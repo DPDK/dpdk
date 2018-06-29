@@ -125,6 +125,7 @@ struct enic {
 	bool disable_overlay; /* devargs disable_overlay=1 */
 	bool nic_cfg_chk;     /* NIC_CFG_CHK available */
 	bool udp_rss_weak;    /* Bodega style UDP RSS */
+	uint8_t ig_vlan_rewrite_mode; /* devargs ig-vlan-rewrite */
 
 	unsigned int flags;
 	unsigned int priv_flags;

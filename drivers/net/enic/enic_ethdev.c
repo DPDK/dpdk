@@ -41,6 +41,7 @@ static const struct rte_pci_id pci_id_enic_map[] = {
 };
 
 #define ENIC_DEVARG_DISABLE_OVERLAY "disable-overlay"
+#define ENIC_DEVARG_IG_VLAN_REWRITE "ig-vlan-rewrite"
 
 RTE_INIT(enicpmd_init_log);
 static void
@@ -858,23 +859,61 @@ static int enic_parse_disable_overlay(__rte_unused const char *key,
 	return 0;
 }
 
+static int enic_parse_ig_vlan_rewrite(__rte_unused const char *key,
+				      const char *value,
+				      void *opaque)
+{
+	struct enic *enic;
+
+	enic = (struct enic *)opaque;
+	if (strcmp(value, "trunk") == 0) {
+		/* Trunk mode: always tag */
+		enic->ig_vlan_rewrite_mode = IG_VLAN_REWRITE_MODE_DEFAULT_TRUNK;
+	} else if (strcmp(value, "untag") == 0) {
+		/* Untag default VLAN mode: untag if VLAN = default VLAN */
+		enic->ig_vlan_rewrite_mode =
+			IG_VLAN_REWRITE_MODE_UNTAG_DEFAULT_VLAN;
+	} else if (strcmp(value, "priority") == 0) {
+		/*
+		 * Priority-tag default VLAN mode: priority tag (VLAN header
+		 * with ID=0) if VLAN = default
+		 */
+		enic->ig_vlan_rewrite_mode =
+			IG_VLAN_REWRITE_MODE_PRIORITY_TAG_DEFAULT_VLAN;
+	} else if (strcmp(value, "pass") == 0) {
+		/* Pass through mode: do not touch tags */
+		enic->ig_vlan_rewrite_mode = IG_VLAN_REWRITE_MODE_PASS_THRU;
+	} else {
+		dev_err(enic, "Invalid value for " ENIC_DEVARG_IG_VLAN_REWRITE
+			": expected=trunk|untag|priority|pass given=%s\n",
+			value);
+		return -EINVAL;
+	}
+	return 0;
+}
+
 static int enic_check_devargs(struct rte_eth_dev *dev)
 {
 	static const char *const valid_keys[] = {
-		ENIC_DEVARG_DISABLE_OVERLAY, NULL};
+		ENIC_DEVARG_DISABLE_OVERLAY,
+		ENIC_DEVARG_IG_VLAN_REWRITE,
+		NULL};
 	struct enic *enic = pmd_priv(dev);
 	struct rte_kvargs *kvlist;
 
 	ENICPMD_FUNC_TRACE();
 
 	enic->disable_overlay = false;
+	enic->ig_vlan_rewrite_mode = IG_VLAN_REWRITE_MODE_PASS_THRU;
 	if (!dev->device->devargs)
 		return 0;
 	kvlist = rte_kvargs_parse(dev->device->devargs->args, valid_keys);
 	if (!kvlist)
 		return -EINVAL;
 	if (rte_kvargs_process(kvlist, ENIC_DEVARG_DISABLE_OVERLAY,
-			       enic_parse_disable_overlay, enic) < 0) {
+			       enic_parse_disable_overlay, enic) < 0 ||
+	    rte_kvargs_process(kvlist, ENIC_DEVARG_IG_VLAN_REWRITE,
+			       enic_parse_ig_vlan_rewrite, enic) < 0) {
 		rte_kvargs_free(kvlist);
 		return -EINVAL;
 	}
@@ -939,4 +978,5 @@ RTE_PMD_REGISTER_PCI(net_enic, rte_enic_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_enic, pci_id_enic_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_enic, "* igb_uio | uio_pci_generic | vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_enic,
-			      ENIC_DEVARG_DISABLE_OVERLAY "=<0|1> ");
+	ENIC_DEVARG_DISABLE_OVERLAY "=0|1 "
+	ENIC_DEVARG_IG_VLAN_REWRITE "=trunk|untag|priority|pass");
