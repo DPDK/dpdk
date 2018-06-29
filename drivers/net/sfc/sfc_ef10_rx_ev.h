@@ -37,8 +37,10 @@ sfc_ef10_rx_ev_to_offloads(const efx_qword_t rx_ev, struct rte_mbuf *m,
 	if (unlikely(rx_ev.eq_u64[0] &
 		rte_cpu_to_le_64((1ull << ESF_DZ_RX_ECC_ERR_LBN) |
 				 (1ull << ESF_DZ_RX_ECRC_ERR_LBN) |
-				 (1ull << ESF_DZ_RX_PARSE_INCOMPLETE_LBN))))
+				 (1ull << ESF_DZ_RX_PARSE_INCOMPLETE_LBN)))) {
+		/* Zero packet type is used as a marker to dicard bad packets */
 		goto done;
+	}
 
 #if SFC_EF10_RX_EV_ENCAP_SUPPORT
 	switch (EFX_QWORD_FIELD(rx_ev, ESF_EZ_RX_ENCAP_HDR)) {
@@ -156,6 +158,8 @@ sfc_ef10_rx_ev_to_offloads(const efx_qword_t rx_ev, struct rte_mbuf *m,
 		/* Unexpected Layer 4 class */
 		SFC_ASSERT(false);
 	}
+
+	SFC_ASSERT(l2_ptype != 0);
 
 done:
 	m->ol_flags = ol_flags & ol_mask;

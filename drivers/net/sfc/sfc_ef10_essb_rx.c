@@ -322,6 +322,12 @@ sfc_ef10_essb_rx_get_pending(struct sfc_ef10_essb_rxq *rxq,
 			const efx_qword_t *qwordp;
 			uint16_t pkt_len;
 
+			/* Buffers to be discarded have 0 in packet type */
+			if (unlikely(m->packet_type == 0)) {
+				rte_mempool_put(rxq->refill_mb_pool, m);
+				goto next_buf;
+			}
+
 			rx_pkts[n_rx_pkts++] = m;
 
 			/* Parse pseudo-header */
@@ -357,6 +363,7 @@ sfc_ef10_essb_rx_get_pending(struct sfc_ef10_essb_rxq *rxq,
 				EFX_QWORD_FIELD(*qwordp,
 						ES_EZ_ESSB_RX_PREFIX_MARK);
 
+next_buf:
 			m = sfc_ef10_essb_next_mbuf(rxq, m);
 		} while (todo_bufs-- > 0);
 	}
