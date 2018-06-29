@@ -20,7 +20,7 @@
 static void size_nports_qsets(struct adapter *adapter)
 {
 	struct vf_resources *vfres = &adapter->params.vfres;
-	unsigned int ethqsets, pmask_nports;
+	unsigned int pmask_nports;
 
 	/*
 	 * The number of "ports" which we support is equal to the number of
@@ -49,23 +49,7 @@ static void size_nports_qsets(struct adapter *adapter)
 		adapter->params.nports = pmask_nports;
 	}
 
-	/*
-	 * We need to reserve an Ingress Queue for the Asynchronous Firmware
-	 * Event Queue.
-	 *
-	 * For each Queue Set, we'll need the ability to allocate two Egress
-	 * Contexts -- one for the Ingress Queue Free List and one for the TX
-	 * Ethernet Queue.
-	 */
-	ethqsets = vfres->niqflint - 1;
-	if (vfres->nethctrl != ethqsets)
-		ethqsets = min(vfres->nethctrl, ethqsets);
-	if (vfres->neq < ethqsets * 2)
-		ethqsets = vfres->neq / 2;
-	if (ethqsets > MAX_ETH_QSETS)
-		ethqsets = MAX_ETH_QSETS;
-	adapter->sge.max_ethqsets = ethqsets;
-
+	configure_max_ethqsets(adapter);
 	if (adapter->sge.max_ethqsets < adapter->params.nports) {
 		dev_warn(adapter->pdev_dev, "only using %d of %d available"
 			 " virtual interfaces (too few Queue Sets)\n",

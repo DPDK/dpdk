@@ -2480,6 +2480,46 @@ int t4_get_core_clock(struct adapter *adapter, struct vpd_params *p)
 	return 0;
 }
 
+/**
+ * t4_get_pfres - retrieve VF resource limits
+ * @adapter: the adapter
+ *
+ * Retrieves configured resource limits and capabilities for a physical
+ * function.  The results are stored in @adapter->pfres.
+ */
+int t4_get_pfres(struct adapter *adapter)
+{
+	struct pf_resources *pfres = &adapter->params.pfres;
+	struct fw_pfvf_cmd cmd, rpl;
+	u32 word;
+	int v;
+
+	/*
+	 * Execute PFVF Read command to get VF resource limits; bail out early
+	 * with error on command failure.
+	 */
+	memset(&cmd, 0, sizeof(cmd));
+	cmd.op_to_vfn = cpu_to_be32(V_FW_CMD_OP(FW_PFVF_CMD) |
+				    F_FW_CMD_REQUEST |
+				    F_FW_CMD_READ |
+				    V_FW_PFVF_CMD_PFN(adapter->pf) |
+				    V_FW_PFVF_CMD_VFN(0));
+	cmd.retval_len16 = cpu_to_be32(FW_LEN16(cmd));
+	v = t4_wr_mbox(adapter, adapter->mbox, &cmd, sizeof(cmd), &rpl);
+	if (v != FW_SUCCESS)
+		return v;
+
+	/*
+	 * Extract PF resource limits and return success.
+	 */
+	word = be32_to_cpu(rpl.niqflint_niq);
+	pfres->niqflint = G_FW_PFVF_CMD_NIQFLINT(word);
+
+	word = be32_to_cpu(rpl.type_to_neq);
+	pfres->neq = G_FW_PFVF_CMD_NEQ(word);
+	return 0;
+}
+
 /* serial flash and firmware constants and flash config file constants */
 enum {
 	SF_ATTEMPTS = 10,             /* max retries for SF operations */

@@ -211,6 +211,14 @@ struct rss_params {
 };
 
 /*
+ * Maximum resources provisioned for a PCI PF.
+ */
+struct pf_resources {
+	unsigned int neq;      /* N egress Qs */
+	unsigned int niqflint; /* N ingress Qs/w free list(s) & intr */
+};
+
+/*
  * Maximum resources provisioned for a PCI VF.
  */
 struct vf_resources {
@@ -233,6 +241,7 @@ struct adapter_params {
 	struct pci_params pci;
 	struct devlog_params devlog;
 	struct rss_params rss;
+	struct pf_resources pfres;
 	struct vf_resources vfres;
 	enum pcie_memwin drv_memwin;
 
@@ -466,6 +475,7 @@ void t4_write_indirect(struct adapter *adap, unsigned int addr_reg,
 		       unsigned int nregs, unsigned int start_idx);
 
 int t4_get_vpd_params(struct adapter *adapter, struct vpd_params *p);
+int t4_get_pfres(struct adapter *adapter);
 int t4_read_flash(struct adapter *adapter, unsigned int addr,
 		  unsigned int nwords, u32 *data, int byte_oriented);
 int t4_flash_cfg_addr(struct adapter *adapter);

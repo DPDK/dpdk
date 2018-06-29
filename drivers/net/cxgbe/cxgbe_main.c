@@ -513,7 +513,7 @@ void cfg_queues(struct rte_eth_dev *eth_dev)
 		 * We default up to # of cores queues per 1G/10G port.
 		 */
 		if (nb_ports)
-			q_per_port = (MAX_ETH_QSETS -
+			q_per_port = (s->max_ethqsets -
 				     (adap->params.nports - nb_ports)) /
 				     nb_ports;
 
@@ -536,8 +536,6 @@ void cfg_queues(struct rte_eth_dev *eth_dev)
 
 			qidx += pi->n_rx_qsets;
 		}
-
-		s->max_ethqsets = qidx;
 
 		for (i = 0; i < ARRAY_SIZE(s->ethrxq); i++) {
 			struct sge_eth_rxq *r = &s->ethrxq[i];
@@ -768,6 +766,40 @@ static void configure_pcie_ext_tag(struct adapter *adapter)
 					 V_MINTAG(8));
 		}
 	}
+}
+
+/* Figure out how many Queue Sets we can support */
+void configure_max_ethqsets(struct adapter *adapter)
+{
+	unsigned int ethqsets;
+
+	/*
+	 * We need to reserve an Ingress Queue for the Asynchronous Firmware
+	 * Event Queue.
+	 *
+	 * For each Queue Set, we'll need the ability to allocate two Egress
+	 * Contexts -- one for the Ingress Queue Free List and one for the TX
+	 * Ethernet Queue.
+	 */
+	if (is_pf4(adapter)) {
+		struct pf_resources *pfres = &adapter->params.pfres;
+
+		ethqsets = pfres->niqflint - 1;
+		if (pfres->neq < ethqsets * 2)
+			ethqsets = pfres->neq / 2;
+	} else {
+		struct vf_resources *vfres = &adapter->params.vfres;
+
+		ethqsets = vfres->niqflint - 1;
+		if (vfres->nethctrl != ethqsets)
+			ethqsets = min(vfres->nethctrl, ethqsets);
+		if (vfres->neq < ethqsets * 2)
+			ethqsets = vfres->neq / 2;
+	}
+
+	if (ethqsets > MAX_ETH_QSETS)
+		ethqsets = MAX_ETH_QSETS;
+	adapter->sge.max_ethqsets = ethqsets;
 }
 
 /*
@@ -1051,6 +1083,17 @@ static int adap_init0(struct adapter *adap)
 		goto bye;
 	}
 
+	/* Now that we've successfully configured and initialized the adapter
+	 * (or found it already initialized), we can ask the Firmware what
+	 * resources it has provisioned for us.
+	 */
+	ret = t4_get_pfres(adap);
+	if (ret) {
+		dev_err(adap->pdev_dev,
+			"Unable to retrieve resource provisioning info\n");
+		goto bye;
+	}
+
 	/* Find out what ports are available to us. */
 	v = V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_DEV) |
 	    V_FW_PARAMS_PARAM_X(FW_PARAMS_PARAM_DEV_PORTVEC);
@@ -1201,6 +1244,7 @@ static int adap_init0(struct adapter *adap)
 	t4_init_tp_params(adap);
 	configure_pcie_ext_tag(adap);
 	configure_vlan_types(adap);
+	configure_max_ethqsets(adap);
 
 	adap->params.drv_memwin = MEMWIN_NIC;
 	adap->flags |= FW_OK;

@@ -744,6 +744,12 @@ struct fw_pfvf_cmd {
 	__be32 r4;
 };
 
+#define S_FW_PFVF_CMD_PFN		8
+#define V_FW_PFVF_CMD_PFN(x)		((x) << S_FW_PFVF_CMD_PFN)
+
+#define S_FW_PFVF_CMD_VFN		0
+#define V_FW_PFVF_CMD_VFN(x)		((x) << S_FW_PFVF_CMD_VFN)
+
 #define S_FW_PFVF_CMD_NIQFLINT          20
 #define M_FW_PFVF_CMD_NIQFLINT          0xfff
 #define G_FW_PFVF_CMD_NIQFLINT(x)       \

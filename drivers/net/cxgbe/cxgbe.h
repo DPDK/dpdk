@@ -63,5 +63,6 @@ void cxgbe_enable_rx_queues(struct port_info *pi);
 void print_port_info(struct adapter *adap);
 void print_adapter_info(struct adapter *adap);
 int cxgbe_get_devargs(struct rte_devargs *devargs, const char *key);
+void configure_max_ethqsets(struct adapter *adapter);
 
 #endif /* _CXGBE_H_ */
