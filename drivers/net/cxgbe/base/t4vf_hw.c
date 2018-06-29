@@ -683,6 +683,9 @@ static int t4vf_get_port_stats_fw(struct adapter *adapter, int pidx,
 	/*
 	 * Translate firmware statistics into host native statistics.
 	 */
+	p->tx_octets = be64_to_cpu(fwstats.tx_bcast_bytes) +
+		       be64_to_cpu(fwstats.tx_mcast_bytes) +
+		       be64_to_cpu(fwstats.tx_ucast_bytes);
 	p->tx_bcast_frames = be64_to_cpu(fwstats.tx_bcast_frames);
 	p->tx_mcast_frames = be64_to_cpu(fwstats.tx_mcast_frames);
 	p->tx_ucast_frames = be64_to_cpu(fwstats.tx_ucast_frames);
@@ -722,6 +725,9 @@ void t4vf_get_port_stats(struct adapter *adapter, int pidx,
 #define GET_STAT(name) \
 	t4_read_reg64(adapter, \
 			T4VF_MPS_BASE_ADDR + A_MPS_VF_STAT_##name##_L)
+	p->tx_octets = GET_STAT(TX_VF_BCAST_BYTES) +
+		       GET_STAT(TX_VF_MCAST_BYTES) +
+		       GET_STAT(TX_VF_UCAST_BYTES);
 	p->tx_bcast_frames = GET_STAT(TX_VF_BCAST_FRAMES);
 	p->tx_mcast_frames = GET_STAT(TX_VF_MCAST_FRAMES);
 	p->tx_ucast_frames = GET_STAT(TX_VF_UCAST_FRAMES);

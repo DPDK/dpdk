@@ -50,6 +50,7 @@ static int cxgbevf_dev_stats_get(struct rte_eth_dev *eth_dev,
 	/* TX Stats */
 	eth_stats->opackets = ps.tx_bcast_frames + ps.tx_mcast_frames +
 			      ps.tx_ucast_frames;
+	eth_stats->obytes = ps.tx_octets;
 	eth_stats->oerrors  = ps.tx_drop;
 
 	for (i = 0; i < pi->n_rx_qsets; i++) {
