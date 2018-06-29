@@ -251,6 +251,8 @@ struct adapter_params {
 	unsigned char nports;             /* # of ethernet ports */
 	unsigned char portvec;
 
+	unsigned char hash_filter;
+
 	enum chip_type chip;              /* chip code */
 	struct arch_specific_params arch; /* chip specific params */
 
@@ -313,6 +315,11 @@ static inline int is_pf4(struct adapter *adap)
 
 #define for_each_port(adapter, iter) \
 	for (iter = 0; iter < (adapter)->params.nports; ++iter)
+
+static inline int is_hashfilter(const struct adapter *adap)
+{
+	return adap->params.hash_filter;
+}
 
 void t4_read_mtu_tbl(struct adapter *adap, u16 *mtus, u8 *mtu_log);
 void t4_tp_wr_bits_indirect(struct adapter *adap, unsigned int addr,

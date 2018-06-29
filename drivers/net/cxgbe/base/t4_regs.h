@@ -937,3 +937,12 @@
 #define M_REV    0xfU
 #define V_REV(x) ((x) << S_REV)
 #define G_REV(x) (((x) >> S_REV) & M_REV)
+
+/* registers for module LE */
+#define A_LE_DB_CONFIG 0x19c04
+
+#define S_HASHEN    20
+#define V_HASHEN(x) ((x) << S_HASHEN)
+#define F_HASHEN    V_HASHEN(1U)
+
+#define A_LE_DB_TID_HASHBASE 0x19df8

@@ -8,6 +8,44 @@
 #include "cxgbe_filter.h"
 
 /**
+ * Initialize Hash Filters
+ */
+int init_hash_filter(struct adapter *adap)
+{
+	unsigned int n_user_filters;
+	unsigned int user_filter_perc;
+	int ret;
+	u32 params[7], val[7];
+
+#define FW_PARAM_DEV(param) \
+	(V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_DEV) | \
+	V_FW_PARAMS_PARAM_X(FW_PARAMS_PARAM_DEV_##param))
+
+#define FW_PARAM_PFVF(param) \
+	(V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_PFVF) | \
+	V_FW_PARAMS_PARAM_X(FW_PARAMS_PARAM_PFVF_##param) |  \
+	V_FW_PARAMS_PARAM_Y(0) | \
+	V_FW_PARAMS_PARAM_Z(0))
+
+	params[0] = FW_PARAM_DEV(NTID);
+	ret = t4_query_params(adap, adap->mbox, adap->pf, 0, 1,
+			      params, val);
+	if (ret < 0)
+		return ret;
+	adap->tids.ntids = val[0];
+	adap->tids.natids = min(adap->tids.ntids / 2, MAX_ATIDS);
+
+	user_filter_perc = 100;
+	n_user_filters = mult_frac(adap->tids.nftids,
+				   user_filter_perc,
+				   100);
+
+	adap->tids.nftids = n_user_filters;
+	adap->params.hash_filter = 1;
+	return 0;
+}
+
+/**
  * Validate if the requested filter specification can be set by checking
  * if the requested features have been enabled
  */

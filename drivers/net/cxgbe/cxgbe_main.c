@@ -287,24 +287,43 @@ static int tid_init(struct tid_info *t)
 {
 	size_t size;
 	unsigned int ftid_bmap_size;
+	unsigned int natids = t->natids;
 	unsigned int max_ftids = t->nftids;
 
 	ftid_bmap_size = rte_bitmap_get_memory_footprint(t->nftids);
 	size = t->ntids * sizeof(*t->tid_tab) +
-		max_ftids * sizeof(*t->ftid_tab);
+		max_ftids * sizeof(*t->ftid_tab) +
+		natids * sizeof(*t->atid_tab);
 
 	t->tid_tab = t4_os_alloc(size);
 	if (!t->tid_tab)
 		return -ENOMEM;
 
-	t->ftid_tab = (struct filter_entry *)&t->tid_tab[t->ntids];
+	t->atid_tab = (union aopen_entry *)&t->tid_tab[t->ntids];
+	t->ftid_tab = (struct filter_entry *)&t->tid_tab[t->natids];
 	t->ftid_bmap_array = t4_os_alloc(ftid_bmap_size);
 	if (!t->ftid_bmap_array) {
 		tid_free(t);
 		return -ENOMEM;
 	}
 
+	t4_os_lock_init(&t->atid_lock);
 	t4_os_lock_init(&t->ftid_lock);
+
+	t->afree = NULL;
+	t->atids_in_use = 0;
+	rte_atomic32_init(&t->tids_in_use);
+	rte_atomic32_set(&t->tids_in_use, 0);
+	rte_atomic32_init(&t->conns_in_use);
+	rte_atomic32_set(&t->conns_in_use, 0);
+
+	/* Setup the free list for atid_tab and clear the stid bitmap. */
+	if (natids) {
+		while (--natids)
+			t->atid_tab[natids - 1].next = &t->atid_tab[natids];
+		t->afree = t->atid_tab;
+	}
+
 	t->ftid_bmap = rte_bitmap_init(t->nftids, t->ftid_bmap_array,
 				       ftid_bmap_size);
 	if (!t->ftid_bmap) {
@@ -784,8 +803,7 @@ static int adap_init0_config(struct adapter *adapter, int reset)
 	 * This will allow the firmware to optimize aspects of the hardware
 	 * configuration which will result in improved performance.
 	 */
-	caps_cmd.niccaps &= cpu_to_be16(~(FW_CAPS_CONFIG_NIC_HASHFILTER |
-					  FW_CAPS_CONFIG_NIC_ETHOFLD));
+	caps_cmd.niccaps &= cpu_to_be16(~FW_CAPS_CONFIG_NIC_ETHOFLD);
 	caps_cmd.toecaps = 0;
 	caps_cmd.iscsicaps = 0;
 	caps_cmd.rdmacaps = 0;
@@ -990,6 +1008,12 @@ static int adap_init0(struct adapter *adap)
 	if (ret < 0)
 		goto bye;
 
+	if ((caps_cmd.niccaps & cpu_to_be16(FW_CAPS_CONFIG_NIC_HASHFILTER)) &&
+	    is_t6(adap->params.chip)) {
+		if (init_hash_filter(adap) < 0)
+			goto bye;
+	}
+
 	/* query tid-related parameters */
 	params[0] = FW_PARAM_DEV(NTID);
 	ret = t4_query_params(adap, adap->mbox, adap->pf, 0, 1,
@@ -997,6 +1021,7 @@ static int adap_init0(struct adapter *adap)
 	if (ret < 0)
 		goto bye;
 	adap->tids.ntids = val[0];
+	adap->tids.natids = min(adap->tids.ntids / 2, MAX_ATIDS);
 
 	/* If we're running on newer firmware, let it know that we're
 	 * prepared to deal with encapsulated CPL messages.  Older
@@ -1651,6 +1676,20 @@ allocate_mac:
 		/* Disable filtering support */
 		dev_warn(adapter, "could not allocate TID table, "
 			 "filter support disabled. Continuing\n");
+	}
+
+	if (is_hashfilter(adapter)) {
+		if (t4_read_reg(adapter, A_LE_DB_CONFIG) & F_HASHEN) {
+			u32 hash_base, hash_reg;
+
+			hash_reg = A_LE_DB_TID_HASHBASE;
+			hash_base = t4_read_reg(adapter, hash_reg);
+			adapter->tids.hash_base = hash_base / 4;
+		}
+	} else {
+		/* Disable hash filtering support */
+		dev_warn(adapter,
+			 "Maskless filter support disabled. Continuing\n");
 	}
 
 	err = init_rss(adapter);
