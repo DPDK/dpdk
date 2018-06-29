@@ -198,15 +198,6 @@ static inline int cxgbe_fls(int x)
 	return x ? sizeof(x) * 8 - __builtin_clz(x) : 0;
 }
 
-/**
- * cxgbe_ffs - find first bit set
- * @x: the word to search
- */
-static inline int cxgbe_ffs(int x)
-{
-	return x ? __builtin_ffs(x) : 0;
-}
-
 static inline unsigned long ilog2(unsigned long n)
 {
 	unsigned int e = 0;

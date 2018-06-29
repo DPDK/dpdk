@@ -1889,12 +1889,16 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 			    F_FW_CMD_WRITE | F_FW_CMD_EXEC);
 
 	if (is_pf4(adap)) {
-		pciechan = cong > 0 ? cxgbe_ffs(cong) - 1 : pi->tx_chan;
+		pciechan = pi->tx_chan;
 		c.op_to_vfn |= htonl(V_FW_IQ_CMD_PFN(adap->pf) |
 				     V_FW_IQ_CMD_VFN(0));
 		if (cong >= 0)
-			c.iqns_to_fl0congen = htonl(F_FW_IQ_CMD_IQFLINTCONGEN |
-						    F_FW_IQ_CMD_IQRO);
+			c.iqns_to_fl0congen =
+				htonl(F_FW_IQ_CMD_IQFLINTCONGEN |
+				      V_FW_IQ_CMD_IQTYPE(cong ?
+							 FW_IQ_IQTYPE_NIC :
+							 FW_IQ_IQTYPE_OFLD) |
+				      F_FW_IQ_CMD_IQRO);
 	} else {
 		pciechan = pi->port_id;
 	}
