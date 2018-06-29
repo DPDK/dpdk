@@ -8,6 +8,7 @@ sources = files('cxgbe_ethdev.c',
 	'sge.c',
 	'cxgbe_filter.c',
 	'cxgbe_flow.c',
+	'clip_tbl.c',
 	'base/t4_hw.c',
 	'base/t4vf_hw.c')
 includes += include_directories('base')

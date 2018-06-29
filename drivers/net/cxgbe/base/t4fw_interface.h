@@ -333,6 +333,7 @@ enum fw_cmd_opcodes {
 	FW_RSS_IND_TBL_CMD             = 0x20,
 	FW_RSS_GLB_CONFIG_CMD	       = 0x22,
 	FW_RSS_VI_CONFIG_CMD           = 0x23,
+	FW_CLIP_CMD                    = 0x28,
 	FW_DEBUG_CMD                   = 0x81,
 };
 
@@ -648,6 +649,8 @@ enum fw_params_param_dev {
  * physical and virtual function parameters
  */
 enum fw_params_param_pfvf {
+	FW_PARAMS_PARAM_PFVF_CLIP_START = 0x03,
+	FW_PARAMS_PARAM_PFVF_CLIP_END = 0x04,
 	FW_PARAMS_PARAM_PFVF_FILTER_START = 0x05,
 	FW_PARAMS_PARAM_PFVF_FILTER_END = 0x06,
 	FW_PARAMS_PARAM_PFVF_CPLFW4MSG_ENCAP = 0x31,
@@ -2166,6 +2169,22 @@ struct fw_rss_vi_config_cmd {
 #define G_FW_RSS_VI_CONFIG_CMD_UDPEN(x)	\
 	(((x) >> S_FW_RSS_VI_CONFIG_CMD_UDPEN) & M_FW_RSS_VI_CONFIG_CMD_UDPEN)
 #define F_FW_RSS_VI_CONFIG_CMD_UDPEN	V_FW_RSS_VI_CONFIG_CMD_UDPEN(1U)
+
+struct fw_clip_cmd {
+	__be32 op_to_write;
+	__be32 alloc_to_len16;
+	__be64 ip_hi;
+	__be64 ip_lo;
+	__be32 r4[2];
+};
+
+#define S_FW_CLIP_CMD_ALLOC		31
+#define V_FW_CLIP_CMD_ALLOC(x)		((x) << S_FW_CLIP_CMD_ALLOC)
+#define F_FW_CLIP_CMD_ALLOC		V_FW_CLIP_CMD_ALLOC(1U)
+
+#define S_FW_CLIP_CMD_FREE		30
+#define V_FW_CLIP_CMD_FREE(x)		((x) << S_FW_CLIP_CMD_FREE)
+#define F_FW_CLIP_CMD_FREE		V_FW_CLIP_CMD_FREE(1U)
 
 /******************************************************************************
  *   D E B U G   C O M M A N D s

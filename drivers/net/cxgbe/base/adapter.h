@@ -11,6 +11,7 @@
 #include <rte_bus_pci.h>
 #include <rte_mbuf.h>
 #include <rte_io.h>
+#include <rte_rwlock.h>
 #include <rte_ethdev.h>
 
 #include "cxgbe_compat.h"
@@ -321,8 +322,39 @@ struct adapter {
 	int use_unpacked_mode; /* unpacked rx mode state */
 	rte_spinlock_t win0_lock;
 
+	unsigned int clipt_start; /* CLIP table start */
+	unsigned int clipt_end;   /* CLIP table end */
+	struct clip_tbl *clipt;   /* CLIP table */
+
 	struct tid_info tids;     /* Info used to access TID related tables */
 };
+
+/**
+ * t4_os_rwlock_init - initialize rwlock
+ * @lock: the rwlock
+ */
+static inline void t4_os_rwlock_init(rte_rwlock_t *lock)
+{
+	rte_rwlock_init(lock);
+}
+
+/**
+ * t4_os_write_lock - get a write lock
+ * @lock: the rwlock
+ */
+static inline void t4_os_write_lock(rte_rwlock_t *lock)
+{
+	rte_rwlock_write_lock(lock);
+}
+
+/**
+ * t4_os_write_unlock - unlock a write lock
+ * @lock: the rwlock
+ */
+static inline void t4_os_write_unlock(rte_rwlock_t *lock)
+{
+	rte_rwlock_write_unlock(lock);
+}
 
 /**
  * ethdev2pinfo - return the port_info structure associated with a rte_eth_dev

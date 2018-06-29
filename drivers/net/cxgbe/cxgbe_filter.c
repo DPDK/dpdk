@@ -6,6 +6,7 @@
 #include "common.h"
 #include "t4_regs.h"
 #include "cxgbe_filter.h"
+#include "clip_tbl.h"
 
 /**
  * Initialize Hash Filters
@@ -164,6 +165,9 @@ int cxgbe_alloc_ftid(struct adapter *adap, unsigned int family)
  */
 void clear_filter(struct filter_entry *f)
 {
+	if (f->clipt)
+		cxgbe_clip_release(f->dev, f->clipt);
+
 	/*
 	 * The zeroing of the filter rule below clears the filter valid,
 	 * pending, locked flags etc. so it's all we need for
@@ -349,16 +353,30 @@ int cxgbe_del_filter(struct rte_eth_dev *dev, unsigned int filter_id,
 	struct port_info *pi = (struct port_info *)(dev->data->dev_private);
 	struct adapter *adapter = pi->adapter;
 	struct filter_entry *f;
+	unsigned int chip_ver;
 	int ret;
 
 	if (filter_id >= adapter->tids.nftids)
 		return -ERANGE;
+
+	chip_ver = CHELSIO_CHIP_VERSION(adapter->params.chip);
 
 	ret = is_filter_set(&adapter->tids, filter_id, fs->type);
 	if (!ret) {
 		dev_warn(adap, "%s: could not find filter entry: %u\n",
 			 __func__, filter_id);
 		return -EINVAL;
+	}
+
+	/*
+	 * Ensure filter id is aligned on the 2 slot boundary for T6,
+	 * and 4 slot boundary for cards below T6.
+	 */
+	if (fs->type) {
+		if (chip_ver < CHELSIO_T6)
+			filter_id &= ~(0x3);
+		else
+			filter_id &= ~(0x1);
 	}
 
 	f = &adapter->tids.ftid_tab[filter_id];
@@ -403,10 +421,14 @@ int cxgbe_set_filter(struct rte_eth_dev *dev, unsigned int filter_id,
 	struct adapter *adapter = pi->adapter;
 	unsigned int fidx, iq, fid_bit = 0;
 	struct filter_entry *f;
+	unsigned int chip_ver;
+	uint8_t bitoff[16] = {0};
 	int ret;
 
 	if (filter_id >= adapter->tids.nftids)
 		return -ERANGE;
+
+	chip_ver = CHELSIO_CHIP_VERSION(adapter->params.chip);
 
 	ret = validate_filter(adapter, fs);
 	if (ret)
@@ -426,38 +448,61 @@ int cxgbe_set_filter(struct rte_eth_dev *dev, unsigned int filter_id,
 	iq = get_filter_steerq(dev, fs);
 
 	/*
-	 * IPv6 filters occupy four slots and must be aligned on
-	 * four-slot boundaries.  IPv4 filters only occupy a single
-	 * slot and have no alignment requirements but writing a new
-	 * IPv4 filter into the middle of an existing IPv6 filter
-	 * requires clearing the old IPv6 filter.
+	 * IPv6 filters occupy four slots and must be aligned on four-slot
+	 * boundaries for T5. On T6, IPv6 filters occupy two-slots and
+	 * must be aligned on two-slot boundaries.
+	 *
+	 * IPv4 filters only occupy a single slot and have no alignment
+	 * requirements but writing a new IPv4 filter into the middle
+	 * of an existing IPv6 filter requires clearing the old IPv6
+	 * filter.
 	 */
 	if (fs->type == FILTER_TYPE_IPV4) { /* IPv4 */
 		/*
-		 * If our IPv4 filter isn't being written to a
-		 * multiple of four filter index and there's an IPv6
-		 * filter at the multiple of 4 base slot, then we need
+		 * For T6, If our IPv4 filter isn't being written to a
+		 * multiple of two filter index and there's an IPv6
+		 * filter at the multiple of 2 base slot, then we need
 		 * to delete that IPv6 filter ...
+		 * For adapters below T6, IPv6 filter occupies 4 entries.
 		 */
-		fidx = filter_id & ~0x3;
+		if (chip_ver < CHELSIO_T6)
+			fidx = filter_id & ~0x3;
+		else
+			fidx = filter_id & ~0x1;
+
 		if (fidx != filter_id && adapter->tids.ftid_tab[fidx].fs.type) {
 			f = &adapter->tids.ftid_tab[fidx];
 			if (f->valid)
 				return -EBUSY;
 		}
 	} else { /* IPv6 */
-		/*
-		 * Ensure that the IPv6 filter is aligned on a
-		 * multiple of 4 boundary.
-		 */
-		if (filter_id & 0x3)
-			return -EINVAL;
+		unsigned int max_filter_id;
+
+		if (chip_ver < CHELSIO_T6) {
+			/*
+			 * Ensure that the IPv6 filter is aligned on a
+			 * multiple of 4 boundary.
+			 */
+			if (filter_id & 0x3)
+				return -EINVAL;
+
+			max_filter_id = filter_id + 4;
+		} else {
+			/*
+			 * For T6, CLIP being enabled, IPv6 filter would occupy
+			 * 2 entries.
+			 */
+			if (filter_id & 0x1)
+				return -EINVAL;
+
+			max_filter_id = filter_id + 2;
+		}
 
 		/*
 		 * Check all except the base overlapping IPv4 filter
 		 * slots.
 		 */
-		for (fidx = filter_id + 1; fidx < filter_id + 4; fidx++) {
+		for (fidx = filter_id + 1; fidx < max_filter_id; fidx++) {
 			f = &adapter->tids.ftid_tab[fidx];
 			if (f->valid)
 				return -EBUSY;
@@ -492,6 +537,16 @@ int cxgbe_set_filter(struct rte_eth_dev *dev, unsigned int filter_id,
 	}
 
 	/*
+	 * Allocate a clip table entry only if we have non-zero IPv6 address
+	 */
+	if (chip_ver > CHELSIO_T5 && fs->type &&
+	    memcmp(fs->val.lip, bitoff, sizeof(bitoff))) {
+		f->clipt = cxgbe_clip_alloc(f->dev, (u32 *)&f->fs.val.lip);
+		if (!f->clipt)
+			goto free_tid;
+	}
+
+	/*
 	 * Convert the filter specification into our internal format.
 	 * We copy the PF/VF specification into the Outer VLAN field
 	 * here so the rest of the code -- including the interface to
@@ -510,12 +565,16 @@ int cxgbe_set_filter(struct rte_eth_dev *dev, unsigned int filter_id,
 	ret = set_filter_wr(dev, filter_id);
 	if (ret) {
 		fid_bit = f->tid - adapter->tids.ftid_base;
-		cxgbe_clear_ftid(&adapter->tids, fid_bit,
-				 fs->type ? FILTER_TYPE_IPV6 :
-					    FILTER_TYPE_IPV4);
-		clear_filter(f);
+		goto free_tid;
 	}
 
+	return ret;
+
+free_tid:
+	cxgbe_clear_ftid(&adapter->tids, fid_bit,
+			 fs->type ? FILTER_TYPE_IPV6 :
+				    FILTER_TYPE_IPV4);
+	clear_filter(f);
 	return ret;
 }
 

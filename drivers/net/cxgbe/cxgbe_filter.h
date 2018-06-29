@@ -141,6 +141,7 @@ struct filter_entry {
 	u32 locked:1;               /* filter is administratively locked */
 	u32 pending:1;              /* filter action is pending FW reply */
 	struct filter_ctx *ctx;     /* caller's completion hook */
+	struct clip_entry *clipt;   /* CLIP Table entry for IPv6 */
 	struct rte_eth_dev *dev;    /* Port's rte eth device */
 	void *private;              /* For use by apps using filter_entry */
 

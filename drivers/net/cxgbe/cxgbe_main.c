@@ -37,6 +37,7 @@
 #include "t4_regs.h"
 #include "t4_msg.h"
 #include "cxgbe.h"
+#include "clip_tbl.h"
 
 /**
  * Allocate a chunk of memory. The allocated memory is cleared.
@@ -995,6 +996,14 @@ static int adap_init0(struct adapter *adap)
 	adap->tids.ftid_base = val[0];
 	adap->tids.nftids = val[1] - val[0] + 1;
 
+	params[0] = FW_PARAM_PFVF(CLIP_START);
+	params[1] = FW_PARAM_PFVF(CLIP_END);
+	ret = t4_query_params(adap, adap->mbox, adap->pf, 0, 2, params, val);
+	if (ret < 0)
+		goto bye;
+	adap->clipt_start = val[0];
+	adap->clipt_end = val[1];
+
 	/*
 	 * Get device capabilities so we can determine what resources we need
 	 * to manage.
@@ -1509,6 +1518,7 @@ void cxgbe_close(struct adapter *adapter)
 		if (is_pf4(adapter))
 			t4_intr_disable(adapter);
 		tid_free(&adapter->tids);
+		t4_cleanup_clip_tbl(adapter);
 		t4_sge_tx_monitor_stop(adapter);
 		t4_free_sge_resources(adapter);
 		for_each_port(adapter, i) {
@@ -1671,6 +1681,15 @@ allocate_mac:
 
 	print_adapter_info(adapter);
 	print_port_info(adapter);
+
+	adapter->clipt = t4_init_clip_tbl(adapter->clipt_start,
+					  adapter->clipt_end);
+	if (!adapter->clipt) {
+		/* We tolerate a lack of clip_table, giving up some
+		 * functionality
+		 */
+		dev_warn(adapter, "could not allocate CLIP. Continuing\n");
+	}
 
 	if (tid_init(&adapter->tids) < 0) {
 		/* Disable filtering support */
