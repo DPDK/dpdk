@@ -528,6 +528,22 @@ parse_max_level:
 	return 0;
 }
 
+void vnic_dev_capable_udp_rss_weak(struct vnic_dev *vdev, bool *cfg_chk,
+				   bool *weak)
+{
+	u64 a0 = CMD_NIC_CFG, a1 = 0;
+	int wait = 1000;
+	int err;
+
+	*cfg_chk = false;
+	*weak = false;
+	err = vnic_dev_cmd(vdev, CMD_CAPABILITY, &a0, &a1, wait);
+	if (err == 0 && a0 != 0 && a1 != 0) {
+		*cfg_chk = true;
+		*weak = !!((a1 >> 32) & CMD_NIC_CFG_CAPF_UDP_WEAK);
+	}
+}
+
 int vnic_dev_capable(struct vnic_dev *vdev, enum vnic_devcmd_cmd cmd)
 {
 	u64 a0 = (u32)cmd, a1 = 0;

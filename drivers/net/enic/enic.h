@@ -123,6 +123,8 @@ struct enic {
 	u8 filter_actions; /* HW supported actions */
 	bool vxlan;
 	bool disable_overlay; /* devargs disable_overlay=1 */
+	bool nic_cfg_chk;     /* NIC_CFG_CHK available */
+	bool udp_rss_weak;    /* Bodega style UDP RSS */
 
 	unsigned int flags;
 	unsigned int priv_flags;

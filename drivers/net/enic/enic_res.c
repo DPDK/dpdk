@@ -82,6 +82,8 @@ int enic_get_vnic_config(struct enic *enic)
 			"Error getting filter modes, %d\n", err);
 		return err;
 	}
+	vnic_dev_capable_udp_rss_weak(enic->vdev, &enic->nic_cfg_chk,
+				      &enic->udp_rss_weak);
 
 	dev_info(enic, "Flow api filter mode: %s Actions: %s%s%s\n",
 		((enic->flow_filter_mode == FILTER_DPDK_1) ? "DPDK" :
@@ -124,7 +126,7 @@ int enic_get_vnic_config(struct enic *enic)
 		ENIC_SETTING(enic, RXCSUM) ? "yes" : "no",
 		ENIC_SETTING(enic, RSS) ?
 			(ENIC_SETTING(enic, RSSHASH_UDPIPV4) ? "+UDP" :
-			((ENIC_SETTING(enic, RSSHASH_UDP_WEAK) ? "+udp" :
+			((enic->udp_rss_weak ? "+udp" :
 			"yes"))) : "no",
 		c->intr_mode == VENET_INTR_MODE_INTX ? "INTx" :
 		c->intr_mode == VENET_INTR_MODE_MSI ? "MSI" :
@@ -161,7 +163,7 @@ int enic_get_vnic_config(struct enic *enic)
 	if (ENIC_SETTING(enic, RSSHASH_TCPIPV6))
 		enic->flow_type_rss_offloads |= ETH_RSS_NONFRAG_IPV6_TCP |
 			ETH_RSS_IPV6_TCP_EX;
-	if (ENIC_SETTING(enic, RSSHASH_UDP_WEAK))
+	if (enic->udp_rss_weak)
 		enic->flow_type_rss_offloads |=
 			ETH_RSS_NONFRAG_IPV4_UDP | ETH_RSS_NONFRAG_IPV6_UDP |
 			ETH_RSS_IPV6_UDP_EX;
@@ -235,6 +237,7 @@ int enic_set_nic_cfg(struct enic *enic, u8 rss_default_cpu, u8 rss_hash_type,
 	u8 rss_hash_bits, u8 rss_base_cpu, u8 rss_enable, u8 tso_ipid_split_en,
 	u8 ig_vlan_strip_en)
 {
+	enum vnic_devcmd_cmd cmd;
 	u64 a0, a1;
 	u32 nic_cfg;
 	int wait = 1000;
@@ -245,8 +248,8 @@ int enic_set_nic_cfg(struct enic *enic, u8 rss_default_cpu, u8 rss_hash_type,
 
 	a0 = nic_cfg;
 	a1 = 0;
-
-	return vnic_dev_cmd(enic->vdev, CMD_NIC_CFG, &a0, &a1, wait);
+	cmd = enic->nic_cfg_chk ? CMD_NIC_CFG_CHK : CMD_NIC_CFG;
+	return vnic_dev_cmd(enic->vdev, cmd, &a0, &a1, wait);
 }
 
 int enic_set_rss_key(struct enic *enic, dma_addr_t key_pa, u64 len)

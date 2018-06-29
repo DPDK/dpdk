@@ -1197,7 +1197,7 @@ int enic_set_rss_conf(struct enic *enic, struct rte_eth_rss_conf *rss_conf)
 			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_TCP_IPV4;
 		if (rss_hf & ETH_RSS_NONFRAG_IPV4_UDP) {
 			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_UDP_IPV4;
-			if (ENIC_SETTING(enic, RSSHASH_UDP_WEAK)) {
+			if (enic->udp_rss_weak) {
 				/*
 				 * 'TCP' is not a typo. The "weak" version of
 				 * UDP RSS requires both the TCP and UDP bits
@@ -1213,7 +1213,7 @@ int enic_set_rss_conf(struct enic *enic, struct rte_eth_rss_conf *rss_conf)
 			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_TCP_IPV6;
 		if (rss_hf & (ETH_RSS_NONFRAG_IPV6_UDP | ETH_RSS_IPV6_UDP_EX)) {
 			rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_UDP_IPV6;
-			if (ENIC_SETTING(enic, RSSHASH_UDP_WEAK))
+			if (enic->udp_rss_weak)
 				rss_hash_type |= NIC_CFG_RSS_HASH_TYPE_TCP_IPV6;
 		}
 	} else {
@@ -1237,8 +1237,11 @@ int enic_set_rss_conf(struct enic *enic, struct rte_eth_rss_conf *rss_conf)
 		enic->rss_hf = rss_hf;
 		enic->rss_hash_type = rss_hash_type;
 		enic->rss_enable = rss_enable;
+	} else {
+		dev_err(enic, "Failed to update RSS configurations."
+			" hash=0x%x\n", rss_hash_type);
 	}
-	return 0;
+	return ret;
 }
 
 int enic_set_vlan_strip(struct enic *enic)

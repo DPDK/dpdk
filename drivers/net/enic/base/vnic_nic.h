@@ -32,8 +32,8 @@
 #define NIC_CFG_RSS_HASH_TYPE_TCP_IPV4		(1 << 2)
 #define NIC_CFG_RSS_HASH_TYPE_IPV6		(1 << 3)
 #define NIC_CFG_RSS_HASH_TYPE_TCP_IPV6		(1 << 4)
-#define NIC_CFG_RSS_HASH_TYPE_IPV6_EX		(1 << 5)
-#define NIC_CFG_RSS_HASH_TYPE_TCP_IPV6_EX	(1 << 6)
+#define NIC_CFG_RSS_HASH_TYPE_RSVD1		(1 << 5)
+#define NIC_CFG_RSS_HASH_TYPE_RSVD2		(1 << 6)
 #define NIC_CFG_RSS_HASH_TYPE_UDP_IPV6		(1 << 7)
 
 static inline void vnic_set_nic_cfg(u32 *nic_cfg,
