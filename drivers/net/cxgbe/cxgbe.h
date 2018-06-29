@@ -18,6 +18,10 @@
 #define CXGBE_MIN_RX_BUFSIZE ETHER_MIN_MTU /* min buf size */
 #define CXGBE_MAX_RX_PKTLEN (9000 + ETHER_HDR_LEN + ETHER_CRC_LEN) /* max pkt */
 
+/* Max poll time is 100 * 100msec = 10 sec */
+#define CXGBE_LINK_STATUS_POLL_MS 100 /* 100ms */
+#define CXGBE_LINK_STATUS_POLL_CNT 100 /* Max number of times to poll */
+
 #define CXGBE_DEFAULT_RSS_KEY_LEN     40 /* 320-bits */
 #define CXGBE_RSS_HF_ALL (ETH_RSS_IPV4 | ETH_RSS_IPV6 | \
 			  ETH_RSS_NONFRAG_IPV4_TCP | \
@@ -32,6 +36,7 @@ bool force_linkup(struct adapter *adap);
 int cxgbe_probe(struct adapter *adapter);
 int cxgbevf_probe(struct adapter *adapter);
 void cxgbe_get_speed_caps(struct port_info *pi, u32 *speed_caps);
+int cxgbe_set_link_status(struct port_info *pi, bool status);
 int cxgbe_up(struct adapter *adap);
 int cxgbe_down(struct port_info *pi);
 void cxgbe_close(struct adapter *adapter);

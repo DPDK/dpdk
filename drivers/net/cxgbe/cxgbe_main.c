@@ -1573,6 +1573,30 @@ void cxgbe_get_speed_caps(struct port_info *pi, u32 *speed_caps)
 }
 
 /**
+ * cxgbe_set_link_status - Set device link up or down.
+ * @pi: Underlying port's info
+ * @status: 0 - down, 1 - up
+ *
+ * Set the device link up or down.
+ */
+int cxgbe_set_link_status(struct port_info *pi, bool status)
+{
+	struct adapter *adapter = pi->adapter;
+	int err = 0;
+
+	err = t4_enable_vi(adapter, adapter->mbox, pi->viid, status, status);
+	if (err) {
+		dev_err(adapter, "%s: disable_vi failed: %d\n", __func__, err);
+		return err;
+	}
+
+	if (!status)
+		t4_reset_link_config(adapter, pi->pidx);
+
+	return 0;
+}
+
+/**
  * cxgb_up - enable the adapter
  * @adap: adapter being enabled
  *
@@ -1597,17 +1621,7 @@ int cxgbe_up(struct adapter *adap)
  */
 int cxgbe_down(struct port_info *pi)
 {
-	struct adapter *adapter = pi->adapter;
-	int err = 0;
-
-	err = t4_enable_vi(adapter, adapter->mbox, pi->viid, false, false);
-	if (err) {
-		dev_err(adapter, "%s: disable_vi failed: %d\n", __func__, err);
-		return err;
-	}
-
-	t4_reset_link_config(adapter, pi->pidx);
-	return 0;
+	return cxgbe_set_link_status(pi, false);
 }
 
 /*
