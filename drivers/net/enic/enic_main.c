@@ -320,6 +320,8 @@ enic_alloc_rx_queue_mbufs(struct enic *enic, struct vnic_rq *rq)
 	 * enic_start_rq().
 	 */
 	rq->need_initial_post = true;
+	/* Initialize fetch index while RQ is disabled */
+	iowrite32(0, &rq->ctrl->fetch_index);
 	return 0;
 }
 
@@ -345,7 +347,6 @@ enic_initial_post_rx(struct enic *enic, struct vnic_rq *rq)
 	dev_debug(enic, "port=%u, qidx=%u, Write %u posted idx, %u sw held\n",
 		enic->port_id, rq->index, rq->posted_index, rq->rx_nb_hold);
 	iowrite32(rq->posted_index, &rq->ctrl->posted_index);
-	iowrite32(0, &rq->ctrl->fetch_index);
 	rte_rmb();
 	rq->need_initial_post = false;
 }
