@@ -4,6 +4,7 @@
  */
 #include <rte_net.h>
 #include "common.h"
+#include "t4_tcb.h"
 #include "t4_regs.h"
 #include "cxgbe_filter.h"
 #include "clip_tbl.h"
@@ -117,6 +118,34 @@ int writable_filter(struct filter_entry *f)
 }
 
 /**
+ * Build a CPL_SET_TCB_FIELD message as payload of a ULP_TX_PKT command.
+ */
+static inline void mk_set_tcb_field_ulp(struct filter_entry *f,
+					struct cpl_set_tcb_field *req,
+					unsigned int word,
+					u64 mask, u64 val, u8 cookie,
+					int no_reply)
+{
+	struct ulp_txpkt *txpkt = (struct ulp_txpkt *)req;
+	struct ulptx_idata *sc = (struct ulptx_idata *)(txpkt + 1);
+
+	txpkt->cmd_dest = cpu_to_be32(V_ULPTX_CMD(ULP_TX_PKT) |
+				      V_ULP_TXPKT_DEST(0));
+	txpkt->len = cpu_to_be32(DIV_ROUND_UP(sizeof(*req), 16));
+	sc->cmd_more = cpu_to_be32(V_ULPTX_CMD(ULP_TX_SC_IMM));
+	sc->len = cpu_to_be32(sizeof(*req) - sizeof(struct work_request_hdr));
+	OPCODE_TID(req) = cpu_to_be32(MK_OPCODE_TID(CPL_SET_TCB_FIELD, f->tid));
+	req->reply_ctrl = cpu_to_be16(V_NO_REPLY(no_reply) | V_REPLY_CHAN(0) |
+				      V_QUEUENO(0));
+	req->word_cookie = cpu_to_be16(V_WORD(word) | V_COOKIE(cookie));
+	req->mask = cpu_to_be64(mask);
+	req->val = cpu_to_be64(val);
+	sc = (struct ulptx_idata *)(req + 1);
+	sc->cmd_more = cpu_to_be32(V_ULPTX_CMD(ULP_TX_SC_NOOP));
+	sc->len = cpu_to_be32(0);
+}
+
+/**
  * Check if entry already filled.
  */
 bool is_filter_set(struct tid_info *t, int fidx, int family)
@@ -183,6 +212,132 @@ static u64 hash_filter_ntuple(const struct filter_entry *f)
 		return 0;
 
 	return ntuple;
+}
+
+/**
+ * Build a CPL_ABORT_REQ message as payload of a ULP_TX_PKT command.
+ */
+static void mk_abort_req_ulp(struct cpl_abort_req *abort_req,
+			     unsigned int tid)
+{
+	struct ulp_txpkt *txpkt = (struct ulp_txpkt *)abort_req;
+	struct ulptx_idata *sc = (struct ulptx_idata *)(txpkt + 1);
+
+	txpkt->cmd_dest = cpu_to_be32(V_ULPTX_CMD(ULP_TX_PKT) |
+				      V_ULP_TXPKT_DEST(0));
+	txpkt->len = cpu_to_be32(DIV_ROUND_UP(sizeof(*abort_req), 16));
+	sc->cmd_more = cpu_to_be32(V_ULPTX_CMD(ULP_TX_SC_IMM));
+	sc->len = cpu_to_be32(sizeof(*abort_req) -
+			      sizeof(struct work_request_hdr));
+	OPCODE_TID(abort_req) = cpu_to_be32(MK_OPCODE_TID(CPL_ABORT_REQ, tid));
+	abort_req->rsvd0 = cpu_to_be32(0);
+	abort_req->rsvd1 = 0;
+	abort_req->cmd = CPL_ABORT_NO_RST;
+	sc = (struct ulptx_idata *)(abort_req + 1);
+	sc->cmd_more = cpu_to_be32(V_ULPTX_CMD(ULP_TX_SC_NOOP));
+	sc->len = cpu_to_be32(0);
+}
+
+/**
+ * Build a CPL_ABORT_RPL message as payload of a ULP_TX_PKT command.
+ */
+static void mk_abort_rpl_ulp(struct cpl_abort_rpl *abort_rpl,
+			     unsigned int tid)
+{
+	struct ulp_txpkt *txpkt = (struct ulp_txpkt *)abort_rpl;
+	struct ulptx_idata *sc = (struct ulptx_idata *)(txpkt + 1);
+
+	txpkt->cmd_dest = cpu_to_be32(V_ULPTX_CMD(ULP_TX_PKT) |
+				      V_ULP_TXPKT_DEST(0));
+	txpkt->len = cpu_to_be32(DIV_ROUND_UP(sizeof(*abort_rpl), 16));
+	sc->cmd_more = cpu_to_be32(V_ULPTX_CMD(ULP_TX_SC_IMM));
+	sc->len = cpu_to_be32(sizeof(*abort_rpl) -
+			      sizeof(struct work_request_hdr));
+	OPCODE_TID(abort_rpl) = cpu_to_be32(MK_OPCODE_TID(CPL_ABORT_RPL, tid));
+	abort_rpl->rsvd0 = cpu_to_be32(0);
+	abort_rpl->rsvd1 = 0;
+	abort_rpl->cmd = CPL_ABORT_NO_RST;
+	sc = (struct ulptx_idata *)(abort_rpl + 1);
+	sc->cmd_more = cpu_to_be32(V_ULPTX_CMD(ULP_TX_SC_NOOP));
+	sc->len = cpu_to_be32(0);
+}
+
+/**
+ * Delete the specified hash filter.
+ */
+static int cxgbe_del_hash_filter(struct rte_eth_dev *dev,
+				 unsigned int filter_id,
+				 struct filter_ctx *ctx)
+{
+	struct adapter *adapter = ethdev2adap(dev);
+	struct tid_info *t = &adapter->tids;
+	struct filter_entry *f;
+	struct sge_ctrl_txq *ctrlq;
+	unsigned int port_id = ethdev2pinfo(dev)->port_id;
+	int ret;
+
+	if (filter_id > adapter->tids.ntids)
+		return -E2BIG;
+
+	f = lookup_tid(t, filter_id);
+	if (!f) {
+		dev_err(adapter, "%s: no filter entry for filter_id = %d\n",
+			__func__, filter_id);
+		return -EINVAL;
+	}
+
+	ret = writable_filter(f);
+	if (ret)
+		return ret;
+
+	if (f->valid) {
+		unsigned int wrlen;
+		struct rte_mbuf *mbuf;
+		struct work_request_hdr *wr;
+		struct ulptx_idata *aligner;
+		struct cpl_set_tcb_field *req;
+		struct cpl_abort_req *abort_req;
+		struct cpl_abort_rpl *abort_rpl;
+
+		f->ctx = ctx;
+		f->pending = 1;
+
+		wrlen = cxgbe_roundup(sizeof(*wr) +
+				      (sizeof(*req) + sizeof(*aligner)) +
+				      sizeof(*abort_req) + sizeof(*abort_rpl),
+				      16);
+
+		ctrlq = &adapter->sge.ctrlq[port_id];
+		mbuf = rte_pktmbuf_alloc(ctrlq->mb_pool);
+		if (!mbuf) {
+			dev_err(adapter, "%s: could not allocate skb ..\n",
+				__func__);
+			goto out_err;
+		}
+
+		mbuf->data_len = wrlen;
+		mbuf->pkt_len = mbuf->data_len;
+
+		req = rte_pktmbuf_mtod(mbuf, struct cpl_set_tcb_field *);
+		INIT_ULPTX_WR(req, wrlen, 0, 0);
+		wr = (struct work_request_hdr *)req;
+		wr++;
+		req = (struct cpl_set_tcb_field *)wr;
+		mk_set_tcb_field_ulp(f, req, W_TCB_RSS_INFO,
+				V_TCB_RSS_INFO(M_TCB_RSS_INFO),
+				V_TCB_RSS_INFO(adapter->sge.fw_evtq.abs_id),
+				0, 1);
+		aligner = (struct ulptx_idata *)(req + 1);
+		abort_req = (struct cpl_abort_req *)(aligner + 1);
+		mk_abort_req_ulp(abort_req, f->tid);
+		abort_rpl = (struct cpl_abort_rpl *)(abort_req + 1);
+		mk_abort_rpl_ulp(abort_rpl, f->tid);
+		t4_mgmt_tx(ctrlq, mbuf);
+	}
+	return 0;
+
+out_err:
+	return -ENOMEM;
 }
 
 /**
@@ -559,6 +714,9 @@ int cxgbe_del_filter(struct rte_eth_dev *dev, unsigned int filter_id,
 	struct filter_entry *f;
 	unsigned int chip_ver;
 	int ret;
+
+	if (is_hashfilter(adapter) && fs->cap)
+		return cxgbe_del_hash_filter(dev, filter_id, ctx);
 
 	if (filter_id >= adapter->tids.nftids)
 		return -ERANGE;
@@ -966,4 +1124,39 @@ int cxgbe_get_filter_count(struct adapter *adapter, unsigned int fidx,
 		}
 	}
 	return 0;
+}
+
+/**
+ * Handle a Hash filter delete reply.
+ */
+void hash_del_filter_rpl(struct adapter *adap,
+			 const struct cpl_abort_rpl_rss *rpl)
+{
+	struct tid_info *t = &adap->tids;
+	struct filter_entry *f;
+	struct filter_ctx *ctx = NULL;
+	unsigned int tid = GET_TID(rpl);
+
+	f = lookup_tid(t, tid);
+	if (!f) {
+		dev_warn(adap, "%s: could not find filter entry: %u\n",
+			 __func__, tid);
+		return;
+	}
+
+	ctx = f->ctx;
+	f->ctx = NULL;
+
+	f->valid = 0;
+
+	if (f->clipt)
+		cxgbe_clip_release(f->dev, f->clipt);
+
+	cxgbe_remove_tid(t, 0, tid, 0);
+	t4_os_free(f);
+
+	if (ctx) {
+		ctx->result = 0;
+		t4_complete(&ctx->completion);
+	}
 }

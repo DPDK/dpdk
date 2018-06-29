@@ -55,6 +55,7 @@ enum fw_memtype {
 
 enum fw_wr_opcodes {
 	FW_FILTER_WR		= 0x02,
+	FW_ULPTX_WR		= 0x04,
 	FW_TP_WR		= 0x05,
 	FW_ETH_TX_PKT_WR	= 0x08,
 	FW_ETH_TX_PKTS_WR	= 0x09,
@@ -77,6 +78,11 @@ struct fw_wr_hdr {
 #define M_FW_WR_OP		0xff
 #define V_FW_WR_OP(x)		((x) << S_FW_WR_OP)
 #define G_FW_WR_OP(x)		(((x) >> S_FW_WR_OP) & M_FW_WR_OP)
+
+/* atomic flag (hi) - firmware encapsulates CPLs in CPL_BARRIER
+ */
+#define S_FW_WR_ATOMIC		23
+#define V_FW_WR_ATOMIC(x)	((x) << S_FW_WR_ATOMIC)
 
 /* work request immediate data length (hi)
  */

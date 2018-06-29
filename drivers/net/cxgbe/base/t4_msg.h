@@ -8,7 +8,12 @@
 
 enum {
 	CPL_ACT_OPEN_REQ      = 0x3,
+	CPL_SET_TCB_FIELD     = 0x5,
+	CPL_ABORT_REQ         = 0xA,
+	CPL_ABORT_RPL         = 0xB,
+	CPL_TID_RELEASE       = 0x1A,
 	CPL_ACT_OPEN_RPL      = 0x25,
+	CPL_ABORT_RPL_RSS     = 0x2D,
 	CPL_SET_TCB_RPL       = 0x3A,
 	CPL_ACT_OPEN_REQ6     = 0x83,
 	CPL_SGE_EGR_UPDATE    = 0xA5,
@@ -25,6 +30,11 @@ enum CPL_error {
 
 enum {
 	ULP_MODE_NONE          = 0,
+};
+
+enum {
+	CPL_ABORT_SEND_RST = 0,
+	CPL_ABORT_NO_RST,
 };
 
 enum {                     /* TX_PKT_XT checksum types */
@@ -189,6 +199,29 @@ struct cpl_act_open_rpl {
 #define M_AOPEN_ATID    0xFFFFFF
 #define G_AOPEN_ATID(x) (((x) >> S_AOPEN_ATID) & M_AOPEN_ATID)
 
+struct cpl_set_tcb_field {
+	WR_HDR;
+	union opcode_tid ot;
+	__be16 reply_ctrl;
+	__be16 word_cookie;
+	__be64 mask;
+	__be64 val;
+};
+
+/* cpl_set_tcb_field.word_cookie fields */
+#define S_WORD    0
+#define V_WORD(x) ((x) << S_WORD)
+
+/* cpl_get_tcb.reply_ctrl fields */
+#define S_QUEUENO    0
+#define V_QUEUENO(x) ((x) << S_QUEUENO)
+
+#define S_REPLY_CHAN    14
+#define V_REPLY_CHAN(x) ((x) << S_REPLY_CHAN)
+
+#define S_NO_REPLY    15
+#define V_NO_REPLY(x) ((x) << S_NO_REPLY)
+
 struct cpl_set_tcb_rpl {
 	RSS_HDR
 	union opcode_tid ot;
@@ -196,6 +229,39 @@ struct cpl_set_tcb_rpl {
 	__u8   cookie;
 	__u8   status;
 	__be64 oldval;
+};
+
+/* cpl_abort_req status command code
+ */
+struct cpl_abort_req {
+	WR_HDR;
+	union opcode_tid ot;
+	__be32 rsvd0;
+	__u8  rsvd1;
+	__u8  cmd;
+	__u8  rsvd2[6];
+};
+
+struct cpl_abort_rpl_rss {
+	RSS_HDR
+	union opcode_tid ot;
+	__u8  rsvd[3];
+	__u8  status;
+};
+
+struct cpl_abort_rpl {
+	WR_HDR;
+	union opcode_tid ot;
+	__be32 rsvd0;
+	__u8  rsvd1;
+	__u8  cmd;
+	__u8  rsvd2[6];
+};
+
+struct cpl_tid_release {
+	WR_HDR;
+	union opcode_tid ot;
+	__be32 rsvd;
 };
 
 struct cpl_tx_data {
@@ -403,7 +469,13 @@ struct cpl_fw6_msg {
 	__be64 data[4];
 };
 
+/* ULP_TX opcodes */
 enum {
+	ULP_TX_PKT = 4
+};
+
+enum {
+	ULP_TX_SC_NOOP = 0x80,
 	ULP_TX_SC_IMM  = 0x81,
 	ULP_TX_SC_DSGL = 0x82,
 	ULP_TX_SC_ISGL = 0x83

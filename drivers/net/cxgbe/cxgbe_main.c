@@ -87,6 +87,10 @@ static int fwevtq_handler(struct sge_rspq *q, const __be64 *rsp,
 		const struct cpl_fw6_msg *msg = (const void *)rsp;
 
 		t4_handle_fw_rpl(q->adapter, msg->data);
+	} else if (opcode == CPL_ABORT_RPL_RSS) {
+		const struct cpl_abort_rpl_rss *p = (const void *)rsp;
+
+		hash_del_filter_rpl(q->adapter, p);
 	} else if (opcode == CPL_SET_TCB_RPL) {
 		const struct cpl_set_tcb_rpl *p = (const void *)rsp;
 
@@ -299,6 +303,50 @@ void cxgbe_free_atid(struct tid_info *t, unsigned int atid)
 	t->afree = p;
 	t->atids_in_use--;
 	t4_os_unlock(&t->atid_lock);
+}
+
+/**
+ * Populate a TID_RELEASE WR.  Caller must properly size the skb.
+ */
+static void mk_tid_release(struct rte_mbuf *mbuf, unsigned int tid)
+{
+	struct cpl_tid_release *req;
+
+	req = rte_pktmbuf_mtod(mbuf, struct cpl_tid_release *);
+	INIT_TP_WR_MIT_CPL(req, CPL_TID_RELEASE, tid);
+}
+
+/**
+ * Release a TID and inform HW.  If we are unable to allocate the release
+ * message we defer to a work queue.
+ */
+void cxgbe_remove_tid(struct tid_info *t, unsigned int chan, unsigned int tid,
+		      unsigned short family)
+{
+	struct rte_mbuf *mbuf;
+	struct adapter *adap = container_of(t, struct adapter, tids);
+
+	WARN_ON(tid >= t->ntids);
+
+	if (t->tid_tab[tid]) {
+		t->tid_tab[tid] = NULL;
+		rte_atomic32_dec(&t->conns_in_use);
+		if (t->hash_base && tid >= t->hash_base) {
+			if (family == FILTER_TYPE_IPV4)
+				rte_atomic32_dec(&t->hash_tids_in_use);
+		} else {
+			if (family == FILTER_TYPE_IPV4)
+				rte_atomic32_dec(&t->tids_in_use);
+		}
+	}
+
+	mbuf = rte_pktmbuf_alloc((&adap->sge.ctrlq[chan])->mb_pool);
+	if (mbuf) {
+		mbuf->data_len = sizeof(struct cpl_tid_release);
+		mbuf->pkt_len = mbuf->data_len;
+		mk_tid_release(mbuf, tid);
+		t4_mgmt_tx(&adap->sge.ctrlq[chan], mbuf);
+	}
 }
 
 /**

@@ -224,6 +224,8 @@ int cxgbe_del_filter(struct rte_eth_dev *dev, unsigned int filter_id,
 int cxgbe_alloc_ftid(struct adapter *adap, unsigned int family);
 int init_hash_filter(struct adapter *adap);
 void hash_filter_rpl(struct adapter *adap, const struct cpl_act_open_rpl *rpl);
+void hash_del_filter_rpl(struct adapter *adap,
+			 const struct cpl_abort_rpl_rss *rpl);
 int validate_filter(struct adapter *adap, struct ch_filter_specification *fs);
 int cxgbe_get_filter_count(struct adapter *adapter, unsigned int fidx,
 			   u64 *c, bool get_byte);

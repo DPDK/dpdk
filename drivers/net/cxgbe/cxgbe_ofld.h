@@ -19,6 +19,19 @@
 	(w)->wr.wr_lo = cpu_to_be64(0); \
 } while (0)
 
+#define INIT_TP_WR_MIT_CPL(w, cpl, tid) do { \
+	INIT_TP_WR(w, tid); \
+	OPCODE_TID(w) = cpu_to_be32(MK_OPCODE_TID(cpl, tid)); \
+} while (0)
+
+#define INIT_ULPTX_WR(w, wrlen, atomic, tid) do { \
+	(w)->wr.wr_hi = cpu_to_be32(V_FW_WR_OP(FW_ULPTX_WR) | \
+				    V_FW_WR_ATOMIC(atomic)); \
+	(w)->wr.wr_mid = cpu_to_be32(V_FW_WR_LEN16(DIV_ROUND_UP(wrlen, 16)) | \
+				     V_FW_WR_FLOWID(tid)); \
+	(w)->wr.wr_lo = cpu_to_be64(0); \
+} while (0)
+
 /*
  * Max # of ATIDs.  The absolute HW max is 16K but we keep it lower.
  */
@@ -68,6 +81,8 @@ static inline void *lookup_atid(const struct tid_info *t, unsigned int atid)
 
 int cxgbe_alloc_atid(struct tid_info *t, void *data);
 void cxgbe_free_atid(struct tid_info *t, unsigned int atid);
+void cxgbe_remove_tid(struct tid_info *t, unsigned int qid, unsigned int tid,
+		      unsigned short family);
 void cxgbe_insert_tid(struct tid_info *t, void *data, unsigned int tid,
 		      unsigned short family);
 
