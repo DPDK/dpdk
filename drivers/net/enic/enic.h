@@ -50,6 +50,9 @@
 
 #define ENICPMD_FDIR_MAX           64
 
+/* HW default VXLAN port */
+#define ENIC_DEFAULT_VXLAN_PORT	   4789
+
 /*
  * Interrupt 0: LSC and errors
  * Interrupt 1: rx queue 0
@@ -126,6 +129,7 @@ struct enic {
 	bool nic_cfg_chk;     /* NIC_CFG_CHK available */
 	bool udp_rss_weak;    /* Bodega style UDP RSS */
 	uint8_t ig_vlan_rewrite_mode; /* devargs ig-vlan-rewrite */
+	uint16_t vxlan_port;  /* current vxlan port pushed to NIC */
 
 	unsigned int flags;
 	unsigned int priv_flags;

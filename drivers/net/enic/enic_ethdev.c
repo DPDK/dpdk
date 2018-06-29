@@ -789,6 +789,79 @@ static int enicpmd_dev_rx_queue_intr_disable(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
+static int udp_tunnel_common_check(struct enic *enic,
+				   struct rte_eth_udp_tunnel *tnl)
+{
+	if (tnl->prot_type != RTE_TUNNEL_TYPE_VXLAN)
+		return -ENOTSUP;
+	if (!enic->overlay_offload) {
+		PMD_INIT_LOG(DEBUG, " vxlan (overlay offload) is not "
+			     "supported\n");
+		return -ENOTSUP;
+	}
+	return 0;
+}
+
+static int update_vxlan_port(struct enic *enic, uint16_t port)
+{
+	if (vnic_dev_overlay_offload_cfg(enic->vdev,
+					 OVERLAY_CFG_VXLAN_PORT_UPDATE,
+					 port)) {
+		PMD_INIT_LOG(DEBUG, " failed to update vxlan port\n");
+		return -EINVAL;
+	}
+	PMD_INIT_LOG(DEBUG, " updated vxlan port to %u\n", port);
+	enic->vxlan_port = port;
+	return 0;
+}
+
+static int enicpmd_dev_udp_tunnel_port_add(struct rte_eth_dev *eth_dev,
+					   struct rte_eth_udp_tunnel *tnl)
+{
+	struct enic *enic = pmd_priv(eth_dev);
+	int ret;
+
+	ENICPMD_FUNC_TRACE();
+	ret = udp_tunnel_common_check(enic, tnl);
+	if (ret)
+		return ret;
+	/*
+	 * The NIC has 1 configurable VXLAN port number. "Adding" a new port
+	 * number replaces it.
+	 */
+	if (tnl->udp_port == enic->vxlan_port || tnl->udp_port == 0) {
+		PMD_INIT_LOG(DEBUG, " %u is already configured or invalid\n",
+			     tnl->udp_port);
+		return -EINVAL;
+	}
+	return update_vxlan_port(enic, tnl->udp_port);
+}
+
+static int enicpmd_dev_udp_tunnel_port_del(struct rte_eth_dev *eth_dev,
+					   struct rte_eth_udp_tunnel *tnl)
+{
+	struct enic *enic = pmd_priv(eth_dev);
+	int ret;
+
+	ENICPMD_FUNC_TRACE();
+	ret = udp_tunnel_common_check(enic, tnl);
+	if (ret)
+		return ret;
+	/*
+	 * Clear the previously set port number and restore the
+	 * hardware default port number. Some drivers disable VXLAN
+	 * offloads when there are no configured port numbers. But
+	 * enic does not do that as VXLAN is part of overlay offload,
+	 * which is tied to inner RSS and TSO.
+	 */
+	if (tnl->udp_port != enic->vxlan_port) {
+		PMD_INIT_LOG(DEBUG, " %u is not a configured vxlan port\n",
+			     tnl->udp_port);
+		return -EINVAL;
+	}
+	return update_vxlan_port(enic, ENIC_DEFAULT_VXLAN_PORT);
+}
+
 static const struct eth_dev_ops enicpmd_eth_dev_ops = {
 	.dev_configure        = enicpmd_dev_configure,
 	.dev_start            = enicpmd_dev_start,
@@ -838,6 +911,8 @@ static const struct eth_dev_ops enicpmd_eth_dev_ops = {
 	.reta_update          = enicpmd_dev_rss_reta_update,
 	.rss_hash_conf_get    = enicpmd_dev_rss_hash_conf_get,
 	.rss_hash_update      = enicpmd_dev_rss_hash_update,
+	.udp_tunnel_port_add  = enicpmd_dev_udp_tunnel_port_add,
+	.udp_tunnel_port_del  = enicpmd_dev_udp_tunnel_port_del,
 };
 
 static int enic_parse_disable_overlay(__rte_unused const char *key,
