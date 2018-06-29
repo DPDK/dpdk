@@ -2117,7 +2117,7 @@ void rte_eth_xstats_reset(uint16_t port_id);
  * @param stat_idx
  *   The per-queue packet statistics functionality number that the transmit
  *   queue is to be assigned.
- *   The value must be in the range [0, RTE_MAX_ETHPORT_QUEUE_STATS_MAPS - 1].
+ *   The value must be in the range [0, RTE_ETHDEV_QUEUE_STAT_CNTRS - 1].
  * @return
  *   Zero if successful. Non-zero otherwise.
  */
@@ -2137,7 +2137,7 @@ int rte_eth_dev_set_tx_queue_stats_mapping(uint16_t port_id,
  * @param stat_idx
  *   The per-queue packet statistics functionality number that the receive
  *   queue is to be assigned.
- *   The value must be in the range [0, RTE_MAX_ETHPORT_QUEUE_STATS_MAPS - 1].
+ *   The value must be in the range [0, RTE_ETHDEV_QUEUE_STAT_CNTRS - 1].
  * @return
  *   Zero if successful. Non-zero otherwise.
  */
