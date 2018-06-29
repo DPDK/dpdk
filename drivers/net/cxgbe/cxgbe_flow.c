@@ -327,6 +327,28 @@ static int cxgbe_get_fidx(struct rte_flow *flow, unsigned int *fidx)
 }
 
 static int
+ch_rte_parse_atype_switch(const struct rte_flow_action *a,
+			  struct ch_filter_specification *fs,
+			  struct rte_flow_error *e)
+{
+	const struct rte_flow_action_phy_port *port;
+
+	switch (a->type) {
+	case RTE_FLOW_ACTION_TYPE_PHY_PORT:
+		port = (const struct rte_flow_action_phy_port *)a->conf;
+		fs->eport = port->index;
+		break;
+	default:
+		/* We are not supposed to come here */
+		return rte_flow_error_set(e, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, a,
+					  "Action not supported");
+	}
+
+	return 0;
+}
+
+static int
 cxgbe_rtef_parse_actions(struct rte_flow *flow,
 			 const struct rte_flow_action action[],
 			 struct rte_flow_error *e)
@@ -335,6 +357,7 @@ cxgbe_rtef_parse_actions(struct rte_flow *flow,
 	const struct rte_flow_action_queue *q;
 	const struct rte_flow_action *a;
 	char abit = 0;
+	int ret;
 
 	for (a = action; a->type != RTE_FLOW_ACTION_TYPE_END; a++) {
 		switch (a->type) {
@@ -367,6 +390,19 @@ cxgbe_rtef_parse_actions(struct rte_flow *flow,
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
 			fs->hitcnts = 1;
+			break;
+		case RTE_FLOW_ACTION_TYPE_PHY_PORT:
+			/* We allow multiple switch actions, but switch is
+			 * not compatible with either queue or drop
+			 */
+			if (abit++ && fs->action != FILTER_SWITCH)
+				return rte_flow_error_set(e, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION, a,
+						"overlapping action specified");
+			ret = ch_rte_parse_atype_switch(a, fs, e);
+			if (ret)
+				return ret;
+			fs->action = FILTER_SWITCH;
 			break;
 		default:
 			/* Not supported action : return error */

@@ -113,6 +113,9 @@ struct work_request_hdr {
 #define G_COOKIE(x) (((x) >> S_COOKIE) & M_COOKIE)
 
 /* option 0 fields */
+#define S_TX_CHAN    2
+#define V_TX_CHAN(x) ((x) << S_TX_CHAN)
+
 #define S_DELACK    5
 #define V_DELACK(x) ((x) << S_DELACK)
 
@@ -144,6 +147,9 @@ struct work_request_hdr {
 #define S_RX_CHANNEL    26
 #define V_RX_CHANNEL(x) ((x) << S_RX_CHANNEL)
 #define F_RX_CHANNEL    V_RX_CHANNEL(1U)
+
+#define S_CCTRL_ECN    27
+#define V_CCTRL_ECN(x) ((x) << S_CCTRL_ECN)
 
 #define S_T5_OPT_2_VALID    31
 #define V_T5_OPT_2_VALID(x) ((x) << S_T5_OPT_2_VALID)

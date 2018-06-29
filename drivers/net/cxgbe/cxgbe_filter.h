@@ -98,6 +98,8 @@ struct ch_filter_specification {
 	uint32_t dirsteer:1;	/* 0 => RSS, 1 => steer to iq */
 	uint32_t iq:10;		/* ingress queue */
 
+	uint32_t eport:2;	/* egress port to switch packet out */
+
 	/* Filter rule value/mask pairs. */
 	struct ch_filter_tuple val;
 	struct ch_filter_tuple mask;
@@ -105,7 +107,8 @@ struct ch_filter_specification {
 
 enum {
 	FILTER_PASS = 0,	/* default */
-	FILTER_DROP
+	FILTER_DROP,
+	FILTER_SWITCH
 };
 
 enum filter_type {

@@ -72,6 +72,15 @@ int validate_filter(struct adapter *adapter, struct ch_filter_specification *fs)
 #undef U
 
 	/*
+	 * If the user is requesting that the filter action loop
+	 * matching packets back out one of our ports, make sure that
+	 * the egress port is in range.
+	 */
+	if (fs->action == FILTER_SWITCH &&
+	    fs->eport >= adapter->params.nports)
+		return -ERANGE;
+
+	/*
 	 * Don't allow various trivially obvious bogus out-of-range
 	 * values ...
 	 */
@@ -419,6 +428,7 @@ static void mk_act_open_req6(struct filter_entry *f, struct rte_mbuf *mbuf,
 	req->opt0 = cpu_to_be64(V_DELACK(f->fs.hitcnts) |
 				V_SMAC_SEL((cxgbe_port_viid(f->dev) & 0x7F)
 					   << 1) |
+				V_TX_CHAN(f->fs.eport) |
 				V_ULP_MODE(ULP_MODE_NONE) |
 				F_TCAM_BYPASS | F_NON_OFFLOAD);
 	req->params = cpu_to_be64(V_FILTER_TUPLE(hash_filter_ntuple(f)));
@@ -427,7 +437,8 @@ static void mk_act_open_req6(struct filter_entry *f, struct rte_mbuf *mbuf,
 			    F_T5_OPT_2_VALID |
 			    F_RX_CHANNEL |
 			    V_CONG_CNTRL((f->fs.action == FILTER_DROP) |
-					 (f->fs.dirsteer << 1)));
+					 (f->fs.dirsteer << 1)) |
+			    V_CCTRL_ECN(f->fs.action == FILTER_SWITCH));
 }
 
 /**
@@ -460,6 +471,7 @@ static void mk_act_open_req(struct filter_entry *f, struct rte_mbuf *mbuf,
 	req->opt0 = cpu_to_be64(V_DELACK(f->fs.hitcnts) |
 				V_SMAC_SEL((cxgbe_port_viid(f->dev) & 0x7F)
 					   << 1) |
+				V_TX_CHAN(f->fs.eport) |
 				V_ULP_MODE(ULP_MODE_NONE) |
 				F_TCAM_BYPASS | F_NON_OFFLOAD);
 	req->params = cpu_to_be64(V_FILTER_TUPLE(hash_filter_ntuple(f)));
@@ -468,7 +480,8 @@ static void mk_act_open_req(struct filter_entry *f, struct rte_mbuf *mbuf,
 			    F_T5_OPT_2_VALID |
 			    F_RX_CHANNEL |
 			    V_CONG_CNTRL((f->fs.action == FILTER_DROP) |
-					 (f->fs.dirsteer << 1)));
+					 (f->fs.dirsteer << 1)) |
+			    V_CCTRL_ECN(f->fs.action == FILTER_SWITCH));
 }
 
 /**
@@ -666,7 +679,9 @@ int set_filter_wr(struct rte_eth_dev *dev, unsigned int fidx)
 	fwr->del_filter_to_l2tix =
 		cpu_to_be32(V_FW_FILTER_WR_DROP(f->fs.action == FILTER_DROP) |
 			    V_FW_FILTER_WR_DIRSTEER(f->fs.dirsteer) |
+			    V_FW_FILTER_WR_LPBK(f->fs.action == FILTER_SWITCH) |
 			    V_FW_FILTER_WR_HITCNTS(f->fs.hitcnts) |
+			    V_FW_FILTER_WR_TXCHAN(f->fs.eport) |
 			    V_FW_FILTER_WR_PRIO(f->fs.prio));
 	fwr->ethtype = cpu_to_be16(f->fs.val.ethtype);
 	fwr->ethtypem = cpu_to_be16(f->fs.mask.ethtype);
