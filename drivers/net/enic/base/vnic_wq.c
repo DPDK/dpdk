@@ -113,6 +113,7 @@ void vnic_wq_init(struct vnic_wq *wq, unsigned int cq_index,
 	vnic_wq_init_start(wq, cq_index, 0, 0,
 		error_interrupt_enable,
 		error_interrupt_offset);
+	wq->cq_pend = 0;
 	wq->last_completed_index = 0;
 }
 

@@ -44,6 +44,7 @@ struct vnic_wq {
 	struct vnic_dev_ring ring;
 	struct rte_mbuf **bufs;
 	unsigned int head_idx;
+	unsigned int cq_pend;
 	unsigned int tail_idx;
 	unsigned int socket_id;
 	const struct rte_memzone *cqmsg_rz;

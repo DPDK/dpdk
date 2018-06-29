@@ -20,6 +20,9 @@
 #define ENIC_ALIGN_DESCS		32
 #define ENIC_ALIGN_DESCS_MASK		~(ENIC_ALIGN_DESCS - 1)
 
+/* Request a completion index every 32 buffers (roughly packets) */
+#define ENIC_WQ_CQ_THRESH		32
+
 #define ENIC_MIN_MTU			68
 
 /* Does not include (possible) inserted VLAN tag and FCS */

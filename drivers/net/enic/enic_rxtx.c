@@ -603,7 +603,7 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct wq_enet_desc *descs, *desc_p, desc_tmp;
 	uint16_t mss;
 	uint8_t vlan_tag_insert;
-	uint8_t eop;
+	uint8_t eop, cq;
 	uint64_t bus_addr;
 	uint8_t offload_mode;
 	uint16_t header_len;
@@ -686,10 +686,14 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				break;
 			}
 		}
-
-
+		wq->cq_pend++;
+		cq = 0;
+		if (eop && wq->cq_pend >= ENIC_WQ_CQ_THRESH) {
+			cq = 1;
+			wq->cq_pend = 0;
+		}
 		wq_enet_desc_enc(&desc_tmp, bus_addr, data_len, mss, header_len,
-				 offload_mode, eop, eop, 0, vlan_tag_insert,
+				 offload_mode, eop, cq, 0, vlan_tag_insert,
 				 vlan_id, 0);
 
 		*desc_p = desc_tmp;
@@ -702,14 +706,21 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			    tx_pkt->next) {
 				data_len = tx_pkt->data_len;
 
-				if (tx_pkt->next == NULL)
+				wq->cq_pend++;
+				cq = 0;
+				if (tx_pkt->next == NULL) {
 					eop = 1;
+					if (wq->cq_pend >= ENIC_WQ_CQ_THRESH) {
+						cq = 1;
+						wq->cq_pend = 0;
+					}
+				}
 				desc_p = descs + head_idx;
 				bus_addr = (dma_addr_t)(tx_pkt->buf_iova
 					   + tx_pkt->data_off);
 				wq_enet_desc_enc((struct wq_enet_desc *)
 						 &desc_tmp, bus_addr, data_len,
-						 mss, 0, offload_mode, eop, eop,
+						 mss, 0, offload_mode, eop, cq,
 						 0, vlan_tag_insert, vlan_id,
 						 0);
 
