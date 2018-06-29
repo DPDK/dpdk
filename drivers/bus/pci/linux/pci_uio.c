@@ -282,21 +282,18 @@ int
 pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
 		struct mapped_pci_resource *uio_res, int map_idx)
 {
-	int fd;
+	int fd = -1;
 	char devname[PATH_MAX];
 	void *mapaddr;
 	struct rte_pci_addr *loc;
 	struct pci_map *maps;
+	int wc_activate = 0;
+
+	if (dev->driver != NULL)
+		wc_activate = dev->driver->drv_flags & RTE_PCI_DRV_WC_ACTIVATE;
 
 	loc = &dev->addr;
 	maps = uio_res->maps;
-
-	/* update devname for mmap  */
-	snprintf(devname, sizeof(devname),
-			"%s/" PCI_PRI_FMT "/resource%d",
-			rte_pci_get_sysfs_path(),
-			loc->domain, loc->bus, loc->devid,
-			loc->function, res_idx);
 
 	/* allocate memory to keep path */
 	maps[map_idx].path = rte_malloc(NULL, strlen(devname) + 1, 0);
@@ -309,11 +306,37 @@ pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
 	/*
 	 * open resource file, to mmap it
 	 */
-	fd = open(devname, O_RDWR);
-	if (fd < 0) {
-		RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
+	if (wc_activate) {
+		/* update devname for mmap  */
+		snprintf(devname, sizeof(devname),
+			"%s/" PCI_PRI_FMT "/resource%d_wc",
+			rte_pci_get_sysfs_path(),
+			loc->domain, loc->bus, loc->devid,
+			loc->function, res_idx);
+
+		if (access(devname, R_OK|W_OK) != -1) {
+			fd = open(devname, O_RDWR);
+			if (fd < 0)
+				RTE_LOG(INFO, EAL, "%s cannot be mapped. "
+					"Fall-back to non prefetchable mode.\n",
+					devname);
+		}
+	}
+
+	if (!wc_activate || fd < 0) {
+		snprintf(devname, sizeof(devname),
+			"%s/" PCI_PRI_FMT "/resource%d",
+			rte_pci_get_sysfs_path(),
+			loc->domain, loc->bus, loc->devid,
+			loc->function, res_idx);
+
+		/* then try to map resource file */
+		fd = open(devname, O_RDWR);
+		if (fd < 0) {
+			RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
 				devname, strerror(errno));
-		goto error;
+			goto error;
+		}
 	}
 
 	/* try mapping somewhere close to the end of hugepages */

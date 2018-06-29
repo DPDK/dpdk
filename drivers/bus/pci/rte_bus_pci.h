@@ -135,6 +135,8 @@ struct rte_pci_bus {
 
 /** Device needs PCI BAR mapping (done with either IGB_UIO or VFIO) */
 #define RTE_PCI_DRV_NEED_MAPPING 0x0001
+/** Device needs PCI BAR mapping with enabled write combining (wc) */
+#define RTE_PCI_DRV_WC_ACTIVATE 0x0002
 /** Device driver supports link state interrupt */
 #define RTE_PCI_DRV_INTR_LSC	0x0008
 /** Device driver supports device removal interrupt */
