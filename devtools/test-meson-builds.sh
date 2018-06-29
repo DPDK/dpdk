@@ -10,6 +10,15 @@
 srcdir=$(dirname $(readlink -m $0))/..
 MESON=${MESON:-meson}
 
+if command -v ninja >/dev/null 2>&1 ; then
+	ninja_cmd=ninja
+elif command -v ninja-build >/dev/null 2>&1 ; then
+	ninja_cmd=ninja-build
+else
+	echo "ERROR: ninja is not found" >&2
+	exit 1
+fi
+
 build () # <directory> <meson options>
 {
 	builddir=$1
@@ -20,8 +29,8 @@ build () # <directory> <meson options>
 		$MESON $options $srcdir $builddir
 		unset CC
 	fi
-	echo "ninja -C $builddir"
-	ninja -C $builddir
+	echo "$ninja_cmd -C $builddir"
+	$ninja_cmd -C $builddir
 }
 
 # shared and static linked builds with gcc and clang
