@@ -371,7 +371,8 @@ sfc_flow_parse_vlan(const struct rte_flow_item *item,
 	 * the outer tag and the next matches the inner tag.
 	 */
 	if (mask->tci == supp_mask.tci) {
-		vid = rte_bswap16(spec->tci);
+		/* Apply mask to keep VID only */
+		vid = rte_bswap16(spec->tci & mask->tci);
 
 		if (!(efx_spec->efs_match_flags &
 		      EFX_FILTER_MATCH_OUTER_VID)) {
