@@ -10,25 +10,14 @@
 #define CRYPTODEV_NAME_AESNI_MB_PMD	crypto_aesni_mb
 /**< AES-NI Multi buffer PMD device name */
 
-#define MB_LOG_ERR(fmt, args...) \
-	RTE_LOG(ERR, CRYPTODEV, "[%s] %s() line %u: " fmt "\n",  \
-			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD), \
-			__func__, __LINE__, ## args)
+/** AESNI_MB PMD LOGTYPE DRIVER */
+int aesni_mb_logtype_driver;
 
-#ifdef RTE_LIBRTE_AESNI_MB_DEBUG
-#define MB_LOG_INFO(fmt, args...) \
-	RTE_LOG(INFO, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			CRYPTODEV_NAME_AESNI_MB_PMD, \
-			__func__, __LINE__, ## args)
+#define AESNI_MB_LOG(level, fmt, ...)  \
+	rte_log(RTE_LOG_ ## level, aesni_mb_logtype_driver,  \
+			"%s() line %u: " fmt "\n", __func__, __LINE__,  \
+					## __VA_ARGS__)
 
-#define MB_LOG_DBG(fmt, args...) \
-	RTE_LOG(DEBUG, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			CRYPTODEV_NAME_AESNI_MB_PMD, \
-			__func__, __LINE__, ## args)
-#else
-#define MB_LOG_INFO(fmt, args...)
-#define MB_LOG_DBG(fmt, args...)
-#endif
 
 #define HMAC_IPAD_VALUE			(0x36)
 #define HMAC_OPAD_VALUE			(0x5C)

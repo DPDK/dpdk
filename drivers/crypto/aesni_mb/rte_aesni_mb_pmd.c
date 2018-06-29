@@ -108,7 +108,7 @@ aesni_mb_set_session_auth_parameters(const struct aesni_mb_op_fns *mb_ops,
 	}
 
 	if (xform->type != RTE_CRYPTO_SYM_XFORM_AUTH) {
-		MB_LOG_ERR("Crypto xform struct not of type auth");
+		AESNI_MB_LOG(ERR, "Crypto xform struct not of type auth");
 		return -1;
 	}
 
@@ -161,7 +161,7 @@ aesni_mb_set_session_auth_parameters(const struct aesni_mb_op_fns *mb_ops,
 		hash_oneblock_fn = mb_ops->aux.one_block.sha512;
 		break;
 	default:
-		MB_LOG_ERR("Unsupported authentication algorithm selection");
+		AESNI_MB_LOG(ERR, "Unsupported authentication algorithm selection");
 		return -ENOTSUP;
 	}
 
@@ -190,7 +190,7 @@ aesni_mb_set_session_cipher_parameters(const struct aesni_mb_op_fns *mb_ops,
 	}
 
 	if (xform->type != RTE_CRYPTO_SYM_XFORM_CIPHER) {
-		MB_LOG_ERR("Crypto xform struct not of type cipher");
+		AESNI_MB_LOG(ERR, "Crypto xform struct not of type cipher");
 		return -EINVAL;
 	}
 
@@ -203,7 +203,7 @@ aesni_mb_set_session_cipher_parameters(const struct aesni_mb_op_fns *mb_ops,
 		sess->cipher.direction = DECRYPT;
 		break;
 	default:
-		MB_LOG_ERR("Invalid cipher operation parameter");
+		AESNI_MB_LOG(ERR, "Invalid cipher operation parameter");
 		return -EINVAL;
 	}
 
@@ -228,7 +228,7 @@ aesni_mb_set_session_cipher_parameters(const struct aesni_mb_op_fns *mb_ops,
 		sess->cipher.mode = DOCSIS_DES;
 		break;
 	default:
-		MB_LOG_ERR("Unsupported cipher mode parameter");
+		AESNI_MB_LOG(ERR, "Unsupported cipher mode parameter");
 		return -ENOTSUP;
 	}
 
@@ -252,7 +252,7 @@ aesni_mb_set_session_cipher_parameters(const struct aesni_mb_op_fns *mb_ops,
 			aes_keyexp_fn = mb_ops->aux.keyexp.aes256;
 			break;
 		default:
-			MB_LOG_ERR("Invalid cipher key length");
+			AESNI_MB_LOG(ERR, "Invalid cipher key length");
 			return -EINVAL;
 		}
 
@@ -263,7 +263,7 @@ aesni_mb_set_session_cipher_parameters(const struct aesni_mb_op_fns *mb_ops,
 
 	} else {
 		if (xform->cipher.key.length != 8) {
-			MB_LOG_ERR("Invalid cipher key length");
+			AESNI_MB_LOG(ERR, "Invalid cipher key length");
 			return -EINVAL;
 		}
 		sess->cipher.key_length_in_bytes = 8;
@@ -294,7 +294,7 @@ aesni_mb_set_session_aead_parameters(const struct aesni_mb_op_fns *mb_ops,
 		sess->auth.operation = RTE_CRYPTO_AUTH_OP_VERIFY;
 		break;
 	default:
-		MB_LOG_ERR("Invalid aead operation parameter");
+		AESNI_MB_LOG(ERR, "Invalid aead operation parameter");
 		return -EINVAL;
 	}
 
@@ -304,7 +304,7 @@ aesni_mb_set_session_aead_parameters(const struct aesni_mb_op_fns *mb_ops,
 		sess->auth.algo = AES_CCM;
 		break;
 	default:
-		MB_LOG_ERR("Unsupported aead mode parameter");
+		AESNI_MB_LOG(ERR, "Unsupported aead mode parameter");
 		return -ENOTSUP;
 	}
 
@@ -320,7 +320,7 @@ aesni_mb_set_session_aead_parameters(const struct aesni_mb_op_fns *mb_ops,
 		aes_keyexp_fn = mb_ops->aux.keyexp.aes128;
 		break;
 	default:
-		MB_LOG_ERR("Invalid cipher key length");
+		AESNI_MB_LOG(ERR, "Invalid cipher key length");
 		return -EINVAL;
 	}
 
@@ -391,7 +391,7 @@ aesni_mb_set_session_parameters(const struct aesni_mb_op_fns *mb_ops,
 		break;
 	case AESNI_MB_OP_NOT_SUPPORTED:
 	default:
-		MB_LOG_ERR("Unsupported operation chain order parameter");
+		AESNI_MB_LOG(ERR, "Unsupported operation chain order parameter");
 		return -ENOTSUP;
 	}
 
@@ -400,14 +400,14 @@ aesni_mb_set_session_parameters(const struct aesni_mb_op_fns *mb_ops,
 
 	ret = aesni_mb_set_session_auth_parameters(mb_ops, sess, auth_xform);
 	if (ret != 0) {
-		MB_LOG_ERR("Invalid/unsupported authentication parameters");
+		AESNI_MB_LOG(ERR, "Invalid/unsupported authentication parameters");
 		return ret;
 	}
 
 	ret = aesni_mb_set_session_cipher_parameters(mb_ops, sess,
 			cipher_xform);
 	if (ret != 0) {
-		MB_LOG_ERR("Invalid/unsupported cipher parameters");
+		AESNI_MB_LOG(ERR, "Invalid/unsupported cipher parameters");
 		return ret;
 	}
 
@@ -415,7 +415,7 @@ aesni_mb_set_session_parameters(const struct aesni_mb_op_fns *mb_ops,
 		ret = aesni_mb_set_session_aead_parameters(mb_ops, sess,
 				aead_xform);
 		if (ret != 0) {
-			MB_LOG_ERR("Invalid/unsupported aead parameters");
+			AESNI_MB_LOG(ERR, "Invalid/unsupported aead parameters");
 			return ret;
 		}
 	}
@@ -555,7 +555,7 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 		char *odata = rte_pktmbuf_append(m_dst,
 				rte_pktmbuf_data_len(op->sym->m_src));
 		if (odata == NULL) {
-			MB_LOG_ERR("failed to allocate space in destination "
+			AESNI_MB_LOG(ERR, "failed to allocate space in destination "
 					"mbuf for source data");
 			op->status = RTE_CRYPTO_OP_STATUS_ERROR;
 			return -1;
@@ -832,13 +832,13 @@ cryptodev_aesni_mb_create(const char *name,
 
 	/* Check CPU for support for AES instruction set */
 	if (!rte_cpu_get_flag_enabled(RTE_CPUFLAG_AES)) {
-		MB_LOG_ERR("AES instructions not supported by CPU");
+		AESNI_MB_LOG(ERR, "AES instructions not supported by CPU");
 		return -EFAULT;
 	}
 
 	dev = rte_cryptodev_pmd_create(name, &vdev->device, init_params);
 	if (dev == NULL) {
-		MB_LOG_ERR("failed to create cryptodev vdev");
+		AESNI_MB_LOG(ERR, "failed to create cryptodev vdev");
 		return -ENODEV;
 	}
 
@@ -911,7 +911,7 @@ cryptodev_aesni_mb_probe(struct rte_vdev_device *vdev)
 
 	retval = rte_cryptodev_pmd_parse_input_args(&init_params, args);
 	if (retval) {
-		MB_LOG_ERR("Failed to parse initialisation arguments[%s]\n",
+		AESNI_MB_LOG(ERR, "Failed to parse initialisation arguments[%s]",
 				args);
 		return -EINVAL;
 	}
@@ -952,3 +952,10 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_AESNI_MB_PMD,
 RTE_PMD_REGISTER_CRYPTO_DRIVER(aesni_mb_crypto_drv,
 		cryptodev_aesni_mb_pmd_drv.driver,
 		cryptodev_driver_id);
+
+RTE_INIT(aesni_mb_init_log);
+static void
+aesni_mb_init_log(void)
+{
+	aesni_mb_logtype_driver = rte_log_register("pmd.crypto.aesni_mb");
+}

@@ -441,12 +441,12 @@ aesni_mb_pmd_qp_create_processed_ops_ring(struct aesni_mb_qp *qp,
 	r = rte_ring_lookup(ring_name);
 	if (r) {
 		if (rte_ring_get_size(r) >= ring_size) {
-			MB_LOG_INFO("Reusing existing ring %s for processed ops",
+			AESNI_MB_LOG(INFO, "Reusing existing ring %s for processed ops",
 			ring_name);
 			return r;
 		}
 
-		MB_LOG_ERR("Unable to reuse existing ring %s for processed ops",
+		AESNI_MB_LOG(ERR, "Unable to reuse existing ring %s for processed ops",
 			ring_name);
 		return NULL;
 	}
@@ -550,20 +550,20 @@ aesni_mb_pmd_session_configure(struct rte_cryptodev *dev,
 	int ret;
 
 	if (unlikely(sess == NULL)) {
-		MB_LOG_ERR("invalid session struct");
+		AESNI_MB_LOG(ERR, "invalid session struct");
 		return -EINVAL;
 	}
 
 	if (rte_mempool_get(mempool, &sess_private_data)) {
-		CDEV_LOG_ERR(
-			"Couldn't get object from session mempool");
+		AESNI_MB_LOG(ERR,
+				"Couldn't get object from session mempool");
 		return -ENOMEM;
 	}
 
 	ret = aesni_mb_set_session_parameters(&job_ops[internals->vector_mode],
 			sess_private_data, xform);
 	if (ret != 0) {
-		MB_LOG_ERR("failed configure session parameters");
+		AESNI_MB_LOG(ERR, "failed configure session parameters");
 
 		/* Return session to mempool */
 		rte_mempool_put(mempool, sess_private_data);
