@@ -654,29 +654,20 @@ static void
 sfc_ef10_essb_rx_qpurge(struct sfc_dp_rxq *dp_rxq)
 {
 	struct sfc_ef10_essb_rxq *rxq = sfc_ef10_essb_rxq_by_dp_rxq(dp_rxq);
-	unsigned int i, j;
+	unsigned int i;
 	const struct sfc_ef10_essb_rx_sw_desc *rxd;
 	struct rte_mbuf *m;
 
-	if (rxq->completed != rxq->added && rxq->left_in_completed > 0) {
-		rxd = &rxq->sw_ring[rxq->completed & rxq->rxq_ptr_mask];
-		m = sfc_ef10_essb_mbuf_by_index(rxq, rxd->first_mbuf,
-				rxq->block_size - rxq->left_in_completed);
-		do {
-			rxq->left_in_completed--;
-			rte_mempool_put(rxq->refill_mb_pool, m);
-			m = sfc_ef10_essb_next_mbuf(rxq, m);
-		} while (rxq->left_in_completed > 0);
-		rxq->completed++;
-	}
-
 	for (i = rxq->completed; i != rxq->added; ++i) {
 		rxd = &rxq->sw_ring[i & rxq->rxq_ptr_mask];
-		m = rxd->first_mbuf;
-		for (j = 0; j < rxq->block_size; ++j) {
+		m = sfc_ef10_essb_mbuf_by_index(rxq, rxd->first_mbuf,
+				rxq->block_size - rxq->left_in_completed);
+		while (rxq->left_in_completed > 0) {
 			rte_mempool_put(rxq->refill_mb_pool, m);
 			m = sfc_ef10_essb_next_mbuf(rxq, m);
+			rxq->left_in_completed--;
 		}
+		rxq->left_in_completed = rxq->block_size;
 	}
 
 	rxq->flags &= ~SFC_EF10_ESSB_RXQ_STARTED;
