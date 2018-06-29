@@ -5032,6 +5032,8 @@ int t4_init_tp_params(struct adapter *adap)
 	adap->params.tp.port_shift = t4_filter_field_shift(adap, F_PORT);
 	adap->params.tp.protocol_shift = t4_filter_field_shift(adap,
 							       F_PROTOCOL);
+	adap->params.tp.ethertype_shift = t4_filter_field_shift(adap,
+								F_ETHERTYPE);
 
 	/*
 	 * If TP_INGRESS_CONFIG.VNID == 0, then TP_VLAN_PRI_MAP.VNIC_ID
@@ -5039,6 +5041,11 @@ int t4_init_tp_params(struct adapter *adap)
 	 */
 	if ((adap->params.tp.ingress_config & F_VNIC) == 0)
 		adap->params.tp.vnic_shift = -1;
+
+	v = t4_read_reg(adap, LE_3_DB_HASH_MASK_GEN_IPV4_T6_A);
+	adap->params.tp.hash_filter_mask = v;
+	v = t4_read_reg(adap, LE_4_DB_HASH_MASK_GEN_IPV4_T6_A);
+	adap->params.tp.hash_filter_mask |= ((u64)v << 32);
 
 	return 0;
 }

@@ -86,6 +86,7 @@ struct ch_filter_specification {
 	 * matching that doesn't exist as a (value, mask) tuple.
 	 */
 	uint32_t type:1;	/* 0 => IPv4, 1 => IPv6 */
+	uint32_t cap:1;		/* 0 => LE-TCAM, 1 => Hash */
 
 	/*
 	 * Packet dispatch information.  Ingress packets which match the

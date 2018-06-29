@@ -946,3 +946,6 @@
 #define F_HASHEN    V_HASHEN(1U)
 
 #define A_LE_DB_TID_HASHBASE 0x19df8
+
+#define LE_3_DB_HASH_MASK_GEN_IPV4_T6_A 0x19eac
+#define LE_4_DB_HASH_MASK_GEN_IPV4_T6_A 0x19eb0

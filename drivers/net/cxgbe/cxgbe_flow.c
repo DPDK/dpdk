@@ -48,6 +48,58 @@ cxgbe_validate_item(const struct rte_flow_item *i, struct rte_flow_error *e)
 	return 0;
 }
 
+static void
+cxgbe_fill_filter_region(struct adapter *adap,
+			 struct ch_filter_specification *fs)
+{
+	struct tp_params *tp = &adap->params.tp;
+	u64 hash_filter_mask = tp->hash_filter_mask;
+	u64 ntuple_mask = 0;
+
+	fs->cap = 0;
+
+	if (!is_hashfilter(adap))
+		return;
+
+	if (fs->type) {
+		uint8_t biton[16] = {0xff, 0xff, 0xff, 0xff,
+				     0xff, 0xff, 0xff, 0xff,
+				     0xff, 0xff, 0xff, 0xff,
+				     0xff, 0xff, 0xff, 0xff};
+		uint8_t bitoff[16] = {0};
+
+		if (!memcmp(fs->val.lip, bitoff, sizeof(bitoff)) ||
+		    !memcmp(fs->val.fip, bitoff, sizeof(bitoff)) ||
+		    memcmp(fs->mask.lip, biton, sizeof(biton)) ||
+		    memcmp(fs->mask.fip, biton, sizeof(biton)))
+			return;
+	} else {
+		uint32_t biton  = 0xffffffff;
+		uint32_t bitoff = 0x0U;
+
+		if (!memcmp(fs->val.lip, &bitoff, sizeof(bitoff)) ||
+		    !memcmp(fs->val.fip, &bitoff, sizeof(bitoff)) ||
+		    memcmp(fs->mask.lip, &biton, sizeof(biton)) ||
+		    memcmp(fs->mask.fip, &biton, sizeof(biton)))
+			return;
+	}
+
+	if (!fs->val.lport || fs->mask.lport != 0xffff)
+		return;
+	if (!fs->val.fport || fs->mask.fport != 0xffff)
+		return;
+
+	if (tp->protocol_shift >= 0)
+		ntuple_mask |= (u64)fs->mask.proto << tp->protocol_shift;
+	if (tp->ethertype_shift >= 0)
+		ntuple_mask |= (u64)fs->mask.ethtype << tp->ethertype_shift;
+
+	if (ntuple_mask != hash_filter_mask)
+		return;
+
+	fs->cap = 1;	/* use hash region */
+}
+
 static int
 ch_rte_parsetype_udp(const void *dmask, const struct rte_flow_item *item,
 		     struct ch_filter_specification *fs,
@@ -222,6 +274,8 @@ cxgbe_validate_fidxonadd(struct ch_filter_specification *fs,
 static int
 cxgbe_verify_fidx(struct rte_flow *flow, unsigned int fidx, uint8_t del)
 {
+	if (flow->fs.cap)
+		return 0; /* Hash filters */
 	return del ? cxgbe_validate_fidxondel(flow->f, fidx) :
 		cxgbe_validate_fidxonadd(&flow->fs,
 					 ethdev2adap(flow->dev), fidx);
@@ -329,6 +383,7 @@ cxgbe_rtef_parse_items(struct rte_flow *flow,
 		       const struct rte_flow_item items[],
 		       struct rte_flow_error *e)
 {
+	struct adapter *adap = ethdev2adap(flow->dev);
 	const struct rte_flow_item *i;
 	char repeat[ARRAY_SIZE(parseitem)] = {0};
 
@@ -368,6 +423,8 @@ cxgbe_rtef_parse_items(struct rte_flow *flow,
 			}
 		}
 	}
+
+	cxgbe_fill_filter_region(adap, &flow->fs);
 
 	return 0;
 }
