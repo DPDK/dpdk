@@ -158,16 +158,23 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 	RTE_LOG(INFO, EAL, "  probe driver: %x:%x %s\n", dev->id.vendor_id,
 		dev->id.device_id, dr->driver.name);
 
+	/*
+	 * reference driver structure
+	 * This needs to be before rte_pci_map_device(), as it enables to use
+	 * driver flags for adjusting configuration.
+	 */
+	dev->driver = dr;
+	dev->device.driver = &dr->driver;
+
 	if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING) {
 		/* map resources for devices that use igb_uio */
 		ret = rte_pci_map_device(dev);
-		if (ret != 0)
+		if (ret != 0) {
+			dev->driver = NULL;
+			dev->device.driver = NULL;
 			return ret;
+		}
 	}
-
-	/* reference driver structure */
-	dev->driver = dr;
-	dev->device.driver = &dr->driver;
 
 	/* call the driver probe() function */
 	ret = dr->probe(dr, dev);
