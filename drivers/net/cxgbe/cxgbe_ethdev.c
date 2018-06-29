@@ -867,13 +867,13 @@ static int cxgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 		return err;
 
 	if (flags & F_FW_RSS_VI_CONFIG_CMD_IP6FOURTUPEN) {
-		rss_hf |= ETH_RSS_NONFRAG_IPV6_TCP;
+		rss_hf |= CXGBE_RSS_HF_TCP_IPV6_MASK;
 		if (flags & F_FW_RSS_VI_CONFIG_CMD_UDPEN)
-			rss_hf |= ETH_RSS_NONFRAG_IPV6_UDP;
+			rss_hf |= CXGBE_RSS_HF_UDP_IPV6_MASK;
 	}
 
 	if (flags & F_FW_RSS_VI_CONFIG_CMD_IP6TWOTUPEN)
-		rss_hf |= ETH_RSS_IPV6;
+		rss_hf |= CXGBE_RSS_HF_IPV6_MASK;
 
 	if (flags & F_FW_RSS_VI_CONFIG_CMD_IP4FOURTUPEN) {
 		rss_hf |= ETH_RSS_NONFRAG_IPV4_TCP;
@@ -882,7 +882,7 @@ static int cxgbe_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	}
 
 	if (flags & F_FW_RSS_VI_CONFIG_CMD_IP4TWOTUPEN)
-		rss_hf |= ETH_RSS_IPV4;
+		rss_hf |= CXGBE_RSS_HF_IPV4_MASK;
 
 	rss_conf->rss_hf = rss_hf;
 

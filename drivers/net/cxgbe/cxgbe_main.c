@@ -1341,7 +1341,7 @@ int cxgbe_write_rss_conf(const struct port_info *pi, uint64_t rss_hf)
 	if (rss_hf & ~CXGBE_RSS_HF_ALL)
 		return -EINVAL;
 
-	if (rss_hf & ETH_RSS_IPV4)
+	if (rss_hf & CXGBE_RSS_HF_IPV4_MASK)
 		flags |= F_FW_RSS_VI_CONFIG_CMD_IP4TWOTUPEN;
 
 	if (rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
@@ -1351,14 +1351,16 @@ int cxgbe_write_rss_conf(const struct port_info *pi, uint64_t rss_hf)
 		flags |= F_FW_RSS_VI_CONFIG_CMD_IP4FOURTUPEN |
 			 F_FW_RSS_VI_CONFIG_CMD_UDPEN;
 
-	if (rss_hf & ETH_RSS_IPV6)
+	if (rss_hf & CXGBE_RSS_HF_IPV6_MASK)
 		flags |= F_FW_RSS_VI_CONFIG_CMD_IP6TWOTUPEN;
 
-	if (rss_hf & ETH_RSS_NONFRAG_IPV6_TCP)
-		flags |= F_FW_RSS_VI_CONFIG_CMD_IP6FOURTUPEN;
+	if (rss_hf & CXGBE_RSS_HF_TCP_IPV6_MASK)
+		flags |= F_FW_RSS_VI_CONFIG_CMD_IP6TWOTUPEN |
+			 F_FW_RSS_VI_CONFIG_CMD_IP6FOURTUPEN;
 
-	if (rss_hf & ETH_RSS_NONFRAG_IPV6_UDP)
-		flags |= F_FW_RSS_VI_CONFIG_CMD_IP6FOURTUPEN |
+	if (rss_hf & CXGBE_RSS_HF_UDP_IPV6_MASK)
+		flags |= F_FW_RSS_VI_CONFIG_CMD_IP6TWOTUPEN |
+			 F_FW_RSS_VI_CONFIG_CMD_IP6FOURTUPEN |
 			 F_FW_RSS_VI_CONFIG_CMD_UDPEN;
 
 	rxq = &adapter->sge.ethrxq[pi->first_qset];
