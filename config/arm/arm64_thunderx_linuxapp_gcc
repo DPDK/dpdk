@@ -2,6 +2,7 @@
 c = 'aarch64-linux-gnu-gcc'
 cpp = 'aarch64-linux-gnu-cpp'
 ar = 'aarch64-linux-gnu-gcc-ar'
+strip = 'aarch64-linux-gnu-strip'
 
 [host_machine]
 system = 'linux'
