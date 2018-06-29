@@ -45,10 +45,16 @@ done
 build build-x86-default -Dmachine=nehalem
 
 # enable cross compilation if gcc cross-compiler is found
-for f in config/arm/arm*gcc ; do
-	c=aarch64-linux-gnu-gcc
-	if ! command -v $c >/dev/null 2>&1 ; then
-		continue
-	fi
-	build build-$(basename $f | tr '_' '-' | cut -d'-' -f-2) --cross-file $f
-done
+c=aarch64-linux-gnu-gcc
+if command -v $c >/dev/null 2>&1 ; then
+	# compile the general v8a also for clang to increase coverage
+	export CC="ccache clang"
+	build build-arm64-host-clang --cross-file \
+		config/arm/arm64_armv8_linuxapp_gcc
+
+	for f in config/arm/arm*gcc ; do
+		export CC="ccache gcc"
+		build build-$(basename $f | tr '_' '-' | cut -d'-' -f-2) \
+			--cross-file $f
+	done
+fi
