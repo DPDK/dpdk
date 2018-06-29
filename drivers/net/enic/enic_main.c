@@ -493,6 +493,27 @@ static void enic_rxq_intr_deinit(struct enic *enic)
 	}
 }
 
+static void enic_prep_wq_for_simple_tx(struct enic *enic, uint16_t queue_idx)
+{
+	struct wq_enet_desc *desc;
+	struct vnic_wq *wq;
+	unsigned int i;
+
+	/*
+	 * Fill WQ descriptor fields that never change. Every descriptor is
+	 * one packet, so set EOP. Also set CQ_ENTRY every ENIC_WQ_CQ_THRESH
+	 * descriptors (i.e. request one completion update every 32 packets).
+	 */
+	wq = &enic->wq[queue_idx];
+	desc = (struct wq_enet_desc *)wq->ring.descs;
+	for (i = 0; i < wq->ring.desc_count; i++, desc++) {
+		desc->header_length_flags = 1 << WQ_ENET_FLAGS_EOP_SHIFT;
+		if (i % ENIC_WQ_CQ_THRESH == ENIC_WQ_CQ_THRESH - 1)
+			desc->header_length_flags |=
+				(1 << WQ_ENET_FLAGS_CQ_ENTRY_SHIFT);
+	}
+}
+
 int enic_enable(struct enic *enic)
 {
 	unsigned int index;
@@ -533,6 +554,21 @@ int enic_enable(struct enic *enic)
 			dev_err(enic, "Failed to alloc data RX queue mbufs\n");
 			return err;
 		}
+	}
+
+	/*
+	 * Use the simple TX handler if possible. All offloads must be disabled
+	 * except mbuf fast free.
+	 */
+	if ((eth_dev->data->dev_conf.txmode.offloads &
+	     ~DEV_TX_OFFLOAD_MBUF_FAST_FREE) == 0) {
+		PMD_INIT_LOG(DEBUG, " use the simple tx handler");
+		eth_dev->tx_pkt_burst = &enic_simple_xmit_pkts;
+		for (index = 0; index < enic->wq_count; index++)
+			enic_prep_wq_for_simple_tx(enic, index);
+	} else {
+		PMD_INIT_LOG(DEBUG, " use the default tx handler");
+		eth_dev->tx_pkt_burst = &enic_xmit_pkts;
 	}
 
 	for (index = 0; index < enic->wq_count; index++)

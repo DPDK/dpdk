@@ -24,10 +24,6 @@
 int enicpmd_logtype_init;
 int enicpmd_logtype_flow;
 
-#define PMD_INIT_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, enicpmd_logtype_init, \
-		"%s" fmt "\n", __func__, ##args)
-
 #define ENICPMD_FUNC_TRACE() PMD_INIT_LOG(DEBUG, " >>")
 
 /*

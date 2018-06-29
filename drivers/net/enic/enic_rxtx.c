@@ -741,4 +741,81 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return index;
 }
 
+static void enqueue_simple_pkts(struct rte_mbuf **pkts,
+				struct wq_enet_desc *desc,
+				uint16_t n,
+				struct enic *enic)
+{
+	struct rte_mbuf *p;
 
+	while (n) {
+		n--;
+		p = *pkts++;
+		desc->address = p->buf_iova + p->data_off;
+		desc->length = p->pkt_len;
+		/*
+		 * The app should not send oversized
+		 * packets. tx_pkt_prepare includes a check as
+		 * well. But some apps ignore the device max size and
+		 * tx_pkt_prepare. Oversized packets cause WQ errrors
+		 * and the NIC ends up disabling the whole WQ. So
+		 * truncate packets..
+		 */
+		if (unlikely(p->pkt_len > ENIC_TX_MAX_PKT_SIZE)) {
+			desc->length = ENIC_TX_MAX_PKT_SIZE;
+			rte_atomic64_inc(&enic->soft_stats.tx_oversized);
+		}
+		desc++;
+	}
+}
+
+uint16_t enic_simple_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+			       uint16_t nb_pkts)
+{
+	unsigned int head_idx, desc_count;
+	struct wq_enet_desc *desc;
+	struct vnic_wq *wq;
+	struct enic *enic;
+	uint16_t rem, n;
+
+	wq = (struct vnic_wq *)tx_queue;
+	enic = vnic_dev_priv(wq->vdev);
+	enic_cleanup_wq(enic, wq);
+	/* Will enqueue this many packets in this call */
+	nb_pkts = RTE_MIN(nb_pkts, wq->ring.desc_avail);
+	if (nb_pkts == 0)
+		return 0;
+
+	head_idx = wq->head_idx;
+	desc_count = wq->ring.desc_count;
+
+	/* Descriptors until the end of the ring */
+	n = desc_count - head_idx;
+	n = RTE_MIN(nb_pkts, n);
+
+	/* Save mbuf pointers to free later */
+	memcpy(wq->bufs + head_idx, tx_pkts, sizeof(struct rte_mbuf *) * n);
+
+	/* Enqueue until the ring end */
+	rem = nb_pkts - n;
+	desc = ((struct wq_enet_desc *)wq->ring.descs) + head_idx;
+	enqueue_simple_pkts(tx_pkts, desc, n, enic);
+
+	/* Wrap to the start of the ring */
+	if (rem) {
+		tx_pkts += n;
+		memcpy(wq->bufs, tx_pkts, sizeof(struct rte_mbuf *) * rem);
+		desc = (struct wq_enet_desc *)wq->ring.descs;
+		enqueue_simple_pkts(tx_pkts, desc, rem, enic);
+	}
+	rte_wmb();
+
+	/* Update head_idx and desc_avail */
+	wq->ring.desc_avail -= nb_pkts;
+	head_idx += nb_pkts;
+	if (head_idx >= desc_count)
+		head_idx -= desc_count;
+	wq->head_idx = head_idx;
+	iowrite32_relaxed(head_idx, &wq->ctrl->posted_index);
+	return nb_pkts;
+}

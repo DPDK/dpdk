@@ -56,6 +56,11 @@
 #define dev_debug(x, args...) dev_printk(DEBUG, args)
 
 extern int enicpmd_logtype_flow;
+extern int enicpmd_logtype_init;
+
+#define PMD_INIT_LOG(level, fmt, args...) \
+	rte_log(RTE_LOG_ ## level, enicpmd_logtype_init, \
+		"%s" fmt "\n", __func__, ##args)
 
 #define __le16 u16
 #define __le32 u32
