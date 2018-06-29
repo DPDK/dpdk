@@ -36,19 +36,13 @@ struct vnic_wq_ctrl {
 	u32 pad9;
 };
 
-/* 16 bytes */
-struct vnic_wq_buf {
-	struct rte_mempool *pool;
-	void *mb;
-};
-
 struct vnic_wq {
 	unsigned int index;
 	uint64_t tx_offload_notsup_mask;
 	struct vnic_dev *vdev;
 	struct vnic_wq_ctrl __iomem *ctrl;              /* memory-mapped */
 	struct vnic_dev_ring ring;
-	struct vnic_wq_buf *bufs;
+	struct rte_mbuf **bufs;
 	unsigned int head_idx;
 	unsigned int tail_idx;
 	unsigned int socket_id;
@@ -164,5 +158,5 @@ unsigned int vnic_wq_error_status(struct vnic_wq *wq);
 void vnic_wq_enable(struct vnic_wq *wq);
 int vnic_wq_disable(struct vnic_wq *wq);
 void vnic_wq_clean(struct vnic_wq *wq,
-		   void (*buf_clean)(struct vnic_wq_buf *buf));
+		   void (*buf_clean)(struct rte_mbuf **buf));
 #endif /* _VNIC_WQ_H_ */

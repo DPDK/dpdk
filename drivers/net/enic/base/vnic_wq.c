@@ -32,8 +32,8 @@ static int vnic_wq_alloc_bufs(struct vnic_wq *wq)
 {
 	unsigned int count = wq->ring.desc_count;
        /* Allocate the mbuf ring */
-	wq->bufs = (struct vnic_wq_buf *)rte_zmalloc_socket("wq->bufs",
-		    sizeof(struct vnic_wq_buf) * count,
+	wq->bufs = (struct rte_mbuf **)rte_zmalloc_socket("wq->bufs",
+		    sizeof(struct rte_mbuf *) * count,
 		    RTE_CACHE_LINE_SIZE, wq->socket_id);
 	wq->head_idx = 0;
 	wq->tail_idx = 0;
@@ -145,9 +145,9 @@ int vnic_wq_disable(struct vnic_wq *wq)
 }
 
 void vnic_wq_clean(struct vnic_wq *wq,
-		   void (*buf_clean)(struct vnic_wq_buf *buf))
+		   void (*buf_clean)(struct rte_mbuf **buf))
 {
-	struct vnic_wq_buf *buf;
+	struct rte_mbuf **buf;
 	unsigned int  to_clean = wq->tail_idx;
 
 	buf = &wq->bufs[to_clean];

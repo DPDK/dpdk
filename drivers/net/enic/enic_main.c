@@ -69,12 +69,12 @@ enic_rxmbuf_queue_release(__rte_unused struct enic *enic, struct vnic_rq *rq)
 	}
 }
 
-static void enic_free_wq_buf(struct vnic_wq_buf *buf)
+static void enic_free_wq_buf(struct rte_mbuf **buf)
 {
-	struct rte_mbuf *mbuf = (struct rte_mbuf *)buf->mb;
+	struct rte_mbuf *mbuf = *buf;
 
 	rte_pktmbuf_free_seg(mbuf);
-	buf->mb = NULL;
+	*buf = NULL;
 }
 
 static void enic_log_q_error(struct enic *enic)

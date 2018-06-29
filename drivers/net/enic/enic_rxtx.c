@@ -473,7 +473,7 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 static inline void enic_free_wq_bufs(struct vnic_wq *wq, u16 completed_index)
 {
-	struct vnic_wq_buf *buf;
+	struct rte_mbuf *buf;
 	struct rte_mbuf *m, *free[ENIC_MAX_WQ_DESCS];
 	unsigned int nb_to_free, nb_free = 0, i;
 	struct rte_mempool *pool;
@@ -483,13 +483,10 @@ static inline void enic_free_wq_bufs(struct vnic_wq *wq, u16 completed_index)
 	nb_to_free = enic_ring_sub(desc_count, wq->tail_idx, completed_index)
 				   + 1;
 	tail_idx = wq->tail_idx;
-	buf = &wq->bufs[tail_idx];
-	pool = ((struct rte_mbuf *)buf->mb)->pool;
+	pool = wq->bufs[tail_idx]->pool;
 	for (i = 0; i < nb_to_free; i++) {
-		buf = &wq->bufs[tail_idx];
-		m = rte_pktmbuf_prefree_seg((struct rte_mbuf *)(buf->mb));
-		buf->mb = NULL;
-
+		buf = wq->bufs[tail_idx];
+		m = rte_pktmbuf_prefree_seg(buf);
 		if (unlikely(m == NULL)) {
 			tail_idx = enic_ring_incr(desc_count, tail_idx);
 			continue;
@@ -574,7 +571,6 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint64_t ol_flags_mask;
 	unsigned int wq_desc_avail;
 	int head_idx;
-	struct vnic_wq_buf *buf;
 	unsigned int desc_count;
 	struct wq_enet_desc *descs, *desc_p, desc_tmp;
 	uint16_t mss;
@@ -669,8 +665,7 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				 vlan_id, 0);
 
 		*desc_p = desc_tmp;
-		buf = &wq->bufs[head_idx];
-		buf->mb = (void *)tx_pkt;
+		wq->bufs[head_idx] = tx_pkt;
 		head_idx = enic_ring_incr(desc_count, head_idx);
 		wq_desc_avail--;
 
@@ -691,8 +686,7 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 						 0);
 
 				*desc_p = desc_tmp;
-				buf = &wq->bufs[head_idx];
-				buf->mb = (void *)tx_pkt;
+				wq->bufs[head_idx] = tx_pkt;
 				head_idx = enic_ring_incr(desc_count, head_idx);
 				wq_desc_avail--;
 			}
