@@ -563,6 +563,10 @@ uint16_t enic_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	for (i = 0; i != nb_pkts; i++) {
 		m = tx_pkts[i];
+		if (unlikely(m->pkt_len > ENIC_TX_MAX_PKT_SIZE)) {
+			rte_errno = EINVAL;
+			return i;
+		}
 		ol_flags = m->ol_flags;
 		if (ol_flags & wq->tx_offload_notsup_mask) {
 			rte_errno = ENOTSUP;
