@@ -71,10 +71,18 @@ The different stream types are:
         tx_pcap=/path/to/file.pcap
 
 *   rx_iface: Defines a reception stream based on a network interface name.
-    The driver reads packets coming from the given interface using the Linux kernel driver for that interface.
+    The driver reads packets from the given interface using the Linux kernel driver for that interface.
+    The driver captures both the incoming and outgoing packets on that interface.
     The value is an interface name.
 
         rx_iface=eth0
+
+*   rx_iface_in: Defines a reception stream based on a network interface name.
+    The driver reads packets from the given interface using the Linux kernel driver for that interface.
+    The driver captures only the incoming packets on that interface.
+    The value is an interface name.
+
+        rx_iface_in=eth0
 
 *   tx_iface: Defines a transmission stream based on a network interface name.
     The driver sends packets to the given interface using the Linux kernel driver for that interface.
@@ -121,6 +129,21 @@ Forward packets through two network interfaces:
 
     $RTE_TARGET/app/testpmd -l 0-3 -n 4 \
         --vdev 'net_pcap0,iface=eth0' --vdev='net_pcap1;iface=eth1'
+
+Enable 2 tx queues on a network interface:
+
+.. code-block:: console
+
+    $RTE_TARGET/app/testpmd -l 0-3 -n 4 \
+        --vdev 'net_pcap0,rx_iface=eth1,tx_iface=eth1,tx_iface=eth1' \
+        -- --txq 2
+
+Read only incoming packets from a network interface and write them back to the same network interface:
+
+.. code-block:: console
+
+    $RTE_TARGET/app/testpmd -l 0-3 -n 4 \
+        --vdev 'net_pcap0,rx_iface_in=eth1,tx_iface=eth1'
 
 Using libpcap-based PMD with the testpmd Application
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

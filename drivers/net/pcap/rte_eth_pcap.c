@@ -26,6 +26,7 @@
 #define ETH_PCAP_RX_PCAP_ARG  "rx_pcap"
 #define ETH_PCAP_TX_PCAP_ARG  "tx_pcap"
 #define ETH_PCAP_RX_IFACE_ARG "rx_iface"
+#define ETH_PCAP_RX_IFACE_IN_ARG "rx_iface_in"
 #define ETH_PCAP_TX_IFACE_ARG "tx_iface"
 #define ETH_PCAP_IFACE_ARG    "iface"
 
@@ -83,6 +84,7 @@ static const char *valid_arguments[] = {
 	ETH_PCAP_RX_PCAP_ARG,
 	ETH_PCAP_TX_PCAP_ARG,
 	ETH_PCAP_RX_IFACE_ARG,
+	ETH_PCAP_RX_IFACE_IN_ARG,
 	ETH_PCAP_TX_IFACE_ARG,
 	ETH_PCAP_IFACE_ARG,
 	NULL
@@ -740,6 +742,21 @@ open_rx_tx_iface(const char *key, const char *value, void *extra_args)
 }
 
 static inline int
+set_iface_direction(const char *iface, pcap_t *pcap,
+		pcap_direction_t direction)
+{
+	const char *direction_str = (direction == PCAP_D_IN) ? "IN" : "OUT";
+	if (pcap_setdirection(pcap, direction) < 0) {
+		PMD_LOG(ERR, "Setting %s pcap direction %s failed - %s\n",
+				iface, direction_str, pcap_geterr(pcap));
+		return -1;
+	}
+	PMD_LOG(INFO, "Setting %s pcap direction %s\n",
+			iface, direction_str);
+	return 0;
+}
+
+static inline int
 open_iface(const char *key, const char *value, void *extra_args)
 {
 	const char *iface = value;
@@ -762,7 +779,29 @@ open_iface(const char *key, const char *value, void *extra_args)
 static inline int
 open_rx_iface(const char *key, const char *value, void *extra_args)
 {
-	return open_iface(key, value, extra_args);
+	int ret = open_iface(key, value, extra_args);
+	if (ret < 0)
+		return ret;
+	if (strcmp(key, ETH_PCAP_RX_IFACE_IN_ARG) == 0) {
+		struct pmd_devargs *pmd = extra_args;
+		unsigned int qid = pmd->num_of_queue - 1;
+
+		set_iface_direction(pmd->queue[qid].name,
+				pmd->queue[qid].pcap,
+				PCAP_D_IN);
+	}
+
+	return 0;
+}
+
+static inline int
+rx_iface_args_process(const char *key, const char *value, void *extra_args)
+{
+	if (strcmp(key, ETH_PCAP_RX_IFACE_ARG) == 0 ||
+			strcmp(key, ETH_PCAP_RX_IFACE_IN_ARG) == 0)
+		return open_rx_iface(key, value, extra_args);
+
+	return 0;
 }
 
 /*
@@ -965,12 +1004,13 @@ pmd_pcap_probe(struct rte_vdev_device *dev)
 	is_rx_pcap = rte_kvargs_count(kvlist, ETH_PCAP_RX_PCAP_ARG) ? 1 : 0;
 	pcaps.num_of_queue = 0;
 
-	if (is_rx_pcap)
+	if (is_rx_pcap) {
 		ret = rte_kvargs_process(kvlist, ETH_PCAP_RX_PCAP_ARG,
 				&open_rx_pcap, &pcaps);
-	else
-		ret = rte_kvargs_process(kvlist, ETH_PCAP_RX_IFACE_ARG,
-				&open_rx_iface, &pcaps);
+	} else {
+		ret = rte_kvargs_process(kvlist, NULL,
+				&rx_iface_args_process, &pcaps);
+	}
 
 	if (ret < 0)
 		goto free_kvlist;
@@ -1036,6 +1076,7 @@ RTE_PMD_REGISTER_PARAM_STRING(net_pcap,
 	ETH_PCAP_RX_PCAP_ARG "=<string> "
 	ETH_PCAP_TX_PCAP_ARG "=<string> "
 	ETH_PCAP_RX_IFACE_ARG "=<ifc> "
+	ETH_PCAP_RX_IFACE_IN_ARG "=<ifc> "
 	ETH_PCAP_TX_IFACE_ARG "=<ifc> "
 	ETH_PCAP_IFACE_ARG "=<ifc>");
 
