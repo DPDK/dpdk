@@ -106,9 +106,6 @@
 #define FM10K_MISC_VEC_ID               RTE_INTR_VEC_ZERO_OFFSET
 #define FM10K_RX_VEC_START              RTE_INTR_VEC_RXTX_OFFSET
 
-#define FM10K_SIMPLE_TX_FLAG ((uint32_t)ETH_TXQ_FLAGS_NOMULTSEGS | \
-				ETH_TXQ_FLAGS_NOOFFLOADS)
-
 struct fm10k_macvlan_filter_info {
 	uint16_t vlan_num;       /* Total VLAN number */
 	uint16_t mac_num;        /* Total mac number */
