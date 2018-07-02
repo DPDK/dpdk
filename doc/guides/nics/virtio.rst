@@ -331,3 +331,13 @@ The user can specify below argument in devargs.
     driver, and works as a HW vhost backend. This argument is used to specify
     a virtio device needs to work in vDPA mode.
     (Default: 0 (disabled))
+
+#. ``mrg_rxbuf``:
+
+    It is used to enable virtio device mergeable Rx buffer feature.
+    (Default: 1 (enabled))
+
+#. ``in_order``:
+
+    It is used to enable virtio device in-order feature.
+    (Default: 1 (enabled))
