@@ -54,6 +54,11 @@ New Features
   PMD does not provide any. The provision of such tuned values now includes
   the ixgbe PMD.
 
+* **Added descriptor status check support for fm10k.**
+
+  ``rte_eth_rx_descritpr_status`` and ``rte_eth_tx_descriptor_status``
+  are supported by fm10K.
+
 
 API Changes
 -----------

@@ -389,6 +389,84 @@ fm10k_dev_rx_descriptor_done(void *rx_queue, uint16_t offset)
 	return ret;
 }
 
+int
+fm10k_dev_rx_descriptor_status(void *rx_queue, uint16_t offset)
+{
+	volatile union fm10k_rx_desc *rxdp;
+	struct fm10k_rx_queue *rxq = rx_queue;
+	uint16_t nb_hold, trigger_last;
+	uint16_t desc;
+	int ret;
+
+	if (unlikely(offset >= rxq->nb_desc)) {
+		PMD_DRV_LOG(ERR, "Invalid RX descriptor offset %u", offset);
+		return 0;
+	}
+
+	if (rxq->next_trigger < rxq->alloc_thresh)
+		trigger_last = rxq->next_trigger +
+					rxq->nb_desc - rxq->alloc_thresh;
+	else
+		trigger_last = rxq->next_trigger - rxq->alloc_thresh;
+
+	if (rxq->next_dd < trigger_last)
+		nb_hold = rxq->next_dd + rxq->nb_desc - trigger_last;
+	else
+		nb_hold = rxq->next_dd - trigger_last;
+
+	if (offset >= rxq->nb_desc - nb_hold)
+		return RTE_ETH_RX_DESC_UNAVAIL;
+
+	desc = rxq->next_dd + offset;
+	if (desc >= rxq->nb_desc)
+		desc -= rxq->nb_desc;
+
+	rxdp = &rxq->hw_ring[desc];
+
+	ret = !!(rxdp->w.status &
+			rte_cpu_to_le_16(FM10K_RXD_STATUS_DD));
+
+	return ret;
+}
+
+int
+fm10k_dev_tx_descriptor_status(void *tx_queue, uint16_t offset)
+{
+	volatile struct fm10k_tx_desc *txdp;
+	struct fm10k_tx_queue *txq = tx_queue;
+	uint16_t desc;
+	uint16_t next_rs = txq->nb_desc;
+	struct fifo rs_tracker = txq->rs_tracker;
+	struct fifo *r = &rs_tracker;
+
+	if (unlikely(offset >= txq->nb_desc))
+		return -EINVAL;
+
+	desc = txq->next_free + offset;
+	/* go to next desc that has the RS bit */
+	desc = (desc / txq->rs_thresh + 1) *
+		txq->rs_thresh - 1;
+
+	if (desc >= txq->nb_desc) {
+		desc -= txq->nb_desc;
+		if (desc >= txq->nb_desc)
+			desc -= txq->nb_desc;
+	}
+
+	r->head = r->list;
+	for ( ; r->head != r->endp; ) {
+		if (*r->head >= desc && *r->head < next_rs)
+			next_rs = *r->head;
+		++r->head;
+	}
+
+	txdp = &txq->hw_ring[next_rs];
+	if (txdp->flags & FM10K_TXD_FLAG_DONE)
+		return RTE_ETH_TX_DESC_DONE;
+
+	return RTE_ETH_TX_DESC_FULL;
+}
+
 /*
  * Free multiple TX mbuf at a time if they are in the same pool
  *
