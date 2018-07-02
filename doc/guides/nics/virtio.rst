@@ -201,7 +201,7 @@ The packet transmission flow is:
 Virtio PMD Rx/Tx Callbacks
 --------------------------
 
-Virtio driver has 3 Rx callbacks and 2 Tx callbacks.
+Virtio driver has 4 Rx callbacks and 3 Tx callbacks.
 
 Rx callbacks:
 
@@ -215,6 +215,9 @@ Rx callbacks:
    Vector version without mergeable Rx buffer support, also fixes the available
    ring indexes and uses vector instructions to optimize performance.
 
+#. ``virtio_recv_mergeable_pkts_inorder``:
+   In-order version with mergeable Rx buffer support.
+
 Tx callbacks:
 
 #. ``virtio_xmit_pkts``:
@@ -223,6 +226,8 @@ Tx callbacks:
 #. ``virtio_xmit_pkts_simple``:
    Vector version fixes the available ring indexes to optimize performance.
 
+#. ``virtio_xmit_pkts_inorder``:
+   In-order version.
 
 By default, the non-vector callbacks are used:
 
@@ -254,6 +259,12 @@ Example of using the vector version of the virtio poll mode driver in
 
    testpmd -l 0-2 -n 4 -- -i --tx-offloads=0x0 --rxq=1 --txq=1 --nb-cores=1
 
+In-order callbacks only work on simulated virtio user vdev.
+
+*   For Rx: If mergeable Rx buffers is enabled and in-order is enabled then
+    ``virtio_xmit_pkts_inorder`` is used.
+
+*   For Tx: If in-order is enabled then ``virtio_xmit_pkts_inorder`` is used.
 
 Interrupt mode
 --------------
