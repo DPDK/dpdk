@@ -974,41 +974,6 @@ rte_eth_speed_bitflag(uint32_t speed, int duplex)
 	}
 }
 
-/**
- * A conversion function from rxmode bitfield API.
- */
-static void
-rte_eth_convert_rx_offload_bitfield(const struct rte_eth_rxmode *rxmode,
-				    uint64_t *rx_offloads)
-{
-	uint64_t offloads = 0;
-
-	if (rxmode->header_split == 1)
-		offloads |= DEV_RX_OFFLOAD_HEADER_SPLIT;
-	if (rxmode->hw_ip_checksum == 1)
-		offloads |= DEV_RX_OFFLOAD_CHECKSUM;
-	if (rxmode->hw_vlan_filter == 1)
-		offloads |= DEV_RX_OFFLOAD_VLAN_FILTER;
-	if (rxmode->hw_vlan_strip == 1)
-		offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
-	if (rxmode->hw_vlan_extend == 1)
-		offloads |= DEV_RX_OFFLOAD_VLAN_EXTEND;
-	if (rxmode->jumbo_frame == 1)
-		offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
-	if (rxmode->hw_strip_crc == 1)
-		offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
-	if (rxmode->enable_scatter == 1)
-		offloads |= DEV_RX_OFFLOAD_SCATTER;
-	if (rxmode->enable_lro == 1)
-		offloads |= DEV_RX_OFFLOAD_TCP_LRO;
-	if (rxmode->hw_timestamp == 1)
-		offloads |= DEV_RX_OFFLOAD_TIMESTAMP;
-	if (rxmode->security == 1)
-		offloads |= DEV_RX_OFFLOAD_SECURITY;
-
-	*rx_offloads = offloads;
-}
-
 const char * __rte_experimental
 rte_eth_dev_rx_offload_name(uint64_t offload)
 {
@@ -1094,14 +1059,6 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 			port_id);
 		return -EBUSY;
 	}
-
-	/*
-	 * Convert between the offloads API to enable PMDs to support
-	 * only one of them.
-	 */
-	if (dev_conf->rxmode.ignore_offload_bitfield == 0)
-		rte_eth_convert_rx_offload_bitfield(
-				&dev_conf->rxmode, &local_conf.rxmode.offloads);
 
 	/* Copy the dev_conf parameter into the dev structure */
 	memcpy(&dev->data->dev_conf, &local_conf, sizeof(dev->data->dev_conf));
@@ -1547,14 +1504,6 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 		rx_conf = &dev_info.default_rxconf;
 
 	local_conf = *rx_conf;
-	if (dev->data->dev_conf.rxmode.ignore_offload_bitfield == 0) {
-		/**
-		 * Reflect port offloads to queue offloads in order for
-		 * offloads to not be discarded.
-		 */
-		rte_eth_convert_rx_offload_bitfield(&dev->data->dev_conf.rxmode,
-						    &local_conf.offloads);
-	}
 
 	/*
 	 * If an offloading has already been enabled in
@@ -1594,55 +1543,6 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 	}
 
 	return eth_err(port_id, ret);
-}
-
-/**
- * Convert from tx offloads to txq_flags.
- */
-static void
-rte_eth_convert_tx_offload(const uint64_t tx_offloads, uint32_t *txq_flags)
-{
-	uint32_t flags = 0;
-
-	if (!(tx_offloads & DEV_TX_OFFLOAD_MULTI_SEGS))
-		flags |= ETH_TXQ_FLAGS_NOMULTSEGS;
-	if (!(tx_offloads & DEV_TX_OFFLOAD_VLAN_INSERT))
-		flags |= ETH_TXQ_FLAGS_NOVLANOFFL;
-	if (!(tx_offloads & DEV_TX_OFFLOAD_SCTP_CKSUM))
-		flags |= ETH_TXQ_FLAGS_NOXSUMSCTP;
-	if (!(tx_offloads & DEV_TX_OFFLOAD_UDP_CKSUM))
-		flags |= ETH_TXQ_FLAGS_NOXSUMUDP;
-	if (!(tx_offloads & DEV_TX_OFFLOAD_TCP_CKSUM))
-		flags |= ETH_TXQ_FLAGS_NOXSUMTCP;
-	if (tx_offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
-		flags |= ETH_TXQ_FLAGS_NOREFCOUNT | ETH_TXQ_FLAGS_NOMULTMEMP;
-
-	*txq_flags = flags;
-}
-
-/**
- * A conversion function from txq_flags API.
- */
-static void
-rte_eth_convert_txq_flags(const uint32_t txq_flags, uint64_t *tx_offloads)
-{
-	uint64_t offloads = 0;
-
-	if (!(txq_flags & ETH_TXQ_FLAGS_NOMULTSEGS))
-		offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
-	if (!(txq_flags & ETH_TXQ_FLAGS_NOVLANOFFL))
-		offloads |= DEV_TX_OFFLOAD_VLAN_INSERT;
-	if (!(txq_flags & ETH_TXQ_FLAGS_NOXSUMSCTP))
-		offloads |= DEV_TX_OFFLOAD_SCTP_CKSUM;
-	if (!(txq_flags & ETH_TXQ_FLAGS_NOXSUMUDP))
-		offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
-	if (!(txq_flags & ETH_TXQ_FLAGS_NOXSUMTCP))
-		offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
-	if ((txq_flags & ETH_TXQ_FLAGS_NOREFCOUNT) &&
-	    (txq_flags & ETH_TXQ_FLAGS_NOMULTMEMP))
-		offloads |= DEV_TX_OFFLOAD_MBUF_FAST_FREE;
-
-	*tx_offloads = offloads;
 }
 
 int
@@ -1707,15 +1607,7 @@ rte_eth_tx_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
 	if (tx_conf == NULL)
 		tx_conf = &dev_info.default_txconf;
 
-	/*
-	 * Convert between the offloads API to enable PMDs to support
-	 * only one of them.
-	 */
 	local_conf = *tx_conf;
-	if (!(tx_conf->txq_flags & ETH_TXQ_FLAGS_IGNORE)) {
-		rte_eth_convert_txq_flags(tx_conf->txq_flags,
-					  &local_conf.offloads);
-	}
 
 	/*
 	 * If an offloading has already been enabled in
@@ -2493,7 +2385,6 @@ void
 rte_eth_dev_info_get(uint16_t port_id, struct rte_eth_dev_info *dev_info)
 {
 	struct rte_eth_dev *dev;
-	struct rte_eth_txconf *txconf;
 	const struct rte_eth_desc_lim lim = {
 		.nb_max = UINT16_MAX,
 		.nb_min = 0,
@@ -2515,9 +2406,6 @@ rte_eth_dev_info_get(uint16_t port_id, struct rte_eth_dev_info *dev_info)
 	dev_info->nb_tx_queues = dev->data->nb_tx_queues;
 
 	dev_info->dev_flags = &dev->data->dev_flags;
-	txconf = &dev_info->default_txconf;
-	/* convert offload to txq_flags to support legacy app */
-	rte_eth_convert_tx_offload(txconf->offloads, &txconf->txq_flags);
 }
 
 int
@@ -3958,7 +3846,6 @@ rte_eth_tx_queue_info_get(uint16_t port_id, uint16_t queue_id,
 	struct rte_eth_txq_info *qinfo)
 {
 	struct rte_eth_dev *dev;
-	struct rte_eth_txconf *txconf = &qinfo->conf;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 
@@ -3975,8 +3862,6 @@ rte_eth_tx_queue_info_get(uint16_t port_id, uint16_t queue_id,
 
 	memset(qinfo, 0, sizeof(*qinfo));
 	dev->dev_ops->txq_info_get(dev, queue_id, qinfo);
-	/* convert offload to txq_flags to support legacy app */
-	rte_eth_convert_tx_offload(txconf->offloads, &txconf->txq_flags);
 
 	return 0;
 }

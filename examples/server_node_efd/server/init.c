@@ -97,7 +97,6 @@ init_port(uint16_t port_num)
 	struct rte_eth_conf port_conf = {
 		.rxmode = {
 			.mq_mode = ETH_MQ_RX_RSS,
-			.ignore_offload_bitfield = 1,
 		},
 	};
 	const uint16_t rx_rings = 1, tx_rings = num_nodes;
@@ -139,7 +138,6 @@ init_port(uint16_t port_num)
 	}
 
 	txconf = dev_info.default_txconf;
-	txconf.txq_flags = ETH_TXQ_FLAGS_IGNORE;
 	txconf.offloads = port_conf.txmode.offloads;
 	for (q = 0; q < tx_rings; q++) {
 		retval = rte_eth_tx_queue_setup(port_num, q, tx_ring_size,

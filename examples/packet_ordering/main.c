@@ -35,11 +35,7 @@ volatile uint8_t quit_signal;
 
 static struct rte_mempool *mbuf_pool;
 
-static struct rte_eth_conf port_conf_default = {
-	.rxmode = {
-		.ignore_offload_bitfield = 1,
-	},
-};
+static struct rte_eth_conf port_conf_default;
 
 struct worker_thread_args {
 	struct rte_ring *ring_in;
@@ -293,7 +289,6 @@ configure_eth_port(uint16_t port_id)
 	}
 
 	txconf = dev_info.default_txconf;
-	txconf.txq_flags = ETH_TXQ_FLAGS_IGNORE;
 	txconf.offloads = port_conf.txmode.offloads;
 	for (q = 0; q < txRings; q++) {
 		ret = rte_eth_tx_queue_setup(port_id, q, nb_txd,

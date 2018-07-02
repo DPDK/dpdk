@@ -267,7 +267,6 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 		.rxmode = {
 			.mq_mode = ETH_MQ_RX_RSS,
 			.max_rx_pkt_len = ETHER_MAX_LEN,
-			.ignore_offload_bitfield = 1,
 		},
 		.rx_adv_conf = {
 			.rss_conf = {
@@ -307,7 +306,6 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 	}
 
 	txconf = dev_info.default_txconf;
-	txconf.txq_flags = ETH_TXQ_FLAGS_IGNORE;
 	txconf.offloads = port_conf_default.txmode.offloads;
 	/* Allocate and set up 1 TX queue per Ethernet port. */
 	for (q = 0; q < tx_rings; q++) {

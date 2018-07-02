@@ -69,7 +69,6 @@ uint8_t tep_filter_type[] = {RTE_TUNNEL_FILTER_IMAC_TENID,
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
 		.split_hdr_size = 0,
-		.ignore_offload_bitfield = 1,
 		.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
 	},
 	.txmode = {
@@ -131,7 +130,6 @@ vxlan_port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 
 	rxconf = &dev_info.default_rxconf;
 	txconf = &dev_info.default_txconf;
-	txconf->txq_flags = ETH_TXQ_FLAGS_IGNORE;
 
 	if (!rte_eth_dev_is_valid_port(port))
 		return -1;

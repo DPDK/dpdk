@@ -39,8 +39,6 @@ struct sfc_dp_tx_qcreate_info {
 	unsigned int		max_fill_level;
 	/** Minimum number of unused Tx descriptors to do reap */
 	unsigned int		free_thresh;
-	/** Transmit queue configuration flags */
-	unsigned int		flags;
 	/** Offloads enabled on the transmit queue */
 	uint64_t		offloads;
 	/** Tx queue size */

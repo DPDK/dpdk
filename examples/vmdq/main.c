@@ -65,7 +65,6 @@ static const struct rte_eth_conf vmdq_conf_default = {
 	.rxmode = {
 		.mq_mode        = ETH_MQ_RX_VMDQ_ONLY,
 		.split_hdr_size = 0,
-		.ignore_offload_bitfield = 1,
 	},
 
 	.txmode = {
@@ -237,7 +236,6 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	rxconf = &dev_info.default_rxconf;
 	rxconf->rx_drop_en = 1;
 	txconf = &dev_info.default_txconf;
-	txconf->txq_flags = ETH_TXQ_FLAGS_IGNORE;
 	txconf->offloads = port_conf.txmode.offloads;
 	for (q = 0; q < rxRings; q++) {
 		retval = rte_eth_rx_queue_setup(port, q, rxRingSize,

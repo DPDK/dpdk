@@ -326,7 +326,7 @@ enum rte_eth_tx_mq_mode {
 struct rte_eth_rxmode {
 	/** The multi-queue packet distribution mode to be used, e.g. RSS. */
 	enum rte_eth_rx_mq_mode mq_mode;
-	uint32_t max_rx_pkt_len;  /**< Only used if jumbo_frame enabled. */
+	uint32_t max_rx_pkt_len;  /**< Only used if JUMBO_FRAME enabled. */
 	uint16_t split_hdr_size;  /**< hdr buf size (header_split enabled).*/
 	/**
 	 * Per-port Rx offloads to be set using DEV_RX_OFFLOAD_* flags.
@@ -334,33 +334,6 @@ struct rte_eth_rxmode {
 	 * structure are allowed to be set.
 	 */
 	uint64_t offloads;
-	__extension__
-	/**
-	 * Below bitfield API is obsolete. Application should
-	 * enable per-port offloads using the offload field
-	 * above.
-	 */
-	uint16_t header_split : 1, /**< Header Split enable. */
-		hw_ip_checksum   : 1, /**< IP/UDP/TCP checksum offload enable. */
-		hw_vlan_filter   : 1, /**< VLAN filter enable. */
-		hw_vlan_strip    : 1, /**< VLAN strip enable. */
-		hw_vlan_extend   : 1, /**< Extended VLAN enable. */
-		jumbo_frame      : 1, /**< Jumbo Frame Receipt enable. */
-		hw_strip_crc     : 1, /**< Enable CRC stripping by hardware. */
-		enable_scatter   : 1, /**< Enable scatter packets rx handler */
-		enable_lro       : 1, /**< Enable LRO */
-		hw_timestamp     : 1, /**< Enable HW timestamp */
-		security	 : 1, /**< Enable rte_security offloads */
-		/**
-		 * When set the offload bitfield should be ignored.
-		 * Instead per-port Rx offloads should be set on offloads
-		 * field above.
-		 * Per-queue offloads shuold be set on rte_eth_rxq_conf
-		 * structure.
-		 * This bit is temporary till rxmode bitfield offloads API will
-		 * be deprecated.
-		 */
-		ignore_offload_bitfield : 1;
 };
 
 /**
@@ -707,28 +680,6 @@ struct rte_eth_rxconf {
 	uint64_t offloads;
 };
 
-#define ETH_TXQ_FLAGS_NOMULTSEGS 0x0001 /**< nb_segs=1 for all mbufs */
-#define ETH_TXQ_FLAGS_NOREFCOUNT 0x0002 /**< refcnt can be ignored */
-#define ETH_TXQ_FLAGS_NOMULTMEMP 0x0004 /**< all bufs come from same mempool */
-#define ETH_TXQ_FLAGS_NOVLANOFFL 0x0100 /**< disable VLAN offload */
-#define ETH_TXQ_FLAGS_NOXSUMSCTP 0x0200 /**< disable SCTP checksum offload */
-#define ETH_TXQ_FLAGS_NOXSUMUDP  0x0400 /**< disable UDP checksum offload */
-#define ETH_TXQ_FLAGS_NOXSUMTCP  0x0800 /**< disable TCP checksum offload */
-#define ETH_TXQ_FLAGS_NOOFFLOADS \
-		(ETH_TXQ_FLAGS_NOVLANOFFL | ETH_TXQ_FLAGS_NOXSUMSCTP | \
-		 ETH_TXQ_FLAGS_NOXSUMUDP  | ETH_TXQ_FLAGS_NOXSUMTCP)
-#define ETH_TXQ_FLAGS_NOXSUMS \
-		(ETH_TXQ_FLAGS_NOXSUMSCTP | ETH_TXQ_FLAGS_NOXSUMUDP | \
-		 ETH_TXQ_FLAGS_NOXSUMTCP)
-/**
- * When set the txq_flags should be ignored,
- * instead per-queue Tx offloads will be set on offloads field
- * located on rte_eth_txq_conf struct.
- * This flag is temporary till the rte_eth_txq_conf.txq_flags
- * API will be deprecated.
- */
-#define ETH_TXQ_FLAGS_IGNORE	0x8000
-
 /**
  * A structure used to configure a TX ring of an Ethernet port.
  */
@@ -738,7 +689,6 @@ struct rte_eth_txconf {
 	uint16_t tx_free_thresh; /**< Start freeing TX buffers if there are
 				      less free descriptors than this value. */
 
-	uint32_t txq_flags; /**< Set flags for the Tx queue */
 	uint8_t tx_deferred_start; /**< Do not start queue with rte_eth_dev_start(). */
 	/**
 	 * Per-queue Tx offloads to be set  using DEV_TX_OFFLOAD_* flags.
@@ -1680,12 +1630,6 @@ int rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
  *     The *tx_rs_thresh* value should be less or equal then
  *     *tx_free_thresh* value, and both of them should be less then
  *     *nb_tx_desc* - 3.
- *   - The *txq_flags* member contains flags to pass to the TX queue setup
- *     function to configure the behavior of the TX queue. This should be set
- *     to 0 if no special configuration is required.
- *     This API is obsolete and will be deprecated. Applications
- *     should set it to ETH_TXQ_FLAGS_IGNORE and use
- *     the offloads field below.
  *   - The *offloads* member contains Tx offloads to be enabled.
  *     If an offloading set in tx_conf->offloads
  *     hasn't been set in the input argument eth_conf->txmode.offloads
@@ -4097,7 +4041,7 @@ static inline int rte_eth_tx_descriptor_status(uint16_t port_id,
  *
  * If the PMD is DEV_TX_OFFLOAD_MT_LOCKFREE capable, multiple threads can
  * invoke this function concurrently on the same tx queue without SW lock.
- * @see rte_eth_dev_info_get, struct rte_eth_txconf::txq_flags
+ * @see rte_eth_dev_info_get, struct rte_eth_txconf::offloads
  *
  * @see rte_eth_tx_prepare to perform some prior checks or adjustments
  * for offloads.

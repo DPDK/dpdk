@@ -1449,7 +1449,6 @@ sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
 	if (rte_eth_dev_must_keep_crc(rxmode->offloads)) {
 		sfc_warn(sa, "FCS stripping cannot be disabled - always on");
 		rxmode->offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
-		rxmode->hw_strip_crc = 1;
 	}
 
 	return rc;

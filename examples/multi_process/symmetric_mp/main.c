@@ -178,7 +178,6 @@ smp_port_init(uint16_t port, struct rte_mempool *mbuf_pool,
 			.rxmode = {
 				.mq_mode	= ETH_MQ_RX_RSS,
 				.split_hdr_size = 0,
-				.ignore_offload_bitfield = 1,
 				.offloads = (DEV_RX_OFFLOAD_CHECKSUM |
 					     DEV_RX_OFFLOAD_CRC_STRIP),
 			},
@@ -236,7 +235,6 @@ smp_port_init(uint16_t port, struct rte_mempool *mbuf_pool,
 	}
 
 	txq_conf = info.default_txconf;
-	txq_conf.txq_flags = ETH_TXQ_FLAGS_IGNORE;
 	txq_conf.offloads = port_conf.txmode.offloads;
 	for (q = 0; q < tx_rings; q ++) {
 		retval = rte_eth_tx_queue_setup(port, q, nb_txd,

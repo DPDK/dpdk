@@ -88,7 +88,6 @@
 /* Options for configuring ethernet port */
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
-		.ignore_offload_bitfield = 1,
 		.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
 	},
 	.txmode = {
@@ -457,7 +456,6 @@ init_port(uint16_t port)
 				port, ret);
 
 	txq_conf = dev_info.default_txconf;
-	txq_conf.txq_flags = ETH_TXQ_FLAGS_IGNORE;
 	txq_conf.offloads = local_port_conf.txmode.offloads;
 	ret = rte_eth_tx_queue_setup(port, 0, nb_txd,
 				rte_eth_dev_socket_id(port),

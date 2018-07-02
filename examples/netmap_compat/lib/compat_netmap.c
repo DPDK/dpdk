@@ -708,7 +708,6 @@ rte_netmap_init_port(uint16_t portid, const struct rte_netmap_port_conf *conf)
 	rxq_conf = dev_info.default_rxconf;
 	rxq_conf.offloads = conf->eth_conf->rxmode.offloads;
 	txq_conf = dev_info.default_txconf;
-	txq_conf.txq_flags = ETH_TXQ_FLAGS_IGNORE;
 	txq_conf.offloads = conf->eth_conf->txmode.offloads;
 	for (i = 0; i < conf->nr_tx_rings; i++) {
 		ret = rte_eth_tx_queue_setup(portid, i, tx_slots,

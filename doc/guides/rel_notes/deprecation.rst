@@ -58,15 +58,6 @@ Deprecation Notices
   experimental API ``rte_pktmbuf_attach_extbuf()`` is used. Removal of the macro
   is to fix this semantic inconsistency.
 
-* ethdev: a new Tx and Rx offload API was introduced on 17.11.
-  In the new API, offloads are divided into per-port and per-queue offloads.
-  Offloads are disabled by default and enabled per application request.
-
-  In later releases the old offloading API will be deprecated, which will include:
-  - removal of ``ETH_TXQ_FLAGS_NO*`` flags.
-  - removal of ``txq_flags`` field from ``rte_eth_txconf`` struct.
-  - removal of the offloads bit-field from ``rte_eth_rxmode`` struct.
-
 * ethdev: In v18.11 ``DEV_RX_OFFLOAD_CRC_STRIP`` offload flag will be removed, default
   behavior without any flag will be changed to CRC strip.
   To keep CRC ``DEV_RX_OFFLOAD_KEEP_CRC`` flag is required.

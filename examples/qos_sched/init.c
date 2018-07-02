@@ -59,7 +59,6 @@ static struct rte_eth_conf port_conf = {
 	.rxmode = {
 		.max_rx_pkt_len = ETHER_MAX_LEN,
 		.split_hdr_size = 0,
-		.ignore_offload_bitfield = 1,
 		.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
 	},
 	.txmode = {
@@ -96,7 +95,6 @@ app_init_port(uint16_t portid, struct rte_mempool *mp)
 	tx_conf.tx_free_thresh = 0;
 	tx_conf.tx_rs_thresh = 0;
 	tx_conf.tx_deferred_start = 0;
-	tx_conf.txq_flags = ETH_TXQ_FLAGS_IGNORE;
 
 	/* init port */
 	RTE_LOG(INFO, APP, "Initializing port %"PRIu16"... ", portid);

@@ -58,7 +58,6 @@ struct sfc_txq {
 	struct sfc_dp_txq		*dp;
 	efx_txq_t			*common;
 	unsigned int			free_thresh;
-	unsigned int			flags;
 	uint64_t			offloads;
 };
 

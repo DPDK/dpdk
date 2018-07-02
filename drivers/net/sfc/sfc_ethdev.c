@@ -874,14 +874,12 @@ sfc_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	}
 
 	/*
-	 * The driver does not use it, but other PMDs update jumbo_frame
+	 * The driver does not use it, but other PMDs update jumbo frame
 	 * flag and max_rx_pkt_len when MTU is set.
 	 */
 	if (mtu > ETHER_MAX_LEN) {
 		struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
-
 		rxmode->offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
-		rxmode->jumbo_frame = 1;
 	}
 
 	dev->data->dev_conf.rxmode.max_rx_pkt_len = sa->port.pdu;
@@ -1089,7 +1087,6 @@ sfc_tx_queue_info_get(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 
 	memset(qinfo, 0, sizeof(*qinfo));
 
-	qinfo->conf.txq_flags = txq_info->txq->flags;
 	qinfo->conf.offloads = txq_info->txq->offloads;
 	qinfo->conf.tx_free_thresh = txq_info->txq->free_thresh;
 	qinfo->conf.tx_deferred_start = txq_info->deferred_start;

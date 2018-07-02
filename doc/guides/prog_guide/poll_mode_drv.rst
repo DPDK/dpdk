@@ -328,11 +328,6 @@ A newly added offloads in ``[rt]x_conf->offloads`` to ``rte_eth_[rt]x_queue_setu
 is the one which hasn't been enabled in ``rte_eth_dev_configure()`` and is requested to be enabled
 in ``rte_eth_[rt]x_queue_setup()``. It must be per-queue type, otherwise trigger an error log.
 
-For an application to use the Tx offloads API it should set the ``ETH_TXQ_FLAGS_IGNORE`` flag in the ``txq_flags`` field located in ``rte_eth_txconf`` struct.
-In such cases it is not required to set other flags in ``txq_flags``.
-For an application to use the Rx offloads API it should set the ``ignore_offload_bitfield`` bit in the ``rte_eth_rxmode`` struct.
-In such cases it is not required to set other bitfield offloads in the ``rxmode`` struct.
-
 Poll Mode Driver API
 --------------------
 

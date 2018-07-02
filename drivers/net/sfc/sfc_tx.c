@@ -171,7 +171,6 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	txq->free_thresh =
 		(tx_conf->tx_free_thresh) ? tx_conf->tx_free_thresh :
 		SFC_TX_DEFAULT_FREE_THRESH;
-	txq->flags = tx_conf->txq_flags;
 	txq->offloads = offloads;
 
 	rc = sfc_dma_alloc(sa, "txq", sw_index, EFX_TXQ_SIZE(txq_info->entries),
@@ -182,7 +181,6 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	memset(&info, 0, sizeof(info));
 	info.max_fill_level = txq_max_fill_level;
 	info.free_thresh = txq->free_thresh;
-	info.flags = tx_conf->txq_flags;
 	info.offloads = offloads;
 	info.txq_entries = txq_info->entries;
 	info.dma_desc_size_max = encp->enc_tx_dma_desc_size_max;
@@ -431,18 +429,10 @@ sfc_tx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 	if (rc != 0)
 		goto fail_ev_qstart;
 
-	/*
-	 * The absence of ETH_TXQ_FLAGS_IGNORE is associated with a legacy
-	 * application which expects that IPv4 checksum offload is enabled
-	 * all the time as there is no legacy flag to turn off the offload.
-	 */
-	if ((txq->offloads & DEV_TX_OFFLOAD_IPV4_CKSUM) ||
-	    (~txq->flags & ETH_TXQ_FLAGS_IGNORE))
+	if (txq->offloads & DEV_TX_OFFLOAD_IPV4_CKSUM)
 		flags |= EFX_TXQ_CKSUM_IPV4;
 
-	if ((txq->offloads & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) ||
-	    ((~txq->flags & ETH_TXQ_FLAGS_IGNORE) &&
-	     (offloads_supported & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM)))
+	if (txq->offloads & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM)
 		flags |= EFX_TXQ_CKSUM_INNER_IPV4;
 
 	if ((txq->offloads & DEV_TX_OFFLOAD_TCP_CKSUM) ||
@@ -453,16 +443,7 @@ sfc_tx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 			flags |= EFX_TXQ_CKSUM_INNER_TCPUDP;
 	}
 
-	/*
-	 * The absence of ETH_TXQ_FLAGS_IGNORE is associated with a legacy
-	 * application. In turn, the absence of ETH_TXQ_FLAGS_NOXSUMTCP is
-	 * associated specifically with a legacy application which expects
-	 * both TCP checksum offload and TSO to be enabled because the legacy
-	 * API does not provide a dedicated mechanism to control TSO.
-	 */
-	if ((txq->offloads & DEV_TX_OFFLOAD_TCP_TSO) ||
-	    ((~txq->flags & ETH_TXQ_FLAGS_IGNORE) &&
-	     (~txq->flags & ETH_TXQ_FLAGS_NOXSUMTCP)))
+	if (txq->offloads & DEV_TX_OFFLOAD_TCP_TSO)
 		flags |= EFX_TXQ_FATSOV2;
 
 	rc = efx_tx_qcreate(sa->nic, sw_index, 0, &txq->mem,

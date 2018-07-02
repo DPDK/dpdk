@@ -199,7 +199,6 @@ static struct rte_eth_conf port_conf = {
 		.split_hdr_size = 0,
 		.offloads = DEV_RX_OFFLOAD_CHECKSUM |
 			    DEV_RX_OFFLOAD_CRC_STRIP,
-		.ignore_offload_bitfield = 1,
 	},
 	.rx_adv_conf = {
 		.rss_conf = {
@@ -1592,7 +1591,6 @@ port_init(uint16_t portid)
 		printf("Setup txq=%u,%d,%d\n", lcore_id, tx_queueid, socket_id);
 
 		txconf = &dev_info.default_txconf;
-		txconf->txq_flags = ETH_TXQ_FLAGS_IGNORE;
 		txconf->offloads = local_port_conf.txmode.offloads;
 
 		ret = rte_eth_tx_queue_setup(portid, tx_queueid, nb_txd,

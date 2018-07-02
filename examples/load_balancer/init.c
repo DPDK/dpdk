@@ -45,7 +45,6 @@ static struct rte_eth_conf port_conf = {
 	.rxmode = {
 		.mq_mode	= ETH_MQ_RX_RSS,
 		.split_hdr_size = 0,
-		.ignore_offload_bitfield = 1,
 		.offloads = (DEV_RX_OFFLOAD_CHECKSUM |
 			     DEV_RX_OFFLOAD_CRC_STRIP),
 	},
@@ -466,7 +465,6 @@ app_init_nics(void)
 		}
 
 		txq_conf = dev_info.default_txconf;
-		txq_conf.txq_flags = ETH_TXQ_FLAGS_IGNORE;
 		txq_conf.offloads = local_port_conf.txmode.offloads;
 		/* Init TX queues */
 		if (app.nic_tx_port_mask[port] == 1) {

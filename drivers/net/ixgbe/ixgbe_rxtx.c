@@ -1420,7 +1420,7 @@ rx_desc_status_to_pkt_flags(uint32_t rx_status, uint64_t vlan_flags)
 	/*
 	 * Check if VLAN present only.
 	 * Do not check whether L3/L4 rx checksum done by NIC or not,
-	 * That can be found from rte_eth_rxmode.hw_ip_checksum flag
+	 * That can be found from rte_eth_rxmode.offloads flag
 	 */
 	pkt_flags = (rx_status & IXGBE_RXD_STAT_VP) ?  vlan_flags : 0;
 

@@ -334,7 +334,6 @@ lcoreid_t latencystats_lcore_id = -1;
 struct rte_eth_rxmode rx_mode = {
 	.max_rx_pkt_len = ETHER_MAX_LEN, /**< Default maximum frame length. */
 	.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
-	.ignore_offload_bitfield = 1,
 };
 
 struct rte_eth_txmode tx_mode = {
@@ -1645,8 +1644,6 @@ start_port(portid_t pid)
 			port->need_reconfig_queues = 0;
 			/* setup tx queues */
 			for (qi = 0; qi < nb_txq; qi++) {
-				port->tx_conf[qi].txq_flags =
-					ETH_TXQ_FLAGS_IGNORE;
 				if ((numa_support) &&
 					(txring_numa[pi] != NUMA_NO_CONFIG))
 					diag = rte_eth_tx_queue_setup(pi, qi,

@@ -2537,9 +2537,9 @@ static int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 		}
 	}
 	if (max_rx_pkt_len > ETHER_MAX_LEN)
-		dev->data->dev_conf.rxmode.jumbo_frame = 1;
+		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
-		dev->data->dev_conf.rxmode.jumbo_frame = 0;
+		dev->data->dev_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
 
 	if (!dev->data->dev_started && restart) {
 		qede_dev_start(dev);

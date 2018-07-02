@@ -371,10 +371,8 @@ int axgbe_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	if (txq->nb_desc % txq->free_thresh != 0)
 		txq->vector_disable = 1;
 
-	if ((tx_conf->txq_flags & (uint32_t)ETH_TXQ_FLAGS_NOOFFLOADS) !=
-	    ETH_TXQ_FLAGS_NOOFFLOADS) {
+	if (tx_conf->offloads != 0)
 		txq->vector_disable = 1;
-	}
 
 	/* Allocate TX ring hardware descriptors */
 	tsize = txq->nb_desc * sizeof(struct axgbe_tx_desc);
