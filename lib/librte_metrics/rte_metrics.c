@@ -205,9 +205,8 @@ rte_metrics_get_names(struct rte_metric_name *names,
 	int return_value;
 
 	memzone = rte_memzone_lookup(RTE_METRICS_MEMZONE_NAME);
-	/* If not allocated, fail silently */
 	if (memzone == NULL)
-		return 0;
+		return -EIO;
 
 	stats = memzone->addr;
 	rte_spinlock_lock(&stats->lock);
@@ -243,9 +242,9 @@ rte_metrics_get_values(int port_id,
 		return -EINVAL;
 
 	memzone = rte_memzone_lookup(RTE_METRICS_MEMZONE_NAME);
-	/* If not allocated, fail silently */
 	if (memzone == NULL)
-		return 0;
+		return -EIO;
+
 	stats = memzone->addr;
 	rte_spinlock_lock(&stats->lock);
 
