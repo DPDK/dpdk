@@ -1806,8 +1806,10 @@ static int
 virtio_dev_configure(struct rte_eth_dev *dev)
 {
 	const struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
+	const struct rte_eth_txmode *txmode = &dev->data->dev_conf.txmode;
 	struct virtio_hw *hw = dev->data->dev_private;
 	uint64_t rx_offloads = rxmode->offloads;
+	uint64_t tx_offloads = txmode->offloads;
 	uint64_t req_features;
 	int ret;
 
@@ -1828,6 +1830,15 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 		req_features |=
 			(1ULL << VIRTIO_NET_F_GUEST_TSO4) |
 			(1ULL << VIRTIO_NET_F_GUEST_TSO6);
+
+	if (tx_offloads & (DEV_TX_OFFLOAD_UDP_CKSUM |
+			   DEV_TX_OFFLOAD_TCP_CKSUM))
+		req_features |= (1ULL << VIRTIO_NET_F_CSUM);
+
+	if (tx_offloads & DEV_TX_OFFLOAD_TCP_TSO)
+		req_features |=
+			(1ULL << VIRTIO_NET_F_HOST_TSO4) |
+			(1ULL << VIRTIO_NET_F_HOST_TSO6);
 
 	/* if request features changed, reinit the device */
 	if (req_features != hw->req_guest_features) {
@@ -2155,14 +2166,14 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->tx_offload_capa = DEV_TX_OFFLOAD_MULTI_SEGS |
 				    DEV_TX_OFFLOAD_VLAN_INSERT;
-	if (hw->guest_features & (1ULL << VIRTIO_NET_F_CSUM)) {
+	if (host_features & (1ULL << VIRTIO_NET_F_CSUM)) {
 		dev_info->tx_offload_capa |=
 			DEV_TX_OFFLOAD_UDP_CKSUM |
 			DEV_TX_OFFLOAD_TCP_CKSUM;
 	}
 	tso_mask = (1ULL << VIRTIO_NET_F_HOST_TSO4) |
 		(1ULL << VIRTIO_NET_F_HOST_TSO6);
-	if ((hw->guest_features & tso_mask) == tso_mask)
+	if ((host_features & tso_mask) == tso_mask)
 		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_TCP_TSO;
 }
 

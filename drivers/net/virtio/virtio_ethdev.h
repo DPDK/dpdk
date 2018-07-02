@@ -28,9 +28,6 @@
 	 1u << VIRTIO_NET_F_CTRL_VQ	  |	\
 	 1u << VIRTIO_NET_F_CTRL_RX	  |	\
 	 1u << VIRTIO_NET_F_CTRL_VLAN	  |	\
-	 1u << VIRTIO_NET_F_CSUM	  |	\
-	 1u << VIRTIO_NET_F_HOST_TSO4	  |	\
-	 1u << VIRTIO_NET_F_HOST_TSO6	  |	\
 	 1u << VIRTIO_NET_F_MRG_RXBUF	  |	\
 	 1u << VIRTIO_NET_F_MTU	| \
 	 1ULL << VIRTIO_NET_F_GUEST_ANNOUNCE |	\
