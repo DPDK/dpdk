@@ -74,6 +74,14 @@ virtqueue_rxvq_flush(struct virtqueue *vq)
 			desc_idx = used_idx;
 			rte_pktmbuf_free(vq->sw_ring[desc_idx]);
 			vq->vq_free_cnt++;
+		} else if (hw->use_inorder_rx) {
+			desc_idx = (uint16_t)uep->id;
+			dxp = &vq->vq_descx[desc_idx];
+			if (dxp->cookie != NULL) {
+				rte_pktmbuf_free(dxp->cookie);
+				dxp->cookie = NULL;
+			}
+			vq_ring_free_inorder(vq, desc_idx, 1);
 		} else {
 			desc_idx = (uint16_t)uep->id;
 			dxp = &vq->vq_descx[desc_idx];

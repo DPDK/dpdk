@@ -48,6 +48,13 @@ virtio_dev_rx_queue_done(void *rxq, uint16_t offset)
 }
 
 void
+vq_ring_free_inorder(struct virtqueue *vq, uint16_t desc_idx, uint16_t num)
+{
+	vq->vq_free_cnt += num;
+	vq->vq_desc_tail_idx = desc_idx & (vq->vq_nentries - 1);
+}
+
+void
 vq_ring_free_chain(struct virtqueue *vq, uint16_t desc_idx)
 {
 	struct vring_desc *dp, *dp_tail;

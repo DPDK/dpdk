@@ -306,6 +306,8 @@ virtio_get_queue_type(struct virtio_hw *hw, uint16_t vtpci_queue_idx)
 #define VIRTQUEUE_NUSED(vq) ((uint16_t)((vq)->vq_ring.used->idx - (vq)->vq_used_cons_idx))
 
 void vq_ring_free_chain(struct virtqueue *vq, uint16_t desc_idx);
+void vq_ring_free_inorder(struct virtqueue *vq, uint16_t desc_idx,
+			  uint16_t num);
 
 static inline void
 vq_update_avail_idx(struct virtqueue *vq)
