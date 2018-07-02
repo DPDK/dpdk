@@ -30,7 +30,6 @@ virtio_user_server_reconnect(struct virtio_user_dev *dev)
 	int ret;
 	int flag;
 	int connectfd;
-	uint64_t features = dev->device_features;
 	struct rte_eth_dev *eth_dev = &rte_eth_devices[dev->port_id];
 
 	connectfd = accept(dev->listenfd, NULL, NULL);
@@ -45,15 +44,8 @@ virtio_user_server_reconnect(struct virtio_user_dev *dev)
 		return -1;
 	}
 
-	features &= ~dev->device_features;
-	/* For following bits, vhost-user doesn't really need to know */
-	features &= ~(1ull << VIRTIO_NET_F_MAC);
-	features &= ~(1ull << VIRTIO_NET_F_CTRL_VLAN);
-	features &= ~(1ull << VIRTIO_NET_F_CTRL_MAC_ADDR);
-	features &= ~(1ull << VIRTIO_NET_F_STATUS);
-	if (features)
-		PMD_INIT_LOG(ERR, "WARNING: Some features 0x%" PRIx64 " are not supported by vhost-user!",
-			     features);
+	/* umask vhost-user unsupported features */
+	dev->device_features &= ~(dev->unsupported_features);
 
 	dev->features &= dev->device_features;
 

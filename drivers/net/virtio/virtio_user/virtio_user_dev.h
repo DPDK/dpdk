@@ -33,6 +33,7 @@ struct virtio_user_dev {
 				   * and will be sync with device
 				   */
 	uint64_t	device_features; /* supported features by device */
+	uint64_t	unsupported_features; /* unsupported features mask */
 	uint8_t		status;
 	uint16_t	port_id;
 	uint8_t		mac_addr[ETHER_ADDR_LEN];
