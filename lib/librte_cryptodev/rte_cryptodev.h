@@ -38,7 +38,6 @@ extern const char **rte_cyptodev_names;
 		RTE_FMT(RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
 			RTE_FMT_TAIL(__VA_ARGS__,)))
 
-#ifdef RTE_LIBRTE_CRYPTODEV_DEBUG
 #define CDEV_LOG_DEBUG(...) \
 	RTE_LOG(DEBUG, CRYPTODEV, \
 		RTE_FMT("%s() line %u: " RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
@@ -48,13 +47,6 @@ extern const char **rte_cyptodev_names;
 	RTE_LOG(DEBUG, CRYPTODEV, \
 		RTE_FMT("[%s] %s: " RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
 			dev, __func__, RTE_FMT_TAIL(__VA_ARGS__,)))
-
-#else
-#define CDEV_LOG_DEBUG(...) (void)0
-#define CDEV_PMD_TRACE(...) (void)0
-#endif
-
-
 
 /**
  * A macro that points to an offset from the start
