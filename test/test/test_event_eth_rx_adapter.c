@@ -25,28 +25,17 @@ struct event_eth_rx_adapter_test_params {
 	struct rte_mempool *mp;
 	uint16_t rx_rings, tx_rings;
 	uint32_t caps;
+	int rx_intr_port_inited;
+	uint16_t rx_intr_port;
 };
 
 static struct event_eth_rx_adapter_test_params default_params;
 
 static inline int
-port_init(uint8_t port, struct rte_mempool *mp)
+port_init_common(uint8_t port, const struct rte_eth_conf *port_conf,
+		struct rte_mempool *mp)
 {
-	static const struct rte_eth_conf port_conf_default = {
-		.rxmode = {
-			.mq_mode = ETH_MQ_RX_RSS,
-			.max_rx_pkt_len = ETHER_MAX_LEN
-		},
-		.rx_adv_conf = {
-			.rss_conf = {
-				.rss_hf = ETH_RSS_IP |
-					  ETH_RSS_TCP |
-					  ETH_RSS_UDP,
-			}
-		}
-	};
 	const uint16_t rx_ring_size = 512, tx_ring_size = 512;
-	struct rte_eth_conf port_conf = port_conf_default;
 	int retval;
 	uint16_t q;
 	struct rte_eth_dev_info dev_info;
@@ -54,7 +43,7 @@ port_init(uint8_t port, struct rte_mempool *mp)
 	if (!rte_eth_dev_is_valid_port(port))
 		return -1;
 
-	retval = rte_eth_dev_configure(port, 0, 0, &port_conf);
+	retval = rte_eth_dev_configure(port, 0, 0, port_conf);
 
 	rte_eth_dev_info_get(port, &dev_info);
 
@@ -64,7 +53,7 @@ port_init(uint8_t port, struct rte_mempool *mp)
 
 	/* Configure the Ethernet device. */
 	retval = rte_eth_dev_configure(port, default_params.rx_rings,
-				default_params.tx_rings, &port_conf);
+				default_params.tx_rings, port_conf);
 	if (retval != 0)
 		return retval;
 
@@ -101,6 +90,77 @@ port_init(uint8_t port, struct rte_mempool *mp)
 	/* Enable RX in promiscuous mode for the Ethernet device. */
 	rte_eth_promiscuous_enable(port);
 
+	return 0;
+}
+
+static inline int
+port_init_rx_intr(uint8_t port, struct rte_mempool *mp)
+{
+	static const struct rte_eth_conf port_conf_default = {
+		.rxmode = {
+			.mq_mode = ETH_MQ_RX_RSS,
+			.max_rx_pkt_len = ETHER_MAX_LEN
+		},
+		.intr_conf = {
+			.rxq = 1,
+		},
+	};
+
+	return port_init_common(port, &port_conf_default, mp);
+}
+
+static inline int
+port_init(uint8_t port, struct rte_mempool *mp)
+{
+	static const struct rte_eth_conf port_conf_default = {
+		.rxmode = {
+			.mq_mode = ETH_MQ_RX_RSS,
+			.max_rx_pkt_len = ETHER_MAX_LEN
+		},
+		.rx_adv_conf = {
+			.rss_conf = {
+				.rss_hf = ETH_RSS_IP |
+					ETH_RSS_TCP |
+					ETH_RSS_UDP,
+			}
+		}
+	};
+
+	return port_init_common(port, &port_conf_default, mp);
+}
+
+static int
+init_port_rx_intr(int num_ports)
+{
+	int retval;
+	uint16_t portid;
+	int err;
+
+	default_params.mp = rte_pktmbuf_pool_create("packet_pool",
+						   NB_MBUFS,
+						   MBUF_CACHE_SIZE,
+						   MBUF_PRIV_SIZE,
+						   RTE_MBUF_DEFAULT_BUF_SIZE,
+						   rte_socket_id());
+	if (!default_params.mp)
+		return -ENOMEM;
+
+	RTE_ETH_FOREACH_DEV(portid) {
+		retval = port_init_rx_intr(portid, default_params.mp);
+		if (retval)
+			continue;
+		err = rte_event_eth_rx_adapter_caps_get(TEST_DEV_ID, portid,
+							&default_params.caps);
+		if (err)
+			continue;
+		if (!(default_params.caps &
+			RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT)) {
+			default_params.rx_intr_port_inited = 1;
+			default_params.rx_intr_port = portid;
+			return 0;
+		}
+		rte_eth_dev_stop(portid);
+	}
 	return 0;
 }
 
@@ -181,6 +241,57 @@ testsuite_setup(void)
 	return err;
 }
 
+static int
+testsuite_setup_rx_intr(void)
+{
+	int err;
+	uint8_t count;
+	struct rte_event_dev_info dev_info;
+
+	count = rte_event_dev_count();
+	if (!count) {
+		printf("Failed to find a valid event device,"
+			" testing with event_skeleton device\n");
+		rte_vdev_init("event_skeleton", NULL);
+	}
+
+	struct rte_event_dev_config config = {
+		.nb_event_queues = 1,
+		.nb_event_ports = 1,
+	};
+
+	err = rte_event_dev_info_get(TEST_DEV_ID, &dev_info);
+	config.nb_event_queue_flows = dev_info.max_event_queue_flows;
+	config.nb_event_port_dequeue_depth =
+			dev_info.max_event_port_dequeue_depth;
+	config.nb_event_port_enqueue_depth =
+			dev_info.max_event_port_enqueue_depth;
+	config.nb_events_limit =
+			dev_info.max_num_events;
+
+	err = rte_event_dev_configure(TEST_DEV_ID, &config);
+	TEST_ASSERT(err == 0, "Event device initialization failed err %d\n",
+			err);
+
+	/*
+	 * eth devices like octeontx use event device to receive packets
+	 * so rte_eth_dev_start invokes rte_event_dev_start internally, so
+	 * call init_ports after rte_event_dev_configure
+	 */
+	err = init_port_rx_intr(rte_eth_dev_count_total());
+	TEST_ASSERT(err == 0, "Port initialization failed err %d\n", err);
+
+	if (!default_params.rx_intr_port_inited)
+		return 0;
+
+	err = rte_event_eth_rx_adapter_caps_get(TEST_DEV_ID,
+						default_params.rx_intr_port,
+						&default_params.caps);
+	TEST_ASSERT(err == 0, "Failed to get adapter cap err %d\n", err);
+
+	return err;
+}
+
 static void
 testsuite_teardown(void)
 {
@@ -188,6 +299,16 @@ testsuite_teardown(void)
 	RTE_ETH_FOREACH_DEV(i)
 		rte_eth_dev_stop(i);
 
+	rte_mempool_free(default_params.mp);
+}
+
+static void
+testsuite_teardown_rx_intr(void)
+{
+	if (!default_params.rx_intr_port_inited)
+		return;
+
+	rte_eth_dev_stop(default_params.rx_intr_port);
 	rte_mempool_free(default_params.mp);
 }
 
@@ -401,6 +522,89 @@ adapter_multi_eth_add_del(void)
 }
 
 static int
+adapter_intr_queue_add_del(void)
+{
+	int err;
+	struct rte_event ev;
+	uint32_t cap;
+	uint16_t eth_port;
+	struct rte_event_eth_rx_adapter_queue_conf queue_config;
+
+	if (!default_params.rx_intr_port_inited)
+		return 0;
+
+	eth_port = default_params.rx_intr_port;
+	err = rte_event_eth_rx_adapter_caps_get(TEST_DEV_ID, eth_port, &cap);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	ev.queue_id = 0;
+	ev.sched_type = RTE_SCHED_TYPE_ATOMIC;
+	ev.priority = 0;
+
+	queue_config.rx_queue_flags = 0;
+	queue_config.ev = ev;
+
+	/* weight = 0 => interrupt mode */
+	queue_config.servicing_weight = 0;
+
+	/* add queue 0 */
+	err = rte_event_eth_rx_adapter_queue_add(TEST_INST_ID,
+						TEST_ETHDEV_ID, 0,
+						&queue_config);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	/* add all queues */
+	queue_config.servicing_weight = 0;
+	err = rte_event_eth_rx_adapter_queue_add(TEST_INST_ID,
+						TEST_ETHDEV_ID,
+						-1,
+						&queue_config);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	/* del queue 0 */
+	err = rte_event_eth_rx_adapter_queue_del(TEST_INST_ID,
+						TEST_ETHDEV_ID,
+						0);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	/* del remaining queues */
+	err = rte_event_eth_rx_adapter_queue_del(TEST_INST_ID,
+						TEST_ETHDEV_ID,
+						-1);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	/* add all queues */
+	queue_config.servicing_weight = 0;
+	err = rte_event_eth_rx_adapter_queue_add(TEST_INST_ID,
+						TEST_ETHDEV_ID,
+						-1,
+						&queue_config);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	/* intr -> poll mode queue */
+	queue_config.servicing_weight = 1;
+	err = rte_event_eth_rx_adapter_queue_add(TEST_INST_ID,
+						TEST_ETHDEV_ID,
+						0,
+						&queue_config);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	err = rte_event_eth_rx_adapter_queue_add(TEST_INST_ID,
+						TEST_ETHDEV_ID,
+						-1,
+						 &queue_config);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	/* del queues */
+	err = rte_event_eth_rx_adapter_queue_del(TEST_INST_ID,
+						TEST_ETHDEV_ID,
+						-1);
+	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	return TEST_SUCCESS;
+}
+
+static int
 adapter_start_stop(void)
 {
 	int err;
@@ -470,7 +674,7 @@ adapter_stats(void)
 	return TEST_SUCCESS;
 }
 
-static struct unit_test_suite service_tests  = {
+static struct unit_test_suite event_eth_rx_tests = {
 	.suite_name = "rx event eth adapter test suite",
 	.setup = testsuite_setup,
 	.teardown = testsuite_teardown,
@@ -485,11 +689,30 @@ static struct unit_test_suite service_tests  = {
 	}
 };
 
+static struct unit_test_suite event_eth_rx_intr_tests = {
+	.suite_name = "rx event eth adapter test suite",
+	.setup = testsuite_setup_rx_intr,
+	.teardown = testsuite_teardown_rx_intr,
+	.unit_test_cases = {
+		TEST_CASE_ST(adapter_create, adapter_free,
+			adapter_intr_queue_add_del),
+		TEST_CASES_END() /**< NULL terminate unit test array */
+	}
+};
+
 static int
 test_event_eth_rx_adapter_common(void)
 {
-	return unit_test_suite_runner(&service_tests);
+	return unit_test_suite_runner(&event_eth_rx_tests);
+}
+
+static int
+test_event_eth_rx_intr_adapter_common(void)
+{
+	return unit_test_suite_runner(&event_eth_rx_intr_tests);
 }
 
 REGISTER_TEST_COMMAND(event_eth_rx_adapter_autotest,
 		test_event_eth_rx_adapter_common);
+REGISTER_TEST_COMMAND(event_eth_rx_intr_adapter_autotest,
+		test_event_eth_rx_intr_adapter_common);
