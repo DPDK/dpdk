@@ -6,6 +6,7 @@
 #define _VIRTIO_PCI_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include <rte_pci.h>
 #include <rte_bus_pci.h>
@@ -240,6 +241,8 @@ struct virtio_hw {
 	uint8_t     use_simple_rx;
 	uint8_t     use_inorder_rx;
 	uint8_t     use_inorder_tx;
+	bool        has_tx_offload;
+	bool        has_rx_offload;
 	uint16_t    port_id;
 	uint8_t     mac_addr[ETHER_ADDR_LEN];
 	uint32_t    notify_off_multiplier;

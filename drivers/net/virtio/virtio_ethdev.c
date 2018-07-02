@@ -1798,6 +1798,22 @@ rte_virtio_pmd_init(void)
 	rte_pci_register(&rte_virtio_pmd);
 }
 
+static bool
+rx_offload_enabled(struct virtio_hw *hw)
+{
+	return vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_CSUM) ||
+		vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_TSO4) ||
+		vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_TSO6);
+}
+
+static bool
+tx_offload_enabled(struct virtio_hw *hw)
+{
+	return vtpci_with_feature(hw, VIRTIO_NET_F_CSUM) ||
+		vtpci_with_feature(hw, VIRTIO_NET_F_HOST_TSO4) ||
+		vtpci_with_feature(hw, VIRTIO_NET_F_HOST_TSO6);
+}
+
 /*
  * Configure virtio device
  * It returns 0 on success.
@@ -1876,6 +1892,9 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 			    "vlan filtering not available on this host");
 		return -ENOTSUP;
 	}
+
+	hw->has_tx_offload = tx_offload_enabled(hw);
+	hw->has_rx_offload = rx_offload_enabled(hw);
 
 	if (dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
 		/* Enable vector (0) for Link State Intrerrupt */

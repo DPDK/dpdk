@@ -347,13 +347,6 @@ virtio_tso_fix_cksum(struct rte_mbuf *m)
 	}
 }
 
-static inline int
-tx_offload_enabled(struct virtio_hw *hw)
-{
-	return vtpci_with_feature(hw, VIRTIO_NET_F_CSUM) ||
-		vtpci_with_feature(hw, VIRTIO_NET_F_HOST_TSO4) ||
-		vtpci_with_feature(hw, VIRTIO_NET_F_HOST_TSO6);
-}
 
 /* avoid write operation when necessary, to lessen cache issues */
 #define ASSIGN_UNLESS_EQUAL(var, val) do {	\
@@ -364,7 +357,7 @@ tx_offload_enabled(struct virtio_hw *hw)
 static inline void
 virtqueue_xmit_offload(struct virtio_net_hdr *hdr,
 			struct rte_mbuf *cookie,
-			int offload)
+			bool offload)
 {
 	if (offload) {
 		if (cookie->ol_flags & PKT_TX_TCP_SEG)
@@ -421,13 +414,10 @@ virtqueue_enqueue_xmit_inorder(struct virtnet_tx *txvq,
 	struct virtio_net_hdr *hdr;
 	uint16_t idx;
 	uint16_t head_size = vq->hw->vtnet_hdr_size;
-	int offload;
 	uint16_t i = 0;
 
 	idx = vq->vq_desc_head_idx;
 	start_dp = vq->vq_ring.desc;
-
-	offload = tx_offload_enabled(vq->hw);
 
 	while (i < num) {
 		idx = idx & (vq->vq_nentries - 1);
@@ -440,7 +430,7 @@ virtqueue_enqueue_xmit_inorder(struct virtnet_tx *txvq,
 		cookies[i]->pkt_len -= head_size;
 
 		/* if offload disabled, it is not zeroed below, do it now */
-		if (offload == 0) {
+		if (!vq->hw->has_tx_offload) {
 			ASSIGN_UNLESS_EQUAL(hdr->csum_start, 0);
 			ASSIGN_UNLESS_EQUAL(hdr->csum_offset, 0);
 			ASSIGN_UNLESS_EQUAL(hdr->flags, 0);
@@ -449,7 +439,8 @@ virtqueue_enqueue_xmit_inorder(struct virtnet_tx *txvq,
 			ASSIGN_UNLESS_EQUAL(hdr->hdr_len, 0);
 		}
 
-		virtqueue_xmit_offload(hdr, cookies[i], offload);
+		virtqueue_xmit_offload(hdr, cookies[i],
+				vq->hw->has_tx_offload);
 
 		start_dp[idx].addr  = VIRTIO_MBUF_DATA_DMA_ADDR(cookies[i], vq);
 		start_dp[idx].len   = cookies[i]->data_len;
@@ -478,9 +469,6 @@ virtqueue_enqueue_xmit(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 	uint16_t head_idx, idx;
 	uint16_t head_size = vq->hw->vtnet_hdr_size;
 	struct virtio_net_hdr *hdr;
-	int offload;
-
-	offload = tx_offload_enabled(vq->hw);
 
 	head_idx = vq->vq_desc_head_idx;
 	idx = head_idx;
@@ -500,7 +488,7 @@ virtqueue_enqueue_xmit(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 		cookie->pkt_len -= head_size;
 
 		/* if offload disabled, it is not zeroed below, do it now */
-		if (offload == 0) {
+		if (!vq->hw->has_tx_offload) {
 			ASSIGN_UNLESS_EQUAL(hdr->csum_start, 0);
 			ASSIGN_UNLESS_EQUAL(hdr->csum_offset, 0);
 			ASSIGN_UNLESS_EQUAL(hdr->flags, 0);
@@ -537,7 +525,7 @@ virtqueue_enqueue_xmit(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 		idx = start_dp[idx].next;
 	}
 
-	virtqueue_xmit_offload(hdr, cookie, offload);
+	virtqueue_xmit_offload(hdr, cookie, vq->hw->has_tx_offload);
 
 	do {
 		start_dp[idx].addr  = VIRTIO_MBUF_DATA_DMA_ADDR(cookie, vq);
@@ -894,14 +882,6 @@ virtio_rx_offload(struct rte_mbuf *m, struct virtio_net_hdr *hdr)
 	return 0;
 }
 
-static inline int
-rx_offload_enabled(struct virtio_hw *hw)
-{
-	return vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_CSUM) ||
-		vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_TSO4) ||
-		vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_TSO6);
-}
-
 #define VIRTIO_MBUF_BURST_SZ 64
 #define DESC_PER_CACHELINE (RTE_CACHE_LINE_SIZE / sizeof(struct vring_desc))
 uint16_t
@@ -917,7 +897,6 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	int error;
 	uint32_t i, nb_enqueued;
 	uint32_t hdr_size;
-	int offload;
 	struct virtio_net_hdr *hdr;
 
 	nb_rx = 0;
@@ -939,7 +918,6 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 	nb_enqueued = 0;
 	hdr_size = hw->vtnet_hdr_size;
-	offload = rx_offload_enabled(hw);
 
 	for (i = 0; i < num ; i++) {
 		rxm = rcv_pkts[i];
@@ -968,7 +946,7 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		if (hw->vlan_strip)
 			rte_vlan_strip(rxm);
 
-		if (offload && virtio_rx_offload(rxm, hdr) < 0) {
+		if (hw->has_rx_offload && virtio_rx_offload(rxm, hdr) < 0) {
 			virtio_discard_rxbuf(vq, rxm);
 			rxvq->stats.errors++;
 			continue;
@@ -1030,7 +1008,6 @@ virtio_recv_mergeable_pkts_inorder(void *rx_queue,
 	uint32_t seg_res;
 	uint32_t hdr_size;
 	int32_t i;
-	int offload;
 
 	nb_rx = 0;
 	if (unlikely(hw->started == 0))
@@ -1048,7 +1025,6 @@ virtio_recv_mergeable_pkts_inorder(void *rx_queue,
 	seg_num = 1;
 	seg_res = 0;
 	hdr_size = hw->vtnet_hdr_size;
-	offload = rx_offload_enabled(hw);
 
 	num = virtqueue_dequeue_rx_inorder(vq, rcv_pkts, len, nb_used);
 
@@ -1088,7 +1064,8 @@ virtio_recv_mergeable_pkts_inorder(void *rx_queue,
 		rx_pkts[nb_rx] = rxm;
 		prev = rxm;
 
-		if (offload && virtio_rx_offload(rxm, &header->hdr) < 0) {
+		if (vq->hw->has_rx_offload &&
+				virtio_rx_offload(rxm, &header->hdr) < 0) {
 			virtio_discard_rxbuf_inorder(vq, rxm);
 			rxvq->stats.errors++;
 			continue;
@@ -1218,7 +1195,6 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 	uint16_t extra_idx;
 	uint32_t seg_res;
 	uint32_t hdr_size;
-	int offload;
 
 	nb_rx = 0;
 	if (unlikely(hw->started == 0))
@@ -1236,7 +1212,6 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 	extra_idx = 0;
 	seg_res = 0;
 	hdr_size = hw->vtnet_hdr_size;
-	offload = rx_offload_enabled(hw);
 
 	while (i < nb_used) {
 		struct virtio_net_hdr_mrg_rxbuf *header;
@@ -1281,7 +1256,8 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 		rx_pkts[nb_rx] = rxm;
 		prev = rxm;
 
-		if (offload && virtio_rx_offload(rxm, &header->hdr) < 0) {
+		if (hw->has_rx_offload &&
+				virtio_rx_offload(rxm, &header->hdr) < 0) {
 			virtio_discard_rxbuf(vq, rxm);
 			rxvq->stats.errors++;
 			continue;
