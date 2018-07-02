@@ -853,6 +853,12 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 	vsocket->supported_features = VIRTIO_NET_SUPPORTED_FEATURES;
 	vsocket->features           = VIRTIO_NET_SUPPORTED_FEATURES;
 
+	/* Dequeue zero copy can't assure descriptors returned in order */
+	if (vsocket->dequeue_zero_copy) {
+		vsocket->supported_features &= ~(1ULL << VIRTIO_F_IN_ORDER);
+		vsocket->features &= ~(1ULL << VIRTIO_F_IN_ORDER);
+	}
+
 	if (!(flags & RTE_VHOST_USER_IOMMU_SUPPORT)) {
 		vsocket->supported_features &= ~(1ULL << VIRTIO_F_IOMMU_PLATFORM);
 		vsocket->features &= ~(1ULL << VIRTIO_F_IOMMU_PLATFORM);

@@ -191,6 +191,13 @@ struct vhost_msg {
  #define VIRTIO_F_VERSION_1 32
 #endif
 
+/*
+ * Available and used descs are in same order
+ */
+#ifndef VIRTIO_F_IN_ORDER
+#define VIRTIO_F_IN_ORDER      35
+#endif
+
 /* Features supported by this builtin vhost-user net driver. */
 #define VIRTIO_NET_SUPPORTED_FEATURES ((1ULL << VIRTIO_NET_F_MRG_RXBUF) | \
 				(1ULL << VIRTIO_F_ANY_LAYOUT) | \
@@ -214,7 +221,8 @@ struct vhost_msg {
 				(1ULL << VIRTIO_NET_F_GUEST_ECN) | \
 				(1ULL << VIRTIO_RING_F_INDIRECT_DESC) | \
 				(1ULL << VIRTIO_RING_F_EVENT_IDX) | \
-				(1ULL << VIRTIO_NET_F_MTU) | \
+				(1ULL << VIRTIO_NET_F_MTU)  | \
+				(1ULL << VIRTIO_F_IN_ORDER) | \
 				(1ULL << VIRTIO_F_IOMMU_PLATFORM))
 
 
