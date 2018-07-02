@@ -2,6 +2,8 @@
  * Copyright(c) 2018 Intel Corporation
  */
 
+#include <rte_string_fns.h>
+
 #include "qat_device.h"
 #include "adf_transport_access_macros.h"
 #include "qat_sym_pmd.h"
@@ -116,7 +118,7 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev)
 
 	qat_dev = qat_pci_get_dev(qat_dev_id);
 	memset(qat_dev, 0, sizeof(*qat_dev));
-	snprintf(qat_dev->name, QAT_DEV_NAME_MAX_LEN, "%s", name);
+	strlcpy(qat_dev->name, name, QAT_DEV_NAME_MAX_LEN);
 	qat_dev->qat_dev_id = qat_dev_id;
 	qat_dev->pci_dev = pci_dev;
 	switch (qat_dev->pci_dev->id.device_id) {
