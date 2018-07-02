@@ -71,11 +71,7 @@ static const struct rte_eth_txconf tx_conf = {
 
 static const struct rte_eth_conf port_conf = {
 	.rxmode = {
-		.header_split = 0,
-		.hw_ip_checksum = 0,
-		.hw_vlan_filter = 0,
-		.jumbo_frame = 0,
-		.hw_strip_crc = 1,
+		.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
 	},
 	.txmode = {
 		.mq_mode = ETH_DCB_NONE,

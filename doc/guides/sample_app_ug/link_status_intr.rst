@@ -137,10 +137,7 @@ The global configuration is stored in a static structure:
     static const struct rte_eth_conf port_conf = {
         .rxmode = {
             .split_hdr_size = 0,
-            .header_split = 0,   /**< Header Split disabled */
-            .hw_ip_checksum = 0, /**< IP checksum offload disabled */
-            .hw_vlan_filter = 0, /**< VLAN filtering disabled */
-            .hw_strip_crc= 0,    /**< CRC stripped by hardware */
+            .offloads = DEV_RX_OFFLOAD_CRC_STRIP,
         },
         .txmode = {},
         .intr_conf = {

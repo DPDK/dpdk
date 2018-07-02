@@ -680,13 +680,7 @@ perf_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 			.mq_mode = ETH_MQ_RX_RSS,
 			.max_rx_pkt_len = ETHER_MAX_LEN,
 			.split_hdr_size = 0,
-			.header_split   = 0,
-			.hw_ip_checksum = 0,
-			.hw_vlan_filter = 0,
-			.hw_vlan_strip  = 0,
-			.hw_vlan_extend = 0,
-			.jumbo_frame    = 0,
-			.hw_strip_crc   = 1,
+			.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
 		},
 		.rx_adv_conf = {
 			.rss_conf = {

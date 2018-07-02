@@ -65,14 +65,7 @@ static struct rte_eth_conf port_conf = {
 		.mq_mode = ETH_MQ_RX_NONE,
 		.max_rx_pkt_len = ETHER_MAX_LEN,
 		.split_hdr_size = 0,
-		.header_split   = 0, /**< Header Split disabled */
-		.hw_ip_checksum = 0, /**< IP checksum offload enabled */
-		.hw_vlan_filter = 0, /**< VLAN filtering disabled */
-		.hw_vlan_strip  = 0, /**< VLAN strip enabled. */
-		.hw_vlan_extend = 0, /**< Extended VLAN disabled. */
-		.jumbo_frame    = 0, /**< Jumbo Frame Support disabled */
-		.hw_strip_crc   = 1, /**< CRC stripped by hardware */
-		.enable_scatter = 0, /**< scatter rx disabled */
+		.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
 	},
 	.txmode = {
 		.mq_mode = ETH_MQ_TX_NONE,
@@ -97,11 +90,6 @@ static struct rte_eth_txconf tx_conf = {
 	},
 	.tx_free_thresh = 32, /* Use PMD default values */
 	.tx_rs_thresh = 32, /* Use PMD default values */
-	.txq_flags = (ETH_TXQ_FLAGS_NOMULTSEGS |
-		      ETH_TXQ_FLAGS_NOVLANOFFL |
-		      ETH_TXQ_FLAGS_NOXSUMSCTP |
-		      ETH_TXQ_FLAGS_NOXSUMUDP |
-		      ETH_TXQ_FLAGS_NOXSUMTCP)
 };
 
 enum {
@@ -808,38 +796,29 @@ test_set_rxtx_conf(cmdline_fixed_string_t mode)
 
 	if (!strcmp(mode, "vector")) {
 		/* vector rx, tx */
-		tx_conf.txq_flags = 0xf01;
 		tx_conf.tx_rs_thresh = 32;
 		tx_conf.tx_free_thresh = 32;
-		port_conf.rxmode.hw_ip_checksum = 0;
-		port_conf.rxmode.enable_scatter = 0;
 		return 0;
 	} else if (!strcmp(mode, "scalar")) {
 		/* bulk alloc rx, full-featured tx */
-		tx_conf.txq_flags = 0;
 		tx_conf.tx_rs_thresh = 32;
 		tx_conf.tx_free_thresh = 32;
-		port_conf.rxmode.hw_ip_checksum = 1;
-		port_conf.rxmode.enable_scatter = 0;
+		port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_CHECKSUM;
 		return 0;
 	} else if (!strcmp(mode, "hybrid")) {
 		/* bulk alloc rx, vector tx
 		 * when vec macro not define,
 		 * using the same rx/tx as scalar
 		 */
-		tx_conf.txq_flags = 0xf01;
 		tx_conf.tx_rs_thresh = 32;
 		tx_conf.tx_free_thresh = 32;
-		port_conf.rxmode.hw_ip_checksum = 1;
-		port_conf.rxmode.enable_scatter = 0;
+		port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_CHECKSUM;
 		return 0;
 	} else if (!strcmp(mode, "full")) {
 		/* full feature rx,tx pair */
-		tx_conf.txq_flags = 0x0;   /* must condition */
 		tx_conf.tx_rs_thresh = 32;
 		tx_conf.tx_free_thresh = 32;
-		port_conf.rxmode.hw_ip_checksum = 0;
-		port_conf.rxmode.enable_scatter = 1; /* must condition */
+		port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_SCATTER;
 		return 0;
 	}
 

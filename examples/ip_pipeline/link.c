@@ -40,18 +40,9 @@ static struct rte_eth_conf port_conf_default = {
 	.link_speeds = 0,
 	.rxmode = {
 		.mq_mode = ETH_MQ_RX_NONE,
-
-		.header_split   = 0, /* Header split */
-		.hw_ip_checksum = 0, /* IP checksum offload */
-		.hw_vlan_filter = 0, /* VLAN filtering */
-		.hw_vlan_strip  = 0, /* VLAN strip */
-		.hw_vlan_extend = 0, /* Extended VLAN */
-		.jumbo_frame    = 0, /* Jumbo frame support */
-		.hw_strip_crc   = 1, /* CRC strip by HW */
-		.enable_scatter = 0, /* Scattered packets RX handler */
-
 		.max_rx_pkt_len = 9000, /* Jumbo frame max packet len */
 		.split_hdr_size = 0, /* Header split buffer size */
+		.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
 	},
 	.rx_adv_conf = {
 		.rss_conf = {

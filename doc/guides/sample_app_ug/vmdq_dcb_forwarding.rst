@@ -102,10 +102,6 @@ a default structure is provided for VMDQ and DCB configuration to be filled in l
         .rxmode = {
             .mq_mode        = ETH_MQ_RX_VMDQ_DCB,
             .split_hdr_size = 0,
-            .header_split   = 0, /**< Header Split disabled */
-            .hw_ip_checksum = 0, /**< IP checksum offload disabled */
-            .hw_vlan_filter = 0, /**< VLAN filtering disabled */
-            .jumbo_frame    = 0, /**< Jumbo Frame Support disabled */
         },
         .txmode = {
             .mq_mode = ETH_MQ_TX_VMDQ_DCB,

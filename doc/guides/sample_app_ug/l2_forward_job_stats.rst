@@ -218,25 +218,6 @@ The rte_eth_dev_configure() function is used to configure the number of queues f
             "err=%d, port=%u\n",
             ret, portid);
 
-The global configuration is stored in a static structure:
-
-.. code-block:: c
-
-    static const struct rte_eth_conf port_conf = {
-        .rxmode = {
-            .split_hdr_size = 0,
-            .header_split = 0,   /**< Header Split disabled */
-            .hw_ip_checksum = 0, /**< IP checksum offload disabled */
-            .hw_vlan_filter = 0, /**< VLAN filtering disabled */
-            .jumbo_frame = 0,    /**< Jumbo Frame Support disabled */
-            .hw_strip_crc= 0,    /**< CRC stripped by hardware */
-        },
-
-        .txmode = {
-            .mq_mode = ETH_DCB_NONE
-        },
-    };
-
 RX Queue Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~
 
