@@ -1909,7 +1909,9 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 	}
 
 	if (rx_offloads & (DEV_RX_OFFLOAD_UDP_CKSUM |
-			   DEV_RX_OFFLOAD_TCP_CKSUM))
+			   DEV_RX_OFFLOAD_TCP_CKSUM |
+			   DEV_RX_OFFLOAD_TCP_LRO |
+			   DEV_RX_OFFLOAD_VLAN_STRIP))
 		hw->use_simple_rx = 0;
 
 	return 0;
