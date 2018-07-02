@@ -777,6 +777,7 @@ M: John Griffin <john.griffin@intel.com>
 M: Fiona Trahe <fiona.trahe@intel.com>
 M: Deepak Kumar Jain <deepak.k.jain@intel.com>
 F: drivers/crypto/qat/
+F: drivers/common/qat/
 F: doc/guides/cryptodevs/qat.rst
 F: doc/guides/cryptodevs/features/qat.ini
 

@@ -5,6 +5,8 @@
 #ifndef _QAT_SYM_PMD_H_
 #define _QAT_SYM_PMD_H_
 
+#ifdef BUILD_QAT_SYM
+
 #include <rte_cryptodev.h>
 
 #include "qat_sym_capabilities.h"
@@ -36,4 +38,5 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev);
 int
 qat_sym_dev_destroy(struct qat_pci_device *qat_pci_dev);
 
+#endif
 #endif /* _QAT_SYM_PMD_H_ */

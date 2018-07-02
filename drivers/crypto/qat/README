@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2015-2018 Intel Corporation
+
+Makefile for crypto QAT PMD is in common/qat directory.
+The build for the QAT driver is done from there as only one library is built for the
+whole QAT pci device and that library includes all the services (crypto, compression)
+which are enabled on the device.

@@ -13,8 +13,14 @@ LIBABIVER := 1
 CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -O3
 
+# build directories
+QAT_CRYPTO_DIR := $(RTE_SDK)/drivers/crypto/qat
+VPATH=$(QAT_CRYPTO_DIR)
+
 # external library include paths
 CFLAGS += -I$(SRCDIR)/qat_adf
+CFLAGS += -I$(SRCDIR)
+CFLAGS += -I$(QAT_CRYPTO_DIR)
 
 # library common source files
 SRCS-y += qat_device.c
@@ -23,11 +29,14 @@ SRCS-y += qat_logs.c
 SRCS-y += qat_qp.c
 
 # library symmetric crypto source files
-LDLIBS += -lrte_cryptodev
-LDLIBS += -lcrypto
-SRCS-y += qat_sym.c
-SRCS-y += qat_sym_session.c
-SRCS-y += qat_sym_pmd.c
+ifeq ($(CONFIG_RTE_LIBRTE_CRYPTODEV),y)
+	LDLIBS += -lrte_cryptodev
+	LDLIBS += -lcrypto
+	CFLAGS += -DBUILD_QAT_SYM
+	SRCS-y += qat_sym.c
+	SRCS-y += qat_sym_session.c
+	SRCS-y += qat_sym_pmd.c
+endif
 
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool
 LDLIBS += -lrte_pci -lrte_bus_pci
@@ -36,6 +45,6 @@ LDLIBS += -lrte_pci -lrte_bus_pci
 SYMLINK-y-include +=
 
 # versioning export map
-EXPORT_MAP := rte_pmd_qat_version.map
+EXPORT_MAP := ../../crypto/qat/rte_pmd_qat_version.map
 
 include $(RTE_SDK)/mk/rte.lib.mk
