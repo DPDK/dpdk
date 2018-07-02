@@ -1029,6 +1029,7 @@ main(int argc, char **argv)
 		struct rte_eth_rxconf rxq_conf;
 		struct rte_eth_txconf txq_conf;
 		struct rte_eth_conf local_port_conf = port_conf;
+		struct rte_eth_dev_info dev_info;
 
 		/* skip ports that are not enabled */
 		if ((l2fwd_enabled_port_mask & (1 << portid)) == 0) {
@@ -1072,7 +1073,7 @@ main(int argc, char **argv)
 		/* init one TX queue on each port */
 		fflush(stdout);
 		txq_conf = dev_info.default_txconf;
-		txq_conf.tx_offloads = local_port_conf.txmode.offloads;
+		txq_conf.offloads = local_port_conf.txmode.offloads;
 		ret = rte_eth_tx_queue_setup(portid, 0, nb_txd,
 				rte_eth_dev_socket_id(portid),
 				&txq_conf);
