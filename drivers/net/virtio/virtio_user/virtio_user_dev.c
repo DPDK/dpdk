@@ -371,6 +371,7 @@ virtio_user_dev_setup(struct virtio_user_dev *dev)
 	 1ULL << VIRTIO_NET_F_GUEST_CSUM	|	\
 	 1ULL << VIRTIO_NET_F_GUEST_TSO4	|	\
 	 1ULL << VIRTIO_NET_F_GUEST_TSO6	|	\
+	 1ULL << VIRTIO_F_IN_ORDER		|	\
 	 1ULL << VIRTIO_F_VERSION_1)
 
 int
