@@ -9,9 +9,7 @@ sources = files('qat_common.c',
 		'qat_qp.c',
 		'qat_device.c',
 		'qat_logs.c',
-		'qat_sym_pmd.c', 'qat_sym.c', 'qat_sym_session.c',
-		'qat_asym_pmd.c',
-		'qat_comp_pmd.c')
+		'qat_sym_pmd.c', 'qat_sym.c', 'qat_sym_session.c')
 includes += include_directories('qat_adf')
 deps += ['bus_pci']
 ext_deps += dep

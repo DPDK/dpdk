@@ -69,10 +69,30 @@ extern struct qat_gen_hw_data qat_gen_config[];
 
 struct qat_pci_device *
 qat_pci_device_allocate(struct rte_pci_device *pci_dev);
+
 int
 qat_pci_device_release(struct rte_pci_device *pci_dev);
+
 struct qat_pci_device *
 qat_get_qat_dev_from_pci_dev(struct rte_pci_device *pci_dev);
 
+/* declaration needed for weak functions */
+int
+qat_sym_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused);
+
+int
+qat_asym_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused);
+
+int
+qat_sym_dev_destroy(struct qat_pci_device *qat_pci_dev __rte_unused);
+
+int
+qat_asym_dev_destroy(struct qat_pci_device *qat_pci_dev __rte_unused);
+
+int
+qat_comp_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused);
+
+int
+qat_comp_dev_destroy(struct qat_pci_device *qat_pci_dev __rte_unused);
 
 #endif /* _QAT_DEVICE_H_ */
