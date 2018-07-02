@@ -1,8 +1,15 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
-version = 4
+version = 5
 allow_experimental_apis = true
+
+if host_machine.system() == 'linux'
+	cflags += '-DLINUX'
+else
+	cflags += '-DBSD'
+endif
+
 sources = files('rte_eventdev.c',
 		'rte_event_ring.c',
 		'rte_event_eth_rx_adapter.c',

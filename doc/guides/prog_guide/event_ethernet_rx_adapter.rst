@@ -144,3 +144,27 @@ enqueued event counts are a sum of the counts from the eventdev PMD callbacks
 if the callback is supported, and the counts maintained by the service function,
 if one exists. The service function also maintains a count of cycles for which
 it was not able to enqueue to the event device.
+
+Interrupt Based Rx Queues
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The service core function is typically set up to poll ethernet Rx queues for
+packets. Certain queues may have low packet rates and it would be more
+efficient to enable the Rx queue interrupt and read packets after receiving
+the interrupt.
+
+The servicing_weight member of struct rte_event_eth_rx_adapter_queue_conf
+is applicable when the adapter uses a service core function. The application
+has to enable Rx queue interrupts when configuring the ethernet device
+using the ``rte_eth_dev_configure()`` function and then use a servicing_weight
+of zero when addding the Rx queue to the adapter.
+
+The adapter creates a thread blocked on the interrupt, on an interrupt this
+thread enqueues the port id and the queue id to a ring buffer. The adapter
+service function dequeues the port id and queue id from the ring buffer,
+invokes the ``rte_eth_rx_burst()`` to receive packets on the queue and
+converts the received packets to events in the same manner as packets
+received on a polled Rx queue. The interrupt thread is affinitized to the same
+CPUs as the lcores of the Rx adapter service function, if the Rx adapter
+service function has not been mapped to any lcores, the interrupt thread
+is mapped to the master lcore.

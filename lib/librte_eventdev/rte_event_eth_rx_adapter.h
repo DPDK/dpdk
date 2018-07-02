@@ -64,8 +64,7 @@
  * the service function ID of the adapter in this case.
  *
  * Note:
- * 1) Interrupt driven receive queues are currently unimplemented.
- * 2) Devices created after an instance of rte_event_eth_rx_adapter_create
+ * 1) Devices created after an instance of rte_event_eth_rx_adapter_create
  *  should be added to a new instance of the rx adapter.
  */
 
@@ -199,6 +198,8 @@ struct rte_event_eth_rx_adapter_stats {
 	 * block cycles can be used to compute the percentage of
 	 * cycles the service is blocked by the event device.
 	 */
+	uint64_t rx_intr_packets;
+	/**< Received packet count for interrupt mode Rx queues */
 };
 
 /**

@@ -8,14 +8,19 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_eventdev.a
 
 # library version
-LIBABIVER := 4
+LIBABIVER := 5
 
 # build flags
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
+ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
+CFLAGS += -DLINUX
+else
+CFLAGS += -DBSD
+endif
 LDLIBS += -lrte_eal -lrte_ring -lrte_ethdev -lrte_hash -lrte_mempool -lrte_timer
-LDLIBS += -lrte_mbuf -lrte_cryptodev
+LDLIBS += -lrte_mbuf -lrte_cryptodev -lpthread
 
 # library source files
 SRCS-y += rte_eventdev.c
