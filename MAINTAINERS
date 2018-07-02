@@ -277,6 +277,7 @@ Core Libraries
 
 Memory pool
 M: Olivier Matz <olivier.matz@6wind.com>
+M: Andrew Rybchenko <arybchenko@solarflare.com>
 F: lib/librte_mempool/
 F: drivers/mempool/Makefile
 F: drivers/mempool/ring/
