@@ -247,6 +247,55 @@ tx_offload_enabled(struct virtio_hw *hw)
 } while (0)
 
 static inline void
+virtqueue_xmit_offload(struct virtio_net_hdr *hdr,
+			struct rte_mbuf *cookie,
+			int offload)
+{
+	if (offload) {
+		if (cookie->ol_flags & PKT_TX_TCP_SEG)
+			cookie->ol_flags |= PKT_TX_TCP_CKSUM;
+
+		switch (cookie->ol_flags & PKT_TX_L4_MASK) {
+		case PKT_TX_UDP_CKSUM:
+			hdr->csum_start = cookie->l2_len + cookie->l3_len;
+			hdr->csum_offset = offsetof(struct udp_hdr,
+				dgram_cksum);
+			hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
+			break;
+
+		case PKT_TX_TCP_CKSUM:
+			hdr->csum_start = cookie->l2_len + cookie->l3_len;
+			hdr->csum_offset = offsetof(struct tcp_hdr, cksum);
+			hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
+			break;
+
+		default:
+			ASSIGN_UNLESS_EQUAL(hdr->csum_start, 0);
+			ASSIGN_UNLESS_EQUAL(hdr->csum_offset, 0);
+			ASSIGN_UNLESS_EQUAL(hdr->flags, 0);
+			break;
+		}
+
+		/* TCP Segmentation Offload */
+		if (cookie->ol_flags & PKT_TX_TCP_SEG) {
+			virtio_tso_fix_cksum(cookie);
+			hdr->gso_type = (cookie->ol_flags & PKT_TX_IPV6) ?
+				VIRTIO_NET_HDR_GSO_TCPV6 :
+				VIRTIO_NET_HDR_GSO_TCPV4;
+			hdr->gso_size = cookie->tso_segsz;
+			hdr->hdr_len =
+				cookie->l2_len +
+				cookie->l3_len +
+				cookie->l4_len;
+		} else {
+			ASSIGN_UNLESS_EQUAL(hdr->gso_type, 0);
+			ASSIGN_UNLESS_EQUAL(hdr->gso_size, 0);
+			ASSIGN_UNLESS_EQUAL(hdr->hdr_len, 0);
+		}
+	}
+}
+
+static inline void
 virtqueue_enqueue_xmit(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 		       uint16_t needed, int use_indirect, int can_push)
 {
@@ -315,49 +364,7 @@ virtqueue_enqueue_xmit(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 		idx = start_dp[idx].next;
 	}
 
-	/* Checksum Offload / TSO */
-	if (offload) {
-		if (cookie->ol_flags & PKT_TX_TCP_SEG)
-			cookie->ol_flags |= PKT_TX_TCP_CKSUM;
-
-		switch (cookie->ol_flags & PKT_TX_L4_MASK) {
-		case PKT_TX_UDP_CKSUM:
-			hdr->csum_start = cookie->l2_len + cookie->l3_len;
-			hdr->csum_offset = offsetof(struct udp_hdr,
-				dgram_cksum);
-			hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
-			break;
-
-		case PKT_TX_TCP_CKSUM:
-			hdr->csum_start = cookie->l2_len + cookie->l3_len;
-			hdr->csum_offset = offsetof(struct tcp_hdr, cksum);
-			hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
-			break;
-
-		default:
-			ASSIGN_UNLESS_EQUAL(hdr->csum_start, 0);
-			ASSIGN_UNLESS_EQUAL(hdr->csum_offset, 0);
-			ASSIGN_UNLESS_EQUAL(hdr->flags, 0);
-			break;
-		}
-
-		/* TCP Segmentation Offload */
-		if (cookie->ol_flags & PKT_TX_TCP_SEG) {
-			virtio_tso_fix_cksum(cookie);
-			hdr->gso_type = (cookie->ol_flags & PKT_TX_IPV6) ?
-				VIRTIO_NET_HDR_GSO_TCPV6 :
-				VIRTIO_NET_HDR_GSO_TCPV4;
-			hdr->gso_size = cookie->tso_segsz;
-			hdr->hdr_len =
-				cookie->l2_len +
-				cookie->l3_len +
-				cookie->l4_len;
-		} else {
-			ASSIGN_UNLESS_EQUAL(hdr->gso_type, 0);
-			ASSIGN_UNLESS_EQUAL(hdr->gso_size, 0);
-			ASSIGN_UNLESS_EQUAL(hdr->hdr_len, 0);
-		}
-	}
+	virtqueue_xmit_offload(hdr, cookie, offload);
 
 	do {
 		start_dp[idx].addr  = VIRTIO_MBUF_DATA_DMA_ADDR(cookie, vq);
@@ -621,6 +628,15 @@ virtio_update_packet_stats(struct virtnet_stats *stats, struct rte_mbuf *mbuf)
 	}
 }
 
+static inline void
+virtio_rx_stats_updated(struct virtnet_rx *rxvq, struct rte_mbuf *m)
+{
+	VIRTIO_DUMP_PACKET(m, m->data_len);
+
+	rxvq->stats.bytes += m->pkt_len;
+	virtio_update_packet_stats(&rxvq->stats, m);
+}
+
 /* Optionally fill offload information in structure */
 static int
 virtio_rx_offload(struct rte_mbuf *m, struct virtio_net_hdr *hdr)
@@ -773,12 +789,9 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			continue;
 		}
 
-		VIRTIO_DUMP_PACKET(rxm, rxm->data_len);
+		virtio_rx_stats_updated(rxvq, rxm);
 
 		rx_pkts[nb_rx++] = rxm;
-
-		rxvq->stats.bytes += rxm->pkt_len;
-		virtio_update_packet_stats(&rxvq->stats, rxm);
 	}
 
 	rxvq->stats.packets += nb_rx;
