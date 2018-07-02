@@ -1336,11 +1336,7 @@ set_rxtx_funcs(struct rte_eth_dev *eth_dev)
 		eth_dev->rx_pkt_burst = &virtio_recv_pkts;
 	}
 
-	if (hw->use_simple_tx) {
-		PMD_INIT_LOG(INFO, "virtio: using simple Tx path on port %u",
-			eth_dev->data->port_id);
-		eth_dev->tx_pkt_burst = virtio_xmit_pkts_simple;
-	} else if (hw->use_inorder_tx) {
+	if (hw->use_inorder_tx) {
 		PMD_INIT_LOG(INFO, "virtio: using inorder Tx path on port %u",
 			eth_dev->data->port_id);
 		eth_dev->tx_pkt_burst = virtio_xmit_pkts_inorder;
@@ -1881,12 +1877,9 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 	rte_spinlock_init(&hw->state_lock);
 
 	hw->use_simple_rx = 1;
-	hw->use_simple_tx = 1;
 
 	if (vtpci_with_feature(hw, VIRTIO_F_IN_ORDER)) {
-		/* Simple Tx not compatible with in-order ring */
 		hw->use_inorder_tx = 1;
-		hw->use_simple_tx = 0;
 		if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF)) {
 			hw->use_inorder_rx = 1;
 			hw->use_simple_rx = 0;
@@ -1898,12 +1891,10 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 #if defined RTE_ARCH_ARM64 || defined RTE_ARCH_ARM
 	if (!rte_cpu_get_flag_enabled(RTE_CPUFLAG_NEON)) {
 		hw->use_simple_rx = 0;
-		hw->use_simple_tx = 0;
 	}
 #endif
 	if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF)) {
 		 hw->use_simple_rx = 0;
-		 hw->use_simple_tx = 0;
 	}
 
 	if (rx_offloads & (DEV_RX_OFFLOAD_UDP_CKSUM |

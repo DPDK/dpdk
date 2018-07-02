@@ -708,10 +708,6 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
-	/* cannot use simple rxtx funcs with multisegs or offloads */
-	if (dev->data->dev_conf.txmode.offloads)
-		hw->use_simple_tx = 0;
-
 	if (nb_desc == 0 || nb_desc > vq->vq_nentries)
 		nb_desc = vq->vq_nentries;
 	vq->vq_free_cnt = RTE_MIN(vq->vq_free_cnt, nb_desc);
@@ -746,33 +742,11 @@ virtio_dev_tx_queue_setup_finish(struct rte_eth_dev *dev,
 	uint8_t vtpci_queue_idx = 2 * queue_idx + VTNET_SQ_TQ_QUEUE_IDX;
 	struct virtio_hw *hw = dev->data->dev_private;
 	struct virtqueue *vq = hw->vqs[vtpci_queue_idx];
-	uint16_t mid_idx = vq->vq_nentries >> 1;
-	struct virtnet_tx *txvq = &vq->txq;
-	uint16_t desc_idx;
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (hw->use_simple_tx) {
-		for (desc_idx = 0; desc_idx < mid_idx; desc_idx++) {
-			vq->vq_ring.avail->ring[desc_idx] =
-				desc_idx + mid_idx;
-			vq->vq_ring.desc[desc_idx + mid_idx].next =
-				desc_idx;
-			vq->vq_ring.desc[desc_idx + mid_idx].addr =
-				txvq->virtio_net_hdr_mem +
-				offsetof(struct virtio_tx_region, tx_hdr);
-			vq->vq_ring.desc[desc_idx + mid_idx].len =
-				vq->hw->vtnet_hdr_size;
-			vq->vq_ring.desc[desc_idx + mid_idx].flags =
-				VRING_DESC_F_NEXT;
-			vq->vq_ring.desc[desc_idx].flags = 0;
-		}
-		for (desc_idx = mid_idx; desc_idx < vq->vq_nentries;
-		     desc_idx++)
-			vq->vq_ring.avail->ring[desc_idx] = desc_idx;
-	} else if (hw->use_inorder_tx) {
+	if (hw->use_inorder_tx)
 		vq->vq_ring.desc[vq->vq_nentries - 1].next = 0;
-	}
 
 	VIRTQUEUE_DUMP(vq);
 
