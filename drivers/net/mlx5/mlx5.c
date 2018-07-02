@@ -1409,6 +1409,11 @@ rte_mlx5_pmd_init(void)
 	/* Match the size of Rx completion entry to the size of a cacheline. */
 	if (RTE_CACHE_LINE_SIZE == 128)
 		setenv("MLX5_CQE_SIZE", "128", 0);
+	/*
+	 * MLX5_DEVICE_FATAL_CLEANUP tells ibv_destroy functions to
+	 * cleanup all the Verbs resources even when the device was removed.
+	 */
+	setenv("MLX5_DEVICE_FATAL_CLEANUP", "1", 1);
 #ifdef RTE_LIBRTE_MLX5_DLOPEN_DEPS
 	if (mlx5_glue_init())
 		return;
