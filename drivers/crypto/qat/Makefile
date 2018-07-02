@@ -15,19 +15,22 @@ CFLAGS += -O3
 
 # external library include paths
 CFLAGS += -I$(SRCDIR)/qat_adf
-LDLIBS += -lcrypto
-LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
-LDLIBS += -lrte_cryptodev
-LDLIBS += -lrte_pci -lrte_bus_pci
 
-# library source files
-SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_sym.c
-SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_device.c
-SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_qp.c
-SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_sym_session.c
-SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_common.c
-SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_logs.c
-SRCS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat_sym_pmd.c
+# library common source files
+SRCS-y += qat_device.c
+SRCS-y += qat_common.c
+SRCS-y += qat_logs.c
+SRCS-y += qat_qp.c
+
+# library symmetric crypto source files
+LDLIBS += -lrte_cryptodev
+LDLIBS += -lcrypto
+SRCS-y += qat_sym.c
+SRCS-y += qat_sym_session.c
+SRCS-y += qat_sym_pmd.c
+
+LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool
+LDLIBS += -lrte_pci -lrte_bus_pci
 
 # export include files
 SYMLINK-y-include +=

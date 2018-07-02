@@ -6,7 +6,6 @@
 #define _QAT_SYM_H_
 
 #include <rte_cryptodev_pmd.h>
-
 #include <openssl/evp.h>
 
 #include "qat_common.h"
@@ -153,4 +152,5 @@ qat_sym_process_response(void **op, uint8_t *resp)
 	}
 	*op = (void *)rx_op;
 }
+
 #endif /* _QAT_SYM_H_ */

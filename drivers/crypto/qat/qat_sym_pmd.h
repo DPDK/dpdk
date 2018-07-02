@@ -10,7 +10,6 @@
 #include "qat_sym_capabilities.h"
 #include "qat_device.h"
 
-
 /**< Intel(R) QAT Symmetric Crypto PMD device name */
 #define CRYPTODEV_NAME_QAT_SYM_PMD	crypto_qat
 #define QAT_SYM_PMD_MAX_NB_SESSIONS	2048
@@ -31,10 +30,10 @@ struct qat_sym_dev_private {
 	/* QAT device symmetric crypto capabilities */
 };
 
-
 int
 qat_sym_dev_create(struct qat_pci_device *qat_pci_dev);
 
 int
 qat_sym_dev_destroy(struct qat_pci_device *qat_pci_dev);
+
 #endif /* _QAT_SYM_PMD_H_ */
