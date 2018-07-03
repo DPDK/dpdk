@@ -6,9 +6,8 @@
 # To build this example as a standalone application with an already-installed
 # DPDK instance, use 'make'
 
-if host_machine.system() != 'linux'
-	build = false
-endif
+# this app can be built if-and-only-if KNI library is buildable
+build = dpdk_conf.has('RTE_LIBRTE_KNI')
 deps += ['kni', 'bus_pci']
 sources = files(
 	'main.c'
