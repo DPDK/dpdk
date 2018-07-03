@@ -14,6 +14,7 @@
 
 #define	FPA_VF_MAX			32
 #define FPA_GPOOL_MASK			(FPA_VF_MAX-1)
+#define FPA_GAURA_SHIFT			4
 
 /* FPA VF register offsets */
 #define FPA_VF_INT(x)			(0x200ULL | ((x) << 22))
@@ -36,6 +37,7 @@
 #define FPA_VF_FREE_ADDRS_S(x, y, z)	\
 	((x) | (((y) & 0x1ff) << 3) | ((((z) & 1)) << 14))
 
+#define FPA_AURA_IDX(gpool)			(gpool << FPA_GAURA_SHIFT)
 /* FPA VF register offsets from VF_BAR4, size 2 MByte */
 #define	FPA_VF_MSIX_VEC_ADDR		0x00000
 #define	FPA_VF_MSIX_VEC_CTL		0x00008
@@ -102,4 +104,11 @@ octeontx_fpa_bufpool_gpool(uintptr_t handle)
 {
 	return (uint8_t)handle & FPA_GPOOL_MASK;
 }
+
+static __rte_always_inline uint16_t
+octeontx_fpa_bufpool_gaura(uintptr_t handle)
+{
+	return octeontx_fpa_bufpool_gpool(handle) << FPA_GAURA_SHIFT;
+}
+
 #endif	/* __OCTEONTX_FPAVF_H__ */

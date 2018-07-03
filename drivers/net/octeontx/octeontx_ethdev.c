@@ -788,7 +788,7 @@ octeontx_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 	pki_qos_cfg_t pki_qos;
 	uintptr_t pool;
 	int ret, port;
-	uint8_t gaura;
+	uint16_t gaura;
 	unsigned int ev_queues = (nic->ev_queues * nic->port_id) + qidx;
 	unsigned int ev_ports = (nic->ev_ports * nic->port_id) + qidx;
 
@@ -899,8 +899,8 @@ octeontx_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 
 		pool = (uintptr_t)mb_pool->pool_id;
 
-		/* Get the gpool Id */
-		gaura = octeontx_fpa_bufpool_gpool(pool);
+		/* Get the gaura Id */
+		gaura = octeontx_fpa_bufpool_gaura(pool);
 
 		pki_qos.qpg_qos = PKI_QPG_QOS_NONE;
 		pki_qos.num_entry = 1;

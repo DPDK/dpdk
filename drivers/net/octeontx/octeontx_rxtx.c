@@ -31,7 +31,7 @@ __octeontx_xmit_pkts(void *lmtline_va, void *ioreg_va, int64_t *fc_status_va,
 		return -ENOSPC;
 
 	/* Get the gaura Id */
-	gaura_id = octeontx_fpa_bufpool_gpool((uintptr_t)tx_pkt->pool->pool_id);
+	gaura_id = octeontx_fpa_bufpool_gaura((uintptr_t)tx_pkt->pool->pool_id);
 
 	/* Setup PKO_SEND_HDR_S */
 	cmd_buf[0] = tx_pkt->data_len & 0xffff;
