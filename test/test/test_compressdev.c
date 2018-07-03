@@ -14,6 +14,8 @@
 #include "test_compressdev_test_buffer.h"
 #include "test.h"
 
+#define DIV_CEIL(a, b)  ((a) / (b) + ((a) % (b) != 0))
+
 #define DEFAULT_WINDOW_SIZE 15
 #define DEFAULT_MEM_LEVEL 8
 #define MAX_DEQD_RETRIES 10
@@ -25,7 +27,8 @@
  * due to the compress block headers
  */
 #define COMPRESS_BUF_SIZE_RATIO 1.3
-#define NUM_MBUFS 16
+#define NUM_LARGE_MBUFS 16
+#define SEG_SIZE 256
 #define NUM_OPS 16
 #define NUM_MAX_XFORMS 16
 #define NUM_MAX_INFLIGHT_OPS 128
@@ -50,7 +53,8 @@ struct priv_op_data {
 };
 
 struct comp_testsuite_params {
-	struct rte_mempool *mbuf_pool;
+	struct rte_mempool *large_mbuf_pool;
+	struct rte_mempool *small_mbuf_pool;
 	struct rte_mempool *op_pool;
 	struct rte_comp_xform *def_comp_xform;
 	struct rte_comp_xform *def_decomp_xform;
@@ -63,7 +67,8 @@ testsuite_teardown(void)
 {
 	struct comp_testsuite_params *ts_params = &testsuite_params;
 
-	rte_mempool_free(ts_params->mbuf_pool);
+	rte_mempool_free(ts_params->large_mbuf_pool);
+	rte_mempool_free(ts_params->small_mbuf_pool);
 	rte_mempool_free(ts_params->op_pool);
 	rte_free(ts_params->def_comp_xform);
 	rte_free(ts_params->def_decomp_xform);
@@ -73,6 +78,7 @@ static int
 testsuite_setup(void)
 {
 	struct comp_testsuite_params *ts_params = &testsuite_params;
+	uint32_t max_buf_size = 0;
 	unsigned int i;
 
 	if (rte_compressdev_count() == 0) {
@@ -83,26 +89,38 @@ testsuite_setup(void)
 	RTE_LOG(NOTICE, USER1, "Running tests on device %s\n",
 				rte_compressdev_name_get(0));
 
-	uint32_t max_buf_size = 0;
 	for (i = 0; i < RTE_DIM(compress_test_bufs); i++)
 		max_buf_size = RTE_MAX(max_buf_size,
 				strlen(compress_test_bufs[i]) + 1);
 
-	max_buf_size *= COMPRESS_BUF_SIZE_RATIO;
 	/*
 	 * Buffers to be used in compression and decompression.
 	 * Since decompressed data might be larger than
 	 * compressed data (due to block header),
 	 * buffers should be big enough for both cases.
 	 */
-	ts_params->mbuf_pool = rte_pktmbuf_pool_create("mbuf_pool",
-			NUM_MBUFS,
+	max_buf_size *= COMPRESS_BUF_SIZE_RATIO;
+	ts_params->large_mbuf_pool = rte_pktmbuf_pool_create("large_mbuf_pool",
+			NUM_LARGE_MBUFS,
 			CACHE_SIZE, 0,
 			max_buf_size + RTE_PKTMBUF_HEADROOM,
 			rte_socket_id());
-	if (ts_params->mbuf_pool == NULL) {
+	if (ts_params->large_mbuf_pool == NULL) {
 		RTE_LOG(ERR, USER1, "Large mbuf pool could not be created\n");
 		return TEST_FAILED;
+	}
+
+	/* Create mempool with smaller buffers for SGL testing */
+	uint16_t max_segs_per_buf = DIV_CEIL(max_buf_size, SEG_SIZE);
+
+	ts_params->small_mbuf_pool = rte_pktmbuf_pool_create("small_mbuf_pool",
+			NUM_LARGE_MBUFS * max_segs_per_buf,
+			CACHE_SIZE, 0,
+			SEG_SIZE + RTE_PKTMBUF_HEADROOM,
+			rte_socket_id());
+	if (ts_params->small_mbuf_pool == NULL) {
+		RTE_LOG(ERR, USER1, "Small mbuf pool could not be created\n");
+		goto exit;
 	}
 
 	ts_params->op_pool = rte_comp_op_pool_create("op_pool", NUM_OPS,
@@ -281,7 +299,9 @@ compress_zlib(struct rte_comp_op *op,
 	z_stream stream;
 	int zlib_flush;
 	int strategy, window_bits, comp_level;
-	int ret = -1;
+	int ret = TEST_FAILED;
+	uint8_t *single_src_buf = NULL;
+	uint8_t *single_dst_buf = NULL;
 
 	/* initialize zlib stream */
 	stream.zalloc = Z_NULL;
@@ -313,11 +333,39 @@ compress_zlib(struct rte_comp_op *op,
 	}
 
 	/* Assuming stateless operation */
-	stream.avail_in = op->src.length;
-	stream.next_in = rte_pktmbuf_mtod(op->m_src, uint8_t *);
-	stream.avail_out = op->m_dst->data_len;
-	stream.next_out = rte_pktmbuf_mtod(op->m_dst, uint8_t *);
+	/* SGL */
+	if (op->m_src->nb_segs > 1) {
+		single_src_buf = rte_malloc(NULL,
+				rte_pktmbuf_pkt_len(op->m_src), 0);
+		if (single_src_buf == NULL) {
+			RTE_LOG(ERR, USER1, "Buffer could not be allocated\n");
+			goto exit;
+		}
+		single_dst_buf = rte_malloc(NULL,
+				rte_pktmbuf_pkt_len(op->m_dst), 0);
+		if (single_dst_buf == NULL) {
+			RTE_LOG(ERR, USER1, "Buffer could not be allocated\n");
+			goto exit;
+		}
+		if (rte_pktmbuf_read(op->m_src, 0,
+					rte_pktmbuf_pkt_len(op->m_src),
+					single_src_buf) == NULL) {
+			RTE_LOG(ERR, USER1,
+				"Buffer could not be read entirely\n");
+			goto exit;
+		}
 
+		stream.avail_in = op->src.length;
+		stream.next_in = single_src_buf;
+		stream.avail_out = rte_pktmbuf_pkt_len(op->m_dst);
+		stream.next_out = single_dst_buf;
+
+	} else {
+		stream.avail_in = op->src.length;
+		stream.next_in = rte_pktmbuf_mtod(op->m_src, uint8_t *);
+		stream.avail_out = op->m_dst->data_len;
+		stream.next_out = rte_pktmbuf_mtod(op->m_dst, uint8_t *);
+	}
 	/* Stateless operation, all buffer will be compressed in one go */
 	zlib_flush = map_zlib_flush_flag(op->flush_flag);
 	ret = deflate(&stream, zlib_flush);
@@ -330,8 +378,30 @@ compress_zlib(struct rte_comp_op *op,
 	if (ret != Z_STREAM_END)
 		goto exit;
 
-	op->consumed = op->src.length - stream.avail_in;
-	op->produced = op->m_dst->data_len - stream.avail_out;
+	/* Copy data to destination SGL */
+	if (op->m_src->nb_segs > 1) {
+		uint32_t remaining_data = stream.total_out;
+		uint8_t *src_data = single_dst_buf;
+		struct rte_mbuf *dst_buf = op->m_dst;
+
+		while (remaining_data > 0) {
+			uint8_t *dst_data = rte_pktmbuf_mtod(dst_buf,
+					uint8_t *);
+			/* Last segment */
+			if (remaining_data < dst_buf->data_len) {
+				memcpy(dst_data, src_data, remaining_data);
+				remaining_data = 0;
+			} else {
+				memcpy(dst_data, src_data, dst_buf->data_len);
+				remaining_data -= dst_buf->data_len;
+				src_data += dst_buf->data_len;
+				dst_buf = dst_buf->next;
+			}
+		}
+	}
+
+	op->consumed = stream.total_in;
+	op->produced = stream.total_out;
 	op->status = RTE_COMP_OP_STATUS_SUCCESS;
 
 	deflateReset(&stream);
@@ -339,6 +409,8 @@ compress_zlib(struct rte_comp_op *op,
 	ret = 0;
 exit:
 	deflateEnd(&stream);
+	rte_free(single_src_buf);
+	rte_free(single_dst_buf);
 
 	return ret;
 }
@@ -351,6 +423,8 @@ decompress_zlib(struct rte_comp_op *op,
 	int window_bits;
 	int zlib_flush;
 	int ret = TEST_FAILED;
+	uint8_t *single_src_buf = NULL;
+	uint8_t *single_dst_buf = NULL;
 
 	/* initialize zlib stream */
 	stream.zalloc = Z_NULL;
@@ -371,10 +445,39 @@ decompress_zlib(struct rte_comp_op *op,
 	}
 
 	/* Assuming stateless operation */
-	stream.avail_in = op->src.length;
-	stream.next_in = rte_pktmbuf_mtod(op->m_src, uint8_t *);
-	stream.avail_out = op->m_dst->data_len;
-	stream.next_out = rte_pktmbuf_mtod(op->m_dst, uint8_t *);
+	/* SGL */
+	if (op->m_src->nb_segs > 1) {
+		single_src_buf = rte_malloc(NULL,
+				rte_pktmbuf_pkt_len(op->m_src), 0);
+		if (single_src_buf == NULL) {
+			RTE_LOG(ERR, USER1, "Buffer could not be allocated\n");
+			goto exit;
+		}
+		single_dst_buf = rte_malloc(NULL,
+				rte_pktmbuf_pkt_len(op->m_dst), 0);
+		if (single_dst_buf == NULL) {
+			RTE_LOG(ERR, USER1, "Buffer could not be allocated\n");
+			goto exit;
+		}
+		if (rte_pktmbuf_read(op->m_src, 0,
+					rte_pktmbuf_pkt_len(op->m_src),
+					single_src_buf) == NULL) {
+			RTE_LOG(ERR, USER1,
+				"Buffer could not be read entirely\n");
+			goto exit;
+		}
+
+		stream.avail_in = op->src.length;
+		stream.next_in = single_src_buf;
+		stream.avail_out = rte_pktmbuf_pkt_len(op->m_dst);
+		stream.next_out = single_dst_buf;
+
+	} else {
+		stream.avail_in = op->src.length;
+		stream.next_in = rte_pktmbuf_mtod(op->m_src, uint8_t *);
+		stream.avail_out = op->m_dst->data_len;
+		stream.next_out = rte_pktmbuf_mtod(op->m_dst, uint8_t *);
+	}
 
 	/* Stateless operation, all buffer will be compressed in one go */
 	zlib_flush = map_zlib_flush_flag(op->flush_flag);
@@ -388,8 +491,29 @@ decompress_zlib(struct rte_comp_op *op,
 	if (ret != Z_STREAM_END)
 		goto exit;
 
-	op->consumed = op->src.length - stream.avail_in;
-	op->produced = op->m_dst->data_len - stream.avail_out;
+	if (op->m_src->nb_segs > 1) {
+		uint32_t remaining_data = stream.total_out;
+		uint8_t *src_data = single_dst_buf;
+		struct rte_mbuf *dst_buf = op->m_dst;
+
+		while (remaining_data > 0) {
+			uint8_t *dst_data = rte_pktmbuf_mtod(dst_buf,
+					uint8_t *);
+			/* Last segment */
+			if (remaining_data < dst_buf->data_len) {
+				memcpy(dst_data, src_data, remaining_data);
+				remaining_data = 0;
+			} else {
+				memcpy(dst_data, src_data, dst_buf->data_len);
+				remaining_data -= dst_buf->data_len;
+				src_data += dst_buf->data_len;
+				dst_buf = dst_buf->next;
+			}
+		}
+	}
+
+	op->consumed = stream.total_in;
+	op->produced = stream.total_out;
 	op->status = RTE_COMP_OP_STATUS_SUCCESS;
 
 	inflateReset(&stream);
@@ -399,6 +523,85 @@ exit:
 	inflateEnd(&stream);
 
 	return ret;
+}
+
+static int
+prepare_sgl_bufs(const char *test_buf, struct rte_mbuf *head_buf,
+		uint32_t total_data_size,
+		struct rte_mempool *pool)
+{
+	uint32_t remaining_data = total_data_size;
+	uint16_t num_remaining_segs =
+			DIV_CEIL(remaining_data, SEG_SIZE);
+	struct rte_mbuf *next_seg;
+	uint32_t data_size;
+	char *buf_ptr;
+	const char *data_ptr = test_buf;
+	unsigned int i;
+	int ret;
+
+	/*
+	 * Allocate data in the first segment (header) and
+	 * copy data if test buffer is provided
+	 */
+	if (remaining_data < SEG_SIZE)
+		data_size = remaining_data;
+	else
+		data_size = SEG_SIZE;
+	buf_ptr = rte_pktmbuf_append(head_buf, data_size);
+	if (buf_ptr == NULL) {
+		RTE_LOG(ERR, USER1,
+			"Not enough space in the buffer\n");
+		return -1;
+	}
+
+	if (data_ptr != NULL) {
+		/* Copy characters without NULL terminator */
+		strncpy(buf_ptr, data_ptr, data_size);
+		data_ptr += data_size;
+	}
+	remaining_data -= data_size;
+
+	/*
+	 * Allocate the rest of the segments,
+	 * copy the rest of the data and chain the segments.
+	 */
+	for (i = 0; i < num_remaining_segs; i++) {
+		next_seg = rte_pktmbuf_alloc(pool);
+		if (next_seg == NULL) {
+			RTE_LOG(ERR, USER1,
+				"New segment could not be allocated "
+				"from the mempool\n");
+			return -1;
+		}
+		if (remaining_data < SEG_SIZE)
+			data_size = remaining_data;
+		else
+			data_size = SEG_SIZE;
+		buf_ptr = rte_pktmbuf_append(next_seg, data_size);
+		if (buf_ptr == NULL) {
+			RTE_LOG(ERR, USER1,
+				"Not enough space in the buffer\n");
+			rte_pktmbuf_free(next_seg);
+			return -1;
+		}
+		if (data_ptr != NULL) {
+			/* Copy characters without NULL terminator */
+			strncpy(buf_ptr, data_ptr, data_size);
+			data_ptr += data_size;
+		}
+		remaining_data -= data_size;
+
+		ret = rte_pktmbuf_chain(head_buf, next_seg);
+		if (ret != 0) {
+			rte_pktmbuf_free(next_seg);
+			RTE_LOG(ERR, USER1,
+				"Segment could not chained\n");
+			return -1;
+		}
+	}
+
+	return 0;
 }
 
 /*
@@ -412,6 +615,7 @@ test_deflate_comp_decomp(const char * const test_bufs[],
 		struct rte_comp_xform *decompress_xforms[],
 		unsigned int num_xforms,
 		enum rte_comp_op_type state,
+		unsigned int sgl,
 		enum zlib_direction zlib_dir)
 {
 	struct comp_testsuite_params *ts_params = &testsuite_params;
@@ -426,10 +630,13 @@ test_deflate_comp_decomp(const char * const test_bufs[],
 	uint16_t num_priv_xforms = 0;
 	unsigned int deqd_retries = 0;
 	struct priv_op_data *priv_data;
-	char *data_ptr;
+	char *buf_ptr;
 	unsigned int i;
+	struct rte_mempool *buf_pool;
+	uint32_t data_size;
 	const struct rte_compressdev_capabilities *capa =
 		rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
+	char *contig_buf = NULL;
 
 	/* Initialize all arrays to NULL */
 	memset(uncomp_bufs, 0, sizeof(struct rte_mbuf *) * num_bufs);
@@ -438,8 +645,14 @@ test_deflate_comp_decomp(const char * const test_bufs[],
 	memset(ops_processed, 0, sizeof(struct rte_comp_op *) * num_bufs);
 	memset(priv_xforms, 0, sizeof(void *) * num_bufs);
 
+	if (sgl)
+		buf_pool = ts_params->small_mbuf_pool;
+	else
+		buf_pool = ts_params->large_mbuf_pool;
+
 	/* Prepare the source mbufs with the data */
-	ret = rte_pktmbuf_alloc_bulk(ts_params->mbuf_pool, uncomp_bufs, num_bufs);
+	ret = rte_pktmbuf_alloc_bulk(buf_pool,
+				uncomp_bufs, num_bufs);
 	if (ret < 0) {
 		RTE_LOG(ERR, USER1,
 			"Source mbufs could not be allocated "
@@ -447,15 +660,24 @@ test_deflate_comp_decomp(const char * const test_bufs[],
 		goto exit;
 	}
 
-	for (i = 0; i < num_bufs; i++) {
-		data_ptr = rte_pktmbuf_append(uncomp_bufs[i],
-					strlen(test_bufs[i]) + 1);
-		snprintf(data_ptr, strlen(test_bufs[i]) + 1, "%s",
-					test_bufs[i]);
+	if (sgl) {
+		for (i = 0; i < num_bufs; i++) {
+			data_size = strlen(test_bufs[i]) + 1;
+			if (prepare_sgl_bufs(test_bufs[i], uncomp_bufs[i],
+					data_size,
+					buf_pool) < 0)
+				goto exit;
+		}
+	} else {
+		for (i = 0; i < num_bufs; i++) {
+			data_size = strlen(test_bufs[i]) + 1;
+			buf_ptr = rte_pktmbuf_append(uncomp_bufs[i], data_size);
+			snprintf(buf_ptr, data_size, "%s", test_bufs[i]);
+		}
 	}
 
 	/* Prepare the destination mbufs */
-	ret = rte_pktmbuf_alloc_bulk(ts_params->mbuf_pool, comp_bufs, num_bufs);
+	ret = rte_pktmbuf_alloc_bulk(buf_pool, comp_bufs, num_bufs);
 	if (ret < 0) {
 		RTE_LOG(ERR, USER1,
 			"Destination mbufs could not be allocated "
@@ -463,9 +685,23 @@ test_deflate_comp_decomp(const char * const test_bufs[],
 		goto exit;
 	}
 
-	for (i = 0; i < num_bufs; i++)
-		rte_pktmbuf_append(comp_bufs[i],
-			strlen(test_bufs[i]) * COMPRESS_BUF_SIZE_RATIO);
+	if (sgl) {
+		for (i = 0; i < num_bufs; i++) {
+			data_size = strlen(test_bufs[i]) *
+				COMPRESS_BUF_SIZE_RATIO;
+			if (prepare_sgl_bufs(NULL, comp_bufs[i],
+					data_size,
+					buf_pool) < 0)
+				goto exit;
+		}
+
+	} else {
+		for (i = 0; i < num_bufs; i++) {
+			data_size = strlen(test_bufs[i]) *
+				COMPRESS_BUF_SIZE_RATIO;
+			rte_pktmbuf_append(comp_bufs[i], data_size);
+		}
+	}
 
 	/* Build the compression operations */
 	ret = rte_comp_op_bulk_alloc(ts_params->op_pool, ops, num_bufs);
@@ -630,7 +866,7 @@ test_deflate_comp_decomp(const char * const test_bufs[],
 	}
 
 	/* Allocate buffers for decompressed data */
-	ret = rte_pktmbuf_alloc_bulk(ts_params->mbuf_pool, uncomp_bufs, num_bufs);
+	ret = rte_pktmbuf_alloc_bulk(buf_pool, uncomp_bufs, num_bufs);
 	if (ret < 0) {
 		RTE_LOG(ERR, USER1,
 			"Destination mbufs could not be allocated "
@@ -638,10 +874,23 @@ test_deflate_comp_decomp(const char * const test_bufs[],
 		goto exit;
 	}
 
-	for (i = 0; i < num_bufs; i++) {
-		priv_data = (struct priv_op_data *)(ops_processed[i] + 1);
-		rte_pktmbuf_append(uncomp_bufs[i],
-				strlen(test_bufs[priv_data->orig_idx]) + 1);
+	if (sgl) {
+		for (i = 0; i < num_bufs; i++) {
+			priv_data = (struct priv_op_data *)
+					(ops_processed[i] + 1);
+			data_size = strlen(test_bufs[priv_data->orig_idx]) + 1;
+			if (prepare_sgl_bufs(NULL, uncomp_bufs[i],
+					data_size, buf_pool) < 0)
+				goto exit;
+		}
+
+	} else {
+		for (i = 0; i < num_bufs; i++) {
+			priv_data = (struct priv_op_data *)
+					(ops_processed[i] + 1);
+			data_size = strlen(test_bufs[priv_data->orig_idx]) + 1;
+			rte_pktmbuf_append(uncomp_bufs[i], data_size);
+		}
 	}
 
 	/* Build the decompression operations */
@@ -816,12 +1065,23 @@ test_deflate_comp_decomp(const char * const test_bufs[],
 	for (i = 0; i < num_bufs; i++) {
 		priv_data = (struct priv_op_data *)(ops_processed[i] + 1);
 		const char *buf1 = test_bufs[priv_data->orig_idx];
-		const char *buf2 = rte_pktmbuf_mtod(ops_processed[i]->m_dst,
-				const char *);
+		const char *buf2;
+		contig_buf = rte_malloc(NULL, ops_processed[i]->produced, 0);
+		if (contig_buf == NULL) {
+			RTE_LOG(ERR, USER1, "Contiguous buffer could not "
+					"be allocated\n");
+			goto exit;
+		}
+
+		buf2 = rte_pktmbuf_read(ops_processed[i]->m_dst, 0,
+				ops_processed[i]->produced, contig_buf);
 
 		if (compare_buffers(buf1, strlen(buf1) + 1,
 				buf2, ops_processed[i]->produced) < 0)
 			goto exit;
+
+		rte_free(contig_buf);
+		contig_buf = NULL;
 	}
 
 	ret_status = 0;
@@ -838,6 +1098,7 @@ exit:
 		if (priv_xforms[i] != NULL)
 			rte_compressdev_private_xform_free(0, priv_xforms[i]);
 	}
+	rte_free(contig_buf);
 
 	return ret_status;
 }
@@ -881,6 +1142,7 @@ test_compressdev_deflate_stateless_fixed(void)
 				&ts_params->def_decomp_xform,
 				1,
 				RTE_COMP_OP_STATELESS,
+				0,
 				ZLIB_DECOMPRESS) < 0) {
 			ret = TEST_FAILED;
 			goto exit;
@@ -893,6 +1155,7 @@ test_compressdev_deflate_stateless_fixed(void)
 				&ts_params->def_decomp_xform,
 				1,
 				RTE_COMP_OP_STATELESS,
+				0,
 				ZLIB_COMPRESS) < 0) {
 			ret = TEST_FAILED;
 			goto exit;
@@ -945,6 +1208,7 @@ test_compressdev_deflate_stateless_dynamic(void)
 				&ts_params->def_decomp_xform,
 				1,
 				RTE_COMP_OP_STATELESS,
+				0,
 				ZLIB_DECOMPRESS) < 0) {
 			ret = TEST_FAILED;
 			goto exit;
@@ -957,6 +1221,7 @@ test_compressdev_deflate_stateless_dynamic(void)
 				&ts_params->def_decomp_xform,
 				1,
 				RTE_COMP_OP_STATELESS,
+				0,
 				ZLIB_COMPRESS) < 0) {
 			ret = TEST_FAILED;
 			goto exit;
@@ -988,6 +1253,7 @@ test_compressdev_deflate_stateless_multi_op(void)
 			&ts_params->def_decomp_xform,
 			1,
 			RTE_COMP_OP_STATELESS,
+			0,
 			ZLIB_DECOMPRESS) < 0)
 		return TEST_FAILED;
 
@@ -998,6 +1264,7 @@ test_compressdev_deflate_stateless_multi_op(void)
 			&ts_params->def_decomp_xform,
 			1,
 			RTE_COMP_OP_STATELESS,
+			0,
 			ZLIB_COMPRESS) < 0)
 		return TEST_FAILED;
 
@@ -1037,6 +1304,7 @@ test_compressdev_deflate_stateless_multi_level(void)
 					&ts_params->def_decomp_xform,
 					1,
 					RTE_COMP_OP_STATELESS,
+					0,
 					ZLIB_DECOMPRESS) < 0) {
 				ret = TEST_FAILED;
 				goto exit;
@@ -1107,6 +1375,7 @@ test_compressdev_deflate_stateless_multi_xform(void)
 			decompress_xforms,
 			NUM_XFORMS,
 			RTE_COMP_OP_STATELESS,
+			0,
 			ZLIB_DECOMPRESS) < 0) {
 		ret = TEST_FAILED;
 		goto exit;
@@ -1120,6 +1389,48 @@ exit:
 	}
 
 	return ret;
+}
+
+static int
+test_compressdev_deflate_stateless_sgl(void)
+{
+	struct comp_testsuite_params *ts_params = &testsuite_params;
+	uint16_t i;
+	const char *test_buffer;
+	const struct rte_compressdev_capabilities *capab;
+
+	capab = rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
+	TEST_ASSERT(capab != NULL, "Failed to retrieve device capabilities");
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_OOP_SGL_IN_SGL_OUT) == 0)
+		return -ENOTSUP;
+
+	for (i = 0; i < RTE_DIM(compress_test_bufs); i++) {
+		test_buffer = compress_test_bufs[i];
+		/* Compress with compressdev, decompress with Zlib */
+		if (test_deflate_comp_decomp(&test_buffer, 1,
+				&i,
+				&ts_params->def_comp_xform,
+				&ts_params->def_decomp_xform,
+				1,
+				RTE_COMP_OP_STATELESS,
+				1,
+				ZLIB_DECOMPRESS) < 0)
+			return TEST_FAILED;
+
+		/* Compress with Zlib, decompress with compressdev */
+		if (test_deflate_comp_decomp(&test_buffer, 1,
+				&i,
+				&ts_params->def_comp_xform,
+				&ts_params->def_decomp_xform,
+				1,
+				RTE_COMP_OP_STATELESS,
+				1,
+				ZLIB_COMPRESS) < 0)
+			return TEST_FAILED;
+	}
+
+	return TEST_SUCCESS;
 }
 
 static struct unit_test_suite compressdev_testsuite  = {
@@ -1139,6 +1450,8 @@ static struct unit_test_suite compressdev_testsuite  = {
 			test_compressdev_deflate_stateless_multi_level),
 		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
 			test_compressdev_deflate_stateless_multi_xform),
+		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
+			test_compressdev_deflate_stateless_sgl),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
