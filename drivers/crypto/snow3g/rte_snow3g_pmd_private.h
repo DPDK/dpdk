@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2016-2017 Intel Corporation
+ * Copyright(c) 2016-2018 Intel Corporation
  */
 
 #ifndef _RTE_SNOW3G_PMD_PRIVATE_H_
@@ -10,25 +10,13 @@
 #define CRYPTODEV_NAME_SNOW3G_PMD	crypto_snow3g
 /**< SNOW 3G PMD device name */
 
-#define SNOW3G_LOG_ERR(fmt, args...) \
-	RTE_LOG(ERR, CRYPTODEV, "[%s] %s() line %u: " fmt "\n",  \
-			RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD), \
-			__func__, __LINE__, ## args)
+/** SNOW 3G PMD LOGTYPE DRIVER */
+int snow3g_logtype_driver;
 
-#ifdef RTE_LIBRTE_SNOW3G_DEBUG
-#define SNOW3G_LOG_INFO(fmt, args...) \
-	RTE_LOG(INFO, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD), \
-			__func__, __LINE__, ## args)
-
-#define SNOW3G_LOG_DBG(fmt, args...) \
-	RTE_LOG(DEBUG, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD), \
-			__func__, __LINE__, ## args)
-#else
-#define SNOW3G_LOG_INFO(fmt, args...)
-#define SNOW3G_LOG_DBG(fmt, args...)
-#endif
+#define SNOW3G_LOG(level, fmt, ...)  \
+	rte_log(RTE_LOG_ ## level, snow3g_logtype_driver,  \
+			"%s() line %u: " fmt "\n", __func__, __LINE__,  \
+					## __VA_ARGS__)
 
 #define SNOW3G_DIGEST_LENGTH 4
 

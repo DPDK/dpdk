@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2016-2017 Intel Corporation
+ * Copyright(c) 2016-2018 Intel Corporation
  */
 
 #include <string.h>
@@ -172,13 +172,13 @@ snow3g_pmd_qp_create_processed_ops_ring(struct snow3g_qp *qp,
 	r = rte_ring_lookup(qp->name);
 	if (r) {
 		if (rte_ring_get_size(r) >= ring_size) {
-			SNOW3G_LOG_INFO("Reusing existing ring %s"
+			SNOW3G_LOG(INFO, "Reusing existing ring %s"
 					" for processed packets",
 					 qp->name);
 			return r;
 		}
 
-		SNOW3G_LOG_ERR("Unable to reuse existing ring %s"
+		SNOW3G_LOG(ERR, "Unable to reuse existing ring %s"
 				" for processed packets",
 				 qp->name);
 		return NULL;
@@ -271,19 +271,19 @@ snow3g_pmd_session_configure(struct rte_cryptodev *dev __rte_unused,
 	int ret;
 
 	if (unlikely(sess == NULL)) {
-		SNOW3G_LOG_ERR("invalid session struct");
+		SNOW3G_LOG(ERR, "invalid session struct");
 		return -EINVAL;
 	}
 
 	if (rte_mempool_get(mempool, &sess_private_data)) {
-		CDEV_LOG_ERR(
+		SNOW3G_LOG(ERR,
 			"Couldn't get object from session mempool");
 		return -ENOMEM;
 	}
 
 	ret = snow3g_set_session_parameters(sess_private_data, xform);
 	if (ret != 0) {
-		SNOW3G_LOG_ERR("failed configure session parameters");
+		SNOW3G_LOG(ERR, "failed configure session parameters");
 
 		/* Return session to mempool */
 		rte_mempool_put(mempool, sess_private_data);

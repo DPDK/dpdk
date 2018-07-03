@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2016-2017 Intel Corporation
+ * Copyright(c) 2016-2018 Intel Corporation
  */
 
 #include <rte_common.h>
@@ -79,7 +79,7 @@ snow3g_set_session_parameters(struct snow3g_session *sess,
 		break;
 	case SNOW3G_OP_NOT_SUPPORTED:
 	default:
-		SNOW3G_LOG_ERR("Unsupported operation chain order parameter");
+		SNOW3G_LOG(ERR, "Unsupported operation chain order parameter");
 		return -ENOTSUP;
 	}
 
@@ -89,7 +89,7 @@ snow3g_set_session_parameters(struct snow3g_session *sess,
 			return -ENOTSUP;
 
 		if (cipher_xform->cipher.iv.length != SNOW3G_IV_LENGTH) {
-			SNOW3G_LOG_ERR("Wrong IV length");
+			SNOW3G_LOG(ERR, "Wrong IV length");
 			return -EINVAL;
 		}
 		sess->cipher_iv_offset = cipher_xform->cipher.iv.offset;
@@ -105,14 +105,14 @@ snow3g_set_session_parameters(struct snow3g_session *sess,
 			return -ENOTSUP;
 
 		if (auth_xform->auth.digest_length != SNOW3G_DIGEST_LENGTH) {
-			SNOW3G_LOG_ERR("Wrong digest length");
+			SNOW3G_LOG(ERR, "Wrong digest length");
 			return -EINVAL;
 		}
 
 		sess->auth_op = auth_xform->auth.op;
 
 		if (auth_xform->auth.iv.length != SNOW3G_IV_LENGTH) {
-			SNOW3G_LOG_ERR("Wrong IV length");
+			SNOW3G_LOG(ERR, "Wrong IV length");
 			return -EINVAL;
 		}
 		sess->auth_iv_offset = auth_xform->auth.iv.offset;
@@ -216,7 +216,7 @@ process_snow3g_cipher_op_bit(struct rte_crypto_op *op,
 	src = rte_pktmbuf_mtod(op->sym->m_src, uint8_t *);
 	if (op->sym->m_dst == NULL) {
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
-		SNOW3G_LOG_ERR("bit-level in-place not supported\n");
+		SNOW3G_LOG(ERR, "bit-level in-place not supported\n");
 		return 0;
 	}
 	dst = rte_pktmbuf_mtod(op->sym->m_dst, uint8_t *);
@@ -246,7 +246,7 @@ process_snow3g_hash_op(struct snow3g_qp *qp, struct rte_crypto_op **ops,
 		/* Data must be byte aligned */
 		if ((ops[i]->sym->auth.data.offset % BYTE_LEN) != 0) {
 			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
-			SNOW3G_LOG_ERR("Offset");
+			SNOW3G_LOG(ERR, "Offset");
 			break;
 		}
 
@@ -295,7 +295,7 @@ process_ops(struct rte_crypto_op **ops, struct snow3g_session *session,
 				(ops[i]->sym->m_dst != NULL &&
 				!rte_pktmbuf_is_contiguous(
 						ops[i]->sym->m_dst))) {
-			SNOW3G_LOG_ERR("PMD supports only contiguous mbufs, "
+			SNOW3G_LOG(ERR, "PMD supports only contiguous mbufs, "
 				"op (%p) provides noncontiguous mbuf as "
 				"source/destination buffer.\n", ops[i]);
 			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
@@ -537,7 +537,7 @@ cryptodev_snow3g_create(const char *name,
 
 	dev = rte_cryptodev_pmd_create(name, &vdev->device, init_params);
 	if (dev == NULL) {
-		SNOW3G_LOG_ERR("failed to create cryptodev vdev");
+		SNOW3G_LOG(ERR, "failed to create cryptodev vdev");
 		goto init_error;
 	}
 
@@ -559,7 +559,7 @@ cryptodev_snow3g_create(const char *name,
 
 	return 0;
 init_error:
-	SNOW3G_LOG_ERR("driver %s: cryptodev_snow3g_create failed",
+	SNOW3G_LOG(ERR, "driver %s: cryptodev_snow3g_create failed",
 			init_params->name);
 
 	cryptodev_snow3g_remove(vdev);
@@ -621,3 +621,10 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_SNOW3G_PMD,
 	"socket_id=<int>");
 RTE_PMD_REGISTER_CRYPTO_DRIVER(snow3g_crypto_drv,
 		cryptodev_snow3g_pmd_drv.driver, cryptodev_driver_id);
+
+RTE_INIT(snow3g_init_log);
+static void
+snow3g_init_log(void)
+{
+	snow3g_logtype_driver = rte_log_register("pmd.crypto.snow3g");
+}
