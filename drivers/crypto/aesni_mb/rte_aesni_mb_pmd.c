@@ -721,7 +721,7 @@ handle_completed_jobs(struct aesni_mb_qp *qp, JOB_AES_HMAC *job,
 		if (processed_jobs == nb_ops)
 			break;
 
-		job = (*qp->op_fns->job.get_completed_job)(&qp->mb_mgr);
+		job = (*qp->op_fns->job.get_completed_job)(qp->mb_mgr);
 	}
 
 	return processed_jobs;
@@ -734,7 +734,7 @@ flush_mb_mgr(struct aesni_mb_qp *qp, struct rte_crypto_op **ops,
 	int processed_ops = 0;
 
 	/* Flush the remaining jobs */
-	JOB_AES_HMAC *job = (*qp->op_fns->job.flush_job)(&qp->mb_mgr);
+	JOB_AES_HMAC *job = (*qp->op_fns->job.flush_job)(qp->mb_mgr);
 
 	if (job)
 		processed_ops += handle_completed_jobs(qp, job,
@@ -779,14 +779,14 @@ aesni_mb_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 			break;
 
 		/* Get next free mb job struct from mb manager */
-		job = (*qp->op_fns->job.get_next)(&qp->mb_mgr);
+		job = (*qp->op_fns->job.get_next)(qp->mb_mgr);
 		if (unlikely(job == NULL)) {
 			/* if no free mb job structs we need to flush mb_mgr */
 			processed_jobs += flush_mb_mgr(qp,
 					&ops[processed_jobs],
 					(nb_ops - processed_jobs) - 1);
 
-			job = (*qp->op_fns->job.get_next)(&qp->mb_mgr);
+			job = (*qp->op_fns->job.get_next)(qp->mb_mgr);
 		}
 
 		retval = set_mb_job_params(job, qp, op, &digest_idx);
@@ -796,7 +796,7 @@ aesni_mb_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 		}
 
 		/* Submit job to multi-buffer for processing */
-		job = (*qp->op_fns->job.submit)(&qp->mb_mgr);
+		job = (*qp->op_fns->job.submit)(qp->mb_mgr);
 
 		/*
 		 * If submit returns a processed job then handle it,

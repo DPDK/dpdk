@@ -123,7 +123,7 @@ struct aesni_mb_qp {
 	/**< Unique Queue Pair Name */
 	const struct aesni_mb_op_fns *op_fns;
 	/**< Vector mode dependent pointer table of the multi-buffer APIs */
-	MB_MGR mb_mgr;
+	MB_MGR *mb_mgr;
 	/**< Multi-buffer instance */
 	struct rte_ring *ingress_queue;
        /**< Ring for placing operations ready for processing */
