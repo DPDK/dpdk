@@ -515,6 +515,13 @@ aesni_gcm_create(const char *name,
 
 	internals->max_nb_queue_pairs = init_params->max_nb_queue_pairs;
 
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 50, 0)
+	AESNI_GCM_LOG(INFO, "IPSec Multi-buffer library version used: %s\n",
+			imb_get_version_str());
+#else
+	AESNI_GCM_LOG(INFO, "IPSec Multi-buffer library version used: 0.49.0\n");
+#endif
+
 	return 0;
 }
 

@@ -7,6 +7,15 @@
 
 #include "aesni_gcm_ops.h"
 
+/*
+ * IMB_VERSION_NUM macro was introduced in version Multi-buffer 0.50,
+ * so if macro is not defined, it means that the version is 0.49.
+ */
+#if !defined(IMB_VERSION_NUM)
+#define IMB_VERSION(a, b, c) (((a) << 16) + ((b) << 8) + (c))
+#define IMB_VERSION_NUM IMB_VERSION(0, 49, 0)
+#endif
+
 #define CRYPTODEV_NAME_AESNI_GCM_PMD	crypto_aesni_gcm
 /**< AES-NI GCM PMD device name */
 
