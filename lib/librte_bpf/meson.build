@@ -8,7 +8,7 @@ sources = files('bpf.c',
 		'bpf_pkt.c',
 		'bpf_validate.c')
 
-if arch_subdir == 'x86'
+if arch_subdir == 'x86' and cc.sizeof('void *') == 8
 	sources += files('bpf_jit_x86.c')
 endif
 
