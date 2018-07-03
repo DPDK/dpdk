@@ -6,7 +6,7 @@
 # This software was jointly developed between OKTET Labs (under contract
 # for Solarflare) and Solarflare Communications, Inc.
 
-if arch_subdir != 'x86'
+if arch_subdir != 'x86' or cc.sizeof('void *') == 4
 	build = false
 endif
 
