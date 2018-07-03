@@ -383,7 +383,7 @@ avp_dev_translate_address(struct rte_eth_dev *eth_dev,
 			(host_phys_addr < (map->phys_addr + map->length))) {
 			/* address is within this segment */
 			offset += (host_phys_addr - map->phys_addr);
-			addr = RTE_PTR_ADD(addr, offset);
+			addr = RTE_PTR_ADD(addr, (uintptr_t)offset);
 
 			PMD_DRV_LOG(DEBUG, "Translating host physical 0x%" PRIx64 " to guest virtual 0x%p\n",
 				    host_phys_addr, addr);
