@@ -59,6 +59,10 @@ warning_flags = [
 	'-Wcast-qual',
 	'-Wno-address-of-packed-member'
 ]
+if cc.sizeof('void *') == 4
+# for 32-bit, don't warn about casting a 32-bit pointer to 64-bit int - it's fine!!
+	warning_flags += '-Wno-pointer-to-int-cast'
+endif
 foreach arg: warning_flags
 	if cc.has_argument(arg)
 		add_project_arguments(arg, language: 'c')
