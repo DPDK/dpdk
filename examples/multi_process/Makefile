@@ -13,5 +13,6 @@ include $(RTE_SDK)/mk/rte.vars.mk
 DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += client_server_mp
 DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += simple_mp
 DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += symmetric_mp
+DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += l2fwd_fork
 
 include $(RTE_SDK)/mk/rte.extsubdir.mk
