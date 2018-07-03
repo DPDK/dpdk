@@ -77,6 +77,7 @@ dpdk_conf.set('RTE_EAL_ALLOW_INV_SOCKET_ID', get_option('allow_invalid_socket_id
 # values which have defaults which may be overridden
 dpdk_conf.set('RTE_MAX_VFIO_GROUPS', 64)
 dpdk_conf.set('RTE_DRIVER_MEMPOOL_BUCKET_SIZE_KB', 64)
+dpdk_conf.set('RTE_LIBRTE_DPAA2_USE_PHYS_IOVA', true)
 
 compile_time_cpuflags = []
 if host_machine.cpu_family().startswith('x86')

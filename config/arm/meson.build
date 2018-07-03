@@ -64,7 +64,7 @@ flags_dpaa2 = [
 	['RTE_CACHE_LINE_SIZE', 64],
 	['RTE_MAX_NUMA_NODES', 1],
 	['RTE_MAX_LCORE', 16],
-	['RTE_LIBRTE_DPAA2_USE_PHYS_IOVA', 'n']]
+	['RTE_LIBRTE_DPAA2_USE_PHYS_IOVA', false]]
 
 ## Arm implementer ID (ARM DDI 0487C.a, Section G7.2.106, Page G7-5321)
 impl_generic = ['Generic armv8', flags_generic, machine_args_generic]
