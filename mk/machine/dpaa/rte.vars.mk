@@ -32,3 +32,6 @@ MACHINE_CFLAGS += -march=armv8-a+crc
 ifdef CONFIG_RTE_ARCH_ARM_TUNE
 MACHINE_CFLAGS += -mtune=$(CONFIG_RTE_ARCH_ARM_TUNE:"%"=%)
 endif
+
+# To avoid TLS corruption issue.
+MACHINE_CFLAGS += -mtls-dialect=trad
