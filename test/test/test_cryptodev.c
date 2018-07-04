@@ -585,7 +585,7 @@ test_device_configure_invalid_dev_id(void)
 	dev_id = ts_params->valid_devs[ts_params->valid_dev_count - 1];
 
 	/* Stop the device in case it's started so it can be configured */
-	rte_cryptodev_stop(ts_params->valid_devs[dev_id]);
+	rte_cryptodev_stop(dev_id);
 
 	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(dev_id, &ts_params->conf),
 			"Failed test for rte_cryptodev_configure: "
