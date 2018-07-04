@@ -2058,11 +2058,21 @@ cmd_config_rss_parsed(void *parsed_result,
 	rss_conf.rss_key = NULL;
 	/* Update global configuration for RSS types. */
 	RTE_ETH_FOREACH_DEV(i) {
-		if (use_default) {
-			rte_eth_dev_info_get(i, &dev_info);
+		struct rte_eth_rss_conf local_rss_conf;
+
+		rte_eth_dev_info_get(i, &dev_info);
+		if (use_default)
 			rss_conf.rss_hf = dev_info.flow_type_rss_offloads;
+
+		local_rss_conf = rss_conf;
+		local_rss_conf.rss_hf = rss_conf.rss_hf &
+			dev_info.flow_type_rss_offloads;
+		if (local_rss_conf.rss_hf != rss_conf.rss_hf) {
+			printf("Port %u modified RSS hash function based on hardware support,"
+				"requested:%#"PRIx64" configured:%#"PRIx64"\n",
+				i, rss_conf.rss_hf, local_rss_conf.rss_hf);
 		}
-		diag = rte_eth_dev_rss_hash_update(i, &rss_conf);
+		diag = rte_eth_dev_rss_hash_update(i, &local_rss_conf);
 		if (diag < 0) {
 			all_updated = 0;
 			printf("Configuration of RSS hash at ethernet port %d "

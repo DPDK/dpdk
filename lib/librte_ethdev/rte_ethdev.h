@@ -1515,9 +1515,11 @@ const char * __rte_experimental rte_eth_dev_tx_offload_name(uint64_t offload);
  *        the [rt]x_offload_capa returned from rte_eth_dev_infos_get().
  *        Any type of device supported offloading set in the input argument
  *        eth_conf->[rt]xmode.offloads to rte_eth_dev_configure() is enabled
- *        on all queues and it can't be disabled in rte_eth_[rt]x_queue_setup().
- *     - the Receive Side Scaling (RSS) configuration when using multiple RX
- *         queues per port.
+ *        on all queues and it can't be disabled in rte_eth_[rt]x_queue_setup()
+ *     -  the Receive Side Scaling (RSS) configuration when using multiple RX
+ *        queues per port. Any RSS hash function set in eth_conf->rss_conf.rss_hf
+ *        must be within the flow_type_rss_offloads provided by drivers via
+ *        rte_eth_dev_infos_get() API.
  *
  *   Embedding all configuration information in a single data structure
  *   is the more flexible method that allows the addition of new features

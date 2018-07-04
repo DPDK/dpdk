@@ -152,8 +152,12 @@ link_create(const char *name, struct link_params *params)
 	memcpy(&port_conf, &port_conf_default, sizeof(port_conf));
 	if (rss) {
 		port_conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
-		port_conf.rx_adv_conf.rss_conf.rss_hf =
-			ETH_RSS_IPV4 | ETH_RSS_IPV6;
+		if (port_info.flow_type_rss_offloads & ETH_RSS_IPV4)
+			port_conf.rx_adv_conf.rss_conf.rss_hf |=
+				ETH_RSS_IPV4;
+		if (port_info.flow_type_rss_offloads & ETH_RSS_IPV6)
+			port_conf.rx_adv_conf.rss_conf.rss_hf |=
+				ETH_RSS_IPV6;
 	}
 
 	cpu_id = (uint32_t) rte_eth_dev_socket_id(port_id);

@@ -700,10 +700,23 @@ perf_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 	}
 
 	RTE_ETH_FOREACH_DEV(i) {
+		struct rte_eth_dev_info dev_info;
+		struct rte_eth_conf local_port_conf = port_conf;
 
-		if (rte_eth_dev_configure(i, 1, 1,
-					&port_conf)
-				< 0) {
+		rte_eth_dev_info_get(i, &dev_info);
+
+		local_port_conf.rx_adv_conf.rss_conf.rss_hf &=
+			dev_info.flow_type_rss_offloads;
+		if (local_port_conf.rx_adv_conf.rss_conf.rss_hf !=
+				port_conf.rx_adv_conf.rss_conf.rss_hf) {
+			evt_info("Port %u modified RSS hash function based on hardware support,"
+				"requested:%#"PRIx64" configured:%#"PRIx64"\n",
+				i,
+				port_conf.rx_adv_conf.rss_conf.rss_hf,
+				local_port_conf.rx_adv_conf.rss_conf.rss_hf);
+		}
+
+		if (rte_eth_dev_configure(i, 1, 1, &local_port_conf) < 0) {
 			evt_err("Failed to configure eth port [%d]", i);
 			return -EINVAL;
 		}
