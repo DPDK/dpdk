@@ -514,7 +514,7 @@ CRC offload
 
 Supports CRC stripping by hardware.
 
-* **[uses] rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_CRC_STRIP``.
+* **[uses] rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_CRC_STRIP,DEV_RX_OFFLOAD_KEEP_CRC``.
 
 
 .. _nic_features_vlan_offload:
