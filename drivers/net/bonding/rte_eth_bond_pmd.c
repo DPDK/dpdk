@@ -2229,7 +2229,6 @@ bond_ethdev_stop(struct rte_eth_dev *eth_dev)
 			tlb_last_obytets[internals->active_slaves[i]] = 0;
 	}
 
-	internals->active_slave_count = 0;
 	internals->link_status_polling_enabled = 0;
 	for (i = 0; i < internals->slave_count; i++)
 		internals->slaves[i].last_link_status = 0;
