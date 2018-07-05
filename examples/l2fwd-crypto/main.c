@@ -42,6 +42,9 @@
 #include <rte_prefetch.h>
 #include <rte_random.h>
 #include <rte_hexdump.h>
+#ifdef RTE_LIBRTE_PMD_CRYPTO_SCHEDULER
+#include <rte_cryptodev_scheduler.h>
+#endif
 
 enum cdev_type {
 	CDEV_TYPE_ANY,
@@ -59,7 +62,6 @@ enum cdev_type {
 #define MAX_AAD_SIZE 65535
 #define MAX_PKT_BURST 32
 #define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
-#define MAX_SESSIONS 32
 #define SESSION_POOL_CACHE_SIZE 0
 
 #define MAXIMUM_IV_LENGTH	16
@@ -1972,6 +1974,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 	unsigned int cdev_id, cdev_count, enabled_cdev_count = 0;
 	const struct rte_cryptodev_capabilities *cap;
 	unsigned int sess_sz, max_sess_sz = 0;
+	uint32_t sessions_needed = 0;
 	int retval;
 
 	cdev_count = rte_cryptodev_count();
@@ -2009,6 +2012,21 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 
 		rte_cryptodev_info_get(cdev_id, &dev_info);
 
+		/*
+		 * Two sessions objects are required for each session
+		 * (one for the header, one for the private data)
+		 */
+		if (!strcmp(dev_info.driver_name, "crypto_scheduler")) {
+#ifdef RTE_LIBRTE_PMD_CRYPTO_SCHEDULER
+			uint32_t nb_slaves =
+				rte_cryptodev_scheduler_slaves_get(cdev_id,
+								NULL);
+
+			sessions_needed = 2 * enabled_cdev_count * nb_slaves;
+#endif
+		} else
+			sessions_needed = 2 * enabled_cdev_count;
+
 		if (session_pool_socket[socket_id] == NULL) {
 			char mp_name[RTE_MEMPOOL_NAMESIZE];
 			struct rte_mempool *sess_mp;
@@ -2021,7 +2039,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 			 * device private data
 			 */
 			sess_mp = rte_mempool_create(mp_name,
-						MAX_SESSIONS * 2,
+						sessions_needed,
 						max_sess_sz,
 						SESSION_POOL_CACHE_SIZE,
 						0, NULL, NULL, NULL,

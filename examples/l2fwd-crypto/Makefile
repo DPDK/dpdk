@@ -51,5 +51,11 @@ include $(RTE_SDK)/mk/rte.vars.mk
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
+ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
+ifeq ($(CONFIG_RTE_LIBRTE_PMD_CRYPTO_SCHEDULER),y)
+LDLIBS += -lrte_pmd_crypto_scheduler
+endif
+endif
+
 include $(RTE_SDK)/mk/rte.extapp.mk
 endif
