@@ -39,6 +39,7 @@
 #include "test_cryptodev_hmac_test_vectors.h"
 
 #define VDEV_ARGS_SIZE 100
+#define MAX_NB_SESSIONS            4
 
 static int gbl_driver_id;
 
@@ -435,9 +436,16 @@ testsuite_setup(void)
 	 * Create mempool with maximum number of sessions * 2,
 	 * to include the session headers
 	 */
+	if (info.sym.max_nb_sessions < MAX_NB_SESSIONS) {
+		RTE_LOG(ERR, USER1, "Device does not support "
+				"at least %u sessions\n",
+				MAX_NB_SESSIONS);
+		return TEST_FAILED;
+	}
+
 	ts_params->session_mpool = rte_mempool_create(
 				"test_sess_mp",
-				info.sym.max_nb_sessions * 2,
+				MAX_NB_SESSIONS * 2,
 				session_size,
 				0, 0, NULL, NULL, NULL,
 				NULL, SOCKET_ID_ANY,
@@ -6499,10 +6507,10 @@ test_multi_session(void)
 
 	sessions = rte_malloc(NULL,
 			(sizeof(struct rte_cryptodev_sym_session *) *
-			dev_info.sym.max_nb_sessions) + 1, 0);
+			MAX_NB_SESSIONS) + 1, 0);
 
 	/* Create multiple crypto sessions*/
-	for (i = 0; i < dev_info.sym.max_nb_sessions; i++) {
+	for (i = 0; i < MAX_NB_SESSIONS; i++) {
 
 		sessions[i] = rte_cryptodev_sym_session_create(
 				ts_params->session_mpool);
@@ -6551,7 +6559,7 @@ test_multi_session(void)
 	TEST_ASSERT_NULL(sessions[i],
 			"Session creation succeeded unexpectedly!");
 
-	for (i = 0; i < dev_info.sym.max_nb_sessions; i++) {
+	for (i = 0; i < MAX_NB_SESSIONS; i++) {
 		rte_cryptodev_sym_session_clear(ts_params->valid_devs[0],
 				sessions[i]);
 		rte_cryptodev_sym_session_free(sessions[i]);
@@ -6610,7 +6618,7 @@ test_multi_session_random_usage(void)
 
 	sessions = rte_malloc(NULL,
 			(sizeof(struct rte_cryptodev_sym_session *)
-					* dev_info.sym.max_nb_sessions) + 1, 0);
+					* MAX_NB_SESSIONS) + 1, 0);
 
 	for (i = 0; i < MB_SESSION_NUMBER; i++) {
 		sessions[i] = rte_cryptodev_sym_session_create(
@@ -8538,6 +8546,13 @@ test_scheduler_attach_slave_op(void)
 		unsigned int session_size =
 			rte_cryptodev_sym_get_private_session_size(i);
 
+		if (info.sym.max_nb_sessions < MAX_NB_SESSIONS) {
+			RTE_LOG(ERR, USER1,
+					"Device does not support "
+					"at least %u sessions\n",
+					MAX_NB_SESSIONS);
+			return TEST_FAILED;
+		}
 		/*
 		 * Create mempool with maximum number of sessions * 2,
 		 * to include the session headers
@@ -8545,7 +8560,7 @@ test_scheduler_attach_slave_op(void)
 		if (ts_params->session_mpool == NULL) {
 			ts_params->session_mpool = rte_mempool_create(
 					"test_sess_mp",
-					info.sym.max_nb_sessions * 2,
+					MAX_NB_SESSIONS * 2,
 					session_size,
 					0, 0, NULL, NULL, NULL,
 					NULL, SOCKET_ID_ANY,
