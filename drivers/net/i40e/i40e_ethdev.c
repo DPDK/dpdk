@@ -12138,7 +12138,8 @@ i40e_update_customized_ptype(struct rte_eth_dev *dev, uint8_t *pkg,
 					ptype_mapping[i].sw_ptype |=
 						RTE_PTYPE_TUNNEL_GRENAT;
 					in_tunnel = true;
-				} else if (!strncasecmp(name, "L2TPV2CTL", 9)) {
+				} else if (!strncasecmp(name, "L2TPV2CTL", 9) ||
+					   !strncasecmp(name, "L2TPV2", 6)) {
 					ptype_mapping[i].sw_ptype |=
 						RTE_PTYPE_TUNNEL_L2TP;
 					in_tunnel = true;
