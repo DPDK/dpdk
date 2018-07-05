@@ -1415,7 +1415,6 @@ virtio_crypto_dev_info_get(struct rte_cryptodev *dev,
 
 	if (info != NULL) {
 		info->driver_id = cryptodev_virtio_driver_id;
-		info->pci_dev = RTE_DEV_TO_PCI(dev->device);
 		info->feature_flags = dev->feature_flags;
 		info->max_nb_queue_pairs = hw->max_dataqueues;
 		info->sym.max_nb_sessions =

@@ -82,6 +82,9 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* cryptodev: In struct ``struct rte_cryptodev_info``, field ``rte_pci_device *pci_dev``
+  has been replaced with field ``struct rte_device *device``.
+
 * compressdev: Feature flag ``RTE_COMP_FF_MBUF_SCATTER_GATHER`` is
   replaced with the following more explicit flags:
   - ``RTE_COMP_FF_OOP_SGL_IN_SGL_OUT``
@@ -146,7 +149,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_cmdline.so.2
      librte_common_octeontx.so.1
      librte_compressdev.so.1
-     librte_cryptodev.so.4
+   + librte_cryptodev.so.5
      librte_distributor.so.1
      librte_eal.so.7
      librte_ethdev.so.9

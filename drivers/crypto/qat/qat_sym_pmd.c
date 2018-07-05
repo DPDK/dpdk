@@ -74,7 +74,6 @@ static void qat_sym_dev_info_get(struct rte_cryptodev *dev,
 		info->capabilities = internals->qat_dev_capabilities;
 		info->sym.max_nb_sessions = QAT_SYM_PMD_MAX_NB_SESSIONS;
 		info->driver_id = cryptodev_qat_driver_id;
-		info->pci_dev = RTE_DEV_TO_PCI(dev->device);
 	}
 }
 

@@ -966,6 +966,7 @@ rte_cryptodev_info_get(uint8_t dev_id, struct rte_cryptodev_info *dev_info)
 	(*dev->dev_ops->dev_infos_get)(dev, dev_info);
 
 	dev_info->driver_name = dev->device->driver->name;
+	dev_info->device = dev->device;
 }
 
 

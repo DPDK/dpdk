@@ -269,7 +269,7 @@ relevant information for the device.
     struct rte_cryptodev_info {
         const char *driver_name;
         uint8_t driver_id;
-        struct rte_pci_device *pci_dev;
+        struct rte_device *device;
 
         uint64_t feature_flags;
 

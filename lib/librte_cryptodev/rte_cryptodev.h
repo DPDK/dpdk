@@ -334,9 +334,9 @@ rte_cryptodev_get_feature_name(uint64_t flag);
 
 /**  Crypto device information */
 struct rte_cryptodev_info {
-	const char *driver_name;		/**< Driver name. */
-	uint8_t driver_id;			/**< Driver identifier */
-	struct rte_pci_device *pci_dev;		/**< PCI information. */
+	const char *driver_name;	/**< Driver name. */
+	uint8_t driver_id;		/**< Driver identifier */
+	struct rte_device *device;	/**< Generic device information. */
 
 	uint64_t feature_flags;
 	/**< Feature flags exposes HW/SW features for the given device */
