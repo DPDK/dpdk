@@ -2215,9 +2215,6 @@ dpaa_sec_dev_infos_get(struct rte_cryptodev *dev,
 		info->feature_flags = dev->feature_flags;
 		info->capabilities = dpaa_sec_capabilities;
 		info->sym.max_nb_sessions = internals->max_nb_sessions;
-		info->sym.max_nb_sessions_per_qp =
-			RTE_DPAA_SEC_PMD_MAX_NB_SESSIONS /
-			RTE_DPAA_MAX_NB_SEC_QPS;
 		info->driver_id = cryptodev_driver_id;
 	}
 }
