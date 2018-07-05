@@ -1242,6 +1242,13 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 	hw->bus.func = pci_dev->addr.function;
 	hw->adapter_stopped = 0;
 
+	/*
+	 * Switch Tag value should not be identical to either the First Tag
+	 * or Second Tag values. So set something other than common Ethertype
+	 * for internal switching.
+	 */
+	hw->switch_tag = 0xffff;
+
 	/* Check if need to support multi-driver */
 	i40e_support_multi_driver(dev);
 
