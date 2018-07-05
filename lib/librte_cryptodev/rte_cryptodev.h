@@ -567,43 +567,6 @@ rte_cryptodev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
 		struct rte_mempool *session_pool);
 
 /**
- * @deprecated
- * Start a specified queue pair of a device. It is used
- * when deferred_start flag of the specified queue is true.
- *
- * @param	dev_id		The identifier of the device
- * @param	queue_pair_id	The index of the queue pair to start. The value
- *				must be in the range [0, nb_queue_pair - 1]
- *				previously supplied to
- *				rte_crypto_dev_configure().
- * @return
- *   - 0: Success, the transmit queue is correctly set up.
- *   - -EINVAL: The dev_id or the queue_id out of range.
- *   - -ENOTSUP: The function not supported in PMD driver.
- */
-__rte_deprecated
-extern int
-rte_cryptodev_queue_pair_start(uint8_t dev_id, uint16_t queue_pair_id);
-
-/**
- * @deprecated
- * Stop specified queue pair of a device
- *
- * @param	dev_id		The identifier of the device
- * @param	queue_pair_id	The index of the queue pair to stop. The value
- *				must be in the range [0, nb_queue_pair - 1]
- *				previously supplied to
- *				rte_cryptodev_configure().
- * @return
- *   - 0: Success, the transmit queue is correctly set up.
- *   - -EINVAL: The dev_id or the queue_id out of range.
- *   - -ENOTSUP: The function not supported in PMD driver.
- */
-__rte_deprecated
-extern int
-rte_cryptodev_queue_pair_stop(uint8_t dev_id, uint16_t queue_pair_id);
-
-/**
  * Get the number of queue pairs on a specific crypto device
  *
  * @param	dev_id		Crypto device identifier.

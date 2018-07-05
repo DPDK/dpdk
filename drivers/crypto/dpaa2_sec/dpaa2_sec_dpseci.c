@@ -1470,26 +1470,6 @@ dpaa2_sec_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	return retcode;
 }
 
-/** Start queue pair */
-static int
-dpaa2_sec_queue_pair_start(__rte_unused struct rte_cryptodev *dev,
-			   __rte_unused uint16_t queue_pair_id)
-{
-	PMD_INIT_FUNC_TRACE();
-
-	return 0;
-}
-
-/** Stop queue pair */
-static int
-dpaa2_sec_queue_pair_stop(__rte_unused struct rte_cryptodev *dev,
-			  __rte_unused uint16_t queue_pair_id)
-{
-	PMD_INIT_FUNC_TRACE();
-
-	return 0;
-}
-
 /** Return the number of allocated queue pairs */
 static uint32_t
 dpaa2_sec_queue_pair_count(struct rte_cryptodev *dev)
@@ -2716,8 +2696,6 @@ static struct rte_cryptodev_ops crypto_ops = {
 	.stats_reset	      = dpaa2_sec_stats_reset,
 	.queue_pair_setup     = dpaa2_sec_queue_pair_setup,
 	.queue_pair_release   = dpaa2_sec_queue_pair_release,
-	.queue_pair_start     = dpaa2_sec_queue_pair_start,
-	.queue_pair_stop      = dpaa2_sec_queue_pair_stop,
 	.queue_pair_count     = dpaa2_sec_queue_pair_count,
 	.session_get_size     = dpaa2_sec_session_get_size,
 	.session_configure    = dpaa2_sec_session_configure,

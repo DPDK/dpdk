@@ -595,32 +595,6 @@ mrvl_crypto_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	return -1;
 }
 
-/** Start queue pair (PMD ops callback) - not supported.
- *
- * @param dev Pointer to the device structure.
- * @param qp_id ID of the Queue Pair.
- * @returns -ENOTSUP. Always.
- */
-static int
-mrvl_crypto_pmd_qp_start(__rte_unused struct rte_cryptodev *dev,
-		__rte_unused uint16_t queue_pair_id)
-{
-	return -ENOTSUP;
-}
-
-/** Stop queue pair (PMD ops callback) - not supported.
- *
- * @param dev Pointer to the device structure.
- * @param qp_id ID of the Queue Pair.
- * @returns -ENOTSUP. Always.
- */
-static int
-mrvl_crypto_pmd_qp_stop(__rte_unused struct rte_cryptodev *dev,
-		__rte_unused uint16_t queue_pair_id)
-{
-	return -ENOTSUP;
-}
-
 /** Return the number of allocated queue pairs (PMD ops callback).
  *
  * @param dev Pointer to the device structure.
@@ -738,8 +712,6 @@ static struct rte_cryptodev_ops mrvl_crypto_pmd_ops = {
 
 		.queue_pair_setup	= mrvl_crypto_pmd_qp_setup,
 		.queue_pair_release	= mrvl_crypto_pmd_qp_release,
-		.queue_pair_start	= mrvl_crypto_pmd_qp_start,
-		.queue_pair_stop	= mrvl_crypto_pmd_qp_stop,
 		.queue_pair_count	= mrvl_crypto_pmd_qp_count,
 
 		.session_get_size	= mrvl_crypto_pmd_session_get_size,

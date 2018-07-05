@@ -509,22 +509,6 @@ qp_setup_cleanup:
 	return -1;
 }
 
-/** Start queue pair */
-static int
-aesni_mb_pmd_qp_start(__rte_unused struct rte_cryptodev *dev,
-		__rte_unused uint16_t queue_pair_id)
-{
-	return -ENOTSUP;
-}
-
-/** Stop queue pair */
-static int
-aesni_mb_pmd_qp_stop(__rte_unused struct rte_cryptodev *dev,
-		__rte_unused uint16_t queue_pair_id)
-{
-	return -ENOTSUP;
-}
-
 /** Return the number of allocated queue pairs */
 static uint32_t
 aesni_mb_pmd_qp_count(struct rte_cryptodev *dev)
@@ -607,8 +591,6 @@ struct rte_cryptodev_ops aesni_mb_pmd_ops = {
 
 		.queue_pair_setup	= aesni_mb_pmd_qp_setup,
 		.queue_pair_release	= aesni_mb_pmd_qp_release,
-		.queue_pair_start	= aesni_mb_pmd_qp_start,
-		.queue_pair_stop	= aesni_mb_pmd_qp_stop,
 		.queue_pair_count	= aesni_mb_pmd_qp_count,
 
 		.session_get_size	= aesni_mb_pmd_session_get_size,

@@ -185,28 +185,6 @@ typedef void (*cryptodev_info_get_t)(struct rte_cryptodev *dev,
 				struct rte_cryptodev_info *dev_info);
 
 /**
- * Start queue pair of a device.
- *
- * @param	dev	Crypto device pointer
- * @param	qp_id	Queue Pair Index
- *
- * @return	Returns 0 on success.
- */
-typedef int (*cryptodev_queue_pair_start_t)(struct rte_cryptodev *dev,
-				uint16_t qp_id);
-
-/**
- * Stop queue pair of a device.
- *
- * @param	dev	Crypto device pointer
- * @param	qp_id	Queue Pair Index
- *
- * @return	Returns 0 on success.
- */
-typedef int (*cryptodev_queue_pair_stop_t)(struct rte_cryptodev *dev,
-				uint16_t qp_id);
-
-/**
  * Setup a queue pair for a device.
  *
  * @param	dev		Crypto device pointer
@@ -344,10 +322,6 @@ struct rte_cryptodev_ops {
 	/**< Set up a device queue pair. */
 	cryptodev_queue_pair_release_t queue_pair_release;
 	/**< Release a queue pair. */
-	cryptodev_queue_pair_start_t queue_pair_start;
-	/**< Start a queue pair. */
-	cryptodev_queue_pair_stop_t queue_pair_stop;
-	/**< Stop a queue pair. */
 	cryptodev_queue_pair_count_t queue_pair_count;
 	/**< Get count of the queue pairs. */
 

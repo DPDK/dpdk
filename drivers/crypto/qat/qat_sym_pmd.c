@@ -202,8 +202,6 @@ static struct rte_cryptodev_ops crypto_qat_ops = {
 		.stats_reset		= qat_sym_stats_reset,
 		.queue_pair_setup	= qat_sym_qp_setup,
 		.queue_pair_release	= qat_sym_qp_release,
-		.queue_pair_start	= NULL,
-		.queue_pair_stop	= NULL,
 		.queue_pair_count	= NULL,
 
 		/* Crypto related operations */

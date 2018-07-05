@@ -87,6 +87,11 @@ API Changes
   Value 0 is accepted in ``sym.max_nb_sessions``, meaning that a device
   supports an unlimited number of sessions.
 
+* cryptodev: Following functions were deprecated and are removed in 18.08:
+
+  - ``rte_cryptodev_queue_pair_start``
+  - ``rte_cryptodev_queue_pair_stop``
+
 * compressdev: Feature flag ``RTE_COMP_FF_MBUF_SCATTER_GATHER`` is
   replaced with the following more explicit flags:
   - ``RTE_COMP_FF_OOP_SGL_IN_SGL_OUT``

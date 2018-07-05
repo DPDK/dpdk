@@ -241,22 +241,6 @@ qp_setup_cleanup:
 	return -1;
 }
 
-/** Start queue pair */
-static int
-null_crypto_pmd_qp_start(__rte_unused struct rte_cryptodev *dev,
-		__rte_unused uint16_t queue_pair_id)
-{
-	return -ENOTSUP;
-}
-
-/** Stop queue pair */
-static int
-null_crypto_pmd_qp_stop(__rte_unused struct rte_cryptodev *dev,
-		__rte_unused uint16_t queue_pair_id)
-{
-	return -ENOTSUP;
-}
-
 /** Return the number of allocated queue pairs */
 static uint32_t
 null_crypto_pmd_qp_count(struct rte_cryptodev *dev)
@@ -337,8 +321,6 @@ struct rte_cryptodev_ops pmd_ops = {
 
 		.queue_pair_setup	= null_crypto_pmd_qp_setup,
 		.queue_pair_release	= null_crypto_pmd_qp_release,
-		.queue_pair_start	= null_crypto_pmd_qp_start,
-		.queue_pair_stop	= null_crypto_pmd_qp_stop,
 		.queue_pair_count	= null_crypto_pmd_qp_count,
 
 		.session_get_size	= null_crypto_pmd_session_get_size,

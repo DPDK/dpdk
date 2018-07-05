@@ -22,8 +22,6 @@ DPDK_16.04 {
 	rte_cryptodev_stop;
 	rte_cryptodev_queue_pair_count;
 	rte_cryptodev_queue_pair_setup;
-	rte_cryptodev_queue_pair_start;
-	rte_cryptodev_queue_pair_stop;
 	rte_crypto_op_pool_create;
 
 	local: *;
