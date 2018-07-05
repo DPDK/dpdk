@@ -1439,6 +1439,12 @@ cryptodevs_init(void)
 		dev_conf.socket_id = rte_cryptodev_socket_id(cdev_id);
 		dev_conf.nb_queue_pairs = qp;
 
+		uint32_t dev_max_sess = cdev_info.sym.max_nb_sessions;
+		if (dev_max_sess < (CDEV_MP_NB_OBJS / 2))
+			rte_exit(EXIT_FAILURE,
+				"Device does not support at least %u "
+				"sessions", CDEV_MP_NB_OBJS / 2);
+
 		if (!socket_ctx[dev_conf.socket_id].session_pool) {
 			char mp_name[RTE_MEMPOOL_NAMESIZE];
 			struct rte_mempool *sess_mp;
