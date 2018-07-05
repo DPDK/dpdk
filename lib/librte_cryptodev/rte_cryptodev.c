@@ -1063,6 +1063,8 @@ rte_cryptodev_sym_session_init(uint8_t dev_id,
 
 	index = dev->driver_id;
 
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->sym_session_configure, -ENOTSUP);
+
 	if (sess->sess_private_data[index] == NULL) {
 		ret = dev->dev_ops->sym_session_configure(dev, xforms,
 							sess, mp);
@@ -1106,6 +1108,8 @@ rte_cryptodev_sym_session_clear(uint8_t dev_id,
 
 	if (dev == NULL || sess == NULL)
 		return -EINVAL;
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->sym_session_clear, -ENOTSUP);
 
 	dev->dev_ops->sym_session_clear(dev, sess);
 
