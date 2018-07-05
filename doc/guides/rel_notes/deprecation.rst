@@ -82,9 +82,6 @@ Deprecation Notices
 * cryptodev: The following changes will be made in the library
   for 18.08:
 
-  - Removal of ``sym`` structure in ``rte_cryptodev_info`` structure,
-    containing fields not relevant anymore since the session mempool
-    is not internal in the crypto device anymore.
   - Functions ``rte_cryptodev_queue_pair_attach_sym_session()`` and
     ``rte_cryptodev_queue_pair_dettach_sym_session()`` will be deprecated from
     18.05 and removed in 18.08, as there are no drivers doing anything useful
