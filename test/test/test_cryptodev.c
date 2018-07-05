@@ -436,7 +436,8 @@ testsuite_setup(void)
 	 * Create mempool with maximum number of sessions * 2,
 	 * to include the session headers
 	 */
-	if (info.sym.max_nb_sessions < MAX_NB_SESSIONS) {
+	if (info.sym.max_nb_sessions != 0 &&
+			info.sym.max_nb_sessions < MAX_NB_SESSIONS) {
 		RTE_LOG(ERR, USER1, "Device does not support "
 				"at least %u sessions\n",
 				MAX_NB_SESSIONS);
@@ -8546,7 +8547,8 @@ test_scheduler_attach_slave_op(void)
 		unsigned int session_size =
 			rte_cryptodev_sym_get_private_session_size(i);
 
-		if (info.sym.max_nb_sessions < MAX_NB_SESSIONS) {
+		if (info.sym.max_nb_sessions != 0 &&
+				info.sym.max_nb_sessions < MAX_NB_SESSIONS) {
 			RTE_LOG(ERR, USER1,
 					"Device does not support "
 					"at least %u sessions\n",

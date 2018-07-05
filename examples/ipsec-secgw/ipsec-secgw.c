@@ -1440,7 +1440,7 @@ cryptodevs_init(void)
 		dev_conf.nb_queue_pairs = qp;
 
 		uint32_t dev_max_sess = cdev_info.sym.max_nb_sessions;
-		if (dev_max_sess < (CDEV_MP_NB_OBJS / 2))
+		if (dev_max_sess != 0 && dev_max_sess < (CDEV_MP_NB_OBJS / 2))
 			rte_exit(EXIT_FAILURE,
 				"Device does not support at least %u "
 				"sessions", CDEV_MP_NB_OBJS / 2);

@@ -349,7 +349,10 @@ struct rte_cryptodev_info {
 
 	struct {
 		unsigned max_nb_sessions;
-		/**< Maximum number of sessions supported by device. */
+		/**< Maximum number of sessions supported by device.
+		 * If 0, the device does not have any limitation in
+		 * number of sessions that can be used.
+		 */
 	} sym;
 };
 

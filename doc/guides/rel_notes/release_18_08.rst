@@ -84,6 +84,8 @@ API Changes
 
 * cryptodev: In struct ``struct rte_cryptodev_info``, field ``rte_pci_device *pci_dev``
   has been replaced with field ``struct rte_device *device``.
+  Value 0 is accepted in ``sym.max_nb_sessions``, meaning that a device
+  supports an unlimited number of sessions.
 
 * compressdev: Feature flag ``RTE_COMP_FF_MBUF_SCATTER_GATHER`` is
   replaced with the following more explicit flags:

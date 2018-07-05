@@ -172,7 +172,7 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs,
 		 * A single session is required per queue pair
 		 * in each device
 		 */
-		if (dev_max_nb_sess < opts->nb_qps) {
+		if (dev_max_nb_sess != 0 && dev_max_nb_sess < opts->nb_qps) {
 			RTE_LOG(ERR, USER1,
 				"Device does not support at least "
 				"%u sessions\n", opts->nb_qps);
