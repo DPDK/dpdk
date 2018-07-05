@@ -1709,6 +1709,7 @@ rte_pmd_i40e_process_ddp_package(uint16_t port, uint8_t *buff,
 				PMD_DRV_LOG(ERR, "Profile of group 0 already exists.");
 			else if (is_exist == 3)
 				PMD_DRV_LOG(ERR, "Profile of different group already exists");
+			i40e_update_customized_info(dev, buff, size, op);
 			rte_free(profile_info_sec);
 			return -EEXIST;
 		}
