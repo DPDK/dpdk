@@ -16,7 +16,22 @@
 
 #define MRVL_MUSDK_DMA_MEMSIZE 41943040
 
+#define MRVL_PMD_MAX_NB_SESS_ARG		("max_nb_sessions")
+#define MRVL_PMD_DEFAULT_MAX_NB_SESSIONS	2048
+
 static uint8_t cryptodev_driver_id;
+
+struct mrvl_pmd_init_params {
+	struct rte_cryptodev_pmd_init_params common;
+	uint32_t max_nb_sessions;
+};
+
+const char *mrvl_pmd_valid_params[] = {
+	RTE_CRYPTODEV_PMD_NAME_ARG,
+	RTE_CRYPTODEV_PMD_MAX_NB_QP_ARG,
+	RTE_CRYPTODEV_PMD_SOCKET_ID_ARG,
+	MRVL_PMD_MAX_NB_SESS_ARG
+};
 
 /**
  * Flag if particular crypto algorithm is supported by PMD/MUSDK.
@@ -691,14 +706,15 @@ mrvl_crypto_pmd_dequeue_burst(void *queue_pair,
 static int
 cryptodev_mrvl_crypto_create(const char *name,
 		struct rte_vdev_device *vdev,
-		struct rte_cryptodev_pmd_init_params *init_params)
+		struct mrvl_pmd_init_params *init_params)
 {
 	struct rte_cryptodev *dev;
 	struct mrvl_crypto_private *internals;
 	struct sam_init_params	sam_params;
 	int ret;
 
-	dev = rte_cryptodev_pmd_create(name, &vdev->device, init_params);
+	dev = rte_cryptodev_pmd_create(name, &vdev->device,
+			&init_params->common);
 	if (dev == NULL) {
 		MRVL_CRYPTO_LOG_ERR("failed to create cryptodev vdev");
 		goto init_error;
@@ -718,7 +734,7 @@ cryptodev_mrvl_crypto_create(const char *name,
 	/* Set vector instructions mode supported */
 	internals = dev->data->dev_private;
 
-	internals->max_nb_qpairs = init_params->max_nb_queue_pairs;
+	internals->max_nb_qpairs = init_params->common.max_nb_queue_pairs;
 	internals->max_nb_sessions = init_params->max_nb_sessions;
 
 	/*
@@ -740,10 +756,97 @@ cryptodev_mrvl_crypto_create(const char *name,
 
 init_error:
 	MRVL_CRYPTO_LOG_ERR(
-		"driver %s: %s failed", init_params->name, __func__);
+		"driver %s: %s failed", init_params->common.name, __func__);
 
 	cryptodev_mrvl_crypto_uninit(vdev);
 	return -EFAULT;
+}
+
+/** Parse integer from integer argument */
+static int
+parse_integer_arg(const char *key __rte_unused,
+		const char *value, void *extra_args)
+{
+	int *i = (int *) extra_args;
+
+	*i = atoi(value);
+	if (*i < 0) {
+		MRVL_CRYPTO_LOG_ERR("Argument has to be positive.\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/** Parse name */
+static int
+parse_name_arg(const char *key __rte_unused,
+		const char *value, void *extra_args)
+{
+	struct rte_cryptodev_pmd_init_params *params = extra_args;
+
+	if (strlen(value) >= RTE_CRYPTODEV_NAME_MAX_LEN - 1) {
+		MRVL_CRYPTO_LOG_ERR("Invalid name %s, should be less than "
+				"%u bytes.\n", value,
+				RTE_CRYPTODEV_NAME_MAX_LEN - 1);
+		return -EINVAL;
+	}
+
+	strncpy(params->name, value, RTE_CRYPTODEV_NAME_MAX_LEN);
+
+	return 0;
+}
+
+static int
+mrvl_pmd_parse_input_args(struct mrvl_pmd_init_params *params,
+			 const char *input_args)
+{
+	struct rte_kvargs *kvlist = NULL;
+	int ret = 0;
+
+	if (params == NULL)
+		return -EINVAL;
+
+	if (input_args) {
+		kvlist = rte_kvargs_parse(input_args,
+					  mrvl_pmd_valid_params);
+		if (kvlist == NULL)
+			return -1;
+
+		/* Common VDEV parameters */
+		ret = rte_kvargs_process(kvlist,
+					 RTE_CRYPTODEV_PMD_MAX_NB_QP_ARG,
+					 &parse_integer_arg,
+					 &params->common.max_nb_queue_pairs);
+		if (ret < 0)
+			goto free_kvlist;
+
+		ret = rte_kvargs_process(kvlist,
+					 RTE_CRYPTODEV_PMD_SOCKET_ID_ARG,
+					 &parse_integer_arg,
+					 &params->common.socket_id);
+		if (ret < 0)
+			goto free_kvlist;
+
+		ret = rte_kvargs_process(kvlist,
+					 RTE_CRYPTODEV_PMD_NAME_ARG,
+					 &parse_name_arg,
+					 &params->common);
+		if (ret < 0)
+			goto free_kvlist;
+
+		ret = rte_kvargs_process(kvlist,
+					 MRVL_PMD_MAX_NB_SESS_ARG,
+					 &parse_integer_arg,
+					 params);
+		if (ret < 0)
+			goto free_kvlist;
+
+	}
+
+free_kvlist:
+	rte_kvargs_free(kvlist);
+	return ret;
 }
 
 /**
@@ -755,7 +858,18 @@ init_error:
 static int
 cryptodev_mrvl_crypto_init(struct rte_vdev_device *vdev)
 {
-	struct rte_cryptodev_pmd_init_params init_params = { };
+	struct mrvl_pmd_init_params init_params = {
+		.common = {
+			.name = "",
+			.private_data_size =
+				sizeof(struct mrvl_crypto_private),
+			.max_nb_queue_pairs =
+				sam_get_num_inst() * SAM_HW_RING_NUM,
+			.socket_id = rte_socket_id()
+		},
+		.max_nb_sessions = MRVL_PMD_DEFAULT_MAX_NB_SESSIONS
+	};
+
 	const char *name, *args;
 	int ret;
 
@@ -764,13 +878,7 @@ cryptodev_mrvl_crypto_init(struct rte_vdev_device *vdev)
 		return -EINVAL;
 	args = rte_vdev_device_args(vdev);
 
-	init_params.private_data_size = sizeof(struct mrvl_crypto_private);
-	init_params.max_nb_queue_pairs = sam_get_num_inst() * SAM_HW_RING_NUM;
-	init_params.max_nb_sessions =
-		RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_SESSIONS;
-	init_params.socket_id = rte_socket_id();
-
-	ret = rte_cryptodev_pmd_parse_input_args(&init_params, args);
+	ret = mrvl_pmd_parse_input_args(&init_params, args);
 	if (ret) {
 		RTE_LOG(ERR, PMD,
 			"Failed to parse initialisation arguments[%s]\n",
