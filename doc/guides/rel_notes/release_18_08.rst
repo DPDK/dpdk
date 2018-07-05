@@ -100,6 +100,14 @@ API Changes
   - ``rte_cryptodev_get_private_session_size`` is replaced with
     ``rte_cryptodev_sym_get_private_session_size``
 
+* cryptodev: Feature flag ``RTE_CRYPTODEV_FF_MBUF_SCATTER_GATHER`` is
+  replaced with the following more explicit flags:
+  - ``RTE_CRYPTODEV_FF_IN_PLACE_SGL``
+  - ``RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT``
+  - ``RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT``
+  - ``RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT``
+  - ``RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT``
+
 * compressdev: Feature flag ``RTE_COMP_FF_MBUF_SCATTER_GATHER`` is
   replaced with the following more explicit flags:
   - ``RTE_COMP_FF_OOP_SGL_IN_SGL_OUT``

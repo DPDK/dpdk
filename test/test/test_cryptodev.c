@@ -3160,8 +3160,11 @@ test_kasumi_encryption_sgl(const struct kasumi_test_data *tdata)
 	struct rte_cryptodev_info dev_info;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
-	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_MBUF_SCATTER_GATHER)) {
-		printf("Device doesn't support scatter-gather. "
+
+	uint64_t feat_flags = dev_info.feature_flags;
+
+	if (!(feat_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)) {
+		printf("Device doesn't support in-place scatter-gather. "
 				"Test Skipped.\n");
 		return 0;
 	}
@@ -3308,8 +3311,11 @@ test_kasumi_encryption_oop_sgl(const struct kasumi_test_data *tdata)
 	struct rte_cryptodev_info dev_info;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
-	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_MBUF_SCATTER_GATHER)) {
-		printf("Device doesn't support scatter-gather. "
+
+	uint64_t feat_flags = dev_info.feature_flags;
+	if (!(feat_flags & RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT)) {
+		printf("Device doesn't support out-of-place scatter-gather "
+				"in both input and output mbufs. "
 				"Test Skipped.\n");
 		return 0;
 	}
@@ -3659,8 +3665,12 @@ test_snow3g_encryption_oop_sgl(const struct snow3g_test_data *tdata)
 	struct rte_cryptodev_info dev_info;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
-	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_MBUF_SCATTER_GATHER)) {
-		printf("Device doesn't support scatter-gather. "
+
+	uint64_t feat_flags = dev_info.feature_flags;
+
+	if (!(feat_flags & RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT)) {
+		printf("Device doesn't support out-of-place scatter-gather "
+				"in both input and output mbufs. "
 				"Test Skipped.\n");
 		return 0;
 	}
@@ -4493,10 +4503,13 @@ test_zuc_encryption_sgl(const struct wireless_test_data *tdata)
 		return -ENOTSUP;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
-	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_MBUF_SCATTER_GATHER)) {
-		printf("Device doesn't support scatter-gather. "
+
+	uint64_t feat_flags = dev_info.feature_flags;
+
+	if (!(feat_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)) {
+		printf("Device doesn't support in-place scatter-gather. "
 				"Test Skipped.\n");
-		return -ENOTSUP;
+		return 0;
 	}
 
 	plaintext_len = ceil_byte_length(tdata->plaintext.len);

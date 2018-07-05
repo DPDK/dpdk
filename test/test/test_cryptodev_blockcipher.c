@@ -77,12 +77,25 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 
 	if (t->feature_mask & BLOCKCIPHER_TEST_FEATURE_SG) {
 		rte_cryptodev_info_get(dev_id, &dev_info);
-		if (!(dev_info.feature_flags &
-				RTE_CRYPTODEV_FF_MBUF_SCATTER_GATHER)) {
-			printf("Device doesn't support scatter-gather. "
+		uint64_t feat_flags = dev_info.feature_flags;
+		uint64_t oop_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT;
+
+		if (t->feature_mask && BLOCKCIPHER_TEST_FEATURE_OOP) {
+			if (!(feat_flags & oop_flag)) {
+				printf("Device doesn't support out-of-place "
+					"scatter-gather in input mbuf. "
 					"Test Skipped.\n");
-			return 0;
+				return 0;
+			}
+		} else {
+			if (!(feat_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)) {
+				printf("Device doesn't support in-place "
+					"scatter-gather mbufs. "
+					"Test Skipped.\n");
+				return 0;
+			}
 		}
+
 		nb_segs = 3;
 	}
 

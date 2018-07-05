@@ -292,31 +292,50 @@ rte_cryptodev_get_aead_algo_enum(enum rte_crypto_aead_algorithm *algo_enum,
  *
  * Keep these flags synchronised with rte_cryptodev_get_feature_name()
  */
-#define	RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO	(1ULL << 0)
+#define	RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO		(1ULL << 0)
 /**< Symmetric crypto operations are supported */
-#define	RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO	(1ULL << 1)
+#define	RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO		(1ULL << 1)
 /**< Asymmetric crypto operations are supported */
-#define	RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING	(1ULL << 2)
+#define	RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING		(1ULL << 2)
 /**< Chaining symmetric crypto operations are supported */
-#define	RTE_CRYPTODEV_FF_CPU_SSE		(1ULL << 3)
+#define	RTE_CRYPTODEV_FF_CPU_SSE			(1ULL << 3)
 /**< Utilises CPU SIMD SSE instructions */
-#define	RTE_CRYPTODEV_FF_CPU_AVX		(1ULL << 4)
+#define	RTE_CRYPTODEV_FF_CPU_AVX			(1ULL << 4)
 /**< Utilises CPU SIMD AVX instructions */
-#define	RTE_CRYPTODEV_FF_CPU_AVX2		(1ULL << 5)
+#define	RTE_CRYPTODEV_FF_CPU_AVX2			(1ULL << 5)
 /**< Utilises CPU SIMD AVX2 instructions */
-#define	RTE_CRYPTODEV_FF_CPU_AESNI		(1ULL << 6)
+#define	RTE_CRYPTODEV_FF_CPU_AESNI			(1ULL << 6)
 /**< Utilises CPU AES-NI instructions */
-#define	RTE_CRYPTODEV_FF_HW_ACCELERATED		(1ULL << 7)
-/**< Operations are off-loaded to an external hardware accelerator */
-#define	RTE_CRYPTODEV_FF_CPU_AVX512		(1ULL << 8)
+#define	RTE_CRYPTODEV_FF_HW_ACCELERATED			(1ULL << 7)
+/**< Operations are off-loaded to an
+ * external hardware accelerator
+ */
+#define	RTE_CRYPTODEV_FF_CPU_AVX512			(1ULL << 8)
 /**< Utilises CPU SIMD AVX512 instructions */
-#define	RTE_CRYPTODEV_FF_MBUF_SCATTER_GATHER	(1ULL << 9)
-/**< Scatter-gather mbufs are supported */
-#define	RTE_CRYPTODEV_FF_CPU_NEON		(1ULL << 10)
+#define	RTE_CRYPTODEV_FF_IN_PLACE_SGL			(1ULL << 9)
+/**< In-place Scatter-gather (SGL) buffers, with multiple segments,
+ * are supported
+ */
+#define RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT		(1ULL << 10)
+/**< Out-of-place Scatter-gather (SGL) buffers are
+ * supported in input and output
+ */
+#define RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT		(1ULL << 11)
+/**< Out-of-place Scatter-gather (SGL) buffers are supported
+ * in input, combined with linear buffers (LB), with a
+ * single segment in output
+ */
+#define RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT		(1ULL << 12)
+/**< Out-of-place Scatter-gather (SGL) buffers are supported
+ * in output, combined with linear buffers (LB) in input
+ */
+#define RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT		(1ULL << 13)
+/**< Out-of-place linear buffers (LB) are supported in input and output */
+#define	RTE_CRYPTODEV_FF_CPU_NEON			(1ULL << 14)
 /**< Utilises CPU NEON instructions */
-#define	RTE_CRYPTODEV_FF_CPU_ARM_CE		(1ULL << 11)
+#define	RTE_CRYPTODEV_FF_CPU_ARM_CE			(1ULL << 15)
 /**< Utilises ARM CPU Cryptographic Extensions */
-#define	RTE_CRYPTODEV_FF_SECURITY		(1ULL << 12)
+#define	RTE_CRYPTODEV_FF_SECURITY			(1ULL << 16)
 /**< Support Security Protocol Processing */
 
 
