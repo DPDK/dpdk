@@ -520,9 +520,7 @@ static struct rte_cryptodev_ops virtio_crypto_dev_ops = {
 	/* Crypto related operations */
 	.session_get_size	= virtio_crypto_sym_get_session_private_size,
 	.session_configure	= virtio_crypto_sym_configure_session,
-	.session_clear		= virtio_crypto_sym_clear_session,
-	.qp_attach_session = NULL,
-	.qp_detach_session = NULL
+	.session_clear		= virtio_crypto_sym_clear_session
 };
 
 static void

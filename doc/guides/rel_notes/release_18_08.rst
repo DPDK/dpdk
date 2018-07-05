@@ -91,6 +91,8 @@ API Changes
 
   - ``rte_cryptodev_queue_pair_start``
   - ``rte_cryptodev_queue_pair_stop``
+  - ``rte_cryptodev_queue_pair_attach_sym_session``
+  - ``rte_cryptodev_queue_pair_detach_sym_session``
 
 * cryptodev: Following functions were deprecated and are replaced by
   other functions in 18.08:

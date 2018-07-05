@@ -50,8 +50,6 @@ DPDK_17.05 {
 
 	rte_cryptodev_get_auth_algo_enum;
 	rte_cryptodev_get_cipher_algo_enum;
-	rte_cryptodev_queue_pair_attach_sym_session;
-	rte_cryptodev_queue_pair_detach_sym_session;
 
 } DPDK_17.02;
 

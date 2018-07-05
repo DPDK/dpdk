@@ -1735,34 +1735,6 @@ dpaa_sec_attach_sess_q(struct dpaa_sec_qp *qp, dpaa_sec_session *sess)
 }
 
 static int
-dpaa_sec_qp_attach_sess(struct rte_cryptodev *dev __rte_unused,
-			uint16_t qp_id __rte_unused,
-			void *ses __rte_unused)
-{
-	PMD_INIT_FUNC_TRACE();
-	return 0;
-}
-
-static int
-dpaa_sec_qp_detach_sess(struct rte_cryptodev *dev,
-			uint16_t qp_id  __rte_unused,
-			void *ses)
-{
-	dpaa_sec_session *sess = ses;
-	struct dpaa_sec_dev_private *qi = dev->data->dev_private;
-
-	PMD_INIT_FUNC_TRACE();
-
-	if (sess->inq)
-		dpaa_sec_detach_rxq(qi, sess->inq);
-	sess->inq = NULL;
-
-	sess->qp = NULL;
-
-	return 0;
-}
-
-static int
 dpaa_sec_set_session_parameters(struct rte_cryptodev *dev,
 			    struct rte_crypto_sym_xform *xform,	void *sess)
 {
@@ -2210,9 +2182,7 @@ static struct rte_cryptodev_ops crypto_ops = {
 	.queue_pair_count     = dpaa_sec_queue_pair_count,
 	.session_get_size     = dpaa_sec_session_get_size,
 	.session_configure    = dpaa_sec_session_configure,
-	.session_clear        = dpaa_sec_session_clear,
-	.qp_attach_session    = dpaa_sec_qp_attach_sess,
-	.qp_detach_session    = dpaa_sec_qp_detach_sess,
+	.session_clear        = dpaa_sec_session_clear
 };
 
 static const struct rte_security_capability *
