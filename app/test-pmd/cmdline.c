@@ -17059,7 +17059,7 @@ cmdline_parse_token_string_t cmd_config_per_port_tx_offload_result_tx_offload =
 cmdline_parse_token_string_t cmd_config_per_port_tx_offload_result_offload =
 	TOKEN_STRING_INITIALIZER
 		(struct cmd_config_per_port_tx_offload_result,
-		 offload, "vlan_insert#ipv4_cksum#udp_cksum#udp_cksum#"
+		 offload, "vlan_insert#ipv4_cksum#udp_cksum#tcp_cksum#"
 			  "sctp_cksum#tcp_tso#udp_tso#outer_ipv4_cksum#"
 			  "qinq_insert#vxlan_tnl_tso#gre_tnl_tso#"
 			  "ipip_tnl_tso#geneve_tnl_tso#macsec_insert#"
@@ -17140,7 +17140,7 @@ cmdline_parse_inst_t cmd_config_per_port_tx_offload = {
 	.f = cmd_config_per_port_tx_offload_parsed,
 	.data = NULL,
 	.help_str = "port config <port_id> tx_offload "
-		    "vlan_insert|ipv4_cksum|udp_cksum|udp_cksum|"
+		    "vlan_insert|ipv4_cksum|udp_cksum|tcp_cksum|"
 		    "sctp_cksum|tcp_tso|udp_tso|outer_ipv4_cksum|"
 		    "qinq_insert|vxlan_tnl_tso|gre_tnl_tso|"
 		    "ipip_tnl_tso|geneve_tnl_tso|macsec_insert|"
@@ -17191,7 +17191,7 @@ cmdline_parse_token_string_t cmd_config_per_queue_tx_offload_result_txoffload =
 cmdline_parse_token_string_t cmd_config_per_queue_tx_offload_result_offload =
 	TOKEN_STRING_INITIALIZER
 		(struct cmd_config_per_queue_tx_offload_result,
-		 offload, "vlan_insert#ipv4_cksum#udp_cksum#udp_cksum#"
+		 offload, "vlan_insert#ipv4_cksum#udp_cksum#tcp_cksum#"
 			  "sctp_cksum#tcp_tso#udp_tso#outer_ipv4_cksum#"
 			  "qinq_insert#vxlan_tnl_tso#gre_tnl_tso#"
 			  "ipip_tnl_tso#geneve_tnl_tso#macsec_insert#"
@@ -17244,7 +17244,7 @@ cmdline_parse_inst_t cmd_config_per_queue_tx_offload = {
 	.f = cmd_config_per_queue_tx_offload_parsed,
 	.data = NULL,
 	.help_str = "port <port_id> txq <queue_id> tx_offload "
-		    "vlan_insert|ipv4_cksum|udp_cksum|udp_cksum|"
+		    "vlan_insert|ipv4_cksum|udp_cksum|tcp_cksum|"
 		    "sctp_cksum|tcp_tso|udp_tso|outer_ipv4_cksum|"
 		    "qinq_insert|vxlan_tnl_tso|gre_tnl_tso|"
 		    "ipip_tnl_tso|geneve_tnl_tso|macsec_insert|"
