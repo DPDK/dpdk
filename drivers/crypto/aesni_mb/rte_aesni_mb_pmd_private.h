@@ -113,8 +113,6 @@ struct aesni_mb_private {
 	/**< CPU vector instruction set mode */
 	unsigned max_nb_queue_pairs;
 	/**< Max number of queue pairs supported by device */
-	unsigned max_nb_sessions;
-	/**< Max number of sessions supported by device */
 };
 
 /** AESNI Multi buffer queue pair */

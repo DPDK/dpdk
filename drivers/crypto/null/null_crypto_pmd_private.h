@@ -19,7 +19,6 @@ int null_logtype_driver;
 /** private data structure for each NULL crypto device */
 struct null_crypto_private {
 	unsigned max_nb_qpairs;		/**< Max number of queue pairs */
-	unsigned max_nb_sessions;	/**< Max number of sessions */
 };
 
 /** NULL crypto queue pair */

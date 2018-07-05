@@ -41,7 +41,7 @@ From the command line using the --vdev EAL option
 
 .. code-block:: console
 
-   --vdev  'crypto_aesni_mb0,max_nb_queue_pairs=2,max_nb_sessions=1024,socket_id=0'
+   --vdev  'crypto_aesni_mb0,max_nb_queue_pairs=2,socket_id=0'
 
 .. Note::
 
@@ -57,12 +57,11 @@ Our using the rte_vdev_init API within the application code.
 .. code-block:: c
 
    rte_vdev_init("crypto_aesni_mb",
-                     "max_nb_queue_pairs=2,max_nb_sessions=1024,socket_id=0")
+                     "max_nb_queue_pairs=2,socket_id=0")
 
 All virtual Crypto devices support the following initialization parameters:
 
 * ``max_nb_queue_pairs`` - maximum number of queue pairs supported by the device.
-* ``max_nb_sessions`` - maximum number of sessions supported by the device
 * ``socket_id`` - socket on which to allocate the device resources on.
 
 

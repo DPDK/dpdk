@@ -24,8 +24,6 @@ int zuc_logtype_driver;
 struct zuc_private {
 	unsigned max_nb_queue_pairs;
 	/**< Max number of queue pairs supported by device */
-	unsigned max_nb_sessions;
-	/**< Max number of sessions supported by device */
 };
 
 /** ZUC buffer queue pair */

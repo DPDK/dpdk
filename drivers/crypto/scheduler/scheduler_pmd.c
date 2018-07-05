@@ -31,7 +31,6 @@ struct scheduler_init_params {
 #define RTE_CRYPTODEV_VDEV_MODE			("mode")
 #define RTE_CRYPTODEV_VDEV_ORDERING		("ordering")
 #define RTE_CRYPTODEV_VDEV_MAX_NB_QP_ARG	("max_nb_queue_pairs")
-#define RTE_CRYPTODEV_VDEV_MAX_NB_SESS_ARG	("max_nb_sessions")
 #define RTE_CRYPTODEV_VDEV_SOCKET_ID		("socket_id")
 #define RTE_CRYPTODEV_VDEV_COREMASK		("coremask")
 #define RTE_CRYPTODEV_VDEV_CORELIST		("corelist")
@@ -42,7 +41,6 @@ const char *scheduler_valid_params[] = {
 	RTE_CRYPTODEV_VDEV_MODE,
 	RTE_CRYPTODEV_VDEV_ORDERING,
 	RTE_CRYPTODEV_VDEV_MAX_NB_QP_ARG,
-	RTE_CRYPTODEV_VDEV_MAX_NB_SESS_ARG,
 	RTE_CRYPTODEV_VDEV_SOCKET_ID,
 	RTE_CRYPTODEV_VDEV_COREMASK,
 	RTE_CRYPTODEV_VDEV_CORELIST
@@ -406,13 +404,6 @@ scheduler_parse_init_params(struct scheduler_init_params *params,
 		if (ret < 0)
 			goto free_kvlist;
 
-		ret = rte_kvargs_process(kvlist,
-				RTE_CRYPTODEV_VDEV_MAX_NB_SESS_ARG,
-				&parse_integer_arg,
-				&params->def_p.max_nb_sessions);
-		if (ret < 0)
-			goto free_kvlist;
-
 		ret = rte_kvargs_process(kvlist, RTE_CRYPTODEV_VDEV_SOCKET_ID,
 				&parse_integer_arg,
 				&params->def_p.socket_id);
@@ -466,8 +457,7 @@ cryptodev_scheduler_probe(struct rte_vdev_device *vdev)
 			"",
 			sizeof(struct scheduler_ctx),
 			rte_socket_id(),
-			RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_QUEUE_PAIRS,
-			RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_SESSIONS
+			RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_QUEUE_PAIRS
 		},
 		.nb_slaves = 0,
 		.mode = CDEV_SCHED_MODE_NOT_SET,
@@ -500,7 +490,6 @@ RTE_PMD_REGISTER_VDEV(CRYPTODEV_NAME_SCHEDULER_PMD,
 	cryptodev_scheduler_pmd_drv);
 RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_SCHEDULER_PMD,
 	"max_nb_queue_pairs=<int> "
-	"max_nb_sessions=<int> "
 	"socket_id=<int> "
 	"slave=<name>");
 RTE_PMD_REGISTER_CRYPTO_DRIVER(scheduler_crypto_drv,

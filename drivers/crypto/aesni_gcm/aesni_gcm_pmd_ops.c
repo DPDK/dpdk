@@ -143,7 +143,8 @@ aesni_gcm_pmd_info_get(struct rte_cryptodev *dev,
 		dev_info->capabilities = aesni_gcm_pmd_capabilities;
 
 		dev_info->max_nb_queue_pairs = internals->max_nb_queue_pairs;
-		dev_info->sym.max_nb_sessions = internals->max_nb_sessions;
+		/* No limit of number of sessions */
+		dev_info->sym.max_nb_sessions = 0;
 	}
 }
 

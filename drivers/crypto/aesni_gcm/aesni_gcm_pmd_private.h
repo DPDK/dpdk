@@ -26,8 +26,6 @@ struct aesni_gcm_private {
 	/**< Vector mode */
 	unsigned max_nb_queue_pairs;
 	/**< Max number of queue pairs supported by device */
-	unsigned max_nb_sessions;
-	/**< Max number of sessions supported by device */
 };
 
 struct aesni_gcm_qp {

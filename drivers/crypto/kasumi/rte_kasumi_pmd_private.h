@@ -24,8 +24,6 @@ int kasumi_logtype_driver;
 struct kasumi_private {
 	unsigned max_nb_queue_pairs;
 	/**< Max number of queue pairs supported by device */
-	unsigned max_nb_sessions;
-	/**< Max number of sessions supported by device */
 };
 
 /** KASUMI buffer queue pair */

@@ -32,18 +32,15 @@ extern "C" {
 
 
 #define RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_QUEUE_PAIRS	8
-#define RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_SESSIONS	2048
 
 #define RTE_CRYPTODEV_PMD_NAME_ARG			("name")
 #define RTE_CRYPTODEV_PMD_MAX_NB_QP_ARG			("max_nb_queue_pairs")
-#define RTE_CRYPTODEV_PMD_MAX_NB_SESS_ARG		("max_nb_sessions")
 #define RTE_CRYPTODEV_PMD_SOCKET_ID_ARG			("socket_id")
 
 
 static const char * const cryptodev_pmd_valid_params[] = {
 	RTE_CRYPTODEV_PMD_NAME_ARG,
 	RTE_CRYPTODEV_PMD_MAX_NB_QP_ARG,
-	RTE_CRYPTODEV_PMD_MAX_NB_SESS_ARG,
 	RTE_CRYPTODEV_PMD_SOCKET_ID_ARG
 };
 
@@ -56,7 +53,6 @@ struct rte_cryptodev_pmd_init_params {
 	size_t private_data_size;
 	int socket_id;
 	unsigned int max_nb_queue_pairs;
-	unsigned int max_nb_sessions;
 };
 
 /** Global structure used for maintaining state of allocated crypto devices */

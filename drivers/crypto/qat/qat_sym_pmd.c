@@ -72,8 +72,9 @@ static void qat_sym_dev_info_get(struct rte_cryptodev *dev,
 			qat_qps_per_service(sym_hw_qps, QAT_SERVICE_SYMMETRIC);
 		info->feature_flags = dev->feature_flags;
 		info->capabilities = internals->qat_dev_capabilities;
-		info->sym.max_nb_sessions = QAT_SYM_PMD_MAX_NB_SESSIONS;
 		info->driver_id = cryptodev_qat_driver_id;
+		/* No limit of number of sessions */
+		info->sym.max_nb_sessions = 0;
 	}
 }
 
@@ -243,8 +244,7 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev)
 	struct rte_cryptodev_pmd_init_params init_params = {
 			.name = "",
 			.socket_id = qat_pci_dev->pci_dev->device.numa_node,
-			.private_data_size = sizeof(struct qat_sym_dev_private),
-			.max_nb_sessions = QAT_SYM_PMD_MAX_NB_SESSIONS
+			.private_data_size = sizeof(struct qat_sym_dev_private)
 	};
 	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	struct rte_cryptodev *cryptodev;

@@ -24,8 +24,6 @@ int snow3g_logtype_driver;
 struct snow3g_private {
 	unsigned max_nb_queue_pairs;
 	/**< Max number of queue pairs supported by device */
-	unsigned max_nb_sessions;
-	/**< Max number of sessions supported by device */
 };
 
 /** SNOW 3G buffer queue pair */

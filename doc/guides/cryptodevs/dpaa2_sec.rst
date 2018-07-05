@@ -199,11 +199,6 @@ Please note that enabling debugging options may affect system performance.
   By default it is only enabled in defconfig_arm64-dpaa2-* config.
   Toggle compilation of the ``librte_pmd_dpaa2_sec`` driver.
 
-* ``CONFIG_RTE_DPAA2_SEC_PMD_MAX_NB_SESSIONS``
-  By default it is set as 2048 in defconfig_arm64-dpaa2-* config.
-  It indicates Number of sessions to create in the session memory pool
-  on a single DPAA2 SEC device.
-
 Installations
 -------------
 To compile the DPAA2_SEC PMD for Linux arm64 gcc target, run the

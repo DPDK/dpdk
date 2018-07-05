@@ -26,6 +26,7 @@
 #define CTX_POOL_NUM_BUFS	32000
 #define CTX_POOL_BUF_SIZE	sizeof(struct dpaa_sec_op_ctx)
 #define CTX_POOL_CACHE_SIZE	512
+#define RTE_DPAA_SEC_PMD_MAX_NB_SESSIONS 2048
 
 #define DIR_ENC                 1
 #define DIR_DEC                 0

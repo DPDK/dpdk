@@ -23,8 +23,6 @@ struct dpaa2_sec_dev_private {
 	uint16_t token; /**< Token required by DPxxx objects */
 	unsigned int max_nb_queue_pairs;
 	/**< Max number of queue pairs supported by device */
-	unsigned int max_nb_sessions;
-	/**< Max number of sessions supported by device */
 };
 
 struct dpaa2_sec_qp {

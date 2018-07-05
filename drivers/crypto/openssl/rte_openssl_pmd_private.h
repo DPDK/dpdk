@@ -49,8 +49,6 @@ enum openssl_auth_mode {
 struct openssl_private {
 	unsigned int max_nb_qpairs;
 	/**< Max number of queue pairs */
-	unsigned int max_nb_sessions;
-	/**< Max number of sessions */
 };
 
 /** OPENSSL crypto queue pair */

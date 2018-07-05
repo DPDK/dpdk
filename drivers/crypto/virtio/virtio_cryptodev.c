@@ -1417,8 +1417,8 @@ virtio_crypto_dev_info_get(struct rte_cryptodev *dev,
 		info->driver_id = cryptodev_virtio_driver_id;
 		info->feature_flags = dev->feature_flags;
 		info->max_nb_queue_pairs = hw->max_dataqueues;
-		info->sym.max_nb_sessions =
-			RTE_VIRTIO_CRYPTO_PMD_MAX_NB_SESSIONS;
+		/* No limit of number of sessions */
+		info->sym.max_nb_sessions = 0;
 		info->capabilities = hw->virtio_dev_capabilities;
 	}
 }
@@ -1431,8 +1431,7 @@ crypto_virtio_pci_probe(
 	struct rte_cryptodev_pmd_init_params init_params = {
 		.name = "",
 		.socket_id = rte_socket_id(),
-		.private_data_size = sizeof(struct virtio_crypto_hw),
-		.max_nb_sessions = RTE_VIRTIO_CRYPTO_PMD_MAX_NB_SESSIONS
+		.private_data_size = sizeof(struct virtio_crypto_hw)
 	};
 	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
 

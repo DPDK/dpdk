@@ -40,7 +40,6 @@
 /* private data structure for each CCP crypto device */
 struct ccp_private {
 	unsigned int max_nb_qpairs;	/**< Max number of queue pairs */
-	unsigned int max_nb_sessions;	/**< Max number of sessions */
 	uint8_t crypto_num_dev;		/**< Number of working crypto devices */
 	bool auth_opt;			/**< Authentication offload option */
 	struct ccp_device *last_dev;	/**< Last working crypto device */

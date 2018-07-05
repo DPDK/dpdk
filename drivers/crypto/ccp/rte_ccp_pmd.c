@@ -30,14 +30,12 @@ struct ccp_pmd_init_params {
 #define CCP_CRYPTODEV_PARAM_NAME		("name")
 #define CCP_CRYPTODEV_PARAM_SOCKET_ID		("socket_id")
 #define CCP_CRYPTODEV_PARAM_MAX_NB_QP		("max_nb_queue_pairs")
-#define CCP_CRYPTODEV_PARAM_MAX_NB_SESS		("max_nb_sessions")
 #define CCP_CRYPTODEV_PARAM_AUTH_OPT		("ccp_auth_opt")
 
 const char *ccp_pmd_valid_params[] = {
 	CCP_CRYPTODEV_PARAM_NAME,
 	CCP_CRYPTODEV_PARAM_SOCKET_ID,
 	CCP_CRYPTODEV_PARAM_MAX_NB_QP,
-	CCP_CRYPTODEV_PARAM_MAX_NB_SESS,
 	CCP_CRYPTODEV_PARAM_AUTH_OPT,
 };
 
@@ -121,13 +119,6 @@ ccp_pmd_parse_input_args(struct ccp_pmd_init_params *params,
 					 CCP_CRYPTODEV_PARAM_MAX_NB_QP,
 					 &parse_integer_arg,
 					 &params->def_p.max_nb_queue_pairs);
-		if (ret < 0)
-			goto free_kvlist;
-
-		ret = rte_kvargs_process(kvlist,
-					 CCP_CRYPTODEV_PARAM_MAX_NB_SESS,
-					 &parse_integer_arg,
-					 &params->def_p.max_nb_sessions);
 		if (ret < 0)
 			goto free_kvlist;
 
@@ -334,7 +325,6 @@ cryptodev_ccp_create(const char *name,
 	internals = dev->data->dev_private;
 
 	internals->max_nb_qpairs = init_params->def_p.max_nb_queue_pairs;
-	internals->max_nb_sessions = init_params->def_p.max_nb_sessions;
 	internals->auth_opt = init_params->auth_opt;
 	internals->crypto_num_dev = cryptodev_cnt;
 
@@ -359,8 +349,7 @@ cryptodev_ccp_probe(struct rte_vdev_device *vdev)
 			"",
 			sizeof(struct ccp_private),
 			rte_socket_id(),
-			CCP_PMD_MAX_QUEUE_PAIRS,
-			RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_SESSIONS
+			CCP_PMD_MAX_QUEUE_PAIRS
 		},
 		.auth_opt = CCP_PMD_AUTH_OPT_CCP,
 	};
@@ -382,8 +371,6 @@ cryptodev_ccp_probe(struct rte_vdev_device *vdev)
 		init_params.def_p.socket_id);
 	RTE_LOG(INFO, PMD, "Max number of queue pairs = %d\n",
 		init_params.def_p.max_nb_queue_pairs);
-	RTE_LOG(INFO, PMD, "Max number of sessions = %d\n",
-		init_params.def_p.max_nb_sessions);
 	RTE_LOG(INFO, PMD, "Authentication offload to %s\n",
 		((init_params.auth_opt == 0) ? "CCP" : "CPU"));
 
@@ -404,7 +391,6 @@ static struct cryptodev_driver ccp_crypto_drv;
 RTE_PMD_REGISTER_VDEV(CRYPTODEV_NAME_CCP_PMD, cryptodev_ccp_pmd_drv);
 RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_CCP_PMD,
 	"max_nb_queue_pairs=<int> "
-	"max_nb_sessions=<int> "
 	"socket_id=<int> "
 	"ccp_auth_opt=<int>");
 RTE_PMD_REGISTER_CRYPTO_DRIVER(ccp_crypto_drv, cryptodev_ccp_pmd_drv.driver,

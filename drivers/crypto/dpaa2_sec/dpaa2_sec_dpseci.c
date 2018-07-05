@@ -2626,7 +2626,8 @@ dpaa2_sec_dev_infos_get(struct rte_cryptodev *dev,
 		info->max_nb_queue_pairs = internals->max_nb_queue_pairs;
 		info->feature_flags = dev->feature_flags;
 		info->capabilities = dpaa2_sec_capabilities;
-		info->sym.max_nb_sessions = internals->max_nb_sessions;
+		/* No limit of number of sessions */
+		info->sym.max_nb_sessions = 0;
 		info->driver_id = cryptodev_driver_id;
 	}
 }
@@ -2786,7 +2787,6 @@ dpaa2_sec_dev_init(struct rte_cryptodev *cryptodev)
 			RTE_CRYPTODEV_FF_MBUF_SCATTER_GATHER;
 
 	internals = cryptodev->data->dev_private;
-	internals->max_nb_sessions = RTE_DPAA2_SEC_PMD_MAX_NB_SESSIONS;
 
 	/*
 	 * For secondary processes, we don't initialise any further as primary

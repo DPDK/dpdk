@@ -321,8 +321,7 @@ scheduler_pmd_info_get(struct rte_cryptodev *dev,
 		struct rte_cryptodev_info *dev_info)
 {
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
-	uint32_t max_nb_sessions = sched_ctx->nb_slaves ?
-			UINT32_MAX : RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_SESSIONS;
+	uint32_t max_nb_sess = 0;
 	uint32_t i;
 
 	if (!dev_info)
@@ -338,17 +337,18 @@ scheduler_pmd_info_get(struct rte_cryptodev *dev,
 		struct rte_cryptodev_info slave_info;
 
 		rte_cryptodev_info_get(slave_dev_id, &slave_info);
-		max_nb_sessions = slave_info.sym.max_nb_sessions <
-				max_nb_sessions ?
-				slave_info.sym.max_nb_sessions :
-				max_nb_sessions;
+		uint32_t dev_max_sess = slave_info.sym.max_nb_sessions;
+		if (dev_max_sess != 0) {
+			if (max_nb_sess == 0 ||	dev_max_sess < max_nb_sess)
+				max_nb_sess = slave_info.sym.max_nb_sessions;
+		}
 	}
 
 	dev_info->driver_id = dev->driver_id;
 	dev_info->feature_flags = dev->feature_flags;
 	dev_info->capabilities = sched_ctx->capabilities;
 	dev_info->max_nb_queue_pairs = sched_ctx->max_nb_queue_pairs;
-	dev_info->sym.max_nb_sessions = max_nb_sessions;
+	dev_info->sym.max_nb_sessions = max_nb_sess;
 }
 
 /** Release queue pair */

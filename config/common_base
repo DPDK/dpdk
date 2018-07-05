@@ -470,14 +470,12 @@ CONFIG_RTE_LIBRTE_PMD_ARMV8_CRYPTO_DEBUG=n
 # Compile NXP DPAA2 crypto sec driver for CAAM HW
 #
 CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC=n
-CONFIG_RTE_DPAA2_SEC_PMD_MAX_NB_SESSIONS=2048
 
 #
 # NXP DPAA caam - crypto driver
 #
 CONFIG_RTE_LIBRTE_PMD_DPAA_SEC=n
 CONFIG_RTE_LIBRTE_DPAA_MAX_CRYPTODEV=4
-CONFIG_RTE_DPAA_SEC_PMD_MAX_NB_SESSIONS=2048
 
 #
 # Compile PMD for QuickAssist based devices
@@ -496,11 +494,6 @@ CONFIG_RTE_LIBRTE_PMD_VIRTIO_CRYPTO=y
 # Number of maximum virtio crypto devices
 #
 CONFIG_RTE_MAX_VIRTIO_CRYPTO=32
-#
-# Number of sessions to create in the session memory pool
-# on a single virtio crypto device.
-#
-CONFIG_RTE_VIRTIO_CRYPTO_PMD_MAX_NB_SESSIONS=1024
 
 #
 # Compile PMD for AESNI backed device

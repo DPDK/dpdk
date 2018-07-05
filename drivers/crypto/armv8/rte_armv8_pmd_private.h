@@ -106,8 +106,6 @@ typedef void (*crypto_key_sched_t)(uint8_t *, const uint8_t *);
 struct armv8_crypto_private {
 	unsigned int max_nb_qpairs;
 	/**< Max number of queue pairs */
-	unsigned int max_nb_sessions;
-	/**< Max number of sessions */
 };
 
 /** ARMv8 crypto queue pair */

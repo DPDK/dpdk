@@ -624,7 +624,8 @@ ccp_pmd_info_get(struct rte_cryptodev *dev,
 		if (internals->auth_opt == 1)
 			dev_info->capabilities = ccp_crypto_cap_complete;
 		dev_info->max_nb_queue_pairs = internals->max_nb_qpairs;
-		dev_info->sym.max_nb_sessions = internals->max_nb_sessions;
+		/* No limit of number of sessions */
+		dev_info->sym.max_nb_sessions = 0;
 	}
 }
 
