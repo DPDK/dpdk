@@ -63,8 +63,6 @@ DPDK_17.08 {
 	rte_cryptodev_driver_id_get;
 	rte_cryptodev_driver_name_get;
 	rte_cryptodev_get_aead_algo_enum;
-	rte_cryptodev_get_header_session_size;
-	rte_cryptodev_get_private_session_size;
 	rte_cryptodev_sym_capability_check_aead;
 	rte_cryptodev_sym_session_init;
 	rte_cryptodev_sym_session_clear;

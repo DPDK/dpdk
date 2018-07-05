@@ -88,9 +88,3 @@ Deprecation Notices
     with them.
   - Some feature flags such as ``RTE_CRYPTODEV_FF_MBUF_SCATTER_GATHER`` are ambiguous,
     so some will be replaced by more explicit flags.
-  - Function ``rte_cryptodev_get_header_session_size()`` will be deprecated
-    in 18.05, and it gets replaced with ``rte_cryptodev_sym_get_header_session_size()``.
-    It will be removed in 18.08.
-  - Function ``rte_cryptodev_get_private_session_size()`` will be deprecated
-    in 18.05, and it gets replaced with ``rte_cryptodev_sym_get_private_session_size()``.
-    It will be removed in 18.08.
