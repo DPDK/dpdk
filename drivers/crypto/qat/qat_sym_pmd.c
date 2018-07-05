@@ -205,9 +205,9 @@ static struct rte_cryptodev_ops crypto_qat_ops = {
 		.queue_pair_count	= NULL,
 
 		/* Crypto related operations */
-		.session_get_size	= qat_sym_session_get_private_size,
-		.session_configure	= qat_sym_session_configure,
-		.session_clear		= qat_sym_session_clear
+		.sym_session_get_size	= qat_sym_session_get_private_size,
+		.sym_session_configure	= qat_sym_session_configure,
+		.sym_session_clear	= qat_sym_session_clear
 };
 
 static uint16_t

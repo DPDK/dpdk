@@ -518,9 +518,9 @@ static struct rte_cryptodev_ops virtio_crypto_dev_ops = {
 	.queue_pair_count                = NULL,
 
 	/* Crypto related operations */
-	.session_get_size	= virtio_crypto_sym_get_session_private_size,
-	.session_configure	= virtio_crypto_sym_configure_session,
-	.session_clear		= virtio_crypto_sym_clear_session
+	.sym_session_get_size		= virtio_crypto_sym_get_session_private_size,
+	.sym_session_configure		= virtio_crypto_sym_configure_session,
+	.sym_session_clear		= virtio_crypto_sym_clear_session
 };
 
 static void
@@ -958,7 +958,7 @@ virtio_crypto_sym_clear_session(
 
 	hw = dev->data->dev_private;
 	vq = hw->cvq;
-	session = (struct virtio_crypto_session *)get_session_private_data(
+	session = (struct virtio_crypto_session *)get_sym_session_private_data(
 		sess, cryptodev_virtio_driver_id);
 	if (session == NULL) {
 		VIRTIO_CRYPTO_SESSION_LOG_ERR("Invalid session parameter");
@@ -1392,7 +1392,7 @@ virtio_crypto_sym_configure_session(
 		goto error_out;
 	}
 
-	set_session_private_data(sess, dev->driver_id,
+	set_sym_session_private_data(sess, dev->driver_id,
 		session_private);
 
 	return 0;

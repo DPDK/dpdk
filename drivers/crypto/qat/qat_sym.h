@@ -143,7 +143,7 @@ qat_sym_process_response(void **op, uint8_t *resp)
 		rx_op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 	} else {
 		struct qat_sym_session *sess = (struct qat_sym_session *)
-						get_session_private_data(
+						get_sym_session_private_data(
 						rx_op->sym->session,
 						cryptodev_qat_driver_id);
 

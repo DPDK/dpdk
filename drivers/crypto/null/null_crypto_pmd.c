@@ -78,7 +78,7 @@ get_session(struct null_crypto_qp *qp, struct rte_crypto_op *op)
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 		if (likely(sym_op->session != NULL))
 			sess = (struct null_crypto_session *)
-					get_session_private_data(
+					get_sym_session_private_data(
 					sym_op->session, cryptodev_driver_id);
 	} else {
 		void *_sess = NULL;
@@ -99,8 +99,8 @@ get_session(struct null_crypto_qp *qp, struct rte_crypto_op *op)
 			sess = NULL;
 		}
 		sym_op->session = (struct rte_cryptodev_sym_session *)_sess;
-		set_session_private_data(sym_op->session, cryptodev_driver_id,
-			_sess_private_data);
+		set_sym_session_private_data(op->sym->session,
+				cryptodev_driver_id, _sess_private_data);
 	}
 
 	return sess;

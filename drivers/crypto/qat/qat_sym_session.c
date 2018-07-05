@@ -112,7 +112,7 @@ qat_sym_session_clear(struct rte_cryptodev *dev,
 		struct rte_cryptodev_sym_session *sess)
 {
 	uint8_t index = dev->driver_id;
-	void *sess_priv = get_session_private_data(sess, index);
+	void *sess_priv = get_sym_session_private_data(sess, index);
 	struct qat_sym_session *s = (struct qat_sym_session *)sess_priv;
 
 	if (sess_priv) {
@@ -121,7 +121,7 @@ qat_sym_session_clear(struct rte_cryptodev *dev,
 		memset(s, 0, qat_sym_session_get_private_size(dev));
 		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
 
-		set_session_private_data(sess, index, NULL);
+		set_sym_session_private_data(sess, index, NULL);
 		rte_mempool_put(sess_mp, sess_priv);
 	}
 }
@@ -396,7 +396,7 @@ qat_sym_session_configure(struct rte_cryptodev *dev,
 		return ret;
 	}
 
-	set_session_private_data(sess, dev->driver_id,
+	set_sym_session_private_data(sess, dev->driver_id,
 		sess_private_data);
 
 	return 0;

@@ -447,7 +447,7 @@ scheduler_pmd_qp_count(struct rte_cryptodev *dev)
 }
 
 static uint32_t
-scheduler_pmd_session_get_size(struct rte_cryptodev *dev __rte_unused)
+scheduler_pmd_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
 {
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
 	uint8_t i = 0;
@@ -457,7 +457,7 @@ scheduler_pmd_session_get_size(struct rte_cryptodev *dev __rte_unused)
 	for (i = 0; i < sched_ctx->nb_slaves; i++) {
 		uint8_t slave_dev_id = sched_ctx->slaves[i].dev_id;
 		struct rte_cryptodev *dev = &rte_cryptodevs[slave_dev_id];
-		uint32_t priv_sess_size = (*dev->dev_ops->session_get_size)(dev);
+		uint32_t priv_sess_size = (*dev->dev_ops->sym_session_get_size)(dev);
 
 		if (max_priv_sess_size < priv_sess_size)
 			max_priv_sess_size = priv_sess_size;
@@ -467,7 +467,7 @@ scheduler_pmd_session_get_size(struct rte_cryptodev *dev __rte_unused)
 }
 
 static int
-scheduler_pmd_session_configure(struct rte_cryptodev *dev,
+scheduler_pmd_sym_session_configure(struct rte_cryptodev *dev,
 	struct rte_crypto_sym_xform *xform,
 	struct rte_cryptodev_sym_session *sess,
 	struct rte_mempool *mempool)
@@ -492,7 +492,7 @@ scheduler_pmd_session_configure(struct rte_cryptodev *dev,
 
 /** Clear the memory of session so it doesn't leave key material behind */
 static void
-scheduler_pmd_session_clear(struct rte_cryptodev *dev,
+scheduler_pmd_sym_session_clear(struct rte_cryptodev *dev,
 		struct rte_cryptodev_sym_session *sess)
 {
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
@@ -521,9 +521,9 @@ struct rte_cryptodev_ops scheduler_pmd_ops = {
 		.queue_pair_release	= scheduler_pmd_qp_release,
 		.queue_pair_count	= scheduler_pmd_qp_count,
 
-		.session_get_size	= scheduler_pmd_session_get_size,
-		.session_configure	= scheduler_pmd_session_configure,
-		.session_clear		= scheduler_pmd_session_clear,
+		.sym_session_get_size	= scheduler_pmd_sym_session_get_size,
+		.sym_session_configure	= scheduler_pmd_sym_session_configure,
+		.sym_session_clear	= scheduler_pmd_sym_session_clear,
 };
 
 struct rte_cryptodev_ops *rte_crypto_scheduler_pmd_ops = &scheduler_pmd_ops;

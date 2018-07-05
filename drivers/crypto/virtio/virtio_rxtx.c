@@ -207,7 +207,7 @@ virtqueue_crypto_sym_enqueue_xmit(
 			sizeof(struct vring_desc) * NUM_ENTRY_VIRTIO_CRYPTO_OP;
 	struct rte_crypto_sym_op *sym_op = cop->sym;
 	struct virtio_crypto_session *session =
-		(struct virtio_crypto_session *)get_session_private_data(
+		(struct virtio_crypto_session *)get_sym_session_private_data(
 		cop->sym->session, cryptodev_virtio_driver_id);
 	struct virtio_crypto_op_data_req *op_data_req;
 	uint32_t hash_result_len = 0;

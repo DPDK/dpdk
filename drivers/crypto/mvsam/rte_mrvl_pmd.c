@@ -447,7 +447,7 @@ mrvl_request_prepare(struct sam_cio_op_params *request,
 		return -EINVAL;
 	}
 
-	sess = (struct mrvl_crypto_session *)get_session_private_data(
+	sess = (struct mrvl_crypto_session *)get_sym_session_private_data(
 			op->sym->session, cryptodev_driver_id);
 	if (unlikely(sess == NULL)) {
 		MRVL_CRYPTO_LOG_ERR("Session was not created for this device");

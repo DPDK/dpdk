@@ -736,7 +736,7 @@ get_session(struct openssl_qp *qp, struct rte_crypto_op *op)
 		/* get existing session */
 		if (likely(op->sym->session != NULL))
 			sess = (struct openssl_session *)
-					get_session_private_data(
+					get_sym_session_private_data(
 					op->sym->session,
 					cryptodev_driver_id);
 	} else {
@@ -759,8 +759,8 @@ get_session(struct openssl_qp *qp, struct rte_crypto_op *op)
 			sess = NULL;
 		}
 		op->sym->session = (struct rte_cryptodev_sym_session *)_sess;
-		set_session_private_data(op->sym->session, cryptodev_driver_id,
-			_sess_private_data);
+		set_sym_session_private_data(op->sym->session,
+				cryptodev_driver_id, _sess_private_data);
 	}
 
 	if (sess == NULL)

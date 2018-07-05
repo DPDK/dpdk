@@ -267,14 +267,14 @@ armv8_crypto_pmd_qp_count(struct rte_cryptodev *dev)
 
 /** Returns the size of the session structure */
 static unsigned
-armv8_crypto_pmd_session_get_size(struct rte_cryptodev *dev __rte_unused)
+armv8_crypto_pmd_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
 {
 	return sizeof(struct armv8_crypto_session);
 }
 
 /** Configure the session from a crypto xform chain */
 static int
-armv8_crypto_pmd_session_configure(struct rte_cryptodev *dev,
+armv8_crypto_pmd_sym_session_configure(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform,
 		struct rte_cryptodev_sym_session *sess,
 		struct rte_mempool *mempool)
@@ -302,7 +302,7 @@ armv8_crypto_pmd_session_configure(struct rte_cryptodev *dev,
 		return ret;
 	}
 
-	set_session_private_data(sess, dev->driver_id,
+	set_sym_session_private_data(sess, dev->driver_id,
 			sess_private_data);
 
 	return 0;
@@ -310,17 +310,17 @@ armv8_crypto_pmd_session_configure(struct rte_cryptodev *dev,
 
 /** Clear the memory of session so it doesn't leave key material behind */
 static void
-armv8_crypto_pmd_session_clear(struct rte_cryptodev *dev,
+armv8_crypto_pmd_sym_session_clear(struct rte_cryptodev *dev,
 		struct rte_cryptodev_sym_session *sess)
 {
 	uint8_t index = dev->driver_id;
-	void *sess_priv = get_session_private_data(sess, index);
+	void *sess_priv = get_sym_session_private_data(sess, index);
 
 	/* Zero out the whole structure */
 	if (sess_priv) {
 		memset(sess_priv, 0, sizeof(struct armv8_crypto_session));
 		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
-		set_session_private_data(sess, index, NULL);
+		set_sym_session_private_data(sess, index, NULL);
 		rte_mempool_put(sess_mp, sess_priv);
 	}
 }
@@ -340,9 +340,9 @@ struct rte_cryptodev_ops armv8_crypto_pmd_ops = {
 		.queue_pair_release	= armv8_crypto_pmd_qp_release,
 		.queue_pair_count	= armv8_crypto_pmd_qp_count,
 
-		.session_get_size	= armv8_crypto_pmd_session_get_size,
-		.session_configure	= armv8_crypto_pmd_session_configure,
-		.session_clear		= armv8_crypto_pmd_session_clear
+		.sym_session_get_size	= armv8_crypto_pmd_sym_session_get_size,
+		.sym_session_configure	= armv8_crypto_pmd_sym_session_configure,
+		.sym_session_clear	= armv8_crypto_pmd_sym_session_clear
 };
 
 struct rte_cryptodev_ops *rte_armv8_crypto_pmd_ops = &armv8_crypto_pmd_ops;

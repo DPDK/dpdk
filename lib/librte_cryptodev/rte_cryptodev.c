@@ -1064,7 +1064,8 @@ rte_cryptodev_sym_session_init(uint8_t dev_id,
 	index = dev->driver_id;
 
 	if (sess->sess_private_data[index] == NULL) {
-		ret = dev->dev_ops->session_configure(dev, xforms, sess, mp);
+		ret = dev->dev_ops->sym_session_configure(dev, xforms,
+							sess, mp);
 		if (ret < 0) {
 			CDEV_LOG_ERR(
 				"dev_id %d failed to configure session details",
@@ -1106,7 +1107,7 @@ rte_cryptodev_sym_session_clear(uint8_t dev_id,
 	if (dev == NULL || sess == NULL)
 		return -EINVAL;
 
-	dev->dev_ops->session_clear(dev, sess);
+	dev->dev_ops->sym_session_clear(dev, sess);
 
 	return 0;
 }
@@ -1123,7 +1124,7 @@ rte_cryptodev_sym_session_free(struct rte_cryptodev_sym_session *sess)
 
 	/* Check that all device private data has been freed */
 	for (i = 0; i < nb_drivers; i++) {
-		sess_priv = get_session_private_data(sess, i);
+		sess_priv = get_sym_session_private_data(sess, i);
 		if (sess_priv != NULL)
 			return -EBUSY;
 	}
@@ -1158,10 +1159,10 @@ rte_cryptodev_sym_get_private_session_size(uint8_t dev_id)
 
 	dev = rte_cryptodev_pmd_get_dev(dev_id);
 
-	if (*dev->dev_ops->session_get_size == NULL)
+	if (*dev->dev_ops->sym_session_get_size == NULL)
 		return 0;
 
-	priv_sess_size = (*dev->dev_ops->session_get_size)(dev);
+	priv_sess_size = (*dev->dev_ops->sym_session_get_size)(dev);
 
 	/*
 	 * If size is less than session header size,

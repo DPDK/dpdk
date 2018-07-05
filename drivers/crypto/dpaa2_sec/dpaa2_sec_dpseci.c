@@ -1080,7 +1080,7 @@ build_sec_fd(struct rte_crypto_op *op,
 	PMD_INIT_FUNC_TRACE();
 
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
-		sess = (dpaa2_sec_session *)get_session_private_data(
+		sess = (dpaa2_sec_session *)get_sym_session_private_data(
 				op->sym->session, cryptodev_driver_id);
 	else if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION)
 		sess = (dpaa2_sec_session *)get_sec_session_private_data(
@@ -1481,7 +1481,7 @@ dpaa2_sec_queue_pair_count(struct rte_cryptodev *dev)
 
 /** Returns the size of the aesni gcm session structure */
 static unsigned int
-dpaa2_sec_session_get_size(struct rte_cryptodev *dev __rte_unused)
+dpaa2_sec_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
 {
 	PMD_INIT_FUNC_TRACE();
 
@@ -2436,7 +2436,7 @@ dpaa2_sec_security_session_destroy(void *dev __rte_unused,
 }
 
 static int
-dpaa2_sec_session_configure(struct rte_cryptodev *dev,
+dpaa2_sec_sym_session_configure(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform,
 		struct rte_cryptodev_sym_session *sess,
 		struct rte_mempool *mempool)
@@ -2457,7 +2457,7 @@ dpaa2_sec_session_configure(struct rte_cryptodev *dev,
 		return ret;
 	}
 
-	set_session_private_data(sess, dev->driver_id,
+	set_sym_session_private_data(sess, dev->driver_id,
 		sess_private_data);
 
 	return 0;
@@ -2465,12 +2465,12 @@ dpaa2_sec_session_configure(struct rte_cryptodev *dev,
 
 /** Clear the memory of session so it doesn't leave key material behind */
 static void
-dpaa2_sec_session_clear(struct rte_cryptodev *dev,
+dpaa2_sec_sym_session_clear(struct rte_cryptodev *dev,
 		struct rte_cryptodev_sym_session *sess)
 {
 	PMD_INIT_FUNC_TRACE();
 	uint8_t index = dev->driver_id;
-	void *sess_priv = get_session_private_data(sess, index);
+	void *sess_priv = get_sym_session_private_data(sess, index);
 	dpaa2_sec_session *s = (dpaa2_sec_session *)sess_priv;
 
 	if (sess_priv) {
@@ -2479,7 +2479,7 @@ dpaa2_sec_session_clear(struct rte_cryptodev *dev,
 		rte_free(s->auth_key.data);
 		memset(sess, 0, sizeof(dpaa2_sec_session));
 		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
-		set_session_private_data(sess, index, NULL);
+		set_sym_session_private_data(sess, index, NULL);
 		rte_mempool_put(sess_mp, sess_priv);
 	}
 }
@@ -2697,9 +2697,9 @@ static struct rte_cryptodev_ops crypto_ops = {
 	.queue_pair_setup     = dpaa2_sec_queue_pair_setup,
 	.queue_pair_release   = dpaa2_sec_queue_pair_release,
 	.queue_pair_count     = dpaa2_sec_queue_pair_count,
-	.session_get_size     = dpaa2_sec_session_get_size,
-	.session_configure    = dpaa2_sec_session_configure,
-	.session_clear        = dpaa2_sec_session_clear,
+	.sym_session_get_size     = dpaa2_sec_sym_session_get_size,
+	.sym_session_configure    = dpaa2_sec_sym_session_configure,
+	.sym_session_clear        = dpaa2_sec_sym_session_clear,
 };
 
 static const struct rte_security_capability *

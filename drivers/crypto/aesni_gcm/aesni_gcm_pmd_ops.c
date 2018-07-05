@@ -251,14 +251,14 @@ aesni_gcm_pmd_qp_count(struct rte_cryptodev *dev)
 
 /** Returns the size of the aesni gcm session structure */
 static unsigned
-aesni_gcm_pmd_session_get_size(struct rte_cryptodev *dev __rte_unused)
+aesni_gcm_pmd_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
 {
 	return sizeof(struct aesni_gcm_session);
 }
 
 /** Configure a aesni gcm session from a crypto xform chain */
 static int
-aesni_gcm_pmd_session_configure(struct rte_cryptodev *dev __rte_unused,
+aesni_gcm_pmd_sym_session_configure(struct rte_cryptodev *dev __rte_unused,
 		struct rte_crypto_sym_xform *xform,
 		struct rte_cryptodev_sym_session *sess,
 		struct rte_mempool *mempool)
@@ -287,7 +287,7 @@ aesni_gcm_pmd_session_configure(struct rte_cryptodev *dev __rte_unused,
 		return ret;
 	}
 
-	set_session_private_data(sess, dev->driver_id,
+	set_sym_session_private_data(sess, dev->driver_id,
 			sess_private_data);
 
 	return 0;
@@ -295,17 +295,17 @@ aesni_gcm_pmd_session_configure(struct rte_cryptodev *dev __rte_unused,
 
 /** Clear the memory of session so it doesn't leave key material behind */
 static void
-aesni_gcm_pmd_session_clear(struct rte_cryptodev *dev,
+aesni_gcm_pmd_sym_session_clear(struct rte_cryptodev *dev,
 		struct rte_cryptodev_sym_session *sess)
 {
 	uint8_t index = dev->driver_id;
-	void *sess_priv = get_session_private_data(sess, index);
+	void *sess_priv = get_sym_session_private_data(sess, index);
 
 	/* Zero out the whole structure */
 	if (sess_priv) {
 		memset(sess_priv, 0, sizeof(struct aesni_gcm_session));
 		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
-		set_session_private_data(sess, index, NULL);
+		set_sym_session_private_data(sess, index, NULL);
 		rte_mempool_put(sess_mp, sess_priv);
 	}
 }
@@ -325,9 +325,9 @@ struct rte_cryptodev_ops aesni_gcm_pmd_ops = {
 		.queue_pair_release	= aesni_gcm_pmd_qp_release,
 		.queue_pair_count	= aesni_gcm_pmd_qp_count,
 
-		.session_get_size	= aesni_gcm_pmd_session_get_size,
-		.session_configure	= aesni_gcm_pmd_session_configure,
-		.session_clear		= aesni_gcm_pmd_session_clear
+		.sym_session_get_size	= aesni_gcm_pmd_sym_session_get_size,
+		.sym_session_configure	= aesni_gcm_pmd_sym_session_configure,
+		.sym_session_clear	= aesni_gcm_pmd_sym_session_clear
 };
 
 struct rte_cryptodev_ops *rte_aesni_gcm_pmd_ops = &aesni_gcm_pmd_ops;

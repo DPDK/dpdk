@@ -299,11 +299,11 @@ struct rte_cryptodev_ops {
 	cryptodev_queue_pair_count_t queue_pair_count;
 	/**< Get count of the queue pairs. */
 
-	cryptodev_sym_get_session_private_size_t session_get_size;
+	cryptodev_sym_get_session_private_size_t sym_session_get_size;
 	/**< Return private session. */
-	cryptodev_sym_configure_session_t session_configure;
+	cryptodev_sym_configure_session_t sym_session_configure;
 	/**< Configure a Crypto session. */
-	cryptodev_sym_free_session_t session_clear;
+	cryptodev_sym_free_session_t sym_session_clear;
 	/**< Clear a Crypto sessions private data. */
 };
 
@@ -436,13 +436,13 @@ static void init_ ##driver_id(void)\
 }
 
 static inline void *
-get_session_private_data(const struct rte_cryptodev_sym_session *sess,
+get_sym_session_private_data(const struct rte_cryptodev_sym_session *sess,
 		uint8_t driver_id) {
 	return sess->sess_private_data[driver_id];
 }
 
 static inline void
-set_session_private_data(struct rte_cryptodev_sym_session *sess,
+set_sym_session_private_data(struct rte_cryptodev_sym_session *sess,
 		uint8_t driver_id, void *private_data)
 {
 	sess->sess_private_data[driver_id] = private_data;

@@ -174,7 +174,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 		return -EINVAL;
 	}
 
-	ctx = (struct qat_sym_session *)get_session_private_data(
+	ctx = (struct qat_sym_session *)get_sym_session_private_data(
 			op->sym->session, cryptodev_qat_driver_id);
 
 	if (unlikely(ctx == NULL)) {

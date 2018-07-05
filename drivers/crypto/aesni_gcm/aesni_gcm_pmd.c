@@ -127,7 +127,7 @@ aesni_gcm_get_session(struct aesni_gcm_qp *qp, struct rte_crypto_op *op)
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 		if (likely(sym_op->session != NULL))
 			sess = (struct aesni_gcm_session *)
-					get_session_private_data(
+					get_sym_session_private_data(
 					sym_op->session,
 					cryptodev_driver_id);
 	} else  {
@@ -149,8 +149,8 @@ aesni_gcm_get_session(struct aesni_gcm_qp *qp, struct rte_crypto_op *op)
 			sess = NULL;
 		}
 		sym_op->session = (struct rte_cryptodev_sym_session *)_sess;
-		set_session_private_data(sym_op->session, cryptodev_driver_id,
-			_sess_private_data);
+		set_sym_session_private_data(sym_op->session,
+				cryptodev_driver_id, _sess_private_data);
 	}
 
 	if (unlikely(sess == NULL))

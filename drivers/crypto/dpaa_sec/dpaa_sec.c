@@ -1416,7 +1416,7 @@ dpaa_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 			switch (op->sess_type) {
 			case RTE_CRYPTO_OP_WITH_SESSION:
 				ses = (dpaa_sec_session *)
-					get_session_private_data(
+					get_sym_session_private_data(
 							op->sym->session,
 							cryptodev_driver_id);
 				break;
@@ -1596,7 +1596,7 @@ dpaa_sec_queue_pair_count(struct rte_cryptodev *dev)
 
 /** Returns the size of session structure */
 static unsigned int
-dpaa_sec_session_get_size(struct rte_cryptodev *dev __rte_unused)
+dpaa_sec_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
 {
 	PMD_INIT_FUNC_TRACE();
 
@@ -1811,7 +1811,7 @@ err1:
 }
 
 static int
-dpaa_sec_session_configure(struct rte_cryptodev *dev,
+dpaa_sec_sym_session_configure(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform,
 		struct rte_cryptodev_sym_session *sess,
 		struct rte_mempool *mempool)
@@ -1835,7 +1835,7 @@ dpaa_sec_session_configure(struct rte_cryptodev *dev,
 		return ret;
 	}
 
-	set_session_private_data(sess, dev->driver_id,
+	set_sym_session_private_data(sess, dev->driver_id,
 			sess_private_data);
 
 
@@ -1844,12 +1844,12 @@ dpaa_sec_session_configure(struct rte_cryptodev *dev,
 
 /** Clear the memory of session so it doesn't leave key material behind */
 static void
-dpaa_sec_session_clear(struct rte_cryptodev *dev,
+dpaa_sec_sym_session_clear(struct rte_cryptodev *dev,
 		struct rte_cryptodev_sym_session *sess)
 {
 	struct dpaa_sec_dev_private *qi = dev->data->dev_private;
 	uint8_t index = dev->driver_id;
-	void *sess_priv = get_session_private_data(sess, index);
+	void *sess_priv = get_sym_session_private_data(sess, index);
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1863,7 +1863,7 @@ dpaa_sec_session_clear(struct rte_cryptodev *dev,
 		rte_free(s->cipher_key.data);
 		rte_free(s->auth_key.data);
 		memset(s, 0, sizeof(dpaa_sec_session));
-		set_session_private_data(sess, index, NULL);
+		set_sym_session_private_data(sess, index, NULL);
 		rte_mempool_put(sess_mp, sess_priv);
 	}
 }
@@ -2180,9 +2180,9 @@ static struct rte_cryptodev_ops crypto_ops = {
 	.queue_pair_setup     = dpaa_sec_queue_pair_setup,
 	.queue_pair_release   = dpaa_sec_queue_pair_release,
 	.queue_pair_count     = dpaa_sec_queue_pair_count,
-	.session_get_size     = dpaa_sec_session_get_size,
-	.session_configure    = dpaa_sec_session_configure,
-	.session_clear        = dpaa_sec_session_clear
+	.sym_session_get_size     = dpaa_sec_sym_session_get_size,
+	.sym_session_configure    = dpaa_sec_sym_session_configure,
+	.sym_session_clear        = dpaa_sec_sym_session_clear
 };
 
 static const struct rte_security_capability *
