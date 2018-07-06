@@ -18,7 +18,7 @@ extern int dpaa2_logtype_sec;
 	rte_log(RTE_LOG_DEBUG, dpaa2_logtype_sec, "dpaa2_sec: %s(): " \
 		fmt "\n", __func__, ##args)
 
-#define PMD_INIT_FUNC_TRACE() DPAA2_SEC_LOG(DEBUG, " >>")
+#define PMD_INIT_FUNC_TRACE() DPAA2_SEC_DEBUG(">>")
 
 #define DPAA2_SEC_INFO(fmt, args...) \
 	DPAA2_SEC_LOG(INFO, fmt, ## args)

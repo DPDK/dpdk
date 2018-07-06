@@ -19,7 +19,7 @@ extern int dpaa2_cmdif_logtype;
 	rte_log(RTE_LOG_DEBUG, dpaa2_cmdif_logtype, "dpaa2_cmdif: %s(): " \
 		fmt "\n", __func__, ## args)
 
-#define DPAA2_CMDIF_FUNC_TRACE() DPAA2_CMDIF_LOG(DEBUG, ">>")
+#define DPAA2_CMDIF_FUNC_TRACE() DPAA2_CMDIF_DEBUG(">>")
 
 #define DPAA2_CMDIF_INFO(fmt, args...) \
 	DPAA2_CMDIF_LOG(INFO, fmt, ## args)

@@ -19,7 +19,7 @@ extern int dpaa2_qdma_logtype;
 	rte_log(RTE_LOG_DEBUG, dpaa2_qdma_logtype, "dpaa2_qdma: %s(): " \
 		fmt "\n", __func__, ## args)
 
-#define DPAA2_QDMA_FUNC_TRACE() DPAA2_QDMA_LOG(DEBUG, ">>")
+#define DPAA2_QDMA_FUNC_TRACE() DPAA2_QDMA_DEBUG(">>")
 
 #define DPAA2_QDMA_INFO(fmt, args...) \
 	DPAA2_QDMA_LOG(INFO, fmt, ## args)

@@ -16,7 +16,7 @@ extern int dpaa2_logtype_event;
 	rte_log(RTE_LOG_DEBUG, dpaa2_logtype_event, "dpaa2_event: %s(): " \
 		fmt "\n", __func__, ##args)
 
-#define EVENTDEV_INIT_FUNC_TRACE() DPAA2_EVENTDEV_LOG(DEBUG, " >>")
+#define EVENTDEV_INIT_FUNC_TRACE() DPAA2_EVENTDEV_DEBUG(" >>")
 
 #define DPAA2_EVENTDEV_INFO(fmt, args...) \
 	DPAA2_EVENTDEV_LOG(INFO, fmt, ## args)

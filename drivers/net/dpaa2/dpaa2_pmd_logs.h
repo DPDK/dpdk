@@ -16,7 +16,7 @@ extern int dpaa2_logtype_pmd;
 	rte_log(RTE_LOG_DEBUG, dpaa2_logtype_pmd, "dpaa2_net: %s(): "\
 		fmt "\n", __func__, ##args)
 
-#define PMD_INIT_FUNC_TRACE() DPAA2_PMD_LOG(DEBUG, " >>")
+#define PMD_INIT_FUNC_TRACE() DPAA2_PMD_DEBUG(">>")
 
 #define DPAA2_PMD_CRIT(fmt, args...) \
 	DPAA2_PMD_LOG(CRIT, fmt, ## args)
