@@ -16,6 +16,8 @@
 #include <fsl_fman_crc64.h>
 #include <fsl_bman.h>
 
+#define FMAN_SP_EXT_BUF_MARG_START_SHIFT            16
+
 /* Instantiate the global variable that the inline CRC64 implementation (in
  * <fsl_fman.h>) depends on.
  */
@@ -422,20 +424,16 @@ fman_if_set_fc_quanta(struct fman_if *fm_if, u16 pause_quanta)
 int
 fman_if_get_fdoff(struct fman_if *fm_if)
 {
-	u32 fmbm_ricp;
+	u32 fmbm_rebm;
 	int fdoff;
-	int iceof_mask = 0x001f0000;
-	int icsz_mask = 0x0000001f;
 
 	struct __fman_if *__if = container_of(fm_if, struct __fman_if, __if);
 
 	assert(fman_ccsr_map_fd != -1);
 
-	fmbm_ricp =
-		   in_be32(&((struct rx_bmi_regs *)__if->bmi_map)->fmbm_ricp);
-	/*iceof + icsz*/
-	fdoff = ((fmbm_ricp & iceof_mask) >> 16) * 16 +
-		(fmbm_ricp & icsz_mask) * 16;
+	fmbm_rebm = in_be32(&((struct rx_bmi_regs *)__if->bmi_map)->fmbm_rebm);
+
+	fdoff = (fmbm_rebm >> FMAN_SP_EXT_BUF_MARG_START_SHIFT) & 0x1ff;
 
 	return fdoff;
 }
@@ -502,12 +500,16 @@ fman_if_set_fdoff(struct fman_if *fm_if, uint32_t fd_offset)
 {
 	struct __fman_if *__if = container_of(fm_if, struct __fman_if, __if);
 	unsigned int *fmbm_rebm;
+	int val = 0;
+	int fmbm_mask = 0x01ff0000;
+
+	val = fd_offset << FMAN_SP_EXT_BUF_MARG_START_SHIFT;
 
 	assert(fman_ccsr_map_fd != -1);
 
 	fmbm_rebm = &((struct rx_bmi_regs *)__if->bmi_map)->fmbm_rebm;
 
-	out_be32(fmbm_rebm, in_be32(fmbm_rebm) | (fd_offset << 16));
+	out_be32(fmbm_rebm, (in_be32(fmbm_rebm) & ~fmbm_mask) | val);
 }
 
 void
