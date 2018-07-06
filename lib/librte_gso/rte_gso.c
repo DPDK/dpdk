@@ -11,6 +11,17 @@
 #include "gso_common.h"
 #include "gso_tcp4.h"
 #include "gso_tunnel_tcp4.h"
+#include "gso_udp4.h"
+
+#define ILLEGAL_UDP_GSO_CTX(ctx) \
+	((((ctx)->gso_types & DEV_TX_OFFLOAD_UDP_TSO) == 0) || \
+	 (ctx)->gso_size < RTE_GSO_UDP_SEG_SIZE_MIN)
+
+#define ILLEGAL_TCP_GSO_CTX(ctx) \
+	((((ctx)->gso_types & (DEV_TX_OFFLOAD_TCP_TSO | \
+		DEV_TX_OFFLOAD_VXLAN_TNL_TSO | \
+		DEV_TX_OFFLOAD_GRE_TNL_TSO)) == 0) || \
+		(ctx)->gso_size < RTE_GSO_SEG_SIZE_MIN)
 
 int
 rte_gso_segment(struct rte_mbuf *pkt,
@@ -27,14 +38,12 @@ rte_gso_segment(struct rte_mbuf *pkt,
 
 	if (pkt == NULL || pkts_out == NULL || gso_ctx == NULL ||
 			nb_pkts_out < 1 ||
-			gso_ctx->gso_size < RTE_GSO_SEG_SIZE_MIN ||
-			((gso_ctx->gso_types & (DEV_TX_OFFLOAD_TCP_TSO |
-			DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-			DEV_TX_OFFLOAD_GRE_TNL_TSO)) == 0))
+			(ILLEGAL_UDP_GSO_CTX(gso_ctx) &&
+			 ILLEGAL_TCP_GSO_CTX(gso_ctx)))
 		return -EINVAL;
 
 	if (gso_ctx->gso_size >= pkt->pkt_len) {
-		pkt->ol_flags &= (~PKT_TX_TCP_SEG);
+		pkt->ol_flags &= (~(PKT_TX_TCP_SEG | PKT_TX_UDP_SEG));
 		pkts_out[0] = pkt;
 		return 1;
 	}
@@ -59,6 +68,11 @@ rte_gso_segment(struct rte_mbuf *pkt,
 		ret = gso_tcp4_segment(pkt, gso_size, ipid_delta,
 				direct_pool, indirect_pool,
 				pkts_out, nb_pkts_out);
+	} else if (IS_IPV4_UDP(pkt->ol_flags) &&
+			(gso_ctx->gso_types & DEV_TX_OFFLOAD_UDP_TSO)) {
+		pkt->ol_flags &= (~PKT_TX_UDP_SEG);
+		ret = gso_udp4_segment(pkt, gso_size, direct_pool,
+				indirect_pool, pkts_out, nb_pkts_out);
 	} else {
 		/* unsupported packet, skip */
 		pkts_out[0] = pkt;

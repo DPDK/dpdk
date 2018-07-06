@@ -17,9 +17,13 @@ extern "C" {
 #include <stdint.h>
 #include <rte_mbuf.h>
 
-/* Minimum GSO segment size. */
+/* Minimum GSO segment size for TCP based packets. */
 #define RTE_GSO_SEG_SIZE_MIN (sizeof(struct ether_hdr) + \
 		sizeof(struct ipv4_hdr) + sizeof(struct tcp_hdr) + 1)
+
+/* Minimum GSO segment size for UDP based packets. */
+#define RTE_GSO_UDP_SEG_SIZE_MIN (sizeof(struct ether_hdr) + \
+		sizeof(struct ipv4_hdr) + sizeof(struct udp_hdr) + 1)
 
 /* GSO flags for rte_gso_ctx. */
 #define RTE_GSO_FLAG_IPID_FIXED (1ULL << 0)
