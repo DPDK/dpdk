@@ -902,7 +902,13 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			buf_iova = buf_vec[vec_idx].buf_iova;
 			buf_len = buf_vec[vec_idx].buf_len;
 
-			rte_prefetch0((void *)(uintptr_t)buf_addr);
+			/*
+			 * Prefecth desc n + 1 buffer while
+			 * desc n buffer is processed.
+			 */
+			if (vec_idx + 1 < nr_vec)
+				rte_prefetch0((void *)(uintptr_t)
+						buf_vec[vec_idx + 1].buf_addr);
 
 			buf_offset = 0;
 			buf_avail  = buf_len;
@@ -1133,6 +1139,8 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 
 		if (likely(dev->dequeue_zero_copy == 0))
 			update_shadow_used_ring(vq, head_idx, 0);
+
+		rte_prefetch0((void *)(uintptr_t)buf_vec[0].buf_addr);
 
 		pkts[i] = rte_pktmbuf_alloc(mbuf_pool);
 		if (unlikely(pkts[i] == NULL)) {
