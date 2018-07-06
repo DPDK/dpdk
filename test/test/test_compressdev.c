@@ -846,6 +846,14 @@ test_compressdev_deflate_stateless_fixed(void)
 	const char *test_buffer;
 	uint16_t i;
 	int ret;
+	const struct rte_compressdev_capabilities *capab;
+
+	capab = rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
+	TEST_ASSERT(capab != NULL, "Failed to retrieve device capabilities");
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_HUFFMAN_FIXED) == 0)
+		return -ENOTSUP;
+
 	struct rte_comp_xform *compress_xform =
 			rte_malloc(NULL, sizeof(struct rte_comp_xform), 0);
 
@@ -904,6 +912,14 @@ test_compressdev_deflate_stateless_dynamic(void)
 	int ret;
 	struct rte_comp_xform *compress_xform =
 			rte_malloc(NULL, sizeof(struct rte_comp_xform), 0);
+
+	const struct rte_compressdev_capabilities *capab;
+
+	capab = rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
+	TEST_ASSERT(capab != NULL, "Failed to retrieve device capabilities");
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_HUFFMAN_DYNAMIC) == 0)
+		return -ENOTSUP;
 
 	if (compress_xform == NULL) {
 		RTE_LOG(ERR, USER1,

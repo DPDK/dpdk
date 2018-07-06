@@ -36,6 +36,10 @@ rte_comp_get_feature_name(uint64_t flag)
 		return "SHA2_SHA256_HASH";
 	case RTE_COMP_FF_SHAREABLE_PRIV_XFORM:
 		return "SHAREABLE_PRIV_XFORM";
+	case RTE_COMP_FF_HUFFMAN_FIXED:
+		return "HUFFMAN_FIXED";
+	case RTE_COMP_FF_HUFFMAN_DYNAMIC:
+		return "HUFFMAN_DYNAMIC";
 	default:
 		return NULL;
 	}

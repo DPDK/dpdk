@@ -63,6 +63,10 @@ extern "C" {
  * to create as many priv_xforms as it expects to have stateless
  * operations in-flight.
  */
+#define RTE_COMP_FF_HUFFMAN_FIXED		(1ULL << 13)
+/**< Fixed huffman encoding is supported */
+#define RTE_COMP_FF_HUFFMAN_DYNAMIC		(1ULL << 14)
+/**< Dynamic huffman encoding is supported */
 
 /** Status of comp operation */
 enum rte_comp_op_status {
