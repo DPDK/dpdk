@@ -109,6 +109,8 @@ const struct device_node *of_get_parent(const struct device_node *dev_node);
 const struct device_node *of_get_next_child(const struct device_node *dev_node,
 					    const struct device_node *prev);
 
+const void *of_get_mac_address(const struct device_node *np);
+
 #define for_each_child_node(parent, child) \
 	for (child = of_get_next_child(parent, NULL); child != NULL; \
 			child = of_get_next_child(parent, child))

@@ -92,3 +92,11 @@ DPDK_18.02 {
 
 	local: *;
 } DPDK_17.11;
+
+DPDK_18.08 {
+	global:
+
+	of_get_mac_address;
+
+	local: *;
+} DPDK_18.02;
