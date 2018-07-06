@@ -516,7 +516,15 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 
 	PMD_INIT_FUNC_TRACE();
 
-	DPAA_PMD_INFO("Rx queue setup for queue index: %d", queue_idx);
+	if (queue_idx >= dev->data->nb_rx_queues) {
+		rte_errno = EOVERFLOW;
+		DPAA_PMD_ERR("%p: queue index out of range (%u >= %u)",
+		      (void *)dev, queue_idx, dev->data->nb_rx_queues);
+		return -rte_errno;
+	}
+
+	DPAA_PMD_INFO("Rx queue setup for queue index: %d fq_id (0x%x)",
+			queue_idx, rxq->fqid);
 
 	if (!dpaa_intf->bp_info || dpaa_intf->bp_info->mp != mp) {
 		struct fman_if_ic_params icp;
@@ -580,9 +588,11 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			opts.fqd.fq_ctrl |= QM_FQCTRL_CGE;
 		}
 		ret = qman_init_fq(rxq, flags, &opts);
-		if (ret)
-			DPAA_PMD_ERR("Channel/Queue association failed. fqid %d"
-				     " ret: %d", rxq->fqid, ret);
+		if (ret) {
+			DPAA_PMD_ERR("Channel/Q association failed. fqid 0x%x "
+				"ret:%d(%s)", rxq->fqid, ret, strerror(ret));
+			return ret;
+		}
 		rxq->cb.dqrr_dpdk_pull_cb = dpaa_rx_cb;
 		rxq->cb.dqrr_prepare = dpaa_rx_cb_prepare;
 		rxq->is_static = true;
@@ -657,8 +667,8 @@ dpaa_eth_eventq_attach(const struct rte_eth_dev *dev,
 
 	ret = qman_init_fq(rxq, flags, &opts);
 	if (ret) {
-		DPAA_PMD_ERR("Channel/Queue association failed. fqid %d ret:%d",
-			     rxq->fqid, ret);
+		DPAA_PMD_ERR("Ev-Channel/Q association failed. fqid 0x%x "
+				"ret:%d(%s)", rxq->fqid, ret, strerror(ret));
 		return ret;
 	}
 
@@ -715,7 +725,15 @@ int dpaa_eth_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 
 	PMD_INIT_FUNC_TRACE();
 
-	DPAA_PMD_INFO("Tx queue setup for queue index: %d", queue_idx);
+	if (queue_idx >= dev->data->nb_tx_queues) {
+		rte_errno = EOVERFLOW;
+		DPAA_PMD_ERR("%p: queue index out of range (%u >= %u)",
+		      (void *)dev, queue_idx, dev->data->nb_tx_queues);
+		return -rte_errno;
+	}
+
+	DPAA_PMD_INFO("Tx queue setup for queue index: %d fq_id (0x%x)",
+			queue_idx, dpaa_intf->tx_queues[queue_idx].fqid);
 	dev->data->tx_queues[queue_idx] = &dpaa_intf->tx_queues[queue_idx];
 	return 0;
 }
@@ -1016,7 +1034,7 @@ static int dpaa_rx_queue_init(struct qman_fq *fq, struct qman_cgr *cgr_rx,
 	DPAA_PMD_DEBUG("creating rx fq %p, fqid %d", fq, fqid);
 	ret = qman_create_fq(fqid, QMAN_FQ_FLAG_NO_ENQUEUE, fq);
 	if (ret) {
-		DPAA_PMD_ERR("create rx fqid %d failed with ret: %d",
+		DPAA_PMD_ERR("create rx fqid 0x%x failed with ret: %d",
 			fqid, ret);
 		return ret;
 	}
