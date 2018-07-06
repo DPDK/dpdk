@@ -783,6 +783,16 @@ softnic_thread_init(struct pmd_internals *p);
 void
 softnic_thread_free(struct pmd_internals *p);
 
+int
+softnic_thread_pipeline_enable(struct pmd_internals *p,
+	uint32_t thread_id,
+	const char *pipeline_name);
+
+int
+softnic_thread_pipeline_disable(struct pmd_internals *p,
+	uint32_t thread_id,
+	const char *pipeline_name);
+
 /**
  * CLI
  */

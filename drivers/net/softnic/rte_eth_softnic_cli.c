@@ -1592,6 +1592,93 @@ cmd_softnic_pipeline_port_in_disable(struct pmd_internals *softnic,
 	}
 }
 
+/**
+ * thread <thread_id> pipeline <pipeline_name> enable
+ */
+static void
+cmd_softnic_thread_pipeline_enable(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	char *pipeline_name;
+	uint32_t thread_id;
+	int status;
+
+	if (n_tokens != 5) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	if (softnic_parser_read_uint32(&thread_id, tokens[1]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "thread_id");
+		return;
+	}
+
+	if (strcmp(tokens[2], "pipeline") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "pipeline");
+		return;
+	}
+
+	pipeline_name = tokens[3];
+
+	if (strcmp(tokens[4], "enable") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "enable");
+		return;
+	}
+
+	status = softnic_thread_pipeline_enable(softnic, thread_id, pipeline_name);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, "thread pipeline enable");
+		return;
+	}
+}
+
+/**
+ * thread <thread_id> pipeline <pipeline_name> disable
+ */
+static void
+cmd_softnic_thread_pipeline_disable(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	char *pipeline_name;
+	uint32_t thread_id;
+	int status;
+
+	if (n_tokens != 5) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	if (softnic_parser_read_uint32(&thread_id, tokens[1]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "thread_id");
+		return;
+	}
+
+	if (strcmp(tokens[2], "pipeline") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "pipeline");
+		return;
+	}
+
+	pipeline_name = tokens[3];
+
+	if (strcmp(tokens[4], "disable") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "disable");
+		return;
+	}
+
+	status = softnic_thread_pipeline_disable(softnic, thread_id, pipeline_name);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL,
+			"thread pipeline disable");
+		return;
+	}
+}
+
 void
 softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 {
@@ -1695,6 +1782,22 @@ softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 			(strcmp(tokens[3], "in") == 0) &&
 			(strcmp(tokens[5], "disable") == 0)) {
 			cmd_softnic_pipeline_port_in_disable(softnic, tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+	}
+
+	if (strcmp(tokens[0], "thread") == 0) {
+		if ((n_tokens >= 5) &&
+			(strcmp(tokens[4], "enable") == 0)) {
+			cmd_softnic_thread_pipeline_enable(softnic, tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if ((n_tokens >= 5) &&
+			(strcmp(tokens[4], "disable") == 0)) {
+			cmd_softnic_thread_pipeline_disable(softnic, tokens, n_tokens,
 				out, out_size);
 			return;
 		}
