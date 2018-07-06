@@ -219,6 +219,7 @@ pmd_init(struct pmd_params *params)
 	softnic_mempool_init(p);
 	softnic_swq_init(p);
 	softnic_link_init(p);
+	softnic_tap_init(p);
 
 	return p;
 }
@@ -229,6 +230,7 @@ pmd_free(struct pmd_internals *p)
 	if (p == NULL)
 		return;
 
+	softnic_tap_free(p);
 	softnic_link_free(p);
 	softnic_swq_free(p);
 	softnic_mempool_free(p);

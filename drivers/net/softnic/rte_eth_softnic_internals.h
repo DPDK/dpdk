@@ -201,6 +201,17 @@ struct tm_internals {
 };
 
 /**
+ * TAP
+ */
+struct softnic_tap {
+	TAILQ_ENTRY(softnic_tap) node;
+	char name[NAME_SIZE];
+	int fd;
+};
+
+TAILQ_HEAD(softnic_tap_list, softnic_tap);
+
+/**
  * PMD Internals
  */
 struct pmd_internals {
@@ -215,6 +226,7 @@ struct pmd_internals {
 	struct softnic_mempool_list mempool_list;
 	struct softnic_swq_list swq_list;
 	struct softnic_link_list link_list;
+	struct softnic_tap_list tap_list;
 };
 
 /**
@@ -293,5 +305,22 @@ tm_used(struct rte_eth_dev *dev __rte_unused)
 {
 	return 0;
 }
+
+/**
+ * TAP
+ */
+int
+softnic_tap_init(struct pmd_internals *p);
+
+void
+softnic_tap_free(struct pmd_internals *p);
+
+struct softnic_tap *
+softnic_tap_find(struct pmd_internals *p,
+	const char *name);
+
+struct softnic_tap *
+softnic_tap_create(struct pmd_internals *p,
+	const char *name);
 
 #endif /* __INCLUDE_RTE_ETH_SOFTNIC_INTERNALS_H__ */

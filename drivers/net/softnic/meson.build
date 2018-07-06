@@ -6,5 +6,6 @@ sources = files('rte_eth_softnic_tm.c',
 	'rte_eth_softnic.c',
 	'rte_eth_softnic_mempool.c',
 	'rte_eth_softnic_swq.c',
-	'rte_eth_softnic_link.c')
+	'rte_eth_softnic_link.c',
+	'rte_eth_softnic_tap.c')
 deps += 'sched'
