@@ -560,7 +560,8 @@ uint16_t dpaa_eth_queue_rx(void *q,
 	struct qman_fq *fq = q;
 	struct qm_dqrr_entry *dq;
 	uint32_t num_rx = 0, ifid = ((struct dpaa_if *)fq->dpaa_intf)->ifid;
-	int ret;
+	int num_rx_bufs, ret;
+	uint32_t vdqcr_flags = 0;
 
 	if (likely(fq->is_static))
 		return dpaa_eth_queue_portal_rx(fq, bufs, nb_bufs);
@@ -573,8 +574,19 @@ uint16_t dpaa_eth_queue_rx(void *q,
 		}
 	}
 
-	ret = qman_set_vdq(fq, (nb_bufs > DPAA_MAX_DEQUEUE_NUM_FRAMES) ?
-				DPAA_MAX_DEQUEUE_NUM_FRAMES : nb_bufs);
+	/* Until request for four buffers, we provide exact number of buffers.
+	 * Otherwise we do not set the QM_VDQCR_EXACT flag.
+	 * Not setting QM_VDQCR_EXACT flag can provide two more buffers than
+	 * requested, so we request two less in this case.
+	 */
+	if (nb_bufs < 4) {
+		vdqcr_flags = QM_VDQCR_EXACT;
+		num_rx_bufs = nb_bufs;
+	} else {
+		num_rx_bufs = nb_bufs > DPAA_MAX_DEQUEUE_NUM_FRAMES ?
+			(DPAA_MAX_DEQUEUE_NUM_FRAMES - 2) : (nb_bufs - 2);
+	}
+	ret = qman_set_vdq(fq, num_rx_bufs, vdqcr_flags);
 	if (ret)
 		return 0;
 

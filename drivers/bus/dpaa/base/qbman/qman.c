@@ -2002,13 +2002,13 @@ int qman_query_congestion(struct qm_mcr_querycongestion *congestion)
 	return 0;
 }
 
-int qman_set_vdq(struct qman_fq *fq, u16 num)
+int qman_set_vdq(struct qman_fq *fq, u16 num, uint32_t vdqcr_flags)
 {
 	struct qman_portal *p = get_affine_portal();
 	uint32_t vdqcr;
 	int ret = -EBUSY;
 
-	vdqcr = QM_VDQCR_EXACT;
+	vdqcr = vdqcr_flags;
 	vdqcr |= QM_VDQCR_NUMFRAMES_SET(num);
 
 	if ((fq->state != qman_fq_state_parked) &&

@@ -1332,10 +1332,11 @@ unsigned int qman_portal_poll_rx(unsigned int poll_limit,
  * qman_set_vdq - Issue a volatile dequeue command
  * @fq: Frame Queue on which the volatile dequeue command is issued
  * @num: Number of Frames requested for volatile dequeue
+ * @vdqcr_flags: QM_VDQCR_EXACT flag to for VDQCR command
  *
  * This function will issue a volatile dequeue command to the QMAN.
  */
-int qman_set_vdq(struct qman_fq *fq, u16 num);
+int qman_set_vdq(struct qman_fq *fq, u16 num, uint32_t vdqcr_flags);
 
 /**
  * qman_dequeue - Get the DQRR entry after volatile dequeue command

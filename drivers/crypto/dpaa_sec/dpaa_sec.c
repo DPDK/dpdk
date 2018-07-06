@@ -526,12 +526,25 @@ dpaa_sec_deq(struct dpaa_sec_qp *qp, struct rte_crypto_op **ops, int nb_ops)
 {
 	struct qman_fq *fq;
 	unsigned int pkts = 0;
-	int ret;
+	int num_rx_bufs, ret;
 	struct qm_dqrr_entry *dq;
+	uint32_t vdqcr_flags = 0;
 
 	fq = &qp->outq;
-	ret = qman_set_vdq(fq, (nb_ops > DPAA_MAX_DEQUEUE_NUM_FRAMES) ?
-				DPAA_MAX_DEQUEUE_NUM_FRAMES : nb_ops);
+	/*
+	 * Until request for four buffers, we provide exact number of buffers.
+	 * Otherwise we do not set the QM_VDQCR_EXACT flag.
+	 * Not setting QM_VDQCR_EXACT flag can provide two more buffers than
+	 * requested, so we request two less in this case.
+	 */
+	if (nb_ops < 4) {
+		vdqcr_flags = QM_VDQCR_EXACT;
+		num_rx_bufs = nb_ops;
+	} else {
+		num_rx_bufs = nb_ops > DPAA_MAX_DEQUEUE_NUM_FRAMES ?
+			(DPAA_MAX_DEQUEUE_NUM_FRAMES - 2) : (nb_ops - 2);
+	}
+	ret = qman_set_vdq(fq, num_rx_bufs, vdqcr_flags);
 	if (ret)
 		return 0;
 
