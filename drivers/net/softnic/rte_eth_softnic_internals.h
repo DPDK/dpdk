@@ -774,6 +774,41 @@ softnic_pipeline_port_in_disable(struct pmd_internals *p,
 	const char *pipeline_name,
 	uint32_t port_id);
 
+int
+softnic_pipeline_table_rule_add(struct pmd_internals *p,
+	const char *pipeline_name,
+	uint32_t table_id,
+	struct softnic_table_rule_match *match,
+	struct softnic_table_rule_action *action,
+	void **data);
+
+int
+softnic_pipeline_table_rule_add_bulk(struct pmd_internals *p,
+	const char *pipeline_name,
+	uint32_t table_id,
+	struct softnic_table_rule_match *match,
+	struct softnic_table_rule_action *action,
+	void **data,
+	uint32_t *n_rules);
+
+int
+softnic_pipeline_table_rule_add_default(struct pmd_internals *p,
+	const char *pipeline_name,
+	uint32_t table_id,
+	struct softnic_table_rule_action *action,
+	void **data);
+
+int
+softnic_pipeline_table_rule_delete(struct pmd_internals *p,
+	const char *pipeline_name,
+	uint32_t table_id,
+	struct softnic_table_rule_match *match);
+
+int
+softnic_pipeline_table_rule_delete_default(struct pmd_internals *p,
+	const char *pipeline_name,
+	uint32_t table_id);
+
 /**
  * Thread
  */
