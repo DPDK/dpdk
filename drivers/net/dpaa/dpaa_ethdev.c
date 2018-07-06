@@ -1174,16 +1174,6 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 
-	/* if push mode queues to be enabled. Currenly we are allowing only
-	 * one queue per thread.
-	 */
-	if (getenv("DPAA_PUSH_QUEUES_NUMBER")) {
-		dpaa_push_mode_max_queue =
-				atoi(getenv("DPAA_PUSH_QUEUES_NUMBER"));
-		if (dpaa_push_mode_max_queue > DPAA_MAX_PUSH_MODE_QUEUE)
-			dpaa_push_mode_max_queue = DPAA_MAX_PUSH_MODE_QUEUE;
-	}
-
 	/* Each device can not have more than DPAA_MAX_NUM_PCD_QUEUES RX
 	 * queues.
 	 */
@@ -1422,6 +1412,20 @@ rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv,
 			RTE_LOG(INFO, PMD,
 				"* FMC not configured.Enabling default mode\n");
 			default_q = 1;
+		}
+
+		/* disabling the default push mode for LS1043 */
+		if (dpaa_svr_family == SVR_LS1043A_FAMILY)
+			dpaa_push_mode_max_queue = 0;
+
+		/* if push mode queues to be enabled. Currenly we are allowing
+		 * only one queue per thread.
+		 */
+		if (getenv("DPAA_PUSH_QUEUES_NUMBER")) {
+			dpaa_push_mode_max_queue =
+					atoi(getenv("DPAA_PUSH_QUEUES_NUMBER"));
+			if (dpaa_push_mode_max_queue > DPAA_MAX_PUSH_MODE_QUEUE)
+			    dpaa_push_mode_max_queue = DPAA_MAX_PUSH_MODE_QUEUE;
 		}
 
 		is_global_init = 1;
