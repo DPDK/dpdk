@@ -236,6 +236,7 @@ pmd_init(struct pmd_params *params)
 	softnic_tmgr_init(p);
 	softnic_tap_init(p);
 	softnic_port_in_action_profile_init(p);
+	softnic_table_action_profile_init(p);
 
 	return p;
 }
@@ -246,6 +247,7 @@ pmd_free(struct pmd_internals *p)
 	if (p == NULL)
 		return;
 
+	softnic_table_action_profile_free(p);
 	softnic_port_in_action_profile_free(p);
 	softnic_tap_free(p);
 	softnic_tmgr_free(p);

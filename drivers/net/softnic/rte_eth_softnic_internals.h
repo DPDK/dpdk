@@ -15,6 +15,7 @@
 #include <rte_ethdev.h>
 #include <rte_sched.h>
 #include <rte_port_in_action.h>
+#include <rte_table_action.h>
 #include <rte_ethdev_driver.h>
 #include <rte_tm_driver.h>
 
@@ -239,6 +240,30 @@ struct softnic_port_in_action_profile {
 TAILQ_HEAD(softnic_port_in_action_profile_list, softnic_port_in_action_profile);
 
 /**
+ * Table action
+ */
+struct softnic_table_action_profile_params {
+	uint64_t action_mask;
+	struct rte_table_action_common_config common;
+	struct rte_table_action_lb_config lb;
+	struct rte_table_action_mtr_config mtr;
+	struct rte_table_action_tm_config tm;
+	struct rte_table_action_encap_config encap;
+	struct rte_table_action_nat_config nat;
+	struct rte_table_action_ttl_config ttl;
+	struct rte_table_action_stats_config stats;
+};
+
+struct softnic_table_action_profile {
+	TAILQ_ENTRY(softnic_table_action_profile) node;
+	char name[NAME_SIZE];
+	struct softnic_table_action_profile_params params;
+	struct rte_table_action_profile *ap;
+};
+
+TAILQ_HEAD(softnic_table_action_profile_list, softnic_table_action_profile);
+
+/**
  * PMD Internals
  */
 struct pmd_internals {
@@ -255,6 +280,7 @@ struct pmd_internals {
 	struct softnic_tmgr_port_list tmgr_port_list;
 	struct softnic_tap_list tap_list;
 	struct softnic_port_in_action_profile_list port_in_action_profile_list;
+	struct softnic_table_action_profile_list table_action_profile_list;
 };
 
 /**
@@ -385,5 +411,23 @@ struct softnic_port_in_action_profile *
 softnic_port_in_action_profile_create(struct pmd_internals *p,
 	const char *name,
 	struct softnic_port_in_action_profile_params *params);
+
+/**
+ * Table action
+ */
+int
+softnic_table_action_profile_init(struct pmd_internals *p);
+
+void
+softnic_table_action_profile_free(struct pmd_internals *p);
+
+struct softnic_table_action_profile *
+softnic_table_action_profile_find(struct pmd_internals *p,
+	const char *name);
+
+struct softnic_table_action_profile *
+softnic_table_action_profile_create(struct pmd_internals *p,
+	const char *name,
+	struct softnic_table_action_profile_params *params);
 
 #endif /* __INCLUDE_RTE_ETH_SOFTNIC_INTERNALS_H__ */
