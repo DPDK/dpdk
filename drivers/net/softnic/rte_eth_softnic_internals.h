@@ -415,9 +415,67 @@ struct pipeline {
 
 TAILQ_HEAD(pipeline_list, pipeline);
 
+/**
+ * Thread
+ */
+#ifndef THREAD_PIPELINES_MAX
+#define THREAD_PIPELINES_MAX                               256
+#endif
+
+#ifndef THREAD_MSGQ_SIZE
+#define THREAD_MSGQ_SIZE                                   64
+#endif
+
+#ifndef THREAD_TIMER_PERIOD_MS
+#define THREAD_TIMER_PERIOD_MS                             100
+#endif
+
+/**
+ * Master thead: data plane thread context
+ */
+struct softnic_thread {
+	struct rte_ring *msgq_req;
+	struct rte_ring *msgq_rsp;
+
+	uint32_t enabled;
+};
+
+/**
+ * Data plane threads: context
+ */
 #ifndef TABLE_RULE_ACTION_SIZE_MAX
 #define TABLE_RULE_ACTION_SIZE_MAX                         2048
 #endif
+
+struct softnic_table_data {
+	struct rte_table_action *a;
+};
+
+struct pipeline_data {
+	struct rte_pipeline *p;
+	struct softnic_table_data table_data[RTE_PIPELINE_TABLE_MAX];
+	uint32_t n_tables;
+
+	struct rte_ring *msgq_req;
+	struct rte_ring *msgq_rsp;
+	uint64_t timer_period; /* Measured in CPU cycles. */
+	uint64_t time_next;
+
+	uint8_t buffer[TABLE_RULE_ACTION_SIZE_MAX];
+};
+
+struct softnic_thread_data {
+	struct rte_pipeline *p[THREAD_PIPELINES_MAX];
+	uint32_t n_pipelines;
+
+	struct pipeline_data pipeline_data[THREAD_PIPELINES_MAX];
+	struct rte_ring *msgq_req;
+	struct rte_ring *msgq_rsp;
+	uint64_t timer_period; /* Measured in CPU cycles. */
+	uint64_t time_next;
+	uint64_t time_next_min;
+	uint64_t iter;
+} __rte_cache_aligned;
 
 /**
  * PMD Internals
@@ -438,6 +496,8 @@ struct pmd_internals {
 	struct softnic_port_in_action_profile_list port_in_action_profile_list;
 	struct softnic_table_action_profile_list table_action_profile_list;
 	struct pipeline_list pipeline_list;
+	struct softnic_thread thread[RTE_MAX_LCORE];
+	struct softnic_thread_data thread_data[RTE_MAX_LCORE];
 };
 
 /**
@@ -625,5 +685,14 @@ int
 softnic_pipeline_table_create(struct pmd_internals *p,
 	const char *pipeline_name,
 	struct softnic_table_params *params);
+
+/**
+ * Thread
+ */
+int
+softnic_thread_init(struct pmd_internals *p);
+
+void
+softnic_thread_free(struct pmd_internals *p);
 
 #endif /* __INCLUDE_RTE_ETH_SOFTNIC_INTERNALS_H__ */

@@ -217,6 +217,7 @@ static void *
 pmd_init(struct pmd_params *params)
 {
 	struct pmd_internals *p;
+	int status;
 
 	p = rte_zmalloc_socket(params->name,
 		sizeof(struct pmd_internals),
@@ -239,6 +240,12 @@ pmd_init(struct pmd_params *params)
 	softnic_table_action_profile_init(p);
 	softnic_pipeline_init(p);
 
+	status = softnic_thread_init(p);
+	if (status) {
+		rte_free(p);
+		return NULL;
+	}
+
 	return p;
 }
 
@@ -248,6 +255,7 @@ pmd_free(struct pmd_internals *p)
 	if (p == NULL)
 		return;
 
+	softnic_thread_free(p);
 	softnic_pipeline_free(p);
 	softnic_table_action_profile_free(p);
 	softnic_port_in_action_profile_free(p);
