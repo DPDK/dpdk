@@ -15,9 +15,9 @@
 /*
  * Global variables of the max portal/pool number this bman version supported
  */
-u16 bman_ip_rev;
+static u16 bman_ip_rev;
 u16 bman_pool_max;
-void *bman_ccsr_map;
+static void *bman_ccsr_map;
 
 /*****************/
 /* Portal driver */

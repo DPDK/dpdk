@@ -139,7 +139,6 @@ struct qm_portal_config {
 #define QMAN_REV31 0x0301
 #define QMAN_REV32 0x0302
 extern u16 qman_ip_rev; /* 0 if uninitialised, otherwise QMAN_REVx */
-extern u32 qman_clk;
 
 int qm_set_wpm(int wpm);
 int qm_get_wpm(int *wpm);

@@ -625,7 +625,7 @@ fail_eqcr:
 
 #define MAX_GLOBAL_PORTALS 8
 static struct qman_portal global_portals[MAX_GLOBAL_PORTALS];
-rte_atomic16_t global_portals_used[MAX_GLOBAL_PORTALS];
+static rte_atomic16_t global_portals_used[MAX_GLOBAL_PORTALS];
 
 static struct qman_portal *
 qman_alloc_global_portal(void)

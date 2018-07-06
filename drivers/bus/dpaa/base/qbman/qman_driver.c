@@ -20,9 +20,9 @@ u16 qm_channel_caam = QMAN_CHANNEL_CAAM;
 u16 qm_channel_pme = QMAN_CHANNEL_PME;
 
 /* Ccsr map address to access ccsrbased register */
-void *qman_ccsr_map;
+static void *qman_ccsr_map;
 /* The qman clock frequency */
-u32 qman_clk;
+static u32 qman_clk;
 
 static __thread int qmfd = -1;
 static __thread struct qm_portal_config qpcfg;

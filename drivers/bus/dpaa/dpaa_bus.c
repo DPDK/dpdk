@@ -50,7 +50,7 @@ struct rte_dpaa_bus rte_dpaa_bus;
 struct netcfg_info *dpaa_netcfg;
 
 /* define a variable to hold the portal_key, once created.*/
-pthread_key_t dpaa_portal_key;
+static pthread_key_t dpaa_portal_key;
 
 unsigned int dpaa_svr_family;
 

@@ -18,11 +18,6 @@
 #include <rte_dpaa_logs.h>
 #include <netcfg.h>
 
-/* Structure contains information about all the interfaces given by user
- * on command line.
- */
-struct netcfg_interface *netcfg_interface;
-
 /* This data structure contaings all configurations information
  * related to usages of DPA devices.
  */
