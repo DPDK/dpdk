@@ -115,6 +115,7 @@ flush_shadow_used_ring(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	vhost_log_cache_sync(dev, vq);
 
 	*(volatile uint16_t *)&vq->used->idx += vq->shadow_used_idx;
+	vq->shadow_used_idx = 0;
 	vhost_log_used_vring(dev, vq, offsetof(struct vring_used, idx),
 		sizeof(vq->used->idx));
 }
@@ -567,7 +568,6 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 
 	rte_prefetch0(&vq->avail->ring[vq->last_avail_idx & (vq->size - 1)]);
 
-	vq->shadow_used_idx = 0;
 	avail_head = *((volatile uint16_t *)&vq->avail->idx);
 	for (pkt_idx = 0; pkt_idx < count; pkt_idx++) {
 		uint32_t pkt_len = pkts[pkt_idx]->pkt_len + dev->vhost_hlen;
@@ -1055,7 +1055,6 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 		goto out_access_unlock;
 
 	vq->batch_copy_nb_elems = 0;
-	vq->shadow_used_idx = 0;
 
 	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
 		vhost_user_iotlb_rd_lock(vq);
@@ -1086,7 +1085,6 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 
 		flush_shadow_used_ring(dev, vq);
 		vhost_vring_call(dev, vq);
-		vq->shadow_used_idx = 0;
 	}
 
 	rte_prefetch0(&vq->avail->ring[vq->last_avail_idx & (vq->size - 1)]);
