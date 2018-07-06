@@ -16,6 +16,7 @@
 #include <fsl_fman_crc64.h>
 #include <fsl_bman.h>
 
+#define FMAN_SP_SG_DISABLE                          0x80000000
 #define FMAN_SP_EXT_BUF_MARG_START_SHIFT            16
 
 /* Instantiate the global variable that the inline CRC64 implementation (in
@@ -536,6 +537,47 @@ fman_if_get_maxfrm(struct fman_if *fm_if)
 	reg_maxfrm = &((struct memac_regs *)__if->ccsr_map)->maxfrm;
 
 	return (in_be32(reg_maxfrm) | 0x0000FFFF);
+}
+
+/* MSB in fmbm_rebm register
+ * 0 - If BMI cannot store the frame in a single buffer it may select a buffer
+ *     of smaller size and store the frame in scatter gather (S/G) buffers
+ * 1 - Scatter gather format is not enabled for frame storage. If BMI cannot
+ *     store the frame in a single buffer, the frame is discarded.
+ */
+
+int
+fman_if_get_sg_enable(struct fman_if *fm_if)
+{
+	u32 fmbm_rebm;
+
+	struct __fman_if *__if = container_of(fm_if, struct __fman_if, __if);
+
+	assert(fman_ccsr_map_fd != -1);
+
+	fmbm_rebm = in_be32(&((struct rx_bmi_regs *)__if->bmi_map)->fmbm_rebm);
+
+	return (fmbm_rebm & FMAN_SP_SG_DISABLE) ? 0 : 1;
+}
+
+void
+fman_if_set_sg(struct fman_if *fm_if, int enable)
+{
+	struct __fman_if *__if = container_of(fm_if, struct __fman_if, __if);
+	unsigned int *fmbm_rebm;
+	int val;
+	int fmbm_mask = FMAN_SP_SG_DISABLE;
+
+	if (enable)
+		val = 0;
+	else
+		val = FMAN_SP_SG_DISABLE;
+
+	assert(fman_ccsr_map_fd != -1);
+
+	fmbm_rebm = &((struct rx_bmi_regs *)__if->bmi_map)->fmbm_rebm;
+
+	out_be32(fmbm_rebm, (in_be32(fmbm_rebm) & ~fmbm_mask) | val);
 }
 
 void

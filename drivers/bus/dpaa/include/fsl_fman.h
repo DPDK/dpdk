@@ -108,6 +108,12 @@ int fman_if_get_fdoff(struct fman_if *fm_if);
 /* Set interface fd->offset value */
 void fman_if_set_fdoff(struct fman_if *fm_if, uint32_t fd_offset);
 
+/* Get interface SG enable status value */
+int fman_if_get_sg_enable(struct fman_if *fm_if);
+
+/* Set interface SG support mode */
+void fman_if_set_sg(struct fman_if *fm_if, int enable);
+
 /* Get interface Max Frame length (MTU) */
 uint16_t fman_if_get_maxfrm(struct fman_if *fm_if);
 
