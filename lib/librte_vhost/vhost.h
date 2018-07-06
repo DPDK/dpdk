@@ -344,6 +344,19 @@ struct virtio_net {
 	struct vhost_user_extern_ops extern_ops;
 } __rte_cache_aligned;
 
+static __rte_always_inline bool
+vq_is_packed(struct virtio_net *dev)
+{
+	return dev->features & (1ull << VIRTIO_F_RING_PACKED);
+}
+
+static inline bool
+desc_is_avail(struct vring_packed_desc *desc, bool wrap_counter)
+{
+	return wrap_counter == !!(desc->flags & VRING_DESC_F_AVAIL) &&
+		wrap_counter != !!(desc->flags & VRING_DESC_F_USED);
+}
+
 #define VHOST_LOG_PAGE	4096
 
 /*
