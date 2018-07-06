@@ -30,23 +30,34 @@ extern "C" {
 /**< Stateful compression is supported */
 #define RTE_COMP_FF_STATEFUL_DECOMPRESSION	(1ULL << 1)
 /**< Stateful decompression is supported */
-#define	RTE_COMP_FF_MBUF_SCATTER_GATHER		(1ULL << 2)
-/**< Scatter-gather mbufs are supported */
-#define RTE_COMP_FF_ADLER32_CHECKSUM		(1ULL << 3)
+#define RTE_COMP_FF_OOP_SGL_IN_SGL_OUT		(1ULL << 2)
+/**< Out-of-place Scatter-gather (SGL) buffers,
+ * with multiple segments, are supported in input and output
+ */
+#define RTE_COMP_FF_OOP_SGL_IN_LB_OUT		(1ULL << 3)
+/**< Out-of-place Scatter-gather (SGL) buffers are supported
+ * in input, combined with linear buffers (LB), with a
+ * single segment, in output
+ */
+#define RTE_COMP_FF_OOP_LB_IN_SGL_OUT		(1ULL << 4)
+/**< Out-of-place Scatter-gather (SGL) buffers are supported
+ * in output, combined with linear buffers (LB) in input
+ */
+#define RTE_COMP_FF_ADLER32_CHECKSUM		(1ULL << 5)
 /**< Adler-32 Checksum is supported */
-#define RTE_COMP_FF_CRC32_CHECKSUM		(1ULL << 4)
+#define RTE_COMP_FF_CRC32_CHECKSUM		(1ULL << 6)
 /**< CRC32 Checksum is supported */
-#define RTE_COMP_FF_CRC32_ADLER32_CHECKSUM	(1ULL << 5)
+#define RTE_COMP_FF_CRC32_ADLER32_CHECKSUM	(1ULL << 7)
 /**< Adler-32/CRC32 Checksum is supported */
-#define RTE_COMP_FF_MULTI_PKT_CHECKSUM		(1ULL << 6)
+#define RTE_COMP_FF_MULTI_PKT_CHECKSUM		(1ULL << 8)
 /**< Generation of checksum across multiple stateless packets is supported */
-#define RTE_COMP_FF_SHA1_HASH			(1ULL << 7)
+#define RTE_COMP_FF_SHA1_HASH			(1ULL << 9)
 /**< SHA1 Hash is supported */
-#define RTE_COMP_FF_SHA2_SHA256_HASH		(1ULL << 8)
+#define RTE_COMP_FF_SHA2_SHA256_HASH		(1ULL << 10)
 /**< SHA256 Hash of SHA2 family is supported */
-#define RTE_COMP_FF_NONCOMPRESSED_BLOCKS	(1ULL << 9)
+#define RTE_COMP_FF_NONCOMPRESSED_BLOCKS	(1ULL << 11)
 /**< Creation of non-compressed blocks using RTE_COMP_LEVEL_NONE is supported */
-#define RTE_COMP_FF_SHAREABLE_PRIV_XFORM	(1ULL << 10)
+#define RTE_COMP_FF_SHAREABLE_PRIV_XFORM	(1ULL << 12)
 /**< Private xforms created by the PMD can be shared
  * across multiple stateless operations. If not set, then app needs
  * to create as many priv_xforms as it expects to have stateless
