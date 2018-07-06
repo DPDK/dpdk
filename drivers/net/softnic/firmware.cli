@@ -1,0 +1,21 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright(c) 2018 Intel Corporation
+
+link LINK dev 0000:02:00.0
+
+pipeline RX period 10 offset_port_id 0
+pipeline RX port in bsz 32 link LINK rxq 0
+pipeline RX port out bsz 32 swq RXQ0
+pipeline RX table match stub
+pipeline RX port in 0 table 0
+pipeline RX table 0 rule add match default action fwd port 0
+
+pipeline TX period 10 offset_port_id 0
+pipeline TX port in bsz 32 swq TXQ0
+pipeline TX port out bsz 32 link LINK txq 0
+pipeline TX table match stub
+pipeline TX port in 0 table 0
+pipeline TX table 0 rule add match default action fwd port 0
+
+thread 1 pipeline RX enable
+thread 1 pipeline TX enable
