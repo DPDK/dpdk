@@ -1019,35 +1019,6 @@ out:
 	return error;
 }
 
-static __rte_always_inline void
-update_used_ring(struct virtio_net *dev, struct vhost_virtqueue *vq,
-		 uint32_t used_idx, uint32_t desc_idx)
-{
-	vq->used->ring[used_idx].id  = desc_idx;
-	vq->used->ring[used_idx].len = 0;
-	vhost_log_cache_used_vring(dev, vq,
-			offsetof(struct vring_used, ring[used_idx]),
-			sizeof(vq->used->ring[used_idx]));
-}
-
-static __rte_always_inline void
-update_used_idx(struct virtio_net *dev, struct vhost_virtqueue *vq,
-		uint32_t count)
-{
-	if (unlikely(count == 0))
-		return;
-
-	rte_smp_wmb();
-	rte_smp_rmb();
-
-	vhost_log_cache_sync(dev, vq);
-
-	vq->used->idx += count;
-	vhost_log_used_vring(dev, vq, offsetof(struct vring_used, idx),
-			sizeof(vq->used->idx));
-	vhost_vring_call(dev, vq);
-}
-
 static __rte_always_inline struct zcopy_mbuf *
 get_zmbuf(struct vhost_virtqueue *vq)
 {
@@ -1115,7 +1086,6 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 	struct rte_mbuf *rarp_mbuf = NULL;
 	struct vhost_virtqueue *vq;
 	uint32_t desc_indexes[MAX_PKT_BURST];
-	uint32_t used_idx;
 	uint32_t i = 0;
 	uint16_t free_entries;
 	uint16_t avail_idx;
@@ -1146,6 +1116,7 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 		goto out_access_unlock;
 
 	vq->batch_copy_nb_elems = 0;
+	vq->shadow_used_idx = 0;
 
 	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
 		vhost_user_iotlb_rd_lock(vq);
@@ -1163,9 +1134,7 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 			next = TAILQ_NEXT(zmbuf, next);
 
 			if (mbuf_is_consumed(zmbuf->mbuf)) {
-				used_idx = vq->last_used_idx++ & (vq->size - 1);
-				update_used_ring(dev, vq, used_idx,
-						 zmbuf->desc_idx);
+				update_shadow_used_ring(vq, zmbuf->desc_idx, 0);
 				nr_updated += 1;
 
 				TAILQ_REMOVE(&vq->zmbuf_list, zmbuf, next);
@@ -1176,7 +1145,9 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 			}
 		}
 
-		update_used_idx(dev, vq, nr_updated);
+		flush_shadow_used_ring(dev, vq);
+		vhost_vring_call(dev, vq);
+		vq->shadow_used_idx = 0;
 	}
 
 	/*
@@ -1217,9 +1188,7 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 
 	/* Prefetch available and used ring */
 	avail_idx = vq->last_avail_idx & (vq->size - 1);
-	used_idx  = vq->last_used_idx  & (vq->size - 1);
 	rte_prefetch0(&vq->avail->ring[avail_idx]);
-	rte_prefetch0(&vq->used->ring[used_idx]);
 
 	count = RTE_MIN(count, MAX_PKT_BURST);
 	count = RTE_MIN(count, free_entries);
@@ -1229,11 +1198,10 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 	/* Retrieve all of the head indexes first to avoid caching issues. */
 	for (i = 0; i < count; i++) {
 		avail_idx = (vq->last_avail_idx + i) & (vq->size - 1);
-		used_idx  = (vq->last_used_idx  + i) & (vq->size - 1);
 		desc_indexes[i] = vq->avail->ring[avail_idx];
 
 		if (likely(dev->dequeue_zero_copy == 0))
-			update_used_ring(dev, vq, used_idx, desc_indexes[i]);
+			update_shadow_used_ring(vq, desc_indexes[i], 0);
 	}
 
 	/* Prefetch descriptor index. */
@@ -1326,8 +1294,10 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 
 	if (likely(dev->dequeue_zero_copy == 0)) {
 		do_data_copy_dequeue(vq);
-		vq->last_used_idx += i;
-		update_used_idx(dev, vq, i);
+		if (unlikely(i < count))
+			vq->shadow_used_idx = i;
+		flush_shadow_used_ring(dev, vq);
+		vhost_vring_call(dev, vq);
 	}
 
 out:
