@@ -241,6 +241,8 @@ enum index {
 	ACTION_OF_PUSH_MPLS_ETHERTYPE,
 	ACTION_VXLAN_ENCAP,
 	ACTION_VXLAN_DECAP,
+	ACTION_NVGRE_ENCAP,
+	ACTION_NVGRE_DECAP,
 };
 
 /** Maximum size for pattern in struct rte_flow_item_raw. */
@@ -275,6 +277,22 @@ struct action_vxlan_encap_data {
 	};
 	struct rte_flow_item_udp item_udp;
 	struct rte_flow_item_vxlan item_vxlan;
+};
+
+/** Maximum number of items in struct rte_flow_action_nvgre_encap. */
+#define ACTION_NVGRE_ENCAP_ITEMS_NUM 5
+
+/** Storage for struct rte_flow_action_nvgre_encap including external data. */
+struct action_nvgre_encap_data {
+	struct rte_flow_action_nvgre_encap conf;
+	struct rte_flow_item items[ACTION_NVGRE_ENCAP_ITEMS_NUM];
+	struct rte_flow_item_eth item_eth;
+	struct rte_flow_item_vlan item_vlan;
+	union {
+		struct rte_flow_item_ipv4 item_ipv4;
+		struct rte_flow_item_ipv6 item_ipv6;
+	};
+	struct rte_flow_item_nvgre item_nvgre;
 };
 
 /** Maximum number of subsequent tokens and arguments on the stack. */
@@ -796,6 +814,8 @@ static const enum index next_action[] = {
 	ACTION_OF_PUSH_MPLS,
 	ACTION_VXLAN_ENCAP,
 	ACTION_VXLAN_DECAP,
+	ACTION_NVGRE_ENCAP,
+	ACTION_NVGRE_DECAP,
 	ZERO,
 };
 
@@ -927,6 +947,9 @@ static int parse_vc_action_rss_queue(struct context *, const struct token *,
 				     const char *, unsigned int, void *,
 				     unsigned int);
 static int parse_vc_action_vxlan_encap(struct context *, const struct token *,
+				       const char *, unsigned int, void *,
+				       unsigned int);
+static int parse_vc_action_nvgre_encap(struct context *, const struct token *,
 				       const char *, unsigned int, void *,
 				       unsigned int);
 static int parse_destroy(struct context *, const struct token *,
@@ -2429,6 +2452,24 @@ static const struct token token_list[] = {
 		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
 		.call = parse_vc,
 	},
+	[ACTION_NVGRE_ENCAP] = {
+		.name = "nvgre_encap",
+		.help = "NVGRE encapsulation, uses configuration set by \"set"
+			" nvgre\"",
+		.priv = PRIV_ACTION(NVGRE_ENCAP,
+				    sizeof(struct action_nvgre_encap_data)),
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.call = parse_vc_action_nvgre_encap,
+	},
+	[ACTION_NVGRE_DECAP] = {
+		.name = "nvgre_decap",
+		.help = "Performs a decapsulation action by stripping all"
+			" headers of the NVGRE tunnel network overlay from the"
+			" matched flow.",
+		.priv = PRIV_ACTION(NVGRE_DECAP, 0),
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.call = parse_vc,
+	},
 };
 
 /** Remove and return last entry from argument stack. */
@@ -3090,6 +3131,97 @@ parse_vc_action_vxlan_encap(struct context *ctx, const struct token *token,
 	memcpy(action_vxlan_encap_data->item_vxlan.vni, vxlan_encap_conf.vni,
 	       RTE_DIM(vxlan_encap_conf.vni));
 	action->conf = &action_vxlan_encap_data->conf;
+	return ret;
+}
+
+/** Parse NVGRE encap action. */
+static int
+parse_vc_action_nvgre_encap(struct context *ctx, const struct token *token,
+			    const char *str, unsigned int len,
+			    void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+	struct rte_flow_action *action;
+	struct action_nvgre_encap_data *action_nvgre_encap_data;
+	int ret;
+
+	ret = parse_vc(ctx, token, str, len, buf, size);
+	if (ret < 0)
+		return ret;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return ret;
+	if (!out->args.vc.actions_n)
+		return -1;
+	action = &out->args.vc.actions[out->args.vc.actions_n - 1];
+	/* Point to selected object. */
+	ctx->object = out->args.vc.data;
+	ctx->objmask = NULL;
+	/* Set up default configuration. */
+	action_nvgre_encap_data = ctx->object;
+	*action_nvgre_encap_data = (struct action_nvgre_encap_data){
+		.conf = (struct rte_flow_action_nvgre_encap){
+			.definition = action_nvgre_encap_data->items,
+		},
+		.items = {
+			{
+				.type = RTE_FLOW_ITEM_TYPE_ETH,
+				.spec = &action_nvgre_encap_data->item_eth,
+				.mask = &rte_flow_item_eth_mask,
+			},
+			{
+				.type = RTE_FLOW_ITEM_TYPE_VLAN,
+				.spec = &action_nvgre_encap_data->item_vlan,
+				.mask = &rte_flow_item_vlan_mask,
+			},
+			{
+				.type = RTE_FLOW_ITEM_TYPE_IPV4,
+				.spec = &action_nvgre_encap_data->item_ipv4,
+				.mask = &rte_flow_item_ipv4_mask,
+			},
+			{
+				.type = RTE_FLOW_ITEM_TYPE_NVGRE,
+				.spec = &action_nvgre_encap_data->item_nvgre,
+				.mask = &rte_flow_item_nvgre_mask,
+			},
+			{
+				.type = RTE_FLOW_ITEM_TYPE_END,
+			},
+		},
+		.item_eth.type = 0,
+		.item_vlan = {
+			.tci = nvgre_encap_conf.vlan_tci,
+			.inner_type = 0,
+		},
+		.item_ipv4.hdr = {
+		       .src_addr = nvgre_encap_conf.ipv4_src,
+		       .dst_addr = nvgre_encap_conf.ipv4_dst,
+		},
+		.item_nvgre.flow_id = 0,
+	};
+	memcpy(action_nvgre_encap_data->item_eth.dst.addr_bytes,
+	       nvgre_encap_conf.eth_dst, ETHER_ADDR_LEN);
+	memcpy(action_nvgre_encap_data->item_eth.src.addr_bytes,
+	       nvgre_encap_conf.eth_src, ETHER_ADDR_LEN);
+	if (!nvgre_encap_conf.select_ipv4) {
+		memcpy(&action_nvgre_encap_data->item_ipv6.hdr.src_addr,
+		       &nvgre_encap_conf.ipv6_src,
+		       sizeof(nvgre_encap_conf.ipv6_src));
+		memcpy(&action_nvgre_encap_data->item_ipv6.hdr.dst_addr,
+		       &nvgre_encap_conf.ipv6_dst,
+		       sizeof(nvgre_encap_conf.ipv6_dst));
+		action_nvgre_encap_data->items[2] = (struct rte_flow_item){
+			.type = RTE_FLOW_ITEM_TYPE_IPV6,
+			.spec = &action_nvgre_encap_data->item_ipv6,
+			.mask = &rte_flow_item_ipv6_mask,
+		};
+	}
+	if (!nvgre_encap_conf.select_vlan)
+		action_nvgre_encap_data->items[1].type =
+			RTE_FLOW_ITEM_TYPE_VOID;
+	memcpy(action_nvgre_encap_data->item_nvgre.tni, nvgre_encap_conf.tni,
+	       RTE_DIM(nvgre_encap_conf.tni));
+	action->conf = &action_nvgre_encap_data->conf;
 	return ret;
 }
 

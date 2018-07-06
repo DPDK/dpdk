@@ -408,6 +408,21 @@ struct vxlan_encap_conf vxlan_encap_conf = {
 	.eth_dst = "\xff\xff\xff\xff\xff\xff",
 };
 
+struct nvgre_encap_conf nvgre_encap_conf = {
+	.select_ipv4 = 1,
+	.select_vlan = 0,
+	.tni = "\x00\x00\x00",
+	.ipv4_src = IPv4(127, 0, 0, 1),
+	.ipv4_dst = IPv4(255, 255, 255, 255),
+	.ipv6_src = "\x00\x00\x00\x00\x00\x00\x00\x00"
+		"\x00\x00\x00\x00\x00\x00\x00\x01",
+	.ipv6_dst = "\x00\x00\x00\x00\x00\x00\x00\x00"
+		"\x00\x00\x00\x00\x00\x00\x11\x11",
+	.vlan_tci = 0,
+	.eth_src = "\x00\x00\x00\x00\x00\x00",
+	.eth_dst = "\xff\xff\xff\xff\xff\xff",
+};
+
 /* Forward function declarations */
 static void map_port_queue_stats_mapping_registers(portid_t pi,
 						   struct rte_port *port);

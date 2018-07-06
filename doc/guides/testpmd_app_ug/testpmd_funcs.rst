@@ -1559,6 +1559,21 @@ flow rule using the action vxlan_encap will use the last configuration set.
 To have a different encapsulation header, one of those commands must be called
 before the flow rule creation.
 
+Config NVGRE Encap outer layers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Configure the outer layer to encapsulate a packet inside a NVGRE tunnel::
+
+ set nvgre ip-version (ipv4|ipv6) tni (tni) ip-src (ip-src) ip-dst (ip-dst) \
+        eth-src (eth-src) eth-dst (eth-dst)
+ set nvgre-with-vlan ip-version (ipv4|ipv6) tni (tni) ip-src (ip-src) \
+        ip-dst (ip-dst) vlan-tci (vlan-tci) eth-src (eth-src) eth-dst (eth-dst)
+
+Those command will set an internal configuration inside testpmd, any following
+flow rule using the action nvgre_encap will use the last configuration set.
+To have a different encapsulation header, one of those commands must be called
+before the flow rule creation.
+
 Port Functions
 --------------
 
@@ -3680,6 +3695,12 @@ This section lists supported actions and their attributes, if any.
 - ``vxlan_decap``: Performs a decapsulation action by stripping all headers of
   the VXLAN tunnel network overlay from the matched flow.
 
+- ``nvgre_encap``: Performs a NVGRE encapsulation, outer layer configuration
+  is done through `Config NVGRE Encap outer layers`_.
+
+- ``nvgre_decap``: Performs a decapsulation action by stripping all headers of
+  the NVGRE tunnel network overlay from the matched flow.
+
 Destroying flow rules
 ~~~~~~~~~~~~~~~~~~~~~
 
@@ -3976,6 +3997,37 @@ IPv6 VXLAN outer header::
          eth-dst 22:22:22:22:22:22
  testpmd> flow create 0 ingress pattern end actions vxlan_encap /
          queue index 0 / end
+
+Sample NVGRE encapsulation rule
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+NVGRE encapsulation outer layer has default value pre-configured in testpmd
+source code, those can be changed by using the following commands
+
+IPv4 NVGRE outer header::
+
+ testpmd> set nvgre ip-version ipv4 tni 4 ip-src 127.0.0.1 ip-dst 128.0.0.1
+        eth-src 11:11:11:11:11:11 eth-dst 22:22:22:22:22:22
+ testpmd> flow create 0 ingress pattern end actions nvgre_encap /
+        queue index 0 / end
+
+ testpmd> set nvgre-with-vlan ip-version ipv4 tni 4 ip-src 127.0.0.1
+         ip-dst 128.0.0.1 vlan-tci 34 eth-src 11:11:11:11:11:11
+         eth-dst 22:22:22:22:22:22
+ testpmd> flow create 0 ingress pattern end actions nvgre_encap /
+         queue index 0 / end
+
+IPv6 NVGRE outer header::
+
+ testpmd> set nvgre ip-version ipv6 tni 4 ip-src ::1 ip-dst ::2222
+        eth-src 11:11:11:11:11:11 eth-dst 22:22:22:22:22:22
+ testpmd> flow create 0 ingress pattern end actions nvgre_encap /
+        queue index 0 / end
+
+ testpmd> set nvgre-with-vlan ip-version ipv6 tni 4 ip-src ::1 ip-dst ::2222
+        vlan-tci 34 eth-src 11:11:11:11:11:11 eth-dst 22:22:22:22:22:22
+ testpmd> flow create 0 ingress pattern end actions nvgre_encap /
+        queue index 0 / end
 
 BPF Functions
 --------------

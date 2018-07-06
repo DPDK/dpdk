@@ -795,6 +795,16 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" eth-dst (eth-dst)\n"
 			"       Configure the VXLAN encapsulation for flows.\n\n"
 
+			"nvgre ip-version (ipv4|ipv6) tni (tni) ip-src"
+			" (ip-src) ip-dst (ip-dst) eth-src (eth-src) eth-dst"
+			" (eth-dst)\n"
+			"       Configure the NVGRE encapsulation for flows.\n\n"
+
+			"nvgre-with-vlan ip-version (ipv4|ipv6) tni (tni)"
+			" ip-src (ip-src) ip-dst (ip-dst) vlan-tci (vlan-tci)"
+			" eth-src (eth-src) eth-dst (eth-dst)\n"
+			"       Configure the NVGRE encapsulation for flows.\n\n"
+
 			, list_pkt_forwarding_modes()
 		);
 	}
@@ -15029,6 +15039,154 @@ cmdline_parse_inst_t cmd_set_vxlan_with_vlan = {
 	},
 };
 
+/** Set NVGRE encapsulation details */
+struct cmd_set_nvgre_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t nvgre;
+	cmdline_fixed_string_t pos_token;
+	cmdline_fixed_string_t ip_version;
+	uint32_t tni;
+	cmdline_ipaddr_t ip_src;
+	cmdline_ipaddr_t ip_dst;
+	uint16_t tci;
+	struct ether_addr eth_src;
+	struct ether_addr eth_dst;
+};
+
+cmdline_parse_token_string_t cmd_set_nvgre_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_nvgre_result, set, "set");
+cmdline_parse_token_string_t cmd_set_nvgre_nvgre =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_nvgre_result, nvgre, "nvgre");
+cmdline_parse_token_string_t cmd_set_nvgre_nvgre_with_vlan =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_nvgre_result, nvgre,
+				 "nvgre-with-vlan");
+cmdline_parse_token_string_t cmd_set_nvgre_ip_version =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_nvgre_result, pos_token,
+				 "ip-version");
+cmdline_parse_token_string_t cmd_set_nvgre_ip_version_value =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_nvgre_result, ip_version,
+				 "ipv4#ipv6");
+cmdline_parse_token_string_t cmd_set_nvgre_tni =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_nvgre_result, pos_token,
+				 "tni");
+cmdline_parse_token_num_t cmd_set_nvgre_tni_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_nvgre_result, tni, UINT32);
+cmdline_parse_token_string_t cmd_set_nvgre_ip_src =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_nvgre_result, pos_token,
+				 "ip-src");
+cmdline_parse_token_num_t cmd_set_nvgre_ip_src_value =
+	TOKEN_IPADDR_INITIALIZER(struct cmd_set_nvgre_result, ip_src);
+cmdline_parse_token_string_t cmd_set_nvgre_ip_dst =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_nvgre_result, pos_token,
+				 "ip-dst");
+cmdline_parse_token_ipaddr_t cmd_set_nvgre_ip_dst_value =
+	TOKEN_IPADDR_INITIALIZER(struct cmd_set_nvgre_result, ip_dst);
+cmdline_parse_token_string_t cmd_set_nvgre_vlan =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_nvgre_result, pos_token,
+				 "vlan-tci");
+cmdline_parse_token_num_t cmd_set_nvgre_vlan_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_nvgre_result, tci, UINT16);
+cmdline_parse_token_string_t cmd_set_nvgre_eth_src =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_nvgre_result, pos_token,
+				 "eth-src");
+cmdline_parse_token_etheraddr_t cmd_set_nvgre_eth_src_value =
+	TOKEN_ETHERADDR_INITIALIZER(struct cmd_set_nvgre_result, eth_src);
+cmdline_parse_token_string_t cmd_set_nvgre_eth_dst =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_nvgre_result, pos_token,
+				 "eth-dst");
+cmdline_parse_token_etheraddr_t cmd_set_nvgre_eth_dst_value =
+	TOKEN_ETHERADDR_INITIALIZER(struct cmd_set_nvgre_result, eth_dst);
+
+static void cmd_set_nvgre_parsed(void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_set_nvgre_result *res = parsed_result;
+	union {
+		uint32_t nvgre_tni;
+		uint8_t tni[4];
+	} id = {
+		.nvgre_tni = rte_cpu_to_be_32(res->tni) & RTE_BE32(0x00ffffff),
+	};
+
+	if (strcmp(res->nvgre, "nvgre") == 0)
+		nvgre_encap_conf.select_vlan = 0;
+	else if (strcmp(res->nvgre, "nvgre-with-vlan") == 0)
+		nvgre_encap_conf.select_vlan = 1;
+	if (strcmp(res->ip_version, "ipv4") == 0)
+		nvgre_encap_conf.select_ipv4 = 1;
+	else if (strcmp(res->ip_version, "ipv6") == 0)
+		nvgre_encap_conf.select_ipv4 = 0;
+	else
+		return;
+	rte_memcpy(nvgre_encap_conf.tni, &id.tni[1], 3);
+	if (nvgre_encap_conf.select_ipv4) {
+		IPV4_ADDR_TO_UINT(res->ip_src, nvgre_encap_conf.ipv4_src);
+		IPV4_ADDR_TO_UINT(res->ip_dst, nvgre_encap_conf.ipv4_dst);
+	} else {
+		IPV6_ADDR_TO_ARRAY(res->ip_src, nvgre_encap_conf.ipv6_src);
+		IPV6_ADDR_TO_ARRAY(res->ip_dst, nvgre_encap_conf.ipv6_dst);
+	}
+	if (nvgre_encap_conf.select_vlan)
+		nvgre_encap_conf.vlan_tci = rte_cpu_to_be_16(res->tci);
+	rte_memcpy(nvgre_encap_conf.eth_src, res->eth_src.addr_bytes,
+		   ETHER_ADDR_LEN);
+	rte_memcpy(nvgre_encap_conf.eth_dst, res->eth_dst.addr_bytes,
+		   ETHER_ADDR_LEN);
+}
+
+cmdline_parse_inst_t cmd_set_nvgre = {
+	.f = cmd_set_nvgre_parsed,
+	.data = NULL,
+	.help_str = "set nvgre ip-version <ipv4|ipv6> tni <tni> ip-src"
+		" <ip-src> ip-dst <ip-dst> eth-src <eth-src>"
+		" eth-dst <eth-dst>",
+	.tokens = {
+		(void *)&cmd_set_nvgre_set,
+		(void *)&cmd_set_nvgre_nvgre,
+		(void *)&cmd_set_nvgre_ip_version,
+		(void *)&cmd_set_nvgre_ip_version_value,
+		(void *)&cmd_set_nvgre_tni,
+		(void *)&cmd_set_nvgre_tni_value,
+		(void *)&cmd_set_nvgre_ip_src,
+		(void *)&cmd_set_nvgre_ip_src_value,
+		(void *)&cmd_set_nvgre_ip_dst,
+		(void *)&cmd_set_nvgre_ip_dst_value,
+		(void *)&cmd_set_nvgre_eth_src,
+		(void *)&cmd_set_nvgre_eth_src_value,
+		(void *)&cmd_set_nvgre_eth_dst,
+		(void *)&cmd_set_nvgre_eth_dst_value,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_set_nvgre_with_vlan = {
+	.f = cmd_set_nvgre_parsed,
+	.data = NULL,
+	.help_str = "set nvgre-with-vlan ip-version <ipv4|ipv6> tni <tni>"
+		" ip-src <ip-src> ip-dst <ip-dst> vlan-tci <vlan-tci>"
+		" eth-src <eth-src> eth-dst <eth-dst>",
+	.tokens = {
+		(void *)&cmd_set_nvgre_set,
+		(void *)&cmd_set_nvgre_nvgre_with_vlan,
+		(void *)&cmd_set_nvgre_ip_version,
+		(void *)&cmd_set_nvgre_ip_version_value,
+		(void *)&cmd_set_nvgre_tni,
+		(void *)&cmd_set_nvgre_tni_value,
+		(void *)&cmd_set_nvgre_ip_src,
+		(void *)&cmd_set_nvgre_ip_src_value,
+		(void *)&cmd_set_nvgre_ip_dst,
+		(void *)&cmd_set_nvgre_ip_dst_value,
+		(void *)&cmd_set_nvgre_vlan,
+		(void *)&cmd_set_nvgre_vlan_value,
+		(void *)&cmd_set_nvgre_eth_src,
+		(void *)&cmd_set_nvgre_eth_src_value,
+		(void *)&cmd_set_nvgre_eth_dst,
+		(void *)&cmd_set_nvgre_eth_dst_value,
+		NULL,
+	},
+};
+
 /* Strict link priority scheduling mode setting */
 static void
 cmd_strict_link_prio_parsed(
@@ -17655,6 +17813,8 @@ cmdline_parse_ctx_t main_ctx[] = {
 #endif
 	(cmdline_parse_inst_t *)&cmd_set_vxlan,
 	(cmdline_parse_inst_t *)&cmd_set_vxlan_with_vlan,
+	(cmdline_parse_inst_t *)&cmd_set_nvgre,
+	(cmdline_parse_inst_t *)&cmd_set_nvgre_with_vlan,
 	(cmdline_parse_inst_t *)&cmd_ddp_add,
 	(cmdline_parse_inst_t *)&cmd_ddp_del,
 	(cmdline_parse_inst_t *)&cmd_ddp_get_list,
