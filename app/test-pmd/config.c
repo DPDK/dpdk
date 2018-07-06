@@ -2332,6 +2332,55 @@ icmp_echo_config_setup(void)
 	}
 }
 
+#if defined RTE_LIBRTE_PMD_SOFTNIC
+static void
+softnic_fwd_config_setup(void)
+{
+	struct rte_port *port;
+	portid_t pid, softnic_portid;
+	queueid_t i;
+	uint8_t softnic_enable = 0;
+
+	RTE_ETH_FOREACH_DEV(pid) {
+			port = &ports[pid];
+			const char *driver = port->dev_info.driver_name;
+
+			if (strcmp(driver, "net_softnic") == 0) {
+				softnic_portid = pid;
+				softnic_enable = 1;
+				break;
+			}
+	}
+
+	if (softnic_enable == 0) {
+		printf("Softnic mode not configured(%s)!\n", __func__);
+		return;
+	}
+
+	cur_fwd_config.nb_fwd_ports = 1;
+	cur_fwd_config.nb_fwd_streams = (streamid_t) nb_rxq;
+
+	/* Re-initialize forwarding streams */
+	init_fwd_streams();
+
+	/*
+	 * In the softnic forwarding test, the number of forwarding cores
+	 * is set to one and remaining are used for softnic packet processing.
+	 */
+	cur_fwd_config.nb_fwd_lcores = 1;
+	setup_fwd_config_of_each_lcore(&cur_fwd_config);
+
+	for (i = 0; i < cur_fwd_config.nb_fwd_streams; i++) {
+		fwd_streams[i]->rx_port   = softnic_portid;
+		fwd_streams[i]->rx_queue  = i;
+		fwd_streams[i]->tx_port   = softnic_portid;
+		fwd_streams[i]->tx_queue  = i;
+		fwd_streams[i]->peer_addr = fwd_streams[i]->tx_port;
+		fwd_streams[i]->retry_enabled = retry_enabled;
+	}
+}
+#endif
+
 void
 fwd_config_setup(void)
 {
@@ -2340,6 +2389,14 @@ fwd_config_setup(void)
 		icmp_echo_config_setup();
 		return;
 	}
+
+#if defined RTE_LIBRTE_PMD_SOFTNIC
+	if (strcmp(cur_fwd_eng->fwd_mode_name, "softnic") == 0) {
+		softnic_fwd_config_setup();
+		return;
+	}
+#endif
+
 	if ((nb_rxq > 1) && (nb_txq > 1)){
 		if (dcb_config)
 			dcb_fwd_config_setup();

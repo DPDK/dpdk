@@ -6,6 +6,7 @@
 
 #include <rte_cycles.h>
 #include <rte_mbuf.h>
+#include <rte_malloc.h>
 #include <rte_ethdev.h>
 #include <rte_flow.h>
 #include <rte_meter.h>
@@ -71,170 +72,17 @@ struct tm_hierarchy {
 	uint32_t n_shapers;
 };
 
-#define BITFIELD(byte_array, slab_pos, slab_mask, slab_shr)	\
-({								\
-	uint64_t slab = *((uint64_t *) &byte_array[slab_pos]);	\
-	uint64_t val =				\
-		(rte_be_to_cpu_64(slab) & slab_mask) >> slab_shr;	\
-	val;						\
-})
-
-#define RTE_SCHED_PORT_HIERARCHY(subport, pipe,           \
-	traffic_class, queue, color)                          \
-	((((uint64_t) (queue)) & 0x3) |                       \
-	((((uint64_t) (traffic_class)) & 0x3) << 2) |         \
-	((((uint64_t) (color)) & 0x3) << 4) |                 \
-	((((uint64_t) (subport)) & 0xFFFF) << 16) |           \
-	((((uint64_t) (pipe)) & 0xFFFFFFFF) << 32))
-
-
-static void
-pkt_metadata_set(struct rte_port *p, struct rte_mbuf **pkts,
-	uint32_t n_pkts)
-{
-	struct softnic_port_tm *tm = &p->softport.tm;
-	uint32_t i;
-
-	for (i = 0; i < (n_pkts & (~0x3)); i += 4) {
-		struct rte_mbuf *pkt0 = pkts[i];
-		struct rte_mbuf *pkt1 = pkts[i + 1];
-		struct rte_mbuf *pkt2 = pkts[i + 2];
-		struct rte_mbuf *pkt3 = pkts[i + 3];
-
-		uint8_t *pkt0_data = rte_pktmbuf_mtod(pkt0, uint8_t *);
-		uint8_t *pkt1_data = rte_pktmbuf_mtod(pkt1, uint8_t *);
-		uint8_t *pkt2_data = rte_pktmbuf_mtod(pkt2, uint8_t *);
-		uint8_t *pkt3_data = rte_pktmbuf_mtod(pkt3, uint8_t *);
-
-		uint64_t pkt0_subport = BITFIELD(pkt0_data,
-					tm->tm_pktfield0_slabpos,
-					tm->tm_pktfield0_slabmask,
-					tm->tm_pktfield0_slabshr);
-		uint64_t pkt0_pipe = BITFIELD(pkt0_data,
-					tm->tm_pktfield1_slabpos,
-					tm->tm_pktfield1_slabmask,
-					tm->tm_pktfield1_slabshr);
-		uint64_t pkt0_dscp = BITFIELD(pkt0_data,
-					tm->tm_pktfield2_slabpos,
-					tm->tm_pktfield2_slabmask,
-					tm->tm_pktfield2_slabshr);
-		uint32_t pkt0_tc = tm->tm_tc_table[pkt0_dscp & 0x3F] >> 2;
-		uint32_t pkt0_tc_q = tm->tm_tc_table[pkt0_dscp & 0x3F] & 0x3;
-		uint64_t pkt1_subport = BITFIELD(pkt1_data,
-					tm->tm_pktfield0_slabpos,
-					tm->tm_pktfield0_slabmask,
-					tm->tm_pktfield0_slabshr);
-		uint64_t pkt1_pipe = BITFIELD(pkt1_data,
-					tm->tm_pktfield1_slabpos,
-					tm->tm_pktfield1_slabmask,
-					tm->tm_pktfield1_slabshr);
-		uint64_t pkt1_dscp = BITFIELD(pkt1_data,
-					tm->tm_pktfield2_slabpos,
-					tm->tm_pktfield2_slabmask,
-					tm->tm_pktfield2_slabshr);
-		uint32_t pkt1_tc = tm->tm_tc_table[pkt1_dscp & 0x3F] >> 2;
-		uint32_t pkt1_tc_q = tm->tm_tc_table[pkt1_dscp & 0x3F] & 0x3;
-
-		uint64_t pkt2_subport = BITFIELD(pkt2_data,
-					tm->tm_pktfield0_slabpos,
-					tm->tm_pktfield0_slabmask,
-					tm->tm_pktfield0_slabshr);
-		uint64_t pkt2_pipe = BITFIELD(pkt2_data,
-					tm->tm_pktfield1_slabpos,
-					tm->tm_pktfield1_slabmask,
-					tm->tm_pktfield1_slabshr);
-		uint64_t pkt2_dscp = BITFIELD(pkt2_data,
-					tm->tm_pktfield2_slabpos,
-					tm->tm_pktfield2_slabmask,
-					tm->tm_pktfield2_slabshr);
-		uint32_t pkt2_tc = tm->tm_tc_table[pkt2_dscp & 0x3F] >> 2;
-		uint32_t pkt2_tc_q = tm->tm_tc_table[pkt2_dscp & 0x3F] & 0x3;
-
-		uint64_t pkt3_subport = BITFIELD(pkt3_data,
-					tm->tm_pktfield0_slabpos,
-					tm->tm_pktfield0_slabmask,
-					tm->tm_pktfield0_slabshr);
-		uint64_t pkt3_pipe = BITFIELD(pkt3_data,
-					tm->tm_pktfield1_slabpos,
-					tm->tm_pktfield1_slabmask,
-					tm->tm_pktfield1_slabshr);
-		uint64_t pkt3_dscp = BITFIELD(pkt3_data,
-					tm->tm_pktfield2_slabpos,
-					tm->tm_pktfield2_slabmask,
-					tm->tm_pktfield2_slabshr);
-		uint32_t pkt3_tc = tm->tm_tc_table[pkt3_dscp & 0x3F] >> 2;
-		uint32_t pkt3_tc_q = tm->tm_tc_table[pkt3_dscp & 0x3F] & 0x3;
-
-		uint64_t pkt0_sched = RTE_SCHED_PORT_HIERARCHY(pkt0_subport,
-						pkt0_pipe,
-						pkt0_tc,
-						pkt0_tc_q,
-						0);
-		uint64_t pkt1_sched = RTE_SCHED_PORT_HIERARCHY(pkt1_subport,
-						pkt1_pipe,
-						pkt1_tc,
-						pkt1_tc_q,
-						0);
-		uint64_t pkt2_sched = RTE_SCHED_PORT_HIERARCHY(pkt2_subport,
-						pkt2_pipe,
-						pkt2_tc,
-						pkt2_tc_q,
-						0);
-		uint64_t pkt3_sched = RTE_SCHED_PORT_HIERARCHY(pkt3_subport,
-						pkt3_pipe,
-						pkt3_tc,
-						pkt3_tc_q,
-						0);
-
-		pkt0->hash.sched.lo = pkt0_sched & 0xFFFFFFFF;
-		pkt0->hash.sched.hi = pkt0_sched >> 32;
-		pkt1->hash.sched.lo = pkt1_sched & 0xFFFFFFFF;
-		pkt1->hash.sched.hi = pkt1_sched >> 32;
-		pkt2->hash.sched.lo = pkt2_sched & 0xFFFFFFFF;
-		pkt2->hash.sched.hi = pkt2_sched >> 32;
-		pkt3->hash.sched.lo = pkt3_sched & 0xFFFFFFFF;
-		pkt3->hash.sched.hi = pkt3_sched >> 32;
-	}
-
-	for (; i < n_pkts; i++)	{
-		struct rte_mbuf *pkt = pkts[i];
-
-		uint8_t *pkt_data = rte_pktmbuf_mtod(pkt, uint8_t *);
-
-		uint64_t pkt_subport = BITFIELD(pkt_data,
-					tm->tm_pktfield0_slabpos,
-					tm->tm_pktfield0_slabmask,
-					tm->tm_pktfield0_slabshr);
-		uint64_t pkt_pipe = BITFIELD(pkt_data,
-					tm->tm_pktfield1_slabpos,
-					tm->tm_pktfield1_slabmask,
-					tm->tm_pktfield1_slabshr);
-		uint64_t pkt_dscp = BITFIELD(pkt_data,
-					tm->tm_pktfield2_slabpos,
-					tm->tm_pktfield2_slabmask,
-					tm->tm_pktfield2_slabshr);
-		uint32_t pkt_tc = tm->tm_tc_table[pkt_dscp & 0x3F] >> 2;
-		uint32_t pkt_tc_q = tm->tm_tc_table[pkt_dscp & 0x3F] & 0x3;
-
-		uint64_t pkt_sched = RTE_SCHED_PORT_HIERARCHY(pkt_subport,
-						pkt_pipe,
-						pkt_tc,
-						pkt_tc_q,
-						0);
-
-		pkt->hash.sched.lo = pkt_sched & 0xFFFFFFFF;
-		pkt->hash.sched.hi = pkt_sched >> 32;
-	}
-}
+static struct fwd_lcore *softnic_fwd_lcore;
+static uint16_t softnic_port_id;
+struct fwd_engine softnic_fwd_engine;
 
 /*
- * Soft port packet forward
+ * Softnic packet forward
  */
 static void
-softport_packet_fwd(struct fwd_stream *fs)
+softnic_fwd(struct fwd_stream *fs)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
-	struct rte_port *rte_tx_port = &ports[fs->tx_port];
 	uint16_t nb_rx;
 	uint16_t nb_tx;
 	uint32_t retry;
@@ -258,14 +106,6 @@ softport_packet_fwd(struct fwd_stream *fs)
 	fs->rx_burst_stats.pkt_burst_spread[nb_rx]++;
 #endif
 
-	if (rte_tx_port->softnic_enable) {
-		/* Set packet metadata if tm flag enabled */
-		if (rte_tx_port->softport.tm_flag)
-			pkt_metadata_set(rte_tx_port, pkts_burst, nb_rx);
-
-		/* Softport run */
-		rte_pmd_softnic_run(fs->tx_port);
-	}
 	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue,
 			pkts_burst, nb_rx);
 
@@ -298,7 +138,34 @@ softport_packet_fwd(struct fwd_stream *fs)
 }
 
 static void
-set_tm_hiearchy_nodes_shaper_rate(portid_t port_id, struct tm_hierarchy *h)
+softnic_fwd_run(struct fwd_stream *fs)
+{
+	rte_pmd_softnic_run(softnic_port_id);
+	softnic_fwd(fs);
+}
+
+/**
+ * Softnic init
+ */
+static int
+softnic_begin(void *arg __rte_unused)
+{
+	for (;;) {
+		if (!softnic_fwd_lcore->stopped)
+			break;
+	}
+
+	do {
+		/* Run softnic */
+		rte_pmd_softnic_run(softnic_port_id);
+	} while (!softnic_fwd_lcore->stopped);
+
+	return 0;
+}
+
+static void
+set_tm_hiearchy_nodes_shaper_rate(portid_t port_id,
+	struct tm_hierarchy *h)
 {
 	struct rte_eth_link link_params;
 	uint64_t tm_port_rate;
@@ -306,7 +173,7 @@ set_tm_hiearchy_nodes_shaper_rate(portid_t port_id, struct tm_hierarchy *h)
 	memset(&link_params, 0, sizeof(link_params));
 
 	rte_eth_link_get(port_id, &link_params);
-	tm_port_rate = (uint64_t)link_params.link_speed * BYTES_IN_MBPS;
+	tm_port_rate = (uint64_t)ETH_SPEED_NUM_10G * BYTES_IN_MBPS;
 
 	if (tm_port_rate > UINT32_MAX)
 		tm_port_rate = UINT32_MAX;
@@ -374,7 +241,8 @@ softport_tm_root_node_add(portid_t port_id, struct tm_hierarchy *h,
 }
 
 static int
-softport_tm_subport_node_add(portid_t port_id, struct tm_hierarchy *h,
+softport_tm_subport_node_add(portid_t port_id,
+	struct tm_hierarchy *h,
 	struct rte_tm_error *error)
 {
 	uint32_t subport_parent_node_id, subport_node_id = 0;
@@ -442,7 +310,8 @@ softport_tm_subport_node_add(portid_t port_id, struct tm_hierarchy *h,
 }
 
 static int
-softport_tm_pipe_node_add(portid_t port_id, struct tm_hierarchy *h,
+softport_tm_pipe_node_add(portid_t port_id,
+	struct tm_hierarchy *h,
 	struct rte_tm_error *error)
 {
 	uint32_t pipe_parent_node_id;
@@ -511,7 +380,8 @@ softport_tm_pipe_node_add(portid_t port_id, struct tm_hierarchy *h,
 }
 
 static int
-softport_tm_tc_node_add(portid_t port_id, struct tm_hierarchy *h,
+softport_tm_tc_node_add(portid_t port_id,
+	struct tm_hierarchy *h,
 	struct rte_tm_error *error)
 {
 	uint32_t tc_parent_node_id;
@@ -674,63 +544,9 @@ softport_tm_queue_node_add(portid_t port_id, struct tm_hierarchy *h,
 	return 0;
 }
 
-/*
- * TM Packet Field Setup
- */
-static void
-softport_tm_pktfield_setup(portid_t port_id)
-{
-	struct rte_port *p = &ports[port_id];
-	uint64_t pktfield0_mask = 0;
-	uint64_t pktfield1_mask = 0x0000000FFF000000LLU;
-	uint64_t pktfield2_mask = 0x00000000000000FCLLU;
-
-	p->softport.tm = (struct softnic_port_tm) {
-		.n_subports_per_port = SUBPORT_NODES_PER_PORT,
-		.n_pipes_per_subport = PIPE_NODES_PER_SUBPORT,
-
-		/* Packet field to identify subport
-		 *
-		 * Default configuration assumes only one subport, thus
-		 * the subport ID is hardcoded to 0
-		 */
-		.tm_pktfield0_slabpos = 0,
-		.tm_pktfield0_slabmask = pktfield0_mask,
-		.tm_pktfield0_slabshr =
-			__builtin_ctzll(pktfield0_mask),
-
-		/* Packet field to identify pipe.
-		 *
-		 * Default value assumes Ethernet/IPv4/UDP packets,
-		 * UDP payload bits 12 .. 23
-		 */
-		.tm_pktfield1_slabpos = 40,
-		.tm_pktfield1_slabmask = pktfield1_mask,
-		.tm_pktfield1_slabshr =
-			__builtin_ctzll(pktfield1_mask),
-
-		/* Packet field used as index into TC translation table
-		 * to identify the traffic class and queue.
-		 *
-		 * Default value assumes Ethernet/IPv4 packets, IPv4
-		 * DSCP field
-		 */
-		.tm_pktfield2_slabpos = 8,
-		.tm_pktfield2_slabmask = pktfield2_mask,
-		.tm_pktfield2_slabshr =
-			__builtin_ctzll(pktfield2_mask),
-
-		.tm_tc_table = {
-			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-		}, /**< TC translation table */
-	};
-}
-
 static int
-softport_tm_hierarchy_specify(portid_t port_id, struct rte_tm_error *error)
+softport_tm_hierarchy_specify(portid_t port_id,
+	struct rte_tm_error *error)
 {
 
 	struct tm_hierarchy h;
@@ -766,75 +582,96 @@ softport_tm_hierarchy_specify(portid_t port_id, struct rte_tm_error *error)
 	if (status)
 		return status;
 
-	/* TM packet fields setup */
-	softport_tm_pktfield_setup(port_id);
-
 	return 0;
 }
 
 /*
- * Soft port Init
+ * Softnic TM default configuration
  */
 static void
-softport_tm_begin(portid_t pi)
+softnic_tm_default_config(portid_t pi)
 {
 	struct rte_port *port = &ports[pi];
+	struct rte_tm_error error;
+	int status;
 
-	/* Soft port TM flag */
-	if (port->softport.tm_flag == 1) {
-		printf("\n\n  TM feature available on port %u\n", pi);
+	/* Stop port */
+	rte_eth_dev_stop(pi);
 
-		/* Soft port TM hierarchy configuration */
-		if ((port->softport.tm.hierarchy_config == 0) &&
-			(port->softport.tm.default_hierarchy_enable == 1)) {
-			struct rte_tm_error error;
-			int status;
-
-			/* Stop port */
-			rte_eth_dev_stop(pi);
-
-			/* TM hierarchy specification */
-			status = softport_tm_hierarchy_specify(pi, &error);
-			if (status) {
-				printf("  TM Hierarchy built error(%d) - %s\n",
-					error.type, error.message);
-				return;
-			}
-			printf("\n  TM Hierarchy Specified!\n\v");
-
-			/* TM hierarchy commit */
-			status = rte_tm_hierarchy_commit(pi, 0, &error);
-			if (status) {
-				printf("  Hierarchy commit error(%d) - %s\n",
-					error.type, error.message);
-				return;
-			}
-			printf("  Hierarchy Committed (port %u)!", pi);
-			port->softport.tm.hierarchy_config = 1;
-
-			/* Start port */
-			status = rte_eth_dev_start(pi);
-			if (status) {
-				printf("\n  Port %u start error!\n", pi);
-				return;
-			}
-			printf("\n  Port %u started!\n", pi);
-			return;
-		}
+	/* TM hierarchy specification */
+	status = softport_tm_hierarchy_specify(pi, &error);
+	if (status) {
+		printf("  TM Hierarchy built error(%d) - %s\n",
+			error.type, error.message);
+		return;
 	}
-	printf("\n  TM feature not available on port %u", pi);
+	printf("\n  TM Hierarchy Specified!\n");
+
+	/* TM hierarchy commit */
+	status = rte_tm_hierarchy_commit(pi, 0, &error);
+	if (status) {
+		printf("  Hierarchy commit error(%d) - %s\n",
+			error.type, error.message);
+		return;
+	}
+	printf("  Hierarchy Committed (port %u)!\n", pi);
+
+	/* Start port */
+	status = rte_eth_dev_start(pi);
+	if (status) {
+		printf("\n  Port %u start error!\n", pi);
+		return;
+	}
+
+	/* Reset the default hierarchy flag */
+	port->softport.default_tm_hierarchy_enable = 0;
 }
 
-struct fwd_engine softnic_tm_engine = {
-	.fwd_mode_name  = "tm",
-	.port_fwd_begin = softport_tm_begin,
-	.port_fwd_end   = NULL,
-	.packet_fwd     = softport_packet_fwd,
-};
+/*
+ * Softnic forwarding init
+ */
+static void
+softnic_fwd_begin(portid_t pi)
+{
+	struct rte_port *port = &ports[pi];
+	uint32_t lcore, fwd_core_present = 0, softnic_run_launch = 0;
+	int	status;
 
-struct fwd_engine softnic_tm_bypass_engine = {
-	.fwd_mode_name  = "tm-bypass",
-	.port_fwd_begin = NULL,
+	softnic_fwd_lcore = port->softport.fwd_lcore_arg[0];
+	softnic_port_id = pi;
+
+	/* Launch softnic_run function on lcores */
+	for (lcore = 0; lcore < RTE_MAX_LCORE; lcore++) {
+		if (!rte_lcore_is_enabled(lcore))
+			continue;
+
+		if (lcore == rte_get_master_lcore())
+			continue;
+
+		if (fwd_core_present == 0) {
+			fwd_core_present++;
+			continue;
+		}
+
+		status = rte_eal_remote_launch(softnic_begin, NULL, lcore);
+		if (status)
+			printf("softnic launch on lcore %u failed (%d)\n",
+				       lcore, status);
+
+		softnic_run_launch = 1;
+	}
+
+	if (!softnic_run_launch)
+		softnic_fwd_engine.packet_fwd = softnic_fwd_run;
+
+	/* Softnic TM default configuration */
+	if (port->softport.default_tm_hierarchy_enable == 1)
+		softnic_tm_default_config(pi);
+}
+
+struct fwd_engine softnic_fwd_engine = {
+	.fwd_mode_name  = "softnic",
+	.port_fwd_begin = softnic_fwd_begin,
 	.port_fwd_end   = NULL,
-	.packet_fwd     = softport_packet_fwd,
+	.packet_fwd     = softnic_fwd,
 };

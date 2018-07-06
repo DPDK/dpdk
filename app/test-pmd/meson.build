@@ -35,7 +35,7 @@ if dpdk_conf.has('RTE_LIBRTE_IXGBE_PMD')
 	deps += 'pmd_ixgbe'
 endif
 if dpdk_conf.has('RTE_LIBRTE_SOFTNIC_PMD')
-	sources += files('tm.c')
+	sources += files('softnicfwd.c')
 	deps += 'pmd_softnic'
 endif
 if dpdk_conf.has('RTE_LIBRTE_DPAA_PMD')
