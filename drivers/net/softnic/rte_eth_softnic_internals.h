@@ -16,6 +16,8 @@
 #include <rte_sched.h>
 #include <rte_port_in_action.h>
 #include <rte_table_action.h>
+#include <rte_pipeline.h>
+
 #include <rte_ethdev_driver.h>
 #include <rte_tm_driver.h>
 
@@ -264,6 +266,160 @@ struct softnic_table_action_profile {
 TAILQ_HEAD(softnic_table_action_profile_list, softnic_table_action_profile);
 
 /**
+ * Pipeline
+ */
+struct pipeline_params {
+	uint32_t timer_period_ms;
+	uint32_t offset_port_id;
+};
+
+enum softnic_port_in_type {
+	PORT_IN_RXQ,
+	PORT_IN_SWQ,
+	PORT_IN_TMGR,
+	PORT_IN_TAP,
+	PORT_IN_SOURCE,
+};
+
+struct softnic_port_in_params {
+	/* Read */
+	enum softnic_port_in_type type;
+	const char *dev_name;
+	union {
+		struct {
+			uint16_t queue_id;
+		} rxq;
+
+		struct {
+			const char *mempool_name;
+			uint32_t mtu;
+		} tap;
+
+		struct {
+			const char *mempool_name;
+			const char *file_name;
+			uint32_t n_bytes_per_pkt;
+		} source;
+	};
+	uint32_t burst_size;
+
+	/* Action */
+	const char *action_profile_name;
+};
+
+enum softnic_port_out_type {
+	PORT_OUT_TXQ,
+	PORT_OUT_SWQ,
+	PORT_OUT_TMGR,
+	PORT_OUT_TAP,
+	PORT_OUT_SINK,
+};
+
+struct softnic_port_out_params {
+	enum softnic_port_out_type type;
+	const char *dev_name;
+	union {
+		struct {
+			uint16_t queue_id;
+		} txq;
+
+		struct {
+			const char *file_name;
+			uint32_t max_n_pkts;
+		} sink;
+	};
+	uint32_t burst_size;
+	int retry;
+	uint32_t n_retries;
+};
+
+enum softnic_table_type {
+	TABLE_ACL,
+	TABLE_ARRAY,
+	TABLE_HASH,
+	TABLE_LPM,
+	TABLE_STUB,
+};
+
+struct softnic_table_acl_params {
+	uint32_t n_rules;
+	uint32_t ip_header_offset;
+	int ip_version;
+};
+
+struct softnic_table_array_params {
+	uint32_t n_keys;
+	uint32_t key_offset;
+};
+
+struct softnic_table_hash_params {
+	uint32_t n_keys;
+	uint32_t key_offset;
+	uint32_t key_size;
+	uint8_t *key_mask;
+	uint32_t n_buckets;
+	int extendable_bucket;
+};
+
+struct softnic_table_lpm_params {
+	uint32_t n_rules;
+	uint32_t key_offset;
+	uint32_t key_size;
+};
+
+struct softnic_table_params {
+	/* Match */
+	enum softnic_table_type match_type;
+	union {
+		struct softnic_table_acl_params acl;
+		struct softnic_table_array_params array;
+		struct softnic_table_hash_params hash;
+		struct softnic_table_lpm_params lpm;
+	} match;
+
+	/* Action */
+	const char *action_profile_name;
+};
+
+struct softnic_port_in {
+	struct softnic_port_in_params params;
+	struct softnic_port_in_action_profile *ap;
+	struct rte_port_in_action *a;
+};
+
+struct softnic_table {
+	struct softnic_table_params params;
+	struct softnic_table_action_profile *ap;
+	struct rte_table_action *a;
+};
+
+struct pipeline {
+	TAILQ_ENTRY(pipeline) node;
+	char name[NAME_SIZE];
+
+	struct rte_pipeline *p;
+	struct softnic_port_in port_in[RTE_PIPELINE_PORT_IN_MAX];
+	struct softnic_table table[RTE_PIPELINE_TABLE_MAX];
+	uint32_t n_ports_in;
+	uint32_t n_ports_out;
+	uint32_t n_tables;
+
+	struct rte_ring *msgq_req;
+	struct rte_ring *msgq_rsp;
+	uint32_t timer_period_ms;
+
+	int enabled;
+	uint32_t thread_id;
+	uint32_t cpu_id;
+};
+
+TAILQ_HEAD(pipeline_list, pipeline);
+
+#ifndef TABLE_RULE_ACTION_SIZE_MAX
+#define TABLE_RULE_ACTION_SIZE_MAX                         2048
+#endif
+
+/**
  * PMD Internals
  */
 struct pmd_internals {
@@ -281,6 +437,7 @@ struct pmd_internals {
 	struct softnic_tap_list tap_list;
 	struct softnic_port_in_action_profile_list port_in_action_profile_list;
 	struct softnic_table_action_profile_list table_action_profile_list;
+	struct pipeline_list pipeline_list;
 };
 
 /**
@@ -429,5 +586,44 @@ struct softnic_table_action_profile *
 softnic_table_action_profile_create(struct pmd_internals *p,
 	const char *name,
 	struct softnic_table_action_profile_params *params);
+
+/**
+ * Pipeline
+ */
+int
+softnic_pipeline_init(struct pmd_internals *p);
+
+void
+softnic_pipeline_free(struct pmd_internals *p);
+
+struct pipeline *
+softnic_pipeline_find(struct pmd_internals *p, const char *name);
+
+struct pipeline *
+softnic_pipeline_create(struct pmd_internals *p,
+	const char *name,
+	struct pipeline_params *params);
+
+int
+softnic_pipeline_port_in_create(struct pmd_internals *p,
+	const char *pipeline_name,
+	struct softnic_port_in_params *params,
+	int enabled);
+
+int
+softnic_pipeline_port_in_connect_to_table(struct pmd_internals *p,
+	const char *pipeline_name,
+	uint32_t port_id,
+	uint32_t table_id);
+
+int
+softnic_pipeline_port_out_create(struct pmd_internals *p,
+	const char *pipeline_name,
+	struct softnic_port_out_params *params);
+
+int
+softnic_pipeline_table_create(struct pmd_internals *p,
+	const char *pipeline_name,
+	struct softnic_table_params *params);
 
 #endif /* __INCLUDE_RTE_ETH_SOFTNIC_INTERNALS_H__ */

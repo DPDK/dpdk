@@ -34,8 +34,12 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_FLOW_CLASSIFY)  += -lrte_flow_classify
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PIPELINE)       += --whole-archive
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PIPELINE)       += -lrte_pipeline
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PIPELINE)       += --no-whole-archive
+_LDLIBS-$(CONFIG_RTE_LIBRTE_TABLE)          += --whole-archive
 _LDLIBS-$(CONFIG_RTE_LIBRTE_TABLE)          += -lrte_table
+_LDLIBS-$(CONFIG_RTE_LIBRTE_TABLE)          += --no-whole-archive
+_LDLIBS-$(CONFIG_RTE_LIBRTE_PORT)           += --whole-archive
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PORT)           += -lrte_port
+_LDLIBS-$(CONFIG_RTE_LIBRTE_PORT)           += --no-whole-archive
 
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PDUMP)          += -lrte_pdump
 _LDLIBS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR)    += -lrte_distributor
