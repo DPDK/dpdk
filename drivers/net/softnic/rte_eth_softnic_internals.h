@@ -838,6 +838,35 @@ softnic_pipeline_table_rule_stats_read(struct pmd_internals *p,
 	struct rte_table_action_stats_counters *stats,
 	int clear);
 
+int
+softnic_pipeline_table_mtr_profile_add(struct pmd_internals *p,
+	const char *pipeline_name,
+	uint32_t table_id,
+	uint32_t meter_profile_id,
+	struct rte_table_action_meter_profile *profile);
+
+int
+softnic_pipeline_table_mtr_profile_delete(struct pmd_internals *p,
+	const char *pipeline_name,
+	uint32_t table_id,
+	uint32_t meter_profile_id);
+
+int
+softnic_pipeline_table_rule_mtr_read(struct pmd_internals *p,
+	const char *pipeline_name,
+	uint32_t table_id,
+	void *data,
+	uint32_t tc_mask,
+	struct rte_table_action_mtr_counters *stats,
+	int clear);
+
+int
+softnic_pipeline_table_dscp_table_update(struct pmd_internals *p,
+	const char *pipeline_name,
+	uint32_t table_id,
+	uint64_t dscp_mask,
+	struct rte_table_action_dscp_table *dscp_table);
+
 /**
  * Thread
  */

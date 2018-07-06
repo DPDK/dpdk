@@ -522,7 +522,10 @@ enum pipeline_req_type {
 	PIPELINE_REQ_TABLE_RULE_DELETE,
 	PIPELINE_REQ_TABLE_RULE_DELETE_DEFAULT,
 	PIPELINE_REQ_TABLE_RULE_STATS_READ,
-
+	PIPELINE_REQ_TABLE_MTR_PROFILE_ADD,
+	PIPELINE_REQ_TABLE_MTR_PROFILE_DELETE,
+	PIPELINE_REQ_TABLE_RULE_MTR_READ,
+	PIPELINE_REQ_TABLE_DSCP_TABLE_UPDATE,
 	PIPELINE_REQ_MAX
 };
 
@@ -564,6 +567,26 @@ struct pipeline_msg_req_table_rule_stats_read {
 	int clear;
 };
 
+struct pipeline_msg_req_table_mtr_profile_add {
+	uint32_t meter_profile_id;
+	struct rte_table_action_meter_profile profile;
+};
+
+struct pipeline_msg_req_table_mtr_profile_delete {
+	uint32_t meter_profile_id;
+};
+
+struct pipeline_msg_req_table_rule_mtr_read {
+	void *data;
+	uint32_t tc_mask;
+	int clear;
+};
+
+struct pipeline_msg_req_table_dscp_table_update {
+	uint64_t dscp_mask;
+	struct rte_table_action_dscp_table dscp_table;
+};
+
 struct pipeline_msg_req {
 	enum pipeline_req_type type;
 	uint32_t id; /* Port IN, port OUT or table ID */
@@ -578,6 +601,10 @@ struct pipeline_msg_req {
 		struct pipeline_msg_req_table_rule_add_bulk table_rule_add_bulk;
 		struct pipeline_msg_req_table_rule_delete table_rule_delete;
 		struct pipeline_msg_req_table_rule_stats_read table_rule_stats_read;
+		struct pipeline_msg_req_table_mtr_profile_add table_mtr_profile_add;
+		struct pipeline_msg_req_table_mtr_profile_delete table_mtr_profile_delete;
+		struct pipeline_msg_req_table_rule_mtr_read table_rule_mtr_read;
+		struct pipeline_msg_req_table_dscp_table_update table_dscp_table_update;
 	};
 };
 
@@ -609,6 +636,10 @@ struct pipeline_msg_rsp_table_rule_stats_read {
 	struct rte_table_action_stats_counters stats;
 };
 
+struct pipeline_msg_rsp_table_rule_mtr_read {
+	struct rte_table_action_mtr_counters stats;
+};
+
 struct pipeline_msg_rsp {
 	int status;
 
@@ -621,6 +652,7 @@ struct pipeline_msg_rsp {
 		struct pipeline_msg_rsp_table_rule_add_default table_rule_add_default;
 		struct pipeline_msg_rsp_table_rule_add_bulk table_rule_add_bulk;
 		struct pipeline_msg_rsp_table_rule_stats_read table_rule_stats_read;
+		struct pipeline_msg_rsp_table_rule_mtr_read table_rule_mtr_read;
 	};
 };
 
@@ -1626,6 +1658,239 @@ softnic_pipeline_table_rule_stats_read(struct pmd_internals *softnic,
 	return status;
 }
 
+int
+softnic_pipeline_table_mtr_profile_add(struct pmd_internals *softnic,
+	const char *pipeline_name,
+	uint32_t table_id,
+	uint32_t meter_profile_id,
+	struct rte_table_action_meter_profile *profile)
+{
+	struct pipeline *p;
+	struct pipeline_msg_req *req;
+	struct pipeline_msg_rsp *rsp;
+	int status;
+
+	/* Check input params */
+	if (pipeline_name == NULL ||
+		profile == NULL)
+		return -1;
+
+	p = softnic_pipeline_find(softnic, pipeline_name);
+	if (p == NULL ||
+		table_id >= p->n_tables)
+		return -1;
+
+	if (!pipeline_is_running(p)) {
+		struct rte_table_action *a = p->table[table_id].a;
+
+		status = rte_table_action_meter_profile_add(a,
+			meter_profile_id,
+			profile);
+
+		return status;
+	}
+
+	/* Allocate request */
+	req = pipeline_msg_alloc();
+	if (req == NULL)
+		return -1;
+
+	/* Write request */
+	req->type = PIPELINE_REQ_TABLE_MTR_PROFILE_ADD;
+	req->id = table_id;
+	req->table_mtr_profile_add.meter_profile_id = meter_profile_id;
+	memcpy(&req->table_mtr_profile_add.profile, profile, sizeof(*profile));
+
+	/* Send request and wait for response */
+	rsp = pipeline_msg_send_recv(p, req);
+	if (rsp == NULL)
+		return -1;
+
+	/* Read response */
+	status = rsp->status;
+
+	/* Free response */
+	pipeline_msg_free(rsp);
+
+	return status;
+}
+
+int
+softnic_pipeline_table_mtr_profile_delete(struct pmd_internals *softnic,
+	const char *pipeline_name,
+	uint32_t table_id,
+	uint32_t meter_profile_id)
+{
+	struct pipeline *p;
+	struct pipeline_msg_req *req;
+	struct pipeline_msg_rsp *rsp;
+	int status;
+
+	/* Check input params */
+	if (pipeline_name == NULL)
+		return -1;
+
+	p = softnic_pipeline_find(softnic, pipeline_name);
+	if (p == NULL ||
+		table_id >= p->n_tables)
+		return -1;
+
+	if (!pipeline_is_running(p)) {
+		struct rte_table_action *a = p->table[table_id].a;
+
+		status = rte_table_action_meter_profile_delete(a,
+				meter_profile_id);
+
+		return status;
+	}
+
+	/* Allocate request */
+	req = pipeline_msg_alloc();
+	if (req == NULL)
+		return -1;
+
+	/* Write request */
+	req->type = PIPELINE_REQ_TABLE_MTR_PROFILE_DELETE;
+	req->id = table_id;
+	req->table_mtr_profile_delete.meter_profile_id = meter_profile_id;
+
+	/* Send request and wait for response */
+	rsp = pipeline_msg_send_recv(p, req);
+	if (rsp == NULL)
+		return -1;
+
+	/* Read response */
+	status = rsp->status;
+
+	/* Free response */
+	pipeline_msg_free(rsp);
+
+	return status;
+}
+
+int
+softnic_pipeline_table_rule_mtr_read(struct pmd_internals *softnic,
+	const char *pipeline_name,
+	uint32_t table_id,
+	void *data,
+	uint32_t tc_mask,
+	struct rte_table_action_mtr_counters *stats,
+	int clear)
+{
+	struct pipeline *p;
+	struct pipeline_msg_req *req;
+	struct pipeline_msg_rsp *rsp;
+	int status;
+
+	/* Check input params */
+	if (pipeline_name == NULL ||
+		data == NULL ||
+		stats == NULL)
+		return -1;
+
+	p = softnic_pipeline_find(softnic, pipeline_name);
+	if (p == NULL ||
+		table_id >= p->n_tables)
+		return -1;
+
+	if (!pipeline_is_running(p)) {
+		struct rte_table_action *a = p->table[table_id].a;
+
+		status = rte_table_action_meter_read(a,
+				data,
+				tc_mask,
+				stats,
+				clear);
+
+		return status;
+	}
+
+	/* Allocate request */
+	req = pipeline_msg_alloc();
+	if (req == NULL)
+		return -1;
+
+	/* Write request */
+	req->type = PIPELINE_REQ_TABLE_RULE_MTR_READ;
+	req->id = table_id;
+	req->table_rule_mtr_read.data = data;
+	req->table_rule_mtr_read.tc_mask = tc_mask;
+	req->table_rule_mtr_read.clear = clear;
+
+	/* Send request and wait for response */
+	rsp = pipeline_msg_send_recv(p, req);
+	if (rsp == NULL)
+		return -1;
+
+	/* Read response */
+	status = rsp->status;
+	if (status)
+		memcpy(stats, &rsp->table_rule_mtr_read.stats, sizeof(*stats));
+
+	/* Free response */
+	pipeline_msg_free(rsp);
+
+	return status;
+}
+
+int
+softnic_pipeline_table_dscp_table_update(struct pmd_internals *softnic,
+	const char *pipeline_name,
+	uint32_t table_id,
+	uint64_t dscp_mask,
+	struct rte_table_action_dscp_table *dscp_table)
+{
+	struct pipeline *p;
+	struct pipeline_msg_req *req;
+	struct pipeline_msg_rsp *rsp;
+	int status;
+
+	/* Check input params */
+	if (pipeline_name == NULL ||
+		dscp_table == NULL)
+		return -1;
+
+	p = softnic_pipeline_find(softnic, pipeline_name);
+	if (p == NULL ||
+		table_id >= p->n_tables)
+		return -1;
+
+	if (!pipeline_is_running(p)) {
+		struct rte_table_action *a = p->table[table_id].a;
+
+		status = rte_table_action_dscp_table_update(a,
+				dscp_mask,
+				dscp_table);
+
+		return status;
+	}
+
+	/* Allocate request */
+	req = pipeline_msg_alloc();
+	if (req == NULL)
+		return -1;
+
+	/* Write request */
+	req->type = PIPELINE_REQ_TABLE_DSCP_TABLE_UPDATE;
+	req->id = table_id;
+	req->table_dscp_table_update.dscp_mask = dscp_mask;
+	memcpy(&req->table_dscp_table_update.dscp_table,
+		dscp_table, sizeof(*dscp_table));
+
+	/* Send request and wait for response */
+	rsp = pipeline_msg_send_recv(p, req);
+	if (rsp == NULL)
+		return -1;
+
+	/* Read response */
+	status = rsp->status;
+
+	/* Free response */
+	pipeline_msg_free(rsp);
+
+	return status;
+}
+
 /**
  * Data plane threads: message handling
  */
@@ -2345,6 +2610,78 @@ pipeline_msg_handle_table_rule_stats_read(struct pipeline_data *p,
 	return rsp;
 }
 
+static struct pipeline_msg_rsp *
+pipeline_msg_handle_table_mtr_profile_add(struct pipeline_data *p,
+	struct pipeline_msg_req *req)
+{
+	struct pipeline_msg_rsp *rsp = (struct pipeline_msg_rsp *)req;
+	uint32_t table_id = req->id;
+	uint32_t meter_profile_id = req->table_mtr_profile_add.meter_profile_id;
+	struct rte_table_action_meter_profile *profile =
+		&req->table_mtr_profile_add.profile;
+	struct rte_table_action *a = p->table_data[table_id].a;
+
+	rsp->status = rte_table_action_meter_profile_add(a,
+		meter_profile_id,
+		profile);
+
+	return rsp;
+}
+
+static struct pipeline_msg_rsp *
+pipeline_msg_handle_table_mtr_profile_delete(struct pipeline_data *p,
+	struct pipeline_msg_req *req)
+{
+	struct pipeline_msg_rsp *rsp = (struct pipeline_msg_rsp *)req;
+	uint32_t table_id = req->id;
+	uint32_t meter_profile_id =
+		req->table_mtr_profile_delete.meter_profile_id;
+	struct rte_table_action *a = p->table_data[table_id].a;
+
+	rsp->status = rte_table_action_meter_profile_delete(a,
+		meter_profile_id);
+
+	return rsp;
+}
+
+static struct pipeline_msg_rsp *
+pipeline_msg_handle_table_rule_mtr_read(struct pipeline_data *p,
+	struct pipeline_msg_req *req)
+{
+	struct pipeline_msg_rsp *rsp = (struct pipeline_msg_rsp *)req;
+	uint32_t table_id = req->id;
+	void *data = req->table_rule_mtr_read.data;
+	uint32_t tc_mask = req->table_rule_mtr_read.tc_mask;
+	int clear = req->table_rule_mtr_read.clear;
+	struct rte_table_action *a = p->table_data[table_id].a;
+
+	rsp->status = rte_table_action_meter_read(a,
+		data,
+		tc_mask,
+		&rsp->table_rule_mtr_read.stats,
+		clear);
+
+	return rsp;
+}
+
+static struct pipeline_msg_rsp *
+pipeline_msg_handle_table_dscp_table_update(struct pipeline_data *p,
+	struct pipeline_msg_req *req)
+{
+	struct pipeline_msg_rsp *rsp = (struct pipeline_msg_rsp *)req;
+	uint32_t table_id = req->id;
+	uint64_t dscp_mask = req->table_dscp_table_update.dscp_mask;
+	struct rte_table_action_dscp_table *dscp_table =
+		&req->table_dscp_table_update.dscp_table;
+	struct rte_table_action *a = p->table_data[table_id].a;
+
+	rsp->status = rte_table_action_dscp_table_update(a,
+		dscp_mask,
+		dscp_table);
+
+	return rsp;
+}
+
 static void
 pipeline_msg_handle(struct pipeline_data *p)
 {
@@ -2399,6 +2736,22 @@ pipeline_msg_handle(struct pipeline_data *p)
 
 		case PIPELINE_REQ_TABLE_RULE_STATS_READ:
 			rsp = pipeline_msg_handle_table_rule_stats_read(p, req);
+			break;
+
+		case PIPELINE_REQ_TABLE_MTR_PROFILE_ADD:
+			rsp = pipeline_msg_handle_table_mtr_profile_add(p, req);
+			break;
+
+		case PIPELINE_REQ_TABLE_MTR_PROFILE_DELETE:
+			rsp = pipeline_msg_handle_table_mtr_profile_delete(p, req);
+			break;
+
+		case PIPELINE_REQ_TABLE_RULE_MTR_READ:
+			rsp = pipeline_msg_handle_table_rule_mtr_read(p, req);
+			break;
+
+		case PIPELINE_REQ_TABLE_DSCP_TABLE_UPDATE:
+			rsp = pipeline_msg_handle_table_dscp_table_update(p, req);
 			break;
 
 		default:

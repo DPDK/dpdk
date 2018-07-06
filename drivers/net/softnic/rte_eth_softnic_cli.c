@@ -3441,6 +3441,386 @@ cmd_softnic_pipeline_table_rule_stats_read(struct pmd_internals *softnic __rte_u
 }
 
 /**
+ * pipeline <pipeline_name> table <table_id> meter profile <meter_profile_id>
+ *  add srtcm cir <cir> cbs <cbs> ebs <ebs>
+ *  | trtcm cir <cir> pir <pir> cbs <cbs> pbs <pbs>
+ */
+static void
+cmd_pipeline_table_meter_profile_add(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct rte_table_action_meter_profile p;
+	char *pipeline_name;
+	uint32_t table_id, meter_profile_id;
+	int status;
+
+	if (n_tokens < 9) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+
+	if (strcmp(tokens[2], "table") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "port");
+		return;
+	}
+
+	if (softnic_parser_read_uint32(&table_id, tokens[3]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "table_id");
+		return;
+	}
+
+	if (strcmp(tokens[4], "meter") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "meter");
+		return;
+	}
+
+	if (strcmp(tokens[5], "profile") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "profile");
+		return;
+	}
+
+	if (softnic_parser_read_uint32(&meter_profile_id, tokens[6]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "meter_profile_id");
+		return;
+	}
+
+	if (strcmp(tokens[7], "add") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "add");
+		return;
+	}
+
+	if (strcmp(tokens[8], "srtcm") == 0) {
+		if (n_tokens != 15) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				tokens[0]);
+			return;
+		}
+
+		p.alg = RTE_TABLE_ACTION_METER_SRTCM;
+
+		if (strcmp(tokens[9], "cir") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "cir");
+			return;
+		}
+
+		if (softnic_parser_read_uint64(&p.srtcm.cir, tokens[10]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "cir");
+			return;
+		}
+
+		if (strcmp(tokens[11], "cbs") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "cbs");
+			return;
+		}
+
+		if (softnic_parser_read_uint64(&p.srtcm.cbs, tokens[12]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "cbs");
+			return;
+		}
+
+		if (strcmp(tokens[13], "ebs") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "ebs");
+			return;
+		}
+
+		if (softnic_parser_read_uint64(&p.srtcm.ebs, tokens[14]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "ebs");
+			return;
+		}
+	} else if (strcmp(tokens[8], "trtcm") == 0) {
+		if (n_tokens != 17) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+			return;
+		}
+
+		p.alg = RTE_TABLE_ACTION_METER_TRTCM;
+
+		if (strcmp(tokens[9], "cir") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "cir");
+			return;
+		}
+
+		if (softnic_parser_read_uint64(&p.trtcm.cir, tokens[10]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "cir");
+			return;
+		}
+
+		if (strcmp(tokens[11], "pir") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "pir");
+			return;
+		}
+
+		if (softnic_parser_read_uint64(&p.trtcm.pir, tokens[12]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "pir");
+			return;
+		}
+		if (strcmp(tokens[13], "cbs") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "cbs");
+			return;
+		}
+
+		if (softnic_parser_read_uint64(&p.trtcm.cbs, tokens[14]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "cbs");
+			return;
+		}
+
+		if (strcmp(tokens[15], "pbs") != 0) {
+			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "pbs");
+			return;
+		}
+
+		if (softnic_parser_read_uint64(&p.trtcm.pbs, tokens[16]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "pbs");
+			return;
+		}
+	} else {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	status = softnic_pipeline_table_mtr_profile_add(softnic,
+		pipeline_name,
+		table_id,
+		meter_profile_id,
+		&p);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
+/**
+ * pipeline <pipeline_name> table <table_id>
+ *  meter profile <meter_profile_id> delete
+ */
+static void
+cmd_pipeline_table_meter_profile_delete(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	char *pipeline_name;
+	uint32_t table_id, meter_profile_id;
+	int status;
+
+	if (n_tokens != 8) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+
+	if (strcmp(tokens[2], "table") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "port");
+		return;
+	}
+
+	if (softnic_parser_read_uint32(&table_id, tokens[3]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "table_id");
+		return;
+	}
+
+	if (strcmp(tokens[4], "meter") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "meter");
+		return;
+	}
+
+	if (strcmp(tokens[5], "profile") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "profile");
+		return;
+	}
+
+	if (softnic_parser_read_uint32(&meter_profile_id, tokens[6]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "meter_profile_id");
+		return;
+	}
+
+	if (strcmp(tokens[7], "delete") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "delete");
+		return;
+	}
+
+	status = softnic_pipeline_table_mtr_profile_delete(softnic,
+		pipeline_name,
+		table_id,
+		meter_profile_id);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
+/**
+ * pipeline <pipeline_name> table <table_id> rule read meter [clear]
+ */
+static void
+cmd_pipeline_table_rule_meter_read(struct pmd_internals *softnic __rte_unused,
+	char **tokens,
+	uint32_t n_tokens __rte_unused,
+	char *out,
+	size_t out_size)
+{
+	snprintf(out, out_size, MSG_CMD_UNIMPLEM, tokens[0]);
+}
+
+/**
+ * pipeline <pipeline_name> table <table_id> dscp <file_name>
+ *
+ * File <file_name>:
+ *  - exactly 64 lines
+ *  - line format: <tc_id> <tc_queue_id> <color>, with <color> as: g | y | r
+ */
+static int
+load_dscp_table(struct rte_table_action_dscp_table *dscp_table,
+	const char *file_name,
+	uint32_t *line_number)
+{
+	FILE *f = NULL;
+	uint32_t dscp, l;
+
+	/* Check input arguments */
+	if (dscp_table == NULL ||
+		file_name == NULL ||
+		line_number == NULL) {
+		if (line_number)
+			*line_number = 0;
+		return -EINVAL;
+	}
+
+	/* Open input file */
+	f = fopen(file_name, "r");
+	if (f == NULL) {
+		*line_number = 0;
+		return -EINVAL;
+	}
+
+	/* Read file */
+	for (dscp = 0, l = 1; ; l++) {
+		char line[64];
+		char *tokens[3];
+		enum rte_meter_color color;
+		uint32_t tc_id, tc_queue_id, n_tokens = RTE_DIM(tokens);
+
+		if (fgets(line, sizeof(line), f) == NULL)
+			break;
+
+		if (is_comment(line))
+			continue;
+
+		if (softnic_parse_tokenize_string(line, tokens, &n_tokens)) {
+			*line_number = l;
+			fclose(f);
+			return -EINVAL;
+		}
+
+		if (n_tokens == 0)
+			continue;
+
+		if (dscp >= RTE_DIM(dscp_table->entry) ||
+			n_tokens != RTE_DIM(tokens) ||
+			softnic_parser_read_uint32(&tc_id, tokens[0]) ||
+			tc_id >= RTE_TABLE_ACTION_TC_MAX ||
+			softnic_parser_read_uint32(&tc_queue_id, tokens[1]) ||
+			tc_queue_id >= RTE_TABLE_ACTION_TC_QUEUE_MAX ||
+			(strlen(tokens[2]) != 1)) {
+			*line_number = l;
+			fclose(f);
+			return -EINVAL;
+		}
+
+		switch (tokens[2][0]) {
+		case 'g':
+		case 'G':
+			color = e_RTE_METER_GREEN;
+			break;
+
+		case 'y':
+		case 'Y':
+			color = e_RTE_METER_YELLOW;
+			break;
+
+		case 'r':
+		case 'R':
+			color = e_RTE_METER_RED;
+			break;
+
+		default:
+			*line_number = l;
+			fclose(f);
+			return -EINVAL;
+		}
+
+		dscp_table->entry[dscp].tc_id = tc_id;
+		dscp_table->entry[dscp].tc_queue_id = tc_queue_id;
+		dscp_table->entry[dscp].color = color;
+		dscp++;
+	}
+
+	/* Close file */
+	fclose(f);
+	return 0;
+}
+
+static void
+cmd_pipeline_table_dscp(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct rte_table_action_dscp_table dscp_table;
+	char *pipeline_name, *file_name;
+	uint32_t table_id, line_number;
+	int status;
+
+	if (n_tokens != 6) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+
+	if (strcmp(tokens[2], "table") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "port");
+		return;
+	}
+
+	if (softnic_parser_read_uint32(&table_id, tokens[3]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "table_id");
+		return;
+	}
+
+	if (strcmp(tokens[4], "dscp") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "dscp");
+		return;
+	}
+
+	file_name = tokens[5];
+
+	status = load_dscp_table(&dscp_table, file_name, &line_number);
+	if (status) {
+		snprintf(out, out_size, MSG_FILE_ERR, file_name, line_number);
+		return;
+	}
+
+	status = softnic_pipeline_table_dscp_table_update(softnic,
+		pipeline_name,
+		table_id,
+		UINT64_MAX,
+		&dscp_table);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
+/**
  * thread <thread_id> pipeline <pipeline_name> enable
  */
 static void
@@ -3710,6 +4090,44 @@ softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 			(strcmp(tokens[5], "read") == 0) &&
 			(strcmp(tokens[6], "stats") == 0)) {
 			cmd_softnic_pipeline_table_rule_stats_read(softnic, tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 8 &&
+			(strcmp(tokens[2], "table") == 0) &&
+			(strcmp(tokens[4], "meter") == 0) &&
+			(strcmp(tokens[5], "profile") == 0) &&
+			(strcmp(tokens[7], "add") == 0)) {
+			cmd_pipeline_table_meter_profile_add(softnic, tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 8 &&
+			(strcmp(tokens[2], "table") == 0) &&
+			(strcmp(tokens[4], "meter") == 0) &&
+			(strcmp(tokens[5], "profile") == 0) &&
+			(strcmp(tokens[7], "delete") == 0)) {
+			cmd_pipeline_table_meter_profile_delete(softnic, tokens,
+				n_tokens, out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 7 &&
+			(strcmp(tokens[2], "table") == 0) &&
+			(strcmp(tokens[4], "rule") == 0) &&
+			(strcmp(tokens[5], "read") == 0) &&
+			(strcmp(tokens[6], "meter") == 0)) {
+			cmd_pipeline_table_rule_meter_read(softnic, tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 5 &&
+			(strcmp(tokens[2], "table") == 0) &&
+			(strcmp(tokens[4], "dscp") == 0)) {
+			cmd_pipeline_table_dscp(softnic, tokens, n_tokens,
 				out, out_size);
 			return;
 		}
