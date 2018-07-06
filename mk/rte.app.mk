@@ -31,7 +31,9 @@ _LDLIBS-y += -L$(RTE_SDK_BIN)/lib
 # Order is important: from higher level to lower level
 #
 _LDLIBS-$(CONFIG_RTE_LIBRTE_FLOW_CLASSIFY)  += -lrte_flow_classify
+_LDLIBS-$(CONFIG_RTE_LIBRTE_PIPELINE)       += --whole-archive
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PIPELINE)       += -lrte_pipeline
+_LDLIBS-$(CONFIG_RTE_LIBRTE_PIPELINE)       += --no-whole-archive
 _LDLIBS-$(CONFIG_RTE_LIBRTE_TABLE)          += -lrte_table
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PORT)           += -lrte_port
 

@@ -14,6 +14,7 @@
 #include <rte_ring.h>
 #include <rte_ethdev.h>
 #include <rte_sched.h>
+#include <rte_port_in_action.h>
 #include <rte_ethdev_driver.h>
 #include <rte_tm_driver.h>
 
@@ -220,6 +221,24 @@ struct softnic_tap {
 TAILQ_HEAD(softnic_tap_list, softnic_tap);
 
 /**
+ * Input port action
+ */
+struct softnic_port_in_action_profile_params {
+	uint64_t action_mask;
+	struct rte_port_in_action_fltr_config fltr;
+	struct rte_port_in_action_lb_config lb;
+};
+
+struct softnic_port_in_action_profile {
+	TAILQ_ENTRY(softnic_port_in_action_profile) node;
+	char name[NAME_SIZE];
+	struct softnic_port_in_action_profile_params params;
+	struct rte_port_in_action_profile *ap;
+};
+
+TAILQ_HEAD(softnic_port_in_action_profile_list, softnic_port_in_action_profile);
+
+/**
  * PMD Internals
  */
 struct pmd_internals {
@@ -235,6 +254,7 @@ struct pmd_internals {
 	struct softnic_link_list link_list;
 	struct softnic_tmgr_port_list tmgr_port_list;
 	struct softnic_tap_list tap_list;
+	struct softnic_port_in_action_profile_list port_in_action_profile_list;
 };
 
 /**
@@ -347,5 +367,23 @@ softnic_tap_find(struct pmd_internals *p,
 struct softnic_tap *
 softnic_tap_create(struct pmd_internals *p,
 	const char *name);
+
+/**
+ * Input port action
+ */
+int
+softnic_port_in_action_profile_init(struct pmd_internals *p);
+
+void
+softnic_port_in_action_profile_free(struct pmd_internals *p);
+
+struct softnic_port_in_action_profile *
+softnic_port_in_action_profile_find(struct pmd_internals *p,
+	const char *name);
+
+struct softnic_port_in_action_profile *
+softnic_port_in_action_profile_create(struct pmd_internals *p,
+	const char *name,
+	struct softnic_port_in_action_profile_params *params);
 
 #endif /* __INCLUDE_RTE_ETH_SOFTNIC_INTERNALS_H__ */
