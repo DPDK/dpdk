@@ -22,6 +22,7 @@
 #include <rte_tm_driver.h>
 
 #include "rte_eth_softnic.h"
+#include "conn.h"
 
 #define NAME_SIZE                                            64
 
@@ -32,6 +33,7 @@
 struct pmd_params {
 	const char *name;
 	const char *firmware;
+	uint16_t conn_port;
 	uint32_t cpu_id;
 
 	/** Traffic Management (TM) */
@@ -488,6 +490,7 @@ struct pmd_internals {
 		struct tm_internals tm; /**< Traffic Management */
 	} soft;
 
+	struct softnic_conn *conn;
 	struct softnic_mempool_list mempool_list;
 	struct softnic_swq_list swq_list;
 	struct softnic_link_list link_list;

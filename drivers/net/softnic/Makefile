@@ -34,10 +34,20 @@ SRCS-$(CONFIG_RTE_LIBRTE_PMD_SOFTNIC) += rte_eth_softnic_pipeline.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_SOFTNIC) += rte_eth_softnic_thread.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_SOFTNIC) += rte_eth_softnic_cli.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_SOFTNIC) += parser.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_SOFTNIC) += conn.c
 
 #
 # Export include files
 #
 SYMLINK-y-include += rte_eth_softnic.h
 
+ifneq ($(CONFIG_RTE_EXEC_ENV),"linuxapp")
+$(info Softnic PMD can only operate in a linuxapp environment, \
+please change the definition of the RTE_TARGET environment variable)
+all:
+clean:
+else
+
 include $(RTE_SDK)/mk/rte.lib.mk
+
+endif

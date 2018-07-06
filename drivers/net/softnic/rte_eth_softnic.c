@@ -19,8 +19,6 @@
 #include "rte_eth_softnic_internals.h"
 
 #define PMD_PARAM_FIRMWARE                                 "firmware"
-#define PMD_PARAM_CPU_ID                                   "cpu_id"
-#define PMD_PARAM_SCRIPT                                   "script"
 #define PMD_PARAM_CONN_PORT                                "conn_port"
 #define PMD_PARAM_CPU_ID                                   "cpu_id"
 #define PMD_PARAM_TM_N_QUEUES                              "tm_n_queues"
@@ -31,6 +29,7 @@
 
 static const char *pmd_valid_args[] = {
 	PMD_PARAM_FIRMWARE,
+	PMD_PARAM_CONN_PORT,
 	PMD_PARAM_CPU_ID,
 	PMD_PARAM_TM_N_QUEUES,
 	PMD_PARAM_TM_QSIZE0,
@@ -38,6 +37,25 @@ static const char *pmd_valid_args[] = {
 	PMD_PARAM_TM_QSIZE2,
 	PMD_PARAM_TM_QSIZE3,
 	NULL
+};
+
+static const char welcome[] =
+	"\n"
+	"Welcome to Soft NIC!\n"
+	"\n";
+
+static const char prompt[] = "softnic> ";
+
+struct softnic_conn_params conn_params_default = {
+	.welcome = welcome,
+	.prompt = prompt,
+	.addr = "0.0.0.0",
+	.port = 0,
+	.buf_size = 1024 * 1024,
+	.msg_in_len_max = 1024,
+	.msg_out_len_max = 1024 * 1024,
+	.msg_handle = softnic_cli_process,
+	.msg_handle_arg = NULL,
 };
 
 static const struct rte_eth_dev_info pmd_dev_info = {
@@ -240,6 +258,21 @@ pmd_init(struct pmd_params *params)
 		return NULL;
 	}
 
+	if (params->conn_port) {
+		struct softnic_conn_params conn_params;
+
+		memcpy(&conn_params, &conn_params_default, sizeof(conn_params));
+		conn_params.port = p->params.conn_port;
+		conn_params.msg_handle_arg = p;
+
+		p->conn = softnic_conn_init(&conn_params);
+		if (p->conn == NULL) {
+			softnic_thread_free(p);
+			rte_free(p);
+			return NULL;
+		}
+	}
+
 	return p;
 }
 
@@ -248,6 +281,9 @@ pmd_free(struct pmd_internals *p)
 {
 	if (p == NULL)
 		return;
+
+	if (p->params.conn_port)
+		softnic_conn_free(p->conn);
 
 	softnic_thread_free(p);
 	softnic_pipeline_free(p);
@@ -328,6 +364,17 @@ get_uint32(const char *key __rte_unused, const char *value, void *extra_args)
 }
 
 static int
+get_uint16(const char *key __rte_unused, const char *value, void *extra_args)
+{
+	if (!value || !extra_args)
+		return -EINVAL;
+
+	*(uint16_t *)extra_args = strtoull(value, NULL, 0);
+
+	return 0;
+}
+
+static int
 pmd_parse_args(struct pmd_params *p, const char *params)
 {
 	struct rte_kvargs *kvlist;
@@ -351,6 +398,14 @@ pmd_parse_args(struct pmd_params *p, const char *params)
 	if (rte_kvargs_count(kvlist, PMD_PARAM_FIRMWARE) == 1) {
 		ret = rte_kvargs_process(kvlist, PMD_PARAM_FIRMWARE,
 			&get_string, &p->firmware);
+		if (ret < 0)
+			goto out_free;
+	}
+
+	/* Connection listening port (optional) */
+	if (rte_kvargs_count(kvlist, PMD_PARAM_CONN_PORT) == 1) {
+		ret = rte_kvargs_process(kvlist, PMD_PARAM_CONN_PORT,
+			&get_uint16, &p->conn_port);
 		if (ret < 0)
 			goto out_free;
 	}
@@ -478,6 +533,7 @@ static struct rte_vdev_driver pmd_softnic_drv = {
 RTE_PMD_REGISTER_VDEV(net_softnic, pmd_softnic_drv);
 RTE_PMD_REGISTER_PARAM_STRING(net_softnic,
 	PMD_PARAM_FIRMWARE "=<string> "
+	PMD_PARAM_CONN_PORT "=<uint16> "
 	PMD_PARAM_CPU_ID "=<uint32> "
 	PMD_PARAM_TM_N_QUEUES "=<uint32> "
 	PMD_PARAM_TM_QSIZE0 "=<uint32> "
@@ -492,4 +548,23 @@ RTE_INIT(pmd_softnic_init_log)
 	pmd_softnic_logtype = rte_log_register("pmd.net.softnic");
 	if (pmd_softnic_logtype >= 0)
 		rte_log_set_level(pmd_softnic_logtype, RTE_LOG_NOTICE);
+}
+
+int
+rte_pmd_softnic_manage(uint16_t port_id)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	struct pmd_internals *softnic;
+
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, 0);
+#endif
+
+	softnic = dev->data->dev_private;
+
+	softnic_conn_poll_for_conn(softnic->conn);
+
+	softnic_conn_poll_for_msg(softnic->conn);
+
+	return 0;
 }

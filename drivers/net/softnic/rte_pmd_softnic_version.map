@@ -5,3 +5,9 @@ DPDK_17.11 {
 
 	local: *;
 };
+
+EXPERIMENTAL {
+	global:
+
+	rte_pmd_softnic_manage;
+};
