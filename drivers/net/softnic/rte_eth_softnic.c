@@ -99,26 +99,27 @@ static int
 pmd_rx_queue_setup(struct rte_eth_dev *dev,
 	uint16_t rx_queue_id,
 	uint16_t nb_rx_desc,
-	unsigned int socket_id,
+	unsigned int socket_id __rte_unused,
 	const struct rte_eth_rxconf *rx_conf __rte_unused,
 	struct rte_mempool *mb_pool __rte_unused)
 {
-	uint32_t size = RTE_ETH_NAME_MAX_LEN + strlen("_rxq") + 4;
-	char name[size];
-	struct rte_ring *r;
+	char name[NAME_SIZE];
+	struct pmd_internals *p = dev->data->dev_private;
+	struct softnic_swq *swq;
 
-	snprintf(name, sizeof(name), "%s_rxq%04x",
-		dev->data->name,
-		rx_queue_id);
+	struct softnic_swq_params params = {
+		.size = nb_rx_desc,
+	};
 
-	r = rte_ring_create(name,
-		nb_rx_desc,
-		socket_id,
-		RING_F_SP_ENQ | RING_F_SC_DEQ);
-	if (r == NULL)
+	snprintf(name, sizeof(name), "RXQ%u", rx_queue_id);
+
+	swq = softnic_swq_create(p,
+		name,
+		&params);
+	if (swq == NULL)
 		return -1;
 
-	dev->data->rx_queues[rx_queue_id] = r;
+	dev->data->rx_queues[rx_queue_id] = swq->r;
 	return 0;
 }
 
@@ -126,25 +127,26 @@ static int
 pmd_tx_queue_setup(struct rte_eth_dev *dev,
 	uint16_t tx_queue_id,
 	uint16_t nb_tx_desc,
-	unsigned int socket_id,
+	unsigned int socket_id __rte_unused,
 	const struct rte_eth_txconf *tx_conf __rte_unused)
 {
-	uint32_t size = RTE_ETH_NAME_MAX_LEN + strlen("_txq") + 4;
-	char name[size];
-	struct rte_ring *r;
+	char name[NAME_SIZE];
+	struct pmd_internals *p = dev->data->dev_private;
+	struct softnic_swq *swq;
 
-	snprintf(name, sizeof(name), "%s_txq%04x",
-		dev->data->name,
-		tx_queue_id);
+	struct softnic_swq_params params = {
+		.size = nb_tx_desc,
+	};
 
-	r = rte_ring_create(name,
-		nb_tx_desc,
-		socket_id,
-		RING_F_SP_ENQ | RING_F_SC_DEQ);
-	if (r == NULL)
+	snprintf(name, sizeof(name), "TXQ%u", tx_queue_id);
+
+	swq = softnic_swq_create(p,
+		name,
+		&params);
+	if (swq == NULL)
 		return -1;
 
-	dev->data->tx_queues[tx_queue_id] = r;
+	dev->data->tx_queues[tx_queue_id] = swq->r;
 	return 0;
 }
 
