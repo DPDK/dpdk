@@ -21,6 +21,16 @@ extern "C" {
 #define SOFTNIC_CPU_ID                                     0
 #endif
 
+/** Traffic Manager: Number of scheduler queues. */
+#ifndef SOFTNIC_TM_N_QUEUES
+#define SOFTNIC_TM_N_QUEUES                                (64 * 1024)
+#endif
+
+/** Traffic Manager: Scheduler queue size (per traffic class). */
+#ifndef SOFTNIC_TM_QUEUE_SIZE
+#define SOFTNIC_TM_QUEUE_SIZE                              64
+#endif
+
 /**
  * Soft NIC run.
  *
@@ -29,7 +39,6 @@ extern "C" {
  * @return
  *    Zero on success, error code otherwise.
  */
-
 int
 rte_pmd_softnic_run(uint16_t port_id);
 

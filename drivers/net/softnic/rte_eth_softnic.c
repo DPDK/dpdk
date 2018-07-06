@@ -20,10 +20,23 @@
 
 #define PMD_PARAM_FIRMWARE                                 "firmware"
 #define PMD_PARAM_CPU_ID                                   "cpu_id"
+#define PMD_PARAM_SCRIPT                                   "script"
+#define PMD_PARAM_CONN_PORT                                "conn_port"
+#define PMD_PARAM_CPU_ID                                   "cpu_id"
+#define PMD_PARAM_TM_N_QUEUES                              "tm_n_queues"
+#define PMD_PARAM_TM_QSIZE0                                "tm_qsize0"
+#define PMD_PARAM_TM_QSIZE1                                "tm_qsize1"
+#define PMD_PARAM_TM_QSIZE2                                "tm_qsize2"
+#define PMD_PARAM_TM_QSIZE3                                "tm_qsize3"
 
 static const char *pmd_valid_args[] = {
 	PMD_PARAM_FIRMWARE,
 	PMD_PARAM_CPU_ID,
+	PMD_PARAM_TM_N_QUEUES,
+	PMD_PARAM_TM_QSIZE0,
+	PMD_PARAM_TM_QSIZE1,
+	PMD_PARAM_TM_QSIZE2,
+	PMD_PARAM_TM_QSIZE3,
 	NULL
 };
 
@@ -155,7 +168,7 @@ pmd_link_update(struct rte_eth_dev *dev __rte_unused,
 static int
 pmd_tm_ops_get(struct rte_eth_dev *dev __rte_unused, void *arg)
 {
-	*(const struct rte_tm_ops **)arg = NULL;
+	*(const struct rte_tm_ops **)arg = &pmd_tm_ops;
 
 	return 0;
 }
@@ -219,6 +232,8 @@ pmd_init(struct pmd_params *params)
 	softnic_mempool_init(p);
 	softnic_swq_init(p);
 	softnic_link_init(p);
+	tm_init(p);
+	softnic_tmgr_init(p);
 	softnic_tap_init(p);
 
 	return p;
@@ -231,6 +246,8 @@ pmd_free(struct pmd_internals *p)
 		return;
 
 	softnic_tap_free(p);
+	softnic_tmgr_free(p);
+	tm_free(p);
 	softnic_link_free(p);
 	softnic_swq_free(p);
 	softnic_mempool_free(p);
@@ -316,6 +333,11 @@ pmd_parse_args(struct pmd_params *p, const char *params)
 	memset(p, 0, sizeof(*p));
 	p->firmware = SOFTNIC_FIRMWARE;
 	p->cpu_id = SOFTNIC_CPU_ID;
+	p->tm.n_queues = SOFTNIC_TM_N_QUEUES;
+	p->tm.qsize[0] = SOFTNIC_TM_QUEUE_SIZE;
+	p->tm.qsize[1] = SOFTNIC_TM_QUEUE_SIZE;
+	p->tm.qsize[2] = SOFTNIC_TM_QUEUE_SIZE;
+	p->tm.qsize[3] = SOFTNIC_TM_QUEUE_SIZE;
 
 	/* Firmware script (optional) */
 	if (rte_kvargs_count(kvlist, PMD_PARAM_FIRMWARE) == 1) {
@@ -329,6 +351,43 @@ pmd_parse_args(struct pmd_params *p, const char *params)
 	if (rte_kvargs_count(kvlist, PMD_PARAM_CPU_ID) == 1) {
 		ret = rte_kvargs_process(kvlist, PMD_PARAM_CPU_ID,
 			&get_uint32, &p->cpu_id);
+		if (ret < 0)
+			goto out_free;
+	}
+
+	/* TM number of queues (optional) */
+	if (rte_kvargs_count(kvlist, PMD_PARAM_TM_N_QUEUES) == 1) {
+		ret = rte_kvargs_process(kvlist, PMD_PARAM_TM_N_QUEUES,
+			&get_uint32, &p->tm.n_queues);
+		if (ret < 0)
+			goto out_free;
+	}
+
+	/* TM queue size 0 .. 3 (optional) */
+	if (rte_kvargs_count(kvlist, PMD_PARAM_TM_QSIZE0) == 1) {
+		ret = rte_kvargs_process(kvlist, PMD_PARAM_TM_QSIZE0,
+			&get_uint32, &p->tm.qsize[0]);
+		if (ret < 0)
+			goto out_free;
+	}
+
+	if (rte_kvargs_count(kvlist, PMD_PARAM_TM_QSIZE1) == 1) {
+		ret = rte_kvargs_process(kvlist, PMD_PARAM_TM_QSIZE1,
+			&get_uint32, &p->tm.qsize[1]);
+		if (ret < 0)
+			goto out_free;
+	}
+
+	if (rte_kvargs_count(kvlist, PMD_PARAM_TM_QSIZE2) == 1) {
+		ret = rte_kvargs_process(kvlist, PMD_PARAM_TM_QSIZE2,
+			&get_uint32, &p->tm.qsize[2]);
+		if (ret < 0)
+			goto out_free;
+	}
+
+	if (rte_kvargs_count(kvlist, PMD_PARAM_TM_QSIZE3) == 1) {
+		ret = rte_kvargs_process(kvlist, PMD_PARAM_TM_QSIZE3,
+			&get_uint32, &p->tm.qsize[3]);
 		if (ret < 0)
 			goto out_free;
 	}
@@ -411,7 +470,14 @@ static struct rte_vdev_driver pmd_softnic_drv = {
 RTE_PMD_REGISTER_VDEV(net_softnic, pmd_softnic_drv);
 RTE_PMD_REGISTER_PARAM_STRING(net_softnic,
 	PMD_PARAM_FIRMWARE "=<string> "
-	PMD_PARAM_CPU_ID "=<uint32>");
+	PMD_PARAM_CPU_ID "=<uint32> "
+	PMD_PARAM_TM_N_QUEUES "=<uint32> "
+	PMD_PARAM_TM_QSIZE0 "=<uint32> "
+	PMD_PARAM_TM_QSIZE1 "=<uint32> "
+	PMD_PARAM_TM_QSIZE2 "=<uint32> "
+	PMD_PARAM_TM_QSIZE3 "=<uint32>"
+);
+
 
 RTE_INIT(pmd_softnic_init_log)
 {

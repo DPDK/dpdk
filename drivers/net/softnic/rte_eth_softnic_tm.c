@@ -7,13 +7,82 @@
 #include <string.h>
 
 #include <rte_malloc.h>
+#include <rte_string_fns.h>
 
 #include "rte_eth_softnic_internals.h"
 #include "rte_eth_softnic.h"
 
-#define BYTES_IN_MBPS		(1000 * 1000 / 8)
 #define SUBPORT_TC_PERIOD	10
 #define PIPE_TC_PERIOD		40
+
+int
+softnic_tmgr_init(struct pmd_internals *p)
+{
+	TAILQ_INIT(&p->tmgr_port_list);
+
+	return 0;
+}
+
+void
+softnic_tmgr_free(struct pmd_internals *p)
+{
+	for ( ; ; ) {
+		struct softnic_tmgr_port *tmgr_port;
+
+		tmgr_port = TAILQ_FIRST(&p->tmgr_port_list);
+		if (tmgr_port == NULL)
+			break;
+
+		TAILQ_REMOVE(&p->tmgr_port_list, tmgr_port, node);
+		free(tmgr_port);
+	}
+}
+
+struct softnic_tmgr_port *
+softnic_tmgr_port_find(struct pmd_internals *p,
+	const char *name)
+{
+	struct softnic_tmgr_port *tmgr_port;
+
+	if (name == NULL)
+		return NULL;
+
+	TAILQ_FOREACH(tmgr_port, &p->tmgr_port_list, node)
+		if (strcmp(tmgr_port->name, name) == 0)
+			return tmgr_port;
+
+	return NULL;
+}
+
+struct softnic_tmgr_port *
+softnic_tmgr_port_create(struct pmd_internals *p,
+	const char *name,
+	struct rte_sched_port *sched)
+{
+	struct softnic_tmgr_port *tmgr_port;
+
+	/* Check input params */
+	if (name == NULL ||
+		softnic_tmgr_port_find(p, name) ||
+		sched == NULL)
+		return NULL;
+
+	/* Resource */
+
+	/* Node allocation */
+	tmgr_port = calloc(1, sizeof(struct softnic_tmgr_port));
+	if (tmgr_port == NULL)
+		return NULL;
+
+	/* Node fill in */
+	strlcpy(tmgr_port->name, name, sizeof(tmgr_port->name));
+	tmgr_port->s = sched;
+
+	/* Node add to list */
+	TAILQ_INSERT_TAIL(&p->tmgr_port_list, tmgr_port, node);
+
+	return tmgr_port;
+}
 
 static void
 tm_hierarchy_init(struct pmd_internals *p)
@@ -89,9 +158,7 @@ tm_hierarchy_uninit(struct pmd_internals *p)
 }
 
 int
-tm_init(struct pmd_internals *p,
-	struct pmd_params *params __rte_unused,
-	int numa_node __rte_unused)
+tm_init(struct pmd_internals *p)
 {
 	tm_hierarchy_init(p);
 
@@ -107,7 +174,9 @@ tm_free(struct pmd_internals *p)
 int
 tm_start(struct pmd_internals *p)
 {
+	struct softnic_tmgr_port *tmgr_port;
 	struct tm_params *t = &p->soft.tm.params;
+	struct rte_sched_port *sched;
 	uint32_t n_subports, subport_id;
 	int status;
 
@@ -116,8 +185,8 @@ tm_start(struct pmd_internals *p)
 		return -1;
 
 	/* Port */
-	p->soft.tm.sched = rte_sched_port_config(&t->port_params);
-	if (p->soft.tm.sched == NULL)
+	sched = rte_sched_port_config(&t->port_params);
+	if (sched == NULL)
 		return -1;
 
 	/* Subport */
@@ -127,11 +196,11 @@ tm_start(struct pmd_internals *p)
 			t->port_params.n_pipes_per_subport;
 		uint32_t pipe_id;
 
-		status = rte_sched_subport_config(p->soft.tm.sched,
+		status = rte_sched_subport_config(sched,
 			subport_id,
 			&t->subport_params[subport_id]);
 		if (status) {
-			rte_sched_port_free(p->soft.tm.sched);
+			rte_sched_port_free(sched);
 			return -1;
 		}
 
@@ -145,16 +214,25 @@ tm_start(struct pmd_internals *p)
 			if (profile_id < 0)
 				continue;
 
-			status = rte_sched_pipe_config(p->soft.tm.sched,
+			status = rte_sched_pipe_config(sched,
 				subport_id,
 				pipe_id,
 				profile_id);
 			if (status) {
-				rte_sched_port_free(p->soft.tm.sched);
+				rte_sched_port_free(sched);
 				return -1;
 			}
 		}
 	}
+
+	tmgr_port = softnic_tmgr_port_create(p, "TMGR", sched);
+	if (tmgr_port == NULL) {
+		rte_sched_port_free(sched);
+		return -1;
+	}
+
+	/* Commit */
+	p->soft.tm.sched = sched;
 
 	return 0;
 }
@@ -162,9 +240,10 @@ tm_start(struct pmd_internals *p)
 void
 tm_stop(struct pmd_internals *p)
 {
-	if (p->soft.tm.sched)
+	if (p->soft.tm.sched) {
 		rte_sched_port_free(p->soft.tm.sched);
-
+		p->soft.tm.sched = NULL;
+	}
 	/* Unfreeze hierarchy */
 	p->soft.tm.hierarchy_frozen = 0;
 }

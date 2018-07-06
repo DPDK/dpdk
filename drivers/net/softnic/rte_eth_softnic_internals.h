@@ -89,7 +89,7 @@ struct softnic_link {
 TAILQ_HEAD(softnic_link_list, softnic_link);
 
 /**
- * Traffic Management (TM) Internals
+ * TMGR
  */
 
 #ifndef TM_MAX_SUBPORTS
@@ -200,6 +200,14 @@ struct tm_internals {
 	struct rte_sched_port *sched;
 };
 
+struct softnic_tmgr_port {
+	TAILQ_ENTRY(softnic_tmgr_port) node;
+	char name[NAME_SIZE];
+	struct rte_sched_port *s;
+};
+
+TAILQ_HEAD(softnic_tmgr_port_list, softnic_tmgr_port);
+
 /**
  * TAP
  */
@@ -218,7 +226,6 @@ struct pmd_internals {
 	/** Params */
 	struct pmd_params params;
 
-	/** Soft device */
 	struct {
 		struct tm_internals tm; /**< Traffic Management */
 	} soft;
@@ -226,6 +233,7 @@ struct pmd_internals {
 	struct softnic_mempool_list mempool_list;
 	struct softnic_swq_list swq_list;
 	struct softnic_link_list link_list;
+	struct softnic_tmgr_port_list tmgr_port_list;
 	struct softnic_tap_list tap_list;
 };
 
@@ -284,12 +292,25 @@ softnic_link_create(struct pmd_internals *p,
 	struct softnic_link_params *params);
 
 /**
- * Traffic Management (TM) Operation
+ * TMGR
  */
-extern const struct rte_tm_ops pmd_tm_ops;
+int
+softnic_tmgr_init(struct pmd_internals *p);
+
+void
+softnic_tmgr_free(struct pmd_internals *p);
+
+struct softnic_tmgr_port *
+softnic_tmgr_port_find(struct pmd_internals *p,
+	const char *name);
+
+struct softnic_tmgr_port *
+softnic_tmgr_port_create(struct pmd_internals *p,
+	const char *name,
+	struct rte_sched_port *sched);
 
 int
-tm_init(struct pmd_internals *p, struct pmd_params *params, int numa_node);
+tm_init(struct pmd_internals *p);
 
 void
 tm_free(struct pmd_internals *p);
@@ -301,10 +322,14 @@ void
 tm_stop(struct pmd_internals *p);
 
 static inline int
-tm_used(struct rte_eth_dev *dev __rte_unused)
+tm_used(struct rte_eth_dev *dev)
 {
-	return 0;
+	struct pmd_internals *p = dev->data->dev_private;
+
+	return p->soft.tm.h.n_tm_nodes[TM_NODE_LEVEL_PORT];
 }
+
+extern const struct rte_tm_ops pmd_tm_ops;
 
 /**
  * TAP
