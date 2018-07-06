@@ -182,6 +182,11 @@ linear_dir(struct dt_dir *d)
 				DPAA_BUS_LOG(DEBUG, "Duplicate lphandle in %s",
 					     d->node.node.full_name);
 			d->lphandle = f;
+		} else if (!strcmp(f->node.node.name, "phandle")) {
+			if (d->lphandle)
+				DPAA_BUS_LOG(DEBUG, "Duplicate lphandle in %s",
+					     d->node.node.full_name);
+			d->lphandle = f;
 		} else if (!strcmp(f->node.node.name, "#address-cells")) {
 			if (d->a_cells)
 				DPAA_BUS_LOG(DEBUG, "Duplicate a_cells in %s",
