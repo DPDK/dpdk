@@ -43,6 +43,7 @@
  * from vring to do scatter RX.
  */
 struct buf_vector {
+	uint64_t buf_iova;
 	uint64_t buf_addr;
 	uint32_t buf_len;
 	uint32_t desc_idx;
