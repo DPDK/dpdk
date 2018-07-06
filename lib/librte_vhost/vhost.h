@@ -192,6 +192,26 @@ struct vhost_msg {
  #define VIRTIO_F_VERSION_1 32
 #endif
 
+/* Declare packed ring related bits for older kernels */
+#ifndef VIRTIO_F_RING_PACKED
+
+#define VIRTIO_F_RING_PACKED 34
+
+#define VRING_DESC_F_NEXT	1
+#define VRING_DESC_F_WRITE	2
+#define VRING_DESC_F_INDIRECT	4
+
+#define VRING_DESC_F_AVAIL	(1ULL << 7)
+#define VRING_DESC_F_USED	(1ULL << 15)
+
+struct vring_packed_desc {
+	uint64_t addr;
+	uint32_t len;
+	uint16_t id;
+	uint16_t flags;
+};
+#endif
+
 /*
  * Available and used descs are in same order
  */
