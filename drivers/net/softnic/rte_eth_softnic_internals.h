@@ -7,14 +7,18 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/queue.h>
 
 #include <rte_mbuf.h>
+#include <rte_ring.h>
 #include <rte_ethdev.h>
 #include <rte_sched.h>
 #include <rte_ethdev_driver.h>
 #include <rte_tm_driver.h>
 
 #include "rte_eth_softnic.h"
+
+#define NAME_SIZE                                            64
 
 /**
  * PMD Parameters
@@ -31,6 +35,21 @@ struct pmd_params {
 		uint16_t qsize[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
 	} tm;
 };
+
+/**
+ * SWQ
+ */
+struct softnic_swq_params {
+	uint32_t size;
+};
+
+struct softnic_swq {
+	TAILQ_ENTRY(softnic_swq) node;
+	char name[NAME_SIZE];
+	struct rte_ring *r;
+};
+
+TAILQ_HEAD(softnic_swq_list, softnic_swq);
 
 /**
  * Traffic Management (TM) Internals
@@ -155,7 +174,27 @@ struct pmd_internals {
 	struct {
 		struct tm_internals tm; /**< Traffic Management */
 	} soft;
+
+	struct softnic_swq_list swq_list;
 };
+
+/**
+ * SWQ
+ */
+int
+softnic_swq_init(struct pmd_internals *p);
+
+void
+softnic_swq_free(struct pmd_internals *p);
+
+struct softnic_swq *
+softnic_swq_find(struct pmd_internals *p,
+	const char *name);
+
+struct softnic_swq *
+softnic_swq_create(struct pmd_internals *p,
+	const char *name,
+	struct softnic_swq_params *params);
 
 /**
  * Traffic Management (TM) Operation

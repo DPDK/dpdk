@@ -212,14 +212,21 @@ pmd_init(struct pmd_params *params)
 	if (p == NULL)
 		return NULL;
 
+	/* Params */
 	memcpy(&p->params, params, sizeof(p->params));
 
+	/* Resources */
+	softnic_swq_init(p);
 	return p;
 }
 
 static void
 pmd_free(struct pmd_internals *p)
 {
+	if (p == NULL)
+		return;
+
+	softnic_swq_free(p);
 	rte_free(p);
 }
 
