@@ -84,7 +84,10 @@ struct log_cache_entry {
  * Structure contains variables relevant to RX/TX virtqueues.
  */
 struct vhost_virtqueue {
-	struct vring_desc	*desc;
+	union {
+		struct vring_desc	*desc;
+		struct vring_packed_desc   *desc_packed;
+	};
 	struct vring_avail	*avail;
 	struct vring_used	*used;
 	uint32_t		size;
@@ -122,6 +125,8 @@ struct vhost_virtqueue {
 
 	struct batch_copy_elem	*batch_copy_elems;
 	uint16_t		batch_copy_nb_elems;
+	bool			used_wrap_counter;
+	bool			avail_wrap_counter;
 
 	struct log_cache_entry log_cache[VHOST_LOG_CACHE_NR];
 	uint16_t log_cache_nb_elem;

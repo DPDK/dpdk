@@ -467,6 +467,27 @@ translate_ring_addresses(struct virtio_net *dev, int vq_index)
 	struct vhost_vring_addr *addr = &vq->ring_addrs;
 	uint64_t len;
 
+	if (vq_is_packed(dev)) {
+		len = sizeof(struct vring_packed_desc) * vq->size;
+		vq->desc_packed = (struct vring_packed_desc *)(uintptr_t)
+			ring_addr_to_vva(dev, vq, addr->desc_user_addr, &len);
+		vq->log_guest_addr = 0;
+		if (vq->desc_packed == NULL ||
+				len != sizeof(struct vring_packed_desc) *
+				vq->size) {
+			RTE_LOG(DEBUG, VHOST_CONFIG,
+				"(%d) failed to map desc_packed ring.\n",
+				dev->vid);
+			return dev;
+		}
+
+		dev = numa_realloc(dev, vq_index);
+		vq = dev->virtqueue[vq_index];
+		addr = &vq->ring_addrs;
+
+		return dev;
+	}
+
 	/* The addresses are converted from QEMU virtual to Vhost virtual. */
 	if (vq->desc && vq->avail && vq->used)
 		return dev;
@@ -875,10 +896,20 @@ err_mmap:
 	return -1;
 }
 
-static int
-vq_is_ready(struct vhost_virtqueue *vq)
+static bool
+vq_is_ready(struct virtio_net *dev, struct vhost_virtqueue *vq)
 {
-	return vq && vq->desc && vq->avail && vq->used &&
+	bool rings_ok;
+
+	if (!vq)
+		return false;
+
+	if (vq_is_packed(dev))
+		rings_ok = !!vq->desc_packed;
+	else
+		rings_ok = vq->desc && vq->avail && vq->used;
+
+	return rings_ok &&
 	       vq->kickfd != VIRTIO_UNINITIALIZED_EVENTFD &&
 	       vq->callfd != VIRTIO_UNINITIALIZED_EVENTFD;
 }
@@ -895,7 +926,7 @@ virtio_is_ready(struct virtio_net *dev)
 	for (i = 0; i < dev->nr_vring; i++) {
 		vq = dev->virtqueue[i];
 
-		if (!vq_is_ready(vq))
+		if (!vq_is_ready(dev, vq))
 			return 0;
 	}
 

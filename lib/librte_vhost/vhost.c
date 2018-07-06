@@ -115,13 +115,10 @@ free_device(struct virtio_net *dev)
 	rte_free(dev);
 }
 
-int
-vring_translate(struct virtio_net *dev, struct vhost_virtqueue *vq)
+static int
+vring_translate_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 {
 	uint64_t req_size, size;
-
-	if (!(dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM)))
-		goto out;
 
 	req_size = sizeof(struct vring_desc) * vq->size;
 	size = req_size;
@@ -153,6 +150,40 @@ vring_translate(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	if (!vq->used || size != req_size)
 		return -1;
 
+	return 0;
+}
+
+static int
+vring_translate_packed(struct virtio_net *dev, struct vhost_virtqueue *vq)
+{
+	uint64_t req_size, size;
+
+	req_size = sizeof(struct vring_packed_desc) * vq->size;
+	size = req_size;
+	vq->desc_packed =
+		(struct vring_packed_desc *)(uintptr_t)vhost_iova_to_vva(dev,
+					vq, vq->ring_addrs.desc_user_addr,
+					&size, VHOST_ACCESS_RW);
+	if (!vq->desc_packed || size != req_size)
+		return -1;
+
+	return 0;
+}
+
+int
+vring_translate(struct virtio_net *dev, struct vhost_virtqueue *vq)
+{
+
+	if (!(dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM)))
+		goto out;
+
+	if (vq_is_packed(dev)) {
+		if (vring_translate_packed(dev, vq) < 0)
+			return -1;
+	} else {
+		if (vring_translate_split(dev, vq) < 0)
+			return -1;
+	}
 out:
 	vq->access_ok = 1;
 
@@ -234,6 +265,8 @@ alloc_vring_queue(struct virtio_net *dev, uint32_t vring_idx)
 	dev->virtqueue[vring_idx] = vq;
 	init_vring_queue(dev, vring_idx);
 	rte_spinlock_init(&vq->access_lock);
+	vq->avail_wrap_counter = 1;
+	vq->used_wrap_counter = 1;
 
 	dev->nr_vring += 1;
 
