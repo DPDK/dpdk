@@ -512,6 +512,30 @@ translate_ring_addresses(struct virtio_net *dev, int vq_index)
 		vq = dev->virtqueue[vq_index];
 		addr = &vq->ring_addrs;
 
+		len = sizeof(struct vring_packed_desc_event);
+		vq->driver_event = (struct vring_packed_desc_event *)
+					(uintptr_t)ring_addr_to_vva(dev,
+					vq, addr->avail_user_addr, &len);
+		if (vq->driver_event == NULL ||
+				len != sizeof(struct vring_packed_desc_event)) {
+			RTE_LOG(DEBUG, VHOST_CONFIG,
+				"(%d) failed to find driver area address.\n",
+				dev->vid);
+			return dev;
+		}
+
+		len = sizeof(struct vring_packed_desc_event);
+		vq->device_event = (struct vring_packed_desc_event *)
+					(uintptr_t)ring_addr_to_vva(dev,
+					vq, addr->used_user_addr, &len);
+		if (vq->device_event == NULL ||
+				len != sizeof(struct vring_packed_desc_event)) {
+			RTE_LOG(DEBUG, VHOST_CONFIG,
+				"(%d) failed to find device area address.\n",
+				dev->vid);
+			return dev;
+		}
+
 		return dev;
 	}
 

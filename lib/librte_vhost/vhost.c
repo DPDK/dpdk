@@ -163,11 +163,26 @@ vring_translate_packed(struct virtio_net *dev, struct vhost_virtqueue *vq)
 
 	req_size = sizeof(struct vring_packed_desc) * vq->size;
 	size = req_size;
-	vq->desc_packed =
-		(struct vring_packed_desc *)(uintptr_t)vhost_iova_to_vva(dev,
-					vq, vq->ring_addrs.desc_user_addr,
-					&size, VHOST_ACCESS_RW);
+	vq->desc_packed = (struct vring_packed_desc *)(uintptr_t)
+		vhost_iova_to_vva(dev, vq, vq->ring_addrs.desc_user_addr,
+				&size, VHOST_ACCESS_RW);
 	if (!vq->desc_packed || size != req_size)
+		return -1;
+
+	req_size = sizeof(struct vring_packed_desc_event);
+	size = req_size;
+	vq->driver_event = (struct vring_packed_desc_event *)(uintptr_t)
+		vhost_iova_to_vva(dev, vq, vq->ring_addrs.avail_user_addr,
+				&size, VHOST_ACCESS_RW);
+	if (!vq->driver_event || size != req_size)
+		return -1;
+
+	req_size = sizeof(struct vring_packed_desc_event);
+	size = req_size;
+	vq->device_event = (struct vring_packed_desc_event *)(uintptr_t)
+		vhost_iova_to_vva(dev, vq, vq->ring_addrs.used_user_addr,
+				&size, VHOST_ACCESS_RW);
+	if (!vq->device_event || size != req_size)
 		return -1;
 
 	return 0;
@@ -270,6 +285,7 @@ alloc_vring_queue(struct virtio_net *dev, uint32_t vring_idx)
 	rte_spinlock_init(&vq->access_lock);
 	vq->avail_wrap_counter = 1;
 	vq->used_wrap_counter = 1;
+	vq->signalled_used_valid = false;
 
 	dev->nr_vring += 1;
 
@@ -604,7 +620,11 @@ rte_vhost_vring_call(int vid, uint16_t vring_idx)
 	if (!vq)
 		return -1;
 
-	vhost_vring_call(dev, vq);
+	if (vq_is_packed(dev))
+		vhost_vring_call_packed(dev, vq);
+	else
+		vhost_vring_call_split(dev, vq);
+
 	return 0;
 }
 
@@ -625,19 +645,52 @@ rte_vhost_avail_entries(int vid, uint16_t queue_id)
 	return *(volatile uint16_t *)&vq->avail->idx - vq->last_used_idx;
 }
 
+static inline void
+vhost_enable_notify_split(struct vhost_virtqueue *vq, int enable)
+{
+	if (enable)
+		vq->used->flags &= ~VRING_USED_F_NO_NOTIFY;
+	else
+		vq->used->flags |= VRING_USED_F_NO_NOTIFY;
+}
+
+static inline void
+vhost_enable_notify_packed(struct virtio_net *dev,
+		struct vhost_virtqueue *vq, int enable)
+{
+	uint16_t flags;
+
+	if (!enable)
+		vq->device_event->flags = VRING_EVENT_F_DISABLE;
+
+	flags = VRING_EVENT_F_ENABLE;
+	if (dev->features & (1ULL << VIRTIO_RING_F_EVENT_IDX)) {
+		flags = VRING_EVENT_F_DESC;
+		vq->device_event->off_wrap = vq->last_avail_idx |
+			vq->avail_wrap_counter << 15;
+	}
+
+	rte_smp_wmb();
+
+	vq->device_event->flags = flags;
+}
+
 int
 rte_vhost_enable_guest_notification(int vid, uint16_t queue_id, int enable)
 {
 	struct virtio_net *dev = get_device(vid);
+	struct vhost_virtqueue *vq;
 
 	if (!dev)
 		return -1;
 
-	if (enable)
-		dev->virtqueue[queue_id]->used->flags &=
-			~VRING_USED_F_NO_NOTIFY;
+	vq = dev->virtqueue[queue_id];
+
+	if (vq_is_packed(dev))
+		vhost_enable_notify_packed(dev, vq, enable);
 	else
-		dev->virtqueue[queue_id]->used->flags |= VRING_USED_F_NO_NOTIFY;
+		vhost_enable_notify_split(vq, enable);
+
 	return 0;
 }
 

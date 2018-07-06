@@ -95,14 +95,21 @@ struct vhost_virtqueue {
 		struct vring_desc	*desc;
 		struct vring_packed_desc   *desc_packed;
 	};
-	struct vring_avail	*avail;
-	struct vring_used	*used;
+	union {
+		struct vring_avail	*avail;
+		struct vring_packed_desc_event *driver_event;
+	};
+	union {
+		struct vring_used	*used;
+		struct vring_packed_desc_event *device_event;
+	};
 	uint32_t		size;
 
 	uint16_t		last_avail_idx;
 	uint16_t		last_used_idx;
 	/* Last used index we notify to front end. */
 	uint16_t		signalled_used;
+	bool			signalled_used_valid;
 #define VIRTIO_INVALID_EVENTFD		(-1)
 #define VIRTIO_UNINITIALIZED_EVENTFD	(-2)
 
@@ -223,6 +230,15 @@ struct vring_packed_desc {
 	uint64_t addr;
 	uint32_t len;
 	uint16_t id;
+	uint16_t flags;
+};
+
+#define VRING_EVENT_F_ENABLE 0x0
+#define VRING_EVENT_F_DISABLE 0x1
+#define VRING_EVENT_F_DESC 0x2
+
+struct vring_packed_desc_event {
+	uint16_t off_wrap;
 	uint16_t flags;
 };
 #endif
@@ -648,7 +664,7 @@ vhost_need_event(uint16_t event_idx, uint16_t new_idx, uint16_t old)
 }
 
 static __rte_always_inline void
-vhost_vring_call(struct virtio_net *dev, struct vhost_virtqueue *vq)
+vhost_vring_call_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 {
 	/* Flush used->idx update before we read avail->flags. */
 	rte_smp_mb();
@@ -673,6 +689,57 @@ vhost_vring_call(struct virtio_net *dev, struct vhost_virtqueue *vq)
 				&& (vq->callfd >= 0))
 			eventfd_write(vq->callfd, (eventfd_t)1);
 	}
+}
+
+static __rte_always_inline void
+vhost_vring_call_packed(struct virtio_net *dev, struct vhost_virtqueue *vq)
+{
+	uint16_t old, new, off, off_wrap;
+	bool signalled_used_valid, kick = false;
+
+	/* Flush used desc update. */
+	rte_smp_mb();
+
+	if (!(dev->features & (1ULL << VIRTIO_RING_F_EVENT_IDX))) {
+		if (vq->driver_event->flags !=
+				VRING_EVENT_F_DISABLE)
+			kick = true;
+		goto kick;
+	}
+
+	old = vq->signalled_used;
+	new = vq->last_used_idx;
+	vq->signalled_used = new;
+	signalled_used_valid = vq->signalled_used_valid;
+	vq->signalled_used_valid = true;
+
+	if (vq->driver_event->flags != VRING_EVENT_F_DESC) {
+		if (vq->driver_event->flags != VRING_EVENT_F_DISABLE)
+			kick = true;
+		goto kick;
+	}
+
+	if (unlikely(!signalled_used_valid)) {
+		kick = true;
+		goto kick;
+	}
+
+	rte_smp_rmb();
+
+	off_wrap = vq->driver_event->off_wrap;
+	off = off_wrap & ~(1 << 15);
+
+	if (new <= old)
+		old -= vq->size;
+
+	if (vq->used_wrap_counter != off_wrap >> 15)
+		off -= vq->size;
+
+	if (vhost_need_event(off, new, old))
+		kick = true;
+kick:
+	if (kick)
+		eventfd_write(vq->callfd, (eventfd_t)1);
 }
 
 #endif /* _VHOST_NET_CDEV_H_ */
