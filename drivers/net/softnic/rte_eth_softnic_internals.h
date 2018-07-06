@@ -867,6 +867,14 @@ softnic_pipeline_table_dscp_table_update(struct pmd_internals *p,
 	uint64_t dscp_mask,
 	struct rte_table_action_dscp_table *dscp_table);
 
+int
+softnic_pipeline_table_rule_ttl_read(struct pmd_internals *p,
+	const char *pipeline_name,
+	uint32_t table_id,
+	void *data,
+	struct rte_table_action_ttl_counters *stats,
+	int clear);
+
 /**
  * Thread
  */

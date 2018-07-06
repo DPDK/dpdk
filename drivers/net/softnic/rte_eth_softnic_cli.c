@@ -3821,6 +3821,19 @@ cmd_pipeline_table_dscp(struct pmd_internals *softnic,
 }
 
 /**
+ * pipeline <pipeline_name> table <table_id> rule read ttl [clear]
+ */
+static void
+cmd_softnic_pipeline_table_rule_ttl_read(struct pmd_internals *softnic __rte_unused,
+	char **tokens,
+	uint32_t n_tokens __rte_unused,
+	char *out,
+	size_t out_size)
+{
+	snprintf(out, out_size, MSG_CMD_UNIMPLEM, tokens[0]);
+}
+
+/**
  * thread <thread_id> pipeline <pipeline_name> enable
  */
 static void
@@ -4128,6 +4141,16 @@ softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 			(strcmp(tokens[2], "table") == 0) &&
 			(strcmp(tokens[4], "dscp") == 0)) {
 			cmd_pipeline_table_dscp(softnic, tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 7 &&
+			(strcmp(tokens[2], "table") == 0) &&
+			(strcmp(tokens[4], "rule") == 0) &&
+			(strcmp(tokens[5], "read") == 0) &&
+			(strcmp(tokens[6], "ttl") == 0)) {
+			cmd_softnic_pipeline_table_rule_ttl_read(softnic, tokens, n_tokens,
 				out, out_size);
 			return;
 		}
