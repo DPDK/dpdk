@@ -1059,6 +1059,13 @@ By default, GSO is disabled for all ports.
 
    testpmd> csum set tcp hw <port_id>
 
+   UDP GSO is the same as IP fragmentation, which treats the UDP header
+   as the payload and does not modify it during segmentation. That is,
+   after UDP GSO, only the first output fragment has the original UDP
+   header. Therefore, users need to enable HW IP checksum calculation
+   and SW UDP checksum calculation for GSO-enabled ports, if they want
+   correct checksums for UDP/IPv4 packets.
+
 set gso segsz
 ~~~~~~~~~~~~~
 

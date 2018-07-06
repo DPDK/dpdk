@@ -43,6 +43,7 @@ Limitations
 #. Currently, the GSO library supports the following IPv4 packet types:
 
  - TCP
+ - UDP
  - VxLAN
  - GRE
 
@@ -145,6 +146,15 @@ TCP/IPv4 GSO
 ~~~~~~~~~~~~
 TCP/IPv4 GSO supports segmentation of suitably large TCP/IPv4 packets, which
 may also contain an optional VLAN tag.
+
+UDP/IPv4 GSO
+~~~~~~~~~~~~
+UDP/IPv4 GSO supports segmentation of suitably large UDP/IPv4 packets, which
+may also contain an optional VLAN tag. UDP GSO is the same as IP fragmentation.
+Specifically, UDP GSO treats the UDP header as a part of the payload and
+does not modify it during segmentation. Therefore, after UDP GSO, only the
+first output packet has the original UDP header, and others just have l2
+and l3 headers.
 
 VxLAN GSO
 ~~~~~~~~~
