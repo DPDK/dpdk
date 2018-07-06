@@ -50,7 +50,10 @@ New Features
 * **Added Flow API support for CXGBE PMD.**
 
   Flow API support has been added to CXGBE Poll Mode Driver to offload
-  flows to Chelsio T5/T6 NICs.
+  flows to Chelsio T5/T6 NICs. Support added for:
+  * Wildcard (LE-TCAM) and Exact (HASH) match filters.
+  * Match items: physical ingress port, IPv4, IPv6, TCP and UDP.
+  * Action items: queue, drop, count, and physical egress port redirect.
 
 * **Added ixgbe preferred Rx/Tx parameters.**
 

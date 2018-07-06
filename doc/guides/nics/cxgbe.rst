@@ -30,7 +30,7 @@ CXGBE and CXGBEVF PMD has support for:
 - All multicast mode
 - Port hardware statistics
 - Jumbo frames
-- Flow API
+- Flow API - Support for both Wildcard (LE-TCAM) and Exact (HASH) match filters.
 
 Limitations
 -----------
