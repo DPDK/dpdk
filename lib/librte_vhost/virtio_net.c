@@ -226,13 +226,13 @@ virtio_enqueue_offload(struct rte_mbuf *m_buf, struct virtio_net_hdr *net_hdr)
 }
 
 static __rte_always_inline int
-fill_vec_buf(struct virtio_net *dev, struct vhost_virtqueue *vq,
-			 uint32_t avail_idx, uint32_t *vec_idx,
+fill_vec_buf_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
+			 uint32_t avail_idx, uint16_t *vec_idx,
 			 struct buf_vector *buf_vec, uint16_t *desc_chain_head,
 			 uint16_t *desc_chain_len, uint8_t perm)
 {
 	uint16_t idx = vq->avail->ring[avail_idx & (vq->size - 1)];
-	uint32_t vec_id = *vec_idx;
+	uint16_t vec_id = *vec_idx;
 	uint32_t len    = 0;
 	uint64_t dlen, desc_avail, desc_iova;
 	struct vring_desc *descs = vq->desc;
@@ -323,13 +323,13 @@ fill_vec_buf(struct virtio_net *dev, struct vhost_virtqueue *vq,
  * Returns -1 on fail, 0 on success
  */
 static inline int
-reserve_avail_buf(struct virtio_net *dev, struct vhost_virtqueue *vq,
+reserve_avail_buf_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 				uint32_t size, struct buf_vector *buf_vec,
 				uint16_t *num_buffers, uint16_t avail_head,
 				uint16_t *nr_vec)
 {
 	uint16_t cur_idx;
-	uint32_t vec_idx = 0;
+	uint16_t vec_idx = 0;
 	uint16_t max_tries, tries = 0;
 
 	uint16_t head_idx = 0;
@@ -347,7 +347,8 @@ reserve_avail_buf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		if (unlikely(cur_idx == avail_head))
 			return -1;
 
-		if (unlikely(fill_vec_buf(dev, vq, cur_idx, &vec_idx, buf_vec,
+		if (unlikely(fill_vec_buf_split(dev, vq, cur_idx,
+						&vec_idx, buf_vec,
 						&head_idx, &len,
 						VHOST_ACCESS_RW) < 0))
 			return -1;
@@ -534,48 +535,22 @@ out:
 }
 
 static __rte_always_inline uint32_t
-virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
+virtio_dev_rx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct rte_mbuf **pkts, uint32_t count)
 {
-	struct vhost_virtqueue *vq;
 	uint32_t pkt_idx = 0;
 	uint16_t num_buffers;
 	struct buf_vector buf_vec[BUF_VECTOR_MAX];
 	uint16_t avail_head;
 
-	VHOST_LOG_DEBUG(VHOST_DATA, "(%d) %s\n", dev->vid, __func__);
-	if (unlikely(!is_valid_virt_queue_idx(queue_id, 0, dev->nr_vring))) {
-		RTE_LOG(ERR, VHOST_DATA, "(%d) %s: invalid virtqueue idx %d.\n",
-			dev->vid, __func__, queue_id);
-		return 0;
-	}
-
-	vq = dev->virtqueue[queue_id];
-
-	rte_spinlock_lock(&vq->access_lock);
-
-	if (unlikely(vq->enabled == 0))
-		goto out_access_unlock;
-
-	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
-		vhost_user_iotlb_rd_lock(vq);
-
-	if (unlikely(vq->access_ok == 0))
-		if (unlikely(vring_translate(dev, vq) < 0))
-			goto out;
-
-	count = RTE_MIN((uint32_t)MAX_PKT_BURST, count);
-	if (count == 0)
-		goto out;
-
 	rte_prefetch0(&vq->avail->ring[vq->last_avail_idx & (vq->size - 1)]);
-
 	avail_head = *((volatile uint16_t *)&vq->avail->idx);
+
 	for (pkt_idx = 0; pkt_idx < count; pkt_idx++) {
 		uint32_t pkt_len = pkts[pkt_idx]->pkt_len + dev->vhost_hlen;
 		uint16_t nr_vec = 0;
 
-		if (unlikely(reserve_avail_buf(dev, vq,
+		if (unlikely(reserve_avail_buf_split(dev, vq,
 						pkt_len, buf_vec, &num_buffers,
 						avail_head, &nr_vec) < 0)) {
 			VHOST_LOG_DEBUG(VHOST_DATA,
@@ -608,6 +583,42 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 		vhost_vring_call(dev, vq);
 	}
 
+	return pkt_idx;
+}
+
+static __rte_always_inline uint32_t
+virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
+	struct rte_mbuf **pkts, uint32_t count)
+{
+	struct vhost_virtqueue *vq;
+
+	VHOST_LOG_DEBUG(VHOST_DATA, "(%d) %s\n", dev->vid, __func__);
+	if (unlikely(!is_valid_virt_queue_idx(queue_id, 0, dev->nr_vring))) {
+		RTE_LOG(ERR, VHOST_DATA, "(%d) %s: invalid virtqueue idx %d.\n",
+			dev->vid, __func__, queue_id);
+		return 0;
+	}
+
+	vq = dev->virtqueue[queue_id];
+
+	rte_spinlock_lock(&vq->access_lock);
+
+	if (unlikely(vq->enabled == 0))
+		goto out_access_unlock;
+
+	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
+		vhost_user_iotlb_rd_lock(vq);
+
+	if (unlikely(vq->access_ok == 0))
+		if (unlikely(vring_translate(dev, vq) < 0))
+			goto out;
+
+	count = RTE_MIN((uint32_t)MAX_PKT_BURST, count);
+	if (count == 0)
+		goto out;
+
+	count = virtio_dev_rx_split(dev, vq, pkts, count);
+
 out:
 	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
 		vhost_user_iotlb_rd_unlock(vq);
@@ -615,7 +626,7 @@ out:
 out_access_unlock:
 	rte_spinlock_unlock(&vq->access_lock);
 
-	return pkt_idx;
+	return count;
 }
 
 uint16_t
@@ -1021,47 +1032,12 @@ restore_mbuf(struct rte_mbuf *m)
 	}
 }
 
-uint16_t
-rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
+static __rte_always_inline uint16_t
+virtio_dev_tx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count)
 {
-	struct virtio_net *dev;
-	struct rte_mbuf *rarp_mbuf = NULL;
-	struct vhost_virtqueue *vq;
-	uint32_t i = 0;
+	uint16_t i;
 	uint16_t free_entries;
-
-	dev = get_device(vid);
-	if (!dev)
-		return 0;
-
-	if (unlikely(!(dev->flags & VIRTIO_DEV_BUILTIN_VIRTIO_NET))) {
-		RTE_LOG(ERR, VHOST_DATA,
-			"(%d) %s: built-in vhost net backend is disabled.\n",
-			dev->vid, __func__);
-		return 0;
-	}
-
-	if (unlikely(!is_valid_virt_queue_idx(queue_id, 1, dev->nr_vring))) {
-		RTE_LOG(ERR, VHOST_DATA, "(%d) %s: invalid virtqueue idx %d.\n",
-			dev->vid, __func__, queue_id);
-		return 0;
-	}
-
-	vq = dev->virtqueue[queue_id];
-
-	if (unlikely(rte_spinlock_trylock(&vq->access_lock) == 0))
-		return 0;
-
-	if (unlikely(vq->enabled == 0))
-		goto out_access_unlock;
-
-	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
-		vhost_user_iotlb_rd_lock(vq);
-
-	if (unlikely(vq->access_ok == 0))
-		if (unlikely(vring_translate(dev, vq) < 0))
-			goto out;
 
 	if (unlikely(dev->dequeue_zero_copy)) {
 		struct zcopy_mbuf *zmbuf, *next;
@@ -1089,39 +1065,10 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 
 	rte_prefetch0(&vq->avail->ring[vq->last_avail_idx & (vq->size - 1)]);
 
-	/*
-	 * Construct a RARP broadcast packet, and inject it to the "pkts"
-	 * array, to looks like that guest actually send such packet.
-	 *
-	 * Check user_send_rarp() for more information.
-	 *
-	 * broadcast_rarp shares a cacheline in the virtio_net structure
-	 * with some fields that are accessed during enqueue and
-	 * rte_atomic16_cmpset() causes a write if using cmpxchg. This could
-	 * result in false sharing between enqueue and dequeue.
-	 *
-	 * Prevent unnecessary false sharing by reading broadcast_rarp first
-	 * and only performing cmpset if the read indicates it is likely to
-	 * be set.
-	 */
-
-	if (unlikely(rte_atomic16_read(&dev->broadcast_rarp) &&
-			rte_atomic16_cmpset((volatile uint16_t *)
-				&dev->broadcast_rarp.cnt, 1, 0))) {
-
-		rarp_mbuf = rte_net_make_rarp_packet(mbuf_pool, &dev->mac);
-		if (rarp_mbuf == NULL) {
-			RTE_LOG(ERR, VHOST_DATA,
-				"Failed to make RARP packet.\n");
-			return 0;
-		}
-		count -= 1;
-	}
-
 	free_entries = *((volatile uint16_t *)&vq->avail->idx) -
 			vq->last_avail_idx;
 	if (free_entries == 0)
-		goto out;
+		return 0;
 
 	VHOST_LOG_DEBUG(VHOST_DATA, "(%d) %s\n", dev->vid, __func__);
 
@@ -1133,10 +1080,10 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 	for (i = 0; i < count; i++) {
 		struct buf_vector buf_vec[BUF_VECTOR_MAX];
 		uint16_t head_idx, dummy_len;
-		uint32_t nr_vec = 0;
+		uint16_t nr_vec = 0;
 		int err;
 
-		if (unlikely(fill_vec_buf(dev, vq,
+		if (unlikely(fill_vec_buf_split(dev, vq,
 						vq->last_avail_idx + i,
 						&nr_vec, buf_vec,
 						&head_idx, &dummy_len,
@@ -1195,6 +1142,79 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 		vhost_vring_call(dev, vq);
 	}
 
+	return i;
+}
+
+uint16_t
+rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
+	struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count)
+{
+	struct virtio_net *dev;
+	struct rte_mbuf *rarp_mbuf = NULL;
+	struct vhost_virtqueue *vq;
+
+	dev = get_device(vid);
+	if (!dev)
+		return 0;
+
+	if (unlikely(!(dev->flags & VIRTIO_DEV_BUILTIN_VIRTIO_NET))) {
+		RTE_LOG(ERR, VHOST_DATA,
+			"(%d) %s: built-in vhost net backend is disabled.\n",
+			dev->vid, __func__);
+		return 0;
+	}
+
+	if (unlikely(!is_valid_virt_queue_idx(queue_id, 1, dev->nr_vring))) {
+		RTE_LOG(ERR, VHOST_DATA, "(%d) %s: invalid virtqueue idx %d.\n",
+			dev->vid, __func__, queue_id);
+		return 0;
+	}
+
+	vq = dev->virtqueue[queue_id];
+
+	if (unlikely(rte_spinlock_trylock(&vq->access_lock) == 0))
+		return 0;
+
+	if (unlikely(vq->enabled == 0))
+		goto out_access_unlock;
+
+	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
+		vhost_user_iotlb_rd_lock(vq);
+
+	if (unlikely(vq->access_ok == 0))
+		if (unlikely(vring_translate(dev, vq) < 0))
+			goto out;
+
+	/*
+	 * Construct a RARP broadcast packet, and inject it to the "pkts"
+	 * array, to looks like that guest actually send such packet.
+	 *
+	 * Check user_send_rarp() for more information.
+	 *
+	 * broadcast_rarp shares a cacheline in the virtio_net structure
+	 * with some fields that are accessed during enqueue and
+	 * rte_atomic16_cmpset() causes a write if using cmpxchg. This could
+	 * result in false sharing between enqueue and dequeue.
+	 *
+	 * Prevent unnecessary false sharing by reading broadcast_rarp first
+	 * and only performing cmpset if the read indicates it is likely to
+	 * be set.
+	 */
+	if (unlikely(rte_atomic16_read(&dev->broadcast_rarp) &&
+			rte_atomic16_cmpset((volatile uint16_t *)
+				&dev->broadcast_rarp.cnt, 1, 0))) {
+
+		rarp_mbuf = rte_net_make_rarp_packet(mbuf_pool, &dev->mac);
+		if (rarp_mbuf == NULL) {
+			RTE_LOG(ERR, VHOST_DATA,
+				"Failed to make RARP packet.\n");
+			return 0;
+		}
+		count -= 1;
+	}
+
+	count = virtio_dev_tx_split(dev, vq, mbuf_pool, pkts, count);
+
 out:
 	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
 		vhost_user_iotlb_rd_unlock(vq);
@@ -1207,10 +1227,10 @@ out_access_unlock:
 		 * Inject it to the head of "pkts" array, so that switch's mac
 		 * learning table will get updated first.
 		 */
-		memmove(&pkts[1], pkts, i * sizeof(struct rte_mbuf *));
+		memmove(&pkts[1], pkts, count * sizeof(struct rte_mbuf *));
 		pkts[0] = rarp_mbuf;
-		i += 1;
+		count += 1;
 	}
 
-	return i;
+	return count;
 }
