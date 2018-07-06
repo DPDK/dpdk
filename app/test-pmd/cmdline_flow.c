@@ -239,6 +239,8 @@ enum index {
 	ACTION_OF_POP_MPLS_ETHERTYPE,
 	ACTION_OF_PUSH_MPLS,
 	ACTION_OF_PUSH_MPLS_ETHERTYPE,
+	ACTION_VXLAN_ENCAP,
+	ACTION_VXLAN_DECAP,
 };
 
 /** Maximum size for pattern in struct rte_flow_item_raw. */
@@ -256,6 +258,23 @@ struct action_rss_data {
 	struct rte_flow_action_rss conf;
 	uint8_t key[RSS_HASH_KEY_LENGTH];
 	uint16_t queue[ACTION_RSS_QUEUE_NUM];
+};
+
+/** Maximum number of items in struct rte_flow_action_vxlan_encap. */
+#define ACTION_VXLAN_ENCAP_ITEMS_NUM 6
+
+/** Storage for struct rte_flow_action_vxlan_encap including external data. */
+struct action_vxlan_encap_data {
+	struct rte_flow_action_vxlan_encap conf;
+	struct rte_flow_item items[ACTION_VXLAN_ENCAP_ITEMS_NUM];
+	struct rte_flow_item_eth item_eth;
+	struct rte_flow_item_vlan item_vlan;
+	union {
+		struct rte_flow_item_ipv4 item_ipv4;
+		struct rte_flow_item_ipv6 item_ipv6;
+	};
+	struct rte_flow_item_udp item_udp;
+	struct rte_flow_item_vxlan item_vxlan;
 };
 
 /** Maximum number of subsequent tokens and arguments on the stack. */
@@ -775,6 +794,8 @@ static const enum index next_action[] = {
 	ACTION_OF_SET_VLAN_PCP,
 	ACTION_OF_POP_MPLS,
 	ACTION_OF_PUSH_MPLS,
+	ACTION_VXLAN_ENCAP,
+	ACTION_VXLAN_DECAP,
 	ZERO,
 };
 
@@ -905,6 +926,9 @@ static int parse_vc_action_rss_type(struct context *, const struct token *,
 static int parse_vc_action_rss_queue(struct context *, const struct token *,
 				     const char *, unsigned int, void *,
 				     unsigned int);
+static int parse_vc_action_vxlan_encap(struct context *, const struct token *,
+				       const char *, unsigned int, void *,
+				       unsigned int);
 static int parse_destroy(struct context *, const struct token *,
 			 const char *, unsigned int,
 			 void *, unsigned int);
@@ -2387,6 +2411,24 @@ static const struct token token_list[] = {
 			      ethertype)),
 		.call = parse_vc_conf,
 	},
+	[ACTION_VXLAN_ENCAP] = {
+		.name = "vxlan_encap",
+		.help = "VXLAN encapsulation, uses configuration set by \"set"
+			" vxlan\"",
+		.priv = PRIV_ACTION(VXLAN_ENCAP,
+				    sizeof(struct action_vxlan_encap_data)),
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.call = parse_vc_action_vxlan_encap,
+	},
+	[ACTION_VXLAN_DECAP] = {
+		.name = "vxlan_decap",
+		.help = "Performs a decapsulation action by stripping all"
+			" headers of the VXLAN tunnel network overlay from the"
+			" matched flow.",
+		.priv = PRIV_ACTION(VXLAN_DECAP, 0),
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.call = parse_vc,
+	},
 };
 
 /** Remove and return last entry from argument stack. */
@@ -2949,6 +2991,106 @@ end:
 	action_rss_data->conf.queue_num = i;
 	action_rss_data->conf.queue = i ? action_rss_data->queue : NULL;
 	return len;
+}
+
+/** Parse VXLAN encap action. */
+static int
+parse_vc_action_vxlan_encap(struct context *ctx, const struct token *token,
+			    const char *str, unsigned int len,
+			    void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+	struct rte_flow_action *action;
+	struct action_vxlan_encap_data *action_vxlan_encap_data;
+	int ret;
+
+	ret = parse_vc(ctx, token, str, len, buf, size);
+	if (ret < 0)
+		return ret;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return ret;
+	if (!out->args.vc.actions_n)
+		return -1;
+	action = &out->args.vc.actions[out->args.vc.actions_n - 1];
+	/* Point to selected object. */
+	ctx->object = out->args.vc.data;
+	ctx->objmask = NULL;
+	/* Set up default configuration. */
+	action_vxlan_encap_data = ctx->object;
+	*action_vxlan_encap_data = (struct action_vxlan_encap_data){
+		.conf = (struct rte_flow_action_vxlan_encap){
+			.definition = action_vxlan_encap_data->items,
+		},
+		.items = {
+			{
+				.type = RTE_FLOW_ITEM_TYPE_ETH,
+				.spec = &action_vxlan_encap_data->item_eth,
+				.mask = &rte_flow_item_eth_mask,
+			},
+			{
+				.type = RTE_FLOW_ITEM_TYPE_VLAN,
+				.spec = &action_vxlan_encap_data->item_vlan,
+				.mask = &rte_flow_item_vlan_mask,
+			},
+			{
+				.type = RTE_FLOW_ITEM_TYPE_IPV4,
+				.spec = &action_vxlan_encap_data->item_ipv4,
+				.mask = &rte_flow_item_ipv4_mask,
+			},
+			{
+				.type = RTE_FLOW_ITEM_TYPE_UDP,
+				.spec = &action_vxlan_encap_data->item_udp,
+				.mask = &rte_flow_item_udp_mask,
+			},
+			{
+				.type = RTE_FLOW_ITEM_TYPE_VXLAN,
+				.spec = &action_vxlan_encap_data->item_vxlan,
+				.mask = &rte_flow_item_vxlan_mask,
+			},
+			{
+				.type = RTE_FLOW_ITEM_TYPE_END,
+			},
+		},
+		.item_eth.type = 0,
+		.item_vlan = {
+			.tci = vxlan_encap_conf.vlan_tci,
+			.inner_type = 0,
+		},
+		.item_ipv4.hdr = {
+			.src_addr = vxlan_encap_conf.ipv4_src,
+			.dst_addr = vxlan_encap_conf.ipv4_dst,
+		},
+		.item_udp.hdr = {
+			.src_port = vxlan_encap_conf.udp_src,
+			.dst_port = vxlan_encap_conf.udp_dst,
+		},
+		.item_vxlan.flags = 0,
+	};
+	memcpy(action_vxlan_encap_data->item_eth.dst.addr_bytes,
+	       vxlan_encap_conf.eth_dst, ETHER_ADDR_LEN);
+	memcpy(action_vxlan_encap_data->item_eth.src.addr_bytes,
+	       vxlan_encap_conf.eth_src, ETHER_ADDR_LEN);
+	if (!vxlan_encap_conf.select_ipv4) {
+		memcpy(&action_vxlan_encap_data->item_ipv6.hdr.src_addr,
+		       &vxlan_encap_conf.ipv6_src,
+		       sizeof(vxlan_encap_conf.ipv6_src));
+		memcpy(&action_vxlan_encap_data->item_ipv6.hdr.dst_addr,
+		       &vxlan_encap_conf.ipv6_dst,
+		       sizeof(vxlan_encap_conf.ipv6_dst));
+		action_vxlan_encap_data->items[2] = (struct rte_flow_item){
+			.type = RTE_FLOW_ITEM_TYPE_IPV6,
+			.spec = &action_vxlan_encap_data->item_ipv6,
+			.mask = &rte_flow_item_ipv6_mask,
+		};
+	}
+	if (!vxlan_encap_conf.select_vlan)
+		action_vxlan_encap_data->items[1].type =
+			RTE_FLOW_ITEM_TYPE_VOID;
+	memcpy(action_vxlan_encap_data->item_vxlan.vni, vxlan_encap_conf.vni,
+	       RTE_DIM(vxlan_encap_conf.vni));
+	action->conf = &action_vxlan_encap_data->conf;
+	return ret;
 }
 
 /** Parse tokens for destroy command. */

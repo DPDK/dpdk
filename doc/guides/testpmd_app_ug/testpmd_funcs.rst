@@ -1541,6 +1541,23 @@ Enable or disable a per queue Tx offloading only on a specific Tx queue::
 
 This command should be run when the port is stopped, or else it will fail.
 
+Config VXLAN Encap outer layers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Configure the outer layer to encapsulate a packet inside a VXLAN tunnel::
+
+ set vxlan ip-version (ipv4|ipv6) vni (vni) udp-src (udp-src) \
+ udp-dst (udp-dst) ip-src (ip-src) ip-dst (ip-dst) eth-src (eth-src) \
+ eth-dst (eth-dst)
+
+ set vxlan-with-vlan ip-version (ipv4|ipv6) vni (vni) udp-src (udp-src) \
+ udp-dst (udp-dst) ip-src (ip-src) ip-dst (ip-dst) vlan-tci (vlan-tci) \
+ eth-src (eth-src) eth-dst (eth-dst)
+
+Those command will set an internal configuration inside testpmd, any following
+flow rule using the action vxlan_encap will use the last configuration set.
+To have a different encapsulation header, one of those commands must be called
+before the flow rule creation.
 
 Port Functions
 --------------
@@ -3657,6 +3674,12 @@ This section lists supported actions and their attributes, if any.
 
   - ``ethertype``: Ethertype.
 
+- ``vxlan_encap``: Performs a VXLAN encapsulation, outer layer configuration
+  is done through `Config VXLAN Encap outer layers`_.
+
+- ``vxlan_decap``: Performs a decapsulation action by stripping all headers of
+  the VXLAN tunnel network overlay from the matched flow.
+
 Destroying flow rules
 ~~~~~~~~~~~~~~~~~~~~~
 
@@ -3921,6 +3944,38 @@ Validate and create a QinQ rule on port 0 to steer traffic to a queue on the hos
    ID      Group   Prio    Attr    Rule
    0       0       0       i-      ETH VLAN VLAN=>VF QUEUE
    1       0       0       i-      ETH VLAN VLAN=>PF QUEUE
+
+Sample VXLAN encapsulation rule
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+VXLAN encapsulation outer layer has default value pre-configured in testpmd
+source code, those can be changed by using the following commands
+
+IPv4 VXLAN outer header::
+
+ testpmd> set vxlan ip-version ipv4 vni 4 udp-src 4 udp-dst 4 ip-src 127.0.0.1
+        ip-dst 128.0.0.1 eth-src 11:11:11:11:11:11 eth-dst 22:22:22:22:22:22
+ testpmd> flow create 0 ingress pattern end actions vxlan_encap /
+        queue index 0 / end
+
+ testpmd> set vxlan-with-vlan ip-version ipv4 vni 4 udp-src 4 udp-dst 4 ip-src
+         127.0.0.1 ip-dst 128.0.0.1 vlan-tci 34 eth-src 11:11:11:11:11:11
+         eth-dst 22:22:22:22:22:22
+ testpmd> flow create 0 ingress pattern end actions vxlan_encap /
+         queue index 0 / end
+
+IPv6 VXLAN outer header::
+
+ testpmd> set vxlan ip-version ipv6 vni 4 udp-src 4 udp-dst 4 ip-src ::1
+        ip-dst ::2222 eth-src 11:11:11:11:11:11 eth-dst 22:22:22:22:22:22
+ testpmd> flow create 0 ingress pattern end actions vxlan_encap /
+         queue index 0 / end
+
+ testpmd> set vxlan-with-vlan ip-version ipv6 vni 4 udp-src 4 udp-dst 4
+         ip-src ::1 ip-dst ::2222 vlan-tci 34 eth-src 11:11:11:11:11:11
+         eth-dst 22:22:22:22:22:22
+ testpmd> flow create 0 ingress pattern end actions vxlan_encap /
+         queue index 0 / end
 
 BPF Functions
 --------------

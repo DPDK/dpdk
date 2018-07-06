@@ -391,6 +391,23 @@ uint8_t bitrate_enabled;
 struct gro_status gro_ports[RTE_MAX_ETHPORTS];
 uint8_t gro_flush_cycles = GRO_DEFAULT_FLUSH_CYCLES;
 
+struct vxlan_encap_conf vxlan_encap_conf = {
+	.select_ipv4 = 1,
+	.select_vlan = 0,
+	.vni = "\x00\x00\x00",
+	.udp_src = 0,
+	.udp_dst = RTE_BE16(4789),
+	.ipv4_src = IPv4(127, 0, 0, 1),
+	.ipv4_dst = IPv4(255, 255, 255, 255),
+	.ipv6_src = "\x00\x00\x00\x00\x00\x00\x00\x00"
+		"\x00\x00\x00\x00\x00\x00\x00\x01",
+	.ipv6_dst = "\x00\x00\x00\x00\x00\x00\x00\x00"
+		"\x00\x00\x00\x00\x00\x00\x11\x11",
+	.vlan_tci = 0,
+	.eth_src = "\x00\x00\x00\x00\x00\x00",
+	.eth_dst = "\xff\xff\xff\xff\xff\xff",
+};
+
 /* Forward function declarations */
 static void map_port_queue_stats_mapping_registers(portid_t pi,
 						   struct rte_port *port);
