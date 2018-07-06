@@ -5,9 +5,11 @@
 #ifndef __INCLUDE_RTE_ETH_SOFTNIC_INTERNALS_H__
 #define __INCLUDE_RTE_ETH_SOFTNIC_INTERNALS_H__
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include <rte_mbuf.h>
+#include <rte_ethdev.h>
 #include <rte_sched.h>
 #include <rte_ethdev_driver.h>
 #include <rte_tm_driver.h>
@@ -18,62 +20,16 @@
  * PMD Parameters
  */
 
-enum pmd_feature {
-	PMD_FEATURE_TM = 1, /**< Traffic Management (TM) */
-};
-
-#ifndef INTRUSIVE
-#define INTRUSIVE					0
-#endif
-
 struct pmd_params {
-	/** Parameters for the soft device (to be created) */
+	const char *name;
+	const char *firmware;
+	uint32_t cpu_id;
+
+	/** Traffic Management (TM) */
 	struct {
-		const char *name; /**< Name */
-		uint32_t flags; /**< Flags */
-
-		/** 0 = Access hard device though API only (potentially slower,
-		 *      but safer);
-		 *  1 = Access hard device private data structures is allowed
-		 *      (potentially faster).
-		 */
-		int intrusive;
-
-		/** Traffic Management (TM) */
-		struct {
-			uint32_t rate; /**< Rate (bytes/second) */
-			uint32_t nb_queues; /**< Number of queues */
-			uint16_t qsize[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
-			/**< Queue size per traffic class */
-			uint32_t enq_bsz; /**< Enqueue burst size */
-			uint32_t deq_bsz; /**< Dequeue burst size */
-		} tm;
-	} soft;
-
-	/** Parameters for the hard device (existing) */
-	struct {
-		char *name; /**< Name */
-		uint16_t tx_queue_id; /**< TX queue ID */
-	} hard;
-};
-
-/**
- * Default Internals
- */
-
-#ifndef DEFAULT_BURST_SIZE
-#define DEFAULT_BURST_SIZE				32
-#endif
-
-#ifndef FLUSH_COUNT_THRESHOLD
-#define FLUSH_COUNT_THRESHOLD			(1 << 17)
-#endif
-
-struct default_internals {
-	struct rte_mbuf **pkts;
-	uint32_t pkts_len;
-	uint32_t txq_pos;
-	uint32_t flush_count;
+		uint32_t n_queues; /**< Number of queues */
+		uint16_t qsize[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
+	} tm;
 };
 
 /**
@@ -185,14 +141,7 @@ struct tm_internals {
 
 	/** Blueprints */
 	struct tm_params params;
-
-	/** Run-time */
 	struct rte_sched_port *sched;
-	struct rte_mbuf **pkts_enq;
-	struct rte_mbuf **pkts_deq;
-	uint32_t pkts_enq_len;
-	uint32_t txq_pos;
-	uint32_t flush_count;
 };
 
 /**
@@ -204,31 +153,14 @@ struct pmd_internals {
 
 	/** Soft device */
 	struct {
-		struct default_internals def; /**< Default */
 		struct tm_internals tm; /**< Traffic Management */
 	} soft;
-
-	/** Hard device */
-	struct {
-		uint16_t port_id;
-	} hard;
-};
-
-struct pmd_rx_queue {
-	/** Hard device */
-	struct {
-		uint16_t port_id;
-		uint16_t rx_queue_id;
-	} hard;
 };
 
 /**
  * Traffic Management (TM) Operation
  */
 extern const struct rte_tm_ops pmd_tm_ops;
-
-int
-tm_params_check(struct pmd_params *params, uint32_t hard_rate);
 
 int
 tm_init(struct pmd_internals *p, struct pmd_params *params, int numa_node);
@@ -243,20 +175,9 @@ void
 tm_stop(struct pmd_internals *p);
 
 static inline int
-tm_enabled(struct rte_eth_dev *dev)
+tm_used(struct rte_eth_dev *dev __rte_unused)
 {
-	struct pmd_internals *p = dev->data->dev_private;
-
-	return (p->params.soft.flags & PMD_FEATURE_TM);
-}
-
-static inline int
-tm_used(struct rte_eth_dev *dev)
-{
-	struct pmd_internals *p = dev->data->dev_private;
-
-	return (p->params.soft.flags & PMD_FEATURE_TM) &&
-		p->soft.tm.h.n_tm_nodes[TM_NODE_LEVEL_PORT];
+	return 0;
 }
 
 #endif /* __INCLUDE_RTE_ETH_SOFTNIC_INTERNALS_H__ */

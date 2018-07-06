@@ -15,50 +15,6 @@
 #define SUBPORT_TC_PERIOD	10
 #define PIPE_TC_PERIOD		40
 
-int
-tm_params_check(struct pmd_params *params, uint32_t hard_rate)
-{
-	uint64_t hard_rate_bytes_per_sec = (uint64_t)hard_rate * BYTES_IN_MBPS;
-	uint32_t i;
-
-	/* rate */
-	if (params->soft.tm.rate) {
-		if (params->soft.tm.rate > hard_rate_bytes_per_sec)
-			return -EINVAL;
-	} else {
-		params->soft.tm.rate =
-			(hard_rate_bytes_per_sec > UINT32_MAX) ?
-				UINT32_MAX : hard_rate_bytes_per_sec;
-	}
-
-	/* nb_queues */
-	if (params->soft.tm.nb_queues == 0)
-		return -EINVAL;
-
-	if (params->soft.tm.nb_queues < RTE_SCHED_QUEUES_PER_PIPE)
-		params->soft.tm.nb_queues = RTE_SCHED_QUEUES_PER_PIPE;
-
-	params->soft.tm.nb_queues =
-		rte_align32pow2(params->soft.tm.nb_queues);
-
-	/* qsize */
-	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++) {
-		if (params->soft.tm.qsize[i] == 0)
-			return -EINVAL;
-
-		params->soft.tm.qsize[i] =
-			rte_align32pow2(params->soft.tm.qsize[i]);
-	}
-
-	/* enq_bsz, deq_bsz */
-	if (params->soft.tm.enq_bsz == 0 ||
-		params->soft.tm.deq_bsz == 0 ||
-		params->soft.tm.deq_bsz >= params->soft.tm.enq_bsz)
-		return -EINVAL;
-
-	return 0;
-}
-
 static void
 tm_hierarchy_init(struct pmd_internals *p)
 {
@@ -134,30 +90,9 @@ tm_hierarchy_uninit(struct pmd_internals *p)
 
 int
 tm_init(struct pmd_internals *p,
-	struct pmd_params *params,
-	int numa_node)
+	struct pmd_params *params __rte_unused,
+	int numa_node __rte_unused)
 {
-	uint32_t enq_bsz = params->soft.tm.enq_bsz;
-	uint32_t deq_bsz = params->soft.tm.deq_bsz;
-
-	p->soft.tm.pkts_enq = rte_zmalloc_socket(params->soft.name,
-		2 * enq_bsz * sizeof(struct rte_mbuf *),
-		0,
-		numa_node);
-
-	if (p->soft.tm.pkts_enq == NULL)
-		return -ENOMEM;
-
-	p->soft.tm.pkts_deq = rte_zmalloc_socket(params->soft.name,
-		deq_bsz * sizeof(struct rte_mbuf *),
-		0,
-		numa_node);
-
-	if (p->soft.tm.pkts_deq == NULL) {
-		rte_free(p->soft.tm.pkts_enq);
-		return -ENOMEM;
-	}
-
 	tm_hierarchy_init(p);
 
 	return 0;
@@ -167,8 +102,6 @@ void
 tm_free(struct pmd_internals *p)
 {
 	tm_hierarchy_uninit(p);
-	rte_free(p->soft.tm.pkts_enq);
-	rte_free(p->soft.tm.pkts_deq);
 }
 
 int
@@ -384,7 +317,7 @@ static uint32_t
 tm_level_get_max_nodes(struct rte_eth_dev *dev, enum tm_node_level level)
 {
 	struct pmd_internals *p = dev->data->dev_private;
-	uint32_t n_queues_max = p->params.soft.tm.nb_queues;
+	uint32_t n_queues_max = p->params.tm.n_queues;
 	uint32_t n_tc_max = n_queues_max / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS;
 	uint32_t n_pipes_max = n_tc_max / RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE;
 	uint32_t n_subports_max = n_pipes_max;
@@ -429,7 +362,7 @@ pmd_tm_node_type_get(struct rte_eth_dev *dev,
 		   NULL,
 		   rte_strerror(EINVAL));
 
-	*is_leaf = node_id < p->params.soft.tm.nb_queues;
+	*is_leaf = node_id < p->params.tm.n_queues;
 
 	return 0;
 }
@@ -1362,7 +1295,7 @@ node_add_check_port(struct rte_eth_dev *dev,
 		params->shaper_profile_id);
 
 	/* node type: non-leaf */
-	if (node_id < p->params.soft.tm.nb_queues)
+	if (node_id < p->params.tm.n_queues)
 		return -rte_tm_error_set(error,
 			EINVAL,
 			RTE_TM_ERROR_TYPE_NODE_ID,
@@ -1385,12 +1318,9 @@ node_add_check_port(struct rte_eth_dev *dev,
 			NULL,
 			rte_strerror(EINVAL));
 
-	/* Shaper must be valid.
-	 * Shaper profile peak rate must fit the configured port rate.
-	 */
+	/* Shaper must be valid */
 	if (params->shaper_profile_id == RTE_TM_SHAPER_PROFILE_ID_NONE ||
-		sp == NULL ||
-		sp->params.peak.rate > p->params.soft.tm.rate)
+		sp == NULL)
 		return -rte_tm_error_set(error,
 			EINVAL,
 			RTE_TM_ERROR_TYPE_NODE_PARAMS_SHAPER_PROFILE_ID,
@@ -1437,7 +1367,7 @@ node_add_check_subport(struct rte_eth_dev *dev,
 	struct pmd_internals *p = dev->data->dev_private;
 
 	/* node type: non-leaf */
-	if (node_id < p->params.soft.tm.nb_queues)
+	if (node_id < p->params.tm.n_queues)
 		return -rte_tm_error_set(error,
 			EINVAL,
 			RTE_TM_ERROR_TYPE_NODE_ID,
@@ -1509,7 +1439,7 @@ node_add_check_pipe(struct rte_eth_dev *dev,
 	struct pmd_internals *p = dev->data->dev_private;
 
 	/* node type: non-leaf */
-	if (node_id < p->params.soft.tm.nb_queues)
+	if (node_id < p->params.tm.n_queues)
 		return -rte_tm_error_set(error,
 			EINVAL,
 			RTE_TM_ERROR_TYPE_NODE_ID,
@@ -1586,7 +1516,7 @@ node_add_check_tc(struct rte_eth_dev *dev,
 	struct pmd_internals *p = dev->data->dev_private;
 
 	/* node type: non-leaf */
-	if (node_id < p->params.soft.tm.nb_queues)
+	if (node_id < p->params.tm.n_queues)
 		return -rte_tm_error_set(error,
 			EINVAL,
 			RTE_TM_ERROR_TYPE_NODE_ID,
@@ -1659,7 +1589,7 @@ node_add_check_queue(struct rte_eth_dev *dev,
 	struct pmd_internals *p = dev->data->dev_private;
 
 	/* node type: leaf */
-	if (node_id >= p->params.soft.tm.nb_queues)
+	if (node_id >= p->params.tm.n_queues)
 		return -rte_tm_error_set(error,
 			EINVAL,
 			RTE_TM_ERROR_TYPE_NODE_ID,
@@ -2548,10 +2478,10 @@ hierarchy_blueprints_create(struct rte_eth_dev *dev)
 		.n_subports_per_port = root->n_children,
 		.n_pipes_per_subport = h->n_tm_nodes[TM_NODE_LEVEL_PIPE] /
 			h->n_tm_nodes[TM_NODE_LEVEL_SUBPORT],
-		.qsize = {p->params.soft.tm.qsize[0],
-			p->params.soft.tm.qsize[1],
-			p->params.soft.tm.qsize[2],
-			p->params.soft.tm.qsize[3],
+		.qsize = {p->params.tm.qsize[0],
+			p->params.tm.qsize[1],
+			p->params.tm.qsize[2],
+			p->params.tm.qsize[3],
 		},
 		.pipe_profiles = t->pipe_profiles,
 		.n_pipe_profiles = t->n_pipe_profiles,

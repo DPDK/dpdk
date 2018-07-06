@@ -11,37 +11,23 @@
 extern "C" {
 #endif
 
-#ifndef SOFTNIC_SOFT_TM_NB_QUEUES
-#define SOFTNIC_SOFT_TM_NB_QUEUES			65536
+/** Firmware. */
+#ifndef SOFTNIC_FIRMWARE
+#define SOFTNIC_FIRMWARE                                   "firmware.cli"
 #endif
 
-#ifndef SOFTNIC_SOFT_TM_QUEUE_SIZE
-#define SOFTNIC_SOFT_TM_QUEUE_SIZE			64
-#endif
-
-#ifndef SOFTNIC_SOFT_TM_ENQ_BSZ
-#define SOFTNIC_SOFT_TM_ENQ_BSZ				32
-#endif
-
-#ifndef SOFTNIC_SOFT_TM_DEQ_BSZ
-#define SOFTNIC_SOFT_TM_DEQ_BSZ				24
-#endif
-
-#ifndef SOFTNIC_HARD_TX_QUEUE_ID
-#define SOFTNIC_HARD_TX_QUEUE_ID			0
+/** NUMA node ID. */
+#ifndef SOFTNIC_CPU_ID
+#define SOFTNIC_CPU_ID                                     0
 #endif
 
 /**
- * Run the traffic management function on the softnic device
+ * Soft NIC run.
  *
- * This function read the packets from the softnic input queues, insert into
- * QoS scheduler queues based on mbuf sched field value and transmit the
- * scheduled packets out through the hard device interface.
- *
- * @param portid
- *    port id of the soft device.
+ * @param port_id
+ *    Port ID of the Soft NIC device.
  * @return
- *    zero.
+ *    Zero on success, error code otherwise.
  */
 
 int
