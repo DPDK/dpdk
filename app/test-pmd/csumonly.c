@@ -411,6 +411,8 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 						info->ethertype);
 			}
 		}
+		if (info->gso_enable)
+			ol_flags |= PKT_TX_UDP_SEG;
 	} else if (info->l4_proto == IPPROTO_TCP) {
 		tcp_hdr = (struct tcp_hdr *)((char *)l3_hdr + info->l3_len);
 		tcp_hdr->cksum = 0;

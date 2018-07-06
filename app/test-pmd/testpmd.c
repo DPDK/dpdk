@@ -776,7 +776,7 @@ init_config(void)
 	init_port_config();
 
 	gso_types = DEV_TX_OFFLOAD_TCP_TSO | DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
-		DEV_TX_OFFLOAD_GRE_TNL_TSO;
+		DEV_TX_OFFLOAD_GRE_TNL_TSO | DEV_TX_OFFLOAD_UDP_TSO;
 	/*
 	 * Records which Mbuf pool to use by each logical core, if needed.
 	 */

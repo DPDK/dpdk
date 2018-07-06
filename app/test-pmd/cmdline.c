@@ -4802,8 +4802,9 @@ cmd_gso_show_parsed(void *parsed_result,
 		if (gso_ports[res->cmd_pid].enable) {
 			printf("Max GSO'd packet size: %uB\n"
 					"Supported GSO types: TCP/IPv4, "
-					"VxLAN with inner TCP/IPv4 packet, "
-					"GRE with inner TCP/IPv4  packet\n",
+					"UDP/IPv4, VxLAN with inner "
+					"TCP/IPv4 packet, GRE with inner "
+					"TCP/IPv4 packet\n",
 					gso_max_segment_size);
 		} else
 			printf("GSO is not enabled on Port %u\n", res->cmd_pid);
