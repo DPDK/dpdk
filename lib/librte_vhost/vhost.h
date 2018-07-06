@@ -56,6 +56,7 @@ struct buf_vector {
 struct zcopy_mbuf {
 	struct rte_mbuf *mbuf;
 	uint32_t desc_idx;
+	uint16_t desc_count;
 	uint16_t in_use;
 
 	TAILQ_ENTRY(zcopy_mbuf) next;

@@ -1448,6 +1448,120 @@ virtio_dev_tx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	return i;
 }
 
+static __rte_always_inline uint16_t
+virtio_dev_tx_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
+	struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count)
+{
+	uint16_t i;
+
+	rte_prefetch0(&vq->desc_packed[vq->last_avail_idx]);
+
+	if (unlikely(dev->dequeue_zero_copy)) {
+		struct zcopy_mbuf *zmbuf, *next;
+
+		for (zmbuf = TAILQ_FIRST(&vq->zmbuf_list);
+		     zmbuf != NULL; zmbuf = next) {
+			next = TAILQ_NEXT(zmbuf, next);
+
+			if (mbuf_is_consumed(zmbuf->mbuf)) {
+				update_shadow_used_ring_packed(vq,
+						zmbuf->desc_idx,
+						0,
+						zmbuf->desc_count);
+
+				TAILQ_REMOVE(&vq->zmbuf_list, zmbuf, next);
+				restore_mbuf(zmbuf->mbuf);
+				rte_pktmbuf_free(zmbuf->mbuf);
+				put_zmbuf(zmbuf);
+				vq->nr_zmbuf -= 1;
+			}
+		}
+
+		flush_shadow_used_ring_packed(dev, vq);
+		vhost_vring_call(dev, vq);
+	}
+
+	VHOST_LOG_DEBUG(VHOST_DATA, "(%d) %s\n", dev->vid, __func__);
+
+	count = RTE_MIN(count, MAX_PKT_BURST);
+	VHOST_LOG_DEBUG(VHOST_DATA, "(%d) about to dequeue %u buffers\n",
+			dev->vid, count);
+
+	for (i = 0; i < count; i++) {
+		struct buf_vector buf_vec[BUF_VECTOR_MAX];
+		uint16_t buf_id, dummy_len;
+		uint16_t desc_count, nr_vec = 0;
+		int err;
+
+		if (unlikely(fill_vec_buf_packed(dev, vq,
+						vq->last_avail_idx, &desc_count,
+						buf_vec, &nr_vec,
+						&buf_id, &dummy_len,
+						VHOST_ACCESS_RW) < 0))
+			break;
+
+		if (likely(dev->dequeue_zero_copy == 0))
+			update_shadow_used_ring_packed(vq, buf_id, 0,
+					desc_count);
+
+		rte_prefetch0((void *)(uintptr_t)buf_vec[0].buf_addr);
+
+		pkts[i] = rte_pktmbuf_alloc(mbuf_pool);
+		if (unlikely(pkts[i] == NULL)) {
+			RTE_LOG(ERR, VHOST_DATA,
+				"Failed to allocate memory for mbuf.\n");
+			break;
+		}
+
+		err = copy_desc_to_mbuf(dev, vq, buf_vec, nr_vec, pkts[i],
+				mbuf_pool);
+		if (unlikely(err)) {
+			rte_pktmbuf_free(pkts[i]);
+			break;
+		}
+
+		if (unlikely(dev->dequeue_zero_copy)) {
+			struct zcopy_mbuf *zmbuf;
+
+			zmbuf = get_zmbuf(vq);
+			if (!zmbuf) {
+				rte_pktmbuf_free(pkts[i]);
+				break;
+			}
+			zmbuf->mbuf = pkts[i];
+			zmbuf->desc_idx = buf_id;
+			zmbuf->desc_count = desc_count;
+
+			/*
+			 * Pin lock the mbuf; we will check later to see
+			 * whether the mbuf is freed (when we are the last
+			 * user) or not. If that's the case, we then could
+			 * update the used ring safely.
+			 */
+			rte_mbuf_refcnt_update(pkts[i], 1);
+
+			vq->nr_zmbuf += 1;
+			TAILQ_INSERT_TAIL(&vq->zmbuf_list, zmbuf, next);
+		}
+
+		vq->last_avail_idx += desc_count;
+		if (vq->last_avail_idx >= vq->size) {
+			vq->last_avail_idx -= vq->size;
+			vq->avail_wrap_counter ^= 1;
+		}
+	}
+
+	if (likely(dev->dequeue_zero_copy == 0)) {
+		do_data_copy_dequeue(vq);
+		if (unlikely(i < count))
+			vq->shadow_used_idx = i;
+		flush_shadow_used_ring_packed(dev, vq);
+		vhost_vring_call(dev, vq);
+	}
+
+	return i;
+}
+
 uint16_t
 rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 	struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count)
@@ -1516,7 +1630,10 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 		count -= 1;
 	}
 
-	count = virtio_dev_tx_split(dev, vq, mbuf_pool, pkts, count);
+	if (vq_is_packed(dev))
+		count = virtio_dev_tx_packed(dev, vq, mbuf_pool, pkts, count);
+	else
+		count = virtio_dev_tx_split(dev, vq, mbuf_pool, pkts, count);
 
 out:
 	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
