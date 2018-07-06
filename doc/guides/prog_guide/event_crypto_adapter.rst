@@ -223,9 +223,9 @@ crypto security session or at an offset in the ``struct rte_crypto_op``.
 The ``rte_crypto_op::private_data_offset`` is used to locate the request/
 response in the ``rte_crypto_op``.
 
-For crypto session, ``rte_cryptodev_sym_session_set_private_data()`` API
+For crypto session, ``rte_cryptodev_sym_session_set_user_data()`` API
 will be used to set request/response data. The same data will be obtained
-by ``rte_cryptodev_sym_session_get_private_data()`` API.  The
+by ``rte_cryptodev_sym_session_get_user_data()`` API.  The
 RTE_EVENT_CRYPTO_ADAPTER_CAP_SESSION_PRIVATE_DATA capability indicates
 whether HW or SW supports this feature.
 
@@ -257,7 +257,7 @@ the ``rte_crypto_op``.
                 m_data.request_info.cdev_id = cdev_id;
                 m_data.request_info.queue_pair_id = qp_id;
                 /* Call set API to store private data information */
-                rte_cryptodev_sym_session_set_private_data(
+                rte_cryptodev_sym_session_set_user_data(
                         op->sym->session,
                         &m_data,
                         sizeof(m_data));

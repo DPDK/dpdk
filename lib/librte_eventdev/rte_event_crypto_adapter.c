@@ -342,7 +342,7 @@ eca_enq_to_cryptodev(struct rte_event_crypto_adapter *adapter,
 		if (crypto_op == NULL)
 			continue;
 		if (crypto_op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
-			m_data = rte_cryptodev_sym_session_get_private_data(
+			m_data = rte_cryptodev_sym_session_get_user_data(
 					crypto_op->sym->session);
 			if (m_data == NULL) {
 				rte_pktmbuf_free(crypto_op->sym->m_src);
@@ -512,7 +512,7 @@ eca_ops_enqueue_burst(struct rte_event_crypto_adapter *adapter,
 	for (i = 0; i < num; i++) {
 		struct rte_event *ev = &events[nb_ev++];
 		if (ops[i]->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
-			m_data = rte_cryptodev_sym_session_get_private_data(
+			m_data = rte_cryptodev_sym_session_get_user_data(
 					ops[i]->sym->session);
 		} else if (ops[i]->sess_type == RTE_CRYPTO_OP_SESSIONLESS &&
 				ops[i]->private_data_offset) {

@@ -205,12 +205,12 @@ test_op_forward_mode(uint8_t session_less)
 		TEST_ASSERT_SUCCESS(ret, "Failed to get adapter capabilities\n");
 
 		if (cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_SESSION_PRIVATE_DATA) {
-			/* Fill in private date information */
+			/* Fill in private user data information */
 			rte_memcpy(&m_data.response_info, &response_info,
 				sizeof(response_info));
 			rte_memcpy(&m_data.request_info, &request_info,
 				sizeof(request_info));
-			rte_cryptodev_sym_session_set_private_data(sess,
+			rte_cryptodev_sym_session_set_user_data(sess,
 						&m_data, sizeof(m_data));
 		}
 
@@ -389,10 +389,10 @@ test_op_new_mode(uint8_t session_less)
 		TEST_ASSERT_SUCCESS(ret, "Failed to get adapter capabilities\n");
 
 		if (cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_SESSION_PRIVATE_DATA) {
-			/* Fill in private data information */
+			/* Fill in private user data information */
 			rte_memcpy(&m_data.response_info, &response_info,
 				   sizeof(m_data));
-			rte_cryptodev_sym_session_set_private_data(sess,
+			rte_cryptodev_sym_session_set_user_data(sess,
 						&m_data, sizeof(m_data));
 		}
 		rte_cryptodev_sym_session_init(TEST_CDEV_ID, sess,

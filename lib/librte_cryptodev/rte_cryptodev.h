@@ -963,35 +963,35 @@ int rte_cryptodev_driver_id_get(const char *name);
 const char *rte_cryptodev_driver_name_get(uint8_t driver_id);
 
 /**
- * Set private data for a session.
+ * Store user data in a session.
  *
  * @param	sess		Session pointer allocated by
  *				*rte_cryptodev_sym_session_create*.
- * @param	data		Pointer to the private data.
- * @param	size		Size of the private data.
+ * @param	data		Pointer to the user data.
+ * @param	size		Size of the user data.
  *
  * @return
  *  - On success, zero.
  *  - On failure, a negative value.
  */
 int __rte_experimental
-rte_cryptodev_sym_session_set_private_data(
+rte_cryptodev_sym_session_set_user_data(
 					struct rte_cryptodev_sym_session *sess,
 					void *data,
 					uint16_t size);
 
 /**
- * Get private data of a session.
+ * Get user data stored in a session.
  *
  * @param	sess		Session pointer allocated by
  *				*rte_cryptodev_sym_session_create*.
  *
  * @return
- *  - On success return pointer to private data.
+ *  - On success return pointer to user data.
  *  - On failure returns NULL.
  */
 void * __rte_experimental
-rte_cryptodev_sym_session_get_private_data(
+rte_cryptodev_sym_session_get_user_data(
 					struct rte_cryptodev_sym_session *sess);
 
 #ifdef __cplusplus

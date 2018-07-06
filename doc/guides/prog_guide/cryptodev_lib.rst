@@ -301,24 +301,24 @@ enqueue call.
 Private data
 ~~~~~~~~~~~~
 For session-based operations, the set and get API provides a mechanism for an
-application to store and retrieve the private data information stored along with
-the crypto session.
+application to store and retrieve the private user data information stored along
+with the crypto session.
 
 For example, suppose an application is submitting a crypto operation with a session
-associated and wants to indicate private data information which is required to be
+associated and wants to indicate private user data information which is required to be
 used after completion of the crypto operation. In this case, the application can use
-the set API to set the private data and retrieve it using get API.
+the set API to set the user data and retrieve it using get API.
 
 .. code-block:: c
 
-	int rte_cryptodev_sym_session_set_private_data(
+	int rte_cryptodev_sym_session_set_user_data(
 		struct rte_cryptodev_sym_session *sess,	void *data, uint16_t size);
 
-	void * rte_cryptodev_sym_session_get_private_data(
+	void * rte_cryptodev_sym_session_get_user_data(
 		struct rte_cryptodev_sym_session *sess);
 
 
-For session-less mode, the private data information can be placed along with the
+For session-less mode, the private user data information can be placed along with the
 ``struct rte_crypto_op``. The ``rte_crypto_op::private_data_offset`` indicates the
 start of private data information. The offset is counted from the start of the
 rte_crypto_op including other crypto information such as the IVs (since there can

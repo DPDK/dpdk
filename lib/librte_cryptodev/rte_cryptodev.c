@@ -1091,7 +1091,7 @@ rte_cryptodev_sym_session_create(struct rte_mempool *mp)
 	}
 
 	/* Clear device session pointer.
-	 * Include the flag indicating presence of private data
+	 * Include the flag indicating presence of user data
 	 */
 	memset(sess, 0, (sizeof(void *) * nb_drivers) + sizeof(uint8_t));
 
@@ -1146,7 +1146,7 @@ rte_cryptodev_sym_get_header_session_size(void)
 	/*
 	 * Header contains pointers to the private data
 	 * of all registered drivers, and a flag which
-	 * indicates presence of private data
+	 * indicates presence of user data
 	 */
 	return ((sizeof(void *) * nb_drivers) + sizeof(uint8_t));
 }
@@ -1181,31 +1181,31 @@ rte_cryptodev_sym_get_private_session_size(uint8_t dev_id)
 }
 
 int __rte_experimental
-rte_cryptodev_sym_session_set_private_data(
+rte_cryptodev_sym_session_set_user_data(
 					struct rte_cryptodev_sym_session *sess,
 					void *data,
 					uint16_t size)
 {
 	uint16_t off_set = sizeof(void *) * nb_drivers;
-	uint8_t *private_data_present = (uint8_t *)sess + off_set;
+	uint8_t *user_data_present = (uint8_t *)sess + off_set;
 
 	if (sess == NULL)
 		return -EINVAL;
 
-	*private_data_present = 1;
+	*user_data_present = 1;
 	off_set += sizeof(uint8_t);
 	rte_memcpy((uint8_t *)sess + off_set, data, size);
 	return 0;
 }
 
 void * __rte_experimental
-rte_cryptodev_sym_session_get_private_data(
+rte_cryptodev_sym_session_get_user_data(
 					struct rte_cryptodev_sym_session *sess)
 {
 	uint16_t off_set = sizeof(void *) * nb_drivers;
-	uint8_t *private_data_present = (uint8_t *)sess + off_set;
+	uint8_t *user_data_present = (uint8_t *)sess + off_set;
 
-	if (sess == NULL || !*private_data_present)
+	if (sess == NULL || !*user_data_present)
 		return NULL;
 
 	off_set += sizeof(uint8_t);
