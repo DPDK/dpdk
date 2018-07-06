@@ -530,6 +530,9 @@ softnic_swq_init(struct pmd_internals *p);
 void
 softnic_swq_free(struct pmd_internals *p);
 
+void
+softnic_softnic_swq_free_keep_rxq_txq(struct pmd_internals *p);
+
 struct softnic_swq *
 softnic_swq_find(struct pmd_internals *p,
 	const char *name);
@@ -658,6 +661,9 @@ softnic_pipeline_init(struct pmd_internals *p);
 
 void
 softnic_pipeline_free(struct pmd_internals *p);
+
+void
+softnic_pipeline_disable_all(struct pmd_internals *p);
 
 struct pipeline *
 softnic_pipeline_find(struct pmd_internals *p, const char *name);

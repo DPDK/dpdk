@@ -153,6 +153,26 @@ pmd_tx_queue_setup(struct rte_eth_dev *dev,
 static int
 pmd_dev_start(struct rte_eth_dev *dev)
 {
+	struct pmd_internals *p = dev->data->dev_private;
+	int status;
+
+	/* TM */
+	if (tm_used(dev)) {
+		status = tm_start(p);
+
+		if (status)
+			return status;
+	}
+
+	/* Firmware */
+	status = softnic_cli_script_process(p,
+		p->params.firmware,
+		conn_params_default.msg_in_len_max,
+		conn_params_default.msg_out_len_max);
+	if (status)
+		return status;
+
+	/* Link UP */
 	dev->data->dev_link.link_status = ETH_LINK_UP;
 
 	return 0;
@@ -161,21 +181,30 @@ pmd_dev_start(struct rte_eth_dev *dev)
 static void
 pmd_dev_stop(struct rte_eth_dev *dev)
 {
+	struct pmd_internals *p = dev->data->dev_private;
+
+	/* Link DOWN */
 	dev->data->dev_link.link_status = ETH_LINK_DOWN;
+
+	/* Firmware */
+	softnic_pipeline_disable_all(p);
+	softnic_pipeline_free(p);
+	softnic_table_action_profile_free(p);
+	softnic_port_in_action_profile_free(p);
+	softnic_tap_free(p);
+	softnic_tmgr_free(p);
+	softnic_link_free(p);
+	softnic_softnic_swq_free_keep_rxq_txq(p);
+	softnic_mempool_free(p);
+
+	/* TM */
+	tm_stop(p);
 }
 
 static void
-pmd_dev_close(struct rte_eth_dev *dev)
+pmd_dev_close(struct rte_eth_dev *dev __rte_unused)
 {
-	uint32_t i;
-
-	/* RX queues */
-	for (i = 0; i < dev->data->nb_rx_queues; i++)
-		rte_ring_free((struct rte_ring *)dev->data->rx_queues[i]);
-
-	/* TX queues */
-	for (i = 0; i < dev->data->nb_tx_queues; i++)
-		rte_ring_free((struct rte_ring *)dev->data->tx_queues[i]);
+	return;
 }
 
 static int

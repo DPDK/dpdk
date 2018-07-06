@@ -61,6 +61,18 @@ softnic_pipeline_free(struct pmd_internals *p)
 	}
 }
 
+void
+softnic_pipeline_disable_all(struct pmd_internals *p)
+{
+	struct pipeline *pipeline;
+
+	TAILQ_FOREACH(pipeline, &p->pipeline_list, node)
+		if (pipeline->enabled)
+			softnic_thread_pipeline_disable(p,
+				pipeline->thread_id,
+				pipeline->name);
+}
+
 struct pipeline *
 softnic_pipeline_find(struct pmd_internals *p,
 	const char *name)
