@@ -507,17 +507,35 @@ thread_msg_handle(struct softnic_thread_data *t)
  */
 enum pipeline_req_type {
 	/* Port IN */
+	PIPELINE_REQ_PORT_IN_STATS_READ,
 	PIPELINE_REQ_PORT_IN_ENABLE,
 	PIPELINE_REQ_PORT_IN_DISABLE,
 
+	/* Port OUT */
+	PIPELINE_REQ_PORT_OUT_STATS_READ,
+
 	/* Table */
+	PIPELINE_REQ_TABLE_STATS_READ,
 	PIPELINE_REQ_TABLE_RULE_ADD,
 	PIPELINE_REQ_TABLE_RULE_ADD_DEFAULT,
 	PIPELINE_REQ_TABLE_RULE_ADD_BULK,
 	PIPELINE_REQ_TABLE_RULE_DELETE,
 	PIPELINE_REQ_TABLE_RULE_DELETE_DEFAULT,
+	PIPELINE_REQ_TABLE_RULE_STATS_READ,
 
 	PIPELINE_REQ_MAX
+};
+
+struct pipeline_msg_req_port_in_stats_read {
+	int clear;
+};
+
+struct pipeline_msg_req_port_out_stats_read {
+	int clear;
+};
+
+struct pipeline_msg_req_table_stats_read {
+	int clear;
 };
 
 struct pipeline_msg_req_table_rule_add {
@@ -541,17 +559,38 @@ struct pipeline_msg_req_table_rule_delete {
 	struct softnic_table_rule_match match;
 };
 
+struct pipeline_msg_req_table_rule_stats_read {
+	void *data;
+	int clear;
+};
+
 struct pipeline_msg_req {
 	enum pipeline_req_type type;
 	uint32_t id; /* Port IN, port OUT or table ID */
 
 	RTE_STD_C11
 	union {
+		struct pipeline_msg_req_port_in_stats_read port_in_stats_read;
+		struct pipeline_msg_req_port_out_stats_read port_out_stats_read;
+		struct pipeline_msg_req_table_stats_read table_stats_read;
 		struct pipeline_msg_req_table_rule_add table_rule_add;
 		struct pipeline_msg_req_table_rule_add_default table_rule_add_default;
 		struct pipeline_msg_req_table_rule_add_bulk table_rule_add_bulk;
 		struct pipeline_msg_req_table_rule_delete table_rule_delete;
+		struct pipeline_msg_req_table_rule_stats_read table_rule_stats_read;
 	};
+};
+
+struct pipeline_msg_rsp_port_in_stats_read {
+	struct rte_pipeline_port_in_stats stats;
+};
+
+struct pipeline_msg_rsp_port_out_stats_read {
+	struct rte_pipeline_port_out_stats stats;
+};
+
+struct pipeline_msg_rsp_table_stats_read {
+	struct rte_pipeline_table_stats stats;
 };
 
 struct pipeline_msg_rsp_table_rule_add {
@@ -566,14 +605,22 @@ struct pipeline_msg_rsp_table_rule_add_bulk {
 	uint32_t n_rules;
 };
 
+struct pipeline_msg_rsp_table_rule_stats_read {
+	struct rte_table_action_stats_counters stats;
+};
+
 struct pipeline_msg_rsp {
 	int status;
 
 	RTE_STD_C11
 	union {
+		struct pipeline_msg_rsp_port_in_stats_read port_in_stats_read;
+		struct pipeline_msg_rsp_port_out_stats_read port_out_stats_read;
+		struct pipeline_msg_rsp_table_stats_read table_stats_read;
 		struct pipeline_msg_rsp_table_rule_add table_rule_add;
 		struct pipeline_msg_rsp_table_rule_add_default table_rule_add_default;
 		struct pipeline_msg_rsp_table_rule_add_bulk table_rule_add_bulk;
+		struct pipeline_msg_rsp_table_rule_stats_read table_rule_stats_read;
 	};
 };
 
@@ -615,6 +662,63 @@ pipeline_msg_send_recv(struct pipeline *p,
 	} while (status != 0);
 
 	return rsp;
+}
+
+int
+softnic_pipeline_port_in_stats_read(struct pmd_internals *softnic,
+	const char *pipeline_name,
+	uint32_t port_id,
+	struct rte_pipeline_port_in_stats *stats,
+	int clear)
+{
+	struct pipeline *p;
+	struct pipeline_msg_req *req;
+	struct pipeline_msg_rsp *rsp;
+	int status;
+
+	/* Check input params */
+	if (pipeline_name == NULL ||
+		stats == NULL)
+		return -1;
+
+	p = softnic_pipeline_find(softnic, pipeline_name);
+	if (p == NULL ||
+		port_id >= p->n_ports_in)
+		return -1;
+
+	if (!pipeline_is_running(p)) {
+		status = rte_pipeline_port_in_stats_read(p->p,
+			port_id,
+			stats,
+			clear);
+
+		return status;
+	}
+
+	/* Allocate request */
+	req = pipeline_msg_alloc();
+	if (req == NULL)
+		return -1;
+
+	/* Write request */
+	req->type = PIPELINE_REQ_PORT_IN_STATS_READ;
+	req->id = port_id;
+	req->port_in_stats_read.clear = clear;
+
+	/* Send request and wait for response */
+	rsp = pipeline_msg_send_recv(p, req);
+	if (rsp == NULL)
+		return -1;
+
+	/* Read response */
+	status = rsp->status;
+	if (status)
+		memcpy(stats, &rsp->port_in_stats_read.stats, sizeof(*stats));
+
+	/* Free response */
+	pipeline_msg_free(rsp);
+
+	return status;
 }
 
 int
@@ -704,6 +808,120 @@ softnic_pipeline_port_in_disable(struct pmd_internals *softnic,
 
 	/* Read response */
 	status = rsp->status;
+
+	/* Free response */
+	pipeline_msg_free(rsp);
+
+	return status;
+}
+
+int
+softnic_pipeline_port_out_stats_read(struct pmd_internals *softnic,
+	const char *pipeline_name,
+	uint32_t port_id,
+	struct rte_pipeline_port_out_stats *stats,
+	int clear)
+{
+	struct pipeline *p;
+	struct pipeline_msg_req *req;
+	struct pipeline_msg_rsp *rsp;
+	int status;
+
+	/* Check input params */
+	if (pipeline_name == NULL ||
+		stats == NULL)
+		return -1;
+
+	p = softnic_pipeline_find(softnic, pipeline_name);
+	if (p == NULL ||
+		port_id >= p->n_ports_out)
+		return -1;
+
+	if (!pipeline_is_running(p)) {
+		status = rte_pipeline_port_out_stats_read(p->p,
+			port_id,
+			stats,
+			clear);
+
+		return status;
+	}
+
+	/* Allocate request */
+	req = pipeline_msg_alloc();
+	if (req == NULL)
+		return -1;
+
+	/* Write request */
+	req->type = PIPELINE_REQ_PORT_OUT_STATS_READ;
+	req->id = port_id;
+	req->port_out_stats_read.clear = clear;
+
+	/* Send request and wait for response */
+	rsp = pipeline_msg_send_recv(p, req);
+	if (rsp == NULL)
+		return -1;
+
+	/* Read response */
+	status = rsp->status;
+	if (status)
+		memcpy(stats, &rsp->port_out_stats_read.stats, sizeof(*stats));
+
+	/* Free response */
+	pipeline_msg_free(rsp);
+
+	return status;
+}
+
+int
+softnic_pipeline_table_stats_read(struct pmd_internals *softnic,
+	const char *pipeline_name,
+	uint32_t table_id,
+	struct rte_pipeline_table_stats *stats,
+	int clear)
+{
+	struct pipeline *p;
+	struct pipeline_msg_req *req;
+	struct pipeline_msg_rsp *rsp;
+	int status;
+
+	/* Check input params */
+	if (pipeline_name == NULL ||
+		stats == NULL)
+		return -1;
+
+	p = softnic_pipeline_find(softnic, pipeline_name);
+	if (p == NULL ||
+		table_id >= p->n_tables)
+		return -1;
+
+	if (!pipeline_is_running(p)) {
+		status = rte_pipeline_table_stats_read(p->p,
+			table_id,
+			stats,
+			clear);
+
+		return status;
+	}
+
+	/* Allocate request */
+	req = pipeline_msg_alloc();
+	if (req == NULL)
+		return -1;
+
+	/* Write request */
+	req->type = PIPELINE_REQ_TABLE_STATS_READ;
+	req->id = table_id;
+	req->table_stats_read.clear = clear;
+
+	/* Send request and wait for response */
+	rsp = pipeline_msg_send_recv(p, req);
+	if (rsp == NULL)
+		return -1;
+
+	/* Read response */
+	status = rsp->status;
+	if (status)
+		memcpy(stats, &rsp->table_stats_read.stats, sizeof(*stats));
 
 	/* Free response */
 	pipeline_msg_free(rsp);
@@ -1346,6 +1564,68 @@ softnic_pipeline_table_rule_delete_default(struct pmd_internals *softnic,
 	return status;
 }
 
+int
+softnic_pipeline_table_rule_stats_read(struct pmd_internals *softnic,
+	const char *pipeline_name,
+	uint32_t table_id,
+	void *data,
+	struct rte_table_action_stats_counters *stats,
+	int clear)
+{
+	struct pipeline *p;
+	struct pipeline_msg_req *req;
+	struct pipeline_msg_rsp *rsp;
+	int status;
+
+	/* Check input params */
+	if (pipeline_name == NULL ||
+		data == NULL ||
+		stats == NULL)
+		return -1;
+
+	p = softnic_pipeline_find(softnic, pipeline_name);
+	if (p == NULL ||
+		table_id >= p->n_tables)
+		return -1;
+
+	if (!pipeline_is_running(p)) {
+		struct rte_table_action *a = p->table[table_id].a;
+
+		status = rte_table_action_stats_read(a,
+			data,
+			stats,
+			clear);
+
+		return status;
+	}
+
+	/* Allocate request */
+	req = pipeline_msg_alloc();
+	if (req == NULL)
+		return -1;
+
+	/* Write request */
+	req->type = PIPELINE_REQ_TABLE_RULE_STATS_READ;
+	req->id = table_id;
+	req->table_rule_stats_read.data = data;
+	req->table_rule_stats_read.clear = clear;
+
+	/* Send request and wait for response */
+	rsp = pipeline_msg_send_recv(p, req);
+	if (rsp == NULL)
+		return -1;
+
+	/* Read response */
+	status = rsp->status;
+	if (status)
+		memcpy(stats, &rsp->table_rule_stats_read.stats, sizeof(*stats));
+
+	/* Free response */
+	pipeline_msg_free(rsp);
+
+	return status;
+}
+
 /**
  * Data plane threads: message handling
  */
@@ -1374,6 +1654,22 @@ pipeline_msg_send(struct rte_ring *msgq_rsp,
 }
 
 static struct pipeline_msg_rsp *
+pipeline_msg_handle_port_in_stats_read(struct pipeline_data *p,
+	struct pipeline_msg_req *req)
+{
+	struct pipeline_msg_rsp *rsp = (struct pipeline_msg_rsp *)req;
+	uint32_t port_id = req->id;
+	int clear = req->port_in_stats_read.clear;
+
+	rsp->status = rte_pipeline_port_in_stats_read(p->p,
+		port_id,
+		&rsp->port_in_stats_read.stats,
+		clear);
+
+	return rsp;
+}
+
+static struct pipeline_msg_rsp *
 pipeline_msg_handle_port_in_enable(struct pipeline_data *p,
 	struct pipeline_msg_req *req)
 {
@@ -1395,6 +1691,38 @@ pipeline_msg_handle_port_in_disable(struct pipeline_data *p,
 
 	rsp->status = rte_pipeline_port_in_disable(p->p,
 		port_id);
+
+	return rsp;
+}
+
+static struct pipeline_msg_rsp *
+pipeline_msg_handle_port_out_stats_read(struct pipeline_data *p,
+	struct pipeline_msg_req *req)
+{
+	struct pipeline_msg_rsp *rsp = (struct pipeline_msg_rsp *)req;
+	uint32_t port_id = req->id;
+	int clear = req->port_out_stats_read.clear;
+
+	rsp->status = rte_pipeline_port_out_stats_read(p->p,
+		port_id,
+		&rsp->port_out_stats_read.stats,
+		clear);
+
+	return rsp;
+}
+
+static struct pipeline_msg_rsp *
+pipeline_msg_handle_table_stats_read(struct pipeline_data *p,
+	struct pipeline_msg_req *req)
+{
+	struct pipeline_msg_rsp *rsp = (struct pipeline_msg_rsp *)req;
+	uint32_t port_id = req->id;
+	int clear = req->table_stats_read.clear;
+
+	rsp->status = rte_pipeline_table_stats_read(p->p,
+		port_id,
+		&rsp->table_stats_read.stats,
+		clear);
 
 	return rsp;
 }
@@ -1999,6 +2327,24 @@ pipeline_msg_handle_table_rule_delete_default(struct pipeline_data *p,
 	return rsp;
 }
 
+static struct pipeline_msg_rsp *
+pipeline_msg_handle_table_rule_stats_read(struct pipeline_data *p,
+	struct pipeline_msg_req *req)
+{
+	struct pipeline_msg_rsp *rsp = (struct pipeline_msg_rsp *)req;
+	uint32_t table_id = req->id;
+	void *data = req->table_rule_stats_read.data;
+	int clear = req->table_rule_stats_read.clear;
+	struct rte_table_action *a = p->table_data[table_id].a;
+
+	rsp->status = rte_table_action_stats_read(a,
+		data,
+		&rsp->table_rule_stats_read.stats,
+		clear);
+
+	return rsp;
+}
+
 static void
 pipeline_msg_handle(struct pipeline_data *p)
 {
@@ -2011,12 +2357,24 @@ pipeline_msg_handle(struct pipeline_data *p)
 			break;
 
 		switch (req->type) {
+		case PIPELINE_REQ_PORT_IN_STATS_READ:
+			rsp = pipeline_msg_handle_port_in_stats_read(p, req);
+			break;
+
 		case PIPELINE_REQ_PORT_IN_ENABLE:
 			rsp = pipeline_msg_handle_port_in_enable(p, req);
 			break;
 
 		case PIPELINE_REQ_PORT_IN_DISABLE:
 			rsp = pipeline_msg_handle_port_in_disable(p, req);
+			break;
+
+		case PIPELINE_REQ_PORT_OUT_STATS_READ:
+			rsp = pipeline_msg_handle_port_out_stats_read(p, req);
+			break;
+
+		case PIPELINE_REQ_TABLE_STATS_READ:
+			rsp = pipeline_msg_handle_table_stats_read(p, req);
 			break;
 
 		case PIPELINE_REQ_TABLE_RULE_ADD:
@@ -2037,6 +2395,10 @@ pipeline_msg_handle(struct pipeline_data *p)
 
 		case PIPELINE_REQ_TABLE_RULE_DELETE_DEFAULT:
 			rsp = pipeline_msg_handle_table_rule_delete_default(p, req);
+			break;
+
+		case PIPELINE_REQ_TABLE_RULE_STATS_READ:
+			rsp = pipeline_msg_handle_table_rule_stats_read(p, req);
 			break;
 
 		default:

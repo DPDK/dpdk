@@ -1500,6 +1500,86 @@ cmd_pipeline_port_in_table(struct pmd_internals *softnic,
 }
 
 /**
+ * pipeline <pipeline_name> port in <port_id> stats read [clear]
+ */
+
+#define MSG_PIPELINE_PORT_IN_STATS                         \
+	"Pkts in: %" PRIu64 "\n"                           \
+	"Pkts dropped by AH: %" PRIu64 "\n"                \
+	"Pkts dropped by other: %" PRIu64 "\n"
+
+static void
+cmd_pipeline_port_in_stats(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct rte_pipeline_port_in_stats stats;
+	char *pipeline_name;
+	uint32_t port_id;
+	int clear, status;
+
+	if (n_tokens != 7 &&
+		n_tokens != 8) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+
+	if (strcmp(tokens[2], "port") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "port");
+		return;
+	}
+
+	if (strcmp(tokens[3], "in") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "in");
+		return;
+	}
+
+	if (softnic_parser_read_uint32(&port_id, tokens[4]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "port_id");
+		return;
+	}
+
+	if (strcmp(tokens[5], "stats") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "stats");
+		return;
+	}
+
+	if (strcmp(tokens[6], "read") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "read");
+		return;
+	}
+
+	clear = 0;
+	if (n_tokens == 8) {
+		if (strcmp(tokens[7], "clear") != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "clear");
+			return;
+		}
+
+		clear = 1;
+	}
+
+	status = softnic_pipeline_port_in_stats_read(softnic,
+		pipeline_name,
+		port_id,
+		&stats,
+		clear);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+
+	snprintf(out, out_size, MSG_PIPELINE_PORT_IN_STATS,
+		stats.stats.n_pkts_in,
+		stats.n_pkts_dropped_by_ah,
+		stats.stats.n_pkts_drop);
+}
+
+/**
  * pipeline <pipeline_name> port in <port_id> enable
  */
 static void
@@ -1593,6 +1673,165 @@ cmd_softnic_pipeline_port_in_disable(struct pmd_internals *softnic,
 		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
 		return;
 	}
+}
+
+/**
+ * pipeline <pipeline_name> port out <port_id> stats read [clear]
+ */
+#define MSG_PIPELINE_PORT_OUT_STATS                        \
+	"Pkts in: %" PRIu64 "\n"                           \
+	"Pkts dropped by AH: %" PRIu64 "\n"                \
+	"Pkts dropped by other: %" PRIu64 "\n"
+
+static void
+cmd_pipeline_port_out_stats(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct rte_pipeline_port_out_stats stats;
+	char *pipeline_name;
+	uint32_t port_id;
+	int clear, status;
+
+	if (n_tokens != 7 &&
+		n_tokens != 8) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+
+	if (strcmp(tokens[2], "port") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "port");
+		return;
+	}
+
+	if (strcmp(tokens[3], "out") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "out");
+		return;
+	}
+
+	if (softnic_parser_read_uint32(&port_id, tokens[4]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "port_id");
+		return;
+	}
+
+	if (strcmp(tokens[5], "stats") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "stats");
+		return;
+	}
+
+	if (strcmp(tokens[6], "read") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "read");
+		return;
+	}
+
+	clear = 0;
+	if (n_tokens == 8) {
+		if (strcmp(tokens[7], "clear") != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "clear");
+			return;
+		}
+
+		clear = 1;
+	}
+
+	status = softnic_pipeline_port_out_stats_read(softnic,
+		pipeline_name,
+		port_id,
+		&stats,
+		clear);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+
+	snprintf(out, out_size, MSG_PIPELINE_PORT_OUT_STATS,
+		stats.stats.n_pkts_in,
+		stats.n_pkts_dropped_by_ah,
+		stats.stats.n_pkts_drop);
+}
+
+/**
+ * pipeline <pipeline_name> table <table_id> stats read [clear]
+ */
+#define MSG_PIPELINE_TABLE_STATS                                     \
+	"Pkts in: %" PRIu64 "\n"                                     \
+	"Pkts in with lookup miss: %" PRIu64 "\n"                    \
+	"Pkts in with lookup hit dropped by AH: %" PRIu64 "\n"       \
+	"Pkts in with lookup hit dropped by others: %" PRIu64 "\n"   \
+	"Pkts in with lookup miss dropped by AH: %" PRIu64 "\n"      \
+	"Pkts in with lookup miss dropped by others: %" PRIu64 "\n"
+
+static void
+cmd_pipeline_table_stats(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct rte_pipeline_table_stats stats;
+	char *pipeline_name;
+	uint32_t table_id;
+	int clear, status;
+
+	if (n_tokens != 6 &&
+		n_tokens != 7) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+
+	if (strcmp(tokens[2], "table") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "port");
+		return;
+	}
+
+	if (softnic_parser_read_uint32(&table_id, tokens[3]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "table_id");
+		return;
+	}
+
+	if (strcmp(tokens[4], "stats") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "stats");
+		return;
+	}
+
+	if (strcmp(tokens[5], "read") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "read");
+		return;
+	}
+
+	clear = 0;
+	if (n_tokens == 7) {
+		if (strcmp(tokens[6], "clear") != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "clear");
+			return;
+		}
+
+		clear = 1;
+	}
+
+	status = softnic_pipeline_table_stats_read(softnic,
+		pipeline_name,
+		table_id,
+		&stats,
+		clear);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+
+	snprintf(out, out_size, MSG_PIPELINE_TABLE_STATS,
+		stats.stats.n_pkts_in,
+		stats.stats.n_pkts_lookup_miss,
+		stats.n_pkts_dropped_by_lkp_hit_ah,
+		stats.n_pkts_dropped_lkp_hit,
+		stats.n_pkts_dropped_by_lkp_miss_ah,
+		stats.n_pkts_dropped_lkp_miss);
 }
 
 /**
@@ -3189,6 +3428,19 @@ cmd_softnic_pipeline_table_rule_delete_default(struct pmd_internals *softnic,
 }
 
 /**
+ * pipeline <pipeline_name> table <table_id> rule read stats [clear]
+ */
+static void
+cmd_softnic_pipeline_table_rule_stats_read(struct pmd_internals *softnic __rte_unused,
+	char **tokens,
+	uint32_t n_tokens __rte_unused,
+	char *out,
+	size_t out_size)
+{
+	snprintf(out, out_size, MSG_CMD_UNIMPLEM, tokens[0]);
+}
+
+/**
  * thread <thread_id> pipeline <pipeline_name> enable
  */
 static void
@@ -3367,6 +3619,15 @@ softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 		if (n_tokens >= 6 &&
 			(strcmp(tokens[2], "port") == 0) &&
 			(strcmp(tokens[3], "in") == 0) &&
+			(strcmp(tokens[5], "stats") == 0)) {
+			cmd_pipeline_port_in_stats(softnic, tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 6 &&
+			(strcmp(tokens[2], "port") == 0) &&
+			(strcmp(tokens[3], "in") == 0) &&
 			(strcmp(tokens[5], "enable") == 0)) {
 			cmd_softnic_pipeline_port_in_enable(softnic, tokens, n_tokens,
 				out, out_size);
@@ -3378,6 +3639,23 @@ softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 			(strcmp(tokens[3], "in") == 0) &&
 			(strcmp(tokens[5], "disable") == 0)) {
 			cmd_softnic_pipeline_port_in_disable(softnic, tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 6 &&
+			(strcmp(tokens[2], "port") == 0) &&
+			(strcmp(tokens[3], "out") == 0) &&
+			(strcmp(tokens[5], "stats") == 0)) {
+			cmd_pipeline_port_out_stats(softnic, tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 5 &&
+			(strcmp(tokens[2], "table") == 0) &&
+			(strcmp(tokens[4], "stats") == 0)) {
+			cmd_pipeline_table_stats(softnic, tokens, n_tokens,
 				out, out_size);
 			return;
 		}
@@ -3422,6 +3700,16 @@ softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 				}
 
 			cmd_softnic_pipeline_table_rule_delete(softnic, tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 7 &&
+			(strcmp(tokens[2], "table") == 0) &&
+			(strcmp(tokens[4], "rule") == 0) &&
+			(strcmp(tokens[5], "read") == 0) &&
+			(strcmp(tokens[6], "stats") == 0)) {
+			cmd_softnic_pipeline_table_rule_stats_read(softnic, tokens, n_tokens,
 				out, out_size);
 			return;
 		}

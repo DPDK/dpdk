@@ -765,6 +765,13 @@ struct softnic_table_rule_action {
 };
 
 int
+softnic_pipeline_port_in_stats_read(struct pmd_internals *p,
+	const char *pipeline_name,
+	uint32_t port_id,
+	struct rte_pipeline_port_in_stats *stats,
+	int clear);
+
+int
 softnic_pipeline_port_in_enable(struct pmd_internals *p,
 	const char *pipeline_name,
 	uint32_t port_id);
@@ -773,6 +780,20 @@ int
 softnic_pipeline_port_in_disable(struct pmd_internals *p,
 	const char *pipeline_name,
 	uint32_t port_id);
+
+int
+softnic_pipeline_port_out_stats_read(struct pmd_internals *p,
+	const char *pipeline_name,
+	uint32_t port_id,
+	struct rte_pipeline_port_out_stats *stats,
+	int clear);
+
+int
+softnic_pipeline_table_stats_read(struct pmd_internals *p,
+	const char *pipeline_name,
+	uint32_t table_id,
+	struct rte_pipeline_table_stats *stats,
+	int clear);
 
 int
 softnic_pipeline_table_rule_add(struct pmd_internals *p,
@@ -808,6 +829,14 @@ int
 softnic_pipeline_table_rule_delete_default(struct pmd_internals *p,
 	const char *pipeline_name,
 	uint32_t table_id);
+
+int
+softnic_pipeline_table_rule_stats_read(struct pmd_internals *p,
+	const char *pipeline_name,
+	uint32_t table_id,
+	void *data,
+	struct rte_table_action_stats_counters *stats,
+	int clear);
 
 /**
  * Thread
