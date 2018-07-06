@@ -217,6 +217,8 @@ pmd_init(struct pmd_params *params)
 
 	/* Resources */
 	softnic_swq_init(p);
+	softnic_link_init(p);
+
 	return p;
 }
 
@@ -226,7 +228,9 @@ pmd_free(struct pmd_internals *p)
 	if (p == NULL)
 		return;
 
+	softnic_link_free(p);
 	softnic_swq_free(p);
+
 	rte_free(p);
 }
 
