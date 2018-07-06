@@ -18,9 +18,6 @@
 #include <rte_ethdev_driver.h>
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Enable/Disable TX loopback
  *
  * @param port
@@ -33,7 +30,7 @@
  *   - (-ENODEV) if *port* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-int __rte_experimental
+int
 rte_pmd_dpaa_set_tx_loopback(uint8_t port, uint8_t on);
 
 #endif /* _PMD_DPAA_H_ */

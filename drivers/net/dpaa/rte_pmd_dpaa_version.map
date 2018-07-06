@@ -3,10 +3,10 @@ DPDK_17.11 {
 	local: *;
 };
 
-EXPERIMENTAL {
+DPDK_18.08 {
 	global:
 
 	dpaa_eth_eventq_attach;
 	dpaa_eth_eventq_detach;
 	rte_pmd_dpaa_set_tx_loopback;
-};
+} DPDK_17.11;
