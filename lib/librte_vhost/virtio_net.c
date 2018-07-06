@@ -37,16 +37,15 @@ is_valid_virt_queue_idx(uint32_t idx, int is_tx, uint32_t nr_vring)
 	return (is_tx ^ (idx & 1)) == 0 && idx < nr_vring;
 }
 
-static __rte_always_inline struct vring_desc *
+static __rte_always_inline void *
 alloc_copy_ind_table(struct virtio_net *dev, struct vhost_virtqueue *vq,
-					 struct vring_desc *desc)
+		uint64_t desc_addr, uint64_t desc_len)
 {
-	struct vring_desc *idesc;
+	void *idesc;
 	uint64_t src, dst;
-	uint64_t len, remain = desc->len;
-	uint64_t desc_addr = desc->addr;
+	uint64_t len, remain = desc_len;
 
-	idesc = rte_malloc(__func__, desc->len, 0);
+	idesc = rte_malloc(__func__, desc_len, 0);
 	if (unlikely(!idesc))
 		return 0;
 
@@ -72,7 +71,7 @@ alloc_copy_ind_table(struct virtio_net *dev, struct vhost_virtqueue *vq,
 }
 
 static __rte_always_inline void
-free_ind_table(struct vring_desc *idesc)
+free_ind_table(void *idesc)
 {
 	rte_free(idesc);
 }
@@ -251,7 +250,8 @@ fill_vec_buf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			 * The indirect desc table is not contiguous
 			 * in process VA space, we have to copy it.
 			 */
-			idesc = alloc_copy_ind_table(dev, vq, &vq->desc[idx]);
+			idesc = alloc_copy_ind_table(dev, vq,
+					vq->desc[idx].addr, vq->desc[idx].len);
 			if (unlikely(!idesc))
 				return -1;
 
