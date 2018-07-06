@@ -393,6 +393,9 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	buf_iova = buf_vec[vec_idx].buf_iova;
 	buf_len = buf_vec[vec_idx].buf_len;
 
+	if (nr_vec > 1)
+		rte_prefetch0((void *)(uintptr_t)buf_vec[1].buf_addr);
+
 	if (unlikely(buf_len < dev->vhost_hlen && nr_vec <= 1)) {
 		error = -1;
 		goto out;
@@ -404,7 +407,6 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		hdr = &tmp_hdr;
 	else
 		hdr = (struct virtio_net_hdr_mrg_rxbuf *)(uintptr_t)hdr_addr;
-	rte_prefetch0((void *)(uintptr_t)hdr_addr);
 
 	VHOST_LOG_DEBUG(VHOST_DATA, "(%d) RX: num merge buffers %d\n",
 		dev->vid, num_buffers);
@@ -436,8 +438,10 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			buf_iova = buf_vec[vec_idx].buf_iova;
 			buf_len = buf_vec[vec_idx].buf_len;
 
-			/* Prefetch buffer address. */
-			rte_prefetch0((void *)(uintptr_t)buf_addr);
+			/* Prefetch next buffer address. */
+			if (vec_idx + 1 < nr_vec)
+				rte_prefetch0((void *)(uintptr_t)
+						buf_vec[vec_idx + 1].buf_addr);
 			buf_offset = 0;
 			buf_avail  = buf_len;
 		}
@@ -578,6 +582,8 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 			vq->shadow_used_idx -= num_buffers;
 			break;
 		}
+
+		rte_prefetch0((void *)(uintptr_t)buf_vec[0].buf_addr);
 
 		VHOST_LOG_DEBUG(VHOST_DATA, "(%d) current index %d | end index %d\n",
 			dev->vid, vq->last_avail_idx,
