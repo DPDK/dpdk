@@ -74,6 +74,7 @@ static uint64_t dev_tx_offloads_nodis =
 
 /* Keep track of whether QMAN and BMAN have been globally initialized */
 static int is_global_init;
+static int default_q;	/* use default queue - FMC is not executed*/
 /* At present we only allow up to 4 push mode queues as default - as each of
  * this queue need dedicated portal and we are short of portals.
  */
@@ -1026,12 +1027,12 @@ static int dpaa_rx_queue_init(struct qman_fq *fq, struct qman_cgr *cgr_rx,
 
 	ret = qman_reserve_fqid(fqid);
 	if (ret) {
-		DPAA_PMD_ERR("reserve rx fqid %d failed with ret: %d",
+		DPAA_PMD_ERR("reserve rx fqid 0x%x failed with ret: %d",
 			     fqid, ret);
 		return -EINVAL;
 	}
 
-	DPAA_PMD_DEBUG("creating rx fq %p, fqid %d", fq, fqid);
+	DPAA_PMD_DEBUG("creating rx fq %p, fqid 0x%x", fq, fqid);
 	ret = qman_create_fq(fqid, QMAN_FQ_FLAG_NO_ENQUEUE, fq);
 	if (ret) {
 		DPAA_PMD_ERR("create rx fqid 0x%x failed with ret: %d",
@@ -1050,7 +1051,7 @@ static int dpaa_rx_queue_init(struct qman_fq *fq, struct qman_cgr *cgr_rx,
 				      &cgr_opts);
 		if (ret) {
 			DPAA_PMD_WARN(
-				"rx taildrop init fail on rx fqid %d (ret=%d)",
+				"rx taildrop init fail on rx fqid 0x%x(ret=%d)",
 				fqid, ret);
 			goto without_cgr;
 		}
@@ -1061,7 +1062,7 @@ static int dpaa_rx_queue_init(struct qman_fq *fq, struct qman_cgr *cgr_rx,
 without_cgr:
 	ret = qman_init_fq(fq, flags, &opts);
 	if (ret)
-		DPAA_PMD_ERR("init rx fqid %d failed with ret: %d", fqid, ret);
+		DPAA_PMD_ERR("init rx fqid 0x%x failed with ret:%d", fqid, ret);
 	return ret;
 }
 
@@ -1089,10 +1090,10 @@ static int dpaa_tx_queue_init(struct qman_fq *fq,
 	/* no tx-confirmation */
 	opts.fqd.context_a.hi = 0x80000000 | fman_dealloc_bufs_mask_hi;
 	opts.fqd.context_a.lo = 0 | fman_dealloc_bufs_mask_lo;
-	DPAA_PMD_DEBUG("init tx fq %p, fqid %d", fq, fq->fqid);
+	DPAA_PMD_DEBUG("init tx fq %p, fqid 0x%x", fq, fq->fqid);
 	ret = qman_init_fq(fq, QMAN_INITFQ_FLAG_SCHED, &opts);
 	if (ret)
-		DPAA_PMD_ERR("init tx fqid %d failed %d", fq->fqid, ret);
+		DPAA_PMD_ERR("init tx fqid 0x%x failed %d", fq->fqid, ret);
 	return ret;
 }
 
@@ -1163,10 +1164,15 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 	dpaa_intf->cfg = cfg;
 
 	/* Initialize Rx FQ's */
-	if (getenv("DPAA_NUM_RX_QUEUES"))
-		num_rx_fqs = atoi(getenv("DPAA_NUM_RX_QUEUES"));
-	else
+	if (default_q) {
 		num_rx_fqs = DPAA_DEFAULT_NUM_PCD_QUEUES;
+	} else {
+		if (getenv("DPAA_NUM_RX_QUEUES"))
+			num_rx_fqs = atoi(getenv("DPAA_NUM_RX_QUEUES"));
+		else
+			num_rx_fqs = DPAA_DEFAULT_NUM_PCD_QUEUES;
+	}
+
 
 	/* if push mode queues to be enabled. Currenly we are allowing only
 	 * one queue per thread.
@@ -1214,8 +1220,11 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	for (loop = 0; loop < num_rx_fqs; loop++) {
-		fqid = DPAA_PCD_FQID_START + dpaa_intf->ifid *
-			DPAA_PCD_FQID_MULTIPLIER + loop;
+		if (default_q)
+			fqid = cfg->rx_def;
+		else
+			fqid = DPAA_PCD_FQID_START + dpaa_intf->ifid *
+				DPAA_PCD_FQID_MULTIPLIER + loop;
 
 		if (dpaa_intf->cgr_rx)
 			dpaa_intf->cgr_rx[loop].cgrid = cgrid[loop];
@@ -1407,6 +1416,12 @@ rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv,
 			DPAA_PMD_ERR("BMAN initialization failed: %d",
 				     ret);
 			return ret;
+		}
+
+		if (access("/tmp/fmc.bin", F_OK) == -1) {
+			RTE_LOG(INFO, PMD,
+				"* FMC not configured.Enabling default mode\n");
+			default_q = 1;
 		}
 
 		is_global_init = 1;
