@@ -233,7 +233,7 @@ vhost_user_set_features(struct virtio_net *dev, uint64_t features)
 
 			dev->virtqueue[dev->nr_vring] = NULL;
 			cleanup_vq(vq, 1);
-			free_vq(vq);
+			free_vq(dev, vq);
 		}
 	}
 
@@ -282,13 +282,26 @@ vhost_user_set_vring_num(struct virtio_net *dev,
 		TAILQ_INIT(&vq->zmbuf_list);
 	}
 
-	vq->shadow_used_ring = rte_malloc(NULL,
+	if (vq_is_packed(dev)) {
+		vq->shadow_used_packed = rte_malloc(NULL,
+				vq->size *
+				sizeof(struct vring_used_elem_packed),
+				RTE_CACHE_LINE_SIZE);
+		if (!vq->shadow_used_packed) {
+			RTE_LOG(ERR, VHOST_CONFIG,
+					"failed to allocate memory for shadow used ring.\n");
+			return -1;
+		}
+
+	} else {
+		vq->shadow_used_split = rte_malloc(NULL,
 				vq->size * sizeof(struct vring_used_elem),
 				RTE_CACHE_LINE_SIZE);
-	if (!vq->shadow_used_ring) {
-		RTE_LOG(ERR, VHOST_CONFIG,
-			"failed to allocate memory for shadow used ring.\n");
-		return -1;
+		if (!vq->shadow_used_split) {
+			RTE_LOG(ERR, VHOST_CONFIG,
+					"failed to allocate memory for shadow used ring.\n");
+			return -1;
+		}
 	}
 
 	vq->batch_copy_elems = rte_malloc(NULL,
@@ -315,7 +328,8 @@ numa_realloc(struct virtio_net *dev, int index)
 	struct virtio_net *old_dev;
 	struct vhost_virtqueue *old_vq, *vq;
 	struct zcopy_mbuf *new_zmbuf;
-	struct vring_used_elem *new_shadow_used_ring;
+	struct vring_used_elem *new_shadow_used_split;
+	struct vring_used_elem_packed *new_shadow_used_packed;
 	struct batch_copy_elem *new_batch_copy_elems;
 	int ret;
 
@@ -350,13 +364,26 @@ numa_realloc(struct virtio_net *dev, int index)
 			vq->zmbufs = new_zmbuf;
 		}
 
-		new_shadow_used_ring = rte_malloc_socket(NULL,
-			vq->size * sizeof(struct vring_used_elem),
-			RTE_CACHE_LINE_SIZE,
-			newnode);
-		if (new_shadow_used_ring) {
-			rte_free(vq->shadow_used_ring);
-			vq->shadow_used_ring = new_shadow_used_ring;
+		if (vq_is_packed(dev)) {
+			new_shadow_used_packed = rte_malloc_socket(NULL,
+					vq->size *
+					sizeof(struct vring_used_elem_packed),
+					RTE_CACHE_LINE_SIZE,
+					newnode);
+			if (new_shadow_used_packed) {
+				rte_free(vq->shadow_used_packed);
+				vq->shadow_used_packed = new_shadow_used_packed;
+			}
+		} else {
+			new_shadow_used_split = rte_malloc_socket(NULL,
+					vq->size *
+					sizeof(struct vring_used_elem),
+					RTE_CACHE_LINE_SIZE,
+					newnode);
+			if (new_shadow_used_split) {
+				rte_free(vq->shadow_used_split);
+				vq->shadow_used_split = new_shadow_used_split;
+			}
 		}
 
 		new_batch_copy_elems = rte_malloc_socket(NULL,
@@ -1047,8 +1074,13 @@ vhost_user_get_vring_base(struct virtio_net *dev,
 
 	if (dev->dequeue_zero_copy)
 		free_zmbufs(vq);
-	rte_free(vq->shadow_used_ring);
-	vq->shadow_used_ring = NULL;
+	if (vq_is_packed(dev)) {
+		rte_free(vq->shadow_used_packed);
+		vq->shadow_used_packed = NULL;
+	} else {
+		rte_free(vq->shadow_used_split);
+		vq->shadow_used_split = NULL;
+	}
 
 	rte_free(vq->batch_copy_elems);
 	vq->batch_copy_elems = NULL;

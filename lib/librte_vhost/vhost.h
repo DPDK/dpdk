@@ -80,6 +80,12 @@ struct log_cache_entry {
 	unsigned long val;
 };
 
+struct vring_used_elem_packed {
+	uint16_t id;
+	uint32_t len;
+	uint32_t count;
+};
+
 /**
  * Structure contains variables relevant to RX/TX virtqueues.
  */
@@ -119,7 +125,10 @@ struct vhost_virtqueue {
 	struct zcopy_mbuf	*zmbufs;
 	struct zcopy_mbuf_list	zmbuf_list;
 
-	struct vring_used_elem  *shadow_used_ring;
+	union {
+		struct vring_used_elem  *shadow_used_split;
+		struct vring_used_elem_packed *shadow_used_packed;
+	};
 	uint16_t                shadow_used_idx;
 	struct vhost_vring_addr ring_addrs;
 
@@ -587,7 +596,7 @@ void vhost_destroy_device(int);
 void vhost_destroy_device_notify(struct virtio_net *dev);
 
 void cleanup_vq(struct vhost_virtqueue *vq, int destroy);
-void free_vq(struct vhost_virtqueue *vq);
+void free_vq(struct virtio_net *dev, struct vhost_virtqueue *vq);
 
 int alloc_vring_queue(struct virtio_net *dev, uint32_t vring_idx);
 

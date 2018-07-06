@@ -82,7 +82,7 @@ do_flush_shadow_used_ring_split(struct virtio_net *dev,
 			uint16_t to, uint16_t from, uint16_t size)
 {
 	rte_memcpy(&vq->used->ring[to],
-			&vq->shadow_used_ring[from],
+			&vq->shadow_used_split[from],
 			size * sizeof(struct vring_used_elem));
 	vhost_log_cache_used_vring(dev, vq,
 			offsetof(struct vring_used, ring[to]),
@@ -126,8 +126,73 @@ update_shadow_used_ring_split(struct vhost_virtqueue *vq,
 {
 	uint16_t i = vq->shadow_used_idx++;
 
-	vq->shadow_used_ring[i].id  = desc_idx;
-	vq->shadow_used_ring[i].len = len;
+	vq->shadow_used_split[i].id  = desc_idx;
+	vq->shadow_used_split[i].len = len;
+}
+
+static __rte_unused __rte_always_inline void
+flush_shadow_used_ring_packed(struct virtio_net *dev,
+			struct vhost_virtqueue *vq)
+{
+	int i;
+	uint16_t used_idx = vq->last_used_idx;
+
+	/* Split loop in two to save memory barriers */
+	for (i = 0; i < vq->shadow_used_idx; i++) {
+		vq->desc_packed[used_idx].id = vq->shadow_used_packed[i].id;
+		vq->desc_packed[used_idx].len = vq->shadow_used_packed[i].len;
+
+		used_idx += vq->shadow_used_packed[i].count;
+		if (used_idx >= vq->size)
+			used_idx -= vq->size;
+	}
+
+	rte_smp_wmb();
+
+	for (i = 0; i < vq->shadow_used_idx; i++) {
+		uint16_t flags;
+
+		if (vq->shadow_used_packed[i].len)
+			flags = VRING_DESC_F_WRITE;
+		else
+			flags = 0;
+
+		if (vq->used_wrap_counter) {
+			flags |= VRING_DESC_F_USED;
+			flags |= VRING_DESC_F_AVAIL;
+		} else {
+			flags &= ~VRING_DESC_F_USED;
+			flags &= ~VRING_DESC_F_AVAIL;
+		}
+
+		vq->desc_packed[vq->last_used_idx].flags = flags;
+
+		vhost_log_cache_used_vring(dev, vq,
+					vq->last_used_idx *
+					sizeof(struct vring_packed_desc),
+					sizeof(struct vring_packed_desc));
+
+		vq->last_used_idx += vq->shadow_used_packed[i].count;
+		if (vq->last_used_idx >= vq->size) {
+			vq->used_wrap_counter ^= 1;
+			vq->last_used_idx -= vq->size;
+		}
+	}
+
+	rte_smp_wmb();
+	vq->shadow_used_idx = 0;
+	vhost_log_cache_sync(dev, vq);
+}
+
+static __rte_unused __rte_always_inline void
+update_shadow_used_ring_packed(struct vhost_virtqueue *vq,
+			 uint16_t desc_idx, uint16_t len, uint16_t count)
+{
+	uint16_t i = vq->shadow_used_idx++;
+
+	vq->shadow_used_packed[i].id  = desc_idx;
+	vq->shadow_used_packed[i].len = len;
+	vq->shadow_used_packed[i].count = count;
 }
 
 static inline void
