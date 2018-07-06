@@ -141,6 +141,8 @@ do_data_copy_enqueue(struct virtio_net *dev, struct vhost_virtqueue *vq)
 		vhost_log_cache_write(dev, vq, elem[i].log_addr, elem[i].len);
 		PRINT_PACKET(dev, (uintptr_t)elem[i].dst, elem[i].len, 0);
 	}
+
+	vq->batch_copy_nb_elems = 0;
 }
 
 static inline void
@@ -152,6 +154,8 @@ do_data_copy_dequeue(struct vhost_virtqueue *vq)
 
 	for (i = 0; i < count; i++)
 		rte_memcpy(elem[i].dst, elem[i].src, elem[i].len);
+
+	vq->batch_copy_nb_elems = 0;
 }
 
 /* avoid write operation when necessary, to lessen cache issues */
@@ -563,8 +567,6 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 	count = RTE_MIN((uint32_t)MAX_PKT_BURST, count);
 	if (count == 0)
 		goto out;
-
-	vq->batch_copy_nb_elems = 0;
 
 	rte_prefetch0(&vq->avail->ring[vq->last_avail_idx & (vq->size - 1)]);
 
@@ -1053,8 +1055,6 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 
 	if (unlikely(vq->enabled == 0))
 		goto out_access_unlock;
-
-	vq->batch_copy_nb_elems = 0;
 
 	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
 		vhost_user_iotlb_rd_lock(vq);
