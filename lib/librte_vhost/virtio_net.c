@@ -1083,6 +1083,8 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 		vq->shadow_used_idx = 0;
 	}
 
+	rte_prefetch0(&vq->avail->ring[vq->last_avail_idx & (vq->size - 1)]);
+
 	/*
 	 * Construct a RARP broadcast packet, and inject it to the "pkts"
 	 * array, to looks like that guest actually send such packet.
