@@ -130,7 +130,7 @@ update_shadow_used_ring_split(struct vhost_virtqueue *vq,
 	vq->shadow_used_split[i].len = len;
 }
 
-static __rte_unused __rte_always_inline void
+static __rte_always_inline void
 flush_shadow_used_ring_packed(struct virtio_net *dev,
 			struct vhost_virtqueue *vq)
 {
@@ -184,7 +184,7 @@ flush_shadow_used_ring_packed(struct virtio_net *dev,
 	vhost_log_cache_sync(dev, vq);
 }
 
-static __rte_unused __rte_always_inline void
+static __rte_always_inline void
 update_shadow_used_ring_packed(struct vhost_virtqueue *vq,
 			 uint16_t desc_idx, uint16_t len, uint16_t count)
 {
@@ -506,7 +506,7 @@ fill_vec_buf_packed_indirect(struct virtio_net *dev,
 	return 0;
 }
 
-static __rte_unused __rte_always_inline int
+static __rte_always_inline int
 fill_vec_buf_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 				uint16_t avail_idx, uint16_t *desc_count,
 				struct buf_vector *buf_vec, uint16_t *vec_idx,
@@ -557,6 +557,65 @@ fill_vec_buf_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	}
 
 	*vec_idx = vec_id;
+
+	return 0;
+}
+
+/*
+ * Returns -1 on fail, 0 on success
+ */
+static inline int
+reserve_avail_buf_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
+				uint32_t size, struct buf_vector *buf_vec,
+				uint16_t *nr_vec, uint16_t *num_buffers,
+				uint16_t *nr_descs)
+{
+	uint16_t avail_idx;
+	uint16_t vec_idx = 0;
+	uint16_t max_tries, tries = 0;
+
+	uint16_t buf_id = 0;
+	uint16_t len = 0;
+	uint16_t desc_count;
+
+	*num_buffers = 0;
+	avail_idx = vq->last_avail_idx;
+
+	if (rxvq_is_mergeable(dev))
+		max_tries = vq->size;
+	else
+		max_tries = 1;
+
+	while (size > 0) {
+		if (unlikely(fill_vec_buf_packed(dev, vq,
+						avail_idx, &desc_count,
+						buf_vec, &vec_idx,
+						&buf_id, &len,
+						VHOST_ACCESS_RO) < 0))
+			return -1;
+
+		len = RTE_MIN(len, size);
+		update_shadow_used_ring_packed(vq, buf_id, len, desc_count);
+		size -= len;
+
+		avail_idx += desc_count;
+		if (avail_idx >= vq->size)
+			avail_idx -= vq->size;
+
+		*nr_descs += desc_count;
+		tries++;
+		*num_buffers += 1;
+
+		/*
+		 * if we tried all available ring items, and still
+		 * can't get enough buf, it means something abnormal
+		 * happened.
+		 */
+		if (unlikely(tries > max_tries))
+			return -1;
+	}
+
+	*nr_vec = vec_idx;
 
 	return 0;
 }
@@ -774,6 +833,59 @@ virtio_dev_rx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 }
 
 static __rte_always_inline uint32_t
+virtio_dev_rx_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
+	struct rte_mbuf **pkts, uint32_t count)
+{
+	uint32_t pkt_idx = 0;
+	uint16_t num_buffers;
+	struct buf_vector buf_vec[BUF_VECTOR_MAX];
+
+	for (pkt_idx = 0; pkt_idx < count; pkt_idx++) {
+		uint32_t pkt_len = pkts[pkt_idx]->pkt_len + dev->vhost_hlen;
+		uint16_t nr_vec = 0;
+		uint16_t nr_descs = 0;
+
+		if (unlikely(reserve_avail_buf_packed(dev, vq,
+						pkt_len, buf_vec, &nr_vec,
+						&num_buffers, &nr_descs) < 0)) {
+			VHOST_LOG_DEBUG(VHOST_DATA,
+				"(%d) failed to get enough desc from vring\n",
+				dev->vid);
+			vq->shadow_used_idx -= num_buffers;
+			break;
+		}
+
+		rte_prefetch0((void *)(uintptr_t)buf_vec[0].buf_addr);
+
+		VHOST_LOG_DEBUG(VHOST_DATA, "(%d) current index %d | end index %d\n",
+			dev->vid, vq->last_avail_idx,
+			vq->last_avail_idx + num_buffers);
+
+		if (copy_mbuf_to_desc(dev, vq, pkts[pkt_idx],
+						buf_vec, nr_vec,
+						num_buffers) < 0) {
+			vq->shadow_used_idx -= num_buffers;
+			break;
+		}
+
+		vq->last_avail_idx += nr_descs;
+		if (vq->last_avail_idx >= vq->size) {
+			vq->last_avail_idx -= vq->size;
+			vq->avail_wrap_counter ^= 1;
+		}
+	}
+
+	do_data_copy_enqueue(dev, vq);
+
+	if (likely(vq->shadow_used_idx)) {
+		flush_shadow_used_ring_packed(dev, vq);
+		vhost_vring_call(dev, vq);
+	}
+
+	return pkt_idx;
+}
+
+static __rte_always_inline uint32_t
 virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 	struct rte_mbuf **pkts, uint32_t count)
 {
@@ -804,7 +916,10 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 	if (count == 0)
 		goto out;
 
-	count = virtio_dev_rx_split(dev, vq, pkts, count);
+	if (vq_is_packed(dev))
+		count = virtio_dev_rx_packed(dev, vq, pkts, count);
+	else
+		count = virtio_dev_rx_split(dev, vq, pkts, count);
 
 out:
 	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
