@@ -451,6 +451,117 @@ reserve_avail_buf_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 }
 
 static __rte_always_inline int
+fill_vec_buf_packed_indirect(struct virtio_net *dev,
+			struct vhost_virtqueue *vq,
+			struct vring_packed_desc *desc, uint16_t *vec_idx,
+			struct buf_vector *buf_vec, uint16_t *len, uint8_t perm)
+{
+	uint16_t i;
+	uint32_t nr_descs;
+	uint16_t vec_id = *vec_idx;
+	uint64_t dlen;
+	struct vring_packed_desc *descs, *idescs = NULL;
+
+	dlen = desc->len;
+	descs = (struct vring_packed_desc *)(uintptr_t)
+		vhost_iova_to_vva(dev, vq, desc->addr, &dlen, VHOST_ACCESS_RO);
+	if (unlikely(!descs))
+		return -1;
+
+	if (unlikely(dlen < desc->len)) {
+		/*
+		 * The indirect desc table is not contiguous
+		 * in process VA space, we have to copy it.
+		 */
+		idescs = alloc_copy_ind_table(dev, vq, desc->addr, desc->len);
+		if (unlikely(!idescs))
+			return -1;
+
+		descs = idescs;
+	}
+
+	nr_descs =  desc->len / sizeof(struct vring_packed_desc);
+	if (unlikely(nr_descs >= vq->size)) {
+		free_ind_table(idescs);
+		return -1;
+	}
+
+	for (i = 0; i < nr_descs; i++) {
+		if (unlikely(vec_id >= BUF_VECTOR_MAX)) {
+			free_ind_table(idescs);
+			return -1;
+		}
+
+		*len += descs[i].len;
+		if (unlikely(map_one_desc(dev, vq, buf_vec, &vec_id,
+						descs[i].addr, descs[i].len,
+						perm)))
+			return -1;
+	}
+	*vec_idx = vec_id;
+
+	if (unlikely(!!idescs))
+		free_ind_table(idescs);
+
+	return 0;
+}
+
+static __rte_unused __rte_always_inline int
+fill_vec_buf_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
+				uint16_t avail_idx, uint16_t *desc_count,
+				struct buf_vector *buf_vec, uint16_t *vec_idx,
+				uint16_t *buf_id, uint16_t *len, uint8_t perm)
+{
+	bool wrap_counter = vq->avail_wrap_counter;
+	struct vring_packed_desc *descs = vq->desc_packed;
+	uint16_t vec_id = *vec_idx;
+
+	if (avail_idx < vq->last_avail_idx)
+		wrap_counter ^= 1;
+
+	if (unlikely(!desc_is_avail(&descs[avail_idx], wrap_counter)))
+		return -1;
+
+	*desc_count = 0;
+
+	while (1) {
+		if (unlikely(vec_id >= BUF_VECTOR_MAX))
+			return -1;
+
+		*desc_count += 1;
+		*buf_id = descs[avail_idx].id;
+
+		if (descs[avail_idx].flags & VRING_DESC_F_INDIRECT) {
+			if (unlikely(fill_vec_buf_packed_indirect(dev, vq,
+							&descs[avail_idx],
+							&vec_id, buf_vec,
+							len, perm) < 0))
+				return -1;
+		} else {
+			*len += descs[avail_idx].len;
+
+			if (unlikely(map_one_desc(dev, vq, buf_vec, &vec_id,
+							descs[avail_idx].addr,
+							descs[avail_idx].len,
+							perm)))
+				return -1;
+		}
+
+		if ((descs[avail_idx].flags & VRING_DESC_F_NEXT) == 0)
+			break;
+
+		if (++avail_idx >= vq->size) {
+			avail_idx -= vq->size;
+			wrap_counter ^= 1;
+		}
+	}
+
+	*vec_idx = vec_id;
+
+	return 0;
+}
+
+static __rte_always_inline int
 copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			    struct rte_mbuf *m, struct buf_vector *buf_vec,
 			    uint16_t nr_vec, uint16_t num_buffers)
