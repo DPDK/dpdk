@@ -216,6 +216,7 @@ pmd_init(struct pmd_params *params)
 	memcpy(&p->params, params, sizeof(p->params));
 
 	/* Resources */
+	softnic_mempool_init(p);
 	softnic_swq_init(p);
 	softnic_link_init(p);
 
@@ -230,6 +231,7 @@ pmd_free(struct pmd_internals *p)
 
 	softnic_link_free(p);
 	softnic_swq_free(p);
+	softnic_mempool_free(p);
 
 	rte_free(p);
 }

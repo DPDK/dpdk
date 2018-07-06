@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <sys/queue.h>
 
+#include <rte_mempool.h>
 #include <rte_mbuf.h>
 #include <rte_ring.h>
 #include <rte_ethdev.h>
@@ -35,6 +36,24 @@ struct pmd_params {
 		uint16_t qsize[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
 	} tm;
 };
+
+/**
+ * MEMPOOL
+ */
+struct softnic_mempool_params {
+	uint32_t buffer_size;
+	uint32_t pool_size;
+	uint32_t cache_size;
+};
+
+struct softnic_mempool {
+	TAILQ_ENTRY(softnic_mempool) node;
+	char name[NAME_SIZE];
+	struct rte_mempool *m;
+	uint32_t buffer_size;
+};
+
+TAILQ_HEAD(softnic_mempool_list, softnic_mempool);
 
 /**
  * SWQ
@@ -193,9 +212,28 @@ struct pmd_internals {
 		struct tm_internals tm; /**< Traffic Management */
 	} soft;
 
+	struct softnic_mempool_list mempool_list;
 	struct softnic_swq_list swq_list;
 	struct softnic_link_list link_list;
 };
+
+/**
+ * MEMPOOL
+ */
+int
+softnic_mempool_init(struct pmd_internals *p);
+
+void
+softnic_mempool_free(struct pmd_internals *p);
+
+struct softnic_mempool *
+softnic_mempool_find(struct pmd_internals *p,
+	const char *name);
+
+struct softnic_mempool *
+softnic_mempool_create(struct pmd_internals *p,
+	const char *name,
+	struct softnic_mempool_params *params);
 
 /**
  * SWQ
