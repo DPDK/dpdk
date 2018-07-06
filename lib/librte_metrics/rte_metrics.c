@@ -159,6 +159,11 @@ rte_metrics_update_values(int port_id,
 	stats = memzone->addr;
 
 	rte_spinlock_lock(&stats->lock);
+
+	if (key >= stats->cnt_stats) {
+		rte_spinlock_unlock(&stats->lock);
+		return -EINVAL;
+	}
 	idx_metric = key;
 	cnt_setsize = 1;
 	while (idx_metric < stats->cnt_stats) {
