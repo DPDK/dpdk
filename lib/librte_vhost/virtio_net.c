@@ -292,6 +292,40 @@ virtio_enqueue_offload(struct rte_mbuf *m_buf, struct virtio_net_hdr *net_hdr)
 }
 
 static __rte_always_inline int
+map_one_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
+		struct buf_vector *buf_vec, uint16_t *vec_idx,
+		uint64_t desc_iova, uint64_t desc_len, uint8_t perm)
+{
+	uint16_t vec_id = *vec_idx;
+
+	while (desc_len) {
+		uint64_t desc_addr;
+		uint64_t desc_chunck_len = desc_len;
+
+		if (unlikely(vec_id >= BUF_VECTOR_MAX))
+			return -1;
+
+		desc_addr = vhost_iova_to_vva(dev, vq,
+				desc_iova,
+				&desc_chunck_len,
+				perm);
+		if (unlikely(!desc_addr))
+			return -1;
+
+		buf_vec[vec_id].buf_iova = desc_iova;
+		buf_vec[vec_id].buf_addr = desc_addr;
+		buf_vec[vec_id].buf_len  = desc_chunck_len;
+
+		desc_len -= desc_chunck_len;
+		desc_iova += desc_chunck_len;
+		vec_id++;
+	}
+	*vec_idx = vec_id;
+
+	return 0;
+}
+
+static __rte_always_inline int
 fill_vec_buf_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			 uint32_t avail_idx, uint16_t *vec_idx,
 			 struct buf_vector *buf_vec, uint16_t *desc_chain_head,
@@ -300,7 +334,7 @@ fill_vec_buf_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	uint16_t idx = vq->avail->ring[avail_idx & (vq->size - 1)];
 	uint16_t vec_id = *vec_idx;
 	uint32_t len    = 0;
-	uint64_t dlen, desc_avail, desc_iova;
+	uint64_t dlen;
 	struct vring_desc *descs = vq->desc;
 	struct vring_desc *idesc = NULL;
 
@@ -337,37 +371,13 @@ fill_vec_buf_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			return -1;
 		}
 
-
 		len += descs[idx].len;
-		desc_avail = descs[idx].len;
-		desc_iova = descs[idx].addr;
 
-		while (desc_avail) {
-			uint64_t desc_addr;
-			uint64_t desc_chunck_len = desc_avail;
-
-			if (unlikely(vec_id >= BUF_VECTOR_MAX)) {
-				free_ind_table(idesc);
-				return -1;
-			}
-
-			desc_addr = vhost_iova_to_vva(dev, vq,
-					desc_iova,
-					&desc_chunck_len,
-					perm);
-			if (unlikely(!desc_addr)) {
-				free_ind_table(idesc);
-				return -1;
-			}
-
-			buf_vec[vec_id].buf_iova = desc_iova;
-			buf_vec[vec_id].buf_addr = desc_addr;
-			buf_vec[vec_id].buf_len  = desc_chunck_len;
-			buf_vec[vec_id].desc_idx = idx;
-
-			desc_avail -= desc_chunck_len;
-			desc_iova += desc_chunck_len;
-			vec_id++;
+		if (unlikely(map_one_desc(dev, vq, buf_vec, &vec_id,
+						descs[idx].addr, descs[idx].len,
+						perm))) {
+			free_ind_table(idesc);
+			return -1;
 		}
 
 		if ((descs[idx].flags & VRING_DESC_F_NEXT) == 0)
