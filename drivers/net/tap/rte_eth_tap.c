@@ -781,12 +781,22 @@ tap_link_set_up(struct rte_eth_dev *dev)
 static int
 tap_dev_start(struct rte_eth_dev *dev)
 {
-	int err;
+	int err, i;
 
 	err = tap_intr_handle_set(dev, 1);
 	if (err)
 		return err;
-	return tap_link_set_up(dev);
+
+	err = tap_link_set_up(dev);
+	if (err)
+		return err;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+
+	return err;
 }
 
 /* This function gets called when the current port gets stopped.
@@ -794,6 +804,13 @@ tap_dev_start(struct rte_eth_dev *dev)
 static void
 tap_dev_stop(struct rte_eth_dev *dev)
 {
+	int i;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+
 	tap_intr_handle_set(dev, 0);
 	tap_link_set_down(dev);
 }
@@ -1531,6 +1548,37 @@ tap_rss_hash_update(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+tap_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+
+	return 0;
+}
+
+static int
+tap_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+
+	return 0;
+}
+
+static int
+tap_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	return 0;
+}
+
+static int
+tap_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	return 0;
+}
 static const struct eth_dev_ops ops = {
 	.dev_start              = tap_dev_start,
 	.dev_stop               = tap_dev_stop,
@@ -1539,6 +1587,10 @@ static const struct eth_dev_ops ops = {
 	.dev_infos_get          = tap_dev_info,
 	.rx_queue_setup         = tap_rx_queue_setup,
 	.tx_queue_setup         = tap_tx_queue_setup,
+	.rx_queue_start         = tap_rx_queue_start,
+	.tx_queue_start         = tap_tx_queue_start,
+	.rx_queue_stop          = tap_rx_queue_stop,
+	.tx_queue_stop          = tap_tx_queue_stop,
 	.rx_queue_release       = tap_rx_queue_release,
 	.tx_queue_release       = tap_tx_queue_release,
 	.flow_ctrl_get          = tap_flow_ctrl_get,
