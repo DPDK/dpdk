@@ -92,6 +92,9 @@
 /* Activate Netlink support in VF mode. */
 #define MLX5_VF_NL_EN "vf_nl_en"
 
+/* Select port representors to instantiate. */
+#define MLX5_REPRESENTOR "representor"
+
 #ifndef HAVE_IBV_MLX5_MOD_MPW
 #define MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED (1 << 2)
 #define MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW (1 << 3)
@@ -443,6 +446,9 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 	struct mlx5_dev_config *config = opaque;
 	unsigned long tmp;
 
+	/* No-op, port representors are processed in mlx5_dev_spawn(). */
+	if (!strcmp(MLX5_REPRESENTOR, key))
+		return 0;
 	errno = 0;
 	tmp = strtoul(val, NULL, 0);
 	if (errno) {
@@ -515,6 +521,7 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 		MLX5_RX_VEC_EN,
 		MLX5_L3_VXLAN_EN,
 		MLX5_VF_NL_EN,
+		MLX5_REPRESENTOR,
 		NULL,
 	};
 	struct rte_kvargs *kvlist;
@@ -672,7 +679,9 @@ mlx5_uar_init_secondary(struct rte_eth_dev *dev)
  *
  * @return
  *   A valid Ethernet device object on success, NULL otherwise and rte_errno
- *   is set.
+ *   is set. The following error is defined:
+ *
+ *   EBUSY: device is not supposed to be spawned.
  */
 static struct rte_eth_dev *
 mlx5_dev_spawn(struct rte_device *dpdk_dev,
@@ -723,6 +732,26 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	int own_domain_id = 0;
 	unsigned int i;
 
+	/* Determine if this port representor is supposed to be spawned. */
+	if (switch_info->representor && dpdk_dev->devargs) {
+		struct rte_eth_devargs eth_da;
+
+		err = rte_eth_devargs_parse(dpdk_dev->devargs->args, &eth_da);
+		if (err) {
+			rte_errno = -err;
+			DRV_LOG(ERR, "failed to process device arguments: %s",
+				strerror(rte_errno));
+			return NULL;
+		}
+		for (i = 0; i < eth_da.nb_representor_ports; ++i)
+			if (eth_da.representor_ports[i] ==
+			    (uint16_t)switch_info->port_name)
+				break;
+		if (i == eth_da.nb_representor_ports) {
+			rte_errno = EBUSY;
+			return NULL;
+		}
+	}
 	/* Prepare shared data between primary and secondary process. */
 	mlx5_prepare_shared_data();
 	errno = 0;
@@ -1343,8 +1372,12 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 		list[i].eth_dev = mlx5_dev_spawn
 			(&pci_dev->device, list[i].ibv_dev, vf, &list[i].info);
-		if (!list[i].eth_dev)
-			break;
+		if (!list[i].eth_dev) {
+			if (rte_errno != EBUSY)
+				break;
+			/* Device is disabled, ignore it. */
+			continue;
+		}
 		restore = list[i].eth_dev->data->dev_flags;
 		rte_eth_copy_pci_info(list[i].eth_dev, pci_dev);
 		/* Restore non-PCI flags cleared by the above call. */
@@ -1370,6 +1403,8 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		ret = -rte_errno;
 		/* Roll back. */
 		while (i--) {
+			if (!list[i].eth_dev)
+				continue;
 			mlx5_dev_close(list[i].eth_dev);
 			if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 				rte_free(list[i].eth_dev->data->dev_private);

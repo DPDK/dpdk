@@ -392,6 +392,18 @@ Run-time configuration
 
   Disabled by default.
 
+- ``representor`` parameter [list]
+
+  This parameter can be used to instantiate DPDK Ethernet devices from
+  existing port (or VF) representors configured on the device.
+
+  It is a standard parameter whose format is described in
+  :ref:`ethernet_device_standard_device_arguments`.
+
+  For instance, to probe port representors 0 through 2::
+
+    representor=[0-2]
+
 Firmware configuration
 ~~~~~~~~~~~~~~~~~~~~~~
 

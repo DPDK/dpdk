@@ -360,6 +360,8 @@ Ethernet Device API
 
 The Ethernet device API exported by the Ethernet PMDs is described in the *DPDK API Reference*.
 
+.. _ethernet_device_standard_device_arguments:
+
 Ethernet Device Standard Device Arguments
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
