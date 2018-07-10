@@ -322,6 +322,8 @@ scheduler_pmd_info_get(struct rte_cryptodev *dev,
 {
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
 	uint32_t max_nb_sess = 0;
+	uint16_t headroom_sz = 0;
+	uint16_t tailroom_sz = 0;
 	uint32_t i;
 
 	if (!dev_info)
@@ -342,12 +344,26 @@ scheduler_pmd_info_get(struct rte_cryptodev *dev,
 			if (max_nb_sess == 0 ||	dev_max_sess < max_nb_sess)
 				max_nb_sess = slave_info.sym.max_nb_sessions;
 		}
+
+		/* Get the max headroom requirement among slave PMDs */
+		headroom_sz = slave_info.min_mbuf_headroom_req >
+				headroom_sz ?
+				slave_info.min_mbuf_headroom_req :
+				headroom_sz;
+
+		/* Get the max tailroom requirement among slave PMDs */
+		tailroom_sz = slave_info.min_mbuf_tailroom_req >
+				tailroom_sz ?
+				slave_info.min_mbuf_tailroom_req :
+				tailroom_sz;
 	}
 
 	dev_info->driver_id = dev->driver_id;
 	dev_info->feature_flags = dev->feature_flags;
 	dev_info->capabilities = sched_ctx->capabilities;
 	dev_info->max_nb_queue_pairs = sched_ctx->max_nb_queue_pairs;
+	dev_info->min_mbuf_headroom_req = headroom_sz;
+	dev_info->min_mbuf_tailroom_req = tailroom_sz;
 	dev_info->sym.max_nb_sessions = max_nb_sess;
 }
 
