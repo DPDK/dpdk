@@ -155,6 +155,29 @@ thread_init(void)
 	return 0;
 }
 
+static inline int
+thread_is_running(uint32_t thread_id)
+{
+	enum rte_lcore_state_t thread_state;
+
+	thread_state = rte_eal_get_lcore_state(thread_id);
+	return (thread_state == RUNNING) ? 1 : 0;
+}
+
+/**
+ * Pipeline is running when:
+ *    (A) Pipeline is mapped to a data plane thread AND
+ *    (B) Its data plane thread is in RUNNING state.
+ */
+static inline int
+pipeline_is_running(struct pipeline *p)
+{
+	if (p->enabled == 0)
+		return 0;
+
+	return thread_is_running(p->thread_id);
+}
+
 /**
  * Master thread & data plane threads: message passing
  */
@@ -254,6 +277,36 @@ thread_pipeline_enable(uint32_t thread_id,
 		p->enabled)
 		return -1;
 
+	if (!thread_is_running(thread_id)) {
+		struct thread_data *td = &thread_data[thread_id];
+		struct pipeline_data *tdp = &td->pipeline_data[td->n_pipelines];
+
+		if (td->n_pipelines >= THREAD_PIPELINES_MAX)
+			return -1;
+
+		/* Data plane thread */
+		td->p[td->n_pipelines] = p->p;
+
+		tdp->p = p->p;
+		for (i = 0; i < p->n_tables; i++)
+			tdp->table_data[i].a = p->table[i].a;
+
+		tdp->n_tables = p->n_tables;
+
+		tdp->msgq_req = p->msgq_req;
+		tdp->msgq_rsp = p->msgq_rsp;
+		tdp->timer_period = (rte_get_tsc_hz() * p->timer_period_ms) / 1000;
+		tdp->time_next = rte_get_tsc_cycles() + tdp->timer_period;
+
+		td->n_pipelines++;
+
+		/* Pipeline */
+		p->thread_id = thread_id;
+		p->enabled = 1;
+
+		return 0;
+	}
+
 	/* Allocate request */
 	req = thread_msg_alloc();
 	if (req == NULL)
@@ -315,6 +368,38 @@ thread_pipeline_disable(uint32_t thread_id,
 
 	if (p->thread_id != thread_id)
 		return -1;
+
+	if (!thread_is_running(thread_id)) {
+		struct thread_data *td = &thread_data[thread_id];
+		uint32_t i;
+
+		for (i = 0; i < td->n_pipelines; i++) {
+			struct pipeline_data *tdp = &td->pipeline_data[i];
+
+			if (tdp->p != p->p)
+				continue;
+
+			/* Data plane thread */
+			if (i < td->n_pipelines - 1) {
+				struct rte_pipeline *pipeline_last =
+					td->p[td->n_pipelines - 1];
+				struct pipeline_data *tdp_last =
+					&td->pipeline_data[td->n_pipelines - 1];
+
+				td->p[i] = pipeline_last;
+				memcpy(tdp, tdp_last, sizeof(*tdp));
+			}
+
+			td->n_pipelines--;
+
+			/* Pipeline */
+			p->enabled = 0;
+
+			break;
+		}
+
+		return 0;
+	}
 
 	/* Allocate request */
 	req = thread_msg_alloc();
@@ -698,9 +783,17 @@ pipeline_port_in_stats_read(const char *pipeline_name,
 
 	p = pipeline_find(pipeline_name);
 	if ((p == NULL) ||
-		(p->enabled == 0) ||
 		(port_id >= p->n_ports_in))
 		return -1;
+
+	if (!pipeline_is_running(p)) {
+		status = rte_pipeline_port_in_stats_read(p->p,
+			port_id,
+			stats,
+			clear);
+
+		return status;
+	}
 
 	/* Allocate request */
 	req = pipeline_msg_alloc();
@@ -743,9 +836,13 @@ pipeline_port_in_enable(const char *pipeline_name,
 
 	p = pipeline_find(pipeline_name);
 	if ((p == NULL) ||
-		(p->enabled == 0) ||
 		(port_id >= p->n_ports_in))
 		return -1;
+
+	if (!pipeline_is_running(p)) {
+		status = rte_pipeline_port_in_enable(p->p, port_id);
+		return status;
+	}
 
 	/* Allocate request */
 	req = pipeline_msg_alloc();
@@ -785,9 +882,13 @@ pipeline_port_in_disable(const char *pipeline_name,
 
 	p = pipeline_find(pipeline_name);
 	if ((p == NULL) ||
-		(p->enabled == 0) ||
 		(port_id >= p->n_ports_in))
 		return -1;
+
+	if (!pipeline_is_running(p)) {
+		status = rte_pipeline_port_in_disable(p->p, port_id);
+		return status;
+	}
 
 	/* Allocate request */
 	req = pipeline_msg_alloc();
@@ -830,9 +931,17 @@ pipeline_port_out_stats_read(const char *pipeline_name,
 
 	p = pipeline_find(pipeline_name);
 	if ((p == NULL) ||
-		(p->enabled == 0) ||
 		(port_id >= p->n_ports_out))
 		return -1;
+
+	if (!pipeline_is_running(p)) {
+		status = rte_pipeline_port_out_stats_read(p->p,
+			port_id,
+			stats,
+			clear);
+
+		return status;
+	}
 
 	/* Allocate request */
 	req = pipeline_msg_alloc();
@@ -878,9 +987,17 @@ pipeline_table_stats_read(const char *pipeline_name,
 
 	p = pipeline_find(pipeline_name);
 	if ((p == NULL) ||
-		(p->enabled == 0) ||
 		(table_id >= p->n_tables))
 		return -1;
+
+	if (!pipeline_is_running(p)) {
+		status = rte_pipeline_table_stats_read(p->p,
+			table_id,
+			stats,
+			clear);
+
+		return status;
+	}
 
 	/* Allocate request */
 	req = pipeline_msg_alloc();
@@ -1070,6 +1187,25 @@ action_default_check(struct table_rule_action *action,
 	return 0;
 }
 
+union table_rule_match_low_level {
+	struct rte_table_acl_rule_add_params acl_add;
+	struct rte_table_acl_rule_delete_params acl_delete;
+	struct rte_table_array_key array;
+	uint8_t hash[TABLE_RULE_MATCH_SIZE_MAX];
+	struct rte_table_lpm_key lpm_ipv4;
+	struct rte_table_lpm_ipv6_key lpm_ipv6;
+};
+
+static int
+match_convert(struct table_rule_match *mh,
+	union table_rule_match_low_level *ml,
+	int add);
+
+static int
+action_convert(struct rte_table_action *a,
+	struct table_rule_action *action,
+	struct rte_pipeline_table_entry *data);
+
 int
 pipeline_table_rule_add(const char *pipeline_name,
 	uint32_t table_id,
@@ -1091,11 +1227,55 @@ pipeline_table_rule_add(const char *pipeline_name,
 
 	p = pipeline_find(pipeline_name);
 	if ((p == NULL) ||
-		(p->enabled == 0) ||
 		(table_id >= p->n_tables) ||
 		match_check(match, p, table_id) ||
 		action_check(action, p, table_id))
 		return -1;
+
+	if (!pipeline_is_running(p)) {
+		struct rte_table_action *a = p->table[table_id].a;
+		union table_rule_match_low_level match_ll;
+		struct rte_pipeline_table_entry *data_in, *data_out;
+		int key_found;
+		uint8_t *buffer;
+
+		buffer = calloc(TABLE_RULE_ACTION_SIZE_MAX, sizeof(uint8_t));
+		if (buffer == NULL)
+			return -1;
+
+		/* Table match-action rule conversion */
+		data_in = (struct rte_pipeline_table_entry *)buffer;
+
+		status = match_convert(match, &match_ll, 1);
+		if (status) {
+			free(buffer);
+			return -1;
+		}
+
+		status = action_convert(a, action, data_in);
+		if (status) {
+			free(buffer);
+			return -1;
+		}
+
+		/* Add rule (match, action) to table */
+		status = rte_pipeline_table_entry_add(p->p,
+				table_id,
+				&match_ll,
+				data_in,
+				&key_found,
+				&data_out);
+		if (status) {
+			free(buffer);
+			return -1;
+		}
+
+		/* Write Response */
+		*data = data_out;
+
+		free(buffer);
+		return 0;
+	}
 
 	/* Allocate request */
 	req = pipeline_msg_alloc();
@@ -1143,10 +1323,43 @@ pipeline_table_rule_add_default(const char *pipeline_name,
 
 	p = pipeline_find(pipeline_name);
 	if ((p == NULL) ||
-		(p->enabled == 0) ||
 		(table_id >= p->n_tables) ||
 		action_default_check(action, p, table_id))
 		return -1;
+
+	if (!pipeline_is_running(p)) {
+		struct rte_pipeline_table_entry *data_in, *data_out;
+		uint8_t *buffer;
+
+		buffer = calloc(TABLE_RULE_ACTION_SIZE_MAX, sizeof(uint8_t));
+		if (buffer == NULL)
+			return -1;
+
+		/* Apply actions */
+		data_in = (struct rte_pipeline_table_entry *)buffer;
+
+		data_in->action = action->fwd.action;
+		if (action->fwd.action == RTE_PIPELINE_ACTION_PORT)
+			data_in->port_id = action->fwd.id;
+		if (action->fwd.action == RTE_PIPELINE_ACTION_TABLE)
+			data_in->table_id = action->fwd.id;
+
+		/* Add default rule to table */
+		status = rte_pipeline_table_default_entry_add(p->p,
+				table_id,
+				data_in,
+				&data_out);
+		if (status) {
+			free(buffer);
+			return -1;
+		}
+
+		/* Write Response */
+		*data = data_out;
+
+		free(buffer);
+		return 0;
+	}
 
 	/* Allocate request */
 	req = pipeline_msg_alloc();
@@ -1199,7 +1412,6 @@ pipeline_table_rule_add_bulk(const char *pipeline_name,
 
 	p = pipeline_find(pipeline_name);
 	if ((p == NULL) ||
-		(p->enabled == 0) ||
 		(table_id >= p->n_tables))
 		return -1;
 
@@ -1207,6 +1419,99 @@ pipeline_table_rule_add_bulk(const char *pipeline_name,
 		if (match_check(match, p, table_id) ||
 			action_check(action, p, table_id))
 			return -1;
+
+	if (!pipeline_is_running(p)) {
+		struct rte_table_action *a = p->table[table_id].a;
+		union table_rule_match_low_level *match_ll;
+		uint8_t *action_ll;
+		void **match_ll_ptr;
+		struct rte_pipeline_table_entry **action_ll_ptr;
+		struct rte_pipeline_table_entry **entries_ptr =
+			(struct rte_pipeline_table_entry **)data;
+		uint32_t bulk =
+			(p->table[table_id].params.match_type == TABLE_ACL) ? 1 : 0;
+		int *found;
+
+		/* Memory allocation */
+		match_ll = calloc(*n_rules, sizeof(union table_rule_match_low_level));
+		action_ll = calloc(*n_rules, TABLE_RULE_ACTION_SIZE_MAX);
+		match_ll_ptr = calloc(*n_rules, sizeof(void *));
+		action_ll_ptr =
+			calloc(*n_rules, sizeof(struct rte_pipeline_table_entry *));
+		found = calloc(*n_rules, sizeof(int));
+
+		if (match_ll == NULL ||
+			action_ll == NULL ||
+			match_ll_ptr == NULL ||
+			action_ll_ptr == NULL ||
+			found == NULL)
+			goto fail;
+
+		for (i = 0; i < *n_rules; i++) {
+			match_ll_ptr[i] = (void *)&match_ll[i];
+			action_ll_ptr[i] =
+				(struct rte_pipeline_table_entry *)&action_ll[i * TABLE_RULE_ACTION_SIZE_MAX];
+		}
+
+		/* Rule match conversion */
+		for (i = 0; i < *n_rules; i++) {
+			status = match_convert(&match[i], match_ll_ptr[i], 1);
+			if (status)
+				goto fail;
+		}
+
+		/* Rule action conversion */
+		for (i = 0; i < *n_rules; i++) {
+			status = action_convert(a, &action[i], action_ll_ptr[i]);
+			if (status)
+				goto fail;
+		}
+
+		/* Add rule (match, action) to table */
+		if (bulk) {
+			status = rte_pipeline_table_entry_add_bulk(p->p,
+				table_id,
+				match_ll_ptr,
+				action_ll_ptr,
+				*n_rules,
+				found,
+				entries_ptr);
+			if (status)
+				*n_rules = 0;
+		} else {
+			for (i = 0; i < *n_rules; i++) {
+				status = rte_pipeline_table_entry_add(p->p,
+					table_id,
+					match_ll_ptr[i],
+					action_ll_ptr[i],
+					&found[i],
+					&entries_ptr[i]);
+				if (status) {
+					*n_rules = i;
+					break;
+				}
+			}
+		}
+
+		/* Free */
+		free(found);
+		free(action_ll_ptr);
+		free(match_ll_ptr);
+		free(action_ll);
+		free(match_ll);
+
+		return status;
+
+fail:
+		free(found);
+		free(action_ll_ptr);
+		free(match_ll_ptr);
+		free(action_ll);
+		free(match_ll);
+
+		*n_rules = 0;
+		return -1;
+	}
 
 	/* Allocate request */
 	req = pipeline_msg_alloc();
@@ -1256,10 +1561,26 @@ pipeline_table_rule_delete(const char *pipeline_name,
 
 	p = pipeline_find(pipeline_name);
 	if ((p == NULL) ||
-		(p->enabled == 0) ||
 		(table_id >= p->n_tables) ||
 		match_check(match, p, table_id))
 		return -1;
+
+	if (!pipeline_is_running(p)) {
+		union table_rule_match_low_level match_ll;
+		int key_found;
+
+		status = match_convert(match, &match_ll, 0);
+		if (status)
+			return -1;
+
+		status = rte_pipeline_table_entry_delete(p->p,
+				table_id,
+				&match_ll,
+				&key_found,
+				NULL);
+
+		return status;
+	}
 
 	/* Allocate request */
 	req = pipeline_msg_alloc();
@@ -1300,9 +1621,16 @@ pipeline_table_rule_delete_default(const char *pipeline_name,
 
 	p = pipeline_find(pipeline_name);
 	if ((p == NULL) ||
-		(p->enabled == 0) ||
 		(table_id >= p->n_tables))
 		return -1;
+
+	if (!pipeline_is_running(p)) {
+		status = rte_pipeline_table_default_entry_delete(p->p,
+			table_id,
+			NULL);
+
+		return status;
+	}
 
 	/* Allocate request */
 	req = pipeline_msg_alloc();
@@ -1347,9 +1675,19 @@ pipeline_table_rule_stats_read(const char *pipeline_name,
 
 	p = pipeline_find(pipeline_name);
 	if ((p == NULL) ||
-		(p->enabled == 0) ||
 		(table_id >= p->n_tables))
 		return -1;
+
+	if (!pipeline_is_running(p)) {
+		struct rte_table_action *a = p->table[table_id].a;
+
+		status = rte_table_action_stats_read(a,
+			data,
+			stats,
+			clear);
+
+		return status;
+	}
 
 	/* Allocate request */
 	req = pipeline_msg_alloc();
@@ -1396,9 +1734,18 @@ pipeline_table_mtr_profile_add(const char *pipeline_name,
 
 	p = pipeline_find(pipeline_name);
 	if ((p == NULL) ||
-		(p->enabled == 0) ||
 		(table_id >= p->n_tables))
 		return -1;
+
+	if (!pipeline_is_running(p)) {
+		struct rte_table_action *a = p->table[table_id].a;
+
+		status = rte_table_action_meter_profile_add(a,
+			meter_profile_id,
+			profile);
+
+		return status;
+	}
 
 	/* Allocate request */
 	req = pipeline_msg_alloc();
@@ -1441,9 +1788,17 @@ pipeline_table_mtr_profile_delete(const char *pipeline_name,
 
 	p = pipeline_find(pipeline_name);
 	if ((p == NULL) ||
-		(p->enabled == 0) ||
 		(table_id >= p->n_tables))
 		return -1;
+
+	if (!pipeline_is_running(p)) {
+		struct rte_table_action *a = p->table[table_id].a;
+
+		status = rte_table_action_meter_profile_delete(a,
+				meter_profile_id);
+
+		return status;
+	}
 
 	/* Allocate request */
 	req = pipeline_msg_alloc();
@@ -1490,9 +1845,20 @@ pipeline_table_rule_mtr_read(const char *pipeline_name,
 
 	p = pipeline_find(pipeline_name);
 	if ((p == NULL) ||
-		(p->enabled == 0) ||
 		(table_id >= p->n_tables))
 		return -1;
+
+	if (!pipeline_is_running(p)) {
+		struct rte_table_action *a = p->table[table_id].a;
+
+		status = rte_table_action_meter_read(a,
+				data,
+				tc_mask,
+				stats,
+				clear);
+
+		return status;
+	}
 
 	/* Allocate request */
 	req = pipeline_msg_alloc();
@@ -1540,9 +1906,18 @@ pipeline_table_dscp_table_update(const char *pipeline_name,
 
 	p = pipeline_find(pipeline_name);
 	if ((p == NULL) ||
-		(p->enabled == 0) ||
 		(table_id >= p->n_tables))
 		return -1;
+
+	if (!pipeline_is_running(p)) {
+		struct rte_table_action *a = p->table[table_id].a;
+
+		status = rte_table_action_dscp_table_update(a,
+				dscp_mask,
+				dscp_table);
+
+		return status;
+	}
 
 	/* Allocate request */
 	req = pipeline_msg_alloc();
@@ -1590,9 +1965,19 @@ pipeline_table_rule_ttl_read(const char *pipeline_name,
 
 	p = pipeline_find(pipeline_name);
 	if ((p == NULL) ||
-		(p->enabled == 0) ||
 		(table_id >= p->n_tables))
 		return -1;
+
+	if (!pipeline_is_running(p)) {
+		struct rte_table_action *a = p->table[table_id].a;
+
+		status = rte_table_action_ttl_read(a,
+				data,
+				stats,
+				clear);
+
+		return status;
+	}
 
 	/* Allocate request */
 	req = pipeline_msg_alloc();
@@ -1721,15 +2106,6 @@ pipeline_msg_handle_table_stats_read(struct pipeline_data *p,
 
 	return rsp;
 }
-
-union table_rule_match_low_level {
-	struct rte_table_acl_rule_add_params acl_add;
-	struct rte_table_acl_rule_delete_params acl_delete;
-	struct rte_table_array_key array;
-	uint8_t hash[TABLE_RULE_MATCH_SIZE_MAX];
-	struct rte_table_lpm_key lpm_ipv4;
-	struct rte_table_lpm_ipv6_key lpm_ipv6;
-};
 
 static int
 match_convert_ipv6_depth(uint32_t depth, uint32_t *depth32)
@@ -2002,6 +2378,107 @@ match_convert(struct table_rule_match *mh,
 	}
 }
 
+static int
+action_convert(struct rte_table_action *a,
+	struct table_rule_action *action,
+	struct rte_pipeline_table_entry *data)
+{
+	int status;
+
+	/* Apply actions */
+	if (action->action_mask & (1LLU << RTE_TABLE_ACTION_FWD)) {
+		status = rte_table_action_apply(a,
+			data,
+			RTE_TABLE_ACTION_FWD,
+			&action->fwd);
+
+		if (status)
+			return status;
+	}
+
+	if (action->action_mask & (1LLU << RTE_TABLE_ACTION_LB)) {
+		status = rte_table_action_apply(a,
+			data,
+			RTE_TABLE_ACTION_LB,
+			&action->lb);
+
+		if (status)
+			return status;
+	}
+
+	if (action->action_mask & (1LLU << RTE_TABLE_ACTION_MTR)) {
+		status = rte_table_action_apply(a,
+			data,
+			RTE_TABLE_ACTION_MTR,
+			&action->mtr);
+
+		if (status)
+			return status;
+	}
+
+	if (action->action_mask & (1LLU << RTE_TABLE_ACTION_TM)) {
+		status = rte_table_action_apply(a,
+			data,
+			RTE_TABLE_ACTION_TM,
+			&action->tm);
+
+		if (status)
+			return status;
+	}
+
+	if (action->action_mask & (1LLU << RTE_TABLE_ACTION_ENCAP)) {
+		status = rte_table_action_apply(a,
+			data,
+			RTE_TABLE_ACTION_ENCAP,
+			&action->encap);
+
+		if (status)
+			return status;
+	}
+
+	if (action->action_mask & (1LLU << RTE_TABLE_ACTION_NAT)) {
+		status = rte_table_action_apply(a,
+			data,
+			RTE_TABLE_ACTION_NAT,
+			&action->nat);
+
+		if (status)
+			return status;
+	}
+
+	if (action->action_mask & (1LLU << RTE_TABLE_ACTION_TTL)) {
+		status = rte_table_action_apply(a,
+			data,
+			RTE_TABLE_ACTION_TTL,
+			&action->ttl);
+
+		if (status)
+			return status;
+	}
+
+	if (action->action_mask & (1LLU << RTE_TABLE_ACTION_STATS)) {
+		status = rte_table_action_apply(a,
+			data,
+			RTE_TABLE_ACTION_STATS,
+			&action->stats);
+
+		if (status)
+			return status;
+	}
+
+	if (action->action_mask & (1LLU << RTE_TABLE_ACTION_TIME)) {
+		status = rte_table_action_apply(a,
+			data,
+			RTE_TABLE_ACTION_TIME,
+			&action->time);
+
+		if (status)
+			return status;
+	}
+
+	return 0;
+}
+
 static struct pipeline_msg_rsp *
 pipeline_msg_handle_table_rule_add(struct pipeline_data *p,
 	struct pipeline_msg_req *req)
@@ -2019,116 +2496,13 @@ pipeline_msg_handle_table_rule_add(struct pipeline_data *p,
 	memset(p->buffer, 0, sizeof(p->buffer));
 	data_in = (struct rte_pipeline_table_entry *) p->buffer;
 
-	if (action->action_mask & (1LLU << RTE_TABLE_ACTION_FWD)) {
-		status = rte_table_action_apply(a,
-			data_in,
-			RTE_TABLE_ACTION_FWD,
-			&action->fwd);
-
-		if (status) {
-			rsp->status = -1;
-			return rsp;
-		}
-	}
-
-	if (action->action_mask & (1LLU << RTE_TABLE_ACTION_LB)) {
-		status = rte_table_action_apply(a,
-			data_in,
-			RTE_TABLE_ACTION_LB,
-			&action->lb);
-
-		if (status) {
-			rsp->status = -1;
-			return rsp;
-		}
-	}
-
-	if (action->action_mask & (1LLU << RTE_TABLE_ACTION_MTR)) {
-		status = rte_table_action_apply(a,
-			data_in,
-			RTE_TABLE_ACTION_MTR,
-			&action->mtr);
-
-		if (status) {
-			rsp->status = -1;
-			return rsp;
-		}
-	}
-
-	if (action->action_mask & (1LLU << RTE_TABLE_ACTION_TM)) {
-		status = rte_table_action_apply(a,
-			data_in,
-			RTE_TABLE_ACTION_TM,
-			&action->tm);
-
-		if (status) {
-			rsp->status = -1;
-			return rsp;
-		}
-	}
-
-	if (action->action_mask & (1LLU << RTE_TABLE_ACTION_ENCAP)) {
-		status = rte_table_action_apply(a,
-			data_in,
-			RTE_TABLE_ACTION_ENCAP,
-			&action->encap);
-
-		if (status) {
-			rsp->status = -1;
-			return rsp;
-		}
-	}
-
-	if (action->action_mask & (1LLU << RTE_TABLE_ACTION_NAT)) {
-		status = rte_table_action_apply(a,
-			data_in,
-			RTE_TABLE_ACTION_NAT,
-			&action->nat);
-
-		if (status) {
-			rsp->status = -1;
-			return rsp;
-		}
-	}
-
-	if (action->action_mask & (1LLU << RTE_TABLE_ACTION_TTL)) {
-		status = rte_table_action_apply(a,
-			data_in,
-			RTE_TABLE_ACTION_TTL,
-			&action->ttl);
-
-		if (status) {
-			rsp->status = -1;
-			return rsp;
-		}
-	}
-
-	if (action->action_mask & (1LLU << RTE_TABLE_ACTION_STATS)) {
-		status = rte_table_action_apply(a,
-			data_in,
-			RTE_TABLE_ACTION_STATS,
-			&action->stats);
-
-		if (status) {
-			rsp->status = -1;
-			return rsp;
-		}
-	}
-
-	if (action->action_mask & (1LLU << RTE_TABLE_ACTION_TIME)) {
-		status = rte_table_action_apply(a,
-			data_in,
-			RTE_TABLE_ACTION_TIME,
-			&action->time);
-
-		if (status) {
-			rsp->status = -1;
-			return rsp;
-		}
-	}
-
-	/* Add rule (match, action) to table */
 	status = match_convert(match, &match_ll, 1);
+	if (status) {
+		rsp->status = -1;
+		return rsp;
+	}
+
+	status = action_convert(a, action, data_in);
 	if (status) {
 		rsp->status = -1;
 		return rsp;
@@ -2242,98 +2616,9 @@ pipeline_msg_handle_table_rule_add_bulk(struct pipeline_data *p,
 
 	/* Rule action conversion */
 	for (i = 0; i < n_rules; i++) {
-		void *data_in = action_ll_ptr[i];
-		struct table_rule_action *act = &action[i];
-
-		if (act->action_mask & (1LLU << RTE_TABLE_ACTION_FWD)) {
-			status = rte_table_action_apply(a,
-				data_in,
-				RTE_TABLE_ACTION_FWD,
-				&act->fwd);
-
-			if (status)
-				goto fail;
-		}
-
-		if (act->action_mask & (1LLU << RTE_TABLE_ACTION_LB)) {
-			status = rte_table_action_apply(a,
-				data_in,
-				RTE_TABLE_ACTION_LB,
-				&act->lb);
-
-			if (status)
-				goto fail;
-		}
-
-		if (act->action_mask & (1LLU << RTE_TABLE_ACTION_MTR)) {
-			status = rte_table_action_apply(a,
-				data_in,
-				RTE_TABLE_ACTION_MTR,
-				&act->mtr);
-
-			if (status)
-				goto fail;
-		}
-
-		if (act->action_mask & (1LLU << RTE_TABLE_ACTION_TM)) {
-			status = rte_table_action_apply(a,
-				data_in,
-				RTE_TABLE_ACTION_TM,
-				&act->tm);
-
-			if (status)
-				goto fail;
-		}
-
-		if (act->action_mask & (1LLU << RTE_TABLE_ACTION_ENCAP)) {
-			status = rte_table_action_apply(a,
-				data_in,
-				RTE_TABLE_ACTION_ENCAP,
-				&act->encap);
-
-			if (status)
-				goto fail;
-		}
-
-		if (act->action_mask & (1LLU << RTE_TABLE_ACTION_NAT)) {
-			status = rte_table_action_apply(a,
-				data_in,
-				RTE_TABLE_ACTION_NAT,
-				&act->nat);
-
-			if (status)
-				goto fail;
-		}
-
-		if (act->action_mask & (1LLU << RTE_TABLE_ACTION_TTL)) {
-			status = rte_table_action_apply(a,
-				data_in,
-				RTE_TABLE_ACTION_TTL,
-				&act->ttl);
-
-			if (status)
-				goto fail;
-		}
-
-		if (act->action_mask & (1LLU << RTE_TABLE_ACTION_STATS)) {
-			status = rte_table_action_apply(a,
-				data_in,
-				RTE_TABLE_ACTION_STATS,
-				&act->stats);
-
-			if (status)
-				goto fail;
-		}
-
-		if (act->action_mask & (1LLU << RTE_TABLE_ACTION_TIME)) {
-			status = rte_table_action_apply(a,
-				data_in,
-				RTE_TABLE_ACTION_TIME,
-				&act->time);
-
-			if (status)
-				goto fail;
-		}
+		status = action_convert(a, &action[i], action_ll_ptr[i]);
+		if (status)
+			goto fail;
 	}
 
 	/* Add rule (match, action) to table */
