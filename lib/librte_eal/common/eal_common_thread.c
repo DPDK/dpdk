@@ -191,7 +191,8 @@ rte_ctrl_thread_create(pthread_t *thread, const char *name,
 	if (name != NULL) {
 		ret = rte_thread_setname(*thread, name);
 		if (ret < 0)
-			goto fail;
+			RTE_LOG(DEBUG, EAL,
+				"Cannot set name for ctrl thread\n");
 	}
 
 	cpu_found = 0;
