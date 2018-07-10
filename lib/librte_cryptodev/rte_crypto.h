@@ -23,6 +23,7 @@ extern "C" {
 #include <rte_common.h>
 
 #include "rte_crypto_sym.h"
+#include "rte_crypto_asym.h"
 
 /** Crypto operation types */
 enum rte_crypto_op_type {
@@ -30,6 +31,8 @@ enum rte_crypto_op_type {
 	/**< Undefined operation type */
 	RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 	/**< Symmetric operation */
+	RTE_CRYPTO_OP_TYPE_ASYMMETRIC
+	/**< Asymmetric operation */
 };
 
 /** Status of crypto operation */
@@ -114,6 +117,10 @@ struct rte_crypto_op {
 	union {
 		struct rte_crypto_sym_op sym[0];
 		/**< Symmetric operation parameters */
+
+		struct rte_crypto_asym_op asym[0];
+		/**< Asymmetric operation parameters */
+
 	}; /**< operation specific parameters */
 };
 
@@ -134,6 +141,9 @@ __rte_crypto_op_reset(struct rte_crypto_op *op, enum rte_crypto_op_type type)
 	case RTE_CRYPTO_OP_TYPE_SYMMETRIC:
 		__rte_crypto_sym_op_reset(op->sym);
 		break;
+	case RTE_CRYPTO_OP_TYPE_ASYMMETRIC:
+		memset(op->asym, 0, sizeof(struct rte_crypto_asym_op));
+	break;
 	case RTE_CRYPTO_OP_TYPE_UNDEFINED:
 	default:
 		break;
@@ -300,9 +310,14 @@ __rte_crypto_op_get_priv_data(struct rte_crypto_op *op, uint32_t size)
 	if (likely(op->mempool != NULL)) {
 		priv_size = __rte_crypto_op_get_priv_data_size(op->mempool);
 
-		if (likely(priv_size >= size))
-			return (void *)((uint8_t *)(op + 1) +
+		if (likely(priv_size >= size)) {
+			if (op->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC)
+				return (void *)((uint8_t *)(op + 1) +
 					sizeof(struct rte_crypto_sym_op));
+			if (op->type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC)
+				return (void *)((uint8_t *)(op + 1) +
+					sizeof(struct rte_crypto_asym_op));
+		}
 	}
 
 	return NULL;
@@ -403,6 +418,24 @@ rte_crypto_op_attach_sym_session(struct rte_crypto_op *op,
 	op->sess_type = RTE_CRYPTO_OP_WITH_SESSION;
 
 	return __rte_crypto_sym_op_attach_sym_session(op->sym, sess);
+}
+
+/**
+ * Attach a asymmetric session to a crypto operation
+ *
+ * @param	op	crypto operation, must be of type asymmetric
+ * @param	sess	cryptodev session
+ */
+static inline int
+rte_crypto_op_attach_asym_session(struct rte_crypto_op *op,
+		struct rte_cryptodev_asym_session *sess)
+{
+	if (unlikely(op->type != RTE_CRYPTO_OP_TYPE_ASYMMETRIC))
+		return -1;
+
+	op->sess_type = RTE_CRYPTO_OP_WITH_SESSION;
+	op->asym->session = sess;
+	return 0;
 }
 
 #ifdef __cplusplus

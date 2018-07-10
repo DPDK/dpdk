@@ -91,6 +91,12 @@ DPDK_18.05 {
 EXPERIMENTAL {
         global:
 
+	rte_cryptodev_asym_get_header_session_size;
+	rte_cryptodev_asym_get_private_session_size;
+	rte_cryptodev_asym_session_clear;
+	rte_cryptodev_asym_session_create;
+	rte_cryptodev_asym_session_free;
+	rte_cryptodev_asym_session_init;
 	rte_cryptodev_sym_session_get_user_data;
 	rte_cryptodev_sym_session_set_user_data;
 };
