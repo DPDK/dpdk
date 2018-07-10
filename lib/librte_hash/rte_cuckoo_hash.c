@@ -484,6 +484,33 @@ enqueue_slot_back(const struct rte_hash *h,
 		rte_ring_sp_enqueue(h->free_slots, slot_id);
 }
 
+/* Search a key from bucket and update its data */
+static inline int32_t
+search_and_update(const struct rte_hash *h, void *data, const void *key,
+	struct rte_hash_bucket *bkt, hash_sig_t sig, hash_sig_t alt_hash)
+{
+	int i;
+	struct rte_hash_key *k, *keys = h->key_store;
+
+	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
+		if (bkt->sig_current[i] == sig &&
+				bkt->sig_alt[i] == alt_hash) {
+			k = (struct rte_hash_key *) ((char *)keys +
+					bkt->key_idx[i] * h->key_entry_size);
+			if (rte_hash_cmp_eq(key, k->key, h) == 0) {
+				/* Update data */
+				k->pdata = data;
+				/*
+				 * Return index where key is stored,
+				 * subtracting the first dummy index
+				 */
+				return bkt->key_idx[i] - 1;
+			}
+		}
+	}
+	return -1;
+}
+
 static inline int32_t
 __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 						hash_sig_t sig, void *data)
@@ -492,7 +519,7 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 	uint32_t prim_bucket_idx, sec_bucket_idx;
 	unsigned i;
 	struct rte_hash_bucket *prim_bkt, *sec_bkt;
-	struct rte_hash_key *new_k, *k, *keys = h->key_store;
+	struct rte_hash_key *new_k, *keys = h->key_store;
 	void *slot_id = NULL;
 	uint32_t new_idx;
 	int ret;
@@ -546,46 +573,14 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 	new_idx = (uint32_t)((uintptr_t) slot_id);
 
 	/* Check if key is already inserted in primary location */
-	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
-		if (prim_bkt->sig_current[i] == sig &&
-				prim_bkt->sig_alt[i] == alt_hash) {
-			k = (struct rte_hash_key *) ((char *)keys +
-					prim_bkt->key_idx[i] * h->key_entry_size);
-			if (rte_hash_cmp_eq(key, k->key, h) == 0) {
-				/* Enqueue index of free slot back in the ring. */
-				enqueue_slot_back(h, cached_free_slots, slot_id);
-				/* Update data */
-				k->pdata = data;
-				/*
-				 * Return index where key is stored,
-				 * subtracting the first dummy index
-				 */
-				ret = prim_bkt->key_idx[i] - 1;
-				goto failure;
-			}
-		}
-	}
+	ret = search_and_update(h, data, key, prim_bkt, sig, alt_hash);
+	if (ret != -1)
+		goto failure;
 
 	/* Check if key is already inserted in secondary location */
-	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
-		if (sec_bkt->sig_alt[i] == sig &&
-				sec_bkt->sig_current[i] == alt_hash) {
-			k = (struct rte_hash_key *) ((char *)keys +
-					sec_bkt->key_idx[i] * h->key_entry_size);
-			if (rte_hash_cmp_eq(key, k->key, h) == 0) {
-				/* Enqueue index of free slot back in the ring. */
-				enqueue_slot_back(h, cached_free_slots, slot_id);
-				/* Update data */
-				k->pdata = data;
-				/*
-				 * Return index where key is stored,
-				 * subtracting the first dummy index
-				 */
-				ret = sec_bkt->key_idx[i] - 1;
-				goto failure;
-			}
-		}
-	}
+	ret = search_and_update(h, data, key, sec_bkt, alt_hash, sig);
+	if (ret != -1)
+		goto failure;
 
 	/* Copy key */
 	rte_memcpy(new_k->key, key, h->key_len);
@@ -698,20 +693,15 @@ rte_hash_add_key_data(const struct rte_hash *h, const void *key, void *data)
 	else
 		return ret;
 }
+
+/* Search one bucket to find the match key */
 static inline int32_t
-__rte_hash_lookup_with_hash(const struct rte_hash *h, const void *key,
-					hash_sig_t sig, void **data)
+search_one_bucket(const struct rte_hash *h, const void *key, hash_sig_t sig,
+			void **data, const struct rte_hash_bucket *bkt)
 {
-	uint32_t bucket_idx;
-	hash_sig_t alt_hash;
-	unsigned i;
-	struct rte_hash_bucket *bkt;
+	int i;
 	struct rte_hash_key *k, *keys = h->key_store;
 
-	bucket_idx = sig & h->bucket_bitmask;
-	bkt = &h->buckets[bucket_idx];
-
-	/* Check if key is in primary location */
 	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
 		if (bkt->sig_current[i] == sig &&
 				bkt->key_idx[i] != EMPTY_SLOT) {
@@ -728,6 +718,26 @@ __rte_hash_lookup_with_hash(const struct rte_hash *h, const void *key,
 			}
 		}
 	}
+	return -1;
+}
+
+static inline int32_t
+__rte_hash_lookup_with_hash(const struct rte_hash *h, const void *key,
+					hash_sig_t sig, void **data)
+{
+	uint32_t bucket_idx;
+	hash_sig_t alt_hash;
+	struct rte_hash_bucket *bkt;
+	int ret;
+
+	bucket_idx = sig & h->bucket_bitmask;
+	bkt = &h->buckets[bucket_idx];
+
+
+	/* Check if key is in primary location */
+	ret = search_one_bucket(h, key, sig, data, bkt);
+	if (ret != -1)
+		return ret;
 
 	/* Calculate secondary hash */
 	alt_hash = rte_hash_secondary_hash(sig);
@@ -735,22 +745,9 @@ __rte_hash_lookup_with_hash(const struct rte_hash *h, const void *key,
 	bkt = &h->buckets[bucket_idx];
 
 	/* Check if key is in secondary location */
-	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
-		if (bkt->sig_current[i] == alt_hash &&
-				bkt->sig_alt[i] == sig) {
-			k = (struct rte_hash_key *) ((char *)keys +
-					bkt->key_idx[i] * h->key_entry_size);
-			if (rte_hash_cmp_eq(key, k->key, h) == 0) {
-				if (data != NULL)
-					*data = k->pdata;
-				/*
-				 * Return index where key is stored,
-				 * subtracting the first dummy index
-				 */
-				return bkt->key_idx[i] - 1;
-			}
-		}
-	}
+	ret = search_one_bucket(h, key, alt_hash, data, bkt);
+	if (ret != -1)
+		return ret;
 
 	return -ENOENT;
 }
@@ -814,19 +811,14 @@ remove_entry(const struct rte_hash *h, struct rte_hash_bucket *bkt, unsigned i)
 	}
 }
 
+/* Search one bucket and remove the matched key */
 static inline int32_t
-__rte_hash_del_key_with_hash(const struct rte_hash *h, const void *key,
-						hash_sig_t sig)
+search_and_remove(const struct rte_hash *h, const void *key,
+			struct rte_hash_bucket *bkt, hash_sig_t sig)
 {
-	uint32_t bucket_idx;
-	hash_sig_t alt_hash;
-	unsigned i;
-	struct rte_hash_bucket *bkt;
 	struct rte_hash_key *k, *keys = h->key_store;
+	unsigned int i;
 	int32_t ret;
-
-	bucket_idx = sig & h->bucket_bitmask;
-	bkt = &h->buckets[bucket_idx];
 
 	/* Check if key is in primary location */
 	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
@@ -847,31 +839,35 @@ __rte_hash_del_key_with_hash(const struct rte_hash *h, const void *key,
 			}
 		}
 	}
+	return -1;
+}
+
+static inline int32_t
+__rte_hash_del_key_with_hash(const struct rte_hash *h, const void *key,
+						hash_sig_t sig)
+{
+	uint32_t bucket_idx;
+	hash_sig_t alt_hash;
+	struct rte_hash_bucket *bkt;
+	int32_t ret;
+
+	bucket_idx = sig & h->bucket_bitmask;
+	bkt = &h->buckets[bucket_idx];
+
+	/* look for key in primary bucket */
+	ret = search_and_remove(h, key, bkt, sig);
+	if (ret != -1)
+		return ret;
 
 	/* Calculate secondary hash */
 	alt_hash = rte_hash_secondary_hash(sig);
 	bucket_idx = alt_hash & h->bucket_bitmask;
 	bkt = &h->buckets[bucket_idx];
 
-	/* Check if key is in secondary location */
-	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
-		if (bkt->sig_current[i] == alt_hash &&
-				bkt->key_idx[i] != EMPTY_SLOT) {
-			k = (struct rte_hash_key *) ((char *)keys +
-					bkt->key_idx[i] * h->key_entry_size);
-			if (rte_hash_cmp_eq(key, k->key, h) == 0) {
-				remove_entry(h, bkt, i);
-
-				/*
-				 * Return index where key is stored,
-				 * subtracting the first dummy index
-				 */
-				ret = bkt->key_idx[i] - 1;
-				bkt->key_idx[i] = EMPTY_SLOT;
-				return ret;
-			}
-		}
-	}
+	/* look for key in secondary bucket */
+	ret = search_and_remove(h, key, bkt, alt_hash);
+	if (ret != -1)
+		return ret;
 
 	return -ENOENT;
 }
