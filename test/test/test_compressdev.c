@@ -80,6 +80,9 @@ testsuite_setup(void)
 		return TEST_FAILED;
 	}
 
+	RTE_LOG(NOTICE, USER1, "Running tests on device %s\n",
+				rte_compressdev_name_get(0));
+
 	uint32_t max_buf_size = 0;
 	for (i = 0; i < RTE_DIM(compress_test_bufs); i++)
 		max_buf_size = RTE_MAX(max_buf_size,
