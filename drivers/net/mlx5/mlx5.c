@@ -652,11 +652,13 @@ static int
 mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	       struct rte_pci_device *pci_dev)
 {
-	struct ibv_device **list = NULL;
-	struct ibv_device *ibv_dev;
+	struct ibv_device **list;
 	struct ibv_context *ctx = NULL;
 	struct ibv_device_attr_ex attr;
+	struct ibv_pd *pd = NULL;
 	struct mlx5dv_context dv_attr = { .comp_mask = 0 };
+	struct rte_eth_dev *eth_dev = NULL;
+	struct priv *priv = NULL;
 	int err = 0;
 	unsigned int vf = 0;
 	unsigned int mps;
@@ -719,6 +721,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		err = rte_errno;
 		break;
 	}
+	mlx5_glue->free_device_list(list);
 	if (ctx == NULL) {
 		switch (err) {
 		case 0:
@@ -733,7 +736,6 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		}
 		goto error;
 	}
-	ibv_dev = list[i];
 	DRV_LOG(DEBUG, "device opened");
 #ifdef HAVE_IBV_MLX5_MOD_SWP
 	dv_attr.comp_mask |= MLX5DV_CONTEXT_MASK_SWP;
@@ -827,15 +829,9 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		DEBUG("ibv_query_device_ex() failed");
 		goto error;
 	}
-	DRV_LOG(INFO, "%u port(s) detected", attr.orig_attr.phys_port_cnt);
-	for (i = 0; i < attr.orig_attr.phys_port_cnt; i++) {
+	{
 		char name[RTE_ETH_NAME_MAX_LEN];
-		int len;
-		uint32_t port = i + 1; /* ports are indexed from one */
 		struct ibv_port_attr port_attr;
-		struct ibv_pd *pd = NULL;
-		struct priv *priv = NULL;
-		struct rte_eth_dev *eth_dev = NULL;
 		struct ether_addr mac;
 		struct mlx5_dev_config config = {
 			.cqe_comp = cqe_comp,
@@ -859,11 +855,9 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			},
 		};
 
-		len = snprintf(name, sizeof(name), PCI_PRI_FMT,
+		snprintf(name, sizeof(name), PCI_PRI_FMT,
 			 pci_dev->addr.domain, pci_dev->addr.bus,
 			 pci_dev->addr.devid, pci_dev->addr.function);
-		if (attr.orig_attr.phys_port_cnt > 1)
-			snprintf(name + len, sizeof(name), " port %u", i);
 		if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 			eth_dev = rte_eth_dev_attach_secondary(name);
 			if (eth_dev == NULL) {
@@ -901,31 +895,22 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			eth_dev->tx_pkt_burst =
 				mlx5_select_tx_function(eth_dev);
 			rte_eth_dev_probing_finish(eth_dev);
-			continue;
-		}
-		DRV_LOG(DEBUG, "using port %u", port);
-		if (!ctx)
-			ctx = mlx5_glue->open_device(ibv_dev);
-		if (ctx == NULL) {
-			err = ENODEV;
-			goto port_error;
+			claim_zero(mlx5_glue->close_device(ctx));
+			return 0;
 		}
 		/* Check port status. */
-		err = mlx5_glue->query_port(ctx, port, &port_attr);
+		err = mlx5_glue->query_port(ctx, 1, &port_attr);
 		if (err) {
 			DRV_LOG(ERR, "port query failed: %s", strerror(err));
-			goto port_error;
+			goto error;
 		}
 		if (port_attr.link_layer != IBV_LINK_LAYER_ETHERNET) {
-			DRV_LOG(ERR,
-				"port %d is not configured in Ethernet mode",
-				port);
+			DRV_LOG(ERR, "port is not configured in Ethernet mode");
 			err = EINVAL;
-			goto port_error;
+			goto error;
 		}
 		if (port_attr.state != IBV_PORT_ACTIVE)
-			DRV_LOG(DEBUG, "port %d is not active: \"%s\" (%d)",
-				port,
+			DRV_LOG(DEBUG, "port is not active: \"%s\" (%d)",
 				mlx5_glue->port_state_str(port_attr.state),
 				port_attr.state);
 		/* Allocate protection domain. */
@@ -933,7 +918,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		if (pd == NULL) {
 			DRV_LOG(ERR, "PD allocation failure");
 			err = ENOMEM;
-			goto port_error;
+			goto error;
 		}
 		/* from rte_ethdev.c */
 		priv = rte_zmalloc("ethdev private structure",
@@ -942,13 +927,12 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		if (priv == NULL) {
 			DRV_LOG(ERR, "priv allocation failure");
 			err = ENOMEM;
-			goto port_error;
+			goto error;
 		}
 		priv->ctx = ctx;
 		strncpy(priv->ibdev_path, priv->ctx->device->ibdev_path,
 			sizeof(priv->ibdev_path));
 		priv->device_attr = attr;
-		priv->port = port;
 		priv->pd = pd;
 		priv->mtu = ETHER_MTU;
 		err = mlx5_args(&config, pci_dev->device.devargs);
@@ -956,7 +940,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			err = rte_errno;
 			DRV_LOG(ERR, "failed to process device arguments: %s",
 				strerror(rte_errno));
-			goto port_error;
+			goto error;
 		}
 		config.hw_csum = !!(attr.device_cap_flags_ex &
 				    IBV_DEVICE_RAW_IP_CSUM);
@@ -1006,7 +990,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 				"multi-packet send not supported on this device"
 				" (" MLX5_TXQ_MPW_EN ")");
 			err = ENOTSUP;
-			goto port_error;
+			goto error;
 		}
 		DRV_LOG(INFO, "%s MPS is %s",
 			config.mps == MLX5_MPW_ENHANCED ? "enhanced " : "",
@@ -1038,7 +1022,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		if (eth_dev == NULL) {
 			DRV_LOG(ERR, "can not allocate rte ethdev");
 			err = ENOMEM;
-			goto port_error;
+			goto error;
 		}
 		eth_dev->data->dev_private = priv;
 		priv->dev_data = eth_dev->data;
@@ -1049,7 +1033,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		err = mlx5_uar_init_primary(eth_dev);
 		if (err) {
 			err = rte_errno;
-			goto port_error;
+			goto error;
 		}
 		/* Configure the first MAC address by default. */
 		if (mlx5_get_mac(eth_dev, &mac.addr_bytes)) {
@@ -1058,7 +1042,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 				" loaded? (errno: %s)",
 				eth_dev->data->port_id, strerror(rte_errno));
 			err = ENODEV;
-			goto port_error;
+			goto error;
 		}
 		DRV_LOG(INFO,
 			"port %u MAC address is %02x:%02x:%02x:%02x:%02x:%02x",
@@ -1082,7 +1066,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		err = mlx5_get_mtu(eth_dev, &priv->mtu);
 		if (err) {
 			err = rte_errno;
-			goto port_error;
+			goto error;
 		}
 		DRV_LOG(DEBUG, "port %u MTU is %u", eth_dev->data->port_id,
 			priv->mtu);
@@ -1131,7 +1115,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			DRV_LOG(ERR, "port %u drop queue allocation failed: %s",
 				eth_dev->data->port_id, strerror(rte_errno));
 			err = rte_errno;
-			goto port_error;
+			goto error;
 		}
 		/* Supported Verbs flow priority number detection. */
 		if (verb_priorities == 0)
@@ -1140,7 +1124,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			DRV_LOG(ERR, "port %u wrong Verbs flow priorities: %u",
 				eth_dev->data->port_id, verb_priorities);
 			err = ENOTSUP;
-			goto port_error;
+			goto error;
 		}
 		priv->config.max_verbs_prio = verb_priorities;
 		/*
@@ -1154,7 +1138,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 					 eth_dev->device->numa_node);
 		if (err) {
 			err = rte_errno;
-			goto port_error;
+			goto error;
 		}
 		/* Add device to memory callback list. */
 		rte_rwlock_write_lock(&mlx5_shared_data->mem_event_rwlock);
@@ -1162,33 +1146,17 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 				 priv, mem_event_cb);
 		rte_rwlock_write_unlock(&mlx5_shared_data->mem_event_rwlock);
 		rte_eth_dev_probing_finish(eth_dev);
-		/*
-		 * Each eth_dev instance is assigned its own Verbs context,
-		 * since this one is consumed, let the next iteration open
-		 * another.
-		 */
-		ctx = NULL;
-		continue;
-port_error:
-		if (priv)
-			rte_free(priv);
-		if (pd)
-			claim_zero(mlx5_glue->dealloc_pd(pd));
-		if (eth_dev && rte_eal_process_type() == RTE_PROC_PRIMARY)
-			rte_eth_dev_release_port(eth_dev);
-		break;
+		return 0;
 	}
-	/*
-	 * XXX if something went wrong in the loop above, there is a resource
-	 * leak (ctx, pd, priv, dpdk ethdev) but we can do nothing about it as
-	 * long as the dpdk does not provide a way to deallocate a ethdev and a
-	 * way to enumerate the registered ethdevs to free the previous ones.
-	 */
 error:
+	if (priv)
+		rte_free(priv);
+	if (pd)
+		claim_zero(mlx5_glue->dealloc_pd(pd));
+	if (eth_dev)
+		rte_eth_dev_release_port(eth_dev);
 	if (ctx)
 		claim_zero(mlx5_glue->close_device(ctx));
-	if (list)
-		mlx5_glue->free_device_list(list);
 	if (err) {
 		rte_errno = err;
 		return -rte_errno;

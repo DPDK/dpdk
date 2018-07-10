@@ -434,7 +434,7 @@ mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 		/* Move the QP to this state. */
 		.qp_state = IBV_QPS_INIT,
 		/* Primary port number. */
-		.port_num = priv->port
+		.port_num = 1,
 	};
 	ret = mlx5_glue->modify_qp(tmpl.qp, &attr.mod,
 				   (IBV_QP_STATE | IBV_QP_PORT));

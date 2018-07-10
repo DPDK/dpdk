@@ -166,7 +166,7 @@ try_dev_id:
 		if (dev_port == dev_port_prev)
 			goto try_dev_id;
 		dev_port_prev = dev_port;
-		if (dev_port == (priv->port - 1u))
+		if (dev_port == 0)
 			strlcpy(match, name, sizeof(match));
 	}
 	closedir(dir);

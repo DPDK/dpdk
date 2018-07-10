@@ -159,7 +159,6 @@ struct priv {
 	unsigned int vlan_filter_n; /* Number of configured VLAN filters. */
 	/* Device properties. */
 	uint16_t mtu; /* Configured MTU. */
-	uint8_t port; /* Physical port number. */
 	unsigned int isolated:1; /* Whether isolated mode is enabled. */
 	/* RX/TX queues. */
 	unsigned int rxqs_n; /* RX queues array size. */
