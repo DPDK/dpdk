@@ -66,6 +66,9 @@ rte_hash_cuckoo_move_insert_mw_tm(const struct rte_hash *h,
 	while (try < RTE_HASH_TSX_MAX_RETRY) {
 		status = rte_xbegin();
 		if (likely(status == RTE_XBEGIN_STARTED)) {
+			/* In case empty slot was gone before entering TSX */
+			if (curr_bkt->key_idx[curr_slot] != EMPTY_SLOT)
+				rte_xabort(RTE_XABORT_CUCKOO_PATH_INVALIDED);
 			while (likely(curr_node->prev != NULL)) {
 				prev_node = curr_node->prev;
 				prev_bkt = prev_node->bkt;
