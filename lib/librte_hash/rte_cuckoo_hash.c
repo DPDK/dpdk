@@ -280,7 +280,10 @@ rte_hash_create(const struct rte_hash_parameters *params)
 			h->add_key = ADD_KEY_MULTIWRITER;
 			h->multiwriter_lock = rte_malloc(NULL,
 							sizeof(rte_spinlock_t),
-							LCORE_CACHE_SIZE);
+							RTE_CACHE_LINE_SIZE);
+			if (h->multiwriter_lock == NULL)
+				goto err_unlock;
+
 			rte_spinlock_init(h->multiwriter_lock);
 		}
 	} else
