@@ -654,10 +654,10 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 {
 	struct ibv_device **list = NULL;
 	struct ibv_device *ibv_dev;
+	struct ibv_context *ctx = NULL;
+	struct ibv_device_attr_ex attr;
 	struct mlx5dv_context dv_attr = { .comp_mask = 0 };
 	int err = 0;
-	struct ibv_context *attr_ctx = NULL;
-	struct ibv_device_attr_ex device_attr;
 	unsigned int vf = 0;
 	unsigned int mps;
 	unsigned int cqe_comp;
@@ -714,12 +714,12 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		       PCI_DEVICE_ID_MELLANOX_CONNECTX5VF) ||
 		      (pci_dev->id.device_id ==
 		       PCI_DEVICE_ID_MELLANOX_CONNECTX5EXVF));
-		attr_ctx = mlx5_glue->open_device(list[i]);
+		ctx = mlx5_glue->open_device(list[i]);
 		rte_errno = errno;
 		err = rte_errno;
 		break;
 	}
-	if (attr_ctx == NULL) {
+	if (ctx == NULL) {
 		switch (err) {
 		case 0:
 			DRV_LOG(ERR,
@@ -748,7 +748,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 #ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
 	dv_attr.comp_mask |= MLX5DV_CONTEXT_MASK_STRIDING_RQ;
 #endif
-	mlx5_glue->dv_query_device(attr_ctx, &dv_attr);
+	mlx5_glue->dv_query_device(ctx, &dv_attr);
 	if (dv_attr.flags & MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED) {
 		if (dv_attr.flags & MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW) {
 			DRV_LOG(DEBUG, "enhanced MPW is supported");
@@ -822,23 +822,20 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	DRV_LOG(WARNING, "MPLS over GRE/UDP tunnel offloading disabled due to"
 		" old OFED/rdma-core version or firmware configuration");
 #endif
-	err = mlx5_glue->query_device_ex(attr_ctx, NULL, &device_attr);
+	err = mlx5_glue->query_device_ex(ctx, NULL, &attr);
 	if (err) {
 		DEBUG("ibv_query_device_ex() failed");
 		goto error;
 	}
-	DRV_LOG(INFO, "%u port(s) detected",
-		device_attr.orig_attr.phys_port_cnt);
-	for (i = 0; i < device_attr.orig_attr.phys_port_cnt; i++) {
+	DRV_LOG(INFO, "%u port(s) detected", attr.orig_attr.phys_port_cnt);
+	for (i = 0; i < attr.orig_attr.phys_port_cnt; i++) {
 		char name[RTE_ETH_NAME_MAX_LEN];
 		int len;
 		uint32_t port = i + 1; /* ports are indexed from one */
-		struct ibv_context *ctx = NULL;
 		struct ibv_port_attr port_attr;
 		struct ibv_pd *pd = NULL;
 		struct priv *priv = NULL;
 		struct rte_eth_dev *eth_dev = NULL;
-		struct ibv_device_attr_ex device_attr_ex;
 		struct ether_addr mac;
 		struct mlx5_dev_config config = {
 			.cqe_comp = cqe_comp,
@@ -865,7 +862,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		len = snprintf(name, sizeof(name), PCI_PRI_FMT,
 			 pci_dev->addr.domain, pci_dev->addr.bus,
 			 pci_dev->addr.devid, pci_dev->addr.function);
-		if (device_attr.orig_attr.phys_port_cnt > 1)
+		if (attr.orig_attr.phys_port_cnt > 1)
 			snprintf(name + len, sizeof(name), " port %u", i);
 		if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 			eth_dev = rte_eth_dev_attach_secondary(name);
@@ -907,7 +904,8 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			continue;
 		}
 		DRV_LOG(DEBUG, "using port %u", port);
-		ctx = mlx5_glue->open_device(ibv_dev);
+		if (!ctx)
+			ctx = mlx5_glue->open_device(ibv_dev);
 		if (ctx == NULL) {
 			err = ENODEV;
 			goto port_error;
@@ -949,7 +947,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		priv->ctx = ctx;
 		strncpy(priv->ibdev_path, priv->ctx->device->ibdev_path,
 			sizeof(priv->ibdev_path));
-		priv->device_attr = device_attr;
+		priv->device_attr = attr;
 		priv->port = port;
 		priv->pd = pd;
 		priv->mtu = ETHER_MTU;
@@ -960,17 +958,12 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 				strerror(rte_errno));
 			goto port_error;
 		}
-		err = mlx5_glue->query_device_ex(ctx, NULL, &device_attr_ex);
-		if (err) {
-			DRV_LOG(ERR, "ibv_query_device_ex() failed");
-			goto port_error;
-		}
-		config.hw_csum = !!(device_attr_ex.device_cap_flags_ex &
+		config.hw_csum = !!(attr.device_cap_flags_ex &
 				    IBV_DEVICE_RAW_IP_CSUM);
 		DRV_LOG(DEBUG, "checksum offloading is %ssupported",
 			(config.hw_csum ? "" : "not "));
 #ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
-		config.flow_counter_en = !!(device_attr.max_counter_sets);
+		config.flow_counter_en = !!attr.max_counter_sets;
 		mlx5_glue->describe_counter_set(ctx, 0, &cs_desc);
 		DRV_LOG(DEBUG,
 			"counter type = %d, num of cs = %ld, attributes = %d",
@@ -978,7 +971,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			cs_desc.attributes);
 #endif
 		config.ind_table_max_size =
-			device_attr_ex.rss_caps.max_rwq_indirection_table_size;
+			attr.rss_caps.max_rwq_indirection_table_size;
 		/* Remove this check once DPDK supports larger/variable
 		 * indirection tables. */
 		if (config.ind_table_max_size >
@@ -986,29 +979,28 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			config.ind_table_max_size = ETH_RSS_RETA_SIZE_512;
 		DRV_LOG(DEBUG, "maximum Rx indirection table size is %u",
 			config.ind_table_max_size);
-		config.hw_vlan_strip = !!(device_attr_ex.raw_packet_caps &
+		config.hw_vlan_strip = !!(attr.raw_packet_caps &
 					 IBV_RAW_PACKET_CAP_CVLAN_STRIPPING);
 		DRV_LOG(DEBUG, "VLAN stripping is %ssupported",
 			(config.hw_vlan_strip ? "" : "not "));
 
-		config.hw_fcs_strip = !!(device_attr_ex.raw_packet_caps &
+		config.hw_fcs_strip = !!(attr.raw_packet_caps &
 					 IBV_RAW_PACKET_CAP_SCATTER_FCS);
 		DRV_LOG(DEBUG, "FCS stripping configuration is %ssupported",
 			(config.hw_fcs_strip ? "" : "not "));
 
 #ifdef HAVE_IBV_WQ_FLAG_RX_END_PADDING
-		config.hw_padding = !!device_attr_ex.rx_pad_end_addr_align;
+		config.hw_padding = !!attr.rx_pad_end_addr_align;
 #endif
 		DRV_LOG(DEBUG,
 			"hardware Rx end alignment padding is %ssupported",
 			(config.hw_padding ? "" : "not "));
 		config.vf = vf;
-		config.tso = ((device_attr_ex.tso_caps.max_tso > 0) &&
-			      (device_attr_ex.tso_caps.supported_qpts &
-			      (1 << IBV_QPT_RAW_PACKET)));
+		config.tso = (attr.tso_caps.max_tso > 0 &&
+			      (attr.tso_caps.supported_qpts &
+			       (1 << IBV_QPT_RAW_PACKET)));
 		if (config.tso)
-			config.tso_max_payload_sz =
-					device_attr_ex.tso_caps.max_tso;
+			config.tso_max_payload_sz = attr.tso_caps.max_tso;
 		if (config.mps && !mps) {
 			DRV_LOG(ERR,
 				"multi-packet send not supported on this device"
@@ -1170,14 +1162,18 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 				 priv, mem_event_cb);
 		rte_rwlock_write_unlock(&mlx5_shared_data->mem_event_rwlock);
 		rte_eth_dev_probing_finish(eth_dev);
+		/*
+		 * Each eth_dev instance is assigned its own Verbs context,
+		 * since this one is consumed, let the next iteration open
+		 * another.
+		 */
+		ctx = NULL;
 		continue;
 port_error:
 		if (priv)
 			rte_free(priv);
 		if (pd)
 			claim_zero(mlx5_glue->dealloc_pd(pd));
-		if (ctx)
-			claim_zero(mlx5_glue->close_device(ctx));
 		if (eth_dev && rte_eal_process_type() == RTE_PROC_PRIMARY)
 			rte_eth_dev_release_port(eth_dev);
 		break;
@@ -1189,8 +1185,8 @@ port_error:
 	 * way to enumerate the registered ethdevs to free the previous ones.
 	 */
 error:
-	if (attr_ctx)
-		claim_zero(mlx5_glue->close_device(attr_ctx));
+	if (ctx)
+		claim_zero(mlx5_glue->close_device(ctx));
 	if (list)
 		mlx5_glue->free_device_list(list);
 	if (err) {
