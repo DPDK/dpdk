@@ -1168,6 +1168,52 @@ error:
 	return NULL;
 }
 
+/** Data associated with devices to spawn. */
+struct mlx5_dev_spawn_data {
+	unsigned int ifindex; /**< Network interface index. */
+	struct mlx5_switch_info info; /**< Switch information. */
+	struct ibv_device *ibv_dev; /**< Associated IB device. */
+	struct rte_eth_dev *eth_dev; /**< Associated Ethernet device. */
+};
+
+/**
+ * Comparison callback to sort device data.
+ *
+ * This is meant to be used with qsort().
+ *
+ * @param a[in]
+ *   Pointer to pointer to first data object.
+ * @param b[in]
+ *   Pointer to pointer to second data object.
+ *
+ * @return
+ *   0 if both objects are equal, less than 0 if the first argument is less
+ *   than the second, greater than 0 otherwise.
+ */
+static int
+mlx5_dev_spawn_data_cmp(const void *a, const void *b)
+{
+	const struct mlx5_switch_info *si_a =
+		&((const struct mlx5_dev_spawn_data *)a)->info;
+	const struct mlx5_switch_info *si_b =
+		&((const struct mlx5_dev_spawn_data *)b)->info;
+	int ret;
+
+	/* Master device first. */
+	ret = si_b->master - si_a->master;
+	if (ret)
+		return ret;
+	/* Then representor devices. */
+	ret = si_b->representor - si_a->representor;
+	if (ret)
+		return ret;
+	/* Unidentified devices come last in no specific order. */
+	if (!si_a->representor)
+		return 0;
+	/* Order representors by name. */
+	return si_a->port_name - si_b->port_name;
+}
+
 /**
  * DPDK callback to register a PCI device.
  *
@@ -1218,9 +1264,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	}
 	ibv_match[n] = NULL;
 
-	unsigned int ifindex[n];
-	struct mlx5_switch_info info[n];
-	struct rte_eth_dev *eth_list[n];
+	struct mlx5_dev_spawn_data list[n];
 	int nl_route = n ? mlx5_nl_init(0, NETLINK_ROUTE) : -1;
 	int nl_rdma = n ? mlx5_nl_init(0, NETLINK_RDMA) : -1;
 	unsigned int i;
@@ -1242,16 +1286,19 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	 *    bail out.
 	 */
 	for (i = 0; i != n; ++i) {
+		list[i].ibv_dev = ibv_match[i];
+		list[i].eth_dev = NULL;
 		if (nl_rdma < 0)
-			ifindex[i] = 0;
+			list[i].ifindex = 0;
 		else
-			ifindex[i] = mlx5_nl_ifindex(nl_rdma,
-						     ibv_match[i]->name);
+			list[i].ifindex = mlx5_nl_ifindex
+				(nl_rdma, list[i].ibv_dev->name);
 		if (nl_route < 0 ||
-		    !ifindex[i] ||
-		    mlx5_nl_switch_info(nl_route, ifindex[i], &info[i])) {
-			ifindex[i] = 0;
-			memset(&info[i], 0, sizeof(info[i]));
+		    !list[i].ifindex ||
+		    mlx5_nl_switch_info(nl_route, list[i].ifindex,
+					&list[i].info)) {
+			list[i].ifindex = 0;
+			memset(&list[i].info, 0, sizeof(list[i].info));
 			continue;
 		}
 	}
@@ -1261,7 +1308,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		close(nl_route);
 	/* Count unidentified devices. */
 	for (u = 0, i = 0; i != n; ++i)
-		if (!info[i].master && !info[i].representor)
+		if (!list[i].info.master && !list[i].info.representor)
 			++u;
 	if (u) {
 		if (n == 1 && u == 1) {
@@ -1275,6 +1322,12 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			n = 0;
 		}
 	}
+	/*
+	 * Sort list to probe devices in natural order for users convenience
+	 * (i.e. master first, then representors from lowest to highest ID).
+	 */
+	if (n)
+		qsort(list, n, sizeof(*list), mlx5_dev_spawn_data_cmp);
 	switch (pci_dev->id.device_id) {
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX4VF:
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX4LXVF:
@@ -1288,15 +1341,15 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	for (i = 0; i != n; ++i) {
 		uint32_t restore;
 
-		eth_list[i] = mlx5_dev_spawn(&pci_dev->device, ibv_match[i],
-					     vf, &info[i]);
-		if (!eth_list[i])
+		list[i].eth_dev = mlx5_dev_spawn
+			(&pci_dev->device, list[i].ibv_dev, vf, &list[i].info);
+		if (!list[i].eth_dev)
 			break;
-		restore = eth_list[i]->data->dev_flags;
-		rte_eth_copy_pci_info(eth_list[i], pci_dev);
+		restore = list[i].eth_dev->data->dev_flags;
+		rte_eth_copy_pci_info(list[i].eth_dev, pci_dev);
 		/* Restore non-PCI flags cleared by the above call. */
-		eth_list[i]->data->dev_flags |= restore;
-		rte_eth_dev_probing_finish(eth_list[i]);
+		list[i].eth_dev->data->dev_flags |= restore;
+		rte_eth_dev_probing_finish(list[i].eth_dev);
 	}
 	mlx5_glue->free_device_list(ibv_list);
 	if (!n) {
@@ -1317,10 +1370,10 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		ret = -rte_errno;
 		/* Roll back. */
 		while (i--) {
-			mlx5_dev_close(eth_list[i]);
+			mlx5_dev_close(list[i].eth_dev);
 			if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-				rte_free(eth_list[i]->data->dev_private);
-			claim_zero(rte_eth_dev_release_port(eth_list[i]));
+				rte_free(list[i].eth_dev->data->dev_private);
+			claim_zero(rte_eth_dev_release_port(list[i].eth_dev));
 		}
 		/* Restore original error. */
 		rte_errno = -ret;
