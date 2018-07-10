@@ -75,8 +75,9 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 
 	int nb_segs = 1;
 
+	rte_cryptodev_info_get(dev_id, &dev_info);
+
 	if (t->feature_mask & BLOCKCIPHER_TEST_FEATURE_SG) {
-		rte_cryptodev_info_get(dev_id, &dev_info);
 		uint64_t feat_flags = dev_info.feature_flags;
 		uint64_t oop_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT;
 
@@ -451,11 +452,34 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 		uint8_t value;
 		uint32_t head_unchanged_len, changed_len = 0;
 		uint32_t i;
+		uint32_t hdroom_used = 0, tlroom_used = 0;
+		uint32_t hdroom = 0;
 
 		mbuf = sym_op->m_src;
+		/*
+		 * Crypto PMDs specify the headroom & tailroom it would use
+		 * when processing the crypto operation. PMD is free to modify
+		 * this space, and so the verification check should skip that
+		 * block.
+		 */
+		hdroom_used = dev_info.min_mbuf_headroom_req;
+		tlroom_used = dev_info.min_mbuf_tailroom_req;
+
+		/* Get headroom */
+		hdroom = rte_pktmbuf_headroom(mbuf);
+
 		head_unchanged_len = mbuf->buf_len;
 
 		for (i = 0; i < mbuf->buf_len; i++) {
+
+			/* Skip headroom used by PMD */
+			if (i == hdroom - hdroom_used)
+				i += hdroom_used;
+
+			/* Skip tailroom used by PMD */
+			if (i == (hdroom + mbuf->data_len))
+				i += tlroom_used;
+
 			value = *((uint8_t *)(mbuf->buf_addr)+i);
 			if (value != tmp_src_buf[i]) {
 				snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
@@ -468,14 +492,13 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 
 		mbuf = sym_op->m_dst;
 		if (t->op_mask & BLOCKCIPHER_TEST_OP_AUTH) {
-			head_unchanged_len = rte_pktmbuf_headroom(mbuf) +
-						sym_op->auth.data.offset;
+			head_unchanged_len = hdroom + sym_op->auth.data.offset;
 			changed_len = sym_op->auth.data.length;
 			if (t->op_mask & BLOCKCIPHER_TEST_OP_AUTH_GEN)
 				changed_len += digest_len;
 		} else {
 			/* cipher-only */
-			head_unchanged_len = rte_pktmbuf_headroom(mbuf) +
+			head_unchanged_len = hdroom +
 					sym_op->cipher.data.offset;
 			changed_len = sym_op->cipher.data.length;
 		}
@@ -499,15 +522,30 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 		uint8_t value;
 		uint32_t head_unchanged_len = 0, changed_len = 0;
 		uint32_t i;
+		uint32_t hdroom_used = 0, tlroom_used = 0;
+		uint32_t hdroom = 0;
+
+		/*
+		 * Crypto PMDs specify the headroom & tailroom it would use
+		 * when processing the crypto operation. PMD is free to modify
+		 * this space, and so the verification check should skip that
+		 * block.
+		 */
+		hdroom_used = dev_info.min_mbuf_headroom_req;
+		tlroom_used = dev_info.min_mbuf_tailroom_req;
 
 		mbuf = sym_op->m_src;
+
+		/* Get headroom */
+		hdroom = rte_pktmbuf_headroom(mbuf);
+
 		if (t->op_mask & BLOCKCIPHER_TEST_OP_CIPHER) {
-			head_unchanged_len = rte_pktmbuf_headroom(mbuf) +
+			head_unchanged_len = hdroom +
 					sym_op->cipher.data.offset;
 			changed_len = sym_op->cipher.data.length;
 		} else {
 			/* auth-only */
-			head_unchanged_len = rte_pktmbuf_headroom(mbuf) +
+			head_unchanged_len = hdroom +
 					sym_op->auth.data.offset +
 					sym_op->auth.data.length;
 			changed_len = 0;
@@ -517,8 +555,18 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 			changed_len += digest_len;
 
 		for (i = 0; i < mbuf->buf_len; i++) {
+
+			/* Skip headroom used by PMD */
+			if (i == hdroom - hdroom_used)
+				i += hdroom_used;
+
 			if (i == head_unchanged_len)
 				i += changed_len;
+
+			/* Skip tailroom used by PMD */
+			if (i == (hdroom + mbuf->data_len))
+				i += tlroom_used;
+
 			value = *((uint8_t *)(mbuf->buf_addr)+i);
 			if (value != tmp_src_buf[i]) {
 				snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
