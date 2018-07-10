@@ -76,6 +76,8 @@ struct cperf_options {
 
 	uint32_t pool_sz;
 	uint32_t total_ops;
+	uint32_t headroom_sz;
+	uint32_t tailroom_sz;
 	uint32_t segment_sz;
 	uint32_t test_buffer_size;
 	uint32_t *imix_buffer_sizes;

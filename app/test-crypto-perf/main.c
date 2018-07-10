@@ -149,6 +149,23 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs,
 			.nb_descriptors = opts->nb_descriptors
 		};
 
+		/**
+		 * Device info specifies the min headroom and tailroom
+		 * requirement for the crypto PMD. This need to be honoured
+		 * by the application, while creating mbuf.
+		 */
+		if (opts->headroom_sz < cdev_info.min_mbuf_headroom_req) {
+			/* Update headroom */
+			opts->headroom_sz = cdev_info.min_mbuf_headroom_req;
+		}
+		if (opts->tailroom_sz < cdev_info.min_mbuf_tailroom_req) {
+			/* Update tailroom */
+			opts->tailroom_sz = cdev_info.min_mbuf_tailroom_req;
+		}
+
+		/* Update segment size to include headroom & tailroom */
+		opts->segment_sz += (opts->headroom_sz + opts->tailroom_sz);
+
 		uint32_t dev_max_nb_sess = cdev_info.sym.max_nb_sessions;
 		/*
 		 * Two sessions objects are required for each session
