@@ -1103,6 +1103,7 @@ static int test_average_table_utilization(void)
 	unsigned i, j;
 	unsigned added_keys, average_keys_added = 0;
 	int ret;
+	unsigned int cnt;
 
 	printf("\n# Running test to determine average utilization"
 	       "\n  before adding elements begins to fail\n");
@@ -1121,9 +1122,20 @@ static int test_average_table_utilization(void)
 			for (i = 0; i < ut_params.key_len; i++)
 				simple_key[i] = rte_rand() % 255;
 			ret = rte_hash_add_key(handle, simple_key);
+			if (ret < 0)
+				break;
 		}
+
 		if (ret != -ENOSPC) {
 			printf("Unexpected error when adding keys\n");
+			rte_hash_free(handle);
+			return -1;
+		}
+
+		cnt = rte_hash_count(handle);
+		if (cnt != added_keys) {
+			printf("rte_hash_count returned wrong value %u, %u,"
+					"%u\n", j, added_keys, cnt);
 			rte_hash_free(handle);
 			return -1;
 		}

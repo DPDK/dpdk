@@ -369,6 +369,30 @@ rte_hash_secondary_hash(const hash_sig_t primary_hash)
 	return primary_hash ^ ((tag + 1) * alt_bits_xor);
 }
 
+int32_t
+rte_hash_count(const struct rte_hash *h)
+{
+	uint32_t tot_ring_cnt, cached_cnt = 0;
+	uint32_t i, ret;
+
+	if (h == NULL)
+		return -EINVAL;
+
+	if (h->multi_writer_support) {
+		tot_ring_cnt = h->entries + (RTE_MAX_LCORE - 1) *
+					(LCORE_CACHE_SIZE - 1);
+		for (i = 0; i < RTE_MAX_LCORE; i++)
+			cached_cnt += h->local_free_slots[i].len;
+
+		ret = tot_ring_cnt - rte_ring_count(h->free_slots) -
+								cached_cnt;
+	} else {
+		tot_ring_cnt = h->entries;
+		ret = tot_ring_cnt - rte_ring_count(h->free_slots);
+	}
+	return ret;
+}
+
 /* Read write locks implemented using rte_rwlock */
 static inline void
 __hash_rw_writer_lock(const struct rte_hash *h)

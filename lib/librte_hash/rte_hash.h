@@ -127,6 +127,17 @@ void
 rte_hash_reset(struct rte_hash *h);
 
 /**
+ * Return the number of keys in the hash table
+ * @param h
+ *  Hash table to query from
+ * @return
+ *   - -EINVAL if parameters are invalid
+ *   - A value indicating how many keys were inserted in the table.
+ */
+int32_t
+rte_hash_count(const struct rte_hash *h);
+
+/**
  * Add a key-value pair to an existing hash table.
  * This operation is not multi-thread safe
  * and should only be called from one thread.

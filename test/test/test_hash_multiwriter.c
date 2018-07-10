@@ -116,6 +116,7 @@ test_hash_multiwriter(void)
 
 	uint32_t duplicated_keys = 0;
 	uint32_t lost_keys = 0;
+	uint32_t count;
 
 	snprintf(name, 32, "test%u", calledCount++);
 	hash_params.name = name;
@@ -162,6 +163,13 @@ test_hash_multiwriter(void)
 	rte_eal_mp_remote_launch(test_hash_multiwriter_worker,
 				 NULL, CALL_MASTER);
 	rte_eal_mp_wait_lcore();
+
+	count = rte_hash_count(handle);
+	if (count != rounded_nb_total_tsx_insertion) {
+		printf("rte_hash_count returned wrong value %u, %d\n",
+				rounded_nb_total_tsx_insertion, count);
+		goto err3;
+	}
 
 	while (rte_hash_iterate(handle, &next_key, &next_data, &iter) >= 0) {
 		/* Search for the key in the list of keys added .*/

@@ -45,3 +45,11 @@ DPDK_16.07 {
 	rte_hash_get_key_with_position;
 
 } DPDK_2.2;
+
+
+DPDK_18.08 {
+	global:
+
+	rte_hash_count;
+
+} DPDK_16.07;
