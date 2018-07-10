@@ -36,6 +36,7 @@
 #include <rte_kvargs.h>
 #include <rte_rwlock.h>
 #include <rte_spinlock.h>
+#include <rte_string_fns.h>
 
 #include "mlx5.h"
 #include "mlx5_utils.h"
@@ -635,32 +636,31 @@ mlx5_uar_init_secondary(struct rte_eth_dev *dev)
 }
 
 /**
- * DPDK callback to register a PCI device.
+ * Spawn an Ethernet device from Verbs information.
  *
- * This function creates an Ethernet device for each port of a given
- * PCI device.
- *
- * @param[in] pci_drv
- *   PCI driver structure (mlx5_driver).
- * @param[in] pci_dev
- *   PCI device information.
+ * @param dpdk_dev
+ *   Backing DPDK device.
+ * @param ibv_dev
+ *   Verbs device.
+ * @param vf
+ *   If nonzero, enable VF-specific features.
  *
  * @return
- *   0 on success, a negative errno value otherwise and rte_errno is set.
+ *   A valid Ethernet device object on success, NULL otherwise and rte_errno
+ *   is set.
  */
-static int
-mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
-	       struct rte_pci_device *pci_dev)
+static struct rte_eth_dev *
+mlx5_dev_spawn(struct rte_device *dpdk_dev,
+	       struct ibv_device *ibv_dev,
+	       int vf)
 {
-	struct ibv_device **list;
-	struct ibv_context *ctx = NULL;
+	struct ibv_context *ctx;
 	struct ibv_device_attr_ex attr;
 	struct ibv_pd *pd = NULL;
 	struct mlx5dv_context dv_attr = { .comp_mask = 0 };
 	struct rte_eth_dev *eth_dev = NULL;
 	struct priv *priv = NULL;
 	int err = 0;
-	unsigned int vf = 0;
 	unsigned int mps;
 	unsigned int cqe_comp;
 	unsigned int tunnel_en = 0;
@@ -672,71 +672,18 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	unsigned int mprq_max_stride_size_n = 0;
 	unsigned int mprq_min_stride_num_n = 0;
 	unsigned int mprq_max_stride_num_n = 0;
-	int i;
 #ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
 	struct ibv_counter_set_description cs_desc = { .counter_type = 0 };
 #endif
 
 	/* Prepare shared data between primary and secondary process. */
 	mlx5_prepare_shared_data();
-	assert(pci_drv == &mlx5_driver);
-	list = mlx5_glue->get_device_list(&i);
-	if (list == NULL) {
-		assert(errno);
-		err = errno;
-		if (errno == ENOSYS)
-			DRV_LOG(ERR,
-				"cannot list devices, is ib_uverbs loaded?");
-		goto error;
+	errno = 0;
+	ctx = mlx5_glue->open_device(ibv_dev);
+	if (!ctx) {
+		rte_errno = errno ? errno : ENODEV;
+		return NULL;
 	}
-	assert(i >= 0);
-	/*
-	 * For each listed device, check related sysfs entry against
-	 * the provided PCI ID.
-	 */
-	while (i != 0) {
-		struct rte_pci_addr pci_addr;
-
-		--i;
-		DRV_LOG(DEBUG, "checking device \"%s\"", list[i]->name);
-		if (mlx5_ibv_device_to_pci_addr(list[i], &pci_addr))
-			continue;
-		if ((pci_dev->addr.domain != pci_addr.domain) ||
-		    (pci_dev->addr.bus != pci_addr.bus) ||
-		    (pci_dev->addr.devid != pci_addr.devid) ||
-		    (pci_dev->addr.function != pci_addr.function))
-			continue;
-		DRV_LOG(INFO, "PCI information matches, using device \"%s\"",
-			list[i]->name);
-		vf = ((pci_dev->id.device_id ==
-		       PCI_DEVICE_ID_MELLANOX_CONNECTX4VF) ||
-		      (pci_dev->id.device_id ==
-		       PCI_DEVICE_ID_MELLANOX_CONNECTX4LXVF) ||
-		      (pci_dev->id.device_id ==
-		       PCI_DEVICE_ID_MELLANOX_CONNECTX5VF) ||
-		      (pci_dev->id.device_id ==
-		       PCI_DEVICE_ID_MELLANOX_CONNECTX5EXVF));
-		ctx = mlx5_glue->open_device(list[i]);
-		rte_errno = errno;
-		err = rte_errno;
-		break;
-	}
-	mlx5_glue->free_device_list(list);
-	if (ctx == NULL) {
-		switch (err) {
-		case 0:
-			DRV_LOG(ERR,
-				"cannot access device, is mlx5_ib loaded?");
-			err = ENODEV;
-			break;
-		case EINVAL:
-			DRV_LOG(ERR,
-				"cannot use device, are drivers up to date?");
-			break;
-		}
-		goto error;
-	}
-	DRV_LOG(DEBUG, "device opened");
 #ifdef HAVE_IBV_MLX5_MOD_SWP
 	dv_attr.comp_mask |= MLX5DV_CONTEXT_MASK_SWP;
 #endif
@@ -855,9 +802,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			},
 		};
 
-		snprintf(name, sizeof(name), PCI_PRI_FMT,
-			 pci_dev->addr.domain, pci_dev->addr.bus,
-			 pci_dev->addr.devid, pci_dev->addr.function);
+		rte_strlcpy(name, dpdk_dev->name, sizeof(name));
 		if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 			eth_dev = rte_eth_dev_attach_secondary(name);
 			if (eth_dev == NULL) {
@@ -866,7 +811,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 				err = rte_errno;
 				goto error;
 			}
-			eth_dev->device = &pci_dev->device;
+			eth_dev->device = dpdk_dev;
 			eth_dev->dev_ops = &mlx5_dev_sec_ops;
 			err = mlx5_uar_init_secondary(eth_dev);
 			if (err) {
@@ -894,9 +839,8 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 				mlx5_select_rx_function(eth_dev);
 			eth_dev->tx_pkt_burst =
 				mlx5_select_tx_function(eth_dev);
-			rte_eth_dev_probing_finish(eth_dev);
 			claim_zero(mlx5_glue->close_device(ctx));
-			return 0;
+			return eth_dev;
 		}
 		/* Check port status. */
 		err = mlx5_glue->query_port(ctx, 1, &port_attr);
@@ -935,7 +879,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		priv->device_attr = attr;
 		priv->pd = pd;
 		priv->mtu = ETHER_MTU;
-		err = mlx5_args(&config, pci_dev->device.devargs);
+		err = mlx5_args(&config, dpdk_dev->devargs);
 		if (err) {
 			err = rte_errno;
 			DRV_LOG(ERR, "failed to process device arguments: %s",
@@ -1027,8 +971,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		eth_dev->data->dev_private = priv;
 		priv->dev_data = eth_dev->data;
 		eth_dev->data->mac_addrs = priv->mac;
-		eth_dev->device = &pci_dev->device;
-		rte_eth_copy_pci_info(eth_dev, pci_dev);
+		eth_dev->device = dpdk_dev;
 		eth_dev->device->driver = &mlx5_driver.driver;
 		err = mlx5_uar_init_primary(eth_dev);
 		if (err) {
@@ -1146,7 +1089,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 				 priv, mem_event_cb);
 		rte_rwlock_write_unlock(&mlx5_shared_data->mem_event_rwlock);
 		rte_eth_dev_probing_finish(eth_dev);
-		return 0;
+		return eth_dev;
 	}
 error:
 	if (priv)
@@ -1157,11 +1100,91 @@ error:
 		rte_eth_dev_release_port(eth_dev);
 	if (ctx)
 		claim_zero(mlx5_glue->close_device(ctx));
-	if (err) {
-		rte_errno = err;
+	assert(err > 0);
+	rte_errno = err;
+	return NULL;
+}
+
+/**
+ * DPDK callback to register a PCI device.
+ *
+ * This function spawns an Ethernet device out of a given PCI device.
+ *
+ * @param[in] pci_drv
+ *   PCI driver structure (mlx5_driver).
+ * @param[in] pci_dev
+ *   PCI device information.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+	       struct rte_pci_device *pci_dev)
+{
+	struct ibv_device **ibv_list;
+	struct rte_eth_dev *eth_dev = NULL;
+	int vf;
+	int ret;
+
+	assert(pci_drv == &mlx5_driver);
+	errno = 0;
+	ibv_list = mlx5_glue->get_device_list(&ret);
+	if (!ibv_list) {
+		rte_errno = errno ? errno : ENOSYS;
+		DRV_LOG(ERR, "cannot list devices, is ib_uverbs loaded?");
 		return -rte_errno;
 	}
-	return 0;
+	while (ret-- > 0) {
+		struct rte_pci_addr pci_addr;
+
+		DRV_LOG(DEBUG, "checking device \"%s\"", ibv_list[ret]->name);
+		if (mlx5_ibv_device_to_pci_addr(ibv_list[ret], &pci_addr))
+			continue;
+		if (pci_dev->addr.domain != pci_addr.domain ||
+		    pci_dev->addr.bus != pci_addr.bus ||
+		    pci_dev->addr.devid != pci_addr.devid ||
+		    pci_dev->addr.function != pci_addr.function)
+			continue;
+		DRV_LOG(INFO, "PCI information matches, using device \"%s\"",
+			ibv_list[ret]->name);
+		break;
+	}
+	switch (pci_dev->id.device_id) {
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX4VF:
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX4LXVF:
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX5VF:
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX5EXVF:
+		vf = 1;
+		break;
+	default:
+		vf = 0;
+	}
+	if (ret >= 0)
+		eth_dev = mlx5_dev_spawn(&pci_dev->device, ibv_list[ret], vf);
+	mlx5_glue->free_device_list(ibv_list);
+	if (!ret) {
+		DRV_LOG(WARNING,
+			"no Verbs device matches PCI device " PCI_PRI_FMT ","
+			" are kernel drivers loaded?",
+			pci_dev->addr.domain, pci_dev->addr.bus,
+			pci_dev->addr.devid, pci_dev->addr.function);
+		rte_errno = ENOENT;
+		ret = -rte_errno;
+	} else if (!eth_dev) {
+		DRV_LOG(ERR,
+			"probe of PCI device " PCI_PRI_FMT " aborted after"
+			" encountering an error: %s",
+			pci_dev->addr.domain, pci_dev->addr.bus,
+			pci_dev->addr.devid, pci_dev->addr.function,
+			strerror(rte_errno));
+		ret = -rte_errno;
+	} else {
+		rte_eth_copy_pci_info(eth_dev, pci_dev);
+		rte_eth_dev_probing_finish(eth_dev);
+		ret = 0;
+	}
+	return ret;
 }
 
 static const struct rte_pci_id mlx5_pci_id_map[] = {
