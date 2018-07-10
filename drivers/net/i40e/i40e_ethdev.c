@@ -2036,27 +2036,40 @@ i40e_phy_conf_link(struct i40e_hw *hw,
 	struct i40e_aq_get_phy_abilities_resp phy_ab;
 	struct i40e_aq_set_phy_config phy_conf;
 	enum i40e_aq_phy_type cnt;
+	uint8_t avail_speed;
 	uint32_t phy_type_mask = 0;
 
 	const uint8_t mask = I40E_AQ_PHY_FLAG_PAUSE_TX |
 			I40E_AQ_PHY_FLAG_PAUSE_RX |
 			I40E_AQ_PHY_FLAG_PAUSE_RX |
 			I40E_AQ_PHY_FLAG_LOW_POWER;
-	const uint8_t advt = I40E_LINK_SPEED_40GB |
-			I40E_LINK_SPEED_25GB |
-			I40E_LINK_SPEED_10GB |
-			I40E_LINK_SPEED_1GB |
-			I40E_LINK_SPEED_100MB;
 	int ret = -ENOTSUP;
 
+	/* To get phy capabilities of available speeds. */
+	status = i40e_aq_get_phy_capabilities(hw, false, true, &phy_ab,
+					      NULL);
+	if (status) {
+		PMD_DRV_LOG(ERR, "Failed to get PHY capabilities: %d\n",
+				status);
+		return ret;
+	}
+	avail_speed = phy_ab.link_speed;
 
+	/* To get the current phy config. */
 	status = i40e_aq_get_phy_capabilities(hw, false, false, &phy_ab,
 					      NULL);
-	if (status)
+	if (status) {
+		PMD_DRV_LOG(ERR, "Failed to get the current PHY config: %d\n",
+				status);
 		return ret;
+	}
 
-	/* If link already up, no need to set up again */
-	if (is_up && phy_ab.phy_type != 0)
+	/* If link needs to go up and it is in autoneg mode the speed is OK,
+	 * no need to set up again.
+	 */
+	if (is_up && phy_ab.phy_type != 0 &&
+		     abilities & I40E_AQ_PHY_AN_ENABLED &&
+		     phy_ab.link_speed != 0)
 		return I40E_SUCCESS;
 
 	memset(&phy_conf, 0, sizeof(phy_conf));
@@ -2065,15 +2078,17 @@ i40e_phy_conf_link(struct i40e_hw *hw,
 	abilities &= ~mask;
 	abilities |= phy_ab.abilities & mask;
 
-	/* update ablities and speed */
-	if (abilities & I40E_AQ_PHY_AN_ENABLED)
-		phy_conf.link_speed = advt;
-	else
-		phy_conf.link_speed = is_up ? force_speed : phy_ab.link_speed;
-
 	phy_conf.abilities = abilities;
 
-
+	/* If link needs to go up, but the force speed is not supported,
+	 * Warn users and config the default available speeds.
+	 */
+	if (is_up && !(force_speed & avail_speed)) {
+		PMD_DRV_LOG(WARNING, "Invalid speed setting, set to default!\n");
+		phy_conf.link_speed = avail_speed;
+	} else {
+		phy_conf.link_speed = is_up ? force_speed : avail_speed;
+	}
 
 	/* PHY type mask needs to include each type except PHY type extension */
 	for (cnt = I40E_PHY_TYPE_SGMII; cnt < I40E_PHY_TYPE_25GBASE_KR; cnt++)
@@ -2109,11 +2124,18 @@ i40e_apply_link_speed(struct rte_eth_dev *dev)
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_eth_conf *conf = &dev->data->dev_conf;
 
+	if (conf->link_speeds == ETH_LINK_SPEED_AUTONEG) {
+		conf->link_speeds = ETH_LINK_SPEED_40G |
+				    ETH_LINK_SPEED_25G |
+				    ETH_LINK_SPEED_20G |
+				    ETH_LINK_SPEED_10G |
+				    ETH_LINK_SPEED_1G |
+				    ETH_LINK_SPEED_100M;
+	}
 	speed = i40e_parse_link_speeds(conf->link_speeds);
-	abilities |= I40E_AQ_PHY_ENABLE_ATOMIC_LINK;
-	if (!(conf->link_speeds & ETH_LINK_SPEED_FIXED))
-		abilities |= I40E_AQ_PHY_AN_ENABLED;
-	abilities |= I40E_AQ_PHY_LINK_ENABLED;
+	abilities |= I40E_AQ_PHY_ENABLE_ATOMIC_LINK |
+		     I40E_AQ_PHY_AN_ENABLED |
+		     I40E_AQ_PHY_LINK_ENABLED;
 
 	return i40e_phy_conf_link(hw, abilities, speed, true);
 }
@@ -2230,13 +2252,6 @@ i40e_dev_start(struct rte_eth_dev *dev)
 	}
 
 	/* Apply link configure */
-	if (dev->data->dev_conf.link_speeds & ~(ETH_LINK_SPEED_100M |
-				ETH_LINK_SPEED_1G | ETH_LINK_SPEED_10G |
-				ETH_LINK_SPEED_20G | ETH_LINK_SPEED_25G |
-				ETH_LINK_SPEED_40G)) {
-		PMD_DRV_LOG(ERR, "Invalid link setting");
-		goto err_up;
-	}
 	ret = i40e_apply_link_speed(dev);
 	if (I40E_SUCCESS != ret) {
 		PMD_DRV_LOG(ERR, "Fail to apply link setting");
