@@ -1569,6 +1569,10 @@ rte_tm_hierarchy_commit(uint16_t port_id,
 /**
  * Traffic manager node parent update
  *
+ * This function may be used to move a node and its children to a different
+ * parent.  Additionally, if the new parent is the same as the current parent,
+ * this function will update the priority/weight of an existing node.
+ *
  * Restriction for root node: its parent cannot be changed.
  *
  * This function can only be called after the rte_tm_hierarchy_commit()
