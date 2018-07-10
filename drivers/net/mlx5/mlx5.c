@@ -654,6 +654,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 {
 	struct ibv_device **list = NULL;
 	struct ibv_device *ibv_dev;
+	struct mlx5dv_context dv_attr = { .comp_mask = 0 };
 	int err = 0;
 	struct ibv_context *attr_ctx = NULL;
 	struct ibv_device_attr_ex device_attr;
@@ -670,7 +671,6 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	unsigned int mprq_min_stride_num_n = 0;
 	unsigned int mprq_max_stride_num_n = 0;
 	int i;
-	struct mlx5dv_context attrs_out = {0};
 #ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
 	struct ibv_counter_set_description cs_desc = { .counter_type = 0 };
 #endif
@@ -736,21 +736,21 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	ibv_dev = list[i];
 	DRV_LOG(DEBUG, "device opened");
 #ifdef HAVE_IBV_MLX5_MOD_SWP
-	attrs_out.comp_mask |= MLX5DV_CONTEXT_MASK_SWP;
+	dv_attr.comp_mask |= MLX5DV_CONTEXT_MASK_SWP;
 #endif
 	/*
 	 * Multi-packet send is supported by ConnectX-4 Lx PF as well
 	 * as all ConnectX-5 devices.
 	 */
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
-	attrs_out.comp_mask |= MLX5DV_CONTEXT_MASK_TUNNEL_OFFLOADS;
+	dv_attr.comp_mask |= MLX5DV_CONTEXT_MASK_TUNNEL_OFFLOADS;
 #endif
 #ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
-	attrs_out.comp_mask |= MLX5DV_CONTEXT_MASK_STRIDING_RQ;
+	dv_attr.comp_mask |= MLX5DV_CONTEXT_MASK_STRIDING_RQ;
 #endif
-	mlx5_glue->dv_query_device(attr_ctx, &attrs_out);
-	if (attrs_out.flags & MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED) {
-		if (attrs_out.flags & MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW) {
+	mlx5_glue->dv_query_device(attr_ctx, &dv_attr);
+	if (dv_attr.flags & MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED) {
+		if (dv_attr.flags & MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW) {
 			DRV_LOG(DEBUG, "enhanced MPW is supported");
 			mps = MLX5_MPW_ENHANCED;
 		} else {
@@ -762,14 +762,14 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		mps = MLX5_MPW_DISABLED;
 	}
 #ifdef HAVE_IBV_MLX5_MOD_SWP
-	if (attrs_out.comp_mask & MLX5DV_CONTEXT_MASK_SWP)
-		swp = attrs_out.sw_parsing_caps.sw_parsing_offloads;
+	if (dv_attr.comp_mask & MLX5DV_CONTEXT_MASK_SWP)
+		swp = dv_attr.sw_parsing_caps.sw_parsing_offloads;
 	DRV_LOG(DEBUG, "SWP support: %u", swp);
 #endif
 #ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
-	if (attrs_out.comp_mask & MLX5DV_CONTEXT_MASK_STRIDING_RQ) {
+	if (dv_attr.comp_mask & MLX5DV_CONTEXT_MASK_STRIDING_RQ) {
 		struct mlx5dv_striding_rq_caps mprq_caps =
-			attrs_out.striding_rq_caps;
+			dv_attr.striding_rq_caps;
 
 		DRV_LOG(DEBUG, "\tmin_single_stride_log_num_of_bytes: %d",
 			mprq_caps.min_single_stride_log_num_of_bytes);
@@ -794,15 +794,15 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	}
 #endif
 	if (RTE_CACHE_LINE_SIZE == 128 &&
-	    !(attrs_out.flags & MLX5DV_CONTEXT_FLAGS_CQE_128B_COMP))
+	    !(dv_attr.flags & MLX5DV_CONTEXT_FLAGS_CQE_128B_COMP))
 		cqe_comp = 0;
 	else
 		cqe_comp = 1;
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
-	if (attrs_out.comp_mask & MLX5DV_CONTEXT_MASK_TUNNEL_OFFLOADS) {
-		tunnel_en = ((attrs_out.tunnel_offloads_caps &
+	if (dv_attr.comp_mask & MLX5DV_CONTEXT_MASK_TUNNEL_OFFLOADS) {
+		tunnel_en = ((dv_attr.tunnel_offloads_caps &
 			      MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_VXLAN) &&
-			     (attrs_out.tunnel_offloads_caps &
+			     (dv_attr.tunnel_offloads_caps &
 			      MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_GRE));
 	}
 	DRV_LOG(DEBUG, "tunnel offloading is %ssupported",
@@ -812,9 +812,9 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		"tunnel offloading disabled due to old OFED/rdma-core version");
 #endif
 #ifdef HAVE_IBV_DEVICE_MPLS_SUPPORT
-	mpls_en = ((attrs_out.tunnel_offloads_caps &
+	mpls_en = ((dv_attr.tunnel_offloads_caps &
 		    MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_CW_MPLS_OVER_GRE) &&
-		   (attrs_out.tunnel_offloads_caps &
+		   (dv_attr.tunnel_offloads_caps &
 		    MLX5DV_RAW_PACKET_CAP_TUNNELED_OFFLOAD_CW_MPLS_OVER_UDP));
 	DRV_LOG(DEBUG, "MPLS over GRE/UDP tunnel offloading is %ssupported",
 		mpls_en ? "" : "not ");
