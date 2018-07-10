@@ -159,6 +159,7 @@ struct priv {
 	struct ibv_context *ctx; /* Verbs context. */
 	struct ibv_device_attr_ex device_attr; /* Device properties. */
 	struct ibv_pd *pd; /* Protection Domain. */
+	char ibdev_name[IBV_SYSFS_NAME_MAX]; /* IB device name. */
 	char ibdev_path[IBV_SYSFS_PATH_MAX]; /* IB device path for secondary */
 	struct ether_addr mac[MLX5_MAX_MAC_ADDRESSES]; /* MAC addresses. */
 	BITFIELD_DECLARE(mac_own, uint64_t, MLX5_MAX_MAC_ADDRESSES);
@@ -168,6 +169,9 @@ struct priv {
 	/* Device properties. */
 	uint16_t mtu; /* Configured MTU. */
 	unsigned int isolated:1; /* Whether isolated mode is enabled. */
+	unsigned int representor:1; /* Device is a port representor. */
+	uint16_t domain_id; /* Switch domain identifier. */
+	int32_t representor_id; /* Port representor identifier. */
 	/* RX/TX queues. */
 	unsigned int rxqs_n; /* RX queues array size. */
 	unsigned int txqs_n; /* TX queues array size. */
@@ -217,9 +221,12 @@ int mlx5_getenv_int(const char *);
 
 /* mlx5_ethdev.c */
 
+int mlx5_get_master_ifname(const struct rte_eth_dev *dev,
+			   char (*ifname)[IF_NAMESIZE]);
 int mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[IF_NAMESIZE]);
 int mlx5_ifindex(const struct rte_eth_dev *dev);
-int mlx5_ifreq(const struct rte_eth_dev *dev, int req, struct ifreq *ifr);
+int mlx5_ifreq(const struct rte_eth_dev *dev, int req, struct ifreq *ifr,
+	       int master);
 int mlx5_get_mtu(struct rte_eth_dev *dev, uint16_t *mtu);
 int mlx5_set_flags(struct rte_eth_dev *dev, unsigned int keep,
 		   unsigned int flags);
@@ -244,6 +251,9 @@ int mlx5_set_link_up(struct rte_eth_dev *dev);
 int mlx5_is_removed(struct rte_eth_dev *dev);
 eth_tx_burst_t mlx5_select_tx_function(struct rte_eth_dev *dev);
 eth_rx_burst_t mlx5_select_rx_function(struct rte_eth_dev *dev);
+unsigned int mlx5_dev_to_port_id(const struct rte_device *dev,
+				 uint16_t *port_list,
+				 unsigned int port_list_n);
 
 /* mlx5_mac.c */
 

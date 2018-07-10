@@ -307,7 +307,27 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	if (ret)
 		DRV_LOG(WARNING, "port %u some flows still remain",
 			dev->data->port_id);
+	if (priv->domain_id != RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID) {
+		unsigned int c = 0;
+		unsigned int i = mlx5_dev_to_port_id(dev->device, NULL, 0);
+		uint16_t port_id[i];
+
+		i = RTE_MIN(mlx5_dev_to_port_id(dev->device, port_id, i), i);
+		while (i--) {
+			struct priv *opriv =
+				rte_eth_devices[port_id[i]].data->dev_private;
+
+			if (!opriv ||
+			    opriv->domain_id != priv->domain_id ||
+			    &rte_eth_devices[port_id[i]] == dev)
+				continue;
+			++c;
+		}
+		if (!c)
+			claim_zero(rte_eth_switch_domain_free(priv->domain_id));
+	}
 	memset(priv, 0, sizeof(*priv));
+	priv->domain_id = RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID;
 }
 
 const struct eth_dev_ops mlx5_dev_ops = {
@@ -647,6 +667,8 @@ mlx5_uar_init_secondary(struct rte_eth_dev *dev)
  *   Verbs device.
  * @param vf
  *   If nonzero, enable VF-specific features.
+ * @param[in] switch_info
+ *   Switch properties of Ethernet device.
  *
  * @return
  *   A valid Ethernet device object on success, NULL otherwise and rte_errno
@@ -655,7 +677,8 @@ mlx5_uar_init_secondary(struct rte_eth_dev *dev)
 static struct rte_eth_dev *
 mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	       struct ibv_device *ibv_dev,
-	       int vf)
+	       int vf,
+	       const struct mlx5_switch_info *switch_info)
 {
 	struct ibv_context *ctx;
 	struct ibv_device_attr_ex attr;
@@ -697,6 +720,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 #endif
 	struct ether_addr mac;
 	char name[RTE_ETH_NAME_MAX_LEN];
+	int own_domain_id = 0;
+	unsigned int i;
 
 	/* Prepare shared data between primary and secondary process. */
 	mlx5_prepare_shared_data();
@@ -805,7 +830,12 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		DEBUG("ibv_query_device_ex() failed");
 		goto error;
 	}
-	rte_strlcpy(name, dpdk_dev->name, sizeof(name));
+	if (!switch_info->representor)
+		rte_strlcpy(name, dpdk_dev->name, sizeof(name));
+	else
+		snprintf(name, sizeof(name), "%s_representor_%u",
+			 dpdk_dev->name, switch_info->port_name);
+	DRV_LOG(DEBUG, "naming Ethernet device \"%s\"", name);
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 		eth_dev = rte_eth_dev_attach_secondary(name);
 		if (eth_dev == NULL) {
@@ -874,6 +904,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		goto error;
 	}
 	priv->ctx = ctx;
+	strncpy(priv->ibdev_name, priv->ctx->device->name,
+		sizeof(priv->ibdev_name));
 	strncpy(priv->ibdev_path, priv->ctx->device->ibdev_path,
 		sizeof(priv->ibdev_path));
 	priv->device_attr = attr;
@@ -883,6 +915,41 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	priv->nl_socket_rdma = mlx5_nl_init(0, NETLINK_RDMA);
 	priv->nl_socket_route =	mlx5_nl_init(RTMGRP_LINK, NETLINK_ROUTE);
 	priv->nl_sn = 0;
+	priv->representor = !!switch_info->representor;
+	priv->domain_id = RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID;
+	priv->representor_id =
+		switch_info->representor ? switch_info->port_name : -1;
+	/*
+	 * Look for sibling devices in order to reuse their switch domain
+	 * if any, otherwise allocate one.
+	 */
+	i = mlx5_dev_to_port_id(dpdk_dev, NULL, 0);
+	if (i > 0) {
+		uint16_t port_id[i];
+
+		i = RTE_MIN(mlx5_dev_to_port_id(dpdk_dev, port_id, i), i);
+		while (i--) {
+			const struct priv *opriv =
+				rte_eth_devices[port_id[i]].data->dev_private;
+
+			if (!opriv ||
+			    opriv->domain_id ==
+			    RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID)
+				continue;
+			priv->domain_id = opriv->domain_id;
+			break;
+		}
+	}
+	if (priv->domain_id == RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID) {
+		err = rte_eth_switch_domain_alloc(&priv->domain_id);
+		if (err) {
+			err = rte_errno;
+			DRV_LOG(ERR, "unable to allocate switch domain: %s",
+				strerror(rte_errno));
+			goto error;
+		}
+		own_domain_id = 1;
+	}
 	err = mlx5_args(&config, dpdk_dev->devargs);
 	if (err) {
 		err = rte_errno;
@@ -966,6 +1033,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		err = ENOMEM;
 		goto error;
 	}
+	if (priv->representor)
+		eth_dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR;
 	eth_dev->data->dev_private = priv;
 	priv->dev_data = eth_dev->data;
 	eth_dev->data->mac_addrs = priv->mac;
@@ -1084,6 +1153,8 @@ error:
 			close(priv->nl_socket_route);
 		if (priv->nl_socket_rdma >= 0)
 			close(priv->nl_socket_rdma);
+		if (own_domain_id)
+			claim_zero(rte_eth_switch_domain_free(priv->domain_id));
 		rte_free(priv);
 	}
 	if (pd)
@@ -1100,7 +1171,7 @@ error:
 /**
  * DPDK callback to register a PCI device.
  *
- * This function spawns an Ethernet device out of a given PCI device.
+ * This function spawns Ethernet devices out of a given PCI device.
  *
  * @param[in] pci_drv
  *   PCI driver structure (mlx5_driver).
@@ -1115,7 +1186,6 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	       struct rte_pci_device *pci_dev)
 {
 	struct ibv_device **ibv_list;
-	struct rte_eth_dev *eth_dev = NULL;
 	unsigned int n = 0;
 	int vf;
 	int ret;
@@ -1150,9 +1220,11 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	unsigned int ifindex[n];
 	struct mlx5_switch_info info[n];
+	struct rte_eth_dev *eth_list[n];
 	int nl_route = n ? mlx5_nl_init(0, NETLINK_ROUTE) : -1;
 	int nl_rdma = n ? mlx5_nl_init(0, NETLINK_RDMA) : -1;
 	unsigned int i;
+	unsigned int u;
 
 	/*
 	 * The existence of several matching entries (n > 1) means port
@@ -1187,28 +1259,14 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		close(nl_rdma);
 	if (nl_route >= 0)
 		close(nl_route);
-	/* Look for master device. */
-	for (i = 0; i != n; ++i) {
-		if (!info[i].master)
-			continue;
-		/* Make it the first entry. */
-		if (i == 0)
-			break;
-		ibv_match[n] = ibv_match[0];
-		ibv_match[0] = ibv_match[i];
-		ibv_match[n] = NULL;
-		break;
-	}
-	if (n && i == n) {
-		if (n == 1 && !info[0].representor) {
+	/* Count unidentified devices. */
+	for (u = 0, i = 0; i != n; ++i)
+		if (!info[i].master && !info[i].representor)
+			++u;
+	if (u) {
+		if (n == 1 && u == 1) {
 			/* Case #2. */
 			DRV_LOG(INFO, "no switch support detected");
-		} else if (n == 1) {
-			/* Case #3. */
-			DRV_LOG(ERR,
-				"device looks like a port representor, this is"
-				" not supported yet");
-			n = 0;
 		} else {
 			/* Case #3. */
 			DRV_LOG(ERR,
@@ -1227,8 +1285,19 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	default:
 		vf = 0;
 	}
-	if (n)
-		eth_dev = mlx5_dev_spawn(&pci_dev->device, ibv_match[0], vf);
+	for (i = 0; i != n; ++i) {
+		uint32_t restore;
+
+		eth_list[i] = mlx5_dev_spawn(&pci_dev->device, ibv_match[i],
+					     vf, &info[i]);
+		if (!eth_list[i])
+			break;
+		restore = eth_list[i]->data->dev_flags;
+		rte_eth_copy_pci_info(eth_list[i], pci_dev);
+		/* Restore non-PCI flags cleared by the above call. */
+		eth_list[i]->data->dev_flags |= restore;
+		rte_eth_dev_probing_finish(eth_list[i]);
+	}
 	mlx5_glue->free_device_list(ibv_list);
 	if (!n) {
 		DRV_LOG(WARNING,
@@ -1238,7 +1307,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			pci_dev->addr.devid, pci_dev->addr.function);
 		rte_errno = ENOENT;
 		ret = -rte_errno;
-	} else if (!eth_dev) {
+	} else if (i != n) {
 		DRV_LOG(ERR,
 			"probe of PCI device " PCI_PRI_FMT " aborted after"
 			" encountering an error: %s",
@@ -1246,9 +1315,16 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			pci_dev->addr.devid, pci_dev->addr.function,
 			strerror(rte_errno));
 		ret = -rte_errno;
+		/* Roll back. */
+		while (i--) {
+			mlx5_dev_close(eth_list[i]);
+			if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+				rte_free(eth_list[i]->data->dev_private);
+			claim_zero(rte_eth_dev_release_port(eth_list[i]));
+		}
+		/* Restore original error. */
+		rte_errno = -ret;
 	} else {
-		rte_eth_copy_pci_info(eth_dev, pci_dev);
-		rte_eth_dev_probing_finish(eth_dev);
 		ret = 0;
 	}
 	return ret;

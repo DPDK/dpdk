@@ -146,7 +146,7 @@ mlx5_read_dev_counters(struct rte_eth_dev *dev, uint64_t *stats)
 	et_stats->cmd = ETHTOOL_GSTATS;
 	et_stats->n_stats = xstats_ctrl->stats_n;
 	ifr.ifr_data = (caddr_t)et_stats;
-	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
+	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr, 1);
 	if (ret) {
 		DRV_LOG(WARNING,
 			"port %u unable to read statistic values from device",
@@ -194,7 +194,7 @@ mlx5_ethtool_get_stats_n(struct rte_eth_dev *dev) {
 
 	drvinfo.cmd = ETHTOOL_GDRVINFO;
 	ifr.ifr_data = (caddr_t)&drvinfo;
-	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
+	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr, 1);
 	if (ret) {
 		DRV_LOG(WARNING, "port %u unable to query number of statistics",
 			dev->data->port_id);
@@ -244,7 +244,7 @@ mlx5_xstats_init(struct rte_eth_dev *dev)
 	strings->string_set = ETH_SS_STATS;
 	strings->len = dev_stats_n;
 	ifr.ifr_data = (caddr_t)strings;
-	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
+	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr, 1);
 	if (ret) {
 		DRV_LOG(WARNING, "port %u unable to get statistic names",
 			dev->data->port_id);

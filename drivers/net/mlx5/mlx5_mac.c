@@ -49,7 +49,7 @@ mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[ETHER_ADDR_LEN])
 	struct ifreq request;
 	int ret;
 
-	ret = mlx5_ifreq(dev, SIOCGIFHWADDR, &request);
+	ret = mlx5_ifreq(dev, SIOCGIFHWADDR, &request, 0);
 	if (ret)
 		return ret;
 	memcpy(mac, request.ifr_hwaddr.sa_data, ETHER_ADDR_LEN);
