@@ -677,6 +677,15 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 					IBV_RAW_PACKET_CAP_SCATTER_FCS);
 		DEBUG("FCS stripping toggling is %ssupported",
 		      priv->hw_fcs_strip ? "" : "not ");
+		priv->tso =
+			((device_attr_ex.tso_caps.max_tso > 0) &&
+			 (device_attr_ex.tso_caps.supported_qpts &
+			  (1 << IBV_QPT_RAW_PACKET)));
+		if (priv->tso)
+			priv->tso_max_payload_sz =
+					device_attr_ex.tso_caps.max_tso;
+		DEBUG("TSO is %ssupported",
+		      priv->tso ? "" : "not ");
 		/* Configure the first MAC address by default. */
 		err = mlx4_get_mac(priv, &mac.addr_bytes);
 		if (err) {

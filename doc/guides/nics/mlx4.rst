@@ -142,6 +142,9 @@ Limitations
   The ability to enable/disable CRC stripping requires OFED version
   4.3-1.5.0.0 and above  or rdma-core version v18 and above.
 
+- TSO (Transmit Segmentation Offload) is supported in OFED version
+  4.4 and above.
+
 Prerequisites
 -------------
 

@@ -85,6 +85,11 @@ mlx4_autoconf.h.new: FORCE
 mlx4_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 	$Q $(RM) -f -- '$@'
 	$Q : > '$@'
+	$Q sh -- '$<' '$@' \
+		HAVE_IBV_MLX4_WQE_LSO_SEG \
+		infiniband/mlx4dv.h \
+		type 'struct mlx4_wqe_lso_seg' \
+		$(AUTOCONF_OUTPUT)
 
 # Create mlx4_autoconf.h or update it in case it differs from the new one.
 

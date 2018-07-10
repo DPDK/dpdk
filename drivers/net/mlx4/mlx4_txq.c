@@ -116,8 +116,14 @@ mlx4_get_tx_port_offloads(struct priv *priv)
 			     DEV_TX_OFFLOAD_UDP_CKSUM |
 			     DEV_TX_OFFLOAD_TCP_CKSUM);
 	}
-	if (priv->hw_csum_l2tun)
+	if (priv->tso)
+		offloads |= DEV_TX_OFFLOAD_TCP_TSO;
+	if (priv->hw_csum_l2tun) {
 		offloads |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+		if (priv->tso)
+			offloads |= (DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
+				     DEV_TX_OFFLOAD_GRE_TNL_TSO);
+	}
 	return offloads;
 }
 

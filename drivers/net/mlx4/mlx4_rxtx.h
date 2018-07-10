@@ -90,7 +90,7 @@ struct mlx4_txq_stats {
 	unsigned int idx; /**< Mapping index. */
 	uint64_t opackets; /**< Total of successfully sent packets. */
 	uint64_t obytes; /**< Total of successfully sent bytes. */
-	uint64_t odropped; /**< Total of packets not sent when Tx ring full. */
+	uint64_t odropped; /**< Total number of packets failed to transmit. */
 };
 
 /** Tx queue descriptor. */

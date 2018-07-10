@@ -47,6 +47,9 @@
 /** Interrupt alarm timeout value in microseconds. */
 #define MLX4_INTR_ALARM_TIMEOUT 100000
 
+/* Maximum packet headers size (L2+L3+L4) for TSO. */
+#define MLX4_MAX_TSO_HEADER 192
+
 /** Port parameter. */
 #define MLX4_PMD_PORT_KVARG "port"
 
@@ -90,6 +93,8 @@ struct priv {
 	uint32_t hw_csum:1; /**< Checksum offload is supported. */
 	uint32_t hw_csum_l2tun:1; /**< Checksum support for L2 tunnels. */
 	uint32_t hw_fcs_strip:1; /**< FCS stripping toggling is supported. */
+	uint32_t tso:1; /**< Transmit segmentation offload is supported. */
+	uint32_t tso_max_payload_sz; /**< Max supported TSO payload size. */
 	uint64_t hw_rss_sup; /**< Supported RSS hash fields (Verbs format). */
 	struct rte_intr_handle intr_handle; /**< Port interrupt handle. */
 	struct mlx4_drop *drop; /**< Shared resources for drop flow rules. */
