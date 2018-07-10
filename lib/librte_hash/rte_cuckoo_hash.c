@@ -125,13 +125,13 @@ rte_hash_create(const struct rte_hash_parameters *params)
 		 * except for the first cache
 		 */
 		num_key_slots = params->entries + (RTE_MAX_LCORE - 1) *
-					LCORE_CACHE_SIZE + 1;
+					(LCORE_CACHE_SIZE - 1) + 1;
 	else
 		num_key_slots = params->entries + 1;
 
 	snprintf(ring_name, sizeof(ring_name), "HT_%s", params->name);
 	/* Create ring (Dummy slot index is not enqueued) */
-	r = rte_ring_create(ring_name, rte_align32pow2(num_key_slots - 1),
+	r = rte_ring_create(ring_name, rte_align32pow2(num_key_slots),
 			params->socket_id, 0);
 	if (r == NULL) {
 		RTE_LOG(ERR, HASH, "memory allocation failed\n");
@@ -290,7 +290,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 		h->add_key = ADD_KEY_SINGLEWRITER;
 
 	/* Populate free slots ring. Entry zero is reserved for key misses. */
-	for (i = 1; i < params->entries + 1; i++)
+	for (i = 1; i < num_key_slots; i++)
 		rte_ring_sp_enqueue(r, (void *)((uintptr_t) i));
 
 	te->data = (void *) h;
@@ -372,7 +372,7 @@ void
 rte_hash_reset(struct rte_hash *h)
 {
 	void *ptr;
-	unsigned i;
+	uint32_t tot_ring_cnt, i;
 
 	if (h == NULL)
 		return;
@@ -385,7 +385,13 @@ rte_hash_reset(struct rte_hash *h)
 		rte_pause();
 
 	/* Repopulate the free slots ring. Entry zero is reserved for key misses */
-	for (i = 1; i < h->entries + 1; i++)
+	if (h->hw_trans_mem_support)
+		tot_ring_cnt = h->entries + (RTE_MAX_LCORE - 1) *
+					(LCORE_CACHE_SIZE - 1);
+	else
+		tot_ring_cnt = h->entries;
+
+	for (i = 1; i < tot_ring_cnt + 1; i++)
 		rte_ring_sp_enqueue(h->free_slots, (void *)((uintptr_t) i));
 
 	if (h->hw_trans_mem_support) {
