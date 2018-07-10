@@ -179,6 +179,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_PMD_RING) += test_pmd_ring_perf.c
 
 SRCS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += test_cryptodev_blockcipher.c
 SRCS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += test_cryptodev.c
+SRCS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += test_cryptodev_asym.c
 
 ifeq ($(CONFIG_RTE_COMPRESSDEV_TEST),y)
 SRCS-$(CONFIG_RTE_LIBRTE_COMPRESSDEV) += test_compressdev.c
