@@ -15,6 +15,8 @@
 #include <rte_crypto.h>
 
 #include "test_cryptodev.h"
+#include "test_cryptodev_dh_test_vectors.h"
+#include "test_cryptodev_dsa_test_vectors.h"
 #include "test_cryptodev_mod_test_vectors.h"
 #include "test_cryptodev_rsa_test_vectors.h"
 #include "test_cryptodev_asym_util.h"
@@ -541,6 +543,386 @@ test_capability(void)
 }
 
 static int
+test_dh_gen_shared_sec(struct rte_crypto_asym_xform *xfrm)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_mempool *op_mpool = ts_params->op_mpool;
+	struct rte_mempool *sess_mpool = ts_params->session_mpool;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_crypto_asym_op *asym_op = NULL;
+	struct rte_crypto_op *op = NULL, *result_op = NULL;
+	struct rte_cryptodev_asym_session *sess = NULL;
+	int status = TEST_SUCCESS;
+	uint8_t output[TEST_DH_MOD_LEN];
+	struct rte_crypto_asym_xform xform = *xfrm;
+	uint8_t peer[] = "01234567890123456789012345678901234567890123456789";
+
+	sess = rte_cryptodev_asym_session_create(sess_mpool);
+	if (sess == NULL) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Session creation failed");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+	/* set up crypto op data structure */
+	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+	if (!op) {
+		RTE_LOG(ERR, USER1,
+			"line %u FAILED: %s",
+			__LINE__, "Failed to allocate asymmetric crypto "
+			"operation struct");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+	asym_op = op->asym;
+
+	/* Setup a xform and op to generate private key only */
+	xform.dh.type = RTE_CRYPTO_ASYM_OP_SHARED_SECRET_COMPUTE;
+	xform.next = NULL;
+	asym_op->dh.priv_key.data = dh_test_params.priv_key.data;
+	asym_op->dh.priv_key.length = dh_test_params.priv_key.length;
+	asym_op->dh.pub_key.data = (uint8_t *)peer;
+	asym_op->dh.pub_key.length = sizeof(peer);
+	asym_op->dh.shared_secret.data = output;
+	asym_op->dh.shared_secret.length = sizeof(output);
+
+	if (rte_cryptodev_asym_session_init(dev_id, sess, &xform,
+			sess_mpool) < 0) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s",
+				__LINE__, "unabled to config sym session");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	/* attach asymmetric crypto session to crypto operations */
+	rte_crypto_op_attach_asym_session(op, sess);
+
+	RTE_LOG(DEBUG, USER1, "Process ASYM operation");
+
+	/* Process crypto operation */
+	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
+		RTE_LOG(ERR, USER1,
+			"line %u FAILED: %s",
+			__LINE__, "Error sending packet for operation");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
+		rte_pause();
+
+	if (result_op == NULL) {
+		RTE_LOG(ERR, USER1,
+			"line %u FAILED: %s",
+			__LINE__, "Failed to process asym crypto op");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	debug_hexdump(stdout, "shared secret:",
+			asym_op->dh.shared_secret.data,
+			asym_op->dh.shared_secret.length);
+
+error_exit:
+	if (sess != NULL) {
+		rte_cryptodev_asym_session_clear(dev_id, sess);
+		rte_cryptodev_asym_session_free(sess);
+	}
+	if (op != NULL)
+		rte_crypto_op_free(op);
+	return status;
+}
+
+static int
+test_dh_gen_priv_key(struct rte_crypto_asym_xform *xfrm)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_mempool *op_mpool = ts_params->op_mpool;
+	struct rte_mempool *sess_mpool = ts_params->session_mpool;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_crypto_asym_op *asym_op = NULL;
+	struct rte_crypto_op *op = NULL, *result_op = NULL;
+	struct rte_cryptodev_asym_session *sess = NULL;
+	int status = TEST_SUCCESS;
+	uint8_t output[TEST_DH_MOD_LEN];
+	struct rte_crypto_asym_xform xform = *xfrm;
+
+	sess = rte_cryptodev_asym_session_create(sess_mpool);
+	if (sess == NULL) {
+		RTE_LOG(ERR, USER1,
+				 "line %u FAILED: %s", __LINE__,
+				"Session creation failed");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+	/* set up crypto op data structure */
+	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+	if (!op) {
+		RTE_LOG(ERR, USER1,
+			"line %u FAILED: %s",
+			__LINE__, "Failed to allocate asymmetric crypto "
+			"operation struct");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+	asym_op = op->asym;
+
+	/* Setup a xform and op to generate private key only */
+	xform.dh.type = RTE_CRYPTO_ASYM_OP_PRIVATE_KEY_GENERATE;
+	xform.next = NULL;
+	asym_op->dh.priv_key.data = output;
+	asym_op->dh.priv_key.length = sizeof(output);
+
+	if (rte_cryptodev_asym_session_init(dev_id, sess, &xform,
+			sess_mpool) < 0) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s",
+				__LINE__, "unabled to config sym session");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	/* attach asymmetric crypto session to crypto operations */
+	rte_crypto_op_attach_asym_session(op, sess);
+
+	RTE_LOG(DEBUG, USER1, "Process ASYM operation");
+
+	/* Process crypto operation */
+	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
+		RTE_LOG(ERR, USER1,
+			"line %u FAILED: %s",
+			__LINE__, "Error sending packet for operation");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
+		rte_pause();
+
+	if (result_op == NULL) {
+		RTE_LOG(ERR, USER1,
+			"line %u FAILED: %s",
+			__LINE__, "Failed to process asym crypto op");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	debug_hexdump(stdout, "private key:",
+			asym_op->dh.priv_key.data,
+			asym_op->dh.priv_key.length);
+
+
+error_exit:
+	if (sess != NULL) {
+		rte_cryptodev_asym_session_clear(dev_id, sess);
+		rte_cryptodev_asym_session_free(sess);
+	}
+	if (op != NULL)
+		rte_crypto_op_free(op);
+
+	return status;
+}
+
+
+static int
+test_dh_gen_pub_key(struct rte_crypto_asym_xform *xfrm)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_mempool *op_mpool = ts_params->op_mpool;
+	struct rte_mempool *sess_mpool = ts_params->session_mpool;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_crypto_asym_op *asym_op = NULL;
+	struct rte_crypto_op *op = NULL, *result_op = NULL;
+	struct rte_cryptodev_asym_session *sess = NULL;
+	int status = TEST_SUCCESS;
+	uint8_t output[TEST_DH_MOD_LEN];
+	struct rte_crypto_asym_xform xform = *xfrm;
+
+	sess = rte_cryptodev_asym_session_create(sess_mpool);
+	if (sess == NULL) {
+		RTE_LOG(ERR, USER1,
+				 "line %u FAILED: %s", __LINE__,
+				"Session creation failed");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+	/* set up crypto op data structure */
+	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+	if (!op) {
+		RTE_LOG(ERR, USER1,
+			"line %u FAILED: %s",
+			__LINE__, "Failed to allocate asymmetric crypto "
+			"operation struct");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+	asym_op = op->asym;
+	/* Setup a xform chain to generate public key
+	 * using test private key
+	 *
+	 */
+	xform.dh.type = RTE_CRYPTO_ASYM_OP_PUBLIC_KEY_GENERATE;
+	xform.next = NULL;
+
+	asym_op->dh.pub_key.data = output;
+	asym_op->dh.pub_key.length = sizeof(output);
+	/* load pre-defined private key */
+	asym_op->dh.priv_key.data = rte_malloc(NULL,
+					dh_test_params.priv_key.length,
+					0);
+	asym_op->dh.priv_key = dh_test_params.priv_key;
+
+	if (rte_cryptodev_asym_session_init(dev_id, sess, &xform,
+			sess_mpool) < 0) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s",
+				__LINE__, "unabled to config sym session");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	/* attach asymmetric crypto session to crypto operations */
+	rte_crypto_op_attach_asym_session(op, sess);
+
+	RTE_LOG(DEBUG, USER1, "Process ASYM operation");
+
+	/* Process crypto operation */
+	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
+		RTE_LOG(ERR, USER1,
+			"line %u FAILED: %s",
+			__LINE__, "Error sending packet for operation");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
+		rte_pause();
+
+	if (result_op == NULL) {
+		RTE_LOG(ERR, USER1,
+			"line %u FAILED: %s",
+			__LINE__, "Failed to process asym crypto op");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	debug_hexdump(stdout, "pub key:",
+			asym_op->dh.pub_key.data, asym_op->dh.pub_key.length);
+
+	debug_hexdump(stdout, "priv key:",
+			asym_op->dh.priv_key.data, asym_op->dh.priv_key.length);
+
+error_exit:
+	if (sess != NULL) {
+		rte_cryptodev_asym_session_clear(dev_id, sess);
+		rte_cryptodev_asym_session_free(sess);
+	}
+	if (op != NULL)
+		rte_crypto_op_free(op);
+
+	return status;
+}
+
+static int
+test_dh_gen_kp(struct rte_crypto_asym_xform *xfrm)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_mempool *op_mpool = ts_params->op_mpool;
+	struct rte_mempool *sess_mpool = ts_params->session_mpool;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_crypto_asym_op *asym_op = NULL;
+	struct rte_crypto_op *op = NULL, *result_op = NULL;
+	struct rte_cryptodev_asym_session *sess = NULL;
+	int status = TEST_SUCCESS;
+	uint8_t out_pub_key[TEST_DH_MOD_LEN];
+	uint8_t out_prv_key[TEST_DH_MOD_LEN];
+	struct rte_crypto_asym_xform pub_key_xform;
+	struct rte_crypto_asym_xform xform = *xfrm;
+
+	sess = rte_cryptodev_asym_session_create(sess_mpool);
+	if (sess == NULL) {
+		RTE_LOG(ERR, USER1,
+				 "line %u FAILED: %s", __LINE__,
+				"Session creation failed");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	/* set up crypto op data structure */
+	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+	if (!op) {
+		RTE_LOG(ERR, USER1,
+			"line %u FAILED: %s",
+			__LINE__, "Failed to allocate asymmetric crypto "
+			"operation struct");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+	asym_op = op->asym;
+	/* Setup a xform chain to generate
+	 * private key first followed by
+	 * public key
+	 */xform.dh.type = RTE_CRYPTO_ASYM_OP_PRIVATE_KEY_GENERATE;
+	pub_key_xform.xform_type = RTE_CRYPTO_ASYM_XFORM_DH;
+	pub_key_xform.dh.type = RTE_CRYPTO_ASYM_OP_PUBLIC_KEY_GENERATE;
+	xform.next = &pub_key_xform;
+
+	asym_op->dh.pub_key.data = out_pub_key;
+	asym_op->dh.pub_key.length = sizeof(out_pub_key);
+	asym_op->dh.priv_key.data = out_prv_key;
+	asym_op->dh.priv_key.length = sizeof(out_prv_key);
+	if (rte_cryptodev_asym_session_init(dev_id, sess, &xform,
+			sess_mpool) < 0) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s",
+				__LINE__, "unabled to config sym session");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	/* attach asymmetric crypto session to crypto operations */
+	rte_crypto_op_attach_asym_session(op, sess);
+
+	RTE_LOG(DEBUG, USER1, "Process ASYM operation");
+
+	/* Process crypto operation */
+	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
+		RTE_LOG(ERR, USER1,
+			"line %u FAILED: %s",
+			__LINE__, "Error sending packet for operation");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
+		rte_pause();
+
+	if (result_op == NULL) {
+		RTE_LOG(ERR, USER1,
+			"line %u FAILED: %s",
+			__LINE__, "Failed to process asym crypto op");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+	debug_hexdump(stdout, "priv key:",
+			out_prv_key, asym_op->dh.priv_key.length);
+	debug_hexdump(stdout, "pub key:",
+			out_pub_key, asym_op->dh.pub_key.length);
+
+error_exit:
+	if (sess != NULL) {
+		rte_cryptodev_asym_session_clear(dev_id, sess);
+		rte_cryptodev_asym_session_free(sess);
+	}
+	if (op != NULL)
+		rte_crypto_op_free(op);
+
+	return status;
+}
+
+static int
 test_mod_inv(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
@@ -769,12 +1151,196 @@ error_exit:
 	return status;
 }
 
+static int
+test_dh_keygenration(void)
+{
+	int status;
+
+	debug_hexdump(stdout, "p:", dh_xform.dh.p.data, dh_xform.dh.p.length);
+	debug_hexdump(stdout, "g:", dh_xform.dh.g.data, dh_xform.dh.g.length);
+	debug_hexdump(stdout, "priv_key:", dh_test_params.priv_key.data,
+			dh_test_params.priv_key.length);
+
+	RTE_LOG(INFO, USER1,
+		"Test Public and Private key pair generation\n");
+
+	status = test_dh_gen_kp(&dh_xform);
+	TEST_ASSERT_EQUAL(status, 0, "Test failed");
+
+	RTE_LOG(INFO, USER1,
+		"Test Public Key Generation using pre-defined priv key\n");
+
+	status = test_dh_gen_pub_key(&dh_xform);
+	TEST_ASSERT_EQUAL(status, 0, "Test failed");
+
+	RTE_LOG(INFO, USER1,
+		"Test Private Key Generation only\n");
+
+	status = test_dh_gen_priv_key(&dh_xform);
+	TEST_ASSERT_EQUAL(status, 0, "Test failed");
+
+	RTE_LOG(INFO, USER1,
+		"Test shared secret compute\n");
+
+	status = test_dh_gen_shared_sec(&dh_xform);
+	TEST_ASSERT_EQUAL(status, 0, "Test failed");
+
+	return status;
+}
+
+static int
+test_dsa_sign(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_mempool *op_mpool = ts_params->op_mpool;
+	struct rte_mempool *sess_mpool = ts_params->session_mpool;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_crypto_asym_op *asym_op = NULL;
+	struct rte_crypto_op *op = NULL, *result_op = NULL;
+	struct rte_cryptodev_asym_session *sess = NULL;
+	int status = TEST_SUCCESS;
+	uint8_t r[TEST_DH_MOD_LEN];
+	uint8_t s[TEST_DH_MOD_LEN];
+	uint8_t dgst[] = "35d81554afaad2cf18f3a1770d5fedc4ea5be344";
+
+	sess = rte_cryptodev_asym_session_create(sess_mpool);
+	if (sess == NULL) {
+		RTE_LOG(ERR, USER1,
+				 "line %u FAILED: %s", __LINE__,
+				"Session creation failed");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+	/* set up crypto op data structure */
+	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+	if (!op) {
+		RTE_LOG(ERR, USER1,
+			"line %u FAILED: %s",
+			__LINE__, "Failed to allocate asymmetric crypto "
+			"operation struct");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+	asym_op = op->asym;
+
+	debug_hexdump(stdout, "p: ", dsa_xform.dsa.p.data,
+			dsa_xform.dsa.p.length);
+	debug_hexdump(stdout, "q: ", dsa_xform.dsa.q.data,
+			dsa_xform.dsa.q.length);
+	debug_hexdump(stdout, "g: ", dsa_xform.dsa.g.data,
+			dsa_xform.dsa.g.length);
+	debug_hexdump(stdout, "priv_key: ", dsa_xform.dsa.x.data,
+			dsa_xform.dsa.x.length);
+
+	if (rte_cryptodev_asym_session_init(dev_id, sess, &dsa_xform,
+				sess_mpool) < 0) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s",
+				__LINE__, "unabled to config sym session");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	/* attach asymmetric crypto session to crypto operations */
+	rte_crypto_op_attach_asym_session(op, sess);
+	asym_op->dsa.op_type = RTE_CRYPTO_ASYM_OP_SIGN;
+	asym_op->dsa.message.data = dgst;
+	asym_op->dsa.message.length = sizeof(dgst);
+	asym_op->dsa.r.length = sizeof(r);
+	asym_op->dsa.r.data = r;
+	asym_op->dsa.s.length = sizeof(s);
+	asym_op->dsa.s.data = s;
+
+	RTE_LOG(DEBUG, USER1, "Process ASYM operation");
+
+	/* Process crypto operation */
+	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
+		RTE_LOG(ERR, USER1,
+			"line %u FAILED: %s",
+			__LINE__, "Error sending packet for operation");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
+		rte_pause();
+
+	if (result_op == NULL) {
+		RTE_LOG(ERR, USER1,
+			"line %u FAILED: %s",
+			__LINE__, "Failed to process asym crypto op");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	asym_op = result_op->asym;
+
+	debug_hexdump(stdout, "r:",
+			asym_op->dsa.r.data, asym_op->dsa.r.length);
+	debug_hexdump(stdout, "s:",
+			asym_op->dsa.s.data, asym_op->dsa.s.length);
+
+	/* Test PMD DSA sign verification using signer public key */
+	asym_op->dsa.op_type = RTE_CRYPTO_ASYM_OP_VERIFY;
+
+	/* copy signer public key */
+	asym_op->dsa.y.data = dsa_test_params.y.data;
+	asym_op->dsa.y.length = dsa_test_params.y.length;
+
+	/* Process crypto operation */
+	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
+		RTE_LOG(ERR, USER1,
+			"line %u FAILED: %s",
+			__LINE__, "Error sending packet for operation");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
+		rte_pause();
+
+	if (result_op == NULL) {
+		RTE_LOG(ERR, USER1,
+			"line %u FAILED: %s",
+			__LINE__, "Failed to process asym crypto op");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	if (result_op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s",
+				__LINE__, "Failed to process asym crypto op");
+		status = TEST_FAILED;
+	}
+error_exit:
+	if (sess != NULL) {
+		rte_cryptodev_asym_session_clear(dev_id, sess);
+		rte_cryptodev_asym_session_free(sess);
+	}
+	if (op != NULL)
+		rte_crypto_op_free(op);
+	return status;
+}
+
+static int
+test_dsa(void)
+{
+	int status;
+	status = test_dsa_sign();
+	TEST_ASSERT_EQUAL(status, 0, "Test failed");
+	return status;
+}
+
+
 static struct unit_test_suite cryptodev_openssl_asym_testsuite  = {
 	.suite_name = "Crypto Device OPENSSL ASYM Unit Test Suite",
 	.setup = testsuite_setup,
 	.teardown = testsuite_teardown,
 	.unit_test_cases = {
 		TEST_CASE_ST(ut_setup, ut_teardown, test_capability),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_dsa),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_dh_keygenration),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_rsa_enc_dec),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_rsa_sign_verify),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_mod_inv),
