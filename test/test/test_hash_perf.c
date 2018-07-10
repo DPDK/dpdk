@@ -76,7 +76,8 @@ static struct rte_hash_parameters ut_params = {
 };
 
 static int
-create_table(unsigned with_data, unsigned table_index)
+create_table(unsigned int with_data, unsigned int table_index,
+		unsigned int with_locks)
 {
 	char name[RTE_HASH_NAMESIZE];
 
@@ -85,6 +86,14 @@ create_table(unsigned with_data, unsigned table_index)
 		sprintf(name, "test_hash%d_data", hashtest_key_lens[table_index]);
 	else
 		sprintf(name, "test_hash%d", hashtest_key_lens[table_index]);
+
+
+	if (with_locks)
+		ut_params.extra_flag =
+			RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT
+				| RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY;
+	else
+		ut_params.extra_flag = 0;
 
 	ut_params.name = name;
 	ut_params.key_len = hashtest_key_lens[table_index];
@@ -459,7 +468,7 @@ reset_table(unsigned table_index)
 }
 
 static int
-run_all_tbl_perf_tests(unsigned with_pushes)
+run_all_tbl_perf_tests(unsigned int with_pushes, unsigned int with_locks)
 {
 	unsigned i, j, with_data, with_hash;
 
@@ -468,7 +477,7 @@ run_all_tbl_perf_tests(unsigned with_pushes)
 
 	for (with_data = 0; with_data <= 1; with_data++) {
 		for (i = 0; i < NUM_KEYSIZES; i++) {
-			if (create_table(with_data, i) < 0)
+			if (create_table(with_data, i, with_locks) < 0)
 				return -1;
 
 			if (get_input_keys(with_pushes, i) < 0)
@@ -611,15 +620,20 @@ fbk_hash_perf_test(void)
 static int
 test_hash_perf(void)
 {
-	unsigned with_pushes;
-
-	for (with_pushes = 0; with_pushes <= 1; with_pushes++) {
-		if (with_pushes == 0)
-			printf("\nALL ELEMENTS IN PRIMARY LOCATION\n");
+	unsigned int with_pushes, with_locks;
+	for (with_locks = 0; with_locks <= 1; with_locks++) {
+		if (with_locks)
+			printf("\nWith locks in the code\n");
 		else
-			printf("\nELEMENTS IN PRIMARY OR SECONDARY LOCATION\n");
-		if (run_all_tbl_perf_tests(with_pushes) < 0)
-			return -1;
+			printf("\nWithout locks in the code\n");
+		for (with_pushes = 0; with_pushes <= 1; with_pushes++) {
+			if (with_pushes == 0)
+				printf("\nALL ELEMENTS IN PRIMARY LOCATION\n");
+			else
+				printf("\nELEMENTS IN PRIMARY OR SECONDARY LOCATION\n");
+			if (run_all_tbl_perf_tests(with_pushes, with_locks) < 0)
+				return -1;
+		}
 	}
 	if (fbk_hash_perf_test() < 0)
 		return -1;
