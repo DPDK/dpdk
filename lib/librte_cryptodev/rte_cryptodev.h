@@ -366,6 +366,12 @@ struct rte_cryptodev_info {
 	unsigned max_nb_queue_pairs;
 	/**< Maximum number of queues pairs supported by device. */
 
+	uint16_t min_mbuf_headroom_req;
+	/**< Minimum mbuf headroom required by device */
+
+	uint16_t min_mbuf_tailroom_req;
+	/**< Minimum mbuf tailroom required by device */
+
 	struct {
 		unsigned max_nb_sessions;
 		/**< Maximum number of sessions supported by device.

@@ -86,6 +86,10 @@ API Changes
   has been replaced with field ``struct rte_device *device``.
   Value 0 is accepted in ``sym.max_nb_sessions``, meaning that a device
   supports an unlimited number of sessions.
+  Two new fields of type ``uint16_t`` have been added:
+  ``min_mbuf_headroom_req`` and ``min_mbuf_tailroom_req``.
+  These parameters specify the recommended headroom and tailroom for mbufs
+  to be processed by the PMD.
 
 * cryptodev: Following functions were deprecated and are removed in 18.08:
 
