@@ -91,12 +91,18 @@ DPDK_18.05 {
 EXPERIMENTAL {
         global:
 
+	rte_cryptodev_asym_capability_get;
 	rte_cryptodev_asym_get_header_session_size;
 	rte_cryptodev_asym_get_private_session_size;
+	rte_cryptodev_asym_get_xform_enum;
 	rte_cryptodev_asym_session_clear;
 	rte_cryptodev_asym_session_create;
 	rte_cryptodev_asym_session_free;
 	rte_cryptodev_asym_session_init;
+	rte_cryptodev_asym_xform_capability_check_modlen;
+	rte_cryptodev_asym_xform_capability_check_optype;
 	rte_cryptodev_sym_session_get_user_data;
 	rte_cryptodev_sym_session_set_user_data;
+	rte_crypto_asym_op_strings;
+	rte_crypto_asym_xform_strings;
 };

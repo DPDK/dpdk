@@ -242,6 +242,24 @@ rte_cryptodev_get_aead_algo_enum(enum rte_crypto_aead_algorithm *algo_enum,
 	return -1;
 }
 
+int __rte_experimental
+rte_cryptodev_asym_get_xform_enum(enum rte_crypto_asym_xform_type *xform_enum,
+		const char *xform_string)
+{
+	unsigned int i;
+
+	for (i = 1; i < RTE_DIM(rte_crypto_asym_xform_strings); i++) {
+		if (strcmp(xform_string,
+			rte_crypto_asym_xform_strings[i]) == 0) {
+			*xform_enum = (enum rte_crypto_asym_xform_type) i;
+			return 0;
+		}
+	}
+
+	/* Invalid string */
+	return -1;
+}
+
 /**
  * The crypto auth operation strings identifiers.
  * It could be used in application command line.
@@ -312,6 +330,28 @@ param_range_check(uint16_t size, const struct rte_crypto_param_range *range)
 	return -1;
 }
 
+const struct rte_cryptodev_asymmetric_xform_capability * __rte_experimental
+rte_cryptodev_asym_capability_get(uint8_t dev_id,
+		const struct rte_cryptodev_asym_capability_idx *idx)
+{
+	const struct rte_cryptodev_capabilities *capability;
+	struct rte_cryptodev_info dev_info;
+	unsigned int i = 0;
+
+	memset(&dev_info, 0, sizeof(struct rte_cryptodev_info));
+	rte_cryptodev_info_get(dev_id, &dev_info);
+
+	while ((capability = &dev_info.capabilities[i++])->op !=
+			RTE_CRYPTO_OP_TYPE_UNDEFINED) {
+		if (capability->op != RTE_CRYPTO_OP_TYPE_ASYMMETRIC)
+			continue;
+
+		if (capability->asym.xform_capa.xform_type == idx->type)
+			return &capability->asym.xform_capa;
+	}
+	return NULL;
+};
+
 int
 rte_cryptodev_sym_capability_check_cipher(
 		const struct rte_cryptodev_symmetric_capability *capability,
@@ -363,6 +403,42 @@ rte_cryptodev_sym_capability_check_aead(
 
 	return 0;
 }
+int __rte_experimental
+rte_cryptodev_asym_xform_capability_check_optype(
+	const struct rte_cryptodev_asymmetric_xform_capability *capability,
+	enum rte_crypto_asym_op_type op_type)
+{
+	if (capability->op_types & (1 << op_type))
+		return 1;
+
+	return 0;
+}
+
+int __rte_experimental
+rte_cryptodev_asym_xform_capability_check_modlen(
+	const struct rte_cryptodev_asymmetric_xform_capability *capability,
+	uint16_t modlen)
+{
+	/* no need to check for limits, if min or max = 0 */
+	if (capability->modlen.min != 0) {
+		if (modlen < capability->modlen.min)
+			return -1;
+	}
+
+	if (capability->modlen.max != 0) {
+		if (modlen > capability->modlen.max)
+			return -1;
+	}
+
+	/* in any case, check if given modlen is module increment */
+	if (capability->modlen.increment != 0) {
+		if (modlen % (capability->modlen.increment))
+			return -1;
+	}
+
+	return 0;
+}
+
 
 const char *
 rte_cryptodev_get_feature_name(uint64_t flag)

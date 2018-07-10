@@ -143,6 +143,35 @@ struct rte_cryptodev_symmetric_capability {
 	};
 };
 
+/**
+ * Asymmetric Xform Crypto Capability
+ *
+ */
+struct rte_cryptodev_asymmetric_xform_capability {
+	enum rte_crypto_asym_xform_type xform_type;
+	/**< Transform type: RSA/MODEXP/DH/DSA/MODINV */
+
+	uint32_t op_types;
+	/**< bitmask for supported rte_crypto_asym_op_type */
+
+	__extension__
+	union {
+		struct rte_crypto_param_range modlen;
+		/**< Range of modulus length supported by modulus based xform.
+		 * Value 0 mean implementation default
+		 */
+	};
+};
+
+/**
+ * Asymmetric Crypto Capability
+ *
+ */
+struct rte_cryptodev_asymmetric_capability {
+	struct rte_cryptodev_asymmetric_xform_capability xform_capa;
+};
+
+
 /** Structure used to capture a capability of a crypto device */
 struct rte_cryptodev_capabilities {
 	enum rte_crypto_op_type op;
@@ -152,6 +181,8 @@ struct rte_cryptodev_capabilities {
 	union {
 		struct rte_cryptodev_symmetric_capability sym;
 		/**< Symmetric operation capability parameters */
+		struct rte_cryptodev_asymmetric_capability asym;
+		/**< Asymmetric operation capability parameters */
 	};
 };
 
@@ -166,7 +197,17 @@ struct rte_cryptodev_sym_capability_idx {
 };
 
 /**
- *  Provide capabilities available for defined device and algorithm
+ * Structure used to describe asymmetric crypto xforms
+ * Each xform maps to one asym algorithm.
+ *
+ */
+struct rte_cryptodev_asym_capability_idx {
+	enum rte_crypto_asym_xform_type type;
+	/**< Asymmetric xform (algo) type */
+};
+
+/**
+ * Provide capabilities available for defined device and algorithm
  *
  * @param	dev_id		The identifier of the device.
  * @param	idx		Description of crypto algorithms.
@@ -178,6 +219,20 @@ struct rte_cryptodev_sym_capability_idx {
 const struct rte_cryptodev_symmetric_capability *
 rte_cryptodev_sym_capability_get(uint8_t dev_id,
 		const struct rte_cryptodev_sym_capability_idx *idx);
+
+/**
+ *  Provide capabilities available for defined device and xform
+ *
+ * @param	dev_id		The identifier of the device.
+ * @param	idx		Description of asym crypto xform.
+ *
+ * @return
+ *   - Return description of the asymmetric crypto capability if exist.
+ *   - Return NULL if the capability not exist.
+ */
+const struct rte_cryptodev_asymmetric_xform_capability * __rte_experimental
+rte_cryptodev_asym_capability_get(uint8_t dev_id,
+		const struct rte_cryptodev_asym_capability_idx *idx);
 
 /**
  * Check if key size and initial vector are supported
@@ -235,6 +290,36 @@ rte_cryptodev_sym_capability_check_aead(
 		uint16_t iv_size);
 
 /**
+ * Check if op type is supported
+ *
+ * @param	capability	Description of the asymmetric crypto capability.
+ * @param	op_type		op type
+ *
+ * @return
+ *   - Return 1 if the op type is supported
+ *   - Return 0 if unsupported
+ */
+int __rte_experimental
+rte_cryptodev_asym_xform_capability_check_optype(
+	const struct rte_cryptodev_asymmetric_xform_capability *capability,
+		enum rte_crypto_asym_op_type op_type);
+
+/**
+ * Check if modulus length is in supported range
+ *
+ * @param	capability	Description of the asymmetric crypto capability.
+ * @param	modlen		modulus length.
+ *
+ * @return
+ *   - Return 0 if the parameters are in range of the capability.
+ *   - Return -1 if the parameters are out of range of the capability.
+ */
+int __rte_experimental
+rte_cryptodev_asym_xform_capability_check_modlen(
+	const struct rte_cryptodev_asymmetric_xform_capability *capability,
+		uint16_t modlen);
+
+/**
  * Provide the cipher algorithm enum, given an algorithm string
  *
  * @param	algo_enum	A pointer to the cipher algorithm
@@ -278,6 +363,22 @@ rte_cryptodev_get_auth_algo_enum(enum rte_crypto_auth_algorithm *algo_enum,
 int
 rte_cryptodev_get_aead_algo_enum(enum rte_crypto_aead_algorithm *algo_enum,
 		const char *algo_string);
+
+/**
+ * Provide the Asymmetric xform enum, given an xform string
+ *
+ * @param	xform_enum	A pointer to the xform type
+ *				enum to be filled
+ * @param	xform_string	xform string
+ *
+ * @return
+ * - Return -1 if string is not valid
+ * - Return 0 if the string is valid
+ */
+int __rte_experimental
+rte_cryptodev_asym_get_xform_enum(enum rte_crypto_asym_xform_type *xform_enum,
+		const char *xform_string);
+
 
 /** Macro used at end of crypto PMD list */
 #define RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST() \
