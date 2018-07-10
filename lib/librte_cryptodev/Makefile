@@ -23,6 +23,7 @@ SYMLINK-y-include += rte_crypto.h
 SYMLINK-y-include += rte_crypto_sym.h
 SYMLINK-y-include += rte_cryptodev.h
 SYMLINK-y-include += rte_cryptodev_pmd.h
+SYMLINK-y-include += rte_crypto_asym.h
 
 # versioning export map
 EXPORT_MAP := rte_cryptodev_version.map
