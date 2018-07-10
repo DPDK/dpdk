@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <net/if.h>
 #include <sys/mman.h>
+#include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 
 /* Verbs header. */
@@ -274,8 +275,10 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		mlx5_socket_uninit(dev);
 	if (priv->config.vf)
 		mlx5_nl_mac_addr_flush(dev);
-	if (priv->nl_socket >= 0)
-		close(priv->nl_socket);
+	if (priv->nl_socket_route >= 0)
+		close(priv->nl_socket_route);
+	if (priv->nl_socket_rdma >= 0)
+		close(priv->nl_socket_rdma);
 	ret = mlx5_hrxq_ibv_verify(dev);
 	if (ret)
 		DRV_LOG(WARNING, "port %u some hash Rx queue still remain",
@@ -876,6 +879,10 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	priv->device_attr = attr;
 	priv->pd = pd;
 	priv->mtu = ETHER_MTU;
+	/* Some internal functions rely on Netlink sockets, open them now. */
+	priv->nl_socket_rdma = mlx5_nl_init(0, NETLINK_RDMA);
+	priv->nl_socket_route =	mlx5_nl_init(RTMGRP_LINK, NETLINK_ROUTE);
+	priv->nl_sn = 0;
 	err = mlx5_args(&config, dpdk_dev->devargs);
 	if (err) {
 		err = rte_errno;
@@ -1010,14 +1017,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	eth_dev->dev_ops = &mlx5_dev_ops;
 	/* Register MAC address. */
 	claim_zero(mlx5_mac_addr_add(eth_dev, &mac, 0, 0));
-	priv->nl_socket = -1;
-	priv->nl_sn = 0;
-	if (vf && config.vf_nl_en) {
-		priv->nl_socket = mlx5_nl_init(RTMGRP_LINK);
-		if (priv->nl_socket < 0)
-			priv->nl_socket = -1;
+	if (vf && config.vf_nl_en)
 		mlx5_nl_mac_addr_sync(eth_dev);
-	}
 	TAILQ_INIT(&priv->flows);
 	TAILQ_INIT(&priv->ctrl_flows);
 	/* Hint libmlx5 to use PMD allocator for data plane resources */
@@ -1078,8 +1079,13 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	rte_rwlock_write_unlock(&mlx5_shared_data->mem_event_rwlock);
 	return eth_dev;
 error:
-	if (priv)
+	if (priv) {
+		if (priv->nl_socket_route >= 0)
+			close(priv->nl_socket_route);
+		if (priv->nl_socket_rdma >= 0)
+			close(priv->nl_socket_rdma);
 		rte_free(priv);
+	}
 	if (pd)
 		claim_zero(mlx5_glue->dealloc_pd(pd));
 	if (eth_dev)
@@ -1110,6 +1116,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 {
 	struct ibv_device **ibv_list;
 	struct rte_eth_dev *eth_dev = NULL;
+	unsigned int n = 0;
 	int vf;
 	int ret;
 
@@ -1121,6 +1128,9 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		DRV_LOG(ERR, "cannot list devices, is ib_uverbs loaded?");
 		return -rte_errno;
 	}
+
+	struct ibv_device *ibv_match[ret + 1];
+
 	while (ret-- > 0) {
 		struct rte_pci_addr pci_addr;
 
@@ -1132,9 +1142,80 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		    pci_dev->addr.devid != pci_addr.devid ||
 		    pci_dev->addr.function != pci_addr.function)
 			continue;
-		DRV_LOG(INFO, "PCI information matches, using device \"%s\"",
+		DRV_LOG(INFO, "PCI information matches for device \"%s\"",
 			ibv_list[ret]->name);
+		ibv_match[n++] = ibv_list[ret];
+	}
+	ibv_match[n] = NULL;
+
+	unsigned int ifindex[n];
+	struct mlx5_switch_info info[n];
+	int nl_route = n ? mlx5_nl_init(0, NETLINK_ROUTE) : -1;
+	int nl_rdma = n ? mlx5_nl_init(0, NETLINK_RDMA) : -1;
+	unsigned int i;
+
+	/*
+	 * The existence of several matching entries (n > 1) means port
+	 * representors have been instantiated. No existing Verbs call nor
+	 * /sys entries can tell them apart, this can only be done through
+	 * Netlink calls assuming kernel drivers are recent enough to
+	 * support them.
+	 *
+	 * In the event of identification failure through Netlink, either:
+	 *
+	 * 1. No device matches (n == 0), complain and bail out.
+	 * 2. A single IB device matches (n == 1) and is not a representor,
+	 *    assume no switch support.
+	 * 3. Otherwise no safe assumptions can be made; complain louder and
+	 *    bail out.
+	 */
+	for (i = 0; i != n; ++i) {
+		if (nl_rdma < 0)
+			ifindex[i] = 0;
+		else
+			ifindex[i] = mlx5_nl_ifindex(nl_rdma,
+						     ibv_match[i]->name);
+		if (nl_route < 0 ||
+		    !ifindex[i] ||
+		    mlx5_nl_switch_info(nl_route, ifindex[i], &info[i])) {
+			ifindex[i] = 0;
+			memset(&info[i], 0, sizeof(info[i]));
+			continue;
+		}
+	}
+	if (nl_rdma >= 0)
+		close(nl_rdma);
+	if (nl_route >= 0)
+		close(nl_route);
+	/* Look for master device. */
+	for (i = 0; i != n; ++i) {
+		if (!info[i].master)
+			continue;
+		/* Make it the first entry. */
+		if (i == 0)
+			break;
+		ibv_match[n] = ibv_match[0];
+		ibv_match[0] = ibv_match[i];
+		ibv_match[n] = NULL;
 		break;
+	}
+	if (n && i == n) {
+		if (n == 1 && !info[0].representor) {
+			/* Case #2. */
+			DRV_LOG(INFO, "no switch support detected");
+		} else if (n == 1) {
+			/* Case #3. */
+			DRV_LOG(ERR,
+				"device looks like a port representor, this is"
+				" not supported yet");
+			n = 0;
+		} else {
+			/* Case #3. */
+			DRV_LOG(ERR,
+				"unable to tell which of the matching devices"
+				" is the master (lack of kernel support?)");
+			n = 0;
+		}
 	}
 	switch (pci_dev->id.device_id) {
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX4VF:
@@ -1146,10 +1227,10 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	default:
 		vf = 0;
 	}
-	if (ret >= 0)
-		eth_dev = mlx5_dev_spawn(&pci_dev->device, ibv_list[ret], vf);
+	if (n)
+		eth_dev = mlx5_dev_spawn(&pci_dev->device, ibv_match[0], vf);
 	mlx5_glue->free_device_list(ibv_list);
-	if (!ret) {
+	if (!n) {
 		DRV_LOG(WARNING,
 			"no Verbs device matches PCI device " PCI_PRI_FMT ","
 			" are kernel drivers loaded?",

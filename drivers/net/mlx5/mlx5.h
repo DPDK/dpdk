@@ -53,6 +53,14 @@ enum {
 	PCI_DEVICE_ID_MELLANOX_CONNECTX5BF = 0xa2d2,
 };
 
+/** Switch information returned by mlx5_nl_switch_info(). */
+struct mlx5_switch_info {
+	uint32_t master:1; /**< Master device. */
+	uint32_t representor:1; /**< Representor device. */
+	int32_t port_name; /**< Representor port name. */
+	uint64_t switch_id; /**< Switch identifier. */
+};
+
 LIST_HEAD(mlx5_dev_list, priv);
 
 /* Shared memory between primary and secondary processes. */
@@ -195,7 +203,8 @@ struct priv {
 	struct mlx5_dev_config config; /* Device configuration. */
 	struct mlx5_verbs_alloc_ctx verbs_alloc_ctx;
 	/* Context for Verbs allocator. */
-	int nl_socket; /* Netlink socket. */
+	int nl_socket_rdma; /* Netlink socket (NETLINK_RDMA). */
+	int nl_socket_route; /* Netlink socket (NETLINK_ROUTE). */
 	uint32_t nl_sn; /* Netlink message sequence number. */
 };
 
@@ -342,7 +351,7 @@ int mlx5_socket_connect(struct rte_eth_dev *priv);
 
 /* mlx5_nl.c */
 
-int mlx5_nl_init(uint32_t nlgroups);
+int mlx5_nl_init(uint32_t nlgroups, int protocol);
 int mlx5_nl_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac,
 			 uint32_t index);
 int mlx5_nl_mac_addr_remove(struct rte_eth_dev *dev, struct ether_addr *mac,
@@ -351,5 +360,8 @@ void mlx5_nl_mac_addr_sync(struct rte_eth_dev *dev);
 void mlx5_nl_mac_addr_flush(struct rte_eth_dev *dev);
 int mlx5_nl_promisc(struct rte_eth_dev *dev, int enable);
 int mlx5_nl_allmulti(struct rte_eth_dev *dev, int enable);
+unsigned int mlx5_nl_ifindex(int nl, const char *name);
+int mlx5_nl_switch_info(int nl, unsigned int ifindex,
+			struct mlx5_switch_info *info);
 
 #endif /* RTE_PMD_MLX5_H_ */

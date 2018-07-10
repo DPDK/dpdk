@@ -3,9 +3,20 @@
  * Copyright 2018 Mellanox Technologies, Ltd
  */
 
+#include <errno.h>
+#include <linux/if_link.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
+#include <net/if.h>
+#include <rdma/rdma_netlink.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
 #include <unistd.h>
+
+#include <rte_errno.h>
 
 #include "mlx5.h"
 #include "mlx5_utils.h"
@@ -27,6 +38,40 @@
 	((struct rtattr *)(((char *)(r)) + NLMSG_ALIGN(sizeof(struct ndmsg))))
 #endif
 
+/*
+ * The following definitions are normally found in rdma/rdma_netlink.h,
+ * however they are so recent that most systems do not expose them yet.
+ */
+#ifndef HAVE_RDMA_NL_NLDEV
+#define RDMA_NL_NLDEV 5
+#endif
+#ifndef HAVE_RDMA_NLDEV_CMD_GET
+#define RDMA_NLDEV_CMD_GET 1
+#endif
+#ifndef HAVE_RDMA_NLDEV_CMD_PORT_GET
+#define RDMA_NLDEV_CMD_PORT_GET 5
+#endif
+#ifndef HAVE_RDMA_NLDEV_ATTR_DEV_INDEX
+#define RDMA_NLDEV_ATTR_DEV_INDEX 1
+#endif
+#ifndef HAVE_RDMA_NLDEV_ATTR_DEV_NAME
+#define RDMA_NLDEV_ATTR_DEV_NAME 2
+#endif
+#ifndef HAVE_RDMA_NLDEV_ATTR_PORT_INDEX
+#define RDMA_NLDEV_ATTR_PORT_INDEX 3
+#endif
+#ifndef HAVE_RDMA_NLDEV_ATTR_NDEV_INDEX
+#define RDMA_NLDEV_ATTR_NDEV_INDEX 50
+#endif
+
+/* These are normally found in linux/if_link.h. */
+#ifndef HAVE_IFLA_PHYS_SWITCH_ID
+#define IFLA_PHYS_SWITCH_ID 36
+#endif
+#ifndef HAVE_IFLA_PHYS_PORT_NAME
+#define IFLA_PHYS_PORT_NAME 38
+#endif
+
 /* Add/remove MAC address through Netlink */
 struct mlx5_nl_mac_addr {
 	struct ether_addr (*mac)[];
@@ -34,18 +79,27 @@ struct mlx5_nl_mac_addr {
 	int mac_n; /**< Number of addresses in the array. */
 };
 
+/** Data structure used by mlx5_nl_ifindex_cb(). */
+struct mlx5_nl_ifindex_data {
+	const char *name; /**< IB device name (in). */
+	uint32_t ibindex; /**< IB device index (out). */
+	uint32_t ifindex; /**< Network interface index (out). */
+};
+
 /**
  * Opens a Netlink socket.
  *
  * @param nl_groups
  *   Netlink group value (e.g. RTMGRP_LINK).
+ * @param protocol
+ *   Netlink protocol (e.g. NETLINK_ROUTE, NETLINK_RDMA).
  *
  * @return
  *   A file descriptor on success, a negative errno value otherwise and
  *   rte_errno is set.
  */
 int
-mlx5_nl_init(uint32_t nl_groups)
+mlx5_nl_init(uint32_t nl_groups, int protocol)
 {
 	int fd;
 	int sndbuf_size = MLX5_SEND_BUF_SIZE;
@@ -56,7 +110,7 @@ mlx5_nl_init(uint32_t nl_groups)
 	};
 	int ret;
 
-	fd = socket(AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, NETLINK_ROUTE);
+	fd = socket(AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, protocol);
 	if (fd == -1) {
 		rte_errno = errno;
 		return -rte_errno;
@@ -334,9 +388,9 @@ mlx5_nl_mac_addr_list(struct rte_eth_dev *dev, struct ether_addr (*mac)[],
 	int ret;
 	uint32_t sn = priv->nl_sn++;
 
-	if (priv->nl_socket == -1)
+	if (priv->nl_socket_route == -1)
 		return 0;
-	fd = priv->nl_socket;
+	fd = priv->nl_socket_route;
 	ret = mlx5_nl_request(fd, &req.hdr, sn, &req.ifm,
 			      sizeof(struct ifinfomsg));
 	if (ret < 0)
@@ -398,9 +452,9 @@ mlx5_nl_mac_addr_modify(struct rte_eth_dev *dev, struct ether_addr *mac,
 	int ret;
 	uint32_t sn = priv->nl_sn++;
 
-	if (priv->nl_socket == -1)
+	if (priv->nl_socket_route == -1)
 		return 0;
-	fd = priv->nl_socket;
+	fd = priv->nl_socket_route;
 	memcpy(RTA_DATA(&req.rta), mac, ETHER_ADDR_LEN);
 	req.hdr.nlmsg_len = NLMSG_ALIGN(req.hdr.nlmsg_len) +
 		RTA_ALIGN(req.rta.rta_len);
@@ -569,9 +623,9 @@ mlx5_nl_device_flags(struct rte_eth_dev *dev, uint32_t flags, int enable)
 	int ret;
 
 	assert(!(flags & ~(IFF_PROMISC | IFF_ALLMULTI)));
-	if (priv->nl_socket < 0)
+	if (priv->nl_socket_route < 0)
 		return 0;
-	fd = priv->nl_socket;
+	fd = priv->nl_socket_route;
 	ret = mlx5_nl_send(fd, &req.hdr, priv->nl_sn++);
 	if (ret < 0)
 		return ret;
@@ -623,5 +677,243 @@ mlx5_nl_allmulti(struct rte_eth_dev *dev, int enable)
 			"port %u cannot %s allmulti mode: Netlink error %s",
 			dev->data->port_id, enable ? "enable" : "disable",
 			strerror(rte_errno));
+	return ret;
+}
+
+/**
+ * Process network interface information from Netlink message.
+ *
+ * @param nh
+ *   Pointer to Netlink message header.
+ * @param arg
+ *   Opaque data pointer for this callback.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_nl_ifindex_cb(struct nlmsghdr *nh, void *arg)
+{
+	struct mlx5_nl_ifindex_data *data = arg;
+	size_t off = NLMSG_HDRLEN;
+	uint32_t ibindex = 0;
+	uint32_t ifindex = 0;
+	int found = 0;
+
+	if (nh->nlmsg_type !=
+	    RDMA_NL_GET_TYPE(RDMA_NL_NLDEV, RDMA_NLDEV_CMD_GET) &&
+	    nh->nlmsg_type !=
+	    RDMA_NL_GET_TYPE(RDMA_NL_NLDEV, RDMA_NLDEV_CMD_PORT_GET))
+		goto error;
+	while (off < nh->nlmsg_len) {
+		struct nlattr *na = (void *)((uintptr_t)nh + off);
+		void *payload = (void *)((uintptr_t)na + NLA_HDRLEN);
+
+		if (na->nla_len > nh->nlmsg_len - off)
+			goto error;
+		switch (na->nla_type) {
+		case RDMA_NLDEV_ATTR_DEV_INDEX:
+			ibindex = *(uint32_t *)payload;
+			break;
+		case RDMA_NLDEV_ATTR_DEV_NAME:
+			if (!strcmp(payload, data->name))
+				found = 1;
+			break;
+		case RDMA_NLDEV_ATTR_NDEV_INDEX:
+			ifindex = *(uint32_t *)payload;
+			break;
+		default:
+			break;
+		}
+		off += NLA_ALIGN(na->nla_len);
+	}
+	if (found) {
+		data->ibindex = ibindex;
+		data->ifindex = ifindex;
+	}
+	return 0;
+error:
+	rte_errno = EINVAL;
+	return -rte_errno;
+}
+
+/**
+ * Get index of network interface associated with some IB device.
+ *
+ * This is the only somewhat safe method to avoid resorting to heuristics
+ * when faced with port representors. Unfortunately it requires at least
+ * Linux 4.17.
+ *
+ * @param nl
+ *   Netlink socket of the RDMA kind (NETLINK_RDMA).
+ * @param[in] name
+ *   IB device name.
+ *
+ * @return
+ *   A valid (nonzero) interface index on success, 0 otherwise and rte_errno
+ *   is set.
+ */
+unsigned int
+mlx5_nl_ifindex(int nl, const char *name)
+{
+	static const uint32_t pindex = 1;
+	uint32_t seq = random();
+	struct mlx5_nl_ifindex_data data = {
+		.name = name,
+		.ibindex = 0, /* Determined during first pass. */
+		.ifindex = 0, /* Determined during second pass. */
+	};
+	union {
+		struct nlmsghdr nh;
+		uint8_t buf[NLMSG_HDRLEN +
+			    NLA_HDRLEN + NLA_ALIGN(sizeof(data.ibindex)) +
+			    NLA_HDRLEN + NLA_ALIGN(sizeof(pindex))];
+	} req = {
+		.nh = {
+			.nlmsg_len = NLMSG_LENGTH(0),
+			.nlmsg_type = RDMA_NL_GET_TYPE(RDMA_NL_NLDEV,
+						       RDMA_NLDEV_CMD_GET),
+			.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK | NLM_F_DUMP,
+		},
+	};
+	struct nlattr *na;
+	int ret;
+
+	ret = mlx5_nl_send(nl, &req.nh, seq);
+	if (ret < 0)
+		return 0;
+	ret = mlx5_nl_recv(nl, seq, mlx5_nl_ifindex_cb, &data);
+	if (ret < 0)
+		return 0;
+	if (!data.ibindex)
+		goto error;
+	++seq;
+	req.nh.nlmsg_type = RDMA_NL_GET_TYPE(RDMA_NL_NLDEV,
+					     RDMA_NLDEV_CMD_PORT_GET);
+	req.nh.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
+	req.nh.nlmsg_len = NLMSG_LENGTH(sizeof(req.buf) - NLMSG_HDRLEN);
+	na = (void *)((uintptr_t)req.buf + NLMSG_HDRLEN);
+	na->nla_len = NLA_HDRLEN + sizeof(data.ibindex);
+	na->nla_type = RDMA_NLDEV_ATTR_DEV_INDEX;
+	memcpy((void *)((uintptr_t)na + NLA_HDRLEN),
+	       &data.ibindex, sizeof(data.ibindex));
+	na = (void *)((uintptr_t)na + NLA_ALIGN(na->nla_len));
+	na->nla_len = NLA_HDRLEN + sizeof(pindex);
+	na->nla_type = RDMA_NLDEV_ATTR_PORT_INDEX;
+	memcpy((void *)((uintptr_t)na + NLA_HDRLEN),
+	       &pindex, sizeof(pindex));
+	ret = mlx5_nl_send(nl, &req.nh, seq);
+	if (ret < 0)
+		return 0;
+	ret = mlx5_nl_recv(nl, seq, mlx5_nl_ifindex_cb, &data);
+	if (ret < 0)
+		return 0;
+	if (!data.ifindex)
+		goto error;
+	return data.ifindex;
+error:
+	rte_errno = ENODEV;
+	return 0;
+}
+
+/**
+ * Process switch information from Netlink message.
+ *
+ * @param nh
+ *   Pointer to Netlink message header.
+ * @param arg
+ *   Opaque data pointer for this callback.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_nl_switch_info_cb(struct nlmsghdr *nh, void *arg)
+{
+	struct mlx5_switch_info info = {
+		.master = 0,
+		.representor = 0,
+		.port_name = 0,
+		.switch_id = 0,
+	};
+	size_t off = NLMSG_LENGTH(sizeof(struct ifinfomsg));
+	bool port_name_set = false;
+	bool switch_id_set = false;
+
+	if (nh->nlmsg_type != RTM_NEWLINK)
+		goto error;
+	while (off < nh->nlmsg_len) {
+		struct rtattr *ra = (void *)((uintptr_t)nh + off);
+		void *payload = RTA_DATA(ra);
+		char *end;
+		unsigned int i;
+
+		if (ra->rta_len > nh->nlmsg_len - off)
+			goto error;
+		switch (ra->rta_type) {
+		case IFLA_PHYS_PORT_NAME:
+			errno = 0;
+			info.port_name = strtol(payload, &end, 0);
+			if (errno ||
+			    (size_t)(end - (char *)payload) != strlen(payload))
+				goto error;
+			port_name_set = true;
+			break;
+		case IFLA_PHYS_SWITCH_ID:
+			info.switch_id = 0;
+			for (i = 0; i < RTA_PAYLOAD(ra); ++i) {
+				info.switch_id <<= 8;
+				info.switch_id |= ((uint8_t *)payload)[i];
+			}
+			switch_id_set = true;
+			break;
+		}
+		off += RTA_ALIGN(ra->rta_len);
+	}
+	info.master = switch_id_set && !port_name_set;
+	info.representor = switch_id_set && port_name_set;
+	memcpy(arg, &info, sizeof(info));
+	return 0;
+error:
+	rte_errno = EINVAL;
+	return -rte_errno;
+}
+
+/**
+ * Get switch information associated with network interface.
+ *
+ * @param nl
+ *   Netlink socket of the ROUTE kind (NETLINK_ROUTE).
+ * @param ifindex
+ *   Network interface index.
+ * @param[out] info
+ *   Switch information object, populated in case of success.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_nl_switch_info(int nl, unsigned int ifindex, struct mlx5_switch_info *info)
+{
+	uint32_t seq = random();
+	struct {
+		struct nlmsghdr nh;
+		struct ifinfomsg info;
+	} req = {
+		.nh = {
+			.nlmsg_len = NLMSG_LENGTH(sizeof(req.info)),
+			.nlmsg_type = RTM_GETLINK,
+			.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK,
+		},
+		.info = {
+			.ifi_family = AF_UNSPEC,
+			.ifi_index = ifindex,
+		},
+	};
+	int ret;
+
+	ret = mlx5_nl_send(nl, &req.nh, seq);
+	if (ret >= 0)
+		ret = mlx5_nl_recv(nl, seq, mlx5_nl_switch_info_cb, info);
 	return ret;
 }
