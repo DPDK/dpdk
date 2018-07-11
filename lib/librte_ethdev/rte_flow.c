@@ -585,7 +585,7 @@ rte_flow_expand_rss(struct rte_flow_expand_rss *buf, size_t size,
 	node = next_node ? &graph[*next_node] : NULL;
 	while (node) {
 		flow_items[stack_pos].type = node->type;
-		if ((node->rss_types & types) == node->rss_types) {
+		if (node->rss_types & types) {
 			/*
 			 * compute the number of items to copy from the
 			 * expansion and copy it.
