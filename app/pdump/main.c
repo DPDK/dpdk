@@ -38,8 +38,9 @@
 #define PDUMP_MSIZE_ARG "mbuf-size"
 #define PDUMP_NUM_MBUFS_ARG "total-num-mbufs"
 
-#define VDEV_PCAP "net_pcap_%s_%d,tx_pcap=%s"
-#define VDEV_IFACE "net_pcap_%s_%d,tx_iface=%s"
+#define VDEV_NAME_FMT "net_pcap_%s_%d"
+#define VDEV_PCAP_ARGS_FMT "tx_pcap=%s"
+#define VDEV_IFACE_ARGS_FMT "tx_iface=%s"
 #define TX_STREAM_SIZE 64
 
 #define MP_NAME "pdump_pool_%d"
@@ -570,6 +571,7 @@ create_mp_ring_vdev(void)
 	uint16_t portid;
 	struct pdump_tuples *pt = NULL;
 	struct rte_mempool *mbuf_pool = NULL;
+	char vdev_name[SIZE];
 	char vdev_args[SIZE];
 	char ring_name[SIZE];
 	char mempool_name[SIZE];
@@ -619,16 +621,27 @@ create_mp_ring_vdev(void)
 			}
 
 			/* create vdevs */
+			snprintf(vdev_name, sizeof(vdev_name),
+				 VDEV_NAME_FMT, RX_STR, i);
 			(pt->rx_vdev_stream_type == IFACE) ?
-			snprintf(vdev_args, SIZE, VDEV_IFACE, RX_STR, i,
-			pt->rx_dev) :
-			snprintf(vdev_args, SIZE, VDEV_PCAP, RX_STR, i,
-			pt->rx_dev);
-			if (rte_eth_dev_attach(vdev_args, &portid) < 0) {
+			snprintf(vdev_args, sizeof(vdev_args),
+				 VDEV_IFACE_ARGS_FMT, pt->rx_dev) :
+			snprintf(vdev_args, sizeof(vdev_args),
+				 VDEV_PCAP_ARGS_FMT, pt->rx_dev);
+			if (rte_eal_hotplug_add("vdev", vdev_name,
+						vdev_args) < 0) {
 				cleanup_rings();
 				rte_exit(EXIT_FAILURE,
 					"vdev creation failed:%s:%d\n",
 					__func__, __LINE__);
+			}
+			if (rte_eth_dev_get_port_by_name(vdev_name,
+							 &portid) != 0) {
+				rte_eal_hotplug_remove("vdev", vdev_name);
+				cleanup_rings();
+				rte_exit(EXIT_FAILURE,
+					"cannot find added vdev %s:%s:%d\n",
+					vdev_name, __func__, __LINE__);
 			}
 			pt->rx_vdev_id = portid;
 
@@ -638,17 +651,28 @@ create_mp_ring_vdev(void)
 			if (pt->single_pdump_dev)
 				pt->tx_vdev_id = portid;
 			else {
-				(pt->tx_vdev_stream_type == IFACE) ?
-				snprintf(vdev_args, SIZE, VDEV_IFACE, TX_STR, i,
-				pt->tx_dev) :
-				snprintf(vdev_args, SIZE, VDEV_PCAP, TX_STR, i,
-				pt->tx_dev);
-				if (rte_eth_dev_attach(vdev_args,
-							&portid) < 0) {
+				snprintf(vdev_name, sizeof(vdev_name),
+					 VDEV_NAME_FMT, TX_STR, i);
+				(pt->rx_vdev_stream_type == IFACE) ?
+				snprintf(vdev_args, sizeof(vdev_args),
+					 VDEV_IFACE_ARGS_FMT, pt->tx_dev) :
+				snprintf(vdev_args, sizeof(vdev_args),
+					 VDEV_PCAP_ARGS_FMT, pt->tx_dev);
+				if (rte_eal_hotplug_add("vdev", vdev_name,
+							vdev_args) < 0) {
 					cleanup_rings();
 					rte_exit(EXIT_FAILURE,
 						"vdev creation failed:"
 						"%s:%d\n", __func__, __LINE__);
+				}
+				if (rte_eth_dev_get_port_by_name(vdev_name,
+						&portid) != 0) {
+					rte_eal_hotplug_remove("vdev",
+							       vdev_name);
+					cleanup_rings();
+					rte_exit(EXIT_FAILURE,
+						"cannot find added vdev %s:%s:%d\n",
+						vdev_name, __func__, __LINE__);
 				}
 				pt->tx_vdev_id = portid;
 
@@ -667,16 +691,27 @@ create_mp_ring_vdev(void)
 					rte_strerror(rte_errno));
 			}
 
+			snprintf(vdev_name, sizeof(vdev_name),
+				 VDEV_NAME_FMT, RX_STR, i);
 			(pt->rx_vdev_stream_type == IFACE) ?
-			snprintf(vdev_args, SIZE, VDEV_IFACE, RX_STR, i,
-				pt->rx_dev) :
-			snprintf(vdev_args, SIZE, VDEV_PCAP, RX_STR, i,
-				pt->rx_dev);
-			if (rte_eth_dev_attach(vdev_args, &portid) < 0) {
+			snprintf(vdev_args, sizeof(vdev_args),
+				 VDEV_IFACE_ARGS_FMT, pt->rx_dev) :
+			snprintf(vdev_args, sizeof(vdev_args),
+				 VDEV_PCAP_ARGS_FMT, pt->rx_dev);
+			if (rte_eal_hotplug_add("vdev", vdev_name,
+						vdev_args) < 0) {
 				cleanup_rings();
 				rte_exit(EXIT_FAILURE,
 					"vdev creation failed:%s:%d\n",
 					__func__, __LINE__);
+			}
+			if (rte_eth_dev_get_port_by_name(vdev_name,
+							 &portid) != 0) {
+				rte_eal_hotplug_remove("vdev", vdev_name);
+				cleanup_rings();
+				rte_exit(EXIT_FAILURE,
+					"cannot find added vdev %s:%s:%d\n",
+					vdev_name, __func__, __LINE__);
 			}
 			pt->rx_vdev_id = portid;
 			/* configure vdev */
@@ -693,15 +728,26 @@ create_mp_ring_vdev(void)
 					rte_strerror(rte_errno));
 			}
 
+			snprintf(vdev_name, sizeof(vdev_name),
+				 VDEV_NAME_FMT, TX_STR, i);
 			(pt->tx_vdev_stream_type == IFACE) ?
-			snprintf(vdev_args, SIZE, VDEV_IFACE, TX_STR, i,
-				pt->tx_dev) :
-			snprintf(vdev_args, SIZE, VDEV_PCAP, TX_STR, i,
-				pt->tx_dev);
-			if (rte_eth_dev_attach(vdev_args, &portid) < 0) {
+			snprintf(vdev_args, sizeof(vdev_args),
+				 VDEV_IFACE_ARGS_FMT, pt->tx_dev) :
+			snprintf(vdev_args, sizeof(vdev_args),
+				 VDEV_PCAP_ARGS_FMT, pt->tx_dev);
+			if (rte_eal_hotplug_add("vdev", vdev_name,
+						vdev_args) < 0) {
 				cleanup_rings();
 				rte_exit(EXIT_FAILURE,
 					"vdev creation failed\n");
+			}
+			if (rte_eth_dev_get_port_by_name(vdev_name,
+							 &portid) != 0) {
+				rte_eal_hotplug_remove("vdev", vdev_name);
+				cleanup_rings();
+				rte_exit(EXIT_FAILURE,
+					"cannot find added vdev %s:%s:%d\n",
+					vdev_name, __func__, __LINE__);
 			}
 			pt->tx_vdev_id = portid;
 
