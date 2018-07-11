@@ -8,3 +8,10 @@ DPDK_2.0 {
 
 	local: *;
 };
+
+EXPERIMENTAL {
+	global:
+
+	rte_kvargs_parse_delim;
+
+} DPDK_2.0;

@@ -168,3 +168,28 @@ rte_kvargs_parse(const char *args, const char * const valid_keys[])
 
 	return kvlist;
 }
+
+__rte_experimental
+struct rte_kvargs *
+rte_kvargs_parse_delim(const char *args, const char * const valid_keys[],
+		       const char *valid_ends)
+{
+	struct rte_kvargs *kvlist = NULL;
+	char *copy;
+	size_t len;
+
+	if (valid_ends == NULL)
+		return rte_kvargs_parse(args, valid_keys);
+
+	copy = strdup(args);
+	if (copy == NULL)
+		return NULL;
+
+	len = strcspn(copy, valid_ends);
+	copy[len] = '\0';
+
+	kvlist = rte_kvargs_parse(copy, valid_keys);
+
+	free(copy);
+	return kvlist;
+}

@@ -25,6 +25,8 @@
 extern "C" {
 #endif
 
+#include <rte_compat.h>
+
 /** Maximum number of key/value associations */
 #define RTE_KVARGS_MAX 32
 
@@ -70,6 +72,36 @@ struct rte_kvargs {
  */
 struct rte_kvargs *rte_kvargs_parse(const char *args,
 		const char *const valid_keys[]);
+
+/**
+ * Allocate a rte_kvargs and store key/value associations from a string.
+ * This version will consider any byte from valid_ends as a possible
+ * terminating character, and will not parse beyond any of their occurrence.
+ *
+ * The function allocates and fills an rte_kvargs structure from a given
+ * string whose format is key1=value1,key2=value2,...
+ *
+ * The structure can be freed with rte_kvargs_free().
+ *
+ * @param args
+ *   The input string containing the key/value associations
+ *
+ * @param valid_keys
+ *   A list of valid keys (table of const char *, the last must be NULL).
+ *   This argument is ignored if NULL
+ *
+ * @param valid_ends
+ *   Acceptable terminating characters.
+ *   If NULL, the behavior is the same as ``rte_kvargs_parse``.
+ *
+ * @return
+ *   - A pointer to an allocated rte_kvargs structure on success
+ *   - NULL on error
+ */
+__rte_experimental
+struct rte_kvargs *rte_kvargs_parse_delim(const char *args,
+		const char *const valid_keys[],
+		const char *valid_ends);
 
 /**
  * Free a rte_kvargs structure
