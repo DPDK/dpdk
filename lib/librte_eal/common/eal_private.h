@@ -270,4 +270,38 @@ int rte_mp_channel_init(void);
  */
 void dev_callback_process(char *device_name, enum rte_dev_event_type event);
 
+/**
+ * @internal
+ * Parse a device string and store its information in an
+ * rte_devargs structure.
+ *
+ * A device description is split by layers of abstraction of the device:
+ * bus, class and driver. Each layer will offer a set of properties that
+ * can be applied either to configure or recognize a device.
+ *
+ * This function will parse those properties and prepare the rte_devargs
+ * to be given to each layers for processing.
+ *
+ * Note: if the "data" field of the devargs points to devstr,
+ * then no dynamic allocation is performed and the rte_devargs
+ * can be safely discarded.
+ *
+ * Otherwise ``data`` will hold a workable copy of devstr, that will be
+ * used by layers descriptors within rte_devargs. In this case,
+ * any rte_devargs should be cleaned-up before being freed.
+ *
+ * @param da
+ *   rte_devargs structure to fill.
+ *
+ * @param devstr
+ *   Device string.
+ *
+ * @return
+ *   0 on success.
+ *   Negative errno values on error (rte_errno is set).
+ */
+int
+rte_devargs_layers_parse(struct rte_devargs *devargs,
+			 const char *devstr);
+
 #endif /* _EAL_PRIVATE_H_ */

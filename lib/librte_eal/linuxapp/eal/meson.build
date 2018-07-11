@@ -23,6 +23,7 @@ env_sources = files('eal_alarm.c',
 		'eal_dev.c',
 )
 
+deps += ['kvargs']
 if has_libnuma == 1
 	dpdk_conf.set10('RTE_EAL_NUMA_AWARE_HUGEPAGES', true)
 endif

@@ -18,6 +18,7 @@ CFLAGS += $(WERROR_FLAGS) -O3
 LDLIBS += -lexecinfo
 LDLIBS += -lpthread
 LDLIBS += -lgcc_s
+LDLIBS += -lrte_kvargs
 
 EXPORT_MAP := ../../rte_eal_version.map
 

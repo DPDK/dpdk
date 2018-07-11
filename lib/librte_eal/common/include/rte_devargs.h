@@ -51,12 +51,19 @@ struct rte_devargs {
 	enum rte_devtype type;
 	/** Device policy. */
 	enum rte_dev_policy policy;
-	/** Bus handle for the device. */
-	struct rte_bus *bus;
 	/** Name of the device. */
 	char name[RTE_DEV_NAME_MAX_LEN];
+	RTE_STD_C11
+	union {
 	/** Arguments string as given by user or "" for no argument. */
-	char *args;
+		char *args;
+		const char *drv_str;
+	};
+	struct rte_bus *bus; /**< bus handle. */
+	struct rte_class *cls; /**< class handle. */
+	const char *bus_str; /**< bus-related part of device string. */
+	const char *cls_str; /**< class-related part of device string. */
+	const char *data; /**< Device string storage. */
 };
 
 /**

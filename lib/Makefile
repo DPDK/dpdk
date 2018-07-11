@@ -7,6 +7,7 @@ DIRS-y += librte_compat
 DIRS-$(CONFIG_RTE_LIBRTE_KVARGS) += librte_kvargs
 DEPDIRS-librte_kvargs := librte_compat
 DIRS-$(CONFIG_RTE_LIBRTE_EAL) += librte_eal
+DEPDIRS-librte_eal := librte_kvargs
 DIRS-$(CONFIG_RTE_LIBRTE_PCI) += librte_pci
 DEPDIRS-librte_pci := librte_eal
 DIRS-$(CONFIG_RTE_LIBRTE_RING) += librte_ring

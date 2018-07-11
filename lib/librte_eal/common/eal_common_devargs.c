@@ -13,9 +13,13 @@
 #include <string.h>
 #include <stdarg.h>
 
+#include <rte_bus.h>
+#include <rte_class.h>
 #include <rte_compat.h>
 #include <rte_dev.h>
 #include <rte_devargs.h>
+#include <rte_errno.h>
+#include <rte_kvargs.h>
 #include <rte_log.h>
 #include <rte_tailq.h>
 #include "eal_private.h"
@@ -55,6 +59,146 @@ rte_eal_parse_devargs_str(const char *devargs_str,
 		return -1;
 	}
 	return 0;
+}
+
+static size_t
+devargs_layer_count(const char *s)
+{
+	size_t i = s ? 1 : 0;
+
+	while (s != NULL && s[0] != '\0') {
+		i += s[0] == '/';
+		s++;
+	}
+	return i;
+}
+
+int
+rte_devargs_layers_parse(struct rte_devargs *devargs,
+			 const char *devstr)
+{
+	struct {
+		const char *key;
+		const char *str;
+		struct rte_kvargs *kvlist;
+	} layers[] = {
+		{ "bus=",    NULL, NULL, },
+		{ "class=",  NULL, NULL, },
+		{ "driver=", NULL, NULL, },
+	};
+	struct rte_kvargs_pair *kv = NULL;
+	struct rte_class *cls = NULL;
+	struct rte_bus *bus = NULL;
+	const char *s = devstr;
+	size_t nblayer;
+	size_t i = 0;
+	int ret = 0;
+
+	/* Split each sub-lists. */
+	nblayer = devargs_layer_count(devstr);
+	if (nblayer > RTE_DIM(layers)) {
+		RTE_LOG(ERR, EAL, "Invalid format: too many layers (%zu)\n",
+			nblayer);
+		ret = -E2BIG;
+		goto get_out;
+	}
+
+	/* If the devargs points the devstr
+	 * as source data, then it should not allocate
+	 * anything and keep referring only to it.
+	 */
+	if (devargs->data != devstr) {
+		devargs->data = strdup(devstr);
+		if (devargs->data == NULL) {
+			RTE_LOG(ERR, EAL, "OOM\n");
+			ret = -ENOMEM;
+			goto get_out;
+		}
+		s = devargs->data;
+	}
+
+	while (s != NULL) {
+		if (strncmp(layers[i].key, s,
+			    strlen(layers[i].key)) &&
+		    /* The last layer is free-form.
+		     * The "driver" key is not required (but accepted).
+		     */
+		    i != RTE_DIM(layers) - 1)
+			goto next_layer;
+		layers[i].str = s;
+		layers[i].kvlist = rte_kvargs_parse_delim(s, NULL, "/");
+		if (layers[i].kvlist == NULL) {
+			RTE_LOG(ERR, EAL, "Could not parse %s\n", s);
+			ret = -EINVAL;
+			goto get_out;
+		}
+		s = strchr(s, '/');
+		if (s != NULL)
+			s++;
+next_layer:
+		if (i >= RTE_DIM(layers)) {
+			RTE_LOG(ERR, EAL, "Unrecognized layer %s\n", s);
+			ret = -EINVAL;
+			goto get_out;
+		}
+		i++;
+	}
+
+	/* Parse each sub-list. */
+	for (i = 0; i < RTE_DIM(layers); i++) {
+		if (layers[i].kvlist == NULL)
+			continue;
+		kv = &layers[i].kvlist->pairs[0];
+		if (strcmp(kv->key, "bus") == 0) {
+			bus = rte_bus_find_by_name(kv->value);
+			if (bus == NULL) {
+				RTE_LOG(ERR, EAL, "Could not find bus \"%s\"\n",
+					kv->value);
+				ret = -EFAULT;
+				goto get_out;
+			}
+		} else if (strcmp(kv->key, "class") == 0) {
+			cls = rte_class_find_by_name(kv->value);
+			if (cls == NULL) {
+				RTE_LOG(ERR, EAL, "Could not find class \"%s\"\n",
+					kv->value);
+				ret = -EFAULT;
+				goto get_out;
+			}
+		} else if (strcmp(kv->key, "driver") == 0) {
+			/* Ignore */
+			continue;
+		}
+	}
+
+	/* Fill devargs fields. */
+	devargs->bus_str = layers[0].str;
+	devargs->cls_str = layers[1].str;
+	devargs->drv_str = layers[2].str;
+	devargs->bus = bus;
+	devargs->cls = cls;
+
+	/* If we own the data, clean up a bit
+	 * the several layers string, to ease
+	 * their parsing afterward.
+	 */
+	if (devargs->data != devstr) {
+		char *s = (void *)(intptr_t)(devargs->data);
+
+		while ((s = strchr(s, '/'))) {
+			*s = '\0';
+			s++;
+		}
+	}
+
+get_out:
+	for (i = 0; i < RTE_DIM(layers); i++) {
+		if (layers[i].kvlist)
+			rte_kvargs_free(layers[i].kvlist);
+	}
+	if (ret != 0)
+		rte_errno = -ret;
+	return ret;
 }
 
 static int
