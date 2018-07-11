@@ -211,19 +211,6 @@ process_isal_deflate(struct rte_comp_op *op, struct isal_comp_qp *qp,
 	qp->stream->level = priv_xform->compress.level;
 	qp->stream->level_buf_size = priv_xform->level_buffer_size;
 
-	/* Point compression stream structure to input/output buffers */
-	qp->stream->avail_in = op->src.length;
-	qp->stream->next_in = rte_pktmbuf_mtod(op->m_src, uint8_t *);
-	qp->stream->avail_out = op->m_dst->data_len;
-	qp->stream->next_out  = rte_pktmbuf_mtod(op->m_dst, uint8_t *);
-	qp->stream->end_of_stream = 1; /* All input consumed in one go */
-
-	if (unlikely(!qp->stream->next_in || !qp->stream->next_out)) {
-		ISAL_PMD_LOG(ERR, "Invalid source or destination buffers\n");
-		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
-		return -1;
-	}
-
 	/* Set op huffman code */
 	if (priv_xform->compress.deflate.huffman == RTE_COMP_HUFFMAN_FIXED)
 		isal_deflate_set_hufftables(qp->stream, NULL,
@@ -237,6 +224,35 @@ process_isal_deflate(struct rte_comp_op *op, struct isal_comp_qp *qp,
 			RTE_COMP_HUFFMAN_DYNAMIC)
 		isal_deflate_set_hufftables(qp->stream, NULL,
 				IGZIP_HUFFTABLE_DEFAULT);
+
+	qp->stream->end_of_stream = 1; /* All input consumed in one go */
+	if ((op->src.length + op->src.offset) > op->m_src->data_len) {
+		ISAL_PMD_LOG(ERR, "Input mbuf not big enough for the length and"
+				" offset provided.\n");
+		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
+		return -1;
+	}
+	/* Point compression stream to input buffer */
+	qp->stream->avail_in = op->src.length;
+	qp->stream->next_in = rte_pktmbuf_mtod_offset(op->m_src, uint8_t *,
+			op->src.offset);
+
+	if (op->dst.offset > op->m_dst->data_len) {
+		ISAL_PMD_LOG(ERR, "Output mbuf not big enough for the length"
+				" and offset provided.\n");
+		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
+		return -1;
+	}
+	/*  Point compression stream to output buffer */
+	qp->stream->avail_out = op->m_dst->data_len - op->dst.offset;
+	qp->stream->next_out  = rte_pktmbuf_mtod_offset(op->m_dst, uint8_t *,
+		op->dst.offset);
+
+	if (unlikely(!qp->stream->next_in || !qp->stream->next_out)) {
+		ISAL_PMD_LOG(ERR, "Invalid source or destination buffers\n");
+		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
+		return -1;
+	}
 
 	/* Execute compression operation */
 	ret =  isal_deflate_stateless(qp->stream);
@@ -277,11 +293,27 @@ process_isal_inflate(struct rte_comp_op *op, struct isal_comp_qp *qp)
 	/* Initialize decompression state */
 	isal_inflate_init(qp->state);
 
-	/* Point decompression state structure to input/output buffers */
+	if ((op->src.length + op->src.offset) > op->m_src->data_len) {
+		ISAL_PMD_LOG(ERR, "Input mbuf not big enough for the length and"
+				" offset provided.\n");
+		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
+		return -1;
+	}
+	/* Point decompression state to input buffer */
 	qp->state->avail_in = op->src.length;
-	qp->state->next_in = rte_pktmbuf_mtod(op->m_src, uint8_t *);
-	qp->state->avail_out = op->m_dst->data_len;
-	qp->state->next_out  = rte_pktmbuf_mtod(op->m_dst, uint8_t *);
+	qp->state->next_in = rte_pktmbuf_mtod_offset(op->m_src, uint8_t *,
+			op->src.offset);
+
+	if (op->dst.offset > op->m_dst->data_len) {
+		ISAL_PMD_LOG(ERR, "Output mbuf not big enough for the length "
+				"and offset provided.\n");
+		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
+		return -1;
+	}
+	/* Point decompression state to output buffer */
+	qp->state->avail_out = op->m_dst->data_len - op->dst.offset;
+	qp->state->next_out  = rte_pktmbuf_mtod_offset(op->m_dst, uint8_t *,
+			op->dst.offset);
 
 	if (unlikely(!qp->state->next_in || !qp->state->next_out)) {
 		ISAL_PMD_LOG(ERR, "Invalid source or destination buffers\n");
