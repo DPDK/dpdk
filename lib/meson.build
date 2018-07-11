@@ -9,7 +9,8 @@
 # given as a dep, no need to mention ring. This is especially true for the
 # core libs which are widely reused, so their deps are kept to a minimum.
 libraries = [ 'compat', # just a header, used for versioning
-	'eal', 'ring', 'mempool', 'mbuf', 'net', 'kvargs', 'ethdev', 'pci', # core
+	'kvargs',
+	'eal', 'ring', 'mempool', 'mbuf', 'net', 'ethdev', 'pci', # core
 	'metrics', # bitrate/latency stats depends on this
 	'hash',    # efd depends on this
 	'timer',   # eventdev depends on this
@@ -45,8 +46,11 @@ foreach l:libraries
 	# external package/library requirements
 	ext_deps = []
 	deps = ['eal']   # eal is standard dependency except for itself
-	if l == 'eal'
+	if l == 'kvargs'
 		deps = []
+	endif
+	if l == 'eal'
+		deps = ['kvargs']
 	endif
 
 	dir_name = 'librte_' + l
