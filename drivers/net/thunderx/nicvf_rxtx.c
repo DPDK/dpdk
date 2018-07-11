@@ -162,12 +162,14 @@ nicvf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		free_desc -= TX_DESC_PER_PKT;
 	}
 
-	sq->tail = tail;
-	sq->xmit_bufs += i;
-	rte_wmb();
+	if (likely(i)) {
+		sq->tail = tail;
+		sq->xmit_bufs += i;
+		rte_wmb();
 
-	/* Inform HW to xmit the packets */
-	nicvf_addr_write(sq->sq_door, i * TX_DESC_PER_PKT);
+		/* Inform HW to xmit the packets */
+		nicvf_addr_write(sq->sq_door, i * TX_DESC_PER_PKT);
+	}
 	return i;
 }
 
@@ -218,12 +220,14 @@ nicvf_xmit_pkts_multiseg(void *tx_queue, struct rte_mbuf **tx_pkts,
 		}
 	}
 
-	sq->tail = tail;
-	sq->xmit_bufs += used_bufs;
-	rte_wmb();
+	if (likely(used_desc)) {
+		sq->tail = tail;
+		sq->xmit_bufs += used_bufs;
+		rte_wmb();
 
-	/* Inform HW to xmit the packets */
-	nicvf_addr_write(sq->sq_door, used_desc);
+		/* Inform HW to xmit the packets */
+		nicvf_addr_write(sq->sq_door, used_desc);
+	}
 	return i;
 }
 
