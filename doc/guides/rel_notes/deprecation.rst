@@ -69,6 +69,11 @@ Deprecation Notices
   Function ``rte_eth_dev_get_port_by_name()`` may be used to find
   identifier of the added port.
 
+* eal: In v18.11 ``rte_eal_dev_attach()`` and ``rte_eal_dev_detach()``
+  will be removed.
+  Hotplug functions ``rte_eal_hotplug_add()`` and ``rte_eal_hotplug_remove()``
+  should be used directly.
+
 * pdump: As we changed to use generic IPC, some changes in APIs and structure
   are expected in subsequent release.
 

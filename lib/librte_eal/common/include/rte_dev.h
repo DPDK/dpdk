@@ -174,6 +174,7 @@ struct rte_device {
  * @return
  *   0 on success, negative on error.
  */
+__rte_deprecated
 int rte_eal_dev_attach(const char *name, const char *devargs);
 
 /**
@@ -184,6 +185,7 @@ int rte_eal_dev_attach(const char *name, const char *devargs);
  * @return
  *   0 on success, negative on error.
  */
+__rte_deprecated
 int rte_eal_dev_detach(struct rte_device *dev);
 
 /**
