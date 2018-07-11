@@ -2346,6 +2346,16 @@ set_queue_stats_mapping(uint16_t port_id, uint16_t queue_id, uint8_t stat_idx,
 	dev = &rte_eth_devices[port_id];
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->queue_stats_mapping_set, -ENOTSUP);
+
+	if (is_rx && (queue_id >= dev->data->nb_rx_queues))
+		return -EINVAL;
+
+	if (!is_rx && (queue_id >= dev->data->nb_tx_queues))
+		return -EINVAL;
+
+	if (stat_idx >= RTE_ETHDEV_QUEUE_STAT_CNTRS)
+		return -EINVAL;
+
 	return (*dev->dev_ops->queue_stats_mapping_set)
 			(dev, queue_id, stat_idx, is_rx);
 }
