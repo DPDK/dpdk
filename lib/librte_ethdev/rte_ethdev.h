@@ -1431,6 +1431,7 @@ uint16_t __rte_experimental rte_eth_dev_count_total(void);
  * @return
  *  0 on success and port_id is filled, negative on error
  */
+__rte_deprecated
 int rte_eth_dev_attach(const char *devargs, uint16_t *port_id);
 
 /**
@@ -1446,6 +1447,7 @@ int rte_eth_dev_attach(const char *devargs, uint16_t *port_id);
  * @return
  *  0 on success and devname is filled, negative on error
  */
+__rte_deprecated
 int rte_eth_dev_detach(uint16_t port_id, char *devname);
 
 /**
