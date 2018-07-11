@@ -354,6 +354,32 @@ __rte_experimental
 int
 rte_dev_iterator_init(struct rte_dev_iterator *it, const char *str);
 
+/**
+ * Iterates on a device iterator.
+ *
+ * Generates a new rte_device handle corresponding to the next element
+ * in the list described in comprehension by the iterator.
+ *
+ * The next object is returned, and the iterator is updated.
+ *
+ * @param it
+ *   Device iterator handle.
+ *
+ * @return
+ *   An rte_device handle if found.
+ *   NULL if an error occurred (rte_errno is set).
+ *   NULL if no device could be found (rte_errno is not set).
+ */
+__rte_experimental
+struct rte_device *
+rte_dev_iterator_next(struct rte_dev_iterator *it);
+
+#define RTE_DEV_FOREACH(dev, devstr, it) \
+	for (rte_dev_iterator_init(it, devstr), \
+	     dev = rte_dev_iterator_next(it); \
+	     dev != NULL; \
+	     dev = rte_dev_iterator_next(it))
+
 #ifdef __cplusplus
 }
 #endif

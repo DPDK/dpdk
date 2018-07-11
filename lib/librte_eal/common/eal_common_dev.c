@@ -45,6 +45,28 @@ static struct dev_event_cb_list dev_event_cbs;
 /* spinlock for device callbacks */
 static rte_spinlock_t dev_event_lock = RTE_SPINLOCK_INITIALIZER;
 
+struct dev_next_ctx {
+	struct rte_dev_iterator *it;
+	const char *bus_str;
+	const char *cls_str;
+};
+
+#define CTX(it, bus_str, cls_str) \
+	(&(const struct dev_next_ctx){ \
+		.it = it, \
+		.bus_str = bus_str, \
+		.cls_str = cls_str, \
+	})
+
+#define ITCTX(ptr) \
+	(((struct dev_next_ctx *)(intptr_t)ptr)->it)
+
+#define BUSCTX(ptr) \
+	(((struct dev_next_ctx *)(intptr_t)ptr)->bus_str)
+
+#define CLSCTX(ptr) \
+	(((struct dev_next_ctx *)(intptr_t)ptr)->cls_str)
+
 static int cmp_detached_dev_name(const struct rte_device *dev,
 	const void *_name)
 {
@@ -397,4 +419,150 @@ rte_dev_iterator_init(struct rte_dev_iterator *it,
 	it->class_device = NULL;
 get_out:
 	return -rte_errno;
+}
+
+static char *
+dev_str_sane_copy(const char *str)
+{
+	size_t end;
+	char *copy;
+
+	end = strcspn(str, ",/");
+	if (str[end] == ',') {
+		copy = strdup(&str[end + 1]);
+	} else {
+		/* '/' or '\0' */
+		copy = strdup("");
+	}
+	if (copy == NULL) {
+		rte_errno = ENOMEM;
+	} else {
+		char *slash;
+
+		slash = strchr(copy, '/');
+		if (slash != NULL)
+			slash[0] = '\0';
+	}
+	return copy;
+}
+
+static int
+class_next_dev_cmp(const struct rte_class *cls,
+		   const void *ctx)
+{
+	struct rte_dev_iterator *it;
+	const char *cls_str = NULL;
+	void *dev;
+
+	if (cls->dev_iterate == NULL)
+		return 1;
+	it = ITCTX(ctx);
+	cls_str = CLSCTX(ctx);
+	dev = it->class_device;
+	/* it->cls_str != NULL means a class
+	 * was specified in the devstr.
+	 */
+	if (it->cls_str != NULL && cls != it->cls)
+		return 1;
+	/* If an error occurred previously,
+	 * no need to test further.
+	 */
+	if (rte_errno != 0)
+		return -1;
+	dev = cls->dev_iterate(dev, cls_str, it);
+	it->class_device = dev;
+	return dev == NULL;
+}
+
+static int
+bus_next_dev_cmp(const struct rte_bus *bus,
+		 const void *ctx)
+{
+	struct rte_device *dev = NULL;
+	struct rte_class *cls = NULL;
+	struct rte_dev_iterator *it;
+	const char *bus_str = NULL;
+
+	if (bus->dev_iterate == NULL)
+		return 1;
+	it = ITCTX(ctx);
+	bus_str = BUSCTX(ctx);
+	dev = it->device;
+	/* it->bus_str != NULL means a bus
+	 * was specified in the devstr.
+	 */
+	if (it->bus_str != NULL && bus != it->bus)
+		return 1;
+	/* If an error occurred previously,
+	 * no need to test further.
+	 */
+	if (rte_errno != 0)
+		return -1;
+	if (it->cls_str == NULL) {
+		dev = bus->dev_iterate(dev, bus_str, it);
+		goto end;
+	}
+	/* cls_str != NULL */
+	if (dev == NULL) {
+next_dev_on_bus:
+		dev = bus->dev_iterate(dev, bus_str, it);
+		it->device = dev;
+	}
+	if (dev == NULL)
+		return 1;
+	if (it->cls != NULL)
+		cls = TAILQ_PREV(it->cls, rte_class_list, next);
+	cls = rte_class_find(cls, class_next_dev_cmp, ctx);
+	if (cls != NULL) {
+		it->cls = cls;
+		goto end;
+	}
+	goto next_dev_on_bus;
+end:
+	it->device = dev;
+	return dev == NULL;
+}
+__rte_experimental
+struct rte_device *
+rte_dev_iterator_next(struct rte_dev_iterator *it)
+{
+	struct rte_bus *bus = NULL;
+	int old_errno = rte_errno;
+	char *bus_str = NULL;
+	char *cls_str = NULL;
+
+	rte_errno = 0;
+	if (it->bus_str == NULL && it->cls_str == NULL) {
+		/* Invalid iterator. */
+		rte_errno = EINVAL;
+		return NULL;
+	}
+	if (it->bus != NULL)
+		bus = TAILQ_PREV(it->bus, rte_bus_list, next);
+	if (it->bus_str != NULL) {
+		bus_str = dev_str_sane_copy(it->bus_str);
+		if (bus_str == NULL)
+			goto out;
+	}
+	if (it->cls_str != NULL) {
+		cls_str = dev_str_sane_copy(it->cls_str);
+		if (cls_str == NULL)
+			goto out;
+	}
+	while ((bus = rte_bus_find(bus, bus_next_dev_cmp,
+				   CTX(it, bus_str, cls_str)))) {
+		if (it->device != NULL) {
+			it->bus = bus;
+			goto out;
+		}
+		if (it->bus_str != NULL ||
+		    rte_errno != 0)
+			break;
+	}
+	if (rte_errno == 0)
+		rte_errno = old_errno;
+out:
+	free(bus_str);
+	free(cls_str);
+	return it->device;
 }

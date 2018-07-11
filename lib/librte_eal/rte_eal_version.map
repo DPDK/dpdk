@@ -264,6 +264,7 @@ EXPERIMENTAL {
 	rte_dev_event_monitor_start;
 	rte_dev_event_monitor_stop;
 	rte_dev_iterator_init;
+	rte_dev_iterator_next;
 	rte_devargs_add;
 	rte_devargs_dump;
 	rte_devargs_insert;
