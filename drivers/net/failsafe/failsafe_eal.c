@@ -86,7 +86,7 @@ fs_bus_init(struct rte_eth_dev *dev)
 			else
 				snprintf(devstr, sizeof(devstr), "%s",
 					 rte_eth_devices[pid].device->name);
-			ret = rte_devargs_parse(da, "%s", devstr);
+			ret = rte_devargs_parse(da, devstr);
 			if (ret) {
 				ERROR("Probed devargs parsing failed with code"
 				      " %d", ret);

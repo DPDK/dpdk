@@ -138,8 +138,8 @@ int __rte_experimental rte_eal_hotplug_add(const char *busname, const char *devn
 	if (da == NULL)
 		return -ENOMEM;
 
-	ret = rte_devargs_parse(da, "%s:%s,%s",
-				    busname, devname, devargs);
+	ret = rte_devargs_parsef(da, "%s:%s,%s",
+				 busname, devname, devargs);
 	if (ret)
 		goto err_devarg;
 

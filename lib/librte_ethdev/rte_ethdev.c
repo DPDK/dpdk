@@ -658,7 +658,7 @@ rte_eth_dev_attach(const char *devargs, uint16_t *port_id)
 	}
 
 	/* parse devargs */
-	if (rte_devargs_parse(&da, "%s", devargs))
+	if (rte_devargs_parse(&da, devargs))
 		goto err;
 
 	ret = rte_eal_hotplug_add(da.bus->name, da.name, da.args);

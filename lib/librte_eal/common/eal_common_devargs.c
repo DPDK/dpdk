@@ -63,24 +63,18 @@ bus_name_cmp(const struct rte_bus *bus, const void *name)
 	return strncmp(bus->name, name, strlen(bus->name));
 }
 
-int __rte_experimental
-rte_devargs_parse(struct rte_devargs *da, const char *format, ...)
+__rte_experimental
+int
+rte_devargs_parse(struct rte_devargs *da, const char *dev)
 {
 	struct rte_bus *bus = NULL;
-	va_list ap;
-	va_start(ap, format);
-	char dev[vsnprintf(NULL, 0, format, ap) + 1];
 	const char *devname;
 	const size_t maxlen = sizeof(da->name);
 	size_t i;
 
-	va_end(ap);
 	if (da == NULL)
 		return -EINVAL;
 
-	va_start(ap, format);
-	vsnprintf(dev, sizeof(dev), format, ap);
-	va_end(ap);
 	/* Retrieve eventual bus info */
 	do {
 		devname = dev;
@@ -125,6 +119,34 @@ rte_devargs_parse(struct rte_devargs *da, const char *format, ...)
 	return 0;
 }
 
+__rte_experimental
+int
+rte_devargs_parsef(struct rte_devargs *da, const char *format, ...)
+{
+	va_list ap;
+	size_t len;
+	char *dev;
+
+	if (da == NULL)
+		return -EINVAL;
+
+	va_start(ap, format);
+	len = vsnprintf(NULL, 0, format, ap);
+	va_end(ap);
+
+	dev = calloc(1, len + 1);
+	if (dev == NULL) {
+		RTE_LOG(ERR, EAL, "not enough memory to parse device\n");
+		return -ENOMEM;
+	}
+
+	va_start(ap, format);
+	vsnprintf(dev, len, format, ap);
+	va_end(ap);
+
+	return rte_devargs_parse(da, dev);
+}
+
 int __rte_experimental
 rte_devargs_insert(struct rte_devargs *da)
 {
@@ -151,7 +173,7 @@ rte_devargs_add(enum rte_devtype devtype, const char *devargs_str)
 	if (devargs == NULL)
 		goto fail;
 
-	if (rte_devargs_parse(devargs, "%s", dev))
+	if (rte_devargs_parse(devargs, dev))
 		goto fail;
 	devargs->type = devtype;
 	bus = devargs->bus;

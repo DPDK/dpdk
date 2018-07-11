@@ -63,7 +63,7 @@ fs_parse_device(struct sub_device *sdev, char *args)
 
 	d = &sdev->devargs;
 	DEBUG("%s", args);
-	ret = rte_devargs_parse(d, "%s", args);
+	ret = rte_devargs_parse(d, args);
 	if (ret) {
 		DEBUG("devargs parsing failed with code %d", ret);
 		return ret;

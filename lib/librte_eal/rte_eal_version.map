@@ -264,6 +264,7 @@ EXPERIMENTAL {
 	rte_devargs_insert;
 	rte_devargs_next;
 	rte_devargs_parse;
+	rte_devargs_parsef;
 	rte_devargs_remove;
 	rte_devargs_type_count;
 	rte_eal_cleanup;
