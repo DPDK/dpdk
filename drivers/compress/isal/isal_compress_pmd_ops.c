@@ -167,8 +167,8 @@ isal_comp_pmd_qp_release(struct rte_compressdev *dev, uint16_t qp_id)
 	if (qp->state != NULL)
 		rte_free(qp->state);
 
-	if (dev->data->queue_pairs[qp_id] != NULL)
-		rte_free(dev->data->queue_pairs[qp_id]);
+	rte_free(qp);
+	dev->data->queue_pairs[qp_id] = NULL;
 
 	return 0;
 }
