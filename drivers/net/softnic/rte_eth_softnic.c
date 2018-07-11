@@ -207,12 +207,6 @@ pmd_tx_pkt_burst(void *txq,
 		NULL);
 }
 
-int
-rte_pmd_softnic_run(uint16_t port_id __rte_unused)
-{
-	return 0;
-}
-
 static void *
 pmd_init(struct pmd_params *params)
 {
