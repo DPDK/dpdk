@@ -283,6 +283,53 @@ __attribute__((used)) = str
 static const char DRV_EXP_TAG(name, kmod_dep_export)[] \
 __attribute__((used)) = str
 
+/**
+ * Iteration context.
+ *
+ * This context carries over the current iteration state.
+ */
+struct rte_dev_iterator {
+	const char *dev_str; /**< device string. */
+	const char *bus_str; /**< bus-related part of device string. */
+	const char *cls_str; /**< class-related part of device string. */
+	struct rte_bus *bus; /**< bus handle. */
+	struct rte_class *cls; /**< class handle. */
+	struct rte_device *device; /**< current position. */
+	void *class_device; /**< additional specialized context. */
+};
+
+/**
+ * Device iteration function.
+ *
+ * Find the next device matching properties passed in parameters.
+ * The function takes an additional ``start`` parameter, that is
+ * used as starting context when relevant.
+ *
+ * The function returns the current element in the iteration.
+ * This return value will potentially be used as a start parameter
+ * in subsequent calls to the function.
+ *
+ * The additional iterator parameter is only there if a specific
+ * implementation needs additional context. It must not be modified by
+ * the iteration function itself.
+ *
+ * @param start
+ *   Starting iteration context.
+ *
+ * @param devstr
+ *   Device description string.
+ *
+ * @param it
+ *   Device iterator.
+ *
+ * @return
+ *   The address of the current element matching the device description
+ *   string.
+ */
+typedef void *(*rte_dev_iterate_t)(const void *start,
+				   const char *devstr,
+				   const struct rte_dev_iterator *it);
+
 #ifdef __cplusplus
 }
 #endif

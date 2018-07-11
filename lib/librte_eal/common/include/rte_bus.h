@@ -211,6 +211,7 @@ struct rte_bus {
 	rte_bus_parse_t parse;       /**< Parse a device name */
 	struct rte_bus_conf conf;    /**< Bus configuration */
 	rte_bus_get_iommu_class_t get_iommu_class; /**< Get iommu class */
+	rte_dev_iterate_t dev_iterate; /**< Device iterator. */
 };
 
 /**
