@@ -10,9 +10,12 @@
 
 #include <rte_compat.h>
 #include <rte_bus.h>
+#include <rte_class.h>
 #include <rte_dev.h>
 #include <rte_devargs.h>
 #include <rte_debug.h>
+#include <rte_errno.h>
+#include <rte_kvargs.h>
 #include <rte_log.h>
 #include <rte_spinlock.h>
 #include <rte_malloc.h>
@@ -342,4 +345,56 @@ dev_callback_process(char *device_name, enum rte_dev_event_type event)
 		cb_lst->active = 0;
 	}
 	rte_spinlock_unlock(&dev_event_lock);
+}
+
+__rte_experimental
+int
+rte_dev_iterator_init(struct rte_dev_iterator *it,
+		      const char *dev_str)
+{
+	struct rte_devargs devargs;
+	struct rte_class *cls = NULL;
+	struct rte_bus *bus = NULL;
+
+	/* Having both bus_str and cls_str NULL is illegal,
+	 * marking this iterator as invalid unless
+	 * everything goes well.
+	 */
+	it->bus_str = NULL;
+	it->cls_str = NULL;
+
+	devargs.data = dev_str;
+	if (rte_devargs_layers_parse(&devargs, dev_str))
+		goto get_out;
+
+	bus = devargs.bus;
+	cls = devargs.cls;
+	/* The string should have at least
+	 * one layer specified.
+	 */
+	if (bus == NULL && cls == NULL) {
+		RTE_LOG(ERR, EAL,
+			"Either bus or class must be specified.\n");
+		rte_errno = EINVAL;
+		goto get_out;
+	}
+	if (bus != NULL && bus->dev_iterate == NULL) {
+		RTE_LOG(ERR, EAL, "Bus %s not supported\n", bus->name);
+		rte_errno = ENOTSUP;
+		goto get_out;
+	}
+	if (cls != NULL && cls->dev_iterate == NULL) {
+		RTE_LOG(ERR, EAL, "Class %s not supported\n", cls->name);
+		rte_errno = ENOTSUP;
+		goto get_out;
+	}
+	it->bus_str = devargs.bus_str;
+	it->cls_str = devargs.cls_str;
+	it->dev_str = dev_str;
+	it->bus = bus;
+	it->cls = cls;
+	it->device = NULL;
+	it->class_device = NULL;
+get_out:
+	return -rte_errno;
 }

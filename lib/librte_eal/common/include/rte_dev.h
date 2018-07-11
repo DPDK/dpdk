@@ -330,6 +330,30 @@ typedef void *(*rte_dev_iterate_t)(const void *start,
 				   const char *devstr,
 				   const struct rte_dev_iterator *it);
 
+/**
+ * Initializes a device iterator.
+ *
+ * This iterator allows accessing a list of devices matching a criteria.
+ * The device matching is made among all buses and classes currently registered,
+ * filtered by the device description given as parameter.
+ *
+ * This function will not allocate any memory. It is safe to stop the
+ * iteration at any moment and let the iterator go out of context.
+ *
+ * @param it
+ *   Device iterator handle.
+ *
+ * @param str
+ *   Device description string.
+ *
+ * @return
+ *   0 on successful initialization.
+ *   <0 on error.
+ */
+__rte_experimental
+int
+rte_dev_iterator_init(struct rte_dev_iterator *it, const char *str);
+
 #ifdef __cplusplus
 }
 #endif
