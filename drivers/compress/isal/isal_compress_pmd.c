@@ -494,7 +494,7 @@ RTE_PMD_REGISTER_PARAM_STRING(COMPDEV_NAME_ISAL_PMD,
 
 RTE_INIT(isal_init_log)
 {
-	isal_logtype_driver = rte_log_register("comp_isal");
+	isal_logtype_driver = rte_log_register("pmd.compress.isal");
 	if (isal_logtype_driver >= 0)
 		rte_log_set_level(isal_logtype_driver, RTE_LOG_INFO);
 }
