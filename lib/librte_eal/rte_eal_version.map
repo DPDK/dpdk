@@ -254,6 +254,10 @@ DPDK_18.08 {
 EXPERIMENTAL {
 	global:
 
+	rte_class_find;
+	rte_class_find_by_name;
+	rte_class_register;
+	rte_class_unregister;
 	rte_ctrl_thread_create;
 	rte_dev_event_callback_register;
 	rte_dev_event_callback_unregister;

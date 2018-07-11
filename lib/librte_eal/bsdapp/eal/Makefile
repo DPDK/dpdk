@@ -52,6 +52,7 @@ SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += eal_common_hypervisor.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += eal_common_string_fns.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += eal_common_hexdump.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += eal_common_devargs.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += eal_common_class.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += eal_common_bus.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += eal_common_dev.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += eal_common_options.c

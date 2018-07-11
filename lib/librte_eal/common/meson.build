@@ -8,6 +8,7 @@ common_objs = []
 common_sources = files(
 	'eal_common_bus.c',
 	'eal_common_cpuflags.c',
+	'eal_common_class.c',
 	'eal_common_devargs.c',
 	'eal_common_dev.c',
 	'eal_common_errno.c',
@@ -47,6 +48,7 @@ common_headers = files(
 	'include/rte_branch_prediction.h',
 	'include/rte_bus.h',
 	'include/rte_bitmap.h',
+	'include/rte_class.h',
 	'include/rte_common.h',
 	'include/rte_debug.h',
 	'include/rte_devargs.h',
