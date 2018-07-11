@@ -153,6 +153,32 @@ int rte_kvargs_process(const struct rte_kvargs *kvlist,
 unsigned rte_kvargs_count(const struct rte_kvargs *kvlist,
 	const char *key_match);
 
+/**
+ * Generic kvarg handler for string comparison.
+ *
+ * This function can be used for a generic string comparison processing
+ * on a list of kvargs.
+ *
+ * @param key
+ *   kvarg pair key.
+ *
+ * @param value
+ *   kvarg pair value.
+ *
+ * @param opaque
+ *   Opaque pointer to a string.
+ *
+ * @return
+ *   0 if the strings match.
+ *   !0 otherwise or on error.
+ *
+ *   Unless strcmp, comparison ordering is not kept.
+ *   In order for rte_kvargs_process to stop processing on match error,
+ *   a negative value is returned even if strcmp had returned a positive one.
+ */
+__rte_experimental
+int rte_kvargs_strcmp(const char *key, const char *value, void *opaque);
+
 #ifdef __cplusplus
 }
 #endif

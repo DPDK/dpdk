@@ -193,3 +193,13 @@ rte_kvargs_parse_delim(const char *args, const char * const valid_keys[],
 	free(copy);
 	return kvlist;
 }
+
+__rte_experimental
+int
+rte_kvargs_strcmp(const char *key __rte_unused,
+		  const char *value, void *opaque)
+{
+	const char *str = opaque;
+
+	return -abs(strcmp(str, value));
+}
