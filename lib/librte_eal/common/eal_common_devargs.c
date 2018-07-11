@@ -16,6 +16,7 @@
 #include <rte_compat.h>
 #include <rte_dev.h>
 #include <rte_devargs.h>
+#include <rte_log.h>
 #include <rte_tailq.h>
 #include "eal_private.h"
 
@@ -96,7 +97,7 @@ rte_devargs_parse(struct rte_devargs *da, const char *format, ...)
 		da->name[i] = devname[i];
 		i++;
 		if (i == maxlen) {
-			fprintf(stderr, "WARNING: Parsing \"%s\": device name should be shorter than %zu\n",
+			RTE_LOG(WARNING, EAL, "Parsing \"%s\": device name should be shorter than %zu\n",
 				dev, maxlen);
 			da->name[i - 1] = '\0';
 			return -EINVAL;
@@ -106,7 +107,7 @@ rte_devargs_parse(struct rte_devargs *da, const char *format, ...)
 	if (bus == NULL) {
 		bus = rte_bus_find_by_device_name(da->name);
 		if (bus == NULL) {
-			fprintf(stderr, "ERROR: failed to parse device \"%s\"\n",
+			RTE_LOG(ERR, EAL, "failed to parse device \"%s\"\n",
 				da->name);
 			return -EFAULT;
 		}
@@ -118,7 +119,7 @@ rte_devargs_parse(struct rte_devargs *da, const char *format, ...)
 	else
 		da->args = strdup("");
 	if (da->args == NULL) {
-		fprintf(stderr, "ERROR: not enough memory to parse arguments\n");
+		RTE_LOG(ERR, EAL, "not enough memory to parse arguments\n");
 		return -ENOMEM;
 	}
 	return 0;
