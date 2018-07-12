@@ -908,9 +908,12 @@ mlx5_flow_list_flush(struct rte_eth_dev *dev, struct mlx5_flows *list)
  *   Pointer to a TAILQ flow list.
  */
 void
-mlx5_flow_stop(struct rte_eth_dev *dev __rte_unused,
-	       struct mlx5_flows *list __rte_unused)
+mlx5_flow_stop(struct rte_eth_dev *dev, struct mlx5_flows *list)
 {
+	struct rte_flow *flow;
+
+	TAILQ_FOREACH_REVERSE(flow, list, mlx5_flows, next)
+		mlx5_flow_remove(dev, flow);
 }
 
 /**
@@ -925,10 +928,23 @@ mlx5_flow_stop(struct rte_eth_dev *dev __rte_unused,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_flow_start(struct rte_eth_dev *dev __rte_unused,
-		struct mlx5_flows *list __rte_unused)
+mlx5_flow_start(struct rte_eth_dev *dev, struct mlx5_flows *list)
 {
+	struct rte_flow *flow;
+	struct rte_flow_error error;
+	int ret = 0;
+
+	TAILQ_FOREACH(flow, list, next) {
+		ret = mlx5_flow_apply(dev, flow, &error);
+		if (ret < 0)
+			goto error;
+	}
 	return 0;
+error:
+	ret = rte_errno; /* Save rte_errno before cleanup. */
+	mlx5_flow_stop(dev, list);
+	rte_errno = ret; /* Restore rte_errno. */
+	return -rte_errno;
 }
 
 /**
