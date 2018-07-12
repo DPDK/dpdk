@@ -1740,10 +1740,6 @@ mlx5_ind_table_ibv_verify(struct rte_eth_dev *dev)
  *   first queue index will be taken for the indirection table.
  * @param queues_n
  *   Number of queues.
- * @param tunnel
- *   Tunnel type, implies tunnel offloading like inner checksum if available.
- * @param rss_level
- *   RSS hash on tunnel level.
  *
  * @return
  *   The Verbs object initialised, NULL otherwise and rte_errno is set.
@@ -1752,17 +1748,13 @@ struct mlx5_hrxq *
 mlx5_hrxq_new(struct rte_eth_dev *dev,
 	      const uint8_t *rss_key, uint32_t rss_key_len,
 	      uint64_t hash_fields,
-	      const uint16_t *queues, uint32_t queues_n,
-	      uint32_t tunnel, uint32_t rss_level)
+	      const uint16_t *queues, uint32_t queues_n)
 {
 	struct priv *priv = dev->data->dev_private;
 	struct mlx5_hrxq *hrxq;
 	struct mlx5_ind_table_ibv *ind_tbl;
 	struct ibv_qp *qp;
 	int err;
-#ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
-	struct mlx5dv_qp_init_attr qp_init_attr = {0};
-#endif
 
 	queues_n = hash_fields ? queues_n : 1;
 	ind_tbl = mlx5_ind_table_ibv_get(dev, queues, queues_n);
@@ -1777,11 +1769,6 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 		rss_key = rss_hash_default_key;
 	}
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
-	if (tunnel) {
-		qp_init_attr.comp_mask =
-				MLX5DV_QP_INIT_ATTR_MASK_QP_CREATE_FLAGS;
-		qp_init_attr.create_flags = MLX5DV_QP_CREATE_TUNNEL_OFFLOADS;
-	}
 	qp = mlx5_glue->dv_create_qp
 		(priv->ctx,
 		 &(struct ibv_qp_init_attr_ex){
@@ -1797,14 +1784,17 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 				.rx_hash_key = rss_key ?
 					       (void *)(uintptr_t)rss_key :
 					       rss_hash_default_key,
-				.rx_hash_fields_mask = hash_fields |
-					(tunnel && rss_level > 1 ?
-					(uint32_t)IBV_RX_HASH_INNER : 0),
+				.rx_hash_fields_mask = hash_fields,
 			},
 			.rwq_ind_tbl = ind_tbl->ind_table,
 			.pd = priv->pd,
 		 },
-		 &qp_init_attr);
+		 &(struct mlx5dv_qp_init_attr){
+			.comp_mask = (hash_fields & IBV_RX_HASH_INNER) ?
+				 MLX5DV_QP_INIT_ATTR_MASK_QP_CREATE_FLAGS :
+				 0,
+			.create_flags = MLX5DV_QP_CREATE_TUNNEL_OFFLOADS,
+		 });
 #else
 	qp = mlx5_glue->create_qp_ex
 		(priv->ctx,
@@ -1838,8 +1828,6 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 	hrxq->qp = qp;
 	hrxq->rss_key_len = rss_key_len;
 	hrxq->hash_fields = hash_fields;
-	hrxq->tunnel = tunnel;
-	hrxq->rss_level = rss_level;
 	memcpy(hrxq->rss_key, rss_key, rss_key_len);
 	rte_atomic32_inc(&hrxq->refcnt);
 	LIST_INSERT_HEAD(&priv->hrxqs, hrxq, next);
@@ -1865,10 +1853,6 @@ error:
  *   first queue index will be taken for the indirection table.
  * @param queues_n
  *   Number of queues.
- * @param tunnel
- *   Tunnel type, implies tunnel offloading like inner checksum if available.
- * @param rss_level
- *   RSS hash on tunnel level
  *
  * @return
  *   An hash Rx queue on success.
@@ -1877,8 +1861,7 @@ struct mlx5_hrxq *
 mlx5_hrxq_get(struct rte_eth_dev *dev,
 	      const uint8_t *rss_key, uint32_t rss_key_len,
 	      uint64_t hash_fields,
-	      const uint16_t *queues, uint32_t queues_n,
-	      uint32_t tunnel, uint32_t rss_level)
+	      const uint16_t *queues, uint32_t queues_n)
 {
 	struct priv *priv = dev->data->dev_private;
 	struct mlx5_hrxq *hrxq;
@@ -1892,10 +1875,6 @@ mlx5_hrxq_get(struct rte_eth_dev *dev,
 		if (memcmp(hrxq->rss_key, rss_key, rss_key_len))
 			continue;
 		if (hrxq->hash_fields != hash_fields)
-			continue;
-		if (hrxq->tunnel != tunnel)
-			continue;
-		if (hrxq->rss_level != rss_level)
 			continue;
 		ind_tbl = mlx5_ind_table_ibv_get(dev, queues, queues_n);
 		if (!ind_tbl)

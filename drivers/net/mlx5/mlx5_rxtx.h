@@ -157,8 +157,6 @@ struct mlx5_hrxq {
 	struct mlx5_ind_table_ibv *ind_table; /* Indirection table. */
 	struct ibv_qp *qp; /* Verbs queue pair. */
 	uint64_t hash_fields; /* Verbs Hash fields. */
-	uint32_t tunnel; /* Tunnel type. */
-	uint32_t rss_level; /* RSS on tunnel level. */
 	uint32_t rss_key_len; /* Hash key length in bytes. */
 	uint8_t rss_key[]; /* Hash key. */
 };
@@ -271,13 +269,11 @@ void mlx5_ind_table_ibv_drop_release(struct rte_eth_dev *dev);
 struct mlx5_hrxq *mlx5_hrxq_new(struct rte_eth_dev *dev,
 				const uint8_t *rss_key, uint32_t rss_key_len,
 				uint64_t hash_fields,
-				const uint16_t *queues, uint32_t queues_n,
-				uint32_t tunnel, uint32_t rss_level);
+				const uint16_t *queues, uint32_t queues_n);
 struct mlx5_hrxq *mlx5_hrxq_get(struct rte_eth_dev *dev,
 				const uint8_t *rss_key, uint32_t rss_key_len,
 				uint64_t hash_fields,
-				const uint16_t *queues, uint32_t queues_n,
-				uint32_t tunnel, uint32_t rss_level);
+				const uint16_t *queues, uint32_t queues_n);
 int mlx5_hrxq_release(struct rte_eth_dev *dev, struct mlx5_hrxq *hxrq);
 int mlx5_hrxq_ibv_verify(struct rte_eth_dev *dev);
 struct mlx5_hrxq *mlx5_hrxq_drop_new(struct rte_eth_dev *dev);
