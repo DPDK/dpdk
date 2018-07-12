@@ -136,7 +136,6 @@ struct mlx5_rxq_ctrl {
 	struct priv *priv; /* Back pointer to private data. */
 	struct mlx5_rxq_data rxq; /* Data path structure. */
 	unsigned int socket; /* CPU socket ID for allocations. */
-	uint32_t tunnel_types[16]; /* Tunnel type counter. */
 	unsigned int irq:1; /* Whether IRQ is enabled. */
 	uint16_t idx; /* Queue index. */
 };
