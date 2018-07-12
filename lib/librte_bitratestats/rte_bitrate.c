@@ -47,6 +47,9 @@ rte_stats_bitrate_reg(struct rte_stats_bitrates *bitrate_data)
 	};
 	int return_value;
 
+	if (bitrate_data == NULL)
+		return -EINVAL;
+
 	return_value = rte_metrics_reg_names(&names[0], ARRAY_SIZE(names));
 	if (return_value >= 0)
 		bitrate_data->id_stats_set = return_value;
@@ -64,6 +67,9 @@ rte_stats_bitrate_calc(struct rte_stats_bitrates *bitrate_data,
 	int64_t delta;
 	const int64_t alpha_percent = 20;
 	uint64_t values[6];
+
+	if (bitrate_data == NULL)
+		return -EINVAL;
 
 	ret_code = rte_eth_stats_get(port_id, &eth_stats);
 	if (ret_code != 0)
