@@ -50,6 +50,7 @@ extern const struct eth_dev_ops mlx5_dev_ops_isolate;
 
 /* Actions that modify the fate of matching traffic. */
 #define MLX5_FLOW_FATE_DROP (1u << 0)
+#define MLX5_FLOW_FATE_QUEUE (1u << 1)
 
 /** Handles information leading to a drop fate. */
 struct mlx5_flow_verbs {
@@ -71,7 +72,8 @@ struct rte_flow {
 	/**< Bit-fields of present layers see MLX5_FLOW_LAYER_*. */
 	uint32_t fate;
 	/**< Bit-fields of present fate see MLX5_FLOW_FATE_*. */
-	struct mlx5_flow_verbs verbs; /* Verbs drop flow. */
+	struct mlx5_flow_verbs verbs; /* Verbs flow. */
+	uint16_t queue; /**< Destination queue to redirect traffic to. */
 };
 
 static const struct rte_flow_ops mlx5_flow_ops = {
@@ -495,6 +497,52 @@ mlx5_flow_action_drop(const struct rte_flow_action *action,
 /**
  * Convert the @p action into @p flow after ensuring the NIC will understand
  * and process it correctly.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device structure.
+ * @param[in] action
+ *   Action configuration.
+ * @param[in, out] flow
+ *   Pointer to flow structure.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_action_queue(struct rte_eth_dev *dev,
+		       const struct rte_flow_action *action,
+		       struct rte_flow *flow,
+		       struct rte_flow_error *error)
+{
+	struct priv *priv = dev->data->dev_private;
+	const struct rte_flow_action_queue *queue = action->conf;
+
+	if (flow->fate)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  action,
+					  "multiple fate actions are not"
+					  " supported");
+	if (queue->index >= priv->rxqs_n)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					  &queue->index,
+					  "queue index out of range");
+	if (!(*priv->rxqs)[queue->index])
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					  &queue->index,
+					  "queue is not configured");
+	flow->queue = queue->index;
+	flow->fate |= MLX5_FLOW_FATE_QUEUE;
+	return 0;
+}
+
+/**
+ * Convert the @p action into @p flow after ensuring the NIC will understand
+ * and process it correctly.
  * The conversion is performed action per action, each of them is written into
  * the @p flow if its size is lesser or equal to @p flow_size.
  * Validation and memory consumption computation are still performed until the
@@ -520,7 +568,7 @@ mlx5_flow_action_drop(const struct rte_flow_action *action,
  *   On error, a negative errno value is returned and rte_errno is set.
  */
 static int
-mlx5_flow_actions(struct rte_eth_dev *dev __rte_unused,
+mlx5_flow_actions(struct rte_eth_dev *dev,
 		  const struct rte_flow_action actions[],
 		  struct rte_flow *flow, const size_t flow_size,
 		  struct rte_flow_error *error)
@@ -536,6 +584,9 @@ mlx5_flow_actions(struct rte_eth_dev *dev __rte_unused,
 		case RTE_FLOW_ACTION_TYPE_DROP:
 			ret = mlx5_flow_action_drop(actions, flow, remain,
 						    error);
+			break;
+		case RTE_FLOW_ACTION_TYPE_QUEUE:
+			ret = mlx5_flow_action_queue(dev, actions, flow, error);
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
@@ -661,7 +712,10 @@ mlx5_flow_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 		}
 	}
 	if (flow->verbs.hrxq) {
-		mlx5_hrxq_drop_release(dev);
+		if (flow->fate & MLX5_FLOW_FATE_DROP)
+			mlx5_hrxq_drop_release(dev);
+		else if (flow->fate & MLX5_FLOW_FATE_QUEUE)
+			mlx5_hrxq_release(dev, flow->verbs.hrxq);
 		flow->verbs.hrxq = NULL;
 	}
 }
@@ -683,17 +737,38 @@ static int
 mlx5_flow_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 		struct rte_flow_error *error)
 {
-	flow->verbs.hrxq = mlx5_hrxq_drop_new(dev);
-	if (!flow->verbs.hrxq)
-		return rte_flow_error_set
-			(error, errno,
-			 RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-			 NULL,
-			 "cannot allocate Drop queue");
+	if (flow->fate & MLX5_FLOW_FATE_DROP) {
+		flow->verbs.hrxq = mlx5_hrxq_drop_new(dev);
+		if (!flow->verbs.hrxq)
+			return rte_flow_error_set
+				(error, errno,
+				 RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				 NULL,
+				 "cannot allocate Drop queue");
+	} else if (flow->fate & MLX5_FLOW_FATE_QUEUE) {
+		struct mlx5_hrxq *hrxq;
+
+		hrxq = mlx5_hrxq_get(dev, rss_hash_default_key,
+				     rss_hash_default_key_len, 0,
+				     &flow->queue, 1, 0, 0);
+		if (!hrxq)
+			hrxq = mlx5_hrxq_new(dev, rss_hash_default_key,
+					     rss_hash_default_key_len, 0,
+					     &flow->queue, 1, 0, 0);
+		if (!hrxq)
+			return rte_flow_error_set(error, rte_errno,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL,
+					"cannot create flow");
+		flow->verbs.hrxq = hrxq;
+	}
 	flow->verbs.flow =
 		mlx5_glue->create_flow(flow->verbs.hrxq->qp, flow->verbs.attr);
 	if (!flow->verbs.flow) {
-		mlx5_hrxq_drop_release(dev);
+		if (flow->fate & MLX5_FLOW_FATE_DROP)
+			mlx5_hrxq_drop_release(dev);
+		else
+			mlx5_hrxq_release(dev, flow->verbs.hrxq);
 		flow->verbs.hrxq = NULL;
 		return rte_flow_error_set(error, errno,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
