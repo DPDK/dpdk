@@ -52,7 +52,9 @@ uint8_t rss_hash_default_key[] = {
 };
 
 /* Length of the default RSS hash key. */
-const size_t rss_hash_default_key_len = sizeof(rss_hash_default_key);
+static_assert(MLX5_RSS_HASH_KEY_LEN ==
+	      (unsigned int)sizeof(rss_hash_default_key),
+	      "wrong RSS default key size.");
 
 /**
  * Check whether Multi-Packet RQ can be enabled for the device.
@@ -1771,7 +1773,7 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 		return NULL;
 	}
 	if (!rss_key_len) {
-		rss_key_len = rss_hash_default_key_len;
+		rss_key_len = MLX5_RSS_HASH_KEY_LEN;
 		rss_key = rss_hash_default_key;
 	}
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
@@ -1791,7 +1793,7 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 			.rx_hash_conf = (struct ibv_rx_hash_conf){
 				.rx_hash_function = IBV_RX_HASH_FUNC_TOEPLITZ,
 				.rx_hash_key_len = rss_key_len ? rss_key_len :
-						   rss_hash_default_key_len,
+						   MLX5_RSS_HASH_KEY_LEN,
 				.rx_hash_key = rss_key ?
 					       (void *)(uintptr_t)rss_key :
 					       rss_hash_default_key,
@@ -1815,7 +1817,7 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 			.rx_hash_conf = (struct ibv_rx_hash_conf){
 				.rx_hash_function = IBV_RX_HASH_FUNC_TOEPLITZ,
 				.rx_hash_key_len = rss_key_len ? rss_key_len :
-						   rss_hash_default_key_len,
+						   MLX5_RSS_HASH_KEY_LEN,
 				.rx_hash_key = rss_key ?
 					       (void *)(uintptr_t)rss_key :
 					       rss_hash_default_key,
@@ -2138,7 +2140,7 @@ mlx5_hrxq_drop_new(struct rte_eth_dev *dev)
 			.rx_hash_conf = (struct ibv_rx_hash_conf){
 				.rx_hash_function =
 					IBV_RX_HASH_FUNC_TOEPLITZ,
-				.rx_hash_key_len = rss_hash_default_key_len,
+				.rx_hash_key_len = MLX5_RSS_HASH_KEY_LEN,
 				.rx_hash_key = rss_hash_default_key,
 				.rx_hash_fields_mask = 0,
 				},

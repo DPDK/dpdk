@@ -376,15 +376,15 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 
 	if (use_app_rss_key &&
 	    (dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key_len !=
-	     rss_hash_default_key_len)) {
-		DRV_LOG(ERR, "port %u RSS key len must be %zu Bytes long",
-			dev->data->port_id, rss_hash_default_key_len);
+	     MLX5_RSS_HASH_KEY_LEN)) {
+		DRV_LOG(ERR, "port %u RSS key len must be %s Bytes long",
+			dev->data->port_id, RTE_STR(MLX5_RSS_HASH_KEY_LEN));
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
 	priv->rss_conf.rss_key =
 		rte_realloc(priv->rss_conf.rss_key,
-			    rss_hash_default_key_len, 0);
+			    MLX5_RSS_HASH_KEY_LEN, 0);
 	if (!priv->rss_conf.rss_key) {
 		DRV_LOG(ERR, "port %u cannot allocate RSS hash key memory (%u)",
 			dev->data->port_id, rxqs_n);
@@ -395,8 +395,8 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 	       use_app_rss_key ?
 	       dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key :
 	       rss_hash_default_key,
-	       rss_hash_default_key_len);
-	priv->rss_conf.rss_key_len = rss_hash_default_key_len;
+	       MLX5_RSS_HASH_KEY_LEN);
+	priv->rss_conf.rss_key_len = MLX5_RSS_HASH_KEY_LEN;
 	priv->rss_conf.rss_hf = dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf;
 	priv->rxqs = (void *)dev->data->rx_queues;
 	priv->txqs = (void *)dev->data->tx_queues;
@@ -514,7 +514,7 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 		info->if_index = if_nametoindex(ifname);
 	info->reta_size = priv->reta_idx_n ?
 		priv->reta_idx_n : config->ind_table_max_size;
-	info->hash_key_size = rss_hash_default_key_len;
+	info->hash_key_size = MLX5_RSS_HASH_KEY_LEN;
 	info->speed_capa = priv->link_speed_capa;
 	info->flow_type_rss_offloads = ~MLX5_RSS_HF_MASK;
 	mlx5_set_default_params(dev, info);

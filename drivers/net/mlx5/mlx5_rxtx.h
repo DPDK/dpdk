@@ -225,7 +225,6 @@ struct mlx5_txq_ctrl {
 /* mlx5_rxq.c */
 
 extern uint8_t rss_hash_default_key[];
-extern const size_t rss_hash_default_key_len;
 
 int mlx5_check_mprq_support(struct rte_eth_dev *dev);
 int mlx5_rxq_mprq_enabled(struct mlx5_rxq_data *rxq);

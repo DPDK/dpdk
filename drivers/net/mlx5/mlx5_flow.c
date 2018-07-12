@@ -1493,11 +1493,11 @@ mlx5_flow_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 		struct mlx5_hrxq *hrxq;
 
 		hrxq = mlx5_hrxq_get(dev, rss_hash_default_key,
-				     rss_hash_default_key_len, 0,
+				     MLX5_RSS_HASH_KEY_LEN, 0,
 				     &flow->queue, 1, 0, 0);
 		if (!hrxq)
 			hrxq = mlx5_hrxq_new(dev, rss_hash_default_key,
-					     rss_hash_default_key_len, 0,
+					     MLX5_RSS_HASH_KEY_LEN, 0,
 					     &flow->queue, 1, 0, 0);
 		if (!hrxq)
 			return rte_flow_error_set(error, rte_errno,
