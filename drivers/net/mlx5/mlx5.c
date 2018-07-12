@@ -598,7 +598,7 @@ mlx5_uar_init_primary(struct rte_eth_dev *dev)
 	rte_memseg_walk(find_lower_va_bound, &addr);
 
 	/* keep distance to hugepages to minimize potential conflicts. */
-	addr = RTE_PTR_SUB(addr, MLX5_UAR_OFFSET + MLX5_UAR_SIZE);
+	addr = RTE_PTR_SUB(addr, (uintptr_t)(MLX5_UAR_OFFSET + MLX5_UAR_SIZE));
 	/* anonymous mmap, no real memory consumption. */
 	addr = mmap(addr, MLX5_UAR_SIZE,
 		    PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
@@ -939,6 +939,12 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	priv->device_attr = attr;
 	priv->pd = pd;
 	priv->mtu = ETHER_MTU;
+#ifndef RTE_ARCH_64
+	/* Initialize UAR access locks for 32bit implementations. */
+	rte_spinlock_init(&priv->uar_lock_cq);
+	for (i = 0; i < MLX5_UAR_PAGE_NUM_MAX; i++)
+		rte_spinlock_init(&priv->uar_lock[i]);
+#endif
 	/* Some internal functions rely on Netlink sockets, open them now. */
 	priv->nl_socket_rdma = mlx5_nl_init(0, NETLINK_RDMA);
 	priv->nl_socket_route =	mlx5_nl_init(RTMGRP_LINK, NETLINK_ROUTE);

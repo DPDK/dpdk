@@ -495,6 +495,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	volatile struct mlx5_wqe_ctrl *last_wqe = NULL;
 	unsigned int segs_n = 0;
 	const unsigned int max_inline = txq->max_inline;
+	uint64_t addr_64;
 
 	if (unlikely(!pkts_n))
 		return 0;
@@ -711,12 +712,12 @@ pkt_inline:
 			ds = 3;
 use_dseg:
 			/* Add the remaining packet as a simple ds. */
-			addr = rte_cpu_to_be_64(addr);
+			addr_64 = rte_cpu_to_be_64(addr);
 			*dseg = (rte_v128u32_t){
 				rte_cpu_to_be_32(length),
 				mlx5_tx_mb2mr(txq, buf),
-				addr,
-				addr >> 32,
+				addr_64,
+				addr_64 >> 32,
 			};
 			++ds;
 			if (!segs_n)
@@ -750,12 +751,12 @@ next_seg:
 		total_length += length;
 #endif
 		/* Store segment information. */
-		addr = rte_cpu_to_be_64(rte_pktmbuf_mtod(buf, uintptr_t));
+		addr_64 = rte_cpu_to_be_64(rte_pktmbuf_mtod(buf, uintptr_t));
 		*dseg = (rte_v128u32_t){
 			rte_cpu_to_be_32(length),
 			mlx5_tx_mb2mr(txq, buf),
-			addr,
-			addr >> 32,
+			addr_64,
+			addr_64 >> 32,
 		};
 		(*txq->elts)[++elts_head & elts_m] = buf;
 		if (--segs_n)
@@ -1450,6 +1451,7 @@ txq_burst_empw(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 	unsigned int mpw_room = 0;
 	unsigned int inl_pad = 0;
 	uint32_t inl_hdr;
+	uint64_t addr_64;
 	struct mlx5_mpw mpw = {
 		.state = MLX5_MPW_STATE_CLOSED,
 	};
@@ -1586,13 +1588,13 @@ txq_burst_empw(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 					((uintptr_t)mpw.data.raw +
 					 inl_pad);
 			(*txq->elts)[elts_head++ & elts_m] = buf;
-			addr = rte_cpu_to_be_64(rte_pktmbuf_mtod(buf,
-								 uintptr_t));
+			addr_64 = rte_cpu_to_be_64(rte_pktmbuf_mtod(buf,
+								    uintptr_t));
 			*dseg = (rte_v128u32_t) {
 				rte_cpu_to_be_32(length),
 				mlx5_tx_mb2mr(txq, buf),
-				addr,
-				addr >> 32,
+				addr_64,
+				addr_64 >> 32,
 			};
 			mpw.data.raw = (volatile void *)(dseg + 1);
 			mpw.total_len += (inl_pad + sizeof(*dseg));

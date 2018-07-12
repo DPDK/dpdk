@@ -49,7 +49,7 @@ libibverbs.
 Features
 --------
 
-- Multi arch support: x86_64, POWER8, ARMv8.
+- Multi arch support: x86_64, POWER8, ARMv8, i686.
 - Multiple TX and RX queues.
 - Support for scattered TX and RX frames.
 - IPv4, IPv6, TCPv4, TCPv6, UDPv4 and UDPv6 RSS on any number of queues.
@@ -489,6 +489,10 @@ RMDA Core with Linux Kernel
 - Minimal kernel version : v4.14 or the most recent 4.14-rc (see `Linux installation documentation`_)
 - Minimal rdma-core version: v15+ commit 0c5f5765213a ("Merge pull request #227 from yishaih/tm")
   (see `RDMA Core installation documentation`_)
+- When building for i686 use:
+
+  - rdma-core version 18.0 or above built with 32bit support.
+  - Kernel version 4.14.41 or above.
 
 .. _`Linux installation documentation`: https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/plain/Documentation/admin-guide/README.rst
 .. _`RDMA Core installation documentation`: https://raw.githubusercontent.com/linux-rdma/rdma-core/master/README.md

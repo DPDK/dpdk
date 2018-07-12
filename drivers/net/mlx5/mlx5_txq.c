@@ -255,6 +255,9 @@ mlx5_tx_uar_remap(struct rte_eth_dev *dev, int fd)
 	struct mlx5_txq_ctrl *txq_ctrl;
 	int already_mapped;
 	size_t page_size = sysconf(_SC_PAGESIZE);
+#ifndef RTE_ARCH_64
+	unsigned int lock_idx;
+#endif
 
 	memset(pages, 0, priv->txqs_n * sizeof(uintptr_t));
 	/*
@@ -281,7 +284,7 @@ mlx5_tx_uar_remap(struct rte_eth_dev *dev, int fd)
 		}
 		/* new address in reserved UAR address space. */
 		addr = RTE_PTR_ADD(priv->uar_base,
-				   uar_va & (MLX5_UAR_SIZE - 1));
+				   uar_va & (uintptr_t)(MLX5_UAR_SIZE - 1));
 		if (!already_mapped) {
 			pages[pages_n++] = uar_va;
 			/* fixed mmap to specified address in reserved
@@ -305,6 +308,12 @@ mlx5_tx_uar_remap(struct rte_eth_dev *dev, int fd)
 		else
 			assert(txq_ctrl->txq.bf_reg ==
 			       RTE_PTR_ADD((void *)addr, off));
+#ifndef RTE_ARCH_64
+		/* Assign a UAR lock according to UAR page number */
+		lock_idx = (txq_ctrl->uar_mmap_offset / page_size) &
+			   MLX5_UAR_PAGE_NUM_MASK;
+		txq->uar_lock = &priv->uar_lock[lock_idx];
+#endif
 	}
 	return 0;
 }
@@ -511,6 +520,8 @@ mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 	rte_atomic32_inc(&txq_ibv->refcnt);
 	if (qp.comp_mask & MLX5DV_QP_MASK_UAR_MMAP_OFFSET) {
 		txq_ctrl->uar_mmap_offset = qp.uar_mmap_offset;
+		DRV_LOG(DEBUG, "port %u: uar_mmap_offset 0x%lx",
+			dev->data->port_id, txq_ctrl->uar_mmap_offset);
 	} else {
 		DRV_LOG(ERR,
 			"port %u failed to retrieve UAR info, invalid"

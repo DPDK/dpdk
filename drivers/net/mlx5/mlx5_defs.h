@@ -87,14 +87,28 @@
 #define MLX5_LINK_STATUS_TIMEOUT 10
 
 /* Reserved address space for UAR mapping. */
-#define MLX5_UAR_SIZE (1ULL << 32)
+#define MLX5_UAR_SIZE (1ULL << (sizeof(uintptr_t) * 4))
 
 /* Offset of reserved UAR address space to hugepage memory. Offset is used here
  * to minimize possibility of address next to hugepage being used by other code
  * in either primary or secondary process, failing to map TX UAR would make TX
  * packets invisible to HW.
  */
-#define MLX5_UAR_OFFSET (1ULL << 32)
+#define MLX5_UAR_OFFSET (1ULL << (sizeof(uintptr_t) * 4))
+
+/* Maximum number of UAR pages used by a port,
+ * These are the size and mask for an array of mutexes used to synchronize
+ * the access to port's UARs on platforms that do not support 64 bit writes.
+ * In such systems it is possible to issue the 64 bits DoorBells through two
+ * consecutive writes, each write 32 bits. The access to a UAR page (which can
+ * be accessible by all threads in the process) must be synchronized
+ * (for example, using a semaphore). Such a synchronization is not required
+ * when ringing DoorBells on different UAR pages.
+ * A port with 512 Tx queues uses 8, 4kBytes, UAR pages which are shared
+ * among the ports.
+ */
+#define MLX5_UAR_PAGE_NUM_MAX 64
+#define MLX5_UAR_PAGE_NUM_MASK ((MLX5_UAR_PAGE_NUM_MAX) - 1)
 
 /* Log 2 of the default number of strides per WQE for Multi-Packet RQ. */
 #define MLX5_MPRQ_STRIDE_NUM_N 6U

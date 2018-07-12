@@ -647,7 +647,8 @@ mlx5_arm_cq(struct mlx5_rxq_data *rxq, int sq_n_rxq)
 	doorbell = (uint64_t)doorbell_hi << 32;
 	doorbell |=  rxq->cqn;
 	rxq->cq_db[MLX5_CQ_ARM_DB] = rte_cpu_to_be_32(doorbell_hi);
-	rte_write64(rte_cpu_to_be_64(doorbell), cq_db_reg);
+	mlx5_uar_write64(rte_cpu_to_be_64(doorbell),
+			 cq_db_reg, rxq->uar_lock_cq);
 }
 
 /**
@@ -1449,6 +1450,9 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	tmpl->rxq.elts_n = log2above(desc);
 	tmpl->rxq.elts =
 		(struct rte_mbuf *(*)[1 << tmpl->rxq.elts_n])(tmpl + 1);
+#ifndef RTE_ARCH_64
+	tmpl->rxq.uar_lock_cq = &priv->uar_lock_cq;
+#endif
 	tmpl->idx = idx;
 	rte_atomic32_inc(&tmpl->refcnt);
 	LIST_INSERT_HEAD(&priv->rxqsctrl, tmpl, next);

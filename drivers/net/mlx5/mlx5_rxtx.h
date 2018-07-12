@@ -26,6 +26,8 @@
 #include <rte_common.h>
 #include <rte_hexdump.h>
 #include <rte_atomic.h>
+#include <rte_spinlock.h>
+#include <rte_io.h>
 
 #include "mlx5_utils.h"
 #include "mlx5.h"
@@ -118,6 +120,10 @@ struct mlx5_rxq_data {
 	void *cq_uar; /* CQ user access region. */
 	uint32_t cqn; /* CQ number. */
 	uint8_t cq_arm_sn; /* CQ arm seq number. */
+#ifndef RTE_ARCH_64
+	rte_spinlock_t *uar_lock_cq;
+	/* CQ (UAR) access lock required for 32bit implementations */
+#endif
 	uint32_t tunnel; /* Tunnel information. */
 } __rte_cache_aligned;
 
@@ -198,6 +204,10 @@ struct mlx5_txq_data {
 	volatile void *bf_reg; /* Blueflame register remapped. */
 	struct rte_mbuf *(*elts)[]; /* TX elements. */
 	struct mlx5_txq_stats stats; /* TX queue counters. */
+#ifndef RTE_ARCH_64
+	rte_spinlock_t *uar_lock;
+	/* UAR access lock required for 32bit implementations */
+#endif
 } __rte_cache_aligned;
 
 /* Verbs Rx queue elements. */
@@ -352,6 +362,63 @@ uint16_t mlx5_rx_burst_vec(void *dpdk_txq, struct rte_mbuf **pkts,
 void mlx5_mr_flush_local_cache(struct mlx5_mr_ctrl *mr_ctrl);
 uint32_t mlx5_rx_addr2mr_bh(struct mlx5_rxq_data *rxq, uintptr_t addr);
 uint32_t mlx5_tx_addr2mr_bh(struct mlx5_txq_data *txq, uintptr_t addr);
+
+/**
+ * Provide safe 64bit store operation to mlx5 UAR region for both 32bit and
+ * 64bit architectures.
+ *
+ * @param val
+ *   value to write in CPU endian format.
+ * @param addr
+ *   Address to write to.
+ * @param lock
+ *   Address of the lock to use for that UAR access.
+ */
+static __rte_always_inline void
+__mlx5_uar_write64_relaxed(uint64_t val, volatile void *addr,
+			   rte_spinlock_t *lock __rte_unused)
+{
+#ifdef RTE_ARCH_64
+	rte_write64_relaxed(val, addr);
+#else /* !RTE_ARCH_64 */
+	rte_spinlock_lock(lock);
+	rte_write32_relaxed(val, addr);
+	rte_io_wmb();
+	rte_write32_relaxed(val >> 32,
+			    (volatile void *)((volatile char *)addr + 4));
+	rte_spinlock_unlock(lock);
+#endif
+}
+
+/**
+ * Provide safe 64bit store operation to mlx5 UAR region for both 32bit and
+ * 64bit architectures while guaranteeing the order of execution with the
+ * code being executed.
+ *
+ * @param val
+ *   value to write in CPU endian format.
+ * @param addr
+ *   Address to write to.
+ * @param lock
+ *   Address of the lock to use for that UAR access.
+ */
+static __rte_always_inline void
+__mlx5_uar_write64(uint64_t val, volatile void *addr, rte_spinlock_t *lock)
+{
+	rte_io_wmb();
+	__mlx5_uar_write64_relaxed(val, addr, lock);
+}
+
+/* Assist macros, used instead of directly calling the functions they wrap. */
+#ifdef RTE_ARCH_64
+#define mlx5_uar_write64_relaxed(val, dst, lock) \
+		__mlx5_uar_write64_relaxed(val, dst, NULL)
+#define mlx5_uar_write64(val, dst, lock) __mlx5_uar_write64(val, dst, NULL)
+#else
+#define mlx5_uar_write64_relaxed(val, dst, lock) \
+		__mlx5_uar_write64_relaxed(val, dst, lock)
+#define mlx5_uar_write64(val, dst, lock) __mlx5_uar_write64(val, dst, lock)
+#endif
 
 #ifndef NDEBUG
 /**
@@ -619,7 +686,7 @@ mlx5_tx_dbrec_cond_wmb(struct mlx5_txq_data *txq, volatile struct mlx5_wqe *wqe,
 	*txq->qp_db = rte_cpu_to_be_32(txq->wqe_ci);
 	/* Ensure ordering between DB record and BF copy. */
 	rte_wmb();
-	*dst = *src;
+	mlx5_uar_write64_relaxed(*src, dst, txq->uar_lock);
 	if (cond)
 		rte_wmb();
 }

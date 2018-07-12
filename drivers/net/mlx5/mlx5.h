@@ -215,6 +215,11 @@ struct priv {
 	int nl_socket_rdma; /* Netlink socket (NETLINK_RDMA). */
 	int nl_socket_route; /* Netlink socket (NETLINK_ROUTE). */
 	uint32_t nl_sn; /* Netlink message sequence number. */
+#ifndef RTE_ARCH_64
+	rte_spinlock_t uar_lock_cq; /* CQs share a common distinct UAR */
+	rte_spinlock_t uar_lock[MLX5_UAR_PAGE_NUM_MAX];
+	/* UAR same-page access control required in 32bit implementations. */
+#endif
 };
 
 #define PORT_ID(priv) ((priv)->dev_data->port_id)
