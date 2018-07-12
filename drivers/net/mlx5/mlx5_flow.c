@@ -53,6 +53,7 @@ extern const struct eth_dev_ops mlx5_dev_ops_isolate;
 #define MLX5_FLOW_FATE_QUEUE (1u << 1)
 
 /* possible L3 layers protocols filtering. */
+#define MLX5_IP_PROTOCOL_TCP 6
 #define MLX5_IP_PROTOCOL_UDP 17
 
 /** Handles information leading to a drop fate. */
@@ -788,6 +789,81 @@ mlx5_flow_item_udp(const struct rte_flow_item *item, struct rte_flow *flow,
 }
 
 /**
+ * Convert the @p item into a Verbs specification after ensuring the NIC
+ * will understand and process it correctly.
+ * If the necessary size for the conversion is greater than the @p flow_size,
+ * nothing is written in @p flow, the validation is still performed.
+ *
+ * @param[in] item
+ *   Item specification.
+ * @param[in, out] flow
+ *   Pointer to flow structure.
+ * @param[in] flow_size
+ *   Size in bytes of the available space in @p flow, if too small, nothing is
+ *   written.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   On success the number of bytes consumed/necessary, if the returned value
+ *   is lesser or equal to @p flow_size, the @p item has fully been converted,
+ *   otherwise another call with this returned memory size should be done.
+ *   On error, a negative errno value is returned and rte_errno is set.
+ */
+static int
+mlx5_flow_item_tcp(const struct rte_flow_item *item, struct rte_flow *flow,
+		   const size_t flow_size, struct rte_flow_error *error)
+{
+	const struct rte_flow_item_tcp *spec = item->spec;
+	const struct rte_flow_item_tcp *mask = item->mask;
+	unsigned int size = sizeof(struct ibv_flow_spec_tcp_udp);
+	struct ibv_flow_spec_tcp_udp tcp = {
+		.type = IBV_FLOW_SPEC_TCP,
+		.size = size,
+	};
+	int ret;
+
+	if (flow->l3_protocol_en && flow->l3_protocol != MLX5_IP_PROTOCOL_TCP)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "protocol filtering not compatible"
+					  " with TCP layer");
+	if (!(flow->layers & MLX5_FLOW_LAYER_OUTER_L3))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "L3 is mandatory to filter on L4");
+	if (flow->layers & MLX5_FLOW_LAYER_OUTER_L4)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "L4 layer is already present");
+	if (!mask)
+		mask = &rte_flow_item_tcp_mask;
+	ret = mlx5_flow_item_acceptable
+		(item, (const uint8_t *)mask,
+		 (const uint8_t *)&rte_flow_item_tcp_mask,
+		 sizeof(struct rte_flow_item_tcp), error);
+	if (ret < 0)
+		return ret;
+	flow->layers |= MLX5_FLOW_LAYER_OUTER_L4_TCP;
+	if (size > flow_size)
+		return size;
+	if (spec) {
+		tcp.val.dst_port = spec->hdr.dst_port;
+		tcp.val.src_port = spec->hdr.src_port;
+		tcp.mask.dst_port = mask->hdr.dst_port;
+		tcp.mask.src_port = mask->hdr.src_port;
+		/* Remove unwanted bits from values. */
+		tcp.val.src_port &= tcp.mask.src_port;
+		tcp.val.dst_port &= tcp.mask.dst_port;
+	}
+	mlx5_flow_spec_verbs_add(flow, &tcp, size);
+	return size;
+}
+
+/**
  * Convert the @p pattern into a Verbs specifications after ensuring the NIC
  * will understand and process it correctly.
  * The conversion is performed item per item, each of them is written into
@@ -840,6 +916,9 @@ mlx5_flow_items(const struct rte_flow_item pattern[],
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			ret = mlx5_flow_item_udp(pattern, flow, remain, error);
+			break;
+		case RTE_FLOW_ITEM_TYPE_TCP:
+			ret = mlx5_flow_item_tcp(pattern, flow, remain, error);
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
