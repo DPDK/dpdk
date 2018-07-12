@@ -54,6 +54,7 @@ extern const struct eth_dev_ops mlx5_dev_ops_isolate;
 /* Pattern tunnel Layer bits. */
 #define MLX5_FLOW_LAYER_VXLAN (1u << 12)
 #define MLX5_FLOW_LAYER_VXLAN_GPE (1u << 13)
+#define MLX5_FLOW_LAYER_GRE (1u << 14)
 
 /* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \
@@ -66,7 +67,8 @@ extern const struct eth_dev_ops mlx5_dev_ops_isolate;
 
 /* Tunnel Masks. */
 #define MLX5_FLOW_LAYER_TUNNEL \
-	(MLX5_FLOW_LAYER_VXLAN | MLX5_FLOW_LAYER_VXLAN_GPE)
+	(MLX5_FLOW_LAYER_VXLAN | MLX5_FLOW_LAYER_VXLAN_GPE | \
+	 MLX5_FLOW_LAYER_GRE)
 
 /* Inner Masks. */
 #define MLX5_FLOW_LAYER_INNER_L3 \
@@ -89,6 +91,7 @@ extern const struct eth_dev_ops mlx5_dev_ops_isolate;
 /* possible L3 layers protocols filtering. */
 #define MLX5_IP_PROTOCOL_TCP 6
 #define MLX5_IP_PROTOCOL_UDP 17
+#define MLX5_IP_PROTOCOL_GRE 47
 
 /* Priority reserved for default flows. */
 #define MLX5_FLOW_PRIO_RSVD ((uint32_t)-1)
@@ -105,6 +108,7 @@ enum mlx5_expansion {
 	MLX5_EXPANSION_OUTER_IPV6_TCP,
 	MLX5_EXPANSION_VXLAN,
 	MLX5_EXPANSION_VXLAN_GPE,
+	MLX5_EXPANSION_GRE,
 	MLX5_EXPANSION_ETH,
 	MLX5_EXPANSION_IPV4,
 	MLX5_EXPANSION_IPV4_UDP,
@@ -137,7 +141,8 @@ static const struct rte_flow_expand_node mlx5_support_expansion[] = {
 	[MLX5_EXPANSION_OUTER_IPV4] = {
 		.next = RTE_FLOW_EXPAND_RSS_NEXT
 			(MLX5_EXPANSION_OUTER_IPV4_UDP,
-			 MLX5_EXPANSION_OUTER_IPV4_TCP),
+			 MLX5_EXPANSION_OUTER_IPV4_TCP,
+			 MLX5_EXPANSION_GRE),
 		.type = RTE_FLOW_ITEM_TYPE_IPV4,
 		.rss_types = ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 |
 			ETH_RSS_NONFRAG_IPV4_OTHER,
@@ -179,6 +184,10 @@ static const struct rte_flow_expand_node mlx5_support_expansion[] = {
 						 MLX5_EXPANSION_IPV4,
 						 MLX5_EXPANSION_IPV6),
 		.type = RTE_FLOW_ITEM_TYPE_VXLAN_GPE,
+	},
+	[MLX5_EXPANSION_GRE] = {
+		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4),
+		.type = RTE_FLOW_ITEM_TYPE_GRE,
 	},
 	[MLX5_EXPANSION_ETH] = {
 		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4,
@@ -327,6 +336,10 @@ static struct mlx5_flow_tunnel_info tunnels_info[] = {
 	{
 		.tunnel = MLX5_FLOW_LAYER_VXLAN_GPE,
 		.ptype = RTE_PTYPE_TUNNEL_VXLAN_GPE | RTE_PTYPE_L4_UDP,
+	},
+	{
+		.tunnel = MLX5_FLOW_LAYER_GRE,
+		.ptype = RTE_PTYPE_TUNNEL_GRE,
 	},
 };
 
@@ -969,6 +982,18 @@ mlx5_flow_item_ipv6(const struct rte_flow_item *item, struct rte_flow *flow,
 					  RTE_FLOW_ERROR_TYPE_ITEM,
 					  item,
 					  "L3 cannot follow an L4 layer.");
+	/*
+	 * IPv6 is not recognised by the NIC inside a GRE tunnel.
+	 * Such support has to be disabled as the rule will be
+	 * accepted.  Issue reproduced with Mellanox OFED 4.3-3.0.2.1 and
+	 * Mellanox OFED 4.4-1.0.0.0.
+	 */
+	if (tunnel && flow->layers & MLX5_FLOW_LAYER_GRE)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "IPv6 inside a GRE tunnel is"
+					  " not recognised.");
 	if (!mask)
 		mask = &rte_flow_item_ipv6_mask;
 	ret = mlx5_flow_item_acceptable
@@ -1409,6 +1434,167 @@ mlx5_flow_item_vxlan_gpe(struct rte_eth_dev *dev,
 }
 
 /**
+ * Update the protocol in Verbs IPv4/IPv6 spec.
+ *
+ * @param[in, out] attr
+ *   Pointer to Verbs attributes structure.
+ * @param[in] search
+ *   Specification type to search in order to update the IP protocol.
+ * @param[in] protocol
+ *   Protocol value to set if none is present in the specification.
+ */
+static void
+mlx5_flow_item_gre_ip_protocol_update(struct ibv_flow_attr *attr,
+				      enum ibv_flow_spec_type search,
+				      uint8_t protocol)
+{
+	unsigned int i;
+	struct ibv_spec_header *hdr = (struct ibv_spec_header *)
+		((uint8_t *)attr + sizeof(struct ibv_flow_attr));
+
+	if (!attr)
+		return;
+	for (i = 0; i != attr->num_of_specs; ++i) {
+		if (hdr->type == search) {
+			union {
+				struct ibv_flow_spec_ipv4_ext *ipv4;
+				struct ibv_flow_spec_ipv6 *ipv6;
+			} ip;
+
+			switch (search) {
+			case IBV_FLOW_SPEC_IPV4_EXT:
+				ip.ipv4 = (struct ibv_flow_spec_ipv4_ext *)hdr;
+				if (!ip.ipv4->val.proto) {
+					ip.ipv4->val.proto = protocol;
+					ip.ipv4->mask.proto = 0xff;
+				}
+				break;
+			case IBV_FLOW_SPEC_IPV6:
+				ip.ipv6 = (struct ibv_flow_spec_ipv6 *)hdr;
+				if (!ip.ipv6->val.next_hdr) {
+					ip.ipv6->val.next_hdr = protocol;
+					ip.ipv6->mask.next_hdr = 0xff;
+				}
+				break;
+			default:
+				break;
+			}
+			break;
+		}
+		hdr = (struct ibv_spec_header *)((uint8_t *)hdr + hdr->size);
+	}
+}
+
+/**
+ * Convert the @p item into a Verbs specification after ensuring the NIC
+ * will understand and process it correctly.
+ * It will also update the previous L3 layer with the protocol value matching
+ * the GRE.
+ * If the necessary size for the conversion is greater than the @p flow_size,
+ * nothing is written in @p flow, the validation is still performed.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[in] item
+ *   Item specification.
+ * @param[in, out] flow
+ *   Pointer to flow structure.
+ * @param[in] flow_size
+ *   Size in bytes of the available space in @p flow, if too small, nothing is
+ *   written.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   On success the number of bytes consumed/necessary, if the returned value
+ *   is lesser or equal to @p flow_size, the @p item has fully been converted,
+ *   otherwise another call with this returned memory size should be done.
+ *   On error, a negative errno value is returned and rte_errno is set.
+ */
+static int
+mlx5_flow_item_gre(const struct rte_flow_item *item,
+		   struct rte_flow *flow, const size_t flow_size,
+		   struct rte_flow_error *error)
+{
+	struct mlx5_flow_verbs *verbs = flow->cur_verbs;
+	const struct rte_flow_item_gre *spec = item->spec;
+	const struct rte_flow_item_gre *mask = item->mask;
+#ifdef HAVE_IBV_DEVICE_MPLS_SUPPORT
+	unsigned int size = sizeof(struct ibv_flow_spec_gre);
+	struct ibv_flow_spec_gre tunnel = {
+		.type = IBV_FLOW_SPEC_GRE,
+		.size = size,
+	};
+#else
+	unsigned int size = sizeof(struct ibv_flow_spec_tunnel);
+	struct ibv_flow_spec_tunnel tunnel = {
+		.type = IBV_FLOW_SPEC_VXLAN_TUNNEL,
+		.size = size,
+	};
+#endif
+	int ret;
+
+	if (flow->l3_protocol_en && flow->l3_protocol != MLX5_IP_PROTOCOL_GRE)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "protocol filtering not compatible"
+					  " with this GRE layer");
+	if (flow->layers & MLX5_FLOW_LAYER_TUNNEL)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "a tunnel is already present");
+	if (!(flow->layers & MLX5_FLOW_LAYER_OUTER_L3))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "L3 Layer is missing");
+	if (!mask)
+		mask = &rte_flow_item_gre_mask;
+	ret = mlx5_flow_item_acceptable
+		(item, (const uint8_t *)mask,
+		 (const uint8_t *)&rte_flow_item_gre_mask,
+		 sizeof(struct rte_flow_item_gre), error);
+	if (ret < 0)
+		return ret;
+#ifdef HAVE_IBV_DEVICE_MPLS_SUPPORT
+	if (spec) {
+		tunnel.val.c_ks_res0_ver = spec->c_rsvd0_ver;
+		tunnel.val.protocol = spec->protocol;
+		tunnel.mask.c_ks_res0_ver = mask->c_rsvd0_ver;
+		tunnel.mask.protocol = mask->protocol;
+		/* Remove unwanted bits from values. */
+		tunnel.val.c_ks_res0_ver &= tunnel.mask.c_ks_res0_ver;
+		tunnel.val.protocol &= tunnel.mask.protocol;
+		tunnel.val.key &= tunnel.mask.key;
+	}
+#else
+	if (spec && (spec->protocol & mask->protocol))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "without MPLS support the"
+					  " specification cannot be used for"
+					  " filtering");
+#endif /* !HAVE_IBV_DEVICE_MPLS_SUPPORT */
+	if (size <= flow_size) {
+		if (flow->layers & MLX5_FLOW_LAYER_OUTER_L3_IPV4)
+			mlx5_flow_item_gre_ip_protocol_update
+				(verbs->attr, IBV_FLOW_SPEC_IPV4_EXT,
+				 MLX5_IP_PROTOCOL_GRE);
+		else
+			mlx5_flow_item_gre_ip_protocol_update
+				(verbs->attr, IBV_FLOW_SPEC_IPV6,
+				 MLX5_IP_PROTOCOL_GRE);
+		mlx5_flow_spec_verbs_add(flow, &tunnel, size);
+		flow->cur_verbs->attr->priority = MLX5_PRIORITY_MAP_L2;
+	}
+	flow->layers |= MLX5_FLOW_LAYER_GRE;
+	return size;
+}
+
+/**
  * Convert the @p pattern into a Verbs specifications after ensuring the NIC
  * will understand and process it correctly.
  * The conversion is performed item per item, each of them is written into
@@ -1473,6 +1659,9 @@ mlx5_flow_items(struct rte_eth_dev *dev,
 		case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
 			ret = mlx5_flow_item_vxlan_gpe(dev, pattern, flow,
 						       remain, error);
+			break;
+		case RTE_FLOW_ITEM_TYPE_GRE:
+			ret = mlx5_flow_item_gre(pattern, flow, remain, error);
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
