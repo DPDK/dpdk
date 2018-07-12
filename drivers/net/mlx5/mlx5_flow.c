@@ -51,6 +51,9 @@ extern const struct eth_dev_ops mlx5_dev_ops_isolate;
 #define MLX5_FLOW_LAYER_INNER_L4_TCP (1u << 10)
 #define MLX5_FLOW_LAYER_INNER_VLAN (1u << 11)
 
+/* Pattern tunnel Layer bits. */
+#define MLX5_FLOW_LAYER_VXLAN (1u << 12)
+
 /* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \
 	(MLX5_FLOW_LAYER_OUTER_L3_IPV4 | MLX5_FLOW_LAYER_OUTER_L3_IPV6)
@@ -61,7 +64,7 @@ extern const struct eth_dev_ops mlx5_dev_ops_isolate;
 	 MLX5_FLOW_LAYER_OUTER_L4)
 
 /* Tunnel Masks. */
-#define MLX5_FLOW_LAYER_TUNNEL 0
+#define MLX5_FLOW_LAYER_TUNNEL MLX5_FLOW_LAYER_VXLAN
 
 /* Inner Masks. */
 #define MLX5_FLOW_LAYER_INNER_L3 \
@@ -98,6 +101,7 @@ enum mlx5_expansion {
 	MLX5_EXPANSION_OUTER_IPV6,
 	MLX5_EXPANSION_OUTER_IPV6_UDP,
 	MLX5_EXPANSION_OUTER_IPV6_TCP,
+	MLX5_EXPANSION_VXLAN,
 	MLX5_EXPANSION_ETH,
 	MLX5_EXPANSION_IPV4,
 	MLX5_EXPANSION_IPV4_UDP,
@@ -136,6 +140,7 @@ static const struct rte_flow_expand_node mlx5_support_expansion[] = {
 			ETH_RSS_NONFRAG_IPV4_OTHER,
 	},
 	[MLX5_EXPANSION_OUTER_IPV4_UDP] = {
+		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_VXLAN),
 		.type = RTE_FLOW_ITEM_TYPE_UDP,
 		.rss_types = ETH_RSS_NONFRAG_IPV4_UDP,
 	},
@@ -152,12 +157,17 @@ static const struct rte_flow_expand_node mlx5_support_expansion[] = {
 			ETH_RSS_NONFRAG_IPV6_OTHER,
 	},
 	[MLX5_EXPANSION_OUTER_IPV6_UDP] = {
+		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_VXLAN),
 		.type = RTE_FLOW_ITEM_TYPE_UDP,
 		.rss_types = ETH_RSS_NONFRAG_IPV6_UDP,
 	},
 	[MLX5_EXPANSION_OUTER_IPV6_TCP] = {
 		.type = RTE_FLOW_ITEM_TYPE_TCP,
 		.rss_types = ETH_RSS_NONFRAG_IPV6_TCP,
+	},
+	[MLX5_EXPANSION_VXLAN] = {
+		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_ETH),
+		.type = RTE_FLOW_ITEM_TYPE_VXLAN,
 	},
 	[MLX5_EXPANSION_ETH] = {
 		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4,
@@ -226,6 +236,8 @@ struct rte_flow {
 	struct mlx5_flow_verbs *cur_verbs;
 	/**< Current Verbs flow structure being filled. */
 	struct rte_flow_action_rss rss;/**< RSS context. */
+	uint32_t tunnel_ptype;
+	/**< Store tunnel packet type data to store in Rx queue. */
 	uint8_t key[MLX5_RSS_HASH_KEY_LEN]; /**< RSS hash key. */
 	uint16_t (*queue)[]; /**< Destination queues to redirect traffic to. */
 };
@@ -1162,6 +1174,103 @@ mlx5_flow_item_tcp(const struct rte_flow_item *item, struct rte_flow *flow,
 }
 
 /**
+ * Convert the @p item into a Verbs specification after ensuring the NIC
+ * will understand and process it correctly.
+ * If the necessary size for the conversion is greater than the @p flow_size,
+ * nothing is written in @p flow, the validation is still performed.
+ *
+ * @param[in] item
+ *   Item specification.
+ * @param[in, out] flow
+ *   Pointer to flow structure.
+ * @param[in] flow_size
+ *   Size in bytes of the available space in @p flow, if too small, nothing is
+ *   written.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   On success the number of bytes consumed/necessary, if the returned value
+ *   is lesser or equal to @p flow_size, the @p item has fully been converted,
+ *   otherwise another call with this returned memory size should be done.
+ *   On error, a negative errno value is returned and rte_errno is set.
+ */
+static int
+mlx5_flow_item_vxlan(const struct rte_flow_item *item, struct rte_flow *flow,
+		     const size_t flow_size, struct rte_flow_error *error)
+{
+	const struct rte_flow_item_vxlan *spec = item->spec;
+	const struct rte_flow_item_vxlan *mask = item->mask;
+	unsigned int size = sizeof(struct ibv_flow_spec_tunnel);
+	struct ibv_flow_spec_tunnel vxlan = {
+		.type = IBV_FLOW_SPEC_VXLAN_TUNNEL,
+		.size = size,
+	};
+	int ret;
+	union vni {
+		uint32_t vlan_id;
+		uint8_t vni[4];
+	} id = { .vlan_id = 0, };
+
+	if (flow->layers & MLX5_FLOW_LAYER_TUNNEL)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "a tunnel is already present");
+	/*
+	 * Verify only UDPv4 is present as defined in
+	 * https://tools.ietf.org/html/rfc7348
+	 */
+	if (!(flow->layers & MLX5_FLOW_LAYER_OUTER_L4_UDP))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "no outer UDP layer found");
+	if (!mask)
+		mask = &rte_flow_item_vxlan_mask;
+	ret = mlx5_flow_item_acceptable
+		(item, (const uint8_t *)mask,
+		 (const uint8_t *)&rte_flow_item_vxlan_mask,
+		 sizeof(struct rte_flow_item_vxlan), error);
+	if (ret < 0)
+		return ret;
+	if (spec) {
+		memcpy(&id.vni[1], spec->vni, 3);
+		vxlan.val.tunnel_id = id.vlan_id;
+		memcpy(&id.vni[1], mask->vni, 3);
+		vxlan.mask.tunnel_id = id.vlan_id;
+		/* Remove unwanted bits from values. */
+		vxlan.val.tunnel_id &= vxlan.mask.tunnel_id;
+	}
+	/*
+	 * Tunnel id 0 is equivalent as not adding a VXLAN layer, if
+	 * only this layer is defined in the Verbs specification it is
+	 * interpreted as wildcard and all packets will match this
+	 * rule, if it follows a full stack layer (ex: eth / ipv4 /
+	 * udp), all packets matching the layers before will also
+	 * match this rule.  To avoid such situation, VNI 0 is
+	 * currently refused.
+	 */
+	if (!vxlan.val.tunnel_id)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "VXLAN vni cannot be 0");
+	if (!(flow->layers & MLX5_FLOW_LAYER_OUTER))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "VXLAN tunnel must be fully defined");
+	if (size <= flow_size) {
+		mlx5_flow_spec_verbs_add(flow, &vxlan, size);
+		flow->cur_verbs->attr->priority = MLX5_PRIORITY_MAP_L2;
+	}
+	flow->layers |= MLX5_FLOW_LAYER_VXLAN;
+	flow->tunnel_ptype = RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_L4_UDP;
+	return size;
+}
+
+/**
  * Convert the @p pattern into a Verbs specifications after ensuring the NIC
  * will understand and process it correctly.
  * The conversion is performed item per item, each of them is written into
@@ -1217,6 +1326,10 @@ mlx5_flow_items(const struct rte_flow_item pattern[],
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			ret = mlx5_flow_item_tcp(pattern, flow, remain, error);
+			break;
+		case RTE_FLOW_ITEM_TYPE_VXLAN:
+			ret = mlx5_flow_item_vxlan(pattern, flow, remain,
+						   error);
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
@@ -1833,7 +1946,7 @@ mlx5_flow_merge(struct rte_eth_dev *dev, struct rte_flow *flow,
 }
 
 /**
- * Mark the Rx queues mark flag if the flow has a mark or flag modifier.
+ * Set the Rx queue flags (Mark/Flag and Tunnel Ptypes) according to the flow.
  *
  * @param[in] dev
  *   Pointer to Ethernet device.
@@ -1841,28 +1954,34 @@ mlx5_flow_merge(struct rte_eth_dev *dev, struct rte_flow *flow,
  *   Pointer to flow structure.
  */
 static void
-mlx5_flow_rxq_mark_set(struct rte_eth_dev *dev, struct rte_flow *flow)
+mlx5_flow_rxq_flags_set(struct rte_eth_dev *dev, struct rte_flow *flow)
 {
 	struct priv *priv = dev->data->dev_private;
+	const int mark = !!(flow->modifier &
+			    (MLX5_FLOW_MOD_FLAG | MLX5_FLOW_MOD_MARK));
+	const int tunnel = !!(flow->layers & MLX5_FLOW_LAYER_TUNNEL);
+	unsigned int i;
 
-	if (flow->modifier & (MLX5_FLOW_MOD_FLAG | MLX5_FLOW_MOD_MARK)) {
-		unsigned int i;
+	for (i = 0; i != flow->rss.queue_num; ++i) {
+		int idx = (*flow->queue)[i];
+		struct mlx5_rxq_ctrl *rxq_ctrl =
+			container_of((*priv->rxqs)[idx],
+				     struct mlx5_rxq_ctrl, rxq);
 
-		for (i = 0; i != flow->rss.queue_num; ++i) {
-			int idx = (*flow->queue)[i];
-			struct mlx5_rxq_ctrl *rxq_ctrl =
-				container_of((*priv->rxqs)[idx],
-					     struct mlx5_rxq_ctrl, rxq);
-
+		if (mark) {
 			rxq_ctrl->rxq.mark = 1;
 			rxq_ctrl->flow_mark_n++;
+		}
+		if (tunnel) {
+			rxq_ctrl->rxq.tunnel = flow->tunnel_ptype;
+			rxq_ctrl->flow_vxlan_n++;
 		}
 	}
 }
 
 /**
- * Clear the Rx queue mark associated with the @p flow if no other flow uses
- * it with a mark request.
+ * Clear the Rx queue flags (Mark/Flag and Tunnel Ptype) associated with the
+ * @p flow if no other flow uses it with the same kind of request.
  *
  * @param dev
  *   Pointer to Ethernet device.
@@ -1870,33 +1989,41 @@ mlx5_flow_rxq_mark_set(struct rte_eth_dev *dev, struct rte_flow *flow)
  *   Pointer to the flow.
  */
 static void
-mlx5_flow_rxq_mark_trim(struct rte_eth_dev *dev, struct rte_flow *flow)
+mlx5_flow_rxq_flags_trim(struct rte_eth_dev *dev, struct rte_flow *flow)
 {
 	struct priv *priv = dev->data->dev_private;
+	const int mark = !!(flow->modifier &
+			    (MLX5_FLOW_MOD_FLAG | MLX5_FLOW_MOD_MARK));
+	const int tunnel = !!(flow->layers & MLX5_FLOW_LAYER_TUNNEL);
+	unsigned int i;
 
-	if (flow->modifier & (MLX5_FLOW_MOD_FLAG | MLX5_FLOW_MOD_MARK)) {
-		unsigned int i;
+	assert(dev->data->dev_started);
+	for (i = 0; i != flow->rss.queue_num; ++i) {
+		int idx = (*flow->queue)[i];
+		struct mlx5_rxq_ctrl *rxq_ctrl =
+			container_of((*priv->rxqs)[idx],
+				     struct mlx5_rxq_ctrl, rxq);
 
-		for (i = 0; i != flow->rss.queue_num; ++i) {
-			int idx = (*flow->queue)[i];
-			struct mlx5_rxq_ctrl *rxq_ctrl =
-				container_of((*priv->rxqs)[idx],
-					     struct mlx5_rxq_ctrl, rxq);
-
+		if (mark) {
 			rxq_ctrl->flow_mark_n--;
 			rxq_ctrl->rxq.mark = !!rxq_ctrl->flow_mark_n;
+		}
+		if (tunnel) {
+			rxq_ctrl->flow_vxlan_n++;
+			if (!rxq_ctrl->flow_vxlan_n)
+				rxq_ctrl->rxq.tunnel = 0;
 		}
 	}
 }
 
 /**
- * Clear the mark bit in all Rx queues.
+ * Clear the Mark/Flag and Tunnel ptype information in all Rx queues.
  *
  * @param dev
  *   Pointer to Ethernet device.
  */
 static void
-mlx5_flow_rxq_mark_clear(struct rte_eth_dev *dev)
+mlx5_flow_rxq_flags_clear(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
 	unsigned int i;
@@ -1911,6 +2038,8 @@ mlx5_flow_rxq_mark_clear(struct rte_eth_dev *dev)
 					struct mlx5_rxq_ctrl, rxq);
 		rxq_ctrl->flow_mark_n = 0;
 		rxq_ctrl->rxq.mark = 0;
+		rxq_ctrl->flow_vxlan_n = 0;
+		rxq_ctrl->rxq.tunnel = 0;
 		++idx;
 	}
 }
@@ -2106,7 +2235,7 @@ mlx5_flow_list_create(struct rte_eth_dev *dev,
 		}
 	}
 	TAILQ_INSERT_TAIL(list, flow, next);
-	mlx5_flow_rxq_mark_set(dev, flow);
+	mlx5_flow_rxq_flags_set(dev, flow);
 	return flow;
 }
 
@@ -2144,7 +2273,12 @@ mlx5_flow_list_destroy(struct rte_eth_dev *dev, struct mlx5_flows *list,
 {
 	mlx5_flow_remove(dev, flow);
 	TAILQ_REMOVE(list, flow, next);
-	mlx5_flow_rxq_mark_trim(dev, flow);
+	/*
+	 * Update RX queue flags only if port is started, otherwise it is
+	 * already clean.
+	 */
+	if (dev->data->dev_started)
+		mlx5_flow_rxq_flags_trim(dev, flow);
 	rte_free(flow);
 }
 
@@ -2182,7 +2316,7 @@ mlx5_flow_stop(struct rte_eth_dev *dev, struct mlx5_flows *list)
 
 	TAILQ_FOREACH_REVERSE(flow, list, mlx5_flows, next)
 		mlx5_flow_remove(dev, flow);
-	mlx5_flow_rxq_mark_clear(dev);
+	mlx5_flow_rxq_flags_clear(dev);
 }
 
 /**
@@ -2207,7 +2341,7 @@ mlx5_flow_start(struct rte_eth_dev *dev, struct mlx5_flows *list)
 		ret = mlx5_flow_apply(dev, flow, &error);
 		if (ret < 0)
 			goto error;
-		mlx5_flow_rxq_mark_set(dev, flow);
+		mlx5_flow_rxq_flags_set(dev, flow);
 	}
 	return 0;
 error:

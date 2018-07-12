@@ -139,6 +139,7 @@ struct mlx5_rxq_ctrl {
 	unsigned int irq:1; /* Whether IRQ is enabled. */
 	uint16_t idx; /* Queue index. */
 	uint32_t flow_mark_n; /* Number of Mark/Flag flows using this Queue. */
+	uint32_t flow_vxlan_n; /* Number of VXLAN flows using this queue. */
 };
 
 /* Indirection table. */
