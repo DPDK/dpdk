@@ -88,6 +88,7 @@ extern const struct eth_dev_ops mlx5_dev_ops_isolate;
 /* Modify a packet. */
 #define MLX5_FLOW_MOD_FLAG (1u << 0)
 #define MLX5_FLOW_MOD_MARK (1u << 1)
+#define MLX5_FLOW_MOD_COUNT (1u << 2)
 
 /* possible L3 layers protocols filtering. */
 #define MLX5_IP_PROTOCOL_TCP 6
@@ -249,6 +250,17 @@ struct mlx5_flow_verbs {
 	uint64_t hash_fields; /**< Verbs hash Rx queue hash fields. */
 };
 
+/* Counters information. */
+struct mlx5_flow_counter {
+	LIST_ENTRY(mlx5_flow_counter) next; /**< Pointer to the next counter. */
+	uint32_t shared:1; /**< Share counter ID with other flow rules. */
+	uint32_t ref_cnt:31; /**< Reference counter. */
+	uint32_t id; /**< Counter ID. */
+	struct ibv_counter_set *cs; /**< Holds the counters for the rule. */
+	uint64_t hits; /**< Number of packets matched by the rule. */
+	uint64_t bytes; /**< Number of bytes matched by the rule. */
+};
+
 /* Flow structure. */
 struct rte_flow {
 	TAILQ_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
@@ -264,6 +276,7 @@ struct rte_flow {
 	LIST_HEAD(verbs, mlx5_flow_verbs) verbs; /**< Verbs flows list. */
 	struct mlx5_flow_verbs *cur_verbs;
 	/**< Current Verbs flow structure being filled. */
+	struct mlx5_flow_counter *counter; /**< Holds Verbs flow counter. */
 	struct rte_flow_action_rss rss;/**< RSS context. */
 	uint8_t key[MLX5_RSS_HASH_KEY_LEN]; /**< RSS hash key. */
 	uint16_t (*queue)[]; /**< Destination queues to redirect traffic to. */
@@ -275,6 +288,7 @@ static const struct rte_flow_ops mlx5_flow_ops = {
 	.destroy = mlx5_flow_destroy,
 	.flush = mlx5_flow_flush,
 	.isolate = mlx5_flow_isolate,
+	.query = mlx5_flow_query,
 };
 
 /* Convert FDIR request to Generic flow. */
@@ -452,6 +466,80 @@ mlx5_flow_adjust_priority(struct rte_eth_dev *dev, struct rte_flow *flow)
 		break;
 	}
 	flow->cur_verbs->attr->priority = priority;
+}
+
+/**
+ * Get a flow counter.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] shared
+ *   Indicate if this counter is shared with other flows.
+ * @param[in] id
+ *   Counter identifier.
+ *
+ * @return
+ *   A pointer to the counter, NULL otherwise and rte_errno is set.
+ */
+static struct mlx5_flow_counter *
+mlx5_flow_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct mlx5_flow_counter *cnt;
+
+	LIST_FOREACH(cnt, &priv->flow_counters, next) {
+		if (cnt->shared != shared)
+			continue;
+		if (cnt->id != id)
+			continue;
+		cnt->ref_cnt++;
+		return cnt;
+	}
+#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
+
+	struct mlx5_flow_counter tmpl = {
+		.shared = shared,
+		.id = id,
+		.cs = mlx5_glue->create_counter_set
+			(priv->ctx,
+			 &(struct ibv_counter_set_init_attr){
+				 .counter_set_id = id,
+			 }),
+		.hits = 0,
+		.bytes = 0,
+	};
+
+	if (!tmpl.cs) {
+		rte_errno = errno;
+		return NULL;
+	}
+	cnt = rte_calloc(__func__, 1, sizeof(*cnt), 0);
+	if (!cnt) {
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	*cnt = tmpl;
+	LIST_INSERT_HEAD(&priv->flow_counters, cnt, next);
+	return cnt;
+#endif
+	rte_errno = ENOTSUP;
+	return NULL;
+}
+
+/**
+ * Release a flow counter.
+ *
+ * @param[in] counter
+ *   Pointer to the counter handler.
+ */
+static void
+mlx5_flow_counter_release(struct mlx5_flow_counter *counter)
+{
+	if (--counter->ref_cnt == 0) {
+		claim_zero(mlx5_glue->destroy_counter_set(counter->cs));
+		LIST_REMOVE(counter, next);
+		rte_free(counter);
+	}
 }
 
 /**
@@ -2129,6 +2217,70 @@ mlx5_flow_action_mark(const struct rte_flow_action *action,
 }
 
 /**
+ * Convert the @p action into a Verbs specification after ensuring the NIC
+ * will understand and process it correctly.
+ * If the necessary size for the conversion is greater than the @p flow_size,
+ * nothing is written in @p flow, the validation is still performed.
+ *
+ * @param action[in]
+ *   Action configuration.
+ * @param flow[in, out]
+ *   Pointer to flow structure.
+ * @param flow_size[in]
+ *   Size in bytes of the available space in @p flow, if too small, nothing is
+ *   written.
+ * @param error[int, out]
+ *   Pointer to error structure.
+ *
+ * @return
+ *   On success the number of bytes consumed/necessary, if the returned value
+ *   is lesser or equal to @p flow_size, the @p action has fully been
+ *   converted, otherwise another call with this returned memory size should
+ *   be done.
+ *   On error, a negative errno value is returned and rte_errno is set.
+ */
+static int
+mlx5_flow_action_count(struct rte_eth_dev *dev,
+		       const struct rte_flow_action *action,
+		       struct rte_flow *flow,
+		       const size_t flow_size __rte_unused,
+		       struct rte_flow_error *error)
+{
+	const struct rte_flow_action_count *count = action->conf;
+#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
+	unsigned int size = sizeof(struct ibv_flow_spec_counter_action);
+	struct ibv_flow_spec_counter_action counter = {
+		.type = IBV_FLOW_SPEC_ACTION_COUNT,
+		.size = size,
+	};
+#endif
+
+	if (!flow->counter) {
+		flow->counter = mlx5_flow_counter_new(dev, count->shared,
+						      count->id);
+		if (!flow->counter)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  action,
+						  "cannot get counter"
+						  " context.");
+	}
+	if (!((struct priv *)dev->data->dev_private)->config.flow_counter_en)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  action,
+					  "flow counters are not supported.");
+	flow->modifier |= MLX5_FLOW_MOD_COUNT;
+#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
+	counter.counter_set_handle = flow->counter->cs->handle;
+	if (size <= flow_size)
+		mlx5_flow_spec_verbs_add(flow, &counter, size);
+	return size;
+#endif
+	return 0;
+}
+
+/**
  * Convert the @p action into @p flow after ensuring the NIC will understand
  * and process it correctly.
  * The conversion is performed action per action, each of them is written into
@@ -2186,6 +2338,10 @@ mlx5_flow_actions(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_RSS:
 			ret = mlx5_flow_action_rss(dev, actions, flow, error);
+			break;
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+			ret = mlx5_flow_action_count(dev, actions, flow, remain,
+						     error);
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
@@ -2567,6 +2723,10 @@ mlx5_flow_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 				mlx5_hrxq_release(dev, verbs->hrxq);
 			verbs->hrxq = NULL;
 		}
+	}
+	if (flow->counter) {
+		mlx5_flow_counter_release(flow->counter);
+		flow->counter = NULL;
 	}
 }
 
@@ -3014,6 +3174,88 @@ mlx5_flow_isolate(struct rte_eth_dev *dev,
 		dev->dev_ops = &mlx5_dev_ops_isolate;
 	else
 		dev->dev_ops = &mlx5_dev_ops;
+	return 0;
+}
+
+/**
+ * Query flow counter.
+ *
+ * @param flow
+ *   Pointer to the flow.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_query_count(struct rte_flow *flow __rte_unused,
+		      void *data __rte_unused,
+		      struct rte_flow_error *error)
+{
+#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
+	struct rte_flow_query_count *qc = data;
+	uint64_t counters[2] = {0, 0};
+	struct ibv_query_counter_set_attr query_cs_attr = {
+		.cs = flow->counter->cs,
+		.query_flags = IBV_COUNTER_SET_FORCE_UPDATE,
+	};
+	struct ibv_counter_set_data query_out = {
+		.out = counters,
+		.outlen = 2 * sizeof(uint64_t),
+	};
+	int err = mlx5_glue->query_counter_set(&query_cs_attr, &query_out);
+
+	if (err)
+		return rte_flow_error_set(error, err,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "cannot read counter");
+	qc->hits_set = 1;
+	qc->bytes_set = 1;
+	qc->hits = counters[0] - flow->counter->hits;
+	qc->bytes = counters[1] - flow->counter->bytes;
+	if (qc->reset) {
+		flow->counter->hits = counters[0];
+		flow->counter->bytes = counters[1];
+	}
+	return 0;
+#endif
+	return rte_flow_error_set(error, ENOTSUP,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL,
+				  "counters are not available");
+}
+
+/**
+ * Query a flows.
+ *
+ * @see rte_flow_query()
+ * @see rte_flow_ops
+ */
+int
+mlx5_flow_query(struct rte_eth_dev *dev __rte_unused,
+		struct rte_flow *flow,
+		const struct rte_flow_action *actions,
+		void *data,
+		struct rte_flow_error *error)
+{
+	int ret = 0;
+
+	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		switch (actions->type) {
+		case RTE_FLOW_ACTION_TYPE_VOID:
+			break;
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+			ret = mlx5_flow_query_count(flow, data, error);
+			break;
+		default:
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  actions,
+						  "action not supported");
+		}
+		if (ret < 0)
+			return ret;
+	}
 	return 0;
 }
 

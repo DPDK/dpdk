@@ -188,6 +188,8 @@ struct priv {
 	struct mlx5_drop drop_queue; /* Flow drop queues. */
 	struct mlx5_flows flows; /* RTE Flow rules. */
 	struct mlx5_flows ctrl_flows; /* Control flow rules. */
+	LIST_HEAD(counters, mlx5_flow_counter) flow_counters;
+	/* Flow counters. */
 	struct {
 		uint32_t dev_gen; /* Generation number to flush local caches. */
 		rte_rwlock_t rwlock; /* MR Lock. */
