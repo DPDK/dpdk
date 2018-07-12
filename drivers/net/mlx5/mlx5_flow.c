@@ -383,6 +383,130 @@ mlx5_flow_item_eth(const struct rte_flow_item *item, struct rte_flow *flow,
 }
 
 /**
+ * Update the VLAN tag in the Verbs Ethernet specification.
+ *
+ * @param[in, out] attr
+ *   Pointer to Verbs attributes structure.
+ * @param[in] eth
+ *   Verbs structure containing the VLAN information to copy.
+ */
+static void
+mlx5_flow_item_vlan_update(struct ibv_flow_attr *attr,
+			   struct ibv_flow_spec_eth *eth)
+{
+	unsigned int i;
+	enum ibv_flow_spec_type search = IBV_FLOW_SPEC_ETH;
+	struct ibv_spec_header *hdr = (struct ibv_spec_header *)
+		((uint8_t *)attr + sizeof(struct ibv_flow_attr));
+
+	for (i = 0; i != attr->num_of_specs; ++i) {
+		if (hdr->type == search) {
+			struct ibv_flow_spec_eth *e =
+				(struct ibv_flow_spec_eth *)hdr;
+
+			e->val.vlan_tag = eth->val.vlan_tag;
+			e->mask.vlan_tag = eth->mask.vlan_tag;
+			e->val.ether_type = eth->val.ether_type;
+			e->mask.ether_type = eth->mask.ether_type;
+			break;
+		}
+		hdr = (struct ibv_spec_header *)((uint8_t *)hdr + hdr->size);
+	}
+}
+
+/**
+ * Convert the @p item into @p flow (or by updating the already present
+ * Ethernet Verbs) specification after ensuring the NIC will understand and
+ * process it correctly.
+ * If the necessary size for the conversion is greater than the @p flow_size,
+ * nothing is written in @p flow, the validation is still performed.
+ *
+ * @param[in] item
+ *   Item specification.
+ * @param[in, out] flow
+ *   Pointer to flow structure.
+ * @param[in] flow_size
+ *   Size in bytes of the available space in @p flow, if too small, nothing is
+ *   written.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   On success the number of bytes consumed/necessary, if the returned value
+ *   is lesser or equal to @p flow_size, the @p item has fully been converted,
+ *   otherwise another call with this returned memory size should be done.
+ *   On error, a negative errno value is returned and rte_errno is set.
+ */
+static int
+mlx5_flow_item_vlan(const struct rte_flow_item *item, struct rte_flow *flow,
+		    const size_t flow_size, struct rte_flow_error *error)
+{
+	const struct rte_flow_item_vlan *spec = item->spec;
+	const struct rte_flow_item_vlan *mask = item->mask;
+	const struct rte_flow_item_vlan nic_mask = {
+		.tci = RTE_BE16(0x0fff),
+		.inner_type = RTE_BE16(0xffff),
+	};
+	unsigned int size = sizeof(struct ibv_flow_spec_eth);
+	struct ibv_flow_spec_eth eth = {
+		.type = IBV_FLOW_SPEC_ETH,
+		.size = size,
+	};
+	int ret;
+	const uint32_t l34m = MLX5_FLOW_LAYER_OUTER_L3 |
+			MLX5_FLOW_LAYER_OUTER_L4;
+	const uint32_t vlanm = MLX5_FLOW_LAYER_OUTER_VLAN;
+	const uint32_t l2m = MLX5_FLOW_LAYER_OUTER_L2;
+
+	if (flow->layers & vlanm)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "VLAN layer already configured");
+	else if ((flow->layers & l34m) != 0)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "L2 layer cannot follow L3/L4 layer");
+	if (!mask)
+		mask = &rte_flow_item_vlan_mask;
+	ret = mlx5_flow_item_acceptable
+		(item, (const uint8_t *)mask,
+		 (const uint8_t *)&nic_mask,
+		 sizeof(struct rte_flow_item_vlan), error);
+	if (ret)
+		return ret;
+	if (spec) {
+		eth.val.vlan_tag = spec->tci;
+		eth.mask.vlan_tag = mask->tci;
+		eth.val.vlan_tag &= eth.mask.vlan_tag;
+		eth.val.ether_type = spec->inner_type;
+		eth.mask.ether_type = mask->inner_type;
+		eth.val.ether_type &= eth.mask.ether_type;
+	}
+	/*
+	 * From verbs perspective an empty VLAN is equivalent
+	 * to a packet without VLAN layer.
+	 */
+	if (!eth.mask.vlan_tag)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+					  item->spec,
+					  "VLAN cannot be empty");
+	if (!(flow->layers & l2m)) {
+		if (size <= flow_size)
+			mlx5_flow_spec_verbs_add(flow, &eth, size);
+	} else {
+		if (flow->verbs.attr)
+			mlx5_flow_item_vlan_update(flow->verbs.attr, &eth);
+		size = 0; /* Only an update is done in eth specification. */
+	}
+	flow->layers |= MLX5_FLOW_LAYER_OUTER_L2 |
+		MLX5_FLOW_LAYER_OUTER_VLAN;
+	return size;
+}
+
+/**
  * Convert the @p pattern into a Verbs specifications after ensuring the NIC
  * will understand and process it correctly.
  * The conversion is performed item per item, each of them is written into
@@ -423,6 +547,9 @@ mlx5_flow_items(const struct rte_flow_item pattern[],
 			break;
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			ret = mlx5_flow_item_eth(pattern, flow, remain, error);
+			break;
+		case RTE_FLOW_ITEM_TYPE_VLAN:
+			ret = mlx5_flow_item_vlan(pattern, flow, remain, error);
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
