@@ -642,7 +642,7 @@ pci_vfio_unmap_resource(struct rte_pci_device *dev)
 	vfio_res_list = RTE_TAILQ_CAST(rte_vfio_tailq.head, mapped_pci_res_list);
 	/* Get vfio_res */
 	TAILQ_FOREACH(vfio_res, vfio_res_list, next) {
-		if (memcmp(&vfio_res->pci_addr, &dev->addr, sizeof(dev->addr)))
+		if (rte_pci_addr_cmp(&vfio_res->pci_addr, &dev->addr))
 			continue;
 		break;
 	}
