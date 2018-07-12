@@ -55,6 +55,7 @@ extern const struct eth_dev_ops mlx5_dev_ops_isolate;
 #define MLX5_FLOW_LAYER_VXLAN (1u << 12)
 #define MLX5_FLOW_LAYER_VXLAN_GPE (1u << 13)
 #define MLX5_FLOW_LAYER_GRE (1u << 14)
+#define MLX5_FLOW_LAYER_MPLS (1u << 15)
 
 /* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \
@@ -68,7 +69,7 @@ extern const struct eth_dev_ops mlx5_dev_ops_isolate;
 /* Tunnel Masks. */
 #define MLX5_FLOW_LAYER_TUNNEL \
 	(MLX5_FLOW_LAYER_VXLAN | MLX5_FLOW_LAYER_VXLAN_GPE | \
-	 MLX5_FLOW_LAYER_GRE)
+	 MLX5_FLOW_LAYER_GRE | MLX5_FLOW_LAYER_MPLS)
 
 /* Inner Masks. */
 #define MLX5_FLOW_LAYER_INNER_L3 \
@@ -92,6 +93,7 @@ extern const struct eth_dev_ops mlx5_dev_ops_isolate;
 #define MLX5_IP_PROTOCOL_TCP 6
 #define MLX5_IP_PROTOCOL_UDP 17
 #define MLX5_IP_PROTOCOL_GRE 47
+#define MLX5_IP_PROTOCOL_MPLS 147
 
 /* Priority reserved for default flows. */
 #define MLX5_FLOW_PRIO_RSVD ((uint32_t)-1)
@@ -109,6 +111,7 @@ enum mlx5_expansion {
 	MLX5_EXPANSION_VXLAN,
 	MLX5_EXPANSION_VXLAN_GPE,
 	MLX5_EXPANSION_GRE,
+	MLX5_EXPANSION_MPLS,
 	MLX5_EXPANSION_ETH,
 	MLX5_EXPANSION_IPV4,
 	MLX5_EXPANSION_IPV4_UDP,
@@ -134,7 +137,8 @@ static const struct rte_flow_expand_node mlx5_support_expansion[] = {
 	},
 	[MLX5_EXPANSION_OUTER_ETH] = {
 		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_OUTER_IPV4,
-						 MLX5_EXPANSION_OUTER_IPV6),
+						 MLX5_EXPANSION_OUTER_IPV6,
+						 MLX5_EXPANSION_MPLS),
 		.type = RTE_FLOW_ITEM_TYPE_ETH,
 		.rss_types = 0,
 	},
@@ -188,6 +192,11 @@ static const struct rte_flow_expand_node mlx5_support_expansion[] = {
 	[MLX5_EXPANSION_GRE] = {
 		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4),
 		.type = RTE_FLOW_ITEM_TYPE_GRE,
+	},
+	[MLX5_EXPANSION_MPLS] = {
+		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4,
+						 MLX5_EXPANSION_IPV6),
+		.type = RTE_FLOW_ITEM_TYPE_MPLS,
 	},
 	[MLX5_EXPANSION_ETH] = {
 		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4,
@@ -340,6 +349,14 @@ static struct mlx5_flow_tunnel_info tunnels_info[] = {
 	{
 		.tunnel = MLX5_FLOW_LAYER_GRE,
 		.ptype = RTE_PTYPE_TUNNEL_GRE,
+	},
+	{
+		.tunnel = MLX5_FLOW_LAYER_MPLS | MLX5_FLOW_LAYER_OUTER_L4_UDP,
+		.ptype = RTE_PTYPE_TUNNEL_MPLS_IN_GRE | RTE_PTYPE_L4_UDP,
+	},
+	{
+		.tunnel = MLX5_FLOW_LAYER_MPLS,
+		.ptype = RTE_PTYPE_TUNNEL_MPLS_IN_GRE,
 	},
 };
 
@@ -1595,6 +1612,84 @@ mlx5_flow_item_gre(const struct rte_flow_item *item,
 }
 
 /**
+ * Convert the @p item into a Verbs specification after ensuring the NIC
+ * will understand and process it correctly.
+ * If the necessary size for the conversion is greater than the @p flow_size,
+ * nothing is written in @p flow, the validation is still performed.
+ *
+ * @param[in] item
+ *   Item specification.
+ * @param[in, out] flow
+ *   Pointer to flow structure.
+ * @param[in] flow_size
+ *   Size in bytes of the available space in @p flow, if too small, nothing is
+ *   written.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   On success the number of bytes consumed/necessary, if the returned value
+ *   is lesser or equal to @p flow_size, the @p item has fully been converted,
+ *   otherwise another call with this returned memory size should be done.
+ *   On error, a negative errno value is returned and rte_errno is set.
+ */
+static int
+mlx5_flow_item_mpls(const struct rte_flow_item *item __rte_unused,
+		    struct rte_flow *flow __rte_unused,
+		    const size_t flow_size __rte_unused,
+		    struct rte_flow_error *error)
+{
+#ifdef HAVE_IBV_DEVICE_MPLS_SUPPORT
+	const struct rte_flow_item_mpls *spec = item->spec;
+	const struct rte_flow_item_mpls *mask = item->mask;
+	unsigned int size = sizeof(struct ibv_flow_spec_mpls);
+	struct ibv_flow_spec_mpls mpls = {
+		.type = IBV_FLOW_SPEC_MPLS,
+		.size = size,
+	};
+	int ret;
+
+	if (flow->l3_protocol_en && flow->l3_protocol != MLX5_IP_PROTOCOL_MPLS)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "protocol filtering not compatible"
+					  " with MPLS layer");
+	if (flow->layers & MLX5_FLOW_LAYER_TUNNEL)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "a tunnel is already"
+					  " present");
+	if (!mask)
+		mask = &rte_flow_item_mpls_mask;
+	ret = mlx5_flow_item_acceptable
+		(item, (const uint8_t *)mask,
+		 (const uint8_t *)&rte_flow_item_mpls_mask,
+		 sizeof(struct rte_flow_item_mpls), error);
+	if (ret < 0)
+		return ret;
+	if (spec) {
+		memcpy(&mpls.val.label, spec, sizeof(mpls.val.label));
+		memcpy(&mpls.mask.label, mask, sizeof(mpls.mask.label));
+		/* Remove unwanted bits from values.  */
+		mpls.val.label &= mpls.mask.label;
+	}
+	if (size <= flow_size) {
+		mlx5_flow_spec_verbs_add(flow, &mpls, size);
+		flow->cur_verbs->attr->priority = MLX5_PRIORITY_MAP_L2;
+	}
+	flow->layers |= MLX5_FLOW_LAYER_MPLS;
+	return size;
+#endif /* !HAVE_IBV_DEVICE_MPLS_SUPPORT */
+	return rte_flow_error_set(error, ENOTSUP,
+				  RTE_FLOW_ERROR_TYPE_ITEM,
+				  item,
+				  "MPLS is not supported by Verbs, please"
+				  " update.");
+}
+
+/**
  * Convert the @p pattern into a Verbs specifications after ensuring the NIC
  * will understand and process it correctly.
  * The conversion is performed item per item, each of them is written into
@@ -1662,6 +1757,9 @@ mlx5_flow_items(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ITEM_TYPE_GRE:
 			ret = mlx5_flow_item_gre(pattern, flow, remain, error);
+			break;
+		case RTE_FLOW_ITEM_TYPE_MPLS:
+			ret = mlx5_flow_item_mpls(pattern, flow, remain, error);
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,

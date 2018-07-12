@@ -35,7 +35,7 @@
 #include "mlx5_prm.h"
 
 /* Support tunnel matching. */
-#define MLX5_FLOW_TUNNEL 3
+#define MLX5_FLOW_TUNNEL 5
 
 struct mlx5_rxq_stats {
 	unsigned int idx; /**< Mapping index. */
