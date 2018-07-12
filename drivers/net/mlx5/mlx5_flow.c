@@ -35,11 +35,50 @@
 extern const struct eth_dev_ops mlx5_dev_ops;
 extern const struct eth_dev_ops mlx5_dev_ops_isolate;
 
+/* Pattern Layer bits. */
+#define MLX5_FLOW_LAYER_OUTER_L2 (1u << 0)
+#define MLX5_FLOW_LAYER_OUTER_L3_IPV4 (1u << 1)
+#define MLX5_FLOW_LAYER_OUTER_L3_IPV6 (1u << 2)
+#define MLX5_FLOW_LAYER_OUTER_L4_UDP (1u << 3)
+#define MLX5_FLOW_LAYER_OUTER_L4_TCP (1u << 4)
+#define MLX5_FLOW_LAYER_OUTER_VLAN (1u << 5)
+/* Masks. */
+#define MLX5_FLOW_LAYER_OUTER_L3 \
+	(MLX5_FLOW_LAYER_OUTER_L3_IPV4 | MLX5_FLOW_LAYER_OUTER_L3_IPV6)
+#define MLX5_FLOW_LAYER_OUTER_L4 \
+	(MLX5_FLOW_LAYER_OUTER_L4_UDP | MLX5_FLOW_LAYER_OUTER_L4_TCP)
+
+/* Actions that modify the fate of matching traffic. */
+#define MLX5_FLOW_FATE_DROP (1u << 0)
+
+/** Handles information leading to a drop fate. */
+struct mlx5_flow_verbs {
+	unsigned int size; /**< Size of the attribute. */
+	struct {
+		struct ibv_flow_attr *attr;
+		/**< Pointer to the Specification buffer. */
+		uint8_t *specs; /**< Pointer to the specifications. */
+	};
+	struct ibv_flow *flow; /**< Verbs flow pointer. */
+	struct mlx5_hrxq *hrxq; /**< Hash Rx queue object. */
+};
+
+/* Flow structure. */
 struct rte_flow {
 	TAILQ_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
+	struct rte_flow_attr attributes; /**< User flow attribute. */
+	uint32_t layers;
+	/**< Bit-fields of present layers see MLX5_FLOW_LAYER_*. */
+	uint32_t fate;
+	/**< Bit-fields of present fate see MLX5_FLOW_FATE_*. */
+	struct mlx5_flow_verbs verbs; /* Verbs drop flow. */
 };
 
 static const struct rte_flow_ops mlx5_flow_ops = {
+	.validate = mlx5_flow_validate,
+	.create = mlx5_flow_create,
+	.destroy = mlx5_flow_destroy,
+	.flush = mlx5_flow_flush,
 	.isolate = mlx5_flow_isolate,
 };
 
@@ -128,7 +167,545 @@ mlx5_flow_discover_priorities(struct rte_eth_dev *dev)
 }
 
 /**
- * Convert a flow.
+ * Verify the @p attributes will be correctly understood by the NIC and store
+ * them in the @p flow if everything is correct.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] attributes
+ *   Pointer to flow attributes
+ * @param[in, out] flow
+ *   Pointer to the rte_flow structure.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_attributes(struct rte_eth_dev *dev,
+		     const struct rte_flow_attr *attributes,
+		     struct rte_flow *flow,
+		     struct rte_flow_error *error)
+{
+	uint32_t priority_max =
+		((struct priv *)dev->data->dev_private)->config.flow_prio;
+
+	if (attributes->group)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
+					  NULL,
+					  "groups is not supported");
+	if (attributes->priority >= priority_max)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
+					  NULL,
+					  "priority out of range");
+	if (attributes->egress)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
+					  NULL,
+					  "egress is not supported");
+	if (attributes->transfer)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
+					  NULL,
+					  "transfer is not supported");
+	if (!attributes->ingress)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
+					  NULL,
+					  "ingress attribute is mandatory");
+	flow->attributes = *attributes;
+	return 0;
+}
+
+/**
+ * Verify the @p item specifications (spec, last, mask) are compatible with the
+ * NIC capabilities.
+ *
+ * @param[in] item
+ *   Item specification.
+ * @param[in] mask
+ *   @p item->mask or flow default bit-masks.
+ * @param[in] nic_mask
+ *   Bit-masks covering supported fields by the NIC to compare with user mask.
+ * @param[in] size
+ *   Bit-masks size in bytes.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_item_acceptable(const struct rte_flow_item *item,
+			  const uint8_t *mask,
+			  const uint8_t *nic_mask,
+			  unsigned int size,
+			  struct rte_flow_error *error)
+{
+	unsigned int i;
+
+	assert(nic_mask);
+	for (i = 0; i < size; ++i)
+		if ((nic_mask[i] | mask[i]) != nic_mask[i])
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item,
+						  "mask enables non supported"
+						  " bits");
+	if (!item->spec && (item->mask || item->last))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "mask/last without a spec is not"
+					  " supported");
+	if (item->spec && item->last) {
+		uint8_t spec[size];
+		uint8_t last[size];
+		unsigned int i;
+		int ret;
+
+		for (i = 0; i < size; ++i) {
+			spec[i] = ((const uint8_t *)item->spec)[i] & mask[i];
+			last[i] = ((const uint8_t *)item->last)[i] & mask[i];
+		}
+		ret = memcmp(spec, last, size);
+		if (ret != 0)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item,
+						  "range is not supported");
+	}
+	return 0;
+}
+
+/**
+ * Add a verbs specification into @p flow.
+ *
+ * @param[in, out] flow
+ *   Pointer to flow structure.
+ * @param[in] src
+ *   Create specification.
+ * @param[in] size
+ *   Size in bytes of the specification to copy.
+ */
+static void
+mlx5_flow_spec_verbs_add(struct rte_flow *flow, void *src, unsigned int size)
+{
+	if (flow->verbs.specs) {
+		void *dst;
+
+		dst = (void *)(flow->verbs.specs + flow->verbs.size);
+		memcpy(dst, src, size);
+		++flow->verbs.attr->num_of_specs;
+	}
+	flow->verbs.size += size;
+}
+
+/**
+ * Convert the @p item into a Verbs specification after ensuring the NIC
+ * will understand and process it correctly.
+ * If the necessary size for the conversion is greater than the @p flow_size,
+ * nothing is written in @p flow, the validation is still performed.
+ *
+ * @param[in] item
+ *   Item specification.
+ * @param[in, out] flow
+ *   Pointer to flow structure.
+ * @param[in] flow_size
+ *   Size in bytes of the available space in @p flow, if too small, nothing is
+ *   written.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   On success the number of bytes consumed/necessary, if the returned value
+ *   is lesser or equal to @p flow_size, the @p item has fully been converted,
+ *   otherwise another call with this returned memory size should be done.
+ *   On error, a negative errno value is returned and rte_errno is set.
+ */
+static int
+mlx5_flow_item_eth(const struct rte_flow_item *item, struct rte_flow *flow,
+		   const size_t flow_size, struct rte_flow_error *error)
+{
+	const struct rte_flow_item_eth *spec = item->spec;
+	const struct rte_flow_item_eth *mask = item->mask;
+	const struct rte_flow_item_eth nic_mask = {
+		.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+		.src.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+		.type = RTE_BE16(0xffff),
+	};
+	const unsigned int size = sizeof(struct ibv_flow_spec_eth);
+	struct ibv_flow_spec_eth eth = {
+		.type = IBV_FLOW_SPEC_ETH,
+		.size = size,
+	};
+	int ret;
+
+	if (flow->layers & MLX5_FLOW_LAYER_OUTER_L2)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "L2 layers already configured");
+	if (!mask)
+		mask = &rte_flow_item_eth_mask;
+	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
+					(const uint8_t *)&nic_mask,
+					sizeof(struct rte_flow_item_eth),
+					error);
+	if (ret)
+		return ret;
+	flow->layers |= MLX5_FLOW_LAYER_OUTER_L2;
+	if (size > flow_size)
+		return size;
+	if (spec) {
+		unsigned int i;
+
+		memcpy(&eth.val.dst_mac, spec->dst.addr_bytes, ETHER_ADDR_LEN);
+		memcpy(&eth.val.src_mac, spec->src.addr_bytes, ETHER_ADDR_LEN);
+		eth.val.ether_type = spec->type;
+		memcpy(&eth.mask.dst_mac, mask->dst.addr_bytes, ETHER_ADDR_LEN);
+		memcpy(&eth.mask.src_mac, mask->src.addr_bytes, ETHER_ADDR_LEN);
+		eth.mask.ether_type = mask->type;
+		/* Remove unwanted bits from values. */
+		for (i = 0; i < ETHER_ADDR_LEN; ++i) {
+			eth.val.dst_mac[i] &= eth.mask.dst_mac[i];
+			eth.val.src_mac[i] &= eth.mask.src_mac[i];
+		}
+		eth.val.ether_type &= eth.mask.ether_type;
+	}
+	mlx5_flow_spec_verbs_add(flow, &eth, size);
+	return size;
+}
+
+/**
+ * Convert the @p pattern into a Verbs specifications after ensuring the NIC
+ * will understand and process it correctly.
+ * The conversion is performed item per item, each of them is written into
+ * the @p flow if its size is lesser or equal to @p flow_size.
+ * Validation and memory consumption computation are still performed until the
+ * end of @p pattern, unless an error is encountered.
+ *
+ * @param[in] pattern
+ *   Flow pattern.
+ * @param[in, out] flow
+ *   Pointer to the rte_flow structure.
+ * @param[in] flow_size
+ *   Size in bytes of the available space in @p flow, if too small some
+ *   garbage may be present.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   On success the number of bytes consumed/necessary, if the returned value
+ *   is lesser or equal to @p flow_size, the @pattern  has fully been
+ *   converted, otherwise another call with this returned memory size should
+ *   be done.
+ *   On error, a negative errno value is returned and rte_errno is set.
+ */
+static int
+mlx5_flow_items(const struct rte_flow_item pattern[],
+		struct rte_flow *flow, const size_t flow_size,
+		struct rte_flow_error *error)
+{
+	int remain = flow_size;
+	size_t size = 0;
+
+	for (; pattern->type != RTE_FLOW_ITEM_TYPE_END; pattern++) {
+		int ret = 0;
+
+		switch (pattern->type) {
+		case RTE_FLOW_ITEM_TYPE_VOID:
+			break;
+		case RTE_FLOW_ITEM_TYPE_ETH:
+			ret = mlx5_flow_item_eth(pattern, flow, remain, error);
+			break;
+		default:
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  pattern,
+						  "item not supported");
+		}
+		if (ret < 0)
+			return ret;
+		if (remain > ret)
+			remain -= ret;
+		else
+			remain = 0;
+		size += ret;
+	}
+	if (!flow->layers) {
+		const struct rte_flow_item item = {
+			.type = RTE_FLOW_ITEM_TYPE_ETH,
+		};
+
+		return mlx5_flow_item_eth(&item, flow, flow_size, error);
+	}
+	return size;
+}
+
+/**
+ * Convert the @p action into a Verbs specification after ensuring the NIC
+ * will understand and process it correctly.
+ * If the necessary size for the conversion is greater than the @p flow_size,
+ * nothing is written in @p flow, the validation is still performed.
+ *
+ * @param[in] action
+ *   Action configuration.
+ * @param[in, out] flow
+ *   Pointer to flow structure.
+ * @param[in] flow_size
+ *   Size in bytes of the available space in @p flow, if too small, nothing is
+ *   written.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   On success the number of bytes consumed/necessary, if the returned value
+ *   is lesser or equal to @p flow_size, the @p action has fully been
+ *   converted, otherwise another call with this returned memory size should
+ *   be done.
+ *   On error, a negative errno value is returned and rte_errno is set.
+ */
+static int
+mlx5_flow_action_drop(const struct rte_flow_action *action,
+		      struct rte_flow *flow, const size_t flow_size,
+		      struct rte_flow_error *error)
+{
+	unsigned int size = sizeof(struct ibv_flow_spec_action_drop);
+	struct ibv_flow_spec_action_drop drop = {
+			.type = IBV_FLOW_SPEC_ACTION_DROP,
+			.size = size,
+	};
+
+	if (flow->fate)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  action,
+					  "multiple fate actions are not"
+					  " supported");
+	if (size < flow_size)
+		mlx5_flow_spec_verbs_add(flow, &drop, size);
+	flow->fate |= MLX5_FLOW_FATE_DROP;
+	return size;
+}
+
+/**
+ * Convert the @p action into @p flow after ensuring the NIC will understand
+ * and process it correctly.
+ * The conversion is performed action per action, each of them is written into
+ * the @p flow if its size is lesser or equal to @p flow_size.
+ * Validation and memory consumption computation are still performed until the
+ * end of @p action, unless an error is encountered.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device structure.
+ * @param[in] actions
+ *   Pointer to flow actions array.
+ * @param[in, out] flow
+ *   Pointer to the rte_flow structure.
+ * @param[in] flow_size
+ *   Size in bytes of the available space in @p flow, if too small some
+ *   garbage may be present.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   On success the number of bytes consumed/necessary, if the returned value
+ *   is lesser or equal to @p flow_size, the @p actions has fully been
+ *   converted, otherwise another call with this returned memory size should
+ *   be done.
+ *   On error, a negative errno value is returned and rte_errno is set.
+ */
+static int
+mlx5_flow_actions(struct rte_eth_dev *dev __rte_unused,
+		  const struct rte_flow_action actions[],
+		  struct rte_flow *flow, const size_t flow_size,
+		  struct rte_flow_error *error)
+{
+	size_t size = 0;
+	int remain = flow_size;
+	int ret = 0;
+
+	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		switch (actions->type) {
+		case RTE_FLOW_ACTION_TYPE_VOID:
+			break;
+		case RTE_FLOW_ACTION_TYPE_DROP:
+			ret = mlx5_flow_action_drop(actions, flow, remain,
+						    error);
+			break;
+		default:
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  actions,
+						  "action not supported");
+		}
+		if (ret < 0)
+			return ret;
+		if (remain > ret)
+			remain -= ret;
+		else
+			remain = 0;
+		size += ret;
+	}
+	if (!flow->fate)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "no fate action found");
+	return size;
+}
+
+/**
+ * Convert the @p attributes, @p pattern, @p action, into an flow for the NIC
+ * after ensuring the NIC will understand and process it correctly.
+ * The conversion is only performed item/action per item/action, each of
+ * them is written into the @p flow if its size is lesser or equal to @p
+ * flow_size.
+ * Validation and memory consumption computation are still performed until the
+ * end, unless an error is encountered.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in, out] flow
+ *   Pointer to flow structure.
+ * @param[in] flow_size
+ *   Size in bytes of the available space in @p flow, if too small some
+ *   garbage may be present.
+ * @param[in] attributes
+ *   Flow rule attributes.
+ * @param[in] pattern
+ *   Pattern specification (list terminated by the END pattern item).
+ * @param[in] actions
+ *   Associated actions (list terminated by the END action).
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   On success the number of bytes consumed/necessary, if the returned value
+ *   is lesser or equal to @p flow_size, the flow has fully been converted and
+ *   can be applied, otherwise another call with this returned memory size
+ *   should be done.
+ *   On error, a negative errno value is returned and rte_errno is set.
+ */
+static int
+mlx5_flow_merge(struct rte_eth_dev *dev, struct rte_flow *flow,
+		const size_t flow_size,
+		const struct rte_flow_attr *attributes,
+		const struct rte_flow_item pattern[],
+		const struct rte_flow_action actions[],
+		struct rte_flow_error *error)
+{
+	struct rte_flow local_flow = { .layers = 0, };
+	size_t size = sizeof(*flow) + sizeof(struct ibv_flow_attr);
+	int remain = (flow_size > size) ? flow_size - size : 0;
+	int ret;
+
+	if (!remain)
+		flow = &local_flow;
+	ret = mlx5_flow_attributes(dev, attributes, flow, error);
+	if (ret < 0)
+		return ret;
+	ret = mlx5_flow_items(pattern, flow, remain, error);
+	if (ret < 0)
+		return ret;
+	size += ret;
+	remain = (flow_size > size) ? flow_size - size : 0;
+	ret = mlx5_flow_actions(dev, actions, flow, remain, error);
+	if (ret < 0)
+		return ret;
+	size += ret;
+	if (size <= flow_size)
+		flow->verbs.attr->priority = flow->attributes.priority;
+	return size;
+}
+
+/**
+ * Validate a flow supported by the NIC.
+ *
+ * @see rte_flow_validate()
+ * @see rte_flow_ops
+ */
+int
+mlx5_flow_validate(struct rte_eth_dev *dev,
+		   const struct rte_flow_attr *attr,
+		   const struct rte_flow_item items[],
+		   const struct rte_flow_action actions[],
+		   struct rte_flow_error *error)
+{
+	int ret = mlx5_flow_merge(dev, NULL, 0, attr, items, actions, error);
+
+	if (ret < 0)
+		return ret;
+	return 0;
+}
+
+/**
+ * Remove the flow.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in, out] flow
+ *   Pointer to flow structure.
+ */
+static void
+mlx5_flow_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
+{
+	if (flow->fate & MLX5_FLOW_FATE_DROP) {
+		if (flow->verbs.flow) {
+			claim_zero(mlx5_glue->destroy_flow(flow->verbs.flow));
+			flow->verbs.flow = NULL;
+		}
+	}
+	if (flow->verbs.hrxq) {
+		mlx5_hrxq_drop_release(dev);
+		flow->verbs.hrxq = NULL;
+	}
+}
+
+/**
+ * Apply the flow.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device structure.
+ * @param[in, out] flow
+ *   Pointer to flow structure.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
+		struct rte_flow_error *error)
+{
+	flow->verbs.hrxq = mlx5_hrxq_drop_new(dev);
+	if (!flow->verbs.hrxq)
+		return rte_flow_error_set
+			(error, errno,
+			 RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			 NULL,
+			 "cannot allocate Drop queue");
+	flow->verbs.flow =
+		mlx5_glue->create_flow(flow->verbs.hrxq->qp, flow->verbs.attr);
+	if (!flow->verbs.flow) {
+		mlx5_hrxq_drop_release(dev);
+		flow->verbs.hrxq = NULL;
+		return rte_flow_error_set(error, errno,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "kernel module refuses to create"
+					  " flow");
+	}
+	return 0;
+}
+
+/**
+ * Create a flow and add it to @p list.
  *
  * @param dev
  *   Pointer to Ethernet device.
@@ -136,7 +713,7 @@ mlx5_flow_discover_priorities(struct rte_eth_dev *dev)
  *   Pointer to a TAILQ flow list.
  * @param[in] attr
  *   Flow rule attributes.
- * @param[in] pattern
+ * @param[in] items
  *   Pattern specification (list terminated by the END pattern item).
  * @param[in] actions
  *   Associated actions (list terminated by the END action).
@@ -147,37 +724,48 @@ mlx5_flow_discover_priorities(struct rte_eth_dev *dev)
  *   A flow on success, NULL otherwise and rte_errno is set.
  */
 static struct rte_flow *
-mlx5_flow_list_create(struct rte_eth_dev *dev __rte_unused,
-		      struct mlx5_flows *list __rte_unused,
-		      const struct rte_flow_attr *attr __rte_unused,
-		      const struct rte_flow_item items[] __rte_unused,
-		      const struct rte_flow_action actions[] __rte_unused,
+mlx5_flow_list_create(struct rte_eth_dev *dev,
+		      struct mlx5_flows *list,
+		      const struct rte_flow_attr *attr,
+		      const struct rte_flow_item items[],
+		      const struct rte_flow_action actions[],
 		      struct rte_flow_error *error)
 {
-	rte_flow_error_set(error, ENOTSUP,
-			   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-			   NULL,
-			   "action not supported");
-	return NULL;
-}
+	struct rte_flow *flow;
+	size_t size;
+	int ret;
 
-/**
- * Validate a flow supported by the NIC.
- *
- * @see rte_flow_validate()
- * @see rte_flow_ops
- */
-int
-mlx5_flow_validate(struct rte_eth_dev *dev __rte_unused,
-		   const struct rte_flow_attr *attr __rte_unused,
-		   const struct rte_flow_item items[] __rte_unused,
-		   const struct rte_flow_action actions[] __rte_unused,
-		   struct rte_flow_error *error)
-{
-	return rte_flow_error_set(error, ENOTSUP,
-				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				  NULL,
-				  "action not supported");
+	ret = mlx5_flow_merge(dev, NULL, 0, attr, items, actions, error);
+	if (ret < 0)
+		return NULL;
+	size = ret;
+	flow = rte_zmalloc(__func__, size, 0);
+	if (!flow) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "cannot allocate memory");
+		return NULL;
+	}
+	flow->verbs.attr = (struct ibv_flow_attr *)(flow + 1);
+	flow->verbs.specs = (uint8_t *)(flow->verbs.attr + 1);
+	ret = mlx5_flow_merge(dev, flow, size, attr, items, actions, error);
+	if (ret < 0)
+		goto error;
+	assert((size_t)ret == size);
+	if (dev->data->dev_started) {
+		ret = mlx5_flow_apply(dev, flow, error);
+		if (ret < 0)
+			goto error;
+	}
+	TAILQ_INSERT_TAIL(list, flow, next);
+	return flow;
+error:
+	ret = rte_errno; /* Save rte_errno before cleanup. */
+	mlx5_flow_remove(dev, flow);
+	rte_free(flow);
+	rte_errno = ret; /* Restore rte_errno. */
+	return NULL;
 }
 
 /**
@@ -187,17 +775,15 @@ mlx5_flow_validate(struct rte_eth_dev *dev __rte_unused,
  * @see rte_flow_ops
  */
 struct rte_flow *
-mlx5_flow_create(struct rte_eth_dev *dev __rte_unused,
-		 const struct rte_flow_attr *attr __rte_unused,
-		 const struct rte_flow_item items[] __rte_unused,
-		 const struct rte_flow_action actions[] __rte_unused,
+mlx5_flow_create(struct rte_eth_dev *dev,
+		 const struct rte_flow_attr *attr,
+		 const struct rte_flow_item items[],
+		 const struct rte_flow_action actions[],
 		 struct rte_flow_error *error)
 {
-	rte_flow_error_set(error, ENOTSUP,
-			   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-			   NULL,
-			   "action not supported");
-	return NULL;
+	return mlx5_flow_list_create
+		(dev, &((struct priv *)dev->data->dev_private)->flows,
+		 attr, items, actions, error);
 }
 
 /**
@@ -211,10 +797,12 @@ mlx5_flow_create(struct rte_eth_dev *dev __rte_unused,
  *   Flow to destroy.
  */
 static void
-mlx5_flow_list_destroy(struct rte_eth_dev *dev __rte_unused,
-		       struct mlx5_flows *list __rte_unused,
-		       struct rte_flow *flow __rte_unused)
+mlx5_flow_list_destroy(struct rte_eth_dev *dev, struct mlx5_flows *list,
+		       struct rte_flow *flow)
 {
+	mlx5_flow_remove(dev, flow);
+	TAILQ_REMOVE(list, flow, next);
+	rte_free(flow);
 }
 
 /**
