@@ -127,6 +127,8 @@ portid_t nb_ports;             /**< Number of probed ethernet ports. */
 struct fwd_lcore **fwd_lcores; /**< For all probed logical cores. */
 lcoreid_t nb_lcores;           /**< Number of probed logical cores. */
 
+portid_t ports_ids[RTE_MAX_ETHPORTS]; /**< Store all port ids. */
+
 /*
  * Test Forwarding Configuration.
  *    nb_fwd_lcores <= nb_cfg_lcores <= nb_lcores
@@ -1191,8 +1193,9 @@ run_pkt_fwd_on_lcore(struct fwd_lcore *fc, packet_fwd_t pkt_fwd)
 	uint64_t tics_per_1sec;
 	uint64_t tics_datum;
 	uint64_t tics_current;
-	uint16_t idx_port;
+	uint16_t i, cnt_ports;
 
+	cnt_ports = nb_ports;
 	tics_datum = rte_rdtsc();
 	tics_per_1sec = rte_get_timer_hz();
 #endif
@@ -1207,9 +1210,9 @@ run_pkt_fwd_on_lcore(struct fwd_lcore *fc, packet_fwd_t pkt_fwd)
 			tics_current = rte_rdtsc();
 			if (tics_current - tics_datum >= tics_per_1sec) {
 				/* Periodic bitrate calculation */
-				RTE_ETH_FOREACH_DEV(idx_port)
+				for (i = 0; i < cnt_ports; i++)
 					rte_stats_bitrate_calc(bitrate_data,
-						idx_port);
+						ports_ids[i]);
 				tics_datum = tics_current;
 			}
 		}
@@ -2012,6 +2015,7 @@ attach_port(char *identifier)
 	reconfig(pi, socket_id);
 	rte_eth_promiscuous_enable(pi);
 
+	ports_ids[nb_ports] = pi;
 	nb_ports = rte_eth_dev_count_avail();
 
 	ports[pi].port_status = RTE_PORT_STOPPED;
@@ -2026,6 +2030,7 @@ void
 detach_port(portid_t port_id)
 {
 	char name[RTE_ETH_NAME_MAX_LEN];
+	uint16_t i;
 
 	printf("Detaching a port...\n");
 
@@ -2042,6 +2047,13 @@ detach_port(portid_t port_id)
 		return;
 	}
 
+	for (i = 0; i < nb_ports; i++) {
+		if (ports_ids[i] == port_id) {
+			ports_ids[i] = ports_ids[nb_ports-1];
+			ports_ids[nb_ports-1] = 0;
+			break;
+		}
+	}
 	nb_ports = rte_eth_dev_count_avail();
 
 	update_fwd_ports(RTE_MAX_ETHPORTS);
@@ -2682,6 +2694,7 @@ main(int argc, char** argv)
 {
 	int diag;
 	portid_t port_id;
+	uint16_t count;
 	int ret;
 
 	signal(SIGINT, signal_handler);
@@ -2701,7 +2714,12 @@ main(int argc, char** argv)
 	rte_pdump_init(NULL);
 #endif
 
-	nb_ports = (portid_t) rte_eth_dev_count_avail();
+	count = 0;
+	RTE_ETH_FOREACH_DEV(port_id) {
+		ports_ids[count] = port_id;
+		count++;
+	}
+	nb_ports = (portid_t) count;
 	if (nb_ports == 0)
 		TESTPMD_LOG(WARNING, "No probed ethernet devices\n");
 
