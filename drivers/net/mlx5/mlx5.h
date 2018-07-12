@@ -139,9 +139,6 @@ enum mlx5_verbs_alloc_type {
 	MLX5_VERBS_ALLOC_TYPE_RX_QUEUE,
 };
 
-/* 8 Verbs priorities. */
-#define MLX5_VERBS_FLOW_PRIO_8 8
-
 /**
  * Verbs allocator needs a context to know in the callback which kind of
  * resources it is allocating.
@@ -152,6 +149,12 @@ struct mlx5_verbs_alloc_ctx {
 };
 
 LIST_HEAD(mlx5_mr_list, mlx5_mr);
+
+/* Flow drop context necessary due to Verbs API. */
+struct mlx5_drop {
+	struct mlx5_hrxq *hrxq; /* Hash Rx queue queue. */
+	struct mlx5_rxq_ibv *rxq; /* Verbs Rx queue. */
+};
 
 struct priv {
 	LIST_ENTRY(priv) mem_event_cb; /* Called by memory event callback. */
@@ -182,7 +185,7 @@ struct priv {
 	struct rte_intr_handle intr_handle; /* Interrupt handler. */
 	unsigned int (*reta_idx)[]; /* RETA index table. */
 	unsigned int reta_idx_n; /* RETA index size. */
-	struct mlx5_hrxq_drop *flow_drop_queue; /* Flow drop queue. */
+	struct mlx5_drop drop_queue; /* Flow drop queues. */
 	struct mlx5_flows flows; /* RTE Flow rules. */
 	struct mlx5_flows ctrl_flows; /* Control flow rules. */
 	struct {
@@ -314,7 +317,8 @@ int mlx5_traffic_restart(struct rte_eth_dev *dev);
 
 /* mlx5_flow.c */
 
-unsigned int mlx5_get_max_verbs_prio(struct rte_eth_dev *dev);
+int mlx5_verbs_max_prio(struct rte_eth_dev *dev);
+void mlx5_flow_print(struct rte_flow *flow);
 int mlx5_flow_validate(struct rte_eth_dev *dev,
 		       const struct rte_flow_attr *attr,
 		       const struct rte_flow_item items[],

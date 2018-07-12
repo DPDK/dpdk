@@ -244,6 +244,8 @@ struct mlx5_rxq_ibv *mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx);
 struct mlx5_rxq_ibv *mlx5_rxq_ibv_get(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_rxq_ibv_release(struct mlx5_rxq_ibv *rxq_ibv);
 int mlx5_rxq_ibv_releasable(struct mlx5_rxq_ibv *rxq_ibv);
+struct mlx5_rxq_ibv *mlx5_rxq_ibv_drop_new(struct rte_eth_dev *dev);
+void mlx5_rxq_ibv_drop_release(struct rte_eth_dev *dev);
 int mlx5_rxq_ibv_verify(struct rte_eth_dev *dev);
 struct mlx5_rxq_ctrl *mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx,
 				   uint16_t desc, unsigned int socket,
@@ -264,6 +266,8 @@ struct mlx5_ind_table_ibv *mlx5_ind_table_ibv_get(struct rte_eth_dev *dev,
 int mlx5_ind_table_ibv_release(struct rte_eth_dev *dev,
 			       struct mlx5_ind_table_ibv *ind_tbl);
 int mlx5_ind_table_ibv_verify(struct rte_eth_dev *dev);
+struct mlx5_ind_table_ibv *mlx5_ind_table_ibv_drop_new(struct rte_eth_dev *dev);
+void mlx5_ind_table_ibv_drop_release(struct rte_eth_dev *dev);
 struct mlx5_hrxq *mlx5_hrxq_new(struct rte_eth_dev *dev,
 				const uint8_t *rss_key, uint32_t rss_key_len,
 				uint64_t hash_fields,
@@ -276,6 +280,8 @@ struct mlx5_hrxq *mlx5_hrxq_get(struct rte_eth_dev *dev,
 				uint32_t tunnel, uint32_t rss_level);
 int mlx5_hrxq_release(struct rte_eth_dev *dev, struct mlx5_hrxq *hxrq);
 int mlx5_hrxq_ibv_verify(struct rte_eth_dev *dev);
+struct mlx5_hrxq *mlx5_hrxq_drop_new(struct rte_eth_dev *dev);
+void mlx5_hrxq_drop_release(struct rte_eth_dev *dev);
 uint64_t mlx5_get_rx_port_offloads(void);
 uint64_t mlx5_get_rx_queue_offloads(struct rte_eth_dev *dev);
 

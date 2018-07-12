@@ -1957,3 +1957,235 @@ mlx5_hrxq_ibv_verify(struct rte_eth_dev *dev)
 	}
 	return ret;
 }
+
+/**
+ * Create a drop Rx queue Verbs object.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   The Verbs object initialised, NULL otherwise and rte_errno is set.
+ */
+struct mlx5_rxq_ibv *
+mlx5_rxq_ibv_drop_new(struct rte_eth_dev *dev)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct ibv_cq *cq;
+	struct ibv_wq *wq = NULL;
+	struct mlx5_rxq_ibv *rxq;
+
+	if (priv->drop_queue.rxq)
+		return priv->drop_queue.rxq;
+	cq = mlx5_glue->create_cq(priv->ctx, 1, NULL, NULL, 0);
+	if (!cq) {
+		DEBUG("port %u cannot allocate CQ for drop queue",
+		      dev->data->port_id);
+		rte_errno = errno;
+		goto error;
+	}
+	wq = mlx5_glue->create_wq(priv->ctx,
+		 &(struct ibv_wq_init_attr){
+			.wq_type = IBV_WQT_RQ,
+			.max_wr = 1,
+			.max_sge = 1,
+			.pd = priv->pd,
+			.cq = cq,
+		 });
+	if (!wq) {
+		DEBUG("port %u cannot allocate WQ for drop queue",
+		      dev->data->port_id);
+		rte_errno = errno;
+		goto error;
+	}
+	rxq = rte_calloc(__func__, 1, sizeof(*rxq), 0);
+	if (!rxq) {
+		DEBUG("port %u cannot allocate drop Rx queue memory",
+		      dev->data->port_id);
+		rte_errno = ENOMEM;
+		goto error;
+	}
+	rxq->cq = cq;
+	rxq->wq = wq;
+	priv->drop_queue.rxq = rxq;
+	return rxq;
+error:
+	if (wq)
+		claim_zero(mlx5_glue->destroy_wq(wq));
+	if (cq)
+		claim_zero(mlx5_glue->destroy_cq(cq));
+	return NULL;
+}
+
+/**
+ * Release a drop Rx queue Verbs object.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   The Verbs object initialised, NULL otherwise and rte_errno is set.
+ */
+void
+mlx5_rxq_ibv_drop_release(struct rte_eth_dev *dev)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct mlx5_rxq_ibv *rxq = priv->drop_queue.rxq;
+
+	if (rxq->wq)
+		claim_zero(mlx5_glue->destroy_wq(rxq->wq));
+	if (rxq->cq)
+		claim_zero(mlx5_glue->destroy_cq(rxq->cq));
+	rte_free(rxq);
+	priv->drop_queue.rxq = NULL;
+}
+
+/**
+ * Create a drop indirection table.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   The Verbs object initialised, NULL otherwise and rte_errno is set.
+ */
+struct mlx5_ind_table_ibv *
+mlx5_ind_table_ibv_drop_new(struct rte_eth_dev *dev)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct mlx5_ind_table_ibv *ind_tbl;
+	struct mlx5_rxq_ibv *rxq;
+	struct mlx5_ind_table_ibv tmpl;
+
+	rxq = mlx5_rxq_ibv_drop_new(dev);
+	if (!rxq)
+		return NULL;
+	tmpl.ind_table = mlx5_glue->create_rwq_ind_table
+		(priv->ctx,
+		 &(struct ibv_rwq_ind_table_init_attr){
+			.log_ind_tbl_size = 0,
+			.ind_tbl = &rxq->wq,
+			.comp_mask = 0,
+		 });
+	if (!tmpl.ind_table) {
+		DEBUG("port %u cannot allocate indirection table for drop"
+		      " queue",
+		      dev->data->port_id);
+		rte_errno = errno;
+		goto error;
+	}
+	ind_tbl = rte_calloc(__func__, 1, sizeof(*ind_tbl), 0);
+	if (!ind_tbl) {
+		rte_errno = ENOMEM;
+		goto error;
+	}
+	ind_tbl->ind_table = tmpl.ind_table;
+	return ind_tbl;
+error:
+	mlx5_rxq_ibv_drop_release(dev);
+	return NULL;
+}
+
+/**
+ * Release a drop indirection table.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ */
+void
+mlx5_ind_table_ibv_drop_release(struct rte_eth_dev *dev)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct mlx5_ind_table_ibv *ind_tbl = priv->drop_queue.hrxq->ind_table;
+
+	claim_zero(mlx5_glue->destroy_rwq_ind_table(ind_tbl->ind_table));
+	mlx5_rxq_ibv_drop_release(dev);
+	rte_free(ind_tbl);
+	priv->drop_queue.hrxq->ind_table = NULL;
+}
+
+/**
+ * Create a drop Rx Hash queue.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   The Verbs object initialised, NULL otherwise and rte_errno is set.
+ */
+struct mlx5_hrxq *
+mlx5_hrxq_drop_new(struct rte_eth_dev *dev)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct mlx5_ind_table_ibv *ind_tbl;
+	struct ibv_qp *qp;
+	struct mlx5_hrxq *hrxq;
+
+	if (priv->drop_queue.hrxq) {
+		rte_atomic32_inc(&priv->drop_queue.hrxq->refcnt);
+		return priv->drop_queue.hrxq;
+	}
+	ind_tbl = mlx5_ind_table_ibv_drop_new(dev);
+	if (!ind_tbl)
+		return NULL;
+	qp = mlx5_glue->create_qp_ex(priv->ctx,
+		 &(struct ibv_qp_init_attr_ex){
+			.qp_type = IBV_QPT_RAW_PACKET,
+			.comp_mask =
+				IBV_QP_INIT_ATTR_PD |
+				IBV_QP_INIT_ATTR_IND_TABLE |
+				IBV_QP_INIT_ATTR_RX_HASH,
+			.rx_hash_conf = (struct ibv_rx_hash_conf){
+				.rx_hash_function =
+					IBV_RX_HASH_FUNC_TOEPLITZ,
+				.rx_hash_key_len = rss_hash_default_key_len,
+				.rx_hash_key = rss_hash_default_key,
+				.rx_hash_fields_mask = 0,
+				},
+			.rwq_ind_tbl = ind_tbl->ind_table,
+			.pd = priv->pd
+		 });
+	if (!qp) {
+		DEBUG("port %u cannot allocate QP for drop queue",
+		      dev->data->port_id);
+		rte_errno = errno;
+		goto error;
+	}
+	hrxq = rte_calloc(__func__, 1, sizeof(*hrxq), 0);
+	if (!hrxq) {
+		DRV_LOG(WARNING,
+			"port %u cannot allocate memory for drop queue",
+			dev->data->port_id);
+		rte_errno = ENOMEM;
+		goto error;
+	}
+	hrxq->ind_table = ind_tbl;
+	hrxq->qp = qp;
+	priv->drop_queue.hrxq = hrxq;
+	rte_atomic32_set(&hrxq->refcnt, 1);
+	return hrxq;
+error:
+	if (ind_tbl)
+		mlx5_ind_table_ibv_drop_release(dev);
+	return NULL;
+}
+
+/**
+ * Release a drop hash Rx queue.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ */
+void
+mlx5_hrxq_drop_release(struct rte_eth_dev *dev)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct mlx5_hrxq *hrxq = priv->drop_queue.hrxq;
+
+	if (rte_atomic32_dec_and_test(&hrxq->refcnt)) {
+		claim_zero(mlx5_glue->destroy_qp(hrxq->qp));
+		mlx5_ind_table_ibv_drop_release(dev);
+		rte_free(hrxq);
+		priv->drop_queue.hrxq = NULL;
+	}
+}

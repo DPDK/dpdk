@@ -75,6 +75,58 @@ struct ibv_spec_header {
 	uint16_t size;
 };
 
+ /**
+  * Get the maximum number of priority available.
+  *
+  * @param[in] dev
+  *   Pointer to Ethernet device.
+  *
+  * @return
+  *   number of supported Verbs flow priority on success, a negative errno
+  *   value otherwise and rte_errno is set.
+  */
+int
+mlx5_verbs_max_prio(struct rte_eth_dev *dev)
+{
+	struct {
+		struct ibv_flow_attr attr;
+		struct ibv_flow_spec_eth eth;
+		struct ibv_flow_spec_action_drop drop;
+	} flow_attr = {
+		.attr = {
+			.num_of_specs = 2,
+		},
+		.eth = {
+			.type = IBV_FLOW_SPEC_ETH,
+			.size = sizeof(struct ibv_flow_spec_eth),
+		},
+		.drop = {
+			.size = sizeof(struct ibv_flow_spec_action_drop),
+			.type = IBV_FLOW_SPEC_ACTION_DROP,
+		},
+	};
+	struct ibv_flow *flow;
+	uint32_t verb_priorities;
+	struct mlx5_hrxq *drop = mlx5_hrxq_drop_new(dev);
+
+	if (!drop) {
+		rte_errno = ENOTSUP;
+		return -rte_errno;
+	}
+	for (verb_priorities = 0; 1; verb_priorities++) {
+		flow_attr.attr.priority = verb_priorities;
+		flow = mlx5_glue->create_flow(drop->qp,
+					      &flow_attr.attr);
+		if (!flow)
+			break;
+		claim_zero(mlx5_glue->destroy_flow(flow));
+	}
+	mlx5_hrxq_drop_release(dev);
+	DRV_LOG(INFO, "port %u flow maximum priority: %d",
+		dev->data->port_id, verb_priorities);
+	return verb_priorities;
+}
+
 /**
  * Convert a flow.
  *
@@ -185,32 +237,6 @@ mlx5_flow_list_flush(struct rte_eth_dev *dev, struct mlx5_flows *list)
 }
 
 /**
- * Create drop queue.
- *
- * @param dev
- *   Pointer to Ethernet device.
- *
- * @return
- *   0 on success, a negative errno value otherwise and rte_errno is set.
- */
-int
-mlx5_flow_create_drop_queue(struct rte_eth_dev *dev __rte_unused)
-{
-	return 0;
-}
-
-/**
- * Delete drop queue.
- *
- * @param dev
- *   Pointer to Ethernet device.
- */
-void
-mlx5_flow_delete_drop_queue(struct rte_eth_dev *dev __rte_unused)
-{
-}
-
-/**
  * Remove all flows.
  *
  * @param dev
@@ -292,6 +318,7 @@ mlx5_ctrl_flow_vlan(struct rte_eth_dev *dev,
 	struct priv *priv = dev->data->dev_private;
 	const struct rte_flow_attr attr = {
 		.ingress = 1,
+		.priority = priv->config.max_verbs_prio - 1,
 	};
 	struct rte_flow_item items[] = {
 		{
@@ -829,19 +856,4 @@ mlx5_dev_filter_ctrl(struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 	return 0;
-}
-
-/**
- * Detect number of Verbs flow priorities supported.
- *
- * @param dev
- *   Pointer to Ethernet device.
- *
- * @return
- *   number of supported Verbs flow priority.
- */
-unsigned int
-mlx5_get_max_verbs_prio(struct rte_eth_dev *dev __rte_unused)
-{
-	return 8;
 }

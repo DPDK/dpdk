@@ -261,7 +261,6 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		priv->txqs_n = 0;
 		priv->txqs = NULL;
 	}
-	mlx5_flow_delete_drop_queue(dev);
 	mlx5_mprq_free_mp(dev);
 	mlx5_mr_release(dev);
 	if (priv->pd != NULL) {
@@ -1139,22 +1138,15 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	mlx5_link_update(eth_dev, 0);
 	/* Store device configuration on private structure. */
 	priv->config = config;
-	/* Create drop queue. */
-	err = mlx5_flow_create_drop_queue(eth_dev);
-	if (err) {
-		DRV_LOG(ERR, "port %u drop queue allocation failed: %s",
-			eth_dev->data->port_id, strerror(rte_errno));
-		err = rte_errno;
-		goto error;
-	}
 	/* Supported Verbs flow priority number detection. */
-	if (verb_priorities == 0)
-		verb_priorities = mlx5_get_max_verbs_prio(eth_dev);
-	if (verb_priorities < MLX5_VERBS_FLOW_PRIO_8) {
-		DRV_LOG(ERR, "port %u wrong Verbs flow priorities: %u",
-			eth_dev->data->port_id, verb_priorities);
-		err = ENOTSUP;
-		goto error;
+	if (verb_priorities == 0) {
+		err = mlx5_verbs_max_prio(eth_dev);
+		if (err < 0) {
+			DRV_LOG(ERR, "port %u wrong Verbs flow priorities",
+				eth_dev->data->port_id);
+			goto error;
+		}
+		verb_priorities = err;
 	}
 	priv->config.max_verbs_prio = verb_priorities;
 	/*
