@@ -717,7 +717,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	unsigned int tunnel_en = 0;
 	unsigned int mpls_en = 0;
 	unsigned int swp = 0;
-	unsigned int verb_priorities = 0;
 	unsigned int mprq = 0;
 	unsigned int mprq_min_stride_size_n = 0;
 	unsigned int mprq_max_stride_size_n = 0;
@@ -1139,16 +1138,10 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	/* Store device configuration on private structure. */
 	priv->config = config;
 	/* Supported Verbs flow priority number detection. */
-	if (verb_priorities == 0) {
-		err = mlx5_verbs_max_prio(eth_dev);
-		if (err < 0) {
-			DRV_LOG(ERR, "port %u wrong Verbs flow priorities",
-				eth_dev->data->port_id);
-			goto error;
-		}
-		verb_priorities = err;
-	}
-	priv->config.max_verbs_prio = verb_priorities;
+	err = mlx5_flow_discover_priorities(eth_dev);
+	if (err < 0)
+		goto error;
+	priv->config.flow_prio = err;
 	/*
 	 * Once the device is added to the list of memory event
 	 * callback, its global MR cache table cannot be expanded

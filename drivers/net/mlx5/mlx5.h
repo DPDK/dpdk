@@ -122,7 +122,7 @@ struct mlx5_dev_config {
 		unsigned int min_rxqs_num;
 		/* Rx queue count threshold to enable MPRQ. */
 	} mprq; /* Configurations for Multi-Packet RQ. */
-	unsigned int max_verbs_prio; /* Number of Verb flow priorities. */
+	unsigned int flow_prio; /* Number of flow priorities. */
 	unsigned int tso_max_payload_sz; /* Maximum TCP payload for TSO. */
 	unsigned int ind_table_max_size; /* Maximum indirection table size. */
 	int txq_inline; /* Maximum packet size for inlining. */
@@ -317,7 +317,7 @@ int mlx5_traffic_restart(struct rte_eth_dev *dev);
 
 /* mlx5_flow.c */
 
-int mlx5_verbs_max_prio(struct rte_eth_dev *dev);
+int mlx5_flow_discover_priorities(struct rte_eth_dev *dev);
 void mlx5_flow_print(struct rte_flow *flow);
 int mlx5_flow_validate(struct rte_eth_dev *dev,
 		       const struct rte_flow_attr *attr,
