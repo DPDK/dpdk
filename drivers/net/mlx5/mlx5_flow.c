@@ -35,18 +35,42 @@
 extern const struct eth_dev_ops mlx5_dev_ops;
 extern const struct eth_dev_ops mlx5_dev_ops_isolate;
 
-/* Pattern Layer bits. */
+/* Pattern outer Layer bits. */
 #define MLX5_FLOW_LAYER_OUTER_L2 (1u << 0)
 #define MLX5_FLOW_LAYER_OUTER_L3_IPV4 (1u << 1)
 #define MLX5_FLOW_LAYER_OUTER_L3_IPV6 (1u << 2)
 #define MLX5_FLOW_LAYER_OUTER_L4_UDP (1u << 3)
 #define MLX5_FLOW_LAYER_OUTER_L4_TCP (1u << 4)
 #define MLX5_FLOW_LAYER_OUTER_VLAN (1u << 5)
-/* Masks. */
+
+/* Pattern inner Layer bits. */
+#define MLX5_FLOW_LAYER_INNER_L2 (1u << 6)
+#define MLX5_FLOW_LAYER_INNER_L3_IPV4 (1u << 7)
+#define MLX5_FLOW_LAYER_INNER_L3_IPV6 (1u << 8)
+#define MLX5_FLOW_LAYER_INNER_L4_UDP (1u << 9)
+#define MLX5_FLOW_LAYER_INNER_L4_TCP (1u << 10)
+#define MLX5_FLOW_LAYER_INNER_VLAN (1u << 11)
+
+/* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \
 	(MLX5_FLOW_LAYER_OUTER_L3_IPV4 | MLX5_FLOW_LAYER_OUTER_L3_IPV6)
 #define MLX5_FLOW_LAYER_OUTER_L4 \
 	(MLX5_FLOW_LAYER_OUTER_L4_UDP | MLX5_FLOW_LAYER_OUTER_L4_TCP)
+#define MLX5_FLOW_LAYER_OUTER \
+	(MLX5_FLOW_LAYER_OUTER_L2 | MLX5_FLOW_LAYER_OUTER_L3 | \
+	 MLX5_FLOW_LAYER_OUTER_L4)
+
+/* Tunnel Masks. */
+#define MLX5_FLOW_LAYER_TUNNEL 0
+
+/* Inner Masks. */
+#define MLX5_FLOW_LAYER_INNER_L3 \
+	(MLX5_FLOW_LAYER_INNER_L3_IPV4 | MLX5_FLOW_LAYER_INNER_L3_IPV6)
+#define MLX5_FLOW_LAYER_INNER_L4 \
+	(MLX5_FLOW_LAYER_INNER_L4_UDP | MLX5_FLOW_LAYER_INNER_L4_TCP)
+#define MLX5_FLOW_LAYER_INNER \
+	(MLX5_FLOW_LAYER_INNER_L2 | MLX5_FLOW_LAYER_INNER_L3 | \
+	 MLX5_FLOW_LAYER_INNER_L4)
 
 /* Actions that modify the fate of matching traffic. */
 #define MLX5_FLOW_FATE_DROP (1u << 0)
@@ -66,6 +90,14 @@ extern const struct eth_dev_ops mlx5_dev_ops_isolate;
 
 enum mlx5_expansion {
 	MLX5_EXPANSION_ROOT,
+	MLX5_EXPANSION_ROOT_OUTER,
+	MLX5_EXPANSION_OUTER_ETH,
+	MLX5_EXPANSION_OUTER_IPV4,
+	MLX5_EXPANSION_OUTER_IPV4_UDP,
+	MLX5_EXPANSION_OUTER_IPV4_TCP,
+	MLX5_EXPANSION_OUTER_IPV6,
+	MLX5_EXPANSION_OUTER_IPV6_UDP,
+	MLX5_EXPANSION_OUTER_IPV6_TCP,
 	MLX5_EXPANSION_ETH,
 	MLX5_EXPANSION_IPV4,
 	MLX5_EXPANSION_IPV4_UDP,
@@ -82,6 +114,50 @@ static const struct rte_flow_expand_node mlx5_support_expansion[] = {
 						 MLX5_EXPANSION_IPV4,
 						 MLX5_EXPANSION_IPV6),
 		.type = RTE_FLOW_ITEM_TYPE_END,
+	},
+	[MLX5_EXPANSION_ROOT_OUTER] = {
+		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_OUTER_ETH,
+						 MLX5_EXPANSION_OUTER_IPV4,
+						 MLX5_EXPANSION_OUTER_IPV6),
+		.type = RTE_FLOW_ITEM_TYPE_END,
+	},
+	[MLX5_EXPANSION_OUTER_ETH] = {
+		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_OUTER_IPV4,
+						 MLX5_EXPANSION_OUTER_IPV6),
+		.type = RTE_FLOW_ITEM_TYPE_ETH,
+		.rss_types = 0,
+	},
+	[MLX5_EXPANSION_OUTER_IPV4] = {
+		.next = RTE_FLOW_EXPAND_RSS_NEXT
+			(MLX5_EXPANSION_OUTER_IPV4_UDP,
+			 MLX5_EXPANSION_OUTER_IPV4_TCP),
+		.type = RTE_FLOW_ITEM_TYPE_IPV4,
+		.rss_types = ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 |
+			ETH_RSS_NONFRAG_IPV4_OTHER,
+	},
+	[MLX5_EXPANSION_OUTER_IPV4_UDP] = {
+		.type = RTE_FLOW_ITEM_TYPE_UDP,
+		.rss_types = ETH_RSS_NONFRAG_IPV4_UDP,
+	},
+	[MLX5_EXPANSION_OUTER_IPV4_TCP] = {
+		.type = RTE_FLOW_ITEM_TYPE_TCP,
+		.rss_types = ETH_RSS_NONFRAG_IPV4_TCP,
+	},
+	[MLX5_EXPANSION_OUTER_IPV6] = {
+		.next = RTE_FLOW_EXPAND_RSS_NEXT
+			(MLX5_EXPANSION_OUTER_IPV6_UDP,
+			 MLX5_EXPANSION_OUTER_IPV6_TCP),
+		.type = RTE_FLOW_ITEM_TYPE_IPV6,
+		.rss_types = ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6 |
+			ETH_RSS_NONFRAG_IPV6_OTHER,
+	},
+	[MLX5_EXPANSION_OUTER_IPV6_UDP] = {
+		.type = RTE_FLOW_ITEM_TYPE_UDP,
+		.rss_types = ETH_RSS_NONFRAG_IPV6_UDP,
+	},
+	[MLX5_EXPANSION_OUTER_IPV6_TCP] = {
+		.type = RTE_FLOW_ITEM_TYPE_TCP,
+		.rss_types = ETH_RSS_NONFRAG_IPV6_TCP,
 	},
 	[MLX5_EXPANSION_ETH] = {
 		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4,
@@ -454,6 +530,35 @@ mlx5_flow_spec_verbs_add(struct rte_flow *flow, void *src, unsigned int size)
 }
 
 /**
+ * Adjust verbs hash fields according to the @p flow information.
+ *
+ * @param[in, out] flow.
+ *   Pointer to flow structure.
+ * @param[in] tunnel
+ *   1 when the hash field is for a tunnel item.
+ * @param[in] layer_types
+ *   ETH_RSS_* types.
+ * @param[in] hash_fields
+ *   Item hash fields.
+ */
+static void
+mlx5_flow_verbs_hashfields_adjust(struct rte_flow *flow,
+				  int tunnel __rte_unused,
+				  uint32_t layer_types, uint64_t hash_fields)
+{
+#ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
+	hash_fields |= (tunnel ? IBV_RX_HASH_INNER : 0);
+	if (flow->rss.level == 2 && !tunnel)
+		hash_fields = 0;
+	else if (flow->rss.level < 2 && tunnel)
+		hash_fields = 0;
+#endif
+	if (!(flow->rss.types & layer_types))
+		hash_fields = 0;
+	flow->cur_verbs->hash_fields |= hash_fields;
+}
+
+/**
  * Convert the @p item into a Verbs specification after ensuring the NIC
  * will understand and process it correctly.
  * If the necessary size for the conversion is greater than the @p flow_size,
@@ -486,14 +591,16 @@ mlx5_flow_item_eth(const struct rte_flow_item *item, struct rte_flow *flow,
 		.src.addr_bytes = "\xff\xff\xff\xff\xff\xff",
 		.type = RTE_BE16(0xffff),
 	};
+	const int tunnel = !!(flow->layers & MLX5_FLOW_LAYER_TUNNEL);
 	const unsigned int size = sizeof(struct ibv_flow_spec_eth);
 	struct ibv_flow_spec_eth eth = {
-		.type = IBV_FLOW_SPEC_ETH,
+		.type = IBV_FLOW_SPEC_ETH | (tunnel ? IBV_FLOW_SPEC_INNER : 0),
 		.size = size,
 	};
 	int ret;
 
-	if (flow->layers & MLX5_FLOW_LAYER_OUTER_L2)
+	if (flow->layers & (tunnel ? MLX5_FLOW_LAYER_INNER_L2 :
+			    MLX5_FLOW_LAYER_OUTER_L2))
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM,
 					  item,
@@ -506,7 +613,8 @@ mlx5_flow_item_eth(const struct rte_flow_item *item, struct rte_flow *flow,
 					error);
 	if (ret)
 		return ret;
-	flow->layers |= MLX5_FLOW_LAYER_OUTER_L2;
+	flow->layers |= tunnel ? MLX5_FLOW_LAYER_INNER_L2 :
+		MLX5_FLOW_LAYER_OUTER_L2;
 	if (size > flow_size)
 		return size;
 	if (spec) {
@@ -543,7 +651,7 @@ mlx5_flow_item_vlan_update(struct ibv_flow_attr *attr,
 			   struct ibv_flow_spec_eth *eth)
 {
 	unsigned int i;
-	enum ibv_flow_spec_type search = IBV_FLOW_SPEC_ETH;
+	const enum ibv_flow_spec_type search = eth->type;
 	struct ibv_spec_header *hdr = (struct ibv_spec_header *)
 		((uint8_t *)attr + sizeof(struct ibv_flow_attr));
 
@@ -596,16 +704,19 @@ mlx5_flow_item_vlan(const struct rte_flow_item *item, struct rte_flow *flow,
 		.inner_type = RTE_BE16(0xffff),
 	};
 	unsigned int size = sizeof(struct ibv_flow_spec_eth);
-	struct mlx5_flow_verbs *verbs = flow->cur_verbs;
+	const int tunnel = !!(flow->layers & MLX5_FLOW_LAYER_TUNNEL);
 	struct ibv_flow_spec_eth eth = {
-		.type = IBV_FLOW_SPEC_ETH,
+		.type = IBV_FLOW_SPEC_ETH | (tunnel ? IBV_FLOW_SPEC_INNER : 0),
 		.size = size,
 	};
 	int ret;
-	const uint32_t l34m = MLX5_FLOW_LAYER_OUTER_L3 |
-			MLX5_FLOW_LAYER_OUTER_L4;
-	const uint32_t vlanm = MLX5_FLOW_LAYER_OUTER_VLAN;
-	const uint32_t l2m = MLX5_FLOW_LAYER_OUTER_L2;
+	const uint32_t l34m = tunnel ? (MLX5_FLOW_LAYER_INNER_L3 |
+					MLX5_FLOW_LAYER_INNER_L4) :
+		(MLX5_FLOW_LAYER_OUTER_L3 | MLX5_FLOW_LAYER_OUTER_L4);
+	const uint32_t vlanm = tunnel ? MLX5_FLOW_LAYER_INNER_VLAN :
+		MLX5_FLOW_LAYER_OUTER_VLAN;
+	const uint32_t l2m = tunnel ? MLX5_FLOW_LAYER_INNER_L2 :
+		MLX5_FLOW_LAYER_OUTER_L2;
 
 	if (flow->layers & vlanm)
 		return rte_flow_error_set(error, ENOTSUP,
@@ -648,11 +759,14 @@ mlx5_flow_item_vlan(const struct rte_flow_item *item, struct rte_flow *flow,
 			mlx5_flow_spec_verbs_add(flow, &eth, size);
 		}
 	} else {
-		if (verbs->attr)
-			mlx5_flow_item_vlan_update(verbs->attr, &eth);
+		if (flow->cur_verbs)
+			mlx5_flow_item_vlan_update(flow->cur_verbs->attr,
+						   &eth);
 		size = 0; /* Only an update is done in eth specification. */
 	}
-	flow->layers |= MLX5_FLOW_LAYER_OUTER_L2 | MLX5_FLOW_LAYER_OUTER_VLAN;
+	flow->layers |= tunnel ?
+		(MLX5_FLOW_LAYER_INNER_L2 | MLX5_FLOW_LAYER_INNER_VLAN) :
+		(MLX5_FLOW_LAYER_OUTER_L2 | MLX5_FLOW_LAYER_OUTER_VLAN);
 	return size;
 }
 
@@ -692,19 +806,23 @@ mlx5_flow_item_ipv4(const struct rte_flow_item *item, struct rte_flow *flow,
 			.next_proto_id = 0xff,
 		},
 	};
+	const int tunnel = !!(flow->layers & MLX5_FLOW_LAYER_TUNNEL);
 	unsigned int size = sizeof(struct ibv_flow_spec_ipv4_ext);
 	struct ibv_flow_spec_ipv4_ext ipv4 = {
-		.type = IBV_FLOW_SPEC_IPV4_EXT,
+		.type = IBV_FLOW_SPEC_IPV4_EXT |
+			(tunnel ? IBV_FLOW_SPEC_INNER : 0),
 		.size = size,
 	};
 	int ret;
 
-	if (flow->layers & MLX5_FLOW_LAYER_OUTER_L3)
+	if (flow->layers & (tunnel ? MLX5_FLOW_LAYER_INNER_L3 :
+			    MLX5_FLOW_LAYER_OUTER_L3))
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM,
 					  item,
 					  "multiple L3 layers not supported");
-	else if (flow->layers & MLX5_FLOW_LAYER_OUTER_L4)
+	else if (flow->layers & (tunnel ? MLX5_FLOW_LAYER_INNER_L4 :
+				 MLX5_FLOW_LAYER_OUTER_L4))
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM,
 					  item,
@@ -717,7 +835,8 @@ mlx5_flow_item_ipv4(const struct rte_flow_item *item, struct rte_flow *flow,
 		 sizeof(struct rte_flow_item_ipv4), error);
 	if (ret < 0)
 		return ret;
-	flow->layers |= MLX5_FLOW_LAYER_OUTER_L3_IPV4;
+	flow->layers |= tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV4 :
+		MLX5_FLOW_LAYER_OUTER_L3_IPV4;
 	if (spec) {
 		ipv4.val = (struct ibv_flow_ipv4_ext_filter){
 			.src_ip = spec->hdr.src_addr,
@@ -740,14 +859,11 @@ mlx5_flow_item_ipv4(const struct rte_flow_item *item, struct rte_flow *flow,
 	flow->l3_protocol_en = !!ipv4.mask.proto;
 	flow->l3_protocol = ipv4.val.proto;
 	if (size <= flow_size) {
-		uint64_t hash_fields = IBV_RX_HASH_SRC_IPV4 |
-			IBV_RX_HASH_DST_IPV4;
-
-		if (!(flow->rss.types &
-		      (ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 |
-		       ETH_RSS_NONFRAG_IPV4_OTHER)))
-			hash_fields = 0;
-		flow->cur_verbs->hash_fields |= hash_fields;
+		mlx5_flow_verbs_hashfields_adjust
+			(flow, tunnel,
+			 (ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 |
+			  ETH_RSS_NONFRAG_IPV4_OTHER),
+			 (IBV_RX_HASH_SRC_IPV4 | IBV_RX_HASH_DST_IPV4));
 		flow->cur_verbs->attr->priority = MLX5_PRIORITY_MAP_L3;
 		mlx5_flow_spec_verbs_add(flow, &ipv4, size);
 	}
@@ -795,19 +911,22 @@ mlx5_flow_item_ipv6(const struct rte_flow_item *item, struct rte_flow *flow,
 			.hop_limits = 0xff,
 		},
 	};
+	const int tunnel = !!(flow->layers & MLX5_FLOW_LAYER_TUNNEL);
 	unsigned int size = sizeof(struct ibv_flow_spec_ipv6);
 	struct ibv_flow_spec_ipv6 ipv6 = {
-		.type = IBV_FLOW_SPEC_IPV6,
+		.type = IBV_FLOW_SPEC_IPV6 | (tunnel ? IBV_FLOW_SPEC_INNER : 0),
 		.size = size,
 	};
 	int ret;
 
-	if (flow->layers & MLX5_FLOW_LAYER_OUTER_L3)
+	if (flow->layers & (tunnel ? MLX5_FLOW_LAYER_INNER_L3 :
+			    MLX5_FLOW_LAYER_OUTER_L3))
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM,
 					  item,
 					  "multiple L3 layers not supported");
-	else if (flow->layers & MLX5_FLOW_LAYER_OUTER_L4)
+	else if (flow->layers & (tunnel ? MLX5_FLOW_LAYER_INNER_L4 :
+				 MLX5_FLOW_LAYER_OUTER_L4))
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM,
 					  item,
@@ -820,7 +939,8 @@ mlx5_flow_item_ipv6(const struct rte_flow_item *item, struct rte_flow *flow,
 		 sizeof(struct rte_flow_item_ipv6), error);
 	if (ret < 0)
 		return ret;
-	flow->layers |= MLX5_FLOW_LAYER_OUTER_L3_IPV6;
+	flow->layers |= tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV6 :
+		MLX5_FLOW_LAYER_OUTER_L3_IPV6;
 	if (spec) {
 		unsigned int i;
 		uint32_t vtc_flow_val;
@@ -863,13 +983,10 @@ mlx5_flow_item_ipv6(const struct rte_flow_item *item, struct rte_flow *flow,
 	flow->l3_protocol_en = !!ipv6.mask.next_hdr;
 	flow->l3_protocol = ipv6.val.next_hdr;
 	if (size <= flow_size) {
-		uint64_t hash_fields = IBV_RX_HASH_SRC_IPV6 |
-			IBV_RX_HASH_DST_IPV6;
-
-		if (!(flow->rss.types &
-		      (ETH_RSS_IPV6 | ETH_RSS_NONFRAG_IPV6_OTHER)))
-			hash_fields = 0;
-		flow->cur_verbs->hash_fields |= hash_fields;
+		mlx5_flow_verbs_hashfields_adjust
+			(flow, tunnel,
+			 (ETH_RSS_IPV6 | ETH_RSS_NONFRAG_IPV6_OTHER),
+			 (IBV_RX_HASH_SRC_IPV6 | IBV_RX_HASH_DST_IPV6));
 		flow->cur_verbs->attr->priority = MLX5_PRIORITY_MAP_L3;
 		mlx5_flow_spec_verbs_add(flow, &ipv6, size);
 	}
@@ -904,9 +1021,10 @@ mlx5_flow_item_udp(const struct rte_flow_item *item, struct rte_flow *flow,
 {
 	const struct rte_flow_item_udp *spec = item->spec;
 	const struct rte_flow_item_udp *mask = item->mask;
+	const int tunnel = !!(flow->layers & MLX5_FLOW_LAYER_TUNNEL);
 	unsigned int size = sizeof(struct ibv_flow_spec_tcp_udp);
 	struct ibv_flow_spec_tcp_udp udp = {
-		.type = IBV_FLOW_SPEC_UDP,
+		.type = IBV_FLOW_SPEC_UDP | (tunnel ? IBV_FLOW_SPEC_INNER : 0),
 		.size = size,
 	};
 	int ret;
@@ -917,13 +1035,15 @@ mlx5_flow_item_udp(const struct rte_flow_item *item, struct rte_flow *flow,
 					  item,
 					  "protocol filtering not compatible"
 					  " with UDP layer");
-	if (!(flow->layers & MLX5_FLOW_LAYER_OUTER_L3))
+	if (!(flow->layers & (tunnel ? MLX5_FLOW_LAYER_INNER_L3 :
+			      MLX5_FLOW_LAYER_OUTER_L3)))
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM,
 					  item,
 					  "L3 is mandatory to filter"
 					  " on L4");
-	if (flow->layers & MLX5_FLOW_LAYER_OUTER_L4)
+	if (flow->layers & (tunnel ? MLX5_FLOW_LAYER_INNER_L4 :
+			    MLX5_FLOW_LAYER_OUTER_L4))
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM,
 					  item,
@@ -937,7 +1057,8 @@ mlx5_flow_item_udp(const struct rte_flow_item *item, struct rte_flow *flow,
 		 sizeof(struct rte_flow_item_udp), error);
 	if (ret < 0)
 		return ret;
-	flow->layers |= MLX5_FLOW_LAYER_OUTER_L4_UDP;
+	flow->layers |= tunnel ? MLX5_FLOW_LAYER_INNER_L4_UDP :
+		MLX5_FLOW_LAYER_OUTER_L4_UDP;
 	if (spec) {
 		udp.val.dst_port = spec->hdr.dst_port;
 		udp.val.src_port = spec->hdr.src_port;
@@ -948,12 +1069,9 @@ mlx5_flow_item_udp(const struct rte_flow_item *item, struct rte_flow *flow,
 		udp.val.dst_port &= udp.mask.dst_port;
 	}
 	if (size <= flow_size) {
-		uint64_t hash_fields = IBV_RX_HASH_SRC_PORT_UDP |
-			IBV_RX_HASH_DST_PORT_UDP;
-
-		if (!(flow->rss.types & ETH_RSS_UDP))
-			hash_fields = 0;
-		flow->cur_verbs->hash_fields |= hash_fields;
+		mlx5_flow_verbs_hashfields_adjust(flow, tunnel, ETH_RSS_UDP,
+						  (IBV_RX_HASH_SRC_PORT_UDP |
+						   IBV_RX_HASH_DST_PORT_UDP));
 		flow->cur_verbs->attr->priority = MLX5_PRIORITY_MAP_L4;
 		mlx5_flow_spec_verbs_add(flow, &udp, size);
 	}
@@ -988,9 +1106,10 @@ mlx5_flow_item_tcp(const struct rte_flow_item *item, struct rte_flow *flow,
 {
 	const struct rte_flow_item_tcp *spec = item->spec;
 	const struct rte_flow_item_tcp *mask = item->mask;
+	const int tunnel = !!(flow->layers & MLX5_FLOW_LAYER_TUNNEL);
 	unsigned int size = sizeof(struct ibv_flow_spec_tcp_udp);
 	struct ibv_flow_spec_tcp_udp tcp = {
-		.type = IBV_FLOW_SPEC_TCP,
+		.type = IBV_FLOW_SPEC_TCP | (tunnel ? IBV_FLOW_SPEC_INNER : 0),
 		.size = size,
 	};
 	int ret;
@@ -1001,12 +1120,14 @@ mlx5_flow_item_tcp(const struct rte_flow_item *item, struct rte_flow *flow,
 					  item,
 					  "protocol filtering not compatible"
 					  " with TCP layer");
-	if (!(flow->layers & MLX5_FLOW_LAYER_OUTER_L3))
+	if (!(flow->layers & (tunnel ? MLX5_FLOW_LAYER_INNER_L3 :
+			      MLX5_FLOW_LAYER_OUTER_L3)))
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM,
 					  item,
 					  "L3 is mandatory to filter on L4");
-	if (flow->layers & MLX5_FLOW_LAYER_OUTER_L4)
+	if (flow->layers & (tunnel ? MLX5_FLOW_LAYER_INNER_L4 :
+			    MLX5_FLOW_LAYER_OUTER_L4))
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM,
 					  item,
@@ -1019,7 +1140,8 @@ mlx5_flow_item_tcp(const struct rte_flow_item *item, struct rte_flow *flow,
 		 sizeof(struct rte_flow_item_tcp), error);
 	if (ret < 0)
 		return ret;
-	flow->layers |= MLX5_FLOW_LAYER_OUTER_L4_TCP;
+	flow->layers |=  tunnel ? MLX5_FLOW_LAYER_INNER_L4_TCP :
+		MLX5_FLOW_LAYER_OUTER_L4_TCP;
 	if (spec) {
 		tcp.val.dst_port = spec->hdr.dst_port;
 		tcp.val.src_port = spec->hdr.src_port;
@@ -1030,12 +1152,9 @@ mlx5_flow_item_tcp(const struct rte_flow_item *item, struct rte_flow *flow,
 		tcp.val.dst_port &= tcp.mask.dst_port;
 	}
 	if (size <= flow_size) {
-		uint64_t hash_fields = IBV_RX_HASH_SRC_PORT_TCP |
-			IBV_RX_HASH_DST_PORT_TCP;
-
-		if (!(flow->rss.types & ETH_RSS_TCP))
-			hash_fields = 0;
-		flow->cur_verbs->hash_fields |= hash_fields;
+		mlx5_flow_verbs_hashfields_adjust(flow, tunnel, ETH_RSS_TCP,
+						  (IBV_RX_HASH_SRC_PORT_TCP |
+						   IBV_RX_HASH_DST_PORT_TCP));
 		flow->cur_verbs->attr->priority = MLX5_PRIORITY_MAP_L4;
 		mlx5_flow_spec_verbs_add(flow, &tcp, size);
 	}
@@ -1261,7 +1380,11 @@ mlx5_flow_action_rss(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  &rss->func,
 					  "RSS hash function not supported");
+#ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
+	if (rss->level > 2)
+#else
 	if (rss->level > 1)
+#endif
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  &rss->level,
@@ -1301,6 +1424,7 @@ mlx5_flow_action_rss(struct rte_eth_dev *dev,
 	flow->rss.queue_num = rss->queue_num;
 	memcpy(flow->key, rss->key, MLX5_RSS_HASH_KEY_LEN);
 	flow->rss.types = rss->types;
+	flow->rss.level = rss->level;
 	flow->fate |= MLX5_FLOW_FATE_RSS;
 	return 0;
 }
@@ -1608,7 +1732,9 @@ mlx5_flow_merge(struct rte_eth_dev *dev, struct rte_flow *flow,
 		ret = rte_flow_expand_rss(buf, sizeof(expand_buffer.buffer),
 					  pattern, local_flow.rss.types,
 					  mlx5_support_expansion,
-					  MLX5_EXPANSION_ROOT);
+					  local_flow.rss.level < 2 ?
+					  MLX5_EXPANSION_ROOT :
+					  MLX5_EXPANSION_ROOT_OUTER);
 		assert(ret > 0 &&
 		       (unsigned int)ret < sizeof(expand_buffer.buffer));
 	} else {
@@ -1979,8 +2105,8 @@ mlx5_flow_list_create(struct rte_eth_dev *dev,
 			return NULL;
 		}
 	}
-	mlx5_flow_rxq_mark_set(dev, flow);
 	TAILQ_INSERT_TAIL(list, flow, next);
+	mlx5_flow_rxq_mark_set(dev, flow);
 	return flow;
 }
 
