@@ -52,6 +52,10 @@ extern const struct eth_dev_ops mlx5_dev_ops_isolate;
 #define MLX5_FLOW_FATE_DROP (1u << 0)
 #define MLX5_FLOW_FATE_QUEUE (1u << 1)
 
+/* Modify a packet. */
+#define MLX5_FLOW_MOD_FLAG (1u << 0)
+#define MLX5_FLOW_MOD_MARK (1u << 1)
+
 /* possible L3 layers protocols filtering. */
 #define MLX5_IP_PROTOCOL_TCP 6
 #define MLX5_IP_PROTOCOL_UDP 17
@@ -75,6 +79,8 @@ struct rte_flow {
 	uint32_t l3_protocol_en:1; /**< Protocol filtering requested. */
 	uint32_t layers;
 	/**< Bit-fields of present layers see MLX5_FLOW_LAYER_*. */
+	uint32_t modifier;
+	/**< Bit-fields of present modifier see MLX5_FLOW_MOD_*. */
 	uint32_t fate;
 	/**< Bit-fields of present fate see MLX5_FLOW_FATE_*. */
 	uint8_t l3_protocol; /**< valid when l3_protocol_en is set. */
@@ -984,6 +990,12 @@ mlx5_flow_action_drop(const struct rte_flow_action *action,
 					  action,
 					  "multiple fate actions are not"
 					  " supported");
+	if (flow->modifier & (MLX5_FLOW_MOD_FLAG | MLX5_FLOW_MOD_MARK))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  action,
+					  "drop is not compatible with"
+					  " flag/mark action");
 	if (size < flow_size)
 		mlx5_flow_spec_verbs_add(flow, &drop, size);
 	flow->fate |= MLX5_FLOW_FATE_DROP;
@@ -1037,6 +1049,161 @@ mlx5_flow_action_queue(struct rte_eth_dev *dev,
 }
 
 /**
+ * Convert the @p action into a Verbs specification after ensuring the NIC
+ * will understand and process it correctly.
+ * If the necessary size for the conversion is greater than the @p flow_size,
+ * nothing is written in @p flow, the validation is still performed.
+ *
+ * @param[in] action
+ *   Action configuration.
+ * @param[in, out] flow
+ *   Pointer to flow structure.
+ * @param[in] flow_size
+ *   Size in bytes of the available space in @p flow, if too small, nothing is
+ *   written.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   On success the number of bytes consumed/necessary, if the returned value
+ *   is lesser or equal to @p flow_size, the @p action has fully been
+ *   converted, otherwise another call with this returned memory size should
+ *   be done.
+ *   On error, a negative errno value is returned and rte_errno is set.
+ */
+static int
+mlx5_flow_action_flag(const struct rte_flow_action *action,
+		      struct rte_flow *flow, const size_t flow_size,
+		      struct rte_flow_error *error)
+{
+	unsigned int size = sizeof(struct ibv_flow_spec_action_tag);
+	struct ibv_flow_spec_action_tag tag = {
+		.type = IBV_FLOW_SPEC_ACTION_TAG,
+		.size = size,
+		.tag_id = mlx5_flow_mark_set(MLX5_FLOW_MARK_DEFAULT),
+	};
+
+	if (flow->modifier & MLX5_FLOW_MOD_FLAG)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  action,
+					  "flag action already present");
+	if (flow->fate & MLX5_FLOW_FATE_DROP)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  action,
+					  "flag is not compatible with drop"
+					  " action");
+	if (flow->modifier & MLX5_FLOW_MOD_MARK)
+		return 0;
+	flow->modifier |= MLX5_FLOW_MOD_FLAG;
+	if (size <= flow_size)
+		mlx5_flow_spec_verbs_add(flow, &tag, size);
+	return size;
+}
+
+/**
+ * Update verbs specification to modify the flag to mark.
+ *
+ * @param[in, out] flow
+ *   Pointer to the rte_flow structure.
+ * @param[in] mark_id
+ *   Mark identifier to replace the flag.
+ */
+static void
+mlx5_flow_verbs_mark_update(struct rte_flow *flow, uint32_t mark_id)
+{
+	struct ibv_spec_header *hdr;
+	int i;
+
+	/* Update Verbs specification. */
+	hdr = (struct ibv_spec_header *)flow->verbs.specs;
+	if (!hdr)
+		return;
+	for (i = 0; i != flow->verbs.attr->num_of_specs; ++i) {
+		if (hdr->type == IBV_FLOW_SPEC_ACTION_TAG) {
+			struct ibv_flow_spec_action_tag *t =
+				(struct ibv_flow_spec_action_tag *)hdr;
+
+			t->tag_id = mlx5_flow_mark_set(mark_id);
+		}
+		hdr = (struct ibv_spec_header *)((uintptr_t)hdr + hdr->size);
+	}
+}
+
+/**
+ * Convert the @p action into @p flow (or by updating the already present
+ * Flag Verbs specification) after ensuring the NIC will understand and
+ * process it correctly.
+ * If the necessary size for the conversion is greater than the @p flow_size,
+ * nothing is written in @p flow, the validation is still performed.
+ *
+ * @param[in] action
+ *   Action configuration.
+ * @param[in, out] flow
+ *   Pointer to flow structure.
+ * @param[in] flow_size
+ *   Size in bytes of the available space in @p flow, if too small, nothing is
+ *   written.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   On success the number of bytes consumed/necessary, if the returned value
+ *   is lesser or equal to @p flow_size, the @p action has fully been
+ *   converted, otherwise another call with this returned memory size should
+ *   be done.
+ *   On error, a negative errno value is returned and rte_errno is set.
+ */
+static int
+mlx5_flow_action_mark(const struct rte_flow_action *action,
+		      struct rte_flow *flow, const size_t flow_size,
+		      struct rte_flow_error *error)
+{
+	const struct rte_flow_action_mark *mark = action->conf;
+	unsigned int size = sizeof(struct ibv_flow_spec_action_tag);
+	struct ibv_flow_spec_action_tag tag = {
+		.type = IBV_FLOW_SPEC_ACTION_TAG,
+		.size = size,
+	};
+
+	if (!mark)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  action,
+					  "configuration cannot be null");
+	if (mark->id >= MLX5_FLOW_MARK_MAX)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					  &mark->id,
+					  "mark id must in 0 <= id < "
+					  RTE_STR(MLX5_FLOW_MARK_MAX));
+	if (flow->modifier & MLX5_FLOW_MOD_MARK)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  action,
+					  "mark action already present");
+	if (flow->fate & MLX5_FLOW_FATE_DROP)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  action,
+					  "mark is not compatible with drop"
+					  " action");
+	if (flow->modifier & MLX5_FLOW_MOD_FLAG) {
+		mlx5_flow_verbs_mark_update(flow, mark->id);
+		size = 0; /**< Only an update is done in the specification. */
+	} else {
+		tag.tag_id = mlx5_flow_mark_set(mark->id);
+		if (size <= flow_size) {
+			tag.tag_id = mlx5_flow_mark_set(mark->id);
+			mlx5_flow_spec_verbs_add(flow, &tag, size);
+		}
+	}
+	flow->modifier |= MLX5_FLOW_MOD_MARK;
+	return size;
+}
+
+/**
  * Convert the @p action into @p flow after ensuring the NIC will understand
  * and process it correctly.
  * The conversion is performed action per action, each of them is written into
@@ -1076,6 +1243,14 @@ mlx5_flow_actions(struct rte_eth_dev *dev,
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
 		switch (actions->type) {
 		case RTE_FLOW_ACTION_TYPE_VOID:
+			break;
+		case RTE_FLOW_ACTION_TYPE_FLAG:
+			ret = mlx5_flow_action_flag(actions, flow, remain,
+						    error);
+			break;
+		case RTE_FLOW_ACTION_TYPE_MARK:
+			ret = mlx5_flow_action_mark(actions, flow, remain,
+						    error);
 			break;
 		case RTE_FLOW_ACTION_TYPE_DROP:
 			ret = mlx5_flow_action_drop(actions, flow, remain,
@@ -1168,6 +1343,79 @@ mlx5_flow_merge(struct rte_eth_dev *dev, struct rte_flow *flow,
 	if (size <= flow_size)
 		flow->verbs.attr->priority = flow->attributes.priority;
 	return size;
+}
+
+/**
+ * Mark the Rx queues mark flag if the flow has a mark or flag modifier.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] flow
+ *   Pointer to flow structure.
+ */
+static void
+mlx5_flow_rxq_mark_set(struct rte_eth_dev *dev, struct rte_flow *flow)
+{
+	struct priv *priv = dev->data->dev_private;
+
+	if (flow->modifier & (MLX5_FLOW_MOD_FLAG | MLX5_FLOW_MOD_MARK)) {
+		struct mlx5_rxq_ctrl *rxq_ctrl =
+			container_of((*priv->rxqs)[flow->queue],
+				     struct mlx5_rxq_ctrl, rxq);
+
+		rxq_ctrl->rxq.mark = 1;
+		rxq_ctrl->flow_mark_n++;
+	}
+}
+
+/**
+ * Clear the Rx queue mark associated with the @p flow if no other flow uses
+ * it with a mark request.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[in] flow
+ *   Pointer to the flow.
+ */
+static void
+mlx5_flow_rxq_mark_trim(struct rte_eth_dev *dev, struct rte_flow *flow)
+{
+	struct priv *priv = dev->data->dev_private;
+
+	if (flow->modifier & (MLX5_FLOW_MOD_FLAG | MLX5_FLOW_MOD_MARK)) {
+		struct mlx5_rxq_ctrl *rxq_ctrl =
+			container_of((*priv->rxqs)[flow->queue],
+				     struct mlx5_rxq_ctrl, rxq);
+
+		rxq_ctrl->flow_mark_n--;
+		rxq_ctrl->rxq.mark = !!rxq_ctrl->flow_mark_n;
+	}
+}
+
+/**
+ * Clear the mark bit in all Rx queues.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ */
+static void
+mlx5_flow_rxq_mark_clear(struct rte_eth_dev *dev)
+{
+	struct priv *priv = dev->data->dev_private;
+	unsigned int i;
+	unsigned int idx;
+
+	for (idx = 0, i = 0; idx != priv->rxqs_n; ++i) {
+		struct mlx5_rxq_ctrl *rxq_ctrl;
+
+		if (!(*priv->rxqs)[idx])
+			continue;
+		rxq_ctrl = container_of((*priv->rxqs)[idx],
+					struct mlx5_rxq_ctrl, rxq);
+		rxq_ctrl->flow_mark_n = 0;
+		rxq_ctrl->rxq.mark = 0;
+		++idx;
+	}
 }
 
 /**
@@ -1329,6 +1577,7 @@ mlx5_flow_list_create(struct rte_eth_dev *dev,
 		if (ret < 0)
 			goto error;
 	}
+	mlx5_flow_rxq_mark_set(dev, flow);
 	TAILQ_INSERT_TAIL(list, flow, next);
 	return flow;
 error:
@@ -1373,6 +1622,7 @@ mlx5_flow_list_destroy(struct rte_eth_dev *dev, struct mlx5_flows *list,
 {
 	mlx5_flow_remove(dev, flow);
 	TAILQ_REMOVE(list, flow, next);
+	mlx5_flow_rxq_mark_trim(dev, flow);
 	rte_free(flow);
 }
 
@@ -1410,6 +1660,7 @@ mlx5_flow_stop(struct rte_eth_dev *dev, struct mlx5_flows *list)
 
 	TAILQ_FOREACH_REVERSE(flow, list, mlx5_flows, next)
 		mlx5_flow_remove(dev, flow);
+	mlx5_flow_rxq_mark_clear(dev);
 }
 
 /**
@@ -1434,6 +1685,7 @@ mlx5_flow_start(struct rte_eth_dev *dev, struct mlx5_flows *list)
 		ret = mlx5_flow_apply(dev, flow, &error);
 		if (ret < 0)
 			goto error;
+		mlx5_flow_rxq_mark_set(dev, flow);
 	}
 	return 0;
 error:

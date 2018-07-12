@@ -138,6 +138,7 @@ struct mlx5_rxq_ctrl {
 	unsigned int socket; /* CPU socket ID for allocations. */
 	unsigned int irq:1; /* Whether IRQ is enabled. */
 	uint16_t idx; /* Queue index. */
+	uint32_t flow_mark_n; /* Number of Mark/Flag flows using this Queue. */
 };
 
 /* Indirection table. */
