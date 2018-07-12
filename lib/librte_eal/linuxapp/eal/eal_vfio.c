@@ -539,10 +539,6 @@ int
 rte_vfio_clear_group(int vfio_group_fd)
 {
 	int i;
-	struct rte_mp_msg mp_req, *mp_rep;
-	struct rte_mp_reply mp_reply;
-	struct timespec ts = {.tv_sec = 5, .tv_nsec = 0};
-	struct vfio_mp_param *p = (struct vfio_mp_param *)mp_req.param;
 	struct vfio_config *vfio_cfg;
 
 	vfio_cfg = get_vfio_cfg_by_group_fd(vfio_group_fd);
@@ -551,40 +547,15 @@ rte_vfio_clear_group(int vfio_group_fd)
 		return -1;
 	}
 
-	if (internal_config.process_type == RTE_PROC_PRIMARY) {
+	i = get_vfio_group_idx(vfio_group_fd);
+	if (i < 0)
+		return -1;
+	vfio_cfg->vfio_groups[i].group_num = -1;
+	vfio_cfg->vfio_groups[i].fd = -1;
+	vfio_cfg->vfio_groups[i].devices = 0;
+	vfio_cfg->vfio_active_groups--;
 
-		i = get_vfio_group_idx(vfio_group_fd);
-		if (i < 0)
-			return -1;
-		vfio_cfg->vfio_groups[i].group_num = -1;
-		vfio_cfg->vfio_groups[i].fd = -1;
-		vfio_cfg->vfio_groups[i].devices = 0;
-		vfio_cfg->vfio_active_groups--;
-		return 0;
-	}
-
-	p->req = SOCKET_CLR_GROUP;
-	p->group_num = vfio_group_fd;
-	strcpy(mp_req.name, EAL_VFIO_MP);
-	mp_req.len_param = sizeof(*p);
-	mp_req.num_fds = 0;
-
-	if (rte_mp_request_sync(&mp_req, &mp_reply, &ts) == 0 &&
-	    mp_reply.nb_received == 1) {
-		mp_rep = &mp_reply.msgs[0];
-		p = (struct vfio_mp_param *)mp_rep->param;
-		if (p->result == SOCKET_OK) {
-			free(mp_reply.msgs);
-			return 0;
-		} else if (p->result == SOCKET_NO_FD)
-			RTE_LOG(ERR, EAL, "  BAD VFIO group fd!\n");
-		else
-			RTE_LOG(ERR, EAL, "  no such VFIO group fd!\n");
-
-		free(mp_reply.msgs);
-	}
-
-	return -1;
+	return 0;
 }
 
 int

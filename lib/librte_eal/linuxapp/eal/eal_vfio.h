@@ -129,7 +129,6 @@ int vfio_mp_sync_setup(void);
 
 #define SOCKET_REQ_CONTAINER 0x100
 #define SOCKET_REQ_GROUP 0x200
-#define SOCKET_CLR_GROUP 0x300
 #define SOCKET_OK 0x0
 #define SOCKET_NO_FD 0x1
 #define SOCKET_ERR 0xFF

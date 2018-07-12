@@ -55,14 +55,6 @@ vfio_mp_primary(const struct rte_mp_msg *msg, const void *peer)
 			reply.fds[0] = fd;
 		}
 		break;
-	case SOCKET_CLR_GROUP:
-		r->req = SOCKET_CLR_GROUP;
-		r->group_num = m->group_num;
-		if (rte_vfio_clear_group(m->group_num) < 0)
-			r->result = SOCKET_NO_FD;
-		else
-			r->result = SOCKET_OK;
-		break;
 	case SOCKET_REQ_CONTAINER:
 		r->req = SOCKET_REQ_CONTAINER;
 		fd = rte_vfio_get_container_fd();
