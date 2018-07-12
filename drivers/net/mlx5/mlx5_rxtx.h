@@ -34,6 +34,9 @@
 #include "mlx5_defs.h"
 #include "mlx5_prm.h"
 
+/* Support tunnel matching. */
+#define MLX5_FLOW_TUNNEL 2
+
 struct mlx5_rxq_stats {
 	unsigned int idx; /**< Mapping index. */
 #ifdef MLX5_PMD_SOFT_COUNTERS
@@ -139,7 +142,7 @@ struct mlx5_rxq_ctrl {
 	unsigned int irq:1; /* Whether IRQ is enabled. */
 	uint16_t idx; /* Queue index. */
 	uint32_t flow_mark_n; /* Number of Mark/Flag flows using this Queue. */
-	uint32_t flow_vxlan_n; /* Number of VXLAN flows using this queue. */
+	uint32_t flow_tunnels_n[MLX5_FLOW_TUNNEL]; /* Tunnels counters. */
 };
 
 /* Indirection table. */

@@ -53,6 +53,7 @@ extern const struct eth_dev_ops mlx5_dev_ops_isolate;
 
 /* Pattern tunnel Layer bits. */
 #define MLX5_FLOW_LAYER_VXLAN (1u << 12)
+#define MLX5_FLOW_LAYER_VXLAN_GPE (1u << 13)
 
 /* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \
@@ -64,7 +65,8 @@ extern const struct eth_dev_ops mlx5_dev_ops_isolate;
 	 MLX5_FLOW_LAYER_OUTER_L4)
 
 /* Tunnel Masks. */
-#define MLX5_FLOW_LAYER_TUNNEL MLX5_FLOW_LAYER_VXLAN
+#define MLX5_FLOW_LAYER_TUNNEL \
+	(MLX5_FLOW_LAYER_VXLAN | MLX5_FLOW_LAYER_VXLAN_GPE)
 
 /* Inner Masks. */
 #define MLX5_FLOW_LAYER_INNER_L3 \
@@ -102,6 +104,7 @@ enum mlx5_expansion {
 	MLX5_EXPANSION_OUTER_IPV6_UDP,
 	MLX5_EXPANSION_OUTER_IPV6_TCP,
 	MLX5_EXPANSION_VXLAN,
+	MLX5_EXPANSION_VXLAN_GPE,
 	MLX5_EXPANSION_ETH,
 	MLX5_EXPANSION_IPV4,
 	MLX5_EXPANSION_IPV4_UDP,
@@ -140,7 +143,8 @@ static const struct rte_flow_expand_node mlx5_support_expansion[] = {
 			ETH_RSS_NONFRAG_IPV4_OTHER,
 	},
 	[MLX5_EXPANSION_OUTER_IPV4_UDP] = {
-		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_VXLAN),
+		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_VXLAN,
+						 MLX5_EXPANSION_VXLAN_GPE),
 		.type = RTE_FLOW_ITEM_TYPE_UDP,
 		.rss_types = ETH_RSS_NONFRAG_IPV4_UDP,
 	},
@@ -157,7 +161,8 @@ static const struct rte_flow_expand_node mlx5_support_expansion[] = {
 			ETH_RSS_NONFRAG_IPV6_OTHER,
 	},
 	[MLX5_EXPANSION_OUTER_IPV6_UDP] = {
-		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_VXLAN),
+		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_VXLAN,
+						 MLX5_EXPANSION_VXLAN_GPE),
 		.type = RTE_FLOW_ITEM_TYPE_UDP,
 		.rss_types = ETH_RSS_NONFRAG_IPV6_UDP,
 	},
@@ -168,6 +173,12 @@ static const struct rte_flow_expand_node mlx5_support_expansion[] = {
 	[MLX5_EXPANSION_VXLAN] = {
 		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_ETH),
 		.type = RTE_FLOW_ITEM_TYPE_VXLAN,
+	},
+	[MLX5_EXPANSION_VXLAN_GPE] = {
+		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_ETH,
+						 MLX5_EXPANSION_IPV4,
+						 MLX5_EXPANSION_IPV6),
+		.type = RTE_FLOW_ITEM_TYPE_VXLAN_GPE,
 	},
 	[MLX5_EXPANSION_ETH] = {
 		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4,
@@ -236,8 +247,6 @@ struct rte_flow {
 	struct mlx5_flow_verbs *cur_verbs;
 	/**< Current Verbs flow structure being filled. */
 	struct rte_flow_action_rss rss;/**< RSS context. */
-	uint32_t tunnel_ptype;
-	/**< Store tunnel packet type data to store in Rx queue. */
 	uint8_t key[MLX5_RSS_HASH_KEY_LEN]; /**< RSS hash key. */
 	uint16_t (*queue)[]; /**< Destination queues to redirect traffic to. */
 };
@@ -302,6 +311,23 @@ static const uint32_t priority_map_3[][MLX5_PRIORITY_MAP_MAX] = {
 static const uint32_t priority_map_5[][MLX5_PRIORITY_MAP_MAX] = {
 	{ 0, 1, 2 }, { 3, 4, 5 }, { 6, 7, 8 },
 	{ 9, 10, 11 }, { 12, 13, 14 },
+};
+
+/* Tunnel information. */
+struct mlx5_flow_tunnel_info {
+	uint32_t tunnel; /**< Tunnel bit (see MLX5_FLOW_*). */
+	uint32_t ptype; /**< Tunnel Ptype (see RTE_PTYPE_*). */
+};
+
+static struct mlx5_flow_tunnel_info tunnels_info[] = {
+	{
+		.tunnel = MLX5_FLOW_LAYER_VXLAN,
+		.ptype = RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_L4_UDP,
+	},
+	{
+		.tunnel = MLX5_FLOW_LAYER_VXLAN_GPE,
+		.ptype = RTE_PTYPE_TUNNEL_VXLAN_GPE | RTE_PTYPE_L4_UDP,
+	},
 };
 
 /**
@@ -1266,7 +1292,119 @@ mlx5_flow_item_vxlan(const struct rte_flow_item *item, struct rte_flow *flow,
 		flow->cur_verbs->attr->priority = MLX5_PRIORITY_MAP_L2;
 	}
 	flow->layers |= MLX5_FLOW_LAYER_VXLAN;
-	flow->tunnel_ptype = RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_L4_UDP;
+	return size;
+}
+
+/**
+ * Convert the @p item into a Verbs specification after ensuring the NIC
+ * will understand and process it correctly.
+ * If the necessary size for the conversion is greater than the @p flow_size,
+ * nothing is written in @p flow, the validation is still performed.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[in] item
+ *   Item specification.
+ * @param[in, out] flow
+ *   Pointer to flow structure.
+ * @param[in] flow_size
+ *   Size in bytes of the available space in @p flow, if too small, nothing is
+ *   written.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   On success the number of bytes consumed/necessary, if the returned value
+ *   is lesser or equal to @p flow_size, the @p item has fully been converted,
+ *   otherwise another call with this returned memory size should be done.
+ *   On error, a negative errno value is returned and rte_errno is set.
+ */
+static int
+mlx5_flow_item_vxlan_gpe(struct rte_eth_dev *dev,
+			 const struct rte_flow_item *item,
+			 struct rte_flow *flow, const size_t flow_size,
+			 struct rte_flow_error *error)
+{
+	const struct rte_flow_item_vxlan_gpe *spec = item->spec;
+	const struct rte_flow_item_vxlan_gpe *mask = item->mask;
+	unsigned int size = sizeof(struct ibv_flow_spec_tunnel);
+	struct ibv_flow_spec_tunnel vxlan_gpe = {
+		.type = IBV_FLOW_SPEC_VXLAN_TUNNEL,
+		.size = size,
+	};
+	int ret;
+	union vni {
+		uint32_t vlan_id;
+		uint8_t vni[4];
+	} id = { .vlan_id = 0, };
+
+	if (!((struct priv *)dev->data->dev_private)->config.l3_vxlan_en)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "L3 VXLAN is not enabled by device"
+					  " parameter and/or not configured in"
+					  " firmware");
+	if (flow->layers & MLX5_FLOW_LAYER_TUNNEL)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "a tunnel is already present");
+	/*
+	 * Verify only UDPv4 is present as defined in
+	 * https://tools.ietf.org/html/rfc7348
+	 */
+	if (!(flow->layers & MLX5_FLOW_LAYER_OUTER_L4_UDP))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "no outer UDP layer found");
+	if (!mask)
+		mask = &rte_flow_item_vxlan_gpe_mask;
+	ret = mlx5_flow_item_acceptable
+		(item, (const uint8_t *)mask,
+		 (const uint8_t *)&rte_flow_item_vxlan_gpe_mask,
+		 sizeof(struct rte_flow_item_vxlan_gpe), error);
+	if (ret < 0)
+		return ret;
+	if (spec) {
+		memcpy(&id.vni[1], spec->vni, 3);
+		vxlan_gpe.val.tunnel_id = id.vlan_id;
+		memcpy(&id.vni[1], mask->vni, 3);
+		vxlan_gpe.mask.tunnel_id = id.vlan_id;
+		if (spec->protocol)
+			return rte_flow_error_set
+				(error, EINVAL,
+				 RTE_FLOW_ERROR_TYPE_ITEM,
+				 item,
+				 "VxLAN-GPE protocol not supported");
+		/* Remove unwanted bits from values. */
+		vxlan_gpe.val.tunnel_id &= vxlan_gpe.mask.tunnel_id;
+	}
+	/*
+	 * Tunnel id 0 is equivalent as not adding a VXLAN layer, if only this
+	 * layer is defined in the Verbs specification it is interpreted as
+	 * wildcard and all packets will match this rule, if it follows a full
+	 * stack layer (ex: eth / ipv4 / udp), all packets matching the layers
+	 * before will also match this rule.  To avoid such situation, VNI 0
+	 * is currently refused.
+	 */
+	if (!vxlan_gpe.val.tunnel_id)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "VXLAN-GPE vni cannot be 0");
+	if (!(flow->layers & MLX5_FLOW_LAYER_OUTER))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "VXLAN-GPE tunnel must be fully"
+					  " defined");
+	if (size <= flow_size) {
+		mlx5_flow_spec_verbs_add(flow, &vxlan_gpe, size);
+		flow->cur_verbs->attr->priority = MLX5_PRIORITY_MAP_L2;
+	}
+	flow->layers |= MLX5_FLOW_LAYER_VXLAN_GPE;
 	return size;
 }
 
@@ -1296,7 +1434,8 @@ mlx5_flow_item_vxlan(const struct rte_flow_item *item, struct rte_flow *flow,
  *   On error, a negative errno value is returned and rte_errno is set.
  */
 static int
-mlx5_flow_items(const struct rte_flow_item pattern[],
+mlx5_flow_items(struct rte_eth_dev *dev,
+		const struct rte_flow_item pattern[],
 		struct rte_flow *flow, const size_t flow_size,
 		struct rte_flow_error *error)
 {
@@ -1330,6 +1469,10 @@ mlx5_flow_items(const struct rte_flow_item pattern[],
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
 			ret = mlx5_flow_item_vxlan(pattern, flow, remain,
 						   error);
+			break;
+		case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
+			ret = mlx5_flow_item_vxlan_gpe(dev, pattern, flow,
+						       remain, error);
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
@@ -1905,7 +2048,8 @@ mlx5_flow_merge(struct rte_eth_dev *dev, struct rte_flow *flow,
 			}
 		}
 		ret = mlx5_flow_items
-			((const struct rte_flow_item *)
+			(dev,
+			 (const struct rte_flow_item *)
 			 &buf->entry[i].pattern[expanded_pattern_idx],
 			 flow,
 			 (size < flow_size) ? flow_size - size : 0, error);
@@ -1946,6 +2090,34 @@ mlx5_flow_merge(struct rte_eth_dev *dev, struct rte_flow *flow,
 }
 
 /**
+ * Lookup and set the ptype in the data Rx part.  A single Ptype can be used,
+ * if several tunnel rules are used on this queue, the tunnel ptype will be
+ * cleared.
+ *
+ * @param rxq_ctrl
+ *   Rx queue to update.
+ */
+static void
+mlx5_flow_rxq_tunnel_ptype_update(struct mlx5_rxq_ctrl *rxq_ctrl)
+{
+	unsigned int i;
+	uint32_t tunnel_ptype = 0;
+
+	/* Look up for the ptype to use. */
+	for (i = 0; i != MLX5_FLOW_TUNNEL; ++i) {
+		if (!rxq_ctrl->flow_tunnels_n[i])
+			continue;
+		if (!tunnel_ptype) {
+			tunnel_ptype = tunnels_info[i].ptype;
+		} else {
+			tunnel_ptype = 0;
+			break;
+		}
+	}
+	rxq_ctrl->rxq.tunnel = tunnel_ptype;
+}
+
+/**
  * Set the Rx queue flags (Mark/Flag and Tunnel Ptypes) according to the flow.
  *
  * @param[in] dev
@@ -1973,8 +2145,17 @@ mlx5_flow_rxq_flags_set(struct rte_eth_dev *dev, struct rte_flow *flow)
 			rxq_ctrl->flow_mark_n++;
 		}
 		if (tunnel) {
-			rxq_ctrl->rxq.tunnel = flow->tunnel_ptype;
-			rxq_ctrl->flow_vxlan_n++;
+			unsigned int j;
+
+			/* Increase the counter matching the flow. */
+			for (j = 0; j != MLX5_FLOW_TUNNEL; ++j) {
+				if ((tunnels_info[j].tunnel & flow->layers) ==
+				    tunnels_info[j].tunnel) {
+					rxq_ctrl->flow_tunnels_n[j]++;
+					break;
+				}
+			}
+			mlx5_flow_rxq_tunnel_ptype_update(rxq_ctrl);
 		}
 	}
 }
@@ -2009,9 +2190,17 @@ mlx5_flow_rxq_flags_trim(struct rte_eth_dev *dev, struct rte_flow *flow)
 			rxq_ctrl->rxq.mark = !!rxq_ctrl->flow_mark_n;
 		}
 		if (tunnel) {
-			rxq_ctrl->flow_vxlan_n++;
-			if (!rxq_ctrl->flow_vxlan_n)
-				rxq_ctrl->rxq.tunnel = 0;
+			unsigned int j;
+
+			/* Decrease the counter matching the flow. */
+			for (j = 0; j != MLX5_FLOW_TUNNEL; ++j) {
+				if ((tunnels_info[j].tunnel & flow->layers) ==
+				    tunnels_info[j].tunnel) {
+					rxq_ctrl->flow_tunnels_n[j]--;
+					break;
+				}
+			}
+			mlx5_flow_rxq_tunnel_ptype_update(rxq_ctrl);
 		}
 	}
 }
@@ -2031,6 +2220,7 @@ mlx5_flow_rxq_flags_clear(struct rte_eth_dev *dev)
 
 	for (idx = 0, i = 0; idx != priv->rxqs_n; ++i) {
 		struct mlx5_rxq_ctrl *rxq_ctrl;
+		unsigned int j;
 
 		if (!(*priv->rxqs)[idx])
 			continue;
@@ -2038,7 +2228,8 @@ mlx5_flow_rxq_flags_clear(struct rte_eth_dev *dev)
 					struct mlx5_rxq_ctrl, rxq);
 		rxq_ctrl->flow_mark_n = 0;
 		rxq_ctrl->rxq.mark = 0;
-		rxq_ctrl->flow_vxlan_n = 0;
+		for (j = 0; j != MLX5_FLOW_TUNNEL; ++j)
+			rxq_ctrl->flow_tunnels_n[j] = 0;
 		rxq_ctrl->rxq.tunnel = 0;
 		++idx;
 	}
