@@ -51,6 +51,7 @@ extern const struct eth_dev_ops mlx5_dev_ops_isolate;
 /* Actions that modify the fate of matching traffic. */
 #define MLX5_FLOW_FATE_DROP (1u << 0)
 #define MLX5_FLOW_FATE_QUEUE (1u << 1)
+#define MLX5_FLOW_FATE_RSS (1u << 2)
 
 /* Modify a packet. */
 #define MLX5_FLOW_MOD_FLAG (1u << 0)
@@ -60,8 +61,68 @@ extern const struct eth_dev_ops mlx5_dev_ops_isolate;
 #define MLX5_IP_PROTOCOL_TCP 6
 #define MLX5_IP_PROTOCOL_UDP 17
 
+/* Priority reserved for default flows. */
+#define MLX5_FLOW_PRIO_RSVD ((uint32_t)-1)
+
+enum mlx5_expansion {
+	MLX5_EXPANSION_ROOT,
+	MLX5_EXPANSION_ETH,
+	MLX5_EXPANSION_IPV4,
+	MLX5_EXPANSION_IPV4_UDP,
+	MLX5_EXPANSION_IPV4_TCP,
+	MLX5_EXPANSION_IPV6,
+	MLX5_EXPANSION_IPV6_UDP,
+	MLX5_EXPANSION_IPV6_TCP,
+};
+
+/** Supported expansion of items. */
+static const struct rte_flow_expand_node mlx5_support_expansion[] = {
+	[MLX5_EXPANSION_ROOT] = {
+		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_ETH,
+						 MLX5_EXPANSION_IPV4,
+						 MLX5_EXPANSION_IPV6),
+		.type = RTE_FLOW_ITEM_TYPE_END,
+	},
+	[MLX5_EXPANSION_ETH] = {
+		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4,
+						 MLX5_EXPANSION_IPV6),
+		.type = RTE_FLOW_ITEM_TYPE_ETH,
+	},
+	[MLX5_EXPANSION_IPV4] = {
+		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV4_UDP,
+						 MLX5_EXPANSION_IPV4_TCP),
+		.type = RTE_FLOW_ITEM_TYPE_IPV4,
+		.rss_types = ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 |
+			ETH_RSS_NONFRAG_IPV4_OTHER,
+	},
+	[MLX5_EXPANSION_IPV4_UDP] = {
+		.type = RTE_FLOW_ITEM_TYPE_UDP,
+		.rss_types = ETH_RSS_NONFRAG_IPV4_UDP,
+	},
+	[MLX5_EXPANSION_IPV4_TCP] = {
+		.type = RTE_FLOW_ITEM_TYPE_TCP,
+		.rss_types = ETH_RSS_NONFRAG_IPV4_TCP,
+	},
+	[MLX5_EXPANSION_IPV6] = {
+		.next = RTE_FLOW_EXPAND_RSS_NEXT(MLX5_EXPANSION_IPV6_UDP,
+						 MLX5_EXPANSION_IPV6_TCP),
+		.type = RTE_FLOW_ITEM_TYPE_IPV6,
+		.rss_types = ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6 |
+			ETH_RSS_NONFRAG_IPV6_OTHER,
+	},
+	[MLX5_EXPANSION_IPV6_UDP] = {
+		.type = RTE_FLOW_ITEM_TYPE_UDP,
+		.rss_types = ETH_RSS_NONFRAG_IPV6_UDP,
+	},
+	[MLX5_EXPANSION_IPV6_TCP] = {
+		.type = RTE_FLOW_ITEM_TYPE_TCP,
+		.rss_types = ETH_RSS_NONFRAG_IPV6_TCP,
+	},
+};
+
 /** Handles information leading to a drop fate. */
 struct mlx5_flow_verbs {
+	LIST_ENTRY(mlx5_flow_verbs) next;
 	unsigned int size; /**< Size of the attribute. */
 	struct {
 		struct ibv_flow_attr *attr;
@@ -70,6 +131,7 @@ struct mlx5_flow_verbs {
 	};
 	struct ibv_flow *flow; /**< Verbs flow pointer. */
 	struct mlx5_hrxq *hrxq; /**< Hash Rx queue object. */
+	uint64_t hash_fields; /**< Verbs hash Rx queue hash fields. */
 };
 
 /* Flow structure. */
@@ -84,8 +146,12 @@ struct rte_flow {
 	uint32_t fate;
 	/**< Bit-fields of present fate see MLX5_FLOW_FATE_*. */
 	uint8_t l3_protocol; /**< valid when l3_protocol_en is set. */
-	struct mlx5_flow_verbs verbs; /* Verbs flow. */
-	uint16_t queue; /**< Destination queue to redirect traffic to. */
+	LIST_HEAD(verbs, mlx5_flow_verbs) verbs; /**< Verbs flows list. */
+	struct mlx5_flow_verbs *cur_verbs;
+	/**< Current Verbs flow structure being filled. */
+	struct rte_flow_action_rss rss;/**< RSS context. */
+	uint8_t key[MLX5_RSS_HASH_KEY_LEN]; /**< RSS hash key. */
+	uint16_t (*queue)[]; /**< Destination queues to redirect traffic to. */
 };
 
 static const struct rte_flow_ops mlx5_flow_ops = {
@@ -128,16 +194,38 @@ struct ibv_spec_header {
 	uint16_t size;
 };
 
- /**
-  * Discover the maximum number of priority available.
-  *
-  * @param[in] dev
-  *   Pointer to Ethernet device.
-  *
-  * @return
-  *   number of supported flow priority on success, a negative errno value
-  *   otherwise and rte_errno is set.
-  */
+/*
+ * Number of sub priorities.
+ * For each kind of pattern matching i.e. L2, L3, L4 to have a correct
+ * matching on the NIC (firmware dependent) L4 most have the higher priority
+ * followed by L3 and ending with L2.
+ */
+#define MLX5_PRIORITY_MAP_L2 2
+#define MLX5_PRIORITY_MAP_L3 1
+#define MLX5_PRIORITY_MAP_L4 0
+#define MLX5_PRIORITY_MAP_MAX 3
+
+/* Map of Verbs to Flow priority with 8 Verbs priorities. */
+static const uint32_t priority_map_3[][MLX5_PRIORITY_MAP_MAX] = {
+	{ 0, 1, 2 }, { 2, 3, 4 }, { 5, 6, 7 },
+};
+
+/* Map of Verbs to Flow priority with 16 Verbs priorities. */
+static const uint32_t priority_map_5[][MLX5_PRIORITY_MAP_MAX] = {
+	{ 0, 1, 2 }, { 3, 4, 5 }, { 6, 7, 8 },
+	{ 9, 10, 11 }, { 12, 13, 14 },
+};
+
+/**
+ * Discover the maximum number of priority available.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   number of supported flow priority on success, a negative errno
+ *   value otherwise and rte_errno is set.
+ */
 int
 mlx5_flow_discover_priorities(struct rte_eth_dev *dev)
 {
@@ -162,6 +250,7 @@ mlx5_flow_discover_priorities(struct rte_eth_dev *dev)
 	struct mlx5_hrxq *drop = mlx5_hrxq_drop_new(dev);
 	uint16_t vprio[] = { 8, 16 };
 	int i;
+	int priority = 0;
 
 	if (!drop) {
 		rte_errno = ENOTSUP;
@@ -173,11 +262,52 @@ mlx5_flow_discover_priorities(struct rte_eth_dev *dev)
 		if (!flow)
 			break;
 		claim_zero(mlx5_glue->destroy_flow(flow));
+		priority = vprio[i];
+	}
+	switch (priority) {
+	case 8:
+		priority = RTE_DIM(priority_map_3);
+		break;
+	case 16:
+		priority = RTE_DIM(priority_map_5);
+		break;
+	default:
+		rte_errno = ENOTSUP;
+		DRV_LOG(ERR,
+			"port %u verbs maximum priority: %d expected 8/16",
+			dev->data->port_id, vprio[i]);
+		return -rte_errno;
 	}
 	mlx5_hrxq_drop_release(dev);
 	DRV_LOG(INFO, "port %u flow maximum priority: %d",
-		dev->data->port_id, vprio[i - 1]);
-	return vprio[i - 1];
+		dev->data->port_id, priority);
+	return priority;
+}
+
+/**
+ * Adjust flow priority.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param flow
+ *   Pointer to an rte flow.
+ */
+static void
+mlx5_flow_adjust_priority(struct rte_eth_dev *dev, struct rte_flow *flow)
+{
+	struct priv *priv = dev->data->dev_private;
+	uint32_t priority = flow->attributes.priority;
+	uint32_t subpriority = flow->cur_verbs->attr->priority;
+
+	switch (priv->config.flow_prio) {
+	case RTE_DIM(priority_map_3):
+		priority = priority_map_3[priority][subpriority];
+		break;
+	case RTE_DIM(priority_map_5):
+		priority = priority_map_5[priority][subpriority];
+		break;
+	}
+	flow->cur_verbs->attr->priority = priority;
 }
 
 /**
@@ -203,14 +333,15 @@ mlx5_flow_attributes(struct rte_eth_dev *dev,
 		     struct rte_flow_error *error)
 {
 	uint32_t priority_max =
-		((struct priv *)dev->data->dev_private)->config.flow_prio;
+		((struct priv *)dev->data->dev_private)->config.flow_prio - 1;
 
 	if (attributes->group)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
 					  NULL,
 					  "groups is not supported");
-	if (attributes->priority >= priority_max)
+	if (attributes->priority != MLX5_FLOW_PRIO_RSVD &&
+	    attributes->priority >= priority_max)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
 					  NULL,
@@ -231,6 +362,8 @@ mlx5_flow_attributes(struct rte_eth_dev *dev,
 					  NULL,
 					  "ingress attribute is mandatory");
 	flow->attributes = *attributes;
+	if (attributes->priority == MLX5_FLOW_PRIO_RSVD)
+		flow->attributes.priority = priority_max;
 	return 0;
 }
 
@@ -296,7 +429,7 @@ mlx5_flow_item_acceptable(const struct rte_flow_item *item,
 }
 
 /**
- * Add a verbs specification into @p flow.
+ * Add a verbs item specification into @p flow.
  *
  * @param[in, out] flow
  *   Pointer to flow structure.
@@ -308,14 +441,16 @@ mlx5_flow_item_acceptable(const struct rte_flow_item *item,
 static void
 mlx5_flow_spec_verbs_add(struct rte_flow *flow, void *src, unsigned int size)
 {
-	if (flow->verbs.specs) {
+	struct mlx5_flow_verbs *verbs = flow->cur_verbs;
+
+	if (verbs->specs) {
 		void *dst;
 
-		dst = (void *)(flow->verbs.specs + flow->verbs.size);
+		dst = (void *)(verbs->specs + verbs->size);
 		memcpy(dst, src, size);
-		++flow->verbs.attr->num_of_specs;
+		++verbs->attr->num_of_specs;
 	}
-	flow->verbs.size += size;
+	verbs->size += size;
 }
 
 /**
@@ -390,6 +525,7 @@ mlx5_flow_item_eth(const struct rte_flow_item *item, struct rte_flow *flow,
 		}
 		eth.val.ether_type &= eth.mask.ether_type;
 	}
+	flow->cur_verbs->attr->priority = MLX5_PRIORITY_MAP_L2;
 	mlx5_flow_spec_verbs_add(flow, &eth, size);
 	return size;
 }
@@ -460,6 +596,7 @@ mlx5_flow_item_vlan(const struct rte_flow_item *item, struct rte_flow *flow,
 		.inner_type = RTE_BE16(0xffff),
 	};
 	unsigned int size = sizeof(struct ibv_flow_spec_eth);
+	struct mlx5_flow_verbs *verbs = flow->cur_verbs;
 	struct ibv_flow_spec_eth eth = {
 		.type = IBV_FLOW_SPEC_ETH,
 		.size = size,
@@ -506,15 +643,16 @@ mlx5_flow_item_vlan(const struct rte_flow_item *item, struct rte_flow *flow,
 					  item->spec,
 					  "VLAN cannot be empty");
 	if (!(flow->layers & l2m)) {
-		if (size <= flow_size)
+		if (size <= flow_size) {
+			flow->cur_verbs->attr->priority = MLX5_PRIORITY_MAP_L2;
 			mlx5_flow_spec_verbs_add(flow, &eth, size);
+		}
 	} else {
-		if (flow->verbs.attr)
-			mlx5_flow_item_vlan_update(flow->verbs.attr, &eth);
+		if (verbs->attr)
+			mlx5_flow_item_vlan_update(verbs->attr, &eth);
 		size = 0; /* Only an update is done in eth specification. */
 	}
-	flow->layers |= MLX5_FLOW_LAYER_OUTER_L2 |
-		MLX5_FLOW_LAYER_OUTER_VLAN;
+	flow->layers |= MLX5_FLOW_LAYER_OUTER_L2 | MLX5_FLOW_LAYER_OUTER_VLAN;
 	return size;
 }
 
@@ -601,8 +739,18 @@ mlx5_flow_item_ipv4(const struct rte_flow_item *item, struct rte_flow *flow,
 	}
 	flow->l3_protocol_en = !!ipv4.mask.proto;
 	flow->l3_protocol = ipv4.val.proto;
-	if (size <= flow_size)
+	if (size <= flow_size) {
+		uint64_t hash_fields = IBV_RX_HASH_SRC_IPV4 |
+			IBV_RX_HASH_DST_IPV4;
+
+		if (!(flow->rss.types &
+		      (ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 |
+		       ETH_RSS_NONFRAG_IPV4_OTHER)))
+			hash_fields = 0;
+		flow->cur_verbs->hash_fields |= hash_fields;
+		flow->cur_verbs->attr->priority = MLX5_PRIORITY_MAP_L3;
 		mlx5_flow_spec_verbs_add(flow, &ipv4, size);
+	}
 	return size;
 }
 
@@ -714,8 +862,17 @@ mlx5_flow_item_ipv6(const struct rte_flow_item *item, struct rte_flow *flow,
 	}
 	flow->l3_protocol_en = !!ipv6.mask.next_hdr;
 	flow->l3_protocol = ipv6.val.next_hdr;
-	if (size <= flow_size)
+	if (size <= flow_size) {
+		uint64_t hash_fields = IBV_RX_HASH_SRC_IPV6 |
+			IBV_RX_HASH_DST_IPV6;
+
+		if (!(flow->rss.types &
+		      (ETH_RSS_IPV6 | ETH_RSS_NONFRAG_IPV6_OTHER)))
+			hash_fields = 0;
+		flow->cur_verbs->hash_fields |= hash_fields;
+		flow->cur_verbs->attr->priority = MLX5_PRIORITY_MAP_L3;
 		mlx5_flow_spec_verbs_add(flow, &ipv6, size);
+	}
 	return size;
 }
 
@@ -754,22 +911,24 @@ mlx5_flow_item_udp(const struct rte_flow_item *item, struct rte_flow *flow,
 	};
 	int ret;
 
-	if (!(flow->layers & MLX5_FLOW_LAYER_OUTER_L3))
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ITEM,
-					  item,
-					  "L3 is mandatory to filter on L4");
-	if (flow->layers & MLX5_FLOW_LAYER_OUTER_L4)
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ITEM,
-					  item,
-					  "L4 layer is already present");
 	if (flow->l3_protocol_en && flow->l3_protocol != MLX5_IP_PROTOCOL_UDP)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM,
 					  item,
 					  "protocol filtering not compatible"
 					  " with UDP layer");
+	if (!(flow->layers & MLX5_FLOW_LAYER_OUTER_L3))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "L3 is mandatory to filter"
+					  " on L4");
+	if (flow->layers & MLX5_FLOW_LAYER_OUTER_L4)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "L4 layer is already"
+					  " present");
 	if (!mask)
 		mask = &rte_flow_item_udp_mask;
 	ret = mlx5_flow_item_acceptable
@@ -779,8 +938,6 @@ mlx5_flow_item_udp(const struct rte_flow_item *item, struct rte_flow *flow,
 	if (ret < 0)
 		return ret;
 	flow->layers |= MLX5_FLOW_LAYER_OUTER_L4_UDP;
-	if (size > flow_size)
-		return size;
 	if (spec) {
 		udp.val.dst_port = spec->hdr.dst_port;
 		udp.val.src_port = spec->hdr.src_port;
@@ -790,7 +947,16 @@ mlx5_flow_item_udp(const struct rte_flow_item *item, struct rte_flow *flow,
 		udp.val.src_port &= udp.mask.src_port;
 		udp.val.dst_port &= udp.mask.dst_port;
 	}
-	mlx5_flow_spec_verbs_add(flow, &udp, size);
+	if (size <= flow_size) {
+		uint64_t hash_fields = IBV_RX_HASH_SRC_PORT_UDP |
+			IBV_RX_HASH_DST_PORT_UDP;
+
+		if (!(flow->rss.types & ETH_RSS_UDP))
+			hash_fields = 0;
+		flow->cur_verbs->hash_fields |= hash_fields;
+		flow->cur_verbs->attr->priority = MLX5_PRIORITY_MAP_L4;
+		mlx5_flow_spec_verbs_add(flow, &udp, size);
+	}
 	return size;
 }
 
@@ -854,8 +1020,6 @@ mlx5_flow_item_tcp(const struct rte_flow_item *item, struct rte_flow *flow,
 	if (ret < 0)
 		return ret;
 	flow->layers |= MLX5_FLOW_LAYER_OUTER_L4_TCP;
-	if (size > flow_size)
-		return size;
 	if (spec) {
 		tcp.val.dst_port = spec->hdr.dst_port;
 		tcp.val.src_port = spec->hdr.src_port;
@@ -865,7 +1029,16 @@ mlx5_flow_item_tcp(const struct rte_flow_item *item, struct rte_flow *flow,
 		tcp.val.src_port &= tcp.mask.src_port;
 		tcp.val.dst_port &= tcp.mask.dst_port;
 	}
-	mlx5_flow_spec_verbs_add(flow, &tcp, size);
+	if (size <= flow_size) {
+		uint64_t hash_fields = IBV_RX_HASH_SRC_PORT_TCP |
+			IBV_RX_HASH_DST_PORT_TCP;
+
+		if (!(flow->rss.types & ETH_RSS_TCP))
+			hash_fields = 0;
+		flow->cur_verbs->hash_fields |= hash_fields;
+		flow->cur_verbs->attr->priority = MLX5_PRIORITY_MAP_L4;
+		mlx5_flow_spec_verbs_add(flow, &tcp, size);
+	}
 	return size;
 }
 
@@ -1043,8 +1216,92 @@ mlx5_flow_action_queue(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  &queue->index,
 					  "queue is not configured");
-	flow->queue = queue->index;
+	if (flow->queue)
+		(*flow->queue)[0] = queue->index;
+	flow->rss.queue_num = 1;
 	flow->fate |= MLX5_FLOW_FATE_QUEUE;
+	return 0;
+}
+
+/**
+ * Ensure the @p action will be understood and used correctly by the  NIC.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param action[in]
+ *   Pointer to flow actions array.
+ * @param flow[in, out]
+ *   Pointer to the rte_flow structure.
+ * @param error[in, out]
+ *   Pointer to error structure.
+ *
+ * @return
+ *   On success @p flow->queue array and @p flow->rss are filled and valid.
+ *   On error, a negative errno value is returned and rte_errno is set.
+ */
+static int
+mlx5_flow_action_rss(struct rte_eth_dev *dev,
+		     const struct rte_flow_action *action,
+		     struct rte_flow *flow,
+		     struct rte_flow_error *error)
+{
+	struct priv *priv = dev->data->dev_private;
+	const struct rte_flow_action_rss *rss = action->conf;
+	unsigned int i;
+
+	if (flow->fate)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  action,
+					  "multiple fate actions are not"
+					  " supported");
+	if (rss->func != RTE_ETH_HASH_FUNCTION_DEFAULT &&
+	    rss->func != RTE_ETH_HASH_FUNCTION_TOEPLITZ)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					  &rss->func,
+					  "RSS hash function not supported");
+	if (rss->level > 1)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					  &rss->level,
+					  "tunnel RSS is not supported");
+	if (rss->key_len < MLX5_RSS_HASH_KEY_LEN)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					  &rss->key_len,
+					  "RSS hash key too small");
+	if (rss->key_len > MLX5_RSS_HASH_KEY_LEN)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					  &rss->key_len,
+					  "RSS hash key too large");
+	if (rss->queue_num > priv->config.ind_table_max_size)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					  &rss->queue_num,
+					  "number of queues too large");
+	if (rss->types & MLX5_RSS_HF_MASK)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					  &rss->types,
+					  "some RSS protocols are not"
+					  " supported");
+	for (i = 0; i != rss->queue_num; ++i) {
+		if (!(*priv->rxqs)[rss->queue[i]])
+			return rte_flow_error_set
+				(error, EINVAL,
+				 RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+				 &rss->queue[i],
+				 "queue is not configured");
+	}
+	if (flow->queue)
+		memcpy((*flow->queue), rss->queue,
+		       rss->queue_num * sizeof(uint16_t));
+	flow->rss.queue_num = rss->queue_num;
+	memcpy(flow->key, rss->key, MLX5_RSS_HASH_KEY_LEN);
+	flow->rss.types = rss->types;
+	flow->fate |= MLX5_FLOW_FATE_RSS;
 	return 0;
 }
 
@@ -1082,6 +1339,7 @@ mlx5_flow_action_flag(const struct rte_flow_action *action,
 		.size = size,
 		.tag_id = mlx5_flow_mark_set(MLX5_FLOW_MARK_DEFAULT),
 	};
+	struct mlx5_flow_verbs *verbs = flow->cur_verbs;
 
 	if (flow->modifier & MLX5_FLOW_MOD_FLAG)
 		return rte_flow_error_set(error, ENOTSUP,
@@ -1095,32 +1353,34 @@ mlx5_flow_action_flag(const struct rte_flow_action *action,
 					  "flag is not compatible with drop"
 					  " action");
 	if (flow->modifier & MLX5_FLOW_MOD_MARK)
-		return 0;
-	flow->modifier |= MLX5_FLOW_MOD_FLAG;
-	if (size <= flow_size)
+		size = 0;
+	else if (size <= flow_size && verbs)
 		mlx5_flow_spec_verbs_add(flow, &tag, size);
+	flow->modifier |= MLX5_FLOW_MOD_FLAG;
 	return size;
 }
 
 /**
  * Update verbs specification to modify the flag to mark.
  *
- * @param[in, out] flow
- *   Pointer to the rte_flow structure.
+ * @param[in, out] verbs
+ *   Pointer to the mlx5_flow_verbs structure.
  * @param[in] mark_id
  *   Mark identifier to replace the flag.
  */
 static void
-mlx5_flow_verbs_mark_update(struct rte_flow *flow, uint32_t mark_id)
+mlx5_flow_verbs_mark_update(struct mlx5_flow_verbs *verbs, uint32_t mark_id)
 {
 	struct ibv_spec_header *hdr;
 	int i;
 
+	if (!verbs)
+		return;
 	/* Update Verbs specification. */
-	hdr = (struct ibv_spec_header *)flow->verbs.specs;
+	hdr = (struct ibv_spec_header *)verbs->specs;
 	if (!hdr)
 		return;
-	for (i = 0; i != flow->verbs.attr->num_of_specs; ++i) {
+	for (i = 0; i != verbs->attr->num_of_specs; ++i) {
 		if (hdr->type == IBV_FLOW_SPEC_ACTION_TAG) {
 			struct ibv_flow_spec_action_tag *t =
 				(struct ibv_flow_spec_action_tag *)hdr;
@@ -1166,6 +1426,7 @@ mlx5_flow_action_mark(const struct rte_flow_action *action,
 		.type = IBV_FLOW_SPEC_ACTION_TAG,
 		.size = size,
 	};
+	struct mlx5_flow_verbs *verbs = flow->cur_verbs;
 
 	if (!mark)
 		return rte_flow_error_set(error, EINVAL,
@@ -1190,14 +1451,11 @@ mlx5_flow_action_mark(const struct rte_flow_action *action,
 					  "mark is not compatible with drop"
 					  " action");
 	if (flow->modifier & MLX5_FLOW_MOD_FLAG) {
-		mlx5_flow_verbs_mark_update(flow, mark->id);
-		size = 0; /**< Only an update is done in the specification. */
-	} else {
+		mlx5_flow_verbs_mark_update(verbs, mark->id);
+		size = 0;
+	} else if (size <= flow_size) {
 		tag.tag_id = mlx5_flow_mark_set(mark->id);
-		if (size <= flow_size) {
-			tag.tag_id = mlx5_flow_mark_set(mark->id);
-			mlx5_flow_spec_verbs_add(flow, &tag, size);
-		}
+		mlx5_flow_spec_verbs_add(flow, &tag, size);
 	}
 	flow->modifier |= MLX5_FLOW_MOD_MARK;
 	return size;
@@ -1258,6 +1516,9 @@ mlx5_flow_actions(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 			ret = mlx5_flow_action_queue(dev, actions, flow, error);
+			break;
+		case RTE_FLOW_ACTION_TYPE_RSS:
+			ret = mlx5_flow_action_rss(dev, actions, flow, error);
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
@@ -1322,26 +1583,126 @@ mlx5_flow_merge(struct rte_eth_dev *dev, struct rte_flow *flow,
 		struct rte_flow_error *error)
 {
 	struct rte_flow local_flow = { .layers = 0, };
-	size_t size = sizeof(*flow) + sizeof(struct ibv_flow_attr);
-	int remain = (flow_size > size) ? flow_size - size : 0;
+	size_t size = sizeof(*flow);
+	union {
+		struct rte_flow_expand_rss buf;
+		uint8_t buffer[2048];
+	} expand_buffer;
+	struct rte_flow_expand_rss *buf = &expand_buffer.buf;
+	struct mlx5_flow_verbs *original_verbs = NULL;
+	size_t original_verbs_size = 0;
+	uint32_t original_layers = 0;
+	int expanded_pattern_idx = 0;
 	int ret;
+	uint32_t i;
 
-	if (!remain)
+	if (size > flow_size)
 		flow = &local_flow;
 	ret = mlx5_flow_attributes(dev, attributes, flow, error);
 	if (ret < 0)
 		return ret;
-	ret = mlx5_flow_items(pattern, flow, remain, error);
+	ret = mlx5_flow_actions(dev, actions, &local_flow, 0, error);
 	if (ret < 0)
 		return ret;
-	size += ret;
-	remain = (flow_size > size) ? flow_size - size : 0;
-	ret = mlx5_flow_actions(dev, actions, flow, remain, error);
-	if (ret < 0)
-		return ret;
-	size += ret;
+	if (local_flow.rss.types) {
+		ret = rte_flow_expand_rss(buf, sizeof(expand_buffer.buffer),
+					  pattern, local_flow.rss.types,
+					  mlx5_support_expansion,
+					  MLX5_EXPANSION_ROOT);
+		assert(ret > 0 &&
+		       (unsigned int)ret < sizeof(expand_buffer.buffer));
+	} else {
+		buf->entries = 1;
+		buf->entry[0].pattern = (void *)(uintptr_t)pattern;
+	}
+	size += RTE_ALIGN_CEIL(local_flow.rss.queue_num * sizeof(uint16_t),
+			       sizeof(void *));
 	if (size <= flow_size)
-		flow->verbs.attr->priority = flow->attributes.priority;
+		flow->queue = (void *)(flow + 1);
+	LIST_INIT(&flow->verbs);
+	flow->layers = 0;
+	flow->modifier = 0;
+	flow->fate = 0;
+	for (i = 0; i != buf->entries; ++i) {
+		size_t off = size;
+		size_t off2;
+
+		flow->layers = original_layers;
+		size += sizeof(struct ibv_flow_attr) +
+			sizeof(struct mlx5_flow_verbs);
+		off2 = size;
+		if (size < flow_size) {
+			flow->cur_verbs = (void *)((uintptr_t)flow + off);
+			flow->cur_verbs->attr = (void *)(flow->cur_verbs + 1);
+			flow->cur_verbs->specs =
+				(void *)(flow->cur_verbs->attr + 1);
+		}
+		/* First iteration convert the pattern into Verbs. */
+		if (i == 0) {
+			/* Actions don't need to be converted several time. */
+			ret = mlx5_flow_actions(dev, actions, flow,
+						(size < flow_size) ?
+						flow_size - size : 0,
+						error);
+			if (ret < 0)
+				return ret;
+			size += ret;
+		} else {
+			/*
+			 * Next iteration means the pattern has already been
+			 * converted and an expansion is necessary to match
+			 * the user RSS request.  For that only the expanded
+			 * items will be converted, the common part with the
+			 * user pattern are just copied into the next buffer
+			 * zone.
+			 */
+			size += original_verbs_size;
+			if (size < flow_size) {
+				rte_memcpy(flow->cur_verbs->attr,
+					   original_verbs->attr,
+					   original_verbs_size +
+					   sizeof(struct ibv_flow_attr));
+				flow->cur_verbs->size = original_verbs_size;
+			}
+		}
+		ret = mlx5_flow_items
+			((const struct rte_flow_item *)
+			 &buf->entry[i].pattern[expanded_pattern_idx],
+			 flow,
+			 (size < flow_size) ? flow_size - size : 0, error);
+		if (ret < 0)
+			return ret;
+		size += ret;
+		if (size <= flow_size) {
+			mlx5_flow_adjust_priority(dev, flow);
+			LIST_INSERT_HEAD(&flow->verbs, flow->cur_verbs, next);
+		}
+		/*
+		 * Keep a pointer of the first verbs conversion and the layers
+		 * it has encountered.
+		 */
+		if (i == 0) {
+			original_verbs = flow->cur_verbs;
+			original_verbs_size = size - off2;
+			original_layers = flow->layers;
+			/*
+			 * move the index of the expanded pattern to the
+			 * first item not addressed yet.
+			 */
+			if (pattern->type == RTE_FLOW_ITEM_TYPE_END) {
+				expanded_pattern_idx++;
+			} else {
+				const struct rte_flow_item *item = pattern;
+
+				for (item = pattern;
+				     item->type != RTE_FLOW_ITEM_TYPE_END;
+				     ++item)
+					expanded_pattern_idx++;
+			}
+		}
+	}
+	/* Restore the origin layers in the flow. */
+	flow->layers = original_layers;
 	return size;
 }
 
@@ -1359,12 +1720,17 @@ mlx5_flow_rxq_mark_set(struct rte_eth_dev *dev, struct rte_flow *flow)
 	struct priv *priv = dev->data->dev_private;
 
 	if (flow->modifier & (MLX5_FLOW_MOD_FLAG | MLX5_FLOW_MOD_MARK)) {
-		struct mlx5_rxq_ctrl *rxq_ctrl =
-			container_of((*priv->rxqs)[flow->queue],
-				     struct mlx5_rxq_ctrl, rxq);
+		unsigned int i;
 
-		rxq_ctrl->rxq.mark = 1;
-		rxq_ctrl->flow_mark_n++;
+		for (i = 0; i != flow->rss.queue_num; ++i) {
+			int idx = (*flow->queue)[i];
+			struct mlx5_rxq_ctrl *rxq_ctrl =
+				container_of((*priv->rxqs)[idx],
+					     struct mlx5_rxq_ctrl, rxq);
+
+			rxq_ctrl->rxq.mark = 1;
+			rxq_ctrl->flow_mark_n++;
+		}
 	}
 }
 
@@ -1383,12 +1749,17 @@ mlx5_flow_rxq_mark_trim(struct rte_eth_dev *dev, struct rte_flow *flow)
 	struct priv *priv = dev->data->dev_private;
 
 	if (flow->modifier & (MLX5_FLOW_MOD_FLAG | MLX5_FLOW_MOD_MARK)) {
-		struct mlx5_rxq_ctrl *rxq_ctrl =
-			container_of((*priv->rxqs)[flow->queue],
-				     struct mlx5_rxq_ctrl, rxq);
+		unsigned int i;
 
-		rxq_ctrl->flow_mark_n--;
-		rxq_ctrl->rxq.mark = !!rxq_ctrl->flow_mark_n;
+		for (i = 0; i != flow->rss.queue_num; ++i) {
+			int idx = (*flow->queue)[i];
+			struct mlx5_rxq_ctrl *rxq_ctrl =
+				container_of((*priv->rxqs)[idx],
+					     struct mlx5_rxq_ctrl, rxq);
+
+			rxq_ctrl->flow_mark_n--;
+			rxq_ctrl->rxq.mark = !!rxq_ctrl->flow_mark_n;
+		}
 	}
 }
 
@@ -1449,18 +1820,20 @@ mlx5_flow_validate(struct rte_eth_dev *dev,
 static void
 mlx5_flow_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 {
-	if (flow->fate & MLX5_FLOW_FATE_DROP) {
-		if (flow->verbs.flow) {
-			claim_zero(mlx5_glue->destroy_flow(flow->verbs.flow));
-			flow->verbs.flow = NULL;
+	struct mlx5_flow_verbs *verbs;
+
+	LIST_FOREACH(verbs, &flow->verbs, next) {
+		if (verbs->flow) {
+			claim_zero(mlx5_glue->destroy_flow(verbs->flow));
+			verbs->flow = NULL;
 		}
-	}
-	if (flow->verbs.hrxq) {
-		if (flow->fate & MLX5_FLOW_FATE_DROP)
-			mlx5_hrxq_drop_release(dev);
-		else if (flow->fate & MLX5_FLOW_FATE_QUEUE)
-			mlx5_hrxq_release(dev, flow->verbs.hrxq);
-		flow->verbs.hrxq = NULL;
+		if (verbs->hrxq) {
+			if (flow->fate & MLX5_FLOW_FATE_DROP)
+				mlx5_hrxq_drop_release(dev);
+			else
+				mlx5_hrxq_release(dev, verbs->hrxq);
+			verbs->hrxq = NULL;
+		}
 	}
 }
 
@@ -1481,46 +1854,68 @@ static int
 mlx5_flow_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 		struct rte_flow_error *error)
 {
-	if (flow->fate & MLX5_FLOW_FATE_DROP) {
-		flow->verbs.hrxq = mlx5_hrxq_drop_new(dev);
-		if (!flow->verbs.hrxq)
-			return rte_flow_error_set
-				(error, errno,
-				 RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				 NULL,
-				 "cannot allocate Drop queue");
-	} else if (flow->fate & MLX5_FLOW_FATE_QUEUE) {
-		struct mlx5_hrxq *hrxq;
+	struct mlx5_flow_verbs *verbs;
+	int err;
 
-		hrxq = mlx5_hrxq_get(dev, rss_hash_default_key,
-				     MLX5_RSS_HASH_KEY_LEN, 0,
-				     &flow->queue, 1, 0, 0);
-		if (!hrxq)
-			hrxq = mlx5_hrxq_new(dev, rss_hash_default_key,
-					     MLX5_RSS_HASH_KEY_LEN, 0,
-					     &flow->queue, 1, 0, 0);
-		if (!hrxq)
-			return rte_flow_error_set(error, rte_errno,
-					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					NULL,
-					"cannot create flow");
-		flow->verbs.hrxq = hrxq;
-	}
-	flow->verbs.flow =
-		mlx5_glue->create_flow(flow->verbs.hrxq->qp, flow->verbs.attr);
-	if (!flow->verbs.flow) {
-		if (flow->fate & MLX5_FLOW_FATE_DROP)
-			mlx5_hrxq_drop_release(dev);
-		else
-			mlx5_hrxq_release(dev, flow->verbs.hrxq);
-		flow->verbs.hrxq = NULL;
-		return rte_flow_error_set(error, errno,
-					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					  NULL,
-					  "kernel module refuses to create"
-					  " flow");
+	LIST_FOREACH(verbs, &flow->verbs, next) {
+		if (flow->fate & MLX5_FLOW_FATE_DROP) {
+			verbs->hrxq = mlx5_hrxq_drop_new(dev);
+			if (!verbs->hrxq) {
+				rte_flow_error_set
+					(error, errno,
+					 RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					 NULL,
+					 "cannot get drop hash queue");
+				goto error;
+			}
+		} else {
+			struct mlx5_hrxq *hrxq;
+
+			hrxq = mlx5_hrxq_get(dev, flow->key,
+					     MLX5_RSS_HASH_KEY_LEN,
+					     verbs->hash_fields,
+					     (*flow->queue),
+					     flow->rss.queue_num, 0, 0);
+			if (!hrxq)
+				hrxq = mlx5_hrxq_new(dev, flow->key,
+						     MLX5_RSS_HASH_KEY_LEN,
+						     verbs->hash_fields,
+						     (*flow->queue),
+						     flow->rss.queue_num, 0, 0);
+			if (!hrxq) {
+				rte_flow_error_set
+					(error, rte_errno,
+					 RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					 NULL,
+					 "cannot get hash queue");
+				goto error;
+			}
+			verbs->hrxq = hrxq;
+		}
+		verbs->flow =
+			mlx5_glue->create_flow(verbs->hrxq->qp, verbs->attr);
+		if (!verbs->flow) {
+			rte_flow_error_set(error, errno,
+					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   NULL,
+					   "hardware refuses to create flow");
+			goto error;
+		}
 	}
 	return 0;
+error:
+	err = rte_errno; /* Save rte_errno before cleanup. */
+	LIST_FOREACH(verbs, &flow->verbs, next) {
+		if (verbs->hrxq) {
+			if (flow->fate & MLX5_FLOW_FATE_DROP)
+				mlx5_hrxq_drop_release(dev);
+			else
+				mlx5_hrxq_release(dev, verbs->hrxq);
+			verbs->hrxq = NULL;
+		}
+	}
+	rte_errno = err; /* Restore rte_errno. */
+	return -rte_errno;
 }
 
 /**
@@ -1550,42 +1945,43 @@ mlx5_flow_list_create(struct rte_eth_dev *dev,
 		      const struct rte_flow_action actions[],
 		      struct rte_flow_error *error)
 {
-	struct rte_flow *flow;
-	size_t size;
+	struct rte_flow *flow = NULL;
+	size_t size = 0;
 	int ret;
 
-	ret = mlx5_flow_merge(dev, NULL, 0, attr, items, actions, error);
+	ret = mlx5_flow_merge(dev, flow, size, attr, items, actions, error);
 	if (ret < 0)
 		return NULL;
 	size = ret;
-	flow = rte_zmalloc(__func__, size, 0);
+	flow = rte_calloc(__func__, 1, size, 0);
 	if (!flow) {
 		rte_flow_error_set(error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				   NULL,
-				   "cannot allocate memory");
+				   "not enough memory to create flow");
 		return NULL;
 	}
-	flow->verbs.attr = (struct ibv_flow_attr *)(flow + 1);
-	flow->verbs.specs = (uint8_t *)(flow->verbs.attr + 1);
 	ret = mlx5_flow_merge(dev, flow, size, attr, items, actions, error);
-	if (ret < 0)
-		goto error;
+	if (ret < 0) {
+		rte_free(flow);
+		return NULL;
+	}
 	assert((size_t)ret == size);
 	if (dev->data->dev_started) {
 		ret = mlx5_flow_apply(dev, flow, error);
-		if (ret < 0)
-			goto error;
+		if (ret < 0) {
+			ret = rte_errno; /* Save rte_errno before cleanup. */
+			if (flow) {
+				mlx5_flow_remove(dev, flow);
+				rte_free(flow);
+			}
+			rte_errno = ret; /* Restore rte_errno. */
+			return NULL;
+		}
 	}
 	mlx5_flow_rxq_mark_set(dev, flow);
 	TAILQ_INSERT_TAIL(list, flow, next);
 	return flow;
-error:
-	ret = rte_errno; /* Save rte_errno before cleanup. */
-	mlx5_flow_remove(dev, flow);
-	rte_free(flow);
-	rte_errno = ret; /* Restore rte_errno. */
-	return NULL;
 }
 
 /**
@@ -1745,7 +2141,7 @@ mlx5_ctrl_flow_vlan(struct rte_eth_dev *dev,
 	struct priv *priv = dev->data->dev_private;
 	const struct rte_flow_attr attr = {
 		.ingress = 1,
-		.priority = priv->config.flow_prio - 1,
+		.priority = MLX5_FLOW_PRIO_RSVD,
 	};
 	struct rte_flow_item items[] = {
 		{
