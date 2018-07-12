@@ -594,6 +594,118 @@ mlx5_flow_item_ipv4(const struct rte_flow_item *item, struct rte_flow *flow,
 }
 
 /**
+ * Convert the @p item into a Verbs specification after ensuring the NIC
+ * will understand and process it correctly.
+ * If the necessary size for the conversion is greater than the @p flow_size,
+ * nothing is written in @p flow, the validation is still performed.
+ *
+ * @param[in] item
+ *   Item specification.
+ * @param[in, out] flow
+ *   Pointer to flow structure.
+ * @param[in] flow_size
+ *   Size in bytes of the available space in @p flow, if too small, nothing is
+ *   written.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   On success the number of bytes consumed/necessary, if the returned value
+ *   is lesser or equal to @p flow_size, the @p item has fully been converted,
+ *   otherwise another call with this returned memory size should be done.
+ *   On error, a negative errno value is returned and rte_errno is set.
+ */
+static int
+mlx5_flow_item_ipv6(const struct rte_flow_item *item, struct rte_flow *flow,
+		    const size_t flow_size, struct rte_flow_error *error)
+{
+	const struct rte_flow_item_ipv6 *spec = item->spec;
+	const struct rte_flow_item_ipv6 *mask = item->mask;
+	const struct rte_flow_item_ipv6 nic_mask = {
+		.hdr = {
+			.src_addr =
+				"\xff\xff\xff\xff\xff\xff\xff\xff"
+				"\xff\xff\xff\xff\xff\xff\xff\xff",
+			.dst_addr =
+				"\xff\xff\xff\xff\xff\xff\xff\xff"
+				"\xff\xff\xff\xff\xff\xff\xff\xff",
+			.vtc_flow = RTE_BE32(0xffffffff),
+			.proto = 0xff,
+			.hop_limits = 0xff,
+		},
+	};
+	unsigned int size = sizeof(struct ibv_flow_spec_ipv6);
+	struct ibv_flow_spec_ipv6 ipv6 = {
+		.type = IBV_FLOW_SPEC_IPV6,
+		.size = size,
+	};
+	int ret;
+
+	if (flow->layers & MLX5_FLOW_LAYER_OUTER_L3)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "multiple L3 layers not supported");
+	else if (flow->layers & MLX5_FLOW_LAYER_OUTER_L4)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "L3 cannot follow an L4 layer.");
+	if (!mask)
+		mask = &rte_flow_item_ipv6_mask;
+	ret = mlx5_flow_item_acceptable
+		(item, (const uint8_t *)mask,
+		 (const uint8_t *)&nic_mask,
+		 sizeof(struct rte_flow_item_ipv6), error);
+	if (ret < 0)
+		return ret;
+	flow->layers |= MLX5_FLOW_LAYER_OUTER_L3_IPV6;
+	if (size > flow_size)
+		return size;
+	if (spec) {
+		unsigned int i;
+		uint32_t vtc_flow_val;
+		uint32_t vtc_flow_mask;
+
+		memcpy(&ipv6.val.src_ip, spec->hdr.src_addr,
+		       RTE_DIM(ipv6.val.src_ip));
+		memcpy(&ipv6.val.dst_ip, spec->hdr.dst_addr,
+		       RTE_DIM(ipv6.val.dst_ip));
+		memcpy(&ipv6.mask.src_ip, mask->hdr.src_addr,
+		       RTE_DIM(ipv6.mask.src_ip));
+		memcpy(&ipv6.mask.dst_ip, mask->hdr.dst_addr,
+		       RTE_DIM(ipv6.mask.dst_ip));
+		vtc_flow_val = rte_be_to_cpu_32(spec->hdr.vtc_flow);
+		vtc_flow_mask = rte_be_to_cpu_32(mask->hdr.vtc_flow);
+		ipv6.val.flow_label =
+			rte_cpu_to_be_32((vtc_flow_val & IPV6_HDR_FL_MASK) >>
+					 IPV6_HDR_FL_SHIFT);
+		ipv6.val.traffic_class = (vtc_flow_val & IPV6_HDR_TC_MASK) >>
+					 IPV6_HDR_TC_SHIFT;
+		ipv6.val.next_hdr = spec->hdr.proto;
+		ipv6.val.hop_limit = spec->hdr.hop_limits;
+		ipv6.mask.flow_label =
+			rte_cpu_to_be_32((vtc_flow_mask & IPV6_HDR_FL_MASK) >>
+					 IPV6_HDR_FL_SHIFT);
+		ipv6.mask.traffic_class = (vtc_flow_mask & IPV6_HDR_TC_MASK) >>
+					  IPV6_HDR_TC_SHIFT;
+		ipv6.mask.next_hdr = mask->hdr.proto;
+		ipv6.mask.hop_limit = mask->hdr.hop_limits;
+		/* Remove unwanted bits from values. */
+		for (i = 0; i < RTE_DIM(ipv6.val.src_ip); ++i) {
+			ipv6.val.src_ip[i] &= ipv6.mask.src_ip[i];
+			ipv6.val.dst_ip[i] &= ipv6.mask.dst_ip[i];
+		}
+		ipv6.val.flow_label &= ipv6.mask.flow_label;
+		ipv6.val.traffic_class &= ipv6.mask.traffic_class;
+		ipv6.val.next_hdr &= ipv6.mask.next_hdr;
+		ipv6.val.hop_limit &= ipv6.mask.hop_limit;
+	}
+	mlx5_flow_spec_verbs_add(flow, &ipv6, size);
+	return size;
+}
+
+/**
  * Convert the @p pattern into a Verbs specifications after ensuring the NIC
  * will understand and process it correctly.
  * The conversion is performed item per item, each of them is written into
@@ -640,6 +752,9 @@ mlx5_flow_items(const struct rte_flow_item pattern[],
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			ret = mlx5_flow_item_ipv4(pattern, flow, remain, error);
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6:
+			ret = mlx5_flow_item_ipv6(pattern, flow, remain, error);
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
