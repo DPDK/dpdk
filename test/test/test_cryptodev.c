@@ -9938,9 +9938,9 @@ test_cryptodev_qat(void /*argv __rte_unused, int argc __rte_unused*/)
 			RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD));
 
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "QAT PMD must be loaded. Check if "
-				"CONFIG_RTE_LIBRTE_PMD_QAT is enabled "
-				"in config file to run this testsuite.\n");
+		RTE_LOG(ERR, USER1, "QAT PMD must be loaded. Check that both "
+		"CONFIG_RTE_LIBRTE_PMD_QAT and CONFIG_RTE_LIBRTE_PMD_QAT_SYM "
+		"are enabled in config file to run this testsuite.\n");
 		return TEST_SKIPPED;
 	}
 

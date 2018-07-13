@@ -861,6 +861,11 @@ Compression Drivers
 M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 
+Intel QuickAssist
+M: Fiona Trahe <fiona.trahe@intel.com>
+F: drivers/compress/qat/
+F: drivers/common/qat/
+
 ISA-L
 M: Lee Daly <lee.daly@intel.com>
 F: drivers/compress/isal/

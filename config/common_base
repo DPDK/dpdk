@@ -493,7 +493,8 @@ CONFIG_RTE_LIBRTE_DPAA_MAX_CRYPTODEV=4
 #
 # Compile PMD for QuickAssist based devices
 #
-CONFIG_RTE_LIBRTE_PMD_QAT=n
+CONFIG_RTE_LIBRTE_PMD_QAT=y
+CONFIG_RTE_LIBRTE_PMD_QAT_SYM=n
 #
 # Max. number of QuickAssist devices, which can be detected and attached
 #

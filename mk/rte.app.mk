@@ -199,7 +199,9 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_GCM)   += -lIPSec_MB
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_CCP)         += -lrte_pmd_ccp -lcrypto
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_OPENSSL)     += -lrte_pmd_openssl -lcrypto
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO) += -lrte_pmd_null_crypto
-_LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_QAT)         += -lrte_pmd_qat -lcrypto
+ifeq ($(CONFIG_RTE_LIBRTE_PMD_QAT),y)
+_LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_QAT_SYM)     += -lrte_pmd_qat -lcrypto
+endif # CONFIG_RTE_LIBRTE_PMD_QAT
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_SNOW3G)      += -lrte_pmd_snow3g
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_SNOW3G)      += -L$(LIBSSO_SNOW3G_PATH)/build -lsso_snow3g
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_KASUMI)      += -lrte_pmd_kasumi
@@ -222,6 +224,10 @@ endif # CONFIG_RTE_LIBRTE_CRYPTODEV
 ifeq ($(CONFIG_RTE_LIBRTE_COMPRESSDEV),y)
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_ISAL) += -lrte_pmd_isal_comp
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_ISAL) += -lisal
+# Link QAT driver if it has not been linked yet
+ifeq ($(CONFIG_RTE_LIBRTE_PMD_QAT_SYM),n)
+_LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_QAT)  += -lrte_pmd_qat
+endif # CONFIG_RTE_LIBRTE_PMD_QAT_SYM
 endif # CONFIG_RTE_LIBRTE_COMPRESSDEV
 
 ifeq ($(CONFIG_RTE_LIBRTE_EVENTDEV),y)
