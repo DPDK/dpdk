@@ -103,4 +103,9 @@ qat_qp_setup(struct qat_pci_device *qat_dev,
 int
 qat_qps_per_service(const struct qat_qp_hw_data *qp_hw_data,
 			enum qat_service_type service);
+
+/* Needed for weak function*/
+int
+qat_comp_process_response(void **op __rte_unused, uint8_t *resp __rte_unused);
+
 #endif /* _QAT_QP_H_ */

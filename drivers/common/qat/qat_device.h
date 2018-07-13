@@ -25,6 +25,8 @@
  *  - runtime data
  */
 struct qat_sym_dev_private;
+struct qat_comp_dev_private;
+
 struct qat_pci_device {
 
 	/* Data used by all services */
@@ -55,6 +57,8 @@ struct qat_pci_device {
 	 */
 
 	/* Data relating to compression service */
+	struct qat_comp_dev_private *comp_dev;
+	/**< link back to compressdev private data */
 
 	/* Data relating to asymmetric crypto service */
 

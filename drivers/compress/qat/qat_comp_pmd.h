@@ -27,16 +27,13 @@ struct qat_comp_dev_private {
 	/**< The device's memory for intermediate buffers */
 	struct rte_mempool *xformpool;
 	/**< The device's pool for qat_comp_xforms */
-
 };
 
-uint16_t
-qat_comp_pmd_enqueue_op_burst(void *qp, struct rte_comp_op **ops,
-		uint16_t nb_ops);
+int
+qat_comp_dev_create(struct qat_pci_device *qat_pci_dev);
 
-uint16_t
-qat_comp_pmd_dequeue_op_burst(void *qp, struct rte_comp_op **ops,
-		uint16_t nb_ops);
+int
+qat_comp_dev_destroy(struct qat_pci_device *qat_pci_dev);
 
 #endif
 #endif /* _QAT_COMP_PMD_H_ */

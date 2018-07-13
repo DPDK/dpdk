@@ -15,6 +15,7 @@
 #include "qat_device.h"
 #include "qat_qp.h"
 #include "qat_sym.h"
+#include "qat_comp.h"
 #include "adf_transport_access_macros.h"
 
 
@@ -606,8 +607,8 @@ qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 
 		if (tmp_qp->service_type == QAT_SERVICE_SYMMETRIC)
 			qat_sym_process_response(ops, resp_msg);
-		/* add qat_asym_process_response here */
-		/* add qat_comp_process_response here */
+		else if (tmp_qp->service_type == QAT_SERVICE_COMPRESSION)
+			qat_comp_process_response(ops, resp_msg);
 
 		head = adf_modulo(head + rx_queue->msg_size,
 				  rx_queue->modulo_mask);
@@ -632,4 +633,10 @@ qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 		txq_write_tail(tmp_qp, tx_queue);
 	}
 	return resp_counter;
+}
+
+__attribute__((weak)) int
+qat_comp_process_response(void **op __rte_unused, uint8_t *resp __rte_unused)
+{
+	return  0;
 }
