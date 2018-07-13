@@ -28,5 +28,12 @@ struct qat_comp_dev_private {
 
 };
 
+void
+qat_comp_stats_reset(struct rte_compressdev *dev);
+
+void
+qat_comp_stats_get(struct rte_compressdev *dev,
+		struct rte_compressdev_stats *stats);
+
 #endif
 #endif /* _QAT_COMP_PMD_H_ */
