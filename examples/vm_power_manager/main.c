@@ -29,6 +29,7 @@
 #include "channel_monitor.h"
 #include "power_manager.h"
 #include "vm_power_cli.h"
+#include "parse.h"
 #include <rte_pmd_ixgbe.h>
 #include <rte_pmd_i40e.h>
 #include <rte_pmd_bnxt.h>
@@ -133,18 +134,22 @@ parse_portmask(const char *portmask)
 static int
 parse_args(int argc, char **argv)
 {
-	int opt, ret;
+	int opt, ret, cnt, i;
 	char **argvopt;
+	uint16_t *oob_enable;
 	int option_index;
 	char *prgname = argv[0];
+	struct core_info *ci;
 	static struct option lgopts[] = {
 		{ "mac-updating", no_argument, 0, 1},
 		{ "no-mac-updating", no_argument, 0, 0},
+		{ "core-list", optional_argument, 0, 'l'},
 		{NULL, 0, 0, 0}
 	};
 	argvopt = argv;
+	ci = get_core_info();
 
-	while ((opt = getopt_long(argc, argvopt, "p:q:T:",
+	while ((opt = getopt_long(argc, argvopt, "l:p:q:T:",
 				  lgopts, &option_index)) != EOF) {
 
 		switch (opt) {
@@ -155,6 +160,27 @@ parse_args(int argc, char **argv)
 				printf("invalid portmask\n");
 				return -1;
 			}
+			break;
+		case 'l':
+			oob_enable = malloc(ci->core_count * sizeof(uint16_t));
+			if (oob_enable == NULL) {
+				printf("Error - Unable to allocate memory\n");
+				return -1;
+			}
+			cnt = parse_set(optarg, oob_enable, ci->core_count);
+			if (cnt < 0) {
+				printf("Invalid core-list - [%s]\n",
+						optarg);
+				break;
+			}
+			for (i = 0; i < ci->core_count; i++) {
+				if (oob_enable[i]) {
+					printf("***Using core %d\n", i);
+					ci->cd[i].oob_enabled = 1;
+					ci->cd[i].global_enabled_cpus = 1;
+				}
+			}
+			free(oob_enable);
 			break;
 		/* long options */
 		case 0:
@@ -260,6 +286,10 @@ main(int argc, char **argv)
 	struct rte_mempool *mbuf_pool;
 	uint16_t portid;
 
+
+	ret = core_info_init();
+	if (ret < 0)
+		rte_panic("Cannot allocate core info\n");
 
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0)

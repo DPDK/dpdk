@@ -8,6 +8,26 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+struct core_details {
+	uint64_t last_branches;
+	uint64_t last_branch_misses;
+	uint16_t global_enabled_cpus;
+	uint16_t oob_enabled;
+	int msr_fd;
+};
+
+struct core_info {
+	uint16_t core_count;
+	struct core_details *cd;
+};
+
+struct core_info *
+get_core_info(void);
+
+int
+core_info_init(void);
+
+#define RTE_LOGTYPE_POWER_MANAGER RTE_LOGTYPE_USER1
 
 /* Maximum number of CPUS to manage */
 #define POWER_MGR_MAX_CPUS 64

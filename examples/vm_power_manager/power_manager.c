@@ -12,6 +12,7 @@
 #include <dirent.h>
 #include <errno.h>
 
+#include <sys/sysinfo.h>
 #include <sys/types.h>
 
 #include <rte_log.h>
@@ -54,6 +55,7 @@ struct freq_info {
 
 static struct freq_info global_core_freq_info[POWER_MGR_MAX_CPUS];
 
+struct core_info ci;
 static uint64_t global_enabled_cpus;
 
 #define SYSFS_CPU_PATH "/sys/devices/system/cpu/cpu%u/topology/core_id"
@@ -74,6 +76,35 @@ set_host_cpus_mask(void)
 			return num_cpus;
 	}
 	return num_cpus;
+}
+
+struct core_info *
+get_core_info(void)
+{
+	return &ci;
+}
+
+int
+core_info_init(void)
+{
+	struct core_info *ci;
+	int i;
+
+	ci = get_core_info();
+
+	ci->core_count = get_nprocs_conf();
+	ci->cd = malloc(ci->core_count * sizeof(struct core_details));
+	if (!ci->cd) {
+		RTE_LOG(ERR, POWER_MANAGER, "Failed to allocate memory for core info.");
+		return -1;
+	}
+	for (i = 0; i < ci->core_count; i++) {
+		ci->cd[i].global_enabled_cpus = 1;
+		ci->cd[i].oob_enabled = 0;
+		ci->cd[i].msr_fd = 0;
+	}
+	printf("%d cores in system\n", ci->core_count);
+	return 0;
 }
 
 int
