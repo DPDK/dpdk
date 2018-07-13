@@ -22,7 +22,6 @@ void branch_monitor_exit(void)
 /* Number of microseconds between each poll */
 #define INTERVAL 100
 #define PRINT_LOOP_COUNT (1000000/INTERVAL)
-#define RATIO_THRESHOLD 0.03
 #define IA32_PERFEVTSEL0 0x186
 #define IA32_PERFEVTSEL1 0x187
 #define IA32_PERFCTR0 0xc1
@@ -89,7 +88,7 @@ apply_policy(int core)
 
 	ratio = (float)miss_diff * (float)100 / (float)hits_diff;
 
-	if (ratio < RATIO_THRESHOLD)
+	if (ratio < ci->branch_ratio_threshold)
 		power_manager_scale_core_min(core);
 	else
 		power_manager_scale_core_max(core);

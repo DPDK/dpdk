@@ -141,17 +141,19 @@ parse_args(int argc, char **argv)
 	int option_index;
 	char *prgname = argv[0];
 	struct core_info *ci;
+	float branch_ratio;
 	static struct option lgopts[] = {
 		{ "mac-updating", no_argument, 0, 1},
 		{ "no-mac-updating", no_argument, 0, 0},
 		{ "core-list", optional_argument, 0, 'l'},
 		{ "port-list", optional_argument, 0, 'p'},
+		{ "branch-ratio", optional_argument, 0, 'b'},
 		{NULL, 0, 0, 0}
 	};
 	argvopt = argv;
 	ci = get_core_info();
 
-	while ((opt = getopt_long(argc, argvopt, "l:p:q:T:",
+	while ((opt = getopt_long(argc, argvopt, "l:p:q:T:b:",
 				  lgopts, &option_index)) != EOF) {
 
 		switch (opt) {
@@ -183,6 +185,18 @@ parse_args(int argc, char **argv)
 				}
 			}
 			free(oob_enable);
+			break;
+		case 'b':
+			branch_ratio = 0.0;
+			if (strlen(optarg))
+				branch_ratio = atof(optarg);
+			if (branch_ratio <= 0.0) {
+				printf("invalid branch ratio specified\n");
+				return -1;
+			}
+			ci->branch_ratio_threshold = branch_ratio;
+			printf("***Setting branch ratio to %f\n",
+					branch_ratio);
 			break;
 		/* long options */
 		case 0:

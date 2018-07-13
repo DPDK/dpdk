@@ -74,6 +74,7 @@ core_info_init(void)
 	ci = get_core_info();
 
 	ci->core_count = get_nprocs_conf();
+	ci->branch_ratio_threshold = BRANCH_RATIO_THRESHOLD;
 	ci->cd = malloc(ci->core_count * sizeof(struct core_details));
 	if (!ci->cd) {
 		RTE_LOG(ERR, POWER_MANAGER, "Failed to allocate memory for core info.");

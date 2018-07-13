@@ -19,7 +19,10 @@ struct core_details {
 struct core_info {
 	uint16_t core_count;
 	struct core_details *cd;
+	float branch_ratio_threshold;
 };
+
+#define BRANCH_RATIO_THRESHOLD 0.1
 
 struct core_info *
 get_core_info(void);
