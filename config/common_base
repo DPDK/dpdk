@@ -491,7 +491,7 @@ CONFIG_RTE_LIBRTE_PMD_DPAA_SEC=n
 CONFIG_RTE_LIBRTE_DPAA_MAX_CRYPTODEV=4
 
 #
-# Compile PMD for QuickAssist based devices
+# Compile PMD for QuickAssist based devices - see docs for details
 #
 CONFIG_RTE_LIBRTE_PMD_QAT=y
 CONFIG_RTE_LIBRTE_PMD_QAT_SYM=n

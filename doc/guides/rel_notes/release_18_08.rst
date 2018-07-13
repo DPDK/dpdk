@@ -74,6 +74,12 @@ New Features
   * Add handlers to add/delete VxLAN port number.
   * Add devarg to specify ingress VLAN rewrite mode.
 
+* **Added a new compression PMD using Intel's QuickAssist (QAT) device family.**
+
+  Added the new ``QAT`` compression driver, for compression and decompression
+  operations in software. See the :doc:`../compressdevs/qat_comp` compression
+  driver guide for details on this new driver.
+
 
 API Changes
 -----------

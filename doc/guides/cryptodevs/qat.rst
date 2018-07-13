@@ -68,11 +68,31 @@ Limitations
 * Queue pairs are not thread-safe (that is, within a single queue pair, RX and TX from different lcores is not supported).
 
 
-Installation
-------------
+Extra notes on KASUMI F9
+------------------------
 
-To enable QAT in DPDK, follow the instructions for modifying the compile-time
+When using KASUMI F9 authentication algorithm, the input buffer must be
+constructed according to the 3GPP KASUMI specifications (section 4.4, page 13):
+`<http://cryptome.org/3gpp/35201-900.pdf>`_.
+Input buffer has to have COUNT (4 bytes), FRESH (4 bytes), MESSAGE and DIRECTION (1 bit)
+concatenated. After the DIRECTION bit, a single '1' bit is appended, followed by
+between 0 and 7 '0' bits, so that the total length of the buffer is multiple of 8 bits.
+Note that the actual message can be any length, specified in bits.
+
+Once this buffer is passed this way, when creating the crypto operation,
+length of data to authenticate (op.sym.auth.data.length) must be the length
+of all the items described above, including the padding at the end.
+Also, offset of data to authenticate (op.sym.auth.data.offset)
+must be such that points at the start of the COUNT bytes.
+
+
+Building the DPDK QAT cryptodev PMD
+-----------------------------------
+
+
+To enable QAT crypto in DPDK, follow the instructions for modifying the compile-time
 configuration file as described `here <http://dpdk.org/doc/guides/linux_gsg/build_dpdk.html>`_.
+
 
 Quick instructions are as follows:
 
@@ -81,29 +101,95 @@ Quick instructions are as follows:
 	cd to the top-level DPDK directory
 	make config T=x86_64-native-linuxapp-gcc
 	sed -i 's,\(CONFIG_RTE_LIBRTE_PMD_QAT\)=n,\1=y,' build/.config
+	sed -i 's,\(CONFIG_RTE_LIBRTE_PMD_QAT_SYM\)=n,\1=y,' build/.config
 	make
 
-To use the DPDK QAT PMD an SRIOV-enabled QAT kernel driver is required. The VF
-devices exposed by this driver will be used by the QAT PMD. The devices and
-available kernel drivers and device ids are :
+
+.. _qat_kernel_installation:
+
+Dependency on the QAT kernel driver
+-----------------------------------
+
+To use the QAT PMD an SRIOV-enabled QAT kernel driver is required. The VF
+devices created and initialised by this driver will be used by the QAT PMD.
+
+Instructions for installation are below, but first an explanation of the
+relationships between the PF/VF devices and the PMDs visible to
+DPDK applications.
+
+
+Acceleration services - cryptography and compression - are provided to DPDK
+applications via PMDs which register to implement the corresponding
+cryptodev and compressdev APIs.
+
+Each QuickAssist VF device can expose one cryptodev PMD and/or one compressdev PMD.
+These QAT PMDs share the same underlying device and pci-mgmt code, but are
+enumerated independently on their respective APIs and appear as independent
+devices to applications.
+
+.. Note::
+
+   Each VF can only be used by one DPDK process. It is not possible to share
+   the same VF across multiple processes, even if these processes are using
+   different acceleration services.
+
+   Conversely one DPDK process can use one or more QAT VFs and can expose both
+   cryptodev and compressdev instances on each of those VFs.
+
+
+
+Device and driver naming
+------------------------
+
+* The qat cryptodev driver name is "crypto_qat".
+  The rte_cryptodev_devices_get() returns the devices exposed by this driver.
+
+* Each qat crypto device has a unique name, in format
+  <pci bdf>_<service>, e.g. "0000:41:01.0_qat_sym".
+  This name can be passed to rte_cryptodev_get_dev_id() to get the device_id.
+
+.. Note::
+
+	The qat crypto driver name is passed to the dpdk-test-crypto-perf tool in the -devtype parameter.
+
+	The qat crypto device name is in the format of the slave parameter passed to the crypto scheduler.
+
+* The qat compressdev driver name is "comp_qat".
+  The rte_compressdev_devices_get() returns the devices exposed by this driver.
+
+* Each qat compression device has a unique name, in format
+  <pci bdf>_<service>, e.g. "0000:41:01.0_qat_comp".
+  This name can be passed to rte_compressdev_get_dev_id() to get the device_id.
+
+
+Available kernel drivers
+------------------------
+
+Kernel drivers for each device are listed in the following table. Scroll right
+to check that the driver and device supports the servic you require.
+
 
 .. _table_qat_pmds_drivers:
 
 .. table:: QAT device generations, devices and drivers
 
-   +-----+----------+--------+---------------+------------+--------+------+--------+--------+
-   | Gen | Device   | Driver | Kernel Module | Pci Driver | PF Did | #PFs | Vf Did | VFs/PF |
-   +=====+==========+========+===============+============+========+======+========+========+
-   | 1   | DH895xCC | 01.org | icp_qa_al     | n/a        | 435    | 1    | 443    | 32     |
-   +-----+----------+--------+---------------+------------+--------+------+--------+--------+
-   | 1   | DH895xCC | 4.4+   | qat_dh895xcc  | dh895xcc   | 435    | 1    | 443    | 32     |
-   +-----+----------+--------+---------------+------------+--------+------+--------+--------+
-   | 2   | C62x     | 4.5+   | qat_c62x      | c6xx       | 37c8   | 3    | 37c9   | 16     |
-   +-----+----------+--------+---------------+------------+--------+------+--------+--------+
-   | 2   | C3xxx    | 4.5+   | qat_c3xxx     | c3xxx      | 19e2   | 1    | 19e3   | 16     |
-   +-----+----------+--------+---------------+------------+--------+------+--------+--------+
-   | 2   | D15xx    | p      | qat_d15xx     | d15xx      | 6f54   | 1    | 6f55   | 16     |
-   +-----+----------+--------+---------------+------------+--------+------+--------+--------+
+   +-----+----------+---------------+---------------+------------+--------+------+--------+--------+-----------+-------------+
+   | Gen | Device   | Driver/ver    | Kernel Module | Pci Driver | PF Did | #PFs | VF Did | VFs/PF | cryptodev | compressdev |
+   +=====+==========+===============+===============+============+========+======+========+========+===========+=============+
+   | 1   | DH895xCC | linux/4.4+    | qat_dh895xcc  | dh895xcc   | 435    | 1    | 443    | 32     | Yes       | No          |
+   +-----+----------+---------------+---------------+------------+--------+------+--------+--------+-----------+-------------+
+   | "   | "        | 01.org/4.2.0+ | "             | "          | "      | "    | "      | "      | Yes       | No          |
+   +-----+----------+---------------+---------------+------------+--------+------+--------+--------+-----------+-------------+
+   | 2   | C62x     | linux/4.5+    | qat_c62x      | c6xx       | 37c8   | 3    | 37c9   | 16     | Yes       | No          |
+   +-----+----------+---------------+---------------+------------+--------+------+--------+--------+-----------+-------------+
+   | "   | "        | 01.org/4.2.0+ | "             | "          | "      | "    | "      | "      | Yes       | Yes         |
+   +-----+----------+---------------+---------------+------------+--------+------+--------+--------+-----------+-------------+
+   | 2   | C3xxx    | linux/4.5+    | qat_c3xxx     | c3xxx      | 19e2   | 1    | 19e3   | 16     | Yes       | No          |
+   +-----+----------+---------------+---------------+------------+--------+------+--------+--------+-----------+-------------+
+   | "   | "        | 01.org/4.2.0+ | "             | "          | "      | "    | "      | "      | Yes       | Yes         |
+   +-----+----------+---------------+---------------+------------+--------+------+--------+--------+-----------+-------------+
+   | 2   | D15xx    | p             | qat_d15xx     | d15xx      | 6f54   | 1    | 6f55   | 16     | Yes       | No          |
+   +-----+----------+---------------+---------------+------------+--------+------+--------+--------+-----------+-------------+
 
 
 The ``Driver`` column indicates either the Linux kernel version in which
@@ -196,9 +282,9 @@ Consult the *Getting Started Guide* at the same URL for further information.
 
 The steps below assume you are:
 
-* Building on a platform with one ``DH895xCC`` device.
-* Using package ``qatmux.l.2.3.0-34.tgz``.
-* On Fedora21 kernel ``3.17.4-301.fc21.x86_64``.
+* Building on a platform with one ``C62x`` device.
+* Using package ``qat1.7.l.4.2.0-000xx.tar.gz``.
+* On Fedora26 kernel ``4.11.11-300.fc26.x86_64``.
 
 In the BIOS ensure that SRIOV is enabled and VT-d is disabled.
 
@@ -206,21 +292,30 @@ Uninstall any existing QAT driver, for example by running:
 
 * ``./installer.sh uninstall`` in the directory where originally installed.
 
-* or ``rmmod qat_dh895xcc; rmmod intel_qat``.
 
 Build and install the SRIOV-enabled QAT driver::
 
     mkdir /QAT
     cd /QAT
 
-    # Copy qatmux.l.2.3.0-34.tgz to this location
-    tar zxof qatmux.l.2.3.0-34.tgz
+    # Copy the package to this location and unpack
+    tar zxof qat1.7.l.4.2.0-000xx.tar.gz
 
-    export ICP_WITHOUT_IOMMU=1
-    ./installer.sh install QAT1.6 host
+    ./configure --enable-icp-sriov=host
+    make install
 
-You can use ``cat /proc/icp_dh895xcc_dev0/version`` to confirm the driver is correctly installed.
-You can use ``lspci -d:443`` to confirm the  of the 32 VF devices available per ``DH895xCC`` device.
+You can use ``cat /sys/kernel/debug/qat<your device type and bdf>/version/fw`` to confirm the driver is correctly installed and is using firmware version 4.2.0.
+You can use ``lspci -d:37c9`` to confirm the presence of the 16 VF devices available per ``C62x`` PF.
+
+Confirm the driver is correctly installed and is using firmware version 4.2.0::
+
+    cat /sys/kernel/debug/qat<your device type and bdf>/version/fw
+
+
+Confirm the presence of 48 VF devices - 16 per PF::
+
+    lspci -d:37c9
+
 
 To complete the installation - follow instructions in `Binding the available VFs to the DPDK UIO driver`_.
 
@@ -261,6 +356,7 @@ To complete the installation - follow instructions in `Binding the available VFs
 
       sudo yum install zlib-devel
       sudo yum install openssl-devel
+      sudo yum install libudev-devel
 
 .. Note::
 
@@ -342,35 +438,6 @@ Another way to bind the VFs to the DPDK UIO driver is by using the
     cd to the top-level DPDK directory
     ./usertools/dpdk-devbind.py -b igb_uio 0000:03:01.1
 
-
-Extra notes on KASUMI F9
-------------------------
-
-When using KASUMI F9 authentication algorithm, the input buffer must be
-constructed according to the 3GPP KASUMI specifications (section 4.4, page 13):
-`<http://cryptome.org/3gpp/35201-900.pdf>`_.
-Input buffer has to have COUNT (4 bytes), FRESH (4 bytes), MESSAGE and DIRECTION (1 bit)
-concatenated. After the DIRECTION bit, a single '1' bit is appended, followed by
-between 0 and 7 '0' bits, so that the total length of the buffer is multiple of 8 bits.
-Note that the actual message can be any length, specified in bits.
-
-Once this buffer is passed this way, when creating the crypto operation,
-length of data to authenticate (op.sym.auth.data.length) must be the length
-of all the items described above, including the padding at the end.
-Also, offset of data to authenticate (op.sym.auth.data.offset)
-must be such that points at the start of the COUNT bytes.
-
-Device and driver naming
-------------------------
-
-The qat crypto driver name is "crypto_qat".
-This name is passed to the dpdk-test-crypto-perf tool in the -devtype parameter.
-The rte_cryptodev_devices_get() can return the devices exposed by a driver.
-
-Each qat crypto device has a unique name, in format
-<pci bdf>_<service>, e.g. "0000:41:01.0_qat_sym".
-This name can be passed to rte_cryptodev_get_dev_id() to get the device_id.
-This is also the format of the slave parameter passed to the crypto scheduler.
 
 Debugging
 ----------------------------------------
