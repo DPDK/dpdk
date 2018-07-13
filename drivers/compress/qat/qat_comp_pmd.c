@@ -194,3 +194,22 @@ qat_comp_dev_close(struct rte_compressdev *dev)
 
 	return ret;
 }
+
+
+void
+qat_comp_dev_info_get(struct rte_compressdev *dev,
+			struct rte_compressdev_info *info)
+{
+	struct qat_comp_dev_private *comp_dev = dev->data->dev_private;
+	const struct qat_qp_hw_data *comp_hw_qps =
+		qat_gen_config[comp_dev->qat_dev->qat_dev_gen]
+			      .qp_hw_data[QAT_SERVICE_COMPRESSION];
+
+	if (info != NULL) {
+		info->max_nb_queue_pairs =
+			qat_qps_per_service(comp_hw_qps,
+					    QAT_SERVICE_COMPRESSION);
+		info->feature_flags = dev->feature_flags;
+		info->capabilities = comp_dev->qat_dev_capabilities;
+	}
+}

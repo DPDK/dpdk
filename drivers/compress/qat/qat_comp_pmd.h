@@ -21,6 +21,8 @@ struct qat_comp_dev_private {
 	/**< The qat pci device hosting the service */
 	struct rte_compressdev *compressdev;
 	/**< The pointer to this compression device structure */
+	const struct rte_compressdev_capabilities *qat_dev_capabilities;
+	/* QAT device compression capabilities */
 	const struct rte_memzone *interm_buff_mz;
 	/**< The device's memory for intermediate buffers */
 	struct rte_mempool *xformpool;
@@ -47,6 +49,10 @@ qat_comp_dev_config(struct rte_compressdev *dev,
 
 int
 qat_comp_dev_close(struct rte_compressdev *dev);
+
+void
+qat_comp_dev_info_get(struct rte_compressdev *dev,
+			struct rte_compressdev_info *info);
 
 #endif
 #endif /* _QAT_COMP_PMD_H_ */
