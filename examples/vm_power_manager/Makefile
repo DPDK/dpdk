@@ -20,6 +20,11 @@ APP = vm_power_mgr
 # all source are stored in SRCS-y
 SRCS-y := main.c vm_power_cli.c power_manager.c channel_manager.c
 SRCS-y += channel_monitor.c parse.c
+ifeq ($(CONFIG_RTE_ARCH_X86_64),y)
+SRCS-y += oob_monitor_x86.c
+else
+SRCS-y += oob_monitor_nop.c
+endif
 
 CFLAGS += -O3 -I$(RTE_SDK)/lib/librte_power/
 CFLAGS += $(WERROR_FLAGS)
