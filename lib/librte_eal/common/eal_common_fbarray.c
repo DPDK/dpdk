@@ -705,39 +705,52 @@ rte_fbarray_init(struct rte_fbarray *arr, const char *name, unsigned int len,
 	if (data == NULL)
 		goto fail;
 
-	eal_get_fbarray_path(path, sizeof(path), name);
+	if (internal_config.no_shconf) {
+		/* remap virtual area as writable */
+		void *new_data = mmap(data, mmap_len, PROT_READ | PROT_WRITE,
+				MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+		if (new_data == MAP_FAILED) {
+			RTE_LOG(DEBUG, EAL, "%s(): couldn't remap anonymous memory: %s\n",
+					__func__, strerror(errno));
+			goto fail;
+		}
+	} else {
+		eal_get_fbarray_path(path, sizeof(path), name);
 
-	/*
-	 * Each fbarray is unique to process namespace, i.e. the filename
-	 * depends on process prefix. Try to take out a lock and see if we
-	 * succeed. If we don't, someone else is using it already.
-	 */
-	fd = open(path, O_CREAT | O_RDWR, 0600);
-	if (fd < 0) {
-		RTE_LOG(DEBUG, EAL, "%s(): couldn't open %s: %s\n", __func__,
-				path, strerror(errno));
-		rte_errno = errno;
-		goto fail;
-	} else if (flock(fd, LOCK_EX | LOCK_NB)) {
-		RTE_LOG(DEBUG, EAL, "%s(): couldn't lock %s: %s\n", __func__,
-				path, strerror(errno));
-		rte_errno = EBUSY;
-		goto fail;
+		/*
+		 * Each fbarray is unique to process namespace, i.e. the
+		 * filename depends on process prefix. Try to take out a lock
+		 * and see if we succeed. If we don't, someone else is using it
+		 * already.
+		 */
+		fd = open(path, O_CREAT | O_RDWR, 0600);
+		if (fd < 0) {
+			RTE_LOG(DEBUG, EAL, "%s(): couldn't open %s: %s\n",
+					__func__, path, strerror(errno));
+			rte_errno = errno;
+			goto fail;
+		} else if (flock(fd, LOCK_EX | LOCK_NB)) {
+			RTE_LOG(DEBUG, EAL, "%s(): couldn't lock %s: %s\n",
+					__func__, path, strerror(errno));
+			rte_errno = EBUSY;
+			goto fail;
+		}
+
+		/* take out a non-exclusive lock, so that other processes could
+		 * still attach to it, but no other process could reinitialize
+		 * it.
+		 */
+		if (flock(fd, LOCK_SH | LOCK_NB)) {
+			rte_errno = errno;
+			goto fail;
+		}
+
+		if (resize_and_map(fd, data, mmap_len))
+			goto fail;
+
+		/* we've mmap'ed the file, we can now close the fd */
+		close(fd);
 	}
-
-	/* take out a non-exclusive lock, so that other processes could still
-	 * attach to it, but no other process could reinitialize it.
-	 */
-	if (flock(fd, LOCK_SH | LOCK_NB)) {
-		rte_errno = errno;
-		goto fail;
-	}
-
-	if (resize_and_map(fd, data, mmap_len))
-		goto fail;
-
-	/* we've mmap'ed the file, we can now close the fd */
-	close(fd);
 
 	/* initialize the data */
 	memset(data, 0, mmap_len);
