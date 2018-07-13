@@ -521,7 +521,18 @@ static void *
 create_shared_memory(const char *filename, const size_t mem_size)
 {
 	void *retval;
-	int fd = open(filename, O_CREAT | O_RDWR, 0666);
+	int fd;
+
+	/* if no shared files mode is used, create anonymous memory instead */
+	if (internal_config.no_shconf) {
+		retval = mmap(NULL, mem_size, PROT_READ | PROT_WRITE,
+				MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+		if (retval == MAP_FAILED)
+			return NULL;
+		return retval;
+	}
+
+	fd = open(filename, O_CREAT | O_RDWR, 0666);
 	if (fd < 0)
 		return NULL;
 	if (ftruncate(fd, mem_size) < 0) {
