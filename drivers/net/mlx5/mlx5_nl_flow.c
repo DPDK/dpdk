@@ -3,6 +3,7 @@
  * Copyright 2018 Mellanox Technologies, Ltd
  */
 
+#include <assert.h>
 #include <errno.h>
 #include <libmnl/libmnl.h>
 #include <linux/if_ether.h>
@@ -12,7 +13,9 @@
 #include <linux/rtnetlink.h>
 #include <linux/tc_act/tc_gact.h>
 #include <linux/tc_act/tc_mirred.h>
+#include <netinet/in.h>
 #include <stdalign.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -20,6 +23,7 @@
 
 #include <rte_byteorder.h>
 #include <rte_errno.h>
+#include <rte_ether.h>
 #include <rte_flow.h>
 
 #include "mlx5.h"
@@ -44,6 +48,72 @@
 #ifndef HAVE_TCA_FLOWER_FLAGS
 #define TCA_FLOWER_FLAGS 22
 #endif
+#ifndef HAVE_TCA_FLOWER_KEY_ETH_TYPE
+#define TCA_FLOWER_KEY_ETH_TYPE 8
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_ETH_DST
+#define TCA_FLOWER_KEY_ETH_DST 4
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_ETH_DST_MASK
+#define TCA_FLOWER_KEY_ETH_DST_MASK 5
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_ETH_SRC
+#define TCA_FLOWER_KEY_ETH_SRC 6
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_ETH_SRC_MASK
+#define TCA_FLOWER_KEY_ETH_SRC_MASK 7
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_IP_PROTO
+#define TCA_FLOWER_KEY_IP_PROTO 9
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_IPV4_SRC
+#define TCA_FLOWER_KEY_IPV4_SRC 10
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_IPV4_SRC_MASK
+#define TCA_FLOWER_KEY_IPV4_SRC_MASK 11
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_IPV4_DST
+#define TCA_FLOWER_KEY_IPV4_DST 12
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_IPV4_DST_MASK
+#define TCA_FLOWER_KEY_IPV4_DST_MASK 13
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_IPV6_SRC
+#define TCA_FLOWER_KEY_IPV6_SRC 14
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_IPV6_SRC_MASK
+#define TCA_FLOWER_KEY_IPV6_SRC_MASK 15
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_IPV6_DST
+#define TCA_FLOWER_KEY_IPV6_DST 16
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_IPV6_DST_MASK
+#define TCA_FLOWER_KEY_IPV6_DST_MASK 17
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_TCP_SRC
+#define TCA_FLOWER_KEY_TCP_SRC 18
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_TCP_SRC_MASK
+#define TCA_FLOWER_KEY_TCP_SRC_MASK 35
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_TCP_DST
+#define TCA_FLOWER_KEY_TCP_DST 19
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_TCP_DST_MASK
+#define TCA_FLOWER_KEY_TCP_DST_MASK 36
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_UDP_SRC
+#define TCA_FLOWER_KEY_UDP_SRC 20
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_UDP_SRC_MASK
+#define TCA_FLOWER_KEY_UDP_SRC_MASK 37
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_UDP_DST
+#define TCA_FLOWER_KEY_UDP_DST 21
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_UDP_DST_MASK
+#define TCA_FLOWER_KEY_UDP_DST_MASK 38
+#endif
 
 /** Parser state definitions for mlx5_nl_flow_trans[]. */
 enum mlx5_nl_flow_trans {
@@ -52,6 +122,11 @@ enum mlx5_nl_flow_trans {
 	ATTR,
 	PATTERN,
 	ITEM_VOID,
+	ITEM_ETH,
+	ITEM_IPV4,
+	ITEM_IPV6,
+	ITEM_TCP,
+	ITEM_UDP,
 	ACTIONS,
 	ACTION_VOID,
 	ACTION_PORT_ID,
@@ -73,14 +148,139 @@ static const enum mlx5_nl_flow_trans *const mlx5_nl_flow_trans[] = {
 	[INVALID] = NULL,
 	[BACK] = NULL,
 	[ATTR] = TRANS(PATTERN),
-	[PATTERN] = TRANS(PATTERN_COMMON),
+	[PATTERN] = TRANS(ITEM_ETH, PATTERN_COMMON),
 	[ITEM_VOID] = TRANS(BACK),
+	[ITEM_ETH] = TRANS(ITEM_IPV4, ITEM_IPV6, PATTERN_COMMON),
+	[ITEM_IPV4] = TRANS(ITEM_TCP, ITEM_UDP, PATTERN_COMMON),
+	[ITEM_IPV6] = TRANS(ITEM_TCP, ITEM_UDP, PATTERN_COMMON),
+	[ITEM_TCP] = TRANS(PATTERN_COMMON),
+	[ITEM_UDP] = TRANS(PATTERN_COMMON),
 	[ACTIONS] = TRANS(ACTIONS_FATE, ACTIONS_COMMON),
 	[ACTION_VOID] = TRANS(BACK),
 	[ACTION_PORT_ID] = TRANS(ACTION_VOID, END),
 	[ACTION_DROP] = TRANS(ACTION_VOID, END),
 	[END] = NULL,
 };
+
+/** Empty masks for known item types. */
+static const union {
+	struct rte_flow_item_eth eth;
+	struct rte_flow_item_ipv4 ipv4;
+	struct rte_flow_item_ipv6 ipv6;
+	struct rte_flow_item_tcp tcp;
+	struct rte_flow_item_udp udp;
+} mlx5_nl_flow_mask_empty;
+
+/** Supported masks for known item types. */
+static const struct {
+	struct rte_flow_item_eth eth;
+	struct rte_flow_item_ipv4 ipv4;
+	struct rte_flow_item_ipv6 ipv6;
+	struct rte_flow_item_tcp tcp;
+	struct rte_flow_item_udp udp;
+} mlx5_nl_flow_mask_supported = {
+	.eth = {
+		.type = RTE_BE16(0xffff),
+		.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+		.src.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	},
+	.ipv4.hdr = {
+		.next_proto_id = 0xff,
+		.src_addr = RTE_BE32(0xffffffff),
+		.dst_addr = RTE_BE32(0xffffffff),
+	},
+	.ipv6.hdr = {
+		.proto = 0xff,
+		.src_addr =
+			"\xff\xff\xff\xff\xff\xff\xff\xff"
+			"\xff\xff\xff\xff\xff\xff\xff\xff",
+		.dst_addr =
+			"\xff\xff\xff\xff\xff\xff\xff\xff"
+			"\xff\xff\xff\xff\xff\xff\xff\xff",
+	},
+	.tcp.hdr = {
+		.src_port = RTE_BE16(0xffff),
+		.dst_port = RTE_BE16(0xffff),
+	},
+	.udp.hdr = {
+		.src_port = RTE_BE16(0xffff),
+		.dst_port = RTE_BE16(0xffff),
+	},
+};
+
+/**
+ * Retrieve mask for pattern item.
+ *
+ * This function does basic sanity checks on a pattern item in order to
+ * return the most appropriate mask for it.
+ *
+ * @param[in] item
+ *   Item specification.
+ * @param[in] mask_default
+ *   Default mask for pattern item as specified by the flow API.
+ * @param[in] mask_supported
+ *   Mask fields supported by the implementation.
+ * @param[in] mask_empty
+ *   Empty mask to return when there is no specification.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   Either @p item->mask or one of the mask parameters on success, NULL
+ *   otherwise and rte_errno is set.
+ */
+static const void *
+mlx5_nl_flow_item_mask(const struct rte_flow_item *item,
+		       const void *mask_default,
+		       const void *mask_supported,
+		       const void *mask_empty,
+		       size_t mask_size,
+		       struct rte_flow_error *error)
+{
+	const uint8_t *mask;
+	size_t i;
+
+	/* item->last and item->mask cannot exist without item->spec. */
+	if (!item->spec && (item->mask || item->last)) {
+		rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, item,
+			 "\"mask\" or \"last\" field provided without a"
+			 " corresponding \"spec\"");
+		return NULL;
+	}
+	/* No spec, no mask, no problem. */
+	if (!item->spec)
+		return mask_empty;
+	mask = item->mask ? item->mask : mask_default;
+	assert(mask);
+	/*
+	 * Single-pass check to make sure that:
+	 * - Mask is supported, no bits are set outside mask_supported.
+	 * - Both item->spec and item->last are included in mask.
+	 */
+	for (i = 0; i != mask_size; ++i) {
+		if (!mask[i])
+			continue;
+		if ((mask[i] | ((const uint8_t *)mask_supported)[i]) !=
+		    ((const uint8_t *)mask_supported)[i]) {
+			rte_flow_error_set
+				(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM_MASK,
+				 mask, "unsupported field found in \"mask\"");
+			return NULL;
+		}
+		if (item->last &&
+		    (((const uint8_t *)item->spec)[i] & mask[i]) !=
+		    (((const uint8_t *)item->last)[i] & mask[i])) {
+			rte_flow_error_set
+				(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM_LAST,
+				 item->last,
+				 "range between \"spec\" and \"last\" not"
+				 " comprised in \"mask\"");
+			return NULL;
+		}
+	}
+	return mask;
+}
 
 /**
  * Transpose flow rule description to rtnetlink message.
@@ -128,6 +328,8 @@ mlx5_nl_flow_transpose(void *buf,
 	const struct rte_flow_action *action;
 	unsigned int n;
 	uint32_t act_index_cur;
+	bool eth_type_set;
+	bool ip_proto_set;
 	struct nlattr *na_flower;
 	struct nlattr *na_flower_act;
 	const enum mlx5_nl_flow_trans *trans;
@@ -140,12 +342,21 @@ init:
 	action = actions;
 	n = 0;
 	act_index_cur = 0;
+	eth_type_set = false;
+	ip_proto_set = false;
 	na_flower = NULL;
 	na_flower_act = NULL;
 	trans = TRANS(ATTR);
 	back = trans;
 trans:
 	switch (trans[n++]) {
+		union {
+			const struct rte_flow_item_eth *eth;
+			const struct rte_flow_item_ipv4 *ipv4;
+			const struct rte_flow_item_ipv6 *ipv6;
+			const struct rte_flow_item_tcp *tcp;
+			const struct rte_flow_item_udp *udp;
+		} spec, mask;
 		union {
 			const struct rte_flow_action_port_id *port_id;
 		} conf;
@@ -233,6 +444,256 @@ trans:
 	case ITEM_VOID:
 		if (item->type != RTE_FLOW_ITEM_TYPE_VOID)
 			goto trans;
+		++item;
+		break;
+	case ITEM_ETH:
+		if (item->type != RTE_FLOW_ITEM_TYPE_ETH)
+			goto trans;
+		mask.eth = mlx5_nl_flow_item_mask
+			(item, &rte_flow_item_eth_mask,
+			 &mlx5_nl_flow_mask_supported.eth,
+			 &mlx5_nl_flow_mask_empty.eth,
+			 sizeof(mlx5_nl_flow_mask_supported.eth), error);
+		if (!mask.eth)
+			return -rte_errno;
+		if (mask.eth == &mlx5_nl_flow_mask_empty.eth) {
+			++item;
+			break;
+		}
+		spec.eth = item->spec;
+		if (mask.eth->type && mask.eth->type != RTE_BE16(0xffff))
+			return rte_flow_error_set
+				(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM_MASK,
+				 mask.eth,
+				 "no support for partial mask on"
+				 " \"type\" field");
+		if (mask.eth->type) {
+			if (!mnl_attr_put_u16_check(buf, size,
+						    TCA_FLOWER_KEY_ETH_TYPE,
+						    spec.eth->type))
+				goto error_nobufs;
+			eth_type_set = 1;
+		}
+		if ((!is_zero_ether_addr(&mask.eth->dst) &&
+		     (!mnl_attr_put_check(buf, size,
+					  TCA_FLOWER_KEY_ETH_DST,
+					  ETHER_ADDR_LEN,
+					  spec.eth->dst.addr_bytes) ||
+		      !mnl_attr_put_check(buf, size,
+					  TCA_FLOWER_KEY_ETH_DST_MASK,
+					  ETHER_ADDR_LEN,
+					  mask.eth->dst.addr_bytes))) ||
+		    (!is_zero_ether_addr(&mask.eth->src) &&
+		     (!mnl_attr_put_check(buf, size,
+					  TCA_FLOWER_KEY_ETH_SRC,
+					  ETHER_ADDR_LEN,
+					  spec.eth->src.addr_bytes) ||
+		      !mnl_attr_put_check(buf, size,
+					  TCA_FLOWER_KEY_ETH_SRC_MASK,
+					  ETHER_ADDR_LEN,
+					  mask.eth->src.addr_bytes))))
+			goto error_nobufs;
+		++item;
+		break;
+	case ITEM_IPV4:
+		if (item->type != RTE_FLOW_ITEM_TYPE_IPV4)
+			goto trans;
+		mask.ipv4 = mlx5_nl_flow_item_mask
+			(item, &rte_flow_item_ipv4_mask,
+			 &mlx5_nl_flow_mask_supported.ipv4,
+			 &mlx5_nl_flow_mask_empty.ipv4,
+			 sizeof(mlx5_nl_flow_mask_supported.ipv4), error);
+		if (!mask.ipv4)
+			return -rte_errno;
+		if (!eth_type_set &&
+		    !mnl_attr_put_u16_check(buf, size,
+					    TCA_FLOWER_KEY_ETH_TYPE,
+					    RTE_BE16(ETH_P_IP)))
+			goto error_nobufs;
+		eth_type_set = 1;
+		if (mask.ipv4 == &mlx5_nl_flow_mask_empty.ipv4) {
+			++item;
+			break;
+		}
+		spec.ipv4 = item->spec;
+		if (mask.ipv4->hdr.next_proto_id &&
+		    mask.ipv4->hdr.next_proto_id != 0xff)
+			return rte_flow_error_set
+				(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM_MASK,
+				 mask.ipv4,
+				 "no support for partial mask on"
+				 " \"hdr.next_proto_id\" field");
+		if (mask.ipv4->hdr.next_proto_id) {
+			if (!mnl_attr_put_u8_check
+			    (buf, size, TCA_FLOWER_KEY_IP_PROTO,
+			     spec.ipv4->hdr.next_proto_id))
+				goto error_nobufs;
+			ip_proto_set = 1;
+		}
+		if ((mask.ipv4->hdr.src_addr &&
+		     (!mnl_attr_put_u32_check(buf, size,
+					      TCA_FLOWER_KEY_IPV4_SRC,
+					      spec.ipv4->hdr.src_addr) ||
+		      !mnl_attr_put_u32_check(buf, size,
+					      TCA_FLOWER_KEY_IPV4_SRC_MASK,
+					      mask.ipv4->hdr.src_addr))) ||
+		    (mask.ipv4->hdr.dst_addr &&
+		     (!mnl_attr_put_u32_check(buf, size,
+					      TCA_FLOWER_KEY_IPV4_DST,
+					      spec.ipv4->hdr.dst_addr) ||
+		      !mnl_attr_put_u32_check(buf, size,
+					      TCA_FLOWER_KEY_IPV4_DST_MASK,
+					      mask.ipv4->hdr.dst_addr))))
+			goto error_nobufs;
+		++item;
+		break;
+	case ITEM_IPV6:
+		if (item->type != RTE_FLOW_ITEM_TYPE_IPV6)
+			goto trans;
+		mask.ipv6 = mlx5_nl_flow_item_mask
+			(item, &rte_flow_item_ipv6_mask,
+			 &mlx5_nl_flow_mask_supported.ipv6,
+			 &mlx5_nl_flow_mask_empty.ipv6,
+			 sizeof(mlx5_nl_flow_mask_supported.ipv6), error);
+		if (!mask.ipv6)
+			return -rte_errno;
+		if (!eth_type_set &&
+		    !mnl_attr_put_u16_check(buf, size,
+					    TCA_FLOWER_KEY_ETH_TYPE,
+					    RTE_BE16(ETH_P_IPV6)))
+			goto error_nobufs;
+		eth_type_set = 1;
+		if (mask.ipv6 == &mlx5_nl_flow_mask_empty.ipv6) {
+			++item;
+			break;
+		}
+		spec.ipv6 = item->spec;
+		if (mask.ipv6->hdr.proto && mask.ipv6->hdr.proto != 0xff)
+			return rte_flow_error_set
+				(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM_MASK,
+				 mask.ipv6,
+				 "no support for partial mask on"
+				 " \"hdr.proto\" field");
+		if (mask.ipv6->hdr.proto) {
+			if (!mnl_attr_put_u8_check
+			    (buf, size, TCA_FLOWER_KEY_IP_PROTO,
+			     spec.ipv6->hdr.proto))
+				goto error_nobufs;
+			ip_proto_set = 1;
+		}
+		if ((!IN6_IS_ADDR_UNSPECIFIED(mask.ipv6->hdr.src_addr) &&
+		     (!mnl_attr_put_check(buf, size,
+					  TCA_FLOWER_KEY_IPV6_SRC,
+					  sizeof(spec.ipv6->hdr.src_addr),
+					  spec.ipv6->hdr.src_addr) ||
+		      !mnl_attr_put_check(buf, size,
+					  TCA_FLOWER_KEY_IPV6_SRC_MASK,
+					  sizeof(mask.ipv6->hdr.src_addr),
+					  mask.ipv6->hdr.src_addr))) ||
+		    (!IN6_IS_ADDR_UNSPECIFIED(mask.ipv6->hdr.dst_addr) &&
+		     (!mnl_attr_put_check(buf, size,
+					  TCA_FLOWER_KEY_IPV6_DST,
+					  sizeof(spec.ipv6->hdr.dst_addr),
+					  spec.ipv6->hdr.dst_addr) ||
+		      !mnl_attr_put_check(buf, size,
+					  TCA_FLOWER_KEY_IPV6_DST_MASK,
+					  sizeof(mask.ipv6->hdr.dst_addr),
+					  mask.ipv6->hdr.dst_addr))))
+			goto error_nobufs;
+		++item;
+		break;
+	case ITEM_TCP:
+		if (item->type != RTE_FLOW_ITEM_TYPE_TCP)
+			goto trans;
+		mask.tcp = mlx5_nl_flow_item_mask
+			(item, &rte_flow_item_tcp_mask,
+			 &mlx5_nl_flow_mask_supported.tcp,
+			 &mlx5_nl_flow_mask_empty.tcp,
+			 sizeof(mlx5_nl_flow_mask_supported.tcp), error);
+		if (!mask.tcp)
+			return -rte_errno;
+		if (!ip_proto_set &&
+		    !mnl_attr_put_u8_check(buf, size,
+					   TCA_FLOWER_KEY_IP_PROTO,
+					   IPPROTO_TCP))
+			goto error_nobufs;
+		if (mask.tcp == &mlx5_nl_flow_mask_empty.tcp) {
+			++item;
+			break;
+		}
+		spec.tcp = item->spec;
+		if ((mask.tcp->hdr.src_port &&
+		     mask.tcp->hdr.src_port != RTE_BE16(0xffff)) ||
+		    (mask.tcp->hdr.dst_port &&
+		     mask.tcp->hdr.dst_port != RTE_BE16(0xffff)))
+			return rte_flow_error_set
+				(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM_MASK,
+				 mask.tcp,
+				 "no support for partial masks on"
+				 " \"hdr.src_port\" and \"hdr.dst_port\""
+				 " fields");
+		if ((mask.tcp->hdr.src_port &&
+		     (!mnl_attr_put_u16_check(buf, size,
+					      TCA_FLOWER_KEY_TCP_SRC,
+					      spec.tcp->hdr.src_port) ||
+		      !mnl_attr_put_u16_check(buf, size,
+					      TCA_FLOWER_KEY_TCP_SRC_MASK,
+					      mask.tcp->hdr.src_port))) ||
+		    (mask.tcp->hdr.dst_port &&
+		     (!mnl_attr_put_u16_check(buf, size,
+					      TCA_FLOWER_KEY_TCP_DST,
+					      spec.tcp->hdr.dst_port) ||
+		      !mnl_attr_put_u16_check(buf, size,
+					      TCA_FLOWER_KEY_TCP_DST_MASK,
+					      mask.tcp->hdr.dst_port))))
+			goto error_nobufs;
+		++item;
+		break;
+	case ITEM_UDP:
+		if (item->type != RTE_FLOW_ITEM_TYPE_UDP)
+			goto trans;
+		mask.udp = mlx5_nl_flow_item_mask
+			(item, &rte_flow_item_udp_mask,
+			 &mlx5_nl_flow_mask_supported.udp,
+			 &mlx5_nl_flow_mask_empty.udp,
+			 sizeof(mlx5_nl_flow_mask_supported.udp), error);
+		if (!mask.udp)
+			return -rte_errno;
+		if (!ip_proto_set &&
+		    !mnl_attr_put_u8_check(buf, size,
+					   TCA_FLOWER_KEY_IP_PROTO,
+					   IPPROTO_UDP))
+			goto error_nobufs;
+		if (mask.udp == &mlx5_nl_flow_mask_empty.udp) {
+			++item;
+			break;
+		}
+		spec.udp = item->spec;
+		if ((mask.udp->hdr.src_port &&
+		     mask.udp->hdr.src_port != RTE_BE16(0xffff)) ||
+		    (mask.udp->hdr.dst_port &&
+		     mask.udp->hdr.dst_port != RTE_BE16(0xffff)))
+			return rte_flow_error_set
+				(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM_MASK,
+				 mask.udp,
+				 "no support for partial masks on"
+				 " \"hdr.src_port\" and \"hdr.dst_port\""
+				 " fields");
+		if ((mask.udp->hdr.src_port &&
+		     (!mnl_attr_put_u16_check(buf, size,
+					      TCA_FLOWER_KEY_UDP_SRC,
+					      spec.udp->hdr.src_port) ||
+		      !mnl_attr_put_u16_check(buf, size,
+					      TCA_FLOWER_KEY_UDP_SRC_MASK,
+					      mask.udp->hdr.src_port))) ||
+		    (mask.udp->hdr.dst_port &&
+		     (!mnl_attr_put_u16_check(buf, size,
+					      TCA_FLOWER_KEY_UDP_DST,
+					      spec.udp->hdr.dst_port) ||
+		      !mnl_attr_put_u16_check(buf, size,
+					      TCA_FLOWER_KEY_UDP_DST_MASK,
+					      mask.udp->hdr.dst_port))))
+			goto error_nobufs;
 		++item;
 		break;
 	case ACTIONS:

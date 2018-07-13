@@ -209,6 +209,116 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		linux/pkt_cls.h \
 		enum TCA_FLOWER_FLAGS \
 		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_ETH_TYPE \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_ETH_TYPE \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_ETH_DST \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_ETH_DST \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_ETH_DST_MASK \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_ETH_DST_MASK \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_ETH_SRC \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_ETH_SRC \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_ETH_SRC_MASK \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_ETH_SRC_MASK \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_IP_PROTO \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_IP_PROTO \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_IPV4_SRC \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_IPV4_SRC \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_IPV4_SRC_MASK \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_IPV4_SRC_MASK \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_IPV4_DST \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_IPV4_DST \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_IPV4_DST_MASK \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_IPV4_DST_MASK \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_IPV6_SRC \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_IPV6_SRC \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_IPV6_SRC_MASK \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_IPV6_SRC_MASK \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_IPV6_DST \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_IPV6_DST \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_IPV6_DST_MASK \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_IPV6_DST_MASK \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_TCP_SRC \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_TCP_SRC \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_TCP_SRC_MASK \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_TCP_SRC_MASK \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_TCP_DST \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_TCP_DST \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_TCP_DST_MASK \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_TCP_DST_MASK \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_UDP_SRC \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_UDP_SRC \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_UDP_SRC_MASK \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_UDP_SRC_MASK \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_UDP_DST \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_UDP_DST \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_UDP_DST_MASK \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_UDP_DST_MASK \
+		$(AUTOCONF_OUTPUT)
 
 # Create mlx5_autoconf.h or update it in case it differs from the new one.
 
