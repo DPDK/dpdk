@@ -117,6 +117,7 @@ API Changes
 
 * cryptodev: Feature flag ``RTE_CRYPTODEV_FF_MBUF_SCATTER_GATHER`` is
   replaced with the following more explicit flags:
+
   - ``RTE_CRYPTODEV_FF_IN_PLACE_SGL``
   - ``RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT``
   - ``RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT``
@@ -127,13 +128,15 @@ API Changes
 
   Used user_data instead of private_data in following APIs to avoid confusion
   with the existing session parameter ``sess_private_data[]`` and related APIs.
-  ``rte_cryptodev_sym_session_set_private_data()`` changed to
-  ``rte_cryptodev_sym_session_set_user_data()``
-  ``rte_cryptodev_sym_session_get_private_data()`` changed to
-  ``rte_cryptodev_sym_session_get_user_data()``
+
+  - ``rte_cryptodev_sym_session_set_private_data()`` changed to
+    ``rte_cryptodev_sym_session_set_user_data()``
+  - ``rte_cryptodev_sym_session_get_private_data()`` changed to
+    ``rte_cryptodev_sym_session_get_user_data()``
 
 * compressdev: Feature flag ``RTE_COMP_FF_MBUF_SCATTER_GATHER`` is
   replaced with the following more explicit flags:
+
   - ``RTE_COMP_FF_OOP_SGL_IN_SGL_OUT``
   - ``RTE_COMP_FF_OOP_SGL_IN_LB_OUT``
   - ``RTE_COMP_FF_OOP_LB_IN_SGL_OUT``
