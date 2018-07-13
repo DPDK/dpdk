@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include <string.h>
+#include <inttypes.h>
 
 #include "test.h"
 
@@ -553,7 +554,7 @@ test_power_acpi_caps(void)
 		return -1;
 	}
 
-	printf("ACPI: Capabilities %lx\n", caps.capabilities);
+	printf("ACPI: Capabilities %"PRIx64"\n", caps.capabilities);
 
 	rte_power_unset_env();
 	return 0;
