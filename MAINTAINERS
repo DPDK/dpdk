@@ -607,6 +607,12 @@ F: drivers/net/vdev_netvsc/
 F: doc/guides/nics/vdev_netvsc.rst
 F: doc/guides/nics/features/vdev_netvsc.ini
 
+Microsoft Hyper-V netvsc - EXPERIMENTAL
+M: Stephen Hemminger <sthemmin@microsoft.com>
+M: K. Y. Srinivasan <kys@microsoft.com>
+M: Haiyang Zhang <haiyangz@microsoft.com>
+F: drivers/net/netvsc/
+
 Netcope szedata2
 M: Matej Vido <vido@cesnet.cz>
 F: drivers/net/szedata2/

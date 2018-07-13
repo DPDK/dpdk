@@ -1,0 +1,5 @@
+/* SPDX-License-Identifier: BSD-3-Clause */
+
+DPDK_18.08 {
+	local: *;
+};
