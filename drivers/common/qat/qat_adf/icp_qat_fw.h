@@ -117,6 +117,10 @@ struct icp_qat_fw_comn_resp {
 #define ICP_QAT_FW_COMN_VALID_FLAG_BITPOS 7
 #define ICP_QAT_FW_COMN_VALID_FLAG_MASK 0x1
 #define ICP_QAT_FW_COMN_HDR_RESRVD_FLD_MASK 0x7F
+#define ICP_QAT_FW_COMN_CNV_FLAG_BITPOS 6
+#define ICP_QAT_FW_COMN_CNV_FLAG_MASK 0x1
+#define ICP_QAT_FW_COMN_CNVNR_FLAG_BITPOS 5
+#define ICP_QAT_FW_COMN_CNVNR_FLAG_MASK 0x1
 
 #define ICP_QAT_FW_COMN_OV_SRV_TYPE_GET(icp_qat_fw_comn_req_hdr_t) \
 	icp_qat_fw_comn_req_hdr_t.service_type
@@ -132,6 +136,16 @@ struct icp_qat_fw_comn_resp {
 
 #define ICP_QAT_FW_COMN_HDR_VALID_FLAG_GET(hdr_t) \
 	ICP_QAT_FW_COMN_VALID_FLAG_GET(hdr_t.hdr_flags)
+
+#define ICP_QAT_FW_COMN_HDR_CNVNR_FLAG_GET(hdr_flags) \
+	QAT_FIELD_GET(hdr_flags, \
+		ICP_QAT_FW_COMN_CNVNR_FLAG_BITPOS, \
+		ICP_QAT_FW_COMN_CNVNR_FLAG_MASK)
+
+#define ICP_QAT_FW_COMN_HDR_CNV_FLAG_GET(hdr_flags) \
+	QAT_FIELD_GET(hdr_flags, \
+		ICP_QAT_FW_COMN_CNV_FLAG_BITPOS, \
+		ICP_QAT_FW_COMN_CNV_FLAG_MASK)
 
 #define ICP_QAT_FW_COMN_HDR_VALID_FLAG_SET(hdr_t, val) \
 	ICP_QAT_FW_COMN_VALID_FLAG_SET(hdr_t, val)
@@ -204,28 +218,43 @@ struct icp_qat_fw_comn_resp {
 	& ICP_QAT_FW_COMN_NEXT_ID_MASK) | \
 	((val) & ICP_QAT_FW_COMN_CURR_ID_MASK)); }
 
+#define ICP_QAT_FW_COMN_NEXT_ID_SET_2(next_curr_id, val)                       \
+	do {                                                                   \
+		(next_curr_id) =                                               \
+		    (((next_curr_id) & ICP_QAT_FW_COMN_CURR_ID_MASK) |         \
+		     (((val) << ICP_QAT_FW_COMN_NEXT_ID_BITPOS) &              \
+		      ICP_QAT_FW_COMN_NEXT_ID_MASK))                           \
+	} while (0)
+
+#define ICP_QAT_FW_COMN_CURR_ID_SET_2(next_curr_id, val)                       \
+	do {                                                                   \
+		(next_curr_id) =                                               \
+		    (((next_curr_id) & ICP_QAT_FW_COMN_NEXT_ID_MASK) |         \
+		     ((val) & ICP_QAT_FW_COMN_CURR_ID_MASK))                   \
+	} while (0)
+
 #define QAT_COMN_RESP_CRYPTO_STATUS_BITPOS 7
 #define QAT_COMN_RESP_CRYPTO_STATUS_MASK 0x1
+#define QAT_COMN_RESP_PKE_STATUS_BITPOS 6
+#define QAT_COMN_RESP_PKE_STATUS_MASK 0x1
 #define QAT_COMN_RESP_CMP_STATUS_BITPOS 5
 #define QAT_COMN_RESP_CMP_STATUS_MASK 0x1
 #define QAT_COMN_RESP_XLAT_STATUS_BITPOS 4
 #define QAT_COMN_RESP_XLAT_STATUS_MASK 0x1
 #define QAT_COMN_RESP_CMP_END_OF_LAST_BLK_BITPOS 3
 #define QAT_COMN_RESP_CMP_END_OF_LAST_BLK_MASK 0x1
-
-#define ICP_QAT_FW_COMN_RESP_STATUS_BUILD(crypto, comp, xlat, eolb) \
-	((((crypto) & QAT_COMN_RESP_CRYPTO_STATUS_MASK) << \
-	QAT_COMN_RESP_CRYPTO_STATUS_BITPOS) | \
-	(((comp) & QAT_COMN_RESP_CMP_STATUS_MASK) << \
-	QAT_COMN_RESP_CMP_STATUS_BITPOS) | \
-	(((xlat) & QAT_COMN_RESP_XLAT_STATUS_MASK) << \
-	QAT_COMN_RESP_XLAT_STATUS_BITPOS) | \
-	(((eolb) & QAT_COMN_RESP_CMP_END_OF_LAST_BLK_MASK) << \
-	QAT_COMN_RESP_CMP_END_OF_LAST_BLK_BITPOS))
+#define QAT_COMN_RESP_UNSUPPORTED_REQUEST_BITPOS 2
+#define QAT_COMN_RESP_UNSUPPORTED_REQUEST_MASK 0x1
+#define QAT_COMN_RESP_XLT_WA_APPLIED_BITPOS 0
+#define QAT_COMN_RESP_XLT_WA_APPLIED_MASK 0x1
 
 #define ICP_QAT_FW_COMN_RESP_CRYPTO_STAT_GET(status) \
 	QAT_FIELD_GET(status, QAT_COMN_RESP_CRYPTO_STATUS_BITPOS, \
 	QAT_COMN_RESP_CRYPTO_STATUS_MASK)
+
+#define ICP_QAT_FW_COMN_RESP_PKE_STAT_GET(status) \
+	QAT_FIELD_GET(status, QAT_COMN_RESP_PKE_STATUS_BITPOS, \
+	QAT_COMN_RESP_PKE_STATUS_MASK)
 
 #define ICP_QAT_FW_COMN_RESP_CMP_STAT_GET(status) \
 	QAT_FIELD_GET(status, QAT_COMN_RESP_CMP_STATUS_BITPOS, \
@@ -235,9 +264,17 @@ struct icp_qat_fw_comn_resp {
 	QAT_FIELD_GET(status, QAT_COMN_RESP_XLAT_STATUS_BITPOS, \
 	QAT_COMN_RESP_XLAT_STATUS_MASK)
 
+#define ICP_QAT_FW_COMN_RESP_XLT_WA_APPLIED_GET(status) \
+	QAT_FIELD_GET(status, QAT_COMN_RESP_XLT_WA_APPLIED_BITPOS, \
+	QAT_COMN_RESP_XLT_WA_APPLIED_MASK)
+
 #define ICP_QAT_FW_COMN_RESP_CMP_END_OF_LAST_BLK_FLAG_GET(status) \
 	QAT_FIELD_GET(status, QAT_COMN_RESP_CMP_END_OF_LAST_BLK_BITPOS, \
 	QAT_COMN_RESP_CMP_END_OF_LAST_BLK_MASK)
+
+#define ICP_QAT_FW_COMN_RESP_UNSUPPORTED_REQUEST_STAT_GET(status) \
+	QAT_FIELD_GET(status, QAT_COMN_RESP_UNSUPPORTED_REQUEST_BITPOS, \
+	QAT_COMN_RESP_UNSUPPORTED_REQUEST_MASK)
 
 #define ICP_QAT_FW_COMN_STATUS_FLAG_OK 0
 #define ICP_QAT_FW_COMN_STATUS_FLAG_ERROR 1
@@ -257,8 +294,16 @@ struct icp_qat_fw_comn_resp {
 #define ERR_CODE_OVERFLOW_ERROR -11
 #define ERR_CODE_SOFT_ERROR -12
 #define ERR_CODE_FATAL_ERROR -13
-#define ERR_CODE_SSM_ERROR -14
-#define ERR_CODE_ENDPOINT_ERROR -15
+#define ERR_CODE_COMP_OUTPUT_CORRUPTION -14
+#define ERR_CODE_HW_INCOMPLETE_FILE -15
+#define ERR_CODE_SSM_ERROR -16
+#define ERR_CODE_ENDPOINT_ERROR -17
+#define ERR_CODE_CNV_ERROR -18
+#define ERR_CODE_EMPTY_DYM_BLOCK -19
+#define ERR_CODE_KPT_CRYPTO_SERVICE_FAIL_INVALID_HANDLE -20
+#define ERR_CODE_KPT_CRYPTO_SERVICE_FAIL_HMAC_FAILED -21
+#define ERR_CODE_KPT_CRYPTO_SERVICE_FAIL_INVALID_WRAPPING_ALGO -22
+#define ERR_CODE_KPT_DRNG_SEED_NOT_LOAD -23
 
 enum icp_qat_fw_slice {
 	ICP_QAT_FW_SLICE_NULL = 0,

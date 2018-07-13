@@ -72,19 +72,44 @@ struct icp_qat_hw_auth_config {
 #define QAT_AUTH_ALGO_MASK 0xF
 #define QAT_AUTH_CMP_BITPOS 8
 #define QAT_AUTH_CMP_MASK 0x7F
-#define QAT_AUTH_SHA3_PADDING_BITPOS 16
-#define QAT_AUTH_SHA3_PADDING_MASK 0x1
+#define QAT_AUTH_SHA3_PADDING_DISABLE_BITPOS 16
+#define QAT_AUTH_SHA3_PADDING_DISABLE_MASK 0x1
+#define QAT_AUTH_SHA3_PADDING_OVERRIDE_BITPOS 17
+#define QAT_AUTH_SHA3_PADDING_OVERRIDE_MASK 0x1
 #define QAT_AUTH_ALGO_SHA3_BITPOS 22
 #define QAT_AUTH_ALGO_SHA3_MASK 0x3
-#define ICP_QAT_HW_AUTH_CONFIG_BUILD(mode, algo, cmp_len) \
-	(((mode & QAT_AUTH_MODE_MASK) << QAT_AUTH_MODE_BITPOS) | \
-	((algo & QAT_AUTH_ALGO_MASK) << QAT_AUTH_ALGO_BITPOS) | \
-	(((algo >> 4) & QAT_AUTH_ALGO_SHA3_MASK) << \
-	 QAT_AUTH_ALGO_SHA3_BITPOS) | \
-	 (((((algo == ICP_QAT_HW_AUTH_ALGO_SHA3_256) || \
-	(algo == ICP_QAT_HW_AUTH_ALGO_SHA3_512)) ? 1 : 0) \
-	& QAT_AUTH_SHA3_PADDING_MASK) << QAT_AUTH_SHA3_PADDING_BITPOS) | \
-	((cmp_len & QAT_AUTH_CMP_MASK) << QAT_AUTH_CMP_BITPOS))
+#define QAT_AUTH_SHA3_PROG_PADDING_POSTFIX_BITPOS 16
+#define QAT_AUTH_SHA3_PROG_PADDING_POSTFIX_MASK 0xF
+#define QAT_AUTH_SHA3_PROG_PADDING_PREFIX_BITPOS 24
+#define QAT_AUTH_SHA3_PROG_PADDING_PREFIX_MASK 0xFF
+#define QAT_AUTH_SHA3_HW_PADDING_ENABLE 0
+#define QAT_AUTH_SHA3_HW_PADDING_DISABLE 1
+#define QAT_AUTH_SHA3_PADDING_DISABLE_USE_DEFAULT 0
+#define QAT_AUTH_SHA3_PADDING_OVERRIDE_USE_DEFAULT 0
+#define QAT_AUTH_SHA3_PADDING_OVERRIDE_PROGRAMMABLE 1
+#define QAT_AUTH_SHA3_PROG_PADDING_POSTFIX_RESERVED 0
+#define QAT_AUTH_SHA3_PROG_PADDING_PREFIX_RESERVED 0
+
+#define ICP_QAT_HW_AUTH_CONFIG_BUILD(mode, algo, cmp_len)                      \
+	((((mode) & QAT_AUTH_MODE_MASK) << QAT_AUTH_MODE_BITPOS) |             \
+	 (((algo) & QAT_AUTH_ALGO_MASK) << QAT_AUTH_ALGO_BITPOS) |             \
+	 (((algo >> 4) & QAT_AUTH_ALGO_SHA3_MASK)                              \
+			<< QAT_AUTH_ALGO_SHA3_BITPOS) |                        \
+	 (((QAT_AUTH_SHA3_PADDING_DISABLE_USE_DEFAULT) &                       \
+			QAT_AUTH_SHA3_PADDING_DISABLE_MASK)                    \
+			<< QAT_AUTH_SHA3_PADDING_DISABLE_BITPOS) |             \
+	 (((QAT_AUTH_SHA3_PADDING_OVERRIDE_USE_DEFAULT) &                      \
+			QAT_AUTH_SHA3_PADDING_OVERRIDE_MASK)                   \
+			<< QAT_AUTH_SHA3_PADDING_OVERRIDE_BITPOS) |            \
+	 (((cmp_len) & QAT_AUTH_CMP_MASK) << QAT_AUTH_CMP_BITPOS))
+
+#define ICP_QAT_HW_AUTH_CONFIG_BUILD_UPPER                                     \
+	((((QAT_AUTH_SHA3_PROG_PADDING_POSTFIX_RESERVED) &                     \
+		QAT_AUTH_SHA3_PROG_PADDING_POSTFIX_MASK)                       \
+		<< QAT_AUTH_SHA3_PROG_PADDING_POSTFIX_BITPOS) |                \
+	 (((QAT_AUTH_SHA3_PROG_PADDING_PREFIX_RESERVED) &                      \
+		QAT_AUTH_SHA3_PROG_PADDING_PREFIX_MASK)                        \
+		<< QAT_AUTH_SHA3_PROG_PADDING_PREFIX_BITPOS))
 
 struct icp_qat_hw_auth_counter {
 	uint32_t counter;
@@ -107,13 +132,13 @@ struct icp_qat_hw_auth_setup {
 #define ICP_QAT_HW_MD5_STATE1_SZ 16
 #define ICP_QAT_HW_SHA1_STATE1_SZ 20
 #define ICP_QAT_HW_SHA224_STATE1_SZ 32
+#define ICP_QAT_HW_SHA3_224_STATE1_SZ 28
 #define ICP_QAT_HW_SHA256_STATE1_SZ 32
 #define ICP_QAT_HW_SHA3_256_STATE1_SZ 32
 #define ICP_QAT_HW_SHA384_STATE1_SZ 64
+#define ICP_QAT_HW_SHA3_384_STATE1_SZ 48
 #define ICP_QAT_HW_SHA512_STATE1_SZ 64
 #define ICP_QAT_HW_SHA3_512_STATE1_SZ 64
-#define ICP_QAT_HW_SHA3_224_STATE1_SZ 28
-#define ICP_QAT_HW_SHA3_384_STATE1_SZ 48
 #define ICP_QAT_HW_AES_XCBC_MAC_STATE1_SZ 16
 #define ICP_QAT_HW_AES_CBC_MAC_STATE1_SZ 16
 #define ICP_QAT_HW_AES_F9_STATE1_SZ 32
@@ -121,17 +146,18 @@ struct icp_qat_hw_auth_setup {
 #define ICP_QAT_HW_GALOIS_128_STATE1_SZ 16
 #define ICP_QAT_HW_SNOW_3G_UIA2_STATE1_SZ 8
 #define ICP_QAT_HW_ZUC_3G_EIA3_STATE1_SZ 8
+
 #define ICP_QAT_HW_NULL_STATE2_SZ 32
 #define ICP_QAT_HW_MD5_STATE2_SZ 16
 #define ICP_QAT_HW_SHA1_STATE2_SZ 20
 #define ICP_QAT_HW_SHA224_STATE2_SZ 32
+#define ICP_QAT_HW_SHA3_224_STATE2_SZ 0
 #define ICP_QAT_HW_SHA256_STATE2_SZ 32
 #define ICP_QAT_HW_SHA3_256_STATE2_SZ 0
 #define ICP_QAT_HW_SHA384_STATE2_SZ 64
+#define ICP_QAT_HW_SHA3_384_STATE2_SZ 0
 #define ICP_QAT_HW_SHA512_STATE2_SZ 64
 #define ICP_QAT_HW_SHA3_512_STATE2_SZ 0
-#define ICP_QAT_HW_SHA3_224_STATE2_SZ 0
-#define ICP_QAT_HW_SHA3_384_STATE2_SZ 0
 #define ICP_QAT_HW_AES_XCBC_MAC_STATE2_SZ 48
 #define ICP_QAT_HW_AES_XCBC_MAC_KEY_SZ 16
 #define ICP_QAT_HW_AES_CBC_MAC_KEY_SZ 16
@@ -152,6 +178,12 @@ struct icp_qat_hw_auth_sha512 {
 	uint8_t state1[ICP_QAT_HW_SHA512_STATE1_SZ];
 	struct icp_qat_hw_auth_setup outer_setup;
 	uint8_t state2[ICP_QAT_HW_SHA512_STATE2_SZ];
+};
+
+struct icp_qat_hw_auth_sha3_512 {
+	struct icp_qat_hw_auth_setup inner_setup;
+	uint8_t state1[ICP_QAT_HW_SHA3_512_STATE1_SZ];
+	struct icp_qat_hw_auth_setup outer_setup;
 };
 
 struct icp_qat_hw_auth_algo_blk {
@@ -282,5 +314,73 @@ struct icp_qat_hw_cipher_algo_blk {
 	struct icp_qat_hw_cipher_config cipher_config;
 	uint8_t key[ICP_QAT_HW_CIPHER_MAX_KEY_SZ];
 } __rte_cache_aligned;
+
+/* ========================================================================= */
+/*                COMPRESSION SLICE                                          */
+/* ========================================================================= */
+
+enum icp_qat_hw_compression_direction {
+	ICP_QAT_HW_COMPRESSION_DIR_COMPRESS = 0,
+	ICP_QAT_HW_COMPRESSION_DIR_DECOMPRESS = 1,
+	ICP_QAT_HW_COMPRESSION_DIR_DELIMITER = 2
+};
+
+enum icp_qat_hw_compression_delayed_match {
+	ICP_QAT_HW_COMPRESSION_DELAYED_MATCH_DISABLED = 0,
+	ICP_QAT_HW_COMPRESSION_DELAYED_MATCH_ENABLED = 1,
+	ICP_QAT_HW_COMPRESSION_DELAYED_MATCH_DELIMITER = 2
+};
+
+enum icp_qat_hw_compression_algo {
+	ICP_QAT_HW_COMPRESSION_ALGO_DEFLATE = 0,
+	ICP_QAT_HW_COMPRESSION_ALGO_LZS = 1,
+	ICP_QAT_HW_COMPRESSION_ALGO_DELIMITER = 2
+};
+
+
+enum icp_qat_hw_compression_depth {
+	ICP_QAT_HW_COMPRESSION_DEPTH_1 = 0,
+	ICP_QAT_HW_COMPRESSION_DEPTH_4 = 1,
+	ICP_QAT_HW_COMPRESSION_DEPTH_8 = 2,
+	ICP_QAT_HW_COMPRESSION_DEPTH_16 = 3,
+	ICP_QAT_HW_COMPRESSION_DEPTH_DELIMITER = 4
+};
+
+enum icp_qat_hw_compression_file_type {
+	ICP_QAT_HW_COMPRESSION_FILE_TYPE_0 = 0,
+	ICP_QAT_HW_COMPRESSION_FILE_TYPE_1 = 1,
+	ICP_QAT_HW_COMPRESSION_FILE_TYPE_2 = 2,
+	ICP_QAT_HW_COMPRESSION_FILE_TYPE_3 = 3,
+	ICP_QAT_HW_COMPRESSION_FILE_TYPE_4 = 4,
+	ICP_QAT_HW_COMPRESSION_FILE_TYPE_DELIMITER = 5
+};
+
+struct icp_qat_hw_compression_config {
+	uint32_t val;
+	uint32_t reserved;
+};
+
+#define QAT_COMPRESSION_DIR_BITPOS 4
+#define QAT_COMPRESSION_DIR_MASK 0x7
+#define QAT_COMPRESSION_DELAYED_MATCH_BITPOS 16
+#define QAT_COMPRESSION_DELAYED_MATCH_MASK 0x1
+#define QAT_COMPRESSION_ALGO_BITPOS 31
+#define QAT_COMPRESSION_ALGO_MASK 0x1
+#define QAT_COMPRESSION_DEPTH_BITPOS 28
+#define QAT_COMPRESSION_DEPTH_MASK 0x7
+#define QAT_COMPRESSION_FILE_TYPE_BITPOS 24
+#define QAT_COMPRESSION_FILE_TYPE_MASK 0xF
+
+#define ICP_QAT_HW_COMPRESSION_CONFIG_BUILD(                                   \
+	dir, delayed, algo, depth, filetype)                                   \
+	((((dir) & QAT_COMPRESSION_DIR_MASK) << QAT_COMPRESSION_DIR_BITPOS) |  \
+	 (((delayed) & QAT_COMPRESSION_DELAYED_MATCH_MASK)                     \
+	  << QAT_COMPRESSION_DELAYED_MATCH_BITPOS) |                           \
+	 (((algo) & QAT_COMPRESSION_ALGO_MASK)                                 \
+	  << QAT_COMPRESSION_ALGO_BITPOS) |                                    \
+	 (((depth) & QAT_COMPRESSION_DEPTH_MASK)                               \
+	  << QAT_COMPRESSION_DEPTH_BITPOS) |                                   \
+	 (((filetype) & QAT_COMPRESSION_FILE_TYPE_MASK)                        \
+	  << QAT_COMPRESSION_FILE_TYPE_BITPOS))
 
 #endif
