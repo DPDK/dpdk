@@ -154,6 +154,7 @@ enum mlx5_nl_flow_trans {
 	ATTR,
 	PATTERN,
 	ITEM_VOID,
+	ITEM_PORT_ID,
 	ITEM_ETH,
 	ITEM_VLAN,
 	ITEM_IPV4,
@@ -174,7 +175,7 @@ enum mlx5_nl_flow_trans {
 #define TRANS(...) (const enum mlx5_nl_flow_trans []){ __VA_ARGS__, INVALID, }
 
 #define PATTERN_COMMON \
-	ITEM_VOID, ACTIONS
+	ITEM_VOID, ITEM_PORT_ID, ACTIONS
 #define ACTIONS_COMMON \
 	ACTION_VOID, ACTION_OF_POP_VLAN, ACTION_OF_PUSH_VLAN, \
 	ACTION_OF_SET_VLAN_VID, ACTION_OF_SET_VLAN_PCP
@@ -188,6 +189,7 @@ static const enum mlx5_nl_flow_trans *const mlx5_nl_flow_trans[] = {
 	[ATTR] = TRANS(PATTERN),
 	[PATTERN] = TRANS(ITEM_ETH, PATTERN_COMMON),
 	[ITEM_VOID] = TRANS(BACK),
+	[ITEM_PORT_ID] = TRANS(BACK),
 	[ITEM_ETH] = TRANS(ITEM_IPV4, ITEM_IPV6, ITEM_VLAN, PATTERN_COMMON),
 	[ITEM_VLAN] = TRANS(ITEM_IPV4, ITEM_IPV6, PATTERN_COMMON),
 	[ITEM_IPV4] = TRANS(ITEM_TCP, ITEM_UDP, PATTERN_COMMON),
@@ -207,6 +209,7 @@ static const enum mlx5_nl_flow_trans *const mlx5_nl_flow_trans[] = {
 
 /** Empty masks for known item types. */
 static const union {
+	struct rte_flow_item_port_id port_id;
 	struct rte_flow_item_eth eth;
 	struct rte_flow_item_vlan vlan;
 	struct rte_flow_item_ipv4 ipv4;
@@ -217,6 +220,7 @@ static const union {
 
 /** Supported masks for known item types. */
 static const struct {
+	struct rte_flow_item_port_id port_id;
 	struct rte_flow_item_eth eth;
 	struct rte_flow_item_vlan vlan;
 	struct rte_flow_item_ipv4 ipv4;
@@ -224,6 +228,9 @@ static const struct {
 	struct rte_flow_item_tcp tcp;
 	struct rte_flow_item_udp udp;
 } mlx5_nl_flow_mask_supported = {
+	.port_id = {
+		.id = 0xffffffff,
+	},
 	.eth = {
 		.type = RTE_BE16(0xffff),
 		.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
@@ -378,6 +385,7 @@ mlx5_nl_flow_transpose(void *buf,
 	const struct rte_flow_action *action;
 	unsigned int n;
 	uint32_t act_index_cur;
+	bool in_port_id_set;
 	bool eth_type_set;
 	bool vlan_present;
 	bool vlan_eth_type_set;
@@ -396,6 +404,7 @@ init:
 	action = actions;
 	n = 0;
 	act_index_cur = 0;
+	in_port_id_set = false;
 	eth_type_set = false;
 	vlan_present = false;
 	vlan_eth_type_set = false;
@@ -409,6 +418,7 @@ init:
 trans:
 	switch (trans[n++]) {
 		union {
+			const struct rte_flow_item_port_id *port_id;
 			const struct rte_flow_item_eth *eth;
 			const struct rte_flow_item_vlan *vlan;
 			const struct rte_flow_item_ipv4 *ipv4;
@@ -508,6 +518,51 @@ trans:
 	case ITEM_VOID:
 		if (item->type != RTE_FLOW_ITEM_TYPE_VOID)
 			goto trans;
+		++item;
+		break;
+	case ITEM_PORT_ID:
+		if (item->type != RTE_FLOW_ITEM_TYPE_PORT_ID)
+			goto trans;
+		mask.port_id = mlx5_nl_flow_item_mask
+			(item, &rte_flow_item_port_id_mask,
+			 &mlx5_nl_flow_mask_supported.port_id,
+			 &mlx5_nl_flow_mask_empty.port_id,
+			 sizeof(mlx5_nl_flow_mask_supported.port_id), error);
+		if (!mask.port_id)
+			return -rte_errno;
+		if (mask.port_id == &mlx5_nl_flow_mask_empty.port_id) {
+			in_port_id_set = 1;
+			++item;
+			break;
+		}
+		spec.port_id = item->spec;
+		if (mask.port_id->id && mask.port_id->id != 0xffffffff)
+			return rte_flow_error_set
+				(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM_MASK,
+				 mask.port_id,
+				 "no support for partial mask on"
+				 " \"id\" field");
+		if (!mask.port_id->id)
+			i = 0;
+		else
+			for (i = 0; ptoi[i].ifindex; ++i)
+				if (ptoi[i].port_id == spec.port_id->id)
+					break;
+		if (!ptoi[i].ifindex)
+			return rte_flow_error_set
+				(error, ENODEV, RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+				 spec.port_id,
+				 "missing data to convert port ID to ifindex");
+		tcm = mnl_nlmsg_get_payload(buf);
+		if (in_port_id_set &&
+		    ptoi[i].ifindex != (unsigned int)tcm->tcm_ifindex)
+			return rte_flow_error_set
+				(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+				 spec.port_id,
+				 "cannot match traffic for several port IDs"
+				 " through a single flow rule");
+		tcm->tcm_ifindex = ptoi[i].ifindex;
+		in_port_id_set = 1;
 		++item;
 		break;
 	case ITEM_ETH:
