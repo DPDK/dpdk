@@ -251,6 +251,60 @@ qat_comp_pmd_dequeue_op_burst(void *qp, struct rte_comp_op **ops,
 	return qat_dequeue_op_burst(qp, (void **)ops, nb_ops);
 }
 
+static uint16_t
+qat_comp_pmd_enq_deq_dummy_op_burst(void *qp __rte_unused,
+				    struct rte_comp_op **ops __rte_unused,
+				    uint16_t nb_ops __rte_unused)
+{
+	QAT_DP_LOG(ERR, "QAT PMD detected wrong FW version !");
+	return 0;
+}
+
+static struct rte_compressdev_ops compress_qat_dummy_ops = {
+
+	/* Device related operations */
+	.dev_configure		= NULL,
+	.dev_start		= NULL,
+	.dev_stop		= qat_comp_dev_stop,
+	.dev_close		= qat_comp_dev_close,
+	.dev_infos_get		= NULL,
+
+	.stats_get		= NULL,
+	.stats_reset		= qat_comp_stats_reset,
+	.queue_pair_setup	= NULL,
+	.queue_pair_release	= qat_comp_qp_release,
+
+	/* Compression related operations */
+	.private_xform_create	= NULL,
+	.private_xform_free	= qat_comp_private_xform_free
+};
+
+static uint16_t
+qat_comp_pmd_dequeue_frst_op_burst(void *qp, struct rte_comp_op **ops,
+				   uint16_t nb_ops)
+{
+	uint16_t ret = qat_dequeue_op_burst(qp, (void **)ops, nb_ops);
+	struct qat_qp *tmp_qp = (struct qat_qp *)qp;
+
+	if (ret) {
+		if ((*ops)->debug_status ==
+				(uint64_t)ERR_CODE_QAT_COMP_WRONG_FW) {
+			tmp_qp->qat_dev->comp_dev->compressdev->enqueue_burst =
+					qat_comp_pmd_enq_deq_dummy_op_burst;
+			tmp_qp->qat_dev->comp_dev->compressdev->dequeue_burst =
+					qat_comp_pmd_enq_deq_dummy_op_burst;
+
+			tmp_qp->qat_dev->comp_dev->compressdev->dev_ops =
+					&compress_qat_dummy_ops;
+			QAT_LOG(ERR, "QAT PMD detected wrong FW version !");
+
+		} else {
+			tmp_qp->qat_dev->comp_dev->compressdev->dequeue_burst =
+					qat_comp_pmd_dequeue_op_burst;
+		}
+	}
+	return ret;
+}
 
 static struct rte_compressdev_ops compress_qat_ops = {
 
@@ -302,7 +356,7 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev)
 	compressdev->dev_ops = &compress_qat_ops;
 
 	compressdev->enqueue_burst = qat_comp_pmd_enqueue_op_burst;
-	compressdev->dequeue_burst = qat_comp_pmd_dequeue_op_burst;
+	compressdev->dequeue_burst = qat_comp_pmd_dequeue_frst_op_burst;
 
 	compressdev->feature_flags = RTE_COMPDEV_FF_HW_ACCELERATED;
 
