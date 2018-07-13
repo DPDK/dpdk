@@ -489,6 +489,13 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 				__func__, strerror(errno));
 			goto resized;
 		}
+		if (internal_config.hugepage_unlink) {
+			if (unlink(path)) {
+				RTE_LOG(DEBUG, EAL, "%s(): unlink() failed: %s\n",
+					__func__, strerror(errno));
+				goto resized;
+			}
+		}
 	}
 
 	/*
@@ -587,7 +594,8 @@ resized:
 		/* ignore failure, can't make it any worse */
 	} else {
 		/* only remove file if we can take out a write lock */
-		if (lock(fd, LOCK_EX) == 1)
+		if (internal_config.hugepage_unlink == 0 &&
+				lock(fd, LOCK_EX) == 1)
 			unlink(path);
 		close(fd);
 	}
@@ -610,6 +618,12 @@ free_seg(struct rte_memseg *ms, struct hugepage_info *hi,
 				MAP_FAILED) {
 		RTE_LOG(DEBUG, EAL, "couldn't unmap page\n");
 		return -1;
+	}
+
+	/* if we've already unlinked the page, nothing needs to be done */
+	if (internal_config.hugepage_unlink) {
+		memset(ms, 0, sizeof(*ms));
+		return 0;
 	}
 
 	/* if we are not in single file segments mode, we're going to unmap the

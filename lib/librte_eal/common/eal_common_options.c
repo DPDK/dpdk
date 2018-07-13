@@ -1332,6 +1332,12 @@ eal_check_common_options(struct internal_config *internal_cfg)
 			" is only supported in non-legacy memory mode\n");
 		return -1;
 	}
+	if (internal_cfg->single_file_segments &&
+			internal_cfg->hugepage_unlink) {
+		RTE_LOG(ERR, EAL, "Option --"OPT_SINGLE_FILE_SEGMENTS" is "
+			"not compatible with --"OPT_HUGE_UNLINK"\n");
+		return -1;
+	}
 
 	return 0;
 }
