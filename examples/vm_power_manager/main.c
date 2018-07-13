@@ -145,6 +145,7 @@ parse_args(int argc, char **argv)
 		{ "mac-updating", no_argument, 0, 1},
 		{ "no-mac-updating", no_argument, 0, 0},
 		{ "core-list", optional_argument, 0, 'l'},
+		{ "port-list", optional_argument, 0, 'p'},
 		{NULL, 0, 0, 0}
 	};
 	argvopt = argv;
