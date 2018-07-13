@@ -572,6 +572,14 @@ rte_mp_channel_init(void)
 	int dir_fd;
 	pthread_t mp_handle_tid;
 
+	/* in no shared files mode, we do not have secondary processes support,
+	 * so no need to initialize IPC.
+	 */
+	if (internal_config.no_shconf) {
+		RTE_LOG(DEBUG, EAL, "No shared files mode enabled, IPC will be disabled\n");
+		return 0;
+	}
+
 	/* create filter path */
 	create_socket_path("*", path, sizeof(path));
 	strlcpy(mp_filter, basename(path), sizeof(mp_filter));
@@ -930,6 +938,12 @@ rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 
 	if (check_input(req) == false)
 		return -1;
+
+	if (internal_config.no_shconf) {
+		RTE_LOG(DEBUG, EAL, "No shared files mode enabled, IPC is disabled\n");
+		return 0;
+	}
+
 	if (gettimeofday(&now, NULL) < 0) {
 		RTE_LOG(ERR, EAL, "Faile to get current time\n");
 		rte_errno = errno;
@@ -1014,6 +1028,12 @@ rte_mp_request_async(struct rte_mp_msg *req, const struct timespec *ts,
 
 	if (check_input(req) == false)
 		return -1;
+
+	if (internal_config.no_shconf) {
+		RTE_LOG(DEBUG, EAL, "No shared files mode enabled, IPC is disabled\n");
+		return 0;
+	}
+
 	if (gettimeofday(&now, NULL) < 0) {
 		RTE_LOG(ERR, EAL, "Faile to get current time\n");
 		rte_errno = errno;
@@ -1150,6 +1170,11 @@ rte_mp_reply(struct rte_mp_msg *msg, const char *peer)
 		RTE_LOG(ERR, EAL, "peer is not specified\n");
 		rte_errno = EINVAL;
 		return -1;
+	}
+
+	if (internal_config.no_shconf) {
+		RTE_LOG(DEBUG, EAL, "No shared files mode enabled, IPC is disabled\n");
+		return 0;
 	}
 
 	return mp_send(msg, peer, MP_REP);
