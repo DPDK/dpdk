@@ -213,3 +213,17 @@ qat_comp_dev_info_get(struct rte_compressdev *dev,
 		info->capabilities = comp_dev->qat_dev_capabilities;
 	}
 }
+
+uint16_t
+qat_comp_pmd_enqueue_op_burst(void *qp, struct rte_comp_op **ops,
+		uint16_t nb_ops)
+{
+	return qat_enqueue_op_burst(qp, (void **)ops, nb_ops);
+}
+
+uint16_t
+qat_comp_pmd_dequeue_op_burst(void *qp, struct rte_comp_op **ops,
+			      uint16_t nb_ops)
+{
+	return qat_dequeue_op_burst(qp, (void **)ops, nb_ops);
+}

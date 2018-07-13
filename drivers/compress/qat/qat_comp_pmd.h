@@ -54,5 +54,13 @@ void
 qat_comp_dev_info_get(struct rte_compressdev *dev,
 			struct rte_compressdev_info *info);
 
+uint16_t
+qat_comp_pmd_enqueue_op_burst(void *qp, struct rte_comp_op **ops,
+		uint16_t nb_ops);
+
+uint16_t
+qat_comp_pmd_dequeue_op_burst(void *qp, struct rte_comp_op **ops,
+		uint16_t nb_ops);
+
 #endif
 #endif /* _QAT_COMP_PMD_H_ */
