@@ -278,51 +278,56 @@ main(int argc, char **argv)
 
 	nb_ports = rte_eth_dev_count_avail();
 
-	mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL", NUM_MBUFS * nb_ports,
-		MBUF_CACHE_SIZE, 0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
+	if (nb_ports > 0) {
+		mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL",
+				NUM_MBUFS * nb_ports, MBUF_CACHE_SIZE, 0,
+				RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
 
-	if (mbuf_pool == NULL)
-		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
+		if (mbuf_pool == NULL)
+			rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
 
-	/* Initialize ports. */
-	RTE_ETH_FOREACH_DEV(portid) {
-		struct ether_addr eth;
-		int w, j;
-		int ret;
+		/* Initialize ports. */
+		RTE_ETH_FOREACH_DEV(portid) {
+			struct ether_addr eth;
+			int w, j;
+			int ret;
 
-		if ((enabled_port_mask & (1 << portid)) == 0)
-			continue;
+			if ((enabled_port_mask & (1 << portid)) == 0)
+				continue;
 
-		eth.addr_bytes[0] = 0xe0;
-		eth.addr_bytes[1] = 0xe0;
-		eth.addr_bytes[2] = 0xe0;
-		eth.addr_bytes[3] = 0xe0;
-		eth.addr_bytes[4] = portid + 0xf0;
+			eth.addr_bytes[0] = 0xe0;
+			eth.addr_bytes[1] = 0xe0;
+			eth.addr_bytes[2] = 0xe0;
+			eth.addr_bytes[3] = 0xe0;
+			eth.addr_bytes[4] = portid + 0xf0;
 
-		if (port_init(portid, mbuf_pool) != 0)
-			rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu8 "\n",
+			if (port_init(portid, mbuf_pool) != 0)
+				rte_exit(EXIT_FAILURE,
+					"Cannot init port %"PRIu8 "\n",
 					portid);
 
-		for (w = 0; w < MAX_VFS; w++) {
-			eth.addr_bytes[5] = w + 0xf0;
+			for (w = 0; w < MAX_VFS; w++) {
+				eth.addr_bytes[5] = w + 0xf0;
 
-			ret = rte_pmd_ixgbe_set_vf_mac_addr(portid,
-						w, &eth);
-			if (ret == -ENOTSUP)
-				ret = rte_pmd_i40e_set_vf_mac_addr(portid,
-						w, &eth);
-			if (ret == -ENOTSUP)
-				ret = rte_pmd_bnxt_set_vf_mac_addr(portid,
-						w, &eth);
+				ret = rte_pmd_ixgbe_set_vf_mac_addr(portid,
+							w, &eth);
+				if (ret == -ENOTSUP)
+					ret = rte_pmd_i40e_set_vf_mac_addr(
+							portid, w, &eth);
+				if (ret == -ENOTSUP)
+					ret = rte_pmd_bnxt_set_vf_mac_addr(
+							portid, w, &eth);
 
-			switch (ret) {
-			case 0:
-				printf("Port %d VF %d MAC: ",
-						portid, w);
-				for (j = 0; j < 6; j++) {
-					printf("%02x", eth.addr_bytes[j]);
-					if (j < 5)
-						printf(":");
+				switch (ret) {
+				case 0:
+					printf("Port %d VF %d MAC: ",
+							portid, w);
+					for (j = 0; j < 5; j++) {
+						printf("%02x:",
+							eth.addr_bytes[j]);
+					}
+					printf("%02x\n", eth.addr_bytes[5]);
+					break;
 				}
 				printf("\n");
 				break;
