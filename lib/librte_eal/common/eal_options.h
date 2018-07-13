@@ -45,6 +45,8 @@ enum {
 	OPT_NO_PCI_NUM,
 #define OPT_NO_SHCONF         "no-shconf"
 	OPT_NO_SHCONF_NUM,
+#define OPT_IN_MEMORY         "in-memory"
+	OPT_IN_MEMORY_NUM,
 #define OPT_SOCKET_MEM        "socket-mem"
 	OPT_SOCKET_MEM_NUM,
 #define OPT_SOCKET_LIMIT        "socket-limit"

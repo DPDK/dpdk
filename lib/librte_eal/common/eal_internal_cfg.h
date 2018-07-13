@@ -41,6 +41,10 @@ struct internal_config {
 	volatile unsigned vmware_tsc_map; /**< true to use VMware TSC mapping
 										* instead of native TSC */
 	volatile unsigned no_shconf;      /**< true if there is no shared config */
+	volatile unsigned in_memory;
+	/**< true if DPDK should operate entirely in-memory and not create any
+	 * shared files or runtime data.
+	 */
 	volatile unsigned create_uio_dev; /**< true to create /dev/uioX devices */
 	volatile enum rte_proc_type_t process_type; /**< multi-process proc type */
 	/** true to try allocating memory on specific sockets */

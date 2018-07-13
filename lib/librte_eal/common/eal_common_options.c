@@ -66,6 +66,7 @@ eal_long_options[] = {
 	{OPT_NO_HUGE,           0, NULL, OPT_NO_HUGE_NUM          },
 	{OPT_NO_PCI,            0, NULL, OPT_NO_PCI_NUM           },
 	{OPT_NO_SHCONF,         0, NULL, OPT_NO_SHCONF_NUM        },
+	{OPT_IN_MEMORY,         0, NULL, OPT_IN_MEMORY_NUM        },
 	{OPT_PCI_BLACKLIST,     1, NULL, OPT_PCI_BLACKLIST_NUM    },
 	{OPT_PCI_WHITELIST,     1, NULL, OPT_PCI_WHITELIST_NUM    },
 	{OPT_PROC_TYPE,         1, NULL, OPT_PROC_TYPE_NUM        },
@@ -1170,6 +1171,13 @@ eal_parse_common_option(int opt, const char *optarg,
 		conf->no_shconf = 1;
 		break;
 
+	case OPT_IN_MEMORY_NUM:
+		conf->in_memory = 1;
+		/* in-memory is a superset of noshconf and huge-unlink */
+		conf->no_shconf = 1;
+		conf->hugepage_unlink = 1;
+		break;
+
 	case OPT_PROC_TYPE_NUM:
 		conf->process_type = eal_parse_proc_type(optarg);
 		break;
@@ -1321,8 +1329,8 @@ eal_check_common_options(struct internal_config *internal_cfg)
 			"be specified together with --"OPT_NO_HUGE"\n");
 		return -1;
 	}
-
-	if (internal_cfg->no_hugetlbfs && internal_cfg->hugepage_unlink) {
+	if (internal_cfg->no_hugetlbfs && internal_cfg->hugepage_unlink &&
+			!internal_cfg->in_memory) {
 		RTE_LOG(ERR, EAL, "Option --"OPT_HUGE_UNLINK" cannot "
 			"be specified together with --"OPT_NO_HUGE"\n");
 		return -1;
@@ -1330,12 +1338,12 @@ eal_check_common_options(struct internal_config *internal_cfg)
 	if (internal_config.force_socket_limits && internal_config.legacy_mem) {
 		RTE_LOG(ERR, EAL, "Option --"OPT_SOCKET_LIMIT
 			" is only supported in non-legacy memory mode\n");
-		return -1;
 	}
 	if (internal_cfg->single_file_segments &&
 			internal_cfg->hugepage_unlink) {
 		RTE_LOG(ERR, EAL, "Option --"OPT_SINGLE_FILE_SEGMENTS" is "
-			"not compatible with --"OPT_HUGE_UNLINK"\n");
+			"not compatible with neither --"OPT_IN_MEMORY" nor "
+			"--"OPT_HUGE_UNLINK"\n");
 		return -1;
 	}
 
@@ -1386,6 +1394,8 @@ eal_common_usage(void)
 	       "                      Set specific log level\n"
 	       "  -v                  Display version information on startup\n"
 	       "  -h, --help          This help\n"
+	       "  --"OPT_IN_MEMORY"   Operate entirely in memory. This will\n"
+	       "                      disable secondary process support\n"
 	       "\nEAL options for DEBUG use only:\n"
 	       "  --"OPT_HUGE_UNLINK"       Unlink hugepage files after init\n"
 	       "  --"OPT_NO_HUGE"           Use malloc instead of hugetlbfs\n"
