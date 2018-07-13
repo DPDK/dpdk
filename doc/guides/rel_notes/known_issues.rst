@@ -739,3 +739,23 @@ Linux kernel 4.10.0 iommu attribute read error
 
 **Driver/Module**:
    ``vfio-pci`` module.
+
+Netvsc driver and application restart
+-------------------------------------
+
+**Description**:
+   The Linux kernel uio_hv_generic driver does not completely shutdown and clean up
+   resources properly if application using Netvsc PMD exits.
+
+**Implication**:
+   When application using Netvsc PMD is restarted it can not complete initialization
+   handshake sequence with the host.
+
+**Resolution/Workaround**:
+   Either reboot the guest or remove and reinsert the hv_uio_generic module.
+
+**Affected Environment/Platform**:
+   Linux Hyper-V.
+
+**Driver/Module**:
+   ``uio_hv_generic`` module.

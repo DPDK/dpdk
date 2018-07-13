@@ -612,6 +612,8 @@ M: Stephen Hemminger <sthemmin@microsoft.com>
 M: K. Y. Srinivasan <kys@microsoft.com>
 M: Haiyang Zhang <haiyangz@microsoft.com>
 F: drivers/net/netvsc/
+F: doc/guides/nics/netvsc.rst
+F: doc/guides/nics/features/netvsc.ini
 
 Netcope szedata2
 M: Matej Vido <vido@cesnet.cz>

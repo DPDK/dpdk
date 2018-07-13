@@ -41,6 +41,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Added support for Hyper-V netvsc PMD.**
+
+  The new ``netvsc`` poll mode driver provides native support for
+  networking on Hyper-V. See the :doc:`../nics/netvsc` NIC driver guide
+  for more details on this new driver.
+
 * **Added Flow API support for CXGBE PMD.**
 
   Flow API support has been added to CXGBE Poll Mode Driver to offload
