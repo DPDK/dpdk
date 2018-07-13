@@ -10,6 +10,7 @@
 #include <rte_compressdev.h>
 #include <rte_compressdev_pmd.h>
 
+#include "qat_common.h"
 #include "icp_qat_hw.h"
 #include "icp_qat_fw_comp.h"
 #include "icp_qat_fw_la.h"
@@ -27,6 +28,13 @@ struct qat_comp_xform {
 	enum qat_comp_request_type qat_comp_request_type;
 	enum rte_comp_checksum_type checksum_type;
 };
+
+int
+qat_comp_build_request(void *in_op, uint8_t *out_msg, void *op_cookie,
+		       enum qat_device_gen qat_dev_gen __rte_unused);
+
+int
+qat_comp_process_response(void **op, uint8_t *resp);
 
 
 int

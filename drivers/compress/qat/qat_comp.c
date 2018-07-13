@@ -19,6 +19,107 @@
 #include "qat_comp.h"
 #include "qat_comp_pmd.h"
 
+
+int
+qat_comp_build_request(void *in_op, uint8_t *out_msg,
+		       void *op_cookie __rte_unused,
+		       enum qat_device_gen qat_dev_gen __rte_unused)
+{
+	struct rte_comp_op *op = in_op;
+	struct qat_comp_xform *qat_xform = op->private_xform;
+	const uint8_t *tmpl = (uint8_t *)&qat_xform->qat_comp_req_tmpl;
+	struct icp_qat_fw_comp_req *comp_req =
+	    (struct icp_qat_fw_comp_req *)out_msg;
+
+	if (unlikely(op->op_type != RTE_COMP_OP_STATELESS)) {
+		QAT_DP_LOG(ERR, "QAT PMD only supports stateless compression "
+				"operation requests, op (%p) is not a "
+				"stateless operation.", op);
+		return -EINVAL;
+	}
+
+	rte_mov128(out_msg, tmpl);
+	comp_req->comn_mid.opaque_data = (uint64_t)(uintptr_t)op;
+
+	/* common for sgl and flat buffers */
+	comp_req->comp_pars.comp_len = op->src.length;
+	comp_req->comp_pars.out_buffer_sz = rte_pktmbuf_pkt_len(op->m_dst);
+
+	/* sgl */
+	if (op->m_src->next != NULL || op->m_dst->next != NULL) {
+		QAT_DP_LOG(ERR, "QAT PMD doesn't support scatter gather");
+		return -EINVAL;
+
+	} else {
+		ICP_QAT_FW_COMN_PTR_TYPE_SET(comp_req->comn_hdr.comn_req_flags,
+				QAT_COMN_PTR_TYPE_FLAT);
+		comp_req->comn_mid.src_length = rte_pktmbuf_data_len(op->m_src);
+		comp_req->comn_mid.dst_length = rte_pktmbuf_data_len(op->m_dst);
+
+		comp_req->comn_mid.src_data_addr =
+		    rte_pktmbuf_mtophys_offset(op->m_src, op->src.offset);
+		comp_req->comn_mid.dest_data_addr =
+		    rte_pktmbuf_mtophys_offset(op->m_dst, op->dst.offset);
+	}
+
+#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
+	QAT_DP_LOG(DEBUG, "Direction: %s",
+	    qat_xform->qat_comp_request_type == QAT_COMP_REQUEST_DECOMPRESS ?
+			    "decompression" : "compression");
+	QAT_DP_HEXDUMP_LOG(DEBUG, "qat compression message:", comp_req,
+		    sizeof(struct icp_qat_fw_comp_req));
+#endif
+	return 0;
+}
+
+int
+qat_comp_process_response(void **op, uint8_t *resp)
+{
+	struct icp_qat_fw_comp_resp *resp_msg =
+			(struct icp_qat_fw_comp_resp *)resp;
+	struct rte_comp_op *rx_op = (struct rte_comp_op *)(uintptr_t)
+			(resp_msg->opaque_data);
+
+#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
+	QAT_DP_LOG(DEBUG, "Direction: %s",
+	    qat_xform->qat_comp_request_type == QAT_COMP_REQUEST_DECOMPRESS ?
+	    "decompression" : "compression");
+	QAT_DP_HEXDUMP_LOG(DEBUG,  "qat_response:", (uint8_t *)resp_msg,
+			sizeof(struct icp_qat_fw_comp_resp));
+#endif
+
+	if ((ICP_QAT_FW_COMN_RESP_CMP_STAT_GET(resp_msg->comn_resp.comn_status)
+		| ICP_QAT_FW_COMN_RESP_XLAT_STAT_GET(
+				resp_msg->comn_resp.comn_status)) !=
+				ICP_QAT_FW_COMN_STATUS_FLAG_OK) {
+
+		rx_op->status = RTE_COMP_OP_STATUS_ERROR;
+		rx_op->debug_status =
+			*((uint16_t *)(&resp_msg->comn_resp.comn_error));
+	} else {
+		struct qat_comp_xform *qat_xform = rx_op->private_xform;
+		struct icp_qat_fw_resp_comp_pars *comp_resp =
+		  (struct icp_qat_fw_resp_comp_pars *)&resp_msg->comp_resp_pars;
+
+		rx_op->status = RTE_COMP_OP_STATUS_SUCCESS;
+		rx_op->consumed = comp_resp->input_byte_counter;
+		rx_op->produced = comp_resp->output_byte_counter;
+
+		if (qat_xform->checksum_type != RTE_COMP_CHECKSUM_NONE) {
+			if (qat_xform->checksum_type == RTE_COMP_CHECKSUM_CRC32)
+				rx_op->output_chksum = comp_resp->curr_crc32;
+			else if (qat_xform->checksum_type ==
+					RTE_COMP_CHECKSUM_ADLER32)
+				rx_op->output_chksum = comp_resp->curr_adler_32;
+			else
+				rx_op->output_chksum = comp_resp->curr_chksum;
+		}
+	}
+	*op = (void *)rx_op;
+
+	return 0;
+}
+
 unsigned int
 qat_comp_xform_size(void)
 {

@@ -10,6 +10,8 @@
 #include <rte_compressdev.h>
 #include <rte_compressdev_pmd.h>
 
+#include "qat_device.h"
+
 /** private data structure for a QAT compression device.
  * This QAT device is a device offering only a compression service,
  * there can be one of these on each qat_pci_device (VF).
