@@ -2,7 +2,6 @@
  * Copyright(c) 2018 Intel Corporation
  */
 
-
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 #include <rte_hexdump.h>
@@ -79,6 +78,8 @@ qat_comp_process_response(void **op, uint8_t *resp)
 			(struct icp_qat_fw_comp_resp *)resp;
 	struct rte_comp_op *rx_op = (struct rte_comp_op *)(uintptr_t)
 			(resp_msg->opaque_data);
+	struct qat_comp_xform *qat_xform = (struct qat_comp_xform *)
+				(rx_op->private_xform);
 
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 	QAT_DP_LOG(DEBUG, "Direction: %s",
@@ -87,6 +88,19 @@ qat_comp_process_response(void **op, uint8_t *resp)
 	QAT_DP_HEXDUMP_LOG(DEBUG,  "qat_response:", (uint8_t *)resp_msg,
 			sizeof(struct icp_qat_fw_comp_resp));
 #endif
+
+	if (likely(qat_xform->qat_comp_request_type
+			!= QAT_COMP_REQUEST_DECOMPRESS)) {
+		if (unlikely(ICP_QAT_FW_COMN_HDR_CNV_FLAG_GET(
+				resp_msg->comn_resp.hdr_flags)
+					== ICP_QAT_FW_COMP_NO_CNV)) {
+			rx_op->status = RTE_COMP_OP_STATUS_ERROR;
+			rx_op->debug_status = ERR_CODE_QAT_COMP_WRONG_FW;
+			*op = (void *)rx_op;
+			QAT_DP_LOG(ERR, "QAT has wrong firmware");
+			return 0;
+		}
+	}
 
 	if ((ICP_QAT_FW_COMN_RESP_CMP_STAT_GET(resp_msg->comn_resp.comn_status)
 		| ICP_QAT_FW_COMN_RESP_XLAT_STAT_GET(

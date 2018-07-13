@@ -15,6 +15,8 @@
 #include "icp_qat_fw_comp.h"
 #include "icp_qat_fw_la.h"
 
+#define ERR_CODE_QAT_COMP_WRONG_FW -99
+
 enum qat_comp_request_type {
 	QAT_COMP_REQUEST_FIXED_COMP_STATELESS,
 	QAT_COMP_REQUEST_DYNAMIC_COMP_STATELESS,
