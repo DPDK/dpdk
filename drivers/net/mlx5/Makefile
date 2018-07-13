@@ -319,6 +319,26 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		linux/pkt_cls.h \
 		enum TCA_FLOWER_KEY_UDP_DST_MASK \
 		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_VLAN_ID \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_VLAN_ID \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_VLAN_PRIO \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_VLAN_PRIO \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_VLAN_ETH_TYPE \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_VLAN_ETH_TYPE \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TC_ACT_VLAN \
+		linux/tc_act/tc_vlan.h \
+		enum TCA_VLAN_PUSH_VLAN_PRIORITY \
+		$(AUTOCONF_OUTPUT)
 
 # Create mlx5_autoconf.h or update it in case it differs from the new one.
 

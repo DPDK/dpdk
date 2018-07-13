@@ -27,6 +27,29 @@
 #include <rte_flow.h>
 
 #include "mlx5.h"
+#include "mlx5_autoconf.h"
+
+#ifdef HAVE_TC_ACT_VLAN
+
+#include <linux/tc_act/tc_vlan.h>
+
+#else /* HAVE_TC_ACT_VLAN */
+
+#define TCA_VLAN_ACT_POP 1
+#define TCA_VLAN_ACT_PUSH 2
+#define TCA_VLAN_ACT_MODIFY 3
+#define TCA_VLAN_PARMS 2
+#define TCA_VLAN_PUSH_VLAN_ID 3
+#define TCA_VLAN_PUSH_VLAN_PROTOCOL 4
+#define TCA_VLAN_PAD 5
+#define TCA_VLAN_PUSH_VLAN_PRIORITY 6
+
+struct tc_vlan {
+	tc_gen;
+	int v_action;
+};
+
+#endif /* HAVE_TC_ACT_VLAN */
 
 /* Normally found in linux/netlink.h. */
 #ifndef NETLINK_CAP_ACK
@@ -114,6 +137,15 @@
 #ifndef HAVE_TCA_FLOWER_KEY_UDP_DST_MASK
 #define TCA_FLOWER_KEY_UDP_DST_MASK 38
 #endif
+#ifndef HAVE_TCA_FLOWER_KEY_VLAN_ID
+#define TCA_FLOWER_KEY_VLAN_ID 23
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_VLAN_PRIO
+#define TCA_FLOWER_KEY_VLAN_PRIO 24
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_VLAN_ETH_TYPE
+#define TCA_FLOWER_KEY_VLAN_ETH_TYPE 25
+#endif
 
 /** Parser state definitions for mlx5_nl_flow_trans[]. */
 enum mlx5_nl_flow_trans {
@@ -123,6 +155,7 @@ enum mlx5_nl_flow_trans {
 	PATTERN,
 	ITEM_VOID,
 	ITEM_ETH,
+	ITEM_VLAN,
 	ITEM_IPV4,
 	ITEM_IPV6,
 	ITEM_TCP,
@@ -131,6 +164,10 @@ enum mlx5_nl_flow_trans {
 	ACTION_VOID,
 	ACTION_PORT_ID,
 	ACTION_DROP,
+	ACTION_OF_POP_VLAN,
+	ACTION_OF_PUSH_VLAN,
+	ACTION_OF_SET_VLAN_VID,
+	ACTION_OF_SET_VLAN_PCP,
 	END,
 };
 
@@ -139,7 +176,8 @@ enum mlx5_nl_flow_trans {
 #define PATTERN_COMMON \
 	ITEM_VOID, ACTIONS
 #define ACTIONS_COMMON \
-	ACTION_VOID
+	ACTION_VOID, ACTION_OF_POP_VLAN, ACTION_OF_PUSH_VLAN, \
+	ACTION_OF_SET_VLAN_VID, ACTION_OF_SET_VLAN_PCP
 #define ACTIONS_FATE \
 	ACTION_PORT_ID, ACTION_DROP
 
@@ -150,7 +188,8 @@ static const enum mlx5_nl_flow_trans *const mlx5_nl_flow_trans[] = {
 	[ATTR] = TRANS(PATTERN),
 	[PATTERN] = TRANS(ITEM_ETH, PATTERN_COMMON),
 	[ITEM_VOID] = TRANS(BACK),
-	[ITEM_ETH] = TRANS(ITEM_IPV4, ITEM_IPV6, PATTERN_COMMON),
+	[ITEM_ETH] = TRANS(ITEM_IPV4, ITEM_IPV6, ITEM_VLAN, PATTERN_COMMON),
+	[ITEM_VLAN] = TRANS(ITEM_IPV4, ITEM_IPV6, PATTERN_COMMON),
 	[ITEM_IPV4] = TRANS(ITEM_TCP, ITEM_UDP, PATTERN_COMMON),
 	[ITEM_IPV6] = TRANS(ITEM_TCP, ITEM_UDP, PATTERN_COMMON),
 	[ITEM_TCP] = TRANS(PATTERN_COMMON),
@@ -159,12 +198,17 @@ static const enum mlx5_nl_flow_trans *const mlx5_nl_flow_trans[] = {
 	[ACTION_VOID] = TRANS(BACK),
 	[ACTION_PORT_ID] = TRANS(ACTION_VOID, END),
 	[ACTION_DROP] = TRANS(ACTION_VOID, END),
+	[ACTION_OF_POP_VLAN] = TRANS(ACTIONS_FATE, ACTIONS_COMMON),
+	[ACTION_OF_PUSH_VLAN] = TRANS(ACTIONS_FATE, ACTIONS_COMMON),
+	[ACTION_OF_SET_VLAN_VID] = TRANS(ACTIONS_FATE, ACTIONS_COMMON),
+	[ACTION_OF_SET_VLAN_PCP] = TRANS(ACTIONS_FATE, ACTIONS_COMMON),
 	[END] = NULL,
 };
 
 /** Empty masks for known item types. */
 static const union {
 	struct rte_flow_item_eth eth;
+	struct rte_flow_item_vlan vlan;
 	struct rte_flow_item_ipv4 ipv4;
 	struct rte_flow_item_ipv6 ipv6;
 	struct rte_flow_item_tcp tcp;
@@ -174,6 +218,7 @@ static const union {
 /** Supported masks for known item types. */
 static const struct {
 	struct rte_flow_item_eth eth;
+	struct rte_flow_item_vlan vlan;
 	struct rte_flow_item_ipv4 ipv4;
 	struct rte_flow_item_ipv6 ipv6;
 	struct rte_flow_item_tcp tcp;
@@ -183,6 +228,11 @@ static const struct {
 		.type = RTE_BE16(0xffff),
 		.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
 		.src.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	},
+	.vlan = {
+		/* PCP and VID only, no DEI. */
+		.tci = RTE_BE16(0xefff),
+		.inner_type = RTE_BE16(0xffff),
 	},
 	.ipv4.hdr = {
 		.next_proto_id = 0xff,
@@ -329,9 +379,13 @@ mlx5_nl_flow_transpose(void *buf,
 	unsigned int n;
 	uint32_t act_index_cur;
 	bool eth_type_set;
+	bool vlan_present;
+	bool vlan_eth_type_set;
 	bool ip_proto_set;
 	struct nlattr *na_flower;
 	struct nlattr *na_flower_act;
+	struct nlattr *na_vlan_id;
+	struct nlattr *na_vlan_priority;
 	const enum mlx5_nl_flow_trans *trans;
 	const enum mlx5_nl_flow_trans *back;
 
@@ -343,15 +397,20 @@ init:
 	n = 0;
 	act_index_cur = 0;
 	eth_type_set = false;
+	vlan_present = false;
+	vlan_eth_type_set = false;
 	ip_proto_set = false;
 	na_flower = NULL;
 	na_flower_act = NULL;
+	na_vlan_id = NULL;
+	na_vlan_priority = NULL;
 	trans = TRANS(ATTR);
 	back = trans;
 trans:
 	switch (trans[n++]) {
 		union {
 			const struct rte_flow_item_eth *eth;
+			const struct rte_flow_item_vlan *vlan;
 			const struct rte_flow_item_ipv4 *ipv4;
 			const struct rte_flow_item_ipv6 *ipv6;
 			const struct rte_flow_item_tcp *tcp;
@@ -359,6 +418,11 @@ trans:
 		} spec, mask;
 		union {
 			const struct rte_flow_action_port_id *port_id;
+			const struct rte_flow_action_of_push_vlan *of_push_vlan;
+			const struct rte_flow_action_of_set_vlan_vid *
+				of_set_vlan_vid;
+			const struct rte_flow_action_of_set_vlan_pcp *
+				of_set_vlan_pcp;
 		} conf;
 		struct nlmsghdr *nlh;
 		struct tcmsg *tcm;
@@ -495,6 +559,58 @@ trans:
 			goto error_nobufs;
 		++item;
 		break;
+	case ITEM_VLAN:
+		if (item->type != RTE_FLOW_ITEM_TYPE_VLAN)
+			goto trans;
+		mask.vlan = mlx5_nl_flow_item_mask
+			(item, &rte_flow_item_vlan_mask,
+			 &mlx5_nl_flow_mask_supported.vlan,
+			 &mlx5_nl_flow_mask_empty.vlan,
+			 sizeof(mlx5_nl_flow_mask_supported.vlan), error);
+		if (!mask.vlan)
+			return -rte_errno;
+		if (!eth_type_set &&
+		    !mnl_attr_put_u16_check(buf, size,
+					    TCA_FLOWER_KEY_ETH_TYPE,
+					    RTE_BE16(ETH_P_8021Q)))
+			goto error_nobufs;
+		eth_type_set = 1;
+		vlan_present = 1;
+		if (mask.vlan == &mlx5_nl_flow_mask_empty.vlan) {
+			++item;
+			break;
+		}
+		spec.vlan = item->spec;
+		if ((mask.vlan->tci & RTE_BE16(0xe000) &&
+		     (mask.vlan->tci & RTE_BE16(0xe000)) != RTE_BE16(0xe000)) ||
+		    (mask.vlan->tci & RTE_BE16(0x0fff) &&
+		     (mask.vlan->tci & RTE_BE16(0x0fff)) != RTE_BE16(0x0fff)) ||
+		    (mask.vlan->inner_type &&
+		     mask.vlan->inner_type != RTE_BE16(0xffff)))
+			return rte_flow_error_set
+				(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM_MASK,
+				 mask.vlan,
+				 "no support for partial masks on"
+				 " \"tci\" (PCP and VID parts) and"
+				 " \"inner_type\" fields");
+		if (mask.vlan->inner_type) {
+			if (!mnl_attr_put_u16_check
+			    (buf, size, TCA_FLOWER_KEY_VLAN_ETH_TYPE,
+			     spec.vlan->inner_type))
+				goto error_nobufs;
+			vlan_eth_type_set = 1;
+		}
+		if ((mask.vlan->tci & RTE_BE16(0xe000) &&
+		     !mnl_attr_put_u8_check
+		     (buf, size, TCA_FLOWER_KEY_VLAN_PRIO,
+		      (rte_be_to_cpu_16(spec.vlan->tci) >> 13) & 0x7)) ||
+		    (mask.vlan->tci & RTE_BE16(0x0fff) &&
+		     !mnl_attr_put_u16_check
+		     (buf, size, TCA_FLOWER_KEY_VLAN_ID,
+		      spec.vlan->tci & RTE_BE16(0x0fff))))
+			goto error_nobufs;
+		++item;
+		break;
 	case ITEM_IPV4:
 		if (item->type != RTE_FLOW_ITEM_TYPE_IPV4)
 			goto trans;
@@ -505,12 +621,15 @@ trans:
 			 sizeof(mlx5_nl_flow_mask_supported.ipv4), error);
 		if (!mask.ipv4)
 			return -rte_errno;
-		if (!eth_type_set &&
+		if ((!eth_type_set || !vlan_eth_type_set) &&
 		    !mnl_attr_put_u16_check(buf, size,
+					    vlan_present ?
+					    TCA_FLOWER_KEY_VLAN_ETH_TYPE :
 					    TCA_FLOWER_KEY_ETH_TYPE,
 					    RTE_BE16(ETH_P_IP)))
 			goto error_nobufs;
 		eth_type_set = 1;
+		vlan_eth_type_set = 1;
 		if (mask.ipv4 == &mlx5_nl_flow_mask_empty.ipv4) {
 			++item;
 			break;
@@ -557,12 +676,15 @@ trans:
 			 sizeof(mlx5_nl_flow_mask_supported.ipv6), error);
 		if (!mask.ipv6)
 			return -rte_errno;
-		if (!eth_type_set &&
+		if ((!eth_type_set || !vlan_eth_type_set) &&
 		    !mnl_attr_put_u16_check(buf, size,
+					    vlan_present ?
+					    TCA_FLOWER_KEY_VLAN_ETH_TYPE :
 					    TCA_FLOWER_KEY_ETH_TYPE,
 					    RTE_BE16(ETH_P_IPV6)))
 			goto error_nobufs;
 		eth_type_set = 1;
+		vlan_eth_type_set = 1;
 		if (mask.ipv6 == &mlx5_nl_flow_mask_empty.ipv6) {
 			++item;
 			break;
@@ -766,6 +888,84 @@ trans:
 			goto error_nobufs;
 		mnl_attr_nest_end(buf, act);
 		mnl_attr_nest_end(buf, act_index);
+		++action;
+		break;
+	case ACTION_OF_POP_VLAN:
+		if (action->type != RTE_FLOW_ACTION_TYPE_OF_POP_VLAN)
+			goto trans;
+		conf.of_push_vlan = NULL;
+		i = TCA_VLAN_ACT_POP;
+		goto action_of_vlan;
+	case ACTION_OF_PUSH_VLAN:
+		if (action->type != RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN)
+			goto trans;
+		conf.of_push_vlan = action->conf;
+		i = TCA_VLAN_ACT_PUSH;
+		goto action_of_vlan;
+	case ACTION_OF_SET_VLAN_VID:
+		if (action->type != RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID)
+			goto trans;
+		conf.of_set_vlan_vid = action->conf;
+		if (na_vlan_id)
+			goto override_na_vlan_id;
+		i = TCA_VLAN_ACT_MODIFY;
+		goto action_of_vlan;
+	case ACTION_OF_SET_VLAN_PCP:
+		if (action->type != RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP)
+			goto trans;
+		conf.of_set_vlan_pcp = action->conf;
+		if (na_vlan_priority)
+			goto override_na_vlan_priority;
+		i = TCA_VLAN_ACT_MODIFY;
+		goto action_of_vlan;
+action_of_vlan:
+		act_index =
+			mnl_attr_nest_start_check(buf, size, act_index_cur++);
+		if (!act_index ||
+		    !mnl_attr_put_strz_check(buf, size, TCA_ACT_KIND, "vlan"))
+			goto error_nobufs;
+		act = mnl_attr_nest_start_check(buf, size, TCA_ACT_OPTIONS);
+		if (!act)
+			goto error_nobufs;
+		if (!mnl_attr_put_check(buf, size, TCA_VLAN_PARMS,
+					sizeof(struct tc_vlan),
+					&(struct tc_vlan){
+						.action = TC_ACT_PIPE,
+						.v_action = i,
+					}))
+			goto error_nobufs;
+		if (i == TCA_VLAN_ACT_POP) {
+			mnl_attr_nest_end(buf, act);
+			++action;
+			break;
+		}
+		if (i == TCA_VLAN_ACT_PUSH &&
+		    !mnl_attr_put_u16_check(buf, size,
+					    TCA_VLAN_PUSH_VLAN_PROTOCOL,
+					    conf.of_push_vlan->ethertype))
+			goto error_nobufs;
+		na_vlan_id = mnl_nlmsg_get_payload_tail(buf);
+		if (!mnl_attr_put_u16_check(buf, size, TCA_VLAN_PAD, 0))
+			goto error_nobufs;
+		na_vlan_priority = mnl_nlmsg_get_payload_tail(buf);
+		if (!mnl_attr_put_u8_check(buf, size, TCA_VLAN_PAD, 0))
+			goto error_nobufs;
+		mnl_attr_nest_end(buf, act);
+		mnl_attr_nest_end(buf, act_index);
+		if (action->type == RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID) {
+override_na_vlan_id:
+			na_vlan_id->nla_type = TCA_VLAN_PUSH_VLAN_ID;
+			*(uint16_t *)mnl_attr_get_payload(na_vlan_id) =
+				rte_be_to_cpu_16
+				(conf.of_set_vlan_vid->vlan_vid);
+		} else if (action->type ==
+			   RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP) {
+override_na_vlan_priority:
+			na_vlan_priority->nla_type =
+				TCA_VLAN_PUSH_VLAN_PRIORITY;
+			*(uint8_t *)mnl_attr_get_payload(na_vlan_priority) =
+				conf.of_set_vlan_pcp->vlan_pcp;
+		}
 		++action;
 		break;
 	case END:
