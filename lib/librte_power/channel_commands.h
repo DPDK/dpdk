@@ -48,7 +48,8 @@ enum workload {HIGH, MEDIUM, LOW};
 enum policy_to_use {
 	TRAFFIC,
 	TIME,
-	WORKLOAD
+	WORKLOAD,
+	BRANCH_RATIO
 };
 
 struct traffic {

@@ -27,6 +27,7 @@
 #include "channel_commands.h"
 #include "channel_manager.h"
 #include "power_manager.h"
+#include "oob_monitor.h"
 
 #define RTE_LOGTYPE_CHANNEL_MONITOR RTE_LOGTYPE_USER1
 
@@ -92,6 +93,10 @@ get_pcpu_to_control(struct policy *pol)
 	struct vm_info info;
 	int pcpu, count;
 	uint64_t mask_u64b;
+	struct core_info *ci;
+	int ret;
+
+	ci = get_core_info();
 
 	RTE_LOG(INFO, CHANNEL_MONITOR, "Looking for pcpu for %s\n",
 			pol->pkt.vm_name);
@@ -100,8 +105,22 @@ get_pcpu_to_control(struct policy *pol)
 	for (count = 0; count < pol->pkt.num_vcpu; count++) {
 		mask_u64b = info.pcpu_mask[pol->pkt.vcpu_to_control[count]];
 		for (pcpu = 0; mask_u64b; mask_u64b &= ~(1ULL << pcpu++)) {
-			if ((mask_u64b >> pcpu) & 1)
-				pol->core_share[count].pcpu = pcpu;
+			if ((mask_u64b >> pcpu) & 1) {
+				if (pol->pkt.policy_to_use == BRANCH_RATIO) {
+					ci->cd[pcpu].oob_enabled = 1;
+					ret = add_core_to_monitor(pcpu);
+					if (ret == 0)
+						printf("Monitoring pcpu %d via Branch Ratio\n",
+								pcpu);
+					else
+						printf("Failed to start OOB Monitoring pcpu %d\n",
+								pcpu);
+
+				} else {
+					pol->core_share[count].pcpu = pcpu;
+					printf("Monitoring pcpu %d\n", pcpu);
+				}
+			}
 		}
 	}
 }
