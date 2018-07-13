@@ -10,6 +10,8 @@
 #include <linux/pkt_cls.h>
 #include <linux/pkt_sched.h>
 #include <linux/rtnetlink.h>
+#include <linux/tc_act/tc_gact.h>
+#include <linux/tc_act/tc_mirred.h>
 #include <stdalign.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -52,6 +54,8 @@ enum mlx5_nl_flow_trans {
 	ITEM_VOID,
 	ACTIONS,
 	ACTION_VOID,
+	ACTION_PORT_ID,
+	ACTION_DROP,
 	END,
 };
 
@@ -60,7 +64,9 @@ enum mlx5_nl_flow_trans {
 #define PATTERN_COMMON \
 	ITEM_VOID, ACTIONS
 #define ACTIONS_COMMON \
-	ACTION_VOID, END
+	ACTION_VOID
+#define ACTIONS_FATE \
+	ACTION_PORT_ID, ACTION_DROP
 
 /** Parser state transitions used by mlx5_nl_flow_transpose(). */
 static const enum mlx5_nl_flow_trans *const mlx5_nl_flow_trans[] = {
@@ -69,8 +75,10 @@ static const enum mlx5_nl_flow_trans *const mlx5_nl_flow_trans[] = {
 	[ATTR] = TRANS(PATTERN),
 	[PATTERN] = TRANS(PATTERN_COMMON),
 	[ITEM_VOID] = TRANS(BACK),
-	[ACTIONS] = TRANS(ACTIONS_COMMON),
+	[ACTIONS] = TRANS(ACTIONS_FATE, ACTIONS_COMMON),
 	[ACTION_VOID] = TRANS(BACK),
+	[ACTION_PORT_ID] = TRANS(ACTION_VOID, END),
+	[ACTION_DROP] = TRANS(ACTION_VOID, END),
 	[END] = NULL,
 };
 
@@ -119,6 +127,7 @@ mlx5_nl_flow_transpose(void *buf,
 	const struct rte_flow_item *item;
 	const struct rte_flow_action *action;
 	unsigned int n;
+	uint32_t act_index_cur;
 	struct nlattr *na_flower;
 	struct nlattr *na_flower_act;
 	const enum mlx5_nl_flow_trans *trans;
@@ -130,14 +139,21 @@ init:
 	item = pattern;
 	action = actions;
 	n = 0;
+	act_index_cur = 0;
 	na_flower = NULL;
 	na_flower_act = NULL;
 	trans = TRANS(ATTR);
 	back = trans;
 trans:
 	switch (trans[n++]) {
+		union {
+			const struct rte_flow_action_port_id *port_id;
+		} conf;
 		struct nlmsghdr *nlh;
 		struct tcmsg *tcm;
+		struct nlattr *act_index;
+		struct nlattr *act;
+		unsigned int i;
 
 	case INVALID:
 		if (item->type)
@@ -228,10 +244,67 @@ trans:
 			mnl_attr_nest_start_check(buf, size, TCA_FLOWER_ACT);
 		if (!na_flower_act)
 			goto error_nobufs;
+		act_index_cur = 1;
 		break;
 	case ACTION_VOID:
 		if (action->type != RTE_FLOW_ACTION_TYPE_VOID)
 			goto trans;
+		++action;
+		break;
+	case ACTION_PORT_ID:
+		if (action->type != RTE_FLOW_ACTION_TYPE_PORT_ID)
+			goto trans;
+		conf.port_id = action->conf;
+		if (conf.port_id->original)
+			i = 0;
+		else
+			for (i = 0; ptoi[i].ifindex; ++i)
+				if (ptoi[i].port_id == conf.port_id->id)
+					break;
+		if (!ptoi[i].ifindex)
+			return rte_flow_error_set
+				(error, ENODEV, RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+				 conf.port_id,
+				 "missing data to convert port ID to ifindex");
+		act_index =
+			mnl_attr_nest_start_check(buf, size, act_index_cur++);
+		if (!act_index ||
+		    !mnl_attr_put_strz_check(buf, size, TCA_ACT_KIND, "mirred"))
+			goto error_nobufs;
+		act = mnl_attr_nest_start_check(buf, size, TCA_ACT_OPTIONS);
+		if (!act)
+			goto error_nobufs;
+		if (!mnl_attr_put_check(buf, size, TCA_MIRRED_PARMS,
+					sizeof(struct tc_mirred),
+					&(struct tc_mirred){
+						.action = TC_ACT_STOLEN,
+						.eaction = TCA_EGRESS_REDIR,
+						.ifindex = ptoi[i].ifindex,
+					}))
+			goto error_nobufs;
+		mnl_attr_nest_end(buf, act);
+		mnl_attr_nest_end(buf, act_index);
+		++action;
+		break;
+	case ACTION_DROP:
+		if (action->type != RTE_FLOW_ACTION_TYPE_DROP)
+			goto trans;
+		act_index =
+			mnl_attr_nest_start_check(buf, size, act_index_cur++);
+		if (!act_index ||
+		    !mnl_attr_put_strz_check(buf, size, TCA_ACT_KIND, "gact"))
+			goto error_nobufs;
+		act = mnl_attr_nest_start_check(buf, size, TCA_ACT_OPTIONS);
+		if (!act)
+			goto error_nobufs;
+		if (!mnl_attr_put_check(buf, size, TCA_GACT_PARMS,
+					sizeof(struct tc_gact),
+					&(struct tc_gact){
+						.action = TC_ACT_SHOT,
+					}))
+			goto error_nobufs;
+		mnl_attr_nest_end(buf, act);
+		mnl_attr_nest_end(buf, act_index);
 		++action;
 		break;
 	case END:
