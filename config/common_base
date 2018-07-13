@@ -400,6 +400,10 @@ CONFIG_RTE_LIBRTE_PMD_FAILSAFE=y
 CONFIG_RTE_LIBRTE_MVPP2_PMD=n
 
 #
+# Compile support for VMBus library
+#
+CONFIG_RTE_LIBRTE_VMBUS=n
+
 # Compile virtual device driver for NetVSC on Hyper-V/Azure
 #
 CONFIG_RTE_LIBRTE_VDEV_NETVSC_PMD=n

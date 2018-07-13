@@ -427,6 +427,10 @@ F: drivers/bus/pci/
 VDEV bus driver
 F: drivers/bus/vdev/
 
+VMBUS bus driver
+M: Stephen Hemminger <sthemmin@microsoft.com>
+F: drivers/bus/vmbus/
+
 
 Networking Drivers
 ------------------
