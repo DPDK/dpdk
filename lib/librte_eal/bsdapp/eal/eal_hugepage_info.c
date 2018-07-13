@@ -101,6 +101,10 @@ eal_hugepage_info_init(void)
 	hpi->num_pages[0] = num_buffers;
 	hpi->lock_descriptor = fd;
 
+	/* for no shared files mode, do not create shared memory config */
+	if (internal_config.no_shconf)
+		return 0;
+
 	tmp_hpi = create_shared_memory(eal_hugepage_info_path(),
 			sizeof(internal_config.hugepage_info));
 	if (tmp_hpi == NULL ) {

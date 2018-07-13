@@ -446,6 +446,10 @@ eal_hugepage_info_init(void)
 	if (hugepage_info_init() < 0)
 		return -1;
 
+	/* for no shared files mode, we're done */
+	if (internal_config.no_shconf)
+		return 0;
+
 	hpi = &internal_config.hugepage_info[0];
 
 	tmp_hpi = create_shared_memory(eal_hugepage_info_path(),
