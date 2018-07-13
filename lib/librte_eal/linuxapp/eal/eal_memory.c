@@ -1088,8 +1088,7 @@ get_socket_mem_size(int socket)
 
 	for (i = 0; i < internal_config.num_hugepage_sizes; i++){
 		struct hugepage_info *hpi = &internal_config.hugepage_info[i];
-		if (strnlen(hpi->hugedir, sizeof(hpi->hugedir)) != 0)
-			size += hpi->hugepage_sz * hpi->num_pages[socket];
+		size += hpi->hugepage_sz * hpi->num_pages[socket];
 	}
 
 	return size;
