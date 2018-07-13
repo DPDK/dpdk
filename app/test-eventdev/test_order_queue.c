@@ -164,10 +164,14 @@ order_queue_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 	if (ret)
 		return ret;
 
-	ret = evt_service_setup(opt->dev_id);
-	if (ret) {
-		evt_err("No service lcore found to run event dev.");
-		return ret;
+	if (!evt_has_distributed_sched(opt->dev_id)) {
+		uint32_t service_id;
+		rte_event_dev_service_id_get(opt->dev_id, &service_id);
+		ret = evt_service_setup(service_id);
+		if (ret) {
+			evt_err("No service lcore found to run event dev.");
+			return ret;
+		}
 	}
 
 	ret = rte_event_dev_start(opt->dev_id);
