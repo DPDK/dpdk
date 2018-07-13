@@ -25,6 +25,7 @@ common_sources = files(
 	'eal_common_tailqs.c',
 	'eal_common_thread.c',
 	'eal_common_timer.c',
+	'eal_common_uuid.c',
 	'malloc_elem.c',
 	'malloc_heap.c',
 	'malloc_mp.c',
@@ -75,6 +76,7 @@ common_headers = files(
 	'include/rte_string_fns.h',
 	'include/rte_tailq.h',
 	'include/rte_time.h',
+	'include/rte_uuid.h',
 	'include/rte_version.h')
 
 # special case install the generic headers, since they go in a subdir

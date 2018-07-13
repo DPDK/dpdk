@@ -241,6 +241,16 @@ DPDK_18.05 {
 
 } DPDK_18.02;
 
+DPDK_18.08 {
+	global:
+
+	rte_uuid_compare;
+	rte_uuid_is_null;
+	rte_uuid_parse;
+	rte_uuid_unparse;
+
+} DPDK_18.05;
+
 EXPERIMENTAL {
 	global:
 
