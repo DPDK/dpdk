@@ -41,5 +41,12 @@ int
 qat_comp_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 		  uint32_t max_inflight_ops, int socket_id);
 
+int
+qat_comp_dev_config(struct rte_compressdev *dev,
+		struct rte_compressdev_config *config);
+
+int
+qat_comp_dev_close(struct rte_compressdev *dev);
+
 #endif
 #endif /* _QAT_COMP_PMD_H_ */

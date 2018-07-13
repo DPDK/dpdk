@@ -99,3 +99,98 @@ qat_comp_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 
 	return ret;
 }
+
+static struct rte_mempool *
+qat_comp_create_xform_pool(struct qat_comp_dev_private *comp_dev,
+			      uint32_t num_elements)
+{
+	char xform_pool_name[RTE_MEMPOOL_NAMESIZE];
+	struct rte_mempool *mp;
+
+	snprintf(xform_pool_name, RTE_MEMPOOL_NAMESIZE,
+			"%s_xforms", comp_dev->qat_dev->name);
+
+	QAT_LOG(DEBUG, "xformpool: %s", xform_pool_name);
+	mp = rte_mempool_lookup(xform_pool_name);
+
+	if (mp != NULL) {
+		QAT_LOG(DEBUG, "xformpool already created");
+		if (mp->size != num_elements) {
+			QAT_LOG(DEBUG, "xformpool wrong size - delete it");
+			rte_mempool_free(mp);
+			mp = NULL;
+			comp_dev->xformpool = NULL;
+		}
+	}
+
+	if (mp == NULL)
+		mp = rte_mempool_create(xform_pool_name,
+				num_elements,
+				qat_comp_xform_size(), 0, 0,
+				NULL, NULL, NULL, NULL, rte_socket_id(),
+				0);
+	if (mp == NULL) {
+		QAT_LOG(ERR, "Err creating mempool %s w %d elements of size %d",
+			xform_pool_name, num_elements, qat_comp_xform_size());
+		return NULL;
+	}
+
+	return mp;
+}
+
+static void
+_qat_comp_dev_config_clear(struct qat_comp_dev_private *comp_dev)
+{
+	/* Free private_xform pool */
+	if (comp_dev->xformpool) {
+		/* Free internal mempool for private xforms */
+		rte_mempool_free(comp_dev->xformpool);
+		comp_dev->xformpool = NULL;
+	}
+}
+
+int
+qat_comp_dev_config(struct rte_compressdev *dev,
+		struct rte_compressdev_config *config)
+{
+	struct qat_comp_dev_private *comp_dev = dev->data->dev_private;
+	int ret = 0;
+
+	if (config->max_nb_streams != 0) {
+		QAT_LOG(ERR,
+	"QAT device does not support STATEFUL so max_nb_streams must be 0");
+		return -EINVAL;
+	}
+
+	comp_dev->xformpool = qat_comp_create_xform_pool(comp_dev,
+					config->max_nb_priv_xforms);
+	if (comp_dev->xformpool == NULL) {
+
+		ret = -ENOMEM;
+		goto error_out;
+	}
+	return 0;
+
+error_out:
+	_qat_comp_dev_config_clear(comp_dev);
+	return ret;
+}
+
+
+int
+qat_comp_dev_close(struct rte_compressdev *dev)
+{
+	int i;
+	int ret = 0;
+	struct qat_comp_dev_private *comp_dev = dev->data->dev_private;
+
+	for (i = 0; i < dev->data->nb_queue_pairs; i++) {
+		ret = qat_comp_qp_release(dev, i);
+		if (ret < 0)
+			return ret;
+	}
+
+	_qat_comp_dev_config_clear(comp_dev);
+
+	return ret;
+}
