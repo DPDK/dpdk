@@ -156,6 +156,12 @@ struct mlx5_drop {
 	struct mlx5_rxq_ibv *rxq; /* Verbs Rx queue. */
 };
 
+/** DPDK port to network interface index (ifindex) conversion. */
+struct mlx5_nl_flow_ptoi {
+	uint16_t port_id; /**< DPDK port ID. */
+	unsigned int ifindex; /**< Network interface index. */
+};
+
 struct mnl_socket;
 
 struct priv {
@@ -390,6 +396,18 @@ int mlx5_nl_switch_info(int nl, unsigned int ifindex,
 
 /* mlx5_nl_flow.c */
 
+int mlx5_nl_flow_transpose(void *buf,
+			   size_t size,
+			   const struct mlx5_nl_flow_ptoi *ptoi,
+			   const struct rte_flow_attr *attr,
+			   const struct rte_flow_item *pattern,
+			   const struct rte_flow_action *actions,
+			   struct rte_flow_error *error);
+void mlx5_nl_flow_brand(void *buf, uint32_t handle);
+int mlx5_nl_flow_create(struct mnl_socket *nl, void *buf,
+			struct rte_flow_error *error);
+int mlx5_nl_flow_destroy(struct mnl_socket *nl, void *buf,
+			 struct rte_flow_error *error);
 int mlx5_nl_flow_init(struct mnl_socket *nl, unsigned int ifindex,
 		      struct rte_flow_error *error);
 struct mnl_socket *mlx5_nl_flow_socket_create(void);

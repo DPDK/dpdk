@@ -4,6 +4,7 @@
  */
 
 #include <sys/queue.h>
+#include <stdalign.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -280,6 +281,7 @@ struct rte_flow {
 	struct rte_flow_action_rss rss;/**< RSS context. */
 	uint8_t key[MLX5_RSS_HASH_KEY_LEN]; /**< RSS hash key. */
 	uint16_t (*queue)[]; /**< Destination queues to redirect traffic to. */
+	void *nl_flow; /**< Netlink flow buffer if relevant. */
 };
 
 static const struct rte_flow_ops mlx5_flow_ops = {
@@ -2366,6 +2368,103 @@ mlx5_flow_actions(struct rte_eth_dev *dev,
 }
 
 /**
+ * Validate flow rule and fill flow structure accordingly.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[out] flow
+ *   Pointer to flow structure.
+ * @param flow_size
+ *   Size of allocated space for @p flow.
+ * @param[in] attr
+ *   Flow rule attributes.
+ * @param[in] pattern
+ *   Pattern specification (list terminated by the END pattern item).
+ * @param[in] actions
+ *   Associated actions (list terminated by the END action).
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   A positive value representing the size of the flow object in bytes
+ *   regardless of @p flow_size on success, a negative errno value otherwise
+ *   and rte_errno is set.
+ */
+static int
+mlx5_flow_merge_switch(struct rte_eth_dev *dev,
+		       struct rte_flow *flow,
+		       size_t flow_size,
+		       const struct rte_flow_attr *attr,
+		       const struct rte_flow_item pattern[],
+		       const struct rte_flow_action actions[],
+		       struct rte_flow_error *error)
+{
+	unsigned int n = mlx5_dev_to_port_id(dev->device, NULL, 0);
+	uint16_t port_id[!n + n];
+	struct mlx5_nl_flow_ptoi ptoi[!n + n + 1];
+	size_t off = RTE_ALIGN_CEIL(sizeof(*flow), alignof(max_align_t));
+	unsigned int i;
+	unsigned int own = 0;
+	int ret;
+
+	/* At least one port is needed when no switch domain is present. */
+	if (!n) {
+		n = 1;
+		port_id[0] = dev->data->port_id;
+	} else {
+		n = RTE_MIN(mlx5_dev_to_port_id(dev->device, port_id, n), n);
+	}
+	for (i = 0; i != n; ++i) {
+		struct rte_eth_dev_info dev_info;
+
+		rte_eth_dev_info_get(port_id[i], &dev_info);
+		if (port_id[i] == dev->data->port_id)
+			own = i;
+		ptoi[i].port_id = port_id[i];
+		ptoi[i].ifindex = dev_info.if_index;
+	}
+	/* Ensure first entry of ptoi[] is the current device. */
+	if (own) {
+		ptoi[n] = ptoi[0];
+		ptoi[0] = ptoi[own];
+		ptoi[own] = ptoi[n];
+	}
+	/* An entry with zero ifindex terminates ptoi[]. */
+	ptoi[n].port_id = 0;
+	ptoi[n].ifindex = 0;
+	if (flow_size < off)
+		flow_size = 0;
+	ret = mlx5_nl_flow_transpose((uint8_t *)flow + off,
+				     flow_size ? flow_size - off : 0,
+				     ptoi, attr, pattern, actions, error);
+	if (ret < 0)
+		return ret;
+	if (flow_size) {
+		*flow = (struct rte_flow){
+			.attributes = *attr,
+			.nl_flow = (uint8_t *)flow + off,
+		};
+		/*
+		 * Generate a reasonably unique handle based on the address
+		 * of the target buffer.
+		 *
+		 * This is straightforward on 32-bit systems where the flow
+		 * pointer can be used directly. Otherwise, its least
+		 * significant part is taken after shifting it by the
+		 * previous power of two of the pointed buffer size.
+		 */
+		if (sizeof(flow) <= 4)
+			mlx5_nl_flow_brand(flow->nl_flow, (uintptr_t)flow);
+		else
+			mlx5_nl_flow_brand
+				(flow->nl_flow,
+				 (uintptr_t)flow >>
+				 rte_log2_u32(rte_align32prevpow2(flow_size)));
+	}
+	return off + ret;
+}
+
+/**
  * Convert the @p attributes, @p pattern, @p action, into an flow for the NIC
  * after ensuring the NIC will understand and process it correctly.
  * The conversion is only performed item/action per item/action, each of
@@ -2419,6 +2518,10 @@ mlx5_flow_merge(struct rte_eth_dev *dev, struct rte_flow *flow,
 	int ret;
 	uint32_t i;
 
+	if (attributes->transfer)
+		return mlx5_flow_merge_switch(dev, flow, flow_size,
+					      attributes, pattern,
+					      actions, error);
 	if (size > flow_size)
 		flow = &local_flow;
 	ret = mlx5_flow_attributes(dev, attributes, flow, error);
@@ -2709,8 +2812,11 @@ mlx5_flow_validate(struct rte_eth_dev *dev,
 static void
 mlx5_flow_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 {
+	struct priv *priv = dev->data->dev_private;
 	struct mlx5_flow_verbs *verbs;
 
+	if (flow->nl_flow && priv->mnl_socket)
+		mlx5_nl_flow_destroy(priv->mnl_socket, flow->nl_flow, NULL);
 	LIST_FOREACH(verbs, &flow->verbs, next) {
 		if (verbs->flow) {
 			claim_zero(mlx5_glue->destroy_flow(verbs->flow));
@@ -2747,6 +2853,7 @@ static int
 mlx5_flow_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 		struct rte_flow_error *error)
 {
+	struct priv *priv = dev->data->dev_private;
 	struct mlx5_flow_verbs *verbs;
 	int err;
 
@@ -2795,6 +2902,10 @@ mlx5_flow_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 			goto error;
 		}
 	}
+	if (flow->nl_flow &&
+	    priv->mnl_socket &&
+	    mlx5_nl_flow_create(priv->mnl_socket, flow->nl_flow, error))
+		goto error;
 	return 0;
 error:
 	err = rte_errno; /* Save rte_errno before cleanup. */

@@ -199,6 +199,16 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		linux/if_link.h \
 		enum IFLA_PHYS_PORT_NAME \
 		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_ACT \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_ACT \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_FLAGS \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_FLAGS \
+		$(AUTOCONF_OUTPUT)
 
 # Create mlx5_autoconf.h or update it in case it differs from the new one.
 
