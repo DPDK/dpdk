@@ -62,5 +62,11 @@ uint16_t
 qat_comp_pmd_dequeue_op_burst(void *qp, struct rte_comp_op **ops,
 		uint16_t nb_ops);
 
+int
+qat_comp_dev_start(struct rte_compressdev *dev __rte_unused);
+
+void
+qat_comp_dev_stop(struct rte_compressdev *dev __rte_unused);
+
 #endif
 #endif /* _QAT_COMP_PMD_H_ */

@@ -176,6 +176,17 @@ error_out:
 	return ret;
 }
 
+int
+qat_comp_dev_start(struct rte_compressdev *dev __rte_unused)
+{
+	return 0;
+}
+
+void
+qat_comp_dev_stop(struct rte_compressdev *dev __rte_unused)
+{
+
+}
 
 int
 qat_comp_dev_close(struct rte_compressdev *dev)
