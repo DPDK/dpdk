@@ -156,6 +156,8 @@ struct mlx5_drop {
 	struct mlx5_rxq_ibv *rxq; /* Verbs Rx queue. */
 };
 
+struct mnl_socket;
+
 struct priv {
 	LIST_ENTRY(priv) mem_event_cb; /* Called by memory event callback. */
 	struct rte_eth_dev_data *dev_data;  /* Pointer to device data. */
@@ -220,6 +222,7 @@ struct priv {
 	rte_spinlock_t uar_lock[MLX5_UAR_PAGE_NUM_MAX];
 	/* UAR same-page access control required in 32bit implementations. */
 #endif
+	struct mnl_socket *mnl_socket; /* Libmnl socket. */
 };
 
 #define PORT_ID(priv) ((priv)->dev_data->port_id)
@@ -384,5 +387,12 @@ int mlx5_nl_allmulti(struct rte_eth_dev *dev, int enable);
 unsigned int mlx5_nl_ifindex(int nl, const char *name);
 int mlx5_nl_switch_info(int nl, unsigned int ifindex,
 			struct mlx5_switch_info *info);
+
+/* mlx5_nl_flow.c */
+
+int mlx5_nl_flow_init(struct mnl_socket *nl, unsigned int ifindex,
+		      struct rte_flow_error *error);
+struct mnl_socket *mlx5_nl_flow_socket_create(void);
+void mlx5_nl_flow_socket_destroy(struct mnl_socket *nl);
 
 #endif /* RTE_PMD_MLX5_H_ */
