@@ -149,6 +149,8 @@ struct rte_flow_expand_rss {
  * Expand RSS flows into several possible flows according to the RSS hash
  * fields requested and the driver capabilities.
  *
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
  * @param[out] buf
  *   Buffer to store the result expansion.
  * @param[in] size
@@ -169,7 +171,7 @@ struct rte_flow_expand_rss {
  *
  *   -E2BIG: graph-depth @p graph is too deep.
  */
-int
+int __rte_experimental
 rte_flow_expand_rss(struct rte_flow_expand_rss *buf, size_t size,
 		    const struct rte_flow_item *pattern, uint64_t types,
 		    const struct rte_flow_expand_node graph[],
