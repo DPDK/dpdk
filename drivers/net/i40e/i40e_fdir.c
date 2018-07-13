@@ -1360,6 +1360,8 @@ i40e_check_fdir_programming_status(struct i40e_rx_queue *rxq)
 			I40E_PCI_REG_WRITE(rxq->qrx_tail, rxq->nb_rx_desc - 1);
 		else
 			I40E_PCI_REG_WRITE(rxq->qrx_tail, rxq->rx_tail - 1);
+	} else {
+		ret = -1;
 	}
 
 	return ret;
