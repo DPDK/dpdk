@@ -832,7 +832,8 @@ rte_eal_init(int argc, char **argv)
 	}
 
 	/* create runtime data directory */
-	if (eal_create_runtime_dir() < 0) {
+	if (internal_config.no_shconf == 0 &&
+			eal_create_runtime_dir() < 0) {
 		rte_eal_init_alert("Cannot create runtime directory\n");
 		rte_errno = EACCES;
 		return -1;
