@@ -11,6 +11,12 @@ extern "C" {
 
 #include "channel_commands.h"
 
+struct channel_packet *get_policy(void);
+
+int set_policy_mac(int port, int idx);
+
+void set_policy_defaults(struct channel_packet *pkt);
+
 void run_cli(__attribute__((unused)) void *arg);
 
 #ifdef __cplusplus

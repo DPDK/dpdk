@@ -14,7 +14,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 APP = guest_vm_power_mgr
 
 # all source are stored in SRCS-y
-SRCS-y := main.c vm_power_cli_guest.c
+SRCS-y := main.c vm_power_cli_guest.c parse.c
 
 CFLAGS += -O3 -I$(RTE_SDK)/lib/librte_power/
 CFLAGS += $(WERROR_FLAGS)
