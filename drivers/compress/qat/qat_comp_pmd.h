@@ -30,30 +30,6 @@ struct qat_comp_dev_private {
 
 };
 
-void
-qat_comp_stats_reset(struct rte_compressdev *dev);
-
-void
-qat_comp_stats_get(struct rte_compressdev *dev,
-		struct rte_compressdev_stats *stats);
-int
-qat_comp_qp_release(struct rte_compressdev *dev, uint16_t queue_pair_id);
-
-int
-qat_comp_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
-		  uint32_t max_inflight_ops, int socket_id);
-
-int
-qat_comp_dev_config(struct rte_compressdev *dev,
-		struct rte_compressdev_config *config);
-
-int
-qat_comp_dev_close(struct rte_compressdev *dev);
-
-void
-qat_comp_dev_info_get(struct rte_compressdev *dev,
-			struct rte_compressdev_info *info);
-
 uint16_t
 qat_comp_pmd_enqueue_op_burst(void *qp, struct rte_comp_op **ops,
 		uint16_t nb_ops);
@@ -61,12 +37,6 @@ qat_comp_pmd_enqueue_op_burst(void *qp, struct rte_comp_op **ops,
 uint16_t
 qat_comp_pmd_dequeue_op_burst(void *qp, struct rte_comp_op **ops,
 		uint16_t nb_ops);
-
-int
-qat_comp_dev_start(struct rte_compressdev *dev __rte_unused);
-
-void
-qat_comp_dev_stop(struct rte_compressdev *dev __rte_unused);
 
 #endif
 #endif /* _QAT_COMP_PMD_H_ */

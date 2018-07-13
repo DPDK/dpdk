@@ -5,7 +5,7 @@
 #include "qat_comp.h"
 #include "qat_comp_pmd.h"
 
-void
+static void
 qat_comp_stats_get(struct rte_compressdev *dev,
 		struct rte_compressdev_stats *stats)
 {
@@ -25,7 +25,7 @@ qat_comp_stats_get(struct rte_compressdev *dev,
 	stats->dequeue_err_count = qat_stats.dequeue_err_count;
 }
 
-void
+static void
 qat_comp_stats_reset(struct rte_compressdev *dev)
 {
 	struct qat_comp_dev_private *qat_priv;
@@ -40,7 +40,7 @@ qat_comp_stats_reset(struct rte_compressdev *dev)
 
 }
 
-int
+static int
 qat_comp_qp_release(struct rte_compressdev *dev, uint16_t queue_pair_id)
 {
 	struct qat_comp_dev_private *qat_private = dev->data->dev_private;
@@ -55,7 +55,7 @@ qat_comp_qp_release(struct rte_compressdev *dev, uint16_t queue_pair_id)
 			&(dev->data->queue_pairs[queue_pair_id]));
 }
 
-int
+static int
 qat_comp_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 		  uint32_t max_inflight_ops, int socket_id)
 {
@@ -149,7 +149,7 @@ _qat_comp_dev_config_clear(struct qat_comp_dev_private *comp_dev)
 	}
 }
 
-int
+static int
 qat_comp_dev_config(struct rte_compressdev *dev,
 		struct rte_compressdev_config *config)
 {
@@ -176,19 +176,19 @@ error_out:
 	return ret;
 }
 
-int
+static int
 qat_comp_dev_start(struct rte_compressdev *dev __rte_unused)
 {
 	return 0;
 }
 
-void
+static void
 qat_comp_dev_stop(struct rte_compressdev *dev __rte_unused)
 {
 
 }
 
-int
+static int
 qat_comp_dev_close(struct rte_compressdev *dev)
 {
 	int i;
@@ -207,7 +207,7 @@ qat_comp_dev_close(struct rte_compressdev *dev)
 }
 
 
-void
+static void
 qat_comp_dev_info_get(struct rte_compressdev *dev,
 			struct rte_compressdev_info *info)
 {
@@ -238,3 +238,23 @@ qat_comp_pmd_dequeue_op_burst(void *qp, struct rte_comp_op **ops,
 {
 	return qat_dequeue_op_burst(qp, (void **)ops, nb_ops);
 }
+
+
+struct rte_compressdev_ops compress_qat_ops = {
+
+	/* Device related operations */
+	.dev_configure		= qat_comp_dev_config,
+	.dev_start		= qat_comp_dev_start,
+	.dev_stop		= qat_comp_dev_stop,
+	.dev_close		= qat_comp_dev_close,
+	.dev_infos_get		= qat_comp_dev_info_get,
+
+	.stats_get		= qat_comp_stats_get,
+	.stats_reset		= qat_comp_stats_reset,
+	.queue_pair_setup	= qat_comp_qp_setup,
+	.queue_pair_release	= qat_comp_qp_release,
+
+	/* Compression related operations */
+	.private_xform_create	= qat_comp_private_xform_create,
+	.private_xform_free	= qat_comp_private_xform_free
+};
