@@ -8,16 +8,6 @@ API and ABI deprecation notices are to be posted here.
 Deprecation Notices
 -------------------
 
-* eal: DPDK runtime configuration file (located at
-  ``/var/run/.<prefix>_config``) will be moved. The new path will be as follows:
-
-  - if DPDK is running as root, path will be set to
-    ``/var/run/dpdk/<prefix>/config``
-  - if DPDK is not running as root and $XDG_RUNTIME_DIR is set, path will be set
-    to ``$XDG_RUNTIME_DIR/dpdk/<prefix>/config``
-  - if DPDK is not running as root and $XDG_RUNTIME_DIR is not set, path will be
-    set to ``/tmp/dpdk/<prefix>/config``
-
 * eal: both declaring and identifying devices will be streamlined in v18.08.
   New functions will appear to query a specific port from buses, classes of
   device and device drivers. Device declaration will be made coherent with the

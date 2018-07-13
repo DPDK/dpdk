@@ -82,6 +82,15 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* Path to runtime config file has changed. The new path is determined as
+  follows:
+
+  - If DPDK is running as root, ``/var/run/dpdk/<prefix>/config``
+  - If DPDK is not running as root:
+
+    * If ``$XDG_RUNTIME_DIR`` is set, ``${XDG_RUNTIME_DIR}/dpdk/<prefix>/config``
+    * Otherwise, ``/tmp/dpdk/<prefix>/config``
+
 * cryptodev: In struct ``struct rte_cryptodev_info``, field ``rte_pci_device *pci_dev``
   has been replaced with field ``struct rte_device *device``.
   Value 0 is accepted in ``sym.max_nb_sessions``, meaning that a device

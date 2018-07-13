@@ -12,7 +12,6 @@
 #define EAL_FILESYSTEM_H
 
 /** Path of rte config file. */
-#define RUNTIME_CONFIG_FMT "%s/.%s_config"
 
 #include <stdint.h>
 #include <limits.h>
@@ -30,17 +29,14 @@ eal_create_runtime_dir(void);
 const char *
 eal_get_runtime_dir(void);
 
+#define RUNTIME_CONFIG_FNAME "config"
 static inline const char *
 eal_runtime_config_path(void)
 {
 	static char buffer[PATH_MAX]; /* static so auto-zeroed */
-	const char *directory = "/var/run";
-	const char *home_dir = getenv("HOME");
 
-	if (getuid() != 0 && home_dir != NULL)
-		directory = home_dir;
-	snprintf(buffer, sizeof(buffer) - 1, RUNTIME_CONFIG_FMT, directory,
-			internal_config.hugefile_prefix);
+	snprintf(buffer, sizeof(buffer) - 1, "%s/%s", eal_get_runtime_dir(),
+			RUNTIME_CONFIG_FNAME);
 	return buffer;
 }
 
