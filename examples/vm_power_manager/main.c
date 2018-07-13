@@ -29,6 +29,7 @@
 #include "channel_monitor.h"
 #include "power_manager.h"
 #include "vm_power_cli.h"
+#include "oob_monitor.h"
 #include "parse.h"
 #include <rte_pmd_ixgbe.h>
 #include <rte_pmd_i40e.h>
@@ -267,6 +268,17 @@ run_monitor(__attribute__((unused)) void *arg)
 	return 0;
 }
 
+static int
+run_core_monitor(__attribute__((unused)) void *arg)
+{
+	if (branch_monitor_init() < 0) {
+		printf("Unable to initialize core monitor\n");
+		return -1;
+	}
+	run_branch_monitor();
+	return 0;
+}
+
 static void
 sig_handler(int signo)
 {
@@ -285,11 +297,14 @@ main(int argc, char **argv)
 	unsigned int nb_ports;
 	struct rte_mempool *mbuf_pool;
 	uint16_t portid;
+	struct core_info *ci;
 
 
 	ret = core_info_init();
 	if (ret < 0)
 		rte_panic("Cannot allocate core info\n");
+
+	ci = get_core_info();
 
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0)
@@ -365,16 +380,23 @@ main(int argc, char **argv)
 		}
 	}
 
+	check_all_ports_link_status(enabled_port_mask);
+
 	lcore_id = rte_get_next_lcore(-1, 1, 0);
 	if (lcore_id == RTE_MAX_LCORE) {
-		RTE_LOG(ERR, EAL, "A minimum of two cores are required to run "
+		RTE_LOG(ERR, EAL, "A minimum of three cores are required to run "
 				"application\n");
 		return 0;
 	}
-
-	check_all_ports_link_status(enabled_port_mask);
+	printf("Running channel monitor on lcore id %d\n", lcore_id);
 	rte_eal_remote_launch(run_monitor, NULL, lcore_id);
 
+	lcore_id = rte_get_next_lcore(lcore_id, 1, 0);
+	if (lcore_id == RTE_MAX_LCORE) {
+		RTE_LOG(ERR, EAL, "A minimum of three cores are required to run "
+				"application\n");
+		return 0;
+	}
 	if (power_manager_init() < 0) {
 		printf("Unable to initialize power manager\n");
 		return -1;
@@ -383,8 +405,17 @@ main(int argc, char **argv)
 		printf("Unable to initialize channel manager\n");
 		return -1;
 	}
+
+	printf("Running core monitor on lcore id %d\n", lcore_id);
+	rte_eal_remote_launch(run_core_monitor, NULL, lcore_id);
+
 	run_cli(NULL);
 
+	branch_monitor_exit();
+
 	rte_eal_mp_wait_lcore();
+
+	free(ci->cd);
+
 	return 0;
 }
