@@ -10,5 +10,21 @@
 #include <rte_compressdev.h>
 #include <rte_compressdev_pmd.h>
 
+/** private data structure for a QAT compression device.
+ * This QAT device is a device offering only a compression service,
+ * there can be one of these on each qat_pci_device (VF).
+ */
+struct qat_comp_dev_private {
+	struct qat_pci_device *qat_dev;
+	/**< The qat pci device hosting the service */
+	struct rte_compressdev *compressdev;
+	/**< The pointer to this compression device structure */
+	const struct rte_memzone *interm_buff_mz;
+	/**< The device's memory for intermediate buffers */
+	struct rte_mempool *xformpool;
+	/**< The device's pool for qat_comp_xforms */
+
+};
+
 #endif
 #endif /* _QAT_COMP_PMD_H_ */
