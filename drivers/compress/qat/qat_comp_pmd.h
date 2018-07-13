@@ -34,6 +34,12 @@ qat_comp_stats_reset(struct rte_compressdev *dev);
 void
 qat_comp_stats_get(struct rte_compressdev *dev,
 		struct rte_compressdev_stats *stats);
+int
+qat_comp_qp_release(struct rte_compressdev *dev, uint16_t queue_pair_id);
+
+int
+qat_comp_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
+		  uint32_t max_inflight_ops, int socket_id);
 
 #endif
 #endif /* _QAT_COMP_PMD_H_ */

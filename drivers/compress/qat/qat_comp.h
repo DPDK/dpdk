@@ -24,6 +24,8 @@ enum qat_comp_request_type {
 	REQ_COMP_END
 };
 
+struct qat_comp_op_cookie {
+};
 
 struct qat_comp_xform {
 	struct icp_qat_fw_comp_req qat_comp_req_tmpl;
