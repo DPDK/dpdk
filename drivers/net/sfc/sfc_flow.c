@@ -93,6 +93,8 @@ static sfc_flow_spec_check sfc_flow_check_unknown_dst_flags;
 static sfc_flow_spec_set_vals sfc_flow_set_ethertypes;
 static sfc_flow_spec_set_vals sfc_flow_set_ifrm_unknown_dst_flags;
 static sfc_flow_spec_check sfc_flow_check_ifrm_unknown_dst_flags;
+static sfc_flow_spec_set_vals sfc_flow_set_outer_vid_flag;
+static sfc_flow_spec_check sfc_flow_check_outer_vid_flag;
 
 static boolean_t
 sfc_flow_is_zero(const uint8_t *buf, unsigned int size)
@@ -1781,6 +1783,43 @@ sfc_flow_set_ethertypes(struct sfc_flow_spec *spec,
 }
 
 /**
+ * Set the EFX_FILTER_MATCH_OUTER_VID match flag with value 0
+ * in the same specifications after copying.
+ *
+ * @param spec[in, out]
+ *   SFC flow specification to update.
+ * @param filters_count_for_one_val[in]
+ *   How many specifications should have the same match flag, what is the
+ *   number of specifications before copying.
+ * @param error[out]
+ *   Perform verbose error reporting if not NULL.
+ */
+static int
+sfc_flow_set_outer_vid_flag(struct sfc_flow_spec *spec,
+			    unsigned int filters_count_for_one_val,
+			    struct rte_flow_error *error)
+{
+	unsigned int i;
+
+	if (filters_count_for_one_val != spec->count) {
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			"Number of specifications is incorrect "
+			"while copying by outer VLAN ID");
+		return -rte_errno;
+	}
+
+	for (i = 0; i < spec->count; i++) {
+		spec->filters[i].efs_match_flags |=
+			EFX_FILTER_MATCH_OUTER_VID;
+
+		spec->filters[i].efs_outer_vid = 0;
+	}
+
+	return 0;
+}
+
+/**
  * Set the EFX_FILTER_MATCH_IFRM_UNKNOWN_UCAST_DST and
  * EFX_FILTER_MATCH_IFRM_UNKNOWN_MCAST_DST match flags in the same
  * specifications after copying.
@@ -1859,6 +1898,36 @@ sfc_flow_check_ifrm_unknown_dst_flags(efx_filter_match_flags_t match,
 	return B_FALSE;
 }
 
+/**
+ * Check that the list of supported filters has a filter that differs
+ * from @p match in that it has no flag EFX_FILTER_MATCH_OUTER_VID
+ * in this case that filter will be used and the flag
+ * EFX_FILTER_MATCH_OUTER_VID is not needed.
+ *
+ * @param match[in]
+ *   The match flags of filter.
+ * @param spec[in]
+ *   Specification to be supplemented.
+ * @param filter[in]
+ *   SFC filter with list of supported filters.
+ */
+static boolean_t
+sfc_flow_check_outer_vid_flag(efx_filter_match_flags_t match,
+			      __rte_unused efx_filter_spec_t *spec,
+			      struct sfc_filter *filter)
+{
+	unsigned int i;
+	efx_filter_match_flags_t match_without_vid =
+		match & ~EFX_FILTER_MATCH_OUTER_VID;
+
+	for (i = 0; i < filter->supported_match_num; i++) {
+		if (match_without_vid == filter->supported_match[i])
+			return B_FALSE;
+	}
+
+	return B_TRUE;
+}
+
 /*
  * Match flags that can be automatically added to filters.
  * Selecting the last minimum when searching for the copy flag ensures that the
@@ -1885,6 +1954,12 @@ static const struct sfc_flow_copy_flag sfc_flow_copy_flags[] = {
 		.vals_count = 2,
 		.set_vals = sfc_flow_set_ifrm_unknown_dst_flags,
 		.spec_check = sfc_flow_check_ifrm_unknown_dst_flags,
+	},
+	{
+		.flag = EFX_FILTER_MATCH_OUTER_VID,
+		.vals_count = 1,
+		.set_vals = sfc_flow_set_outer_vid_flag,
+		.spec_check = sfc_flow_check_outer_vid_flag,
 	},
 };
 
