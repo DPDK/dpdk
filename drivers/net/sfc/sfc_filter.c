@@ -75,6 +75,7 @@ int
 sfc_filter_attach(struct sfc_adapter *sa)
 {
 	int rc;
+	unsigned int i;
 
 	sfc_log_init(sa, "entry");
 
@@ -87,6 +88,19 @@ sfc_filter_attach(struct sfc_adapter *sa)
 		goto fail_cache_match_supported;
 
 	efx_filter_fini(sa->nic);
+
+	sa->filter.supports_ip_proto_or_addr_filter = B_FALSE;
+	sa->filter.supports_rem_or_local_port_filter = B_FALSE;
+	for (i = 0; i < sa->filter.supported_match_num; ++i) {
+		if (sa->filter.supported_match[i] &
+		    (EFX_FILTER_MATCH_IP_PROTO | EFX_FILTER_MATCH_LOC_HOST |
+		     EFX_FILTER_MATCH_REM_HOST))
+			sa->filter.supports_ip_proto_or_addr_filter = B_TRUE;
+
+		if (sa->filter.supported_match[i] &
+		    (EFX_FILTER_MATCH_LOC_PORT | EFX_FILTER_MATCH_REM_PORT))
+			sa->filter.supports_rem_or_local_port_filter = B_TRUE;
+	}
 
 	sfc_log_init(sa, "done");
 
