@@ -658,7 +658,8 @@ struct sfc_dp_rx sfc_ef10_rx = {
 		.hw_fw_caps	= SFC_DP_HW_FW_CAP_EF10,
 	},
 	.features		= SFC_DP_RX_FEAT_MULTI_PROCESS |
-				  SFC_DP_RX_FEAT_TUNNELS,
+				  SFC_DP_RX_FEAT_TUNNELS |
+				  SFC_DP_RX_FEAT_CHECKSUM,
 	.get_dev_info		= sfc_ef10_rx_get_dev_info,
 	.qsize_up_rings		= sfc_ef10_rx_qsize_up_rings,
 	.qcreate		= sfc_ef10_rx_qcreate,

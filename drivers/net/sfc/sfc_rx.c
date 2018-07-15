@@ -517,7 +517,8 @@ struct sfc_dp_rx sfc_efx_rx = {
 		.type		= SFC_DP_RX,
 		.hw_fw_caps	= 0,
 	},
-	.features		= SFC_DP_RX_FEAT_SCATTER,
+	.features		= SFC_DP_RX_FEAT_SCATTER |
+				  SFC_DP_RX_FEAT_CHECKSUM,
 	.qsize_up_rings		= sfc_efx_rx_qsize_up_rings,
 	.qcreate		= sfc_efx_rx_qcreate,
 	.qdestroy		= sfc_efx_rx_qdestroy,
@@ -792,9 +793,12 @@ sfc_rx_get_dev_offload_caps(struct sfc_adapter *sa)
 
 	caps |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	caps |= DEV_RX_OFFLOAD_CRC_STRIP;
-	caps |= DEV_RX_OFFLOAD_IPV4_CKSUM;
-	caps |= DEV_RX_OFFLOAD_UDP_CKSUM;
-	caps |= DEV_RX_OFFLOAD_TCP_CKSUM;
+
+	if (sa->dp_rx->features & SFC_DP_RX_FEAT_CHECKSUM) {
+		caps |= DEV_RX_OFFLOAD_IPV4_CKSUM;
+		caps |= DEV_RX_OFFLOAD_UDP_CKSUM;
+		caps |= DEV_RX_OFFLOAD_TCP_CKSUM;
+	}
 
 	if (encp->enc_tunnel_encapsulations_supported &&
 	    (sa->dp_rx->features & SFC_DP_RX_FEAT_TUNNELS))
@@ -1443,8 +1447,13 @@ sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
 		rxmode->offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
 	}
 
+	/*
+	 * Requested offloads are validated against supported by ethdev,
+	 * so unsupported offloads cannot be added as the result of
+	 * below check.
+	 */
 	if ((rxmode->offloads & DEV_RX_OFFLOAD_CHECKSUM) !=
-	    DEV_RX_OFFLOAD_CHECKSUM) {
+	    (offloads_supported & DEV_RX_OFFLOAD_CHECKSUM)) {
 		sfc_warn(sa, "Rx checksum offloads cannot be disabled - always on (IPv4/TCP/UDP)");
 		rxmode->offloads |= DEV_RX_OFFLOAD_CHECKSUM;
 	}
