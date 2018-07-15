@@ -2,7 +2,7 @@
 # Copyright(c) 2017 Intel Corporation
 
 project('DPDK', 'C',
-	version: '18.08-rc0',
+	version: '18.08-rc1',
 	license: 'BSD',
 	default_options: ['buildtype=release', 'default_library=static'],
 	meson_version: '>= 0.41'
