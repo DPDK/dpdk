@@ -41,6 +41,32 @@
 #include "mlx5_rxtx.h"
 #include "mlx5_utils.h"
 
+/* Supported speed values found in /usr/include/linux/ethtool.h */
+#ifndef HAVE_SUPPORTED_40000baseKR4_Full
+#define SUPPORTED_40000baseKR4_Full (1 << 23)
+#endif
+#ifndef HAVE_SUPPORTED_40000baseCR4_Full
+#define SUPPORTED_40000baseCR4_Full (1 << 24)
+#endif
+#ifndef HAVE_SUPPORTED_40000baseSR4_Full
+#define SUPPORTED_40000baseSR4_Full (1 << 25)
+#endif
+#ifndef HAVE_SUPPORTED_40000baseLR4_Full
+#define SUPPORTED_40000baseLR4_Full (1 << 26)
+#endif
+#ifndef HAVE_SUPPORTED_56000baseKR4_Full
+#define SUPPORTED_56000baseKR4_Full (1 << 27)
+#endif
+#ifndef HAVE_SUPPORTED_56000baseCR4_Full
+#define SUPPORTED_56000baseCR4_Full (1 << 28)
+#endif
+#ifndef HAVE_SUPPORTED_56000baseSR4_Full
+#define SUPPORTED_56000baseSR4_Full (1 << 29)
+#endif
+#ifndef HAVE_SUPPORTED_56000baseLR4_Full
+#define SUPPORTED_56000baseLR4_Full (1 << 30)
+#endif
+
 /* Add defines in case the running kernel is not the same as user headers. */
 #ifndef ETHTOOL_GLINKSETTINGS
 struct ethtool_link_settings {

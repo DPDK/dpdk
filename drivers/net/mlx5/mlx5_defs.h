@@ -128,4 +128,9 @@
 /* Cache size of mempool for Multi-Packet RQ. */
 #define MLX5_MPRQ_MP_CACHE_SZ 32
 
+/* Definition of static_assert found in /usr/include/assert.h */
+#ifndef HAVE_STATIC_ASSERT
+#define static_assert _Static_assert
+#endif
+
 #endif /* RTE_PMD_MLX5_DEFS_H_ */
