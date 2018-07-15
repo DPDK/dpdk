@@ -817,10 +817,8 @@ sfc_rx_get_queue_offload_caps(struct sfc_adapter *sa)
 static int
 sfc_rx_qcheck_conf(struct sfc_adapter *sa, unsigned int rxq_max_fill_level,
 		   const struct rte_eth_rxconf *rx_conf,
-		   uint64_t offloads)
+		   __rte_unused uint64_t offloads)
 {
-	uint64_t offloads_supported = sfc_rx_get_dev_offload_caps(sa) |
-				      sfc_rx_get_queue_offload_caps(sa);
 	int rc = 0;
 
 	if (rx_conf->rx_thresh.pthresh != 0 ||
@@ -841,14 +839,6 @@ sfc_rx_qcheck_conf(struct sfc_adapter *sa, unsigned int rxq_max_fill_level,
 		sfc_err(sa, "RxQ drop disable is not supported");
 		rc = EINVAL;
 	}
-
-	if ((offloads & DEV_RX_OFFLOAD_CHECKSUM) !=
-	    DEV_RX_OFFLOAD_CHECKSUM)
-		sfc_warn(sa, "Rx checksum offloads cannot be disabled - always on (IPv4/TCP/UDP)");
-
-	if ((offloads_supported & DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM) &&
-	    (~offloads & DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM))
-		sfc_warn(sa, "Rx outer IPv4 checksum offload cannot be disabled - always on");
 
 	return rc;
 }
@@ -1424,6 +1414,8 @@ sfc_rx_qinit_info(struct sfc_adapter *sa, unsigned int sw_index)
 static int
 sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
 {
+	uint64_t offloads_supported = sfc_rx_get_dev_offload_caps(sa) |
+				      sfc_rx_get_queue_offload_caps(sa);
 	struct sfc_rss *rss = &sa->rss;
 	int rc = 0;
 
@@ -1449,6 +1441,18 @@ sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
 	if (rte_eth_dev_must_keep_crc(rxmode->offloads)) {
 		sfc_warn(sa, "FCS stripping cannot be disabled - always on");
 		rxmode->offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
+	}
+
+	if ((rxmode->offloads & DEV_RX_OFFLOAD_CHECKSUM) !=
+	    DEV_RX_OFFLOAD_CHECKSUM) {
+		sfc_warn(sa, "Rx checksum offloads cannot be disabled - always on (IPv4/TCP/UDP)");
+		rxmode->offloads |= DEV_RX_OFFLOAD_CHECKSUM;
+	}
+
+	if ((offloads_supported & DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM) &&
+	    (~rxmode->offloads & DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM)) {
+		sfc_warn(sa, "Rx outer IPv4 checksum offload cannot be disabled - always on");
+		rxmode->offloads |= DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM;
 	}
 
 	return rc;
