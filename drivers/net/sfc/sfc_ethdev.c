@@ -1055,9 +1055,7 @@ sfc_rx_queue_info_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 	qinfo->conf.rx_free_thresh = rxq->refill_threshold;
 	qinfo->conf.rx_drop_en = 1;
 	qinfo->conf.rx_deferred_start = rxq_info->deferred_start;
-	qinfo->conf.offloads = DEV_RX_OFFLOAD_IPV4_CKSUM |
-			       DEV_RX_OFFLOAD_UDP_CKSUM |
-			       DEV_RX_OFFLOAD_TCP_CKSUM;
+	qinfo->conf.offloads = dev->data->dev_conf.rxmode.offloads;
 	if (rxq_info->type_flags & EFX_RXQ_FLAG_SCATTER) {
 		qinfo->conf.offloads |= DEV_RX_OFFLOAD_SCATTER;
 		qinfo->scattered_rx = 1;
