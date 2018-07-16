@@ -66,14 +66,17 @@ eal_get_virtual_area(void *requested_addr, size_t *size,
 		addr_is_hint = true;
 	}
 
-	/* if requested address is not aligned by page size, or if requested
-	 * address is NULL, add page size to requested length as we may get an
-	 * address that's aligned by system page size, which can be smaller than
-	 * our requested page size. additionally, we shouldn't try to align if
-	 * system page size is the same as requested page size.
+	/* we don't need alignment of resulting pointer in the following cases:
+	 *
+	 * 1. page size is equal to system size
+	 * 2. we have a requested address, and it is page-aligned, and we will
+	 *    be discarding the address if we get a different one.
+	 *
+	 * for all other cases, alignment is potentially necessary.
 	 */
 	no_align = (requested_addr != NULL &&
-		((uintptr_t)requested_addr & (page_sz - 1))) ||
+		requested_addr == RTE_PTR_ALIGN(requested_addr, page_sz) &&
+		!addr_is_hint) ||
 		page_sz == system_page_sz;
 
 	do {
