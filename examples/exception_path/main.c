@@ -131,6 +131,9 @@ print_stats(void)
 	       " Lcore    Port            RX            TX    Dropped on TX\n"
 	       "-------  ------  ------------  ------------  ---------------\n");
 	RTE_LCORE_FOREACH(i) {
+		/* limit ourselves to application supported cores only */
+		if (i >= APP_MAX_LCORE)
+			break;
 		printf("%6u %7u %13"PRIu64" %13"PRIu64" %16"PRIu64"\n",
 		       i, (unsigned)port_ids[i],
 		       lcore_stats[i].rx, lcore_stats[i].tx,
