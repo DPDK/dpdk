@@ -21,7 +21,6 @@
 #include "cperf_test_verify.h"
 #include "cperf_test_pmd_cyclecount.h"
 
-#define SESS_MEMPOOL_CACHE_SIZE 64
 
 const char *cperf_test_type_strs[] = {
 	[CPERF_TEST_TYPE_THROUGHPUT] = "throughput",
@@ -204,7 +203,7 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs,
 			sess_mp = rte_mempool_create(mp_name,
 						sessions_needed,
 						max_sess_size,
-						SESS_MEMPOOL_CACHE_SIZE,
+						0,
 						0, NULL, NULL, NULL,
 						NULL, socket_id,
 						0);
