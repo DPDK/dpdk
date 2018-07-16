@@ -408,7 +408,7 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 	/* Zero pad data to be crypto'd so it is block aligned */
 	data_len  = rte_pktmbuf_data_len(m) - ipdata_offset;
 
-	if (cparams->do_hash && cparams->hash_verify)
+	if ((cparams->do_hash || cparams->do_aead) && cparams->hash_verify)
 		data_len -= cparams->digest_length;
 
 	if (cparams->do_cipher) {
