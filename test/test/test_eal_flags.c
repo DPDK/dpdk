@@ -376,17 +376,17 @@ test_invalid_vdev_flag(void)
 #endif
 
 	/* Test with invalid vdev option */
-	const char *vdevinval[] = {prgname, prefix, "-n", "1",
+	const char *vdevinval[] = {prgname, prefix, no_huge, "-n", "1",
 				"-c", "1", vdev, "eth_dummy"};
 
 	/* Test with valid vdev option */
-	const char *vdevval1[] = {prgname, prefix, "-n", "1",
+	const char *vdevval1[] = {prgname, prefix, no_huge, "-n", "1",
 	"-c", "1", vdev, "net_ring0"};
 
-	const char *vdevval2[] = {prgname, prefix, "-n", "1",
+	const char *vdevval2[] = {prgname, prefix, no_huge, "-n", "1",
 	"-c", "1", vdev, "net_ring0,args=test"};
 
-	const char *vdevval3[] = {prgname, prefix, "-n", "1",
+	const char *vdevval3[] = {prgname, prefix, no_huge, "-n", "1",
 	"-c", "1", vdev, "net_ring0,nodeaction=r1:0:CREATE"};
 
 	if (launch_proc(vdevinval) == 0) {
@@ -849,13 +849,10 @@ test_misc_flags(void)
 	const char *argv4[] = {prgname, prefix, mp_flag, "-c", "1", "--syslog"};
 	/* With invalid --syslog */
 	const char *argv5[] = {prgname, prefix, mp_flag, "-c", "1", "--syslog", "error"};
-	/* With no-sh-conf */
+	/* With no-sh-conf, also use no-huge to ensure this test runs on BSD */
 	const char *argv6[] = {prgname, "-c", "1", "-n", "2", "-m", DEFAULT_MEM_SIZE,
-			no_shconf, nosh_prefix };
+			no_shconf, nosh_prefix, no_huge};
 
-#ifdef RTE_EXEC_ENV_BSDAPP
-	return 0;
-#endif
 	/* With --huge-dir */
 	const char *argv7[] = {prgname, "-c", "1", "-n", "2", "-m", DEFAULT_MEM_SIZE,
 			"--file-prefix=hugedir", "--huge-dir", hugepath};
@@ -889,6 +886,7 @@ test_misc_flags(void)
 	const char *argv15[] = {prgname, "--file-prefix=intr",
 			"-c", "1", "-n", "2", "--vfio-intr=invalid"};
 
+	/* run all tests also applicable to FreeBSD first */
 
 	if (launch_proc(argv0) == 0) {
 		printf("Error - process ran ok with invalid flag\n");
@@ -902,6 +900,16 @@ test_misc_flags(void)
 		printf("Error - process did not run ok with -v flag\n");
 		return -1;
 	}
+	if (launch_proc(argv6) != 0) {
+		printf("Error - process did not run ok with --no-shconf flag\n");
+		return -1;
+	}
+
+#ifdef RTE_EXEC_ENV_BSDAPP
+	/* no more tests to be done on FreeBSD */
+	return 0;
+#endif
+
 	if (launch_proc(argv3) != 0) {
 		printf("Error - process did not run ok with --syslog flag\n");
 		return -1;
@@ -914,13 +922,6 @@ test_misc_flags(void)
 		printf("Error - process run ok with invalid --syslog flag\n");
 		return -1;
 	}
-	if (launch_proc(argv6) != 0) {
-		printf("Error - process did not run ok with --no-shconf flag\n");
-		return -1;
-	}
-#ifdef RTE_EXEC_ENV_BSDAPP
-	return 0;
-#endif
 	if (launch_proc(argv7) != 0) {
 		printf("Error - process did not run ok with --huge-dir flag\n");
 		return -1;
