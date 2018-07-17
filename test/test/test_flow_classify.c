@@ -871,32 +871,32 @@ test_flow_classify(void)
 		printf("Line %i: f_create has failed!\n", __LINE__);
 		rte_flow_classifier_free(cls->cls);
 		rte_free(cls);
-		return -1;
+		return TEST_FAILED;
 	}
 	printf("Created table_acl for for IPv4 five tuple packets\n");
 
 	ret = init_mbufpool();
 	if (ret) {
 		printf("Line %i: init_mbufpool has failed!\n", __LINE__);
-		return -1;
+		return TEST_FAILED;
 	}
 
 	if (test_invalid_parameters() < 0)
-		return -1;
+		return TEST_FAILED;
 	if (test_valid_parameters() < 0)
-		return -1;
+		return TEST_FAILED;
 	if (test_invalid_patterns() < 0)
-		return -1;
+		return TEST_FAILED;
 	if (test_invalid_actions() < 0)
-		return -1;
+		return TEST_FAILED;
 	if (test_query_udp() < 0)
-		return -1;
+		return TEST_FAILED;
 	if (test_query_tcp() < 0)
-		return -1;
+		return TEST_FAILED;
 	if (test_query_sctp() < 0)
-		return -1;
+		return TEST_FAILED;
 
-	return 0;
+	return TEST_SUCCESS;
 }
 
 REGISTER_TEST_COMMAND(flow_classify_autotest, test_flow_classify);
