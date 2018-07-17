@@ -48,18 +48,29 @@ static rte_atomic64_t ginsertions;
 static int use_htm;
 
 static int
-test_hash_multiwriter_worker(__attribute__((unused)) void *arg)
+test_hash_multiwriter_worker(void *arg)
 {
 	uint64_t i, offset;
+	uint16_t pos_core;
 	uint32_t lcore_id = rte_lcore_id();
 	uint64_t begin, cycles;
+	uint16_t *enabled_core_ids = (uint16_t *)arg;
 
-	offset = (lcore_id - rte_get_master_lcore())
-		* tbl_multiwriter_test_params.nb_tsx_insertion;
+	for (pos_core = 0; pos_core < rte_lcore_count(); pos_core++) {
+		if (enabled_core_ids[pos_core] == lcore_id)
+			break;
+	}
+
+	/*
+	 * Calculate offset for entries based on the position of the
+	 * logical core, from the master core (not counting not enabled cores)
+	 */
+	offset = pos_core * tbl_multiwriter_test_params.nb_tsx_insertion;
 
 	printf("Core #%d inserting %d: %'"PRId64" - %'"PRId64"\n",
 	       lcore_id, tbl_multiwriter_test_params.nb_tsx_insertion,
-	       offset, offset + tbl_multiwriter_test_params.nb_tsx_insertion);
+	       offset,
+	       offset + tbl_multiwriter_test_params.nb_tsx_insertion - 1);
 
 	begin = rte_rdtsc_precise();
 
@@ -88,6 +99,8 @@ test_hash_multiwriter(void)
 {
 	unsigned int i, rounded_nb_total_tsx_insertion;
 	static unsigned calledCount = 1;
+	uint16_t enabled_core_ids[RTE_MAX_LCORE];
+	uint16_t core_id;
 
 	uint32_t *keys;
 	uint32_t *found;
@@ -159,9 +172,27 @@ test_hash_multiwriter(void)
 	rte_atomic64_init(&ginsertions);
 	rte_atomic64_clear(&ginsertions);
 
+	/* Get list of enabled cores */
+	i = 0;
+	for (core_id = 0; core_id < RTE_MAX_LCORE; core_id++) {
+		if (i == rte_lcore_count())
+			break;
+
+		if (rte_lcore_is_enabled(core_id)) {
+			enabled_core_ids[i] = core_id;
+			i++;
+		}
+	}
+
+	if (i != rte_lcore_count()) {
+		printf("Number of enabled cores in list is different from "
+				"number given by rte_lcore_count()\n");
+		goto err3;
+	}
+
 	/* Fire all threads. */
 	rte_eal_mp_remote_launch(test_hash_multiwriter_worker,
-				 NULL, CALL_MASTER);
+				 enabled_core_ids, CALL_MASTER);
 	rte_eal_mp_wait_lcore();
 
 	count = rte_hash_count(handle);
