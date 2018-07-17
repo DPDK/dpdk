@@ -720,7 +720,8 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 				uint16_t hdr_vec_idx = 0;
 
 				while (remain) {
-					len = remain;
+					len = RTE_MIN(remain,
+						buf_vec[hdr_vec_idx].buf_len);
 					dst = buf_vec[hdr_vec_idx].buf_addr;
 					rte_memcpy((void *)(uintptr_t)dst,
 							(void *)(uintptr_t)src,
@@ -747,7 +748,7 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			hdr_addr = 0;
 		}
 
-		cpy_len = RTE_MIN(buf_len, mbuf_avail);
+		cpy_len = RTE_MIN(buf_avail, mbuf_avail);
 
 		if (likely(cpy_len > MAX_BATCH_LEN ||
 					vq->batch_copy_nb_elems >= vq->size)) {
@@ -1112,7 +1113,8 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			 * in a contiguous virtual area.
 			 */
 			while (remain) {
-				len = remain;
+				len = RTE_MIN(remain,
+					buf_vec[hdr_vec_idx].buf_len);
 				src = buf_vec[hdr_vec_idx].buf_addr;
 				rte_memcpy((void *)(uintptr_t)dst,
 						   (void *)(uintptr_t)src, len);
