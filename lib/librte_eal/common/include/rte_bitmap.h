@@ -198,12 +198,12 @@ rte_bitmap_get_memory_footprint(uint32_t n_bits) {
 /**
  * Bitmap initialization
  *
- * @param mem_size
- *   Minimum expected size of bitmap.
+ * @param n_bits
+ *   Number of pre-allocated bits in array2.
  * @param mem
  *   Base address of array1 and array2.
- * @param n_bits
- *   Number of pre-allocated bits in array2. Must be non-zero and multiple of 512.
+ * @param mem_size
+ *   Minimum expected size of bitmap.
  * @return
  *   Handle to bitmap instance.
  */
