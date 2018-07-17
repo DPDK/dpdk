@@ -481,7 +481,9 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 	void *new_addr;
 
 	alloc_sz = hi->hugepage_sz;
-	if (internal_config.in_memory && anonymous_hugepages_supported) {
+	if (!internal_config.single_file_segments &&
+			internal_config.in_memory &&
+			anonymous_hugepages_supported) {
 		int log2, flags;
 
 		log2 = rte_log2_u32(alloc_sz);
