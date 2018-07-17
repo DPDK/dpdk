@@ -26,8 +26,9 @@
  * - Bulk dequeue.
  * - Bulk enqueue.
  *
- * Note: the ring implementation is not preemptable. A lcore must not
- * be interrupted by another task that uses the same ring.
+ * Note: the ring implementation is not preemptible. Refer to Programmer's
+ * guide/Environment Abstraction Layer/Multiple pthread/Known Issues/rte_ring
+ * for more information.
  *
  */
 
