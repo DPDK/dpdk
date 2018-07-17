@@ -3629,11 +3629,11 @@ rte_eth_dev_l2_tunnel_offload_set(uint16_t port_id,
 				  uint8_t en);
 
 /**
-* Get the port id from pci address or device name
-* Example:
-* - PCIe, 0000:2:00.0
-* - SoC, fsl-gmac0
-* - vdev, net_pcap0
+* Get the port id from device name. The device name should be specified
+* as below:
+* - PCIe address (Domain:Bus:Device.Function), for example- 0000:2:00.0
+* - SoC device name, for example- fsl-gmac0
+* - vdev dpdk name, for example- net_[pcap0|null0|tap0]
 *
 * @param name
 *  pci address or name of the device
@@ -3647,11 +3647,10 @@ int
 rte_eth_dev_get_port_by_name(const char *name, uint16_t *port_id);
 
 /**
-* Get the device name from port id
-* Example:
-* - PCIe Bus:Domain:Function, 0000:02:00.0
-* - SoC device name, fsl-gmac0
-* - vdev dpdk name, net_[pcap0|null0|tun0|tap0]
+* Get the device name from port id. The device name is specified as below:
+* - PCIe address (Domain:Bus:Device.Function), for example- 0000:02:00.0
+* - SoC device name, for example- fsl-gmac0
+* - vdev dpdk name, for example- net_[pcap0|null0|tun0|tap0]
 *
 * @param port_id
 *   Port identifier of the device.
