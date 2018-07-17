@@ -175,9 +175,6 @@ set_tm_hiearchy_nodes_shaper_rate(portid_t port_id,
 	rte_eth_link_get(port_id, &link_params);
 	tm_port_rate = (uint64_t)ETH_SPEED_NUM_10G * BYTES_IN_MBPS;
 
-	if (tm_port_rate > UINT32_MAX)
-		tm_port_rate = UINT32_MAX;
-
 	/* Set tm hierarchy shapers rate */
 	h->root_node_shaper_rate = tm_port_rate;
 	h->subport_node_shaper_rate =
