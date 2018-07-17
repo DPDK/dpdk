@@ -617,7 +617,7 @@ F: doc/guides/nics/netvsc.rst
 F: doc/guides/nics/features/netvsc.ini
 
 Netcope szedata2
-M: Matej Vido <vido@cesnet.cz>
+M: Jan Remes <remes@netcope.com>
 F: drivers/net/szedata2/
 F: doc/guides/nics/szedata2.rst
 F: doc/guides/nics/features/szedata2.ini
