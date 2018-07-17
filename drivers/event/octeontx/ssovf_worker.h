@@ -28,11 +28,11 @@ ssovf_octeontx_wqe_to_pkt(uint64_t work, uint16_t port_info)
 {
 	struct rte_mbuf *mbuf;
 	octtx_wqe_t *wqe = (octtx_wqe_t *)(uintptr_t)work;
-	rte_prefetch_non_temporal(wqe);
 
 	/* Get mbuf from wqe */
 	mbuf = (struct rte_mbuf *)((uintptr_t)wqe -
 			OCTTX_PACKET_WQE_SKIP);
+	rte_prefetch_non_temporal(mbuf);
 	mbuf->packet_type =
 		ptype_table[wqe->s.w2.lcty][wqe->s.w2.lety][wqe->s.w2.lfty];
 	mbuf->data_off = RTE_PTR_DIFF(wqe->s.w3.addr, mbuf->buf_addr);
