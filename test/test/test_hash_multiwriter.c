@@ -154,16 +154,17 @@ test_hash_multiwriter(void)
 		goto err1;
 	}
 
+	for (i = 0; i < nb_entries; i++)
+		keys[i] = i;
+
+	tbl_multiwriter_test_params.keys = keys;
+
 	found = rte_zmalloc(NULL, sizeof(uint32_t) * nb_entries, 0);
 	if (found == NULL) {
 		printf("RTE_ZMALLOC failed\n");
 		goto err2;
 	}
 
-	for (i = 0; i < nb_entries; i++)
-		keys[i] = i;
-
-	tbl_multiwriter_test_params.keys = keys;
 	tbl_multiwriter_test_params.found = found;
 
 	rte_atomic64_init(&gcycles);
