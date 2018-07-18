@@ -55,25 +55,27 @@ union mbuf_initializer {
 };
 
 struct nicvf_rxq {
+	MARKER rxq_fastpath_data_start;
+	uint8_t  rbptr_offset;
+	uint16_t rx_free_thresh;
+	uint32_t head;
+	uint32_t qlen_mask;
+	int32_t recv_buffers;
+	int32_t available_space;
 	uint64_t mbuf_phys_off;
 	uintptr_t cq_status;
 	uintptr_t cq_door;
-	union mbuf_initializer mbuf_initializer;
-	nicvf_iova_addr_t phys;
-	union cq_entry_t *desc;
 	struct nicvf_rbdr *shared_rbdr;
-	struct nicvf *nic;
 	struct rte_mempool *pool;
-	uint32_t head;
-	uint32_t qlen_mask;
-	int32_t available_space;
-	int32_t recv_buffers;
-	uint16_t rx_free_thresh;
-	uint16_t queue_id;
-	uint16_t precharge_cnt;
+	union cq_entry_t *desc;
+	union mbuf_initializer mbuf_initializer;
+	MARKER rxq_fastpath_data_end;
 	uint8_t rx_drop_en;
+	uint16_t precharge_cnt;
 	uint16_t port_id;
-	uint8_t  rbptr_offset;
+	uint16_t queue_id;
+	struct nicvf *nic;
+	nicvf_iova_addr_t phys;
 } __rte_cache_aligned;
 
 struct nicvf {
@@ -85,6 +87,7 @@ struct nicvf {
 	bool loopback_supported;
 	bool pf_acked:1;
 	bool pf_nacked:1;
+	bool offload_cksum:1;
 	uint64_t hwcap;
 	uint8_t link_up;
 	uint8_t	duplex;

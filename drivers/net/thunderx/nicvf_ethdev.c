@@ -355,11 +355,9 @@ nicvf_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 	}
 
 	memcpy((char *)ptypes + copied, &ptypes_end, sizeof(ptypes_end));
-	if (dev->rx_pkt_burst == nicvf_recv_pkts ||
-		dev->rx_pkt_burst == nicvf_recv_pkts_multiseg)
-		return ptypes;
 
-	return NULL;
+	/* All Ptypes are supported in all Rx functions. */
+	return ptypes;
 }
 
 static void
@@ -916,13 +914,18 @@ nicvf_set_tx_function(struct rte_eth_dev *dev)
 static void
 nicvf_set_rx_function(struct rte_eth_dev *dev)
 {
-	if (dev->data->scattered_rx) {
-		PMD_DRV_LOG(DEBUG, "Using multi-segment rx callback");
-		dev->rx_pkt_burst = nicvf_recv_pkts_multiseg;
-	} else {
-		PMD_DRV_LOG(DEBUG, "Using single-segment rx callback");
-		dev->rx_pkt_burst = nicvf_recv_pkts;
-	}
+	struct nicvf *nic = nicvf_pmd_priv(dev);
+
+	const eth_rx_burst_t rx_burst_func[2][2] = {
+		/* [NORMAL/SCATTER] [NO_CKSUM/CKSUM] */
+		[0][0] = nicvf_recv_pkts_no_offload,
+		[0][1] = nicvf_recv_pkts_cksum,
+		[1][0] = nicvf_recv_pkts_multiseg_no_offload,
+		[1][1] = nicvf_recv_pkts_multiseg_cksum,
+	};
+
+	dev->rx_pkt_burst =
+		rx_burst_func[dev->data->scattered_rx][nic->offload_cksum];
 }
 
 static int
@@ -1243,6 +1246,9 @@ nicvf_rxq_mbuf_setup(struct nicvf_rxq *rxq)
 				offsetof(struct rte_mbuf, data_off) != 4);
 	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, port) -
 				offsetof(struct rte_mbuf, data_off) != 6);
+	RTE_BUILD_BUG_ON(offsetof(struct nicvf_rxq, rxq_fastpath_data_end) -
+				offsetof(struct nicvf_rxq,
+					rxq_fastpath_data_start) > 128);
 	mb_def.nb_segs = 1;
 	mb_def.data_off = RTE_PKTMBUF_HEADROOM + (nic->skip_bytes);
 	mb_def.port = rxq->port_id;
@@ -1743,7 +1749,7 @@ nicvf_dev_start(struct rte_eth_dev *dev)
 			return ret;
 	}
 
-	/* Configure callbacks based on scatter mode */
+	/* Configure callbacks based on offloads */
 	nicvf_set_tx_function(dev);
 	nicvf_set_rx_function(dev);
 
@@ -1961,6 +1967,9 @@ nicvf_dev_configure(struct rte_eth_dev *dev)
 				  dev->data->port_id, nic->vf_id);
 		}
 	}
+
+	if (rxmode->offloads & DEV_RX_OFFLOAD_CHECKSUM)
+		nic->offload_cksum = 1;
 
 	PMD_INIT_LOG(DEBUG, "Configured ethdev port%d hwcap=0x%" PRIx64,
 		dev->data->port_id, nicvf_hw_cap(nic));
