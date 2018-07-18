@@ -286,12 +286,17 @@ eal_proc_type_detect(void)
 	enum rte_proc_type_t ptype = RTE_PROC_PRIMARY;
 	const char *pathname = eal_runtime_config_path();
 
-	/* if we can open the file but not get a write-lock we are a secondary
-	 * process. NOTE: if we get a file handle back, we keep that open
-	 * and don't close it to prevent a race condition between multiple opens */
-	if (((mem_cfg_fd = open(pathname, O_RDWR)) >= 0) &&
-			(fcntl(mem_cfg_fd, F_SETLK, &wr_lock) < 0))
-		ptype = RTE_PROC_SECONDARY;
+	/* if there no shared config, there can be no secondary processes */
+	if (!internal_config.no_shconf) {
+		/* if we can open the file but not get a write-lock we are a
+		 * secondary process. NOTE: if we get a file handle back, we
+		 * keep that open and don't close it to prevent a race condition
+		 * between multiple opens.
+		 */
+		if (((mem_cfg_fd = open(pathname, O_RDWR)) >= 0) &&
+				(fcntl(mem_cfg_fd, F_SETLK, &wr_lock) < 0))
+			ptype = RTE_PROC_SECONDARY;
+	}
 
 	RTE_LOG(INFO, EAL, "Auto-detected process type: %s\n",
 			ptype == RTE_PROC_PRIMARY ? "PRIMARY" : "SECONDARY");
@@ -468,6 +473,14 @@ eal_parse_args(int argc, char **argv)
 		}
 	}
 
+	/* create runtime data directory */
+	if (internal_config.no_shconf == 0 &&
+			eal_create_runtime_dir() < 0) {
+		RTE_LOG(ERR, EAL, "Cannot create runtime directory\n");
+		ret = -1;
+		goto out;
+	}
+
 	if (eal_adjust_config(&internal_config) != 0) {
 		ret = -1;
 		goto out;
@@ -597,14 +610,6 @@ rte_eal_init(int argc, char **argv)
 		rte_eal_init_alert("Invalid 'command line' arguments.");
 		rte_errno = EINVAL;
 		rte_atomic32_clear(&run_once);
-		return -1;
-	}
-
-	/* create runtime data directory */
-	if (internal_config.no_shconf == 0 &&
-			eal_create_runtime_dir() < 0) {
-		rte_eal_init_alert("Cannot create runtime directory\n");
-		rte_errno = EACCES;
 		return -1;
 	}
 
