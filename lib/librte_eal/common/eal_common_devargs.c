@@ -285,7 +285,7 @@ rte_devargs_parsef(struct rte_devargs *da, const char *format, ...)
 	}
 
 	va_start(ap, format);
-	vsnprintf(dev, len, format, ap);
+	vsnprintf(dev, len + 1, format, ap);
 	va_end(ap);
 
 	return rte_devargs_parse(da, dev);
