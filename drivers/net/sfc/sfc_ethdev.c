@@ -1027,7 +1027,7 @@ sfc_set_mc_addr_list(struct rte_eth_dev *dev, struct ether_addr *mc_addr_set,
 	if (rc != 0)
 		sfc_err(sa, "cannot set multicast address list (rc = %u)", rc);
 
-	SFC_ASSERT(rc > 0);
+	SFC_ASSERT(rc >= 0);
 	return -rc;
 }
 
