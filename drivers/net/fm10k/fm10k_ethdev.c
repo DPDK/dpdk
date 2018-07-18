@@ -810,52 +810,50 @@ static int
 fm10k_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	int err = -1;
+	int err;
 	uint32_t reg;
 	struct fm10k_rx_queue *rxq;
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (rx_queue_id < dev->data->nb_rx_queues) {
-		rxq = dev->data->rx_queues[rx_queue_id];
-		err = rx_queue_reset(rxq);
-		if (err == -ENOMEM) {
-			PMD_INIT_LOG(ERR, "Failed to alloc memory : %d", err);
-			return err;
-		} else if (err == -EINVAL) {
-			PMD_INIT_LOG(ERR, "Invalid buffer address alignment :"
-				" %d", err);
-			return err;
-		}
-
-		/* Setup the HW Rx Head and Tail Descriptor Pointers
-		 * Note: this must be done AFTER the queue is enabled on real
-		 * hardware, but BEFORE the queue is enabled when using the
-		 * emulation platform. Do it in both places for now and remove
-		 * this comment and the following two register writes when the
-		 * emulation platform is no longer being used.
-		 */
-		FM10K_WRITE_REG(hw, FM10K_RDH(rx_queue_id), 0);
-		FM10K_WRITE_REG(hw, FM10K_RDT(rx_queue_id), rxq->nb_desc - 1);
-
-		/* Set PF ownership flag for PF devices */
-		reg = FM10K_READ_REG(hw, FM10K_RXQCTL(rx_queue_id));
-		if (hw->mac.type == fm10k_mac_pf)
-			reg |= FM10K_RXQCTL_PF;
-		reg |= FM10K_RXQCTL_ENABLE;
-		/* enable RX queue */
-		FM10K_WRITE_REG(hw, FM10K_RXQCTL(rx_queue_id), reg);
-		FM10K_WRITE_FLUSH(hw);
-
-		/* Setup the HW Rx Head and Tail Descriptor Pointers
-		 * Note: this must be done AFTER the queue is enabled
-		 */
-		FM10K_WRITE_REG(hw, FM10K_RDH(rx_queue_id), 0);
-		FM10K_WRITE_REG(hw, FM10K_RDT(rx_queue_id), rxq->nb_desc - 1);
-		dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+	rxq = dev->data->rx_queues[rx_queue_id];
+	err = rx_queue_reset(rxq);
+	if (err == -ENOMEM) {
+		PMD_INIT_LOG(ERR, "Failed to alloc memory : %d", err);
+		return err;
+	} else if (err == -EINVAL) {
+		PMD_INIT_LOG(ERR, "Invalid buffer address alignment :"
+			" %d", err);
+		return err;
 	}
 
-	return err;
+	/* Setup the HW Rx Head and Tail Descriptor Pointers
+	 * Note: this must be done AFTER the queue is enabled on real
+	 * hardware, but BEFORE the queue is enabled when using the
+	 * emulation platform. Do it in both places for now and remove
+	 * this comment and the following two register writes when the
+	 * emulation platform is no longer being used.
+	 */
+	FM10K_WRITE_REG(hw, FM10K_RDH(rx_queue_id), 0);
+	FM10K_WRITE_REG(hw, FM10K_RDT(rx_queue_id), rxq->nb_desc - 1);
+
+	/* Set PF ownership flag for PF devices */
+	reg = FM10K_READ_REG(hw, FM10K_RXQCTL(rx_queue_id));
+	if (hw->mac.type == fm10k_mac_pf)
+		reg |= FM10K_RXQCTL_PF;
+	reg |= FM10K_RXQCTL_ENABLE;
+	/* enable RX queue */
+	FM10K_WRITE_REG(hw, FM10K_RXQCTL(rx_queue_id), reg);
+	FM10K_WRITE_FLUSH(hw);
+
+	/* Setup the HW Rx Head and Tail Descriptor Pointers
+	 * Note: this must be done AFTER the queue is enabled
+	 */
+	FM10K_WRITE_REG(hw, FM10K_RDH(rx_queue_id), 0);
+	FM10K_WRITE_REG(hw, FM10K_RDT(rx_queue_id), rxq->nb_desc - 1);
+	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+
+	return 0;
 }
 
 static int
@@ -865,14 +863,12 @@ fm10k_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (rx_queue_id < dev->data->nb_rx_queues) {
-		/* Disable RX queue */
-		rx_queue_disable(hw, rx_queue_id);
+	/* Disable RX queue */
+	rx_queue_disable(hw, rx_queue_id);
 
-		/* Free mbuf and clean HW ring */
-		rx_queue_clean(dev->data->rx_queues[rx_queue_id]);
-		dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
-	}
+	/* Free mbuf and clean HW ring */
+	rx_queue_clean(dev->data->rx_queues[rx_queue_id]);
+	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
 }
@@ -884,28 +880,23 @@ fm10k_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	/** @todo - this should be defined in the shared code */
 #define FM10K_TXDCTL_WRITE_BACK_MIN_DELAY	0x00010000
 	uint32_t txdctl = FM10K_TXDCTL_WRITE_BACK_MIN_DELAY;
-	int err = 0;
+	struct fm10k_tx_queue *q = dev->data->tx_queues[tx_queue_id];
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (tx_queue_id < dev->data->nb_tx_queues) {
-		struct fm10k_tx_queue *q = dev->data->tx_queues[tx_queue_id];
+	q->ops->reset(q);
 
-		q->ops->reset(q);
+	/* reset head and tail pointers */
+	FM10K_WRITE_REG(hw, FM10K_TDH(tx_queue_id), 0);
+	FM10K_WRITE_REG(hw, FM10K_TDT(tx_queue_id), 0);
 
-		/* reset head and tail pointers */
-		FM10K_WRITE_REG(hw, FM10K_TDH(tx_queue_id), 0);
-		FM10K_WRITE_REG(hw, FM10K_TDT(tx_queue_id), 0);
+	/* enable TX queue */
+	FM10K_WRITE_REG(hw, FM10K_TXDCTL(tx_queue_id),
+				FM10K_TXDCTL_ENABLE | txdctl);
+	FM10K_WRITE_FLUSH(hw);
+	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
 
-		/* enable TX queue */
-		FM10K_WRITE_REG(hw, FM10K_TXDCTL(tx_queue_id),
-					FM10K_TXDCTL_ENABLE | txdctl);
-		FM10K_WRITE_FLUSH(hw);
-		dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
-	} else
-		err = -1;
-
-	return err;
+	return 0;
 }
 
 static int
@@ -915,11 +906,9 @@ fm10k_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (tx_queue_id < dev->data->nb_tx_queues) {
-		tx_queue_disable(hw, tx_queue_id);
-		tx_queue_clean(dev->data->tx_queues[tx_queue_id]);
-		dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
-	}
+	tx_queue_disable(hw, tx_queue_id);
+	tx_queue_clean(dev->data->tx_queues[tx_queue_id]);
+	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
 }
