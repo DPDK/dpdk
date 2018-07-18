@@ -1,31 +1,6 @@
-..  BSD LICENSE
+..  SPDX-License-Identifier: BSD-3-Clause
     Copyright (c) 2017, Cisco Systems, Inc.
     All rights reserved.
-
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions
-    are met:
-
-    1. Redistributions of source code must retain the above copyright
-    notice, this list of conditions and the following disclaimer.
-
-    2. Redistributions in binary form must reproduce the above copyright
-    notice, this list of conditions and the following disclaimer in
-    the documentation and/or other materials provided with the
-    distribution.
-
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-    FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-    COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-    INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-    BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-    CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-    LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
-    ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-    POSSIBILITY OF SUCH DAMAGE.
 
 ENIC Poll Mode Driver
 =====================
@@ -336,6 +311,40 @@ it, set ``devargs`` parameter ``disable-overlay=1``. For example::
 
     -w 12:00.0,disable-overlay=1
 
+By default, the NIC uses 4789 as the VXLAN port. The user may change
+it through ``rte_eth_dev_udp_tunnel_port_{add,delete}``. However, as
+the current NIC has a single VXLAN port number, the user cannot
+configure multiple port numbers.
+
+Ingress VLAN Rewrite
+--------------------
+
+VIC adapters can tag, untag, or modify the VLAN headers of ingress
+packets. The ingress VLAN rewrite mode controls this behavior. By
+default, it is set to pass-through, where the NIC does not modify the
+VLAN header in any way so that the application can see the original
+header. This mode is sufficient for many applications, but may not be
+suitable for others. Such applications may change the mode by setting
+``devargs`` parameter ``ig-vlan-rewrite`` to one of the following.
+
+- ``pass``: Pass-through mode. The NIC does not modify the VLAN
+  header. This is the default mode.
+
+- ``priority``: Priority-tag default VLAN mode. If the ingress packet
+  is tagged with the default VLAN, the NIC replaces its VLAN header
+  with the priority tag (VLAN ID 0).
+
+- ``trunk``: Default trunk mode. The NIC tags untagged ingress packets
+  with the default VLAN. Tagged ingress packets are not modified. To
+  the application, every packet appears as tagged.
+
+- ``untag``: Untag default VLAN mode. If the ingress packet is tagged
+  with the default VLAN, the NIC removes or untags its VLAN header so
+  that the application sees an untagged packet. As a result, the
+  default VLAN becomes `untagged`. This mode can be useful for
+  applications such as OVS-DPDK performance benchmarks that utilize
+  only the default VLAN and want to see only untagged packets.
+
 .. _enic_limitations:
 
 Limitations
@@ -366,9 +375,9 @@ Another alternative is modify the adapter's ingress VLAN rewrite mode so that
 packets with the default VLAN tag are stripped by the adapter and presented to
 DPDK as untagged packets. In this case mbuf->vlan_tci and the PKT_RX_VLAN and
 PKT_RX_VLAN_STRIPPED mbuf flags would not be set. This mode is enabled with the
-``devargs`` parameter ``ig-vlan-rewrite=1``. For example::
+``devargs`` parameter ``ig-vlan-rewrite=untag``. For example::
 
-    -w 12:00.0,ig-vlan-rewrite=1
+    -w 12:00.0,ig-vlan-rewrite=untag
 
 - Limited flow director support on 1200 series and 1300 series Cisco VIC
   adapters with old firmware. Please see :ref:`enic-flow-director`.
@@ -405,10 +414,14 @@ PKT_RX_VLAN_STRIPPED mbuf flags would not be set. This mode is enabled with the
 
   - ``rx_good_bytes`` (ibytes) always includes VLAN header (4B) and CRC bytes (4B).
     This behavior applies to 1300 and older series VIC adapters.
+    1400 series VICs do not count CRC bytes, and count VLAN header only when VLAN
+    stripping is disabled.
   - When the NIC drops a packet because the Rx queue has no free buffers,
     ``rx_good_bytes`` still increments by 4B if the packet is not VLAN tagged or
     VLAN stripping is disabled, or by 8B if the packet is VLAN tagged and stripping
-    is enabled. This behavior applies to 1300 and older series VIC adapters.
+    is enabled.
+    This behavior applies to 1300 and older series VIC adapters. 1400 series VICs
+    do not increment this byte counter when packets are dropped.
 
 - **RSS Hashing**
 
@@ -434,6 +447,7 @@ ENIC PMD supports all recent generations of Cisco VIC adapters including:
 
 - VIC 1200 series
 - VIC 1300 series
+- VIC 1400 series
 
 Supported Operating Systems
 ---------------------------
@@ -457,7 +471,7 @@ Supported features
 - VLAN filtering (supported via UCSM/CIMC only)
 - Execution of application by unprivileged system users
 - IPV4, IPV6 and TCP RSS hashing
-- UDP RSS hashing (support for upcoming adapters)
+- UDP RSS hashing (1400 series and later adapters)
 - Scattered Rx
 - MTU update
 - SR-IOV on UCS managed servers connected to Fabric Interconnects
@@ -534,4 +548,4 @@ Any questions or bugs should be reported to DPDK community and to the ENIC PMD
 maintainers:
 
 - John Daley <johndale@cisco.com>
-- Nelson Escobar <neescoba@cisco.com>
+- Hyong Youb Kim <hyonkim@cisco.com>
