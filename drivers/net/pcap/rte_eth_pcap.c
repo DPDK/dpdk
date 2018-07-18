@@ -432,6 +432,7 @@ eth_dev_start(struct rte_eth_dev *dev)
 				return -1;
 			rx->pcap = tx->pcap;
 		}
+
 		goto status_up;
 	}
 
@@ -467,6 +468,12 @@ eth_dev_start(struct rte_eth_dev *dev)
 	}
 
 status_up:
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+
 	dev->data->dev_link.link_status = ETH_LINK_UP;
 
 	return 0;
@@ -519,6 +526,12 @@ eth_dev_stop(struct rte_eth_dev *dev)
 	}
 
 status_down:
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+
 	dev->data->dev_link.link_status = ETH_LINK_DOWN;
 }
 
@@ -646,6 +659,38 @@ eth_tx_queue_setup(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+eth_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+
+	return 0;
+}
+
+static int
+eth_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+
+	return 0;
+}
+
+static int
+eth_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	return 0;
+}
+
+static int
+eth_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	return 0;
+}
+
 static const struct eth_dev_ops ops = {
 	.dev_start = eth_dev_start,
 	.dev_stop = eth_dev_stop,
@@ -654,6 +699,10 @@ static const struct eth_dev_ops ops = {
 	.dev_infos_get = eth_dev_info,
 	.rx_queue_setup = eth_rx_queue_setup,
 	.tx_queue_setup = eth_tx_queue_setup,
+	.rx_queue_start = eth_rx_queue_start,
+	.tx_queue_start = eth_tx_queue_start,
+	.rx_queue_stop = eth_rx_queue_stop,
+	.tx_queue_stop = eth_tx_queue_stop,
 	.rx_queue_release = eth_queue_release,
 	.tx_queue_release = eth_queue_release,
 	.link_update = eth_link_update,
