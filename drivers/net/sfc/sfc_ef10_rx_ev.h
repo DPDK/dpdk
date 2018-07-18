@@ -122,6 +122,8 @@ sfc_ef10_rx_ev_to_offloads(const efx_qword_t rx_ev, struct rte_mbuf *m,
 		if (tun_ptype == 0)
 			l2_ptype = RTE_PTYPE_L2_ETHER_ARP;
 		break;
+	case ESE_DZ_L3_CLASS_UNKNOWN:
+		break;
 	default:
 		/* Unexpected Layer 3 class */
 		SFC_ASSERT(false);
