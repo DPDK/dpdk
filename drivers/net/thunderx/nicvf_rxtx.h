@@ -10,6 +10,7 @@
 
 #define NICVF_RX_OFFLOAD_NONE           0x1
 #define NICVF_RX_OFFLOAD_CKSUM          0x2
+#define NICVF_RX_OFFLOAD_VLAN_STRIP     0x4
 
 #define NICVF_TX_OFFLOAD_MASK (PKT_TX_IP_CKSUM | PKT_TX_L4_MASK)
 
@@ -93,10 +94,18 @@ uint16_t nicvf_recv_pkts_no_offload(void *rxq, struct rte_mbuf **rx_pkts,
 		uint16_t pkts);
 uint16_t nicvf_recv_pkts_cksum(void *rxq, struct rte_mbuf **rx_pkts,
 		uint16_t pkts);
+uint16_t nicvf_recv_pkts_vlan_strip(void *rx_queue, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts);
+uint16_t nicvf_recv_pkts_cksum_vlan_strip(void *rx_queue,
+		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 
 uint16_t nicvf_recv_pkts_multiseg_no_offload(void *rx_queue,
 		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 uint16_t nicvf_recv_pkts_multiseg_cksum(void *rx_queue,
+		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
+uint16_t nicvf_recv_pkts_multiseg_vlan_strip(void *rx_queue,
+		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
+uint16_t nicvf_recv_pkts_multiseg_cksum_vlan_strip(void *rx_queue,
 		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 
 uint16_t nicvf_xmit_pkts(void *txq, struct rte_mbuf **tx_pkts, uint16_t pkts);

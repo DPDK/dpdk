@@ -88,6 +88,7 @@ struct nicvf {
 	bool pf_acked:1;
 	bool pf_nacked:1;
 	bool offload_cksum:1;
+	bool vlan_strip:1;
 	uint64_t hwcap;
 	uint8_t link_up;
 	uint8_t	duplex;

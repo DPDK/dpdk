@@ -699,6 +699,7 @@ nicvf_vlan_hw_strip(struct nicvf *nic, bool enable)
 	else
 		val &= ~((STRIP_SECOND_VLAN | STRIP_FIRST_VLAN) << 25);
 
+	nic->vlan_strip = enable;
 	nicvf_reg_write(nic, NIC_VNIC_RQ_GEN_CFG, val);
 }
 
