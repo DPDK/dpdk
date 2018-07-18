@@ -514,6 +514,21 @@ static void enic_prep_wq_for_simple_tx(struct enic *enic, uint16_t queue_idx)
 	}
 }
 
+static void pick_rx_handler(struct enic *enic)
+{
+	struct rte_eth_dev *eth_dev;
+
+	/* Use the non-scatter, simplified RX handler if possible. */
+	eth_dev = enic->rte_dev;
+	if (enic->rq_count > 0 && enic->rq[0].data_queue_enable == 0) {
+		PMD_INIT_LOG(DEBUG, " use the non-scatter Rx handler");
+		eth_dev->rx_pkt_burst = &enic_noscatter_recv_pkts;
+	} else {
+		PMD_INIT_LOG(DEBUG, " use the normal Rx handler");
+		eth_dev->rx_pkt_burst = &enic_recv_pkts;
+	}
+}
+
 int enic_enable(struct enic *enic)
 {
 	unsigned int index;
@@ -571,13 +586,7 @@ int enic_enable(struct enic *enic)
 		eth_dev->tx_pkt_burst = &enic_xmit_pkts;
 	}
 
-	/* Use the non-scatter, simplified RX handler if possible. */
-	if (enic->rq_count > 0 && enic->rq[0].data_queue_enable == 0) {
-		PMD_INIT_LOG(DEBUG, " use the non-scatter Rx handler");
-		eth_dev->rx_pkt_burst = &enic_noscatter_recv_pkts;
-	} else {
-		PMD_INIT_LOG(DEBUG, " use the normal Rx handler");
-	}
+	pick_rx_handler(enic);
 
 	for (index = 0; index < enic->wq_count; index++)
 		enic_start_wq(enic, index);
@@ -1550,7 +1559,7 @@ int enic_set_mtu(struct enic *enic, uint16_t new_mtu)
 
 	/* put back the real receive function */
 	rte_mb();
-	eth_dev->rx_pkt_burst = enic_recv_pkts;
+	pick_rx_handler(enic);
 	rte_mb();
 
 	/* restart Rx traffic */
