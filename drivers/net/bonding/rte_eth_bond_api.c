@@ -345,14 +345,6 @@ __eth_bond_slave_add_lock_free(uint16_t bonded_port_id, uint16_t slave_port_id)
 		internals->tx_queue_offload_capa &= dev_info.tx_queue_offload_capa;
 		internals->flow_type_rss_offloads &= dev_info.flow_type_rss_offloads;
 
-		if (link_properties_valid(bonded_eth_dev,
-				&slave_eth_dev->data->dev_link) != 0) {
-			RTE_BOND_LOG(ERR, "Invalid link properties for slave %d"
-					" in bonding mode %d", slave_port_id,
-					internals->mode);
-			return -1;
-		}
-
 		/* RETA size is GCD of all slaves RETA sizes, so, if all sizes will be
 		 * the power of 2, the lower one is GCD
 		 */
@@ -412,11 +404,6 @@ __eth_bond_slave_add_lock_free(uint16_t bonded_port_id, uint16_t slave_port_id)
 			    !internals->user_defined_primary_port)
 				bond_ethdev_primary_set(internals,
 							slave_port_id);
-
-			if (find_slave_by_id(internals->active_slaves,
-					     internals->active_slave_count,
-					     slave_port_id) == internals->active_slave_count)
-				activate_slave(bonded_eth_dev, slave_port_id);
 		}
 	}
 

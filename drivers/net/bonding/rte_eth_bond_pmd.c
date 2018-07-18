@@ -2732,6 +2732,17 @@ bond_ethdev_lsc_event_callback(uint16_t port_id, enum rte_eth_event_type type,
 			mac_address_slaves_update(bonded_eth_dev);
 		}
 
+		/* check link state properties if bonded link is up*/
+		if (bonded_eth_dev->data->dev_link.link_status == ETH_LINK_UP) {
+			if (link_properties_valid(bonded_eth_dev, &link) != 0)
+				RTE_BOND_LOG(ERR, "Invalid link properties "
+					     "for slave %d in bonding mode %d",
+					     port_id, internals->mode);
+		} else {
+			/* inherit slave link properties */
+			link_properties_set(bonded_eth_dev, &link);
+		}
+
 		activate_slave(bonded_eth_dev, port_id);
 
 		/* If user has defined the primary port then default to using it */
