@@ -3238,6 +3238,7 @@ bond_probe(struct rte_vdev_device *dev)
 	internals = rte_eth_devices[port_id].data->dev_private;
 	internals->kvlist = kvlist;
 
+	rte_eth_dev_probing_finish(&rte_eth_devices[port_id]);
 
 	if (rte_kvargs_count(kvlist, PMD_BOND_AGG_MODE_KVARG) == 1) {
 		if (rte_kvargs_process(kvlist,
@@ -3257,7 +3258,6 @@ bond_probe(struct rte_vdev_device *dev)
 		rte_eth_bond_8023ad_agg_selection_set(port_id, AGG_STABLE);
 	}
 
-	rte_eth_dev_probing_finish(&rte_eth_devices[port_id]);
 	RTE_BOND_LOG(INFO, "Create bonded device %s on port %d in mode %u on "
 			"socket %u.",	name, port_id, bonding_mode, socket_id);
 	return 0;
