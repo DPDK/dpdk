@@ -7,7 +7,7 @@ build_map_changes()
 	local fname=$1
 	local mapdb=$2
 
-	cat $fname | awk '
+	cat "$fname" | awk '
 		# Initialize our variables
 		BEGIN {map="";sym="";ar="";sec=""; in_sec=0; in_map=0}
 
@@ -71,10 +71,10 @@ build_map_changes()
 					print map " " sym " unknown del"
 				}
 			}
-		}' > ./$mapdb
+		}' > "$mapdb"
 
-		sort -u $mapdb > ./$mapdb.2
-		mv -f $mapdb.2 $mapdb
+		sort -u "$mapdb" > "$mapdb.2"
+		mv -f "$mapdb.2" "$mapdb"
 
 }
 
@@ -111,7 +111,7 @@ check_for_rule_violations()
 				# to be moving from an already supported
 				# section or its a violation
 				grep -q \
-				"$mname $symname [^EXPERIMENTAL] del" $mapdb
+				"$mname $symname [^EXPERIMENTAL] del" "$mapdb"
 				if [ $? -ne 0 ]
 				then
 					echo -n "ERROR: symbol $symname "
@@ -133,7 +133,7 @@ check_for_rule_violations()
 				echo "gone through the deprecation process"
 			fi
 		fi
-	done < $mapdb
+	done < "$mapdb"
 
 	return $ret
 }
@@ -146,14 +146,14 @@ exit_code=1
 
 clean_and_exit_on_sig()
 {
-	rm -f $mapfile
+	rm -f "$mapfile"
 	exit $exit_code
 }
 
-build_map_changes $patch $mapfile
-check_for_rule_violations $mapfile
+build_map_changes "$patch" "$mapfile"
+check_for_rule_violations "$mapfile"
 exit_code=$?
 
-rm -f $mapfile
+rm -f "$mapfile"
 
 exit $exit_code
