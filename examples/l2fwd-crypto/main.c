@@ -1931,21 +1931,19 @@ check_supported_size(uint16_t length, uint16_t min, uint16_t max,
 static int
 check_iv_param(const struct rte_crypto_param_range *iv_range_size,
 		unsigned int iv_param, int iv_random_size,
-		uint16_t *iv_length)
+		uint16_t iv_length)
 {
 	/*
 	 * Check if length of provided IV is supported
 	 * by the algorithm chosen.
 	 */
 	if (iv_param) {
-		if (check_supported_size(*iv_length,
+		if (check_supported_size(iv_length,
 				iv_range_size->min,
 				iv_range_size->max,
 				iv_range_size->increment)
-					!= 0) {
-			printf("Unsupported IV length\n");
+					!= 0)
 			return -1;
-		}
 	/*
 	 * Check if length of IV to be randomly generated
 	 * is supported by the algorithm chosen.
@@ -1955,14 +1953,9 @@ check_iv_param(const struct rte_crypto_param_range *iv_range_size,
 				iv_range_size->min,
 				iv_range_size->max,
 				iv_range_size->increment)
-					!= 0) {
-			printf("Unsupported IV length\n");
+					!= 0)
 			return -1;
-		}
-		*iv_length = iv_random_size;
-	/* No size provided, use minimum size. */
-	} else
-		*iv_length = iv_range_size->min;
+	}
 
 	return 0;
 }
@@ -2069,8 +2062,21 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 			if (check_iv_param(&cap->sym.aead.iv_size,
 					options->aead_iv_param,
 					options->aead_iv_random_size,
-					&options->aead_iv.length) < 0)
+					options->aead_iv.length) < 0) {
+				printf("Unsupported IV length\n");
 				continue;
+			}
+
+			/* Set IV if not provided from command line */
+			if (options->aead_iv_param == 0) {
+				if (options->aead_iv_random_size != -1)
+					options->aead_iv.length =
+						options->aead_iv_random_size;
+				/* No size provided, use minimum size. */
+				else
+					options->aead_iv.length =
+						cap->sym.aead.iv_size.min;
+			}
 
 			/*
 			 * Check if length of provided AEAD key is supported
@@ -2178,8 +2184,21 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 			if (check_iv_param(&cap->sym.cipher.iv_size,
 					options->cipher_iv_param,
 					options->cipher_iv_random_size,
-					&options->cipher_iv.length) < 0)
+					options->cipher_iv.length) < 0) {
+				printf("Unsupported IV length\n");
 				continue;
+			}
+
+			/* Set IV if not provided from command line */
+			if (options->cipher_iv_param == 0) {
+				if (options->cipher_iv_random_size != -1)
+					options->cipher_iv.length =
+						options->cipher_iv_random_size;
+				/* No size provided, use minimum size. */
+				else
+					options->cipher_iv.length =
+						cap->sym.cipher.iv_size.min;
+			}
 
 			/*
 			 * Check if length of provided cipher key is supported
@@ -2235,8 +2254,22 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 			if (check_iv_param(&cap->sym.auth.iv_size,
 					options->auth_iv_param,
 					options->auth_iv_random_size,
-					&options->auth_iv.length) < 0)
+					options->auth_iv.length) < 0) {
+				printf("Unsupported IV length\n");
 				continue;
+			}
+
+			/* Set IV if not provided from command line */
+			if (options->auth_iv_param == 0) {
+				if (options->auth_iv_random_size != -1)
+					options->auth_iv.length =
+						options->auth_iv_random_size;
+				/* No size provided, use minimum size. */
+				else
+					options->auth_iv.length =
+						cap->sym.auth.iv_size.min;
+			}
+
 			/*
 			 * Check if length of provided auth key is supported
 			 * by the algorithm chosen.
