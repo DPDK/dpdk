@@ -566,6 +566,15 @@ The case when one CB belongs to TB and is being enqueued individually to BBDEV,
 this case is considered as a special case of partial TB where its number of CBs
 is 1. Therefore, it requires to get processed in TB-mode.
 
+The figure below visualizes the encoding of CBs using BBDEV interface in
+TB-mode. CB-mode is a reduced version, where only one CB exists:
+
+.. _figure_turbo_tb_encode:
+
+.. figure:: img/turbo_tb_encode.svg
+
+    Turbo encoding of Code Blocks in mbuf structure
+
 
 BBDEV Turbo Decode Operation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -650,6 +659,15 @@ is 1. Therefore, it requires to get processed in TB-mode.
 
 The output mbuf data structure is expected to be allocated by the application
 with enough room for the output data.
+
+The figure below visualizes the decoding of CBs using BBDEV interface in
+TB-mode. CB-mode is a reduced version, where only one CB exists:
+
+.. _figure_turbo_tb_decode:
+
+.. figure:: img/turbo_tb_decode.svg
+
+    Turbo decoding of Code Blocks in mbuf structure
 
 
 Sample code
