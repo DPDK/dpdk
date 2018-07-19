@@ -1961,10 +1961,251 @@ check_iv_param(const struct rte_crypto_param_range *iv_range_size,
 }
 
 static int
+check_capabilities(struct l2fwd_crypto_options *options, uint8_t cdev_id)
+{
+	struct rte_cryptodev_info dev_info;
+	const struct rte_cryptodev_capabilities *cap;
+
+	rte_cryptodev_info_get(cdev_id, &dev_info);
+
+	/* Set AEAD parameters */
+	if (options->xform_chain == L2FWD_CRYPTO_AEAD) {
+		/* Check if device supports AEAD algo */
+		cap = check_device_support_aead_algo(options, &dev_info,
+						cdev_id);
+		if (cap == NULL)
+			return -1;
+
+		if (check_iv_param(&cap->sym.aead.iv_size,
+				options->aead_iv_param,
+				options->aead_iv_random_size,
+				options->aead_iv.length) != 0) {
+			RTE_LOG(DEBUG, USER1,
+				"Device %u does not support IV length\n",
+				cdev_id);
+			return -1;
+		}
+
+		/*
+		 * Check if length of provided AEAD key is supported
+		 * by the algorithm chosen.
+		 */
+		if (options->aead_key_param) {
+			if (check_supported_size(
+					options->aead_xform.aead.key.length,
+					cap->sym.aead.key_size.min,
+					cap->sym.aead.key_size.max,
+					cap->sym.aead.key_size.increment)
+						!= 0) {
+				RTE_LOG(DEBUG, USER1,
+					"Device %u does not support "
+					"AEAD key length\n",
+					cdev_id);
+				return -1;
+			}
+		/*
+		 * Check if length of the aead key to be randomly generated
+		 * is supported by the algorithm chosen.
+		 */
+		} else if (options->aead_key_random_size != -1) {
+			if (check_supported_size(options->aead_key_random_size,
+					cap->sym.aead.key_size.min,
+					cap->sym.aead.key_size.max,
+					cap->sym.aead.key_size.increment)
+						!= 0) {
+				RTE_LOG(DEBUG, USER1,
+					"Device %u does not support "
+					"AEAD key length\n",
+					cdev_id);
+				return -1;
+			}
+		}
+
+
+		/*
+		 * Check if length of provided AAD is supported
+		 * by the algorithm chosen.
+		 */
+		if (options->aad_param) {
+			if (check_supported_size(options->aad.length,
+					cap->sym.aead.aad_size.min,
+					cap->sym.aead.aad_size.max,
+					cap->sym.aead.aad_size.increment)
+						!= 0) {
+				RTE_LOG(DEBUG, USER1,
+					"Device %u does not support "
+					"AAD length\n",
+					cdev_id);
+				return -1;
+			}
+		/*
+		 * Check if length of AAD to be randomly generated
+		 * is supported by the algorithm chosen.
+		 */
+		} else if (options->aad_random_size != -1) {
+			if (check_supported_size(options->aad_random_size,
+					cap->sym.aead.aad_size.min,
+					cap->sym.aead.aad_size.max,
+					cap->sym.aead.aad_size.increment)
+						!= 0) {
+				RTE_LOG(DEBUG, USER1,
+					"Device %u does not support "
+					"AAD length\n",
+					cdev_id);
+				return -1;
+			}
+		}
+
+		/* Check if digest size is supported by the algorithm. */
+		if (options->digest_size != -1) {
+			if (check_supported_size(options->digest_size,
+					cap->sym.aead.digest_size.min,
+					cap->sym.aead.digest_size.max,
+					cap->sym.aead.digest_size.increment)
+						!= 0) {
+				RTE_LOG(DEBUG, USER1,
+					"Device %u does not support "
+					"digest length\n",
+					cdev_id);
+				return -1;
+			}
+		}
+	}
+
+	/* Set cipher parameters */
+	if (options->xform_chain == L2FWD_CRYPTO_CIPHER_HASH ||
+			options->xform_chain == L2FWD_CRYPTO_HASH_CIPHER ||
+			options->xform_chain == L2FWD_CRYPTO_CIPHER_ONLY) {
+		/* Check if device supports cipher algo */
+		cap = check_device_support_cipher_algo(options, &dev_info,
+						cdev_id);
+		if (cap == NULL)
+			return -1;
+
+		if (check_iv_param(&cap->sym.cipher.iv_size,
+				options->cipher_iv_param,
+				options->cipher_iv_random_size,
+				options->cipher_iv.length) != 0) {
+			RTE_LOG(DEBUG, USER1,
+				"Device %u does not support IV length\n",
+				cdev_id);
+			return -1;
+		}
+
+		/*
+		 * Check if length of provided cipher key is supported
+		 * by the algorithm chosen.
+		 */
+		if (options->ckey_param) {
+			if (check_supported_size(
+					options->cipher_xform.cipher.key.length,
+					cap->sym.cipher.key_size.min,
+					cap->sym.cipher.key_size.max,
+					cap->sym.cipher.key_size.increment)
+						!= 0) {
+				RTE_LOG(DEBUG, USER1,
+					"Device %u does not support cipher "
+					"key length\n",
+					cdev_id);
+				return -1;
+			}
+		/*
+		 * Check if length of the cipher key to be randomly generated
+		 * is supported by the algorithm chosen.
+		 */
+		} else if (options->ckey_random_size != -1) {
+			if (check_supported_size(options->ckey_random_size,
+					cap->sym.cipher.key_size.min,
+					cap->sym.cipher.key_size.max,
+					cap->sym.cipher.key_size.increment)
+						!= 0) {
+				RTE_LOG(DEBUG, USER1,
+					"Device %u does not support cipher "
+					"key length\n",
+					cdev_id);
+				return -1;
+			}
+		}
+	}
+
+	/* Set auth parameters */
+	if (options->xform_chain == L2FWD_CRYPTO_CIPHER_HASH ||
+			options->xform_chain == L2FWD_CRYPTO_HASH_CIPHER ||
+			options->xform_chain == L2FWD_CRYPTO_HASH_ONLY) {
+		/* Check if device supports auth algo */
+		cap = check_device_support_auth_algo(options, &dev_info,
+						cdev_id);
+		if (cap == NULL)
+			return -1;
+
+		if (check_iv_param(&cap->sym.auth.iv_size,
+				options->auth_iv_param,
+				options->auth_iv_random_size,
+				options->auth_iv.length) != 0) {
+			RTE_LOG(DEBUG, USER1,
+				"Device %u does not support IV length\n",
+				cdev_id);
+			return -1;
+		}
+		/*
+		 * Check if length of provided auth key is supported
+		 * by the algorithm chosen.
+		 */
+		if (options->akey_param) {
+			if (check_supported_size(
+					options->auth_xform.auth.key.length,
+					cap->sym.auth.key_size.min,
+					cap->sym.auth.key_size.max,
+					cap->sym.auth.key_size.increment)
+						!= 0) {
+				RTE_LOG(DEBUG, USER1,
+					"Device %u does not support auth "
+					"key length\n",
+					cdev_id);
+				return -1;
+			}
+		/*
+		 * Check if length of the auth key to be randomly generated
+		 * is supported by the algorithm chosen.
+		 */
+		} else if (options->akey_random_size != -1) {
+			if (check_supported_size(options->akey_random_size,
+					cap->sym.auth.key_size.min,
+					cap->sym.auth.key_size.max,
+					cap->sym.auth.key_size.increment)
+						!= 0) {
+				RTE_LOG(DEBUG, USER1,
+					"Device %u does not support auth "
+					"key length\n",
+					cdev_id);
+				return -1;
+			}
+		}
+
+		/* Check if digest size is supported by the algorithm. */
+		if (options->digest_size != -1) {
+			if (check_supported_size(options->digest_size,
+					cap->sym.auth.digest_size.min,
+					cap->sym.auth.digest_size.max,
+					cap->sym.auth.digest_size.increment)
+						!= 0) {
+				RTE_LOG(DEBUG, USER1,
+					"Device %u does not support "
+					"digest length\n",
+					cdev_id);
+				return -1;
+			}
+		}
+	}
+
+	return 0;
+}
+
+static int
 initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 		uint8_t *enabled_cdevs)
 {
-	unsigned int cdev_id, cdev_count, enabled_cdev_count = 0;
+	uint8_t cdev_id, cdev_count, enabled_cdev_count = 0;
 	const struct rte_cryptodev_capabilities *cap;
 	unsigned int sess_sz, max_sess_sz = 0;
 	uint32_t sessions_needed = 0;
@@ -1976,16 +2217,31 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 		return -1;
 	}
 
-	for (cdev_id = 0; cdev_id < cdev_count; cdev_id++) {
+	for (cdev_id = 0; cdev_id < cdev_count && enabled_cdev_count < nb_ports;
+			cdev_id++) {
+		if (check_cryptodev_mask(options, cdev_id) < 0)
+			continue;
+
+		if (check_capabilities(options, cdev_id) < 0)
+			continue;
+
 		sess_sz = rte_cryptodev_sym_get_private_session_size(cdev_id);
 		if (sess_sz > max_sess_sz)
 			max_sess_sz = sess_sz;
+
+		l2fwd_enabled_crypto_mask |= (((uint64_t)1) << cdev_id);
+
+		enabled_cdevs[cdev_id] = 1;
+		enabled_cdev_count++;
 	}
 
-	for (cdev_id = 0; cdev_id < cdev_count && enabled_cdev_count < nb_ports;
-			cdev_id++) {
+	for (cdev_id = 0; cdev_id < cdev_count; cdev_id++) {
 		struct rte_cryptodev_qp_conf qp_conf;
 		struct rte_cryptodev_info dev_info;
+
+		if (enabled_cdevs[cdev_id] == 0)
+			continue;
+
 		retval = rte_cryptodev_socket_id(cdev_id);
 
 		if (retval < 0) {
@@ -1999,9 +2255,6 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 			.nb_queue_pairs = 1,
 			.socket_id = socket_id,
 		};
-
-		if (check_cryptodev_mask(options, (uint8_t)cdev_id))
-			continue;
 
 		rte_cryptodev_info_get(cdev_id, &dev_info);
 
@@ -2349,11 +2602,6 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 					cdev_id, retval);
 			return -1;
 		}
-
-		l2fwd_enabled_crypto_mask |= (((uint64_t)1) << cdev_id);
-
-		enabled_cdevs[cdev_id] = 1;
-		enabled_cdev_count++;
 	}
 
 	return enabled_cdev_count;
