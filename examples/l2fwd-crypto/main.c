@@ -2070,7 +2070,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 					options->aead_iv_param,
 					options->aead_iv_random_size,
 					&options->aead_iv.length) < 0)
-				return -1;
+				continue;
 
 			/*
 			 * Check if length of provided AEAD key is supported
@@ -2084,7 +2084,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 						cap->sym.aead.key_size.increment)
 							!= 0) {
 					printf("Unsupported aead key length\n");
-					return -1;
+					continue;
 				}
 			/*
 			 * Check if length of the aead key to be randomly generated
@@ -2097,7 +2097,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 						cap->sym.aead.key_size.increment)
 							!= 0) {
 					printf("Unsupported aead key length\n");
-					return -1;
+					continue;
 				}
 				options->aead_xform.aead.key.length =
 							options->aead_key_random_size;
@@ -2122,7 +2122,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 						cap->sym.aead.aad_size.increment)
 							!= 0) {
 					printf("Unsupported AAD length\n");
-					return -1;
+					continue;
 				}
 			/*
 			 * Check if length of AAD to be randomly generated
@@ -2135,7 +2135,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 						cap->sym.aead.aad_size.increment)
 							!= 0) {
 					printf("Unsupported AAD length\n");
-					return -1;
+					continue;
 				}
 				options->aad.length = options->aad_random_size;
 			/* No size provided, use minimum size. */
@@ -2153,7 +2153,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 						cap->sym.aead.digest_size.increment)
 							!= 0) {
 					printf("Unsupported digest length\n");
-					return -1;
+					continue;
 				}
 				options->aead_xform.aead.digest_length =
 							options->digest_size;
@@ -2179,7 +2179,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 					options->cipher_iv_param,
 					options->cipher_iv_random_size,
 					&options->cipher_iv.length) < 0)
-				return -1;
+				continue;
 
 			/*
 			 * Check if length of provided cipher key is supported
@@ -2193,7 +2193,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 						cap->sym.cipher.key_size.increment)
 							!= 0) {
 					printf("Unsupported cipher key length\n");
-					return -1;
+					continue;
 				}
 			/*
 			 * Check if length of the cipher key to be randomly generated
@@ -2206,7 +2206,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 						cap->sym.cipher.key_size.increment)
 							!= 0) {
 					printf("Unsupported cipher key length\n");
-					return -1;
+					continue;
 				}
 				options->cipher_xform.cipher.key.length =
 							options->ckey_random_size;
@@ -2236,7 +2236,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 					options->auth_iv_param,
 					options->auth_iv_random_size,
 					&options->auth_iv.length) < 0)
-				return -1;
+				continue;
 			/*
 			 * Check if length of provided auth key is supported
 			 * by the algorithm chosen.
@@ -2249,7 +2249,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 						cap->sym.auth.key_size.increment)
 							!= 0) {
 					printf("Unsupported auth key length\n");
-					return -1;
+					continue;
 				}
 			/*
 			 * Check if length of the auth key to be randomly generated
@@ -2262,7 +2262,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 						cap->sym.auth.key_size.increment)
 							!= 0) {
 					printf("Unsupported auth key length\n");
-					return -1;
+					continue;
 				}
 				options->auth_xform.auth.key.length =
 							options->akey_random_size;
@@ -2284,7 +2284,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 						cap->sym.auth.digest_size.increment)
 							!= 0) {
 					printf("Unsupported digest length\n");
-					return -1;
+					continue;
 				}
 				options->auth_xform.auth.digest_length =
 							options->digest_size;
