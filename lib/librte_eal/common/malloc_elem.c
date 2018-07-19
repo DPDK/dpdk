@@ -519,8 +519,8 @@ malloc_elem_free(struct malloc_elem *elem)
 	void *ptr;
 	size_t data_len;
 
-	ptr = RTE_PTR_ADD(elem, MALLOC_ELEM_HEADER_LEN + elem->pad);
-	data_len = elem->size - elem->pad - MALLOC_ELEM_OVERHEAD;
+	ptr = RTE_PTR_ADD(elem, MALLOC_ELEM_HEADER_LEN);
+	data_len = elem->size - MALLOC_ELEM_OVERHEAD;
 
 	elem = malloc_elem_join_adjacent_free(elem);
 
