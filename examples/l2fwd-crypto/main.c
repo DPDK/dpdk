@@ -2304,21 +2304,10 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 
 		/* Set AEAD parameters */
 		if (options->xform_chain == L2FWD_CRYPTO_AEAD) {
-			/* Check if device supports AEAD algo */
 			cap = check_device_support_aead_algo(options, &dev_info,
 							cdev_id);
-			if (cap == NULL)
-				continue;
 
 			options->block_size = cap->sym.aead.block_size;
-
-			if (check_iv_param(&cap->sym.aead.iv_size,
-					options->aead_iv_param,
-					options->aead_iv_random_size,
-					options->aead_iv.length) < 0) {
-				printf("Unsupported IV length\n");
-				continue;
-			}
 
 			/* Set IV if not provided from command line */
 			if (options->aead_iv_param == 0) {
@@ -2331,93 +2320,41 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 						cap->sym.aead.iv_size.min;
 			}
 
-			/*
-			 * Check if length of provided AEAD key is supported
-			 * by the algorithm chosen.
-			 */
-			if (options->aead_key_param) {
-				if (check_supported_size(
-						options->aead_xform.aead.key.length,
-						cap->sym.aead.key_size.min,
-						cap->sym.aead.key_size.max,
-						cap->sym.aead.key_size.increment)
-							!= 0) {
-					printf("Unsupported aead key length\n");
-					continue;
-				}
-			/*
-			 * Check if length of the aead key to be randomly generated
-			 * is supported by the algorithm chosen.
-			 */
-			} else if (options->aead_key_random_size != -1) {
-				if (check_supported_size(options->aead_key_random_size,
-						cap->sym.aead.key_size.min,
-						cap->sym.aead.key_size.max,
-						cap->sym.aead.key_size.increment)
-							!= 0) {
-					printf("Unsupported aead key length\n");
-					continue;
-				}
-				options->aead_xform.aead.key.length =
-							options->aead_key_random_size;
-			/* No size provided, use minimum size. */
-			} else
-				options->aead_xform.aead.key.length =
+			/* Set key if not provided from command line */
+			if (options->aead_key_param == 0) {
+				if (options->aead_key_random_size != -1)
+					options->aead_xform.aead.key.length =
+						options->aead_key_random_size;
+				/* No size provided, use minimum size. */
+				else
+					options->aead_xform.aead.key.length =
 						cap->sym.aead.key_size.min;
 
-			if (!options->aead_key_param)
 				generate_random_key(
 					options->aead_xform.aead.key.data,
 					options->aead_xform.aead.key.length);
+			}
 
-			/*
-			 * Check if length of provided AAD is supported
-			 * by the algorithm chosen.
-			 */
-			if (options->aad_param) {
-				if (check_supported_size(options->aad.length,
-						cap->sym.aead.aad_size.min,
-						cap->sym.aead.aad_size.max,
-						cap->sym.aead.aad_size.increment)
-							!= 0) {
-					printf("Unsupported AAD length\n");
-					continue;
-				}
-			/*
-			 * Check if length of AAD to be randomly generated
-			 * is supported by the algorithm chosen.
-			 */
-			} else if (options->aad_random_size != -1) {
-				if (check_supported_size(options->aad_random_size,
-						cap->sym.aead.aad_size.min,
-						cap->sym.aead.aad_size.max,
-						cap->sym.aead.aad_size.increment)
-							!= 0) {
-					printf("Unsupported AAD length\n");
-					continue;
-				}
-				options->aad.length = options->aad_random_size;
-			/* No size provided, use minimum size. */
-			} else
-				options->aad.length = cap->sym.auth.aad_size.min;
+			/* Set AAD if not provided from command line */
+			if (options->aad_param == 0) {
+				if (options->aad_random_size != -1)
+					options->aad.length =
+						options->aad_random_size;
+				/* No size provided, use minimum size. */
+				else
+					options->aad.length =
+						cap->sym.auth.aad_size.min;
+			}
 
 			options->aead_xform.aead.aad_length =
 						options->aad.length;
 
-			/* Check if digest size is supported by the algorithm. */
-			if (options->digest_size != -1) {
-				if (check_supported_size(options->digest_size,
-						cap->sym.aead.digest_size.min,
-						cap->sym.aead.digest_size.max,
-						cap->sym.aead.digest_size.increment)
-							!= 0) {
-					printf("Unsupported digest length\n");
-					continue;
-				}
+			/* Set digest size if not provided from command line */
+			if (options->digest_size != -1)
 				options->aead_xform.aead.digest_length =
 							options->digest_size;
-			/* No size provided, use minimum size. */
-			} else
+				/* No size provided, use minimum size. */
+			else
 				options->aead_xform.aead.digest_length =
 						cap->sym.aead.digest_size.min;
 		}
@@ -2426,21 +2363,9 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 		if (options->xform_chain == L2FWD_CRYPTO_CIPHER_HASH ||
 				options->xform_chain == L2FWD_CRYPTO_HASH_CIPHER ||
 				options->xform_chain == L2FWD_CRYPTO_CIPHER_ONLY) {
-			/* Check if device supports cipher algo */
 			cap = check_device_support_cipher_algo(options, &dev_info,
 							cdev_id);
-			if (cap == NULL)
-				continue;
-
 			options->block_size = cap->sym.cipher.block_size;
-
-			if (check_iv_param(&cap->sym.cipher.iv_size,
-					options->cipher_iv_param,
-					options->cipher_iv_random_size,
-					options->cipher_iv.length) < 0) {
-				printf("Unsupported IV length\n");
-				continue;
-			}
 
 			/* Set IV if not provided from command line */
 			if (options->cipher_iv_param == 0) {
@@ -2453,64 +2378,28 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 						cap->sym.cipher.iv_size.min;
 			}
 
-			/*
-			 * Check if length of provided cipher key is supported
-			 * by the algorithm chosen.
-			 */
-			if (options->ckey_param) {
-				if (check_supported_size(
-						options->cipher_xform.cipher.key.length,
-						cap->sym.cipher.key_size.min,
-						cap->sym.cipher.key_size.max,
-						cap->sym.cipher.key_size.increment)
-							!= 0) {
-					printf("Unsupported cipher key length\n");
-					continue;
-				}
-			/*
-			 * Check if length of the cipher key to be randomly generated
-			 * is supported by the algorithm chosen.
-			 */
-			} else if (options->ckey_random_size != -1) {
-				if (check_supported_size(options->ckey_random_size,
-						cap->sym.cipher.key_size.min,
-						cap->sym.cipher.key_size.max,
-						cap->sym.cipher.key_size.increment)
-							!= 0) {
-					printf("Unsupported cipher key length\n");
-					continue;
-				}
-				options->cipher_xform.cipher.key.length =
-							options->ckey_random_size;
-			/* No size provided, use minimum size. */
-			} else
-				options->cipher_xform.cipher.key.length =
+			/* Set key if not provided from command line */
+			if (options->ckey_param == 0) {
+				if (options->ckey_random_size != -1)
+					options->cipher_xform.cipher.key.length =
+						options->ckey_random_size;
+				/* No size provided, use minimum size. */
+				else
+					options->cipher_xform.cipher.key.length =
 						cap->sym.cipher.key_size.min;
 
-			if (!options->ckey_param)
 				generate_random_key(
 					options->cipher_xform.cipher.key.data,
 					options->cipher_xform.cipher.key.length);
-
+			}
 		}
 
 		/* Set auth parameters */
 		if (options->xform_chain == L2FWD_CRYPTO_CIPHER_HASH ||
 				options->xform_chain == L2FWD_CRYPTO_HASH_CIPHER ||
 				options->xform_chain == L2FWD_CRYPTO_HASH_ONLY) {
-			/* Check if device supports auth algo */
 			cap = check_device_support_auth_algo(options, &dev_info,
 							cdev_id);
-			if (cap == NULL)
-				continue;
-
-			if (check_iv_param(&cap->sym.auth.iv_size,
-					options->auth_iv_param,
-					options->auth_iv_random_size,
-					options->auth_iv.length) < 0) {
-				printf("Unsupported IV length\n");
-				continue;
-			}
 
 			/* Set IV if not provided from command line */
 			if (options->auth_iv_param == 0) {
@@ -2523,59 +2412,27 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 						cap->sym.auth.iv_size.min;
 			}
 
-			/*
-			 * Check if length of provided auth key is supported
-			 * by the algorithm chosen.
-			 */
-			if (options->akey_param) {
-				if (check_supported_size(
-						options->auth_xform.auth.key.length,
-						cap->sym.auth.key_size.min,
-						cap->sym.auth.key_size.max,
-						cap->sym.auth.key_size.increment)
-							!= 0) {
-					printf("Unsupported auth key length\n");
-					continue;
-				}
-			/*
-			 * Check if length of the auth key to be randomly generated
-			 * is supported by the algorithm chosen.
-			 */
-			} else if (options->akey_random_size != -1) {
-				if (check_supported_size(options->akey_random_size,
-						cap->sym.auth.key_size.min,
-						cap->sym.auth.key_size.max,
-						cap->sym.auth.key_size.increment)
-							!= 0) {
-					printf("Unsupported auth key length\n");
-					continue;
-				}
-				options->auth_xform.auth.key.length =
-							options->akey_random_size;
-			/* No size provided, use minimum size. */
-			} else
-				options->auth_xform.auth.key.length =
+			/* Set key if not provided from command line */
+			if (options->akey_param == 0) {
+				if (options->akey_random_size != -1)
+					options->auth_xform.auth.key.length =
+						options->akey_random_size;
+				/* No size provided, use minimum size. */
+				else
+					options->auth_xform.auth.key.length =
 						cap->sym.auth.key_size.min;
 
-			if (!options->akey_param)
 				generate_random_key(
 					options->auth_xform.auth.key.data,
 					options->auth_xform.auth.key.length);
+			}
 
-			/* Check if digest size is supported by the algorithm. */
-			if (options->digest_size != -1) {
-				if (check_supported_size(options->digest_size,
-						cap->sym.auth.digest_size.min,
-						cap->sym.auth.digest_size.max,
-						cap->sym.auth.digest_size.increment)
-							!= 0) {
-					printf("Unsupported digest length\n");
-					continue;
-				}
+			/* Set digest size if not provided from command line */
+			if (options->digest_size != -1)
 				options->auth_xform.auth.digest_length =
 							options->digest_size;
-			/* No size provided, use minimum size. */
-			} else
+				/* No size provided, use minimum size. */
+			else
 				options->auth_xform.auth.digest_length =
 						cap->sym.auth.digest_size.min;
 		}
