@@ -28,7 +28,8 @@
  */
 #define COMPRESS_BUF_SIZE_RATIO 1.3
 #define NUM_LARGE_MBUFS 16
-#define SEG_SIZE 256
+#define SMALL_SEG_SIZE 256
+#define MAX_SEGS 16
 #define NUM_OPS 16
 #define NUM_MAX_XFORMS 16
 #define NUM_MAX_INFLIGHT_OPS 128
@@ -111,12 +112,10 @@ testsuite_setup(void)
 	}
 
 	/* Create mempool with smaller buffers for SGL testing */
-	uint16_t max_segs_per_buf = DIV_CEIL(max_buf_size, SEG_SIZE);
-
 	ts_params->small_mbuf_pool = rte_pktmbuf_pool_create("small_mbuf_pool",
-			NUM_LARGE_MBUFS * max_segs_per_buf,
+			NUM_LARGE_MBUFS * MAX_SEGS,
 			CACHE_SIZE, 0,
-			SEG_SIZE + RTE_PKTMBUF_HEADROOM,
+			SMALL_SEG_SIZE + RTE_PKTMBUF_HEADROOM,
 			rte_socket_id());
 	if (ts_params->small_mbuf_pool == NULL) {
 		RTE_LOG(ERR, USER1, "Small mbuf pool could not be created\n");
@@ -528,30 +527,35 @@ exit:
 static int
 prepare_sgl_bufs(const char *test_buf, struct rte_mbuf *head_buf,
 		uint32_t total_data_size,
-		struct rte_mempool *pool)
+		struct rte_mempool *small_mbuf_pool,
+		struct rte_mempool *large_mbuf_pool,
+		uint8_t limit_segs_in_sgl)
 {
 	uint32_t remaining_data = total_data_size;
-	uint16_t num_remaining_segs =
-			DIV_CEIL(remaining_data, SEG_SIZE);
+	uint16_t num_remaining_segs = DIV_CEIL(remaining_data, SMALL_SEG_SIZE);
+	struct rte_mempool *pool;
 	struct rte_mbuf *next_seg;
 	uint32_t data_size;
 	char *buf_ptr;
 	const char *data_ptr = test_buf;
-	unsigned int i;
+	uint16_t i;
 	int ret;
+
+	if (limit_segs_in_sgl != 0 && num_remaining_segs > limit_segs_in_sgl)
+		num_remaining_segs = limit_segs_in_sgl - 1;
 
 	/*
 	 * Allocate data in the first segment (header) and
 	 * copy data if test buffer is provided
 	 */
-	if (remaining_data < SEG_SIZE)
+	if (remaining_data < SMALL_SEG_SIZE)
 		data_size = remaining_data;
 	else
-		data_size = SEG_SIZE;
+		data_size = SMALL_SEG_SIZE;
 	buf_ptr = rte_pktmbuf_append(head_buf, data_size);
 	if (buf_ptr == NULL) {
 		RTE_LOG(ERR, USER1,
-			"Not enough space in the buffer\n");
+			"Not enough space in the 1st buffer\n");
 		return -1;
 	}
 
@@ -561,12 +565,26 @@ prepare_sgl_bufs(const char *test_buf, struct rte_mbuf *head_buf,
 		data_ptr += data_size;
 	}
 	remaining_data -= data_size;
+	num_remaining_segs--;
 
 	/*
 	 * Allocate the rest of the segments,
 	 * copy the rest of the data and chain the segments.
 	 */
 	for (i = 0; i < num_remaining_segs; i++) {
+
+		if (i == (num_remaining_segs - 1)) {
+			/* last segment */
+			if (remaining_data > SMALL_SEG_SIZE)
+				pool = large_mbuf_pool;
+			else
+				pool = small_mbuf_pool;
+			data_size = remaining_data;
+		} else {
+			data_size = SMALL_SEG_SIZE;
+			pool = small_mbuf_pool;
+		}
+
 		next_seg = rte_pktmbuf_alloc(pool);
 		if (next_seg == NULL) {
 			RTE_LOG(ERR, USER1,
@@ -574,10 +592,6 @@ prepare_sgl_bufs(const char *test_buf, struct rte_mbuf *head_buf,
 				"from the mempool\n");
 			return -1;
 		}
-		if (remaining_data < SEG_SIZE)
-			data_size = remaining_data;
-		else
-			data_size = SEG_SIZE;
 		buf_ptr = rte_pktmbuf_append(next_seg, data_size);
 		if (buf_ptr == NULL) {
 			RTE_LOG(ERR, USER1,
@@ -665,7 +679,9 @@ test_deflate_comp_decomp(const char * const test_bufs[],
 			data_size = strlen(test_bufs[i]) + 1;
 			if (prepare_sgl_bufs(test_bufs[i], uncomp_bufs[i],
 					data_size,
-					buf_pool) < 0)
+					ts_params->small_mbuf_pool,
+					ts_params->large_mbuf_pool,
+					MAX_SEGS) < 0)
 				goto exit;
 		}
 	} else {
@@ -691,7 +707,9 @@ test_deflate_comp_decomp(const char * const test_bufs[],
 				COMPRESS_BUF_SIZE_RATIO;
 			if (prepare_sgl_bufs(NULL, comp_bufs[i],
 					data_size,
-					buf_pool) < 0)
+					ts_params->small_mbuf_pool,
+					ts_params->large_mbuf_pool,
+					MAX_SEGS) < 0)
 				goto exit;
 		}
 
@@ -880,7 +898,10 @@ test_deflate_comp_decomp(const char * const test_bufs[],
 					(ops_processed[i] + 1);
 			data_size = strlen(test_bufs[priv_data->orig_idx]) + 1;
 			if (prepare_sgl_bufs(NULL, uncomp_bufs[i],
-					data_size, buf_pool) < 0)
+					data_size,
+					ts_params->small_mbuf_pool,
+					ts_params->large_mbuf_pool,
+					MAX_SEGS) < 0)
 				goto exit;
 		}
 
