@@ -1076,7 +1076,10 @@ virtio_crypto_sym_clear_session(
 	VIRTIO_CRYPTO_SESSION_LOG_INFO("Close session %"PRIu64" successfully ",
 			session->session_id);
 
-	memset(sess, 0, sizeof(struct virtio_crypto_session));
+	memset(session, 0, sizeof(struct virtio_crypto_session));
+	struct rte_mempool *sess_mp = rte_mempool_from_obj(session);
+	set_sym_session_private_data(sess, cryptodev_virtio_driver_id, NULL);
+	rte_mempool_put(sess_mp, session);
 	rte_free(malloc_virt_addr);
 }
 
