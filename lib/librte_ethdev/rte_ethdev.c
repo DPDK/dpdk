@@ -1191,9 +1191,9 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	}
 
 	/* Initialize Rx profiling if enabled at compilation time. */
-	diag = __rte_eth_profile_rx_init(port_id, dev);
+	diag = __rte_eth_dev_profile_init(port_id, dev);
 	if (diag != 0) {
-		RTE_ETHDEV_LOG(ERR, "Port%u __rte_eth_profile_rx_init = %d\n",
+		RTE_ETHDEV_LOG(ERR, "Port%u __rte_eth_dev_profile_init = %d\n",
 			port_id, diag);
 		rte_eth_dev_rx_queue_config(dev, 0);
 		rte_eth_dev_tx_queue_config(dev, 0);
