@@ -474,14 +474,9 @@ static int
 ssovf_eth_rx_adapter_start(const struct rte_eventdev *dev,
 					const struct rte_eth_dev *eth_dev)
 {
-	int ret;
-	const struct octeontx_nic *nic = eth_dev->data->dev_private;
 	RTE_SET_USED(dev);
+	RTE_SET_USED(eth_dev);
 
-	ret = strncmp(eth_dev->data->name, "eth_octeontx", 12);
-	if (ret)
-		return 0;
-	octeontx_pki_port_start(nic->port_id);
 	return 0;
 }
 
@@ -490,14 +485,9 @@ static int
 ssovf_eth_rx_adapter_stop(const struct rte_eventdev *dev,
 		const struct rte_eth_dev *eth_dev)
 {
-	int ret;
-	const struct octeontx_nic *nic = eth_dev->data->dev_private;
 	RTE_SET_USED(dev);
+	RTE_SET_USED(eth_dev);
 
-	ret = strncmp(eth_dev->data->name, "eth_octeontx", 12);
-	if (ret)
-		return 0;
-	octeontx_pki_port_stop(nic->port_id);
 	return 0;
 }
 
