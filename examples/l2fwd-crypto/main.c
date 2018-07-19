@@ -2066,10 +2066,11 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 
 			options->block_size = cap->sym.aead.block_size;
 
-			check_iv_param(&cap->sym.aead.iv_size,
+			if (check_iv_param(&cap->sym.aead.iv_size,
 					options->aead_iv_param,
 					options->aead_iv_random_size,
-					&options->aead_iv.length);
+					&options->aead_iv.length) < 0)
+				return -1;
 
 			/*
 			 * Check if length of provided AEAD key is supported
@@ -2174,10 +2175,11 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 
 			options->block_size = cap->sym.cipher.block_size;
 
-			check_iv_param(&cap->sym.cipher.iv_size,
+			if (check_iv_param(&cap->sym.cipher.iv_size,
 					options->cipher_iv_param,
 					options->cipher_iv_random_size,
-					&options->cipher_iv.length);
+					&options->cipher_iv.length) < 0)
+				return -1;
 
 			/*
 			 * Check if length of provided cipher key is supported
@@ -2230,10 +2232,11 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 			if (cap == NULL)
 				continue;
 
-			check_iv_param(&cap->sym.auth.iv_size,
+			if (check_iv_param(&cap->sym.auth.iv_size,
 					options->auth_iv_param,
 					options->auth_iv_random_size,
-					&options->auth_iv.length);
+					&options->auth_iv.length) < 0)
+				return -1;
 			/*
 			 * Check if length of provided auth key is supported
 			 * by the algorithm chosen.
