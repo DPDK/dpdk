@@ -45,12 +45,10 @@ foreach l:libraries
 	# use "deps" for internal DPDK dependencies, and "ext_deps" for
 	# external package/library requirements
 	ext_deps = []
-	deps = ['eal']   # eal is standard dependency except for itself
-	if l == 'kvargs'
-		deps = []
-	endif
-	if l == 'eal'
-		deps = ['kvargs']
+	deps = []
+	# eal is standard dependency once built
+	if dpdk_conf.has('RTE_LIBRTE_EAL')
+		deps += ['eal']
 	endif
 
 	dir_name = 'librte_' + l
