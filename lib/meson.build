@@ -26,6 +26,10 @@ libraries = [ 'compat', # just a header, used for versioning
 	# flow_classify lib depends on pkt framework table lib
 	'flow_classify', 'bpf']
 
+default_cflags = machine_args
+if cc.has_argument('-Wno-format-truncation')
+	default_cflags += '-Wno-format-truncation'
+endif
 foreach l:libraries
 	build = true
 	name = l
@@ -34,11 +38,7 @@ foreach l:libraries
 	sources = []
 	headers = []
 	includes = []
-	cflags = machine_args
-	if cc.has_argument('-Wno-format-truncation')
-	    cflags += '-Wno-format-truncation'
-	endif
-
+	cflags = default_cflags
 	objs = [] # other object files to link against, used e.g. for
 	          # instruction-set optimized versions of code
 

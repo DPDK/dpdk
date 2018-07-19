@@ -18,15 +18,16 @@ else
 	examples = get_option('examples').split(',')
 	allow_skips = false # error out if we can't build a requested app
 endif
+default_cflags = machine_args
+if cc.has_argument('-Wno-format-truncation')
+	default_cflags += '-Wno-format-truncation'
+endif
 foreach example: examples
 	name = example
 	build = true
 	sources = []
 	allow_experimental_apis = false
-	cflags = machine_args
-	if cc.has_argument('-Wno-format-truncation')
-		cflags += '-Wno-format-truncation'
-	endif
+	cflags = default_cflags
 
 	ext_deps = [execinfo]
 	includes = [include_directories(example)]
