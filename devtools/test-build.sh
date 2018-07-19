@@ -153,6 +153,8 @@ config () # <directory> <target> <options>
 		sed -ri       's,(PMD_SZEDATA2=)n,\1y,' $1/.config
 		test "$DPDK_DEP_ZLIB" != y || \
 		sed -ri          's,(BNX2X_PMD=)n,\1y,' $1/.config
+		test "$DPDK_DEP_ZLIB" != y || \
+		sed -ri   's,(COMPRESSDEV_TEST=)n,\1y,' $1/.config
 		test "$DPDK_DEP_PCAP" != y || \
 		sed -ri               's,(PCAP=)n,\1y,' $1/.config
 		test -z "$ARMV8_CRYPTO_LIB_PATH" || \
