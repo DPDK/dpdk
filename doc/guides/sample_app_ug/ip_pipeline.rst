@@ -222,6 +222,8 @@ Link
     txq <n_queues> <queue_size> promiscuous on | off
     [rss <qid_0> ... <qid_n>]
 
+ Note: The PCI device name must be specified in the Domain:Bus:Device.Function format.
+
 
 Mempool
 ~~~~~~~
