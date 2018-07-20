@@ -49,13 +49,13 @@ is_comment(char *in)
 	return 0;
 }
 
-/**
- * mempool <mempool_name>
- *  buffer <buffer_size>
- *  pool <pool_size>
- *  cache <cache_size>
- *  cpu <cpu_id>
- */
+static const char cmd_mempool_help[] =
+"mempool <mempool_name>\n"
+"   buffer <buffer_size>\n"
+"   pool <pool_size>\n"
+"   cache <cache_size>\n"
+"   cpu <cpu_id>\n";
+
 static void
 cmd_mempool(char **tokens,
 	uint32_t n_tokens,
@@ -120,14 +120,14 @@ cmd_mempool(char **tokens,
 	}
 }
 
-/**
- * link <link_name>
- *  dev <device_name> | port <port_id>
- *  rxq <n_queues> <queue_size> <mempool_name>
- *  txq <n_queues> <queue_size>
- *  promiscuous on | off
- *  [rss <qid_0> ... <qid_n>]
- */
+static const char cmd_link_help[] =
+"link <link_name>\n"
+"   dev <device_name> | port <port_id>\n"
+"   rxq <n_queues> <queue_size> <mempool_name>\n"
+"   txq <n_queues> <queue_size>\n"
+"   promiscuous on | off\n"
+"   [rss <qid_0> ... <qid_n>]\n";
+
 static void
 cmd_link(char **tokens,
 	uint32_t n_tokens,
@@ -323,11 +323,11 @@ cmd_link_show(char **tokens, uint32_t n_tokens, char *out, size_t out_size)
 	}
 }
 
-/**
- * swq <swq_name>
- *  size <size>
- *  cpu <cpu_id>
- */
+static const char cmd_swq_help[] =
+"swq <swq_name>\n"
+"   size <size>\n"
+"   cpu <cpu_id>\n";
+
 static void
 cmd_swq(char **tokens,
 	uint32_t n_tokens,
@@ -372,12 +372,12 @@ cmd_swq(char **tokens,
 	}
 }
 
-/**
- * tmgr subport profile
- *  <tb_rate> <tb_size>
- *  <tc0_rate> <tc1_rate> <tc2_rate> <tc3_rate>
- *  <tc_period>
- */
+static const char cmd_tmgr_subport_profile_help[] =
+"tmgr subport profile\n"
+"   <tb_rate> <tb_size>\n"
+"   <tc0_rate> <tc1_rate> <tc2_rate> <tc3_rate>\n"
+"   <tc_period>\n";
+
 static void
 cmd_tmgr_subport_profile(char **tokens,
 	uint32_t n_tokens,
@@ -420,14 +420,14 @@ cmd_tmgr_subport_profile(char **tokens,
 	}
 }
 
-/**
- * tmgr pipe profile
- *  <tb_rate> <tb_size>
- *  <tc0_rate> <tc1_rate> <tc2_rate> <tc3_rate>
- *  <tc_period>
- *  <tc_ov_weight>
- *  <wrr_weight0..15>
- */
+static const char cmd_tmgr_pipe_profile_help[] =
+"tmgr pipe profile\n"
+"   <tb_rate> <tb_size>\n"
+"   <tc0_rate> <tc1_rate> <tc2_rate> <tc3_rate>\n"
+"   <tc_period>\n"
+"   <tc_ov_weight>\n"
+"   <wrr_weight0..15>\n";
+
 static void
 cmd_tmgr_pipe_profile(char **tokens,
 	uint32_t n_tokens,
@@ -483,16 +483,16 @@ cmd_tmgr_pipe_profile(char **tokens,
 	}
 }
 
-/**
- * tmgr <tmgr_name>
- *  rate <rate>
- *  spp <n_subports_per_port>
- *  pps <n_pipes_per_subport>
- *  qsize <qsize_tc0> <qsize_tc1> <qsize_tc2> <qsize_tc3>
- *  fo <frame_overhead>
- *  mtu <mtu>
- *  cpu <cpu_id>
- */
+static const char cmd_tmgr_help[] =
+"tmgr <tmgr_name>\n"
+"   rate <rate>\n"
+"   spp <n_subports_per_port>\n"
+"   pps <n_pipes_per_subport>\n"
+"   qsize <qsize_tc0> <qsize_tc1> <qsize_tc2> <qsize_tc3>\n"
+"   fo <frame_overhead>\n"
+"   mtu <mtu>\n"
+"   cpu <cpu_id>\n";
+
 static void
 cmd_tmgr(char **tokens,
 	uint32_t n_tokens,
@@ -589,10 +589,10 @@ cmd_tmgr(char **tokens,
 	}
 }
 
-/**
- * tmgr <tmgr_name> subport <subport_id>
- *  profile <subport_profile_id>
- */
+static const char cmd_tmgr_subport_help[] =
+"tmgr <tmgr_name> subport <subport_id>\n"
+"   profile <subport_profile_id>\n";
+
 static void
 cmd_tmgr_subport(char **tokens,
 	uint32_t n_tokens,
@@ -627,11 +627,12 @@ cmd_tmgr_subport(char **tokens,
 	}
 }
 
-/**
- * tmgr <tmgr_name> subport <subport_id> pipe
- *  from <pipe_id_first> to <pipe_id_last>
- *  profile <pipe_profile_id>
- */
+
+static const char cmd_tmgr_subport_pipe_help[] =
+"tmgr <tmgr_name> subport <subport_id> pipe\n"
+"   from <pipe_id_first> to <pipe_id_last>\n"
+"   profile <pipe_profile_id>\n";
+
 static void
 cmd_tmgr_subport_pipe(char **tokens,
 	uint32_t n_tokens,
@@ -697,9 +698,10 @@ cmd_tmgr_subport_pipe(char **tokens,
 	}
 }
 
-/**
- * tap <tap_name>
- */
+
+static const char cmd_tap_help[] =
+"tap <tap_name>\n";
+
 static void
 cmd_tap(char **tokens,
 	uint32_t n_tokens,
@@ -723,12 +725,12 @@ cmd_tap(char **tokens,
 	}
 }
 
-/**
- * kni <kni_name>
- *  link <link_name>
- *  mempool <mempool_name>
- *  [thread <thread_id>]
- */
+static const char cmd_kni_help[] =
+"kni <kni_name>\n"
+"   link <link_name>\n"
+"   mempool <mempool_name>\n"
+"   [thread <thread_id>]\n";
+
 static void
 cmd_kni(char **tokens,
 	uint32_t n_tokens,
@@ -783,11 +785,12 @@ cmd_kni(char **tokens,
 	}
 }
 
-/**
- * port in action profile <profile_name>
- *  [filter match | mismatch offset <key_offset> mask <key_mask> key <key_value> port <port_id>]
- *  [balance offset <key_offset> mask <key_mask> port <port_id0> ... <port_id15>]
- */
+
+static const char cmd_port_in_action_profile_help[] =
+"port in action profile <profile_name>\n"
+"   [filter match | mismatch offset <key_offset> mask <key_mask> key <key_value> port <port_id>]\n"
+"   [balance offset <key_offset> mask <key_mask> port <port_id0> ... <port_id15>]\n";
+
 static void
 cmd_port_in_action_profile(char **tokens,
 	uint32_t n_tokens,
@@ -947,24 +950,25 @@ cmd_port_in_action_profile(char **tokens,
 	}
 }
 
-/**
- * table action profile <profile_name>
- *  ipv4 | ipv6
- *  offset <ip_offset>
- *  fwd
- *  [balance offset <key_offset> mask <key_mask> outoffset <out_offset>]
- *  [meter srtcm | trtcm
- *      tc <n_tc>
- *      stats none | pkts | bytes | both]
- *  [tm spp <n_subports_per_port> pps <n_pipes_per_subport>]
- *  [encap ether | vlan | qinq | mpls | pppoe]
- *  [nat src | dst
- *      proto udp | tcp]
- *  [ttl drop | fwd
- *      stats none | pkts]
- *  [stats pkts | bytes | both]
- *  [time]
- */
+
+static const char cmd_table_action_profile_help[] =
+"table action profile <profile_name>\n"
+"   ipv4 | ipv6\n"
+"   offset <ip_offset>\n"
+"   fwd\n"
+"   [balance offset <key_offset> mask <key_mask> outoffset <out_offset>]\n"
+"   [meter srtcm | trtcm\n"
+"       tc <n_tc>\n"
+"       stats none | pkts | bytes | both]\n"
+"   [tm spp <n_subports_per_port> pps <n_pipes_per_subport>]\n"
+"   [encap ether | vlan | qinq | mpls | pppoe]\n"
+"   [nat src | dst\n"
+"       proto udp | tcp]\n"
+"   [ttl drop | fwd\n"
+"       stats none | pkts]\n"
+"   [stats pkts | bytes | both]\n"
+"   [time]\n";
+
 static void
 cmd_table_action_profile(char **tokens,
 	uint32_t n_tokens,
@@ -1293,12 +1297,12 @@ cmd_table_action_profile(char **tokens,
 	}
 }
 
-/**
- * pipeline <pipeline_name>
- *  period <timer_period_ms>
- *  offset_port_id <offset_port_id>
- *  cpu <cpu_id>
- */
+static const char cmd_pipeline_help[] =
+"pipeline <pipeline_name>\n"
+"   period <timer_period_ms>\n"
+"   offset_port_id <offset_port_id>\n"
+"   cpu <cpu_id>\n";
+
 static void
 cmd_pipeline(char **tokens,
 	uint32_t n_tokens,
@@ -1353,18 +1357,18 @@ cmd_pipeline(char **tokens,
 	}
 }
 
-/**
- * pipeline <pipeline_name> port in
- *  bsz <burst_size>
- *  link <link_name> rxq <queue_id>
- *  | swq <swq_name>
- *  | tmgr <tmgr_name>
- *  | tap <tap_name> mempool <mempool_name> mtu <mtu>
- *  | kni <kni_name>
- *  | source mempool <mempool_name> file <file_name> bpp <n_bytes_per_pkt>
- *  [action <port_in_action_profile_name>]
- *  [disabled]
- */
+static const char cmd_pipeline_port_in_help[] =
+"pipeline <pipeline_name> port in\n"
+"   bsz <burst_size>\n"
+"   link <link_name> rxq <queue_id>\n"
+"   | swq <swq_name>\n"
+"   | tmgr <tmgr_name>\n"
+"   | tap <tap_name> mempool <mempool_name> mtu <mtu>\n"
+"   | kni <kni_name>\n"
+"   | source mempool <mempool_name> file <file_name> bpp <n_bytes_per_pkt>\n"
+"   [action <port_in_action_profile_name>]\n"
+"   [disabled]\n";
+
 static void
 cmd_pipeline_port_in(char **tokens,
 	uint32_t n_tokens,
@@ -1572,16 +1576,16 @@ cmd_pipeline_port_in(char **tokens,
 	}
 }
 
-/**
- * pipeline <pipeline_name> port out
- *  bsz <burst_size>
- *  link <link_name> txq <txq_id>
- *  | swq <swq_name>
- *  | tmgr <tmgr_name>
- *  | tap <tap_name>
- *  | kni <kni_name>
- *  | sink [file <file_name> pkts <max_n_pkts>]
- */
+static const char cmd_pipeline_port_out_help[] =
+"pipeline <pipeline_name> port out\n"
+"   bsz <burst_size>\n"
+"   link <link_name> txq <txq_id>\n"
+"   | swq <swq_name>\n"
+"   | tmgr <tmgr_name>\n"
+"   | tap <tap_name>\n"
+"   | kni <kni_name>\n"
+"   | sink [file <file_name> pkts <max_n_pkts>]\n";
+
 static void
 cmd_pipeline_port_out(char **tokens,
 	uint32_t n_tokens,
@@ -1726,30 +1730,30 @@ cmd_pipeline_port_out(char **tokens,
 	}
 }
 
-/**
- * pipeline <pipeline_name> table
- *      match
- *      acl
- *          ipv4 | ipv6
- *          offset <ip_header_offset>
- *          size <n_rules>
- *      | array
- *          offset <key_offset>
- *          size <n_keys>
- *      | hash
- *          ext | lru
- *          key <key_size>
- *          mask <key_mask>
- *          offset <key_offset>
- *          buckets <n_buckets>
- *          size <n_keys>
- *      | lpm
- *          ipv4 | ipv6
- *          offset <ip_header_offset>
- *          size <n_rules>
- *      | stub
- *  [action <table_action_profile_name>]
- */
+static const char cmd_pipeline_table_help[] =
+"pipeline <pipeline_name> table\n"
+"       match\n"
+"       acl\n"
+"           ipv4 | ipv6\n"
+"           offset <ip_header_offset>\n"
+"           size <n_rules>\n"
+"       | array\n"
+"           offset <key_offset>\n"
+"           size <n_keys>\n"
+"       | hash\n"
+"           ext | lru\n"
+"           key <key_size>\n"
+"           mask <key_mask>\n"
+"           offset <key_offset>\n"
+"           buckets <n_buckets>\n"
+"           size <n_keys>\n"
+"       | lpm\n"
+"           ipv4 | ipv6\n"
+"           offset <ip_header_offset>\n"
+"           size <n_rules>\n"
+"       | stub\n"
+"   [action <table_action_profile_name>]\n";
+
 static void
 cmd_pipeline_table(char **tokens,
 	uint32_t n_tokens,
@@ -2011,9 +2015,9 @@ cmd_pipeline_table(char **tokens,
 	}
 }
 
-/**
- * pipeline <pipeline_name> port in <port_id> table <table_id>
- */
+static const char cmd_pipeline_port_in_table_help[] =
+"pipeline <pipeline_name> port in <port_id> table <table_id>\n";
+
 static void
 cmd_pipeline_port_in_table(char **tokens,
 	uint32_t n_tokens,
@@ -2065,9 +2069,9 @@ cmd_pipeline_port_in_table(char **tokens,
 	}
 }
 
-/**
- * pipeline <pipeline_name> port in <port_id> stats read [clear]
- */
+
+static const char cmd_pipeline_port_in_stats_help[] =
+"pipeline <pipeline_name> port in <port_id> stats read [clear]\n";
 
 #define MSG_PIPELINE_PORT_IN_STATS                         \
 	"Pkts in: %" PRIu64 "\n"                           \
@@ -2142,9 +2146,10 @@ cmd_pipeline_port_in_stats(char **tokens,
 		stats.stats.n_pkts_drop);
 }
 
-/**
- * pipeline <pipeline_name> port in <port_id> enable
- */
+
+static const char cmd_pipeline_port_in_enable_help[] =
+"pipeline <pipeline_name> port in <port_id> enable\n";
+
 static void
 cmd_pipeline_port_in_enable(char **tokens,
 	uint32_t n_tokens,
@@ -2189,9 +2194,10 @@ cmd_pipeline_port_in_enable(char **tokens,
 	}
 }
 
-/**
- * pipeline <pipeline_name> port in <port_id> disable
- */
+
+static const char cmd_pipeline_port_in_disable_help[] =
+"pipeline <pipeline_name> port in <port_id> disable\n";
+
 static void
 cmd_pipeline_port_in_disable(char **tokens,
 	uint32_t n_tokens,
@@ -2236,9 +2242,10 @@ cmd_pipeline_port_in_disable(char **tokens,
 	}
 }
 
-/**
- * pipeline <pipeline_name> port out <port_id> stats read [clear]
- */
+
+static const char cmd_pipeline_port_out_stats_help[] =
+"pipeline <pipeline_name> port out <port_id> stats read [clear]\n";
+
 #define MSG_PIPELINE_PORT_OUT_STATS                        \
 	"Pkts in: %" PRIu64 "\n"                           \
 	"Pkts dropped by AH: %" PRIu64 "\n"                \
@@ -2312,9 +2319,10 @@ cmd_pipeline_port_out_stats(char **tokens,
 		stats.stats.n_pkts_drop);
 }
 
-/**
- * pipeline <pipeline_name> table <table_id> stats read [clear]
- */
+
+static const char cmd_pipeline_table_stats_help[] =
+"pipeline <pipeline_name> table <table_id> stats read [clear]\n";
+
 #define MSG_PIPELINE_TABLE_STATS                                     \
 	"Pkts in: %" PRIu64 "\n"                                     \
 	"Pkts in with lookup miss: %" PRIu64 "\n"                    \
@@ -3492,11 +3500,12 @@ parse_table_action(char **tokens,
 	return n_tokens0 - n_tokens;
 }
 
-/**
- * pipeline <pipeline_name> table <table_id> rule add
- *    match <match>
- *    action <table_action>
- */
+
+static const char cmd_pipeline_table_rule_add_help[] =
+"pipeline <pipeline_name> table <table_id> rule add\n"
+"     match <match>\n"
+"     action <table_action>\n";
+
 static void
 cmd_pipeline_table_rule_add(char **tokens,
 	uint32_t n_tokens,
@@ -3572,17 +3581,18 @@ cmd_pipeline_table_rule_add(char **tokens,
 	}
 }
 
-/**
- * pipeline <pipeline_name> table <table_id> rule add
- *    match
- *       default
- *    action
- *       fwd
- *          drop
- *          | port <port_id>
- *          | meta
- *          | table <table_id>
- */
+
+static const char cmd_pipeline_table_rule_add_default_help[] =
+"pipeline <pipeline_name> table <table_id> rule add\n"
+"     match\n"
+"        default\n"
+"     action\n"
+"        fwd\n"
+"           drop\n"
+"           | port <port_id>\n"
+"           | meta\n"
+"           | table <table_id>\n";
+
 static void
 cmd_pipeline_table_rule_add_default(char **tokens,
 	uint32_t n_tokens,
@@ -3704,12 +3714,13 @@ cmd_pipeline_table_rule_add_default(char **tokens,
 	}
 }
 
-/**
- * pipeline <pipeline_name> table <table_id> rule add bulk <file_name> <n_rules>
- *
- * File <file_name>:
- * - line format: match <match> action <action>
- */
+
+static const char cmd_pipeline_table_rule_add_bulk_help[] =
+"pipeline <pipeline_name> table <table_id> rule add bulk <file_name> <n_rules>\n"
+"\n"
+"  File <file_name>:\n"
+"  - line format: match <match> action <action>\n";
+
 static int
 cli_rule_file_process(const char *file_name,
 	size_t line_len_max,
@@ -3831,10 +3842,11 @@ cmd_pipeline_table_rule_add_bulk(char **tokens,
 	free(match);
 }
 
-/**
- * pipeline <pipeline_name> table <table_id> rule delete
- *    match <match>
- */
+
+static const char cmd_pipeline_table_rule_delete_help[] =
+"pipeline <pipeline_name> table <table_id> rule delete\n"
+"     match <match>\n";
+
 static void
 cmd_pipeline_table_rule_delete(char **tokens,
 	uint32_t n_tokens,
@@ -3899,11 +3911,12 @@ cmd_pipeline_table_rule_delete(char **tokens,
 	}
 }
 
-/**
- * pipeline <pipeline_name> table <table_id> rule delete
- *    match
- *       default
- */
+
+static const char cmd_pipeline_table_rule_delete_default_help[] =
+"pipeline <pipeline_name> table <table_id> rule delete\n"
+"     match\n"
+"        default\n";
+
 static void
 cmd_pipeline_table_rule_delete_default(char **tokens,
 	uint32_t n_tokens,
@@ -3959,9 +3972,10 @@ cmd_pipeline_table_rule_delete_default(char **tokens,
 	}
 }
 
-/**
- * pipeline <pipeline_name> table <table_id> rule read stats [clear]
- */
+
+static const char cmd_pipeline_table_rule_stats_read_help[] =
+"pipeline <pipeline_name> table <table_id> rule read stats [clear]\n";
+
 static void
 cmd_pipeline_table_rule_stats_read(char **tokens,
 	uint32_t n_tokens __rte_unused,
@@ -3971,11 +3985,12 @@ cmd_pipeline_table_rule_stats_read(char **tokens,
 	snprintf(out, out_size, MSG_CMD_UNIMPLEM, tokens[0]);
 }
 
-/**
- * pipeline <pipeline_name> table <table_id> meter profile <meter_profile_id>
- *  add srtcm cir <cir> cbs <cbs> ebs <ebs>
- *  | trtcm cir <cir> pir <pir> cbs <cbs> pbs <pbs>
- */
+
+static const char cmd_pipeline_table_meter_profile_add_help[] =
+"pipeline <pipeline_name> table <table_id> meter profile <meter_profile_id>\n"
+"   add srtcm cir <cir> cbs <cbs> ebs <ebs>\n"
+"   | trtcm cir <cir> pir <pir> cbs <cbs> pbs <pbs>\n";
+
 static void
 cmd_pipeline_table_meter_profile_add(char **tokens,
 	uint32_t n_tokens,
@@ -4123,10 +4138,11 @@ cmd_pipeline_table_meter_profile_add(char **tokens,
 	}
 }
 
-/**
- * pipeline <pipeline_name> table <table_id>
- *  meter profile <meter_profile_id> delete
- */
+
+static const char cmd_pipeline_table_meter_profile_delete_help[] =
+"pipeline <pipeline_name> table <table_id>\n"
+"   meter profile <meter_profile_id> delete\n";
+
 static void
 cmd_pipeline_table_meter_profile_delete(char **tokens,
 	uint32_t n_tokens,
@@ -4183,9 +4199,10 @@ cmd_pipeline_table_meter_profile_delete(char **tokens,
 	}
 }
 
-/**
- * pipeline <pipeline_name> table <table_id> rule read meter [clear]
- */
+
+static const char cmd_pipeline_table_rule_meter_read_help[] =
+"pipeline <pipeline_name> table <table_id> rule read meter [clear]\n";
+
 static void
 cmd_pipeline_table_rule_meter_read(char **tokens,
 	uint32_t n_tokens __rte_unused,
@@ -4195,13 +4212,14 @@ cmd_pipeline_table_rule_meter_read(char **tokens,
 	snprintf(out, out_size, MSG_CMD_UNIMPLEM, tokens[0]);
 }
 
-/**
- * pipeline <pipeline_name> table <table_id> dscp <file_name>
- *
- * File <file_name>:
- *  - exactly 64 lines
- *  - line format: <tc_id> <tc_queue_id> <color>, with <color> as: g | y | r
- */
+
+static const char cmd_pipeline_table_dscp_help[] =
+"pipeline <pipeline_name> table <table_id> dscp <file_name>\n"
+"\n"
+" File <file_name>:\n"
+"   - exactly 64 lines\n"
+"   - line format: <tc_id> <tc_queue_id> <color>, with <color> as: g | y | r\n";
+
 static int
 load_dscp_table(struct rte_table_action_dscp_table *dscp_table,
 	const char *file_name,
@@ -4344,9 +4362,10 @@ cmd_pipeline_table_dscp(char **tokens,
 	}
 }
 
-/**
- * pipeline <pipeline_name> table <table_id> rule read ttl [clear]
- */
+
+static const char cmd_pipeline_table_rule_ttl_read_help[] =
+"pipeline <pipeline_name> table <table_id> rule read ttl [clear]\n";
+
 static void
 cmd_pipeline_table_rule_ttl_read(char **tokens,
 	uint32_t n_tokens __rte_unused,
@@ -4356,9 +4375,10 @@ cmd_pipeline_table_rule_ttl_read(char **tokens,
 	snprintf(out, out_size, MSG_CMD_UNIMPLEM, tokens[0]);
 }
 
-/**
- * thread <thread_id> pipeline <pipeline_name> enable
- */
+
+static const char cmd_thread_pipeline_enable_help[] =
+"thread <thread_id> pipeline <pipeline_name> enable\n";
+
 static void
 cmd_thread_pipeline_enable(char **tokens,
 	uint32_t n_tokens,
@@ -4398,9 +4418,10 @@ cmd_thread_pipeline_enable(char **tokens,
 	}
 }
 
-/**
- * thread <thread_id> pipeline <pipeline_name> disable
- */
+
+static const char cmd_thread_pipeline_disable_help[] =
+"thread <thread_id> pipeline <pipeline_name> disable\n";
+
 static void
 cmd_thread_pipeline_disable(char **tokens,
 	uint32_t n_tokens,
@@ -4441,6 +4462,316 @@ cmd_thread_pipeline_disable(char **tokens,
 	}
 }
 
+static void
+cmd_help(char **tokens, uint32_t n_tokens, char *out, size_t out_size)
+{
+	tokens++;
+	n_tokens--;
+
+	if (n_tokens == 0) {
+		snprintf(out, out_size,
+			"Type 'help <command>' for details on each command.\n\n"
+			"List of commands:\n"
+			"\tmempool\n"
+			"\tlink\n"
+			"\tswq\n"
+			"\ttmgr subport profile\n"
+			"\ttmgr pipe profile\n"
+			"\ttmgr\n"
+			"\ttmgr subport\n"
+			"\ttmgr subport pipe\n"
+			"\ttap\n"
+			"\tkni\n"
+			"\tport in action profile\n"
+			"\ttable action profile\n"
+			"\tpipeline\n"
+			"\tpipeline port in\n"
+			"\tpipeline port out\n"
+			"\tpipeline table\n"
+			"\tpipeline port in table\n"
+			"\tpipeline port in stats\n"
+			"\tpipeline port in enable\n"
+			"\tpipeline port in disable\n"
+			"\tpipeline port out stats\n"
+			"\tpipeline table stats\n"
+			"\tpipeline table rule add\n"
+			"\tpipeline table rule add default\n"
+			"\tpipeline table rule add bulk\n"
+			"\tpipeline table rule delete\n"
+			"\tpipeline table rule delete default\n"
+			"\tpipeline table rule stats read\n"
+			"\tpipeline table meter profile add\n"
+			"\tpipeline table meter profile delete\n"
+			"\tpipeline table rule meter read\n"
+			"\tpipeline table dscp\n"
+			"\tpipeline table rule ttl read\n"
+			"\tthread pipeline enable\n"
+			"\tthread pipeline disable\n\n");
+		return;
+	}
+
+	if (strcmp(tokens[0], "mempool") == 0) {
+		snprintf(out, out_size, "\n%s\n", cmd_mempool_help);
+		return;
+	}
+
+	if (strcmp(tokens[0], "link") == 0) {
+		snprintf(out, out_size, "\n%s\n", cmd_link_help);
+		return;
+	}
+
+	if (strcmp(tokens[0], "swq") == 0) {
+		snprintf(out, out_size, "\n%s\n", cmd_swq_help);
+		return;
+	}
+
+	if (strcmp(tokens[0], "tmgr") == 0) {
+		if (n_tokens == 1) {
+			snprintf(out, out_size, "\n%s\n", cmd_tmgr_help);
+			return;
+		}
+
+		if ((n_tokens == 2) &&
+			(strcmp(tokens[1], "subport")) == 0) {
+			snprintf(out, out_size, "\n%s\n", cmd_tmgr_subport_help);
+			return;
+		}
+
+		if ((n_tokens == 3) &&
+			(strcmp(tokens[1], "subport") == 0) &&
+			(strcmp(tokens[2], "profile") == 0)) {
+			snprintf(out, out_size, "\n%s\n",
+				cmd_tmgr_subport_profile_help);
+			return;
+		}
+
+		if ((n_tokens == 3) &&
+			(strcmp(tokens[1], "subport") == 0) &&
+			(strcmp(tokens[2], "pipe") == 0)) {
+			snprintf(out, out_size, "\n%s\n", cmd_tmgr_subport_pipe_help);
+			return;
+		}
+
+		if ((n_tokens == 3) &&
+			(strcmp(tokens[1], "pipe") == 0) &&
+			(strcmp(tokens[2], "profile") == 0)) {
+			snprintf(out, out_size, "\n%s\n", cmd_tmgr_pipe_profile_help);
+			return;
+		}
+	}
+
+	if (strcmp(tokens[0], "tap") == 0) {
+		snprintf(out, out_size, "\n%s\n", cmd_tap_help);
+		return;
+	}
+
+	if (strcmp(tokens[0], "kni") == 0) {
+		snprintf(out, out_size, "\n%s\n", cmd_kni_help);
+		return;
+	}
+
+	if ((n_tokens == 4) &&
+		(strcmp(tokens[0], "port") == 0) &&
+		(strcmp(tokens[1], "in") == 0) &&
+		(strcmp(tokens[2], "action") == 0) &&
+		(strcmp(tokens[3], "profile") == 0)) {
+		snprintf(out, out_size, "\n%s\n", cmd_port_in_action_profile_help);
+		return;
+	}
+
+	if ((n_tokens == 3) &&
+		(strcmp(tokens[0], "table") == 0) &&
+		(strcmp(tokens[1], "action") == 0) &&
+		(strcmp(tokens[2], "profile") == 0)) {
+		snprintf(out, out_size, "\n%s\n", cmd_table_action_profile_help);
+		return;
+	}
+
+	if ((strcmp(tokens[0], "pipeline") == 0) && (n_tokens == 1)) {
+		snprintf(out, out_size, "\n%s\n", cmd_pipeline_help);
+		return;
+	}
+
+	if ((strcmp(tokens[0], "pipeline") == 0) &&
+		(strcmp(tokens[1], "port") == 0)) {
+		if ((n_tokens == 3) && (strcmp(tokens[2], "in")) == 0) {
+			snprintf(out, out_size, "\n%s\n", cmd_pipeline_port_in_help);
+			return;
+		}
+
+		if ((n_tokens == 3) && (strcmp(tokens[2], "out")) == 0) {
+			snprintf(out, out_size, "\n%s\n", cmd_pipeline_port_out_help);
+			return;
+		}
+
+		if ((n_tokens == 4) &&
+			(strcmp(tokens[2], "in") == 0) &&
+			(strcmp(tokens[3], "table") == 0)) {
+			snprintf(out, out_size, "\n%s\n",
+				cmd_pipeline_port_in_table_help);
+			return;
+		}
+
+		if ((n_tokens == 4) &&
+			(strcmp(tokens[2], "in") == 0) &&
+			(strcmp(tokens[3], "stats") == 0)) {
+			snprintf(out, out_size, "\n%s\n",
+				cmd_pipeline_port_in_stats_help);
+			return;
+		}
+
+		if ((n_tokens == 4) &&
+			(strcmp(tokens[2], "in") == 0) &&
+			(strcmp(tokens[3], "enable") == 0)) {
+			snprintf(out, out_size, "\n%s\n",
+				cmd_pipeline_port_in_enable_help);
+			return;
+		}
+
+		if ((n_tokens == 4) &&
+			(strcmp(tokens[2], "in") == 0) &&
+			(strcmp(tokens[3], "disable") == 0)) {
+			snprintf(out, out_size, "\n%s\n",
+				cmd_pipeline_port_in_disable_help);
+			return;
+		}
+
+		if ((n_tokens == 4) &&
+			(strcmp(tokens[2], "out") == 0) &&
+			(strcmp(tokens[3], "stats") == 0)) {
+			snprintf(out, out_size, "\n%s\n",
+				cmd_pipeline_port_out_stats_help);
+			return;
+		}
+	}
+
+	if ((strcmp(tokens[0], "pipeline") == 0) &&
+		(strcmp(tokens[1], "table") == 0)) {
+		if (n_tokens == 2) {
+			snprintf(out, out_size, "\n%s\n", cmd_pipeline_table_help);
+			return;
+		}
+
+		if ((n_tokens == 3) && strcmp(tokens[2], "stats") == 0) {
+			snprintf(out, out_size, "\n%s\n",
+				cmd_pipeline_table_stats_help);
+			return;
+		}
+
+		if ((n_tokens == 3) && strcmp(tokens[2], "dscp") == 0) {
+			snprintf(out, out_size, "\n%s\n",
+				cmd_pipeline_table_dscp_help);
+			return;
+		}
+
+		if ((n_tokens == 4) &&
+			(strcmp(tokens[2], "rule") == 0) &&
+			(strcmp(tokens[3], "add") == 0)) {
+			snprintf(out, out_size, "\n%s\n",
+				cmd_pipeline_table_rule_add_help);
+			return;
+		}
+
+		if ((n_tokens == 5) &&
+			(strcmp(tokens[2], "rule") == 0) &&
+			(strcmp(tokens[3], "add") == 0) &&
+			(strcmp(tokens[4], "default") == 0)) {
+			snprintf(out, out_size, "\n%s\n",
+				cmd_pipeline_table_rule_add_default_help);
+			return;
+		}
+
+		if ((n_tokens == 5) &&
+			(strcmp(tokens[2], "rule") == 0) &&
+			(strcmp(tokens[3], "add") == 0) &&
+			(strcmp(tokens[4], "bulk") == 0)) {
+			snprintf(out, out_size, "\n%s\n",
+				cmd_pipeline_table_rule_add_bulk_help);
+			return;
+		}
+
+		if ((n_tokens == 4) &&
+			(strcmp(tokens[2], "rule") == 0) &&
+			(strcmp(tokens[3], "delete") == 0)) {
+			snprintf(out, out_size, "\n%s\n",
+				cmd_pipeline_table_rule_delete_help);
+			return;
+		}
+
+		if ((n_tokens == 5) &&
+			(strcmp(tokens[2], "rule") == 0) &&
+			(strcmp(tokens[3], "delete") == 0) &&
+			(strcmp(tokens[4], "default") == 0)) {
+			snprintf(out, out_size, "\n%s\n",
+				cmd_pipeline_table_rule_delete_default_help);
+			return;
+		}
+
+		if ((n_tokens == 5) &&
+			(strcmp(tokens[2], "rule") == 0) &&
+			(strcmp(tokens[3], "stats") == 0) &&
+			(strcmp(tokens[4], "read") == 0)) {
+			snprintf(out, out_size, "\n%s\n",
+				cmd_pipeline_table_rule_stats_read_help);
+			return;
+		}
+
+		if ((n_tokens == 5) &&
+			(strcmp(tokens[2], "meter") == 0) &&
+			(strcmp(tokens[3], "profile") == 0) &&
+			(strcmp(tokens[4], "add") == 0)) {
+			snprintf(out, out_size, "\n%s\n",
+				cmd_pipeline_table_meter_profile_add_help);
+			return;
+		}
+
+		if ((n_tokens == 5) &&
+			(strcmp(tokens[2], "meter") == 0) &&
+			(strcmp(tokens[3], "profile") == 0) &&
+			(strcmp(tokens[4], "delete") == 0)) {
+			snprintf(out, out_size, "\n%s\n",
+				cmd_pipeline_table_meter_profile_delete_help);
+			return;
+		}
+
+		if ((n_tokens == 5) &&
+			(strcmp(tokens[2], "rule") == 0) &&
+			(strcmp(tokens[3], "meter") == 0) &&
+			(strcmp(tokens[4], "read") == 0)) {
+			snprintf(out, out_size, "\n%s\n",
+				cmd_pipeline_table_rule_meter_read_help);
+			return;
+		}
+
+		if ((n_tokens == 5) &&
+			(strcmp(tokens[2], "rule") == 0) &&
+			(strcmp(tokens[3], "ttl") == 0) &&
+			(strcmp(tokens[4], "read") == 0)) {
+			snprintf(out, out_size, "\n%s\n",
+				cmd_pipeline_table_rule_ttl_read_help);
+			return;
+		}
+	}
+
+	if ((n_tokens == 3) &&
+		(strcmp(tokens[0], "thread") == 0) &&
+		(strcmp(tokens[1], "pipeline") == 0)) {
+		if (strcmp(tokens[2], "enable") == 0) {
+			snprintf(out, out_size, "\n%s\n",
+				cmd_thread_pipeline_enable_help);
+			return;
+		}
+
+		if (strcmp(tokens[2], "disable") == 0) {
+			snprintf(out, out_size, "\n%s\n",
+				cmd_thread_pipeline_disable_help);
+			return;
+		}
+	}
+
+	snprintf(out, out_size, "Invalid command\n");
+}
+
 void
 cli_process(char *in, char *out, size_t out_size)
 {
@@ -4459,6 +4790,11 @@ cli_process(char *in, char *out, size_t out_size)
 
 	if (n_tokens == 0)
 		return;
+
+	if (strcmp(tokens[0], "help") == 0) {
+		cmd_help(tokens, n_tokens, out, out_size);
+		return;
+	}
 
 	if (strcmp(tokens[0], "mempool") == 0) {
 		cmd_mempool(tokens, n_tokens, out, out_size);
