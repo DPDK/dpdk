@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include <rte_string_fns.h>
+#include <rte_tailq.h>
 
 #include "rte_eth_softnic_internals.h"
 
@@ -36,9 +37,9 @@ softnic_swq_free(struct pmd_internals *p)
 void
 softnic_softnic_swq_free_keep_rxq_txq(struct pmd_internals *p)
 {
-	struct softnic_swq *swq;
+	struct softnic_swq *swq, *tswq;
 
-	TAILQ_FOREACH(swq, &p->swq_list, node) {
+	TAILQ_FOREACH_SAFE(swq, &p->swq_list, node, tswq) {
 		if ((strncmp(swq->name, "RXQ", strlen("RXQ")) == 0) ||
 			(strncmp(swq->name, "TXQ", strlen("TXQ")) == 0))
 			continue;
