@@ -18,7 +18,7 @@ elif host_machine.system() == 'freebsd'
 	subdir('bsdapp/eal')
 
 else
-	error('unsupported system type @0@'.format(hostmachine.system()))
+	error('unsupported system type "@0@"'.format(host_machine.system()))
 endif
 
 version = 7  # the version of the EAL API
