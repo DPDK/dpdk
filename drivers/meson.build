@@ -61,6 +61,10 @@ foreach class:driver_classes
 			shared_objs = []
 			static_objs = []
 			foreach d:deps
+				if not is_variable('shared_rte_' + d)
+					error('Missing dependency ' + d +
+						' for driver ' + lib_name)
+				endif
 				shared_objs += [get_variable('shared_rte_' + d)]
 				static_objs += [get_variable('static_rte_' + d)]
 			endforeach
