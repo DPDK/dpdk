@@ -23,6 +23,8 @@
 /* 3DES key sizes */
 #define QAT_3DES_KEY_SZ_OPT1 24 /* Keys are independent */
 #define QAT_3DES_KEY_SZ_OPT2 16 /* K3=K1 */
+#define QAT_3DES_KEY_SZ_OPT3 8 /* K1=K2=K3 */
+
 
 #define QAT_AES_HW_CONFIG_CBC_ENC(alg) \
 	ICP_QAT_HW_CIPHER_CONFIG_BUILD(ICP_QAT_HW_CIPHER_CBC_MODE, alg, \

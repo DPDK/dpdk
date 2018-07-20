@@ -434,7 +434,7 @@
 				.algo = RTE_CRYPTO_CIPHER_3DES_CBC,	\
 				.block_size = 8,			\
 				.key_size = {				\
-					.min = 16,			\
+					.min = 8,			\
 					.max = 24,			\
 					.increment = 8			\
 				},					\
