@@ -25,7 +25,7 @@ NEW_TYPEDEFS,COMPARISON_TO_NULL"
 
 clean_tmp_files() {
 	if echo $tmpinput | grep -q '^checkpatches\.' ; then
-		rm -f $tmpinput
+		rm -f "$tmpinput"
 	fi
 }
 
@@ -77,13 +77,13 @@ check () { # <patch> <commit> <title>
 	elif [ -n "$2" ] ; then
 		tmpinput=$(mktemp checkpatches.XXXXXX)
 		git format-patch --find-renames \
-		--no-stat --stdout -1 $commit > $tmpinput
+		--no-stat --stdout -1 $commit > "$tmpinput"
 	else
 		tmpinput=$(mktemp checkpatches.XXXXXX)
-		cat > $tmpinput
+		cat > "$tmpinput"
 	fi
 
-	report=$($DPDK_CHECKPATCH_PATH $options $tmpinput 2>/dev/null)
+	report=$($DPDK_CHECKPATCH_PATH $options "$tmpinput" 2>/dev/null)
 	if [ $? -ne 0 ] ; then
 		$verbose || printf '\n### %s\n\n' "$3"
 		printf '%s\n' "$report" | sed -n '1,/^total:.*lines checked$/p'
