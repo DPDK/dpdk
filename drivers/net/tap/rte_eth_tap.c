@@ -1931,6 +1931,7 @@ rte_pmd_tun_probe(struct rte_vdev_device *dev)
 			return -1;
 		}
 		eth_dev->dev_ops = &ops;
+		eth_dev->device = &dev->device;
 		return 0;
 	}
 
@@ -2000,6 +2001,7 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 		}
 		/* TODO: request info from primary to set up Rx and Tx */
 		eth_dev->dev_ops = &ops;
+		eth_dev->device = &dev->device;
 		rte_eth_dev_probing_finish(eth_dev);
 		return 0;
 	}

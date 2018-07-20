@@ -1389,6 +1389,8 @@ rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv,
 		eth_dev = rte_eth_dev_attach_secondary(dpaa_dev->name);
 		if (!eth_dev)
 			return -ENOMEM;
+		eth_dev->device = &dpaa_dev->device;
+		eth_dev->dev_ops = &dpaa_devops;
 		rte_eth_dev_probing_finish(eth_dev);
 		return 0;
 	}

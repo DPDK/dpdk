@@ -328,6 +328,7 @@ rte_pmd_failsafe_probe(struct rte_vdev_device *vdev)
 		}
 		/* TODO: request info from primary to set up Rx and Tx */
 		eth_dev->dev_ops = &failsafe_ops;
+		eth_dev->device = &vdev->device;
 		rte_eth_dev_probing_finish(eth_dev);
 		return 0;
 	}
