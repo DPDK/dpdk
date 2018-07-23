@@ -71,6 +71,8 @@ const struct scheduler_parse_map scheduler_ordering_map[] = {
 		{"disable", 0}
 };
 
+#define CDEV_SCHED_MODE_PARAM_SEP_CHAR		':'
+
 static int
 cryptodev_scheduler_create(const char *name,
 		struct rte_vdev_device *vdev,
@@ -110,6 +112,15 @@ cryptodev_scheduler_create(const char *name,
 
 	if (init_params->mode > CDEV_SCHED_MODE_USERDEFINED &&
 			init_params->mode < CDEV_SCHED_MODE_COUNT) {
+		union {
+			struct rte_cryptodev_scheduler_threshold_option
+					threshold_option;
+		} option;
+		enum rte_cryptodev_schedule_option_type option_type;
+		char param_name[RTE_CRYPTODEV_SCHEDULER_NAME_MAX_LEN] = {0};
+		char param_val[RTE_CRYPTODEV_SCHEDULER_NAME_MAX_LEN] = {0};
+		char *s, *end;
+
 		ret = rte_cryptodev_scheduler_mode_set(dev->data->dev_id,
 			init_params->mode);
 		if (ret < 0) {
@@ -124,6 +135,48 @@ cryptodev_scheduler_create(const char *name,
 			CR_SCHED_LOG(INFO, "  Scheduling mode = %s",
 					scheduler_mode_map[i].name);
 			break;
+		}
+
+		if (strlen(init_params->mode_param_str) > 0) {
+			s = strchr(init_params->mode_param_str,
+					CDEV_SCHED_MODE_PARAM_SEP_CHAR);
+			if (s == NULL) {
+				CR_SCHED_LOG(ERR, "Invalid mode param");
+				return -EINVAL;
+			}
+
+			strlcpy(param_name, init_params->mode_param_str,
+					s - init_params->mode_param_str + 1);
+			s++;
+			strlcpy(param_val, s,
+					RTE_CRYPTODEV_SCHEDULER_NAME_MAX_LEN);
+
+			switch (init_params->mode) {
+			case CDEV_SCHED_MODE_PKT_SIZE_DISTR:
+				if (strcmp(param_name,
+					RTE_CRYPTODEV_SCHEDULER_PARAM_THRES)
+						!= 0) {
+					CR_SCHED_LOG(ERR, "Invalid mode param");
+					return -EINVAL;
+				}
+				option_type = CDEV_SCHED_OPTION_THRESHOLD;
+
+				option.threshold_option.threshold =
+						strtoul(param_val, &end, 0);
+				break;
+			default:
+				CR_SCHED_LOG(ERR, "Invalid mode param");
+				return -EINVAL;
+			}
+
+			if (sched_ctx->ops.option_set(dev, option_type,
+					(void *)&option) < 0) {
+				CR_SCHED_LOG(ERR, "Invalid mode param");
+				return -EINVAL;
+			}
+
+			RTE_LOG(INFO, PMD, "  Sched mode param (%s = %s)\n",
+					param_name, param_val);
 		}
 	}
 

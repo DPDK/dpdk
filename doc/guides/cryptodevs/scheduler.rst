@@ -137,7 +137,12 @@ operation:
    **option_type** must be **CDEV_SCHED_OPTION_THRESHOLD** and **option** should
    point to a rte_cryptodev_scheduler_threshold_option structure filled with
    appropriate threshold value. Please NOTE this threshold has be a power-of-2
-   unsigned integer.
+   unsigned integer. It is possible to use **mode_param** initialization
+   parameter to achieve the same purpose. For example:
+
+   ... --vdev "crypto_scheduler,mode=packet-size-distr,mode_param=threshold:512" ...
+
+   The above parameter will overwrite the threshold value to 512.
 
 *   **CDEV_SCHED_MODE_FAILOVER:**
 

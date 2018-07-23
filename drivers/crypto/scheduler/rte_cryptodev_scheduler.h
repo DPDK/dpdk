@@ -76,6 +76,7 @@ enum rte_cryptodev_schedule_option_type {
 /**
  * Threshold option structure
  */
+#define RTE_CRYPTODEV_SCHEDULER_PARAM_THRES	"threshold"
 struct rte_cryptodev_scheduler_threshold_option {
 	uint32_t threshold;	/**< Threshold for packet-size mode */
 };
