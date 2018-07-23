@@ -300,9 +300,8 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 			struct rte_flow_item_vlan vlan_spec = {
 				.tci = rte_cpu_to_be_16(vlan),
 			};
-			struct rte_flow_item_vlan vlan_mask = {
-				.tci = 0xffff,
-			};
+			struct rte_flow_item_vlan vlan_mask =
+				rte_flow_item_vlan_mask;
 
 			ret = mlx5_ctrl_flow_vlan(dev, &bcast, &bcast,
 						  &vlan_spec, &vlan_mask);
@@ -339,9 +338,8 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 			struct rte_flow_item_vlan vlan_spec = {
 				.tci = rte_cpu_to_be_16(vlan),
 			};
-			struct rte_flow_item_vlan vlan_mask = {
-				.tci = 0xffff,
-			};
+			struct rte_flow_item_vlan vlan_mask =
+				rte_flow_item_vlan_mask;
 
 			ret = mlx5_ctrl_flow_vlan(dev, &unicast,
 						  &unicast_mask,
