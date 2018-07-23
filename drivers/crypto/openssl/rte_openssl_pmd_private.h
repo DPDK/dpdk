@@ -9,6 +9,8 @@
 #include <openssl/hmac.h>
 #include <openssl/des.h>
 #include <openssl/rsa.h>
+#include <openssl/dh.h>
+#include <openssl/dsa.h>
 
 #define CRYPTODEV_NAME_OPENSSL_PMD	crypto_openssl
 /**< Open SSL Crypto PMD device name */
@@ -159,6 +161,13 @@ struct openssl_asym_session {
 			BIGNUM *modulus;
 			BN_CTX *ctx;
 		} m;
+		struct dh {
+			DH *dh_key;
+			uint32_t key_op;
+		} dh;
+		struct {
+			DSA *dsa;
+		} s;
 	} u;
 } __rte_cache_aligned;
 /** Set and validate OPENSSL crypto session parameters */

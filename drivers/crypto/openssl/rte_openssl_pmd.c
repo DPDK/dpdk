@@ -1546,6 +1546,230 @@ process_openssl_auth_op(struct openssl_qp *qp, struct rte_crypto_op *op,
 		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
 }
 
+/* process dsa sign operation */
+static int
+process_openssl_dsa_sign_op(struct rte_crypto_op *cop,
+		struct openssl_asym_session *sess)
+{
+	struct rte_crypto_dsa_op_param *op = &cop->asym->dsa;
+	DSA *dsa = sess->u.s.dsa;
+	DSA_SIG *sign = NULL;
+
+	sign = DSA_do_sign(op->message.data,
+			op->message.length,
+			dsa);
+
+	if (sign == NULL) {
+		OPENSSL_LOG(ERR, "%s:%d\n", __func__, __LINE__);
+		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+	} else {
+		const BIGNUM *r = NULL, *s = NULL;
+		get_dsa_sign(sign, r, s);
+
+		op->r.length = BN_bn2bin(r, op->r.data);
+		op->s.length = BN_bn2bin(s, op->s.data);
+		cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+	}
+
+	DSA_SIG_free(sign);
+
+	return 0;
+}
+
+/* process dsa verify operation */
+static int
+process_openssl_dsa_verify_op(struct rte_crypto_op *cop,
+		struct openssl_asym_session *sess)
+{
+	struct rte_crypto_dsa_op_param *op = &cop->asym->dsa;
+	DSA *dsa = sess->u.s.dsa;
+	int ret;
+	DSA_SIG *sign = DSA_SIG_new();
+	BIGNUM *r = NULL, *s = NULL;
+	BIGNUM *pub_key = NULL;
+
+	if (sign == NULL) {
+		OPENSSL_LOG(ERR, " %s:%d\n", __func__, __LINE__);
+		cop->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+		return -1;
+	}
+
+	r = BN_bin2bn(op->r.data,
+			op->r.length,
+			r);
+	s = BN_bin2bn(op->s.data,
+			op->s.length,
+			s);
+	pub_key = BN_bin2bn(op->y.data,
+			op->y.length,
+			pub_key);
+	if (!r || !s || !pub_key) {
+		if (r)
+			BN_free(r);
+		if (s)
+			BN_free(s);
+		if (pub_key)
+			BN_free(pub_key);
+
+		cop->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+		return -1;
+	}
+	set_dsa_sign(sign, r, s);
+	set_dsa_pub_key(dsa, pub_key);
+
+	ret = DSA_do_verify(op->message.data,
+			op->message.length,
+			sign,
+			dsa);
+
+	if (ret != 1)
+		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+	else
+		cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+
+	DSA_SIG_free(sign);
+
+	return 0;
+}
+
+/* process dh operation */
+static int
+process_openssl_dh_op(struct rte_crypto_op *cop,
+		struct openssl_asym_session *sess)
+{
+	struct rte_crypto_dh_op_param *op = &cop->asym->dh;
+	DH *dh_key = sess->u.dh.dh_key;
+	BIGNUM *priv_key = NULL;
+	int ret = 0;
+
+	if (sess->u.dh.key_op &
+			(1 << RTE_CRYPTO_ASYM_OP_SHARED_SECRET_COMPUTE)) {
+		/* compute shared secret using peer public key
+		 * and current private key
+		 * shared secret = peer_key ^ priv_key mod p
+		 */
+		BIGNUM *peer_key = NULL;
+
+		/* copy private key and peer key and compute shared secret */
+		peer_key = BN_bin2bn(op->pub_key.data,
+				op->pub_key.length,
+				peer_key);
+		if (peer_key == NULL) {
+			cop->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+			return -1;
+		}
+		priv_key = BN_bin2bn(op->priv_key.data,
+				op->priv_key.length,
+				priv_key);
+		if (priv_key == NULL) {
+			BN_free(peer_key);
+			cop->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+			return -1;
+		}
+		set_dh_priv_key(dh_key, priv_key, ret);
+		if (ret) {
+			OPENSSL_LOG(ERR, "Failed to set private key\n");
+			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+			BN_free(peer_key);
+			BN_free(priv_key);
+			return 0;
+		}
+
+		ret = DH_compute_key(
+				op->shared_secret.data,
+				peer_key, dh_key);
+		if (ret < 0) {
+			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+			BN_free(peer_key);
+			/* priv key is already loaded into dh,
+			 * let's not free that directly here.
+			 * DH_free() will auto free it later.
+			 */
+			return 0;
+		}
+		cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+		op->shared_secret.length = ret;
+		BN_free(peer_key);
+		return 0;
+	}
+
+	/*
+	 * other options are public and private key generations.
+	 *
+	 * if user provides private key,
+	 * then first set DH with user provided private key
+	 */
+	if ((sess->u.dh.key_op &
+			(1 << RTE_CRYPTO_ASYM_OP_PUBLIC_KEY_GENERATE)) &&
+			!(sess->u.dh.key_op &
+			(1 << RTE_CRYPTO_ASYM_OP_PRIVATE_KEY_GENERATE))) {
+		/* generate public key using user-provided private key
+		 * pub_key = g ^ priv_key mod p
+		 */
+
+		/* load private key into DH */
+		priv_key = BN_bin2bn(op->priv_key.data,
+				op->priv_key.length,
+				priv_key);
+		if (priv_key == NULL) {
+			cop->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+			return -1;
+		}
+		set_dh_priv_key(dh_key, priv_key, ret);
+		if (ret) {
+			OPENSSL_LOG(ERR, "Failed to set private key\n");
+			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+			BN_free(priv_key);
+			return 0;
+		}
+	}
+
+	/* generate public and private key pair.
+	 *
+	 * if private key already set, generates only public key.
+	 *
+	 * if private key is not already set, then set it to random value
+	 * and update internal private key.
+	 */
+	if (!DH_generate_key(dh_key)) {
+		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		return 0;
+	}
+
+	if (sess->u.dh.key_op & (1 << RTE_CRYPTO_ASYM_OP_PUBLIC_KEY_GENERATE)) {
+		const BIGNUM *pub_key = NULL;
+
+		OPENSSL_LOG(DEBUG, "%s:%d update public key\n",
+				__func__, __LINE__);
+
+		/* get the generated keys */
+		get_dh_pub_key(dh_key, pub_key);
+
+		/* output public key */
+		op->pub_key.length = BN_bn2bin(pub_key,
+				op->pub_key.data);
+	}
+
+	if (sess->u.dh.key_op &
+			(1 << RTE_CRYPTO_ASYM_OP_PRIVATE_KEY_GENERATE)) {
+		const BIGNUM *priv_key = NULL;
+
+		OPENSSL_LOG(DEBUG, "%s:%d updated priv key\n",
+				__func__, __LINE__);
+
+		/* get the generated keys */
+		get_dh_priv_key(dh_key, priv_key);
+
+		/* provide generated private key back to user */
+		op->priv_key.length = BN_bn2bin(priv_key,
+				op->priv_key.data);
+	}
+
+	cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+
+	return 0;
+}
+
 /* process modinv operation */
 static int
 process_openssl_modinv_op(struct rte_crypto_op *cop,
@@ -1720,6 +1944,19 @@ process_asym_op(struct openssl_qp *qp, struct rte_crypto_op *op,
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_MODINV:
 		retval = process_openssl_modinv_op(op, sess);
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_DH:
+		retval = process_openssl_dh_op(op, sess);
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_DSA:
+		if (op->asym->dsa.op_type == RTE_CRYPTO_ASYM_OP_SIGN)
+			retval = process_openssl_dsa_sign_op(op, sess);
+		else if (op->asym->dsa.op_type ==
+				RTE_CRYPTO_ASYM_OP_VERIFY)
+			retval =
+				process_openssl_dsa_verify_op(op, sess);
+		else
+			op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 		break;
 	default:
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;

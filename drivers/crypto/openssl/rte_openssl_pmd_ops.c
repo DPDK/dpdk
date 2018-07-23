@@ -527,6 +527,48 @@ static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 		},
 		}
 	},
+	{	/* dh */
+		.op = RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
+		{.asym = {
+			.xform_capa = {
+				.xform_type = RTE_CRYPTO_ASYM_XFORM_DH,
+				.op_types =
+				((1<<RTE_CRYPTO_ASYM_OP_PRIVATE_KEY_GENERATE) |
+				(1 << RTE_CRYPTO_ASYM_OP_PUBLIC_KEY_GENERATE |
+				(1 <<
+				RTE_CRYPTO_ASYM_OP_SHARED_SECRET_COMPUTE))),
+				{
+				.modlen = {
+				/* value 0 symbolizes no limit on min length */
+				.min = 0,
+				/* value 0 symbolizes no limit on max length */
+				.max = 0,
+				.increment = 1
+				}, }
+			}
+		},
+		}
+	},
+	{	/* dsa */
+		.op = RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
+		{.asym = {
+			.xform_capa = {
+				.xform_type = RTE_CRYPTO_ASYM_XFORM_DSA,
+				.op_types =
+				((1<<RTE_CRYPTO_ASYM_OP_SIGN) |
+				(1 << RTE_CRYPTO_ASYM_OP_VERIFY)),
+				{
+				.modlen = {
+				/* value 0 symbolizes no limit on min length */
+				.min = 0,
+				/* value 0 symbolizes no limit on max length */
+				.max = 0,
+				.increment = 1
+				}, }
+			}
+		},
+		}
+	},
 
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
@@ -769,7 +811,8 @@ static int openssl_set_asym_session_parameters(
 {
 	int ret = 0;
 
-	if (xform->next != NULL) {
+	if ((xform->xform_type != RTE_CRYPTO_ASYM_XFORM_DH) &&
+		(xform->next != NULL)) {
 		OPENSSL_LOG(ERR, "chained xfrms are not supported on %s",
 			rte_crypto_asym_xform_strings[xform->xform_type]);
 		return -1;
@@ -940,6 +983,147 @@ err_rsa:
 		asym_session->xfrm_type = RTE_CRYPTO_ASYM_XFORM_MODINV;
 		break;
 	}
+	case RTE_CRYPTO_ASYM_XFORM_DH:
+	{
+		BIGNUM *p = NULL;
+		BIGNUM *g = NULL;
+
+		p = BN_bin2bn((const unsigned char *)
+				xform->dh.p.data,
+				xform->dh.p.length,
+				p);
+		g = BN_bin2bn((const unsigned char *)
+				xform->dh.g.data,
+				xform->dh.g.length,
+				g);
+		if (!p || !g)
+			goto err_dh;
+
+		DH *dh = DH_new();
+		if (dh == NULL) {
+			OPENSSL_LOG(ERR,
+				"failed to allocate resources\n");
+			goto err_dh;
+		}
+		set_dh_params(dh, p, g, ret);
+		if (ret) {
+			DH_free(dh);
+			goto err_dh;
+		}
+
+		/*
+		 * setup xfrom for
+		 * public key generate, or
+		 * DH Priv key generate, or both
+		 * public and private key generate
+		 */
+		asym_session->u.dh.key_op = (1 << xform->dh.type);
+
+		if (xform->dh.type ==
+			RTE_CRYPTO_ASYM_OP_PRIVATE_KEY_GENERATE) {
+			/* check if next is pubkey */
+			if ((xform->next != NULL) &&
+				(xform->next->xform_type ==
+				RTE_CRYPTO_ASYM_XFORM_DH) &&
+				(xform->next->dh.type ==
+				RTE_CRYPTO_ASYM_OP_PUBLIC_KEY_GENERATE)
+				) {
+				/*
+				 * setup op as pub/priv key
+				 * pair generationi
+				 */
+				asym_session->u.dh.key_op |=
+				(1 <<
+				RTE_CRYPTO_ASYM_OP_PUBLIC_KEY_GENERATE);
+			}
+		}
+		asym_session->u.dh.dh_key = dh;
+		asym_session->xfrm_type = RTE_CRYPTO_ASYM_XFORM_DH;
+		break;
+
+err_dh:
+		OPENSSL_LOG(ERR, " failed to set dh params\n");
+		if (p)
+			BN_free(p);
+		if (g)
+			BN_free(g);
+		return -1;
+	}
+	case RTE_CRYPTO_ASYM_XFORM_DSA:
+	{
+		BIGNUM *p = NULL, *g = NULL;
+		BIGNUM *q = NULL, *priv_key = NULL;
+		BIGNUM *pub_key = BN_new();
+		BN_zero(pub_key);
+
+		p = BN_bin2bn((const unsigned char *)
+				xform->dsa.p.data,
+				xform->dsa.p.length,
+				p);
+
+		g = BN_bin2bn((const unsigned char *)
+				xform->dsa.g.data,
+				xform->dsa.g.length,
+				g);
+
+		q = BN_bin2bn((const unsigned char *)
+				xform->dsa.q.data,
+				xform->dsa.q.length,
+				q);
+		if (!p || !q || !g)
+			goto err_dsa;
+
+		priv_key = BN_bin2bn((const unsigned char *)
+				xform->dsa.x.data,
+				xform->dsa.x.length,
+				priv_key);
+		if (priv_key == NULL)
+			goto err_dsa;
+
+		DSA *dsa = DSA_new();
+		if (dsa == NULL) {
+			OPENSSL_LOG(ERR,
+				" failed to allocate resources\n");
+			goto err_dsa;
+		}
+
+		set_dsa_params(dsa, p, q, g, ret);
+		if (ret) {
+			DSA_free(dsa);
+			OPENSSL_LOG(ERR, "Failed to dsa params\n");
+			goto err_dsa;
+		}
+
+		/*
+		 * openssl 1.1.0 mandate that public key can't be
+		 * NULL in very first call. so set a dummy pub key.
+		 * to keep consistency, lets follow same approach for
+		 * both versions
+		 */
+		/* just set dummy public for very 1st call */
+		set_dsa_keys(dsa, pub_key, priv_key, ret);
+		if (ret) {
+			DSA_free(dsa);
+			OPENSSL_LOG(ERR, "Failed to set keys\n");
+			return -1;
+		}
+		asym_session->u.s.dsa = dsa;
+		asym_session->xfrm_type = RTE_CRYPTO_ASYM_XFORM_DSA;
+		break;
+
+err_dsa:
+		if (p)
+			BN_free(p);
+		if (q)
+			BN_free(q);
+		if (g)
+			BN_free(g);
+		if (priv_key)
+			BN_free(priv_key);
+		if (pub_key)
+			BN_free(pub_key);
+		return -1;
+	}
 	default:
 		return -1;
 	}
@@ -1020,6 +1204,14 @@ static void openssl_reset_asym_session(struct openssl_asym_session *sess)
 			BN_CTX_end(sess->u.m.ctx);
 			BN_CTX_free(sess->u.m.ctx);
 		}
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_DH:
+		if (sess->u.dh.dh_key)
+			DH_free(sess->u.dh.dh_key);
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_DSA:
+		if (sess->u.s.dsa)
+			DSA_free(sess->u.s.dsa);
 		break;
 	default:
 		break;
