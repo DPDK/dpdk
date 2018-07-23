@@ -80,6 +80,7 @@ crypto processing.
 
 Test name is cryptodev_openssl_autotest.
 For performance test cryptodev_openssl_perftest can be used.
+For asymmetric crypto operations testing, run cryptodev_openssl_asym_autotest.
 
 To verify real traffic l2fwd-crypto example can be used with this command:
 
