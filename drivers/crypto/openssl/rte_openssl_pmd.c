@@ -14,6 +14,7 @@
 #include <openssl/evp.h>
 
 #include "rte_openssl_pmd_private.h"
+#include "compat.h"
 
 #define DES_BLOCK_SIZE 8
 
@@ -730,19 +731,36 @@ openssl_reset_session(struct openssl_session *sess)
 }
 
 /** Provide session for operation */
-static struct openssl_session *
+static void *
 get_session(struct openssl_qp *qp, struct rte_crypto_op *op)
 {
 	struct openssl_session *sess = NULL;
+	struct openssl_asym_session *asym_sess = NULL;
 
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
-		/* get existing session */
-		if (likely(op->sym->session != NULL))
-			sess = (struct openssl_session *)
-					get_sym_session_private_data(
-					op->sym->session,
-					cryptodev_driver_id);
+		if (op->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
+			/* get existing session */
+			if (likely(op->sym->session != NULL))
+				sess = (struct openssl_session *)
+						get_sym_session_private_data(
+						op->sym->session,
+						cryptodev_driver_id);
+		} else {
+			if (likely(op->asym->session != NULL))
+				asym_sess = (struct openssl_asym_session *)
+						get_asym_session_private_data(
+						op->asym->session,
+						cryptodev_driver_id);
+			if (asym_sess == NULL)
+				op->status =
+					RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
+			return asym_sess;
+		}
 	} else {
+		/* sessionless asymmetric not supported */
+		if (op->type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC)
+			return NULL;
+
 		/* provide internal session */
 		void *_sess = NULL;
 		void *_sess_private_data = NULL;
@@ -1528,6 +1546,196 @@ process_openssl_auth_op(struct openssl_qp *qp, struct rte_crypto_op *op,
 		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
 }
 
+/* process modinv operation */
+static int
+process_openssl_modinv_op(struct rte_crypto_op *cop,
+		struct openssl_asym_session *sess)
+{
+	struct rte_crypto_asym_op *op = cop->asym;
+	BIGNUM *base = BN_CTX_get(sess->u.m.ctx);
+	BIGNUM *res = BN_CTX_get(sess->u.m.ctx);
+
+	if (unlikely(base == NULL || res == NULL)) {
+		if (base)
+			BN_free(base);
+		if (res)
+			BN_free(res);
+		cop->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+		return -1;
+	}
+
+	base = BN_bin2bn((const unsigned char *)op->modinv.base.data,
+			op->modinv.base.length, base);
+
+	if (BN_mod_inverse(res, base, sess->u.m.modulus, sess->u.m.ctx)) {
+		cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+		op->modinv.base.length = BN_bn2bin(res, op->modinv.base.data);
+	} else {
+		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+	}
+
+	return 0;
+}
+
+/* process modexp operation */
+static int
+process_openssl_modexp_op(struct rte_crypto_op *cop,
+		struct openssl_asym_session *sess)
+{
+	struct rte_crypto_asym_op *op = cop->asym;
+	BIGNUM *base = BN_CTX_get(sess->u.e.ctx);
+	BIGNUM *res = BN_CTX_get(sess->u.e.ctx);
+
+	if (unlikely(base == NULL || res == NULL)) {
+		if (base)
+			BN_free(base);
+		if (res)
+			BN_free(res);
+		cop->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+		return -1;
+	}
+
+	base = BN_bin2bn((const unsigned char *)op->modinv.base.data,
+			op->modinv.base.length, base);
+
+	if (BN_mod_exp(res, base, sess->u.e.exp,
+				sess->u.e.mod, sess->u.e.ctx)) {
+		op->modinv.base.length = BN_bn2bin(res, op->modinv.base.data);
+		cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+	} else {
+		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+	}
+
+	return 0;
+}
+
+/* process rsa operations */
+static int
+process_openssl_rsa_op(struct rte_crypto_op *cop,
+		struct openssl_asym_session *sess)
+{
+	int ret = 0;
+	struct rte_crypto_asym_op *op = cop->asym;
+	RSA *rsa = sess->u.r.rsa;
+	uint32_t pad = (op->rsa.pad);
+
+	switch (pad) {
+	case RTE_CRYPTO_RSA_PKCS1_V1_5_BT0:
+	case RTE_CRYPTO_RSA_PKCS1_V1_5_BT1:
+	case RTE_CRYPTO_RSA_PKCS1_V1_5_BT2:
+		pad = RSA_PKCS1_PADDING;
+		break;
+	case RTE_CRYPTO_RSA_PADDING_NONE:
+		pad = RSA_NO_PADDING;
+		break;
+	default:
+		cop->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+		OPENSSL_LOG(ERR,
+				"rsa pad type not supported %d\n", pad);
+		return 0;
+	}
+
+	switch (op->rsa.op_type) {
+	case RTE_CRYPTO_ASYM_OP_ENCRYPT:
+		ret = RSA_public_encrypt(op->rsa.message.length,
+				op->rsa.message.data,
+				op->rsa.message.data,
+				rsa,
+				pad);
+
+		if (ret > 0)
+			op->rsa.message.length = ret;
+		OPENSSL_LOG(DEBUG,
+				"length of encrypted text %d\n", ret);
+		break;
+
+	case RTE_CRYPTO_ASYM_OP_DECRYPT:
+		ret = RSA_private_decrypt(op->rsa.message.length,
+				op->rsa.message.data,
+				op->rsa.message.data,
+				rsa,
+				pad);
+		if (ret > 0)
+			op->rsa.message.length = ret;
+		break;
+
+	case RTE_CRYPTO_ASYM_OP_SIGN:
+		ret = RSA_private_encrypt(op->rsa.message.length,
+				op->rsa.message.data,
+				op->rsa.sign.data,
+				rsa,
+				pad);
+		if (ret > 0)
+			op->rsa.sign.length = ret;
+		break;
+
+	case RTE_CRYPTO_ASYM_OP_VERIFY:
+		ret = RSA_public_decrypt(op->rsa.sign.length,
+				op->rsa.sign.data,
+				op->rsa.sign.data,
+				rsa,
+				pad);
+
+		OPENSSL_LOG(DEBUG,
+				"Length of public_decrypt %d "
+				"length of message %zd\n",
+				ret, op->rsa.message.length);
+
+		if (memcmp(op->rsa.sign.data, op->rsa.message.data,
+					op->rsa.message.length)) {
+			OPENSSL_LOG(ERR,
+					"RSA sign Verification failed");
+			return -1;
+		}
+		break;
+
+	default:
+		/* allow ops with invalid args to be pushed to
+		 * completion queue
+		 */
+		cop->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+		break;
+	}
+
+	if (ret < 0)
+		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+
+	return 0;
+}
+
+static int
+process_asym_op(struct openssl_qp *qp, struct rte_crypto_op *op,
+		struct openssl_asym_session *sess)
+{
+	int retval = 0;
+
+	op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+
+	switch (sess->xfrm_type) {
+	case RTE_CRYPTO_ASYM_XFORM_RSA:
+		retval = process_openssl_rsa_op(op, sess);
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_MODEX:
+		retval = process_openssl_modexp_op(op, sess);
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_MODINV:
+		retval = process_openssl_modinv_op(op, sess);
+		break;
+	default:
+		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+		break;
+	}
+	if (!retval) {
+		/* op processed so push to completion queue as processed */
+		retval = rte_ring_enqueue(qp->processed_ops, (void *)op);
+		if (retval)
+			/* return error if failed to put in completion queue */
+			retval = -1;
+	}
+
+	return retval;
+}
+
 /** Process crypto operation for mbuf */
 static int
 process_op(struct openssl_qp *qp, struct rte_crypto_op *op,
@@ -1600,7 +1808,7 @@ static uint16_t
 openssl_pmd_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 		uint16_t nb_ops)
 {
-	struct openssl_session *sess;
+	void *sess;
 	struct openssl_qp *qp = queue_pair;
 	int i, retval;
 
@@ -1609,7 +1817,12 @@ openssl_pmd_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 		if (unlikely(sess == NULL))
 			goto enqueue_err;
 
-		retval = process_op(qp, ops[i], sess);
+		if (ops[i]->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC)
+			retval = process_op(qp, ops[i],
+					(struct openssl_session *) sess);
+		else
+			retval = process_asym_op(qp, ops[i],
+					(struct openssl_asym_session *) sess);
 		if (unlikely(retval < 0))
 			goto enqueue_err;
 	}
@@ -1664,7 +1877,8 @@ cryptodev_openssl_create(const char *name,
 			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
 			RTE_CRYPTODEV_FF_CPU_AESNI |
 			RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT |
-			RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT;
+			RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT |
+			RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO;
 
 	/* Set vector instructions mode supported */
 	internals = dev->data->dev_private;
