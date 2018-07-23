@@ -2762,22 +2762,20 @@ mlx5_flow_rxq_flags_clear(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
 	unsigned int i;
-	unsigned int idx;
 
-	for (idx = 0, i = 0; idx != priv->rxqs_n; ++i) {
+	for (i = 0; i != priv->rxqs_n; ++i) {
 		struct mlx5_rxq_ctrl *rxq_ctrl;
 		unsigned int j;
 
-		if (!(*priv->rxqs)[idx])
+		if (!(*priv->rxqs)[i])
 			continue;
-		rxq_ctrl = container_of((*priv->rxqs)[idx],
+		rxq_ctrl = container_of((*priv->rxqs)[i],
 					struct mlx5_rxq_ctrl, rxq);
 		rxq_ctrl->flow_mark_n = 0;
 		rxq_ctrl->rxq.mark = 0;
 		for (j = 0; j != MLX5_FLOW_TUNNEL; ++j)
 			rxq_ctrl->flow_tunnels_n[j] = 0;
 		rxq_ctrl->rxq.tunnel = 0;
-		++idx;
 	}
 }
 
