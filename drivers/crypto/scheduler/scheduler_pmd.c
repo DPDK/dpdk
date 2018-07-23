@@ -9,6 +9,7 @@
 #include <rte_malloc.h>
 #include <rte_cpuflags.h>
 #include <rte_reorder.h>
+#include <rte_string_fns.h>
 
 #include "rte_cryptodev_scheduler.h"
 #include "scheduler_pmd_private.h"
@@ -19,6 +20,7 @@ struct scheduler_init_params {
 	struct rte_cryptodev_pmd_init_params def_p;
 	uint32_t nb_slaves;
 	enum rte_cryptodev_scheduler_mode mode;
+	char mode_param_str[RTE_CRYPTODEV_SCHEDULER_NAME_MAX_LEN];
 	uint32_t enable_ordering;
 	uint16_t wc_pool[RTE_MAX_LCORE];
 	uint16_t nb_wc;
@@ -29,6 +31,7 @@ struct scheduler_init_params {
 #define RTE_CRYPTODEV_VDEV_NAME			("name")
 #define RTE_CRYPTODEV_VDEV_SLAVE		("slave")
 #define RTE_CRYPTODEV_VDEV_MODE			("mode")
+#define RTE_CRYPTODEV_VDEV_MODE_PARAM		("mode_param")
 #define RTE_CRYPTODEV_VDEV_ORDERING		("ordering")
 #define RTE_CRYPTODEV_VDEV_MAX_NB_QP_ARG	("max_nb_queue_pairs")
 #define RTE_CRYPTODEV_VDEV_SOCKET_ID		("socket_id")
@@ -39,6 +42,7 @@ const char *scheduler_valid_params[] = {
 	RTE_CRYPTODEV_VDEV_NAME,
 	RTE_CRYPTODEV_VDEV_SLAVE,
 	RTE_CRYPTODEV_VDEV_MODE,
+	RTE_CRYPTODEV_VDEV_MODE_PARAM,
 	RTE_CRYPTODEV_VDEV_ORDERING,
 	RTE_CRYPTODEV_VDEV_MAX_NB_QP_ARG,
 	RTE_CRYPTODEV_VDEV_SOCKET_ID,
@@ -346,6 +350,7 @@ parse_mode_arg(const char *key __rte_unused,
 		if (strcmp(value, scheduler_mode_map[i].name) == 0) {
 			param->mode = (enum rte_cryptodev_scheduler_mode)
 					scheduler_mode_map[i].val;
+
 			break;
 		}
 	}
@@ -354,6 +359,18 @@ parse_mode_arg(const char *key __rte_unused,
 		CR_SCHED_LOG(ERR, "Unrecognized input.");
 		return -EINVAL;
 	}
+
+	return 0;
+}
+
+static int
+parse_mode_param_arg(const char *key __rte_unused,
+		const char *value, void *extra_args)
+{
+	struct scheduler_init_params *param = extra_args;
+
+	strlcpy(param->mode_param_str, value,
+			RTE_CRYPTODEV_SCHEDULER_NAME_MAX_LEN);
 
 	return 0;
 }
@@ -435,6 +452,11 @@ scheduler_parse_init_params(struct scheduler_init_params *params,
 
 		ret = rte_kvargs_process(kvlist, RTE_CRYPTODEV_VDEV_MODE,
 				&parse_mode_arg, params);
+		if (ret < 0)
+			goto free_kvlist;
+
+		ret = rte_kvargs_process(kvlist, RTE_CRYPTODEV_VDEV_MODE_PARAM,
+				&parse_mode_param_arg, params);
 		if (ret < 0)
 			goto free_kvlist;
 

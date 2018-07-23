@@ -71,6 +71,11 @@ two calls:
   mode parameter values are specified in the "Cryptodev Scheduler Modes
   Overview" section.
 
+* mode_param: Specify the mode-specific parameter. Some scheduling modes
+  may be initialized with specific parameters other than the default ones,
+  such as the **threshold** packet size of **packet-size-distr** mode. This
+  parameter fulfills the purpose.
+
 * ordering: Specify the status of the crypto operations ordering feature.
   The value of this parameter can be "enable" or "disable". This feature
   is disabled by default.
