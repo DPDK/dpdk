@@ -21,11 +21,21 @@
  */
 #define BPI_MAX_ENCR_IV_LEN ICP_QAT_HW_AES_BLK_SZ
 
+/*
+ * Maximum number of SGL entries
+ */
+#define QAT_SYM_SGL_MAX_NUMBER	16
+
 struct qat_sym_session;
 
+struct qat_sym_sgl {
+	qat_sgl_hdr;
+	struct qat_flat_buf buffers[QAT_SYM_SGL_MAX_NUMBER];
+} __rte_packed __rte_cache_aligned;
+
 struct qat_sym_op_cookie {
-	struct qat_sgl qat_sgl_src;
-	struct qat_sgl qat_sgl_dst;
+	struct qat_sym_sgl qat_sgl_src;
+	struct qat_sym_sgl qat_sgl_dst;
 	phys_addr_t qat_sgl_src_phys_addr;
 	phys_addr_t qat_sgl_dst_phys_addr;
 };

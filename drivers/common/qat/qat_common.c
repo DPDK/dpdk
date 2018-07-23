@@ -8,40 +8,53 @@
 
 int
 qat_sgl_fill_array(struct rte_mbuf *buf, uint64_t buf_start,
-		struct qat_sgl *list, uint32_t data_len)
+		void *list_in, uint32_t data_len,
+		const uint16_t max_segs)
 {
 	int nr = 1;
-
-	uint32_t buf_len = rte_pktmbuf_iova(buf) -
-			buf_start + rte_pktmbuf_data_len(buf);
+	struct qat_sgl *list = (struct qat_sgl *)list_in;
+	/* buf_start allows the first buffer to start at an address before or
+	 * after the mbuf data start. It's used to either optimally align the
+	 * dma to 64 or to start dma from an offset.
+	 */
+	uint32_t buf_len;
+	uint32_t first_buf_len = rte_pktmbuf_data_len(buf) +
+			(rte_pktmbuf_mtophys(buf) - buf_start);
+#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
+	uint8_t *virt_addr[max_segs];
+	virt_addr[0] = rte_pktmbuf_mtod(buf, uint8_t*) +
+			(rte_pktmbuf_mtophys(buf) - buf_start);
+#endif
 
 	list->buffers[0].addr = buf_start;
 	list->buffers[0].resrvd = 0;
-	list->buffers[0].len = buf_len;
+	list->buffers[0].len = first_buf_len;
 
-	if (data_len <= buf_len) {
+	if (data_len <= first_buf_len) {
 		list->num_bufs = nr;
 		list->buffers[0].len = data_len;
-		return 0;
+		goto sgl_end;
 	}
 
 	buf = buf->next;
+	buf_len = first_buf_len;
 	while (buf) {
-		if (unlikely(nr == QAT_SGL_MAX_NUMBER)) {
-			QAT_LOG(ERR,
-				"QAT PMD exceeded size of QAT SGL entry(%u)",
-					QAT_SGL_MAX_NUMBER);
+		if (unlikely(nr == max_segs)) {
+			QAT_DP_LOG(ERR, "Exceeded max segments in QAT SGL (%u)",
+					max_segs);
 			return -EINVAL;
 		}
 
 		list->buffers[nr].len = rte_pktmbuf_data_len(buf);
 		list->buffers[nr].resrvd = 0;
-		list->buffers[nr].addr = rte_pktmbuf_iova(buf);
-
+		list->buffers[nr].addr = rte_pktmbuf_mtophys(buf);
+#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
+		virt_addr[nr] = rte_pktmbuf_mtod(buf, uint8_t*);
+#endif
 		buf_len += list->buffers[nr].len;
 		buf = buf->next;
 
-		if (buf_len > data_len) {
+		if (buf_len >= data_len) {
 			list->buffers[nr].len -=
 				buf_len - data_len;
 			buf = NULL;
@@ -49,6 +62,22 @@ qat_sgl_fill_array(struct rte_mbuf *buf, uint64_t buf_start,
 		++nr;
 	}
 	list->num_bufs = nr;
+
+sgl_end:
+#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
+	{
+		uint16_t i;
+		QAT_DP_LOG(INFO, "SGL with %d buffers:", list->num_bufs);
+		for (i = 0; i < list->num_bufs; i++) {
+			QAT_DP_LOG(INFO,
+				"QAT SGL buf %d, len = %d, iova = 0x%012"PRIx64,
+				i, list->buffers[i].len,
+				list->buffers[i].addr);
+			QAT_DP_HEXDUMP_LOG(DEBUG, "qat SGL",
+					virt_addr[i], list->buffers[i].len);
+		}
+	}
+#endif
 
 	return 0;
 }

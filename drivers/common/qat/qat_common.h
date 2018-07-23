@@ -10,11 +10,6 @@
 
 /**< Intel(R) QAT device name for PCI registration */
 #define QAT_PCI_NAME	qat
-/*
- * Maximum number of SGL entries
- */
-#define QAT_SGL_MAX_NUMBER	16
-
 #define QAT_64_BTYE_ALIGN_MASK (~0x3f)
 
 /* Intel(R) QuickAssist Technology device generation is enumerated
@@ -31,6 +26,7 @@ enum qat_service_type {
 	QAT_SERVICE_COMPRESSION,
 	QAT_SERVICE_INVALID
 };
+
 #define QAT_MAX_SERVICES		(QAT_SERVICE_INVALID)
 
 /**< Common struct for scatter-gather list operations */
@@ -40,11 +36,17 @@ struct qat_flat_buf {
 	uint64_t addr;
 } __rte_packed;
 
+#define qat_sgl_hdr  struct { \
+	uint64_t resrvd; \
+	uint32_t num_bufs; \
+	uint32_t num_mapped_bufs; \
+}
+
+__extension__
 struct qat_sgl {
-	uint64_t resrvd;
-	uint32_t num_bufs;
-	uint32_t num_mapped_bufs;
-	struct qat_flat_buf buffers[QAT_SGL_MAX_NUMBER];
+	qat_sgl_hdr;
+	/* flexible array of flat buffers*/
+	struct qat_flat_buf buffers[0];
 } __rte_packed __rte_cache_aligned;
 
 /** Common, i.e. not service-specific, statistics */
@@ -64,7 +66,8 @@ struct qat_pci_device;
 
 int
 qat_sgl_fill_array(struct rte_mbuf *buf, uint64_t buf_start,
-		struct qat_sgl *list, uint32_t data_len);
+		void *list_in, uint32_t data_len,
+		const uint16_t max_segs);
 void
 qat_stats_get(struct qat_pci_device *dev,
 		struct qat_common_stats *stats,
