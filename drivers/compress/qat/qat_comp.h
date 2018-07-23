@@ -24,7 +24,16 @@ enum qat_comp_request_type {
 	REQ_COMP_END
 };
 
+struct qat_comp_sgl {
+	qat_sgl_hdr;
+	struct qat_flat_buf buffers[RTE_PMD_QAT_COMP_SGL_MAX_SEGMENTS];
+} __rte_packed __rte_cache_aligned;
+
 struct qat_comp_op_cookie {
+	struct qat_comp_sgl qat_sgl_src;
+	struct qat_comp_sgl qat_sgl_dst;
+	phys_addr_t qat_sgl_src_phys_addr;
+	phys_addr_t qat_sgl_dst_phys_addr;
 };
 
 struct qat_comp_xform {

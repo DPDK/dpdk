@@ -13,7 +13,10 @@ static const struct rte_compressdev_capabilities qat_comp_gen_capabilities[] = {
 				RTE_COMP_FF_ADLER32_CHECKSUM |
 				RTE_COMP_FF_CRC32_ADLER32_CHECKSUM |
 				RTE_COMP_FF_SHAREABLE_PRIV_XFORM |
-				RTE_COMP_FF_HUFFMAN_FIXED,
+				RTE_COMP_FF_HUFFMAN_FIXED |
+				RTE_COMP_FF_OOP_SGL_IN_SGL_OUT |
+				RTE_COMP_FF_OOP_SGL_IN_LB_OUT |
+				RTE_COMP_FF_OOP_LB_IN_SGL_OUT,
 	 .window_size = {.min = 15, .max = 15, .increment = 0} },
 	{RTE_COMP_ALGO_LIST_END, 0, {0, 0, 0} } };
 
@@ -71,7 +74,9 @@ static int
 qat_comp_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 		  uint32_t max_inflight_ops, int socket_id)
 {
+	struct qat_qp *qp;
 	int ret = 0;
+	uint32_t i;
 	struct qat_qp_config qat_qp_conf;
 
 	struct qat_qp **qp_addr =
@@ -108,6 +113,24 @@ qat_comp_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 	/* store a link to the qp in the qat_pci_device */
 	qat_private->qat_dev->qps_in_use[QAT_SERVICE_COMPRESSION][qp_id]
 							= *qp_addr;
+
+	qp = (struct qat_qp *)*qp_addr;
+
+	for (i = 0; i < qp->nb_descriptors; i++) {
+
+		struct qat_comp_op_cookie *cookie =
+				qp->op_cookies[i];
+
+		cookie->qat_sgl_src_phys_addr =
+				rte_mempool_virt2iova(cookie) +
+				offsetof(struct qat_comp_op_cookie,
+				qat_sgl_src);
+
+		cookie->qat_sgl_dst_phys_addr =
+				rte_mempool_virt2iova(cookie) +
+				offsetof(struct qat_comp_op_cookie,
+				qat_sgl_dst);
+	}
 
 	return ret;
 }

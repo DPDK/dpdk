@@ -21,10 +21,12 @@
 
 int
 qat_comp_build_request(void *in_op, uint8_t *out_msg,
-		       void *op_cookie __rte_unused,
+		       void *op_cookie,
 		       enum qat_device_gen qat_dev_gen __rte_unused)
 {
 	struct rte_comp_op *op = in_op;
+	struct qat_comp_op_cookie *cookie =
+			(struct qat_comp_op_cookie *)op_cookie;
 	struct qat_comp_xform *qat_xform = op->private_xform;
 	const uint8_t *tmpl = (uint8_t *)&qat_xform->qat_comp_req_tmpl;
 	struct icp_qat_fw_comp_req *comp_req =
@@ -44,12 +46,43 @@ qat_comp_build_request(void *in_op, uint8_t *out_msg,
 	comp_req->comp_pars.comp_len = op->src.length;
 	comp_req->comp_pars.out_buffer_sz = rte_pktmbuf_pkt_len(op->m_dst);
 
-	/* sgl */
 	if (op->m_src->next != NULL || op->m_dst->next != NULL) {
-		QAT_DP_LOG(ERR, "QAT PMD doesn't support scatter gather");
-		return -EINVAL;
+		/* sgl */
+		int ret = 0;
+
+		ICP_QAT_FW_COMN_PTR_TYPE_SET(comp_req->comn_hdr.comn_req_flags,
+				QAT_COMN_PTR_TYPE_SGL);
+		ret = qat_sgl_fill_array(op->m_src,
+				rte_pktmbuf_mtophys_offset(op->m_src,
+							op->src.offset),
+				&cookie->qat_sgl_src,
+				op->src.length,
+				RTE_PMD_QAT_COMP_SGL_MAX_SEGMENTS);
+		if (ret) {
+			QAT_DP_LOG(ERR, "QAT PMD Cannot fill sgl array");
+			return ret;
+		}
+
+		ret = qat_sgl_fill_array(op->m_dst,
+				rte_pktmbuf_mtophys_offset(op->m_dst,
+							op->dst.offset),
+				&cookie->qat_sgl_dst,
+				comp_req->comp_pars.out_buffer_sz,
+				RTE_PMD_QAT_COMP_SGL_MAX_SEGMENTS);
+		if (ret) {
+			QAT_DP_LOG(ERR, "QAT PMD Cannot fill sgl array");
+			return ret;
+		}
+
+		comp_req->comn_mid.src_data_addr =
+				cookie->qat_sgl_src_phys_addr;
+		comp_req->comn_mid.dest_data_addr =
+				cookie->qat_sgl_dst_phys_addr;
+		comp_req->comn_mid.src_length = 0;
+		comp_req->comn_mid.dst_length = 0;
 
 	} else {
+		/* flat aka linear buffer */
 		ICP_QAT_FW_COMN_PTR_TYPE_SET(comp_req->comn_hdr.comn_req_flags,
 				QAT_COMN_PTR_TYPE_FLAT);
 		comp_req->comn_mid.src_length = rte_pktmbuf_data_len(op->m_src);

@@ -89,6 +89,7 @@
 /* QuickAssist device */
 /* Max. number of QuickAssist devices which can be attached */
 #define RTE_PMD_QAT_MAX_PCI_DEVICES 48
+#define RTE_PMD_QAT_COMP_SGL_MAX_SEGMENTS 16
 
 /* virtio crypto defines */
 #define RTE_MAX_VIRTIO_CRYPTO 32

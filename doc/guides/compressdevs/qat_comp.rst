@@ -35,8 +35,6 @@ Checksum generation:
 Limitations
 -----------
 
-* Chained mbufs are not yet supported, therefore max data size which can be passed to the PMD in a single mbuf is 64K - 1. If data is larger than this it will need to be split up and sent as multiple operations.
-
 * Compressdev level 0, no compression, is not supported.
 
 * Dynamic Huffman encoding is not yet supported.

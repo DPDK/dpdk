@@ -499,6 +499,7 @@ CONFIG_RTE_LIBRTE_PMD_QAT_SYM=n
 # Max. number of QuickAssist devices, which can be detected and attached
 #
 CONFIG_RTE_PMD_QAT_MAX_PCI_DEVICES=48
+CONFIG_RTE_PMD_QAT_COMP_SGL_MAX_SEGMENTS=16
 
 #
 # Compile PMD for virtio crypto devices
