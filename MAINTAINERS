@@ -750,6 +750,8 @@ Softnic PMD
 M: Jasvinder Singh <jasvinder.singh@intel.com>
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
 F: drivers/net/softnic/
+F: doc/guides/nics/features/softnic.ini
+F: doc/guides/nics/softnic.rst
 
 
 Crypto Drivers

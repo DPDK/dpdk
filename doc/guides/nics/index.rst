@@ -38,6 +38,7 @@ Network Interface Controller Drivers
     octeontx
     qede
     sfc_efx
+    softnic
     szedata2
     tap
     thunderx

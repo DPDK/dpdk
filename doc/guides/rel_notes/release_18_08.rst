@@ -76,6 +76,12 @@ New Features
   * Add handlers to add/delete VxLAN port number.
   * Add devarg to specify ingress VLAN rewrite mode.
 
+* **SoftNIC PMD rework.**
+
+  The SoftNIC PMD infrastructure is restructured to use the Packet Framework,
+  which makes it more flexible, modular and easier to add new functionality
+  in future.
+
 * **Updated the AESNI MB PMD.**
 
   The AESNI MB PMD has been updated with additional support for:

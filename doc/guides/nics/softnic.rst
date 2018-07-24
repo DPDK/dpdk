@@ -1,0 +1,250 @@
+..  SPDX-License-Identifier: BSD-3-Clause
+    Copyright(c) 2018 Intel Corporation.
+
+Soft NIC Poll Mode Driver
+=========================
+
+The Soft NIC allows building custom NIC pipelines in software. The Soft NIC pipeline
+is DIY and reconfigurable through ``firmware`` (DPDK Packet Framework script).
+
+The Soft NIC leverages the DPDK Packet Framework libraries (librte_port,
+librte_table and librte_pipeline) to make it modular, flexible and extensible
+with new functionality. Please refer to DPDK Programmer's Guide, Chapter
+``Packet Framework`` and DPDK Sample Application User Guide,
+Chapter ``IP Pipeline Application`` for more details.
+
+The Soft NIC is configured through the standard DPDK ethdev API (ethdev, flow,
+QoS, security). The internal framework is not externally visible.
+
+Key benefits:
+ - Can be used to augment missing features to HW NICs.
+ - Allows consumption of advanced DPDK features without application redesign.
+ - Allows out-of-the-box performance boost of DPDK consumers applications simply by
+   instantiating this type of Ethernet device.
+
+Flow
+----
+* ``Device creation``: Each Soft NIC instance is a virtual device.
+
+* ``Device start``: The Soft NIC firmware script is executed every time the device
+  is started. The firmware script typically creates several internal objects,
+  such as: memory pools, SW queues, traffic manager, action profiles, pipelines,
+  etc.
+
+* ``Device stop``: All the internal objects that were previously created by the
+  firmware script during device start are now destroyed.
+
+* ``Device run``: Each Soft NIC device needs one or several CPU cores to run.
+  The firmware script maps each internal pipeline to a CPU core. Multiple
+  pipelines can be mapped to the same CPU core. In order for a given pipeline
+  assigned to CPU core X to run, the application needs to periodically call on
+  CPU core X the `rte_pmd_softnic_run()` function for the current Soft NIC
+  device.
+
+* ``Application run``: The application reads packets from the Soft NIC device RX
+  queues and writes packets to the Soft NIC device TX queues.
+
+Supported Operating Systems
+---------------------------
+
+Any Linux distribution fulfilling the conditions described in ``System Requirements``
+section of :ref:`the DPDK documentation <linux_gsg>` or refer to *DPDK
+Release Notes*.
+
+Build options
+-------------
+
+The default PMD configuration available in the common_linuxapp configuration file:
+
+CONFIG_RTE_LIBRTE_PMD_SOFTNIC=y
+
+Once the DPDK is built, all the DPDK applications include support for the
+Soft NIC PMD.
+
+Soft NIC PMD arguments
+----------------------
+
+The user can specify below arguments in EAL ``--vdev`` options to create the
+Soft NIC device instance:
+
+        --vdev "net_softnic0,firmware=firmware.cli,conn_port=8086"
+
+#.  ``firmware``: path to the firmware script used for Soft NIC configuration.
+    The example "firmware" script is provided at `drivers/net/softnic/`.
+    (Optional: No, Default = NA)
+
+#.  ``conn_port``: tcp connection port (non-zero value) used by remote client
+    (for examples- telnet, netcat, etc.) to connect and configure Soft NIC device in run-time.
+    (Optional: yes, Default value: 0, no connection with external client)
+
+#.  ``cpu_id``: numa node id. (Optional: yes, Default value: 0)
+
+#.  ``tm_n_queues``: number of traffic manager's scheduler queues. The traffic manager
+    is based on DPDK *librte_sched* library. (Optional: yes, Default value: 65,536 queues)
+
+#.  ``tm_qsize0``: size of scheduler queue 0 per traffic class of the pipes/subscribers.
+    (Optional: yes, Default: 64)
+
+#.  ``tm_qsize1``: size of scheduler queue 1 per traffic class of the pipes/subscribers.
+    (Optional: yes, Default: 64)
+
+#.  ``tm_qsize2``: size of scheduler queue 2 per traffic class of the pipes/subscribers.
+    (Optional: yes, Default: 64)
+
+#.  ``tm_qsize3``: size of scheduler queue 3 per traffic class of the pipes/subscribers.
+    (Optional: yes, Default: 64)
+
+
+Soft NIC testing
+----------------
+
+* Run testpmd application in Soft NIC forwarding mode with loopback feature
+  enabled on Soft NIC port:
+
+    .. code-block:: console
+
+         ./testpmd -c 0x3 --vdev 'net_softnic0,firmware=<script path>/firmware.cli,cpu_id=0,conn_port=8086' -- -i
+              --forward-mode=softnic --portmask=0x2
+
+    .. code-block:: console
+
+        ...
+        Interactive-mode selected
+        Set softnic packet forwarding mode
+        ...
+        Configuring Port 0 (socket 0)
+        Port 0: 90:E2:BA:37:9D:DC
+        Configuring Port 1 (socket 0)
+
+        ; SPDX-License-Identifier: BSD-3-Clause
+        ; Copyright(c) 2018 Intel Corporation
+
+        link LINK dev 0000:02:00.0
+
+        pipeline RX period 10 offset_port_id 0
+        pipeline RX port in bsz 32 link LINK rxq 0
+        pipeline RX port out bsz 32 swq RXQ0
+        pipeline RX table match stub
+        pipeline RX port in 0 table 0
+
+        pipeline TX period 10 offset_port_id 0
+        pipeline TX port in bsz 32 swq TXQ0
+        pipeline TX port out bsz 32 link LINK txq 0
+        pipeline TX table match stub
+        pipeline TX port in 0 table 0
+
+        thread 1 pipeline RX enable
+        thread 1 pipeline TX enable
+        Port 1: 00:00:00:00:00:00
+        Checking link statuses...
+        Done
+        testpmd>
+
+* Start forwarding
+
+    .. code-block:: console
+
+         testpmd> start
+         softnic packet forwarding - ports=1 - cores=1 - streams=1 - NUMA support enabled, MP over anonymous pages disabled
+         Logical Core 1 (socket 0) forwards packets on 1 streams:
+         RX P=2/Q=0 (socket 0) -> TX P=2/Q=0 (socket 0) peer=02:00:00:00:00:02
+
+         softnic packet forwarding packets/burst=32
+         nb forwarding cores=1 - nb forwarding ports=1
+         port 0: RX queue number: 1 Tx queue number: 1
+         Rx offloads=0x1000 Tx offloads=0x0
+         RX queue: 0
+         RX desc=512 - RX free threshold=32
+         RX threshold registers: pthresh=8 hthresh=8  wthresh=0
+         RX Offloads=0x0
+         TX queue: 0
+         TX desc=512 - TX free threshold=32
+         TX threshold registers: pthresh=32 hthresh=0  wthresh=0
+         TX offloads=0x0 - TX RS bit threshold=32
+         port 1: RX queue number: 1 Tx queue number: 1
+         Rx offloads=0x0 Tx offloads=0x0
+         RX queue: 0
+         RX desc=0 - RX free threshold=0
+         RX threshold registers: pthresh=0 hthresh=0  wthresh=0
+         RX Offloads=0x0
+         TX queue: 0
+         TX desc=0 - TX free threshold=0
+         TX threshold registers: pthresh=0 hthresh=0  wthresh=0
+         TX offloads=0x0 - TX RS bit threshold=0
+
+* Start remote client (e.g. telnet) to communicate with the softnic device:
+
+    .. code-block:: console
+
+        $ telnet 127.0.0.1 8086
+        Trying 127.0.0.1...
+        Connected to 127.0.0.1.
+        Escape character is '^]'.
+
+        Welcome to Soft NIC!
+
+        softnic>
+
+* Add/update Soft NIC pipeline table match-action entries from telnet client:
+
+    .. code-block:: console
+
+        softnic> pipeline RX table 0 rule add match default action fwd port 0
+        softnic> pipeline TX table 0 rule add match default action fwd port 0
+
+Soft NIC Firmware
+-----------------
+
+The Soft NIC firmware, for example- `softnic/firmware.cli`, consists of following CLI commands
+for creating and managing software based NIC pipelines. For more details, please refer to CLI
+command description provided in `softnic/rte_eth_softnic_cli.c`.
+
+* Physical port for packets send/receive:
+
+    .. code-block:: console
+
+        link LINK dev 0000:02:00.0
+
+* Pipeline create:
+
+    .. code-block:: console
+
+        pipeline RX period 10 offset_port_id 0           (Soft NIC rx-path pipeline)
+        pipeline TX period 10 offset_port_id 0           (Soft NIC tx-path pipeline)
+
+* Pipeline input/output port create
+
+    .. code-block:: console
+
+        pipeline RX port in bsz 32 link LINK rxq 0      (Soft NIC rx pipeline input port)
+        pipeline RX port out bsz 32 swq RXQ0            (Soft NIC rx pipeline output port)
+        pipeline TX port in bsz 32 swq TXQ0             (Soft NIC tx pipeline input port)
+        pipeline TX port out bsz 32 link LINK txq 0     (Soft NIC tx pipeline output port)
+
+* Pipeline table create
+
+    .. code-block:: console
+
+        pipeline RX table match stub             (Soft NIC rx pipeline match-action table)
+        pipeline TX table match stub             (Soft NIC tx pipeline match-action table)
+
+* Pipeline input port connection with table
+
+    .. code-block:: console
+
+        pipeline RX port in 0 table 0          (Soft NIC rx pipeline input port 0 connection with table 0)
+        pipeline TX port in 0 table 0          (Soft NIC tx pipeline input port 0 connection with table 0)
+
+* Pipeline table match-action rules add
+
+    .. code-block:: console
+
+        pipeline RX table 0 rule add match default action fwd port 0        (Soft NIC rx pipeline table 0 rule)
+        pipeline TX table 0 rule add match default action fwd port 0        (Soft NIC tx pipeline table 0 rule)
+
+* Enable pipeline on CPU thread
+
+    .. code-block:: console
+
+        thread 1 pipeline RX enable        (Soft NIC rx pipeline enable on cpu thread id 1)
+        thread 1 pipeline TX enable        (Soft NIC tx pipeline enable on cpu thread id 1)
