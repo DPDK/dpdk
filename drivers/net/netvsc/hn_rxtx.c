@@ -728,17 +728,11 @@ hn_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		      struct rte_mempool *mp)
 {
 	struct hn_data *hv = dev->data->dev_private;
-	uint32_t qmax = hv->rxbuf_section_cnt;
 	char ring_name[RTE_RING_NAMESIZE];
 	struct hn_rx_queue *rxq;
 	unsigned int count;
-	size_t size;
-	int err = -ENOMEM;
 
 	PMD_INIT_FUNC_TRACE();
-
-	if (nb_desc == 0 || nb_desc > qmax)
-		nb_desc = qmax;
 
 	if (queue_idx == 0) {
 		rxq = hv->primary;
@@ -749,14 +743,9 @@ hn_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	rxq->mb_pool = mp;
-
-	count = rte_align32pow2(nb_desc);
-	size = sizeof(struct rte_ring) + count * sizeof(void *);
-	rxq->rx_ring = rte_malloc_socket("RX_RING", size,
-					 RTE_CACHE_LINE_SIZE,
-					 socket_id);
-	if (!rxq->rx_ring)
-		goto fail;
+	count = rte_mempool_avail_count(mp) / dev->data->nb_rx_queues;
+	if (nb_desc == 0 || nb_desc > count)
+		nb_desc = count;
 
 	/*
 	 * Staging ring from receive event logic to rx_pkts.
@@ -765,9 +754,10 @@ hn_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	 */
 	snprintf(ring_name, sizeof(ring_name),
 		 "hn_rx_%u_%u", dev->data->port_id, queue_idx);
-	err = rte_ring_init(rxq->rx_ring, ring_name,
-			    count, 0);
-	if (err)
+	rxq->rx_ring = rte_ring_create(ring_name,
+				       rte_align32pow2(nb_desc),
+				       socket_id, 0);
+	if (!rxq->rx_ring)
 		goto fail;
 
 	dev->data->rx_queues[queue_idx] = rxq;
