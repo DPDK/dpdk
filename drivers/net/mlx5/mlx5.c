@@ -1330,7 +1330,8 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	 * Netlink calls assuming kernel drivers are recent enough to
 	 * support them.
 	 *
-	 * In the event of identification failure through Netlink, either:
+	 * In the event of identification failure through Netlink, try again
+	 * through sysfs, then either:
 	 *
 	 * 1. No device matches (n == 0), complain and bail out.
 	 * 2. A single IB device matches (n == 1) and is not a representor,
@@ -1349,7 +1350,9 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		if (nl_route < 0 ||
 		    !list[i].ifindex ||
 		    mlx5_nl_switch_info(nl_route, list[i].ifindex,
-					&list[i].info)) {
+					&list[i].info) ||
+		    ((!list[i].info.representor && !list[i].info.master) &&
+		     mlx5_sysfs_switch_info(list[i].ifindex, &list[i].info))) {
 			list[i].ifindex = 0;
 			memset(&list[i].info, 0, sizeof(list[i].info));
 			continue;

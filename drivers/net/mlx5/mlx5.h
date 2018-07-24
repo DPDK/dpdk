@@ -273,6 +273,8 @@ eth_rx_burst_t mlx5_select_rx_function(struct rte_eth_dev *dev);
 unsigned int mlx5_dev_to_port_id(const struct rte_device *dev,
 				 uint16_t *port_list,
 				 unsigned int port_list_n);
+int mlx5_sysfs_switch_info(unsigned int ifindex,
+			   struct mlx5_switch_info *info);
 
 /* mlx5_mac.c */
 

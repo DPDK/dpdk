@@ -1321,3 +1321,56 @@ mlx5_dev_to_port_id(const struct rte_device *dev, uint16_t *port_list,
 	}
 	return n;
 }
+
+/**
+ * Get switch information associated with network interface.
+ *
+ * @param ifindex
+ *   Network interface index.
+ * @param[out] info
+ *   Switch information object, populated in case of success.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_sysfs_switch_info(unsigned int ifindex, struct mlx5_switch_info *info)
+{
+	char ifname[IF_NAMESIZE];
+	FILE *file;
+	struct mlx5_switch_info data = { .master = 0, };
+	bool port_name_set = false;
+	bool port_switch_id_set = false;
+	char c;
+
+	if (!if_indextoname(ifindex, ifname)) {
+		rte_errno = errno;
+		return -rte_errno;
+	}
+
+	MKSTR(phys_port_name, "/sys/class/net/%s/phys_port_name",
+	      ifname);
+	MKSTR(phys_switch_id, "/sys/class/net/%s/phys_switch_id",
+	      ifname);
+
+	file = fopen(phys_port_name, "rb");
+	if (file != NULL) {
+		port_name_set =
+			fscanf(file, "%d%c", &data.port_name, &c) == 2 &&
+			c == '\n';
+		fclose(file);
+	}
+	file = fopen(phys_switch_id, "rb");
+	if (file == NULL) {
+		rte_errno = errno;
+		return -rte_errno;
+	}
+	port_switch_id_set =
+		fscanf(file, "%" SCNx64 "%c", &data.switch_id, &c) == 2 &&
+		c == '\n';
+	fclose(file);
+	data.master = port_switch_id_set && !port_name_set;
+	data.representor = port_switch_id_set && port_name_set;
+	*info = data;
+	return 0;
+}
