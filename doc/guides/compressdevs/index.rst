@@ -12,3 +12,4 @@ Compression Device Drivers
     overview
     isal
     qat_comp
+    zlib

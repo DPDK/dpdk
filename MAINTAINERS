@@ -875,6 +875,8 @@ F: doc/guides/compressdevs/features/isal.ini
 ZLIB
 M: Sunila Sahu <sunila.sahu@caviumnetworks.com>
 F: drivers/compress/zlib/
+F: doc/guides/compressdevs/zlib.rst
+F: doc/guides/compressdevs/features/zlib.ini
 
 
 Eventdev Drivers
