@@ -21,6 +21,8 @@ zlib_create(const char *name,
 		return -ENODEV;
 	}
 
+	dev->dev_ops = rte_zlib_pmd_ops;
+
 	return 0;
 }
 

@@ -24,5 +24,6 @@ LDLIBS += -lrte_bus_vdev
 
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_ZLIB) += zlib_pmd.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_ZLIB) += zlib_pmd_ops.c
 
 include $(RTE_SDK)/mk/rte.lib.mk
