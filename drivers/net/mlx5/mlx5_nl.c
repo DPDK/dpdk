@@ -89,8 +89,6 @@ struct mlx5_nl_ifindex_data {
 /**
  * Opens a Netlink socket.
  *
- * @param nl_groups
- *   Netlink group value (e.g. RTMGRP_LINK).
  * @param protocol
  *   Netlink protocol (e.g. NETLINK_ROUTE, NETLINK_RDMA).
  *
@@ -99,14 +97,13 @@ struct mlx5_nl_ifindex_data {
  *   rte_errno is set.
  */
 int
-mlx5_nl_init(uint32_t nl_groups, int protocol)
+mlx5_nl_init(int protocol)
 {
 	int fd;
 	int sndbuf_size = MLX5_SEND_BUF_SIZE;
 	int rcvbuf_size = MLX5_RECV_BUF_SIZE;
 	struct sockaddr_nl local = {
 		.nl_family = AF_NETLINK,
-		.nl_groups = nl_groups,
 	};
 	int ret;
 

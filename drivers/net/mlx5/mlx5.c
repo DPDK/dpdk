@@ -948,8 +948,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		rte_spinlock_init(&priv->uar_lock[i]);
 #endif
 	/* Some internal functions rely on Netlink sockets, open them now. */
-	priv->nl_socket_rdma = mlx5_nl_init(0, NETLINK_RDMA);
-	priv->nl_socket_route =	mlx5_nl_init(RTMGRP_LINK, NETLINK_ROUTE);
+	priv->nl_socket_rdma = mlx5_nl_init(NETLINK_RDMA);
+	priv->nl_socket_route =	mlx5_nl_init(NETLINK_ROUTE);
 	priv->nl_sn = 0;
 	priv->representor = !!switch_info->representor;
 	priv->domain_id = RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID;
@@ -1318,8 +1318,8 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	ibv_match[n] = NULL;
 
 	struct mlx5_dev_spawn_data list[n];
-	int nl_route = n ? mlx5_nl_init(0, NETLINK_ROUTE) : -1;
-	int nl_rdma = n ? mlx5_nl_init(0, NETLINK_RDMA) : -1;
+	int nl_route = n ? mlx5_nl_init(NETLINK_ROUTE) : -1;
+	int nl_rdma = n ? mlx5_nl_init(NETLINK_RDMA) : -1;
 	unsigned int i;
 	unsigned int u;
 

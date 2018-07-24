@@ -383,7 +383,7 @@ int mlx5_socket_connect(struct rte_eth_dev *priv);
 
 /* mlx5_nl.c */
 
-int mlx5_nl_init(uint32_t nlgroups, int protocol);
+int mlx5_nl_init(int protocol);
 int mlx5_nl_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac,
 			 uint32_t index);
 int mlx5_nl_mac_addr_remove(struct rte_eth_dev *dev, struct ether_addr *mac,
