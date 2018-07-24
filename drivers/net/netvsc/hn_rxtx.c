@@ -878,11 +878,11 @@ void hn_process_events(struct hn_data *hv, uint16_t queue_id)
 			PMD_DRV_LOG(ERR, "unknown chan pkt %u", pkt->type);
 			break;
 		}
+
+		if (rxq->rx_ring && rte_ring_full(rxq->rx_ring))
+			break;
 	}
 	rte_spinlock_unlock(&rxq->ring_lock);
-
-	if (unlikely(ret != -EAGAIN))
-		PMD_DRV_LOG(ERR, "channel receive failed: %d", ret);
 }
 
 static void hn_append_to_chim(struct hn_tx_queue *txq,
@@ -1248,7 +1248,7 @@ hn_xmit_pkts(void *ptxq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 			pkt = hn_try_txagg(hv, txq, pkt_size);
 			if (unlikely(!pkt))
-				goto fail;
+				break;
 
 			hn_encap(pkt, txq->queue_id, m);
 			hn_append_to_chim(txq, pkt, m);
@@ -1269,7 +1269,7 @@ hn_xmit_pkts(void *ptxq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			} else {
 				txd = hn_new_txd(hv, txq);
 				if (unlikely(!txd))
-					goto fail;
+					break;
 			}
 
 			pkt = txd->rndis_pkt;
@@ -1310,8 +1310,9 @@ hn_recv_pkts(void *prxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	if (unlikely(hv->closed))
 		return 0;
 
-	/* Get all outstanding receive completions */
-	hn_process_events(hv, rxq->queue_id);
+	/* If ring is empty then process more */
+	if (rte_ring_count(rxq->rx_ring) < nb_pkts)
+		hn_process_events(hv, rxq->queue_id);
 
 	/* Get mbufs off staging ring */
 	return rte_ring_sc_dequeue_burst(rxq->rx_ring, (void **)rx_pkts,
