@@ -20,29 +20,41 @@ struct evt_test *test;
 static void
 signal_handler(int signum)
 {
-	if (signum == SIGINT || signum == SIGTERM) {
+	int i;
+	static uint8_t once;
+
+	if ((signum == SIGINT || signum == SIGTERM) && !once) {
+		once = true;
 		printf("\nSignal %d received, preparing to exit...\n",
 				signum);
-		/* request all lcores to exit from the main loop */
-		*(int *)test->test_priv = true;
-		rte_wmb();
 
-		rte_eal_mp_wait_lcore();
+		if (test != NULL) {
+			/* request all lcores to exit from the main loop */
+			*(int *)test->test_priv = true;
+			rte_wmb();
 
-		if (test->ops.test_result)
-			test->ops.test_result(test, &opt);
+			if (test->ops.ethdev_destroy)
+				test->ops.ethdev_destroy(test, &opt);
 
-		if (test->ops.eventdev_destroy)
-			test->ops.eventdev_destroy(test, &opt);
+			rte_eal_mp_wait_lcore();
 
-		if (test->ops.ethdev_destroy)
-			test->ops.ethdev_destroy(test, &opt);
+			if (test->ops.test_result)
+				test->ops.test_result(test, &opt);
 
-		if (test->ops.mempool_destroy)
-			test->ops.mempool_destroy(test, &opt);
+			if (opt.prod_type == EVT_PROD_TYPE_ETH_RX_ADPTR) {
+				RTE_ETH_FOREACH_DEV(i)
+					rte_eth_dev_close(i);
+			}
 
-		if (test->ops.test_destroy)
-			test->ops.test_destroy(test, &opt);
+			if (test->ops.eventdev_destroy)
+				test->ops.eventdev_destroy(test, &opt);
+
+			if (test->ops.mempool_destroy)
+				test->ops.mempool_destroy(test, &opt);
+
+			if (test->ops.test_destroy)
+				test->ops.test_destroy(test, &opt);
+		}
 
 		/* exit with the expected status */
 		signal(signum, SIG_DFL);

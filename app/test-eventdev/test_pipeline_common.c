@@ -477,7 +477,6 @@ pipeline_ethdev_destroy(struct evt_test *test, struct evt_options *opt)
 	RTE_ETH_FOREACH_DEV(i) {
 		rte_event_eth_rx_adapter_stop(i);
 		rte_eth_dev_stop(i);
-		rte_eth_dev_close(i);
 	}
 }
 
