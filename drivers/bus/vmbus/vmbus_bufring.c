@@ -221,6 +221,9 @@ vmbus_rxbr_read(struct vmbus_br *rbr, void *data, size_t dlen, size_t skip)
 	if (vmbus_br_availread(rbr) < dlen + skip + sizeof(uint64_t))
 		return -EAGAIN;
 
+	/* Record where host was when we started read (for debug) */
+	rbr->windex = rbr->vbr->windex;
+
 	/*
 	 * Copy channel packet from RX bufring.
 	 */

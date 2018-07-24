@@ -337,11 +337,22 @@ int rte_vmbus_chan_recv(struct vmbus_channel *chan,
  * @param len
  *	Pointer to size of receive buffer (in/out)
  * @return
- *   On success, returns 0
+ *   On success, returns number of bytes read.
  *   On failure, returns negative errno.
  */
 int rte_vmbus_chan_recv_raw(struct vmbus_channel *chan,
 			    void *data, uint32_t *len);
+
+/**
+ * Notify host of bytes read (after recv_raw)
+ * Signals host if required.
+ *
+ * @param channel
+ *	Pointer to vmbus_channel structure.
+ * @param bytes_read
+ *	Number of bytes read since last signal
+ */
+void rte_vmbus_chan_signal_read(struct vmbus_channel *chan, uint32_t bytes_read);
 
 /**
  * Determine sub channel index of the given channel

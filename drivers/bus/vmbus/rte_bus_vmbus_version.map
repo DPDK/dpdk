@@ -10,6 +10,7 @@ DPDK_18.08 {
 	rte_vmbus_chan_rx_empty;
 	rte_vmbus_chan_send;
 	rte_vmbus_chan_send_sglist;
+	rte_vmbus_chan_signal_read;
 	rte_vmbus_chan_signal_tx;
 	rte_vmbus_irq_mask;
 	rte_vmbus_irq_read;

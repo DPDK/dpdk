@@ -40,7 +40,7 @@
 #define HN_TXCOPY_THRESHOLD	512
 
 #define HN_RXCOPY_THRESHOLD	256
-#define HN_RXQ_EVENT_DEFAULT	1024
+#define HN_RXQ_EVENT_DEFAULT	2048
 
 struct hn_rxinfo {
 	uint32_t	vlan_info;
@@ -709,7 +709,8 @@ struct hn_rx_queue *hn_rx_queue_alloc(struct hn_data *hv,
 {
 	struct hn_rx_queue *rxq;
 
-	rxq = rte_zmalloc_socket("HN_RXQ", sizeof(*rxq),
+	rxq = rte_zmalloc_socket("HN_RXQ",
+				 sizeof(*rxq) + HN_RXQ_EVENT_DEFAULT,
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (rxq) {
 		rxq->hv = hv;
@@ -717,16 +718,6 @@ struct hn_rx_queue *hn_rx_queue_alloc(struct hn_data *hv,
 		rte_spinlock_init(&rxq->ring_lock);
 		rxq->port_id = hv->port_id;
 		rxq->queue_id = queue_id;
-
-		rxq->event_sz = HN_RXQ_EVENT_DEFAULT;
-		rxq->event_buf = rte_malloc_socket("RX_EVENTS",
-						   rxq->event_sz,
-						   RTE_CACHE_LINE_SIZE,
-						   socket_id);
-		if (!rxq->event_buf) {
-			rte_free(rxq);
-			rxq = NULL;
-		}
 	}
 	return rxq;
 }
@@ -835,6 +826,7 @@ void hn_process_events(struct hn_data *hv, uint16_t queue_id)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[hv->port_id];
 	struct hn_rx_queue *rxq;
+	uint32_t bytes_read = 0;
 	int ret = 0;
 
 	rxq = queue_id == 0 ? hv->primary : dev->data->rx_queues[queue_id];
@@ -852,34 +844,21 @@ void hn_process_events(struct hn_data *hv, uint16_t queue_id)
 
 	for (;;) {
 		const struct vmbus_chanpkt_hdr *pkt;
-		uint32_t len = rxq->event_sz;
+		uint32_t len = HN_RXQ_EVENT_DEFAULT;
 		const void *data;
 
 		ret = rte_vmbus_chan_recv_raw(rxq->chan, rxq->event_buf, &len);
 		if (ret == -EAGAIN)
 			break;	/* ring is empty */
 
-		if (ret == -ENOBUFS) {
-			/* expanded buffer needed */
-			len = rte_align32pow2(len);
-			PMD_DRV_LOG(DEBUG, "expand event buf to %u", len);
+		else if (ret == -ENOBUFS)
+			rte_exit(EXIT_FAILURE, "event buffer not big enough (%u < %u)",
+				 HN_RXQ_EVENT_DEFAULT, len);
+		else if (ret <= 0)
+			rte_exit(EXIT_FAILURE,
+				 "vmbus ring buffer error: %d", ret);
 
-			rxq->event_buf = rte_realloc(rxq->event_buf,
-						     len, RTE_CACHE_LINE_SIZE);
-			if (rxq->event_buf) {
-				rxq->event_sz = len;
-				continue;
-			}
-
-			rte_exit(EXIT_FAILURE, "can not expand event buf!\n");
-			break;
-		}
-
-		if (ret != 0) {
-			PMD_DRV_LOG(ERR, "vmbus ring buffer error: %d", ret);
-			break;
-		}
-
+		bytes_read += ret;
 		pkt = (const struct vmbus_chanpkt_hdr *)rxq->event_buf;
 		data = (char *)rxq->event_buf + vmbus_chanpkt_getlen(pkt->hlen);
 
@@ -904,6 +883,10 @@ void hn_process_events(struct hn_data *hv, uint16_t queue_id)
 		if (rxq->rx_ring && rte_ring_full(rxq->rx_ring))
 			break;
 	}
+
+	if (bytes_read > 0)
+		rte_vmbus_chan_signal_read(rxq->chan, bytes_read);
+
 	rte_spinlock_unlock(&rxq->ring_lock);
 }
 

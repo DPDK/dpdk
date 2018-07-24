@@ -176,49 +176,37 @@ bool rte_vmbus_chan_rx_empty(const struct vmbus_channel *channel)
 	return br->vbr->rindex == br->vbr->windex;
 }
 
-static int vmbus_read_and_signal(struct vmbus_channel *chan,
-				 void *data, size_t dlen, size_t skip)
+/* Signal host after reading N bytes */
+void rte_vmbus_chan_signal_read(struct vmbus_channel *chan, uint32_t bytes_read)
 {
 	struct vmbus_br *rbr = &chan->rxbr;
-	uint32_t write_sz, pending_sz, bytes_read;
-	int error;
-
-	/* Record where host was when we started read (for debug) */
-	rbr->windex = rbr->vbr->windex;
-
-	/* Read data and skip packet header */
-	error = vmbus_rxbr_read(rbr, data, dlen, skip);
-	if (error)
-		return error;
+	uint32_t write_sz, pending_sz;
 
 	/* No need for signaling on older versions */
 	if (!rbr->vbr->feature_bits.feat_pending_send_sz)
-		return 0;
+		return;
 
 	/* Make sure reading of pending happens after new read index */
 	rte_mb();
 
 	pending_sz = rbr->vbr->pending_send;
 	if (!pending_sz)
-		return 0;
+		return;
 
 	rte_smp_rmb();
 	write_sz = vmbus_br_availwrite(rbr, rbr->vbr->windex);
-	bytes_read = dlen + skip + sizeof(uint64_t);
 
 	/* If there was space before then host was not blocked */
 	if (write_sz - bytes_read > pending_sz)
-		return 0;
+		return;
 
 	/* If pending write will not fit */
 	if (write_sz <= pending_sz)
-		return 0;
+		return;
 
 	vmbus_set_event(chan->device, chan);
-	return 0;
 }
 
-/* TODO: replace this with inplace ring buffer (no copy) */
 int rte_vmbus_chan_recv(struct vmbus_channel *chan, void *data, uint32_t *len,
 			uint64_t *request_id)
 {
@@ -256,10 +244,16 @@ int rte_vmbus_chan_recv(struct vmbus_channel *chan, void *data, uint32_t *len,
 	if (request_id)
 		*request_id = pkt.xactid;
 
-	/* Read data and skip the header */
-	return vmbus_read_and_signal(chan, data, dlen, hlen);
+	/* Read data and skip packet header */
+	error = vmbus_rxbr_read(&chan->rxbr, data, dlen, hlen);
+	if (error)
+		return error;
+
+	rte_vmbus_chan_signal_read(chan, dlen + hlen + sizeof(uint64_t));
+	return 0;
 }
 
+/* TODO: replace this with inplace ring buffer (no copy) */
 int rte_vmbus_chan_recv_raw(struct vmbus_channel *chan,
 			    void *data, uint32_t *len)
 {
@@ -291,8 +285,13 @@ int rte_vmbus_chan_recv_raw(struct vmbus_channel *chan,
 	if (unlikely(dlen > bufferlen))
 		return -ENOBUFS;
 
-	/* Put packet header in data buffer */
-	return vmbus_read_and_signal(chan, data, dlen, 0);
+	/* Read data and skip packet header */
+	error = vmbus_rxbr_read(&chan->rxbr, data, dlen, 0);
+	if (error)
+		return error;
+
+	/* Return the number of bytes read */
+	return dlen + sizeof(uint64_t);
 }
 
 int vmbus_chan_create(const struct rte_vmbus_device *device,
