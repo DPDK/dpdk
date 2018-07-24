@@ -731,8 +731,7 @@ alloc_seg_walk(const struct rte_memseg_list *msl, void *arg)
 	need = wa->n_segs;
 
 	/* try finding space in memseg list */
-	cur_idx = rte_fbarray_find_prev_n_free(&cur_msl->memseg_arr,
-			cur_msl->memseg_arr.len - 1, need);
+	cur_idx = rte_fbarray_find_next_n_free(&cur_msl->memseg_arr, 0, need);
 	if (cur_idx < 0)
 		return 0;
 	start_idx = cur_idx;
