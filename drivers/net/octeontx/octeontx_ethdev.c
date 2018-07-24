@@ -353,6 +353,9 @@ octeontx_dev_close(struct rte_eth_dev *dev)
 
 		rte_free(txq);
 	}
+
+	dev->tx_pkt_burst = NULL;
+	dev->rx_pkt_burst = NULL;
 }
 
 static int
@@ -446,9 +449,6 @@ octeontx_dev_stop(struct rte_eth_dev *dev)
 			     ret);
 		return;
 	}
-
-	dev->tx_pkt_burst = NULL;
-	dev->rx_pkt_burst = NULL;
 }
 
 static void
