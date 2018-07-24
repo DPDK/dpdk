@@ -959,7 +959,10 @@ qede_mac_int_ops(struct rte_eth_dev *eth_dev, struct ecore_filter_ucast *ucast,
 	if (rc == 0)
 		rc = ecore_filter_ucast_cmd(edev, ucast,
 					    ECORE_SPQ_MODE_CB, NULL);
-	if (rc != ECORE_SUCCESS)
+	/* Indicate error only for add filter operation.
+	 * Delete filter operations are not severe.
+	 */
+	if ((rc != ECORE_SUCCESS) && add)
 		DP_ERR(edev, "MAC filter failed, rc = %d, op = %d\n",
 		       rc, add);
 
