@@ -78,8 +78,6 @@ As a result the level mappings from the API to the PMD are shown below.
 Limitations
 -----------
 
-* Chained mbufs will not be supported until a future release, meaning max data size being passed to PMD through a single mbuf is 64K - 1. If data is larger than this it will need to be split up and sent as multiple operations.
-
 * Compressdev level 0, no compression, is not supported.
 
 * Checksums will not be supported until future release.

@@ -12,7 +12,10 @@
 static const struct rte_compressdev_capabilities isal_pmd_capabilities[] = {
 	{
 		.algo = RTE_COMP_ALGO_DEFLATE,
-		.comp_feature_flags =	RTE_COMP_FF_SHAREABLE_PRIV_XFORM |
+		.comp_feature_flags =	RTE_COMP_FF_OOP_SGL_IN_SGL_OUT |
+					RTE_COMP_FF_OOP_SGL_IN_LB_OUT |
+					RTE_COMP_FF_OOP_LB_IN_SGL_OUT |
+					RTE_COMP_FF_SHAREABLE_PRIV_XFORM |
 					RTE_COMP_FF_HUFFMAN_FIXED |
 					RTE_COMP_FF_HUFFMAN_DYNAMIC,
 		.window_size = {

@@ -86,6 +86,10 @@ New Features
   operations in software. See the :doc:`../compressdevs/qat_comp` compression
   driver guide for details on this new driver.
 
+* **Updated the ISA-L PMD.**
+
+  Added support for chained mbufs (input and output).
+
 
 API Changes
 -----------
