@@ -1729,8 +1729,20 @@ static void qede_dev_close(struct rte_eth_dev *eth_dev)
 	qdev->ops->common->slowpath_stop(edev);
 	qdev->ops->common->remove(edev);
 	rte_intr_disable(&pci_dev->intr_handle);
-	rte_intr_callback_unregister(&pci_dev->intr_handle,
-				     qede_interrupt_handler, (void *)eth_dev);
+
+	switch (pci_dev->intr_handle.type) {
+	case RTE_INTR_HANDLE_UIO_INTX:
+	case RTE_INTR_HANDLE_VFIO_LEGACY:
+		rte_intr_callback_unregister(&pci_dev->intr_handle,
+					     qede_interrupt_handler_intx,
+					     (void *)eth_dev);
+		break;
+	default:
+		rte_intr_callback_unregister(&pci_dev->intr_handle,
+					   qede_interrupt_handler,
+					   (void *)eth_dev);
+	}
+
 	if (ECORE_IS_CMT(edev))
 		rte_eal_alarm_cancel(qede_poll_sp_sb_cb, (void *)eth_dev);
 }
