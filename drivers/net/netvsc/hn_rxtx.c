@@ -268,6 +268,17 @@ hn_dev_tx_queue_release(void *arg)
 	rte_free(txq);
 }
 
+void
+hn_dev_tx_queue_info(struct rte_eth_dev *dev, uint16_t queue_idx,
+		     struct rte_eth_txq_info *qinfo)
+{
+	struct hn_data *hv = dev->data->dev_private;
+	struct hn_tx_queue *txq = dev->data->rx_queues[queue_idx];
+
+	qinfo->conf.tx_free_thresh = txq->free_thresh;
+	qinfo->nb_desc = hv->tx_pool->size;
+}
+
 static void
 hn_nvs_send_completed(struct rte_eth_dev *dev, uint16_t queue_id,
 		      unsigned long xactid, const struct hn_nvs_rndis_ack *ack)
@@ -788,6 +799,17 @@ hn_dev_rx_queue_release(void *arg)
 		rte_free(rxq->event_buf);
 		rte_free(rxq);
 	}
+}
+
+void
+hn_dev_rx_queue_info(struct rte_eth_dev *dev, uint16_t queue_idx,
+		     struct rte_eth_rxq_info *qinfo)
+{
+	struct hn_rx_queue *rxq = dev->data->rx_queues[queue_idx];
+
+	qinfo->mp = rxq->mb_pool;
+	qinfo->scattered_rx = 1;
+	qinfo->nb_desc = rte_ring_get_capacity(rxq->rx_ring);
 }
 
 static void
