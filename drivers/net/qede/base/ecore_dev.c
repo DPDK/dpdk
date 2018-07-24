@@ -2511,15 +2511,21 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 			}
 		}
 
-		/* Log and clean previous pglue_b errors if such exist */
+		/* Log and clear previous pglue_b errors if such exist */
 		ecore_pglueb_rbc_attn_handler(p_hwfn, p_hwfn->p_main_ptt, true);
-		ecore_pglueb_clear_err(p_hwfn, p_hwfn->p_main_ptt);
 
 		/* Enable the PF's internal FID_enable in the PXP */
 		rc = ecore_pglueb_set_pfid_enable(p_hwfn, p_hwfn->p_main_ptt,
 						  true);
 		if (rc != ECORE_SUCCESS)
 			goto load_err;
+
+		/* Clear the pglue_b was_error indication.
+		 * In E4 it must be done after the BME and the internal
+		 * FID_enable for the PF are set, since VDMs may cause the
+		 * indication to be set again.
+		 */
+		ecore_pglueb_clear_err(p_hwfn, p_hwfn->p_main_ptt);
 
 		switch (load_code) {
 		case FW_MSG_CODE_DRV_LOAD_ENGINE:
