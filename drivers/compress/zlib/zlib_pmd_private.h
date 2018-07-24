@@ -61,6 +61,10 @@ struct zlib_priv_xform {
 	struct zlib_stream stream;
 } __rte_cache_aligned;
 
+int
+zlib_set_stream_parameters(const struct rte_comp_xform *xform,
+		struct zlib_stream *stream);
+
 /** Device specific operations function pointer structure */
 extern struct rte_compressdev_ops *rte_zlib_pmd_ops;
 

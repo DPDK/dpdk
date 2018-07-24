@@ -7,6 +7,100 @@
 
 #include "zlib_pmd_private.h"
 
+/** Parse comp xform and set private xform/stream parameters */
+int
+zlib_set_stream_parameters(const struct rte_comp_xform *xform,
+		struct zlib_stream *stream)
+{
+	int strategy, level, wbits;
+	z_stream *strm = &stream->strm;
+
+	/* allocate deflate state */
+	strm->zalloc = Z_NULL;
+	strm->zfree = Z_NULL;
+	strm->opaque = Z_NULL;
+
+	switch (xform->type) {
+	case RTE_COMP_COMPRESS:
+		/** Compression window bits */
+		switch (xform->compress.algo) {
+		case RTE_COMP_ALGO_DEFLATE:
+			wbits = -(xform->compress.window_size);
+			break;
+		default:
+			ZLIB_PMD_ERR("Compression algorithm not supported\n");
+			return -1;
+		}
+		/** Compression Level */
+		switch (xform->compress.level) {
+		case RTE_COMP_LEVEL_PMD_DEFAULT:
+			level = Z_DEFAULT_COMPRESSION;
+			break;
+		case RTE_COMP_LEVEL_NONE:
+			level = Z_NO_COMPRESSION;
+			break;
+		case RTE_COMP_LEVEL_MIN:
+			level = Z_BEST_SPEED;
+			break;
+		case RTE_COMP_LEVEL_MAX:
+			level = Z_BEST_COMPRESSION;
+			break;
+		default:
+			level = xform->compress.level;
+			if (level < RTE_COMP_LEVEL_MIN ||
+					level > RTE_COMP_LEVEL_MAX) {
+				ZLIB_PMD_ERR("Compression level %d "
+						"not supported\n",
+						level);
+				return -1;
+			}
+			break;
+		}
+		/** Compression strategy */
+		switch (xform->compress.deflate.huffman) {
+		case RTE_COMP_HUFFMAN_DEFAULT:
+			strategy = Z_DEFAULT_STRATEGY;
+			break;
+		case RTE_COMP_HUFFMAN_FIXED:
+			strategy = Z_FIXED;
+			break;
+		case RTE_COMP_HUFFMAN_DYNAMIC:
+			strategy = Z_DEFAULT_STRATEGY;
+			break;
+		default:
+			ZLIB_PMD_ERR("Compression strategy not supported\n");
+			return -1;
+		}
+		if (deflateInit2(strm, level,
+					Z_DEFLATED, wbits,
+					DEF_MEM_LEVEL, strategy) != Z_OK) {
+			ZLIB_PMD_ERR("Deflate init failed\n");
+			return -1;
+		}
+		break;
+
+	case RTE_COMP_DECOMPRESS:
+		/** window bits */
+		switch (xform->decompress.algo) {
+		case RTE_COMP_ALGO_DEFLATE:
+			wbits = -(xform->decompress.window_size);
+			break;
+		default:
+			ZLIB_PMD_ERR("Compression algorithm not supported\n");
+			return -1;
+		}
+
+		if (inflateInit2(strm, wbits) != Z_OK) {
+			ZLIB_PMD_ERR("Inflate init failed\n");
+			return -1;
+		}
+		break;
+	default:
+		return -1;
+	}
+	return 0;
+}
+
 static int
 zlib_create(const char *name,
 		struct rte_vdev_device *vdev,

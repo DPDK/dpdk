@@ -213,6 +213,76 @@ qp_setup_cleanup:
 	return -1;
 }
 
+/** Configure stream */
+static int
+zlib_pmd_stream_create(struct rte_compressdev *dev,
+		const struct rte_comp_xform *xform,
+		void **zstream)
+{
+	int ret = 0;
+	struct zlib_stream *stream;
+	struct zlib_private *internals = dev->data->dev_private;
+
+	if (xform == NULL) {
+		ZLIB_PMD_ERR("invalid xform struct");
+		return -EINVAL;
+	}
+
+	if (rte_mempool_get(internals->mp, zstream)) {
+		ZLIB_PMD_ERR("Couldn't get object from session mempool");
+		return -ENOMEM;
+	}
+	stream = *((struct zlib_stream **)zstream);
+
+	ret = zlib_set_stream_parameters(xform, stream);
+
+	if (ret < 0) {
+		ZLIB_PMD_ERR("failed configure session parameters");
+
+		memset(stream, 0, sizeof(struct zlib_stream));
+		/* Return session to mempool */
+		rte_mempool_put(internals->mp, stream);
+		return ret;
+	}
+
+	return 0;
+}
+
+/** Configure private xform */
+static int
+zlib_pmd_private_xform_create(struct rte_compressdev *dev,
+		const struct rte_comp_xform *xform,
+		void **private_xform)
+{
+	return zlib_pmd_stream_create(dev, xform, private_xform);
+}
+
+/** Clear the memory of stream so it doesn't leave key material behind */
+static int
+zlib_pmd_stream_free(__rte_unused struct rte_compressdev *dev,
+		void *zstream)
+{
+	struct zlib_stream *stream = (struct zlib_stream *)zstream;
+	if (!stream)
+		return -EINVAL;
+
+	stream->free(&stream->strm);
+	/* Zero out the whole structure */
+	memset(stream, 0, sizeof(struct zlib_stream));
+	struct rte_mempool *mp = rte_mempool_from_obj(stream);
+	rte_mempool_put(mp, stream);
+
+	return 0;
+}
+
+/** Clear the memory of stream so it doesn't leave key material behind */
+static int
+zlib_pmd_private_xform_free(struct rte_compressdev *dev,
+		void *private_xform)
+{
+	return zlib_pmd_stream_free(dev, private_xform);
+}
+
 struct rte_compressdev_ops zlib_pmd_ops = {
 		.dev_configure		= zlib_pmd_config,
 		.dev_start		= zlib_pmd_start,
@@ -227,8 +297,8 @@ struct rte_compressdev_ops zlib_pmd_ops = {
 		.queue_pair_setup	= zlib_pmd_qp_setup,
 		.queue_pair_release	= zlib_pmd_qp_release,
 
-		.private_xform_create	= NULL,
-		.private_xform_free	= NULL,
+		.private_xform_create	= zlib_pmd_private_xform_create,
+		.private_xform_free	= zlib_pmd_private_xform_free,
 
 		.stream_create	= NULL,
 		.stream_free	= NULL
