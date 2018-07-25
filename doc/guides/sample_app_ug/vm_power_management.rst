@@ -20,7 +20,7 @@ running on Virtual Machines(VMs).
 
 The Virtual Machine Power Management solution shows an example of
 how a DPDK application can indicate its processing requirements using VM local
-only information(vCPU/lcore) to a Host based Monitor which is responsible
+only information(vCPU/lcore, etc.) to a Host based Monitor which is responsible
 for accepting requests for frequency changes for a vCPU, translating the vCPU
 to a pCPU via libvirt and affecting the change in frequency.
 
@@ -37,6 +37,26 @@ The solution is comprised of two high-level components:
    VM requests arriving on a channel for frequency changes are passed
    to the librte_power ACPI cpufreq sysfs based library.
    The Host Application relies on both qemu-kvm and libvirt to function.
+
+   This monitoring application is responsible for:
+
+   - Accepting requests from client applications: Client applications can
+     request frequency changes for a vCPU, translating
+     the vCPU to a pCPU via libvirt and affecting the change in frequency.
+
+   - Accepting policies from client applications: Client application can
+     send a policy to the host application. The
+     host application will then apply the rules of the policy independent
+     of the application. For example, the policy can contain time-of-day
+     information for busy/quiet periods, and the host application can scale
+     up/down the relevant cores when required. See the details of the guest
+     application below for more information on setting the policy values.
+
+   - Out-of-band monitoring of workloads via cores hardware event counters:
+     The host application can manage power for an application in a virtualised
+     OR non-virtualised environment by looking at the event counters of the
+     cores and taking action based on the branch hit/miss ratio. See the host
+     application '--core-list' command line parameter below.
 
 #. librte_power for Virtual Machines
 
@@ -174,12 +194,19 @@ Compiling and Running the Host Application
 Compiling
 ~~~~~~~~~
 
-Compiling the Application
--------------------------
-
-To compile the sample application see :doc:`compiling`.
+For information on compiling DPDK and the sample applications
+see :doc:`compiling`.
 
 The application is located in the ``vm_power_manager`` sub-directory.
+
+To build just the ``vm_power_manager`` application:
+
+.. code-block:: console
+
+  export RTE_SDK=/path/to/rte_sdk
+  export RTE_TARGET=build
+  cd ${RTE_SDK}/examples/vm_power_manager/
+  make
 
 Running
 ~~~~~~~
@@ -287,38 +314,129 @@ Manual control and inspection can also be carried in relation CPU frequency scal
 
     set_cpu_freq {core_num} up|down|min|max
 
+There are also some command line parameters for enabling the out-of-band
+monitoring of branch ratio on cores doing busy polling via PMDs.
+
+  .. code-block:: console
+
+    --core-list {list of cores}
+
+  When this parameter is used, the list of cores specified will monitor the ratio
+  between branch hits and branch misses. A tightly polling PMD thread will have a
+  very low branch ratio, so the core frequency will be scaled down to the minimim
+  allowed value. When packets are received, the code path will alter, causing the
+  branch ratio to increase. When the ratio goes above the ratio threshold, the
+  core frequency will be scaled up to the maximum allowed value.
+
+  .. code-block:: console
+
+    --branch-ratio {ratio}
+
+  The branch ratio is a floating point number that specifies the threshold at which
+  to scale up or down for the given workload. The default branch ratio is 0.01,
+  and will need to be adjusted for different workloads.
+
+
 Compiling and Running the Guest Applications
 --------------------------------------------
 
-For compiling and running l3fwd-power, see :doc:`l3_forward_power_man`.
+l3fwd-power is one sample application that can be used with vm_power_manager.
 
 A guest CLI is also provided for validating the setup.
 
 For both l3fwd-power and guest CLI, the channels for the VM must be monitored by the
-host application using the *add_channels* command on the host.
+host application using the *add_channels* command on the host. This typically uses
+the following commands in the host application:
+
+.. code-block:: console
+
+  vm_power> add_vm vmname
+  vm_power> add_channels vmname all
+  vm_power> set_channel_status vmname all enabled
+  vm_power> show_vm vmname
+
 
 Compiling
 ~~~~~~~~~
 
-#. export RTE_SDK=/path/to/rte_sdk
-#. cd ${RTE_SDK}/examples/vm_power_manager/guest_cli
-#. make
+For information on compiling DPDK and the sample applications
+see :doc:`compiling`.
+
+For compiling and running l3fwd-power, see :doc:`l3_forward_power_man`.
+
+The application is located in the ``guest_cli`` sub-directory under ``vm_power_manager``.
+
+To build just the ``guest_vm_power_manager`` application:
+
+.. code-block:: console
+
+  export RTE_SDK=/path/to/rte_sdk
+  export RTE_TARGET=build
+  cd ${RTE_SDK}/examples/vm_power_manager/guest_cli/
+  make
 
 Running
 ~~~~~~~
 
-The application does not have any specific command line options other than *EAL*:
+The standard *EAL* command line parameters are required:
 
 .. code-block:: console
 
- ./build/vm_power_mgr [EAL options]
+ ./build/guest_vm_power_mgr [EAL options] -- [guest options]
 
-The application for example purposes uses a channel for each lcore enabled,
-for example to run on cores 0,1,2,3 on a system with 4 memory channels:
+The guest example uses a channel for each lcore enabled. For example,
+to run on cores 0,1,2,3:
 
 .. code-block:: console
 
- ./build/guest_vm_power_mgr -l 0-3 -n 4
+ ./build/guest_vm_power_mgr -l 0-3
+
+Optionally, there is a list of command line parameter should the user wish to send a power
+policy down to the host application. These parameters are as follows:
+
+  .. code-block:: console
+
+    --vm-name {name of guest vm}
+
+  This parameter allows the user to change the Virtual Machine name passed down to the
+  host application via the power policy. The default is "ubuntu2"
+
+  .. code-block:: console
+
+    --vcpu-list {list vm cores}
+
+  A comma-separated list of cores in the VM that the user wants the host application to
+  monitor. The list of cores in any vm starts at zero, and these are mapped to the
+  physical cores by the host application once the policy is passed down.
+  Valid syntax includes individial cores '2,3,4', or a range of cores '2-4', or a
+  combination of both '1,3,5-7'
+
+  .. code-block:: console
+
+    --busy-hours {list of busy hours}
+
+  A comma-separated list of hours within which to set the core frequency to maximum.
+  Valid syntax includes individial hours '2,3,4', or a range of hours '2-4', or a
+  combination of both '1,3,5-7'. Valid hours are 0 to 23.
+
+  .. code-block:: console
+
+    --quiet-hours {list of quiet hours}
+
+  A comma-separated list of hours within which to set the core frequency to minimum.
+  Valid syntax includes individial hours '2,3,4', or a range of hours '2-4', or a
+  combination of both '1,3,5-7'. Valid hours are 0 to 23.
+
+  .. code-block:: console
+
+    --policy {policy type}
+
+  The type of policy. This can be one of the following values:
+  TRAFFIC - based on incoming traffic rates on the NIC.
+  TIME - busy/quiet hours policy.
+  BRANCH_RATIO - uses branch ratio counters to determine core busyness.
+  Not all parameters are needed for all policy types. For example, BRANCH_RATIO
+  only needs the vcpu-list parameter, not any of the hours.
 
 
 After successful initialization the user is presented with VM Power Manager Guest CLI:
@@ -333,3 +451,20 @@ Where {core_num} is the lcore and channel to change frequency by scaling up/down
 .. code-block:: console
 
   set_cpu_freq {core_num} up|down|min|max
+
+To start the application and configure the power policy, and send it to the host:
+
+.. code-block:: console
+
+ ./build/guest_vm_power_mgr -l 0-3 -n 4 -- --vm-name=ubuntu --policy=BRANCH_RATIO --vcpu-list=2-4
+
+Once the VM Power Manager Guest CLI appears, issuing the 'send_policy now' command
+will send the policy to the host:
+
+.. code-block:: console
+
+  send_policy now
+
+Once the policy is sent to the host, the host application takes over the power monitoring
+of the specified cores in the policy.
+
