@@ -93,7 +93,7 @@ The following device parameters are supported:
 
 - ``ignore`` [int]
 
-  If nonzero, ignores the driver runnig (actually used to disable the
+  If nonzero, ignores the driver running (actually used to disable the
   auto-detection in Hyper-V VM).
 
 .. note::
