@@ -272,6 +272,72 @@ cmd_tmgr_shaper_profile(struct pmd_internals *softnic,
 }
 
 /**
+ * tmgr shared shaper
+ *  id <shared_shaper_id>
+ *  profile <shaper_profile_id>
+ */
+static void
+cmd_tmgr_shared_shaper(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct rte_tm_error error;
+	uint32_t shared_shaper_id, shaper_profile_id;
+	uint16_t port_id;
+	int status;
+
+	if (n_tokens != 7) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	if (strcmp(tokens[1], "shared") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "shared");
+		return;
+	}
+
+	if (strcmp(tokens[2], "shaper") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "shaper");
+		return;
+	}
+
+	if (strcmp(tokens[3], "id") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "id");
+		return;
+	}
+
+	if (softnic_parser_read_uint32(&shared_shaper_id, tokens[4]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "shared_shaper_id");
+		return;
+	}
+
+	if (strcmp(tokens[5], "profile") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "profile");
+		return;
+	}
+
+	if (softnic_parser_read_uint32(&shaper_profile_id, tokens[6]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "shaper_profile_id");
+		return;
+	}
+
+	status = rte_eth_dev_get_port_by_name(softnic->params.name, &port_id);
+	if (status)
+		return;
+
+	status = rte_tm_shared_shaper_add_update(port_id,
+		shared_shaper_id,
+		shaper_profile_id,
+		&error);
+	if (status != 0) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
+/**
  * tmgr <tmgr_name>
  */
 static void
@@ -4079,6 +4145,13 @@ softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 			(strcmp(tokens[1], "shaper") == 0) &&
 			(strcmp(tokens[2], "profile") == 0)) {
 			cmd_tmgr_shaper_profile(softnic, tokens, n_tokens, out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 3 &&
+			(strcmp(tokens[1], "shared") == 0) &&
+			(strcmp(tokens[2], "shaper") == 0)) {
+			cmd_tmgr_shared_shaper(softnic, tokens, n_tokens, out, out_size);
 			return;
 		}
 	}
