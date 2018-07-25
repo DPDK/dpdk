@@ -58,6 +58,36 @@ Prerequisites
 - Upgrade the NVM/FW version following the `Intel® Ethernet NVM Update Tool Quick Usage Guide for Linux
   <https://www-ssl.intel.com/content/www/us/en/embedded/products/networking/nvm-update-tool-quick-linux-usage-guide.html>`_ and `Intel® Ethernet NVM Update Tool: Quick Usage Guide for EFI <https://www.intel.com/content/www/us/en/embedded/products/networking/nvm-update-tool-quick-efi-usage-guide.html>`_ if needed.
 
+Recommended Matching List
+-------------------------
+
+It is highly recommended to upgrade the i40e kernel driver and firmware to
+avoid the compatibility issues with i40e PMD. Here is the suggested matching
+list which has been tested and verified. The detailed information can refer
+to chapter Tested Platforms/Tested NICs in release notes.
+
+   +--------------+-----------------------+------------------+
+   | DPDK version | Kernel driver version | Firmware version |
+   +==============+=======================+==================+
+   |    18.05     |         2.4.6         |       6.01       |
+   +--------------+-----------------------+------------------+
+   |    18.02     |         2.4.3         |       6.01       |
+   +--------------+-----------------------+------------------+
+   |    17.11     |         2.1.26        |       6.01       |
+   +--------------+-----------------------+------------------+
+   |    17.08     |         2.0.19        |       6.01       |
+   +--------------+-----------------------+------------------+
+   |    17.05     |         1.5.23        |       5.05       |
+   +--------------+-----------------------+------------------+
+   |    17.02     |         1.5.23        |       5.05       |
+   +--------------+-----------------------+------------------+
+   |    16.11     |         1.5.23        |       5.05       |
+   +--------------+-----------------------+------------------+
+   |    16.07     |         1.4.25        |       5.04       |
+   +--------------+-----------------------+------------------+
+   |    16.04     |         1.4.25        |       5.02       |
+   +--------------+-----------------------+------------------+
+
 Pre-Installation Configuration
 ------------------------------
 
