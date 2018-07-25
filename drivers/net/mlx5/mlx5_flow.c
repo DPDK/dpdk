@@ -3301,32 +3301,40 @@ mlx5_flow_query_count(struct rte_flow *flow __rte_unused,
 		      struct rte_flow_error *error)
 {
 #ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
-	struct rte_flow_query_count *qc = data;
-	uint64_t counters[2] = {0, 0};
-	struct ibv_query_counter_set_attr query_cs_attr = {
-		.cs = flow->counter->cs,
-		.query_flags = IBV_COUNTER_SET_FORCE_UPDATE,
-	};
-	struct ibv_counter_set_data query_out = {
-		.out = counters,
-		.outlen = 2 * sizeof(uint64_t),
-	};
-	int err = mlx5_glue->query_counter_set(&query_cs_attr, &query_out);
+	if (flow->modifier & MLX5_FLOW_MOD_COUNT) {
+		struct rte_flow_query_count *qc = data;
+		uint64_t counters[2] = {0, 0};
+		struct ibv_query_counter_set_attr query_cs_attr = {
+			.cs = flow->counter->cs,
+			.query_flags = IBV_COUNTER_SET_FORCE_UPDATE,
+		};
+		struct ibv_counter_set_data query_out = {
+			.out = counters,
+			.outlen = 2 * sizeof(uint64_t),
+		};
+		int err = mlx5_glue->query_counter_set(&query_cs_attr,
+						       &query_out);
 
-	if (err)
-		return rte_flow_error_set(error, err,
-					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					  NULL,
-					  "cannot read counter");
-	qc->hits_set = 1;
-	qc->bytes_set = 1;
-	qc->hits = counters[0] - flow->counter->hits;
-	qc->bytes = counters[1] - flow->counter->bytes;
-	if (qc->reset) {
-		flow->counter->hits = counters[0];
-		flow->counter->bytes = counters[1];
+		if (err)
+			return rte_flow_error_set
+				(error, err,
+				 RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				 NULL,
+				 "cannot read counter");
+		qc->hits_set = 1;
+		qc->bytes_set = 1;
+		qc->hits = counters[0] - flow->counter->hits;
+		qc->bytes = counters[1] - flow->counter->bytes;
+		if (qc->reset) {
+			flow->counter->hits = counters[0];
+			flow->counter->bytes = counters[1];
+		}
+		return 0;
 	}
-	return 0;
+	return rte_flow_error_set(error, ENOTSUP,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL,
+				  "flow does not have counter");
 #endif
 	return rte_flow_error_set(error, ENOTSUP,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
