@@ -673,6 +673,9 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 						   &device_attr_ex);
 		DEBUG("supported RSS hash fields mask: %016" PRIx64,
 		      priv->hw_rss_sup);
+		priv->hw_rss_max_qps =
+			device_attr_ex.rss_caps.max_rwq_indirection_table_size;
+		DEBUG("MAX RSS queues %d", priv->hw_rss_max_qps);
 		priv->hw_fcs_strip = !!(device_attr_ex.raw_packet_caps &
 					IBV_RAW_PACKET_CAP_SCATTER_FCS);
 		DEBUG("FCS stripping toggling is %ssupported",

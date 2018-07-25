@@ -95,6 +95,7 @@ struct priv {
 	uint32_t hw_fcs_strip:1; /**< FCS stripping toggling is supported. */
 	uint32_t tso:1; /**< Transmit segmentation offload is supported. */
 	uint32_t tso_max_payload_sz; /**< Max supported TSO payload size. */
+	uint32_t hw_rss_max_qps; /**< Max Rx Queues supported by RSS. */
 	uint64_t hw_rss_sup; /**< Supported RSS hash fields (Verbs format). */
 	struct rte_intr_handle intr_handle; /**< Port interrupt handle. */
 	struct mlx4_drop *drop; /**< Shared resources for drop flow rules. */
