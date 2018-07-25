@@ -338,6 +338,171 @@ cmd_tmgr_shared_shaper(struct pmd_internals *softnic,
 }
 
 /**
+ * tmgr node
+ *   id <node_id>
+ *   parent <parent_node_id | none>
+ *   priority <priority>
+ *   weight <weight>
+ *   [shaper profile <shaper_profile_id>]
+ *   [shared shaper <shared_shaper_id>]
+ *   [nonleaf sp <n_sp_priorities>]
+ */
+static void
+cmd_tmgr_node(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct rte_tm_error error;
+	struct rte_tm_node_params np;
+	uint32_t node_id, parent_node_id, priority, weight, shared_shaper_id;
+	uint16_t port_id;
+	int status;
+
+	memset(&np, 0, sizeof(struct rte_tm_node_params));
+	np.shaper_profile_id = RTE_TM_SHAPER_PROFILE_ID_NONE;
+	np.nonleaf.n_sp_priorities = 1;
+
+	if (n_tokens < 10) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	if (strcmp(tokens[1], "node") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "node");
+		return;
+	}
+
+	if (strcmp(tokens[2], "id") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "id");
+		return;
+	}
+
+	if (softnic_parser_read_uint32(&node_id, tokens[3]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "node_id");
+		return;
+	}
+
+	if (strcmp(tokens[4], "parent") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "parent");
+		return;
+	}
+
+	if (strcmp(tokens[5], "none") == 0)
+		parent_node_id = RTE_TM_NODE_ID_NULL;
+	else {
+		if (softnic_parser_read_uint32(&parent_node_id, tokens[5]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "parent_node_id");
+			return;
+		}
+	}
+
+	if (strcmp(tokens[6], "priority") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "priority");
+		return;
+	}
+
+	if (softnic_parser_read_uint32(&priority, tokens[7]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "priority");
+		return;
+	}
+
+	if (strcmp(tokens[8], "weight") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "weight");
+		return;
+	}
+
+	if (softnic_parser_read_uint32(&weight, tokens[9]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "weight");
+		return;
+	}
+
+	tokens += 10;
+	n_tokens -= 10;
+
+	if (n_tokens >= 2 &&
+		(strcmp(tokens[0], "shaper") == 0) &&
+		(strcmp(tokens[1], "profile") == 0)) {
+		if (n_tokens < 3) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH, "tmgr node");
+			return;
+		}
+
+		if (strcmp(tokens[2], "none") == 0) {
+			np.shaper_profile_id = RTE_TM_SHAPER_PROFILE_ID_NONE;
+		} else {
+			if (softnic_parser_read_uint32(&np.shaper_profile_id, tokens[2]) != 0) {
+				snprintf(out, out_size, MSG_ARG_INVALID, "shaper_profile_id");
+				return;
+			}
+		}
+
+		tokens += 3;
+		n_tokens -= 3;
+	} /* shaper profile */
+
+	if (n_tokens >= 2 &&
+		(strcmp(tokens[0], "shared") == 0) &&
+		(strcmp(tokens[1], "shaper") == 0)) {
+		if (n_tokens < 3) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH, "tmgr node");
+			return;
+		}
+
+		if (softnic_parser_read_uint32(&shared_shaper_id, tokens[2]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "shared_shaper_id");
+			return;
+		}
+
+		np.shared_shaper_id = &shared_shaper_id;
+		np.n_shared_shapers = 1;
+
+		tokens += 3;
+		n_tokens -= 3;
+	} /* shared shaper */
+
+	if (n_tokens >= 2 &&
+		(strcmp(tokens[0], "nonleaf") == 0) &&
+		(strcmp(tokens[1], "sp") == 0)) {
+		if (n_tokens < 3) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH, "tmgr node");
+			return;
+		}
+
+		if (softnic_parser_read_uint32(&np.nonleaf.n_sp_priorities, tokens[2]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "n_sp_priorities");
+			return;
+		}
+
+		tokens += 3;
+		n_tokens -= 3;
+	} /* nonleaf sp <n_sp_priorities> */
+
+	if (n_tokens) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	status = rte_eth_dev_get_port_by_name(softnic->params.name, &port_id);
+	if (status != 0)
+		return;
+
+	status = rte_tm_node_add(port_id,
+		node_id,
+		parent_node_id,
+		priority,
+		weight,
+		RTE_TM_NODE_LEVEL_ID_ANY,
+		&np,
+		&error);
+	if (status != 0) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
+/**
  * tmgr <tmgr_name>
  */
 static void
@@ -4152,6 +4317,12 @@ softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 			(strcmp(tokens[1], "shared") == 0) &&
 			(strcmp(tokens[2], "shaper") == 0)) {
 			cmd_tmgr_shared_shaper(softnic, tokens, n_tokens, out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 2 &&
+			(strcmp(tokens[1], "node") == 0)) {
+			cmd_tmgr_node(softnic, tokens, n_tokens, out, out_size);
 			return;
 		}
 	}
