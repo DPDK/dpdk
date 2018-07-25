@@ -24,6 +24,8 @@ cavium_pkx = {'Class': '08', 'Vendor': '177d', 'Device': 'a0dd,a049',
               'SVendor': None, 'SDevice': None}
 cavium_tim = {'Class': '08', 'Vendor': '177d', 'Device': 'a051',
               'SVendor': None, 'SDevice': None}
+cavium_zip = {'Class': '12', 'Vendor': '177d', 'Device': 'a037',
+              'SVendor': None, 'SDevice': None}
 avp_vnic = {'Class': '05', 'Vendor': '1af4', 'Device': '1110',
               'SVendor': None, 'SDevice': None}
 
@@ -31,6 +33,7 @@ network_devices = [network_class, cavium_pkx, avp_vnic]
 crypto_devices = [encryption_class, intel_processor_class]
 eventdev_devices = [cavium_sso, cavium_tim]
 mempool_devices = [cavium_fpa]
+compress_devices = [cavium_zip]
 
 # global dict ethernet devices present. Dictionary indexed by PCI address.
 # Each device within this is itself a dictionary of device properties
@@ -79,7 +82,7 @@ Options:
 
     --status-dev:
         Print the status of given device group. Supported device groups are:
-        "net", "crypto", "event" and "mempool"
+        "net", "crypto", "event", "mempool" and "compress"
 
     -b driver, --bind=driver:
         Select the driver to use or \"none\" to unbind the device
@@ -569,6 +572,10 @@ def show_status():
     if status_dev == "mempool" or status_dev == "all":
         show_device_status(mempool_devices, "Mempool")
 
+    if status_dev == "compress" or status_dev == "all":
+        show_device_status(compress_devices , "Compress")
+
+
 def parse_args():
     '''Parses the command-line arguments given by the user and takes the
     appropriate action for each'''
@@ -642,6 +649,7 @@ def do_arg_actions():
             get_device_details(crypto_devices)
             get_device_details(eventdev_devices)
             get_device_details(mempool_devices)
+            get_device_details(compress_devices)
         show_status()
 
 
@@ -654,6 +662,7 @@ def main():
     get_device_details(crypto_devices)
     get_device_details(eventdev_devices)
     get_device_details(mempool_devices)
+    get_device_details(compress_devices)
     do_arg_actions()
 
 if __name__ == "__main__":
