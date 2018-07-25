@@ -2057,8 +2057,7 @@ next_desc:
 		 * of the ixgbe PMD.
 		 *
 		 * TODO:
-		 *    - Get rid of "volatile" crap and let the compiler do its
-		 *      job.
+		 *    - Get rid of "volatile" and let the compiler do its job.
 		 *    - Use the proper memory barrier (rte_rmb()) to ensure the
 		 *      memory ordering below.
 		 */
