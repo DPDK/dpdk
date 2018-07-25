@@ -33,6 +33,8 @@ skip_digits(const char *src)
 
 int softnic_parser_read_arg_bool(const char *p);
 
+int softnic_parser_read_int32(int32_t *value, const char *p);
+
 int softnic_parser_read_uint64(uint64_t *value, const char *p);
 int softnic_parser_read_uint32(uint32_t *value, const char *p);
 int softnic_parser_read_uint16(uint16_t *value, const char *p);

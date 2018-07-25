@@ -93,6 +93,24 @@ softnic_parser_read_arg_bool(const char *p)
 }
 
 int
+softnic_parser_read_int32(int32_t *value, const char *p)
+{
+	char *next;
+	int32_t val;
+
+	p = skip_white_spaces(p);
+	if (!isdigit(*p))
+		return -EINVAL;
+
+	val = strtol(p, &next, 10);
+	if (p == next)
+		return -EINVAL;
+
+	*value = val;
+	return 0;
+}
+
+int
 softnic_parser_read_uint64(uint64_t *value, const char *p)
 {
 	char *next;

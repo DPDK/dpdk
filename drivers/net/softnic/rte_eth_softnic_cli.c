@@ -185,6 +185,93 @@ cmd_swq(struct pmd_internals *softnic,
 }
 
 /**
+ * tmgr shaper profile
+ *  id <profile_id>
+ *  rate <tb_rate> size <tb_size>
+ *  adj <packet_length_adjust>
+ */
+static void
+cmd_tmgr_shaper_profile(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct rte_tm_shaper_params sp;
+	struct rte_tm_error error;
+	uint32_t shaper_profile_id;
+	uint16_t port_id;
+	int status;
+
+	memset(&sp, 0, sizeof(struct rte_tm_shaper_params));
+
+	if (n_tokens != 11) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	if (strcmp(tokens[1], "shaper") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "shaper");
+		return;
+	}
+
+	if (strcmp(tokens[2], "profile") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "profile");
+		return;
+	}
+
+	if (strcmp(tokens[3], "id") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "id");
+		return;
+	}
+
+	if (softnic_parser_read_uint32(&shaper_profile_id, tokens[4]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "profile_id");
+		return;
+	}
+
+	if (strcmp(tokens[5], "rate") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "rate");
+		return;
+	}
+
+	if (softnic_parser_read_uint64(&sp.peak.rate, tokens[6]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "tb_rate");
+		return;
+	}
+
+	if (strcmp(tokens[7], "size") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "size");
+		return;
+	}
+
+	if (softnic_parser_read_uint64(&sp.peak.size, tokens[8]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "tb_size");
+		return;
+	}
+
+	if (strcmp(tokens[9], "adj") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "adj");
+		return;
+	}
+
+	if (softnic_parser_read_int32(&sp.pkt_length_adjust, tokens[10]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "packet_length_adjust");
+		return;
+	}
+
+	status = rte_eth_dev_get_port_by_name(softnic->params.name, &port_id);
+	if (status)
+		return;
+
+	status = rte_tm_shaper_profile_add(port_id, shaper_profile_id, &sp, &error);
+	if (status != 0) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
+/**
  * tmgr <tmgr_name>
  */
 static void
@@ -3983,8 +4070,17 @@ softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 	}
 
 	if (strcmp(tokens[0], "tmgr") == 0) {
-		cmd_tmgr(softnic, tokens, n_tokens, out, out_size);
-		return;
+		if (n_tokens == 2) {
+			cmd_tmgr(softnic, tokens, n_tokens, out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 3 &&
+			(strcmp(tokens[1], "shaper") == 0) &&
+			(strcmp(tokens[2], "profile") == 0)) {
+			cmd_tmgr_shaper_profile(softnic, tokens, n_tokens, out, out_size);
+			return;
+		}
 	}
 
 	if (strcmp(tokens[0], "tap") == 0) {
