@@ -503,6 +503,46 @@ cmd_tmgr_node(struct pmd_internals *softnic,
 }
 
 /**
+ * tmgr hierarchy commit
+ */
+static void
+cmd_tmgr_hierarchy_commit(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct rte_tm_error error;
+	uint16_t port_id;
+	int status;
+
+	if (n_tokens != 3) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	if (strcmp(tokens[1], "hierarchy") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "hierarchy");
+		return;
+	}
+
+	if (strcmp(tokens[2], "commit") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "commit");
+		return;
+	}
+
+	status = rte_eth_dev_get_port_by_name(softnic->params.name, &port_id);
+	if (status != 0)
+		return;
+
+	status = rte_tm_hierarchy_commit(port_id, 1, &error);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
+/**
  * tmgr <tmgr_name>
  */
 static void
@@ -4323,6 +4363,13 @@ softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 		if (n_tokens >= 2 &&
 			(strcmp(tokens[1], "node") == 0)) {
 			cmd_tmgr_node(softnic, tokens, n_tokens, out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 3 &&
+			(strcmp(tokens[1], "hierarchy") == 0) &&
+			(strcmp(tokens[2], "commit") == 0)) {
+			cmd_tmgr_hierarchy_commit(softnic, tokens, n_tokens, out, out_size);
 			return;
 		}
 	}
