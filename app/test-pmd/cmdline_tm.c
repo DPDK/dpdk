@@ -2176,7 +2176,7 @@ static void cmd_port_tm_hierarchy_commit_parsed(void *parsed_result,
 cmdline_parse_inst_t cmd_port_tm_hierarchy_commit = {
 	.f = cmd_port_tm_hierarchy_commit_parsed,
 	.data = NULL,
-	.help_str = "Set port tm node shaper profile",
+	.help_str = "Commit port tm hierarchy",
 	.tokens = {
 		(void *)&cmd_port_tm_hierarchy_commit_port,
 		(void *)&cmd_port_tm_hierarchy_commit_tm,
