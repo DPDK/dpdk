@@ -861,6 +861,10 @@ Compression Drivers
 M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 
+Cavium OCTEONTX zipvf
+M: Ashish Gupta <ashish.gupta@cavium.com>
+F: drivers/compress/octeontx/
+
 Intel QuickAssist
 M: Fiona Trahe <fiona.trahe@intel.com>
 F: drivers/compress/qat/

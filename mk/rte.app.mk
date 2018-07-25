@@ -224,6 +224,7 @@ endif # CONFIG_RTE_LIBRTE_CRYPTODEV
 ifeq ($(CONFIG_RTE_LIBRTE_COMPRESSDEV),y)
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_ISAL) += -lrte_pmd_isal_comp
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_ISAL) += -lisal
+_LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_ZIPVF) += -lrte_pmd_octeontx_zip
 # Link QAT driver if it has not been linked yet
 ifeq ($(CONFIG_RTE_LIBRTE_PMD_QAT_SYM),n)
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_QAT)  += -lrte_pmd_qat

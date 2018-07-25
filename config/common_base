@@ -578,6 +578,11 @@ CONFIG_RTE_COMPRESS_MAX_DEVS=64
 CONFIG_RTE_COMPRESSDEV_TEST=n
 
 #
+# Compile PMD for Octeontx ZIPVF compression device
+#
+CONFIG_RTE_LIBRTE_PMD_OCTEONTX_ZIPVF=y
+
+#
 # Compile PMD for ISA-L compression device
 #
 CONFIG_RTE_LIBRTE_PMD_ISAL=n
