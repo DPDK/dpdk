@@ -90,8 +90,23 @@ enum {
 	MAX_BUFS_PER_STREAM
 } NUM_BUFS_PER_STREAM;
 
-
+struct zip_stream;
 struct zipvf_qp;
+
+/* Algorithm handler function prototype */
+typedef int (*comp_func_t)(struct rte_comp_op *op,
+			   struct zipvf_qp *qp, struct zip_stream *zstrm);
+
+/**
+ * ZIP private stream structure
+ */
+struct zip_stream {
+	union zip_inst_s *inst;
+	/* zip instruction pointer */
+	comp_func_t func;
+	/* function to process comp operation */
+	void *bufs[MAX_BUFS_PER_STREAM];
+} _rte_cache_aligned;
 
 
 /**
@@ -156,6 +171,8 @@ zipvf_q_init(struct zipvf_qp *qp);
 int
 zipvf_q_term(struct zipvf_qp *qp);
 
+int
+zipvf_push_command(struct zipvf_qp *qp, union zip_inst_s *zcmd);
 
 uint64_t
 zip_reg_read64(uint8_t *hw_addr, uint64_t offset);

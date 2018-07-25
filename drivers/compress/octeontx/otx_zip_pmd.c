@@ -28,6 +28,103 @@ static const struct rte_compressdev_capabilities
 	RTE_COMP_END_OF_CAPABILITIES_LIST()
 };
 
+/** Parse xform parameters and setup a stream */
+static int
+zip_set_stream_parameters(struct rte_compressdev *dev,
+			const struct rte_comp_xform *xform,
+			struct zip_stream *z_stream)
+{
+	int ret;
+	union zip_inst_s *inst;
+	struct zip_vf *vf = (struct zip_vf *)dev->data->dev_private;
+	void *res;
+
+	/* Allocate resources required by a stream */
+	ret = rte_mempool_get_bulk(vf->zip_mp,
+			z_stream->bufs, MAX_BUFS_PER_STREAM);
+	if (ret < 0)
+		return -1;
+
+	/* get one command buffer from pool and set up */
+	inst = (union zip_inst_s *)z_stream->bufs[CMD_BUF];
+	res = z_stream->bufs[RES_BUF];
+
+	memset(inst->u, 0, sizeof(inst->u));
+
+	/* set bf for only first ops of stream */
+	inst->s.bf = 1;
+
+	if (xform->type == RTE_COMP_COMPRESS) {
+		inst->s.op = ZIP_OP_E_COMP;
+
+		switch (xform->compress.deflate.huffman) {
+		case RTE_COMP_HUFFMAN_DEFAULT:
+			inst->s.cc = ZIP_CC_DEFAULT;
+			break;
+		case RTE_COMP_HUFFMAN_FIXED:
+			inst->s.cc = ZIP_CC_FIXED_HUFF;
+			break;
+		case RTE_COMP_HUFFMAN_DYNAMIC:
+			inst->s.cc = ZIP_CC_DYN_HUFF;
+			break;
+		default:
+			ret = -1;
+			goto err;
+		}
+
+		switch (xform->compress.level) {
+		case RTE_COMP_LEVEL_MIN:
+			inst->s.ss = ZIP_COMP_E_LEVEL_MIN;
+			break;
+		case RTE_COMP_LEVEL_MAX:
+			inst->s.ss = ZIP_COMP_E_LEVEL_MAX;
+			break;
+		case RTE_COMP_LEVEL_NONE:
+			ZIP_PMD_ERR("Compression level not supported");
+			ret = -1;
+			goto err;
+		default:
+			/* for any value between min and max , choose
+			 * PMD default.
+			 */
+			inst->s.ss = ZIP_COMP_E_LEVEL_MED; /** PMD default **/
+			break;
+		}
+	} else if (xform->type == RTE_COMP_DECOMPRESS) {
+		inst->s.op = ZIP_OP_E_DECOMP;
+		/* from HRM,
+		 * For DEFLATE decompression, [CC] must be 0x0.
+		 * For decompression, [SS] must be 0x0
+		 */
+		inst->s.cc = 0;
+		/* Speed bit should not be set for decompression */
+		inst->s.ss = 0;
+		/* decompression context is supported only for STATEFUL
+		 * operations. Currently we support STATELESS ONLY so
+		 * skip setting of ctx pointer
+		 */
+
+	} else {
+		ZIP_PMD_ERR("\nxform type not supported");
+		ret = -1;
+		goto err;
+	}
+
+	inst->s.res_ptr_addr.s.addr = rte_mempool_virt2iova(res);
+	inst->s.res_ptr_ctl.s.length = 0;
+
+	z_stream->inst = inst;
+
+	return 0;
+
+err:
+	rte_mempool_put_bulk(vf->zip_mp,
+			     (void *)&(z_stream->bufs[0]),
+			     MAX_BUFS_PER_STREAM);
+
+	return ret;
+}
+
 /** Configure device */
 static int
 zip_pmd_config(struct rte_compressdev *dev,
@@ -253,6 +350,53 @@ qp_setup_cleanup:
 	return -1;
 }
 
+static int
+zip_pmd_stream_create(struct rte_compressdev *dev,
+		const struct rte_comp_xform *xform, void **stream)
+{
+	int ret;
+	struct zip_stream *strm = NULL;
+
+	strm = rte_malloc(NULL,
+			sizeof(struct zip_stream), 0);
+
+	if (strm == NULL)
+		return (-ENOMEM);
+
+	ret = zip_set_stream_parameters(dev, xform, strm);
+	if (ret < 0) {
+		ZIP_PMD_ERR("failed configure xform parameters");
+		rte_free(strm);
+		return ret;
+	}
+	*stream = strm;
+	return 0;
+}
+
+static int
+zip_pmd_stream_free(struct rte_compressdev *dev, void *stream)
+{
+	struct zip_vf *vf = (struct zip_vf *) (dev->data->dev_private);
+	struct zip_stream *z_stream;
+
+	if (stream == NULL)
+		return 0;
+
+	z_stream = (struct zip_stream *)stream;
+
+	/* Free resources back to pool */
+	rte_mempool_put_bulk(vf->zip_mp,
+				(void *)&(z_stream->bufs[0]),
+				MAX_BUFS_PER_STREAM);
+
+	/* Zero out the whole structure */
+	memset(stream, 0, sizeof(struct zip_stream));
+	rte_free(stream);
+
+	return 0;
+}
+
+
 struct rte_compressdev_ops octtx_zip_pmd_ops = {
 		.dev_configure		= zip_pmd_config,
 		.dev_start		= zip_pmd_start,
@@ -266,6 +410,11 @@ struct rte_compressdev_ops octtx_zip_pmd_ops = {
 
 		.queue_pair_setup	= zip_pmd_qp_setup,
 		.queue_pair_release	= zip_pmd_qp_release,
+
+		.private_xform_create	= zip_pmd_stream_create,
+		.private_xform_free	= zip_pmd_stream_free,
+		.stream_create		= NULL,
+		.stream_free		= NULL
 };
 
 static int
