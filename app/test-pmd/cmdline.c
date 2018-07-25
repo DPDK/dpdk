@@ -69,9 +69,6 @@
 #ifdef RTE_LIBRTE_I40E_PMD
 #include <rte_pmd_i40e.h>
 #endif
-#ifdef RTE_LIBRTE_PMD_SOFTNIC
-#include <rte_eth_softnic.h>
-#endif
 #ifdef RTE_LIBRTE_BNXT_PMD
 #include <rte_pmd_bnxt.h>
 #endif
@@ -17896,50 +17893,15 @@ cmdline_read_from_file(const char *filename)
 void
 prompt(void)
 {
-	int status;
-
 	/* initialize non-constant commands */
 	cmd_set_fwd_mode_init();
 	cmd_set_fwd_retry_mode_init();
 
-#if defined RTE_LIBRTE_PMD_SOFTNIC
-	portid_t softnic_portid, pid;
-	uint8_t softnic_enable = 0;
-
-	if (strcmp(cur_fwd_eng->fwd_mode_name, "softnic") == 0) {
-		RTE_ETH_FOREACH_DEV(pid) {
-			struct rte_port *port = &ports[pid];
-			const char *driver = port->dev_info.driver_name;
-
-			if (strcmp(driver, "net_softnic") == 0) {
-				softnic_portid = pid;
-				softnic_enable = 1;
-				break;
-			}
-		}
-	}
-#endif
-
 	testpmd_cl = cmdline_stdin_new(main_ctx, "testpmd> ");
 	if (testpmd_cl == NULL)
 		return;
-
-	for (;;) {
-		status = cmdline_poll(testpmd_cl);
-		if (status < 0)
-			rte_panic("CLI poll error (%" PRId32 ")\n", status);
-		else if (status == RDLINE_EXITED) {
-			cmdline_stdin_exit(testpmd_cl);
-			rte_exit(0, "\n");
-		}
-
-#if defined RTE_LIBRTE_PMD_SOFTNIC
-
-	if ((softnic_enable == 1) &&
-		(strcmp(cur_fwd_eng->fwd_mode_name, "softnic") == 0))
-		rte_pmd_softnic_manage(softnic_portid);
-#endif
-	}
+	cmdline_interact(testpmd_cl);
+	cmdline_stdin_exit(testpmd_cl);
 }
 
 void
