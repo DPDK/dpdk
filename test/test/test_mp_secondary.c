@@ -50,32 +50,6 @@
 #define launch_proc(ARGV) process_dup(ARGV, \
 		sizeof(ARGV)/(sizeof(ARGV[0])), __func__)
 
-#ifdef RTE_EXEC_ENV_LINUXAPP
-static char*
-get_current_prefix(char * prefix, int size)
-{
-	char path[PATH_MAX] = {0};
-	char buf[PATH_MAX] = {0};
-
-	/* get file for config (fd is always 3) */
-	snprintf(path, sizeof(path), "/proc/self/fd/%d", 3);
-
-	/* return NULL on error */
-	if (readlink(path, buf, sizeof(buf)) == -1)
-		return NULL;
-
-	/* get the basename */
-	snprintf(buf, sizeof(buf), "%s", basename(buf));
-
-	/* copy string all the way from second char up to start of _config */
-	snprintf(prefix, size, "%.*s",
-			(int)(strnlen(buf, sizeof(buf)) - sizeof("_config")),
-			&buf[1]);
-
-	return prefix;
-}
-#endif
-
 /*
  * This function is called in the primary i.e. main test, to spawn off secondary
  * processes to run actual mp tests. Uses fork() and exec pair

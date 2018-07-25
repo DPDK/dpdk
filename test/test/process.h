@@ -5,6 +5,11 @@
 #ifndef _PROCESS_H_
 #define _PROCESS_H_
 
+#include <limits.h> /* PATH_MAX */
+#include <libgen.h> /* basename et al */
+#include <stdlib.h> /* NULL */
+#include <unistd.h> /* readlink */
+
 #ifdef RTE_EXEC_ENV_BSDAPP
 #define self "curproc"
 #define exe "file"
@@ -60,5 +65,29 @@ process_dup(const char *const argv[], int numargs, const char *env_value)
 		;
 	return status;
 }
+
+/* FreeBSD doesn't support file prefixes, so force compile failures for any
+ * tests attempting to use this function on FreeBSD.
+ */
+#ifdef RTE_EXEC_ENV_LINUXAPP
+static char *
+get_current_prefix(char *prefix, int size)
+{
+	char path[PATH_MAX] = {0};
+	char buf[PATH_MAX] = {0};
+
+	/* get file for config (fd is always 3) */
+	snprintf(path, sizeof(path), "/proc/self/fd/%d", 3);
+
+	/* return NULL on error */
+	if (readlink(path, buf, sizeof(buf)) == -1)
+		return NULL;
+
+	/* get the prefix */
+	snprintf(prefix, size, "%s", basename(dirname(buf)));
+
+	return prefix;
+}
+#endif
 
 #endif /* _PROCESS_H_ */

@@ -221,30 +221,6 @@ get_number_of_sockets(void)
 }
 #endif
 
-static char*
-get_current_prefix(char * prefix, int size)
-{
-	char path[PATH_MAX] = {0};
-	char buf[PATH_MAX] = {0};
-
-	/* get file for config (fd is always 3) */
-	snprintf(path, sizeof(path), "/proc/self/fd/%d", 3);
-
-	/* return NULL on error */
-	if (readlink(path, buf, sizeof(buf)) == -1)
-		return NULL;
-
-	/* get the basename */
-	snprintf(buf, sizeof(buf), "%s", basename(buf));
-
-	/* copy string all the way from second char up to start of _config */
-	snprintf(prefix, size, "%.*s",
-			(int)(strnlen(buf, sizeof(buf)) - sizeof("_config")),
-			&buf[1]);
-
-	return prefix;
-}
-
 /*
  * Test that the app doesn't run with invalid whitelist option.
  * Final tests ensures it does run with valid options as sanity check (one
@@ -697,16 +673,18 @@ test_invalid_n_flag(void)
 static int
 test_no_hpet_flag(void)
 {
-	char prefix[PATH_MAX], tmp[PATH_MAX];
+	char prefix[PATH_MAX] = "";
 
 #ifdef RTE_EXEC_ENV_BSDAPP
 	return 0;
-#endif
+#else
+	char tmp[PATH_MAX];
 	if (get_current_prefix(tmp, sizeof(tmp)) == NULL) {
 		printf("Error - unable to get current prefix!\n");
 		return -1;
 	}
 	snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
+#endif
 
 	/* With --no-hpet */
 	const char *argv1[] = {prgname, prefix, mp_flag, no_hpet, "-c", "1", "-n", "2"};
@@ -978,9 +956,15 @@ test_file_prefix(void)
 	 * 6. run a primary process with memtest2 prefix
 	 * 7. check that only memtest2 hugefiles are present in the hugedir
 	 */
+	char prefix[PATH_MAX] = "";
 
 #ifdef RTE_EXEC_ENV_BSDAPP
 	return 0;
+#else
+	if (get_current_prefix(prefix, sizeof(prefix)) == NULL) {
+		printf("Error - unable to get current prefix!\n");
+		return -1;
+	}
 #endif
 
 	/* this should fail unless the test itself is run with "memtest" prefix */
@@ -994,12 +978,6 @@ test_file_prefix(void)
 	/* primary process with memtest2 */
 	const char *argv2[] = {prgname, "-c", "1", "-n", "2", "-m", DEFAULT_MEM_SIZE,
 				"--file-prefix=" memtest2 };
-
-	char prefix[32];
-	if (get_current_prefix(prefix, sizeof(prefix)) == NULL) {
-		printf("Error - unable to get current prefix!\n");
-		return -1;
-	}
 
 	/* check if files for current prefix are present */
 	if (process_hugefiles(prefix, HUGEPAGE_CHECK_EXISTS) != 1) {
