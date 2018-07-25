@@ -960,7 +960,6 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	rxvq->stats.packets += nb_rx;
 
 	/* Allocate new mbuf for the used descriptor */
-	error = ENOSPC;
 	while (likely(!virtqueue_full(vq))) {
 		new_mbuf = rte_mbuf_raw_alloc(rxvq->mpool);
 		if (unlikely(new_mbuf == NULL)) {
@@ -1319,7 +1318,6 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 	rxvq->stats.packets += nb_rx;
 
 	/* Allocate new mbuf for the used descriptor */
-	error = ENOSPC;
 	while (likely(!virtqueue_full(vq))) {
 		new_mbuf = rte_mbuf_raw_alloc(rxvq->mpool);
 		if (unlikely(new_mbuf == NULL)) {
