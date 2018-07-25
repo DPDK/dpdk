@@ -864,6 +864,8 @@ T: git://dpdk.org/next/dpdk-next-crypto
 Cavium OCTEONTX zipvf
 M: Ashish Gupta <ashish.gupta@cavium.com>
 F: drivers/compress/octeontx/
+F: doc/guides/compressdevs/octeontx.rst
+F: doc/guides/compressdevs/features/octeontx.ini
 
 Intel QuickAssist
 M: Fiona Trahe <fiona.trahe@intel.com>

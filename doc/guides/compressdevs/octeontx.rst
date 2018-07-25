@@ -1,0 +1,105 @@
+..  SPDX-License-Identifier: BSD-3-Clause
+    Copyright(c) 2018 Cavium Networks.
+
+Octeontx ZIP Compression Poll Mode Driver
+=========================================
+
+The Octeontx ZIP PMD (**librte_pmd_octeontx_zip**) provides poll mode
+compression & decompression driver for ZIP HW offload device, found in
+**Cavium OCTEONTX** SoC family.
+
+More information can be found at `Cavium, Inc Official Website
+<http://www.cavium.com/OCTEON-TX_ARM_Processors.html>`_.
+
+Features
+--------
+
+Octeontx ZIP PMD has support for:
+
+Compression/Decompression algorithm:
+
+* DEFLATE
+
+Huffman code type:
+
+* FIXED
+* DYNAMIC
+
+Window size support:
+
+* 2 to 2^14
+
+Limitations
+-----------
+
+* Chained mbufs are not supported.
+
+Supported OCTEONTX SoCs
+-----------------------
+
+- CN83xx
+
+Steps To Setup Platform
+-----------------------
+
+   Octeontx SDK includes kernel image which provides Octeontx ZIP PF
+   driver to manage configuration of ZIPVF device
+   Required version of SDK is "OCTEONTX-SDK-6.2.0-build35" or above.
+
+   SDK can be install by using below command.
+   #rpm -ivh CTEONTX-SDK-6.2.0-build35.x86_64.rpm --force --nodeps
+   It will install OCTEONTX-SDK at following default location
+   /usr/local/Cavium_Networks/OCTEONTX-SDK/
+
+   For more information on building and booting linux kernel on OCTEONTX
+   please refer /usr/local/Cavium_Networks/OCTEONTX-SDK/docs/OcteonTX-SDK-UG_6.2.0.pdf.
+
+   SDK and related information can be obtained from: `Cavium support site <https://support.cavium.com/>`_.
+
+Installation
+------------
+
+Driver Compilation
+~~~~~~~~~~~~~~~~~~
+
+To compile the OCTEONTX ZIP PMD for Linux arm64 gcc target, run the
+following ``make`` command:
+
+   .. code-block:: console
+
+      cd <DPDK-source-directory>
+      make config T=arm64-thunderx-linuxapp-gcc install
+
+
+Initialization
+--------------
+
+The octeontx zip is exposed as pci device which consists of a set of
+PCIe VF devices. On EAL initialization, ZIP PCIe VF devices will be
+probed. To use the PMD in an application, user must:
+
+* run dev_bind script to bind eight ZIP PCIe VFs to the ``vfio-pci`` driver:
+
+   .. code-block:: console
+
+      ./usertools/dpdk-devbind.py -b vfio-pci 0001:04:00.1
+      ./usertools/dpdk-devbind.py -b vfio-pci 0001:04:00.2
+      ./usertools/dpdk-devbind.py -b vfio-pci 0001:04:00.3
+      ./usertools/dpdk-devbind.py -b vfio-pci 0001:04:00.4
+      ./usertools/dpdk-devbind.py -b vfio-pci 0001:04:00.5
+      ./usertools/dpdk-devbind.py -b vfio-pci 0001:04:00.6
+      ./usertools/dpdk-devbind.py -b vfio-pci 0001:04:00.7
+      ./usertools/dpdk-devbind.py -b vfio-pci 0001:04:01.0
+
+* The unit test cases can be tested as below:
+
+   .. code-block:: console
+
+      reserve enough huge pages
+      cd to the top-level DPDK directory
+      export RTE_TARGET=arm64-thunderx-linuxapp-gcc
+      export RTE_SDK=`pwd`
+      cd to test/test
+      type the command "make" to compile
+      run the tests with "./test"
+      type the command "compressdev_autotest" to test

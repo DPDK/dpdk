@@ -11,5 +11,6 @@ Compression Device Drivers
 
     overview
     isal
+    octeontx
     qat_comp
     zlib
