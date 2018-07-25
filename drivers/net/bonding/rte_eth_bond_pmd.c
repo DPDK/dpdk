@@ -2113,10 +2113,6 @@ bond_ethdev_start(struct rte_eth_dev *eth_dev)
 		}
 	}
 
-	/* Update all slave devices MACs*/
-	if (mac_address_slaves_update(eth_dev) != 0)
-		goto out_err;
-
 	/* If bonded device is configure in promiscuous mode then re-apply config */
 	if (internals->promiscuous_en)
 		bond_ethdev_promiscuous_enable(eth_dev);
@@ -2156,6 +2152,10 @@ bond_ethdev_start(struct rte_eth_dev *eth_dev)
 			bond_ethdev_slave_link_status_change_monitor,
 			(void *)&rte_eth_devices[internals->port_id]);
 	}
+
+	/* Update all slave devices MACs*/
+	if (mac_address_slaves_update(eth_dev) != 0)
+		goto out_err;
 
 	if (internals->user_defined_primary_port)
 		bond_ethdev_primary_set(internals, internals->primary_port);
