@@ -234,6 +234,7 @@ static void cmd_show_port_tm_cap_parsed(void *parsed_result,
 		return;
 
 	memset(&cap, 0, sizeof(struct rte_tm_capabilities));
+	memset(&error, 0, sizeof(struct rte_tm_error));
 	ret = rte_tm_capabilities_get(port_id, &cap, &error);
 	if (ret) {
 		print_err_msg(&error);
@@ -374,6 +375,7 @@ static void cmd_show_port_tm_level_cap_parsed(void *parsed_result,
 		return;
 
 	memset(&lcap, 0, sizeof(struct rte_tm_level_capabilities));
+	memset(&error, 0, sizeof(struct rte_tm_error));
 	ret = rte_tm_level_capabilities_get(port_id, level_id, &lcap, &error);
 	if (ret) {
 		print_err_msg(&error);
@@ -498,6 +500,7 @@ static void cmd_show_port_tm_node_cap_parsed(void *parsed_result,
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
+	memset(&error, 0, sizeof(struct rte_tm_error));
 	/* Node id must be valid */
 	ret = rte_tm_node_type_get(port_id, node_id, &is_leaf, &error);
 	if (ret != 0) {
@@ -615,6 +618,7 @@ static void cmd_show_port_tm_node_stats_parsed(void *parsed_result,
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
+	memset(&error, 0, sizeof(struct rte_tm_error));
 	/* Port status */
 	if (!port_is_started(port_id)) {
 		printf(" Port %u not started (error)\n", port_id);
@@ -727,6 +731,7 @@ static void cmd_show_port_tm_node_type_parsed(void *parsed_result,
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
+	memset(&error, 0, sizeof(struct rte_tm_error));
 	ret = rte_tm_node_type_get(port_id, node_id, &is_leaf, &error);
 	if (ret != 0) {
 		print_err_msg(&error);
@@ -832,6 +837,7 @@ static void cmd_add_port_tm_node_shaper_profile_parsed(void *parsed_result,
 
 	/* Private shaper profile params */
 	memset(&sp, 0, sizeof(struct rte_tm_shaper_params));
+	memset(&error, 0, sizeof(struct rte_tm_error));
 	sp.peak.rate = res->tb_rate;
 	sp.peak.size = res->tb_size;
 	sp.pkt_length_adjust = pkt_len_adjust;
@@ -919,6 +925,7 @@ static void cmd_del_port_tm_node_shaper_profile_parsed(void *parsed_result,
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
+	memset(&error, 0, sizeof(struct rte_tm_error));
 	ret = rte_tm_shaper_profile_delete(port_id, shaper_id, &error);
 	if (ret != 0) {
 		print_err_msg(&error);
@@ -1004,6 +1011,7 @@ static void cmd_add_port_tm_node_shared_shaper_parsed(void *parsed_result,
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
+	memset(&error, 0, sizeof(struct rte_tm_error));
 	/* Command type: add */
 	if ((strcmp(res->cmd_type, "add") == 0) &&
 		(port_is_started(port_id))) {
@@ -1098,6 +1106,7 @@ static void cmd_del_port_tm_node_shared_shaper_parsed(void *parsed_result,
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
+	memset(&error, 0, sizeof(struct rte_tm_error));
 	ret = rte_tm_shared_shaper_delete(port_id, shared_shaper_id, &error);
 	if (ret != 0) {
 		print_err_msg(&error);
@@ -1254,6 +1263,7 @@ static void cmd_add_port_tm_node_wred_profile_parsed(void *parsed_result,
 		return;
 
 	memset(&wp, 0, sizeof(struct rte_tm_wred_params));
+	memset(&error, 0, sizeof(struct rte_tm_error));
 
 	/* WRED Params  (Green Color)*/
 	color = RTE_TM_GREEN;
@@ -1369,6 +1379,7 @@ static void cmd_del_port_tm_node_wred_profile_parsed(void *parsed_result,
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
+	memset(&error, 0, sizeof(struct rte_tm_error));
 	ret = rte_tm_wred_profile_delete(port_id, wred_profile_id, &error);
 	if (ret != 0) {
 		print_err_msg(&error);
@@ -1455,6 +1466,7 @@ static void cmd_set_port_tm_node_shaper_profile_parsed(void *parsed_result,
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
+	memset(&error, 0, sizeof(struct rte_tm_error));
 	/* Port status */
 	if (!port_is_started(port_id)) {
 		printf(" Port %u not started (error)\n", port_id);
@@ -1571,6 +1583,7 @@ static void cmd_add_port_tm_nonleaf_node_parsed(void *parsed_result,
 		return;
 
 	memset(&np, 0, sizeof(struct rte_tm_node_params));
+	memset(&error, 0, sizeof(struct rte_tm_error));
 
 	/* Node parameters */
 	if (res->parent_node_id < 0)
@@ -1731,6 +1744,7 @@ static void cmd_add_port_tm_leaf_node_parsed(void *parsed_result,
 		return;
 
 	memset(&np, 0, sizeof(struct rte_tm_node_params));
+	memset(&error, 0, sizeof(struct rte_tm_error));
 
 	/* Node parameters */
 	if (res->parent_node_id < 0)
@@ -1848,6 +1862,7 @@ static void cmd_del_port_tm_node_parsed(void *parsed_result,
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
+	memset(&error, 0, sizeof(struct rte_tm_error));
 	/* Port status */
 	if (port_is_started(port_id)) {
 		printf(" Port %u not stopped (error)\n", port_id);
@@ -1937,6 +1952,7 @@ static void cmd_set_port_tm_node_parent_parsed(void *parsed_result,
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
+	memset(&error, 0, sizeof(struct rte_tm_error));
 	/* Port status */
 	if (!port_is_started(port_id)) {
 		printf(" Port %u not started (error)\n", port_id);
@@ -2012,6 +2028,7 @@ static void cmd_suspend_port_tm_node_parsed(void *parsed_result,
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
+	memset(&error, 0, sizeof(struct rte_tm_error));
 	ret = rte_tm_node_suspend(port_id, node_id, &error);
 	if (ret != 0) {
 		print_err_msg(&error);
@@ -2076,6 +2093,7 @@ static void cmd_resume_port_tm_node_parsed(void *parsed_result,
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
+	memset(&error, 0, sizeof(struct rte_tm_error));
 	ret = rte_tm_node_resume(port_id, node_id, &error);
 	if (ret != 0) {
 		print_err_msg(&error);
@@ -2147,6 +2165,7 @@ static void cmd_port_tm_hierarchy_commit_parsed(void *parsed_result,
 	else
 		clean_on_fail = 0;
 
+	memset(&error, 0, sizeof(struct rte_tm_error));
 	ret = rte_tm_hierarchy_commit(port_id, clean_on_fail, &error);
 	if (ret != 0) {
 		print_err_msg(&error);
