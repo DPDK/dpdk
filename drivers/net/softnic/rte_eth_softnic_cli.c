@@ -502,6 +502,498 @@ cmd_tmgr_node(struct pmd_internals *softnic,
 	}
 }
 
+static uint32_t
+root_node_id(uint32_t n_spp,
+	uint32_t n_pps)
+{
+	uint32_t n_queues = n_spp * n_pps * RTE_SCHED_QUEUES_PER_PIPE;
+	uint32_t n_tc = n_spp * n_pps * RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE;
+	uint32_t n_pipes = n_spp * n_pps;
+
+	return n_queues + n_tc + n_pipes + n_spp;
+}
+
+static uint32_t
+subport_node_id(uint32_t n_spp,
+	uint32_t n_pps,
+	uint32_t subport_id)
+{
+	uint32_t n_pipes = n_spp * n_pps;
+	uint32_t n_tc = n_pipes * RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE;
+	uint32_t n_queues = n_pipes * RTE_SCHED_QUEUES_PER_PIPE;
+
+	return n_queues + n_tc + n_pipes + subport_id;
+}
+
+static uint32_t
+pipe_node_id(uint32_t n_spp,
+	uint32_t n_pps,
+	uint32_t subport_id,
+	uint32_t pipe_id)
+{
+	uint32_t n_pipes = n_spp * n_pps;
+	uint32_t n_tc = n_pipes * RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE;
+	uint32_t n_queues = n_pipes * RTE_SCHED_QUEUES_PER_PIPE;
+
+	return n_queues +
+		n_tc +
+		pipe_id +
+		subport_id * n_pps;
+}
+
+static uint32_t
+tc_node_id(uint32_t n_spp,
+	uint32_t n_pps,
+	uint32_t subport_id,
+	uint32_t pipe_id,
+	uint32_t tc_id)
+{
+	uint32_t n_pipes = n_spp * n_pps;
+	uint32_t n_queues = n_pipes * RTE_SCHED_QUEUES_PER_PIPE;
+
+	return n_queues +
+		tc_id +
+		(pipe_id + subport_id * n_pps) * RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE;
+}
+
+static uint32_t
+queue_node_id(uint32_t n_spp __rte_unused,
+	uint32_t n_pps,
+	uint32_t subport_id,
+	uint32_t pipe_id,
+	uint32_t tc_id,
+	uint32_t queue_id)
+{
+	return queue_id +
+		tc_id * RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE +
+		(pipe_id + subport_id * n_pps) * RTE_SCHED_QUEUES_PER_PIPE;
+}
+
+struct tmgr_hierarchy_default_params {
+	uint32_t n_spp; /**< Number of subports per port. */
+	uint32_t n_pps; /**< Number of pipes per subport. */
+
+	struct {
+		uint32_t port;
+		uint32_t subport;
+		uint32_t pipe;
+		uint32_t tc[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
+	} shaper_profile_id;
+
+	struct {
+		uint32_t tc[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
+		uint32_t tc_valid[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
+	} shared_shaper_id;
+
+	struct {
+		uint32_t queue[RTE_SCHED_QUEUES_PER_PIPE];
+	} weight;
+};
+
+static int
+tmgr_hierarchy_default(struct pmd_internals *softnic,
+	struct tmgr_hierarchy_default_params *params)
+{
+	struct rte_tm_node_params root_node_params = {
+		.shaper_profile_id = params->shaper_profile_id.port,
+		.nonleaf = {
+			.n_sp_priorities = 1,
+		},
+	};
+
+	struct rte_tm_node_params subport_node_params = {
+		.shaper_profile_id = params->shaper_profile_id.subport,
+		.nonleaf = {
+			.n_sp_priorities = 1,
+		},
+	};
+
+	struct rte_tm_node_params pipe_node_params = {
+		.shaper_profile_id = params->shaper_profile_id.pipe,
+		.nonleaf = {
+			.n_sp_priorities = RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE,
+		},
+	};
+
+	struct rte_tm_node_params tc_node_params[] = {
+		[0] = {
+			.shaper_profile_id = params->shaper_profile_id.tc[0],
+			.shared_shaper_id = &params->shared_shaper_id.tc[0],
+			.n_shared_shapers =
+				(&params->shared_shaper_id.tc_valid[0]) ? 1 : 0,
+			.nonleaf = {
+				.n_sp_priorities = 1,
+			},
+		},
+
+		[1] = {
+			.shaper_profile_id = params->shaper_profile_id.tc[1],
+			.shared_shaper_id = &params->shared_shaper_id.tc[1],
+			.n_shared_shapers =
+				(&params->shared_shaper_id.tc_valid[1]) ? 1 : 0,
+			.nonleaf = {
+				.n_sp_priorities = 1,
+			},
+		},
+
+		[2] = {
+			.shaper_profile_id = params->shaper_profile_id.tc[2],
+			.shared_shaper_id = &params->shared_shaper_id.tc[2],
+			.n_shared_shapers =
+				(&params->shared_shaper_id.tc_valid[2]) ? 1 : 0,
+			.nonleaf = {
+				.n_sp_priorities = 1,
+			},
+		},
+
+		[3] = {
+			.shaper_profile_id = params->shaper_profile_id.tc[3],
+			.shared_shaper_id = &params->shared_shaper_id.tc[3],
+			.n_shared_shapers =
+				(&params->shared_shaper_id.tc_valid[3]) ? 1 : 0,
+			.nonleaf = {
+				.n_sp_priorities = 1,
+			},
+		},
+	};
+
+	struct rte_tm_node_params queue_node_params = {
+		.shaper_profile_id = RTE_TM_SHAPER_PROFILE_ID_NONE,
+	};
+
+	struct rte_tm_error error;
+	uint32_t n_spp = params->n_spp, n_pps = params->n_pps, s;
+	int status;
+	uint16_t port_id;
+
+	status = rte_eth_dev_get_port_by_name(softnic->params.name, &port_id);
+	if (status)
+		return -1;
+
+	/* Hierarchy level 0: Root node */
+	status = rte_tm_node_add(port_id,
+		root_node_id(n_spp, n_pps),
+		RTE_TM_NODE_ID_NULL,
+		0,
+		1,
+		RTE_TM_NODE_LEVEL_ID_ANY,
+		&root_node_params,
+		&error);
+	if (status)
+		return -1;
+
+	/* Hierarchy level 1: Subport nodes */
+	for (s = 0; s < params->n_spp; s++) {
+		uint32_t p;
+
+		status = rte_tm_node_add(port_id,
+			subport_node_id(n_spp, n_pps, s),
+			root_node_id(n_spp, n_pps),
+			0,
+			1,
+			RTE_TM_NODE_LEVEL_ID_ANY,
+			&subport_node_params,
+			&error);
+		if (status)
+			return -1;
+
+		/* Hierarchy level 2: Pipe nodes */
+		for (p = 0; p < params->n_pps; p++) {
+			uint32_t t;
+
+			status = rte_tm_node_add(port_id,
+				pipe_node_id(n_spp, n_pps, s, p),
+				subport_node_id(n_spp, n_pps, s),
+				0,
+				1,
+				RTE_TM_NODE_LEVEL_ID_ANY,
+				&pipe_node_params,
+				&error);
+			if (status)
+				return -1;
+
+			/* Hierarchy level 3: Traffic class nodes */
+			for (t = 0; t < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; t++) {
+				uint32_t q;
+
+				status = rte_tm_node_add(port_id,
+					tc_node_id(n_spp, n_pps, s, p, t),
+					pipe_node_id(n_spp, n_pps, s, p),
+					t,
+					1,
+					RTE_TM_NODE_LEVEL_ID_ANY,
+					&tc_node_params[t],
+					&error);
+				if (status)
+					return -1;
+
+				/* Hierarchy level 4: Queue nodes */
+				for (q = 0; q < RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS; q++) {
+					status = rte_tm_node_add(port_id,
+						queue_node_id(n_spp, n_pps, s, p, t, q),
+						tc_node_id(n_spp, n_pps, s, p, t),
+						0,
+						params->weight.queue[q],
+						RTE_TM_NODE_LEVEL_ID_ANY,
+						&queue_node_params,
+						&error);
+					if (status)
+						return -1;
+				} /* Queue */
+			} /* TC */
+		} /* Pipe */
+	} /* Subport */
+
+	return 0;
+}
+
+
+/**
+ * tmgr hierarchy-default
+ *  spp <n_subports_per_port>
+ *  pps <n_pipes_per_subport>
+ *  shaper profile
+ *   port <profile_id>
+ *   subport <profile_id>
+ *   pipe <profile_id>
+ *   tc0 <profile_id>
+ *   tc1 <profile_id>
+ *   tc2 <profile_id>
+ *   tc3 <profile_id>
+ *  shared shaper
+ *   tc0 <id | none>
+ *   tc1 <id | none>
+ *   tc2 <id | none>
+ *   tc3 <id | none>
+ *  weight
+ *   queue  <q0> ... <q15>
+ */
+static void
+cmd_tmgr_hierarchy_default(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct tmgr_hierarchy_default_params p;
+	int i, status;
+
+	memset(&p, 0, sizeof(p));
+
+	if (n_tokens != 50) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	if (strcmp(tokens[1], "hierarchy-default") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "hierarchy-default");
+		return;
+	}
+
+	if (strcmp(tokens[2], "spp") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "spp");
+		return;
+	}
+
+	if (softnic_parser_read_uint32(&p.n_spp, tokens[3]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "n_subports_per_port");
+		return;
+	}
+
+	if (strcmp(tokens[4], "pps") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "pps");
+		return;
+	}
+
+	if (softnic_parser_read_uint32(&p.n_pps, tokens[5]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "n_pipes_per_subport");
+		return;
+	}
+
+	/* Shaper profile */
+
+	if (strcmp(tokens[6], "shaper") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "shaper");
+		return;
+	}
+
+	if (strcmp(tokens[7], "profile") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "profile");
+		return;
+	}
+
+	if (strcmp(tokens[8], "port") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "port");
+		return;
+	}
+
+	if (softnic_parser_read_uint32(&p.shaper_profile_id.port, tokens[9]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "port profile id");
+		return;
+	}
+
+	if (strcmp(tokens[10], "subport") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "subport");
+		return;
+	}
+
+	if (softnic_parser_read_uint32(&p.shaper_profile_id.subport, tokens[11]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "subport profile id");
+		return;
+	}
+
+	if (strcmp(tokens[12], "pipe") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "pipe");
+		return;
+	}
+
+	if (softnic_parser_read_uint32(&p.shaper_profile_id.pipe, tokens[13]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "pipe_profile_id");
+		return;
+	}
+
+	if (strcmp(tokens[14], "tc0") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "tc0");
+		return;
+	}
+
+	if (softnic_parser_read_uint32(&p.shaper_profile_id.tc[0], tokens[15]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "tc0 profile id");
+		return;
+	}
+
+	if (strcmp(tokens[16], "tc1") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "tc1");
+		return;
+	}
+
+	if (softnic_parser_read_uint32(&p.shaper_profile_id.tc[1], tokens[17]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "tc1 profile id");
+		return;
+	}
+
+	if (strcmp(tokens[18], "tc2") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "tc2");
+		return;
+	}
+
+	if (softnic_parser_read_uint32(&p.shaper_profile_id.tc[2], tokens[19]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "tc2 profile id");
+		return;
+	}
+
+	if (strcmp(tokens[20], "tc3") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "tc3");
+		return;
+	}
+
+	if (softnic_parser_read_uint32(&p.shaper_profile_id.tc[3], tokens[21]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "tc3 profile id");
+		return;
+	}
+
+	/* Shared shaper */
+
+	if (strcmp(tokens[22], "shared") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "shared");
+		return;
+	}
+
+	if (strcmp(tokens[23], "shaper") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "shaper");
+		return;
+	}
+
+	if (strcmp(tokens[24], "tc0") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "tc0");
+		return;
+	}
+
+	if (strcmp(tokens[25], "none") == 0)
+		p.shared_shaper_id.tc_valid[0] = 0;
+	else {
+		if (softnic_parser_read_uint32(&p.shared_shaper_id.tc[0], tokens[25]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "shared shaper tc0");
+			return;
+		}
+
+		p.shared_shaper_id.tc_valid[0] = 1;
+	}
+
+	if (strcmp(tokens[26], "tc1") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "tc1");
+		return;
+	}
+
+	if (strcmp(tokens[27], "none") == 0)
+		p.shared_shaper_id.tc_valid[1] = 0;
+	else {
+		if (softnic_parser_read_uint32(&p.shared_shaper_id.tc[1], tokens[27]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "shared shaper tc1");
+			return;
+		}
+
+		p.shared_shaper_id.tc_valid[1] = 1;
+	}
+
+	if (strcmp(tokens[28], "tc2") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "tc2");
+		return;
+	}
+
+	if (strcmp(tokens[29], "none") == 0)
+		p.shared_shaper_id.tc_valid[2] = 0;
+	else {
+		if (softnic_parser_read_uint32(&p.shared_shaper_id.tc[2], tokens[29]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "shared shaper tc2");
+			return;
+		}
+
+		p.shared_shaper_id.tc_valid[2] = 1;
+	}
+
+	if (strcmp(tokens[30], "tc3") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "tc3");
+		return;
+	}
+
+	if (strcmp(tokens[31], "none") == 0)
+		p.shared_shaper_id.tc_valid[3] = 0;
+	else {
+		if (softnic_parser_read_uint32(&p.shared_shaper_id.tc[3], tokens[31]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "shared shaper tc3");
+			return;
+		}
+
+		p.shared_shaper_id.tc_valid[3] = 1;
+	}
+
+	/* Weight */
+
+	if (strcmp(tokens[32], "weight") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "weight");
+		return;
+	}
+
+	if (strcmp(tokens[33], "queue") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "queue");
+		return;
+	}
+
+	for (i = 0; i < 16; i++) {
+		if (softnic_parser_read_uint32(&p.weight.queue[i], tokens[34 + i]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "weight queue");
+			return;
+		}
+	}
+
+	status = tmgr_hierarchy_default(softnic, &p);
+	if (status != 0) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
 /**
  * tmgr hierarchy commit
  */
@@ -4363,6 +4855,12 @@ softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 		if (n_tokens >= 2 &&
 			(strcmp(tokens[1], "node") == 0)) {
 			cmd_tmgr_node(softnic, tokens, n_tokens, out, out_size);
+			return;
+		}
+
+		if (n_tokens >= 2 &&
+			(strcmp(tokens[1], "hierarchy-default") == 0)) {
+			cmd_tmgr_hierarchy_default(softnic, tokens, n_tokens, out, out_size);
 			return;
 		}
 
