@@ -1628,7 +1628,8 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 		if (rarp_mbuf == NULL) {
 			RTE_LOG(ERR, VHOST_DATA,
 				"Failed to make RARP packet.\n");
-			return 0;
+			count = 0;
+			goto out;
 		}
 		count -= 1;
 	}
