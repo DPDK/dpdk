@@ -18,6 +18,77 @@ zip_reg_write64(uint8_t *hw_addr, uint64_t offset, uint64_t val)
 	*(uint64_t *)(base + offset) = val;
 }
 
+static void
+zip_q_enable(struct zipvf_qp *qp)
+{
+	zip_vqx_ena_t que_ena;
+
+	/*ZIP VFx command queue init*/
+	que_ena.u = 0ull;
+	que_ena.s.ena = 1;
+
+	zip_reg_write64(qp->vf->vbar0, ZIP_VQ_ENA, que_ena.u);
+	rte_wmb();
+}
+
+/* initialize given qp on zip device */
+int
+zipvf_q_init(struct zipvf_qp *qp)
+{
+	zip_vqx_sbuf_addr_t que_sbuf_addr;
+
+	uint64_t size;
+	void *cmdq_addr;
+	uint64_t iova;
+	struct zipvf_cmdq *cmdq = &qp->cmdq;
+	struct zip_vf *vf = qp->vf;
+
+	/* allocate and setup instruction queue */
+	size = ZIP_MAX_CMDQ_SIZE;
+	size = ZIP_ALIGN_ROUNDUP(size, ZIP_CMDQ_ALIGN);
+
+	cmdq_addr = rte_zmalloc(qp->name, size, ZIP_CMDQ_ALIGN);
+	if (cmdq_addr == NULL)
+		return -1;
+
+	cmdq->sw_head = (uint64_t *)cmdq_addr;
+	cmdq->va = (uint8_t *)cmdq_addr;
+	iova = rte_mem_virt2iova(cmdq_addr);
+
+	cmdq->iova = iova;
+
+	que_sbuf_addr.u = 0ull;
+	que_sbuf_addr.s.ptr = (cmdq->iova >> 7);
+	zip_reg_write64(vf->vbar0, ZIP_VQ_SBUF_ADDR, que_sbuf_addr.u);
+
+	zip_q_enable(qp);
+
+	memset(cmdq->va, 0, ZIP_MAX_CMDQ_SIZE);
+	rte_spinlock_init(&cmdq->qlock);
+
+	return 0;
+}
+
+int
+zipvf_q_term(struct zipvf_qp *qp)
+{
+	struct zipvf_cmdq *cmdq = &qp->cmdq;
+	zip_vqx_ena_t que_ena;
+	struct zip_vf *vf = qp->vf;
+
+	if (cmdq->va != NULL) {
+		memset(cmdq->va, 0, ZIP_MAX_CMDQ_SIZE);
+		rte_free(cmdq->va);
+	}
+
+	/*Disabling the ZIP queue*/
+	que_ena.u = 0ull;
+	zip_reg_write64(vf->vbar0, ZIP_VQ_ENA, que_ena.u);
+
+	return 0;
+}
+
+
 int
 zipvf_create(struct rte_compressdev *compressdev)
 {

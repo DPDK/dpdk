@@ -11,8 +11,261 @@
 
 #include "otx_zip.h"
 
-struct rte_compressdev_ops octtx_zip_pmd_ops = {
+static const struct rte_compressdev_capabilities
+				octtx_zip_pmd_capabilities[] = {
+	{	.algo = RTE_COMP_ALGO_DEFLATE,
+		/* Deflate */
+		.comp_feature_flags =	RTE_COMP_FF_HUFFMAN_FIXED |
+					RTE_COMP_FF_HUFFMAN_DYNAMIC,
+		/* Non sharable Priv XFORM and Stateless */
+		.window_size = {
+				.min = 1,
+				.max = 14,
+				.increment = 1
+				/* size supported 2^1 to 2^14 */
+		},
+	},
+	RTE_COMP_END_OF_CAPABILITIES_LIST()
+};
 
+/** Configure device */
+static int
+zip_pmd_config(struct rte_compressdev *dev,
+		struct rte_compressdev_config *config)
+{
+	int nb_streams;
+	char res_pool[RTE_MEMZONE_NAMESIZE];
+	struct zip_vf *vf;
+	struct rte_mempool *zip_buf_mp;
+
+	if (!config || !dev)
+		return -EIO;
+
+	vf = (struct zip_vf *)(dev->data->dev_private);
+
+	/* create pool with maximum numbers of resources
+	 * required by streams
+	 */
+
+	/* use common pool for non-shareable priv_xform and stream */
+	nb_streams = config->max_nb_priv_xforms + config->max_nb_streams;
+
+	snprintf(res_pool, RTE_MEMZONE_NAMESIZE, "octtx_zip_res_pool%u",
+		 dev->data->dev_id);
+
+	/** TBD Should we use the per core object cache for stream resources */
+	zip_buf_mp = rte_mempool_create(
+			res_pool,
+			nb_streams * MAX_BUFS_PER_STREAM,
+			ZIP_BUF_SIZE,
+			0,
+			0,
+			NULL,
+			NULL,
+			NULL,
+			NULL,
+			SOCKET_ID_ANY,
+			0);
+
+	if (zip_buf_mp == NULL) {
+		ZIP_PMD_ERR(
+			"Failed to create buf mempool octtx_zip_res_pool%u",
+			dev->data->dev_id);
+		return -1;
+	}
+
+	vf->zip_mp = zip_buf_mp;
+
+	return 0;
+}
+
+/** Start device */
+static int
+zip_pmd_start(__rte_unused struct rte_compressdev *dev)
+{
+	return 0;
+}
+
+/** Stop device */
+static void
+zip_pmd_stop(__rte_unused struct rte_compressdev *dev)
+{
+
+}
+
+/** Close device */
+static int
+zip_pmd_close(struct rte_compressdev *dev)
+{
+	if (dev == NULL)
+		return -1;
+
+	struct zip_vf *vf = (struct zip_vf *)dev->data->dev_private;
+	rte_mempool_free(vf->zip_mp);
+
+	return 0;
+}
+
+/** Get device statistics */
+static void
+zip_pmd_stats_get(struct rte_compressdev *dev,
+		struct rte_compressdev_stats *stats)
+{
+	int qp_id;
+
+	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
+		struct zipvf_qp *qp = dev->data->queue_pairs[qp_id];
+
+		stats->enqueued_count += qp->qp_stats.enqueued_count;
+		stats->dequeued_count += qp->qp_stats.dequeued_count;
+
+		stats->enqueue_err_count += qp->qp_stats.enqueue_err_count;
+		stats->dequeue_err_count += qp->qp_stats.dequeue_err_count;
+	}
+}
+
+/** Reset device statistics */
+static void
+zip_pmd_stats_reset(struct rte_compressdev *dev)
+{
+	int qp_id;
+
+	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
+		struct zipvf_qp *qp = dev->data->queue_pairs[qp_id];
+		memset(&qp->qp_stats, 0, sizeof(qp->qp_stats));
+	}
+}
+
+/** Get device info */
+static void
+zip_pmd_info_get(struct rte_compressdev *dev,
+		struct rte_compressdev_info *dev_info)
+{
+	struct zip_vf *vf = (struct zip_vf *)dev->data->dev_private;
+
+	if (dev_info != NULL) {
+		dev_info->driver_name = dev->device->driver->name;
+		dev_info->feature_flags = dev->feature_flags;
+		dev_info->capabilities = octtx_zip_pmd_capabilities;
+		dev_info->max_nb_queue_pairs = vf->max_nb_queue_pairs;
+	}
+}
+
+/** Release queue pair */
+static int
+zip_pmd_qp_release(struct rte_compressdev *dev, uint16_t qp_id)
+{
+	struct zipvf_qp *qp = dev->data->queue_pairs[qp_id];
+
+	if (qp != NULL) {
+		zipvf_q_term(qp);
+
+		if (qp->processed_pkts)
+			rte_ring_free(qp->processed_pkts);
+
+		rte_free(qp);
+		dev->data->queue_pairs[qp_id] = NULL;
+	}
+	return 0;
+}
+
+/** Create a ring to place process packets on */
+static struct rte_ring *
+zip_pmd_qp_create_processed_pkts_ring(struct zipvf_qp *qp,
+		unsigned int ring_size, int socket_id)
+{
+	struct rte_ring *r;
+
+	r = rte_ring_lookup(qp->name);
+	if (r) {
+		if (rte_ring_get_size(r) >= ring_size) {
+			ZIP_PMD_INFO("Reusing existing ring %s for processed"
+					" packets", qp->name);
+			return r;
+		}
+
+		ZIP_PMD_ERR("Unable to reuse existing ring %s for processed"
+				" packets", qp->name);
+		return NULL;
+	}
+
+	return rte_ring_create(qp->name, ring_size, socket_id,
+						RING_F_EXACT_SZ);
+}
+
+/** Setup a queue pair */
+static int
+zip_pmd_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
+		uint32_t max_inflight_ops, int socket_id)
+{
+	struct zipvf_qp *qp = NULL;
+	struct zip_vf *vf;
+	char *name;
+	int ret;
+
+	if (!dev)
+		return -1;
+
+	vf = (struct zip_vf *) (dev->data->dev_private);
+
+	/* Free memory prior to re-allocation if needed. */
+	if (dev->data->queue_pairs[qp_id] != NULL) {
+		ZIP_PMD_INFO("Using existing queue pair %d ", qp_id);
+		return 0;
+	}
+
+	name =  rte_malloc(NULL, RTE_COMPRESSDEV_NAME_MAX_LEN, 0);
+	snprintf(name, RTE_COMPRESSDEV_NAME_MAX_LEN,
+		 "zip_pmd_%u_qp_%u",
+		 dev->data->dev_id, qp_id);
+
+	/* Allocate the queue pair data structure. */
+	qp = rte_zmalloc_socket(name, sizeof(*qp),
+				RTE_CACHE_LINE_SIZE, socket_id);
+	if (qp == NULL)
+		return (-ENOMEM);
+
+	qp->name = name;
+
+	/* Create completion queue upto max_inflight_ops */
+	qp->processed_pkts = zip_pmd_qp_create_processed_pkts_ring(qp,
+						max_inflight_ops, socket_id);
+	if (qp->processed_pkts == NULL)
+		goto qp_setup_cleanup;
+
+	qp->id = qp_id;
+	qp->vf = vf;
+
+	ret = zipvf_q_init(qp);
+	if (ret < 0)
+		goto qp_setup_cleanup;
+
+	dev->data->queue_pairs[qp_id] = qp;
+
+	memset(&qp->qp_stats, 0, sizeof(qp->qp_stats));
+	return 0;
+
+qp_setup_cleanup:
+	if (qp->processed_pkts)
+		rte_ring_free(qp->processed_pkts);
+	if (qp)
+		rte_free(qp);
+	return -1;
+}
+
+struct rte_compressdev_ops octtx_zip_pmd_ops = {
+		.dev_configure		= zip_pmd_config,
+		.dev_start		= zip_pmd_start,
+		.dev_stop		= zip_pmd_stop,
+		.dev_close		= zip_pmd_close,
+
+		.stats_get		= zip_pmd_stats_get,
+		.stats_reset		= zip_pmd_stats_reset,
+
+		.dev_infos_get		= zip_pmd_info_get,
+
+		.queue_pair_setup	= zip_pmd_qp_setup,
+		.queue_pair_release	= zip_pmd_qp_release,
 };
 
 static int

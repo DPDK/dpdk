@@ -77,8 +77,54 @@ int octtx_zip_logtype_driver;
 	ZIP_PMD_LOG(INFO, fmt, ## args)
 #define ZIP_PMD_ERR(fmt, args...) \
 	ZIP_PMD_LOG(ERR, fmt, ## args)
-#define ZIP_PMD_WARN(fmt, args...) \
-	ZIP_PMD_LOG(WARNING, fmt, ## args)
+
+/* resources required to process stream */
+enum {
+	RES_BUF = 0,
+	CMD_BUF,
+	HASH_CTX_BUF,
+	DECOMP_CTX_BUF,
+	IN_DATA_BUF,
+	OUT_DATA_BUF,
+	HISTORY_DATA_BUF,
+	MAX_BUFS_PER_STREAM
+} NUM_BUFS_PER_STREAM;
+
+
+struct zipvf_qp;
+
+
+/**
+ * ZIP instruction Queue
+ */
+struct zipvf_cmdq {
+	rte_spinlock_t qlock;
+	/* queue lock */
+	uint64_t *sw_head;
+	/* pointer to start of 8-byte word length queue-head */
+	uint8_t *va;
+	/* pointer to instruction queue virtual address */
+	rte_iova_t iova;
+	/* iova addr of cmdq head*/
+};
+
+/**
+ * ZIP device queue structure
+ */
+struct zipvf_qp {
+	struct zipvf_cmdq cmdq;
+	/* Hardware instruction queue structure */
+	struct rte_ring *processed_pkts;
+	/* Ring for placing processed packets */
+	struct rte_compressdev_stats qp_stats;
+	/* Queue pair statistics */
+	uint16_t id;
+	/* Queue Pair Identifier */
+	const char *name;
+	/* Unique Queue Pair Name */
+	struct zip_vf *vf;
+	/* pointer to device, queue belongs to */
+} __rte_cache_aligned;
 
 /**
  * ZIP VF device structure.
@@ -103,6 +149,13 @@ zipvf_create(struct rte_compressdev *compressdev);
 
 int
 zipvf_destroy(struct rte_compressdev *compressdev);
+
+int
+zipvf_q_init(struct zipvf_qp *qp);
+
+int
+zipvf_q_term(struct zipvf_qp *qp);
+
 
 uint64_t
 zip_reg_read64(uint8_t *hw_addr, uint64_t offset);
