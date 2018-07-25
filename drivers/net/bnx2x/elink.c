@@ -5203,11 +5203,12 @@ static elink_status_t elink_get_mod_abs_int_cfg(struct bnx2x_softc *sc,
 				PORT_HW_CFG_E3_MOD_ABS_MASK) >>
 				PORT_HW_CFG_E3_MOD_ABS_SHIFT;
 
-		/* Should not happen. This function called upon interrupt
-		 * triggered by GPIO ( since EPIO can only generate interrupts
-		 * to MCP).
+		/*
+		 * This should not happen since this function is called
+		 * from interrupt triggered by GPIO (since EPIO can only
+		 * generate interrupts to MCP).
 		 * So if this function was called and none of the GPIOs was set,
-		 * it means the shit hit the fan.
+		 * it means something disastrous has already happened.
 		 */
 		if ((cfg_pin < PIN_CFG_GPIO0_P0) ||
 		    (cfg_pin > PIN_CFG_GPIO3_P1)) {
