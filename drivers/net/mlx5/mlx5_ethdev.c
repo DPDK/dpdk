@@ -245,24 +245,20 @@ mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[IF_NAMESIZE])
  *   Pointer to Ethernet device.
  *
  * @return
- *   Interface index on success, a negative errno value otherwise and
- *   rte_errno is set.
+ *   Nonzero interface index on success, zero otherwise and rte_errno is set.
  */
-int
+unsigned int
 mlx5_ifindex(const struct rte_eth_dev *dev)
 {
 	char ifname[IF_NAMESIZE];
-	unsigned int ret;
+	unsigned int ifindex;
 
-	ret = mlx5_get_ifname(dev, &ifname);
-	if (ret)
-		return ret;
-	ret = if_nametoindex(ifname);
-	if (ret == 0) {
+	if (mlx5_get_ifname(dev, &ifname))
+		return 0;
+	ifindex = if_nametoindex(ifname);
+	if (!ifindex)
 		rte_errno = errno;
-		return -rte_errno;
-	}
-	return ret;
+	return ifindex;
 }
 
 /**

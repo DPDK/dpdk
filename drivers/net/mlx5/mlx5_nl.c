@@ -362,7 +362,7 @@ mlx5_nl_mac_addr_list(struct rte_eth_dev *dev, struct ether_addr (*mac)[],
 		      int *mac_n)
 {
 	struct priv *priv = dev->data->dev_private;
-	int iface_idx = mlx5_ifindex(dev);
+	unsigned int iface_idx = mlx5_ifindex(dev);
 	struct {
 		struct nlmsghdr	hdr;
 		struct ifinfomsg ifm;
@@ -421,7 +421,7 @@ mlx5_nl_mac_addr_modify(struct rte_eth_dev *dev, struct ether_addr *mac,
 			int add)
 {
 	struct priv *priv = dev->data->dev_private;
-	int iface_idx = mlx5_ifindex(dev);
+	unsigned int iface_idx = mlx5_ifindex(dev);
 	struct {
 		struct nlmsghdr hdr;
 		struct ndmsg ndm;
@@ -600,7 +600,7 @@ static int
 mlx5_nl_device_flags(struct rte_eth_dev *dev, uint32_t flags, int enable)
 {
 	struct priv *priv = dev->data->dev_private;
-	int iface_idx = mlx5_ifindex(dev);
+	unsigned int iface_idx = mlx5_ifindex(dev);
 	struct {
 		struct nlmsghdr hdr;
 		struct ifinfomsg ifi;
