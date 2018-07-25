@@ -28,6 +28,85 @@ static const struct rte_compressdev_capabilities
 	RTE_COMP_END_OF_CAPABILITIES_LIST()
 };
 
+/*
+ * Reset session to default state for next set of stateless operation
+ */
+static inline void
+reset_stream(struct zip_stream *z_stream)
+{
+	union zip_inst_s *inst = (union zip_inst_s *)(z_stream->inst);
+
+	inst->s.bf = 1;
+	inst->s.ef = 0;
+}
+
+int
+zip_process_op(struct rte_comp_op *op,
+		struct zipvf_qp *qp,
+		struct zip_stream *zstrm)
+{
+	union zip_inst_s *inst = zstrm->inst;
+	volatile union zip_zres_s *zresult = NULL;
+
+
+	if ((op->m_src->nb_segs > 1) || (op->m_dst->nb_segs > 1) ||
+			(op->src.offset > rte_pktmbuf_pkt_len(op->m_src)) ||
+			(op->dst.offset > rte_pktmbuf_pkt_len(op->m_dst))) {
+		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
+		ZIP_PMD_ERR("Segmented packet is not supported\n");
+		return 0;
+	}
+
+	zipvf_prepare_cmd_stateless(op, zstrm);
+
+	zresult = (union zip_zres_s *)zstrm->bufs[RES_BUF];
+	zresult->s.compcode = 0;
+
+#ifdef ZIP_DBG
+	zip_dump_instruction(inst);
+#endif
+
+	/* Submit zip command */
+	zipvf_push_command(qp, (void *)inst);
+
+	/* Check and Process results in sync mode */
+	do {
+	} while (!zresult->s.compcode);
+
+	if (zresult->s.compcode == ZIP_COMP_E_SUCCESS) {
+		op->status = RTE_COMP_OP_STATUS_SUCCESS;
+	} else {
+		/* FATAL error cannot do anything */
+		ZIP_PMD_ERR("operation failed with error code:%d\n",
+			zresult->s.compcode);
+		if (zresult->s.compcode == ZIP_COMP_E_DSTOP)
+			op->status = RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED;
+		else
+			op->status = RTE_COMP_OP_STATUS_ERROR;
+	}
+
+	ZIP_PMD_INFO("written %d\n", zresult->s.totalbyteswritten);
+
+	/* Update op stats */
+	switch (op->status) {
+	case RTE_COMP_OP_STATUS_SUCCESS:
+		op->consumed = zresult->s.totalbytesread;
+	/* Fall-through */
+	case RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED:
+		op->produced = zresult->s.totalbyteswritten;
+		break;
+	default:
+		ZIP_PMD_ERR("stats not updated for status:%d\n",
+				op->status);
+		break;
+	}
+	/* zstream is reset irrespective of result */
+	reset_stream(zstrm);
+
+	zresult->s.compcode = ZIP_COMP_E_NOTDONE;
+	return 0;
+}
+
 /** Parse xform parameters and setup a stream */
 static int
 zip_set_stream_parameters(struct rte_compressdev *dev,
@@ -114,6 +193,7 @@ zip_set_stream_parameters(struct rte_compressdev *dev,
 	inst->s.res_ptr_ctl.s.length = 0;
 
 	z_stream->inst = inst;
+	z_stream->func = zip_process_op;
 
 	return 0;
 
@@ -397,6 +477,62 @@ zip_pmd_stream_free(struct rte_compressdev *dev, void *stream)
 }
 
 
+static uint16_t
+zip_pmd_enqueue_burst_sync(void *queue_pair,
+		struct rte_comp_op **ops, uint16_t nb_ops)
+{
+	struct zipvf_qp *qp = queue_pair;
+	struct rte_comp_op *op;
+	struct zip_stream *zstrm;
+	int i, ret = 0;
+	uint16_t enqd = 0;
+
+	for (i = 0; i < nb_ops; i++) {
+		op = ops[i];
+
+		if (op->op_type == RTE_COMP_OP_STATEFUL) {
+			op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
+		} else {
+			/* process stateless ops */
+			zstrm = (struct zip_stream *)op->private_xform;
+			if (unlikely(zstrm == NULL))
+				op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
+			else
+				ret = zstrm->func(op, qp, zstrm);
+		}
+
+		/* Whatever is out of op, put it into completion queue with
+		 * its status
+		 */
+		if (!ret)
+			ret = rte_ring_enqueue(qp->processed_pkts, (void *)op);
+
+		if (unlikely(ret < 0)) {
+			/* increment count if failed to enqueue op*/
+			qp->qp_stats.enqueue_err_count++;
+		} else {
+			qp->qp_stats.enqueued_count++;
+			enqd++;
+		}
+	}
+	return enqd;
+}
+
+static uint16_t
+zip_pmd_dequeue_burst_sync(void *queue_pair,
+		struct rte_comp_op **ops, uint16_t nb_ops)
+{
+	struct zipvf_qp *qp = queue_pair;
+
+	unsigned int nb_dequeued = 0;
+
+	nb_dequeued = rte_ring_dequeue_burst(qp->processed_pkts,
+			(void **)ops, nb_ops, NULL);
+	qp->qp_stats.dequeued_count += nb_dequeued;
+
+	return nb_dequeued;
+}
+
 struct rte_compressdev_ops octtx_zip_pmd_ops = {
 		.dev_configure		= zip_pmd_config,
 		.dev_start		= zip_pmd_start,
@@ -458,6 +594,8 @@ zip_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	compressdev->dev_ops = &octtx_zip_pmd_ops;
 	/* register rx/tx burst functions for data path */
+	compressdev->dequeue_burst = zip_pmd_dequeue_burst_sync;
+	compressdev->enqueue_burst = zip_pmd_enqueue_burst_sync;
 	compressdev->feature_flags = RTE_COMPDEV_FF_HW_ACCELERATED;
 	return ret;
 }

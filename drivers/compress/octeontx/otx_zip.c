@@ -88,6 +88,53 @@ zipvf_q_term(struct zipvf_qp *qp)
 	return 0;
 }
 
+void
+zipvf_push_command(struct zipvf_qp *qp, union zip_inst_s *cmd)
+{
+	zip_quex_doorbell_t dbell;
+	union zip_nptr_s ncp;
+	uint64_t *ncb_ptr;
+	struct zipvf_cmdq *cmdq = &qp->cmdq;
+	void *reg_base = qp->vf->vbar0;
+
+	/*Held queue lock*/
+	rte_spinlock_lock(&(cmdq->qlock));
+
+	/* Check space availability in zip cmd queue */
+	if ((((cmdq->sw_head - (uint64_t *)cmdq->va) * sizeof(uint64_t *)) +
+		ZIP_CMD_SIZE) == (ZIP_MAX_CMDQ_SIZE - ZIP_MAX_NCBP_SIZE)) {
+		/*Last buffer of the command queue*/
+		memcpy((uint8_t *)cmdq->sw_head,
+			(uint8_t *)cmd,
+			sizeof(union zip_inst_s));
+		/* move pointer to next loc in unit of 64-bit word */
+		cmdq->sw_head += ZIP_CMD_SIZE_WORDS;
+
+		/* now, point the "Next-Chunk Buffer Ptr" to sw_head */
+		ncb_ptr = cmdq->sw_head;
+		/* Pointing head again to cmdqueue base*/
+		cmdq->sw_head = (uint64_t *)cmdq->va;
+
+		ncp.u = 0ull;
+		ncp.s.addr = cmdq->iova;
+		*ncb_ptr = ncp.u;
+	} else {
+		/*Enough buffers available in the command queue*/
+		memcpy((uint8_t *)cmdq->sw_head,
+			(uint8_t *)cmd,
+			sizeof(union zip_inst_s));
+		cmdq->sw_head += ZIP_CMD_SIZE_WORDS;
+	}
+
+	rte_wmb();
+
+	/* Ringing ZIP VF doorbell */
+	dbell.u = 0ull;
+	dbell.s.dbell_cnt = 1;
+	zip_reg_write64(reg_base, ZIP_VQ_DOORBELL, dbell.u);
+
+	rte_spinlock_unlock(&(cmdq->qlock));
+}
 
 int
 zipvf_create(struct rte_compressdev *compressdev)

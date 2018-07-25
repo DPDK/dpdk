@@ -159,6 +159,95 @@ struct zip_vf {
 	/* pointer to pools */
 } __rte_cache_aligned;
 
+
+static inline void
+zipvf_prepare_in_buf(struct zip_stream *zstrm, struct rte_comp_op *op)
+{
+	uint32_t offset, inlen;
+	struct rte_mbuf *m_src;
+	union zip_inst_s *inst = zstrm->inst;
+
+	inlen = op->src.length;
+	offset = op->src.offset;
+	m_src = op->m_src;
+
+	/* Prepare direct input data pointer */
+	inst->s.dg = 0;
+	inst->s.inp_ptr_addr.s.addr =
+			rte_pktmbuf_iova_offset(m_src, offset);
+	inst->s.inp_ptr_ctl.s.length = inlen;
+}
+
+static inline void
+zipvf_prepare_out_buf(struct zip_stream *zstrm, struct rte_comp_op *op)
+{
+	uint32_t offset;
+	struct rte_mbuf *m_dst;
+	union zip_inst_s *inst = zstrm->inst;
+
+	offset = op->dst.offset;
+	m_dst = op->m_dst;
+
+	/* Prepare direct input data pointer */
+	inst->s.ds = 0;
+	inst->s.out_ptr_addr.s.addr =
+			rte_pktmbuf_iova_offset(m_dst, offset);
+	inst->s.totaloutputlength = rte_pktmbuf_pkt_len(m_dst) -
+			op->dst.offset;
+	inst->s.out_ptr_ctl.s.length = inst->s.totaloutputlength;
+}
+
+static inline void
+zipvf_prepare_cmd_stateless(struct rte_comp_op *op, struct zip_stream *zstrm)
+{
+	union zip_inst_s *inst = zstrm->inst;
+
+	/* set flush flag to always 1*/
+	inst->s.ef = 1;
+
+	if (inst->s.op == ZIP_OP_E_DECOMP)
+		inst->s.sf = 1;
+	else
+		inst->s.sf = 0;
+
+	/* Set input checksum */
+	inst->s.adlercrc32 = op->input_chksum;
+
+	/* Prepare gather buffers */
+	zipvf_prepare_in_buf(zstrm, op);
+	zipvf_prepare_out_buf(zstrm, op);
+}
+
+#ifdef ZIP_DBG
+static inline void
+zip_dump_instruction(void *inst)
+{
+	union zip_inst_s *cmd83 = (union zip_inst_s *)inst;
+	printf("####### START ########\n");
+	printf("doneint:%d totaloutputlength:%d\n", cmd83->s.doneint,
+		cmd83->s.totaloutputlength);
+	printf("exnum:%d iv:%d exbits:%d hmif:%d halg:%d\n", cmd83->s.exn,
+		cmd83->s.iv, cmd83->s.exbits, cmd83->s.hmif, cmd83->s.halg);
+	printf("flush:%d speed:%d cc:%d\n", cmd83->s.sf,
+		cmd83->s.ss, cmd83->s.cc);
+	printf("eof:%d bof:%d op:%d dscatter:%d dgather:%d hgather:%d\n",
+		cmd83->s.ef, cmd83->s.bf, cmd83->s.op, cmd83->s.ds,
+		cmd83->s.dg, cmd83->s.hg);
+	printf("historylength:%d adler32:%d\n", cmd83->s.historylength,
+		cmd83->s.adlercrc32);
+	printf("ctx_ptr.addr:0x%"PRIx64"\n", cmd83->s.ctx_ptr_addr.s.addr);
+	printf("ctx_ptr.len:%d\n", cmd83->s.ctx_ptr_ctl.s.length);
+	printf("history_ptr.addr:0x%"PRIx64"\n", cmd83->s.his_ptr_addr.s.addr);
+	printf("history_ptr.len:%d\n", cmd83->s.his_ptr_ctl.s.length);
+	printf("inp_ptr.addr:0x%"PRIx64"\n", cmd83->s.inp_ptr_addr.s.addr);
+	printf("inp_ptr.len:%d\n", cmd83->s.inp_ptr_ctl.s.length);
+	printf("out_ptr.addr:0x%"PRIx64"\n", cmd83->s.out_ptr_addr.s.addr);
+	printf("out_ptr.len:%d\n", cmd83->s.out_ptr_ctl.s.length);
+	printf("result_ptr.len:%d\n", cmd83->s.res_ptr_ctl.s.length);
+	printf("####### END ########\n");
+}
+#endif
+
 int
 zipvf_create(struct rte_compressdev *compressdev);
 
@@ -171,8 +260,13 @@ zipvf_q_init(struct zipvf_qp *qp);
 int
 zipvf_q_term(struct zipvf_qp *qp);
 
-int
+void
 zipvf_push_command(struct zipvf_qp *qp, union zip_inst_s *zcmd);
+
+int
+zip_process_op(struct rte_comp_op *op,
+				struct zipvf_qp *qp,
+				struct zip_stream *zstrm);
 
 uint64_t
 zip_reg_read64(uint8_t *hw_addr, uint64_t offset);
