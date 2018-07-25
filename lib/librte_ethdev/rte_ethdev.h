@@ -964,8 +964,6 @@ struct rte_eth_conf {
  * mentioned in rte_tx_offload_names in rte_ethdev.c file.
  */
 
-struct rte_pci_device;
-
 /*
  * Fallback default preferred Rx/Tx port parameters.
  * These are used if an application requests default parameters
