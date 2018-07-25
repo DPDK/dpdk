@@ -34,6 +34,7 @@ softnic_tmgr_free(struct pmd_internals *p)
 			break;
 
 		TAILQ_REMOVE(&p->tmgr_port_list, tmgr_port, node);
+		rte_sched_port_free(tmgr_port->s);
 		free(tmgr_port);
 	}
 }
@@ -56,23 +57,71 @@ softnic_tmgr_port_find(struct pmd_internals *p,
 
 struct softnic_tmgr_port *
 softnic_tmgr_port_create(struct pmd_internals *p,
-	const char *name,
-	struct rte_sched_port *sched)
+	const char *name)
 {
 	struct softnic_tmgr_port *tmgr_port;
+	struct tm_params *t = &p->soft.tm.params;
+	struct rte_sched_port *sched;
+	uint32_t n_subports, subport_id;
 
 	/* Check input params */
 	if (name == NULL ||
-		softnic_tmgr_port_find(p, name) ||
-		sched == NULL)
+		softnic_tmgr_port_find(p, name))
 		return NULL;
 
-	/* Resource */
+	/*
+	 * Resource
+	 */
+
+	/* Is hierarchy frozen? */
+	if (p->soft.tm.hierarchy_frozen == 0)
+		return NULL;
+
+	/* Port */
+	sched = rte_sched_port_config(&t->port_params);
+	if (sched == NULL)
+		return NULL;
+
+	/* Subport */
+	n_subports = t->port_params.n_subports_per_port;
+	for (subport_id = 0; subport_id < n_subports; subport_id++) {
+		uint32_t n_pipes_per_subport = t->port_params.n_pipes_per_subport;
+		uint32_t pipe_id;
+		int status;
+
+		status = rte_sched_subport_config(sched,
+			subport_id,
+			&t->subport_params[subport_id]);
+		if (status) {
+			rte_sched_port_free(sched);
+			return NULL;
+		}
+
+		/* Pipe */
+		for (pipe_id = 0; pipe_id < n_pipes_per_subport; pipe_id++) {
+			int pos = subport_id * TM_MAX_PIPES_PER_SUBPORT + pipe_id;
+			int profile_id = t->pipe_to_profile[pos];
+
+			if (profile_id < 0)
+				continue;
+
+			status = rte_sched_pipe_config(sched,
+				subport_id,
+				pipe_id,
+				profile_id);
+			if (status) {
+				rte_sched_port_free(sched);
+				return NULL;
+			}
+		}
+	}
 
 	/* Node allocation */
 	tmgr_port = calloc(1, sizeof(struct softnic_tmgr_port));
-	if (tmgr_port == NULL)
+	if (tmgr_port == NULL) {
+		rte_sched_port_free(sched);
 		return NULL;
+	}
 
 	/* Node fill in */
 	strlcpy(tmgr_port->name, name, sizeof(tmgr_port->name));
@@ -84,10 +133,22 @@ softnic_tmgr_port_create(struct pmd_internals *p,
 	return tmgr_port;
 }
 
-static void
+static struct rte_sched_port *
+SCHED(struct pmd_internals *p)
+{
+	struct softnic_tmgr_port *tmgr_port;
+
+	tmgr_port = softnic_tmgr_port_find(p, "TMGR");
+	if (tmgr_port == NULL)
+		return NULL;
+
+	return tmgr_port->s;
+}
+
+void
 tm_hierarchy_init(struct pmd_internals *p)
 {
-	memset(&p->soft.tm.h, 0, sizeof(p->soft.tm.h));
+	memset(&p->soft.tm, 0, sizeof(p->soft.tm));
 
 	/* Initialize shaper profile list */
 	TAILQ_INIT(&p->soft.tm.h.shaper_profiles);
@@ -102,8 +163,8 @@ tm_hierarchy_init(struct pmd_internals *p)
 	TAILQ_INIT(&p->soft.tm.h.nodes);
 }
 
-static void
-tm_hierarchy_uninit(struct pmd_internals *p)
+void
+tm_hierarchy_free(struct pmd_internals *p)
 {
 	/* Remove all nodes*/
 	for ( ; ; ) {
@@ -154,98 +215,7 @@ tm_hierarchy_uninit(struct pmd_internals *p)
 		free(shaper_profile);
 	}
 
-	memset(&p->soft.tm.h, 0, sizeof(p->soft.tm.h));
-}
-
-int
-tm_init(struct pmd_internals *p)
-{
 	tm_hierarchy_init(p);
-
-	return 0;
-}
-
-void
-tm_free(struct pmd_internals *p)
-{
-	tm_hierarchy_uninit(p);
-}
-
-int
-tm_start(struct pmd_internals *p)
-{
-	struct softnic_tmgr_port *tmgr_port;
-	struct tm_params *t = &p->soft.tm.params;
-	struct rte_sched_port *sched;
-	uint32_t n_subports, subport_id;
-	int status;
-
-	/* Is hierarchy frozen? */
-	if (p->soft.tm.hierarchy_frozen == 0)
-		return -1;
-
-	/* Port */
-	sched = rte_sched_port_config(&t->port_params);
-	if (sched == NULL)
-		return -1;
-
-	/* Subport */
-	n_subports = t->port_params.n_subports_per_port;
-	for (subport_id = 0; subport_id < n_subports; subport_id++) {
-		uint32_t n_pipes_per_subport =
-			t->port_params.n_pipes_per_subport;
-		uint32_t pipe_id;
-
-		status = rte_sched_subport_config(sched,
-			subport_id,
-			&t->subport_params[subport_id]);
-		if (status) {
-			rte_sched_port_free(sched);
-			return -1;
-		}
-
-		/* Pipe */
-		n_pipes_per_subport = t->port_params.n_pipes_per_subport;
-		for (pipe_id = 0; pipe_id < n_pipes_per_subport; pipe_id++) {
-			int pos = subport_id * TM_MAX_PIPES_PER_SUBPORT +
-				pipe_id;
-			int profile_id = t->pipe_to_profile[pos];
-
-			if (profile_id < 0)
-				continue;
-
-			status = rte_sched_pipe_config(sched,
-				subport_id,
-				pipe_id,
-				profile_id);
-			if (status) {
-				rte_sched_port_free(sched);
-				return -1;
-			}
-		}
-	}
-
-	tmgr_port = softnic_tmgr_port_create(p, "TMGR", sched);
-	if (tmgr_port == NULL) {
-		rte_sched_port_free(sched);
-		return -1;
-	}
-
-	/* Commit */
-	p->soft.tm.sched = sched;
-
-	return 0;
-}
-
-void
-tm_stop(struct pmd_internals *p)
-{
-	if (p->soft.tm.sched) {
-		rte_sched_port_free(p->soft.tm.sched);
-		p->soft.tm.sched = NULL;
-	}
-	/* Unfreeze hierarchy */
-	p->soft.tm.hierarchy_frozen = 0;
 }
 
 static struct tm_shaper_profile *
@@ -1095,7 +1065,7 @@ update_subport_tc_rate(struct rte_eth_dev *dev,
 	subport_params.tc_rate[tc_id] = sp_new->params.peak.rate;
 
 	/* Update the subport configuration. */
-	if (rte_sched_subport_config(p->soft.tm.sched,
+	if (rte_sched_subport_config(SCHED(p),
 		subport_id, &subport_params))
 		return -1;
 
@@ -2623,10 +2593,8 @@ pmd_tm_hierarchy_commit(struct rte_eth_dev *dev,
 
 	status = hierarchy_commit_check(dev, error);
 	if (status) {
-		if (clear_on_fail) {
-			tm_hierarchy_uninit(p);
-			tm_hierarchy_init(p);
-		}
+		if (clear_on_fail)
+			tm_hierarchy_free(p);
 
 		return status;
 	}
@@ -2668,7 +2636,7 @@ update_pipe_weight(struct rte_eth_dev *dev, struct tm_node *np, uint32_t weight)
 		return -1;
 
 	/* Update the pipe profile used by the current pipe. */
-	if (rte_sched_pipe_config(p->soft.tm.sched, subport_id, pipe_id,
+	if (rte_sched_pipe_config(SCHED(p), subport_id, pipe_id,
 		(int32_t)pipe_profile_id))
 		return -1;
 
@@ -2717,7 +2685,7 @@ update_queue_weight(struct rte_eth_dev *dev,
 		return -1;
 
 	/* Update the pipe profile used by the current pipe. */
-	if (rte_sched_pipe_config(p->soft.tm.sched, subport_id, pipe_id,
+	if (rte_sched_pipe_config(SCHED(p), subport_id, pipe_id,
 		(int32_t)pipe_profile_id))
 		return -1;
 
@@ -2850,7 +2818,7 @@ update_subport_rate(struct rte_eth_dev *dev,
 	subport_params.tb_size = sp->params.peak.size;
 
 	/* Update the subport configuration. */
-	if (rte_sched_subport_config(p->soft.tm.sched, subport_id,
+	if (rte_sched_subport_config(SCHED(p), subport_id,
 		&subport_params))
 		return -1;
 
@@ -2897,7 +2865,7 @@ update_pipe_rate(struct rte_eth_dev *dev,
 		return -1;
 
 	/* Update the pipe profile used by the current pipe. */
-	if (rte_sched_pipe_config(p->soft.tm.sched, subport_id, pipe_id,
+	if (rte_sched_pipe_config(SCHED(p), subport_id, pipe_id,
 		(int32_t)pipe_profile_id))
 		return -1;
 
@@ -2942,7 +2910,7 @@ update_tc_rate(struct rte_eth_dev *dev,
 		return -1;
 
 	/* Update the pipe profile used by the current pipe. */
-	if (rte_sched_pipe_config(p->soft.tm.sched, subport_id, pipe_id,
+	if (rte_sched_pipe_config(SCHED(p), subport_id, pipe_id,
 		(int32_t)pipe_profile_id))
 		return -1;
 
@@ -3077,8 +3045,7 @@ read_port_stats(struct rte_eth_dev *dev,
 		uint32_t tc_ov, id;
 
 		/* Stats read */
-		int status = rte_sched_subport_read_stats(
-			p->soft.tm.sched,
+		int status = rte_sched_subport_read_stats(SCHED(p),
 			subport_id,
 			&s,
 			&tc_ov);
@@ -3125,8 +3092,7 @@ read_subport_stats(struct rte_eth_dev *dev,
 	uint32_t tc_ov, tc_id;
 
 	/* Stats read */
-	int status = rte_sched_subport_read_stats(
-		p->soft.tm.sched,
+	int status = rte_sched_subport_read_stats(SCHED(p),
 		subport_id,
 		&s,
 		&tc_ov);
@@ -3186,8 +3152,7 @@ read_pipe_stats(struct rte_eth_dev *dev,
 			i / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
 			i % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS);
 
-		int status = rte_sched_queue_read_stats(
-			p->soft.tm.sched,
+		int status = rte_sched_queue_read_stats(SCHED(p),
 			qid,
 			&s,
 			&qlen);
@@ -3247,8 +3212,7 @@ read_tc_stats(struct rte_eth_dev *dev,
 			tc_id,
 			i);
 
-		int status = rte_sched_queue_read_stats(
-			p->soft.tm.sched,
+		int status = rte_sched_queue_read_stats(SCHED(p),
 			qid,
 			&s,
 			&qlen);
@@ -3307,8 +3271,7 @@ read_queue_stats(struct rte_eth_dev *dev,
 		tc_id,
 		queue_id);
 
-	int status = rte_sched_queue_read_stats(
-		p->soft.tm.sched,
+	int status = rte_sched_queue_read_stats(SCHED(p),
 		qid,
 		&s,
 		&qlen);

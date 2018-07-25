@@ -203,7 +203,6 @@ struct tm_internals {
 
 	/** Blueprints */
 	struct tm_params params;
-	struct rte_sched_port *sched;
 };
 
 struct softnic_tmgr_port {
@@ -575,20 +574,13 @@ softnic_tmgr_port_find(struct pmd_internals *p,
 
 struct softnic_tmgr_port *
 softnic_tmgr_port_create(struct pmd_internals *p,
-	const char *name,
-	struct rte_sched_port *sched);
-
-int
-tm_init(struct pmd_internals *p);
+	const char *name);
 
 void
-tm_free(struct pmd_internals *p);
-
-int
-tm_start(struct pmd_internals *p);
+tm_hierarchy_init(struct pmd_internals *p);
 
 void
-tm_stop(struct pmd_internals *p);
+tm_hierarchy_free(struct pmd_internals *p);
 
 static inline int
 tm_used(struct rte_eth_dev *dev)

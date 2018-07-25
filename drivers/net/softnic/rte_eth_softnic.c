@@ -156,14 +156,6 @@ pmd_dev_start(struct rte_eth_dev *dev)
 	struct pmd_internals *p = dev->data->dev_private;
 	int status;
 
-	/* TM */
-	if (tm_used(dev)) {
-		status = tm_start(p);
-
-		if (status)
-			return status;
-	}
-
 	/* Firmware */
 	status = softnic_cli_script_process(p,
 		p->params.firmware,
@@ -197,8 +189,7 @@ pmd_dev_stop(struct rte_eth_dev *dev)
 	softnic_softnic_swq_free_keep_rxq_txq(p);
 	softnic_mempool_free(p);
 
-	/* TM */
-	tm_stop(p);
+	tm_hierarchy_free(p);
 }
 
 static void
@@ -273,10 +264,11 @@ pmd_init(struct pmd_params *params)
 	memcpy(&p->params, params, sizeof(p->params));
 
 	/* Resources */
+	tm_hierarchy_init(p);
+
 	softnic_mempool_init(p);
 	softnic_swq_init(p);
 	softnic_link_init(p);
-	tm_init(p);
 	softnic_tmgr_init(p);
 	softnic_tap_init(p);
 	softnic_port_in_action_profile_init(p);
@@ -322,10 +314,11 @@ pmd_free(struct pmd_internals *p)
 	softnic_port_in_action_profile_free(p);
 	softnic_tap_free(p);
 	softnic_tmgr_free(p);
-	tm_free(p);
 	softnic_link_free(p);
 	softnic_swq_free(p);
 	softnic_mempool_free(p);
+
+	tm_hierarchy_free(p);
 
 	rte_free(p);
 }

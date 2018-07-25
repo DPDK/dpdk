@@ -185,6 +185,33 @@ cmd_swq(struct pmd_internals *softnic,
 }
 
 /**
+ * tmgr <tmgr_name>
+ */
+static void
+cmd_tmgr(struct pmd_internals *softnic,
+	char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	char *name;
+	struct softnic_tmgr_port *tmgr_port;
+
+	if (n_tokens != 2) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	name = tokens[1];
+
+	tmgr_port = softnic_tmgr_port_create(softnic, name);
+	if (tmgr_port == NULL) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
+
+/**
  * tap <tap_name>
  */
 static void
@@ -3952,6 +3979,11 @@ softnic_cli_process(char *in, char *out, size_t out_size, void *arg)
 
 	if (strcmp(tokens[0], "swq") == 0) {
 		cmd_swq(softnic, tokens, n_tokens, out, out_size);
+		return;
+	}
+
+	if (strcmp(tokens[0], "tmgr") == 0) {
+		cmd_tmgr(softnic, tokens, n_tokens, out, out_size);
 		return;
 	}
 
