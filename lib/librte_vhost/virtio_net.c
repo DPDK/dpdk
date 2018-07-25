@@ -1594,15 +1594,19 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 	if (unlikely(rte_spinlock_trylock(&vq->access_lock) == 0))
 		return 0;
 
-	if (unlikely(vq->enabled == 0))
+	if (unlikely(vq->enabled == 0)) {
+		count = 0;
 		goto out_access_unlock;
+	}
 
 	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
 		vhost_user_iotlb_rd_lock(vq);
 
 	if (unlikely(vq->access_ok == 0))
-		if (unlikely(vring_translate(dev, vq) < 0))
+		if (unlikely(vring_translate(dev, vq) < 0)) {
+			count = 0;
 			goto out;
+		}
 
 	/*
 	 * Construct a RARP broadcast packet, and inject it to the "pkts"
