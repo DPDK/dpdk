@@ -415,12 +415,19 @@ reserve_avail_buf_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	cur_idx  = vq->last_avail_idx;
 
 	if (rxvq_is_mergeable(dev))
-		max_tries = vq->size;
+		max_tries = vq->size - 1;
 	else
 		max_tries = 1;
 
 	while (size > 0) {
 		if (unlikely(cur_idx == avail_head))
+			return -1;
+		/*
+		 * if we tried all available ring items, and still
+		 * can't get enough buf, it means something abnormal
+		 * happened.
+		 */
+		if (unlikely(++tries > max_tries))
 			return -1;
 
 		if (unlikely(fill_vec_buf_split(dev, vq, cur_idx,
@@ -433,16 +440,7 @@ reserve_avail_buf_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		size -= len;
 
 		cur_idx++;
-		tries++;
 		*num_buffers += 1;
-
-		/*
-		 * if we tried all available ring items, and still
-		 * can't get enough buf, it means something abnormal
-		 * happened.
-		 */
-		if (unlikely(tries > max_tries))
-			return -1;
 	}
 
 	*nr_vec = vec_idx;
@@ -582,11 +580,19 @@ reserve_avail_buf_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	avail_idx = vq->last_avail_idx;
 
 	if (rxvq_is_mergeable(dev))
-		max_tries = vq->size;
+		max_tries = vq->size - 1;
 	else
 		max_tries = 1;
 
 	while (size > 0) {
+		/*
+		 * if we tried all available ring items, and still
+		 * can't get enough buf, it means something abnormal
+		 * happened.
+		 */
+		if (unlikely(++tries > max_tries))
+			return -1;
+
 		if (unlikely(fill_vec_buf_packed(dev, vq,
 						avail_idx, &desc_count,
 						buf_vec, &vec_idx,
@@ -603,16 +609,7 @@ reserve_avail_buf_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			avail_idx -= vq->size;
 
 		*nr_descs += desc_count;
-		tries++;
 		*num_buffers += 1;
-
-		/*
-		 * if we tried all available ring items, and still
-		 * can't get enough buf, it means something abnormal
-		 * happened.
-		 */
-		if (unlikely(tries > max_tries))
-			return -1;
 	}
 
 	*nr_vec = vec_idx;
