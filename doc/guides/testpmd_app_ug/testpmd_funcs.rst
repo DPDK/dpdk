@@ -2025,7 +2025,7 @@ Create a new bonding device::
 
 For example, to create a bonded device in mode 1 on socket 0::
 
-   testpmd> create bonded 1 0
+   testpmd> create bonded device 1 0
    created new bonded device (port X)
 
 add bonding slave
