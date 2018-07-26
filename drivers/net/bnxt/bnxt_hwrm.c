@@ -2020,6 +2020,7 @@ int bnxt_clear_hwrm_vnic_filters(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 			rc = bnxt_hwrm_clear_ntuple_filter(bp, filter);
 		else
 			rc = bnxt_hwrm_clear_l2_filter(bp, filter);
+		STAILQ_REMOVE(&vnic->filter, filter, bnxt_filter_info, next);
 		//if (rc)
 			//break;
 	}
