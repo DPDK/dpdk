@@ -70,8 +70,7 @@ New Features
 
 * **Updated the enic driver.**
 
-  * Add support for mbuf fast free offload.
-  * Add low cycle count Tx handler for no-offload Tx (except mbuf fast free).
+  * Add low cycle count Tx handler for no-offload Tx.
   * Add low cycle count Rx handler for non-scattered Rx.
   * Minor performance improvements to scattered Rx handler.
   * Add handlers to add/delete VxLAN port number.

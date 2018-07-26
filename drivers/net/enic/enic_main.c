@@ -572,11 +572,10 @@ int enic_enable(struct enic *enic)
 	}
 
 	/*
-	 * Use the simple TX handler if possible. All offloads must be disabled
-	 * except mbuf fast free.
+	 * Use the simple TX handler if possible. All offloads must be
+	 * disabled.
 	 */
-	if ((eth_dev->data->dev_conf.txmode.offloads &
-	     ~DEV_TX_OFFLOAD_MBUF_FAST_FREE) == 0) {
+	if (eth_dev->data->dev_conf.txmode.offloads == 0) {
 		PMD_INIT_LOG(DEBUG, " use the simple tx handler");
 		eth_dev->tx_pkt_burst = &enic_simple_xmit_pkts;
 		for (index = 0; index < enic->wq_count; index++)

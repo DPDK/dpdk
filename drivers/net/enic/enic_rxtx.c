@@ -588,31 +588,6 @@ enic_noscatter_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	return rx - rx_pkts;
 }
 
-static void enic_fast_free_wq_bufs(struct vnic_wq *wq, u16 completed_index)
-{
-	unsigned int desc_count, n, nb_to_free, tail_idx;
-	struct rte_mempool *pool;
-	struct rte_mbuf **m;
-
-	desc_count = wq->ring.desc_count;
-	nb_to_free = enic_ring_sub(desc_count, wq->tail_idx, completed_index)
-				   + 1;
-	tail_idx = wq->tail_idx;
-	wq->tail_idx += nb_to_free;
-	wq->ring.desc_avail += nb_to_free;
-	if (wq->tail_idx >= desc_count)
-		wq->tail_idx -= desc_count;
-	/* First, free at most until the end of ring */
-	m = &wq->bufs[tail_idx];
-	pool = (*m)->pool;
-	n = RTE_MIN(nb_to_free, desc_count - tail_idx);
-	rte_mempool_put_bulk(pool, (void **)m, n);
-	n = nb_to_free - n;
-	/* Then wrap and free the rest */
-	if (unlikely(n))
-		rte_mempool_put_bulk(pool, (void **)wq->bufs, n);
-}
-
 static inline void enic_free_wq_bufs(struct vnic_wq *wq, u16 completed_index)
 {
 	struct rte_mbuf *buf;
@@ -660,10 +635,7 @@ unsigned int enic_cleanup_wq(__rte_unused struct enic *enic, struct vnic_wq *wq)
 	completed_index = *((uint32_t *)wq->cqmsg_rz->addr) & 0xffff;
 
 	if (wq->last_completed_index != completed_index) {
-		if (wq->offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
-			enic_fast_free_wq_bufs(wq, completed_index);
-		else
-			enic_free_wq_bufs(wq, completed_index);
+		enic_free_wq_bufs(wq, completed_index);
 		wq->last_completed_index = completed_index;
 	}
 	return 0;
