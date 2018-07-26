@@ -433,9 +433,11 @@ int cxgbe_dev_configure(struct rte_eth_dev *eth_dev)
 		if (err)
 			return err;
 		adapter->flags |= FW_QUEUE_BOUND;
-		err = setup_sge_ctrl_txq(adapter);
-		if (err)
-			return err;
+		if (is_pf4(adapter)) {
+			err = setup_sge_ctrl_txq(adapter);
+			if (err)
+				return err;
+		}
 	}
 
 	err = cfg_queue_count(eth_dev);
