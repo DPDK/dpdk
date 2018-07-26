@@ -105,7 +105,7 @@ static struct clip_entry *t4_clip_alloc(struct rte_eth_dev *dev,
 	struct adapter *adap = ethdev2adap(dev);
 	struct clip_tbl *ctbl = adap->clipt;
 	struct clip_entry *ce;
-	int ret;
+	int ret = 0;
 
 	if (!ctbl)
 		return NULL;
@@ -120,12 +120,10 @@ static struct clip_entry *t4_clip_alloc(struct rte_eth_dev *dev,
 				ce->type = FILTER_TYPE_IPV6;
 				rte_atomic32_set(&ce->refcnt, 1);
 				ret = clip6_get_mbox(dev, lip);
-				if (ret) {
+				if (ret)
 					dev_debug(adap,
 						  "CLIP FW ADD CMD failed: %d",
 						  ret);
-					ce = NULL;
-				}
 			} else {
 				ce->type = FILTER_TYPE_IPV4;
 			}
@@ -136,7 +134,7 @@ static struct clip_entry *t4_clip_alloc(struct rte_eth_dev *dev,
 	}
 	t4_os_write_unlock(&ctbl->lock);
 
-	return ce;
+	return ret ? NULL : ce;
 }
 
 /**
