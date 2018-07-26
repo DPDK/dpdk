@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2017 Intel Corporation
+ * Copyright(c) 2018 Intel Corporation
  */
 
 #include <unistd.h>
@@ -265,6 +265,7 @@ rte_latencystats_uninit(void)
 	uint16_t qid;
 	int ret = 0;
 	struct rxtx_cbs *cbs = NULL;
+	const struct rte_memzone *mz = NULL;
 
 	/** De register Rx/Tx callbacks */
 	RTE_ETH_FOREACH_DEV(pid) {
@@ -287,6 +288,11 @@ rte_latencystats_uninit(void)
 					"qid=%d\n", pid, qid);
 		}
 	}
+
+	/* free up the memzone */
+	mz = rte_memzone_lookup(MZ_RTE_LATENCY_STATS);
+	if (mz)
+		rte_memzone_free(mz);
 
 	return 0;
 }
