@@ -72,7 +72,7 @@ pci_name_set(struct rte_pci_device *dev)
 	 */
 	if (devargs != NULL)
 		/* If an rte_devargs exists, the generic rte_device uses the
-		 * given name as its namea
+		 * given name as its name.
 		 */
 		dev->device.name = dev->device.devargs->name;
 	else
