@@ -3353,13 +3353,12 @@ int bnxt_get_nvram_directory(struct bnxt *bp, uint32_t len, uint8_t *data)
 	req.host_dest_addr = rte_cpu_to_le_64(dma_handle);
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
-	HWRM_CHECK_RESULT();
-	HWRM_UNLOCK();
-
 	if (rc == 0)
 		memcpy(data, buf, len > buflen ? buflen : len);
 
 	rte_free(buf);
+	HWRM_CHECK_RESULT();
+	HWRM_UNLOCK();
 
 	return rc;
 }
@@ -3391,12 +3390,13 @@ int bnxt_hwrm_get_nvram_item(struct bnxt *bp, uint32_t index,
 	req.offset = rte_cpu_to_le_32(offset);
 	req.len = rte_cpu_to_le_32(length);
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
-	HWRM_CHECK_RESULT();
-	HWRM_UNLOCK();
 	if (rc == 0)
 		memcpy(data, buf, length);
 
 	rte_free(buf);
+	HWRM_CHECK_RESULT();
+	HWRM_UNLOCK();
+
 	return rc;
 }
 
@@ -3451,10 +3451,10 @@ int bnxt_hwrm_flash_nvram(struct bnxt *bp, uint16_t dir_type,
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
+	rte_free(buf);
 	HWRM_CHECK_RESULT();
 	HWRM_UNLOCK();
 
-	rte_free(buf);
 	return rc;
 }
 
