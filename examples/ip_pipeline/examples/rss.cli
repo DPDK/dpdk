@@ -1,0 +1,112 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright(c) 2010-2018 Intel Corporation
+
+; This setup demonstrates the usage of NIC Receive Side Scaling (RSS) feature.
+; Each NIC splits the input traffic into 4 RX queues, with each of its RX queues
+; being handled by a different pipeline:
+;
+;                                                    +-----------+    +----------+
+;                       +--------------------------->|           |    |          |
+;                       |       +------------------->| PIPELINE0 +--->|  LINK 0  |--->
+;                       |       |     +------------->| (CORE A)  |    |    TX    |
+;                       |       |     |     +------->|           |    |          |
+;                       |       |     |     |        +-----------+    +----------+
+;    +----------+       |       |     |     |
+;    |          |-------+       |     |     |
+;--->|  LINK 0  |-----------+   |     |     |
+;    |    RX    |---------+ |   |     |     |
+;    |          |-------+ | |   |     |     |
+;    +----------+       | | |   |     |     |        +-----------+    +----------+
+;                       | | +---|-----|-----|------->|           |    |          |
+;    +----------+       | |     | +---|-----|------->| PIPELINE1 +--->|  LINK 1  |--->
+;    |          |-------|-|-----+ |   | +---|------->| (CORE B)  |    |    TX    |
+;--->|  LINK 1  |-------|-|-------+   | |   | +----->|           |    |          |
+;    |    RX    |-------|-|-------+   | |   | |      +-----------+    +----------+
+;    |          |-------|-|-----+ |   | |   | |
+;    +----------+       | |     | |   | |   | |
+;                       | |     | |   | |   | |
+;    +----------+       | |     | |   | |   | |
+;    |          |-------|-|-----|-|---+ |   | |
+;--->|  LINK 2  |-------|-|-----|-|-----+   | |      +-----------+    +----------+
+;    |    RX    |-----+ | +-----|-|---------|-|----->|           |    |          |
+;    |          |---+ | |       | +---------|-|----->| PIPELINE2 +--->|  LINK 2  |--->
+;    +----------+   | +-|-------|-----------|-|----->| (CORE C)  |    |    TX    |
+;                   |   |       |           | | +--->|           |    |          |
+;    +----------+   |   |       |           | | |    +-----------+    +----------+
+;    |          |---|---|-------|-----------+ | |
+;--->|  LINK 3  |---|---|-------|-------------+ |
+;    |    RX    |---|---|-------|---------------+
+;    |          |---|---|-------|-----------+
+;    +----------+   |   |       |           |
+;                   |   |       |           |        +-----------+    +----------+
+;                   |   +-------|-----------|------->|           |    |          |
+;                   |           +-----------|------->| PIPELINE3 +--->|  LINK 3  |--->
+;                   +-----------------------|------->| (CORE D)  |    |    TX    |
+;                                           +------->|           |    |          |
+;                                                    +-----------+    +----------+
+;
+;
+
+mempool MEMPOOL0 buffer 2304 pool 32K cache 256 cpu 0
+
+link LINK0 dev 0000:02:00.0 rxq 4 128 MEMPOOL0 txq 1 512 promiscuous on rss 0 1 2 3
+link LINK1 dev 0000:02:00.1 rxq 4 128 MEMPOOL0 txq 1 512 promiscuous on rss 0 1 2 3
+link LINK2 dev 0000:06:00.0 rxq 4 128 MEMPOOL0 txq 1 512 promiscuous on rss 0 1 2 3
+link LINK3 dev 0000:06:00.1 rxq 4 128 MEMPOOL0 txq 1 512 promiscuous on rss 0 1 2 3
+
+pipeline PIPELINE0 period 10 offset_port_id 0 cpu 0
+pipeline PIPELINE0 port in bsz 32 link LINK0 rxq 0
+pipeline PIPELINE0 port in bsz 32 link LINK1 rxq 0
+pipeline PIPELINE0 port in bsz 32 link LINK2 rxq 0
+pipeline PIPELINE0 port in bsz 32 link LINK3 rxq 0
+pipeline PIPELINE0 port out bsz 32 link LINK0 txq 0
+pipeline PIPELINE0 table match stub
+pipeline PIPELINE0 port in 0 table 0
+pipeline PIPELINE0 port in 1 table 0
+pipeline PIPELINE0 port in 2 table 0
+pipeline PIPELINE0 port in 3 table 0
+pipeline PIPELINE0 table 0 rule add match default action fwd port 0
+
+pipeline PIPELINE1 period 10 offset_port_id 0 cpu 0
+pipeline PIPELINE1 port in bsz 32 link LINK0 rxq 1
+pipeline PIPELINE1 port in bsz 32 link LINK1 rxq 1
+pipeline PIPELINE1 port in bsz 32 link LINK2 rxq 1
+pipeline PIPELINE1 port in bsz 32 link LINK3 rxq 1
+pipeline PIPELINE1 port out bsz 32 link LINK1 txq 0
+pipeline PIPELINE1 table match stub
+pipeline PIPELINE1 port in 0 table 0
+pipeline PIPELINE1 port in 1 table 0
+pipeline PIPELINE1 port in 2 table 0
+pipeline PIPELINE1 port in 3 table 0
+pipeline PIPELINE1 table 0 rule add match default action fwd port 0
+
+pipeline PIPELINE2 period 10 offset_port_id 0 cpu 0
+pipeline PIPELINE2 port in bsz 32 link LINK0 rxq 2
+pipeline PIPELINE2 port in bsz 32 link LINK1 rxq 2
+pipeline PIPELINE2 port in bsz 32 link LINK2 rxq 2
+pipeline PIPELINE2 port in bsz 32 link LINK3 rxq 2
+pipeline PIPELINE2 port out bsz 32 link LINK2 txq 0
+pipeline PIPELINE2 table match stub
+pipeline PIPELINE2 port in 0 table 0
+pipeline PIPELINE2 port in 1 table 0
+pipeline PIPELINE2 port in 2 table 0
+pipeline PIPELINE2 port in 3 table 0
+pipeline PIPELINE2 table 0 rule add match default action fwd port 0
+
+pipeline PIPELINE3 period 10 offset_port_id 0 cpu 0
+pipeline PIPELINE3 port in bsz 32 link LINK0 rxq 3
+pipeline PIPELINE3 port in bsz 32 link LINK1 rxq 3
+pipeline PIPELINE3 port in bsz 32 link LINK2 rxq 3
+pipeline PIPELINE3 port in bsz 32 link LINK3 rxq 3
+pipeline PIPELINE3 port out bsz 32 link LINK3 txq 0
+pipeline PIPELINE3 table match stub
+pipeline PIPELINE3 port in 0 table 0
+pipeline PIPELINE3 port in 1 table 0
+pipeline PIPELINE3 port in 2 table 0
+pipeline PIPELINE3 port in 3 table 0
+pipeline PIPELINE3 table 0 rule add match default action fwd port 0
+
+thread 1 pipeline PIPELINE0 enable
+thread 2 pipeline PIPELINE1 enable
+thread 3 pipeline PIPELINE2 enable
+thread 4 pipeline PIPELINE3 enable
