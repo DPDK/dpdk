@@ -19,6 +19,8 @@ The main configuration parameters for the hash are:
 
 *   Size of the key in bytes
 
+*   An extra flag used to describe additional settings, for example the multithreading mode of operation (as will be described later)
+
 The hash also allows the configuration of some low-level implementation related parameters such as:
 
 *   Hash function to translate the key into a bucket index
@@ -49,8 +51,7 @@ Apart from these method explained above, the API allows the user three more opti
 Also, the API contains a method to allow the user to look up entries in bursts, achieving higher performance
 than looking up individual entries, as the function prefetches next entries at the time it is operating
 with the first ones, which reduces significantly the impact of the necessary memory accesses.
-Notice that this method uses a pipeline of 8 entries (4 stages of 2 entries), so it is highly recommended
-to use at least 8 entries per burst.
+
 
 The actual data associated with each key can be either managed by the user using a separate table that
 mirrors the hash in terms of number of entries and position of each entry,
@@ -63,10 +64,32 @@ However, this table could also be used for more sophisticated features and provi
 Multi-process support
 ---------------------
 
-The hash library can be used in a multi-process environment, minding that only lookups are thread-safe.
+The hash library can be used in a multi-process environment.
 The only function that can only be used in single-process mode is rte_hash_set_cmp_func(), which sets up
 a custom compare function, which is assigned to a function pointer (therefore, it is not supported in
 multi-process mode).
+
+
+Multi-thread support
+---------------------
+
+The hash library supports multithreading, and the user specifies the needed mode of operation at the creation time of the hash table
+by appropriately setting the flag. In all modes of operation lookups are thread-safe meaning lookups can be called from multiple
+threads concurrently.
+
+For concurrent writes, and concurrent reads and writes the following flag values define the corresponding modes of operation:
+
+*  If the multi-writer flag (RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD) is set, multiple threads writing to the table is allowed.
+   Key add, delete, and table reset are protected from other writer threads. With only this flag set, readers are not protected from ongoing writes.
+
+*  If the read/write concurrency (RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY) is set, multithread read/write operation is safe
+   (i.e., no need to stop the readers from accessing the hash table until writers finish their updates. Reads and writes can operate table concurrently).
+
+*  In addition to these two flag values, if the transactional memory flag (RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT) is also set,
+   hardware transactional memory will be used to guarantee the thread safety as long as it is supported by the hardware (for example the Intel® TSX support).
+
+If the platform supports Intel® TSX, it is advised to set the transactional memory flag, as this will speed up concurrent table operations.
+Otherwise concurrent operations will be slower because of the overhead associated with the software locking mechanisms.
 
 Implementation Details
 ----------------------
