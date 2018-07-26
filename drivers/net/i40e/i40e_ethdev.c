@@ -42,6 +42,8 @@
 
 #define ETH_I40E_FLOATING_VEB_ARG	"enable_floating_veb"
 #define ETH_I40E_FLOATING_VEB_LIST_ARG	"floating_veb_list"
+#define ETH_I40E_SUPPORT_MULTI_DRIVER	"support-multi-driver"
+#define ETH_I40E_QUEUE_NUM_PER_VF_ARG	"queue-num-per-vf"
 
 #define I40E_CLEAR_PXE_WAIT_MS     200
 
@@ -400,6 +402,13 @@ static void i40e_notify_all_vfs_link_status(struct rte_eth_dev *dev);
 
 int i40e_logtype_init;
 int i40e_logtype_driver;
+
+static const char *const valid_keys[] = {
+	ETH_I40E_FLOATING_VEB_ARG,
+	ETH_I40E_FLOATING_VEB_LIST_ARG,
+	ETH_I40E_SUPPORT_MULTI_DRIVER,
+	ETH_I40E_QUEUE_NUM_PER_VF_ARG,
+	NULL};
 
 static const struct rte_pci_id pci_id_i40e_map[] = {
 	{ RTE_PCI_DEVICE(I40E_INTEL_VENDOR_ID, I40E_DEV_ID_SFP_XL710) },
@@ -852,7 +861,7 @@ config_vf_floating_veb(struct rte_devargs *devargs,
 	if (devargs == NULL)
 		return;
 
-	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	kvlist = rte_kvargs_parse(devargs->args, valid_keys);
 	if (kvlist == NULL)
 		return;
 
@@ -893,7 +902,7 @@ is_floating_veb_supported(struct rte_devargs *devargs)
 	if (devargs == NULL)
 		return 0;
 
-	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	kvlist = rte_kvargs_parse(devargs->args, valid_keys);
 	if (kvlist == NULL)
 		return 0;
 
@@ -1100,8 +1109,6 @@ i40e_init_queue_region_conf(struct rte_eth_dev *dev)
 	memset(info, 0, sizeof(struct i40e_queue_regions));
 }
 
-#define ETH_I40E_SUPPORT_MULTI_DRIVER	"support-multi-driver"
-
 static int
 i40e_parse_multi_drv_handler(__rte_unused const char *key,
 			       const char *value,
@@ -1133,9 +1140,8 @@ static int
 i40e_support_multi_driver(struct rte_eth_dev *dev)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	static const char *const valid_keys[] = {
-		ETH_I40E_SUPPORT_MULTI_DRIVER, NULL};
 	struct rte_kvargs *kvlist;
+	int kvargs_count;
 
 	/* Enable global configuration by default */
 	pf->support_multi_driver = false;
@@ -1147,7 +1153,13 @@ i40e_support_multi_driver(struct rte_eth_dev *dev)
 	if (!kvlist)
 		return -EINVAL;
 
-	if (rte_kvargs_count(kvlist, ETH_I40E_SUPPORT_MULTI_DRIVER) > 1)
+	kvargs_count = rte_kvargs_count(kvlist, ETH_I40E_SUPPORT_MULTI_DRIVER);
+	if (!kvargs_count) {
+		rte_kvargs_free(kvlist);
+		return 0;
+	}
+
+	if (kvargs_count > 1)
 		PMD_DRV_LOG(WARNING, "More than one argument \"%s\" and only "
 			    "the first invalid or last valid one is used !",
 			    ETH_I40E_SUPPORT_MULTI_DRIVER);
@@ -4357,7 +4369,6 @@ i40e_get_cap(struct i40e_hw *hw)
 }
 
 #define RTE_LIBRTE_I40E_QUEUE_NUM_PER_VF	4
-#define QUEUE_NUM_PER_VF_ARG			"queue-num-per-vf"
 
 static int i40e_pf_parse_vf_queue_number_handler(const char *key,
 		const char *value,
@@ -4391,9 +4402,9 @@ static int i40e_pf_parse_vf_queue_number_handler(const char *key,
 
 static int i40e_pf_config_vf_rxq_number(struct rte_eth_dev *dev)
 {
-	static const char * const valid_keys[] = {QUEUE_NUM_PER_VF_ARG, NULL};
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct rte_kvargs *kvlist;
+	int kvargs_count;
 
 	/* set default queue number per VF as 4 */
 	pf->vf_nb_qp_max = RTE_LIBRTE_I40E_QUEUE_NUM_PER_VF;
@@ -4405,12 +4416,18 @@ static int i40e_pf_config_vf_rxq_number(struct rte_eth_dev *dev)
 	if (kvlist == NULL)
 		return -(EINVAL);
 
-	if (rte_kvargs_count(kvlist, QUEUE_NUM_PER_VF_ARG) > 1)
+	kvargs_count = rte_kvargs_count(kvlist, ETH_I40E_QUEUE_NUM_PER_VF_ARG);
+	if (!kvargs_count) {
+		rte_kvargs_free(kvlist);
+		return 0;
+	}
+
+	if (kvargs_count > 1)
 		PMD_DRV_LOG(WARNING, "More than one argument \"%s\" and only "
 			    "the first invalid or last valid one is used !",
-			    QUEUE_NUM_PER_VF_ARG);
+			    ETH_I40E_QUEUE_NUM_PER_VF_ARG);
 
-	rte_kvargs_process(kvlist, QUEUE_NUM_PER_VF_ARG,
+	rte_kvargs_process(kvlist, ETH_I40E_QUEUE_NUM_PER_VF_ARG,
 			   i40e_pf_parse_vf_queue_number_handler, pf);
 
 	rte_kvargs_free(kvlist);
@@ -12507,5 +12524,7 @@ RTE_INIT(i40e_init_log)
 }
 
 RTE_PMD_REGISTER_PARAM_STRING(net_i40e,
-			      QUEUE_NUM_PER_VF_ARG "=1|2|4|8|16"
+			      ETH_I40E_FLOATING_VEB_ARG "=1"
+			      ETH_I40E_FLOATING_VEB_LIST_ARG "=<string>"
+			      ETH_I40E_QUEUE_NUM_PER_VF_ARG "=1|2|4|8|16"
 			      ETH_I40E_SUPPORT_MULTI_DRIVER "=1");
