@@ -321,6 +321,7 @@ eal_parse_service_coremask(const char *coremask)
 	unsigned int count = 0;
 	char c;
 	int val;
+	uint32_t taken_lcore_count = 0;
 
 	if (coremask == NULL)
 		return -1;
@@ -354,7 +355,7 @@ eal_parse_service_coremask(const char *coremask)
 				if (master_lcore_parsed &&
 						cfg->master_lcore == lcore) {
 					RTE_LOG(ERR, EAL,
-						"Error: lcore %u is master lcore, cannot use as service core\n",
+						"lcore %u is master lcore, cannot use as service core\n",
 						idx);
 					return -1;
 				}
@@ -364,6 +365,10 @@ eal_parse_service_coremask(const char *coremask)
 						"lcore %u unavailable\n", idx);
 					return -1;
 				}
+
+				if (cfg->lcore_role[idx] == ROLE_RTE)
+					taken_lcore_count++;
+
 				lcore_config[idx].core_role = ROLE_SERVICE;
 				count++;
 			}
@@ -380,7 +385,24 @@ eal_parse_service_coremask(const char *coremask)
 	if (count == 0)
 		return -1;
 
+	if (core_parsed && taken_lcore_count != count) {
+		RTE_LOG(WARNING, EAL,
+			"Not all service cores are in the coremask. "
+			"Please ensure -c or -l includes service cores\n");
+	}
+
 	cfg->service_lcore_count = count;
+	return 0;
+}
+
+static int
+eal_service_cores_parsed(void)
+{
+	int idx;
+	for (idx = 0; idx < RTE_MAX_LCORE; idx++) {
+		if (lcore_config[idx].core_role == ROLE_SERVICE)
+			return 1;
+	}
 	return 0;
 }
 
@@ -392,6 +414,11 @@ eal_parse_coremask(const char *coremask)
 	unsigned count = 0;
 	char c;
 	int val;
+
+	if (eal_service_cores_parsed())
+		RTE_LOG(WARNING, EAL,
+			"Service cores parsed before dataplane cores. "
+			"Please ensure -c is before -s or -S\n");
 
 	if (coremask == NULL)
 		return -1;
@@ -424,6 +451,7 @@ eal_parse_coremask(const char *coremask)
 					        "unavailable\n", idx);
 					return -1;
 				}
+
 				cfg->lcore_role[idx] = ROLE_RTE;
 				lcore_config[idx].core_index = count;
 				count++;
@@ -455,6 +483,7 @@ eal_parse_service_corelist(const char *corelist)
 	unsigned count = 0;
 	char *end = NULL;
 	int min, max;
+	uint32_t taken_lcore_count = 0;
 
 	if (corelist == NULL)
 		return -1;
@@ -496,6 +525,9 @@ eal_parse_service_corelist(const char *corelist)
 							idx);
 						return -1;
 					}
+					if (cfg->lcore_role[idx] == ROLE_RTE)
+						taken_lcore_count++;
+
 					lcore_config[idx].core_role =
 							ROLE_SERVICE;
 					count++;
@@ -510,6 +542,12 @@ eal_parse_service_corelist(const char *corelist)
 	if (count == 0)
 		return -1;
 
+	if (core_parsed && taken_lcore_count != count) {
+		RTE_LOG(WARNING, EAL,
+			"Not all service cores were in the coremask. "
+			"Please ensure -c or -l includes service cores\n");
+	}
+
 	return 0;
 }
 
@@ -521,6 +559,11 @@ eal_parse_corelist(const char *corelist)
 	unsigned count = 0;
 	char *end = NULL;
 	int min, max;
+
+	if (eal_service_cores_parsed())
+		RTE_LOG(WARNING, EAL,
+			"Service cores parsed before dataplane cores. "
+			"Please ensure -l is before -s or -S\n");
 
 	if (corelist == NULL)
 		return -1;
@@ -596,7 +639,8 @@ eal_parse_master_lcore(const char *arg)
 
 	/* ensure master core is not used as service core */
 	if (lcore_config[cfg->master_lcore].core_role == ROLE_SERVICE) {
-		RTE_LOG(ERR, EAL, "Error: Master lcore is used as a service core.\n");
+		RTE_LOG(ERR, EAL,
+			"Error: Master lcore is used as a service core\n");
 		return -1;
 	}
 
