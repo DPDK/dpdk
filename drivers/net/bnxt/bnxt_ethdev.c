@@ -438,7 +438,7 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	/* For the sake of symmetry, max_rx_queues = max_tx_queues */
 	dev_info->max_rx_queues = max_rx_rings;
 	dev_info->max_tx_queues = max_rx_rings;
-	dev_info->reta_size = bp->max_rsscos_ctx;
+	dev_info->reta_size = HW_HASH_INDEX_SIZE;
 	dev_info->hash_key_size = 40;
 	max_vnics = bp->max_vnics;
 
