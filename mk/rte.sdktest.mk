@@ -18,7 +18,7 @@ DIR := $(shell basename $(RTE_OUTPUT))
 #
 # test: launch auto-tests, very simple for now.
 #
-.PHONY: test test-basic test-fast test-perf test-drivers test-dump coverage
+.PHONY: test test-fast test-perf test-drivers test-dump coverage
 
 PERFLIST=ring_perf,mempool_perf,memcpy_perf,hash_perf,timer_perf,\
          reciprocal_division,reciprocal_division_perf,lpm_perf,red_all,\
@@ -31,8 +31,7 @@ DRIVERSLIST=link_bonding,link_bonding_mode4,link_bonding_rssconf,\
             cryptodev_scheduler,cryptodev_aesni_gcm,cryptodev_null,\
             cryptodev_sw_snow3g,cryptodev_sw_kasumi,cryptodev_sw_zuc
 DUMPLIST=dump_struct_sizes,dump_mempool,dump_malloc_stats,dump_devargs,\
-         dump_log_types,dump_ring,quit,dump_physmem,dump_memzone,\
-         devargs_autotest
+         dump_log_types,dump_ring,dump_physmem,dump_memzone
 
 SPACESTR:=
 SPACESTR+=
@@ -46,7 +45,7 @@ test-perf: WHITELIST=$(STRIPPED_PERFLIST)
 test-drivers: WHITELIST=$(STRIPPED_DRIVERSLIST)
 test-dump: WHITELIST=$(STRIPPED_DUMPLIST)
 
-test test-basic test-fast test-perf test-drivers test-dump:
+test test-fast test-perf test-drivers test-dump:
 	@mkdir -p $(AUTOTEST_DIR) ; \
 	cd $(AUTOTEST_DIR) ; \
 	if [ -f $(RTE_OUTPUT)/app/test ]; then \
