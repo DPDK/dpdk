@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007-2013 Cavium Inc. All rights reserved.
+ * Copyright (c) 2007-2013 Broadcom Corporation.
  *
  * Eric Davis        <edavis@broadcom.com>
  * David Christensen <davidch@broadcom.com>
