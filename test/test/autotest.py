@@ -39,11 +39,8 @@ print(cmdline)
 runner = autotest_runner.AutotestRunner(cmdline, target, test_blacklist,
                                         test_whitelist)
 
-for test_group in autotest_data.parallel_test_group_list:
-    runner.add_parallel_test_group(test_group)
-
-for test_group in autotest_data.non_parallel_test_group_list:
-    runner.add_non_parallel_test_group(test_group)
+runner.parallel_tests = autotest_data.parallel_test_list[:]
+runner.non_parallel_tests = autotest_data.non_parallel_test_list[:]
 
 num_fails = runner.run_all_tests()
 
