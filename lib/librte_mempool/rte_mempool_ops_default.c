@@ -12,12 +12,31 @@ rte_mempool_op_calc_mem_size_default(const struct rte_mempool *mp,
 				     size_t *min_chunk_size, size_t *align)
 {
 	size_t total_elt_sz;
+	size_t obj_per_page, pg_num, pg_sz;
 	size_t mem_size;
 
 	total_elt_sz = mp->header_size + mp->elt_size + mp->trailer_size;
-
-	mem_size = rte_mempool_calc_mem_size_helper(obj_num, total_elt_sz,
-						    pg_shift);
+	if (total_elt_sz == 0) {
+		mem_size = 0;
+	} else if (pg_shift == 0) {
+		mem_size = total_elt_sz * obj_num;
+	} else {
+		pg_sz = (size_t)1 << pg_shift;
+		obj_per_page = pg_sz / total_elt_sz;
+		if (obj_per_page == 0) {
+			/*
+			 * Note that if object size is bigger than page size,
+			 * then it is assumed that pages are grouped in subsets
+			 * of physically continuous pages big enough to store
+			 * at least one object.
+			 */
+			mem_size =
+				RTE_ALIGN_CEIL(total_elt_sz, pg_sz) * obj_num;
+		} else {
+			pg_num = (obj_num + obj_per_page - 1) / obj_per_page;
+			mem_size = pg_num << pg_shift;
+		}
+	}
 
 	*min_chunk_size = RTE_MAX((size_t)1 << pg_shift, total_elt_sz);
 

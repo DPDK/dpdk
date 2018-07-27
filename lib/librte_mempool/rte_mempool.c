@@ -225,31 +225,6 @@ rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
 	return sz->total_size;
 }
 
-
-/*
- * Internal function to calculate required memory chunk size.
- */
-size_t
-rte_mempool_calc_mem_size_helper(uint32_t elt_num, size_t total_elt_sz,
-				 uint32_t pg_shift)
-{
-	size_t obj_per_page, pg_num, pg_sz;
-
-	if (total_elt_sz == 0)
-		return 0;
-
-	if (pg_shift == 0)
-		return total_elt_sz * elt_num;
-
-	pg_sz = (size_t)1 << pg_shift;
-	obj_per_page = pg_sz / total_elt_sz;
-	if (obj_per_page == 0)
-		return RTE_ALIGN_CEIL(total_elt_sz, pg_sz) * elt_num;
-
-	pg_num = (elt_num + obj_per_page - 1) / obj_per_page;
-	return pg_num << pg_shift;
-}
-
 /* free a memchunk allocated with rte_memzone_reserve() */
 static void
 rte_mempool_memchunk_mz_free(__rte_unused struct rte_mempool_memhdr *memhdr,

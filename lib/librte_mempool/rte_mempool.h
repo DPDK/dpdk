@@ -488,28 +488,6 @@ ssize_t rte_mempool_op_calc_mem_size_default(const struct rte_mempool *mp,
 		size_t *min_chunk_size, size_t *align);
 
 /**
- * @internal Helper function to calculate memory size required to store
- * specified number of objects in assumption that the memory buffer will
- * be aligned at page boundary.
- *
- * Note that if object size is bigger than page size, then it assumes
- * that pages are grouped in subsets of physically continuous pages big
- * enough to store at least one object.
- *
- * @param elt_num
- *   Number of elements.
- * @param total_elt_sz
- *   The size of each element, including header and trailer, as returned
- *   by rte_mempool_calc_obj_size().
- * @param pg_shift
- *   LOG2 of the physical pages size. If set to 0, ignore page boundaries.
- * @return
- *   Required memory size aligned at page boundary.
- */
-size_t rte_mempool_calc_mem_size_helper(uint32_t elt_num, size_t total_elt_sz,
-		uint32_t pg_shift);
-
-/**
  * Function to be called for each populated object.
  *
  * @param[in] mp
