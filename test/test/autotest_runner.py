@@ -41,7 +41,7 @@ def wait_prompt(child):
 # quite a bit of effort to make it work).
 
 
-def run_test_group(cmdline, test_group):
+def run_test_group(cmdline, target, test_group):
     results = []
     child = None
     start_time = time.time()
@@ -128,14 +128,15 @@ def run_test_group(cmdline, test_group):
             # make a note when the test was finished
             end_time = time.time()
 
+            log = logfile.getvalue()
+
             # append test data to the result tuple
-            result += (test["Name"], end_time - start_time,
-                       logfile.getvalue())
+            result += (test["Name"], end_time - start_time, log)
 
             # call report function, if any defined, and supply it with
             # target and complete log for test run
             if test["Report"]:
-                report = test["Report"](self.target, log)
+                report = test["Report"](target, log)
 
                 # append report to results tuple
                 result += (report,)
@@ -343,6 +344,7 @@ class AutotestRunner:
             for test_group in self.parallel_test_groups:
                 result = pool.apply_async(run_test_group,
                                           [self.__get_cmdline(test_group),
+                                           self.target,
                                            test_group])
                 results.append(result)
 
@@ -367,7 +369,7 @@ class AutotestRunner:
             # run non_parallel tests. they are run one by one, synchronously
             for test_group in self.non_parallel_test_groups:
                 group_result = run_test_group(
-                    self.__get_cmdline(test_group), test_group)
+                    self.__get_cmdline(test_group), self.target, test_group)
 
                 self.__process_results(group_result)
 
