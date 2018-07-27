@@ -28,6 +28,7 @@
 #define I40E_NUM_DESC_ALIGN       32
 #define I40E_BUF_SIZE_MIN         1024
 #define I40E_FRAME_SIZE_MAX       9728
+#define I40E_TSO_FRAME_SIZE_MAX   262144
 #define I40E_QUEUE_BASE_ADDR_UNIT 128
 /* number of VSIs and queue default setting */
 #define I40E_MAX_QP_NUM_PER_VF    16
