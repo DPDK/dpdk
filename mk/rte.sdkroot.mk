@@ -68,8 +68,8 @@ config defconfig showconfigs showversion showversionum:
 cscope gtags tags etags:
 	$(Q)$(RTE_SDK)/devtools/build-tags.sh $@ $T
 
-.PHONY: test test-basic test-fast test-ring test-mempool test-perf coverage
-test test-basic test-fast test-ring test-mempool test-perf coverage:
+.PHONY: test test-basic test-fast test-ring test-mempool test-perf coverage test-drivers test-dump
+test test-basic test-fast test-ring test-mempool test-perf coverage test-drivers test-dump:
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdktest.mk $@
 
 test: test-build
