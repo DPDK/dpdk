@@ -1,8 +1,7 @@
-#    Copyright (c) 2014 - 2018 Cavium Inc.
-#    All rights reserved.
-#    www.cavium.com
-#
-#    See LICENSE.bnx2x_pmd for copyright and licensing details.
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2014 - 2018 Cavium Inc.
+# All rights reserved.
+# www.cavium.com
 include $(RTE_SDK)/mk/rte.vars.mk
 
 #
