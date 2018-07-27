@@ -1257,6 +1257,11 @@ STATIC s32 e1000_init_hw_82571(struct e1000_hw *hw)
 	 */
 	e1000_clear_hw_cntrs_82571(hw);
 
+	/* MSI-X configure for 82574 */
+	if (mac->type == e1000_82574)
+		E1000_WRITE_REG(hw, E1000_IVAR,
+				(E1000_IVAR_INT_ALLOC_VALID << 16));
+
 	return ret_val;
 }
 
