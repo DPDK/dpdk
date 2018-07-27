@@ -8,9 +8,6 @@ DPDK_2.0 {
 	rte_mempool_list_dump;
 	rte_mempool_lookup;
 	rte_mempool_walk;
-	rte_mempool_xmem_create;
-	rte_mempool_xmem_size;
-	rte_mempool_xmem_usage;
 
 	local: *;
 };
@@ -34,8 +31,6 @@ DPDK_16.07 {
 	rte_mempool_ops_table;
 	rte_mempool_populate_anon;
 	rte_mempool_populate_default;
-	rte_mempool_populate_phys;
-	rte_mempool_populate_phys_tab;
 	rte_mempool_populate_virt;
 	rte_mempool_register_ops;
 	rte_mempool_set_ops_byname;
@@ -46,7 +41,6 @@ DPDK_17.11 {
 	global:
 
 	rte_mempool_populate_iova;
-	rte_mempool_populate_iova_tab;
 
 } DPDK_16.07;
 

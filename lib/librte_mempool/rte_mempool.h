@@ -974,74 +974,6 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 		   int socket_id, unsigned flags);
 
 /**
- * @deprecated
- * Create a new mempool named *name* in memory.
- *
- * The pool contains n elements of elt_size. Its size is set to n.
- * This function uses ``memzone_reserve()`` to allocate the mempool header
- * (and the objects if vaddr is NULL).
- * Depending on the input parameters, mempool elements can be either allocated
- * together with the mempool header, or an externally provided memory buffer
- * could be used to store mempool objects. In later case, that external
- * memory buffer can consist of set of disjoint physical pages.
- *
- * @param name
- *   The name of the mempool.
- * @param n
- *   The number of elements in the mempool. The optimum size (in terms of
- *   memory usage) for a mempool is when n is a power of two minus one:
- *   n = (2^q - 1).
- * @param elt_size
- *   The size of each element.
- * @param cache_size
- *   Size of the cache. See rte_mempool_create() for details.
- * @param private_data_size
- *   The size of the private data appended after the mempool
- *   structure. This is useful for storing some private data after the
- *   mempool structure, as is done for rte_mbuf_pool for example.
- * @param mp_init
- *   A function pointer that is called for initialization of the pool,
- *   before object initialization. The user can initialize the private
- *   data in this function if needed. This parameter can be NULL if
- *   not needed.
- * @param mp_init_arg
- *   An opaque pointer to data that can be used in the mempool
- *   constructor function.
- * @param obj_init
- *   A function called for each object at initialization of the pool.
- *   See rte_mempool_create() for details.
- * @param obj_init_arg
- *   An opaque pointer passed to the object constructor function.
- * @param socket_id
- *   The *socket_id* argument is the socket identifier in the case of
- *   NUMA. The value can be *SOCKET_ID_ANY* if there is no NUMA
- *   constraint for the reserved zone.
- * @param flags
- *   Flags controlling the behavior of the mempool. See
- *   rte_mempool_create() for details.
- * @param vaddr
- *   Virtual address of the externally allocated memory buffer.
- *   Will be used to store mempool objects.
- * @param iova
- *   Array of IO addresses of the pages that comprises given memory buffer.
- * @param pg_num
- *   Number of elements in the iova array.
- * @param pg_shift
- *   LOG2 of the physical pages size.
- * @return
- *   The pointer to the new allocated mempool, on success. NULL on error
- *   with rte_errno set appropriately. See rte_mempool_create() for details.
- */
-__rte_deprecated
-struct rte_mempool *
-rte_mempool_xmem_create(const char *name, unsigned n, unsigned elt_size,
-		unsigned cache_size, unsigned private_data_size,
-		rte_mempool_ctor_t *mp_init, void *mp_init_arg,
-		rte_mempool_obj_cb_t *obj_init, void *obj_init_arg,
-		int socket_id, unsigned flags, void *vaddr,
-		const rte_iova_t iova[], uint32_t pg_num, uint32_t pg_shift);
-
-/**
  * Create an empty mempool
  *
  * The mempool is allocated and initialized, but it is not populated: no
@@ -1122,48 +1054,6 @@ rte_mempool_free(struct rte_mempool *mp);
 int rte_mempool_populate_iova(struct rte_mempool *mp, char *vaddr,
 	rte_iova_t iova, size_t len, rte_mempool_memchunk_free_cb_t *free_cb,
 	void *opaque);
-
-__rte_deprecated
-int rte_mempool_populate_phys(struct rte_mempool *mp, char *vaddr,
-	phys_addr_t paddr, size_t len, rte_mempool_memchunk_free_cb_t *free_cb,
-	void *opaque);
-
-/**
- * @deprecated
- * Add physical memory for objects in the pool at init
- *
- * Add a virtually contiguous memory chunk in the pool where objects can
- * be instantiated. The IO addresses corresponding to the virtual
- * area are described in iova[], pg_num, pg_shift.
- *
- * @param mp
- *   A pointer to the mempool structure.
- * @param vaddr
- *   The virtual address of memory that should be used to store objects.
- * @param iova
- *   An array of IO addresses of each page composing the virtual area.
- * @param pg_num
- *   Number of elements in the iova array.
- * @param pg_shift
- *   LOG2 of the physical pages size.
- * @param free_cb
- *   The callback used to free this chunk when destroying the mempool.
- * @param opaque
- *   An opaque argument passed to free_cb.
- * @return
- *   The number of objects added on success.
- *   On error, the chunks are not added in the memory list of the
- *   mempool and a negative errno is returned.
- */
-__rte_deprecated
-int rte_mempool_populate_iova_tab(struct rte_mempool *mp, char *vaddr,
-	const rte_iova_t iova[], uint32_t pg_num, uint32_t pg_shift,
-	rte_mempool_memchunk_free_cb_t *free_cb, void *opaque);
-
-__rte_deprecated
-int rte_mempool_populate_phys_tab(struct rte_mempool *mp, char *vaddr,
-	const phys_addr_t paddr[], uint32_t pg_num, uint32_t pg_shift,
-	rte_mempool_memchunk_free_cb_t *free_cb, void *opaque);
 
 /**
  * Add virtually contiguous memory for objects in the pool at init
@@ -1746,13 +1636,6 @@ rte_mempool_virt2iova(const void *elt)
 	return hdr->iova;
 }
 
-__rte_deprecated
-static inline phys_addr_t
-rte_mempool_virt2phy(__rte_unused const struct rte_mempool *mp, const void *elt)
-{
-	return rte_mempool_virt2iova(elt);
-}
-
 /**
  * Check the consistency of mempool objects.
  *
@@ -1820,68 +1703,6 @@ struct rte_mempool *rte_mempool_lookup(const char *name);
  */
 uint32_t rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
 	struct rte_mempool_objsz *sz);
-
-/**
- * @deprecated
- * Get the size of memory required to store mempool elements.
- *
- * Calculate the maximum amount of memory required to store given number
- * of objects. Assume that the memory buffer will be aligned at page
- * boundary.
- *
- * Note that if object size is bigger than page size, then it assumes
- * that pages are grouped in subsets of physically continuous pages big
- * enough to store at least one object.
- *
- * @param elt_num
- *   Number of elements.
- * @param total_elt_sz
- *   The size of each element, including header and trailer, as returned
- *   by rte_mempool_calc_obj_size().
- * @param pg_shift
- *   LOG2 of the physical pages size. If set to 0, ignore page boundaries.
- * @param flags
- *  The mempool flags.
- * @return
- *   Required memory size aligned at page boundary.
- */
-__rte_deprecated
-size_t rte_mempool_xmem_size(uint32_t elt_num, size_t total_elt_sz,
-	uint32_t pg_shift, unsigned int flags);
-
-/**
- * @deprecated
- * Get the size of memory required to store mempool elements.
- *
- * Calculate how much memory would be actually required with the given
- * memory footprint to store required number of objects.
- *
- * @param vaddr
- *   Virtual address of the externally allocated memory buffer.
- *   Will be used to store mempool objects.
- * @param elt_num
- *   Number of elements.
- * @param total_elt_sz
- *   The size of each element, including header and trailer, as returned
- *   by rte_mempool_calc_obj_size().
- * @param iova
- *   Array of IO addresses of the pages that comprises given memory buffer.
- * @param pg_num
- *   Number of elements in the iova array.
- * @param pg_shift
- *   LOG2 of the physical pages size.
- * @param flags
- *  The mempool flags.
- * @return
- *   On success, the number of bytes needed to store given number of
- *   objects, aligned to the given page size. If the provided memory
- *   buffer is too small, return a negative value whose absolute value
- *   is the actual number of elements that can be stored in that buffer.
- */
-__rte_deprecated
-ssize_t rte_mempool_xmem_usage(void *vaddr, uint32_t elt_num,
-	size_t total_elt_sz, const rte_iova_t iova[], uint32_t pg_num,
-	uint32_t pg_shift, unsigned int flags);
 
 /**
  * Walk list of all memory pools

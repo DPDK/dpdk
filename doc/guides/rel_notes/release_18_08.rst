@@ -121,6 +121,16 @@ API Changes
     * If ``$XDG_RUNTIME_DIR`` is set, ``${XDG_RUNTIME_DIR}/dpdk/<prefix>/config``
     * Otherwise, ``/tmp/dpdk/<prefix>/config``
 
+* mempool: Following functions were deprecated and are removed in 18.08:
+
+  - ``rte_mempool_populate_iova_tab``
+  - ``rte_mempool_populate_phys_tab``
+  - ``rte_mempool_populate_phys`` (``rte_mempool_populate_iova`` should be used)
+  - ``rte_mempool_virt2phy`` (``rte_mempool_virt2iova`` should be used)
+  - ``rte_mempool_xmem_create``
+  - ``rte_mempool_xmem_size``
+  - ``rte_mempool_xmem_usage``
+
 * cryptodev: In struct ``struct rte_cryptodev_info``, field ``rte_pci_device *pci_dev``
   has been replaced with field ``struct rte_device *device``.
   Value 0 is accepted in ``sym.max_nb_sessions``, meaning that a device
@@ -246,7 +256,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_latencystats.so.1
      librte_lpm.so.2
      librte_mbuf.so.4
-     librte_mempool.so.4
+   + librte_mempool.so.5
      librte_meter.so.2
      librte_metrics.so.1
      librte_net.so.1

@@ -7,15 +7,12 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_mempool.a
 
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3
-# Allow deprecated symbol to use deprecated rte_mempool_populate_iova_tab()
-# from earlier deprecated rte_mempool_populate_phys_tab()
-CFLAGS += -Wno-deprecated-declarations
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 LDLIBS += -lrte_eal -lrte_ring
 
 EXPORT_MAP := rte_mempool_version.map
 
-LIBABIVER := 4
+LIBABIVER := 5
 
 # memseg walk is not yet part of stable API
 CFLAGS += -DALLOW_EXPERIMENTAL_API
