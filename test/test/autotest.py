@@ -36,8 +36,12 @@ cmdline = "%s -c f -n 4" % (sys.argv[1])
 
 print(cmdline)
 
+# how many workers to run tests with. FreeBSD doesn't support multiple primary
+# processes, so make it 1, otherwise make it 4. ignored for non-parallel tests
+n_processes = 1 if "bsdapp" in target else 4
+
 runner = autotest_runner.AutotestRunner(cmdline, target, test_blacklist,
-                                        test_whitelist)
+                                        test_whitelist, n_processes)
 
 runner.parallel_tests = autotest_data.parallel_test_list[:]
 runner.non_parallel_tests = autotest_data.non_parallel_test_list[:]
