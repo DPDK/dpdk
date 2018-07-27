@@ -247,7 +247,7 @@ class AutotestRunner:
 
             # don't print out total time every line, it's the same anyway
             if i == len(results) - 1:
-                print(result,
+                print(result +
                       "[%02dm %02ds]" % (total_time / 60, total_time % 60))
             else:
                 print(result)
@@ -332,8 +332,8 @@ class AutotestRunner:
 
             # create table header
             print("")
-            print("Test name".ljust(30), "Test result".ljust(29),
-                  "Test".center(9), "Total".center(9))
+            print("Test name".ljust(30) + "Test result".ljust(29) +
+                  "Test".center(9) + "Total".center(9))
             print("=" * 80)
 
             # make a note of tests start time
