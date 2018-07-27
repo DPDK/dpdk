@@ -156,8 +156,18 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 		 * add the intr file descriptor into wait list.
 		 */
 		if (kevent(kq, &ke, 1, NULL, 0, NULL) < 0) {
-			RTE_LOG(ERR, EAL, "Error adding fd %d kevent, %s\n",
-				src->intr_handle.fd, strerror(errno));
+			/* currently, nic_uio does not support interrupts, so
+			 * this error will always be triggered and output to the
+			 * user. so, don't output it unless debug log level set.
+			 */
+			if (errno == ENODEV)
+				RTE_LOG(DEBUG, EAL, "Interrupt handle %d not supported\n",
+					src->intr_handle.fd);
+			else
+				RTE_LOG(ERR, EAL, "Error adding fd %d "
+						"kevent, %s\n",
+						src->intr_handle.fd,
+						strerror(errno));
 			ret = -errno;
 			goto fail;
 		}
