@@ -341,6 +341,7 @@ class AutotestRunner:
             # make a note of tests start time
             self.start = time.time()
 
+            print("Parallel autotests:")
             # assign worker threads to run test groups
             for test_group in self.parallel_test_groups:
                 result = pool.apply_async(run_test_group,
@@ -367,6 +368,7 @@ class AutotestRunner:
                     # remove result from results list once we're done with it
                     results.remove(group_result)
 
+            print("Non-parallel autotests:")
             # run non_parallel tests. they are run one by one, synchronously
             for test_group in self.non_parallel_test_groups:
                 group_result = run_test_group(
