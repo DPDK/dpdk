@@ -3,6 +3,7 @@
 
 # The main logic behind running autotests in parallel
 
+from __future__ import print_function
 import StringIO
 import csv
 import multiprocessing
@@ -52,8 +53,8 @@ def run_test_group(cmdline, target, test_group):
         # prepare logging of init
         startuplog = StringIO.StringIO()
 
-        print >>startuplog, "\n%s %s\n" % ("=" * 20, test_group["Prefix"])
-        print >>startuplog, "\ncmdline=%s" % cmdline
+        print("\n%s %s\n" % ("=" * 20, test_group["Prefix"]), file=startuplog)
+        print("\ncmdline=%s" % cmdline, file=startuplog)
 
         child = pexpect.spawn(cmdline, logfile=startuplog)
 
@@ -117,7 +118,7 @@ def run_test_group(cmdline, target, test_group):
 
         try:
             # print test name to log buffer
-            print >>logfile, "\n%s %s\n" % ("-" * 20, test["Name"])
+            print("\n%s %s\n" % ("-" * 20, test["Name"]), file=logfile)
 
             # run test function associated with the test
             if stripped or test["Command"] in avail_cmds:
