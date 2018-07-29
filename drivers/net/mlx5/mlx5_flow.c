@@ -490,7 +490,7 @@ mlx5_flow_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 	struct mlx5_flow_counter *cnt;
 
 	LIST_FOREACH(cnt, &priv->flow_counters, next) {
-		if (cnt->shared != shared)
+		if (!cnt->shared || cnt->shared != shared)
 			continue;
 		if (cnt->id != id)
 			continue;
