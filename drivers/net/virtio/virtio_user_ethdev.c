@@ -681,6 +681,7 @@ RTE_PMD_REGISTER_PARAM_STRING(net_virtio_user,
 	"cq=<int> "
 	"queue_size=<int> "
 	"queues=<int> "
-	"iface=<string>"
-	"mrg_rxbuf=<0|1>"
+	"iface=<string> "
+	"server=<0|1> "
+	"mrg_rxbuf=<0|1> "
 	"in_order=<0|1>");
