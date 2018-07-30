@@ -332,71 +332,56 @@ pci_vfio_mmap_bar(int vfio_dev_fd, struct mapped_pci_resource *vfio_res,
 	void *bar_addr;
 	struct pci_msix_table *msix_table = &vfio_res->msix_table;
 	struct pci_map *bar = &vfio_res->maps[bar_index];
-	bool again = false;
 
 	if (bar->size == 0)
 		/* Skip this BAR */
 		return 0;
 
+	if (msix_table->bar_index == bar_index) {
+		/*
+		 * VFIO will not let us map the MSI-X table,
+		 * but we can map around it.
+		 */
+		uint32_t table_start = msix_table->offset;
+		uint32_t table_end = table_start + msix_table->size;
+		table_end = (table_end + ~PAGE_MASK) & PAGE_MASK;
+		table_start &= PAGE_MASK;
+
+		if (table_start == 0 && table_end >= bar->size) {
+			/* Cannot map this BAR */
+			RTE_LOG(DEBUG, EAL, "Skipping BAR%d\n", bar_index);
+			bar->size = 0;
+			bar->addr = 0;
+			return 0;
+		}
+
+		memreg[0].offset = bar->offset;
+		memreg[0].size = table_start;
+		memreg[1].offset = bar->offset + table_end;
+		memreg[1].size = bar->size - table_end;
+
+		RTE_LOG(DEBUG, EAL,
+			"Trying to map BAR%d that contains the MSI-X "
+			"table. Trying offsets: "
+			"0x%04lx:0x%04lx, 0x%04lx:0x%04lx\n", bar_index,
+			memreg[0].offset, memreg[0].size,
+			memreg[1].offset, memreg[1].size);
+	} else {
+		memreg[0].offset = bar->offset;
+		memreg[0].size = bar->size;
+	}
+
 	/* reserve the address using an inaccessible mapping */
 	bar_addr = mmap(bar->addr, bar->size, 0, MAP_PRIVATE |
 			MAP_ANONYMOUS | additional_flags, -1, 0);
-	if (bar_addr == MAP_FAILED) {
-		RTE_LOG(ERR, EAL,
-			"Failed to create inaccessible mapping for BAR%d\n",
-			bar_index);
-		return -1;
-	}
-
-	memreg[0].offset = bar->offset;
-	memreg[0].size = bar->size;
-	do {
+	if (bar_addr != MAP_FAILED) {
 		void *map_addr = NULL;
-		if (again) {
-			/*
-			 * VFIO did not let us map the MSI-X table,
-			 * but we can map around it.
-			 */
-			uint32_t table_start = msix_table->offset;
-			uint32_t table_end = table_start + msix_table->size;
-			table_end = (table_end + ~PAGE_MASK) & PAGE_MASK;
-			table_start &= PAGE_MASK;
-
-			if (table_start == 0 && table_end >= bar->size) {
-				/* Cannot map this BAR */
-				RTE_LOG(DEBUG, EAL, "Skipping BAR%d\n",
-						bar_index);
-				munmap(bar_addr, bar->size);
-				bar->size = 0;
-				bar->addr = 0;
-				return 0;
-			}
-
-			memreg[0].offset = bar->offset;
-			memreg[0].size = table_start;
-			memreg[1].offset = bar->offset + table_end;
-			memreg[1].size = bar->size - table_end;
-
-			RTE_LOG(DEBUG, EAL,
-				"Trying to map BAR%d that contains the MSI-X "
-				"table. Trying offsets: "
-				"0x%04lx:0x%04lx, 0x%04lx:0x%04lx\n", bar_index,
-				memreg[0].offset, memreg[0].size,
-				memreg[1].offset, memreg[1].size);
-		}
-
 		if (memreg[0].size) {
 			/* actual map of first part */
 			map_addr = pci_map_resource(bar_addr, vfio_dev_fd,
 							memreg[0].offset,
 							memreg[0].size,
 							MAP_FIXED);
-		}
-
-		if (map_addr == MAP_FAILED &&
-			msix_table->bar_index == bar_index && !again) {
-			again = true;
-			continue;
 		}
 
 		/* if there's a second part, try to map it */
@@ -419,8 +404,12 @@ pci_vfio_mmap_bar(int vfio_dev_fd, struct mapped_pci_resource *vfio_res,
 					bar_index);
 			return -1;
 		}
-		break;
-	} while (again);
+	} else {
+		RTE_LOG(ERR, EAL,
+				"Failed to create inaccessible mapping for BAR%d\n",
+				bar_index);
+		return -1;
+	}
 
 	bar->addr = bar_addr;
 	return 0;
