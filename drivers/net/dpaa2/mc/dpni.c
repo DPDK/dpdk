@@ -198,7 +198,7 @@ int dpni_set_pools(struct fsl_mc_io *mc_io,
 					  token);
 	cmd_params = (struct dpni_cmd_set_pools *)cmd.params;
 	cmd_params->num_dpbp = cfg->num_dpbp;
-	for (i = 0; i < DPNI_MAX_DPBP; i++) {
+	for (i = 0; i < cmd_params->num_dpbp; i++) {
 		cmd_params->pool[i].dpbp_id =
 			cpu_to_le16(cfg->pools[i].dpbp_id);
 		cmd_params->pool[i].priority_mask =
