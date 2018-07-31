@@ -36,6 +36,12 @@ mlx5_socket_init(struct rte_eth_dev *dev)
 	int flags;
 
 	/*
+	 * Close the last socket that was used to communicate
+	 * with the secondary process
+	 */
+	if (priv->primary_socket)
+		mlx5_socket_uninit(dev);
+	/*
 	 * Initialise the socket to communicate with the secondary
 	 * process.
 	 */
