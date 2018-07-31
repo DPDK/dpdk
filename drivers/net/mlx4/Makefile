@@ -115,7 +115,7 @@ endif
 $(LIB_GLUE): mlx4_glue.o
 	$Q $(LD) $(GLUE_LDFLAGS) $(EXTRA_LDFLAGS) \
 		-Wl,-h,$(LIB_GLUE) \
-		-s -shared -o $@ $< -libverbs -lmlx4
+		-shared -o $@ $< -libverbs -lmlx4
 
 mlx4_glue.o: mlx4_autoconf.h
 
