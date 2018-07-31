@@ -409,7 +409,7 @@ endif
 $(LIB_GLUE): mlx5_glue.o
 	$Q $(LD) $(GLUE_LDFLAGS) $(EXTRA_LDFLAGS) \
 		-Wl,-h,$(LIB_GLUE) \
-		-s -shared -o $@ $< -libverbs -lmlx5
+		-shared -o $@ $< -libverbs -lmlx5
 
 mlx5_glue.o: mlx5_autoconf.h
 
