@@ -218,6 +218,8 @@ test_pmd_ring_pair_create_attach(int portd, int porte)
 	struct rte_mbuf buf, *pbuf = &buf;
 	struct rte_eth_conf null_conf;
 
+	memset(&null_conf, 0, sizeof(struct rte_eth_conf));
+
 	if ((rte_eth_dev_configure(portd, 1, 1, &null_conf) < 0)
 		|| (rte_eth_dev_configure(porte, 1, 1, &null_conf) < 0)) {
 		printf("Configure failed for port\n");
