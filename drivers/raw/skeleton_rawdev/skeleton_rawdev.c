@@ -305,6 +305,18 @@ static int skeleton_rawdev_queue_release(struct rte_rawdev *dev,
 	return ret;
 }
 
+static uint16_t skeleton_rawdev_queue_count(struct rte_rawdev *dev)
+{
+	struct skeleton_rawdev *skeldev;
+
+	SKELETON_PMD_FUNC_TRACE();
+
+	RTE_FUNC_PTR_OR_ERR_RET(dev, -EINVAL);
+
+	skeldev = skeleton_rawdev_get_priv(dev);
+	return skeldev->num_queues;
+}
+
 static int skeleton_rawdev_get_attr(struct rte_rawdev *dev,
 				    const char *attr_name,
 				    uint64_t *attr_value)
@@ -524,6 +536,7 @@ static const struct rte_rawdev_ops skeleton_rawdev_ops = {
 	.queue_def_conf = skeleton_rawdev_queue_def_conf,
 	.queue_setup = skeleton_rawdev_queue_setup,
 	.queue_release = skeleton_rawdev_queue_release,
+	.queue_count = skeleton_rawdev_queue_count,
 
 	.attr_get = skeleton_rawdev_get_attr,
 	.attr_set = skeleton_rawdev_set_attr,

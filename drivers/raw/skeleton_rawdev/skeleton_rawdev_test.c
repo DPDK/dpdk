@@ -194,6 +194,18 @@ test_rawdev_queue_default_conf_get(void)
 }
 
 static int
+test_rawdev_queue_count(void)
+{
+	unsigned int q_count;
+
+	/* Get the current configuration */
+	q_count = rte_rawdev_queue_count(TEST_DEV_ID);
+	RTE_TEST_ASSERT_EQUAL(q_count, 1, "Invalid queue count (%d)", q_count);
+
+	return TEST_SUCCESS;
+}
+
+static int
 test_rawdev_queue_setup(void)
 {
 	int ret;
@@ -429,6 +441,7 @@ test_rawdev_skeldev(void)
 	SKELDEV_TEST_RUN(test_rawdev_configure, NULL,
 			 test_rawdev_queue_default_conf_get);
 	SKELDEV_TEST_RUN(test_rawdev_configure, NULL, test_rawdev_queue_setup);
+	SKELDEV_TEST_RUN(NULL, NULL, test_rawdev_queue_count);
 	SKELDEV_TEST_RUN(test_rawdev_queue_setup, NULL,
 			 test_rawdev_queue_release);
 	SKELDEV_TEST_RUN(NULL, NULL, test_rawdev_attr_set_get);
