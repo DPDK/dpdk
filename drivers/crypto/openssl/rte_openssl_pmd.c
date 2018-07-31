@@ -1564,7 +1564,7 @@ process_openssl_dsa_sign_op(struct rte_crypto_op *cop,
 		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
 	} else {
 		const BIGNUM *r = NULL, *s = NULL;
-		get_dsa_sign(sign, r, s);
+		get_dsa_sign(sign, &r, &s);
 
 		op->r.length = BN_bn2bin(r, op->r.data);
 		op->s.length = BN_bn2bin(s, op->s.data);
@@ -1666,7 +1666,7 @@ process_openssl_dh_op(struct rte_crypto_op *cop,
 			cop->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
 			return -1;
 		}
-		set_dh_priv_key(dh_key, priv_key, ret);
+		ret = set_dh_priv_key(dh_key, priv_key);
 		if (ret) {
 			OPENSSL_LOG(ERR, "Failed to set private key\n");
 			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
@@ -1715,7 +1715,7 @@ process_openssl_dh_op(struct rte_crypto_op *cop,
 			cop->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
 			return -1;
 		}
-		set_dh_priv_key(dh_key, priv_key, ret);
+		ret = set_dh_priv_key(dh_key, priv_key);
 		if (ret) {
 			OPENSSL_LOG(ERR, "Failed to set private key\n");
 			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
@@ -1743,7 +1743,7 @@ process_openssl_dh_op(struct rte_crypto_op *cop,
 				__func__, __LINE__);
 
 		/* get the generated keys */
-		get_dh_pub_key(dh_key, pub_key);
+		get_dh_pub_key(dh_key, &pub_key);
 
 		/* output public key */
 		op->pub_key.length = BN_bn2bin(pub_key,
@@ -1758,7 +1758,7 @@ process_openssl_dh_op(struct rte_crypto_op *cop,
 				__func__, __LINE__);
 
 		/* get the generated keys */
-		get_dh_priv_key(dh_key, priv_key);
+		get_dh_priv_key(dh_key, &priv_key);
 
 		/* provide generated private key back to user */
 		op->priv_key.length = BN_bn2bin(priv_key,

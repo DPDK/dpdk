@@ -875,14 +875,14 @@ static int openssl_set_asym_session_parameters(
 				RSA_free(rsa);
 				goto err_rsa;
 			}
-			set_rsa_params(rsa, p, q, ret);
+			ret = set_rsa_params(rsa, p, q);
 			if (ret) {
 				OPENSSL_LOG(ERR,
 					"failed to set rsa params\n");
 				RSA_free(rsa);
 				goto err_rsa;
 			}
-			set_rsa_crt_params(rsa, dmp1, dmq1, iqmp, ret);
+			ret = set_rsa_crt_params(rsa, dmp1, dmq1, iqmp);
 			if (ret) {
 				OPENSSL_LOG(ERR,
 					"failed to set crt params\n");
@@ -896,7 +896,7 @@ static int openssl_set_asym_session_parameters(
 			}
 		}
 
-		set_rsa_keys(rsa, n, e, d, ret);
+		ret = set_rsa_keys(rsa, n, e, d);
 		if (ret) {
 			OPENSSL_LOG(ERR, "Failed to load rsa keys\n");
 			RSA_free(rsa);
@@ -1005,7 +1005,7 @@ err_rsa:
 				"failed to allocate resources\n");
 			goto err_dh;
 		}
-		set_dh_params(dh, p, g, ret);
+		ret = set_dh_params(dh, p, g);
 		if (ret) {
 			DH_free(dh);
 			goto err_dh;
@@ -1087,7 +1087,7 @@ err_dh:
 			goto err_dsa;
 		}
 
-		set_dsa_params(dsa, p, q, g, ret);
+		ret = set_dsa_params(dsa, p, q, g);
 		if (ret) {
 			DSA_free(dsa);
 			OPENSSL_LOG(ERR, "Failed to dsa params\n");
@@ -1101,7 +1101,7 @@ err_dh:
 		 * both versions
 		 */
 		/* just set dummy public for very 1st call */
-		set_dsa_keys(dsa, pub_key, priv_key, ret);
+		ret = set_dsa_keys(dsa, pub_key, priv_key);
 		if (ret) {
 			DSA_free(dsa);
 			OPENSSL_LOG(ERR, "Failed to set keys\n");
