@@ -182,6 +182,7 @@ rte_rawdev_queue_setup(uint16_t dev_id,
  */
 int
 rte_rawdev_queue_release(uint16_t dev_id, uint16_t queue_id);
+
 /**
  * Get the number of raw queues on a specific raw device
  *

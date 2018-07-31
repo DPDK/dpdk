@@ -251,6 +251,24 @@ typedef int (*rawdev_queue_release_t)(struct rte_rawdev *dev,
 				      uint16_t queue_id);
 
 /**
+ * Get the count of number of queues configured on this device.
+ *
+ * Another way to fetch this information is to fetch the device configuration.
+ * But, that assumes that the device configuration managed by the driver has
+ * that kind of information.
+ *
+ * This function helps in getting queue count supported, independently. It
+ * can help in cases where iterator needs to be implemented.
+ *
+ * @param
+ *   Raw device pointer
+ * @return
+ *   Number of queues; 0 is assumed to be a valid response.
+ *
+ */
+typedef uint16_t (*rawdev_queue_count_t)(struct rte_rawdev *dev);
+
+/**
  * Enqueue an array of raw buffers to the device.
  *
  * Buffer being used is opaque - it can be obtained from mempool or from
@@ -506,6 +524,8 @@ struct rte_rawdev_ops {
 	rawdev_queue_setup_t queue_setup;
 	/**< Release an raw queue. */
 	rawdev_queue_release_t queue_release;
+	/**< Get the number of queues attached to the device */
+	rawdev_queue_count_t queue_count;
 
 	/**< Enqueue an array of raw buffers to device. */
 	rawdev_enqueue_bufs_t enqueue_bufs;

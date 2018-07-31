@@ -172,6 +172,18 @@ rte_rawdev_queue_release(uint16_t dev_id, uint16_t queue_id)
 	return (*dev->dev_ops->queue_release)(dev, queue_id);
 }
 
+uint16_t
+rte_rawdev_queue_count(uint16_t dev_id)
+{
+	struct rte_rawdev *dev;
+
+	RTE_RAWDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	dev = &rte_rawdevs[dev_id];
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->queue_count, -ENOTSUP);
+	return (*dev->dev_ops->queue_count)(dev);
+}
+
 int
 rte_rawdev_get_attr(uint16_t dev_id,
 		    const char *attr_name,
