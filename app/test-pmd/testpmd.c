@@ -2484,12 +2484,14 @@ const uint16_t vlan_tags[] = {
 };
 
 static  int
-get_eth_dcb_conf(struct rte_eth_conf *eth_conf,
+get_eth_dcb_conf(portid_t pid, struct rte_eth_conf *eth_conf,
 		 enum dcb_mode_enable dcb_mode,
 		 enum rte_eth_nb_tcs num_tcs,
 		 uint8_t pfc_en)
 {
 	uint8_t i;
+	int32_t rc;
+	struct rte_eth_rss_conf rss_conf;
 
 	/*
 	 * Builds up the correct configuration for dcb+vt based on the vlan tags array
@@ -2529,6 +2531,10 @@ get_eth_dcb_conf(struct rte_eth_conf *eth_conf,
 		struct rte_eth_dcb_tx_conf *tx_conf =
 				&eth_conf->tx_adv_conf.dcb_tx_conf;
 
+		rc = rte_eth_dev_rss_hash_conf_get(pid, &rss_conf);
+		if (rc != 0)
+			return rc;
+
 		rx_conf->nb_tcs = num_tcs;
 		tx_conf->nb_tcs = num_tcs;
 
@@ -2536,8 +2542,9 @@ get_eth_dcb_conf(struct rte_eth_conf *eth_conf,
 			rx_conf->dcb_tc[i] = i % num_tcs;
 			tx_conf->dcb_tc[i] = i % num_tcs;
 		}
+
 		eth_conf->rxmode.mq_mode = ETH_MQ_RX_DCB_RSS;
-		eth_conf->rx_adv_conf.rss_conf.rss_hf = rss_hf;
+		eth_conf->rx_adv_conf.rss_conf = rss_conf;
 		eth_conf->txmode.mq_mode = ETH_MQ_TX_DCB;
 	}
 
@@ -2571,7 +2578,7 @@ init_port_dcb_config(portid_t pid,
 	port_conf.txmode = rte_port->dev_conf.txmode;
 
 	/*set configuration of DCB in vt mode and DCB in non-vt mode*/
-	retval = get_eth_dcb_conf(&port_conf, dcb_mode, num_tcs, pfc_en);
+	retval = get_eth_dcb_conf(pid, &port_conf, dcb_mode, num_tcs, pfc_en);
 	if (retval < 0)
 		return retval;
 	port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_VLAN_FILTER;
