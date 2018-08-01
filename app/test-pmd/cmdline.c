@@ -1897,11 +1897,13 @@ cmd_config_rx_mode_flag_parsed(void *parsed_result,
 		port = &ports[pid];
 		rx_offloads = port->dev_conf.rxmode.offloads;
 		if (!strcmp(res->name, "crc-strip")) {
-			if (!strcmp(res->value, "on"))
+			if (!strcmp(res->value, "on")) {
 				rx_offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
-			else if (!strcmp(res->value, "off"))
+				rx_offloads &= ~DEV_RX_OFFLOAD_KEEP_CRC;
+			} else if (!strcmp(res->value, "off")) {
+				rx_offloads |= DEV_RX_OFFLOAD_KEEP_CRC;
 				rx_offloads &= ~DEV_RX_OFFLOAD_CRC_STRIP;
-			else {
+			} else {
 				printf("Unknown parameter\n");
 				return;
 			}
