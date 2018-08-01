@@ -30,7 +30,7 @@ rte_meter_get_tb_params(uint64_t hz, uint64_t rate, uint64_t *tb_period, uint64_
 	}
 }
 
-int __rte_experimental
+int
 rte_meter_srtcm_profile_config(struct rte_meter_srtcm_profile *p,
 	struct rte_meter_srtcm_params *params)
 {
@@ -68,7 +68,7 @@ rte_meter_srtcm_config(struct rte_meter_srtcm *m,
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_meter_trtcm_profile_config(struct rte_meter_trtcm_profile *p,
 	struct rte_meter_trtcm_params *params)
 {

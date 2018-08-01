@@ -11,7 +11,7 @@ DPDK_2.0 {
 	local: *;
 };
 
-EXPERIMENTAL {
+DPDK_18.08 {
 	global:
 
 	rte_meter_srtcm_profile_config;

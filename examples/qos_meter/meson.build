@@ -7,7 +7,6 @@
 # DPDK instance, use 'make'
 
 deps += 'meter'
-allow_experimental_apis = true
 sources = files(
 	'main.c', 'rte_policer.c'
 )

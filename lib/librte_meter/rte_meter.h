@@ -20,7 +20,6 @@ extern "C" {
  ***/
 
 #include <stdint.h>
-#include <rte_compat.h>
 
 /*
  * Application Programmer's Interface (API)
@@ -82,7 +81,7 @@ struct rte_meter_trtcm;
  * @return
  *    0 upon success, error code otherwise
  */
-int __rte_experimental
+int
 rte_meter_srtcm_profile_config(struct rte_meter_srtcm_profile *p,
 	struct rte_meter_srtcm_params *params);
 
@@ -96,7 +95,7 @@ rte_meter_srtcm_profile_config(struct rte_meter_srtcm_profile *p,
  * @return
  *    0 upon success, error code otherwise
  */
-int __rte_experimental
+int
 rte_meter_trtcm_profile_config(struct rte_meter_trtcm_profile *p,
 	struct rte_meter_trtcm_params *params);
 
