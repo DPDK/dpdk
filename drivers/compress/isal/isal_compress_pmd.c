@@ -404,9 +404,9 @@ process_isal_deflate(struct rte_comp_op *op, struct isal_comp_qp *qp,
 		return -1;
 	}
 
-	if (op->dst.offset > op->m_dst->pkt_len) {
-		ISAL_PMD_LOG(ERR, "Output mbuf(s) not big enough for length"
-				" and offset provided.\n");
+	if (op->dst.offset >= op->m_dst->pkt_len) {
+		ISAL_PMD_LOG(ERR, "Output mbuf(s) not big enough"
+				" for offset provided.\n");
 		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
 		return -1;
 	}
@@ -483,8 +483,8 @@ process_isal_inflate(struct rte_comp_op *op, struct isal_comp_qp *qp)
 		return -1;
 	}
 
-	if (op->dst.offset > op->m_dst->data_len) {
-		ISAL_PMD_LOG(ERR, "Output mbuf not big enough for length and "
+	if (op->dst.offset >= op->m_dst->pkt_len) {
+		ISAL_PMD_LOG(ERR, "Output mbuf not big enough for "
 				"offset provided.\n");
 		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
 		return -1;
