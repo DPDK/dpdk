@@ -463,7 +463,7 @@ _rte_eth_dev_owner_set(const uint16_t port_id, const uint64_t old_owner_id,
 
 	port_owner->id = new_owner->id;
 
-	RTE_ETHDEV_LOG(ERR, "Port %u owner is %s_%016"PRIx64"\n",
+	RTE_ETHDEV_LOG(DEBUG, "Port %u owner is %s_%016"PRIx64"\n",
 		port_id, new_owner->name, new_owner->id);
 
 	return 0;
