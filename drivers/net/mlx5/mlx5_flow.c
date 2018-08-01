@@ -2879,7 +2879,9 @@ mlx5_flow_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 						     MLX5_RSS_HASH_KEY_LEN,
 						     verbs->hash_fields,
 						     (*flow->queue),
-						     flow->rss.queue_num);
+						     flow->rss.queue_num,
+						     !!(flow->layers &
+						      MLX5_FLOW_LAYER_TUNNEL));
 			if (!hrxq) {
 				rte_flow_error_set
 					(error, rte_errno,

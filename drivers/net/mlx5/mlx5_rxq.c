@@ -1752,7 +1752,8 @@ struct mlx5_hrxq *
 mlx5_hrxq_new(struct rte_eth_dev *dev,
 	      const uint8_t *rss_key, uint32_t rss_key_len,
 	      uint64_t hash_fields,
-	      const uint16_t *queues, uint32_t queues_n)
+	      const uint16_t *queues, uint32_t queues_n,
+	      int tunnel __rte_unused)
 {
 	struct priv *priv = dev->data->dev_private;
 	struct mlx5_hrxq *hrxq;
@@ -1794,9 +1795,8 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 			.pd = priv->pd,
 		 },
 		 &(struct mlx5dv_qp_init_attr){
-			.comp_mask = (hash_fields & IBV_RX_HASH_INNER) ?
-				 MLX5DV_QP_INIT_ATTR_MASK_QP_CREATE_FLAGS :
-				 0,
+			.comp_mask = tunnel ?
+				MLX5DV_QP_INIT_ATTR_MASK_QP_CREATE_FLAGS : 0,
 			.create_flags = MLX5DV_QP_CREATE_TUNNEL_OFFLOADS,
 		 });
 #else
