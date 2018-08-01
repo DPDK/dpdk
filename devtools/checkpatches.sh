@@ -29,7 +29,7 @@ clean_tmp_files() {
 	fi
 }
 
-trap "clean_tmp_files" SIGINT
+trap "clean_tmp_files" INT
 
 print_usage () {
 	cat <<- END_OF_HELP
