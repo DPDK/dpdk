@@ -2174,12 +2174,15 @@ bond_ethdev_stop(struct rte_eth_dev *eth_dev)
 			tlb_last_obytets[internals->active_slaves[i]] = 0;
 	}
 
-	internals->link_status_polling_enabled = 0;
-	for (i = 0; i < internals->slave_count; i++)
-		internals->slaves[i].last_link_status = 0;
-
 	eth_dev->data->dev_link.link_status = ETH_LINK_DOWN;
 	eth_dev->data->dev_started = 0;
+
+	internals->link_status_polling_enabled = 0;
+	for (i = 0; i < internals->slave_count; i++) {
+		internals->slaves[i].last_link_status = 0;
+		rte_eth_dev_stop(internals->slaves[i].port_id);
+		deactivate_slave(eth_dev, internals->slaves[i].port_id);
+	}
 }
 
 void
