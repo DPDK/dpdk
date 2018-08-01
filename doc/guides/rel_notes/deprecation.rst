@@ -8,6 +8,21 @@ API and ABI deprecation notices are to be posted here.
 Deprecation Notices
 -------------------
 
+* eal: certain structures will change in EAL on account of upcoming external
+  memory support. Aside from internal changes leading to an ABI break, the
+  following externally visible changes will also be implemented:
+
+  - ``rte_memseg_list`` will change to include a boolean flag indicating
+    whether a particular memseg list is externally allocated. This will have
+    implications for any users of memseg-walk-related functions, as they will
+    now have to skip externally allocated segments in most cases if the intent
+    is to only iterate over internal DPDK memory.
+  - ``socket_id`` parameter across the entire DPDK will gain additional meaning,
+    as some socket ID's will now be representing externally allocated memory. No
+    changes will be required for existing code as backwards compatibility will
+    be kept, and those who do not use this feature will not see these extra
+    socket ID's.
+
 * eal: both declaring and identifying devices will be streamlined in v18.08.
   New functions will appear to query a specific port from buses, classes of
   device and device drivers. Device declaration will be made coherent with the
