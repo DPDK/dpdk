@@ -774,7 +774,7 @@ hn_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	return 0;
 
 fail:
-	rte_free(rxq->rx_ring);
+	rte_ring_free(rxq->rx_ring);
 	rte_free(rxq->event_buf);
 	rte_free(rxq);
 	return -ENOMEM;
@@ -790,7 +790,7 @@ hn_dev_rx_queue_release(void *arg)
 	if (!rxq)
 		return;
 
-	rte_free(rxq->rx_ring);
+	rte_ring_free(rxq->rx_ring);
 	rxq->rx_ring = NULL;
 	rxq->mb_pool = NULL;
 
