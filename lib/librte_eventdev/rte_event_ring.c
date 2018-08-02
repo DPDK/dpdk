@@ -82,11 +82,16 @@ rte_event_ring_create(const char *name, unsigned int count, int socket_id,
 	mz = rte_memzone_reserve(mz_name, ring_size, socket_id, mz_flags);
 	if (mz != NULL) {
 		r = mz->addr;
-		/*
-		 * no need to check return value here, we already checked the
-		 * arguments above
-		 */
-		rte_event_ring_init(r, name, requested_count, flags);
+		/* Check return value in case rte_ring_init() fails on size */
+		int err = rte_event_ring_init(r, name, requested_count, flags);
+		if (err) {
+			RTE_LOG(ERR, RING, "Ring init failed\n");
+			if (rte_memzone_free(mz) != 0)
+				RTE_LOG(ERR, RING, "Cannot free memzone\n");
+			rte_free(te);
+			rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+			return NULL;
+		}
 
 		te->data = (void *) r;
 		r->r.memzone = mz;
