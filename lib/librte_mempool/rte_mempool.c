@@ -916,6 +916,12 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 
 	mempool_list = RTE_TAILQ_CAST(rte_mempool_tailq.head, rte_mempool_list);
 
+	/* asked for zero items */
+	if (n == 0) {
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
 	/* asked cache too big */
 	if (cache_size > RTE_MEMPOOL_CACHE_MAX_SIZE ||
 	    CALC_CACHE_FLUSHTHRESH(cache_size) > n) {
