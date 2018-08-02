@@ -991,6 +991,7 @@ action_of_vlan:
 			goto error_nobufs;
 		if (i == TCA_VLAN_ACT_POP) {
 			mnl_attr_nest_end(buf, act);
+			mnl_attr_nest_end(buf, act_index);
 			++action;
 			break;
 		}
