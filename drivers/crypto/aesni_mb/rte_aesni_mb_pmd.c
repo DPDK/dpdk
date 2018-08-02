@@ -833,21 +833,29 @@ aesni_mb_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 
 	uint8_t digest_idx = qp->digest_idx;
 	do {
-		/* Get next operation to process from ingress queue */
-		retval = rte_ring_dequeue(qp->ingress_queue, (void **)&op);
-		if (retval < 0)
-			break;
-
 		/* Get next free mb job struct from mb manager */
 		job = (*qp->op_fns->job.get_next)(qp->mb_mgr);
 		if (unlikely(job == NULL)) {
 			/* if no free mb job structs we need to flush mb_mgr */
 			processed_jobs += flush_mb_mgr(qp,
 					&ops[processed_jobs],
-					(nb_ops - processed_jobs) - 1);
+					nb_ops - processed_jobs);
+
+			if (nb_ops == processed_jobs)
+				break;
 
 			job = (*qp->op_fns->job.get_next)(qp->mb_mgr);
 		}
+
+		/*
+		 * Get next operation to process from ingress queue.
+		 * There is no need to return the job to the MB_MGR
+		 * if there are no more operations to process, since the MB_MGR
+		 * can use that pointer again in next get_next calls.
+		 */
+		retval = rte_ring_dequeue(qp->ingress_queue, (void **)&op);
+		if (retval < 0)
+			break;
 
 		retval = set_mb_job_params(job, qp, op, &digest_idx);
 		if (unlikely(retval != 0)) {
