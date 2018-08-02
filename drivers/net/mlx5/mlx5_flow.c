@@ -2065,6 +2065,11 @@ mlx5_flow_action_rss(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  &rss->key_len,
 					  "RSS hash key too large");
+	if (!rss->queue_num)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					  rss,
+					  "no queues were provided for RSS");
 	if (rss->queue_num > priv->config.ind_table_max_size)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
@@ -2077,6 +2082,12 @@ mlx5_flow_action_rss(struct rte_eth_dev *dev,
 					  "some RSS protocols are not"
 					  " supported");
 	for (i = 0; i != rss->queue_num; ++i) {
+		if (rss->queue[i] >= priv->rxqs_n)
+			return rte_flow_error_set
+				(error, EINVAL,
+				 RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+				 rss,
+				 "queue index out of range");
 		if (!(*priv->rxqs)[rss->queue[i]])
 			return rte_flow_error_set
 				(error, EINVAL,
