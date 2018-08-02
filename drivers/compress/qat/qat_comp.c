@@ -44,7 +44,8 @@ qat_comp_build_request(void *in_op, uint8_t *out_msg,
 
 	/* common for sgl and flat buffers */
 	comp_req->comp_pars.comp_len = op->src.length;
-	comp_req->comp_pars.out_buffer_sz = rte_pktmbuf_pkt_len(op->m_dst);
+	comp_req->comp_pars.out_buffer_sz = rte_pktmbuf_pkt_len(op->m_dst) -
+			op->dst.offset;
 
 	if (op->m_src->next != NULL || op->m_dst->next != NULL) {
 		/* sgl */
@@ -85,8 +86,9 @@ qat_comp_build_request(void *in_op, uint8_t *out_msg,
 		/* flat aka linear buffer */
 		ICP_QAT_FW_COMN_PTR_TYPE_SET(comp_req->comn_hdr.comn_req_flags,
 				QAT_COMN_PTR_TYPE_FLAT);
-		comp_req->comn_mid.src_length = rte_pktmbuf_data_len(op->m_src);
-		comp_req->comn_mid.dst_length = rte_pktmbuf_data_len(op->m_dst);
+		comp_req->comn_mid.src_length = op->src.length;
+		comp_req->comn_mid.dst_length =
+				comp_req->comp_pars.out_buffer_sz;
 
 		comp_req->comn_mid.src_data_addr =
 		    rte_pktmbuf_mtophys_offset(op->m_src, op->src.offset);
