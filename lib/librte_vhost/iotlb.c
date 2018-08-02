@@ -303,6 +303,13 @@ out:
 	return vva;
 }
 
+void
+vhost_user_iotlb_flush_all(struct vhost_virtqueue *vq)
+{
+	vhost_user_iotlb_cache_remove_all(vq);
+	vhost_user_iotlb_pending_remove_all(vq);
+}
+
 int
 vhost_user_iotlb_init(struct virtio_net *dev, int vq_index)
 {
@@ -315,8 +322,7 @@ vhost_user_iotlb_init(struct virtio_net *dev, int vq_index)
 		 * The cache has already been initialized,
 		 * just drop all cached and pending entries.
 		 */
-		vhost_user_iotlb_cache_remove_all(vq);
-		vhost_user_iotlb_pending_remove_all(vq);
+		vhost_user_iotlb_flush_all(vq);
 	}
 
 #ifdef RTE_LIBRTE_VHOST_NUMA

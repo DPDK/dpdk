@@ -813,6 +813,11 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *pmsg)
 		dev->mem = NULL;
 	}
 
+	/* Flush IOTLB cache as previous HVAs are now invalid */
+	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
+		for (i = 0; i < dev->nr_vring; i++)
+			vhost_user_iotlb_flush_all(dev->virtqueue[i]);
+
 	dev->nr_guest_pages = 0;
 	if (!dev->guest_pages) {
 		dev->max_guest_pages = 8;
