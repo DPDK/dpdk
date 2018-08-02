@@ -81,10 +81,18 @@ mlx5_promiscuous_disable(struct rte_eth_dev *dev)
 void
 mlx5_allmulticast_enable(struct rte_eth_dev *dev)
 {
+	struct priv *priv = dev->data->dev_private;
 	int ret;
 
 	dev->data->all_multicast = 1;
-	if (((struct priv *)dev->data->dev_private)->config.vf)
+	if (priv->isolated) {
+		DRV_LOG(WARNING,
+			"port %u cannot enable allmulticast mode"
+			" in flow isolation mode",
+			dev->data->port_id);
+		return;
+	}
+	if (priv->config.vf)
 		mlx5_nl_allmulti(dev, 1);
 	ret = mlx5_traffic_restart(dev);
 	if (ret)
@@ -101,10 +109,11 @@ mlx5_allmulticast_enable(struct rte_eth_dev *dev)
 void
 mlx5_allmulticast_disable(struct rte_eth_dev *dev)
 {
+	struct priv *priv = dev->data->dev_private;
 	int ret;
 
 	dev->data->all_multicast = 0;
-	if (((struct priv *)dev->data->dev_private)->config.vf)
+	if (priv->config.vf)
 		mlx5_nl_allmulti(dev, 0);
 	ret = mlx5_traffic_restart(dev);
 	if (ret)
