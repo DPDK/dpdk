@@ -1234,6 +1234,13 @@ mlx5_mprq_alloc_mp(struct rte_eth_dev *dev)
 	 */
 	desc *= 4;
 	obj_num = desc + MLX5_MPRQ_MP_CACHE_SZ * priv->rxqs_n;
+	/*
+	 * rte_mempool_create_empty() has sanity check to refuse large cache
+	 * size compared to the number of elements.
+	 * CACHE_FLUSHTHRESH_MULTIPLIER is defined in a C file, so using a
+	 * constant number 2 instead.
+	 */
+	obj_num = RTE_MAX(obj_num, MLX5_MPRQ_MP_CACHE_SZ * 2);
 	/* Check a mempool is already allocated and if it can be resued. */
 	if (mp != NULL && mp->elt_size >= obj_size && mp->size >= obj_num) {
 		DRV_LOG(DEBUG, "port %u mempool %s is being reused",
