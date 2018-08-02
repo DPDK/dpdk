@@ -65,7 +65,7 @@ struct qat_common_stats {
 struct qat_pci_device;
 
 int
-qat_sgl_fill_array(struct rte_mbuf *buf, uint64_t buf_start,
+qat_sgl_fill_array(struct rte_mbuf *buf, int64_t offset,
 		void *list_in, uint32_t data_len,
 		const uint16_t max_segs);
 void

@@ -7,79 +7,66 @@
 #include "qat_logs.h"
 
 int
-qat_sgl_fill_array(struct rte_mbuf *buf, uint64_t buf_start,
+qat_sgl_fill_array(struct rte_mbuf *buf, int64_t offset,
 		void *list_in, uint32_t data_len,
 		const uint16_t max_segs)
 {
-	int nr = 1;
+	int res = -EINVAL;
+	uint32_t buf_len, nr;
 	struct qat_sgl *list = (struct qat_sgl *)list_in;
-	/* buf_start allows the first buffer to start at an address before or
-	 * after the mbuf data start. It's used to either optimally align the
-	 * dma to 64 or to start dma from an offset.
-	 */
-	uint32_t buf_len;
-	uint32_t first_buf_len = rte_pktmbuf_data_len(buf) +
-			(rte_pktmbuf_mtophys(buf) - buf_start);
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 	uint8_t *virt_addr[max_segs];
-	virt_addr[0] = rte_pktmbuf_mtod(buf, uint8_t*) +
-			(rte_pktmbuf_mtophys(buf) - buf_start);
 #endif
 
-	list->buffers[0].addr = buf_start;
-	list->buffers[0].resrvd = 0;
-	list->buffers[0].len = first_buf_len;
-
-	if (data_len <= first_buf_len) {
-		list->num_bufs = nr;
-		list->buffers[0].len = data_len;
-		goto sgl_end;
-	}
-
-	buf = buf->next;
-	buf_len = first_buf_len;
-	while (buf) {
-		if (unlikely(nr == max_segs)) {
-			QAT_DP_LOG(ERR, "Exceeded max segments in QAT SGL (%u)",
-					max_segs);
-			return -EINVAL;
+	for (nr = buf_len = 0; buf &&  nr < max_segs; buf = buf->next)  {
+		if (offset >= rte_pktmbuf_data_len(buf)) {
+			offset -= rte_pktmbuf_data_len(buf);
+			continue;
 		}
 
-		list->buffers[nr].len = rte_pktmbuf_data_len(buf);
+		list->buffers[nr].len = rte_pktmbuf_data_len(buf) - offset;
 		list->buffers[nr].resrvd = 0;
-		list->buffers[nr].addr = rte_pktmbuf_mtophys(buf);
+		list->buffers[nr].addr = rte_pktmbuf_iova_offset(buf, offset);
+
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
-		virt_addr[nr] = rte_pktmbuf_mtod(buf, uint8_t*);
+		virt_addr[nr] = rte_pktmbuf_mtod_offset(buf, uint8_t*, offset);
 #endif
+		offset = 0;
 		buf_len += list->buffers[nr].len;
-		buf = buf->next;
 
 		if (buf_len >= data_len) {
-			list->buffers[nr].len -=
-				buf_len - data_len;
-			buf = NULL;
+			list->buffers[nr].len -= buf_len - data_len;
+			res = 0;
+			break;
 		}
 		++nr;
 	}
-	list->num_bufs = nr;
 
-sgl_end:
+	if (unlikely(res != 0)) {
+		if (nr == max_segs) {
+			QAT_DP_LOG(ERR, "Exceeded max segments in QAT SGL (%u)",
+				   max_segs);
+		} else {
+			QAT_DP_LOG(ERR, "Mbuf chain is too short");
+		}
+	} else {
+
+		list->num_bufs = ++nr;
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
-	{
-		uint16_t i;
 		QAT_DP_LOG(INFO, "SGL with %d buffers:", list->num_bufs);
-		for (i = 0; i < list->num_bufs; i++) {
+		for (nr = 0; nr < list->num_bufs; nr++) {
 			QAT_DP_LOG(INFO,
 				"QAT SGL buf %d, len = %d, iova = 0x%012"PRIx64,
-				i, list->buffers[i].len,
-				list->buffers[i].addr);
+				 nr, list->buffers[nr].len,
+				 list->buffers[nr].addr);
 			QAT_DP_HEXDUMP_LOG(DEBUG, "qat SGL",
-					virt_addr[i], list->buffers[i].len);
+					   virt_addr[nr],
+					   list->buffers[nr].len);
 		}
-	}
 #endif
+	}
 
-	return 0;
+	return res;
 }
 
 void qat_stats_get(struct qat_pci_device *dev,

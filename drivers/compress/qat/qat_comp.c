@@ -53,25 +53,24 @@ qat_comp_build_request(void *in_op, uint8_t *out_msg,
 
 		ICP_QAT_FW_COMN_PTR_TYPE_SET(comp_req->comn_hdr.comn_req_flags,
 				QAT_COMN_PTR_TYPE_SGL);
+
 		ret = qat_sgl_fill_array(op->m_src,
-				rte_pktmbuf_mtophys_offset(op->m_src,
-							op->src.offset),
+				op->src.offset,
 				&cookie->qat_sgl_src,
 				op->src.length,
 				RTE_PMD_QAT_COMP_SGL_MAX_SEGMENTS);
 		if (ret) {
-			QAT_DP_LOG(ERR, "QAT PMD Cannot fill sgl array");
+			QAT_DP_LOG(ERR, "QAT PMD Cannot fill source sgl array");
 			return ret;
 		}
 
 		ret = qat_sgl_fill_array(op->m_dst,
-				rte_pktmbuf_mtophys_offset(op->m_dst,
-							op->dst.offset),
+				op->dst.offset,
 				&cookie->qat_sgl_dst,
 				comp_req->comp_pars.out_buffer_sz,
 				RTE_PMD_QAT_COMP_SGL_MAX_SEGMENTS);
 		if (ret) {
-			QAT_DP_LOG(ERR, "QAT PMD Cannot fill sgl array");
+			QAT_DP_LOG(ERR, "QAT PMD Cannot fill dest. sgl array");
 			return ret;
 		}
 

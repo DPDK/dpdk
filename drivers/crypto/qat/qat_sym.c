@@ -494,10 +494,11 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 
 		ICP_QAT_FW_COMN_PTR_TYPE_SET(qat_req->comn_hdr.comn_req_flags,
 				QAT_COMN_PTR_TYPE_SGL);
-		ret = qat_sgl_fill_array(op->sym->m_src, src_buf_start,
-					&cookie->qat_sgl_src,
-					qat_req->comn_mid.src_length,
-					QAT_SYM_SGL_MAX_NUMBER);
+		ret = qat_sgl_fill_array(op->sym->m_src,
+		   (int64_t)(src_buf_start - rte_pktmbuf_iova(op->sym->m_src)),
+		   &cookie->qat_sgl_src,
+		   qat_req->comn_mid.src_length,
+		   QAT_SYM_SGL_MAX_NUMBER);
 
 		if (unlikely(ret)) {
 			QAT_DP_LOG(ERR, "QAT PMD Cannot fill sgl array");
@@ -510,10 +511,11 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 				cookie->qat_sgl_src_phys_addr;
 		else {
 			ret = qat_sgl_fill_array(op->sym->m_dst,
-						 dst_buf_start,
-						 &cookie->qat_sgl_dst,
-						 qat_req->comn_mid.dst_length,
-						 QAT_SYM_SGL_MAX_NUMBER);
+				(int64_t)(dst_buf_start -
+					  rte_pktmbuf_iova(op->sym->m_dst)),
+				 &cookie->qat_sgl_dst,
+				 qat_req->comn_mid.dst_length,
+				 QAT_SYM_SGL_MAX_NUMBER);
 
 			if (unlikely(ret)) {
 				QAT_DP_LOG(ERR, "QAT PMD can't fill sgl array");
