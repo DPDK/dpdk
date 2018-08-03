@@ -85,3 +85,10 @@ Deprecation Notices
   - ``rte_pdump_set_socket_dir`` will be removed;
   - The parameter, ``path``, of ``rte_pdump_init`` will be removed;
   - The enum ``rte_pdump_socktype`` will be removed.
+
+* ethdev: flow API function ``rte_flow_copy()`` will be deprecated in v18.11
+  in favor of ``rte_flow_conv()`` (which will appear in that version) and
+  subsequently removed for v19.02.
+
+  This is due to a lack of flexibility and reliance on a type unusable with
+  C++ programs (struct rte_flow_desc).
