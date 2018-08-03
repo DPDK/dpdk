@@ -58,7 +58,6 @@
 #define wmb()   rte_wmb()
 #define rmb()   rte_rmb()
 
-
 #define MAX_QUEUES sysconf(_SC_NPROCESSORS_CONF)
 
 #define BNX2X_MIN_RX_BUF_SIZE 1024
@@ -71,6 +70,8 @@
 #define BNX2X_TX_TICKS 50
 /* Maximum number of Rx packets to process at a time */
 #define BNX2X_RX_BUDGET 0xffffffff
+
+#define BNX2X_SP_TIMER_PERIOD US_PER_S /* 1 second */
 
 #endif
 

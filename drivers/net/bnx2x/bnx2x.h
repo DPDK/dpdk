@@ -1930,6 +1930,7 @@ void bnx2x_link_status_update(struct bnx2x_softc *sc);
 int bnx2x_complete_sp(struct bnx2x_softc *sc);
 int bnx2x_set_storm_rx_mode(struct bnx2x_softc *sc);
 void bnx2x_periodic_callout(struct bnx2x_softc *sc);
+void bnx2x_periodic_stop(void *param);
 
 int bnx2x_vf_get_resources(struct bnx2x_softc *sc, uint8_t tx_count, uint8_t rx_count);
 void bnx2x_vf_close(struct bnx2x_softc *sc);
