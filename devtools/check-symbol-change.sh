@@ -4,8 +4,8 @@
 
 build_map_changes()
 {
-	local fname=$1
-	local mapdb=$2
+	local fname="$1"
+	local mapdb="$2"
 
 	cat "$fname" | awk '
 		# Initialize our variables
@@ -80,7 +80,7 @@ build_map_changes()
 
 check_for_rule_violations()
 {
-	local mapdb=$1
+	local mapdb="$1"
 	local mname
 	local symname
 	local secname
@@ -89,10 +89,10 @@ check_for_rule_violations()
 
 	while read mname symname secname ar
 	do
-		if [ "$ar" == "add" ]
+		if [ "$ar" = "add" ]
 		then
 
-			if [ "$secname" == "unknown" ]
+			if [ "$secname" = "unknown" ]
 			then
 				# Just inform the user of this occurrence, but
 				# don't flag it as an error
