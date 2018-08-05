@@ -506,7 +506,7 @@ RMDA Core with Linux Kernel
 Mellanox OFED
 ^^^^^^^^^^^^^
 
-- Mellanox OFED version: **4.2, 4.3**.
+- Mellanox OFED version: **4.3, 4.4**.
 - firmware version:
 
   - ConnectX-4: **12.21.1000** and above.

@@ -76,6 +76,21 @@ New Features
   * Add handlers to add/delete VxLAN port number.
   * Add devarg to specify ingress VLAN rewrite mode.
 
+* **Updated mlx5 driver.**
+
+  Updated the mlx5 driver including the following changes:
+
+  * Added port representors support.
+  * Added Flow API support for e-switch rules.
+    Supported ACTION_PORT_ID, ACTION_DROP, ACTION_OF_POP_VLAN,
+    ACTION_OF_PUSH_VLAN, ACTION_OF_SET_VLAN_VID, ACTION_OF_SET_VLAN_PCP
+    and ITEM_PORT_ID.
+  * Supported 32-bit compilation.
+
+* **Added TSO support for mlx4 driver.**
+
+  The support is from MLNX_OFED_4.4 and above.
+
 * **SoftNIC PMD rework.**
 
   The SoftNIC PMD infrastructure is restructured to use the Packet Framework,
