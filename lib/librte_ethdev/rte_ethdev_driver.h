@@ -38,7 +38,6 @@ struct rte_eth_dev *rte_eth_dev_allocated(const char *name);
  * to that slot for the driver to use.
  *
  * @param	name	Unique identifier name for each Ethernet device
- * @param	type	Device type of this Ethernet device
  * @return
  *   - Slot in the rte_dev_devices array for a new device;
  */
