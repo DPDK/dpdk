@@ -6,7 +6,7 @@ Netvsc poll mode driver
 
 The Netvsc Poll Mode driver (PMD) provides support for the paravirtualized
 network device for Microsoft Hyper-V. It can be used with
-Window Server 2008/2012/2016, Windows 10 and Azure cloud.
+Window Server 2008/2012/2016, Windows 10.
 The device offers multi-queue support (if kernel and host support it),
 checksum and segmentation offloads.
 
@@ -21,7 +21,7 @@ In this release, the hyper PMD driver provides the basic functionality of packet
 
 *   The PMD supports multicast packets and promiscuous mode subject to restrictions on the host.
     In order to this to work, the guest network configuration on Hyper-V must be configured to allow MAC address
-    spoofing. This option is not available on Azure.
+    spoofing.
 
 *   The device has only a single MAC address.
     Hyper-V driver does not support MAC or VLAN filtering because the Hyper-V host does not support it.
@@ -33,9 +33,13 @@ In this release, the hyper PMD driver provides the basic functionality of packet
 *   The maximum number of queues is limited by the host (currently 64).
     When used with 4.16 kernel only a single queue is available.
 
-*   This driver is intended for use with synthetic path only.
-    Accelerated Networking (SR-IOV) acceleration is not supported yet.
-    Use the VDEV_NETVSC device for accelerated networking instead.
+.. note::
+   This driver is intended for use with **Hyper-V only** and is
+   not recommended for use on Azure because accelerated Networking
+   (SR-IOV) is not supported.
+
+   On Azure, use the :doc:`vdev_netvsc` which
+   automatically configures the necessary TAP and failsave drivers.
 
 
 Installation
@@ -88,7 +92,7 @@ operations:
 
 .. Note::
 
-   The dpkd-devbind.py script should not be used. It only handles PCI devices.
+   The dpkd-devbind.py script can not be used since it only handles PCI devices.
 
 
 Prerequisites
