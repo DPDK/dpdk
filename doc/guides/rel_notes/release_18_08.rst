@@ -131,6 +131,17 @@ API Changes
   - ``rte_mempool_xmem_size``
   - ``rte_mempool_xmem_usage``
 
+* ethdev: The old offload API is removed:
+
+  - Rx per-port ``rte_eth_conf.rxmode.[bit-fields]``
+  - Tx per-queue ``rte_eth_txconf.txq_flags``
+  - ``ETH_TXQ_FLAGS_NO*``
+
+  The transition bits are removed:
+
+  - ``rte_eth_conf.rxmode.ignore_offload_bitfield``
+  - ``ETH_TXQ_FLAGS_IGNORE``
+
 * cryptodev: In struct ``struct rte_cryptodev_info``, field ``rte_pci_device *pci_dev``
   has been replaced with field ``struct rte_device *device``.
   Value 0 is accepted in ``sym.max_nb_sessions``, meaning that a device
@@ -243,7 +254,7 @@ The libraries prepended with a plus sign were incremented in this version.
    + librte_cryptodev.so.5
      librte_distributor.so.1
      librte_eal.so.7
-     librte_ethdev.so.9
+   + librte_ethdev.so.10
      librte_eventdev.so.4
      librte_flow_classify.so.1
      librte_gro.so.1
