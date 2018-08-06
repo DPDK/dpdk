@@ -513,6 +513,9 @@ static void hn_rxpkt(struct hn_rx_queue *rxq, struct hn_rx_bufinfo *rxb,
 		if (info->csum_info & (NDIS_RXCSUM_INFO_UDPCS_OK
 				       | NDIS_RXCSUM_INFO_TCPCS_OK))
 			m->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+		else if (info->csum_info & (NDIS_RXCSUM_INFO_TCPCS_FAILED
+					    | NDIS_RXCSUM_INFO_UDPCS_FAILED))
+			m->ol_flags |= PKT_RX_L4_CKSUM_BAD;
 	}
 
 	if (info->hash_info != HN_NDIS_HASH_INFO_INVALID) {
