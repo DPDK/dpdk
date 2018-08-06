@@ -537,7 +537,7 @@ tap_flow_create_eth(const struct rte_flow_item *item, void *data)
 	if (!flow)
 		return 0;
 	msg = &flow->msg;
-	if (!is_zero_ether_addr(&spec->dst)) {
+	if (!is_zero_ether_addr(&mask->dst)) {
 		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_ETH_DST, ETHER_ADDR_LEN,
 			   &spec->dst.addr_bytes);
 		tap_nlattr_add(&msg->nh,
@@ -651,13 +651,13 @@ tap_flow_create_ipv4(const struct rte_flow_item *item, void *data)
 		info->eth_type = htons(ETH_P_IP);
 	if (!spec)
 		return 0;
-	if (spec->hdr.dst_addr) {
+	if (mask->hdr.dst_addr) {
 		tap_nlattr_add32(&msg->nh, TCA_FLOWER_KEY_IPV4_DST,
 			     spec->hdr.dst_addr);
 		tap_nlattr_add32(&msg->nh, TCA_FLOWER_KEY_IPV4_DST_MASK,
 			     mask->hdr.dst_addr);
 	}
-	if (spec->hdr.src_addr) {
+	if (mask->hdr.src_addr) {
 		tap_nlattr_add32(&msg->nh, TCA_FLOWER_KEY_IPV4_SRC,
 			     spec->hdr.src_addr);
 		tap_nlattr_add32(&msg->nh, TCA_FLOWER_KEY_IPV4_SRC_MASK,
@@ -707,13 +707,13 @@ tap_flow_create_ipv6(const struct rte_flow_item *item, void *data)
 		info->eth_type = htons(ETH_P_IPV6);
 	if (!spec)
 		return 0;
-	if (memcmp(spec->hdr.dst_addr, empty_addr, 16)) {
+	if (memcmp(mask->hdr.dst_addr, empty_addr, 16)) {
 		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_IPV6_DST,
 			   sizeof(spec->hdr.dst_addr), &spec->hdr.dst_addr);
 		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_IPV6_DST_MASK,
 			   sizeof(mask->hdr.dst_addr), &mask->hdr.dst_addr);
 	}
-	if (memcmp(spec->hdr.src_addr, empty_addr, 16)) {
+	if (memcmp(mask->hdr.src_addr, empty_addr, 16)) {
 		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_IPV6_SRC,
 			   sizeof(spec->hdr.src_addr), &spec->hdr.src_addr);
 		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_IPV6_SRC_MASK,
@@ -762,10 +762,10 @@ tap_flow_create_udp(const struct rte_flow_item *item, void *data)
 	tap_nlattr_add8(&msg->nh, TCA_FLOWER_KEY_IP_PROTO, IPPROTO_UDP);
 	if (!spec)
 		return 0;
-	if (spec->hdr.dst_port & mask->hdr.dst_port)
+	if (mask->hdr.dst_port)
 		tap_nlattr_add16(&msg->nh, TCA_FLOWER_KEY_UDP_DST,
 			     spec->hdr.dst_port);
-	if (spec->hdr.src_port & mask->hdr.src_port)
+	if (mask->hdr.src_port)
 		tap_nlattr_add16(&msg->nh, TCA_FLOWER_KEY_UDP_SRC,
 			     spec->hdr.src_port);
 	return 0;
@@ -808,10 +808,10 @@ tap_flow_create_tcp(const struct rte_flow_item *item, void *data)
 	tap_nlattr_add8(&msg->nh, TCA_FLOWER_KEY_IP_PROTO, IPPROTO_TCP);
 	if (!spec)
 		return 0;
-	if (spec->hdr.dst_port & mask->hdr.dst_port)
+	if (mask->hdr.dst_port)
 		tap_nlattr_add16(&msg->nh, TCA_FLOWER_KEY_TCP_DST,
 			     spec->hdr.dst_port);
-	if (spec->hdr.src_port & mask->hdr.src_port)
+	if (mask->hdr.src_port)
 		tap_nlattr_add16(&msg->nh, TCA_FLOWER_KEY_TCP_SRC,
 			     spec->hdr.src_port);
 	return 0;
