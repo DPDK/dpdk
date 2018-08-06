@@ -39,11 +39,17 @@ void vmbus_uio_irq_control(struct rte_vmbus_device *dev, int32_t onoff)
 int vmbus_uio_irq_read(struct rte_vmbus_device *dev)
 {
 	int32_t count;
+	int cc;
 
-	if (read(dev->intr_handle.fd, &count, sizeof(count)) < 0) {
-		VMBUS_LOG(ERR, "cannot read to %d:%s",
-			dev->intr_handle.fd, strerror(errno));
-		count = -errno;
+	cc = read(dev->intr_handle.fd, &count, sizeof(count));
+	if (cc < (int)sizeof(count)) {
+		if (cc < 0) {
+			VMBUS_LOG(ERR, "IRQ read failed %s",
+				  strerror(errno));
+			return -errno;
+		}
+		VMBUS_LOG(ERR, "can't read IRQ count");
+		return -EINVAL;
 	}
 
 	return count;
