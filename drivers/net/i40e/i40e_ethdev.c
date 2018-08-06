@@ -11312,6 +11312,16 @@ i40e_dcb_init_configure(struct rte_eth_dev *dev, bool sw_dcb)
 	 * LLDP MIB change event.
 	 */
 	if (sw_dcb == TRUE) {
+		/* When using NVM 6.01 or later, the RX data path does
+		 * not hang if the FW LLDP is stopped.
+		 */
+		if (((hw->nvm.version >> 12) & 0xf) >= 6 &&
+		    ((hw->nvm.version >> 4) & 0xff) >= 1) {
+			ret = i40e_aq_stop_lldp(hw, TRUE, NULL);
+			if (ret != I40E_SUCCESS)
+				PMD_INIT_LOG(DEBUG, "Failed to stop lldp");
+		}
+
 		ret = i40e_init_dcb(hw);
 		/* If lldp agent is stopped, the return value from
 		 * i40e_init_dcb we expect is failure with I40E_AQ_RC_EPERM
