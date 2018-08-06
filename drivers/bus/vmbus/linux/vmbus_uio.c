@@ -357,6 +357,7 @@ int vmbus_uio_get_subchan(struct vmbus_channel *primary,
 		if (err) {
 			VMBUS_LOG(NOTICE, "invalid subchannel id %lu",
 				  subid);
+			closedir(chan_dir);
 			return err;
 		}
 
