@@ -18,6 +18,7 @@
 #include <rte_common.h>
 #include <rte_malloc.h>
 #include <rte_bus_vmbus.h>
+#include <rte_string_fns.h>
 
 #include "private.h"
 
@@ -89,7 +90,7 @@ vmbus_uio_alloc_resource(struct rte_vmbus_device *dev,
 		goto error;
 	}
 
-	strncpy((*uio_res)->path, devname, PATH_MAX);
+	strlcpy((*uio_res)->path, devname, PATH_MAX);
 	rte_uuid_copy((*uio_res)->id, dev->device_id);
 
 	return 0;
