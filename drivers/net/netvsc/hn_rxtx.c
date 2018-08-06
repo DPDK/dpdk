@@ -24,6 +24,7 @@
 #include <rte_memory.h>
 #include <rte_eal.h>
 #include <rte_dev.h>
+#include <rte_net.h>
 #include <rte_bus_vmbus.h>
 #include <rte_spinlock.h>
 
@@ -495,6 +496,10 @@ static void hn_rxpkt(struct hn_rx_queue *rxq, struct hn_rx_bufinfo *rxb,
 	m->port = rxq->port_id;
 	m->pkt_len = dlen;
 	m->data_len = dlen;
+	m->packet_type = rte_net_get_ptype(m, NULL,
+					   RTE_PTYPE_L2_MASK |
+					   RTE_PTYPE_L3_MASK |
+					   RTE_PTYPE_L4_MASK);
 
 	if (info->vlan_info != HN_NDIS_VLAN_INFO_INVALID) {
 		m->vlan_tci = info->vlan_info;
@@ -515,9 +520,10 @@ static void hn_rxpkt(struct hn_rx_queue *rxq, struct hn_rx_bufinfo *rxb,
 		m->hash.rss = info->hash_value;
 	}
 
-	PMD_RX_LOG(DEBUG, "port %u:%u RX id %" PRIu64 " size %u ol_flags %#" PRIx64,
+	PMD_RX_LOG(DEBUG,
+		   "port %u:%u RX id %"PRIu64" size %u type %#x ol_flags %#"PRIx64,
 		   rxq->port_id, rxq->queue_id, rxb->xactid,
-		   m->pkt_len, m->ol_flags);
+		   m->pkt_len, m->packet_type, m->ol_flags);
 
 	++rxq->stats.packets;
 	rxq->stats.bytes += m->pkt_len;
