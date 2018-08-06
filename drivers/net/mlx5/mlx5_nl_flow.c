@@ -800,16 +800,6 @@ trans:
 		}
 		spec.tcp = item->spec;
 		if ((mask.tcp->hdr.src_port &&
-		     mask.tcp->hdr.src_port != RTE_BE16(0xffff)) ||
-		    (mask.tcp->hdr.dst_port &&
-		     mask.tcp->hdr.dst_port != RTE_BE16(0xffff)))
-			return rte_flow_error_set
-				(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM_MASK,
-				 mask.tcp,
-				 "no support for partial masks on"
-				 " \"hdr.src_port\" and \"hdr.dst_port\""
-				 " fields");
-		if ((mask.tcp->hdr.src_port &&
 		     (!mnl_attr_put_u16_check(buf, size,
 					      TCA_FLOWER_KEY_TCP_SRC,
 					      spec.tcp->hdr.src_port) ||
@@ -846,16 +836,6 @@ trans:
 			break;
 		}
 		spec.udp = item->spec;
-		if ((mask.udp->hdr.src_port &&
-		     mask.udp->hdr.src_port != RTE_BE16(0xffff)) ||
-		    (mask.udp->hdr.dst_port &&
-		     mask.udp->hdr.dst_port != RTE_BE16(0xffff)))
-			return rte_flow_error_set
-				(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM_MASK,
-				 mask.udp,
-				 "no support for partial masks on"
-				 " \"hdr.src_port\" and \"hdr.dst_port\""
-				 " fields");
 		if ((mask.udp->hdr.src_port &&
 		     (!mnl_attr_put_u16_check(buf, size,
 					      TCA_FLOWER_KEY_UDP_SRC,
