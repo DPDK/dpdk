@@ -21,7 +21,7 @@ else
 	error('unsupported system type "@0@"'.format(host_machine.system()))
 endif
 
-version = 7  # the version of the EAL API
+version = 8  # the version of the EAL API
 allow_experimental_apis = true
 deps += 'compat'
 deps += 'kvargs'

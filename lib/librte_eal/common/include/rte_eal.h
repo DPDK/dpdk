@@ -501,17 +501,6 @@ enum rte_iova_mode rte_eal_iova_mode(void);
 const char * __rte_experimental
 rte_eal_mbuf_user_pool_ops(void);
 
-/**
- * @deprecated
- * Get default pool ops name for mbuf
- *
- * @return
- *   returns default pool ops name.
- */
-__rte_deprecated
-const char *
-rte_eal_mbuf_default_mempool_ops(void);
-
 #ifdef __cplusplus
 }
 #endif

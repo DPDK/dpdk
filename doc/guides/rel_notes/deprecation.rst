@@ -42,15 +42,6 @@ Deprecation Notices
   - ``eal_parse_pci_DomBDF`` replaced by ``rte_pci_addr_parse``
   - ``rte_eal_compare_pci_addr`` replaced by ``rte_pci_addr_cmp``
 
-* eal: a new set of mbuf mempool ops name APIs for user, platform and best
-  mempool names have been defined in ``rte_mbuf`` in v18.02. The uses of
-  ``rte_eal_mbuf_default_mempool_ops`` shall be replaced by
-  ``rte_mbuf_best_mempool_ops``.
-  The following function is deprecated since 18.05, and will be removed
-  in 18.08:
-
-  - ``rte_eal_mbuf_default_mempool_ops``
-
 * mbuf: The opaque ``mbuf->hash.sched`` field will be updated to support generic
   definition in line with the ethdev TM and MTR APIs. Currently, this field
   is defined in librte_sched in a non-generic way. The new generic format

@@ -22,7 +22,7 @@ LDLIBS += -lrte_kvargs
 
 EXPORT_MAP := ../../rte_eal_version.map
 
-LIBABIVER := 7
+LIBABIVER := 8
 
 # specific to bsdapp exec-env
 SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) := eal.c

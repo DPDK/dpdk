@@ -136,6 +136,10 @@ API Changes
     * If ``$XDG_RUNTIME_DIR`` is set, ``${XDG_RUNTIME_DIR}/dpdk/<prefix>/config``
     * Otherwise, ``/tmp/dpdk/<prefix>/config``
 
+* eal: The function ``rte_eal_mbuf_default_mempool_ops`` was deprecated
+  and is removed in 18.08. It shall be replaced by
+  ``rte_mbuf_best_mempool_ops``.
+
 * mempool: Following functions were deprecated and are removed in 18.08:
 
   - ``rte_mempool_populate_iova_tab``
@@ -268,7 +272,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_compressdev.so.1
    + librte_cryptodev.so.5
      librte_distributor.so.1
-     librte_eal.so.7
+   + librte_eal.so.8
    + librte_ethdev.so.10
      librte_eventdev.so.4
      librte_flow_classify.so.1

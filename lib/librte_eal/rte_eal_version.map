@@ -181,7 +181,6 @@ DPDK_17.11 {
 	rte_bus_get_iommu_class;
 	rte_eal_has_pci;
 	rte_eal_iova_mode;
-	rte_eal_mbuf_default_mempool_ops;
 	rte_eal_using_phys_addrs;
 	rte_eal_vfio_intr_mode;
 	rte_lcore_has_role;
