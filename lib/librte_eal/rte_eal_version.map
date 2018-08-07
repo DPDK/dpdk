@@ -243,6 +243,7 @@ DPDK_18.05 {
 DPDK_18.08 {
 	global:
 
+	rte_eal_mbuf_user_pool_ops;
 	rte_uuid_compare;
 	rte_uuid_is_null;
 	rte_uuid_parse;
@@ -286,7 +287,6 @@ EXPERIMENTAL {
 	rte_eal_cleanup;
 	rte_eal_hotplug_add;
 	rte_eal_hotplug_remove;
-	rte_eal_mbuf_user_pool_ops;
 	rte_fbarray_attach;
 	rte_fbarray_destroy;
 	rte_fbarray_detach;

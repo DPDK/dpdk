@@ -155,7 +155,7 @@ eal_get_runtime_dir(void)
 }
 
 /* Return user provided mbuf pool ops name */
-const char * __rte_experimental
+const char *
 rte_eal_mbuf_user_pool_ops(void)
 {
 	return internal_config.user_mbuf_pool_ops_name;
