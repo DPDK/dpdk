@@ -1154,8 +1154,22 @@ vfio_spapr_dma_do_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 	struct vfio_iommu_type1_dma_map dma_map;
 	struct vfio_iommu_type1_dma_unmap dma_unmap;
 	int ret;
+	struct vfio_iommu_spapr_register_memory reg = {
+		.argsz = sizeof(reg),
+		.flags = 0
+	};
+	reg.vaddr = (uintptr_t) vaddr;
+	reg.size = len;
 
 	if (do_map != 0) {
+		ret = ioctl(vfio_container_fd,
+				VFIO_IOMMU_SPAPR_REGISTER_MEMORY, &reg);
+		if (ret) {
+			RTE_LOG(ERR, EAL, "  cannot register vaddr for IOMMU, "
+				"error %i (%s)\n", errno, strerror(errno));
+			return -1;
+		}
+
 		memset(&dma_map, 0, sizeof(dma_map));
 		dma_map.argsz = sizeof(struct vfio_iommu_type1_dma_map);
 		dma_map.vaddr = vaddr;
@@ -1172,13 +1186,6 @@ vfio_spapr_dma_do_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 		}
 
 	} else {
-		struct vfio_iommu_spapr_register_memory reg = {
-			.argsz = sizeof(reg),
-			.flags = 0
-		};
-		reg.vaddr = (uintptr_t) vaddr;
-		reg.size = len;
-
 		ret = ioctl(vfio_container_fd,
 				VFIO_IOMMU_SPAPR_UNREGISTER_MEMORY, &reg);
 		if (ret) {
@@ -1213,7 +1220,7 @@ vfio_spapr_map_walk(const struct rte_memseg_list *msl,
 	if (msl->external)
 		return 0;
 
-	return vfio_spapr_dma_mem_map(*vfio_container_fd, ms->addr_64, ms->iova,
+	return vfio_spapr_dma_do_map(*vfio_container_fd, ms->addr_64, ms->iova,
 			ms->len, 1);
 }
 
