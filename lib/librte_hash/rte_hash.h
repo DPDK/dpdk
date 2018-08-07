@@ -268,8 +268,8 @@ rte_hash_del_key_with_hash(const struct rte_hash *h, const void *key, hash_sig_t
  *   Output containing a pointer to the key
  * @return
  *   - 0 if retrieved successfully
- *   - EINVAL if the parameters are invalid.
- *   - ENOENT if no valid key is found in the given position.
+ *   - -EINVAL if the parameters are invalid.
+ *   - -ENOENT if no valid key is found in the given position.
  */
 int
 rte_hash_get_key_with_position(const struct rte_hash *h, const int32_t position,
@@ -286,9 +286,11 @@ rte_hash_get_key_with_position(const struct rte_hash *h, const int32_t position,
  * @param data
  *   Output with pointer to data returned from the hash table.
  * @return
- *   0 if successful lookup
- *   - EINVAL if the parameters are invalid.
- *   - ENOENT if the key is not found.
+ *   - A positive value that can be used by the caller as an offset into an
+ *     array of user data. This value is unique for this key, and is the same
+ *     value that was returned when the key was added.
+ *   - -EINVAL if the parameters are invalid.
+ *   - -ENOENT if the key is not found.
  */
 int
 rte_hash_lookup_data(const struct rte_hash *h, const void *key, void **data);
@@ -307,9 +309,11 @@ rte_hash_lookup_data(const struct rte_hash *h, const void *key, void **data);
  * @param data
  *   Output with pointer to data returned from the hash table.
  * @return
- *   0 if successful lookup
- *   - EINVAL if the parameters are invalid.
- *   - ENOENT if the key is not found.
+ *   - A positive value that can be used by the caller as an offset into an
+ *     array of user data. This value is unique for this key, and is the same
+ *     value that was returned when the key was added.
+ *   - -EINVAL if the parameters are invalid.
+ *   - -ENOENT if the key is not found.
  */
 int
 rte_hash_lookup_with_hash_data(const struct rte_hash *h, const void *key,
