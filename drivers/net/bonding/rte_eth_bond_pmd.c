@@ -37,7 +37,8 @@ get_vlan_offset(struct ether_hdr *eth_hdr, uint16_t *proto)
 {
 	size_t vlan_offset = 0;
 
-	if (rte_cpu_to_be_16(ETHER_TYPE_VLAN) == *proto) {
+	if (rte_cpu_to_be_16(ETHER_TYPE_VLAN) == *proto ||
+		rte_cpu_to_be_16(ETHER_TYPE_QINQ) == *proto) {
 		struct vlan_hdr *vlan_hdr = (struct vlan_hdr *)(eth_hdr + 1);
 
 		vlan_offset = sizeof(struct vlan_hdr);
