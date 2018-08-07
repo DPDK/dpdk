@@ -27,8 +27,6 @@
 #include "private.h"
 
 
-static void rte_pci_remove_device(struct rte_pci_device *pci_device);
-
 extern struct rte_pci_bus rte_pci_bus;
 
 #define SYSFS_PCI_DEVICES "/sys/bus/pci/devices"
