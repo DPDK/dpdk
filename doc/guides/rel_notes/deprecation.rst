@@ -23,7 +23,7 @@ Deprecation Notices
     be kept, and those who do not use this feature will not see these extra
     socket ID's.
 
-* eal: both declaring and identifying devices will be streamlined in v18.08.
+* eal: both declaring and identifying devices will be streamlined in v18.11.
   New functions will appear to query a specific port from buses, classes of
   device and device drivers. Device declaration will be made coherent with the
   new scheme of device identification.
@@ -33,7 +33,6 @@ Deprecation Notices
   - Functions previously deprecated will change or disappear:
 
     + ``rte_eal_devargs_type_count``
-    + ``rte_eal_devargs_parse`` will change its format and use.
 
 * pci: Several exposed functions are misnamed.
   The following functions are deprecated starting from v17.11 and are replaced:
