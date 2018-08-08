@@ -571,7 +571,7 @@ TB-mode. CB-mode is a reduced version, where only one CB exists:
 
 .. _figure_turbo_tb_encode:
 
-.. figure:: img/turbo_tb_encode.svg
+.. figure:: img/turbo_tb_encode.*
 
     Turbo encoding of Code Blocks in mbuf structure
 
@@ -665,7 +665,7 @@ TB-mode. CB-mode is a reduced version, where only one CB exists:
 
 .. _figure_turbo_tb_decode:
 
-.. figure:: img/turbo_tb_decode.svg
+.. figure:: img/turbo_tb_decode.*
 
     Turbo decoding of Code Blocks in mbuf structure
 
