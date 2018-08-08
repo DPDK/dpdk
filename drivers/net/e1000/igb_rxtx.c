@@ -1452,10 +1452,10 @@ igb_reset_tx_queue(struct igb_tx_queue *txq, struct rte_eth_dev *dev)
 uint64_t
 igb_get_tx_port_offloads_capa(struct rte_eth_dev *dev)
 {
-	uint64_t rx_offload_capa;
+	uint64_t tx_offload_capa;
 
 	RTE_SET_USED(dev);
-	rx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT |
+	tx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT |
 			  DEV_TX_OFFLOAD_IPV4_CKSUM  |
 			  DEV_TX_OFFLOAD_UDP_CKSUM   |
 			  DEV_TX_OFFLOAD_TCP_CKSUM   |
@@ -1463,17 +1463,17 @@ igb_get_tx_port_offloads_capa(struct rte_eth_dev *dev)
 			  DEV_TX_OFFLOAD_TCP_TSO     |
 			  DEV_TX_OFFLOAD_MULTI_SEGS;
 
-	return rx_offload_capa;
+	return tx_offload_capa;
 }
 
 uint64_t
 igb_get_tx_queue_offloads_capa(struct rte_eth_dev *dev)
 {
-	uint64_t rx_queue_offload_capa;
+	uint64_t tx_queue_offload_capa;
 
-	rx_queue_offload_capa = igb_get_tx_port_offloads_capa(dev);
+	tx_queue_offload_capa = igb_get_tx_port_offloads_capa(dev);
 
-	return rx_queue_offload_capa;
+	return tx_queue_offload_capa;
 }
 
 int
