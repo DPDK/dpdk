@@ -1356,7 +1356,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		sizeof(struct rte_mbuf_ext_shared_info) +
 		RTE_PKTMBUF_HEADROOM;
 	if (mprq_en &&
-	    desc >= (1U << config->mprq.stride_num_n) &&
+	    desc > (1U << config->mprq.stride_num_n) &&
 	    mprq_stride_size <= (1U << config->mprq.max_stride_size_n)) {
 		/* TODO: Rx scatter isn't supported yet. */
 		tmpl->rxq.sges_n = 0;
@@ -1411,6 +1411,14 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			dev->data->dev_conf.rxmode.max_rx_pkt_len,
 			mb_len - RTE_PKTMBUF_HEADROOM);
 	}
+	if (mprq_en && !mlx5_rxq_mprq_enabled(&tmpl->rxq))
+		DRV_LOG(WARNING,
+			"port %u MPRQ is requested but cannot be enabled"
+			" (requested: desc = %u, stride_sz = %u,"
+			" supported: min_stride_num = %u, max_stride_sz = %u).",
+			dev->data->port_id, desc, mprq_stride_size,
+			(1 << config->mprq.stride_num_n),
+			(1 << config->mprq.max_stride_size_n));
 	DRV_LOG(DEBUG, "port %u maximum number of segments per packet: %u",
 		dev->data->port_id, 1 << tmpl->rxq.sges_n);
 	if (desc % (1 << tmpl->rxq.sges_n)) {
