@@ -15,7 +15,6 @@
 #include <rte_memcpy.h>
 #include <rte_vfio.h>
 
-#include "eal_private.h"
 #include "eal_filesystem.h"
 
 #include "private.h"
