@@ -27,3 +27,10 @@ DPDK_18.08 {
 
 	local: *;
 };
+
+DPDK_18.11 {
+	global:
+
+	rte_vmbus_set_latency;
+
+} DPDK_18.08;

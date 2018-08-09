@@ -365,6 +365,21 @@ void rte_vmbus_chan_signal_read(struct vmbus_channel *chan, uint32_t bytes_read)
 uint16_t rte_vmbus_sub_channel_index(const struct vmbus_channel *chan);
 
 /**
+ * Set the host monitor latency hint
+ *
+ * @param dev
+ *    VMBUS device
+ * @param chan
+ *	Pointer to vmbus_channel structure.
+ * @param latency
+ *	Approximate wait period between hypervisor examinations of
+ *	the trigger page (in nanoseconds).
+ */
+void rte_vmbus_set_latency(const struct rte_vmbus_device *dev,
+			   const struct vmbus_channel *chan,
+			   uint32_t latency);
+
+/**
  * Register a VMBUS driver.
  *
  * @param driver
