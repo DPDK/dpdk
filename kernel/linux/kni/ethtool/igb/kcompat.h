@@ -3929,6 +3929,11 @@ skb_set_hash(struct sk_buff *skb, __u32 hash, __always_unused int type)
 #endif
 #endif
 
+#if (defined(RHEL_RELEASE_CODE) && \
+	(RHEL_RELEASE_VERSION(7, 5) <= RHEL_RELEASE_CODE))
+#define ndo_change_mtu ndo_change_mtu_rh74
+#endif
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
 #define HAVE_PCI_ENABLE_MSIX
 #endif
