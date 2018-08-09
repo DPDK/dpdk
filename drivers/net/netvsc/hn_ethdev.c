@@ -547,6 +547,7 @@ static const struct eth_dev_ops hn_eth_dev_ops = {
 	.allmulticast_disable   = hn_dev_allmulticast_disable,
 	.tx_queue_setup		= hn_dev_tx_queue_setup,
 	.tx_queue_release	= hn_dev_tx_queue_release,
+	.tx_done_cleanup        = hn_dev_tx_done_cleanup,
 	.rx_queue_setup		= hn_dev_rx_queue_setup,
 	.rx_queue_release	= hn_dev_rx_queue_release,
 	.link_update		= hn_dev_link_update,

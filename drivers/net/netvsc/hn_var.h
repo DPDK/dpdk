@@ -133,7 +133,8 @@ hn_primary_chan(const struct hn_data *hv)
 	return hv->channels[0];
 }
 
-void hn_process_events(struct hn_data *hv, uint16_t queue_id);
+uint32_t hn_process_events(struct hn_data *hv, uint16_t queue_id,
+		       uint32_t tx_limit);
 
 uint16_t hn_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		      uint16_t nb_pkts);
@@ -147,6 +148,7 @@ int	hn_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 void	hn_dev_tx_queue_release(void *arg);
 void	hn_dev_tx_queue_info(struct rte_eth_dev *dev, uint16_t queue_idx,
 			     struct rte_eth_txq_info *qinfo);
+int	hn_dev_tx_done_cleanup(void *arg, uint32_t free_cnt);
 
 struct hn_rx_queue *hn_rx_queue_alloc(struct hn_data *hv,
 				      uint16_t queue_id,

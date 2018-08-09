@@ -801,6 +801,14 @@ hn_dev_rx_queue_release(void *arg)
 	}
 }
 
+int
+hn_dev_tx_done_cleanup(void *arg, uint32_t free_cnt)
+{
+	struct hn_tx_queue *txq = arg;
+
+	return hn_process_events(txq->hv, txq->queue_id, free_cnt);
+}
+
 void
 hn_dev_rx_queue_info(struct rte_eth_dev *dev, uint16_t queue_idx,
 		     struct rte_eth_rxq_info *qinfo)
@@ -831,25 +839,27 @@ hn_nvs_handle_notify(const struct vmbus_chanpkt_hdr *pkthdr,
  * Process pending events on the channel.
  * Called from both Rx queue poll and Tx cleanup
  */
-void hn_process_events(struct hn_data *hv, uint16_t queue_id)
+uint32_t hn_process_events(struct hn_data *hv, uint16_t queue_id,
+			   uint32_t tx_limit)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[hv->port_id];
 	struct hn_rx_queue *rxq;
 	uint32_t bytes_read = 0;
+	uint32_t tx_done = 0;
 	int ret = 0;
 
 	rxq = queue_id == 0 ? hv->primary : dev->data->rx_queues[queue_id];
 
 	/* If no pending data then nothing to do */
 	if (rte_vmbus_chan_rx_empty(rxq->chan))
-		return;
+		return 0;
 
 	/*
 	 * Since channel is shared between Rx and TX queue need to have a lock
 	 * since DPDK does not force same CPU to be used for Rx/Tx.
 	 */
 	if (unlikely(!rte_spinlock_trylock(&rxq->ring_lock)))
-		return;
+		return 0;
 
 	for (;;) {
 		const struct vmbus_chanpkt_hdr *pkt;
@@ -873,6 +883,7 @@ void hn_process_events(struct hn_data *hv, uint16_t queue_id)
 
 		switch (pkt->type) {
 		case VMBUS_CHANPKT_TYPE_COMP:
+			++tx_done;
 			hn_nvs_handle_comp(dev, queue_id, pkt, data);
 			break;
 
@@ -889,6 +900,9 @@ void hn_process_events(struct hn_data *hv, uint16_t queue_id)
 			break;
 		}
 
+		if (tx_limit && tx_done >= tx_limit)
+			break;
+
 		if (rxq->rx_ring && rte_ring_full(rxq->rx_ring))
 			break;
 	}
@@ -897,6 +911,8 @@ void hn_process_events(struct hn_data *hv, uint16_t queue_id)
 		rte_vmbus_chan_signal_read(rxq->chan, bytes_read);
 
 	rte_spinlock_unlock(&rxq->ring_lock);
+
+	return tx_done;
 }
 
 static void hn_append_to_chim(struct hn_tx_queue *txq,
@@ -1244,7 +1260,7 @@ hn_xmit_pkts(void *ptxq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		return 0;
 
 	if (rte_mempool_avail_count(hv->tx_pool) <= txq->free_thresh)
-		hn_process_events(hv, txq->queue_id);
+		hn_process_events(hv, txq->queue_id, 0);
 
 	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
 		struct rte_mbuf *m = tx_pkts[nb_tx];
@@ -1326,7 +1342,7 @@ hn_recv_pkts(void *prxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 	/* If ring is empty then process more */
 	if (rte_ring_count(rxq->rx_ring) < nb_pkts)
-		hn_process_events(hv, rxq->queue_id);
+		hn_process_events(hv, rxq->queue_id, 0);
 
 	/* Get mbufs off staging ring */
 	return rte_ring_sc_dequeue_burst(rxq->rx_ring, (void **)rx_pkts,

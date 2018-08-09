@@ -382,7 +382,7 @@ static int hn_rndis_exec1(struct hn_data *hv,
 	if (comp) {
 		/* Poll primary channel until response received */
 		while (hv->rndis_pending == rid)
-			hn_process_events(hv, 0);
+			hn_process_events(hv, 0, 1);
 
 		memcpy(comp, hv->rndis_resp, comp_len);
 	}
