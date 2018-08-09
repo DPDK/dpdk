@@ -279,14 +279,13 @@ hn_nvs_conn_chim(struct hn_data *hv)
 			       NVS_TYPE_CHIM_CONNRESP);
 	if (error) {
 		PMD_DRV_LOG(ERR, "exec nvs chim conn failed");
-		goto cleanup;
+		return error;
 	}
 
 	if (resp.status != NVS_STATUS_OK) {
 		PMD_DRV_LOG(ERR, "nvs chim conn failed: %x",
 			    resp.status);
-		error = -EIO;
-		goto cleanup;
+		return -EIO;
 	}
 
 	sectsz = resp.sectsz;
@@ -295,7 +294,8 @@ hn_nvs_conn_chim(struct hn_data *hv)
 		PMD_DRV_LOG(NOTICE,
 			    "invalid chimney sending buffer section size: %u",
 			    sectsz);
-		return 0;
+		error = -EINVAL;
+		goto cleanup;
 	}
 
 	hv->chim_szmax = sectsz;
@@ -303,11 +303,6 @@ hn_nvs_conn_chim(struct hn_data *hv)
 
 	PMD_DRV_LOG(INFO, "send buffer %lu section size:%u, count:%u",
 		    len, hv->chim_szmax, hv->chim_cnt);
-
-	if (len % hv->chim_szmax != 0) {
-		PMD_DRV_LOG(NOTICE,
-			    "chimney sending sections are not properly aligned");
-	}
 
 	/* Done! */
 	return 0;
