@@ -213,13 +213,13 @@ F: test/test/test_bitmap.c
 
 ARM v7
 M: Jan Viktorin <viktorin@rehivetech.com>
-M: Jianbo Liu <jianbo.liu@arm.com>
+M: Gavin Hu <gavin.hu@arm.com>
 F: lib/librte_eal/common/arch/arm/
 F: lib/librte_eal/common/include/arch/arm/
 
 ARM v8
 M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
-M: Jianbo Liu <jianbo.liu@arm.com>
+M: Gavin Hu <gavin.hu@arm.com>
 F: lib/librte_eal/common/include/arch/arm/*_64.h
 F: lib/librte_net/net_crc_neon.h
 F: lib/librte_acl/acl_run_neon.*
@@ -581,7 +581,6 @@ Marvell mvpp2
 M: Tomasz Duszynski <tdu@semihalf.com>
 M: Dmitri Epshtein <dima@marvell.com>
 M: Natalie Samsonov <nsamsono@marvell.com>
-M: Jianbo Liu <jianbo.liu@arm.com>
 F: drivers/net/mvpp2/
 F: doc/guides/nics/mvpp2.rst
 F: doc/guides/nics/features/mvpp2.ini
@@ -808,7 +807,6 @@ Marvell Mrvl
 M: Tomasz Duszynski <tdu@semihalf.com>
 M: Dmitri Epshtein <dima@marvell.com>
 M: Natalie Samsonov <nsamsono@marvell.com>
-M: Jianbo Liu <jianbo.liu@arm.com>
 F: drivers/crypto/mvsam/
 F: doc/guides/cryptodevs/mvsam.rst
 F: doc/guides/cryptodevs/features/mvsam.ini
