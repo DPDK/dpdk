@@ -54,6 +54,7 @@ New Features
 
   Flow API support has been added to CXGBE Poll Mode Driver to offload
   flows to Chelsio T5/T6 NICs. Support added for:
+
   * Wildcard (LE-TCAM) and Exact (HASH) match filters.
   * Match items: physical ingress port, IPv4, IPv6, TCP and UDP.
   * Action items: queue, drop, count, and physical egress port redirect.
@@ -68,8 +69,8 @@ New Features
 
 * **Added descriptor status check support for fm10k.**
 
-  ``rte_eth_rx_descritpr_status`` and ``rte_eth_tx_descriptor_status``
-  are supported by fm10K.
+  The ``rte_eth_rx_descriptor_status`` and ``rte_eth_tx_descriptor_status``
+  APIs are now supported by fm10K.
 
 * **Updated the enic driver.**
 
@@ -85,20 +86,20 @@ New Features
 
   * Added port representors support.
   * Added Flow API support for e-switch rules.
-    Supported ACTION_PORT_ID, ACTION_DROP, ACTION_OF_POP_VLAN,
+    Added support for ACTION_PORT_ID, ACTION_DROP, ACTION_OF_POP_VLAN,
     ACTION_OF_PUSH_VLAN, ACTION_OF_SET_VLAN_VID, ACTION_OF_SET_VLAN_PCP
     and ITEM_PORT_ID.
-  * Supported 32-bit compilation.
+  * Added support for 32-bit compilation.
 
-* **Added TSO support for mlx4 driver.**
+* **Added TSO support for the mlx4 driver.**
 
-  The support is from MLNX_OFED_4.4 and above.
+  Added TSO support for the mlx4 drivers from MLNX_OFED_4.4 and above.
 
 * **SoftNIC PMD rework.**
 
-  The SoftNIC PMD infrastructure is restructured to use the Packet Framework,
-  which makes it more flexible, modular and easier to add new functionality
-  in future.
+  The SoftNIC PMD infrastructure has been restructured to use the Packet
+  Framework, which makes it more flexible, modular and easier to add new
+  functionality in the future.
 
 * **Updated the AESNI MB PMD.**
 
@@ -130,8 +131,8 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
-* Path to runtime config file has changed. The new path is determined as
-  follows:
+* The path to the runtime config file has changed. The new path is determined
+  as follows:
 
   - If DPDK is running as root, ``/var/run/dpdk/<prefix>/config``
   - If DPDK is not running as root:
@@ -164,24 +165,26 @@ API Changes
   - ``rte_eth_conf.rxmode.ignore_offload_bitfield``
   - ``ETH_TXQ_FLAGS_IGNORE``
 
-* cryptodev: In struct ``struct rte_cryptodev_info``, field ``rte_pci_device *pci_dev``
-  has been replaced with field ``struct rte_device *device``.
-  Value 0 is accepted in ``sym.max_nb_sessions``, meaning that a device
-  supports an unlimited number of sessions.
-  Two new fields of type ``uint16_t`` have been added:
-  ``min_mbuf_headroom_req`` and ``min_mbuf_tailroom_req``.
-  These parameters specify the recommended headroom and tailroom for mbufs
-  to be processed by the PMD.
+* cryptodev: The following API changes have been made in 18.08:
 
-* cryptodev: Following functions were deprecated and are removed in 18.08:
+  - In struct ``struct rte_cryptodev_info``, field ``rte_pci_device *pci_dev``
+    has been replaced with field ``struct rte_device *device``.
+  - Value 0 is accepted in ``sym.max_nb_sessions``, meaning that a device
+    supports an unlimited number of sessions.
+  - Two new fields of type ``uint16_t`` have been added:
+    ``min_mbuf_headroom_req`` and ``min_mbuf_tailroom_req``.  These parameters
+    specify the recommended headroom and tailroom for mbufs to be processed by
+    the PMD.
+
+* cryptodev: The following functions were deprecated and are removed in 18.08:
 
   - ``rte_cryptodev_queue_pair_start``
   - ``rte_cryptodev_queue_pair_stop``
   - ``rte_cryptodev_queue_pair_attach_sym_session``
   - ``rte_cryptodev_queue_pair_detach_sym_session``
 
-* cryptodev: Following functions were deprecated and are replaced by
-  other functions in 18.08:
+* cryptodev: The following functions were deprecated and are replaced by other
+  functions in 18.08:
 
   - ``rte_cryptodev_get_header_session_size`` is replaced with
     ``rte_cryptodev_sym_get_header_session_size``
@@ -213,34 +216,6 @@ API Changes
   - ``RTE_COMP_FF_OOP_SGL_IN_SGL_OUT``
   - ``RTE_COMP_FF_OOP_SGL_IN_LB_OUT``
   - ``RTE_COMP_FF_OOP_LB_IN_SGL_OUT``
-
-
-ABI Changes
------------
-
-.. This section should contain ABI changes. Sample format:
-
-   * Add a short 1-2 sentence description of the ABI change
-     that was announced in the previous releases and made in this release.
-     Use fixed width quotes for ``function_names`` or ``struct_names``.
-     Use the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
-
-
-Removed Items
--------------
-
-.. This section should contain removed items in this release. Sample format:
-
-   * Add a short 1-2 sentence description of the removed item
-     in the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
 
 
 Shared Library Versions
@@ -315,21 +290,6 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_table.so.3
      librte_timer.so.1
      librte_vhost.so.3
-
-
-Known Issues
-------------
-
-.. This section should contain new known issues in this release. Sample format:
-
-   * **Add title in present tense with full stop.**
-
-     Add a short 1-2 sentence description of the known issue
-     in the present tense. Add information on any known workarounds.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
 
 
 Tested Platforms
