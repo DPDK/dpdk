@@ -264,6 +264,9 @@ static int hn_subchan_configure(struct hn_data *hv,
 			return err;
 		}
 
+		rte_vmbus_set_latency(hv->vmbus, new_sc,
+				      HN_CHAN_LATENCY_NS);
+
 		retry = 0;
 		chn_index = rte_vmbus_sub_channel_index(new_sc);
 		if (chn_index == 0 || chn_index > hv->max_queues) {
@@ -628,6 +631,9 @@ eth_hn_dev_init(struct rte_eth_dev *eth_dev)
 	err = rte_vmbus_chan_open(vmbus, &hv->channels[0]);
 	if (err)
 		return err;
+
+	rte_vmbus_set_latency(hv->vmbus, hv->channels[0],
+			      HN_CHAN_LATENCY_NS);
 
 	hv->primary = hn_rx_queue_alloc(hv, 0,
 					eth_dev->device->numa_node);

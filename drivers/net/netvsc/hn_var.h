@@ -20,6 +20,9 @@
 /* Retry interval */
 #define HN_CHAN_INTERVAL_US	100
 
+/* Host monitor interval */
+#define HN_CHAN_LATENCY_NS	50000
+
 /* Buffers need to be aligned */
 #ifndef PAGE_SIZE
 #define PAGE_SIZE 4096
