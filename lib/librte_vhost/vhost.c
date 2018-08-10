@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #ifdef RTE_LIBRTE_VHOST_NUMA
+#include <numa.h>
 #include <numaif.h>
 #endif
 
@@ -480,7 +481,7 @@ rte_vhost_get_numa_node(int vid)
 	int numa_node;
 	int ret;
 
-	if (dev == NULL)
+	if (dev == NULL || numa_available() != 0)
 		return -1;
 
 	ret = get_mempolicy(&numa_node, NULL, 0, dev,
