@@ -438,6 +438,26 @@ Another way to bind the VFs to the DPDK UIO driver is by using the
     cd to the top-level DPDK directory
     ./usertools/dpdk-devbind.py -b igb_uio 0000:03:01.1
 
+Testing
+~~~~~~~
+
+QAT crypto PMD can be tested by running the test application::
+
+    make defconfig
+    make test-build -j
+    cd ./build/app
+    ./test -l1 -n1 -w <your qat bdf>
+    RTE>>cryptodev_qat_autotest
+
+QAT compression PMD can be tested by running the test application::
+
+    make defconfig
+    sed -i 's,\(CONFIG_RTE_COMPRESSDEV_TEST\)=n,\1=y,' build/.config
+    make test-build -j
+    cd ./build/app
+    ./test -l1 -n1 -w <your qat bdf>
+    RTE>>compressdev_autotest
+
 
 Debugging
 ----------------------------------------
