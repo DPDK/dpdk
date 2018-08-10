@@ -12,7 +12,7 @@
 #include "qat_sym_capabilities.h"
 #include "qat_device.h"
 
-/**< Intel(R) QAT Symmetric Crypto PMD device name */
+/** Intel(R) QAT Symmetric Crypto PMD driver name */
 #define CRYPTODEV_NAME_QAT_SYM_PMD	crypto_qat
 
 extern uint8_t cryptodev_qat_driver_id;
