@@ -72,17 +72,18 @@ Extra notes on KASUMI F9
 ------------------------
 
 When using KASUMI F9 authentication algorithm, the input buffer must be
-constructed according to the 3GPP KASUMI specifications (section 4.4, page 13):
-`<http://cryptome.org/3gpp/35201-900.pdf>`_.
-Input buffer has to have COUNT (4 bytes), FRESH (4 bytes), MESSAGE and DIRECTION (1 bit)
-concatenated. After the DIRECTION bit, a single '1' bit is appended, followed by
-between 0 and 7 '0' bits, so that the total length of the buffer is multiple of 8 bits.
-Note that the actual message can be any length, specified in bits.
+constructed according to the
+`3GPP KASUMI specification <http://cryptome.org/3gpp/35201-900.pdf>`_
+(section 4.4, page 13). The input buffer has to have COUNT (4 bytes),
+FRESH (4 bytes), MESSAGE and DIRECTION (1 bit) concatenated. After the DIRECTION
+bit, a single '1' bit is appended, followed by between 0 and 7 '0' bits, so that
+the total length of the buffer is multiple of 8 bits. Note that the actual
+message can be any length, specified in bits.
 
 Once this buffer is passed this way, when creating the crypto operation,
-length of data to authenticate (op.sym.auth.data.length) must be the length
+length of data to authenticate "op.sym.auth.data.length" must be the length
 of all the items described above, including the padding at the end.
-Also, offset of data to authenticate (op.sym.auth.data.offset)
+Also, offset of data to authenticate "op.sym.auth.data.offset"
 must be such that points at the start of the COUNT bytes.
 
 
@@ -142,19 +143,19 @@ Device and driver naming
 ------------------------
 
 * The qat cryptodev driver name is "crypto_qat".
-  The rte_cryptodev_devices_get() returns the devices exposed by this driver.
+  The "rte_cryptodev_devices_get()" returns the devices exposed by this driver.
 
 * Each qat crypto device has a unique name, in format
-  <pci bdf>_<service>, e.g. "0000:41:01.0_qat_sym".
-  This name can be passed to rte_cryptodev_get_dev_id() to get the device_id.
+  "<pci bdf>_<service>", e.g. "0000:41:01.0_qat_sym".
+  This name can be passed to "rte_cryptodev_get_dev_id()" to get the device_id.
 
 .. Note::
 
-	The qat crypto driver name is passed to the dpdk-test-crypto-perf tool in the -devtype parameter.
+	The qat crypto driver name is passed to the dpdk-test-crypto-perf tool in the "-devtype" parameter.
 
 	The qat crypto device name is in the format of the slave parameter passed to the crypto scheduler.
 
-* The qat compressdev driver name is "comp_qat".
+* The qat compressdev driver name is "qat".
   The rte_compressdev_devices_get() returns the devices exposed by this driver.
 
 * Each qat compression device has a unique name, in format
@@ -166,7 +167,7 @@ Available kernel drivers
 ------------------------
 
 Kernel drivers for each device are listed in the following table. Scroll right
-to check that the driver and device supports the servic you require.
+to check that the driver and device supports the service you require.
 
 
 .. _table_qat_pmds_drivers:
