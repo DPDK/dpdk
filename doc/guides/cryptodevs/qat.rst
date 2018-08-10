@@ -105,51 +105,41 @@ must be such that points at the start of the COUNT bytes.
 Building PMDs on QAT
 --------------------
 
-To enable QAT crypto in DPDK, follow the instructions for modifying the compile-time
-configuration file as described `here <http://dpdk.org/doc/guides/linux_gsg/build_dpdk.html>`_.
+A QAT device can host multiple acceleration services:
+
+* symmetric cryptography
+* data compression
+
+These services are provided to DPDK applications via PMDs which register to
+implement the corresponding cryptodev and compressdev APIs. The PMDs use
+common QAT driver code which manages the QAT PCI device. They also depend on a
+QAT kernel driver being installed on the platform, see :ref:`qat_kernel` below.
 
 
-Quick instructions are as follows:
+Configuring and Building the DPDK QAT PMDs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+Further information on configuring, building and installing DPDK is described
+`here <http://dpdk.org/doc/guides/linux_gsg/build_dpdk.html>`_.
+
+
+Quick instructions for QAT cryptodev PMD are as follows:
 
 .. code-block:: console
 
 	cd to the top-level DPDK directory
-	make config T=x86_64-native-linuxapp-gcc
-	sed -i 's,\(CONFIG_RTE_LIBRTE_PMD_QAT\)=n,\1=y,' build/.config
+	make defconfig
 	sed -i 's,\(CONFIG_RTE_LIBRTE_PMD_QAT_SYM\)=n,\1=y,' build/.config
 	make
 
+Quick instructions for QAT compressdev PMD are as follows:
 
-.. _qat_kernel_installation:
+.. code-block:: console
 
-Dependency on the QAT kernel driver
------------------------------------
-
-To use the QAT PMD an SRIOV-enabled QAT kernel driver is required. The VF
-devices created and initialised by this driver will be used by the QAT PMD.
-
-Instructions for installation are below, but first an explanation of the
-relationships between the PF/VF devices and the PMDs visible to
-DPDK applications.
-
-
-Acceleration services - cryptography and compression - are provided to DPDK
-applications via PMDs which register to implement the corresponding
-cryptodev and compressdev APIs.
-
-Each QuickAssist VF device can expose one cryptodev PMD and/or one compressdev PMD.
-These QAT PMDs share the same underlying device and pci-mgmt code, but are
-enumerated independently on their respective APIs and appear as independent
-devices to applications.
-
-.. Note::
-
-   Each VF can only be used by one DPDK process. It is not possible to share
-   the same VF across multiple processes, even if these processes are using
-   different acceleration services.
-
-   Conversely one DPDK process can use one or more QAT VFs and can expose both
-   cryptodev and compressdev instances on each of those VFs.
+	cd to the top-level DPDK directory
+	make defconfig
+	make
 
 
 
@@ -175,6 +165,33 @@ Device and driver naming
 * Each qat compression device has a unique name, in format
   <pci bdf>_<service>, e.g. "0000:41:01.0_qat_comp".
   This name can be passed to rte_compressdev_get_dev_id() to get the device_id.
+
+.. _qat_kernel:
+
+Dependency on the QAT kernel driver
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To use QAT an SRIOV-enabled QAT kernel driver is required. The VF
+devices created and initialised by this driver will be used by the QAT PMDs.
+
+Instructions for installation are below, but first an explanation of the
+relationships between the PF/VF devices and the PMDs visible to
+DPDK applications.
+
+Each QuickAssist PF device exposes a number of VF devices. Each VF device can
+enable one cryptodev PMD and/or one compressdev PMD.
+These QAT PMDs share the same underlying device and pci-mgmt code, but are
+enumerated independently on their respective APIs and appear as independent
+devices to applications.
+
+.. Note::
+
+   Each VF can only be used by one DPDK process. It is not possible to share
+   the same VF across multiple processes, even if these processes are using
+   different acceleration services.
+
+   Conversely one DPDK process can use one or more QAT VFs and can expose both
+   cryptodev and compressdev instances on each of those VFs.
 
 
 Available kernel drivers
