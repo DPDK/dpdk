@@ -4,7 +4,19 @@
 Intel(R) QuickAssist (QAT) Crypto Poll Mode Driver
 ==================================================
 
-The QAT PMD provides poll mode crypto driver support for the following
+QAT documentation consists of three parts:
+
+* Details of the symmetric crypto service below.
+* Details of the `compression service <http://dpdk.org/doc/guides/compressdevs/qat_comp.html>`_
+  in the compressdev drivers section.
+* Details of building the common QAT infrastructure and the PMDs to support the
+  above services. See :ref:`building_qat` below.
+
+
+Symmetric Crypto Service on QAT
+-------------------------------
+
+The QAT crypto PMD provides poll mode crypto driver support for the following
 hardware accelerator devices:
 
 * ``Intel QuickAssist Technology DH895xCC``
@@ -14,7 +26,7 @@ hardware accelerator devices:
 
 
 Features
---------
+~~~~~~~~
 
 The QAT PMD has support for:
 
@@ -57,7 +69,7 @@ Supported AEAD algorithms:
 
 
 Limitations
------------
+~~~~~~~~~~~
 
 * Only supports the session-oriented API implementation (session-less APIs are not supported).
 * SNOW 3G (UEA2), KASUMI (F8) and ZUC (EEA3) supported only if cipher length and offset fields are byte-multiple.
@@ -69,7 +81,7 @@ Limitations
 
 
 Extra notes on KASUMI F9
-------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 When using KASUMI F9 authentication algorithm, the input buffer must be
 constructed according to the
@@ -87,9 +99,11 @@ Also, offset of data to authenticate "op.sym.auth.data.offset"
 must be such that points at the start of the COUNT bytes.
 
 
-Building the DPDK QAT cryptodev PMD
------------------------------------
 
+.. _building_qat:
+
+Building PMDs on QAT
+--------------------
 
 To enable QAT crypto in DPDK, follow the instructions for modifying the compile-time
 configuration file as described `here <http://dpdk.org/doc/guides/linux_gsg/build_dpdk.html>`_.
@@ -140,7 +154,7 @@ devices to applications.
 
 
 Device and driver naming
-------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 * The qat cryptodev driver name is "crypto_qat".
   The "rte_cryptodev_devices_get()" returns the devices exposed by this driver.
@@ -164,7 +178,7 @@ Device and driver naming
 
 
 Available kernel drivers
-------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 Kernel drivers for each device are listed in the following table. Scroll right
 to check that the driver and device supports the service you require.
@@ -204,7 +218,7 @@ If you are running on a kernel which includes a driver for your device, see
 
 
 Installation using kernel.org driver
-------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The examples below are based on the C62x device, if you have a different device
 use the corresponding values in the above table.
@@ -275,7 +289,7 @@ To complete the installation follow the instructions in
 
 
 Installation using 01.org QAT driver
-------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Download the latest QuickAssist Technology Driver from `01.org
 <https://01.org/packet-processing/intel%C2%AE-quickassist-technology-drivers-and-patches>`_.
@@ -369,12 +383,12 @@ To complete the installation - follow instructions in `Binding the available VFs
 
 
 Binding the available VFs to the DPDK UIO driver
-------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Unbind the VFs from the stock driver so they can be bound to the uio driver.
 
 For an Intel(R) QuickAssist Technology DH895xCC device
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The unbind command below assumes ``BDFs`` of ``03:01.00-03:04.07``, if your
 VFs are different adjust the unbind command below::
@@ -387,7 +401,7 @@ VFs are different adjust the unbind command below::
     done
 
 For an Intel(R) QuickAssist Technology C62x device
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The unbind command below assumes ``BDFs`` of ``1a:01.00-1a:02.07``,
 ``3d:01.00-3d:02.07`` and ``3f:01.00-3f:02.07``, if your VFs are different
@@ -407,7 +421,7 @@ adjust the unbind command below::
     done
 
 For Intel(R) QuickAssist Technology C3xxx or D15xx device
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The unbind command below assumes ``BDFs`` of ``01:01.00-01:02.07``, if your
 VFs are different adjust the unbind command below::
@@ -420,7 +434,7 @@ VFs are different adjust the unbind command below::
     done
 
 Bind to the DPDK uio driver
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Install the DPDK igb_uio driver, bind the VF PCI Device id to it and use lspci
 to confirm the VF devices are now in use by igb_uio kernel driver,
@@ -461,7 +475,7 @@ QAT compression PMD can be tested by running the test application::
 
 
 Debugging
-----------------------------------------
+~~~~~~~~~
 
 There are 2 sets of trace available via the dynamic logging feature:
 
