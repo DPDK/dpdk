@@ -142,6 +142,37 @@ Quick instructions for QAT compressdev PMD are as follows:
 	make
 
 
+Build Configuration
+~~~~~~~~~~~~~~~~~~~
+
+These are the build configuration options affecting QAT, and their default values:
+
+.. code-block:: console
+
+	CONFIG_RTE_LIBRTE_PMD_QAT=y
+	CONFIG_RTE_LIBRTE_PMD_QAT_SYM=n
+	CONFIG_RTE_PMD_QAT_MAX_PCI_DEVICES=48
+	CONFIG_RTE_PMD_QAT_COMP_SGL_MAX_SEGMENTS=16
+
+CONFIG_RTE_LIBRTE_PMD_QAT must be enabled for any QAT PMD to be built.
+
+The QAT cryptodev PMD has an external dependency on libcrypto, so is not
+built by default. CONFIG_RTE_LIBRTE_PMD_QAT_SYM should be enabled to build it.
+
+The QAT compressdev PMD has no external dependencies, so needs no configuration
+options and is built by default.
+
+The number of VFs per PF varies - see table below. If multiple QAT packages are
+installed on a platform then CONFIG_RTE_PMD_QAT_MAX_PCI_DEVICES should be
+adjusted to the number of VFs which the QAT common code will need to handle.
+Note, there is a separate config item for max cryptodevs CONFIG_RTE_CRYPTO_MAX_DEVS,
+if necessary this should be adjusted to handle the total of QAT and other devices
+which the process will use.
+
+QAT allocates internal structures to handle SGLs. For the compression service
+CONFIG_RTE_PMD_QAT_COMP_SGL_MAX_SEGMENTS can be changed if more segments are needed.
+An extra (max_inflight_ops x 16) bytes per queue_pair will be used for every increment.
+
 
 Device and driver naming
 ~~~~~~~~~~~~~~~~~~~~~~~~
