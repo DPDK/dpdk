@@ -348,6 +348,16 @@ static struct rte_compressdev_ops compress_qat_ops = {
 	.private_xform_free	= qat_comp_private_xform_free
 };
 
+/* An rte_driver is needed in the registration of the device with compressdev.
+ * The actual qat pci's rte_driver can't be used as its name represents
+ * the whole pci device with all services. Think of this as a holder for a name
+ * for the compression part of the pci device.
+ */
+static const char qat_comp_drv_name[] = RTE_STR(COMPRESSDEV_NAME_QAT_PMD);
+static const struct rte_driver compdev_qat_driver = {
+	.name = qat_comp_drv_name,
+	.alias = qat_comp_drv_name
+};
 int
 qat_comp_dev_create(struct qat_pci_device *qat_pci_dev)
 {
@@ -368,8 +378,14 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev)
 			qat_pci_dev->name, "comp");
 	QAT_LOG(DEBUG, "Creating QAT COMP device %s", name);
 
+	/* Populate subset device to use in compressdev device creation */
+	qat_pci_dev->comp_rte_dev.driver = &compdev_qat_driver;
+	qat_pci_dev->comp_rte_dev.numa_node =
+					qat_pci_dev->pci_dev->device.numa_node;
+	qat_pci_dev->comp_rte_dev.devargs = NULL;
+
 	compressdev = rte_compressdev_pmd_create(name,
-			&qat_pci_dev->pci_dev->device,
+			&(qat_pci_dev->comp_rte_dev),
 			sizeof(struct qat_comp_dev_private),
 			&init_params);
 

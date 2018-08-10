@@ -12,6 +12,9 @@
 
 #include "qat_device.h"
 
+/**< Intel(R) QAT Compression PMD driver name */
+#define COMPRESSDEV_NAME_QAT_PMD	compress_qat
+
 /** private data structure for a QAT compression device.
  * This QAT device is a device offering only a compression service,
  * there can be one of these on each qat_pci_device (VF).

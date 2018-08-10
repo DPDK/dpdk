@@ -190,7 +190,7 @@ Device and driver naming
 
 	The qat crypto device name is in the format of the slave parameter passed to the crypto scheduler.
 
-* The qat compressdev driver name is "qat".
+* The qat compressdev driver name is "compress_qat".
   The rte_compressdev_devices_get() returns the devices exposed by this driver.
 
 * Each qat compression device has a unique name, in format

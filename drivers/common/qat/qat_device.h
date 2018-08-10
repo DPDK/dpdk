@@ -59,6 +59,11 @@ struct qat_pci_device {
 	/* Data relating to compression service */
 	struct qat_comp_dev_private *comp_dev;
 	/**< link back to compressdev private data */
+	struct rte_device comp_rte_dev;
+	/**< This represents the compression subset of this pci device.
+	 * Register with this rather than with the one in
+	 * pci_dev so that its driver can have a compression-specific name
+	 */
 
 	/* Data relating to asymmetric crypto service */
 
