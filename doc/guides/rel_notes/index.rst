@@ -9,6 +9,7 @@ Release Notes
     :numbered:
 
     rel_description
+    release_18_11
     release_18_08
     release_18_05
     release_18_02
