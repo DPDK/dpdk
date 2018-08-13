@@ -477,7 +477,7 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 	} else if (strcmp(MLX5_TXQS_MIN_INLINE, key) == 0) {
 		config->txqs_inline = tmp;
 	} else if (strcmp(MLX5_TXQ_MPW_EN, key) == 0) {
-		config->mps = !!tmp ? config->mps : 0;
+		config->mps = !!tmp;
 	} else if (strcmp(MLX5_TXQ_MPW_HDR_DSEG_EN, key) == 0) {
 		config->mpw_hdr_dseg = !!tmp;
 	} else if (strcmp(MLX5_TXQ_MAX_INLINE_LEN, key) == 0) {
@@ -702,6 +702,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	struct mlx5dv_context dv_attr = { .comp_mask = 0 };
 	struct mlx5_dev_config config = {
 		.vf = !!vf,
+		.mps = MLX5_ARG_UNSET,
 		.tx_vec_en = 1,
 		.rx_vec_en = 1,
 		.mpw_hdr_dseg = 0,
@@ -791,7 +792,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		DRV_LOG(DEBUG, "MPW isn't supported");
 		mps = MLX5_MPW_DISABLED;
 	}
-	config.mps = mps;
 #ifdef HAVE_IBV_MLX5_MOD_SWP
 	if (dv_attr.comp_mask & MLX5DV_CONTEXT_MASK_SWP)
 		swp = dv_attr.sw_parsing_caps.sw_parsing_offloads;
@@ -1035,13 +1035,15 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		       (1 << IBV_QPT_RAW_PACKET)));
 	if (config.tso)
 		config.tso_max_payload_sz = attr.tso_caps.max_tso;
-	if (config.mps && !mps) {
-		DRV_LOG(ERR,
-			"multi-packet send not supported on this device"
-			" (" MLX5_TXQ_MPW_EN ")");
-		err = ENOTSUP;
-		goto error;
-	}
+	/*
+	 * MPW is disabled by default, while the Enhanced MPW is enabled
+	 * by default.
+	 */
+	if (config.mps == MLX5_ARG_UNSET)
+		config.mps = (mps == MLX5_MPW_ENHANCED) ? MLX5_MPW_ENHANCED :
+							  MLX5_MPW_DISABLED;
+	else
+		config.mps = config.mps ? mps : MLX5_MPW_DISABLED;
 	DRV_LOG(INFO, "%sMPS is %s",
 		config.mps == MLX5_MPW_ENHANCED ? "enhanced " : "",
 		config.mps != MLX5_MPW_DISABLED ? "enabled" : "disabled");

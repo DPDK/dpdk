@@ -99,7 +99,6 @@ struct mlx5_dev_config {
 	unsigned int hw_fcs_strip:1; /* FCS stripping is supported. */
 	unsigned int hw_padding:1; /* End alignment padding is supported. */
 	unsigned int vf:1; /* This is a VF. */
-	unsigned int mps:2; /* Multi-packet send supported mode. */
 	unsigned int tunnel_en:1;
 	/* Whether tunnel stateless offloads are supported. */
 	unsigned int mpls_en:1; /* MPLS over GRE/UDP is enabled. */
@@ -122,6 +121,7 @@ struct mlx5_dev_config {
 		unsigned int min_rxqs_num;
 		/* Rx queue count threshold to enable MPRQ. */
 	} mprq; /* Configurations for Multi-Packet RQ. */
+	int mps; /* Multi-packet send supported mode. */
 	unsigned int flow_prio; /* Number of flow priorities. */
 	unsigned int tso_max_payload_sz; /* Maximum TCP payload for TSO. */
 	unsigned int ind_table_max_size; /* Maximum indirection table size. */

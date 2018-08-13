@@ -339,7 +339,12 @@ Run-time configuration
   When those offloads are requested the MPS send function will not be used.
 
   It is currently only supported on the ConnectX-4 Lx, ConnectX-5 and Bluefield
-  families of adapters. Enabled by default.
+  families of adapters.
+  On ConnectX-4 Lx the MPW is considered un-secure hence disabled by default.
+  Users which enable the MPW should be aware that application which provides incorrect
+  mbuf descriptors in the Tx burst can lead to serious errors in the host including, on some cases,
+  NIC to get stuck.
+  On ConnectX-5 and Bluefield the MPW is secure and enabled by default.
 
 - ``txq_mpw_hdr_dseg_en`` parameter [int]
 
