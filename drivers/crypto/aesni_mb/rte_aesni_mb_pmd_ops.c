@@ -48,7 +48,11 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 				.block_size = 64,
 				.key_size = {
 					.min = 1,
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 50, 0)
+					.max = 65535,
+#else
 					.max = 64,
+#endif
 					.increment = 1
 				},
 				.digest_size = {
@@ -75,7 +79,11 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 				.block_size = 64,
 				.key_size = {
 					.min = 1,
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 50, 0)
+					.max = 65535,
+#else
 					.max = 64,
+#endif
 					.increment = 1
 				},
 				.digest_size = {
@@ -102,7 +110,11 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 				.block_size = 64,
 				.key_size = {
 					.min = 1,
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 50, 0)
+					.max = 65535,
+#else
 					.max = 64,
+#endif
 					.increment = 1
 				},
 				.digest_size = {
@@ -129,7 +141,11 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 				.block_size = 128,
 				.key_size = {
 					.min = 1,
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 50, 0)
+					.max = 65535,
+#else
 					.max = 128,
+#endif
 					.increment = 1
 				},
 				.digest_size = {
@@ -156,7 +172,11 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 				.block_size = 128,
 				.key_size = {
 					.min = 1,
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 50, 0)
+					.max = 65535,
+#else
 					.max = 128,
+#endif
 					.increment = 1
 				},
 				.digest_size = {

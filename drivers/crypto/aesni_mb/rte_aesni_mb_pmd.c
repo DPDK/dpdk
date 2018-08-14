@@ -16,7 +16,7 @@
 
 #define AES_CCM_DIGEST_MIN_LEN 4
 #define AES_CCM_DIGEST_MAX_LEN 16
-
+#define HMAC_MAX_BLOCK_SIZE 128
 static uint8_t cryptodev_driver_id;
 
 typedef void (*hash_one_block_t)(const void *data, void *digest);
@@ -104,6 +104,8 @@ aesni_mb_set_session_auth_parameters(const struct aesni_mb_op_fns *mb_ops,
 		const struct rte_crypto_sym_xform *xform)
 {
 	hash_one_block_t hash_oneblock_fn;
+	unsigned int key_larger_block_size = 0;
+	uint8_t hashed_key[HMAC_MAX_BLOCK_SIZE] = { 0 };
 
 	if (xform == NULL) {
 		sess->auth.algo = NULL_HASH;
@@ -182,22 +184,67 @@ aesni_mb_set_session_auth_parameters(const struct aesni_mb_op_fns *mb_ops,
 	case RTE_CRYPTO_AUTH_SHA1_HMAC:
 		sess->auth.algo = SHA1;
 		hash_oneblock_fn = mb_ops->aux.one_block.sha1;
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 50, 0)
+		if (xform->auth.key.length > get_auth_algo_blocksize(SHA1)) {
+			mb_ops->aux.multi_block.sha1(
+				xform->auth.key.data,
+				xform->auth.key.length,
+				hashed_key);
+			key_larger_block_size = 1;
+		}
+#endif
 		break;
 	case RTE_CRYPTO_AUTH_SHA224_HMAC:
 		sess->auth.algo = SHA_224;
 		hash_oneblock_fn = mb_ops->aux.one_block.sha224;
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 50, 0)
+		if (xform->auth.key.length > get_auth_algo_blocksize(SHA_224)) {
+			mb_ops->aux.multi_block.sha224(
+				xform->auth.key.data,
+				xform->auth.key.length,
+				hashed_key);
+			key_larger_block_size = 1;
+		}
+#endif
 		break;
 	case RTE_CRYPTO_AUTH_SHA256_HMAC:
 		sess->auth.algo = SHA_256;
 		hash_oneblock_fn = mb_ops->aux.one_block.sha256;
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 50, 0)
+		if (xform->auth.key.length > get_auth_algo_blocksize(SHA_256)) {
+			mb_ops->aux.multi_block.sha256(
+				xform->auth.key.data,
+				xform->auth.key.length,
+				hashed_key);
+			key_larger_block_size = 1;
+		}
+#endif
 		break;
 	case RTE_CRYPTO_AUTH_SHA384_HMAC:
 		sess->auth.algo = SHA_384;
 		hash_oneblock_fn = mb_ops->aux.one_block.sha384;
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 50, 0)
+		if (xform->auth.key.length > get_auth_algo_blocksize(SHA_384)) {
+			mb_ops->aux.multi_block.sha384(
+				xform->auth.key.data,
+				xform->auth.key.length,
+				hashed_key);
+			key_larger_block_size = 1;
+		}
+#endif
 		break;
 	case RTE_CRYPTO_AUTH_SHA512_HMAC:
 		sess->auth.algo = SHA_512;
 		hash_oneblock_fn = mb_ops->aux.one_block.sha512;
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 50, 0)
+		if (xform->auth.key.length > get_auth_algo_blocksize(SHA_512)) {
+			mb_ops->aux.multi_block.sha512(
+				xform->auth.key.data,
+				xform->auth.key.length,
+				hashed_key);
+			key_larger_block_size = 1;
+		}
+#endif
 		break;
 	default:
 		AESNI_MB_LOG(ERR, "Unsupported authentication algorithm selection");
@@ -225,11 +272,19 @@ aesni_mb_set_session_auth_parameters(const struct aesni_mb_op_fns *mb_ops,
 		sess->auth.gen_digest_len = sess->auth.req_digest_len;
 
 	/* Calculate Authentication precomputes */
-	calculate_auth_precomputes(hash_oneblock_fn,
+	if (key_larger_block_size) {
+		calculate_auth_precomputes(hash_oneblock_fn,
+			sess->auth.pads.inner, sess->auth.pads.outer,
+			hashed_key,
+			xform->auth.key.length,
+			get_auth_algo_blocksize(sess->auth.algo));
+	} else {
+		calculate_auth_precomputes(hash_oneblock_fn,
 			sess->auth.pads.inner, sess->auth.pads.outer,
 			xform->auth.key.data,
 			xform->auth.key.length,
 			get_auth_algo_blocksize(sess->auth.algo));
+	}
 
 	return 0;
 }
