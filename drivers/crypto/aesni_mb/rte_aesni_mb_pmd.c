@@ -141,7 +141,31 @@ aesni_mb_set_session_auth_parameters(const struct aesni_mb_op_fns *mb_ops,
 	if (xform->auth.algo == RTE_CRYPTO_AUTH_AES_CMAC) {
 		sess->auth.algo = AES_CMAC;
 
-		sess->auth.gen_digest_len = sess->auth.req_digest_len;
+		uint16_t cmac_digest_len = get_digest_byte_length(AES_CMAC);
+
+		if (sess->auth.req_digest_len > cmac_digest_len) {
+			AESNI_MB_LOG(ERR, "Invalid digest size\n");
+			return -EINVAL;
+		}
+		/*
+		 * Multi-buffer lib supports digest sizes from 4 to 16 bytes
+		 * in version 0.50 and sizes of 12 and 16 bytes,
+		 * in version 0.49.
+		 * If size requested is different, generate the full digest
+		 * (16 bytes) in a temporary location and then memcpy
+		 * the requested number of bytes.
+		 */
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 50, 0)
+		if (sess->auth.req_digest_len < 4)
+#else
+		uint16_t cmac_trunc_digest_len =
+				get_truncated_digest_byte_length(AES_CMAC);
+		if (sess->auth.req_digest_len != cmac_digest_len &&
+				sess->auth.req_digest_len != cmac_trunc_digest_len)
+#endif
+			sess->auth.gen_digest_len = cmac_digest_len;
+		else
+			sess->auth.gen_digest_len = sess->auth.req_digest_len;
 		(*mb_ops->aux.keyexp.aes_cmac_expkey)(xform->auth.key.data,
 				sess->auth.cmac.expkey);
 
