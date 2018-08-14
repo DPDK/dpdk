@@ -225,17 +225,8 @@ process_gcm_crypto_op(struct aesni_gcm_qp *qp, struct rte_crypto_op *op,
 
 	iv_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
 				session->iv.offset);
-	/*
-	 * GCM working in 12B IV mode => 16B pre-counter block we need
-	 * to set BE LSB to 1, driver expects that 16B is allocated
-	 */
-	if (session->iv.length == 12) {
-		uint32_t *iv_padd = (uint32_t *)&(iv_ptr[12]);
-		*iv_padd = rte_bswap32(1);
-	}
 
 	if (session->op == AESNI_GCM_OP_AUTHENTICATED_ENCRYPTION) {
-
 		qp->ops[session->key].init(&session->gdata_key,
 				&qp->gdata_ctx,
 				iv_ptr,
