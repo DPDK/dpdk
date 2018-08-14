@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <strings.h>
+#include <malloc.h>
 
 #include <rte_ethdev.h>
 #include <rte_memcpy.h>
@@ -718,16 +719,24 @@ struct hn_rx_queue *hn_rx_queue_alloc(struct hn_data *hv,
 {
 	struct hn_rx_queue *rxq;
 
-	rxq = rte_zmalloc_socket("HN_RXQ",
-				 sizeof(*rxq) + HN_RXQ_EVENT_DEFAULT,
+	rxq = rte_zmalloc_socket("HN_RXQ", sizeof(*rxq),
 				 RTE_CACHE_LINE_SIZE, socket_id);
-	if (rxq) {
-		rxq->hv = hv;
-		rxq->chan = hv->channels[queue_id];
-		rte_spinlock_init(&rxq->ring_lock);
-		rxq->port_id = hv->port_id;
-		rxq->queue_id = queue_id;
+	if (!rxq)
+		return NULL;
+
+	rxq->hv = hv;
+	rxq->chan = hv->channels[queue_id];
+	rte_spinlock_init(&rxq->ring_lock);
+	rxq->port_id = hv->port_id;
+	rxq->queue_id = queue_id;
+	rxq->event_sz = HN_RXQ_EVENT_DEFAULT;
+	rxq->event_buf = rte_malloc_socket("HN_EVENTS", HN_RXQ_EVENT_DEFAULT,
+					   RTE_CACHE_LINE_SIZE, socket_id);
+	if (!rxq->event_buf) {
+		rte_free(rxq);
+		return NULL;
 	}
+
 	return rxq;
 }
 
@@ -863,19 +872,34 @@ uint32_t hn_process_events(struct hn_data *hv, uint16_t queue_id,
 
 	for (;;) {
 		const struct vmbus_chanpkt_hdr *pkt;
-		uint32_t len = HN_RXQ_EVENT_DEFAULT;
+		uint32_t len = rxq->event_sz;
 		const void *data;
 
+retry:
 		ret = rte_vmbus_chan_recv_raw(rxq->chan, rxq->event_buf, &len);
 		if (ret == -EAGAIN)
 			break;	/* ring is empty */
 
-		else if (ret == -ENOBUFS)
-			rte_exit(EXIT_FAILURE, "event buffer not big enough (%u < %u)",
-				 HN_RXQ_EVENT_DEFAULT, len);
-		else if (ret <= 0)
+		if (unlikely(ret == -ENOBUFS)) {
+			/* event buffer not large enough to read ring */
+
+			PMD_DRV_LOG(DEBUG,
+				    "event buffer expansion (need %u)", len);
+			rxq->event_sz = len + len / 4;
+			rxq->event_buf = rte_realloc(rxq->event_buf, rxq->event_sz,
+						     RTE_CACHE_LINE_SIZE);
+			if (rxq->event_buf)
+				goto retry;
+			/* out of memory, no more events now */
+			rxq->event_sz = 0;
+			break;
+		}
+
+		if (unlikely(ret <= 0)) {
+			/* This indicates a failure to communicate (or worse) */
 			rte_exit(EXIT_FAILURE,
 				 "vmbus ring buffer error: %d", ret);
+		}
 
 		bytes_read += ret;
 		pkt = (const struct vmbus_chanpkt_hdr *)rxq->event_buf;

@@ -80,7 +80,7 @@ struct hn_rx_queue {
 	struct hn_stats stats;
 	uint64_t ring_full;
 
-	uint8_t	event_buf[];
+	void *event_buf;
 };
 
 
