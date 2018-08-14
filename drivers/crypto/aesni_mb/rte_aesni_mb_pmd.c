@@ -14,6 +14,9 @@
 
 #include "rte_aesni_mb_pmd_private.h"
 
+#define AES_CCM_DIGEST_MIN_LEN 4
+#define AES_CCM_DIGEST_MAX_LEN 16
+
 static uint8_t cryptodev_driver_id;
 
 typedef void (*hash_one_block_t)(const void *data, void *digest);
@@ -122,6 +125,12 @@ aesni_mb_set_session_auth_parameters(const struct aesni_mb_op_fns *mb_ops,
 	if (xform->auth.algo == RTE_CRYPTO_AUTH_AES_XCBC_MAC) {
 		sess->auth.algo = AES_XCBC;
 
+		uint16_t xcbc_mac_digest_len =
+			get_truncated_digest_byte_length(AES_XCBC);
+		if (sess->auth.req_digest_len != xcbc_mac_digest_len) {
+			AESNI_MB_LOG(ERR, "Invalid digest size\n");
+			return -EINVAL;
+		}
 		sess->auth.gen_digest_len = sess->auth.req_digest_len;
 		(*mb_ops->aux.keyexp.aes_xcbc)(xform->auth.key.data,
 				sess->auth.xcbc.k1_expanded,
@@ -387,6 +396,13 @@ aesni_mb_set_session_aead_parameters(const struct aesni_mb_op_fns *mb_ops,
 	sess->iv.length = xform->aead.iv.length;
 
 	sess->auth.req_digest_len = xform->aead.digest_length;
+	/* CCM digests must be between 4 and 16 and an even number */
+	if (sess->auth.req_digest_len < AES_CCM_DIGEST_MIN_LEN ||
+			sess->auth.req_digest_len > AES_CCM_DIGEST_MAX_LEN ||
+			(sess->auth.req_digest_len & 1) == 1) {
+		AESNI_MB_LOG(ERR, "Invalid digest size\n");
+		return -EINVAL;
+	}
 	sess->auth.gen_digest_len = sess->auth.req_digest_len;
 
 	/* Check key length and choose key expansion function for AES */
