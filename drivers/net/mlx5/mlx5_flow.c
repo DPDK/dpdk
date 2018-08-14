@@ -1053,6 +1053,8 @@ mlx5_flow_item_ipv4(const struct rte_flow_item *item, struct rte_flow *flow,
 		mlx5_flow_verbs_hashfields_adjust
 			(flow, tunnel,
 			 (ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 |
+			  ETH_RSS_NONFRAG_IPV4_TCP |
+			  ETH_RSS_NONFRAG_IPV4_UDP |
 			  ETH_RSS_NONFRAG_IPV4_OTHER),
 			 (IBV_RX_HASH_SRC_IPV4 | IBV_RX_HASH_DST_IPV4));
 		flow->cur_verbs->attr->priority = MLX5_PRIORITY_MAP_L3;
@@ -1188,7 +1190,10 @@ mlx5_flow_item_ipv6(const struct rte_flow_item *item, struct rte_flow *flow,
 	if (size <= flow_size) {
 		mlx5_flow_verbs_hashfields_adjust
 			(flow, tunnel,
-			 (ETH_RSS_IPV6 | ETH_RSS_NONFRAG_IPV6_OTHER),
+			 (ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6 |
+			  ETH_RSS_NONFRAG_IPV6_TCP | ETH_RSS_NONFRAG_IPV6_UDP |
+			  ETH_RSS_NONFRAG_IPV6_OTHER | ETH_RSS_IPV6_EX |
+			  ETH_RSS_IPV6_TCP_EX | ETH_RSS_IPV6_UDP_EX),
 			 (IBV_RX_HASH_SRC_IPV6 | IBV_RX_HASH_DST_IPV6));
 		flow->cur_verbs->attr->priority = MLX5_PRIORITY_MAP_L3;
 		mlx5_flow_spec_verbs_add(flow, &ipv6, size);
