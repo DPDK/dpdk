@@ -25,9 +25,15 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 					.increment = 1
 				},
 				.digest_size = {
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 50, 0)
+					.min = 1,
+					.max = 16,
+					.increment = 1
+#else
 					.min = 12,
 					.max = 12,
 					.increment = 0
+#endif
 				},
 				.iv_size = { 0 }
 			}, }
@@ -46,9 +52,15 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 					.increment = 1
 				},
 				.digest_size = {
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 50, 0)
+					.min = 1,
+					.max = 20,
+					.increment = 1
+#else
 					.min = 12,
 					.max = 12,
 					.increment = 0
+#endif
 				},
 				.iv_size = { 0 }
 			}, }
@@ -67,9 +79,15 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 					.increment = 1
 				},
 				.digest_size = {
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 50, 0)
+					.min = 1,
+					.max = 28,
+					.increment = 1
+#else
 					.min = 14,
 					.max = 14,
 					.increment = 0
+#endif
 				},
 				.iv_size = { 0 }
 			}, }
@@ -88,9 +106,15 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 					.increment = 1
 				},
 				.digest_size = {
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 50, 0)
+					.min = 1,
+					.max = 32,
+					.increment = 1
+#else
 					.min = 16,
 					.max = 16,
 					.increment = 0
+#endif
 				},
 				.iv_size = { 0 }
 			}, }
@@ -109,9 +133,15 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 					.increment = 1
 				},
 				.digest_size = {
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 50, 0)
+					.min = 1,
+					.max = 48,
+					.increment = 1
+#else
 					.min = 24,
 					.max = 24,
 					.increment = 0
+#endif
 				},
 				.iv_size = { 0 }
 			}, }
@@ -130,9 +160,15 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 					.increment = 1
 				},
 				.digest_size = {
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 50, 0)
+					.min = 1,
+					.max = 64,
+					.increment = 1
+#else
 					.min = 32,
 					.max = 32,
 					.increment = 0
+#endif
 				},
 				.iv_size = { 0 }
 			}, }

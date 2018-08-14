@@ -112,12 +112,17 @@ aesni_mb_set_session_auth_parameters(const struct aesni_mb_op_fns *mb_ops,
 		return -1;
 	}
 
+	/* Set the request digest size */
+	sess->auth.req_digest_len = xform->auth.digest_length;
+
 	/* Select auth generate/verify */
 	sess->auth.operation = xform->auth.op;
 
 	/* Set Authentication Parameters */
 	if (xform->auth.algo == RTE_CRYPTO_AUTH_AES_XCBC_MAC) {
 		sess->auth.algo = AES_XCBC;
+
+		sess->auth.gen_digest_len = sess->auth.req_digest_len;
 		(*mb_ops->aux.keyexp.aes_xcbc)(xform->auth.key.data,
 				sess->auth.xcbc.k1_expanded,
 				sess->auth.xcbc.k2, sess->auth.xcbc.k3);
@@ -126,6 +131,8 @@ aesni_mb_set_session_auth_parameters(const struct aesni_mb_op_fns *mb_ops,
 
 	if (xform->auth.algo == RTE_CRYPTO_AUTH_AES_CMAC) {
 		sess->auth.algo = AES_CMAC;
+
+		sess->auth.gen_digest_len = sess->auth.req_digest_len;
 		(*mb_ops->aux.keyexp.aes_cmac_expkey)(xform->auth.key.data,
 				sess->auth.cmac.expkey);
 
@@ -133,7 +140,6 @@ aesni_mb_set_session_auth_parameters(const struct aesni_mb_op_fns *mb_ops,
 				sess->auth.cmac.skey1, sess->auth.cmac.skey2);
 		return 0;
 	}
-
 
 	switch (xform->auth.algo) {
 	case RTE_CRYPTO_AUTH_MD5_HMAC:
@@ -164,6 +170,26 @@ aesni_mb_set_session_auth_parameters(const struct aesni_mb_op_fns *mb_ops,
 		AESNI_MB_LOG(ERR, "Unsupported authentication algorithm selection");
 		return -ENOTSUP;
 	}
+	uint16_t trunc_digest_size =
+			get_truncated_digest_byte_length(sess->auth.algo);
+	uint16_t full_digest_size =
+			get_digest_byte_length(sess->auth.algo);
+
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 50, 0)
+	if (sess->auth.req_digest_len > full_digest_size ||
+			sess->auth.req_digest_len == 0) {
+#else
+	if (sess->auth.req_digest_len != trunc_digest_size) {
+#endif
+		AESNI_MB_LOG(ERR, "Invalid digest size\n");
+		return -EINVAL;
+	}
+
+	if (sess->auth.req_digest_len != trunc_digest_size &&
+			sess->auth.req_digest_len != full_digest_size)
+		sess->auth.gen_digest_len = full_digest_size;
+	else
+		sess->auth.gen_digest_len = sess->auth.req_digest_len;
 
 	/* Calculate Authentication precomputes */
 	calculate_auth_precomputes(hash_oneblock_fn,
@@ -360,6 +386,9 @@ aesni_mb_set_session_aead_parameters(const struct aesni_mb_op_fns *mb_ops,
 	sess->iv.offset = xform->aead.iv.offset;
 	sess->iv.length = xform->aead.iv.length;
 
+	sess->auth.req_digest_len = xform->aead.digest_length;
+	sess->auth.gen_digest_len = sess->auth.req_digest_len;
+
 	/* Check key length and choose key expansion function for AES */
 
 	switch (xform->aead.key.length) {
@@ -397,19 +426,16 @@ aesni_mb_set_session_parameters(const struct aesni_mb_op_fns *mb_ops,
 		sess->chain_order = HASH_CIPHER;
 		auth_xform = xform;
 		cipher_xform = xform->next;
-		sess->auth.digest_len = xform->auth.digest_length;
 		break;
 	case AESNI_MB_OP_CIPHER_HASH:
 		sess->chain_order = CIPHER_HASH;
 		auth_xform = xform->next;
 		cipher_xform = xform;
-		sess->auth.digest_len = xform->auth.digest_length;
 		break;
 	case AESNI_MB_OP_HASH_ONLY:
 		sess->chain_order = HASH_CIPHER;
 		auth_xform = xform;
 		cipher_xform = NULL;
-		sess->auth.digest_len = xform->auth.digest_length;
 		break;
 	case AESNI_MB_OP_CIPHER_ONLY:
 		/*
@@ -428,13 +454,11 @@ aesni_mb_set_session_parameters(const struct aesni_mb_op_fns *mb_ops,
 	case AESNI_MB_OP_AEAD_CIPHER_HASH:
 		sess->chain_order = CIPHER_HASH;
 		sess->aead.aad_len = xform->aead.aad_length;
-		sess->auth.digest_len = xform->aead.digest_length;
 		aead_xform = xform;
 		break;
 	case AESNI_MB_OP_AEAD_HASH_CIPHER:
 		sess->chain_order = HASH_CIPHER;
 		sess->aead.aad_len = xform->aead.aad_length;
-		sess->auth.digest_len = xform->aead.digest_length;
 		aead_xform = xform;
 		break;
 	case AESNI_MB_OP_NOT_SUPPORTED:
@@ -641,21 +665,17 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 			job->auth_tag_output = op->sym->aead.digest.data;
 		else
 			job->auth_tag_output = op->sym->auth.digest.data;
+
+		if (session->auth.req_digest_len != session->auth.gen_digest_len) {
+			job->auth_tag_output = qp->temp_digests[*digest_idx];
+			*digest_idx = (*digest_idx + 1) % MAX_JOBS;
+		}
 	}
 
-	/*
-	 * Multi-buffer library current only support returning a truncated
-	 * digest length as specified in the relevant IPsec RFCs
-	 */
-	if (job->hash_alg != AES_CCM && job->hash_alg != AES_CMAC)
-		job->auth_tag_output_len_in_bytes =
-				get_truncated_digest_byte_length(job->hash_alg);
-	else
-		job->auth_tag_output_len_in_bytes = session->auth.digest_len;
-
+	/* Set digest length */
+	job->auth_tag_output_len_in_bytes = session->auth.gen_digest_len;
 
 	/* Set IV parameters */
-
 	job->iv_len_in_bytes = session->iv.length;
 
 	/* Data  Parameter */
@@ -690,18 +710,35 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 }
 
 static inline void
-verify_digest(struct aesni_mb_qp *qp __rte_unused, JOB_AES_HMAC *job,
-		struct rte_crypto_op *op) {
+verify_digest(JOB_AES_HMAC *job, struct rte_crypto_op *op,
+		struct aesni_mb_session *sess)
+{
 	/* Verify digest if required */
 	if (job->hash_alg == AES_CCM) {
 		if (memcmp(job->auth_tag_output, op->sym->aead.digest.data,
-				job->auth_tag_output_len_in_bytes) != 0)
+				sess->auth.req_digest_len) != 0)
 			op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 	} else {
 		if (memcmp(job->auth_tag_output, op->sym->auth.digest.data,
-				job->auth_tag_output_len_in_bytes) != 0)
+				sess->auth.req_digest_len) != 0)
 			op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 	}
+}
+
+static inline void
+generate_digest(JOB_AES_HMAC *job, struct rte_crypto_op *op,
+		struct aesni_mb_session *sess)
+{
+	/* No extra copy neeed */
+	if (likely(sess->auth.req_digest_len == sess->auth.gen_digest_len))
+		return;
+
+	/*
+	 * This can only happen for HMAC, so only digest
+	 * for authentication algos is required
+	 */
+	memcpy(op->sym->auth.digest.data, job->auth_tag_output,
+			sess->auth.req_digest_len);
 }
 
 /**
@@ -730,7 +767,9 @@ post_process_mb_job(struct aesni_mb_qp *qp, JOB_AES_HMAC *job)
 			if (job->hash_alg != NULL_HASH) {
 				if (sess->auth.operation ==
 						RTE_CRYPTO_AUTH_OP_VERIFY)
-					verify_digest(qp, job, op);
+					verify_digest(job, op, sess);
+				else
+					generate_digest(job, op, sess);
 			}
 			break;
 		default:

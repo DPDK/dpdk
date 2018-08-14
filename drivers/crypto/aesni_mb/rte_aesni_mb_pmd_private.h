@@ -31,8 +31,8 @@ int aesni_mb_logtype_driver;
 #define HMAC_IPAD_VALUE			(0x36)
 #define HMAC_OPAD_VALUE			(0x5C)
 
-/* Maximum length for digest (SHA-512 truncated needs 32 bytes) */
-#define DIGEST_LENGTH_MAX 32
+/* Maximum length for digest */
+#define DIGEST_LENGTH_MAX 64
 static const unsigned auth_blocksize[] = {
 		[MD5]		= 64,
 		[SHA1]		= 64,
@@ -95,7 +95,8 @@ static const unsigned auth_digest_byte_lengths[] = {
 };
 
 /**
- * Get the output digest size in bytes for a specified authentication algorithm
+ * Get the full digest size in bytes for a specified authentication algorithm
+ * (if available in the Multi-buffer library)
  *
  * @Note: this function will not return a valid value for a non-valid
  * authentication algorithm
@@ -226,8 +227,10 @@ struct aesni_mb_session {
 			} cmac;
 			/**< Expanded XCBC authentication keys */
 		};
-	/** digest size */
-	uint16_t digest_len;
+	/** Generated digest size by the Multi-buffer library */
+	uint16_t gen_digest_len;
+	/** Requested digest size from Cryptodev */
+	uint16_t req_digest_len;
 
 	} auth;
 	struct {
