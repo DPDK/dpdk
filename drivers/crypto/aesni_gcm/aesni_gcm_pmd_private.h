@@ -76,8 +76,10 @@ struct aesni_gcm_session {
 	/**< IV parameters */
 	uint16_t aad_length;
 	/**< AAD length */
-	uint16_t digest_length;
-	/**< Digest length */
+	uint16_t req_digest_length;
+	/**< Requested digest length */
+	uint16_t gen_digest_length;
+	/**< Generated digest length */
 	enum aesni_gcm_operation op;
 	/**< GCM operation type */
 	enum aesni_gcm_key key;

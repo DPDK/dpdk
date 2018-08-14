@@ -23,7 +23,6 @@ aesni_gcm_set_session_parameters(const struct aesni_gcm_ops *gcm_ops,
 {
 	const struct rte_crypto_sym_xform *auth_xform;
 	const struct rte_crypto_sym_xform *aead_xform;
-	uint16_t digest_length;
 	uint8_t key_length;
 	uint8_t *key;
 
@@ -47,7 +46,7 @@ aesni_gcm_set_session_parameters(const struct aesni_gcm_ops *gcm_ops,
 
 		key_length = auth_xform->auth.key.length;
 		key = auth_xform->auth.key.data;
-		digest_length = auth_xform->auth.digest_length;
+		sess->req_digest_length = auth_xform->auth.digest_length;
 
 	/* AES-GCM */
 	} else if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
@@ -73,7 +72,7 @@ aesni_gcm_set_session_parameters(const struct aesni_gcm_ops *gcm_ops,
 		key = aead_xform->aead.key.data;
 
 		sess->aad_length = aead_xform->aead.aad_length;
-		digest_length = aead_xform->aead.digest_length;
+		sess->req_digest_length = aead_xform->aead.digest_length;
 	} else {
 		AESNI_GCM_LOG(ERR, "Wrong xform type, has to be AEAD or authentication");
 		return -ENOTSUP;
@@ -106,13 +105,28 @@ aesni_gcm_set_session_parameters(const struct aesni_gcm_ops *gcm_ops,
 	gcm_ops[sess->key].precomp(key, &sess->gdata_key);
 
 	/* Digest check */
-	if (digest_length != 16 &&
-			digest_length != 12 &&
-			digest_length != 8) {
+	if (sess->req_digest_length > 16) {
 		AESNI_GCM_LOG(ERR, "Invalid digest length");
 		return -EINVAL;
 	}
-	sess->digest_length = digest_length;
+	/*
+	 * Multi-buffer lib supports digest sizes from 4 to 16 bytes
+	 * in version 0.50 and sizes of 8, 12 and 16 bytes,
+	 * in version 0.49.
+	 * If size requested is different, generate the full digest
+	 * (16 bytes) in a temporary location and then memcpy
+	 * the requested number of bytes.
+	 */
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 50, 0)
+	if (sess->req_digest_length < 4)
+#else
+	if (sess->req_digest_length != 16 &&
+			sess->req_digest_length != 12 &&
+			sess->req_digest_length != 8)
+#endif
+		sess->gen_digest_length = 16;
+	else
+		sess->gen_digest_length = sess->req_digest_length;
 
 	return 0;
 }
@@ -180,6 +194,7 @@ process_gcm_crypto_op(struct aesni_gcm_qp *qp, struct rte_crypto_op *op,
 	struct rte_mbuf *m_src = sym_op->m_src;
 	uint32_t offset, data_offset, data_length;
 	uint32_t part_len, total_len, data_len;
+	uint8_t *tag;
 
 	if (session->op == AESNI_GCM_OP_AUTHENTICATED_ENCRYPTION ||
 			session->op == AESNI_GCM_OP_AUTHENTICATED_DECRYPTION) {
@@ -254,13 +269,16 @@ process_gcm_crypto_op(struct aesni_gcm_qp *qp, struct rte_crypto_op *op,
 			total_len -= part_len;
 		}
 
+		if (session->req_digest_length != session->gen_digest_length)
+			tag = qp->temp_digest;
+		else
+			tag = sym_op->aead.digest.data;
+
 		qp->ops[session->key].finalize(&session->gdata_key,
 				&qp->gdata_ctx,
-				sym_op->aead.digest.data,
-				(uint64_t)session->digest_length);
+				tag,
+				session->gen_digest_length);
 	} else if (session->op == AESNI_GCM_OP_AUTHENTICATED_DECRYPTION) {
-		uint8_t *auth_tag = qp->temp_digest;
-
 		qp->ops[session->key].init(&session->gdata_key,
 				&qp->gdata_ctx,
 				iv_ptr,
@@ -289,33 +307,41 @@ process_gcm_crypto_op(struct aesni_gcm_qp *qp, struct rte_crypto_op *op,
 			total_len -= part_len;
 		}
 
+		tag = qp->temp_digest;
 		qp->ops[session->key].finalize(&session->gdata_key,
 				&qp->gdata_ctx,
-				auth_tag,
-				(uint64_t)session->digest_length);
+				tag,
+				session->gen_digest_length);
 	} else if (session->op == AESNI_GMAC_OP_GENERATE) {
 		qp->ops[session->key].init(&session->gdata_key,
 				&qp->gdata_ctx,
 				iv_ptr,
 				src,
 				(uint64_t)data_length);
+		if (session->req_digest_length != session->gen_digest_length)
+			tag = qp->temp_digest;
+		else
+			tag = sym_op->auth.digest.data;
 		qp->ops[session->key].finalize(&session->gdata_key,
 				&qp->gdata_ctx,
-				sym_op->auth.digest.data,
-				(uint64_t)session->digest_length);
+				tag,
+				session->gen_digest_length);
 	} else { /* AESNI_GMAC_OP_VERIFY */
-		uint8_t *auth_tag = qp->temp_digest;
-
 		qp->ops[session->key].init(&session->gdata_key,
 				&qp->gdata_ctx,
 				iv_ptr,
 				src,
 				(uint64_t)data_length);
 
+		/*
+		 * Generate always 16 bytes and later compare only
+		 * the bytes passed.
+		 */
+		tag = qp->temp_digest;
 		qp->ops[session->key].finalize(&session->gdata_key,
 				&qp->gdata_ctx,
-				auth_tag,
-				(uint64_t)session->digest_length);
+				tag,
+				session->gen_digest_length);
 	}
 
 	return 0;
@@ -352,13 +378,22 @@ post_process_gcm_crypto_op(struct aesni_gcm_qp *qp,
 
 #ifdef RTE_LIBRTE_PMD_AESNI_GCM_DEBUG
 		rte_hexdump(stdout, "auth tag (orig):",
-				digest, session->digest_length);
+				digest, session->req_digest_length);
 		rte_hexdump(stdout, "auth tag (calc):",
-				tag, session->digest_length);
+				tag, session->req_digest_length);
 #endif
 
-		if (memcmp(tag, digest,	session->digest_length) != 0)
+		if (memcmp(tag, digest,	session->req_digest_length) != 0)
 			op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+	} else {
+		if (session->req_digest_length != session->gen_digest_length) {
+			if (session->op == AESNI_GCM_OP_AUTHENTICATED_ENCRYPTION)
+				memcpy(op->sym->aead.digest.data, qp->temp_digest,
+						session->req_digest_length);
+			else
+				memcpy(op->sym->auth.digest.data, qp->temp_digest,
+						session->req_digest_length);
+		}
 	}
 }
 
