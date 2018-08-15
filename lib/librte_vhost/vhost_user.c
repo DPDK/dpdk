@@ -357,11 +357,13 @@ numa_realloc(struct virtio_net *dev, int index)
 		memcpy(vq, old_vq, sizeof(*vq));
 		TAILQ_INIT(&vq->zmbuf_list);
 
-		new_zmbuf = rte_malloc_socket(NULL, vq->zmbuf_size *
-			sizeof(struct zcopy_mbuf), 0, newnode);
-		if (new_zmbuf) {
-			rte_free(vq->zmbufs);
-			vq->zmbufs = new_zmbuf;
+		if (dev->dequeue_zero_copy) {
+			new_zmbuf = rte_malloc_socket(NULL, vq->zmbuf_size *
+					sizeof(struct zcopy_mbuf), 0, newnode);
+			if (new_zmbuf) {
+				rte_free(vq->zmbufs);
+				vq->zmbufs = new_zmbuf;
+			}
 		}
 
 		if (vq_is_packed(dev)) {
