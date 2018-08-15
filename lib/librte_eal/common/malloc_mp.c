@@ -194,13 +194,11 @@ handle_alloc_request(const struct malloc_mp_req *m,
 
 	/* we can't know in advance how many pages we'll need, so we malloc */
 	ms = malloc(sizeof(*ms) * n_segs);
-
-	memset(ms, 0, sizeof(*ms) * n_segs);
-
 	if (ms == NULL) {
 		RTE_LOG(ERR, EAL, "Couldn't allocate memory for request state\n");
 		goto fail;
 	}
+	memset(ms, 0, sizeof(*ms) * n_segs);
 
 	elem = alloc_pages_on_heap(heap, ar->page_sz, ar->elt_size, ar->socket,
 			ar->flags, ar->align, ar->bound, ar->contig, ms,

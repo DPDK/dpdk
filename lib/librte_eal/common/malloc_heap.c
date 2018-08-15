@@ -326,11 +326,9 @@ try_expand_heap_primary(struct malloc_heap *heap, uint64_t pg_sz,
 
 	/* we can't know in advance how many pages we'll need, so we malloc */
 	ms = malloc(sizeof(*ms) * n_segs);
-
-	memset(ms, 0, sizeof(*ms) * n_segs);
-
 	if (ms == NULL)
 		return -1;
+	memset(ms, 0, sizeof(*ms) * n_segs);
 
 	elem = alloc_pages_on_heap(heap, pg_sz, elt_size, socket, flags, align,
 			bound, contig, ms, n_segs);
