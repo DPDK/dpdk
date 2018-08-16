@@ -831,10 +831,10 @@ enum rte_tm_cman_mode {
  */
 struct rte_tm_red_params {
 	/** Minimum queue threshold */
-	uint32_t min_th;
+	uint64_t min_th;
 
 	/** Maximum queue threshold */
-	uint32_t max_th;
+	uint64_t max_th;
 
 	/** Inverse of packet marking probability maximum value (maxp), i.e.
 	 * maxp_inv = 1 / maxp
