@@ -393,11 +393,8 @@ static int
 rte_eth_is_valid_owner_id(uint64_t owner_id)
 {
 	if (owner_id == RTE_ETH_DEV_NO_OWNER ||
-	    rte_eth_dev_shared_data->next_owner_id <= owner_id) {
-		RTE_ETHDEV_LOG(ERR, "Invalid owner_id=%016"PRIx64"\n",
-			owner_id);
+	    rte_eth_dev_shared_data->next_owner_id <= owner_id)
 		return 0;
-	}
 	return 1;
 }
 
@@ -444,8 +441,12 @@ _rte_eth_dev_owner_set(const uint16_t port_id, const uint64_t old_owner_id,
 	}
 
 	if (!rte_eth_is_valid_owner_id(new_owner->id) &&
-	    !rte_eth_is_valid_owner_id(old_owner_id))
+	    !rte_eth_is_valid_owner_id(old_owner_id)) {
+		RTE_ETHDEV_LOG(ERR,
+			"Invalid owner old_id=%016"PRIx64" new_id=%016"PRIx64"\n",
+		       old_owner_id, new_owner->id);
 		return -EINVAL;
+	}
 
 	port_owner = &rte_eth_devices[port_id].data->owner;
 	if (port_owner->id != old_owner_id) {
@@ -516,9 +517,13 @@ rte_eth_dev_owner_delete(const uint64_t owner_id)
 			if (rte_eth_devices[port_id].data->owner.id == owner_id)
 				memset(&rte_eth_devices[port_id].data->owner, 0,
 				       sizeof(struct rte_eth_dev_owner));
-		RTE_ETHDEV_LOG(ERR,
+		RTE_ETHDEV_LOG(NOTICE,
 			"All port owners owned by %016"PRIx64" identifier have removed\n",
 			owner_id);
+	} else {
+		RTE_ETHDEV_LOG(ERR,
+			       "Invalid owner id=%016"PRIx64"\n",
+			       owner_id);
 	}
 
 	rte_spinlock_unlock(&rte_eth_dev_shared_data->ownership_lock);
