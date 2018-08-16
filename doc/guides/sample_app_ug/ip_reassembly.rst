@@ -23,8 +23,8 @@ There are two key differences from the L2 Forwarding sample application:
 
 *   The second difference is that the application differentiates between IP and non-IP traffic by means of offload flags.
 
-The Longest Prefix Match (LPM for IPv4, LPM6 for IPv6) table is used to store/lookup an outgoing port number, associated with that IPv4 address. Any unmatched packets are forwarded to the originating port.Compiling the Application
---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+The Longest Prefix Match (LPM for IPv4, LPM6 for IPv6) table is used to store/lookup an outgoing port number,
+associated with that IPv4 address. Any unmatched packets are forwarded to the originating port.
 
 
 Compiling the Application
