@@ -267,12 +267,13 @@ create_mbuf_pool(struct op_data_entries *entries, uint8_t dev_id,
 
 static int
 create_mempools(struct active_device *ad, int socket_id,
-		enum rte_bbdev_op_type op_type, uint16_t num_ops)
+		enum rte_bbdev_op_type org_op_type, uint16_t num_ops)
 {
 	struct rte_mempool *mp;
 	unsigned int ops_pool_size, mbuf_pool_size = 0;
 	char pool_name[RTE_MEMPOOL_NAMESIZE];
 	const char *op_type_str;
+	enum rte_bbdev_op_type op_type = org_op_type;
 
 	struct op_data_entries *in = &test_vector.entries[DATA_INPUT];
 	struct op_data_entries *hard_out =
@@ -289,6 +290,9 @@ create_mempools(struct active_device *ad, int socket_id,
 					OPS_CACHE_SIZE + 1)),
 			OPS_POOL_SIZE_MIN));
 
+	if (org_op_type == RTE_BBDEV_OP_NONE)
+		op_type = RTE_BBDEV_OP_TURBO_ENC;
+
 	op_type_str = rte_bbdev_op_type_str(op_type);
 	TEST_ASSERT_NOT_NULL(op_type_str, "Invalid op type: %u", op_type);
 
@@ -302,6 +306,10 @@ create_mempools(struct active_device *ad, int socket_id,
 			ad->dev_id,
 			socket_id);
 	ad->ops_mempool = mp;
+
+	/* Do not create inputs and outputs mbufs for BaseBand Null Device */
+	if (org_op_type == RTE_BBDEV_OP_NONE)
+		return TEST_SUCCESS;
 
 	/* Inputs */
 	mbuf_pool_size = optimal_mempool_size(ops_pool_size * in->nb_segments);
@@ -1058,14 +1066,14 @@ run_test_case_on_device(test_case_function *test_case_func, uint8_t dev_id,
 	rte_bbdev_info_get(ad->dev_id, &info);
 	socket_id = GET_SOCKET(info.socket_id);
 
-	if (op_type == RTE_BBDEV_OP_NONE)
-		op_type = RTE_BBDEV_OP_TURBO_ENC;
 	f_ret = create_mempools(ad, socket_id, op_type,
 			get_num_ops());
 	if (f_ret != TEST_SUCCESS) {
 		printf("Couldn't create mempools");
 		goto fail;
 	}
+	if (op_type == RTE_BBDEV_OP_NONE)
+		op_type = RTE_BBDEV_OP_TURBO_ENC;
 
 	f_ret = init_test_op_params(op_params, test_vector.op_type,
 			test_vector.expected_status,
