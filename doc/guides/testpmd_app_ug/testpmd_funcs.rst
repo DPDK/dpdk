@@ -2673,6 +2673,63 @@ where:
   call failure. On the other hand, hierarchy is preserved when this parameter
   is equal to zero.
 
+Set port traffic management mark VLAN dei
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Enables/Disables the traffic management marking on the port for VLAN packets::
+
+   testpmd> set port tm mark vlan_dei <port_id> <green> <yellow> <red>
+
+where:
+
+* ``port_id``: The port which on which VLAN packets marked as ``green`` or
+  ``yellow`` or ``red`` will have dei bit enabled
+
+* ``green`` enable 1, disable 0 marking for dei bit of VLAN packets marked as green
+
+* ``yellow`` enable 1, disable 0 marking for dei bit of VLAN packets marked as yellow
+
+* ``red`` enable 1, disable 0 marking for dei bit of VLAN packets marked as red
+
+Set port traffic management mark IP dscp
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Enables/Disables the traffic management marking on the port for IP dscp packets::
+
+   testpmd> set port tm mark ip_dscp <port_id> <green> <yellow> <red>
+
+where:
+
+* ``port_id``: The port which on which IP packets marked as ``green`` or
+  ``yellow`` or ``red`` will have IP dscp bits updated
+
+* ``green`` enable 1, disable 0 marking IP dscp to low drop precedence for green packets
+
+* ``yellow`` enable 1, disable 0 marking IP dscp to medium drop precedence for yellow packets
+
+* ``red`` enable 1, disable 0 marking IP dscp to high drop precedence for red packets
+
+Set port traffic management mark IP ecn
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Enables/Disables the traffic management marking on the port for IP ecn packets::
+
+   testpmd> set port tm mark ip_ecn <port_id> <green> <yellow> <red>
+
+where:
+
+* ``port_id``: The port which on which IP packets marked as ``green`` or
+  ``yellow`` or ``red`` will have IP ecn bits updated
+
+* ``green`` enable 1, disable 0 marking IP ecn for green marked packets with ecn of 2'b01  or 2'b10
+  to ecn of 2'b11 when IP is caring TCP or SCTP
+
+* ``yellow`` enable 1, disable 0 marking IP ecn for yellow marked packets with ecn of 2'b01  or 2'b10
+  to ecn of 2'b11 when IP is caring TCP or SCTP
+
+* ``red`` enable 1, disable 0 marking IP ecn for yellow marked packets with ecn of 2'b01  or 2'b10
+  to ecn of 2'b11 when IP is caring TCP or SCTP
+
 Set port traffic management default hierarchy (softnic forwarding mode)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

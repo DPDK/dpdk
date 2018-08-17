@@ -25,5 +25,8 @@ extern cmdline_parse_inst_t cmd_set_port_tm_node_parent;
 extern cmdline_parse_inst_t cmd_suspend_port_tm_node;
 extern cmdline_parse_inst_t cmd_resume_port_tm_node;
 extern cmdline_parse_inst_t cmd_port_tm_hierarchy_commit;
+extern cmdline_parse_inst_t cmd_port_tm_mark_vlan_dei;
+extern cmdline_parse_inst_t cmd_port_tm_mark_ip_ecn;
+extern cmdline_parse_inst_t cmd_port_tm_mark_ip_dscp;
 
 #endif /* _CMDLINE_TM_H_ */
