@@ -63,6 +63,7 @@ octeontx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 	count = 0;
 
+	rte_cio_wmb();
 	while (count < nb_pkts) {
 		res = __octeontx_xmit_pkts(dq->lmtline_va, dq->ioreg_va,
 					   dq->fc_status_va,
