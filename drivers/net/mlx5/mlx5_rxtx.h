@@ -97,10 +97,10 @@ struct mlx5_rxq_data {
 	volatile uint32_t *rq_db;
 	volatile uint32_t *cq_db;
 	uint16_t port_id;
-	uint16_t rq_ci;
+	uint32_t rq_ci;
 	uint16_t consumed_strd; /* Number of consumed strides in WQE. */
-	uint16_t rq_pi;
-	uint16_t cq_ci;
+	uint32_t rq_pi;
+	uint32_t cq_ci;
 	struct mlx5_mr_ctrl mr_ctrl; /* MR control descriptor. */
 	uint16_t mprq_max_memcpy_len; /* Maximum size of packet to memcpy. */
 	volatile void *wqes;

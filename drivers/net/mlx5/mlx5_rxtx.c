@@ -2097,7 +2097,7 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	const unsigned int wq_mask = (1 << rxq->elts_n) - 1;
 	volatile struct mlx5_cqe *cqe = &(*rxq->cqes)[rxq->cq_ci & cq_mask];
 	unsigned int i = 0;
-	uint16_t rq_ci = rxq->rq_ci;
+	uint32_t rq_ci = rxq->rq_ci;
 	uint16_t consumed_strd = rxq->consumed_strd;
 	struct mlx5_mprq_buf *buf = (*rxq->mprq_bufs)[rq_ci & wq_mask];
 
