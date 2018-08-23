@@ -32,7 +32,7 @@ Code
 .. code-block:: c
 
   /* create the attribute structure */
-  struct rte_flow_attr attr = {.ingress = 1};
+  struct rte_flow_attr attr = { .ingress = 1 };
   struct rte_flow_item pattern[MAX_PATTERN_IN_FLOW];
   struct rte_flow_action actions[MAX_ACTIONS_IN_FLOW];
   struct rte_flow_item_etc eth;
@@ -62,8 +62,8 @@ Code
   actions[1].type = RTE_FLOW_ACTION_TYPE_END;
 
   /* validate and create the flow rule */
-  if (!rte_flow_validate(port_id, &attr, pattern, actions, &error)
-      flow = rte_flow_create(port_id, &attr, pattern, actions, &error)
+  if (!rte_flow_validate(port_id, &attr, pattern, actions, &error))
+      flow = rte_flow_create(port_id, &attr, pattern, actions, &error);
 
 Output
 ~~~~~~
@@ -120,7 +120,7 @@ clarity)::
 
   tpmd> flow create 0 ingress pattern eth / vlan /
                     ipv4 dst spec 192.168.3.0 dst mask 255.255.255.0 /
-	            end actions drop / end
+                    end actions drop / end
 
 Code
 ~~~~
@@ -160,8 +160,8 @@ Code
   actions[1].type = RTE_FLOW_ACTION_TYPE_END;
 
   /* validate and create the flow rule */
-  if (!rte_flow_validate(port_id, &attr, pattern, actions, &error)
-      flow = rte_flow_create(port_id, &attr, pattern, actions, &error)
+  if (!rte_flow_validate(port_id, &attr, pattern, actions, &error))
+      flow = rte_flow_create(port_id, &attr, pattern, actions, &error);
 
 Output
 ~~~~~~
@@ -227,7 +227,7 @@ Code
 
 .. code-block:: c
 
-  struct rte_flow_attr attr = {.ingress = 1};
+  struct rte_flow_attr attr = { .ingress = 1 };
   struct rte_flow_item pattern[MAX_PATTERN_IN_FLOW];
   struct rte_flow_action actions[MAX_ACTIONS_IN_FLOW];
   struct rte_flow_item_etc eth;
@@ -250,12 +250,12 @@ Code
 
   /* create the queue action */
   actions[0].type = RTE_FLOW_ACTION_TYPE_QUEUE;
-  actions[0].conf = &queue
+  actions[0].conf = &queue;
   actions[1].type = RTE_FLOW_ACTION_TYPE_END;
 
   /* validate and create the flow rule */
-  if (!rte_flow_validate(port_id, &attr, pattern, actions, &error)
-      flow = rte_flow_create(port_id, &attr, pattern, actions, &error)
+  if (!rte_flow_validate(port_id, &attr, pattern, actions, &error))
+      flow = rte_flow_create(port_id, &attr, pattern, actions, &error);
 
 Output
 ~~~~~~
