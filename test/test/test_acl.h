@@ -80,34 +80,40 @@ enum {
 struct rte_acl_ipv4vlan_rule invalid_layout_rules[] = {
 		/* test src and dst address */
 		{
-				.data = {.userdata = 1, .category_mask = 1},
+				.data = {.userdata = 1, .category_mask = 1,
+					.priority = 1},
 				.src_addr = IPv4(10,0,0,0),
 				.src_mask_len = 24,
 		},
 		{
-				.data = {.userdata = 2, .category_mask = 1},
+				.data = {.userdata = 2, .category_mask = 1,
+					.priority = 1},
 				.dst_addr = IPv4(10,0,0,0),
 				.dst_mask_len = 24,
 		},
 		/* test src and dst ports */
 		{
-				.data = {.userdata = 3, .category_mask = 1},
+				.data = {.userdata = 3, .category_mask = 1,
+					.priority = 1},
 				.dst_port_low = 100,
 				.dst_port_high = 100,
 		},
 		{
-				.data = {.userdata = 4, .category_mask = 1},
+				.data = {.userdata = 4, .category_mask = 1,
+					.priority = 1},
 				.src_port_low = 100,
 				.src_port_high = 100,
 		},
 		/* test proto */
 		{
-				.data = {.userdata = 5, .category_mask = 1},
+				.data = {.userdata = 5, .category_mask = 1,
+					.priority = 1},
 				.proto = 0xf,
 				.proto_mask = 0xf
 		},
 		{
-				.data = {.userdata = 6, .category_mask = 1},
+				.data = {.userdata = 6, .category_mask = 1,
+					.priority = 1},
 				.dst_port_low = 0xf,
 				.dst_port_high = 0xf,
 		}
