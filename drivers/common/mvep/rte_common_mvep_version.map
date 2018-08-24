@@ -1,0 +1,6 @@
+DPDK_18.11 {
+	global:
+
+	rte_mvep_init;
+	rte_mvep_deinit;
+};
