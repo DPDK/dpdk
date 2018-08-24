@@ -22,4 +22,4 @@ sources = files(
 	'mrvl_qos.c'
 )
 
-deps += ['cfgfile']
+deps += ['cfgfile', 'common_mvep']
