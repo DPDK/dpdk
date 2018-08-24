@@ -2886,6 +2886,9 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	ether_addr_copy((struct ether_addr *)hw->mac_addr,
 			&eth_dev->data->mac_addrs[0]);
 
+	if (!(hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR))
+		eth_dev->data->dev_flags |= RTE_ETH_DEV_NOLIVE_MAC_ADDR;
+
 	PMD_INIT_LOG(INFO, "port %d VendorID=0x%x DeviceID=0x%x "
 		     "mac=%02x:%02x:%02x:%02x:%02x:%02x",
 		     eth_dev->data->port_id, pci_dev->id.vendor_id,
