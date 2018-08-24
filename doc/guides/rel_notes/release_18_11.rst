@@ -68,6 +68,12 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* A new device flag, RTE_ETH_DEV_NOLIVE_MAC_ADDR, changes the order of
+  actions inside rte_eth_dev_start regarding MAC set. Some NICs do not
+  support MAC changes once the port has started and with this new device
+  flag the MAC can be properly configured in any case. This is particularly
+  important for bonding.
+
 
 ABI Changes
 -----------

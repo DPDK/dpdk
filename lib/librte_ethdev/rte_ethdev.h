@@ -1268,6 +1268,8 @@ struct rte_eth_dev_owner {
 #define RTE_ETH_DEV_INTR_RMV     0x0008
 /** Device is port representor */
 #define RTE_ETH_DEV_REPRESENTOR  0x0010
+/** Device does not support MAC change after started */
+#define RTE_ETH_DEV_NOLIVE_MAC_ADDR  0x0020
 
 /**
  * Iterates over valid ethdev ports owned by a specific owner.
@@ -1750,6 +1752,10 @@ int rte_eth_dev_tx_queue_stop(uint16_t port_id, uint16_t tx_queue_id);
  * The device start step is the last one and consists of setting the configured
  * offload features and in starting the transmit and the receive units of the
  * device.
+ *
+ * Device RTE_ETH_DEV_NOLIVE_MAC_ADDR flag causes MAC address to be set before
+ * PMD port start callback function is invoked.
+ *
  * On success, all basic functions exported by the Ethernet API (link status,
  * receive/transmit, and so on) can be invoked.
  *

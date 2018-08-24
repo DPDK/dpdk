@@ -1219,18 +1219,13 @@ _rte_eth_dev_reset(struct rte_eth_dev *dev)
 }
 
 static void
-rte_eth_dev_config_restore(uint16_t port_id)
+rte_eth_dev_mac_restore(struct rte_eth_dev *dev,
+			struct rte_eth_dev_info *dev_info)
 {
-	struct rte_eth_dev *dev;
-	struct rte_eth_dev_info dev_info;
 	struct ether_addr *addr;
 	uint16_t i;
 	uint32_t pool = 0;
 	uint64_t pool_mask;
-
-	dev = &rte_eth_devices[port_id];
-
-	rte_eth_dev_info_get(port_id, &dev_info);
 
 	/* replay MAC address configuration including default MAC */
 	addr = &dev->data->mac_addrs[0];
@@ -1240,7 +1235,7 @@ rte_eth_dev_config_restore(uint16_t port_id)
 		(*dev->dev_ops->mac_addr_add)(dev, addr, 0, pool);
 
 	if (*dev->dev_ops->mac_addr_add != NULL) {
-		for (i = 1; i < dev_info.max_mac_addrs; i++) {
+		for (i = 1; i < dev_info->max_mac_addrs; i++) {
 			addr = &dev->data->mac_addrs[i];
 
 			/* skip zero address */
@@ -1259,6 +1254,14 @@ rte_eth_dev_config_restore(uint16_t port_id)
 			} while (pool_mask);
 		}
 	}
+}
+
+static void
+rte_eth_dev_config_restore(struct rte_eth_dev *dev,
+			   struct rte_eth_dev_info *dev_info, uint16_t port_id)
+{
+	if (!(*dev_info->dev_flags & RTE_ETH_DEV_NOLIVE_MAC_ADDR))
+		rte_eth_dev_mac_restore(dev, dev_info);
 
 	/* replay promiscuous configuration */
 	if (rte_eth_promiscuous_get(port_id) == 1)
@@ -1277,6 +1280,7 @@ int
 rte_eth_dev_start(uint16_t port_id)
 {
 	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
 	int diag;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
@@ -1292,13 +1296,19 @@ rte_eth_dev_start(uint16_t port_id)
 		return 0;
 	}
 
+	rte_eth_dev_info_get(port_id, &dev_info);
+
+	/* Lets restore MAC now if device does not support live change */
+	if (*dev_info.dev_flags & RTE_ETH_DEV_NOLIVE_MAC_ADDR)
+		rte_eth_dev_mac_restore(dev, &dev_info);
+
 	diag = (*dev->dev_ops->dev_start)(dev);
 	if (diag == 0)
 		dev->data->dev_started = 1;
 	else
 		return eth_err(port_id, diag);
 
-	rte_eth_dev_config_restore(port_id);
+	rte_eth_dev_config_restore(dev, &dev_info, port_id);
 
 	if (dev->data->dev_conf.intr_conf.lsc == 0) {
 		RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->link_update, -ENOTSUP);
