@@ -87,9 +87,9 @@ static int used_bpools[PP2_NUM_PKT_PROC] = {
 	[0 ... PP2_NUM_PKT_PROC - 1] = MRVL_MUSDK_BPOOLS_RESERVED
 };
 
-struct pp2_bpool *mrvl_port_to_bpool_lookup[RTE_MAX_ETHPORTS];
-int mrvl_port_bpool_size[PP2_NUM_PKT_PROC][PP2_BPOOL_NUM_POOLS][RTE_MAX_LCORE];
-uint64_t cookie_addr_high = MRVL_COOKIE_ADDR_INVALID;
+static struct pp2_bpool *mrvl_port_to_bpool_lookup[RTE_MAX_ETHPORTS];
+static int mrvl_port_bpool_size[PP2_NUM_PKT_PROC][PP2_BPOOL_NUM_POOLS][RTE_MAX_LCORE];
+static uint64_t cookie_addr_high = MRVL_COOKIE_ADDR_INVALID;
 
 int mrvl_logtype;
 
