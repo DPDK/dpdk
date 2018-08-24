@@ -1353,6 +1353,8 @@ mrvl_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
 {
 	static const uint32_t ptypes[] = {
 		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L2_ETHER_VLAN,
+		RTE_PTYPE_L2_ETHER_QINQ,
 		RTE_PTYPE_L3_IPV4,
 		RTE_PTYPE_L3_IPV4_EXT,
 		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
@@ -1922,12 +1924,26 @@ mrvl_desc_to_packet_type_and_offset(struct pp2_ppio_desc *desc,
 {
 	enum pp2_inq_l3_type l3_type;
 	enum pp2_inq_l4_type l4_type;
+	enum pp2_inq_vlan_tag vlan_tag;
 	uint64_t packet_type;
 
 	pp2_ppio_inq_desc_get_l3_info(desc, &l3_type, l3_offset);
 	pp2_ppio_inq_desc_get_l4_info(desc, &l4_type, l4_offset);
+	pp2_ppio_inq_desc_get_vlan_tag(desc, &vlan_tag);
 
 	packet_type = RTE_PTYPE_L2_ETHER;
+
+	switch (vlan_tag) {
+	case PP2_INQ_VLAN_TAG_SINGLE:
+		packet_type |= RTE_PTYPE_L2_ETHER_VLAN;
+		break;
+	case PP2_INQ_VLAN_TAG_DOUBLE:
+	case PP2_INQ_VLAN_TAG_TRIPLE:
+		packet_type |= RTE_PTYPE_L2_ETHER_QINQ;
+		break;
+	default:
+		break;
+	}
 
 	switch (l3_type) {
 	case PP2_INQ_L3_TYPE_IPV4_NO_OPTS:
