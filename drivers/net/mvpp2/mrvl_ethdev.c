@@ -84,8 +84,7 @@ static const char * const valid_args[] = {
 static int used_hifs = MRVL_MUSDK_HIFS_RESERVED;
 static struct pp2_hif *hifs[RTE_MAX_LCORE];
 static int used_bpools[PP2_NUM_PKT_PROC] = {
-	MRVL_MUSDK_BPOOLS_RESERVED,
-	MRVL_MUSDK_BPOOLS_RESERVED
+	[0 ... PP2_NUM_PKT_PROC - 1] = MRVL_MUSDK_BPOOLS_RESERVED
 };
 
 struct pp2_bpool *mrvl_port_to_bpool_lookup[RTE_MAX_ETHPORTS];
