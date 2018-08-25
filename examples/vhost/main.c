@@ -58,9 +58,6 @@
 /* Max number of devices. Limited by vmdq. */
 #define MAX_DEVICES 64
 
-/* Size of buffers used for snprintfs. */
-#define MAX_PRINT_BUFF 6072
-
 /* Maximum long option length for option parsing. */
 #define MAX_LONG_OPT_SZ 64
 
