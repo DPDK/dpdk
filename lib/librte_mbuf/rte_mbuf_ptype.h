@@ -131,6 +131,13 @@ extern "C" {
  */
 #define RTE_PTYPE_L2_ETHER_PPPOE            0x00000008
 /**
+ * FCoE packet type.
+ *
+ * Packet format:
+ * <'ether type'=[0x8906]>
+ */
+#define RTE_PTYPE_L2_ETHER_FCOE             0x00000009
+/**
  * Mask of layer 2 packet types.
  * It is used for outer packet for tunneling cases.
  */
