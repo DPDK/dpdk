@@ -138,6 +138,13 @@ extern "C" {
  */
 #define RTE_PTYPE_L2_ETHER_FCOE             0x00000009
 /**
+ * MPLS packet type.
+ *
+ * Packet format:
+ * <'ether type'=[0x8847|0x8848]>
+ */
+#define RTE_PTYPE_L2_ETHER_MPLS             0x0000000a
+/**
  * Mask of layer 2 packet types.
  * It is used for outer packet for tunneling cases.
  */
