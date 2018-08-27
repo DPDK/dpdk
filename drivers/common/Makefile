@@ -10,6 +10,7 @@ endif
 
 MVEP-y := $(CONFIG_RTE_LIBRTE_MVPP2_PMD)
 MVEP-y += $(CONFIG_RTE_LIBRTE_MVNETA_PMD)
+MVEP-y += $(CONFIG_RTE_LIBRTE_PMD_MVSAM_CRYPTO)
 ifneq (,$(findstring y,$(MVEP-y)))
 DIRS-y += mvep
 endif

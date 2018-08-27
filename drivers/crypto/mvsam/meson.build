@@ -18,4 +18,4 @@ endif
 
 sources = files('rte_mrvl_pmd.c', 'rte_mrvl_pmd_ops.c')
 
-deps += ['bus_vdev']
+deps += ['bus_vdev', 'common_mvep']

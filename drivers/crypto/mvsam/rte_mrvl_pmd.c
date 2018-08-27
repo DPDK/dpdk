@@ -12,10 +12,9 @@
 #include <rte_malloc.h>
 #include <rte_cpuflags.h>
 #include <rte_kvargs.h>
+#include <rte_mvep_common.h>
 
 #include "rte_mrvl_pmd_private.h"
-
-#define MRVL_MUSDK_DMA_MEMSIZE 41943040
 
 #define MRVL_PMD_MAX_NB_SESS_ARG		("max_nb_sessions")
 #define MRVL_PMD_DEFAULT_MAX_NB_SESSIONS	2048
@@ -767,7 +766,7 @@ cryptodev_mrvl_crypto_create(const char *name,
 	struct rte_cryptodev *dev;
 	struct mrvl_crypto_private *internals;
 	struct sam_init_params	sam_params;
-	int ret;
+	int ret = -EINVAL;
 
 	dev = rte_cryptodev_pmd_create(name, &vdev->device,
 			&init_params->common);
@@ -795,30 +794,26 @@ cryptodev_mrvl_crypto_create(const char *name,
 	internals->max_nb_qpairs = init_params->common.max_nb_queue_pairs;
 	internals->max_nb_sessions = init_params->max_nb_sessions;
 
-	/*
-	 * ret == -EEXIST is correct, it means DMA
-	 * has been already initialized.
-	 */
-	ret = mv_sys_dma_mem_init(MRVL_MUSDK_DMA_MEMSIZE);
-	if (ret < 0) {
-		if (ret != -EEXIST)
-			return ret;
-
-		MRVL_CRYPTO_LOG_INFO(
-			"DMA memory has been already initialized by a different driver.");
-	}
+	ret = rte_mvep_init(MVEP_MOD_T_SAM, NULL);
+	if (ret)
+		goto init_error;
 
 	sam_params.max_num_sessions = internals->max_nb_sessions;
 
 	/* sam_set_debug_flags(3); */
-	return sam_init(&sam_params);
+
+	ret = sam_init(&sam_params);
+	if (ret)
+		goto init_error;
+
+	return 0;
 
 init_error:
 	MRVL_CRYPTO_LOG_ERR(
 		"driver %s: %s failed", init_params->common.name, __func__);
 
 	cryptodev_mrvl_crypto_uninit(vdev);
-	return -EFAULT;
+	return ret;
 }
 
 /** Parse integer from integer argument */
@@ -968,6 +963,7 @@ cryptodev_mrvl_crypto_uninit(struct rte_vdev_device *vdev)
 		name, rte_socket_id());
 
 	sam_deinit();
+	rte_mvep_deinit(MVEP_MOD_T_SAM);
 
 	cryptodev = rte_cryptodev_pmd_get_named_dev(name);
 	if (cryptodev == NULL)
