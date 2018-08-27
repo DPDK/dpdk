@@ -452,8 +452,10 @@ mrvl_request_prepare(struct sam_cio_op_params *request,
 		struct rte_crypto_op *op)
 {
 	struct mrvl_crypto_session *sess;
-	struct rte_mbuf *dst_mbuf;
+	struct rte_mbuf *src_mbuf, *dst_mbuf;
+	uint16_t segments_nb;
 	uint8_t *digest;
+	int i;
 
 	if (unlikely(op->sess_type == RTE_CRYPTO_OP_SESSIONLESS)) {
 		MRVL_CRYPTO_LOG_ERR("MRVL CRYPTO PMD only supports session "
@@ -469,28 +471,46 @@ mrvl_request_prepare(struct sam_cio_op_params *request,
 		return -EINVAL;
 	}
 
-	/*
+	request->sa = sess->sam_sess;
+	request->cookie = op;
+
+	src_mbuf = op->sym->m_src;
+	segments_nb = src_mbuf->nb_segs;
+	/* The following conditions must be met:
+	 * - Destination buffer is required when segmented source buffer
+	 * - Segmented destination buffer is not supported
+	 */
+	if ((segments_nb > 1) && (!op->sym->m_dst)) {
+		MRVL_CRYPTO_LOG_ERR("op->sym->m_dst = NULL!\n");
+		return -1;
+	}
+	/* For non SG case:
 	 * If application delivered us null dst buffer, it means it expects
 	 * us to deliver the result in src buffer.
 	 */
 	dst_mbuf = op->sym->m_dst ? op->sym->m_dst : op->sym->m_src;
 
-	request->sa = sess->sam_sess;
-	request->cookie = op;
-
-	/* Single buffers only, sorry. */
-	request->num_bufs = 1;
-	request->src = src_bd;
-	src_bd->vaddr = rte_pktmbuf_mtod(op->sym->m_src, void *);
-	src_bd->paddr = rte_pktmbuf_iova(op->sym->m_src);
-	src_bd->len = rte_pktmbuf_data_len(op->sym->m_src);
-
-	/* Empty source. */
-	if (rte_pktmbuf_data_len(op->sym->m_src) == 0) {
-		/* EIP does not support 0 length buffers. */
-		MRVL_CRYPTO_LOG_ERR("Buffer length == 0 not supported!");
+	if (!rte_pktmbuf_is_contiguous(dst_mbuf)) {
+		MRVL_CRYPTO_LOG_ERR("Segmented destination buffer "
+				    "not supported.\n");
 		return -1;
 	}
+
+	request->num_bufs = segments_nb;
+	for (i = 0; i < segments_nb; i++) {
+		/* Empty source. */
+		if (rte_pktmbuf_data_len(src_mbuf) == 0) {
+			/* EIP does not support 0 length buffers. */
+			MRVL_CRYPTO_LOG_ERR("Buffer length == 0 not supported!");
+			return -1;
+		}
+		src_bd[i].vaddr = rte_pktmbuf_mtod(src_mbuf, void *);
+		src_bd[i].paddr = rte_pktmbuf_iova(src_mbuf);
+		src_bd[i].len = rte_pktmbuf_data_len(src_mbuf);
+
+		src_mbuf = src_mbuf->next;
+	}
+	request->src = src_bd;
 
 	/* Empty destination. */
 	if (rte_pktmbuf_data_len(dst_mbuf) == 0) {
@@ -542,7 +562,7 @@ mrvl_request_prepare(struct sam_cio_op_params *request,
 
 	/*
 	 * EIP supports only scenarios where ICV(digest buffer) is placed at
-	 * auth_icv_offset. Any other placement means risking errors.
+	 * auth_icv_offset.
 	 */
 	if (sess->sam_sess_params.dir == SAM_DIR_ENCRYPT) {
 		/*
@@ -551,17 +571,36 @@ mrvl_request_prepare(struct sam_cio_op_params *request,
 		 */
 		if (rte_pktmbuf_mtod_offset(
 				dst_mbuf, uint8_t *,
-				request->auth_icv_offset) == digest) {
+				request->auth_icv_offset) == digest)
 			return 0;
-		}
 	} else {/* sess->sam_sess_params.dir == SAM_DIR_DECRYPT */
 		/*
 		 * EIP will look for digest at auth_icv_offset
-		 * offset in SRC buffer.
+		 * offset in SRC buffer. It must be placed in the last
+		 * segment and the offset must be set to reach digest
+		 * in the last segment
 		 */
-		if (rte_pktmbuf_mtod_offset(
-				op->sym->m_src, uint8_t *,
-				request->auth_icv_offset) == digest) {
+		struct rte_mbuf *last_seg =  op->sym->m_src;
+		uint32_t d_offset = request->auth_icv_offset;
+		u32 d_size = sess->sam_sess_params.u.basic.auth_icv_len;
+		unsigned char *d_ptr;
+
+		/* Find the last segment and the offset for the last segment */
+		while ((last_seg->next != NULL) &&
+				(d_offset >= last_seg->data_len)) {
+			d_offset -= last_seg->data_len;
+			last_seg = last_seg->next;
+		}
+
+		if (rte_pktmbuf_mtod_offset(last_seg, uint8_t *,
+					    d_offset) == digest)
+			return 0;
+
+		/* copy digest to last segment */
+		if (last_seg->buf_len >= (d_size + d_offset)) {
+			d_ptr = (unsigned char *)last_seg->buf_addr +
+				 d_offset;
+			rte_memcpy(d_ptr, digest, d_size);
 			return 0;
 		}
 	}
@@ -597,11 +636,10 @@ mrvl_crypto_pmd_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 	int ret;
 	struct sam_cio_op_params requests[nb_ops];
 	/*
-	 * DPDK uses single fragment buffers, so we can KISS descriptors.
 	 * SAM does not store bd pointers, so on-stack scope will be enough.
 	 */
-	struct sam_buf_info src_bd[nb_ops];
-	struct sam_buf_info dst_bd[nb_ops];
+	struct mrvl_crypto_src_table src_bd[nb_ops];
+	struct sam_buf_info          dst_bd[nb_ops];
 	struct mrvl_crypto_qp *qp = (struct mrvl_crypto_qp *)queue_pair;
 
 	if (nb_ops == 0)
@@ -609,11 +647,14 @@ mrvl_crypto_pmd_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 
 	/* Prepare the burst. */
 	memset(&requests, 0, sizeof(requests));
+	memset(&src_bd, 0, sizeof(src_bd));
 
 	/* Iterate through */
 	for (; iter_ops < nb_ops; ++iter_ops) {
+		/* store the op id for debug */
+		src_bd[iter_ops].iter_ops = iter_ops;
 		if (mrvl_request_prepare(&requests[iter_ops],
-					&src_bd[iter_ops],
+					src_bd[iter_ops].src_bd,
 					&dst_bd[iter_ops],
 					ops[iter_ops]) < 0) {
 			MRVL_CRYPTO_LOG_ERR(
@@ -769,6 +810,7 @@ cryptodev_mrvl_crypto_create(const char *name,
 
 	sam_params.max_num_sessions = internals->max_nb_sessions;
 
+	/* sam_set_debug_flags(3); */
 	return sam_init(&sam_params);
 
 init_error:

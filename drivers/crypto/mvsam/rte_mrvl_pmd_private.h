@@ -38,6 +38,8 @@
  */
 #define BITS2BYTES(x) ((x) >> 3)
 
+#define MRVL_MAX_SEGMENTS 16
+
 /** The operation order mode enumerator. */
 enum mrvl_crypto_chain_order {
 	MRVL_CRYPTO_CHAIN_CIPHER_ONLY,
@@ -82,6 +84,11 @@ struct mrvl_crypto_session {
 
 	/** Cipher IV offset. */
 	uint16_t cipher_iv_offset;
+} __rte_cache_aligned;
+
+struct mrvl_crypto_src_table {
+	uint16_t iter_ops;
+	struct sam_buf_info src_bd[MRVL_MAX_SEGMENTS];
 } __rte_cache_aligned;
 
 /** Set and validate MRVL crypto session parameters */
