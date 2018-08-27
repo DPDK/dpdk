@@ -454,10 +454,10 @@ cxgbe_rtef_parse_items(struct rte_flow *flow,
 	char repeat[ARRAY_SIZE(parseitem)] = {0};
 
 	for (i = items; i->type != RTE_FLOW_ITEM_TYPE_END; i++) {
-		struct chrte_fparse *idx = &flow->item_parser[i->type];
+		struct chrte_fparse *idx;
 		int ret;
 
-		if (i->type > ARRAY_SIZE(parseitem))
+		if (i->type >= ARRAY_SIZE(parseitem))
 			return rte_flow_error_set(e, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
 						  i, "Item not supported");
@@ -478,6 +478,7 @@ cxgbe_rtef_parse_items(struct rte_flow *flow,
 			if (ret)
 				return ret;
 
+			idx = &flow->item_parser[i->type];
 			if (!idx || !idx->fptr) {
 				return rte_flow_error_set(e, ENOTSUP,
 						RTE_FLOW_ERROR_TYPE_ITEM, i,
