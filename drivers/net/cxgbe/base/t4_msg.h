@@ -11,7 +11,9 @@ enum {
 	CPL_SET_TCB_FIELD     = 0x5,
 	CPL_ABORT_REQ         = 0xA,
 	CPL_ABORT_RPL         = 0xB,
+	CPL_L2T_WRITE_REQ     = 0x12,
 	CPL_TID_RELEASE       = 0x1A,
+	CPL_L2T_WRITE_RPL     = 0x23,
 	CPL_ACT_OPEN_RPL      = 0x25,
 	CPL_ABORT_RPL_RSS     = 0x2D,
 	CPL_SET_TCB_RPL       = 0x3A,
@@ -65,6 +67,9 @@ union opcode_tid {
 #define S_TID_TID    0
 #define M_TID_TID    0x3fff
 #define G_TID_TID(x) (((x) >> S_TID_TID) & M_TID_TID)
+
+#define S_TID_QID    14
+#define V_TID_QID(x) ((x) << S_TID_QID)
 
 struct rss_header {
 	__u8 opcode;
@@ -419,6 +424,35 @@ struct cpl_rx_pkt {
 	__be32 l2info;
 	__be16 hdr_len;
 	__be16 err_vec;
+};
+
+struct cpl_l2t_write_req {
+	WR_HDR;
+	union opcode_tid ot;
+	__be16 params;
+	__be16 l2t_idx;
+	__be16 vlan;
+	__u8   dst_mac[6];
+};
+
+/* cpl_l2t_write_req.params fields */
+#define S_L2T_W_PORT    8
+#define V_L2T_W_PORT(x) ((x) << S_L2T_W_PORT)
+
+#define S_L2T_W_LPBK    10
+#define V_L2T_W_LPBK(x) ((x) << S_L2T_W_LPBK)
+
+#define S_L2T_W_ARPMISS         11
+#define V_L2T_W_ARPMISS(x)      ((x) << S_L2T_W_ARPMISS)
+
+#define S_L2T_W_NOREPLY    15
+#define V_L2T_W_NOREPLY(x) ((x) << S_L2T_W_NOREPLY)
+
+struct cpl_l2t_write_rpl {
+	RSS_HDR
+	union opcode_tid ot;
+	__u8 status;
+	__u8 rsvd[3];
 };
 
 /* rx_pkt.l2info fields */

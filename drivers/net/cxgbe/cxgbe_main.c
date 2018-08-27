@@ -38,6 +38,7 @@
 #include "t4_msg.h"
 #include "cxgbe.h"
 #include "clip_tbl.h"
+#include "l2t.h"
 
 /**
  * Allocate a chunk of memory. The allocated memory is cleared.
@@ -99,6 +100,10 @@ static int fwevtq_handler(struct sge_rspq *q, const __be64 *rsp,
 		const struct cpl_act_open_rpl *p = (const void *)rsp;
 
 		hash_filter_rpl(q->adapter, p);
+	} else if (opcode == CPL_L2T_WRITE_RPL) {
+		const struct cpl_l2t_write_rpl *p = (const void *)rsp;
+
+		do_l2t_write_rpl(q->adapter, p);
 	} else {
 		dev_err(adapter, "unexpected CPL %#x on FW event queue\n",
 			opcode);
@@ -1135,13 +1140,17 @@ static int adap_init0(struct adapter *adap)
 	 V_FW_PARAMS_PARAM_Y(0) | \
 	 V_FW_PARAMS_PARAM_Z(0))
 
-	params[0] = FW_PARAM_PFVF(FILTER_START);
-	params[1] = FW_PARAM_PFVF(FILTER_END);
-	ret = t4_query_params(adap, adap->mbox, adap->pf, 0, 2, params, val);
+	params[0] = FW_PARAM_PFVF(L2T_START);
+	params[1] = FW_PARAM_PFVF(L2T_END);
+	params[2] = FW_PARAM_PFVF(FILTER_START);
+	params[3] = FW_PARAM_PFVF(FILTER_END);
+	ret = t4_query_params(adap, adap->mbox, adap->pf, 0, 4, params, val);
 	if (ret < 0)
 		goto bye;
-	adap->tids.ftid_base = val[0];
-	adap->tids.nftids = val[1] - val[0] + 1;
+	adap->l2t_start = val[0];
+	adap->l2t_end = val[1];
+	adap->tids.ftid_base = val[2];
+	adap->tids.nftids = val[3] - val[2] + 1;
 
 	params[0] = FW_PARAM_PFVF(CLIP_START);
 	params[1] = FW_PARAM_PFVF(CLIP_END);
@@ -1679,10 +1688,11 @@ void cxgbe_close(struct adapter *adapter)
 	int i;
 
 	if (adapter->flags & FULL_INIT_DONE) {
-		if (is_pf4(adapter))
-			t4_intr_disable(adapter);
 		tid_free(&adapter->tids);
 		t4_cleanup_clip_tbl(adapter);
+		t4_cleanup_l2t(adapter);
+		if (is_pf4(adapter))
+			t4_intr_disable(adapter);
 		t4_sge_tx_monitor_stop(adapter);
 		t4_free_sge_resources(adapter);
 		for_each_port(adapter, i) {
@@ -1853,6 +1863,12 @@ allocate_mac:
 		 * functionality
 		 */
 		dev_warn(adapter, "could not allocate CLIP. Continuing\n");
+	}
+
+	adapter->l2t = t4_init_l2t(adapter->l2t_start, adapter->l2t_end);
+	if (!adapter->l2t) {
+		/* We tolerate a lack of L2T, giving up some functionality */
+		dev_warn(adapter, "could not allocate L2T. Continuing\n");
 	}
 
 	if (tid_init(&adapter->tids) < 0) {

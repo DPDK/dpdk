@@ -324,7 +324,10 @@ struct adapter {
 
 	unsigned int clipt_start; /* CLIP table start */
 	unsigned int clipt_end;   /* CLIP table end */
+	unsigned int l2t_start;   /* Layer 2 table start */
+	unsigned int l2t_end;     /* Layer 2 table end */
 	struct clip_tbl *clipt;   /* CLIP table */
+	struct l2t_data *l2t;     /* Layer 2 table */
 
 	struct tid_info tids;     /* Info used to access TID related tables */
 };
