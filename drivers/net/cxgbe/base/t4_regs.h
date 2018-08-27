@@ -45,6 +45,14 @@
 #define MPS_T5_CLS_SRAM_H(idx) (A_MPS_T5_CLS_SRAM_H + (idx) * 8)
 #define NUM_MPS_T5_CLS_SRAM_H_INSTANCES 512
 
+#define S_DATAPORTNUM    12
+#define M_DATAPORTNUM    0xfU
+#define V_DATAPORTNUM(x) ((x) << S_DATAPORTNUM)
+
+#define S_DATALKPTYPE    10
+#define M_DATALKPTYPE    0x3U
+#define V_DATALKPTYPE(x) ((x) << S_DATALKPTYPE)
+
 /* registers for module SGE */
 #define SGE_BASE_ADDR 0x1000
 

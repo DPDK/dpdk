@@ -39,6 +39,7 @@
 #include "cxgbe.h"
 #include "clip_tbl.h"
 #include "l2t.h"
+#include "mps_tcam.h"
 
 /**
  * Allocate a chunk of memory. The allocated memory is cleared.
@@ -1689,6 +1690,7 @@ void cxgbe_close(struct adapter *adapter)
 
 	if (adapter->flags & FULL_INIT_DONE) {
 		tid_free(&adapter->tids);
+		t4_cleanup_mpstcam(adapter);
 		t4_cleanup_clip_tbl(adapter);
 		t4_cleanup_l2t(adapter);
 		if (is_pf4(adapter))
@@ -1876,6 +1878,11 @@ allocate_mac:
 		dev_warn(adapter, "could not allocate TID table, "
 			 "filter support disabled. Continuing\n");
 	}
+
+	adapter->mpstcam = t4_init_mpstcam(adapter);
+	if (!adapter->mpstcam)
+		dev_warn(adapter, "could not allocate mps tcam table."
+			 " Continuing\n");
 
 	if (is_hashfilter(adapter)) {
 		if (t4_read_reg(adapter, A_LE_DB_CONFIG) & F_HASHEN) {

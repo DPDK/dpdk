@@ -4162,6 +4162,112 @@ int t4_set_rxmode(struct adapter *adap, unsigned int mbox, unsigned int viid,
 }
 
 /**
+ *	t4_alloc_raw_mac_filt - Adds a raw mac entry in mps tcam
+ *	@adap: the adapter
+ *	@viid: the VI id
+ *	@mac: the MAC address
+ *	@mask: the mask
+ *	@idx: index at which to add this entry
+ *	@port_id: the port index
+ *	@lookup_type: MAC address for inner (1) or outer (0) header
+ *	@sleep_ok: call is allowed to sleep
+ *
+ *	Adds the mac entry at the specified index using raw mac interface.
+ *
+ *	Returns a negative error number or the allocated index for this mac.
+ */
+int t4_alloc_raw_mac_filt(struct adapter *adap, unsigned int viid,
+			  const u8 *addr, const u8 *mask, unsigned int idx,
+			  u8 lookup_type, u8 port_id, bool sleep_ok)
+{
+	int ret = 0;
+	struct fw_vi_mac_cmd c;
+	struct fw_vi_mac_raw *p = &c.u.raw;
+	u32 val;
+
+	memset(&c, 0, sizeof(c));
+	c.op_to_viid = cpu_to_be32(V_FW_CMD_OP(FW_VI_MAC_CMD) |
+				   F_FW_CMD_REQUEST | F_FW_CMD_WRITE |
+				   V_FW_VI_MAC_CMD_VIID(viid));
+	val = V_FW_CMD_LEN16(1) |
+	      V_FW_VI_MAC_CMD_ENTRY_TYPE(FW_VI_MAC_TYPE_RAW);
+	c.freemacs_to_len16 = cpu_to_be32(val);
+
+	/* Specify that this is an inner mac address */
+	p->raw_idx_pkd = cpu_to_be32(V_FW_VI_MAC_CMD_RAW_IDX(idx));
+
+	/* Lookup Type. Outer header: 0, Inner header: 1 */
+	p->data0_pkd = cpu_to_be32(V_DATALKPTYPE(lookup_type) |
+				   V_DATAPORTNUM(port_id));
+	/* Lookup mask and port mask */
+	p->data0m_pkd = cpu_to_be64(V_DATALKPTYPE(M_DATALKPTYPE) |
+				    V_DATAPORTNUM(M_DATAPORTNUM));
+
+	/* Copy the address and the mask */
+	memcpy((u8 *)&p->data1[0] + 2, addr, ETHER_ADDR_LEN);
+	memcpy((u8 *)&p->data1m[0] + 2, mask, ETHER_ADDR_LEN);
+
+	ret = t4_wr_mbox_meat(adap, adap->mbox, &c, sizeof(c), &c, sleep_ok);
+	if (ret == 0) {
+		ret = G_FW_VI_MAC_CMD_RAW_IDX(be32_to_cpu(p->raw_idx_pkd));
+		if (ret != (int)idx)
+			ret = -ENOMEM;
+	}
+
+	return ret;
+}
+
+/**
+ *	t4_free_raw_mac_filt - Frees a raw mac entry in mps tcam
+ *	@adap: the adapter
+ *	@viid: the VI id
+ *	@addr: the MAC address
+ *	@mask: the mask
+ *	@idx: index of the entry in mps tcam
+ *	@lookup_type: MAC address for inner (1) or outer (0) header
+ *	@port_id: the port index
+ *	@sleep_ok: call is allowed to sleep
+ *
+ *	Removes the mac entry at the specified index using raw mac interface.
+ *
+ *	Returns a negative error number on failure.
+ */
+int t4_free_raw_mac_filt(struct adapter *adap, unsigned int viid,
+			 const u8 *addr, const u8 *mask, unsigned int idx,
+			 u8 lookup_type, u8 port_id, bool sleep_ok)
+{
+	struct fw_vi_mac_cmd c;
+	struct fw_vi_mac_raw *p = &c.u.raw;
+	u32 raw;
+
+	memset(&c, 0, sizeof(c));
+	c.op_to_viid = cpu_to_be32(V_FW_CMD_OP(FW_VI_MAC_CMD) |
+				   F_FW_CMD_REQUEST | F_FW_CMD_WRITE |
+				   V_FW_CMD_EXEC(0) |
+				   V_FW_VI_MAC_CMD_VIID(viid));
+	raw = V_FW_VI_MAC_CMD_ENTRY_TYPE(FW_VI_MAC_TYPE_RAW);
+	c.freemacs_to_len16 = cpu_to_be32(V_FW_VI_MAC_CMD_FREEMACS(0) |
+					  raw |
+					  V_FW_CMD_LEN16(1));
+
+	p->raw_idx_pkd = cpu_to_be32(V_FW_VI_MAC_CMD_RAW_IDX(idx) |
+				     FW_VI_MAC_ID_BASED_FREE);
+
+	/* Lookup Type. Outer header: 0, Inner header: 1 */
+	p->data0_pkd = cpu_to_be32(V_DATALKPTYPE(lookup_type) |
+				   V_DATAPORTNUM(port_id));
+	/* Lookup mask and port mask */
+	p->data0m_pkd = cpu_to_be64(V_DATALKPTYPE(M_DATALKPTYPE) |
+				    V_DATAPORTNUM(M_DATAPORTNUM));
+
+	/* Copy the address and the mask */
+	memcpy((u8 *)&p->data1[0] + 2, addr, ETHER_ADDR_LEN);
+	memcpy((u8 *)&p->data1m[0] + 2, mask, ETHER_ADDR_LEN);
+
+	return t4_wr_mbox_meat(adap, adap->mbox, &c, sizeof(c), &c, sleep_ok);
+}
+
+/**
  * t4_change_mac - modifies the exact-match filter for a MAC address
  * @adap: the adapter
  * @mbox: mailbox to use for the FW command
