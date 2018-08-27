@@ -7,6 +7,7 @@
 
 #include <rte_flow_driver.h>
 #include "cxgbe_filter.h"
+#include "mps_tcam.h"
 #include "cxgbe.h"
 
 #define CXGBE_FLOW_POLL_US  10

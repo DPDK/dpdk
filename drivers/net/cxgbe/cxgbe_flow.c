@@ -95,11 +95,53 @@ cxgbe_fill_filter_region(struct adapter *adap,
 		ntuple_mask |= (u64)fs->mask.ethtype << tp->ethertype_shift;
 	if (tp->port_shift >= 0)
 		ntuple_mask |= (u64)fs->mask.iport << tp->port_shift;
+	if (tp->macmatch_shift >= 0)
+		ntuple_mask |= (u64)fs->mask.macidx << tp->macmatch_shift;
 
 	if (ntuple_mask != hash_filter_mask)
 		return;
 
 	fs->cap = 1;	/* use hash region */
+}
+
+static int
+ch_rte_parsetype_eth(const void *dmask, const struct rte_flow_item *item,
+		     struct ch_filter_specification *fs,
+		     struct rte_flow_error *e)
+{
+	const struct rte_flow_item_eth *spec = item->spec;
+	const struct rte_flow_item_eth *umask = item->mask;
+	const struct rte_flow_item_eth *mask;
+
+	/* If user has not given any mask, then use chelsio supported mask. */
+	mask = umask ? umask : (const struct rte_flow_item_eth *)dmask;
+
+	/* we don't support SRC_MAC filtering*/
+	if (!is_zero_ether_addr(&mask->src))
+		return rte_flow_error_set(e, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM,
+					  item,
+					  "src mac filtering not supported");
+
+	if (!is_zero_ether_addr(&mask->dst)) {
+		const u8 *addr = (const u8 *)&spec->dst.addr_bytes[0];
+		const u8 *m = (const u8 *)&mask->dst.addr_bytes[0];
+		struct rte_flow *flow = (struct rte_flow *)fs->private;
+		struct port_info *pi = (struct port_info *)
+					(flow->dev->data->dev_private);
+		int idx;
+
+		idx = cxgbe_mpstcam_alloc(pi, addr, m);
+		if (idx <= 0)
+			return rte_flow_error_set(e, idx,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  NULL, "unable to allocate mac"
+						  " entry in h/w");
+		CXGBE_FILL_FS(idx, 0x1ff, macidx);
+	}
+
+	CXGBE_FILL_FS(be16_to_cpu(spec->type),
+		      be16_to_cpu(mask->type), ethtype);
+	return 0;
 }
 
 static int
@@ -440,7 +482,16 @@ cxgbe_rtef_parse_actions(struct rte_flow *flow,
 }
 
 struct chrte_fparse parseitem[] = {
-		[RTE_FLOW_ITEM_TYPE_PHY_PORT] = {
+	[RTE_FLOW_ITEM_TYPE_ETH] = {
+		.fptr  = ch_rte_parsetype_eth,
+		.dmask = &(const struct rte_flow_item_eth){
+			.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+			.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+			.type = 0xffff,
+		}
+	},
+
+	[RTE_FLOW_ITEM_TYPE_PHY_PORT] = {
 		.fptr = ch_rte_parsetype_port,
 		.dmask = &(const struct rte_flow_item_phy_port){
 			.index = 0x7,
@@ -528,7 +579,6 @@ cxgbe_flow_parse(struct rte_flow *flow,
 		 struct rte_flow_error *e)
 {
 	int ret;
-
 	/* parse user request into ch_filter_specification */
 	ret = cxgbe_rtef_parse_attr(flow, attr, e);
 	if (ret)
@@ -607,6 +657,7 @@ cxgbe_flow_create(struct rte_eth_dev *dev,
 
 	flow->item_parser = parseitem;
 	flow->dev = dev;
+	flow->fs.private = (void *)flow;
 
 	if (cxgbe_flow_parse(flow, attr, item, action, e)) {
 		t4_os_free(flow);
@@ -659,6 +710,17 @@ static int __cxgbe_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 		dev_err(adap, "Hardware error %d while deleting the filter.\n",
 			ctx.result);
 		return ctx.result;
+	}
+
+	fs = &flow->fs;
+	if (fs->mask.macidx) {
+		struct port_info *pi = (struct port_info *)
+					(dev->data->dev_private);
+		int ret;
+
+		ret = cxgbe_mpstcam_remove(pi, fs->val.macidx);
+		if (!ret)
+			return ret;
 	}
 
 	return 0;

@@ -1075,11 +1075,9 @@ static int cxgbe_get_regs(struct rte_eth_dev *eth_dev,
 int cxgbe_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *addr)
 {
 	struct port_info *pi = (struct port_info *)(dev->data->dev_private);
-	struct adapter *adapter = pi->adapter;
 	int ret;
 
-	ret = t4_change_mac(adapter, adapter->mbox, pi->viid,
-			    pi->xact_addr_filt, (u8 *)addr, true, true);
+	ret = cxgbe_mpstcam_modify(pi, (int)pi->xact_addr_filt, (u8 *)addr);
 	if (ret < 0) {
 		dev_err(adapter, "failed to set mac addr; err = %d\n",
 			ret);

@@ -5251,6 +5251,8 @@ int t4_init_tp_params(struct adapter *adap)
 							       F_PROTOCOL);
 	adap->params.tp.ethertype_shift = t4_filter_field_shift(adap,
 								F_ETHERTYPE);
+	adap->params.tp.macmatch_shift = t4_filter_field_shift(adap,
+							       F_MACMATCH);
 
 	/*
 	 * If TP_INGRESS_CONFIG.VNID == 0, then TP_VLAN_PRI_MAP.VNIC_ID

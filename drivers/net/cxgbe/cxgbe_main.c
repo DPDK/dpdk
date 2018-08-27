@@ -1342,10 +1342,8 @@ int link_start(struct port_info *pi)
 	ret = t4_set_rxmode(adapter, adapter->mbox, pi->viid, mtu, -1, -1,
 			    -1, 1, true);
 	if (ret == 0) {
-		ret = t4_change_mac(adapter, adapter->mbox, pi->viid,
-				    pi->xact_addr_filt,
-				    (u8 *)&pi->eth_dev->data->mac_addrs[0],
-				    true, true);
+		ret = cxgbe_mpstcam_modify(pi, (int)pi->xact_addr_filt,
+				(u8 *)&pi->eth_dev->data->mac_addrs[0]);
 		if (ret >= 0) {
 			pi->xact_addr_filt = ret;
 			ret = 0;

@@ -66,7 +66,8 @@ int validate_filter(struct adapter *adapter, struct ch_filter_specification *fs)
 #define U(_mask, _field) \
 	(!(fconf & (_mask)) && S(_field))
 
-	if (U(F_PORT, iport) || U(F_ETHERTYPE, ethtype) || U(F_PROTOCOL, proto))
+	if (U(F_PORT, iport) || U(F_ETHERTYPE, ethtype) ||
+	    U(F_PROTOCOL, proto) || U(F_MACMATCH, macidx))
 		return -EOPNOTSUPP;
 
 #undef S
@@ -268,6 +269,8 @@ static u64 hash_filter_ntuple(const struct filter_entry *f)
 
 	if (tp->ethertype_shift >= 0 && f->fs.mask.ethtype)
 		ntuple |= (u64)(f->fs.val.ethtype) << tp->ethertype_shift;
+	if (tp->macmatch_shift >= 0 && f->fs.mask.macidx)
+		ntuple |= (u64)(f->fs.val.macidx) << tp->macmatch_shift;
 
 	if (ntuple != tp->hash_filter_mask)
 		return 0;
@@ -744,7 +747,9 @@ int set_filter_wr(struct rte_eth_dev *dev, unsigned int fidx)
 			    V_FW_FILTER_WR_RX_RPL_IQ(adapter->sge.fw_evtq.abs_id
 						     ));
 	fwr->maci_to_matchtypem =
-		cpu_to_be32(V_FW_FILTER_WR_PORT(f->fs.val.iport) |
+		cpu_to_be32(V_FW_FILTER_WR_MACI(f->fs.val.macidx) |
+			    V_FW_FILTER_WR_MACIM(f->fs.mask.macidx) |
+			    V_FW_FILTER_WR_PORT(f->fs.val.iport) |
 			    V_FW_FILTER_WR_PORTM(f->fs.mask.iport));
 	fwr->ptcl = f->fs.val.proto;
 	fwr->ptclm = f->fs.mask.proto;

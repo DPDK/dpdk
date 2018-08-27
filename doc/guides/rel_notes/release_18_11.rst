@@ -58,6 +58,7 @@ New Features
 
   Flow API support has been enhanced for CXGBE Poll Mode Driver to offload:
 
+  * Match items: destination MAC address.
   * Action items: push/pop/rewrite vlan header.
 
 

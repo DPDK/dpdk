@@ -77,6 +77,7 @@ struct ch_filter_tuple {
  * Filter specification
  */
 struct ch_filter_specification {
+	void *private;
 	/* Administrative fields for filter. */
 	uint32_t hitcnts:1;	/* count filter hits in TCB */
 	uint32_t prio:1;	/* filter has priority over active/server */
