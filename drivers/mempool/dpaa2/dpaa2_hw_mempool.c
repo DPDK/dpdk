@@ -33,13 +33,6 @@
 struct dpaa2_bp_info rte_dpaa2_bpid_info[MAX_BPID];
 static struct dpaa2_bp_list *h_bp_list;
 
-/* List of all the memseg information locally maintained in dpaa2 driver. This
- * is to optimize the PA_to_VA searches until a better mechanism (algo) is
- * available.
- */
-struct dpaa2_memseg_list rte_dpaa2_memsegs
-	= TAILQ_HEAD_INITIALIZER(rte_dpaa2_memsegs);
-
 /* Dynamic logging identified for mempool */
 int dpaa2_logtype_mempool;
 
