@@ -49,6 +49,7 @@ const char *rte_get_ptype_l4_name(uint32_t ptype)
 	case RTE_PTYPE_L4_SCTP: return "L4_SCTP";
 	case RTE_PTYPE_L4_ICMP: return "L4_ICMP";
 	case RTE_PTYPE_L4_NONFRAG: return "L4_NONFRAG";
+	case RTE_PTYPE_L4_IGMP: return "L4_IGMP";
 	default: return "L4_UNKNOWN";
 	}
 }

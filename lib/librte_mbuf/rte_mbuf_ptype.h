@@ -301,6 +301,14 @@ extern "C" {
  */
 #define RTE_PTYPE_L4_NONFRAG                0x00000600
 /**
+ * IGMP (Internet Group Management Protocol) packet type.
+ *
+ * Packet format:
+ * <'ether type'=0x0800
+ * | 'version'=4, 'protocol'=2, 'MF'=0, 'frag_offset'=0>
+ */
+#define RTE_PTYPE_L4_IGMP                   0x00000700
+/**
  * Mask of layer 4 packet types.
  * It is used for outer packet for tunneling cases.
  */
