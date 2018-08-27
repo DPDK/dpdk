@@ -657,7 +657,7 @@ mrvl_crypto_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		 */
 		int num = sam_get_num_inst();
 		if (num == 0) {
-			MRVL_CRYPTO_LOG_ERR("No crypto engines detected.\n");
+			MRVL_LOG(ERR, "No crypto engines detected!");
 			return -1;
 		}
 
@@ -741,7 +741,7 @@ mrvl_crypto_pmd_sym_session_configure(__rte_unused struct rte_cryptodev *dev,
 	int ret;
 
 	if (sess == NULL) {
-		MRVL_CRYPTO_LOG_ERR("Invalid session struct.");
+		MRVL_LOG(ERR, "Invalid session struct!");
 		return -EINVAL;
 	}
 
@@ -752,7 +752,7 @@ mrvl_crypto_pmd_sym_session_configure(__rte_unused struct rte_cryptodev *dev,
 
 	ret = mrvl_crypto_set_session_parameters(sess_private_data, xform);
 	if (ret != 0) {
-		MRVL_CRYPTO_LOG_ERR("Failed to configure session parameters.");
+		MRVL_LOG(ERR, "Failed to configure session parameters!");
 
 		/* Return session to mempool */
 		rte_mempool_put(mp, sess_private_data);
@@ -764,7 +764,7 @@ mrvl_crypto_pmd_sym_session_configure(__rte_unused struct rte_cryptodev *dev,
 	mrvl_sess = (struct mrvl_crypto_session *)sess_private_data;
 	if (sam_session_create(&mrvl_sess->sam_sess_params,
 				&mrvl_sess->sam_sess) < 0) {
-		MRVL_CRYPTO_LOG_DBG("Failed to create session!");
+		MRVL_LOG(DEBUG, "Failed to create session!");
 		return -EIO;
 	}
 
@@ -792,7 +792,7 @@ mrvl_crypto_pmd_sym_session_clear(struct rte_cryptodev *dev,
 
 		if (mrvl_sess->sam_sess &&
 		    sam_session_destroy(mrvl_sess->sam_sess) < 0) {
-			MRVL_CRYPTO_LOG_INFO("Error while destroying session!");
+			MRVL_LOG(ERR, "Error while destroying session!");
 		}
 
 		memset(sess, 0, sizeof(struct mrvl_crypto_session));
