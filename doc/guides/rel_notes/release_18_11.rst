@@ -54,6 +54,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Add support to offload more flow match and actions for CXGBE PMD**
+
+  Flow API support has been enhanced for CXGBE Poll Mode Driver to offload:
+
+  * Action items: push/pop/rewrite vlan header.
+
 
 API Changes
 -----------

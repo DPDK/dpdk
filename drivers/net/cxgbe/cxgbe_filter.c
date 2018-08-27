@@ -8,6 +8,7 @@
 #include "t4_regs.h"
 #include "cxgbe_filter.h"
 #include "clip_tbl.h"
+#include "l2t.h"
 
 /**
  * Initialize Hash Filters
@@ -162,6 +163,16 @@ static void set_tcb_field(struct adapter *adapter, unsigned int ftid,
 	req->val = cpu_to_be64(val);
 
 	t4_mgmt_tx(ctrlq, mbuf);
+}
+
+/**
+ * Set one of the t_flags bits in the TCB.
+ */
+static void set_tcb_tflag(struct adapter *adap, unsigned int ftid,
+			  unsigned int bit_pos, unsigned int val, int no_reply)
+{
+	set_tcb_field(adap, ftid,  W_TCB_T_FLAGS, 1ULL << bit_pos,
+		      (unsigned long long)val << bit_pos, no_reply);
 }
 
 /**
@@ -425,7 +436,10 @@ static void mk_act_open_req6(struct filter_entry *f, struct rte_mbuf *mbuf,
 	req->local_ip_lo = local_lo;
 	req->peer_ip_hi = peer_hi;
 	req->peer_ip_lo = peer_lo;
-	req->opt0 = cpu_to_be64(V_DELACK(f->fs.hitcnts) |
+	req->opt0 = cpu_to_be64(V_NAGLE(f->fs.newvlan == VLAN_REMOVE ||
+					f->fs.newvlan == VLAN_REWRITE) |
+				V_DELACK(f->fs.hitcnts) |
+				V_L2T_IDX(f->l2t ? f->l2t->idx : 0) |
 				V_SMAC_SEL((cxgbe_port_viid(f->dev) & 0x7F)
 					   << 1) |
 				V_TX_CHAN(f->fs.eport) |
@@ -468,7 +482,10 @@ static void mk_act_open_req(struct filter_entry *f, struct rte_mbuf *mbuf,
 			f->fs.val.lip[2] << 16 | f->fs.val.lip[3] << 24;
 	req->peer_ip = f->fs.val.fip[0] | f->fs.val.fip[1] << 8 |
 			f->fs.val.fip[2] << 16 | f->fs.val.fip[3] << 24;
-	req->opt0 = cpu_to_be64(V_DELACK(f->fs.hitcnts) |
+	req->opt0 = cpu_to_be64(V_NAGLE(f->fs.newvlan == VLAN_REMOVE ||
+					f->fs.newvlan == VLAN_REWRITE) |
+				V_DELACK(f->fs.hitcnts) |
+				V_L2T_IDX(f->l2t ? f->l2t->idx : 0) |
 				V_SMAC_SEL((cxgbe_port_viid(f->dev) & 0x7F)
 					   << 1) |
 				V_TX_CHAN(f->fs.eport) |
@@ -517,6 +534,22 @@ static int cxgbe_set_hash_filter(struct rte_eth_dev *dev,
 	f->ctx = ctx;
 	f->dev = dev;
 	f->fs.iq = iq;
+
+	/*
+	 * If the new filter requires loopback Destination MAC and/or VLAN
+	 * rewriting then we need to allocate a Layer 2 Table (L2T) entry for
+	 * the filter.
+	 */
+	if (f->fs.newvlan == VLAN_INSERT ||
+	    f->fs.newvlan == VLAN_REWRITE) {
+		/* allocate L2T entry for new filter */
+		f->l2t = cxgbe_l2t_alloc_switching(dev, f->fs.vlan,
+						   f->fs.eport, f->fs.dmac);
+		if (!f->l2t) {
+			ret = -ENOMEM;
+			goto out_err;
+		}
+	}
 
 	atid = cxgbe_alloc_atid(t, f);
 	if (atid < 0)
@@ -653,6 +686,19 @@ int set_filter_wr(struct rte_eth_dev *dev, unsigned int fidx)
 	unsigned int port_id = ethdev2pinfo(dev)->port_id;
 	int ret;
 
+	/*
+	 * If the new filter requires loopback Destination MAC and/or VLAN
+	 * rewriting then we need to allocate a Layer 2 Table (L2T) entry for
+	 * the filter.
+	 */
+	if (f->fs.newvlan) {
+		/* allocate L2T entry for new filter */
+		f->l2t = cxgbe_l2t_alloc_switching(f->dev, f->fs.vlan,
+						   f->fs.eport, f->fs.dmac);
+		if (!f->l2t)
+			return -ENOMEM;
+	}
+
 	ctrlq = &adapter->sge.ctrlq[port_id];
 	mbuf = rte_pktmbuf_alloc(ctrlq->mb_pool);
 	if (!mbuf) {
@@ -680,9 +726,16 @@ int set_filter_wr(struct rte_eth_dev *dev, unsigned int fidx)
 		cpu_to_be32(V_FW_FILTER_WR_DROP(f->fs.action == FILTER_DROP) |
 			    V_FW_FILTER_WR_DIRSTEER(f->fs.dirsteer) |
 			    V_FW_FILTER_WR_LPBK(f->fs.action == FILTER_SWITCH) |
+			    V_FW_FILTER_WR_INSVLAN
+				(f->fs.newvlan == VLAN_INSERT ||
+				 f->fs.newvlan == VLAN_REWRITE) |
+			    V_FW_FILTER_WR_RMVLAN
+				(f->fs.newvlan == VLAN_REMOVE ||
+				 f->fs.newvlan == VLAN_REWRITE) |
 			    V_FW_FILTER_WR_HITCNTS(f->fs.hitcnts) |
 			    V_FW_FILTER_WR_TXCHAN(f->fs.eport) |
-			    V_FW_FILTER_WR_PRIO(f->fs.prio));
+			    V_FW_FILTER_WR_PRIO(f->fs.prio) |
+			    V_FW_FILTER_WR_L2TIX(f->l2t ? f->l2t->idx : 0));
 	fwr->ethtype = cpu_to_be16(f->fs.val.ethtype);
 	fwr->ethtypem = cpu_to_be16(f->fs.mask.ethtype);
 	fwr->smac_sel = 0;
@@ -1046,6 +1099,9 @@ void hash_filter_rpl(struct adapter *adap, const struct cpl_act_open_rpl *rpl)
 				      V_TCB_TIMESTAMP(0ULL) |
 				      V_TCB_T_RTT_TS_RECENT_AGE(0ULL),
 				      1);
+		if (f->fs.newvlan == VLAN_INSERT ||
+		    f->fs.newvlan == VLAN_REWRITE)
+			set_tcb_tflag(adap, tid, S_TF_CCTRL_RFR, 1, 1);
 		break;
 	}
 	default:

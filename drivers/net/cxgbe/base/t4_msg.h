@@ -138,6 +138,12 @@ struct work_request_hdr {
 #define V_TCAM_BYPASS(x) ((__u64)(x) << S_TCAM_BYPASS)
 #define F_TCAM_BYPASS    V_TCAM_BYPASS(1ULL)
 
+#define S_L2T_IDX    36
+#define V_L2T_IDX(x) ((__u64)(x) << S_L2T_IDX)
+
+#define S_NAGLE    49
+#define V_NAGLE(x) ((__u64)(x) << S_NAGLE)
+
 /* option 2 fields */
 #define S_RSS_QUEUE    0
 #define V_RSS_QUEUE(x) ((x) << S_RSS_QUEUE)

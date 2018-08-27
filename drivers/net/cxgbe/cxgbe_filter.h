@@ -99,6 +99,9 @@ struct ch_filter_specification {
 	uint32_t iq:10;		/* ingress queue */
 
 	uint32_t eport:2;	/* egress port to switch packet out */
+	uint32_t newvlan:2;     /* rewrite VLAN Tag */
+	uint8_t dmac[ETHER_ADDR_LEN];   /* new destination MAC address */
+	uint16_t vlan;          /* VLAN Tag to insert */
 
 	/* Filter rule value/mask pairs. */
 	struct ch_filter_tuple val;
@@ -109,6 +112,12 @@ enum {
 	FILTER_PASS = 0,	/* default */
 	FILTER_DROP,
 	FILTER_SWITCH
+};
+
+enum {
+	VLAN_REMOVE = 1,
+	VLAN_INSERT,
+	VLAN_REWRITE
 };
 
 enum filter_type {

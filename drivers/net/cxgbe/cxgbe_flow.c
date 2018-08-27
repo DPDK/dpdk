@@ -331,9 +331,30 @@ ch_rte_parse_atype_switch(const struct rte_flow_action *a,
 			  struct ch_filter_specification *fs,
 			  struct rte_flow_error *e)
 {
+	const struct rte_flow_action_of_set_vlan_vid *vlanid;
+	const struct rte_flow_action_of_push_vlan *pushvlan;
 	const struct rte_flow_action_phy_port *port;
 
 	switch (a->type) {
+	case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
+		vlanid = (const struct rte_flow_action_of_set_vlan_vid *)
+			  a->conf;
+		fs->newvlan = VLAN_REWRITE;
+		fs->vlan = vlanid->vlan_vid;
+		break;
+	case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
+		pushvlan = (const struct rte_flow_action_of_push_vlan *)
+			    a->conf;
+		if (pushvlan->ethertype != ETHER_TYPE_VLAN)
+			return rte_flow_error_set(e, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION, a,
+						  "only ethertype 0x8100 "
+						  "supported for push vlan.");
+		fs->newvlan = VLAN_INSERT;
+		break;
+	case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
+		fs->newvlan = VLAN_REMOVE;
+		break;
 	case RTE_FLOW_ACTION_TYPE_PHY_PORT:
 		port = (const struct rte_flow_action_phy_port *)a->conf;
 		fs->eport = port->index;
@@ -391,6 +412,9 @@ cxgbe_rtef_parse_actions(struct rte_flow *flow,
 		case RTE_FLOW_ACTION_TYPE_COUNT:
 			fs->hitcnts = 1;
 			break;
+		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
+		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
+		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
 		case RTE_FLOW_ACTION_TYPE_PHY_PORT:
 			/* We allow multiple switch actions, but switch is
 			 * not compatible with either queue or drop
