@@ -223,6 +223,8 @@ void rte_pci_unregister(struct rte_pci_driver *driver);
  *   The length of the data buffer.
  * @param offset
  *   The offset into PCI config space
+ * @return
+ *  Number of bytes read on success, negative on error.
  */
 int rte_pci_read_config(const struct rte_pci_device *device,
 		void *buf, size_t len, off_t offset);
