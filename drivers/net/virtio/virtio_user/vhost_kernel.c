@@ -147,8 +147,8 @@ prepare_vhost_memory_kernel(void)
 	 (1ULL << VIRTIO_NET_F_HOST_TSO6) |	\
 	 (1ULL << VIRTIO_NET_F_CSUM))
 
-static int
-tap_supporte_mq(void)
+static unsigned int
+tap_support_features(void)
 {
 	int tapfd;
 	unsigned int tap_features;
@@ -167,7 +167,7 @@ tap_supporte_mq(void)
 	}
 
 	close(tapfd);
-	return tap_features & IFF_MULTI_QUEUE;
+	return tap_features;
 }
 
 static int
@@ -181,6 +181,7 @@ vhost_kernel_ioctl(struct virtio_user_dev *dev,
 	struct vhost_memory_kernel *vm = NULL;
 	int vhostfd;
 	unsigned int queue_sel;
+	unsigned int features;
 
 	PMD_DRV_LOG(INFO, "%s", vhost_msg_strings[req]);
 
@@ -234,17 +235,20 @@ vhost_kernel_ioctl(struct virtio_user_dev *dev,
 	}
 
 	if (!ret && req_kernel == VHOST_GET_FEATURES) {
+		features = tap_support_features();
 		/* with tap as the backend, all these features are supported
 		 * but not claimed by vhost-net, so we add them back when
 		 * reporting to upper layer.
 		 */
-		*((uint64_t *)arg) |= VHOST_KERNEL_GUEST_OFFLOADS_MASK;
-		*((uint64_t *)arg) |= VHOST_KERNEL_HOST_OFFLOADS_MASK;
+		if (features & IFF_VNET_HDR) {
+			*((uint64_t *)arg) |= VHOST_KERNEL_GUEST_OFFLOADS_MASK;
+			*((uint64_t *)arg) |= VHOST_KERNEL_HOST_OFFLOADS_MASK;
+		}
 
 		/* vhost_kernel will not declare this feature, but it does
 		 * support multi-queue.
 		 */
-		if (tap_supporte_mq())
+		if (features & IFF_MULTI_QUEUE)
 			*(uint64_t *)arg |= (1ull << VIRTIO_NET_F_MQ);
 	}
 
@@ -339,7 +343,7 @@ vhost_kernel_enable_queue_pair(struct virtio_user_dev *dev,
 		hdr_size = sizeof(struct virtio_net_hdr);
 
 	tapfd = vhost_kernel_open_tap(&dev->ifname, hdr_size, req_mq,
-			 (char *)dev->mac_addr);
+			 (char *)dev->mac_addr, dev->features);
 	if (tapfd < 0) {
 		PMD_DRV_LOG(ERR, "fail to open tap for vhost kernel");
 		return -1;
