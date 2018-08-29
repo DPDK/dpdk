@@ -1778,12 +1778,11 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 
 	/* If RSS is enabled for bonding, try to enable it for slaves  */
 	if (bonded_eth_dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
-		if (bonded_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key_len
-				!= 0) {
+		if (internals->rss_key_len != 0) {
 			slave_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key_len =
-					bonded_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key_len;
+					internals->rss_key_len;
 			slave_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key =
-					bonded_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key;
+					internals->rss_key;
 		} else {
 			slave_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key = NULL;
 		}
@@ -3284,11 +3283,23 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 
 	unsigned i, j;
 
-	/* If RSS is enabled, fill table and key with default values */
+	/*
+	 * If RSS is enabled, fill table with default values and
+	 * set key to the the value specified in port RSS configuration.
+	 * Fall back to default RSS key if the key is not specified
+	 */
 	if (dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS) {
-		dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key = internals->rss_key;
-		dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key_len = 0;
-		memcpy(internals->rss_key, default_rss_key, 40);
+		if (dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key != NULL) {
+			internals->rss_key_len =
+				dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key_len;
+			memcpy(internals->rss_key,
+			       dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key,
+			       internals->rss_key_len);
+		} else {
+			internals->rss_key_len = sizeof(default_rss_key);
+			memcpy(internals->rss_key, default_rss_key,
+			       internals->rss_key_len);
+		}
 
 		for (i = 0; i < RTE_DIM(internals->reta_conf); i++) {
 			internals->reta_conf[i].mask = ~0LL;
