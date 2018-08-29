@@ -673,6 +673,7 @@ sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 
 	rxq_info = &sa->rxq_info[sw_index];
 	rxq = rxq_info->rxq;
+	SFC_ASSERT(rxq != NULL);
 	SFC_ASSERT(rxq->state == SFC_RXQ_INITIALIZED);
 
 	evq = rxq->evq;
@@ -763,7 +764,7 @@ sfc_rx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 	rxq_info = &sa->rxq_info[sw_index];
 	rxq = rxq_info->rxq;
 
-	if (rxq->state == SFC_RXQ_INITIALIZED)
+	if (rxq == NULL || rxq->state == SFC_RXQ_INITIALIZED)
 		return;
 	SFC_ASSERT(rxq->state & SFC_RXQ_STARTED);
 
@@ -1363,7 +1364,8 @@ sfc_rx_start(struct sfc_adapter *sa)
 		goto fail_rss_config;
 
 	for (sw_index = 0; sw_index < sa->rxq_count; ++sw_index) {
-		if ((!sa->rxq_info[sw_index].deferred_start ||
+		if (sa->rxq_info[sw_index].rxq != NULL &&
+		    (!sa->rxq_info[sw_index].deferred_start ||
 		     sa->rxq_info[sw_index].deferred_started)) {
 			rc = sfc_rx_qstart(sa, sw_index);
 			if (rc != 0)
