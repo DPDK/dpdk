@@ -172,7 +172,8 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	if (sa->dp_tx->get_dev_info != NULL)
 		sa->dp_tx->get_dev_info(dev_info);
 
-	dev_info->dev_capa = RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP;
+	dev_info->dev_capa = RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP |
+			     RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP;
 }
 
 static const uint32_t *
@@ -1197,6 +1198,9 @@ sfc_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	if (sa->state != SFC_ADAPTER_STARTED)
 		goto fail_not_started;
 
+	if (sa->txq_info[tx_queue_id].txq == NULL)
+		goto fail_not_setup;
+
 	rc = sfc_tx_qstart(sa, tx_queue_id);
 	if (rc != 0)
 		goto fail_tx_qstart;
@@ -1208,6 +1212,7 @@ sfc_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 
 fail_tx_qstart:
 
+fail_not_setup:
 fail_not_started:
 	sfc_adapter_unlock(sa);
 	SFC_ASSERT(rc > 0);
