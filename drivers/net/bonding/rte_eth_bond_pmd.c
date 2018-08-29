@@ -3293,7 +3293,9 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 		for (i = 0; i < RTE_DIM(internals->reta_conf); i++) {
 			internals->reta_conf[i].mask = ~0LL;
 			for (j = 0; j < RTE_RETA_GROUP_SIZE; j++)
-				internals->reta_conf[i].reta[j] = j % dev->data->nb_rx_queues;
+				internals->reta_conf[i].reta[j] =
+						(i * RTE_RETA_GROUP_SIZE + j) %
+						dev->data->nb_rx_queues;
 		}
 	}
 
