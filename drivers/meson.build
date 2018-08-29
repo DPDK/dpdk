@@ -24,6 +24,7 @@ foreach class:driver_classes
 	                     # version file for linking
 
 	subdir(class)
+	class_drivers = []
 
 	foreach drv:drivers
 		drv_path = join_paths(class, drv)
@@ -51,6 +52,8 @@ foreach class:driver_classes
 		subdir(drv_path)
 
 		if build
+			class_drivers += name
+
 			dpdk_conf.set(config_flag_fmt.format(name.to_upper()),1)
 			lib_name = driver_name_fmt.format(name)
 
@@ -141,4 +144,6 @@ foreach class:driver_classes
 			set_variable('static_@0@'.format(lib_name), static_dep)
 		endif # build
 	endforeach
+
+	set_variable(class + '_drivers', class_drivers)
 endforeach
