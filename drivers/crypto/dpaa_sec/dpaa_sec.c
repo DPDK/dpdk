@@ -2031,7 +2031,8 @@ dpaa_sec_set_ipsec_session(__rte_unused struct rte_cryptodev *dev,
 			(IPVERSION << PDBNH_ESP_ENCAP_SHIFT) |
 			PDBOPTS_ESP_OIHI_PDB_INL |
 			PDBOPTS_ESP_IVSRC |
-			PDBHMO_ESP_ENCAP_DTTL;
+			PDBHMO_ESP_ENCAP_DTTL |
+			PDBHMO_ESP_SNR;
 		session->encap_pdb.spi = ipsec_xform->spi;
 		session->encap_pdb.ip_hdr_len = sizeof(struct ip);
 
