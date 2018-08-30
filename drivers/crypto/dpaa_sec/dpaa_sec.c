@@ -1762,6 +1762,7 @@ dpaa_sec_set_session_parameters(struct rte_cryptodev *dev,
 		DPAA_SEC_ERR("invalid session struct");
 		return -EINVAL;
 	}
+	memset(session, 0, sizeof(dpaa_sec_session));
 
 	/* Default IV length = 0 */
 	session->iv.length = 0;
@@ -1896,6 +1897,7 @@ dpaa_sec_set_ipsec_session(__rte_unused struct rte_cryptodev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
+	memset(session, 0, sizeof(dpaa_sec_session));
 	if (ipsec_xform->direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS) {
 		cipher_xform = &conf->crypto_xform->cipher;
 		auth_xform = &conf->crypto_xform->next->auth;

@@ -2099,6 +2099,7 @@ dpaa2_sec_set_session_parameters(struct rte_cryptodev *dev,
 		return -1;
 	}
 
+	memset(session, 0, sizeof(dpaa2_sec_session));
 	/* Default IV length = 0 */
 	session->iv.length = 0;
 
@@ -2156,6 +2157,7 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
+	memset(session, 0, sizeof(dpaa2_sec_session));
 	if (ipsec_xform->direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS) {
 		cipher_xform = &conf->crypto_xform->cipher;
 		auth_xform = &conf->crypto_xform->next->auth;
