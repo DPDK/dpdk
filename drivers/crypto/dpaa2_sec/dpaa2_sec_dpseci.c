@@ -62,11 +62,75 @@ static uint8_t cryptodev_driver_id;
 int dpaa2_logtype_sec;
 
 static inline int
+build_proto_compound_fd(dpaa2_sec_session *sess,
+	       struct rte_crypto_op *op,
+	       struct qbman_fd *fd, uint16_t bpid)
+{
+	struct rte_crypto_sym_op *sym_op = op->sym;
+	struct ctxt_priv *priv = sess->ctxt;
+	struct qbman_fle *fle, *ip_fle, *op_fle;
+	struct sec_flow_context *flc;
+	struct rte_mbuf *src_mbuf = sym_op->m_src;
+	struct rte_mbuf *dst_mbuf = sym_op->m_dst;
+	int retval;
+
+	/* Save the shared descriptor */
+	flc = &priv->flc_desc[0].flc;
+
+	/* we are using the first FLE entry to store Mbuf */
+	retval = rte_mempool_get(priv->fle_pool, (void **)(&fle));
+	if (retval) {
+		DPAA2_SEC_ERR("Memory alloc failed");
+		return -1;
+	}
+	memset(fle, 0, FLE_POOL_BUF_SIZE);
+	DPAA2_SET_FLE_ADDR(fle, (size_t)op);
+	DPAA2_FLE_SAVE_CTXT(fle, (ptrdiff_t)priv);
+
+	op_fle = fle + 1;
+	ip_fle = fle + 2;
+
+	if (likely(bpid < MAX_BPID)) {
+		DPAA2_SET_FD_BPID(fd, bpid);
+		DPAA2_SET_FLE_BPID(op_fle, bpid);
+		DPAA2_SET_FLE_BPID(ip_fle, bpid);
+	} else {
+		DPAA2_SET_FD_IVP(fd);
+		DPAA2_SET_FLE_IVP(op_fle);
+		DPAA2_SET_FLE_IVP(ip_fle);
+	}
+
+	/* Configure FD as a FRAME LIST */
+	DPAA2_SET_FD_ADDR(fd, DPAA2_VADDR_TO_IOVA(op_fle));
+	DPAA2_SET_FD_COMPOUND_FMT(fd);
+	DPAA2_SET_FD_FLC(fd, (ptrdiff_t)flc);
+
+	/* Configure Output FLE with dst mbuf data  */
+	DPAA2_SET_FLE_ADDR(op_fle, DPAA2_MBUF_VADDR_TO_IOVA(dst_mbuf));
+	DPAA2_SET_FLE_OFFSET(op_fle, dst_mbuf->data_off);
+	DPAA2_SET_FLE_LEN(op_fle, dst_mbuf->buf_len);
+
+	/* Configure Input FLE with src mbuf data */
+	DPAA2_SET_FLE_ADDR(ip_fle, DPAA2_MBUF_VADDR_TO_IOVA(src_mbuf));
+	DPAA2_SET_FLE_OFFSET(ip_fle, src_mbuf->data_off);
+	DPAA2_SET_FLE_LEN(ip_fle, src_mbuf->pkt_len);
+
+	DPAA2_SET_FD_LEN(fd, ip_fle->length);
+	DPAA2_SET_FLE_FIN(ip_fle);
+
+	return 0;
+
+}
+
+static inline int
 build_proto_fd(dpaa2_sec_session *sess,
 	       struct rte_crypto_op *op,
 	       struct qbman_fd *fd, uint16_t bpid)
 {
 	struct rte_crypto_sym_op *sym_op = op->sym;
+	if (sym_op->m_dst)
+		return build_proto_compound_fd(sess, op, fd, bpid);
+
 	struct ctxt_priv *priv = sess->ctxt;
 	struct sec_flow_context *flc;
 	struct rte_mbuf *mbuf = sym_op->m_src;
@@ -1273,6 +1337,16 @@ sec_fd_to_mbuf(const struct qbman_fd *fd, uint8_t driver_id)
 	} else
 		dst = src;
 
+	if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
+		dpaa2_sec_session *sess = (dpaa2_sec_session *)
+			get_sec_session_private_data(op->sym->sec_session);
+		if (sess->ctxt_type == DPAA2_SEC_IPSEC) {
+			uint16_t len = DPAA2_GET_FD_LEN(fd);
+			dst->pkt_len = len;
+			dst->data_len = len;
+		}
+	}
+
 	DPAA2_SEC_DP_DEBUG("mbuf %p BMAN buf addr %p,"
 		" fdaddr =%" PRIx64 " bpid =%d meta =%d off =%d, len =%d\n",
 		(void *)dst,
@@ -2154,6 +2228,7 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 	struct alginfo authdata, cipherdata;
 	int bufsize;
 	struct sec_flow_context *flc;
+	struct dpaa2_sec_dev_private *dev_priv = dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -2175,6 +2250,7 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 		return -ENOMEM;
 	}
 
+	priv->fle_pool = dev_priv->fle_pool;
 	flc = &priv->flc_desc[0].flc;
 
 	session->ctxt_type = DPAA2_SEC_IPSEC;
