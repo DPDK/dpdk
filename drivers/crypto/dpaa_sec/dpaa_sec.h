@@ -150,6 +150,7 @@ struct dpaa_sec_dev_private {
 	unsigned char inq_attach[RTE_DPAA_MAX_RX_QUEUE];
 	unsigned int max_nb_queue_pairs;
 	unsigned int max_nb_sessions;
+	rte_spinlock_t lock;
 };
 
 #define MAX_SG_ENTRIES		16

@@ -23,6 +23,7 @@
 #include <rte_mbuf.h>
 #include <rte_memcpy.h>
 #include <rte_string_fns.h>
+#include <rte_spinlock.h>
 
 #include <fsl_usd.h>
 #include <fsl_qman.h>
@@ -1810,7 +1811,9 @@ dpaa_sec_set_session_parameters(struct rte_cryptodev *dev,
 		return -EINVAL;
 	}
 	session->ctx_pool = internals->ctx_pool;
+	rte_spinlock_lock(&internals->lock);
 	session->inq = dpaa_sec_attach_rxq(internals);
+	rte_spinlock_unlock(&internals->lock);
 	if (session->inq == NULL) {
 		DPAA_SEC_ERR("unable to attach sec queue");
 		goto err1;
@@ -2037,7 +2040,9 @@ dpaa_sec_set_ipsec_session(__rte_unused struct rte_cryptodev *dev,
 	} else
 		goto out;
 	session->ctx_pool = internals->ctx_pool;
+	rte_spinlock_lock(&internals->lock);
 	session->inq = dpaa_sec_attach_rxq(internals);
+	rte_spinlock_unlock(&internals->lock);
 	if (session->inq == NULL) {
 		DPAA_SEC_ERR("unable to attach sec queue");
 		goto out;
@@ -2288,6 +2293,7 @@ dpaa_sec_dev_init(struct rte_cryptodev *cryptodev)
 	security_instance->sess_cnt = 0;
 	cryptodev->security_ctx = security_instance;
 
+	rte_spinlock_init(&internals->lock);
 	for (i = 0; i < internals->max_nb_queue_pairs; i++) {
 		/* init qman fq for queue pair */
 		qp = &internals->qps[i];
