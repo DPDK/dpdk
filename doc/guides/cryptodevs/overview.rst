@@ -33,7 +33,7 @@ Supported Feature Flags
      scatter-gathered styled buffers.
 
    - "OOP LB In LB Out" feature flag stands for
-     "Out-of-place Linear Buffers Input, Scatter-gather list Output",
+     "Out-of-place Linear Buffers Input, Linear Buffers Output",
      which means that Out-of-place operation is supported,
      with linear input and output buffers.
 
