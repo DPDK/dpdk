@@ -106,6 +106,10 @@ eth_dev_vmbus_allocate(struct rte_vmbus_device *dev, size_t private_data_size)
 	}
 
 	eth_dev->device = &dev->device;
+
+	/* interrupt is simulated */
+	dev->intr_handle.type = RTE_INTR_HANDLE_EXT;
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
 	eth_dev->intr_handle = &dev->intr_handle;
 
 	return eth_dev;
@@ -186,7 +190,7 @@ static int hn_parse_args(const struct rte_eth_dev *dev)
  *   means block this call until link is up.
  *   which is not worth supporting.
  */
-static int
+int
 hn_dev_link_update(struct rte_eth_dev *dev,
 		   __rte_unused int wait_to_complete)
 {
@@ -552,12 +556,6 @@ hn_dev_start(struct rte_eth_dev *dev)
 	struct hn_data *hv = dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
-
-	/* check if lsc interrupt feature is enabled */
-	if (dev->data->dev_conf.intr_conf.lsc) {
-		PMD_DRV_LOG(ERR, "link status not supported yet");
-		return -ENOTSUP;
-	}
 
 	return hn_rndis_set_rxfilter(hv,
 				     NDIS_PACKET_TYPE_BROADCAST |

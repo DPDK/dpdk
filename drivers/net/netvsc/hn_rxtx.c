@@ -601,7 +601,7 @@ error:
 }
 
 static void
-hn_rndis_receive(const struct rte_eth_dev *dev, struct hn_rx_queue *rxq,
+hn_rndis_receive(struct rte_eth_dev *dev, struct hn_rx_queue *rxq,
 		 struct hn_rx_bufinfo *rxb, void *buf, uint32_t len)
 {
 	const struct rndis_msghdr *hdr = buf;
@@ -613,7 +613,7 @@ hn_rndis_receive(const struct rte_eth_dev *dev, struct hn_rx_queue *rxq,
 		break;
 
 	case RNDIS_INDICATE_STATUS_MSG:
-		hn_rndis_link_status(rxq->hv, buf);
+		hn_rndis_link_status(dev, buf);
 		break;
 
 	case RNDIS_INITIALIZE_CMPLT:

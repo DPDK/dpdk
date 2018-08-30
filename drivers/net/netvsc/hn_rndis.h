@@ -6,7 +6,7 @@ struct hn_data;
 
 void hn_rndis_receive_response(struct hn_data *hv,
 			      const void *data, uint32_t len);
-void	hn_rndis_link_status(struct hn_data *hv, const void *data);
+void	hn_rndis_link_status(struct rte_eth_dev *dev, const void *msg);
 int	hn_rndis_attach(struct hn_data *hv);
 void	hn_rndis_detach(struct hn_data *hv);
 int	hn_rndis_get_eaddr(struct hn_data *hv, uint8_t *eaddr);

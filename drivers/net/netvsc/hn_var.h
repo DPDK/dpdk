@@ -142,6 +142,7 @@ uint16_t hn_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		      uint16_t nb_pkts);
 
 int	hn_tx_pool_init(struct rte_eth_dev *dev);
+int	hn_dev_link_update(struct rte_eth_dev *dev, int wait);
 int	hn_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			      uint16_t nb_desc, unsigned int socket_id,
 			      const struct rte_eth_txconf *tx_conf);

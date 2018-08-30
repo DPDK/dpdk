@@ -28,7 +28,8 @@ In this release, the hyper PMD driver provides the basic functionality of packet
 
 *   VLAN tags are always stripped and presented in mbuf tci field.
 
-*   The Hyper-V driver does not use or support Link State or Rx interrupt.
+*   The Hyper-V driver does not use or support interrupts. Link state change
+    callback is done via change events in the packet ring.
 
 *   The maximum number of queues is limited by the host (currently 64).
     When used with 4.16 kernel only a single queue is available.

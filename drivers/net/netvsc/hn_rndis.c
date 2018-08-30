@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 
+#include <rte_ethdev_driver.h>
 #include <rte_ethdev.h>
 #include <rte_string_fns.h>
 #include <rte_memzone.h>
@@ -281,7 +282,7 @@ static int hn_nvs_send_rndis_ctrl(struct vmbus_channel *chan,
 				  &nvs_rndis, sizeof(nvs_rndis), 0U, NULL);
 }
 
-void hn_rndis_link_status(struct hn_data *hv __rte_unused, const void *msg)
+void hn_rndis_link_status(struct rte_eth_dev *dev, const void *msg)
 {
 	const struct rndis_status_msg *indicate = msg;
 
@@ -290,15 +291,19 @@ void hn_rndis_link_status(struct hn_data *hv __rte_unused, const void *msg)
 	PMD_DRV_LOG(DEBUG, "link status %#x", indicate->status);
 
 	switch (indicate->status) {
-	case RNDIS_STATUS_LINK_SPEED_CHANGE:
 	case RNDIS_STATUS_NETWORK_CHANGE:
 	case RNDIS_STATUS_TASK_OFFLOAD_CURRENT_CONFIG:
 		/* ignore not in DPDK API */
 		break;
 
+	case RNDIS_STATUS_LINK_SPEED_CHANGE:
 	case RNDIS_STATUS_MEDIA_CONNECT:
 	case RNDIS_STATUS_MEDIA_DISCONNECT:
-		/* TODO handle as LSC interrupt  */
+		if (dev->data->dev_conf.intr_conf.lsc &&
+		    hn_dev_link_update(dev, 0) == 0)
+			_rte_eth_dev_callback_process(dev,
+						      RTE_ETH_EVENT_INTR_LSC,
+						      NULL);
 		break;
 	default:
 		PMD_DRV_LOG(NOTICE, "unknown RNDIS indication: %#x",
