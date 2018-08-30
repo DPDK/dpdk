@@ -15,6 +15,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_NETVSC_PMD) += hn_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_NETVSC_PMD) += hn_rxtx.c
 SRCS-$(CONFIG_RTE_LIBRTE_NETVSC_PMD) += hn_rndis.c
 SRCS-$(CONFIG_RTE_LIBRTE_NETVSC_PMD) += hn_nvs.c
+SRCS-$(CONFIG_RTE_LIBRTE_NETVSC_PMD) += hn_vf.c
 
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs

@@ -913,6 +913,37 @@ int hn_rndis_get_offload(struct hn_data *hv,
 	return 0;
 }
 
+uint32_t
+hn_rndis_get_ptypes(struct hn_data *hv)
+{
+	struct ndis_offload hwcaps;
+	uint32_t ptypes;
+	int error;
+
+	memset(&hwcaps, 0, sizeof(hwcaps));
+
+	error = hn_rndis_query_hwcaps(hv, &hwcaps);
+	if (error) {
+		PMD_DRV_LOG(ERR, "hwcaps query failed: %d", error);
+		return RTE_PTYPE_L2_ETHER;
+	}
+
+	ptypes = RTE_PTYPE_L2_ETHER;
+
+	if (hwcaps.ndis_csum.ndis_ip4_rxcsum & NDIS_RXCSUM_CAP_IP4)
+		ptypes |= RTE_PTYPE_L3_IPV4;
+
+	if ((hwcaps.ndis_csum.ndis_ip4_rxcsum & NDIS_RXCSUM_CAP_TCP4) ||
+	    (hwcaps.ndis_csum.ndis_ip6_rxcsum & NDIS_RXCSUM_CAP_TCP6))
+		ptypes |= RTE_PTYPE_L4_TCP;
+
+	if ((hwcaps.ndis_csum.ndis_ip4_rxcsum & NDIS_RXCSUM_CAP_UDP4) ||
+	    (hwcaps.ndis_csum.ndis_ip6_rxcsum & NDIS_RXCSUM_CAP_UDP6))
+		ptypes |= RTE_PTYPE_L4_UDP;
+
+	return ptypes;
+}
+
 int
 hn_rndis_set_rxfilter(struct hn_data *hv, uint32_t filter)
 {

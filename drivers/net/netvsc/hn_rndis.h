@@ -24,6 +24,7 @@ int	hn_rndis_query_rsscaps(struct hn_data *hv,
 			       unsigned int *rxr_cnt0);
 int	hn_rndis_conf_rss(struct hn_data *hv,
 			  const struct rte_eth_rss_conf *rss_conf);
+uint32_t hn_rndis_get_ptypes(struct hn_data *hv);
 
 #ifdef RTE_LIBRTE_NETVSC_DEBUG_DUMP
 void hn_rndis_dump(const void *buf);

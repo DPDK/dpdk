@@ -105,6 +105,12 @@ struct hn_nvs_ndis_init {
 	uint8_t		rsvd[28];
 } __rte_packed;
 
+struct hn_nvs_vf_association {
+	uint32_t	type;	/* NVS_TYPE_VFASSOC_NOTE */
+	uint32_t	allocated;
+	uint32_t	serial;
+} __rte_packed;
+
 #define NVS_DATAPATH_SYNTHETIC	0
 #define NVS_DATAPATH_VF		1
 
@@ -207,6 +213,9 @@ void	hn_nvs_detach(struct hn_data *hv);
 void	hn_nvs_ack_rxbuf(struct vmbus_channel *chan, uint64_t tid);
 int	hn_nvs_alloc_subchans(struct hn_data *hv, uint32_t *nsubch);
 void	hn_nvs_set_datapath(struct hn_data *hv, uint32_t path);
+void	hn_nvs_handle_vfassoc(struct rte_eth_dev *dev,
+			      const struct vmbus_chanpkt_hdr *hdr,
+			      const void *data);
 
 static inline int
 hn_nvs_send(struct vmbus_channel *chan, uint16_t flags,

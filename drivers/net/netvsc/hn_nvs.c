@@ -532,10 +532,19 @@ void
 hn_nvs_set_datapath(struct hn_data *hv, uint32_t path)
 {
 	struct hn_nvs_datapath dp;
+	int error;
+
+	PMD_DRV_LOG(DEBUG, "set datapath %s",
+		    path ? "VF" : "Synthetic");
 
 	memset(&dp, 0, sizeof(dp));
 	dp.type = NVS_TYPE_SET_DATAPATH;
 	dp.active_path = path;
 
-	hn_nvs_req_send(hv, &dp, sizeof(dp));
+	error = hn_nvs_req_send(hv, &dp, sizeof(dp));
+	if (error) {
+		PMD_DRV_LOG(ERR,
+			    "send set datapath failed: %d",
+			    error);
+	}
 }

@@ -192,7 +192,7 @@ static int hn_parse_args(const struct rte_eth_dev *dev)
  */
 int
 hn_dev_link_update(struct rte_eth_dev *dev,
-		   __rte_unused int wait_to_complete)
+		   int wait_to_complete)
 {
 	struct hn_data *hv = dev->data->dev_private;
 	struct rte_eth_link link, old;
@@ -205,6 +205,8 @@ hn_dev_link_update(struct rte_eth_dev *dev,
 		return error;
 
 	hn_rndis_get_linkspeed(hv);
+
+	hn_vf_link_update(dev, wait_to_complete);
 
 	link = (struct rte_eth_link) {
 		.link_duplex = ETH_LINK_FULL_DUPLEX,
@@ -244,6 +246,7 @@ static void hn_dev_info_get(struct rte_eth_dev *dev,
 	dev_info->max_tx_queues = hv->max_queues;
 
 	hn_rndis_get_offload(hv, dev_info);
+	hn_vf_info_get(hv, dev_info);
 }
 
 static void
@@ -394,13 +397,15 @@ static int hn_dev_configure(struct rte_eth_dev *dev)
 		}
 	}
 
-	return 0;
+	return hn_vf_configure(dev, dev_conf);
 }
 
 static int hn_dev_stats_get(struct rte_eth_dev *dev,
 			    struct rte_eth_stats *stats)
 {
 	unsigned int i;
+
+	hn_vf_stats_get(dev, stats);
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		const struct hn_tx_queue *txq = dev->data->tx_queues[i];
@@ -464,18 +469,38 @@ hn_dev_stats_reset(struct rte_eth_dev *dev)
 	}
 }
 
+static void
+hn_dev_xstats_reset(struct rte_eth_dev *dev)
+{
+	hn_dev_stats_reset(dev);
+	hn_vf_xstats_reset(dev);
+}
+
+static int
+hn_dev_xstats_count(struct rte_eth_dev *dev)
+{
+	int ret, count;
+
+	count = dev->data->nb_tx_queues * RTE_DIM(hn_stat_strings);
+	count += dev->data->nb_rx_queues * RTE_DIM(hn_stat_strings);
+
+	ret = hn_vf_xstats_get_names(dev, NULL, 0);
+	if (ret < 0)
+		return ret;
+
+	return count + ret;
+}
+
 static int
 hn_dev_xstats_get_names(struct rte_eth_dev *dev,
 			struct rte_eth_xstat_name *xstats_names,
-			__rte_unused unsigned int limit)
+			unsigned int limit)
 {
 	unsigned int i, t, count = 0;
-
-	PMD_INIT_FUNC_TRACE();
+	int ret;
 
 	if (!xstats_names)
-		return dev->data->nb_tx_queues * RTE_DIM(hn_stat_strings)
-			+ dev->data->nb_rx_queues * RTE_DIM(hn_stat_strings);
+		return hn_dev_xstats_count(dev);
 
 	/* Note: limit checked in rte_eth_xstats_names() */
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
@@ -483,6 +508,9 @@ hn_dev_xstats_get_names(struct rte_eth_dev *dev,
 
 		if (!txq)
 			continue;
+
+		if (count >= limit)
+			break;
 
 		for (t = 0; t < RTE_DIM(hn_stat_strings); t++)
 			snprintf(xstats_names[count++].name,
@@ -496,6 +524,9 @@ hn_dev_xstats_get_names(struct rte_eth_dev *dev,
 		if (!rxq)
 			continue;
 
+		if (count >= limit)
+			break;
+
 		for (t = 0; t < RTE_DIM(hn_stat_strings); t++)
 			snprintf(xstats_names[count++].name,
 				 RTE_ETH_XSTATS_NAME_SIZE,
@@ -503,7 +534,12 @@ hn_dev_xstats_get_names(struct rte_eth_dev *dev,
 				 hn_stat_strings[t].name);
 	}
 
-	return count;
+	ret = hn_vf_xstats_get_names(dev, xstats_names + count,
+				     limit - count);
+	if (ret < 0)
+		return ret;
+
+	return count + ret;
 }
 
 static int
@@ -512,11 +548,9 @@ hn_dev_xstats_get(struct rte_eth_dev *dev,
 		  unsigned int n)
 {
 	unsigned int i, t, count = 0;
-
-	const unsigned int nstats =
-		dev->data->nb_tx_queues * RTE_DIM(hn_stat_strings)
-		+ dev->data->nb_rx_queues * RTE_DIM(hn_stat_strings);
+	const unsigned int nstats = hn_dev_xstats_count(dev);
 	const char *stats;
+	int ret;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -547,20 +581,33 @@ hn_dev_xstats_get(struct rte_eth_dev *dev,
 				(stats + hn_stat_strings[t].offset);
 	}
 
-	return count;
+	ret = hn_vf_xstats_get(dev, xstats + count, n - count);
+	if (ret < 0)
+		return ret;
+
+	return count + ret;
 }
 
 static int
 hn_dev_start(struct rte_eth_dev *dev)
 {
 	struct hn_data *hv = dev->data->dev_private;
+	int error;
 
 	PMD_INIT_FUNC_TRACE();
 
-	return hn_rndis_set_rxfilter(hv,
-				     NDIS_PACKET_TYPE_BROADCAST |
-				     NDIS_PACKET_TYPE_ALL_MULTICAST |
-				     NDIS_PACKET_TYPE_DIRECTED);
+	error = hn_rndis_set_rxfilter(hv,
+				      NDIS_PACKET_TYPE_BROADCAST |
+				      NDIS_PACKET_TYPE_ALL_MULTICAST |
+				      NDIS_PACKET_TYPE_DIRECTED);
+	if (error)
+		return error;
+
+	error = hn_vf_start(dev);
+	if (error)
+		hn_rndis_set_rxfilter(hv, 0);
+
+	return error;
 }
 
 static void
@@ -571,12 +618,15 @@ hn_dev_stop(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	hn_rndis_set_rxfilter(hv, 0);
+	hn_vf_stop(dev);
 }
 
 static void
 hn_dev_close(struct rte_eth_dev *dev __rte_unused)
 {
 	PMD_INIT_LOG(DEBUG, "close");
+
+	hn_vf_close(dev);
 }
 
 static const struct eth_dev_ops hn_eth_dev_ops = {
@@ -585,8 +635,7 @@ static const struct eth_dev_ops hn_eth_dev_ops = {
 	.dev_stop		= hn_dev_stop,
 	.dev_close		= hn_dev_close,
 	.dev_infos_get		= hn_dev_info_get,
-	.txq_info_get		= hn_dev_tx_queue_info,
-	.rxq_info_get		= hn_dev_rx_queue_info,
+	.dev_supported_ptypes_get = hn_vf_supported_ptypes,
 	.promiscuous_enable     = hn_dev_promiscuous_enable,
 	.promiscuous_disable    = hn_dev_promiscuous_disable,
 	.allmulticast_enable    = hn_dev_allmulticast_enable,
@@ -598,10 +647,10 @@ static const struct eth_dev_ops hn_eth_dev_ops = {
 	.rx_queue_release	= hn_dev_rx_queue_release,
 	.link_update		= hn_dev_link_update,
 	.stats_get		= hn_dev_stats_get,
+	.stats_reset            = hn_dev_stats_reset,
 	.xstats_get		= hn_dev_xstats_get,
 	.xstats_get_names	= hn_dev_xstats_get_names,
-	.stats_reset            = hn_dev_stats_reset,
-	.xstats_reset		= hn_dev_stats_reset,
+	.xstats_reset		= hn_dev_xstats_reset,
 };
 
 /*
@@ -679,6 +728,14 @@ eth_hn_dev_init(struct rte_eth_dev *eth_dev)
 	if (err)
 		return err;
 
+	strlcpy(hv->owner.name, eth_dev->device->name,
+		RTE_ETH_MAX_OWNER_NAME_LEN);
+	err = rte_eth_dev_owner_new(&hv->owner.id);
+	if (err) {
+		PMD_INIT_LOG(ERR, "Can not get owner id");
+		return err;
+	}
+
 	/* Initialize primary channel input for control operations */
 	err = rte_vmbus_chan_open(vmbus, &hv->channels[0]);
 	if (err)
@@ -714,6 +771,15 @@ eth_hn_dev_init(struct rte_eth_dev *eth_dev)
 
 	hv->max_queues = RTE_MIN(rxr_cnt, (unsigned int)max_chan);
 
+	/* If VF was reported but not added, do it now */
+	if (hv->vf_present && !hv->vf_dev) {
+		PMD_INIT_LOG(DEBUG, "Adding VF device");
+
+		err = hn_vf_add(eth_dev, hv);
+		if (err)
+			goto failed;
+	}
+
 	return 0;
 
 failed:
@@ -743,6 +809,7 @@ eth_hn_dev_uninit(struct rte_eth_dev *eth_dev)
 	hn_detach(hv);
 	rte_vmbus_chan_close(hv->primary->chan);
 	rte_free(hv->primary);
+	rte_eth_dev_owner_delete(hv->owner.id);
 
 	eth_dev->data->mac_addrs = NULL;
 

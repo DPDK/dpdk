@@ -34,14 +34,10 @@ In this release, the hyper PMD driver provides the basic functionality of packet
 *   The maximum number of queues is limited by the host (currently 64).
     When used with 4.16 kernel only a single queue is available.
 
-.. note::
-   This driver is intended for use with **Hyper-V only** and is
-   not recommended for use on Azure because accelerated Networking
-   (SR-IOV) is not supported.
-
-   On Azure, use the :doc:`vdev_netvsc` which
-   automatically configures the necessary TAP and failsave drivers.
-
+*   This driver supports SR-IOV network acceleration.
+    If SR-IOV is enabled then the driver will transparently manage the interface,
+    and send and receive packets using the VF path.
+    The VDEV_NETVSC and FAILSAFE drivers are *not* used when using netvsc PMD.
 
 Installation
 ------------

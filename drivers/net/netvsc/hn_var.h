@@ -94,8 +94,11 @@ struct hn_rx_bufinfo {
 struct hn_data {
 	struct rte_vmbus_device *vmbus;
 	struct hn_rx_queue *primary;
+	struct rte_eth_dev *vf_dev;		/* Subordinate device */
+	rte_spinlock_t  vf_lock;
 	uint16_t	port_id;
 	bool		closed;
+	bool		vf_present;
 	uint32_t	link_status;
 	uint32_t	link_speed;
 
@@ -124,6 +127,10 @@ struct hn_data {
 	uint8_t		rndis_resp[256];
 
 	struct ether_addr mac_addr;
+
+	struct rte_eth_dev_owner owner;
+	struct rte_intr_handle vf_intr;
+
 	struct vmbus_channel *channels[HN_MAX_CHANNELS];
 };
 
@@ -160,5 +167,37 @@ int	hn_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			      const struct rte_eth_rxconf *rx_conf,
 			      struct rte_mempool *mp);
 void	hn_dev_rx_queue_release(void *arg);
-void	hn_dev_rx_queue_info(struct rte_eth_dev *dev, uint16_t queue_idx,
-			     struct rte_eth_rxq_info *qinfo);
+
+void	hn_vf_info_get(struct hn_data *hv,
+		       struct rte_eth_dev_info *info);
+int	hn_vf_add(struct rte_eth_dev *dev, struct hn_data *hv);
+int	hn_vf_configure(struct rte_eth_dev *dev,
+			const struct rte_eth_conf *dev_conf);
+const uint32_t *hn_vf_supported_ptypes(struct rte_eth_dev *dev);
+int	hn_vf_start(struct rte_eth_dev *dev);
+void	hn_vf_reset(struct rte_eth_dev *dev);
+void	hn_vf_stop(struct rte_eth_dev *dev);
+void	hn_vf_close(struct rte_eth_dev *dev);
+int	hn_vf_link_update(struct rte_eth_dev *dev,
+			  int wait_to_complete);
+int	hn_vf_tx_queue_setup(struct rte_eth_dev *dev,
+			     uint16_t queue_idx, uint16_t nb_desc,
+			     unsigned int socket_id,
+			     const struct rte_eth_txconf *tx_conf);
+void	hn_vf_tx_queue_release(struct hn_data *hv, uint16_t queue_id);
+int	hn_vf_rx_queue_setup(struct rte_eth_dev *dev,
+			     uint16_t queue_idx, uint16_t nb_desc,
+			     unsigned int socket_id,
+			     const struct rte_eth_rxconf *rx_conf,
+			     struct rte_mempool *mp);
+void	hn_vf_rx_queue_release(struct hn_data *hv, uint16_t queue_id);
+
+int	hn_vf_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
+void	hn_vf_stats_reset(struct rte_eth_dev *dev);
+int	hn_vf_xstats_get_names(struct rte_eth_dev *dev,
+			       struct rte_eth_xstat_name *xstats_names,
+			       unsigned int size);
+int	hn_vf_xstats_get(struct rte_eth_dev *dev,
+			 struct rte_eth_xstat *xstats,
+			 unsigned int n);
+void	hn_vf_xstats_reset(struct rte_eth_dev *dev);
