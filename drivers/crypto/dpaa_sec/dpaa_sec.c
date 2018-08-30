@@ -1448,14 +1448,18 @@ dpaa_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 				nb_ops = loop;
 				goto send_pkts;
 			}
-			if (unlikely(!ses->qp || ses->qp != qp)) {
-				DPAA_SEC_DP_ERR("sess->qp - %p qp %p",
-					     ses->qp, qp);
+			if (unlikely(!ses->qp)) {
 				if (dpaa_sec_attach_sess_q(qp, ses)) {
 					frames_to_send = loop;
 					nb_ops = loop;
 					goto send_pkts;
 				}
+			} else if (unlikely(ses->qp != qp)) {
+				DPAA_SEC_DP_ERR("Old:sess->qp = %p"
+					" New qp = %p\n", ses->qp, qp);
+				frames_to_send = loop;
+				nb_ops = loop;
+				goto send_pkts;
 			}
 
 			auth_only_len = op->sym->auth.data.length -
