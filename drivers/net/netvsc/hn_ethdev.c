@@ -14,7 +14,9 @@
 #include <rte_memcpy.h>
 #include <rte_string_fns.h>
 #include <rte_memzone.h>
+#include <rte_devargs.h>
 #include <rte_malloc.h>
+#include <rte_kvargs.h>
 #include <rte_atomic.h>
 #include <rte_branch_prediction.h>
 #include <rte_ether.h>
@@ -128,6 +130,55 @@ eth_dev_vmbus_release(struct rte_eth_dev *eth_dev)
 
 	eth_dev->device = NULL;
 	eth_dev->intr_handle = NULL;
+}
+
+/* handle "latency=X" from devargs */
+static int hn_set_latency(const char *key, const char *value, void *opaque)
+{
+	struct hn_data *hv = opaque;
+	char *endp = NULL;
+	unsigned long lat;
+
+	errno = 0;
+	lat = strtoul(value, &endp, 0);
+
+	if (*value == '\0' || *endp != '\0') {
+		PMD_DRV_LOG(ERR, "invalid parameter %s=%s", key, value);
+		return -EINVAL;
+	}
+
+	PMD_DRV_LOG(DEBUG, "set latency %lu usec", lat);
+
+	hv->latency = lat * 1000;	/* usec to nsec */
+	return 0;
+}
+
+/* Parse device arguments */
+static int hn_parse_args(const struct rte_eth_dev *dev)
+{
+	struct hn_data *hv = dev->data->dev_private;
+	struct rte_devargs *devargs = dev->device->devargs;
+	static const char * const valid_keys[] = {
+		"latency",
+		NULL
+	};
+	struct rte_kvargs *kvlist;
+
+	if (!devargs)
+		return 0;
+
+	PMD_INIT_LOG(DEBUG, "device args %s %s",
+		     devargs->name, devargs->args);
+
+	kvlist = rte_kvargs_parse(devargs->args, valid_keys);
+	if (!kvlist) {
+		PMD_DRV_LOG(NOTICE, "invalid parameters");
+		return -EINVAL;
+	}
+
+	rte_kvargs_process(kvlist, "latency", hn_set_latency, hv);
+	rte_kvargs_free(kvlist);
+	return 0;
 }
 
 /* Update link status.
@@ -263,8 +314,7 @@ static int hn_subchan_configure(struct hn_data *hv,
 			return err;
 		}
 
-		rte_vmbus_set_latency(hv->vmbus, new_sc,
-				      HN_CHAN_LATENCY_NS);
+		rte_vmbus_set_latency(hv->vmbus, new_sc, hv->latency);
 
 		retry = 0;
 		chn_index = rte_vmbus_sub_channel_index(new_sc);
@@ -626,14 +676,18 @@ eth_hn_dev_init(struct rte_eth_dev *eth_dev)
 	hv->rxbuf_res = &vmbus->resource[HV_RECV_BUF_MAP];
 	hv->chim_res  = &vmbus->resource[HV_SEND_BUF_MAP];
 	hv->port_id = eth_dev->data->port_id;
+	hv->latency = HN_CHAN_LATENCY_NS;
+
+	err = hn_parse_args(eth_dev);
+	if (err)
+		return err;
 
 	/* Initialize primary channel input for control operations */
 	err = rte_vmbus_chan_open(vmbus, &hv->channels[0]);
 	if (err)
 		return err;
 
-	rte_vmbus_set_latency(hv->vmbus, hv->channels[0],
-			      HN_CHAN_LATENCY_NS);
+	rte_vmbus_set_latency(hv->vmbus, hv->channels[0], hv->latency);
 
 	hv->primary = hn_rx_queue_alloc(hv, 0,
 					eth_dev->device->numa_node);

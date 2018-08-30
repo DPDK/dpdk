@@ -113,6 +113,7 @@ struct hn_data {
 	uint32_t	chim_szmax;		/* Max size per buffer */
 	uint32_t	chim_cnt;		/* Max packets per buffer */
 
+	uint32_t	latency;
 	uint32_t	nvs_ver;
 	uint32_t	ndis_ver;
 	uint32_t	rndis_agg_size;

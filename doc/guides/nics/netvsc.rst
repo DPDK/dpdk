@@ -103,3 +103,19 @@ The following prerequisites apply:
 *   Linux kernel support for UIO on vmbus is done with the uio_hv_generic driver.
     Full support of multiple queues requires the 4.17 kernel. It is possible
     to use the netvsc PMD with 4.16 kernel but it is limited to a single queue.
+
+
+Netvsc PMD arguments
+--------------------
+
+The user can specify below argument in devargs.
+
+#.  ``latency``:
+
+    A netvsc device uses a mailbox page to indicate to the host that there
+    is something in the transmit queue. The host scans this page at a
+    periodic interval. This parameter allows adjusting the value that
+    is used by the host. Smaller values improve transmit latency, and larger
+    values save CPU cycles. This parameter is in microseconds.
+    If the value is too large or too small it will be
+    ignored by the host. (Default: 50)
