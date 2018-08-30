@@ -276,6 +276,8 @@ vmbus_scan_one(const char *name)
 		dev->device.numa_node = SOCKET_ID_ANY;
 	}
 
+	dev->device.devargs = vmbus_devargs_lookup(dev);
+
 	/* device is valid, add in list (sorted) */
 	VMBUS_LOG(DEBUG, "Adding vmbus device %s", name);
 

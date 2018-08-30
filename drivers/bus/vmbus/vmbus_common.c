@@ -85,7 +85,6 @@ vmbus_match(const struct rte_vmbus_driver *dr,
 
 	return false;
 }
-
 /*
  * If device ID match, call the devinit() function of the driver.
  */
@@ -202,6 +201,27 @@ vmbus_parse(const char *name, void *addr)
 		memcpy(addr, &guid, sizeof(guid));
 
 	return ret;
+}
+
+/*
+ * scan for matching device args on command line
+ * example:
+ *	-w 'vmbus:635a7ae3-091e-4410-ad59-667c4f8c04c3,latency=20'
+ */
+struct rte_devargs *
+vmbus_devargs_lookup(struct rte_vmbus_device *dev)
+{
+	struct rte_devargs *devargs;
+	rte_uuid_t addr;
+
+	RTE_EAL_DEVARGS_FOREACH("vmbus", devargs) {
+		vmbus_parse(devargs->name, &addr);
+
+		if (rte_uuid_compare(dev->device_id, addr) == 0)
+			return devargs;
+	}
+	return NULL;
+
 }
 
 /* register vmbus driver */
