@@ -56,7 +56,7 @@ static const struct hn_xstats_name_off hn_stat_strings[] = {
 	{ "good_packets",           offsetof(struct hn_stats, packets) },
 	{ "good_bytes",             offsetof(struct hn_stats, bytes) },
 	{ "errors",                 offsetof(struct hn_stats, errors) },
-	{ "allocation_failed",      offsetof(struct hn_stats, nomemory) },
+	{ "ring full",              offsetof(struct hn_stats, ring_full) },
 	{ "multicast_packets",      offsetof(struct hn_stats, multicast) },
 	{ "broadcast_packets",      offsetof(struct hn_stats, broadcast) },
 	{ "undersize_packets",      offsetof(struct hn_stats, size_bins[0]) },
@@ -406,7 +406,7 @@ static int hn_dev_stats_get(struct rte_eth_dev *dev,
 
 		stats->opackets += txq->stats.packets;
 		stats->obytes += txq->stats.bytes;
-		stats->oerrors += txq->stats.errors + txq->stats.nomemory;
+		stats->oerrors += txq->stats.errors;
 
 		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
 			stats->q_opackets[i] = txq->stats.packets;
@@ -423,7 +423,7 @@ static int hn_dev_stats_get(struct rte_eth_dev *dev,
 		stats->ipackets += rxq->stats.packets;
 		stats->ibytes += rxq->stats.bytes;
 		stats->ierrors += rxq->stats.errors;
-		stats->imissed += rxq->ring_full;
+		stats->imissed += rxq->stats.ring_full;
 
 		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
 			stats->q_ipackets[i] = rxq->stats.packets;
@@ -457,7 +457,6 @@ hn_dev_stats_reset(struct rte_eth_dev *dev)
 			continue;
 
 		memset(&rxq->stats, 0, sizeof(struct hn_stats));
-		rxq->ring_full = 0;
 	}
 }
 

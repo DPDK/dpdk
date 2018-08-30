@@ -534,7 +534,7 @@ static void hn_rxpkt(struct hn_rx_queue *rxq, struct hn_rx_bufinfo *rxb,
 	hn_update_packet_stats(&rxq->stats, m);
 
 	if (unlikely(rte_ring_sp_enqueue(rxq->rx_ring, m) != 0)) {
-		++rxq->ring_full;
+		++rxq->stats.ring_full;
 		rte_pktmbuf_free(m);
 	}
 }
@@ -1007,7 +1007,7 @@ static struct hn_txdesc *hn_new_txd(struct hn_data *hv,
 	struct hn_txdesc *txd;
 
 	if (rte_mempool_get(hv->tx_pool, (void **)&txd)) {
-		++txq->stats.nomemory;
+		++txq->stats.ring_full;
 		PMD_TX_LOG(DEBUG, "tx pool exhausted!");
 		return NULL;
 	}
