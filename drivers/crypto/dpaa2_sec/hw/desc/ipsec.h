@@ -522,44 +522,133 @@ enum ipsec_icv_size {
 
 /*
  * IPSec ESP Datapath Protocol Override Register (DPOVRD)
+ * IPSEC_N_* defines are for IPsec new mode.
  */
 
-#define IPSEC_DECO_DPOVRD_USE		0x80
+/**
+ * IPSEC_DPOVRD_USE - DPOVRD will override values specified in the PDB
+ */
+#define IPSEC_DPOVRD_USE	BIT(31)
 
-struct ipsec_deco_dpovrd {
-	uint8_t ovrd_ecn;
-	uint8_t ip_hdr_len;
-	uint8_t nh_offset;
-	union {
-		uint8_t next_header;	/* next header if encap */
-		uint8_t rsvd;		/* reserved if decap */
-	};
-};
+/**
+ * IPSEC_DPOVRD_ECN_SHIFT - Explicit Congestion Notification
+ *
+ * If set, MSB of the 4 bits indicates that the 2 LSBs will replace the ECN bits
+ * in the IP header.
+ */
+#define IPSEC_DPOVRD_ECN_SHIFT		24
 
-struct ipsec_new_encap_deco_dpovrd {
-#define IPSEC_NEW_ENCAP_DECO_DPOVRD_USE	0x8000
-	uint16_t ovrd_ip_hdr_len;	/* OVRD + outer IP header material
-					 * length
-					 */
-#define IPSEC_NEW_ENCAP_OIMIF		0x80
-	uint8_t oimif_aoipho;		/* OIMIF + actual outer IP header
-					 * offset
-					 */
-	uint8_t rsvd;
-};
+/**
+ * IPSEC_DPOVRD_ECN_MASK - See IPSEC_DPOVRD_ECN_SHIFT
+ */
+#define IPSEC_DPOVRD_ECN_MASK		(0xf << IPSEC_ENCAP_DPOVRD_ECN_SHIFT)
 
-struct ipsec_new_decap_deco_dpovrd {
-	uint8_t ovrd;
-	uint8_t aoipho_hi;		/* upper nibble of actual outer IP
-					 * header
-					 */
-	uint16_t aoipho_lo_ip_hdr_len;	/* lower nibble of actual outer IP
-					 * header + outer IP header material
-					 */
-};
+/**
+ * IPSEC_DPOVRD_IP_HDR_LEN_SHIFT - The length (in bytes) of the portion of the
+ *                                 IP header that is not encrypted
+ */
+#define IPSEC_DPOVRD_IP_HDR_LEN_SHIFT	16
 
-static inline void
-__gen_auth_key(struct program *program, struct alginfo *authdata)
+/**
+ * IPSEC_DPOVRD_IP_HDR_LEN_MASK - See IPSEC_DPOVRD_IP_HDR_LEN_SHIFT
+ */
+#define IPSEC_DPOVRD_IP_HDR_LEN_MASK	(0xff << IPSEC_DPOVRD_IP_HDR_LEN_SHIFT)
+
+/**
+ * IPSEC_DPOVRD_NH_OFFSET_SHIFT - The location of the next header field within
+ *                                the IP header of the transport mode packet
+ *
+ * Encap:
+ *	ESP_Trailer_NH <-- IP_Hdr[DPOVRD[NH_OFFSET]]
+ *	IP_Hdr[DPOVRD[NH_OFFSET]] <-- DPOVRD[NH]
+ *Decap:
+ *	IP_Hdr[DPOVRD[NH_OFFSET]] <-- ESP_Trailer_NH
+ */
+#define IPSEC_DPOVRD_NH_OFFSET_SHIFT	8
+
+/**
+ * IPSEC_DPOVRD_NH_OFFSET_MASK - See IPSEC_DPOVRD_NH_OFFSET_SHIFT
+ */
+#define IPSEC_DPOVRD_NH_OFFSET_MASK	(0xff << IPSEC_DPOVRD_NH_OFFSET_SHIFT)
+
+/**
+ * IPSEC_DPOVRD_NH_MASK - See IPSEC_DPOVRD_NH_OFFSET_SHIFT
+ *                        Valid only for encapsulation.
+ */
+#define IPSEC_DPOVRD_NH_MASK		0xff
+
+/**
+ * IPSEC_N_ENCAP_DPOVRD_OIM_LEN_SHIFT - Outer IP header Material length (encap)
+ *                                      Valid only if L2_COPY is not set.
+ */
+#define IPSEC_N_ENCAP_DPOVRD_OIM_LEN_SHIFT	16
+
+/**
+ * IPSEC_N_ENCAP_DPOVRD_OIM_LEN_MASK - See IPSEC_N_ENCAP_DPOVRD_OIM_LEN_SHIFT
+ */
+#define IPSEC_N_ENCAP_DPOVRD_OIM_LEN_MASK \
+	(0xfff << IPSEC_N_ENCAP_DPOVRD_OIM_LEN_SHIFT)
+
+/**
+ * IPSEC_N_ENCAP_DPOVRD_L2_LEN_SHIFT - L2 header length
+ *                                     Valid only if L2_COPY is set.
+ */
+#define IPSEC_N_ENCAP_DPOVRD_L2_LEN_SHIFT	16
+
+/**
+ * IPSEC_N_ENCAP_DPOVRD_L2_LEN_MASK - See IPSEC_N_ENCAP_DPOVRD_L2_LEN_SHIFT
+ */
+#define IPSEC_N_ENCAP_DPOVRD_L2_LEN_MASK \
+	(0xff << IPSEC_N_ENCAP_DPOVRD_L2_LEN_SHIFT)
+
+/**
+ * IPSEC_N_ENCAP_DPOVRD_OIMIF -  Outer IP header Material in Input Frame
+ */
+#define IPSEC_N_ENCAP_DPOVRD_OIMIF		BIT(15)
+
+/**
+ * IPSEC_N_ENCAP_DPOVRD_L2_COPY - L2 header present in input frame
+ *
+ * Note: For Era <= 8, this bit is reserved (not used) by HW.
+ */
+#define IPSEC_N_ENCAP_DPOVRD_L2_COPY		BIT(14)
+
+/**
+ * IPSEC_N_ENCAP_DPOVRD_AOIPHO_SHIFT - Actual Outer IP Header Offset (encap)
+ */
+#define IPSEC_N_ENCAP_DPOVRD_AOIPHO_SHIFT	8
+
+/**
+ * IPSEC_N_ENCAP_DPOVRD_AOIPHO_MASK - See IPSEC_N_ENCAP_DPOVRD_AOIPHO_SHIFT
+ */
+#define IPSEC_N_ENCAP_DPOVRD_AOIPHO_MASK \
+	(0x3c << IPSEC_N_ENCAP_DPOVRD_AOIPHO_SHIFT)
+
+/**
+ * IPSEC_N_ENCAP_DPOVRD_NH_MASK -  Next Header
+ *
+ * Used in the Next Header field of the encapsulated payload.
+ */
+#define IPSEC_N_ENCAP_DPOVRD_NH_MASK		0xff
+
+/**
+ * IPSEC_N_DECAP_DPOVRD_AOIPHO_SHIFT - Actual Outer IP Header Offset (decap)
+ */
+#define IPSEC_N_DECAP_DPOVRD_AOIPHO_SHIFT	12
+
+/**
+ * IPSEC_N_DECAP_DPOVRD_AOIPHO_MASK - See IPSEC_N_DECAP_DPOVRD_AOIPHO_SHIFT
+ */
+#define IPSEC_N_DECAP_DPOVRD_AOIPHO_MASK \
+	(0xff << IPSEC_N_DECAP_DPOVRD_AOIPHO_SHIFT)
+
+/**
+ * IPSEC_N_DECAP_DPOVRD_OIM_LEN_MASK - Outer IP header Material length (decap)
+ */
+#define IPSEC_N_DECAP_DPOVRD_OIM_LEN_MASK	0xfff
+
+static inline void __gen_auth_key(struct program *program,
+				  struct alginfo *authdata)
 {
 	uint32_t dkp_protid;
 
@@ -603,6 +692,7 @@ __gen_auth_key(struct program *program, struct alginfo *authdata)
  * @descbuf: pointer to buffer used for descriptor construction
  * @ps: if 36/40bit addressing is desired, this parameter must be true
  * @swap: if true, perform descriptor byte swapping on a 4-byte boundary
+ * @share: sharing type of shared descriptor
  * @pdb: pointer to the PDB to be used with this descriptor
  *       This structure will be copied inline to the descriptor under
  *       construction. No error checking will be made. Refer to the
@@ -621,6 +711,7 @@ __gen_auth_key(struct program *program, struct alginfo *authdata)
  */
 static inline int
 cnstr_shdsc_ipsec_encap(uint32_t *descbuf, bool ps, bool swap,
+					  enum rta_share_type share,
 			struct ipsec_encap_pdb *pdb,
 			struct alginfo *cipherdata,
 			struct alginfo *authdata)
@@ -638,7 +729,7 @@ cnstr_shdsc_ipsec_encap(uint32_t *descbuf, bool ps, bool swap,
 		PROGRAM_SET_BSWAP(p);
 	if (ps)
 		PROGRAM_SET_36BIT_ADDR(p);
-	phdr = SHR_HDR(p, SHR_SERIAL, hdr, 0);
+	phdr = SHR_HDR(p, share, hdr, 0);
 	__rta_copy_ipsec_encap_pdb(p, pdb, cipherdata->algtype);
 	COPY_DATA(p, pdb->ip_hdr, pdb->ip_hdr_len);
 	SET_LABEL(p, hdr);
@@ -669,6 +760,7 @@ cnstr_shdsc_ipsec_encap(uint32_t *descbuf, bool ps, bool swap,
  * @descbuf: pointer to buffer used for descriptor construction
  * @ps: if 36/40bit addressing is desired, this parameter must be true
  * @swap: if true, perform descriptor byte swapping on a 4-byte boundary
+ * @share: sharing type of shared descriptor
  * @pdb: pointer to the PDB to be used with this descriptor
  *       This structure will be copied inline to the descriptor under
  *       construction. No error checking will be made. Refer to the
@@ -687,6 +779,7 @@ cnstr_shdsc_ipsec_encap(uint32_t *descbuf, bool ps, bool swap,
  */
 static inline int
 cnstr_shdsc_ipsec_decap(uint32_t *descbuf, bool ps, bool swap,
+			enum rta_share_type share,
 			struct ipsec_decap_pdb *pdb,
 			struct alginfo *cipherdata,
 			struct alginfo *authdata)
@@ -704,7 +797,7 @@ cnstr_shdsc_ipsec_decap(uint32_t *descbuf, bool ps, bool swap,
 		PROGRAM_SET_BSWAP(p);
 	if (ps)
 		PROGRAM_SET_36BIT_ADDR(p);
-	phdr = SHR_HDR(p, SHR_SERIAL, hdr, 0);
+	phdr = SHR_HDR(p, share, hdr, 0);
 	__rta_copy_ipsec_decap_pdb(p, pdb, cipherdata->algtype);
 	SET_LABEL(p, hdr);
 	pkeyjmp = JUMP(p, keyjmp, LOCAL_JUMP, ALL_TRUE, BOTH|SHRD);
@@ -1040,7 +1133,7 @@ cnstr_shdsc_ipsec_decap_des_aes_xcbc(uint32_t *descbuf,
  * layers to determine whether Outer IP Header and/or keys can be inlined or
  * not. To be used as first parameter of rta_inline_query().
  */
-#define IPSEC_NEW_ENC_BASE_DESC_LEN	(5 * CAAM_CMD_SZ + \
+#define IPSEC_NEW_ENC_BASE_DESC_LEN	(12 * CAAM_CMD_SZ + \
 					 sizeof(struct ipsec_encap_pdb))
 
 /**
@@ -1052,7 +1145,7 @@ cnstr_shdsc_ipsec_decap_des_aes_xcbc(uint32_t *descbuf,
  * layers to determine whether Outer IP Header and/or key can be inlined or
  * not. To be used as first parameter of rta_inline_query().
  */
-#define IPSEC_NEW_NULL_ENC_BASE_DESC_LEN	(4 * CAAM_CMD_SZ + \
+#define IPSEC_NEW_NULL_ENC_BASE_DESC_LEN	(11 * CAAM_CMD_SZ + \
 						 sizeof(struct ipsec_encap_pdb))
 
 /**
@@ -1061,6 +1154,7 @@ cnstr_shdsc_ipsec_decap_des_aes_xcbc(uint32_t *descbuf,
  * @descbuf: pointer to buffer used for descriptor construction
  * @ps: if 36/40bit addressing is desired, this parameter must be true
  * @swap: must be true when core endianness doesn't match SEC endianness
+ * @share: sharing type of shared descriptor
  * @pdb: pointer to the PDB to be used with this descriptor
  *       This structure will be copied inline to the descriptor under
  *       construction. No error checking will be made. Refer to the
@@ -1080,11 +1174,21 @@ cnstr_shdsc_ipsec_decap_des_aes_xcbc(uint32_t *descbuf,
  *            compute MDHA on the fly in HW.
  *            Valid algorithm values - one of OP_PCL_IPSEC_*
  *
+ * Note: L2 header copy functionality is implemented assuming that bits 14
+ * (currently reserved) and 16-23 (part of Outer IP Header Material Length)
+ * in DPOVRD register are not used (which is usually the case when L3 header
+ * is provided in PDB).
+ * When DPOVRD[14] is set, frame starts with an L2 header; in this case, the
+ * L2 header length is found at DPOVRD[23:16]. SEC uses this length to copy
+ * the header and then it deletes DPOVRD[23:16] (so there is no side effect
+ * when later running IPsec protocol).
+ *
  * Return: size of descriptor written in words or negative number on error
  */
 static inline int
 cnstr_shdsc_ipsec_new_encap(uint32_t *descbuf, bool ps,
 			    bool swap,
+					      enum rta_share_type share,
 			    struct ipsec_encap_pdb *pdb,
 			    uint8_t *opt_ip_hdr,
 			    struct alginfo *cipherdata,
@@ -1097,6 +1201,8 @@ cnstr_shdsc_ipsec_new_encap(uint32_t *descbuf, bool ps,
 	REFERENCE(pkeyjmp);
 	LABEL(hdr);
 	REFERENCE(phdr);
+	LABEL(l2copy);
+	REFERENCE(pl2copy);
 
 	if (rta_sec_era < RTA_SEC_ERA_8) {
 		pr_err("IPsec new mode encap: available only for Era %d or above\n",
@@ -1109,7 +1215,7 @@ cnstr_shdsc_ipsec_new_encap(uint32_t *descbuf, bool ps,
 		PROGRAM_SET_BSWAP(p);
 	if (ps)
 		PROGRAM_SET_36BIT_ADDR(p);
-	phdr = SHR_HDR(p, SHR_SERIAL, hdr, 0);
+	phdr = SHR_HDR(p, share, hdr, 0);
 
 	__rta_copy_ipsec_encap_pdb(p, pdb, cipherdata->algtype);
 
@@ -1128,6 +1234,16 @@ cnstr_shdsc_ipsec_new_encap(uint32_t *descbuf, bool ps,
 	}
 	SET_LABEL(p, hdr);
 
+	MATHB(p, DPOVRD, AND, IPSEC_N_ENCAP_DPOVRD_L2_COPY, NONE, 4, IMMED2);
+	pl2copy = JUMP(p, l2copy, LOCAL_JUMP, ALL_TRUE, MATH_Z);
+	MATHI(p, DPOVRD, RSHIFT, IPSEC_N_ENCAP_DPOVRD_L2_LEN_SHIFT, VSEQOUTSZ,
+	      1, 0);
+	MATHB(p, DPOVRD, AND, ~IPSEC_N_ENCAP_DPOVRD_L2_LEN_MASK, DPOVRD, 4,
+	      IMMED2);
+	/* TODO: CLASS2 corresponds to AUX=2'b10; add more intuitive defines */
+	SEQFIFOSTORE(p, METADATA, 0, 0, CLASS2 | VLF);
+	SET_LABEL(p, l2copy);
+
 	pkeyjmp = JUMP(p, keyjmp, LOCAL_JUMP, ALL_TRUE, SHRD);
 	if (authdata->keylen)
 		__gen_auth_key(p, authdata);
@@ -1138,6 +1254,7 @@ cnstr_shdsc_ipsec_new_encap(uint32_t *descbuf, bool ps,
 	PROTOCOL(p, OP_TYPE_ENCAP_PROTOCOL,
 		 OP_PCLID_IPSEC_NEW,
 		 (uint16_t)(cipherdata->algtype | authdata->algtype));
+	PATCH_JUMP(p, pl2copy, l2copy);
 	PATCH_JUMP(p, pkeyjmp, keyjmp);
 	PATCH_HDR(p, phdr, hdr);
 	return PROGRAM_FINALIZE(p);
@@ -1171,6 +1288,7 @@ cnstr_shdsc_ipsec_new_encap(uint32_t *descbuf, bool ps,
  * @descbuf: pointer to buffer used for descriptor construction
  * @ps: if 36/40bit addressing is desired, this parameter must be true
  * @swap: must be true when core endianness doesn't match SEC endianness
+ * @share: sharing type of shared descriptor
  * @pdb: pointer to the PDB to be used with this descriptor
  *       This structure will be copied inline to the descriptor under
  *       construction. No error checking will be made. Refer to the
@@ -1188,6 +1306,7 @@ cnstr_shdsc_ipsec_new_encap(uint32_t *descbuf, bool ps,
 static inline int
 cnstr_shdsc_ipsec_new_decap(uint32_t *descbuf, bool ps,
 			    bool swap,
+					      enum rta_share_type share,
 			    struct ipsec_decap_pdb *pdb,
 			    struct alginfo *cipherdata,
 			    struct alginfo *authdata)
@@ -1211,7 +1330,7 @@ cnstr_shdsc_ipsec_new_decap(uint32_t *descbuf, bool ps,
 		PROGRAM_SET_BSWAP(p);
 	if (ps)
 		PROGRAM_SET_36BIT_ADDR(p);
-	phdr = SHR_HDR(p, SHR_SERIAL, hdr, 0);
+	phdr = SHR_HDR(p, share, hdr, 0);
 	__rta_copy_ipsec_decap_pdb(p, pdb, cipherdata->algtype);
 	SET_LABEL(p, hdr);
 	pkeyjmp = JUMP(p, keyjmp, LOCAL_JUMP, ALL_TRUE, SHRD);

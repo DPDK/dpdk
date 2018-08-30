@@ -488,13 +488,15 @@ dpaa_sec_prep_cdb(dpaa_sec_session *ses)
 			if (ses->dir == DIR_ENC) {
 				shared_desc_len = cnstr_shdsc_ipsec_new_encap(
 						cdb->sh_desc,
-						true, swap, &ses->encap_pdb,
+						true, swap, SHR_SERIAL,
+						&ses->encap_pdb,
 						(uint8_t *)&ses->ip4_hdr,
 						&alginfo_c, &alginfo_a);
 			} else if (ses->dir == DIR_DEC) {
 				shared_desc_len = cnstr_shdsc_ipsec_new_decap(
 						cdb->sh_desc,
-						true, swap, &ses->decap_pdb,
+						true, swap, SHR_SERIAL,
+						&ses->decap_pdb,
 						&alginfo_c, &alginfo_a);
 			}
 		} else {

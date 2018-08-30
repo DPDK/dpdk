@@ -410,6 +410,35 @@ cnstr_shdsc_kasumi_f9(uint32_t *descbuf, bool ps, bool swap,
 }
 
 /**
+ * cnstr_shdsc_crc - CRC32 Accelerator (IEEE 802 CRC32 protocol mode)
+ * @descbuf: pointer to descriptor-under-construction buffer
+ * @swap: must be true when core endianness doesn't match SEC endianness
+ *
+ * Return: size of descriptor written in words or negative number on error
+ */
+static inline int
+cnstr_shdsc_crc(uint32_t *descbuf, bool swap)
+{
+	struct program prg;
+	struct program *p = &prg;
+
+	PROGRAM_CNTXT_INIT(p, descbuf, 0);
+	if (swap)
+		PROGRAM_SET_BSWAP(p);
+
+	SHR_HDR(p, SHR_ALWAYS, 1, 0);
+
+	MATHB(p, SEQINSZ, SUB, MATH2, VSEQINSZ, 4, 0);
+	ALG_OPERATION(p, OP_ALG_ALGSEL_CRC,
+		      OP_ALG_AAI_802 | OP_ALG_AAI_DOC,
+		      OP_ALG_AS_FINALIZE, 0, DIR_ENC);
+	SEQFIFOLOAD(p, MSG2, 0, VLF | LAST2);
+	SEQSTORE(p, CONTEXT2, 0, 4, 0);
+
+	return PROGRAM_FINALIZE(p);
+}
+
+/**
  * cnstr_shdsc_gcm_encap - AES-GCM encap as a shared descriptor
  * @descbuf: pointer to descriptor-under-construction buffer
  * @ps: if 36/40bit addressing is desired, this parameter must be true
@@ -610,35 +639,6 @@ cnstr_shdsc_gcm_decap(uint32_t *descbuf, bool ps, bool swap,
 	PATCH_JUMP(p, pkeyjmp, keyjmp);
 	PATCH_JUMP(p, pzeroassocjump1, zeroassocjump1);
 	PATCH_JUMP(p, pzeropayloadjump, zeropayloadjump);
-
-	return PROGRAM_FINALIZE(p);
-}
-
-/**
- * cnstr_shdsc_crc - CRC32 Accelerator (IEEE 802 CRC32 protocol mode)
- * @descbuf: pointer to descriptor-under-construction buffer
- * @swap: must be true when core endianness doesn't match SEC endianness
- *
- * Return: size of descriptor written in words or negative number on error
- */
-static inline int
-cnstr_shdsc_crc(uint32_t *descbuf, bool swap)
-{
-	struct program prg;
-	struct program *p = &prg;
-
-	PROGRAM_CNTXT_INIT(p, descbuf, 0);
-	if (swap)
-		PROGRAM_SET_BSWAP(p);
-
-	SHR_HDR(p, SHR_ALWAYS, 1, 0);
-
-	MATHB(p, SEQINSZ, SUB, MATH2, VSEQINSZ, 4, 0);
-	ALG_OPERATION(p, OP_ALG_ALGSEL_CRC,
-		      OP_ALG_AAI_802 | OP_ALG_AAI_DOC,
-		      OP_ALG_AS_FINALIZE, 0, DIR_ENC);
-	SEQFIFOLOAD(p, MSG2, 0, VLF | LAST2);
-	SEQSTORE(p, CONTEXT2, 0, 4, 0);
 
 	return PROGRAM_FINALIZE(p);
 }

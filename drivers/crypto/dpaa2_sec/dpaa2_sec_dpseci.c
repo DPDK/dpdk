@@ -2328,7 +2328,7 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 
 		session->dir = DIR_ENC;
 		bufsize = cnstr_shdsc_ipsec_new_encap(priv->flc_desc[0].desc,
-				1, 0, &encap_pdb,
+				1, 0, SHR_SERIAL, &encap_pdb,
 				(uint8_t *)&ip4_hdr,
 				&cipherdata, &authdata);
 	} else if (ipsec_xform->direction ==
@@ -2338,7 +2338,8 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 		decap_pdb.options = sizeof(struct ip) << 16;
 		session->dir = DIR_DEC;
 		bufsize = cnstr_shdsc_ipsec_new_decap(priv->flc_desc[0].desc,
-				1, 0, &decap_pdb, &cipherdata, &authdata);
+				1, 0, SHR_SERIAL,
+				&decap_pdb, &cipherdata, &authdata);
 	} else
 		goto out;
 
