@@ -245,9 +245,9 @@ slave_rte_flow_prepare(uint16_t slave_id, struct bond_dev_private *internals)
 	}
 	TAILQ_FOREACH(flow, &internals->flow_list, next) {
 		flow->flows[slave_id] = rte_flow_create(slave_port_id,
-							&flow->fd->attr,
-							flow->fd->items,
-							flow->fd->actions,
+							flow->rule.attr,
+							flow->rule.pattern,
+							flow->rule.actions,
 							&ferror);
 		if (flow->flows[slave_id] == NULL) {
 			RTE_BOND_LOG(ERR, "Cannot create flow for slave"

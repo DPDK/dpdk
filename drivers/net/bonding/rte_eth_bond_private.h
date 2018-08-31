@@ -5,9 +5,11 @@
 #ifndef _RTE_ETH_BOND_PRIVATE_H_
 #define _RTE_ETH_BOND_PRIVATE_H_
 
+#include <stdint.h>
 #include <sys/queue.h>
 
 #include <rte_ethdev_driver.h>
+#include <rte_flow.h>
 #include <rte_spinlock.h>
 #include <rte_bitmap.h>
 #include <rte_flow_driver.h>
@@ -93,7 +95,8 @@ struct rte_flow {
 	/* Slaves flows */
 	struct rte_flow *flows[RTE_MAX_ETHPORTS];
 	/* Flow description for synchronization */
-	struct rte_flow_desc *fd;
+	struct rte_flow_conv_rule rule;
+	uint8_t rule_data[];
 };
 
 typedef void (*burst_xmit_hash_t)(struct rte_mbuf **buf, uint16_t nb_pkts,
