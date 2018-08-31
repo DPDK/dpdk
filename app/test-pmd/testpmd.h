@@ -134,15 +134,12 @@ struct fwd_stream {
 
 /** Descriptor for a single flow. */
 struct port_flow {
-	size_t size; /**< Allocated space including data[]. */
 	struct port_flow *next; /**< Next flow in list. */
 	struct port_flow *tmp; /**< Temporary linking. */
 	uint32_t id; /**< Flow rule ID. */
 	struct rte_flow *flow; /**< Opaque flow object returned by PMD. */
-	struct rte_flow_attr attr; /**< Attributes. */
-	struct rte_flow_item *pattern; /**< Pattern. */
-	struct rte_flow_action *actions; /**< Actions. */
-	uint8_t data[]; /**< Storage for pattern/actions. */
+	struct rte_flow_conv_rule rule; /* Saved flow rule description. */
+	uint8_t data[]; /**< Storage for flow rule description */
 };
 
 #ifdef SOFTNIC
