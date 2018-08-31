@@ -87,7 +87,8 @@ static struct rte_eth_dev_info default_infos = {
 			ETH_RSS_UDP |
 			ETH_RSS_TCP,
 	.dev_capa =
-		RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP,
+		RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP |
+		RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP,
 };
 
 static int
@@ -185,7 +186,7 @@ fs_set_queues_state_start(struct rte_eth_dev *dev)
 	}
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];
-		if (!txq->info.conf.tx_deferred_start)
+		if (txq != NULL && !txq->info.conf.tx_deferred_start)
 			dev->data->tx_queue_state[i] =
 						RTE_ETH_QUEUE_STATE_STARTED;
 	}
@@ -244,7 +245,9 @@ fs_set_queues_state_stop(struct rte_eth_dev *dev)
 			dev->data->rx_queue_state[i] =
 						RTE_ETH_QUEUE_STATE_STOPPED;
 	for (i = 0; i < dev->data->nb_tx_queues; i++)
-		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+		if (dev->data->tx_queues[i] != NULL)
+			dev->data->tx_queue_state[i] =
+						RTE_ETH_QUEUE_STATE_STOPPED;
 }
 
 static void
