@@ -1,5 +1,7 @@
 option('allow_invalid_socket_id', type: 'boolean', value: false,
 	description: 'allow out-of-range NUMA socket id\'s for platforms that don\'t report the value correctly')
+option('enable_driver_mlx_glue', type: 'boolean', value: false,
+	description: 'Enable glue library for Mellanox PMDs')
 option('enable_kmods', type: 'boolean', value: true,
 	description: 'build kernel modules')
 option('enable_docs', type: 'boolean', value: false,
