@@ -51,10 +51,15 @@ static const struct rte_flow_desc_data rte_flow_desc_item[] = {
 	MK_FLOW_ITEM(TCP, sizeof(struct rte_flow_item_tcp)),
 	MK_FLOW_ITEM(SCTP, sizeof(struct rte_flow_item_sctp)),
 	MK_FLOW_ITEM(VXLAN, sizeof(struct rte_flow_item_vxlan)),
-	MK_FLOW_ITEM(MPLS, sizeof(struct rte_flow_item_mpls)),
-	MK_FLOW_ITEM(GRE, sizeof(struct rte_flow_item_gre)),
 	MK_FLOW_ITEM(E_TAG, sizeof(struct rte_flow_item_e_tag)),
 	MK_FLOW_ITEM(NVGRE, sizeof(struct rte_flow_item_nvgre)),
+	MK_FLOW_ITEM(MPLS, sizeof(struct rte_flow_item_mpls)),
+	MK_FLOW_ITEM(GRE, sizeof(struct rte_flow_item_gre)),
+	MK_FLOW_ITEM(FUZZY, sizeof(struct rte_flow_item_fuzzy)),
+	MK_FLOW_ITEM(GTP, sizeof(struct rte_flow_item_gtp)),
+	MK_FLOW_ITEM(GTPC, sizeof(struct rte_flow_item_gtp)),
+	MK_FLOW_ITEM(GTPU, sizeof(struct rte_flow_item_gtp)),
+	MK_FLOW_ITEM(ESP, sizeof(struct rte_flow_item_esp)),
 	MK_FLOW_ITEM(GENEVE, sizeof(struct rte_flow_item_geneve)),
 	MK_FLOW_ITEM(VXLAN_GPE, sizeof(struct rte_flow_item_vxlan_gpe)),
 	MK_FLOW_ITEM(ARP_ETH_IPV4, sizeof(struct rte_flow_item_arp_eth_ipv4)),
@@ -67,6 +72,7 @@ static const struct rte_flow_desc_data rte_flow_desc_item[] = {
 		     sizeof(struct rte_flow_item_icmp6_nd_opt_sla_eth)),
 	MK_FLOW_ITEM(ICMP6_ND_OPT_TLA_ETH,
 		     sizeof(struct rte_flow_item_icmp6_nd_opt_tla_eth)),
+	MK_FLOW_ITEM(MARK, sizeof(struct rte_flow_item_mark)),
 };
 
 /** Generate flow_action[] entry. */
@@ -81,6 +87,7 @@ static const struct rte_flow_desc_data rte_flow_desc_action[] = {
 	MK_FLOW_ACTION(END, 0),
 	MK_FLOW_ACTION(VOID, 0),
 	MK_FLOW_ACTION(PASSTHRU, 0),
+	MK_FLOW_ACTION(JUMP, sizeof(struct rte_flow_action_jump)),
 	MK_FLOW_ACTION(MARK, sizeof(struct rte_flow_action_mark)),
 	MK_FLOW_ACTION(FLAG, 0),
 	MK_FLOW_ACTION(QUEUE, sizeof(struct rte_flow_action_queue)),
@@ -91,6 +98,8 @@ static const struct rte_flow_desc_data rte_flow_desc_action[] = {
 	MK_FLOW_ACTION(VF, sizeof(struct rte_flow_action_vf)),
 	MK_FLOW_ACTION(PHY_PORT, sizeof(struct rte_flow_action_phy_port)),
 	MK_FLOW_ACTION(PORT_ID, sizeof(struct rte_flow_action_port_id)),
+	MK_FLOW_ACTION(METER, sizeof(struct rte_flow_action_meter)),
+	MK_FLOW_ACTION(SECURITY, sizeof(struct rte_flow_action_security)),
 	MK_FLOW_ACTION(OF_SET_MPLS_TTL,
 		       sizeof(struct rte_flow_action_of_set_mpls_ttl)),
 	MK_FLOW_ACTION(OF_DEC_MPLS_TTL, 0),
@@ -110,6 +119,10 @@ static const struct rte_flow_desc_data rte_flow_desc_action[] = {
 		       sizeof(struct rte_flow_action_of_pop_mpls)),
 	MK_FLOW_ACTION(OF_PUSH_MPLS,
 		       sizeof(struct rte_flow_action_of_push_mpls)),
+	MK_FLOW_ACTION(VXLAN_ENCAP, sizeof(struct rte_flow_action_vxlan_encap)),
+	MK_FLOW_ACTION(VXLAN_DECAP, 0),
+	MK_FLOW_ACTION(NVGRE_ENCAP, sizeof(struct rte_flow_action_vxlan_encap)),
+	MK_FLOW_ACTION(NVGRE_DECAP, 0),
 };
 
 static int
@@ -407,11 +420,16 @@ rte_flow_conv_action_conf(void *buf, const size_t size,
 	switch (action->type) {
 		union {
 			const struct rte_flow_action_rss *rss;
+			const struct rte_flow_action_vxlan_encap *vxlan_encap;
+			const struct rte_flow_action_nvgre_encap *nvgre_encap;
 		} src;
 		union {
 			struct rte_flow_action_rss *rss;
+			struct rte_flow_action_vxlan_encap *vxlan_encap;
+			struct rte_flow_action_nvgre_encap *nvgre_encap;
 		} dst;
 		size_t tmp;
+		int ret;
 
 	case RTE_FLOW_ACTION_TYPE_RSS:
 		src.rss = action->conf;
@@ -443,6 +461,34 @@ rte_flow_conv_action_conf(void *buf, const size_t size,
 					((void *)((uintptr_t)dst.rss + off),
 					 src.rss->queue, tmp);
 			off += tmp;
+		}
+		break;
+	case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+	case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
+		src.vxlan_encap = action->conf;
+		dst.vxlan_encap = buf;
+		RTE_BUILD_BUG_ON(sizeof(*src.vxlan_encap) !=
+				 sizeof(*src.nvgre_encap) ||
+				 offsetof(struct rte_flow_action_vxlan_encap,
+					  definition) !=
+				 offsetof(struct rte_flow_action_nvgre_encap,
+					  definition));
+		off = sizeof(*dst.vxlan_encap);
+		if (src.vxlan_encap->definition) {
+			off = RTE_ALIGN_CEIL
+				(off, sizeof(*dst.vxlan_encap->definition));
+			ret = rte_flow_conv
+				(RTE_FLOW_CONV_OP_PATTERN,
+				 (void *)((uintptr_t)dst.vxlan_encap + off),
+				 size > off ? size - off : 0,
+				 src.vxlan_encap->definition, NULL);
+			if (ret < 0)
+				return 0;
+			if (size >= off + ret)
+				dst.vxlan_encap->definition =
+					(void *)((uintptr_t)dst.vxlan_encap +
+						 off);
+			off += ret;
 		}
 		break;
 	default:
