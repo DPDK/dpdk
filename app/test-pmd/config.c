@@ -1346,11 +1346,12 @@ port_flow_complain(struct rte_flow_error *error)
 		errstr = "unknown type";
 	else
 		errstr = errstrlist[error->type];
-	printf("Caught error type %d (%s): %s%s\n",
+	printf("Caught error type %d (%s): %s%s: %s\n",
 	       error->type, errstr,
 	       error->cause ? (snprintf(buf, sizeof(buf), "cause: %p, ",
 					error->cause), buf) : "",
-	       error->message ? error->message : "(no stated reason)");
+	       error->message ? error->message : "(no stated reason)",
+	       rte_strerror(err));
 	return -err;
 }
 
