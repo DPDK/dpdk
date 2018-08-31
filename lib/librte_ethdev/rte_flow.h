@@ -2332,6 +2332,7 @@ rte_flow_error_set(struct rte_flow_error *error,
 		   const char *message);
 
 /**
+ * @deprecated
  * @see rte_flow_copy()
  */
 struct rte_flow_desc {
@@ -2343,10 +2344,13 @@ struct rte_flow_desc {
 };
 
 /**
+ * @deprecated
  * Copy an rte_flow rule description.
  *
  * This interface is kept for compatibility with older applications but is
- * implemented as a wrapper to rte_flow_conv().
+ * implemented as a wrapper to rte_flow_conv(). It is deprecated due to its
+ * lack of flexibility and reliance on a type unusable with C++ programs
+ * (struct rte_flow_desc).
  *
  * @param[in] fd
  *   Flow rule description.
@@ -2365,6 +2369,7 @@ struct rte_flow_desc {
  *   If len is lower than the size of the flow, the number of bytes that would
  *   have been written to desc had it been sufficient. Nothing is written.
  */
+__rte_deprecated
 size_t
 rte_flow_copy(struct rte_flow_desc *fd, size_t len,
 	      const struct rte_flow_attr *attr,
