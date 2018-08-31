@@ -288,26 +288,41 @@ rte_flow_error_set(struct rte_flow_error *error,
 }
 
 /** Pattern item specification types. */
-enum item_spec_type {
-	ITEM_SPEC,
-	ITEM_LAST,
-	ITEM_MASK,
+enum rte_flow_conv_item_spec_type {
+	RTE_FLOW_CONV_ITEM_SPEC,
+	RTE_FLOW_CONV_ITEM_LAST,
+	RTE_FLOW_CONV_ITEM_MASK,
 };
 
-/** Compute storage space needed by item specification and copy it. */
+/**
+ * Copy pattern item specification.
+ *
+ * @param[out] buf
+ *   Output buffer. Can be NULL if @p size is zero.
+ * @param size
+ *   Size of @p buf in bytes.
+ * @param[in] item
+ *   Pattern item to copy specification from.
+ * @param type
+ *   Specification selector for either @p spec, @p last or @p mask.
+ *
+ * @return
+ *   Number of bytes needed to store pattern item specification regardless
+ *   of @p size. @p buf contents are truncated to @p size if not large
+ *   enough.
+ */
 static size_t
-flow_item_spec_copy(void *buf, const struct rte_flow_item *item,
-		    enum item_spec_type type)
+rte_flow_conv_item_spec(void *buf, const size_t size,
+			const struct rte_flow_item *item,
+			enum rte_flow_conv_item_spec_type type)
 {
-	size_t size = 0;
+	size_t off;
 	const void *data =
-		type == ITEM_SPEC ? item->spec :
-		type == ITEM_LAST ? item->last :
-		type == ITEM_MASK ? item->mask :
+		type == RTE_FLOW_CONV_ITEM_SPEC ? item->spec :
+		type == RTE_FLOW_CONV_ITEM_LAST ? item->last :
+		type == RTE_FLOW_CONV_ITEM_MASK ? item->mask :
 		NULL;
 
-	if (!item->spec || !data)
-		goto empty;
 	switch (item->type) {
 		union {
 			const struct rte_flow_item_raw *raw;
@@ -324,7 +339,7 @@ flow_item_spec_copy(void *buf, const struct rte_flow_item *item,
 		union {
 			struct rte_flow_item_raw *raw;
 		} dst;
-		size_t off;
+		size_t tmp;
 
 	case RTE_FLOW_ITEM_TYPE_RAW:
 		spec.raw = item->spec;
@@ -332,41 +347,62 @@ flow_item_spec_copy(void *buf, const struct rte_flow_item *item,
 		mask.raw = item->mask ? item->mask : &rte_flow_item_raw_mask;
 		src.raw = data;
 		dst.raw = buf;
-		off = RTE_ALIGN_CEIL(sizeof(struct rte_flow_item_raw),
-				     sizeof(*src.raw->pattern));
-		if (type == ITEM_SPEC ||
-		    (type == ITEM_MASK &&
+		rte_memcpy(dst.raw,
+			   (&(struct rte_flow_item_raw){
+				.relative = src.raw->relative,
+				.search = src.raw->search,
+				.reserved = src.raw->reserved,
+				.offset = src.raw->offset,
+				.limit = src.raw->limit,
+				.length = src.raw->length,
+			   }),
+			   size > sizeof(*dst.raw) ? sizeof(*dst.raw) : size);
+		off = sizeof(*dst.raw);
+		if (type == RTE_FLOW_CONV_ITEM_SPEC ||
+		    (type == RTE_FLOW_CONV_ITEM_MASK &&
 		     ((spec.raw->length & mask.raw->length) >=
 		      (last.raw->length & mask.raw->length))))
-			size = spec.raw->length & mask.raw->length;
+			tmp = spec.raw->length & mask.raw->length;
 		else
-			size = last.raw->length & mask.raw->length;
-		size = off + size * sizeof(*src.raw->pattern);
-		if (dst.raw) {
-			memcpy(dst.raw, src.raw, sizeof(*src.raw));
-			dst.raw->pattern = memcpy((uint8_t *)dst.raw + off,
-						  src.raw->pattern,
-						  size - off);
+			tmp = last.raw->length & mask.raw->length;
+		if (tmp) {
+			off = RTE_ALIGN_CEIL(off, sizeof(*dst.raw->pattern));
+			if (size >= off + tmp)
+				dst.raw->pattern = rte_memcpy
+					((void *)((uintptr_t)dst.raw + off),
+					 src.raw->pattern, tmp);
+			off += tmp;
 		}
 		break;
 	default:
-		size = rte_flow_desc_item[item->type].size;
-		if (buf)
-			memcpy(buf, data, size);
+		off = rte_flow_desc_item[item->type].size;
+		rte_memcpy(buf, data, (size > off ? off : size));
 		break;
 	}
-empty:
-	return RTE_ALIGN_CEIL(size, sizeof(double));
+	return off;
 }
 
-/** Compute storage space needed by action configuration and copy it. */
+/**
+ * Copy action configuration.
+ *
+ * @param[out] buf
+ *   Output buffer. Can be NULL if @p size is zero.
+ * @param size
+ *   Size of @p buf in bytes.
+ * @param[in] action
+ *   Action to copy configuration from.
+ *
+ * @return
+ *   Number of bytes needed to store pattern item specification regardless
+ *   of @p size. @p buf contents are truncated to @p size if not large
+ *   enough.
+ */
 static size_t
-flow_action_conf_copy(void *buf, const struct rte_flow_action *action)
+rte_flow_conv_action_conf(void *buf, const size_t size,
+			  const struct rte_flow_action *action)
 {
-	size_t size = 0;
+	size_t off;
 
-	if (!action->conf)
-		goto empty;
 	switch (action->type) {
 		union {
 			const struct rte_flow_action_rss *rss;
@@ -374,49 +410,308 @@ flow_action_conf_copy(void *buf, const struct rte_flow_action *action)
 		union {
 			struct rte_flow_action_rss *rss;
 		} dst;
-		size_t off;
+		size_t tmp;
 
 	case RTE_FLOW_ACTION_TYPE_RSS:
 		src.rss = action->conf;
 		dst.rss = buf;
-		off = 0;
-		if (dst.rss)
-			*dst.rss = (struct rte_flow_action_rss){
+		rte_memcpy(dst.rss,
+			   (&(struct rte_flow_action_rss){
 				.func = src.rss->func,
 				.level = src.rss->level,
 				.types = src.rss->types,
 				.key_len = src.rss->key_len,
 				.queue_num = src.rss->queue_num,
-			};
-		off += sizeof(*src.rss);
+			   }),
+			   size > sizeof(*dst.rss) ? sizeof(*dst.rss) : size);
+		off = sizeof(*dst.rss);
 		if (src.rss->key_len) {
-			off = RTE_ALIGN_CEIL(off, sizeof(double));
-			size = sizeof(*src.rss->key) * src.rss->key_len;
-			if (dst.rss)
-				dst.rss->key = memcpy
+			off = RTE_ALIGN_CEIL(off, sizeof(*dst.rss->key));
+			tmp = sizeof(*src.rss->key) * src.rss->key_len;
+			if (size >= off + tmp)
+				dst.rss->key = rte_memcpy
 					((void *)((uintptr_t)dst.rss + off),
-					 src.rss->key, size);
-			off += size;
+					 src.rss->key, tmp);
+			off += tmp;
 		}
 		if (src.rss->queue_num) {
-			off = RTE_ALIGN_CEIL(off, sizeof(double));
-			size = sizeof(*src.rss->queue) * src.rss->queue_num;
-			if (dst.rss)
-				dst.rss->queue = memcpy
+			off = RTE_ALIGN_CEIL(off, sizeof(*dst.rss->queue));
+			tmp = sizeof(*src.rss->queue) * src.rss->queue_num;
+			if (size >= off + tmp)
+				dst.rss->queue = rte_memcpy
 					((void *)((uintptr_t)dst.rss + off),
-					 src.rss->queue, size);
-			off += size;
+					 src.rss->queue, tmp);
+			off += tmp;
 		}
-		size = off;
 		break;
 	default:
-		size = rte_flow_desc_action[action->type].size;
-		if (buf)
-			memcpy(buf, action->conf, size);
+		off = rte_flow_desc_action[action->type].size;
+		rte_memcpy(buf, action->conf, (size > off ? off : size));
 		break;
 	}
-empty:
-	return RTE_ALIGN_CEIL(size, sizeof(double));
+	return off;
+}
+
+/**
+ * Copy a list of pattern items.
+ *
+ * @param[out] dst
+ *   Destination buffer. Can be NULL if @p size is zero.
+ * @param size
+ *   Size of @p dst in bytes.
+ * @param[in] src
+ *   Source pattern items.
+ * @param num
+ *   Maximum number of pattern items to process from @p src or 0 to process
+ *   the entire list. In both cases, processing stops after
+ *   RTE_FLOW_ITEM_TYPE_END is encountered.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   A positive value representing the number of bytes needed to store
+ *   pattern items regardless of @p size on success (@p buf contents are
+ *   truncated to @p size if not large enough), a negative errno value
+ *   otherwise and rte_errno is set.
+ */
+static int
+rte_flow_conv_pattern(struct rte_flow_item *dst,
+		      const size_t size,
+		      const struct rte_flow_item *src,
+		      unsigned int num,
+		      struct rte_flow_error *error)
+{
+	uintptr_t data = (uintptr_t)dst;
+	size_t off;
+	size_t ret;
+	unsigned int i;
+
+	for (i = 0, off = 0; !num || i != num; ++i, ++src, ++dst) {
+		if ((size_t)src->type >= RTE_DIM(rte_flow_desc_item) ||
+		    !rte_flow_desc_item[src->type].name)
+			return rte_flow_error_set
+				(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM, src,
+				 "cannot convert unknown item type");
+		if (size >= off + sizeof(*dst))
+			*dst = (struct rte_flow_item){
+				.type = src->type,
+			};
+		off += sizeof(*dst);
+		if (!src->type)
+			num = i + 1;
+	}
+	num = i;
+	src -= num;
+	dst -= num;
+	do {
+		if (src->spec) {
+			off = RTE_ALIGN_CEIL(off, sizeof(double));
+			ret = rte_flow_conv_item_spec
+				((void *)(data + off),
+				 size > off ? size - off : 0, src,
+				 RTE_FLOW_CONV_ITEM_SPEC);
+			if (size && size >= off + ret)
+				dst->spec = (void *)(data + off);
+			off += ret;
+
+		}
+		if (src->last) {
+			off = RTE_ALIGN_CEIL(off, sizeof(double));
+			ret = rte_flow_conv_item_spec
+				((void *)(data + off),
+				 size > off ? size - off : 0, src,
+				 RTE_FLOW_CONV_ITEM_LAST);
+			if (size && size >= off + ret)
+				dst->last = (void *)(data + off);
+			off += ret;
+		}
+		if (src->mask) {
+			off = RTE_ALIGN_CEIL(off, sizeof(double));
+			ret = rte_flow_conv_item_spec
+				((void *)(data + off),
+				 size > off ? size - off : 0, src,
+				 RTE_FLOW_CONV_ITEM_MASK);
+			if (size && size >= off + ret)
+				dst->mask = (void *)(data + off);
+			off += ret;
+		}
+		++src;
+		++dst;
+	} while (--num);
+	return off;
+}
+
+/**
+ * Copy a list of actions.
+ *
+ * @param[out] dst
+ *   Destination buffer. Can be NULL if @p size is zero.
+ * @param size
+ *   Size of @p dst in bytes.
+ * @param[in] src
+ *   Source actions.
+ * @param num
+ *   Maximum number of actions to process from @p src or 0 to process the
+ *   entire list. In both cases, processing stops after
+ *   RTE_FLOW_ACTION_TYPE_END is encountered.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   A positive value representing the number of bytes needed to store
+ *   actions regardless of @p size on success (@p buf contents are truncated
+ *   to @p size if not large enough), a negative errno value otherwise and
+ *   rte_errno is set.
+ */
+static int
+rte_flow_conv_actions(struct rte_flow_action *dst,
+		      const size_t size,
+		      const struct rte_flow_action *src,
+		      unsigned int num,
+		      struct rte_flow_error *error)
+{
+	uintptr_t data = (uintptr_t)dst;
+	size_t off;
+	size_t ret;
+	unsigned int i;
+
+	for (i = 0, off = 0; !num || i != num; ++i, ++src, ++dst) {
+		if ((size_t)src->type >= RTE_DIM(rte_flow_desc_action) ||
+		    !rte_flow_desc_action[src->type].name)
+			return rte_flow_error_set
+				(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
+				 src, "cannot convert unknown action type");
+		if (size >= off + sizeof(*dst))
+			*dst = (struct rte_flow_action){
+				.type = src->type,
+			};
+		off += sizeof(*dst);
+		if (!src->type)
+			num = i + 1;
+	}
+	num = i;
+	src -= num;
+	dst -= num;
+	do {
+		if (src->conf) {
+			off = RTE_ALIGN_CEIL(off, sizeof(double));
+			ret = rte_flow_conv_action_conf
+				((void *)(data + off),
+				 size > off ? size - off : 0, src);
+			if (size && size >= off + ret)
+				dst->conf = (void *)(data + off);
+			off += ret;
+		}
+		++src;
+		++dst;
+	} while (--num);
+	return off;
+}
+
+/**
+ * Copy flow rule components.
+ *
+ * This comprises the flow rule descriptor itself, attributes, pattern and
+ * actions list. NULL components in @p src are skipped.
+ *
+ * @param[out] dst
+ *   Destination buffer. Can be NULL if @p size is zero.
+ * @param size
+ *   Size of @p dst in bytes.
+ * @param[in] src
+ *   Source flow rule descriptor.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   A positive value representing the number of bytes needed to store all
+ *   components including the descriptor regardless of @p size on success
+ *   (@p buf contents are truncated to @p size if not large enough), a
+ *   negative errno value otherwise and rte_errno is set.
+ */
+static int
+rte_flow_conv_rule(struct rte_flow_conv_rule *dst,
+		   const size_t size,
+		   const struct rte_flow_conv_rule *src,
+		   struct rte_flow_error *error)
+{
+	size_t off;
+	int ret;
+
+	rte_memcpy(dst,
+		   (&(struct rte_flow_conv_rule){
+			.attr = NULL,
+			.pattern = NULL,
+			.actions = NULL,
+		   }),
+		   size > sizeof(*dst) ? sizeof(*dst) : size);
+	off = sizeof(*dst);
+	if (src->attr_ro) {
+		off = RTE_ALIGN_CEIL(off, sizeof(double));
+		if (size && size >= off + sizeof(*dst->attr))
+			dst->attr = rte_memcpy
+				((void *)((uintptr_t)dst + off),
+				 src->attr_ro, sizeof(*dst->attr));
+		off += sizeof(*dst->attr);
+	}
+	if (src->pattern_ro) {
+		off = RTE_ALIGN_CEIL(off, sizeof(double));
+		ret = rte_flow_conv_pattern((void *)((uintptr_t)dst + off),
+					    size > off ? size - off : 0,
+					    src->pattern_ro, 0, error);
+		if (ret < 0)
+			return ret;
+		if (size && size >= off + (size_t)ret)
+			dst->pattern = (void *)((uintptr_t)dst + off);
+		off += ret;
+	}
+	if (src->actions_ro) {
+		off = RTE_ALIGN_CEIL(off, sizeof(double));
+		ret = rte_flow_conv_actions((void *)((uintptr_t)dst + off),
+					    size > off ? size - off : 0,
+					    src->actions_ro, 0, error);
+		if (ret < 0)
+			return ret;
+		if (size >= off + (size_t)ret)
+			dst->actions = (void *)((uintptr_t)dst + off);
+		off += ret;
+	}
+	return off;
+}
+
+/** Helper function to convert flow API objects. */
+int
+rte_flow_conv(enum rte_flow_conv_op op,
+	      void *dst,
+	      size_t size,
+	      const void *src,
+	      struct rte_flow_error *error)
+{
+	switch (op) {
+		const struct rte_flow_attr *attr;
+
+	case RTE_FLOW_CONV_OP_NONE:
+		return 0;
+	case RTE_FLOW_CONV_OP_ATTR:
+		attr = src;
+		if (size > sizeof(*attr))
+			size = sizeof(*attr);
+		rte_memcpy(dst, attr, size);
+		return sizeof(*attr);
+	case RTE_FLOW_CONV_OP_ITEM:
+		return rte_flow_conv_pattern(dst, size, src, 1, error);
+	case RTE_FLOW_CONV_OP_ACTION:
+		return rte_flow_conv_actions(dst, size, src, 1, error);
+	case RTE_FLOW_CONV_OP_PATTERN:
+		return rte_flow_conv_pattern(dst, size, src, 0, error);
+	case RTE_FLOW_CONV_OP_ACTIONS:
+		return rte_flow_conv_actions(dst, size, src, 0, error);
+	case RTE_FLOW_CONV_OP_RULE:
+		return rte_flow_conv_rule(dst, size, src, error);
+	}
+	return rte_flow_error_set
+		(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+		 "unknown object conversion operation");
 }
 
 /** Store a full rte_flow description. */
@@ -426,105 +721,49 @@ rte_flow_copy(struct rte_flow_desc *desc, size_t len,
 	      const struct rte_flow_item *items,
 	      const struct rte_flow_action *actions)
 {
-	struct rte_flow_desc *fd = NULL;
-	size_t tmp;
-	size_t off1 = 0;
-	size_t off2 = 0;
-	size_t size = 0;
+	/*
+	 * Overlap struct rte_flow_conv with struct rte_flow_desc in order
+	 * to convert the former to the latter without wasting space.
+	 */
+	struct rte_flow_conv_rule *dst =
+		len ?
+		(void *)((uintptr_t)desc +
+			 (offsetof(struct rte_flow_desc, actions) -
+			  offsetof(struct rte_flow_conv_rule, actions))) :
+		NULL;
+	size_t dst_size =
+		len > sizeof(*desc) - sizeof(*dst) ?
+		len - (sizeof(*desc) - sizeof(*dst)) :
+		0;
+	struct rte_flow_conv_rule src = {
+		.attr_ro = NULL,
+		.pattern_ro = items,
+		.actions_ro = actions,
+	};
+	int ret;
 
-store:
-	if (items) {
-		const struct rte_flow_item *item;
-
-		item = items;
-		if (fd)
-			fd->items = (void *)&fd->data[off1];
-		do {
-			struct rte_flow_item *dst = NULL;
-
-			if ((size_t)item->type >=
-				RTE_DIM(rte_flow_desc_item) ||
-			    !rte_flow_desc_item[item->type].name) {
-				rte_errno = ENOTSUP;
-				return 0;
-			}
-			if (fd)
-				dst = memcpy(fd->data + off1, item,
-					     sizeof(*item));
-			off1 += sizeof(*item);
-			if (item->spec) {
-				if (fd)
-					dst->spec = fd->data + off2;
-				off2 += flow_item_spec_copy
-					(fd ? fd->data + off2 : NULL, item,
-					 ITEM_SPEC);
-			}
-			if (item->last) {
-				if (fd)
-					dst->last = fd->data + off2;
-				off2 += flow_item_spec_copy
-					(fd ? fd->data + off2 : NULL, item,
-					 ITEM_LAST);
-			}
-			if (item->mask) {
-				if (fd)
-					dst->mask = fd->data + off2;
-				off2 += flow_item_spec_copy
-					(fd ? fd->data + off2 : NULL, item,
-					 ITEM_MASK);
-			}
-			off2 = RTE_ALIGN_CEIL(off2, sizeof(double));
-		} while ((item++)->type != RTE_FLOW_ITEM_TYPE_END);
-		off1 = RTE_ALIGN_CEIL(off1, sizeof(double));
+	RTE_BUILD_BUG_ON(sizeof(struct rte_flow_desc) <
+			 sizeof(struct rte_flow_conv_rule));
+	if (dst_size &&
+	    (&dst->pattern != &desc->items ||
+	     &dst->actions != &desc->actions ||
+	     (uintptr_t)(dst + 1) != (uintptr_t)(desc + 1))) {
+		rte_errno = EINVAL;
+		return 0;
 	}
-	if (actions) {
-		const struct rte_flow_action *action;
-
-		action = actions;
-		if (fd)
-			fd->actions = (void *)&fd->data[off1];
-		do {
-			struct rte_flow_action *dst = NULL;
-
-			if ((size_t)action->type >=
-				RTE_DIM(rte_flow_desc_action) ||
-			    !rte_flow_desc_action[action->type].name) {
-				rte_errno = ENOTSUP;
-				return 0;
-			}
-			if (fd)
-				dst = memcpy(fd->data + off1, action,
-					     sizeof(*action));
-			off1 += sizeof(*action);
-			if (action->conf) {
-				if (fd)
-					dst->conf = fd->data + off2;
-				off2 += flow_action_conf_copy
-					(fd ? fd->data + off2 : NULL, action);
-			}
-			off2 = RTE_ALIGN_CEIL(off2, sizeof(double));
-		} while ((action++)->type != RTE_FLOW_ACTION_TYPE_END);
-	}
-	if (fd != NULL)
-		return size;
-	off1 = RTE_ALIGN_CEIL(off1, sizeof(double));
-	tmp = RTE_ALIGN_CEIL(offsetof(struct rte_flow_desc, data),
-			     sizeof(double));
-	size = tmp + off1 + off2;
-	if (size > len)
-		return size;
-	fd = desc;
-	if (fd != NULL) {
-		*fd = (const struct rte_flow_desc) {
-			.size = size,
+	ret = rte_flow_conv(RTE_FLOW_CONV_OP_RULE, dst, dst_size, &src, NULL);
+	if (ret < 0)
+		return 0;
+	ret += sizeof(*desc) - sizeof(*dst);
+	rte_memcpy(desc,
+		   (&(struct rte_flow_desc){
+			.size = ret,
 			.attr = *attr,
-		};
-		tmp -= offsetof(struct rte_flow_desc, data);
-		off2 = tmp + off1;
-		off1 = tmp;
-		goto store;
-	}
-	return 0;
+			.items = dst_size ? dst->pattern : NULL,
+			.actions = dst_size ? dst->actions : NULL,
+		   }),
+		   len > sizeof(*desc) ? sizeof(*desc) : len);
+	return ret;
 }
 
 /**

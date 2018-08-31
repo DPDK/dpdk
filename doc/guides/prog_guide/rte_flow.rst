@@ -2419,6 +2419,25 @@ This function initializes ``error`` (if non-NULL) with the provided
 parameters and sets ``rte_errno`` to ``code``. A negative error ``code`` is
 then returned.
 
+Object conversion
+~~~~~~~~~~~~~~~~~
+
+.. code-block:: c
+
+   int
+   rte_flow_conv(enum rte_flow_conv_op op,
+                 void *dst,
+                 size_t size,
+                 const void *src,
+                 struct rte_flow_error *error);
+
+Convert ``src`` to ``dst`` according to operation ``op``. Possible
+operations include:
+
+- Attributes, pattern item or action duplication.
+- Duplication of an entire pattern or list of actions.
+- Duplication of a complete flow rule description.
+
 Caveats
 -------
 

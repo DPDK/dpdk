@@ -18,6 +18,7 @@
 #include <stdint.h>
 
 #include <rte_arp.h>
+#include <rte_common.h>
 #include <rte_ether.h>
 #include <rte_eth_ctrl.h>
 #include <rte_icmp.h>
@@ -1932,6 +1933,119 @@ struct rte_flow_error {
 };
 
 /**
+ * Complete flow rule description.
+ *
+ * This object type is used when converting a flow rule description.
+ *
+ * @see RTE_FLOW_CONV_OP_RULE
+ * @see rte_flow_conv()
+ */
+RTE_STD_C11
+struct rte_flow_conv_rule {
+	union {
+		const struct rte_flow_attr *attr_ro; /**< RO attributes. */
+		struct rte_flow_attr *attr; /**< Attributes. */
+	};
+	union {
+		const struct rte_flow_item *pattern_ro; /**< RO pattern. */
+		struct rte_flow_item *pattern; /**< Pattern items. */
+	};
+	union {
+		const struct rte_flow_action *actions_ro; /**< RO actions. */
+		struct rte_flow_action *actions; /**< List of actions. */
+	};
+};
+
+/**
+ * Conversion operations for flow API objects.
+ *
+ * @see rte_flow_conv()
+ */
+enum rte_flow_conv_op {
+	/**
+	 * No operation to perform.
+	 *
+	 * rte_flow_conv() simply returns 0.
+	 */
+	RTE_FLOW_CONV_OP_NONE,
+
+	/**
+	 * Convert attributes structure.
+	 *
+	 * This is a basic copy of an attributes structure.
+	 *
+	 * - @p src type:
+	 *   @code const struct rte_flow_attr * @endcode
+	 * - @p dst type:
+	 *   @code struct rte_flow_attr * @endcode
+	 */
+	RTE_FLOW_CONV_OP_ATTR,
+
+	/**
+	 * Convert a single item.
+	 *
+	 * Duplicates @p spec, @p last and @p mask but not outside objects.
+	 *
+	 * - @p src type:
+	 *   @code const struct rte_flow_item * @endcode
+	 * - @p dst type:
+	 *   @code struct rte_flow_item * @endcode
+	 */
+	RTE_FLOW_CONV_OP_ITEM,
+
+	/**
+	 * Convert a single action.
+	 *
+	 * Duplicates @p conf but not outside objects.
+	 *
+	 * - @p src type:
+	 *   @code const struct rte_flow_action * @endcode
+	 * - @p dst type:
+	 *   @code struct rte_flow_action * @endcode
+	 */
+	RTE_FLOW_CONV_OP_ACTION,
+
+	/**
+	 * Convert an entire pattern.
+	 *
+	 * Duplicates all pattern items at once with the same constraints as
+	 * RTE_FLOW_CONV_OP_ITEM.
+	 *
+	 * - @p src type:
+	 *   @code const struct rte_flow_item * @endcode
+	 * - @p dst type:
+	 *   @code struct rte_flow_item * @endcode
+	 */
+	RTE_FLOW_CONV_OP_PATTERN,
+
+	/**
+	 * Convert a list of actions.
+	 *
+	 * Duplicates the entire list of actions at once with the same
+	 * constraints as RTE_FLOW_CONV_OP_ACTION.
+	 *
+	 * - @p src type:
+	 *   @code const struct rte_flow_action * @endcode
+	 * - @p dst type:
+	 *   @code struct rte_flow_action * @endcode
+	 */
+	RTE_FLOW_CONV_OP_ACTIONS,
+
+	/**
+	 * Convert a complete flow rule description.
+	 *
+	 * Comprises attributes, pattern and actions together at once with
+	 * the usual constraints.
+	 *
+	 * - @p src type:
+	 *   @code const struct rte_flow_conv_rule * @endcode
+	 * - @p dst type:
+	 *   @code struct rte_flow_conv_rule * @endcode
+	 */
+	RTE_FLOW_CONV_OP_RULE,
+};
+
+/**
  * Check whether a flow rule can be created on a given port.
  *
  * The flow rule is validated for correctness and whether it could be accepted
@@ -2162,10 +2276,7 @@ rte_flow_error_set(struct rte_flow_error *error,
 		   const char *message);
 
 /**
- * Generic flow representation.
- *
- * This form is sufficient to describe an rte_flow independently from any
- * PMD implementation and allows for replayability and identification.
+ * @see rte_flow_copy()
  */
 struct rte_flow_desc {
 	size_t size; /**< Allocated space including data[]. */
@@ -2177,6 +2288,9 @@ struct rte_flow_desc {
 
 /**
  * Copy an rte_flow rule description.
+ *
+ * This interface is kept for compatibility with older applications but is
+ * implemented as a wrapper to rte_flow_conv().
  *
  * @param[in] fd
  *   Flow rule description.
@@ -2200,6 +2314,54 @@ rte_flow_copy(struct rte_flow_desc *fd, size_t len,
 	      const struct rte_flow_attr *attr,
 	      const struct rte_flow_item *items,
 	      const struct rte_flow_action *actions);
+
+/**
+ * Flow object conversion helper.
+ *
+ * This function performs conversion of various flow API objects to a
+ * pre-allocated destination buffer. See enum rte_flow_conv_op for possible
+ * operations and details about each of them.
+ *
+ * Since destination buffer must be large enough, it works in a manner
+ * reminiscent of snprintf():
+ *
+ * - If @p size is 0, @p dst may be a NULL pointer, otherwise @p dst must be
+ *   non-NULL.
+ * - If positive, the returned value represents the number of bytes needed
+ *   to store the conversion of @p src to @p dst according to @p op
+ *   regardless of the @p size parameter.
+ * - Since no more than @p size bytes can be written to @p dst, output is
+ *   truncated and may be inconsistent when the returned value is larger
+ *   than that.
+ * - In case of conversion error, a negative error code is returned and
+ *   @p dst contents are unspecified.
+ *
+ * @param op
+ *   Operation to perform, related to the object type of @p dst.
+ * @param[out] dst
+ *   Destination buffer address. Must be suitably aligned by the caller.
+ * @param size
+ *   Destination buffer size in bytes.
+ * @param[in] src
+ *   Source object to copy. Depending on @p op, its type may differ from
+ *   that of @p dst.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. Initialized in case of
+ *   error only.
+ *
+ * @return
+ *   The number of bytes required to convert @p src to @p dst on success, a
+ *   negative errno value otherwise and rte_errno is set.
+ *
+ * @see rte_flow_conv_op
+ */
+__rte_experimental
+int
+rte_flow_conv(enum rte_flow_conv_op op,
+	      void *dst,
+	      size_t size,
+	      const void *src,
+	      struct rte_flow_error *error);
 
 #ifdef __cplusplus
 }
