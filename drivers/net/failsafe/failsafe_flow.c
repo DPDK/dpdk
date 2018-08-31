@@ -3,8 +3,11 @@
  * Copyright 2017 Mellanox Technologies, Ltd
  */
 
+#include <stddef.h>
+#include <string.h>
 #include <sys/queue.h>
 
+#include <rte_errno.h>
 #include <rte_malloc.h>
 #include <rte_tailq.h>
 #include <rte_flow.h>
@@ -18,19 +21,33 @@ fs_flow_allocate(const struct rte_flow_attr *attr,
 		 const struct rte_flow_action *actions)
 {
 	struct rte_flow *flow;
-	size_t fdsz;
+	const struct rte_flow_conv_rule rule = {
+		.attr_ro = attr,
+		.pattern_ro = items,
+		.actions_ro = actions,
+	};
+	struct rte_flow_error error;
+	int ret;
 
-	fdsz = rte_flow_copy(NULL, 0, attr, items, actions);
-	flow = rte_zmalloc(NULL,
-			   sizeof(struct rte_flow) + fdsz,
+	ret = rte_flow_conv(RTE_FLOW_CONV_OP_RULE, NULL, 0, &rule, &error);
+	if (ret < 0) {
+		ERROR("Unable to process flow rule (%s): %s",
+		      error.message ? error.message : "unspecified",
+		      strerror(rte_errno));
+		return NULL;
+	}
+	flow = rte_zmalloc(NULL, offsetof(struct rte_flow, rule) + ret,
 			   RTE_CACHE_LINE_SIZE);
 	if (flow == NULL) {
 		ERROR("Could not allocate new flow");
 		return NULL;
 	}
-	flow->fd = (void *)((uintptr_t)flow + sizeof(*flow));
-	if (rte_flow_copy(flow->fd, fdsz, attr, items, actions) != fdsz) {
-		ERROR("Failed to copy flow description");
+	ret = rte_flow_conv(RTE_FLOW_CONV_OP_RULE, &flow->rule, ret, &rule,
+			    &error);
+	if (ret < 0) {
+		ERROR("Failed to copy flow rule (%s): %s",
+		      error.message ? error.message : "unspecified",
+		      strerror(rte_errno));
 		rte_free(flow);
 		return NULL;
 	}

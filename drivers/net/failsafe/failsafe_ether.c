@@ -247,9 +247,9 @@ fs_eth_dev_conf_apply(struct rte_eth_dev *dev,
 			DEBUG("Creating flow #%" PRIu32, i++);
 			flow->flows[SUB_ID(sdev)] =
 				rte_flow_create(PORT_ID(sdev),
-						&flow->fd->attr,
-						flow->fd->items,
-						flow->fd->actions,
+						flow->rule.attr,
+						flow->rule.pattern,
+						flow->rule.actions,
 						&ferror);
 			ret = rte_errno;
 			if (ret)

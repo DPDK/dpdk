@@ -6,6 +6,7 @@
 #ifndef _RTE_ETH_FAILSAFE_PRIVATE_H_
 #define _RTE_ETH_FAILSAFE_PRIVATE_H_
 
+#include <stdint.h>
 #include <sys/queue.h>
 #include <pthread.h>
 
@@ -13,6 +14,7 @@
 #include <rte_dev.h>
 #include <rte_ethdev_driver.h>
 #include <rte_devargs.h>
+#include <rte_flow.h>
 #include <rte_interrupts.h>
 
 #define FAILSAFE_DRIVER_NAME "Fail-safe PMD"
@@ -81,7 +83,8 @@ struct rte_flow {
 	/* sub_flows */
 	struct rte_flow *flows[FAILSAFE_MAX_ETHPORTS];
 	/* flow description for synchronization */
-	struct rte_flow_desc *fd;
+	struct rte_flow_conv_rule rule;
+	uint8_t rule_data[];
 };
 
 enum dev_state {
