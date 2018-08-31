@@ -20,6 +20,9 @@ sources = [
 error_cflags = ['-Wno-unused-value',
 		'-Wno-unused-but-set-variable']
 c_args = cflags
+if allow_experimental_apis
+	c_args += '-DALLOW_EXPERIMENTAL_API'
+endif
 foreach flag: error_cflags
 	if cc.has_argument(flag)
 		c_args += flag

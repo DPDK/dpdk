@@ -13,8 +13,12 @@ foreach d: depends
 	static_objs += [get_variable('static_rte_' + d)]
 endforeach
 
+c_args = cflags
+if allow_experimental_apis
+	c_args += '-DALLOW_EXPERIMENTAL_API'
+endif
 base_lib = static_library('octeontx_base', sources,
-	c_args: cflags,
+	c_args: c_args,
 	dependencies: static_objs,
 )
 
