@@ -11,6 +11,7 @@
 #include <rte_common.h>
 #include <rte_errno.h>
 #include <rte_branch_prediction.h>
+#include <rte_string_fns.h>
 #include "rte_ethdev.h"
 #include "rte_flow_driver.h"
 #include "rte_flow.h"
@@ -679,6 +680,60 @@ rte_flow_conv_rule(struct rte_flow_conv_rule *dst,
 	return off;
 }
 
+/**
+ * Retrieve the name of a pattern item/action type.
+ *
+ * @param is_action
+ *   Nonzero when @p src represents an action type instead of a pattern item
+ *   type.
+ * @param is_ptr
+ *   Nonzero to write string address instead of contents into @p dst.
+ * @param[out] dst
+ *   Destination buffer. Can be NULL if @p size is zero.
+ * @param size
+ *   Size of @p dst in bytes.
+ * @param[in] src
+ *   Depending on @p is_action, source pattern item or action type cast as a
+ *   pointer.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   A positive value representing the number of bytes needed to store the
+ *   name or its address regardless of @p size on success (@p buf contents
+ *   are truncated to @p size if not large enough), a negative errno value
+ *   otherwise and rte_errno is set.
+ */
+static int
+rte_flow_conv_name(int is_action,
+		   int is_ptr,
+		   char *dst,
+		   const size_t size,
+		   const void *src,
+		   struct rte_flow_error *error)
+{
+	struct desc_info {
+		const struct rte_flow_desc_data *data;
+		size_t num;
+	};
+	static const struct desc_info info_rep[2] = {
+		{ rte_flow_desc_item, RTE_DIM(rte_flow_desc_item), },
+		{ rte_flow_desc_action, RTE_DIM(rte_flow_desc_action), },
+	};
+	const struct desc_info *const info = &info_rep[!!is_action];
+	unsigned int type = (uintptr_t)src;
+
+	if (type >= info->num)
+		return rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			 "unknown object type to retrieve the name of");
+	if (!is_ptr)
+		return strlcpy(dst, info->data[type].name, size);
+	if (size >= sizeof(const char **))
+		*((const char **)dst) = info->data[type].name;
+	return sizeof(const char **);
+}
+
 /** Helper function to convert flow API objects. */
 int
 rte_flow_conv(enum rte_flow_conv_op op,
@@ -708,6 +763,14 @@ rte_flow_conv(enum rte_flow_conv_op op,
 		return rte_flow_conv_actions(dst, size, src, 0, error);
 	case RTE_FLOW_CONV_OP_RULE:
 		return rte_flow_conv_rule(dst, size, src, error);
+	case RTE_FLOW_CONV_OP_ITEM_NAME:
+		return rte_flow_conv_name(0, 0, dst, size, src, error);
+	case RTE_FLOW_CONV_OP_ACTION_NAME:
+		return rte_flow_conv_name(1, 0, dst, size, src, error);
+	case RTE_FLOW_CONV_OP_ITEM_NAME_PTR:
+		return rte_flow_conv_name(0, 1, dst, size, src, error);
+	case RTE_FLOW_CONV_OP_ACTION_NAME_PTR:
+		return rte_flow_conv_name(1, 1, dst, size, src, error);
 	}
 	return rte_flow_error_set
 		(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,

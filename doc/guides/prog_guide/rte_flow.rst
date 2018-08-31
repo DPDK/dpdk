@@ -2437,6 +2437,7 @@ operations include:
 - Attributes, pattern item or action duplication.
 - Duplication of an entire pattern or list of actions.
 - Duplication of a complete flow rule description.
+- Pattern item or action name retrieval.
 
 Caveats
 -------

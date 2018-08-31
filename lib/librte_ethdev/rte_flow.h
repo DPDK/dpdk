@@ -2043,6 +2043,62 @@ enum rte_flow_conv_op {
 	 *   @code struct rte_flow_conv_rule * @endcode
 	 */
 	RTE_FLOW_CONV_OP_RULE,
+
+	/**
+	 * Convert item type to its name string.
+	 *
+	 * Writes a NUL-terminated string to @p dst. Like snprintf(), the
+	 * returned value excludes the terminator which is always written
+	 * nonetheless.
+	 *
+	 * - @p src type:
+	 *   @code (const void *)enum rte_flow_item_type @endcode
+	 * - @p dst type:
+	 *   @code char * @endcode
+	 **/
+	RTE_FLOW_CONV_OP_ITEM_NAME,
+
+	/**
+	 * Convert action type to its name string.
+	 *
+	 * Writes a NUL-terminated string to @p dst. Like snprintf(), the
+	 * returned value excludes the terminator which is always written
+	 * nonetheless.
+	 *
+	 * - @p src type:
+	 *   @code (const void *)enum rte_flow_action_type @endcode
+	 * - @p dst type:
+	 *   @code char * @endcode
+	 **/
+	RTE_FLOW_CONV_OP_ACTION_NAME,
+
+	/**
+	 * Convert item type to pointer to item name.
+	 *
+	 * Retrieves item name pointer from its type. The string itself is
+	 * not copied; instead, a unique pointer to an internal static
+	 * constant storage is written to @p dst.
+	 *
+	 * - @p src type:
+	 *   @code (const void *)enum rte_flow_item_type @endcode
+	 * - @p dst type:
+	 *   @code const char ** @endcode
+	 */
+	RTE_FLOW_CONV_OP_ITEM_NAME_PTR,
+
+	/**
+	 * Convert action type to pointer to action name.
+	 *
+	 * Retrieves action name pointer from its type. The string itself is
+	 * not copied; instead, a unique pointer to an internal static
+	 * constant storage is written to @p dst.
+	 *
+	 * - @p src type:
+	 *   @code (const void *)enum rte_flow_action_type @endcode
+	 * - @p dst type:
+	 *   @code const char ** @endcode
+	 */
+	RTE_FLOW_CONV_OP_ACTION_NAME_PTR,
 };
 
 /**
