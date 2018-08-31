@@ -372,7 +372,7 @@ void failsafe_rx_intr_uninstall_subdevice(struct sub_device *sdev)
 	for (qid = 0; qid < ETH(sdev)->data->nb_rx_queues; qid++) {
 		if (qid < fsdev->data->nb_rx_queues) {
 			fsrxq = fsdev->data->rx_queues[qid];
-			if (fsrxq->enable_events)
+			if (fsrxq != NULL && fsrxq->enable_events)
 				rte_eth_dev_rx_intr_disable(PORT_ID(sdev),
 							    qid);
 		}
