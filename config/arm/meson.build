@@ -157,7 +157,8 @@ else
 endif
 message(machine_args)
 
-if cc.get_define('__ARM_NEON', args: machine_args) != ''
+if (cc.get_define('__ARM_NEON', args: machine_args) != '' or
+    cc.get_define('__aarch64__', args: machine_args) != '')
 	dpdk_conf.set('RTE_MACHINE_CPUFLAG_NEON', 1)
 	compile_time_cpuflags += ['RTE_CPUFLAG_NEON']
 endif

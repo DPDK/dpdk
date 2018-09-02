@@ -89,7 +89,7 @@ CPUFLAGS += VSX
 endif
 
 # ARM flags
-ifneq ($(filter $(AUTO_CPUFLAGS),__ARM_NEON),)
+ifneq ($(filter __ARM_NEON __aarch64__,$(AUTO_CPUFLAGS)),)
 CPUFLAGS += NEON
 endif
 
