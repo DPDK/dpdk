@@ -1619,7 +1619,12 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	 */
 	if ((diag != IXGBE_SUCCESS) && (diag != IXGBE_ERR_INVALID_MAC_ADDR)) {
 		PMD_INIT_LOG(ERR, "VF Initialization Failure: %d", diag);
-		return diag;
+		/*
+		 * This error code will be propagated to the app by
+		 * rte_eth_dev_reset, so use a public error code rather than
+		 * the internal-only IXGBE_ERR_RESET_FAILED
+		 */
+		return -EAGAIN;
 	}
 
 	/* negotiate mailbox API version to use with the PF. */
