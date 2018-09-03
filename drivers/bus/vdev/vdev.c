@@ -346,6 +346,7 @@ vdev_action(const struct rte_mp_msg *mp_msg, const void *peer)
 	const struct vdev_param *in = (const struct vdev_param *)mp_msg->param;
 	const char *devname;
 	int num;
+	int ret;
 
 	strlcpy(mp_resp.name, VDEV_MP_KEY, sizeof(mp_resp.name));
 	mp_resp.len_param = sizeof(*ou);
@@ -380,7 +381,10 @@ vdev_action(const struct rte_mp_msg *mp_msg, const void *peer)
 		break;
 	case VDEV_SCAN_ONE:
 		VDEV_LOG(INFO, "receive vdev, %s", in->name);
-		if (insert_vdev(in->name, NULL, NULL) < 0)
+		ret = insert_vdev(in->name, NULL, NULL);
+		if (ret == -EEXIST)
+			VDEV_LOG(DEBUG, "device already exist, %s", in->name);
+		else if (ret < 0)
 			VDEV_LOG(ERR, "failed to add vdev, %s", in->name);
 		break;
 	default:
