@@ -421,6 +421,9 @@ functionality requires a NIC firmware version of 6.0 or greater.
 Current implementation supports GTP-C/GTP-U/PPPoE/PPPoL2TP,
 steering can be used with rte_flow API.
 
+GTPv1 package is released, and it can be downloaded from
+https://downloadcenter.intel.com/download/27587.
+
 Load a profile which supports GTP and store backup profile:
 
 .. code-block:: console
