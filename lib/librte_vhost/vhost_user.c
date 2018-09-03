@@ -1014,7 +1014,7 @@ vhost_user_set_vring_call(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 	vq->callfd = file.fd;
 }
 
-static void
+static int
 vhost_user_set_vring_kick(struct virtio_net **pdev, struct VhostUserMsg *pmsg)
 {
 	struct vhost_vring_file file;
@@ -1032,7 +1032,7 @@ vhost_user_set_vring_kick(struct virtio_net **pdev, struct VhostUserMsg *pmsg)
 	/* Interpret ring addresses only when ring is started. */
 	dev = translate_ring_addresses(dev, file.index);
 	if (!dev)
-		return;
+		return -1;
 
 	*pdev = dev;
 
@@ -1049,6 +1049,7 @@ vhost_user_set_vring_kick(struct virtio_net **pdev, struct VhostUserMsg *pmsg)
 	if (vq->kickfd >= 0)
 		close(vq->kickfd);
 	vq->kickfd = file.fd;
+	return 0;
 }
 
 static void
@@ -1172,14 +1173,19 @@ vhost_user_get_protocol_features(struct virtio_net *dev,
 	msg->size = sizeof(msg->payload.u64);
 }
 
-static void
+static int
 vhost_user_set_protocol_features(struct virtio_net *dev,
 				 uint64_t protocol_features)
 {
-	if (protocol_features & ~VHOST_USER_PROTOCOL_FEATURES)
-		return;
+	if (protocol_features & ~VHOST_USER_PROTOCOL_FEATURES) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"(%d) received invalid protocol features.\n",
+			dev->vid);
+		return -1;
+	}
 
 	dev->protocol_features = protocol_features;
+	return 0;
 }
 
 static int
@@ -1657,8 +1663,6 @@ vhost_user_msg_handler(int vid, int fd)
 		break;
 	case VHOST_USER_SET_FEATURES:
 		ret = vhost_user_set_features(dev, msg.payload.u64);
-		if (ret)
-			return -1;
 		break;
 
 	case VHOST_USER_GET_PROTOCOL_FEATURES:
@@ -1666,14 +1670,14 @@ vhost_user_msg_handler(int vid, int fd)
 		send_vhost_reply(fd, &msg);
 		break;
 	case VHOST_USER_SET_PROTOCOL_FEATURES:
-		vhost_user_set_protocol_features(dev, msg.payload.u64);
+		ret = vhost_user_set_protocol_features(dev, msg.payload.u64);
 		break;
 
 	case VHOST_USER_SET_OWNER:
-		vhost_user_set_owner();
+		ret = vhost_user_set_owner();
 		break;
 	case VHOST_USER_RESET_OWNER:
-		vhost_user_reset_owner(dev);
+		ret = vhost_user_reset_owner(dev);
 		break;
 
 	case VHOST_USER_SET_MEM_TABLE:
@@ -1681,8 +1685,9 @@ vhost_user_msg_handler(int vid, int fd)
 		break;
 
 	case VHOST_USER_SET_LOG_BASE:
-		vhost_user_set_log_base(dev, &msg);
-
+		ret = vhost_user_set_log_base(dev, &msg);
+		if (ret)
+			goto skip_to_reply;
 		/* it needs a reply */
 		msg.size = sizeof(msg.payload.u64);
 		send_vhost_reply(fd, &msg);
@@ -1693,23 +1698,25 @@ vhost_user_msg_handler(int vid, int fd)
 		break;
 
 	case VHOST_USER_SET_VRING_NUM:
-		vhost_user_set_vring_num(dev, &msg);
+		ret = vhost_user_set_vring_num(dev, &msg);
 		break;
 	case VHOST_USER_SET_VRING_ADDR:
-		vhost_user_set_vring_addr(&dev, &msg);
+		ret = vhost_user_set_vring_addr(&dev, &msg);
 		break;
 	case VHOST_USER_SET_VRING_BASE:
-		vhost_user_set_vring_base(dev, &msg);
+		ret = vhost_user_set_vring_base(dev, &msg);
 		break;
 
 	case VHOST_USER_GET_VRING_BASE:
-		vhost_user_get_vring_base(dev, &msg);
+		ret = vhost_user_get_vring_base(dev, &msg);
+		if (ret)
+			goto skip_to_reply;
 		msg.size = sizeof(msg.payload.state);
 		send_vhost_reply(fd, &msg);
 		break;
 
 	case VHOST_USER_SET_VRING_KICK:
-		vhost_user_set_vring_kick(&dev, &msg);
+		ret = vhost_user_set_vring_kick(&dev, &msg);
 		break;
 	case VHOST_USER_SET_VRING_CALL:
 		vhost_user_set_vring_call(dev, &msg);
@@ -1728,10 +1735,10 @@ vhost_user_msg_handler(int vid, int fd)
 		break;
 
 	case VHOST_USER_SET_VRING_ENABLE:
-		vhost_user_set_vring_enable(dev, &msg);
+		ret = vhost_user_set_vring_enable(dev, &msg);
 		break;
 	case VHOST_USER_SEND_RARP:
-		vhost_user_send_rarp(dev, &msg);
+		ret = vhost_user_send_rarp(dev, &msg);
 		break;
 
 	case VHOST_USER_NET_SET_MTU:
@@ -1752,7 +1759,7 @@ vhost_user_msg_handler(int vid, int fd)
 	}
 
 skip_to_post_handle:
-	if (dev->extern_ops.post_msg_handle) {
+	if (!ret && dev->extern_ops.post_msg_handle) {
 		uint32_t need_reply;
 
 		ret = (*dev->extern_ops.post_msg_handle)(
@@ -1772,6 +1779,10 @@ skip_to_reply:
 		msg.payload.u64 = !!ret;
 		msg.size = sizeof(msg.payload.u64);
 		send_vhost_reply(fd, &msg);
+	} else if (ret) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"vhost message handling failed.\n");
+		return -1;
 	}
 
 	if (!(dev->flags & VIRTIO_DEV_RUNNING) && virtio_is_ready(dev)) {
