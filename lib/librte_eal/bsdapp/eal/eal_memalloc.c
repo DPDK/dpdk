@@ -48,6 +48,18 @@ eal_memalloc_sync_with_primary(void)
 }
 
 int
+eal_memalloc_get_seg_fd(int list_idx, int seg_idx)
+{
+	return -1;
+}
+
+int
+eal_memalloc_set_seg_fd(int list_idx, int seg_idx, int fd)
+{
+	return -1;
+}
+
+int
 eal_memalloc_init(void)
 {
 	return 0;

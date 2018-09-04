@@ -294,7 +294,7 @@ dump_memseg(const struct rte_memseg_list *msl, const struct rte_memseg *ms,
 		void *arg)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	int msl_idx, ms_idx;
+	int msl_idx, ms_idx, fd;
 	FILE *f = arg;
 
 	msl_idx = msl - mcfg->memsegs;
@@ -305,10 +305,11 @@ dump_memseg(const struct rte_memseg_list *msl, const struct rte_memseg *ms,
 	if (ms_idx < 0)
 		return -1;
 
+	fd = eal_memalloc_get_seg_fd(msl_idx, ms_idx);
 	fprintf(f, "Segment %i-%i: IOVA:0x%"PRIx64", len:%zu, "
 			"virt:%p, socket_id:%"PRId32", "
 			"hugepage_sz:%"PRIu64", nchannel:%"PRIx32", "
-			"nrank:%"PRIx32"\n",
+			"nrank:%"PRIx32" fd:%i\n",
 			msl_idx, ms_idx,
 			ms->iova,
 			ms->len,
@@ -316,7 +317,8 @@ dump_memseg(const struct rte_memseg_list *msl, const struct rte_memseg *ms,
 			ms->socket_id,
 			ms->hugepage_sz,
 			ms->nchannel,
-			ms->nrank);
+			ms->nrank,
+			fd);
 
 	return 0;
 }

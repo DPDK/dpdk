@@ -772,7 +772,10 @@ remap_segment(struct hugepage_file *hugepages, int seg_start, int seg_end)
 
 		rte_fbarray_set_used(arr, ms_idx);
 
-		close(fd);
+		/* store segment fd internally */
+		if (eal_memalloc_set_seg_fd(msl_idx, ms_idx, fd) < 0)
+			RTE_LOG(ERR, EAL, "Could not store segment fd: %s\n",
+				rte_strerror(rte_errno));
 	}
 	RTE_LOG(DEBUG, EAL, "Allocated %" PRIu64 "M on socket %i\n",
 			(seg_len * page_sz) >> 20, socket_id);
@@ -1771,6 +1774,7 @@ getFileSize(int fd)
 static int
 eal_legacy_hugepage_attach(void)
 {
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	struct hugepage_file *hp = NULL;
 	unsigned int num_hp = 0;
 	unsigned int i = 0;
@@ -1814,6 +1818,9 @@ eal_legacy_hugepage_attach(void)
 		struct hugepage_file *hf = &hp[i];
 		size_t map_sz = hf->size;
 		void *map_addr = hf->final_va;
+		int msl_idx, ms_idx;
+		struct rte_memseg_list *msl;
+		struct rte_memseg *ms;
 
 		/* if size is zero, no more pages left */
 		if (map_sz == 0)
@@ -1831,25 +1838,50 @@ eal_legacy_hugepage_attach(void)
 		if (map_addr == MAP_FAILED) {
 			RTE_LOG(ERR, EAL, "Could not map %s: %s\n",
 				hf->filepath, strerror(errno));
-			close(fd);
-			goto error;
+			goto fd_error;
 		}
 
 		/* set shared lock on the file. */
 		if (flock(fd, LOCK_SH) < 0) {
 			RTE_LOG(DEBUG, EAL, "%s(): Locking file failed: %s\n",
 				__func__, strerror(errno));
-			close(fd);
-			goto error;
+			goto fd_error;
 		}
 
-		close(fd);
+		/* find segment data */
+		msl = rte_mem_virt2memseg_list(map_addr);
+		if (msl == NULL) {
+			RTE_LOG(DEBUG, EAL, "%s(): Cannot find memseg list\n",
+				__func__);
+			goto fd_error;
+		}
+		ms = rte_mem_virt2memseg(map_addr, msl);
+		if (ms == NULL) {
+			RTE_LOG(DEBUG, EAL, "%s(): Cannot find memseg\n",
+				__func__);
+			goto fd_error;
+		}
+
+		msl_idx = msl - mcfg->memsegs;
+		ms_idx = rte_fbarray_find_idx(&msl->memseg_arr, ms);
+		if (ms_idx < 0) {
+			RTE_LOG(DEBUG, EAL, "%s(): Cannot find memseg idx\n",
+				__func__);
+			goto fd_error;
+		}
+
+		/* store segment fd internally */
+		if (eal_memalloc_set_seg_fd(msl_idx, ms_idx, fd) < 0)
+			RTE_LOG(ERR, EAL, "Could not store segment fd: %s\n",
+				rte_strerror(rte_errno));
 	}
 	/* unmap the hugepage config file, since we are done using it */
 	munmap(hp, size);
 	close(fd_hugepage);
 	return 0;
 
+fd_error:
+	close(fd);
 error:
 	/* map all segments into memory to make sure we get the addrs */
 	cur_seg = 0;

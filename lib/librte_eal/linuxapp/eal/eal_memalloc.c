@@ -1334,16 +1334,10 @@ secondary_msl_create_walk(const struct rte_memseg_list *msl,
 }
 
 static int
-fd_list_create_walk(const struct rte_memseg_list *msl,
-		void *arg __rte_unused)
+alloc_list(int list_idx, int len)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	unsigned int i, len;
-	int msl_idx;
 	int *data;
-
-	msl_idx = msl - mcfg->memsegs;
-	len = msl->memseg_arr.len;
+	int i;
 
 	/* ensure we have space to store fd per each possible segment */
 	data = malloc(sizeof(int) * len);
@@ -1355,12 +1349,54 @@ fd_list_create_walk(const struct rte_memseg_list *msl,
 	for (i = 0; i < len; i++)
 		data[i] = -1;
 
-	fd_list[msl_idx].fds = data;
-	fd_list[msl_idx].len = len;
-	fd_list[msl_idx].count = 0;
-	fd_list[msl_idx].memseg_list_fd = -1;
+	fd_list[list_idx].fds = data;
+	fd_list[list_idx].len = len;
+	fd_list[list_idx].count = 0;
+	fd_list[list_idx].memseg_list_fd = -1;
 
 	return 0;
+}
+
+static int
+fd_list_create_walk(const struct rte_memseg_list *msl,
+		void *arg __rte_unused)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	unsigned int len;
+	int msl_idx;
+
+	msl_idx = msl - mcfg->memsegs;
+	len = msl->memseg_arr.len;
+
+	return alloc_list(msl_idx, len);
+}
+
+int
+eal_memalloc_set_seg_fd(int list_idx, int seg_idx, int fd)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+
+	/* if list is not allocated, allocate it */
+	if (fd_list[list_idx].len == 0) {
+		int len = mcfg->memsegs[list_idx].memseg_arr.len;
+
+		if (alloc_list(list_idx, len) < 0)
+			return -1;
+	}
+	fd_list[list_idx].fds[seg_idx] = fd;
+
+	return 0;
+}
+
+int
+eal_memalloc_get_seg_fd(int list_idx, int seg_idx)
+{
+	if (internal_config.single_file_segments)
+		return fd_list[list_idx].memseg_list_fd;
+	/* list not initialized */
+	if (fd_list[list_idx].len == 0)
+		return -1;
+	return fd_list[list_idx].fds[seg_idx];
 }
 
 int
