@@ -9,6 +9,7 @@ if has_libnuma == 1
 endif
 version = 4
 allow_experimental_apis = true
+cflags += '-fno-strict-aliasing'
 sources = files('fd_man.c', 'iotlb.c', 'socket.c', 'vdpa.c',
 		'vhost.c', 'vhost_user.c',
 		'virtio_net.c', 'vhost_crypto.c')

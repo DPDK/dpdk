@@ -647,12 +647,18 @@ rte_vhost_avail_entries(int vid, uint16_t queue_id)
 }
 
 static inline void
-vhost_enable_notify_split(struct vhost_virtqueue *vq, int enable)
+vhost_enable_notify_split(struct virtio_net *dev,
+		struct vhost_virtqueue *vq, int enable)
 {
-	if (enable)
-		vq->used->flags &= ~VRING_USED_F_NO_NOTIFY;
-	else
-		vq->used->flags |= VRING_USED_F_NO_NOTIFY;
+	if (!(dev->features & (1ULL << VIRTIO_RING_F_EVENT_IDX))) {
+		if (enable)
+			vq->used->flags &= ~VRING_USED_F_NO_NOTIFY;
+		else
+			vq->used->flags |= VRING_USED_F_NO_NOTIFY;
+	} else {
+		if (enable)
+			vhost_avail_event(vq) = vq->last_avail_idx;
+	}
 }
 
 static inline void
@@ -690,7 +696,7 @@ rte_vhost_enable_guest_notification(int vid, uint16_t queue_id, int enable)
 	if (vq_is_packed(dev))
 		vhost_enable_notify_packed(dev, vq, enable);
 	else
-		vhost_enable_notify_split(vq, enable);
+		vhost_enable_notify_split(dev, vq, enable);
 
 	return 0;
 }

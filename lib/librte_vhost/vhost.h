@@ -648,6 +648,8 @@ vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	return __vhost_iova_to_vva(dev, vq, iova, len, perm);
 }
 
+#define vhost_avail_event(vr) \
+	(*(volatile uint16_t*)&(vr)->used->ring[(vr)->size])
 #define vhost_used_event(vr) \
 	(*(volatile uint16_t*)&(vr)->avail->ring[(vr)->size])
 
