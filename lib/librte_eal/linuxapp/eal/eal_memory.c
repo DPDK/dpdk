@@ -17,6 +17,7 @@
 #include <sys/stat.h>
 #include <sys/queue.h>
 #include <sys/file.h>
+#include <sys/resource.h>
 #include <unistd.h>
 #include <limits.h>
 #include <sys/ioctl.h>
@@ -2204,6 +2205,25 @@ memseg_secondary_init(void)
 int
 rte_eal_memseg_init(void)
 {
+	/* increase rlimit to maximum */
+	struct rlimit lim;
+
+	if (getrlimit(RLIMIT_NOFILE, &lim) == 0) {
+		/* set limit to maximum */
+		lim.rlim_cur = lim.rlim_max;
+
+		if (setrlimit(RLIMIT_NOFILE, &lim) < 0) {
+			RTE_LOG(DEBUG, EAL, "Setting maximum number of open files failed: %s\n",
+					strerror(errno));
+		} else {
+			RTE_LOG(DEBUG, EAL, "Setting maximum number of open files to %"
+					PRIu64 "\n",
+					(uint64_t)lim.rlim_cur);
+		}
+	} else {
+		RTE_LOG(ERR, EAL, "Cannot get current resource limits\n");
+	}
+
 	return rte_eal_process_type() == RTE_PROC_PRIMARY ?
 #ifndef RTE_ARCH_64
 			memseg_primary_init_32() :
