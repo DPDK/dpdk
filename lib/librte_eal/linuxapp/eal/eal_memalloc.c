@@ -318,18 +318,24 @@ get_seg_fd(char *path, int buflen, struct hugepage_info *hi,
 		/* create a hugepage file path */
 		eal_get_hugefile_path(path, buflen, hi->hugedir,
 				list_idx * RTE_MAX_MEMSEG_PER_LIST + seg_idx);
-		fd = open(path, O_CREAT | O_RDWR, 0600);
+
+		fd = fd_list[list_idx].fds[seg_idx];
+
 		if (fd < 0) {
-			RTE_LOG(DEBUG, EAL, "%s(): open failed: %s\n", __func__,
-					strerror(errno));
-			return -1;
-		}
-		/* take out a read lock */
-		if (lock(fd, LOCK_SH) < 0) {
-			RTE_LOG(ERR, EAL, "%s(): lock failed: %s\n",
-				__func__, strerror(errno));
-			close(fd);
-			return -1;
+			fd = open(path, O_CREAT | O_RDWR, 0600);
+			if (fd < 0) {
+				RTE_LOG(DEBUG, EAL, "%s(): open failed: %s\n",
+					__func__, strerror(errno));
+				return -1;
+			}
+			/* take out a read lock */
+			if (lock(fd, LOCK_SH) < 0) {
+				RTE_LOG(ERR, EAL, "%s(): lock failed: %s\n",
+					__func__, strerror(errno));
+				close(fd);
+				return -1;
+			}
+			fd_list[list_idx].fds[seg_idx] = fd;
 		}
 	}
 	return fd;
@@ -601,10 +607,6 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 		goto mapped;
 	}
 #endif
-	/* for non-single file segments that aren't in-memory, we can close fd
-	 * here */
-	if (!internal_config.single_file_segments && !internal_config.in_memory)
-		close(fd);
 
 	ms->addr = addr;
 	ms->hugepage_sz = alloc_sz;
@@ -634,7 +636,10 @@ unmapped:
 		RTE_LOG(CRIT, EAL, "Can't mmap holes in our virtual address space\n");
 	}
 resized:
-	/* in-memory mode will never be single-file-segments mode */
+	/* some codepaths will return negative fd, so exit early */
+	if (fd < 0)
+		return -1;
+
 	if (internal_config.single_file_segments) {
 		resize_hugefile(fd, path, list_idx, seg_idx, map_offset,
 				alloc_sz, false);
@@ -646,6 +651,7 @@ resized:
 				lock(fd, LOCK_EX) == 1)
 			unlink(path);
 		close(fd);
+		fd_list[list_idx].fds[seg_idx] = -1;
 	}
 	return -1;
 }
@@ -700,6 +706,7 @@ free_seg(struct rte_memseg *ms, struct hugepage_info *hi,
 		}
 		/* closing fd will drop the lock */
 		close(fd);
+		fd_list[list_idx].fds[seg_idx] = -1;
 	}
 
 	memset(ms, 0, sizeof(*ms));
@@ -1364,8 +1371,7 @@ eal_memalloc_init(void)
 			return -1;
 
 	/* initialize all of the fd lists */
-	if (internal_config.single_file_segments)
-		if (rte_memseg_list_walk(fd_list_create_walk, NULL))
-			return -1;
+	if (rte_memseg_list_walk(fd_list_create_walk, NULL))
+		return -1;
 	return 0;
 }
