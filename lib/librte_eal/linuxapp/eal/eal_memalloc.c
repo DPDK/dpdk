@@ -1407,6 +1407,30 @@ eal_memalloc_get_seg_fd(int list_idx, int seg_idx)
 }
 
 int
+eal_memalloc_get_seg_fd_offset(int list_idx, int seg_idx, size_t *offset)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+
+	/* fd_list not initialized? */
+	if (fd_list[list_idx].len == 0)
+		return -ENODEV;
+	if (internal_config.single_file_segments) {
+		size_t pgsz = mcfg->memsegs[list_idx].page_sz;
+
+		/* segment not active? */
+		if (fd_list[list_idx].memseg_list_fd < 0)
+			return -ENOENT;
+		*offset = pgsz * seg_idx;
+	} else {
+		/* segment not active? */
+		if (fd_list[list_idx].fds[seg_idx] < 0)
+			return -ENOENT;
+		*offset = 0;
+	}
+	return 0;
+}
+
+int
 eal_memalloc_init(void)
 {
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)

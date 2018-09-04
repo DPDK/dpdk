@@ -366,6 +366,55 @@ int __rte_experimental
 rte_memseg_get_fd_thread_unsafe(const struct rte_memseg *ms);
 
 /**
+ * Get offset into segment file descriptor associated with a particular memseg
+ * (if available).
+ *
+ * @note This function read-locks the memory hotplug subsystem, and thus cannot
+ *       be used within memory-related callback functions.
+ *
+ * @param ms
+ *   A pointer to memseg for which to get file descriptor.
+ * @param offset
+ *   A pointer to offset value where the result will be stored.
+ *
+ * @return
+ *   Valid file descriptor in case of success.
+ *   -1 in case of error, with ``rte_errno`` set to the following values:
+ *     - EINVAL  - ``ms`` pointer was NULL or did not point to a valid memseg
+ *     - EINVAL  - ``offset`` pointer was NULL
+ *     - ENODEV  - ``ms`` fd is not available
+ *     - ENOENT  - ``ms`` is an unused segment
+ *     - ENOTSUP - segment fd's are not supported
+ */
+int __rte_experimental
+rte_memseg_get_fd_offset(const struct rte_memseg *ms, size_t *offset);
+
+/**
+ * Get offset into segment file descriptor associated with a particular memseg
+ * (if available).
+ *
+ * @note This function does not perform any locking, and is only safe to call
+ *       from within memory-related callback functions.
+ *
+ * @param ms
+ *   A pointer to memseg for which to get file descriptor.
+ * @param offset
+ *   A pointer to offset value where the result will be stored.
+ *
+ * @return
+ *   Valid file descriptor in case of success.
+ *   -1 in case of error, with ``rte_errno`` set to the following values:
+ *     - EINVAL  - ``ms`` pointer was NULL or did not point to a valid memseg
+ *     - EINVAL  - ``offset`` pointer was NULL
+ *     - ENODEV  - ``ms`` fd is not available
+ *     - ENOENT  - ``ms`` is an unused segment
+ *     - ENOTSUP - segment fd's are not supported
+ */
+int __rte_experimental
+rte_memseg_get_fd_offset_thread_unsafe(const struct rte_memseg *ms,
+		size_t *offset);
+
+/**
  * Dump the physical memory layout to a file.
  *
  * @note This function read-locks the memory hotplug subsystem, and thus cannot

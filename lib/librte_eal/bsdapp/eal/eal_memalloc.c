@@ -61,6 +61,12 @@ eal_memalloc_set_seg_fd(int list_idx, int seg_idx, int fd)
 }
 
 int
+eal_memalloc_get_seg_fd_offset(int list_idx, int seg_idx, size_t *offset)
+{
+	return -ENOTSUP;
+}
+
+int
 eal_memalloc_init(void)
 {
 	return 0;

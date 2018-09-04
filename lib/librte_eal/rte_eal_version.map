@@ -328,7 +328,9 @@ EXPERIMENTAL {
 	rte_memseg_contig_walk;
 	rte_memseg_contig_walk_thread_unsafe;
 	rte_memseg_get_fd;
+	rte_memseg_get_fd_offset;
 	rte_memseg_get_fd_thread_unsafe;
+	rte_memseg_get_fd_offset_thread_unsafe;
 	rte_memseg_list_walk;
 	rte_memseg_list_walk_thread_unsafe;
 	rte_memseg_walk;
