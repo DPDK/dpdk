@@ -1390,6 +1390,12 @@ eal_check_common_options(struct internal_config *internal_cfg)
 			"--"OPT_HUGE_UNLINK"\n");
 		return -1;
 	}
+	if (internal_cfg->legacy_mem &&
+			internal_cfg->in_memory) {
+		RTE_LOG(ERR, EAL, "Option --"OPT_LEGACY_MEM" is not compatible "
+				"with --"OPT_IN_MEMORY"\n");
+		return -1;
+	}
 
 	return 0;
 }
