@@ -39,7 +39,6 @@ static uint64_t dev_rx_offloads_sup =
 
 /* Rx offloads which cannot be disabled */
 static uint64_t dev_rx_offloads_nodis =
-		DEV_RX_OFFLOAD_CRC_STRIP |
 		DEV_RX_OFFLOAD_SCATTER;
 
 /* Supported Tx offloads */

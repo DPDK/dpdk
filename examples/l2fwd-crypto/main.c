@@ -213,7 +213,6 @@ static struct rte_eth_conf port_conf = {
 		.mq_mode = ETH_MQ_RX_NONE,
 		.max_rx_pkt_len = ETHER_MAX_LEN,
 		.split_hdr_size = 0,
-		.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
 	},
 	.txmode = {
 		.mq_mode = ETH_MQ_TX_NONE,

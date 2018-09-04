@@ -577,7 +577,7 @@ port_offload_cap_display(portid_t port_id)
 	}
 
 	if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM) {
-		printf("RX Outer IPv4 checksum:               ");
+		printf("RX Outer IPv4 checksum:        ");
 		if (ports[port_id].dev_conf.rxmode.offloads &
 		    DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM)
 			printf("on\n");
@@ -594,19 +594,28 @@ port_offload_cap_display(portid_t port_id)
 			printf("off\n");
 	}
 
-	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_VLAN_INSERT) {
-		printf("VLAN insert:                   ");
-		if (ports[port_id].dev_conf.txmode.offloads &
-		    DEV_TX_OFFLOAD_VLAN_INSERT)
+	if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_TIMESTAMP) {
+		printf("HW timestamp:                  ");
+		if (ports[port_id].dev_conf.rxmode.offloads &
+		    DEV_RX_OFFLOAD_TIMESTAMP)
 			printf("on\n");
 		else
 			printf("off\n");
 	}
 
-	if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_TIMESTAMP) {
-		printf("HW timestamp:                  ");
+	if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_KEEP_CRC) {
+		printf("Rx Keep CRC:                   ");
 		if (ports[port_id].dev_conf.rxmode.offloads &
-		    DEV_RX_OFFLOAD_TIMESTAMP)
+		    DEV_RX_OFFLOAD_KEEP_CRC)
+			printf("on\n");
+		else
+			printf("off\n");
+	}
+
+	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_VLAN_INSERT) {
+		printf("VLAN insert:                   ");
+		if (ports[port_id].dev_conf.txmode.offloads &
+		    DEV_TX_OFFLOAD_VLAN_INSERT)
 			printf("on\n");
 		else
 			printf("off\n");

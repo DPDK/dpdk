@@ -40,8 +40,7 @@
 			    DEV_TX_OFFLOAD_VLAN_INSERT)
 
 #define HN_RX_OFFLOAD_CAPS (DEV_RX_OFFLOAD_CHECKSUM | \
-			    DEV_RX_OFFLOAD_VLAN_STRIP | \
-			    DEV_RX_OFFLOAD_CRC_STRIP)
+			    DEV_RX_OFFLOAD_VLAN_STRIP)
 
 int hn_logtype_init;
 int hn_logtype_driver;

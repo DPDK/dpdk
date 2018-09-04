@@ -121,7 +121,6 @@ init_port(void)
 	struct rte_eth_conf port_conf = {
 		.rxmode = {
 			.split_hdr_size = 0,
-			.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
 		},
 		.txmode = {
 			.offloads =

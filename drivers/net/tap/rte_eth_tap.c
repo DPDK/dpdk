@@ -305,8 +305,7 @@ tap_rx_offload_get_queue_capa(void)
 	return DEV_RX_OFFLOAD_SCATTER |
 	       DEV_RX_OFFLOAD_IPV4_CKSUM |
 	       DEV_RX_OFFLOAD_UDP_CKSUM |
-	       DEV_RX_OFFLOAD_TCP_CKSUM |
-	       DEV_RX_OFFLOAD_CRC_STRIP;
+	       DEV_RX_OFFLOAD_TCP_CKSUM;
 }
 
 /* Callback to handle the rx burst of packets to the correct interface and

@@ -73,7 +73,6 @@ static const struct rte_eth_dev_info pmd_dev_info = {
 		.nb_min = 0,
 		.nb_align = 1,
 	},
-	.rx_offload_capa = DEV_RX_OFFLOAD_CRC_STRIP,
 };
 
 static int pmd_softnic_logtype;

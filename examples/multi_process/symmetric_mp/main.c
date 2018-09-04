@@ -178,8 +178,7 @@ smp_port_init(uint16_t port, struct rte_mempool *mbuf_pool,
 			.rxmode = {
 				.mq_mode	= ETH_MQ_RX_RSS,
 				.split_hdr_size = 0,
-				.offloads = (DEV_RX_OFFLOAD_CHECKSUM |
-					     DEV_RX_OFFLOAD_CRC_STRIP),
+				.offloads = DEV_RX_OFFLOAD_CHECKSUM,
 			},
 			.rx_adv_conf = {
 				.rss_conf = {

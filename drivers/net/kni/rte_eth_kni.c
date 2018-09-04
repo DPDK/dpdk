@@ -207,7 +207,6 @@ eth_kni_dev_info(struct rte_eth_dev *dev __rte_unused,
 	dev_info->max_rx_queues = KNI_MAX_QUEUE_PER_PORT;
 	dev_info->max_tx_queues = KNI_MAX_QUEUE_PER_PORT;
 	dev_info->min_rx_bufsize = 0;
-	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_CRC_STRIP;
 }
 
 static int

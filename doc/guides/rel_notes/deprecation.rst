@@ -56,12 +56,6 @@ Deprecation Notices
   experimental API ``rte_pktmbuf_attach_extbuf()`` is used. Removal of the macro
   is to fix this semantic inconsistency.
 
-* ethdev: In v18.11 ``DEV_RX_OFFLOAD_CRC_STRIP`` offload flag will be removed, default
-  behavior without any flag will be changed to CRC strip.
-  To keep CRC ``DEV_RX_OFFLOAD_KEEP_CRC`` flag is required.
-  ``KEEP_CRC``: Keep CRC in packet
-  No flag: Strip CRC from packet
-
 * ethdev: the legacy filter API, including
   ``rte_eth_dev_filter_supported()``, ``rte_eth_dev_filter_ctrl()`` as well
   as filter types MACVLAN, ETHERTYPE, FLEXIBLE, SYN, NTUPLE, TUNNEL, FDIR,

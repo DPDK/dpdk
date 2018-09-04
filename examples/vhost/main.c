@@ -118,8 +118,7 @@ static struct rte_eth_conf vmdq_conf_default = {
 		 * this fixes bug of ipv4 forwarding in guest can't
 		 * forward pakets from one virtio dev to another virtio dev.
 		 */
-		.offloads = (DEV_RX_OFFLOAD_CRC_STRIP |
-			     DEV_RX_OFFLOAD_VLAN_STRIP),
+		.offloads = DEV_RX_OFFLOAD_VLAN_STRIP,
 	},
 
 	.txmode = {

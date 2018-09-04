@@ -66,7 +66,6 @@
 			   DEV_TX_OFFLOAD_TCP_TSO)
 
 #define CXGBE_RX_OFFLOADS (DEV_RX_OFFLOAD_VLAN_STRIP |\
-			   DEV_RX_OFFLOAD_CRC_STRIP |\
 			   DEV_RX_OFFLOAD_IPV4_CKSUM |\
 			   DEV_RX_OFFLOAD_JUMBO_FRAME |\
 			   DEV_RX_OFFLOAD_UDP_CKSUM |\
@@ -413,20 +412,9 @@ int cxgbe_dev_configure(struct rte_eth_dev *eth_dev)
 {
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
 	struct adapter *adapter = pi->adapter;
-	uint64_t configured_offloads;
 	int err;
 
 	CXGBE_FUNC_TRACE();
-	configured_offloads = eth_dev->data->dev_conf.rxmode.offloads;
-
-	/* KEEP_CRC offload flag is not supported by PMD
-	 * can remove the below block when DEV_RX_OFFLOAD_CRC_STRIP removed
-	 */
-	if (rte_eth_dev_must_keep_crc(configured_offloads)) {
-		dev_info(adapter, "can't disable hw crc strip\n");
-		eth_dev->data->dev_conf.rxmode.offloads |=
-			DEV_RX_OFFLOAD_CRC_STRIP;
-	}
 
 	if (!(adapter->flags & FW_QUEUE_BOUND)) {
 		err = setup_sge_fwevtq(adapter);

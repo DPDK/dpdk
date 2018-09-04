@@ -305,7 +305,6 @@ eth_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_rx_queues = (uint16_t)internals->nb_queues;
 	dev_info->max_tx_queues = (uint16_t)internals->nb_queues;
 	dev_info->min_rx_bufsize = 0;
-	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_CRC_STRIP;
 }
 
 static int

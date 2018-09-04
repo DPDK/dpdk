@@ -82,7 +82,6 @@ static struct rte_eth_dev_tx_buffer *tx_buffer[RTE_MAX_ETHPORTS];
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
 		.split_hdr_size = 0,
-		.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
 	},
 	.txmode = {
 		.mq_mode = ETH_MQ_TX_NONE,

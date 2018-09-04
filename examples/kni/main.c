@@ -94,9 +94,6 @@ static struct kni_port_params *kni_port_params_array[RTE_MAX_ETHPORTS];
 
 /* Options for configuring ethernet port */
 static struct rte_eth_conf port_conf = {
-	.rxmode = {
-		.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
-	},
 	.txmode = {
 		.mq_mode = ETH_MQ_TX_NONE,
 	},

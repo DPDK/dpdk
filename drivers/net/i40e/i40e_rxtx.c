@@ -1828,7 +1828,7 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->queue_id = queue_idx;
 	rxq->reg_idx = reg_idx;
 	rxq->port_id = dev->data->port_id;
-	if (rte_eth_dev_must_keep_crc(dev->data->dev_conf.rxmode.offloads))
+	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC)
 		rxq->crc_len = ETHER_CRC_LEN;
 	else
 		rxq->crc_len = 0;

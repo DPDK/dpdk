@@ -139,8 +139,7 @@ CRC striping
 ~~~~~~~~~~~~
 
 The FM10000 family of NICs strip the CRC for every packets coming into the
-host interface.  So, CRC will be stripped even when ``DEV_RX_OFFLOAD_CRC_STRIP``
-in ``rxmode.offloads`` is NOT set in ``struct rte_eth_conf``.
+host interface. So, keeping CRC is not supported.
 
 Maximum packet length
 ~~~~~~~~~~~~~~~~~~~~~

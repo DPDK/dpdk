@@ -878,10 +878,8 @@ launch_args_parse(int argc, char** argv)
 						 " must be >= 0\n", n);
 			}
 #endif
-			if (!strcmp(lgopts[opt_idx].name, "disable-crc-strip")) {
-				rx_offloads &= ~DEV_RX_OFFLOAD_CRC_STRIP;
+			if (!strcmp(lgopts[opt_idx].name, "disable-crc-strip"))
 				rx_offloads |= DEV_RX_OFFLOAD_KEEP_CRC;
-			}
 			if (!strcmp(lgopts[opt_idx].name, "enable-lro"))
 				rx_offloads |= DEV_RX_OFFLOAD_TCP_LRO;
 			if (!strcmp(lgopts[opt_idx].name, "enable-scatter"))

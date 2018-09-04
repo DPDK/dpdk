@@ -609,7 +609,7 @@ ixgbe_crypto_enable_ipsec(struct rte_eth_dev *dev)
 		PMD_DRV_LOG(ERR, "RSC and IPsec not supported");
 		return -1;
 	}
-	if (rte_eth_dev_must_keep_crc(rx_offloads)) {
+	if (rx_offloads & DEV_RX_OFFLOAD_KEEP_CRC) {
 		PMD_DRV_LOG(ERR, "HW CRC strip needs to be enabled for IPsec");
 		return -1;
 	}

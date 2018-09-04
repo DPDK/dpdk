@@ -678,7 +678,6 @@ uint64_t
 mlx4_get_rx_queue_offloads(struct priv *priv)
 {
 	uint64_t offloads = DEV_RX_OFFLOAD_SCATTER |
-			    DEV_RX_OFFLOAD_CRC_STRIP |
 			    DEV_RX_OFFLOAD_KEEP_CRC |
 			    DEV_RX_OFFLOAD_JUMBO_FRAME;
 
@@ -780,7 +779,7 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	}
 	/* By default, FCS (CRC) is stripped by hardware. */
 	crc_present = 0;
-	if (rte_eth_dev_must_keep_crc(offloads)) {
+	if (offloads & DEV_RX_OFFLOAD_KEEP_CRC) {
 		if (priv->hw_fcs_strip) {
 			crc_present = 1;
 		} else {

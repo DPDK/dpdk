@@ -91,7 +91,6 @@ virtual_ethdev_info_get(struct rte_eth_dev *dev __rte_unused,
 	dev_info->max_tx_queues = (uint16_t)512;
 
 	dev_info->min_rx_bufsize = 0;
-	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_CRC_STRIP;
 }
 
 static int

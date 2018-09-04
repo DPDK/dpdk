@@ -2848,7 +2848,6 @@ ixgbe_get_rx_port_offloads(struct rte_eth_dev *dev)
 	offloads = DEV_RX_OFFLOAD_IPV4_CKSUM  |
 		   DEV_RX_OFFLOAD_UDP_CKSUM   |
 		   DEV_RX_OFFLOAD_TCP_CKSUM   |
-		   DEV_RX_OFFLOAD_CRC_STRIP   |
 		   DEV_RX_OFFLOAD_KEEP_CRC    |
 		   DEV_RX_OFFLOAD_JUMBO_FRAME |
 		   DEV_RX_OFFLOAD_SCATTER;
@@ -2936,7 +2935,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->reg_idx = (uint16_t)((RTE_ETH_DEV_SRIOV(dev).active == 0) ?
 		queue_idx : RTE_ETH_DEV_SRIOV(dev).def_pool_q_idx + queue_idx);
 	rxq->port_id = dev->data->port_id;
-	if (rte_eth_dev_must_keep_crc(dev->data->dev_conf.rxmode.offloads))
+	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC)
 		rxq->crc_len = ETHER_CRC_LEN;
 	else
 		rxq->crc_len = 0;
@@ -4705,7 +4704,7 @@ ixgbe_set_rsc(struct rte_eth_dev *dev)
 
 	/* RSC global configuration (chapter 4.6.7.2.1 of 82599 Spec) */
 
-	if (rte_eth_dev_must_keep_crc(rx_conf->offloads) &&
+	if ((rx_conf->offloads & DEV_RX_OFFLOAD_KEEP_CRC) &&
 	     (rx_conf->offloads & DEV_RX_OFFLOAD_TCP_LRO)) {
 		/*
 		 * According to chapter of 4.6.7.2.1 of the Spec Rev.
@@ -4854,7 +4853,7 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 	 * Configure CRC stripping, if any.
 	 */
 	hlreg0 = IXGBE_READ_REG(hw, IXGBE_HLREG0);
-	if (rte_eth_dev_must_keep_crc(rx_conf->offloads))
+	if (rx_conf->offloads & DEV_RX_OFFLOAD_KEEP_CRC)
 		hlreg0 &= ~IXGBE_HLREG0_RXCRCSTRP;
 	else
 		hlreg0 |= IXGBE_HLREG0_RXCRCSTRP;
@@ -4895,8 +4894,10 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 		 * Reset crc_len in case it was changed after queue setup by a
 		 * call to configure.
 		 */
-		rxq->crc_len = rte_eth_dev_must_keep_crc(rx_conf->offloads) ?
-				ETHER_CRC_LEN : 0;
+		if (rx_conf->offloads & DEV_RX_OFFLOAD_KEEP_CRC)
+			rxq->crc_len = ETHER_CRC_LEN;
+		else
+			rxq->crc_len = 0;
 
 		/* Setup the Base and Length of the Rx Descriptor Rings */
 		bus_addr = rxq->rx_ring_phys_addr;
@@ -4965,7 +4966,7 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 	if (hw->mac.type == ixgbe_mac_82599EB ||
 	    hw->mac.type == ixgbe_mac_X540) {
 		rdrxctl = IXGBE_READ_REG(hw, IXGBE_RDRXCTL);
-		if (rte_eth_dev_must_keep_crc(rx_conf->offloads))
+		if (rx_conf->offloads & DEV_RX_OFFLOAD_KEEP_CRC)
 			rdrxctl &= ~IXGBE_RDRXCTL_CRCSTRIP;
 		else
 			rdrxctl |= IXGBE_RDRXCTL_CRCSTRIP;

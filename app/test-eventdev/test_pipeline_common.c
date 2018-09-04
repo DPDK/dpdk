@@ -222,7 +222,6 @@ pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 		.rxmode = {
 			.mq_mode = ETH_MQ_RX_RSS,
 			.max_rx_pkt_len = ETHER_MAX_LEN,
-			.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
 		},
 		.rx_adv_conf = {
 			.rss_conf = {

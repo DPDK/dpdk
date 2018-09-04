@@ -109,8 +109,7 @@ static struct rte_eth_conf port_conf = {
 	.rxmode = {
 		.max_rx_pkt_len = JUMBO_FRAME_MAX_SIZE,
 		.split_hdr_size = 0,
-		.offloads = (DEV_RX_OFFLOAD_JUMBO_FRAME |
-			     DEV_RX_OFFLOAD_CRC_STRIP),
+		.offloads = DEV_RX_OFFLOAD_JUMBO_FRAME,
 	},
 	.txmode = {
 		.mq_mode = ETH_MQ_TX_NONE,

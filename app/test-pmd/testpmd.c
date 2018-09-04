@@ -334,7 +334,6 @@ lcoreid_t latencystats_lcore_id = -1;
  */
 struct rte_eth_rxmode rx_mode = {
 	.max_rx_pkt_len = ETHER_MAX_LEN, /**< Default maximum frame length. */
-	.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
 };
 
 struct rte_eth_txmode tx_mode = {
@@ -739,10 +738,6 @@ init_config(void)
 		port->dev_conf.rxmode = rx_mode;
 		rte_eth_dev_info_get(pid, &port->dev_info);
 
-		if (!(port->dev_info.rx_offload_capa &
-					DEV_RX_OFFLOAD_CRC_STRIP))
-			port->dev_conf.rxmode.offloads &=
-				~DEV_RX_OFFLOAD_CRC_STRIP;
 		if (!(port->dev_info.tx_offload_capa &
 		      DEV_TX_OFFLOAD_MBUF_FAST_FREE))
 			port->dev_conf.txmode.offloads &=

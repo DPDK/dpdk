@@ -1536,7 +1536,7 @@ i40evf_dev_configure(struct rte_eth_dev *dev)
 	/* For non-DPDK PF drivers, VF has no ability to disable HW
 	 * CRC strip, and is implicitly enabled by the PF.
 	 */
-	if (rte_eth_dev_must_keep_crc(conf->rxmode.offloads)) {
+	if (conf->rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC) {
 		vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 		if ((vf->version_major == VIRTCHNL_VERSION_MAJOR) &&
 		    (vf->version_minor <= VIRTCHNL_VERSION_MINOR)) {
@@ -2180,7 +2180,6 @@ i40evf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		DEV_RX_OFFLOAD_UDP_CKSUM |
 		DEV_RX_OFFLOAD_TCP_CKSUM |
 		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_CRC_STRIP |
 		DEV_RX_OFFLOAD_KEEP_CRC |
 		DEV_RX_OFFLOAD_SCATTER |
 		DEV_RX_OFFLOAD_JUMBO_FRAME |

@@ -1056,8 +1056,7 @@ eth_dev_info(struct rte_eth_dev *dev,
 	dev_info->max_rx_queues = internals->max_rx_queues;
 	dev_info->max_tx_queues = internals->max_tx_queues;
 	dev_info->min_rx_bufsize = 0;
-	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_SCATTER |
-				    DEV_RX_OFFLOAD_CRC_STRIP;
+	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_SCATTER;
 	dev_info->tx_offload_capa = 0;
 	dev_info->rx_queue_offload_capa = 0;
 	dev_info->tx_queue_offload_capa = 0;

@@ -48,7 +48,6 @@ static struct rte_eth_conf port_conf_default = {
 		.mq_mode = ETH_MQ_RX_NONE,
 		.max_rx_pkt_len = 9000, /* Jumbo frame max packet len */
 		.split_hdr_size = 0, /* Header split buffer size */
-		.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
 	},
 	.rx_adv_conf = {
 		.rss_conf = {

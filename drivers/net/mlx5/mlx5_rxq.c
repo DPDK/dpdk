@@ -388,7 +388,6 @@ mlx5_get_rx_queue_offloads(struct rte_eth_dev *dev)
 			     DEV_RX_OFFLOAD_TIMESTAMP |
 			     DEV_RX_OFFLOAD_JUMBO_FRAME);
 
-	offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
 	if (config->hw_fcs_strip)
 		offloads |= DEV_RX_OFFLOAD_KEEP_CRC;
 
@@ -1438,7 +1437,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	tmpl->rxq.vlan_strip = !!(offloads & DEV_RX_OFFLOAD_VLAN_STRIP);
 	/* By default, FCS (CRC) is stripped by hardware. */
 	tmpl->rxq.crc_present = 0;
-	if (rte_eth_dev_must_keep_crc(offloads)) {
+	if (offloads & DEV_RX_OFFLOAD_KEEP_CRC) {
 		if (config->hw_fcs_strip) {
 			tmpl->rxq.crc_present = 1;
 		} else {

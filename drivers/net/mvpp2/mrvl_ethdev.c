@@ -67,7 +67,6 @@
 /** Port Rx offload capabilities */
 #define MRVL_RX_OFFLOADS (DEV_RX_OFFLOAD_VLAN_FILTER | \
 			  DEV_RX_OFFLOAD_JUMBO_FRAME | \
-			  DEV_RX_OFFLOAD_CRC_STRIP | \
 			  DEV_RX_OFFLOAD_CHECKSUM)
 
 /** Port Tx offloads capabilities */
@@ -309,14 +308,6 @@ mrvl_dev_configure(struct rte_eth_dev *dev)
 		MRVL_LOG(INFO, "Unsupported rx multi queue mode %d",
 			dev->data->dev_conf.rxmode.mq_mode);
 		return -EINVAL;
-	}
-
-	/* KEEP_CRC offload flag is not supported by PMD
-	 * can remove the below block when DEV_RX_OFFLOAD_CRC_STRIP removed
-	 */
-	if (rte_eth_dev_must_keep_crc(dev->data->dev_conf.rxmode.offloads)) {
-		MRVL_LOG(INFO, "L2 CRC stripping is always enabled in hw");
-		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
 	}
 
 	if (dev->data->dev_conf.rxmode.split_hdr_size) {
@@ -1334,7 +1325,6 @@ mrvl_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
 
 	/* By default packets are dropped if no descriptors are available */
 	info->default_rxconf.rx_drop_en = 1;
-	info->default_rxconf.offloads = DEV_RX_OFFLOAD_CRC_STRIP;
 
 	info->max_rx_pktlen = MRVL_PKT_SIZE_MAX;
 }

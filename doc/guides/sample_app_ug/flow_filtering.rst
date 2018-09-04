@@ -139,7 +139,6 @@ application is shown below:
            struct rte_eth_conf port_conf = {
                    .rxmode = {
                            .split_hdr_size = 0,
-                           .offloads = DEV_RX_OFFLOAD_CRC_STRIP,
                            },
                    .txmode = {
                            .offloads =
@@ -215,7 +214,6 @@ The Ethernet port is configured with default settings using the
    struct rte_eth_conf port_conf = {
            .rxmode = {
                    .split_hdr_size = 0,
-                   .offloads = DEV_RX_OFFLOAD_CRC_STRIP,
                    },
            .txmode = {
                    .offloads =

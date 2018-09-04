@@ -70,9 +70,6 @@ static const struct rte_eth_txconf tx_conf = {
 };
 
 static const struct rte_eth_conf port_conf = {
-	.rxmode = {
-		.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
-	},
 	.txmode = {
 		.mq_mode = ETH_DCB_NONE,
 	},

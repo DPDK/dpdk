@@ -793,7 +793,6 @@ sfc_rx_get_dev_offload_caps(struct sfc_adapter *sa)
 	uint64_t caps = 0;
 
 	caps |= DEV_RX_OFFLOAD_JUMBO_FRAME;
-	caps |= DEV_RX_OFFLOAD_CRC_STRIP;
 
 	if (sa->dp_rx->features & SFC_DP_RX_FEAT_CHECKSUM) {
 		caps |= DEV_RX_OFFLOAD_IPV4_CKSUM;
@@ -1439,14 +1438,6 @@ sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
 		sfc_err(sa, "Rx multi-queue mode %u not supported",
 			rxmode->mq_mode);
 		rc = EINVAL;
-	}
-
-	/* KEEP_CRC offload flag is not supported by PMD
-	 * can remove the below block when DEV_RX_OFFLOAD_CRC_STRIP removed
-	 */
-	if (rte_eth_dev_must_keep_crc(rxmode->offloads)) {
-		sfc_warn(sa, "FCS stripping cannot be disabled - always on");
-		rxmode->offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
 	}
 
 	/*

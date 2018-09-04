@@ -1431,7 +1431,6 @@ nicvf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_free_thresh = NICVF_DEFAULT_RX_FREE_THRESH,
 		.rx_drop_en = 0,
-		.offloads = DEV_RX_OFFLOAD_CRC_STRIP,
 	};
 
 	dev_info->default_txconf = (struct rte_eth_txconf) {
@@ -1914,14 +1913,6 @@ nicvf_dev_configure(struct rte_eth_dev *dev)
 	if (!rte_eal_has_hugepages()) {
 		PMD_INIT_LOG(INFO, "Huge page is not configured");
 		return -EINVAL;
-	}
-
-	/* KEEP_CRC offload flag is not supported by PMD
-	 * can remove the below block when DEV_RX_OFFLOAD_CRC_STRIP removed
-	 */
-	if (rte_eth_dev_must_keep_crc(rxmode->offloads)) {
-		PMD_INIT_LOG(NOTICE, "Can't disable hw crc strip");
-		rxmode->offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
 	}
 
 	if (txmode->mq_mode) {

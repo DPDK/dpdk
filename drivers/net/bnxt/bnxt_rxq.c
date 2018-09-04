@@ -331,8 +331,10 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 
 	rxq->queue_id = queue_idx;
 	rxq->port_id = eth_dev->data->port_id;
-	rxq->crc_len = rte_eth_dev_must_keep_crc(rx_offloads) ?
-		ETHER_CRC_LEN : 0;
+	if (rx_offloads & DEV_RX_OFFLOAD_KEEP_CRC)
+		rxq->crc_len = ETHER_CRC_LEN;
+	else
+		rxq->crc_len = 0;
 
 	eth_dev->data->rx_queues[queue_idx] = rxq;
 	/* Allocate RX ring hardware descriptors */

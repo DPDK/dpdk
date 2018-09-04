@@ -1898,11 +1898,9 @@ cmd_config_rx_mode_flag_parsed(void *parsed_result,
 		rx_offloads = port->dev_conf.rxmode.offloads;
 		if (!strcmp(res->name, "crc-strip")) {
 			if (!strcmp(res->value, "on")) {
-				rx_offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
 				rx_offloads &= ~DEV_RX_OFFLOAD_KEEP_CRC;
 			} else if (!strcmp(res->value, "off")) {
 				rx_offloads |= DEV_RX_OFFLOAD_KEEP_CRC;
-				rx_offloads &= ~DEV_RX_OFFLOAD_CRC_STRIP;
 			} else {
 				printf("Unknown parameter\n");
 				return;

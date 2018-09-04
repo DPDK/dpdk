@@ -1638,7 +1638,6 @@ igb_get_rx_port_offloads_capa(struct rte_eth_dev *dev)
 			  DEV_RX_OFFLOAD_UDP_CKSUM   |
 			  DEV_RX_OFFLOAD_TCP_CKSUM   |
 			  DEV_RX_OFFLOAD_JUMBO_FRAME |
-			  DEV_RX_OFFLOAD_CRC_STRIP   |
 			  DEV_RX_OFFLOAD_KEEP_CRC    |
 			  DEV_RX_OFFLOAD_SCATTER;
 
@@ -1721,7 +1720,7 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->reg_idx = (uint16_t)((RTE_ETH_DEV_SRIOV(dev).active == 0) ?
 		queue_idx : RTE_ETH_DEV_SRIOV(dev).def_pool_q_idx + queue_idx);
 	rxq->port_id = dev->data->port_id;
-	if (rte_eth_dev_must_keep_crc(dev->data->dev_conf.rxmode.offloads))
+	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC)
 		rxq->crc_len = ETHER_CRC_LEN;
 	else
 		rxq->crc_len = 0;
@@ -2374,7 +2373,7 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 		 * Reset crc_len in case it was changed after queue setup by a
 		 *  call to configure
 		 */
-		if (rte_eth_dev_must_keep_crc(dev->data->dev_conf.rxmode.offloads))
+		if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC)
 			rxq->crc_len = ETHER_CRC_LEN;
 		else
 			rxq->crc_len = 0;
@@ -2506,7 +2505,7 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 	E1000_WRITE_REG(hw, E1000_RXCSUM, rxcsum);
 
 	/* Setup the Receive Control Register. */
-	if (rte_eth_dev_must_keep_crc(dev->data->dev_conf.rxmode.offloads)) {
+	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC) {
 		rctl &= ~E1000_RCTL_SECRC; /* Do not Strip Ethernet CRC. */
 
 		/* clear STRCRC bit in all queues */
