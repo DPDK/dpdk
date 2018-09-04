@@ -318,6 +318,54 @@ int __rte_experimental
 rte_memseg_list_walk_thread_unsafe(rte_memseg_list_walk_t func, void *arg);
 
 /**
+ * Return file descriptor associated with a particular memseg (if available).
+ *
+ * @note This function read-locks the memory hotplug subsystem, and thus cannot
+ *       be used within memory-related callback functions.
+ *
+ * @note This returns an internal file descriptor. Performing any operations on
+ *       this file descriptor is inherently dangerous, so it should be treated
+ *       as read-only for all intents and purposes.
+ *
+ * @param ms
+ *   A pointer to memseg for which to get file descriptor.
+ *
+ * @return
+ *   Valid file descriptor in case of success.
+ *   -1 in case of error, with ``rte_errno`` set to the following values:
+ *     - EINVAL  - ``ms`` pointer was NULL or did not point to a valid memseg
+ *     - ENODEV  - ``ms`` fd is not available
+ *     - ENOENT  - ``ms`` is an unused segment
+ *     - ENOTSUP - segment fd's are not supported
+ */
+int __rte_experimental
+rte_memseg_get_fd(const struct rte_memseg *ms);
+
+/**
+ * Return file descriptor associated with a particular memseg (if available).
+ *
+ * @note This function does not perform any locking, and is only safe to call
+ *       from within memory-related callback functions.
+ *
+ * @note This returns an internal file descriptor. Performing any operations on
+ *       this file descriptor is inherently dangerous, so it should be treated
+ *       as read-only for all intents and purposes.
+ *
+ * @param ms
+ *   A pointer to memseg for which to get file descriptor.
+ *
+ * @return
+ *   Valid file descriptor in case of success.
+ *   -1 in case of error, with ``rte_errno`` set to the following values:
+ *     - EINVAL  - ``ms`` pointer was NULL or did not point to a valid memseg
+ *     - ENODEV  - ``ms`` fd is not available
+ *     - ENOENT  - ``ms`` is an unused segment
+ *     - ENOTSUP - segment fd's are not supported
+ */
+int __rte_experimental
+rte_memseg_get_fd_thread_unsafe(const struct rte_memseg *ms);
+
+/**
  * Dump the physical memory layout to a file.
  *
  * @note This function read-locks the memory hotplug subsystem, and thus cannot

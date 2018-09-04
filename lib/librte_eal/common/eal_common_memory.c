@@ -550,6 +550,55 @@ rte_memseg_list_walk(rte_memseg_list_walk_t func, void *arg)
 	return ret;
 }
 
+int __rte_experimental
+rte_memseg_get_fd_thread_unsafe(const struct rte_memseg *ms)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	struct rte_memseg_list *msl;
+	struct rte_fbarray *arr;
+	int msl_idx, seg_idx, ret;
+
+	if (ms == NULL) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+
+	msl = rte_mem_virt2memseg_list(ms->addr);
+	if (msl == NULL) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+	arr = &msl->memseg_arr;
+
+	msl_idx = msl - mcfg->memsegs;
+	seg_idx = rte_fbarray_find_idx(arr, ms);
+
+	if (!rte_fbarray_is_used(arr, seg_idx)) {
+		rte_errno = ENOENT;
+		return -1;
+	}
+
+	ret = eal_memalloc_get_seg_fd(msl_idx, seg_idx);
+	if (ret < 0) {
+		rte_errno = -ret;
+		ret = -1;
+	}
+	return ret;
+}
+
+int __rte_experimental
+rte_memseg_get_fd(const struct rte_memseg *ms)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	int ret;
+
+	rte_rwlock_read_lock(&mcfg->memory_hotplug_lock);
+	ret = rte_memseg_get_fd_thread_unsafe(ms);
+	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
+
+	return ret;
+}
+
 /* init memory subsystem */
 int
 rte_eal_memory_init(void)

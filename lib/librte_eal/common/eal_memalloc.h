@@ -76,9 +76,11 @@ eal_memalloc_mem_alloc_validator_unregister(const char *name, int socket_id);
 int
 eal_memalloc_mem_alloc_validate(int socket_id, size_t new_len);
 
+/* returns fd or -errno */
 int
 eal_memalloc_get_seg_fd(int list_idx, int seg_idx);
 
+/* returns 0 or -errno */
 int
 eal_memalloc_set_seg_fd(int list_idx, int seg_idx, int fd);
 

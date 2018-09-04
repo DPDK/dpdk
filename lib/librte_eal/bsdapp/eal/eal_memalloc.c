@@ -4,6 +4,7 @@
 
 #include <inttypes.h>
 
+#include <rte_errno.h>
 #include <rte_log.h>
 #include <rte_memory.h>
 
@@ -50,13 +51,13 @@ eal_memalloc_sync_with_primary(void)
 int
 eal_memalloc_get_seg_fd(int list_idx, int seg_idx)
 {
-	return -1;
+	return -ENOTSUP;
 }
 
 int
 eal_memalloc_set_seg_fd(int list_idx, int seg_idx, int fd)
 {
-	return -1;
+	return -ENOTSUP;
 }
 
 int

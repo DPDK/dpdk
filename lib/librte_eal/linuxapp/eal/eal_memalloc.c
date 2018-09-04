@@ -34,6 +34,7 @@
 #include <rte_log.h>
 #include <rte_eal_memconfig.h>
 #include <rte_eal.h>
+#include <rte_errno.h>
 #include <rte_memory.h>
 #include <rte_spinlock.h>
 
@@ -1381,7 +1382,7 @@ eal_memalloc_set_seg_fd(int list_idx, int seg_idx, int fd)
 		int len = mcfg->memsegs[list_idx].memseg_arr.len;
 
 		if (alloc_list(list_idx, len) < 0)
-			return -1;
+			return -ENOMEM;
 	}
 	fd_list[list_idx].fds[seg_idx] = fd;
 
@@ -1391,12 +1392,18 @@ eal_memalloc_set_seg_fd(int list_idx, int seg_idx, int fd)
 int
 eal_memalloc_get_seg_fd(int list_idx, int seg_idx)
 {
-	if (internal_config.single_file_segments)
-		return fd_list[list_idx].memseg_list_fd;
-	/* list not initialized */
-	if (fd_list[list_idx].len == 0)
-		return -1;
-	return fd_list[list_idx].fds[seg_idx];
+	int fd;
+	if (internal_config.single_file_segments) {
+		fd = fd_list[list_idx].memseg_list_fd;
+	} else if (fd_list[list_idx].len == 0) {
+		/* list not initialized */
+		fd = -1;
+	} else {
+		fd = fd_list[list_idx].fds[seg_idx];
+	}
+	if (fd < 0)
+		return -ENODEV;
+	return fd;
 }
 
 int
