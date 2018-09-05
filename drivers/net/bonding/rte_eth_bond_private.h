@@ -162,6 +162,8 @@ struct bond_dev_private {
 
 	struct rte_eth_rxconf default_rxconf;	/**< Default RxQ conf. */
 	struct rte_eth_txconf default_txconf;	/**< Default TxQ conf. */
+	struct rte_eth_desc_lim rx_desc_lim;	/**< Rx descriptor limits */
+	struct rte_eth_desc_lim tx_desc_lim;	/**< Tx descriptor limits */
 
 	uint16_t reta_size;
 	struct rte_eth_rss_reta_entry64 reta_conf[ETH_RSS_RETA_SIZE_512 /

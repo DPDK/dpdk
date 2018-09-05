@@ -2253,6 +2253,11 @@ bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	memcpy(&dev_info->default_txconf, &internals->default_txconf,
 	       sizeof(dev_info->default_txconf));
 
+	memcpy(&dev_info->rx_desc_lim, &internals->rx_desc_lim,
+	       sizeof(dev_info->rx_desc_lim));
+	memcpy(&dev_info->tx_desc_lim, &internals->tx_desc_lim,
+	       sizeof(dev_info->tx_desc_lim));
+
 	/**
 	 * If dedicated hw queues enabled for link bonding device in LACP mode
 	 * then we need to reduce the maximum number of data path queues by 1.
@@ -3077,6 +3082,9 @@ bond_alloc(struct rte_vdev_device *dev, uint8_t mode)
 	       sizeof(internals->default_rxconf));
 	memset(&internals->default_txconf, 0,
 	       sizeof(internals->default_txconf));
+
+	memset(&internals->rx_desc_lim, 0, sizeof(internals->rx_desc_lim));
+	memset(&internals->tx_desc_lim, 0, sizeof(internals->tx_desc_lim));
 
 	memset(internals->active_slaves, 0, sizeof(internals->active_slaves));
 	memset(internals->slaves, 0, sizeof(internals->slaves));

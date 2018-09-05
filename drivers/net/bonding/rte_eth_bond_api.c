@@ -399,6 +399,43 @@ eth_bond_slave_inherit_dev_info_tx_next(struct bond_dev_private *internals,
 			     internals->tx_queue_offload_capa;
 }
 
+static void
+eth_bond_slave_inherit_desc_lim_first(struct rte_eth_desc_lim *bond_desc_lim,
+		const struct rte_eth_desc_lim *slave_desc_lim)
+{
+	memcpy(bond_desc_lim, slave_desc_lim, sizeof(*bond_desc_lim));
+}
+
+static int
+eth_bond_slave_inherit_desc_lim_next(struct rte_eth_desc_lim *bond_desc_lim,
+		const struct rte_eth_desc_lim *slave_desc_lim)
+{
+	bond_desc_lim->nb_max = RTE_MIN(bond_desc_lim->nb_max,
+					slave_desc_lim->nb_max);
+	bond_desc_lim->nb_min = RTE_MAX(bond_desc_lim->nb_min,
+					slave_desc_lim->nb_min);
+	bond_desc_lim->nb_align = RTE_MAX(bond_desc_lim->nb_align,
+					  slave_desc_lim->nb_align);
+
+	if (bond_desc_lim->nb_min > bond_desc_lim->nb_max ||
+	    bond_desc_lim->nb_align > bond_desc_lim->nb_max) {
+		RTE_BOND_LOG(ERR, "Failed to inherit descriptor limits");
+		return -EINVAL;
+	}
+
+	/* Treat maximum number of segments equal to 0 as unspecified */
+	if (slave_desc_lim->nb_seg_max != 0 &&
+	    (bond_desc_lim->nb_seg_max == 0 ||
+	     slave_desc_lim->nb_seg_max < bond_desc_lim->nb_seg_max))
+		bond_desc_lim->nb_seg_max = slave_desc_lim->nb_seg_max;
+	if (slave_desc_lim->nb_mtu_seg_max != 0 &&
+	    (bond_desc_lim->nb_mtu_seg_max == 0 ||
+	     slave_desc_lim->nb_mtu_seg_max < bond_desc_lim->nb_mtu_seg_max))
+		bond_desc_lim->nb_mtu_seg_max = slave_desc_lim->nb_mtu_seg_max;
+
+	return 0;
+}
+
 static int
 __eth_bond_slave_add_lock_free(uint16_t bonded_port_id, uint16_t slave_port_id)
 {
@@ -458,9 +495,26 @@ __eth_bond_slave_add_lock_free(uint16_t bonded_port_id, uint16_t slave_port_id)
 
 		eth_bond_slave_inherit_dev_info_rx_first(internals, &dev_info);
 		eth_bond_slave_inherit_dev_info_tx_first(internals, &dev_info);
+
+		eth_bond_slave_inherit_desc_lim_first(&internals->rx_desc_lim,
+						      &dev_info.rx_desc_lim);
+		eth_bond_slave_inherit_desc_lim_first(&internals->tx_desc_lim,
+						      &dev_info.tx_desc_lim);
 	} else {
+		int ret;
+
 		eth_bond_slave_inherit_dev_info_rx_next(internals, &dev_info);
 		eth_bond_slave_inherit_dev_info_tx_next(internals, &dev_info);
+
+		ret = eth_bond_slave_inherit_desc_lim_next(
+				&internals->rx_desc_lim, &dev_info.rx_desc_lim);
+		if (ret != 0)
+			return ret;
+
+		ret = eth_bond_slave_inherit_desc_lim_next(
+				&internals->tx_desc_lim, &dev_info.tx_desc_lim);
+		if (ret != 0)
+			return ret;
 	}
 
 	bonded_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf &=
