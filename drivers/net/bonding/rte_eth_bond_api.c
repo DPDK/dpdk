@@ -269,6 +269,136 @@ slave_rte_flow_prepare(uint16_t slave_id, struct bond_dev_private *internals)
 	return 0;
 }
 
+static void
+eth_bond_slave_inherit_dev_info_rx_first(struct bond_dev_private *internals,
+					 const struct rte_eth_dev_info *di)
+{
+	struct rte_eth_rxconf *rxconf_i = &internals->default_rxconf;
+
+	internals->reta_size = di->reta_size;
+
+	/* Inherit Rx offload capabilities from the first slave device */
+	internals->rx_offload_capa = di->rx_offload_capa;
+	internals->rx_queue_offload_capa = di->rx_queue_offload_capa;
+	internals->flow_type_rss_offloads = di->flow_type_rss_offloads;
+
+	/* Inherit maximum Rx packet size from the first slave device */
+	internals->candidate_max_rx_pktlen = di->max_rx_pktlen;
+
+	/* Inherit default Rx queue settings from the first slave device */
+	memcpy(rxconf_i, &di->default_rxconf, sizeof(*rxconf_i));
+
+	/*
+	 * Turn off descriptor prefetch and writeback by default for all
+	 * slave devices. Applications may tweak this setting if need be.
+	 */
+	rxconf_i->rx_thresh.pthresh = 0;
+	rxconf_i->rx_thresh.hthresh = 0;
+	rxconf_i->rx_thresh.wthresh = 0;
+
+	/* Setting this to zero should effectively enable default values */
+	rxconf_i->rx_free_thresh = 0;
+
+	/* Disable deferred start by default for all slave devices */
+	rxconf_i->rx_deferred_start = 0;
+}
+
+static void
+eth_bond_slave_inherit_dev_info_tx_first(struct bond_dev_private *internals,
+					 const struct rte_eth_dev_info *di)
+{
+	struct rte_eth_txconf *txconf_i = &internals->default_txconf;
+
+	/* Inherit Tx offload capabilities from the first slave device */
+	internals->tx_offload_capa = di->tx_offload_capa;
+	internals->tx_queue_offload_capa = di->tx_queue_offload_capa;
+
+	/* Inherit default Tx queue settings from the first slave device */
+	memcpy(txconf_i, &di->default_txconf, sizeof(*txconf_i));
+
+	/*
+	 * Turn off descriptor prefetch and writeback by default for all
+	 * slave devices. Applications may tweak this setting if need be.
+	 */
+	txconf_i->tx_thresh.pthresh = 0;
+	txconf_i->tx_thresh.hthresh = 0;
+	txconf_i->tx_thresh.wthresh = 0;
+
+	/*
+	 * Setting these parameters to zero assumes that default
+	 * values will be configured implicitly by slave devices.
+	 */
+	txconf_i->tx_free_thresh = 0;
+	txconf_i->tx_rs_thresh = 0;
+
+	/* Disable deferred start by default for all slave devices */
+	txconf_i->tx_deferred_start = 0;
+}
+
+static void
+eth_bond_slave_inherit_dev_info_rx_next(struct bond_dev_private *internals,
+					const struct rte_eth_dev_info *di)
+{
+	struct rte_eth_rxconf *rxconf_i = &internals->default_rxconf;
+	const struct rte_eth_rxconf *rxconf = &di->default_rxconf;
+
+	internals->rx_offload_capa &= di->rx_offload_capa;
+	internals->rx_queue_offload_capa &= di->rx_queue_offload_capa;
+	internals->flow_type_rss_offloads &= di->flow_type_rss_offloads;
+
+	/*
+	 * If at least one slave device suggests enabling this
+	 * setting by default, enable it for all slave devices
+	 * since disabling it may not be necessarily supported.
+	 */
+	if (rxconf->rx_drop_en == 1)
+		rxconf_i->rx_drop_en = 1;
+
+	/*
+	 * Adding a new slave device may cause some of previously inherited
+	 * offloads to be withdrawn from the internal rx_queue_offload_capa
+	 * value. Thus, the new internal value of default Rx queue offloads
+	 * has to be masked by rx_queue_offload_capa to make sure that only
+	 * commonly supported offloads are preserved from both the previous
+	 * value and the value being inhereted from the new slave device.
+	 */
+	rxconf_i->offloads = (rxconf_i->offloads | rxconf->offloads) &
+			     internals->rx_queue_offload_capa;
+
+	/*
+	 * RETA size is GCD of all slaves RETA sizes, so, if all sizes will be
+	 * the power of 2, the lower one is GCD
+	 */
+	if (internals->reta_size > di->reta_size)
+		internals->reta_size = di->reta_size;
+
+	if (!internals->max_rx_pktlen &&
+	    di->max_rx_pktlen < internals->candidate_max_rx_pktlen)
+		internals->candidate_max_rx_pktlen = di->max_rx_pktlen;
+}
+
+static void
+eth_bond_slave_inherit_dev_info_tx_next(struct bond_dev_private *internals,
+					const struct rte_eth_dev_info *di)
+{
+	struct rte_eth_txconf *txconf_i = &internals->default_txconf;
+	const struct rte_eth_txconf *txconf = &di->default_txconf;
+
+	internals->tx_offload_capa &= di->tx_offload_capa;
+	internals->tx_queue_offload_capa &= di->tx_queue_offload_capa;
+
+	/*
+	 * Adding a new slave device may cause some of previously inherited
+	 * offloads to be withdrawn from the internal tx_queue_offload_capa
+	 * value. Thus, the new internal value of default Tx queue offloads
+	 * has to be masked by tx_queue_offload_capa to make sure that only
+	 * commonly supported offloads are preserved from both the previous
+	 * value and the value being inhereted from the new slave device.
+	 */
+	txconf_i->offloads = (txconf_i->offloads | txconf->offloads) &
+			     internals->tx_queue_offload_capa;
+}
+
 static int
 __eth_bond_slave_add_lock_free(uint16_t bonded_port_id, uint16_t slave_port_id)
 {
@@ -326,34 +456,11 @@ __eth_bond_slave_add_lock_free(uint16_t bonded_port_id, uint16_t slave_port_id)
 		internals->nb_rx_queues = slave_eth_dev->data->nb_rx_queues;
 		internals->nb_tx_queues = slave_eth_dev->data->nb_tx_queues;
 
-		internals->reta_size = dev_info.reta_size;
-
-		/* Take the first dev's offload capabilities */
-		internals->rx_offload_capa = dev_info.rx_offload_capa;
-		internals->tx_offload_capa = dev_info.tx_offload_capa;
-		internals->rx_queue_offload_capa = dev_info.rx_queue_offload_capa;
-		internals->tx_queue_offload_capa = dev_info.tx_queue_offload_capa;
-		internals->flow_type_rss_offloads = dev_info.flow_type_rss_offloads;
-
-		/* Inherit first slave's max rx packet size */
-		internals->candidate_max_rx_pktlen = dev_info.max_rx_pktlen;
-
+		eth_bond_slave_inherit_dev_info_rx_first(internals, &dev_info);
+		eth_bond_slave_inherit_dev_info_tx_first(internals, &dev_info);
 	} else {
-		internals->rx_offload_capa &= dev_info.rx_offload_capa;
-		internals->tx_offload_capa &= dev_info.tx_offload_capa;
-		internals->rx_queue_offload_capa &= dev_info.rx_queue_offload_capa;
-		internals->tx_queue_offload_capa &= dev_info.tx_queue_offload_capa;
-		internals->flow_type_rss_offloads &= dev_info.flow_type_rss_offloads;
-
-		/* RETA size is GCD of all slaves RETA sizes, so, if all sizes will be
-		 * the power of 2, the lower one is GCD
-		 */
-		if (internals->reta_size > dev_info.reta_size)
-			internals->reta_size = dev_info.reta_size;
-
-		if (!internals->max_rx_pktlen &&
-		    dev_info.max_rx_pktlen < internals->candidate_max_rx_pktlen)
-			internals->candidate_max_rx_pktlen = dev_info.max_rx_pktlen;
+		eth_bond_slave_inherit_dev_info_rx_next(internals, &dev_info);
+		eth_bond_slave_inherit_dev_info_tx_next(internals, &dev_info);
 	}
 
 	bonded_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf &=

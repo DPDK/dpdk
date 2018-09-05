@@ -160,6 +160,9 @@ struct bond_dev_private {
 	/** Bit mask of RSS offloads, the bit offset also means flow type */
 	uint64_t flow_type_rss_offloads;
 
+	struct rte_eth_rxconf default_rxconf;	/**< Default RxQ conf. */
+	struct rte_eth_txconf default_txconf;	/**< Default TxQ conf. */
+
 	uint16_t reta_size;
 	struct rte_eth_rss_reta_entry64 reta_conf[ETH_RSS_RETA_SIZE_512 /
 			RTE_RETA_GROUP_SIZE];

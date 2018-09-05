@@ -2248,6 +2248,11 @@ bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_rx_queues = max_nb_rx_queues;
 	dev_info->max_tx_queues = max_nb_tx_queues;
 
+	memcpy(&dev_info->default_rxconf, &internals->default_rxconf,
+	       sizeof(dev_info->default_rxconf));
+	memcpy(&dev_info->default_txconf, &internals->default_txconf,
+	       sizeof(dev_info->default_txconf));
+
 	/**
 	 * If dedicated hw queues enabled for link bonding device in LACP mode
 	 * then we need to reduce the maximum number of data path queues by 1.
@@ -3067,6 +3072,11 @@ bond_alloc(struct rte_vdev_device *dev, uint8_t mode)
 
 	/* Initially allow to choose any offload type */
 	internals->flow_type_rss_offloads = ETH_RSS_PROTO_MASK;
+
+	memset(&internals->default_rxconf, 0,
+	       sizeof(internals->default_rxconf));
+	memset(&internals->default_txconf, 0,
+	       sizeof(internals->default_txconf));
 
 	memset(internals->active_slaves, 0, sizeof(internals->active_slaves));
 	memset(internals->slaves, 0, sizeof(internals->slaves));
