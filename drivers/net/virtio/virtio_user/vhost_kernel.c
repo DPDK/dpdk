@@ -70,41 +70,41 @@ static uint64_t vhost_req_user_to_kernel[] = {
 	[VHOST_USER_SET_MEM_TABLE] = VHOST_SET_MEM_TABLE,
 };
 
-struct walk_arg {
-	struct vhost_memory_kernel *vm;
-	uint32_t region_nr;
-};
 static int
-add_memory_region(const struct rte_memseg_list *msl __rte_unused,
-		const struct rte_memseg *ms, size_t len, void *arg)
+add_memseg_list(const struct rte_memseg_list *msl, void *arg)
 {
-	struct walk_arg *wa = arg;
+	struct vhost_memory_kernel *vm = arg;
 	struct vhost_memory_region *mr;
 	void *start_addr;
+	uint64_t len;
 
-	if (wa->region_nr >= max_regions)
+	if (vm->nregions >= max_regions)
 		return -1;
 
-	mr = &wa->vm->regions[wa->region_nr++];
-	start_addr = ms->addr;
+	start_addr = msl->base_va;
+	len = msl->page_sz * msl->memseg_arr.len;
+
+	mr = &vm->regions[vm->nregions++];
 
 	mr->guest_phys_addr = (uint64_t)(uintptr_t)start_addr;
 	mr->userspace_addr = (uint64_t)(uintptr_t)start_addr;
 	mr->memory_size = len;
-	mr->mmap_offset = 0;
+	mr->mmap_offset = 0; /* flags_padding */
+
+	PMD_DRV_LOG(DEBUG, "index=%u addr=%p len=%" PRIu64,
+			vm->nregions - 1, start_addr, len);
 
 	return 0;
 }
 
-/* By default, vhost kernel module allows 64 regions, but DPDK allows
- * 256 segments. As a relief, below function merges those virtually
- * adjacent memsegs into one region.
+/* By default, vhost kernel module allows 64 regions, but DPDK may
+ * have much more memory regions. Below function will treat each
+ * contiguous memory space reserved by DPDK as one region.
  */
 static struct vhost_memory_kernel *
 prepare_vhost_memory_kernel(void)
 {
 	struct vhost_memory_kernel *vm;
-	struct walk_arg wa;
 
 	vm = malloc(sizeof(struct vhost_memory_kernel) +
 			max_regions *
@@ -112,20 +112,18 @@ prepare_vhost_memory_kernel(void)
 	if (!vm)
 		return NULL;
 
-	wa.region_nr = 0;
-	wa.vm = vm;
+	vm->nregions = 0;
+	vm->padding = 0;
 
 	/*
 	 * The memory lock has already been taken by memory subsystem
 	 * or virtio_user_start_device().
 	 */
-	if (rte_memseg_contig_walk_thread_unsafe(add_memory_region, &wa) < 0) {
+	if (rte_memseg_list_walk_thread_unsafe(add_memseg_list, vm) < 0) {
 		free(vm);
 		return NULL;
 	}
 
-	vm->nregions = wa.region_nr;
-	vm->padding = 0;
 	return vm;
 }
 
