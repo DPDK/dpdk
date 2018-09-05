@@ -11,6 +11,9 @@
 #include <string.h>
 #include <errno.h>
 
+#include <rte_fbarray.h>
+#include <rte_eal_memconfig.h>
+
 #include "vhost.h"
 #include "virtio_user_dev.h"
 
@@ -121,133 +124,103 @@ fail:
 	return -1;
 }
 
-struct hugepage_file_info {
-	uint64_t addr;            /**< virtual addr */
-	size_t   size;            /**< the file size */
-	char     path[PATH_MAX];  /**< path to backing file */
+struct walk_arg {
+	struct vhost_memory *vm;
+	int *fds;
+	int region_nr;
 };
 
-/* Two possible options:
- * 1. Match HUGEPAGE_INFO_FMT to find the file storing struct hugepage_file
- * array. This is simple but cannot be used in secondary process because
- * secondary process will close and munmap that file.
- * 2. Match HUGEFILE_FMT to find hugepage files directly.
- *
- * We choose option 2.
- */
 static int
-get_hugepage_file_info(struct hugepage_file_info huges[], int max)
+update_memory_region(const struct rte_memseg_list *msl __rte_unused,
+		const struct rte_memseg *ms, void *arg)
 {
-	int idx, k, exist;
-	FILE *f;
-	char buf[BUFSIZ], *tmp, *tail;
-	char *str_underline, *str_start;
-	int huge_index;
-	uint64_t v_start, v_end;
-	struct stat stats;
+	struct walk_arg *wa = arg;
+	struct vhost_memory_region *mr;
+	uint64_t start_addr, end_addr;
+	size_t offset;
+	int i, fd;
 
-	f = fopen("/proc/self/maps", "r");
-	if (!f) {
-		PMD_DRV_LOG(ERR, "cannot open /proc/self/maps");
+	fd = rte_memseg_get_fd_thread_unsafe(ms);
+	if (fd < 0) {
+		PMD_DRV_LOG(ERR, "Failed to get fd, ms=%p rte_errno=%d",
+			ms, rte_errno);
 		return -1;
 	}
 
-	idx = 0;
-	while (fgets(buf, sizeof(buf), f) != NULL) {
-		if (sscanf(buf, "%" PRIx64 "-%" PRIx64, &v_start, &v_end) < 2) {
-			PMD_DRV_LOG(ERR, "Failed to parse address");
-			goto error;
-		}
-
-		tmp = strchr(buf, ' ') + 1; /** skip address */
-		tmp = strchr(tmp, ' ') + 1; /** skip perm */
-		tmp = strchr(tmp, ' ') + 1; /** skip offset */
-		tmp = strchr(tmp, ' ') + 1; /** skip dev */
-		tmp = strchr(tmp, ' ') + 1; /** skip inode */
-		while (*tmp == ' ')         /** skip spaces */
-			tmp++;
-		tail = strrchr(tmp, '\n');  /** remove newline if exists */
-		if (tail)
-			*tail = '\0';
-
-		/* Match HUGEFILE_FMT, aka "%s/%smap_%d",
-		 * which is defined in eal_filesystem.h
-		 */
-		str_underline = strrchr(tmp, '_');
-		if (!str_underline)
-			continue;
-
-		str_start = str_underline - strlen("map");
-		if (str_start < tmp)
-			continue;
-
-		if (sscanf(str_start, "map_%d", &huge_index) != 1)
-			continue;
-
-		/* skip duplicated file which is mapped to different regions */
-		for (k = 0, exist = -1; k < idx; ++k) {
-			if (!strcmp(huges[k].path, tmp)) {
-				exist = k;
-				break;
-			}
-		}
-		if (exist >= 0)
-			continue;
-
-		if (idx >= max) {
-			PMD_DRV_LOG(ERR, "Exceed maximum of %d", max);
-			goto error;
-		}
-
-		huges[idx].addr = v_start;
-		huges[idx].size = v_end - v_start; /* To be corrected later */
-		snprintf(huges[idx].path, PATH_MAX, "%s", tmp);
-		idx++;
+	if (rte_memseg_get_fd_offset_thread_unsafe(ms, &offset) < 0) {
+		PMD_DRV_LOG(ERR, "Failed to get offset, ms=%p rte_errno=%d",
+			ms, rte_errno);
+		return -1;
 	}
 
-	/* correct the size for files who have many regions */
-	for (k = 0; k < idx; ++k) {
-		if (stat(huges[k].path, &stats) < 0) {
-			PMD_DRV_LOG(ERR, "Failed to stat %s, %s\n",
-				    huges[k].path, strerror(errno));
+	start_addr = (uint64_t)(uintptr_t)ms->addr;
+	end_addr = start_addr + ms->len;
+
+	for (i = 0; i < wa->region_nr; i++) {
+		if (wa->fds[i] != fd)
 			continue;
+
+		mr = &wa->vm->regions[i];
+
+		if (mr->userspace_addr + mr->memory_size < end_addr)
+			mr->memory_size = end_addr - mr->userspace_addr;
+
+		if (mr->userspace_addr > start_addr) {
+			mr->userspace_addr = start_addr;
+			mr->guest_phys_addr = start_addr;
 		}
-		huges[k].size = stats.st_size;
-		PMD_DRV_LOG(INFO, "file %s, size %zx\n",
-			    huges[k].path, huges[k].size);
+
+		if (mr->mmap_offset > offset)
+			mr->mmap_offset = offset;
+
+		PMD_DRV_LOG(DEBUG, "index=%d fd=%d offset=0x%" PRIx64
+			" addr=0x%" PRIx64 " len=%" PRIu64, i, fd,
+			mr->mmap_offset, mr->userspace_addr,
+			mr->memory_size);
+
+		return 0;
 	}
 
-	fclose(f);
-	return idx;
+	if (i >= VHOST_MEMORY_MAX_NREGIONS) {
+		PMD_DRV_LOG(ERR, "Too many memory regions");
+		return -1;
+	}
 
-error:
-	fclose(f);
-	return -1;
+	mr = &wa->vm->regions[i];
+	wa->fds[i] = fd;
+
+	mr->guest_phys_addr = start_addr;
+	mr->userspace_addr = start_addr;
+	mr->memory_size = ms->len;
+	mr->mmap_offset = offset;
+
+	PMD_DRV_LOG(DEBUG, "index=%d fd=%d offset=0x%" PRIx64
+		" addr=0x%" PRIx64 " len=%" PRIu64, i, fd,
+		mr->mmap_offset, mr->userspace_addr,
+		mr->memory_size);
+
+	wa->region_nr++;
+
+	return 0;
 }
 
 static int
 prepare_vhost_memory_user(struct vhost_user_msg *msg, int fds[])
 {
-	int i, num;
-	struct hugepage_file_info huges[VHOST_MEMORY_MAX_NREGIONS];
-	struct vhost_memory_region *mr;
+	struct walk_arg wa;
 
-	num = get_hugepage_file_info(huges, VHOST_MEMORY_MAX_NREGIONS);
-	if (num < 0) {
-		PMD_INIT_LOG(ERR, "Failed to prepare memory for vhost-user");
+	wa.region_nr = 0;
+	wa.vm = &msg->payload.memory;
+	wa.fds = fds;
+
+	/*
+	 * The memory lock has already been taken by memory subsystem
+	 * or virtio_user_start_device().
+	 */
+	if (rte_memseg_walk_thread_unsafe(update_memory_region, &wa) < 0)
 		return -1;
-	}
 
-	for (i = 0; i < num; ++i) {
-		mr = &msg->payload.memory.regions[i];
-		mr->guest_phys_addr = huges[i].addr; /* use vaddr! */
-		mr->userspace_addr = huges[i].addr;
-		mr->memory_size = huges[i].size;
-		mr->mmap_offset = 0;
-		fds[i] = open(huges[i].path, O_RDWR);
-	}
-
-	msg->payload.memory.nregions = num;
+	msg->payload.memory.nregions = wa.region_nr;
 	msg->payload.memory.padding = 0;
 
 	return 0;
@@ -280,7 +253,7 @@ vhost_user_sock(struct virtio_user_dev *dev,
 	int need_reply = 0;
 	int fds[VHOST_MEMORY_MAX_NREGIONS];
 	int fd_num = 0;
-	int i, len;
+	int len;
 	int vhostfd = dev->vhostfd;
 
 	RTE_SET_USED(m);
@@ -363,10 +336,6 @@ vhost_user_sock(struct virtio_user_dev *dev,
 			    vhost_msg_strings[req], strerror(errno));
 		return -1;
 	}
-
-	if (req == VHOST_USER_SET_MEM_TABLE)
-		for (i = 0; i < fd_num; ++i)
-			close(fds[i]);
 
 	if (need_reply) {
 		if (vhost_user_read(vhostfd, &msg) < 0) {
