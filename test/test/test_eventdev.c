@@ -190,15 +190,18 @@ test_eventdev_configure(void)
 		 "Config negative test failed");
 	TEST_ASSERT_EQUAL(-EINVAL,
 		test_ethdev_config_run(&dev_conf, &info, max_event_queue_flows),
-		 "Config negative test failed");
-	TEST_ASSERT_EQUAL(-EINVAL,
-		test_ethdev_config_run(&dev_conf, &info,
-			max_event_port_dequeue_depth),
-			 "Config negative test failed");
-	TEST_ASSERT_EQUAL(-EINVAL,
-		test_ethdev_config_run(&dev_conf, &info,
-		max_event_port_enqueue_depth),
-		 "Config negative test failed");
+		"Config negative test failed");
+
+	if (info.event_dev_cap & RTE_EVENT_DEV_CAP_BURST_MODE) {
+		TEST_ASSERT_EQUAL(-EINVAL,
+				test_ethdev_config_run(&dev_conf, &info,
+					max_event_port_dequeue_depth),
+				"Config negative test failed");
+		TEST_ASSERT_EQUAL(-EINVAL,
+				test_ethdev_config_run(&dev_conf, &info,
+					max_event_port_enqueue_depth),
+				"Config negative test failed");
+	}
 
 	/* Positive case */
 	devconf_set_default_sane_values(&dev_conf, &info);
