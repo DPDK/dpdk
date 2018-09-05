@@ -115,7 +115,11 @@ prepare_vhost_memory_kernel(void)
 	wa.region_nr = 0;
 	wa.vm = vm;
 
-	if (rte_memseg_contig_walk(add_memory_region, &wa) < 0) {
+	/*
+	 * The memory lock has already been taken by memory subsystem
+	 * or virtio_user_start_device().
+	 */
+	if (rte_memseg_contig_walk_thread_unsafe(add_memory_region, &wa) < 0) {
 		free(vm);
 		return NULL;
 	}
