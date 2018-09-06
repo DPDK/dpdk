@@ -496,9 +496,6 @@ adapter_multi_eth_add_del(void)
 	err = init_ports(rte_eth_dev_count_total());
 	TEST_ASSERT(err == 0, "Port initialization failed err %d\n", err);
 
-	/* creating new instance for all newly added eth devices */
-	adapter_create();
-
 	/* eth_rx_adapter_queue_add for n ports */
 	port_index = 0;
 	for (; port_index < rte_eth_dev_count_total(); port_index += 1) {
@@ -515,8 +512,6 @@ adapter_multi_eth_add_del(void)
 				port_index, 0);
 		TEST_ASSERT(err == 0, "Expected 0 got %d", err);
 	}
-
-	adapter_free();
 
 	return TEST_SUCCESS;
 }
@@ -682,7 +677,8 @@ static struct unit_test_suite event_eth_rx_tests = {
 		TEST_CASE_ST(NULL, NULL, adapter_create_free),
 		TEST_CASE_ST(adapter_create, adapter_free,
 					adapter_queue_add_del),
-		TEST_CASE_ST(NULL, NULL, adapter_multi_eth_add_del),
+		TEST_CASE_ST(adapter_create, adapter_free,
+					adapter_multi_eth_add_del),
 		TEST_CASE_ST(adapter_create, adapter_free, adapter_start_stop),
 		TEST_CASE_ST(adapter_create, adapter_free, adapter_stats),
 		TEST_CASES_END() /**< NULL terminate unit test array */
