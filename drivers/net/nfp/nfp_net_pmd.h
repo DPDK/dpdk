@@ -293,6 +293,8 @@ struct nfp_net_txq {
 #define PCIE_DESC_RX_UDP_CSUM_OK        (1 <<  1)
 #define PCIE_DESC_RX_VLAN               (1 <<  0)
 
+#define PCIE_DESC_RX_L4_CSUM_OK         (PCIE_DESC_RX_TCP_CSUM_OK | \
+					 PCIE_DESC_RX_UDP_CSUM_OK)
 struct nfp_net_rx_desc {
 	union {
 		/* Freelist descriptor */

@@ -1779,21 +1779,20 @@ nfp_net_rx_cksum(struct nfp_net_rxq *rxq, struct nfp_net_rx_desc *rxd,
 		return;
 
 	/* If IPv4 and IP checksum error, fail */
-	if ((rxd->rxd.flags & PCIE_DESC_RX_IP4_CSUM) &&
-	    !(rxd->rxd.flags & PCIE_DESC_RX_IP4_CSUM_OK))
+	if (unlikely((rxd->rxd.flags & PCIE_DESC_RX_IP4_CSUM) &&
+	    !(rxd->rxd.flags & PCIE_DESC_RX_IP4_CSUM_OK)))
 		mb->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+	else
+		mb->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
 
 	/* If neither UDP nor TCP return */
 	if (!(rxd->rxd.flags & PCIE_DESC_RX_TCP_CSUM) &&
 	    !(rxd->rxd.flags & PCIE_DESC_RX_UDP_CSUM))
 		return;
 
-	if ((rxd->rxd.flags & PCIE_DESC_RX_TCP_CSUM) &&
-	    !(rxd->rxd.flags & PCIE_DESC_RX_TCP_CSUM_OK))
-		mb->ol_flags |= PKT_RX_L4_CKSUM_BAD;
-
-	if ((rxd->rxd.flags & PCIE_DESC_RX_UDP_CSUM) &&
-	    !(rxd->rxd.flags & PCIE_DESC_RX_UDP_CSUM_OK))
+	if (likely(rxd->rxd.flags & PCIE_DESC_RX_L4_CSUM_OK))
+		mb->ol_flags |= PKT_RX_L4_CKSUM_GOOD;
+	else
 		mb->ol_flags |= PKT_RX_L4_CKSUM_BAD;
 }
 
