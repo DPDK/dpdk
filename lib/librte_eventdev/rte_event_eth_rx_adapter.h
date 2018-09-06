@@ -76,10 +76,6 @@
  * rte_event_eth_rx_adapter_cb_register() function allows the
  * application to register a callback that selects which packets to enqueue
  * to the event device.
- *
- * Note:
- * 1) Devices created after an instance of rte_event_eth_rx_adapter_create
- *  should be added to a new instance of the rx adapter.
  */
 
 #ifdef __cplusplus
