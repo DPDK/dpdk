@@ -888,6 +888,7 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 	struct rte_mbuf **pkts, uint32_t count)
 {
 	struct vhost_virtqueue *vq;
+	uint32_t nb_tx = 0;
 
 	VHOST_LOG_DEBUG(VHOST_DATA, "(%d) %s\n", dev->vid, __func__);
 	if (unlikely(!is_valid_virt_queue_idx(queue_id, 0, dev->nr_vring))) {
@@ -915,9 +916,9 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 		goto out;
 
 	if (vq_is_packed(dev))
-		count = virtio_dev_rx_packed(dev, vq, pkts, count);
+		nb_tx = virtio_dev_rx_packed(dev, vq, pkts, count);
 	else
-		count = virtio_dev_rx_split(dev, vq, pkts, count);
+		nb_tx = virtio_dev_rx_split(dev, vq, pkts, count);
 
 out:
 	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
@@ -926,7 +927,7 @@ out:
 out_access_unlock:
 	rte_spinlock_unlock(&vq->access_lock);
 
-	return count;
+	return nb_tx;
 }
 
 uint16_t
