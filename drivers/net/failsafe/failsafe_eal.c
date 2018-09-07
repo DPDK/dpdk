@@ -144,8 +144,7 @@ fs_bus_uninit(struct rte_eth_dev *dev)
 	int ret = 0;
 
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_PROBED) {
-		sdev_ret = rte_eal_hotplug_remove(sdev->bus->name,
-							sdev->dev->name);
+		sdev_ret = rte_dev_remove(sdev->dev);
 		if (sdev_ret) {
 			ERROR("Failed to remove requested device %s (err: %d)",
 			      sdev->dev->name, sdev_ret);

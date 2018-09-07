@@ -282,8 +282,7 @@ fs_dev_remove(struct sub_device *sdev)
 		sdev->state = DEV_PROBED;
 		/* fallthrough */
 	case DEV_PROBED:
-		ret = rte_eal_hotplug_remove(sdev->bus->name,
-					     sdev->dev->name);
+		ret = rte_dev_remove(sdev->dev);
 		if (ret) {
 			ERROR("Bus detach failed for sub_device %u",
 			      SUB_ID(sdev));

@@ -197,13 +197,26 @@ int rte_eal_dev_detach(struct rte_device *dev);
  * @param devname
  *   The device name. Based on this device name, eal will identify a driver
  *   capable of handling it and pass it to the driver probing function.
- * @param devargs
+ * @param drvargs
  *   Device arguments to be passed to the driver.
  * @return
  *   0 on success, negative on error.
  */
 int rte_eal_hotplug_add(const char *busname, const char *devname,
-			const char *devargs);
+			const char *drvargs);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Add matching devices.
+ *
+ * @param devargs
+ *   Device arguments including bus, class and driver properties.
+ * @return
+ *   0 on success, negative on error.
+ */
+int __rte_experimental rte_dev_probe(const char *devargs);
 
 /**
  * Hotplug remove a given device from a specific bus.
@@ -216,6 +229,19 @@ int rte_eal_hotplug_add(const char *busname, const char *devname,
  *   0 on success, negative on error.
  */
 int rte_eal_hotplug_remove(const char *busname, const char *devname);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Remove one device.
+ *
+ * @param dev
+ *   Data structure of the device to remove.
+ * @return
+ *   0 on success, negative on error.
+ */
+int __rte_experimental rte_dev_remove(struct rte_device *dev);
 
 /**
  * Device comparison function.

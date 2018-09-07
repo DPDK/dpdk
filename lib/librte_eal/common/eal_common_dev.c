@@ -129,46 +129,62 @@ int rte_eal_dev_detach(struct rte_device *dev)
 
 int
 rte_eal_hotplug_add(const char *busname, const char *devname,
-		    const char *devargs)
+		    const char *drvargs)
 {
-	struct rte_bus *bus;
+	int ret;
+	char *devargs = NULL;
+	int length;
+
+	length = snprintf(NULL, 0, "%s:%s,%s", busname, devname, drvargs);
+	if (length < 0)
+		return -EINVAL;
+	devargs = malloc(length + 1);
+	if (devargs == NULL)
+		return -ENOMEM;
+	ret = snprintf(devargs, length + 1, "%s:%s,%s", busname, devname, drvargs);
+	if (ret < 0)
+		return -EINVAL;
+
+	ret = rte_dev_probe(devargs);
+
+	free(devargs);
+	return ret;
+}
+
+int __rte_experimental
+rte_dev_probe(const char *devargs)
+{
 	struct rte_device *dev;
 	struct rte_devargs *da;
 	int ret;
-
-	bus = rte_bus_find_by_name(busname);
-	if (bus == NULL) {
-		RTE_LOG(ERR, EAL, "Cannot find bus (%s)\n", busname);
-		return -ENOENT;
-	}
-
-	if (bus->plug == NULL) {
-		RTE_LOG(ERR, EAL, "Function plug not supported by bus (%s)\n",
-			bus->name);
-		return -ENOTSUP;
-	}
 
 	da = calloc(1, sizeof(*da));
 	if (da == NULL)
 		return -ENOMEM;
 
-	ret = rte_devargs_parsef(da, "%s:%s,%s",
-				 busname, devname, devargs);
+	ret = rte_devargs_parse(da, devargs);
 	if (ret)
 		goto err_devarg;
+
+	if (da->bus->plug == NULL) {
+		RTE_LOG(ERR, EAL, "Function plug not supported by bus (%s)\n",
+			da->bus->name);
+		ret = -ENOTSUP;
+		goto err_devarg;
+	}
 
 	ret = rte_devargs_insert(da);
 	if (ret)
 		goto err_devarg;
 
-	ret = bus->scan();
+	ret = da->bus->scan();
 	if (ret)
 		goto err_devarg;
 
-	dev = bus->find_device(NULL, cmp_dev_name, devname);
+	dev = da->bus->find_device(NULL, cmp_dev_name, da->name);
 	if (dev == NULL) {
 		RTE_LOG(ERR, EAL, "Cannot find device (%s)\n",
-			devname);
+			da->name);
 		ret = -ENODEV;
 		goto err_devarg;
 	}
@@ -178,7 +194,7 @@ rte_eal_hotplug_add(const char *busname, const char *devname,
 		return -EEXIST;
 	}
 
-	ret = bus->plug(dev);
+	ret = dev->bus->plug(dev);
 	if (ret) {
 		RTE_LOG(ERR, EAL, "Driver cannot attach the device (%s)\n",
 			dev->name);
@@ -197,20 +213,13 @@ err_devarg:
 int
 rte_eal_hotplug_remove(const char *busname, const char *devname)
 {
-	struct rte_bus *bus;
 	struct rte_device *dev;
-	int ret;
+	struct rte_bus *bus;
 
 	bus = rte_bus_find_by_name(busname);
 	if (bus == NULL) {
 		RTE_LOG(ERR, EAL, "Cannot find bus (%s)\n", busname);
 		return -ENOENT;
-	}
-
-	if (bus->unplug == NULL) {
-		RTE_LOG(ERR, EAL, "Function unplug not supported by bus (%s)\n",
-			bus->name);
-		return -ENOTSUP;
 	}
 
 	dev = bus->find_device(NULL, cmp_dev_name, devname);
@@ -219,12 +228,26 @@ rte_eal_hotplug_remove(const char *busname, const char *devname)
 		return -EINVAL;
 	}
 
+	return rte_dev_remove(dev);
+}
+
+int __rte_experimental
+rte_dev_remove(struct rte_device *dev)
+{
+	int ret;
+
 	if (dev->driver == NULL) {
 		RTE_LOG(ERR, EAL, "Device is already unplugged\n");
 		return -ENOENT;
 	}
 
-	ret = bus->unplug(dev);
+	if (dev->bus->unplug == NULL) {
+		RTE_LOG(ERR, EAL, "Function unplug not supported by bus (%s)\n",
+			dev->bus->name);
+		return -ENOTSUP;
+	}
+
+	ret = dev->bus->unplug(dev);
 	if (ret)
 		RTE_LOG(ERR, EAL, "Driver cannot detach the device (%s)\n",
 			dev->name);
