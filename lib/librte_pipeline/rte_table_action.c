@@ -430,6 +430,7 @@ encap_valid(enum rte_table_action_encap_type encap)
 	case RTE_TABLE_ACTION_ENCAP_QINQ:
 	case RTE_TABLE_ACTION_ENCAP_MPLS:
 	case RTE_TABLE_ACTION_ENCAP_PPPOE:
+	case RTE_TABLE_ACTION_ENCAP_VXLAN:
 		return 1;
 	default:
 		return 0;
@@ -498,6 +499,38 @@ struct encap_pppoe_data {
 	struct pppoe_ppp_hdr pppoe_ppp;
 } __attribute__((__packed__));
 
+#define IP_PROTO_UDP                                       17
+
+struct encap_vxlan_ipv4_data {
+	struct ether_hdr ether;
+	struct ipv4_hdr ipv4;
+	struct udp_hdr udp;
+	struct vxlan_hdr vxlan;
+} __attribute__((__packed__));
+
+struct encap_vxlan_ipv4_vlan_data {
+	struct ether_hdr ether;
+	struct vlan_hdr vlan;
+	struct ipv4_hdr ipv4;
+	struct udp_hdr udp;
+	struct vxlan_hdr vxlan;
+} __attribute__((__packed__));
+
+struct encap_vxlan_ipv6_data {
+	struct ether_hdr ether;
+	struct ipv6_hdr ipv6;
+	struct udp_hdr udp;
+	struct vxlan_hdr vxlan;
+} __attribute__((__packed__));
+
+struct encap_vxlan_ipv6_vlan_data {
+	struct ether_hdr ether;
+	struct vlan_hdr vlan;
+	struct ipv6_hdr ipv6;
+	struct udp_hdr udp;
+	struct vxlan_hdr vxlan;
+} __attribute__((__packed__));
+
 static size_t
 encap_data_size(struct rte_table_action_encap_config *encap)
 {
@@ -516,6 +549,18 @@ encap_data_size(struct rte_table_action_encap_config *encap)
 
 	case 1LLU << RTE_TABLE_ACTION_ENCAP_PPPOE:
 		return sizeof(struct encap_pppoe_data);
+
+	case 1LLU << RTE_TABLE_ACTION_ENCAP_VXLAN:
+		if (encap->vxlan.ip_version)
+			if (encap->vxlan.vlan)
+				return sizeof(struct encap_vxlan_ipv4_vlan_data);
+			else
+				return sizeof(struct encap_vxlan_ipv4_data);
+		else
+			if (encap->vxlan.vlan)
+				return sizeof(struct encap_vxlan_ipv6_vlan_data);
+			else
+				return sizeof(struct encap_vxlan_ipv6_data);
 
 	default:
 		return 0;
@@ -548,6 +593,9 @@ encap_apply_check(struct rte_table_action_encap_params *p,
 		return 0;
 
 	case RTE_TABLE_ACTION_ENCAP_PPPOE:
+		return 0;
+
+	case RTE_TABLE_ACTION_ENCAP_VXLAN:
 		return 0;
 
 	default:
@@ -679,6 +727,168 @@ encap_pppoe_apply(void *data,
 }
 
 static int
+encap_vxlan_apply(void *data,
+	struct rte_table_action_encap_params *p,
+	struct rte_table_action_encap_config *cfg)
+{
+	if ((p->vxlan.vxlan.vni > 0xFFFFFF) ||
+		(cfg->vxlan.ip_version && (p->vxlan.ipv4.dscp > 0x3F)) ||
+		(!cfg->vxlan.ip_version && (p->vxlan.ipv6.flow_label > 0xFFFFF)) ||
+		(!cfg->vxlan.ip_version && (p->vxlan.ipv6.dscp > 0x3F)) ||
+		(cfg->vxlan.vlan && (p->vxlan.vlan.vid > 0xFFF)))
+		return -1;
+
+	if (cfg->vxlan.ip_version)
+		if (cfg->vxlan.vlan) {
+			struct encap_vxlan_ipv4_vlan_data *d = data;
+
+			/* Ethernet */
+			ether_addr_copy(&p->vxlan.ether.da, &d->ether.d_addr);
+			ether_addr_copy(&p->vxlan.ether.sa, &d->ether.s_addr);
+			d->ether.ether_type = rte_htons(ETHER_TYPE_VLAN);
+
+			/* VLAN */
+			d->vlan.vlan_tci = rte_htons(VLAN(p->vxlan.vlan.pcp,
+				p->vxlan.vlan.dei,
+				p->vxlan.vlan.vid));
+			d->vlan.eth_proto = rte_htons(ETHER_TYPE_IPv4);
+
+			/* IPv4*/
+			d->ipv4.version_ihl = 0x45;
+			d->ipv4.type_of_service = p->vxlan.ipv4.dscp << 2;
+			d->ipv4.total_length = 0; /* not pre-computed */
+			d->ipv4.packet_id = 0;
+			d->ipv4.fragment_offset = 0;
+			d->ipv4.time_to_live = p->vxlan.ipv4.ttl;
+			d->ipv4.next_proto_id = IP_PROTO_UDP;
+			d->ipv4.hdr_checksum = 0;
+			d->ipv4.src_addr = rte_htonl(p->vxlan.ipv4.sa);
+			d->ipv4.dst_addr = rte_htonl(p->vxlan.ipv4.da);
+
+			d->ipv4.hdr_checksum = rte_ipv4_cksum(&d->ipv4);
+
+			/* UDP */
+			d->udp.src_port = rte_htons(p->vxlan.udp.sp);
+			d->udp.dst_port = rte_htons(p->vxlan.udp.dp);
+			d->udp.dgram_len = 0; /* not pre-computed */
+			d->udp.dgram_cksum = 0;
+
+			/* VXLAN */
+			d->vxlan.vx_flags = rte_htonl(0x08000000);
+			d->vxlan.vx_vni = rte_htonl(p->vxlan.vxlan.vni << 8);
+
+			return 0;
+		} else {
+			struct encap_vxlan_ipv4_data *d = data;
+
+			/* Ethernet */
+			ether_addr_copy(&p->vxlan.ether.da, &d->ether.d_addr);
+			ether_addr_copy(&p->vxlan.ether.sa, &d->ether.s_addr);
+			d->ether.ether_type = rte_htons(ETHER_TYPE_IPv4);
+
+			/* IPv4*/
+			d->ipv4.version_ihl = 0x45;
+			d->ipv4.type_of_service = p->vxlan.ipv4.dscp << 2;
+			d->ipv4.total_length = 0; /* not pre-computed */
+			d->ipv4.packet_id = 0;
+			d->ipv4.fragment_offset = 0;
+			d->ipv4.time_to_live = p->vxlan.ipv4.ttl;
+			d->ipv4.next_proto_id = IP_PROTO_UDP;
+			d->ipv4.hdr_checksum = 0;
+			d->ipv4.src_addr = rte_htonl(p->vxlan.ipv4.sa);
+			d->ipv4.dst_addr = rte_htonl(p->vxlan.ipv4.da);
+
+			d->ipv4.hdr_checksum = rte_ipv4_cksum(&d->ipv4);
+
+			/* UDP */
+			d->udp.src_port = rte_htons(p->vxlan.udp.sp);
+			d->udp.dst_port = rte_htons(p->vxlan.udp.dp);
+			d->udp.dgram_len = 0; /* not pre-computed */
+			d->udp.dgram_cksum = 0;
+
+			/* VXLAN */
+			d->vxlan.vx_flags = rte_htonl(0x08000000);
+			d->vxlan.vx_vni = rte_htonl(p->vxlan.vxlan.vni << 8);
+
+			return 0;
+		}
+	else
+		if (cfg->vxlan.vlan) {
+			struct encap_vxlan_ipv6_vlan_data *d = data;
+
+			/* Ethernet */
+			ether_addr_copy(&p->vxlan.ether.da, &d->ether.d_addr);
+			ether_addr_copy(&p->vxlan.ether.sa, &d->ether.s_addr);
+			d->ether.ether_type = rte_htons(ETHER_TYPE_VLAN);
+
+			/* VLAN */
+			d->vlan.vlan_tci = rte_htons(VLAN(p->vxlan.vlan.pcp,
+				p->vxlan.vlan.dei,
+				p->vxlan.vlan.vid));
+			d->vlan.eth_proto = rte_htons(ETHER_TYPE_IPv6);
+
+			/* IPv6*/
+			d->ipv6.vtc_flow = rte_htonl((6 << 28) |
+				(p->vxlan.ipv6.dscp << 22) |
+				p->vxlan.ipv6.flow_label);
+			d->ipv6.payload_len = 0; /* not pre-computed */
+			d->ipv6.proto = IP_PROTO_UDP;
+			d->ipv6.hop_limits = p->vxlan.ipv6.hop_limit;
+			memcpy(d->ipv6.src_addr,
+				p->vxlan.ipv6.sa,
+				sizeof(p->vxlan.ipv6.sa));
+			memcpy(d->ipv6.dst_addr,
+				p->vxlan.ipv6.da,
+				sizeof(p->vxlan.ipv6.da));
+
+			/* UDP */
+			d->udp.src_port = rte_htons(p->vxlan.udp.sp);
+			d->udp.dst_port = rte_htons(p->vxlan.udp.dp);
+			d->udp.dgram_len = 0; /* not pre-computed */
+			d->udp.dgram_cksum = 0;
+
+			/* VXLAN */
+			d->vxlan.vx_flags = rte_htonl(0x08000000);
+			d->vxlan.vx_vni = rte_htonl(p->vxlan.vxlan.vni << 8);
+
+			return 0;
+		} else {
+			struct encap_vxlan_ipv6_data *d = data;
+
+			/* Ethernet */
+			ether_addr_copy(&p->vxlan.ether.da, &d->ether.d_addr);
+			ether_addr_copy(&p->vxlan.ether.sa, &d->ether.s_addr);
+			d->ether.ether_type = rte_htons(ETHER_TYPE_IPv6);
+
+			/* IPv6*/
+			d->ipv6.vtc_flow = rte_htonl((6 << 28) |
+				(p->vxlan.ipv6.dscp << 22) |
+				p->vxlan.ipv6.flow_label);
+			d->ipv6.payload_len = 0; /* not pre-computed */
+			d->ipv6.proto = IP_PROTO_UDP;
+			d->ipv6.hop_limits = p->vxlan.ipv6.hop_limit;
+			memcpy(d->ipv6.src_addr,
+				p->vxlan.ipv6.sa,
+				sizeof(p->vxlan.ipv6.sa));
+			memcpy(d->ipv6.dst_addr,
+				p->vxlan.ipv6.da,
+				sizeof(p->vxlan.ipv6.da));
+
+			/* UDP */
+			d->udp.src_port = rte_htons(p->vxlan.udp.sp);
+			d->udp.dst_port = rte_htons(p->vxlan.udp.dp);
+			d->udp.dgram_len = 0; /* not pre-computed */
+			d->udp.dgram_cksum = 0;
+
+			/* VXLAN */
+			d->vxlan.vx_flags = rte_htonl(0x08000000);
+			d->vxlan.vx_vni = rte_htonl(p->vxlan.vxlan.vni << 8);
+
+			return 0;
+		}
+}
+
+static int
 encap_apply(void *data,
 	struct rte_table_action_encap_params *p,
 	struct rte_table_action_encap_config *cfg,
@@ -707,9 +917,29 @@ encap_apply(void *data,
 	case RTE_TABLE_ACTION_ENCAP_PPPOE:
 		return encap_pppoe_apply(data, p);
 
+	case RTE_TABLE_ACTION_ENCAP_VXLAN:
+		return encap_vxlan_apply(data, p, cfg);
+
 	default:
 		return -EINVAL;
 	}
+}
+
+static __rte_always_inline uint16_t
+encap_vxlan_ipv4_checksum_update(uint16_t cksum0,
+	uint16_t total_length)
+{
+	int32_t cksum1;
+
+	cksum1 = cksum0;
+	cksum1 = ~cksum1 & 0xFFFF;
+
+	/* Add total length (one's complement logic) */
+	cksum1 += total_length;
+	cksum1 = (cksum1 & 0xFFFF) + (cksum1 >> 16);
+	cksum1 = (cksum1 & 0xFFFF) + (cksum1 >> 16);
+
+	return (uint16_t)(~cksum1);
 }
 
 static __rte_always_inline void *
@@ -717,6 +947,118 @@ encap(void *dst, const void *src, size_t n)
 {
 	dst = ((uint8_t *) dst) - n;
 	return rte_memcpy(dst, src, n);
+}
+
+static __rte_always_inline void
+pkt_work_encap_vxlan_ipv4(struct rte_mbuf *mbuf,
+	struct encap_vxlan_ipv4_data *vxlan_tbl,
+	struct rte_table_action_encap_config *cfg)
+{
+	uint32_t ether_offset = cfg->vxlan.data_offset;
+	void *ether = RTE_MBUF_METADATA_UINT32_PTR(mbuf, ether_offset);
+	struct encap_vxlan_ipv4_data *vxlan_pkt;
+	uint16_t ether_length, ipv4_total_length, ipv4_hdr_cksum, udp_length;
+
+	ether_length = (uint16_t)mbuf->pkt_len;
+	ipv4_total_length = ether_length +
+		(sizeof(struct vxlan_hdr) +
+		sizeof(struct udp_hdr) +
+		sizeof(struct ipv4_hdr));
+	ipv4_hdr_cksum = encap_vxlan_ipv4_checksum_update(vxlan_tbl->ipv4.hdr_checksum,
+		rte_htons(ipv4_total_length));
+	udp_length = ether_length +
+		(sizeof(struct vxlan_hdr) +
+		sizeof(struct udp_hdr));
+
+	vxlan_pkt = encap(ether, vxlan_tbl, sizeof(*vxlan_tbl));
+	vxlan_pkt->ipv4.total_length = rte_htons(ipv4_total_length);
+	vxlan_pkt->ipv4.hdr_checksum = ipv4_hdr_cksum;
+	vxlan_pkt->udp.dgram_len = rte_htons(udp_length);
+
+	mbuf->data_off = ether_offset - (sizeof(struct rte_mbuf) + sizeof(*vxlan_pkt));
+	mbuf->pkt_len = mbuf->data_len = ether_length + sizeof(*vxlan_pkt);
+}
+
+static __rte_always_inline void
+pkt_work_encap_vxlan_ipv4_vlan(struct rte_mbuf *mbuf,
+	struct encap_vxlan_ipv4_vlan_data *vxlan_tbl,
+	struct rte_table_action_encap_config *cfg)
+{
+	uint32_t ether_offset = cfg->vxlan.data_offset;
+	void *ether = RTE_MBUF_METADATA_UINT32_PTR(mbuf, ether_offset);
+	struct encap_vxlan_ipv4_vlan_data *vxlan_pkt;
+	uint16_t ether_length, ipv4_total_length, ipv4_hdr_cksum, udp_length;
+
+	ether_length = (uint16_t)mbuf->pkt_len;
+	ipv4_total_length = ether_length +
+		(sizeof(struct vxlan_hdr) +
+		sizeof(struct udp_hdr) +
+		sizeof(struct ipv4_hdr));
+	ipv4_hdr_cksum = encap_vxlan_ipv4_checksum_update(vxlan_tbl->ipv4.hdr_checksum,
+		rte_htons(ipv4_total_length));
+	udp_length = ether_length +
+		(sizeof(struct vxlan_hdr) +
+		sizeof(struct udp_hdr));
+
+	vxlan_pkt = encap(ether, vxlan_tbl, sizeof(*vxlan_tbl));
+	vxlan_pkt->ipv4.total_length = rte_htons(ipv4_total_length);
+	vxlan_pkt->ipv4.hdr_checksum = ipv4_hdr_cksum;
+	vxlan_pkt->udp.dgram_len = rte_htons(udp_length);
+
+	mbuf->data_off = ether_offset - (sizeof(struct rte_mbuf) + sizeof(*vxlan_pkt));
+	mbuf->pkt_len = mbuf->data_len = ether_length + sizeof(*vxlan_pkt);
+}
+
+static __rte_always_inline void
+pkt_work_encap_vxlan_ipv6(struct rte_mbuf *mbuf,
+	struct encap_vxlan_ipv6_data *vxlan_tbl,
+	struct rte_table_action_encap_config *cfg)
+{
+	uint32_t ether_offset = cfg->vxlan.data_offset;
+	void *ether = RTE_MBUF_METADATA_UINT32_PTR(mbuf, ether_offset);
+	struct encap_vxlan_ipv6_data *vxlan_pkt;
+	uint16_t ether_length, ipv6_payload_length, udp_length;
+
+	ether_length = (uint16_t)mbuf->pkt_len;
+	ipv6_payload_length = ether_length +
+		(sizeof(struct vxlan_hdr) +
+		sizeof(struct udp_hdr));
+	udp_length = ether_length +
+		(sizeof(struct vxlan_hdr) +
+		sizeof(struct udp_hdr));
+
+	vxlan_pkt = encap(ether, vxlan_tbl, sizeof(*vxlan_tbl));
+	vxlan_pkt->ipv6.payload_len = rte_htons(ipv6_payload_length);
+	vxlan_pkt->udp.dgram_len = rte_htons(udp_length);
+
+	mbuf->data_off = ether_offset - (sizeof(struct rte_mbuf) + sizeof(*vxlan_pkt));
+	mbuf->pkt_len = mbuf->data_len = ether_length + sizeof(*vxlan_pkt);
+}
+
+static __rte_always_inline void
+pkt_work_encap_vxlan_ipv6_vlan(struct rte_mbuf *mbuf,
+	struct encap_vxlan_ipv6_vlan_data *vxlan_tbl,
+	struct rte_table_action_encap_config *cfg)
+{
+	uint32_t ether_offset = cfg->vxlan.data_offset;
+	void *ether = RTE_MBUF_METADATA_UINT32_PTR(mbuf, ether_offset);
+	struct encap_vxlan_ipv6_vlan_data *vxlan_pkt;
+	uint16_t ether_length, ipv6_payload_length, udp_length;
+
+	ether_length = (uint16_t)mbuf->pkt_len;
+	ipv6_payload_length = ether_length +
+		(sizeof(struct vxlan_hdr) +
+		sizeof(struct udp_hdr));
+	udp_length = ether_length +
+		(sizeof(struct vxlan_hdr) +
+		sizeof(struct udp_hdr));
+
+	vxlan_pkt = encap(ether, vxlan_tbl, sizeof(*vxlan_tbl));
+	vxlan_pkt->ipv6.payload_len = rte_htons(ipv6_payload_length);
+	vxlan_pkt->udp.dgram_len = rte_htons(udp_length);
+
+	mbuf->data_off = ether_offset - (sizeof(struct rte_mbuf) + sizeof(*vxlan_pkt));
+	mbuf->pkt_len = mbuf->data_len = ether_length + sizeof(*vxlan_pkt);
 }
 
 static __rte_always_inline void
@@ -774,6 +1116,20 @@ pkt_work_encap(struct rte_mbuf *mbuf,
 		mbuf->pkt_len = mbuf->data_len = total_length +
 			sizeof(struct encap_pppoe_data);
 		break;
+	}
+
+	case 1LLU << RTE_TABLE_ACTION_ENCAP_VXLAN:
+	{
+		if (cfg->vxlan.ip_version)
+			if (cfg->vxlan.vlan)
+				pkt_work_encap_vxlan_ipv4_vlan(mbuf, data, cfg);
+			else
+				pkt_work_encap_vxlan_ipv4(mbuf, data, cfg);
+		else
+			if (cfg->vxlan.vlan)
+				pkt_work_encap_vxlan_ipv6_vlan(mbuf, data, cfg);
+			else
+				pkt_work_encap_vxlan_ipv6(mbuf, data, cfg);
 	}
 
 	default:

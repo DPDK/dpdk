@@ -366,6 +366,11 @@ enum rte_table_action_encap_type {
 
 	/** IP -> { Ether | PPPoE | PPP | IP } */
 	RTE_TABLE_ACTION_ENCAP_PPPOE,
+
+	/** Ether -> { Ether | IP | UDP | VXLAN | Ether }
+	 * Ether -> { Ether | VLAN | IP | UDP | VXLAN | Ether }
+	 */
+	RTE_TABLE_ACTION_ENCAP_VXLAN,
 };
 
 /** Pre-computed Ethernet header fields for encapsulation action. */
@@ -391,6 +396,34 @@ struct rte_table_action_mpls_hdr {
 /** Pre-computed PPPoE header fields for encapsulation action. */
 struct rte_table_action_pppoe_hdr {
 	uint16_t session_id; /**< Session ID. */
+};
+
+/** Pre-computed IPv4 header fields for encapsulation action. */
+struct rte_table_action_ipv4_header {
+	uint32_t sa; /**< Source address. */
+	uint32_t da; /**< Destination address. */
+	uint8_t dscp; /**< DiffServ Code Point (DSCP). */
+	uint8_t ttl; /**< Time To Live (TTL). */
+};
+
+/** Pre-computed IPv6 header fields for encapsulation action. */
+struct rte_table_action_ipv6_header {
+	uint8_t sa[16]; /**< Source address. */
+	uint8_t da[16]; /**< Destination address. */
+	uint32_t flow_label; /**< Flow label. */
+	uint8_t dscp; /**< DiffServ Code Point (DSCP). */
+	uint8_t hop_limit; /**< Hop Limit (HL). */
+};
+
+/** Pre-computed UDP header fields for encapsulation action. */
+struct rte_table_action_udp_header {
+	uint16_t sp; /**< Source port. */
+	uint16_t dp; /**< Destination port. */
+};
+
+/** Pre-computed VXLAN header fields for encapsulation action. */
+struct rte_table_action_vxlan_hdr {
+	uint32_t vni; /**< VXLAN Network Identifier (VNI). */
 };
 
 /** Ether encap parameters. */
@@ -437,6 +470,21 @@ struct rte_table_action_encap_pppoe_params {
 	struct rte_table_action_pppoe_hdr pppoe; /**< PPPoE/PPP headers. */
 };
 
+/** VXLAN encap parameters. */
+struct rte_table_action_encap_vxlan_params {
+	struct rte_table_action_ether_hdr ether; /**< Ethernet header. */
+	struct rte_table_action_vlan_hdr vlan; /**< VLAN header. */
+
+	RTE_STD_C11
+	union {
+		struct rte_table_action_ipv4_header ipv4; /**< IPv4 header. */
+		struct rte_table_action_ipv6_header ipv6; /**< IPv6 header. */
+	};
+
+	struct rte_table_action_udp_header udp; /**< UDP header. */
+	struct rte_table_action_vxlan_hdr vxlan; /**< VXLAN header. */
+};
+
 /** Encap action configuration (per table action profile). */
 struct rte_table_action_encap_config {
 	/** Bit mask defining the set of packet encapsulations enabled for the
@@ -446,6 +494,30 @@ struct rte_table_action_encap_config {
 	 * @see enum rte_table_action_encap_type
 	 */
 	uint64_t encap_mask;
+
+	/** Encapsulation type specific configuration. */
+	RTE_STD_C11
+	union {
+		struct {
+			/** Input packet to be encapsulated: offset within the
+			 * input packet buffer to the start of the Ethernet
+			 * frame to be encapsulated. Offset 0 points to the
+			 * first byte of the MBUF structure.
+			 */
+			uint32_t data_offset;
+
+			/** Encapsulation header: non-zero when encapsulation
+			 * header includes a VLAN tag, zero otherwise.
+			 */
+			int vlan;
+
+			/** Encapsulation header: IP version of the IP header
+			 * within the encapsulation header. Non-zero for IPv4,
+			 * zero for IPv6.
+			 */
+			int ip_version;
+		} vxlan; /**< VXLAN specific configuration. */
+	};
 };
 
 /** Encap action parameters (per table rule). */
@@ -469,6 +541,9 @@ struct rte_table_action_encap_params {
 
 		/** Only valid when *type* is set to PPPoE. */
 		struct rte_table_action_encap_pppoe_params pppoe;
+
+		/** Only valid when *type* is set to VXLAN. */
+		struct rte_table_action_encap_vxlan_params vxlan;
 	};
 };
 
