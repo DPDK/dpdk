@@ -1391,7 +1391,25 @@ cryptodevs_init(void)
 
 	uint32_t max_sess_sz = 0, sess_sz;
 	for (cdev_id = 0; cdev_id < rte_cryptodev_count(); cdev_id++) {
+		void *sec_ctx;
+
+		/* Get crypto priv session size */
 		sess_sz = rte_cryptodev_sym_get_private_session_size(cdev_id);
+		if (sess_sz > max_sess_sz)
+			max_sess_sz = sess_sz;
+
+		/*
+		 * If crypto device is security capable, need to check the
+		 * size of security session as well.
+		 */
+
+		/* Get security context of the crypto device */
+		sec_ctx = rte_cryptodev_get_sec_ctx(cdev_id);
+		if (sec_ctx == NULL)
+			continue;
+
+		/* Get size of security session */
+		sess_sz = rte_security_session_get_size(sec_ctx);
 		if (sess_sz > max_sess_sz)
 			max_sess_sz = sess_sz;
 	}
