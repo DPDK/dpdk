@@ -961,7 +961,8 @@ static const char cmd_table_action_profile_help[] =
 "       tc <n_tc>\n"
 "       stats none | pkts | bytes | both]\n"
 "   [tm spp <n_subports_per_port> pps <n_pipes_per_subport>]\n"
-"   [encap ether | vlan | qinq | mpls | pppoe]\n"
+"   [encap ether | vlan | qinq | mpls | pppoe |\n"
+"       vxlan offset <ether_offset> ipv4 | ipv6 vlan on | off]\n"
 "   [nat src | dst\n"
 "       proto udp | tcp]\n"
 "   [ttl drop | fwd\n"
@@ -1157,6 +1158,8 @@ cmd_table_action_profile(char **tokens,
 	} /* tm */
 
 	if ((t0 < n_tokens) && (strcmp(tokens[t0], "encap") == 0)) {
+		uint32_t n_extra_tokens = 0;
+
 		if (n_tokens < t0 + 2) {
 			snprintf(out, out_size, MSG_ARG_MISMATCH,
 				"action profile encap");
@@ -1173,13 +1176,61 @@ cmd_table_action_profile(char **tokens,
 			p.encap.encap_mask = 1LLU << RTE_TABLE_ACTION_ENCAP_MPLS;
 		else if (strcmp(tokens[t0 + 1], "pppoe") == 0)
 			p.encap.encap_mask = 1LLU << RTE_TABLE_ACTION_ENCAP_PPPOE;
-		else {
+		else if (strcmp(tokens[t0 + 1], "vxlan") == 0) {
+			if (n_tokens < t0 + 2 + 5) {
+				snprintf(out, out_size, MSG_ARG_MISMATCH,
+					"action profile encap vxlan");
+				return;
+			}
+
+			if (strcmp(tokens[t0 + 2], "offset") != 0) {
+				snprintf(out, out_size, MSG_ARG_NOT_FOUND,
+					"vxlan: offset");
+				return;
+			}
+
+			if (parser_read_uint32(&p.encap.vxlan.data_offset,
+				tokens[t0 + 2 + 1]) != 0) {
+				snprintf(out, out_size, MSG_ARG_INVALID,
+					"vxlan: ether_offset");
+				return;
+			}
+
+			if (strcmp(tokens[t0 + 2 + 2], "ipv4") == 0)
+				p.encap.vxlan.ip_version = 1;
+			else if (strcmp(tokens[t0 + 2 + 2], "ipv6") == 0)
+				p.encap.vxlan.ip_version = 0;
+			else {
+				snprintf(out, out_size, MSG_ARG_INVALID,
+					"vxlan: ipv4 or ipv6");
+				return;
+			}
+
+			if (strcmp(tokens[t0 + 2 + 3], "vlan") != 0) {
+				snprintf(out, out_size, MSG_ARG_NOT_FOUND,
+					"vxlan: vlan");
+				return;
+			}
+
+			if (strcmp(tokens[t0 + 2 + 4], "on") == 0)
+				p.encap.vxlan.vlan = 1;
+			else if (strcmp(tokens[t0 + 2 + 4], "off") == 0)
+				p.encap.vxlan.vlan = 0;
+			else {
+				snprintf(out, out_size, MSG_ARG_INVALID,
+					"vxlan: on or off");
+				return;
+			}
+
+			p.encap.encap_mask = 1LLU << RTE_TABLE_ACTION_ENCAP_VXLAN;
+			n_extra_tokens = 5;
+		} else {
 			snprintf(out, out_size, MSG_ARG_MISMATCH, "encap");
 			return;
 		}
 
 		p.action_mask |= 1LLU << RTE_TABLE_ACTION_ENCAP;
-		t0 += 2;
+		t0 += 2 + n_extra_tokens;
 	} /* encap */
 
 	if ((t0 < n_tokens) && (strcmp(tokens[t0], "nat") == 0)) {
@@ -2861,7 +2912,13 @@ parse_match(char **tokens,
  *          [label1 <label> <tc> <ttl>
  *          [label2 <label> <tc> <ttl>
  *          [label3 <label> <tc> <ttl>]]]
- *       | pppoe <da> <sa> <session_id>]
+ *       | pppoe <da> <sa> <session_id>
+ *       | vxlan ether <da> <sa>
+ *          [vlan <pcp> <dei> <vid>]
+ *          ipv4 <sa> <da> <dscp> <ttl>
+ *          | ipv6 <sa> <da> <flow_label> <dscp> <hop_limit>
+ *          udp <sp> <dp>
+ *          vxlan <vni>]
  *    [nat ipv4 | ipv6 <addr> <port>]
  *    [ttl dec | keep]
  *    [stats]
@@ -3252,6 +3309,122 @@ parse_table_action_encap(char **tokens,
 		a->encap.type = RTE_TABLE_ACTION_ENCAP_PPPOE;
 		a->action_mask |= 1 << RTE_TABLE_ACTION_ENCAP;
 		return 1 + 4;
+	}
+
+	/* vxlan */
+	if (n_tokens && (strcmp(tokens[0], "vxlan") == 0)) {
+		uint32_t n = 0;
+
+		n_tokens--;
+		tokens++;
+		n++;
+
+		/* ether <da> <sa> */
+		if ((n_tokens < 3) ||
+			strcmp(tokens[0], "ether") ||
+			parse_mac_addr(tokens[1], &a->encap.vxlan.ether.da) ||
+			parse_mac_addr(tokens[2], &a->encap.vxlan.ether.sa))
+			return 0;
+
+		n_tokens -= 3;
+		tokens += 3;
+		n += 3;
+
+		/* [vlan <pcp> <dei> <vid>] */
+		if (strcmp(tokens[0], "vlan") == 0) {
+			uint32_t pcp, dei, vid;
+
+			if ((n_tokens < 4) ||
+				parser_read_uint32(&pcp, tokens[1]) ||
+				(pcp > 7) ||
+				parser_read_uint32(&dei, tokens[2]) ||
+				(dei > 1) ||
+				parser_read_uint32(&vid, tokens[3]) ||
+				(vid > 0xFFF))
+				return 0;
+
+			a->encap.vxlan.vlan.pcp = pcp;
+			a->encap.vxlan.vlan.dei = dei;
+			a->encap.vxlan.vlan.vid = vid;
+
+			n_tokens -= 4;
+			tokens += 4;
+			n += 4;
+		}
+
+		/* ipv4 <sa> <da> <dscp> <ttl>
+		   | ipv6 <sa> <da> <flow_label> <dscp> <hop_limit> */
+		if (strcmp(tokens[0], "ipv4") == 0) {
+			struct in_addr sa, da;
+			uint8_t dscp, ttl;
+
+			if ((n_tokens < 5) ||
+				parse_ipv4_addr(tokens[1], &sa) ||
+				parse_ipv4_addr(tokens[2], &da) ||
+				parser_read_uint8(&dscp, tokens[3]) ||
+				(dscp > 64) ||
+				parser_read_uint8(&ttl, tokens[4]))
+				return 0;
+
+			a->encap.vxlan.ipv4.sa = rte_be_to_cpu_32(sa.s_addr);
+			a->encap.vxlan.ipv4.da = rte_be_to_cpu_32(da.s_addr);
+			a->encap.vxlan.ipv4.dscp = dscp;
+			a->encap.vxlan.ipv4.ttl = ttl;
+
+			n_tokens -= 5;
+			tokens += 5;
+			n += 5;
+		} else if (strcmp(tokens[0], "ipv6") == 0) {
+			struct in6_addr sa, da;
+			uint32_t flow_label;
+			uint8_t dscp, hop_limit;
+
+			if ((n_tokens < 6) ||
+				parse_ipv6_addr(tokens[1], &sa) ||
+				parse_ipv6_addr(tokens[2], &da) ||
+				parser_read_uint32(&flow_label, tokens[3]) ||
+				parser_read_uint8(&dscp, tokens[4]) ||
+				(dscp > 64) ||
+				parser_read_uint8(&hop_limit, tokens[5]))
+				return 0;
+
+			memcpy(a->encap.vxlan.ipv6.sa, sa.s6_addr, 16);
+			memcpy(a->encap.vxlan.ipv6.da, da.s6_addr, 16);
+			a->encap.vxlan.ipv6.flow_label = flow_label;
+			a->encap.vxlan.ipv6.dscp = dscp;
+			a->encap.vxlan.ipv6.hop_limit = hop_limit;
+
+			n_tokens -= 6;
+			tokens += 6;
+			n += 6;
+		} else
+			return 0;
+
+		/* udp <sp> <dp> */
+		if ((n_tokens < 3) ||
+			strcmp(tokens[0], "udp") ||
+			parser_read_uint16(&a->encap.vxlan.udp.sp, tokens[1]) ||
+			parser_read_uint16(&a->encap.vxlan.udp.dp, tokens[2]))
+			return 0;
+
+		n_tokens -= 3;
+		tokens += 3;
+		n += 3;
+
+		/* vxlan <vni> */
+		if ((n_tokens < 2) ||
+			strcmp(tokens[0], "vxlan") ||
+			parser_read_uint32(&a->encap.vxlan.vxlan.vni, tokens[1]) ||
+			(a->encap.vxlan.vxlan.vni > 0xFFFFFF))
+			return 0;
+
+		n_tokens -= 2;
+		tokens += 2;
+		n += 2;
+
+		a->encap.type = RTE_TABLE_ACTION_ENCAP_VXLAN;
+		a->action_mask |= 1 << RTE_TABLE_ACTION_ENCAP;
+		return 1 + n;
 	}
 
 	return 0;
