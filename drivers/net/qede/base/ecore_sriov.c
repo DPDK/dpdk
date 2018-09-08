@@ -1968,7 +1968,8 @@ ecore_iov_configure_vport_forced(struct ecore_hwfn *p_hwfn,
 		return ECORE_INVAL;
 
 	if ((events & (1 << MAC_ADDR_FORCED)) ||
-	    p_hwfn->pf_params.eth_pf_params.allow_vf_mac_change) {
+	    p_hwfn->pf_params.eth_pf_params.allow_vf_mac_change ||
+	    p_vf->p_vf_info.is_trusted_configured) {
 		/* Since there's no way [currently] of removing the MAC,
 		 * we can always assume this means we need to force it.
 		 */
@@ -1989,7 +1990,8 @@ ecore_iov_configure_vport_forced(struct ecore_hwfn *p_hwfn,
 			return rc;
 		}
 
-		if (p_hwfn->pf_params.eth_pf_params.allow_vf_mac_change)
+		if (p_hwfn->pf_params.eth_pf_params.allow_vf_mac_change ||
+		    p_vf->p_vf_info.is_trusted_configured)
 			p_vf->configured_features |=
 				1 << VFPF_BULLETIN_MAC_ADDR;
 		else
@@ -3351,6 +3353,15 @@ ecore_iov_vf_update_mac_shadow(struct ecore_hwfn *p_hwfn,
 	if (p_vf->bulletin.p_virt->valid_bitmap & (1 << MAC_ADDR_FORCED))
 		return ECORE_SUCCESS;
 
+	/* Since we don't have the implementation of the logic for removing
+	 * a forced MAC and restoring shadow MAC, let's not worry about
+	 * processing shadow copies of MAC as long as VF trust mode is ON,
+	 * to keep things simple.
+	 */
+	if (p_hwfn->pf_params.eth_pf_params.allow_vf_mac_change ||
+	    p_vf->p_vf_info.is_trusted_configured)
+		return ECORE_SUCCESS;
+
 	/* First remove entries and then add new ones */
 	if (p_params->opcode == ECORE_FILTER_REMOVE) {
 		for (i = 0; i < ECORE_ETH_VF_NUM_MAC_FILTERS; i++) {
@@ -4415,17 +4426,23 @@ void ecore_iov_bulletin_set_forced_mac(struct ecore_hwfn *p_hwfn,
 		return;
 	}
 
-	if (p_hwfn->pf_params.eth_pf_params.allow_vf_mac_change)
+	if (p_hwfn->pf_params.eth_pf_params.allow_vf_mac_change ||
+	    vf_info->p_vf_info.is_trusted_configured) {
 		feature = 1 << VFPF_BULLETIN_MAC_ADDR;
-	else
+		/* Trust mode will disable Forced MAC */
+		vf_info->bulletin.p_virt->valid_bitmap &=
+			~(1 << MAC_ADDR_FORCED);
+	} else {
 		feature = 1 << MAC_ADDR_FORCED;
+		/* Forced MAC will disable MAC_ADDR */
+		vf_info->bulletin.p_virt->valid_bitmap &=
+			~(1 << VFPF_BULLETIN_MAC_ADDR);
+	}
 
-	OSAL_MEMCPY(vf_info->bulletin.p_virt->mac, mac, ETH_ALEN);
+	OSAL_MEMCPY(vf_info->bulletin.p_virt->mac,
+		    mac, ETH_ALEN);
 
 	vf_info->bulletin.p_virt->valid_bitmap |= feature;
-	/* Forced MAC will disable MAC_ADDR */
-	vf_info->bulletin.p_virt->valid_bitmap &=
-	    ~(1 << VFPF_BULLETIN_MAC_ADDR);
 
 	ecore_iov_configure_vport_forced(p_hwfn, vf_info, feature);
 }
@@ -4460,7 +4477,8 @@ enum _ecore_status_t ecore_iov_bulletin_set_mac(struct ecore_hwfn *p_hwfn,
 
 	vf_info->bulletin.p_virt->valid_bitmap |= feature;
 
-	if (p_hwfn->pf_params.eth_pf_params.allow_vf_mac_change)
+	if (p_hwfn->pf_params.eth_pf_params.allow_vf_mac_change ||
+	    vf_info->p_vf_info.is_trusted_configured)
 		ecore_iov_configure_vport_forced(p_hwfn, vf_info, feature);
 
 	return ECORE_SUCCESS;
