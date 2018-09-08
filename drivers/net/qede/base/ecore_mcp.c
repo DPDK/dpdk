@@ -2201,8 +2201,10 @@ enum _ecore_status_t ecore_mcp_get_media_type(struct ecore_hwfn *p_hwfn,
 
 enum _ecore_status_t ecore_mcp_get_transceiver_data(struct ecore_hwfn *p_hwfn,
 						    struct ecore_ptt *p_ptt,
-						    u32 *p_tranceiver_type)
+						    u32 *p_transceiver_state,
+						    u32 *p_transceiver_type)
 {
+	u32 transceiver_info;
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 
 	/* TODO - Add support for VFs */
@@ -2213,14 +2215,23 @@ enum _ecore_status_t ecore_mcp_get_transceiver_data(struct ecore_hwfn *p_hwfn,
 		DP_NOTICE(p_hwfn, false, "MFW is not initialized!\n");
 		return ECORE_BUSY;
 	}
-	if (!p_ptt) {
-		*p_tranceiver_type = ETH_TRANSCEIVER_TYPE_NONE;
-		rc = ECORE_INVAL;
+
+	*p_transceiver_type = ETH_TRANSCEIVER_TYPE_NONE;
+	*p_transceiver_state = ETH_TRANSCEIVER_STATE_UPDATING;
+
+	transceiver_info = ecore_rd(p_hwfn, p_ptt,
+				    p_hwfn->mcp_info->port_addr +
+				    offsetof(struct public_port,
+				    transceiver_data));
+
+	*p_transceiver_state = GET_MFW_FIELD(transceiver_info,
+					     ETH_TRANSCEIVER_STATE);
+
+	if (*p_transceiver_state == ETH_TRANSCEIVER_STATE_PRESENT) {
+		*p_transceiver_type = GET_MFW_FIELD(transceiver_info,
+					    ETH_TRANSCEIVER_TYPE);
 	} else {
-		*p_tranceiver_type = ecore_rd(p_hwfn, p_ptt,
-				p_hwfn->mcp_info->port_addr +
-				offsetof(struct public_port,
-					transceiver_data));
+		*p_transceiver_type = ETH_TRANSCEIVER_TYPE_UNKNOWN;
 	}
 
 	return rc;
@@ -2240,15 +2251,11 @@ enum _ecore_status_t ecore_mcp_trans_speed_mask(struct ecore_hwfn *p_hwfn,
 						struct ecore_ptt *p_ptt,
 						u32 *p_speed_mask)
 {
-	u32 transceiver_data, transceiver_type, transceiver_state;
+	u32 transceiver_type, transceiver_state;
 
-	ecore_mcp_get_transceiver_data(p_hwfn, p_ptt, &transceiver_data);
+	ecore_mcp_get_transceiver_data(p_hwfn, p_ptt, &transceiver_state,
+				       &transceiver_type);
 
-	transceiver_state = GET_MFW_FIELD(transceiver_data,
-			    ETH_TRANSCEIVER_STATE);
-
-	transceiver_type = GET_MFW_FIELD(transceiver_data,
-			   ETH_TRANSCEIVER_TYPE);
 
 	if (is_transceiver_ready(transceiver_state, transceiver_type) == 0)
 		return ECORE_INVAL;

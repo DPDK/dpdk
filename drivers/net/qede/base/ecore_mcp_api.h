@@ -607,6 +607,7 @@ enum _ecore_status_t ecore_mcp_get_media_type(struct ecore_hwfn *p_hwfn,
  *
  * @param p_dev      - ecore dev pointer
  * @param p_ptt
+ * @param p_transceiver_state - transceiver state.
  * @param p_transceiver_type - media type value
  *
  * @return enum _ecore_status_t -
@@ -615,6 +616,7 @@ enum _ecore_status_t ecore_mcp_get_media_type(struct ecore_hwfn *p_hwfn,
  */
 enum _ecore_status_t ecore_mcp_get_transceiver_data(struct ecore_hwfn *p_hwfn,
 						    struct ecore_ptt *p_ptt,
+						    u32 *p_transceiver_state,
 						    u32 *p_tranceiver_type);
 
 /**
