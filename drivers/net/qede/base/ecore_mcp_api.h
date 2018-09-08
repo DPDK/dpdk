@@ -521,6 +521,10 @@ union ecore_mfw_tlv_data {
 	struct ecore_mfw_tlv_iscsi iscsi;
 };
 
+enum ecore_hw_info_change {
+	ECORE_HW_INFO_CHANGE_OVLAN,
+};
+
 /**
  * @brief - returns the link params of the hw function
  *
