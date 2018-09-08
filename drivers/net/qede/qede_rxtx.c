@@ -2151,3 +2151,84 @@ qede_rxtx_pkts_dummy(__rte_unused void *p_rxq,
 {
 	return 0;
 }
+
+
+/* this function does a fake walk through over completion queue
+ * to calculate number of BDs used by HW.
+ * At the end, it restores the state of completion queue.
+ */
+static uint16_t
+qede_parse_fp_cqe(struct qede_rx_queue *rxq)
+{
+	uint16_t hw_comp_cons, sw_comp_cons, bd_count = 0;
+	union eth_rx_cqe *cqe, *orig_cqe = NULL;
+
+	hw_comp_cons = rte_le_to_cpu_16(*rxq->hw_cons_ptr);
+	sw_comp_cons = ecore_chain_get_cons_idx(&rxq->rx_comp_ring);
+
+	if (hw_comp_cons == sw_comp_cons)
+		return 0;
+
+	/* Get the CQE from the completion ring */
+	cqe = (union eth_rx_cqe *)ecore_chain_consume(&rxq->rx_comp_ring);
+	orig_cqe = cqe;
+
+	while (sw_comp_cons != hw_comp_cons) {
+		switch (cqe->fast_path_regular.type) {
+		case ETH_RX_CQE_TYPE_REGULAR:
+			bd_count += cqe->fast_path_regular.bd_num;
+			break;
+		case ETH_RX_CQE_TYPE_TPA_END:
+			bd_count += cqe->fast_path_tpa_end.num_of_bds;
+			break;
+		default:
+			break;
+		}
+
+		cqe =
+		(union eth_rx_cqe *)ecore_chain_consume(&rxq->rx_comp_ring);
+		sw_comp_cons = ecore_chain_get_cons_idx(&rxq->rx_comp_ring);
+	}
+
+	/* revert comp_ring to original state */
+	ecore_chain_set_cons(&rxq->rx_comp_ring, sw_comp_cons, orig_cqe);
+
+	return bd_count;
+}
+
+int
+qede_rx_descriptor_status(void *p_rxq, uint16_t offset)
+{
+	uint16_t hw_bd_cons, sw_bd_cons, sw_bd_prod;
+	uint16_t produced, consumed;
+	struct qede_rx_queue *rxq = p_rxq;
+
+	if (offset > rxq->nb_rx_desc)
+		return -EINVAL;
+
+	sw_bd_cons = ecore_chain_get_cons_idx(&rxq->rx_bd_ring);
+	sw_bd_prod = ecore_chain_get_prod_idx(&rxq->rx_bd_ring);
+
+	/* find BDs used by HW from completion queue elements */
+	hw_bd_cons = sw_bd_cons + qede_parse_fp_cqe(rxq);
+
+	if (hw_bd_cons < sw_bd_cons)
+		/* wraparound case */
+		consumed = (0xffff - sw_bd_cons) + hw_bd_cons;
+	else
+		consumed = hw_bd_cons - sw_bd_cons;
+
+	if (offset <= consumed)
+		return RTE_ETH_RX_DESC_DONE;
+
+	if (sw_bd_prod < sw_bd_cons)
+		/* wraparound case */
+		produced = (0xffff - sw_bd_cons) + sw_bd_prod;
+	else
+		produced = sw_bd_prod - sw_bd_cons;
+
+	if (offset <= produced)
+		return RTE_ETH_RX_DESC_AVAIL;
+
+	return RTE_ETH_RX_DESC_UNAVAIL;
+}

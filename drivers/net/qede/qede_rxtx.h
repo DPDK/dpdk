@@ -276,6 +276,8 @@ int qede_start_queues(struct rte_eth_dev *eth_dev);
 void qede_stop_queues(struct rte_eth_dev *eth_dev);
 int qede_calc_rx_buf_size(struct rte_eth_dev *dev, uint16_t mbufsz,
 			  uint16_t max_frame_size);
+int
+qede_rx_descriptor_status(void *rxq, uint16_t offset);
 
 /* Fastpath resource alloc/dealloc helpers */
 int qede_alloc_fp_resc(struct qede_dev *qdev);
