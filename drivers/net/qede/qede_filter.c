@@ -121,7 +121,7 @@ const struct _qede_udp_tunn_types {
 #define QEDE_FDIR_IP_DEFAULT_VERSION_IHL	(IP_VERSION | IP_HDRLEN)
 #define QEDE_FDIR_TCP_DEFAULT_DATAOFF		(0x50)
 #define QEDE_FDIR_IPV4_DEF_TTL			(64)
-
+#define QEDE_FDIR_IPV6_DEFAULT_VTC_FLOW		(0x60000000)
 /* Sum of length of header types of L2, L3, L4.
  * L2 : ether_hdr + vlan_hdr + vxlan_hdr
  * L3 : ipv6_hdr
@@ -445,24 +445,28 @@ qede_fdir_construct_pkt(struct rte_eth_dev *eth_dev,
 		ip6->proto = input->flow.ipv6_flow.proto ?
 					input->flow.ipv6_flow.proto :
 					next_proto[input->flow_type];
-		rte_memcpy(&ip6->src_addr, &input->flow.ipv6_flow.dst_ip,
+		ip6->vtc_flow =
+			rte_cpu_to_be_32(QEDE_FDIR_IPV6_DEFAULT_VTC_FLOW);
+
+		rte_memcpy(&ip6->src_addr, &input->flow.ipv6_flow.src_ip,
 			   IPV6_ADDR_LEN);
-		rte_memcpy(&ip6->dst_addr, &input->flow.ipv6_flow.src_ip,
+		rte_memcpy(&ip6->dst_addr, &input->flow.ipv6_flow.dst_ip,
 			   IPV6_ADDR_LEN);
 		len += sizeof(struct ipv6_hdr);
+		params->ipv6 = true;
 
 		raw_pkt = (uint8_t *)buff;
 		/* UDP */
 		if (input->flow_type == RTE_ETH_FLOW_NONFRAG_IPV6_UDP) {
 			udp = (struct udp_hdr *)(raw_pkt + len);
-			udp->src_port = input->flow.udp6_flow.dst_port;
-			udp->dst_port = input->flow.udp6_flow.src_port;
+			udp->src_port = input->flow.udp6_flow.src_port;
+			udp->dst_port = input->flow.udp6_flow.dst_port;
 			len += sizeof(struct udp_hdr);
 			params->udp = true;
 		} else { /* TCP */
 			tcp = (struct tcp_hdr *)(raw_pkt + len);
-			tcp->src_port = input->flow.tcp4_flow.src_port;
-			tcp->dst_port = input->flow.tcp4_flow.dst_port;
+			tcp->src_port = input->flow.tcp6_flow.src_port;
+			tcp->dst_port = input->flow.tcp6_flow.dst_port;
 			tcp->data_off = QEDE_FDIR_TCP_DEFAULT_DATAOFF;
 			len += sizeof(struct tcp_hdr);
 			params->tcp = true;
