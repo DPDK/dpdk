@@ -61,9 +61,16 @@
 #define QEDE_FW_RX_ALIGN_END	(1UL << QEDE_RX_ALIGN_SHIFT)
 #define QEDE_CEIL_TO_CACHE_LINE_SIZE(n) (((n) + (QEDE_FW_RX_ALIGN_END - 1)) & \
 					~(QEDE_FW_RX_ALIGN_END - 1))
-/* Note: QEDE_LLC_SNAP_HDR_LEN is optional */
-#define QEDE_ETH_OVERHEAD	(((2 * QEDE_VLAN_TAG_SIZE)) - (ETHER_CRC_LEN) \
-				+ (QEDE_LLC_SNAP_HDR_LEN))
+#define QEDE_FLOOR_TO_CACHE_LINE_SIZE(n) RTE_ALIGN_FLOOR(n, \
+							 QEDE_FW_RX_ALIGN_END)
+
+/* Note: QEDE_LLC_SNAP_HDR_LEN is optional,
+ * +2 is for padding in front of L2 header
+ */
+#define QEDE_ETH_OVERHEAD	(((2 * QEDE_VLAN_TAG_SIZE)) \
+				 + (QEDE_LLC_SNAP_HDR_LEN) + 2)
+
+#define QEDE_MAX_ETHER_HDR_LEN	(ETHER_HDR_LEN + QEDE_ETH_OVERHEAD)
 
 #define QEDE_RSS_OFFLOAD_ALL    (ETH_RSS_IPV4			|\
 				 ETH_RSS_NONFRAG_IPV4_TCP	|\
@@ -267,6 +274,8 @@ uint16_t qede_rxtx_pkts_dummy(void *p_rxq,
 int qede_start_queues(struct rte_eth_dev *eth_dev);
 
 void qede_stop_queues(struct rte_eth_dev *eth_dev);
+int qede_calc_rx_buf_size(struct rte_eth_dev *dev, uint16_t mbufsz,
+			  uint16_t max_frame_size);
 
 /* Fastpath resource alloc/dealloc helpers */
 int qede_alloc_fp_resc(struct qede_dev *qdev);

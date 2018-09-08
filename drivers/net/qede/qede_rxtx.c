@@ -35,6 +35,49 @@ static inline int qede_alloc_rx_buffer(struct qede_rx_queue *rxq)
 	return 0;
 }
 
+/* Criterias for calculating Rx buffer size -
+ * 1) rx_buf_size should not exceed the size of mbuf
+ * 2) In scattered_rx mode - minimum rx_buf_size should be
+ *    (MTU + Maximum L2 Header Size + 2) / ETH_RX_MAX_BUFF_PER_PKT
+ * 3) In regular mode - minimum rx_buf_size should be
+ *    (MTU + Maximum L2 Header Size + 2)
+ *    In above cases +2 corrosponds to 2 bytes padding in front of L2
+ *    header.
+ * 4) rx_buf_size should be cacheline-size aligned. So considering
+ *    criteria 1, we need to adjust the size to floor instead of ceil,
+ *    so that we don't exceed mbuf size while ceiling rx_buf_size.
+ */
+int
+qede_calc_rx_buf_size(struct rte_eth_dev *dev, uint16_t mbufsz,
+		      uint16_t max_frame_size)
+{
+	struct qede_dev *qdev = QEDE_INIT_QDEV(dev);
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	int rx_buf_size;
+
+	if (dev->data->scattered_rx) {
+		/* per HW limitation, only ETH_RX_MAX_BUFF_PER_PKT number of
+		 * bufferes can be used for single packet. So need to make sure
+		 * mbuf size is sufficient enough for this.
+		 */
+		if ((mbufsz * ETH_RX_MAX_BUFF_PER_PKT) <
+		     (max_frame_size + QEDE_ETH_OVERHEAD)) {
+			DP_ERR(edev, "mbuf %d size is not enough to hold max fragments (%d) for max rx packet length (%d)\n",
+			       mbufsz, ETH_RX_MAX_BUFF_PER_PKT, max_frame_size);
+			return -EINVAL;
+		}
+
+		rx_buf_size = RTE_MAX(mbufsz,
+				      (max_frame_size + QEDE_ETH_OVERHEAD) /
+				       ETH_RX_MAX_BUFF_PER_PKT);
+	} else {
+		rx_buf_size = max_frame_size + QEDE_ETH_OVERHEAD;
+	}
+
+	/* Align to cache-line size if needed */
+	return QEDE_FLOOR_TO_CACHE_LINE_SIZE(rx_buf_size);
+}
+
 int
 qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		    uint16_t nb_desc, unsigned int socket_id,
@@ -85,6 +128,8 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 
 	/* Fix up RX buffer size */
 	bufsz = (uint16_t)rte_pktmbuf_data_room_size(mp) - RTE_PKTMBUF_HEADROOM;
+	/* cache align the mbuf size to simplfy rx_buf_size calculation */
+	bufsz = QEDE_FLOOR_TO_CACHE_LINE_SIZE(bufsz);
 	if ((rxmode->offloads & DEV_RX_OFFLOAD_SCATTER)	||
 	    (max_rx_pkt_len + QEDE_ETH_OVERHEAD) > bufsz) {
 		if (!dev->data->scattered_rx) {
@@ -93,13 +138,13 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		}
 	}
 
-	if (dev->data->scattered_rx)
-		rxq->rx_buf_size = bufsz + ETHER_HDR_LEN +
-				   ETHER_CRC_LEN + QEDE_ETH_OVERHEAD;
-	else
-		rxq->rx_buf_size = max_rx_pkt_len + QEDE_ETH_OVERHEAD;
-	/* Align to cache-line size if needed */
-	rxq->rx_buf_size = QEDE_CEIL_TO_CACHE_LINE_SIZE(rxq->rx_buf_size);
+	rc = qede_calc_rx_buf_size(dev, bufsz, max_rx_pkt_len);
+	if (rc < 0) {
+		rte_free(rxq);
+		return rc;
+	}
+
+	rxq->rx_buf_size = rc;
 
 	DP_INFO(edev, "mtu %u mbufsz %u bd_max_bytes %u scatter_mode %d\n",
 		qdev->mtu, bufsz, rxq->rx_buf_size, dev->data->scattered_rx);

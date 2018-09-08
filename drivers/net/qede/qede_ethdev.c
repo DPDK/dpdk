@@ -1210,7 +1210,7 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 	if (rxmode->offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
 		eth_dev->data->mtu =
 			eth_dev->data->dev_conf.rxmode.max_rx_pkt_len -
-			ETHER_HDR_LEN - ETHER_CRC_LEN;
+			ETHER_HDR_LEN - QEDE_ETH_OVERHEAD;
 
 	if (rxmode->offloads & DEV_RX_OFFLOAD_SCATTER)
 		eth_dev->data->scattered_rx = 1;
@@ -2225,19 +2225,18 @@ static int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	struct qede_fastpath *fp;
 	uint32_t max_rx_pkt_len;
 	uint32_t frame_size;
-	uint16_t rx_buf_size;
 	uint16_t bufsz;
 	bool restart = false;
-	int i;
+	int i, rc;
 
 	PMD_INIT_FUNC_TRACE(edev);
 	qede_dev_info_get(dev, &dev_info);
-	max_rx_pkt_len = mtu + ETHER_HDR_LEN + ETHER_CRC_LEN;
-	frame_size = max_rx_pkt_len + QEDE_ETH_OVERHEAD;
+	max_rx_pkt_len = mtu + QEDE_MAX_ETHER_HDR_LEN;
+	frame_size = max_rx_pkt_len;
 	if ((mtu < ETHER_MIN_MTU) || (frame_size > dev_info.max_rx_pktlen)) {
 		DP_ERR(edev, "MTU %u out of range, %u is maximum allowable\n",
 		       mtu, dev_info.max_rx_pktlen - ETHER_HDR_LEN -
-			ETHER_CRC_LEN - QEDE_ETH_OVERHEAD);
+		       QEDE_ETH_OVERHEAD);
 		return -EINVAL;
 	}
 	if (!dev->data->scattered_rx &&
@@ -2265,14 +2264,15 @@ static int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 		if (fp->rxq != NULL) {
 			bufsz = (uint16_t)rte_pktmbuf_data_room_size(
 				fp->rxq->mb_pool) - RTE_PKTMBUF_HEADROOM;
-			if (dev->data->scattered_rx)
-				rx_buf_size = bufsz + ETHER_HDR_LEN +
-					      ETHER_CRC_LEN + QEDE_ETH_OVERHEAD;
-			else
-				rx_buf_size = frame_size;
-			rx_buf_size = QEDE_CEIL_TO_CACHE_LINE_SIZE(rx_buf_size);
-			fp->rxq->rx_buf_size = rx_buf_size;
-			DP_INFO(edev, "RX buffer size %u\n", rx_buf_size);
+			/* cache align the mbuf size to simplfy rx_buf_size
+			 * calculation
+			 */
+			bufsz = QEDE_FLOOR_TO_CACHE_LINE_SIZE(bufsz);
+			rc = qede_calc_rx_buf_size(dev, bufsz, frame_size);
+			if (rc < 0)
+				return rc;
+
+			fp->rxq->rx_buf_size = rc;
 		}
 	}
 	if (max_rx_pkt_len > ETHER_MAX_LEN)
