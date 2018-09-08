@@ -185,6 +185,12 @@ enum ecore_ov_driver_state {
 	ECORE_OV_DRIVER_STATE_ACTIVE
 };
 
+enum ecore_ov_eswitch {
+	ECORE_OV_ESWITCH_NONE,
+	ECORE_OV_ESWITCH_VEB,
+	ECORE_OV_ESWITCH_VEPA
+};
+
 #define ECORE_MAX_NPIV_ENTRIES 128
 #define ECORE_WWN_SIZE 8
 struct ecore_fc_npiv_tbl {
@@ -812,6 +818,32 @@ ecore_mcp_ov_get_fc_npiv(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
  */
 enum _ecore_status_t ecore_mcp_ov_update_mtu(struct ecore_hwfn *p_hwfn,
 					     struct ecore_ptt *p_ptt, u16 mtu);
+
+/**
+ * @brief Send MAC address to MFW
+ *
+ *  @param p_hwfn
+ *  @param p_ptt
+ *  @param mac - MAC address
+ *
+ * @return enum _ecore_status_t - ECORE_SUCCESS - operation was successful.
+ */
+enum _ecore_status_t
+ecore_mcp_ov_update_mac(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+			u8 *mac);
+
+/**
+ * @brief Send eswitch mode to MFW
+ *
+ *  @param p_hwfn
+ *  @param p_ptt
+ *  @param eswitch - eswitch mode
+ *
+ * @return enum _ecore_status_t - ECORE_SUCCESS - operation was successful.
+ */
+enum _ecore_status_t
+ecore_mcp_ov_update_eswitch(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+			    enum ecore_ov_eswitch eswitch);
 
 /**
  * @brief Set LED status

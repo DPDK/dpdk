@@ -2869,10 +2869,72 @@ ecore_mcp_ov_get_fc_npiv(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 }
 
 enum _ecore_status_t
-ecore_mcp_ov_update_mtu(struct ecore_hwfn *p_hwfn,
-			struct ecore_ptt *p_ptt, u16 mtu)
+ecore_mcp_ov_update_mtu(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+			u16 mtu)
 {
-	return 0;
+	u32 resp = 0, param = 0, drv_mb_param = 0;
+	enum _ecore_status_t rc;
+
+	SET_MFW_FIELD(drv_mb_param, DRV_MB_PARAM_OV_MTU_SIZE, (u32)mtu);
+	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_OV_UPDATE_MTU,
+			   drv_mb_param, &resp, &param);
+	if (rc != ECORE_SUCCESS)
+		DP_ERR(p_hwfn, "Failed to send mtu value, rc = %d\n", rc);
+
+	return rc;
+}
+
+enum _ecore_status_t
+ecore_mcp_ov_update_mac(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+			u8 *mac)
+{
+	struct ecore_mcp_mb_params mb_params;
+	union drv_union_data union_data;
+	enum _ecore_status_t rc;
+
+	OSAL_MEM_ZERO(&mb_params, sizeof(mb_params));
+	mb_params.cmd = DRV_MSG_CODE_SET_VMAC;
+	SET_MFW_FIELD(mb_params.param, DRV_MSG_CODE_VMAC_TYPE,
+		      DRV_MSG_CODE_VMAC_TYPE_MAC);
+	mb_params.param |= MCP_PF_ID(p_hwfn);
+	OSAL_MEMCPY(&union_data.raw_data, mac, ETH_ALEN);
+	mb_params.p_data_src = &union_data;
+	rc = ecore_mcp_cmd_and_union(p_hwfn, p_ptt, &mb_params);
+	if (rc != ECORE_SUCCESS)
+		DP_ERR(p_hwfn, "Failed to send mac address, rc = %d\n", rc);
+
+	return rc;
+}
+
+enum _ecore_status_t
+ecore_mcp_ov_update_eswitch(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+			    enum ecore_ov_eswitch eswitch)
+{
+	enum _ecore_status_t rc;
+	u32 resp = 0, param = 0;
+	u32 drv_mb_param;
+
+	switch (eswitch) {
+	case ECORE_OV_ESWITCH_NONE:
+		drv_mb_param = DRV_MB_PARAM_ESWITCH_MODE_NONE;
+		break;
+	case ECORE_OV_ESWITCH_VEB:
+		drv_mb_param = DRV_MB_PARAM_ESWITCH_MODE_VEB;
+		break;
+	case ECORE_OV_ESWITCH_VEPA:
+		drv_mb_param = DRV_MB_PARAM_ESWITCH_MODE_VEPA;
+		break;
+	default:
+		DP_ERR(p_hwfn, "Invalid eswitch mode %d\n", eswitch);
+		return ECORE_INVAL;
+	}
+
+	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_OV_UPDATE_ESWITCH_MODE,
+			   drv_mb_param, &resp, &param);
+	if (rc != ECORE_SUCCESS)
+		DP_ERR(p_hwfn, "Failed to send eswitch mode, rc = %d\n", rc);
+
+	return rc;
 }
 
 enum _ecore_status_t ecore_mcp_set_led(struct ecore_hwfn *p_hwfn,

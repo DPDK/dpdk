@@ -2599,17 +2599,23 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 		if (rc != ECORE_SUCCESS)
 			DP_INFO(p_hwfn, "Failed to update firmware version\n");
 
-		if (!b_default_mtu)
+		if (!b_default_mtu) {
 			rc = ecore_mcp_ov_update_mtu(p_hwfn, p_hwfn->p_main_ptt,
 						      p_hwfn->hw_info.mtu);
-		if (rc != ECORE_SUCCESS)
-			DP_INFO(p_hwfn, "Failed to update default mtu\n");
+			if (rc != ECORE_SUCCESS)
+				DP_INFO(p_hwfn, "Failed to update default mtu\n");
+		}
 
 		rc = ecore_mcp_ov_update_driver_state(p_hwfn,
 						      p_hwfn->p_main_ptt,
 						ECORE_OV_DRIVER_STATE_DISABLED);
 		if (rc != ECORE_SUCCESS)
 			DP_INFO(p_hwfn, "Failed to update driver state\n");
+
+		rc = ecore_mcp_ov_update_eswitch(p_hwfn, p_hwfn->p_main_ptt,
+						 ECORE_OV_ESWITCH_NONE);
+		if (rc != ECORE_SUCCESS)
+			DP_INFO(p_hwfn, "Failed to update eswitch mode\n");
 	}
 
 	return rc;
