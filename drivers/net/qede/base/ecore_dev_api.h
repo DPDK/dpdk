@@ -271,6 +271,9 @@ struct ecore_hw_prepare_params {
 
 	/* Enable/disable request by ecore client for pacing */
 	bool b_en_pacing;
+
+	/* Indicates whether this PF serves a storage target */
+	bool b_is_target;
 };
 
 /**

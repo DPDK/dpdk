@@ -3027,15 +3027,30 @@ static void ecore_hw_set_feat(struct ecore_hwfn *p_hwfn)
 				   FEAT_NUM(p_hwfn, ECORE_VF_L2_QUE));
 	}
 
-	if (ECORE_IS_FCOE_PERSONALITY(p_hwfn))
-		feat_num[ECORE_FCOE_CQ] =
-			OSAL_MIN_T(u32, sb_cnt.cnt, RESC_NUM(p_hwfn,
-							     ECORE_CMDQS_CQS));
+	if (ECORE_IS_FCOE_PERSONALITY(p_hwfn) ||
+	    ECORE_IS_ISCSI_PERSONALITY(p_hwfn)) {
+		u32 *p_storage_feat = ECORE_IS_FCOE_PERSONALITY(p_hwfn) ?
+				      &feat_num[ECORE_FCOE_CQ] :
+				      &feat_num[ECORE_ISCSI_CQ];
+		u32 limit = sb_cnt.cnt;
 
-	if (ECORE_IS_ISCSI_PERSONALITY(p_hwfn))
-		feat_num[ECORE_ISCSI_CQ] =
-			OSAL_MIN_T(u32, sb_cnt.cnt, RESC_NUM(p_hwfn,
-							     ECORE_CMDQS_CQS));
+		/* The number of queues should not exceed the number of FP SBs.
+		 * In storage target, the queues are divided into pairs of a CQ
+		 * and a CmdQ, and each pair uses a single SB. The limit in
+		 * this case should allow a max ratio of 2:1 instead of 1:1.
+		 */
+		if (p_hwfn->p_dev->b_is_target)
+			limit *= 2;
+		*p_storage_feat = OSAL_MIN_T(u32, limit,
+					     RESC_NUM(p_hwfn, ECORE_CMDQS_CQS));
+
+		/* @DPDK */
+		/* The size of "cq_cmdq_sb_num_arr" in the fcoe/iscsi init
+		 * ramrod is limited to "NUM_OF_GLOBAL_QUEUES / 2".
+		 */
+		*p_storage_feat = OSAL_MIN_T(u32, *p_storage_feat,
+					     (NUM_OF_GLOBAL_QUEUES / 2));
+	}
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_PROBE,
 		   "#PF_L2_QUEUE=%d VF_L2_QUEUES=%d #ROCE_CNQ=%d #FCOE_CQ=%d #ISCSI_CQ=%d #SB=%d\n",
@@ -4327,6 +4342,7 @@ enum _ecore_status_t ecore_hw_prepare(struct ecore_dev *p_dev,
 	p_dev->chk_reg_fifo = p_params->chk_reg_fifo;
 	p_dev->allow_mdump = p_params->allow_mdump;
 	p_hwfn->b_en_pacing = p_params->b_en_pacing;
+	p_dev->b_is_target = p_params->b_is_target;
 
 	if (p_params->b_relaxed_probe)
 		p_params->p_relaxed_res = ECORE_HW_PREPARE_SUCCESS;

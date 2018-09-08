@@ -870,6 +870,9 @@ struct ecore_dev {
 	bool				b_is_emul_full;
 #endif
 
+	/* Indicates whether this PF serves a storage target */
+	bool				b_is_target;
+
 #ifdef CONFIG_ECORE_BINARY_FW /* @DPDK */
 	void				*firmware;
 	u64				fw_len;
