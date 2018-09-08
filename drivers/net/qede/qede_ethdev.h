@@ -151,18 +151,43 @@ struct qede_ucast_entry {
 	SLIST_ENTRY(qede_ucast_entry) list;
 };
 
-struct qede_fdir_entry {
+#ifndef IPV6_ADDR_LEN
+#define IPV6_ADDR_LEN				(16)
+#endif
+
+struct qede_arfs_tuple {
+	union {
+		uint32_t src_ipv4;
+		uint8_t src_ipv6[IPV6_ADDR_LEN];
+	};
+
+	union {
+		uint32_t dst_ipv4;
+		uint8_t dst_ipv6[IPV6_ADDR_LEN];
+	};
+
+	uint16_t	src_port;
+	uint16_t	dst_port;
+	uint16_t	eth_proto;
+	uint8_t		ip_proto;
+
+	/* Describe filtering mode needed for this kind of filter */
+	enum ecore_filter_config_mode mode;
+};
+
+struct qede_arfs_entry {
 	uint32_t soft_id; /* unused for now */
 	uint16_t pkt_len; /* actual packet length to match */
 	uint16_t rx_queue; /* queue to be steered to */
 	const struct rte_memzone *mz; /* mz used to hold L2 frame */
-	SLIST_ENTRY(qede_fdir_entry) list;
+	struct qede_arfs_tuple tuple;
+	SLIST_ENTRY(qede_arfs_entry) list;
 };
 
-struct qede_fdir_info {
+struct qede_arfs_info {
 	struct ecore_arfs_config_params arfs;
 	uint16_t filter_count;
-	SLIST_HEAD(fdir_list_head, qede_fdir_entry)fdir_list_head;
+	SLIST_HEAD(arfs_list_head, qede_arfs_entry)arfs_list_head;
 };
 
 /* IANA assigned default UDP ports for encapsulation protocols */
@@ -207,7 +232,7 @@ struct qede_dev {
 	struct qede_tunn_params vxlan;
 	struct qede_tunn_params geneve;
 	struct qede_tunn_params ipgre;
-	struct qede_fdir_info fdir_info;
+	struct qede_arfs_info arfs_info;
 	bool vlan_strip_flg;
 	char drv_ver[QEDE_PMD_DRV_VER_STR_SIZE];
 	bool vport_started;

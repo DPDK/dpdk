@@ -2575,7 +2575,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 
 	adapter->num_tx_queues = 0;
 	adapter->num_rx_queues = 0;
-	SLIST_INIT(&adapter->fdir_info.fdir_list_head);
+	SLIST_INIT(&adapter->arfs_info.arfs_list_head);
 	SLIST_INIT(&adapter->vlan_list_head);
 	SLIST_INIT(&adapter->uc_list_head);
 	SLIST_INIT(&adapter->mc_list_head);

@@ -2084,6 +2084,24 @@ void ecore_reset_vport_stats(struct ecore_dev *p_dev)
 	}
 }
 
+static enum gft_profile_type
+ecore_arfs_mode_to_hsi(enum ecore_filter_config_mode mode)
+{
+	if (mode == ECORE_FILTER_CONFIG_MODE_5_TUPLE)
+		return GFT_PROFILE_TYPE_4_TUPLE;
+
+	if (mode == ECORE_FILTER_CONFIG_MODE_IP_DEST)
+		return GFT_PROFILE_TYPE_IP_DST_ADDR;
+
+	if (mode == ECORE_FILTER_CONFIG_MODE_TUNN_TYPE)
+		return GFT_PROFILE_TYPE_TUNNEL_TYPE;
+
+	if (mode == ECORE_FILTER_CONFIG_MODE_IP_SRC)
+		return GFT_PROFILE_TYPE_IP_SRC_ADDR;
+
+	return GFT_PROFILE_TYPE_L4_DST_PORT;
+}
+
 void ecore_arfs_mode_configure(struct ecore_hwfn *p_hwfn,
 			       struct ecore_ptt *p_ptt,
 			       struct ecore_arfs_config_params *p_cfg_params)
@@ -2091,13 +2109,13 @@ void ecore_arfs_mode_configure(struct ecore_hwfn *p_hwfn,
 	if (OSAL_TEST_BIT(ECORE_MF_DISABLE_ARFS, &p_hwfn->p_dev->mf_bits))
 		return;
 
-	if (p_cfg_params->arfs_enable) {
+	if (p_cfg_params->mode != ECORE_FILTER_CONFIG_MODE_DISABLE) {
 		ecore_gft_config(p_hwfn, p_ptt, p_hwfn->rel_pf_id,
 				 p_cfg_params->tcp,
 				 p_cfg_params->udp,
 				 p_cfg_params->ipv4,
 				 p_cfg_params->ipv6,
-				 GFT_PROFILE_TYPE_4_TUPLE);
+				 ecore_arfs_mode_to_hsi(p_cfg_params->mode));
 		DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 			   "tcp = %s, udp = %s, ipv4 = %s, ipv6 =%s\n",
 			   p_cfg_params->tcp ? "Enable" : "Disable",
@@ -2107,8 +2125,8 @@ void ecore_arfs_mode_configure(struct ecore_hwfn *p_hwfn,
 	} else {
 		ecore_gft_disable(p_hwfn, p_ptt, p_hwfn->rel_pf_id);
 	}
-	DP_VERBOSE(p_hwfn, ECORE_MSG_SP, "Configured ARFS mode : %s\n",
-		   p_cfg_params->arfs_enable ? "Enable" : "Disable");
+	DP_VERBOSE(p_hwfn, ECORE_MSG_SP, "Configured ARFS mode : %d\n",
+		   (int)p_cfg_params->mode);
 }
 
 enum _ecore_status_t

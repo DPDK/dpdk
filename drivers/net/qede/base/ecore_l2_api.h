@@ -139,12 +139,21 @@ struct ecore_filter_accept_flags {
 #define ECORE_ACCEPT_BCAST		0x20
 };
 
+enum ecore_filter_config_mode {
+	ECORE_FILTER_CONFIG_MODE_DISABLE,
+	ECORE_FILTER_CONFIG_MODE_5_TUPLE,
+	ECORE_FILTER_CONFIG_MODE_L4_PORT,
+	ECORE_FILTER_CONFIG_MODE_IP_DEST,
+	ECORE_FILTER_CONFIG_MODE_TUNN_TYPE,
+	ECORE_FILTER_CONFIG_MODE_IP_SRC,
+};
+
 struct ecore_arfs_config_params {
 	bool tcp;
 	bool udp;
 	bool ipv4;
 	bool ipv6;
-	bool arfs_enable;	/* Enable or disable arfs mode */
+	enum ecore_filter_config_mode mode;
 };
 
 /* Add / remove / move / remove-all unicast MAC-VLAN filters.

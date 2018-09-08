@@ -129,10 +129,6 @@ const struct _qede_udp_tunn_types {
  */
 #define QEDE_MAX_FDIR_PKT_LEN			(86)
 
-#ifndef IPV6_ADDR_LEN
-#define IPV6_ADDR_LEN				(16)
-#endif
-
 static inline bool qede_valid_flow(uint16_t flow_type)
 {
 	return  ((flow_type == RTE_ETH_FLOW_NONFRAG_IPV4_TCP) ||
@@ -140,6 +136,12 @@ static inline bool qede_valid_flow(uint16_t flow_type)
 		 (flow_type == RTE_ETH_FLOW_NONFRAG_IPV6_TCP) ||
 		 (flow_type == RTE_ETH_FLOW_NONFRAG_IPV6_UDP));
 }
+
+static uint16_t
+qede_arfs_construct_pkt(struct rte_eth_dev *eth_dev,
+			struct qede_arfs_entry *arfs,
+			void *buff,
+			struct ecore_arfs_config_params *params);
 
 /* Note: Flowdir support is only partial.
  * For ex: drop_queue, FDIR masks, flex_conf are not supported.
@@ -154,17 +156,19 @@ int qede_check_fdir_support(struct rte_eth_dev *eth_dev)
 	/* check FDIR modes */
 	switch (fdir->mode) {
 	case RTE_FDIR_MODE_NONE:
-		qdev->fdir_info.arfs.arfs_enable = false;
+		qdev->arfs_info.arfs.mode = ECORE_FILTER_CONFIG_MODE_DISABLE;
 		DP_INFO(edev, "flowdir is disabled\n");
 	break;
 	case RTE_FDIR_MODE_PERFECT:
 		if (ECORE_IS_CMT(edev)) {
 			DP_ERR(edev, "flowdir is not supported in 100G mode\n");
-			qdev->fdir_info.arfs.arfs_enable = false;
+			qdev->arfs_info.arfs.mode =
+				ECORE_FILTER_CONFIG_MODE_DISABLE;
 			return -ENOTSUP;
 		}
-		qdev->fdir_info.arfs.arfs_enable = true;
-		DP_INFO(edev, "flowdir is enabled\n");
+		qdev->arfs_info.arfs.mode =
+				ECORE_FILTER_CONFIG_MODE_5_TUPLE;
+		DP_INFO(edev, "flowdir is enabled (5 Tuple mode)\n");
 	break;
 	case RTE_FDIR_MODE_PERFECT_TUNNEL:
 	case RTE_FDIR_MODE_SIGNATURE:
@@ -179,29 +183,96 @@ int qede_check_fdir_support(struct rte_eth_dev *eth_dev)
 void qede_fdir_dealloc_resc(struct rte_eth_dev *eth_dev)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
-	struct qede_fdir_entry *tmp = NULL;
+	struct qede_arfs_entry *tmp = NULL;
 
-	SLIST_FOREACH(tmp, &qdev->fdir_info.fdir_list_head, list) {
+	SLIST_FOREACH(tmp, &qdev->arfs_info.arfs_list_head, list) {
 		if (tmp) {
 			if (tmp->mz)
 				rte_memzone_free(tmp->mz);
-			SLIST_REMOVE(&qdev->fdir_info.fdir_list_head, tmp,
-				     qede_fdir_entry, list);
+			SLIST_REMOVE(&qdev->arfs_info.arfs_list_head, tmp,
+				     qede_arfs_entry, list);
 			rte_free(tmp);
 		}
 	}
 }
 
 static int
-qede_config_cmn_fdir_filter(struct rte_eth_dev *eth_dev,
-			    struct rte_eth_fdir_filter *fdir_filter,
-			    bool add)
+qede_fdir_to_arfs_filter(struct rte_eth_dev *eth_dev,
+			 struct rte_eth_fdir_filter *fdir,
+			 struct qede_arfs_entry *arfs)
+{
+	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	struct rte_eth_fdir_input *input;
+
+	static const uint8_t next_proto[] = {
+		[RTE_ETH_FLOW_NONFRAG_IPV4_TCP] = IPPROTO_TCP,
+		[RTE_ETH_FLOW_NONFRAG_IPV4_UDP] = IPPROTO_UDP,
+		[RTE_ETH_FLOW_NONFRAG_IPV6_TCP] = IPPROTO_TCP,
+		[RTE_ETH_FLOW_NONFRAG_IPV6_UDP] = IPPROTO_UDP,
+	};
+
+	input = &fdir->input;
+
+	DP_INFO(edev, "flow_type %d\n", input->flow_type);
+
+	switch (input->flow_type) {
+	case RTE_ETH_FLOW_NONFRAG_IPV4_TCP:
+	case RTE_ETH_FLOW_NONFRAG_IPV4_UDP:
+		/* fill the common ip header */
+		arfs->tuple.eth_proto = ETHER_TYPE_IPv4;
+		arfs->tuple.dst_ipv4 = input->flow.ip4_flow.dst_ip;
+		arfs->tuple.src_ipv4 = input->flow.ip4_flow.src_ip;
+		arfs->tuple.ip_proto = next_proto[input->flow_type];
+
+		/* UDP */
+		if (input->flow_type == RTE_ETH_FLOW_NONFRAG_IPV4_UDP) {
+			arfs->tuple.dst_port = input->flow.udp4_flow.dst_port;
+			arfs->tuple.src_port = input->flow.udp4_flow.src_port;
+		} else { /* TCP */
+			arfs->tuple.dst_port = input->flow.tcp4_flow.dst_port;
+			arfs->tuple.src_port = input->flow.tcp4_flow.src_port;
+		}
+		break;
+	case RTE_ETH_FLOW_NONFRAG_IPV6_TCP:
+	case RTE_ETH_FLOW_NONFRAG_IPV6_UDP:
+		arfs->tuple.eth_proto = ETHER_TYPE_IPv6;
+		arfs->tuple.ip_proto = next_proto[input->flow_type];
+		rte_memcpy(arfs->tuple.dst_ipv6,
+			   &input->flow.ipv6_flow.dst_ip,
+			   IPV6_ADDR_LEN);
+		rte_memcpy(arfs->tuple.src_ipv6,
+			   &input->flow.ipv6_flow.src_ip,
+			   IPV6_ADDR_LEN);
+
+		/* UDP */
+		if (input->flow_type == RTE_ETH_FLOW_NONFRAG_IPV6_UDP) {
+			arfs->tuple.dst_port = input->flow.udp6_flow.dst_port;
+			arfs->tuple.src_port = input->flow.udp6_flow.src_port;
+		} else { /* TCP */
+			arfs->tuple.dst_port = input->flow.tcp6_flow.dst_port;
+			arfs->tuple.src_port = input->flow.tcp6_flow.src_port;
+		}
+		break;
+	default:
+		DP_ERR(edev, "Unsupported flow_type %u\n",
+		       input->flow_type);
+		return -ENOTSUP;
+	}
+
+	arfs->rx_queue = fdir->action.rx_queue;
+	return 0;
+}
+
+static int
+qede_config_arfs_filter(struct rte_eth_dev *eth_dev,
+			struct qede_arfs_entry *arfs,
+			bool add)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	char mz_name[RTE_MEMZONE_NAMESIZE] = {0};
-	struct qede_fdir_entry *tmp = NULL;
-	struct qede_fdir_entry *fdir = NULL;
+	struct qede_arfs_entry *tmp = NULL;
 	const struct rte_memzone *mz;
 	struct ecore_hwfn *p_hwfn;
 	enum _ecore_status_t rc;
@@ -209,17 +280,12 @@ qede_config_cmn_fdir_filter(struct rte_eth_dev *eth_dev,
 	void *pkt;
 
 	if (add) {
-		if (qdev->fdir_info.filter_count == QEDE_RFS_MAX_FLTR - 1) {
+		if (qdev->arfs_info.filter_count == QEDE_RFS_MAX_FLTR - 1) {
 			DP_ERR(edev, "Reached max flowdir filter limit\n");
 			return -EINVAL;
 		}
-		fdir = rte_malloc(NULL, sizeof(struct qede_fdir_entry),
-				  RTE_CACHE_LINE_SIZE);
-		if (!fdir) {
-			DP_ERR(edev, "Did not allocate memory for fdir\n");
-			return -ENOMEM;
-		}
 	}
+
 	/* soft_id could have been used as memzone string, but soft_id is
 	 * not currently used so it has no significance.
 	 */
@@ -230,98 +296,124 @@ qede_config_cmn_fdir_filter(struct rte_eth_dev *eth_dev,
 	if (!mz) {
 		DP_ERR(edev, "Failed to allocate memzone for fdir, err = %s\n",
 		       rte_strerror(rte_errno));
-		rc = -rte_errno;
-		goto err1;
+		return -rte_errno;
 	}
 
 	pkt = mz->addr;
 	memset(pkt, 0, QEDE_MAX_FDIR_PKT_LEN);
-	pkt_len = qede_fdir_construct_pkt(eth_dev, fdir_filter, pkt,
-					  &qdev->fdir_info.arfs);
+	pkt_len = qede_arfs_construct_pkt(eth_dev, arfs, pkt,
+					  &qdev->arfs_info.arfs);
 	if (pkt_len == 0) {
 		rc = -EINVAL;
-		goto err2;
+		goto err1;
 	}
+
 	DP_INFO(edev, "pkt_len = %u memzone = %s\n", pkt_len, mz_name);
 	if (add) {
-		SLIST_FOREACH(tmp, &qdev->fdir_info.fdir_list_head, list) {
+		SLIST_FOREACH(tmp, &qdev->arfs_info.arfs_list_head, list) {
 			if (memcmp(tmp->mz->addr, pkt, pkt_len) == 0) {
 				DP_INFO(edev, "flowdir filter exist\n");
-				rc = 0;
-				goto err2;
+				rc = -EEXIST;
+				goto err1;
 			}
 		}
 	} else {
-		SLIST_FOREACH(tmp, &qdev->fdir_info.fdir_list_head, list) {
+		SLIST_FOREACH(tmp, &qdev->arfs_info.arfs_list_head, list) {
 			if (memcmp(tmp->mz->addr, pkt, pkt_len) == 0)
 				break;
 		}
 		if (!tmp) {
 			DP_ERR(edev, "flowdir filter does not exist\n");
 			rc = -EEXIST;
-			goto err2;
+			goto err1;
 		}
 	}
 	p_hwfn = ECORE_LEADING_HWFN(edev);
 	if (add) {
-		if (!qdev->fdir_info.arfs.arfs_enable) {
+		if (qdev->arfs_info.arfs.mode ==
+			ECORE_FILTER_CONFIG_MODE_DISABLE) {
 			/* Force update */
 			eth_dev->data->dev_conf.fdir_conf.mode =
 						RTE_FDIR_MODE_PERFECT;
-			qdev->fdir_info.arfs.arfs_enable = true;
+			qdev->arfs_info.arfs.mode =
+					ECORE_FILTER_CONFIG_MODE_5_TUPLE;
 			DP_INFO(edev, "Force enable flowdir in perfect mode\n");
 		}
 		/* Enable ARFS searcher with updated flow_types */
 		ecore_arfs_mode_configure(p_hwfn, p_hwfn->p_arfs_ptt,
-					  &qdev->fdir_info.arfs);
+					  &qdev->arfs_info.arfs);
 	}
 	/* configure filter with ECORE_SPQ_MODE_EBLOCK */
 	rc = ecore_configure_rfs_ntuple_filter(p_hwfn, NULL,
 					       (dma_addr_t)mz->iova,
 					       pkt_len,
-					       fdir_filter->action.rx_queue,
+					       arfs->rx_queue,
 					       0, add);
 	if (rc == ECORE_SUCCESS) {
 		if (add) {
-			fdir->rx_queue = fdir_filter->action.rx_queue;
-			fdir->pkt_len = pkt_len;
-			fdir->mz = mz;
-			SLIST_INSERT_HEAD(&qdev->fdir_info.fdir_list_head,
-					  fdir, list);
-			qdev->fdir_info.filter_count++;
+			arfs->pkt_len = pkt_len;
+			arfs->mz = mz;
+			SLIST_INSERT_HEAD(&qdev->arfs_info.arfs_list_head,
+					  arfs, list);
+			qdev->arfs_info.filter_count++;
 			DP_INFO(edev, "flowdir filter added, count = %d\n",
-				qdev->fdir_info.filter_count);
+				qdev->arfs_info.filter_count);
 		} else {
 			rte_memzone_free(tmp->mz);
-			SLIST_REMOVE(&qdev->fdir_info.fdir_list_head, tmp,
-				     qede_fdir_entry, list);
+			SLIST_REMOVE(&qdev->arfs_info.arfs_list_head, tmp,
+				     qede_arfs_entry, list);
 			rte_free(tmp); /* the node deleted */
 			rte_memzone_free(mz); /* temp node allocated */
-			qdev->fdir_info.filter_count--;
+			qdev->arfs_info.filter_count--;
 			DP_INFO(edev, "Fdir filter deleted, count = %d\n",
-				qdev->fdir_info.filter_count);
+				qdev->arfs_info.filter_count);
 		}
 	} else {
 		DP_ERR(edev, "flowdir filter failed, rc=%d filter_count=%d\n",
-		       rc, qdev->fdir_info.filter_count);
+		       rc, qdev->arfs_info.filter_count);
 	}
 
 	/* Disable ARFS searcher if there are no more filters */
-	if (qdev->fdir_info.filter_count == 0) {
-		memset(&qdev->fdir_info.arfs, 0,
+	if (qdev->arfs_info.filter_count == 0) {
+		memset(&qdev->arfs_info.arfs, 0,
 		       sizeof(struct ecore_arfs_config_params));
 		DP_INFO(edev, "Disabling flowdir\n");
-		qdev->fdir_info.arfs.arfs_enable = false;
+		qdev->arfs_info.arfs.mode = ECORE_FILTER_CONFIG_MODE_DISABLE;
 		ecore_arfs_mode_configure(p_hwfn, p_hwfn->p_arfs_ptt,
-					  &qdev->fdir_info.arfs);
+					  &qdev->arfs_info.arfs);
 	}
 	return 0;
 
-err2:
-	rte_memzone_free(mz);
 err1:
-	if (add)
-		rte_free(fdir);
+	rte_memzone_free(mz);
+	return rc;
+}
+
+static int
+qede_config_cmn_fdir_filter(struct rte_eth_dev *eth_dev,
+			    struct rte_eth_fdir_filter *fdir_filter,
+			    bool add)
+{
+	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	struct qede_arfs_entry *arfs = NULL;
+	int rc = 0;
+
+	arfs = rte_malloc(NULL, sizeof(struct qede_arfs_entry),
+				  RTE_CACHE_LINE_SIZE);
+	if (!arfs) {
+		DP_ERR(edev, "Did not allocate memory for arfs\n");
+		return -ENOMEM;
+	}
+
+	rc = qede_fdir_to_arfs_filter(eth_dev, fdir_filter, arfs);
+	if (rc < 0)
+		return rc;
+
+	rc = qede_config_arfs_filter(eth_dev, arfs, add);
+	if (rc < 0)
+		rte_free(arfs);
+
 	return rc;
 }
 
@@ -353,9 +445,9 @@ qede_fdir_filter_add(struct rte_eth_dev *eth_dev,
 }
 
 /* Fills the L3/L4 headers and returns the actual length  of flowdir packet */
-uint16_t
-qede_fdir_construct_pkt(struct rte_eth_dev *eth_dev,
-			struct rte_eth_fdir_filter *fdir,
+static uint16_t
+qede_arfs_construct_pkt(struct rte_eth_dev *eth_dev,
+			struct qede_arfs_entry *arfs,
 			void *buff,
 			struct ecore_arfs_config_params *params)
 
@@ -364,64 +456,39 @@ qede_fdir_construct_pkt(struct rte_eth_dev *eth_dev,
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	uint16_t *ether_type;
 	uint8_t *raw_pkt;
-	struct rte_eth_fdir_input *input;
-	static uint8_t vlan_frame[] = {0x81, 0, 0, 0};
 	struct ipv4_hdr *ip;
 	struct ipv6_hdr *ip6;
 	struct udp_hdr *udp;
 	struct tcp_hdr *tcp;
 	uint16_t len;
-	static const uint8_t next_proto[] = {
-		[RTE_ETH_FLOW_NONFRAG_IPV4_TCP] = IPPROTO_TCP,
-		[RTE_ETH_FLOW_NONFRAG_IPV4_UDP] = IPPROTO_UDP,
-		[RTE_ETH_FLOW_NONFRAG_IPV6_TCP] = IPPROTO_TCP,
-		[RTE_ETH_FLOW_NONFRAG_IPV6_UDP] = IPPROTO_UDP,
-	};
+
 	raw_pkt = (uint8_t *)buff;
-	input = &fdir->input;
-	DP_INFO(edev, "flow_type %d\n", input->flow_type);
 
 	len =  2 * sizeof(struct ether_addr);
 	raw_pkt += 2 * sizeof(struct ether_addr);
-	if (input->flow_ext.vlan_tci) {
-		DP_INFO(edev, "adding VLAN header\n");
-		rte_memcpy(raw_pkt, vlan_frame, sizeof(vlan_frame));
-		rte_memcpy(raw_pkt + sizeof(uint16_t),
-			   &input->flow_ext.vlan_tci,
-			   sizeof(uint16_t));
-		raw_pkt += sizeof(vlan_frame);
-		len += sizeof(vlan_frame);
-	}
 	ether_type = (uint16_t *)raw_pkt;
 	raw_pkt += sizeof(uint16_t);
 	len += sizeof(uint16_t);
 
-	switch (input->flow_type) {
-	case RTE_ETH_FLOW_NONFRAG_IPV4_TCP:
-	case RTE_ETH_FLOW_NONFRAG_IPV4_UDP:
-		/* fill the common ip header */
+	*ether_type = rte_cpu_to_be_16(arfs->tuple.eth_proto);
+	switch (arfs->tuple.eth_proto) {
+	case ETHER_TYPE_IPv4:
 		ip = (struct ipv4_hdr *)raw_pkt;
-		*ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
 		ip->version_ihl = QEDE_FDIR_IP_DEFAULT_VERSION_IHL;
 		ip->total_length = sizeof(struct ipv4_hdr);
-		ip->next_proto_id = input->flow.ip4_flow.proto ?
-				    input->flow.ip4_flow.proto :
-				    next_proto[input->flow_type];
-		ip->time_to_live = input->flow.ip4_flow.ttl ?
-				   input->flow.ip4_flow.ttl :
-				   QEDE_FDIR_IPV4_DEF_TTL;
-		ip->type_of_service = input->flow.ip4_flow.tos;
-		ip->dst_addr = input->flow.ip4_flow.dst_ip;
-		ip->src_addr = input->flow.ip4_flow.src_ip;
+		ip->next_proto_id = arfs->tuple.ip_proto;
+		ip->time_to_live = QEDE_FDIR_IPV4_DEF_TTL;
+		ip->dst_addr = arfs->tuple.dst_ipv4;
+		ip->src_addr = arfs->tuple.src_ipv4;
 		len += sizeof(struct ipv4_hdr);
 		params->ipv4 = true;
 
 		raw_pkt = (uint8_t *)buff;
 		/* UDP */
-		if (input->flow_type == RTE_ETH_FLOW_NONFRAG_IPV4_UDP) {
+		if (arfs->tuple.ip_proto == IPPROTO_UDP) {
 			udp = (struct udp_hdr *)(raw_pkt + len);
-			udp->dst_port = input->flow.udp4_flow.dst_port;
-			udp->src_port = input->flow.udp4_flow.src_port;
+			udp->dst_port = arfs->tuple.dst_port;
+			udp->src_port = arfs->tuple.src_port;
 			udp->dgram_len = sizeof(struct udp_hdr);
 			len += sizeof(struct udp_hdr);
 			/* adjust ip total_length */
@@ -429,8 +496,8 @@ qede_fdir_construct_pkt(struct rte_eth_dev *eth_dev,
 			params->udp = true;
 		} else { /* TCP */
 			tcp = (struct tcp_hdr *)(raw_pkt + len);
-			tcp->src_port = input->flow.tcp4_flow.src_port;
-			tcp->dst_port = input->flow.tcp4_flow.dst_port;
+			tcp->src_port = arfs->tuple.src_port;
+			tcp->dst_port = arfs->tuple.dst_port;
 			tcp->data_off = QEDE_FDIR_TCP_DEFAULT_DATAOFF;
 			len += sizeof(struct tcp_hdr);
 			/* adjust ip total_length */
@@ -438,43 +505,39 @@ qede_fdir_construct_pkt(struct rte_eth_dev *eth_dev,
 			params->tcp = true;
 		}
 		break;
-	case RTE_ETH_FLOW_NONFRAG_IPV6_TCP:
-	case RTE_ETH_FLOW_NONFRAG_IPV6_UDP:
+	case ETHER_TYPE_IPv6:
 		ip6 = (struct ipv6_hdr *)raw_pkt;
-		*ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv6);
-		ip6->proto = input->flow.ipv6_flow.proto ?
-					input->flow.ipv6_flow.proto :
-					next_proto[input->flow_type];
+		ip6->proto = arfs->tuple.ip_proto;
 		ip6->vtc_flow =
 			rte_cpu_to_be_32(QEDE_FDIR_IPV6_DEFAULT_VTC_FLOW);
 
-		rte_memcpy(&ip6->src_addr, &input->flow.ipv6_flow.src_ip,
+		rte_memcpy(&ip6->src_addr, arfs->tuple.src_ipv6,
 			   IPV6_ADDR_LEN);
-		rte_memcpy(&ip6->dst_addr, &input->flow.ipv6_flow.dst_ip,
+		rte_memcpy(&ip6->dst_addr, arfs->tuple.dst_ipv6,
 			   IPV6_ADDR_LEN);
 		len += sizeof(struct ipv6_hdr);
 		params->ipv6 = true;
 
 		raw_pkt = (uint8_t *)buff;
 		/* UDP */
-		if (input->flow_type == RTE_ETH_FLOW_NONFRAG_IPV6_UDP) {
+		if (arfs->tuple.ip_proto == IPPROTO_UDP) {
 			udp = (struct udp_hdr *)(raw_pkt + len);
-			udp->src_port = input->flow.udp6_flow.src_port;
-			udp->dst_port = input->flow.udp6_flow.dst_port;
+			udp->src_port = arfs->tuple.src_port;
+			udp->dst_port = arfs->tuple.dst_port;
 			len += sizeof(struct udp_hdr);
 			params->udp = true;
 		} else { /* TCP */
 			tcp = (struct tcp_hdr *)(raw_pkt + len);
-			tcp->src_port = input->flow.tcp6_flow.src_port;
-			tcp->dst_port = input->flow.tcp6_flow.dst_port;
+			tcp->src_port = arfs->tuple.src_port;
+			tcp->dst_port = arfs->tuple.dst_port;
 			tcp->data_off = QEDE_FDIR_TCP_DEFAULT_DATAOFF;
 			len += sizeof(struct tcp_hdr);
 			params->tcp = true;
 		}
 		break;
 	default:
-		DP_ERR(edev, "Unsupported flow_type %u\n",
-		       input->flow_type);
+		DP_ERR(edev, "Unsupported eth_proto %u\n",
+		       arfs->tuple.eth_proto);
 		return 0;
 	}
 
