@@ -943,7 +943,7 @@ enum _ecore_status_t ecore_mcp_nvm_resp(struct ecore_dev *p_dev, u8 *p_buf);
  * @return enum _ecore_status_t - ECORE_SUCCESS - operation was successful.
  */
 enum _ecore_status_t ecore_mcp_phy_read(struct ecore_dev *p_dev, u32 cmd,
-					u32 addr, u8 *p_buf, u32 len);
+					u32 addr, u8 *p_buf, u32 *p_len);
 
 /**
  * @brief Read from nvm

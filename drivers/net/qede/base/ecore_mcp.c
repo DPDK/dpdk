@@ -3053,7 +3053,7 @@ enum _ecore_status_t ecore_mcp_nvm_read(struct ecore_dev *p_dev, u32 addr,
 }
 
 enum _ecore_status_t ecore_mcp_phy_read(struct ecore_dev *p_dev, u32 cmd,
-					u32 addr, u8 *p_buf, u32 len)
+					u32 addr, u8 *p_buf, u32 *p_len)
 {
 	struct ecore_hwfn *p_hwfn = ECORE_LEADING_HWFN(p_dev);
 	struct ecore_ptt *p_ptt;
@@ -3068,7 +3068,7 @@ enum _ecore_status_t ecore_mcp_phy_read(struct ecore_dev *p_dev, u32 cmd,
 				  (cmd == ECORE_PHY_CORE_READ) ?
 				  DRV_MSG_CODE_PHY_CORE_READ :
 				  DRV_MSG_CODE_PHY_RAW_READ,
-				  addr, &resp, &param, &len, (u32 *)p_buf);
+				  addr, &resp, &param, p_len, (u32 *)p_buf);
 	if (rc != ECORE_SUCCESS)
 		DP_NOTICE(p_dev, false, "MCP command rc = %d\n", rc);
 
