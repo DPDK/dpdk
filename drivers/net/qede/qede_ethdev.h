@@ -215,6 +215,15 @@ struct qede_dev {
 	void *ethdev;
 };
 
+static inline void qede_set_ucast_cmn_params(struct ecore_filter_ucast *ucast)
+{
+	memset(ucast, 0, sizeof(struct ecore_filter_ucast));
+	ucast->is_rx_filter = true;
+	ucast->is_tx_filter = true;
+	/* ucast->assert_on_error = true; - For debug */
+}
+
+
 /* Non-static functions */
 int qede_config_rss(struct rte_eth_dev *eth_dev);
 
@@ -235,9 +244,6 @@ int qede_link_update(struct rte_eth_dev *eth_dev,
 int qede_dev_filter_ctrl(struct rte_eth_dev *dev, enum rte_filter_type type,
 			 enum rte_filter_op op, void *arg);
 
-int qede_fdir_filter_conf(struct rte_eth_dev *eth_dev,
-			  enum rte_filter_op filter_op, void *arg);
-
 int qede_ntuple_filter_conf(struct rte_eth_dev *eth_dev,
 			    enum rte_filter_op filter_op, void *arg);
 
@@ -255,5 +261,16 @@ int qede_activate_vport(struct rte_eth_dev *eth_dev, bool flg);
 int qede_update_mtu(struct rte_eth_dev *eth_dev, uint16_t mtu);
 
 int qede_enable_tpa(struct rte_eth_dev *eth_dev, bool flg);
+int qede_udp_dst_port_del(struct rte_eth_dev *eth_dev,
+			  struct rte_eth_udp_tunnel *tunnel_udp);
+int qede_udp_dst_port_add(struct rte_eth_dev *eth_dev,
+			  struct rte_eth_udp_tunnel *tunnel_udp);
 
+enum _ecore_status_t
+qede_mac_int_ops(struct rte_eth_dev *eth_dev, struct ecore_filter_ucast *ucast,
+		 bool add);
+void qede_config_accept_any_vlan(struct qede_dev *qdev, bool flg);
+int qede_ucast_filter(struct rte_eth_dev *eth_dev,
+		      struct ecore_filter_ucast *ucast,
+		      bool add);
 #endif /* _QEDE_ETHDEV_H_ */

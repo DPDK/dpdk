@@ -6,7 +6,7 @@ objs = [base_objs]
 
 sources = files(
 	'qede_ethdev.c',
-	'qede_fdir.c',
+	'qede_filter.c',
 	'qede_main.c',
 	'qede_rxtx.c',
 )
