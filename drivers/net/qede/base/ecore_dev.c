@@ -4272,6 +4272,13 @@ ecore_hw_prepare_single(struct ecore_hwfn *p_hwfn,
 		rc = ecore_mcp_initiate_pf_flr(p_hwfn, p_hwfn->p_main_ptt);
 		if (rc != ECORE_SUCCESS)
 			DP_NOTICE(p_hwfn, false, "Failed to initiate PF FLR\n");
+
+		/* Workaround for MFW issue where PF FLR does not cleanup
+		 * IGU block
+		 */
+		if (!(p_hwfn->mcp_info->capabilities &
+		      FW_MB_PARAM_FEATURE_SUPPORT_IGU_CLEANUP))
+			ecore_pf_flr_igu_cleanup(p_hwfn);
 	}
 
 	/* Check if mdump logs/data are present and update the epoch value */

@@ -2681,3 +2681,35 @@ enum _ecore_status_t ecore_int_get_sb_dbg(struct ecore_hwfn *p_hwfn,
 
 	return ECORE_SUCCESS;
 }
+
+void ecore_pf_flr_igu_cleanup(struct ecore_hwfn *p_hwfn)
+{
+	struct ecore_ptt *p_ptt = p_hwfn->p_main_ptt;
+	struct ecore_ptt *p_dpc_ptt = ecore_get_reserved_ptt(p_hwfn,
+							     RESERVED_PTT_DPC);
+	int i;
+
+	/* Do not reorder the following cleanup sequence */
+	/* Ack all attentions */
+	ecore_wr(p_hwfn, p_ptt, IGU_REG_ATTENTION_ACK_BITS, 0xfff);
+
+	/* Clear driver attention */
+	ecore_wr(p_hwfn,  p_dpc_ptt,
+		((p_hwfn->rel_pf_id << 3) + MISC_REG_AEU_GENERAL_ATTN_0), 0);
+
+	/* Clear per-PF IGU registers to restore them as if the IGU
+	 * was reset for this PF
+	 */
+	ecore_wr(p_hwfn, p_ptt, IGU_REG_LEADING_EDGE_LATCH, 0);
+	ecore_wr(p_hwfn, p_ptt, IGU_REG_TRAILING_EDGE_LATCH, 0);
+	ecore_wr(p_hwfn, p_ptt, IGU_REG_PF_CONFIGURATION, 0);
+
+	/* Execute IGU clean up*/
+	ecore_wr(p_hwfn, p_ptt, IGU_REG_PF_FUNCTIONAL_CLEANUP, 1);
+
+	/* Clear Stats */
+	ecore_wr(p_hwfn, p_ptt, IGU_REG_STATISTIC_NUM_OF_INTA_ASSERTED, 0);
+
+	for (i = 0; i < IGU_REG_PBA_STS_PF_SIZE; i++)
+		ecore_wr(p_hwfn, p_ptt, IGU_REG_PBA_STS_PF + i * 4, 0);
+}
