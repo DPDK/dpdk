@@ -8,6 +8,7 @@
 #include <rte_tcp.h>
 #include <rte_sctp.h>
 #include <rte_errno.h>
+#include <rte_flow_driver.h>
 
 #include "qede_ethdev.h"
 
@@ -1159,6 +1160,327 @@ qede_tunn_filter_config(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
+static int
+qede_flow_validate_attr(__attribute__((unused))struct rte_eth_dev *dev,
+			const struct rte_flow_attr *attr,
+			struct rte_flow_error *error)
+{
+	if (attr == NULL) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR, NULL,
+				   "NULL attribute");
+		return -rte_errno;
+	}
+
+	if (attr->group != 0) {
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_ATTR_GROUP, attr,
+				   "Groups are not supported");
+		return -rte_errno;
+	}
+
+	if (attr->priority != 0) {
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY, attr,
+				   "Priorities are not supported");
+		return -rte_errno;
+	}
+
+	if (attr->egress != 0) {
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, attr,
+				   "Egress is not supported");
+		return -rte_errno;
+	}
+
+	if (attr->transfer != 0) {
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER, attr,
+				   "Transfer is not supported");
+		return -rte_errno;
+	}
+
+	if (attr->ingress == 0) {
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_ATTR_INGRESS, attr,
+				   "Only ingress is supported");
+		return -rte_errno;
+	}
+
+	return 0;
+}
+
+static int
+qede_flow_parse_pattern(__attribute__((unused))struct rte_eth_dev *dev,
+			const struct rte_flow_item pattern[],
+			struct rte_flow_error *error,
+			struct rte_flow *flow)
+{
+	bool l3 = false, l4 = false;
+
+	if (pattern == NULL) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM_NUM, NULL,
+				   "NULL pattern");
+		return -rte_errno;
+	}
+
+	for (; pattern->type != RTE_FLOW_ITEM_TYPE_END; pattern++) {
+		if (!pattern->spec) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   pattern,
+					   "Item spec not defined");
+			return -rte_errno;
+		}
+
+		if (pattern->last) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   pattern,
+					   "Item last not supported");
+			return -rte_errno;
+		}
+
+		if (pattern->mask) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   pattern,
+					   "Item mask not supported");
+			return -rte_errno;
+		}
+
+		/* Below validation is only for 4 tuple flow
+		 * (GFT_PROFILE_TYPE_4_TUPLE)
+		 * - src and dst L3 address (IPv4 or IPv6)
+		 * - src and dst L4 port (TCP or UDP)
+		 */
+
+		switch (pattern->type) {
+		case RTE_FLOW_ITEM_TYPE_IPV4:
+			l3 = true;
+
+			if (flow) {
+				const struct rte_flow_item_ipv4 *spec;
+
+				spec = pattern->spec;
+				flow->entry.tuple.src_ipv4 = spec->hdr.src_addr;
+				flow->entry.tuple.dst_ipv4 = spec->hdr.dst_addr;
+				flow->entry.tuple.eth_proto = ETHER_TYPE_IPv4;
+			}
+			break;
+
+		case RTE_FLOW_ITEM_TYPE_IPV6:
+			l3 = true;
+
+			if (flow) {
+				const struct rte_flow_item_ipv6 *spec;
+
+				spec = pattern->spec;
+				rte_memcpy(flow->entry.tuple.src_ipv6,
+					   spec->hdr.src_addr,
+					   IPV6_ADDR_LEN);
+				rte_memcpy(flow->entry.tuple.dst_ipv6,
+					   spec->hdr.dst_addr,
+					   IPV6_ADDR_LEN);
+				flow->entry.tuple.eth_proto = ETHER_TYPE_IPv6;
+			}
+			break;
+
+		case RTE_FLOW_ITEM_TYPE_UDP:
+			l4 = true;
+
+			if (flow) {
+				const struct rte_flow_item_udp *spec;
+
+				spec = pattern->spec;
+				flow->entry.tuple.src_port =
+						spec->hdr.src_port;
+				flow->entry.tuple.dst_port =
+						spec->hdr.dst_port;
+				flow->entry.tuple.ip_proto = IPPROTO_UDP;
+			}
+			break;
+
+		case RTE_FLOW_ITEM_TYPE_TCP:
+			l4 = true;
+
+			if (flow) {
+				const struct rte_flow_item_tcp *spec;
+
+				spec = pattern->spec;
+				flow->entry.tuple.src_port =
+						spec->hdr.src_port;
+				flow->entry.tuple.dst_port =
+						spec->hdr.dst_port;
+				flow->entry.tuple.ip_proto = IPPROTO_TCP;
+			}
+
+			break;
+		default:
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   pattern,
+					   "Only 4 tuple (IPV4, IPV6, UDP and TCP) item types supported");
+			return -rte_errno;
+		}
+	}
+
+	if (!(l3 && l4)) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM,
+				   pattern,
+				   "Item types need to have both L3 and L4 protocols");
+		return -rte_errno;
+	}
+
+	return 0;
+}
+
+static int
+qede_flow_parse_actions(struct rte_eth_dev *dev,
+			const struct rte_flow_action actions[],
+			struct rte_flow_error *error,
+			struct rte_flow *flow)
+{
+	struct qede_dev *qdev = QEDE_INIT_QDEV(dev);
+	const struct rte_flow_action_queue *queue;
+
+	if (actions == NULL) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION_NUM, NULL,
+				   "NULL actions");
+		return -rte_errno;
+	}
+
+	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		switch (actions->type) {
+		case RTE_FLOW_ACTION_TYPE_QUEUE:
+			queue = actions->conf;
+
+			if (queue->index >= QEDE_RSS_COUNT(qdev)) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ACTION,
+						   actions,
+						   "Bad QUEUE action");
+				return -rte_errno;
+			}
+
+			if (flow)
+				flow->entry.rx_queue = queue->index;
+
+			break;
+
+		default:
+			rte_flow_error_set(error, ENOTSUP,
+					   RTE_FLOW_ERROR_TYPE_ACTION,
+					   actions,
+					   "Action is not supported - only ACTION_TYPE_QUEUE supported");
+			return -rte_errno;
+		}
+	}
+
+	return 0;
+}
+
+static int
+qede_flow_parse(struct rte_eth_dev *dev,
+		const struct rte_flow_attr *attr,
+		const struct rte_flow_item patterns[],
+		const struct rte_flow_action actions[],
+		struct rte_flow_error *error,
+		struct rte_flow *flow)
+
+{
+	int rc = 0;
+
+	rc = qede_flow_validate_attr(dev, attr, error);
+	if (rc)
+		return rc;
+
+	/* parse and validate item pattern and actions.
+	 * Given item list and actions will be translate to qede PMD
+	 * specific arfs structure.
+	 */
+	rc = qede_flow_parse_pattern(dev, patterns, error, flow);
+	if (rc)
+		return rc;
+
+	rc = qede_flow_parse_actions(dev, actions, error, flow);
+
+	return rc;
+}
+
+static int
+qede_flow_validate(struct rte_eth_dev *dev,
+		   const struct rte_flow_attr *attr,
+		   const struct rte_flow_item patterns[],
+		   const struct rte_flow_action actions[],
+		   struct rte_flow_error *error)
+{
+	return qede_flow_parse(dev, attr, patterns, actions, error, NULL);
+}
+
+static struct rte_flow *
+qede_flow_create(struct rte_eth_dev *dev,
+		 const struct rte_flow_attr *attr,
+		 const struct rte_flow_item pattern[],
+		 const struct rte_flow_action actions[],
+		 struct rte_flow_error *error)
+{
+	struct rte_flow *flow = NULL;
+	int rc;
+
+	flow = rte_zmalloc("qede_rte_flow", sizeof(*flow), 0);
+	if (flow == NULL) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Failed to allocate memory");
+		return NULL;
+	}
+
+	rc = qede_flow_parse(dev, attr, pattern, actions, error, flow);
+	if (rc < 0) {
+		rte_free(flow);
+		return NULL;
+	}
+
+	rc = qede_config_arfs_filter(dev, &flow->entry, true);
+	if (rc < 0) {
+		rte_flow_error_set(error, rc,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Failed to configure flow filter");
+		rte_free(flow);
+		return NULL;
+	}
+
+	return flow;
+}
+
+static int
+qede_flow_destroy(struct rte_eth_dev *eth_dev,
+		  struct rte_flow *flow,
+		  struct rte_flow_error *error)
+{
+	int rc = 0;
+
+	rc = qede_config_arfs_filter(eth_dev, &flow->entry, false);
+	if (rc < 0) {
+		rte_flow_error_set(error, rc,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Failed to delete flow filter");
+		rte_free(flow);
+	}
+
+	return rc;
+}
+
+const struct rte_flow_ops qede_flow_ops = {
+	.validate = qede_flow_validate,
+	.create = qede_flow_create,
+	.destroy = qede_flow_destroy,
+};
+
 int qede_dev_filter_ctrl(struct rte_eth_dev *eth_dev,
 			 enum rte_filter_type filter_type,
 			 enum rte_filter_op filter_op,
@@ -1195,6 +1517,17 @@ int qede_dev_filter_ctrl(struct rte_eth_dev *eth_dev,
 		return qede_fdir_filter_conf(eth_dev, filter_op, arg);
 	case RTE_ETH_FILTER_NTUPLE:
 		return qede_ntuple_filter_conf(eth_dev, filter_op, arg);
+	case RTE_ETH_FILTER_GENERIC:
+		if (ECORE_IS_CMT(edev)) {
+			DP_ERR(edev, "flowdir is not supported in 100G mode\n");
+			return -ENOTSUP;
+		}
+
+		if (filter_op != RTE_ETH_FILTER_GET)
+			return -EINVAL;
+
+		*(const void **)arg = &qede_flow_ops;
+		return 0;
 	case RTE_ETH_FILTER_MACVLAN:
 	case RTE_ETH_FILTER_ETHERTYPE:
 	case RTE_ETH_FILTER_FLEXIBLE:
@@ -1211,4 +1544,3 @@ int qede_dev_filter_ctrl(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
-/* RTE_FLOW */

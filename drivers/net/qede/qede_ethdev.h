@@ -184,6 +184,11 @@ struct qede_arfs_entry {
 	SLIST_ENTRY(qede_arfs_entry) list;
 };
 
+/* Opaque handle for rte flow managed by PMD */
+struct rte_flow {
+	struct qede_arfs_entry entry;
+};
+
 struct qede_arfs_info {
 	struct ecore_arfs_config_params arfs;
 	uint16_t filter_count;
