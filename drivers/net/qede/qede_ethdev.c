@@ -14,6 +14,9 @@ int qede_logtype_init;
 int qede_logtype_driver;
 
 static const struct qed_eth_ops *qed_ops;
+static int qede_eth_dev_uninit(struct rte_eth_dev *eth_dev);
+static int qede_eth_dev_init(struct rte_eth_dev *eth_dev);
+
 #define QEDE_SP_TIMER_PERIOD	10000 /* 100ms */
 
 struct rte_qede_xstats_name_off {
@@ -2294,6 +2297,18 @@ static int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	return 0;
 }
 
+static int
+qede_dev_reset(struct rte_eth_dev *dev)
+{
+	int ret;
+
+	ret = qede_eth_dev_uninit(dev);
+	if (ret)
+		return ret;
+
+	return qede_eth_dev_init(dev);
+}
+
 static const struct eth_dev_ops qede_eth_dev_ops = {
 	.dev_configure = qede_dev_configure,
 	.dev_infos_get = qede_dev_info_get,
@@ -2303,6 +2318,7 @@ static const struct eth_dev_ops qede_eth_dev_ops = {
 	.tx_queue_setup = qede_tx_queue_setup,
 	.tx_queue_release = qede_tx_queue_release,
 	.dev_start = qede_dev_start,
+	.dev_reset = qede_dev_reset,
 	.dev_set_link_up = qede_dev_set_link_up,
 	.dev_set_link_down = qede_dev_set_link_down,
 	.link_update = qede_link_update,
@@ -2345,6 +2361,7 @@ static const struct eth_dev_ops qede_eth_vf_dev_ops = {
 	.tx_queue_setup = qede_tx_queue_setup,
 	.tx_queue_release = qede_tx_queue_release,
 	.dev_start = qede_dev_start,
+	.dev_reset = qede_dev_reset,
 	.dev_set_link_up = qede_dev_set_link_up,
 	.dev_set_link_down = qede_dev_set_link_down,
 	.link_update = qede_link_update,
