@@ -2591,6 +2591,20 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 	}
 
 	if (IS_PF(p_dev)) {
+		/* Get pre-negotiated values for stag, bandwidth etc. */
+		p_hwfn = ECORE_LEADING_HWFN(p_dev);
+		DP_VERBOSE(p_hwfn, ECORE_MSG_SPQ,
+			   "Sending GET_OEM_UPDATES command to trigger stag/bandwidth attention handling\n");
+		rc = ecore_mcp_cmd(p_hwfn, p_hwfn->p_main_ptt,
+				   DRV_MSG_CODE_GET_OEM_UPDATES,
+				   1 << DRV_MB_PARAM_DUMMY_OEM_UPDATES_OFFSET,
+				   &resp, &param);
+		if (rc != ECORE_SUCCESS)
+			DP_NOTICE(p_hwfn, false,
+				  "Failed to send GET_OEM_UPDATES attention request\n");
+	}
+
+	if (IS_PF(p_dev)) {
 		p_hwfn = ECORE_LEADING_HWFN(p_dev);
 		drv_mb_param = STORM_FW_VERSION;
 		rc = ecore_mcp_cmd(p_hwfn, p_hwfn->p_main_ptt,
