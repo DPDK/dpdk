@@ -2410,6 +2410,7 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 	bool b_default_mtu = true;
 	struct ecore_hwfn *p_hwfn;
 	enum _ecore_status_t rc = ECORE_SUCCESS;
+	u16 ether_type;
 	int i;
 
 	if ((p_params->int_mode == ECORE_INT_MODE_MSI) && ECORE_IS_CMT(p_dev)) {
@@ -2441,6 +2442,25 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 		rc = ecore_calc_hw_mode(p_hwfn);
 		if (rc != ECORE_SUCCESS)
 			return rc;
+
+		if (IS_PF(p_dev) && (OSAL_TEST_BIT(ECORE_MF_8021Q_TAGGING,
+						   &p_dev->mf_bits) ||
+				     OSAL_TEST_BIT(ECORE_MF_8021AD_TAGGING,
+						   &p_dev->mf_bits))) {
+			if (OSAL_TEST_BIT(ECORE_MF_8021Q_TAGGING,
+					  &p_dev->mf_bits))
+				ether_type = ETHER_TYPE_VLAN;
+			else
+				ether_type = ETHER_TYPE_QINQ;
+			STORE_RT_REG(p_hwfn, PRS_REG_TAG_ETHERTYPE_0_RT_OFFSET,
+				     ether_type);
+			STORE_RT_REG(p_hwfn, NIG_REG_TAG_ETHERTYPE_0_RT_OFFSET,
+				     ether_type);
+			STORE_RT_REG(p_hwfn, PBF_REG_TAG_ETHERTYPE_0_RT_OFFSET,
+				     ether_type);
+			STORE_RT_REG(p_hwfn, DORQ_REG_TAG1_ETHERTYPE_RT_OFFSET,
+				     ether_type);
+		}
 
 		ecore_set_spq_block_timeout(p_hwfn, p_params->spq_timeout_ms);
 
