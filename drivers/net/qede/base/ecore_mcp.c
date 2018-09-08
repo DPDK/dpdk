@@ -1989,7 +1989,7 @@ ecore_mcp_read_ufp_config(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
 		DP_NOTICE(p_hwfn, false, "Unknown Host priority control %d\n",
 			  val);
 
-	DP_VERBOSE(p_hwfn, ECORE_MSG_DCB,
+	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 		   "UFP shmem config: mode = %d tc = %d pri_type = %d\n",
 		   p_hwfn->ufp_info.mode, p_hwfn->ufp_info.tc,
 		   p_hwfn->ufp_info.pri_type);
