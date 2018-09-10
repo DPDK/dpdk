@@ -10,6 +10,10 @@
 #include "efx.h"
 #include "efx_regs_mcdi.h"
 
+#if EFSYS_OPT_NAMES
+#include "mc_driver_pcol_strs.h"
+#endif /* EFSYS_OPT_NAMES */
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
