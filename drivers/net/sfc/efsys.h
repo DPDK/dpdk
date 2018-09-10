@@ -48,10 +48,6 @@ extern "C" {
 #include "efx_types.h"
 
 
-#ifndef _NOTE
-#define _NOTE(s)
-#endif
-
 typedef bool boolean_t;
 
 #ifndef B_FALSE
@@ -105,40 +101,6 @@ prefetch_read_once(const volatile void *addr)
 {
 	rte_prefetch_non_temporal(addr);
 }
-
-/* Modifiers used for Windows builds */
-#define __in
-#define __in_opt
-#define __in_ecount(_n)
-#define __in_ecount_opt(_n)
-#define __in_bcount(_n)
-#define __in_bcount_opt(_n)
-
-#define __out
-#define __out_opt
-#define __out_ecount(_n)
-#define __out_ecount_opt(_n)
-#define __out_bcount(_n)
-#define __out_bcount_opt(_n)
-#define __out_bcount_part(_n, _l)
-#define __out_bcount_part_opt(_n, _l)
-
-#define __deref_out
-
-#define __inout
-#define __inout_opt
-#define __inout_ecount(_n)
-#define __inout_ecount_opt(_n)
-#define __inout_bcount(_n)
-#define __inout_bcount_opt(_n)
-#define __inout_bcount_full_opt(_n)
-
-#define __deref_out_bcount_opt(n)
-
-#define __checkReturn
-#define __success(_x)
-
-#define __drv_when(_p, _c)
 
 /* Code inclusion options */
 
