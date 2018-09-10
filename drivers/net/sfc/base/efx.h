@@ -2368,7 +2368,7 @@ extern	__checkReturn				efx_rc_t
 efx_rx_scale_hash_flags_get(
 	__in					efx_nic_t *enp,
 	__in					efx_rx_hash_alg_t hash_alg,
-	__inout_ecount(EFX_RX_HASH_NFLAGS)	unsigned int *flags,
+	__inout_ecount(EFX_RX_HASH_NFLAGS)	unsigned int *flagsp,
 	__out					unsigned int *nflagsp);
 
 extern	__checkReturn	efx_rc_t

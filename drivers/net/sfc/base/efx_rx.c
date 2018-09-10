@@ -298,16 +298,16 @@ fail1:
 efx_rx_scale_hash_flags_get(
 	__in					efx_nic_t *enp,
 	__in					efx_rx_hash_alg_t hash_alg,
-	__inout_ecount(EFX_RX_HASH_NFLAGS)	unsigned int *flags,
+	__inout_ecount(EFX_RX_HASH_NFLAGS)	unsigned int *flagsp,
 	__out					unsigned int *nflagsp)
 {
 	efx_nic_cfg_t *encp = &enp->en_nic_cfg;
 	boolean_t l4;
 	boolean_t additional_modes;
-	unsigned int *entryp = flags;
+	unsigned int *entryp = flagsp;
 	efx_rc_t rc;
 
-	if (flags == NULL || nflagsp == NULL) {
+	if (flagsp == NULL || nflagsp == NULL) {
 		rc = EINVAL;
 		goto fail1;
 	}
@@ -368,7 +368,7 @@ efx_rx_scale_hash_flags_get(
 
 #undef LIST_FLAGS
 
-	*nflagsp = (unsigned int)(entryp - flags);
+	*nflagsp = (unsigned int)(entryp - flagsp);
 	EFSYS_ASSERT3U(*nflagsp, <=, EFX_RX_HASH_NFLAGS);
 
 	return (0);
