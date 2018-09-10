@@ -577,7 +577,8 @@ fail1:
 
 	__checkReturn	efx_rc_t
 efx_build_signed_image_write_buffer(
-	__out		uint8_t			*bufferp,
+	__out_bcount(buffer_size)
+			uint8_t			*bufferp,
 	__in		uint32_t		buffer_size,
 	__in		efx_image_info_t	*infop,
 	__out		efx_image_header_t	**headerpp)
