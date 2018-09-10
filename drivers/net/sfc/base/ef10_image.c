@@ -704,7 +704,7 @@ efx_build_signed_image_write_buffer(
 	 * results in the layout used for the data chunks and chunk headers.
 	 */
 	/* END CSTYLED */
-	memset(bufferp, buffer_size, 0xFF);
+	memset(bufferp, 0xFF, buffer_size);
 
 	EFX_STATIC_ASSERT(sizeof (chunk_hdr) == SIGNED_IMAGE_CHUNK_HDR_LEN);
 	memset(&chunk_hdr, 0, SIGNED_IMAGE_CHUNK_HDR_LEN);
