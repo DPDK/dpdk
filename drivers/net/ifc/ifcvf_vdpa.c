@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/epoll.h>
+#include <linux/virtio_net.h>
 
 #include <rte_malloc.h>
 #include <rte_memory.h>
@@ -277,11 +278,29 @@ vdpa_ifcvf_start(struct ifcvf_internal *internal)
 }
 
 static void
+ifcvf_used_ring_log(struct ifcvf_hw *hw, uint32_t queue, uint8_t *log_buf)
+{
+	uint32_t i, size;
+	uint64_t pfn;
+
+	pfn = hw->vring[queue].used / PAGE_SIZE;
+	size = hw->vring[queue].size * sizeof(struct vring_used_elem) +
+			sizeof(__virtio16) * 3;
+
+	for (i = 0; i <= size / PAGE_SIZE; i++)
+		__sync_fetch_and_or_8(&log_buf[(pfn + i) / 8],
+				1 << ((pfn + i) % 8));
+}
+
+static void
 vdpa_ifcvf_stop(struct ifcvf_internal *internal)
 {
 	struct ifcvf_hw *hw = &internal->hw;
 	uint32_t i;
 	int vid;
+	uint64_t features;
+	uint64_t log_base, log_size;
+	uint8_t *log_buf;
 
 	vid = internal->vid;
 	ifcvf_stop_hw(hw);
@@ -289,6 +308,21 @@ vdpa_ifcvf_stop(struct ifcvf_internal *internal)
 	for (i = 0; i < hw->nr_vring; i++)
 		rte_vhost_set_vring_base(vid, i, hw->vring[i].last_avail_idx,
 				hw->vring[i].last_used_idx);
+
+	rte_vhost_get_negotiated_features(vid, &features);
+	if (RTE_VHOST_NEED_LOG(features)) {
+		ifcvf_disable_logging(hw);
+		rte_vhost_get_log_base(internal->vid, &log_base, &log_size);
+		rte_vfio_container_dma_unmap(internal->vfio_container_fd,
+				log_base, IFCVF_LOG_BASE, log_size);
+		/*
+		 * IFCVF marks dirty memory pages for only packet buffer,
+		 * SW helps to mark the used ring as dirty after device stops.
+		 */
+		log_buf = (uint8_t *)(uintptr_t)log_base;
+		for (i = 0; i < hw->nr_vring; i++)
+			ifcvf_used_ring_log(hw, i, log_buf);
+	}
 }
 
 #define MSIX_IRQ_SET_BUF_LEN (sizeof(struct vfio_irq_set) + \
@@ -549,6 +583,35 @@ ifcvf_dev_close(int vid)
 }
 
 static int
+ifcvf_set_features(int vid)
+{
+	uint64_t features;
+	int did;
+	struct internal_list *list;
+	struct ifcvf_internal *internal;
+	uint64_t log_base, log_size;
+
+	did = rte_vhost_get_vdpa_device_id(vid);
+	list = find_internal_resource_by_did(did);
+	if (list == NULL) {
+		DRV_LOG(ERR, "Invalid device id: %d", did);
+		return -1;
+	}
+
+	internal = list->internal;
+	rte_vhost_get_negotiated_features(vid, &features);
+
+	if (RTE_VHOST_NEED_LOG(features)) {
+		rte_vhost_get_log_base(vid, &log_base, &log_size);
+		rte_vfio_container_dma_map(internal->vfio_container_fd,
+				log_base, IFCVF_LOG_BASE, log_size);
+		ifcvf_enable_logging(&internal->hw, IFCVF_LOG_BASE, log_size);
+	}
+
+	return 0;
+}
+
+static int
 ifcvf_get_vfio_group_fd(int vid)
 {
 	int did;
@@ -664,7 +727,7 @@ struct rte_vdpa_dev_ops ifcvf_ops = {
 	.dev_conf = ifcvf_dev_config,
 	.dev_close = ifcvf_dev_close,
 	.set_vring_state = NULL,
-	.set_features = NULL,
+	.set_features = ifcvf_set_features,
 	.migration_done = NULL,
 	.get_vfio_group_fd = ifcvf_get_vfio_group_fd,
 	.get_vfio_device_fd = ifcvf_get_vfio_device_fd,
@@ -699,7 +762,11 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	features = ifcvf_get_features(&internal->hw);
 	internal->features = (features &
 		~(1ULL << VIRTIO_F_IOMMU_PLATFORM)) |
-		(1ULL << VHOST_USER_F_PROTOCOL_FEATURES);
+		(1ULL << VIRTIO_NET_F_GUEST_ANNOUNCE) |
+		(1ULL << VIRTIO_NET_F_CTRL_VQ) |
+		(1ULL << VIRTIO_NET_F_STATUS) |
+		(1ULL << VHOST_USER_F_PROTOCOL_FEATURES) |
+		(1ULL << VHOST_F_LOG_ALL);
 
 	internal->dev_addr.pci_addr = pci_dev->addr;
 	internal->dev_addr.type = PCI_ADDR;

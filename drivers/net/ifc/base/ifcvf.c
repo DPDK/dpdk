@@ -249,7 +249,7 @@ ifcvf_hw_disable(struct ifcvf_hw *hw)
 		IFCVF_WRITE_REG16(IFCVF_MSI_NO_VECTOR, &cfg->queue_msix_vector);
 		ring_state = *(u32 *)(hw->lm_cfg + IFCVF_LM_RING_STATE_OFFSET +
 				(i / 2) * IFCVF_LM_CFG_SIZE + (i % 2) * 4);
-		hw->vring[i].last_avail_idx = (u16)ring_state;
+		hw->vring[i].last_avail_idx = (u16)(ring_state >> 16);
 		hw->vring[i].last_used_idx = (u16)(ring_state >> 16);
 	}
 }
@@ -276,6 +276,37 @@ ifcvf_stop_hw(struct ifcvf_hw *hw)
 {
 	ifcvf_hw_disable(hw);
 	ifcvf_reset(hw);
+}
+
+void
+ifcvf_enable_logging(struct ifcvf_hw *hw, u64 log_base, u64 log_size)
+{
+	u8 *lm_cfg;
+
+	lm_cfg = hw->lm_cfg;
+
+	*(u32 *)(lm_cfg + IFCVF_LM_BASE_ADDR_LOW) =
+		log_base & IFCVF_32_BIT_MASK;
+
+	*(u32 *)(lm_cfg + IFCVF_LM_BASE_ADDR_HIGH) =
+		(log_base >> 32) & IFCVF_32_BIT_MASK;
+
+	*(u32 *)(lm_cfg + IFCVF_LM_END_ADDR_LOW) =
+		(log_base + log_size) & IFCVF_32_BIT_MASK;
+
+	*(u32 *)(lm_cfg + IFCVF_LM_END_ADDR_HIGH) =
+		((log_base + log_size) >> 32) & IFCVF_32_BIT_MASK;
+
+	*(u32 *)(lm_cfg + IFCVF_LM_LOGGING_CTRL) = IFCVF_LM_ENABLE_VF;
+}
+
+void
+ifcvf_disable_logging(struct ifcvf_hw *hw)
+{
+	u8 *lm_cfg;
+
+	lm_cfg = hw->lm_cfg;
+	*(u32 *)(lm_cfg + IFCVF_LM_LOGGING_CTRL) = IFCVF_LM_DISABLE;
 }
 
 void

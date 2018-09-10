@@ -49,6 +49,7 @@
 #define IFCVF_LM_DISABLE		0x0
 #define IFCVF_LM_ENABLE_VF		0x1
 #define IFCVF_LM_ENABLE_PF		0x3
+#define IFCVF_LOG_BASE			0x100000000000
 
 #define IFCVF_32_BIT_MASK		0xffffffff
 
@@ -141,6 +142,12 @@ ifcvf_start_hw(struct ifcvf_hw *hw);
 
 void
 ifcvf_stop_hw(struct ifcvf_hw *hw);
+
+void
+ifcvf_enable_logging(struct ifcvf_hw *hw, u64 log_base, u64 log_size);
+
+void
+ifcvf_disable_logging(struct ifcvf_hw *hw);
 
 void
 ifcvf_notify_queue(struct ifcvf_hw *hw, u16 qid);
