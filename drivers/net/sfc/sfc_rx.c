@@ -1200,7 +1200,7 @@ sfc_rx_hash_init(struct sfc_adapter *sa)
 		return EINVAL;
 
 	rc = efx_rx_scale_hash_flags_get(sa->nic, alg, flags_supp,
-					 &nb_flags_supp);
+					 RTE_DIM(flags_supp), &nb_flags_supp);
 	if (rc != 0)
 		return rc;
 
