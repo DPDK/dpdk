@@ -419,13 +419,19 @@ cperf_test_vector_get_dummy(struct cperf_options *options)
 			t_vec->cipher_key.length = 0;
 			t_vec->ciphertext.data = plaintext;
 			t_vec->cipher_key.data = NULL;
-			t_vec->cipher_iv.data = NULL;
 		} else {
 			t_vec->cipher_key.length = options->cipher_key_sz;
 			t_vec->ciphertext.data = ciphertext;
 			t_vec->cipher_key.data = cipher_key;
-			t_vec->cipher_iv.data = rte_malloc(NULL, options->cipher_iv_sz,
-					16);
+		}
+
+		/* Init IV data ptr */
+		t_vec->cipher_iv.data = NULL;
+
+		if (options->cipher_iv_sz != 0) {
+			/* Set IV parameters */
+			t_vec->cipher_iv.data = rte_malloc(NULL,
+					options->cipher_iv_sz, 16);
 			if (t_vec->cipher_iv.data == NULL) {
 				rte_free(t_vec);
 				return NULL;
@@ -433,17 +439,7 @@ cperf_test_vector_get_dummy(struct cperf_options *options)
 			memcpy(t_vec->cipher_iv.data, iv, options->cipher_iv_sz);
 		}
 		t_vec->ciphertext.length = options->max_buffer_size;
-
-		/* Set IV parameters */
-		t_vec->cipher_iv.data = rte_malloc(NULL, options->cipher_iv_sz,
-				16);
-		if (options->cipher_iv_sz && t_vec->cipher_iv.data == NULL) {
-			rte_free(t_vec);
-			return NULL;
-		}
-		memcpy(t_vec->cipher_iv.data, iv, options->cipher_iv_sz);
 		t_vec->cipher_iv.length = options->cipher_iv_sz;
-
 		t_vec->data.cipher_offset = 0;
 		t_vec->data.cipher_length = options->max_buffer_size;
 
