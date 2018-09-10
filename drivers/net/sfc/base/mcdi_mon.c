@@ -6,6 +6,7 @@
 
 #include "efx.h"
 #include "efx_impl.h"
+#include "mcdi_mon.h"
 
 #if EFSYS_OPT_MON_MCDI
 
