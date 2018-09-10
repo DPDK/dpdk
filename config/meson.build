@@ -9,7 +9,13 @@ else
 endif
 dpdk_conf.set('RTE_MACHINE', machine)
 machine_args = []
-machine_args += '-march=' + machine
+# ppc64 does not support -march=native
+if host_machine.cpu_family().startswith('ppc') and machine == 'native'
+	machine_args += '-mcpu=' + machine
+	machine_args += '-mtune=' + machine
+else
+	machine_args += '-march=' + machine
+endif
 
 toolchain = cc.get_id()
 dpdk_conf.set_quoted('RTE_TOOLCHAIN', toolchain)
@@ -84,6 +90,8 @@ if host_machine.cpu_family().startswith('x86')
 	arch_subdir = 'x86'
 elif host_machine.cpu_family().startswith('arm') or host_machine.cpu_family().startswith('aarch')
 	arch_subdir = 'arm'
+elif host_machine.cpu_family().startswith('ppc')
+	arch_subdir = 'ppc_64'
 endif
 subdir(arch_subdir)
 dpdk_conf.set('RTE_COMPILE_TIME_CPUFLAGS', ','.join(compile_time_cpuflags))
