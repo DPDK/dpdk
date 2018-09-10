@@ -831,7 +831,7 @@ efx_rx_qcreate_packed_stream(
 {
 	efx_rxq_type_data_t type_data;
 
-	memset(&type_data, 0, sizeof(type_data));
+	memset(&type_data, 0, sizeof (type_data));
 
 	type_data.ertd_packed_stream.eps_buf_size = ps_buf_size;
 
@@ -867,7 +867,7 @@ efx_rx_qcreate_es_super_buffer(
 		goto fail1;
 	}
 
-	memset(&type_data, 0, sizeof(type_data));
+	memset(&type_data, 0, sizeof (type_data));
 
 	type_data.ertd_es_super_buffer.eessb_bufs_per_desc = n_bufs_per_desc;
 	type_data.ertd_es_super_buffer.eessb_max_dma_len = max_dma_len;
