@@ -1158,10 +1158,12 @@ efx_lic_v3_read_key(
 	__in			size_t key_max_size,
 	__out			uint32_t *lengthp)
 {
+	uint32_t tag;
+
 	_NOTE(ARGUNUSED(enp))
 
 	return ef10_nvram_buffer_get_item(bufferp, buffer_size,
-		    offset, length, keyp, key_max_size, lengthp);
+		    offset, length, &tag, keyp, key_max_size, lengthp);
 }
 
 	__checkReturn		efx_rc_t
@@ -1179,7 +1181,7 @@ efx_lic_v3_write_key(
 	EFSYS_ASSERT(length <= EFX_LICENSE_V3_KEY_LENGTH_MAX);
 
 	return ef10_nvram_buffer_insert_item(bufferp, buffer_size,
-		    offset, keyp, length, lengthp);
+		    offset, TLV_TAG_LICENSE, keyp, length, lengthp);
 }
 
 	__checkReturn		efx_rc_t
@@ -1221,8 +1223,10 @@ efx_lic_v3_create_partition(
 {
 	efx_rc_t rc;
 
+	_NOTE(ARGUNUSED(enp))
+
 	/* Construct empty partition */
-	if ((rc = ef10_nvram_buffer_create(enp,
+	if ((rc = ef10_nvram_buffer_create(
 	    NVRAM_PARTITION_TYPE_LICENSE,
 	    bufferp, buffer_size)) != 0) {
 		rc = EFAULT;
@@ -1246,13 +1250,16 @@ efx_lic_v3_finish_partition(
 {
 	efx_rc_t rc;
 
+	_NOTE(ARGUNUSED(enp))
+
 	if ((rc = ef10_nvram_buffer_finish(bufferp,
 			buffer_size)) != 0) {
 		goto fail1;
 	}
 
 	/* Validate completed partition */
-	if ((rc = ef10_nvram_buffer_validate(enp, NVRAM_PARTITION_TYPE_LICENSE,
+	if ((rc = ef10_nvram_buffer_validate(
+					NVRAM_PARTITION_TYPE_LICENSE,
 					bufferp, buffer_size)) != 0) {
 		goto fail2;
 	}
