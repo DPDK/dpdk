@@ -559,7 +559,7 @@ efx_nic_reset(
 	 */
 	mod_flags = enp->en_mod_flags;
 	mod_flags &= ~(EFX_MOD_MCDI | EFX_MOD_PROBE | EFX_MOD_NVRAM |
-		    EFX_MOD_VPD | EFX_MOD_MON);
+	    EFX_MOD_VPD | EFX_MOD_MON);
 	EFSYS_ASSERT3U(mod_flags, ==, 0);
 	if (mod_flags != 0) {
 		rc = EINVAL;
