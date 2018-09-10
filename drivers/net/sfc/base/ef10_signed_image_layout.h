@@ -4,6 +4,14 @@
  * All rights reserved.
  */
 
+/*
+ * This is NOT the original source file. Do NOT edit it.
+ * To update the image layout headers, please edit the copy in
+ * the sfregistry repo and then, in that repo,
+ * "make layout_headers" or "make export" to
+ * regenerate and export all types of headers.
+ */
+
 /* These structures define the layouts for the signed firmware image binary
  * saved in NVRAM. The original image is in the Cryptographic message
  * syntax (CMS) format which contains the bootable firmware binary plus the
