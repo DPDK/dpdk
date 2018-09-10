@@ -639,22 +639,22 @@ ef10_tx_qdesc_tso2_create(
 
 	EFSYS_ASSERT(count >= EFX_TX_FATSOV2_OPT_NDESCS);
 
-	EFX_POPULATE_QWORD_6(edp[0].ed_eq,
+	EFX_POPULATE_QWORD_5(edp[0].ed_eq,
 			    ESF_DZ_TX_DESC_IS_OPT, 1,
 			    ESF_DZ_TX_OPTION_TYPE,
 			    ESE_DZ_TX_OPTION_DESC_TSO,
 			    ESF_DZ_TX_TSO_OPTION_TYPE,
 			    ESE_DZ_TX_TSO_OPTION_DESC_FATSO2A,
 			    ESF_DZ_TX_TSO_IP_ID, ipv4_id,
-			    ESF_DZ_TX_TSO_OUTER_IPID, outer_ipv4_id,
 			    ESF_DZ_TX_TSO_TCP_SEQNO, tcp_seq);
-	EFX_POPULATE_QWORD_4(edp[1].ed_eq,
+	EFX_POPULATE_QWORD_5(edp[1].ed_eq,
 			    ESF_DZ_TX_DESC_IS_OPT, 1,
 			    ESF_DZ_TX_OPTION_TYPE,
 			    ESE_DZ_TX_OPTION_DESC_TSO,
 			    ESF_DZ_TX_TSO_OPTION_TYPE,
 			    ESE_DZ_TX_TSO_OPTION_DESC_FATSO2B,
-			    ESF_DZ_TX_TSO_TCP_MSS, tcp_mss);
+			    ESF_DZ_TX_TSO_TCP_MSS, tcp_mss,
+			    ESF_DZ_TX_TSO_OUTER_IPID, outer_ipv4_id);
 }
 
 	void
