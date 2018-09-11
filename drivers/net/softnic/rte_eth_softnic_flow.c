@@ -1,9 +1,12 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2017 Intel Corporation
+ * Copyright(c) 2018 Intel Corporation
  */
 
 #include "rte_eth_softnic_internals.h"
 #include "rte_eth_softnic.h"
+
+#define rte_ntohs rte_be_to_cpu_16
+#define rte_ntohl rte_be_to_cpu_32
 
 int
 flow_attr_map_set(struct pmd_internals *softnic,
@@ -397,6 +400,113 @@ flow_item_skip_disabled_protos(const struct rte_flow_item **item,
 	((1LLU << RTE_FLOW_ITEM_TYPE_IPV4) | \
 	 (1LLU << RTE_FLOW_ITEM_TYPE_IPV6))
 
+static void
+flow_item_skip_void(const struct rte_flow_item **item)
+{
+	for ( ; ; (*item)++)
+		if ((*item)->type != RTE_FLOW_ITEM_TYPE_VOID)
+			return;
+}
+
+#define IP_PROTOCOL_TCP 0x06
+#define IP_PROTOCOL_UDP 0x11
+#define IP_PROTOCOL_SCTP 0x84
+
+static int
+mask_to_depth(uint64_t mask,
+		uint32_t *depth)
+{
+	uint64_t n;
+
+	if (mask == UINT64_MAX) {
+		if (depth)
+			*depth = 64;
+
+		return 0;
+	}
+
+	mask = ~mask;
+
+	if (mask & (mask + 1))
+		return -1;
+
+	n = __builtin_popcountll(mask);
+	if (depth)
+		*depth = (uint32_t)(64 - n);
+
+	return 0;
+}
+
+static int
+ipv4_mask_to_depth(uint32_t mask,
+		uint32_t *depth)
+{
+	uint32_t d;
+	int status;
+
+	status = mask_to_depth(mask | (UINT64_MAX << 32), &d);
+	if (status)
+		return status;
+
+	d -= 32;
+	if (depth)
+		*depth = d;
+
+	return 0;
+}
+
+static int
+ipv6_mask_to_depth(uint8_t *mask,
+	uint32_t *depth)
+{
+	uint64_t *m = (uint64_t *)mask;
+	uint64_t m0 = rte_be_to_cpu_64(m[0]);
+	uint64_t m1 = rte_be_to_cpu_64(m[1]);
+	uint32_t d0, d1;
+	int status;
+
+	status = mask_to_depth(m0, &d0);
+	if (status)
+		return status;
+
+	status = mask_to_depth(m1, &d1);
+	if (status)
+		return status;
+
+	if (d0 < 64 && d1)
+		return -1;
+
+	if (depth)
+		*depth = d0 + d1;
+
+	return 0;
+}
+
+static int
+port_mask_to_range(uint16_t port,
+	uint16_t port_mask,
+	uint16_t *port0,
+	uint16_t *port1)
+{
+	int status;
+	uint16_t p0, p1;
+
+	status = mask_to_depth(port_mask | (UINT64_MAX << 16), NULL);
+	if (status)
+		return -1;
+
+	p0 = port & port_mask;
+	p1 = p0 | ~port_mask;
+
+	if (port0)
+		*port0 = p0;
+
+	if (port1)
+		*port1 = p1;
+
+	return 0;
+}
+
 static int
 flow_rule_match_acl_get(struct pmd_internals *softnic __rte_unused,
 		struct pipeline *pipeline __rte_unused,
@@ -409,6 +519,7 @@ flow_rule_match_acl_get(struct pmd_internals *softnic __rte_unused,
 	union flow_item spec, mask;
 	size_t size, length = 0;
 	int disabled = 0, status;
+	uint8_t ip_proto, ip_proto_mask;
 
 	memset(rule_match, 0, sizeof(*rule_match));
 	rule_match->match_type = TABLE_ACL;
@@ -427,6 +538,80 @@ flow_rule_match_acl_get(struct pmd_internals *softnic __rte_unused,
 		return status;
 
 	switch (item->type) {
+	case RTE_FLOW_ITEM_TYPE_IPV4:
+	{
+		uint32_t sa_depth, da_depth;
+
+		status = ipv4_mask_to_depth(rte_ntohl(mask.ipv4.hdr.src_addr),
+				&sa_depth);
+		if (status)
+			return rte_flow_error_set(error,
+				EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item,
+				"ACL: Illegal IPv4 header source address mask");
+
+		status = ipv4_mask_to_depth(rte_ntohl(mask.ipv4.hdr.dst_addr),
+				&da_depth);
+		if (status)
+			return rte_flow_error_set(error,
+				EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item,
+				"ACL: Illegal IPv4 header destination address mask");
+
+		ip_proto = spec.ipv4.hdr.next_proto_id;
+		ip_proto_mask = mask.ipv4.hdr.next_proto_id;
+
+		rule_match->match.acl.ip_version = 1;
+		rule_match->match.acl.ipv4.sa =
+			rte_ntohl(spec.ipv4.hdr.src_addr);
+		rule_match->match.acl.ipv4.da =
+			rte_ntohl(spec.ipv4.hdr.dst_addr);
+		rule_match->match.acl.sa_depth = sa_depth;
+		rule_match->match.acl.da_depth = da_depth;
+		rule_match->match.acl.proto = ip_proto;
+		rule_match->match.acl.proto_mask = ip_proto_mask;
+		break;
+	} /* RTE_FLOW_ITEM_TYPE_IPV4 */
+
+	case RTE_FLOW_ITEM_TYPE_IPV6:
+	{
+		uint32_t sa_depth, da_depth;
+
+		status = ipv6_mask_to_depth(mask.ipv6.hdr.src_addr, &sa_depth);
+		if (status)
+			return rte_flow_error_set(error,
+				EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item,
+				"ACL: Illegal IPv6 header source address mask");
+
+		status = ipv6_mask_to_depth(mask.ipv6.hdr.dst_addr, &da_depth);
+		if (status)
+			return rte_flow_error_set(error,
+				EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item,
+				"ACL: Illegal IPv6 header destination address mask");
+
+		ip_proto = spec.ipv6.hdr.proto;
+		ip_proto_mask = mask.ipv6.hdr.proto;
+
+		rule_match->match.acl.ip_version = 0;
+		memcpy(rule_match->match.acl.ipv6.sa,
+			spec.ipv6.hdr.src_addr,
+			sizeof(spec.ipv6.hdr.src_addr));
+		memcpy(rule_match->match.acl.ipv6.da,
+			spec.ipv6.hdr.dst_addr,
+			sizeof(spec.ipv6.hdr.dst_addr));
+		rule_match->match.acl.sa_depth = sa_depth;
+		rule_match->match.acl.da_depth = da_depth;
+		rule_match->match.acl.proto = ip_proto;
+		rule_match->match.acl.proto_mask = ip_proto_mask;
+		break;
+	} /* RTE_FLOW_ITEM_TYPE_IPV6 */
+
 	default:
 		return rte_flow_error_set(error,
 			ENOTSUP,
@@ -434,9 +619,179 @@ flow_rule_match_acl_get(struct pmd_internals *softnic __rte_unused,
 			item,
 			"ACL: IP protocol required");
 	} /* switch */
+
+	if (ip_proto_mask != UINT8_MAX)
+		return rte_flow_error_set(error,
+			EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			item,
+			"ACL: Illegal IP protocol mask");
+
+	item++;
+
+	/* VOID only, if any. */
+	flow_item_skip_void(&item);
+
+	/* TCP/UDP/SCTP only. */
+	status = flow_item_proto_preprocess(item, &spec, &mask,
+			&size, &disabled, error);
+	if (status)
+		return status;
+
+	switch (item->type) {
+	case RTE_FLOW_ITEM_TYPE_TCP:
+	{
+		uint16_t sp0, sp1, dp0, dp1;
+
+		if (ip_proto != IP_PROTOCOL_TCP)
+			return rte_flow_error_set(error,
+				EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item,
+				"ACL: Item type is TCP, but IP protocol is not");
+
+		status = port_mask_to_range(rte_ntohs(spec.tcp.hdr.src_port),
+				rte_ntohs(mask.tcp.hdr.src_port),
+				&sp0,
+				&sp1);
+
+		if (status)
+			return rte_flow_error_set(error,
+				EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item,
+				"ACL: Illegal TCP source port mask");
+
+		status = port_mask_to_range(rte_ntohs(spec.tcp.hdr.dst_port),
+				rte_ntohs(mask.tcp.hdr.dst_port),
+				&dp0,
+				&dp1);
+
+		if (status)
+			return rte_flow_error_set(error,
+				EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item,
+				"ACL: Illegal TCP destination port mask");
+
+		rule_match->match.acl.sp0 = sp0;
+		rule_match->match.acl.sp1 = sp1;
+		rule_match->match.acl.dp0 = dp0;
+		rule_match->match.acl.dp1 = dp1;
+
+		break;
+	} /* RTE_FLOW_ITEM_TYPE_TCP */
+
+	case RTE_FLOW_ITEM_TYPE_UDP:
+	{
+		uint16_t sp0, sp1, dp0, dp1;
+
+		if (ip_proto != IP_PROTOCOL_UDP)
+			return rte_flow_error_set(error,
+				EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item,
+				"ACL: Item type is UDP, but IP protocol is not");
+
+		status = port_mask_to_range(rte_ntohs(spec.udp.hdr.src_port),
+			rte_ntohs(mask.udp.hdr.src_port),
+			&sp0,
+			&sp1);
+		if (status)
+			return rte_flow_error_set(error,
+				EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item,
+				"ACL: Illegal UDP source port mask");
+
+		status = port_mask_to_range(rte_ntohs(spec.udp.hdr.dst_port),
+			rte_ntohs(mask.udp.hdr.dst_port),
+			&dp0,
+			&dp1);
+		if (status)
+			return rte_flow_error_set(error,
+				EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item,
+				"ACL: Illegal UDP destination port mask");
+
+		rule_match->match.acl.sp0 = sp0;
+		rule_match->match.acl.sp1 = sp1;
+		rule_match->match.acl.dp0 = dp0;
+		rule_match->match.acl.dp1 = dp1;
+
+		break;
+	} /* RTE_FLOW_ITEM_TYPE_UDP */
+
+	case RTE_FLOW_ITEM_TYPE_SCTP:
+	{
+		uint16_t sp0, sp1, dp0, dp1;
+
+		if (ip_proto != IP_PROTOCOL_SCTP)
+			return rte_flow_error_set(error,
+				EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item,
+				"ACL: Item type is SCTP, but IP protocol is not");
+
+		status = port_mask_to_range(rte_ntohs(spec.sctp.hdr.src_port),
+			rte_ntohs(mask.sctp.hdr.src_port),
+			&sp0,
+			&sp1);
+
+		if (status)
+			return rte_flow_error_set(error,
+				EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item,
+				"ACL: Illegal SCTP source port mask");
+
+		status = port_mask_to_range(rte_ntohs(spec.sctp.hdr.dst_port),
+			rte_ntohs(mask.sctp.hdr.dst_port),
+			&dp0,
+			&dp1);
+		if (status)
+			return rte_flow_error_set(error,
+				EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item,
+				"ACL: Illegal SCTP destination port mask");
+
+		rule_match->match.acl.sp0 = sp0;
+		rule_match->match.acl.sp1 = sp1;
+		rule_match->match.acl.dp0 = dp0;
+		rule_match->match.acl.dp1 = dp1;
+
+		break;
+	} /* RTE_FLOW_ITEM_TYPE_SCTP */
+
+	default:
+		return rte_flow_error_set(error,
+			ENOTSUP,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			item,
+			"ACL: TCP/UDP/SCTP required");
+	} /* switch */
+
+	item++;
+
+	/* VOID or disabled protos only, if any. */
+	status = flow_item_skip_disabled_protos(&item, 0, NULL, error);
+	if (status)
+		return status;
+
+	/* END only. */
+	if (item->type != RTE_FLOW_ITEM_TYPE_END)
+		return rte_flow_error_set(error,
+			EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			item,
+			"ACL: Expecting END item");
+
+	return 0;
 }
 
-static int
+	static int
 flow_rule_match_get(struct pmd_internals *softnic,
 		struct pipeline *pipeline,
 		struct softnic_table *table,
