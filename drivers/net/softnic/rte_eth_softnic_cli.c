@@ -1697,6 +1697,8 @@ cmd_pipeline_port_in(struct pmd_internals *softnic,
 	uint32_t t0;
 	int enabled, status;
 
+	memset(&p, 0, sizeof(p));
+
 	if (n_tokens < 7) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
 		return;
@@ -1735,7 +1737,7 @@ cmd_pipeline_port_in(struct pmd_internals *softnic,
 
 		p.type = PORT_IN_RXQ;
 
-		p.dev_name = tokens[t0 + 1];
+		strcpy(p.dev_name, tokens[t0 + 1]);
 
 		if (strcmp(tokens[t0 + 2], "rxq") != 0) {
 			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "rxq");
@@ -1758,7 +1760,7 @@ cmd_pipeline_port_in(struct pmd_internals *softnic,
 
 		p.type = PORT_IN_SWQ;
 
-		p.dev_name = tokens[t0 + 1];
+		strcpy(p.dev_name, tokens[t0 + 1]);
 
 		t0 += 2;
 	} else if (strcmp(tokens[t0], "tmgr") == 0) {
@@ -1770,7 +1772,7 @@ cmd_pipeline_port_in(struct pmd_internals *softnic,
 
 		p.type = PORT_IN_TMGR;
 
-		p.dev_name = tokens[t0 + 1];
+		strcpy(p.dev_name, tokens[t0 + 1]);
 
 		t0 += 2;
 	} else if (strcmp(tokens[t0], "tap") == 0) {
@@ -1782,7 +1784,7 @@ cmd_pipeline_port_in(struct pmd_internals *softnic,
 
 		p.type = PORT_IN_TAP;
 
-		p.dev_name = tokens[t0 + 1];
+		strcpy(p.dev_name, tokens[t0 + 1]);
 
 		if (strcmp(tokens[t0 + 2], "mempool") != 0) {
 			snprintf(out, out_size, MSG_ARG_NOT_FOUND,
@@ -1813,8 +1815,6 @@ cmd_pipeline_port_in(struct pmd_internals *softnic,
 		}
 
 		p.type = PORT_IN_SOURCE;
-
-		p.dev_name = NULL;
 
 		if (strcmp(tokens[t0 + 1], "mempool") != 0) {
 			snprintf(out, out_size, MSG_ARG_NOT_FOUND,
@@ -1851,7 +1851,6 @@ cmd_pipeline_port_in(struct pmd_internals *softnic,
 		return;
 	}
 
-	p.action_profile_name = NULL;
 	if (n_tokens > t0 &&
 		(strcmp(tokens[t0], "action") == 0)) {
 		if (n_tokens < t0 + 2) {
@@ -1859,7 +1858,7 @@ cmd_pipeline_port_in(struct pmd_internals *softnic,
 			return;
 		}
 
-		p.action_profile_name = tokens[t0 + 1];
+		strcpy(p.action_profile_name, tokens[t0 + 1]);
 
 		t0 += 2;
 	}
@@ -1945,7 +1944,7 @@ cmd_pipeline_port_out(struct pmd_internals *softnic,
 
 		p.type = PORT_OUT_TXQ;
 
-		p.dev_name = tokens[7];
+		strcpy(p.dev_name, tokens[7]);
 
 		if (strcmp(tokens[8], "txq") != 0) {
 			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "txq");
@@ -1966,7 +1965,7 @@ cmd_pipeline_port_out(struct pmd_internals *softnic,
 
 		p.type = PORT_OUT_SWQ;
 
-		p.dev_name = tokens[7];
+		strcpy(p.dev_name, tokens[7]);
 	} else if (strcmp(tokens[6], "tmgr") == 0) {
 		if (n_tokens != 8) {
 			snprintf(out, out_size, MSG_ARG_MISMATCH,
@@ -1976,7 +1975,7 @@ cmd_pipeline_port_out(struct pmd_internals *softnic,
 
 		p.type = PORT_OUT_TMGR;
 
-		p.dev_name = tokens[7];
+		strcpy(p.dev_name, tokens[7]);
 	} else if (strcmp(tokens[6], "tap") == 0) {
 		if (n_tokens != 8) {
 			snprintf(out, out_size, MSG_ARG_MISMATCH,
@@ -1986,7 +1985,7 @@ cmd_pipeline_port_out(struct pmd_internals *softnic,
 
 		p.type = PORT_OUT_TAP;
 
-		p.dev_name = tokens[7];
+		strcpy(p.dev_name, tokens[7]);
 	} else if (strcmp(tokens[6], "sink") == 0) {
 		if ((n_tokens != 7) && (n_tokens != 11)) {
 			snprintf(out, out_size, MSG_ARG_MISMATCH,
@@ -1995,8 +1994,6 @@ cmd_pipeline_port_out(struct pmd_internals *softnic,
 		}
 
 		p.type = PORT_OUT_SINK;
-
-		p.dev_name = NULL;
 
 		if (n_tokens == 7) {
 			p.sink.file_name = NULL;
@@ -2064,11 +2061,12 @@ cmd_pipeline_table(struct pmd_internals *softnic,
 	char *out,
 	size_t out_size)
 {
-	uint8_t key_mask[TABLE_RULE_MATCH_SIZE_MAX];
 	struct softnic_table_params p;
 	char *pipeline_name;
 	uint32_t t0;
 	int status;
+
+	memset(&p, 0, sizeof(p));
 
 	if (n_tokens < 5) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
@@ -2203,12 +2201,11 @@ cmd_pipeline_table(struct pmd_internals *softnic,
 		}
 
 		if ((softnic_parse_hex_string(tokens[t0 + 5],
-			key_mask, &key_mask_size) != 0) ||
+			p.match.hash.key_mask, &key_mask_size) != 0) ||
 			key_mask_size != p.match.hash.key_size) {
 			snprintf(out, out_size, MSG_ARG_INVALID, "key_mask");
 			return;
 		}
-		p.match.hash.key_mask = key_mask;
 
 		if (strcmp(tokens[t0 + 6], "offset") != 0) {
 			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "offset");
@@ -2295,7 +2292,6 @@ cmd_pipeline_table(struct pmd_internals *softnic,
 		return;
 	}
 
-	p.action_profile_name = NULL;
 	if (n_tokens > t0 &&
 		(strcmp(tokens[t0], "action") == 0)) {
 		if (n_tokens < t0 + 2) {
@@ -2303,7 +2299,7 @@ cmd_pipeline_table(struct pmd_internals *softnic,
 			return;
 		}
 
-		p.action_profile_name = tokens[t0 + 1];
+		strcpy(p.action_profile_name, tokens[t0 + 1]);
 
 		t0 += 2;
 	}

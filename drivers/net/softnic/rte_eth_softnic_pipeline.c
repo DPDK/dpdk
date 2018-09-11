@@ -212,7 +212,7 @@ softnic_pipeline_port_in_create(struct pmd_internals *softnic,
 		return -1;
 
 	ap = NULL;
-	if (params->action_profile_name) {
+	if (strlen(params->action_profile_name)) {
 		ap = softnic_port_in_action_profile_find(softnic,
 			params->action_profile_name);
 		if (ap == NULL)
@@ -729,7 +729,7 @@ softnic_pipeline_table_create(struct pmd_internals *softnic,
 		return -1;
 
 	ap = NULL;
-	if (params->action_profile_name) {
+	if (strlen(params->action_profile_name)) {
 		ap = softnic_table_action_profile_find(softnic,
 			params->action_profile_name);
 		if (ap == NULL)

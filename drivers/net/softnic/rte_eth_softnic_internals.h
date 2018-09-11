@@ -308,7 +308,7 @@ enum softnic_port_in_type {
 struct softnic_port_in_params {
 	/* Read */
 	enum softnic_port_in_type type;
-	const char *dev_name;
+	char dev_name[NAME_SIZE];
 	union {
 		struct {
 			uint16_t queue_id;
@@ -328,7 +328,7 @@ struct softnic_port_in_params {
 	uint32_t burst_size;
 
 	/* Action */
-	const char *action_profile_name;
+	char action_profile_name[NAME_SIZE];
 };
 
 enum softnic_port_out_type {
@@ -341,7 +341,7 @@ enum softnic_port_out_type {
 
 struct softnic_port_out_params {
 	enum softnic_port_out_type type;
-	const char *dev_name;
+	char dev_name[NAME_SIZE];
 	union {
 		struct {
 			uint16_t queue_id;
@@ -376,11 +376,15 @@ struct softnic_table_array_params {
 	uint32_t key_offset;
 };
 
+#ifndef TABLE_RULE_MATCH_SIZE_MAX
+#define TABLE_RULE_MATCH_SIZE_MAX                          256
+#endif
+
 struct softnic_table_hash_params {
 	uint32_t n_keys;
 	uint32_t key_offset;
 	uint32_t key_size;
-	uint8_t *key_mask;
+	uint8_t key_mask[TABLE_RULE_MATCH_SIZE_MAX];
 	uint32_t n_buckets;
 	int extendable_bucket;
 };
@@ -402,7 +406,7 @@ struct softnic_table_params {
 	} match;
 
 	/* Action */
-	const char *action_profile_name;
+	char action_profile_name[NAME_SIZE];
 };
 
 struct softnic_port_in {
@@ -756,10 +760,6 @@ struct softnic_table_rule_match_acl {
 struct softnic_table_rule_match_array {
 	uint32_t pos;
 };
-
-#ifndef TABLE_RULE_MATCH_SIZE_MAX
-#define TABLE_RULE_MATCH_SIZE_MAX                          256
-#endif
 
 struct softnic_table_rule_match_hash {
 	uint8_t key[TABLE_RULE_MATCH_SIZE_MAX];
