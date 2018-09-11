@@ -1,0 +1,96 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright 2013-2017 6WIND S.A.
+
+PROJECT_NAME            = DPDK
+PROJECT_NUMBER          = @VERSION@
+INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
+                          @TOPDIR@/drivers/crypto/scheduler \
+                          @TOPDIR@/drivers/mempool/dpaa2 \
+                          @TOPDIR@/drivers/net/bnxt \
+                          @TOPDIR@/drivers/net/bonding \
+                          @TOPDIR@/drivers/net/dpaa \
+                          @TOPDIR@/drivers/net/i40e \
+                          @TOPDIR@/drivers/net/ixgbe \
+                          @TOPDIR@/drivers/net/softnic \
+                          @TOPDIR@/drivers/raw/dpaa2_cmdif \
+                          @TOPDIR@/drivers/raw/dpaa2_qdma \
+                          @TOPDIR@/lib/librte_eal/common/include \
+                          @TOPDIR@/lib/librte_eal/common/include/generic \
+                          @TOPDIR@/lib/librte_acl \
+                          @TOPDIR@/lib/librte_bbdev \
+                          @TOPDIR@/lib/librte_bitratestats \
+                          @TOPDIR@/lib/librte_bpf \
+                          @TOPDIR@/lib/librte_cfgfile \
+                          @TOPDIR@/lib/librte_cmdline \
+                          @TOPDIR@/lib/librte_compat \
+                          @TOPDIR@/lib/librte_compressdev \
+                          @TOPDIR@/lib/librte_cryptodev \
+                          @TOPDIR@/lib/librte_distributor \
+                          @TOPDIR@/lib/librte_efd \
+                          @TOPDIR@/lib/librte_ethdev \
+                          @TOPDIR@/lib/librte_eventdev \
+                          @TOPDIR@/lib/librte_flow_classify \
+                          @TOPDIR@/lib/librte_gro \
+                          @TOPDIR@/lib/librte_gso \
+                          @TOPDIR@/lib/librte_hash \
+                          @TOPDIR@/lib/librte_ip_frag \
+                          @TOPDIR@/lib/librte_jobstats \
+                          @TOPDIR@/lib/librte_kni \
+                          @TOPDIR@/lib/librte_kvargs \
+                          @TOPDIR@/lib/librte_latencystats \
+                          @TOPDIR@/lib/librte_lpm \
+                          @TOPDIR@/lib/librte_mbuf \
+                          @TOPDIR@/lib/librte_member \
+                          @TOPDIR@/lib/librte_mempool \
+                          @TOPDIR@/lib/librte_meter \
+                          @TOPDIR@/lib/librte_metrics \
+                          @TOPDIR@/lib/librte_net \
+                          @TOPDIR@/lib/librte_pci \
+                          @TOPDIR@/lib/librte_pdump \
+                          @TOPDIR@/lib/librte_pipeline \
+                          @TOPDIR@/lib/librte_port \
+                          @TOPDIR@/lib/librte_power \
+                          @TOPDIR@/lib/librte_rawdev \
+                          @TOPDIR@/lib/librte_reorder \
+                          @TOPDIR@/lib/librte_ring \
+                          @TOPDIR@/lib/librte_sched \
+                          @TOPDIR@/lib/librte_security \
+                          @TOPDIR@/lib/librte_table \
+                          @TOPDIR@/lib/librte_timer \
+                          @TOPDIR@/lib/librte_vhost
+INPUT                   += @API_EXAMPLES@
+FILE_PATTERNS           = rte_*.h \
+                          cmdline.h
+PREDEFINED              = __DOXYGEN__ \
+			   VFIO_PRESENT \
+                          __attribute__(x)=
+
+OPTIMIZE_OUTPUT_FOR_C   = YES
+ENABLE_PREPROCESSING    = YES
+MACRO_EXPANSION         = YES
+EXPAND_ONLY_PREDEF      = YES
+EXTRACT_STATIC          = YES
+DISTRIBUTE_GROUP_DOC    = YES
+HIDE_UNDOC_MEMBERS      = YES
+HIDE_UNDOC_CLASSES      = YES
+HIDE_SCOPE_NAMES        = YES
+GENERATE_DEPRECATEDLIST = NO
+VERBATIM_HEADERS        = NO
+ALPHABETICAL_INDEX      = NO
+
+HTML_TIMESTAMP          = NO
+HTML_DYNAMIC_SECTIONS   = YES
+SEARCHENGINE            = NO
+SORT_MEMBER_DOCS        = NO
+SOURCE_BROWSER          = YES
+
+EXAMPLE_PATH            = @TOPDIR@/examples
+EXAMPLE_PATTERNS        = *.c
+EXAMPLE_RECURSIVE       = YES
+
+OUTPUT_DIRECTORY        = @OUTPUT@
+STRIP_FROM_PATH         = @STRIP_FROM_PATH@
+GENERATE_HTML           = YES
+HTML_OUTPUT             = @HTML_OUTPUT@
+GENERATE_LATEX          = NO
+GENERATE_MAN            = NO

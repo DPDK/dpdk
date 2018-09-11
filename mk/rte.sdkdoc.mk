@@ -43,15 +43,13 @@ clean: api-html-clean guides-html-clean guides-pdf-clean guides-man-clean
 api-html: $(API_EXAMPLES)
 	@echo 'doxygen for API...'
 	$(Q)mkdir -p $(RTE_OUTPUT)/doc/html
-	$(Q)(cat $(RTE_SDK)/doc/api/doxy-api.conf     && \
-	    printf 'PROJECT_NUMBER = '                && \
-	                     $(MAKE) -rRs showversion && \
-	    echo INPUT           += $(API_EXAMPLES)   && \
-	    echo OUTPUT_DIRECTORY = $(RTE_OUTPUT)/doc && \
-	    echo HTML_OUTPUT      = html/api          && \
-	    echo GENERATE_HTML    = YES               && \
-	    echo GENERATE_LATEX   = NO                && \
-	    echo GENERATE_MAN     = NO                )| \
+	$(Q)(sed -e "s|@VERSION@|`$(MAKE) -rRs showversion`|" \
+	         -e "s|@API_EXAMPLES@|$(API_EXAMPLES)|"       \
+	         -e "s|@OUTPUT@|$(RTE_OUTPUT)/doc|"           \
+	         -e "s|@HTML_OUTPUT@|html/api|"               \
+	         -e "s|@TOPDIR@|./|g"                         \
+	         -e "s|@STRIP_FROM_PATH@|./|g"                \
+	         $(RTE_SDK)/doc/api/doxy-api.conf.in)|        \
 	    doxygen -
 	$(Q)$(RTE_SDK)/doc/api/doxy-html-custom.sh $(RTE_OUTPUT)/doc/html/api/doxygen.css
 
