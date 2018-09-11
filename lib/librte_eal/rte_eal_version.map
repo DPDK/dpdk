@@ -262,6 +262,13 @@ DPDK_18.08 {
 
 } DPDK_18.05;
 
+DPDK_18.11 {
+	global:
+
+	rte_strscpy;
+
+} DPDK_18.08;
+
 EXPERIMENTAL {
 	global:
 

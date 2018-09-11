@@ -38,3 +38,29 @@ einval_error:
 	errno = EINVAL;
 	return -1;
 }
+
+/* Copy src string into dst.
+ *
+ * Return negative value and NUL-terminate if dst is too short,
+ * Otherwise return number of bytes copied.
+ */
+ssize_t
+rte_strscpy(char *dst, const char *src, size_t dsize)
+{
+	size_t nleft = dsize;
+	size_t res = 0;
+
+	/* Copy as many bytes as will fit. */
+	while (nleft != 0) {
+		dst[res] = src[res];
+		if (src[res] == '\0')
+			return res;
+		res++;
+		nleft--;
+	}
+
+	/* Not enough room in dst, set NUL and return error. */
+	if (res != 0)
+		dst[res - 1] = '\0';
+	return -E2BIG;
+}
