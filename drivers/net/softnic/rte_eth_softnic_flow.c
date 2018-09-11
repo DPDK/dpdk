@@ -1,12 +1,38 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2018 Intel Corporation
  */
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <rte_common.h>
+#include <rte_byteorder.h>
+#include <rte_malloc.h>
+#include <rte_string_fns.h>
+#include <rte_flow.h>
+#include <rte_flow_driver.h>
 
 #include "rte_eth_softnic_internals.h"
 #include "rte_eth_softnic.h"
 
+#define rte_htons rte_cpu_to_be_16
+#define rte_htonl rte_cpu_to_be_32
+
 #define rte_ntohs rte_be_to_cpu_16
 #define rte_ntohl rte_be_to_cpu_32
+
+static struct rte_flow *
+softnic_flow_find(struct softnic_table *table,
+	struct softnic_table_rule_match *rule_match)
+{
+	struct rte_flow *flow;
+
+	TAILQ_FOREACH(flow, &table->flows, node)
+		if (memcmp(&flow->match, rule_match, sizeof(*rule_match)) == 0)
+			return flow;
+
+	return NULL;
+}
 
 int
 flow_attr_map_set(struct pmd_internals *softnic,
@@ -1443,6 +1469,154 @@ pmd_flow_validate(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static struct rte_flow *
+pmd_flow_create(struct rte_eth_dev *dev,
+	const struct rte_flow_attr *attr,
+	const struct rte_flow_item item[],
+	const struct rte_flow_action action[],
+	struct rte_flow_error *error)
+{
+	struct softnic_table_rule_match rule_match;
+	struct softnic_table_rule_action rule_action;
+	void *rule_data;
+
+	struct pmd_internals *softnic = dev->data->dev_private;
+	struct pipeline *pipeline;
+	struct softnic_table *table;
+	struct rte_flow *flow;
+	const char *pipeline_name = NULL;
+	uint32_t table_id = 0;
+	int new_flow, status;
+
+	/* Check input parameters. */
+	if (attr == NULL) {
+		rte_flow_error_set(error,
+			EINVAL,
+			RTE_FLOW_ERROR_TYPE_ATTR,
+			NULL,
+			"Null attr");
+		return NULL;
+	}
+
+	if (item == NULL) {
+		rte_flow_error_set(error,
+			EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			NULL,
+			"Null item");
+		return NULL;
+	}
+
+	if (action == NULL) {
+		rte_flow_error_set(error,
+			EINVAL,
+			RTE_FLOW_ERROR_TYPE_ACTION,
+			NULL,
+			"Null action");
+		return NULL;
+	}
+
+	/* Identify the pipeline table to add this flow to. */
+	status = flow_pipeline_table_get(softnic, attr, &pipeline_name,
+					&table_id, error);
+	if (status)
+		return NULL;
+
+	pipeline = softnic_pipeline_find(softnic, pipeline_name);
+	if (pipeline == NULL) {
+		rte_flow_error_set(error,
+			EINVAL,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			NULL,
+			"Invalid pipeline name");
+		return NULL;
+	}
+
+	if (table_id >= pipeline->n_tables) {
+		rte_flow_error_set(error,
+			EINVAL,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			NULL,
+			"Invalid pipeline table ID");
+		return NULL;
+	}
+
+	table = &pipeline->table[table_id];
+
+	/* Rule match. */
+	memset(&rule_match, 0, sizeof(rule_match));
+	status = flow_rule_match_get(softnic,
+		pipeline,
+		table,
+		attr,
+		item,
+		&rule_match,
+		error);
+	if (status)
+		return NULL;
+
+	/* Rule action. */
+	memset(&rule_action, 0, sizeof(rule_action));
+	status = flow_rule_action_get(softnic,
+		pipeline,
+		table,
+		attr,
+		action,
+		&rule_action,
+		error);
+	if (status)
+		return NULL;
+
+	/* Flow find/allocate. */
+	new_flow = 0;
+	flow = softnic_flow_find(table, &rule_match);
+	if (flow == NULL) {
+		new_flow = 1;
+		flow = calloc(1, sizeof(struct rte_flow));
+		if (flow == NULL) {
+			rte_flow_error_set(error,
+				ENOMEM,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL,
+				"Not enough memory for new flow");
+			return NULL;
+		}
+	}
+
+	/* Rule add. */
+	status = softnic_pipeline_table_rule_add(softnic,
+		pipeline_name,
+		table_id,
+		&rule_match,
+		&rule_action,
+		&rule_data);
+	if (status) {
+		if (new_flow)
+			free(flow);
+
+		rte_flow_error_set(error,
+			EINVAL,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			NULL,
+			"Pipeline table rule add failed");
+		return NULL;
+	}
+
+	/* Flow fill in. */
+	memcpy(&flow->match, &rule_match, sizeof(rule_match));
+	memcpy(&flow->action, &rule_action, sizeof(rule_action));
+	flow->data = rule_data;
+	flow->pipeline = pipeline;
+	flow->table_id = table_id;
+
+	/* Flow add to list. */
+	if (new_flow)
+		TAILQ_INSERT_TAIL(&table->flows, flow, node);
+
+	return flow;
+}
+
 const struct rte_flow_ops pmd_flow_ops = {
 	.validate = pmd_flow_validate,
+	.create = pmd_flow_create,
 };
