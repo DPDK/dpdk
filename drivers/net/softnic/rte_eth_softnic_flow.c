@@ -791,7 +791,195 @@ flow_rule_match_acl_get(struct pmd_internals *softnic __rte_unused,
 	return 0;
 }
 
-	static int
+/***
+ * Both *tmask* and *fmask* are byte arrays of size *tsize* and *fsize*
+ * respectively.
+ * They are located within a larger buffer at offsets *toffset* and *foffset*
+ * respectivelly. Both *tmask* and *fmask* represent bitmasks for the larger
+ * buffer.
+ * Question: are the two masks equivalent?
+ *
+ * Notes:
+ * 1. Offset basically indicates that the first offset bytes in the buffer
+ *    are "don't care", so offset is equivalent to pre-pending an "all-zeros"
+ *    array of *offset* bytes to the *mask*.
+ * 2. Each *mask* might contain a number of zero bytes at the beginning or
+ *    at the end.
+ * 3. Bytes in the larger buffer after the end of the *mask* are also considered
+ *    "don't care", so they are equivalent to appending an "all-zeros" array of
+ *    bytes to the *mask*.
+ *
+ * Example:
+ * Buffer = [xx xx xx xx xx xx xx xx], buffer size = 8 bytes
+ * tmask = [00 22 00 33 00], toffset = 2, tsize = 5
+ *    => buffer mask = [00 00 00 22 00 33 00 00]
+ * fmask = [22 00 33], foffset = 3, fsize = 3 =>
+ *    => buffer mask = [00 00 00 22 00 33 00 00]
+ * Therefore, the tmask and fmask from this example are equivalent.
+ */
+static int
+hash_key_mask_is_same(uint8_t *tmask,
+	size_t toffset,
+	size_t tsize,
+	uint8_t *fmask,
+	size_t foffset,
+	size_t fsize,
+	size_t *toffset_plus,
+	size_t *foffset_plus)
+{
+	size_t tpos; /* Position of first non-zero byte in the tmask buffer. */
+	size_t fpos; /* Position of first non-zero byte in the fmask buffer. */
+
+	/* Compute tpos and fpos. */
+	for (tpos = 0; tmask[tpos] == 0; tpos++)
+		;
+	for (fpos = 0; fmask[fpos] == 0; fpos++)
+		;
+
+	if (toffset + tpos != foffset + fpos)
+		return 0; /* FALSE */
+
+	tsize -= tpos;
+	fsize -= fpos;
+
+	if (tsize < fsize) {
+		size_t i;
+
+		for (i = 0; i < tsize; i++)
+			if (tmask[tpos + i] != fmask[fpos + i])
+				return 0; /* FALSE */
+
+		for ( ; i < fsize; i++)
+			if (fmask[fpos + i])
+				return 0; /* FALSE */
+	} else {
+		size_t i;
+
+		for (i = 0; i < fsize; i++)
+			if (tmask[tpos + i] != fmask[fpos + i])
+				return 0; /* FALSE */
+
+		for ( ; i < tsize; i++)
+			if (tmask[tpos + i])
+				return 0; /* FALSE */
+	}
+
+	if (toffset_plus)
+		*toffset_plus = tpos;
+
+	if (foffset_plus)
+		*foffset_plus = fpos;
+
+	return 1; /* TRUE */
+}
+
+static int
+flow_rule_match_hash_get(struct pmd_internals *softnic __rte_unused,
+	struct pipeline *pipeline __rte_unused,
+	struct softnic_table *table,
+	const struct rte_flow_attr *attr __rte_unused,
+	const struct rte_flow_item *item,
+	struct softnic_table_rule_match *rule_match,
+	struct rte_flow_error *error)
+{
+	struct softnic_table_rule_match_hash key, key_mask;
+	struct softnic_table_hash_params *params = &table->params.match.hash;
+	size_t offset = 0, length = 0, tpos, fpos;
+	int status;
+
+	memset(&key, 0, sizeof(key));
+	memset(&key_mask, 0, sizeof(key_mask));
+
+	/* VOID or disabled protos only, if any. */
+	status = flow_item_skip_disabled_protos(&item, 0, &offset, error);
+	if (status)
+		return status;
+
+	if (item->type == RTE_FLOW_ITEM_TYPE_END)
+		return rte_flow_error_set(error,
+			EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			item,
+			"HASH: END detected too early");
+
+	/* VOID or any protocols (enabled or disabled). */
+	for ( ; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
+		union flow_item spec, mask;
+		size_t size;
+		int disabled, status;
+
+		if (item->type == RTE_FLOW_ITEM_TYPE_VOID)
+			continue;
+
+		status = flow_item_proto_preprocess(item,
+			&spec,
+			&mask,
+			&size,
+			&disabled,
+			error);
+		if (status)
+			return status;
+
+		if (length + size > sizeof(key)) {
+			if (disabled)
+				break;
+
+			return rte_flow_error_set(error,
+				ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item,
+				"HASH: Item too big");
+		}
+
+		memcpy(&key.key[length], &spec, size);
+		memcpy(&key_mask.key[length], &mask, size);
+		length += size;
+	}
+
+	if (item->type != RTE_FLOW_ITEM_TYPE_END) {
+		/* VOID or disabled protos only, if any. */
+		status = flow_item_skip_disabled_protos(&item, 0, NULL, error);
+		if (status)
+			return status;
+
+		/* END only. */
+		if (item->type != RTE_FLOW_ITEM_TYPE_END)
+			return rte_flow_error_set(error,
+				EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item,
+				"HASH: Expecting END item");
+	}
+
+	/* Compare flow key mask against table key mask. */
+	offset += sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM;
+
+	if (!hash_key_mask_is_same(params->key_mask,
+		params->key_offset,
+		params->key_size,
+		key_mask.key,
+		offset,
+		length,
+		&tpos,
+		&fpos))
+		return rte_flow_error_set(error,
+			EINVAL,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			NULL,
+			"HASH: Item list is not observing the match format");
+
+	/* Rule match. */
+	memset(rule_match, 0, sizeof(*rule_match));
+	rule_match->match_type = TABLE_HASH;
+	memcpy(&rule_match->match.hash.key[tpos],
+		&key.key[fpos],
+		RTE_MIN(sizeof(rule_match->match.hash.key) - tpos,
+			length - fpos));
+
+	return 0;
+}
+
+static int
 flow_rule_match_get(struct pmd_internals *softnic,
 		struct pipeline *pipeline,
 		struct softnic_table *table,
@@ -809,7 +997,18 @@ flow_rule_match_get(struct pmd_internals *softnic,
 			item,
 			rule_match,
 			error);
+
 		/* FALLTHROUGH */
+
+	case TABLE_HASH:
+		return flow_rule_match_hash_get(softnic,
+			pipeline,
+			table,
+			attr,
+			item,
+			rule_match,
+			error);
+
 	default:
 		return rte_flow_error_set(error,
 			ENOTSUP,
