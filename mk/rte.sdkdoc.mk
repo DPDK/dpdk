@@ -63,10 +63,7 @@ api-html-clean:
 
 $(API_EXAMPLES): api-html-clean
 	$(Q)mkdir -p $(@D)
-	@printf '/**\n' > $(API_EXAMPLES)
-	@printf '@page examples DPDK Example Programs\n\n' >> $(API_EXAMPLES)
-	@find examples -type f -name '*.c' -printf '@example %p\n' | LC_ALL=C sort >> $(API_EXAMPLES)
-	@printf '*/\n' >> $(API_EXAMPLES)
+	$(Q)doc/api/generate_examples.sh examples $(API_EXAMPLES)
 
 guides-pdf-clean: guides-pdf-img-clean
 guides-pdf-img-clean:
