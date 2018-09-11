@@ -51,6 +51,21 @@ struct rte_flow;
 
 TAILQ_HEAD(flow_list, rte_flow);
 
+struct flow_attr_map {
+	char pipeline_name[NAME_SIZE];
+	uint32_t table_id;
+	int valid;
+};
+
+#ifndef SOFTNIC_FLOW_MAX_GROUPS
+#define SOFTNIC_FLOW_MAX_GROUPS                            64
+#endif
+
+struct flow_internals {
+	struct flow_attr_map ingress_map[SOFTNIC_FLOW_MAX_GROUPS];
+	struct flow_attr_map egress_map[SOFTNIC_FLOW_MAX_GROUPS];
+};
+
 /**
  * MEMPOOL
  */
@@ -497,6 +512,7 @@ struct pmd_internals {
 		struct tm_internals tm; /**< Traffic Management */
 	} soft;
 
+	struct flow_internals flow;
 	struct softnic_conn *conn;
 	struct softnic_mempool_list mempool_list;
 	struct softnic_swq_list swq_list;
@@ -509,6 +525,21 @@ struct pmd_internals {
 	struct softnic_thread thread[RTE_MAX_LCORE];
 	struct softnic_thread_data thread_data[RTE_MAX_LCORE];
 };
+
+/**
+ * Ethdev Flow API
+ */
+int
+flow_attr_map_set(struct pmd_internals *softnic,
+		uint32_t group_id,
+		int ingress,
+		const char *pipeline_name,
+		uint32_t table_id);
+
+struct flow_attr_map *
+flow_attr_map_get(struct pmd_internals *softnic,
+		uint32_t group_id,
+		int ingress);
 
 /**
  * MEMPOOL
