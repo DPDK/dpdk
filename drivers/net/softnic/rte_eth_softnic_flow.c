@@ -1009,6 +1009,8 @@ flow_rule_match_get(struct pmd_internals *softnic,
 			rule_match,
 			error);
 
+		/* FALLTHROUGH */
+
 	default:
 		return rte_flow_error_set(error,
 			ENOTSUP,
@@ -1019,6 +1021,341 @@ flow_rule_match_get(struct pmd_internals *softnic,
 }
 
 static int
+flow_rule_action_get(struct pmd_internals *softnic,
+	struct pipeline *pipeline,
+	struct softnic_table *table,
+	const struct rte_flow_attr *attr,
+	const struct rte_flow_action *action,
+	struct softnic_table_rule_action *rule_action,
+	struct rte_flow_error *error __rte_unused)
+{
+	struct softnic_table_action_profile *profile;
+	struct softnic_table_action_profile_params *params;
+	int n_jump_queue_rss_drop = 0;
+	int n_count = 0;
+
+	profile = softnic_table_action_profile_find(softnic,
+		table->params.action_profile_name);
+	if (profile == NULL)
+		return rte_flow_error_set(error,
+			EINVAL,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			action,
+			"JUMP: Table action profile");
+
+	params = &profile->params;
+
+	for ( ; action->type != RTE_FLOW_ACTION_TYPE_END; action++) {
+		if (action->type == RTE_FLOW_ACTION_TYPE_VOID)
+			continue;
+
+		switch (action->type) {
+		case RTE_FLOW_ACTION_TYPE_JUMP:
+		{
+			const struct rte_flow_action_jump *conf = action->conf;
+			struct flow_attr_map *map;
+
+			if (conf == NULL)
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					action,
+					"JUMP: Null configuration");
+
+			if (n_jump_queue_rss_drop)
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					action,
+					"Only one termination action is"
+					" allowed per flow");
+
+			if ((params->action_mask &
+				(1LLU << RTE_TABLE_ACTION_FWD)) == 0)
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL,
+					"JUMP action not enabled for this table");
+
+			n_jump_queue_rss_drop = 1;
+
+			map = flow_attr_map_get(softnic,
+				conf->group,
+				attr->ingress);
+			if (map == NULL || map->valid == 0)
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL,
+					"JUMP: Invalid group mapping");
+
+			if (strcmp(pipeline->name, map->pipeline_name) != 0)
+				return rte_flow_error_set(error,
+					ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL,
+					"JUMP: Jump to table in different pipeline");
+
+			/* RTE_TABLE_ACTION_FWD */
+			rule_action->fwd.action = RTE_PIPELINE_ACTION_TABLE;
+			rule_action->fwd.id = map->table_id;
+			rule_action->action_mask |= 1 << RTE_TABLE_ACTION_FWD;
+			break;
+		} /* RTE_FLOW_ACTION_TYPE_JUMP */
+
+		case RTE_FLOW_ACTION_TYPE_QUEUE:
+		{
+			char name[NAME_SIZE];
+			struct rte_eth_dev *dev;
+			const struct rte_flow_action_queue *conf = action->conf;
+			uint32_t port_id;
+			int status;
+
+			if (conf == NULL)
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					action,
+					"QUEUE: Null configuration");
+
+			if (n_jump_queue_rss_drop)
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					action,
+					"Only one termination action is allowed"
+					" per flow");
+
+			if ((params->action_mask &
+				(1LLU << RTE_TABLE_ACTION_FWD)) == 0)
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL,
+					"QUEUE action not enabled for this table");
+
+			n_jump_queue_rss_drop = 1;
+
+			dev = ETHDEV(softnic);
+			if (dev == NULL ||
+				conf->index >= dev->data->nb_rx_queues)
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					action,
+					"QUEUE: Invalid RX queue ID");
+
+			sprintf(name, "RXQ%u", (uint32_t)conf->index);
+
+			status = softnic_pipeline_port_out_find(softnic,
+				pipeline->name,
+				name,
+				&port_id);
+			if (status)
+				return rte_flow_error_set(error,
+					ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					action,
+					"QUEUE: RX queue not accessible from this pipeline");
+
+			/* RTE_TABLE_ACTION_FWD */
+			rule_action->fwd.action = RTE_PIPELINE_ACTION_PORT;
+			rule_action->fwd.id = port_id;
+			rule_action->action_mask |= 1 << RTE_TABLE_ACTION_FWD;
+			break;
+		} /*RTE_FLOW_ACTION_TYPE_QUEUE */
+
+		case RTE_FLOW_ACTION_TYPE_RSS:
+		{
+			const struct rte_flow_action_rss *conf = action->conf;
+			uint32_t i;
+
+			if (conf == NULL)
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					action,
+					"RSS: Null configuration");
+
+			if (!rte_is_power_of_2(conf->queue_num))
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					conf,
+					"RSS: Number of queues must be a power of 2");
+
+			if (conf->queue_num > RTE_DIM(rule_action->lb.out))
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					conf,
+					"RSS: Number of queues too big");
+
+			if (n_jump_queue_rss_drop)
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					action,
+					"Only one termination action is allowed per flow");
+
+			if (((params->action_mask &
+				(1LLU << RTE_TABLE_ACTION_FWD)) == 0) ||
+				((params->action_mask &
+				(1LLU << RTE_TABLE_ACTION_LB)) == 0))
+				return rte_flow_error_set(error,
+					ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL,
+					"RSS action not supported by this table");
+
+			if (params->lb.out_offset !=
+				pipeline->params.offset_port_id)
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL,
+					"RSS action not supported by this pipeline");
+
+			n_jump_queue_rss_drop = 1;
+
+			/* RTE_TABLE_ACTION_LB */
+			for (i = 0; i < conf->queue_num; i++) {
+				char name[NAME_SIZE];
+				struct rte_eth_dev *dev;
+				uint32_t port_id;
+				int status;
+
+				dev = ETHDEV(softnic);
+				if (dev == NULL ||
+					conf->queue[i] >=
+						dev->data->nb_rx_queues)
+					return rte_flow_error_set(error,
+						EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						action,
+						"RSS: Invalid RX queue ID");
+
+				sprintf(name, "RXQ%u",
+					(uint32_t)conf->queue[i]);
+
+				status = softnic_pipeline_port_out_find(softnic,
+					pipeline->name,
+					name,
+					&port_id);
+				if (status)
+					return rte_flow_error_set(error,
+						ENOTSUP,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						action,
+						"RSS: RX queue not accessible from this pipeline");
+
+				rule_action->lb.out[i] = port_id;
+			}
+
+			for ( ; i < RTE_DIM(rule_action->lb.out); i++)
+				rule_action->lb.out[i] =
+				rule_action->lb.out[i % conf->queue_num];
+
+			rule_action->action_mask |= 1 << RTE_TABLE_ACTION_LB;
+
+			/* RTE_TABLE_ACTION_FWD */
+			rule_action->fwd.action = RTE_PIPELINE_ACTION_PORT_META;
+			rule_action->action_mask |= 1 << RTE_TABLE_ACTION_FWD;
+			break;
+		} /* RTE_FLOW_ACTION_TYPE_RSS */
+
+		case RTE_FLOW_ACTION_TYPE_DROP:
+		{
+			const void *conf = action->conf;
+
+			if (conf != NULL)
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					action,
+					"DROP: No configuration required");
+
+			if (n_jump_queue_rss_drop)
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					action,
+					"Only one termination action is allowed per flow");
+			if ((params->action_mask &
+				(1LLU << RTE_TABLE_ACTION_FWD)) == 0)
+				return rte_flow_error_set(error,
+					ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL,
+					"DROP action not supported by this table");
+
+			n_jump_queue_rss_drop = 1;
+
+			/* RTE_TABLE_ACTION_FWD */
+			rule_action->fwd.action = RTE_PIPELINE_ACTION_DROP;
+			rule_action->action_mask |= 1 << RTE_TABLE_ACTION_FWD;
+			break;
+		} /* RTE_FLOW_ACTION_TYPE_DROP */
+
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+		{
+			const struct rte_flow_action_count *conf = action->conf;
+
+			if (conf == NULL)
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					action,
+					"COUNT: Null configuration");
+
+			if (conf->shared)
+				return rte_flow_error_set(error,
+					ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					conf,
+					"COUNT: Shared counters not supported");
+
+			if (n_count)
+				return rte_flow_error_set(error,
+					ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					action,
+					"Only one COUNT action per flow");
+
+			if ((params->action_mask &
+				(1LLU << RTE_TABLE_ACTION_STATS)) == 0)
+				return rte_flow_error_set(error,
+					ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL,
+					"COUNT action not supported by this table");
+
+			n_count = 1;
+
+			/* RTE_TABLE_ACTION_STATS */
+			rule_action->stats.n_packets = 0;
+			rule_action->stats.n_bytes = 0;
+			rule_action->action_mask |= 1 << RTE_TABLE_ACTION_STATS;
+			break;
+		} /* RTE_FLOW_ACTION_TYPE_COUNT */
+
+		default:
+			return -ENOTSUP;
+		}
+	}
+
+	if (n_jump_queue_rss_drop == 0)
+		return rte_flow_error_set(error,
+			EINVAL,
+			RTE_FLOW_ERROR_TYPE_ACTION,
+			action,
+			"Flow does not have any terminating action");
+
+	return 0;
+}
+
+static int
 pmd_flow_validate(struct rte_eth_dev *dev,
 		const struct rte_flow_attr *attr,
 		const struct rte_flow_item item[],
@@ -1026,6 +1363,7 @@ pmd_flow_validate(struct rte_eth_dev *dev,
 		struct rte_flow_error *error)
 {
 	struct softnic_table_rule_match rule_match;
+	struct softnic_table_rule_action rule_action;
 
 	struct pmd_internals *softnic = dev->data->dev_private;
 	struct pipeline *pipeline;
@@ -1087,6 +1425,18 @@ pmd_flow_validate(struct rte_eth_dev *dev,
 			item,
 			&rule_match,
 			error);
+	if (status)
+		return status;
+
+	/* Rule action. */
+	memset(&rule_action, 0, sizeof(rule_action));
+	status = flow_rule_action_get(softnic,
+		pipeline,
+		table,
+		attr,
+		action,
+		&rule_action,
+		error);
 	if (status)
 		return status;
 
