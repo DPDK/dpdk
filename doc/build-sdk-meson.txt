@@ -85,6 +85,8 @@ Project-specific options are passed used -Doption=value::
 
 	meson -Dmax_lcores=8 smallbuild  # scale build for smaller systems
 
+	meson -Denable_docs=true fullbuild  # build and install docs
+
 Examples of setting the same options using meson configure::
 
 	meson configure -Dwerror=true

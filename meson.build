@@ -34,6 +34,9 @@ subdir('usertools')
 subdir('app')
 subdir('test')
 
+# build docs
+subdir('doc')
+
 # build any examples explicitly requested - useful for developers
 if get_option('examples') != ''
 	subdir('examples')
