@@ -298,6 +298,106 @@ flow_item_is_proto(enum rte_flow_item_type type,
 }
 
 static int
+flow_item_raw_preprocess(const struct rte_flow_item *item,
+	union flow_item *item_spec,
+	union flow_item *item_mask,
+	size_t *item_size,
+	int *item_disabled,
+	struct rte_flow_error *error)
+{
+	const struct rte_flow_item_raw *item_raw_spec = item->spec;
+	const struct rte_flow_item_raw *item_raw_mask = item->mask;
+	const uint8_t *pattern;
+	const uint8_t *pattern_mask;
+	uint8_t *spec = (uint8_t *)item_spec;
+	uint8_t *mask = (uint8_t *)item_mask;
+	size_t pattern_length, pattern_offset, i;
+	int disabled;
+
+	if (!item->spec)
+		return rte_flow_error_set(error,
+			ENOTSUP,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			item,
+			"RAW: Null specification");
+
+	if (item->last)
+		return rte_flow_error_set(error,
+			ENOTSUP,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			item,
+			"RAW: Range not allowed (last must be NULL)");
+
+	if (item_raw_spec->relative == 0)
+		return rte_flow_error_set(error,
+			ENOTSUP,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			item,
+			"RAW: Absolute offset not supported");
+
+	if (item_raw_spec->search)
+		return rte_flow_error_set(error,
+			ENOTSUP,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			item,
+			"RAW: Search not supported");
+
+	if (item_raw_spec->offset < 0)
+		return rte_flow_error_set(error,
+			ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM,
+			item,
+			"RAW: Negative offset not supported");
+
+	if (item_raw_spec->length == 0)
+		return rte_flow_error_set(error,
+			ENOTSUP,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			item,
+			"RAW: Zero pattern length");
+
+	if (item_raw_spec->offset + item_raw_spec->length >
+		TABLE_RULE_MATCH_SIZE_MAX)
+		return rte_flow_error_set(error,
+			ENOTSUP,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			item,
+			"RAW: Item too big");
+
+	if (!item_raw_spec->pattern && item_raw_mask && item_raw_mask->pattern)
+		return rte_flow_error_set(error,
+			ENOTSUP,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			item,
+			"RAW: Non-NULL pattern mask not allowed with NULL pattern");
+
+	pattern = item_raw_spec->pattern;
+	pattern_mask = (item_raw_mask) ? item_raw_mask->pattern : NULL;
+	pattern_length = (size_t)item_raw_spec->length;
+	pattern_offset = (size_t)item_raw_spec->offset;
+
+	disabled = 0;
+	if (pattern_mask == NULL)
+		disabled = 1;
+	else
+		for (i = 0; i < pattern_length; i++)
+			if ((pattern)[i])
+				disabled = 1;
+
+	memset(spec, 0, TABLE_RULE_MATCH_SIZE_MAX);
+	if (pattern)
+		memcpy(&spec[pattern_offset], pattern, pattern_length);
+
+	memset(mask, 0, TABLE_RULE_MATCH_SIZE_MAX);
+	if (pattern_mask)
+		memcpy(&mask[pattern_offset], pattern_mask, pattern_length);
+
+	*item_size = pattern_offset + pattern_length;
+	*item_disabled = disabled;
+
+	return 0;
+}
+
+static int
 flow_item_proto_preprocess(const struct rte_flow_item *item,
 	union flow_item *item_spec,
 	union flow_item *item_mask,
@@ -316,6 +416,14 @@ flow_item_proto_preprocess(const struct rte_flow_item *item,
 			RTE_FLOW_ERROR_TYPE_ITEM,
 			item,
 			"Item type not supported");
+
+	if (item->type == RTE_FLOW_ITEM_TYPE_RAW)
+		return flow_item_raw_preprocess(item,
+			item_spec,
+			item_mask,
+			item_size,
+			item_disabled,
+			error);
 
 	/* spec */
 	if (!item->spec) {
