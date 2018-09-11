@@ -569,6 +569,8 @@ flow_attr_map_get(struct pmd_internals *softnic,
 		uint32_t group_id,
 		int ingress);
 
+extern const struct rte_flow_ops pmd_flow_ops;
+
 /**
  * MEMPOOL
  */
