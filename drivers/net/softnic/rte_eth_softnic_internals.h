@@ -20,6 +20,7 @@
 
 #include <rte_ethdev_driver.h>
 #include <rte_tm_driver.h>
+#include <rte_flow_driver.h>
 
 #include "rte_eth_softnic.h"
 #include "conn.h"
@@ -42,6 +43,13 @@ struct pmd_params {
 		uint16_t qsize[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE];
 	} tm;
 };
+
+/**
+ * Ethdev Flow API
+ */
+struct rte_flow;
+
+TAILQ_HEAD(flow_list, rte_flow);
 
 /**
  * MEMPOOL
@@ -760,6 +768,15 @@ struct softnic_table_rule_action {
 	struct rte_table_action_ttl_params ttl;
 	struct rte_table_action_stats_params stats;
 	struct rte_table_action_time_params time;
+};
+
+struct rte_flow {
+	TAILQ_ENTRY(rte_flow) node;
+	struct softnic_table_rule_match match;
+	struct softnic_table_rule_action action;
+	void *data;
+	struct pipeline *pipeline;
+	uint32_t table_id;
 };
 
 int
