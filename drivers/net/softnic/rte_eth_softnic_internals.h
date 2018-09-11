@@ -18,6 +18,7 @@
 #include <rte_table_action.h>
 #include <rte_pipeline.h>
 
+#include <rte_ethdev_core.h>
 #include <rte_ethdev_driver.h>
 #include <rte_tm_driver.h>
 #include <rte_flow_driver.h>
@@ -536,6 +537,22 @@ struct pmd_internals {
 	struct softnic_thread thread[RTE_MAX_LCORE];
 	struct softnic_thread_data thread_data[RTE_MAX_LCORE];
 };
+
+static inline struct rte_eth_dev *
+ETHDEV(struct pmd_internals *softnic)
+{
+	uint16_t port_id;
+	int status;
+
+	if (softnic == NULL)
+		return NULL;
+
+	status = rte_eth_dev_get_port_by_name(softnic->params.name, &port_id);
+	if (status)
+		return NULL;
+
+	return &rte_eth_devices[port_id];
+}
 
 /**
  * Ethdev Flow API
