@@ -415,10 +415,15 @@ struct softnic_port_in {
 	struct rte_port_in_action *a;
 };
 
+struct softnic_port_out {
+	struct softnic_port_out_params params;
+};
+
 struct softnic_table {
 	struct softnic_table_params params;
 	struct softnic_table_action_profile *ap;
 	struct rte_table_action *a;
+	struct flow_list flows;
 };
 
 struct pipeline {
@@ -426,7 +431,9 @@ struct pipeline {
 	char name[NAME_SIZE];
 
 	struct rte_pipeline *p;
+	struct pipeline_params params;
 	struct softnic_port_in port_in[RTE_PIPELINE_PORT_IN_MAX];
+	struct softnic_port_out port_out[RTE_PIPELINE_PORT_OUT_MAX];
 	struct softnic_table table[RTE_PIPELINE_TABLE_MAX];
 	uint32_t n_ports_in;
 	uint32_t n_ports_out;
@@ -724,6 +731,12 @@ int
 softnic_pipeline_port_out_create(struct pmd_internals *p,
 	const char *pipeline_name,
 	struct softnic_port_out_params *params);
+
+int
+softnic_pipeline_port_out_find(struct pmd_internals *softnic,
+		const char *pipeline_name,
+		const char *name,
+		uint32_t *port_id);
 
 int
 softnic_pipeline_table_create(struct pmd_internals *p,

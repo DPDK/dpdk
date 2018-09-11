@@ -42,17 +42,41 @@ softnic_pipeline_init(struct pmd_internals *p)
 	return 0;
 }
 
+static void
+softnic_pipeline_table_free(struct softnic_table *table)
+{
+	for ( ; ; ) {
+		struct rte_flow *flow;
+
+		flow = TAILQ_FIRST(&table->flows);
+		if (flow == NULL)
+			break;
+
+		TAILQ_REMOVE(&table->flows, flow, node);
+		free(flow);
+	}
+}
+
 void
 softnic_pipeline_free(struct pmd_internals *p)
 {
 	for ( ; ; ) {
 		struct pipeline *pipeline;
+		uint32_t table_id;
 
 		pipeline = TAILQ_FIRST(&p->pipeline_list);
 		if (pipeline == NULL)
 			break;
 
 		TAILQ_REMOVE(&p->pipeline_list, pipeline, node);
+
+		for (table_id = 0; table_id < pipeline->n_tables; table_id++) {
+			struct softnic_table *table =
+				&pipeline->table[table_id];
+
+			softnic_pipeline_table_free(table);
+		}
+
 		rte_ring_free(pipeline->msgq_req);
 		rte_ring_free(pipeline->msgq_rsp);
 		rte_pipeline_free(pipeline->p);
@@ -159,6 +183,7 @@ softnic_pipeline_create(struct pmd_internals *softnic,
 	/* Node fill in */
 	strlcpy(pipeline->name, name, sizeof(pipeline->name));
 	pipeline->p = p;
+	memcpy(&pipeline->params, params, sizeof(*params));
 	pipeline->n_ports_in = 0;
 	pipeline->n_ports_out = 0;
 	pipeline->n_tables = 0;
@@ -400,6 +425,7 @@ softnic_pipeline_port_out_create(struct pmd_internals *softnic,
 	} pp_nodrop;
 
 	struct pipeline *pipeline;
+	struct softnic_port_out *port_out;
 	uint32_t port_id;
 	int status;
 
@@ -541,6 +567,8 @@ softnic_pipeline_port_out_create(struct pmd_internals *softnic,
 		return -1;
 
 	/* Pipeline */
+	port_out = &pipeline->port_out[pipeline->n_ports_out];
+	memcpy(&port_out->params, params, sizeof(*params));
 	pipeline->n_ports_out++;
 
 	return 0;
@@ -959,7 +987,36 @@ softnic_pipeline_table_create(struct pmd_internals *softnic,
 	memcpy(&table->params, params, sizeof(*params));
 	table->ap = ap;
 	table->a = action;
+	TAILQ_INIT(&table->flows);
 	pipeline->n_tables++;
 
 	return 0;
+}
+
+int
+softnic_pipeline_port_out_find(struct pmd_internals *softnic,
+		const char *pipeline_name,
+		const char *name,
+		uint32_t *port_id)
+{
+	struct pipeline *pipeline;
+	uint32_t i;
+
+	if (softnic == NULL ||
+			pipeline_name == NULL ||
+			name == NULL ||
+			port_id == NULL)
+		return -1;
+
+	pipeline = softnic_pipeline_find(softnic, pipeline_name);
+	if (pipeline == NULL)
+		return -1;
+
+	for (i = 0; i < pipeline->n_ports_out; i++)
+		if (strcmp(pipeline->port_out[i].params.dev_name, name) == 0) {
+			*port_id = i;
+			return 0;
+		}
+
+	return -1;
 }
