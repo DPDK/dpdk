@@ -1654,8 +1654,63 @@ pmd_flow_destroy(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+pmd_flow_query(struct rte_eth_dev *dev __rte_unused,
+	struct rte_flow *flow,
+	const struct rte_flow_action *action __rte_unused,
+	void *data,
+	struct rte_flow_error *error)
+{
+	struct rte_table_action_stats_counters stats;
+	struct softnic_table *table;
+	struct rte_flow_query_count *flow_stats = data;
+	int status;
+
+	/* Check input parameters. */
+	if (flow == NULL)
+		return rte_flow_error_set(error,
+			EINVAL,
+			RTE_FLOW_ERROR_TYPE_HANDLE,
+			NULL,
+			"Null flow");
+
+	if (data == NULL)
+		return rte_flow_error_set(error,
+			EINVAL,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			NULL,
+			"Null data");
+
+	table = &flow->pipeline->table[flow->table_id];
+
+	/* Rule stats read. */
+	status = rte_table_action_stats_read(table->a,
+		flow->data,
+		&stats,
+		flow_stats->reset);
+	if (status)
+		return rte_flow_error_set(error,
+			EINVAL,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			NULL,
+			"Pipeline table rule stats read failed");
+
+	/* Fill in flow stats. */
+	flow_stats->hits_set =
+		(table->ap->params.stats.n_packets_enabled) ? 1 : 0;
+	flow_stats->bytes_set =
+		(table->ap->params.stats.n_bytes_enabled) ? 1 : 0;
+	flow_stats->hits = stats.n_packets;
+	flow_stats->bytes = stats.n_bytes;
+
+	return 0;
+}
+
 const struct rte_flow_ops pmd_flow_ops = {
 	.validate = pmd_flow_validate,
 	.create = pmd_flow_create,
 	.destroy = pmd_flow_destroy,
+	.flush = NULL,
+	.query = pmd_flow_query,
+	.isolate = NULL,
 };
