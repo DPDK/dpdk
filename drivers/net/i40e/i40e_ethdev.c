@@ -292,6 +292,7 @@ static void i40e_stat_update_48(struct i40e_hw *hw,
 			       uint64_t *stat);
 static void i40e_pf_config_irq0(struct i40e_hw *hw, bool no_queue);
 static void i40e_dev_interrupt_handler(void *param);
+static void i40e_dev_alarm_handler(void *param);
 static int i40e_res_pool_init(struct i40e_res_pool_info *pool,
 				uint32_t base, uint32_t num);
 static void i40e_res_pool_destroy(struct i40e_res_pool_info *pool);
@@ -1200,6 +1201,8 @@ i40e_aq_debug_write_global_register(struct i40e_hw *hw,
 
 	return i40e_aq_debug_write_register(hw, reg_addr, reg_val, cmd_details);
 }
+
+#define I40E_ALARM_INTERVAL 50000 /* us */
 
 static int
 eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
@@ -2293,8 +2296,13 @@ i40e_dev_start(struct rte_eth_dev *dev)
 		i40e_dev_link_update(dev, 0);
 	}
 
-	/* enable uio intr after callback register */
-	rte_intr_enable(intr_handle);
+	if (dev->data->dev_conf.intr_conf.rxq == 0) {
+		rte_eal_alarm_set(I40E_ALARM_INTERVAL,
+				  i40e_dev_alarm_handler, dev);
+	} else {
+		/* enable uio intr after callback register */
+		rte_intr_enable(intr_handle);
+	}
 
 	i40e_filter_restore(pf);
 
@@ -2324,6 +2332,12 @@ i40e_dev_stop(struct rte_eth_dev *dev)
 
 	if (hw->adapter_stopped == 1)
 		return;
+
+	if (dev->data->dev_conf.intr_conf.rxq == 0) {
+		rte_eal_alarm_cancel(i40e_dev_alarm_handler, dev);
+		rte_intr_enable(intr_handle);
+	}
+
 	/* Disable all queues */
 	i40e_dev_switch_queues(pf, FALSE);
 
@@ -6550,6 +6564,55 @@ done:
 	/* Enable interrupt */
 	i40e_pf_enable_irq0(hw);
 	rte_intr_enable(dev->intr_handle);
+}
+
+static void
+i40e_dev_alarm_handler(void *param)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t icr0;
+
+	/* Disable interrupt */
+	i40e_pf_disable_irq0(hw);
+
+	/* read out interrupt causes */
+	icr0 = I40E_READ_REG(hw, I40E_PFINT_ICR0);
+
+	/* No interrupt event indicated */
+	if (!(icr0 & I40E_PFINT_ICR0_INTEVENT_MASK)) {
+		PMD_DRV_LOG(INFO, "No interrupt event");
+		goto done;
+	}
+	if (icr0 & I40E_PFINT_ICR0_ECC_ERR_MASK)
+		PMD_DRV_LOG(ERR, "ICR0: unrecoverable ECC error");
+	if (icr0 & I40E_PFINT_ICR0_MAL_DETECT_MASK)
+		PMD_DRV_LOG(ERR, "ICR0: malicious programming detected");
+	if (icr0 & I40E_PFINT_ICR0_GRST_MASK)
+		PMD_DRV_LOG(INFO, "ICR0: global reset requested");
+	if (icr0 & I40E_PFINT_ICR0_PCI_EXCEPTION_MASK)
+		PMD_DRV_LOG(INFO, "ICR0: PCI exception activated");
+	if (icr0 & I40E_PFINT_ICR0_STORM_DETECT_MASK)
+		PMD_DRV_LOG(INFO, "ICR0: a change in the storm control state");
+	if (icr0 & I40E_PFINT_ICR0_HMC_ERR_MASK)
+		PMD_DRV_LOG(ERR, "ICR0: HMC error");
+	if (icr0 & I40E_PFINT_ICR0_PE_CRITERR_MASK)
+		PMD_DRV_LOG(ERR, "ICR0: protocol engine critical error");
+
+	if (icr0 & I40E_PFINT_ICR0_VFLR_MASK) {
+		PMD_DRV_LOG(INFO, "ICR0: VF reset detected");
+		i40e_dev_handle_vfr_event(dev);
+	}
+	if (icr0 & I40E_PFINT_ICR0_ADMINQ_MASK) {
+		PMD_DRV_LOG(INFO, "ICR0: adminq event");
+		i40e_dev_handle_aq_msg(dev);
+	}
+
+done:
+	/* Enable interrupt */
+	i40e_pf_enable_irq0(hw);
+	rte_eal_alarm_set(I40E_ALARM_INTERVAL,
+			  i40e_dev_alarm_handler, dev);
 }
 
 int
