@@ -1616,7 +1616,46 @@ pmd_flow_create(struct rte_eth_dev *dev,
 	return flow;
 }
 
+static int
+pmd_flow_destroy(struct rte_eth_dev *dev,
+	struct rte_flow *flow,
+	struct rte_flow_error *error)
+{
+	struct pmd_internals *softnic = dev->data->dev_private;
+	struct softnic_table *table;
+	int status;
+
+	/* Check input parameters. */
+	if (flow == NULL)
+		return rte_flow_error_set(error,
+			EINVAL,
+			RTE_FLOW_ERROR_TYPE_HANDLE,
+			NULL,
+			"Null flow");
+
+	table = &flow->pipeline->table[flow->table_id];
+
+	/* Rule delete. */
+	status = softnic_pipeline_table_rule_delete(softnic,
+		flow->pipeline->name,
+		flow->table_id,
+		&flow->match);
+	if (status)
+		return rte_flow_error_set(error,
+			EINVAL,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			NULL,
+			"Pipeline table rule delete failed");
+
+	/* Flow delete. */
+	TAILQ_REMOVE(&table->flows, flow, node);
+	free(flow);
+
+	return 0;
+}
+
 const struct rte_flow_ops pmd_flow_ops = {
 	.validate = pmd_flow_validate,
 	.create = pmd_flow_create,
+	.destroy = pmd_flow_destroy,
 };
