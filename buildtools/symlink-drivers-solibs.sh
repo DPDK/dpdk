@@ -9,4 +9,4 @@
 # parameters to script are paths relative to install prefix:
 # 1. directory containing driver files e.g. lib64/dpdk/drivers
 # 2. directory for installed regular libs e.g. lib64
-ln -sf ${DESTDIR}/${MESON_INSTALL_PREFIX}/$1/* ${DESTDIR}/${MESON_INSTALL_PREFIX}/$2
+ln -rsf ${DESTDIR}/${MESON_INSTALL_PREFIX}/$1/* ${DESTDIR}/${MESON_INSTALL_PREFIX}/$2
