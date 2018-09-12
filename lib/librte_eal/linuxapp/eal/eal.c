@@ -825,7 +825,8 @@ rte_eal_init(int argc, char **argv)
 	int i, fctret, ret;
 	pthread_t thread_id;
 	static rte_atomic32_t run_once = RTE_ATOMIC32_INIT(0);
-	const char *logid;
+	const char *p;
+	static char logid[PATH_MAX];
 	char cpuset[RTE_CPU_AFFINITY_STR_LEN];
 	char thread_name[RTE_MAX_THREAD_NAME_LEN];
 
@@ -842,9 +843,8 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
-	logid = strrchr(argv[0], '/');
-	logid = strdup(logid ? logid + 1: argv[0]);
-
+	p = strrchr(argv[0], '/');
+	strlcpy(logid, p ? p + 1 : argv[0], sizeof(logid));
 	thread_id = pthread_self();
 
 	eal_reset_internal_config(&internal_config);
