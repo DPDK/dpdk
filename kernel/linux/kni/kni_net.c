@@ -597,7 +597,7 @@ kni_net_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 	pr_debug("kni_net_ioctl group:%d cmd:%d\n",
 		((struct kni_dev *)netdev_priv(dev))->group_id, cmd);
 
-	return 0;
+	return -EOPNOTSUPP;
 }
 
 static void
