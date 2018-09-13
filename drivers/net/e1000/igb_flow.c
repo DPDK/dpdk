@@ -1307,6 +1307,7 @@ igb_parse_rss_filter(struct rte_eth_dev *dev,
 			struct igb_rte_flow_rss_conf *rss_conf,
 			struct rte_flow_error *error)
 {
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	const struct rte_flow_action *act;
 	const struct rte_flow_action_rss *rss;
 	uint16_t n, index;
@@ -1357,11 +1358,14 @@ igb_parse_rss_filter(struct rte_eth_dev *dev,
 		return rte_flow_error_set
 			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION, act,
 			 "RSS hash key must be exactly 40 bytes");
-	if (rss->queue_num > RTE_DIM(rss_conf->queue))
+	if (((hw->mac.type == e1000_82576) &&
+	     (rss->queue_num > IGB_MAX_RX_QUEUE_NUM_82576)) ||
+	    ((hw->mac.type != e1000_82576) &&
+	     (rss->queue_num > IGB_MAX_RX_QUEUE_NUM)))
 		return rte_flow_error_set
 			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION, act,
 			 "too many queues for RSS context");
-	if (igb_rss_conf_init(rss_conf, rss))
+	if (igb_rss_conf_init(dev, rss_conf, rss))
 		return rte_flow_error_set
 			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION, act,
 			 "RSS context initialization failure");
@@ -1574,7 +1578,7 @@ igb_flow_create(struct rte_eth_dev *dev,
 				PMD_DRV_LOG(ERR, "failed to allocate memory");
 				goto out;
 			}
-			igb_rss_conf_init(&rss_filter_ptr->filter_info,
+			igb_rss_conf_init(dev, &rss_filter_ptr->filter_info,
 					  &rss_conf.conf);
 			TAILQ_INSERT_TAIL(&igb_filter_rss_list,
 				rss_filter_ptr, entries);

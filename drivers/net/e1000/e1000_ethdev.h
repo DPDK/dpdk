@@ -236,7 +236,8 @@ struct igb_ethertype_filter {
 struct igb_rte_flow_rss_conf {
 	struct rte_flow_action_rss conf; /**< RSS parameters. */
 	uint8_t key[IGB_HKEY_MAX_INDEX * sizeof(uint32_t)]; /* Hash key. */
-	uint16_t queue[IGB_MAX_RX_QUEUE_NUM]; /**< Queues indices to use. */
+	/* Queues indices to use. */
+	uint16_t queue[IGB_MAX_RX_QUEUE_NUM_82576];
 };
 
 /*
@@ -506,7 +507,8 @@ int eth_igb_syn_filter_set(struct rte_eth_dev *dev,
 int eth_igb_add_del_flex_filter(struct rte_eth_dev *dev,
 			struct rte_eth_flex_filter *filter,
 			bool add);
-int igb_rss_conf_init(struct igb_rte_flow_rss_conf *out,
+int igb_rss_conf_init(struct rte_eth_dev *dev,
+		      struct igb_rte_flow_rss_conf *out,
 		      const struct rte_flow_action_rss *in);
 int igb_action_rss_same(const struct rte_flow_action_rss *comp,
 			const struct rte_flow_action_rss *with);

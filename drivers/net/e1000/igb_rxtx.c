@@ -2851,11 +2851,17 @@ igb_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 }
 
 int
-igb_rss_conf_init(struct igb_rte_flow_rss_conf *out,
+igb_rss_conf_init(struct rte_eth_dev *dev,
+		  struct igb_rte_flow_rss_conf *out,
 		  const struct rte_flow_action_rss *in)
 {
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
 	if (in->key_len > RTE_DIM(out->key) ||
-	    in->queue_num > RTE_DIM(out->queue))
+	    ((hw->mac.type == e1000_82576) &&
+	     (in->queue_num > IGB_MAX_RX_QUEUE_NUM_82576)) ||
+	    ((hw->mac.type != e1000_82576) &&
+	     (in->queue_num > IGB_MAX_RX_QUEUE_NUM)))
 		return -EINVAL;
 	out->conf = (struct rte_flow_action_rss){
 		.func = in->func,
@@ -2944,7 +2950,7 @@ igb_config_rss_filter(struct rte_eth_dev *dev,
 		rss_conf.rss_key = rss_intel_key; /* Default hash key */
 	igb_hw_rss_hash_set(hw, &rss_conf);
 
-	if (igb_rss_conf_init(&filter_info->rss_info, &conf->conf))
+	if (igb_rss_conf_init(dev, &filter_info->rss_info, &conf->conf))
 		return -EINVAL;
 
 	return 0;
