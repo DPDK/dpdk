@@ -199,9 +199,7 @@ i40e_rx_vec_dev_conf_condition_check_default(struct rte_eth_dev *dev)
 	if (fconf->mode != RTE_FDIR_MODE_NONE)
 		return -1;
 
-	 /* - no csum error report support
-	 * - no header split support
-	 */
+	 /* no header split support */
 	if (rxmode->offloads & DEV_RX_OFFLOAD_HEADER_SPLIT)
 		return -1;
 
