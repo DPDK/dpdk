@@ -233,6 +233,8 @@ sfc_tx_qfini(struct sfc_adapter *sa, unsigned int sw_index)
 	sfc_log_init(sa, "TxQ = %u", sw_index);
 
 	SFC_ASSERT(sw_index < sa->txq_count);
+	sa->eth_dev->data->tx_queues[sw_index] = NULL;
+
 	txq_info = &sa->txq_info[sw_index];
 
 	txq = txq_info->txq;

@@ -498,9 +498,6 @@ sfc_tx_queue_release(void *queue)
 
 	sfc_adapter_lock(sa);
 
-	SFC_ASSERT(sw_index < sa->eth_dev->data->nb_tx_queues);
-	sa->eth_dev->data->tx_queues[sw_index] = NULL;
-
 	sfc_tx_qfini(sa, sw_index);
 
 	sfc_adapter_unlock(sa);
