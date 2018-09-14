@@ -22,8 +22,10 @@ LDLIBS += -lrte_eal -lrte_eventdev
 LDLIBS += -lrte_bus_fslmc -lrte_mempool_dpaa2 -lrte_pmd_dpaa2
 LDLIBS += -lrte_bus_vdev
 LDLIBS += -lrte_common_dpaax
+LDLIBS += -lrte_pmd_dpaa2_sec
 CFLAGS += -I$(RTE_SDK)/drivers/net/dpaa2
 CFLAGS += -I$(RTE_SDK)/drivers/net/dpaa2/mc
+CFLAGS += -I$(RTE_SDK)/drivers/crypto/dpaa2_sec
 
 # versioning export map
 EXPORT_MAP := rte_pmd_dpaa2_event_version.map

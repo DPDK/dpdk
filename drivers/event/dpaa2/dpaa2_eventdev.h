@@ -42,6 +42,15 @@ enum {
 		(RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT | \
 		RTE_EVENT_ETH_RX_ADAPTER_CAP_MULTI_EVENTQ | \
 		RTE_EVENT_ETH_RX_ADAPTER_CAP_OVERRIDE_FLOW_ID)
+
+/**< Crypto Rx adapter cap to return If the packet transfers from
+ * the cryptodev to eventdev with DPAA2 devices.
+ */
+#define RTE_EVENT_CRYPTO_ADAPTER_DPAA2_CAP \
+		(RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_OP_NEW | \
+		RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_QP_EV_BIND | \
+		RTE_EVENT_CRYPTO_ADAPTER_CAP_SESSION_PRIVATE_DATA)
+
 /**< Ethernet Rx adapter cap to return If the packet transfers from
  * the ethdev to eventdev with DPAA2 devices.
  */
