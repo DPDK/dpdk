@@ -1103,6 +1103,7 @@ sfc_rx_qfini(struct sfc_adapter *sa, unsigned int sw_index)
 	struct sfc_rxq *rxq;
 
 	SFC_ASSERT(sw_index < sa->rxq_count);
+	sa->eth_dev->data->rx_queues[sw_index] = NULL;
 
 	rxq_info = &sa->rxq_info[sw_index];
 

@@ -444,8 +444,6 @@ sfc_rx_queue_release(void *queue)
 
 	sfc_log_init(sa, "RxQ=%u", sw_index);
 
-	sa->eth_dev->data->rx_queues[sw_index] = NULL;
-
 	sfc_rx_qfini(sa, sw_index);
 
 	sfc_adapter_unlock(sa);
