@@ -469,11 +469,11 @@ update_datapath(struct ifcvf_internal *internal)
 		if (ret)
 			goto err;
 
-		ret = setup_notify_relay(internal);
+		ret = vdpa_ifcvf_start(internal);
 		if (ret)
 			goto err;
 
-		ret = vdpa_ifcvf_start(internal);
+		ret = setup_notify_relay(internal);
 		if (ret)
 			goto err;
 
@@ -481,11 +481,11 @@ update_datapath(struct ifcvf_internal *internal)
 	} else if (rte_atomic32_read(&internal->running) &&
 		   (!rte_atomic32_read(&internal->started) ||
 		    !rte_atomic32_read(&internal->dev_attached))) {
-		vdpa_ifcvf_stop(internal);
-
 		ret = unset_notify_relay(internal);
 		if (ret)
 			goto err;
+
+		vdpa_ifcvf_stop(internal);
 
 		ret = vdpa_disable_vfio_intr(internal);
 		if (ret)
