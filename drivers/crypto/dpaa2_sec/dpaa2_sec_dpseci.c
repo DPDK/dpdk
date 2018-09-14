@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016 NXP
+ *   Copyright 2016-2018 NXP
  *
  */
 
@@ -10,7 +10,6 @@
 
 #include <rte_mbuf.h>
 #include <rte_cryptodev.h>
-#include <rte_security_driver.h>
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 #include <rte_string_fns.h>
@@ -29,6 +28,7 @@
 #include <fsl_mc_sys.h>
 
 #include "dpaa2_sec_priv.h"
+#include "dpaa2_sec_event.h"
 #include "dpaa2_sec_logs.h"
 
 /* Required types */
@@ -2852,6 +2852,92 @@ void dpaa2_sec_stats_reset(struct rte_cryptodev *dev)
 		qp[i]->rx_vq.tx_pkts = 0;
 		qp[i]->rx_vq.err_pkts = 0;
 	}
+}
+
+static void __attribute__((hot))
+dpaa2_sec_process_parallel_event(struct qbman_swp *swp,
+				 const struct qbman_fd *fd,
+				 const struct qbman_result *dq,
+				 struct dpaa2_queue *rxq,
+				 struct rte_event *ev)
+{
+	/* Prefetching mbuf */
+	rte_prefetch0((void *)(size_t)(DPAA2_GET_FD_ADDR(fd)-
+		rte_dpaa2_bpid_info[DPAA2_GET_FD_BPID(fd)].meta_data_size));
+
+	/* Prefetching ipsec crypto_op stored in priv data of mbuf */
+	rte_prefetch0((void *)(size_t)(DPAA2_GET_FD_ADDR(fd)-64));
+
+	ev->flow_id = rxq->ev.flow_id;
+	ev->sub_event_type = rxq->ev.sub_event_type;
+	ev->event_type = RTE_EVENT_TYPE_CRYPTODEV;
+	ev->op = RTE_EVENT_OP_NEW;
+	ev->sched_type = rxq->ev.sched_type;
+	ev->queue_id = rxq->ev.queue_id;
+	ev->priority = rxq->ev.priority;
+	ev->event_ptr = sec_fd_to_mbuf(fd, ((struct rte_cryptodev *)
+				(rxq->dev))->driver_id);
+
+	qbman_swp_dqrr_consume(swp, dq);
+}
+
+int
+dpaa2_sec_eventq_attach(const struct rte_cryptodev *dev,
+		int qp_id,
+		uint16_t dpcon_id,
+		const struct rte_event *event)
+{
+	struct dpaa2_sec_dev_private *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpseci = (struct fsl_mc_io *)priv->hw;
+	struct dpaa2_sec_qp *qp = dev->data->queue_pairs[qp_id];
+	struct dpseci_rx_queue_cfg cfg;
+	int ret;
+
+	if (event->sched_type == RTE_SCHED_TYPE_PARALLEL)
+		qp->rx_vq.cb = dpaa2_sec_process_parallel_event;
+	else
+		return -EINVAL;
+
+	memset(&cfg, 0, sizeof(struct dpseci_rx_queue_cfg));
+	cfg.options = DPSECI_QUEUE_OPT_DEST;
+	cfg.dest_cfg.dest_type = DPSECI_DEST_DPCON;
+	cfg.dest_cfg.dest_id = dpcon_id;
+	cfg.dest_cfg.priority = event->priority;
+
+	cfg.options |= DPSECI_QUEUE_OPT_USER_CTX;
+	cfg.user_ctx = (size_t)(qp);
+
+	ret = dpseci_set_rx_queue(dpseci, CMD_PRI_LOW, priv->token,
+				  qp_id, &cfg);
+	if (ret) {
+		RTE_LOG(ERR, PMD, "Error in dpseci_set_queue: ret: %d\n", ret);
+		return ret;
+	}
+
+	memcpy(&qp->rx_vq.ev, event, sizeof(struct rte_event));
+
+	return 0;
+}
+
+int
+dpaa2_sec_eventq_detach(const struct rte_cryptodev *dev,
+			int qp_id)
+{
+	struct dpaa2_sec_dev_private *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpseci = (struct fsl_mc_io *)priv->hw;
+	struct dpseci_rx_queue_cfg cfg;
+	int ret;
+
+	memset(&cfg, 0, sizeof(struct dpseci_rx_queue_cfg));
+	cfg.options = DPSECI_QUEUE_OPT_DEST;
+	cfg.dest_cfg.dest_type = DPSECI_DEST_NONE;
+
+	ret = dpseci_set_rx_queue(dpseci, CMD_PRI_LOW, priv->token,
+				  qp_id, &cfg);
+	if (ret)
+		RTE_LOG(ERR, PMD, "Error in dpseci_set_queue: ret: %d\n", ret);
+
+	return ret;
 }
 
 static struct rte_cryptodev_ops crypto_ops = {
