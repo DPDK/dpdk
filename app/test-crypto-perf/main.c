@@ -421,6 +421,10 @@ cperf_check_test_vector(struct cperf_options *opts,
 			return -1;
 		if (test_vec->ciphertext.length < opts->max_buffer_size)
 			return -1;
+		if (test_vec->aead_key.data == NULL)
+			return -1;
+		if (test_vec->aead_key.length != opts->aead_key_sz)
+			return -1;
 		if (test_vec->aead_iv.data == NULL)
 			return -1;
 		if (test_vec->aead_iv.length != opts->aead_iv_sz)
