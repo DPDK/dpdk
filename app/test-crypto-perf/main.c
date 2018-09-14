@@ -342,7 +342,9 @@ cperf_check_test_vector(struct cperf_options *opts,
 				return -1;
 			if (test_vec->ciphertext.length < opts->max_buffer_size)
 				return -1;
-			if (test_vec->cipher_iv.data == NULL)
+			/* Cipher IV is only required for some algorithms */
+			if (opts->cipher_iv_sz &&
+					test_vec->cipher_iv.data == NULL)
 				return -1;
 			if (test_vec->cipher_iv.length != opts->cipher_iv_sz)
 				return -1;
