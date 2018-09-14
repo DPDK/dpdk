@@ -357,7 +357,9 @@ cperf_check_test_vector(struct cperf_options *opts,
 				return -1;
 			if (test_vec->plaintext.length < opts->max_buffer_size)
 				return -1;
-			if (test_vec->auth_key.data == NULL)
+			/* Auth key is only required for some algorithms */
+			if (opts->auth_key_sz &&
+					test_vec->auth_key.data == NULL)
 				return -1;
 			if (test_vec->auth_key.length != opts->auth_key_sz)
 				return -1;
