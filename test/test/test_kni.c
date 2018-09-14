@@ -7,10 +7,11 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <dirent.h>
 
 #include "test.h"
 
-#ifndef RTE_LIBRTE_KNI
+#if !defined(RTE_EXEC_ENV_LINUXAPP) || !defined(RTE_LIBRTE_KNI)
 
 static int
 test_kni(void)
@@ -40,6 +41,8 @@ test_kni(void)
 
 #define IFCONFIG      "/sbin/ifconfig "
 #define TEST_KNI_PORT "test_kni_port"
+#define KNI_MODULE_PATH "/sys/module/rte_kni"
+#define KNI_MODULE_PARAM_LO KNI_MODULE_PATH"/parameters/lo_mode"
 #define KNI_TEST_MAX_PORTS 4
 /* The threshold number of mbufs to be transmitted or received. */
 #define KNI_NUM_MBUF_THRESHOLD 100
@@ -530,7 +533,7 @@ static int
 test_kni(void)
 {
 	int ret = -1;
-	uint16_t nb_ports, port_id;
+	uint16_t port_id;
 	struct rte_kni *kni;
 	struct rte_mempool *mp;
 	struct rte_kni_conf conf;
@@ -538,6 +541,20 @@ test_kni(void)
 	struct rte_kni_ops ops;
 	const struct rte_pci_device *pci_dev;
 	const struct rte_bus *bus;
+	FILE *fd;
+	DIR *dir;
+	char buf[16];
+
+	dir = opendir(KNI_MODULE_PATH);
+	if (!dir) {
+		if (errno == ENOENT) {
+			printf("Cannot run UT due to missing rte_kni module\n");
+			return -1;
+		}
+		printf("opendir: %s", strerror(errno));
+		return -1;
+	}
+	closedir(dir);
 
 	/* Initialize KNI subsytem */
 	rte_kni_init(KNI_TEST_MAX_PORTS);
@@ -550,12 +567,6 @@ test_kni(void)
 	mp = test_kni_create_mempool();
 	if (!mp) {
 		printf("fail to create mempool for kni\n");
-		return -1;
-	}
-
-	nb_ports = rte_eth_dev_count_avail();
-	if (nb_ports == 0) {
-		printf("no supported nic port found\n");
 		return -1;
 	}
 
@@ -587,9 +598,25 @@ test_kni(void)
 	rte_eth_promiscuous_enable(port_id);
 
 	/* basic test of kni processing */
-	ret = test_kni_processing(port_id, mp);
-	if (ret < 0)
-		goto fail;
+	fd = fopen(KNI_MODULE_PARAM_LO, "r");
+	if (fd == NULL) {
+		printf("fopen: %s", strerror(errno));
+		return -1;
+	}
+	memset(&buf, 0, sizeof(buf));
+	if (fgets(buf, sizeof(buf), fd)) {
+		if (!strncmp(buf, "lo_mode_fifo", strlen("lo_mode_fifo")) ||
+			!strncmp(buf, "lo_mode_fifo_skb",
+				  strlen("lo_mode_fifo_skb"))) {
+			ret = test_kni_processing(port_id, mp);
+			if (ret < 0) {
+				fclose(fd);
+				goto fail;
+			}
+		} else
+			printf("test_kni_processing skipped because of missing rte_kni module lo_mode argument\n");
+	}
+	fclose(fd);
 
 	/* test of allocating KNI with NULL mempool pointer */
 	memset(&info, 0, sizeof(info));
