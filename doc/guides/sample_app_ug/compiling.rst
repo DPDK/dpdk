@@ -9,7 +9,6 @@ This section explains how to compile the DPDK sample applications.
 To compile all the sample applications
 --------------------------------------
 
-
 Set the path to DPDK source code if its not set:
 
     .. code-block:: console
@@ -93,3 +92,17 @@ Build the application:
 
         export RTE_TARGET=build
         make
+
+To cross compile the sample application(s)
+------------------------------------------
+
+For cross compiling the sample application(s), please append 'CROSS=$(CROSS_COMPILER_PREFIX)' to the 'make' command.
+In example of AARCH64 cross compiling:
+
+    .. code-block:: console
+
+        export RTE_TARGET=build
+        export RTE_SDK=/path/to/rte_sdk
+        make -C examples CROSS=aarch64-linux-gnu-
+               or
+        make CROSS=aarch64-linux-gnu-
