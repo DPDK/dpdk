@@ -20,6 +20,9 @@
 
 /****** library defines ********/
 
+/* compat defines */
+#define RTE_BUILD_SHARED_LIB
+
 /* EAL defines */
 #define RTE_MAX_MEMSEG_LISTS 128
 #define RTE_MAX_MEMSEG_PER_LIST 8192
