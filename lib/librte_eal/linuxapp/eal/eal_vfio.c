@@ -1702,6 +1702,11 @@ rte_vfio_container_group_bind(int container_fd, int iommu_group_num)
 		return -1;
 	}
 
+	/* check if we already have the group descriptor open */
+	for (i = 0; i < VFIO_MAX_GROUPS; i++)
+		if (vfio_cfg->vfio_groups[i].group_num == iommu_group_num)
+			return vfio_cfg->vfio_groups[i].fd;
+
 	/* Check room for new group */
 	if (vfio_cfg->vfio_active_groups == VFIO_MAX_GROUPS) {
 		RTE_LOG(ERR, EAL, "Maximum number of VFIO groups reached!\n");
