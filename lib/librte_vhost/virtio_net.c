@@ -122,7 +122,7 @@ flush_shadow_used_ring_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 
 static __rte_always_inline void
 update_shadow_used_ring_split(struct vhost_virtqueue *vq,
-			 uint16_t desc_idx, uint16_t len)
+			 uint16_t desc_idx, uint32_t len)
 {
 	uint16_t i = vq->shadow_used_idx++;
 
@@ -186,7 +186,7 @@ flush_shadow_used_ring_packed(struct virtio_net *dev,
 
 static __rte_always_inline void
 update_shadow_used_ring_packed(struct vhost_virtqueue *vq,
-			 uint16_t desc_idx, uint16_t len, uint16_t count)
+			 uint16_t desc_idx, uint32_t len, uint16_t count)
 {
 	uint16_t i = vq->shadow_used_idx++;
 
@@ -329,7 +329,7 @@ static __rte_always_inline int
 fill_vec_buf_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			 uint32_t avail_idx, uint16_t *vec_idx,
 			 struct buf_vector *buf_vec, uint16_t *desc_chain_head,
-			 uint16_t *desc_chain_len, uint8_t perm)
+			 uint32_t *desc_chain_len, uint8_t perm)
 {
 	uint16_t idx = vq->avail->ring[avail_idx & (vq->size - 1)];
 	uint16_t vec_id = *vec_idx;
@@ -409,7 +409,7 @@ reserve_avail_buf_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	uint16_t max_tries, tries = 0;
 
 	uint16_t head_idx = 0;
-	uint16_t len = 0;
+	uint32_t len = 0;
 
 	*num_buffers = 0;
 	cur_idx  = vq->last_avail_idx;
@@ -452,7 +452,7 @@ static __rte_always_inline int
 fill_vec_buf_packed_indirect(struct virtio_net *dev,
 			struct vhost_virtqueue *vq,
 			struct vring_packed_desc *desc, uint16_t *vec_idx,
-			struct buf_vector *buf_vec, uint16_t *len, uint8_t perm)
+			struct buf_vector *buf_vec, uint32_t *len, uint8_t perm)
 {
 	uint16_t i;
 	uint32_t nr_descs;
@@ -508,7 +508,7 @@ static __rte_always_inline int
 fill_vec_buf_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 				uint16_t avail_idx, uint16_t *desc_count,
 				struct buf_vector *buf_vec, uint16_t *vec_idx,
-				uint16_t *buf_id, uint16_t *len, uint8_t perm)
+				uint16_t *buf_id, uint32_t *len, uint8_t perm)
 {
 	bool wrap_counter = vq->avail_wrap_counter;
 	struct vring_packed_desc *descs = vq->desc_packed;
@@ -573,7 +573,7 @@ reserve_avail_buf_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	uint16_t max_tries, tries = 0;
 
 	uint16_t buf_id = 0;
-	uint16_t len = 0;
+	uint32_t len = 0;
 	uint16_t desc_count;
 
 	*num_buffers = 0;
@@ -1379,7 +1379,8 @@ virtio_dev_tx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 	for (i = 0; i < count; i++) {
 		struct buf_vector buf_vec[BUF_VECTOR_MAX];
-		uint16_t head_idx, dummy_len;
+		uint16_t head_idx;
+		uint32_t dummy_len;
 		uint16_t nr_vec = 0;
 		int err;
 
@@ -1486,7 +1487,8 @@ virtio_dev_tx_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 	for (i = 0; i < count; i++) {
 		struct buf_vector buf_vec[BUF_VECTOR_MAX];
-		uint16_t buf_id, dummy_len;
+		uint16_t buf_id;
+		uint32_t dummy_len;
 		uint16_t desc_count, nr_vec = 0;
 		int err;
 
