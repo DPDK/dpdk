@@ -12,8 +12,8 @@ sources = [
 ]
 
 error_cflags = ['-Wno-sign-compare', '-Wno-unused-value',
-		'-Wno-format', '-Wno-unused-but-set-variable',
-		'-Wno-strict-aliasing'
+		'-Wno-format', '-Wno-error=format-security',
+		'-Wno-strict-aliasing', '-Wno-unused-but-set-variable'
 ]
 c_args = cflags
 foreach flag: error_cflags
