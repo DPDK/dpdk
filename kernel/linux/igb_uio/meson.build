@@ -15,4 +15,6 @@ custom_target('igb_uio',
 			'/../../../lib/librte_eal/common/include',
 		'modules'],
 	depends: mkfile,
+	install: true,
+	install_dir: kernel_dir + '/../extra/dpdk',
 	build_by_default: get_option('enable_kmods'))
