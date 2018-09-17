@@ -81,6 +81,10 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* mbuf: The ``__rte_mbuf_raw_free()`` and ``__rte_pktmbuf_prefree_seg()``
+  functions were deprecated since 17.05 and are replaced by
+  ``rte_mbuf_raw_free()`` and ``rte_pktmbuf_prefree_seg()``.
+
 * A new device flag, RTE_ETH_DEV_NOLIVE_MAC_ADDR, changes the order of
   actions inside rte_eth_dev_start regarding MAC set. Some NICs do not
   support MAC changes once the port has started and with this new device

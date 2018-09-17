@@ -1038,14 +1038,6 @@ rte_mbuf_raw_free(struct rte_mbuf *m)
 	rte_mempool_put(m->pool, m);
 }
 
-/* compat with older versions */
-__rte_deprecated
-static inline void
-__rte_mbuf_raw_free(struct rte_mbuf *m)
-{
-	rte_mbuf_raw_free(m);
-}
-
 /**
  * The packet mbuf constructor.
  *
@@ -1656,14 +1648,6 @@ rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
 		return m;
 	}
 	return NULL;
-}
-
-/* deprecated, replaced by rte_pktmbuf_prefree_seg() */
-__rte_deprecated
-static inline struct rte_mbuf *
-__rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
-{
-	return rte_pktmbuf_prefree_seg(m);
 }
 
 /**
