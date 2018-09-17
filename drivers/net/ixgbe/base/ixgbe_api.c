@@ -148,8 +148,6 @@ s32 ixgbe_set_mac_type(struct ixgbe_hw *hw)
 	case IXGBE_DEV_ID_82599_QSFP_SF_QP:
 	case IXGBE_DEV_ID_82599EN_SFP:
 	case IXGBE_DEV_ID_82599_CX4:
-	case IXGBE_DEV_ID_82599_LS:
-	case IXGBE_DEV_ID_82599_BYPASS:
 	case IXGBE_DEV_ID_82599_T3_LOM:
 		hw->mac.type = ixgbe_mac_82599EB;
 		break;
@@ -164,7 +162,6 @@ s32 ixgbe_set_mac_type(struct ixgbe_hw *hw)
 		break;
 	case IXGBE_DEV_ID_X540T:
 	case IXGBE_DEV_ID_X540T1:
-	case IXGBE_DEV_ID_X540_BYPASS:
 		hw->mac.type = ixgbe_mac_X540;
 		hw->mvals = ixgbe_mvals_X540;
 		break;

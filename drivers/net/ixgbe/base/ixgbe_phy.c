@@ -2565,7 +2565,6 @@ STATIC bool ixgbe_get_i2c_data(struct ixgbe_hw *hw, u32 *i2cctl)
 {
 	u32 data_oe_bit = IXGBE_I2C_DATA_OE_N_EN_BY_MAC(hw);
 	bool data;
-	UNREFERENCED_1PARAMETER(hw);
 
 	DEBUGFUNC("ixgbe_get_i2c_data");
 

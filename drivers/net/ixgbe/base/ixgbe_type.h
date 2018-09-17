@@ -17,8 +17,8 @@
  *
  * - IXGBE_ERROR_POLLING
  * This category is for errors related to polling/timeout issues and should be
- * used in any case where the timeout occured, or a failure to obtain a lock, or
- * failure to receive data within the time limit.
+ * used in any case where the timeout occurred, or a failure to obtain a lock,
+ * or failure to receive data within the time limit.
  *
  * - IXGBE_ERROR_CAUTION
  * This category should be used for reporting issues that may be the cause of
@@ -93,12 +93,9 @@
 #define IXGBE_DEV_ID_82599_T3_LOM		0x151C
 #define IXGBE_DEV_ID_82599_VF			0x10ED
 #define IXGBE_DEV_ID_82599_VF_HV		0x152E
-#define IXGBE_DEV_ID_82599_LS			0x154F
-#define IXGBE_DEV_ID_82599_BYPASS		0x155D
 #define IXGBE_DEV_ID_X540T			0x1528
 #define IXGBE_DEV_ID_X540_VF			0x1515
 #define IXGBE_DEV_ID_X540_VF_HV			0x1530
-#define IXGBE_DEV_ID_X540_BYPASS		0x155C
 #define IXGBE_DEV_ID_X540T1			0x1560
 #define IXGBE_DEV_ID_X550T			0x1563
 #define IXGBE_DEV_ID_X550T1			0x15D1
@@ -3726,9 +3723,7 @@ enum ixgbe_sfp_type {
 enum ixgbe_media_type {
 	ixgbe_media_type_unknown = 0,
 	ixgbe_media_type_fiber,
-	ixgbe_media_type_fiber_fixed,
 	ixgbe_media_type_fiber_qsfp,
-	ixgbe_media_type_fiber_lco,
 	ixgbe_media_type_copper,
 	ixgbe_media_type_backplane,
 	ixgbe_media_type_cx4,

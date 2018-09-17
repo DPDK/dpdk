@@ -58,9 +58,6 @@ void ixgbe_init_mac_link_ops_82599(struct ixgbe_hw *hw)
 		mac->ops.setup_mac_link = ixgbe_setup_mac_link_82599;
 		mac->ops.set_rate_select_speed =
 					       ixgbe_set_hard_rate_select_speed;
-		if (ixgbe_get_media_type(hw) == ixgbe_media_type_fiber_fixed)
-			mac->ops.set_rate_select_speed =
-					       ixgbe_set_soft_rate_select_speed;
 	} else {
 		if ((ixgbe_get_media_type(hw) == ixgbe_media_type_backplane) &&
 		     (hw->phy.smart_speed == ixgbe_smart_speed_auto ||
@@ -532,15 +529,8 @@ enum ixgbe_media_type ixgbe_get_media_type_82599(struct ixgbe_hw *hw)
 	case IXGBE_DEV_ID_82599_T3_LOM:
 		media_type = ixgbe_media_type_copper;
 		break;
-	case IXGBE_DEV_ID_82599_LS:
-		media_type = ixgbe_media_type_fiber_lco;
-		break;
 	case IXGBE_DEV_ID_82599_QSFP_SF_QP:
 		media_type = ixgbe_media_type_fiber_qsfp;
-		break;
-	case IXGBE_DEV_ID_82599_BYPASS:
-		media_type = ixgbe_media_type_fiber_fixed;
-		hw->phy.multispeed_fiber = true;
 		break;
 	default:
 		media_type = ixgbe_media_type_unknown;
