@@ -72,12 +72,23 @@ struct mlx5_shared_data {
 
 extern struct mlx5_shared_data *mlx5_shared_data;
 
+struct mlx5_counter_ctrl {
+	/* Name of the counter. */
+	char dpdk_name[RTE_ETH_XSTATS_NAME_SIZE];
+	/* Name of the counter on the device table. */
+	char ctr_name[RTE_ETH_XSTATS_NAME_SIZE];
+	uint32_t ib:1; /**< Nonzero for IB counters. */
+};
+
 struct mlx5_xstats_ctrl {
 	/* Number of device stats. */
 	uint16_t stats_n;
+	/* Number of device stats identified by PMD. */
+	uint16_t  mlx5_stats_n;
 	/* Index in the device counters table. */
 	uint16_t dev_table_idx[MLX5_MAX_XSTATS];
 	uint64_t base[MLX5_MAX_XSTATS];
+	struct mlx5_counter_ctrl info[MLX5_MAX_XSTATS];
 };
 
 /* Flow list . */
