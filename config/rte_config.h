@@ -109,8 +109,6 @@
 #define RTE_LIBRTE_I40E_QUEUE_NUM_PER_PF 64
 #define RTE_LIBRTE_I40E_QUEUE_NUM_PER_VF 4
 #define RTE_LIBRTE_I40E_QUEUE_NUM_PER_VM 4
-/* interval up to 8160 us, aligned to 2 (or default value) */
-#define RTE_LIBRTE_I40E_ITR_INTERVAL -1
 
 /* Ring net PMD settings */
 #define RTE_PMD_RING_MAX_RX_RINGS 16
