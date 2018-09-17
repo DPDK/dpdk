@@ -345,46 +345,13 @@ get_vfio_cfg_by_group_num(int iommu_group_num)
 	return NULL;
 }
 
-static struct vfio_config *
-get_vfio_cfg_by_group_fd(int vfio_group_fd)
-{
-	struct vfio_config *vfio_cfg;
-	int i, j;
-
-	for (i = 0; i < VFIO_MAX_CONTAINERS; i++) {
-		vfio_cfg = &vfio_cfgs[i];
-		for (j = 0; j < VFIO_MAX_GROUPS; j++)
-			if (vfio_cfg->vfio_groups[j].fd == vfio_group_fd)
-				return vfio_cfg;
-	}
-
-	return NULL;
-}
-
-static struct vfio_config *
-get_vfio_cfg_by_container_fd(int container_fd)
-{
-	int i;
-
-	for (i = 0; i < VFIO_MAX_CONTAINERS; i++) {
-		if (vfio_cfgs[i].vfio_container_fd == container_fd)
-			return &vfio_cfgs[i];
-	}
-
-	return NULL;
-}
-
-int
-rte_vfio_get_group_fd(int iommu_group_num)
+static int
+vfio_get_group_fd(struct vfio_config *vfio_cfg,
+		int iommu_group_num)
 {
 	int i;
 	int vfio_group_fd;
 	struct vfio_group *cur_grp;
-	struct vfio_config *vfio_cfg;
-
-	/* get the vfio_config it belongs to */
-	vfio_cfg = get_vfio_cfg_by_group_num(iommu_group_num);
-	vfio_cfg = vfio_cfg ? vfio_cfg : default_vfio_cfg;
 
 	/* check if we already have the group descriptor open */
 	for (i = 0; i < VFIO_MAX_GROUPS; i++)
@@ -421,6 +388,47 @@ rte_vfio_get_group_fd(int iommu_group_num)
 	vfio_cfg->vfio_active_groups++;
 
 	return vfio_group_fd;
+}
+
+static struct vfio_config *
+get_vfio_cfg_by_group_fd(int vfio_group_fd)
+{
+	struct vfio_config *vfio_cfg;
+	int i, j;
+
+	for (i = 0; i < VFIO_MAX_CONTAINERS; i++) {
+		vfio_cfg = &vfio_cfgs[i];
+		for (j = 0; j < VFIO_MAX_GROUPS; j++)
+			if (vfio_cfg->vfio_groups[j].fd == vfio_group_fd)
+				return vfio_cfg;
+	}
+
+	return NULL;
+}
+
+static struct vfio_config *
+get_vfio_cfg_by_container_fd(int container_fd)
+{
+	int i;
+
+	for (i = 0; i < VFIO_MAX_CONTAINERS; i++) {
+		if (vfio_cfgs[i].vfio_container_fd == container_fd)
+			return &vfio_cfgs[i];
+	}
+
+	return NULL;
+}
+
+int
+rte_vfio_get_group_fd(int iommu_group_num)
+{
+	struct vfio_config *vfio_cfg;
+
+	/* get the vfio_config it belongs to */
+	vfio_cfg = get_vfio_cfg_by_group_num(iommu_group_num);
+	vfio_cfg = vfio_cfg ? vfio_cfg : default_vfio_cfg;
+
+	return vfio_get_group_fd(vfio_cfg, iommu_group_num);
 }
 
 static int
@@ -1692,9 +1700,6 @@ int
 rte_vfio_container_group_bind(int container_fd, int iommu_group_num)
 {
 	struct vfio_config *vfio_cfg;
-	struct vfio_group *cur_grp;
-	int vfio_group_fd;
-	int i;
 
 	vfio_cfg = get_vfio_cfg_by_container_fd(container_fd);
 	if (vfio_cfg == NULL) {
@@ -1702,41 +1707,7 @@ rte_vfio_container_group_bind(int container_fd, int iommu_group_num)
 		return -1;
 	}
 
-	/* check if we already have the group descriptor open */
-	for (i = 0; i < VFIO_MAX_GROUPS; i++)
-		if (vfio_cfg->vfio_groups[i].group_num == iommu_group_num)
-			return vfio_cfg->vfio_groups[i].fd;
-
-	/* Check room for new group */
-	if (vfio_cfg->vfio_active_groups == VFIO_MAX_GROUPS) {
-		RTE_LOG(ERR, EAL, "Maximum number of VFIO groups reached!\n");
-		return -1;
-	}
-
-	/* Get an index for the new group */
-	for (i = 0; i < VFIO_MAX_GROUPS; i++)
-		if (vfio_cfg->vfio_groups[i].group_num == -1) {
-			cur_grp = &vfio_cfg->vfio_groups[i];
-			break;
-		}
-
-	/* This should not happen */
-	if (i == VFIO_MAX_GROUPS) {
-		RTE_LOG(ERR, EAL, "No VFIO group free slot found\n");
-		return -1;
-	}
-
-	vfio_group_fd = vfio_open_group_fd(iommu_group_num);
-	if (vfio_group_fd < 0) {
-		RTE_LOG(ERR, EAL, "Failed to open group %d\n", iommu_group_num);
-		return -1;
-	}
-	cur_grp->group_num = iommu_group_num;
-	cur_grp->fd = vfio_group_fd;
-	cur_grp->devices = 0;
-	vfio_cfg->vfio_active_groups++;
-
-	return vfio_group_fd;
+	return vfio_get_group_fd(vfio_cfg, iommu_group_num);
 }
 
 int
