@@ -145,5 +145,8 @@ foreach class:driver_classes
 		endif # build
 	endforeach
 
-	set_variable(class + '_drivers', class_drivers)
+	if meson.version().version_compare('>=0.47')
+		# prior to 0.47, set_variable can't take array params
+		set_variable(class + '_drivers', class_drivers)
+	endif
 endforeach
