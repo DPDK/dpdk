@@ -81,6 +81,14 @@ New Features
   * Support for runtime Rx and Tx queues setup.
   * Support multicast MAC address set.
 
+* **Added Distributed Software Eventdev PMD.**
+
+  Added the new Distributed Software Event Device (DSW), which is a
+  pure-software eventdev driver distributing the work of scheduling
+  among all eventdev ports and the lcores using them. DSW, compared to
+  the SW eventdev PMD, sacrifices load balancing performance to
+  gain better event scheduling throughput and scalability.
+
 * **Added ability to switch queue deferred start flag on testpmd app.**
 
   Added a console command to testpmd app, giving ability to switch

@@ -924,6 +924,7 @@ F: doc/guides/sample_app_ug/eventdev_pipeline.rst
 Distributed Software Eventdev PMD
 M: Mattias Rönnblom <mattias.ronnblom@ericsson.com>
 F: drivers/event/dsw/
+F: doc/guides/eventdevs/dsw.rst
 
 Software OPDL Eventdev PMD
 M: Liang Ma <liang.j.ma@intel.com>
