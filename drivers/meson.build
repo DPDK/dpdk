@@ -9,6 +9,7 @@ driver_classes = ['common',
 	       'crypto',  # depends on common, bus and mempool (net in future).
 	       'compress', # depends on common, bus, mempool.
 	       'event',   # depends on common, bus, mempool and net.
+	       'baseband', # depends on common and bus.
 	       'raw']     # depends on common, bus, mempool, net and event.
 
 default_cflags = machine_args
