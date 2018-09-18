@@ -93,6 +93,17 @@
  */
 #define DSW_CTL_IN_RING_SIZE ((DSW_MAX_PORTS-1)*4)
 
+/* With DSW_SORT_DEQUEUED enabled, the scheduler will, at the point of
+ * dequeue(), arrange events so that events with the same flow id on
+ * the same queue forms a back-to-back "burst", and also so that such
+ * bursts of different flow ids, but on the same queue, also come
+ * consecutively. All this in an attempt to improve data and
+ * instruction cache usage for the application, at the cost of a
+ * scheduler overhead increase.
+ */
+
+/* #define DSW_SORT_DEQUEUED */
+
 struct dsw_queue_flow {
 	uint8_t queue_id;
 	uint16_t flow_hash;

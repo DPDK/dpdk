@@ -4,6 +4,10 @@
 
 #include "dsw_evdev.h"
 
+#ifdef DSW_SORT_DEQUEUED
+#include "dsw_sort.h"
+#endif
+
 #include <stdbool.h>
 #include <string.h>
 
@@ -1121,6 +1125,21 @@ dsw_port_record_seen_events(struct dsw_port *port, struct rte_event *events,
 				DSW_MAX_EVENTS_RECORDED);
 }
 
+#ifdef DSW_SORT_DEQUEUED
+
+#define DSW_EVENT_TO_INT(_event)				\
+	((int)((((_event)->queue_id)<<16)|((_event)->flow_id)))
+
+static inline int
+dsw_cmp_event(const void *v_event_a, const void *v_event_b)
+{
+	const struct rte_event *event_a = v_event_a;
+	const struct rte_event *event_b = v_event_b;
+
+	return DSW_EVENT_TO_INT(event_a) - DSW_EVENT_TO_INT(event_b);
+}
+#endif
+
 static uint16_t
 dsw_port_dequeue_burst(struct dsw_port *port, struct rte_event *events,
 		       uint16_t num)
@@ -1190,6 +1209,10 @@ dsw_event_dequeue_burst(void *port, struct rte_event *events, uint16_t num,
 	 *	consider flushing the output buffer, on dequeued ==
 	 *	0.
 	 */
+
+#ifdef DSW_SORT_DEQUEUED
+	dsw_stable_sort(events, dequeued, sizeof(events[0]), dsw_cmp_event);
+#endif
 
 	return dequeued;
 }
