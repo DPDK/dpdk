@@ -10,6 +10,62 @@
 #define EVENTDEV_NAME_DSW_PMD event_dsw
 
 static int
+dsw_port_setup(struct rte_eventdev *dev, uint8_t port_id,
+	       const struct rte_event_port_conf *conf)
+{
+	struct dsw_evdev *dsw = dsw_pmd_priv(dev);
+	struct dsw_port *port;
+	struct rte_event_ring *in_ring;
+	char ring_name[RTE_RING_NAMESIZE];
+
+	port = &dsw->ports[port_id];
+
+	*port = (struct dsw_port) {
+		.id = port_id,
+		.dsw = dsw,
+		.dequeue_depth = conf->dequeue_depth,
+		.enqueue_depth = conf->enqueue_depth,
+		.new_event_threshold = conf->new_event_threshold
+	};
+
+	snprintf(ring_name, sizeof(ring_name), "dsw%d_p%u", dev->data->dev_id,
+		 port_id);
+
+	in_ring = rte_event_ring_create(ring_name, DSW_IN_RING_SIZE,
+					dev->data->socket_id,
+					RING_F_SC_DEQ|RING_F_EXACT_SZ);
+
+	if (in_ring == NULL)
+		return -ENOMEM;
+
+	port->in_ring = in_ring;
+
+	dev->data->ports[port_id] = port;
+
+	return 0;
+}
+
+static void
+dsw_port_def_conf(struct rte_eventdev *dev __rte_unused,
+		  uint8_t port_id __rte_unused,
+		  struct rte_event_port_conf *port_conf)
+{
+	*port_conf = (struct rte_event_port_conf) {
+		.new_event_threshold = 1024,
+		.dequeue_depth = DSW_MAX_PORT_DEQUEUE_DEPTH / 4,
+		.enqueue_depth = DSW_MAX_PORT_ENQUEUE_DEPTH / 4
+	};
+}
+
+static void
+dsw_port_release(void *p)
+{
+	struct dsw_port *port = p;
+
+	rte_event_ring_free(port->in_ring);
+}
+
+static int
 dsw_queue_setup(struct rte_eventdev *dev, uint8_t queue_id,
 		const struct rte_event_queue_conf *conf)
 {
@@ -81,12 +137,16 @@ dsw_configure(const struct rte_eventdev *dev)
 	struct dsw_evdev *dsw = dsw_pmd_priv(dev);
 	const struct rte_event_dev_config *conf = &dev->data->dev_conf;
 
+	dsw->num_ports = conf->nb_event_ports;
 	dsw->num_queues = conf->nb_event_queues;
 
 	return 0;
 }
 
 static struct rte_eventdev_ops dsw_evdev_ops = {
+	.port_setup = dsw_port_setup,
+	.port_def_conf = dsw_port_def_conf,
+	.port_release = dsw_port_release,
 	.queue_setup = dsw_queue_setup,
 	.queue_def_conf = dsw_queue_def_conf,
 	.queue_release = dsw_queue_release,
