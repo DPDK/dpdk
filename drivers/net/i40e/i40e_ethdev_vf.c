@@ -1384,10 +1384,8 @@ i40evf_dev_alarm_handler(void *param)
 	icr0 = I40E_READ_REG(hw, I40E_VFINT_ICR01);
 
 	/* No interrupt event indicated */
-	if (!(icr0 & I40E_VFINT_ICR01_INTEVENT_MASK)) {
-		PMD_DRV_LOG(DEBUG, "No interrupt event, nothing to do");
+	if (!(icr0 & I40E_VFINT_ICR01_INTEVENT_MASK))
 		goto done;
-	}
 
 	if (icr0 & I40E_VFINT_ICR01_ADMINQ_MASK) {
 		PMD_DRV_LOG(DEBUG, "ICR01_ADMINQ is reported");

@@ -6641,10 +6641,8 @@ i40e_dev_alarm_handler(void *param)
 	icr0 = I40E_READ_REG(hw, I40E_PFINT_ICR0);
 
 	/* No interrupt event indicated */
-	if (!(icr0 & I40E_PFINT_ICR0_INTEVENT_MASK)) {
-		PMD_DRV_LOG(INFO, "No interrupt event");
+	if (!(icr0 & I40E_PFINT_ICR0_INTEVENT_MASK))
 		goto done;
-	}
 	if (icr0 & I40E_PFINT_ICR0_ECC_ERR_MASK)
 		PMD_DRV_LOG(ERR, "ICR0: unrecoverable ECC error");
 	if (icr0 & I40E_PFINT_ICR0_MAL_DETECT_MASK)
