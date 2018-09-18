@@ -21,6 +21,7 @@ LIBABIVER := 1
 
 EXPORT_MAP := rte_pmd_dsw_event_version.map
 
-SRCS-$(CONFIG_RTE_LIBRTE_PMD_DSW_EVENTDEV) += dsw_evdev.c dsw_event.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_DSW_EVENTDEV) += \
+	dsw_evdev.c dsw_event.c dsw_xstats.c
 
 include $(RTE_SDK)/mk/rte.lib.mk

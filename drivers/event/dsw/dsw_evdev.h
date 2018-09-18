@@ -176,6 +176,14 @@ struct dsw_port {
 	uint16_t seen_events_idx;
 	struct dsw_queue_flow seen_events[DSW_MAX_EVENTS_RECORDED];
 
+	uint64_t new_enqueued;
+	uint64_t forward_enqueued;
+	uint64_t release_enqueued;
+	uint64_t queue_enqueued[DSW_MAX_QUEUES];
+
+	uint64_t dequeued;
+	uint64_t queue_dequeued[DSW_MAX_QUEUES];
+
 	uint16_t out_buffer_len[DSW_MAX_PORTS];
 	struct rte_event out_buffer[DSW_MAX_PORTS][DSW_MAX_PORT_OUT_BUFFER];
 
@@ -242,6 +250,17 @@ uint16_t dsw_event_enqueue_forward_burst(void *port,
 uint16_t dsw_event_dequeue(void *port, struct rte_event *ev, uint64_t wait);
 uint16_t dsw_event_dequeue_burst(void *port, struct rte_event *events,
 				 uint16_t num, uint64_t wait);
+
+int dsw_xstats_get_names(const struct rte_eventdev *dev,
+			 enum rte_event_dev_xstats_mode mode,
+			 uint8_t queue_port_id,
+			 struct rte_event_dev_xstats_name *xstats_names,
+			 unsigned int *ids, unsigned int size);
+int dsw_xstats_get(const struct rte_eventdev *dev,
+		   enum rte_event_dev_xstats_mode mode, uint8_t queue_port_id,
+		   const unsigned int ids[], uint64_t values[], unsigned int n);
+uint64_t dsw_xstats_get_by_name(const struct rte_eventdev *dev,
+				const char *name, unsigned int *id);
 
 static inline struct dsw_evdev *
 dsw_pmd_priv(const struct rte_eventdev *eventdev)

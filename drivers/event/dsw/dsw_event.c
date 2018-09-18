@@ -83,6 +83,33 @@ dsw_port_return_credits(struct dsw_evdev *dsw, struct dsw_port *port,
 }
 
 static void
+dsw_port_enqueue_stats(struct dsw_port *port, uint16_t num_new,
+		       uint16_t num_forward, uint16_t num_release)
+{
+	port->new_enqueued += num_new;
+	port->forward_enqueued += num_forward;
+	port->release_enqueued += num_release;
+}
+
+static void
+dsw_port_queue_enqueue_stats(struct dsw_port *source_port, uint8_t queue_id)
+{
+	source_port->queue_enqueued[queue_id]++;
+}
+
+static void
+dsw_port_dequeue_stats(struct dsw_port *port, uint16_t num)
+{
+	port->dequeued += num;
+}
+
+static void
+dsw_port_queue_dequeued_stats(struct dsw_port *source_port, uint8_t queue_id)
+{
+	source_port->queue_dequeued[queue_id]++;
+}
+
+static void
 dsw_port_load_record(struct dsw_port *port, unsigned int dequeued)
 {
 	if (dequeued > 0 && port->busy_start == 0)
@@ -1059,12 +1086,16 @@ dsw_event_enqueue_burst_generic(void *port, const struct rte_event events[],
 
 	source_port->pending_releases -= num_release;
 
+	dsw_port_enqueue_stats(source_port, num_new,
+			       num_non_release-num_new, num_release);
+
 	for (i = 0; i < events_len; i++) {
 		const struct rte_event *event = &events[i];
 
 		if (likely(num_release == 0 ||
 			   event->op != RTE_EVENT_OP_RELEASE))
 			dsw_port_buffer_event(dsw, source_port, event);
+		dsw_port_queue_enqueue_stats(source_port, event->queue_id);
 	}
 
 	DSW_LOG_DP_PORT(DEBUG, source_port->id, "%d non-release events "
@@ -1109,6 +1140,8 @@ dsw_port_record_seen_events(struct dsw_port *port, struct rte_event *events,
 {
 	uint16_t i;
 
+	dsw_port_dequeue_stats(port, num);
+
 	for (i = 0; i < num; i++) {
 		uint16_t l_idx = port->seen_events_idx;
 		struct dsw_queue_flow *qf = &port->seen_events[l_idx];
@@ -1117,6 +1150,8 @@ dsw_port_record_seen_events(struct dsw_port *port, struct rte_event *events,
 		qf->flow_hash = dsw_flow_id_hash(event->flow_id);
 
 		port->seen_events_idx = (l_idx+1) % DSW_MAX_EVENTS_RECORDED;
+
+		dsw_port_queue_dequeued_stats(port, event->queue_id);
 	}
 
 	if (unlikely(port->seen_events_len != DSW_MAX_EVENTS_RECORDED))

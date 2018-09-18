@@ -3,4 +3,4 @@
 
 allow_experimental_apis = true
 deps += ['bus_vdev']
-sources = files('dsw_evdev.c', 'dsw_event.c')
+sources = files('dsw_evdev.c', 'dsw_event.c', 'dsw_xstats.c')

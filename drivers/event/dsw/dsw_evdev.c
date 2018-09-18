@@ -378,7 +378,10 @@ static struct rte_eventdev_ops dsw_evdev_ops = {
 	.dev_configure = dsw_configure,
 	.dev_start = dsw_start,
 	.dev_stop = dsw_stop,
-	.dev_close = dsw_close
+	.dev_close = dsw_close,
+	.xstats_get = dsw_xstats_get,
+	.xstats_get_names = dsw_xstats_get_names,
+	.xstats_get_by_name = dsw_xstats_get_by_name
 };
 
 static int
