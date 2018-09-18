@@ -24,7 +24,7 @@ LDLIBS += -lrte_bus_vdev -lrte_mbuf -lrte_mempool
 LIBABIVER := 1
 
 # versioning export map
-EXPORT_MAP := rte_pmd_evdev_opdl_version.map
+EXPORT_MAP := rte_pmd_opdl_event_version.map
 
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OPDL_EVENTDEV) += opdl_ring.c
