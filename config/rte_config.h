@@ -116,4 +116,7 @@
 #define RTE_PMD_RING_MAX_RX_RINGS 16
 #define RTE_PMD_RING_MAX_TX_RINGS 16
 
+/* QEDE PMD defines */
+#define RTE_LIBRTE_QEDE_FW ""
+
 #endif /* _RTE_CONFIG_H_ */
