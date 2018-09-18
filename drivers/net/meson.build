@@ -25,6 +25,7 @@ drivers = ['af_packet',
 	'sfc',
 	'softnic',
 	'szedata2',
+	'tap',
 	'thunderx',
 	'vhost',
 	'virtio']
