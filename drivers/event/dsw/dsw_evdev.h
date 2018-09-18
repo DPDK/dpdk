@@ -36,6 +36,15 @@
  */
 #define DSW_PARALLEL_FLOWS (1024)
 
+/* 'Background tasks' are polling the control rings for *
+ *  migration-related messages, or flush the output buffer (so
+ *  buffered events doesn't linger too long). Shouldn't be too low,
+ *  since the system won't benefit from the 'batching' effects from
+ *  the output buffer, and shouldn't be too high, since it will make
+ *  buffered events linger too long in case the port goes idle.
+ */
+#define DSW_MAX_PORT_OPS_PER_BG_TASK (128)
+
 /* Avoid making small 'loans' from the central in-flight event credit
  * pool, to improve efficiency.
  */
@@ -49,6 +58,22 @@
  * input ring.
  */
 #define DSW_IN_RING_SIZE (DSW_MAX_EVENTS)
+
+#define DSW_MAX_LOAD (INT16_MAX)
+#define DSW_LOAD_FROM_PERCENT(x) ((int16_t)(((x)*DSW_MAX_LOAD)/100))
+#define DSW_LOAD_TO_PERCENT(x) ((100*x)/DSW_MAX_LOAD)
+
+/* The thought behind keeping the load update interval shorter than
+ * the migration interval is that the load from newly migrated flows
+ * should 'show up' on the load measurement before new migrations are
+ * considered. This is to avoid having too many flows, from too many
+ * source ports, to be migrated too quickly to a lightly loaded port -
+ * in particular since this might cause the system to oscillate.
+ */
+#define DSW_LOAD_UPDATE_INTERVAL (DSW_MIGRATION_INTERVAL/4)
+#define DSW_OLD_LOAD_WEIGHT (1)
+
+#define DSW_MIGRATION_INTERVAL (1000)
 
 struct dsw_port {
 	uint16_t id;
@@ -71,10 +96,25 @@ struct dsw_port {
 
 	uint16_t next_parallel_flow_id;
 
+	uint16_t ops_since_bg_task;
+
+	uint64_t last_bg;
+
+	/* For port load measurement. */
+	uint64_t next_load_update;
+	uint64_t load_update_interval;
+	uint64_t measurement_start;
+	uint64_t busy_start;
+	uint64_t busy_cycles;
+	uint64_t total_busy_cycles;
+
 	uint16_t out_buffer_len[DSW_MAX_PORTS];
 	struct rte_event out_buffer[DSW_MAX_PORTS][DSW_MAX_PORT_OUT_BUFFER];
 
 	struct rte_event_ring *in_ring __rte_cache_aligned;
+
+	/* Estimate of current port load. */
+	rte_atomic16_t load __rte_cache_aligned;
 } __rte_cache_aligned;
 
 struct dsw_queue {

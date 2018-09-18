@@ -7,6 +7,7 @@
 #include <stdbool.h>
 
 #include <rte_atomic.h>
+#include <rte_cycles.h>
 #include <rte_random.h>
 
 static bool
@@ -73,6 +74,70 @@ dsw_port_return_credits(struct dsw_evdev *dsw, struct dsw_port *port,
 				"Returned %d tokens to pool.\n",
 				return_credits);
 	}
+}
+
+static void
+dsw_port_load_record(struct dsw_port *port, unsigned int dequeued)
+{
+	if (dequeued > 0 && port->busy_start == 0)
+		/* work period begins */
+		port->busy_start = rte_get_timer_cycles();
+	else if (dequeued == 0 && port->busy_start > 0) {
+		/* work period ends */
+		uint64_t work_period =
+			rte_get_timer_cycles() - port->busy_start;
+		port->busy_cycles += work_period;
+		port->busy_start = 0;
+	}
+}
+
+static int16_t
+dsw_port_load_close_period(struct dsw_port *port, uint64_t now)
+{
+	uint64_t passed = now - port->measurement_start;
+	uint64_t busy_cycles = port->busy_cycles;
+
+	if (port->busy_start > 0) {
+		busy_cycles += (now - port->busy_start);
+		port->busy_start = now;
+	}
+
+	int16_t load = (DSW_MAX_LOAD * busy_cycles) / passed;
+
+	port->measurement_start = now;
+	port->busy_cycles = 0;
+
+	port->total_busy_cycles += busy_cycles;
+
+	return load;
+}
+
+static void
+dsw_port_load_update(struct dsw_port *port, uint64_t now)
+{
+	int16_t old_load;
+	int16_t period_load;
+	int16_t new_load;
+
+	old_load = rte_atomic16_read(&port->load);
+
+	period_load = dsw_port_load_close_period(port, now);
+
+	new_load = (period_load + old_load*DSW_OLD_LOAD_WEIGHT) /
+		(DSW_OLD_LOAD_WEIGHT+1);
+
+	rte_atomic16_set(&port->load, new_load);
+}
+
+static void
+dsw_port_consider_load_update(struct dsw_port *port, uint64_t now)
+{
+	if (now < port->next_load_update)
+		return;
+
+	port->next_load_update = now + port->load_update_interval;
+
+	dsw_port_load_update(port, now);
 }
 
 static uint8_t
@@ -197,6 +262,39 @@ dsw_port_buffer_event(struct dsw_evdev *dsw, struct dsw_port *source_port,
 }
 
 static void
+dsw_port_note_op(struct dsw_port *port, uint16_t num_events)
+{
+	/* To pull the control ring reasonbly often on busy ports,
+	 * each dequeued/enqueued event is considered an 'op' too.
+	 */
+	port->ops_since_bg_task += (num_events+1);
+}
+
+static void
+dsw_port_flush_out_buffers(struct dsw_evdev *dsw, struct dsw_port *source_port);
+
+static void
+dsw_port_bg_process(struct dsw_evdev *dsw, struct dsw_port *port)
+{
+	if (unlikely(port->ops_since_bg_task >= DSW_MAX_PORT_OPS_PER_BG_TASK)) {
+		uint64_t now;
+
+		now = rte_get_timer_cycles();
+
+		port->last_bg = now;
+
+		/* Logic to avoid having events linger in the output
+		 * buffer too long.
+		 */
+		dsw_port_flush_out_buffers(dsw, port);
+
+		dsw_port_consider_load_update(port, now);
+
+		port->ops_since_bg_task = 0;
+	}
+}
+
+static void
 dsw_port_flush_out_buffers(struct dsw_evdev *dsw, struct dsw_port *source_port)
 {
 	uint16_t dest_port_id;
@@ -225,6 +323,8 @@ dsw_event_enqueue_burst_generic(void *port, const struct rte_event events[],
 	DSW_LOG_DP_PORT(DEBUG, source_port->id, "Attempting to enqueue %d "
 			"events to port %d.\n", events_len, source_port->id);
 
+	dsw_port_bg_process(dsw, source_port);
+
 	/* XXX: For performance (=ring efficiency) reasons, the
 	 * scheduler relies on internal non-ring buffers instead of
 	 * immediately sending the event to the destination ring. For
@@ -238,12 +338,15 @@ dsw_event_enqueue_burst_generic(void *port, const struct rte_event events[],
 	 * considered.
 	 */
 	if (unlikely(events_len == 0)) {
+		dsw_port_note_op(source_port, DSW_MAX_PORT_OPS_PER_BG_TASK);
 		dsw_port_flush_out_buffers(dsw, source_port);
 		return 0;
 	}
 
 	if (unlikely(events_len > source_port->enqueue_depth))
 		events_len = source_port->enqueue_depth;
+
+	dsw_port_note_op(source_port, events_len);
 
 	if (!op_types_known)
 		for (i = 0; i < events_len; i++) {
@@ -337,12 +440,18 @@ dsw_event_dequeue_burst(void *port, struct rte_event *events, uint16_t num,
 
 	source_port->pending_releases = 0;
 
+	dsw_port_bg_process(dsw, source_port);
+
 	if (unlikely(num > source_port->dequeue_depth))
 		num = source_port->dequeue_depth;
 
 	dequeued = dsw_port_dequeue_burst(source_port, events, num);
 
 	source_port->pending_releases = dequeued;
+
+	dsw_port_load_record(source_port, dequeued);
+
+	dsw_port_note_op(source_port, dequeued);
 
 	if (dequeued > 0) {
 		DSW_LOG_DP_PORT(DEBUG, source_port->id, "Dequeued %d events.\n",
