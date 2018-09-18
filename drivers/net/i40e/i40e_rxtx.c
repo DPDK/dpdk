@@ -2909,6 +2909,35 @@ i40e_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->conf.offloads = txq->offloads;
 }
 
+static eth_rx_burst_t
+i40e_get_latest_rx_vec(bool scatter)
+{
+#ifdef RTE_ARCH_X86
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2))
+		return scatter ? i40e_recv_scattered_pkts_vec_avx2 :
+				 i40e_recv_pkts_vec_avx2;
+#endif
+	return scatter ? i40e_recv_scattered_pkts_vec :
+			 i40e_recv_pkts_vec;
+}
+
+static eth_rx_burst_t
+i40e_get_recommend_rx_vec(bool scatter)
+{
+#ifdef RTE_ARCH_X86
+	/*
+	 * since AVX frequency can be different to base frequency, limit
+	 * use of AVX2 version to later plaforms, not all those that could
+	 * theoretically run it.
+	 */
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F))
+		return scatter ? i40e_recv_scattered_pkts_vec_avx2 :
+				 i40e_recv_pkts_vec_avx2;
+#endif
+	return scatter ? i40e_recv_scattered_pkts_vec :
+			 i40e_recv_pkts_vec;
+}
+
 void __attribute__((cold))
 i40e_set_rx_function(struct rte_eth_dev *dev)
 {
@@ -2940,57 +2969,17 @@ i40e_set_rx_function(struct rte_eth_dev *dev)
 		}
 	}
 
-	if (dev->data->scattered_rx) {
-		/* Set the non-LRO scattered callback: there are Vector and
-		 * single allocation versions.
-		 */
-		if (ad->rx_vec_allowed) {
-			PMD_INIT_LOG(DEBUG, "Using Vector Scattered Rx "
-					    "callback (port=%d).",
-				     dev->data->port_id);
-
-			dev->rx_pkt_burst = i40e_recv_scattered_pkts_vec;
-#ifdef RTE_ARCH_X86
-			/*
-			 * since AVX frequency can be different to base
-			 * frequency, limit use of AVX2 version to later
-			 * plaforms, not all those that could theoretically
-			 * run it.
-			 */
-			if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F))
-				dev->rx_pkt_burst =
-					i40e_recv_scattered_pkts_vec_avx2;
-#endif
-		} else {
-			PMD_INIT_LOG(DEBUG, "Using a Scattered with bulk "
-					   "allocation callback (port=%d).",
-				     dev->data->port_id);
-			dev->rx_pkt_burst = i40e_recv_scattered_pkts;
-		}
-	/* If parameters allow we are going to choose between the following
-	 * callbacks:
-	 *    - Vector
-	 *    - Bulk Allocation
-	 *    - Single buffer allocation (the simplest one)
-	 */
-	} else if (ad->rx_vec_allowed) {
-		PMD_INIT_LOG(DEBUG, "Vector rx enabled, please make sure RX "
-				    "burst size no less than %d (port=%d).",
-			     RTE_I40E_DESCS_PER_LOOP,
-			     dev->data->port_id);
-
-		dev->rx_pkt_burst = i40e_recv_pkts_vec;
-#ifdef RTE_ARCH_X86
-		/*
-		 * since AVX frequency can be different to base
-		 * frequency, limit use of AVX2 version to later
-		 * plaforms, not all those that could theoretically
-		 * run it.
-		 */
-		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F))
-			dev->rx_pkt_burst = i40e_recv_pkts_vec_avx2;
-#endif
-	} else if (ad->rx_bulk_alloc_allowed) {
+	if (ad->rx_vec_allowed) {
+		/* Vec Rx path */
+		PMD_INIT_LOG(DEBUG, "Vector Rx path will be used on port=%d.",
+				dev->data->port_id);
+		if (ad->use_latest_vec)
+			dev->rx_pkt_burst =
+			i40e_get_latest_rx_vec(dev->data->scattered_rx);
+		else
+			dev->rx_pkt_burst =
+			i40e_get_recommend_rx_vec(dev->data->scattered_rx);
+	} else if (!dev->data->scattered_rx && ad->rx_bulk_alloc_allowed) {
 		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions are "
 				    "satisfied. Rx Burst Bulk Alloc function "
 				    "will be used on port=%d.",
@@ -2998,12 +2987,12 @@ i40e_set_rx_function(struct rte_eth_dev *dev)
 
 		dev->rx_pkt_burst = i40e_recv_pkts_bulk_alloc;
 	} else {
-		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions are not "
-				    "satisfied, or Scattered Rx is requested "
-				    "(port=%d).",
+		/* Simple Rx Path. */
+		PMD_INIT_LOG(DEBUG, "Simple Rx path will be used on port=%d.",
 			     dev->data->port_id);
-
-		dev->rx_pkt_burst = i40e_recv_pkts;
+		dev->rx_pkt_burst = dev->data->scattered_rx ?
+					i40e_recv_scattered_pkts :
+					i40e_recv_pkts;
 	}
 
 	/* Propagate information about RX function choice through all queues. */
@@ -3049,6 +3038,31 @@ i40e_set_tx_function_flag(struct rte_eth_dev *dev, struct i40e_tx_queue *txq)
 				txq->queue_id);
 }
 
+static eth_tx_burst_t
+i40e_get_latest_tx_vec(void)
+{
+#ifdef RTE_ARCH_X86
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2))
+		return i40e_xmit_pkts_vec_avx2;
+#endif
+	return i40e_xmit_pkts_vec;
+}
+
+static eth_tx_burst_t
+i40e_get_recommend_tx_vec(void)
+{
+#ifdef RTE_ARCH_X86
+	/*
+	 * since AVX frequency can be different to base frequency, limit
+	 * use of AVX2 version to later plaforms, not all those that could
+	 * theoretically run it.
+	 */
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F))
+		return i40e_xmit_pkts_vec_avx2;
+#endif
+	return i40e_xmit_pkts_vec;
+}
+
 void __attribute__((cold))
 i40e_set_tx_function(struct rte_eth_dev *dev)
 {
@@ -3073,17 +3087,12 @@ i40e_set_tx_function(struct rte_eth_dev *dev)
 	if (ad->tx_simple_allowed) {
 		if (ad->tx_vec_allowed) {
 			PMD_INIT_LOG(DEBUG, "Vector tx finally be used.");
-			dev->tx_pkt_burst = i40e_xmit_pkts_vec;
-#ifdef RTE_ARCH_X86
-			/*
-			 * since AVX frequency can be different to base
-			 * frequency, limit use of AVX2 version to later
-			 * plaforms, not all those that could theoretically
-			 * run it.
-			 */
-			if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F))
-				dev->tx_pkt_burst = i40e_xmit_pkts_vec_avx2;
-#endif
+			if (ad->use_latest_vec)
+				dev->tx_pkt_burst =
+					i40e_get_latest_tx_vec();
+			else
+				dev->tx_pkt_burst =
+					i40e_get_recommend_tx_vec();
 		} else {
 			PMD_INIT_LOG(DEBUG, "Simple tx finally be used.");
 			dev->tx_pkt_burst = i40e_xmit_pkts_simple;

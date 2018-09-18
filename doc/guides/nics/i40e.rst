@@ -163,6 +163,15 @@ Runtime Config Options
   Currently hot-plugging of representor ports is not supported so all required
   representors must be specified on the creation of the PF.
 
+- ``Use latest supported vector`` (default ``disable``)
+
+  Latest supported vector path may not always get the best perf so vector path was
+  recommended to use only on later platform. But users may want the latest vector path
+  since it can get better perf in some real work loading cases. So ``devargs`` param
+  ``use-latest-supported-vec`` is introduced, for example::
+
+  -w 84:00.0,use-latest-supported-vec=1
+
 Driver compilation and testing
 ------------------------------
 

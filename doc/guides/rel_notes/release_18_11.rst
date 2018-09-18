@@ -61,6 +61,11 @@ New Features
   * Match items: destination MAC address.
   * Action items: push/pop/rewrite vlan header.
 
+* **Added a devarg to use the latest supported vector path in i40e.**
+  A new devarg ``use-latest-supported-vec`` was introduced to allow users to
+  choose the latest vector path that the platform supported. For example, users
+  can use AVX2 vector path on BDW/HSW to get better performance.
+
 * **Added support for SR-IOV in netvsc PMD.**
 
   The ``netvsc`` poll mode driver now supports the Accelerated Networking

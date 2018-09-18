@@ -1078,6 +1078,9 @@ struct i40e_adapter {
 	uint64_t pctypes_tbl[I40E_FLOW_TYPE_MAX] __rte_cache_min_aligned;
 	uint64_t flow_types_mask;
 	uint64_t pctypes_mask;
+
+	/* For devargs */
+	uint8_t use_latest_vec;
 };
 
 /**
