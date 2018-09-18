@@ -10,6 +10,91 @@
 #define EVENTDEV_NAME_DSW_PMD event_dsw
 
 static int
+dsw_queue_setup(struct rte_eventdev *dev, uint8_t queue_id,
+		const struct rte_event_queue_conf *conf)
+{
+	struct dsw_evdev *dsw = dsw_pmd_priv(dev);
+	struct dsw_queue *queue = &dsw->queues[queue_id];
+
+	if (RTE_EVENT_QUEUE_CFG_ALL_TYPES & conf->event_queue_cfg)
+		return -ENOTSUP;
+
+	if (conf->schedule_type == RTE_SCHED_TYPE_ORDERED)
+		return -ENOTSUP;
+
+	/* SINGLE_LINK is better off treated as TYPE_ATOMIC, since it
+	 * avoid the "fake" TYPE_PARALLEL flow_id assignment. Since
+	 * the queue will only have a single serving port, no
+	 * migration will ever happen, so the extra TYPE_ATOMIC
+	 * migration overhead is avoided.
+	 */
+	if (RTE_EVENT_QUEUE_CFG_SINGLE_LINK & conf->event_queue_cfg)
+		queue->schedule_type = RTE_SCHED_TYPE_ATOMIC;
+	else /* atomic or parallel */
+		queue->schedule_type = conf->schedule_type;
+
+	queue->num_serving_ports = 0;
+
+	return 0;
+}
+
+static void
+dsw_queue_def_conf(struct rte_eventdev *dev __rte_unused,
+		   uint8_t queue_id __rte_unused,
+		   struct rte_event_queue_conf *queue_conf)
+{
+	*queue_conf = (struct rte_event_queue_conf) {
+		.nb_atomic_flows = 4096,
+		.schedule_type = RTE_SCHED_TYPE_ATOMIC,
+		.priority = RTE_EVENT_DEV_PRIORITY_NORMAL
+	};
+}
+
+static void
+dsw_queue_release(struct rte_eventdev *dev __rte_unused,
+		  uint8_t queue_id __rte_unused)
+{
+}
+
+static void
+dsw_info_get(struct rte_eventdev *dev __rte_unused,
+	     struct rte_event_dev_info *info)
+{
+	*info = (struct rte_event_dev_info) {
+		.driver_name = DSW_PMD_NAME,
+		.max_event_queues = DSW_MAX_QUEUES,
+		.max_event_queue_flows = DSW_MAX_FLOWS,
+		.max_event_queue_priority_levels = 1,
+		.max_event_priority_levels = 1,
+		.max_event_ports = DSW_MAX_PORTS,
+		.max_event_port_dequeue_depth = DSW_MAX_PORT_DEQUEUE_DEPTH,
+		.max_event_port_enqueue_depth = DSW_MAX_PORT_ENQUEUE_DEPTH,
+		.max_num_events = DSW_MAX_EVENTS,
+		.event_dev_cap = RTE_EVENT_DEV_CAP_BURST_MODE|
+		RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED
+	};
+}
+
+static int
+dsw_configure(const struct rte_eventdev *dev)
+{
+	struct dsw_evdev *dsw = dsw_pmd_priv(dev);
+	const struct rte_event_dev_config *conf = &dev->data->dev_conf;
+
+	dsw->num_queues = conf->nb_event_queues;
+
+	return 0;
+}
+
+static struct rte_eventdev_ops dsw_evdev_ops = {
+	.queue_setup = dsw_queue_setup,
+	.queue_def_conf = dsw_queue_def_conf,
+	.queue_release = dsw_queue_release,
+	.dev_infos_get = dsw_info_get,
+	.dev_configure = dsw_configure,
+};
+
+static int
 dsw_probe(struct rte_vdev_device *vdev)
 {
 	const char *name;
@@ -22,6 +107,8 @@ dsw_probe(struct rte_vdev_device *vdev)
 				      rte_socket_id());
 	if (dev == NULL)
 		return -EFAULT;
+
+	dev->dev_ops = &dsw_evdev_ops;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
