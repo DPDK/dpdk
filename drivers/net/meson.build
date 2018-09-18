@@ -27,6 +27,7 @@ drivers = ['af_packet',
 	'szedata2',
 	'tap',
 	'thunderx',
+	'vdev_netvsc',
 	'vhost',
 	'virtio']
 std_deps = ['ethdev', 'kvargs'] # 'ethdev' also pulls in mbuf, net, eal etc
