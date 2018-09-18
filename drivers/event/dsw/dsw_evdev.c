@@ -2,6 +2,8 @@
  * Copyright(c) 2018 Ericsson AB
  */
 
+#include <stdbool.h>
+
 #include <rte_eventdev_pmd.h>
 #include <rte_eventdev_pmd_vdev.h>
 
@@ -113,6 +115,69 @@ dsw_queue_release(struct rte_eventdev *dev __rte_unused,
 }
 
 static void
+queue_add_port(struct dsw_queue *queue, uint16_t port_id)
+{
+	queue->serving_ports[queue->num_serving_ports] = port_id;
+	queue->num_serving_ports++;
+}
+
+static bool
+queue_remove_port(struct dsw_queue *queue, uint16_t port_id)
+{
+	uint16_t i;
+
+	for (i = 0; i < queue->num_serving_ports; i++)
+		if (queue->serving_ports[i] == port_id) {
+			uint16_t last_idx = queue->num_serving_ports - 1;
+			if (i != last_idx)
+				queue->serving_ports[i] =
+					queue->serving_ports[last_idx];
+			queue->num_serving_ports--;
+			return true;
+		}
+	return false;
+}
+
+static int
+dsw_port_link_unlink(struct rte_eventdev *dev, void *port,
+		     const uint8_t queues[], uint16_t num, bool link)
+{
+	struct dsw_evdev *dsw = dsw_pmd_priv(dev);
+	struct dsw_port *p = port;
+	uint16_t i;
+	uint16_t count = 0;
+
+	for (i = 0; i < num; i++) {
+		uint8_t qid = queues[i];
+		struct dsw_queue *q = &dsw->queues[qid];
+		if (link) {
+			queue_add_port(q, p->id);
+			count++;
+		} else {
+			bool removed = queue_remove_port(q, p->id);
+			if (removed)
+				count++;
+		}
+	}
+
+	return count;
+}
+
+static int
+dsw_port_link(struct rte_eventdev *dev, void *port, const uint8_t queues[],
+	      const uint8_t priorities[] __rte_unused, uint16_t num)
+{
+	return dsw_port_link_unlink(dev, port, queues, num, true);
+}
+
+static int
+dsw_port_unlink(struct rte_eventdev *dev, void *port, uint8_t queues[],
+		uint16_t num)
+{
+	return dsw_port_link_unlink(dev, port, queues, num, false);
+}
+
+static void
 dsw_info_get(struct rte_eventdev *dev __rte_unused,
 	     struct rte_event_dev_info *info)
 {
@@ -150,6 +215,8 @@ static struct rte_eventdev_ops dsw_evdev_ops = {
 	.queue_setup = dsw_queue_setup,
 	.queue_def_conf = dsw_queue_def_conf,
 	.queue_release = dsw_queue_release,
+	.port_link = dsw_port_link,
+	.port_unlink = dsw_port_unlink,
 	.dev_infos_get = dsw_info_get,
 	.dev_configure = dsw_configure,
 };

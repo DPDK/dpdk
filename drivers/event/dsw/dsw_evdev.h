@@ -51,6 +51,7 @@ struct dsw_port {
 
 struct dsw_queue {
 	uint8_t schedule_type;
+	uint8_t serving_ports[DSW_MAX_PORTS];
 	uint16_t num_serving_ports;
 };
 
