@@ -20,6 +20,7 @@ dsw_port_setup(struct rte_eventdev *dev, uint8_t port_id,
 	struct dsw_evdev *dsw = dsw_pmd_priv(dev);
 	struct dsw_port *port;
 	struct rte_event_ring *in_ring;
+	struct rte_ring *ctl_in_ring;
 	char ring_name[RTE_RING_NAMESIZE];
 
 	port = &dsw->ports[port_id];
@@ -42,12 +43,28 @@ dsw_port_setup(struct rte_eventdev *dev, uint8_t port_id,
 	if (in_ring == NULL)
 		return -ENOMEM;
 
+	snprintf(ring_name, sizeof(ring_name), "dswctl%d_p%u",
+		 dev->data->dev_id, port_id);
+
+	ctl_in_ring = rte_ring_create(ring_name, DSW_CTL_IN_RING_SIZE,
+				      dev->data->socket_id,
+				      RING_F_SC_DEQ|RING_F_EXACT_SZ);
+
+	if (ctl_in_ring == NULL) {
+		rte_event_ring_free(in_ring);
+		return -ENOMEM;
+	}
+
 	port->in_ring = in_ring;
+	port->ctl_in_ring = ctl_in_ring;
 
 	rte_atomic16_init(&port->load);
 
 	port->load_update_interval =
 		(DSW_LOAD_UPDATE_INTERVAL * rte_get_timer_hz()) / US_PER_S;
+
+	port->migration_interval =
+		(DSW_MIGRATION_INTERVAL * rte_get_timer_hz()) / US_PER_S;
 
 	dev->data->ports[port_id] = port;
 
@@ -72,6 +89,7 @@ dsw_port_release(void *p)
 	struct dsw_port *port = p;
 
 	rte_event_ring_free(port->in_ring);
+	rte_ring_free(port->ctl_in_ring);
 }
 
 static int
@@ -273,6 +291,14 @@ dsw_port_drain_buf(uint8_t dev_id, struct rte_event *buf, uint16_t buf_len,
 }
 
 static void
+dsw_port_drain_paused(uint8_t dev_id, struct dsw_port *port,
+		      eventdev_stop_flush_t flush, void *flush_arg)
+{
+	dsw_port_drain_buf(dev_id, port->paused_events, port->paused_events_len,
+			   flush, flush_arg);
+}
+
+static void
 dsw_port_drain_out(uint8_t dev_id, struct dsw_evdev *dsw, struct dsw_port *port,
 		   eventdev_stop_flush_t flush, void *flush_arg)
 {
@@ -308,6 +334,7 @@ dsw_drain(uint8_t dev_id, struct dsw_evdev *dsw,
 		struct dsw_port *port = &dsw->ports[port_id];
 
 		dsw_port_drain_out(dev_id, dsw, port, flush, flush_arg);
+		dsw_port_drain_paused(dev_id, port, flush, flush_arg);
 		dsw_port_drain_in_ring(dev_id, port, flush, flush_arg);
 	}
 }

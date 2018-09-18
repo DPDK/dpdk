@@ -73,7 +73,37 @@
 #define DSW_LOAD_UPDATE_INTERVAL (DSW_MIGRATION_INTERVAL/4)
 #define DSW_OLD_LOAD_WEIGHT (1)
 
+/* The minimum time (in us) between two flow migrations. What puts an
+ * upper limit on the actual migration rate is primarily the pace in
+ * which the ports send and receive control messages, which in turn is
+ * largely a function of how much cycles are spent the processing of
+ * an event burst.
+ */
 #define DSW_MIGRATION_INTERVAL (1000)
+#define DSW_MIN_SOURCE_LOAD_FOR_MIGRATION (DSW_LOAD_FROM_PERCENT(70))
+#define DSW_MAX_TARGET_LOAD_FOR_MIGRATION (DSW_LOAD_FROM_PERCENT(95))
+
+#define DSW_MAX_EVENTS_RECORDED (128)
+
+/* Only one outstanding migration per port is allowed */
+#define DSW_MAX_PAUSED_FLOWS (DSW_MAX_PORTS)
+
+/* Enough room for paus request/confirm and unpaus request/confirm for
+ * all possible senders.
+ */
+#define DSW_CTL_IN_RING_SIZE ((DSW_MAX_PORTS-1)*4)
+
+struct dsw_queue_flow {
+	uint8_t queue_id;
+	uint16_t flow_hash;
+};
+
+enum dsw_migration_state {
+	DSW_MIGRATION_STATE_IDLE,
+	DSW_MIGRATION_STATE_PAUSING,
+	DSW_MIGRATION_STATE_FORWARDING,
+	DSW_MIGRATION_STATE_UNPAUSING
+};
 
 struct dsw_port {
 	uint16_t id;
@@ -98,6 +128,7 @@ struct dsw_port {
 
 	uint16_t ops_since_bg_task;
 
+	/* most recent 'background' processing */
 	uint64_t last_bg;
 
 	/* For port load measurement. */
@@ -108,10 +139,45 @@ struct dsw_port {
 	uint64_t busy_cycles;
 	uint64_t total_busy_cycles;
 
+	/* For the ctl interface and flow migration mechanism. */
+	uint64_t next_migration;
+	uint64_t migration_interval;
+	enum dsw_migration_state migration_state;
+
+	uint64_t migration_start;
+	uint64_t migrations;
+	uint64_t migration_latency;
+
+	uint8_t migration_target_port_id;
+	struct dsw_queue_flow migration_target_qf;
+	uint8_t cfm_cnt;
+
+	uint16_t paused_flows_len;
+	struct dsw_queue_flow paused_flows[DSW_MAX_PAUSED_FLOWS];
+
+	/* In a very contrived worst case all inflight events can be
+	 * laying around paused here.
+	 */
+	uint16_t paused_events_len;
+	struct rte_event paused_events[DSW_MAX_EVENTS];
+
+	uint16_t seen_events_len;
+	uint16_t seen_events_idx;
+	struct dsw_queue_flow seen_events[DSW_MAX_EVENTS_RECORDED];
+
 	uint16_t out_buffer_len[DSW_MAX_PORTS];
 	struct rte_event out_buffer[DSW_MAX_PORTS][DSW_MAX_PORT_OUT_BUFFER];
 
+	uint16_t in_buffer_len;
+	uint16_t in_buffer_start;
+	/* This buffer may contain events that were read up from the
+	 * in_ring during the flow migration process.
+	 */
+	struct rte_event in_buffer[DSW_MAX_EVENTS];
+
 	struct rte_event_ring *in_ring __rte_cache_aligned;
+
+	struct rte_ring *ctl_in_ring __rte_cache_aligned;
 
 	/* Estimate of current port load. */
 	rte_atomic16_t load __rte_cache_aligned;
@@ -136,6 +202,20 @@ struct dsw_evdev {
 
 	rte_atomic32_t credits_on_loan __rte_cache_aligned;
 };
+
+#define DSW_CTL_PAUS_REQ (0)
+#define DSW_CTL_UNPAUS_REQ (1)
+#define DSW_CTL_CFM (2)
+
+/* sizeof(struct dsw_ctl_msg) must be equal or less than
+ * sizeof(void *), to fit on the control ring.
+ */
+struct dsw_ctl_msg {
+	uint8_t type:2;
+	uint8_t originating_port_id:6;
+	uint8_t queue_id;
+	uint16_t flow_hash;
+} __rte_packed;
 
 uint16_t dsw_event_enqueue(void *port, const struct rte_event *event);
 uint16_t dsw_event_enqueue_burst(void *port,
