@@ -74,6 +74,7 @@ static void eth_igb_stop(struct rte_eth_dev *dev);
 static int  eth_igb_dev_set_link_up(struct rte_eth_dev *dev);
 static int  eth_igb_dev_set_link_down(struct rte_eth_dev *dev);
 static void eth_igb_close(struct rte_eth_dev *dev);
+static int eth_igb_reset(struct rte_eth_dev *dev);
 static void eth_igb_promiscuous_enable(struct rte_eth_dev *dev);
 static void eth_igb_promiscuous_disable(struct rte_eth_dev *dev);
 static void eth_igb_allmulticast_enable(struct rte_eth_dev *dev);
@@ -351,6 +352,7 @@ static const struct eth_dev_ops eth_igb_ops = {
 	.dev_set_link_up      = eth_igb_dev_set_link_up,
 	.dev_set_link_down    = eth_igb_dev_set_link_down,
 	.dev_close            = eth_igb_close,
+	.dev_reset            = eth_igb_reset,
 	.promiscuous_enable   = eth_igb_promiscuous_enable,
 	.promiscuous_disable  = eth_igb_promiscuous_disable,
 	.allmulticast_enable  = eth_igb_allmulticast_enable,
@@ -1592,6 +1594,33 @@ eth_igb_close(struct rte_eth_dev *dev)
 	memset(&link, 0, sizeof(link));
 	rte_eth_linkstatus_set(dev, &link);
 }
+
+/*
+ * Reset PF device.
+ */
+static int
+eth_igb_reset(struct rte_eth_dev *dev)
+{
+	int ret;
+
+	/* When a DPDK PMD PF begin to reset PF port, it should notify all
+	 * its VF to make them align with it. The detailed notification
+	 * mechanism is PMD specific and is currently not implemented.
+	 * To avoid unexpected behavior in VF, currently reset of PF with
+	 * SR-IOV activation is not supported. It might be supported later.
+	 */
+	if (dev->data->sriov.active)
+		return -ENOTSUP;
+
+	ret = eth_igb_dev_uninit(dev);
+	if (ret)
+		return ret;
+
+	ret = eth_igb_dev_init(dev);
+
+	return ret;
+}
+
 
 static int
 igb_get_rx_buffer_size(struct e1000_hw *hw)
