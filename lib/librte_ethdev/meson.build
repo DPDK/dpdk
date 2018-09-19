@@ -6,6 +6,7 @@ version = 10
 allow_experimental_apis = true
 sources = files('ethdev_private.c',
 	'ethdev_profile.c',
+	'rte_class_eth.c',
 	'rte_ethdev.c',
 	'rte_flow.c',
 	'rte_mtr.c',

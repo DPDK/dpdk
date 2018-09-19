@@ -12,7 +12,7 @@ CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 LDLIBS += -lrte_net -lrte_eal -lrte_mempool -lrte_ring
-LDLIBS += -lrte_mbuf
+LDLIBS += -lrte_mbuf -lrte_kvargs
 
 EXPORT_MAP := rte_ethdev_version.map
 
@@ -20,6 +20,7 @@ LIBABIVER := 10
 
 SRCS-y += ethdev_private.c
 SRCS-y += rte_ethdev.c
+SRCS-y += rte_class_eth.c
 SRCS-y += rte_flow.c
 SRCS-y += rte_tm.c
 SRCS-y += rte_mtr.c
