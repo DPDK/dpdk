@@ -621,7 +621,7 @@ avf_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return nb_pkts;
 }
 
-void __attribute__((cold))
+static void __attribute__((cold))
 avf_rx_queue_release_mbufs_sse(struct avf_rx_queue *rxq)
 {
 	_avf_rx_queue_release_mbufs_vec(rxq);

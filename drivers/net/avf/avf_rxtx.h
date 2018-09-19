@@ -227,7 +227,7 @@ static inline
 void avf_dump_tx_descriptor(const struct avf_tx_queue *txq,
 			    const void *desc, uint16_t tx_id)
 {
-	char *name;
+	const char *name;
 	const struct avf_tx_desc *tx_desc = desc;
 	enum avf_tx_desc_dtype_value type;
 

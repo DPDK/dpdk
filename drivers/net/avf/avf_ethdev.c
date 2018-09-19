@@ -559,7 +559,7 @@ avf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 }
 
 static const uint32_t *
-avf_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+avf_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
 {
 	static const uint32_t ptypes[] = {
 		RTE_PTYPE_L2_ETHER,
