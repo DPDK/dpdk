@@ -146,7 +146,7 @@ mlx5_read_dev_counters(struct rte_eth_dev *dev, uint64_t *stats)
 	et_stats->cmd = ETHTOOL_GSTATS;
 	et_stats->n_stats = xstats_ctrl->stats_n;
 	ifr.ifr_data = (caddr_t)et_stats;
-	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr, 1);
+	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr, 0);
 	if (ret) {
 		DRV_LOG(WARNING,
 			"port %u unable to read statistic values from device",
@@ -194,7 +194,7 @@ mlx5_ethtool_get_stats_n(struct rte_eth_dev *dev) {
 
 	drvinfo.cmd = ETHTOOL_GDRVINFO;
 	ifr.ifr_data = (caddr_t)&drvinfo;
-	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr, 1);
+	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr, 0);
 	if (ret) {
 		DRV_LOG(WARNING, "port %u unable to query number of statistics",
 			dev->data->port_id);
@@ -229,7 +229,6 @@ mlx5_xstats_init(struct rte_eth_dev *dev)
 		return;
 	}
 	dev_stats_n = ret;
-	xstats_ctrl->stats_n = dev_stats_n;
 	/* Allocate memory to grab stat names and values. */
 	str_sz = dev_stats_n * ETH_GSTRING_LEN;
 	strings = (struct ethtool_gstrings *)
@@ -244,7 +243,7 @@ mlx5_xstats_init(struct rte_eth_dev *dev)
 	strings->string_set = ETH_SS_STATS;
 	strings->len = dev_stats_n;
 	ifr.ifr_data = (caddr_t)strings;
-	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr, 1);
+	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr, 0);
 	if (ret) {
 		DRV_LOG(WARNING, "port %u unable to get statistic names",
 			dev->data->port_id);
@@ -275,6 +274,7 @@ mlx5_xstats_init(struct rte_eth_dev *dev)
 			goto free;
 		}
 	}
+	xstats_ctrl->stats_n = dev_stats_n;
 	/* Copy to base at first time. */
 	assert(xstats_n <= MLX5_MAX_XSTATS);
 	ret = mlx5_read_dev_counters(dev, xstats_ctrl->base);
@@ -307,6 +307,8 @@ mlx5_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *stats,
 	unsigned int i;
 	uint64_t counters[n];
 
+	if (!priv->xstats_ctrl.stats_n)
+		return 0;
 	if (n >= xstats_n && stats) {
 		struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
 		int stats_n;
@@ -480,8 +482,11 @@ int
 mlx5_xstats_get_names(struct rte_eth_dev *dev __rte_unused,
 		      struct rte_eth_xstat_name *xstats_names, unsigned int n)
 {
+	struct priv *priv = dev->data->dev_private;
 	unsigned int i;
 
+	if (!priv->xstats_ctrl.stats_n)
+		return 0;
 	if (n >= xstats_n && xstats_names) {
 		for (i = 0; i != xstats_n; ++i) {
 			strncpy(xstats_names[i].name,
