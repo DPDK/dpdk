@@ -4,9 +4,6 @@
 
 /* This file manages the list of devices and their arguments, as given
  * by the user at startup
- *
- * Code here should not call rte_log since the EAL environment
- * may not be initialized.
  */
 
 #include <stdio.h>
