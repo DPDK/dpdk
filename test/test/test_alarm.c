@@ -178,7 +178,10 @@ static int
 test_alarm(void)
 {
 	int count = 0;
-
+#ifdef RTE_EXEC_ENV_BSDAPP
+	printf("The alarm API is not supported on FreeBSD\n");
+	return 0;
+#endif
 	/* check if the callback will be called */
 	printf("check if the callback will be called\n");
 	flag = 0;
