@@ -627,16 +627,19 @@ mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev,
 	int link_speed = 0;
 	int ret;
 
-	ret = mlx5_ifreq(dev, SIOCGIFFLAGS, &ifr, 1);
+	ret = mlx5_ifreq(dev, SIOCGIFFLAGS, &ifr, 0);
 	if (ret) {
 		DRV_LOG(WARNING, "port %u ioctl(SIOCGIFFLAGS) failed: %s",
 			dev->data->port_id, strerror(rte_errno));
 		return ret;
 	}
-	memset(&dev_link, 0, sizeof(dev_link));
-	dev_link.link_status = ((ifr.ifr_flags & IFF_UP) &&
-				(ifr.ifr_flags & IFF_RUNNING));
-	ifr.ifr_data = (void *)&edata;
+	dev_link = (struct rte_eth_link) {
+		.link_status = ((ifr.ifr_flags & IFF_UP) &&
+				(ifr.ifr_flags & IFF_RUNNING)),
+	};
+	ifr = (struct ifreq) {
+		.ifr_data = (void *)&edata,
+	};
 	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr, 1);
 	if (ret) {
 		DRV_LOG(WARNING,
@@ -666,8 +669,9 @@ mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev,
 				ETH_LINK_HALF_DUPLEX : ETH_LINK_FULL_DUPLEX);
 	dev_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
 			ETH_LINK_SPEED_FIXED);
-	if ((dev_link.link_speed && !dev_link.link_status) ||
-	    (!dev_link.link_speed && dev_link.link_status)) {
+	if (!priv->representor &&
+	    ((dev_link.link_speed && !dev_link.link_status) ||
+	     (!dev_link.link_speed && dev_link.link_status))) {
 		rte_errno = EAGAIN;
 		return -rte_errno;
 	}
@@ -698,16 +702,19 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev,
 	uint64_t sc;
 	int ret;
 
-	ret = mlx5_ifreq(dev, SIOCGIFFLAGS, &ifr, 1);
+	ret = mlx5_ifreq(dev, SIOCGIFFLAGS, &ifr, 0);
 	if (ret) {
 		DRV_LOG(WARNING, "port %u ioctl(SIOCGIFFLAGS) failed: %s",
 			dev->data->port_id, strerror(rte_errno));
 		return ret;
 	}
-	memset(&dev_link, 0, sizeof(dev_link));
-	dev_link.link_status = ((ifr.ifr_flags & IFF_UP) &&
-				(ifr.ifr_flags & IFF_RUNNING));
-	ifr.ifr_data = (void *)&gcmd;
+	dev_link = (struct rte_eth_link) {
+		.link_status = ((ifr.ifr_flags & IFF_UP) &&
+				(ifr.ifr_flags & IFF_RUNNING)),
+	};
+	ifr = (struct ifreq) {
+		.ifr_data = (void *)&gcmd,
+	};
 	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr, 1);
 	if (ret) {
 		DRV_LOG(DEBUG,
@@ -775,8 +782,9 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev,
 				ETH_LINK_HALF_DUPLEX : ETH_LINK_FULL_DUPLEX);
 	dev_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
 				  ETH_LINK_SPEED_FIXED);
-	if ((dev_link.link_speed && !dev_link.link_status) ||
-	    (!dev_link.link_speed && dev_link.link_status)) {
+	if (!priv->representor &&
+	    ((dev_link.link_speed && !dev_link.link_status) ||
+	     (!dev_link.link_speed && dev_link.link_status))) {
 		rte_errno = EAGAIN;
 		return -rte_errno;
 	}
