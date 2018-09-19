@@ -69,7 +69,6 @@ avf_execute_vf_cmd(struct avf_adapter *adapter, struct avf_cmd_info *args)
 {
 	struct avf_hw *hw = AVF_DEV_PRIVATE_TO_HW(adapter);
 	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(adapter);
-	struct avf_arq_event_info event_info;
 	enum avf_status_code ret;
 	int err = 0;
 	int i = 0;
@@ -600,7 +599,6 @@ avf_config_irq_map(struct avf_adapter *adapter)
 	struct virtchnl_irq_map_info *map_info;
 	struct virtchnl_vector_map *vecmap;
 	struct avf_cmd_info args;
-	uint32_t vector_id;
 	int len, i, err;
 
 	len = sizeof(struct virtchnl_irq_map_info) +

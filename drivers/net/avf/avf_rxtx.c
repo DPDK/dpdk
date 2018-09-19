@@ -247,7 +247,6 @@ alloc_rxq_mbufs(struct avf_rx_queue *rxq)
 static inline void
 release_rxq_mbufs(struct avf_rx_queue *rxq)
 {
-	struct rte_mbuf *mbuf;
 	uint16_t i;
 
 	if (!rxq->sw_ring)
@@ -310,9 +309,8 @@ avf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	struct avf_rx_queue *rxq;
 	const struct rte_memzone *mz;
 	uint32_t ring_size;
-	uint16_t len, i;
+	uint16_t len;
 	uint16_t rx_free_thresh;
-	uint16_t base, bsf, tc_mapping;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -428,13 +426,10 @@ avf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		       const struct rte_eth_txconf *tx_conf)
 {
 	struct avf_hw *hw = AVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct avf_adapter *ad =
-		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct avf_tx_queue *txq;
 	const struct rte_memzone *mz;
 	uint32_t ring_size;
 	uint16_t tx_rs_thresh, tx_free_thresh;
-	uint16_t i, base, bsf, tc_mapping;
 	uint64_t offloads;
 
 	PMD_INIT_FUNC_TRACE();
@@ -515,8 +510,11 @@ avf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->ops = &def_txq_ops;
 
 #ifdef RTE_LIBRTE_AVF_INC_VECTOR
-	if (check_tx_vec_allow(txq) == FALSE)
+	if (check_tx_vec_allow(txq) == FALSE) {
+		struct avf_adapter *ad =
+			AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 		ad->tx_vec_allowed = false;
+	}
 #endif
 
 	return 0;
@@ -1268,7 +1266,6 @@ static inline uint16_t
 rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
 	struct avf_rx_queue *rxq = (struct avf_rx_queue *)rx_queue;
-	struct rte_eth_dev *dev;
 	uint16_t nb_rx = 0;
 
 	if (!nb_pkts)
@@ -1584,10 +1581,6 @@ avf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		if (nb_ctx) {
 			/* Setup TX context descriptor if required */
-			volatile struct avf_tx_context_desc *ctx_txd =
-				(volatile struct avf_tx_context_desc *)
-					&txr[tx_id];
-			uint16_t cd_l2tag2 = 0;
 			uint64_t cd_type_cmd_tso_mss =
 				AVF_TX_DESC_DTYPE_CONTEXT;
 
@@ -1603,7 +1596,7 @@ avf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				cd_type_cmd_tso_mss |=
 					avf_set_tso_ctx(tx_pkt, tx_offload);
 
-			AVF_DUMP_TX_DESC(txq, ctx_txd, tx_id);
+			AVF_DUMP_TX_DESC(txq, &txr[tx_id], tx_id);
 			txe->last_id = tx_last;
 			tx_id = txe->next_id;
 			txe = txn;

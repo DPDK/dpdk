@@ -154,7 +154,6 @@ static int
 avf_init_rss(struct avf_adapter *adapter)
 {
 	struct avf_info *vf =  AVF_DEV_PRIVATE_TO_VF(adapter);
-	struct avf_hw *hw = AVF_DEV_PRIVATE_TO_HW(adapter);
 	struct rte_eth_rss_conf *rss_conf;
 	uint8_t i, j, nb_q;
 	int ret;
@@ -259,11 +258,8 @@ avf_init_rxq(struct rte_eth_dev *dev, struct avf_rx_queue *rxq)
 static int
 avf_init_queues(struct rte_eth_dev *dev)
 {
-	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct avf_rx_queue **rxq =
 		(struct avf_rx_queue **)dev->data->rx_queues;
-	struct avf_tx_queue **txq =
-		(struct avf_tx_queue **)dev->data->tx_queues;
 	int i, ret = AVF_SUCCESS;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
@@ -415,7 +411,6 @@ avf_dev_start(struct rte_eth_dev *dev)
 		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct avf_hw *hw = AVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = dev->intr_handle;
 
 	PMD_INIT_FUNC_TRACE();
@@ -476,9 +471,7 @@ avf_dev_stop(struct rte_eth_dev *dev)
 	struct avf_adapter *adapter =
 		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct avf_hw *hw = AVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = dev->intr_handle;
-	int ret, i;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -503,8 +496,6 @@ avf_dev_stop(struct rte_eth_dev *dev)
 static void
 avf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
-	struct avf_adapter *adapter =
-		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 
 	memset(dev_info, 0, sizeof(*dev_info));
@@ -914,7 +905,6 @@ avf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 static int
 avf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
-	struct avf_info *vf = AVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	uint32_t frame_size = mtu + AVF_ETH_OVERHEAD;
 	int ret = 0;
 
@@ -1044,8 +1034,6 @@ avf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 static int
 avf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 {
-	struct avf_adapter *adapter =
-		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct avf_hw *hw = AVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint16_t msix_intr;
@@ -1088,7 +1076,7 @@ avf_check_vf_reset_done(struct avf_hw *hw)
 static int
 avf_init_vf(struct rte_eth_dev *dev)
 {
-	int i, err, bufsz;
+	int err, bufsz;
 	struct avf_adapter *adapter =
 		AVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct avf_hw *hw = AVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -1197,7 +1185,6 @@ avf_dev_interrupt_handler(void *param)
 
 	avf_handle_virtchnl_msg(dev);
 
-done:
 	avf_enable_irq0(hw);
 }
 
