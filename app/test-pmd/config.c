@@ -1141,6 +1141,7 @@ static const struct {
 	MK_FLOW_ACTION(END, 0),
 	MK_FLOW_ACTION(VOID, 0),
 	MK_FLOW_ACTION(PASSTHRU, 0),
+	MK_FLOW_ACTION(JUMP, 0),
 	MK_FLOW_ACTION(MARK, sizeof(struct rte_flow_action_mark)),
 	MK_FLOW_ACTION(FLAG, 0),
 	MK_FLOW_ACTION(QUEUE, sizeof(struct rte_flow_action_queue)),
