@@ -1160,6 +1160,7 @@ em_get_tx_port_offloads_capa(struct rte_eth_dev *dev)
 
 	RTE_SET_USED(dev);
 	tx_offload_capa =
+		DEV_TX_OFFLOAD_MULTI_SEGS  |
 		DEV_TX_OFFLOAD_VLAN_INSERT |
 		DEV_TX_OFFLOAD_IPV4_CKSUM  |
 		DEV_TX_OFFLOAD_UDP_CKSUM   |
