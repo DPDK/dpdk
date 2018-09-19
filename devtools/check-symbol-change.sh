@@ -140,7 +140,7 @@ check_for_rule_violations()
 
 trap clean_and_exit_on_sig EXIT
 
-mapfile=`mktemp mapdb.XXXXXX`
+mapfile=`mktemp -t dpdk.mapdb.XXXXXX`
 patch=$1
 exit_code=1
 

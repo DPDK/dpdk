@@ -90,11 +90,11 @@ include_dir=${1:-build/include}
 	'rte_eth_vhost.h' \
 }
 
-temp_cc=/tmp/${0##*/}.$$.c
+temp_cc=$(mktemp -t dpdk.${0##*/}.XXX.c)
 pass_cc=
 failures_cc=0
 
-temp_cxx=/tmp/${0##*/}.$$.cc
+temp_cxx=$(mktemp -t dpdk.${0##*/}.XXX.cc)
 pass_cxx=
 failures_cxx=0
 

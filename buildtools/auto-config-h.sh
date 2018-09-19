@@ -23,7 +23,7 @@ name=${5:?define/type/function name required}
 
 : ${CC:=cc}
 
-temp=/tmp/${0##*/}.$$.c
+temp=$(mktemp -t dpdk.${0##*/}.XXX.c)
 
 case $type in
 define)

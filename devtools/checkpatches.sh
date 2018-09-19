@@ -90,11 +90,11 @@ check () { # <patch> <commit> <title>
 	if [ -n "$1" ] ; then
 		tmpinput=$1
 	elif [ -n "$2" ] ; then
-		tmpinput=$(mktemp checkpatches.XXXXXX)
+		tmpinput=$(mktemp -t dpdk.checkpatches.XXXXXX)
 		git format-patch --find-renames \
 		--no-stat --stdout -1 $commit > "$tmpinput"
 	else
-		tmpinput=$(mktemp checkpatches.XXXXXX)
+		tmpinput=$(mktemp -t dpdk.checkpatches.XXXXXX)
 		cat > "$tmpinput"
 	fi
 
