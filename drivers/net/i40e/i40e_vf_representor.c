@@ -48,6 +48,7 @@ i40e_vf_representor_dev_infos_get(struct rte_eth_dev *ethdev,
 		DEV_RX_OFFLOAD_UDP_CKSUM |
 		DEV_RX_OFFLOAD_TCP_CKSUM;
 	dev_info->tx_offload_capa =
+		DEV_TX_OFFLOAD_MULTI_SEGS  |
 		DEV_TX_OFFLOAD_VLAN_INSERT |
 		DEV_TX_OFFLOAD_QINQ_INSERT |
 		DEV_TX_OFFLOAD_IPV4_CKSUM |
