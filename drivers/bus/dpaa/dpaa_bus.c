@@ -559,6 +559,9 @@ rte_dpaa_bus_probe(void)
 			if (ret)
 				continue;
 
+			if (rte_dev_is_probed(&dev->device))
+				continue;
+
 			if (!drv->probe ||
 			    (dev->device.devargs &&
 			    dev->device.devargs->policy == RTE_DEV_BLACKLISTED))

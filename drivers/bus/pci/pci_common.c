@@ -6,6 +6,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/queue.h>
@@ -122,6 +123,7 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 			 struct rte_pci_device *dev)
 {
 	int ret;
+	bool already_probed;
 	struct rte_pci_addr *loc;
 
 	if ((dr == NULL) || (dev == NULL))
@@ -152,6 +154,13 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 		dev->device.numa_node = 0;
 	}
 
+	already_probed = rte_dev_is_probed(&dev->device);
+	if (already_probed && !(dr->drv_flags & RTE_PCI_DRV_PROBE_AGAIN)) {
+		RTE_LOG(DEBUG, EAL, "Device %s is already probed\n",
+				dev->device.name);
+		return -EEXIST;
+	}
+
 	RTE_LOG(INFO, EAL, "  probe driver: %x:%x %s\n", dev->id.vendor_id,
 		dev->id.device_id, dr->driver.name);
 
@@ -160,9 +169,10 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 	 * This needs to be before rte_pci_map_device(), as it enables to use
 	 * driver flags for adjusting configuration.
 	 */
-	dev->driver = dr;
+	if (!already_probed)
+		dev->driver = dr;
 
-	if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING) {
+	if (!already_probed && (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING)) {
 		/* map resources for devices that use igb_uio */
 		ret = rte_pci_map_device(dev);
 		if (ret != 0) {
@@ -173,6 +183,8 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 
 	/* call the driver probe() function */
 	ret = dr->probe(dr, dev);
+	if (already_probed)
+		return ret; /* no rollback if already succeeded earlier */
 	if (ret) {
 		dev->driver = NULL;
 		if ((dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING) &&
@@ -243,10 +255,6 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 	if (dev == NULL)
 		return -1;
 
-	/* Check if a driver is already loaded */
-	if (rte_dev_is_probed(&dev->device))
-		return 0;
-
 	FOREACH_DRIVER_ON_PCIBUS(dr) {
 		rc = rte_pci_probe_one_driver(dr, dev);
 		if (rc < 0)
@@ -288,11 +296,14 @@ rte_pci_probe(void)
 			devargs->policy == RTE_DEV_WHITELISTED)
 			ret = pci_probe_all_drivers(dev);
 		if (ret < 0) {
-			RTE_LOG(ERR, EAL, "Requested device " PCI_PRI_FMT
-				 " cannot be used\n", dev->addr.domain, dev->addr.bus,
-				 dev->addr.devid, dev->addr.function);
-			rte_errno = errno;
-			failed++;
+			if (ret != -EEXIST) {
+				RTE_LOG(ERR, EAL, "Requested device "
+					PCI_PRI_FMT " cannot be used\n",
+					dev->addr.domain, dev->addr.bus,
+					dev->addr.devid, dev->addr.function);
+				rte_errno = errno;
+				failed++;
+			}
 			ret = 0;
 		}
 	}

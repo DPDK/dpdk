@@ -159,7 +159,7 @@ struct rte_device {
 	const struct rte_driver *driver; /**< Driver assigned after probing */
 	const struct rte_bus *bus;    /**< Bus handle assigned on scan */
 	int numa_node;                /**< NUMA node connection */
-	struct rte_devargs *devargs;  /**< Device user arguments */
+	struct rte_devargs *devargs;  /**< Arguments for latest probing */
 };
 
 /**

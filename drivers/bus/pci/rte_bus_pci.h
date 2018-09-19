@@ -123,7 +123,7 @@ struct rte_pci_driver {
 	pci_probe_t *probe;                /**< Device Probe function. */
 	pci_remove_t *remove;              /**< Device Remove function. */
 	const struct rte_pci_id *id_table; /**< ID table, NULL terminated. */
-	uint32_t drv_flags;                /**< Flags contolling handling of device. */
+	uint32_t drv_flags;                /**< Flags RTE_PCI_DRV_*. */
 };
 
 /**
@@ -139,6 +139,8 @@ struct rte_pci_bus {
 #define RTE_PCI_DRV_NEED_MAPPING 0x0001
 /** Device needs PCI BAR mapping with enabled write combining (wc) */
 #define RTE_PCI_DRV_WC_ACTIVATE 0x0002
+/** Device already probed can be probed again to check for new ports. */
+#define RTE_PCI_DRV_PROBE_AGAIN 0x0004
 /** Device driver supports link state interrupt */
 #define RTE_PCI_DRV_INTR_LSC	0x0008
 /** Device driver supports device removal interrupt */

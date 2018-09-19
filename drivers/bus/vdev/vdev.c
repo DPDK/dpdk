@@ -226,6 +226,11 @@ insert_vdev(const char *name, const char *args, struct rte_vdev_device **p_dev)
 	dev->device.name = devargs->name;
 
 	if (find_vdev(name)) {
+		/*
+		 * A vdev is expected to have only one port.
+		 * So there is no reason to try probing again,
+		 * even with new arguments.
+		 */
 		ret = -EEXIST;
 		goto fail;
 	}

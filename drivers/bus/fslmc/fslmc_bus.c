@@ -401,6 +401,9 @@ rte_fslmc_probe(void)
 			if (!drv->probe)
 				continue;
 
+			if (rte_dev_is_probed(&dev->device))
+				continue;
+
 			if (dev->device.devargs &&
 			  dev->device.devargs->policy == RTE_DEV_BLACKLISTED) {
 				DPAA2_BUS_LOG(DEBUG, "%s Blacklisted, skipping",

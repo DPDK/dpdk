@@ -219,13 +219,10 @@ local_dev_probe(const char *devargs, struct rte_device **new_dev)
 		goto err_devarg;
 	}
 
-	if (rte_dev_is_probed(dev)) {
-		RTE_LOG(ERR, EAL, "Device is already plugged\n");
-		return -EEXIST;
-	}
-
 	ret = dev->bus->plug(dev);
 	if (ret) {
+		if (rte_dev_is_probed(dev)) /* if already succeeded earlier */
+			return ret; /* no rollback */
 		RTE_LOG(ERR, EAL, "Driver cannot attach the device (%s)\n",
 			dev->name);
 		goto err_devarg;
