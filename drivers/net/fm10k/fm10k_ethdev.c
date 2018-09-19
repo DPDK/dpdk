@@ -1975,6 +1975,7 @@ static uint64_t fm10k_get_tx_port_offloads_capa(struct rte_eth_dev *dev)
 	RTE_SET_USED(dev);
 
 	return (uint64_t)(DEV_TX_OFFLOAD_VLAN_INSERT |
+			  DEV_TX_OFFLOAD_MULTI_SEGS  |
 			  DEV_TX_OFFLOAD_IPV4_CKSUM  |
 			  DEV_TX_OFFLOAD_UDP_CKSUM   |
 			  DEV_TX_OFFLOAD_TCP_CKSUM   |
