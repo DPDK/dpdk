@@ -66,6 +66,7 @@ Hash algorithms:
 Supported AEAD algorithms:
 
 * ``RTE_CRYPTO_AEAD_AES_GCM``
+* ``RTE_CRYPTO_AEAD_AES_CCM``
 
 
 Limitations
