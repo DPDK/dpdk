@@ -27,8 +27,6 @@
 #include "private.h"
 
 
-extern struct rte_pci_bus rte_pci_bus;
-
 #define SYSFS_PCI_DEVICES "/sys/bus/pci/devices"
 
 const char *rte_pci_get_sysfs_path(void)
@@ -435,6 +433,7 @@ struct rte_pci_bus rte_pci_bus = {
 		.unplug = pci_unplug,
 		.parse = pci_parse,
 		.get_iommu_class = rte_pci_get_iommu_class,
+		.dev_iterate = rte_pci_dev_iterate,
 	},
 	.device_list = TAILQ_HEAD_INITIALIZER(rte_pci_bus.device_list),
 	.driver_list = TAILQ_HEAD_INITIALIZER(rte_pci_bus.driver_list),

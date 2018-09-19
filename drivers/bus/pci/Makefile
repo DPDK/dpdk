@@ -26,10 +26,11 @@ CFLAGS += -I$(RTE_SDK)/lib/librte_eal/$(SYSTEM)app/eal
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
-LDLIBS += -lrte_ethdev -lrte_pci
+LDLIBS += -lrte_ethdev -lrte_pci -lrte_kvargs
 
 include $(RTE_SDK)/drivers/bus/pci/$(SYSTEM)/Makefile
 SRCS-$(CONFIG_RTE_LIBRTE_PCI_BUS) := $(addprefix $(SYSTEM)/,$(SRCS))
+SRCS-$(CONFIG_RTE_LIBRTE_PCI_BUS) += pci_params.c
 SRCS-$(CONFIG_RTE_LIBRTE_PCI_BUS) += pci_common.c
 SRCS-$(CONFIG_RTE_LIBRTE_PCI_BUS) += pci_common_uio.c
 

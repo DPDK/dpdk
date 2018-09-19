@@ -10,6 +10,8 @@
 #include <rte_pci.h>
 #include <rte_bus_pci.h>
 
+extern struct rte_pci_bus rte_pci_bus;
+
 struct rte_pci_driver;
 struct rte_pci_device;
 
@@ -165,5 +167,28 @@ rte_pci_match(const struct rte_pci_driver *pci_drv,
  */
 enum rte_iova_mode
 rte_pci_get_iommu_class(void);
+
+/*
+ * Iterate over internal devices,
+ * matching any device against the provided
+ * string.
+ *
+ * @param start
+ *   Iteration starting point.
+ *
+ * @param str
+ *   Device string to match against.
+ *
+ * @param it
+ *   (unused) iterator structure.
+ *
+ * @return
+ *   A pointer to the next matching device if any.
+ *   NULL otherwise.
+ */
+void *
+rte_pci_dev_iterate(const void *start,
+		    const char *str,
+		    const struct rte_dev_iterator *it);
 
 #endif /* _PCI_PRIVATE_H_ */
