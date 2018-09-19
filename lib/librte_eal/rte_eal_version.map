@@ -19,9 +19,6 @@ DPDK_2.0 {
 	rte_dump_tailq;
 	rte_eal_alarm_cancel;
 	rte_eal_alarm_set;
-	rte_eal_devargs_add;
-	rte_eal_devargs_dump;
-	rte_eal_devargs_type_count;
 	rte_eal_get_configuration;
 	rte_eal_get_lcore_state;
 	rte_eal_get_physmem_size;
@@ -32,7 +29,6 @@ DPDK_2.0 {
 	rte_eal_lcore_role;
 	rte_eal_mp_remote_launch;
 	rte_eal_mp_wait_lcore;
-	rte_eal_parse_devargs_str;
 	rte_eal_process_type;
 	rte_eal_remote_launch;
 	rte_eal_tailq_lookup;

@@ -137,6 +137,11 @@ API Changes
   instead leave it to the memory subsystem to decide whether socket ID is a
   valid one.
 
+* eal: The following devargs functions, which were deprecated in 18.05,
+  were removed in 18.11:
+  ``rte_eal_parse_devargs_str()``, ``rte_eal_devargs_add()``,
+  ``rte_eal_devargs_type_count()``, and ``rte_eal_devargs_dump()``.
+
 * mbuf: The ``__rte_mbuf_raw_free()`` and ``__rte_pktmbuf_prefree_seg()``
   functions were deprecated since 17.05 and are replaced by
   ``rte_mbuf_raw_free()`` and ``rte_pktmbuf_prefree_seg()``.

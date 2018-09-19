@@ -28,36 +28,6 @@ TAILQ_HEAD(rte_devargs_list, rte_devargs);
 struct rte_devargs_list devargs_list =
 	TAILQ_HEAD_INITIALIZER(devargs_list);
 
-int
-rte_eal_parse_devargs_str(const char *devargs_str,
-			char **drvname, char **drvargs)
-{
-	char *sep;
-
-	if ((devargs_str) == NULL || (drvname) == NULL || (drvargs == NULL))
-		return -1;
-
-	*drvname = strdup(devargs_str);
-	if (*drvname == NULL)
-		return -1;
-
-	/* set the first ',' to '\0' to split name and arguments */
-	sep = strchr(*drvname, ',');
-	if (sep != NULL) {
-		sep[0] = '\0';
-		*drvargs = strdup(sep + 1);
-	} else {
-		*drvargs = strdup("");
-	}
-
-	if (*drvargs == NULL) {
-		free(*drvname);
-		*drvname = NULL;
-		return -1;
-	}
-	return 0;
-}
-
 static size_t
 devargs_layer_count(const char *s)
 {
