@@ -3,6 +3,7 @@
  */
 
 #include <rte_bus.h>
+#include <rte_bus_pci.h>
 #include <rte_dev.h>
 #include <rte_errno.h>
 #include <rte_kvargs.h>
@@ -11,21 +12,45 @@
 #include "private.h"
 
 enum pci_params {
+	RTE_PCI_PARAMS_ID,
 	RTE_PCI_PARAMS_MAX,
 };
 
 static const char * const pci_params_keys[] = {
+	[RTE_PCI_PARAMS_ID] = "id",
 	[RTE_PCI_PARAMS_MAX] = NULL,
 };
+
+static int
+pci_addr_kv_cmp(const char *key __rte_unused,
+		const char *value,
+		void *_addr2)
+{
+	struct rte_pci_addr _addr1;
+	struct rte_pci_addr *addr1 = &_addr1;
+	struct rte_pci_addr *addr2 = _addr2;
+
+	if (rte_pci_addr_parse(value, addr1))
+		return -1;
+	return -abs(rte_pci_addr_cmp(addr1, addr2));
+}
 
 static int
 pci_dev_match(const struct rte_device *dev,
 	      const void *_kvlist)
 {
 	const struct rte_kvargs *kvlist = _kvlist;
+	const struct rte_pci_device *pdev;
 
-	(void) dev;
-	(void) kvlist;
+	if (kvlist == NULL)
+		/* Empty string matches everything. */
+		return 0;
+	pdev = RTE_DEV_TO_PCI_CONST(dev);
+	/* if any field does not match. */
+	if (rte_kvargs_process(kvlist, "id",
+			       &pci_addr_kv_cmp,
+			       (void *)(intptr_t)&pdev->addr))
+		return 1;
 	return 0;
 }
 
