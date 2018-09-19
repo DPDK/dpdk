@@ -176,11 +176,8 @@ int rte_devargs_add(enum rte_devtype devtype, const char *devargs_str);
  * Its resources are freed.
  * If the devargs cannot be found, nothing happens.
  *
- * @param busname
- *   bus name of the devargs to remove.
- *
- * @param devname
- *   device name of the devargs to remove.
+ * @param devargs
+ *   The instance or a copy of devargs to remove.
  *
  * @return
  *   0 on success.
@@ -188,8 +185,7 @@ int rte_devargs_add(enum rte_devtype devtype, const char *devargs_str);
  *   >0 if the devargs was not within the user device list.
  */
 __rte_experimental
-int rte_devargs_remove(const char *busname,
-		       const char *devname);
+int rte_devargs_remove(struct rte_devargs *devargs);
 
 /**
  * Count the number of user devices of a specified type

@@ -142,6 +142,9 @@ API Changes
   ``rte_eal_parse_devargs_str()``, ``rte_eal_devargs_add()``,
   ``rte_eal_devargs_type_count()``, and ``rte_eal_devargs_dump()``.
 
+* eal: The parameters of the function ``rte_devargs_remove()`` have changed
+  from bus and device names to ``struct rte_devargs``.
+
 * mbuf: The ``__rte_mbuf_raw_free()`` and ``__rte_pktmbuf_prefree_seg()``
   functions were deprecated since 17.05 and are replaced by
   ``rte_mbuf_raw_free()`` and ``rte_pktmbuf_prefree_seg()``.

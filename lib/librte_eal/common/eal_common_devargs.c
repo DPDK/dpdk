@@ -263,7 +263,7 @@ rte_devargs_insert(struct rte_devargs *da)
 {
 	int ret;
 
-	ret = rte_devargs_remove(da->bus->name, da->name);
+	ret = rte_devargs_remove(da);
 	if (ret < 0)
 		return ret;
 	TAILQ_INSERT_TAIL(&devargs_list, da, next);
@@ -309,14 +309,17 @@ fail:
 }
 
 int __rte_experimental
-rte_devargs_remove(const char *busname, const char *devname)
+rte_devargs_remove(struct rte_devargs *devargs)
 {
 	struct rte_devargs *d;
 	void *tmp;
 
+	if (devargs == NULL || devargs->bus == NULL)
+		return -1;
+
 	TAILQ_FOREACH_SAFE(d, &devargs_list, next, tmp) {
-		if (strcmp(d->bus->name, busname) == 0 &&
-		    strcmp(d->name, devname) == 0) {
+		if (strcmp(d->bus->name, devargs->bus->name) == 0 &&
+		    strcmp(d->name, devargs->name) == 0) {
 			TAILQ_REMOVE(&devargs_list, d, next);
 			free(d->args);
 			free(d);

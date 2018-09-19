@@ -249,7 +249,6 @@ int
 rte_vdev_init(const char *name, const char *args)
 {
 	struct rte_vdev_device *dev;
-	struct rte_devargs *devargs;
 	int ret;
 
 	rte_spinlock_recursive_lock(&vdev_device_list_lock);
@@ -260,9 +259,8 @@ rte_vdev_init(const char *name, const char *args)
 			if (ret > 0)
 				VDEV_LOG(ERR, "no driver found for %s", name);
 			/* If fails, remove it from vdev list */
-			devargs = dev->device.devargs;
 			TAILQ_REMOVE(&vdev_device_list, dev, next);
-			rte_devargs_remove(devargs->bus->name, devargs->name);
+			rte_devargs_remove(dev->device.devargs);
 			free(dev);
 		}
 	}
@@ -290,7 +288,6 @@ int
 rte_vdev_uninit(const char *name)
 {
 	struct rte_vdev_device *dev;
-	struct rte_devargs *devargs;
 	int ret;
 
 	if (name == NULL)
@@ -309,8 +306,7 @@ rte_vdev_uninit(const char *name)
 		goto unlock;
 
 	TAILQ_REMOVE(&vdev_device_list, dev, next);
-	devargs = dev->device.devargs;
-	rte_devargs_remove(devargs->bus->name, devargs->name);
+	rte_devargs_remove(dev->device.devargs);
 	free(dev);
 
 unlock:

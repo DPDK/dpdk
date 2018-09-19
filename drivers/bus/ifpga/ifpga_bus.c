@@ -361,7 +361,6 @@ static int
 ifpga_unplug(struct rte_device *dev)
 {
 	struct rte_afu_device *afu_dev = NULL;
-	struct rte_devargs *devargs = NULL;
 	int ret;
 
 	if (dev == NULL)
@@ -371,15 +370,13 @@ ifpga_unplug(struct rte_device *dev)
 	if (!afu_dev)
 		return -ENOENT;
 
-	devargs = dev->devargs;
-
 	ret = ifpga_remove_driver(afu_dev);
 	if (ret)
 		return ret;
 
 	TAILQ_REMOVE(&ifpga_afu_dev_list, afu_dev, next);
 
-	rte_devargs_remove(devargs->bus->name, devargs->name);
+	rte_devargs_remove(dev->devargs);
 	free(afu_dev);
 	return 0;
 

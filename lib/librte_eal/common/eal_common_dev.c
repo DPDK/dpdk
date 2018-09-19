@@ -186,7 +186,7 @@ int __rte_experimental rte_eal_hotplug_add(const char *busname, const char *devn
 	return 0;
 
 err_devarg:
-	if (rte_devargs_remove(busname, devname)) {
+	if (rte_devargs_remove(da) != 0) {
 		free(da->args);
 		free(da);
 	}
@@ -227,7 +227,7 @@ rte_eal_hotplug_remove(const char *busname, const char *devname)
 	if (ret)
 		RTE_LOG(ERR, EAL, "Driver cannot detach the device (%s)\n",
 			dev->name);
-	rte_devargs_remove(busname, devname);
+	rte_devargs_remove(dev->devargs);
 	return ret;
 }
 
