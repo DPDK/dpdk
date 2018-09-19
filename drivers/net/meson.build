@@ -3,6 +3,7 @@
 
 drivers = ['af_packet',
 	'ark',
+	'avf',
 	'avp',
 	'axgbe', 'bonding',
 	'bnx2x',
