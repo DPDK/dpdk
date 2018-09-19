@@ -23,6 +23,7 @@
 
 #include "rte_bus_vdev.h"
 #include "vdev_logs.h"
+#include "vdev_private.h"
 
 #define VDEV_MP_KEY	"bus_vdev_mp"
 
@@ -497,9 +498,9 @@ vdev_probe(void)
 	return ret;
 }
 
-static struct rte_device *
-vdev_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
-		 const void *data)
+struct rte_device *
+rte_vdev_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
+		     const void *data)
 {
 	const struct rte_vdev_device *vstart;
 	struct rte_vdev_device *dev;
@@ -536,10 +537,11 @@ vdev_unplug(struct rte_device *dev)
 static struct rte_bus rte_vdev_bus = {
 	.scan = vdev_scan,
 	.probe = vdev_probe,
-	.find_device = vdev_find_device,
+	.find_device = rte_vdev_find_device,
 	.plug = vdev_plug,
 	.unplug = vdev_unplug,
 	.parse = vdev_parse,
+	.dev_iterate = rte_vdev_dev_iterate,
 };
 
 RTE_REGISTER_BUS(vdev, rte_vdev_bus);
