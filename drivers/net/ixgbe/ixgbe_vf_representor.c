@@ -65,7 +65,7 @@ ixgbe_vf_representor_dev_infos_get(struct rte_eth_dev *ethdev,
 	dev_info->tx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT |
 		DEV_TX_OFFLOAD_IPV4_CKSUM | DEV_TX_OFFLOAD_UDP_CKSUM |
 		DEV_TX_OFFLOAD_TCP_CKSUM | DEV_TX_OFFLOAD_SCTP_CKSUM |
-		DEV_TX_OFFLOAD_TCP_TSO;
+		DEV_TX_OFFLOAD_TCP_TSO | DEV_TX_OFFLOAD_MULTI_SEGS;
 	/**< Device TX offload capabilities. */
 
 	dev_info->speed_capa =
