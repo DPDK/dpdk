@@ -806,6 +806,186 @@ typedef int (*eventdev_crypto_adapter_stats_reset)
 			(const struct rte_eventdev *dev,
 			 const struct rte_cryptodev *cdev);
 
+/**
+ * Retrieve the event device's eth Tx adapter capabilities.
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @param eth_dev
+ *   Ethernet device pointer
+ *
+ * @param[out] caps
+ *   A pointer to memory filled with eth Tx adapter capabilities.
+ *
+ * @return
+ *   - 0: Success, driver provides eth Tx adapter capabilities
+ *   - <0: Error code returned by the driver function.
+ *
+ */
+typedef int (*eventdev_eth_tx_adapter_caps_get_t)
+					(const struct rte_eventdev *dev,
+					const struct rte_eth_dev *eth_dev,
+					uint32_t *caps);
+
+/**
+ * Create adapter callback.
+ *
+ * @param id
+ *   Adapter identifier
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @return
+ *   - 0: Success.
+ *   - <0: Error code on failure.
+ */
+typedef int (*eventdev_eth_tx_adapter_create_t)(uint8_t id,
+					const struct rte_eventdev *dev);
+
+/**
+ * Free adapter callback.
+ *
+ * @param id
+ *   Adapter identifier
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @return
+ *   - 0: Success.
+ *   - <0: Error code on failure.
+ */
+typedef int (*eventdev_eth_tx_adapter_free_t)(uint8_t id,
+					const struct rte_eventdev *dev);
+
+/**
+ * Add a Tx queue to the adapter.
+ * A queue value of -1 is used to indicate all
+ * queues within the device.
+ *
+ * @param id
+ *   Adapter identifier
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @param eth_dev
+ *   Ethernet device pointer
+ *
+ * @param tx_queue_id
+ *   Transmt queue index
+ *
+ * @return
+ *   - 0: Success.
+ *   - <0: Error code on failure.
+ */
+typedef int (*eventdev_eth_tx_adapter_queue_add_t)(
+					uint8_t id,
+					const struct rte_eventdev *dev,
+					const struct rte_eth_dev *eth_dev,
+					int32_t tx_queue_id);
+
+/**
+ * Delete a Tx queue from the adapter.
+ * A queue value of -1 is used to indicate all
+ * queues within the device, that have been added to this
+ * adapter.
+ *
+ * @param id
+ *   Adapter identifier
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @param eth_dev
+ *   Ethernet device pointer
+ *
+ * @param tx_queue_id
+ *   Transmit queue index
+ *
+ * @return
+ *  - 0: Success, Queues deleted successfully.
+ *  - <0: Error code on failure.
+ */
+typedef int (*eventdev_eth_tx_adapter_queue_del_t)(
+					uint8_t id,
+					const struct rte_eventdev *dev,
+					const struct rte_eth_dev *eth_dev,
+					int32_t tx_queue_id);
+
+/**
+ * Start the adapter.
+ *
+ * @param id
+ *   Adapter identifier
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @return
+ *  - 0: Success, Adapter started correctly.
+ *  - <0: Error code on failure.
+ */
+typedef int (*eventdev_eth_tx_adapter_start_t)(uint8_t id,
+					const struct rte_eventdev *dev);
+
+/**
+ * Stop the adapter.
+ *
+ * @param id
+ *  Adapter identifier
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @return
+ *  - 0: Success.
+ *  - <0: Error code on failure.
+ */
+typedef int (*eventdev_eth_tx_adapter_stop_t)(uint8_t id,
+					const struct rte_eventdev *dev);
+
+struct rte_event_eth_tx_adapter_stats;
+
+/**
+ * Retrieve statistics for an adapter
+ *
+ * @param id
+ *  Adapter identifier
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @param [out] stats
+ *  A pointer to structure used to retrieve statistics for an adapter
+ *
+ * @return
+ *  - 0: Success, statistics retrieved successfully.
+ *  - <0: Error code on failure.
+ */
+typedef int (*eventdev_eth_tx_adapter_stats_get_t)(
+				uint8_t id,
+				const struct rte_eventdev *dev,
+				struct rte_event_eth_tx_adapter_stats *stats);
+
+/**
+ * Reset statistics for an adapter
+ *
+ * @param id
+ *  Adapter identifier
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @return
+ *  - 0: Success, statistics retrieved successfully.
+ *  - <0: Error code on failure.
+ */
+typedef int (*eventdev_eth_tx_adapter_stats_reset_t)(uint8_t id,
+					const struct rte_eventdev *dev);
+
 /** Event device operations function pointer table */
 struct rte_eventdev_ops {
 	eventdev_info_get_t dev_infos_get;	/**< Get device info. */
@@ -880,6 +1060,26 @@ struct rte_eventdev_ops {
 	/**< Get crypto stats */
 	eventdev_crypto_adapter_stats_reset crypto_adapter_stats_reset;
 	/**< Reset crypto stats */
+
+	eventdev_eth_tx_adapter_caps_get_t eth_tx_adapter_caps_get;
+	/**< Get ethernet Tx adapter capabilities */
+
+	eventdev_eth_tx_adapter_create_t eth_tx_adapter_create;
+	/**< Create adapter callback */
+	eventdev_eth_tx_adapter_free_t eth_tx_adapter_free;
+	/**< Free adapter callback */
+	eventdev_eth_tx_adapter_queue_add_t eth_tx_adapter_queue_add;
+	/**< Add Tx queues to the eth Tx adapter */
+	eventdev_eth_tx_adapter_queue_del_t eth_tx_adapter_queue_del;
+	/**< Delete Tx queues from the eth Tx adapter */
+	eventdev_eth_tx_adapter_start_t eth_tx_adapter_start;
+	/**< Start eth Tx adapter */
+	eventdev_eth_tx_adapter_stop_t eth_tx_adapter_stop;
+	/**< Stop eth Tx adapter */
+	eventdev_eth_tx_adapter_stats_get_t eth_tx_adapter_stats_get;
+	/**< Get eth Tx adapter statistics */
+	eventdev_eth_tx_adapter_stats_reset_t eth_tx_adapter_stats_reset;
+	/**< Reset eth Tx adapter statistics */
 
 	eventdev_selftest dev_selftest;
 	/**< Start eventdev Selftest */

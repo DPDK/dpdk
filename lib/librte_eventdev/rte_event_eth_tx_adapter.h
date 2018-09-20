@@ -39,14 +39,14 @@
  * rte_event_eth_tx_adapter_create() or rte_event_eth_tx_adapter_create_ext().
  *
  * The adapter will use the common implementation when the eventdev PMD
- * does not have the RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT capability.
+ * does not have the #RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT capability.
  * The common implementation uses an event port that is created using the port
  * configuration parameter passed to rte_event_eth_tx_adapter_create(). The
  * application can get the port identifier using
  * rte_event_eth_tx_adapter_event_port_get() and must link an event queue to
  * this port.
  *
- * If the eventdev PMD has the RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT
+ * If the eventdev PMD has the #RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT
  * flags set, Tx adapter events should be enqueued using the
  * rte_event_eth_tx_adapter_enqueue() function, else the application should
  * use rte_event_enqueue_burst().
@@ -329,7 +329,7 @@ rte_event_eth_tx_adapter_txq_get(struct rte_mbuf *pkt)
  * @b EXPERIMENTAL: this API may change without prior notice
  *
  * Retrieve the adapter event port. The adapter creates an event port if
- * the RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT is not set in the
+ * the #RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT is not set in the
  * ethernet Tx capabilities of the event device.
  *
  * @param id
@@ -347,7 +347,7 @@ rte_event_eth_tx_adapter_event_port_get(uint8_t id, uint8_t *event_port_id);
  * Enqueue a burst of events objects or an event object supplied in *rte_event*
  * structure on an  event device designated by its *dev_id* through the event
  * port specified by *port_id*. This function is supported if the eventdev PMD
- * has the RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT capability flag set.
+ * has the #RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT capability flag set.
  *
  * The *nb_events* parameter is the number of event objects to enqueue which are
  * supplied in the *ev* array of *rte_event* structure.

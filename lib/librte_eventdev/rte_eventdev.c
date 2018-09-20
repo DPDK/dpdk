@@ -175,6 +175,31 @@ rte_event_crypto_adapter_caps_get(uint8_t dev_id, uint8_t cdev_id,
 		(dev, cdev, caps) : -ENOTSUP;
 }
 
+int __rte_experimental
+rte_event_eth_tx_adapter_caps_get(uint8_t dev_id, uint16_t eth_port_id,
+				uint32_t *caps)
+{
+	struct rte_eventdev *dev;
+	struct rte_eth_dev *eth_dev;
+
+	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(eth_port_id, -EINVAL);
+
+	dev = &rte_eventdevs[dev_id];
+	eth_dev = &rte_eth_devices[eth_port_id];
+
+	if (caps == NULL)
+		return -EINVAL;
+
+	*caps = 0;
+
+	return dev->dev_ops->eth_tx_adapter_caps_get ?
+			(*dev->dev_ops->eth_tx_adapter_caps_get)(dev,
+								eth_dev,
+								caps)
+			: 0;
+}
+
 static inline int
 rte_event_dev_queue_config(struct rte_eventdev *dev, uint8_t nb_queues)
 {
@@ -1297,6 +1322,15 @@ rte_eventdev_find_free_device_index(void)
 	return RTE_EVENT_MAX_DEVS;
 }
 
+static uint16_t
+rte_event_tx_adapter_enqueue(__rte_unused void *port,
+			__rte_unused struct rte_event ev[],
+			__rte_unused uint16_t nb_events)
+{
+	rte_errno = ENOTSUP;
+	return 0;
+}
+
 struct rte_eventdev *
 rte_event_pmd_allocate(const char *name, int socket_id)
 {
@@ -1316,6 +1350,8 @@ rte_event_pmd_allocate(const char *name, int socket_id)
 	}
 
 	eventdev = &rte_eventdevs[dev_id];
+
+	eventdev->txa_enqueue = rte_event_tx_adapter_enqueue;
 
 	if (eventdev->data == NULL) {
 		struct rte_eventdev_data *eventdev_data = NULL;
