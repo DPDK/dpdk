@@ -407,6 +407,47 @@ failsafe_eth_dev_rx_queues_sync(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static int
+failsafe_eth_dev_tx_queues_sync(struct rte_eth_dev *dev)
+{
+	struct txq *txq;
+	int ret;
+	uint16_t i;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+
+		if (txq->info.conf.tx_deferred_start &&
+		    dev->data->tx_queue_state[i] ==
+						RTE_ETH_QUEUE_STATE_STARTED) {
+			/*
+			 * The subdevice Tx queue does not launch on device
+			 * start if deferred start flag is set. It needs to be
+			 * started manually in case an appropriate failsafe Tx
+			 * queue has been started earlier.
+			 */
+			ret = dev->dev_ops->tx_queue_start(dev, i);
+			if (ret) {
+				ERROR("Could not synchronize Tx queue %d", i);
+				return ret;
+			}
+		} else if (dev->data->tx_queue_state[i] ==
+						RTE_ETH_QUEUE_STATE_STOPPED) {
+			/*
+			 * The subdevice Tx queue needs to be stopped manually
+			 * in case an appropriate failsafe Tx queue has been
+			 * stopped earlier.
+			 */
+			ret = dev->dev_ops->tx_queue_stop(dev, i);
+			if (ret) {
+				ERROR("Could not synchronize Tx queue %d", i);
+				return ret;
+			}
+		}
+	}
+	return 0;
+}
+
 int
 failsafe_eth_dev_state_sync(struct rte_eth_dev *dev)
 {
@@ -466,6 +507,9 @@ failsafe_eth_dev_state_sync(struct rte_eth_dev *dev)
 	if (ret)
 		goto err_remove;
 	ret = failsafe_eth_dev_rx_queues_sync(dev);
+	if (ret)
+		goto err_remove;
+	ret = failsafe_eth_dev_tx_queues_sync(dev);
 	if (ret)
 		goto err_remove;
 	return 0;

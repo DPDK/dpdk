@@ -76,8 +76,8 @@ New Features
 
   Updated the failsafe driver including the following changes:
 
-  * Support for Rx queues start and stop.
-  * Support for Rx queues deferred start.
+  * Support for Rx and Tx queues start and stop.
+  * Support for Rx and Tx queues deferred start.
 
 * **Added ability to switch queue deferred start flag on testpmd app.**
 

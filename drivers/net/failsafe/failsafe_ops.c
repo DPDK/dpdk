@@ -172,12 +172,19 @@ static void
 fs_set_queues_state_start(struct rte_eth_dev *dev)
 {
 	struct rxq *rxq;
+	struct txq *txq;
 	uint16_t i;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];
 		if (!rxq->info.conf.rx_deferred_start)
 			dev->data->rx_queue_state[i] =
+						RTE_ETH_QUEUE_STATE_STARTED;
+	}
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		if (!txq->info.conf.tx_deferred_start)
+			dev->data->tx_queue_state[i] =
 						RTE_ETH_QUEUE_STATE_STARTED;
 	}
 }
@@ -232,6 +239,8 @@ fs_set_queues_state_stop(struct rte_eth_dev *dev)
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 }
 
 static void
@@ -367,6 +376,59 @@ fs_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		}
 	}
 	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+	fs_unlock(dev, 0);
+	return 0;
+}
+
+static int
+fs_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct sub_device *sdev;
+	uint8_t i;
+	int ret;
+	int err = 0;
+	bool failure = true;
+
+	fs_lock(dev, 0);
+	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
+		uint16_t port_id = ETH(sdev)->data->port_id;
+
+		ret = rte_eth_dev_tx_queue_stop(port_id, tx_queue_id);
+		ret = fs_err(sdev, ret);
+		if (ret) {
+			ERROR("Tx queue stop failed for subdevice %d", i);
+			err = ret;
+		} else {
+			failure = false;
+		}
+	}
+	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+	fs_unlock(dev, 0);
+	/* Return 0 in case of at least one successful queue stop */
+	return (failure) ? err : 0;
+}
+
+static int
+fs_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct sub_device *sdev;
+	uint8_t i;
+	int ret;
+
+	fs_lock(dev, 0);
+	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
+		uint16_t port_id = ETH(sdev)->data->port_id;
+
+		ret = rte_eth_dev_tx_queue_start(port_id, tx_queue_id);
+		ret = fs_err(sdev, ret);
+		if (ret) {
+			ERROR("Tx queue start failed for subdevice %d", i);
+			fs_tx_queue_stop(dev, tx_queue_id);
+			fs_unlock(dev, 0);
+			return ret;
+		}
+	}
+	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
 	fs_unlock(dev, 0);
 	return 0;
 }
@@ -592,12 +654,17 @@ fs_tx_queue_setup(struct rte_eth_dev *dev,
 	uint8_t i;
 	int ret;
 
-	if (tx_conf->tx_deferred_start) {
-		ERROR("Tx queue deferred start is not supported");
-		return -EINVAL;
-	}
-
 	fs_lock(dev, 0);
+	if (tx_conf->tx_deferred_start) {
+		FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_PROBED) {
+			if (SUBOPS(sdev, tx_queue_start) == NULL) {
+				ERROR("Tx queue deferred start is not "
+					"supported for subdevice %d", i);
+				fs_unlock(dev, 0);
+				return -EINVAL;
+			}
+		}
+	}
 	txq = dev->data->tx_queues[tx_queue_id];
 	if (txq != NULL) {
 		fs_tx_queue_release(txq);
@@ -1127,6 +1194,8 @@ const struct eth_dev_ops failsafe_ops = {
 	.vlan_filter_set = fs_vlan_filter_set,
 	.rx_queue_start = fs_rx_queue_start,
 	.rx_queue_stop = fs_rx_queue_stop,
+	.tx_queue_start = fs_tx_queue_start,
+	.tx_queue_stop = fs_tx_queue_stop,
 	.rx_queue_setup = fs_rx_queue_setup,
 	.tx_queue_setup = fs_tx_queue_setup,
 	.rx_queue_release = fs_rx_queue_release,
