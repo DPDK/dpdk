@@ -77,6 +77,7 @@ static int vmxnet3_dev_link_update(struct rte_eth_dev *dev,
 static void vmxnet3_hw_stats_save(struct vmxnet3_hw *hw);
 static int vmxnet3_dev_stats_get(struct rte_eth_dev *dev,
 				  struct rte_eth_stats *stats);
+static void vmxnet3_dev_stats_reset(struct rte_eth_dev *dev);
 static int vmxnet3_dev_xstats_get_names(struct rte_eth_dev *dev,
 					struct rte_eth_xstat_name *xstats,
 					unsigned int n);
@@ -119,6 +120,7 @@ static const struct eth_dev_ops vmxnet3_eth_dev_ops = {
 	.stats_get            = vmxnet3_dev_stats_get,
 	.xstats_get_names     = vmxnet3_dev_xstats_get_names,
 	.xstats_get           = vmxnet3_dev_xstats_get,
+	.stats_reset          = vmxnet3_dev_stats_reset,
 	.mac_addr_set         = vmxnet3_mac_addr_set,
 	.dev_infos_get        = vmxnet3_dev_info_get,
 	.dev_supported_ptypes_get = vmxnet3_dev_supported_ptypes_get,
@@ -333,6 +335,10 @@ eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 	/* clear shadow stats */
 	memset(hw->saved_tx_stats, 0, sizeof(hw->saved_tx_stats));
 	memset(hw->saved_rx_stats, 0, sizeof(hw->saved_rx_stats));
+
+	/* clear snapshot stats */
+	memset(hw->snapshot_tx_stats, 0, sizeof(hw->snapshot_tx_stats));
+	memset(hw->snapshot_rx_stats, 0, sizeof(hw->snapshot_rx_stats));
 
 	/* set the initial link status */
 	memset(&link, 0, sizeof(link));
@@ -889,7 +895,49 @@ vmxnet3_hw_rx_stats_get(struct vmxnet3_hw *hw, unsigned int q,
 	VMXNET3_UPDATE_RX_STAT(hw, q, pktsRxError, res);
 	VMXNET3_UPDATE_RX_STAT(hw, q, pktsRxOutOfBuf, res);
 
-#undef VMXNET3_UPDATE_RX_STATS
+#undef VMXNET3_UPDATE_RX_STAT
+}
+
+static void
+vmxnet3_tx_stats_get(struct vmxnet3_hw *hw, unsigned int q,
+					struct UPT1_TxStats *res)
+{
+		vmxnet3_hw_tx_stats_get(hw, q, res);
+
+#define VMXNET3_REDUCE_SNAPSHOT_TX_STAT(h, i, f, r)	\
+		((r)->f -= (h)->snapshot_tx_stats[(i)].f)
+
+	VMXNET3_REDUCE_SNAPSHOT_TX_STAT(hw, q, ucastPktsTxOK, res);
+	VMXNET3_REDUCE_SNAPSHOT_TX_STAT(hw, q, mcastPktsTxOK, res);
+	VMXNET3_REDUCE_SNAPSHOT_TX_STAT(hw, q, bcastPktsTxOK, res);
+	VMXNET3_REDUCE_SNAPSHOT_TX_STAT(hw, q, ucastBytesTxOK, res);
+	VMXNET3_REDUCE_SNAPSHOT_TX_STAT(hw, q, mcastBytesTxOK, res);
+	VMXNET3_REDUCE_SNAPSHOT_TX_STAT(hw, q, bcastBytesTxOK, res);
+	VMXNET3_REDUCE_SNAPSHOT_TX_STAT(hw, q, pktsTxError, res);
+	VMXNET3_REDUCE_SNAPSHOT_TX_STAT(hw, q, pktsTxDiscard, res);
+
+#undef VMXNET3_REDUCE_SNAPSHOT_TX_STAT
+}
+
+static void
+vmxnet3_rx_stats_get(struct vmxnet3_hw *hw, unsigned int q,
+					struct UPT1_RxStats *res)
+{
+		vmxnet3_hw_rx_stats_get(hw, q, res);
+
+#define VMXNET3_REDUCE_SNAPSHOT_RX_STAT(h, i, f, r)	\
+		((r)->f -= (h)->snapshot_rx_stats[(i)].f)
+
+	VMXNET3_REDUCE_SNAPSHOT_RX_STAT(hw, q, ucastPktsRxOK, res);
+	VMXNET3_REDUCE_SNAPSHOT_RX_STAT(hw, q, mcastPktsRxOK, res);
+	VMXNET3_REDUCE_SNAPSHOT_RX_STAT(hw, q, bcastPktsRxOK, res);
+	VMXNET3_REDUCE_SNAPSHOT_RX_STAT(hw, q, ucastBytesRxOK, res);
+	VMXNET3_REDUCE_SNAPSHOT_RX_STAT(hw, q, mcastBytesRxOK, res);
+	VMXNET3_REDUCE_SNAPSHOT_RX_STAT(hw, q, bcastBytesRxOK, res);
+	VMXNET3_REDUCE_SNAPSHOT_RX_STAT(hw, q, pktsRxError, res);
+	VMXNET3_REDUCE_SNAPSHOT_RX_STAT(hw, q, pktsRxOutOfBuf, res);
+
+#undef VMXNET3_REDUCE_SNAPSHOT_RX_STAT
 }
 
 static void
@@ -1004,7 +1052,7 @@ vmxnet3_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	RTE_BUILD_BUG_ON(RTE_ETHDEV_QUEUE_STAT_CNTRS < VMXNET3_MAX_TX_QUEUES);
 	for (i = 0; i < hw->num_tx_queues; i++) {
-		vmxnet3_hw_tx_stats_get(hw, i, &txStats);
+		vmxnet3_tx_stats_get(hw, i, &txStats);
 
 		stats->q_opackets[i] = txStats.ucastPktsTxOK +
 			txStats.mcastPktsTxOK +
@@ -1021,7 +1069,7 @@ vmxnet3_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	RTE_BUILD_BUG_ON(RTE_ETHDEV_QUEUE_STAT_CNTRS < VMXNET3_MAX_RX_QUEUES);
 	for (i = 0; i < hw->num_rx_queues; i++) {
-		vmxnet3_hw_rx_stats_get(hw, i, &rxStats);
+		vmxnet3_rx_stats_get(hw, i, &rxStats);
 
 		stats->q_ipackets[i] = rxStats.ucastPktsRxOK +
 			rxStats.mcastPktsRxOK +
@@ -1040,6 +1088,30 @@ vmxnet3_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	}
 
 	return 0;
+}
+
+static void
+vmxnet3_dev_stats_reset(struct rte_eth_dev *dev)
+{
+	unsigned int i;
+	struct vmxnet3_hw *hw = dev->data->dev_private;
+	struct UPT1_TxStats txStats;
+	struct UPT1_RxStats rxStats;
+
+	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD, VMXNET3_CMD_GET_STATS);
+
+	RTE_BUILD_BUG_ON(RTE_ETHDEV_QUEUE_STAT_CNTRS < VMXNET3_MAX_TX_QUEUES);
+
+	for (i = 0; i < hw->num_tx_queues; i++) {
+		vmxnet3_hw_tx_stats_get(hw, i, &txStats);
+		memcpy(&hw->snapshot_tx_stats[i], &txStats,
+			sizeof(hw->snapshot_tx_stats[0]));
+	}
+	for (i = 0; i < hw->num_rx_queues; i++) {
+		vmxnet3_hw_rx_stats_get(hw, i, &rxStats);
+		memcpy(&hw->snapshot_rx_stats[i], &rxStats,
+			sizeof(hw->snapshot_rx_stats[0]));
+	}
 }
 
 static void
