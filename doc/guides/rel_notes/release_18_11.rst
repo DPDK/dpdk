@@ -152,6 +152,10 @@ ABI Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* eal: added ``legacy_mem`` and ``single_file_segments`` values to
+       ``rte_config`` structure on account of improving DPDK usability when
+       using either ``--legacy-mem`` or ``--single-file-segments`` flags.
+
 
 Removed Items
 -------------
@@ -198,7 +202,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_compressdev.so.1
      librte_cryptodev.so.5
      librte_distributor.so.1
-     librte_eal.so.8
+   + librte_eal.so.9
      librte_ethdev.so.10
    + librte_eventdev.so.6
      librte_flow_classify.so.1

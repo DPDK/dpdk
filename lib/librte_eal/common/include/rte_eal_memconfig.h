@@ -77,6 +77,10 @@ struct rte_mem_config {
 	 * exact same address the primary process maps it.
 	 */
 	uint64_t mem_cfg_addr;
+
+	/* legacy mem and single file segments options are shared */
+	uint32_t legacy_mem;
+	uint32_t single_file_segments;
 } __attribute__((__packed__));
 
 

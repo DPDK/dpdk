@@ -352,6 +352,24 @@ eal_proc_type_detect(void)
 	return ptype;
 }
 
+/* copies data from internal config to shared config */
+static void
+eal_update_mem_config(void)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	mcfg->legacy_mem = internal_config.legacy_mem;
+	mcfg->single_file_segments = internal_config.single_file_segments;
+}
+
+/* copies data from shared config to internal config */
+static void
+eal_update_internal_config(void)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	internal_config.legacy_mem = mcfg->legacy_mem;
+	internal_config.single_file_segments = mcfg->single_file_segments;
+}
+
 /* Sets up rte_config structure with the pointer to shared memory config.*/
 static void
 rte_config_init(void)
@@ -361,11 +379,13 @@ rte_config_init(void)
 	switch (rte_config.process_type){
 	case RTE_PROC_PRIMARY:
 		rte_eal_config_create();
+		eal_update_mem_config();
 		break;
 	case RTE_PROC_SECONDARY:
 		rte_eal_config_attach();
 		rte_eal_mcfg_wait_complete(rte_config.mem_config);
 		rte_eal_config_reattach();
+		eal_update_internal_config();
 		break;
 	case RTE_PROC_AUTO:
 	case RTE_PROC_INVALID:
