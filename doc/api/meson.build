@@ -50,7 +50,6 @@ if doxygen.found()
 		install_dir: htmldir,
 		build_by_default: false)
 
-	run_target('doc', command: 'true', depends: doxy_build)
-else
-	run_target('doc', command: ['echo', 'doxygen', 'not', 'found'])
+	doc_targets += doxy_build
+	doc_target_names += 'Doxygen_API'
 endif
