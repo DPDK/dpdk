@@ -342,6 +342,11 @@ fs_rx_queue_setup(struct rte_eth_dev *dev,
 	uint8_t i;
 	int ret;
 
+	if (rx_conf->rx_deferred_start) {
+		ERROR("Rx queue deferred start is not supported");
+		return -EINVAL;
+	}
+
 	fs_lock(dev, 0);
 	rxq = dev->data->rx_queues[rx_queue_id];
 	if (rxq != NULL) {
@@ -502,6 +507,11 @@ fs_tx_queue_setup(struct rte_eth_dev *dev,
 	struct txq *txq;
 	uint8_t i;
 	int ret;
+
+	if (tx_conf->tx_deferred_start) {
+		ERROR("Tx queue deferred start is not supported");
+		return -EINVAL;
+	}
 
 	fs_lock(dev, 0);
 	txq = dev->data->tx_queues[tx_queue_id];
