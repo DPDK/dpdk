@@ -58,28 +58,34 @@ bond_ethdev_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
 	struct bond_dev_private *internals;
 
-	uint16_t num_rx_slave = 0;
 	uint16_t num_rx_total = 0;
-
+	uint16_t slave_count;
+	uint16_t active_slave;
 	int i;
 
 	/* Cast to structure, containing bonded device's port id and queue id */
 	struct bond_rx_queue *bd_rx_q = (struct bond_rx_queue *)queue;
-
 	internals = bd_rx_q->dev_private;
+	slave_count = internals->active_slave_count;
+	active_slave = internals->active_slave;
 
+	for (i = 0; i < slave_count && nb_pkts; i++) {
+		uint16_t num_rx_slave;
 
-	for (i = 0; i < internals->active_slave_count && nb_pkts; i++) {
 		/* Offset of pointer to *bufs increases as packets are received
 		 * from other slaves */
-		num_rx_slave = rte_eth_rx_burst(internals->active_slaves[i],
-				bd_rx_q->queue_id, bufs + num_rx_total, nb_pkts);
-		if (num_rx_slave) {
-			num_rx_total += num_rx_slave;
-			nb_pkts -= num_rx_slave;
-		}
+		num_rx_slave =
+			rte_eth_rx_burst(internals->active_slaves[active_slave],
+					 bd_rx_q->queue_id,
+					 bufs + num_rx_total, nb_pkts);
+		num_rx_total += num_rx_slave;
+		nb_pkts -= num_rx_slave;
+		if (++active_slave == slave_count)
+			active_slave = 0;
 	}
 
+	if (++internals->active_slave == slave_count)
+		internals->active_slave = 0;
 	return num_rx_total;
 }
 
@@ -258,25 +264,32 @@ bond_ethdev_rx_burst_8023ad_fast_queue(void *queue, struct rte_mbuf **bufs,
 	uint16_t num_rx_total = 0;	/* Total number of received packets */
 	uint16_t slaves[RTE_MAX_ETHPORTS];
 	uint16_t slave_count;
-
-	uint16_t i, idx;
+	uint16_t active_slave;
+	uint16_t i;
 
 	/* Copy slave list to protect against slave up/down changes during tx
 	 * bursting */
 	slave_count = internals->active_slave_count;
+	active_slave = internals->active_slave;
 	memcpy(slaves, internals->active_slaves,
 			sizeof(internals->active_slaves[0]) * slave_count);
 
-	for (i = 0, idx = internals->active_slave;
-			i < slave_count && num_rx_total < nb_pkts; i++, idx++) {
-		idx = idx % slave_count;
+	for (i = 0; i < slave_count && nb_pkts; i++) {
+		uint16_t num_rx_slave;
 
 		/* Read packets from this slave */
-		num_rx_total += rte_eth_rx_burst(slaves[idx], bd_rx_q->queue_id,
-				&bufs[num_rx_total], nb_pkts - num_rx_total);
+		num_rx_slave = rte_eth_rx_burst(slaves[active_slave],
+						bd_rx_q->queue_id,
+						bufs + num_rx_total, nb_pkts);
+		num_rx_total += num_rx_slave;
+		nb_pkts -= num_rx_slave;
+
+		if (++active_slave == slave_count)
+			active_slave = 0;
 	}
 
-	internals->active_slave = idx;
+	if (++internals->active_slave == slave_count)
+		internals->active_slave = 0;
 
 	return num_rx_total;
 }
@@ -459,7 +472,9 @@ bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 			idx = 0;
 	}
 
-	internals->active_slave = idx;
+	if (++internals->active_slave == slave_count)
+		internals->active_slave = 0;
+
 	return num_rx_total;
 }
 
