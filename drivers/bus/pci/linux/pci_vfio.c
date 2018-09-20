@@ -415,6 +415,93 @@ pci_vfio_mmap_bar(int vfio_dev_fd, struct mapped_pci_resource *vfio_res,
 	return 0;
 }
 
+/*
+ * region info may contain capability headers, so we need to keep reallocating
+ * the memory until we match allocated memory size with argsz.
+ */
+static int
+pci_vfio_get_region_info(int vfio_dev_fd, struct vfio_region_info **info,
+		int region)
+{
+	struct vfio_region_info *ri;
+	size_t argsz = sizeof(*ri);
+	int ret;
+
+	ri = malloc(sizeof(*ri));
+	if (ri == NULL) {
+		RTE_LOG(ERR, EAL, "Cannot allocate memory for region info\n");
+		return -1;
+	}
+again:
+	memset(ri, 0, argsz);
+	ri->argsz = argsz;
+	ri->index = region;
+
+	ret = ioctl(vfio_dev_fd, VFIO_DEVICE_GET_REGION_INFO, ri);
+	if (ret < 0) {
+		free(ri);
+		return ret;
+	}
+	if (ri->argsz != argsz) {
+		struct vfio_region_info *tmp;
+
+		argsz = ri->argsz;
+		tmp = realloc(ri, argsz);
+
+		if (tmp == NULL) {
+			/* realloc failed but the ri is still there */
+			free(ri);
+			RTE_LOG(ERR, EAL, "Cannot reallocate memory for region info\n");
+			return -1;
+		}
+		ri = tmp;
+		goto again;
+	}
+	*info = ri;
+
+	return 0;
+}
+
+static struct vfio_info_cap_header *
+pci_vfio_info_cap(struct vfio_region_info *info, int cap)
+{
+	struct vfio_info_cap_header *h;
+	size_t offset;
+
+	if ((info->flags & RTE_VFIO_INFO_FLAG_CAPS) == 0) {
+		/* VFIO info does not advertise capabilities */
+		return NULL;
+	}
+
+	offset = VFIO_CAP_OFFSET(info);
+	while (offset != 0) {
+		h = RTE_PTR_ADD(info, offset);
+		if (h->id == cap)
+			return h;
+		offset = h->next;
+	}
+	return NULL;
+}
+
+static int
+pci_vfio_msix_is_mappable(int vfio_dev_fd, int msix_region)
+{
+	struct vfio_region_info *info;
+	int ret;
+
+	ret = pci_vfio_get_region_info(vfio_dev_fd, &info, msix_region);
+	if (ret < 0)
+		return -1;
+
+	ret = pci_vfio_info_cap(info, RTE_VFIO_CAP_MSIX_MAPPABLE) != NULL;
+
+	/* cleanup */
+	free(info);
+
+	return ret;
+}
+
+
 static int
 pci_vfio_map_resource_primary(struct rte_pci_device *dev)
 {
@@ -464,56 +551,75 @@ pci_vfio_map_resource_primary(struct rte_pci_device *dev)
 	if (ret < 0) {
 		RTE_LOG(ERR, EAL, "  %s cannot get MSI-X BAR number!\n",
 				pci_addr);
-		goto err_vfio_dev_fd;
+		goto err_vfio_res;
+	}
+	/* if we found our MSI-X BAR region, check if we can mmap it */
+	if (vfio_res->msix_table.bar_index != -1) {
+		int ret = pci_vfio_msix_is_mappable(vfio_dev_fd,
+				vfio_res->msix_table.bar_index);
+		if (ret < 0) {
+			RTE_LOG(ERR, EAL, "Couldn't check if MSI-X BAR is mappable\n");
+			goto err_vfio_res;
+		} else if (ret != 0) {
+			/* we can map it, so we don't care where it is */
+			RTE_LOG(DEBUG, EAL, "VFIO reports MSI-X BAR as mappable\n");
+			vfio_res->msix_table.bar_index = -1;
+		}
 	}
 
 	for (i = 0; i < (int) vfio_res->nb_maps; i++) {
-		struct vfio_region_info reg = { .argsz = sizeof(reg) };
+		struct vfio_region_info *reg = NULL;
 		void *bar_addr;
 
-		reg.index = i;
-
-		ret = ioctl(vfio_dev_fd, VFIO_DEVICE_GET_REGION_INFO, &reg);
-		if (ret) {
+		ret = pci_vfio_get_region_info(vfio_dev_fd, &reg, i);
+		if (ret < 0) {
 			RTE_LOG(ERR, EAL, "  %s cannot get device region info "
-					"error %i (%s)\n", pci_addr, errno, strerror(errno));
+				"error %i (%s)\n", pci_addr, errno,
+				strerror(errno));
 			goto err_vfio_res;
 		}
 
 		/* chk for io port region */
 		ret = pci_vfio_is_ioport_bar(vfio_dev_fd, i);
-		if (ret < 0)
+		if (ret < 0) {
+			free(reg);
 			goto err_vfio_res;
-		else if (ret) {
+		} else if (ret) {
 			RTE_LOG(INFO, EAL, "Ignore mapping IO port bar(%d)\n",
 					i);
+			free(reg);
 			continue;
 		}
 
 		/* skip non-mmapable BARs */
-		if ((reg.flags & VFIO_REGION_INFO_FLAG_MMAP) == 0)
+		if ((reg->flags & VFIO_REGION_INFO_FLAG_MMAP) == 0) {
+			free(reg);
 			continue;
+		}
 
 		/* try mapping somewhere close to the end of hugepages */
 		if (pci_map_addr == NULL)
 			pci_map_addr = pci_find_max_end_va();
 
 		bar_addr = pci_map_addr;
-		pci_map_addr = RTE_PTR_ADD(bar_addr, (size_t) reg.size);
+		pci_map_addr = RTE_PTR_ADD(bar_addr, (size_t) reg->size);
 
 		maps[i].addr = bar_addr;
-		maps[i].offset = reg.offset;
-		maps[i].size = reg.size;
+		maps[i].offset = reg->offset;
+		maps[i].size = reg->size;
 		maps[i].path = NULL; /* vfio doesn't have per-resource paths */
 
 		ret = pci_vfio_mmap_bar(vfio_dev_fd, vfio_res, i, 0);
 		if (ret < 0) {
 			RTE_LOG(ERR, EAL, "  %s mapping BAR%i failed: %s\n",
 					pci_addr, i, strerror(errno));
+			free(reg);
 			goto err_vfio_res;
 		}
 
 		dev->mem_resource[i].addr = maps[i].addr;
+
+		free(reg);
 	}
 
 	if (pci_rte_vfio_setup_device(dev, vfio_dev_fd) < 0) {

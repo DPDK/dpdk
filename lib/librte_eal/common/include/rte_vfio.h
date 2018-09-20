@@ -14,6 +14,8 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
+
 /*
  * determine if VFIO is present on the system
  */
@@ -42,6 +44,30 @@ extern "C" {
 #define RTE_VFIO_NOIOMMU VFIO_NOIOMMU_IOMMU
 #else
 #define RTE_VFIO_NOIOMMU 8
+#endif
+
+/*
+ * capabilities are only supported on kernel 4.6+. there were also some API
+ * changes as well, so add a macro to get cap offset.
+ */
+#ifdef VFIO_REGION_INFO_FLAG_CAPS
+#define RTE_VFIO_INFO_FLAG_CAPS VFIO_REGION_INFO_FLAG_CAPS
+#define VFIO_CAP_OFFSET(x) (x->cap_offset)
+#else
+#define RTE_VFIO_INFO_FLAG_CAPS (1 << 3)
+#define VFIO_CAP_OFFSET(x) (x->resv)
+struct vfio_info_cap_header {
+	uint16_t id;
+	uint16_t version;
+	uint32_t next;
+};
+#endif
+
+/* kernels 4.16+ can map BAR containing MSI-X table */
+#ifdef VFIO_REGION_INFO_CAP_MSIX_MAPPABLE
+#define RTE_VFIO_CAP_MSIX_MAPPABLE VFIO_REGION_INFO_CAP_MSIX_MAPPABLE
+#else
+#define RTE_VFIO_CAP_MSIX_MAPPABLE 3
 #endif
 
 #else /* not VFIO_PRESENT */
