@@ -44,6 +44,7 @@ Programmer's Guide
     thread_safety_dpdk_functions
     eventdev
     event_ethernet_rx_adapter
+    event_ethernet_tx_adapter
     event_timer_adapter
     event_crypto_adapter
     qos_framework

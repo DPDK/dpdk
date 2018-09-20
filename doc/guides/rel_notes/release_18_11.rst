@@ -81,6 +81,14 @@ New Features
   * Support for runtime Rx and Tx queues setup.
   * Support multicast MAC address set.
 
+* **Added Event Ethernet Tx Adapter.**
+
+  Added event ethernet Tx adapter library that  provides configuration and
+  data path APIs for the ethernet transmit stage of an event driven packet
+  processing application. These APIs abstract the implementation of the
+  transmit stage and allow the application to use eventdev PMD support or
+  a common implementation.
+
 * **Added Distributed Software Eventdev PMD.**
 
   Added the new Distributed Software Event Device (DSW), which is a
