@@ -464,7 +464,9 @@ struct rte_mbuf {
 	};
 	uint16_t nb_segs;         /**< Number of segments. */
 
-	/** Input port (16 bits to support more than 256 virtual ports). */
+	/** Input port (16 bits to support more than 256 virtual ports).
+	 * The event eth Tx adapter uses this field to specify the output port.
+	 */
 	uint16_t port;
 
 	uint64_t ol_flags;        /**< Offload features. */
@@ -530,6 +532,9 @@ struct rte_mbuf {
 		struct {
 			uint32_t lo;
 			uint32_t hi;
+			/**< The event eth Tx adapter uses this field to store
+			 * Tx queue id. @see rte_event_eth_tx_adapter_txq_set()
+			 */
 		} sched;          /**< Hierarchical scheduler */
 		uint32_t usr;	  /**< User defined tags. See rte_distributor_process() */
 	} hash;                   /**< hash information */
