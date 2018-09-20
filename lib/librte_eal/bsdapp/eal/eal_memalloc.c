@@ -49,19 +49,21 @@ eal_memalloc_sync_with_primary(void)
 }
 
 int
-eal_memalloc_get_seg_fd(int list_idx, int seg_idx)
+eal_memalloc_get_seg_fd(int list_idx __rte_unused, int seg_idx __rte_unused)
 {
 	return -ENOTSUP;
 }
 
 int
-eal_memalloc_set_seg_fd(int list_idx, int seg_idx, int fd)
+eal_memalloc_set_seg_fd(int list_idx __rte_unused, int seg_idx __rte_unused,
+		int fd __rte_unused)
 {
 	return -ENOTSUP;
 }
 
 int
-eal_memalloc_get_seg_fd_offset(int list_idx, int seg_idx, size_t *offset)
+eal_memalloc_get_seg_fd_offset(int list_idx __rte_unused,
+		int seg_idx __rte_unused, size_t *offset __rte_unused)
 {
 	return -ENOTSUP;
 }
