@@ -883,6 +883,10 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Start/stop a rx/tx queue of port X. Only take effect"
 			" when port X is started\n\n"
 
+			"port (port_id) (rxq|txq) (queue_id) deferred_start (on|off)\n"
+			"    Switch on/off a deferred start of port X rx/tx queue. Only"
+			" take effect when port X is stopped.\n\n"
+
 			"port (port_id) (rxq|txq) (queue_id) setup\n"
 			"    Setup a rx/tx queue of port X.\n\n"
 
@@ -2435,6 +2439,92 @@ cmdline_parse_inst_t cmd_config_rxtx_queue = {
 		(void *)&cmd_config_rxtx_queue_rxtxq,
 		(void *)&cmd_config_rxtx_queue_qid,
 		(void *)&cmd_config_rxtx_queue_opname,
+		NULL,
+	},
+};
+
+/* *** configure port rxq/txq deferred start on/off *** */
+struct cmd_config_deferred_start_rxtx_queue {
+	cmdline_fixed_string_t port;
+	portid_t port_id;
+	cmdline_fixed_string_t rxtxq;
+	uint16_t qid;
+	cmdline_fixed_string_t opname;
+	cmdline_fixed_string_t state;
+};
+
+static void
+cmd_config_deferred_start_rxtx_queue_parsed(void *parsed_result,
+			__attribute__((unused)) struct cmdline *cl,
+			__attribute__((unused)) void *data)
+{
+	struct cmd_config_deferred_start_rxtx_queue *res = parsed_result;
+	struct rte_port *port;
+	uint8_t isrx;
+	uint8_t ison;
+	uint8_t needreconfig = 0;
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
+	if (port_is_started(res->port_id) != 0) {
+		printf("Please stop port %u first\n", res->port_id);
+		return;
+	}
+
+	port = &ports[res->port_id];
+
+	isrx = !strcmp(res->rxtxq, "rxq");
+
+	if (isrx && rx_queue_id_is_invalid(res->qid))
+		return;
+	else if (!isrx && tx_queue_id_is_invalid(res->qid))
+		return;
+
+	ison = !strcmp(res->state, "on");
+
+	if (isrx && port->rx_conf[res->qid].rx_deferred_start != ison) {
+		port->rx_conf[res->qid].rx_deferred_start = ison;
+		needreconfig = 1;
+	} else if (!isrx && port->tx_conf[res->qid].tx_deferred_start != ison) {
+		port->tx_conf[res->qid].tx_deferred_start = ison;
+		needreconfig = 1;
+	}
+
+	if (needreconfig)
+		cmd_reconfig_device_queue(res->port_id, 0, 1);
+}
+
+cmdline_parse_token_string_t cmd_config_deferred_start_rxtx_queue_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_deferred_start_rxtx_queue,
+						port, "port");
+cmdline_parse_token_num_t cmd_config_deferred_start_rxtx_queue_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_deferred_start_rxtx_queue,
+						port_id, UINT16);
+cmdline_parse_token_string_t cmd_config_deferred_start_rxtx_queue_rxtxq =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_deferred_start_rxtx_queue,
+						rxtxq, "rxq#txq");
+cmdline_parse_token_num_t cmd_config_deferred_start_rxtx_queue_qid =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_deferred_start_rxtx_queue,
+						qid, UINT16);
+cmdline_parse_token_string_t cmd_config_deferred_start_rxtx_queue_opname =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_deferred_start_rxtx_queue,
+						opname, "deferred_start");
+cmdline_parse_token_string_t cmd_config_deferred_start_rxtx_queue_state =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_deferred_start_rxtx_queue,
+						state, "on#off");
+
+cmdline_parse_inst_t cmd_config_deferred_start_rxtx_queue = {
+	.f = cmd_config_deferred_start_rxtx_queue_parsed,
+	.data = NULL,
+	.help_str = "port <port_id> rxq|txq <queue_id> deferred_start on|off",
+	.tokens = {
+		(void *)&cmd_config_deferred_start_rxtx_queue_port,
+		(void *)&cmd_config_deferred_start_rxtx_queue_port_id,
+		(void *)&cmd_config_deferred_start_rxtx_queue_rxtxq,
+		(void *)&cmd_config_deferred_start_rxtx_queue_qid,
+		(void *)&cmd_config_deferred_start_rxtx_queue_opname,
+		(void *)&cmd_config_deferred_start_rxtx_queue_state,
 		NULL,
 	},
 };
@@ -17709,6 +17799,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_config_rss,
 	(cmdline_parse_inst_t *)&cmd_config_rxtx_ring_size,
 	(cmdline_parse_inst_t *)&cmd_config_rxtx_queue,
+	(cmdline_parse_inst_t *)&cmd_config_deferred_start_rxtx_queue,
 	(cmdline_parse_inst_t *)&cmd_setup_rxtx_queue,
 	(cmdline_parse_inst_t *)&cmd_config_rss_reta,
 	(cmdline_parse_inst_t *)&cmd_showport_reta,

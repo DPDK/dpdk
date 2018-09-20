@@ -72,6 +72,13 @@ New Features
   SR-IOV option in Hyper-V and Azure. This is an alternative to the previous
   vdev_netvsc, tap, and failsafe drivers combination.
 
+* **Added ability to switch queue deferred start flag on testpmd app.**
+
+  Added a console command to testpmd app, giving ability to switch
+  ``rx_deferred_start`` or ``tx_deferred_start`` flag of the specified queue of
+  the specified port. The port must be stopped before the command call in order
+  to reconfigure queues.
+
 
 API Changes
 -----------

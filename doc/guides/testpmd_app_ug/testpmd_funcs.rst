@@ -1765,6 +1765,13 @@ Start/stop a rx/tx queue on a specific port::
 
    testpmd> port (port_id) (rxq|txq) (queue_id) (start|stop)
 
+port config - queue deferred start
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Switch on/off deferred start of a specific port queue::
+
+   testpmd> port (port_id) (rxq|txq) (queue_id) deferred_start (on|off)
+
 port setup queue
 ~~~~~~~~~~~~~~~~~~~~~
 
