@@ -72,6 +72,13 @@ New Features
   SR-IOV option in Hyper-V and Azure. This is an alternative to the previous
   vdev_netvsc, tap, and failsafe drivers combination.
 
+* **Updated failsafe driver.**
+
+  Updated the failsafe driver including the following changes:
+
+  * Support for Rx queues start and stop.
+  * Support for Rx queues deferred start.
+
 * **Added ability to switch queue deferred start flag on testpmd app.**
 
   Added a console command to testpmd app, giving ability to switch

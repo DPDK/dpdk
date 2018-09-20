@@ -366,6 +366,47 @@ failsafe_dev_remove(struct rte_eth_dev *dev)
 		}
 }
 
+static int
+failsafe_eth_dev_rx_queues_sync(struct rte_eth_dev *dev)
+{
+	struct rxq *rxq;
+	int ret;
+	uint16_t i;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		rxq = dev->data->rx_queues[i];
+
+		if (rxq->info.conf.rx_deferred_start &&
+		    dev->data->rx_queue_state[i] ==
+						RTE_ETH_QUEUE_STATE_STARTED) {
+			/*
+			 * The subdevice Rx queue does not launch on device
+			 * start if deferred start flag is set. It needs to be
+			 * started manually in case an appropriate failsafe Rx
+			 * queue has been started earlier.
+			 */
+			ret = dev->dev_ops->rx_queue_start(dev, i);
+			if (ret) {
+				ERROR("Could not synchronize Rx queue %d", i);
+				return ret;
+			}
+		} else if (dev->data->rx_queue_state[i] ==
+						RTE_ETH_QUEUE_STATE_STOPPED) {
+			/*
+			 * The subdevice Rx queue needs to be stopped manually
+			 * in case an appropriate failsafe Rx queue has been
+			 * stopped earlier.
+			 */
+			ret = dev->dev_ops->rx_queue_stop(dev, i);
+			if (ret) {
+				ERROR("Could not synchronize Rx queue %d", i);
+				return ret;
+			}
+		}
+	}
+	return 0;
+}
+
 int
 failsafe_eth_dev_state_sync(struct rte_eth_dev *dev)
 {
@@ -422,6 +463,9 @@ failsafe_eth_dev_state_sync(struct rte_eth_dev *dev)
 	if (PRIV(dev)->state < DEV_STARTED)
 		return 0;
 	ret = dev->dev_ops->dev_start(dev);
+	if (ret)
+		goto err_remove;
+	ret = failsafe_eth_dev_rx_queues_sync(dev);
 	if (ret)
 		goto err_remove;
 	return 0;
