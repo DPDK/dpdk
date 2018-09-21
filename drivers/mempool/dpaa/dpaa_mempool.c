@@ -122,7 +122,7 @@ dpaa_buf_free(struct dpaa_bp_info *bp_info, uint64_t addr)
 	struct bm_buffer buf;
 	int ret;
 
-	DPAA_MEMPOOL_DEBUG("Free 0x%" PRIx64 " to bpid: %d",
+	DPAA_MEMPOOL_DPDEBUG("Free 0x%" PRIx64 " to bpid: %d",
 			   addr, bp_info->bpid);
 
 	bm_buffer_set64(&buf, addr);
