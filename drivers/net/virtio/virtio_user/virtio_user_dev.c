@@ -549,13 +549,11 @@ virtio_user_handle_mq(struct virtio_user_dev *dev, uint16_t q_pairs)
 	/* Server mode can't enable queue pairs if vhostfd is invalid,
 	 * always return 0 in this case.
 	 */
-	if (dev->vhostfd >= 0) {
+	if (!dev->is_server || dev->vhostfd >= 0) {
 		for (i = 0; i < q_pairs; ++i)
 			ret |= dev->ops->enable_qp(dev, i, 1);
 		for (i = q_pairs; i < dev->max_queue_pairs; ++i)
 			ret |= dev->ops->enable_qp(dev, i, 0);
-	} else if (!dev->is_server) {
-		ret = ~0;
 	}
 	dev->queue_pairs = q_pairs;
 
