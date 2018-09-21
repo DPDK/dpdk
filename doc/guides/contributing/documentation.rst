@@ -297,8 +297,8 @@ Line Length
 
      testpmd -l 2-3 -n 4 \
              --vdev=virtio_user0,path=/dev/vhost-net,queues=2,queue_size=1024 \
-             -- -i --txqflags=0x0 --enable-hw-vlan --enable-lro \
-             --enable-rx-cksum --txq=2 --rxq=2 --rxd=1024  --txd=1024
+             -- -i --tx-offloads=0x0000002c --enable-lro --txq=2 --rxq=2 \
+             --txd=1024 --rxd=1024
 
 
 Whitespace

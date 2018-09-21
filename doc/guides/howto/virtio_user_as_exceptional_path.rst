@@ -57,8 +57,8 @@ compiling the kernel and those kernel modules should be inserted.
 
         $(testpmd) -l 2-3 -n 4 \
 		--vdev=virtio_user0,path=/dev/vhost-net,queue_size=1024 \
-		-- -i --txqflags=0x0 --enable-lro \
-		--enable-rx-cksum --rxd=1024 --txd=1024
+		-- -i --tx-offloads=0x0000002c --enable-lro \
+		--txd=1024 --rxd=1024
 
     This command runs testpmd with two ports, one physical NIC to communicate
     with outside, and one virtio-user to communicate with kernel.
@@ -68,11 +68,6 @@ compiling the kernel and those kernel modules should be inserted.
     This is used to negotiate VIRTIO_NET_F_GUEST_TSO4 and
     VIRTIO_NET_F_GUEST_TSO6 feature so that large packets from kernel can be
     transmitted to DPDK application and further TSOed by physical NIC.
-
-* ``--enable-rx-cksum``
-
-    This is used to negotiate VIRTIO_NET_F_GUEST_CSUM so that packets from
-    kernel can be deemed as valid Rx checksumed.
 
 * ``queue_size``
 
@@ -86,9 +81,17 @@ compiling the kernel and those kernel modules should be inserted.
 
         $(testpmd) -l 2-3 -n 4 \
 		--vdev=virtio_user0,path=/dev/vhost-net,queues=2,queue_size=1024 \
-		-- -i --txqflags=0x0 --enable-lro \
-		--enable-rx-cksum --txq=2 --rxq=2 --rxd=1024 \
-		--txd=1024
+		-- -i --tx-offloads=0x0000002c --enable-lro \
+		--txq=2 --rxq=2 --txd=1024 --rxd=1024
+
+#. Enable Rx checksum offloads in testpmd:
+
+    .. code-block:: console
+
+        (testpmd) port stop 0
+        (testpmd) port config 0 rx_offload tcp_cksum on
+        (testpmd) port config 0 rx_offload udp_cksum on
+        (testpmd) port start 0
 
 #. Start testpmd:
 

@@ -96,7 +96,7 @@ some minor changes.
             dpdk-app-testpmd testpmd -l 6-7 -n 4 -m 1024 --no-pci \
             --vdev=virtio_user0,path=/var/run/usvhost \
             --file-prefix=container \
-            -- -i --txqflags=0xf00 --disable-hw-vlan
+            -- -i
 
 Note: If we run all above setup on the host, it's a shm-based IPC.
 
