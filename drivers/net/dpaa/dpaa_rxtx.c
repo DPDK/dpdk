@@ -870,6 +870,19 @@ dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 				DPAA_TX_BURST_SIZE : nb_bufs;
 		for (loop = 0; loop < frames_to_send; loop++) {
 			mbuf = *(bufs++);
+			seqn = mbuf->seqn;
+			if (seqn != DPAA_INVALID_MBUF_SEQN) {
+				index = seqn - 1;
+				if (DPAA_PER_LCORE_DQRR_HELD & (1 << index)) {
+					flags[loop] =
+					   ((index & QM_EQCR_DCA_IDXMASK) << 8);
+					flags[loop] |= QMAN_ENQUEUE_FLAG_DCA;
+					DPAA_PER_LCORE_DQRR_SIZE--;
+					DPAA_PER_LCORE_DQRR_HELD &=
+								~(1 << index);
+				}
+			}
+
 			if (likely(RTE_MBUF_DIRECT(mbuf))) {
 				mp = mbuf->pool;
 				bp_info = DPAA_MEMPOOL_TO_POOL_INFO(mp);
@@ -914,18 +927,6 @@ dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 					frames_to_send = loop;
 					nb_bufs = loop;
 					goto send_pkts;
-				}
-			}
-			seqn = mbuf->seqn;
-			if (seqn != DPAA_INVALID_MBUF_SEQN) {
-				index = seqn - 1;
-				if (DPAA_PER_LCORE_DQRR_HELD & (1 << index)) {
-					flags[loop] =
-					   ((index & QM_EQCR_DCA_IDXMASK) << 8);
-					flags[loop] |= QMAN_ENQUEUE_FLAG_DCA;
-					DPAA_PER_LCORE_DQRR_SIZE--;
-					DPAA_PER_LCORE_DQRR_HELD &=
-								~(1 << index);
 				}
 			}
 		}
