@@ -40,7 +40,10 @@
 	(VIRTIO_PMD_DEFAULT_GUEST_FEATURES |	\
 	 1u << VIRTIO_NET_F_GUEST_CSUM	   |	\
 	 1u << VIRTIO_NET_F_GUEST_TSO4     |	\
-	 1u << VIRTIO_NET_F_GUEST_TSO6)
+	 1u << VIRTIO_NET_F_GUEST_TSO6     |	\
+	 1u << VIRTIO_NET_F_CSUM           |	\
+	 1u << VIRTIO_NET_F_HOST_TSO4      |	\
+	 1u << VIRTIO_NET_F_HOST_TSO6)
 
 /*
  * CQ function prototype
