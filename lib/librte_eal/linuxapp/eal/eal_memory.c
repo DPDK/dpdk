@@ -587,7 +587,7 @@ unlink_hugepage_files(struct hugepage_file *hugepg_tbl,
 	for (page = 0; page < nrpages; page++) {
 		struct hugepage_file *hp = &hugepg_tbl[page];
 
-		if (hp->final_va != NULL && unlink(hp->filepath)) {
+		if (hp->orig_va != NULL && unlink(hp->filepath)) {
 			RTE_LOG(WARNING, EAL, "%s(): Removing %s failed: %s\n",
 				__func__, hp->filepath, strerror(errno));
 		}
