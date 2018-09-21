@@ -1040,6 +1040,50 @@ static inline unsigned int __poll_portal_fast(struct qman_portal *p,
 	return limit;
 }
 
+int qman_irqsource_add(u32 bits)
+{
+	struct qman_portal *p = get_affine_portal();
+
+	bits = bits & QM_PIRQ_VISIBLE;
+
+	/* Clear any previously remaining interrupt conditions in
+	 * QCSP_ISR. This prevents raising a false interrupt when
+	 * interrupt conditions are enabled in QCSP_IER.
+	 */
+	qm_isr_status_clear(&p->p, bits);
+	dpaa_set_bits(bits, &p->irq_sources);
+	qm_isr_enable_write(&p->p, p->irq_sources);
+
+
+	return 0;
+}
+
+int qman_irqsource_remove(u32 bits)
+{
+	struct qman_portal *p = get_affine_portal();
+	u32 ier;
+
+	/* Our interrupt handler only processes+clears status register bits that
+	 * are in p->irq_sources. As we're trimming that mask, if one of them
+	 * were to assert in the status register just before we remove it from
+	 * the enable register, there would be an interrupt-storm when we
+	 * release the IRQ lock. So we wait for the enable register update to
+	 * take effect in h/w (by reading it back) and then clear all other bits
+	 * in the status register. Ie. we clear them from ISR once it's certain
+	 * IER won't allow them to reassert.
+	 */
+
+	bits &= QM_PIRQ_VISIBLE;
+	dpaa_clear_bits(bits, &p->irq_sources);
+	qm_isr_enable_write(&p->p, p->irq_sources);
+	ier = qm_isr_enable_read(&p->p);
+	/* Using "~ier" (rather than "bits" or "~p->irq_sources") creates a
+	 * data-dependency, ie. to protect against re-ordering.
+	 */
+	qm_isr_status_clear(&p->p, ~ier);
+	return 0;
+}
+
 u16 qman_affine_channel(int cpu)
 {
 	if (cpu < 0) {
@@ -1112,6 +1156,14 @@ unsigned int qman_portal_poll_rx(unsigned int poll_limit,
 	qm_out(DQRR_DCAP, (1 << 8) | consume);
 
 	return rx_number;
+}
+
+void qman_clear_irq(void)
+{
+	struct qman_portal *p = get_affine_portal();
+	u32 clear = QM_DQAVAIL_MASK | (p->irq_sources &
+		~(QM_PIRQ_CSCI | QM_PIRQ_CCSCI));
+	qm_isr_status_clear(&p->p, clear);
 }
 
 u32 qman_portal_dequeue(struct rte_event ev[], unsigned int poll_limit,

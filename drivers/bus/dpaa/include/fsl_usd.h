@@ -55,6 +55,10 @@ int qman_free_raw_portal(struct dpaa_raw_portal *portal);
 int bman_allocate_raw_portal(struct dpaa_raw_portal *portal);
 int bman_free_raw_portal(struct dpaa_raw_portal *portal);
 
+/* Obtain thread-local UIO file-descriptors */
+int qman_thread_fd(void);
+int bman_thread_fd(void);
+
 /* Post-process interrupts. NB, the kernel IRQ handler disables the interrupt
  * line before notifying us, and this post-processing re-enables it once
  * processing is complete. As such, it is essential to call this before going
@@ -62,6 +66,8 @@ int bman_free_raw_portal(struct dpaa_raw_portal *portal);
  */
 void qman_thread_irq(void);
 void bman_thread_irq(void);
+
+void qman_clear_irq(void);
 
 /* Global setup */
 int qman_global_init(void);

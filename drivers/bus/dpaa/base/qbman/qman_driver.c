@@ -113,6 +113,11 @@ static int fsl_qman_portal_finish(void)
 	return ret;
 }
 
+int qman_thread_fd(void)
+{
+	return qmfd;
+}
+
 int qman_thread_init(void)
 {
 	/* Convert from contiguous/virtual cpu numbering to real cpu when
@@ -135,7 +140,7 @@ void qman_thread_irq(void)
 	 * rather than breaking that encapsulation I am simply hard-coding the
 	 * offset to the inhibit register here.
 	 */
-	out_be32(qpcfg.addr_virt[DPAA_PORTAL_CI] + 0xe0c, 0);
+	out_be32(qpcfg.addr_virt[DPAA_PORTAL_CI] + 0x36C0, 0);
 }
 
 struct qman_portal *fsl_qman_portal_create(void)

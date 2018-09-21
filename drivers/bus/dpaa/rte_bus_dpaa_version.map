@@ -95,10 +95,24 @@ DPDK_18.02 {
 
 DPDK_18.08 {
 	global:
-
 	fman_if_get_sg_enable;
 	fman_if_set_sg;
 	of_get_mac_address;
 
 	local: *;
 } DPDK_18.02;
+
+DPDK_18.11 {
+	global:
+	bman_thread_irq;
+	fman_if_get_sg_enable;
+	fman_if_set_sg;
+	qman_clear_irq;
+
+	qman_irqsource_add;
+	qman_irqsource_remove;
+	qman_thread_fd;
+	qman_thread_irq;
+
+	local: *;
+} DPDK_18.08;

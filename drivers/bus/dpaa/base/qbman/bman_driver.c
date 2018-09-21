@@ -23,7 +23,7 @@ static void *bman_ccsr_map;
 /* Portal driver */
 /*****************/
 
-static __thread int fd = -1;
+static __thread int bmfd = -1;
 static __thread struct bm_portal_config pcfg;
 static __thread struct dpaa_ioctl_portal_map map = {
 	.type = dpaa_portal_bman
@@ -70,14 +70,14 @@ static int fsl_bman_portal_init(uint32_t idx, int is_shared)
 	pcfg.index = map.index;
 	bman_depletion_fill(&pcfg.mask);
 
-	fd = open(BMAN_PORTAL_IRQ_PATH, O_RDONLY);
-	if (fd == -1) {
+	bmfd = open(BMAN_PORTAL_IRQ_PATH, O_RDONLY);
+	if (bmfd == -1) {
 		pr_err("BMan irq init failed");
 		process_portal_unmap(&map.addr);
 		return -EBUSY;
 	}
 	/* Use the IRQ FD as a unique IRQ number */
-	pcfg.irq = fd;
+	pcfg.irq = bmfd;
 
 	portal = bman_create_affine_portal(&pcfg);
 	if (!portal) {
@@ -90,7 +90,7 @@ static int fsl_bman_portal_init(uint32_t idx, int is_shared)
 	/* Set the IRQ number */
 	irq_map.type = dpaa_portal_bman;
 	irq_map.portal_cinh = map.addr.cinh;
-	process_portal_irq_map(fd, &irq_map);
+	process_portal_irq_map(bmfd, &irq_map);
 	return 0;
 }
 
@@ -99,7 +99,7 @@ static int fsl_bman_portal_finish(void)
 	__maybe_unused const struct bm_portal_config *cfg;
 	int ret;
 
-	process_portal_irq_unmap(fd);
+	process_portal_irq_unmap(bmfd);
 
 	cfg = bman_destroy_affine_portal();
 	DPAA_BUG_ON(cfg != &pcfg);
@@ -107,6 +107,11 @@ static int fsl_bman_portal_finish(void)
 	if (ret)
 		error(0, ret, "process_portal_unmap()");
 	return ret;
+}
+
+int bman_thread_fd(void)
+{
+	return bmfd;
 }
 
 int bman_thread_init(void)
