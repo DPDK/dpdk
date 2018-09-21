@@ -316,7 +316,7 @@ rte_mp_sendmsg(struct rte_mp_msg *msg);
  *
  * @param reply
  *   The reply argument will be for storing all the replied messages;
- *   the caller is responsible for free reply->replies.
+ *   the caller is responsible for free reply->msgs.
  *
  * @param ts
  *   The ts argument specifies how long we can wait for the peer(s) to reply.

@@ -425,6 +425,7 @@ vdev_scan(void)
 			mp_rep = &mp_reply.msgs[0];
 			resp = (struct vdev_param *)mp_rep->param;
 			VDEV_LOG(INFO, "Received %d vdevs", resp->num);
+			free(mp_reply.msgs);
 		} else
 			VDEV_LOG(ERR, "Failed to request vdev from primary");
 
