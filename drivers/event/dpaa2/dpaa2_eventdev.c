@@ -284,7 +284,7 @@ dpaa2_eventdev_info_get(struct rte_eventdev *dev,
 	dev_info->max_dequeue_timeout_ns =
 		DPAA2_EVENT_MAX_DEQUEUE_TIMEOUT;
 	dev_info->dequeue_timeout_ns =
-		DPAA2_EVENT_MIN_DEQUEUE_TIMEOUT;
+		DPAA2_EVENT_PORT_DEQUEUE_TIMEOUT_NS;
 	dev_info->max_event_queues = priv->max_event_queues;
 	dev_info->max_event_queue_flows =
 		DPAA2_EVENT_MAX_QUEUE_FLOWS;
@@ -314,13 +314,26 @@ dpaa2_eventdev_configure(const struct rte_eventdev *dev)
 
 	EVENTDEV_INIT_FUNC_TRACE();
 
-	priv->dequeue_timeout_ns = conf->dequeue_timeout_ns;
 	priv->nb_event_queues = conf->nb_event_queues;
 	priv->nb_event_ports = conf->nb_event_ports;
 	priv->nb_event_queue_flows = conf->nb_event_queue_flows;
 	priv->nb_event_port_dequeue_depth = conf->nb_event_port_dequeue_depth;
 	priv->nb_event_port_enqueue_depth = conf->nb_event_port_enqueue_depth;
 	priv->event_dev_cfg = conf->event_dev_cfg;
+
+	/* Check dequeue timeout method is per dequeue or global */
+	if (priv->event_dev_cfg & RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT) {
+		/*
+		 * Use timeout value as given in dequeue operation.
+		 * So invalidating this timeout value.
+		 */
+		priv->dequeue_timeout_ns = 0;
+
+	} else if (conf->dequeue_timeout_ns == 0) {
+		priv->dequeue_timeout_ns = DPAA2_EVENT_PORT_DEQUEUE_TIMEOUT_NS;
+	} else {
+		priv->dequeue_timeout_ns = conf->dequeue_timeout_ns;
+	}
 
 	DPAA2_EVENTDEV_DEBUG("Configured eventdev devid=%d",
 			     dev->data->dev_id);
@@ -516,7 +529,7 @@ static int
 dpaa2_eventdev_timeout_ticks(struct rte_eventdev *dev, uint64_t ns,
 			     uint64_t *timeout_ticks)
 {
-	uint32_t scale = 1;
+	uint32_t scale = 1000*1000;
 
 	EVENTDEV_INIT_FUNC_TRACE();
 
