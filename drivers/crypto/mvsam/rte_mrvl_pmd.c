@@ -94,6 +94,11 @@ struct cipher_params_mapping cipher_map[RTE_CRYPTO_CIPHER_LIST_END] = {
 		.cipher_alg = SAM_CIPHER_AES,
 		.cipher_mode = SAM_CIPHER_CTR,
 		.max_key_len = BITS2BYTES(256) },
+	[RTE_CRYPTO_CIPHER_AES_ECB] = {
+		.supported = ALGO_SUPPORTED,
+		.cipher_alg = SAM_CIPHER_AES,
+		.cipher_mode = SAM_CIPHER_ECB,
+		.max_key_len = BITS2BYTES(256) },
 };
 
 /**
