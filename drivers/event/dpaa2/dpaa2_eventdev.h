@@ -56,17 +56,18 @@ struct dpaa2_dpcon_dev {
 	uint8_t channel_index;
 };
 
-struct evq_info_t {
+struct dpaa2_eventq {
 	/* DPcon device */
 	struct dpaa2_dpcon_dev *dpcon;
 	/* Attached DPCI device */
 	struct dpaa2_dpci_dev *dpci;
 	/* Configuration provided by the user */
 	uint32_t event_queue_cfg;
+	uint32_t event_queue_id;
 };
 
 struct dpaa2_eventdev {
-	struct evq_info_t evq_info[DPAA2_EVENT_MAX_QUEUES];
+	struct dpaa2_eventq evq_info[DPAA2_EVENT_MAX_QUEUES];
 	uint32_t dequeue_timeout_ns;
 	uint8_t max_event_queues;
 	uint8_t nb_event_queues;

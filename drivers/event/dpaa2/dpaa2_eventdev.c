@@ -58,7 +58,7 @@ dpaa2_eventdev_enqueue_burst(void *port, const struct rte_event ev[],
 			((struct dpaa2_io_portal_t *)port)->eventdev;
 	struct dpaa2_eventdev *priv = ev_dev->data->dev_private;
 	uint32_t queue_id = ev[0].queue_id;
-	struct evq_info_t *evq_info = &priv->evq_info[queue_id];
+	struct dpaa2_eventq *evq_info = &priv->evq_info[queue_id];
 	uint32_t fqid;
 	struct qbman_swp *swp;
 	struct qbman_fd fd_arr[MAX_TX_RING_SLOTS];
@@ -385,7 +385,7 @@ dpaa2_eventdev_queue_setup(struct rte_eventdev *dev, uint8_t queue_id,
 			   const struct rte_event_queue_conf *queue_conf)
 {
 	struct dpaa2_eventdev *priv = dev->data->dev_private;
-	struct evq_info_t *evq_info =
+	struct dpaa2_eventq *evq_info =
 		&priv->evq_info[queue_id];
 
 	EVENTDEV_INIT_FUNC_TRACE();
@@ -449,7 +449,7 @@ dpaa2_eventdev_port_unlink(struct rte_eventdev *dev, void *port,
 {
 	struct dpaa2_eventdev *priv = dev->data->dev_private;
 	struct dpaa2_io_portal_t *dpaa2_portal = port;
-	struct evq_info_t *evq_info;
+	struct dpaa2_eventq *evq_info;
 	int i;
 
 	EVENTDEV_INIT_FUNC_TRACE();
@@ -473,7 +473,7 @@ dpaa2_eventdev_port_link(struct rte_eventdev *dev, void *port,
 {
 	struct dpaa2_eventdev *priv = dev->data->dev_private;
 	struct dpaa2_io_portal_t *dpaa2_portal = port;
-	struct evq_info_t *evq_info;
+	struct dpaa2_eventq *evq_info;
 	uint8_t channel_index;
 	int ret, i, n;
 
