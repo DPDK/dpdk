@@ -51,9 +51,11 @@ sw_schedule_atomic_to_cq(struct sw_evdev *sw, struct sw_qid * const qid,
 		int cq = fid->cq;
 
 		if (cq < 0) {
-			uint32_t cq_idx = qid->cq_next_tx++;
-			if (qid->cq_next_tx == qid->cq_num_mapped_cqs)
+			uint32_t cq_idx;
+			if (qid->cq_next_tx >= qid->cq_num_mapped_cqs)
 				qid->cq_next_tx = 0;
+			cq_idx = qid->cq_next_tx++;
+
 			cq = qid->cq_map[cq_idx];
 
 			/* find least used */
@@ -140,9 +142,10 @@ sw_schedule_parallel_to_cq(struct sw_evdev *sw, struct sw_qid * const qid,
 		do {
 			if (++cq_check_count > qid->cq_num_mapped_cqs)
 				goto exit;
-			cq = qid->cq_map[cq_idx];
-			if (++cq_idx == qid->cq_num_mapped_cqs)
+			if (cq_idx >= qid->cq_num_mapped_cqs)
 				cq_idx = 0;
+			cq = qid->cq_map[cq_idx++];
+
 		} while (rte_event_ring_free_count(
 				sw->ports[cq].cq_worker_ring) == 0 ||
 				sw->ports[cq].inflights == SW_PORT_HIST_LIST);
@@ -220,7 +223,7 @@ sw_schedule_qid_to_cq(struct sw_evdev *sw)
 		int iq_num = PKT_MASK_TO_IQ(qid->iq_pkt_mask);
 
 		/* zero mapped CQs indicates directed */
-		if (iq_num >= SW_IQS_MAX)
+		if (iq_num >= SW_IQS_MAX || qid->cq_num_mapped_cqs == 0)
 			continue;
 
 		uint32_t pkts_done = 0;
