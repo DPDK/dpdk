@@ -2238,11 +2238,6 @@ int qman_enqueue_multi(struct qman_fq *fq,
 	/* try to send as many frames as possible */
 	while (eqcr->available && frames_to_send--) {
 		eq->fqid = fq->fqid_le;
-#ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
-		eq->tag = cpu_to_be32(fq->key);
-#else
-		eq->tag = cpu_to_be32((u32)(uintptr_t)fq);
-#endif
 		eq->fd.opaque_addr = fd->opaque_addr;
 		eq->fd.addr = cpu_to_be40(fd->addr);
 		eq->fd.status = cpu_to_be32(fd->status);
