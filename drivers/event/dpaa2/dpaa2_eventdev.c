@@ -293,6 +293,9 @@ dpaa2_eventdev_info_get(struct rte_eventdev *dev,
 	dev_info->max_event_priority_levels =
 		DPAA2_EVENT_MAX_EVENT_PRIORITY_LEVELS;
 	dev_info->max_event_ports = rte_fslmc_get_device_count(DPAA2_IO);
+	/* we only support dpio upto number of cores*/
+	if (dev_info->max_event_ports > rte_lcore_count())
+		dev_info->max_event_ports = rte_lcore_count();
 	dev_info->max_event_port_dequeue_depth =
 		DPAA2_EVENT_MAX_PORT_DEQUEUE_DEPTH;
 	dev_info->max_event_port_enqueue_depth =
