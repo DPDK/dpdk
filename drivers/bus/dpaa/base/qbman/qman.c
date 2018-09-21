@@ -852,11 +852,9 @@ mr_loop:
 			case QM_MR_VERB_FQPN:
 				/* Parked */
 #ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
-				fq = get_fq_table_entry(
-					be32_to_cpu(msg->fq.contextB));
+				fq = get_fq_table_entry(msg->fq.contextB);
 #else
-				fq = (void *)(uintptr_t)
-					be32_to_cpu(msg->fq.contextB);
+				fq = (void *)(uintptr_t)msg->fq.contextB;
 #endif
 				fq_state_change(p, fq, msg, verb);
 				if (fq->cb.fqs)
@@ -967,7 +965,6 @@ static inline unsigned int __poll_portal_fast(struct qman_portal *p,
 		*shadow = *dq;
 		dq = shadow;
 		shadow->fqid = be32_to_cpu(shadow->fqid);
-		shadow->contextB = be32_to_cpu(shadow->contextB);
 		shadow->seqnum = be16_to_cpu(shadow->seqnum);
 		hw_fd_to_cpu(&shadow->fd);
 #endif
@@ -1136,9 +1133,9 @@ unsigned int qman_portal_poll_rx(unsigned int poll_limit,
 
 		/* SDQCR: context_b points to the FQ */
 #ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
-		fq = qman_fq_lookup_table[be32_to_cpu(dq[rx_number]->contextB)];
+		fq = qman_fq_lookup_table[dq[rx_number]->contextB];
 #else
-		fq = (void *)be32_to_cpu(dq[rx_number]->contextB);
+		fq = (void *)dq[rx_number]->contextB;
 #endif
 		if (fq->cb.dqrr_prepare)
 			fq->cb.dqrr_prepare(shadow[rx_number],
@@ -1195,7 +1192,6 @@ u32 qman_portal_dequeue(struct rte_event ev[], unsigned int poll_limit,
 		*shadow = *dq;
 		dq = shadow;
 		shadow->fqid = be32_to_cpu(shadow->fqid);
-		shadow->contextB = be32_to_cpu(shadow->contextB);
 		shadow->seqnum = be16_to_cpu(shadow->seqnum);
 		hw_fd_to_cpu(&shadow->fd);
 #endif
@@ -1260,7 +1256,6 @@ struct qm_dqrr_entry *qman_dequeue(struct qman_fq *fq)
 	*shadow = *dq;
 	dq = shadow;
 	shadow->fqid = be32_to_cpu(shadow->fqid);
-	shadow->contextB = be32_to_cpu(shadow->contextB);
 	shadow->seqnum = be16_to_cpu(shadow->seqnum);
 	hw_fd_to_cpu(&shadow->fd);
 #endif
@@ -1556,7 +1551,7 @@ int qman_init_fq(struct qman_fq *fq, u32 flags, struct qm_mcc_initfq *opts)
 
 		mcc->initfq.we_mask |= QM_INITFQ_WE_CONTEXTB;
 #ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
-		mcc->initfq.fqd.context_b = fq->key;
+		mcc->initfq.fqd.context_b = cpu_to_be32(fq->key);
 #else
 		mcc->initfq.fqd.context_b = (u32)(uintptr_t)fq;
 #endif
