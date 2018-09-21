@@ -31,7 +31,7 @@ EXPORT_MAP := rte_pmd_mvsam_version.map
 
 # external library dependencies
 LDLIBS += -L$(LIBMUSDK_PATH)/lib -lmusdk
-LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool
+LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_kvargs
 LDLIBS += -lrte_cryptodev
 LDLIBS += -lrte_bus_vdev
 

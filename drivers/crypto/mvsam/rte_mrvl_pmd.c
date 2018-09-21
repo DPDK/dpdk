@@ -11,6 +11,7 @@
 #include <rte_bus_vdev.h>
 #include <rte_malloc.h>
 #include <rte_cpuflags.h>
+#include <rte_kvargs.h>
 
 #include "rte_mrvl_pmd_private.h"
 
