@@ -617,9 +617,9 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		fman_if_set_bp(dpaa_intf->fif, mp->size,
 			       dpaa_intf->bp_info->bpid, bp_size);
 		dpaa_intf->valid = 1;
-		DPAA_PMD_INFO("if =%s - fd_offset = %d offset = %d",
-			    dpaa_intf->name, fd_offset,
-			fman_if_get_fdoff(dpaa_intf->fif));
+		DPAA_PMD_DEBUG("if:%s fd_offset = %d offset = %d",
+				dpaa_intf->name, fd_offset,
+				fman_if_get_fdoff(dpaa_intf->fif));
 	}
 	DPAA_PMD_DEBUG("if:%s sg_on = %d, max_frm =%d", dpaa_intf->name,
 		fman_if_get_sg_enable(dpaa_intf->fif),
@@ -697,7 +697,8 @@ dpaa_eth_eventq_attach(const struct rte_eth_dev *dev,
 	struct qm_mcc_initfq opts = {0};
 
 	if (dpaa_push_mode_max_queue)
-		DPAA_PMD_WARN("PUSH mode already enabled for first %d queues.\n"
+		DPAA_PMD_WARN("PUSH mode q and EVENTDEV are not compatible\n"
+			      "PUSH mode already enabled for first %d queues.\n"
 			      "To disable set DPAA_PUSH_QUEUES_NUMBER to 0\n",
 			      dpaa_push_mode_max_queue);
 
