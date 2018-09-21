@@ -178,6 +178,15 @@ int	hn_vf_start(struct rte_eth_dev *dev);
 void	hn_vf_reset(struct rte_eth_dev *dev);
 void	hn_vf_stop(struct rte_eth_dev *dev);
 void	hn_vf_close(struct rte_eth_dev *dev);
+
+void	hn_vf_allmulticast_enable(struct rte_eth_dev *dev);
+void	hn_vf_allmulticast_disable(struct rte_eth_dev *dev);
+void	hn_vf_promiscuous_enable(struct rte_eth_dev *dev);
+void	hn_vf_promiscuous_disable(struct rte_eth_dev *dev);
+int	hn_vf_mc_addr_list(struct rte_eth_dev *dev,
+			   struct ether_addr *mc_addr_set,
+			   uint32_t nb_mc_addr);
+
 int	hn_vf_link_update(struct rte_eth_dev *dev,
 			  int wait_to_complete);
 int	hn_vf_tx_queue_setup(struct rte_eth_dev *dev,

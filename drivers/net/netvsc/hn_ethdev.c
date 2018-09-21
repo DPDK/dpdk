@@ -255,6 +255,7 @@ hn_dev_promiscuous_enable(struct rte_eth_dev *dev)
 	struct hn_data *hv = dev->data->dev_private;
 
 	hn_rndis_set_rxfilter(hv, NDIS_PACKET_TYPE_PROMISCUOUS);
+	hn_vf_promiscuous_enable(dev);
 }
 
 static void
@@ -267,6 +268,7 @@ hn_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	if (dev->data->all_multicast)
 		filter |= NDIS_PACKET_TYPE_ALL_MULTICAST;
 	hn_rndis_set_rxfilter(hv, filter);
+	hn_vf_promiscuous_disable(dev);
 }
 
 static void
@@ -277,6 +279,7 @@ hn_dev_allmulticast_enable(struct rte_eth_dev *dev)
 	hn_rndis_set_rxfilter(hv, NDIS_PACKET_TYPE_DIRECTED |
 			      NDIS_PACKET_TYPE_ALL_MULTICAST |
 			NDIS_PACKET_TYPE_BROADCAST);
+	hn_vf_allmulticast_enable(dev);
 }
 
 static void
@@ -286,6 +289,16 @@ hn_dev_allmulticast_disable(struct rte_eth_dev *dev)
 
 	hn_rndis_set_rxfilter(hv, NDIS_PACKET_TYPE_DIRECTED |
 			     NDIS_PACKET_TYPE_BROADCAST);
+	hn_vf_allmulticast_disable(dev);
+}
+
+static int
+hn_dev_mc_addr_list(struct rte_eth_dev *dev,
+		     struct ether_addr *mc_addr_set,
+		     uint32_t nb_mc_addr)
+{
+	/* No filtering on the synthetic path, but can do it on VF */
+	return hn_vf_mc_addr_list(dev, mc_addr_set, nb_mc_addr);
 }
 
 /* Setup shared rx/tx queue data */
@@ -640,6 +653,7 @@ static const struct eth_dev_ops hn_eth_dev_ops = {
 	.promiscuous_disable    = hn_dev_promiscuous_disable,
 	.allmulticast_enable    = hn_dev_allmulticast_enable,
 	.allmulticast_disable   = hn_dev_allmulticast_disable,
+	.set_mc_addr_list	= hn_dev_mc_addr_list,
 	.tx_queue_setup		= hn_dev_tx_queue_setup,
 	.tx_queue_release	= hn_dev_tx_queue_release,
 	.tx_done_cleanup        = hn_dev_tx_done_cleanup,

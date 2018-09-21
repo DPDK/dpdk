@@ -373,6 +373,43 @@ void hn_vf_stats_reset(struct rte_eth_dev *dev)
 	VF_ETHDEV_FUNC(dev, rte_eth_stats_reset);
 }
 
+void hn_vf_allmulticast_enable(struct rte_eth_dev *dev)
+{
+	VF_ETHDEV_FUNC(dev, rte_eth_allmulticast_enable);
+}
+
+void hn_vf_allmulticast_disable(struct rte_eth_dev *dev)
+{
+	VF_ETHDEV_FUNC(dev, rte_eth_allmulticast_disable);
+}
+
+void hn_vf_promiscuous_enable(struct rte_eth_dev *dev)
+{
+	VF_ETHDEV_FUNC(dev, rte_eth_promiscuous_enable);
+}
+
+void hn_vf_promiscuous_disable(struct rte_eth_dev *dev)
+{
+	VF_ETHDEV_FUNC(dev, rte_eth_promiscuous_disable);
+}
+
+int hn_vf_mc_addr_list(struct rte_eth_dev *dev,
+			struct ether_addr *mc_addr_set,
+			uint32_t nb_mc_addr)
+{
+	struct hn_data *hv = dev->data->dev_private;
+	struct rte_eth_dev *vf_dev;
+	int ret = 0;
+
+	rte_spinlock_lock(&hv->vf_lock);
+	vf_dev = hv->vf_dev;
+	if (vf_dev)
+		ret = rte_eth_dev_set_mc_addr_list(vf_dev->data->port_id,
+						   mc_addr_set, nb_mc_addr);
+	rte_spinlock_unlock(&hv->vf_lock);
+	return ret;
+}
+
 int hn_vf_tx_queue_setup(struct rte_eth_dev *dev,
 			 uint16_t queue_idx, uint16_t nb_desc,
 			 unsigned int socket_id,
