@@ -32,8 +32,6 @@
 /* L4 Type field: TCP */
 #define DPAA_L4_PARSE_RESULT_TCP	0x20
 
-#define DPAA_SGT_MAX_ENTRIES 16 /* maximum number of entries in SG Table */
-
 #define DPAA_MAX_DEQUEUE_NUM_FRAMES    63
 	/** <Maximum number of frames to be dequeued in a single rx call*/
 
