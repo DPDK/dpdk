@@ -193,14 +193,24 @@ dpaa_eth_dev_configure(struct rte_eth_dev *dev)
 	}
 
 	if (rx_offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
+		uint32_t max_len;
+
+		DPAA_PMD_DEBUG("enabling jumbo");
+
 		if (dev->data->dev_conf.rxmode.max_rx_pkt_len <=
-		    DPAA_MAX_RX_PKT_LEN) {
-			fman_if_set_maxfrm(dpaa_intf->fif,
-				dev->data->dev_conf.rxmode.max_rx_pkt_len);
-			return 0;
-		} else {
-			return -1;
+		    DPAA_MAX_RX_PKT_LEN)
+			max_len = dev->data->dev_conf.rxmode.max_rx_pkt_len;
+		else {
+			DPAA_PMD_INFO("enabling jumbo override conf max len=%d "
+				"supported is %d",
+				dev->data->dev_conf.rxmode.max_rx_pkt_len,
+				DPAA_MAX_RX_PKT_LEN);
+			max_len = DPAA_MAX_RX_PKT_LEN;
 		}
+
+		fman_if_set_maxfrm(dpaa_intf->fif, max_len);
+		dev->data->mtu = max_len
+				- ETHER_HDR_LEN - ETHER_CRC_LEN - VLAN_TAG_SIZE;
 	}
 	return 0;
 }
