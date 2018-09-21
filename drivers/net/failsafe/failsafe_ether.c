@@ -179,6 +179,23 @@ fs_eth_dev_conf_apply(struct rte_eth_dev *dev,
 			return ret;
 		}
 	}
+	/*
+	 * Propagate multicast MAC addresses to sub-devices,
+	 * if non zero number of addresses is set.
+	 * The condition is required to avoid breakage of failsafe
+	 * for sub-devices which do not support the operation
+	 * if the feature is really not used.
+	 */
+	if (PRIV(dev)->nb_mcast_addr > 0) {
+		DEBUG("Configuring multicast MAC addresses");
+		ret = rte_eth_dev_set_mc_addr_list(PORT_ID(sdev),
+						   PRIV(dev)->mcast_addrs,
+						   PRIV(dev)->nb_mcast_addr);
+		if (ret) {
+			ERROR("Failed to apply multicast MAC addresses");
+			return ret;
+		}
+	}
 	/* VLAN filter */
 	vfc1 = &dev->data->vlan_filter_conf;
 	vfc2 = &edev->data->vlan_filter_conf;

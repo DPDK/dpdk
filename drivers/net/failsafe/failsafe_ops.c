@@ -1127,6 +1127,55 @@ fs_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 }
 
 static int
+fs_set_mc_addr_list(struct rte_eth_dev *dev,
+		    struct ether_addr *mc_addr_set, uint32_t nb_mc_addr)
+{
+	struct sub_device *sdev;
+	uint8_t i;
+	int ret;
+	void *mcast_addrs;
+
+	fs_lock(dev, 0);
+
+	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
+		ret = rte_eth_dev_set_mc_addr_list(PORT_ID(sdev),
+						   mc_addr_set, nb_mc_addr);
+		if (ret != 0) {
+			ERROR("Operation rte_eth_dev_set_mc_addr_list failed for sub_device %d with error %d",
+			      i, ret);
+			goto rollback;
+		}
+	}
+
+	mcast_addrs = rte_realloc(PRIV(dev)->mcast_addrs,
+		nb_mc_addr * sizeof(PRIV(dev)->mcast_addrs[0]), 0);
+	if (mcast_addrs == NULL && nb_mc_addr > 0) {
+		ret = -ENOMEM;
+		goto rollback;
+	}
+	rte_memcpy(mcast_addrs, mc_addr_set,
+		   nb_mc_addr * sizeof(PRIV(dev)->mcast_addrs[0]));
+	PRIV(dev)->nb_mcast_addr = nb_mc_addr;
+	PRIV(dev)->mcast_addrs = mcast_addrs;
+
+	fs_unlock(dev, 0);
+	return 0;
+
+rollback:
+	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
+		int rc = rte_eth_dev_set_mc_addr_list(PORT_ID(sdev),
+			PRIV(dev)->mcast_addrs,	PRIV(dev)->nb_mcast_addr);
+		if (rc != 0) {
+			ERROR("Multicast MAC address list rollback for sub_device %d failed with error %d",
+			      i, rc);
+		}
+	}
+
+	fs_unlock(dev, 0);
+	return ret;
+}
+
+static int
 fs_rss_hash_update(struct rte_eth_dev *dev,
 			struct rte_eth_rss_conf *rss_conf)
 {
@@ -1214,6 +1263,7 @@ const struct eth_dev_ops failsafe_ops = {
 	.mac_addr_remove = fs_mac_addr_remove,
 	.mac_addr_add = fs_mac_addr_add,
 	.mac_addr_set = fs_mac_addr_set,
+	.set_mc_addr_list = fs_set_mc_addr_list,
 	.rss_hash_update = fs_rss_hash_update,
 	.filter_ctrl = fs_filter_ctrl,
 };

@@ -143,6 +143,8 @@ struct fs_priv {
 	uint32_t nb_mac_addr;
 	struct ether_addr mac_addrs[FAILSAFE_MAX_ETHADDR];
 	uint32_t mac_addr_pool[FAILSAFE_MAX_ETHADDR];
+	uint32_t nb_mcast_addr;
+	struct ether_addr *mcast_addrs;
 	/* current capabilities */
 	struct rte_eth_dev_info infos;
 	struct rte_eth_dev_owner my_owner; /* Unique owner. */

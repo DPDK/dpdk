@@ -79,6 +79,7 @@ New Features
   * Support for Rx and Tx queues start and stop.
   * Support for Rx and Tx queues deferred start.
   * Support for runtime Rx and Tx queues setup.
+  * Support multicast MAC address set.
 
 * **Added ability to switch queue deferred start flag on testpmd app.**
 

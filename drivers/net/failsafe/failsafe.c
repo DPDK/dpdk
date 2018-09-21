@@ -304,6 +304,7 @@ fs_rte_eth_free(const char *name)
 	ret = pthread_mutex_destroy(&PRIV(dev)->hotplug_mutex);
 	if (ret)
 		ERROR("Error while destroying hotplug mutex");
+	rte_free(PRIV(dev)->mcast_addrs);
 	rte_free(PRIV(dev));
 	rte_eth_dev_release_port(dev);
 	return ret;
