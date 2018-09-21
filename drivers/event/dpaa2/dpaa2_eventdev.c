@@ -197,6 +197,7 @@ static void dpaa2_eventdev_process_atomic(struct qbman_swp *swp,
 	ev->mbuf->seqn = dqrr_index + 1;
 	DPAA2_PER_LCORE_DQRR_SIZE++;
 	DPAA2_PER_LCORE_DQRR_HELD |= 1 << dqrr_index;
+	DPAA2_PER_LCORE_DQRR_MBUF(dqrr_index) = ev->mbuf;
 }
 
 static uint16_t
