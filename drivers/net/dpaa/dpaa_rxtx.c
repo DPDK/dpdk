@@ -370,10 +370,6 @@ dpaa_eth_fd_to_mbuf(const struct qm_fd *fd, uint32_t ifid)
 	if (unlikely(format == qm_fd_sg))
 		return dpaa_eth_sg_to_mbuf(fd, ifid);
 
-	ptr = DPAA_MEMPOOL_PTOV(bp_info, qm_fd_addr(fd));
-
-	rte_prefetch0((void *)((uint8_t *)ptr + DEFAULT_RX_ICEOF));
-
 	offset = (fd->opaque & DPAA_FD_OFFSET_MASK) >> DPAA_FD_OFFSET_SHIFT;
 	length = fd->opaque & DPAA_FD_LENGTH_MASK;
 
@@ -381,8 +377,11 @@ dpaa_eth_fd_to_mbuf(const struct qm_fd *fd, uint32_t ifid)
 
 	/* Ignoring case when format != qm_fd_contig */
 	dpaa_display_frame(fd);
+	ptr = DPAA_MEMPOOL_PTOV(bp_info, qm_fd_addr(fd));
 
 	mbuf = (struct rte_mbuf *)((char *)ptr - bp_info->meta_data_size);
+	/* Prefetch the Parse results and packet data to L1 */
+	rte_prefetch0((void *)((uint8_t *)ptr + DEFAULT_RX_ICEOF));
 
 	mbuf->data_off = offset;
 	mbuf->data_len = length;
