@@ -30,9 +30,9 @@ static const struct rte_cryptodev_capabilities
 					.increment = 1
 				},
 				.digest_size = {
-					.min = 16,
+					.min = 12,
 					.max = 16,
-					.increment = 0
+					.increment = 4
 				},
 			}, }
 		}, }
@@ -50,9 +50,9 @@ static const struct rte_cryptodev_capabilities
 						.increment = 0
 					},
 					.digest_size = {
-						.min = 16,
+						.min = 12,
 						.max = 16,
-						.increment = 0
+						.increment = 4
 					},
 				}, }
 			}, }
@@ -70,9 +70,9 @@ static const struct rte_cryptodev_capabilities
 						.increment = 1
 					},
 					.digest_size = {
-						.min = 20,
+						.min = 12,
 						.max = 20,
-						.increment = 0
+						.increment = 4
 					},
 				}, }
 			}, }
@@ -90,9 +90,9 @@ static const struct rte_cryptodev_capabilities
 					.increment = 0
 				},
 				.digest_size = {
-					.min = 20,
+					.min = 12,
 					.max = 20,
-					.increment = 0
+					.increment = 4
 				},
 			}, }
 		}, }
@@ -110,9 +110,9 @@ static const struct rte_cryptodev_capabilities
 					.increment = 0
 				},
 				.digest_size = {
-					.min = 28,
+					.min = 12,
 					.max = 28,
-					.increment = 0
+					.increment = 4
 				},
 			}, }
 		}, }
@@ -130,9 +130,9 @@ static const struct rte_cryptodev_capabilities
 						.increment = 1
 					},
 					.digest_size = {
-						.min = 32,
+						.min = 12,
 						.max = 32,
-						.increment = 0
+						.increment = 4
 					},
 				}, }
 			}, }
@@ -150,9 +150,9 @@ static const struct rte_cryptodev_capabilities
 						.increment = 0
 					},
 					.digest_size = {
-						.min = 32,
+						.min = 12,
 						.max = 32,
-						.increment = 0
+						.increment = 4
 					},
 				}, }
 			}, }
@@ -170,9 +170,9 @@ static const struct rte_cryptodev_capabilities
 					.increment = 1
 				},
 				.digest_size = {
-					.min = 48,
+					.min = 12,
 					.max = 48,
-					.increment = 0
+					.increment = 4
 				},
 			}, }
 		}, }
@@ -190,9 +190,9 @@ static const struct rte_cryptodev_capabilities
 					.increment = 0
 				},
 				.digest_size = {
-					.min = 48,
+					.min = 12,
 					.max = 48,
-					.increment = 0
+					.increment = 4
 				},
 			}, }
 		}, }
@@ -210,9 +210,9 @@ static const struct rte_cryptodev_capabilities
 					.increment = 1
 				},
 				.digest_size = {
-					.min = 64,
-					.max = 64,
-					.increment = 0
+					.min = 12,
+					.max = 48,
+					.increment = 4
 				},
 			}, }
 		}, }
@@ -230,8 +230,8 @@ static const struct rte_cryptodev_capabilities
 					.increment = 0
 				},
 				.digest_size = {
-					.min = 64,
-					.max = 64,
+					.min = 12,
+					.max = 48,
 					.increment = 0
 				},
 			}, }
