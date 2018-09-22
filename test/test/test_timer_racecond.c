@@ -54,7 +54,7 @@
 
 #define BILLION (1UL << 30)
 
-#define TEST_DURATION_S 20 /* in seconds */
+#define TEST_DURATION_S 4 /* in seconds */
 #define N_TIMERS    50
 
 static struct rte_timer timer[N_TIMERS];
