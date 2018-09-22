@@ -635,7 +635,7 @@ test_device_configure_invalid_queue_pair_ids(void)
 
 
 	/* valid - max value queue pairs */
-	ts_params->conf.nb_queue_pairs = MAX_NUM_QPS_PER_QAT_DEVICE;
+	ts_params->conf.nb_queue_pairs = orig_nb_qps;
 
 	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(ts_params->valid_devs[0],
 			&ts_params->conf),
@@ -667,7 +667,7 @@ test_device_configure_invalid_queue_pair_ids(void)
 
 
 	/* invalid - max value + 1 queue pairs */
-	ts_params->conf.nb_queue_pairs = MAX_NUM_QPS_PER_QAT_DEVICE + 1;
+	ts_params->conf.nb_queue_pairs = orig_nb_qps + 1;
 
 	TEST_ASSERT_FAIL(rte_cryptodev_configure(ts_params->valid_devs[0],
 			&ts_params->conf),
@@ -819,7 +819,7 @@ test_queue_pair_descriptor_setup(void)
 	/* test invalid queue pair id */
 	qp_conf.nb_descriptors = DEFAULT_NUM_OPS_INFLIGHT;	/*valid */
 
-	qp_id = DEFAULT_NUM_QPS_PER_QAT_DEVICE;		/*invalid */
+	qp_id = ts_params->conf.nb_queue_pairs;		/*invalid */
 
 	TEST_ASSERT_FAIL(rte_cryptodev_queue_pair_setup(
 			ts_params->valid_devs[0],
