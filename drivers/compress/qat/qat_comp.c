@@ -145,7 +145,6 @@ qat_comp_process_response(void **op, uint8_t *resp)
 		rx_op->debug_status =
 			*((uint16_t *)(&resp_msg->comn_resp.comn_error));
 	} else {
-		struct qat_comp_xform *qat_xform = rx_op->private_xform;
 		struct icp_qat_fw_resp_comp_pars *comp_resp =
 		  (struct icp_qat_fw_resp_comp_pars *)&resp_msg->comp_resp_pars;
 
