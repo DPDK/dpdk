@@ -59,18 +59,6 @@
  */
 #include "t4_pci_id_tbl.h"
 
-#define CXGBE_TX_OFFLOADS (DEV_TX_OFFLOAD_VLAN_INSERT |\
-			   DEV_TX_OFFLOAD_IPV4_CKSUM |\
-			   DEV_TX_OFFLOAD_UDP_CKSUM |\
-			   DEV_TX_OFFLOAD_TCP_CKSUM |\
-			   DEV_TX_OFFLOAD_TCP_TSO)
-
-#define CXGBE_RX_OFFLOADS (DEV_RX_OFFLOAD_VLAN_STRIP |\
-			   DEV_RX_OFFLOAD_IPV4_CKSUM |\
-			   DEV_RX_OFFLOAD_JUMBO_FRAME |\
-			   DEV_RX_OFFLOAD_UDP_CKSUM |\
-			   DEV_RX_OFFLOAD_TCP_CKSUM)
-
 uint16_t cxgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			 uint16_t nb_pkts)
 {
@@ -340,6 +328,7 @@ void cxgbe_dev_close(struct rte_eth_dev *eth_dev)
 int cxgbe_dev_start(struct rte_eth_dev *eth_dev)
 {
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct rte_eth_rxmode *rx_conf = &eth_dev->data->dev_conf.rxmode;
 	struct adapter *adapter = pi->adapter;
 	int err = 0, i;
 
@@ -359,6 +348,11 @@ int cxgbe_dev_start(struct rte_eth_dev *eth_dev)
 		if (err < 0)
 			goto out;
 	}
+
+	if (rx_conf->offloads & DEV_RX_OFFLOAD_SCATTER)
+		eth_dev->data->scattered_rx = 1;
+	else
+		eth_dev->data->scattered_rx = 0;
 
 	cxgbe_enable_rx_queues(pi);
 
@@ -406,6 +400,7 @@ void cxgbe_dev_stop(struct rte_eth_dev *eth_dev)
 	 *  have been disabled
 	 */
 	t4_sge_eth_clear_queues(pi);
+	eth_dev->data->scattered_rx = 0;
 }
 
 int cxgbe_dev_configure(struct rte_eth_dev *eth_dev)
