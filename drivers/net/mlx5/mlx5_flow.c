@@ -295,6 +295,15 @@ struct mlx5_flow_verbs {
 	uint64_t hash_fields; /**< Verbs hash Rx queue hash fields. */
 };
 
+/** Device flow structure. */
+struct mlx5_flow {
+	LIST_ENTRY(mlx5_flow) next;
+	struct rte_flow *flow; /**< Pointer to the main flow. */
+	union {
+		struct mlx5_flow_verbs verbs; /**< Holds the verbs dev-flow. */
+	};
+};
+
 /* Counters information. */
 struct mlx5_flow_counter {
 	LIST_ENTRY(mlx5_flow_counter) next; /**< Pointer to the next counter. */
@@ -324,6 +333,8 @@ struct rte_flow {
 	uint8_t key[MLX5_RSS_HASH_KEY_LEN]; /**< RSS hash key. */
 	uint16_t (*queue)[]; /**< Destination queues to redirect traffic to. */
 	void *nl_flow; /**< Netlink flow buffer if relevant. */
+	LIST_HEAD(dev_flows, mlx5_flow) dev_flows;
+	/**< Device flows that are part of the flow. */
 };
 
 static const struct rte_flow_ops mlx5_flow_ops = {
@@ -2325,7 +2336,7 @@ mlx5_flow_rxq_flags_clear(struct rte_eth_dev *dev)
  *   Pointer to error structure.
  *
  * @return
- *   0 on success, a negative errno value otherwise and rte_ernno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx5_flow_validate_action_flag(uint64_t action_flags,
@@ -2427,7 +2438,6 @@ mlx5_flow_validate_action_drop(uint64_t action_flags,
 }
 
 /*
- *
  * Validate the queue action.
  *
  * @param[in] action
@@ -2470,7 +2480,6 @@ mlx5_flow_validate_action_queue(const struct rte_flow_action *action,
 }
 
 /*
- *
  * Validate the rss action.
  *
  * @param[in] action
@@ -3216,7 +3225,7 @@ mlx5_flow_validate_item_mpls(const struct rte_flow_item *item __rte_unused,
 	if (ret < 0)
 		return ret;
 	return 0;
-#endif /* !HAVE_IBV_DEVICE_MPLS_SUPPORT */
+#endif
 	return rte_flow_error_set(error, ENOTSUP,
 				  RTE_FLOW_ERROR_TYPE_ITEM, item,
 				  "MPLS is not supported by Verbs, please"
@@ -3224,7 +3233,6 @@ mlx5_flow_validate_item_mpls(const struct rte_flow_item *item __rte_unused,
 }
 
 /**
- *
  * Internal validation function.
  *
  * @param[in] dev
@@ -3449,6 +3457,222 @@ mlx5_flow_validate(struct rte_eth_dev *dev,
 }
 
 /**
+ * Calculate the required bytes that are needed for the action part of the verbs
+ * flow, in addtion returns bit-fields with all the detected action, in order to
+ * avoid another interation over the actions.
+ *
+ * @param[in] actions
+ *   Pointer to the list of actions.
+ * @param[out] action_flags
+ *   Pointer to the detected actions.
+ *
+ * @return
+ *   The size of the memory needed for all actions.
+ */
+static int
+mlx5_flow_verbs_get_actions_and_size(const struct rte_flow_action actions[],
+				     uint64_t *action_flags)
+{
+	int size = 0;
+	uint64_t detected_actions = 0;
+
+	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		switch (actions->type) {
+		case RTE_FLOW_ACTION_TYPE_VOID:
+			break;
+		case RTE_FLOW_ACTION_TYPE_FLAG:
+			size += sizeof(struct ibv_flow_spec_action_tag);
+			detected_actions |= MLX5_FLOW_ACTION_FLAG;
+			break;
+		case RTE_FLOW_ACTION_TYPE_MARK:
+			size += sizeof(struct ibv_flow_spec_action_tag);
+			detected_actions |= MLX5_FLOW_ACTION_MARK;
+			break;
+		case RTE_FLOW_ACTION_TYPE_DROP:
+			size += sizeof(struct ibv_flow_spec_action_drop);
+			detected_actions |= MLX5_FLOW_ACTION_DROP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_QUEUE:
+			detected_actions |= MLX5_FLOW_ACTION_QUEUE;
+			break;
+		case RTE_FLOW_ACTION_TYPE_RSS:
+			detected_actions |= MLX5_FLOW_ACTION_RSS;
+			break;
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
+			size += sizeof(struct ibv_flow_spec_counter_action);
+#endif
+			detected_actions |= MLX5_FLOW_ACTION_COUNT;
+			break;
+		default:
+			break;
+		}
+	}
+	*action_flags = detected_actions;
+	return size;
+}
+
+/**
+ * Calculate the required bytes that are needed for the item part of the verbs
+ * flow, in addtion returns bit-fields with all the detected action, in order to
+ * avoid another interation over the actions.
+ *
+ * @param[in] actions
+ *   Pointer to the list of items.
+ * @param[in, out] item_flags
+ *   Pointer to the detected items.
+ *
+ * @return
+ *   The size of the memory needed for all items.
+ */
+static int
+mlx5_flow_verbs_get_items_and_size(const struct rte_flow_item items[],
+				   uint64_t *item_flags)
+{
+	int size = 0;
+	uint64_t detected_items = 0;
+	const int tunnel = !!(*item_flags & MLX5_FLOW_LAYER_TUNNEL);
+
+	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
+		switch (items->type) {
+		case RTE_FLOW_ITEM_TYPE_VOID:
+			break;
+		case RTE_FLOW_ITEM_TYPE_ETH:
+			size += sizeof(struct ibv_flow_spec_eth);
+			detected_items |= tunnel ? MLX5_FLOW_LAYER_INNER_L2 :
+					MLX5_FLOW_LAYER_OUTER_L2;
+			break;
+		case RTE_FLOW_ITEM_TYPE_VLAN:
+			size += sizeof(struct ibv_flow_spec_eth);
+			detected_items |= tunnel ? MLX5_FLOW_LAYER_INNER_VLAN :
+					MLX5_FLOW_LAYER_OUTER_VLAN;
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV4:
+			size += sizeof(struct ibv_flow_spec_ipv4_ext);
+			detected_items |= tunnel ?
+					MLX5_FLOW_LAYER_INNER_L3_IPV4 :
+					MLX5_FLOW_LAYER_OUTER_L3_IPV4;
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6:
+			size += sizeof(struct ibv_flow_spec_ipv6);
+			detected_items |= tunnel ?
+				MLX5_FLOW_LAYER_INNER_L3_IPV6 :
+				MLX5_FLOW_LAYER_OUTER_L3_IPV6;
+			break;
+		case RTE_FLOW_ITEM_TYPE_UDP:
+			size += sizeof(struct ibv_flow_spec_tcp_udp);
+			detected_items |= tunnel ?
+					MLX5_FLOW_LAYER_INNER_L4_UDP :
+					MLX5_FLOW_LAYER_OUTER_L4_UDP;
+			break;
+		case RTE_FLOW_ITEM_TYPE_TCP:
+			size += sizeof(struct ibv_flow_spec_tcp_udp);
+			detected_items |= tunnel ?
+					MLX5_FLOW_LAYER_INNER_L4_TCP :
+					MLX5_FLOW_LAYER_OUTER_L4_TCP;
+			break;
+		case RTE_FLOW_ITEM_TYPE_VXLAN:
+			size += sizeof(struct ibv_flow_spec_tunnel);
+			detected_items |= MLX5_FLOW_LAYER_VXLAN;
+			break;
+		case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
+			size += sizeof(struct ibv_flow_spec_tunnel);
+			detected_items |= MLX5_FLOW_LAYER_VXLAN_GPE;
+			break;
+		case RTE_FLOW_ITEM_TYPE_GRE:
+#ifdef HAVE_IBV_DEVICE_MPLS_SUPPORT
+			size += sizeof(struct ibv_flow_spec_gre);
+			detected_items |= MLX5_FLOW_LAYER_GRE;
+#else
+			size += sizeof(struct ibv_flow_spec_tunnel);
+			detected_items |= MLX5_FLOW_LAYER_TUNNEL;
+#endif
+			break;
+		case RTE_FLOW_ITEM_TYPE_MPLS:
+#ifdef HAVE_IBV_DEVICE_MPLS_SUPPORT
+			size += sizeof(struct ibv_flow_spec_mpls);
+			detected_items |= MLX5_FLOW_LAYER_MPLS;
+#endif
+			break;
+		default:
+			break;
+		}
+	}
+	*item_flags = detected_items;
+	return size;
+}
+
+/**
+ * Get RSS action from the action list.
+ *
+ * @param[in] actions
+ *   Pointer to the list of actions.
+ *
+ * @return
+ *   Pointer to the RSS action if exist, else return NULL.
+ */
+static const struct rte_flow_action_rss*
+mlx5_flow_get_rss_action(const struct rte_flow_action actions[])
+{
+	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		switch (actions->type) {
+		case RTE_FLOW_ACTION_TYPE_RSS:
+			return (const struct rte_flow_action_rss *)
+			       actions->conf;
+		default:
+			break;
+		}
+	}
+	return NULL;
+}
+
+/**
+ * Internal preparation function. Allocate mlx5_flow with the required size.
+ * The required size is calculate based on the actions and items. This function
+ * also returns the detected actions and items for later use.
+ *
+ * @param[in] attr
+ *   Pointer to the flow attributes.
+ * @param[in] items
+ *   Pointer to the list of items.
+ * @param[in] actions
+ *   Pointer to the list of actions.
+ * @param[out] item_flags
+ *   Pointer to bit mask of all items detected.
+ * @param[out] action_flags
+ *   Pointer to bit mask of all actions detected.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   Pointer to mlx5_flow object on success, otherwise NULL and rte_errno
+ *   is set.
+ */
+static struct mlx5_flow *
+mlx5_flow_verbs_prepare(const struct rte_flow_attr *attr __rte_unused,
+			const struct rte_flow_item items[],
+			const struct rte_flow_action actions[],
+			uint64_t *item_flags,
+			uint64_t *action_flags,
+			struct rte_flow_error *error)
+{
+	uint32_t size = sizeof(struct ibv_flow_attr);
+	struct mlx5_flow *flow;
+
+	size += mlx5_flow_verbs_get_actions_and_size(actions, action_flags);
+	size += mlx5_flow_verbs_get_items_and_size(items, item_flags);
+	flow = rte_calloc(__func__, 1, size, 0);
+	if (!flow) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "not enough memory to create flow");
+		return NULL;
+	}
+	return flow;
+}
+
+/**
  * Remove the flow.
  *
  * @param[in] dev
@@ -3599,12 +3823,46 @@ mlx5_flow_list_create(struct rte_eth_dev *dev,
 		      struct rte_flow_error *error)
 {
 	struct rte_flow *flow = NULL;
+	struct mlx5_flow *dev_flow;
 	size_t size = 0;
+	uint64_t action_flags = 0;
+	uint64_t item_flags = 0;
+	const struct rte_flow_action_rss *rss;
+	union {
+		struct rte_flow_expand_rss buf;
+		uint8_t buffer[2048];
+	} expand_buffer;
+	struct rte_flow_expand_rss *buf = &expand_buffer.buf;
 	int ret;
+	uint32_t i;
 
 	ret = mlx5_flow_validate(dev, attr, items, actions, error);
 	if (ret < 0)
 		return NULL;
+	flow = rte_calloc(__func__, 1, sizeof(*flow), 0);
+	LIST_INIT(&flow->dev_flows);
+	rss = mlx5_flow_get_rss_action(actions);
+	if (rss && rss->types) {
+		unsigned int graph_root;
+
+		graph_root = mlx5_find_graph_root(items, rss->level);
+		ret = rte_flow_expand_rss(buf, sizeof(expand_buffer.buffer),
+					  items, rss->types,
+					  mlx5_support_expansion,
+					  graph_root);
+		assert(ret > 0 &&
+		       (unsigned int)ret < sizeof(expand_buffer.buffer));
+	} else {
+		buf->entries = 1;
+		buf->entry[0].pattern = (void *)(uintptr_t)items;
+	}
+	for (i = 0; i < buf->entries; ++i) {
+		dev_flow = mlx5_flow_verbs_prepare(attr, buf->entry[i].pattern,
+						   actions, &item_flags,
+						   &action_flags, error);
+		dev_flow->flow = flow;
+		LIST_INSERT_HEAD(&flow->dev_flows, dev_flow, next);
+	}
 	ret = mlx5_flow_merge(dev, flow, size, attr, items, actions, error);
 	if (ret < 0)
 		return NULL;
@@ -4096,7 +4354,6 @@ mlx5_fdir_filter_convert(struct rte_eth_dev *dev,
 			.dst_addr = input->flow.ip4_flow.dst_ip,
 			.time_to_live = input->flow.ip4_flow.ttl,
 			.type_of_service = input->flow.ip4_flow.tos,
-			.next_proto_id = input->flow.ip4_flow.proto,
 		};
 		attributes->l3_mask.ipv4.hdr = (struct ipv4_hdr){
 			.src_addr = mask->ipv4_mask.src_ip,
