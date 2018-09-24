@@ -2490,10 +2490,15 @@ mlx5_dev_filter_ctrl(struct rte_eth_dev *dev,
  *   Pointer to Ethernet device structure.
  */
 void
-mlx5_flow_init_driver_ops(struct rte_eth_dev *dev __rte_unused)
+mlx5_flow_init_driver_ops(struct rte_eth_dev *dev)
 {
+	struct priv *priv __rte_unused = dev->data->dev_private;
+
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
-	mlx5_flow_dv_get_driver_ops(&nic_ops);
+	if (priv->config.dv_flow_en)
+		mlx5_flow_dv_get_driver_ops(&nic_ops);
+	else
+		mlx5_flow_verbs_get_driver_ops(&nic_ops);
 #else
 	mlx5_flow_verbs_get_driver_ops(&nic_ops);
 #endif

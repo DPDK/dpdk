@@ -397,6 +397,13 @@ Run-time configuration
 
   Disabled by default.
 
+- ``dv_flow_en`` parameter [int]
+
+  A nonzero value enables the DV flow steering assuming it is supported
+  by the driver.
+
+  Disabled by default.
+
 - ``representor`` parameter [list]
 
   This parameter can be used to instantiate DPDK Ethernet devices from
