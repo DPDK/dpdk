@@ -1477,6 +1477,35 @@ vhost_user_iotlb_msg(struct virtio_net **pdev, struct VhostUserMsg *msg)
 	return VH_RESULT_OK;
 }
 
+typedef int (*vhost_message_handler_t)(struct virtio_net **pdev,
+					struct VhostUserMsg *msg);
+static vhost_message_handler_t vhost_message_handlers[VHOST_USER_MAX] = {
+	[VHOST_USER_NONE] = NULL,
+	[VHOST_USER_GET_FEATURES] = vhost_user_get_features,
+	[VHOST_USER_SET_FEATURES] = vhost_user_set_features,
+	[VHOST_USER_SET_OWNER] = vhost_user_set_owner,
+	[VHOST_USER_RESET_OWNER] = vhost_user_reset_owner,
+	[VHOST_USER_SET_MEM_TABLE] = vhost_user_set_mem_table,
+	[VHOST_USER_SET_LOG_BASE] = vhost_user_set_log_base,
+	[VHOST_USER_SET_LOG_FD] = vhost_user_set_log_fd,
+	[VHOST_USER_SET_VRING_NUM] = vhost_user_set_vring_num,
+	[VHOST_USER_SET_VRING_ADDR] = vhost_user_set_vring_addr,
+	[VHOST_USER_SET_VRING_BASE] = vhost_user_set_vring_base,
+	[VHOST_USER_GET_VRING_BASE] = vhost_user_get_vring_base,
+	[VHOST_USER_SET_VRING_KICK] = vhost_user_set_vring_kick,
+	[VHOST_USER_SET_VRING_CALL] = vhost_user_set_vring_call,
+	[VHOST_USER_SET_VRING_ERR] = vhost_user_set_vring_err,
+	[VHOST_USER_GET_PROTOCOL_FEATURES] = vhost_user_get_protocol_features,
+	[VHOST_USER_SET_PROTOCOL_FEATURES] = vhost_user_set_protocol_features,
+	[VHOST_USER_GET_QUEUE_NUM] = vhost_user_get_queue_num,
+	[VHOST_USER_SET_VRING_ENABLE] = vhost_user_set_vring_enable,
+	[VHOST_USER_SEND_RARP] = vhost_user_send_rarp,
+	[VHOST_USER_NET_SET_MTU] = vhost_user_net_set_mtu,
+	[VHOST_USER_SET_SLAVE_REQ_FD] = vhost_user_set_req_fd,
+	[VHOST_USER_IOTLB_MSG] = vhost_user_iotlb_msg,
+};
+
+
 /* return bytes# of read on success or negative val on failure. */
 static int
 read_vhost_message(int sockfd, struct VhostUserMsg *msg)
@@ -1630,6 +1659,7 @@ vhost_user_msg_handler(int vid, int fd)
 	int ret;
 	int unlock_required = 0;
 	uint32_t skip_master = 0;
+	int request;
 
 	dev = get_device(vid);
 	if (dev == NULL)
@@ -1722,100 +1752,34 @@ vhost_user_msg_handler(int vid, int fd)
 			goto skip_to_post_handle;
 	}
 
-	switch (msg.request.master) {
-	case VHOST_USER_GET_FEATURES:
-		ret = vhost_user_get_features(&dev, &msg);
-		send_vhost_reply(fd, &msg);
-		break;
-	case VHOST_USER_SET_FEATURES:
-		ret = vhost_user_set_features(&dev, &msg);
-		break;
+	request = msg.request.master;
+	if (request > VHOST_USER_NONE && request < VHOST_USER_MAX) {
+		if (!vhost_message_handlers[request])
+			goto skip_to_post_handle;
+		ret = vhost_message_handlers[request](&dev, &msg);
 
-	case VHOST_USER_GET_PROTOCOL_FEATURES:
-		ret = vhost_user_get_protocol_features(&dev, &msg);
-		send_vhost_reply(fd, &msg);
-		break;
-	case VHOST_USER_SET_PROTOCOL_FEATURES:
-		ret = vhost_user_set_protocol_features(&dev, &msg);
-		break;
-
-	case VHOST_USER_SET_OWNER:
-		ret = vhost_user_set_owner(&dev, &msg);
-		break;
-	case VHOST_USER_RESET_OWNER:
-		ret = vhost_user_reset_owner(&dev, &msg);
-		break;
-
-	case VHOST_USER_SET_MEM_TABLE:
-		ret = vhost_user_set_mem_table(&dev, &msg);
-		break;
-
-	case VHOST_USER_SET_LOG_BASE:
-		ret = vhost_user_set_log_base(&dev, &msg);
-		if (ret)
-			goto skip_to_reply;
-		/* it needs a reply */
-		send_vhost_reply(fd, &msg);
-		break;
-	case VHOST_USER_SET_LOG_FD:
-		ret = vhost_user_set_log_fd(&dev, &msg);
-		break;
-
-	case VHOST_USER_SET_VRING_NUM:
-		ret = vhost_user_set_vring_num(&dev, &msg);
-		break;
-	case VHOST_USER_SET_VRING_ADDR:
-		ret = vhost_user_set_vring_addr(&dev, &msg);
-		break;
-	case VHOST_USER_SET_VRING_BASE:
-		ret = vhost_user_set_vring_base(&dev, &msg);
-		break;
-
-	case VHOST_USER_GET_VRING_BASE:
-		ret = vhost_user_get_vring_base(&dev, &msg);
-		if (ret)
-			goto skip_to_reply;
-		send_vhost_reply(fd, &msg);
-		break;
-
-	case VHOST_USER_SET_VRING_KICK:
-		ret = vhost_user_set_vring_kick(&dev, &msg);
-		break;
-	case VHOST_USER_SET_VRING_CALL:
-		ret = vhost_user_set_vring_call(&dev, &msg);
-		break;
-
-	case VHOST_USER_SET_VRING_ERR:
-		ret = vhost_user_set_vring_err(&dev, &msg);
-		break;
-
-	case VHOST_USER_GET_QUEUE_NUM:
-		ret = vhost_user_get_queue_num(&dev, &msg);
-		send_vhost_reply(fd, &msg);
-		break;
-
-	case VHOST_USER_SET_VRING_ENABLE:
-		ret = vhost_user_set_vring_enable(&dev, &msg);
-		break;
-	case VHOST_USER_SEND_RARP:
-		ret = vhost_user_send_rarp(&dev, &msg);
-		break;
-
-	case VHOST_USER_NET_SET_MTU:
-		ret = vhost_user_net_set_mtu(&dev, &msg);
-		break;
-
-	case VHOST_USER_SET_SLAVE_REQ_FD:
-		ret = vhost_user_set_req_fd(&dev, &msg);
-		break;
-
-	case VHOST_USER_IOTLB_MSG:
-		ret = vhost_user_iotlb_msg(&dev, &msg);
-		break;
-
-	default:
-		ret = -1;
-		break;
+		switch (ret) {
+		case VH_RESULT_ERR:
+			RTE_LOG(ERR, VHOST_CONFIG,
+				"Processing %s failed.\n",
+				vhost_message_str[request]);
+			break;
+		case VH_RESULT_OK:
+			RTE_LOG(DEBUG, VHOST_CONFIG,
+				"Processing %s succeeded.\n",
+				vhost_message_str[request]);
+			break;
+		case VH_RESULT_REPLY:
+			RTE_LOG(DEBUG, VHOST_CONFIG,
+				"Processing %s succeeded and needs reply.\n",
+				vhost_message_str[request]);
+			send_vhost_reply(fd, &msg);
+			break;
+		}
+	} else {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"Requested invalid message type %d.\n", request);
+		ret = VH_RESULT_ERR;
 	}
 
 skip_to_post_handle:
