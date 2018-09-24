@@ -250,7 +250,7 @@ vhost_user_set_features(struct virtio_net *dev, uint64_t features)
  */
 static int
 vhost_user_set_vring_num(struct virtio_net *dev,
-			 VhostUserMsg *msg)
+			 struct VhostUserMsg *msg)
 {
 	struct vhost_virtqueue *vq = dev->virtqueue[msg->payload.state.index];
 
@@ -611,7 +611,7 @@ translate_ring_addresses(struct virtio_net *dev, int vq_index)
  * This function then converts these to our address space.
  */
 static int
-vhost_user_set_vring_addr(struct virtio_net **pdev, VhostUserMsg *msg)
+vhost_user_set_vring_addr(struct virtio_net **pdev, struct VhostUserMsg *msg)
 {
 	struct vhost_virtqueue *vq;
 	struct vhost_vring_addr *addr = &msg->payload.addr;
@@ -648,7 +648,7 @@ vhost_user_set_vring_addr(struct virtio_net **pdev, VhostUserMsg *msg)
  */
 static int
 vhost_user_set_vring_base(struct virtio_net *dev,
-			  VhostUserMsg *msg)
+			  struct VhostUserMsg *msg)
 {
 	dev->virtqueue[msg->payload.state.index]->last_used_idx  =
 			msg->payload.state.num;
@@ -780,10 +780,10 @@ vhost_memory_changed(struct VhostUserMemory *new,
 }
 
 static int
-vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *pmsg)
+vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg)
 {
 	struct virtio_net *dev = *pdev;
-	struct VhostUserMemory memory = pmsg->payload.memory;
+	struct VhostUserMemory memory = msg->payload.memory;
 	struct rte_vhost_mem_region *reg;
 	void *mmap_addr;
 	uint64_t mmap_size;
@@ -804,7 +804,7 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *pmsg)
 			"(%d) memory regions not changed\n", dev->vid);
 
 		for (i = 0; i < memory.nregions; i++)
-			close(pmsg->fds[i]);
+			close(msg->fds[i]);
 
 		return 0;
 	}
@@ -845,7 +845,7 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *pmsg)
 	dev->mem->nregions = memory.nregions;
 
 	for (i = 0; i < memory.nregions; i++) {
-		fd  = pmsg->fds[i];
+		fd  = msg->fds[i];
 		reg = &dev->mem->regions[i];
 
 		reg->guest_phys_addr = memory.regions[i].guest_phys_addr;
@@ -994,16 +994,16 @@ virtio_is_ready(struct virtio_net *dev)
 }
 
 static void
-vhost_user_set_vring_call(struct virtio_net *dev, struct VhostUserMsg *pmsg)
+vhost_user_set_vring_call(struct virtio_net *dev, struct VhostUserMsg *msg)
 {
 	struct vhost_vring_file file;
 	struct vhost_virtqueue *vq;
 
-	file.index = pmsg->payload.u64 & VHOST_USER_VRING_IDX_MASK;
-	if (pmsg->payload.u64 & VHOST_USER_VRING_NOFD_MASK)
+	file.index = msg->payload.u64 & VHOST_USER_VRING_IDX_MASK;
+	if (msg->payload.u64 & VHOST_USER_VRING_NOFD_MASK)
 		file.fd = VIRTIO_INVALID_EVENTFD;
 	else
-		file.fd = pmsg->fds[0];
+		file.fd = msg->fds[0];
 	RTE_LOG(INFO, VHOST_CONFIG,
 		"vring call idx:%d file:%d\n", file.index, file.fd);
 
@@ -1015,17 +1015,17 @@ vhost_user_set_vring_call(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 }
 
 static int
-vhost_user_set_vring_kick(struct virtio_net **pdev, struct VhostUserMsg *pmsg)
+vhost_user_set_vring_kick(struct virtio_net **pdev, struct VhostUserMsg *msg)
 {
 	struct vhost_vring_file file;
 	struct vhost_virtqueue *vq;
 	struct virtio_net *dev = *pdev;
 
-	file.index = pmsg->payload.u64 & VHOST_USER_VRING_IDX_MASK;
-	if (pmsg->payload.u64 & VHOST_USER_VRING_NOFD_MASK)
+	file.index = msg->payload.u64 & VHOST_USER_VRING_IDX_MASK;
+	if (msg->payload.u64 & VHOST_USER_VRING_NOFD_MASK)
 		file.fd = VIRTIO_INVALID_EVENTFD;
 	else
-		file.fd = pmsg->fds[0];
+		file.fd = msg->fds[0];
 	RTE_LOG(INFO, VHOST_CONFIG,
 		"vring kick idx:%d file:%d\n", file.index, file.fd);
 
@@ -1073,7 +1073,7 @@ free_zmbufs(struct vhost_virtqueue *vq)
  */
 static int
 vhost_user_get_vring_base(struct virtio_net *dev,
-			  VhostUserMsg *msg)
+			  struct VhostUserMsg *msg)
 {
 	struct vhost_virtqueue *vq = dev->virtqueue[msg->payload.state.index];
 
@@ -1126,7 +1126,7 @@ vhost_user_get_vring_base(struct virtio_net *dev,
  */
 static int
 vhost_user_set_vring_enable(struct virtio_net *dev,
-			    VhostUserMsg *msg)
+			    struct VhostUserMsg *msg)
 {
 	int enable = (int)msg->payload.state.num;
 	int index = (int)msg->payload.state.index;
@@ -1485,7 +1485,8 @@ send_vhost_slave_message(struct virtio_net *dev, struct VhostUserMsg *msg,
  * Allocate a queue pair if it hasn't been allocated yet
  */
 static int
-vhost_user_check_and_alloc_queue_pair(struct virtio_net *dev, VhostUserMsg *msg)
+vhost_user_check_and_alloc_queue_pair(struct virtio_net *dev,
+			struct VhostUserMsg *msg)
 {
 	uint16_t vring_idx;
 
@@ -1818,9 +1819,9 @@ skip_to_reply:
 }
 
 static int process_slave_message_reply(struct virtio_net *dev,
-				       const VhostUserMsg *msg)
+				       const struct VhostUserMsg *msg)
 {
-	VhostUserMsg msg_reply;
+	struct VhostUserMsg msg_reply;
 	int ret;
 
 	if ((msg->flags & VHOST_USER_NEED_REPLY) == 0)
