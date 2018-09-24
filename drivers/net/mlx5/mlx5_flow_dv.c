@@ -295,6 +295,49 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 }
 
 /**
+ * Internal preparation function. Allocates the DV flow size,
+ * this size is constant.
+ *
+ * @param[in] attr
+ *   Pointer to the flow attributes.
+ * @param[in] items
+ *   Pointer to the list of items.
+ * @param[in] actions
+ *   Pointer to the list of actions.
+ * @param[out] item_flags
+ *   Pointer to bit mask of all items detected.
+ * @param[out] action_flags
+ *   Pointer to bit mask of all actions detected.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   Pointer to mlx5_flow object on success,
+ *   otherwise NULL and rte_ernno is set.
+ */
+static struct mlx5_flow *
+flow_dv_prepare(const struct rte_flow_attr *attr __rte_unused,
+		const struct rte_flow_item items[] __rte_unused,
+		const struct rte_flow_action actions[] __rte_unused,
+		uint64_t *item_flags __rte_unused,
+		uint64_t *action_flags __rte_unused,
+		struct rte_flow_error *error)
+{
+	uint32_t size = sizeof(struct mlx5_flow);
+	struct mlx5_flow *flow;
+
+	flow = rte_calloc(__func__, 1, size, 0);
+	if (!flow) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "not enough memory to create flow");
+		return NULL;
+	}
+	flow->dv.value.size = MLX5_ST_SZ_DB(fte_match_param);
+	return flow;
+}
+
+/**
  * Fills the flow_ops with the function pointers.
  *
  * @param[out] flow_ops
@@ -305,7 +348,7 @@ mlx5_flow_dv_get_driver_ops(struct mlx5_flow_driver_ops *flow_ops)
 {
 	*flow_ops = (struct mlx5_flow_driver_ops) {
 		.validate = flow_dv_validate,
-		.prepare = NULL,
+		.prepare = flow_dv_prepare,
 		.translate = NULL,
 		.apply = NULL,
 		.remove = NULL,

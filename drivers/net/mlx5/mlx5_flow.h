@@ -108,6 +108,37 @@
 /* Max number of actions per DV flow. */
 #define MLX5_DV_MAX_NUMBER_OF_ACTIONS 8
 
+/* Matcher PRM representation */
+struct mlx5_flow_dv_match_params {
+	size_t size;
+	/**< Size of match value. Do NOT split size and key! */
+	uint32_t buf[MLX5_ST_SZ_DW(fte_match_param)];
+	/**< Matcher value. This value is used as the mask or as a key. */
+};
+
+/* Matcher structure. */
+struct mlx5_flow_dv_matcher {
+	LIST_ENTRY(mlx5_flow_dv_matcher) next;
+	/* Pointer to the next element. */
+	rte_atomic32_t refcnt; /**< Reference counter. */
+	void *matcher_object; /**< Pointer to DV matcher */
+	uint16_t crc; /**< CRC of key. */
+	uint16_t priority; /**< Priority of matcher. */
+	uint8_t egress; /**< Egress matcher. */
+	struct mlx5_flow_dv_match_params mask; /**< Matcher mask. */
+};
+
+/* DV flows structure. */
+struct mlx5_flow_dv {
+	uint64_t hash_fields; /**< Fields that participate in the hash. */
+	struct mlx5_hrxq *hrxq; /**< Hash Rx queues. */
+	/* Flow DV api: */
+	struct mlx5_flow_dv_matcher *matcher; /**< Cache to matcher. */
+	struct mlx5_flow_dv_match_params value;
+	/**< Holds the value that the packet is compared to. */
+	struct ibv_flow *flow; /**< Installed flow. */
+};
+
 /* Verbs specification header. */
 struct ibv_spec_header {
 	enum ibv_flow_spec_type type;
@@ -134,7 +165,8 @@ struct mlx5_flow {
 	struct rte_flow *flow; /**< Pointer to the main flow. */
 	uint32_t layers; /**< Bit-fields that holds the detected layers. */
 	union {
-		struct mlx5_flow_verbs verbs; /**< Holds the verbs dev-flow. */
+		struct mlx5_flow_dv dv;
+		struct mlx5_flow_verbs verbs;
 	};
 };
 
