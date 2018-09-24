@@ -105,6 +105,9 @@
 #define MLX5_PRIORITY_MAP_L4 0
 #define MLX5_PRIORITY_MAP_MAX 3
 
+/* Max number of actions per DV flow. */
+#define MLX5_DV_MAX_NUMBER_OF_ACTIONS 8
+
 /* Verbs specification header. */
 struct ibv_spec_header {
 	enum ibv_flow_spec_type type;
@@ -251,6 +254,9 @@ int mlx5_flow_validate_item_vxlan_gpe(const struct rte_flow_item *item,
 				      struct rte_eth_dev *dev,
 				      struct rte_flow_error *error);
 void mlx5_flow_init_driver_ops(struct rte_eth_dev *dev);
+
+/* mlx5_flow_dv.c */
+void mlx5_flow_dv_get_driver_ops(struct mlx5_flow_driver_ops *flow_ops);
 
 /* mlx5_flow_verbs.c */
 
