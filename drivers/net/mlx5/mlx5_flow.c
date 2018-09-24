@@ -38,6 +38,23 @@
 extern const struct eth_dev_ops mlx5_dev_ops;
 extern const struct eth_dev_ops mlx5_dev_ops_isolate;
 
+/** Device flow drivers. */
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+extern const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops;
+#endif
+extern const struct mlx5_flow_driver_ops mlx5_flow_verbs_drv_ops;
+
+const struct mlx5_flow_driver_ops mlx5_flow_null_drv_ops;
+
+const struct mlx5_flow_driver_ops *flow_drv_ops[] = {
+	[MLX5_FLOW_TYPE_MIN] = &mlx5_flow_null_drv_ops,
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	[MLX5_FLOW_TYPE_DV] = &mlx5_flow_dv_drv_ops,
+#endif
+	[MLX5_FLOW_TYPE_VERBS] = &mlx5_flow_verbs_drv_ops,
+	[MLX5_FLOW_TYPE_MAX] = &mlx5_flow_null_drv_ops
+};
+
 enum mlx5_expansion {
 	MLX5_EXPANSION_ROOT,
 	MLX5_EXPANSION_ROOT_OUTER,
@@ -282,9 +299,6 @@ static struct mlx5_flow_tunnel_info tunnels_info[] = {
 		.ptype = RTE_PTYPE_TUNNEL_MPLS_IN_GRE,
 	},
 };
-
-/* Holds the nic operations that should be used. */
-struct mlx5_flow_driver_ops nic_ops;
 
 /**
  * Discover the maximum number of priority available.
@@ -1529,6 +1543,284 @@ mlx5_flow_validate_item_mpls(const struct rte_flow_item *item __rte_unused,
 				  " update.");
 }
 
+static int
+flow_null_validate(struct rte_eth_dev *dev __rte_unused,
+		   const struct rte_flow_attr *attr __rte_unused,
+		   const struct rte_flow_item items[] __rte_unused,
+		   const struct rte_flow_action actions[] __rte_unused,
+		   struct rte_flow_error *error __rte_unused)
+{
+	rte_errno = ENOTSUP;
+	return -rte_errno;
+}
+
+static struct mlx5_flow *
+flow_null_prepare(const struct rte_flow_attr *attr __rte_unused,
+		  const struct rte_flow_item items[] __rte_unused,
+		  const struct rte_flow_action actions[] __rte_unused,
+		  uint64_t *item_flags __rte_unused,
+		  uint64_t *action_flags __rte_unused,
+		  struct rte_flow_error *error __rte_unused)
+{
+	rte_errno = ENOTSUP;
+	return NULL;
+}
+
+static int
+flow_null_translate(struct rte_eth_dev *dev __rte_unused,
+		    struct mlx5_flow *dev_flow __rte_unused,
+		    const struct rte_flow_attr *attr __rte_unused,
+		    const struct rte_flow_item items[] __rte_unused,
+		    const struct rte_flow_action actions[] __rte_unused,
+		    struct rte_flow_error *error __rte_unused)
+{
+	rte_errno = ENOTSUP;
+	return -rte_errno;
+}
+
+static int
+flow_null_apply(struct rte_eth_dev *dev __rte_unused,
+		struct rte_flow *flow __rte_unused,
+		struct rte_flow_error *error __rte_unused)
+{
+	rte_errno = ENOTSUP;
+	return -rte_errno;
+}
+
+static void
+flow_null_remove(struct rte_eth_dev *dev __rte_unused,
+		 struct rte_flow *flow __rte_unused)
+{
+}
+
+static void
+flow_null_destroy(struct rte_eth_dev *dev __rte_unused,
+		  struct rte_flow *flow __rte_unused)
+{
+}
+
+/* Void driver to protect from null pointer reference. */
+const struct mlx5_flow_driver_ops mlx5_flow_null_drv_ops = {
+	.validate = flow_null_validate,
+	.prepare = flow_null_prepare,
+	.translate = flow_null_translate,
+	.apply = flow_null_apply,
+	.remove = flow_null_remove,
+	.destroy = flow_null_destroy,
+};
+
+/**
+ * Select flow driver type according to flow attributes and device
+ * configuration.
+ *
+ * @param[in] dev
+ *   Pointer to the dev structure.
+ * @param[in] attr
+ *   Pointer to the flow attributes.
+ *
+ * @return
+ *   flow driver type if supported, MLX5_FLOW_TYPE_MAX otherwise.
+ */
+static enum mlx5_flow_drv_type
+flow_get_drv_type(struct rte_eth_dev *dev __rte_unused,
+		  const struct rte_flow_attr *attr)
+{
+	struct priv *priv __rte_unused = dev->data->dev_private;
+	enum mlx5_flow_drv_type type = MLX5_FLOW_TYPE_MAX;
+
+	if (!attr->transfer) {
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+		type = priv->config.dv_flow_en ?  MLX5_FLOW_TYPE_DV :
+						  MLX5_FLOW_TYPE_VERBS;
+#else
+		type = MLX5_FLOW_TYPE_VERBS;
+#endif
+	}
+	return type;
+}
+
+#define flow_get_drv_ops(type) flow_drv_ops[type]
+
+/**
+ * Flow driver validation API. This abstracts calling driver specific functions.
+ * The type of flow driver is determined according to flow attributes.
+ *
+ * @param[in] dev
+ *   Pointer to the dev structure.
+ * @param[in] attr
+ *   Pointer to the flow attributes.
+ * @param[in] items
+ *   Pointer to the list of items.
+ * @param[in] actions
+ *   Pointer to the list of actions.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_ernno is set.
+ */
+static inline int
+flow_drv_validate(struct rte_eth_dev *dev,
+		  const struct rte_flow_attr *attr,
+		  const struct rte_flow_item items[],
+		  const struct rte_flow_action actions[],
+		  struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops;
+	enum mlx5_flow_drv_type type = flow_get_drv_type(dev, attr);
+
+	fops = flow_get_drv_ops(type);
+	return fops->validate(dev, attr, items, actions, error);
+}
+
+/**
+ * Flow driver preparation API. This abstracts calling driver specific
+ * functions. Parent flow (rte_flow) should have driver type (drv_type). It
+ * calculates the size of memory required for device flow, allocates the memory,
+ * initializes the device flow and returns the pointer.
+ *
+ * @param[in] attr
+ *   Pointer to the flow attributes.
+ * @param[in] items
+ *   Pointer to the list of items.
+ * @param[in] actions
+ *   Pointer to the list of actions.
+ * @param[out] item_flags
+ *   Pointer to bit mask of all items detected.
+ * @param[out] action_flags
+ *   Pointer to bit mask of all actions detected.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   Pointer to device flow on success, otherwise NULL and rte_ernno is set.
+ */
+static inline struct mlx5_flow *
+flow_drv_prepare(struct rte_flow *flow,
+		 const struct rte_flow_attr *attr,
+		 const struct rte_flow_item items[],
+		 const struct rte_flow_action actions[],
+		 uint64_t *item_flags,
+		 uint64_t *action_flags,
+		 struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops;
+	enum mlx5_flow_drv_type type = flow->drv_type;
+
+	assert(type > MLX5_FLOW_TYPE_MIN && type < MLX5_FLOW_TYPE_MAX);
+	fops = flow_get_drv_ops(type);
+	return fops->prepare(attr, items, actions, item_flags, action_flags,
+			     error);
+}
+
+/**
+ * Flow driver translation API. This abstracts calling driver specific
+ * functions. Parent flow (rte_flow) should have driver type (drv_type). It
+ * translates a generic flow into a driver flow. flow_drv_prepare() must
+ * precede.
+ *
+ *
+ * @param[in] dev
+ *   Pointer to the rte dev structure.
+ * @param[in, out] dev_flow
+ *   Pointer to the mlx5 flow.
+ * @param[in] attr
+ *   Pointer to the flow attributes.
+ * @param[in] items
+ *   Pointer to the list of items.
+ * @param[in] actions
+ *   Pointer to the list of actions.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_ernno is set.
+ */
+static inline int
+flow_drv_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
+		   const struct rte_flow_attr *attr,
+		   const struct rte_flow_item items[],
+		   const struct rte_flow_action actions[],
+		   struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops;
+	enum mlx5_flow_drv_type type = dev_flow->flow->drv_type;
+
+	assert(type > MLX5_FLOW_TYPE_MIN && type < MLX5_FLOW_TYPE_MAX);
+	fops = flow_get_drv_ops(type);
+	return fops->translate(dev, dev_flow, attr, items, actions, error);
+}
+
+/**
+ * Flow driver apply API. This abstracts calling driver specific functions.
+ * Parent flow (rte_flow) should have driver type (drv_type). It applies
+ * translated driver flows on to device. flow_drv_translate() must precede.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device structure.
+ * @param[in, out] flow
+ *   Pointer to flow structure.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static inline int
+flow_drv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
+	       struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops;
+	enum mlx5_flow_drv_type type = flow->drv_type;
+
+	assert(type > MLX5_FLOW_TYPE_MIN && type < MLX5_FLOW_TYPE_MAX);
+	fops = flow_get_drv_ops(type);
+	return fops->apply(dev, flow, error);
+}
+
+/**
+ * Flow driver remove API. This abstracts calling driver specific functions.
+ * Parent flow (rte_flow) should have driver type (drv_type). It removes a flow
+ * on device. All the resources of the flow should be freed by calling
+ * flow_dv_destroy().
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in, out] flow
+ *   Pointer to flow structure.
+ */
+static inline void
+flow_drv_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
+{
+	const struct mlx5_flow_driver_ops *fops;
+	enum mlx5_flow_drv_type type = flow->drv_type;
+
+	assert(type > MLX5_FLOW_TYPE_MIN && type < MLX5_FLOW_TYPE_MAX);
+	fops = flow_get_drv_ops(type);
+	fops->remove(dev, flow);
+}
+
+/**
+ * Flow driver destroy API. This abstracts calling driver specific functions.
+ * Parent flow (rte_flow) should have driver type (drv_type). It removes a flow
+ * on device and releases resources of the flow.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in, out] flow
+ *   Pointer to flow structure.
+ */
+static inline void
+flow_drv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
+{
+	const struct mlx5_flow_driver_ops *fops;
+	enum mlx5_flow_drv_type type = flow->drv_type;
+
+	assert(type > MLX5_FLOW_TYPE_MIN && type < MLX5_FLOW_TYPE_MAX);
+	fops = flow_get_drv_ops(type);
+	fops->destroy(dev, flow);
+}
+
 /**
  * Validate a flow supported by the NIC.
  *
@@ -1544,7 +1836,7 @@ mlx5_flow_validate(struct rte_eth_dev *dev,
 {
 	int ret;
 
-	ret =  nic_ops.validate(dev, attr, items, actions, error);
+	ret = flow_drv_validate(dev, attr, items, actions, error);
 	if (ret < 0)
 		return ret;
 	return 0;
@@ -1634,7 +1926,7 @@ mlx5_flow_list_create(struct rte_eth_dev *dev,
 	uint32_t i;
 	uint32_t flow_size;
 
-	ret = mlx5_flow_validate(dev, attr, items, actions, error);
+	ret = flow_drv_validate(dev, attr, items, actions, error);
 	if (ret < 0)
 		return NULL;
 	flow_size = sizeof(struct rte_flow);
@@ -1645,6 +1937,9 @@ mlx5_flow_list_create(struct rte_eth_dev *dev,
 	else
 		flow_size += RTE_ALIGN_CEIL(sizeof(uint16_t), sizeof(void *));
 	flow = rte_calloc(__func__, 1, flow_size, 0);
+	flow->drv_type = flow_get_drv_type(dev, attr);
+	assert(flow->drv_type > MLX5_FLOW_TYPE_MIN &&
+	       flow->drv_type < MLX5_FLOW_TYPE_MAX);
 	flow->queue = (void *)(flow + 1);
 	LIST_INIT(&flow->dev_flows);
 	if (rss && rss->types) {
@@ -1662,21 +1957,21 @@ mlx5_flow_list_create(struct rte_eth_dev *dev,
 		buf->entry[0].pattern = (void *)(uintptr_t)items;
 	}
 	for (i = 0; i < buf->entries; ++i) {
-		dev_flow = nic_ops.prepare(attr, buf->entry[i].pattern,
-					   actions, &item_flags,
-					   &action_flags, error);
+		dev_flow = flow_drv_prepare(flow, attr, buf->entry[i].pattern,
+					    actions, &item_flags, &action_flags,
+					    error);
 		if (!dev_flow)
 			goto error;
 		dev_flow->flow = flow;
 		LIST_INSERT_HEAD(&flow->dev_flows, dev_flow, next);
-		ret = nic_ops.translate(dev, dev_flow, attr,
-					buf->entry[i].pattern,
-					actions, error);
+		ret = flow_drv_translate(dev, dev_flow, attr,
+					 buf->entry[i].pattern,
+					 actions, error);
 		if (ret < 0)
 			goto error;
 	}
 	if (dev->data->dev_started) {
-		ret = nic_ops.apply(dev, flow, error);
+		ret = flow_drv_apply(dev, flow, error);
 		if (ret < 0)
 			goto error;
 	}
@@ -1686,7 +1981,7 @@ mlx5_flow_list_create(struct rte_eth_dev *dev,
 error:
 	ret = rte_errno; /* Save rte_errno before cleanup. */
 	assert(flow);
-	nic_ops.destroy(dev, flow);
+	flow_drv_destroy(dev, flow);
 	rte_free(flow);
 	rte_errno = ret; /* Restore rte_errno. */
 	return NULL;
@@ -1724,7 +2019,7 @@ static void
 mlx5_flow_list_destroy(struct rte_eth_dev *dev, struct mlx5_flows *list,
 		       struct rte_flow *flow)
 {
-	nic_ops.destroy(dev, flow);
+	flow_drv_destroy(dev, flow);
 	TAILQ_REMOVE(list, flow, next);
 	/*
 	 * Update RX queue flags only if port is started, otherwise it is
@@ -1768,7 +2063,7 @@ mlx5_flow_stop(struct rte_eth_dev *dev, struct mlx5_flows *list)
 	struct rte_flow *flow;
 
 	TAILQ_FOREACH_REVERSE(flow, list, mlx5_flows, next)
-		nic_ops.remove(dev, flow);
+		flow_drv_remove(dev, flow);
 	mlx5_flow_rxq_flags_clear(dev);
 }
 
@@ -1791,7 +2086,7 @@ mlx5_flow_start(struct rte_eth_dev *dev, struct mlx5_flows *list)
 	int ret = 0;
 
 	TAILQ_FOREACH(flow, list, next) {
-		ret = nic_ops.apply(dev, flow, &error);
+		ret = flow_drv_apply(dev, flow, &error);
 		if (ret < 0)
 			goto error;
 		mlx5_flow_rxq_flags_set(dev, flow);
@@ -2481,25 +2776,4 @@ mlx5_dev_filter_ctrl(struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 	return 0;
-}
-
-/**
- * Init the driver ops structure.
- *
- * @param dev
- *   Pointer to Ethernet device structure.
- */
-void
-mlx5_flow_init_driver_ops(struct rte_eth_dev *dev)
-{
-	struct priv *priv __rte_unused = dev->data->dev_private;
-
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
-	if (priv->config.dv_flow_en)
-		mlx5_flow_dv_get_driver_ops(&nic_ops);
-	else
-		mlx5_flow_verbs_get_driver_ops(&nic_ops);
-#else
-	mlx5_flow_verbs_get_driver_ops(&nic_ops);
-#endif
 }

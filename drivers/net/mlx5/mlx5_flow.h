@@ -120,6 +120,13 @@
 /* Max number of actions per DV flow. */
 #define MLX5_DV_MAX_NUMBER_OF_ACTIONS 8
 
+enum mlx5_flow_drv_type {
+	MLX5_FLOW_TYPE_MIN,
+	MLX5_FLOW_TYPE_DV,
+	MLX5_FLOW_TYPE_VERBS,
+	MLX5_FLOW_TYPE_MAX,
+};
+
 /* Matcher PRM representation */
 struct mlx5_flow_dv_match_params {
 	size_t size;
@@ -205,7 +212,7 @@ struct mlx5_flow_counter {
 /* Flow structure. */
 struct rte_flow {
 	TAILQ_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
-	struct rte_flow_attr attributes; /**< User flow attribute. */
+	enum mlx5_flow_drv_type drv_type; /**< Drvier type. */
 	uint32_t layers;
 	/**< Bit-fields of present layers see MLX5_FLOW_LAYER_*. */
 	struct mlx5_flow_counter *counter; /**< Holds flow counter. */
@@ -309,13 +316,5 @@ int mlx5_flow_validate_item_vxlan_gpe(const struct rte_flow_item *item,
 				      uint64_t item_flags,
 				      struct rte_eth_dev *dev,
 				      struct rte_flow_error *error);
-void mlx5_flow_init_driver_ops(struct rte_eth_dev *dev);
-
-/* mlx5_flow_dv.c */
-void mlx5_flow_dv_get_driver_ops(struct mlx5_flow_driver_ops *flow_ops);
-
-/* mlx5_flow_verbs.c */
-
-void mlx5_flow_verbs_get_driver_ops(struct mlx5_flow_driver_ops *flow_ops);
 
 #endif /* RTE_PMD_MLX5_FLOW_H_ */

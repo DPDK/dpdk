@@ -1643,15 +1643,11 @@ error:
 	return -rte_errno;
 }
 
-void
-mlx5_flow_verbs_get_driver_ops(struct mlx5_flow_driver_ops *flow_ops)
-{
-	*flow_ops = (struct mlx5_flow_driver_ops) {
-		.validate = flow_verbs_validate,
-		.prepare = flow_verbs_prepare,
-		.translate = flow_verbs_translate,
-		.apply = flow_verbs_apply,
-		.remove = flow_verbs_remove,
-		.destroy = flow_verbs_destroy,
-	};
-}
+const struct mlx5_flow_driver_ops mlx5_flow_verbs_drv_ops = {
+	.validate = flow_verbs_validate,
+	.prepare = flow_verbs_prepare,
+	.translate = flow_verbs_translate,
+	.apply = flow_verbs_apply,
+	.remove = flow_verbs_remove,
+	.destroy = flow_verbs_destroy,
+};

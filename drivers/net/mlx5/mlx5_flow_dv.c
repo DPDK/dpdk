@@ -1358,23 +1358,13 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 	}
 }
 
-/**
- * Fills the flow_ops with the function pointers.
- *
- * @param[out] flow_ops
- *   Pointer to driver_ops structure.
- */
-void
-mlx5_flow_dv_get_driver_ops(struct mlx5_flow_driver_ops *flow_ops)
-{
-	*flow_ops = (struct mlx5_flow_driver_ops) {
-		.validate = flow_dv_validate,
-		.prepare = flow_dv_prepare,
-		.translate = flow_dv_translate,
-		.apply = flow_dv_apply,
-		.remove = flow_dv_remove,
-		.destroy = flow_dv_destroy,
-	};
-}
+const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
+	.validate = flow_dv_validate,
+	.prepare = flow_dv_prepare,
+	.translate = flow_dv_translate,
+	.apply = flow_dv_apply,
+	.remove = flow_dv_remove,
+	.destroy = flow_dv_destroy,
+};
 
 #endif /* HAVE_IBV_FLOW_DV_SUPPORT */
