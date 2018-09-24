@@ -333,6 +333,23 @@ typedef int (*eventdev_port_unlink_t)(struct rte_eventdev *dev, void *port,
 		uint8_t queues[], uint16_t nb_unlinks);
 
 /**
+ * Unlinks in progress. Returns number of unlinks that the PMD is currently
+ * performing, but have not yet been completed.
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @param port
+ *   Event port pointer
+ *
+ * @return
+ *   Returns the number of in-progress unlinks. Zero is returned if none are
+ *   in progress.
+ */
+typedef int (*eventdev_port_unlinks_in_progress_t)(struct rte_eventdev *dev,
+		void *port);
+
+/**
  * Converts nanoseconds to *timeout_ticks* value for rte_event_dequeue()
  *
  * @param dev
@@ -815,6 +832,8 @@ struct rte_eventdev_ops {
 	/**< Link event queues to an event port. */
 	eventdev_port_unlink_t port_unlink;
 	/**< Unlink event queues from an event port. */
+	eventdev_port_unlinks_in_progress_t port_unlinks_in_progress;
+	/**< Unlinks in progress on an event port. */
 	eventdev_dequeue_timeout_ticks_t timeout_ticks;
 	/**< Converts ns to *timeout_ticks* value for rte_event_dequeue() */
 	eventdev_dump_t dump;

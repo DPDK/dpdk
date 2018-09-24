@@ -980,6 +980,28 @@ rte_event_port_unlink(uint8_t dev_id, uint8_t port_id,
 	return diag;
 }
 
+int __rte_experimental
+rte_event_port_unlinks_in_progress(uint8_t dev_id, uint8_t port_id)
+{
+	struct rte_eventdev *dev;
+
+	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	dev = &rte_eventdevs[dev_id];
+	if (!is_valid_port(dev, port_id)) {
+		RTE_EDEV_LOG_ERR("Invalid port_id=%" PRIu8, port_id);
+		return -EINVAL;
+	}
+
+	/* Return 0 if the PMD does not implement unlinks in progress.
+	 * This allows PMDs which handle unlink synchronously to not implement
+	 * this function at all.
+	 */
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->port_unlinks_in_progress, 0);
+
+	return (*dev->dev_ops->port_unlinks_in_progress)(dev,
+			dev->data->ports[port_id]);
+}
+
 int
 rte_event_port_links_get(uint8_t dev_id, uint8_t port_id,
 			 uint8_t queues[], uint8_t priorities[])

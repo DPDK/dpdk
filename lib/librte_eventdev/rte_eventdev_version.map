@@ -96,6 +96,7 @@ EXPERIMENTAL {
 	rte_event_crypto_adapter_stats_reset;
 	rte_event_crypto_adapter_stop;
 	rte_event_eth_rx_adapter_cb_register;
+	rte_event_port_unlinks_in_progress;
 	rte_event_timer_adapter_caps_get;
 	rte_event_timer_adapter_create;
 	rte_event_timer_adapter_create_ext;
