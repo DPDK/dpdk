@@ -520,13 +520,18 @@ sw_event_schedule(struct rte_eventdev *dev)
 		/* Pull from rx_ring for ports */
 		do {
 			in_pkts = 0;
-			for (i = 0; i < sw->port_count; i++)
+			for (i = 0; i < sw->port_count; i++) {
+				/* ack the unlinks in progress as done */
+				if (sw->ports[i].unlinks_in_progress)
+					sw->ports[i].unlinks_in_progress = 0;
+
 				if (sw->ports[i].is_directed)
 					in_pkts += sw_schedule_pull_port_dir(sw, i);
 				else if (sw->ports[i].num_ordered_qids > 0)
 					in_pkts += sw_schedule_pull_port_lb(sw, i);
 				else
 					in_pkts += sw_schedule_pull_port_no_reorder(sw, i);
+			}
 
 			/* QID scan for re-ordered */
 			in_pkts += sw_schedule_reorder(sw, 0,

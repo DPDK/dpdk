@@ -113,7 +113,19 @@ sw_port_unlink(struct rte_eventdev *dev, void *port, uint8_t queues[],
 			}
 		}
 	}
+
+	p->unlinks_in_progress += unlinked;
+	rte_smp_mb();
+
 	return unlinked;
+}
+
+static int
+sw_port_unlinks_in_progress(struct rte_eventdev *dev, void *port)
+{
+	RTE_SET_USED(dev);
+	struct sw_port *p = port;
+	return p->unlinks_in_progress;
 }
 
 static int
@@ -925,6 +937,7 @@ sw_probe(struct rte_vdev_device *vdev)
 			.port_release = sw_port_release,
 			.port_link = sw_port_link,
 			.port_unlink = sw_port_unlink,
+			.port_unlinks_in_progress = sw_port_unlinks_in_progress,
 
 			.eth_rx_adapter_caps_get = sw_eth_rx_adapter_caps_get,
 

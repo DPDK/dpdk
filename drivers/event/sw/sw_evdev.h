@@ -148,6 +148,14 @@ struct sw_port {
 	/* A numeric ID for the port */
 	uint8_t id;
 
+	/* An atomic counter for when the port has been unlinked, and the
+	 * scheduler has not yet acked this unlink - hence there may still be
+	 * events in the buffers going to the port. When the unlinks in
+	 * progress is read by the scheduler, no more events will be pushed to
+	 * the port - hence the scheduler core can just assign zero.
+	 */
+	uint8_t unlinks_in_progress;
+
 	int16_t is_directed; /** Takes from a single directed QID */
 	/**
 	 * For loadbalanced we can optimise pulling packets from
