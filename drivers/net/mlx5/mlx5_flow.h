@@ -1,0 +1,259 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright 2018 Mellanox Technologies, Ltd
+ */
+
+#ifndef RTE_PMD_MLX5_FLOW_H_
+#define RTE_PMD_MLX5_FLOW_H_
+
+#include <netinet/in.h>
+#include <sys/queue.h>
+#include <stdalign.h>
+#include <stdint.h>
+#include <string.h>
+
+/* Verbs header. */
+/* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
+#ifdef PEDANTIC
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+#include <infiniband/verbs.h>
+#ifdef PEDANTIC
+#pragma GCC diagnostic error "-Wpedantic"
+#endif
+
+/* Pattern outer Layer bits. */
+#define MLX5_FLOW_LAYER_OUTER_L2 (1u << 0)
+#define MLX5_FLOW_LAYER_OUTER_L3_IPV4 (1u << 1)
+#define MLX5_FLOW_LAYER_OUTER_L3_IPV6 (1u << 2)
+#define MLX5_FLOW_LAYER_OUTER_L4_UDP (1u << 3)
+#define MLX5_FLOW_LAYER_OUTER_L4_TCP (1u << 4)
+#define MLX5_FLOW_LAYER_OUTER_VLAN (1u << 5)
+
+/* Pattern inner Layer bits. */
+#define MLX5_FLOW_LAYER_INNER_L2 (1u << 6)
+#define MLX5_FLOW_LAYER_INNER_L3_IPV4 (1u << 7)
+#define MLX5_FLOW_LAYER_INNER_L3_IPV6 (1u << 8)
+#define MLX5_FLOW_LAYER_INNER_L4_UDP (1u << 9)
+#define MLX5_FLOW_LAYER_INNER_L4_TCP (1u << 10)
+#define MLX5_FLOW_LAYER_INNER_VLAN (1u << 11)
+
+/* Pattern tunnel Layer bits. */
+#define MLX5_FLOW_LAYER_VXLAN (1u << 12)
+#define MLX5_FLOW_LAYER_VXLAN_GPE (1u << 13)
+#define MLX5_FLOW_LAYER_GRE (1u << 14)
+#define MLX5_FLOW_LAYER_MPLS (1u << 15)
+
+/* Outer Masks. */
+#define MLX5_FLOW_LAYER_OUTER_L3 \
+	(MLX5_FLOW_LAYER_OUTER_L3_IPV4 | MLX5_FLOW_LAYER_OUTER_L3_IPV6)
+#define MLX5_FLOW_LAYER_OUTER_L4 \
+	(MLX5_FLOW_LAYER_OUTER_L4_UDP | MLX5_FLOW_LAYER_OUTER_L4_TCP)
+#define MLX5_FLOW_LAYER_OUTER \
+	(MLX5_FLOW_LAYER_OUTER_L2 | MLX5_FLOW_LAYER_OUTER_L3 | \
+	 MLX5_FLOW_LAYER_OUTER_L4)
+
+/* Tunnel Masks. */
+#define MLX5_FLOW_LAYER_TUNNEL \
+	(MLX5_FLOW_LAYER_VXLAN | MLX5_FLOW_LAYER_VXLAN_GPE | \
+	 MLX5_FLOW_LAYER_GRE | MLX5_FLOW_LAYER_MPLS)
+
+/* Inner Masks. */
+#define MLX5_FLOW_LAYER_INNER_L3 \
+	(MLX5_FLOW_LAYER_INNER_L3_IPV4 | MLX5_FLOW_LAYER_INNER_L3_IPV6)
+#define MLX5_FLOW_LAYER_INNER_L4 \
+	(MLX5_FLOW_LAYER_INNER_L4_UDP | MLX5_FLOW_LAYER_INNER_L4_TCP)
+#define MLX5_FLOW_LAYER_INNER \
+	(MLX5_FLOW_LAYER_INNER_L2 | MLX5_FLOW_LAYER_INNER_L3 | \
+	 MLX5_FLOW_LAYER_INNER_L4)
+
+/* Actions that modify the fate of matching traffic. */
+#define MLX5_FLOW_FATE_DROP (1u << 0)
+#define MLX5_FLOW_FATE_QUEUE (1u << 1)
+#define MLX5_FLOW_FATE_RSS (1u << 2)
+
+/* Modify a packet. */
+#define MLX5_FLOW_MOD_FLAG (1u << 0)
+#define MLX5_FLOW_MOD_MARK (1u << 1)
+#define MLX5_FLOW_MOD_COUNT (1u << 2)
+
+/* Actions */
+#define MLX5_FLOW_ACTION_DROP (1u << 0)
+#define MLX5_FLOW_ACTION_QUEUE (1u << 1)
+#define MLX5_FLOW_ACTION_RSS (1u << 2)
+#define MLX5_FLOW_ACTION_FLAG (1u << 3)
+#define MLX5_FLOW_ACTION_MARK (1u << 4)
+#define MLX5_FLOW_ACTION_COUNT (1u << 5)
+
+#define MLX5_FLOW_FATE_ACTIONS \
+	(MLX5_FLOW_ACTION_DROP | MLX5_FLOW_ACTION_QUEUE | MLX5_FLOW_ACTION_RSS)
+
+#ifndef IPPROTO_MPLS
+#define IPPROTO_MPLS 137
+#endif
+
+/* Priority reserved for default flows. */
+#define MLX5_FLOW_PRIO_RSVD ((uint32_t)-1)
+
+/*
+ * Number of sub priorities.
+ * For each kind of pattern matching i.e. L2, L3, L4 to have a correct
+ * matching on the NIC (firmware dependent) L4 most have the higher priority
+ * followed by L3 and ending with L2.
+ */
+#define MLX5_PRIORITY_MAP_L2 2
+#define MLX5_PRIORITY_MAP_L3 1
+#define MLX5_PRIORITY_MAP_L4 0
+#define MLX5_PRIORITY_MAP_MAX 3
+
+/* Verbs specification header. */
+struct ibv_spec_header {
+	enum ibv_flow_spec_type type;
+	uint16_t size;
+};
+
+/** Handles information leading to a drop fate. */
+struct mlx5_flow_verbs {
+	LIST_ENTRY(mlx5_flow_verbs) next;
+	unsigned int size; /**< Size of the attribute. */
+	struct {
+		struct ibv_flow_attr *attr;
+		/**< Pointer to the Specification buffer. */
+		uint8_t *specs; /**< Pointer to the specifications. */
+	};
+	struct ibv_flow *flow; /**< Verbs flow pointer. */
+	struct mlx5_hrxq *hrxq; /**< Hash Rx queue object. */
+	uint64_t hash_fields; /**< Verbs hash Rx queue hash fields. */
+};
+
+/** Device flow structure. */
+struct mlx5_flow {
+	LIST_ENTRY(mlx5_flow) next;
+	struct rte_flow *flow; /**< Pointer to the main flow. */
+	uint32_t layers; /**< Bit-fields that holds the detected layers. */
+	union {
+		struct mlx5_flow_verbs verbs; /**< Holds the verbs dev-flow. */
+	};
+};
+
+/* Counters information. */
+struct mlx5_flow_counter {
+	LIST_ENTRY(mlx5_flow_counter) next; /**< Pointer to the next counter. */
+	uint32_t shared:1; /**< Share counter ID with other flow rules. */
+	uint32_t ref_cnt:31; /**< Reference counter. */
+	uint32_t id; /**< Counter ID. */
+	struct ibv_counter_set *cs; /**< Holds the counters for the rule. */
+	uint64_t hits; /**< Number of packets matched by the rule. */
+	uint64_t bytes; /**< Number of bytes matched by the rule. */
+};
+
+/* Flow structure. */
+struct rte_flow {
+	TAILQ_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
+	struct rte_flow_attr attributes; /**< User flow attribute. */
+	uint32_t layers;
+	/**< Bit-fields of present layers see MLX5_FLOW_LAYER_*. */
+	struct mlx5_flow_counter *counter; /**< Holds flow counter. */
+	struct rte_flow_action_rss rss;/**< RSS context. */
+	uint8_t key[MLX5_RSS_HASH_KEY_LEN]; /**< RSS hash key. */
+	uint16_t (*queue)[]; /**< Destination queues to redirect traffic to. */
+	void *nl_flow; /**< Netlink flow buffer if relevant. */
+	LIST_HEAD(dev_flows, mlx5_flow) dev_flows;
+	/**< Device flows that are part of the flow. */
+	uint32_t actions; /**< Bit-fields which mark all detected actions. */
+};
+typedef int (*mlx5_flow_validate_t)(struct rte_eth_dev *dev,
+				    const struct rte_flow_attr *attr,
+				    const struct rte_flow_item items[],
+				    const struct rte_flow_action actions[],
+				    struct rte_flow_error *error);
+typedef struct mlx5_flow *(*mlx5_flow_prepare_t)
+	(const struct rte_flow_attr *attr, const struct rte_flow_item items[],
+	 const struct rte_flow_action actions[], uint64_t *item_flags,
+	 uint64_t *action_flags, struct rte_flow_error *error);
+typedef int (*mlx5_flow_translate_t)(struct rte_eth_dev *dev,
+				     struct mlx5_flow *dev_flow,
+				     const struct rte_flow_attr *attr,
+				     const struct rte_flow_item items[],
+				     const struct rte_flow_action actions[],
+				     struct rte_flow_error *error);
+typedef int (*mlx5_flow_apply_t)(struct rte_eth_dev *dev, struct rte_flow *flow,
+				 struct rte_flow_error *error);
+typedef void (*mlx5_flow_remove_t)(struct rte_eth_dev *dev,
+				   struct rte_flow *flow);
+typedef void (*mlx5_flow_destroy_t)(struct rte_eth_dev *dev,
+				    struct rte_flow *flow);
+struct mlx5_flow_driver_ops {
+	mlx5_flow_validate_t validate;
+	mlx5_flow_prepare_t prepare;
+	mlx5_flow_translate_t translate;
+	mlx5_flow_apply_t apply;
+	mlx5_flow_remove_t remove;
+	mlx5_flow_destroy_t destroy;
+};
+
+/* mlx5_flow.c */
+
+uint32_t mlx5_flow_adjust_priority(struct rte_eth_dev *dev, int32_t priority,
+				   uint32_t subpriority);
+int mlx5_flow_validate_action_count(struct rte_eth_dev *dev,
+				    struct rte_flow_error *error);
+int mlx5_flow_validate_action_drop(uint64_t action_flags,
+				   struct rte_flow_error *error);
+int mlx5_flow_validate_action_flag(uint64_t action_flags,
+				   struct rte_flow_error *error);
+int mlx5_flow_validate_action_mark(const struct rte_flow_action *action,
+				   uint64_t action_flags,
+				   struct rte_flow_error *error);
+int mlx5_flow_validate_action_queue(const struct rte_flow_action *action,
+				    uint64_t action_flags,
+				    struct rte_eth_dev *dev,
+				    struct rte_flow_error *error);
+int mlx5_flow_validate_action_rss(const struct rte_flow_action *action,
+				  uint64_t action_flags,
+				  struct rte_eth_dev *dev,
+				  struct rte_flow_error *error);
+int mlx5_flow_validate_attributes(struct rte_eth_dev *dev,
+				  const struct rte_flow_attr *attributes,
+				  struct rte_flow_error *error);
+int mlx5_flow_validate_item_eth(const struct rte_flow_item *item,
+				uint64_t item_flags,
+				struct rte_flow_error *error);
+int mlx5_flow_validate_item_gre(const struct rte_flow_item *item,
+				uint64_t item_flags,
+				uint8_t target_protocol,
+				struct rte_flow_error *error);
+int mlx5_flow_validate_item_ipv4(const struct rte_flow_item *item,
+				 int64_t item_flags,
+				 struct rte_flow_error *error);
+int mlx5_flow_validate_item_ipv6(const struct rte_flow_item *item,
+				 uint64_t item_flags,
+				 struct rte_flow_error *error);
+int mlx5_flow_validate_item_mpls(const struct rte_flow_item *item,
+				 uint64_t item_flags,
+				 uint8_t target_protocol,
+				 struct rte_flow_error *error);
+int mlx5_flow_validate_item_tcp(const struct rte_flow_item *item,
+				uint64_t item_flags,
+				uint8_t target_protocol,
+				struct rte_flow_error *error);
+int mlx5_flow_validate_item_udp(const struct rte_flow_item *item,
+				uint64_t item_flags,
+				uint8_t target_protocol,
+				struct rte_flow_error *error);
+int mlx5_flow_validate_item_vlan(const struct rte_flow_item *item,
+				 int64_t item_flags,
+				 struct rte_flow_error *error);
+int mlx5_flow_validate_item_vxlan(const struct rte_flow_item *item,
+				  uint64_t item_flags,
+				  struct rte_flow_error *error);
+int mlx5_flow_validate_item_vxlan_gpe(const struct rte_flow_item *item,
+				      uint64_t item_flags,
+				      struct rte_eth_dev *dev,
+				      struct rte_flow_error *error);
+void mlx5_flow_init_driver_ops(struct rte_eth_dev *dev);
+
+/* mlx5_flow_verbs.c */
+
+void mlx5_flow_verbs_get_driver_ops(struct mlx5_flow_driver_ops *flow_ops);
+
+#endif /* RTE_PMD_MLX5_FLOW_H_ */

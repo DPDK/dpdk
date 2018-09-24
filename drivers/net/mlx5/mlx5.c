@@ -46,6 +46,7 @@
 #include "mlx5_defs.h"
 #include "mlx5_glue.h"
 #include "mlx5_mr.h"
+#include "mlx5_flow.h"
 
 /* Device parameter to enable RX completion queue compression. */
 #define MLX5_RXQ_CQE_COMP_EN "rxq_cqe_comp_en"
@@ -1187,6 +1188,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	if (err < 0)
 		goto error;
 	priv->config.flow_prio = err;
+	mlx5_flow_init_driver_ops(eth_dev);
 	/*
 	 * Once the device is added to the list of memory event
 	 * callback, its global MR cache table cannot be expanded
