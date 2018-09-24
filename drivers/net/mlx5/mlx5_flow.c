@@ -445,6 +445,42 @@ mlx5_flow_item_acceptable(const struct rte_flow_item *item,
 }
 
 /**
+ * Adjust the hash fields according to the @p flow information.
+ *
+ * @param[in] dev_flow.
+ *   Pointer to the mlx5_flow.
+ * @param[in] tunnel
+ *   1 when the hash field is for a tunnel item.
+ * @param[in] layer_types
+ *   ETH_RSS_* types.
+ * @param[in] hash_fields
+ *   Item hash fields.
+ *
+ * @return
+ *   The hash fileds that should be used.
+ */
+uint64_t
+mlx5_flow_hashfields_adjust(struct mlx5_flow *dev_flow,
+			    int tunnel __rte_unused, uint32_t layer_types,
+			    uint64_t hash_fields)
+{
+	struct rte_flow *flow = dev_flow->flow;
+#ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
+	int rss_request_inner = flow->rss.level >= 2;
+
+	/* Check RSS hash level for tunnel. */
+	if (tunnel && rss_request_inner)
+		hash_fields |= IBV_RX_HASH_INNER;
+	else if (tunnel || rss_request_inner)
+		return 0;
+#endif
+	/* Check if requested layer matches RSS hash fields. */
+	if (!(flow->rss.types & layer_types))
+		return 0;
+	return hash_fields;
+}
+
+/**
  * Lookup and set the ptype in the data Rx part.  A single Ptype can be used,
  * if several tunnel rules are used on this queue, the tunnel ptype will be
  * cleared.

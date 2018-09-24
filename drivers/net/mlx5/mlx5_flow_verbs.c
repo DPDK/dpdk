@@ -133,37 +133,6 @@ flow_verbs_spec_add(struct mlx5_flow *flow, void *src, unsigned int size)
 }
 
 /**
- * Adjust verbs hash fields according to the @p flow information.
- *
- * @param[in] dev_flow.
- *   Pointer to dev flow structure.
- * @param[in] tunnel
- *   1 when the hash field is for a tunnel item.
- * @param[in] layer_types
- *   ETH_RSS_* types.
- * @param[in] hash_fields
- *   Item hash fields.
- */
-static void
-flow_verbs_hashfields_adjust(struct mlx5_flow *dev_flow,
-			     int tunnel __rte_unused,
-			     uint32_t layer_types, uint64_t hash_fields)
-{
-#ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
-	int rss_request_inner = dev_flow->flow->rss.level >= 2;
-
-	hash_fields |= (tunnel ? IBV_RX_HASH_INNER : 0);
-	if (rss_request_inner && !tunnel)
-		hash_fields = 0;
-	else if (rss_request_inner < 2 && tunnel)
-		hash_fields = 0;
-#endif
-	if (!(dev_flow->flow->rss.types & layer_types))
-		hash_fields = 0;
-	dev_flow->verbs.hash_fields |= hash_fields;
-}
-
-/**
  * Convert the @p item into a Verbs specification. This function assumes that
  * the input is valid and that there is space to insert the requested item
  * into the flow.
@@ -347,13 +316,10 @@ flow_verbs_translate_item_ipv4(const struct rte_flow_item *item,
 		ipv4.val.proto &= ipv4.mask.proto;
 		ipv4.val.tos &= ipv4.mask.tos;
 	}
-	flow_verbs_hashfields_adjust(dev_flow, tunnel,
-				     (ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 |
-				      ETH_RSS_NONFRAG_IPV4_TCP |
-				      ETH_RSS_NONFRAG_IPV4_UDP |
-				      ETH_RSS_NONFRAG_IPV4_OTHER),
-				     (IBV_RX_HASH_SRC_IPV4 |
-				      IBV_RX_HASH_DST_IPV4));
+	dev_flow->verbs.hash_fields |=
+		mlx5_flow_hashfields_adjust(dev_flow, tunnel,
+					    MLX5_IPV4_LAYER_TYPES,
+					    MLX5_IPV4_IBV_RX_HASH);
 	dev_flow->verbs.attr->priority = MLX5_PRIORITY_MAP_L3;
 	flow_verbs_spec_add(dev_flow, &ipv4, size);
 }
@@ -427,16 +393,10 @@ flow_verbs_translate_item_ipv6(const struct rte_flow_item *item,
 		ipv6.val.next_hdr &= ipv6.mask.next_hdr;
 		ipv6.val.hop_limit &= ipv6.mask.hop_limit;
 	}
-	flow_verbs_hashfields_adjust(dev_flow, tunnel,
-				     (ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6 |
-				      ETH_RSS_NONFRAG_IPV6_TCP |
-				      ETH_RSS_NONFRAG_IPV6_UDP |
-				      ETH_RSS_IPV6_EX  |
-				      ETH_RSS_IPV6_TCP_EX |
-				      ETH_RSS_IPV6_UDP_EX |
-				      ETH_RSS_NONFRAG_IPV6_OTHER),
-				     (IBV_RX_HASH_SRC_IPV6 |
-				      IBV_RX_HASH_DST_IPV6));
+	dev_flow->verbs.hash_fields |=
+		mlx5_flow_hashfields_adjust(dev_flow, tunnel,
+					    MLX5_IPV6_LAYER_TYPES,
+					    MLX5_IPV6_IBV_RX_HASH);
 	dev_flow->verbs.attr->priority = MLX5_PRIORITY_MAP_L3;
 	flow_verbs_spec_add(dev_flow, &ipv6, size);
 }
@@ -480,10 +440,10 @@ flow_verbs_translate_item_udp(const struct rte_flow_item *item,
 		udp.val.src_port &= udp.mask.src_port;
 		udp.val.dst_port &= udp.mask.dst_port;
 	}
-	flow_verbs_hashfields_adjust(dev_flow,
-				     tunnel, ETH_RSS_UDP,
-				     (IBV_RX_HASH_SRC_PORT_UDP |
-				      IBV_RX_HASH_DST_PORT_UDP));
+	dev_flow->verbs.hash_fields |=
+		mlx5_flow_hashfields_adjust(dev_flow, tunnel, ETH_RSS_UDP,
+					    (IBV_RX_HASH_SRC_PORT_UDP |
+					     IBV_RX_HASH_DST_PORT_UDP));
 	dev_flow->verbs.attr->priority = MLX5_PRIORITY_MAP_L4;
 	flow_verbs_spec_add(dev_flow, &udp, size);
 }
@@ -527,10 +487,10 @@ flow_verbs_translate_item_tcp(const struct rte_flow_item *item,
 		tcp.val.src_port &= tcp.mask.src_port;
 		tcp.val.dst_port &= tcp.mask.dst_port;
 	}
-	flow_verbs_hashfields_adjust(dev_flow,
-				     tunnel, ETH_RSS_TCP,
-				     (IBV_RX_HASH_SRC_PORT_TCP |
-				      IBV_RX_HASH_DST_PORT_TCP));
+	dev_flow->verbs.hash_fields |=
+		mlx5_flow_hashfields_adjust(dev_flow, tunnel, ETH_RSS_TCP,
+					    (IBV_RX_HASH_SRC_PORT_TCP |
+					     IBV_RX_HASH_DST_PORT_TCP));
 	dev_flow->verbs.attr->priority = MLX5_PRIORITY_MAP_L4;
 	flow_verbs_spec_add(dev_flow, &tcp, size);
 }

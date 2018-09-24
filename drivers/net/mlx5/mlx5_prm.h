@@ -493,6 +493,13 @@ struct mlx5_ifc_fte_match_param_bits {
 	u8 reserved_at_800[0x800];
 };
 
+enum {
+	MLX5_MATCH_CRITERIA_ENABLE_OUTER_BIT,
+	MLX5_MATCH_CRITERIA_ENABLE_MISC_BIT,
+	MLX5_MATCH_CRITERIA_ENABLE_INNER_BIT,
+	MLX5_MATCH_CRITERIA_ENABLE_MISC2_BIT
+};
+
 /* CQE format mask. */
 #define MLX5E_CQE_FORMAT_MASK 0xc
 

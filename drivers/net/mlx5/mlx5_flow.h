@@ -91,6 +91,10 @@
 #define IPPROTO_MPLS 137
 #endif
 
+/* UDP port numbers for VxLAN. */
+#define MLX5_UDP_PORT_VXLAN 4789
+#define MLX5_UDP_PORT_VXLAN_GPE 4790
+
 /* Priority reserved for default flows. */
 #define MLX5_FLOW_PRIO_RSVD ((uint32_t)-1)
 
@@ -104,6 +108,24 @@
 #define MLX5_PRIORITY_MAP_L3 1
 #define MLX5_PRIORITY_MAP_L4 0
 #define MLX5_PRIORITY_MAP_MAX 3
+
+/* Valid layer type for IPV4 RSS. */
+#define MLX5_IPV4_LAYER_TYPES \
+	(ETH_RSS_IPV4 | ETH_RSS_FRAG_IPV4 | \
+	 ETH_RSS_NONFRAG_IPV4_TCP | ETH_RSS_NONFRAG_IPV4_UDP | \
+	 ETH_RSS_NONFRAG_IPV4_OTHER)
+
+/* IBV hash source bits  for IPV4. */
+#define MLX5_IPV4_IBV_RX_HASH (IBV_RX_HASH_SRC_IPV4 | IBV_RX_HASH_DST_IPV4)
+
+/* Valid layer type for IPV6 RSS. */
+#define MLX5_IPV6_LAYER_TYPES \
+	(ETH_RSS_IPV6 | ETH_RSS_FRAG_IPV6 | ETH_RSS_NONFRAG_IPV6_TCP | \
+	 ETH_RSS_NONFRAG_IPV6_UDP | ETH_RSS_IPV6_EX  | ETH_RSS_IPV6_TCP_EX | \
+	 ETH_RSS_IPV6_UDP_EX | ETH_RSS_NONFRAG_IPV6_OTHER)
+
+/* IBV hash source bits  for IPV6. */
+#define MLX5_IPV6_IBV_RX_HASH (IBV_RX_HASH_SRC_IPV6 | IBV_RX_HASH_DST_IPV6)
 
 /* Max number of actions per DV flow. */
 #define MLX5_DV_MAX_NUMBER_OF_ACTIONS 8
@@ -228,6 +250,9 @@ struct mlx5_flow_driver_ops {
 
 /* mlx5_flow.c */
 
+uint64_t mlx5_flow_hashfields_adjust(struct mlx5_flow *dev_flow, int tunnel,
+				     uint32_t layer_types,
+				     uint64_t hash_fields);
 uint32_t mlx5_flow_adjust_priority(struct rte_eth_dev *dev, int32_t priority,
 				   uint32_t subpriority);
 int mlx5_flow_validate_action_count(struct rte_eth_dev *dev,
