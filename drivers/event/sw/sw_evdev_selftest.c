@@ -1904,6 +1904,77 @@ qid_priorities(struct test *t)
 }
 
 static int
+unlink_in_progress(struct test *t)
+{
+	/* Test unlinking API, in particular that when an unlink request has
+	 * not yet been seen by the scheduler thread, that the
+	 * unlink_in_progress() function returns the number of unlinks.
+	 */
+	unsigned int i;
+	/* Create instance with 1 ports, and 3 qids */
+	if (init(t, 3, 1) < 0 ||
+			create_ports(t, 1) < 0) {
+		printf("%d: Error initializing device\n", __LINE__);
+		return -1;
+	}
+
+	for (i = 0; i < 3; i++) {
+		/* Create QID */
+		const struct rte_event_queue_conf conf = {
+			.schedule_type = RTE_SCHED_TYPE_ATOMIC,
+			/* increase priority (0 == highest), as we go */
+			.priority = RTE_EVENT_DEV_PRIORITY_NORMAL - i,
+			.nb_atomic_flows = 1024,
+			.nb_atomic_order_sequences = 1024,
+		};
+
+		if (rte_event_queue_setup(evdev, i, &conf) < 0) {
+			printf("%d: error creating qid %d\n", __LINE__, i);
+			return -1;
+		}
+		t->qid[i] = i;
+	}
+	t->nb_qids = i;
+	/* map all QIDs to port */
+	rte_event_port_link(evdev, t->port[0], NULL, NULL, 0);
+
+	if (rte_event_dev_start(evdev) < 0) {
+		printf("%d: Error with start call\n", __LINE__);
+		return -1;
+	}
+
+	/* unlink all ports to have outstanding unlink requests */
+	int ret = rte_event_port_unlink(evdev, t->port[0], NULL, 0);
+	if (ret < 0) {
+		printf("%d: Failed to unlink queues\n", __LINE__);
+		return -1;
+	}
+
+	/* get active unlinks here, expect 3 */
+	int unlinks_in_progress =
+		rte_event_port_unlinks_in_progress(evdev, t->port[0]);
+	if (unlinks_in_progress != 3) {
+		printf("%d: Expected num unlinks in progress == 3, got %d\n",
+				__LINE__, unlinks_in_progress);
+		return -1;
+	}
+
+	/* run scheduler service on this thread to ack the unlinks */
+	rte_service_run_iter_on_app_lcore(t->service_id, 1);
+
+	/* active unlinks expected as 0 as scheduler thread has acked */
+	unlinks_in_progress =
+		rte_event_port_unlinks_in_progress(evdev, t->port[0]);
+	if (unlinks_in_progress != 0) {
+		printf("%d: Expected num unlinks in progress == 0, got %d\n",
+				__LINE__, unlinks_in_progress);
+	}
+
+	cleanup(t);
+	return 0;
+}
+
+static int
 load_balancing(struct test *t)
 {
 	const int rx_enq = 0;
@@ -3258,6 +3329,12 @@ test_sw_eventdev(void)
 	ret = qid_priorities(t);
 	if (ret != 0) {
 		printf("ERROR - QID Priority test FAILED.\n");
+		goto test_fail;
+	}
+	printf("*** Running Unlink-in-progress test...\n");
+	ret = unlink_in_progress(t);
+	if (ret != 0) {
+		printf("ERROR - Unlink in progress test FAILED.\n");
 		goto test_fail;
 	}
 	printf("*** Running Ordered Reconfigure test...\n");
