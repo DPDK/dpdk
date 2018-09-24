@@ -289,6 +289,23 @@ mr_find_next_chunk(struct mlx4_mr *mr, struct mlx4_mr_cache *entry,
 	uintptr_t end = 0;
 	uint32_t idx = 0;
 
+	/* MR for external memory doesn't have memseg list. */
+	if (mr->msl == NULL) {
+		struct ibv_mr *ibv_mr = mr->ibv_mr;
+
+		assert(mr->ms_bmp_n == 1);
+		assert(mr->ms_n == 1);
+		assert(base_idx == 0);
+		/*
+		 * Can't search it from memseg list but get it directly from
+		 * verbs MR as there's only one chunk.
+		 */
+		entry->start = (uintptr_t)ibv_mr->addr;
+		entry->end = (uintptr_t)ibv_mr->addr + mr->ibv_mr->length;
+		entry->lkey = rte_cpu_to_be_32(mr->ibv_mr->lkey);
+		/* Returning 1 ends iteration. */
+		return 1;
+	}
 	for (idx = base_idx; idx < mr->ms_bmp_n; ++idx) {
 		if (rte_bitmap_get(mr->ms_bmp, idx)) {
 			const struct rte_memseg_list *msl;
@@ -809,6 +826,7 @@ mlx4_mr_mem_event_free_cb(struct rte_eth_dev *dev, const void *addr, size_t len)
 		mr = mr_lookup_dev_list(dev, &entry, start);
 		if (mr == NULL)
 			continue;
+		assert(mr->msl); /* Can't be external memory. */
 		ms = rte_mem_virt2memseg((void *)start, msl);
 		assert(ms != NULL);
 		assert(msl->page_sz == ms->hugepage_sz);
@@ -1055,6 +1073,133 @@ mlx4_mr_flush_local_cache(struct mlx4_mr_ctrl *mr_ctrl)
 	      (void *)mr_ctrl, mr_ctrl->cur_gen);
 }
 
+/**
+ * Called during rte_mempool_mem_iter() by mlx4_mr_update_ext_mp().
+ *
+ * Externally allocated chunk is registered and a MR is created for the chunk.
+ * The MR object is added to the global list. If memseg list of a MR object
+ * (mr->msl) is null, the MR object can be regarded as externally allocated
+ * memory.
+ *
+ * Once external memory is registered, it should be static. If the memory is
+ * freed and the virtual address range has different physical memory mapped
+ * again, it may cause crash on device due to the wrong translation entry. PMD
+ * can't track the free event of the external memory for now.
+ */
+static void
+mlx4_mr_update_ext_mp_cb(struct rte_mempool *mp, void *opaque,
+			 struct rte_mempool_memhdr *memhdr,
+			 unsigned mem_idx __rte_unused)
+{
+	struct mr_update_mp_data *data = opaque;
+	struct rte_eth_dev *dev = data->dev;
+	struct priv *priv = dev->data->dev_private;
+	struct mlx4_mr_ctrl *mr_ctrl = data->mr_ctrl;
+	struct mlx4_mr *mr = NULL;
+	uintptr_t addr = (uintptr_t)memhdr->addr;
+	size_t len = memhdr->len;
+	struct mlx4_mr_cache entry;
+	uint32_t lkey;
+
+	/* If already registered, it should return. */
+	rte_rwlock_read_lock(&priv->mr.rwlock);
+	lkey = mr_lookup_dev(dev, &entry, addr);
+	rte_rwlock_read_unlock(&priv->mr.rwlock);
+	if (lkey != UINT32_MAX)
+		return;
+	mr = rte_zmalloc_socket(NULL,
+				RTE_ALIGN_CEIL(sizeof(*mr),
+					       RTE_CACHE_LINE_SIZE),
+				RTE_CACHE_LINE_SIZE, mp->socket_id);
+	if (mr == NULL) {
+		WARN("port %u unable to allocate memory for a new MR of"
+		     " mempool (%s).",
+		     dev->data->port_id, mp->name);
+		data->ret = -1;
+		return;
+	}
+	DEBUG("port %u register MR for chunk #%d of mempool (%s)",
+	      dev->data->port_id, mem_idx, mp->name);
+	mr->ibv_mr = mlx4_glue->reg_mr(priv->pd, (void *)addr, len,
+				       IBV_ACCESS_LOCAL_WRITE);
+	if (mr->ibv_mr == NULL) {
+		WARN("port %u fail to create a verbs MR for address (%p)",
+		     dev->data->port_id, (void *)addr);
+		rte_free(mr);
+		data->ret = -1;
+		return;
+	}
+	mr->msl = NULL; /* Mark it is external memory. */
+	mr->ms_bmp = NULL;
+	mr->ms_n = 1;
+	mr->ms_bmp_n = 1;
+	rte_rwlock_write_lock(&priv->mr.rwlock);
+	LIST_INSERT_HEAD(&priv->mr.mr_list, mr, mr);
+	DEBUG("port %u MR CREATED (%p) for external memory %p:\n"
+	      "  [0x%" PRIxPTR ", 0x%" PRIxPTR "),"
+	      " lkey=0x%x base_idx=%u ms_n=%u, ms_bmp_n=%u",
+	      dev->data->port_id, (void *)mr, (void *)addr,
+	      addr, addr + len, rte_cpu_to_be_32(mr->ibv_mr->lkey),
+	      mr->ms_base_idx, mr->ms_n, mr->ms_bmp_n);
+	/* Insert to the global cache table. */
+	mr_insert_dev_cache(dev, mr);
+	rte_rwlock_write_unlock(&priv->mr.rwlock);
+	/* Insert to the local cache table */
+	mlx4_mr_addr2mr_bh(dev, mr_ctrl, addr);
+}
+
+/**
+ * Register MR for entire memory chunks in a Mempool having externally allocated
+ * memory and fill in local cache.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param mr_ctrl
+ *   Pointer to per-queue MR control structure.
+ * @param mp
+ *   Pointer to registering Mempool.
+ *
+ * @return
+ *   0 on success, -1 on failure.
+ */
+static uint32_t
+mlx4_mr_update_ext_mp(struct rte_eth_dev *dev, struct mlx4_mr_ctrl *mr_ctrl,
+		      struct rte_mempool *mp)
+{
+	struct mr_update_mp_data data = {
+		.dev = dev,
+		.mr_ctrl = mr_ctrl,
+		.ret = 0,
+	};
+
+	rte_mempool_mem_iter(mp, mlx4_mr_update_ext_mp_cb, &data);
+	return data.ret;
+}
+
+/**
+ * Register MR entire memory chunks in a Mempool having externally allocated
+ * memory and search LKey of the address to return.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param addr
+ *   Search key.
+ * @param mp
+ *   Pointer to registering Mempool where addr belongs.
+ *
+ * @return
+ *   LKey for address on success, UINT32_MAX on failure.
+ */
+uint32_t
+mlx4_tx_update_ext_mp(struct txq *txq, uintptr_t addr, struct rte_mempool *mp)
+{
+	struct mlx4_mr_ctrl *mr_ctrl = &txq->mr_ctrl;
+	struct priv *priv = txq->priv;
+
+	mlx4_mr_update_ext_mp(priv->dev, mr_ctrl, mp);
+	return mlx4_tx_addr2mr_bh(txq, addr);
+}
+
 /* Called during rte_mempool_mem_iter() by mlx4_mr_update_mp(). */
 static void
 mlx4_mr_update_mp_cb(struct rte_mempool *mp __rte_unused, void *opaque,
@@ -1098,6 +1243,10 @@ mlx4_mr_update_mp(struct rte_eth_dev *dev, struct mlx4_mr_ctrl *mr_ctrl,
 	};
 
 	rte_mempool_mem_iter(mp, mlx4_mr_update_mp_cb, &data);
+	if (data.ret < 0 && rte_errno == ENXIO) {
+		/* Mempool may have externally allocated memory. */
+		return mlx4_mr_update_ext_mp(dev, mr_ctrl, mp);
+	}
 	return data.ret;
 }
 
