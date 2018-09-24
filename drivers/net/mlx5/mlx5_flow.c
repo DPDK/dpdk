@@ -42,6 +42,7 @@ extern const struct eth_dev_ops mlx5_dev_ops_isolate;
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 extern const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops;
 #endif
+extern const struct mlx5_flow_driver_ops mlx5_flow_tcf_drv_ops;
 extern const struct mlx5_flow_driver_ops mlx5_flow_verbs_drv_ops;
 
 const struct mlx5_flow_driver_ops mlx5_flow_null_drv_ops;
@@ -51,6 +52,7 @@ const struct mlx5_flow_driver_ops *flow_drv_ops[] = {
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	[MLX5_FLOW_TYPE_DV] = &mlx5_flow_dv_drv_ops,
 #endif
+	[MLX5_FLOW_TYPE_TCF] = &mlx5_flow_tcf_drv_ops,
 	[MLX5_FLOW_TYPE_VERBS] = &mlx5_flow_verbs_drv_ops,
 	[MLX5_FLOW_TYPE_MAX] = &mlx5_flow_null_drv_ops
 };
@@ -1628,7 +1630,9 @@ flow_get_drv_type(struct rte_eth_dev *dev __rte_unused,
 	struct priv *priv __rte_unused = dev->data->dev_private;
 	enum mlx5_flow_drv_type type = MLX5_FLOW_TYPE_MAX;
 
-	if (!attr->transfer) {
+	if (attr->transfer) {
+		type = MLX5_FLOW_TYPE_TCF;
+	} else {
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 		type = priv->config.dv_flow_en ?  MLX5_FLOW_TYPE_DV :
 						  MLX5_FLOW_TYPE_VERBS;

@@ -32,6 +32,7 @@ if build
 		'mlx5_ethdev.c',
 		'mlx5_flow.c',
 		'mlx5_flow_dv.c',
+		'mlx5_flow_tcf.c',
 		'mlx5_flow_verbs.c',
 		'mlx5_mac.c',
 		'mlx5_mr.c',

@@ -73,6 +73,11 @@
 #define MLX5_FLOW_ACTION_FLAG (1u << 3)
 #define MLX5_FLOW_ACTION_MARK (1u << 4)
 #define MLX5_FLOW_ACTION_COUNT (1u << 5)
+#define MLX5_FLOW_ACTION_PORT_ID (1u << 6)
+#define MLX5_FLOW_ACTION_OF_POP_VLAN (1u << 7)
+#define MLX5_FLOW_ACTION_OF_PUSH_VLAN (1u << 8)
+#define MLX5_FLOW_ACTION_OF_SET_VLAN_VID (1u << 9)
+#define MLX5_FLOW_ACTION_OF_SET_VLAN_PCP (1u << 10)
 
 #define MLX5_FLOW_FATE_ACTIONS \
 	(MLX5_FLOW_ACTION_DROP | MLX5_FLOW_ACTION_QUEUE | MLX5_FLOW_ACTION_RSS)
@@ -123,6 +128,7 @@
 enum mlx5_flow_drv_type {
 	MLX5_FLOW_TYPE_MIN,
 	MLX5_FLOW_TYPE_DV,
+	MLX5_FLOW_TYPE_TCF,
 	MLX5_FLOW_TYPE_VERBS,
 	MLX5_FLOW_TYPE_MAX,
 };
@@ -165,6 +171,12 @@ struct mlx5_flow_dv {
 	int actions_n; /**< number of actions. */
 };
 
+/** Linux TC flower driver for E-Switch flow. */
+struct mlx5_flow_tcf {
+	struct nlmsghdr *nlh;
+	struct tcmsg *tcm;
+};
+
 /* Verbs specification header. */
 struct ibv_spec_header {
 	enum ibv_flow_spec_type type;
@@ -194,6 +206,7 @@ struct mlx5_flow {
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 		struct mlx5_flow_dv dv;
 #endif
+		struct mlx5_flow_tcf tcf;
 		struct mlx5_flow_verbs verbs;
 	};
 };
@@ -316,5 +329,12 @@ int mlx5_flow_validate_item_vxlan_gpe(const struct rte_flow_item *item,
 				      uint64_t item_flags,
 				      struct rte_eth_dev *dev,
 				      struct rte_flow_error *error);
+
+/* mlx5_flow_tcf.c */
+
+int mlx5_flow_tcf_init(struct mnl_socket *nl, unsigned int ifindex,
+		       struct rte_flow_error *error);
+struct mnl_socket *mlx5_flow_tcf_socket_create(void);
+void mlx5_flow_tcf_socket_destroy(struct mnl_socket *nl);
 
 #endif /* RTE_PMD_MLX5_FLOW_H_ */
