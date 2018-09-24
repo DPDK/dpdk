@@ -363,6 +363,8 @@ uint16_t mlx5_rx_burst_vec(void *dpdk_txq, struct rte_mbuf **pkts,
 void mlx5_mr_flush_local_cache(struct mlx5_mr_ctrl *mr_ctrl);
 uint32_t mlx5_rx_addr2mr_bh(struct mlx5_rxq_data *rxq, uintptr_t addr);
 uint32_t mlx5_tx_addr2mr_bh(struct mlx5_txq_data *txq, uintptr_t addr);
+uint32_t mlx5_tx_update_ext_mp(struct mlx5_txq_data *txq, uintptr_t addr,
+			       struct rte_mempool *mp);
 
 /**
  * Provide safe 64bit store operation to mlx5 UAR region for both 32bit and
@@ -607,6 +609,24 @@ mlx5_tx_complete(struct mlx5_txq_data *txq)
 }
 
 /**
+ * Get Memory Pool (MP) from mbuf. If mbuf is indirect, the pool from which the
+ * cloned mbuf is allocated is returned instead.
+ *
+ * @param buf
+ *   Pointer to mbuf.
+ *
+ * @return
+ *   Memory pool where data is located for given mbuf.
+ */
+static struct rte_mempool *
+mlx5_mb2mp(struct rte_mbuf *buf)
+{
+	if (unlikely(RTE_MBUF_INDIRECT(buf)))
+		return rte_mbuf_from_indirect(buf)->pool;
+	return buf->pool;
+}
+
+/**
  * Query LKey from a packet buffer for Rx. No need to flush local caches for Rx
  * as mempool is pre-configured and static.
  *
@@ -664,7 +684,20 @@ mlx5_tx_addr2mr(struct mlx5_txq_data *txq, uintptr_t addr)
 	return mlx5_tx_addr2mr_bh(txq, addr);
 }
 
-#define mlx5_tx_mb2mr(rxq, mb) mlx5_tx_addr2mr(rxq, (uintptr_t)((mb)->buf_addr))
+static __rte_always_inline uint32_t
+mlx5_tx_mb2mr(struct mlx5_txq_data *txq, struct rte_mbuf *mb)
+{
+	uintptr_t addr = (uintptr_t)mb->buf_addr;
+	uint32_t lkey = mlx5_tx_addr2mr(txq, addr);
+
+	if (likely(lkey != UINT32_MAX))
+		return lkey;
+	if (rte_errno == ENXIO) {
+		/* Mempool may have externally allocated memory. */
+		lkey = mlx5_tx_update_ext_mp(txq, addr, mlx5_mb2mp(mb));
+	}
+	return lkey;
+}
 
 /**
  * Ring TX queue doorbell and flush the update if requested.
