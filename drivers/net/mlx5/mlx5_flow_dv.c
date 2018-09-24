@@ -2,6 +2,7 @@
  * Copyright 2018 Mellanox Technologies, Ltd
  */
 
+
 #include <sys/queue.h>
 #include <stdalign.h>
 #include <stdint.h>
@@ -1101,7 +1102,7 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 	if (matcher->egress)
 		dv_attr.flags |= IBV_FLOW_ATTR_FLAGS_EGRESS;
 	cache_matcher->matcher_object =
-		mlx5dv_create_flow_matcher(priv->ctx, &dv_attr);
+		mlx5_glue->dv_create_flow_matcher(priv->ctx, &dv_attr);
 	if (!cache_matcher->matcher_object)
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -1174,6 +1175,190 @@ flow_dv_translate(struct rte_eth_dev *dev,
 }
 
 /**
+ * Apply the flow to the NIC.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in, out] flow
+ *   Pointer to flow structure.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
+	      struct rte_flow_error *error)
+{
+	struct mlx5_flow_dv *dv;
+	struct mlx5_flow *dev_flow;
+	int n;
+	int err;
+
+	LIST_FOREACH(dev_flow, &flow->dev_flows, next) {
+		dv = &dev_flow->dv;
+		n = dv->actions_n;
+		if (flow->actions & MLX5_FLOW_ACTION_DROP) {
+			dv->hrxq = mlx5_hrxq_drop_new(dev);
+			if (!dv->hrxq) {
+				rte_flow_error_set
+					(error, errno,
+					 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					 "cannot get drop hash queue");
+				goto error;
+			}
+			dv->actions[n].type = MLX5DV_FLOW_ACTION_DEST_IBV_QP;
+			dv->actions[n].qp = dv->hrxq->qp;
+			n++;
+		} else {
+			struct mlx5_hrxq *hrxq;
+			hrxq = mlx5_hrxq_get(dev, flow->key,
+					     MLX5_RSS_HASH_KEY_LEN,
+					     dv->hash_fields,
+					     (*flow->queue),
+					     flow->rss.queue_num);
+			if (!hrxq)
+				hrxq = mlx5_hrxq_new
+					(dev, flow->key, MLX5_RSS_HASH_KEY_LEN,
+					 dv->hash_fields, (*flow->queue),
+					 flow->rss.queue_num,
+					 !!(flow->layers &
+					    MLX5_FLOW_LAYER_TUNNEL));
+			if (!hrxq) {
+				rte_flow_error_set
+					(error, rte_errno,
+					 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					 "cannot get hash queue");
+				goto error;
+			}
+			dv->hrxq = hrxq;
+			dv->actions[n].type = MLX5DV_FLOW_ACTION_DEST_IBV_QP;
+			dv->actions[n].qp = hrxq->qp;
+			n++;
+		}
+		dv->flow =
+			mlx5_glue->dv_create_flow(dv->matcher->matcher_object,
+						  (void *)&dv->value, n,
+						  dv->actions);
+		if (!dv->flow) {
+			rte_flow_error_set(error, errno,
+					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   NULL,
+					   "hardware refuses to create flow");
+			goto error;
+		}
+	}
+	return 0;
+error:
+	err = rte_errno; /* Save rte_errno before cleanup. */
+	LIST_FOREACH(dev_flow, &flow->dev_flows, next) {
+		struct mlx5_flow_dv *dv = &dev_flow->dv;
+		if (dv->hrxq) {
+			if (flow->actions & MLX5_FLOW_ACTION_DROP)
+				mlx5_hrxq_drop_release(dev);
+			else
+				mlx5_hrxq_release(dev, dv->hrxq);
+			dv->hrxq = NULL;
+		}
+	}
+	rte_errno = err; /* Restore rte_errno. */
+	return -rte_errno;
+}
+
+/**
+ * Release the flow matcher.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param flow
+ *   Pointer to mlx5_flow.
+ *
+ * @return
+ *   1 while a reference on it exists, 0 when freed.
+ */
+static int
+flow_dv_matcher_release(struct rte_eth_dev *dev,
+			struct mlx5_flow *flow)
+{
+	struct mlx5_flow_dv_matcher *matcher = flow->dv.matcher;
+
+	assert(matcher->matcher_object);
+	DRV_LOG(DEBUG, "port %u matcher %p: refcnt %d--",
+		dev->data->port_id, (void *)matcher,
+		rte_atomic32_read(&matcher->refcnt));
+	if (rte_atomic32_dec_and_test(&matcher->refcnt)) {
+		claim_zero(mlx5_glue->dv_destroy_flow_matcher
+			   (matcher->matcher_object));
+		LIST_REMOVE(matcher, next);
+		rte_free(matcher);
+		DRV_LOG(DEBUG, "port %u matcher %p: removed",
+			dev->data->port_id, (void *)matcher);
+		return 0;
+	}
+	return 1;
+}
+
+/**
+ * Remove the flow from the NIC but keeps it in memory.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in, out] flow
+ *   Pointer to flow structure.
+ */
+static void
+flow_dv_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
+{
+	struct mlx5_flow_dv *dv;
+	struct mlx5_flow *dev_flow;
+
+	if (!flow)
+		return;
+	LIST_FOREACH(dev_flow, &flow->dev_flows, next) {
+		dv = &dev_flow->dv;
+		if (dv->flow) {
+			claim_zero(mlx5_glue->destroy_flow(dv->flow));
+			dv->flow = NULL;
+		}
+		if (dv->hrxq) {
+			if (flow->actions & MLX5_FLOW_ACTION_DROP)
+				mlx5_hrxq_drop_release(dev);
+			else
+				mlx5_hrxq_release(dev, dv->hrxq);
+			dv->hrxq = NULL;
+		}
+	}
+	if (flow->counter)
+		flow->counter = NULL;
+}
+
+/**
+ * Remove the flow from the NIC and the memory.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in, out] flow
+ *   Pointer to flow structure.
+ */
+static void
+flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
+{
+	struct mlx5_flow *dev_flow;
+
+	if (!flow)
+		return;
+	flow_dv_remove(dev, flow);
+	while (!LIST_EMPTY(&flow->dev_flows)) {
+		dev_flow = LIST_FIRST(&flow->dev_flows);
+		LIST_REMOVE(dev_flow, next);
+		if (dev_flow->dv.matcher)
+			flow_dv_matcher_release(dev, dev_flow);
+		rte_free(dev_flow);
+	}
+}
+
+/**
  * Fills the flow_ops with the function pointers.
  *
  * @param[out] flow_ops
@@ -1186,9 +1371,9 @@ mlx5_flow_dv_get_driver_ops(struct mlx5_flow_driver_ops *flow_ops)
 		.validate = flow_dv_validate,
 		.prepare = flow_dv_prepare,
 		.translate = flow_dv_translate,
-		.apply = NULL,
-		.remove = NULL,
-		.destroy = NULL,
+		.apply = flow_dv_apply,
+		.remove = flow_dv_remove,
+		.destroy = flow_dv_destroy,
 	};
 }
 

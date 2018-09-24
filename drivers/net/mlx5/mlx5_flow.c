@@ -2492,5 +2492,9 @@ mlx5_dev_filter_ctrl(struct rte_eth_dev *dev,
 void
 mlx5_flow_init_driver_ops(struct rte_eth_dev *dev __rte_unused)
 {
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	mlx5_flow_dv_get_driver_ops(&nic_ops);
+#else
 	mlx5_flow_verbs_get_driver_ops(&nic_ops);
+#endif
 }

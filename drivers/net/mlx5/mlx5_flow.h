@@ -66,16 +66,6 @@
 	(MLX5_FLOW_LAYER_INNER_L2 | MLX5_FLOW_LAYER_INNER_L3 | \
 	 MLX5_FLOW_LAYER_INNER_L4)
 
-/* Actions that modify the fate of matching traffic. */
-#define MLX5_FLOW_FATE_DROP (1u << 0)
-#define MLX5_FLOW_FATE_QUEUE (1u << 1)
-#define MLX5_FLOW_FATE_RSS (1u << 2)
-
-/* Modify a packet. */
-#define MLX5_FLOW_MOD_FLAG (1u << 0)
-#define MLX5_FLOW_MOD_MARK (1u << 1)
-#define MLX5_FLOW_MOD_COUNT (1u << 2)
-
 /* Actions */
 #define MLX5_FLOW_ACTION_DROP (1u << 0)
 #define MLX5_FLOW_ACTION_QUEUE (1u << 1)
@@ -194,7 +184,9 @@ struct mlx5_flow {
 	struct rte_flow *flow; /**< Pointer to the main flow. */
 	uint32_t layers; /**< Bit-fields that holds the detected layers. */
 	union {
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
 		struct mlx5_flow_dv dv;
+#endif
 		struct mlx5_flow_verbs verbs;
 	};
 };
