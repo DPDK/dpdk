@@ -240,6 +240,10 @@ Supported NICs
 
    - Solarflare X2522 Dual Port SFP28 10/25GbE Adapter
 
+   - Solarflare X2541 Single Port QSFP28 10/25G/100G Adapter
+
+   - Solarflare X2542 Dual Port QSFP28 10/25G/100G Adapter
+
 - Solarflare Flareon [Ultra] Server Adapters:
 
    - Solarflare SFN8522 Dual Port SFP+ Server Adapter
