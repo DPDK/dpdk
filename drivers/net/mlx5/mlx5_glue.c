@@ -346,6 +346,48 @@ mlx5_glue_dv_create_qp(struct ibv_context *context,
 #endif
 }
 
+static struct mlx5dv_flow_matcher *
+mlx5_glue_dv_create_flow_matcher(struct ibv_context *context,
+				 struct mlx5dv_flow_matcher_attr *matcher_attr)
+{
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	return mlx5dv_create_flow_matcher(context, matcher_attr);
+#else
+	(void)context;
+	(void)matcher_attr;
+	return NULL;
+#endif
+}
+
+static struct ibv_flow *
+mlx5_glue_dv_create_flow(struct mlx5dv_flow_matcher *matcher,
+			 struct mlx5dv_flow_match_parameters *match_value,
+			 size_t num_actions,
+			 struct mlx5dv_flow_action_attr *actions_attr)
+{
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	return mlx5dv_create_flow(matcher, match_value,
+				  num_actions, actions_attr);
+#else
+	(void)matcher;
+	(void)match_value;
+	(void)num_actions;
+	(void)actions_attr;
+	return NULL;
+#endif
+}
+
+static int
+mlx5_glue_dv_destroy_flow_matcher(struct mlx5dv_flow_matcher *matcher)
+{
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	return mlx5dv_destroy_flow_matcher(matcher);
+#else
+	(void)matcher;
+	return 0;
+#endif
+}
+
 alignas(RTE_CACHE_LINE_SIZE)
 const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.version = MLX5_GLUE_VERSION,
@@ -392,4 +434,7 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.dv_set_context_attr = mlx5_glue_dv_set_context_attr,
 	.dv_init_obj = mlx5_glue_dv_init_obj,
 	.dv_create_qp = mlx5_glue_dv_create_qp,
+	.dv_create_flow_matcher = mlx5_glue_dv_create_flow_matcher,
+	.dv_destroy_flow_matcher = mlx5_glue_dv_destroy_flow_matcher,
+	.dv_create_flow = mlx5_glue_dv_create_flow,
 };
