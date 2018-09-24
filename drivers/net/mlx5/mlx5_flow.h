@@ -138,6 +138,8 @@ struct mlx5_flow_dv_match_params {
 	/**< Matcher value. This value is used as the mask or as a key. */
 };
 
+#define MLX5_DV_MAX_NUMBER_OF_ACTIONS 8
+
 /* Matcher structure. */
 struct mlx5_flow_dv_matcher {
 	LIST_ENTRY(mlx5_flow_dv_matcher) next;
@@ -159,6 +161,11 @@ struct mlx5_flow_dv {
 	struct mlx5_flow_dv_match_params value;
 	/**< Holds the value that the packet is compared to. */
 	struct ibv_flow *flow; /**< Installed flow. */
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	struct mlx5dv_flow_action_attr actions[MLX5_DV_MAX_NUMBER_OF_ACTIONS];
+	/**< Action list. */
+#endif
+	int actions_n; /**< number of actions. */
 };
 
 /* Verbs specification header. */

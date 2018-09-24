@@ -946,6 +946,65 @@ flow_dv_create_item(void *matcher, void *key,
 	}
 }
 
+/**
+ * Store the requested actions in an array.
+ *
+ * @param[in] action
+ *   Flow action to translate.
+ * @param[in, out] dev_flow
+ *   Pointer to the mlx5_flow.
+ */
+static void
+flow_dv_create_action(const struct rte_flow_action *action,
+		      struct mlx5_flow *dev_flow)
+{
+	const struct rte_flow_action_queue *queue;
+	const struct rte_flow_action_rss *rss;
+	int actions_n = dev_flow->dv.actions_n;
+	struct rte_flow *flow = dev_flow->flow;
+
+	switch (action->type) {
+	case RTE_FLOW_ACTION_TYPE_VOID:
+		break;
+	case RTE_FLOW_ACTION_TYPE_FLAG:
+		dev_flow->dv.actions[actions_n].type = MLX5DV_FLOW_ACTION_TAG;
+		dev_flow->dv.actions[actions_n].tag_value =
+			MLX5_FLOW_MARK_DEFAULT;
+		actions_n++;
+		break;
+	case RTE_FLOW_ACTION_TYPE_MARK:
+		dev_flow->dv.actions[actions_n].type = MLX5DV_FLOW_ACTION_TAG;
+		dev_flow->dv.actions[actions_n].tag_value =
+			((const struct rte_flow_action_mark *)
+			 (action->conf))->id;
+		actions_n++;
+		break;
+	case RTE_FLOW_ACTION_TYPE_DROP:
+		dev_flow->dv.actions[actions_n].type = MLX5DV_FLOW_ACTION_DROP;
+		flow->actions |= MLX5_FLOW_ACTION_DROP;
+		break;
+	case RTE_FLOW_ACTION_TYPE_QUEUE:
+		queue = action->conf;
+		flow->rss.queue_num = 1;
+		(*flow->queue)[0] = queue->index;
+		break;
+	case RTE_FLOW_ACTION_TYPE_RSS:
+		rss = action->conf;
+		if (flow->queue)
+			memcpy((*flow->queue), rss->queue,
+			       rss->queue_num * sizeof(uint16_t));
+		flow->rss.queue_num = rss->queue_num;
+		memcpy(flow->key, rss->key, MLX5_RSS_HASH_KEY_LEN);
+		flow->rss.types = rss->types;
+		flow->rss.level = rss->level;
+		/* Added to array only in apply since we need the QP */
+		break;
+	default:
+		break;
+	}
+	dev_flow->dv.actions_n = actions_n;
+}
+
 static uint32_t matcher_zero[MLX5_ST_SZ_DW(fte_match_param)] = { 0 };
 
 #define HEADER_IS_ZERO(match_criteria, headers)				     \
@@ -1109,6 +1168,8 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	matcher.egress = attr->egress;
 	if (flow_dv_matcher_register(dev, &matcher, dev_flow, error))
 		return -rte_errno;
+	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++)
+		flow_dv_create_action(actions, dev_flow);
 	return 0;
 }
 
