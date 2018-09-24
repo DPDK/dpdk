@@ -112,6 +112,12 @@ API Changes
   flag the MAC can be properly configured in any case. This is particularly
   important for bonding.
 
+* The default behaviour of CRC strip offload changed. Without any specific Rx
+  offload flag, default behavior by PMD is now to strip CRC.
+  DEV_RX_OFFLOAD_CRC_STRIP offload flag has been removed.
+  To request keeping CRC, application should set ``DEV_RX_OFFLOAD_KEEP_CRC`` Rx
+  offload.
+
 
 ABI Changes
 -----------
