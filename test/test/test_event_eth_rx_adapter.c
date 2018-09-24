@@ -98,8 +98,7 @@ port_init_rx_intr(uint8_t port, struct rte_mempool *mp)
 {
 	static const struct rte_eth_conf port_conf_default = {
 		.rxmode = {
-			.mq_mode = ETH_MQ_RX_RSS,
-			.max_rx_pkt_len = ETHER_MAX_LEN
+			.mq_mode = ETH_MQ_RX_NONE,
 		},
 		.intr_conf = {
 			.rxq = 1,
@@ -114,16 +113,8 @@ port_init(uint8_t port, struct rte_mempool *mp)
 {
 	static const struct rte_eth_conf port_conf_default = {
 		.rxmode = {
-			.mq_mode = ETH_MQ_RX_RSS,
-			.max_rx_pkt_len = ETHER_MAX_LEN
+			.mq_mode = ETH_MQ_RX_NONE,
 		},
-		.rx_adv_conf = {
-			.rss_conf = {
-				.rss_hf = ETH_RSS_IP |
-					ETH_RSS_TCP |
-					ETH_RSS_UDP,
-			}
-		}
 	};
 
 	return port_init_common(port, &port_conf_default, mp);
