@@ -5,58 +5,6 @@
 
 #include "test_pipeline_common.h"
 
-static int32_t
-pipeline_event_tx_burst_service_func(void *args)
-{
-
-	int i;
-	struct tx_service_data *tx = args;
-	const uint8_t dev = tx->dev_id;
-	const uint8_t port = tx->port_id;
-	struct rte_event ev[BURST_SIZE + 1];
-
-	uint16_t nb_rx = rte_event_dequeue_burst(dev, port, ev, BURST_SIZE, 0);
-
-	if (!nb_rx) {
-		for (i = 0; i < tx->nb_ethports; i++)
-			rte_eth_tx_buffer_flush(i, 0, tx->tx_buf[i]);
-		return 0;
-	}
-
-	for (i = 0; i < nb_rx; i++) {
-		struct rte_mbuf *m = ev[i].mbuf;
-		rte_eth_tx_buffer(m->port, 0, tx->tx_buf[m->port], m);
-	}
-	tx->processed_pkts += nb_rx;
-
-	return 0;
-}
-
-static int32_t
-pipeline_event_tx_service_func(void *args)
-{
-
-	int i;
-	struct tx_service_data *tx = args;
-	const uint8_t dev = tx->dev_id;
-	const uint8_t port = tx->port_id;
-	struct rte_event ev;
-
-	uint16_t nb_rx = rte_event_dequeue_burst(dev, port, &ev, 1, 0);
-
-	if (!nb_rx) {
-		for (i = 0; i < tx->nb_ethports; i++)
-			rte_eth_tx_buffer_flush(i, 0, tx->tx_buf[i]);
-		return 0;
-	}
-
-	struct rte_mbuf *m = ev.mbuf;
-	rte_eth_tx_buffer(m->port, 0, tx->tx_buf[m->port], m);
-	tx->processed_pkts++;
-
-	return 0;
-}
-
 int
 pipeline_test_result(struct evt_test *test, struct evt_options *opt)
 {
@@ -97,11 +45,8 @@ processed_pkts(struct test_pipeline *t)
 	uint64_t total = 0;
 
 	rte_smp_rmb();
-	if (t->mt_unsafe)
-		total = t->tx_service.processed_pkts;
-	else
-		for (i = 0; i < t->nb_workers; i++)
-			total += t->worker[i].processed_pkts;
+	for (i = 0; i < t->nb_workers; i++)
+		total += t->worker[i].processed_pkts;
 
 	return total;
 }
@@ -215,7 +160,6 @@ pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 {
 	uint16_t i;
 	uint8_t nb_queues = 1;
-	uint8_t mt_state = 0;
 	struct test_pipeline *t = evt_test_priv(test);
 	struct rte_eth_rxconf rx_conf;
 	struct rte_eth_conf port_conf = {
@@ -237,13 +181,17 @@ pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 		return -ENODEV;
 	}
 
+	t->internal_port = 1;
 	RTE_ETH_FOREACH_DEV(i) {
 		struct rte_eth_dev_info dev_info;
 		struct rte_eth_conf local_port_conf = port_conf;
+		uint32_t caps = 0;
+
+		rte_event_eth_tx_adapter_caps_get(opt->dev_id, i, &caps);
+		if (!(caps & RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT))
+			t->internal_port = 0;
 
 		rte_eth_dev_info_get(i, &dev_info);
-		mt_state = !(dev_info.tx_offload_capa &
-				DEV_TX_OFFLOAD_MT_LOCKFREE);
 		rx_conf = dev_info.default_rxconf;
 		rx_conf.offloads = port_conf.rxmode.offloads;
 
@@ -278,11 +226,6 @@ pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 			return -EINVAL;
 		}
 
-		t->mt_unsafe |= mt_state;
-		t->tx_service.tx_buf[i] =
-			rte_malloc(NULL, RTE_ETH_TX_BUFFER_SIZE(BURST_SIZE), 0);
-		if (t->tx_service.tx_buf[i] == NULL)
-			rte_panic("Unable to allocate Tx buffer memory.");
 		rte_eth_promiscuous_enable(i);
 	}
 
@@ -294,7 +237,6 @@ pipeline_event_port_setup(struct evt_test *test, struct evt_options *opt,
 		uint8_t *queue_arr, uint8_t nb_queues,
 		const struct rte_event_port_conf p_conf)
 {
-	int i;
 	int ret;
 	uint8_t port;
 	struct test_pipeline *t = evt_test_priv(test);
@@ -315,23 +257,15 @@ pipeline_event_port_setup(struct evt_test *test, struct evt_options *opt,
 			return ret;
 		}
 
-		if (queue_arr == NULL) {
-			if (rte_event_port_link(opt->dev_id, port, NULL, NULL,
-						0) != nb_queues)
-				goto link_fail;
-		} else {
-			for (i = 0; i < nb_queues; i++) {
-				if (rte_event_port_link(opt->dev_id, port,
-						&queue_arr[i], NULL, 1) != 1)
-					goto link_fail;
-			}
-		}
+		if (rte_event_port_link(opt->dev_id, port, queue_arr, NULL,
+					nb_queues) != nb_queues)
+			goto link_fail;
 	}
 
 	return 0;
 
 link_fail:
-	evt_err("failed to link all queues to port %d", port);
+	evt_err("failed to link queues to port %d", port);
 	return -EINVAL;
 }
 
@@ -384,79 +318,64 @@ pipeline_event_rx_adapter_setup(struct evt_options *opt, uint8_t stride,
 			}
 		}
 
-		ret = rte_eth_dev_start(prod);
-		if (ret) {
-			evt_err("Ethernet dev [%d] failed to start."
-					" Using synthetic producer", prod);
-			return ret;
-		}
-
-		ret = rte_event_eth_rx_adapter_start(prod);
-		if (ret) {
-			evt_err("Rx adapter[%d] start failed", prod);
-			return ret;
-		}
-		evt_info("Port[%d] using Rx adapter[%d] started", prod, prod);
+		evt_info("Port[%d] using Rx adapter[%d] configured", prod,
+				prod);
 	}
 
 	return ret;
 }
 
 int
-pipeline_event_tx_service_setup(struct evt_test *test, struct evt_options *opt,
-		uint8_t tx_queue_id, uint8_t tx_port_id,
-		const struct rte_event_port_conf p_conf)
+pipeline_event_tx_adapter_setup(struct evt_options *opt,
+		struct rte_event_port_conf port_conf)
 {
 	int ret;
-	struct rte_service_spec serv;
-	struct test_pipeline *t = evt_test_priv(test);
-	struct tx_service_data *tx = &t->tx_service;
+	uint16_t consm;
 
-	ret = rte_event_port_setup(opt->dev_id, tx_port_id, &p_conf);
-	if (ret) {
-		evt_err("failed to setup port %d", tx_port_id);
-		return ret;
+	RTE_ETH_FOREACH_DEV(consm) {
+		uint32_t cap;
+
+		ret = rte_event_eth_tx_adapter_caps_get(opt->dev_id,
+				consm, &cap);
+		if (ret) {
+			evt_err("failed to get event tx adapter[%d] caps",
+					consm);
+			return ret;
+		}
+
+		ret = rte_event_eth_tx_adapter_create(consm, opt->dev_id,
+				&port_conf);
+		if (ret) {
+			evt_err("failed to create tx adapter[%d]", consm);
+			return ret;
+		}
+
+		ret = rte_event_eth_tx_adapter_queue_add(consm, consm, -1);
+		if (ret) {
+			evt_err("failed to add tx queues to adapter[%d]",
+					consm);
+			return ret;
+		}
+
+		if (!(cap & RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT)) {
+			uint32_t service_id;
+
+			rte_event_eth_tx_adapter_service_id_get(consm,
+					&service_id);
+			ret = evt_service_setup(service_id);
+			if (ret) {
+				evt_err("Failed to setup service core"
+						" for Tx adapter\n");
+				return ret;
+			}
+		}
+
+		evt_info("Port[%d] using Tx adapter[%d] Configured", consm,
+				consm);
 	}
 
-	if (rte_event_port_link(opt->dev_id, tx_port_id, &tx_queue_id,
-				NULL, 1) != 1) {
-		evt_err("failed to link queues to port %d", tx_port_id);
-		return -EINVAL;
-	}
-
-	tx->dev_id = opt->dev_id;
-	tx->queue_id = tx_queue_id;
-	tx->port_id = tx_port_id;
-	tx->nb_ethports = rte_eth_dev_count_avail();
-	tx->t = t;
-
-	/* Register Tx service */
-	memset(&serv, 0, sizeof(struct rte_service_spec));
-	snprintf(serv.name, sizeof(serv.name), "Tx_service");
-
-	if (evt_has_burst_mode(opt->dev_id))
-		serv.callback = pipeline_event_tx_burst_service_func;
-	else
-		serv.callback = pipeline_event_tx_service_func;
-
-	serv.callback_userdata = (void *)tx;
-	ret = rte_service_component_register(&serv, &tx->service_id);
-	if (ret) {
-		evt_err("failed to register Tx service");
-		return ret;
-	}
-
-	ret = evt_service_setup(tx->service_id);
-	if (ret) {
-		evt_err("Failed to setup service core for Tx service\n");
-		return ret;
-	}
-
-	rte_service_runstate_set(tx->service_id, 1);
-
-	return 0;
+	return ret;
 }
-
 
 void
 pipeline_ethdev_destroy(struct evt_test *test, struct evt_options *opt)
@@ -464,16 +383,10 @@ pipeline_ethdev_destroy(struct evt_test *test, struct evt_options *opt)
 	uint16_t i;
 	RTE_SET_USED(test);
 	RTE_SET_USED(opt);
-	struct test_pipeline *t = evt_test_priv(test);
-
-	if (t->mt_unsafe) {
-		rte_service_component_runstate_set(t->tx_service.service_id, 0);
-		rte_service_runstate_set(t->tx_service.service_id, 0);
-		rte_service_component_unregister(t->tx_service.service_id);
-	}
 
 	RTE_ETH_FOREACH_DEV(i) {
 		rte_event_eth_rx_adapter_stop(i);
+		rte_event_eth_tx_adapter_stop(i);
 		rte_eth_dev_stop(i);
 	}
 }
@@ -483,7 +396,6 @@ pipeline_eventdev_destroy(struct evt_test *test, struct evt_options *opt)
 {
 	RTE_SET_USED(test);
 
-	rte_event_dev_stop(opt->dev_id);
 	rte_event_dev_close(opt->dev_id);
 }
 
