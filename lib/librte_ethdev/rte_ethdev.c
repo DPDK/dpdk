@@ -3467,10 +3467,8 @@ rte_eth_dev_create(struct rte_device *device, const char *name,
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		ethdev = rte_eth_dev_allocate(name);
-		if (!ethdev) {
-			retval = -ENODEV;
-			goto probe_failed;
-		}
+		if (!ethdev)
+			return -ENODEV;
 
 		if (priv_data_size) {
 			ethdev->data->dev_private = rte_zmalloc_socket(
@@ -3480,7 +3478,7 @@ rte_eth_dev_create(struct rte_device *device, const char *name,
 			if (!ethdev->data->dev_private) {
 				RTE_LOG(ERR, EAL, "failed to allocate private data");
 				retval = -ENOMEM;
-				goto probe_failed;
+				goto data_alloc_failed;
 			}
 		}
 	} else {
@@ -3488,8 +3486,7 @@ rte_eth_dev_create(struct rte_device *device, const char *name,
 		if (!ethdev) {
 			RTE_LOG(ERR, EAL, "secondary process attach failed, "
 				"ethdev doesn't exist");
-			retval = -ENODEV;
-			goto probe_failed;
+			return  -ENODEV;
 		}
 	}
 
@@ -3518,6 +3515,7 @@ probe_failed:
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		rte_free(ethdev->data->dev_private);
 
+data_alloc_failed:
 	rte_eth_dev_release_port(ethdev);
 
 	return retval;
