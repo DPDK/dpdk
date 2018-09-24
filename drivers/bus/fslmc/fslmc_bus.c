@@ -396,8 +396,12 @@ rte_fslmc_probe(void)
 			   dev->device.devargs->policy ==
 			   RTE_DEV_WHITELISTED)) {
 				ret = drv->probe(drv, dev);
-				if (ret)
+				if (ret) {
 					DPAA2_BUS_ERR("Unable to probe");
+				} else {
+					dev->driver = drv;
+					dev->device.driver = &drv->driver;
+				}
 			}
 			break;
 		}

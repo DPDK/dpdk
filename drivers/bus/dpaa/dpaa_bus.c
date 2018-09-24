@@ -563,8 +563,12 @@ rte_dpaa_bus_probe(void)
 			    dev->device.devargs->policy ==
 			    RTE_DEV_WHITELISTED)) {
 				ret = drv->probe(drv, dev);
-				if (ret)
+				if (ret) {
 					DPAA_BUS_ERR("Unable to probe.\n");
+				} else {
+					dev->driver = drv;
+					dev->device.driver = &drv->driver;
+				}
 			}
 			break;
 		}
