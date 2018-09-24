@@ -26,20 +26,6 @@ core_in_use(unsigned int lcore_id) {
 		fdata->tx_core[lcore_id] || fdata->worker_core[lcore_id]);
 }
 
-static void
-eth_tx_buffer_retry(struct rte_mbuf **pkts, uint16_t unsent,
-			void *userdata)
-{
-	int port_id = (uintptr_t) userdata;
-	unsigned int _sent = 0;
-
-	do {
-		/* Note: hard-coded TX queue */
-		_sent += rte_eth_tx_burst(port_id, 0, &pkts[_sent],
-					  unsent - _sent);
-	} while (_sent != unsent);
-}
-
 /*
  * Parse the coremask given as argument (hexadecimal string) and fill
  * the global configuration (core role and core count) with the parsed
@@ -263,6 +249,7 @@ parse_app_args(int argc, char **argv)
 static inline int
 port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 {
+	struct rte_eth_rxconf rx_conf;
 	static const struct rte_eth_conf port_conf_default = {
 		.rxmode = {
 			.mq_mode = ETH_MQ_RX_RSS,
@@ -291,6 +278,8 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
 		port_conf.txmode.offloads |=
 			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+	rx_conf = dev_info.default_rxconf;
+	rx_conf.offloads = port_conf.rxmode.offloads;
 
 	port_conf.rx_adv_conf.rss_conf.rss_hf &=
 		dev_info.flow_type_rss_offloads;
@@ -311,7 +300,8 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 	/* Allocate and set up 1 RX queue per Ethernet port. */
 	for (q = 0; q < rx_rings; q++) {
 		retval = rte_eth_rx_queue_setup(port, q, rx_ring_size,
-				rte_eth_dev_socket_id(port), NULL, mbuf_pool);
+				rte_eth_dev_socket_id(port), &rx_conf,
+				mbuf_pool);
 		if (retval < 0)
 			return retval;
 	}
@@ -350,7 +340,7 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 static int
 init_ports(uint16_t num_ports)
 {
-	uint16_t portid, i;
+	uint16_t portid;
 
 	if (!cdata.num_mbuf)
 		cdata.num_mbuf = 16384 * num_ports;
@@ -367,36 +357,26 @@ init_ports(uint16_t num_ports)
 			rte_exit(EXIT_FAILURE, "Cannot init port %"PRIu16 "\n",
 					portid);
 
-	RTE_ETH_FOREACH_DEV(i) {
-		void *userdata = (void *)(uintptr_t) i;
-		fdata->tx_buf[i] =
-			rte_malloc(NULL, RTE_ETH_TX_BUFFER_SIZE(32), 0);
-		if (fdata->tx_buf[i] == NULL)
-			rte_panic("Out of memory\n");
-		rte_eth_tx_buffer_init(fdata->tx_buf[i], 32);
-		rte_eth_tx_buffer_set_err_callback(fdata->tx_buf[i],
-						   eth_tx_buffer_retry,
-						   userdata);
-	}
-
 	return 0;
 }
 
 static void
 do_capability_setup(uint8_t eventdev_id)
 {
+	int ret;
 	uint16_t i;
-	uint8_t mt_unsafe = 0;
+	uint8_t generic_pipeline = 0;
 	uint8_t burst = 0;
 
 	RTE_ETH_FOREACH_DEV(i) {
-		struct rte_eth_dev_info dev_info;
-		memset(&dev_info, 0, sizeof(struct rte_eth_dev_info));
+		uint32_t caps = 0;
 
-		rte_eth_dev_info_get(i, &dev_info);
-		/* Check if it is safe ask worker to tx. */
-		mt_unsafe |= !(dev_info.tx_offload_capa &
-				DEV_TX_OFFLOAD_MT_LOCKFREE);
+		ret = rte_event_eth_tx_adapter_caps_get(eventdev_id, i, &caps);
+		if (ret)
+			rte_exit(EXIT_FAILURE,
+				"Invalid capability for Tx adptr port %d\n", i);
+		generic_pipeline |= !(caps &
+				RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT);
 	}
 
 	struct rte_event_dev_info eventdev_info;
@@ -406,21 +386,42 @@ do_capability_setup(uint8_t eventdev_id)
 	burst = eventdev_info.event_dev_cap & RTE_EVENT_DEV_CAP_BURST_MODE ? 1 :
 		0;
 
-	if (mt_unsafe)
+	if (generic_pipeline)
 		set_worker_generic_setup_data(&fdata->cap, burst);
 	else
-		set_worker_tx_setup_data(&fdata->cap, burst);
+		set_worker_tx_enq_setup_data(&fdata->cap, burst);
 }
 
 static void
 signal_handler(int signum)
 {
+	static uint8_t once;
+	uint16_t portid;
+
 	if (fdata->done)
 		rte_exit(1, "Exiting on signal %d\n", signum);
-	if (signum == SIGINT || signum == SIGTERM) {
+	if ((signum == SIGINT || signum == SIGTERM) && !once) {
 		printf("\n\nSignal %d received, preparing to exit...\n",
 				signum);
+		if (cdata.dump_dev)
+			rte_event_dev_dump(0, stdout);
+		once = 1;
 		fdata->done = 1;
+		rte_smp_wmb();
+
+		RTE_ETH_FOREACH_DEV(portid) {
+			rte_event_eth_rx_adapter_stop(portid);
+			rte_event_eth_tx_adapter_stop(portid);
+			rte_eth_dev_stop(portid);
+		}
+
+		rte_eal_mp_wait_lcore();
+
+		RTE_ETH_FOREACH_DEV(portid) {
+			rte_eth_dev_close(portid);
+		}
+
+		rte_event_dev_close(0);
 	}
 	if (signum == SIGTSTP)
 		rte_event_dev_dump(0, stdout);
@@ -499,7 +500,7 @@ main(int argc, char **argv)
 	if (worker_data == NULL)
 		rte_panic("rte_calloc failed\n");
 
-	int dev_id = fdata->cap.evdev_setup(&cons_data, worker_data);
+	int dev_id = fdata->cap.evdev_setup(worker_data);
 	if (dev_id < 0)
 		rte_exit(EXIT_FAILURE, "Error setting up eventdev\n");
 
@@ -524,8 +525,8 @@ main(int argc, char **argv)
 
 		if (fdata->tx_core[lcore_id])
 			printf(
-				"[%s()] lcore %d executing NIC Tx, and using eventdev port %u\n",
-				__func__, lcore_id, cons_data.port_id);
+				"[%s()] lcore %d executing NIC Tx\n",
+				__func__, lcore_id);
 
 		if (fdata->sched_core[lcore_id])
 			printf("[%s()] lcore %d executing scheduler\n",
@@ -554,9 +555,6 @@ main(int argc, char **argv)
 		fdata->cap.worker(&worker_data[worker_idx++]);
 
 	rte_eal_mp_wait_lcore();
-
-	if (cdata.dump_dev)
-		rte_event_dev_dump(dev_id, stdout);
 
 	if (!cdata.quiet && (port_stat(dev_id, worker_data[0].port_id) !=
 			(uint64_t)-ENOTSUP)) {

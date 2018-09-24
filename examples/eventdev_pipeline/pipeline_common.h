@@ -16,6 +16,7 @@
 #include <rte_ethdev.h>
 #include <rte_eventdev.h>
 #include <rte_event_eth_rx_adapter.h>
+#include <rte_event_eth_tx_adapter.h>
 #include <rte_service.h>
 #include <rte_service_component.h>
 
@@ -23,38 +24,30 @@
 #define BATCH_SIZE 16
 #define MAX_NUM_CORE 64
 
-struct cons_data {
-	uint8_t dev_id;
-	uint8_t port_id;
-	uint8_t release;
-} __rte_cache_aligned;
-
 struct worker_data {
 	uint8_t dev_id;
 	uint8_t port_id;
 } __rte_cache_aligned;
 
 typedef int (*worker_loop)(void *);
-typedef int (*consumer_loop)(void);
 typedef void (*schedule_loop)(unsigned int);
-typedef int (*eventdev_setup)(struct cons_data *, struct worker_data *);
-typedef void (*rx_adapter_setup)(uint16_t nb_ports);
+typedef int (*eventdev_setup)(struct worker_data *);
+typedef void (*adapter_setup)(uint16_t nb_ports);
 typedef void (*opt_check)(void);
 
 struct setup_data {
 	worker_loop worker;
-	consumer_loop consumer;
 	schedule_loop scheduler;
 	eventdev_setup evdev_setup;
-	rx_adapter_setup adptr_setup;
+	adapter_setup adptr_setup;
 	opt_check check_opt;
 };
 
 struct fastpath_data {
 	volatile int done;
-	uint32_t tx_lock;
 	uint32_t evdev_service_id;
 	uint32_t rxadptr_service_id;
+	uint32_t txadptr_service_id;
 	bool rx_single;
 	bool tx_single;
 	bool sched_single;
@@ -62,7 +55,6 @@ struct fastpath_data {
 	unsigned int tx_core[MAX_NUM_CORE];
 	unsigned int sched_core[MAX_NUM_CORE];
 	unsigned int worker_core[MAX_NUM_CORE];
-	struct rte_eth_dev_tx_buffer *tx_buf[RTE_MAX_ETHPORTS];
 	struct setup_data cap;
 } __rte_cache_aligned;
 
@@ -88,6 +80,8 @@ struct config_data {
 	int16_t next_qid[MAX_NUM_STAGES+2];
 	int16_t qid[MAX_NUM_STAGES];
 	uint8_t rx_adapter_id;
+	uint8_t tx_adapter_id;
+	uint8_t tx_queue_id;
 	uint64_t worker_lcore_mask;
 	uint64_t rx_lcore_mask;
 	uint64_t tx_lcore_mask;
@@ -98,8 +92,6 @@ struct port_link {
 	uint8_t queue_id;
 	uint8_t priority;
 };
-
-struct cons_data cons_data;
 
 struct fastpath_data *fdata;
 struct config_data cdata;
@@ -142,12 +134,11 @@ schedule_devices(unsigned int lcore_id)
 		}
 	}
 
-	if (fdata->tx_core[lcore_id] && (fdata->tx_single ||
-			 rte_atomic32_cmpset(&(fdata->tx_lock), 0, 1))) {
-		fdata->cap.consumer();
-		rte_atomic32_clear((rte_atomic32_t *)&(fdata->tx_lock));
+	if (fdata->tx_core[lcore_id]) {
+		rte_service_run_iter_on_app_lcore(fdata->txadptr_service_id,
+				!fdata->tx_single);
 	}
 }
 
 void set_worker_generic_setup_data(struct setup_data *caps, bool burst);
-void set_worker_tx_setup_data(struct setup_data *caps, bool burst);
+void set_worker_tx_enq_setup_data(struct setup_data *caps, bool burst);
