@@ -65,12 +65,12 @@ pipeline_test_result(struct evt_test *test, struct evt_options *opt)
 	uint64_t total = 0;
 	struct test_pipeline *t = evt_test_priv(test);
 
-	printf("Packet distribution across worker cores :\n");
+	evt_info("Packet distribution across worker cores :");
 	for (i = 0; i < t->nb_workers; i++)
 		total += t->worker[i].processed_pkts;
 	for (i = 0; i < t->nb_workers; i++)
-		printf("Worker %d packets: "CLGRN"%"PRIx64" "CLNRM"percentage:"
-				CLGRN" %3.2f\n"CLNRM, i,
+		evt_info("Worker %d packets: "CLGRN"%"PRIx64""CLNRM" percentage:"
+				CLGRN" %3.2f"CLNRM, i,
 				t->worker[i].processed_pkts,
 				(((double)t->worker[i].processed_pkts)/total)
 				* 100);
@@ -233,7 +233,7 @@ pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 
 	RTE_SET_USED(opt);
 	if (!rte_eth_dev_count_avail()) {
-		evt_err("No ethernet ports found.\n");
+		evt_err("No ethernet ports found.");
 		return -ENODEV;
 	}
 
@@ -252,7 +252,7 @@ pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 		if (local_port_conf.rx_adv_conf.rss_conf.rss_hf !=
 				port_conf.rx_adv_conf.rss_conf.rss_hf) {
 			evt_info("Port %u modified RSS hash function based on hardware support,"
-				"requested:%#"PRIx64" configured:%#"PRIx64"\n",
+				"requested:%#"PRIx64" configured:%#"PRIx64"",
 				i,
 				port_conf.rx_adv_conf.rss_conf.rss_hf,
 				local_port_conf.rx_adv_conf.rss_conf.rss_hf);
@@ -261,19 +261,19 @@ pipeline_ethdev_setup(struct evt_test *test, struct evt_options *opt)
 		if (rte_eth_dev_configure(i, nb_queues, nb_queues,
 					&local_port_conf)
 				< 0) {
-			evt_err("Failed to configure eth port [%d]\n", i);
+			evt_err("Failed to configure eth port [%d]", i);
 			return -EINVAL;
 		}
 
 		if (rte_eth_rx_queue_setup(i, 0, NB_RX_DESC,
 				rte_socket_id(), &rx_conf, t->pool) < 0) {
-			evt_err("Failed to setup eth port [%d] rx_queue: %d.\n",
+			evt_err("Failed to setup eth port [%d] rx_queue: %d.",
 					i, 0);
 			return -EINVAL;
 		}
 		if (rte_eth_tx_queue_setup(i, 0, NB_TX_DESC,
 					rte_socket_id(), NULL) < 0) {
-			evt_err("Failed to setup eth port [%d] tx_queue: %d.\n",
+			evt_err("Failed to setup eth port [%d] tx_queue: %d.",
 					i, 0);
 			return -EINVAL;
 		}
@@ -379,7 +379,7 @@ pipeline_event_rx_adapter_setup(struct evt_options *opt, uint8_t stride,
 			ret = evt_service_setup(service_id);
 			if (ret) {
 				evt_err("Failed to setup service core"
-						" for Rx adapter\n");
+						" for Rx adapter");
 				return ret;
 			}
 		}
@@ -396,8 +396,7 @@ pipeline_event_rx_adapter_setup(struct evt_options *opt, uint8_t stride,
 			evt_err("Rx adapter[%d] start failed", prod);
 			return ret;
 		}
-		printf("%s: Port[%d] using Rx adapter[%d] started\n", __func__,
-				prod, prod);
+		evt_info("Port[%d] using Rx adapter[%d] started", prod, prod);
 	}
 
 	return ret;
