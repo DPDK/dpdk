@@ -18,7 +18,7 @@ pipeline_atq_nb_event_queues(struct evt_options *opt)
 static int
 pipeline_atq_worker_single_stage_tx(void *arg)
 {
-	PIPELINE_WROKER_SINGLE_STAGE_INIT;
+	PIPELINE_WORKER_SINGLE_STAGE_INIT;
 
 	while (t->done == false) {
 		uint16_t event = rte_event_dequeue_burst(dev, port, &ev, 1, 0);
@@ -43,7 +43,7 @@ pipeline_atq_worker_single_stage_tx(void *arg)
 static int
 pipeline_atq_worker_single_stage_fwd(void *arg)
 {
-	PIPELINE_WROKER_SINGLE_STAGE_INIT;
+	PIPELINE_WORKER_SINGLE_STAGE_INIT;
 	const uint8_t tx_queue = t->tx_service.queue_id;
 
 	while (t->done == false) {
@@ -66,7 +66,7 @@ pipeline_atq_worker_single_stage_fwd(void *arg)
 static int
 pipeline_atq_worker_single_stage_burst_tx(void *arg)
 {
-	PIPELINE_WROKER_SINGLE_STAGE_BURST_INIT;
+	PIPELINE_WORKER_SINGLE_STAGE_BURST_INIT;
 
 	while (t->done == false) {
 		uint16_t nb_rx = rte_event_dequeue_burst(dev, port, ev,
@@ -98,7 +98,7 @@ pipeline_atq_worker_single_stage_burst_tx(void *arg)
 static int
 pipeline_atq_worker_single_stage_burst_fwd(void *arg)
 {
-	PIPELINE_WROKER_SINGLE_STAGE_BURST_INIT;
+	PIPELINE_WORKER_SINGLE_STAGE_BURST_INIT;
 	const uint8_t tx_queue = t->tx_service.queue_id;
 
 	while (t->done == false) {
@@ -126,7 +126,7 @@ pipeline_atq_worker_single_stage_burst_fwd(void *arg)
 static int
 pipeline_atq_worker_multi_stage_tx(void *arg)
 {
-	PIPELINE_WROKER_MULTI_STAGE_INIT;
+	PIPELINE_WORKER_MULTI_STAGE_INIT;
 	const uint8_t nb_stages = t->opt->nb_stages;
 
 
@@ -161,7 +161,7 @@ pipeline_atq_worker_multi_stage_tx(void *arg)
 static int
 pipeline_atq_worker_multi_stage_fwd(void *arg)
 {
-	PIPELINE_WROKER_MULTI_STAGE_INIT;
+	PIPELINE_WORKER_MULTI_STAGE_INIT;
 	const uint8_t nb_stages = t->opt->nb_stages;
 	const uint8_t tx_queue = t->tx_service.queue_id;
 
@@ -192,7 +192,7 @@ pipeline_atq_worker_multi_stage_fwd(void *arg)
 static int
 pipeline_atq_worker_multi_stage_burst_tx(void *arg)
 {
-	PIPELINE_WROKER_MULTI_STAGE_BURST_INIT;
+	PIPELINE_WORKER_MULTI_STAGE_BURST_INIT;
 	const uint8_t nb_stages = t->opt->nb_stages;
 
 	while (t->done == false) {
@@ -234,7 +234,7 @@ pipeline_atq_worker_multi_stage_burst_tx(void *arg)
 static int
 pipeline_atq_worker_multi_stage_burst_fwd(void *arg)
 {
-	PIPELINE_WROKER_MULTI_STAGE_BURST_INIT;
+	PIPELINE_WORKER_MULTI_STAGE_BURST_INIT;
 	const uint8_t nb_stages = t->opt->nb_stages;
 	const uint8_t tx_queue = t->tx_service.queue_id;
 

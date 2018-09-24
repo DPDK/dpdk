@@ -65,14 +65,14 @@ struct test_pipeline {
 
 #define BURST_SIZE 16
 
-#define PIPELINE_WROKER_SINGLE_STAGE_INIT \
+#define PIPELINE_WORKER_SINGLE_STAGE_INIT \
 	struct worker_data *w  = arg;     \
 	struct test_pipeline *t = w->t;   \
 	const uint8_t dev = w->dev_id;    \
 	const uint8_t port = w->port_id;  \
 	struct rte_event ev
 
-#define PIPELINE_WROKER_SINGLE_STAGE_BURST_INIT \
+#define PIPELINE_WORKER_SINGLE_STAGE_BURST_INIT \
 	int i;                                  \
 	struct worker_data *w  = arg;           \
 	struct test_pipeline *t = w->t;         \
@@ -80,7 +80,7 @@ struct test_pipeline {
 	const uint8_t port = w->port_id;        \
 	struct rte_event ev[BURST_SIZE + 1]
 
-#define PIPELINE_WROKER_MULTI_STAGE_INIT                         \
+#define PIPELINE_WORKER_MULTI_STAGE_INIT                         \
 	struct worker_data *w  = arg;                            \
 	struct test_pipeline *t = w->t;                          \
 	uint8_t cq_id;                                           \
@@ -90,7 +90,7 @@ struct test_pipeline {
 	uint8_t *const sched_type_list = &t->sched_type_list[0]; \
 	struct rte_event ev
 
-#define PIPELINE_WROKER_MULTI_STAGE_BURST_INIT                   \
+#define PIPELINE_WORKER_MULTI_STAGE_BURST_INIT                   \
 	int i;                                  \
 	struct worker_data *w  = arg;                            \
 	struct test_pipeline *t = w->t;                          \
