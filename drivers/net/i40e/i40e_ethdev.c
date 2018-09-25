@@ -3653,7 +3653,7 @@ i40e_vlan_tpid_set(struct rte_eth_dev *dev,
 			if (vlan_type == ETH_VLAN_TYPE_OUTER)
 				hw->second_tag = rte_cpu_to_le_16(tpid);
 		}
-		ret = i40e_aq_set_switch_config(hw, 0, 0, NULL);
+		ret = i40e_aq_set_switch_config(hw, 0, 0, 0, NULL);
 		if (ret != I40E_SUCCESS) {
 			PMD_DRV_LOG(ERR,
 				    "Set switch config failed aq_err: %d",
