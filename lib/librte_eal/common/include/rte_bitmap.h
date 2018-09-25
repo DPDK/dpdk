@@ -88,7 +88,7 @@ __rte_bitmap_index1_inc(struct rte_bitmap *bmp)
 static inline uint64_t
 __rte_bitmap_mask1_get(struct rte_bitmap *bmp)
 {
-	return (~1lu) << bmp->offset1;
+	return (~1llu) << bmp->offset1;
 }
 
 static inline void
@@ -317,7 +317,7 @@ rte_bitmap_get(struct rte_bitmap *bmp, uint32_t pos)
 	index2 = pos >> RTE_BITMAP_SLAB_BIT_SIZE_LOG2;
 	offset2 = pos & RTE_BITMAP_SLAB_BIT_MASK;
 	slab2 = bmp->array2 + index2;
-	return (*slab2) & (1lu << offset2);
+	return (*slab2) & (1llu << offset2);
 }
 
 /**
@@ -342,8 +342,8 @@ rte_bitmap_set(struct rte_bitmap *bmp, uint32_t pos)
 	slab2 = bmp->array2 + index2;
 	slab1 = bmp->array1 + index1;
 
-	*slab2 |= 1lu << offset2;
-	*slab1 |= 1lu << offset1;
+	*slab2 |= 1llu << offset2;
+	*slab1 |= 1llu << offset1;
 }
 
 /**
@@ -370,7 +370,7 @@ rte_bitmap_set_slab(struct rte_bitmap *bmp, uint32_t pos, uint64_t slab)
 	slab1 = bmp->array1 + index1;
 
 	*slab2 |= slab;
-	*slab1 |= 1lu << offset1;
+	*slab1 |= 1llu << offset1;
 }
 
 static inline uint64_t
@@ -408,7 +408,7 @@ rte_bitmap_clear(struct rte_bitmap *bmp, uint32_t pos)
 	slab2 = bmp->array2 + index2;
 
 	/* Return if array2 slab is not all-zeros */
-	*slab2 &= ~(1lu << offset2);
+	*slab2 &= ~(1llu << offset2);
 	if (*slab2){
 		return;
 	}
@@ -424,7 +424,7 @@ rte_bitmap_clear(struct rte_bitmap *bmp, uint32_t pos)
 	index1 = pos >> (RTE_BITMAP_SLAB_BIT_SIZE_LOG2 + RTE_BITMAP_CL_BIT_SIZE_LOG2);
 	offset1 = (pos >> RTE_BITMAP_CL_BIT_SIZE_LOG2) & RTE_BITMAP_SLAB_BIT_MASK;
 	slab1 = bmp->array1 + index1;
-	*slab1 &= ~(1lu << offset1);
+	*slab1 &= ~(1llu << offset1);
 
 	return;
 }

@@ -101,6 +101,7 @@ test_bitmap_slab_set_get(struct rte_bitmap *bmp)
 static int
 test_bitmap_set_get_clear(struct rte_bitmap *bmp)
 {
+	uint64_t val;
 	int i;
 
 	rte_bitmap_reset(bmp);
@@ -120,6 +121,23 @@ test_bitmap_set_get_clear(struct rte_bitmap *bmp)
 	for (i = 0; i < MAX_BITS; i++) {
 		if (rte_bitmap_get(bmp, i)) {
 			printf("Failed to clear set bit.\n");
+			return TEST_FAILED;
+		}
+	}
+
+	rte_bitmap_reset(bmp);
+
+	/* Alternate slab set test */
+	for (i = 0; i < MAX_BITS; i++) {
+		if (i % RTE_BITMAP_SLAB_BIT_SIZE)
+			rte_bitmap_set(bmp, i);
+	}
+
+	for (i = 0; i < MAX_BITS; i++) {
+		val = rte_bitmap_get(bmp, i);
+		if (((i % RTE_BITMAP_SLAB_BIT_SIZE) && !val) ||
+		    (!(i % RTE_BITMAP_SLAB_BIT_SIZE) && val)) {
+			printf("Failed to get set bit.\n");
 			return TEST_FAILED;
 		}
 	}
