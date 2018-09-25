@@ -375,24 +375,24 @@ enum i40e_status_code i40e_aq_query_switch_comp_bw_config(struct i40e_hw *hw,
 		struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_resume_port_tx(struct i40e_hw *hw,
 				struct i40e_asq_cmd_details *cmd_details);
+enum i40e_status_code
+i40e_aq_add_cloud_filters_bb(struct i40e_hw *hw, u16 seid,
+			     struct i40e_aqc_cloud_filters_element_bb *filters,
+			     u8 filter_count);
+enum i40e_status_code
+i40e_aq_add_cloud_filters(struct i40e_hw *hw, u16 vsi,
+			  struct i40e_aqc_cloud_filters_element_data *filters,
+			  u8 filter_count);
+enum i40e_status_code
+i40e_aq_rem_cloud_filters(struct i40e_hw *hw, u16 vsi,
+			  struct i40e_aqc_cloud_filters_element_data *filters,
+			  u8 filter_count);
+enum i40e_status_code
+i40e_aq_rem_cloud_filters_bb(struct i40e_hw *hw, u16 seid,
+			     struct i40e_aqc_cloud_filters_element_bb *filters,
+			     u8 filter_count);
 enum i40e_status_code i40e_read_lldp_cfg(struct i40e_hw *hw,
 					struct i40e_lldp_variables *lldp_cfg);
-enum i40e_status_code i40e_aq_add_cloud_filters(struct i40e_hw *hw,
-		u16 vsi,
-		struct i40e_aqc_cloud_filters_element_data *filters,
-		u8 filter_count);
-enum i40e_status_code i40e_aq_add_cloud_filters_big_buffer(struct i40e_hw *hw,
-	u16 seid,
-	struct i40e_aqc_add_rm_cloud_filt_elem_ext *filters,
-	u8 filter_count);
-enum i40e_status_code i40e_aq_remove_cloud_filters(struct i40e_hw *hw,
-		u16 vsi,
-		struct i40e_aqc_cloud_filters_element_data *filters,
-		u8 filter_count);
-enum i40e_status_code i40e_aq_remove_cloud_filters_big_buffer(
-	struct i40e_hw *hw, u16 seid,
-	struct i40e_aqc_add_rm_cloud_filt_elem_ext *filters,
-	u8 filter_count);
 enum i40e_status_code i40e_aq_replace_cloud_filters(struct i40e_hw *hw,
 		struct i40e_aqc_replace_cloud_filters_cmd *filters,
 		struct i40e_aqc_replace_cloud_filters_cmd_buf *cmd_buf);

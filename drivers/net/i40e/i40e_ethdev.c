@@ -391,7 +391,7 @@ static int i40e_sw_ethertype_filter_insert(struct i40e_pf *pf,
 				   struct i40e_ethertype_filter *filter);
 
 static int i40e_tunnel_filter_convert(
-	struct i40e_aqc_add_rm_cloud_filt_elem_ext *cld_filter,
+	struct i40e_aqc_cloud_filters_element_bb *cld_filter,
 	struct i40e_tunnel_filter *tunnel_filter);
 static int i40e_sw_tunnel_filter_insert(struct i40e_pf *pf,
 				struct i40e_tunnel_filter *tunnel_filter);
@@ -7493,7 +7493,7 @@ i40e_dev_get_filter_type(uint16_t filter_type, uint16_t *flag)
 /* Convert tunnel filter structure */
 static int
 i40e_tunnel_filter_convert(
-	struct i40e_aqc_add_rm_cloud_filt_elem_ext *cld_filter,
+	struct i40e_aqc_cloud_filters_element_bb *cld_filter,
 	struct i40e_tunnel_filter *tunnel_filter)
 {
 	ether_addr_copy((struct ether_addr *)&cld_filter->element.outer_mac,
@@ -7591,8 +7591,8 @@ i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 	int val, ret = 0;
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
 	struct i40e_vsi *vsi = pf->main_vsi;
-	struct i40e_aqc_add_rm_cloud_filt_elem_ext *cld_filter;
-	struct i40e_aqc_add_rm_cloud_filt_elem_ext *pfilter;
+	struct i40e_aqc_cloud_filters_element_bb *cld_filter;
+	struct i40e_aqc_cloud_filters_element_bb *pfilter;
 	struct i40e_tunnel_rule *tunnel_rule = &pf->tunnel;
 	struct i40e_tunnel_filter *tunnel, *node;
 	struct i40e_tunnel_filter check_filter; /* Check if filter exists */
@@ -7700,7 +7700,7 @@ i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 		if (ret < 0)
 			rte_free(tunnel);
 	} else {
-		ret = i40e_aq_remove_cloud_filters(hw, vsi->seid,
+		ret = i40e_aq_rem_cloud_filters(hw, vsi->seid,
 						   &cld_filter->element, 1);
 		if (ret < 0) {
 			PMD_DRV_LOG(ERR, "Failed to delete a tunnel filter.");
@@ -8033,8 +8033,8 @@ i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 	struct i40e_pf_vf *vf = NULL;
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
 	struct i40e_vsi *vsi;
-	struct i40e_aqc_add_rm_cloud_filt_elem_ext *cld_filter;
-	struct i40e_aqc_add_rm_cloud_filt_elem_ext *pfilter;
+	struct i40e_aqc_cloud_filters_element_bb *cld_filter;
+	struct i40e_aqc_cloud_filters_element_bb *pfilter;
 	struct i40e_tunnel_rule *tunnel_rule = &pf->tunnel;
 	struct i40e_tunnel_filter *tunnel, *node;
 	struct i40e_tunnel_filter check_filter; /* Check if filter exists */
@@ -8237,7 +8237,7 @@ i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 
 	if (add) {
 		if (big_buffer)
-			ret = i40e_aq_add_cloud_filters_big_buffer(hw,
+			ret = i40e_aq_add_cloud_filters_bb(hw,
 						   vsi->seid, cld_filter, 1);
 		else
 			ret = i40e_aq_add_cloud_filters(hw,
@@ -8260,11 +8260,11 @@ i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 			rte_free(tunnel);
 	} else {
 		if (big_buffer)
-			ret = i40e_aq_remove_cloud_filters_big_buffer(
+			ret = i40e_aq_rem_cloud_filters_bb(
 				hw, vsi->seid, cld_filter, 1);
 		else
-			ret = i40e_aq_remove_cloud_filters(hw, vsi->seid,
-						   &cld_filter->element, 1);
+			ret = i40e_aq_rem_cloud_filters(hw, vsi->seid,
+						&cld_filter->element, 1);
 		if (ret < 0) {
 			PMD_DRV_LOG(ERR, "Failed to delete a tunnel filter.");
 			rte_free(cld_filter);
@@ -11945,7 +11945,7 @@ i40e_tunnel_filter_restore(struct i40e_pf *pf)
 	struct i40e_tunnel_filter_list
 		*tunnel_list = &pf->tunnel.tunnel_list;
 	struct i40e_tunnel_filter *f;
-	struct i40e_aqc_add_rm_cloud_filt_elem_ext cld_filter;
+	struct i40e_aqc_cloud_filters_element_bb cld_filter;
 	bool big_buffer = 0;
 
 	TAILQ_FOREACH(f, tunnel_list, rules) {
@@ -11980,8 +11980,8 @@ i40e_tunnel_filter_restore(struct i40e_pf *pf)
 			big_buffer = 1;
 
 		if (big_buffer)
-			i40e_aq_add_cloud_filters_big_buffer(hw,
-					     vsi->seid, &cld_filter, 1);
+			i40e_aq_add_cloud_filters_bb(hw,
+					vsi->seid, &cld_filter, 1);
 		else
 			i40e_aq_add_cloud_filters(hw, vsi->seid,
 						  &cld_filter.element, 1);

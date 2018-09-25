@@ -4773,7 +4773,7 @@ i40e_flow_destroy_tunnel_filter(struct i40e_pf *pf,
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
 	struct i40e_vsi *vsi;
 	struct i40e_pf_vf *vf;
-	struct i40e_aqc_add_rm_cloud_filt_elem_ext cld_filter;
+	struct i40e_aqc_cloud_filters_element_bb cld_filter;
 	struct i40e_tunnel_rule *tunnel_rule = &pf->tunnel;
 	struct i40e_tunnel_filter *node;
 	bool big_buffer = 0;
@@ -4808,11 +4808,11 @@ i40e_flow_destroy_tunnel_filter(struct i40e_pf *pf,
 		big_buffer = 1;
 
 	if (big_buffer)
-		ret = i40e_aq_remove_cloud_filters_big_buffer(hw, vsi->seid,
-							      &cld_filter, 1);
+		ret = i40e_aq_rem_cloud_filters_bb(hw, vsi->seid,
+						&cld_filter, 1);
 	else
-		ret = i40e_aq_remove_cloud_filters(hw, vsi->seid,
-						   &cld_filter.element, 1);
+		ret = i40e_aq_rem_cloud_filters(hw, vsi->seid,
+						&cld_filter.element, 1);
 	if (ret < 0)
 		return -ENOTSUP;
 

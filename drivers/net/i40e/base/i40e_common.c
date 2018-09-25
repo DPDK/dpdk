@@ -5746,21 +5746,21 @@ enum i40e_status_code i40e_aq_add_cloud_filters(struct i40e_hw *hw,
 }
 
 /**
- * i40e_aq_add_cloud_filters_big_buffer
+ * i40e_aq_add_cloud_filters_bb
  * @hw: pointer to the hardware structure
  * @seid: VSI seid to add cloud filters from
  * @filters: Buffer which contains the filters in big buffer to be added
  * @filter_count: number of filters contained in the buffer
  *
  * Set the cloud filters for a given VSI.  The contents of the
- * i40e_aqc_add_rm_cloud_filt_elem_ext are filled in by the caller of
+ * i40e_aqc_cloud_filters_element_bb are filled in by the caller of the
  * the function.
  *
  **/
-enum i40e_status_code i40e_aq_add_cloud_filters_big_buffer(struct i40e_hw *hw,
-	u16 seid,
-	struct i40e_aqc_add_rm_cloud_filt_elem_ext *filters,
-	u8 filter_count)
+enum i40e_status_code
+i40e_aq_add_cloud_filters_bb(struct i40e_hw *hw, u16 seid,
+			     struct i40e_aqc_cloud_filters_element_bb *filters,
+			     u8 filter_count)
 {
 	struct i40e_aq_desc desc;
 	struct i40e_aqc_add_remove_cloud_filters *cmd =
@@ -5777,9 +5777,8 @@ enum i40e_status_code i40e_aq_add_cloud_filters_big_buffer(struct i40e_hw *hw,
 	desc.flags |= CPU_TO_LE16((u16)(I40E_AQ_FLAG_BUF | I40E_AQ_FLAG_RD));
 	cmd->num_filters = filter_count;
 	cmd->seid = CPU_TO_LE16(seid);
-	cmd->big_buffer_flag = I40E_AQC_ADD_REM_CLOUD_CMD_BIG_BUFFER;
+	cmd->big_buffer_flag = I40E_AQC_ADD_CLOUD_CMD_BB;
 
-	/* adjust Geneve VNI for HW issue */
 	for (i = 0; i < filter_count; i++) {
 		u16 tnl_type;
 		u32 ti;
@@ -5787,6 +5786,11 @@ enum i40e_status_code i40e_aq_add_cloud_filters_big_buffer(struct i40e_hw *hw,
 		tnl_type = (LE16_TO_CPU(filters[i].element.flags) &
 			   I40E_AQC_ADD_CLOUD_TNL_TYPE_MASK) >>
 			   I40E_AQC_ADD_CLOUD_TNL_TYPE_SHIFT;
+
+		/* Due to hardware eccentricities, the VNI for Geneve is shifted
+		 * one more byte further than normally used for Tenant ID in
+		 * other tunnel types.
+		 */
 		if (tnl_type == I40E_AQC_ADD_CLOUD_TNL_TYPE_GENEVE) {
 			ti = LE32_TO_CPU(filters[i].element.tenant_id);
 			filters[i].element.tenant_id = CPU_TO_LE32(ti << 8);
@@ -5799,7 +5803,7 @@ enum i40e_status_code i40e_aq_add_cloud_filters_big_buffer(struct i40e_hw *hw,
 }
 
 /**
- * i40e_aq_remove_cloud_filters
+ * i40e_aq_rem_cloud_filters
  * @hw: pointer to the hardware structure
  * @seid: VSI seid to remove cloud filters from
  * @filters: Buffer which contains the filters to be removed
@@ -5810,10 +5814,10 @@ enum i40e_status_code i40e_aq_add_cloud_filters_big_buffer(struct i40e_hw *hw,
  * of the function.
  *
  **/
-enum i40e_status_code i40e_aq_remove_cloud_filters(struct i40e_hw *hw,
-	u16 seid,
-	struct i40e_aqc_cloud_filters_element_data *filters,
-	u8 filter_count)
+enum i40e_status_code
+i40e_aq_rem_cloud_filters(struct i40e_hw *hw, u16 seid,
+			  struct i40e_aqc_cloud_filters_element_data *filters,
+			  u8 filter_count)
 {
 	struct i40e_aq_desc desc;
 	struct i40e_aqc_add_remove_cloud_filters *cmd =
@@ -5838,22 +5842,21 @@ enum i40e_status_code i40e_aq_remove_cloud_filters(struct i40e_hw *hw,
 }
 
 /**
- * i40e_aq_remove_cloud_filters_big_buffer
+ * i40e_aq_rem_cloud_filters_bb
  * @hw: pointer to the hardware structure
  * @seid: VSI seid to remove cloud filters from
  * @filters: Buffer which contains the filters in big buffer to be removed
  * @filter_count: number of filters contained in the buffer
  *
- * Remove the cloud filters for a given VSI.  The contents of the
- * i40e_aqc_add_rm_cloud_filt_elem_ext are filled in by the caller of
- * the function.
+ * Remove the big buffer cloud filters for a given VSI.  The contents of the
+ * i40e_aqc_cloud_filters_element_bb are filled in by the caller of the
+ * function.
  *
  **/
-enum i40e_status_code i40e_aq_remove_cloud_filters_big_buffer(
-	struct i40e_hw *hw,
-	u16 seid,
-	struct i40e_aqc_add_rm_cloud_filt_elem_ext *filters,
-	u8 filter_count)
+enum i40e_status_code
+i40e_aq_rem_cloud_filters_bb(struct i40e_hw *hw, u16 seid,
+			     struct i40e_aqc_cloud_filters_element_bb *filters,
+			     u8 filter_count)
 {
 	struct i40e_aq_desc desc;
 	struct i40e_aqc_add_remove_cloud_filters *cmd =
@@ -5870,9 +5873,8 @@ enum i40e_status_code i40e_aq_remove_cloud_filters_big_buffer(
 	desc.flags |= CPU_TO_LE16((u16)(I40E_AQ_FLAG_BUF | I40E_AQ_FLAG_RD));
 	cmd->num_filters = filter_count;
 	cmd->seid = CPU_TO_LE16(seid);
-	cmd->big_buffer_flag = I40E_AQC_ADD_REM_CLOUD_CMD_BIG_BUFFER;
+	cmd->big_buffer_flag = I40E_AQC_ADD_CLOUD_CMD_BB;
 
-	/* adjust Geneve VNI for HW issue */
 	for (i = 0; i < filter_count; i++) {
 		u16 tnl_type;
 		u32 ti;
@@ -5880,6 +5882,11 @@ enum i40e_status_code i40e_aq_remove_cloud_filters_big_buffer(
 		tnl_type = (LE16_TO_CPU(filters[i].element.flags) &
 			   I40E_AQC_ADD_CLOUD_TNL_TYPE_MASK) >>
 			   I40E_AQC_ADD_CLOUD_TNL_TYPE_SHIFT;
+
+		/* Due to hardware eccentricities, the VNI for Geneve is shifted
+		 * one more byte further than normally used for Tenant ID in
+		 * other tunnel types.
+		 */
 		if (tnl_type == I40E_AQC_ADD_CLOUD_TNL_TYPE_GENEVE) {
 			ti = LE32_TO_CPU(filters[i].element.tenant_id);
 			filters[i].element.tenant_id = CPU_TO_LE32(ti << 8);
