@@ -7110,6 +7110,7 @@ do_retry:
 		wr32(hw, reg_addr, reg_val);
 }
 
+#ifdef PF_DRIVER
 /**
  * i40e_aq_set_phy_register
  * @hw: pointer to the hw struct
@@ -7187,6 +7188,7 @@ enum i40e_status_code i40e_aq_get_phy_register(struct i40e_hw *hw,
 	return status;
 }
 
+#endif /* PF_DRIVER */
 #ifdef VF_DRIVER
 
 /**
