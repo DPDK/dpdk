@@ -1262,18 +1262,20 @@ static enum i40e_status_code _i40e_read_lldp_cfg(struct i40e_hw *hw,
 {
 	u32 address, offset = (2 * word_offset);
 	enum i40e_status_code ret;
+	__le16 raw_mem;
 	u16 mem;
 
 	ret = i40e_acquire_nvm(hw, I40E_RESOURCE_READ);
 	if (ret != I40E_SUCCESS)
 		return ret;
 
-	ret = i40e_aq_read_nvm(hw, 0x0, module * 2, sizeof(mem), &mem, true,
-			       NULL);
+	ret = i40e_aq_read_nvm(hw, 0x0, module * 2, sizeof(raw_mem), &raw_mem,
+			       true, NULL);
 	i40e_release_nvm(hw);
 	if (ret != I40E_SUCCESS)
 		return ret;
 
+	mem = LE16_TO_CPU(raw_mem);
 	/* Check if this pointer needs to be read in word size or 4K sector
 	 * units.
 	 */
@@ -1286,12 +1288,13 @@ static enum i40e_status_code _i40e_read_lldp_cfg(struct i40e_hw *hw,
 	if (ret != I40E_SUCCESS)
 		goto err_lldp_cfg;
 
-	ret = i40e_aq_read_nvm(hw, module, offset, sizeof(mem), &mem, true,
-			       NULL);
+	ret = i40e_aq_read_nvm(hw, module, offset, sizeof(raw_mem), &raw_mem,
+			       true, NULL);
 	i40e_release_nvm(hw);
 	if (ret != I40E_SUCCESS)
 		return ret;
 
+	mem = LE16_TO_CPU(raw_mem);
 	offset = mem + word_offset;
 	offset *= 2;
 
