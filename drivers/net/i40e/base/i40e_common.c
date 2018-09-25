@@ -1342,7 +1342,7 @@ enum i40e_status_code i40e_pf_reset(struct i40e_hw *hw)
 			I40E_GLGEN_RSTCTL_GRSTDEL_MASK) >>
 			I40E_GLGEN_RSTCTL_GRSTDEL_SHIFT;
 
-	grst_del = grst_del * 20;
+	grst_del = min(grst_del * 20, 160U);
 
 	for (cnt = 0; cnt < grst_del; cnt++) {
 		reg = rd32(hw, I40E_GLGEN_RSTAT);
