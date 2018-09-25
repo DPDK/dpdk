@@ -303,6 +303,11 @@ mrvl_dev_configure(struct rte_eth_dev *dev)
 	struct mrvl_priv *priv = dev->data->dev_private;
 	int ret;
 
+	if (priv->ppio) {
+		MRVL_LOG(INFO, "Device reconfiguration is not supported");
+		return -EINVAL;
+	}
+
 	if (dev->data->dev_conf.rxmode.mq_mode != ETH_MQ_RX_NONE &&
 	    dev->data->dev_conf.rxmode.mq_mode != ETH_MQ_RX_RSS) {
 		MRVL_LOG(INFO, "Unsupported rx multi queue mode %d",
@@ -515,6 +520,9 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 	struct mrvl_priv *priv = dev->data->dev_private;
 	char match[MRVL_MATCH_LEN];
 	int ret = 0, i, def_init_size;
+
+	if (priv->ppio)
+		return mrvl_dev_set_link_up(dev);
 
 	snprintf(match, sizeof(match), "ppio-%d:%d",
 		 priv->pp_id, priv->ppio_id);
@@ -740,28 +748,7 @@ mrvl_flush_bpool(struct rte_eth_dev *dev)
 static void
 mrvl_dev_stop(struct rte_eth_dev *dev)
 {
-	struct mrvl_priv *priv = dev->data->dev_private;
-
 	mrvl_dev_set_link_down(dev);
-	mrvl_flush_rx_queues(dev);
-	mrvl_flush_tx_shadow_queues(dev);
-	if (priv->cls_tbl) {
-		pp2_cls_tbl_deinit(priv->cls_tbl);
-		priv->cls_tbl = NULL;
-	}
-	if (priv->qos_tbl) {
-		pp2_cls_qos_tbl_deinit(priv->qos_tbl);
-		priv->qos_tbl = NULL;
-	}
-	if (priv->ppio)
-		pp2_ppio_deinit(priv->ppio);
-	priv->ppio = NULL;
-
-	/* policer must be released after ppio deinitialization */
-	if (priv->policer) {
-		pp2_cls_plcr_deinit(priv->policer);
-		priv->policer = NULL;
-	}
 }
 
 /**
@@ -776,6 +763,9 @@ mrvl_dev_close(struct rte_eth_dev *dev)
 	struct mrvl_priv *priv = dev->data->dev_private;
 	size_t i;
 
+	mrvl_flush_rx_queues(dev);
+	mrvl_flush_tx_shadow_queues(dev);
+
 	for (i = 0; i < priv->ppio_params.inqs_params.num_tcs; ++i) {
 		struct pp2_ppio_tc_params *tc_params =
 			&priv->ppio_params.inqs_params.tcs_params[i];
@@ -786,7 +776,28 @@ mrvl_dev_close(struct rte_eth_dev *dev)
 		}
 	}
 
+	if (priv->cls_tbl) {
+		pp2_cls_tbl_deinit(priv->cls_tbl);
+		priv->cls_tbl = NULL;
+	}
+
+	if (priv->qos_tbl) {
+		pp2_cls_qos_tbl_deinit(priv->qos_tbl);
+		priv->qos_tbl = NULL;
+	}
+
 	mrvl_flush_bpool(dev);
+
+	if (priv->ppio) {
+		pp2_ppio_deinit(priv->ppio);
+		priv->ppio = NULL;
+	}
+
+	/* policer must be released after ppio deinitialization */
+	if (priv->policer) {
+		pp2_cls_plcr_deinit(priv->policer);
+		priv->policer = NULL;
+	}
 }
 
 /**
