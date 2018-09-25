@@ -20,7 +20,8 @@ sources = files(
 	'mrvl_ethdev.c',
 	'mrvl_flow.c',
 	'mrvl_qos.c',
-	'mrvl_mtr.c'
+	'mrvl_mtr.c',
+	'mrvl_tm.c'
 )
 
 deps += ['cfgfile', 'common_mvep']

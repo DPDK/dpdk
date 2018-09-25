@@ -40,5 +40,6 @@ SRCS-$(CONFIG_RTE_LIBRTE_MVPP2_PMD) += mrvl_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_MVPP2_PMD) += mrvl_qos.c
 SRCS-$(CONFIG_RTE_LIBRTE_MVPP2_PMD) += mrvl_flow.c
 SRCS-$(CONFIG_RTE_LIBRTE_MVPP2_PMD) += mrvl_mtr.c
+SRCS-$(CONFIG_RTE_LIBRTE_MVPP2_PMD) += mrvl_tm.c
 
 include $(RTE_SDK)/mk/rte.lib.mk
