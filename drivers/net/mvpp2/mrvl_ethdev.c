@@ -64,7 +64,8 @@
 /** Port Tx offloads capabilities */
 #define MRVL_TX_OFFLOADS (DEV_TX_OFFLOAD_IPV4_CKSUM | \
 			  DEV_TX_OFFLOAD_UDP_CKSUM | \
-			  DEV_TX_OFFLOAD_TCP_CKSUM)
+			  DEV_TX_OFFLOAD_TCP_CKSUM | \
+			  DEV_TX_OFFLOAD_MULTI_SEGS)
 
 static const char * const valid_args[] = {
 	MRVL_IFACE_NAME_ARG,
@@ -104,7 +105,9 @@ struct mrvl_shadow_txq {
 	int head;           /* write index - used when sending buffers */
 	int tail;           /* read index - used when releasing buffers */
 	u16 size;           /* queue occupied size */
-	u16 num_to_release; /* number of buffers sent, that can be released */
+	u16 num_to_release; /* number of descriptors sent, that can be
+			     * released
+			     */
 	struct buff_release_entry ent[MRVL_PP2_TX_SHADOWQ_SIZE]; /* q entries */
 };
 
@@ -136,6 +139,12 @@ static inline void mrvl_free_sent_buffers(struct pp2_ppio *ppio,
 			struct pp2_hif *hif, unsigned int core_id,
 			struct mrvl_shadow_txq *sq, int qid, int force);
 
+static uint16_t mrvl_tx_pkt_burst(void *txq, struct rte_mbuf **tx_pkts,
+				  uint16_t nb_pkts);
+static uint16_t mrvl_tx_sg_pkt_burst(void *txq,	struct rte_mbuf **tx_pkts,
+				     uint16_t nb_pkts);
+
+
 #define MRVL_XSTATS_TBL_ENTRY(name) { \
 	#name, offsetof(struct pp2_ppio_statistics, name),	\
 	sizeof(((struct pp2_ppio_statistics *)0)->name)		\
@@ -161,6 +170,31 @@ static struct {
 	MRVL_XSTATS_TBL_ENTRY(tx_unicast_packets),
 	MRVL_XSTATS_TBL_ENTRY(tx_errors)
 };
+
+static inline void
+mrvl_fill_shadowq(struct mrvl_shadow_txq *sq, struct rte_mbuf *buf)
+{
+	sq->ent[sq->head].buff.cookie = (uint64_t)buf;
+	sq->ent[sq->head].buff.addr = buf ?
+		rte_mbuf_data_iova_default(buf) : 0;
+
+	sq->ent[sq->head].bpool =
+		(unlikely(!buf || buf->port >= RTE_MAX_ETHPORTS ||
+		 buf->refcnt > 1)) ? NULL :
+		 mrvl_port_to_bpool_lookup[buf->port];
+
+	sq->head = (sq->head + 1) & MRVL_PP2_TX_SHADOWQ_MASK;
+	sq->size++;
+}
+
+static inline void
+mrvl_fill_desc(struct pp2_ppio_desc *desc, struct rte_mbuf *buf)
+{
+	pp2_ppio_outq_desc_reset(desc);
+	pp2_ppio_outq_desc_set_phys_addr(desc, rte_pktmbuf_iova(buf));
+	pp2_ppio_outq_desc_set_pkt_offset(desc, 0);
+	pp2_ppio_outq_desc_set_pkt_len(desc, rte_pktmbuf_data_len(buf));
+}
 
 static inline int
 mrvl_get_bpool_size(int pp2_id, int pool_id)
@@ -241,6 +275,27 @@ out:
 }
 
 /**
+ * Set tx burst function according to offload flag
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ */
+static void
+mrvl_set_tx_function(struct rte_eth_dev *dev)
+{
+	struct mrvl_priv *priv = dev->data->dev_private;
+
+	/* Use a simple Tx queue (no offloads, no multi segs) if possible */
+	if (priv->multiseg) {
+		RTE_LOG(INFO, PMD, "Using multi-segment tx callback\n");
+		dev->tx_pkt_burst = mrvl_tx_sg_pkt_burst;
+	} else {
+		RTE_LOG(INFO, PMD, "Using single-segment tx callback\n");
+		dev->tx_pkt_burst = mrvl_tx_pkt_burst;
+	}
+}
+
+/**
  * Configure rss based on dpdk rss configuration.
  *
  * @param priv
@@ -315,6 +370,9 @@ mrvl_dev_configure(struct rte_eth_dev *dev)
 	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
 		dev->data->mtu = dev->data->dev_conf.rxmode.max_rx_pkt_len -
 				 MRVL_PP2_ETH_HDRS_LEN;
+
+	if (dev->data->dev_conf.txmode.offloads & DEV_TX_OFFLOAD_MULTI_SEGS)
+		priv->multiseg = 1;
 
 	ret = mrvl_configure_rxqs(priv, dev->data->port_id,
 				  dev->data->nb_rx_queues);
@@ -663,6 +721,7 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 
 	mrvl_flow_init(dev);
 	mrvl_mtr_init(dev);
+	mrvl_set_tx_function(dev);
 
 	return 0;
 out:
@@ -2429,22 +2488,8 @@ mrvl_tx_pkt_burst(void *txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			rte_mbuf_prefetch_part2(pref_pkt_hdr);
 		}
 
-		sq->ent[sq->head].buff.cookie = (uint64_t)mbuf;
-		sq->ent[sq->head].buff.addr =
-			rte_mbuf_data_iova_default(mbuf);
-		sq->ent[sq->head].bpool =
-			(unlikely(mbuf->port >= RTE_MAX_ETHPORTS ||
-			 mbuf->refcnt > 1)) ? NULL :
-			 mrvl_port_to_bpool_lookup[mbuf->port];
-		sq->head = (sq->head + 1) & MRVL_PP2_TX_SHADOWQ_MASK;
-		sq->size++;
-
-		pp2_ppio_outq_desc_reset(&descs[i]);
-		pp2_ppio_outq_desc_set_phys_addr(&descs[i],
-						 rte_pktmbuf_iova(mbuf));
-		pp2_ppio_outq_desc_set_pkt_offset(&descs[i], 0);
-		pp2_ppio_outq_desc_set_pkt_len(&descs[i],
-					       rte_pktmbuf_pkt_len(mbuf));
+		mrvl_fill_shadowq(sq, mbuf);
+		mrvl_fill_desc(&descs[i], mbuf);
 
 		bytes_sent += rte_pktmbuf_pkt_len(mbuf);
 		/*
@@ -2475,6 +2520,152 @@ mrvl_tx_pkt_burst(void *txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				rte_pktmbuf_pkt_len((struct rte_mbuf *)addr);
 		}
 		sq->size -= num - nb_pkts;
+	}
+
+	q->bytes_sent += bytes_sent;
+
+	return nb_pkts;
+}
+
+/** DPDK callback for S/G transmit.
+ *
+ * @param txq
+ *   Generic pointer transmit queue.
+ * @param tx_pkts
+ *   Packets to transmit.
+ * @param nb_pkts
+ *   Number of packets in array.
+ *
+ * @return
+ *   Number of packets successfully transmitted.
+ */
+static uint16_t
+mrvl_tx_sg_pkt_burst(void *txq, struct rte_mbuf **tx_pkts,
+		     uint16_t nb_pkts)
+{
+	struct mrvl_txq *q = txq;
+	struct mrvl_shadow_txq *sq;
+	struct pp2_hif *hif;
+	struct pp2_ppio_desc descs[nb_pkts * PP2_PPIO_DESC_NUM_FRAGS];
+	struct pp2_ppio_sg_pkts pkts;
+	uint8_t frags[nb_pkts];
+	unsigned int core_id = rte_lcore_id();
+	int i, j, ret, bytes_sent = 0;
+	int tail, tail_first;
+	uint16_t num, sq_free_size;
+	uint16_t nb_segs, total_descs = 0;
+	uint64_t addr;
+
+	hif = mrvl_get_hif(q->priv, core_id);
+	sq = &q->shadow_txqs[core_id];
+	pkts.frags = frags;
+	pkts.num = 0;
+
+	if (unlikely(!q->priv->ppio || !hif))
+		return 0;
+
+	if (sq->size)
+		mrvl_free_sent_buffers(q->priv->ppio, hif, core_id,
+				       sq, q->queue_id, 0);
+
+	/* Save shadow queue free size */
+	sq_free_size = MRVL_PP2_TX_SHADOWQ_SIZE - sq->size - 1;
+
+	tail = 0;
+	for (i = 0; i < nb_pkts; i++) {
+		struct rte_mbuf *mbuf = tx_pkts[i];
+		struct rte_mbuf *seg = NULL;
+		int gen_l3_cksum, gen_l4_cksum;
+		enum pp2_outq_l3_type l3_type;
+		enum pp2_outq_l4_type l4_type;
+
+		nb_segs = mbuf->nb_segs;
+		tail_first = tail;
+		total_descs += nb_segs;
+
+		/*
+		 * Check if total_descs does not exceed
+		 * shadow queue free size
+		 */
+		if (unlikely(total_descs > sq_free_size)) {
+			total_descs -= nb_segs;
+			RTE_LOG(DEBUG, PMD,
+				"No room in shadow queue for %d packets! "
+				"%d packets will be sent.\n",
+				nb_pkts, i);
+			break;
+		}
+
+		/* Check if nb_segs does not exceed the max nb of desc per
+		 * fragmented packet
+		 */
+		if (nb_segs > PP2_PPIO_DESC_NUM_FRAGS) {
+			total_descs -= nb_segs;
+			RTE_LOG(ERR, PMD,
+				"Too many segments. Packet won't be sent.\n");
+			break;
+		}
+
+		if (likely(nb_pkts - i > MRVL_MUSDK_PREFETCH_SHIFT)) {
+			struct rte_mbuf *pref_pkt_hdr;
+
+			pref_pkt_hdr = tx_pkts[i + MRVL_MUSDK_PREFETCH_SHIFT];
+			rte_mbuf_prefetch_part1(pref_pkt_hdr);
+			rte_mbuf_prefetch_part2(pref_pkt_hdr);
+		}
+
+		pkts.frags[pkts.num] = nb_segs;
+		pkts.num++;
+
+		seg = mbuf;
+		for (j = 0; j < nb_segs - 1; j++) {
+			/* For the subsequent segments, set shadow queue
+			 * buffer to NULL
+			 */
+			mrvl_fill_shadowq(sq, NULL);
+			mrvl_fill_desc(&descs[tail], seg);
+
+			tail++;
+			seg = seg->next;
+		}
+		/* Put first mbuf info in last shadow queue entry */
+		mrvl_fill_shadowq(sq, mbuf);
+		/* Update descriptor with last segment */
+		mrvl_fill_desc(&descs[tail++], seg);
+
+		bytes_sent += rte_pktmbuf_pkt_len(mbuf);
+		/* In case unsupported ol_flags were passed
+		 * do not update descriptor offload information
+		 */
+		ret = mrvl_prepare_proto_info(mbuf->ol_flags, mbuf->packet_type,
+					      &l3_type, &l4_type, &gen_l3_cksum,
+					      &gen_l4_cksum);
+		if (unlikely(ret))
+			continue;
+
+		pp2_ppio_outq_desc_set_proto_info(&descs[tail_first], l3_type,
+						  l4_type, mbuf->l2_len,
+						  mbuf->l2_len + mbuf->l3_len,
+						  gen_l3_cksum, gen_l4_cksum);
+	}
+
+	num = total_descs;
+	pp2_ppio_send_sg(q->priv->ppio, hif, q->queue_id, descs,
+			 &total_descs, &pkts);
+	/* number of packets that were not sent */
+	if (unlikely(num > total_descs)) {
+		for (i = total_descs; i < num; i++) {
+			sq->head = (MRVL_PP2_TX_SHADOWQ_SIZE + sq->head - 1) &
+				MRVL_PP2_TX_SHADOWQ_MASK;
+
+			addr = sq->ent[sq->head].buff.cookie;
+			if (addr)
+				bytes_sent -=
+					rte_pktmbuf_pkt_len((struct rte_mbuf *)
+						(cookie_addr_high | addr));
+		}
+		sq->size -= num - total_descs;
+		nb_pkts = pkts.num;
 	}
 
 	q->bytes_sent += bytes_sent;
@@ -2610,11 +2801,11 @@ mrvl_eth_dev_create(struct rte_vdev_device *vdev, const char *name)
 	memcpy(eth_dev->data->mac_addrs[0].addr_bytes,
 	       req.ifr_addr.sa_data, ETHER_ADDR_LEN);
 
-	eth_dev->rx_pkt_burst = mrvl_rx_pkt_burst;
-	eth_dev->tx_pkt_burst = mrvl_tx_pkt_burst;
 	eth_dev->data->kdrv = RTE_KDRV_NONE;
 	eth_dev->data->dev_private = priv;
 	eth_dev->device = &vdev->device;
+	eth_dev->rx_pkt_burst = mrvl_rx_pkt_burst;
+	mrvl_set_tx_function(eth_dev);
 	eth_dev->dev_ops = &mrvl_ops;
 
 	rte_eth_dev_probing_finish(eth_dev);
