@@ -15,15 +15,6 @@
 #include <rte_malloc.h>
 #include <rte_string_fns.h>
 
-/* Unluckily, container_of is defined by both DPDK and MUSDK,
- * we'll declare only one version.
- *
- * Note that it is not used in this PMD anyway.
- */
-#ifdef container_of
-#undef container_of
-#endif
-
 #include "mrvl_qos.h"
 
 /* Parsing tokens. Defined conveniently, so that any correction is easy. */

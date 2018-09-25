@@ -11,13 +11,8 @@
 
 #include <arpa/inet.h>
 
-#ifdef container_of
-#undef container_of
-#endif
-
 #include "mrvl_ethdev.h"
 #include "mrvl_qos.h"
-#include "env/mv_common.h" /* for BIT() */
 
 /** Number of rules in the classifier table. */
 #define MRVL_CLS_MAX_NUM_RULES 20

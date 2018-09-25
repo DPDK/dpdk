@@ -10,15 +10,6 @@
 #include <rte_malloc.h>
 #include <rte_bus_vdev.h>
 
-/* Unluckily, container_of is defined by both DPDK and MUSDK,
- * we'll declare only one version.
- *
- * Note that it is not used in this PMD anyway.
- */
-#ifdef container_of
-#undef container_of
-#endif
-
 #include <fcntl.h>
 #include <linux/ethtool.h>
 #include <linux/sockios.h>

@@ -10,12 +10,23 @@
 #include <rte_spinlock.h>
 #include <rte_flow_driver.h>
 
+/*
+ * container_of is defined by both DPDK and MUSDK,
+ * we'll declare only one version.
+ *
+ * Note that it is not used in this PMD anyway.
+ */
+#ifdef container_of
+#undef container_of
+#endif
+
 #include <env/mv_autogen_comp_flags.h>
 #include <drivers/mv_pp2.h>
 #include <drivers/mv_pp2_bpool.h>
 #include <drivers/mv_pp2_cls.h>
 #include <drivers/mv_pp2_hif.h>
 #include <drivers/mv_pp2_ppio.h>
+#include "env/mv_common.h" /* for BIT() */
 
 /** Maximum number of rx queues per port */
 #define MRVL_PP2_RXQ_MAX 32
