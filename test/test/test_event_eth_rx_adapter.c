@@ -310,6 +310,8 @@ adapter_create(void)
 	struct rte_event_dev_info dev_info;
 	struct rte_event_port_conf rx_p_conf;
 
+	memset(&rx_p_conf, 0, sizeof(rx_p_conf));
+
 	err = rte_event_dev_info_get(TEST_DEV_ID, &dev_info);
 	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
 
@@ -491,7 +493,7 @@ adapter_multi_eth_add_del(void)
 	port_index = 0;
 	for (; port_index < rte_eth_dev_count_total(); port_index += 1) {
 		err = rte_event_eth_rx_adapter_queue_add(TEST_INST_ID,
-				port_index, 0,
+				port_index, -1,
 				&queue_config);
 		TEST_ASSERT(err == 0, "Expected 0 got %d", err);
 	}
@@ -500,7 +502,7 @@ adapter_multi_eth_add_del(void)
 	port_index = 0;
 	for (; port_index < rte_eth_dev_count_total(); port_index += 1) {
 		err = rte_event_eth_rx_adapter_queue_del(TEST_INST_ID,
-				port_index, 0);
+				port_index, -1);
 		TEST_ASSERT(err == 0, "Expected 0 got %d", err);
 	}
 
