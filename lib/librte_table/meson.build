@@ -19,6 +19,8 @@ headers = files('rte_table.h',
 		'rte_table_lpm_ipv6.h',
 		'rte_table_hash.h',
 		'rte_table_hash_cuckoo.h',
+		'rte_table_hash_func.h',
+		'rte_table_hash_func_arm64.h',
 		'rte_lru.h',
 		'rte_table_array.h',
 		'rte_table_stub.h')
