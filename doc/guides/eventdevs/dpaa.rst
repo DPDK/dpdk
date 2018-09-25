@@ -122,6 +122,8 @@ Example:
 
     ./your_eventdev_application --vdev="event_dpaa1"
 
+* Use dev arg option ``disable_intr=1`` to disable the interrupt mode
+
 Limitations
 -----------
 
