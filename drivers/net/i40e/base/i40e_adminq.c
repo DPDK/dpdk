@@ -97,6 +97,7 @@ enum i40e_status_code i40e_alloc_adminq_arq_ring(struct i40e_hw *hw)
  **/
 void i40e_free_adminq_asq(struct i40e_hw *hw)
 {
+	i40e_free_virt_mem(hw, &hw->aq.asq.cmd_buf);
 	i40e_free_dma_mem(hw, &hw->aq.asq.desc_buf);
 }
 
@@ -404,7 +405,7 @@ enum i40e_status_code i40e_init_asq(struct i40e_hw *hw)
 	/* initialize base registers */
 	ret_code = i40e_config_asq_regs(hw);
 	if (ret_code != I40E_SUCCESS)
-		goto init_adminq_free_rings;
+		goto init_config_regs;
 
 	/* success! */
 	hw->aq.asq.count = hw->aq.num_asq_entries;
@@ -412,6 +413,10 @@ enum i40e_status_code i40e_init_asq(struct i40e_hw *hw)
 
 init_adminq_free_rings:
 	i40e_free_adminq_asq(hw);
+	return ret_code;
+
+init_config_regs:
+	i40e_free_asq_bufs(hw);
 
 init_adminq_exit:
 	return ret_code;
