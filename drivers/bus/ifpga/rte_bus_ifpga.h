@@ -83,9 +83,6 @@ struct rte_afu_device {
 #define RTE_DEV_TO_AFU(ptr) \
 	container_of(ptr, struct rte_afu_device, device)
 
-#define RTE_DRV_TO_AFU_CONST(ptr) \
-	container_of(ptr, const struct rte_afu_driver, driver)
-
 /**
  * Initialization function for the driver called during FPGA BUS probing.
  */

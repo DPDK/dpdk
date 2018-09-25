@@ -347,16 +347,14 @@ static int
 ifpga_remove_driver(struct rte_afu_device *afu_dev)
 {
 	const char *name;
-	const struct rte_afu_driver *driver;
 
 	name = rte_ifpga_device_name(afu_dev);
-	if (!afu_dev->device.driver) {
+	if (afu_dev->driver == NULL) {
 		IFPGA_BUS_DEBUG("no driver attach to device %s\n", name);
 		return 1;
 	}
 
-	driver = RTE_DRV_TO_AFU_CONST(afu_dev->device.driver);
-	return driver->remove(afu_dev);
+	return afu_dev->driver->remove(afu_dev);
 }
 
 static int
