@@ -2437,7 +2437,8 @@ mrvl_create_cls_table(struct rte_eth_dev *dev, struct rte_flow *first_flow)
 
 	if (first_flow->pattern & F_IP4_TOS) {
 		key->proto_field[key->num_fields].proto = MV_NET_PROTO_IP4;
-		key->proto_field[key->num_fields].field.ipv4 = MV_NET_IP4_F_TOS;
+		key->proto_field[key->num_fields].field.ipv4 =
+							MV_NET_IP4_F_DSCP;
 		key->key_size += 1;
 		key->num_fields += 1;
 	}

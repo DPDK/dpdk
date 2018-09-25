@@ -864,7 +864,7 @@ cryptodev_mrvl_crypto_init(struct rte_vdev_device *vdev)
 			.private_data_size =
 				sizeof(struct mrvl_crypto_private),
 			.max_nb_queue_pairs =
-				sam_get_num_inst() * SAM_HW_RING_NUM,
+				sam_get_num_inst() * sam_get_num_cios(0),
 			.socket_id = rte_socket_id()
 		},
 		.max_nb_sessions = MRVL_PMD_DEFAULT_MAX_NB_SESSIONS

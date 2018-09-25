@@ -74,6 +74,7 @@ Features of the MVPP2 PMD are:
 - QoS
 - RX flow control
 - TX queue start/stop
+- Scattered TX frames
 
 
 Limitations
@@ -96,19 +97,19 @@ Prerequisites
 
   .. code-block:: console
 
-     git clone https://github.com/MarvellEmbeddedProcessors/linux-marvell.git -b linux-4.4.52-armada-17.10
+     git clone https://github.com/MarvellEmbeddedProcessors/linux-marvell.git -b linux-4.4.120-armada-18.09
 
 - Out of tree `mvpp2x_sysfs` kernel module sources
 
   .. code-block:: console
 
-     git clone https://github.com/MarvellEmbeddedProcessors/mvpp2x-marvell.git -b mvpp2x-armada-17.10
+     git clone https://github.com/MarvellEmbeddedProcessors/mvpp2x-marvell.git -b mvpp2x-armada-18.09
 
 - MUSDK (Marvell User-Space SDK) sources
 
   .. code-block:: console
 
-     git clone https://github.com/MarvellEmbeddedProcessors/musdk-marvell.git -b musdk-armada-17.10
+     git clone https://github.com/MarvellEmbeddedProcessors/musdk-marvell.git -b musdk-armada-18.09
 
   MUSDK is a light-weight library that provides direct access to Marvell's
   PPv2 (Packet Processor v2). Alternatively prebuilt MUSDK library can be
@@ -118,12 +119,6 @@ Prerequisites
 
   To get better understanding of the library one can consult documentation
   available in the ``doc`` top level directory of the MUSDK sources.
-
-  MUSDK must be configured with the following features:
-
-  .. code-block:: console
-
-     --enable-bpool-dma=64
 
 - DPDK environment
 
@@ -140,6 +135,9 @@ The following options can be modified in the ``config`` file.
 
     Toggle compilation of the librte mvpp2 driver.
 
+    .. Note::
+
+       When MVPP2 PMD is enabled ``CONFIG_RTE_LIBRTE_MVNETA_PMD`` must be disabled
 
 QoS Configuration
 -----------------
@@ -314,7 +312,7 @@ Driver needs precompiled MUSDK library during compilation.
 
    export CROSS_COMPILE=<toolchain>/bin/aarch64-linux-gnu-
    ./bootstrap
-   ./configure --host=aarch64-linux-gnu --enable-bpool-dma=64
+   ./configure --host=aarch64-linux-gnu
    make install
 
 MUSDK will be installed to `usr/local` under current directory.
@@ -328,7 +326,8 @@ the path to the MUSDK installation directory needs to be exported.
    export LIBMUSDK_PATH=<musdk>/usr/local
    export CROSS=aarch64-linux-gnu-
    make config T=arm64-armv8a-linuxapp-gcc
-   sed -ri 's,(MVPP2_PMD=)n,\1y,' build/.config
+   sed -i "s/MVNETA_PMD=y/MVNETA_PMD=n/" build/.config
+   sed -i "s/MVPP2_PMD=n/MVPP2_PMD=y/" build/.config
    make
 
 Flow API
@@ -500,15 +499,14 @@ Usage Example
 -------------
 
 MVPP2 PMD requires extra out of tree kernel modules to function properly.
-`musdk_uio` and `mv_pp_uio` sources are part of the MUSDK. Please consult
+`musdk_cma` sources are part of the MUSDK. Please consult
 ``doc/musdk_get_started.txt`` for the detailed build instructions.
 For `mvpp2x_sysfs` please consult ``Documentation/pp22_sysfs.txt`` for the
 detailed build instructions.
 
 .. code-block:: console
 
-   insmod musdk_uio.ko
-   insmod mv_pp_uio.ko
+   insmod musdk_cma.ko
    insmod mvpp2x_sysfs.ko
 
 Additionally interfaces used by DPDK application need to be put up:

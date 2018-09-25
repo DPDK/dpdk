@@ -54,9 +54,7 @@
 #define MRVL_ARP_LENGTH 28
 
 #define MRVL_COOKIE_ADDR_INVALID ~0ULL
-
-#define MRVL_COOKIE_HIGH_ADDR_SHIFT	(sizeof(pp2_cookie_t) * 8)
-#define MRVL_COOKIE_HIGH_ADDR_MASK	(~0ULL << MRVL_COOKIE_HIGH_ADDR_SHIFT)
+#define MRVL_COOKIE_HIGH_ADDR_MASK 0xffffff0000000000
 
 /** Port Rx offload capabilities */
 #define MRVL_RX_OFFLOADS (DEV_RX_OFFLOAD_VLAN_FILTER | \
@@ -1534,7 +1532,7 @@ mrvl_fill_bpool(struct mrvl_rxq *rxq, int num)
 
 		entries[i].buff.addr =
 			rte_mbuf_data_iova_default(mbufs[i]);
-		entries[i].buff.cookie = (pp2_cookie_t)(uint64_t)mbufs[i];
+		entries[i].buff.cookie = (uint64_t)mbufs[i];
 		entries[i].bpool = bpool;
 	}
 
@@ -2170,7 +2168,7 @@ mrvl_rx_pkt_burst(void *rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		if (unlikely(status != PP2_DESC_ERR_OK)) {
 			struct pp2_buff_inf binf = {
 				.addr = rte_mbuf_data_iova_default(mbuf),
-				.cookie = (pp2_cookie_t)(uint64_t)mbuf,
+				.cookie = (uint64_t)mbuf,
 			};
 
 			pp2_bpool_put_buff(hif, bpool, &binf);
@@ -2431,7 +2429,7 @@ mrvl_tx_pkt_burst(void *txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			rte_mbuf_prefetch_part2(pref_pkt_hdr);
 		}
 
-		sq->ent[sq->head].buff.cookie = (pp2_cookie_t)(uint64_t)mbuf;
+		sq->ent[sq->head].buff.cookie = (uint64_t)mbuf;
 		sq->ent[sq->head].buff.addr =
 			rte_mbuf_data_iova_default(mbuf);
 		sq->ent[sq->head].bpool =
