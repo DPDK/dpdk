@@ -2506,11 +2506,11 @@ eth_event_callback(portid_t port_id, enum rte_eth_event_type type, void *param,
 	RTE_SET_USED(ret_param);
 
 	if (type >= RTE_ETH_EVENT_MAX) {
-		fprintf(stderr, "\nPort %" PRIu8 ": %s called upon invalid event %d\n",
+		fprintf(stderr, "\nPort %" PRIu16 ": %s called upon invalid event %d\n",
 			port_id, __func__, type);
 		fflush(stderr);
 	} else if (event_print_mask & (UINT32_C(1) << type)) {
-		printf("\nPort %" PRIu8 ": %s event\n", port_id,
+		printf("\nPort %" PRIu16 ": %s event\n", port_id,
 			event_desc[type]);
 		fflush(stdout);
 	}
