@@ -5686,10 +5686,10 @@ void i40e_add_filter_to_drop_tx_flow_control_frames(struct i40e_hw *hw,
  * to be shifted 1 byte over from the VxLAN VNI
  **/
 STATIC void i40e_fix_up_geneve_vni(
-	struct i40e_aqc_add_remove_cloud_filters_element_data *filters,
+	struct i40e_aqc_cloud_filters_element_data *filters,
 	u8 filter_count)
 {
-	struct i40e_aqc_add_remove_cloud_filters_element_data *f = filters;
+	struct i40e_aqc_cloud_filters_element_data *f = filters;
 	int i;
 
 	for (i = 0; i < filter_count; i++) {
@@ -5714,13 +5714,13 @@ STATIC void i40e_fix_up_geneve_vni(
  * @filter_count: number of filters contained in the buffer
  *
  * Set the cloud filters for a given VSI.  The contents of the
- * i40e_aqc_add_remove_cloud_filters_element_data are filled
+ * i40e_aqc_cloud_filters_element_data are filled
  * in by the caller of the function.
  *
  **/
 enum i40e_status_code i40e_aq_add_cloud_filters(struct i40e_hw *hw,
 	u16 seid,
-	struct i40e_aqc_add_remove_cloud_filters_element_data *filters,
+	struct i40e_aqc_cloud_filters_element_data *filters,
 	u8 filter_count)
 {
 	struct i40e_aq_desc desc;
@@ -5806,13 +5806,13 @@ enum i40e_status_code i40e_aq_add_cloud_filters_big_buffer(struct i40e_hw *hw,
  * @filter_count: number of filters contained in the buffer
  *
  * Remove the cloud filters for a given VSI.  The contents of the
- * i40e_aqc_add_remove_cloud_filters_element_data are filled
- * in by the caller of the function.
+ * i40e_aqc_cloud_filters_element_data are filled in by the caller
+ * of the function.
  *
  **/
 enum i40e_status_code i40e_aq_remove_cloud_filters(struct i40e_hw *hw,
 	u16 seid,
-	struct i40e_aqc_add_remove_cloud_filters_element_data *filters,
+	struct i40e_aqc_cloud_filters_element_data *filters,
 	u8 filter_count)
 {
 	struct i40e_aq_desc desc;
