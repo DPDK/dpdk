@@ -487,9 +487,6 @@ i40e_vf_representor_init(struct rte_eth_dev *ethdev, void *init_params)
 	if (representor->vf_id >= pf->vf_num)
 		return -ENODEV;
 
-	/** representor shares the same driver as it's PF device */
-	ethdev->device->driver = representor->adapter->eth_dev->device->driver;
-
 	/* Set representor device ops */
 	ethdev->dev_ops = &i40e_representor_dev_ops;
 

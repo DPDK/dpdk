@@ -111,7 +111,6 @@ vmbus_probe_one_driver(struct rte_vmbus_driver *dr,
 
 	/* reference driver structure */
 	dev->driver = dr;
-	dev->device.driver = &dr->driver;
 
 	if (dev->device.numa_node < 0) {
 		VMBUS_LOG(WARNING, "  Invalid NUMA socket, default to 0");
@@ -124,6 +123,8 @@ vmbus_probe_one_driver(struct rte_vmbus_driver *dr,
 	if (ret) {
 		dev->driver = NULL;
 		rte_vmbus_unmap_device(dev);
+	} else {
+		dev->device.driver = &dr->driver;
 	}
 
 	return ret;
@@ -142,7 +143,7 @@ vmbus_probe_all_drivers(struct rte_vmbus_device *dev)
 	int rc;
 
 	/* Check if a driver is already loaded */
-	if (dev->driver != NULL) {
+	if (dev->device.driver != NULL) {
 		VMBUS_LOG(DEBUG, "VMBUS driver already loaded");
 		return 0;
 	}

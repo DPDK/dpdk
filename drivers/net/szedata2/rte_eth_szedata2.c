@@ -1474,7 +1474,7 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev, struct port_info *pi)
 	PMD_INIT_FUNC_TRACE();
 
 	PMD_INIT_LOG(INFO, "Initializing eth_dev %s (driver %s)", data->name,
-			dev->device->driver->name);
+			RTE_STR(RTE_SZEDATA2_DRIVER_NAME));
 
 	/* Fill internal private structure. */
 	internals->dev = dev;
@@ -1525,7 +1525,7 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev, struct port_info *pi)
 	ether_addr_copy(&eth_addr, data->mac_addrs);
 
 	PMD_INIT_LOG(INFO, "%s device %s successfully initialized",
-			dev->device->driver->name, data->name);
+			RTE_STR(RTE_SZEDATA2_DRIVER_NAME), data->name);
 
 	return 0;
 }
@@ -1547,7 +1547,7 @@ rte_szedata2_eth_dev_uninit(struct rte_eth_dev *dev)
 	rte_free(dev->data->mac_addrs);
 
 	PMD_DRV_LOG(INFO, "%s device %s successfully uninitialized",
-			dev->device->driver->name, dev->data->name);
+			RTE_STR(RTE_SZEDATA2_DRIVER_NAME), dev->data->name);
 
 	return 0;
 }

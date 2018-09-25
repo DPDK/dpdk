@@ -161,14 +161,12 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 	 * driver flags for adjusting configuration.
 	 */
 	dev->driver = dr;
-	dev->device.driver = &dr->driver;
 
 	if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING) {
 		/* map resources for devices that use igb_uio */
 		ret = rte_pci_map_device(dev);
 		if (ret != 0) {
 			dev->driver = NULL;
-			dev->device.driver = NULL;
 			return ret;
 		}
 	}
@@ -177,7 +175,6 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 	ret = dr->probe(dr, dev);
 	if (ret) {
 		dev->driver = NULL;
-		dev->device.driver = NULL;
 		if ((dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING) &&
 			/* Don't unmap if device is unsupported and
 			 * driver needs mapped resources.
@@ -185,6 +182,8 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 			!(ret > 0 &&
 				(dr->drv_flags & RTE_PCI_DRV_KEEP_MAPPED_RES)))
 			rte_pci_unmap_device(dev);
+	} else {
+		dev->device.driver = &dr->driver;
 	}
 
 	return ret;
@@ -245,7 +244,7 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 		return -1;
 
 	/* Check if a driver is already loaded */
-	if (dev->driver != NULL)
+	if (dev->device.driver != NULL)
 		return 0;
 
 	FOREACH_DRIVER_ON_PCIBUS(dr) {

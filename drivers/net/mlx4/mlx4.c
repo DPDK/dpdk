@@ -734,7 +734,6 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		eth_dev->data->mac_addrs = priv->mac;
 		eth_dev->device = &pci_dev->device;
 		rte_eth_copy_pci_info(eth_dev, pci_dev);
-		eth_dev->device->driver = &mlx4_driver.driver;
 		/* Initialize local interrupt handle for current port. */
 		priv->intr_handle = (struct rte_intr_handle){
 			.fd = -1,

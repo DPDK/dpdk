@@ -280,14 +280,13 @@ ifpga_probe_one_driver(struct rte_afu_driver *drv,
 
 	/* reference driver structure */
 	afu_dev->driver = drv;
-	afu_dev->device.driver = &drv->driver;
 
 	/* call the driver probe() function */
 	ret = drv->probe(afu_dev);
-	if (ret) {
+	if (ret)
 		afu_dev->driver = NULL;
-		afu_dev->device.driver = NULL;
-	}
+	else
+		afu_dev->device.driver = &drv->driver;
 
 	return ret;
 }
@@ -302,7 +301,7 @@ ifpga_probe_all_drivers(struct rte_afu_device *afu_dev)
 		return -1;
 
 	/* Check if a driver is already loaded */
-	if (afu_dev->driver != NULL)
+	if (afu_dev->device.driver != NULL)
 		return 0;
 
 	TAILQ_FOREACH(drv, &ifpga_afu_drv_list, next) {

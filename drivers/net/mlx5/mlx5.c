@@ -1090,7 +1090,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	priv->dev_data = eth_dev->data;
 	eth_dev->data->mac_addrs = priv->mac;
 	eth_dev->device = dpdk_dev;
-	eth_dev->device->driver = &mlx5_driver.driver;
 	err = mlx5_uar_init_primary(eth_dev);
 	if (err) {
 		err = rte_errno;

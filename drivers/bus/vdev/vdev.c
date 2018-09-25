@@ -150,10 +150,9 @@ vdev_probe_all_drivers(struct rte_vdev_device *dev)
 
 	if (vdev_parse(name, &driver))
 		return -1;
-	dev->device.driver = &driver->driver;
 	ret = driver->probe(dev);
-	if (ret)
-		dev->device.driver = NULL;
+	if (ret == 0)
+		dev->device.driver = &driver->driver;
 	return ret;
 }
 
