@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
-version = 5
+version = 6
 allow_experimental_apis = true
 
 if host_machine.system() == 'linux'

@@ -1112,7 +1112,7 @@ struct rte_event {
  *
  */
 int
-rte_event_eth_rx_adapter_caps_get(uint8_t dev_id, uint8_t eth_port_id,
+rte_event_eth_rx_adapter_caps_get(uint8_t dev_id, uint16_t eth_port_id,
 				uint32_t *caps);
 
 #define RTE_EVENT_TIMER_ADAPTER_CAP_INTERNAL_PORT (1ULL << 0)

@@ -134,6 +134,9 @@ API Changes
   To request keeping CRC, application should set ``DEV_RX_OFFLOAD_KEEP_CRC`` Rx
   offload.
 
+* eventdev: Type of 2nd parameter to ``rte_event_eth_rx_adapter_caps_get()``
+  has been changed from uint8_t to uint16_t.
+
 
 ABI Changes
 -----------
@@ -197,7 +200,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_distributor.so.1
      librte_eal.so.8
      librte_ethdev.so.10
-     librte_eventdev.so.5
+   + librte_eventdev.so.6
      librte_flow_classify.so.1
      librte_gro.so.1
      librte_gso.so.1

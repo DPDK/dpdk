@@ -32,7 +32,7 @@ struct event_eth_rx_adapter_test_params {
 static struct event_eth_rx_adapter_test_params default_params;
 
 static inline int
-port_init_common(uint8_t port, const struct rte_eth_conf *port_conf,
+port_init_common(uint16_t port, const struct rte_eth_conf *port_conf,
 		struct rte_mempool *mp)
 {
 	const uint16_t rx_ring_size = 512, tx_ring_size = 512;
@@ -94,7 +94,7 @@ port_init_common(uint8_t port, const struct rte_eth_conf *port_conf,
 }
 
 static inline int
-port_init_rx_intr(uint8_t port, struct rte_mempool *mp)
+port_init_rx_intr(uint16_t port, struct rte_mempool *mp)
 {
 	static const struct rte_eth_conf port_conf_default = {
 		.rxmode = {
@@ -109,7 +109,7 @@ port_init_rx_intr(uint8_t port, struct rte_mempool *mp)
 }
 
 static inline int
-port_init(uint8_t port, struct rte_mempool *mp)
+port_init(uint16_t port, struct rte_mempool *mp)
 {
 	static const struct rte_eth_conf port_conf_default = {
 		.rxmode = {

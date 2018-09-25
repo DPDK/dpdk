@@ -109,7 +109,7 @@ rte_event_dev_info_get(uint8_t dev_id, struct rte_event_dev_info *dev_info)
 }
 
 int
-rte_event_eth_rx_adapter_caps_get(uint8_t dev_id, uint8_t eth_port_id,
+rte_event_eth_rx_adapter_caps_get(uint8_t dev_id, uint16_t eth_port_id,
 				uint32_t *caps)
 {
 	struct rte_eventdev *dev;
