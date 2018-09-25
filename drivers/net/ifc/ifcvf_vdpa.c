@@ -206,7 +206,7 @@ exit:
 }
 
 static uint64_t
-qva_to_gpa(int vid, uint64_t qva)
+hva_to_gpa(int vid, uint64_t hva)
 {
 	struct rte_vhost_memory *mem = NULL;
 	struct rte_vhost_mem_region *reg;
@@ -219,9 +219,9 @@ qva_to_gpa(int vid, uint64_t qva)
 	for (i = 0; i < mem->nregions; i++) {
 		reg = &mem->regions[i];
 
-		if (qva >= reg->host_user_addr &&
-				qva < reg->host_user_addr + reg->size) {
-			gpa = qva - reg->host_user_addr + reg->guest_phys_addr;
+		if (hva >= reg->host_user_addr &&
+				hva < reg->host_user_addr + reg->size) {
+			gpa = hva - reg->host_user_addr + reg->guest_phys_addr;
 			break;
 		}
 	}
@@ -247,21 +247,21 @@ vdpa_ifcvf_start(struct ifcvf_internal *internal)
 
 	for (i = 0; i < nr_vring; i++) {
 		rte_vhost_get_vhost_vring(vid, i, &vq);
-		gpa = qva_to_gpa(vid, (uint64_t)(uintptr_t)vq.desc);
+		gpa = hva_to_gpa(vid, (uint64_t)(uintptr_t)vq.desc);
 		if (gpa == 0) {
 			DRV_LOG(ERR, "Fail to get GPA for descriptor ring.");
 			return -1;
 		}
 		hw->vring[i].desc = gpa;
 
-		gpa = qva_to_gpa(vid, (uint64_t)(uintptr_t)vq.avail);
+		gpa = hva_to_gpa(vid, (uint64_t)(uintptr_t)vq.avail);
 		if (gpa == 0) {
 			DRV_LOG(ERR, "Fail to get GPA for available ring.");
 			return -1;
 		}
 		hw->vring[i].avail = gpa;
 
-		gpa = qva_to_gpa(vid, (uint64_t)(uintptr_t)vq.used);
+		gpa = hva_to_gpa(vid, (uint64_t)(uintptr_t)vq.used);
 		if (gpa == 0) {
 			DRV_LOG(ERR, "Fail to get GPA for used ring.");
 			return -1;
