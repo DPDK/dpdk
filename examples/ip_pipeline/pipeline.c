@@ -22,6 +22,7 @@
 #include <rte_table_acl.h>
 #include <rte_table_array.h>
 #include <rte_table_hash.h>
+#include <rte_table_hash_func.h>
 #include <rte_table_lpm.h>
 #include <rte_table_lpm_ipv6.h>
 #include <rte_table_stub.h>
@@ -35,8 +36,6 @@
 #include "tap.h"
 #include "tmgr.h"
 #include "swq.h"
-
-#include "hash_func.h"
 
 #ifndef PIPELINE_MSGQ_SIZE
 #define PIPELINE_MSGQ_SIZE                                 64
@@ -818,28 +817,28 @@ pipeline_table_create(const char *pipeline_name,
 
 		switch (params->match.hash.key_size) {
 		case  8:
-			f_hash = hash_default_key8;
+			f_hash = rte_table_hash_crc_key8;
 			break;
 		case 16:
-			f_hash = hash_default_key16;
+			f_hash = rte_table_hash_crc_key16;
 			break;
 		case 24:
-			f_hash = hash_default_key24;
+			f_hash = rte_table_hash_crc_key24;
 			break;
 		case 32:
-			f_hash = hash_default_key32;
+			f_hash = rte_table_hash_crc_key32;
 			break;
 		case 40:
-			f_hash = hash_default_key40;
+			f_hash = rte_table_hash_crc_key40;
 			break;
 		case 48:
-			f_hash = hash_default_key48;
+			f_hash = rte_table_hash_crc_key48;
 			break;
 		case 56:
-			f_hash = hash_default_key56;
+			f_hash = rte_table_hash_crc_key56;
 			break;
 		case 64:
-			f_hash = hash_default_key64;
+			f_hash = rte_table_hash_crc_key64;
 			break;
 		default:
 			return -1;

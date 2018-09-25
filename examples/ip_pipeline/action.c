@@ -7,9 +7,9 @@
 #include <string.h>
 
 #include <rte_string_fns.h>
+#include <rte_table_hash_func.h>
 
 #include "action.h"
-#include "hash_func.h"
 
 /**
  * Input port
@@ -57,35 +57,35 @@ port_in_action_profile_create(const char *name,
 		(params->lb.f_hash == NULL)) {
 		switch (params->lb.key_size) {
 		case  8:
-			params->lb.f_hash = hash_default_key8;
+			params->lb.f_hash = rte_table_hash_crc_key8;
 			break;
 
 		case 16:
-			params->lb.f_hash = hash_default_key16;
+			params->lb.f_hash = rte_table_hash_crc_key16;
 			break;
 
 		case 24:
-			params->lb.f_hash = hash_default_key24;
+			params->lb.f_hash = rte_table_hash_crc_key24;
 			break;
 
 		case 32:
-			params->lb.f_hash = hash_default_key32;
+			params->lb.f_hash = rte_table_hash_crc_key32;
 			break;
 
 		case 40:
-			params->lb.f_hash = hash_default_key40;
+			params->lb.f_hash = rte_table_hash_crc_key40;
 			break;
 
 		case 48:
-			params->lb.f_hash = hash_default_key48;
+			params->lb.f_hash = rte_table_hash_crc_key48;
 			break;
 
 		case 56:
-			params->lb.f_hash = hash_default_key56;
+			params->lb.f_hash = rte_table_hash_crc_key56;
 			break;
 
 		case 64:
-			params->lb.f_hash = hash_default_key64;
+			params->lb.f_hash = rte_table_hash_crc_key64;
 			break;
 
 		default:
@@ -192,35 +192,35 @@ table_action_profile_create(const char *name,
 		(params->lb.f_hash == NULL)) {
 		switch (params->lb.key_size) {
 		case 8:
-			params->lb.f_hash = hash_default_key8;
+			params->lb.f_hash = rte_table_hash_crc_key8;
 			break;
 
 		case 16:
-			params->lb.f_hash = hash_default_key16;
+			params->lb.f_hash = rte_table_hash_crc_key16;
 			break;
 
 		case 24:
-			params->lb.f_hash = hash_default_key24;
+			params->lb.f_hash = rte_table_hash_crc_key24;
 			break;
 
 		case 32:
-			params->lb.f_hash = hash_default_key32;
+			params->lb.f_hash = rte_table_hash_crc_key32;
 			break;
 
 		case 40:
-			params->lb.f_hash = hash_default_key40;
+			params->lb.f_hash = rte_table_hash_crc_key40;
 			break;
 
 		case 48:
-			params->lb.f_hash = hash_default_key48;
+			params->lb.f_hash = rte_table_hash_crc_key48;
 			break;
 
 		case 56:
-			params->lb.f_hash = hash_default_key56;
+			params->lb.f_hash = rte_table_hash_crc_key56;
 			break;
 
 		case 64:
-			params->lb.f_hash = hash_default_key64;
+			params->lb.f_hash = rte_table_hash_crc_key64;
 			break;
 
 		default:
