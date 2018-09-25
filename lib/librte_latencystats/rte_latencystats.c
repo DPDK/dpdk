@@ -125,8 +125,11 @@ add_time_stamps(uint16_t pid __rte_unused,
 	for (i = 0; i < nb_pkts; i++) {
 		diff_tsc = now - prev_tsc;
 		timer_tsc += diff_tsc;
-		if (timer_tsc >= samp_intvl) {
+
+		if ((pkts[i]->ol_flags & PKT_RX_TIMESTAMP) == 0
+				&& (timer_tsc >= samp_intvl)) {
 			pkts[i]->timestamp = now;
+			pkts[i]->ol_flags |= PKT_RX_TIMESTAMP;
 			timer_tsc = 0;
 		}
 		prev_tsc = now;
@@ -156,7 +159,7 @@ calc_latency(uint16_t pid __rte_unused,
 
 	now = rte_rdtsc();
 	for (i = 0; i < nb_pkts; i++) {
-		if (pkts[i]->timestamp)
+		if (pkts[i]->ol_flags & PKT_RX_TIMESTAMP)
 			latency[cnt++] = now - pkts[i]->timestamp;
 	}
 
