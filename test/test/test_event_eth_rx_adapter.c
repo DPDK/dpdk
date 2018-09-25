@@ -535,11 +535,13 @@ adapter_intr_queue_add_del(void)
 	/* weight = 0 => interrupt mode */
 	queue_config.servicing_weight = 0;
 
-	/* add queue 0 */
-	err = rte_event_eth_rx_adapter_queue_add(TEST_INST_ID,
-						TEST_ETHDEV_ID, 0,
-						&queue_config);
-	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+	if (cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_MULTI_EVENTQ) {
+		/* add queue 0 */
+		err = rte_event_eth_rx_adapter_queue_add(TEST_INST_ID,
+							TEST_ETHDEV_ID, 0,
+							&queue_config);
+		TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+	}
 
 	/* add all queues */
 	queue_config.servicing_weight = 0;
@@ -549,11 +551,13 @@ adapter_intr_queue_add_del(void)
 						&queue_config);
 	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
 
-	/* del queue 0 */
-	err = rte_event_eth_rx_adapter_queue_del(TEST_INST_ID,
-						TEST_ETHDEV_ID,
-						0);
-	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+	if (cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_MULTI_EVENTQ) {
+		/* del queue 0 */
+		err = rte_event_eth_rx_adapter_queue_del(TEST_INST_ID,
+							TEST_ETHDEV_ID,
+							0);
+		TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+	}
 
 	/* del remaining queues */
 	err = rte_event_eth_rx_adapter_queue_del(TEST_INST_ID,
@@ -571,11 +575,14 @@ adapter_intr_queue_add_del(void)
 
 	/* intr -> poll mode queue */
 	queue_config.servicing_weight = 1;
-	err = rte_event_eth_rx_adapter_queue_add(TEST_INST_ID,
-						TEST_ETHDEV_ID,
-						0,
-						&queue_config);
-	TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+
+	if (cap & RTE_EVENT_ETH_RX_ADAPTER_CAP_MULTI_EVENTQ) {
+		err = rte_event_eth_rx_adapter_queue_add(TEST_INST_ID,
+							TEST_ETHDEV_ID,
+							0,
+							&queue_config);
+		TEST_ASSERT(err == 0, "Expected 0 got %d", err);
+	}
 
 	err = rte_event_eth_rx_adapter_queue_add(TEST_INST_ID,
 						TEST_ETHDEV_ID,
