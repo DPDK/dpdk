@@ -1554,7 +1554,8 @@ struct i40e_aqc_replace_cloud_filters_cmd {
 	u8	old_filter_type;
 	u8	new_filter_type;
 	u8	tr_bit;
-	u8	reserved[4];
+	u8	tr_bit2;
+	u8	reserved[3];
 	__le32 addr_high;
 	__le32 addr_low;
 };

@@ -5990,6 +5990,14 @@ i40e_status_code i40e_aq_replace_cloud_filters(struct i40e_hw *hw,
 	enum i40e_status_code status = I40E_SUCCESS;
 	int i = 0;
 
+	/* X722 doesn't support this command */
+	if (hw->mac.type == I40E_MAC_X722)
+		return I40E_ERR_DEVICE_NOT_SUPPORTED;
+
+	/* need FW version greater than 6.00 */
+	if (hw->aq.fw_maj_ver < 6)
+		return I40E_NOT_SUPPORTED;
+
 	i40e_fill_default_direct_cmd_desc(&desc,
 					  i40e_aqc_opc_replace_cloud_filters);
 
@@ -5999,6 +6007,7 @@ i40e_status_code i40e_aq_replace_cloud_filters(struct i40e_hw *hw,
 	cmd->new_filter_type = filters->new_filter_type;
 	cmd->valid_flags = filters->valid_flags;
 	cmd->tr_bit = filters->tr_bit;
+	cmd->tr_bit2 = filters->tr_bit2;
 
 	status = i40e_asq_send_command(hw, &desc, cmd_buf,
 		sizeof(struct i40e_aqc_replace_cloud_filters_cmd_buf),  NULL);
