@@ -244,7 +244,7 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 		return -1;
 
 	/* Check if a driver is already loaded */
-	if (dev->device.driver != NULL)
+	if (rte_dev_is_probed(&dev->device))
 		return 0;
 
 	FOREACH_DRIVER_ON_PCIBUS(dr) {

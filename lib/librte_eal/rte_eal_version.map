@@ -282,6 +282,7 @@ EXPERIMENTAL {
 	rte_dev_event_monitor_stop;
 	rte_dev_hotplug_handle_disable;
 	rte_dev_hotplug_handle_enable;
+	rte_dev_is_probed;
 	rte_dev_iterator_init;
 	rte_dev_iterator_next;
 	rte_dev_probe;

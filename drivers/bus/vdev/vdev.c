@@ -481,7 +481,7 @@ vdev_probe(void)
 		 * we call each driver probe.
 		 */
 
-		if (dev->device.driver)
+		if (rte_dev_is_probed(&dev->device))
 			continue;
 
 		if (vdev_probe_all_drivers(dev)) {

@@ -301,7 +301,7 @@ ifpga_probe_all_drivers(struct rte_afu_device *afu_dev)
 		return -1;
 
 	/* Check if a driver is already loaded */
-	if (afu_dev->device.driver != NULL)
+	if (rte_dev_is_probed(&afu_dev->device))
 		return 0;
 
 	TAILQ_FOREACH(drv, &ifpga_afu_drv_list, next) {
@@ -325,7 +325,7 @@ ifpga_probe(void)
 	int ret = 0;
 
 	TAILQ_FOREACH(afu_dev, &ifpga_afu_dev_list, next) {
-		if (afu_dev->device.driver)
+		if (rte_dev_is_probed(&afu_dev->device))
 			continue;
 
 		ret = ifpga_probe_all_drivers(afu_dev);

@@ -143,7 +143,7 @@ vmbus_probe_all_drivers(struct rte_vmbus_device *dev)
 	int rc;
 
 	/* Check if a driver is already loaded */
-	if (dev->device.driver != NULL) {
+	if (rte_dev_is_probed(&dev->device)) {
 		VMBUS_LOG(DEBUG, "VMBUS driver already loaded");
 		return 0;
 	}

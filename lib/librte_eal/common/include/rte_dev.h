@@ -163,6 +163,20 @@ struct rte_device {
 };
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Query status of a device.
+ *
+ * @param dev
+ *   Generic device pointer.
+ * @return
+ *   (int)true if already probed successfully, 0 otherwise.
+ */
+__rte_experimental
+int rte_dev_is_probed(const struct rte_device *dev);
+
+/**
  * Attach a device to a registered driver.
  *
  * @param name

@@ -76,6 +76,13 @@ static int cmp_dev_name(const struct rte_device *dev, const void *_name)
 	return strcmp(dev->name, name);
 }
 
+int __rte_experimental
+rte_dev_is_probed(const struct rte_device *dev)
+{
+	/* The field driver should be set only when the probe is successful. */
+	return dev->driver != NULL;
+}
+
 int rte_eal_dev_attach(const char *name, const char *devargs)
 {
 	struct rte_bus *bus;
@@ -212,7 +219,7 @@ local_dev_probe(const char *devargs, struct rte_device **new_dev)
 		goto err_devarg;
 	}
 
-	if (dev->driver != NULL) {
+	if (rte_dev_is_probed(dev)) {
 		RTE_LOG(ERR, EAL, "Device is already plugged\n");
 		return -EEXIST;
 	}
@@ -355,11 +362,6 @@ local_dev_remove(struct rte_device *dev)
 {
 	int ret;
 
-	if (dev->driver == NULL) {
-		RTE_LOG(ERR, EAL, "Device is already unplugged\n");
-		return -ENOENT;
-	}
-
 	if (dev->bus->unplug == NULL) {
 		RTE_LOG(ERR, EAL, "Function unplug not supported by bus (%s)\n",
 			dev->bus->name);
@@ -384,6 +386,11 @@ rte_dev_remove(struct rte_device *dev)
 	struct eal_dev_mp_req req;
 	char *devargs;
 	int ret;
+
+	if (!rte_dev_is_probed(dev)) {
+		RTE_LOG(ERR, EAL, "Device is not probed\n");
+		return -ENOENT;
+	}
 
 	ret = build_devargs(dev->devargs->bus->name, dev->name, "", &devargs);
 	if (ret != 0)
