@@ -167,7 +167,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"Display:\n"
 			"--------\n\n"
 
-			"show port (info|stats|xstats|fdir|stat_qmap|dcb_tc|cap) (port_id|all)\n"
+			"show port (info|stats|summary|xstats|fdir|stat_qmap|dcb_tc|cap) (port_id|all)\n"
 			"    Display information for port_id, or all.\n\n"
 
 			"show port X rss reta (size) (mask0,mask1,...)\n"
@@ -7161,6 +7161,11 @@ static void cmd_showportall_parsed(void *parsed_result,
 	} else if (!strcmp(res->what, "info"))
 		RTE_ETH_FOREACH_DEV(i)
 			port_infos_display(i);
+	else if (!strcmp(res->what, "summary")) {
+		port_summary_header_display();
+		RTE_ETH_FOREACH_DEV(i)
+			port_summary_display(i);
+	}
 	else if (!strcmp(res->what, "stats"))
 		RTE_ETH_FOREACH_DEV(i)
 			nic_stats_display(i);
@@ -7188,14 +7193,14 @@ cmdline_parse_token_string_t cmd_showportall_port =
 	TOKEN_STRING_INITIALIZER(struct cmd_showportall_result, port, "port");
 cmdline_parse_token_string_t cmd_showportall_what =
 	TOKEN_STRING_INITIALIZER(struct cmd_showportall_result, what,
-				 "info#stats#xstats#fdir#stat_qmap#dcb_tc#cap");
+				 "info#summary#stats#xstats#fdir#stat_qmap#dcb_tc#cap");
 cmdline_parse_token_string_t cmd_showportall_all =
 	TOKEN_STRING_INITIALIZER(struct cmd_showportall_result, all, "all");
 cmdline_parse_inst_t cmd_showportall = {
 	.f = cmd_showportall_parsed,
 	.data = NULL,
 	.help_str = "show|clear port "
-		"info|stats|xstats|fdir|stat_qmap|dcb_tc|cap all",
+		"info|summary|stats|xstats|fdir|stat_qmap|dcb_tc|cap all",
 	.tokens = {
 		(void *)&cmd_showportall_show,
 		(void *)&cmd_showportall_port,
@@ -7225,6 +7230,10 @@ static void cmd_showport_parsed(void *parsed_result,
 			nic_xstats_clear(res->portnum);
 	} else if (!strcmp(res->what, "info"))
 		port_infos_display(res->portnum);
+	else if (!strcmp(res->what, "summary")) {
+		port_summary_header_display();
+		port_summary_display(res->portnum);
+	}
 	else if (!strcmp(res->what, "stats"))
 		nic_stats_display(res->portnum);
 	else if (!strcmp(res->what, "xstats"))
@@ -7246,7 +7255,7 @@ cmdline_parse_token_string_t cmd_showport_port =
 	TOKEN_STRING_INITIALIZER(struct cmd_showport_result, port, "port");
 cmdline_parse_token_string_t cmd_showport_what =
 	TOKEN_STRING_INITIALIZER(struct cmd_showport_result, what,
-				 "info#stats#xstats#fdir#stat_qmap#dcb_tc#cap");
+				 "info#summary#stats#xstats#fdir#stat_qmap#dcb_tc#cap");
 cmdline_parse_token_num_t cmd_showport_portnum =
 	TOKEN_NUM_INITIALIZER(struct cmd_showport_result, portnum, UINT16);
 
@@ -7254,7 +7263,7 @@ cmdline_parse_inst_t cmd_showport = {
 	.f = cmd_showport_parsed,
 	.data = NULL,
 	.help_str = "show|clear port "
-		"info|stats|xstats|fdir|stat_qmap|dcb_tc|cap "
+		"info|summary|stats|xstats|fdir|stat_qmap|dcb_tc|cap "
 		"<port_id>",
 	.tokens = {
 		(void *)&cmd_showport_show,

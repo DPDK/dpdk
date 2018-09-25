@@ -520,6 +520,43 @@ port_infos_display(portid_t port_id)
 }
 
 void
+port_summary_header_display(void)
+{
+	uint16_t port_number;
+
+	port_number = rte_eth_dev_count_avail();
+	printf("Number of available ports: %i\n", port_number);
+	printf("%-4s %-17s %-12s %-14s %-8s %s\n", "Port", "MAC Address", "Name",
+			"Driver", "Status", "Link");
+}
+
+void
+port_summary_display(portid_t port_id)
+{
+	struct ether_addr mac_addr;
+	struct rte_eth_link link;
+	struct rte_eth_dev_info dev_info;
+	char name[RTE_ETH_NAME_MAX_LEN];
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
+		print_valid_ports();
+		return;
+	}
+
+	rte_eth_link_get_nowait(port_id, &link);
+	rte_eth_dev_info_get(port_id, &dev_info);
+	rte_eth_dev_get_name_by_port(port_id, name);
+	rte_eth_macaddr_get(port_id, &mac_addr);
+
+	printf("%-4d %02X:%02X:%02X:%02X:%02X:%02X %-12s %-14s %-8s %uMbps\n",
+		port_id, mac_addr.addr_bytes[0], mac_addr.addr_bytes[1],
+		mac_addr.addr_bytes[2], mac_addr.addr_bytes[3],
+		mac_addr.addr_bytes[4], mac_addr.addr_bytes[5], name,
+		dev_info.driver_name, (link.link_status) ? ("up") : ("down"),
+		(unsigned int) link.link_speed);
+}
+
+void
 port_offload_cap_display(portid_t port_id)
 {
 	struct rte_eth_dev_info dev_info;

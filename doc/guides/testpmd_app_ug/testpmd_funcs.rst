@@ -159,11 +159,13 @@ show port
 
 Display information for a given port or all ports::
 
-   testpmd> show port (info|stats|xstats|fdir|stat_qmap|dcb_tc|cap) (port_id|all)
+   testpmd> show port (info|summary|stats|xstats|fdir|stat_qmap|dcb_tc|cap) (port_id|all)
 
 The available information categories are:
 
 * ``info``: General port information such as MAC address.
+
+* ``summary``: Brief port summary such as Device Name, Driver Name etc.
 
 * ``stats``: RX/TX statistics.
 
