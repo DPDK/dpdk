@@ -152,19 +152,22 @@ Configuration syntax
 
 .. code-block:: console
 
-   [port <portnum> default]
-   default_tc = <default_tc>
-   mapping_priority = <mapping_priority>
-   policer_enable = <policer_enable>
+   [policer <policer_id>]
    token_unit = <token_unit>
    color = <color_mode>
    cir = <cir>
    ebs = <ebs>
    cbs = <cbs>
 
+   [port <portnum> default]
+   default_tc = <default_tc>
+   mapping_priority = <mapping_priority>
+
    rate_limit_enable = <rate_limit_enable>
    rate_limit = <rate_limit>
    burst_size = <burst_size>
+
+   default_policer = <policer_id>
 
    [port <portnum> tc <traffic_class>]
    rxq = <rx_queue_list>
@@ -201,7 +204,9 @@ Where:
 
 - ``<dscp_list>``: List of DSCP values to handle in particular TC (e.g. 0-12 32-48 63).
 
-- ``<policer_enable>``: Enable ingress policer.
+- ``<default_policer>``: Id of the policer configuration section to be used as default.
+
+- ``<policer_id>``: Id of the policer configuration section (0..31).
 
 - ``<token_unit>``: Policer token unit (`bytes` or `packets`).
 
@@ -215,7 +220,7 @@ Where:
 
 - ``<default_color>``: Default color for specific tc.
 
-- ``<rate_limit_enable>``: Enables per port or per txq rate limiting.
+- ``<rate_limit_enable>``: Enables per port or per txq rate limiting (`0`/`1` to disable/enable).
 
 - ``<rate_limit>``: Committed information rate, in kilo bits per second.
 
@@ -233,6 +238,13 @@ Configuration file example
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: console
+
+   [policer 0]
+   token_unit = bytes
+   color = blind
+   cir = 100000
+   ebs = 64
+   cbs = 64
 
    [port 0 default]
    default_tc = 0
@@ -265,12 +277,7 @@ Configuration file example
    default_tc = 0
    mapping_priority = vlan/ip
 
-   policer_enable = 1
-   token_unit = bytes
-   color = blind
-   cir = 100000
-   ebs = 64
-   cbs = 64
+   default_policer = 0
 
    [port 1 tc 0]
    rxq = 0

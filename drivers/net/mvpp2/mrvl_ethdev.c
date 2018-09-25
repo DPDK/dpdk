@@ -789,9 +789,9 @@ mrvl_dev_close(struct rte_eth_dev *dev)
 	}
 
 	/* policer must be released after ppio deinitialization */
-	if (priv->policer) {
-		pp2_cls_plcr_deinit(priv->policer);
-		priv->policer = NULL;
+	if (priv->default_policer) {
+		pp2_cls_plcr_deinit(priv->default_policer);
+		priv->default_policer = NULL;
 	}
 }
 

@@ -42,7 +42,8 @@
 #define MRVL_TOK_WRR_WEIGHT "wrr_weight"
 
 /* policer specific configuration tokens */
-#define MRVL_TOK_PLCR_ENABLE "policer_enable"
+#define MRVL_TOK_PLCR "policer"
+#define MRVL_TOK_PLCR_DEFAULT "default_policer"
 #define MRVL_TOK_PLCR_UNIT "token_unit"
 #define MRVL_TOK_PLCR_UNIT_BYTES "bytes"
 #define MRVL_TOK_PLCR_UNIT_PACKETS "packets"
@@ -368,6 +369,9 @@ parse_tc_cfg(struct rte_cfgfile *file, int port, int tc,
 		cfg->port[port].tc[tc].dscps = n;
 	}
 
+	if (!cfg->port[port].setup_policer)
+		return 0;
+
 	entry = rte_cfgfile_get_entry(file, sec_name,
 			MRVL_TOK_PLCR_DEFAULT_COLOR);
 	if (entry) {
@@ -385,6 +389,85 @@ parse_tc_cfg(struct rte_cfgfile *file, int port, int tc,
 			return -1;
 		}
 	}
+
+	return 0;
+}
+
+/**
+ * Parse default port policer.
+ *
+ * @param file Config file handle.
+ * @param sec_name Section name with policer configuration
+ * @param port Port number.
+ * @param cfg[out] Parsing results.
+ * @returns 0 in case of success, negative value otherwise.
+ */
+static int
+parse_policer(struct rte_cfgfile *file, int port, const char *sec_name,
+		struct mrvl_qos_cfg *cfg)
+{
+	const char *entry;
+	uint32_t val;
+
+	/* Read policer token unit */
+	entry = rte_cfgfile_get_entry(file, sec_name, MRVL_TOK_PLCR_UNIT);
+	if (entry) {
+		if (!strncmp(entry, MRVL_TOK_PLCR_UNIT_BYTES,
+					sizeof(MRVL_TOK_PLCR_UNIT_BYTES))) {
+			cfg->port[port].policer_params.token_unit =
+				PP2_CLS_PLCR_BYTES_TOKEN_UNIT;
+		} else if (!strncmp(entry, MRVL_TOK_PLCR_UNIT_PACKETS,
+					sizeof(MRVL_TOK_PLCR_UNIT_PACKETS))) {
+			cfg->port[port].policer_params.token_unit =
+				PP2_CLS_PLCR_PACKETS_TOKEN_UNIT;
+		} else {
+			RTE_LOG(ERR, PMD, "Unknown token: %s\n", entry);
+			return -1;
+		}
+	}
+
+	/* Read policer color mode */
+	entry = rte_cfgfile_get_entry(file, sec_name, MRVL_TOK_PLCR_COLOR);
+	if (entry) {
+		if (!strncmp(entry, MRVL_TOK_PLCR_COLOR_BLIND,
+					sizeof(MRVL_TOK_PLCR_COLOR_BLIND))) {
+			cfg->port[port].policer_params.color_mode =
+				PP2_CLS_PLCR_COLOR_BLIND_MODE;
+		} else if (!strncmp(entry, MRVL_TOK_PLCR_COLOR_AWARE,
+					sizeof(MRVL_TOK_PLCR_COLOR_AWARE))) {
+			cfg->port[port].policer_params.color_mode =
+				PP2_CLS_PLCR_COLOR_AWARE_MODE;
+		} else {
+			RTE_LOG(ERR, PMD, "Error in parsing: %s\n", entry);
+			return -1;
+		}
+	}
+
+	/* Read policer cir */
+	entry = rte_cfgfile_get_entry(file, sec_name, MRVL_TOK_PLCR_CIR);
+	if (entry) {
+		if (get_val_securely(entry, &val) < 0)
+			return -1;
+		cfg->port[port].policer_params.cir = val;
+	}
+
+	/* Read policer cbs */
+	entry = rte_cfgfile_get_entry(file, sec_name, MRVL_TOK_PLCR_CBS);
+	if (entry) {
+		if (get_val_securely(entry, &val) < 0)
+			return -1;
+		cfg->port[port].policer_params.cbs = val;
+	}
+
+	/* Read policer ebs */
+	entry = rte_cfgfile_get_entry(file, sec_name, MRVL_TOK_PLCR_EBS);
+	if (entry) {
+		if (get_val_securely(entry, &val) < 0)
+			return -1;
+		cfg->port[port].policer_params.ebs = val;
+	}
+
+	cfg->port[port].setup_policer = 1;
 
 	return 0;
 }
@@ -457,88 +540,6 @@ mrvl_get_qoscfg(const char *key __rte_unused, const char *path,
 			return -1;
 		}
 
-		entry = rte_cfgfile_get_entry(file, sec_name,
-				MRVL_TOK_PLCR_ENABLE);
-		if (entry) {
-			if (get_val_securely(entry, &val) < 0)
-				return -1;
-			(*cfg)->port[n].policer_enable = val;
-		}
-
-		if ((*cfg)->port[n].policer_enable) {
-			enum pp2_cls_plcr_token_unit unit;
-
-			/* Read policer token unit */
-			entry = rte_cfgfile_get_entry(file, sec_name,
-					MRVL_TOK_PLCR_UNIT);
-			if (entry) {
-				if (!strncmp(entry, MRVL_TOK_PLCR_UNIT_BYTES,
-					sizeof(MRVL_TOK_PLCR_UNIT_BYTES))) {
-					unit = PP2_CLS_PLCR_BYTES_TOKEN_UNIT;
-				} else if (!strncmp(entry,
-						MRVL_TOK_PLCR_UNIT_PACKETS,
-					sizeof(MRVL_TOK_PLCR_UNIT_PACKETS))) {
-					unit = PP2_CLS_PLCR_PACKETS_TOKEN_UNIT;
-				} else {
-					MRVL_LOG(ERR, "Unknown token: %s",
-						entry);
-					return -1;
-				}
-				(*cfg)->port[n].policer_params.token_unit =
-					unit;
-			}
-
-			/* Read policer color mode */
-			entry = rte_cfgfile_get_entry(file, sec_name,
-					MRVL_TOK_PLCR_COLOR);
-			if (entry) {
-				enum pp2_cls_plcr_color_mode mode;
-
-				if (!strncmp(entry, MRVL_TOK_PLCR_COLOR_BLIND,
-					sizeof(MRVL_TOK_PLCR_COLOR_BLIND))) {
-					mode = PP2_CLS_PLCR_COLOR_BLIND_MODE;
-				} else if (!strncmp(entry,
-						MRVL_TOK_PLCR_COLOR_AWARE,
-					sizeof(MRVL_TOK_PLCR_COLOR_AWARE))) {
-					mode = PP2_CLS_PLCR_COLOR_AWARE_MODE;
-				} else {
-					MRVL_LOG(ERR,
-						"Error in parsing: %s",
-						entry);
-					return -1;
-				}
-				(*cfg)->port[n].policer_params.color_mode =
-					mode;
-			}
-
-			/* Read policer cir */
-			entry = rte_cfgfile_get_entry(file, sec_name,
-					MRVL_TOK_PLCR_CIR);
-			if (entry) {
-				if (get_val_securely(entry, &val) < 0)
-					return -1;
-				(*cfg)->port[n].policer_params.cir = val;
-			}
-
-			/* Read policer cbs */
-			entry = rte_cfgfile_get_entry(file, sec_name,
-					MRVL_TOK_PLCR_CBS);
-			if (entry) {
-				if (get_val_securely(entry, &val) < 0)
-					return -1;
-				(*cfg)->port[n].policer_params.cbs = val;
-			}
-
-			/* Read policer ebs */
-			entry = rte_cfgfile_get_entry(file, sec_name,
-					MRVL_TOK_PLCR_EBS);
-			if (entry) {
-				if (get_val_securely(entry, &val) < 0)
-					return -1;
-				(*cfg)->port[n].policer_params.ebs = val;
-			}
-		}
-
 		/*
 		 * Read per-port rate limiting. Setting that will
 		 * disable per-queue rate limiting.
@@ -595,6 +596,20 @@ mrvl_get_qoscfg(const char *key __rte_unused, const char *path,
 		} else {
 			(*cfg)->port[n].mapping_priority =
 				PP2_CLS_QOS_TBL_VLAN_IP_PRI;
+		}
+
+		/* Parse policer configuration (if any) */
+		entry = rte_cfgfile_get_entry(file, sec_name,
+				MRVL_TOK_PLCR_DEFAULT);
+		if (entry) {
+			if (get_val_securely(entry, &val) < 0)
+				return -1;
+
+			snprintf(sec_name, sizeof(sec_name), "%s %d",
+					MRVL_TOK_PLCR, val);
+			ret = parse_policer(file, n, sec_name, *cfg);
+			if (ret)
+				return -1;
 		}
 
 		for (i = 0; i < MRVL_PP2_RXQ_MAX; ++i) {
@@ -659,6 +674,7 @@ setup_tc(struct pp2_ppio_tc_params *param, uint8_t inqs,
  *
  * @param priv Port's private data.
  * @param params Pointer to the policer's configuration.
+ * @param plcr_id Policer id.
  * @returns 0 in case of success, negative values otherwise.
  */
 static int
@@ -667,17 +683,23 @@ setup_policer(struct mrvl_priv *priv, struct pp2_cls_plcr_params *params)
 	char match[16];
 	int ret;
 
-	snprintf(match, sizeof(match), "policer-%d:%d\n",
-			priv->pp_id, priv->ppio_id);
+	/*
+	 * At this point no other policers are used which means
+	 * any policer can be picked up and used as a default one.
+	 *
+	 * Lets use 0th then.
+	 */
+	sprintf(match, "policer-%d:%d\n", priv->pp_id, 0);
 	params->match = match;
 
-	ret = pp2_cls_plcr_init(params, &priv->policer);
+	ret = pp2_cls_plcr_init(params, &priv->default_policer);
 	if (ret) {
 		MRVL_LOG(ERR, "Failed to setup %s", match);
 		return -1;
 	}
 
-	priv->ppio_params.inqs_params.plcr = priv->policer;
+	priv->ppio_params.inqs_params.plcr = priv->default_policer;
+	priv->used_plcrs = BIT(0);
 
 	return 0;
 }
@@ -809,7 +831,7 @@ mrvl_configure_rxqs(struct mrvl_priv *priv, uint16_t portid,
 
 	priv->ppio_params.inqs_params.num_tcs = i;
 
-	if (port_cfg->policer_enable)
+	if (port_cfg->setup_policer)
 		return setup_policer(priv, &port_cfg->policer_params);
 
 	return 0;

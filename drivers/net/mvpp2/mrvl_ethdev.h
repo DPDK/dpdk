@@ -168,7 +168,7 @@ struct mrvl_priv {
 	uint32_t cls_tbl_pattern;
 	LIST_HEAD(mrvl_flows, rte_flow) flows;
 
-	struct pp2_cls_plcr *policer;
+	struct pp2_cls_plcr *default_policer;
 
 	LIST_HEAD(profiles, mrvl_mtr_profile) profiles;
 	LIST_HEAD(mtrs, mrvl_mtr) mtrs;

@@ -43,7 +43,7 @@ struct mrvl_qos_cfg {
 		uint8_t default_tc;
 		uint8_t use_global_defaults;
 		struct pp2_cls_plcr_params policer_params;
-		uint8_t policer_enable;
+		uint8_t setup_policer;
 	} port[RTE_MAX_ETHPORTS];
 };
 
