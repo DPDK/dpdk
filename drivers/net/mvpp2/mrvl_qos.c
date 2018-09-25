@@ -324,6 +324,7 @@ parse_tc_cfg(struct rte_cfgfile *file, int port, int tc,
 	if (rte_cfgfile_num_sections(file, sec_name, strlen(sec_name)) <= 0)
 		return 0;
 
+	cfg->port[port].use_global_defaults = 0;
 	entry = rte_cfgfile_get_entry(file, sec_name, MRVL_TOK_RXQ);
 	if (entry) {
 		n = get_entry_values(entry,
@@ -421,7 +422,7 @@ parse_policer(struct rte_cfgfile *file, int port, const char *sec_name,
 			cfg->port[port].policer_params.token_unit =
 				PP2_CLS_PLCR_PACKETS_TOKEN_UNIT;
 		} else {
-			RTE_LOG(ERR, PMD, "Unknown token: %s\n", entry);
+			MRVL_LOG(ERR, "Unknown token: %s", entry);
 			return -1;
 		}
 	}
@@ -438,7 +439,7 @@ parse_policer(struct rte_cfgfile *file, int port, const char *sec_name,
 			cfg->port[port].policer_params.color_mode =
 				PP2_CLS_PLCR_COLOR_AWARE_MODE;
 		} else {
-			RTE_LOG(ERR, PMD, "Error in parsing: %s\n", entry);
+			MRVL_LOG(ERR, "Error in parsing: %s", entry);
 			return -1;
 		}
 	}
@@ -518,26 +519,13 @@ mrvl_get_qoscfg(const char *key __rte_unused, const char *path,
 		snprintf(sec_name, sizeof(sec_name), "%s %d %s",
 			MRVL_TOK_PORT, n, MRVL_TOK_DEFAULT);
 
+		/* Use global defaults, unless an override occurs */
+		(*cfg)->port[n].use_global_defaults = 1;
+
 		/* Skip ports non-existing in configuration. */
 		if (rte_cfgfile_num_sections(file, sec_name,
 				strlen(sec_name)) <= 0) {
-			(*cfg)->port[n].use_global_defaults = 1;
-			(*cfg)->port[n].mapping_priority =
-				PP2_CLS_QOS_TBL_VLAN_IP_PRI;
 			continue;
-		}
-
-		entry = rte_cfgfile_get_entry(file, sec_name,
-				MRVL_TOK_DEFAULT_TC);
-		if (entry) {
-			if (get_val_securely(entry, &val) < 0 ||
-				val > USHRT_MAX)
-				return -1;
-			(*cfg)->port[n].default_tc = (uint8_t)val;
-		} else {
-			MRVL_LOG(ERR,
-				"Default Traffic Class required in custom configuration!");
-			return -1;
 		}
 
 		/*
@@ -573,6 +561,7 @@ mrvl_get_qoscfg(const char *key __rte_unused, const char *path,
 		entry = rte_cfgfile_get_entry(file, sec_name,
 				MRVL_TOK_MAPPING_PRIORITY);
 		if (entry) {
+			(*cfg)->port[n].use_global_defaults = 0;
 			if (!strncmp(entry, MRVL_TOK_VLAN_IP,
 				sizeof(MRVL_TOK_VLAN_IP)))
 				(*cfg)->port[n].mapping_priority =
@@ -602,6 +591,7 @@ mrvl_get_qoscfg(const char *key __rte_unused, const char *path,
 		entry = rte_cfgfile_get_entry(file, sec_name,
 				MRVL_TOK_PLCR_DEFAULT);
 		if (entry) {
+			(*cfg)->port[n].use_global_defaults = 0;
 			if (get_val_securely(entry, &val) < 0)
 				return -1;
 
@@ -626,6 +616,21 @@ mrvl_get_qoscfg(const char *key __rte_unused, const char *path,
 				rte_exit(EXIT_FAILURE,
 					"Error %d parsing port %d tc %d!\n",
 					ret, n, i);
+		}
+
+		entry = rte_cfgfile_get_entry(file, sec_name,
+					      MRVL_TOK_DEFAULT_TC);
+		if (entry) {
+			if (get_val_securely(entry, &val) < 0 ||
+			    val > USHRT_MAX)
+				return -1;
+			(*cfg)->port[n].default_tc = (uint8_t)val;
+		} else {
+			if ((*cfg)->port[n].use_global_defaults == 0) {
+				MRVL_LOG(ERR,
+					 "Default Traffic Class required in custom configuration!");
+				return -1;
+			}
 		}
 	}
 

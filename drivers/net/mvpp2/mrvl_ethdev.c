@@ -593,7 +593,8 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 	}
 
 	/* For default QoS config, don't start classifier. */
-	if (mrvl_qos_cfg) {
+	if (mrvl_qos_cfg  &&
+	    mrvl_qos_cfg->port[dev->data->port_id].use_global_defaults == 0) {
 		ret = mrvl_start_qos_mapping(priv);
 		if (ret) {
 			MRVL_LOG(ERR, "Failed to setup QoS mapping");
