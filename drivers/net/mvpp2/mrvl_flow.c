@@ -11,7 +11,7 @@
 
 #include <arpa/inet.h>
 
-#include "mrvl_ethdev.h"
+#include "mrvl_flow.h"
 #include "mrvl_qos.h"
 
 /** Number of rules in the classifier table. */
@@ -2790,3 +2790,34 @@ const struct rte_flow_ops mrvl_flow_ops = {
 	.flush = mrvl_flow_flush,
 	.isolate = mrvl_flow_isolate
 };
+
+/**
+ * Initialize flow resources.
+ *
+ * @param dev Pointer to the device.
+ */
+void
+mrvl_flow_init(struct rte_eth_dev *dev)
+{
+	struct mrvl_priv *priv = dev->data->dev_private;
+
+	LIST_INIT(&priv->flows);
+}
+
+/**
+ * Cleanup flow resources.
+ *
+ * @param dev Pointer to the device.
+ */
+void
+mrvl_flow_deinit(struct rte_eth_dev *dev)
+{
+	struct mrvl_priv *priv = dev->data->dev_private;
+
+	mrvl_flow_flush(dev, NULL);
+
+	if (priv->cls_tbl) {
+		pp2_cls_tbl_deinit(priv->cls_tbl);
+		priv->cls_tbl = NULL;
+	}
+}

@@ -23,6 +23,7 @@
 #include <rte_mvep_common.h>
 #include "mrvl_ethdev.h"
 #include "mrvl_qos.h"
+#include "mrvl_flow.h"
 #include "mrvl_mtr.h"
 
 /* bitmask with reserved hifs */
@@ -619,6 +620,7 @@ mrvl_dev_start(struct rte_eth_dev *dev)
 			goto out;
 	}
 
+	mrvl_flow_init(dev);
 	mrvl_mtr_init(dev);
 
 	return 0;
@@ -759,6 +761,7 @@ mrvl_dev_close(struct rte_eth_dev *dev)
 
 	mrvl_flush_rx_queues(dev);
 	mrvl_flush_tx_shadow_queues(dev);
+	mrvl_flow_deinit(dev);
 	mrvl_mtr_deinit(dev);
 
 	for (i = 0; i < priv->ppio_params.inqs_params.num_tcs; ++i) {
