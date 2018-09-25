@@ -49,7 +49,7 @@ dpaa_event_dequeue_timeout_ticks(struct rte_eventdev *dev, uint64_t ns,
 {
 	uint64_t cycles_per_second;
 
-	EVENTDEV_DRV_FUNC_TRACE();
+	EVENTDEV_INIT_FUNC_TRACE();
 
 	RTE_SET_USED(dev);
 
@@ -175,7 +175,7 @@ static void
 dpaa_event_dev_info_get(struct rte_eventdev *dev,
 			struct rte_event_dev_info *dev_info)
 {
-	EVENTDEV_DRV_FUNC_TRACE();
+	EVENTDEV_INIT_FUNC_TRACE();
 
 	RTE_SET_USED(dev);
 	dev_info->driver_name = "event_dpaa";
@@ -220,8 +220,7 @@ dpaa_event_dev_configure(const struct rte_eventdev *dev)
 	int ret, i;
 	uint32_t *ch_id;
 
-	EVENTDEV_DRV_FUNC_TRACE();
-
+	EVENTDEV_INIT_FUNC_TRACE();
 	priv->dequeue_timeout_ns = conf->dequeue_timeout_ns;
 	priv->nb_events_limit = conf->nb_events_limit;
 	priv->nb_event_queues = conf->nb_event_queues;
@@ -244,13 +243,14 @@ dpaa_event_dev_configure(const struct rte_eventdev *dev)
 			  sizeof(uint32_t) * priv->nb_event_queues,
 			  RTE_CACHE_LINE_SIZE);
 	if (ch_id == NULL) {
-		EVENTDEV_DRV_ERR("Fail to allocate memory for dpaa channels\n");
+		DPAA_EVENTDEV_ERR("Fail to allocate memory for dpaa channels\n");
 		return -ENOMEM;
 	}
 	/* Create requested event queues within the given event device */
 	ret = qman_alloc_pool_range(ch_id, priv->nb_event_queues, 1, 0);
 	if (ret < 0) {
-		EVENTDEV_DRV_ERR("Failed to create internal channel\n");
+		DPAA_EVENTDEV_ERR("qman_alloc_pool_range %u, err =%d\n",
+				 priv->nb_event_queues, ret);
 		rte_free(ch_id);
 		return ret;
 	}
@@ -283,7 +283,7 @@ dpaa_event_dev_configure(const struct rte_eventdev *dev)
 	 * can be created equals to number of lcore.
 	 */
 	rte_free(ch_id);
-	EVENTDEV_DRV_LOG("Configured eventdev devid=%d", dev->data->dev_id);
+	DPAA_EVENTDEV_INFO("Configured eventdev devid=%d", dev->data->dev_id);
 
 	return 0;
 }
@@ -291,7 +291,7 @@ dpaa_event_dev_configure(const struct rte_eventdev *dev)
 static int
 dpaa_event_dev_start(struct rte_eventdev *dev)
 {
-	EVENTDEV_DRV_FUNC_TRACE();
+	EVENTDEV_INIT_FUNC_TRACE();
 	RTE_SET_USED(dev);
 
 	return 0;
@@ -300,14 +300,14 @@ dpaa_event_dev_start(struct rte_eventdev *dev)
 static void
 dpaa_event_dev_stop(struct rte_eventdev *dev)
 {
-	EVENTDEV_DRV_FUNC_TRACE();
+	EVENTDEV_INIT_FUNC_TRACE();
 	RTE_SET_USED(dev);
 }
 
 static int
 dpaa_event_dev_close(struct rte_eventdev *dev)
 {
-	EVENTDEV_DRV_FUNC_TRACE();
+	EVENTDEV_INIT_FUNC_TRACE();
 	RTE_SET_USED(dev);
 
 	return 0;
@@ -317,7 +317,7 @@ static void
 dpaa_event_queue_def_conf(struct rte_eventdev *dev, uint8_t queue_id,
 			  struct rte_event_queue_conf *queue_conf)
 {
-	EVENTDEV_DRV_FUNC_TRACE();
+	EVENTDEV_INIT_FUNC_TRACE();
 
 	RTE_SET_USED(dev);
 	RTE_SET_USED(queue_id);
@@ -334,14 +334,14 @@ dpaa_event_queue_setup(struct rte_eventdev *dev, uint8_t queue_id,
 	struct dpaa_eventdev *priv = dev->data->dev_private;
 	struct dpaa_eventq *evq_info = &priv->evq_info[queue_id];
 
-	EVENTDEV_DRV_FUNC_TRACE();
+	EVENTDEV_INIT_FUNC_TRACE();
 
 	switch (queue_conf->schedule_type) {
 	case RTE_SCHED_TYPE_PARALLEL:
 	case RTE_SCHED_TYPE_ATOMIC:
 		break;
 	case RTE_SCHED_TYPE_ORDERED:
-		EVENTDEV_DRV_ERR("Schedule type is not supported.");
+		DPAA_EVENTDEV_ERR("Schedule type is not supported.");
 		return -1;
 	}
 	evq_info->event_queue_cfg = queue_conf->event_queue_cfg;
@@ -353,7 +353,7 @@ dpaa_event_queue_setup(struct rte_eventdev *dev, uint8_t queue_id,
 static void
 dpaa_event_queue_release(struct rte_eventdev *dev, uint8_t queue_id)
 {
-	EVENTDEV_DRV_FUNC_TRACE();
+	EVENTDEV_INIT_FUNC_TRACE();
 
 	RTE_SET_USED(dev);
 	RTE_SET_USED(queue_id);
@@ -363,7 +363,7 @@ static void
 dpaa_event_port_default_conf_get(struct rte_eventdev *dev, uint8_t port_id,
 				 struct rte_event_port_conf *port_conf)
 {
-	EVENTDEV_DRV_FUNC_TRACE();
+	EVENTDEV_INIT_FUNC_TRACE();
 
 	RTE_SET_USED(dev);
 	RTE_SET_USED(port_id);
@@ -379,7 +379,7 @@ dpaa_event_port_setup(struct rte_eventdev *dev, uint8_t port_id,
 {
 	struct dpaa_eventdev *eventdev = dev->data->dev_private;
 
-	EVENTDEV_DRV_FUNC_TRACE();
+	EVENTDEV_INIT_FUNC_TRACE();
 
 	RTE_SET_USED(port_conf);
 	dev->data->ports[port_id] = &eventdev->ports[port_id];
@@ -390,7 +390,7 @@ dpaa_event_port_setup(struct rte_eventdev *dev, uint8_t port_id,
 static void
 dpaa_event_port_release(void *port)
 {
-	EVENTDEV_DRV_FUNC_TRACE();
+	EVENTDEV_INIT_FUNC_TRACE();
 
 	RTE_SET_USED(port);
 }
@@ -466,7 +466,7 @@ dpaa_event_eth_rx_adapter_caps_get(const struct rte_eventdev *dev,
 {
 	const char *ethdev_driver = eth_dev->device->driver->name;
 
-	EVENTDEV_DRV_FUNC_TRACE();
+	EVENTDEV_INIT_FUNC_TRACE();
 
 	RTE_SET_USED(dev);
 
@@ -491,14 +491,14 @@ dpaa_event_eth_rx_adapter_queue_add(
 	struct dpaa_if *dpaa_intf = eth_dev->data->dev_private;
 	int ret, i;
 
-	EVENTDEV_DRV_FUNC_TRACE();
+	EVENTDEV_INIT_FUNC_TRACE();
 
 	if (rx_queue_id == -1) {
 		for (i = 0; i < dpaa_intf->nb_rx_queues; i++) {
 			ret = dpaa_eth_eventq_attach(eth_dev, i, ch_id,
 						     queue_conf);
 			if (ret) {
-				EVENTDEV_DRV_ERR(
+				DPAA_EVENTDEV_ERR(
 					"Event Queue attach failed:%d\n", ret);
 				goto detach_configured_queues;
 			}
@@ -508,7 +508,7 @@ dpaa_event_eth_rx_adapter_queue_add(
 
 	ret = dpaa_eth_eventq_attach(eth_dev, rx_queue_id, ch_id, queue_conf);
 	if (ret)
-		EVENTDEV_DRV_ERR("dpaa_eth_eventq_attach failed:%d\n", ret);
+		DPAA_EVENTDEV_ERR("dpaa_eth_eventq_attach failed:%d\n", ret);
 	return ret;
 
 detach_configured_queues:
@@ -527,14 +527,14 @@ dpaa_event_eth_rx_adapter_queue_del(const struct rte_eventdev *dev,
 	int ret, i;
 	struct dpaa_if *dpaa_intf = eth_dev->data->dev_private;
 
-	EVENTDEV_DRV_FUNC_TRACE();
+	EVENTDEV_INIT_FUNC_TRACE();
 
 	RTE_SET_USED(dev);
 	if (rx_queue_id == -1) {
 		for (i = 0; i < dpaa_intf->nb_rx_queues; i++) {
 			ret = dpaa_eth_eventq_detach(eth_dev, i);
 			if (ret)
-				EVENTDEV_DRV_ERR(
+				DPAA_EVENTDEV_ERR(
 					"Event Queue detach failed:%d\n", ret);
 		}
 
@@ -543,7 +543,7 @@ dpaa_event_eth_rx_adapter_queue_del(const struct rte_eventdev *dev,
 
 	ret = dpaa_eth_eventq_detach(eth_dev, rx_queue_id);
 	if (ret)
-		EVENTDEV_DRV_ERR("dpaa_eth_eventq_detach failed:%d\n", ret);
+		DPAA_EVENTDEV_ERR("dpaa_eth_eventq_detach failed:%d\n", ret);
 	return ret;
 }
 
@@ -551,7 +551,7 @@ static int
 dpaa_event_eth_rx_adapter_start(const struct rte_eventdev *dev,
 				const struct rte_eth_dev *eth_dev)
 {
-	EVENTDEV_DRV_FUNC_TRACE();
+	EVENTDEV_INIT_FUNC_TRACE();
 
 	RTE_SET_USED(dev);
 	RTE_SET_USED(eth_dev);
@@ -563,7 +563,7 @@ static int
 dpaa_event_eth_rx_adapter_stop(const struct rte_eventdev *dev,
 			       const struct rte_eth_dev *eth_dev)
 {
-	EVENTDEV_DRV_FUNC_TRACE();
+	EVENTDEV_INIT_FUNC_TRACE();
 
 	RTE_SET_USED(dev);
 	RTE_SET_USED(eth_dev);
@@ -603,7 +603,7 @@ dpaa_event_dev_create(const char *name)
 					   sizeof(struct dpaa_eventdev),
 					   rte_socket_id());
 	if (eventdev == NULL) {
-		EVENTDEV_DRV_ERR("Failed to create eventdev vdev %s", name);
+		DPAA_EVENTDEV_ERR("Failed to create eventdev vdev %s", name);
 		goto fail;
 	}
 
@@ -631,7 +631,7 @@ dpaa_event_dev_probe(struct rte_vdev_device *vdev)
 	const char *name;
 
 	name = rte_vdev_device_name(vdev);
-	EVENTDEV_DRV_LOG("Initializing %s", name);
+	DPAA_EVENTDEV_INFO("Initializing %s", name);
 
 	return dpaa_event_dev_create(name);
 }
@@ -642,7 +642,7 @@ dpaa_event_dev_remove(struct rte_vdev_device *vdev)
 	const char *name;
 
 	name = rte_vdev_device_name(vdev);
-	EVENTDEV_DRV_LOG("Closing %s", name);
+	DPAA_EVENTDEV_INFO("Closing %s", name);
 
 	return rte_event_pmd_vdev_uninit(name);
 }

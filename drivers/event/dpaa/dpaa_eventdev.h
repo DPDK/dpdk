@@ -12,13 +12,6 @@
 
 #define EVENTDEV_NAME_DPAA_PMD		event_dpaa1
 
-#define EVENTDEV_DRV_LOG(fmt, args...)	\
-		DPAA_EVENTDEV_INFO(fmt, ## args)
-#define EVENTDEV_DRV_FUNC_TRACE()	\
-		DPAA_EVENTDEV_DEBUG("%s() Called:\n", __func__)
-#define EVENTDEV_DRV_ERR(fmt, args...)	\
-		DPAA_EVENTDEV_ERR("%s(): " fmt "\n", __func__, ## args)
-
 #define DPAA_EVENT_MAX_PORTS			8
 #define DPAA_EVENT_MAX_QUEUES			16
 #define DPAA_EVENT_MIN_DEQUEUE_TIMEOUT	1
