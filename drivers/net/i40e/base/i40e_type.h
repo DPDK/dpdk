@@ -1512,7 +1512,9 @@ struct i40e_hw_port_stats {
 #define I40E_SR_CONTROL_WORD_1_MASK	(0x03 << I40E_SR_CONTROL_WORD_1_SHIFT)
 #define I40E_SR_CONTROL_WORD_1_NVM_BANK_VALID	BIT(5)
 #define I40E_SR_NVM_MAP_STRUCTURE_TYPE		BIT(12)
-#define I40E_PTR_TYPE                           BIT(15)
+#define I40E_PTR_TYPE				BIT(15)
+#define I40E_SR_OCP_CFG_WORD0			0x2B
+#define I40E_SR_OCP_ENABLED			BIT(15)
 
 /* Shadow RAM related */
 #define I40E_SR_SECTOR_SIZE_IN_WORDS	0x800
