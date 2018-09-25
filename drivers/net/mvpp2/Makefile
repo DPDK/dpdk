@@ -39,5 +39,6 @@ LDLIBS += -lrte_bus_vdev -lrte_common_mvep
 SRCS-$(CONFIG_RTE_LIBRTE_MVPP2_PMD) += mrvl_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_MVPP2_PMD) += mrvl_qos.c
 SRCS-$(CONFIG_RTE_LIBRTE_MVPP2_PMD) += mrvl_flow.c
+SRCS-$(CONFIG_RTE_LIBRTE_MVPP2_PMD) += mrvl_mtr.c
 
 include $(RTE_SDK)/mk/rte.lib.mk
