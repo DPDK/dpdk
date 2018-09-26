@@ -82,8 +82,19 @@ struct softnic_mtr_meter_profile {
 
 TAILQ_HEAD(softnic_mtr_meter_profile_list, softnic_mtr_meter_profile);
 
+/* MTR meter object */
+struct softnic_mtr {
+	TAILQ_ENTRY(softnic_mtr) node;
+	uint32_t mtr_id;
+	struct rte_mtr_params params;
+	struct rte_flow *flow;
+};
+
+TAILQ_HEAD(softnic_mtr_list, softnic_mtr);
+
 struct mtr_internals {
 	struct softnic_mtr_meter_profile_list meter_profiles;
+	struct softnic_mtr_list mtrs;
 };
 
 /**
@@ -600,6 +611,10 @@ softnic_mtr_init(struct pmd_internals *p);
 
 void
 softnic_mtr_free(struct pmd_internals *p);
+
+struct softnic_mtr *
+softnic_mtr_find(struct pmd_internals *p,
+	uint32_t mtr_id);
 
 struct softnic_mtr_meter_profile *
 softnic_mtr_meter_profile_find(struct pmd_internals *p,
