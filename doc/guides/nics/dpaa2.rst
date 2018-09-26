@@ -409,8 +409,7 @@ Features of the DPAA2 PMD are:
 
 Supported DPAA2 SoCs
 --------------------
-
-- LS2080A/LS2040A
+- LX2160A
 - LS2084A/LS2044A
 - LS2088A/LS2048A
 - LS1088A/LS1048A
@@ -418,52 +417,12 @@ Supported DPAA2 SoCs
 Prerequisites
 -------------
 
-There are three main pre-requisities for executing DPAA2 PMD on a DPAA2
-compatible board:
-
-1. **ARM 64 Tool Chain**
-
-   For example, the `*aarch64* Linaro Toolchain <https://releases.linaro.org/components/toolchain/binaries/6.4-2017.08/aarch64-linux-gnu/>`_.
-
-2. **Linux Kernel**
-
-   It can be obtained from `NXP's Github hosting <https://github.com/qoriq-open-source/linux>`_.
-
-3. **Rootfile system**
-
-   Any *aarch64* supporting filesystem can be used. For example,
-   Ubuntu 15.10 (Wily) or 16.04 LTS (Xenial) userland which can be obtained
-   from `here <http://cdimage.ubuntu.com/ubuntu-base/releases/16.04/release/ubuntu-base-16.04.1-base-arm64.tar.gz>`_.
-
-As an alternative method, DPAA2 PMD can also be executed using images provided
-as part of SDK from NXP. The SDK includes all the above prerequisites necessary
-to bring up a DPAA2 board.
-
-The following dependencies are not part of DPDK and must be installed
-separately:
-
-- **NXP Linux SDK**
-
-  NXP Linux software development kit (SDK) includes support for family
-  of QorIQ® ARM-Architecture-based system on chip (SoC) processors
-  and corresponding boards.
-
-  It includes the Linux board support packages (BSPs) for NXP SoCs,
-  a fully operational tool chain, kernel and board specific modules.
-
-  SDK and related information can be obtained from:  `NXP QorIQ SDK  <http://www.nxp.com/products/software-and-tools/run-time-software/linux-sdk/linux-sdk-for-qoriq-processors:SDKLINUX>`_.
-
-- **DPDK Extra Scripts**
-
-  DPAA2 based resources can be configured easily with the help of ready scripts
-  as provided in the DPDK Extra repository.
-
-  `DPDK Extras Scripts <https://github.com/qoriq-open-source/dpdk-extras>`_.
+See :doc:`../platform/dpaa2` for setup information
 
 Currently supported by DPDK:
 
-- NXP SDK **17.08+**.
-- MC Firmware version **10.3.1** and higher.
+- NXP SDK **18.09+**.
+- MC Firmware version **10.10.0** and higher.
 - Supported architectures:  **arm64 LE**.
 
 - Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.

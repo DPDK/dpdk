@@ -129,7 +129,7 @@ AEAD algorithms:
 Supported DPAA2 SoCs
 --------------------
 
-* LS2080A/LS2040A
+* LS2160A
 * LS2084A/LS2044A
 * LS2088A/LS2048A
 * LS1088A/LS1048A
@@ -157,31 +157,15 @@ Prerequisites
 DPAA2_SEC driver has similar pre-requisites as described in :ref:`dpaa2_overview`.
 The following dependencies are not part of DPDK and must be installed separately:
 
-* **NXP Linux SDK**
-
-  NXP Linux software development kit (SDK) includes support for the family
-  of QorIQ® ARM-Architecture-based system on chip (SoC) processors
-  and corresponding boards.
-
-  It includes the Linux board support packages (BSPs) for NXP SoCs,
-  a fully operational tool chain, kernel and board specific modules.
-
-  SDK and related information can be obtained from:  `NXP QorIQ SDK  <http://www.nxp.com/products/software-and-tools/run-time-software/linux-sdk/linux-sdk-for-qoriq-processors:SDKLINUX>`_.
-
-* **DPDK Extra Scripts**
-
-  DPAA2 based resources can be configured easily with the help of ready scripts
-  as provided in the DPDK helper repository.
-
-  `DPDK Extra Scripts <https://github.com/qoriq-open-source/dpdk-extras>`_.
+See :doc:`../platform/dpaa2` for setup information
 
 Currently supported by DPDK:
 
-* NXP SDK **17.08+**.
-* MC Firmware version **10.3.1** and higher.
-* Supported architectures:  **arm64 LE**.
+- NXP SDK **18.09+**.
+- MC Firmware version **10.10.0** and higher.
+- Supported architectures:  **arm64 LE**.
 
-* Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
+- Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>` to setup the basic DPDK environment.
 
 Pre-Installation Configuration
 ------------------------------
