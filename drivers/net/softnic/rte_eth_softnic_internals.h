@@ -320,6 +320,15 @@ struct softnic_table_action_profile {
 
 TAILQ_HEAD(softnic_table_action_profile_list, softnic_table_action_profile);
 
+struct softnic_table_meter_profile {
+	TAILQ_ENTRY(softnic_table_meter_profile) node;
+	uint32_t meter_profile_id;
+	struct rte_table_action_meter_profile profile;
+};
+
+TAILQ_HEAD(softnic_table_meter_profile_list,
+	softnic_table_meter_profile);
+
 /**
  * Pipeline
  */
@@ -455,6 +464,7 @@ struct softnic_table {
 	struct softnic_table_action_profile *ap;
 	struct rte_table_action *a;
 	struct flow_list flows;
+	struct softnic_table_meter_profile_list meter_profiles;
 };
 
 struct pipeline {
@@ -812,6 +822,10 @@ int
 softnic_pipeline_table_create(struct pmd_internals *p,
 	const char *pipeline_name,
 	struct softnic_table_params *params);
+
+struct softnic_table_meter_profile *
+softnic_pipeline_table_meter_profile_find(struct softnic_table *table,
+	uint32_t meter_profile_id);
 
 struct softnic_table_rule_match_acl {
 	int ip_version;

@@ -1680,6 +1680,8 @@ softnic_pipeline_table_mtr_profile_add(struct pmd_internals *softnic,
 	struct pipeline *p;
 	struct pipeline_msg_req *req;
 	struct pipeline_msg_rsp *rsp;
+	struct softnic_table *table;
+	struct softnic_table_meter_profile *mp;
 	int status;
 
 	/* Check input params */
@@ -1692,20 +1694,40 @@ softnic_pipeline_table_mtr_profile_add(struct pmd_internals *softnic,
 		table_id >= p->n_tables)
 		return -1;
 
-	if (!pipeline_is_running(p)) {
-		struct rte_table_action *a = p->table[table_id].a;
+	table = &p->table[table_id];
+	mp = softnic_pipeline_table_meter_profile_find(table, meter_profile_id);
+	if (mp)
+		return -1;
 
-		status = rte_table_action_meter_profile_add(a,
+	/* Resource Allocation */
+	mp = calloc(1, sizeof(struct softnic_table_meter_profile));
+	if (mp == NULL)
+		return -1;
+
+	mp->meter_profile_id = meter_profile_id;
+	memcpy(&mp->profile, profile, sizeof(mp->profile));
+
+	if (!pipeline_is_running(p)) {
+		status = rte_table_action_meter_profile_add(table->a,
 			meter_profile_id,
 			profile);
+		if (status) {
+			free(mp);
+			return status;
+		}
+
+		/* Add profile to the table. */
+		TAILQ_INSERT_TAIL(&table->meter_profiles, mp, node);
 
 		return status;
 	}
 
 	/* Allocate request */
 	req = pipeline_msg_alloc();
-	if (req == NULL)
+	if (req == NULL) {
+		free(mp);
 		return -1;
+	}
 
 	/* Write request */
 	req->type = PIPELINE_REQ_TABLE_MTR_PROFILE_ADD;
@@ -1715,11 +1737,17 @@ softnic_pipeline_table_mtr_profile_add(struct pmd_internals *softnic,
 
 	/* Send request and wait for response */
 	rsp = pipeline_msg_send_recv(p, req);
-	if (rsp == NULL)
+	if (rsp == NULL) {
+		free(mp);
 		return -1;
+	}
 
 	/* Read response */
 	status = rsp->status;
+	if (status == 0)
+		TAILQ_INSERT_TAIL(&table->meter_profiles, mp, node);
+	else
+		free(mp);
 
 	/* Free response */
 	pipeline_msg_free(rsp);

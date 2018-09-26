@@ -332,6 +332,107 @@ pmd_mtr_destroy(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/* MTR object meter profile update */
+static int
+pmd_mtr_meter_profile_update(struct rte_eth_dev *dev,
+	uint32_t mtr_id,
+	uint32_t meter_profile_id,
+	struct rte_mtr_error *error)
+{
+	struct pmd_internals *p = dev->data->dev_private;
+	struct softnic_mtr_meter_profile *mp_new, *mp_old;
+	struct softnic_mtr *m;
+	int status;
+
+	/* MTR object id must be valid */
+	m = softnic_mtr_find(p, mtr_id);
+	if (m == NULL)
+		return -rte_mtr_error_set(error,
+			EEXIST,
+			RTE_MTR_ERROR_TYPE_MTR_ID,
+			NULL,
+			"MTR object id not valid");
+
+	/* Meter profile id must be valid */
+	mp_new = softnic_mtr_meter_profile_find(p, meter_profile_id);
+	if (mp_new == NULL)
+		return -rte_mtr_error_set(error,
+			EINVAL,
+			RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
+			NULL,
+			"Meter profile not valid");
+
+	/* MTR object already set to meter profile id */
+	if (m->params.meter_profile_id == meter_profile_id)
+		return 0;
+
+	/*  MTR object owner table update */
+	if (m->flow) {
+		uint32_t table_id = m->flow->table_id;
+		struct softnic_table *table = &m->flow->pipeline->table[table_id];
+		struct softnic_table_rule_action action;
+
+		if (!softnic_pipeline_table_meter_profile_find(table,
+			meter_profile_id)) {
+			struct rte_table_action_meter_profile profile;
+
+			memset(&profile, 0, sizeof(profile));
+
+			profile.alg = RTE_TABLE_ACTION_METER_TRTCM;
+			profile.trtcm.cir = mp_new->params.trtcm_rfc2698.cir;
+			profile.trtcm.pir = mp_new->params.trtcm_rfc2698.pir;
+			profile.trtcm.cbs = mp_new->params.trtcm_rfc2698.cbs;
+			profile.trtcm.pbs = mp_new->params.trtcm_rfc2698.pbs;
+
+			/* Add meter profile to pipeline table */
+			status = softnic_pipeline_table_mtr_profile_add(p,
+					m->flow->pipeline->name,
+					table_id,
+					meter_profile_id,
+					&profile);
+			if (status)
+				return -rte_mtr_error_set(error,
+					EINVAL,
+					RTE_MTR_ERROR_TYPE_UNSPECIFIED,
+					NULL,
+					"Table meter profile add failed");
+		}
+
+		/* Set meter action */
+		memcpy(&action, &m->flow->action, sizeof(action));
+
+		action.mtr.mtr[0].meter_profile_id = meter_profile_id;
+
+		/* Re-add rule */
+		status = softnic_pipeline_table_rule_add(p,
+			m->flow->pipeline->name,
+			table_id,
+			&m->flow->match,
+			&action,
+			&m->flow->data);
+		if (status)
+			return -rte_mtr_error_set(error,
+				EINVAL,
+				RTE_MTR_ERROR_TYPE_UNSPECIFIED,
+				NULL,
+				"Pipeline table rule add failed");
+
+		/* Flow: update meter action */
+		memcpy(&m->flow->action, &action, sizeof(m->flow->action));
+	}
+
+	mp_old = softnic_mtr_meter_profile_find(p, m->params.meter_profile_id);
+
+	/* Meter: Set meter profile */
+	m->params.meter_profile_id = meter_profile_id;
+
+	/* Update dependencies*/
+	mp_old->n_users--;
+	mp_new->n_users++;
+
+	return 0;
+}
+
 const struct rte_mtr_ops pmd_mtr_ops = {
 	.capabilities_get = NULL,
 
@@ -343,7 +444,7 @@ const struct rte_mtr_ops pmd_mtr_ops = {
 	.meter_enable = NULL,
 	.meter_disable = NULL,
 
-	.meter_profile_update = NULL,
+	.meter_profile_update = pmd_mtr_meter_profile_update,
 	.meter_dscp_table_update = NULL,
 	.policer_actions_update = NULL,
 	.stats_update = NULL,

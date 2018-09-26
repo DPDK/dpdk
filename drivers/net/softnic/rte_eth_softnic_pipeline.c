@@ -55,6 +55,17 @@ softnic_pipeline_table_free(struct softnic_table *table)
 		TAILQ_REMOVE(&table->flows, flow, node);
 		free(flow);
 	}
+
+	for ( ; ; ) {
+		struct softnic_table_meter_profile *mp;
+
+		mp = TAILQ_FIRST(&table->meter_profiles);
+		if (mp == NULL)
+			break;
+
+		TAILQ_REMOVE(&table->meter_profiles, mp, node);
+		free(mp);
+	}
 }
 
 void
@@ -988,6 +999,7 @@ softnic_pipeline_table_create(struct pmd_internals *softnic,
 	table->ap = ap;
 	table->a = action;
 	TAILQ_INIT(&table->flows);
+	TAILQ_INIT(&table->meter_profiles);
 	pipeline->n_tables++;
 
 	return 0;
@@ -1019,4 +1031,17 @@ softnic_pipeline_port_out_find(struct pmd_internals *softnic,
 		}
 
 	return -1;
+}
+
+struct softnic_table_meter_profile *
+softnic_pipeline_table_meter_profile_find(struct softnic_table *table,
+	uint32_t meter_profile_id)
+{
+	struct softnic_table_meter_profile *mp;
+
+	TAILQ_FOREACH(mp, &table->meter_profiles, node)
+		if (mp->meter_profile_id == meter_profile_id)
+			return mp;
+
+	return NULL;
 }
