@@ -875,7 +875,7 @@ struct filter_action_v2 {
 	u32 rq_idx;
 	u32 flags;                     /* use FILTER_ACTION_XXX_FLAG defines */
 	u16 filter_id;
-	u_int8_t reserved[32];         /* for future expansion */
+	uint8_t reserved[32];         /* for future expansion */
 } __attribute__((packed));
 
 /* Specifies the filter type. */
@@ -941,9 +941,9 @@ enum {
 };
 
 struct filter_tlv {
-	u_int32_t type;
-	u_int32_t length;
-	u_int32_t val[0];
+	uint32_t type;
+	uint32_t length;
+	uint32_t val[0];
 };
 
 /* Data for CMD_ADD_FILTER is 2 TLV and filter + action structs */
@@ -957,10 +957,10 @@ struct filter_tlv {
  * drivers should use this instead of "sizeof (struct filter_v2)" when
  * computing length for TLV.
  */
-static inline u_int32_t
+static inline uint32_t
 vnic_filter_size(struct filter_v2 *fp)
 {
-	u_int32_t size;
+	uint32_t size;
 
 	switch (fp->type) {
 	case FILTER_USNIC_ID:
@@ -999,10 +999,10 @@ enum {
  * drivers should use this instead of "sizeof (struct filter_action_v2)"
  * when computing length for TLV.
  */
-static inline u_int32_t
+static inline uint32_t
 vnic_action_size(struct filter_action_v2 *fap)
 {
-	u_int32_t size;
+	uint32_t size;
 
 	switch (fap->type) {
 	case FILTER_ACTION_RQ_STEERING:
