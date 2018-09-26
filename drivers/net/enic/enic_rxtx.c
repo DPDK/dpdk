@@ -842,12 +842,33 @@ static void enqueue_simple_pkts(struct rte_mbuf **pkts,
 				struct enic *enic)
 {
 	struct rte_mbuf *p;
+	uint16_t mss;
 
 	while (n) {
 		n--;
 		p = *pkts++;
 		desc->address = p->buf_iova + p->data_off;
 		desc->length = p->pkt_len;
+		/* VLAN insert */
+		desc->vlan_tag = p->vlan_tci;
+		desc->header_length_flags &=
+			((1 << WQ_ENET_FLAGS_EOP_SHIFT) |
+			 (1 << WQ_ENET_FLAGS_CQ_ENTRY_SHIFT));
+		if (p->ol_flags & PKT_TX_VLAN) {
+			desc->header_length_flags |=
+				1 << WQ_ENET_FLAGS_VLAN_TAG_INSERT_SHIFT;
+		}
+		/*
+		 * Checksum offload. We use WQ_ENET_OFFLOAD_MODE_CSUM, which
+		 * is 0, so no need to set offload_mode.
+		 */
+		mss = 0;
+		if (p->ol_flags & PKT_TX_IP_CKSUM)
+			mss |= ENIC_CALC_IP_CKSUM << WQ_ENET_MSS_SHIFT;
+		if (p->ol_flags & PKT_TX_L4_MASK)
+			mss |= ENIC_CALC_TCP_UDP_CKSUM << WQ_ENET_MSS_SHIFT;
+		desc->mss_loopback = mss;
+
 		/*
 		 * The app should not send oversized
 		 * packets. tx_pkt_prepare includes a check as

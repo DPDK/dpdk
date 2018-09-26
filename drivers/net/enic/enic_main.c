@@ -534,6 +534,7 @@ int enic_enable(struct enic *enic)
 	unsigned int index;
 	int err;
 	struct rte_eth_dev *eth_dev = enic->rte_dev;
+	uint64_t simple_tx_offloads;
 
 	eth_dev->data->dev_link.link_speed = vnic_dev_port_speed(enic->vdev);
 	eth_dev->data->dev_link.link_duplex = ETH_LINK_FULL_DUPLEX;
@@ -572,10 +573,17 @@ int enic_enable(struct enic *enic)
 	}
 
 	/*
-	 * Use the simple TX handler if possible. All offloads must be
-	 * disabled.
+	 * Use the simple TX handler if possible. Only checksum offloads
+	 * and vlan insertion are supported.
 	 */
-	if (eth_dev->data->dev_conf.txmode.offloads == 0) {
+	simple_tx_offloads = enic->tx_offload_capa &
+		(DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+		 DEV_TX_OFFLOAD_VLAN_INSERT |
+		 DEV_TX_OFFLOAD_IPV4_CKSUM |
+		 DEV_TX_OFFLOAD_UDP_CKSUM |
+		 DEV_TX_OFFLOAD_TCP_CKSUM);
+	if ((eth_dev->data->dev_conf.txmode.offloads &
+	     ~simple_tx_offloads) == 0) {
 		PMD_INIT_LOG(DEBUG, " use the simple tx handler");
 		eth_dev->tx_pkt_burst = &enic_simple_xmit_pkts;
 		for (index = 0; index < enic->wq_count; index++)
