@@ -709,7 +709,7 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	wq_desc_avail = vnic_wq_desc_avail(wq);
 	head_idx = wq->head_idx;
 	desc_count = wq->ring.desc_count;
-	ol_flags_mask = PKT_TX_VLAN_PKT | PKT_TX_IP_CKSUM | PKT_TX_L4_MASK;
+	ol_flags_mask = PKT_TX_VLAN | PKT_TX_IP_CKSUM | PKT_TX_L4_MASK;
 	tx_oversized = &enic->soft_stats.tx_oversized;
 
 	nb_pkts = RTE_MIN(nb_pkts, ENIC_TX_XMIT_MAX);
@@ -737,7 +737,7 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		mss = 0;
 		vlan_id = tx_pkt->vlan_tci;
-		vlan_tag_insert = !!(ol_flags & PKT_TX_VLAN_PKT);
+		vlan_tag_insert = !!(ol_flags & PKT_TX_VLAN);
 		bus_addr = (dma_addr_t)
 			   (tx_pkt->buf_iova + tx_pkt->data_off);
 
