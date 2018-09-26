@@ -22,6 +22,7 @@
 #include <rte_ethdev_driver.h>
 #include <rte_tm_driver.h>
 #include <rte_flow_driver.h>
+#include <rte_mtr_driver.h>
 
 #include "rte_eth_softnic.h"
 #include "conn.h"
@@ -65,6 +66,24 @@ struct flow_attr_map {
 struct flow_internals {
 	struct flow_attr_map ingress_map[SOFTNIC_FLOW_MAX_GROUPS];
 	struct flow_attr_map egress_map[SOFTNIC_FLOW_MAX_GROUPS];
+};
+
+/**
+ * Meter
+ */
+
+/* MTR meter profile */
+struct softnic_mtr_meter_profile {
+	TAILQ_ENTRY(softnic_mtr_meter_profile) node;
+	uint32_t meter_profile_id;
+	struct rte_mtr_meter_profile params;
+	uint32_t n_users;
+};
+
+TAILQ_HEAD(softnic_mtr_meter_profile_list, softnic_mtr_meter_profile);
+
+struct mtr_internals {
+	struct softnic_mtr_meter_profile_list meter_profiles;
 };
 
 /**
@@ -525,6 +544,8 @@ struct pmd_internals {
 	} soft;
 
 	struct flow_internals flow;
+	struct mtr_internals mtr;
+
 	struct softnic_conn *conn;
 	struct softnic_mempool_list mempool_list;
 	struct softnic_swq_list swq_list;
@@ -574,6 +595,16 @@ extern const struct rte_flow_ops pmd_flow_ops;
 /**
  * Meter
  */
+int
+softnic_mtr_init(struct pmd_internals *p);
+
+void
+softnic_mtr_free(struct pmd_internals *p);
+
+struct softnic_mtr_meter_profile *
+softnic_mtr_meter_profile_find(struct pmd_internals *p,
+	uint32_t meter_profile_id);
+
 extern const struct rte_mtr_ops pmd_mtr_ops;
 
 /**

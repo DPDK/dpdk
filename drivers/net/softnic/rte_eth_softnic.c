@@ -190,6 +190,7 @@ pmd_dev_stop(struct rte_eth_dev *dev)
 	softnic_mempool_free(p);
 
 	tm_hierarchy_free(p);
+	softnic_mtr_free(p);
 }
 
 static void
@@ -290,6 +291,7 @@ pmd_init(struct pmd_params *params)
 
 	/* Resources */
 	tm_hierarchy_init(p);
+	softnic_mtr_init(p);
 
 	softnic_mempool_init(p);
 	softnic_swq_init(p);
@@ -344,6 +346,7 @@ pmd_free(struct pmd_internals *p)
 	softnic_mempool_free(p);
 
 	tm_hierarchy_free(p);
+	softnic_mtr_free(p);
 
 	rte_free(p);
 }
