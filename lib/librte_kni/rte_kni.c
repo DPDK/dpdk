@@ -18,6 +18,9 @@
 #include <rte_log.h>
 #include <rte_kni.h>
 #include <rte_memzone.h>
+#include <rte_tailq.h>
+#include <rte_rwlock.h>
+#include <rte_eal_memconfig.h>
 #include <exec-env/rte_kni_common.h>
 #include "rte_kni_fifo.h"
 
@@ -30,7 +33,23 @@
 
 #define KNI_REQUEST_MBUF_NUM_MAX      32
 
-#define KNI_MEM_CHECK(cond) do { if (cond) goto kni_fail; } while (0)
+#define KNI_MEM_CHECK(cond, fail) do { if (cond) goto fail; } while (0)
+
+#define KNI_MZ_NAME_FMT			"kni_info_%s"
+#define KNI_TX_Q_MZ_NAME_FMT		"kni_tx_%s"
+#define KNI_RX_Q_MZ_NAME_FMT		"kni_rx_%s"
+#define KNI_ALLOC_Q_MZ_NAME_FMT		"kni_alloc_%s"
+#define KNI_FREE_Q_MZ_NAME_FMT		"kni_free_%s"
+#define KNI_REQ_Q_MZ_NAME_FMT		"kni_req_%s"
+#define KNI_RESP_Q_MZ_NAME_FMT		"kni_resp_%s"
+#define KNI_SYNC_ADDR_MZ_NAME_FMT	"kni_sync_%s"
+
+TAILQ_HEAD(rte_kni_list, rte_tailq_entry);
+
+static struct rte_tailq_elem rte_kni_tailq = {
+	.name = "RTE_KNI",
+};
+EAL_REGISTER_TAILQ(rte_kni_tailq)
 
 /**
  * KNI context
@@ -42,10 +61,19 @@ struct rte_kni {
 	struct rte_mempool *pktmbuf_pool;   /**< pkt mbuf mempool */
 	unsigned mbuf_size;                 /**< mbuf size */
 
+	const struct rte_memzone *m_tx_q;   /**< TX queue memzone */
+	const struct rte_memzone *m_rx_q;   /**< RX queue memzone */
+	const struct rte_memzone *m_alloc_q;/**< Alloc queue memzone */
+	const struct rte_memzone *m_free_q; /**< Free queue memzone */
+
 	struct rte_kni_fifo *tx_q;          /**< TX queue */
 	struct rte_kni_fifo *rx_q;          /**< RX queue */
 	struct rte_kni_fifo *alloc_q;       /**< Allocated mbufs queue */
 	struct rte_kni_fifo *free_q;        /**< To be freed mbufs queue */
+
+	const struct rte_memzone *m_req_q;  /**< Request queue memzone */
+	const struct rte_memzone *m_resp_q; /**< Response queue memzone */
+	const struct rte_memzone *m_sync_addr;/**< Sync addr memzone */
 
 	/* For request & response */
 	struct rte_kni_fifo *req_q;         /**< Request queue */
@@ -53,7 +81,6 @@ struct rte_kni {
 	void * sync_addr;                   /**< Req/Resp Mem address */
 
 	struct rte_kni_ops ops;             /**< operations for request */
-	uint8_t in_use : 1;                 /**< kni in use */
 };
 
 enum kni_ops_status {
@@ -61,231 +88,111 @@ enum kni_ops_status {
 	KNI_REQ_REGISTERED,
 };
 
-/**
- * KNI memzone pool slot
- */
-struct rte_kni_memzone_slot {
-	uint32_t id;
-	uint8_t in_use : 1;                    /**< slot in use */
-
-	/* Memzones */
-	const struct rte_memzone *m_ctx;       /**< KNI ctx */
-	const struct rte_memzone *m_tx_q;      /**< TX queue */
-	const struct rte_memzone *m_rx_q;      /**< RX queue */
-	const struct rte_memzone *m_alloc_q;   /**< Allocated mbufs queue */
-	const struct rte_memzone *m_free_q;    /**< To be freed mbufs queue */
-	const struct rte_memzone *m_req_q;     /**< Request queue */
-	const struct rte_memzone *m_resp_q;    /**< Response queue */
-	const struct rte_memzone *m_sync_addr;
-
-	/* Free linked list */
-	struct rte_kni_memzone_slot *next;     /**< Next slot link.list */
-};
-
-/**
- * KNI memzone pool
- */
-struct rte_kni_memzone_pool {
-	uint8_t initialized : 1;            /**< Global KNI pool init flag */
-
-	uint32_t max_ifaces;                /**< Max. num of KNI ifaces */
-	struct rte_kni_memzone_slot *slots;        /**< Pool slots */
-	rte_spinlock_t mutex;               /**< alloc/release mutex */
-
-	/* Free memzone slots linked-list */
-	struct rte_kni_memzone_slot *free;         /**< First empty slot */
-	struct rte_kni_memzone_slot *free_tail;    /**< Last empty slot */
-};
-
-
 static void kni_free_mbufs(struct rte_kni *kni);
 static void kni_allocate_mbufs(struct rte_kni *kni);
 
 static volatile int kni_fd = -1;
-static struct rte_kni_memzone_pool kni_memzone_pool = {
-	.initialized = 0,
-};
-
-static const struct rte_memzone *
-kni_memzone_reserve(const char *name, size_t len, int socket_id,
-						unsigned flags)
-{
-	const struct rte_memzone *mz = rte_memzone_lookup(name);
-
-	if (mz == NULL)
-		mz = rte_memzone_reserve(name, len, socket_id, flags);
-
-	return mz;
-}
-
-/* Pool mgmt */
-static struct rte_kni_memzone_slot*
-kni_memzone_pool_alloc(void)
-{
-	struct rte_kni_memzone_slot *slot;
-
-	rte_spinlock_lock(&kni_memzone_pool.mutex);
-
-	if (!kni_memzone_pool.free) {
-		rte_spinlock_unlock(&kni_memzone_pool.mutex);
-		return NULL;
-	}
-
-	slot = kni_memzone_pool.free;
-	kni_memzone_pool.free = slot->next;
-	slot->in_use = 1;
-
-	if (!kni_memzone_pool.free)
-		kni_memzone_pool.free_tail = NULL;
-
-	rte_spinlock_unlock(&kni_memzone_pool.mutex);
-
-	return slot;
-}
-
-static void
-kni_memzone_pool_release(struct rte_kni_memzone_slot *slot)
-{
-	rte_spinlock_lock(&kni_memzone_pool.mutex);
-
-	if (kni_memzone_pool.free)
-		kni_memzone_pool.free_tail->next = slot;
-	else
-		kni_memzone_pool.free = slot;
-
-	kni_memzone_pool.free_tail = slot;
-	slot->next = NULL;
-	slot->in_use = 0;
-
-	rte_spinlock_unlock(&kni_memzone_pool.mutex);
-}
-
 
 /* Shall be called before any allocation happens */
-void
-rte_kni_init(unsigned int max_kni_ifaces)
+int
+rte_kni_init(unsigned int max_kni_ifaces __rte_unused)
 {
-	uint32_t i;
-	struct rte_kni_memzone_slot *it;
-	const struct rte_memzone *mz;
-#define OBJNAMSIZ 32
-	char obj_name[OBJNAMSIZ];
-	char mz_name[RTE_MEMZONE_NAMESIZE];
-
-	/* Immediately return if KNI is already initialized */
-	if (kni_memzone_pool.initialized) {
-		RTE_LOG(WARNING, KNI, "Double call to rte_kni_init()");
-		return;
-	}
-
-	if (max_kni_ifaces == 0) {
-		RTE_LOG(ERR, KNI, "Invalid number of max_kni_ifaces %d\n",
-							max_kni_ifaces);
-		RTE_LOG(ERR, KNI, "Unable to initialize KNI\n");
-		return;
-	}
-
 	/* Check FD and open */
 	if (kni_fd < 0) {
 		kni_fd = open("/dev/" KNI_DEVICE, O_RDWR);
 		if (kni_fd < 0) {
 			RTE_LOG(ERR, KNI,
 				"Can not open /dev/%s\n", KNI_DEVICE);
-			return;
+			return -1;
 		}
 	}
 
-	/* Allocate slot objects */
-	kni_memzone_pool.slots = (struct rte_kni_memzone_slot *)
-					rte_malloc(NULL,
-					sizeof(struct rte_kni_memzone_slot) *
-					max_kni_ifaces,
-					0);
-	KNI_MEM_CHECK(kni_memzone_pool.slots == NULL);
-
-	/* Initialize general pool variables */
-	kni_memzone_pool.initialized = 1;
-	kni_memzone_pool.max_ifaces = max_kni_ifaces;
-	kni_memzone_pool.free = &kni_memzone_pool.slots[0];
-	rte_spinlock_init(&kni_memzone_pool.mutex);
-
-	/* Pre-allocate all memzones of all the slots; panic on error */
-	for (i = 0; i < max_kni_ifaces; i++) {
-
-		/* Recover current slot */
-		it = &kni_memzone_pool.slots[i];
-		it->id = i;
-
-		/* Allocate KNI context */
-		snprintf(mz_name, RTE_MEMZONE_NAMESIZE, "KNI_INFO_%d", i);
-		mz = kni_memzone_reserve(mz_name, sizeof(struct rte_kni),
-					SOCKET_ID_ANY, 0);
-		KNI_MEM_CHECK(mz == NULL);
-		it->m_ctx = mz;
-
-		/* TX RING */
-		snprintf(obj_name, OBJNAMSIZ, "kni_tx_%d", i);
-		mz = kni_memzone_reserve(obj_name, KNI_FIFO_SIZE,
-							SOCKET_ID_ANY, 0);
-		KNI_MEM_CHECK(mz == NULL);
-		it->m_tx_q = mz;
-
-		/* RX RING */
-		snprintf(obj_name, OBJNAMSIZ, "kni_rx_%d", i);
-		mz = kni_memzone_reserve(obj_name, KNI_FIFO_SIZE,
-							SOCKET_ID_ANY, 0);
-		KNI_MEM_CHECK(mz == NULL);
-		it->m_rx_q = mz;
-
-		/* ALLOC RING */
-		snprintf(obj_name, OBJNAMSIZ, "kni_alloc_%d", i);
-		mz = kni_memzone_reserve(obj_name, KNI_FIFO_SIZE,
-							SOCKET_ID_ANY, 0);
-		KNI_MEM_CHECK(mz == NULL);
-		it->m_alloc_q = mz;
-
-		/* FREE RING */
-		snprintf(obj_name, OBJNAMSIZ, "kni_free_%d", i);
-		mz = kni_memzone_reserve(obj_name, KNI_FIFO_SIZE,
-							SOCKET_ID_ANY, 0);
-		KNI_MEM_CHECK(mz == NULL);
-		it->m_free_q = mz;
-
-		/* Request RING */
-		snprintf(obj_name, OBJNAMSIZ, "kni_req_%d", i);
-		mz = kni_memzone_reserve(obj_name, KNI_FIFO_SIZE,
-							SOCKET_ID_ANY, 0);
-		KNI_MEM_CHECK(mz == NULL);
-		it->m_req_q = mz;
-
-		/* Response RING */
-		snprintf(obj_name, OBJNAMSIZ, "kni_resp_%d", i);
-		mz = kni_memzone_reserve(obj_name, KNI_FIFO_SIZE,
-							SOCKET_ID_ANY, 0);
-		KNI_MEM_CHECK(mz == NULL);
-		it->m_resp_q = mz;
-
-		/* Req/Resp sync mem area */
-		snprintf(obj_name, OBJNAMSIZ, "kni_sync_%d", i);
-		mz = kni_memzone_reserve(obj_name, KNI_FIFO_SIZE,
-							SOCKET_ID_ANY, 0);
-		KNI_MEM_CHECK(mz == NULL);
-		it->m_sync_addr = mz;
-
-		if ((i+1) == max_kni_ifaces) {
-			it->next = NULL;
-			kni_memzone_pool.free_tail = it;
-		} else
-			it->next = &kni_memzone_pool.slots[i+1];
-	}
-
-	return;
-
-kni_fail:
-	RTE_LOG(ERR, KNI, "Unable to allocate memory for max_kni_ifaces:%d."
-		"Increase the amount of hugepages memory\n", max_kni_ifaces);
+	return 0;
 }
 
+static struct rte_kni *
+__rte_kni_get(const char *name)
+{
+	struct rte_kni *kni;
+	struct rte_tailq_entry *te;
+	struct rte_kni_list *kni_list;
+
+	kni_list = RTE_TAILQ_CAST(rte_kni_tailq.head, rte_kni_list);
+
+	TAILQ_FOREACH(te, kni_list, next) {
+		kni = te->data;
+		if (strncmp(name, kni->name, RTE_KNI_NAMESIZE) == 0)
+			break;
+	}
+
+	if (te == NULL)
+		kni = NULL;
+
+	return kni;
+}
+
+static int
+kni_reserve_mz(struct rte_kni *kni)
+{
+	char mz_name[RTE_MEMZONE_NAMESIZE];
+
+	snprintf(mz_name, RTE_MEMZONE_NAMESIZE, KNI_TX_Q_MZ_NAME_FMT, kni->name);
+	kni->m_tx_q = rte_memzone_reserve(mz_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
+	KNI_MEM_CHECK(kni->m_tx_q == NULL, tx_q_fail);
+
+	snprintf(mz_name, RTE_MEMZONE_NAMESIZE, KNI_RX_Q_MZ_NAME_FMT, kni->name);
+	kni->m_rx_q = rte_memzone_reserve(mz_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
+	KNI_MEM_CHECK(kni->m_rx_q == NULL, rx_q_fail);
+
+	snprintf(mz_name, RTE_MEMZONE_NAMESIZE, KNI_ALLOC_Q_MZ_NAME_FMT, kni->name);
+	kni->m_alloc_q = rte_memzone_reserve(mz_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
+	KNI_MEM_CHECK(kni->m_alloc_q == NULL, alloc_q_fail);
+
+	snprintf(mz_name, RTE_MEMZONE_NAMESIZE, KNI_FREE_Q_MZ_NAME_FMT, kni->name);
+	kni->m_free_q = rte_memzone_reserve(mz_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
+	KNI_MEM_CHECK(kni->m_free_q == NULL, free_q_fail);
+
+	snprintf(mz_name, RTE_MEMZONE_NAMESIZE, KNI_REQ_Q_MZ_NAME_FMT, kni->name);
+	kni->m_req_q = rte_memzone_reserve(mz_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
+	KNI_MEM_CHECK(kni->m_req_q == NULL, req_q_fail);
+
+	snprintf(mz_name, RTE_MEMZONE_NAMESIZE, KNI_RESP_Q_MZ_NAME_FMT, kni->name);
+	kni->m_resp_q = rte_memzone_reserve(mz_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
+	KNI_MEM_CHECK(kni->m_resp_q == NULL, resp_q_fail);
+
+	snprintf(mz_name, RTE_MEMZONE_NAMESIZE, KNI_SYNC_ADDR_MZ_NAME_FMT, kni->name);
+	kni->m_sync_addr = rte_memzone_reserve(mz_name, KNI_FIFO_SIZE, SOCKET_ID_ANY, 0);
+	KNI_MEM_CHECK(kni->m_sync_addr == NULL, sync_addr_fail);
+
+	return 0;
+
+sync_addr_fail:
+	rte_memzone_free(kni->m_resp_q);
+resp_q_fail:
+	rte_memzone_free(kni->m_req_q);
+req_q_fail:
+	rte_memzone_free(kni->m_free_q);
+free_q_fail:
+	rte_memzone_free(kni->m_alloc_q);
+alloc_q_fail:
+	rte_memzone_free(kni->m_rx_q);
+rx_q_fail:
+	rte_memzone_free(kni->m_tx_q);
+tx_q_fail:
+	return -1;
+}
+
+static void
+kni_release_mz(struct rte_kni *kni)
+{
+	rte_memzone_free(kni->m_tx_q);
+	rte_memzone_free(kni->m_rx_q);
+	rte_memzone_free(kni->m_alloc_q);
+	rte_memzone_free(kni->m_free_q);
+	rte_memzone_free(kni->m_req_q);
+	rte_memzone_free(kni->m_resp_q);
+	rte_memzone_free(kni->m_sync_addr);
+}
 
 struct rte_kni *
 rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
@@ -294,41 +201,45 @@ rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 {
 	int ret;
 	struct rte_kni_device_info dev_info;
-	struct rte_kni *ctx;
-	char intf_name[RTE_KNI_NAMESIZE];
-	const struct rte_memzone *mz;
-	struct rte_kni_memzone_slot *slot = NULL;
+	struct rte_kni *kni;
+	struct rte_tailq_entry *te;
+	struct rte_kni_list *kni_list;
 
 	if (!pktmbuf_pool || !conf || !conf->name[0])
 		return NULL;
 
 	/* Check if KNI subsystem has been initialized */
-	if (kni_memzone_pool.initialized != 1) {
+	if (kni_fd < 0) {
 		RTE_LOG(ERR, KNI, "KNI subsystem has not been initialized. Invoke rte_kni_init() first\n");
 		return NULL;
 	}
 
-	/* Get an available slot from the pool */
-	slot = kni_memzone_pool_alloc();
-	if (!slot) {
-		RTE_LOG(ERR, KNI, "Cannot allocate more KNI interfaces; increase the number of max_kni_ifaces(current %d) or release unused ones.\n",
-			kni_memzone_pool.max_ifaces);
-		return NULL;
+	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+
+	kni = __rte_kni_get(conf->name);
+	if (kni != NULL) {
+		RTE_LOG(ERR, KNI, "KNI already exists\n");
+		goto unlock;
 	}
 
-	/* Recover ctx */
-	ctx = slot->m_ctx->addr;
-	snprintf(intf_name, RTE_KNI_NAMESIZE, "%s", conf->name);
-
-	if (ctx->in_use) {
-		RTE_LOG(ERR, KNI, "KNI %s is in use\n", ctx->name);
-		return NULL;
+	te = rte_zmalloc("KNI_TAILQ_ENTRY", sizeof(*te), 0);
+	if (te == NULL) {
+		RTE_LOG(ERR, KNI, "Failed to allocate tailq entry\n");
+		goto unlock;
 	}
-	memset(ctx, 0, sizeof(struct rte_kni));
+
+	kni = rte_zmalloc("KNI", sizeof(struct rte_kni), RTE_CACHE_LINE_SIZE);
+	if (kni == NULL) {
+		RTE_LOG(ERR, KNI, "KNI memory allocation failed\n");
+		goto kni_fail;
+	}
+
+	snprintf(kni->name, RTE_KNI_NAMESIZE, "%s", conf->name);
+
 	if (ops)
-		memcpy(&ctx->ops, ops, sizeof(struct rte_kni_ops));
+		memcpy(&kni->ops, ops, sizeof(struct rte_kni_ops));
 	else
-		ctx->ops.port_id = UINT16_MAX;
+		kni->ops.port_id = UINT16_MAX;
 
 	memset(&dev_info, 0, sizeof(dev_info));
 	dev_info.bus = conf->addr.bus;
@@ -344,72 +255,79 @@ rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 
 	memcpy(dev_info.mac_addr, conf->mac_addr, ETHER_ADDR_LEN);
 
-	snprintf(ctx->name, RTE_KNI_NAMESIZE, "%s", intf_name);
-	snprintf(dev_info.name, RTE_KNI_NAMESIZE, "%s", intf_name);
+	snprintf(dev_info.name, RTE_KNI_NAMESIZE, "%s", conf->name);
 
 	RTE_LOG(INFO, KNI, "pci: %02x:%02x:%02x \t %02x:%02x\n",
 		dev_info.bus, dev_info.devid, dev_info.function,
 			dev_info.vendor_id, dev_info.device_id);
+
+	ret = kni_reserve_mz(kni);
+	if (ret < 0)
+		goto mz_fail;
+
 	/* TX RING */
-	mz = slot->m_tx_q;
-	ctx->tx_q = mz->addr;
-	kni_fifo_init(ctx->tx_q, KNI_FIFO_COUNT_MAX);
-	dev_info.tx_phys = mz->phys_addr;
+	kni->tx_q = kni->m_tx_q->addr;
+	kni_fifo_init(kni->tx_q, KNI_FIFO_COUNT_MAX);
+	dev_info.tx_phys = kni->m_tx_q->phys_addr;
 
 	/* RX RING */
-	mz = slot->m_rx_q;
-	ctx->rx_q = mz->addr;
-	kni_fifo_init(ctx->rx_q, KNI_FIFO_COUNT_MAX);
-	dev_info.rx_phys = mz->phys_addr;
+	kni->rx_q = kni->m_rx_q->addr;
+	kni_fifo_init(kni->rx_q, KNI_FIFO_COUNT_MAX);
+	dev_info.rx_phys = kni->m_rx_q->phys_addr;
 
 	/* ALLOC RING */
-	mz = slot->m_alloc_q;
-	ctx->alloc_q = mz->addr;
-	kni_fifo_init(ctx->alloc_q, KNI_FIFO_COUNT_MAX);
-	dev_info.alloc_phys = mz->phys_addr;
+	kni->alloc_q = kni->m_alloc_q->addr;
+	kni_fifo_init(kni->alloc_q, KNI_FIFO_COUNT_MAX);
+	dev_info.alloc_phys = kni->m_alloc_q->phys_addr;
 
 	/* FREE RING */
-	mz = slot->m_free_q;
-	ctx->free_q = mz->addr;
-	kni_fifo_init(ctx->free_q, KNI_FIFO_COUNT_MAX);
-	dev_info.free_phys = mz->phys_addr;
+	kni->free_q = kni->m_free_q->addr;
+	kni_fifo_init(kni->free_q, KNI_FIFO_COUNT_MAX);
+	dev_info.free_phys = kni->m_free_q->phys_addr;
 
 	/* Request RING */
-	mz = slot->m_req_q;
-	ctx->req_q = mz->addr;
-	kni_fifo_init(ctx->req_q, KNI_FIFO_COUNT_MAX);
-	dev_info.req_phys = mz->phys_addr;
+	kni->req_q = kni->m_req_q->addr;
+	kni_fifo_init(kni->req_q, KNI_FIFO_COUNT_MAX);
+	dev_info.req_phys = kni->m_req_q->phys_addr;
 
 	/* Response RING */
-	mz = slot->m_resp_q;
-	ctx->resp_q = mz->addr;
-	kni_fifo_init(ctx->resp_q, KNI_FIFO_COUNT_MAX);
-	dev_info.resp_phys = mz->phys_addr;
+	kni->resp_q = kni->m_resp_q->addr;
+	kni_fifo_init(kni->resp_q, KNI_FIFO_COUNT_MAX);
+	dev_info.resp_phys = kni->m_resp_q->phys_addr;
 
 	/* Req/Resp sync mem area */
-	mz = slot->m_sync_addr;
-	ctx->sync_addr = mz->addr;
-	dev_info.sync_va = mz->addr;
-	dev_info.sync_phys = mz->phys_addr;
+	kni->sync_addr = kni->m_sync_addr->addr;
+	dev_info.sync_va = kni->m_sync_addr->addr;
+	dev_info.sync_phys = kni->m_sync_addr->phys_addr;
 
-	ctx->pktmbuf_pool = pktmbuf_pool;
-	ctx->group_id = conf->group_id;
-	ctx->slot_id = slot->id;
-	ctx->mbuf_size = conf->mbuf_size;
+	kni->pktmbuf_pool = pktmbuf_pool;
+	kni->group_id = conf->group_id;
+	kni->mbuf_size = conf->mbuf_size;
 
 	ret = ioctl(kni_fd, RTE_KNI_IOCTL_CREATE, &dev_info);
-	KNI_MEM_CHECK(ret < 0);
+	if (ret < 0)
+		goto ioctl_fail;
 
-	ctx->in_use = 1;
+	te->data = kni;
+
+	kni_list = RTE_TAILQ_CAST(rte_kni_tailq.head, rte_kni_list);
+	TAILQ_INSERT_TAIL(kni_list, te, next);
+
+	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
 
 	/* Allocate mbufs and then put them into alloc_q */
-	kni_allocate_mbufs(ctx);
+	kni_allocate_mbufs(kni);
 
-	return ctx;
+	return kni;
 
+ioctl_fail:
+	kni_release_mz(kni);
+mz_fail:
+	rte_free(kni);
 kni_fail:
-	if (slot)
-		kni_memzone_pool_release(&kni_memzone_pool.slots[slot->id]);
+	rte_free(te);
+unlock:
+	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
 
 	return NULL;
 }
@@ -462,18 +380,35 @@ kni_free_fifo_phy(struct rte_mempool *mp, struct rte_kni_fifo *fifo)
 int
 rte_kni_release(struct rte_kni *kni)
 {
+	struct rte_tailq_entry *te;
+	struct rte_kni_list *kni_list;
 	struct rte_kni_device_info dev_info;
-	uint32_t slot_id;
 	uint32_t retry = 5;
 
-	if (!kni || !kni->in_use)
+	if (!kni)
 		return -1;
+
+	kni_list = RTE_TAILQ_CAST(rte_kni_tailq.head, rte_kni_list);
+
+	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
+
+	TAILQ_FOREACH(te, kni_list, next) {
+		if (te->data == kni)
+			break;
+	}
+
+	if (te == NULL)
+		goto unlock;
 
 	snprintf(dev_info.name, sizeof(dev_info.name), "%s", kni->name);
 	if (ioctl(kni_fd, RTE_KNI_IOCTL_RELEASE, &dev_info) < 0) {
 		RTE_LOG(ERR, KNI, "Fail to release kni device\n");
-		return -1;
+		goto unlock;
 	}
+
+	TAILQ_REMOVE(kni_list, te, next);
+
+	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
 
 	/* mbufs in all fifo should be released, except request/response */
 
@@ -488,20 +423,18 @@ rte_kni_release(struct rte_kni *kni)
 	kni_free_fifo(kni->tx_q);
 	kni_free_fifo(kni->free_q);
 
-	slot_id = kni->slot_id;
+	kni_release_mz(kni);
 
-	/* Memset the KNI struct */
-	memset(kni, 0, sizeof(struct rte_kni));
+	rte_free(kni);
 
-	/* Release memzone */
-	if (slot_id > kni_memzone_pool.max_ifaces) {
-		RTE_LOG(ERR, KNI, "KNI pool: corrupted slot ID: %d, max: %d\n",
-			slot_id, kni_memzone_pool.max_ifaces);
-		return -1;
-	}
-	kni_memzone_pool_release(&kni_memzone_pool.slots[slot_id]);
+	rte_free(te);
 
 	return 0;
+
+unlock:
+	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
+
+	return -1;
 }
 
 /* default callback for request of configuring device mac address */
@@ -711,24 +644,18 @@ kni_allocate_mbufs(struct rte_kni *kni)
 struct rte_kni *
 rte_kni_get(const char *name)
 {
-	uint32_t i;
-	struct rte_kni_memzone_slot *it;
 	struct rte_kni *kni;
 
 	if (name == NULL || name[0] == '\0')
 		return NULL;
 
-	/* Note: could be improved perf-wise if necessary */
-	for (i = 0; i < kni_memzone_pool.max_ifaces; i++) {
-		it = &kni_memzone_pool.slots[i];
-		if (it->in_use == 0)
-			continue;
-		kni = it->m_ctx->addr;
-		if (strncmp(kni->name, name, RTE_KNI_NAMESIZE) == 0)
-			return kni;
-	}
+	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
 
-	return NULL;
+	kni = __rte_kni_get(name);
+
+	rte_rwlock_read_unlock(RTE_EAL_TAILQ_RWLOCK);
+
+	return kni;
 }
 
 const char *

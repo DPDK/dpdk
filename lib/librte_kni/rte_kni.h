@@ -81,8 +81,12 @@ struct rte_kni_conf {
  *
  * @param max_kni_ifaces
  *  The maximum number of KNI interfaces that can coexist concurrently
+ *
+ * @return
+ *  - 0 indicates success.
+ *  - negative value indicates failure.
  */
-void rte_kni_init(unsigned int max_kni_ifaces);
+int rte_kni_init(unsigned int max_kni_ifaces);
 
 
 /**
