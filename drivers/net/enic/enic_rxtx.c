@@ -233,10 +233,12 @@ enic_cq_rx_to_pkt_flags(struct cq_desc *cqd, struct rte_mbuf *mbuf)
 		pkt_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
 		mbuf->packet_type |= RTE_PTYPE_L2_ETHER;
 	} else {
-		if (vlan_tci != 0)
+		if (vlan_tci != 0) {
+			pkt_flags |= PKT_RX_VLAN;
 			mbuf->packet_type |= RTE_PTYPE_L2_ETHER_VLAN;
-		else
+		} else {
 			mbuf->packet_type |= RTE_PTYPE_L2_ETHER;
+		}
 	}
 	mbuf->vlan_tci = vlan_tci;
 
