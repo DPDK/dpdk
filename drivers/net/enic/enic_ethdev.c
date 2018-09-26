@@ -1044,7 +1044,8 @@ static int eth_enic_pci_remove(struct rte_pci_device *pci_dev)
 
 static struct rte_pci_driver rte_enic_pmd = {
 	.id_table = pci_id_enic_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
+		     RTE_PCI_DRV_IOVA_AS_VA,
 	.probe = eth_enic_pci_probe,
 	.remove = eth_enic_pci_remove,
 };
