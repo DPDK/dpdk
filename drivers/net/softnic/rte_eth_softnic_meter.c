@@ -131,11 +131,44 @@ pmd_mtr_meter_profile_add(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/* MTR meter profile delete */
+static int
+pmd_mtr_meter_profile_delete(struct rte_eth_dev *dev,
+	uint32_t meter_profile_id,
+	struct rte_mtr_error *error)
+{
+	struct pmd_internals *p = dev->data->dev_private;
+	struct softnic_mtr_meter_profile *mp;
+
+	/* Meter profile must exist */
+	mp = softnic_mtr_meter_profile_find(p, meter_profile_id);
+	if (mp == NULL)
+		return -rte_mtr_error_set(error,
+			EINVAL,
+			RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
+			NULL,
+			"Meter profile id invalid");
+
+	/* Check unused */
+	if (mp->n_users)
+		return -rte_mtr_error_set(error,
+			EBUSY,
+			RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
+			NULL,
+			"Meter profile in use");
+
+	/* Remove from list */
+	TAILQ_REMOVE(&p->mtr.meter_profiles, mp, node);
+	free(mp);
+
+	return 0;
+}
+
 const struct rte_mtr_ops pmd_mtr_ops = {
 	.capabilities_get = NULL,
 
 	.meter_profile_add = pmd_mtr_meter_profile_add,
-	.meter_profile_delete = NULL,
+	.meter_profile_delete = pmd_mtr_meter_profile_delete,
 
 	.create = NULL,
 	.destroy = NULL,
