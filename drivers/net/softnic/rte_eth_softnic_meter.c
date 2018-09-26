@@ -574,6 +574,140 @@ pmd_mtr_policer_actions_update(struct rte_eth_dev *dev,
 	return 0;
 }
 
+#define MTR_STATS_PKTS_DEFAULT (RTE_MTR_STATS_N_PKTS_GREEN | \
+				RTE_MTR_STATS_N_PKTS_YELLOW | \
+				RTE_MTR_STATS_N_PKTS_RED | \
+				RTE_MTR_STATS_N_PKTS_DROPPED)
+
+#define MTR_STATS_BYTES_DEFAULT (RTE_MTR_STATS_N_BYTES_GREEN | \
+				RTE_MTR_STATS_N_BYTES_YELLOW | \
+				RTE_MTR_STATS_N_BYTES_RED | \
+				RTE_MTR_STATS_N_BYTES_DROPPED)
+
+/* MTR object stats read */
+static void
+mtr_stats_convert(struct softnic_mtr *m,
+	struct rte_table_action_mtr_counters_tc *in,
+	struct rte_mtr_stats *out,
+	uint64_t *out_mask)
+{
+	memset(&out, 0, sizeof(out));
+	*out_mask = 0;
+
+	if (in->n_packets_valid) {
+		uint32_t i;
+
+		for (i = 0; i < RTE_MTR_COLORS; i++) {
+			if (m->params.action[i] == MTR_POLICER_ACTION_COLOR_GREEN)
+				out->n_pkts[RTE_MTR_GREEN] += in->n_packets[i];
+
+			if (m->params.action[i] == MTR_POLICER_ACTION_COLOR_YELLOW)
+				out->n_pkts[RTE_MTR_YELLOW] += in->n_packets[i];
+
+			if (m->params.action[i] == MTR_POLICER_ACTION_COLOR_RED)
+				out->n_pkts[RTE_MTR_RED] += in->n_packets[i];
+
+			if (m->params.action[i] == MTR_POLICER_ACTION_DROP)
+				out->n_pkts_dropped += in->n_packets[i];
+		}
+
+		*out_mask |= MTR_STATS_PKTS_DEFAULT;
+	}
+
+	if (in->n_bytes_valid) {
+		uint32_t i;
+
+		for (i = 0; i < RTE_MTR_COLORS; i++) {
+			if (m->params.action[i] == MTR_POLICER_ACTION_COLOR_GREEN)
+				out->n_bytes[RTE_MTR_GREEN] += in->n_bytes[i];
+
+			if (m->params.action[i] == MTR_POLICER_ACTION_COLOR_YELLOW)
+				out->n_bytes[RTE_MTR_YELLOW] += in->n_bytes[i];
+
+			if (m->params.action[i] == MTR_POLICER_ACTION_COLOR_RED)
+				out->n_bytes[RTE_MTR_RED] += in->n_bytes[i];
+
+			if (m->params.action[i] == MTR_POLICER_ACTION_DROP)
+				out->n_bytes_dropped += in->n_bytes[i];
+		}
+
+		*out_mask |= MTR_STATS_BYTES_DEFAULT;
+	}
+}
+
+/* MTR object stats read */
+static int
+pmd_mtr_stats_read(struct rte_eth_dev *dev,
+	uint32_t mtr_id,
+	struct rte_mtr_stats *stats,
+	uint64_t *stats_mask,
+	int clear,
+	struct rte_mtr_error *error)
+{
+	struct pmd_internals *p = dev->data->dev_private;
+	struct rte_table_action_mtr_counters counters;
+	struct pipeline *pipeline;
+	struct softnic_table *table;
+	struct softnic_mtr *m;
+	int status;
+
+	/* MTR object id must be valid */
+	m = softnic_mtr_find(p, mtr_id);
+	if (m == NULL)
+		return -rte_mtr_error_set(error,
+			EEXIST,
+			RTE_MTR_ERROR_TYPE_MTR_ID,
+			NULL,
+			"MTR object id not valid");
+
+	/* MTR meter object owner valid? */
+	if (m->flow == NULL) {
+		if (stats != NULL)
+			memset(stats, 0, sizeof(*stats));
+
+		if (stats_mask)
+			*stats_mask = MTR_STATS_PKTS_DEFAULT |
+				MTR_STATS_BYTES_DEFAULT;
+
+		return 0;
+	}
+
+	pipeline = m->flow->pipeline;
+	table = &pipeline->table[m->flow->table_id];
+
+	/* Meter stats read. */
+	status = rte_table_action_meter_read(table->a,
+		m->flow->data,
+		1,
+		&counters,
+		clear);
+	if (status)
+		return -rte_mtr_error_set(error,
+			EINVAL,
+			RTE_MTR_ERROR_TYPE_UNSPECIFIED,
+			NULL,
+			"Meter stats read failed");
+
+	/* Stats format conversion. */
+	if (stats || stats_mask) {
+		struct rte_mtr_stats s;
+		uint64_t s_mask = 0;
+
+		mtr_stats_convert(m,
+			&counters.stats[0],
+			&s,
+			&s_mask);
+
+		if (stats)
+			memcpy(stats, &s, sizeof(*stats));
+
+		if (stats_mask)
+			*stats_mask = s_mask;
+	}
+
+	return 0;
+}
+
 const struct rte_mtr_ops pmd_mtr_ops = {
 	.capabilities_get = NULL,
 
@@ -590,5 +724,5 @@ const struct rte_mtr_ops pmd_mtr_ops = {
 	.policer_actions_update = pmd_mtr_policer_actions_update,
 	.stats_update = NULL,
 
-	.stats_read = NULL,
+	.stats_read = pmd_mtr_stats_read,
 };
