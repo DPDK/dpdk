@@ -464,6 +464,7 @@ struct softnic_table {
 	struct softnic_table_action_profile *ap;
 	struct rte_table_action *a;
 	struct flow_list flows;
+	struct rte_table_action_dscp_table dscp_table;
 	struct softnic_table_meter_profile_list meter_profiles;
 };
 

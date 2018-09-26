@@ -1902,6 +1902,11 @@ softnic_pipeline_table_dscp_table_update(struct pmd_internals *softnic,
 				dscp_mask,
 				dscp_table);
 
+		/* Update table dscp table */
+		if (!status)
+			memcpy(&p->table[table_id].dscp_table, dscp_table,
+				sizeof(p->table[table_id].dscp_table));
+
 		return status;
 	}
 
@@ -1924,6 +1929,11 @@ softnic_pipeline_table_dscp_table_update(struct pmd_internals *softnic,
 
 	/* Read response */
 	status = rsp->status;
+
+	/* Update table dscp table */
+	if (!status)
+		memcpy(&p->table[table_id].dscp_table, dscp_table,
+			sizeof(p->table[table_id].dscp_table));
 
 	/* Free response */
 	pipeline_msg_free(rsp);

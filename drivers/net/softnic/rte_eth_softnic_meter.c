@@ -433,6 +433,58 @@ pmd_mtr_meter_profile_update(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/* MTR object meter DSCP table update */
+static int
+pmd_mtr_meter_dscp_table_update(struct rte_eth_dev *dev,
+	uint32_t mtr_id,
+	enum rte_mtr_color *dscp_table,
+	struct rte_mtr_error *error)
+{
+	struct pmd_internals *p = dev->data->dev_private;
+	struct rte_table_action_dscp_table dt;
+	struct pipeline *pipeline;
+	struct softnic_table *table;
+	struct softnic_mtr *m;
+	uint32_t table_id, i;
+	int status;
+
+	/* MTR object id must be valid */
+	m = softnic_mtr_find(p, mtr_id);
+	if (m == NULL)
+		return -rte_mtr_error_set(error,
+			EEXIST,
+			RTE_MTR_ERROR_TYPE_MTR_ID,
+			NULL,
+			"MTR object id not valid");
+
+	/* MTR object owner valid? */
+	if (m->flow == NULL)
+		return 0;
+
+	pipeline = m->flow->pipeline;
+	table_id = m->flow->table_id;
+	table = &pipeline->table[table_id];
+
+	memcpy(&dt, &table->dscp_table, sizeof(dt));
+	for (i = 0; i < RTE_DIM(dt.entry); i++)
+		dt.entry[i].color = (enum rte_meter_color)dscp_table[i];
+
+	/* Update table */
+	status = softnic_pipeline_table_dscp_table_update(p,
+			pipeline->name,
+			table_id,
+			UINT64_MAX,
+			&dt);
+	if (status)
+		return -rte_mtr_error_set(error,
+			EINVAL,
+			RTE_MTR_ERROR_TYPE_UNSPECIFIED,
+			NULL,
+			"Table action dscp table update failed");
+
+	return 0;
+}
+
 const struct rte_mtr_ops pmd_mtr_ops = {
 	.capabilities_get = NULL,
 
@@ -445,7 +497,7 @@ const struct rte_mtr_ops pmd_mtr_ops = {
 	.meter_disable = NULL,
 
 	.meter_profile_update = pmd_mtr_meter_profile_update,
-	.meter_dscp_table_update = NULL,
+	.meter_dscp_table_update = pmd_mtr_meter_dscp_table_update,
 	.policer_actions_update = NULL,
 	.stats_update = NULL,
 

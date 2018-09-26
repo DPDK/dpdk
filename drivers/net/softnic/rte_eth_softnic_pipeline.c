@@ -1000,6 +1000,7 @@ softnic_pipeline_table_create(struct pmd_internals *softnic,
 	table->a = action;
 	TAILQ_INIT(&table->flows);
 	TAILQ_INIT(&table->meter_profiles);
+	memset(&table->dscp_table, 0, sizeof(table->dscp_table));
 	pipeline->n_tables++;
 
 	return 0;
