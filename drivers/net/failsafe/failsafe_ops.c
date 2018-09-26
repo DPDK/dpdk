@@ -890,6 +890,8 @@ fs_stats_reset(struct rte_eth_dev *dev)
  *      all sub_devices and the default capabilities.
  *      Uses a logical AND of TX capabilities among
  *      the active probed sub_device and the default capabilities.
+ *      Uses a logical AND of device capabilities among
+ *      all sub_devices and the default capabilities.
  *
  */
 static void
@@ -908,10 +910,12 @@ fs_dev_infos_get(struct rte_eth_dev *dev,
 		uint64_t rx_offload_capa;
 		uint64_t rxq_offload_capa;
 		uint64_t rss_hf_offload_capa;
+		uint64_t dev_capa;
 
 		rx_offload_capa = default_infos.rx_offload_capa;
 		rxq_offload_capa = default_infos.rx_queue_offload_capa;
 		rss_hf_offload_capa = default_infos.flow_type_rss_offloads;
+		dev_capa = default_infos.dev_capa;
 		FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_PROBED) {
 			rte_eth_dev_info_get(PORT_ID(sdev),
 					&PRIV(dev)->infos);
@@ -920,12 +924,14 @@ fs_dev_infos_get(struct rte_eth_dev *dev,
 					PRIV(dev)->infos.rx_queue_offload_capa;
 			rss_hf_offload_capa &=
 					PRIV(dev)->infos.flow_type_rss_offloads;
+			dev_capa &= PRIV(dev)->infos.dev_capa;
 		}
 		sdev = TX_SUBDEV(dev);
 		rte_eth_dev_info_get(PORT_ID(sdev), &PRIV(dev)->infos);
 		PRIV(dev)->infos.rx_offload_capa = rx_offload_capa;
 		PRIV(dev)->infos.rx_queue_offload_capa = rxq_offload_capa;
 		PRIV(dev)->infos.flow_type_rss_offloads = rss_hf_offload_capa;
+		PRIV(dev)->infos.dev_capa = dev_capa;
 		PRIV(dev)->infos.tx_offload_capa &=
 					default_infos.tx_offload_capa;
 		PRIV(dev)->infos.tx_queue_offload_capa &=
