@@ -2,20 +2,22 @@
  * Copyright(c) 2010-2015 Intel Corporation
  */
 #include "test.h"
+#include <string.h>
 
 #include <stdio.h>
 
 #include <rte_eth_ring.h>
 #include <rte_ethdev.h>
-
-static struct rte_mempool *mp;
-static int tx_porta, rx_portb, rxtx_portc, rxtx_portd, rxtx_porte;
+#include <rte_bus_vdev.h>
 
 #define SOCKET0 0
 #define RING_SIZE 256
 #define NUM_RINGS 2
 #define NB_MBUF 512
 
+static struct rte_mempool *mp;
+struct rte_ring *rxtx[NUM_RINGS];
+static int tx_porta, rx_portb, rxtx_portc, rxtx_portd, rxtx_porte;
 
 static int
 test_ethdev_configure_port(int port)
@@ -42,7 +44,7 @@ test_ethdev_configure_port(int port)
 	}
 
 	if (rte_eth_rx_queue_setup(port, 0, RING_SIZE, SOCKET0,
-			NULL, mp) < 0) {
+				NULL, mp) < 0) {
 		printf("RX queue setup failed port %d\n", port);
 		return -1;
 	}
@@ -71,21 +73,21 @@ test_send_basic_packets(void)
 
 	if (rte_eth_tx_burst(tx_porta, 0, pbufs, RING_SIZE/2) < RING_SIZE/2) {
 		printf("Failed to transmit packet burst port %d\n", tx_porta);
-		return -1;
+		return TEST_FAILED;
 	}
 
 	if (rte_eth_rx_burst(rx_portb, 0, pbufs, RING_SIZE) != RING_SIZE/2) {
 		printf("Failed to receive packet burst on port %d\n", rx_portb);
-		return -1;
+		return TEST_FAILED;
 	}
 
 	for (i = 0; i < RING_SIZE/2; i++)
 		if (pbufs[i] != &bufs[i]) {
 			printf("Error: received data does not match that transmitted\n");
-			return -1;
+			return TEST_FAILED;
 		}
 
-	return 0;
+	return TEST_SUCCESS;
 }
 
 static int
@@ -212,7 +214,7 @@ test_stats_reset(int port)
 }
 
 static int
-test_pmd_ring_pair_create_attach(int portd, int porte)
+test_pmd_ring_pair_create_attach(void)
 {
 	struct rte_eth_stats stats, stats2;
 	struct rte_mbuf buf, *pbuf = &buf;
@@ -220,185 +222,218 @@ test_pmd_ring_pair_create_attach(int portd, int porte)
 
 	memset(&null_conf, 0, sizeof(struct rte_eth_conf));
 
-	if ((rte_eth_dev_configure(portd, 1, 1, &null_conf) < 0)
-		|| (rte_eth_dev_configure(porte, 1, 1, &null_conf) < 0)) {
+	if ((rte_eth_dev_configure(rxtx_portd, 1, 1, &null_conf) < 0)
+			|| (rte_eth_dev_configure(rxtx_porte, 1, 1,
+					&null_conf) < 0)) {
 		printf("Configure failed for port\n");
-		return -1;
+		return TEST_FAILED;
 	}
 
-	if ((rte_eth_tx_queue_setup(portd, 0, RING_SIZE, SOCKET0, NULL) < 0)
-		|| (rte_eth_tx_queue_setup(porte, 0, RING_SIZE, SOCKET0, NULL) < 0)) {
+	if ((rte_eth_tx_queue_setup(rxtx_portd, 0, RING_SIZE,
+					SOCKET0, NULL) < 0)
+			|| (rte_eth_tx_queue_setup(rxtx_porte, 0, RING_SIZE,
+					SOCKET0, NULL) < 0)) {
 		printf("TX queue setup failed\n");
-		return -1;
+		return TEST_FAILED;
 	}
 
-	if ((rte_eth_rx_queue_setup(portd, 0, RING_SIZE, SOCKET0, NULL, mp) < 0)
-		|| (rte_eth_rx_queue_setup(porte, 0, RING_SIZE, SOCKET0, NULL, mp) < 0)) {
+	if ((rte_eth_rx_queue_setup(rxtx_portd, 0, RING_SIZE,
+					SOCKET0, NULL, mp) < 0)
+			|| (rte_eth_rx_queue_setup(rxtx_porte, 0, RING_SIZE,
+					SOCKET0, NULL, mp) < 0)) {
 		printf("RX queue setup failed\n");
-		return -1;
+		return TEST_FAILED;
 	}
 
-	if ((rte_eth_dev_start(portd) < 0)
-		|| (rte_eth_dev_start(porte) < 0)) {
+	if ((rte_eth_dev_start(rxtx_portd) < 0)
+			|| (rte_eth_dev_start(rxtx_porte) < 0)) {
 		printf("Error starting port\n");
-		return -1;
+		return TEST_FAILED;
 	}
 
-	rte_eth_stats_reset(portd);
+	rte_eth_stats_reset(rxtx_portd);
 	/* check stats of port, should all be zero */
-	rte_eth_stats_get(portd, &stats);
+	rte_eth_stats_get(rxtx_portd, &stats);
 	if (stats.ipackets != 0 || stats.opackets != 0 ||
 			stats.ibytes != 0 || stats.obytes != 0 ||
 			stats.ierrors != 0 || stats.oerrors != 0) {
-		printf("Error: port %d stats are not zero\n", portd);
-		return -1;
+		printf("Error: port %d stats are not zero\n", rxtx_portd);
+		return TEST_FAILED;
 	}
 
-	rte_eth_stats_reset(porte);
+	rte_eth_stats_reset(rxtx_porte);
 	/* check stats of port, should all be zero */
-	rte_eth_stats_get(porte, &stats2);
+	rte_eth_stats_get(rxtx_porte, &stats2);
 	if (stats2.ipackets != 0 || stats2.opackets != 0 ||
 			stats2.ibytes != 0 || stats2.obytes != 0 ||
 			stats2.ierrors != 0 || stats2.oerrors != 0) {
-		printf("Error: port %d stats are not zero\n", porte);
-		return -1;
+		printf("Error: port %d stats are not zero\n", rxtx_porte);
+		return TEST_FAILED;
 	}
 
 	/*
-	 * send and receive 1 packet (portd -> porte)
+	 * send and receive 1 packet (rxtx_portd -> rxtx_porte)
 	 * and check for stats update
 	 */
-	printf("Testing send and receive 1 packet (portd -> porte)\n");
-	if (rte_eth_tx_burst(portd, 0, &pbuf, 1) != 1) {
-		printf("Error sending packet to port %d\n", portd);
-		return -1;
+	printf("Testing send and receive 1 packet (rxtx_portd -> rxtx_porte)\n");
+	if (rte_eth_tx_burst(rxtx_portd, 0, &pbuf, 1) != 1) {
+		printf("Error sending packet to port %d\n", rxtx_portd);
+		return TEST_FAILED;
 	}
 
-	if (rte_eth_rx_burst(porte, 0, &pbuf, 1) != 1) {
-		printf("Error receiving packet from port %d\n", porte);
-		return -1;
+	if (rte_eth_rx_burst(rxtx_porte, 0, &pbuf, 1) != 1) {
+		printf("Error receiving packet from port %d\n", rxtx_porte);
+		return TEST_FAILED;
 	}
 
-	rte_eth_stats_get(portd, &stats);
-	rte_eth_stats_get(porte, &stats2);
+	rte_eth_stats_get(rxtx_portd, &stats);
+	rte_eth_stats_get(rxtx_porte, &stats2);
 	if (stats.ipackets != 0 || stats.opackets != 1 ||
 			stats.ibytes != 0 || stats.obytes != 0 ||
 			stats.ierrors != 0 || stats.oerrors != 0) {
-		printf("Error: port %d stats are not as expected\n", portd);
-		return -1;
+		printf("Error: port %d stats are not as expected\n",
+				rxtx_portd);
+		return TEST_FAILED;
 	}
 
 	if (stats2.ipackets != 1 || stats2.opackets != 0 ||
 			stats2.ibytes != 0 || stats2.obytes != 0 ||
 			stats2.ierrors != 0 || stats2.oerrors != 0) {
-		printf("Error: port %d stats are not as expected\n", porte);
-		return -1;
+		printf("Error: port %d stats are not as expected\n",
+				rxtx_porte);
+		return TEST_FAILED;
 	}
 
 	/*
-	 * send and receive 1 packet (porte -> portd)
+	 * send and receive 1 packet (rxtx_porte -> rxtx_portd)
 	 * and check for stats update
 	 */
-	printf("Testing send and receive 1 packet (porte -> portd)\n");
-	if (rte_eth_tx_burst(porte, 0, &pbuf, 1) != 1) {
-		printf("Error sending packet to port %d\n", porte);
-		return -1;
+	printf("Testing send and receive 1 packet "
+			"(rxtx_porte -> rxtx_portd)\n");
+	if (rte_eth_tx_burst(rxtx_porte, 0, &pbuf, 1) != 1) {
+		printf("Error sending packet to port %d\n", rxtx_porte);
+		return TEST_FAILED;
 	}
 
-	if (rte_eth_rx_burst(portd, 0, &pbuf, 1) != 1) {
-		printf("Error receiving packet from port %d\n", portd);
-		return -1;
+	if (rte_eth_rx_burst(rxtx_portd, 0, &pbuf, 1) != 1) {
+		printf("Error receiving packet from port %d\n", rxtx_portd);
+		return TEST_FAILED;
 	}
 
-	rte_eth_stats_get(portd, &stats);
-	rte_eth_stats_get(porte, &stats2);
+	rte_eth_stats_get(rxtx_portd, &stats);
+	rte_eth_stats_get(rxtx_porte, &stats2);
 	if (stats.ipackets != 1 || stats.opackets != 1 ||
 			stats.ibytes != 0 || stats.obytes != 0 ||
 			stats.ierrors != 0 || stats.oerrors != 0) {
-		printf("Error: port %d stats are not as expected\n", portd);
-		return -1;
+		printf("Error: port %d stats are not as expected\n",
+				rxtx_portd);
+		return TEST_FAILED;
 	}
 
 	if (stats2.ipackets != 1 || stats2.opackets != 1 ||
 			stats2.ibytes != 0 || stats2.obytes != 0 ||
 			stats2.ierrors != 0 || stats2.oerrors != 0) {
-		printf("Error: port %d stats are not as expected\n", porte);
-		return -1;
+		printf("Error: port %d stats are not as expected\n",
+				rxtx_porte);
+		return TEST_FAILED;
 	}
 
 	/*
-	 * send and receive 1 packet (portd -> portd)
+	 * send and receive 1 packet (rxtx_portd -> rxtx_portd)
 	 * and check for stats update
 	 */
-	printf("Testing send and receive 1 packet (portd -> portd)\n");
-	if (rte_eth_tx_burst(portd, 0, &pbuf, 1) != 1) {
-		printf("Error sending packet to port %d\n", portd);
-		return -1;
+	printf("Testing send and receive 1 packet "
+			"(rxtx_portd -> rxtx_portd)\n");
+	if (rte_eth_tx_burst(rxtx_portd, 0, &pbuf, 1) != 1) {
+		printf("Error sending packet to port %d\n", rxtx_portd);
+		return TEST_FAILED;
 	}
 
-	if (rte_eth_rx_burst(portd, 0, &pbuf, 1) != 1) {
-		printf("Error receiving packet from port %d\n", porte);
-		return -1;
+	if (rte_eth_rx_burst(rxtx_portd, 0, &pbuf, 1) != 1) {
+		printf("Error receiving packet from port %d\n", rxtx_porte);
+		return TEST_FAILED;
 	}
 
-	rte_eth_stats_get(portd, &stats);
-	rte_eth_stats_get(porte, &stats2);
+	rte_eth_stats_get(rxtx_portd, &stats);
+	rte_eth_stats_get(rxtx_porte, &stats2);
 	if (stats.ipackets != 2 || stats.opackets != 2 ||
 			stats.ibytes != 0 || stats.obytes != 0 ||
 			stats.ierrors != 0 || stats.oerrors != 0) {
-		printf("Error: port %d stats are not as expected\n", portd);
-		return -1;
+		printf("Error: port %d stats are not as expected\n",
+				rxtx_portd);
+		return TEST_FAILED;
 	}
 
 	if (stats2.ipackets != 1 || stats2.opackets != 1 ||
 			stats2.ibytes != 0 || stats2.obytes != 0 ||
 			stats2.ierrors != 0 || stats2.oerrors != 0) {
-		printf("Error: port %d stats are not as expected\n", porte);
-		return -1;
+		printf("Error: port %d stats are not as expected\n",
+				rxtx_porte);
+		return TEST_FAILED;
 	}
 
 	/*
-	 * send and receive 1 packet (porte -> porte)
+	 * send and receive 1 packet (rxtx_porte -> rxtx_porte)
 	 * and check for stats update
 	 */
-	printf("Testing send and receive 1 packet (porte -> porte)\n");
-	if (rte_eth_tx_burst(porte, 0, &pbuf, 1) != 1) {
-		printf("Error sending packet to port %d\n", porte);
-		return -1;
+	printf("Testing send and receive 1 packet "
+			"(rxtx_porte -> rxtx_porte)\n");
+	if (rte_eth_tx_burst(rxtx_porte, 0, &pbuf, 1) != 1) {
+		printf("Error sending packet to port %d\n", rxtx_porte);
+		return TEST_FAILED;
 	}
 
-	if (rte_eth_rx_burst(porte, 0, &pbuf, 1) != 1) {
-		printf("Error receiving packet from port %d\n", porte);
-		return -1;
+	if (rte_eth_rx_burst(rxtx_porte, 0, &pbuf, 1) != 1) {
+		printf("Error receiving packet from port %d\n", rxtx_porte);
+		return TEST_FAILED;
 	}
 
-	rte_eth_stats_get(portd, &stats);
-	rte_eth_stats_get(porte, &stats2);
+	rte_eth_stats_get(rxtx_portd, &stats);
+	rte_eth_stats_get(rxtx_porte, &stats2);
 	if (stats.ipackets != 2 || stats.opackets != 2 ||
 			stats.ibytes != 0 || stats.obytes != 0 ||
 			stats.ierrors != 0 || stats.oerrors != 0) {
-		printf("Error: port %d stats are not as expected\n", portd);
-		return -1;
+		printf("Error: port %d stats are not as expected\n",
+				rxtx_portd);
+		return TEST_FAILED;
 	}
 
 	if (stats2.ipackets != 2 || stats2.opackets != 2 ||
 			stats2.ibytes != 0 || stats2.obytes != 0 ||
 			stats2.ierrors != 0 || stats2.oerrors != 0) {
-		printf("Error: port %d stats are not as expected\n", porte);
-		return -1;
+		printf("Error: port %d stats are not as expected\n",
+				rxtx_porte);
+		return TEST_FAILED;
 	}
 
-	rte_eth_dev_stop(portd);
-	rte_eth_dev_stop(porte);
+	rte_eth_dev_stop(rxtx_portd);
+	rte_eth_dev_stop(rxtx_porte);
 
-	return 0;
+	return TEST_SUCCESS;
+}
+
+static void
+test_cleanup_resources(void)
+{
+	int itr;
+	for (itr = 0; itr < NUM_RINGS; itr++)
+		rte_ring_free(rxtx[itr]);
+
+	rte_eth_dev_stop(tx_porta);
+	rte_eth_dev_stop(rx_portb);
+	rte_eth_dev_stop(rxtx_portc);
+
+	rte_mempool_free(mp);
+	rte_vdev_uninit("net_ring_net_ringa");
+	rte_vdev_uninit("net_ring_net_ringb");
+	rte_vdev_uninit("net_ring_net_ringc");
+	rte_vdev_uninit("net_ring_net_ringd");
+	rte_vdev_uninit("net_ring_net_ringe");
 }
 
 static int
-test_pmd_ring(void)
+test_pmd_ringcreate_setup(void)
 {
-	struct rte_ring *rxtx[NUM_RINGS];
-	int port, cmdl_port0 = -1;
 	uint8_t nb_ports;
 
 	nb_ports = rte_eth_dev_count_avail();
@@ -431,53 +466,33 @@ test_pmd_ring(void)
 			tx_porta, rx_portb, rxtx_portc, rxtx_portd, rxtx_porte);
 
 	if ((tx_porta == -1) || (rx_portb == -1) || (rxtx_portc == -1)
-		|| (rxtx_portd == -1) || (rxtx_porte == -1)) {
+			|| (rxtx_portd == -1) || (rxtx_porte == -1)) {
 		printf("rte_eth_from rings failed\n");
 		return -1;
 	}
 
 	mp = rte_pktmbuf_pool_create("mbuf_pool", NB_MBUF, 32,
-		0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
+			0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
 	if (mp == NULL)
 		return -1;
 
 	if ((tx_porta >= RTE_MAX_ETHPORTS) || (rx_portb >= RTE_MAX_ETHPORTS)
-		|| (rxtx_portc >= RTE_MAX_ETHPORTS)
-		|| (rxtx_portd >= RTE_MAX_ETHPORTS)
-		|| (rxtx_porte >= RTE_MAX_ETHPORTS)) {
+			|| (rxtx_portc >= RTE_MAX_ETHPORTS)
+			|| (rxtx_portd >= RTE_MAX_ETHPORTS)
+			|| (rxtx_porte >= RTE_MAX_ETHPORTS)) {
 		printf(" port exceed max eth ports\n");
 		return -1;
 	}
+	return 0;
+}
 
-	if (test_ethdev_configure_port(tx_porta) < 0)
-		return -1;
-
-	if (test_ethdev_configure_port(rx_portb) < 0)
-		return -1;
-
-	if (test_ethdev_configure_port(rxtx_portc) < 0)
-		return -1;
-
-	if (test_send_basic_packets() < 0)
-		return -1;
-
-	if (test_get_stats(rxtx_portc) < 0)
-		return -1;
-
-	if (test_stats_reset(rxtx_portc) < 0)
-		return -1;
-
-	rte_eth_dev_stop(tx_porta);
-	rte_eth_dev_stop(rx_portb);
-	rte_eth_dev_stop(rxtx_portc);
-
-	if (test_pmd_ring_pair_create_attach(rxtx_portd, rxtx_porte) < 0)
-		return -1;
-
+static int
+test_command_line_ring_port(void)
+{
+	int port, cmdl_port0 = -1;
 	/* find a port created with the --vdev=net_ring0 command line option */
 	RTE_ETH_FOREACH_DEV(port) {
 		struct rte_eth_dev_info dev_info;
-
 		rte_eth_dev_info_get(port, &dev_info);
 		if (!strcmp(dev_info.driver_name, "Rings PMD")) {
 			printf("found a command line ring port=%d\n", port);
@@ -486,17 +501,66 @@ test_pmd_ring(void)
 		}
 	}
 	if (cmdl_port0 != -1) {
-		if (test_ethdev_configure_port(cmdl_port0) < 0)
-			return -1;
-		if (test_send_basic_packets_port(cmdl_port0) < 0)
-			return -1;
-		if (test_stats_reset(cmdl_port0) < 0)
-			return -1;
-		if (test_get_stats(cmdl_port0) < 0)
-			return -1;
+		TEST_ASSERT((test_ethdev_configure_port(cmdl_port0) < 0),
+				"test ethdev configure port cmdl_port0 is failed");
+		TEST_ASSERT((test_send_basic_packets_port(cmdl_port0) < 0),
+				"test send basic packets port cmdl_port0 is failed");
+		TEST_ASSERT((test_stats_reset(cmdl_port0) < 0),
+				"test stats reset cmdl_port0 is failed");
+		TEST_ASSERT((test_get_stats(cmdl_port0) < 0),
+				"test get stats cmdl_port0 is failed");
 		rte_eth_dev_stop(cmdl_port0);
 	}
-	return 0;
+	return TEST_SUCCESS;
+}
+
+static int
+test_ethdev_configure_ports(void)
+{
+	TEST_ASSERT((test_ethdev_configure_port(tx_porta) == 0),
+			"test ethdev configure ports tx_porta is failed");
+	TEST_ASSERT((test_ethdev_configure_port(rx_portb) == 0),
+			"test ethdev configure ports rx_portb is failed");
+	TEST_ASSERT((test_ethdev_configure_port(rxtx_portc) == 0),
+			"test ethdev configure ports rxtx_portc is failed");
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_get_stats_for_port(void)
+{
+	TEST_ASSERT(test_get_stats(rxtx_portc) == 0, "test get stats failed");
+	return TEST_SUCCESS;
+}
+
+static int
+test_stats_reset_for_port(void)
+{
+	TEST_ASSERT(test_stats_reset(rxtx_portc) == 0, "test stats reset failed");
+	return TEST_SUCCESS;
+}
+
+static struct
+unit_test_suite test_pmd_ring_suite  = {
+	.setup = test_pmd_ringcreate_setup,
+	.teardown = test_cleanup_resources,
+	.suite_name = "Test Pmd Ring Unit Test Suite",
+	.unit_test_cases = {
+		TEST_CASE(test_ethdev_configure_ports),
+		TEST_CASE(test_send_basic_packets),
+		TEST_CASE(test_get_stats_for_port),
+		TEST_CASE(test_stats_reset_for_port),
+		TEST_CASE(test_pmd_ring_pair_create_attach),
+		TEST_CASE(test_command_line_ring_port),
+		TEST_CASES_END()
+	}
+};
+
+static int
+test_pmd_ring(void)
+{
+	return unit_test_suite_runner(&test_pmd_ring_suite);
 }
 
 REGISTER_TEST_COMMAND(ring_pmd_autotest, test_pmd_ring);
