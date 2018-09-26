@@ -35,7 +35,7 @@ Code
   struct rte_flow_attr attr = { .ingress = 1 };
   struct rte_flow_item pattern[MAX_PATTERN_IN_FLOW];
   struct rte_flow_action actions[MAX_ACTIONS_IN_FLOW];
-  struct rte_flow_item_etc eth;
+  struct rte_flow_item_eth eth;
   struct rte_flow_item_vlan vlan;
   struct rte_flow_item_ipv4 ipv4;
   struct rte_flow *flow;
@@ -55,7 +55,7 @@ Code
   pattern[2].spec = &ipv4;
 
   /* end the pattern array */
-  pattern[3].type = RTE_FLOW_ITEM)TYPE_END;
+  pattern[3].type = RTE_FLOW_ITEM_TYPE_END;
 
   /* create the drop action */
   actions[0].type = RTE_FLOW_ACTION_TYPE_DROP;
@@ -130,7 +130,7 @@ Code
   struct rte_flow_attr attr = {.ingress = 1};
   struct rte_flow_item pattern[MAX_PATTERN_IN_FLOW];
   struct rte_flow_action actions[MAX_ACTIONS_IN_FLOW];
-  struct rte_flow_item_etc eth;
+  struct rte_flow_item_eth eth;
   struct rte_flow_item_vlan vlan;
   struct rte_flow_item_ipv4 ipv4;
   struct rte_flow_item_ipv4 ipv4_mask;
@@ -153,7 +153,7 @@ Code
   pattern[2].mask = &ipv4_mask;
 
   /* end the pattern array */
-  pattern[3].type = RTE_FLOW_ITEM)TYPE_END;
+  pattern[3].type = RTE_FLOW_ITEM_TYPE_END;
 
   /* create the drop action */
   actions[0].type = RTE_FLOW_ACTION_TYPE_DROP;
@@ -230,7 +230,7 @@ Code
   struct rte_flow_attr attr = { .ingress = 1 };
   struct rte_flow_item pattern[MAX_PATTERN_IN_FLOW];
   struct rte_flow_action actions[MAX_ACTIONS_IN_FLOW];
-  struct rte_flow_item_etc eth;
+  struct rte_flow_item_eth eth;
   struct rte_flow_item_vlan vlan;
   struct rte_flow_action_queue queue = { .index = 3 };
   struct rte_flow *flow;
@@ -246,7 +246,7 @@ Code
   pattern[1].spec = &vlan;
 
   /* end the pattern array */
-  pattern[2].type = RTE_FLOW_ITEM)TYPE_END;
+  pattern[2].type = RTE_FLOW_ITEM_TYPE_END;
 
   /* create the queue action */
   actions[0].type = RTE_FLOW_ACTION_TYPE_QUEUE;
