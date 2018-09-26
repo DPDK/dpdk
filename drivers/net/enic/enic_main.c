@@ -1652,6 +1652,19 @@ static int enic_dev_init(struct enic *enic)
 	vnic_dev_notify_set(enic->vdev, -1); /* No Intr for notify */
 
 	enic->overlay_offload = false;
+	if (enic->disable_overlay && enic->vxlan) {
+		/*
+		 * Explicitly disable overlay offload as the setting is
+		 * sticky, and resetting vNIC does not disable it.
+		 */
+		if (vnic_dev_overlay_offload_ctrl(enic->vdev,
+						  OVERLAY_FEATURE_VXLAN,
+						  OVERLAY_OFFLOAD_DISABLE)) {
+			dev_err(enic, "failed to disable overlay offload\n");
+		} else {
+			dev_info(enic, "Overlay offload is disabled\n");
+		}
+	}
 	if (!enic->disable_overlay && enic->vxlan &&
 	    /* 'VXLAN feature' enables VXLAN, NVGRE, and GENEVE. */
 	    vnic_dev_overlay_offload_ctrl(enic->vdev,
