@@ -285,6 +285,53 @@ pmd_mtr_create(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/* MTR object destroy */
+static int
+pmd_mtr_destroy(struct rte_eth_dev *dev,
+	uint32_t mtr_id,
+	struct rte_mtr_error *error)
+{
+	struct pmd_internals *p = dev->data->dev_private;
+	struct softnic_mtr_list *ml = &p->mtr.mtrs;
+	struct softnic_mtr_meter_profile *mp;
+	struct softnic_mtr *m;
+
+	/* MTR object must exist */
+	m = softnic_mtr_find(p, mtr_id);
+	if (m == NULL)
+		return -rte_mtr_error_set(error,
+			EEXIST,
+			RTE_MTR_ERROR_TYPE_MTR_ID,
+			NULL,
+			"MTR object id not valid");
+
+	/* MTR object must not have any owner */
+	if (m->flow != NULL)
+		return -rte_mtr_error_set(error,
+			EINVAL,
+			RTE_MTR_ERROR_TYPE_UNSPECIFIED,
+			NULL,
+			"MTR object is being used");
+
+	/* Get meter profile */
+	mp = softnic_mtr_meter_profile_find(p, m->params.meter_profile_id);
+	if (mp == NULL)
+		return -rte_mtr_error_set(error,
+			EINVAL,
+			RTE_MTR_ERROR_TYPE_METER_PROFILE_ID,
+			NULL,
+			"MTR object meter profile invalid");
+
+	/* Update dependencies */
+	mp->n_users--;
+
+	/* Remove from list */
+	TAILQ_REMOVE(ml, m, node);
+	free(m);
+
+	return 0;
+}
+
 const struct rte_mtr_ops pmd_mtr_ops = {
 	.capabilities_get = NULL,
 
@@ -292,7 +339,7 @@ const struct rte_mtr_ops pmd_mtr_ops = {
 	.meter_profile_delete = pmd_mtr_meter_profile_delete,
 
 	.create = pmd_mtr_create,
-	.destroy = NULL,
+	.destroy = pmd_mtr_destroy,
 	.meter_enable = NULL,
 	.meter_disable = NULL,
 
