@@ -127,8 +127,9 @@ int rte_eal_dev_detach(struct rte_device *dev)
 	return ret;
 }
 
-int __rte_experimental rte_eal_hotplug_add(const char *busname, const char *devname,
-			const char *devargs)
+int
+rte_eal_hotplug_add(const char *busname, const char *devname,
+		    const char *devargs)
 {
 	struct rte_bus *bus;
 	struct rte_device *dev;
@@ -193,7 +194,7 @@ err_devarg:
 	return ret;
 }
 
-int __rte_experimental
+int
 rte_eal_hotplug_remove(const char *busname, const char *devname)
 {
 	struct rte_bus *bus;

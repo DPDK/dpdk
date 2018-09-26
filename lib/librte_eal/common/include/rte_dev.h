@@ -190,9 +190,6 @@ __rte_deprecated
 int rte_eal_dev_detach(struct rte_device *dev);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Hotplug add a given device to a specific bus.
  *
  * @param busname
@@ -205,13 +202,10 @@ int rte_eal_dev_detach(struct rte_device *dev);
  * @return
  *   0 on success, negative on error.
  */
-int __rte_experimental rte_eal_hotplug_add(const char *busname, const char *devname,
+int rte_eal_hotplug_add(const char *busname, const char *devname,
 			const char *devargs);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Hotplug remove a given device from a specific bus.
  *
  * @param busname
@@ -221,8 +215,7 @@ int __rte_experimental rte_eal_hotplug_add(const char *busname, const char *devn
  * @return
  *   0 on success, negative on error.
  */
-int __rte_experimental rte_eal_hotplug_remove(const char *busname,
-					  const char *devname);
+int rte_eal_hotplug_remove(const char *busname, const char *devname);
 
 /**
  * Device comparison function.

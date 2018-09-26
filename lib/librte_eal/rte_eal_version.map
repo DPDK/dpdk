@@ -261,6 +261,8 @@ DPDK_18.08 {
 DPDK_18.11 {
 	global:
 
+	rte_eal_hotplug_add;
+	rte_eal_hotplug_remove;
 	rte_strscpy;
 
 } DPDK_18.08;
@@ -288,8 +290,6 @@ EXPERIMENTAL {
 	rte_devargs_remove;
 	rte_devargs_type_count;
 	rte_eal_cleanup;
-	rte_eal_hotplug_add;
-	rte_eal_hotplug_remove;
 	rte_fbarray_attach;
 	rte_fbarray_destroy;
 	rte_fbarray_detach;
