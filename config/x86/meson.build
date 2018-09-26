@@ -28,10 +28,9 @@ foreach f:base_flags
 endforeach
 
 dpdk_conf.set('RTE_ARCH_X86', 1)
-if (host_machine.cpu_family() == 'x86_64')
+if dpdk_conf.get('RTE_ARCH_64')
 	dpdk_conf.set('RTE_ARCH_X86_64', 1)
 	dpdk_conf.set('RTE_ARCH', 'x86_64')
-	dpdk_conf.set('RTE_ARCH_64', 1)
 else
 	dpdk_conf.set('RTE_ARCH_I686', 1)
 	dpdk_conf.set('RTE_ARCH', 'i686')

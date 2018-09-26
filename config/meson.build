@@ -43,6 +43,8 @@ toolchain = cc.get_id()
 dpdk_conf.set_quoted('RTE_TOOLCHAIN', toolchain)
 dpdk_conf.set('RTE_TOOLCHAIN_' + toolchain.to_upper(), 1)
 
+dpdk_conf.set('RTE_ARCH_64', cc.sizeof('void *') == 8)
+
 add_project_link_arguments('-Wl,--no-as-needed', language: 'c')
 dpdk_extra_ldflags += '-Wl,--no-as-needed'
 
@@ -90,7 +92,7 @@ warning_flags = [
 	'-Wcast-qual',
 	'-Wno-address-of-packed-member'
 ]
-if cc.sizeof('void *') == 4
+if not dpdk_conf.get('RTE_ARCH_64')
 # for 32-bit, don't warn about casting a 32-bit pointer to 64-bit int - it's fine!!
 	warning_flags += '-Wno-pointer-to-int-cast'
 endif
@@ -109,6 +111,7 @@ dpdk_conf.set('RTE_EAL_ALLOW_INV_SOCKET_ID', get_option('allow_invalid_socket_id
 dpdk_conf.set('RTE_MAX_VFIO_GROUPS', 64)
 dpdk_conf.set('RTE_DRIVER_MEMPOOL_BUCKET_SIZE_KB', 64)
 dpdk_conf.set('RTE_LIBRTE_DPAA2_USE_PHYS_IOVA', true)
+
 
 compile_time_cpuflags = []
 if host_machine.cpu_family().startswith('x86')

@@ -89,7 +89,7 @@ impl_dpaa2 = ['NXP DPAA2', flags_dpaa2, machine_args_generic]
 
 dpdk_conf.set('RTE_FORCE_INTRINSICS', 1)
 
-if cc.sizeof('void *') != 8
+if not dpdk_conf.get('RTE_ARCH_64')
 	dpdk_conf.set('RTE_CACHE_LINE_SIZE', 64)
 	dpdk_conf.set('RTE_ARCH_ARM', 1)
 	dpdk_conf.set('RTE_ARCH_ARMv7', 1)
@@ -99,7 +99,6 @@ if cc.sizeof('void *') != 8
 else
 	dpdk_conf.set('RTE_CACHE_LINE_SIZE', 128)
 	dpdk_conf.set('RTE_ARCH_ARM64', 1)
-	dpdk_conf.set('RTE_ARCH_64', 1)
 
 	machine = []
 	cmd_generic = ['generic', '', '', 'default', '']
