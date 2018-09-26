@@ -485,6 +485,95 @@ pmd_mtr_meter_dscp_table_update(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/* MTR object policer action update */
+static int
+pmd_mtr_policer_actions_update(struct rte_eth_dev *dev,
+	uint32_t mtr_id,
+	uint32_t action_mask,
+	enum rte_mtr_policer_action *actions,
+	struct rte_mtr_error *error)
+{
+	struct pmd_internals *p = dev->data->dev_private;
+	struct softnic_mtr *m;
+	uint32_t i;
+	int status;
+
+	/* MTR object id must be valid */
+	m = softnic_mtr_find(p, mtr_id);
+	if (m == NULL)
+		return -rte_mtr_error_set(error,
+			EEXIST,
+			RTE_MTR_ERROR_TYPE_MTR_ID,
+			NULL,
+			"MTR object id not valid");
+
+	/* Valid policer actions */
+	if (actions == NULL)
+		return -rte_mtr_error_set(error,
+			EINVAL,
+			RTE_MTR_ERROR_TYPE_UNSPECIFIED,
+			NULL,
+			"Invalid actions");
+
+	for (i = 0; i < RTE_MTR_COLORS; i++) {
+		if (action_mask & (1 << i)) {
+			if (actions[i] != MTR_POLICER_ACTION_COLOR_GREEN  &&
+				actions[i] != MTR_POLICER_ACTION_COLOR_YELLOW &&
+				actions[i] != MTR_POLICER_ACTION_COLOR_RED &&
+				actions[i] != MTR_POLICER_ACTION_DROP) {
+				return -rte_mtr_error_set(error,
+					EINVAL,
+					RTE_MTR_ERROR_TYPE_UNSPECIFIED,
+					NULL,
+					" Invalid action value");
+			}
+		}
+	}
+
+	/* MTR object owner valid? */
+	if (m->flow) {
+		struct pipeline *pipeline = m->flow->pipeline;
+		struct softnic_table *table = &pipeline->table[m->flow->table_id];
+		struct softnic_table_rule_action action;
+
+		memcpy(&action, &m->flow->action, sizeof(action));
+
+		/* Set action */
+		for (i = 0; i < RTE_MTR_COLORS; i++)
+			if (action_mask & (1 << i))
+				action.mtr.mtr[0].policer[i] =
+					(enum rte_table_action_policer)actions[i];
+
+		/* Re-add the rule */
+		status = softnic_pipeline_table_rule_add(p,
+			pipeline->name,
+			m->flow->table_id,
+			&m->flow->match,
+			&action,
+			&m->flow->data);
+		if (status)
+			return -rte_mtr_error_set(error,
+				EINVAL,
+				RTE_MTR_ERROR_TYPE_UNSPECIFIED,
+				NULL,
+				"Pipeline table rule re-add failed");
+
+		/* Flow: Update meter action */
+		memcpy(&m->flow->action, &action, sizeof(m->flow->action));
+
+		/* Reset the meter stats */
+		rte_table_action_meter_read(table->a, m->flow->data,
+			1, NULL, 1);
+	}
+
+	/* Meter: Update policer actions */
+	for (i = 0; i < RTE_MTR_COLORS; i++)
+		if (action_mask & (1 << i))
+			m->params.action[i] = actions[i];
+
+	return 0;
+}
+
 const struct rte_mtr_ops pmd_mtr_ops = {
 	.capabilities_get = NULL,
 
@@ -498,7 +587,7 @@ const struct rte_mtr_ops pmd_mtr_ops = {
 
 	.meter_profile_update = pmd_mtr_meter_profile_update,
 	.meter_dscp_table_update = pmd_mtr_meter_dscp_table_update,
-	.policer_actions_update = NULL,
+	.policer_actions_update = pmd_mtr_policer_actions_update,
 	.stats_update = NULL,
 
 	.stats_read = NULL,
