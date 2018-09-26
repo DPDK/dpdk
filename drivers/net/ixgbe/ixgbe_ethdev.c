@@ -1118,6 +1118,14 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 		return -EIO;
 	}
 
+	if (hw->mac.ops.fw_recovery_mode && hw->mac.ops.fw_recovery_mode(hw)) {
+		PMD_INIT_LOG(ERR, "\nERROR: "
+			"Firmware recovery mode detected. Limiting functionality.\n"
+			"Refer to the Intel(R) Ethernet Adapters and Devices "
+			"User Guide for details on firmware recovery mode.");
+		return -EIO;
+	}
+
 	/* pick up the PCI bus settings for reporting later */
 	ixgbe_get_bus_info(hw);
 
