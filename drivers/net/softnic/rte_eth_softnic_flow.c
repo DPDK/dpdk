@@ -1161,7 +1161,7 @@ flow_rule_action_get(struct pmd_internals *softnic,
 	const struct rte_flow_attr *attr,
 	const struct rte_flow_action *action,
 	struct softnic_table_rule_action *rule_action,
-	struct rte_flow_error *error __rte_unused)
+	struct rte_flow_error *error)
 {
 	struct softnic_table_action_profile *profile;
 	struct softnic_table_action_profile_params *params;
@@ -1474,6 +1474,95 @@ flow_rule_action_get(struct pmd_internals *softnic,
 			break;
 		} /* RTE_FLOW_ACTION_TYPE_COUNT */
 
+		case RTE_FLOW_ACTION_TYPE_METER:
+		{
+			const struct rte_flow_action_meter *conf = action->conf;
+			struct softnic_mtr_meter_profile *mp;
+			struct softnic_mtr *m;
+			uint32_t table_id = table - pipeline->table;
+			uint32_t meter_profile_id;
+			int status;
+
+			if ((params->action_mask & (1LLU << RTE_TABLE_ACTION_MTR)) == 0)
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL,
+					"METER: Table action not supported");
+
+			if (params->mtr.n_tc != 1)
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL,
+					"METER: Multiple TCs not supported");
+
+			if (conf == NULL)
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					action,
+					"METER: Null configuration");
+
+			m = softnic_mtr_find(softnic, conf->mtr_id);
+
+			if (m == NULL)
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					NULL,
+					"METER: Invalid meter ID");
+
+			if (m->flow)
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					NULL,
+					"METER: Meter already attached to a flow");
+
+			meter_profile_id = m->params.meter_profile_id;
+			mp = softnic_mtr_meter_profile_find(softnic, meter_profile_id);
+
+			/* Add meter profile to pipeline table */
+			if (!softnic_pipeline_table_meter_profile_find(table,
+					meter_profile_id)) {
+				struct rte_table_action_meter_profile profile;
+
+				memset(&profile, 0, sizeof(profile));
+				profile.alg = RTE_TABLE_ACTION_METER_TRTCM;
+				profile.trtcm.cir = mp->params.trtcm_rfc2698.cir;
+				profile.trtcm.pir = mp->params.trtcm_rfc2698.pir;
+				profile.trtcm.cbs = mp->params.trtcm_rfc2698.cbs;
+				profile.trtcm.pbs = mp->params.trtcm_rfc2698.pbs;
+
+				status = softnic_pipeline_table_mtr_profile_add(softnic,
+						pipeline->name,
+						table_id,
+						meter_profile_id,
+						&profile);
+				if (status) {
+					rte_flow_error_set(error,
+						EINVAL,
+						RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+						NULL,
+						"METER: Table meter profile add failed");
+					return -1;
+				}
+			}
+
+			/* RTE_TABLE_ACTION_METER */
+			rule_action->mtr.mtr[0].meter_profile_id = meter_profile_id;
+			rule_action->mtr.mtr[0].policer[e_RTE_METER_GREEN] =
+				(enum rte_table_action_policer)m->params.action[RTE_MTR_GREEN];
+			rule_action->mtr.mtr[0].policer[e_RTE_METER_YELLOW] =
+				(enum rte_table_action_policer)m->params.action[RTE_MTR_YELLOW];
+			rule_action->mtr.mtr[0].policer[e_RTE_METER_RED] =
+				(enum rte_table_action_policer)m->params.action[RTE_MTR_RED];
+			rule_action->mtr.tc_mask = 1;
+			rule_action->action_mask |= 1 << RTE_TABLE_ACTION_MTR;
+			break;
+		} /* RTE_FLOW_ACTION_TYPE_METER */
+
 		default:
 			return -ENOTSUP;
 		}
@@ -1577,6 +1666,61 @@ pmd_flow_validate(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static struct softnic_mtr *
+flow_action_meter_get(struct pmd_internals *softnic,
+	const struct rte_flow_action *action)
+{
+	for ( ; action->type != RTE_FLOW_ACTION_TYPE_END; action++)
+		if (action->type == RTE_FLOW_ACTION_TYPE_METER) {
+			const struct rte_flow_action_meter *conf = action->conf;
+
+			if (conf == NULL)
+				return NULL;
+
+			return softnic_mtr_find(softnic, conf->mtr_id);
+		}
+
+	return NULL;
+}
+
+static void
+flow_meter_owner_reset(struct pmd_internals *softnic,
+	struct rte_flow *flow)
+{
+	struct softnic_mtr_list *ml = &softnic->mtr.mtrs;
+	struct softnic_mtr *m;
+
+	TAILQ_FOREACH(m, ml, node)
+		if (m->flow == flow) {
+			m->flow = NULL;
+			break;
+		}
+}
+
+static void
+flow_meter_owner_set(struct pmd_internals *softnic,
+	struct rte_flow *flow,
+	struct softnic_mtr *mtr)
+{
+	/* Reset current flow meter  */
+	flow_meter_owner_reset(softnic, flow);
+
+	/* Set new flow meter */
+	mtr->flow = flow;
+}
+
+static int
+is_meter_action_enable(struct pmd_internals *softnic,
+	struct softnic_table *table)
+{
+	struct softnic_table_action_profile *profile =
+		softnic_table_action_profile_find(softnic,
+			table->params.action_profile_name);
+	struct softnic_table_action_profile_params *params = &profile->params;
+
+	return (params->action_mask & (1LLU << RTE_TABLE_ACTION_MTR)) ? 1 : 0;
+}
+
 static struct rte_flow *
 pmd_flow_create(struct rte_eth_dev *dev,
 	const struct rte_flow_attr *attr,
@@ -1592,6 +1736,7 @@ pmd_flow_create(struct rte_eth_dev *dev,
 	struct pipeline *pipeline;
 	struct softnic_table *table;
 	struct rte_flow *flow;
+	struct softnic_mtr *mtr;
 	const char *pipeline_name = NULL;
 	uint32_t table_id = 0;
 	int new_flow, status;
@@ -1717,6 +1862,10 @@ pmd_flow_create(struct rte_eth_dev *dev,
 	flow->pipeline = pipeline;
 	flow->table_id = table_id;
 
+	mtr = flow_action_meter_get(softnic, action);
+	if (mtr)
+		flow_meter_owner_set(softnic, flow, mtr);
+
 	/* Flow add to list. */
 	if (new_flow)
 		TAILQ_INSERT_TAIL(&table->flows, flow, node);
@@ -1754,6 +1903,10 @@ pmd_flow_destroy(struct rte_eth_dev *dev,
 			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 			NULL,
 			"Pipeline table rule delete failed");
+
+	/* Update dependencies */
+	if (is_meter_action_enable(softnic, table))
+		flow_meter_owner_reset(softnic, flow);
 
 	/* Flow delete. */
 	TAILQ_REMOVE(&table->flows, flow, node);
