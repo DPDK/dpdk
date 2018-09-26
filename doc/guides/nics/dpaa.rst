@@ -181,65 +181,8 @@ Supported DPAA SoCs
 Prerequisites
 -------------
 
-There are three main pre-requisities for executing DPAA PMD on a DPAA
-compatible board:
+See :doc:`../platform/dpaa` for setup information
 
-1. **ARM 64 Tool Chain**
-
-   For example, the `*aarch64* Linaro Toolchain <https://releases.linaro.org/components/toolchain/binaries/6.4-2017.08/aarch64-linux-gnu/>`_.
-
-2. **Linux Kernel**
-
-   It can be obtained from `NXP's Github hosting <https://github.com/qoriq-open-source/linux>`_.
-
-3. **Rootfile system**
-
-   Any *aarch64* supporting filesystem can be used. For example,
-   Ubuntu 15.10 (Wily) or 16.04 LTS (Xenial) userland which can be obtained
-   from `here <http://cdimage.ubuntu.com/ubuntu-base/releases/16.04/release/ubuntu-base-16.04.1-base-arm64.tar.gz>`_.
-
-4. **FMC Tool**
-
-   Before any DPDK application can be executed, the Frame Manager Configuration
-   Tool (FMC) need to be executed to set the configurations of the queues. This
-   includes the queue state, RSS and other policies.
-   This tool can be obtained from `NXP (Freescale) Public Git Repository <https://github.com/qoriq-open-source/fmc>`_.
-
-   This tool needs configuration files which are available in the
-   :ref:`DPDK Extra Scripts <extra_scripts>`, described below for DPDK usages.
-
-As an alternative method, DPAA PMD can also be executed using images provided
-as part of SDK from NXP. The SDK includes all the above prerequisites necessary
-to bring up a DPAA board.
-
-The following dependencies are not part of DPDK and must be installed
-separately:
-
-- **NXP Linux SDK**
-
-  NXP Linux software development kit (SDK) includes support for family
-  of QorIQ® ARM-Architecture-based system on chip (SoC) processors
-  and corresponding boards.
-
-  It includes the Linux board support packages (BSPs) for NXP SoCs,
-  a fully operational tool chain, kernel and board specific modules.
-
-  SDK and related information can be obtained from:  `NXP QorIQ SDK  <http://www.nxp.com/products/software-and-tools/run-time-software/linux-sdk/linux-sdk-for-qoriq-processors:SDKLINUX>`_.
-
-
-.. _extra_scripts:
-
-- **DPDK Extra Scripts**
-
-  DPAA based resources can be configured easily with the help of ready scripts
-  as provided in the DPDK Extra repository.
-
-  `DPDK Extras Scripts <https://github.com/qoriq-open-source/dpdk-extras>`_.
-
-Currently supported by DPDK:
-
-- NXP SDK **2.0+**.
-- Supported architectures:  **arm64 LE**.
 
 - Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>`
   to setup the basic DPDK environment.
