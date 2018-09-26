@@ -167,6 +167,7 @@ static int hn_parse_args(const struct rte_eth_dev *dev)
 		NULL
 	};
 	struct rte_kvargs *kvlist;
+	int ret;
 
 	if (!devargs)
 		return 0;
@@ -180,9 +181,12 @@ static int hn_parse_args(const struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	rte_kvargs_process(kvlist, "latency", hn_set_latency, hv);
+	ret = rte_kvargs_process(kvlist, "latency", hn_set_latency, hv);
+	if (ret)
+		PMD_DRV_LOG(ERR, "Unable to process latency arg\n");
+
 	rte_kvargs_free(kvlist);
-	return 0;
+	return ret;
 }
 
 /* Update link status.
