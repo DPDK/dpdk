@@ -14,6 +14,7 @@
 #include <rte_errno.h>
 #include <rte_ring.h>
 #include <rte_tm_driver.h>
+#include <rte_mtr_driver.h>
 
 #include "rte_eth_softnic.h"
 #include "rte_eth_softnic_internals.h"
@@ -227,6 +228,14 @@ pmd_tm_ops_get(struct rte_eth_dev *dev __rte_unused, void *arg)
 	return 0;
 }
 
+static int
+pmd_mtr_ops_get(struct rte_eth_dev *dev __rte_unused, void *arg)
+{
+	*(const struct rte_mtr_ops **)arg = &pmd_mtr_ops;
+
+	return 0;
+}
+
 static const struct eth_dev_ops pmd_ops = {
 	.dev_configure = pmd_dev_configure,
 	.dev_start = pmd_dev_start,
@@ -238,6 +247,7 @@ static const struct eth_dev_ops pmd_ops = {
 	.tx_queue_setup = pmd_tx_queue_setup,
 	.filter_ctrl = pmd_filter_ctrl,
 	.tm_ops_get = pmd_tm_ops_get,
+	.mtr_ops_get = pmd_mtr_ops_get,
 };
 
 static uint16_t

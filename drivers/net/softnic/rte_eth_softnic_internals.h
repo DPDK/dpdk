@@ -572,6 +572,11 @@ flow_attr_map_get(struct pmd_internals *softnic,
 extern const struct rte_flow_ops pmd_flow_ops;
 
 /**
+ * Meter
+ */
+extern const struct rte_mtr_ops pmd_mtr_ops;
+
+/**
  * MEMPOOL
  */
 int

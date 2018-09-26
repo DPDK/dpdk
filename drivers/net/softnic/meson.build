@@ -14,6 +14,7 @@ sources = files('rte_eth_softnic_tm.c',
 	'rte_eth_softnic_thread.c',
 	'rte_eth_softnic_cli.c',
 	'rte_eth_softnic_flow.c',
+	'rte_eth_softnic_meter.c',
 	'parser.c',
 	'conn.c')
 deps += ['pipeline', 'port', 'table', 'sched']
