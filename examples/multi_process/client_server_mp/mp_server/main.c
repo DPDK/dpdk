@@ -12,6 +12,7 @@
 #include <sys/queue.h>
 #include <errno.h>
 #include <netinet/ip.h>
+#include <signal.h>
 
 #include <rte_common.h>
 #include <rte_memory.h>
@@ -264,9 +265,23 @@ do_packet_forwarding(void)
 	}
 }
 
+static void
+signal_handler(int signal)
+{
+	uint16_t port_id;
+
+	if (signal == SIGINT)
+		RTE_ETH_FOREACH_DEV(port_id) {
+			rte_eth_dev_stop(port_id);
+			rte_eth_dev_close(port_id);
+		}
+	exit(0);
+}
+
 int
 main(int argc, char *argv[])
 {
+	signal(SIGINT, signal_handler);
 	/* initialise the system */
 	if (init(argc, argv) < 0 )
 		return -1;
