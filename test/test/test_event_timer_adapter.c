@@ -792,7 +792,7 @@ _cancel_burst_thread(void *args)
 		TEST_ASSERT_EQUAL(n, ret, "Failed to cancel complete burst of "
 				  "event timers");
 		rte_mempool_put_bulk(eventdev_test_mempool, (void **)ev_tim,
-				ret);
+				RTE_MIN(ret, MAX_BURST));
 
 		cancel_count += ret;
 	}
