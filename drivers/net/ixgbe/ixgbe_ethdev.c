@@ -217,8 +217,7 @@ static int ixgbe_dev_lsc_interrupt_setup(struct rte_eth_dev *dev, uint8_t on);
 static int ixgbe_dev_macsec_interrupt_setup(struct rte_eth_dev *dev);
 static int ixgbe_dev_rxq_interrupt_setup(struct rte_eth_dev *dev);
 static int ixgbe_dev_interrupt_get_status(struct rte_eth_dev *dev);
-static int ixgbe_dev_interrupt_action(struct rte_eth_dev *dev,
-				      struct rte_intr_handle *handle);
+static int ixgbe_dev_interrupt_action(struct rte_eth_dev *dev);
 static void ixgbe_dev_interrupt_handler(void *param);
 static void ixgbe_dev_interrupt_delayed_handler(void *param);
 static int ixgbe_add_rar(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
@@ -4294,8 +4293,7 @@ ixgbe_dev_link_status_print(struct rte_eth_dev *dev)
  *  - On failure, a negative value.
  */
 static int
-ixgbe_dev_interrupt_action(struct rte_eth_dev *dev,
-			   struct rte_intr_handle *intr_handle)
+ixgbe_dev_interrupt_action(struct rte_eth_dev *dev)
 {
 	struct ixgbe_interrupt *intr =
 		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
@@ -4346,7 +4344,6 @@ ixgbe_dev_interrupt_action(struct rte_eth_dev *dev,
 
 	PMD_DRV_LOG(DEBUG, "enable intr immediately");
 	ixgbe_enable_intr(dev);
-	rte_intr_enable(intr_handle);
 
 	return 0;
 }
@@ -4429,7 +4426,7 @@ ixgbe_dev_interrupt_handler(void *param)
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 
 	ixgbe_dev_interrupt_get_status(dev);
-	ixgbe_dev_interrupt_action(dev, dev->intr_handle);
+	ixgbe_dev_interrupt_action(dev);
 }
 
 static int
