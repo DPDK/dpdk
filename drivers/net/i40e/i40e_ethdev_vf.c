@@ -1520,8 +1520,6 @@ i40evf_dev_configure(struct rte_eth_dev *dev)
 {
 	struct i40e_adapter *ad =
 		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-	struct rte_eth_conf *conf = &dev->data->dev_conf;
-	struct i40e_vf *vf;
 
 	/* Initialize to TRUE. If any of Rx queues doesn't meet the bulk
 	 * allocation or vector Rx preconditions we will reset it.
@@ -1530,19 +1528,6 @@ i40evf_dev_configure(struct rte_eth_dev *dev)
 	ad->rx_vec_allowed = true;
 	ad->tx_simple_allowed = true;
 	ad->tx_vec_allowed = true;
-
-	/* For non-DPDK PF drivers, VF has no ability to disable HW
-	 * CRC strip, and is implicitly enabled by the PF.
-	 */
-	if (conf->rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC) {
-		vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-		if ((vf->version_major == VIRTCHNL_VERSION_MAJOR) &&
-		    (vf->version_minor <= VIRTCHNL_VERSION_MINOR)) {
-			/* Peer is running non-DPDK PF driver. */
-			PMD_INIT_LOG(ERR, "VF can't disable HW CRC Strip");
-			return -EINVAL;
-		}
-	}
 
 	return i40evf_init_vlan(dev);
 }
@@ -2178,7 +2163,6 @@ i40evf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		DEV_RX_OFFLOAD_UDP_CKSUM |
 		DEV_RX_OFFLOAD_TCP_CKSUM |
 		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_KEEP_CRC |
 		DEV_RX_OFFLOAD_SCATTER |
 		DEV_RX_OFFLOAD_JUMBO_FRAME |
 		DEV_RX_OFFLOAD_VLAN_FILTER;
