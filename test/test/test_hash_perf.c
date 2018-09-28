@@ -249,7 +249,7 @@ timed_adds(unsigned with_hash, unsigned with_data, unsigned table_index)
 						(const void *) keys[i],
 						signatures[i], data);
 			if (ret < 0) {
-				printf("Failed to add key number %u\n", ret);
+				printf("H+D: Failed to add key number %u\n", i);
 				return -1;
 			}
 		} else if (with_hash && !with_data) {
@@ -259,7 +259,7 @@ timed_adds(unsigned with_hash, unsigned with_data, unsigned table_index)
 			if (ret >= 0)
 				positions[i] = ret;
 			else {
-				printf("Failed to add key number %u\n", ret);
+				printf("H: Failed to add key number %u\n", i);
 				return -1;
 			}
 		} else if (!with_hash && with_data) {
@@ -267,7 +267,7 @@ timed_adds(unsigned with_hash, unsigned with_data, unsigned table_index)
 						(const void *) keys[i],
 						data);
 			if (ret < 0) {
-				printf("Failed to add key number %u\n", ret);
+				printf("D: Failed to add key number %u\n", i);
 				return -1;
 			}
 		} else {
@@ -275,7 +275,7 @@ timed_adds(unsigned with_hash, unsigned with_data, unsigned table_index)
 			if (ret >= 0)
 				positions[i] = ret;
 			else {
-				printf("Failed to add key number %u\n", ret);
+				printf("Failed to add key number %u\n", i);
 				return -1;
 			}
 		}
@@ -443,7 +443,7 @@ timed_deletes(unsigned with_hash, unsigned with_data, unsigned table_index)
 		if (ret >= 0)
 			positions[i] = ret;
 		else {
-			printf("Failed to add key number %u\n", ret);
+			printf("Failed to delete key number %u\n", i);
 			return -1;
 		}
 	}
