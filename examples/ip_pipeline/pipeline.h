@@ -27,6 +27,7 @@ enum port_in_type {
 	PORT_IN_TAP,
 	PORT_IN_KNI,
 	PORT_IN_SOURCE,
+	PORT_IN_CRYPTODEV,
 };
 
 struct port_in_params {
@@ -48,6 +49,12 @@ struct port_in_params {
 			const char *file_name;
 			uint32_t n_bytes_per_pkt;
 		} source;
+
+		struct {
+			uint16_t queue_id;
+			void *f_callback;
+			void *arg_callback;
+		} cryptodev;
 	};
 	uint32_t burst_size;
 
@@ -62,6 +69,7 @@ enum port_out_type {
 	PORT_OUT_TAP,
 	PORT_OUT_KNI,
 	PORT_OUT_SINK,
+	PORT_OUT_CRYPTODEV,
 };
 
 struct port_out_params {
@@ -76,6 +84,11 @@ struct port_out_params {
 			const char *file_name;
 			uint32_t max_n_pkts;
 		} sink;
+
+		struct {
+			uint16_t queue_id;
+			uint32_t op_offset;
+		} cryptodev;
 	};
 	uint32_t burst_size;
 	int retry;
