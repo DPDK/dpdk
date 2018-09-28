@@ -1532,6 +1532,7 @@ enic_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow,
 	enic_flow_del_filter(enic, flow->enic_filter_id, error);
 	LIST_REMOVE(flow, next);
 	rte_spinlock_unlock(&enic->flows_lock);
+	rte_free(flow);
 	return 0;
 }
 
@@ -1555,6 +1556,7 @@ enic_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 		flow = LIST_FIRST(&enic->flows);
 		enic_flow_del_filter(enic, flow->enic_filter_id, error);
 		LIST_REMOVE(flow, next);
+		rte_free(flow);
 	}
 	rte_spinlock_unlock(&enic->flows_lock);
 	return 0;
