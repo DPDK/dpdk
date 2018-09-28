@@ -260,6 +260,12 @@ Generic Flow API is supported. The baseline support is:
   - Selectors: 'is', 'spec' and 'mask'. 'last' is not supported
   - In total, up to 64 bytes of mask is allowed across all headers
 
+- **1400 and later series VICS with advanced filters enabled**
+
+  All the above plus:
+
+  - Action: count
+
 More features may be added in future firmware and new versions of the VIC.
 Please refer to the release notes.
 

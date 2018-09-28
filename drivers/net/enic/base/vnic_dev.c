@@ -57,12 +57,16 @@ struct vnic_dev {
 	void (*free_consistent)(void *priv,
 		size_t size, void *vaddr,
 		dma_addr_t dma_handle);
+	struct vnic_counter_counts *flow_counters;
+	dma_addr_t flow_counters_pa;
 };
 
 #define VNIC_MAX_RES_HDR_SIZE \
 	(sizeof(struct vnic_resource_header) + \
 	sizeof(struct vnic_resource) * RES_TYPE_MAX)
 #define VNIC_RES_STRIDE	128
+
+#define VNIC_MAX_FLOW_COUNTERS 2048
 
 void *vnic_dev_priv(struct vnic_dev *vdev)
 {
@@ -611,6 +615,23 @@ int vnic_dev_stats_dump(struct vnic_dev *vdev, struct vnic_stats **stats)
 	return vnic_dev_cmd(vdev, CMD_STATS_DUMP, &a0, &a1, wait);
 }
 
+/*
+ * Configure counter DMA
+ */
+int vnic_dev_counter_dma_cfg(struct vnic_dev *vdev, u32 period, u32 counter_idx)
+{
+	u64 args[3];
+	int wait = 1000;
+
+	if (!vdev->flow_counters || counter_idx >= VNIC_MAX_FLOW_COUNTERS)
+		return -ENOMEM;
+
+	args[0] = counter_idx + 1;
+	args[1] = vdev->flow_counters_pa;
+	args[2] = period;
+	return vnic_dev_cmd_args(vdev, CMD_COUNTER_DMA_CONFIG, args, 3, wait);
+}
+
 int vnic_dev_close(struct vnic_dev *vdev)
 {
 	u64 a0 = 0, a1 = 0;
@@ -939,6 +960,23 @@ int vnic_dev_alloc_stats_mem(struct vnic_dev *vdev)
 	return vdev->stats == NULL ? -ENOMEM : 0;
 }
 
+/*
+ * Initialize for up to VNIC_MAX_FLOW_COUNTERS
+ */
+int vnic_dev_alloc_counter_mem(struct vnic_dev *vdev)
+{
+	char name[NAME_MAX];
+	static u32 instance;
+
+	snprintf((char *)name, sizeof(name), "vnic_flow_ctrs-%u", instance++);
+	vdev->flow_counters = vdev->alloc_consistent(vdev->priv,
+					     sizeof(struct vnic_counter_counts)
+					     * VNIC_MAX_FLOW_COUNTERS,
+					     &vdev->flow_counters_pa,
+					     (u8 *)name);
+	return vdev->flow_counters == NULL ? -ENOMEM : 0;
+}
+
 void vnic_dev_unregister(struct vnic_dev *vdev)
 {
 	if (vdev) {
@@ -951,6 +989,15 @@ void vnic_dev_unregister(struct vnic_dev *vdev)
 			vdev->free_consistent(vdev->priv,
 				sizeof(struct vnic_stats),
 				vdev->stats, vdev->stats_pa);
+		if (vdev->flow_counters) {
+			/* turn off counter DMAs before freeing memory */
+			vnic_dev_counter_dma_cfg(vdev, 0, 0);
+
+			vdev->free_consistent(vdev->priv,
+				sizeof(struct vnic_counter_counts)
+				* VNIC_MAX_FLOW_COUNTERS,
+				vdev->flow_counters, vdev->flow_counters_pa);
+		}
 		if (vdev->fw_info)
 			vdev->free_consistent(vdev->priv,
 				sizeof(struct vnic_devcmd_fw_info),
@@ -1093,4 +1140,50 @@ int vnic_dev_capable_vxlan(struct vnic_dev *vdev)
 	return ret == 0 &&
 		(a1 & (FEATURE_VXLAN_IPV6 | FEATURE_VXLAN_MULTI_WQ)) ==
 		(FEATURE_VXLAN_IPV6 | FEATURE_VXLAN_MULTI_WQ);
+}
+
+bool vnic_dev_counter_alloc(struct vnic_dev *vdev, uint32_t *idx)
+{
+	u64 a0 = 0;
+	u64 a1 = 0;
+	int wait = 1000;
+
+	if (vnic_dev_cmd(vdev, CMD_COUNTER_ALLOC, &a0, &a1, wait))
+		return false;
+	*idx = (uint32_t)a0;
+	return true;
+}
+
+bool vnic_dev_counter_free(struct vnic_dev *vdev, uint32_t idx)
+{
+	u64 a0 = idx;
+	u64 a1 = 0;
+	int wait = 1000;
+
+	return vnic_dev_cmd(vdev, CMD_COUNTER_FREE, &a0, &a1,
+			    wait) == 0;
+}
+
+bool vnic_dev_counter_query(struct vnic_dev *vdev, uint32_t idx,
+			    bool reset, uint64_t *packets, uint64_t *bytes)
+{
+	u64 a0 = idx;
+	u64 a1 = reset ? 1 : 0;
+	int wait = 1000;
+
+	if (vdev->flow_counters) {
+		/* Using counter DMA API, so counters avail in host memory */
+		*packets = vdev->flow_counters[idx].vcc_packets;
+		*bytes = vdev->flow_counters[idx].vcc_bytes;
+		if (reset)
+			if (vnic_dev_cmd(vdev, CMD_COUNTER_QUERY, &a0, &a1,
+			    wait))
+				return false;
+	} else {
+		if (vnic_dev_cmd(vdev, CMD_COUNTER_QUERY, &a0, &a1, wait))
+			return false;
+		*packets = a0;
+		*bytes = a1;
+	}
+	return true;
 }
