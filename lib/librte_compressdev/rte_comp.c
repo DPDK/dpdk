@@ -83,8 +83,8 @@ struct rte_comp_op_pool_private {
  * @param nb_ops
  *   Number of operations to allocate
  * @return
- *   - 0: Success
- *   - -ENOENT: Not enough entries in the mempool; no ops are retrieved.
+ *   - nb_ops: Success, the nb_ops requested was allocated
+ *   - 0: Not enough entries in the mempool; no ops are retrieved.
  */
 static inline int
 rte_comp_op_raw_bulk_alloc(struct rte_mempool *mempool,

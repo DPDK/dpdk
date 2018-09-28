@@ -448,8 +448,8 @@ rte_comp_op_alloc(struct rte_mempool *mempool);
  * @param nb_ops
  *   Number of operations to allocate
  * @return
- *   - 0: Success
- *   - -ENOENT: Not enough entries in the mempool; no ops are retrieved.
+ *   - nb_ops: Success, the nb_ops requested was allocated
+ *   - 0: Not enough entries in the mempool; no ops are retrieved.
  */
 int __rte_experimental
 rte_comp_op_bulk_alloc(struct rte_mempool *mempool,
