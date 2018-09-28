@@ -100,6 +100,39 @@ ptype_table[PTYPE_SIZE][PTYPE_SIZE][PTYPE_SIZE] = {
 
 };
 
+static __rte_always_inline int
+__octeontx_xmit_pkts(void *lmtline_va, void *ioreg_va, int64_t *fc_status_va,
+			struct rte_mbuf *tx_pkt)
+{
+	uint64_t cmd_buf[4] __rte_cache_aligned;
+	uint16_t gaura_id;
+
+	if (unlikely(*((volatile int64_t *)fc_status_va) < 0))
+		return -ENOSPC;
+
+	/* Get the gaura Id */
+	gaura_id = octeontx_fpa_bufpool_gpool((uintptr_t)tx_pkt->pool->pool_id);
+
+	/* Setup PKO_SEND_HDR_S */
+	cmd_buf[0] = tx_pkt->data_len & 0xffff;
+	cmd_buf[1] = 0x0;
+
+	/* Set don't free bit if reference count > 1 */
+	if (rte_mbuf_refcnt_read(tx_pkt) > 1)
+		cmd_buf[0] |= (1ULL << 58); /* SET DF */
+
+	/* Setup PKO_SEND_GATHER_S */
+	cmd_buf[(1 << 1) | 1] = rte_mbuf_data_iova(tx_pkt);
+	cmd_buf[(1 << 1) | 0] = PKO_SEND_GATHER_SUBDC |
+				PKO_SEND_GATHER_LDTYPE(0x1ull) |
+				PKO_SEND_GATHER_GAUAR((long)gaura_id) |
+				tx_pkt->data_len;
+
+	octeontx_reg_lmtst(lmtline_va, ioreg_va, cmd_buf, PKO_CMD_SZ);
+
+	return 0;
+}
+
 uint16_t
 octeontx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
 

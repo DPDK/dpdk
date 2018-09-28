@@ -261,3 +261,47 @@ ssows_reset(struct ssows *ws)
 			ssows_swtag_untag(ws);
 	}
 }
+
+uint16_t
+sso_event_tx_adapter_enqueue(void *port,
+		struct rte_event ev[], uint16_t nb_events)
+{
+	uint16_t port_id;
+	uint16_t queue_id;
+	struct rte_mbuf *m;
+	struct rte_eth_dev *ethdev;
+	struct ssows *ws = port;
+	struct octeontx_txq *txq;
+	octeontx_dq_t *dq;
+
+	RTE_SET_USED(nb_events);
+	switch (ev->sched_type) {
+	case SSO_SYNC_ORDERED:
+		ssows_swtag_norm(ws, ev->event, SSO_SYNC_ATOMIC);
+		rte_cio_wmb();
+		ssows_swtag_wait(ws);
+		break;
+	case SSO_SYNC_UNTAGGED:
+		ssows_swtag_full(ws, ev->u64, ev->event, SSO_SYNC_ATOMIC,
+				ev->queue_id);
+		rte_cio_wmb();
+		ssows_swtag_wait(ws);
+		break;
+	case SSO_SYNC_ATOMIC:
+		rte_cio_wmb();
+		break;
+	}
+
+	m = ev[0].mbuf;
+	port_id = m->port;
+	queue_id = rte_event_eth_tx_adapter_txq_get(m);
+	ethdev = &rte_eth_devices[port_id];
+	txq = ethdev->data->tx_queues[queue_id];
+	dq = &txq->dq;
+
+	if (__octeontx_xmit_pkts(dq->lmtline_va, dq->ioreg_va, dq->fc_status_va,
+				m) < 0)
+		return 0;
+
+	return 1;
+}

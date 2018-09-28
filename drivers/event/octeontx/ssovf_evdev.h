@@ -5,6 +5,7 @@
 #ifndef __SSOVF_EVDEV_H__
 #define __SSOVF_EVDEV_H__
 
+#include <rte_event_eth_tx_adapter.h>
 #include <rte_eventdev_pmd_vdev.h>
 #include <rte_io.h>
 
@@ -179,6 +180,8 @@ typedef void (*ssows_handle_event_t)(void *arg, struct rte_event ev);
 void ssows_flush_events(struct ssows *ws, uint8_t queue_id,
 		ssows_handle_event_t fn, void *arg);
 void ssows_reset(struct ssows *ws);
+uint16_t sso_event_tx_adapter_enqueue(void *port,
+		struct rte_event ev[], uint16_t nb_events);
 int ssovf_info(struct ssovf_info *info);
 void *ssovf_bar(enum ssovf_type, uint8_t id, uint8_t bar);
 int test_eventdev_octeontx(void);

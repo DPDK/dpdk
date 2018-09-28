@@ -146,6 +146,7 @@ ssovf_fastpath_fns_set(struct rte_eventdev *dev)
 	dev->enqueue_forward_burst = ssows_enq_fwd_burst;
 	dev->dequeue       = ssows_deq;
 	dev->dequeue_burst = ssows_deq_burst;
+	dev->txa_enqueue = sso_event_tx_adapter_enqueue;
 
 	if (edev->is_timeout_deq) {
 		dev->dequeue       = ssows_deq_timeout;
@@ -491,6 +492,77 @@ ssovf_eth_rx_adapter_stop(const struct rte_eventdev *dev,
 	return 0;
 }
 
+static int
+ssovf_eth_tx_adapter_caps_get(const struct rte_eventdev *dev,
+		const struct rte_eth_dev *eth_dev, uint32_t *caps)
+{
+	int ret;
+	RTE_SET_USED(dev);
+
+	ret = strncmp(eth_dev->data->name, "eth_octeontx", 12);
+	if (ret)
+		*caps = 0;
+	else
+		*caps = RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT;
+
+	return 0;
+}
+
+static int
+ssovf_eth_tx_adapter_create(uint8_t id, const struct rte_eventdev *dev)
+{
+	RTE_SET_USED(id);
+	RTE_SET_USED(dev);
+	return 0;
+}
+
+static int
+ssovf_eth_tx_adapter_free(uint8_t id, const struct rte_eventdev *dev)
+{
+	RTE_SET_USED(id);
+	RTE_SET_USED(dev);
+	return 0;
+}
+
+static int
+ssovf_eth_tx_adapter_queue_add(uint8_t id, const struct rte_eventdev *dev,
+		const struct rte_eth_dev *eth_dev, int32_t tx_queue_id)
+{
+	RTE_SET_USED(id);
+	RTE_SET_USED(dev);
+	RTE_SET_USED(eth_dev);
+	RTE_SET_USED(tx_queue_id);
+	return 0;
+}
+
+static int
+ssovf_eth_tx_adapter_queue_del(uint8_t id, const struct rte_eventdev *dev,
+		const struct rte_eth_dev *eth_dev, int32_t tx_queue_id)
+{
+	RTE_SET_USED(id);
+	RTE_SET_USED(dev);
+	RTE_SET_USED(eth_dev);
+	RTE_SET_USED(tx_queue_id);
+	return 0;
+}
+
+static int
+ssovf_eth_tx_adapter_start(uint8_t id, const struct rte_eventdev *dev)
+{
+	RTE_SET_USED(id);
+	RTE_SET_USED(dev);
+	return 0;
+}
+
+static int
+ssovf_eth_tx_adapter_stop(uint8_t id, const struct rte_eventdev *dev)
+{
+	RTE_SET_USED(id);
+	RTE_SET_USED(dev);
+	return 0;
+}
+
+
 static void
 ssovf_dump(struct rte_eventdev *dev, FILE *f)
 {
@@ -618,6 +690,14 @@ static struct rte_eventdev_ops ssovf_ops = {
 	.eth_rx_adapter_queue_del = ssovf_eth_rx_adapter_queue_del,
 	.eth_rx_adapter_start = ssovf_eth_rx_adapter_start,
 	.eth_rx_adapter_stop = ssovf_eth_rx_adapter_stop,
+
+	.eth_tx_adapter_caps_get = ssovf_eth_tx_adapter_caps_get,
+	.eth_tx_adapter_create = ssovf_eth_tx_adapter_create,
+	.eth_tx_adapter_free = ssovf_eth_tx_adapter_free,
+	.eth_tx_adapter_queue_add = ssovf_eth_tx_adapter_queue_add,
+	.eth_tx_adapter_queue_del = ssovf_eth_tx_adapter_queue_del,
+	.eth_tx_adapter_start = ssovf_eth_tx_adapter_start,
+	.eth_tx_adapter_stop = ssovf_eth_tx_adapter_stop,
 
 	.timer_adapter_caps_get = ssovf_timvf_caps_get,
 

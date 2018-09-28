@@ -42,6 +42,7 @@ ssovf_octeontx_wqe_to_pkt(uint64_t work, uint16_t port_info)
 	mbuf->ol_flags = 0;
 	mbuf->port = rte_octeontx_pchan_map[port_info >> 4][port_info & 0xF];
 	rte_mbuf_refcnt_set(mbuf, 1);
+
 	return mbuf;
 }
 
