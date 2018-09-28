@@ -12,6 +12,8 @@
 #include <rte_ethdev.h>
 
 #include "cli.h"
+
+#include "cryptodev.h"
 #include "kni.h"
 #include "link.h"
 #include "mempool.h"
@@ -785,6 +787,65 @@ cmd_kni(char **tokens,
 	}
 }
 
+static const char cmd_cryptodev_help[] =
+"cryptodev <cryptodev_name>\n"
+"   dev <device_name> | dev_id <device_id>\n"
+"   queue <n_queues> <queue_size>\n";
+
+static void
+cmd_cryptodev(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct cryptodev_params params;
+	char *name;
+
+	memset(&params, 0, sizeof(params));
+	if (n_tokens != 7) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	name = tokens[1];
+
+	if (strcmp(tokens[2], "dev") == 0)
+		params.dev_name = tokens[3];
+	else if (strcmp(tokens[2], "dev_id") == 0) {
+		if (parser_read_uint32(&params.dev_id, tokens[3]) < 0) {
+			snprintf(out, out_size,	MSG_ARG_INVALID,
+				"dev_id");
+			return;
+		}
+	} else {
+		snprintf(out, out_size,	MSG_ARG_INVALID,
+			"cryptodev");
+		return;
+	}
+
+	if (strcmp(tokens[4], "queue")) {
+		snprintf(out, out_size,	MSG_ARG_NOT_FOUND,
+			"4");
+		return;
+	}
+
+	if (parser_read_uint32(&params.n_queues, tokens[5]) < 0) {
+		snprintf(out, out_size,	MSG_ARG_INVALID,
+			"q");
+		return;
+	}
+
+	if (parser_read_uint32(&params.queue_size, tokens[6]) < 0) {
+		snprintf(out, out_size,	MSG_ARG_INVALID,
+			"queue_size");
+		return;
+	}
+
+	if (cryptodev_create(name, &params) == NULL) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
 
 static const char cmd_port_in_action_profile_help[] =
 "port in action profile <profile_name>\n"
@@ -968,7 +1029,10 @@ static const char cmd_table_action_profile_help[] =
 "   [ttl drop | fwd\n"
 "       stats none | pkts]\n"
 "   [stats pkts | bytes | both]\n"
-"   [time]\n";
+"   [time]\n"
+"   [sym_crypto dev <CRYPTODEV_NAME> offset <op_offset> "
+"       mempool_create <mempool_name>\n"
+"       mempool_init <mempool_name>]\n";
 
 static void
 cmd_table_action_profile(char **tokens,
@@ -1336,6 +1400,57 @@ cmd_table_action_profile(char **tokens,
 		t0 += 1;
 	} /* time */
 
+	if ((t0 < n_tokens) && (strcmp(tokens[t0], "sym_crypto") == 0)) {
+		struct cryptodev *cryptodev;
+		struct mempool *mempool;
+
+		if (n_tokens < t0 + 9 ||
+				strcmp(tokens[t0 + 1], "dev") ||
+				strcmp(tokens[t0 + 3], "offset") ||
+				strcmp(tokens[t0 + 5], "mempool_create") ||
+				strcmp(tokens[t0 + 7], "mempool_init")) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"table action profile sym_crypto");
+			return;
+		}
+
+		cryptodev = cryptodev_find(tokens[t0 + 2]);
+		if (cryptodev == NULL) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"table action profile sym_crypto");
+			return;
+		}
+
+		p.sym_crypto.cryptodev_id = cryptodev->dev_id;
+
+		if (parser_read_uint32(&p.sym_crypto.op_offset,
+				tokens[t0 + 4]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+					"table action profile sym_crypto");
+			return;
+		}
+
+		mempool = mempool_find(tokens[t0 + 6]);
+		if (mempool == NULL) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"table action profile sym_crypto");
+			return;
+		}
+		p.sym_crypto.mp_create = mempool->m;
+
+		mempool = mempool_find(tokens[t0 + 8]);
+		if (mempool == NULL) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"table action profile sym_crypto");
+			return;
+		}
+		p.sym_crypto.mp_init = mempool->m;
+
+		p.action_mask |= 1LLU << RTE_TABLE_ACTION_SYM_CRYPTO;
+
+		t0 += 9;
+	} /* sym_crypto */
+
 	if (t0 < n_tokens) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
 		return;
@@ -1417,6 +1532,7 @@ static const char cmd_pipeline_port_in_help[] =
 "   | tap <tap_name> mempool <mempool_name> mtu <mtu>\n"
 "   | kni <kni_name>\n"
 "   | source mempool <mempool_name> file <file_name> bpp <n_bytes_per_pkt>\n"
+"   | cryptodev <cryptodev_name> rxq <queue_id>\n"
 "   [action <port_in_action_profile_name>]\n"
 "   [disabled]\n";
 
@@ -1589,6 +1705,26 @@ cmd_pipeline_port_in(char **tokens,
 		}
 
 		t0 += 7;
+	} else if (strcmp(tokens[t0], "cryptodev") == 0) {
+		if (n_tokens < t0 + 3) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"pipeline port in cryptodev");
+			return;
+		}
+
+		p.type = PORT_IN_CRYPTODEV;
+
+		p.dev_name = tokens[t0 + 1];
+		if (parser_read_uint16(&p.rxq.queue_id, tokens[t0 + 3]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"rxq");
+			return;
+		}
+
+		p.cryptodev.arg_callback = NULL;
+		p.cryptodev.f_callback = NULL;
+
+		t0 += 4;
 	} else {
 		snprintf(out, out_size, MSG_ARG_INVALID, tokens[0]);
 		return;
@@ -1635,7 +1771,8 @@ static const char cmd_pipeline_port_out_help[] =
 "   | tmgr <tmgr_name>\n"
 "   | tap <tap_name>\n"
 "   | kni <kni_name>\n"
-"   | sink [file <file_name> pkts <max_n_pkts>]\n";
+"   | sink [file <file_name> pkts <max_n_pkts>]\n"
+"   | cryptodev <cryptodev_name> txq <txq_id> offset <crypto_op_offset>\n";
 
 static void
 cmd_pipeline_port_out(char **tokens,
@@ -1768,6 +1905,41 @@ cmd_pipeline_port_out(char **tokens,
 				snprintf(out, out_size, MSG_ARG_INVALID, "max_n_pkts");
 				return;
 			}
+		}
+
+	} else if (strcmp(tokens[6], "cryptodev") == 0) {
+		if (n_tokens != 12) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"pipeline port out cryptodev");
+			return;
+		}
+
+		p.type = PORT_OUT_CRYPTODEV;
+
+		p.dev_name = tokens[7];
+
+		if (strcmp(tokens[8], "txq")) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"pipeline port out cryptodev");
+			return;
+		}
+
+		if (parser_read_uint16(&p.cryptodev.queue_id, tokens[9])
+				!= 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "queue_id");
+			return;
+		}
+
+		if (strcmp(tokens[10], "offset")) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"pipeline port out cryptodev");
+			return;
+		}
+
+		if (parser_read_uint32(&p.cryptodev.op_offset, tokens[11])
+				!= 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID, "queue_id");
+			return;
 		}
 	} else {
 		snprintf(out, out_size, MSG_ARG_INVALID, tokens[0]);
@@ -2923,6 +3095,18 @@ parse_match(char **tokens,
  *    [ttl dec | keep]
  *    [stats]
  *    [time]
+ *    [sym_crypto
+ *       encrypt | decrypt
+ *       type
+ *       | cipher
+ *          cipher_algo <algo> cipher_key <key> cipher_iv <iv>
+ *       | cipher_auth
+ *          cipher_algo <algo> cipher_key <key> cipher_iv <iv>
+ *          auth_algo <algo> auth_key <key> digest_size <size>
+ *       | aead
+ *          aead_algo <algo> aead_key <key> aead_iv <iv> aead_aad <aad>
+ *          digest_size <size>
+ *       data_offset <data_offset>]
  *
  * where:
  *    <pa> ::= g | y | r | drop
@@ -3521,6 +3705,368 @@ parse_table_action_time(char **tokens,
 	return 1;
 }
 
+static void
+parse_free_sym_crypto_param_data(struct rte_table_action_sym_crypto_params *p)
+{
+	struct rte_crypto_sym_xform *xform[2] = {NULL};
+	uint32_t i;
+
+	xform[0] = p->xform;
+	if (xform[0])
+		xform[1] = xform[0]->next;
+
+	for (i = 0; i < 2; i++) {
+		if (xform[i] == NULL)
+			continue;
+
+		switch (xform[i]->type) {
+		case RTE_CRYPTO_SYM_XFORM_CIPHER:
+			if (xform[i]->cipher.key.data)
+				free(xform[i]->cipher.key.data);
+			if (p->cipher_auth.cipher_iv.val)
+				free(p->cipher_auth.cipher_iv.val);
+			if (p->cipher_auth.cipher_iv_update.val)
+				free(p->cipher_auth.cipher_iv_update.val);
+			break;
+		case RTE_CRYPTO_SYM_XFORM_AUTH:
+			if (xform[i]->auth.key.data)
+				free(xform[i]->cipher.key.data);
+			if (p->cipher_auth.auth_iv.val)
+				free(p->cipher_auth.cipher_iv.val);
+			if (p->cipher_auth.auth_iv_update.val)
+				free(p->cipher_auth.cipher_iv_update.val);
+			break;
+		case RTE_CRYPTO_SYM_XFORM_AEAD:
+			if (xform[i]->aead.key.data)
+				free(xform[i]->cipher.key.data);
+			if (p->aead.iv.val)
+				free(p->aead.iv.val);
+			if (p->aead.aad.val)
+				free(p->aead.aad.val);
+			break;
+		default:
+			continue;
+		}
+	}
+
+}
+
+static struct rte_crypto_sym_xform *
+parse_table_action_cipher(struct rte_table_action_sym_crypto_params *p,
+		char **tokens, uint32_t n_tokens, uint32_t encrypt,
+		uint32_t *used_n_tokens)
+{
+	struct rte_crypto_sym_xform *xform_cipher;
+	int status;
+	size_t len;
+
+	if (n_tokens < 7 || strcmp(tokens[1], "cipher_algo") ||
+			strcmp(tokens[3], "cipher_key") ||
+			strcmp(tokens[5], "cipher_iv"))
+		return NULL;
+
+	xform_cipher = calloc(1, sizeof(*xform_cipher));
+	if (xform_cipher == NULL)
+		return NULL;
+
+	xform_cipher->type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	xform_cipher->cipher.op = encrypt ? RTE_CRYPTO_CIPHER_OP_ENCRYPT :
+			RTE_CRYPTO_CIPHER_OP_DECRYPT;
+
+	/* cipher_algo */
+	status = rte_cryptodev_get_cipher_algo_enum(
+			&xform_cipher->cipher.algo, tokens[2]);
+	if (status < 0)
+		goto error_exit;
+
+	/* cipher_key */
+	len = strlen(tokens[4]);
+	xform_cipher->cipher.key.data = calloc(1, len / 2 + 1);
+	if (xform_cipher->cipher.key.data == NULL)
+		goto error_exit;
+
+	status = parse_hex_string(tokens[4],
+			xform_cipher->cipher.key.data,
+			(uint32_t *)&len);
+	if (status < 0)
+		goto error_exit;
+
+	xform_cipher->cipher.key.length = (uint16_t)len;
+
+	/* cipher_iv */
+	len = strlen(tokens[6]);
+
+	p->cipher_auth.cipher_iv.val = calloc(1, len / 2 + 1);
+	if (p->cipher_auth.cipher_iv.val == NULL)
+		goto error_exit;
+
+	status = parse_hex_string(tokens[6],
+			p->cipher_auth.cipher_iv.val,
+			(uint32_t *)&len);
+	if (status < 0)
+		goto error_exit;
+
+	xform_cipher->cipher.iv.length = (uint16_t)len;
+	xform_cipher->cipher.iv.offset = RTE_TABLE_ACTION_SYM_CRYPTO_IV_OFFSET;
+	p->cipher_auth.cipher_iv.length = (uint32_t)len;
+	*used_n_tokens = 7;
+
+	return xform_cipher;
+
+error_exit:
+	if (xform_cipher->cipher.key.data)
+		free(xform_cipher->cipher.key.data);
+
+	if (p->cipher_auth.cipher_iv.val) {
+		free(p->cipher_auth.cipher_iv.val);
+		p->cipher_auth.cipher_iv.val = NULL;
+	}
+
+	free(xform_cipher);
+
+	return NULL;
+}
+
+static struct rte_crypto_sym_xform *
+parse_table_action_cipher_auth(struct rte_table_action_sym_crypto_params *p,
+		char **tokens, uint32_t n_tokens, uint32_t encrypt,
+		uint32_t *used_n_tokens)
+{
+	struct rte_crypto_sym_xform *xform_cipher;
+	struct rte_crypto_sym_xform *xform_auth;
+	int status;
+	size_t len;
+
+	if (n_tokens < 13 ||
+			strcmp(tokens[7], "auth_algo") ||
+			strcmp(tokens[9], "auth_key") ||
+			strcmp(tokens[11], "digest_size"))
+		return NULL;
+
+	xform_auth = calloc(1, sizeof(*xform_auth));
+	if (xform_auth == NULL)
+		return NULL;
+
+	xform_auth->type = RTE_CRYPTO_SYM_XFORM_AUTH;
+	xform_auth->auth.op = encrypt ? RTE_CRYPTO_AUTH_OP_GENERATE :
+			RTE_CRYPTO_AUTH_OP_VERIFY;
+
+	/* auth_algo */
+	status = rte_cryptodev_get_auth_algo_enum(&xform_auth->auth.algo,
+			tokens[8]);
+	if (status < 0)
+		goto error_exit;
+
+	/* auth_key */
+	len = strlen(tokens[10]);
+	xform_auth->auth.key.data = calloc(1, len / 2 + 1);
+	if (xform_auth->auth.key.data == NULL)
+		goto error_exit;
+
+	status = parse_hex_string(tokens[10],
+			xform_auth->auth.key.data, (uint32_t *)&len);
+	if (status < 0)
+		goto error_exit;
+
+	xform_auth->auth.key.length = (uint16_t)len;
+
+	if (strcmp(tokens[11], "digest_size"))
+		goto error_exit;
+
+	status = parser_read_uint16(&xform_auth->auth.digest_length,
+			tokens[12]);
+	if (status < 0)
+		goto error_exit;
+
+	xform_cipher = parse_table_action_cipher(p, tokens, 7, encrypt,
+			used_n_tokens);
+	if (xform_cipher == NULL)
+		goto error_exit;
+
+	*used_n_tokens += 6;
+
+	if (encrypt) {
+		xform_cipher->next = xform_auth;
+		return xform_cipher;
+	} else {
+		xform_auth->next = xform_cipher;
+		return xform_auth;
+	}
+
+error_exit:
+	if (xform_auth->auth.key.data)
+		free(xform_auth->auth.key.data);
+	if (p->cipher_auth.auth_iv.val) {
+		free(p->cipher_auth.auth_iv.val);
+		p->cipher_auth.auth_iv.val = 0;
+	}
+
+	free(xform_auth);
+
+	return NULL;
+}
+
+static struct rte_crypto_sym_xform *
+parse_table_action_aead(struct rte_table_action_sym_crypto_params *p,
+		char **tokens, uint32_t n_tokens, uint32_t encrypt,
+		uint32_t *used_n_tokens)
+{
+	struct rte_crypto_sym_xform *xform_aead;
+	int status;
+	size_t len;
+
+	if (n_tokens < 11 || strcmp(tokens[1], "aead_algo") ||
+			strcmp(tokens[3], "aead_key") ||
+			strcmp(tokens[5], "aead_iv") ||
+			strcmp(tokens[7], "aead_aad") ||
+			strcmp(tokens[9], "digest_size"))
+		return NULL;
+
+	xform_aead = calloc(1, sizeof(*xform_aead));
+	if (xform_aead == NULL)
+		return NULL;
+
+	xform_aead->type = RTE_CRYPTO_SYM_XFORM_AEAD;
+	xform_aead->aead.op = encrypt ? RTE_CRYPTO_AEAD_OP_ENCRYPT :
+			RTE_CRYPTO_AEAD_OP_DECRYPT;
+
+	/* aead_algo */
+	status = rte_cryptodev_get_aead_algo_enum(&xform_aead->aead.algo,
+			tokens[2]);
+	if (status < 0)
+		goto error_exit;
+
+	/* aead_key */
+	len = strlen(tokens[4]);
+	xform_aead->aead.key.data = calloc(1, len / 2 + 1);
+	if (xform_aead->aead.key.data == NULL)
+		goto error_exit;
+
+	status = parse_hex_string(tokens[4], xform_aead->aead.key.data,
+			(uint32_t *)&len);
+	if (status < 0)
+		goto error_exit;
+
+	xform_aead->aead.key.length = (uint16_t)len;
+
+	/* aead_iv */
+	len = strlen(tokens[6]);
+	p->aead.iv.val = calloc(1, len / 2 + 1);
+	if (p->aead.iv.val == NULL)
+		goto error_exit;
+
+	status = parse_hex_string(tokens[6], p->aead.iv.val,
+			(uint32_t *)&len);
+	if (status < 0)
+		goto error_exit;
+
+	xform_aead->aead.iv.length = (uint16_t)len;
+	xform_aead->aead.iv.offset = RTE_TABLE_ACTION_SYM_CRYPTO_IV_OFFSET;
+	p->aead.iv.length = (uint32_t)len;
+
+	/* aead_aad */
+	len = strlen(tokens[8]);
+	p->aead.aad.val = calloc(1, len / 2 + 1);
+	if (p->aead.aad.val == NULL)
+		goto error_exit;
+
+	status = parse_hex_string(tokens[8], p->aead.aad.val, (uint32_t *)&len);
+	if (status < 0)
+		goto error_exit;
+
+	xform_aead->aead.aad_length = (uint16_t)len;
+	p->aead.aad.length = (uint32_t)len;
+
+	/* digest_size */
+	status = parser_read_uint16(&xform_aead->aead.digest_length,
+			tokens[10]);
+	if (status < 0)
+		goto error_exit;
+
+	*used_n_tokens = 11;
+
+	return xform_aead;
+
+error_exit:
+	if (xform_aead->aead.key.data)
+		free(xform_aead->aead.key.data);
+	if (p->aead.iv.val) {
+		free(p->aead.iv.val);
+		p->aead.iv.val = NULL;
+	}
+	if (p->aead.aad.val) {
+		free(p->aead.aad.val);
+		p->aead.aad.val = NULL;
+	}
+
+	free(xform_aead);
+
+	return NULL;
+}
+
+
+static uint32_t
+parse_table_action_sym_crypto(char **tokens,
+	uint32_t n_tokens,
+	struct table_rule_action *a)
+{
+	struct rte_table_action_sym_crypto_params *p = &a->sym_crypto;
+	struct rte_crypto_sym_xform *xform = NULL;
+	uint32_t used_n_tokens;
+	uint32_t encrypt;
+	int status;
+
+	if ((n_tokens < 12) ||
+		strcmp(tokens[0], "sym_crypto") ||
+		strcmp(tokens[2], "type"))
+		return 0;
+
+	memset(p, 0, sizeof(*p));
+
+	if (strcmp(tokens[1], "encrypt") == 0)
+		encrypt = 1;
+	else
+		encrypt = 0;
+
+	status = parser_read_uint32(&p->data_offset, tokens[n_tokens - 1]);
+	if (status < 0)
+		return 0;
+
+	if (strcmp(tokens[3], "cipher") == 0) {
+		tokens += 3;
+		n_tokens -= 3;
+
+		xform = parse_table_action_cipher(p, tokens, n_tokens, encrypt,
+				&used_n_tokens);
+	} else if (strcmp(tokens[3], "cipher_auth") == 0) {
+		tokens += 3;
+		n_tokens -= 3;
+
+		xform = parse_table_action_cipher_auth(p, tokens, n_tokens,
+				encrypt, &used_n_tokens);
+	} else if (strcmp(tokens[3], "aead") == 0) {
+		tokens += 3;
+		n_tokens -= 3;
+
+		xform = parse_table_action_aead(p, tokens, n_tokens, encrypt,
+				&used_n_tokens);
+	}
+
+	if (xform == NULL)
+		return 0;
+
+	p->xform = xform;
+
+	if (strcmp(tokens[used_n_tokens], "data_offset")) {
+		parse_free_sym_crypto_param_data(p);
+		return 0;
+	}
+
+	a->action_mask |= 1 << RTE_TABLE_ACTION_SYM_CRYPTO;
+
+	return used_n_tokens + 5;
+}
+
 static uint32_t
 parse_table_action(char **tokens,
 	uint32_t n_tokens,
@@ -3665,6 +4211,20 @@ parse_table_action(char **tokens,
 		n_tokens -= n;
 	}
 
+	if (n_tokens && (strcmp(tokens[0], "sym_crypto") == 0)) {
+		uint32_t n;
+
+		n = parse_table_action_sym_crypto(tokens, n_tokens, a);
+		if (n == 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"action sym_crypto");
+			return 0;
+		}
+
+		tokens += n;
+		n_tokens -= n;
+	}
+
 	if (n_tokens0 - n_tokens == 1) {
 		snprintf(out, out_size, MSG_ARG_INVALID, "action");
 		return 0;
@@ -3752,6 +4312,9 @@ cmd_pipeline_table_rule_add(char **tokens,
 		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
 		return;
 	}
+
+	if (a.action_mask & 1 << RTE_TABLE_ACTION_SYM_CRYPTO)
+		parse_free_sym_crypto_param_data(&a.sym_crypto);
 }
 
 
@@ -4743,6 +5306,11 @@ cmd_help(char **tokens, uint32_t n_tokens, char *out, size_t out_size)
 		return;
 	}
 
+	if (strcmp(tokens[0], "cryptodev") == 0) {
+		snprintf(out, out_size, "\n%s\n", cmd_cryptodev_help);
+		return;
+	}
+
 	if ((n_tokens == 4) &&
 		(strcmp(tokens[0], "port") == 0) &&
 		(strcmp(tokens[1], "in") == 0) &&
@@ -5030,6 +5598,11 @@ cli_process(char *in, char *out, size_t out_size)
 
 	if (strcmp(tokens[0], "kni") == 0) {
 		cmd_kni(tokens, n_tokens, out, out_size);
+		return;
+	}
+
+	if (strcmp(tokens[0], "cryptodev") == 0) {
+		cmd_cryptodev(tokens, n_tokens, out, out_size);
 		return;
 	}
 
