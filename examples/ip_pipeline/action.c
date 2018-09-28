@@ -333,6 +333,17 @@ table_action_profile_create(const char *name,
 		}
 	}
 
+	if (params->action_mask & (1LLU << RTE_TABLE_ACTION_SYM_CRYPTO)) {
+		status = rte_table_action_profile_action_register(ap,
+			RTE_TABLE_ACTION_SYM_CRYPTO,
+			&params->sym_crypto);
+
+		if (status) {
+			rte_table_action_profile_free(ap);
+			return NULL;
+		}
+	}
+
 	status = rte_table_action_profile_freeze(ap);
 	if (status) {
 		rte_table_action_profile_free(ap);

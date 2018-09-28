@@ -53,6 +53,7 @@ struct table_action_profile_params {
 	struct rte_table_action_nat_config nat;
 	struct rte_table_action_ttl_config ttl;
 	struct rte_table_action_stats_config stats;
+	struct rte_table_action_sym_crypto_config sym_crypto;
 };
 
 struct table_action_profile {

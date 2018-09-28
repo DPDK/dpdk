@@ -281,6 +281,7 @@ struct table_rule_action {
 	struct rte_table_action_ttl_params ttl;
 	struct rte_table_action_stats_params stats;
 	struct rte_table_action_time_params time;
+	struct rte_table_action_sym_crypto_params sym_crypto;
 };
 
 int
