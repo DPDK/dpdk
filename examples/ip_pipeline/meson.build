@@ -21,5 +21,6 @@ sources = files(
 	'swq.c',
 	'tap.c',
 	'thread.c',
-	'tmgr.c'
+	'tmgr.c',
+	'cryptodev.c'
 )

@@ -18,6 +18,7 @@ SRCS-y += swq.c
 SRCS-y += tap.c
 SRCS-y += thread.c
 SRCS-y += tmgr.c
+SRCS-y += cryptodev.c
 
 # Build using pkg-config variables if possible
 $(shell pkg-config --exists libdpdk)

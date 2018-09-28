@@ -14,6 +14,7 @@
 #include "cli.h"
 #include "conn.h"
 #include "kni.h"
+#include "cryptodev.h"
 #include "link.h"
 #include "mempool.h"
 #include "pipeline.h"
@@ -207,6 +208,14 @@ main(int argc, char **argv)
 	status = kni_init();
 	if (status) {
 		printf("Error: KNI initialization failed (%d)\n", status);
+		return status;
+	}
+
+	/* Sym Crypto */
+	status = cryptodev_init();
+	if (status) {
+		printf("Error: Cryptodev initialization failed (%d)\n",
+				status);
 		return status;
 	}
 
