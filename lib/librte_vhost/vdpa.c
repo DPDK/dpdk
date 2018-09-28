@@ -113,3 +113,9 @@ rte_vdpa_get_device(int did)
 
 	return vdpa_devices[did];
 }
+
+int
+rte_vdpa_get_device_num(void)
+{
+	return vdpa_device_num;
+}

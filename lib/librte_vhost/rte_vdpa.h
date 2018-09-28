@@ -84,4 +84,7 @@ rte_vdpa_find_device_id(struct rte_vdpa_dev_addr *addr);
 struct rte_vdpa_device * __rte_experimental
 rte_vdpa_get_device(int did);
 
+/* Get current available vdpa device number */
+int __rte_experimental
+rte_vdpa_get_device_num(void);
 #endif /* _RTE_VDPA_H_ */
