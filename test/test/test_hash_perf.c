@@ -20,7 +20,8 @@
 #define MAX_ENTRIES (1 << 19)
 #define KEYS_TO_ADD (MAX_ENTRIES * 3 / 4) /* 75% table utilization */
 #define NUM_LOOKUPS (KEYS_TO_ADD * 5) /* Loop among keys added, several times */
-#define BUCKET_SIZE 4
+/* BUCKET_SIZE should be same as RTE_HASH_BUCKET_ENTRIES in rte_hash library */
+#define BUCKET_SIZE 8
 #define NUM_BUCKETS (MAX_ENTRIES / BUCKET_SIZE)
 #define MAX_KEYSIZE 64
 #define NUM_KEYSIZES 10
