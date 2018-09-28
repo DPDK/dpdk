@@ -72,4 +72,5 @@ EXPERIMENTAL {
 	rte_table_action_stats_read;
 	rte_table_action_time_read;
 	rte_table_action_ttl_read;
+	rte_table_action_crypto_sym_session_get;
 };

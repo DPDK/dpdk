@@ -93,6 +93,9 @@ enum rte_table_action_type {
 
 	/** Timestamp. */
 	RTE_TABLE_ACTION_TIME,
+
+	/** Crypto. */
+	RTE_TABLE_ACTION_SYM_CRYPTO,
 };
 
 /** Common action configuration (per table action profile). */
@@ -681,6 +684,93 @@ struct rte_table_action_time_params {
 };
 
 /**
+ * RTE_TABLE_ACTION_CRYPTO
+ */
+#ifndef RTE_TABLE_ACTION_SYM_CRYPTO_IV_SIZE_MAX
+#define RTE_TABLE_ACTION_SYM_CRYPTO_IV_SIZE_MAX		(16)
+#endif
+
+#ifndef RTE_TABLE_ACTION_SYM_CRYPTO_AAD_SIZE_MAX
+#define RTE_TABLE_ACTION_SYM_CRYPTO_AAD_SIZE_MAX	(16)
+#endif
+
+#ifndef RTE_TABLE_ACTION_SYM_CRYPTO_IV_OFFSET
+#define RTE_TABLE_ACTION_SYM_CRYPTO_IV_OFFSET				\
+	(sizeof(struct rte_crypto_op) + sizeof(struct rte_crypto_sym_op))
+#endif
+
+/** Common action structure to store the data's value, length, and offset */
+struct rte_table_action_vlo {
+	uint8_t *val;
+	uint32_t length;
+	uint32_t offset;
+};
+
+/** Symmetric crypto action configuration (per table action profile). */
+struct rte_table_action_sym_crypto_config {
+	/** Target Cryptodev ID. */
+	uint8_t cryptodev_id;
+
+	/**
+	 * Offset to rte_crypto_op structure within the input packet buffer.
+	 * Offset 0 points to the first byte of the MBUF structure.
+	 */
+	uint32_t op_offset;
+
+	/** The mempool for creating cryptodev sessions. */
+	struct rte_mempool *mp_create;
+
+	/** The mempool for initializing cryptodev sessions. */
+	struct rte_mempool *mp_init;
+};
+
+/** Symmetric Crypto action parameters (per table rule). */
+struct rte_table_action_sym_crypto_params {
+
+	/** Xform pointer contains all relevant information */
+	struct rte_crypto_sym_xform *xform;
+
+	/**
+	 * Offset within the input packet buffer to the first byte of data
+	 * to be processed by the crypto unit. Offset 0 points to the first
+	 * byte of the MBUF structure.
+	 */
+	uint32_t data_offset;
+
+	union {
+		struct {
+			/** Cipher iv data. */
+			struct rte_table_action_vlo cipher_iv;
+
+			/** Cipher iv data. */
+			struct rte_table_action_vlo cipher_iv_update;
+
+			/** Auth iv data. */
+			struct rte_table_action_vlo auth_iv;
+
+			/** Auth iv data. */
+			struct rte_table_action_vlo auth_iv_update;
+
+		} cipher_auth;
+
+		struct {
+			/** AEAD AAD data. */
+			struct rte_table_action_vlo aad;
+
+			/** AEAD iv data. */
+			struct rte_table_action_vlo iv;
+
+			/** AEAD AAD data. */
+			struct rte_table_action_vlo aad_update;
+
+			/** AEAD iv data. */
+			struct rte_table_action_vlo iv_update;
+
+		} aead;
+	};
+};
+
+/**
  * Table action profile.
  */
 struct rte_table_action_profile;
@@ -972,6 +1062,20 @@ int __rte_experimental
 rte_table_action_time_read(struct rte_table_action *action,
 	void *data,
 	uint64_t *timestamp);
+
+/**
+ * Table action cryptodev symmetric session get.
+ *
+ * @param[in] action
+ *   Handle to table action object (needs to be valid).
+ * @param[in] data
+ *   Data byte array (typically table rule data) with sym crypto action.
+ * @return
+ *   The pointer to the session on success, NULL otherwise.
+ */
+struct rte_cryptodev_sym_session *__rte_experimental
+rte_table_action_crypto_sym_session_get(struct rte_table_action *action,
+	void *data);
 
 #ifdef __cplusplus
 }

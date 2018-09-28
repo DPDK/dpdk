@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2010-2018 Intel Corporation
  */
-
 #include <stdlib.h>
 #include <string.h>
 
@@ -15,6 +14,8 @@
 #include <rte_esp.h>
 #include <rte_tcp.h>
 #include <rte_udp.h>
+#include <rte_cryptodev.h>
+#include <rte_cryptodev_pmd.h>
 
 #include "rte_table_action.h"
 
@@ -1575,6 +1576,441 @@ pkt_work_time(struct time_data *data,
 	data->time = time;
 }
 
+
+/**
+ * RTE_TABLE_ACTION_CRYPTO
+ */
+
+#define CRYPTO_OP_MASK_CIPHER	0x1
+#define CRYPTO_OP_MASK_AUTH	0x2
+#define CRYPTO_OP_MASK_AEAD	0x4
+
+struct crypto_op_sym_iv_aad {
+	struct rte_crypto_op op;
+	struct rte_crypto_sym_op sym_op;
+	union {
+		struct {
+			uint8_t cipher_iv[
+				RTE_TABLE_ACTION_SYM_CRYPTO_IV_SIZE_MAX];
+			uint8_t auth_iv[
+				RTE_TABLE_ACTION_SYM_CRYPTO_IV_SIZE_MAX];
+		} cipher_auth;
+
+		struct {
+			uint8_t iv[RTE_TABLE_ACTION_SYM_CRYPTO_IV_SIZE_MAX];
+			uint8_t aad[RTE_TABLE_ACTION_SYM_CRYPTO_AAD_SIZE_MAX];
+		} aead_iv_aad;
+
+	} iv_aad;
+};
+
+struct sym_crypto_data {
+
+	union {
+		struct {
+
+			/** Length of cipher iv. */
+			uint16_t cipher_iv_len;
+
+			/** Offset from start of IP header to the cipher iv. */
+			uint16_t cipher_iv_data_offset;
+
+			/** Length of cipher iv to be updated in the mbuf. */
+			uint16_t cipher_iv_update_len;
+
+			/** Offset from start of IP header to the auth iv. */
+			uint16_t auth_iv_data_offset;
+
+			/** Length of auth iv in the mbuf. */
+			uint16_t auth_iv_len;
+
+			/** Length of auth iv to be updated in the mbuf. */
+			uint16_t auth_iv_update_len;
+
+		} cipher_auth;
+		struct {
+
+			/** Length of iv. */
+			uint16_t iv_len;
+
+			/** Offset from start of IP header to the aead iv. */
+			uint16_t iv_data_offset;
+
+			/** Length of iv to be updated in the mbuf. */
+			uint16_t iv_update_len;
+
+			/** Length of aad */
+			uint16_t aad_len;
+
+			/** Offset from start of IP header to the aad. */
+			uint16_t aad_data_offset;
+
+			/** Length of aad to updated in the mbuf. */
+			uint16_t aad_update_len;
+
+		} aead;
+	};
+
+	/** Offset from start of IP header to the data. */
+	uint16_t data_offset;
+
+	/** Digest length. */
+	uint16_t digest_len;
+
+	/** block size */
+	uint16_t block_size;
+
+	/** Mask of crypto operation */
+	uint16_t op_mask;
+
+	/** Session pointer. */
+	struct rte_cryptodev_sym_session *session;
+
+	/** Direction of crypto, encrypt or decrypt */
+	uint16_t direction;
+
+	/** Private data size to store cipher iv / aad. */
+	uint8_t iv_aad_data[32];
+
+} __attribute__((__packed__));
+
+static int
+sym_crypto_cfg_check(struct rte_table_action_sym_crypto_config *cfg)
+{
+	if (!rte_cryptodev_pmd_is_valid_dev(cfg->cryptodev_id))
+		return -EINVAL;
+	if (cfg->mp_create == NULL || cfg->mp_init == NULL)
+		return -EINVAL;
+
+	return 0;
+}
+
+static int
+get_block_size(const struct rte_crypto_sym_xform *xform, uint8_t cdev_id)
+{
+	struct rte_cryptodev_info dev_info;
+	const struct rte_cryptodev_capabilities *cap;
+	uint32_t i;
+
+	rte_cryptodev_info_get(cdev_id, &dev_info);
+
+	for (i = 0;; i++) {
+		cap = &dev_info.capabilities[i];
+		if (!cap)
+			break;
+
+		if (cap->sym.xform_type != xform->type)
+			continue;
+
+		if ((xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER) &&
+				(cap->sym.cipher.algo == xform->cipher.algo))
+			return cap->sym.cipher.block_size;
+
+		if ((xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) &&
+				(cap->sym.aead.algo == xform->aead.algo))
+			return cap->sym.aead.block_size;
+
+		if (xform->type == RTE_CRYPTO_SYM_XFORM_NOT_SPECIFIED)
+			break;
+	}
+
+	return -1;
+}
+
+static int
+sym_crypto_apply(struct sym_crypto_data *data,
+	struct rte_table_action_sym_crypto_config *cfg,
+	struct rte_table_action_sym_crypto_params *p)
+{
+	const struct rte_crypto_cipher_xform *cipher_xform = NULL;
+	const struct rte_crypto_auth_xform *auth_xform = NULL;
+	const struct rte_crypto_aead_xform *aead_xform = NULL;
+	struct rte_crypto_sym_xform *xform = p->xform;
+	struct rte_cryptodev_sym_session *session;
+	int ret;
+
+	memset(data, 0, sizeof(*data));
+
+	while (xform) {
+		if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER) {
+			cipher_xform = &xform->cipher;
+
+			if (cipher_xform->iv.length >
+				RTE_TABLE_ACTION_SYM_CRYPTO_IV_SIZE_MAX)
+				return -ENOMEM;
+			if (cipher_xform->iv.offset !=
+					RTE_TABLE_ACTION_SYM_CRYPTO_IV_OFFSET)
+				return -EINVAL;
+
+			ret = get_block_size(xform, cfg->cryptodev_id);
+			if (ret < 0)
+				return -1;
+			data->block_size = (uint16_t)ret;
+			data->op_mask |= CRYPTO_OP_MASK_CIPHER;
+
+			data->cipher_auth.cipher_iv_len =
+					cipher_xform->iv.length;
+			data->cipher_auth.cipher_iv_data_offset = (uint16_t)
+					p->cipher_auth.cipher_iv_update.offset;
+			data->cipher_auth.cipher_iv_update_len = (uint16_t)
+					p->cipher_auth.cipher_iv_update.length;
+
+			rte_memcpy(data->iv_aad_data,
+					p->cipher_auth.cipher_iv.val,
+					p->cipher_auth.cipher_iv.length);
+
+			data->direction = cipher_xform->op;
+
+		} else if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH) {
+			auth_xform = &xform->auth;
+			if (auth_xform->iv.length >
+				RTE_TABLE_ACTION_SYM_CRYPTO_IV_SIZE_MAX)
+				return -ENOMEM;
+			data->op_mask |= CRYPTO_OP_MASK_AUTH;
+
+			data->cipher_auth.auth_iv_len = auth_xform->iv.length;
+			data->cipher_auth.auth_iv_data_offset = (uint16_t)
+					p->cipher_auth.auth_iv_update.offset;
+			data->cipher_auth.auth_iv_update_len = (uint16_t)
+					p->cipher_auth.auth_iv_update.length;
+			data->digest_len = auth_xform->digest_length;
+
+			data->direction = (auth_xform->op ==
+					RTE_CRYPTO_AUTH_OP_GENERATE) ?
+					RTE_CRYPTO_CIPHER_OP_ENCRYPT :
+					RTE_CRYPTO_CIPHER_OP_DECRYPT;
+
+		} else if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
+			aead_xform = &xform->aead;
+
+			if ((aead_xform->iv.length >
+				RTE_TABLE_ACTION_SYM_CRYPTO_IV_SIZE_MAX) || (
+				aead_xform->aad_length >
+				RTE_TABLE_ACTION_SYM_CRYPTO_AAD_SIZE_MAX))
+				return -EINVAL;
+			if (aead_xform->iv.offset !=
+					RTE_TABLE_ACTION_SYM_CRYPTO_IV_OFFSET)
+				return -EINVAL;
+
+			ret = get_block_size(xform, cfg->cryptodev_id);
+			if (ret < 0)
+				return -1;
+			data->block_size = (uint16_t)ret;
+			data->op_mask |= CRYPTO_OP_MASK_AEAD;
+
+			data->digest_len = aead_xform->digest_length;
+			data->aead.iv_len = aead_xform->iv.length;
+			data->aead.aad_len = aead_xform->aad_length;
+
+			data->aead.iv_data_offset = (uint16_t)
+					p->aead.iv_update.offset;
+			data->aead.iv_update_len = (uint16_t)
+					p->aead.iv_update.length;
+			data->aead.aad_data_offset = (uint16_t)
+					p->aead.aad_update.offset;
+			data->aead.aad_update_len = (uint16_t)
+					p->aead.aad_update.length;
+
+			rte_memcpy(data->iv_aad_data,
+					p->aead.iv.val,
+					p->aead.iv.length);
+
+			rte_memcpy(data->iv_aad_data + p->aead.iv.length,
+					p->aead.aad.val,
+					p->aead.aad.length);
+
+			data->direction = (aead_xform->op ==
+					RTE_CRYPTO_AEAD_OP_ENCRYPT) ?
+					RTE_CRYPTO_CIPHER_OP_ENCRYPT :
+					RTE_CRYPTO_CIPHER_OP_DECRYPT;
+		} else
+			return -EINVAL;
+
+		xform = xform->next;
+	}
+
+	if (auth_xform && auth_xform->iv.length) {
+		if (cipher_xform) {
+			if (auth_xform->iv.offset !=
+					RTE_TABLE_ACTION_SYM_CRYPTO_IV_OFFSET +
+					cipher_xform->iv.length)
+				return -EINVAL;
+
+			rte_memcpy(data->iv_aad_data + cipher_xform->iv.length,
+					p->cipher_auth.auth_iv.val,
+					p->cipher_auth.auth_iv.length);
+		} else {
+			rte_memcpy(data->iv_aad_data,
+					p->cipher_auth.auth_iv.val,
+					p->cipher_auth.auth_iv.length);
+		}
+	}
+
+	session = rte_cryptodev_sym_session_create(cfg->mp_create);
+	if (!session)
+		return -ENOMEM;
+
+	ret = rte_cryptodev_sym_session_init(cfg->cryptodev_id, session,
+			p->xform, cfg->mp_init);
+	if (ret < 0) {
+		rte_cryptodev_sym_session_free(session);
+		return ret;
+	}
+
+	data->data_offset = (uint16_t)p->data_offset;
+	data->session = session;
+
+	return 0;
+}
+
+static __rte_always_inline uint64_t
+pkt_work_sym_crypto(struct rte_mbuf *mbuf, struct sym_crypto_data *data,
+		struct rte_table_action_sym_crypto_config *cfg,
+		uint16_t ip_offset)
+{
+	struct crypto_op_sym_iv_aad *crypto_op = (struct crypto_op_sym_iv_aad *)
+			RTE_MBUF_METADATA_UINT8_PTR(mbuf, cfg->op_offset);
+	struct rte_crypto_op *op = &crypto_op->op;
+	struct rte_crypto_sym_op *sym = op->sym;
+	uint32_t pkt_offset = sizeof(*mbuf) + mbuf->data_off;
+	uint32_t payload_len = pkt_offset + mbuf->data_len - data->data_offset;
+
+	op->type = RTE_CRYPTO_OP_TYPE_SYMMETRIC;
+	op->sess_type = RTE_CRYPTO_OP_WITH_SESSION;
+	op->phys_addr = mbuf->buf_iova + cfg->op_offset - sizeof(*mbuf);
+	op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+	sym->m_src = mbuf;
+	sym->m_dst = NULL;
+	sym->session = data->session;
+
+	/** pad the packet */
+	if (data->direction == RTE_CRYPTO_CIPHER_OP_ENCRYPT) {
+		uint32_t append_len = RTE_ALIGN_CEIL(payload_len,
+				data->block_size) - payload_len;
+
+		if (unlikely(rte_pktmbuf_append(mbuf, append_len +
+				data->digest_len) == NULL))
+			return 1;
+
+		payload_len += append_len;
+	} else
+		payload_len -= data->digest_len;
+
+	if (data->op_mask & CRYPTO_OP_MASK_CIPHER) {
+		/** prepare cipher op */
+		uint8_t *iv = crypto_op->iv_aad.cipher_auth.cipher_iv;
+
+		sym->cipher.data.length = payload_len;
+		sym->cipher.data.offset = data->data_offset - pkt_offset;
+
+		if (data->cipher_auth.cipher_iv_update_len) {
+			uint8_t *pkt_iv = RTE_MBUF_METADATA_UINT8_PTR(mbuf,
+				data->cipher_auth.cipher_iv_data_offset
+				+ ip_offset);
+
+			/** For encryption, update the pkt iv field, otherwise
+			 *  update the iv_aad_field
+			 **/
+			if (data->direction == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
+				rte_memcpy(pkt_iv, data->iv_aad_data,
+					data->cipher_auth.cipher_iv_update_len);
+			else
+				rte_memcpy(data->iv_aad_data, pkt_iv,
+					data->cipher_auth.cipher_iv_update_len);
+		}
+
+		/** write iv */
+		rte_memcpy(iv, data->iv_aad_data,
+				data->cipher_auth.cipher_iv_len);
+	}
+
+	if (data->op_mask & CRYPTO_OP_MASK_AUTH) {
+		/** authentication always start from IP header. */
+		sym->auth.data.offset = ip_offset - pkt_offset;
+		sym->auth.data.length = mbuf->data_len - sym->auth.data.offset -
+				data->digest_len;
+		sym->auth.digest.data = rte_pktmbuf_mtod_offset(mbuf,
+				uint8_t *, rte_pktmbuf_pkt_len(mbuf) -
+				data->digest_len);
+		sym->auth.digest.phys_addr = rte_pktmbuf_iova_offset(mbuf,
+				rte_pktmbuf_pkt_len(mbuf) - data->digest_len);
+
+		if (data->cipher_auth.auth_iv_update_len) {
+			uint8_t *pkt_iv = RTE_MBUF_METADATA_UINT8_PTR(mbuf,
+					data->cipher_auth.auth_iv_data_offset
+					+ ip_offset);
+			uint8_t *data_iv = data->iv_aad_data +
+					data->cipher_auth.cipher_iv_len;
+
+			if (data->direction == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
+				rte_memcpy(pkt_iv, data_iv,
+					data->cipher_auth.auth_iv_update_len);
+			else
+				rte_memcpy(data_iv, pkt_iv,
+					data->cipher_auth.auth_iv_update_len);
+		}
+
+		if (data->cipher_auth.auth_iv_len) {
+			/** prepare cipher op */
+			uint8_t *iv = crypto_op->iv_aad.cipher_auth.auth_iv;
+
+			rte_memcpy(iv, data->iv_aad_data +
+					data->cipher_auth.cipher_iv_len,
+					data->cipher_auth.auth_iv_len);
+		}
+	}
+
+	if (data->op_mask & CRYPTO_OP_MASK_AEAD) {
+		uint8_t *iv = crypto_op->iv_aad.aead_iv_aad.iv;
+		uint8_t *aad = crypto_op->iv_aad.aead_iv_aad.aad;
+
+		sym->aead.aad.data = aad;
+		sym->aead.aad.phys_addr = rte_pktmbuf_iova_offset(mbuf,
+				aad - rte_pktmbuf_mtod(mbuf, uint8_t *));
+		sym->aead.digest.data = rte_pktmbuf_mtod_offset(mbuf,
+				uint8_t *, rte_pktmbuf_pkt_len(mbuf) -
+				data->digest_len);
+		sym->aead.digest.phys_addr = rte_pktmbuf_iova_offset(mbuf,
+				rte_pktmbuf_pkt_len(mbuf) - data->digest_len);
+		sym->aead.data.offset = data->data_offset - pkt_offset;
+		sym->aead.data.length = payload_len;
+
+		if (data->aead.iv_update_len) {
+			uint8_t *pkt_iv = RTE_MBUF_METADATA_UINT8_PTR(mbuf,
+					data->aead.iv_data_offset + ip_offset);
+			uint8_t *data_iv = data->iv_aad_data;
+
+			if (data->direction == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
+				rte_memcpy(pkt_iv, data_iv,
+						data->aead.iv_update_len);
+			else
+				rte_memcpy(data_iv, pkt_iv,
+					data->aead.iv_update_len);
+		}
+
+		rte_memcpy(iv, data->iv_aad_data, data->aead.iv_len);
+
+		if (data->aead.aad_update_len) {
+			uint8_t *pkt_aad = RTE_MBUF_METADATA_UINT8_PTR(mbuf,
+					data->aead.aad_data_offset + ip_offset);
+			uint8_t *data_aad = data->iv_aad_data +
+					data->aead.iv_len;
+
+			if (data->direction == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
+				rte_memcpy(pkt_aad, data_aad,
+						data->aead.iv_update_len);
+			else
+				rte_memcpy(data_aad, pkt_aad,
+					data->aead.iv_update_len);
+		}
+
+		rte_memcpy(aad, data->iv_aad_data + data->aead.iv_len,
+					data->aead.aad_len);
+	}
+
+	return 0;
+}
+
 /**
  * Action profile
  */
@@ -1591,6 +2027,7 @@ action_valid(enum rte_table_action_type action)
 	case RTE_TABLE_ACTION_TTL:
 	case RTE_TABLE_ACTION_STATS:
 	case RTE_TABLE_ACTION_TIME:
+	case RTE_TABLE_ACTION_SYM_CRYPTO:
 		return 1;
 	default:
 		return 0;
@@ -1610,6 +2047,7 @@ struct ap_config {
 	struct rte_table_action_nat_config nat;
 	struct rte_table_action_ttl_config ttl;
 	struct rte_table_action_stats_config stats;
+	struct rte_table_action_sym_crypto_config sym_crypto;
 };
 
 static size_t
@@ -1630,6 +2068,8 @@ action_cfg_size(enum rte_table_action_type action)
 		return sizeof(struct rte_table_action_ttl_config);
 	case RTE_TABLE_ACTION_STATS:
 		return sizeof(struct rte_table_action_stats_config);
+	case RTE_TABLE_ACTION_SYM_CRYPTO:
+		return sizeof(struct rte_table_action_sym_crypto_config);
 	default:
 		return 0;
 	}
@@ -1661,6 +2101,8 @@ action_cfg_get(struct ap_config *ap_config,
 	case RTE_TABLE_ACTION_STATS:
 		return &ap_config->stats;
 
+	case RTE_TABLE_ACTION_SYM_CRYPTO:
+		return &ap_config->sym_crypto;
 	default:
 		return NULL;
 	}
@@ -1716,6 +2158,9 @@ action_data_size(enum rte_table_action_type action,
 
 	case RTE_TABLE_ACTION_TIME:
 		return sizeof(struct time_data);
+
+	case RTE_TABLE_ACTION_SYM_CRYPTO:
+		return (sizeof(struct sym_crypto_data));
 
 	default:
 		return 0;
@@ -1814,6 +2259,10 @@ rte_table_action_profile_action_register(struct rte_table_action_profile *profil
 
 	case RTE_TABLE_ACTION_STATS:
 		status = stats_cfg_check(action_config);
+		break;
+
+	case RTE_TABLE_ACTION_SYM_CRYPTO:
+		status = sym_crypto_cfg_check(action_config);
 		break;
 
 	default:
@@ -1964,6 +2413,11 @@ rte_table_action_apply(struct rte_table_action *action,
 	case RTE_TABLE_ACTION_TIME:
 		return time_apply(action_data,
 			action_params);
+
+	case RTE_TABLE_ACTION_SYM_CRYPTO:
+		return sym_crypto_apply(action_data,
+				&action->cfg.sym_crypto,
+				action_params);
 
 	default:
 		return -EINVAL;
@@ -2217,6 +2671,25 @@ rte_table_action_time_read(struct rte_table_action *action,
 	return 0;
 }
 
+struct rte_cryptodev_sym_session *
+rte_table_action_crypto_sym_session_get(struct rte_table_action *action,
+	void *data)
+{
+	struct sym_crypto_data *sym_crypto_data;
+
+	/* Check input arguments */
+	if ((action == NULL) ||
+		((action->cfg.action_mask &
+		(1LLU << RTE_TABLE_ACTION_SYM_CRYPTO)) == 0) ||
+		(data == NULL))
+		return NULL;
+
+	sym_crypto_data = action_data_get(data, action,
+			RTE_TABLE_ACTION_SYM_CRYPTO);
+
+	return sym_crypto_data->session;
+}
+
 static __rte_always_inline uint64_t
 pkt_work(struct rte_mbuf *mbuf,
 	struct rte_pipeline_table_entry *table_entry,
@@ -2320,6 +2793,14 @@ pkt_work(struct rte_mbuf *mbuf,
 			action_data_get(table_entry, action, RTE_TABLE_ACTION_TIME);
 
 		pkt_work_time(data, time);
+	}
+
+	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_SYM_CRYPTO)) {
+		void *data = action_data_get(table_entry, action,
+				RTE_TABLE_ACTION_SYM_CRYPTO);
+
+		drop_mask |= pkt_work_sym_crypto(mbuf, data, &cfg->sym_crypto,
+				ip_offset);
 	}
 
 	return drop_mask;
@@ -2608,6 +3089,26 @@ pkt4_work(struct rte_mbuf **mbufs,
 		pkt_work_time(data1, time);
 		pkt_work_time(data2, time);
 		pkt_work_time(data3, time);
+	}
+
+	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_SYM_CRYPTO)) {
+		void *data0 = action_data_get(table_entry0, action,
+				RTE_TABLE_ACTION_SYM_CRYPTO);
+		void *data1 = action_data_get(table_entry1, action,
+				RTE_TABLE_ACTION_SYM_CRYPTO);
+		void *data2 = action_data_get(table_entry2, action,
+				RTE_TABLE_ACTION_SYM_CRYPTO);
+		void *data3 = action_data_get(table_entry3, action,
+				RTE_TABLE_ACTION_SYM_CRYPTO);
+
+		drop_mask0 |= pkt_work_sym_crypto(mbuf0, data0, &cfg->sym_crypto,
+				ip_offset);
+		drop_mask1 |= pkt_work_sym_crypto(mbuf1, data1, &cfg->sym_crypto,
+				ip_offset);
+		drop_mask2 |= pkt_work_sym_crypto(mbuf2, data2, &cfg->sym_crypto,
+				ip_offset);
+		drop_mask3 |= pkt_work_sym_crypto(mbuf3, data3, &cfg->sym_crypto,
+				ip_offset);
 	}
 
 	return drop_mask0 |
