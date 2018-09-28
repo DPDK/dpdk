@@ -2316,7 +2316,7 @@ init_error:
 }
 
 static int
-cryptodev_dpaa_sec_probe(struct rte_dpaa_driver *dpaa_drv,
+cryptodev_dpaa_sec_probe(struct rte_dpaa_driver *dpaa_drv __rte_unused,
 				struct rte_dpaa_device *dpaa_dev)
 {
 	struct rte_cryptodev *cryptodev;
@@ -2344,7 +2344,6 @@ cryptodev_dpaa_sec_probe(struct rte_dpaa_driver *dpaa_drv,
 
 	dpaa_dev->crypto_dev = cryptodev;
 	cryptodev->device = &dpaa_dev->device;
-	cryptodev->device->driver = &dpaa_drv->driver;
 
 	/* init user callbacks */
 	TAILQ_INIT(&(cryptodev->link_intr_cbs));
