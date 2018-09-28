@@ -1371,7 +1371,7 @@ dpaa_dev_uninit(struct rte_eth_dev *dev)
 }
 
 static int
-rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv,
+rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv __rte_unused,
 	       struct rte_dpaa_device *dpaa_dev)
 {
 	int diag;
@@ -1455,7 +1455,6 @@ rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv,
 	}
 
 	eth_dev->device = &dpaa_dev->device;
-	eth_dev->device->driver = &dpaa_drv->driver;
 	dpaa_dev->eth_dev = eth_dev;
 
 	/* Invoke PMD device initialization function */
