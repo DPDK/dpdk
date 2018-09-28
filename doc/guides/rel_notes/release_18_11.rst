@@ -120,6 +120,15 @@ New Features
   the specified port. The port must be stopped before the command call in order
   to reconfigure queues.
 
+* **Add a new sample for vDPA**
+
+  The vdpa sample application creates vhost-user sockets by using the
+  vDPA backend. vDPA stands for vhost Data Path Acceleration which utilizes
+  virtio ring compatible devices to serve virtio driver directly to enable
+  datapath acceleration. As vDPA driver can help to set up vhost datapath,
+  this application doesn't need to launch dedicated worker threads for vhost
+  enqueue/dequeue operations.
+
 
 API Changes
 -----------

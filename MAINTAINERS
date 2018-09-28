@@ -706,6 +706,8 @@ F: doc/guides/sample_app_ug/vhost.rst
 F: examples/vhost_scsi/
 F: doc/guides/sample_app_ug/vhost_scsi.rst
 F: examples/vhost_crypto/
+F: examples/vdpa/
+F: doc/guides/sample_app_ug/vdpa.rst
 
 Vhost PMD
 M: Maxime Coquelin <maxime.coquelin@redhat.com>

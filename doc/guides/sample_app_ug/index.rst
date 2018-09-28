@@ -45,6 +45,7 @@ Sample Applications User Guides
     vhost
     vhost_scsi
     vhost_crypto
+    vdpa
     netmap_compatibility
     ip_pipeline
     test_pipeline
