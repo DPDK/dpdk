@@ -1,0 +1,58 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright(c) 2018 Intel Corporation
+
+;                 ________________
+; LINK0 RXQ0 --->|                |---> CRYPTO0 TXQ0
+;                |      Flow      |
+; CRYPTO0 RXQ0-->| Classification |---> LINK0 TXQ0
+;                |________________|
+;                        |
+;                        +-----------> SINK0 (flow lookup miss)
+;
+; Input packet: Ethernet/IPv4
+;
+; Packet buffer layout:
+; #   Field Name       Offset (Bytes)   Size (Bytes)
+; 0   Mbuf             0                128
+; 1   Headroom         128              128
+; 2   Ethernet header  256              14
+; 3   IPv4 header      280              20
+; 4   Packet           256              1536
+; 5   Crypto Operation 1792             160
+
+mempool MEMPOOL0 buffer 2304 pool 32K cache 256 cpu 1
+mempool MEMPOOL_SESSION0 buffer 1024 pool 1024 cache 128 cpu 1
+
+link LINK0 dev 0000:81:00.0 rxq 1 128 MEMPOOL0 txq 1 512 promiscuous on
+
+#Cryptodev
+cryptodev CRYPTO0 dev crypto_aesni_gcm0 queue 1 1024
+
+table action profile AP0 ipv4 offset 270 fwd sym_crypto dev CRYPTO0 offset 1792 mempool_create MEMPOOL_SESSION0 mempool_init MEMPOOL_SESSION0
+table action profile AP1 ipv4 offset 270 fwd
+
+pipeline PIPELINE0 period 10 offset_port_id 0 cpu 1
+
+pipeline PIPELINE0 port in bsz 32 link LINK0 rxq 0
+pipeline PIPELINE0 port in bsz 32 cryptodev CRYPTO0 rxq 0
+
+pipeline PIPELINE0 port out bsz 32 cryptodev CRYPTO0 txq 0 offset 1792
+pipeline PIPELINE0 port out bsz 32 link LINK0 txq 0
+pipeline PIPELINE0 port out bsz 32 sink
+
+pipeline PIPELINE0 table match hash ext key 8 mask FFFFFFFF00000000 offset 282 buckets 1K size 4K action AP0
+pipeline PIPELINE0 table match stub action AP1
+
+pipeline PIPELINE0 port in 0 table 0
+pipeline PIPELINE0 port in 1 table 1
+
+thread 24 pipeline PIPELINE0 enable
+
+pipeline PIPELINE0 table 0 rule add match default action fwd port 2
+
+#AES-GCM encrypt
+pipeline PIPELINE0 table 0 rule add match hash ipv4_addr 100.0.0.10 action fwd port 0 sym_crypto encrypt type aead aead_algo aes-gcm aead_key 000102030405060708090a0b0c0d0e0f aead_iv 000102030405060708090a0b aead_aad 000102030405060708090a0b0c0d0e0f digest_size 8 data_offset 290
+#AES-GCM decrypt
+#pipeline PIPELINE0 table 0 rule add match hash ipv4_addr 100.0.0.10 action fwd port 0 sym_crypto decrypt type aead aead_algo aes-gcm aead_key 000102030405060708090a0b0c0d0e0f aead_iv 000102030405060708090a0b aead_aad 000102030405060708090a0b0c0d0e0f digest_size 8 data_offset 290
+
+pipeline PIPELINE0 table 1 rule add match default action fwd port 1
