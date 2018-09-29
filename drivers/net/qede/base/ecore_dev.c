@@ -569,12 +569,11 @@ u16 ecore_init_qm_get_num_pf_rls(struct ecore_hwfn *p_hwfn)
 {
 	u16 num_pf_rls, num_vfs = ecore_init_qm_get_num_vfs(p_hwfn);
 
-	/* @DPDK */
 	/* num RLs can't exceed resource amount of rls or vports or the
 	 * dcqcn qps
 	 */
 	num_pf_rls = (u16)OSAL_MIN_T(u32, RESC_NUM(p_hwfn, ECORE_RL),
-				     (u16)RESC_NUM(p_hwfn, ECORE_VPORT));
+				     RESC_NUM(p_hwfn, ECORE_VPORT));
 
 	/* make sure after we reserve the default and VF rls we'll have
 	 * something left
@@ -835,7 +834,7 @@ u16 ecore_get_cm_pq_idx_mcos(struct ecore_hwfn *p_hwfn, u8 tc)
 	if (tc > max_tc)
 		DP_ERR(p_hwfn, "tc %d must be smaller than %d\n", tc, max_tc);
 
-	return ecore_get_cm_pq_idx(p_hwfn, PQ_FLAGS_MCOS) + tc;
+	return ecore_get_cm_pq_idx(p_hwfn, PQ_FLAGS_MCOS) + (tc % max_tc);
 }
 
 u16 ecore_get_cm_pq_idx_vf(struct ecore_hwfn *p_hwfn, u16 vf)
@@ -845,17 +844,17 @@ u16 ecore_get_cm_pq_idx_vf(struct ecore_hwfn *p_hwfn, u16 vf)
 	if (vf > max_vf)
 		DP_ERR(p_hwfn, "vf %d must be smaller than %d\n", vf, max_vf);
 
-	return ecore_get_cm_pq_idx(p_hwfn, PQ_FLAGS_VFS) + vf;
+	return ecore_get_cm_pq_idx(p_hwfn, PQ_FLAGS_VFS) + (vf % max_vf);
 }
 
 u16 ecore_get_cm_pq_idx_rl(struct ecore_hwfn *p_hwfn, u16 rl)
 {
 	u16 max_rl = ecore_init_qm_get_num_pf_rls(p_hwfn);
 
-	if (rl > max_rl)
-		DP_ERR(p_hwfn, "rl %d must be smaller than %d\n", rl, max_rl);
-
-	return ecore_get_cm_pq_idx(p_hwfn, PQ_FLAGS_RLS) + rl;
+	/* for rate limiters, it is okay to use the modulo behavior - no
+	 * DP_ERR
+	 */
+	return ecore_get_cm_pq_idx(p_hwfn, PQ_FLAGS_RLS) + (rl % max_rl);
 }
 
 u16 ecore_get_qm_vport_idx_rl(struct ecore_hwfn *p_hwfn, u16 rl)
