@@ -131,7 +131,9 @@ bnx2x_interrupt_handler(void *param)
 
 	PMD_DEBUG_PERIODIC_LOG(INFO, sc, "Interrupt handled");
 
+	atomic_store_rel_long(&sc->periodic_flags, PERIODIC_STOP);
 	bnx2x_interrupt_action(dev);
+	atomic_store_rel_long(&sc->periodic_flags, PERIODIC_GO);
 	rte_intr_enable(&sc->pci_dev->intr_handle);
 }
 
