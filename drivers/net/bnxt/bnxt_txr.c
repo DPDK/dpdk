@@ -120,7 +120,7 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 {
 	struct bnxt_tx_ring_info *txr = txq->tx_ring;
 	struct tx_bd_long *txbd;
-	struct tx_bd_long_hi *txbd1;
+	struct tx_bd_long_hi *txbd1 = NULL;
 	uint32_t vlan_tag_flags, cfa_action;
 	bool long_bd = false;
 	uint16_t last_prod = 0;
@@ -295,7 +295,8 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 	}
 
 	txbd->flags_type |= TX_BD_LONG_FLAGS_PACKET_END;
-	txbd1->lflags = rte_cpu_to_le_32(txbd1->lflags);
+	if (txbd1)
+		txbd1->lflags = rte_cpu_to_le_32(txbd1->lflags);
 
 	txr->tx_prod = RING_NEXT(txr->tx_ring_struct, txr->tx_prod);
 
