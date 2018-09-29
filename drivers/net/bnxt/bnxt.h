@@ -261,6 +261,7 @@ struct bnxt {
 #define BNXT_FLAG_EXT_TX_PORT_STATS	(1 << 9)
 #define BNXT_FLAG_KONG_MB_EN	(1 << 10)
 #define BNXT_FLAG_TRUSTED_VF_EN	(1 << 11)
+#define BNXT_FLAG_DFLT_VNIC_SET	(1 << 12)
 #define BNXT_FLAG_NEW_RM	(1 << 30)
 #define BNXT_FLAG_INIT_DONE	(1 << 31)
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
