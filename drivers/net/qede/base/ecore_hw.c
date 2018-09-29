@@ -407,6 +407,30 @@ void ecore_port_unpretend(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
 			*(u32 *)&p_ptt->pxp.pretend);
 }
 
+void ecore_port_fid_pretend(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+			    u8 port_id, u16 fid)
+{
+	u16 control = 0;
+
+	SET_FIELD(control, PXP_PRETEND_CMD_PORT, port_id);
+	SET_FIELD(control, PXP_PRETEND_CMD_USE_PORT, 1);
+	SET_FIELD(control, PXP_PRETEND_CMD_PRETEND_PORT, 1);
+
+	SET_FIELD(control, PXP_PRETEND_CMD_IS_CONCRETE, 1);
+	SET_FIELD(control, PXP_PRETEND_CMD_PRETEND_FUNCTION, 1);
+
+	if (!GET_FIELD(fid, PXP_CONCRETE_FID_VFVALID))
+		fid = GET_FIELD(fid, PXP_CONCRETE_FID_PFID);
+
+	p_ptt->pxp.pretend.control = OSAL_CPU_TO_LE16(control);
+	p_ptt->pxp.pretend.fid.concrete_fid.fid = OSAL_CPU_TO_LE16(fid);
+
+	REG_WR(p_hwfn,
+	       ecore_ptt_config_addr(p_ptt) +
+	       OFFSETOF(struct pxp_ptt_entry, pretend),
+	       *(u32 *)&p_ptt->pxp.pretend);
+}
+
 u32 ecore_vfid_to_concrete(struct ecore_hwfn *p_hwfn, u8 vfid)
 {
 	u32 concrete_fid = 0;

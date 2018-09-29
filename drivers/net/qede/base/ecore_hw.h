@@ -223,6 +223,18 @@ void ecore_port_unpretend(struct ecore_hwfn	*p_hwfn,
 			  struct ecore_ptt	*p_ptt);
 
 /**
+ * @brief ecore_port_fid_pretend - pretend to another port and another function
+ *        when accessing the ptt window
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ * @param port_id - the port to pretend to
+ * @param fid - fid field of pxp_pretend structure. Can contain either pf / vf.
+ */
+void ecore_port_fid_pretend(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+			    u8 port_id, u16 fid);
+
+/**
  * @brief ecore_vfid_to_concrete - build a concrete FID for a
  *        given VF ID
  *
