@@ -235,6 +235,7 @@ EXPERIMENTAL {
 	rte_eth_dev_owner_new;
 	rte_eth_dev_owner_set;
 	rte_eth_dev_owner_unset;
+	rte_eth_dev_rx_intr_ctl_q_get_fd;
 	rte_eth_dev_rx_offload_name;
 	rte_eth_dev_tx_offload_name;
 	rte_eth_switch_domain_alloc;
