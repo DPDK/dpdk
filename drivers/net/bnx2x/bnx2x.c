@@ -112,6 +112,7 @@ static void bnx2x_pf_disable(struct bnx2x_softc *sc);
 static void bnx2x_update_rx_prod(struct bnx2x_softc *sc,
 				 struct bnx2x_fastpath *fp,
 				 uint16_t rx_bd_prod, uint16_t rx_cq_prod);
+static void bnx2x_link_report_locked(struct bnx2x_softc *sc);
 static void bnx2x_link_report(struct bnx2x_softc *sc);
 void bnx2x_link_status_update(struct bnx2x_softc *sc);
 static int bnx2x_alloc_mem(struct bnx2x_softc *sc);
@@ -198,7 +199,8 @@ static int bnx2x_acquire_hw_lock(struct bnx2x_softc *sc, uint32_t resource)
 	uint32_t hw_lock_control_reg;
 	int cnt;
 
-	PMD_INIT_FUNC_TRACE(sc);
+	if (resource)
+		PMD_INIT_FUNC_TRACE(sc);
 
 	/* validate the resource is within range */
 	if (resource > HW_LOCK_MAX_RESOURCE_VALUE) {
@@ -234,7 +236,8 @@ static int bnx2x_acquire_hw_lock(struct bnx2x_softc *sc, uint32_t resource)
 		DELAY(5000);
 	}
 
-	PMD_DRV_LOG(NOTICE, sc, "Resource lock timeout!");
+	PMD_DRV_LOG(NOTICE, sc, "Resource 0x%x resource_bit 0x%x lock timeout!",
+		    resource, resource_bit);
 	return -1;
 }
 
@@ -245,13 +248,14 @@ static int bnx2x_release_hw_lock(struct bnx2x_softc *sc, uint32_t resource)
 	int func = SC_FUNC(sc);
 	uint32_t hw_lock_control_reg;
 
-	PMD_INIT_FUNC_TRACE(sc);
+	if (resource)
+		PMD_INIT_FUNC_TRACE(sc);
 
 	/* validate the resource is within range */
 	if (resource > HW_LOCK_MAX_RESOURCE_VALUE) {
 		PMD_DRV_LOG(NOTICE, sc,
-			    "resource 0x%x > HW_LOCK_MAX_RESOURCE_VALUE",
-			    resource);
+			    "(resource 0x%x > HW_LOCK_MAX_RESOURCE_VALUE)"
+			    " resource_bit 0x%x", resource, resource_bit);
 		return -1;
 	}
 
@@ -273,6 +277,18 @@ static int bnx2x_release_hw_lock(struct bnx2x_softc *sc, uint32_t resource)
 
 	REG_WR(sc, hw_lock_control_reg, resource_bit);
 	return 0;
+}
+
+static void bnx2x_acquire_phy_lock(struct bnx2x_softc *sc)
+{
+	BNX2X_PHY_LOCK(sc);
+	bnx2x_acquire_hw_lock(sc, HW_LOCK_RESOURCE_MDIO);
+}
+
+static void bnx2x_release_phy_lock(struct bnx2x_softc *sc)
+{
+	bnx2x_release_hw_lock(sc, HW_LOCK_RESOURCE_MDIO);
+	BNX2X_PHY_UNLOCK(sc);
 }
 
 /* copy command into DMAE command memory and set DMAE command Go */
@@ -2903,7 +2919,7 @@ static void bnx2x_link_attn(struct bnx2x_softc *sc)
 		}
 	}
 
-	bnx2x_link_report(sc);
+	bnx2x_link_report_locked(sc);
 
 	if (IS_MF(sc)) {
 		bnx2x_link_sync_notify(sc);
@@ -2942,6 +2958,7 @@ static void bnx2x_attn_int_asserted(struct bnx2x_softc *sc, uint32_t asserted)
 	if (asserted & ATTN_HARD_WIRED_MASK) {
 		if (asserted & ATTN_NIG_FOR_FUNC) {
 
+			bnx2x_acquire_phy_lock(sc);
 			/* save nig interrupt mask */
 			nig_mask = REG_RD(sc, nig_int_mask_addr);
 
@@ -3039,6 +3056,7 @@ static void bnx2x_attn_int_asserted(struct bnx2x_softc *sc, uint32_t asserted)
 
 		REG_WR(sc, nig_int_mask_addr, nig_mask);
 
+		bnx2x_release_phy_lock(sc);
 	}
 }
 
@@ -3838,8 +3856,10 @@ static void bnx2x_attn_int_deasserted3(struct bnx2x_softc *sc, uint32_t attn)
 			if (sc->link_vars.periodic_flags &
 			    ELINK_PERIODIC_FLAGS_LINK_EVENT) {
 				/* sync with link */
+				bnx2x_acquire_phy_lock(sc);
 				sc->link_vars.periodic_flags &=
 				    ~ELINK_PERIODIC_FLAGS_LINK_EVENT;
+				bnx2x_release_phy_lock(sc);
 				if (IS_MF(sc)) {
 					bnx2x_link_sync_notify(sc);
 				}
@@ -4029,7 +4049,9 @@ static void bnx2x_attn_int_deasserted0(struct bnx2x_softc *sc, uint32_t attn)
 	}
 
 	if ((attn & sc->link_vars.aeu_int_mask) && sc->port.pmf) {
+		bnx2x_acquire_phy_lock(sc);
 		elink_handle_module_detect_int(&sc->link_params);
+		bnx2x_release_phy_lock(sc);
 	}
 
 	if (attn & HW_INTERRUT_ASSERT_SET_0) {
@@ -6867,7 +6889,7 @@ bnx2x_fill_report_data(struct bnx2x_softc *sc, struct bnx2x_link_report_data *da
 }
 
 /* report link status to OS, should be called under phy_lock */
-static void bnx2x_link_report(struct bnx2x_softc *sc)
+static void bnx2x_link_report_locked(struct bnx2x_softc *sc)
 {
 	struct bnx2x_link_report_data cur_data;
 
@@ -6888,8 +6910,13 @@ static void bnx2x_link_report(struct bnx2x_softc *sc)
 		return;
 	}
 
+	PMD_DRV_LOG(INFO, sc, "Change in link status : cur_data = %lx, last_reported_link = %lx\n",
+		    cur_data.link_report_flags,
+		    sc->last_reported_link.link_report_flags);
+
 	sc->link_cnt++;
 
+	PMD_DRV_LOG(INFO, sc, "link status change count = %x\n", sc->link_cnt);
 	/* report new link params and remember the state for the next time */
 	rte_memcpy(&sc->last_reported_link, &cur_data, sizeof(cur_data));
 
@@ -6939,6 +6966,14 @@ static void bnx2x_link_report(struct bnx2x_softc *sc)
 			    "NIC Link is Up, %d Mbps %s duplex, Flow control: %s",
 			    cur_data.line_speed, duplex, flow);
 	}
+}
+
+static void
+bnx2x_link_report(struct bnx2x_softc *sc)
+{
+	bnx2x_acquire_phy_lock(sc);
+	bnx2x_link_report_locked(sc);
+	bnx2x_release_phy_lock(sc);
 }
 
 void bnx2x_link_status_update(struct bnx2x_softc *sc)
@@ -7019,6 +7054,8 @@ static int bnx2x_initial_phy_init(struct bnx2x_softc *sc, int load_mode)
 
 	bnx2x_set_requested_fc(sc);
 
+	bnx2x_acquire_phy_lock(sc);
+
 	if (load_mode == LOAD_DIAG) {
 		lp->loopback_mode = ELINK_LOOPBACK_XGXS;
 /* Prefer doing PHY loopback at 10G speed, if possible */
@@ -7037,6 +7074,8 @@ static int bnx2x_initial_phy_init(struct bnx2x_softc *sc, int load_mode)
 	}
 
 	rc = elink_phy_init(&sc->link_params, &sc->link_vars);
+
+	bnx2x_release_phy_lock(sc);
 
 	bnx2x_calc_fc_adv(sc);
 
@@ -7088,7 +7127,9 @@ void bnx2x_periodic_callout(struct bnx2x_softc *sc)
  */
 		mb();
 		if (sc->port.pmf) {
+			bnx2x_acquire_phy_lock(sc);
 			elink_period_func(&sc->link_params, &sc->link_vars);
+			bnx2x_release_phy_lock(sc);
 		}
 	}
 #ifdef BNX2X_PULSE
@@ -9840,8 +9881,10 @@ static void bnx2x_common_init_phy(struct bnx2x_softc *sc)
 		shmem2_base[1] = SHMEM2_RD(sc, other_shmem2_base_addr);
 	}
 
+	bnx2x_acquire_phy_lock(sc);
 	elink_common_init_phy(sc, shmem_base, shmem2_base,
 			      sc->devinfo.chip_id, 0);
+	bnx2x_release_phy_lock(sc);
 }
 
 static void bnx2x_pf_disable(struct bnx2x_softc *sc)
@@ -11320,7 +11363,9 @@ static int bnx2x_init_hw_func(struct bnx2x_softc *sc)
 static void bnx2x_link_reset(struct bnx2x_softc *sc)
 {
 	if (!BNX2X_NOMCP(sc)) {
+		bnx2x_acquire_phy_lock(sc);
 		elink_lfa_reset(&sc->link_params, &sc->link_vars);
+		bnx2x_release_phy_lock(sc);
 	} else {
 		if (!CHIP_REV_IS_SLOW(sc)) {
 			PMD_DRV_LOG(WARNING, sc,

@@ -725,6 +725,13 @@ struct bnx2x_port {
 
     uint32_t    phy_addr;
 
+	/* Used to synchronize phy accesses. */
+	rte_spinlock_t	phy_mtx;
+	char		phy_mtx_name[32];
+
+#define BNX2X_PHY_LOCK(sc)          rte_spinlock_lock(&sc->port.phy_mtx)
+#define BNX2X_PHY_UNLOCK(sc)        rte_spinlock_unlock(&sc->port.phy_mtx)
+
     /*
      * MCP scratchpad address for port specific statistics.
      * The device is responsible for writing statistcss
