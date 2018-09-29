@@ -565,13 +565,20 @@ enum _ecore_status_t ecore_vf_hw_prepare(struct ecore_hwfn *p_hwfn)
 							   phys,
 							   p_iov->bulletin.
 							   size);
+	if (!p_iov->bulletin.p_virt) {
+		DP_NOTICE(p_hwfn, false, "Failed to alloc bulletin memory\n");
+		goto free_pf2vf_reply;
+	}
 	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
 		   "VF's bulletin Board [%p virt 0x%lx phys 0x%08x bytes]\n",
 		   p_iov->bulletin.p_virt, (unsigned long)p_iov->bulletin.phys,
 		   p_iov->bulletin.size);
 
 #ifdef CONFIG_ECORE_LOCK_ALLOC
-	OSAL_MUTEX_ALLOC(p_hwfn, &p_iov->mutex);
+	if (OSAL_MUTEX_ALLOC(p_hwfn, &p_iov->mutex)) {
+		DP_NOTICE(p_hwfn, false, "Failed to allocate p_iov->mutex\n");
+		goto free_bulletin_mem;
+	}
 #endif
 	OSAL_MUTEX_INIT(&p_iov->mutex);
 
@@ -609,6 +616,16 @@ enum _ecore_status_t ecore_vf_hw_prepare(struct ecore_hwfn *p_hwfn)
 
 	return rc;
 
+#ifdef CONFIG_ECORE_LOCK_ALLOC
+free_bulletin_mem:
+	OSAL_DMA_FREE_COHERENT(p_hwfn->p_dev, p_iov->bulletin.p_virt,
+			       p_iov->bulletin.phys,
+			       p_iov->bulletin.size);
+#endif
+free_pf2vf_reply:
+	OSAL_DMA_FREE_COHERENT(p_hwfn->p_dev, p_iov->pf2vf_reply,
+			       p_iov->pf2vf_reply_phys,
+			       sizeof(union pfvf_tlvs));
 free_vf2pf_request:
 	OSAL_DMA_FREE_COHERENT(p_hwfn->p_dev, p_iov->vf2pf_request,
 			       p_iov->vf2pf_request_phys,

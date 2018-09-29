@@ -1133,6 +1133,9 @@ enum _ecore_status_t ecore_cxt_mngr_alloc(struct ecore_hwfn *p_hwfn)
 		return ECORE_NOMEM;
 	}
 
+	/* Set the cxt mangr pointer prior to further allocations */
+	p_hwfn->p_cxt_mngr = p_mngr;
+
 	/* Initialize ILT client registers */
 	clients = p_mngr->clients;
 	clients[ILT_CLI_CDUC].first.reg = ILT_CFG_REG(CDUC, FIRST_ILT);
@@ -1174,12 +1177,12 @@ enum _ecore_status_t ecore_cxt_mngr_alloc(struct ecore_hwfn *p_hwfn)
 
 	/* Initialize the dynamic ILT allocation mutex */
 #ifdef CONFIG_ECORE_LOCK_ALLOC
-	OSAL_MUTEX_ALLOC(p_hwfn, &p_mngr->mutex);
+	if (OSAL_MUTEX_ALLOC(p_hwfn, &p_mngr->mutex)) {
+		DP_NOTICE(p_hwfn, false, "Failed to alloc p_mngr->mutex\n");
+		return ECORE_NOMEM;
+	}
 #endif
 	OSAL_MUTEX_INIT(&p_mngr->mutex);
-
-	/* Set the cxt mangr pointer priori to further allocations */
-	p_hwfn->p_cxt_mngr = p_mngr;
 
 	return ECORE_SUCCESS;
 }
