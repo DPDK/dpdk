@@ -789,7 +789,6 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 	int rc = 0;
 	struct hwrm_ver_get_input req = {.req_type = 0 };
 	struct hwrm_ver_get_output *resp = bp->hwrm_cmd_resp_addr;
-	uint32_t my_version;
 	uint32_t fw_version;
 	uint16_t max_resp_len;
 	char type[RTE_MEMZONE_NAMESIZE];
@@ -817,10 +816,6 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 	PMD_DRV_LOG(INFO, "Driver HWRM version: %d.%d.%d\n",
 		HWRM_VERSION_MAJOR, HWRM_VERSION_MINOR, HWRM_VERSION_UPDATE);
 
-	my_version = HWRM_VERSION_MAJOR << 16;
-	my_version |= HWRM_VERSION_MINOR << 8;
-	my_version |= HWRM_VERSION_UPDATE;
-
 	fw_version = resp->hwrm_intf_maj_8b << 16;
 	fw_version |= resp->hwrm_intf_min_8b << 8;
 	fw_version |= resp->hwrm_intf_upd_8b;
@@ -830,21 +825,6 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 		PMD_DRV_LOG(ERR, "Unsupported firmware API version\n");
 		rc = -EINVAL;
 		goto error;
-	}
-
-	if (my_version != fw_version) {
-		PMD_DRV_LOG(INFO, "BNXT Driver/HWRM API mismatch.\n");
-		if (my_version < fw_version) {
-			PMD_DRV_LOG(INFO,
-				"Firmware API version is newer than driver.\n");
-			PMD_DRV_LOG(INFO,
-				"The driver may be missing features.\n");
-		} else {
-			PMD_DRV_LOG(INFO,
-				"Firmware API version is older than driver.\n");
-			PMD_DRV_LOG(INFO,
-				"Not all driver features may be functional.\n");
-		}
 	}
 
 	if (bp->max_req_len > resp->max_req_win_len) {
