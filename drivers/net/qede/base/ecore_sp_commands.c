@@ -515,6 +515,10 @@ enum _ecore_status_t ecore_sp_rl_update(struct ecore_hwfn *p_hwfn,
 	rl_update->rl_id_first = params->rl_id_first;
 	rl_update->rl_id_last = params->rl_id_last;
 	rl_update->rl_dc_qcn_flg = params->rl_dc_qcn_flg;
+	rl_update->dcqcn_reset_alpha_on_idle =
+		params->dcqcn_reset_alpha_on_idle;
+	rl_update->rl_bc_stage_th = params->rl_bc_stage_th;
+	rl_update->rl_timer_stage_th = params->rl_timer_stage_th;
 	rl_update->rl_bc_rate = OSAL_CPU_TO_LE32(params->rl_bc_rate);
 	rl_update->rl_max_rate =
 		OSAL_CPU_TO_LE16(ecore_sp_rl_mb_to_qm(params->rl_max_rate));
@@ -529,12 +533,14 @@ enum _ecore_status_t ecore_sp_rl_update(struct ecore_hwfn *p_hwfn,
 		OSAL_CPU_TO_LE32(params->dcqcn_timeuot_us);
 	rl_update->qcn_timeuot_us = OSAL_CPU_TO_LE32(params->qcn_timeuot_us);
 
-	DP_VERBOSE(p_hwfn, ECORE_MSG_SPQ, "rl_params: qcn_update_param_flg %x, dcqcn_update_param_flg %x, rl_init_flg %x, rl_start_flg %x, rl_stop_flg %x, rl_id_first %x, rl_id_last %x, rl_dc_qcn_flg %x, rl_bc_rate %x, rl_max_rate %x, rl_r_ai %x, rl_r_hai %x, dcqcn_g %x, dcqcn_k_us %x, dcqcn_timeuot_us %x, qcn_timeuot_us %x\n",
+	DP_VERBOSE(p_hwfn, ECORE_MSG_SPQ, "rl_params: qcn_update_param_flg %x, dcqcn_update_param_flg %x, rl_init_flg %x, rl_start_flg %x, rl_stop_flg %x, rl_id_first %x, rl_id_last %x, rl_dc_qcn_flg %x,dcqcn_reset_alpha_on_idle %x, rl_bc_stage_th %x, rl_timer_stage_th %x, rl_bc_rate %x, rl_max_rate %x, rl_r_ai %x, rl_r_hai %x, dcqcn_g %x, dcqcn_k_us %x, dcqcn_timeuot_us %x, qcn_timeuot_us %x\n",
 		   rl_update->qcn_update_param_flg,
 		   rl_update->dcqcn_update_param_flg,
 		   rl_update->rl_init_flg, rl_update->rl_start_flg,
 		   rl_update->rl_stop_flg, rl_update->rl_id_first,
 		   rl_update->rl_id_last, rl_update->rl_dc_qcn_flg,
+		   rl_update->dcqcn_reset_alpha_on_idle,
+		   rl_update->rl_bc_stage_th, rl_update->rl_timer_stage_th,
 		   rl_update->rl_bc_rate, rl_update->rl_max_rate,
 		   rl_update->rl_r_ai, rl_update->rl_r_hai,
 		   rl_update->dcqcn_g, rl_update->dcqcn_k_us,
