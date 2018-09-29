@@ -3001,7 +3001,7 @@ int bnxt_hwrm_vf_func_cfg_def_cp(struct bnxt *bp)
 	HWRM_PREP(req, FUNC_VF_CFG, BNXT_USE_CHIMP_MB);
 
 	req.enables = rte_cpu_to_le_32(
-			HWRM_FUNC_CFG_INPUT_ENABLES_ASYNC_EVENT_CR);
+			HWRM_FUNC_VF_CFG_INPUT_ENABLES_ASYNC_EVENT_CR);
 	req.async_event_cr = rte_cpu_to_le_16(
 			bp->def_cp_ring->cp_ring_struct->fw_ring_id);
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
