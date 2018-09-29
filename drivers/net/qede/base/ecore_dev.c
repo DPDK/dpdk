@@ -1974,6 +1974,14 @@ enum ECORE_ROCE_EDPM_MODE {
 	ECORE_ROCE_EDPM_MODE_DISABLE = 2,
 };
 
+bool ecore_edpm_enabled(struct ecore_hwfn *p_hwfn)
+{
+	if (p_hwfn->dcbx_no_edpm || p_hwfn->db_bar_no_edpm)
+		return false;
+
+	return true;
+}
+
 static enum _ecore_status_t
 ecore_hw_init_pf_doorbell_bar(struct ecore_hwfn *p_hwfn,
 			      struct ecore_ptt *p_ptt)
@@ -2061,7 +2069,7 @@ ecore_hw_init_pf_doorbell_bar(struct ecore_hwfn *p_hwfn,
 	DP_INFO(p_hwfn,
 		" dpi_size=%d, dpi_count=%d, roce_edpm=%s\n",
 		p_hwfn->dpi_size, p_hwfn->dpi_count,
-		((p_hwfn->dcbx_no_edpm) || (p_hwfn->db_bar_no_edpm)) ?
+		(!ecore_edpm_enabled(p_hwfn)) ?
 		"disabled" : "enabled");
 
 	/* Check return codes from above calls */

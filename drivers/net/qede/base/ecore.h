@@ -962,6 +962,8 @@ void ecore_db_recovery_dp(struct ecore_hwfn *p_hwfn);
 void ecore_db_recovery_execute(struct ecore_hwfn *p_hwfn,
 			       enum ecore_db_rec_exec);
 
+bool ecore_edpm_enabled(struct ecore_hwfn *p_hwfn);
+
 /* amount of resources used in qm init */
 u8 ecore_init_qm_get_num_tcs(struct ecore_hwfn *p_hwfn);
 u16 ecore_init_qm_get_num_vfs(struct ecore_hwfn *p_hwfn);

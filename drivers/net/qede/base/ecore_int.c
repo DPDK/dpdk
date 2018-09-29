@@ -431,9 +431,8 @@ ecore_general_attention_35(struct ecore_hwfn *p_hwfn)
 #define ECORE_DB_REC_COUNT			10
 #define ECORE_DB_REC_INTERVAL			100
 
-/* assumes sticky overflow indication was set for this PF */
-static enum _ecore_status_t ecore_db_rec_attn(struct ecore_hwfn *p_hwfn,
-					      struct ecore_ptt *p_ptt)
+static enum _ecore_status_t ecore_db_rec_flush_queue(struct ecore_hwfn *p_hwfn,
+						     struct ecore_ptt *p_ptt)
 {
 	u8 count = ECORE_DB_REC_COUNT;
 	u32 usage = 1;
@@ -459,6 +458,21 @@ static enum _ecore_status_t ecore_db_rec_attn(struct ecore_hwfn *p_hwfn,
 			  "DB recovery: doorbell usage failed to zero after %d usec. usage was %x\n",
 			  ECORE_DB_REC_INTERVAL * ECORE_DB_REC_COUNT, usage);
 		return ECORE_TIMEOUT;
+	}
+
+	return ECORE_SUCCESS;
+}
+
+/* assumes sticky overflow indication was set for this PF */
+static enum _ecore_status_t ecore_db_rec_attn(struct ecore_hwfn *p_hwfn,
+					      struct ecore_ptt *p_ptt)
+{
+	enum _ecore_status_t rc;
+
+	if (ecore_edpm_enabled(p_hwfn)) {
+		rc = ecore_db_rec_flush_queue(p_hwfn, p_ptt);
+		if (rc != ECORE_SUCCESS)
+			return rc;
 	}
 
 	/* flush any pedning (e)dpm as they may never arrive */
