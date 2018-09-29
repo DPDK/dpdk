@@ -832,6 +832,26 @@ enum eth_filter_type {
 
 
 /*
+ * inner to inner vlan priority translation configurations
+ */
+struct eth_in_to_in_pri_map_cfg {
+/* If set, non_rdma_in_to_in_pri_map or rdma_in_to_in_pri_map will be used for
+ * inner to inner priority mapping depending on protocol type
+ */
+	u8 inner_vlan_pri_remap_en;
+	u8 reserved[7];
+/* Map for inner to inner vlan priority translation for Non RDMA protocols, used
+ * for TenantDcb. Set inner_vlan_pri_remap_en, when init the map.
+ */
+	u8 non_rdma_in_to_in_pri_map[8];
+/* Map for inner to inner vlan priority translation for RDMA protocols, used for
+ * TenantDcb. Set inner_vlan_pri_remap_en, when init the map.
+ */
+	u8 rdma_in_to_in_pri_map[8];
+};
+
+
+/*
  * eth IPv4 Fragment Type
  */
 enum eth_ipv4_frag_type {
@@ -1030,8 +1050,11 @@ struct eth_vport_rx_mode {
 /* accept all broadcast packets (subject to vlan) */
 #define ETH_VPORT_RX_MODE_BCAST_ACCEPT_ALL_MASK        0x1
 #define ETH_VPORT_RX_MODE_BCAST_ACCEPT_ALL_SHIFT       5
-#define ETH_VPORT_RX_MODE_RESERVED1_MASK               0x3FF
-#define ETH_VPORT_RX_MODE_RESERVED1_SHIFT              6
+/* accept any VNI in tunnel VNI classification. Used for default queue. */
+#define ETH_VPORT_RX_MODE_ACCEPT_ANY_VNI_MASK          0x1
+#define ETH_VPORT_RX_MODE_ACCEPT_ANY_VNI_SHIFT         6
+#define ETH_VPORT_RX_MODE_RESERVED1_MASK               0x1FF
+#define ETH_VPORT_RX_MODE_RESERVED1_SHIFT              7
 };
 
 
@@ -1357,6 +1380,20 @@ struct tx_queue_update_ramrod_data {
 };
 
 
+/*
+ * Inner to Inner VLAN priority map update mode
+ */
+enum update_in_to_in_pri_map_mode_enum {
+/* Inner to Inner VLAN priority map update Disabled */
+	ETH_IN_TO_IN_PRI_MAP_UPDATE_DISABLED,
+/* Update Inner to Inner VLAN priority map for non RDMA protocols */
+	ETH_IN_TO_IN_PRI_MAP_UPDATE_NON_RDMA_TBL,
+/* Update Inner to Inner VLAN priority map for RDMA protocols */
+	ETH_IN_TO_IN_PRI_MAP_UPDATE_RDMA_TBL,
+	MAX_UPDATE_IN_TO_IN_PRI_MAP_MODE_ENUM
+};
+
+
 
 /*
  * Ramrod data for vport update ramrod
@@ -1405,7 +1442,12 @@ struct vport_start_ramrod_data {
 	u8 ctl_frame_mac_check_en;
 /* If set, control frames will be filtered according to ethtype check. */
 	u8 ctl_frame_ethtype_check_en;
-	u8 reserved[1];
+/* If set, the inner vlan (802.1q tag) priority that is written to cqe will be
+ * zero out, used for TenantDcb
+ */
+	u8 wipe_inner_vlan_pri_en;
+/* inner to inner vlan priority translation configurations */
+	struct eth_in_to_in_pri_map_cfg in_to_in_vlan_pri_map_cfg;
 };
 
 
@@ -1473,7 +1515,14 @@ struct vport_update_ramrod_data_cmn {
 	u8 ctl_frame_mac_check_en;
 /* If set, control frames will be filtered according to ethtype check. */
 	u8 ctl_frame_ethtype_check_en;
-	u8 reserved[15];
+/* Indicates to update RDMA or NON-RDMA vlan remapping priority table according
+ * to update_in_to_in_pri_map_mode_enum, used for TenantDcb (use enum
+ * update_in_to_in_pri_map_mode_enum)
+ */
+	u8 update_in_to_in_pri_map_mode;
+/* Map for inner to inner vlan priority translation, used for TenantDcb. */
+	u8 in_to_in_pri_map[8];
+	u8 reserved[6];
 };
 
 struct vport_update_ramrod_mcast {

@@ -922,7 +922,11 @@ struct core_rx_start_ramrod_data {
 	struct core_rx_action_on_error action_on_error;
 /* set when in GSI offload mode on ROCE connection */
 	u8 gsi_offload_flag;
-	u8 reserved[6];
+/* If set, the inner vlan (802.1q tag) priority that is written to cqe will be
+ * zero out, used for TenantDcb
+ */
+	u8 wipe_inner_vlan_pri_en;
+	u8 reserved[5];
 };
 
 
@@ -1044,7 +1048,11 @@ struct core_tx_start_ramrod_data {
 	__le16 qm_pq_id /* QM PQ ID */;
 /* set when in GSI offload mode on ROCE connection */
 	u8 gsi_offload_flag;
-	u8 resrved[3];
+/* vport id of the current connection, used to access non_rdma_in_to_in_pri_map
+ * which is per vport
+ */
+	u8 vport_id;
+	u8 resrved[2];
 };
 
 
@@ -1168,6 +1176,25 @@ struct eth_rx_rate_limit {
 	u8 add_sub_cnst /* Add (1) or subtract (0) constant term */;
 	u8 reserved0;
 	__le16 reserved1;
+};
+
+
+/* Update RSS indirection table entry command. One outstanding command supported
+ * per PF.
+ */
+struct eth_tstorm_rss_update_data {
+/* Valid flag. Driver must set this flag, FW clear valid flag when ready for new
+ * RSS update command.
+ */
+	u8 valid;
+/* Global VPORT ID. If RSS is disable for VPORT, RSS update command will be
+ * ignored.
+ */
+	u8 vport_id;
+	u8 ind_table_index /* RSS indirect table index that will be updated. */;
+	u8 reserved;
+	__le16 ind_table_value /* RSS indirect table new value. */;
+	__le16 reserved1 /* reserved. */;
 };
 
 
@@ -1463,6 +1490,10 @@ struct pf_start_tunnel_config {
  * FW will use a default port
  */
 	u8 set_geneve_udp_port_flg;
+/* Set no-innet-L2 VXLAN tunnel UDP destination port to
+ * no_inner_l2_vxlan_udp_port. If not set - FW will use a default port
+ */
+	u8 set_no_inner_l2_vxlan_udp_port_flg;
 	u8 tunnel_clss_vxlan /* Rx classification scheme for VXLAN tunnel. */;
 /* Rx classification scheme for l2 GENEVE tunnel. */
 	u8 tunnel_clss_l2geneve;
@@ -1470,11 +1501,15 @@ struct pf_start_tunnel_config {
 	u8 tunnel_clss_ipgeneve;
 	u8 tunnel_clss_l2gre /* Rx classification scheme for l2 GRE tunnel. */;
 	u8 tunnel_clss_ipgre /* Rx classification scheme for ip GRE tunnel. */;
-	u8 reserved;
 /* VXLAN tunnel UDP destination port. Valid if set_vxlan_udp_port_flg=1 */
 	__le16 vxlan_udp_port;
 /* GENEVE tunnel UDP destination port. Valid if set_geneve_udp_port_flg=1 */
 	__le16 geneve_udp_port;
+/* no-innet-L2 VXLAN  tunnel UDP destination port. Valid if
+ * set_no_inner_l2_vxlan_udp_port_flg=1
+ */
+	__le16 no_inner_l2_vxlan_udp_port;
+	__le16 reserved[3];
 };
 
 /*
@@ -1547,6 +1582,8 @@ struct pf_update_tunnel_config {
 	u8 set_vxlan_udp_port_flg;
 /* Update GENEVE tunnel UDP destination port. */
 	u8 set_geneve_udp_port_flg;
+/* Update no-innet-L2 VXLAN  tunnel UDP destination port. */
+	u8 set_no_inner_l2_vxlan_udp_port_flg;
 	u8 tunnel_clss_vxlan /* Classification scheme for VXLAN tunnel. */;
 /* Classification scheme for l2 GENEVE tunnel. */
 	u8 tunnel_clss_l2geneve;
@@ -1554,9 +1591,12 @@ struct pf_update_tunnel_config {
 	u8 tunnel_clss_ipgeneve;
 	u8 tunnel_clss_l2gre /* Classification scheme for l2 GRE tunnel. */;
 	u8 tunnel_clss_ipgre /* Classification scheme for ip GRE tunnel. */;
+	u8 reserved;
 	__le16 vxlan_udp_port /* VXLAN tunnel UDP destination port. */;
 	__le16 geneve_udp_port /* GENEVE tunnel UDP destination port. */;
-	__le16 reserved;
+/* no-innet-L2 VXLAN  tunnel UDP destination port. */
+	__le16 no_inner_l2_vxlan_udp_port;
+	__le16 reserved1[3];
 };
 
 /*
@@ -1686,6 +1726,13 @@ struct rl_update_ramrod_data {
 /* ID of last RL, that will be updated. If clear, single RL will updated. */
 	u8 rl_id_last;
 	u8 rl_dc_qcn_flg /* If set, RL will used for DCQCN. */;
+/* If set, alpha will be reset to 1 when the state machine is idle. */
+	u8 dcqcn_reset_alpha_on_idle;
+/* Byte counter threshold to change rate increase stage. */
+	u8 rl_bc_stage_th;
+/* Timer threshold to change rate increase stage. */
+	u8 rl_timer_stage_th;
+	u8 reserved1;
 	__le32 rl_bc_rate /* Byte Counter Limit. */;
 	__le16 rl_max_rate /* Maximum rate in 1.6 Mbps resolution. */;
 	__le16 rl_r_ai /* Active increase rate. */;
@@ -1694,7 +1741,7 @@ struct rl_update_ramrod_data {
 	__le32 dcqcn_k_us /* DCQCN Alpha update interval. */;
 	__le32 dcqcn_timeuot_us /* DCQCN timeout. */;
 	__le32 qcn_timeuot_us /* QCN timeout. */;
-	__le32 reserved[2];
+	__le32 reserved2;
 };
 
 

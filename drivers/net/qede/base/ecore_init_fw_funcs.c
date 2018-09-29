@@ -1665,7 +1665,7 @@ void ecore_gft_config(struct ecore_hwfn *p_hwfn,
 			       bool ipv6,
 			       enum gft_profile_type profile_type)
 {
-	u32 reg_val, cam_line, ram_line_lo, ram_line_hi;
+	u32 reg_val, cam_line, ram_line_lo, ram_line_hi, search_non_ip_as_gft;
 
 	if (!ipv6 && !ipv4)
 		DP_NOTICE(p_hwfn, true, "gft_config: must accept at least on of - ipv4 or ipv6'\n");
@@ -1729,6 +1729,9 @@ void ecore_gft_config(struct ecore_hwfn *p_hwfn,
 	ram_line_lo = 0;
 	ram_line_hi = 0;
 
+	/* Search no IP as GFT */
+	search_non_ip_as_gft = 0;
+
 	/* Tunnel type */
 	SET_FIELD(ram_line_lo, GFT_RAM_LINE_TUNNEL_DST_PORT, 1);
 	SET_FIELD(ram_line_lo, GFT_RAM_LINE_TUNNEL_OVER_IP_PROTOCOL, 1);
@@ -1752,8 +1755,13 @@ void ecore_gft_config(struct ecore_hwfn *p_hwfn,
 		SET_FIELD(ram_line_lo, GFT_RAM_LINE_ETHERTYPE, 1);
 	} else if (profile_type == GFT_PROFILE_TYPE_TUNNEL_TYPE) {
 		SET_FIELD(ram_line_lo, GFT_RAM_LINE_TUNNEL_ETHERTYPE, 1);
+
+		/* Allow tunneled traffic without inner IP */
+		search_non_ip_as_gft = 1;
 	}
 
+	ecore_wr(p_hwfn, p_ptt, PRS_REG_SEARCH_NON_IP_AS_GFT,
+		 search_non_ip_as_gft);
 	ecore_wr(p_hwfn, p_ptt,
 		 PRS_REG_GFT_PROFILE_MASK_RAM + RAM_LINE_SIZE * pf_id,
 		 ram_line_lo);
@@ -1996,52 +2004,49 @@ void ecore_enable_context_validation(struct ecore_hwfn *p_hwfn,
 	ecore_wr(p_hwfn, p_ptt, CDU_REG_TCFC_CTX_VALID0, ctx_validation);
 }
 
-#define RSS_IND_TABLE_BASE_ADDR       4112
-#define RSS_IND_TABLE_VPORT_SIZE      16
-#define RSS_IND_TABLE_ENTRY_PER_LINE  8
 
-/* Update RSS indirection table entry. */
-void ecore_update_eth_rss_ind_table_entry(struct ecore_hwfn *p_hwfn,
-					  struct ecore_ptt *p_ptt,
-					  u8 rss_id,
-					  u8 ind_table_index,
-					  u16 ind_table_value)
+/*******************************************************************************
+ * File name : rdma_init.c
+ * Author    : Michael Shteinbok
+ *******************************************************************************
+ *******************************************************************************
+ * Description:
+ * RDMA HSI functions
+ *
+ *******************************************************************************
+ * Notes: This is the input to the auto generated file drv_init_fw_funcs.c
+ *
+ *******************************************************************************
+ */
+static u32 ecore_get_rdma_assert_ram_addr(struct ecore_hwfn *p_hwfn,
+					  u8 storm_id)
 {
-	u32 cnt, rss_addr;
-	u32 *reg_val;
-	u16 rss_ind_entry[RSS_IND_TABLE_ENTRY_PER_LINE];
-	u16 rss_ind_mask[RSS_IND_TABLE_ENTRY_PER_LINE];
+	switch (storm_id) {
+	case 0: return TSEM_REG_FAST_MEMORY + SEM_FAST_REG_INT_RAM +
+		       TSTORM_RDMA_ASSERT_LEVEL_OFFSET(p_hwfn->rel_pf_id);
+	case 1: return MSEM_REG_FAST_MEMORY + SEM_FAST_REG_INT_RAM +
+		       MSTORM_RDMA_ASSERT_LEVEL_OFFSET(p_hwfn->rel_pf_id);
+	case 2: return USEM_REG_FAST_MEMORY + SEM_FAST_REG_INT_RAM +
+		       USTORM_RDMA_ASSERT_LEVEL_OFFSET(p_hwfn->rel_pf_id);
+	case 3: return XSEM_REG_FAST_MEMORY + SEM_FAST_REG_INT_RAM +
+		       XSTORM_RDMA_ASSERT_LEVEL_OFFSET(p_hwfn->rel_pf_id);
+	case 4: return YSEM_REG_FAST_MEMORY + SEM_FAST_REG_INT_RAM +
+		       YSTORM_RDMA_ASSERT_LEVEL_OFFSET(p_hwfn->rel_pf_id);
+	case 5: return PSEM_REG_FAST_MEMORY + SEM_FAST_REG_INT_RAM +
+		       PSTORM_RDMA_ASSERT_LEVEL_OFFSET(p_hwfn->rel_pf_id);
 
-	/* get entry address */
-	rss_addr =  RSS_IND_TABLE_BASE_ADDR +
-		    RSS_IND_TABLE_VPORT_SIZE * rss_id +
-		    ind_table_index / RSS_IND_TABLE_ENTRY_PER_LINE;
-
-	/* prepare update command */
-	ind_table_index %= RSS_IND_TABLE_ENTRY_PER_LINE;
-
-	for (cnt = 0; cnt < RSS_IND_TABLE_ENTRY_PER_LINE; cnt++) {
-		if (cnt == ind_table_index) {
-			rss_ind_entry[cnt] = ind_table_value;
-			rss_ind_mask[cnt]  = 0xFFFF;
-		} else {
-			rss_ind_entry[cnt] = 0;
-			rss_ind_mask[cnt]  = 0;
-		}
+	default: return 0;
 	}
+}
 
-	/* Update entry in HW*/
-	ecore_wr(p_hwfn, p_ptt, RSS_REG_RSS_RAM_ADDR, rss_addr);
+void ecore_set_rdma_error_level(struct ecore_hwfn *p_hwfn,
+				struct ecore_ptt *p_ptt,
+				u8 assert_level[NUM_STORMS])
+{
+	u8 storm_id;
+	for (storm_id = 0; storm_id < NUM_STORMS; storm_id++) {
+		u32 ram_addr = ecore_get_rdma_assert_ram_addr(p_hwfn, storm_id);
 
-	reg_val = (u32 *)rss_ind_mask;
-	ecore_wr(p_hwfn, p_ptt, RSS_REG_RSS_RAM_MASK, reg_val[0]);
-	ecore_wr(p_hwfn, p_ptt, RSS_REG_RSS_RAM_MASK + 4, reg_val[1]);
-	ecore_wr(p_hwfn, p_ptt, RSS_REG_RSS_RAM_MASK + 8, reg_val[2]);
-	ecore_wr(p_hwfn, p_ptt, RSS_REG_RSS_RAM_MASK + 12, reg_val[3]);
-
-	reg_val = (u32 *)rss_ind_entry;
-	ecore_wr(p_hwfn, p_ptt, RSS_REG_RSS_RAM_DATA, reg_val[0]);
-	ecore_wr(p_hwfn, p_ptt, RSS_REG_RSS_RAM_DATA + 4, reg_val[1]);
-	ecore_wr(p_hwfn, p_ptt, RSS_REG_RSS_RAM_DATA + 8, reg_val[2]);
-	ecore_wr(p_hwfn, p_ptt, RSS_REG_RSS_RAM_DATA + 12, reg_val[3]);
+		ecore_wr(p_hwfn, p_ptt, ram_addr, assert_level[storm_id]);
+	}
 }

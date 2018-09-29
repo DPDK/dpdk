@@ -137,6 +137,7 @@ struct ecore_filter_accept_flags {
 #define ECORE_ACCEPT_MCAST_MATCHED	0x08
 #define ECORE_ACCEPT_MCAST_UNMATCHED	0x10
 #define ECORE_ACCEPT_BCAST		0x20
+#define ECORE_ACCEPT_ANY_VNI		0x40
 };
 
 enum ecore_filter_config_mode {

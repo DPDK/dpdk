@@ -113,91 +113,129 @@
 /* Tstorm Eth limit Rx rate */
 #define ETH_RX_RATE_LIMIT_OFFSET(pf_id) (IRO[29].base + ((pf_id) * IRO[29].m1))
 #define ETH_RX_RATE_LIMIT_SIZE (IRO[29].size)
+/* RSS indirection table entry update command per PF offset in TSTORM PF BAR0.
+ * Use eth_tstorm_rss_update_data for update.
+ */
+#define TSTORM_ETH_RSS_UPDATE_OFFSET(pf_id) (IRO[30].base + \
+	((pf_id) * IRO[30].m1))
+#define TSTORM_ETH_RSS_UPDATE_SIZE (IRO[30].size)
 /* Xstorm queue zone */
-#define XSTORM_ETH_QUEUE_ZONE_OFFSET(queue_id) (IRO[30].base + \
-	((queue_id) * IRO[30].m1))
-#define XSTORM_ETH_QUEUE_ZONE_SIZE (IRO[30].size)
+#define XSTORM_ETH_QUEUE_ZONE_OFFSET(queue_id) (IRO[31].base + \
+	((queue_id) * IRO[31].m1))
+#define XSTORM_ETH_QUEUE_ZONE_SIZE (IRO[31].size)
 /* Ystorm cqe producer */
-#define YSTORM_TOE_CQ_PROD_OFFSET(rss_id) (IRO[31].base + \
-	((rss_id) * IRO[31].m1))
-#define YSTORM_TOE_CQ_PROD_SIZE (IRO[31].size)
-/* Ustorm cqe producer */
-#define USTORM_TOE_CQ_PROD_OFFSET(rss_id) (IRO[32].base + \
+#define YSTORM_TOE_CQ_PROD_OFFSET(rss_id) (IRO[32].base + \
 	((rss_id) * IRO[32].m1))
-#define USTORM_TOE_CQ_PROD_SIZE (IRO[32].size)
+#define YSTORM_TOE_CQ_PROD_SIZE (IRO[32].size)
+/* Ustorm cqe producer */
+#define USTORM_TOE_CQ_PROD_OFFSET(rss_id) (IRO[33].base + \
+	((rss_id) * IRO[33].m1))
+#define USTORM_TOE_CQ_PROD_SIZE (IRO[33].size)
 /* Ustorm grq producer */
-#define USTORM_TOE_GRQ_PROD_OFFSET(pf_id) (IRO[33].base + \
-	((pf_id) * IRO[33].m1))
-#define USTORM_TOE_GRQ_PROD_SIZE (IRO[33].size)
+#define USTORM_TOE_GRQ_PROD_OFFSET(pf_id) (IRO[34].base + \
+	((pf_id) * IRO[34].m1))
+#define USTORM_TOE_GRQ_PROD_SIZE (IRO[34].size)
 /* Tstorm cmdq-cons of given command queue-id */
-#define TSTORM_SCSI_CMDQ_CONS_OFFSET(cmdq_queue_id) (IRO[34].base + \
-	((cmdq_queue_id) * IRO[34].m1))
-#define TSTORM_SCSI_CMDQ_CONS_SIZE (IRO[34].size)
+#define TSTORM_SCSI_CMDQ_CONS_OFFSET(cmdq_queue_id) (IRO[35].base + \
+	((cmdq_queue_id) * IRO[35].m1))
+#define TSTORM_SCSI_CMDQ_CONS_SIZE (IRO[35].size)
 /* Tstorm (reflects M-Storm) bdq-external-producer of given function ID,
  * BDqueue-id
  */
-#define TSTORM_SCSI_BDQ_EXT_PROD_OFFSET(func_id, bdq_id) (IRO[35].base + \
-	((func_id) * IRO[35].m1) + ((bdq_id) * IRO[35].m2))
-#define TSTORM_SCSI_BDQ_EXT_PROD_SIZE (IRO[35].size)
-/* Mstorm bdq-external-producer of given BDQ resource ID, BDqueue-id */
-#define MSTORM_SCSI_BDQ_EXT_PROD_OFFSET(func_id, bdq_id) (IRO[36].base + \
+#define TSTORM_SCSI_BDQ_EXT_PROD_OFFSET(func_id, bdq_id) (IRO[36].base + \
 	((func_id) * IRO[36].m1) + ((bdq_id) * IRO[36].m2))
-#define MSTORM_SCSI_BDQ_EXT_PROD_SIZE (IRO[36].size)
+#define TSTORM_SCSI_BDQ_EXT_PROD_SIZE (IRO[36].size)
+/* Mstorm bdq-external-producer of given BDQ resource ID, BDqueue-id */
+#define MSTORM_SCSI_BDQ_EXT_PROD_OFFSET(func_id, bdq_id) (IRO[37].base + \
+	((func_id) * IRO[37].m1) + ((bdq_id) * IRO[37].m2))
+#define MSTORM_SCSI_BDQ_EXT_PROD_SIZE (IRO[37].size)
 /* Tstorm iSCSI RX stats */
-#define TSTORM_ISCSI_RX_STATS_OFFSET(pf_id) (IRO[37].base + \
-	((pf_id) * IRO[37].m1))
-#define TSTORM_ISCSI_RX_STATS_SIZE (IRO[37].size)
-/* Mstorm iSCSI RX stats */
-#define MSTORM_ISCSI_RX_STATS_OFFSET(pf_id) (IRO[38].base + \
+#define TSTORM_ISCSI_RX_STATS_OFFSET(pf_id) (IRO[38].base + \
 	((pf_id) * IRO[38].m1))
-#define MSTORM_ISCSI_RX_STATS_SIZE (IRO[38].size)
-/* Ustorm iSCSI RX stats */
-#define USTORM_ISCSI_RX_STATS_OFFSET(pf_id) (IRO[39].base + \
+#define TSTORM_ISCSI_RX_STATS_SIZE (IRO[38].size)
+/* Mstorm iSCSI RX stats */
+#define MSTORM_ISCSI_RX_STATS_OFFSET(pf_id) (IRO[39].base + \
 	((pf_id) * IRO[39].m1))
-#define USTORM_ISCSI_RX_STATS_SIZE (IRO[39].size)
-/* Xstorm iSCSI TX stats */
-#define XSTORM_ISCSI_TX_STATS_OFFSET(pf_id) (IRO[40].base + \
+#define MSTORM_ISCSI_RX_STATS_SIZE (IRO[39].size)
+/* Ustorm iSCSI RX stats */
+#define USTORM_ISCSI_RX_STATS_OFFSET(pf_id) (IRO[40].base + \
 	((pf_id) * IRO[40].m1))
-#define XSTORM_ISCSI_TX_STATS_SIZE (IRO[40].size)
-/* Ystorm iSCSI TX stats */
-#define YSTORM_ISCSI_TX_STATS_OFFSET(pf_id) (IRO[41].base + \
+#define USTORM_ISCSI_RX_STATS_SIZE (IRO[40].size)
+/* Xstorm iSCSI TX stats */
+#define XSTORM_ISCSI_TX_STATS_OFFSET(pf_id) (IRO[41].base + \
 	((pf_id) * IRO[41].m1))
-#define YSTORM_ISCSI_TX_STATS_SIZE (IRO[41].size)
-/* Pstorm iSCSI TX stats */
-#define PSTORM_ISCSI_TX_STATS_OFFSET(pf_id) (IRO[42].base + \
+#define XSTORM_ISCSI_TX_STATS_SIZE (IRO[41].size)
+/* Ystorm iSCSI TX stats */
+#define YSTORM_ISCSI_TX_STATS_OFFSET(pf_id) (IRO[42].base + \
 	((pf_id) * IRO[42].m1))
-#define PSTORM_ISCSI_TX_STATS_SIZE (IRO[42].size)
-/* Tstorm FCoE RX stats */
-#define TSTORM_FCOE_RX_STATS_OFFSET(pf_id) (IRO[43].base + \
+#define YSTORM_ISCSI_TX_STATS_SIZE (IRO[42].size)
+/* Pstorm iSCSI TX stats */
+#define PSTORM_ISCSI_TX_STATS_OFFSET(pf_id) (IRO[43].base + \
 	((pf_id) * IRO[43].m1))
-#define TSTORM_FCOE_RX_STATS_SIZE (IRO[43].size)
-/* Pstorm FCoE TX stats */
-#define PSTORM_FCOE_TX_STATS_OFFSET(pf_id) (IRO[44].base + \
+#define PSTORM_ISCSI_TX_STATS_SIZE (IRO[43].size)
+/* Tstorm FCoE RX stats */
+#define TSTORM_FCOE_RX_STATS_OFFSET(pf_id) (IRO[44].base + \
 	((pf_id) * IRO[44].m1))
-#define PSTORM_FCOE_TX_STATS_SIZE (IRO[44].size)
+#define TSTORM_FCOE_RX_STATS_SIZE (IRO[44].size)
+/* Pstorm FCoE TX stats */
+#define PSTORM_FCOE_TX_STATS_OFFSET(pf_id) (IRO[45].base + \
+	((pf_id) * IRO[45].m1))
+#define PSTORM_FCOE_TX_STATS_SIZE (IRO[45].size)
 /* Pstorm RDMA queue statistics */
-#define PSTORM_RDMA_QUEUE_STAT_OFFSET(rdma_stat_counter_id) \
-	(IRO[45].base + ((rdma_stat_counter_id) * IRO[45].m1))
-#define PSTORM_RDMA_QUEUE_STAT_SIZE (IRO[45].size)
-/* Tstorm RDMA queue statistics */
-#define TSTORM_RDMA_QUEUE_STAT_OFFSET(rdma_stat_counter_id) (IRO[46].base + \
+#define PSTORM_RDMA_QUEUE_STAT_OFFSET(rdma_stat_counter_id) (IRO[46].base + \
 	((rdma_stat_counter_id) * IRO[46].m1))
-#define TSTORM_RDMA_QUEUE_STAT_SIZE (IRO[46].size)
+#define PSTORM_RDMA_QUEUE_STAT_SIZE (IRO[46].size)
+/* Tstorm RDMA queue statistics */
+#define TSTORM_RDMA_QUEUE_STAT_OFFSET(rdma_stat_counter_id) (IRO[47].base + \
+	((rdma_stat_counter_id) * IRO[47].m1))
+#define TSTORM_RDMA_QUEUE_STAT_SIZE (IRO[47].size)
+/* Xstorm error level for assert */
+#define XSTORM_RDMA_ASSERT_LEVEL_OFFSET(pf_id) (IRO[48].base + \
+	((pf_id) * IRO[48].m1))
+#define XSTORM_RDMA_ASSERT_LEVEL_SIZE (IRO[48].size)
+/* Ystorm error level for assert */
+#define YSTORM_RDMA_ASSERT_LEVEL_OFFSET(pf_id) (IRO[49].base + \
+	((pf_id) * IRO[49].m1))
+#define YSTORM_RDMA_ASSERT_LEVEL_SIZE (IRO[49].size)
+/* Pstorm error level for assert */
+#define PSTORM_RDMA_ASSERT_LEVEL_OFFSET(pf_id) (IRO[50].base + \
+	((pf_id) * IRO[50].m1))
+#define PSTORM_RDMA_ASSERT_LEVEL_SIZE (IRO[50].size)
+/* Tstorm error level for assert */
+#define TSTORM_RDMA_ASSERT_LEVEL_OFFSET(pf_id) (IRO[51].base + \
+	((pf_id) * IRO[51].m1))
+#define TSTORM_RDMA_ASSERT_LEVEL_SIZE (IRO[51].size)
+/* Mstorm error level for assert */
+#define MSTORM_RDMA_ASSERT_LEVEL_OFFSET(pf_id) (IRO[52].base + \
+	((pf_id) * IRO[52].m1))
+#define MSTORM_RDMA_ASSERT_LEVEL_SIZE (IRO[52].size)
+/* Ustorm error level for assert */
+#define USTORM_RDMA_ASSERT_LEVEL_OFFSET(pf_id) (IRO[53].base + \
+	((pf_id) * IRO[53].m1))
+#define USTORM_RDMA_ASSERT_LEVEL_SIZE (IRO[53].size)
 /* Xstorm iWARP rxmit stats */
-#define XSTORM_IWARP_RXMIT_STATS_OFFSET(pf_id) (IRO[47].base + \
-	((pf_id) * IRO[47].m1))
-#define XSTORM_IWARP_RXMIT_STATS_SIZE (IRO[47].size)
+#define XSTORM_IWARP_RXMIT_STATS_OFFSET(pf_id) (IRO[54].base + \
+	((pf_id) * IRO[54].m1))
+#define XSTORM_IWARP_RXMIT_STATS_SIZE (IRO[54].size)
 /* Tstorm RoCE Event Statistics */
-#define TSTORM_ROCE_EVENTS_STAT_OFFSET(roce_pf_id) (IRO[48].base + \
-	((roce_pf_id) * IRO[48].m1))
-#define TSTORM_ROCE_EVENTS_STAT_SIZE (IRO[48].size)
+#define TSTORM_ROCE_EVENTS_STAT_OFFSET(roce_pf_id) (IRO[55].base + \
+	((roce_pf_id) * IRO[55].m1))
+#define TSTORM_ROCE_EVENTS_STAT_SIZE (IRO[55].size)
 /* DCQCN Received Statistics */
-#define YSTORM_ROCE_DCQCN_RECEIVED_STATS_OFFSET(roce_pf_id) (IRO[49].base + \
-	((roce_pf_id) * IRO[49].m1))
-#define YSTORM_ROCE_DCQCN_RECEIVED_STATS_SIZE (IRO[49].size)
+#define YSTORM_ROCE_DCQCN_RECEIVED_STATS_OFFSET(roce_pf_id) (IRO[56].base + \
+	((roce_pf_id) * IRO[56].m1))
+#define YSTORM_ROCE_DCQCN_RECEIVED_STATS_SIZE (IRO[56].size)
+/* RoCE Error Statistics */
+#define YSTORM_ROCE_ERROR_STATS_OFFSET(roce_pf_id) (IRO[57].base + \
+	((roce_pf_id) * IRO[57].m1))
+#define YSTORM_ROCE_ERROR_STATS_SIZE (IRO[57].size)
 /* DCQCN Sent Statistics */
-#define PSTORM_ROCE_DCQCN_SENT_STATS_OFFSET(roce_pf_id) (IRO[50].base + \
-	((roce_pf_id) * IRO[50].m1))
-#define PSTORM_ROCE_DCQCN_SENT_STATS_SIZE (IRO[50].size)
+#define PSTORM_ROCE_DCQCN_SENT_STATS_OFFSET(roce_pf_id) (IRO[58].base + \
+	((roce_pf_id) * IRO[58].m1))
+#define PSTORM_ROCE_DCQCN_SENT_STATS_SIZE (IRO[58].size)
+/* RoCE CQEs Statistics */
+#define USTORM_ROCE_CQE_STATS_OFFSET(roce_pf_id) (IRO[59].base + \
+	((roce_pf_id) * IRO[59].m1))
+#define USTORM_ROCE_CQE_STATS_SIZE (IRO[59].size)
 
 #endif /* __IRO_H__ */

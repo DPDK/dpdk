@@ -472,21 +472,35 @@ void ecore_memset_task_ctx(void *p_ctx_mem,
 			   u32 ctx_size,
 			   u8 ctx_type);
 
-/**
- * @brief ecore_update_eth_rss_ind_table_entry - Update RSS indirection table
- * entry.
- * The function must run in exclusive mode to prevent wrong RSS configuration.
+
+/*******************************************************************************
+ * File name : rdma_init.h
+ * Author    : Michael Shteinbok
+ *******************************************************************************
+ *******************************************************************************
+ * Description:
+ * RDMA HSI functions header
  *
- * @param p_hwfn    - HW device data
- * @param p_ptt  - ptt window used for writing the registers.
- * @param rss_id - RSS engine ID.
- * @param ind_table_index -  RSS indirect table index.
- * @param ind_table_value -  RSS indirect table new value.
+ *******************************************************************************
+ * Notes: This is the input to the auto generated file drv_init_fw_funcs.h
+ *
+ *******************************************************************************
  */
-void ecore_update_eth_rss_ind_table_entry(struct ecore_hwfn *p_hwfn,
-					  struct ecore_ptt *p_ptt,
-					  u8 rss_id,
-					  u8 ind_table_index,
-					  u16 ind_table_value);
+#define NUM_STORMS 6
+
+
+
+/**
+ * @brief ecore_set_rdma_error_level - Sets the RDMA assert level.
+ *                                     If the severity of the error will be
+ *				       above the level, the FW will assert.
+ * @param p_hwfn -		   HW device data
+ * @param p_ptt -		   ptt window used for writing the registers
+ * @param assert_level - An array of assert levels for each storm.
+ */
+void ecore_set_rdma_error_level(struct ecore_hwfn *p_hwfn,
+				struct ecore_ptt *p_ptt,
+				u8 assert_level[NUM_STORMS]);
+
 
 #endif

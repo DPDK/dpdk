@@ -1091,6 +1091,15 @@ struct idle_chk_data {
 };
 
 /*
+ * Pretend parameters
+ */
+struct pretend_params {
+	u8 split_type /* Pretend split type (from enum init_split_types) */;
+	u8 reserved;
+	u16 split_id /* Preted split ID (within the pretend split type) */;
+};
+
+/*
  * Debug Tools data (per HW function)
  */
 struct dbg_tools_data {
@@ -1102,11 +1111,17 @@ struct dbg_tools_data {
 	u8 block_in_reset[88];
 	u8 chip_id /* Chip ID (from enum chip_ids) */;
 	u8 platform_id /* Platform ID */;
+	u8 num_ports /* Number of ports in the chip */;
+	u8 num_pfs_per_port /* Number of PFs in each port */;
+	u8 num_vfs /* Number of VFs in the chip */;
 	u8 initialized /* Indicates if the data was initialized */;
 	u8 use_dmae /* Indicates if DMAE should be used */;
+	u8 reserved;
+	struct pretend_params pretend /* Current pretend parameters */;
 /* Numbers of registers that were read since last log */
 	u32 num_regs_read;
 };
+
 
 
 #endif /* __ECORE_HSI_DEBUG_TOOLS__ */

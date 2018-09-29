@@ -27,8 +27,8 @@
 #include "mcp_public.h"
 
 #define ECORE_MAJOR_VERSION		8
-#define ECORE_MINOR_VERSION		30
-#define ECORE_REVISION_VERSION		8
+#define ECORE_MINOR_VERSION		37
+#define ECORE_REVISION_VERSION		20
 #define ECORE_ENGINEERING_VERSION	0
 
 #define ECORE_VERSION							\
@@ -660,6 +660,7 @@ struct ecore_hwfn {
 #endif
 
 	struct dbg_tools_data		dbg_info;
+	void				*dbg_user_info;
 
 	struct z_stream_s		*stream;
 

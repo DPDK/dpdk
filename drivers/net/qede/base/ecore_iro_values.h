@@ -7,7 +7,7 @@
 #ifndef __IRO_VALUES_H__
 #define __IRO_VALUES_H__
 
-static const struct iro iro_arr[51] = {
+static const struct iro iro_arr[60] = {
 /* YSTORM_FLOW_CONTROL_MODE_OFFSET */
 	{      0x0,      0x0,      0x0,      0x0,      0x8},
 /* TSTORM_PORT_STAT_OFFSET(port_id) */
@@ -29,7 +29,7 @@ static const struct iro iro_arr[51] = {
 /* YSTORM_INTEG_TEST_DATA_OFFSET */
 	{   0x3e38,      0x0,      0x0,      0x0,     0x78},
 /* PSTORM_INTEG_TEST_DATA_OFFSET */
-	{   0x2b78,      0x0,      0x0,      0x0,     0x78},
+	{   0x3ef8,      0x0,      0x0,      0x0,     0x78},
 /* TSTORM_INTEG_TEST_DATA_OFFSET */
 	{   0x4c40,      0x0,      0x0,      0x0,     0x78},
 /* MSTORM_INTEG_TEST_DATA_OFFSET */
@@ -43,7 +43,7 @@ static const struct iro iro_arr[51] = {
 /* CORE_LL2_USTORM_PER_QUEUE_STAT_OFFSET(core_rx_queue_id) */
 	{   0xb820,     0x30,      0x0,      0x0,     0x30},
 /* CORE_LL2_PSTORM_PER_QUEUE_STAT_OFFSET(core_tx_stats_id) */
-	{   0x96c0,     0x30,      0x0,      0x0,     0x30},
+	{   0xa990,     0x30,      0x0,      0x0,     0x30},
 /* MSTORM_QUEUE_STAT_OFFSET(stat_counter_id) */
 	{   0x4b68,     0x80,      0x0,      0x0,     0x40},
 /* MSTORM_ETH_PF_PRODS_OFFSET(queue_id) */
@@ -59,15 +59,17 @@ static const struct iro iro_arr[51] = {
 /* USTORM_ETH_PF_STAT_OFFSET(pf_id) */
 	{   0xe770,     0x60,      0x0,      0x0,     0x60},
 /* PSTORM_QUEUE_STAT_OFFSET(stat_counter_id) */
-	{   0x2d10,     0x80,      0x0,      0x0,     0x38},
+	{   0x4090,     0x80,      0x0,      0x0,     0x38},
 /* PSTORM_ETH_PF_STAT_OFFSET(pf_id) */
-	{   0xf2b8,     0x78,      0x0,      0x0,     0x78},
+	{   0xfea8,     0x78,      0x0,      0x0,     0x78},
 /* PSTORM_CTL_FRAME_ETHTYPE_OFFSET(ethType_id) */
 	{    0x1f8,      0x4,      0x0,      0x0,      0x4},
 /* TSTORM_ETH_PRS_INPUT_OFFSET */
 	{   0xaf20,      0x0,      0x0,      0x0,     0xf0},
 /* ETH_RX_RATE_LIMIT_OFFSET(pf_id) */
 	{   0xb010,      0x8,      0x0,      0x0,      0x8},
+/* TSTORM_ETH_RSS_UPDATE_OFFSET(pf_id) */
+	{    0xc00,      0x8,      0x0,      0x0,      0x8},
 /* XSTORM_ETH_QUEUE_ZONE_OFFSET(queue_id) */
 	{    0x1f8,      0x8,      0x0,      0x0,      0x8},
 /* YSTORM_TOE_CQ_PROD_OFFSET(rss_id) */
@@ -91,25 +93,41 @@ static const struct iro iro_arr[51] = {
 /* XSTORM_ISCSI_TX_STATS_OFFSET(pf_id) */
 	{   0xa588,     0x50,      0x0,      0x0,     0x20},
 /* YSTORM_ISCSI_TX_STATS_OFFSET(pf_id) */
-	{   0x8700,     0x40,      0x0,      0x0,     0x28},
+	{   0x8f00,     0x40,      0x0,      0x0,     0x28},
 /* PSTORM_ISCSI_TX_STATS_OFFSET(pf_id) */
-	{  0x10300,     0x18,      0x0,      0x0,     0x10},
+	{  0x10e30,     0x18,      0x0,      0x0,     0x10},
 /* TSTORM_FCOE_RX_STATS_OFFSET(pf_id) */
 	{   0xde48,     0x48,      0x0,      0x0,     0x38},
 /* PSTORM_FCOE_TX_STATS_OFFSET(pf_id) */
-	{  0x10768,     0x20,      0x0,      0x0,     0x20},
+	{  0x11298,     0x20,      0x0,      0x0,     0x20},
 /* PSTORM_RDMA_QUEUE_STAT_OFFSET(rdma_stat_counter_id) */
-	{   0x2d48,     0x80,      0x0,      0x0,     0x10},
+	{   0x40c8,     0x80,      0x0,      0x0,     0x10},
 /* TSTORM_RDMA_QUEUE_STAT_OFFSET(rdma_stat_counter_id) */
 	{   0x5048,     0x10,      0x0,      0x0,     0x10},
+/* XSTORM_RDMA_ASSERT_LEVEL_OFFSET(pf_id) */
+	{   0xa928,      0x8,      0x0,      0x0,      0x1},
+/* YSTORM_RDMA_ASSERT_LEVEL_OFFSET(pf_id) */
+	{   0xa128,      0x8,      0x0,      0x0,      0x1},
+/* PSTORM_RDMA_ASSERT_LEVEL_OFFSET(pf_id) */
+	{  0x11a30,      0x8,      0x0,      0x0,      0x1},
+/* TSTORM_RDMA_ASSERT_LEVEL_OFFSET(pf_id) */
+	{   0xf030,      0x8,      0x0,      0x0,      0x1},
+/* MSTORM_RDMA_ASSERT_LEVEL_OFFSET(pf_id) */
+	{  0x13028,      0x8,      0x0,      0x0,      0x1},
+/* USTORM_RDMA_ASSERT_LEVEL_OFFSET(pf_id) */
+	{  0x12c58,      0x8,      0x0,      0x0,      0x1},
 /* XSTORM_IWARP_RXMIT_STATS_OFFSET(pf_id) */
 	{   0xc9b8,     0x30,      0x0,      0x0,     0x10},
 /* TSTORM_ROCE_EVENTS_STAT_OFFSET(roce_pf_id) */
-	{   0xed90,     0x10,      0x0,      0x0,     0x10},
+	{   0xed90,     0x28,      0x0,      0x0,     0x28},
 /* YSTORM_ROCE_DCQCN_RECEIVED_STATS_OFFSET(roce_pf_id) */
-	{   0xa520,     0x10,      0x0,      0x0,     0x10},
+	{   0xad20,     0x18,      0x0,      0x0,     0x18},
+/* YSTORM_ROCE_ERROR_STATS_OFFSET(roce_pf_id) */
+	{   0xaea0,      0x8,      0x0,      0x0,      0x8},
 /* PSTORM_ROCE_DCQCN_SENT_STATS_OFFSET(roce_pf_id) */
-	{  0x13108,      0x8,      0x0,      0x0,      0x8},
+	{  0x13c38,      0x8,      0x0,      0x0,      0x8},
+/* USTORM_ROCE_CQE_STATS_OFFSET(roce_pf_id) */
+	{  0x13c50,     0x18,      0x0,      0x0,     0x18},
 };
 
 #endif /* __IRO_VALUES_H__ */

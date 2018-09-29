@@ -456,6 +456,12 @@ static void ecore_qm_info_free(struct ecore_hwfn *p_hwfn)
 	OSAL_FREE(p_hwfn->p_dev, qm_info->wfq_data);
 }
 
+static void ecore_dbg_user_data_free(struct ecore_hwfn *p_hwfn)
+{
+	OSAL_FREE(p_hwfn->p_dev, p_hwfn->dbg_user_info);
+	p_hwfn->dbg_user_info = OSAL_NULL;
+}
+
 void ecore_resc_free(struct ecore_dev *p_dev)
 {
 	int i;
@@ -483,6 +489,7 @@ void ecore_resc_free(struct ecore_dev *p_dev)
 		ecore_l2_free(p_hwfn);
 		ecore_dmae_info_free(p_hwfn);
 		ecore_dcbx_info_free(p_hwfn);
+		ecore_dbg_user_data_free(p_hwfn);
 		/* @@@TBD Flush work-queue ? */
 
 		/* destroy doorbell recovery mechanism */
@@ -1334,7 +1341,14 @@ enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev)
 				  "Failed to allocate memory for dcbx structure\n");
 			goto alloc_err;
 		}
-	}
+
+		rc = OSAL_DBG_ALLOC_USER_DATA(p_hwfn, &p_hwfn->dbg_user_info);
+		if (rc) {
+			DP_NOTICE(p_hwfn, false,
+				  "Failed to allocate dbg user info structure\n");
+			goto alloc_err;
+		}
+	} /* hwfn loop */
 
 	p_dev->reset_stats = OSAL_ZALLOC(p_dev, GFP_KERNEL,
 					 sizeof(*p_dev->reset_stats));

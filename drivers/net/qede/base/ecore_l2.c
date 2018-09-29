@@ -608,6 +608,9 @@ ecore_sp_update_accept_mode(struct ecore_hwfn *p_hwfn,
 		SET_FIELD(state, ETH_VPORT_RX_MODE_BCAST_ACCEPT_ALL,
 			  !!(accept_filter & ECORE_ACCEPT_BCAST));
 
+		SET_FIELD(state, ETH_VPORT_RX_MODE_ACCEPT_ANY_VNI,
+			  !!(accept_filter & ECORE_ACCEPT_ANY_VNI));
+
 		p_ramrod->rx_mode.state = OSAL_CPU_TO_LE16(state);
 		DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 			   "vport[%02x] p_ramrod->rx_mode.state = 0x%x\n",
