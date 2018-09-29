@@ -33,6 +33,13 @@
 #define BNXT_MAX_RX_RING_DESC	8192
 #define BNXT_DB_SIZE		0x80
 
+/* Chimp Communication Channel */
+#define GRCPF_REG_CHIMP_CHANNEL_OFFSET		0x0
+#define GRCPF_REG_CHIMP_COMM_TRIGGER		0x100
+/* Kong Communication Channel */
+#define GRCPF_REG_KONG_CHANNEL_OFFSET		0xA00
+#define GRCPF_REG_KONG_COMM_TRIGGER		0xB00
+
 #define BNXT_INT_LAT_TMR_MIN			75
 #define BNXT_INT_LAT_TMR_MAX			150
 #define BNXT_NUM_CMPL_AGGR_INT			36
@@ -252,6 +259,7 @@ struct bnxt {
 #define BNXT_FLAG_MULTI_HOST    (1 << 7)
 #define BNXT_FLAG_EXT_RX_PORT_STATS	(1 << 8)
 #define BNXT_FLAG_EXT_TX_PORT_STATS	(1 << 9)
+#define BNXT_FLAG_KONG_MB_EN	(1 << 10)
 #define BNXT_FLAG_NEW_RM	(1 << 30)
 #define BNXT_FLAG_INIT_DONE	(1 << 31)
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
@@ -259,6 +267,8 @@ struct bnxt {
 #define BNXT_NPAR(bp)		((bp)->port_partition_type)
 #define BNXT_MH(bp)             ((bp)->flags & BNXT_FLAG_MULTI_HOST)
 #define BNXT_SINGLE_PF(bp)      (BNXT_PF(bp) && !BNXT_NPAR(bp) && !BNXT_MH(bp))
+#define BNXT_USE_CHIMP_MB	0 //For non-CFA commands, everything uses Chimp.
+#define BNXT_USE_KONG(bp)	((bp)->flags & BNXT_FLAG_KONG_MB_EN)
 
 	unsigned int		rx_nr_rings;
 	unsigned int		rx_cp_nr_rings;
@@ -299,6 +309,7 @@ struct bnxt {
 	uint8_t			mac_addr[ETHER_ADDR_LEN];
 
 	uint16_t			hwrm_cmd_seq;
+	uint16_t			kong_cmd_seq;
 	void				*hwrm_cmd_resp_addr;
 	rte_iova_t			hwrm_cmd_resp_dma_addr;
 	void				*hwrm_short_cmd_req_addr;
