@@ -2323,3 +2323,55 @@ ecore_eth_tx_queue_maxrate(struct ecore_hwfn *p_hwfn,
 	return ecore_init_vport_rl(p_hwfn, p_ptt, vport, rate,
 				   p_link->speed);
 }
+
+#define RSS_TSTORM_UPDATE_STATUS_MAX_POLL_COUNT    100
+#define RSS_TSTORM_UPDATE_STATUS_POLL_PERIOD_US    1
+
+enum _ecore_status_t
+ecore_update_eth_rss_ind_table_entry(struct ecore_hwfn *p_hwfn,
+				     u8 vport_id,
+				     u8 ind_table_index,
+				     u16 ind_table_value)
+{
+	struct eth_tstorm_rss_update_data update_data = { 0 };
+	void OSAL_IOMEM *addr = OSAL_NULL;
+	enum _ecore_status_t rc;
+	u8 abs_vport_id;
+	u32 cnt = 0;
+
+	OSAL_BUILD_BUG_ON(sizeof(update_data) != sizeof(u64));
+
+	rc = ecore_fw_vport(p_hwfn, vport_id, &abs_vport_id);
+	if (rc != ECORE_SUCCESS)
+		return rc;
+
+	addr = (u8 OSAL_IOMEM *)p_hwfn->regview +
+	       GTT_BAR0_MAP_REG_TSDM_RAM +
+	       TSTORM_ETH_RSS_UPDATE_OFFSET(p_hwfn->rel_pf_id);
+
+	*(u64 *)(&update_data) = DIRECT_REG_RD64(p_hwfn, addr);
+
+	for (cnt = 0; update_data.valid &&
+	     cnt < RSS_TSTORM_UPDATE_STATUS_MAX_POLL_COUNT; cnt++) {
+		OSAL_UDELAY(RSS_TSTORM_UPDATE_STATUS_POLL_PERIOD_US);
+		*(u64 *)(&update_data) = DIRECT_REG_RD64(p_hwfn, addr);
+	}
+
+	if (update_data.valid) {
+		DP_NOTICE(p_hwfn, true,
+			  "rss update valid status is not clear! valid=0x%x vport id=%d ind_Table_idx=%d ind_table_value=%d.\n",
+			  update_data.valid, vport_id, ind_table_index,
+			  ind_table_value);
+
+		return ECORE_AGAIN;
+	}
+
+	update_data.valid	    = 1;
+	update_data.ind_table_index = ind_table_index;
+	update_data.ind_table_value = ind_table_value;
+	update_data.vport_id	    = abs_vport_id;
+
+	DIRECT_REG_WR64(p_hwfn, addr, *(u64 *)(&update_data));
+
+	return ECORE_SUCCESS;
+}
