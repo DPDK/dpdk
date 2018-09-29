@@ -101,7 +101,8 @@ static enum _ecore_status_t ecore_init_rt(struct ecore_hwfn *p_hwfn,
 
 		rc = ecore_dmae_host2grc(p_hwfn, p_ptt,
 					 (osal_uintptr_t)(p_init_val + i),
-					 addr + (i << 2), segment, 0);
+					 addr + (i << 2), segment,
+					 OSAL_NULL /* default parameters */);
 		if (rc != ECORE_SUCCESS)
 			return rc;
 
@@ -165,8 +166,9 @@ static enum _ecore_status_t ecore_init_array_dmae(struct ecore_hwfn *p_hwfn,
 	} else {
 		rc = ecore_dmae_host2grc(p_hwfn, p_ptt,
 					 (osal_uintptr_t)(p_buf +
-							   dmae_data_offset),
-					 addr, size, 0);
+							  dmae_data_offset),
+					 addr, size,
+					 OSAL_NULL /* default parameters */);
 	}
 
 	return rc;
@@ -177,13 +179,15 @@ static enum _ecore_status_t ecore_init_fill_dmae(struct ecore_hwfn *p_hwfn,
 						 u32 addr, u32 fill_count)
 {
 	static u32 zero_buffer[DMAE_MAX_RW_SIZE];
+	struct ecore_dmae_params params;
 
 	OSAL_MEMSET(zero_buffer, 0, sizeof(u32) * DMAE_MAX_RW_SIZE);
 
+	OSAL_MEMSET(&params, 0, sizeof(params));
+	params.flags = ECORE_DMAE_FLAG_RW_REPL_SRC;
 	return ecore_dmae_host2grc(p_hwfn, p_ptt,
 				   (osal_uintptr_t)&zero_buffer[0],
-				   addr, fill_count,
-				   ECORE_DMAE_FLAG_RW_REPL_SRC);
+				   addr, fill_count, &params);
 }
 
 static void ecore_init_fill(struct ecore_hwfn *p_hwfn,

@@ -450,14 +450,17 @@ u32 ecore_vfid_to_concrete(struct ecore_hwfn *p_hwfn, u8 vfid)
  * If this changes, this needs to be revisted.
  */
 
-/* Ecore DMAE
- * =============
- */
+/* DMAE */
+
+#define ECORE_DMAE_FLAGS_IS_SET(params, flag)	\
+	((params) != OSAL_NULL && ((params)->flags & ECORE_DMAE_FLAG_##flag))
+
 static void ecore_dmae_opcode(struct ecore_hwfn *p_hwfn,
 			      const u8 is_src_type_grc,
 			      const u8 is_dst_type_grc,
 			      struct ecore_dmae_params *p_params)
 {
+	u8 src_pfid, dst_pfid, port_id;
 	u16 opcode_b = 0;
 	u32 opcode = 0;
 
@@ -467,16 +470,20 @@ static void ecore_dmae_opcode(struct ecore_hwfn *p_hwfn,
 	 */
 	opcode |= (is_src_type_grc ? DMAE_CMD_SRC_MASK_GRC
 		   : DMAE_CMD_SRC_MASK_PCIE) << DMAE_CMD_SRC_SHIFT;
-	opcode |= (p_hwfn->rel_pf_id & DMAE_CMD_SRC_PF_ID_MASK) <<
-	    DMAE_CMD_SRC_PF_ID_SHIFT;
+	src_pfid = ECORE_DMAE_FLAGS_IS_SET(p_params, PF_SRC) ?
+		   p_params->src_pfid : p_hwfn->rel_pf_id;
+	opcode |= (src_pfid & DMAE_CMD_SRC_PF_ID_MASK) <<
+		  DMAE_CMD_SRC_PF_ID_SHIFT;
 
 	/* The destination of the DMA can be: 0-None 1-PCIe 2-GRC 3-None */
 	opcode |= (is_dst_type_grc ? DMAE_CMD_DST_MASK_GRC
 		   : DMAE_CMD_DST_MASK_PCIE) << DMAE_CMD_DST_SHIFT;
-	opcode |= (p_hwfn->rel_pf_id & DMAE_CMD_DST_PF_ID_MASK) <<
-	    DMAE_CMD_DST_PF_ID_SHIFT;
+	dst_pfid = ECORE_DMAE_FLAGS_IS_SET(p_params, PF_DST) ?
+		   p_params->dst_pfid : p_hwfn->rel_pf_id;
+	opcode |= (dst_pfid & DMAE_CMD_DST_PF_ID_MASK) <<
+		  DMAE_CMD_DST_PF_ID_SHIFT;
 
-	/* DMAE_E4_TODO need to check which value to specifiy here. */
+	/* DMAE_E4_TODO need to check which value to specify here. */
 	/* opcode |= (!b_complete_to_host)<< DMAE_CMD_C_DST_SHIFT; */
 
 	/* Whether to write a completion word to the completion destination:
@@ -486,7 +493,7 @@ static void ecore_dmae_opcode(struct ecore_hwfn *p_hwfn,
 	opcode |= DMAE_CMD_COMP_WORD_EN_MASK << DMAE_CMD_COMP_WORD_EN_SHIFT;
 	opcode |= DMAE_CMD_SRC_ADDR_RESET_MASK << DMAE_CMD_SRC_ADDR_RESET_SHIFT;
 
-	if (p_params->flags & ECORE_DMAE_FLAG_COMPLETION_DST)
+	if (ECORE_DMAE_FLAGS_IS_SET(p_params, COMPLETION_DST))
 		opcode |= 1 << DMAE_CMD_COMP_FUNC_SHIFT;
 
 	/* swapping mode 3 - big endian there should be a define ifdefed in
@@ -494,7 +501,9 @@ static void ecore_dmae_opcode(struct ecore_hwfn *p_hwfn,
 	 */
 	opcode |= DMAE_CMD_ENDIANITY << DMAE_CMD_ENDIANITY_MODE_SHIFT;
 
-	opcode |= p_hwfn->port_id << DMAE_CMD_PORT_ID_SHIFT;
+	port_id = (ECORE_DMAE_FLAGS_IS_SET(p_params, PORT)) ?
+		  p_params->port_id : p_hwfn->port_id;
+	opcode |= port_id << DMAE_CMD_PORT_ID_SHIFT;
 
 	/* reset source address in next go */
 	opcode |= DMAE_CMD_SRC_ADDR_RESET_MASK << DMAE_CMD_SRC_ADDR_RESET_SHIFT;
@@ -503,14 +512,14 @@ static void ecore_dmae_opcode(struct ecore_hwfn *p_hwfn,
 	opcode |= DMAE_CMD_DST_ADDR_RESET_MASK << DMAE_CMD_DST_ADDR_RESET_SHIFT;
 
 	/* SRC/DST VFID: all 1's - pf, otherwise VF id */
-	if (p_params->flags & ECORE_DMAE_FLAG_VF_SRC) {
+	if (ECORE_DMAE_FLAGS_IS_SET(p_params, VF_SRC)) {
 		opcode |= (1 << DMAE_CMD_SRC_VF_ID_VALID_SHIFT);
 		opcode_b |= (p_params->src_vfid << DMAE_CMD_SRC_VF_ID_SHIFT);
 	} else {
 		opcode_b |= (DMAE_CMD_SRC_VF_ID_MASK <<
 			     DMAE_CMD_SRC_VF_ID_SHIFT);
 	}
-	if (p_params->flags & ECORE_DMAE_FLAG_VF_DST) {
+	if (ECORE_DMAE_FLAGS_IS_SET(p_params, VF_DST)) {
 		opcode |= 1 << DMAE_CMD_DST_VF_ID_VALID_SHIFT;
 		opcode_b |= p_params->dst_vfid << DMAE_CMD_DST_VF_ID_SHIFT;
 	} else {
@@ -855,7 +864,7 @@ ecore_dmae_execute_command(struct ecore_hwfn *p_hwfn,
 	for (i = 0; i <= cnt_split; i++) {
 		offset = length_limit * i;
 
-		if (!(p_params->flags & ECORE_DMAE_FLAG_RW_REPL_SRC)) {
+		if (!ECORE_DMAE_FLAGS_IS_SET(p_params, RW_REPL_SRC)) {
 			if (src_type == ECORE_DMAE_ADDRESS_GRC)
 				src_addr_split = src_addr + offset;
 			else
@@ -896,18 +905,15 @@ ecore_dmae_execute_command(struct ecore_hwfn *p_hwfn,
 	return ecore_status;
 }
 
-enum _ecore_status_t
-ecore_dmae_host2grc(struct ecore_hwfn *p_hwfn,
-		    struct ecore_ptt *p_ptt,
-		    u64 source_addr,
-		    u32 grc_addr, u32 size_in_dwords, u32 flags)
+enum _ecore_status_t ecore_dmae_host2grc(struct ecore_hwfn *p_hwfn,
+					 struct ecore_ptt *p_ptt,
+					 u64 source_addr,
+					 u32 grc_addr,
+					 u32 size_in_dwords,
+					 struct ecore_dmae_params *p_params)
 {
 	u32 grc_addr_in_dw = grc_addr / sizeof(u32);
-	struct ecore_dmae_params params;
 	enum _ecore_status_t rc;
-
-	OSAL_MEMSET(&params, 0, sizeof(struct ecore_dmae_params));
-	params.flags = flags;
 
 	OSAL_SPIN_LOCK(&p_hwfn->dmae_info.lock);
 
@@ -915,32 +921,29 @@ ecore_dmae_host2grc(struct ecore_hwfn *p_hwfn,
 					grc_addr_in_dw,
 					ECORE_DMAE_ADDRESS_HOST_VIRT,
 					ECORE_DMAE_ADDRESS_GRC,
-					size_in_dwords, &params);
+					size_in_dwords, p_params);
 
 	OSAL_SPIN_UNLOCK(&p_hwfn->dmae_info.lock);
 
 	return rc;
 }
 
-enum _ecore_status_t
-ecore_dmae_grc2host(struct ecore_hwfn *p_hwfn,
-		    struct ecore_ptt *p_ptt,
-		    u32 grc_addr,
-		    dma_addr_t dest_addr, u32 size_in_dwords, u32 flags)
+enum _ecore_status_t ecore_dmae_grc2host(struct ecore_hwfn *p_hwfn,
+					 struct ecore_ptt *p_ptt,
+					 u32 grc_addr,
+					 dma_addr_t dest_addr,
+					 u32 size_in_dwords,
+					 struct ecore_dmae_params *p_params)
 {
 	u32 grc_addr_in_dw = grc_addr / sizeof(u32);
-	struct ecore_dmae_params params;
 	enum _ecore_status_t rc;
-
-	OSAL_MEMSET(&params, 0, sizeof(struct ecore_dmae_params));
-	params.flags = flags;
 
 	OSAL_SPIN_LOCK(&p_hwfn->dmae_info.lock);
 
 	rc = ecore_dmae_execute_command(p_hwfn, p_ptt, grc_addr_in_dw,
 					dest_addr, ECORE_DMAE_ADDRESS_GRC,
 					ECORE_DMAE_ADDRESS_HOST_VIRT,
-					size_in_dwords, &params);
+					size_in_dwords, p_params);
 
 	OSAL_SPIN_UNLOCK(&p_hwfn->dmae_info.lock);
 
@@ -989,7 +992,6 @@ enum _ecore_status_t ecore_dmae_sanity(struct ecore_hwfn *p_hwfn,
 				       const char *phase)
 {
 	u32 size = OSAL_PAGE_SIZE / 2, val;
-	struct ecore_dmae_params params;
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 	dma_addr_t p_phys;
 	void *p_virt;
@@ -1021,9 +1023,9 @@ enum _ecore_status_t ecore_dmae_sanity(struct ecore_hwfn *p_hwfn,
 		   (unsigned long)(p_phys + size),
 		   (u8 *)p_virt + size, size);
 
-	OSAL_MEMSET(&params, 0, sizeof(params));
 	rc = ecore_dmae_host2host(p_hwfn, p_ptt, p_phys, p_phys + size,
-				  size / 4 /* size_in_dwords */, &params);
+				  size / 4 /* size_in_dwords */,
+				  OSAL_NULL /* default parameters */);
 	if (rc != ECORE_SUCCESS) {
 		DP_NOTICE(p_hwfn, false,
 			  "DMAE sanity [%s]: ecore_dmae_host2host() failed. rc = %d.\n",
@@ -1053,4 +1055,33 @@ enum _ecore_status_t ecore_dmae_sanity(struct ecore_hwfn *p_hwfn,
 out:
 	OSAL_DMA_FREE_COHERENT(p_hwfn->p_dev, p_virt, p_phys, 2 * size);
 	return rc;
+}
+
+void ecore_ppfid_wr(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+		    u8 abs_ppfid, u32 hw_addr, u32 val)
+{
+	u8 pfid = ECORE_PFID_BY_PPFID(p_hwfn, abs_ppfid);
+
+	ecore_fid_pretend(p_hwfn, p_ptt,
+			  pfid << PXP_PRETEND_CONCRETE_FID_PFID_SHIFT);
+	ecore_wr(p_hwfn, p_ptt, hw_addr, val);
+	ecore_fid_pretend(p_hwfn, p_ptt,
+			  p_hwfn->rel_pf_id <<
+			  PXP_PRETEND_CONCRETE_FID_PFID_SHIFT);
+}
+
+u32 ecore_ppfid_rd(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+		   u8 abs_ppfid, u32 hw_addr)
+{
+	u8 pfid = ECORE_PFID_BY_PPFID(p_hwfn, abs_ppfid);
+	u32 val;
+
+	ecore_fid_pretend(p_hwfn, p_ptt,
+			  pfid << PXP_PRETEND_CONCRETE_FID_PFID_SHIFT);
+	val = ecore_rd(p_hwfn, p_ptt, hw_addr);
+	ecore_fid_pretend(p_hwfn, p_ptt,
+			  p_hwfn->rel_pf_id <<
+			  PXP_PRETEND_CONCRETE_FID_PFID_SHIFT);
+
+	return val;
 }

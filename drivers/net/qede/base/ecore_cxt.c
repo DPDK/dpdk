@@ -2114,7 +2114,7 @@ ecore_cxt_dynamic_ilt_alloc(struct ecore_hwfn *p_hwfn,
 
 	ecore_dmae_host2grc(p_hwfn, p_ptt, (u64)(osal_uintptr_t)&ilt_hw_entry,
 			    reg_offset, sizeof(ilt_hw_entry) / sizeof(u32),
-			    0 /* no flags */);
+			    OSAL_NULL /* default parameters */);
 
 	if (elem_type == ECORE_ELEM_CXT) {
 		u32 last_cid_allocated = (1 + (iid / elems_per_p)) *
@@ -2221,7 +2221,7 @@ ecore_cxt_free_ilt_range(struct ecore_hwfn *p_hwfn,
 				    (u64)(osal_uintptr_t)&ilt_hw_entry,
 				    reg_offset,
 				    sizeof(ilt_hw_entry) / sizeof(u32),
-				    0 /* no flags */);
+				    OSAL_NULL /* default parameters */);
 	}
 
 	ecore_ptt_release(p_hwfn, p_ptt);

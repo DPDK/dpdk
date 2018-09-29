@@ -1561,11 +1561,13 @@ void ecore_int_cau_conf_sb(struct ecore_hwfn *p_hwfn,
 		ecore_dmae_host2grc(p_hwfn, p_ptt,
 				    (u64)(osal_uintptr_t)&phys_addr,
 				    CAU_REG_SB_ADDR_MEMORY +
-				    igu_sb_id * sizeof(u64), 2, 0);
+				    igu_sb_id * sizeof(u64), 2,
+				    OSAL_NULL /* default parameters */);
 		ecore_dmae_host2grc(p_hwfn, p_ptt,
 				    (u64)(osal_uintptr_t)&sb_entry,
 				    CAU_REG_SB_VAR_MEMORY +
-				    igu_sb_id * sizeof(u64), 2, 0);
+				    igu_sb_id * sizeof(u64), 2,
+				    OSAL_NULL /* default parameters */);
 	} else {
 		/* Initialize Status Block Address */
 		STORE_RT_REG_AGG(p_hwfn,
@@ -2646,7 +2648,8 @@ enum _ecore_status_t ecore_int_set_timer_res(struct ecore_hwfn *p_hwfn,
 
 	rc = ecore_dmae_grc2host(p_hwfn, p_ptt, CAU_REG_SB_VAR_MEMORY +
 				 sb_id * sizeof(u64),
-				 (u64)(osal_uintptr_t)&sb_entry, 2, 0);
+				 (u64)(osal_uintptr_t)&sb_entry, 2,
+				 OSAL_NULL /* default parameters */);
 	if (rc != ECORE_SUCCESS) {
 		DP_ERR(p_hwfn, "dmae_grc2host failed %d\n", rc);
 		return rc;
@@ -2659,8 +2662,8 @@ enum _ecore_status_t ecore_int_set_timer_res(struct ecore_hwfn *p_hwfn,
 
 	rc = ecore_dmae_host2grc(p_hwfn, p_ptt,
 				 (u64)(osal_uintptr_t)&sb_entry,
-				 CAU_REG_SB_VAR_MEMORY +
-				 sb_id * sizeof(u64), 2, 0);
+				 CAU_REG_SB_VAR_MEMORY + sb_id * sizeof(u64), 2,
+				 OSAL_NULL /* default parameters */);
 	if (rc != ECORE_SUCCESS) {
 		DP_ERR(p_hwfn, "dmae_host2grc failed %d\n", rc);
 		return rc;

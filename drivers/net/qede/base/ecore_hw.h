@@ -134,8 +134,8 @@ struct ecore_ptt *ecore_get_reserved_ptt(struct ecore_hwfn	*p_hwfn,
  *
  * @param p_hwfn
  * @param p_ptt
- * @param val
  * @param hw_addr
+ * @param val
  */
 void ecore_wr(struct ecore_hwfn	*p_hwfn,
 	      struct ecore_ptt	*p_ptt,
@@ -147,7 +147,6 @@ void ecore_wr(struct ecore_hwfn	*p_hwfn,
  *
  * @param p_hwfn
  * @param p_ptt
- * @param val
  * @param hw_addr
  */
 u32 ecore_rd(struct ecore_hwfn	*p_hwfn,
@@ -268,5 +267,30 @@ void ecore_hw_err_notify(struct ecore_hwfn *p_hwfn,
 enum _ecore_status_t ecore_dmae_sanity(struct ecore_hwfn *p_hwfn,
 				       struct ecore_ptt *p_ptt,
 				       const char *phase);
+
+/**
+ * @brief ecore_ppfid_wr - Write value to BAR using the given ptt while
+ *	pretending to a PF to which the given PPFID pertains.
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ * @param abs_ppfid
+ * @param hw_addr
+ * @param val
+ */
+void ecore_ppfid_wr(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+		    u8 abs_ppfid, u32 hw_addr, u32 val);
+
+/**
+ * @brief ecore_ppfid_rd - Read value from BAR using the given ptt while
+ *	 pretending to a PF to which the given PPFID pertains.
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ * @param abs_ppfid
+ * @param hw_addr
+ */
+u32 ecore_ppfid_rd(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+		   u8 abs_ppfid, u32 hw_addr);
 
 #endif /* __ECORE_HW_H__ */

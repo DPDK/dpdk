@@ -25,9 +25,6 @@
 					     rel_pfid)
 #define MCP_PF_ID(p_hwfn)	MCP_PF_ID_BY_REL(p_hwfn, (p_hwfn)->rel_pf_id)
 
-#define MFW_PORT(_p_hwfn)	((_p_hwfn)->abs_pf_id % \
-				 ecore_device_num_ports((_p_hwfn)->p_dev))
-
 struct ecore_mcp_info {
 	/* List for mailbox commands which were sent and wait for a response */
 	osal_list_t cmd_list;
@@ -565,5 +562,23 @@ ecore_mcp_read_ufp_config(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt);
 
 void ecore_mcp_wol_wr(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 		      u32 offset, u32 val);
+
+/**
+ * @brief Get the engine affinity configuration.
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ */
+enum _ecore_status_t ecore_mcp_get_engine_config(struct ecore_hwfn *p_hwfn,
+						 struct ecore_ptt *p_ptt);
+
+/**
+ * @brief Get the PPFID bitmap.
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ */
+enum _ecore_status_t ecore_mcp_get_ppfid_bitmap(struct ecore_hwfn *p_hwfn,
+						struct ecore_ptt *p_ptt);
 
 #endif /* __ECORE_MCP_H__ */

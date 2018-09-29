@@ -2217,7 +2217,8 @@ int ecore_get_rxq_coalesce(struct ecore_hwfn *p_hwfn,
 
 	rc = ecore_dmae_grc2host(p_hwfn, p_ptt, CAU_REG_SB_VAR_MEMORY +
 				 p_cid->sb_igu_id * sizeof(u64),
-				 (u64)(osal_uintptr_t)&sb_entry, 2, 0);
+				 (u64)(osal_uintptr_t)&sb_entry, 2,
+				 OSAL_NULL /* default parameters */);
 	if (rc != ECORE_SUCCESS) {
 		DP_ERR(p_hwfn, "dmae_grc2host failed %d\n", rc);
 		return rc;
@@ -2251,7 +2252,8 @@ int ecore_get_txq_coalesce(struct ecore_hwfn *p_hwfn,
 
 	rc = ecore_dmae_grc2host(p_hwfn, p_ptt, CAU_REG_SB_VAR_MEMORY +
 				 p_cid->sb_igu_id * sizeof(u64),
-				 (u64)(osal_uintptr_t)&sb_entry, 2, 0);
+				 (u64)(osal_uintptr_t)&sb_entry, 2,
+				 OSAL_NULL /* default parameters */);
 	if (rc != ECORE_SUCCESS) {
 		DP_ERR(p_hwfn, "dmae_grc2host failed %d\n", rc);
 		return rc;

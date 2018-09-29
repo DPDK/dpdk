@@ -893,12 +893,19 @@ ecore_dcbx_mib_update_event(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 
 	ecore_dcbx_get_params(p_hwfn, &p_hwfn->p_dcbx_info->get, type);
 
-	/* Update the DSCP to TC mapping bit if required */
+	/* Update the DSCP to TC mapping enable bit if required */
 	if ((type == ECORE_DCBX_OPERATIONAL_MIB) &&
 	    p_hwfn->p_dcbx_info->dscp_nig_update) {
 		u8 val = !!p_hwfn->p_dcbx_info->get.dscp.enabled;
+		u32 addr = NIG_REG_DSCP_TO_TC_MAP_ENABLE;
 
-		ecore_wr(p_hwfn, p_ptt, NIG_REG_DSCP_TO_TC_MAP_ENABLE, val);
+		rc = ecore_all_ppfids_wr(p_hwfn, p_ptt, addr, val);
+		if (rc != ECORE_SUCCESS) {
+			DP_NOTICE(p_hwfn, false,
+				  "Failed to update the DSCP to TC mapping enable bit\n");
+			return rc;
+		}
+
 		p_hwfn->p_dcbx_info->dscp_nig_update = false;
 	}
 

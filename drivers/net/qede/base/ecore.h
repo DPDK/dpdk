@@ -19,6 +19,7 @@
 #include <zlib.h>
 #endif
 
+#include "ecore_status.h"
 #include "ecore_hsi_common.h"
 #include "ecore_hsi_debug_tools.h"
 #include "ecore_hsi_init_func.h"
@@ -207,6 +208,7 @@ struct ecore_l2_info;
 struct ecore_igu_info;
 struct ecore_mcp_info;
 struct ecore_dcbx_info;
+struct ecore_llh_info;
 
 struct ecore_rt_data {
 	u32	*init_val;
@@ -743,6 +745,7 @@ struct ecore_dev {
 #endif
 #define ECORE_IS_AH(dev)	((dev)->type == ECORE_DEV_TYPE_AH)
 #define ECORE_IS_K2(dev)	ECORE_IS_AH(dev)
+#define ECORE_IS_E4(dev)	(ECORE_IS_BB(dev) || ECORE_IS_AH(dev))
 
 	u16 vendor_id;
 	u16 device_id;
@@ -837,7 +840,25 @@ struct ecore_dev {
 	/* HW functions */
 	u8				num_hwfns;
 	struct ecore_hwfn		hwfns[MAX_HWFNS_PER_DEVICE];
+#define ECORE_LEADING_HWFN(dev)		(&dev->hwfns[0])
 #define ECORE_IS_CMT(dev)		((dev)->num_hwfns > 1)
+
+	/* Engine affinity */
+	u8				l2_affin_hint;
+	u8				fir_affin;
+	u8				iwarp_affin;
+	/* Macro for getting the engine-affinitized hwfn for FCoE/iSCSI/RoCE */
+#define ECORE_FIR_AFFIN_HWFN(dev)	(&dev->hwfns[dev->fir_affin])
+	/* Macro for getting the engine-affinitized hwfn for iWARP */
+#define ECORE_IWARP_AFFIN_HWFN(dev)	(&dev->hwfns[dev->iwarp_affin])
+	/* Generic macro for getting the engine-affinitized hwfn */
+#define ECORE_AFFIN_HWFN(dev) \
+	(ECORE_IS_IWARP_PERSONALITY(ECORE_LEADING_HWFN(dev)) ? \
+	 ECORE_IWARP_AFFIN_HWFN(dev) : \
+	 ECORE_FIR_AFFIN_HWFN(dev))
+	/* Macro for getting the index (0/1) of the engine-affinitized hwfn */
+#define ECORE_AFFIN_HWFN_IDX(dev) \
+	(IS_LEAD_HWFN(ECORE_AFFIN_HWFN(dev)) ? 0 : 1)
 
 	/* SRIOV */
 	struct ecore_hw_sriov_info	*p_iov_info;
@@ -873,6 +894,9 @@ struct ecore_dev {
 #ifndef ASIC_ONLY
 	bool				b_is_emul_full;
 #endif
+	/* LLH info */
+	u8				ppfid_bitmap;
+	struct ecore_llh_info		*p_llh_info;
 
 	/* Indicates whether this PF serves a storage target */
 	bool				b_is_target;
@@ -974,6 +998,29 @@ u16 ecore_init_qm_get_num_pf_rls(struct ecore_hwfn *p_hwfn);
 u16 ecore_init_qm_get_num_vports(struct ecore_hwfn *p_hwfn);
 u16 ecore_init_qm_get_num_pqs(struct ecore_hwfn *p_hwfn);
 
-#define ECORE_LEADING_HWFN(dev)	(&dev->hwfns[0])
+#define MFW_PORT(_p_hwfn)	((_p_hwfn)->abs_pf_id % \
+				 ecore_device_num_ports((_p_hwfn)->p_dev))
+
+/* The PFID<->PPFID calculation is based on the relative index of a PF on its
+ * port. In BB there is a bug in the LLH in which the PPFID is actually engine
+ * based, and thus it equals the PFID.
+ */
+#define ECORE_PFID_BY_PPFID(_p_hwfn, abs_ppfid) \
+	(ECORE_IS_BB((_p_hwfn)->p_dev) ? \
+	 (abs_ppfid) : \
+	 (abs_ppfid) * (_p_hwfn)->p_dev->num_ports_in_engine + \
+	 MFW_PORT(_p_hwfn))
+#define ECORE_PPFID_BY_PFID(_p_hwfn) \
+	(ECORE_IS_BB((_p_hwfn)->p_dev) ? \
+	 (_p_hwfn)->rel_pf_id : \
+	 (_p_hwfn)->rel_pf_id / (_p_hwfn)->p_dev->num_ports_in_engine)
+
+enum _ecore_status_t ecore_all_ppfids_wr(struct ecore_hwfn *p_hwfn,
+					 struct ecore_ptt *p_ptt, u32 addr,
+					 u32 val);
+
+/* Utility functions for dumping the content of the NIG LLH filters */
+enum _ecore_status_t ecore_llh_dump_ppfid(struct ecore_dev *p_dev, u8 ppfid);
+enum _ecore_status_t ecore_llh_dump_all(struct ecore_dev *p_dev);
 
 #endif /* __ECORE_H */
