@@ -285,10 +285,6 @@ struct bnxt {
 	struct bnxt_filter_info	*filter_info;
 	STAILQ_HEAD(, bnxt_filter_info)	free_filter_list;
 
-	/* VNIC pointer for flow filter (VMDq) pools */
-#define MAX_FF_POOLS	256
-	STAILQ_HEAD(, bnxt_vnic_info)	ff_pool[MAX_FF_POOLS];
-
 	struct bnxt_irq         *irq_tbl;
 
 #define MAX_NUM_MAC_ADDR	32

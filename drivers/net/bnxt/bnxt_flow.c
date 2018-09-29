@@ -678,7 +678,7 @@ bnxt_get_l2_filter(struct bnxt *bp, struct bnxt_filter_info *nf,
 	struct bnxt_vnic_info *vnic0;
 	int rc;
 
-	vnic0 = STAILQ_FIRST(&bp->ff_pool[0]);
+	vnic0 = &bp->vnic_info[0];
 	f0 = STAILQ_FIRST(&vnic0->filter);
 
 	/* This flow has same DST MAC as the port/l2 filter. */
@@ -763,8 +763,8 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 		}
 		PMD_DRV_LOG(DEBUG, "Queue index %d\n", act_q->index);
 
-		vnic0 = STAILQ_FIRST(&bp->ff_pool[0]);
-		vnic = STAILQ_FIRST(&bp->ff_pool[act_q->index]);
+		vnic0 = &bp->vnic_info[0];
+		vnic =  &bp->vnic_info[act_q->index];
 		if (vnic == NULL) {
 			rte_flow_error_set(error,
 					   EINVAL,
@@ -786,7 +786,7 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 		PMD_DRV_LOG(DEBUG, "VNIC found\n");
 		break;
 	case RTE_FLOW_ACTION_TYPE_DROP:
-		vnic0 = STAILQ_FIRST(&bp->ff_pool[0]);
+		vnic0 = &bp->vnic_info[0];
 		filter1 = bnxt_get_l2_filter(bp, filter, vnic0);
 		if (filter1 == NULL) {
 			rc = -ENOSPC;
@@ -802,7 +802,7 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 				HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_FLAGS_DROP;
 		break;
 	case RTE_FLOW_ACTION_TYPE_COUNT:
-		vnic0 = STAILQ_FIRST(&bp->ff_pool[0]);
+		vnic0 = &bp->vnic_info[0];
 		filter1 = bnxt_get_l2_filter(bp, filter, vnic0);
 		if (filter1 == NULL) {
 			rc = -ENOSPC;
@@ -854,7 +854,7 @@ bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
 		filter->mirror_vnic_id = dflt_vnic;
 		filter->enables |= NTUPLE_FLTR_ALLOC_INPUT_EN_MIRROR_VNIC_ID;
 
-		vnic0 = STAILQ_FIRST(&bp->ff_pool[0]);
+		vnic0 = &bp->vnic_info[0];
 		filter1 = bnxt_get_l2_filter(bp, filter, vnic0);
 		if (filter1 == NULL) {
 			rc = -ENOSPC;

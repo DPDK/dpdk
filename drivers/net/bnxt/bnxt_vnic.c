@@ -57,29 +57,6 @@ void bnxt_init_vnics(struct bnxt *bp)
 		STAILQ_INIT(&vnic->flow_list);
 		STAILQ_INSERT_TAIL(&bp->free_vnic_list, vnic, next);
 	}
-	for (i = 0; i < MAX_FF_POOLS; i++)
-		STAILQ_INIT(&bp->ff_pool[i]);
-}
-
-int bnxt_free_vnic(struct bnxt *bp, struct bnxt_vnic_info *vnic,
-			  int pool)
-{
-	struct bnxt_vnic_info *temp;
-
-	temp = STAILQ_FIRST(&bp->ff_pool[pool]);
-	while (temp) {
-		if (temp == vnic) {
-			STAILQ_REMOVE(&bp->ff_pool[pool], vnic,
-				      bnxt_vnic_info, next);
-			vnic->fw_vnic_id = (uint16_t)HWRM_NA_SIGNATURE;
-			STAILQ_INSERT_TAIL(&bp->free_vnic_list, vnic,
-					   next);
-			return 0;
-		}
-		temp = STAILQ_NEXT(temp, next);
-	}
-	PMD_DRV_LOG(ERR, "VNIC %p is not found in pool[%d]\n", vnic, pool);
-	return -EINVAL;
 }
 
 struct bnxt_vnic_info *bnxt_alloc_vnic(struct bnxt *bp)
@@ -98,26 +75,22 @@ struct bnxt_vnic_info *bnxt_alloc_vnic(struct bnxt *bp)
 
 void bnxt_free_all_vnics(struct bnxt *bp)
 {
-	struct bnxt_vnic_info *temp, *next;
-	int i;
+	struct bnxt_vnic_info *temp;
+	unsigned int i;
 
-	for (i = 0; i < MAX_FF_POOLS; i++) {
-		temp = STAILQ_FIRST(&bp->ff_pool[i]);
-		while (temp) {
-			next = STAILQ_NEXT(temp, next);
-			STAILQ_REMOVE(&bp->ff_pool[i], temp, bnxt_vnic_info,
-				      next);
-			STAILQ_INSERT_TAIL(&bp->free_vnic_list, temp, next);
-			temp = next;
-		}
+	for (i = 0; i < bp->nr_vnics; i++) {
+		temp = &bp->vnic_info[i];
+		STAILQ_INSERT_TAIL(&bp->free_vnic_list, temp, next);
 	}
 }
 
 void bnxt_free_vnic_attributes(struct bnxt *bp)
 {
 	struct bnxt_vnic_info *vnic;
+	unsigned int i;
 
-	STAILQ_FOREACH(vnic, &bp->free_vnic_list, next) {
+	for (i = 0; i < bp->max_vnics; i++) {
+		vnic = &bp->vnic_info[i];
 		if (vnic->rss_table) {
 			/* 'Unreserve' the rss_table */
 			/* N/A */

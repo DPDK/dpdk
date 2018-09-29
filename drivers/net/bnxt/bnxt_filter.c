@@ -80,21 +80,21 @@ void bnxt_free_all_filters(struct bnxt *bp)
 {
 	struct bnxt_vnic_info *vnic;
 	struct bnxt_filter_info *filter, *temp_filter;
-	int i;
+	unsigned int i;
 
-	for (i = 0; i < MAX_FF_POOLS; i++) {
-		STAILQ_FOREACH(vnic, &bp->ff_pool[i], next) {
-			filter = STAILQ_FIRST(&vnic->filter);
-			while (filter) {
-				temp_filter = STAILQ_NEXT(filter, next);
-				STAILQ_REMOVE(&vnic->filter, filter,
-					      bnxt_filter_info, next);
-				STAILQ_INSERT_TAIL(&bp->free_filter_list,
-						   filter, next);
-				filter = temp_filter;
-			}
-			STAILQ_INIT(&vnic->filter);
+//	for (i = 0; i < MAX_FF_POOLS; i++) {
+	for (i = 0; i < bp->nr_vnics; i++) {
+		vnic = &bp->vnic_info[i];
+		filter = STAILQ_FIRST(&vnic->filter);
+		while (filter) {
+			temp_filter = STAILQ_NEXT(filter, next);
+			STAILQ_REMOVE(&vnic->filter, filter,
+					bnxt_filter_info, next);
+			STAILQ_INSERT_TAIL(&bp->free_filter_list,
+					filter, next);
+			filter = temp_filter;
 		}
+		STAILQ_INIT(&vnic->filter);
 	}
 
 	for (i = 0; i < bp->pf.max_vfs; i++) {
