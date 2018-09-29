@@ -26,7 +26,7 @@
 
 #include <rte_io.h>
 
-#define HWRM_CMD_TIMEOUT		10000
+#define HWRM_CMD_TIMEOUT		6000000
 #define HWRM_SPEC_CODE_1_8_3		0x10803
 #define HWRM_VERSION_1_9_1		0x10901
 
@@ -135,7 +135,7 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 			if (*valid == HWRM_RESP_VALID_KEY)
 				break;
 		}
-		rte_delay_us(600);
+		rte_delay_us(1);
 	}
 
 	if (i >= HWRM_CMD_TIMEOUT) {
