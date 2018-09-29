@@ -2158,7 +2158,9 @@ static void ecore_iov_vf_mbx_start_vport(struct ecore_hwfn *p_hwfn,
 	params.vport_id = vf->vport_id;
 	params.max_buffers_per_cqe = start->max_buffers_per_cqe;
 	params.mtu = vf->mtu;
-	params.check_mac = true;
+
+	/* Non trusted VFs should enable control frame filtering */
+	params.check_mac = !vf->p_vf_info.is_trusted_configured;
 
 	rc = ecore_sp_eth_vport_start(p_hwfn, &params);
 	if (rc != ECORE_SUCCESS) {

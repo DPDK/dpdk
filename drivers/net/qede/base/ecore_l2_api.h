@@ -347,7 +347,10 @@ struct ecore_sp_vport_update_params {
 	/* MTU change - notice this requires the vport to be disabled.
 	 * If non-zero, value would be used.
 	 */
-	u16 mtu;
+	u16                     mtu;
+	u8			update_ctl_frame_check;
+	u8			mac_chk_en;
+	u8			ethtype_chk_en;
 };
 
 /**
