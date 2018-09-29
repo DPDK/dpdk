@@ -424,20 +424,20 @@ static void ecore_init_pxp_arb(struct bnx2x_softc *sc, int r_order,
 	uint32_t val, i;
 
 	if (r_order > MAX_RD_ORD) {
-		ECORE_MSG("read order of %d  order adjusted to %d",
+		ECORE_MSG(sc, "read order of %d  order adjusted to %d",
 			   r_order, MAX_RD_ORD);
 		r_order = MAX_RD_ORD;
 	}
 	if (w_order > MAX_WR_ORD) {
-		ECORE_MSG("write order of %d  order adjusted to %d",
+		ECORE_MSG(sc, "write order of %d  order adjusted to %d",
 			   w_order, MAX_WR_ORD);
 		w_order = MAX_WR_ORD;
 	}
 	if (CHIP_REV_IS_FPGA(sc)) {
-		ECORE_MSG("write order adjusted to 1 for FPGA");
+		ECORE_MSG(sc, "write order adjusted to 1 for FPGA");
 		w_order = 0;
 	}
-	ECORE_MSG("read order %d  write order %d", r_order, w_order);
+	ECORE_MSG(sc, "read order %d  write order %d", r_order, w_order);
 
 	for (i = 0; i < NUM_RD_Q-1; i++) {
 		REG_WR(sc, read_arb_addr[i].l, read_arb_data[i][r_order].l);

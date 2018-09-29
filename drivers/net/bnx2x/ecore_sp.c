@@ -53,14 +53,14 @@ ecore_exe_queue_init(struct bnx2x_softc *sc __rte_unused,
 	o->execute = exec;
 	o->get = get;
 
-	ECORE_MSG("Setup the execution queue with the chunk length of %d",
+	ECORE_MSG(sc, "Setup the execution queue with the chunk length of %d",
 		  exe_len);
 }
 
 static void ecore_exe_queue_free_elem(struct bnx2x_softc *sc __rte_unused,
 				      struct ecore_exeq_elem *elem)
 {
-	ECORE_MSG("Deleting an exe_queue element");
+	ECORE_MSG(sc, "Deleting an exe_queue element");
 	ECORE_FREE(sc, elem, sizeof(*elem));
 }
 
@@ -106,7 +106,7 @@ static int ecore_exe_queue_add(struct bnx2x_softc *sc,
 		/* Check if this request is ok */
 		rc = o->validate(sc, o->owner, elem);
 		if (rc) {
-			ECORE_MSG("Preamble failed: %d", rc);
+			ECORE_MSG(sc, "Preamble failed: %d", rc);
 			goto free_and_exit;
 		}
 	}
@@ -176,8 +176,8 @@ static int ecore_exe_queue_step(struct bnx2x_softc *sc,
 	 */
 	if (!ECORE_LIST_IS_EMPTY(&o->pending_comp)) {
 		if (ECORE_TEST_BIT(RAMROD_DRV_CLR_ONLY, ramrod_flags)) {
-			ECORE_MSG
-			    ("RAMROD_DRV_CLR_ONLY requested: resetting a pending_comp list");
+			ECORE_MSG(sc,
+				  "RAMROD_DRV_CLR_ONLY requested: resetting a pending_comp list");
 			__ecore_exe_queue_reset_pending(sc, o);
 		} else {
 			return ECORE_PENDING;
@@ -240,7 +240,7 @@ static struct ecore_exeq_elem *ecore_exe_queue_alloc_elem(struct
 							  bnx2x_softc *sc
 							  __rte_unused)
 {
-	ECORE_MSG("Allocating a new exe_queue element");
+	ECORE_MSG(sc, "Allocating a new exe_queue element");
 	return ECORE_ZALLOC(sizeof(struct ecore_exeq_elem), GFP_ATOMIC, sc);
 }
 
@@ -290,14 +290,14 @@ static int ecore_state_wait(struct bnx2x_softc *sc, int state,
 	if (CHIP_REV_IS_EMUL(sc))
 		cnt *= 20;
 
-	ECORE_MSG("waiting for state to become %d", state);
+	ECORE_MSG(sc, "waiting for state to become %d", state);
 
 	ECORE_MIGHT_SLEEP();
 	while (cnt--) {
 		bnx2x_intr_legacy(sc, 1);
 		if (!ECORE_TEST_BIT(state, pstate)) {
 #ifdef ECORE_STOP_ON_ERROR
-			ECORE_MSG("exit  (cnt %d)", 5000 - cnt);
+			ECORE_MSG(sc, "exit  (cnt %d)", 5000 - cnt);
 #endif
 			return ECORE_SUCCESS;
 		}
@@ -309,7 +309,7 @@ static int ecore_state_wait(struct bnx2x_softc *sc, int state,
 	}
 
 	/* timeout! */
-	PMD_DRV_LOG(ERR, "timeout waiting for state %d", state);
+	PMD_DRV_LOG(ERR, sc, "timeout waiting for state %d", state);
 #ifdef ECORE_STOP_ON_ERROR
 	ecore_panic();
 #endif
@@ -370,11 +370,11 @@ static int __ecore_vlan_mac_h_write_trylock(struct bnx2x_softc *sc __rte_unused,
 					    struct ecore_vlan_mac_obj *o)
 {
 	if (o->head_reader) {
-		ECORE_MSG("vlan_mac_lock writer - There are readers; Busy");
+		ECORE_MSG(sc, "vlan_mac_lock writer - There are readers; Busy");
 		return ECORE_BUSY;
 	}
 
-	ECORE_MSG("vlan_mac_lock writer - Taken");
+	ECORE_MSG(sc, "vlan_mac_lock writer - Taken");
 	return ECORE_SUCCESS;
 }
 
@@ -394,13 +394,13 @@ static void __ecore_vlan_mac_h_exec_pending(struct bnx2x_softc *sc,
 	int rc;
 	unsigned long ramrod_flags = o->saved_ramrod_flags;
 
-	ECORE_MSG("vlan_mac_lock execute pending command with ramrod flags %lu",
+	ECORE_MSG(sc, "vlan_mac_lock execute pending command with ramrod flags %lu",
 		  ramrod_flags);
 	o->head_exe_request = FALSE;
 	o->saved_ramrod_flags = 0;
 	rc = ecore_exe_queue_step(sc, &o->exe_queue, &ramrod_flags);
 	if (rc != ECORE_SUCCESS) {
-		PMD_DRV_LOG(ERR,
+		PMD_DRV_LOG(ERR, sc,
 			    "execution of pending commands failed with rc %d",
 			    rc);
 #ifdef ECORE_STOP_ON_ERROR
@@ -425,7 +425,7 @@ static void __ecore_vlan_mac_h_pend(struct bnx2x_softc *sc __rte_unused,
 {
 	o->head_exe_request = TRUE;
 	o->saved_ramrod_flags = ramrod_flags;
-	ECORE_MSG("Placing pending execution with ramrod flags %lu",
+	ECORE_MSG(sc, "Placing pending execution with ramrod flags %lu",
 		  ramrod_flags);
 }
 
@@ -446,8 +446,8 @@ static void __ecore_vlan_mac_h_write_unlock(struct bnx2x_softc *sc,
 	 * executed. If so, execute again. [Ad infinitum]
 	 */
 	while (o->head_exe_request) {
-		ECORE_MSG
-		    ("vlan_mac_lock - writer release encountered a pending request");
+		ECORE_MSG(sc,
+			  "vlan_mac_lock - writer release encountered a pending request");
 		__ecore_vlan_mac_h_exec_pending(sc, o);
 	}
 }
@@ -483,7 +483,8 @@ static int __ecore_vlan_mac_h_read_lock(struct bnx2x_softc *sc __rte_unused,
 {
 	/* If we got here, we're holding lock --> no WRITER exists */
 	o->head_reader++;
-	ECORE_MSG("vlan_mac_lock - locked reader - number %d", o->head_reader);
+	ECORE_MSG(sc,
+		  "vlan_mac_lock - locked reader - number %d", o->head_reader);
 
 	return ECORE_SUCCESS;
 }
@@ -522,14 +523,14 @@ static void __ecore_vlan_mac_h_read_unlock(struct bnx2x_softc *sc,
 					   struct ecore_vlan_mac_obj *o)
 {
 	if (!o->head_reader) {
-		PMD_DRV_LOG(ERR,
+		PMD_DRV_LOG(ERR, sc,
 			    "Need to release vlan mac reader lock, but lock isn't taken");
 #ifdef ECORE_STOP_ON_ERROR
 		ecore_panic();
 #endif
 	} else {
 		o->head_reader--;
-		PMD_DRV_LOG(INFO,
+		PMD_DRV_LOG(INFO, sc,
 			    "vlan_mac_lock - decreased readers to %d",
 			    o->head_reader);
 	}
@@ -538,7 +539,7 @@ static void __ecore_vlan_mac_h_read_unlock(struct bnx2x_softc *sc,
 	 * was last - if so we need to execute the command.
 	 */
 	if (!o->head_reader && o->head_exe_request) {
-		PMD_DRV_LOG(INFO,
+		PMD_DRV_LOG(INFO, sc,
 			    "vlan_mac_lock - reader release encountered a pending request");
 
 		/* Writer release will do the trick */
@@ -581,10 +582,10 @@ static int ecore_get_n_elements(struct bnx2x_softc *sc,
 	uint8_t *next = base;
 	int counter = 0, read_lock;
 
-	ECORE_MSG("get_n_elements - taking vlan_mac_lock (reader)");
+	ECORE_MSG(sc, "get_n_elements - taking vlan_mac_lock (reader)");
 	read_lock = ecore_vlan_mac_h_read_lock(sc, o);
 	if (read_lock != ECORE_SUCCESS)
-		PMD_DRV_LOG(ERR,
+		PMD_DRV_LOG(ERR, sc,
 			    "get_n_elements failed to get vlan mac reader lock; Access without lock");
 
 	/* traverse list */
@@ -593,15 +594,15 @@ static int ecore_get_n_elements(struct bnx2x_softc *sc,
 		if (counter < n) {
 			ECORE_MEMCPY(next, &pos->u, size);
 			counter++;
-			ECORE_MSG
-			    ("copied element number %d to address %p element was:",
+			    ECORE_MSG
+			    (sc, "copied element number %d to address %p element was:",
 			     counter, next);
 			next += stride + size;
 		}
 	}
 
 	if (read_lock == ECORE_SUCCESS) {
-		ECORE_MSG("get_n_elements - releasing vlan_mac_lock (reader)");
+		ECORE_MSG(sc, "get_n_elements - releasing vlan_mac_lock (reader)");
 		ecore_vlan_mac_h_read_unlock(sc, o);
 	}
 
@@ -615,7 +616,7 @@ static int ecore_check_mac_add(struct bnx2x_softc *sc __rte_unused,
 {
 	struct ecore_vlan_mac_registry_elem *pos;
 
-	ECORE_MSG("Checking MAC %02x:%02x:%02x:%02x:%02x:%02x for ADD command",
+	ECORE_MSG(sc, "Checking MAC %02x:%02x:%02x:%02x:%02x:%02x for ADD command",
 		  data->mac.mac[0], data->mac.mac[1], data->mac.mac[2],
 		  data->mac.mac[3], data->mac.mac[4], data->mac.mac[5]);
 
@@ -644,7 +645,7 @@ static struct ecore_vlan_mac_registry_elem *ecore_check_mac_del(struct bnx2x_sof
 {
 	struct ecore_vlan_mac_registry_elem *pos;
 
-	ECORE_MSG("Checking MAC %02x:%02x:%02x:%02x:%02x:%02x for DEL command",
+	ECORE_MSG(sc, "Checking MAC %02x:%02x:%02x:%02x:%02x:%02x for DEL command",
 		  data->mac.mac[0], data->mac.mac[1], data->mac.mac[2],
 		  data->mac.mac[3], data->mac.mac[4], data->mac.mac[5]);
 
@@ -722,7 +723,7 @@ static void ecore_set_mac_in_nig(struct bnx2x_softc *sc,
 	if (index > ECORE_LLH_CAM_MAX_PF_LINE)
 		return;
 
-	ECORE_MSG("Going to %s LLH configuration at entry %d",
+	ECORE_MSG(sc, "Going to %s LLH configuration at entry %d",
 		  (add ? "ADD" : "DELETE"), index);
 
 	if (add) {
@@ -838,7 +839,7 @@ static void ecore_set_one_mac_e2(struct bnx2x_softc *sc,
 	ecore_vlan_mac_set_cmd_hdr_e2(o, add, CLASSIFY_RULE_OPCODE_MAC,
 				      &rule_entry->mac.header);
 
-	ECORE_MSG("About to %s MAC %02x:%02x:%02x:%02x:%02x:%02x for Queue %d",
+	ECORE_MSG(sc, "About to %s MAC %02x:%02x:%02x:%02x:%02x:%02x for Queue %d",
 		  (add ? "add" : "delete"), mac[0], mac[1], mac[2], mac[3],
 		  mac[4], mac[5], raw->cl_id);
 
@@ -943,7 +944,7 @@ static void ecore_vlan_mac_set_rdata_e1x(struct bnx2x_softc *sc
 	ecore_vlan_mac_set_cfg_entry_e1x(o, add, opcode, mac, vlan_id,
 					 cfg_entry);
 
-	ECORE_MSG("%s MAC %02x:%02x:%02x:%02x:%02x:%02x CLID %d CAM offset %d",
+	ECORE_MSG(sc, "%s MAC %02x:%02x:%02x:%02x:%02x:%02x CLID %d CAM offset %d",
 		  (add ? "setting" : "clearing"),
 		  mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
 		  o->raw.cl_id, cam_offset);
@@ -1088,8 +1089,8 @@ static int ecore_validate_vlan_mac_add(struct bnx2x_softc *sc,
 	/* Check the registry */
 	rc = o->check_add(sc, o, &elem->cmd_data.vlan_mac.u);
 	if (rc) {
-		ECORE_MSG
-		    ("ADD command is not allowed considering current registry state.");
+		ECORE_MSG(sc,
+			  "ADD command is not allowed considering current registry state.");
 		return rc;
 	}
 
@@ -1097,7 +1098,7 @@ static int ecore_validate_vlan_mac_add(struct bnx2x_softc *sc,
 	 * MAC/VLAN/VLAN-MAC. Return an error if there is.
 	 */
 	if (exeq->get(exeq, elem)) {
-		ECORE_MSG("There is a pending ADD command already");
+		ECORE_MSG(sc, "There is a pending ADD command already");
 		return ECORE_EXISTS;
 	}
 
@@ -1136,8 +1137,8 @@ static int ecore_validate_vlan_mac_del(struct bnx2x_softc *sc,
 	 */
 	pos = o->check_del(sc, o, &elem->cmd_data.vlan_mac.u);
 	if (!pos) {
-		ECORE_MSG
-		    ("DEL command is not allowed considering current registry state");
+		ECORE_MSG(sc,
+			  "DEL command is not allowed considering current registry state");
 		return ECORE_EXISTS;
 	}
 
@@ -1149,13 +1150,13 @@ static int ecore_validate_vlan_mac_del(struct bnx2x_softc *sc,
 	/* Check for MOVE commands */
 	query_elem.cmd_data.vlan_mac.cmd = ECORE_VLAN_MAC_MOVE;
 	if (exeq->get(exeq, &query_elem)) {
-		PMD_DRV_LOG(ERR, "There is a pending MOVE command already");
+		PMD_DRV_LOG(ERR, sc, "There is a pending MOVE command already");
 		return ECORE_INVAL;
 	}
 
 	/* Check for DEL commands */
 	if (exeq->get(exeq, elem)) {
-		ECORE_MSG("There is a pending DEL command already");
+		ECORE_MSG(sc, "There is a pending DEL command already");
 		return ECORE_EXISTS;
 	}
 
@@ -1163,7 +1164,7 @@ static int ecore_validate_vlan_mac_del(struct bnx2x_softc *sc,
 	if (!(ECORE_TEST_BIT(ECORE_DONT_CONSUME_CAM_CREDIT,
 			     &elem->cmd_data.vlan_mac.vlan_mac_flags) ||
 	      o->put_credit(o))) {
-		PMD_DRV_LOG(ERR, "Failed to return a credit");
+		PMD_DRV_LOG(ERR, sc, "Failed to return a credit");
 		return ECORE_INVAL;
 	}
 
@@ -1196,8 +1197,8 @@ static int ecore_validate_vlan_mac_move(struct bnx2x_softc *sc,
 	 * state.
 	 */
 	if (!src_o->check_move(sc, src_o, dest_o, &elem->cmd_data.vlan_mac.u)) {
-		ECORE_MSG
-		    ("MOVE command is not allowed considering current registry state");
+		ECORE_MSG(sc,
+			  "MOVE command is not allowed considering current registry state");
 		return ECORE_INVAL;
 	}
 
@@ -1210,21 +1211,21 @@ static int ecore_validate_vlan_mac_move(struct bnx2x_softc *sc,
 	/* Check DEL on source */
 	query_elem.cmd_data.vlan_mac.cmd = ECORE_VLAN_MAC_DEL;
 	if (src_exeq->get(src_exeq, &query_elem)) {
-		PMD_DRV_LOG(ERR,
+		PMD_DRV_LOG(ERR, sc,
 			    "There is a pending DEL command on the source queue already");
 		return ECORE_INVAL;
 	}
 
 	/* Check MOVE on source */
 	if (src_exeq->get(src_exeq, elem)) {
-		ECORE_MSG("There is a pending MOVE command already");
+		ECORE_MSG(sc, "There is a pending MOVE command already");
 		return ECORE_EXISTS;
 	}
 
 	/* Check ADD on destination */
 	query_elem.cmd_data.vlan_mac.cmd = ECORE_VLAN_MAC_ADD;
 	if (dest_exeq->get(dest_exeq, &query_elem)) {
-		PMD_DRV_LOG(ERR,
+		PMD_DRV_LOG(ERR, sc,
 			    "There is a pending ADD command on the destination queue already");
 		return ECORE_INVAL;
 	}
@@ -1329,7 +1330,7 @@ static int __ecore_vlan_mac_execute_step(struct bnx2x_softc *sc,
 
 	ECORE_SPIN_LOCK_BH(&o->exe_queue.lock);
 
-	ECORE_MSG("vlan_mac_execute_step - trying to take writer lock");
+	ECORE_MSG(sc, "vlan_mac_execute_step - trying to take writer lock");
 	rc = __ecore_vlan_mac_h_write_trylock(sc, o);
 
 	if (rc != ECORE_SUCCESS) {
@@ -1426,17 +1427,17 @@ static int ecore_optimize_vlan_mac(struct bnx2x_softc *sc,
 				    &pos->cmd_data.vlan_mac.vlan_mac_flags)) {
 			if ((query.cmd_data.vlan_mac.cmd ==
 			     ECORE_VLAN_MAC_ADD) && !o->put_credit(o)) {
-				PMD_DRV_LOG(ERR,
+				PMD_DRV_LOG(ERR, sc,
 					    "Failed to return the credit for the optimized ADD command");
 				return ECORE_INVAL;
 			} else if (!o->get_credit(o)) {	/* VLAN_MAC_DEL */
-				PMD_DRV_LOG(ERR,
+				PMD_DRV_LOG(ERR, sc,
 					    "Failed to recover the credit from the optimized DEL command");
 				return ECORE_INVAL;
 			}
 		}
 
-		ECORE_MSG("Optimizing %s command",
+		ECORE_MSG(sc, "Optimizing %s command",
 			  (elem->cmd_data.vlan_mac.cmd == ECORE_VLAN_MAC_ADD) ?
 			  "ADD" : "DEL");
 
@@ -1486,7 +1487,7 @@ static int ecore_vlan_mac_get_registry_elem(struct bnx2x_softc *sc,
 			return ECORE_INVAL;
 		}
 
-		ECORE_MSG("Got cam offset %d", reg_elem->cam_offset);
+		ECORE_MSG(sc, "Got cam offset %d", reg_elem->cam_offset);
 
 		/* Set a VLAN-MAC data */
 		ECORE_MEMCPY(&reg_elem->u, &elem->cmd_data.vlan_mac.u,
@@ -1695,8 +1696,8 @@ int ecore_config_vlan_mac(struct bnx2x_softc *sc,
 		rc = ECORE_PENDING;
 
 	if (ECORE_TEST_BIT(RAMROD_DRV_CLR_ONLY, ramrod_flags)) {
-		ECORE_MSG
-		    ("RAMROD_DRV_CLR_ONLY requested: clearing a pending bit.");
+		ECORE_MSG(sc,
+			  "RAMROD_DRV_CLR_ONLY requested: clearing a pending bit.");
 		raw->clear_pending(raw);
 	}
 
@@ -1775,7 +1776,7 @@ static int ecore_vlan_mac_del_all(struct bnx2x_softc *sc,
 		    *vlan_mac_flags) {
 			rc = exeq->remove(sc, exeq->owner, exeq_pos);
 			if (rc) {
-				PMD_DRV_LOG(ERR, "Failed to remove command");
+				PMD_DRV_LOG(ERR, sc, "Failed to remove command");
 				ECORE_SPIN_UNLOCK_BH(&exeq->lock);
 				return rc;
 			}
@@ -1800,7 +1801,7 @@ static int ecore_vlan_mac_del_all(struct bnx2x_softc *sc,
 	ECORE_CLEAR_BIT_NA(RAMROD_EXEC, &p.ramrod_flags);
 	ECORE_CLEAR_BIT_NA(RAMROD_CONT, &p.ramrod_flags);
 
-	ECORE_MSG("vlan_mac_del_all -- taking vlan_mac_lock (reader)");
+	ECORE_MSG(sc, "vlan_mac_del_all -- taking vlan_mac_lock (reader)");
 	read_lock = ecore_vlan_mac_h_read_lock(sc, o);
 	if (read_lock != ECORE_SUCCESS)
 		return read_lock;
@@ -1812,7 +1813,7 @@ static int ecore_vlan_mac_del_all(struct bnx2x_softc *sc,
 			ECORE_MEMCPY(&p.user_req.u, &pos->u, sizeof(pos->u));
 			rc = ecore_config_vlan_mac(sc, &p);
 			if (rc < 0) {
-				PMD_DRV_LOG(ERR,
+				PMD_DRV_LOG(ERR, sc,
 					    "Failed to add a new DEL command");
 				ecore_vlan_mac_h_read_unlock(sc, o);
 				return rc;
@@ -1820,7 +1821,7 @@ static int ecore_vlan_mac_del_all(struct bnx2x_softc *sc,
 		}
 	}
 
-	ECORE_MSG("vlan_mac_del_all -- releasing vlan_mac_lock (reader)");
+	ECORE_MSG(sc, "vlan_mac_del_all -- releasing vlan_mac_lock (reader)");
 	ecore_vlan_mac_h_read_unlock(sc, o);
 
 	p.ramrod_flags = *ramrod_flags;
@@ -2007,7 +2008,7 @@ static int ecore_set_rx_mode_e1x(struct bnx2x_softc *sc,
 	    mac_filters->unmatched_unicast | mask :
 	    mac_filters->unmatched_unicast & ~mask;
 
-	ECORE_MSG("drop_ucast 0x%xdrop_mcast 0x%x accp_ucast 0x%x"
+	ECORE_MSG(sc, "drop_ucast 0x%xdrop_mcast 0x%x accp_ucast 0x%x"
 		  "accp_mcast 0x%xaccp_bcast 0x%x",
 		  mac_filters->ucast_drop_all, mac_filters->mcast_drop_all,
 		  mac_filters->ucast_accept_all, mac_filters->mcast_accept_all,
@@ -2153,8 +2154,8 @@ static int ecore_set_rx_mode_e2(struct bnx2x_softc *sc,
 	 */
 	ecore_rx_mode_set_rdata_hdr_e2(p->cid, &data->header, rule_idx);
 
-	ECORE_MSG
-	    ("About to configure %d rules, rx_accept_flags 0x%lx, tx_accept_flags 0x%lx",
+	    ECORE_MSG
+	    (sc, "About to configure %d rules, rx_accept_flags 0x%lx, tx_accept_flags 0x%lx",
 	     data->header.rule_cnt, p->rx_accept_flags, p->tx_accept_flags);
 
 	/* No need for an explicit memory barrier here as long we would
@@ -2207,7 +2208,7 @@ int ecore_config_rx_mode(struct bnx2x_softc *sc,
 				return rc;
 		}
 	} else {
-		ECORE_MSG("ERROR: config_rx_mode is NULL");
+		ECORE_MSG(sc, "ERROR: config_rx_mode is NULL");
 		return -1;
 	}
 
@@ -2288,7 +2289,7 @@ static int ecore_mcast_enqueue_cmd(struct bnx2x_softc *sc __rte_unused,
 	if (!new_cmd)
 		return ECORE_NOMEM;
 
-	ECORE_MSG("About to enqueue a new %d command. macs_list_len=%d",
+	ECORE_MSG(sc, "About to enqueue a new %d command. macs_list_len=%d",
 		  cmd, macs_list_len);
 
 	ECORE_LIST_INIT(&new_cmd->data.macs_head);
@@ -2324,7 +2325,7 @@ static int ecore_mcast_enqueue_cmd(struct bnx2x_softc *sc __rte_unused,
 
 	default:
 		ECORE_FREE(sc, new_cmd, total_sz);
-		PMD_DRV_LOG(ERR, "Unknown command: %d", cmd);
+		PMD_DRV_LOG(ERR, sc, "Unknown command: %d", cmd);
 		return ECORE_INVAL;
 	}
 
@@ -2436,11 +2437,11 @@ static void ecore_mcast_set_one_rule_e2(struct bnx2x_softc *sc __rte_unused,
 		break;
 
 	default:
-		PMD_DRV_LOG(ERR, "Unknown command: %d", cmd);
+		PMD_DRV_LOG(ERR, sc, "Unknown command: %d", cmd);
 		return;
 	}
 
-	ECORE_MSG("%s bin %d",
+	ECORE_MSG(sc, "%s bin %d",
 		  ((rx_tx_add_flag & ETH_MULTICAST_RULES_CMD_IS_ADD) ?
 		   "Setting" : "Clearing"), bin);
 
@@ -2475,7 +2476,7 @@ static int ecore_mcast_handle_restore_cmd_e2(struct bnx2x_softc *sc,
 
 		cnt++;
 
-		ECORE_MSG("About to configure a bin %d", cur_bin);
+		ECORE_MSG(sc, "About to configure a bin %d", cur_bin);
 
 		/* Break if we reached the maximum number
 		 * of rules.
@@ -2507,8 +2508,8 @@ static void ecore_mcast_hdl_pending_add_e2(struct bnx2x_softc *sc,
 
 		cnt++;
 
-		ECORE_MSG
-		    ("About to configure %02x:%02x:%02x:%02x:%02x:%02x mcast MAC",
+		    ECORE_MSG
+		    (sc, "About to configure %02x:%02x:%02x:%02x:%02x:%02x mcast MAC",
 		     pmac_pos->mac[0], pmac_pos->mac[1], pmac_pos->mac[2],
 		     pmac_pos->mac[3], pmac_pos->mac[4], pmac_pos->mac[5]);
 
@@ -2543,7 +2544,7 @@ static void ecore_mcast_hdl_pending_del_e2(struct bnx2x_softc *sc,
 
 		cmd_pos->data.macs_num--;
 
-		ECORE_MSG("Deleting MAC. %d left,cnt is %d",
+		ECORE_MSG(sc, "Deleting MAC. %d left,cnt is %d",
 			  cmd_pos->data.macs_num, cnt);
 
 		/* Break if we reached the maximum
@@ -2602,7 +2603,8 @@ static int ecore_mcast_handle_pending_cmds_e2(struct bnx2x_softc *sc, struct
 			break;
 
 		default:
-			PMD_DRV_LOG(ERR, "Unknown command: %d", cmd_pos->type);
+			PMD_DRV_LOG(ERR, sc,
+				    "Unknown command: %d", cmd_pos->type);
 			return ECORE_INVAL;
 		}
 
@@ -2639,8 +2641,8 @@ static void ecore_mcast_hdl_add(struct bnx2x_softc *sc,
 
 		cnt++;
 
-		ECORE_MSG
-		    ("About to configure %02x:%02x:%02x:%02x:%02x:%02x mcast MAC",
+		    ECORE_MSG
+		    (sc, "About to configure %02x:%02x:%02x:%02x:%02x:%02x mcast MAC",
 		     mlist_pos->mac[0], mlist_pos->mac[1], mlist_pos->mac[2],
 		     mlist_pos->mac[3], mlist_pos->mac[4], mlist_pos->mac[5]);
 	}
@@ -2660,7 +2662,8 @@ static void ecore_mcast_hdl_del(struct bnx2x_softc *sc,
 
 		cnt++;
 
-		ECORE_MSG("Deleting MAC. %d left", p->mcast_list_len - i - 1);
+		ECORE_MSG(sc,
+			  "Deleting MAC. %d left", p->mcast_list_len - i - 1);
 	}
 
 	*line_idx = cnt;
@@ -2686,7 +2689,7 @@ static int ecore_mcast_handle_current_cmd(struct bnx2x_softc *sc, struct
 	struct ecore_mcast_obj *o = p->mcast_obj;
 	int cnt = start_cnt;
 
-	ECORE_MSG("p->mcast_list_len=%d", p->mcast_list_len);
+	ECORE_MSG(sc, "p->mcast_list_len=%d", p->mcast_list_len);
 
 	switch (cmd) {
 	case ECORE_MCAST_CMD_ADD:
@@ -2702,7 +2705,7 @@ static int ecore_mcast_handle_current_cmd(struct bnx2x_softc *sc, struct
 		break;
 
 	default:
-		PMD_DRV_LOG(ERR, "Unknown command: %d", cmd);
+		PMD_DRV_LOG(ERR, sc, "Unknown command: %d", cmd);
 		return ECORE_INVAL;
 	}
 
@@ -2747,7 +2750,7 @@ static int ecore_mcast_validate_e2(__rte_unused struct bnx2x_softc *sc,
 		break;
 
 	default:
-		PMD_DRV_LOG(ERR, "Unknown command: %d", cmd);
+		PMD_DRV_LOG(ERR, sc, "Unknown command: %d", cmd);
 		return ECORE_INVAL;
 	}
 
@@ -2933,8 +2936,8 @@ static void ecore_mcast_hdl_add_e1h(struct bnx2x_softc *sc __rte_unused,
 		bit = ecore_mcast_bin_from_mac(mlist_pos->mac);
 		ECORE_57711_SET_MC_FILTER(mc_filter, bit);
 
-		ECORE_MSG
-		    ("About to configure %02x:%02x:%02x:%02x:%02x:%02x mcast MAC, bin %d",
+		    ECORE_MSG
+		    (sc, "About to configure %02x:%02x:%02x:%02x:%02x:%02x mcast MAC, bin %d",
 		     mlist_pos->mac[0], mlist_pos->mac[1], mlist_pos->mac[2],
 		     mlist_pos->mac[3], mlist_pos->mac[4], mlist_pos->mac[5],
 		     bit);
@@ -2954,7 +2957,7 @@ static void ecore_mcast_hdl_restore_e1h(struct bnx2x_softc *sc
 	for (bit = ecore_mcast_get_next_bin(o, 0);
 	     bit >= 0; bit = ecore_mcast_get_next_bin(o, bit + 1)) {
 		ECORE_57711_SET_MC_FILTER(mc_filter, bit);
-		ECORE_MSG("About to set bin %d", bit);
+		ECORE_MSG(sc, "About to set bin %d", bit);
 	}
 }
 
@@ -2985,7 +2988,7 @@ static int ecore_mcast_setup_e1h(struct bnx2x_softc *sc,
 			break;
 
 		case ECORE_MCAST_CMD_DEL:
-			ECORE_MSG("Invalidating multicast MACs configuration");
+			ECORE_MSG(sc, "Invalidating multicast MACs configuration");
 
 			/* clear the registry */
 			ECORE_MEMSET(o->registry.aprox_match.vec, 0,
@@ -2997,7 +3000,7 @@ static int ecore_mcast_setup_e1h(struct bnx2x_softc *sc,
 			break;
 
 		default:
-			PMD_DRV_LOG(ERR, "Unknown command: %d", cmd);
+			PMD_DRV_LOG(ERR, sc, "Unknown command: %d", cmd);
 			return ECORE_INVAL;
 		}
 
@@ -3048,8 +3051,8 @@ int ecore_config_mcast(struct bnx2x_softc *sc,
 	if ((!p->mcast_list_len) && (!o->check_sched(o)))
 		return ECORE_SUCCESS;
 
-	ECORE_MSG
-	    ("o->total_pending_num=%d p->mcast_list_len=%d o->max_cmd_len=%d",
+	    ECORE_MSG
+	    (sc, "o->total_pending_num=%d p->mcast_list_len=%d o->max_cmd_len=%d",
 	     o->total_pending_num, p->mcast_list_len, o->max_cmd_len);
 
 	/* Enqueue the current command to the pending list if we can't complete
@@ -3478,7 +3481,7 @@ static int ecore_setup_rss(struct bnx2x_softc *sc,
 
 	ECORE_MEMSET(data, 0, sizeof(*data));
 
-	ECORE_MSG("Configuring RSS");
+	ECORE_MSG(sc, "Configuring RSS");
 
 	/* Set an echo field */
 	data->echo = ECORE_CPU_TO_LE32((r->cid & ECORE_SWCID_MASK) |
@@ -3492,7 +3495,7 @@ static int ecore_setup_rss(struct bnx2x_softc *sc,
 
 	data->rss_mode = rss_mode;
 
-	ECORE_MSG("rss_mode=%d", rss_mode);
+	ECORE_MSG(sc, "rss_mode=%d", rss_mode);
 
 	/* RSS capabilities */
 	if (ECORE_TEST_BIT(ECORE_RSS_IPV4, &p->rss_flags))
@@ -3532,7 +3535,7 @@ static int ecore_setup_rss(struct bnx2x_softc *sc,
 	/* RSS engine ID */
 	data->rss_engine_id = o->engine_id;
 
-	ECORE_MSG("rss_engine_id=%d", data->rss_engine_id);
+	ECORE_MSG(sc, "rss_engine_id=%d", data->rss_engine_id);
 
 	/* Indirection table */
 	ECORE_MEMCPY(data->indirection_table, p->ind_table,
@@ -3627,15 +3630,15 @@ int ecore_queue_state_change(struct bnx2x_softc *sc,
 	/* Check that the requested transition is legal */
 	rc = o->check_transition(sc, o, params);
 	if (rc) {
-		PMD_DRV_LOG(ERR, "check transition returned an error. rc %d",
+		PMD_DRV_LOG(ERR, sc, "check transition returned an error. rc %d",
 			    rc);
 		return ECORE_INVAL;
 	}
 
 	/* Set "pending" bit */
-	ECORE_MSG("pending bit was=%lx", o->pending);
+	ECORE_MSG(sc, "pending bit was=%lx", o->pending);
 	pending_bit = o->set_pending(o, params);
-	ECORE_MSG("pending bit now=%lx", o->pending);
+	ECORE_MSG(sc, "pending bit now=%lx", o->pending);
 
 	/* Don't send a command if only driver cleanup was requested */
 	if (ECORE_TEST_BIT(RAMROD_DRV_CLR_ONLY, &params->ramrod_flags))
@@ -3702,7 +3705,7 @@ static int ecore_queue_comp_cmd(struct bnx2x_softc *sc __rte_unused,
 	unsigned long cur_pending = o->pending;
 
 	if (!ECORE_TEST_AND_CLEAR_BIT(cmd, &cur_pending)) {
-		PMD_DRV_LOG(ERR,
+		PMD_DRV_LOG(ERR, sc,
 			    "Bad MC reply %d for queue %d in state %d pending 0x%lx, next_state %d",
 			    cmd, o->cids[ECORE_PRIMARY_CID_INDEX], o->state,
 			    cur_pending, o->next_state);
@@ -3713,15 +3716,15 @@ static int ecore_queue_comp_cmd(struct bnx2x_softc *sc __rte_unused,
 		/* >= because tx only must always be smaller than cos since the
 		 * primary connection supports COS 0
 		 */
-		PMD_DRV_LOG(ERR,
+		PMD_DRV_LOG(ERR, sc,
 			    "illegal value for next tx_only: %d. max cos was %d",
 			    o->next_tx_only, o->max_cos);
 
-	ECORE_MSG("Completing command %d for queue %d, setting state to %d",
+	ECORE_MSG(sc, "Completing command %d for queue %d, setting state to %d",
 		  cmd, o->cids[ECORE_PRIMARY_CID_INDEX], o->next_state);
 
 	if (o->next_tx_only)	/* print num tx-only if any exist */
-		ECORE_MSG("primary cid %d: num tx-only cons %d",
+		ECORE_MSG(sc, "primary cid %d: num tx-only cons %d",
 			  o->cids[ECORE_PRIMARY_CID_INDEX], o->next_tx_only);
 
 	o->state = o->next_state;
@@ -3782,7 +3785,7 @@ static void ecore_q_fill_init_general_data(struct bnx2x_softc *sc __rte_unused,
 	    ECORE_TEST_BIT(ECORE_Q_FLG_FCOE, flags) ?
 	    LLFC_TRAFFIC_TYPE_FCOE : LLFC_TRAFFIC_TYPE_NW;
 
-	ECORE_MSG("flags: active %d, cos %d, stats en %d",
+	ECORE_MSG(sc, "flags: active %d, cos %d, stats en %d",
 		  gen_data->activate_flg, gen_data->cos,
 		  gen_data->statistics_en_flg);
 }
@@ -3923,7 +3926,7 @@ static void ecore_q_fill_setup_tx_only(struct bnx2x_softc *sc, struct ecore_queu
 	ecore_q_fill_init_tx_data(&cmd_params->params.tx_only.txq_params,
 				  &data->tx, &cmd_params->params.tx_only.flags);
 
-	ECORE_MSG("cid %d, tx bd page lo %x hi %x",
+	ECORE_MSG(sc, "cid %d, tx bd page lo %x hi %x",
 		  cmd_params->q_obj->cids[0],
 		  data->tx.tx_bd_page_base.lo, data->tx.tx_bd_page_base.hi);
 }
@@ -3973,9 +3976,9 @@ static int ecore_q_init(struct bnx2x_softc *sc,
 
 	/* Set CDU context validation values */
 	for (cos = 0; cos < o->max_cos; cos++) {
-		ECORE_MSG("setting context validation. cid %d, cos %d",
+		ECORE_MSG(sc, "setting context validation. cid %d, cos %d",
 			  o->cids[cos], cos);
-		ECORE_MSG("context pointer %p", init->cxts[cos]);
+		ECORE_MSG(sc, "context pointer %p", init->cxts[cos]);
 		ECORE_SET_CTX_VALIDATION(sc, init->cxts[cos], o->cids[cos]);
 	}
 
@@ -4059,15 +4062,15 @@ static int ecore_q_send_setup_tx_only(struct bnx2x_softc *sc, struct ecore_queue
 
 	if (ECORE_TEST_BIT(ECORE_Q_TYPE_FWD, &o->type))
 		ramrod = RAMROD_CMD_ID_ETH_FORWARD_SETUP;
-	ECORE_MSG("sending forward tx-only ramrod");
+	ECORE_MSG(sc, "sending forward tx-only ramrod");
 
 	if (cid_index >= o->max_cos) {
-		PMD_DRV_LOG(ERR, "queue[%d]: cid_index (%d) is out of range",
+		PMD_DRV_LOG(ERR, sc, "queue[%d]: cid_index (%d) is out of range",
 			    o->cl_id, cid_index);
 		return ECORE_INVAL;
 	}
 
-	ECORE_MSG("parameters received: cos: %d sp-id: %d",
+	ECORE_MSG(sc, "parameters received: cos: %d sp-id: %d",
 		  tx_only_params->gen_params.cos,
 		  tx_only_params->gen_params.spcl_id);
 
@@ -4077,8 +4080,8 @@ static int ecore_q_send_setup_tx_only(struct bnx2x_softc *sc, struct ecore_queue
 	/* Fill the ramrod data */
 	ecore_q_fill_setup_tx_only(sc, params, rdata);
 
-	ECORE_MSG
-	    ("sending tx-only ramrod: cid %d, client-id %d, sp-client id %d, cos %d",
+	    ECORE_MSG
+	    (sc, "sending tx-only ramrod: cid %d, client-id %d, sp-client id %d, cos %d",
 	     o->cids[cid_index], rdata->general.client_id,
 	     rdata->general.sp_client_id, rdata->general.cos);
 
@@ -4173,7 +4176,7 @@ static int ecore_q_send_update(struct bnx2x_softc *sc,
 	uint8_t cid_index = update_params->cid_index;
 
 	if (cid_index >= o->max_cos) {
-		PMD_DRV_LOG(ERR, "queue[%d]: cid_index (%d) is out of range",
+		PMD_DRV_LOG(ERR, sc, "queue[%d]: cid_index (%d) is out of range",
 			    o->cl_id, cid_index);
 		return ECORE_INVAL;
 	}
@@ -4267,7 +4270,7 @@ static int ecore_q_send_cfc_del(struct bnx2x_softc *sc,
 	uint8_t cid_idx = params->params.cfc_del.cid_index;
 
 	if (cid_idx >= o->max_cos) {
-		PMD_DRV_LOG(ERR, "queue[%d]: cid_index (%d) is out of range",
+		PMD_DRV_LOG(ERR, sc, "queue[%d]: cid_index (%d) is out of range",
 			    o->cl_id, cid_idx);
 		return ECORE_INVAL;
 	}
@@ -4283,7 +4286,7 @@ static int ecore_q_send_terminate(struct bnx2x_softc *sc, struct ecore_queue_sta
 	uint8_t cid_index = params->params.terminate.cid_index;
 
 	if (cid_index >= o->max_cos) {
-		PMD_DRV_LOG(ERR, "queue[%d]: cid_index (%d) is out of range",
+		PMD_DRV_LOG(ERR, sc, "queue[%d]: cid_index (%d) is out of range",
 			    o->cl_id, cid_index);
 		return ECORE_INVAL;
 	}
@@ -4327,7 +4330,7 @@ static int ecore_queue_send_cmd_cmn(struct bnx2x_softc *sc, struct ecore_queue_s
 	case ECORE_Q_CMD_EMPTY:
 		return ecore_q_send_empty(sc, params);
 	default:
-		PMD_DRV_LOG(ERR, "Unknown command: %d", params->cmd);
+		PMD_DRV_LOG(ERR, sc, "Unknown command: %d", params->cmd);
 		return ECORE_INVAL;
 	}
 }
@@ -4350,7 +4353,7 @@ static int ecore_queue_send_cmd_e1x(struct bnx2x_softc *sc,
 	case ECORE_Q_CMD_EMPTY:
 		return ecore_queue_send_cmd_cmn(sc, params);
 	default:
-		PMD_DRV_LOG(ERR, "Unknown command: %d", params->cmd);
+		PMD_DRV_LOG(ERR, sc, "Unknown command: %d", params->cmd);
 		return ECORE_INVAL;
 	}
 }
@@ -4373,7 +4376,7 @@ static int ecore_queue_send_cmd_e2(struct bnx2x_softc *sc,
 	case ECORE_Q_CMD_EMPTY:
 		return ecore_queue_send_cmd_cmn(sc, params);
 	default:
-		PMD_DRV_LOG(ERR, "Unknown command: %d", params->cmd);
+		PMD_DRV_LOG(ERR, sc, "Unknown command: %d", params->cmd);
 		return ECORE_INVAL;
 	}
 }
@@ -4416,7 +4419,7 @@ static int ecore_queue_chk_transition(struct bnx2x_softc *sc __rte_unused,
 	 * the previous one.
 	 */
 	if (o->pending) {
-		PMD_DRV_LOG(ERR, "Blocking transition since pending was %lx",
+		PMD_DRV_LOG(ERR, sc, "Blocking transition since pending was %lx",
 			    o->pending);
 		return ECORE_BUSY;
 	}
@@ -4543,19 +4546,19 @@ static int ecore_queue_chk_transition(struct bnx2x_softc *sc __rte_unused,
 
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "Illegal state: %d", state);
+		PMD_DRV_LOG(ERR, sc, "Illegal state: %d", state);
 	}
 
 	/* Transition is assured */
 	if (next_state != ECORE_Q_STATE_MAX) {
-		ECORE_MSG("Good state transition: %d(%d)->%d",
+		ECORE_MSG(sc, "Good state transition: %d(%d)->%d",
 			  state, cmd, next_state);
 		o->next_state = next_state;
 		o->next_tx_only = next_tx_only;
 		return ECORE_SUCCESS;
 	}
 
-	ECORE_MSG("Bad state transition request: %d %d", state, cmd);
+	ECORE_MSG(sc, "Bad state transition request: %d %d", state, cmd);
 
 	return ECORE_INVAL;
 }
@@ -4606,18 +4609,18 @@ static int ecore_queue_chk_fwd_transition(struct bnx2x_softc *sc __rte_unused,
 
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "Illegal state: %d", state);
+		PMD_DRV_LOG(ERR, sc, "Illegal state: %d", state);
 	}
 
 	/* Transition is assured */
 	if (next_state != ECORE_Q_STATE_MAX) {
-		ECORE_MSG("Good state transition: %d(%d)->%d",
+		ECORE_MSG(sc, "Good state transition: %d(%d)->%d",
 			  state, cmd, next_state);
 		o->next_state = next_state;
 		return ECORE_SUCCESS;
 	}
 
-	ECORE_MSG("Bad state transition request: %d %d", state, cmd);
+	ECORE_MSG(sc, "Bad state transition request: %d %d", state, cmd);
 	return ECORE_INVAL;
 }
 
@@ -4697,14 +4700,14 @@ ecore_func_state_change_comp(struct bnx2x_softc *sc __rte_unused,
 	unsigned long cur_pending = o->pending;
 
 	if (!ECORE_TEST_AND_CLEAR_BIT(cmd, &cur_pending)) {
-		PMD_DRV_LOG(ERR,
+		PMD_DRV_LOG(ERR, sc,
 			    "Bad MC reply %d for func %d in state %d pending 0x%lx, next_state %d",
 			    cmd, ECORE_FUNC_ID(sc), o->state, cur_pending,
 			    o->next_state);
 		return ECORE_INVAL;
 	}
 
-	ECORE_MSG("Completing command %d for func %d, setting state to %d",
+	ECORE_MSG(sc, "Completing command %d for func %d, setting state to %d",
 		  cmd, ECORE_FUNC_ID(sc), o->next_state);
 
 	o->state = o->next_state;
@@ -4827,18 +4830,19 @@ static int ecore_func_chk_transition(struct bnx2x_softc *sc __rte_unused,
 
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "Unknown state: %d", state);
+		PMD_DRV_LOG(ERR, sc, "Unknown state: %d", state);
 	}
 
 	/* Transition is assured */
 	if (next_state != ECORE_F_STATE_MAX) {
-		ECORE_MSG("Good function state transition: %d(%d)->%d",
+		ECORE_MSG(sc, "Good function state transition: %d(%d)->%d",
 			  state, cmd, next_state);
 		o->next_state = next_state;
 		return ECORE_SUCCESS;
 	}
 
-	ECORE_MSG("Bad function state transition request: %d %d", state, cmd);
+	ECORE_MSG(sc,
+		  "Bad function state transition request: %d %d", state, cmd);
 
 	return ECORE_INVAL;
 }
@@ -4928,13 +4932,13 @@ static int ecore_func_hw_init(struct bnx2x_softc *sc,
 	const struct ecore_func_sp_drv_ops *drv = o->drv;
 	int rc = 0;
 
-	ECORE_MSG("function %d  load_code %x",
+	ECORE_MSG(sc, "function %d  load_code %x",
 		  ECORE_ABS_FUNC_ID(sc), load_code);
 
 	/* Prepare FW */
 	rc = drv->init_fw(sc);
 	if (rc) {
-		PMD_DRV_LOG(ERR, "Error loading firmware");
+		PMD_DRV_LOG(ERR, sc, "Error loading firmware");
 		goto init_err;
 	}
 
@@ -4965,7 +4969,7 @@ static int ecore_func_hw_init(struct bnx2x_softc *sc,
 
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "Unknown load_code (0x%x) from MCP",
+		PMD_DRV_LOG(ERR, sc, "Unknown load_code (0x%x) from MCP",
 			    load_code);
 		rc = ECORE_INVAL;
 	}
@@ -5041,7 +5045,7 @@ static int ecore_func_hw_reset(struct bnx2x_softc *sc,
 	struct ecore_func_sp_obj *o = params->f_obj;
 	const struct ecore_func_sp_drv_ops *drv = o->drv;
 
-	ECORE_MSG("function %d  reset_phase %x", ECORE_ABS_FUNC_ID(sc),
+	ECORE_MSG(sc, "function %d  reset_phase %x", ECORE_ABS_FUNC_ID(sc),
 		  reset_phase);
 
 	switch (reset_phase) {
@@ -5055,7 +5059,7 @@ static int ecore_func_hw_reset(struct bnx2x_softc *sc,
 		ecore_func_reset_func(sc, drv);
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "Unknown reset_phase (0x%x) from MCP",
+		PMD_DRV_LOG(ERR, sc, "Unknown reset_phase (0x%x) from MCP",
 			    reset_phase);
 		break;
 	}
@@ -5146,7 +5150,7 @@ static int ecore_func_send_afex_update(struct bnx2x_softc *sc, struct ecore_func
 	 *  read and we will have to put a full memory barrier there
 	 *  (inside ecore_sp_post()).
 	 */
-	ECORE_MSG("afex: sending func_update vif_id 0x%x dvlan 0x%x prio 0x%x",
+	ECORE_MSG(sc, "afex: sending func_update vif_id 0x%x dvlan 0x%x prio 0x%x",
 		  rdata->vif_id,
 		  rdata->afex_default_vlan, rdata->allowed_priorities);
 
@@ -5184,8 +5188,8 @@ inline int ecore_func_send_afex_viflists(struct bnx2x_softc *sc,
 	 *  (inside ecore_sp_post()).
 	 */
 
-	ECORE_MSG
-	    ("afex: ramrod lists, cmd 0x%x index 0x%x func_bit_map 0x%x func_to_clr 0x%x",
+	    ECORE_MSG
+	    (sc, "afex: ramrod lists, cmd 0x%x index 0x%x func_bit_map 0x%x func_to_clr 0x%x",
 	     rdata->afex_vif_list_command, rdata->vif_list_index,
 	     rdata->func_bit_map, rdata->func_to_clear);
 
@@ -5256,7 +5260,7 @@ static int ecore_func_send_cmd(struct bnx2x_softc *sc,
 	case ECORE_F_CMD_SWITCH_UPDATE:
 		return ecore_func_send_switch_update(sc, params);
 	default:
-		PMD_DRV_LOG(ERR, "Unknown command: %d", params->cmd);
+		PMD_DRV_LOG(ERR, sc, "Unknown command: %d", params->cmd);
 		return ECORE_INVAL;
 	}
 }
@@ -5317,7 +5321,7 @@ int ecore_func_state_change(struct bnx2x_softc *sc,
 		}
 		if (rc == ECORE_BUSY) {
 			ECORE_MUTEX_UNLOCK(&o->one_pending_mutex);
-			PMD_DRV_LOG(ERR,
+			PMD_DRV_LOG(ERR, sc,
 				    "timeout waiting for previous ramrod completion");
 			return rc;
 		}

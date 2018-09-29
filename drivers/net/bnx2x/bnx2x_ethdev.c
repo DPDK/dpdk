@@ -85,7 +85,7 @@ bnx2x_link_update(struct rte_eth_dev *dev)
 	struct bnx2x_softc *sc = dev->data->dev_private;
 	struct rte_eth_link link;
 
-	PMD_INIT_FUNC_TRACE();
+	PMD_INIT_FUNC_TRACE(sc);
 
 	bnx2x_link_status_update(sc);
 	memset(&link, 0, sizeof(link));
@@ -129,7 +129,7 @@ bnx2x_interrupt_handler(void *param)
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 	struct bnx2x_softc *sc = dev->data->dev_private;
 
-	PMD_DEBUG_PERIODIC_LOG(INFO, "Interrupt handled");
+	PMD_DEBUG_PERIODIC_LOG(INFO, sc, "Interrupt handled");
 
 	bnx2x_interrupt_action(dev);
 	rte_intr_enable(&sc->pci_dev->intr_handle);
@@ -147,8 +147,8 @@ static void bnx2x_periodic_start(void *param)
 		ret = rte_eal_alarm_set(BNX2X_SP_TIMER_PERIOD,
 					bnx2x_periodic_start, (void *)dev);
 		if (ret) {
-			PMD_DRV_LOG(ERR, "Unable to start periodic"
-					 " timer rc %d", ret);
+			PMD_DRV_LOG(ERR, sc, "Unable to start periodic"
+					     " timer rc %d", ret);
 			assert(false && "Unable to start periodic timer");
 		}
 	}
@@ -176,34 +176,34 @@ bnx2x_dev_configure(struct rte_eth_dev *dev)
 
 	int mp_ncpus = sysconf(_SC_NPROCESSORS_CONF);
 
-	PMD_INIT_FUNC_TRACE();
+	PMD_INIT_FUNC_TRACE(sc);
 
 	if (rxmode->offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
 		sc->mtu = dev->data->dev_conf.rxmode.max_rx_pkt_len;
 
 	if (dev->data->nb_tx_queues > dev->data->nb_rx_queues) {
-		PMD_DRV_LOG(ERR, "The number of TX queues is greater than number of RX queues");
+		PMD_DRV_LOG(ERR, sc, "The number of TX queues is greater than number of RX queues");
 		return -EINVAL;
 	}
 
 	sc->num_queues = MAX(dev->data->nb_rx_queues, dev->data->nb_tx_queues);
 	if (sc->num_queues > mp_ncpus) {
-		PMD_DRV_LOG(ERR, "The number of queues is more than number of CPUs");
+		PMD_DRV_LOG(ERR, sc, "The number of queues is more than number of CPUs");
 		return -EINVAL;
 	}
 
-	PMD_DRV_LOG(DEBUG, "num_queues=%d, mtu=%d",
+	PMD_DRV_LOG(DEBUG, sc, "num_queues=%d, mtu=%d",
 		       sc->num_queues, sc->mtu);
 
 	/* allocate ilt */
 	if (bnx2x_alloc_ilt_mem(sc) != 0) {
-		PMD_DRV_LOG(ERR, "bnx2x_alloc_ilt_mem was failed");
+		PMD_DRV_LOG(ERR, sc, "bnx2x_alloc_ilt_mem was failed");
 		return -ENXIO;
 	}
 
 	/* allocate the host hardware/software hsi structures */
 	if (bnx2x_alloc_hsi_mem(sc) != 0) {
-		PMD_DRV_LOG(ERR, "bnx2x_alloc_hsi_mem was failed");
+		PMD_DRV_LOG(ERR, sc, "bnx2x_alloc_hsi_mem was failed");
 		bnx2x_free_ilt_mem(sc);
 		return -ENXIO;
 	}
@@ -217,7 +217,7 @@ bnx2x_dev_start(struct rte_eth_dev *dev)
 	struct bnx2x_softc *sc = dev->data->dev_private;
 	int ret = 0;
 
-	PMD_INIT_FUNC_TRACE();
+	PMD_INIT_FUNC_TRACE(sc);
 
 	/* start the periodic callout */
 	if (sc->periodic_flags & PERIODIC_STOP)
@@ -225,7 +225,7 @@ bnx2x_dev_start(struct rte_eth_dev *dev)
 
 	ret = bnx2x_init(sc);
 	if (ret) {
-		PMD_DRV_LOG(DEBUG, "bnx2x_init failed (%d)", ret);
+		PMD_DRV_LOG(DEBUG, sc, "bnx2x_init failed (%d)", ret);
 		return -1;
 	}
 
@@ -234,12 +234,12 @@ bnx2x_dev_start(struct rte_eth_dev *dev)
 				bnx2x_interrupt_handler, (void *)dev);
 
 		if (rte_intr_enable(&sc->pci_dev->intr_handle))
-			PMD_DRV_LOG(ERR, "rte_intr_enable failed");
+			PMD_DRV_LOG(ERR, sc, "rte_intr_enable failed");
 	}
 
 	ret = bnx2x_dev_rx_init(dev);
 	if (ret != 0) {
-		PMD_DRV_LOG(DEBUG, "bnx2x_dev_rx_init returned error code");
+		PMD_DRV_LOG(DEBUG, sc, "bnx2x_dev_rx_init returned error code");
 		return -3;
 	}
 
@@ -255,7 +255,7 @@ bnx2x_dev_stop(struct rte_eth_dev *dev)
 	struct bnx2x_softc *sc = dev->data->dev_private;
 	int ret = 0;
 
-	PMD_INIT_FUNC_TRACE();
+	PMD_INIT_FUNC_TRACE(sc);
 
 	if (IS_PF(sc)) {
 		rte_intr_disable(&sc->pci_dev->intr_handle);
@@ -268,7 +268,7 @@ bnx2x_dev_stop(struct rte_eth_dev *dev)
 
 	ret = bnx2x_nic_unload(sc, UNLOAD_NORMAL, FALSE);
 	if (ret) {
-		PMD_DRV_LOG(DEBUG, "bnx2x_nic_unload failed (%d)", ret);
+		PMD_DRV_LOG(DEBUG, sc, "bnx2x_nic_unload failed (%d)", ret);
 		return;
 	}
 
@@ -280,7 +280,7 @@ bnx2x_dev_close(struct rte_eth_dev *dev)
 {
 	struct bnx2x_softc *sc = dev->data->dev_private;
 
-	PMD_INIT_FUNC_TRACE();
+	PMD_INIT_FUNC_TRACE(sc);
 
 	if (IS_VF(sc))
 		bnx2x_vf_close(sc);
@@ -300,7 +300,7 @@ bnx2x_promisc_enable(struct rte_eth_dev *dev)
 {
 	struct bnx2x_softc *sc = dev->data->dev_private;
 
-	PMD_INIT_FUNC_TRACE();
+	PMD_INIT_FUNC_TRACE(sc);
 	sc->rx_mode = BNX2X_RX_MODE_PROMISC;
 	if (rte_eth_allmulticast_get(dev->data->port_id) == 1)
 		sc->rx_mode = BNX2X_RX_MODE_ALLMULTI_PROMISC;
@@ -312,7 +312,7 @@ bnx2x_promisc_disable(struct rte_eth_dev *dev)
 {
 	struct bnx2x_softc *sc = dev->data->dev_private;
 
-	PMD_INIT_FUNC_TRACE();
+	PMD_INIT_FUNC_TRACE(sc);
 	sc->rx_mode = BNX2X_RX_MODE_NORMAL;
 	if (rte_eth_allmulticast_get(dev->data->port_id) == 1)
 		sc->rx_mode = BNX2X_RX_MODE_ALLMULTI;
@@ -324,7 +324,7 @@ bnx2x_dev_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct bnx2x_softc *sc = dev->data->dev_private;
 
-	PMD_INIT_FUNC_TRACE();
+	PMD_INIT_FUNC_TRACE(sc);
 	sc->rx_mode = BNX2X_RX_MODE_ALLMULTI;
 	if (rte_eth_promiscuous_get(dev->data->port_id) == 1)
 		sc->rx_mode = BNX2X_RX_MODE_ALLMULTI_PROMISC;
@@ -336,7 +336,7 @@ bnx2x_dev_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct bnx2x_softc *sc = dev->data->dev_private;
 
-	PMD_INIT_FUNC_TRACE();
+	PMD_INIT_FUNC_TRACE(sc);
 	sc->rx_mode = BNX2X_RX_MODE_NORMAL;
 	if (rte_eth_promiscuous_get(dev->data->port_id) == 1)
 		sc->rx_mode = BNX2X_RX_MODE_PROMISC;
@@ -346,7 +346,9 @@ bnx2x_dev_allmulticast_disable(struct rte_eth_dev *dev)
 static int
 bnx2x_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 {
-	PMD_INIT_FUNC_TRACE();
+	struct bnx2x_softc *sc = dev->data->dev_private;
+
+	PMD_INIT_FUNC_TRACE(sc);
 
 	return bnx2x_link_update(dev);
 }
@@ -361,7 +363,7 @@ bnx2xvf_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_comple
 
 	bnx2x_check_bull(sc);
 	if (sc->old_bulletin.valid_bitmap & (1 << CHANNEL_DOWN)) {
-		PMD_DRV_LOG(ERR, "PF indicated channel is down."
+		PMD_DRV_LOG(ERR, sc, "PF indicated channel is down."
 				"VF device is no longer operational");
 		dev->data->dev_link.link_status = ETH_LINK_DOWN;
 	}
@@ -377,7 +379,7 @@ bnx2x_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	uint64_t brb_drops;
 	uint64_t brb_truncates;
 
-	PMD_INIT_FUNC_TRACE();
+	PMD_INIT_FUNC_TRACE(sc);
 
 	bnx2x_stats_handle(sc, STATS_EVENT_UPDATE);
 
@@ -568,26 +570,34 @@ bnx2x_common_dev_init(struct rte_eth_dev *eth_dev, int is_vf)
 {
 	int ret = 0;
 	struct rte_pci_device *pci_dev;
+	struct rte_pci_addr pci_addr;
 	struct bnx2x_softc *sc;
 
-	PMD_INIT_FUNC_TRACE();
+	/* Extract key data structures */
+	sc = eth_dev->data->dev_private;
+	pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
+	pci_addr = pci_dev->addr;
+
+	snprintf(sc->devinfo.name, NAME_SIZE, PCI_SHORT_PRI_FMT ":dpdk-port-%u",
+		 pci_addr.bus, pci_addr.devid, pci_addr.function,
+		 eth_dev->data->port_id);
+
+	PMD_INIT_FUNC_TRACE(sc);
 
 	eth_dev->dev_ops = is_vf ? &bnx2xvf_eth_dev_ops : &bnx2x_eth_dev_ops;
-	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
-	sc = eth_dev->data->dev_private;
 	sc->pcie_bus    = pci_dev->addr.bus;
 	sc->pcie_device = pci_dev->addr.devid;
-
-	if (is_vf)
-		sc->flags = BNX2X_IS_VF_FLAG;
 
 	sc->devinfo.vendor_id    = pci_dev->id.vendor_id;
 	sc->devinfo.device_id    = pci_dev->id.device_id;
 	sc->devinfo.subvendor_id = pci_dev->id.subsystem_vendor_id;
 	sc->devinfo.subdevice_id = pci_dev->id.subsystem_device_id;
+
+	if (is_vf)
+		sc->flags = BNX2X_IS_VF_FLAG;
 
 	sc->pcie_func = pci_dev->addr.function;
 	sc->bar[BAR0].base_addr = (void *)pci_dev->mem_resource[0].addr;
@@ -616,7 +626,7 @@ bnx2x_common_dev_init(struct rte_eth_dev *eth_dev, int is_vf)
 	sc->pci_dev = pci_dev;
 	ret = bnx2x_attach(sc);
 	if (ret) {
-		PMD_DRV_LOG(ERR, "bnx2x_attach failed (%d)", ret);
+		PMD_DRV_LOG(ERR, sc, "bnx2x_attach failed (%d)", ret);
 		return ret;
 	}
 
@@ -625,21 +635,21 @@ bnx2x_common_dev_init(struct rte_eth_dev *eth_dev, int is_vf)
 		ret = rte_eal_alarm_set(BNX2X_SP_TIMER_PERIOD,
 					bnx2x_periodic_start, (void *)eth_dev);
 		if (ret) {
-			PMD_DRV_LOG(ERR, "Unable to start periodic"
-					  " timer rc %d", ret);
+			PMD_DRV_LOG(ERR, sc, "Unable to start periodic"
+					     " timer rc %d", ret);
 			return -EINVAL;
 		}
 	}
 
 	eth_dev->data->mac_addrs = (struct ether_addr *)sc->link_params.mac_addr;
 
-	PMD_DRV_LOG(INFO, "pcie_bus=%d, pcie_device=%d",
+	PMD_DRV_LOG(INFO, sc, "pcie_bus=%d, pcie_device=%d",
 			sc->pcie_bus, sc->pcie_device);
-	PMD_DRV_LOG(INFO, "bar0.addr=%p, bar1.addr=%p",
+	PMD_DRV_LOG(INFO, sc, "bar0.addr=%p, bar1.addr=%p",
 			sc->bar[BAR0].base_addr, sc->bar[BAR1].base_addr);
-	PMD_DRV_LOG(INFO, "port=%d, path=%d, vnic=%d, func=%d",
+	PMD_DRV_LOG(INFO, sc, "port=%d, path=%d, vnic=%d, func=%d",
 			PORT_ID(sc), PATH_ID(sc), VNIC_ID(sc), FUNC_ID(sc));
-	PMD_DRV_LOG(INFO, "portID=%d vendorID=0x%x deviceID=0x%x",
+	PMD_DRV_LOG(INFO, sc, "portID=%d vendorID=0x%x deviceID=0x%x",
 			eth_dev->data->port_id, pci_dev->id.vendor_id, pci_dev->id.device_id);
 
 	if (IS_VF(sc)) {
@@ -679,14 +689,16 @@ out:
 static int
 eth_bnx2x_dev_init(struct rte_eth_dev *eth_dev)
 {
-	PMD_INIT_FUNC_TRACE();
+	struct bnx2x_softc *sc = eth_dev->data->dev_private;
+	PMD_INIT_FUNC_TRACE(sc);
 	return bnx2x_common_dev_init(eth_dev, 0);
 }
 
 static int
 eth_bnx2xvf_dev_init(struct rte_eth_dev *eth_dev)
 {
-	PMD_INIT_FUNC_TRACE();
+	struct bnx2x_softc *sc = eth_dev->data->dev_private;
+	PMD_INIT_FUNC_TRACE(sc);
 	return bnx2x_common_dev_init(eth_dev, 1);
 }
 

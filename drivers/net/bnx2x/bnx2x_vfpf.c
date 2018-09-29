@@ -37,12 +37,12 @@ bnx2x_check_bull(struct bnx2x_softc *sc)
 			if (bull->crc == bnx2x_vf_crc(bull))
 				break;
 
-			PMD_DRV_LOG(ERR, "bad crc on bulletin board. contained %x computed %x",
+			PMD_DRV_LOG(ERR, sc, "bad crc on bulletin board. contained %x computed %x",
 					bull->crc, bnx2x_vf_crc(bull));
 			++tries;
 		}
 		if (tries == BNX2X_VF_BULLETIN_TRIES) {
-			PMD_DRV_LOG(ERR, "pf to vf bulletin board crc was wrong %d consecutive times. Aborting",
+			PMD_DRV_LOG(ERR, sc, "pf to vf bulletin board crc was wrong %d consecutive times. Aborting",
 					tries);
 			return FALSE;
 		}
@@ -82,7 +82,7 @@ bnx2x_vf_prep(struct bnx2x_softc *sc, struct vf_first_tlv *first_tlv,
 
 	rte_spinlock_lock(&sc->vf2pf_lock);
 
-	PMD_DRV_LOG(DEBUG, "Preparing %d tlv for sending", type);
+	PMD_DRV_LOG(DEBUG, sc, "Preparing %d tlv for sending", type);
 
 	memset(mbox, 0, sizeof(struct bnx2x_vf_mbx_msg));
 
@@ -97,7 +97,7 @@ static void
 bnx2x_vf_finalize(struct bnx2x_softc *sc,
 		  __rte_unused struct vf_first_tlv *first_tlv)
 {
-	PMD_DRV_LOG(DEBUG, "done sending [%d] tlv over vf pf channel",
+	PMD_DRV_LOG(DEBUG, sc, "done sending [%d] tlv over vf pf channel",
 		    first_tlv->tl.type);
 
 	rte_spinlock_unlock(&sc->vf2pf_lock);
@@ -116,14 +116,14 @@ bnx2x_do_req4pf(struct bnx2x_softc *sc, rte_iova_t phys_addr)
 	uint8_t i;
 
 	if (*status) {
-		PMD_DRV_LOG(ERR, "status should be zero before message"
+		PMD_DRV_LOG(ERR, sc, "status should be zero before message"
 				 " to pf was sent");
 		return -EINVAL;
 	}
 
 	bnx2x_check_bull(sc);
 	if (sc->old_bulletin.valid_bitmap & (1 << CHANNEL_DOWN)) {
-		PMD_DRV_LOG(ERR, "channel is down. Aborting message sending");
+		PMD_DRV_LOG(ERR, sc, "channel is down. Aborting message sending");
 		return -EINVAL;
 	}
 
@@ -143,11 +143,11 @@ bnx2x_do_req4pf(struct bnx2x_softc *sc, rte_iova_t phys_addr)
 	}
 
 	if (!*status) {
-		PMD_DRV_LOG(ERR, "Response from PF timed out");
+		PMD_DRV_LOG(ERR, sc, "Response from PF timed out");
 		return -EAGAIN;
 	}
 
-	PMD_DRV_LOG(DEBUG, "Response from PF was received");
+	PMD_DRV_LOG(DEBUG, sc, "Response from PF was received");
 	return 0;
 }
 
@@ -195,7 +195,7 @@ int bnx2x_loop_obtain_resources(struct bnx2x_softc *sc)
 	int rc;
 
 	do {
-		PMD_DRV_LOG(DEBUG, "trying to get resources");
+		PMD_DRV_LOG(DEBUG, sc, "trying to get resources");
 
 		rc = bnx2x_do_req4pf(sc, sc->vf2pf_mbox_mapping.paddr);
 		if (rc)
@@ -207,11 +207,11 @@ int bnx2x_loop_obtain_resources(struct bnx2x_softc *sc)
 
 		/* check PF to request acceptance */
 		if (sc_resp->status == BNX2X_VF_STATUS_SUCCESS) {
-			PMD_DRV_LOG(DEBUG, "resources obtained successfully");
+			PMD_DRV_LOG(DEBUG, sc, "resources obtained successfully");
 			res_obtained = true;
 		} else if (sc_resp->status == BNX2X_VF_STATUS_NO_RESOURCES &&
 			   tries < BNX2X_VF_OBTAIN_MAX_TRIES) {
-			PMD_DRV_LOG(DEBUG,
+			PMD_DRV_LOG(DEBUG, sc,
 			   "PF cannot allocate requested amount of resources");
 
 			res_query = &sc->vf2pf_mbox->query[0].acquire.res_query;
@@ -227,7 +227,7 @@ int bnx2x_loop_obtain_resources(struct bnx2x_softc *sc)
 
 			memset(&sc->vf2pf_mbox->resp, 0, sizeof(union resp_tlvs));
 		} else {
-			PMD_DRV_LOG(ERR, "Failed to get the requested "
+			PMD_DRV_LOG(ERR, sc, "Failed to get the requested "
 					 "amount of resources: %d.",
 					 sc_resp->status);
 			return -EINVAL;
@@ -296,7 +296,7 @@ int bnx2x_vf_get_resources(struct bnx2x_softc *sc, uint8_t tx_count, uint8_t rx_
 	sc->doorbell_size = sc_resp.db_size;
 	sc->flags |= BNX2X_NO_WOL_FLAG | BNX2X_NO_ISCSI_OOO_FLAG | BNX2X_NO_ISCSI_FLAG | BNX2X_NO_FCOE_FLAG;
 
-	PMD_DRV_LOG(DEBUG, "status block count = %d, base status block = %x",
+	PMD_DRV_LOG(DEBUG, sc, "status block count = %d, base status block = %x",
 		sc->igu_sb_cnt, sc->igu_base_sb);
 	strncpy(sc->fw_ver, sc_resp.fw_ver, sizeof(sc->fw_ver));
 
@@ -333,7 +333,7 @@ bnx2x_vf_close(struct bnx2x_softc *sc)
 
 		rc = bnx2x_do_req4pf(sc, sc->vf2pf_mbox_mapping.paddr);
 		if (rc || reply->status != BNX2X_VF_STATUS_SUCCESS)
-			PMD_DRV_LOG(ERR, "Failed to release VF");
+			PMD_DRV_LOG(ERR, sc, "Failed to release VF");
 
 		bnx2x_vf_finalize(sc, &query->first_tlv);
 	}
@@ -367,12 +367,12 @@ bnx2x_vf_init(struct bnx2x_softc *sc)
 	if (rc)
 		goto out;
 	if (reply->status != BNX2X_VF_STATUS_SUCCESS) {
-		PMD_DRV_LOG(ERR, "Failed to init VF");
+		PMD_DRV_LOG(ERR, sc, "Failed to init VF");
 		rc = -EINVAL;
 		goto out;
 	}
 
-	PMD_DRV_LOG(DEBUG, "VF was initialized");
+	PMD_DRV_LOG(DEBUG, sc, "VF was initialized");
 out:
 	bnx2x_vf_finalize(sc, &query->first_tlv);
 	return rc;
@@ -403,7 +403,7 @@ bnx2x_vf_unload(struct bnx2x_softc *sc)
 
 			rc = bnx2x_do_req4pf(sc, sc->vf2pf_mbox_mapping.paddr);
 			if (rc || reply->status != BNX2X_VF_STATUS_SUCCESS)
-				PMD_DRV_LOG(ERR,
+				PMD_DRV_LOG(ERR, sc,
 					    "Bad reply for vf_q %d teardown", i);
 
 			bnx2x_vf_finalize(sc, &query_op->first_tlv);
@@ -423,7 +423,7 @@ bnx2x_vf_unload(struct bnx2x_softc *sc)
 
 		rc = bnx2x_do_req4pf(sc, sc->vf2pf_mbox_mapping.paddr);
 		if (rc || reply->status != BNX2X_VF_STATUS_SUCCESS)
-			PMD_DRV_LOG(ERR,
+			PMD_DRV_LOG(ERR, sc,
 				    "Bad reply from PF for close message");
 
 		bnx2x_vf_finalize(sc, &query->first_tlv);
@@ -450,7 +450,7 @@ bnx2x_vf_rx_q_prep(struct bnx2x_softc *sc, struct bnx2x_fastpath *fp,
 
 	rxq = sc->rx_queues[fp->index];
 	if (!rxq) {
-		PMD_DRV_LOG(ERR, "RX queue %d is NULL", fp->index);
+		PMD_DRV_LOG(ERR, sc, "RX queue %d is NULL", fp->index);
 		return;
 	}
 
@@ -474,7 +474,7 @@ bnx2x_vf_tx_q_prep(struct bnx2x_softc *sc, struct bnx2x_fastpath *fp,
 
 	txq = sc->tx_queues[fp->index];
 	if (!txq) {
-		PMD_DRV_LOG(ERR, "TX queue %d is NULL", fp->index);
+		PMD_DRV_LOG(ERR, sc, "TX queue %d is NULL", fp->index);
 		return;
 	}
 
@@ -511,7 +511,7 @@ bnx2x_vf_setup_queue(struct bnx2x_softc *sc, struct bnx2x_fastpath *fp, int lead
 	if (rc)
 		goto out;
 	if (reply->status != BNX2X_VF_STATUS_SUCCESS) {
-		PMD_DRV_LOG(ERR, "Failed to setup VF queue[%d]",
+		PMD_DRV_LOG(ERR, sc, "Failed to setup VF queue[%d]",
 				 fp->index);
 		rc = -EINVAL;
 	}
@@ -566,7 +566,7 @@ bnx2x_vf_set_mac(struct bnx2x_softc *sc, int set)
 	}
 
 	if (BNX2X_VF_STATUS_SUCCESS != reply->status) {
-		PMD_DRV_LOG(ERR, "Bad reply from PF for SET MAC message: %d",
+		PMD_DRV_LOG(ERR, sc, "Bad reply from PF for SET MAC message: %d",
 				reply->status);
 		rc = -EINVAL;
 	}
@@ -608,7 +608,7 @@ bnx2x_vf_config_rss(struct bnx2x_softc *sc,
 		goto out;
 
 	if (reply->status != BNX2X_VF_STATUS_SUCCESS) {
-		PMD_DRV_LOG(ERR, "Failed to configure RSS");
+		PMD_DRV_LOG(ERR, sc, "Failed to configure RSS");
 		rc = -EINVAL;
 	}
 out:
@@ -652,7 +652,7 @@ bnx2x_vf_set_rx_mode(struct bnx2x_softc *sc)
 		query->rx_mask |= VFPF_RX_MASK_ACCEPT_BROADCAST;
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "BAD rx mode (%d)", sc->rx_mode);
+		PMD_DRV_LOG(ERR, sc, "BAD rx mode (%d)", sc->rx_mode);
 		rc = -EINVAL;
 		goto out;
 	}
@@ -666,7 +666,7 @@ bnx2x_vf_set_rx_mode(struct bnx2x_softc *sc)
 		goto out;
 
 	if (reply->status != BNX2X_VF_STATUS_SUCCESS) {
-		PMD_DRV_LOG(ERR, "Failed to set RX mode");
+		PMD_DRV_LOG(ERR, sc, "Failed to set RX mode");
 		rc = -EINVAL;
 	}
 

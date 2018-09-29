@@ -215,8 +215,8 @@ ECORE_CRC32_LE(uint32_t seed, uint8_t *mac, uint32_t len)
     } while (0)
 
 
-#define ECORE_MSG(m, ...) \
-	PMD_DRV_LOG(DEBUG, m, ##__VA_ARGS__)
+#define ECORE_MSG(sc, m, ...) \
+	PMD_DRV_LOG(DEBUG, sc, m, ##__VA_ARGS__)
 
 typedef struct _ecore_list_entry_t
 {
