@@ -702,6 +702,16 @@ bool ecore_iov_is_vf_started(struct ecore_hwfn *p_hwfn,
  */
 int ecore_iov_get_vf_min_rate(struct ecore_hwfn *p_hwfn, int vfid);
 
+/**
+ * @brief - Configure min rate for VF's vport.
+ * @param p_dev
+ * @param vfid
+ * @param - rate in Mbps
+ *
+ * @return
+ */
+enum _ecore_status_t ecore_iov_configure_min_tx_rate(struct ecore_dev *p_dev,
+						     int vfid, u32 rate);
 #endif
 
 /**

@@ -4798,6 +4798,32 @@ enum _ecore_status_t ecore_iov_configure_tx_rate(struct ecore_hwfn *p_hwfn,
 				   p_link->speed);
 }
 
+enum _ecore_status_t ecore_iov_configure_min_tx_rate(struct ecore_dev *p_dev,
+						     int vfid, u32 rate)
+{
+	struct ecore_vf_info *vf;
+	int i;
+
+	for_each_hwfn(p_dev, i) {
+		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[i];
+
+		if (!ecore_iov_pf_sanity_check(p_hwfn, vfid)) {
+			DP_NOTICE(p_hwfn, true,
+				  "SR-IOV sanity check failed, can't set min rate\n");
+			return ECORE_INVAL;
+		}
+	}
+
+	vf = ecore_iov_get_vf_info(ECORE_LEADING_HWFN(p_dev), (u16)vfid, true);
+	if (!vf) {
+		DP_NOTICE(p_dev, true,
+			  "Getting vf info failed, can't set min rate\n");
+		return ECORE_INVAL;
+	}
+
+	return ecore_configure_vport_wfq(p_dev, vf->vport_id, rate);
+}
+
 enum _ecore_status_t ecore_iov_get_vf_stats(struct ecore_hwfn *p_hwfn,
 					    struct ecore_ptt *p_ptt,
 					    int vfid,
@@ -4908,7 +4934,7 @@ bool ecore_iov_is_vf_started(struct ecore_hwfn *p_hwfn,
 	return (p_vf->state != VF_FREE && p_vf->state != VF_STOPPED);
 }
 
-enum _ecore_status_t
+int
 ecore_iov_get_vf_min_rate(struct ecore_hwfn *p_hwfn, int vfid)
 {
 	struct ecore_wfq_data *vf_vp_wfq;
