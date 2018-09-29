@@ -4553,12 +4553,18 @@ int bnx2x_intr_legacy(struct bnx2x_softc *sc, int scan_fp)
 		fp = &sc->fp[i];
 		mask = (0x2 << (fp->index + CNIC_SUPPORT(sc)));
 		if (status & mask) {
+		/* acknowledge and disable further fastpath interrupts */
+			bnx2x_ack_sb(sc, fp->igu_sb_id, USTORM_ID,
+				     0, IGU_INT_DISABLE, 0);
 			bnx2x_handle_fp_tq(fp, scan_fp);
 			status &= ~mask;
 		}
 	}
 
 	if (unlikely(status & 0x1)) {
+		/* acknowledge and disable further slowpath interrupts */
+		bnx2x_ack_sb(sc, sc->igu_dsb_id, USTORM_ID,
+			     0, IGU_INT_DISABLE, 0);
 		rc = bnx2x_handle_sp_tq(sc);
 		status &= ~0x1;
 	}
