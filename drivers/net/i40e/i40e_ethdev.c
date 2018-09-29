@@ -6625,7 +6625,6 @@ i40e_dev_interrupt_handler(void *param)
 done:
 	/* Enable interrupt */
 	i40e_pf_enable_irq0(hw);
-	rte_intr_enable(dev->intr_handle);
 }
 
 static void
