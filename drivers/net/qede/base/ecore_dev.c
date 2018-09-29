@@ -2804,6 +2804,12 @@ enum _ecore_status_t ecore_hw_stop(struct ecore_dev *p_dev)
 			rc2 = ECORE_UNKNOWN_ERROR;
 		}
 
+		OSAL_DPC_SYNC(p_hwfn);
+
+		/* After this point we don't expect the FW to send us async
+		 * events
+		 */
+
 		/* perform debug action after PF stop was sent */
 		OSAL_AFTER_PF_STOP((void *)p_dev, p_hwfn->my_id);
 

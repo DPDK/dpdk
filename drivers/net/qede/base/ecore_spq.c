@@ -283,8 +283,10 @@ ecore_async_event_completion(struct ecore_hwfn *p_hwfn,
 {
 	ecore_spq_async_comp_cb cb;
 
-	if (!p_hwfn->p_spq || (p_eqe->protocol_id >= MAX_PROTOCOL_TYPE))
+	if (p_eqe->protocol_id >= MAX_PROTOCOL_TYPE) {
+		DP_ERR(p_hwfn, "Wrong protocol: %d\n", p_eqe->protocol_id);
 		return ECORE_INVAL;
+	}
 
 	cb = p_hwfn->p_spq->async_comp_cb[p_eqe->protocol_id];
 	if (cb) {
@@ -339,10 +341,16 @@ enum _ecore_status_t ecore_eq_completion(struct ecore_hwfn *p_hwfn,
 {
 	struct ecore_eq *p_eq = cookie;
 	struct ecore_chain *p_chain = &p_eq->chain;
+	u16 fw_cons_idx             = 0;
 	enum _ecore_status_t rc = 0;
 
+	if (!p_hwfn->p_spq) {
+		DP_ERR(p_hwfn, "Unexpected NULL p_spq\n");
+		return ECORE_INVAL;
+	}
+
 	/* take a snapshot of the FW consumer */
-	u16 fw_cons_idx = OSAL_LE16_TO_CPU(*p_eq->p_fw_cons);
+	fw_cons_idx = OSAL_LE16_TO_CPU(*p_eq->p_fw_cons);
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_SPQ, "fw_cons_idx %x\n", fw_cons_idx);
 
