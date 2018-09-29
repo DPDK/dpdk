@@ -177,10 +177,16 @@ enum _ecore_status_t ecore_mcp_free(struct ecore_hwfn *p_hwfn)
 	return ECORE_SUCCESS;
 }
 
+/* Maximum of 1 sec to wait for the SHMEM ready indication */
+#define ECORE_MCP_SHMEM_RDY_MAX_RETRIES	20
+#define ECORE_MCP_SHMEM_RDY_ITER_MS	50
+
 static enum _ecore_status_t ecore_load_mcp_offsets(struct ecore_hwfn *p_hwfn,
 						   struct ecore_ptt *p_ptt)
 {
 	struct ecore_mcp_info *p_info = p_hwfn->mcp_info;
+	u8 cnt = ECORE_MCP_SHMEM_RDY_MAX_RETRIES;
+	u8 msec = ECORE_MCP_SHMEM_RDY_ITER_MS;
 	u32 drv_mb_offsize, mfw_mb_offsize;
 	u32 mcp_pf_id = MCP_PF_ID(p_hwfn);
 
@@ -198,6 +204,35 @@ static enum _ecore_status_t ecore_load_mcp_offsets(struct ecore_hwfn *p_hwfn,
 
 	p_info->public_base |= GRCBASE_MCP;
 
+	/* Get the MFW MB address and number of supported messages */
+	mfw_mb_offsize = ecore_rd(p_hwfn, p_ptt,
+				  SECTION_OFFSIZE_ADDR(p_info->public_base,
+				  PUBLIC_MFW_MB));
+	p_info->mfw_mb_addr = SECTION_ADDR(mfw_mb_offsize, mcp_pf_id);
+	p_info->mfw_mb_length = (u16)ecore_rd(p_hwfn, p_ptt,
+					      p_info->mfw_mb_addr);
+
+	/* @@@TBD:
+	 * The driver can notify that there was an MCP reset, and read the SHMEM
+	 * values before the MFW has completed initializing them.
+	 * As a temporary solution, the "sup_msgs" field is used as a data ready
+	 * indication.
+	 * This should be replaced with an actual indication when it is provided
+	 * by the MFW.
+	 */
+	while (!p_info->mfw_mb_length && cnt--) {
+		OSAL_MSLEEP(msec);
+		p_info->mfw_mb_length = (u16)ecore_rd(p_hwfn, p_ptt,
+						      p_info->mfw_mb_addr);
+	}
+
+	if (!cnt) {
+		DP_NOTICE(p_hwfn, false,
+			  "Failed to get the SHMEM ready notification after %d msec\n",
+			  ECORE_MCP_SHMEM_RDY_MAX_RETRIES * msec);
+		return ECORE_TIMEOUT;
+	}
+
 	/* Calculate the driver and MFW mailbox address */
 	drv_mb_offsize = ecore_rd(p_hwfn, p_ptt,
 				  SECTION_OFFSIZE_ADDR(p_info->public_base,
@@ -207,14 +242,6 @@ static enum _ecore_status_t ecore_load_mcp_offsets(struct ecore_hwfn *p_hwfn,
 		   "drv_mb_offsiz = 0x%x, drv_mb_addr = 0x%x"
 		   " mcp_pf_id = 0x%x\n",
 		   drv_mb_offsize, p_info->drv_mb_addr, mcp_pf_id);
-
-	/* Set the MFW MB address */
-	mfw_mb_offsize = ecore_rd(p_hwfn, p_ptt,
-				  SECTION_OFFSIZE_ADDR(p_info->public_base,
-						       PUBLIC_MFW_MB));
-	p_info->mfw_mb_addr = SECTION_ADDR(mfw_mb_offsize, mcp_pf_id);
-	p_info->mfw_mb_length = (u16)ecore_rd(p_hwfn, p_ptt,
-					       p_info->mfw_mb_addr);
 
 	/* Get the current driver mailbox sequence before sending
 	 * the first command
