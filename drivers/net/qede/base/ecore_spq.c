@@ -282,6 +282,7 @@ ecore_async_event_completion(struct ecore_hwfn *p_hwfn,
 			     struct event_ring_entry *p_eqe)
 {
 	ecore_spq_async_comp_cb cb;
+	enum _ecore_status_t rc;
 
 	if (p_eqe->protocol_id >= MAX_PROTOCOL_TYPE) {
 		DP_ERR(p_hwfn, "Wrong protocol: %d\n", p_eqe->protocol_id);
@@ -289,15 +290,22 @@ ecore_async_event_completion(struct ecore_hwfn *p_hwfn,
 	}
 
 	cb = p_hwfn->p_spq->async_comp_cb[p_eqe->protocol_id];
-	if (cb) {
-		return cb(p_hwfn, p_eqe->opcode, p_eqe->echo,
-			  &p_eqe->data, p_eqe->fw_return_code);
-	} else {
+	if (!cb) {
 		DP_NOTICE(p_hwfn,
 			  true, "Unknown Async completion for protocol: %d\n",
 			  p_eqe->protocol_id);
 		return ECORE_INVAL;
 	}
+
+	rc = cb(p_hwfn, p_eqe->opcode, p_eqe->echo,
+		&p_eqe->data, p_eqe->fw_return_code);
+	if (rc != ECORE_SUCCESS)
+		DP_NOTICE(p_hwfn, true,
+			  "Async completion callback failed, rc = %d [opcode %x, echo %x, fw_return_code %x]",
+			  rc, p_eqe->opcode, p_eqe->echo,
+			  p_eqe->fw_return_code);
+
+	return rc;
 }
 
 enum _ecore_status_t
@@ -342,7 +350,7 @@ enum _ecore_status_t ecore_eq_completion(struct ecore_hwfn *p_hwfn,
 	struct ecore_eq *p_eq = cookie;
 	struct ecore_chain *p_chain = &p_eq->chain;
 	u16 fw_cons_idx             = 0;
-	enum _ecore_status_t rc = 0;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
 
 	if (!p_hwfn->p_spq) {
 		DP_ERR(p_hwfn, "Unexpected NULL p_spq\n");
@@ -366,7 +374,8 @@ enum _ecore_status_t ecore_eq_completion(struct ecore_hwfn *p_hwfn,
 	while (fw_cons_idx != ecore_chain_get_cons_idx(p_chain)) {
 		struct event_ring_entry *p_eqe = ecore_chain_consume(p_chain);
 		if (!p_eqe) {
-			rc = ECORE_INVAL;
+			DP_ERR(p_hwfn,
+			       "Unexpected NULL chain consumer entry\n");
 			break;
 		}
 
@@ -382,15 +391,13 @@ enum _ecore_status_t ecore_eq_completion(struct ecore_hwfn *p_hwfn,
 						      */
 			   p_eqe->flags);
 
-		if (GET_FIELD(p_eqe->flags, EVENT_RING_ENTRY_ASYNC)) {
-			if (ecore_async_event_completion(p_hwfn, p_eqe))
-				rc = ECORE_INVAL;
-		} else if (ecore_spq_completion(p_hwfn,
-						p_eqe->echo,
-						p_eqe->fw_return_code,
-						&p_eqe->data)) {
-			rc = ECORE_INVAL;
-		}
+		if (GET_FIELD(p_eqe->flags, EVENT_RING_ENTRY_ASYNC))
+			ecore_async_event_completion(p_hwfn, p_eqe);
+		else
+			ecore_spq_completion(p_hwfn,
+					     p_eqe->echo,
+					     p_eqe->fw_return_code,
+					     &p_eqe->data);
 
 		ecore_chain_recycle_consumed(p_chain);
 	}
@@ -936,12 +943,11 @@ enum _ecore_status_t ecore_spq_completion(struct ecore_hwfn *p_hwfn,
 	struct ecore_spq_entry *found = OSAL_NULL;
 	enum _ecore_status_t rc;
 
-	if (!p_hwfn)
-		return ECORE_INVAL;
-
 	p_spq = p_hwfn->p_spq;
-	if (!p_spq)
+	if (!p_spq) {
+		DP_ERR(p_hwfn, "Unexpected NULL p_spq\n");
 		return ECORE_INVAL;
+	}
 
 	OSAL_SPIN_LOCK(&p_spq->lock);
 	OSAL_LIST_FOR_EACH_ENTRY_SAFE(p_ent,

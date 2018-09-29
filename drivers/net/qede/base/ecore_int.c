@@ -1224,8 +1224,9 @@ static enum _ecore_status_t ecore_int_attentions(struct ecore_hwfn *p_hwfn)
 static void ecore_sb_ack_attn(struct ecore_hwfn *p_hwfn,
 			      void OSAL_IOMEM *igu_addr, u32 ack_cons)
 {
-	struct igu_prod_cons_update igu_ack = { 0 };
+	struct igu_prod_cons_update igu_ack;
 
+	OSAL_MEMSET(&igu_ack, 0, sizeof(struct igu_prod_cons_update));
 	igu_ack.sb_id_and_flags =
 	    ((ack_cons << IGU_PROD_CONS_UPDATE_SB_INDEX_SHIFT) |
 	     (1 << IGU_PROD_CONS_UPDATE_UPDATE_FLAG_SHIFT) |

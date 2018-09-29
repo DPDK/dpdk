@@ -325,7 +325,7 @@ ecore_dcbx_process_mib_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
 {
 	struct dcbx_app_priority_feature *p_app;
 	struct dcbx_app_priority_entry *p_tbl;
-	struct ecore_dcbx_results data = { 0 };
+	struct ecore_dcbx_results data;
 	struct dcbx_ets_feature *p_ets;
 	struct ecore_hw_info *p_info;
 	u32 pri_tc_tbl, flags;
@@ -345,6 +345,7 @@ ecore_dcbx_process_mib_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
 	p_info = &p_hwfn->hw_info;
 	num_entries = GET_MFW_FIELD(p_app->flags, DCBX_APP_NUM_ENTRIES);
 
+	OSAL_MEMSET(&data, 0, sizeof(struct ecore_dcbx_results));
 	rc = ecore_dcbx_process_tlv(p_hwfn, p_ptt, &data, p_tbl, pri_tc_tbl,
 				    num_entries, dcbx_version);
 	if (rc != ECORE_SUCCESS)

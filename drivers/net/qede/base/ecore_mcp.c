@@ -3084,7 +3084,7 @@ enum _ecore_status_t ecore_mcp_phy_read(struct ecore_dev *p_dev, u32 cmd,
 {
 	struct ecore_hwfn *p_hwfn = ECORE_LEADING_HWFN(p_dev);
 	struct ecore_ptt *p_ptt;
-	u32 resp, param;
+	u32 resp = 0, param;
 	enum _ecore_status_t rc;
 
 	p_ptt = ecore_ptt_acquire(p_hwfn);
@@ -3124,7 +3124,7 @@ enum _ecore_status_t ecore_mcp_nvm_del_file(struct ecore_dev *p_dev, u32 addr)
 {
 	struct ecore_hwfn *p_hwfn = ECORE_LEADING_HWFN(p_dev);
 	struct ecore_ptt *p_ptt;
-	u32 resp, param;
+	u32 resp = 0, param;
 	enum _ecore_status_t rc;
 
 	p_ptt = ecore_ptt_acquire(p_hwfn);
@@ -3143,7 +3143,7 @@ enum _ecore_status_t ecore_mcp_nvm_put_file_begin(struct ecore_dev *p_dev,
 {
 	struct ecore_hwfn *p_hwfn = ECORE_LEADING_HWFN(p_dev);
 	struct ecore_ptt *p_ptt;
-	u32 resp, param;
+	u32 resp = 0, param;
 	enum _ecore_status_t rc;
 
 	p_ptt = ecore_ptt_acquire(p_hwfn);
@@ -3237,8 +3237,8 @@ enum _ecore_status_t ecore_mcp_phy_write(struct ecore_dev *p_dev, u32 cmd,
 					 u32 addr, u8 *p_buf, u32 len)
 {
 	struct ecore_hwfn *p_hwfn = ECORE_LEADING_HWFN(p_dev);
+	u32 resp = 0, param, nvm_cmd;
 	struct ecore_ptt *p_ptt;
-	u32 resp, param, nvm_cmd;
 	enum _ecore_status_t rc;
 
 	p_ptt = ecore_ptt_acquire(p_hwfn);
@@ -4216,10 +4216,11 @@ enum _ecore_status_t ecore_mcp_get_ppfid_bitmap(struct ecore_hwfn *p_hwfn,
 void ecore_mcp_wol_wr(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 		      u32 offset, u32 val)
 {
-	struct ecore_mcp_mb_params mb_params = {0};
 	enum _ecore_status_t	   rc = ECORE_SUCCESS;
 	u32			   dword = val;
+	struct ecore_mcp_mb_params mb_params;
 
+	OSAL_MEMSET(&mb_params, 0, sizeof(struct ecore_mcp_mb_params));
 	mb_params.cmd = DRV_MSG_CODE_WRITE_WOL_REG;
 	mb_params.param = offset;
 	mb_params.p_data_src = &dword;

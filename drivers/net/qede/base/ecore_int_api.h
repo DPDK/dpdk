@@ -92,8 +92,9 @@ static OSAL_INLINE u16 ecore_sb_update_sb_idx(struct ecore_sb_info *sb_info)
 static OSAL_INLINE void ecore_sb_ack(struct ecore_sb_info *sb_info,
 				     enum igu_int_cmd int_cmd, u8 upd_flg)
 {
-	struct igu_prod_cons_update igu_ack = { 0 };
+	struct igu_prod_cons_update igu_ack;
 
+	OSAL_MEMSET(&igu_ack, 0, sizeof(struct igu_prod_cons_update));
 	igu_ack.sb_id_and_flags =
 	    ((sb_info->sb_ack << IGU_PROD_CONS_UPDATE_SB_INDEX_SHIFT) |
 	     (upd_flg << IGU_PROD_CONS_UPDATE_UPDATE_FLAG_SHIFT) |

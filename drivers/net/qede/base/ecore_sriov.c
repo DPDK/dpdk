@@ -218,7 +218,7 @@ struct ecore_vf_info *ecore_iov_get_vf_info(struct ecore_hwfn *p_hwfn,
 static struct ecore_queue_cid *
 ecore_iov_get_vf_rx_queue_cid(struct ecore_vf_queue *p_queue)
 {
-	int i;
+	u32 i;
 
 	for (i = 0; i < MAX_QUEUES_PER_QZONE; i++) {
 		if (p_queue->cids[i].p_cid &&
@@ -240,7 +240,7 @@ static bool ecore_iov_validate_queue_mode(struct ecore_vf_info *p_vf,
 					  enum ecore_iov_validate_q_mode mode,
 					  bool b_is_tx)
 {
-	int i;
+	u32 i;
 
 	if (mode == ECORE_IOV_VALIDATE_Q_NA)
 		return true;
@@ -2089,8 +2089,8 @@ static void ecore_iov_vf_mbx_start_vport(struct ecore_hwfn *p_hwfn,
 					 struct ecore_ptt *p_ptt,
 					 struct ecore_vf_info *vf)
 {
-	struct ecore_sp_vport_start_params params = { 0 };
 	struct ecore_iov_vf_mbx *mbx = &vf->vf_mbx;
+	struct ecore_sp_vport_start_params params;
 	struct vfpf_vport_start_tlv *start;
 	u8 status = PFVF_STATUS_SUCCESS;
 	struct ecore_vf_info *vf_info;
@@ -2141,6 +2141,7 @@ static void ecore_iov_vf_mbx_start_vport(struct ecore_hwfn *p_hwfn,
 		*p_bitmap |= 1 << VFPF_BULLETIN_UNTAGGED_DEFAULT;
 	}
 
+	OSAL_MEMSET(&params, 0, sizeof(struct ecore_sp_vport_start_params));
 	params.tpa_mode = start->tpa_mode;
 	params.remove_inner_vlan = start->inner_vlan_removal;
 	params.tx_switching = true;
@@ -3668,7 +3669,7 @@ static void ecore_iov_vf_pf_set_coalesce(struct ecore_hwfn *p_hwfn,
 	struct ecore_queue_cid *p_cid;
 	u16 rx_coal, tx_coal;
 	u16 qid;
-	int i;
+	u32 i;
 
 	req = &mbx->req_virt->update_coalesce;
 
@@ -3748,7 +3749,8 @@ ecore_iov_pf_configure_vf_queue_coalesce(struct ecore_hwfn *p_hwfn,
 	struct ecore_queue_cid *p_cid;
 	struct ecore_vf_info *vf;
 	struct ecore_ptt *p_ptt;
-	int i, rc = 0;
+	int rc = 0;
+	u32 i;
 
 	if (!ecore_iov_is_valid_vfid(p_hwfn, vf_id, true, true)) {
 		DP_NOTICE(p_hwfn, true,
