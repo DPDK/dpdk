@@ -543,6 +543,9 @@ enum ecore_mf_mode_bit {
 
 	/* Use stag for steering */
 	ECORE_MF_8021AD_TAGGING,
+
+	/* Allow FIP discovery fallback */
+	ECORE_MF_FIP_SPECIAL,
 };
 
 enum ecore_ufp_mode {

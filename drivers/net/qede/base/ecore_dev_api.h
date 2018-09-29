@@ -704,4 +704,13 @@ ecore_set_queue_coalesce(struct ecore_hwfn *p_hwfn, u16 rx_coal,
 enum _ecore_status_t ecore_pglueb_set_pfid_enable(struct ecore_hwfn *p_hwfn,
 						  struct ecore_ptt *p_ptt,
 						  bool b_enable);
+
+/**
+ * @brief Whether FIP discovery fallback special mode is enabled or not.
+ *
+ * @param cdev
+ *
+ * @return true if device is in FIP special mode, false otherwise.
+ */
+bool ecore_is_mf_fip_special(struct ecore_dev *p_dev);
 #endif

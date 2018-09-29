@@ -3704,7 +3704,8 @@ ecore_hw_get_nvm_info(struct ecore_hwfn *p_hwfn,
 	case NVM_CFG1_GLOB_MF_MODE_BD:
 		p_hwfn->p_dev->mf_bits = 1 << ECORE_MF_OVLAN_CLSS |
 					 1 << ECORE_MF_LLH_PROTO_CLSS |
-					 1 << ECORE_MF_8021AD_TAGGING;
+					 1 << ECORE_MF_8021AD_TAGGING |
+					 1 << ECORE_MF_FIP_SPECIAL;
 		break;
 	case NVM_CFG1_GLOB_MF_MODE_NPAR1_0:
 		p_hwfn->p_dev->mf_bits = 1 << ECORE_MF_LLH_MAC_CLSS |
@@ -5803,4 +5804,9 @@ void ecore_set_fw_mac_addr(__le16 *fw_msb,
 	((u8 *)fw_mid)[1] = mac[2];
 	((u8 *)fw_lsb)[0] = mac[5];
 	((u8 *)fw_lsb)[1] = mac[4];
+}
+
+bool ecore_is_mf_fip_special(struct ecore_dev *p_dev)
+{
+	return !!OSAL_TEST_BIT(ECORE_MF_FIP_SPECIAL, &p_dev->mf_bits);
 }
