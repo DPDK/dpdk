@@ -20,7 +20,7 @@
 
 #include "bnxt_cpr.h"
 
-#define BNXT_MAX_MTU		9500
+#define BNXT_MAX_MTU		9574
 #define VLAN_TAG_SIZE		4
 #define BNXT_VF_RSV_NUM_RSS_CTX	1
 #define BNXT_VF_RSV_NUM_L2_CTX	4

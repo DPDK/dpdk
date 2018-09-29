@@ -451,7 +451,7 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	/* Fast path specifics */
 	dev_info->min_rx_bufsize = 1;
 	dev_info->max_rx_pktlen = BNXT_MAX_MTU + ETHER_HDR_LEN + ETHER_CRC_LEN
-				  + VLAN_TAG_SIZE;
+				  + VLAN_TAG_SIZE * 2;
 
 	dev_info->rx_offload_capa = BNXT_DEV_RX_OFFLOAD_SUPPORT;
 	if (bp->flags & BNXT_FLAG_PTP_SUPPORTED)
@@ -1564,20 +1564,16 @@ static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
 	struct rte_eth_dev_info dev_info;
-	uint32_t max_dev_mtu;
 	uint32_t rc = 0;
 	uint32_t i;
 
 	bnxt_dev_info_get_op(eth_dev, &dev_info);
-	max_dev_mtu = dev_info.max_rx_pktlen -
-		      ETHER_HDR_LEN - ETHER_CRC_LEN - VLAN_TAG_SIZE * 2;
 
-	if (new_mtu < ETHER_MIN_MTU || new_mtu > max_dev_mtu) {
+	if (new_mtu < ETHER_MIN_MTU || new_mtu > BNXT_MAX_MTU) {
 		PMD_DRV_LOG(ERR, "MTU requested must be within (%d, %d)\n",
-			ETHER_MIN_MTU, max_dev_mtu);
+			ETHER_MIN_MTU, BNXT_MAX_MTU);
 		return -EINVAL;
 	}
-
 
 	if (new_mtu > ETHER_MTU) {
 		bp->flags |= BNXT_FLAG_JUMBO;
