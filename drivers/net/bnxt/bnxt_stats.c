@@ -180,6 +180,150 @@ static const struct bnxt_xstats_name_off bnxt_func_stats_strings[] = {
 				rx_agg_aborts)},
 };
 
+static const struct bnxt_xstats_name_off bnxt_rx_ext_stats_strings[] = {
+	{"link_down_events", offsetof(struct rx_port_stats_ext,
+				link_down_events)},
+	{"continuous_pause_events", offsetof(struct rx_port_stats_ext,
+				continuous_pause_events)},
+	{"resume_pause_events", offsetof(struct rx_port_stats_ext,
+				resume_pause_events)},
+	{"continuous_roce_pause_events", offsetof(struct rx_port_stats_ext,
+				continuous_roce_pause_events)},
+	{"resume_roce_pause_events", offsetof(struct rx_port_stats_ext,
+				resume_roce_pause_events)},
+	{"rx_bytes_cos0", offsetof(struct rx_port_stats_ext,
+				rx_bytes_cos0)},
+	{"rx_bytes_cos1", offsetof(struct rx_port_stats_ext,
+				rx_bytes_cos1)},
+	{"rx_bytes_cos2", offsetof(struct rx_port_stats_ext,
+				rx_bytes_cos2)},
+	{"rx_bytes_cos3", offsetof(struct rx_port_stats_ext,
+				rx_bytes_cos3)},
+	{"rx_bytes_cos4", offsetof(struct rx_port_stats_ext,
+				rx_bytes_cos4)},
+	{"rx_bytes_cos5", offsetof(struct rx_port_stats_ext,
+				rx_bytes_cos5)},
+	{"rx_bytes_cos6", offsetof(struct rx_port_stats_ext,
+				rx_bytes_cos6)},
+	{"rx_bytes_cos7", offsetof(struct rx_port_stats_ext,
+				rx_bytes_cos7)},
+	{"rx_packets_cos0", offsetof(struct rx_port_stats_ext,
+				rx_packets_cos0)},
+	{"rx_packets_cos1", offsetof(struct rx_port_stats_ext,
+				rx_packets_cos1)},
+	{"rx_packets_cos2", offsetof(struct rx_port_stats_ext,
+				rx_packets_cos2)},
+	{"rx_packets_cos3", offsetof(struct rx_port_stats_ext,
+				rx_packets_cos3)},
+	{"rx_packets_cos4", offsetof(struct rx_port_stats_ext,
+				rx_packets_cos4)},
+	{"rx_packets_cos5", offsetof(struct rx_port_stats_ext,
+				rx_packets_cos5)},
+	{"rx_packets_cos6", offsetof(struct rx_port_stats_ext,
+				rx_packets_cos6)},
+	{"rx_packets_cos7", offsetof(struct rx_port_stats_ext,
+				rx_packets_cos7)},
+	{"pfc_pri0_rx_duration_us", offsetof(struct rx_port_stats_ext,
+				pfc_pri0_rx_duration_us)},
+	{"pfc_pri0_rx_transitions", offsetof(struct rx_port_stats_ext,
+				pfc_pri0_rx_transitions)},
+	{"pfc_pri1_rx_duration_us", offsetof(struct rx_port_stats_ext,
+				pfc_pri1_rx_duration_us)},
+	{"pfc_pri1_rx_transitions", offsetof(struct rx_port_stats_ext,
+				pfc_pri1_rx_transitions)},
+	{"pfc_pri2_rx_duration_us", offsetof(struct rx_port_stats_ext,
+				pfc_pri2_rx_duration_us)},
+	{"pfc_pri2_rx_transitions", offsetof(struct rx_port_stats_ext,
+				pfc_pri2_rx_transitions)},
+	{"pfc_pri3_rx_duration_us", offsetof(struct rx_port_stats_ext,
+				pfc_pri3_rx_duration_us)},
+	{"pfc_pri3_rx_transitions", offsetof(struct rx_port_stats_ext,
+				pfc_pri3_rx_transitions)},
+	{"pfc_pri4_rx_duration_us", offsetof(struct rx_port_stats_ext,
+				pfc_pri4_rx_duration_us)},
+	{"pfc_pri4_rx_transitions", offsetof(struct rx_port_stats_ext,
+				pfc_pri4_rx_transitions)},
+	{"pfc_pri5_rx_duration_us", offsetof(struct rx_port_stats_ext,
+				pfc_pri5_rx_duration_us)},
+	{"pfc_pri5_rx_transitions", offsetof(struct rx_port_stats_ext,
+				pfc_pri5_rx_transitions)},
+	{"pfc_pri6_rx_duration_us", offsetof(struct rx_port_stats_ext,
+				pfc_pri6_rx_duration_us)},
+	{"pfc_pri6_rx_transitions", offsetof(struct rx_port_stats_ext,
+				pfc_pri6_rx_transitions)},
+	{"pfc_pri7_rx_duration_us", offsetof(struct rx_port_stats_ext,
+				pfc_pri7_rx_duration_us)},
+	{"pfc_pri7_rx_transitions", offsetof(struct rx_port_stats_ext,
+				pfc_pri7_rx_transitions)},
+};
+
+static const struct bnxt_xstats_name_off bnxt_tx_ext_stats_strings[] = {
+	{"tx_bytes_cos0", offsetof(struct tx_port_stats_ext,
+				tx_bytes_cos0)},
+	{"tx_bytes_cos1", offsetof(struct tx_port_stats_ext,
+				tx_bytes_cos1)},
+	{"tx_bytes_cos2", offsetof(struct tx_port_stats_ext,
+				tx_bytes_cos2)},
+	{"tx_bytes_cos3", offsetof(struct tx_port_stats_ext,
+				tx_bytes_cos3)},
+	{"tx_bytes_cos4", offsetof(struct tx_port_stats_ext,
+				tx_bytes_cos4)},
+	{"tx_bytes_cos5", offsetof(struct tx_port_stats_ext,
+				tx_bytes_cos5)},
+	{"tx_bytes_cos6", offsetof(struct tx_port_stats_ext,
+				tx_bytes_cos6)},
+	{"tx_bytes_cos7", offsetof(struct tx_port_stats_ext,
+				tx_bytes_cos7)},
+	{"tx_packets_cos0", offsetof(struct tx_port_stats_ext,
+				tx_packets_cos0)},
+	{"tx_packets_cos1", offsetof(struct tx_port_stats_ext,
+				tx_packets_cos1)},
+	{"tx_packets_cos2", offsetof(struct tx_port_stats_ext,
+				tx_packets_cos2)},
+	{"tx_packets_cos3", offsetof(struct tx_port_stats_ext,
+				tx_packets_cos3)},
+	{"tx_packets_cos4", offsetof(struct tx_port_stats_ext,
+				tx_packets_cos4)},
+	{"tx_packets_cos5", offsetof(struct tx_port_stats_ext,
+				tx_packets_cos5)},
+	{"tx_packets_cos6", offsetof(struct tx_port_stats_ext,
+				tx_packets_cos6)},
+	{"tx_packets_cos7", offsetof(struct tx_port_stats_ext,
+				tx_packets_cos7)},
+	{"pfc_pri0_tx_duration_us", offsetof(struct tx_port_stats_ext,
+				pfc_pri0_tx_duration_us)},
+	{"pfc_pri0_tx_transitions", offsetof(struct tx_port_stats_ext,
+				pfc_pri0_tx_transitions)},
+	{"pfc_pri1_tx_duration_us", offsetof(struct tx_port_stats_ext,
+				pfc_pri1_tx_duration_us)},
+	{"pfc_pri1_tx_transitions", offsetof(struct tx_port_stats_ext,
+				pfc_pri1_tx_transitions)},
+	{"pfc_pri2_tx_duration_us", offsetof(struct tx_port_stats_ext,
+				pfc_pri2_tx_duration_us)},
+	{"pfc_pri2_tx_transitions", offsetof(struct tx_port_stats_ext,
+				pfc_pri2_tx_transitions)},
+	{"pfc_pri3_tx_duration_us", offsetof(struct tx_port_stats_ext,
+				pfc_pri3_tx_duration_us)},
+	{"pfc_pri3_tx_transitions", offsetof(struct tx_port_stats_ext,
+				pfc_pri3_tx_transitions)},
+	{"pfc_pri4_tx_duration_us", offsetof(struct tx_port_stats_ext,
+				pfc_pri4_tx_duration_us)},
+	{"pfc_pri4_tx_transitions", offsetof(struct tx_port_stats_ext,
+				pfc_pri4_tx_transitions)},
+	{"pfc_pri5_tx_duration_us", offsetof(struct tx_port_stats_ext,
+				pfc_pri5_tx_duration_us)},
+	{"pfc_pri5_tx_transitions", offsetof(struct tx_port_stats_ext,
+				pfc_pri5_tx_transitions)},
+	{"pfc_pri6_tx_duration_us", offsetof(struct tx_port_stats_ext,
+				pfc_pri6_tx_duration_us)},
+	{"pfc_pri6_tx_transitions", offsetof(struct tx_port_stats_ext,
+				pfc_pri6_tx_transitions)},
+	{"pfc_pri7_tx_duration_us", offsetof(struct tx_port_stats_ext,
+				pfc_pri7_tx_duration_us)},
+	{"pfc_pri7_tx_transitions", offsetof(struct tx_port_stats_ext,
+				pfc_pri7_tx_transitions)},
+};
+
 /*
  * Statistics functions
  */
@@ -265,12 +409,22 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 
 	unsigned int count, i;
 	uint64_t tx_drop_pkts;
+	unsigned int rx_port_stats_ext_cnt;
+	unsigned int tx_port_stats_ext_cnt;
+	unsigned int stat_size = sizeof(uint64_t);
+	unsigned int stat_count;
 
 	bnxt_hwrm_port_qstats(bp);
 	bnxt_hwrm_func_qstats_tx_drop(bp, 0xffff, &tx_drop_pkts);
+	bnxt_hwrm_ext_port_qstats(bp);
+	rx_port_stats_ext_cnt = bp->fw_rx_port_stats_ext_size / stat_size;
+	tx_port_stats_ext_cnt = bp->fw_tx_port_stats_ext_size / stat_size;
 
 	count = RTE_DIM(bnxt_rx_stats_strings) +
-		RTE_DIM(bnxt_tx_stats_strings) + 1; /* For tx_drop_pkts */
+		RTE_DIM(bnxt_tx_stats_strings) + 1/* For tx_drop_pkts */ +
+		RTE_DIM(bnxt_rx_ext_stats_strings) +
+		RTE_DIM(bnxt_tx_ext_stats_strings);
+	stat_count = count;
 
 	if (n < count)
 		return count;
@@ -299,7 +453,27 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 	xstats[count].value = rte_le_to_cpu_64(tx_drop_pkts);
 	count++;
 
-	return count;
+	for (i = 0; i < tx_port_stats_ext_cnt; i++) {
+		uint64_t *tx_stats_ext = (uint64_t *)bp->hw_tx_port_stats_ext;
+
+		xstats[count].value = rte_le_to_cpu_64
+					(*(uint64_t *)((char *)tx_stats_ext +
+					 bnxt_tx_ext_stats_strings[i].offset));
+
+		count++;
+	}
+
+	for (i = 0; i < rx_port_stats_ext_cnt; i++) {
+		uint64_t *rx_stats_ext = (uint64_t *)bp->hw_rx_port_stats_ext;
+
+		xstats[count].value = rte_le_to_cpu_64
+					(*(uint64_t *)((char *)rx_stats_ext +
+					 bnxt_rx_ext_stats_strings[i].offset));
+
+		count++;
+	}
+
+	return stat_count;
 }
 
 int bnxt_dev_xstats_get_names_op(__rte_unused struct rte_eth_dev *eth_dev,
@@ -308,7 +482,9 @@ int bnxt_dev_xstats_get_names_op(__rte_unused struct rte_eth_dev *eth_dev,
 {
 	/* Account for the Tx drop pkts aka the Anti spoof counter */
 	const unsigned int stat_cnt = RTE_DIM(bnxt_rx_stats_strings) +
-				RTE_DIM(bnxt_tx_stats_strings) + 1;
+				RTE_DIM(bnxt_tx_stats_strings) + 1 +
+				RTE_DIM(bnxt_rx_ext_stats_strings) +
+				RTE_DIM(bnxt_tx_ext_stats_strings);
 	unsigned int i, count;
 
 	if (xstats_names != NULL) {
@@ -335,6 +511,25 @@ int bnxt_dev_xstats_get_names_op(__rte_unused struct rte_eth_dev *eth_dev,
 				"%s",
 				bnxt_func_stats_strings[4].name);
 		count++;
+
+		for (i = 0; i < RTE_DIM(bnxt_rx_ext_stats_strings); i++) {
+			snprintf(xstats_names[count].name,
+				 sizeof(xstats_names[count].name),
+				 "%s",
+				 bnxt_rx_ext_stats_strings[i].name);
+
+			count++;
+		}
+
+		for (i = 0; i < RTE_DIM(bnxt_tx_ext_stats_strings); i++) {
+			snprintf(xstats_names[count].name,
+				 sizeof(xstats_names[count].name),
+				 "%s",
+				 bnxt_tx_ext_stats_strings[i].name);
+
+			count++;
+		}
+
 	}
 	return stat_cnt;
 }
@@ -359,7 +554,9 @@ int bnxt_dev_xstats_get_by_id_op(struct rte_eth_dev *dev, const uint64_t *ids,
 {
 	/* Account for the Tx drop pkts aka the Anti spoof counter */
 	const unsigned int stat_cnt = RTE_DIM(bnxt_rx_stats_strings) +
-				RTE_DIM(bnxt_tx_stats_strings) + 1;
+				RTE_DIM(bnxt_tx_stats_strings) + 1 +
+				RTE_DIM(bnxt_rx_ext_stats_strings) +
+				RTE_DIM(bnxt_tx_ext_stats_strings);
 	struct rte_eth_xstat xstats[stat_cnt];
 	uint64_t values_copy[stat_cnt];
 	uint16_t i;
@@ -384,7 +581,9 @@ int bnxt_dev_xstats_get_names_by_id_op(struct rte_eth_dev *dev,
 {
 	/* Account for the Tx drop pkts aka the Anti spoof counter */
 	const unsigned int stat_cnt = RTE_DIM(bnxt_rx_stats_strings) +
-				RTE_DIM(bnxt_tx_stats_strings) + 1;
+				RTE_DIM(bnxt_tx_stats_strings) + 1 +
+				RTE_DIM(bnxt_rx_ext_stats_strings) +
+				RTE_DIM(bnxt_tx_ext_stats_strings);
 	struct rte_eth_xstat_name xstats_names_copy[stat_cnt];
 	uint16_t i;
 

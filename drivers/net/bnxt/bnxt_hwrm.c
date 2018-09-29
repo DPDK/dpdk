@@ -3945,3 +3945,47 @@ int bnxt_hwrm_set_ring_coal(struct bnxt *bp,
 	HWRM_UNLOCK();
 	return 0;
 }
+
+int bnxt_hwrm_ext_port_qstats(struct bnxt *bp)
+{
+	struct hwrm_port_qstats_ext_input req = {0};
+	struct hwrm_port_qstats_ext_output *resp = bp->hwrm_cmd_resp_addr;
+	struct bnxt_pf_info *pf = &bp->pf;
+	int rc;
+
+	if (!(bp->flags & BNXT_FLAG_EXT_RX_PORT_STATS ||
+	      bp->flags & BNXT_FLAG_EXT_TX_PORT_STATS))
+		return 0;
+
+	HWRM_PREP(req, PORT_QSTATS_EXT);
+
+	req.port_id = rte_cpu_to_le_16(pf->port_id);
+	if (bp->flags & BNXT_FLAG_EXT_TX_PORT_STATS) {
+		req.tx_stat_host_addr =
+			rte_cpu_to_le_64(bp->hw_tx_port_stats_map);
+		req.tx_stat_size =
+			rte_cpu_to_le_16(sizeof(struct tx_port_stats_ext));
+	}
+	if (bp->flags & BNXT_FLAG_EXT_RX_PORT_STATS) {
+		req.rx_stat_host_addr =
+			rte_cpu_to_le_64(bp->hw_rx_port_stats_map);
+		req.rx_stat_size =
+			rte_cpu_to_le_16(sizeof(struct rx_port_stats_ext));
+	}
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	if (rc) {
+		bp->fw_rx_port_stats_ext_size = 0;
+		bp->fw_tx_port_stats_ext_size = 0;
+	} else {
+		bp->fw_rx_port_stats_ext_size =
+			rte_le_to_cpu_16(resp->rx_stat_size);
+		bp->fw_tx_port_stats_ext_size =
+			rte_le_to_cpu_16(resp->tx_stat_size);
+	}
+
+	HWRM_CHECK_RESULT();
+	HWRM_UNLOCK();
+
+	return rc;
+}

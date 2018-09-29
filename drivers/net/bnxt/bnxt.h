@@ -250,6 +250,8 @@ struct bnxt {
 #define BNXT_FLAG_UPDATE_HASH	(1 << 5)
 #define BNXT_FLAG_PTP_SUPPORTED	(1 << 6)
 #define BNXT_FLAG_MULTI_HOST    (1 << 7)
+#define BNXT_FLAG_EXT_RX_PORT_STATS	(1 << 8)
+#define BNXT_FLAG_EXT_TX_PORT_STATS	(1 << 9)
 #define BNXT_FLAG_NEW_RM	(1 << 30)
 #define BNXT_FLAG_INIT_DONE	(1 << 31)
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
@@ -264,6 +266,9 @@ struct bnxt {
 	const void		*rx_mem_zone;
 	struct rx_port_stats    *hw_rx_port_stats;
 	rte_iova_t		hw_rx_port_stats_map;
+	struct rx_port_stats_ext    *hw_rx_port_stats_ext;
+	rte_iova_t		hw_rx_port_stats_ext_map;
+	uint16_t		fw_rx_port_stats_ext_size;
 
 	unsigned int		tx_nr_rings;
 	unsigned int		tx_cp_nr_rings;
@@ -271,6 +276,9 @@ struct bnxt {
 	const void		*tx_mem_zone;
 	struct tx_port_stats    *hw_tx_port_stats;
 	rte_iova_t		hw_tx_port_stats_map;
+	struct tx_port_stats_ext    *hw_tx_port_stats_ext;
+	rte_iova_t		hw_tx_port_stats_ext_map;
+	uint16_t		fw_tx_port_stats_ext_size;
 
 	/* Default completion ring */
 	struct bnxt_cp_ring_info	*def_cp_ring;

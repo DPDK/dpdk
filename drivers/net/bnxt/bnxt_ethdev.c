@@ -3215,7 +3215,9 @@ skip_init:
 		mz_name[RTE_MEMZONE_NAMESIZE - 1] = 0;
 		mz = rte_memzone_lookup(mz_name);
 		total_alloc_len = RTE_CACHE_LINE_ROUNDUP(
-				sizeof(struct rx_port_stats) + 512);
+					sizeof(struct rx_port_stats) +
+					sizeof(struct rx_port_stats_ext) +
+					512);
 		if (!mz) {
 			mz = rte_memzone_reserve(mz_name, total_alloc_len,
 					SOCKET_ID_ANY,
@@ -3251,7 +3253,9 @@ skip_init:
 		mz_name[RTE_MEMZONE_NAMESIZE - 1] = 0;
 		mz = rte_memzone_lookup(mz_name);
 		total_alloc_len = RTE_CACHE_LINE_ROUNDUP(
-				sizeof(struct tx_port_stats) + 512);
+					sizeof(struct tx_port_stats) +
+					sizeof(struct tx_port_stats_ext) +
+					512);
 		if (!mz) {
 			mz = rte_memzone_reserve(mz_name,
 					total_alloc_len,
@@ -3282,8 +3286,30 @@ skip_init:
 		bp->hw_tx_port_stats_map = mz_phys_addr;
 
 		bp->flags |= BNXT_FLAG_PORT_STATS;
+
+		/* Display extended statistics if FW supports it */
+		if (bp->hwrm_spec_code < HWRM_SPEC_CODE_1_8_4 ||
+		    bp->hwrm_spec_code == HWRM_SPEC_CODE_1_9_0)
+			goto skip_ext_stats;
+
+		bp->hw_rx_port_stats_ext = (void *)
+			(bp->hw_rx_port_stats + sizeof(struct rx_port_stats));
+		bp->hw_rx_port_stats_ext_map = bp->hw_rx_port_stats_map +
+			sizeof(struct rx_port_stats);
+		bp->flags |= BNXT_FLAG_EXT_RX_PORT_STATS;
+
+
+		if (bp->hwrm_spec_code < HWRM_SPEC_CODE_1_9_2) {
+			bp->hw_tx_port_stats_ext = (void *)
+			(bp->hw_tx_port_stats + sizeof(struct tx_port_stats));
+			bp->hw_tx_port_stats_ext_map =
+				bp->hw_tx_port_stats_map +
+				sizeof(struct tx_port_stats);
+			bp->flags |= BNXT_FLAG_EXT_TX_PORT_STATS;
+		}
 	}
 
+skip_ext_stats:
 	rc = bnxt_alloc_hwrm_resources(bp);
 	if (rc) {
 		PMD_DRV_LOG(ERR,
