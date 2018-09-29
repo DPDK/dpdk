@@ -428,13 +428,13 @@ ecore_general_attention_35(struct ecore_hwfn *p_hwfn)
 #define ECORE_DORQ_ATTENTION_SIZE_MASK		(0x7f)
 #define ECORE_DORQ_ATTENTION_SIZE_SHIFT		(16)
 
-#define ECORE_DB_REC_COUNT			10
+#define ECORE_DB_REC_COUNT			1000
 #define ECORE_DB_REC_INTERVAL			100
 
 static enum _ecore_status_t ecore_db_rec_flush_queue(struct ecore_hwfn *p_hwfn,
 						     struct ecore_ptt *p_ptt)
 {
-	u8 count = ECORE_DB_REC_COUNT;
+	u32 count = ECORE_DB_REC_COUNT;
 	u32 usage = 1;
 
 	/* wait for usage to zero or count to run out. This is necessary since
@@ -463,11 +463,18 @@ static enum _ecore_status_t ecore_db_rec_flush_queue(struct ecore_hwfn *p_hwfn,
 	return ECORE_SUCCESS;
 }
 
-/* assumes sticky overflow indication was set for this PF */
-static enum _ecore_status_t ecore_db_rec_attn(struct ecore_hwfn *p_hwfn,
-					      struct ecore_ptt *p_ptt)
+enum _ecore_status_t ecore_db_rec_handler(struct ecore_hwfn *p_hwfn,
+					  struct ecore_ptt *p_ptt)
 {
+	u32 overflow;
 	enum _ecore_status_t rc;
+
+	overflow = ecore_rd(p_hwfn, p_ptt, DORQ_REG_PF_OVFL_STICKY);
+	DP_NOTICE(p_hwfn, false, "PF Overflow sticky 0x%x\n", overflow);
+	if (!overflow) {
+		ecore_db_recovery_execute(p_hwfn, DB_REC_ONCE);
+		return ECORE_SUCCESS;
+	}
 
 	if (ecore_edpm_enabled(p_hwfn)) {
 		rc = ecore_db_rec_flush_queue(p_hwfn, p_ptt);
@@ -491,8 +498,7 @@ static enum _ecore_status_t ecore_db_rec_attn(struct ecore_hwfn *p_hwfn,
 
 static enum _ecore_status_t ecore_dorq_attn_cb(struct ecore_hwfn *p_hwfn)
 {
-	u32 int_sts, first_drop_reason, details, address, overflow,
-		all_drops_reason;
+	u32 int_sts, first_drop_reason, details, address, all_drops_reason;
 	struct ecore_ptt *p_ptt = p_hwfn->p_dpc_ptt;
 	enum _ecore_status_t rc;
 
@@ -518,8 +524,6 @@ static enum _ecore_status_t ecore_dorq_attn_cb(struct ecore_hwfn *p_hwfn)
 				   DORQ_REG_DB_DROP_DETAILS);
 		address = ecore_rd(p_hwfn, p_ptt,
 				   DORQ_REG_DB_DROP_DETAILS_ADDRESS);
-		overflow = ecore_rd(p_hwfn, p_ptt,
-				    DORQ_REG_PF_OVFL_STICKY);
 		all_drops_reason = ecore_rd(p_hwfn, p_ptt,
 					    DORQ_REG_DB_DROP_DETAILS_REASON);
 
@@ -530,19 +534,16 @@ static enum _ecore_status_t ecore_dorq_attn_cb(struct ecore_hwfn *p_hwfn)
 			  "FID\t\t0x%04x\t\t(Opaque FID)\n"
 			  "Size\t\t0x%04x\t\t(in bytes)\n"
 			  "1st drop reason\t0x%08x\t(details on first drop since last handling)\n"
-			  "Sticky reasons\t0x%08x\t(all drop reasons since last handling)\n"
-			  "Overflow\t0x%x\t\t(a per PF indication)\n",
+			  "Sticky reasons\t0x%08x\t(all drop reasons since last handling)\n",
 			  address,
 			  GET_FIELD(details, ECORE_DORQ_ATTENTION_OPAQUE),
 			  GET_FIELD(details, ECORE_DORQ_ATTENTION_SIZE) * 4,
-			  first_drop_reason, all_drops_reason, overflow);
+			  first_drop_reason, all_drops_reason);
 
-		/* if this PF caused overflow, initiate recovery */
-		if (overflow) {
-			rc = ecore_db_rec_attn(p_hwfn, p_ptt);
-			if (rc != ECORE_SUCCESS)
-				return rc;
-		}
+		rc = ecore_db_rec_handler(p_hwfn, p_ptt);
+		OSAL_DB_REC_OCCURRED(p_hwfn);
+		if (rc != ECORE_SUCCESS)
+			return rc;
 
 		/* clear the doorbell drop details and prepare for next drop */
 		ecore_wr(p_hwfn, p_ptt, DORQ_REG_DB_DROP_DETAILS_REL, 0);

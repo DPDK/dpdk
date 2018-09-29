@@ -454,5 +454,6 @@ u32 qede_crc32(u32 crc, u8 *ptr, u32 length);
 #define OSAL_DIV_S64(a, b)	((a) / (b))
 #define OSAL_LLDP_RX_TLVS(p_hwfn, tlv_buf, tlv_size) nothing
 #define OSAL_DBG_ALLOC_USER_DATA(p_hwfn, user_data_ptr) (0)
+#define OSAL_DB_REC_OCCURRED(p_hwfn) nothing
 
 #endif /* __BCM_OSAL_H */

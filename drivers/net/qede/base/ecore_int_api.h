@@ -343,4 +343,15 @@ enum _ecore_status_t ecore_int_get_sb_dbg(struct ecore_hwfn *p_hwfn,
 enum _ecore_status_t
 ecore_int_igu_relocate_sb(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 			  u16 sb_id, bool b_to_vf);
+
+/**
+ * @brief - Doorbell Recovery handler.
+ *          Run DB_REAL_DEAL doorbell recovery in case of PF overflow
+ *          (and flush DORQ if needed), otherwise run DB_REC_ONCE.
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ */
+enum _ecore_status_t ecore_db_rec_handler(struct ecore_hwfn *p_hwfn,
+					  struct ecore_ptt *p_ptt);
 #endif
