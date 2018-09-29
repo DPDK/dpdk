@@ -383,6 +383,8 @@ int bnxt_hwrm_set_l2_filter(struct bnxt *bp,
 	HWRM_PREP(req, CFA_L2_FILTER_ALLOC, BNXT_USE_CHIMP_MB);
 
 	req.flags = rte_cpu_to_le_32(filter->flags);
+	req.flags |=
+	rte_cpu_to_le_32(HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_OUTERMOST);
 
 	enables = filter->enables |
 	      HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_DST_ID;
