@@ -500,6 +500,18 @@ struct port_hw_cfg {		    /* port 0: 0x12c  port 1: 0x2bc */
 	#define PORT_HW_CFG_TX_DRV_BROADCAST_MASK                     0x000F0000
 	#define PORT_HW_CFG_TX_DRV_BROADCAST_SHIFT                    16
 
+	/*  Set non-default values for TXFIR in SFP mode. */
+	#define PORT_HW_CFG_TX_DRV_IFIR_MASK                          0x00F00000
+	#define PORT_HW_CFG_TX_DRV_IFIR_SHIFT                         20
+
+	/*  Set non-default values for IPREDRIVER in SFP mode. */
+	#define PORT_HW_CFG_TX_DRV_IPREDRIVER_MASK                    0x0F000000
+	#define PORT_HW_CFG_TX_DRV_IPREDRIVER_SHIFT                   24
+
+	/*  Set non-default values for POST2 in SFP mode. */
+	#define PORT_HW_CFG_TX_DRV_POST2_MASK                         0xF0000000
+	#define PORT_HW_CFG_TX_DRV_POST2_SHIFT                        28
+
 	uint32_t reserved0[5];				    /* 0x17c */
 
 	uint32_t aeu_int_mask;				    /* 0x190 */
@@ -783,6 +795,7 @@ struct port_hw_cfg {		    /* port 0: 0x12c  port 1: 0x2bc */
 		#define PORT_HW_CFG_XGXS_EXT_PHY_TYPE_BNX2X8722        0x00000f00
 		#define PORT_HW_CFG_XGXS_EXT_PHY_TYPE_BNX2X54616       0x00001000
 		#define PORT_HW_CFG_XGXS_EXT_PHY_TYPE_BNX2X84834       0x00001100
+		#define PORT_HW_CFG_XGXS_EXT_PHY_TYPE_BNX2X84858     0x00001200
 		#define PORT_HW_CFG_XGXS_EXT_PHY_TYPE_DIRECT_WC      0x0000fc00
 		#define PORT_HW_CFG_XGXS_EXT_PHY_TYPE_FAILURE        0x0000fd00
 		#define PORT_HW_CFG_XGXS_EXT_PHY_TYPE_NOT_CONN       0x0000ff00
@@ -2532,7 +2545,12 @@ struct shmem2_region {
 	uint32_t drv_func_info_addr;			/* Offset 0x14C */
 	uint32_t drv_func_info_size;			/* Offset 0x150 */
 	uint32_t link_attr_sync[PORT_MAX];		/* Offset 0x154 */
-	#define LINK_ATTR_SYNC_KR2_ENABLE	(1<<0)
+	#define LINK_ATTR_SYNC_KR2_ENABLE       0x00000001
+	#define LINK_ATTR_84858                 0x00000002
+	#define LINK_SFP_EEPROM_COMP_CODE_MASK  0x0000ff00
+	#define LINK_SFP_EEPROM_COMP_CODE_SHIFT          8
+
+	uint32_t link_change_count[PORT_MAX];		/* Offset 0x160-0x164 */
 };
 
 

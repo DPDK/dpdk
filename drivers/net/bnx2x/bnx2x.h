@@ -824,6 +824,7 @@ struct bnx2x_devinfo {
 #define CHIP_ID(sc)           ((sc)->devinfo.chip_id & 0xffff0000)
 #define CHIP_NUM(sc)          ((sc)->devinfo.chip_id >> 16)
 /* device ids */
+#define CHIP_NUM_57710        0x164e
 #define CHIP_NUM_57711        0x164f
 #define CHIP_NUM_57711E       0x1650
 #define CHIP_NUM_57712        0x1662
@@ -865,6 +866,8 @@ struct bnx2x_devinfo {
 #define CHIP_METAL(sc)      ((sc->devinfo.chip_id) & 0x00000ff0)
 #define CHIP_BOND_ID(sc)    ((sc->devinfo.chip_id) & 0x0000000f)
 
+#define CHIP_IS_E1(sc)      (CHIP_NUM(sc) == CHIP_NUM_57710)
+#define CHIP_IS_57710(sc)   (CHIP_NUM(sc) == CHIP_NUM_57710)
 #define CHIP_IS_57711(sc)   (CHIP_NUM(sc) == CHIP_NUM_57711)
 #define CHIP_IS_57711E(sc)  (CHIP_NUM(sc) == CHIP_NUM_57711E)
 #define CHIP_IS_E1H(sc)     ((CHIP_IS_57711(sc)) || \
