@@ -755,7 +755,7 @@ static int bnxt_mac_addr_add_op(struct rte_eth_dev *eth_dev,
 	struct bnxt_vnic_info *vnic = &bp->vnic_info[pool];
 	struct bnxt_filter_info *filter;
 
-	if (BNXT_VF(bp)) {
+	if (BNXT_VF(bp) & !BNXT_VF_IS_TRUSTED(bp)) {
 		PMD_DRV_LOG(ERR, "Cannot add MAC address to a VF interface\n");
 		return -ENOTSUP;
 	}
@@ -1447,7 +1447,7 @@ bnxt_set_default_mac_addr_op(struct rte_eth_dev *dev, struct ether_addr *addr)
 	struct bnxt_filter_info *filter;
 	int rc;
 
-	if (BNXT_VF(bp))
+	if (BNXT_VF(bp) && !BNXT_VF_IS_TRUSTED(bp))
 		return -EPERM;
 
 	memcpy(bp->mac_addr, addr, sizeof(bp->mac_addr));

@@ -909,6 +909,9 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 		bp->flags |= BNXT_FLAG_KONG_MB_EN;
 		PMD_DRV_LOG(DEBUG, "Kong mailbox channel enabled\n");
 	}
+	if (dev_caps_cfg &
+	    HWRM_VER_GET_OUTPUT_DEV_CAPS_CFG_TRUSTED_VF_SUPPORTED)
+		PMD_DRV_LOG(DEBUG, "FW supports Trusted VFs\n");
 
 error:
 	HWRM_UNLOCK();
@@ -2457,6 +2460,11 @@ int bnxt_hwrm_func_qcfg(struct bnxt *bp)
 	flags = rte_le_to_cpu_16(resp->flags);
 	if (BNXT_PF(bp) && (flags & HWRM_FUNC_QCFG_OUTPUT_FLAGS_MULTI_HOST))
 		bp->flags |= BNXT_FLAG_MULTI_HOST;
+
+	if (BNXT_VF(bp) && (flags & HWRM_FUNC_QCFG_OUTPUT_FLAGS_TRUSTED_VF)) {
+		bp->flags |= BNXT_FLAG_TRUSTED_VF_EN;
+		PMD_DRV_LOG(INFO, "Trusted VF cap enabled\n");
+	}
 
 	switch (resp->port_partition_type) {
 	case HWRM_FUNC_QCFG_OUTPUT_PORT_PARTITION_TYPE_NPAR1_0:

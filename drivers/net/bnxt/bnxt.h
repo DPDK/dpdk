@@ -260,6 +260,7 @@ struct bnxt {
 #define BNXT_FLAG_EXT_RX_PORT_STATS	(1 << 8)
 #define BNXT_FLAG_EXT_TX_PORT_STATS	(1 << 9)
 #define BNXT_FLAG_KONG_MB_EN	(1 << 10)
+#define BNXT_FLAG_TRUSTED_VF_EN	(1 << 11)
 #define BNXT_FLAG_NEW_RM	(1 << 30)
 #define BNXT_FLAG_INIT_DONE	(1 << 31)
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
@@ -269,6 +270,7 @@ struct bnxt {
 #define BNXT_SINGLE_PF(bp)      (BNXT_PF(bp) && !BNXT_NPAR(bp) && !BNXT_MH(bp))
 #define BNXT_USE_CHIMP_MB	0 //For non-CFA commands, everything uses Chimp.
 #define BNXT_USE_KONG(bp)	((bp)->flags & BNXT_FLAG_KONG_MB_EN)
+#define BNXT_VF_IS_TRUSTED(bp)	((bp)->flags & BNXT_FLAG_TRUSTED_VF_EN)
 
 	unsigned int		rx_nr_rings;
 	unsigned int		rx_cp_nr_rings;
