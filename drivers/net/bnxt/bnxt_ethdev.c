@@ -202,7 +202,9 @@ static int bnxt_init_chip(struct bnxt *bp)
 	struct bnxt_rx_queue *rxq;
 	struct rte_eth_link new;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(bp->eth_dev);
+	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	uint64_t rx_offloads = dev_conf->rxmode.offloads;
 	uint32_t intr_vector = 0;
 	uint32_t queue_id, base = BNXT_MISC_VEC_ID;
 	uint32_t vec = BNXT_MISC_VEC_ID;
@@ -282,6 +284,16 @@ static int bnxt_init_chip(struct bnxt *bp)
 				goto err_out;
 			}
 		}
+
+		/*
+		 * Firmware sets pf pair in default vnic cfg. If the VLAN strip
+		 * setting is not available at this time, it will not be
+		 * configured correctly in the CFA.
+		 */
+		if (rx_offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+			vnic->vlan_strip = true;
+		else
+			vnic->vlan_strip = false;
 
 		rc = bnxt_hwrm_vnic_cfg(bp, vnic);
 		if (rc) {
