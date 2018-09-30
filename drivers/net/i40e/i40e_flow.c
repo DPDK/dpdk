@@ -3127,6 +3127,7 @@ i40e_flow_parse_fdir_filter(struct rte_eth_dev *dev,
 			    struct rte_flow_error *error,
 			    union i40e_filter_t *filter)
 {
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_fdir_filter_conf *fdir_filter =
 		&filter->fdir_filter;
 	int ret;
@@ -3148,14 +3149,29 @@ i40e_flow_parse_fdir_filter(struct rte_eth_dev *dev,
 
 	if (dev->data->dev_conf.fdir_conf.mode !=
 	    RTE_FDIR_MODE_PERFECT) {
-		rte_flow_error_set(error, ENOTSUP,
-				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				   NULL,
-				   "Check the mode in fdir_conf.");
-		return -rte_errno;
+		/* Enable fdir when fdir flow is added at first time. */
+		ret = i40e_fdir_setup(pf);
+		if (ret != I40E_SUCCESS) {
+			rte_flow_error_set(error, ENOTSUP,
+					   RTE_FLOW_ERROR_TYPE_HANDLE,
+					   NULL, "Failed to setup fdir.");
+			return -rte_errno;
+		}
+		ret = i40e_fdir_configure(dev);
+		if (ret < 0) {
+			rte_flow_error_set(error, ENOTSUP,
+					   RTE_FLOW_ERROR_TYPE_HANDLE,
+					   NULL, "Failed to configure fdir.");
+			goto err;
+		}
+
+		dev->data->dev_conf.fdir_conf.mode = RTE_FDIR_MODE_PERFECT;
 	}
 
 	return 0;
+err:
+	i40e_fdir_teardown(pf);
+	return -rte_errno;
 }
 
 /* Parse to get the action info of a tunnel filter
@@ -4708,6 +4724,13 @@ i40e_flow_destroy(struct rte_eth_dev *dev,
 	case RTE_ETH_FILTER_FDIR:
 		ret = i40e_flow_add_del_fdir_filter(dev,
 		       &((struct i40e_fdir_filter *)flow->rule)->fdir, 0);
+
+		/* If the last flow is destroyed, disable fdir. */
+		if (!ret && !TAILQ_EMPTY(&pf->fdir.fdir_list)) {
+			i40e_fdir_teardown(pf);
+			dev->data->dev_conf.fdir_conf.mode =
+				   RTE_FDIR_MODE_NONE;
+		}
 		break;
 	case RTE_ETH_FILTER_HASH:
 		ret = i40e_config_rss_filter_del(dev,
@@ -4899,6 +4922,8 @@ i40e_flow_flush_fdir_filter(struct i40e_pf *pf)
 		     pctype <= I40E_FILTER_PCTYPE_L2_PAYLOAD; pctype++)
 			pf->fdir.inset_flag[pctype] = 0;
 	}
+
+	i40e_fdir_teardown(pf);
 
 	return ret;
 }

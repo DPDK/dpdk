@@ -1787,6 +1787,10 @@ i40e_dev_configure(struct rte_eth_dev *dev)
 	ad->tx_simple_allowed = true;
 	ad->tx_vec_allowed = true;
 
+	/* Only legacy filter API needs the following fdir config. So when the
+	 * legacy filter API is deprecated, the following codes should also be
+	 * removed.
+	 */
 	if (dev->data->dev_conf.fdir_conf.mode == RTE_FDIR_MODE_PERFECT) {
 		ret = i40e_fdir_setup(pf);
 		if (ret != I40E_SUCCESS) {
@@ -1844,7 +1848,11 @@ err_dcb:
 	rte_free(pf->vmdq);
 	pf->vmdq = NULL;
 err:
-	/* need to release fdir resource if exists */
+	/* Need to release fdir resource if exists.
+	 * Only legacy filter API needs the following fdir config. So when the
+	 * legacy filter API is deprecated, the following code should also be
+	 * removed.
+	 */
 	i40e_fdir_teardown(pf);
 	return ret;
 }
@@ -2482,6 +2490,11 @@ i40e_dev_close(struct rte_eth_dev *dev)
 	i40e_pf_disable_irq0(hw);
 	rte_intr_disable(intr_handle);
 
+	/*
+	 * Only legacy filter API needs the following fdir config. So when the
+	 * legacy filter API is deprecated, the following code should also be
+	 * removed.
+	 */
 	i40e_fdir_teardown(pf);
 
 	/* shutdown and destroy the HMC */
