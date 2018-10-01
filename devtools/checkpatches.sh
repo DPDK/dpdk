@@ -73,14 +73,20 @@ if [ ! -f "$DPDK_CHECKPATCH_PATH" ] || [ ! -x "$DPDK_CHECKPATCH_PATH" ] ; then
 	exit 1
 fi
 
+print_headline() { # <title>
+	printf '\n### %s\n\n' "$1"
+	headline_printed=true
+}
+
 total=0
 status=0
 
 check () { # <patch> <commit> <title>
 	local ret=0
+	headline_printed=false
 
 	total=$(($total + 1))
-	! $verbose || printf '\n### %s\n\n' "$3"
+	! $verbose || print_headline "$3"
 	if [ -n "$1" ] ; then
 		tmpinput=$1
 	elif [ -n "$2" ] ; then
@@ -92,9 +98,10 @@ check () { # <patch> <commit> <title>
 		cat > "$tmpinput"
 	fi
 
+	! $verbose || printf 'Running checkpatch.pl:\n'
 	report=$($DPDK_CHECKPATCH_PATH $options "$tmpinput" 2>/dev/null)
 	if [ $? -ne 0 ] ; then
-		$verbose || printf '\n### %s\n\n' "$3"
+		$headline_printed || print_headline "$3"
 		printf '%s\n' "$report" | sed -n '1,/^total:.*lines checked$/p'
 		ret=1
 	fi
@@ -102,6 +109,7 @@ check () { # <patch> <commit> <title>
 	! $verbose || printf '\nChecking API additions/removals:\n'
 	report=$($VALIDATE_NEW_API "$tmpinput")
 	if [ $? -ne 0 ] ; then
+		$headline_printed || print_headline "$3"
 		printf '%s\n' "$report"
 		ret=1
 	fi
@@ -109,6 +117,7 @@ check () { # <patch> <commit> <title>
 	! $verbose || printf '\nChecking forbidden tokens additions:\n'
 	report=$(check_forbidden_additions <"$tmpinput")
 	if [ $? -ne 0 ] ; then
+		$headline_printed || print_headline "$3"
 		printf '%s\n' "$report"
 		ret=1
 	fi
