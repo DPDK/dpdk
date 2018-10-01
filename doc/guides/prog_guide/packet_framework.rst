@@ -98,6 +98,10 @@ Port Types
    |   |                  | character device.                                                                     |
    |   |                  |                                                                                       |
    +---+------------------+---------------------------------------------------------------------------------------+
+   | 9 | Sym_crypto       | Output port used to extract DPDK Cryptodev operations from a fixed offset of the      |
+   |   |                  | packet and then enqueue to the Cryptodev PMD. Input port used to dequeue the          |
+   |   |                  | Cryptodev operations from the Cryptodev PMD and then retrieve the packets from them.  |
+   +---+------------------+---------------------------------------------------------------------------------------+
 
 Port Interface
 ~~~~~~~~~~~~~~
@@ -1078,6 +1082,11 @@ with each table entry having its own set of enabled user actions and its own cop
    |   |                                   | checksum.                                                           |
    |   |                                   |                                                                     |
    +---+-----------------------------------+---------------------------------------------------------------------+
+   | 7 | Sym Crypto                        | Generate Cryptodev session based on the user-specified algorithm    |
+   |   |                                   | and key(s), and assemble the cryptodev operation based on the       |
+   |   |                                   | predefined offsets.                                                 |
+   |   |                                   |                                                                     |
+   +---+-----------------------------------+---------------------------------------------------------------------+
 
 Multicore Scaling
 -----------------
@@ -1133,7 +1142,7 @@ Typical devices with acceleration capabilities are:
 
 *   Inline accelerators: NICs, switches, FPGAs, etc;
 
-*   Look-aside accelerators: chipsets, FPGAs, etc.
+*   Look-aside accelerators: chipsets, FPGAs, Intel QuickAssist, etc.
 
 Usually, to support a specific functional block, specific implementation of Packet Framework tables and/or ports and/or actions has to be provided for each accelerator,
 with all the implementations sharing the same API: pure SW implementation (no acceleration), implementation using accelerator A, implementation using accelerator B, etc.

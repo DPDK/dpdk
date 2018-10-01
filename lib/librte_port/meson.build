@@ -9,7 +9,8 @@ sources = files(
 	'rte_port_ras.c',
 	'rte_port_ring.c',
 	'rte_port_sched.c',
-	'rte_port_source_sink.c')
+	'rte_port_source_sink.c',
+	'rte_port_sym_crypto.c')
 headers = files(
 	'rte_port_ethdev.h',
 	'rte_port_fd.h',
@@ -18,8 +19,9 @@ headers = files(
 	'rte_port.h',
 	'rte_port_ring.h',
 	'rte_port_sched.h',
-	'rte_port_source_sink.h')
-deps += ['ethdev', 'sched', 'ip_frag']
+	'rte_port_source_sink.h',
+	'rte_port_sym_crypto.h')
+deps += ['ethdev', 'sched', 'ip_frag', 'cryptodev']
 
 if dpdk_conf.has('RTE_LIBRTE_KNI')
 	sources += files('rte_port_kni.c')

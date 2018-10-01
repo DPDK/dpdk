@@ -51,3 +51,12 @@ DPDK_16.11 {
 	rte_port_fd_writer_nodrop_ops;
 
 } DPDK_16.07;
+
+DPDK_18.11 {
+	global:
+
+	rte_port_sym_crypto_reader_ops;
+	rte_port_sym_crypto_writer_ops;
+	rte_port_sym_crypto_writer_nodrop_ops;
+
+} DPDK_16.11;
