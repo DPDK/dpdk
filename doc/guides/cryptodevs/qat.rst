@@ -23,6 +23,7 @@ hardware accelerator devices:
 * ``Intel QuickAssist Technology C62x``
 * ``Intel QuickAssist Technology C3xxx``
 * ``Intel QuickAssist Technology D15xx``
+* ``Intel QuickAssist Technology C4xxx``
 
 
 Features
@@ -254,6 +255,8 @@ to check that the driver and device supports the service you require.
    | "   | "        | 01.org/4.2.0+ | "             | "          | "      | "    | "      | "      | Yes       | Yes         |
    +-----+----------+---------------+---------------+------------+--------+------+--------+--------+-----------+-------------+
    | 2   | D15xx    | p             | qat_d15xx     | d15xx      | 6f54   | 1    | 6f55   | 16     | Yes       | No          |
+   +-----+----------+---------------+---------------+------------+--------+------+--------+--------+-----------+-------------+
+   | 3   | C4xxx    | p             | qat_c4xxx     | c4xxx      | 18a0   | 1    | 18a1   | 128    | Yes       | No          |
    +-----+----------+---------------+---------------+------------+--------+------+--------+--------+-----------+-------------+
 
 

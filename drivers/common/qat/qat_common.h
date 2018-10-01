@@ -17,7 +17,8 @@
  */
 enum qat_device_gen {
 	QAT_GEN1 = 1,
-	QAT_GEN2
+	QAT_GEN2,
+	QAT_GEN3
 };
 
 enum qat_service_type {

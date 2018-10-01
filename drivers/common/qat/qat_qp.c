@@ -90,6 +90,44 @@ const struct qat_qp_hw_data qat_gen1_qps[QAT_MAX_SERVICES]
 	}
 };
 
+__extension__
+const struct qat_qp_hw_data qat_gen3_qps[QAT_MAX_SERVICES]
+					 [ADF_MAX_QPS_ON_ANY_SERVICE] = {
+	/* queue pairs which provide an asymmetric crypto service */
+	[QAT_SERVICE_ASYMMETRIC] = {
+		{
+			.service_type = QAT_SERVICE_ASYMMETRIC,
+			.hw_bundle_num = 0,
+			.tx_ring_num = 0,
+			.rx_ring_num = 4,
+			.tx_msg_size = 64,
+			.rx_msg_size = 32,
+		}
+	},
+	/* queue pairs which provide a symmetric crypto service */
+	[QAT_SERVICE_SYMMETRIC] = {
+		{
+			.service_type = QAT_SERVICE_SYMMETRIC,
+			.hw_bundle_num = 0,
+			.tx_ring_num = 1,
+			.rx_ring_num = 5,
+			.tx_msg_size = 128,
+			.rx_msg_size = 32,
+		}
+	},
+	/* queue pairs which provide a compression service */
+	[QAT_SERVICE_COMPRESSION] = {
+		{
+			.service_type = QAT_SERVICE_COMPRESSION,
+			.hw_bundle_num = 0,
+			.tx_ring_num = 3,
+			.rx_ring_num = 7,
+			.tx_msg_size = 128,
+			.rx_msg_size = 32,
+		}
+	}
+};
+
 static int qat_qp_check_queue_alignment(uint64_t phys_addr,
 	uint32_t queue_size_bytes);
 static void qat_queue_delete(struct qat_queue *queue);

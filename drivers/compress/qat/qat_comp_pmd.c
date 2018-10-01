@@ -407,6 +407,7 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev)
 	switch (qat_pci_dev->qat_dev_gen) {
 	case QAT_GEN1:
 	case QAT_GEN2:
+	case QAT_GEN3:
 		comp_dev->qat_dev_capabilities = qat_comp_gen_capabilities;
 		break;
 	default:

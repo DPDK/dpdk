@@ -290,6 +290,7 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev)
 		internals->qat_dev_capabilities = qat_gen1_sym_capabilities;
 		break;
 	case QAT_GEN2:
+	case QAT_GEN3:
 		internals->qat_dev_capabilities = qat_gen2_sym_capabilities;
 		break;
 	default:

@@ -139,6 +139,10 @@ New Features
   A new devarg ``phy_mac`` was introduced to allow users to use physical
   MAC address of the selected PCAP interface.
 
+* **Added support for GEN3 devices to Intel QAT driver .**
+
+  Added support for the third generation of Intel QuickAssist devices.
+
 * **Updated the QAT PMD.**
 
   The QAT PMD was updated with additional support for:
