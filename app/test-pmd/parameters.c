@@ -190,6 +190,11 @@ usage(char* progname)
 	printf("  --vxlan-gpe-port=N: UPD port of tunnel VXLAN-GPE\n");
 	printf("  --mlockall: lock all memory\n");
 	printf("  --no-mlockall: do not lock all memory\n");
+	printf("  --mp-alloc <native|anon|xmem|xmemhuge>: mempool allocation method.\n"
+	       "    native: use regular DPDK memory to create and populate mempool\n"
+	       "    anon: use regular DPDK memory to create and anonymous memory to populate mempool\n"
+	       "    xmem: use anonymous memory to create and populate mempool\n"
+	       "    xmemhuge: use anonymous hugepage memory to create and populate mempool\n");
 }
 
 #ifdef RTE_LIBRTE_CMDLINE
@@ -625,6 +630,7 @@ launch_args_parse(int argc, char** argv)
 		{ "vxlan-gpe-port",		1, 0, 0 },
 		{ "mlockall",			0, 0, 0 },
 		{ "no-mlockall",		0, 0, 0 },
+		{ "mp-alloc",			1, 0, 0 },
 		{ 0, 0, 0, 0 },
 	};
 
@@ -743,7 +749,22 @@ launch_args_parse(int argc, char** argv)
 			if (!strcmp(lgopts[opt_idx].name, "numa"))
 				numa_support = 1;
 			if (!strcmp(lgopts[opt_idx].name, "mp-anon")) {
-				mp_anon = 1;
+				mp_alloc_type = MP_ALLOC_ANON;
+			}
+			if (!strcmp(lgopts[opt_idx].name, "mp-alloc")) {
+				if (!strcmp(optarg, "native"))
+					mp_alloc_type = MP_ALLOC_NATIVE;
+				else if (!strcmp(optarg, "anon"))
+					mp_alloc_type = MP_ALLOC_ANON;
+				else if (!strcmp(optarg, "xmem"))
+					mp_alloc_type = MP_ALLOC_XMEM;
+				else if (!strcmp(optarg, "xmemhuge"))
+					mp_alloc_type = MP_ALLOC_XMEM_HUGE;
+				else
+					rte_exit(EXIT_FAILURE,
+						"mp-alloc %s invalid - must be: "
+						"native, anon, xmem or xmemhuge\n",
+						 optarg);
 			}
 			if (!strcmp(lgopts[opt_idx].name, "port-numa-config")) {
 				if (parse_portnuma_config(optarg))

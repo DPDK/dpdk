@@ -69,6 +69,16 @@ enum {
 	PORT_TOPOLOGY_LOOP,
 };
 
+enum {
+	MP_ALLOC_NATIVE, /**< allocate and populate mempool natively */
+	MP_ALLOC_ANON,
+	/**< allocate mempool natively, but populate using anonymous memory */
+	MP_ALLOC_XMEM,
+	/**< allocate and populate mempool using anonymous memory */
+	MP_ALLOC_XMEM_HUGE
+	/**< allocate and populate mempool using anonymous hugepage memory */
+};
+
 #ifdef RTE_TEST_PMD_RECORD_BURST_STATS
 /**
  * The data structure associated with RX and TX packet burst statistics
@@ -304,7 +314,8 @@ extern uint8_t  numa_support; /**< set by "--numa" parameter */
 extern uint16_t port_topology; /**< set by "--port-topology" parameter */
 extern uint8_t no_flush_rx; /**<set by "--no-flush-rx" parameter */
 extern uint8_t flow_isolate_all; /**< set by "--flow-isolate-all */
-extern uint8_t  mp_anon; /**< set by "--mp-anon" parameter */
+extern uint8_t  mp_alloc_type;
+/**< set by "--mp-anon" or "--mp-alloc" parameter */
 extern uint8_t no_link_check; /**<set by "--disable-link-check" parameter */
 extern volatile int test_done; /* stop packet forwarding when set to 1. */
 extern uint8_t lsc_interrupt; /**< disabled by "--no-lsc-interrupt" parameter */

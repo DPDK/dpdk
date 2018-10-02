@@ -2423,6 +2423,23 @@ fwd_config_setup(void)
 		simple_fwd_config_setup();
 }
 
+static const char *
+mp_alloc_to_str(uint8_t mode)
+{
+	switch (mode) {
+	case MP_ALLOC_NATIVE:
+		return "native";
+	case MP_ALLOC_ANON:
+		return "anon";
+	case MP_ALLOC_XMEM:
+		return "xmem";
+	case MP_ALLOC_XMEM_HUGE:
+		return "xmemhuge";
+	default:
+		return "invalid";
+	}
+}
+
 void
 pkt_fwd_config_display(struct fwd_config *cfg)
 {
@@ -2431,12 +2448,12 @@ pkt_fwd_config_display(struct fwd_config *cfg)
 	streamid_t sm_id;
 
 	printf("%s packet forwarding%s - ports=%d - cores=%d - streams=%d - "
-		"NUMA support %s, MP over anonymous pages %s\n",
+		"NUMA support %s, MP allocation mode: %s\n",
 		cfg->fwd_eng->fwd_mode_name,
 		retry_enabled == 0 ? "" : " with retry",
 		cfg->nb_fwd_ports, cfg->nb_fwd_lcores, cfg->nb_fwd_streams,
 		numa_support == 1 ? "enabled" : "disabled",
-		mp_anon != 0 ? "enabled" : "disabled");
+		mp_alloc_to_str(mp_alloc_type));
 
 	if (retry_enabled)
 		printf("TX retry num: %u, delay between TX retries: %uus\n",

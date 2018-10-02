@@ -498,3 +498,15 @@ The commandline options are:
 *   ``--no-mlockall``
 
     Disable locking all memory.
+
+*   ``--mp-alloc <native|anon|xmem|xmemhuge>``
+
+    Select mempool allocation mode:
+
+    * native: create and populate mempool using native DPDK memory
+    * anon: create mempool using native DPDK memory, but populate using
+      anonymous memory
+    * xmem: create and populate mempool using externally and anonymously
+      allocated area
+    * xmemhuge: create and populate mempool using externally and anonymously
+      allocated hugepage area

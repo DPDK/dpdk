@@ -27,6 +27,7 @@
 #include <rte_log.h>
 #include <rte_debug.h>
 #include <rte_cycles.h>
+#include <rte_malloc_heap.h>
 #include <rte_memory.h>
 #include <rte_memcpy.h>
 #include <rte_launch.h>
@@ -63,6 +64,22 @@
 
 #include "testpmd.h"
 
+#ifndef MAP_HUGETLB
+/* FreeBSD may not have MAP_HUGETLB (in fact, it probably doesn't) */
+#define HUGE_FLAG (0x40000)
+#else
+#define HUGE_FLAG MAP_HUGETLB
+#endif
+
+#ifndef MAP_HUGE_SHIFT
+/* older kernels (or FreeBSD) will not have this define */
+#define HUGE_SHIFT (26)
+#else
+#define HUGE_SHIFT MAP_HUGE_SHIFT
+#endif
+
+#define EXTMEM_HEAP_NAME "extmem"
+
 uint16_t verbose_level = 0; /**< Silent by default. */
 int testpmd_logtype; /**< Log type for testpmd logs */
 
@@ -88,9 +105,13 @@ uint8_t numa_support = 1; /**< numa enabled by default */
 uint8_t socket_num = UMA_NO_CONFIG;
 
 /*
- * Use ANONYMOUS mapped memory (might be not physically continuous) for mbufs.
+ * Select mempool allocation type:
+ * - native: use regular DPDK memory
+ * - anon: use regular DPDK memory to create mempool, but populate using
+ *         anonymous memory (may not be IOVA-contiguous)
+ * - xmem: use externally allocated hugepage memory
  */
-uint8_t mp_anon = 0;
+uint8_t mp_alloc_type = MP_ALLOC_NATIVE;
 
 /*
  * Store specified sockets on which memory pool to be used by ports
@@ -527,6 +548,236 @@ set_def_fwd_config(void)
 	set_default_fwd_ports_config();
 }
 
+/* extremely pessimistic estimation of memory required to create a mempool */
+static int
+calc_mem_size(uint32_t nb_mbufs, uint32_t mbuf_sz, size_t pgsz, size_t *out)
+{
+	unsigned int n_pages, mbuf_per_pg, leftover;
+	uint64_t total_mem, mbuf_mem, obj_sz;
+
+	/* there is no good way to predict how much space the mempool will
+	 * occupy because it will allocate chunks on the fly, and some of those
+	 * will come from default DPDK memory while some will come from our
+	 * external memory, so just assume 128MB will be enough for everyone.
+	 */
+	uint64_t hdr_mem = 128 << 20;
+
+	/* account for possible non-contiguousness */
+	obj_sz = rte_mempool_calc_obj_size(mbuf_sz, 0, NULL);
+	if (obj_sz > pgsz) {
+		TESTPMD_LOG(ERR, "Object size is bigger than page size\n");
+		return -1;
+	}
+
+	mbuf_per_pg = pgsz / obj_sz;
+	leftover = (nb_mbufs % mbuf_per_pg) > 0;
+	n_pages = (nb_mbufs / mbuf_per_pg) + leftover;
+
+	mbuf_mem = n_pages * pgsz;
+
+	total_mem = RTE_ALIGN(hdr_mem + mbuf_mem, pgsz);
+
+	if (total_mem > SIZE_MAX) {
+		TESTPMD_LOG(ERR, "Memory size too big\n");
+		return -1;
+	}
+	*out = (size_t)total_mem;
+
+	return 0;
+}
+
+static inline uint32_t
+bsf64(uint64_t v)
+{
+	return (uint32_t)__builtin_ctzll(v);
+}
+
+static inline uint32_t
+log2_u64(uint64_t v)
+{
+	if (v == 0)
+		return 0;
+	v = rte_align64pow2(v);
+	return bsf64(v);
+}
+
+static int
+pagesz_flags(uint64_t page_sz)
+{
+	/* as per mmap() manpage, all page sizes are log2 of page size
+	 * shifted by MAP_HUGE_SHIFT
+	 */
+	int log2 = log2_u64(page_sz);
+
+	return (log2 << HUGE_SHIFT);
+}
+
+static void *
+alloc_mem(size_t memsz, size_t pgsz, bool huge)
+{
+	void *addr;
+	int flags;
+
+	/* allocate anonymous hugepages */
+	flags = MAP_ANONYMOUS | MAP_PRIVATE;
+	if (huge)
+		flags |= HUGE_FLAG | pagesz_flags(pgsz);
+
+	addr = mmap(NULL, memsz, PROT_READ | PROT_WRITE, flags, -1, 0);
+	if (addr == MAP_FAILED)
+		return NULL;
+
+	return addr;
+}
+
+struct extmem_param {
+	void *addr;
+	size_t len;
+	size_t pgsz;
+	rte_iova_t *iova_table;
+	unsigned int iova_table_len;
+};
+
+static int
+create_extmem(uint32_t nb_mbufs, uint32_t mbuf_sz, struct extmem_param *param,
+		bool huge)
+{
+	uint64_t pgsizes[] = {RTE_PGSIZE_2M, RTE_PGSIZE_1G, /* x86_64, ARM */
+			RTE_PGSIZE_16M, RTE_PGSIZE_16G};    /* POWER */
+	unsigned int cur_page, n_pages, pgsz_idx;
+	size_t mem_sz, cur_pgsz;
+	rte_iova_t *iovas = NULL;
+	void *addr;
+	int ret;
+
+	for (pgsz_idx = 0; pgsz_idx < RTE_DIM(pgsizes); pgsz_idx++) {
+		/* skip anything that is too big */
+		if (pgsizes[pgsz_idx] > SIZE_MAX)
+			continue;
+
+		cur_pgsz = pgsizes[pgsz_idx];
+
+		/* if we were told not to allocate hugepages, override */
+		if (!huge)
+			cur_pgsz = sysconf(_SC_PAGESIZE);
+
+		ret = calc_mem_size(nb_mbufs, mbuf_sz, cur_pgsz, &mem_sz);
+		if (ret < 0) {
+			TESTPMD_LOG(ERR, "Cannot calculate memory size\n");
+			return -1;
+		}
+
+		/* allocate our memory */
+		addr = alloc_mem(mem_sz, cur_pgsz, huge);
+
+		/* if we couldn't allocate memory with a specified page size,
+		 * that doesn't mean we can't do it with other page sizes, so
+		 * try another one.
+		 */
+		if (addr == NULL)
+			continue;
+
+		/* store IOVA addresses for every page in this memory area */
+		n_pages = mem_sz / cur_pgsz;
+
+		iovas = malloc(sizeof(*iovas) * n_pages);
+
+		if (iovas == NULL) {
+			TESTPMD_LOG(ERR, "Cannot allocate memory for iova addresses\n");
+			goto fail;
+		}
+		/* lock memory if it's not huge pages */
+		if (!huge)
+			mlock(addr, mem_sz);
+
+		/* populate IOVA addresses */
+		for (cur_page = 0; cur_page < n_pages; cur_page++) {
+			rte_iova_t iova;
+			size_t offset;
+			void *cur;
+
+			offset = cur_pgsz * cur_page;
+			cur = RTE_PTR_ADD(addr, offset);
+
+			/* touch the page before getting its IOVA */
+			*(volatile char *)cur = 0;
+
+			iova = rte_mem_virt2iova(cur);
+
+			iovas[cur_page] = iova;
+		}
+
+		break;
+	}
+	/* if we couldn't allocate anything */
+	if (iovas == NULL)
+		return -1;
+
+	param->addr = addr;
+	param->len = mem_sz;
+	param->pgsz = cur_pgsz;
+	param->iova_table = iovas;
+	param->iova_table_len = n_pages;
+
+	return 0;
+fail:
+	if (iovas)
+		free(iovas);
+	if (addr)
+		munmap(addr, mem_sz);
+
+	return -1;
+}
+
+static int
+setup_extmem(uint32_t nb_mbufs, uint32_t mbuf_sz, bool huge)
+{
+	struct extmem_param param;
+	int socket_id, ret;
+
+	memset(&param, 0, sizeof(param));
+
+	/* check if our heap exists */
+	socket_id = rte_malloc_heap_get_socket(EXTMEM_HEAP_NAME);
+	if (socket_id < 0) {
+		/* create our heap */
+		ret = rte_malloc_heap_create(EXTMEM_HEAP_NAME);
+		if (ret < 0) {
+			TESTPMD_LOG(ERR, "Cannot create heap\n");
+			return -1;
+		}
+	}
+
+	ret = create_extmem(nb_mbufs, mbuf_sz, &param, huge);
+	if (ret < 0) {
+		TESTPMD_LOG(ERR, "Cannot create memory area\n");
+		return -1;
+	}
+
+	/* we now have a valid memory area, so add it to heap */
+	ret = rte_malloc_heap_memory_add(EXTMEM_HEAP_NAME,
+			param.addr, param.len, param.iova_table,
+			param.iova_table_len, param.pgsz);
+
+	/* when using VFIO, memory is automatically mapped for DMA by EAL */
+
+	/* not needed any more */
+	free(param.iova_table);
+
+	if (ret < 0) {
+		TESTPMD_LOG(ERR, "Cannot add memory to heap\n");
+		munmap(param.addr, param.len);
+		return -1;
+	}
+
+	/* success */
+
+	TESTPMD_LOG(DEBUG, "Allocated %zuMB of external memory\n",
+			param.len >> 20);
+
+	return 0;
+}
+
 /*
  * Configuration initialisation done once at init time.
  */
@@ -545,27 +796,59 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 		"create a new mbuf pool <%s>: n=%u, size=%u, socket=%u\n",
 		pool_name, nb_mbuf, mbuf_seg_size, socket_id);
 
-	if (mp_anon != 0) {
-		rte_mp = rte_mempool_create_empty(pool_name, nb_mbuf,
-			mb_size, (unsigned) mb_mempool_cache,
-			sizeof(struct rte_pktmbuf_pool_private),
-			socket_id, 0);
-		if (rte_mp == NULL)
-			goto err;
-
-		if (rte_mempool_populate_anon(rte_mp) == 0) {
-			rte_mempool_free(rte_mp);
-			rte_mp = NULL;
-			goto err;
+	switch (mp_alloc_type) {
+	case MP_ALLOC_NATIVE:
+		{
+			/* wrapper to rte_mempool_create() */
+			TESTPMD_LOG(INFO, "preferred mempool ops selected: %s\n",
+					rte_mbuf_best_mempool_ops());
+			rte_mp = rte_pktmbuf_pool_create(pool_name, nb_mbuf,
+				mb_mempool_cache, 0, mbuf_seg_size, socket_id);
+			break;
 		}
-		rte_pktmbuf_pool_init(rte_mp, NULL);
-		rte_mempool_obj_iter(rte_mp, rte_pktmbuf_init, NULL);
-	} else {
-		/* wrapper to rte_mempool_create() */
-		TESTPMD_LOG(INFO, "preferred mempool ops selected: %s\n",
-				rte_mbuf_best_mempool_ops());
-		rte_mp = rte_pktmbuf_pool_create(pool_name, nb_mbuf,
-			mb_mempool_cache, 0, mbuf_seg_size, socket_id);
+	case MP_ALLOC_ANON:
+		{
+			rte_mp = rte_mempool_create_empty(pool_name, nb_mbuf,
+				mb_size, (unsigned int) mb_mempool_cache,
+				sizeof(struct rte_pktmbuf_pool_private),
+				socket_id, 0);
+			if (rte_mp == NULL)
+				goto err;
+
+			if (rte_mempool_populate_anon(rte_mp) == 0) {
+				rte_mempool_free(rte_mp);
+				rte_mp = NULL;
+				goto err;
+			}
+			rte_pktmbuf_pool_init(rte_mp, NULL);
+			rte_mempool_obj_iter(rte_mp, rte_pktmbuf_init, NULL);
+			break;
+		}
+	case MP_ALLOC_XMEM:
+	case MP_ALLOC_XMEM_HUGE:
+		{
+			int heap_socket;
+			bool huge = mp_alloc_type == MP_ALLOC_XMEM_HUGE;
+
+			if (setup_extmem(nb_mbuf, mbuf_seg_size, huge) < 0)
+				rte_exit(EXIT_FAILURE, "Could not create external memory\n");
+
+			heap_socket =
+				rte_malloc_heap_get_socket(EXTMEM_HEAP_NAME);
+			if (heap_socket < 0)
+				rte_exit(EXIT_FAILURE, "Could not get external memory socket ID\n");
+
+			TESTPMD_LOG(INFO, "preferred mempool ops selected: %s\n",
+					rte_mbuf_best_mempool_ops());
+			rte_mp = rte_pktmbuf_pool_create(pool_name, nb_mbuf,
+					mb_mempool_cache, 0, mbuf_seg_size,
+					heap_socket);
+			break;
+		}
+	default:
+		{
+			rte_exit(EXIT_FAILURE, "Invalid mempool creation mode\n");
+		}
 	}
 
 err:
