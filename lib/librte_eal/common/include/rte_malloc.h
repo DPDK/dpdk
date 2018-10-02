@@ -315,6 +315,9 @@ rte_malloc_heap_memory_add(const char *heap_name, void *va_addr, size_t len,
  * @note Memory area must not contain any allocated elements to allow its
  *   removal from the heap
  *
+ * @note All other processes must detach from the memory chunk prior to it being
+ *   removed from the heap.
+ *
  * @param heap_name
  *   Name of the heap to remove memory from
  * @param va_addr
@@ -356,6 +359,30 @@ rte_malloc_heap_memory_remove(const char *heap_name, void *va_addr, size_t len);
  */
 int __rte_experimental
 rte_malloc_heap_memory_attach(const char *heap_name, void *va_addr, size_t len);
+
+/**
+ * Detach from a chunk of external memory in secondary process.
+ *
+ * @note This function must be called in before any attempt is made to remove
+ *   external memory from the heap in another process. This function does *not*
+ *   need to be called if a call to ``rte_malloc_heap_memory_remove`` will be
+ *   called in current process.
+ *
+ * @param heap_name
+ *   Heap name to which this chunk of memory belongs
+ * @param va_addr
+ *   Start address of memory chunk to attach to
+ * @param len
+ *   Length of memory chunk to attach to
+ * @return
+ *   0 on successful detach
+ *   -1 on unsuccessful detach, with rte_errno set to indicate cause for error:
+ *     EINVAL - one of the parameters was invalid
+ *     EPERM  - attempted to detach memory from a reserved heap
+ *     ENOENT - heap or memory chunk was not found
+ */
+int __rte_experimental
+rte_malloc_heap_memory_detach(const char *heap_name, void *va_addr, size_t len);
 
 /**
  * Creates a new empty malloc heap with a specified name.

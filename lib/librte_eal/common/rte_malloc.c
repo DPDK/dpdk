@@ -421,10 +421,11 @@ struct sync_mem_walk_arg {
 	void *va_addr;
 	size_t len;
 	int result;
+	bool attach;
 };
 
 static int
-attach_mem_walk(const struct rte_memseg_list *msl, void *arg)
+sync_mem_walk(const struct rte_memseg_list *msl, void *arg)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	struct sync_mem_walk_arg *wa = arg;
@@ -439,7 +440,10 @@ attach_mem_walk(const struct rte_memseg_list *msl, void *arg)
 		msl_idx = msl - mcfg->memsegs;
 		found_msl = &mcfg->memsegs[msl_idx];
 
-		ret = rte_fbarray_attach(&found_msl->memseg_arr);
+		if (wa->attach)
+			ret = rte_fbarray_attach(&found_msl->memseg_arr);
+		else
+			ret = rte_fbarray_detach(&found_msl->memseg_arr);
 
 		if (ret < 0)
 			wa->result = -rte_errno;
@@ -450,8 +454,8 @@ attach_mem_walk(const struct rte_memseg_list *msl, void *arg)
 	return 0;
 }
 
-int
-rte_malloc_heap_memory_attach(const char *heap_name, void *va_addr, size_t len)
+static int
+sync_memory(const char *heap_name, void *va_addr, size_t len, bool attach)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	struct malloc_heap *heap = NULL;
@@ -474,20 +478,21 @@ rte_malloc_heap_memory_attach(const char *heap_name, void *va_addr, size_t len)
 		ret = -1;
 		goto unlock;
 	}
-	/* we shouldn't be able to attach to internal heaps */
+	/* we shouldn't be able to sync to internal heaps */
 	if (heap->socket_id < RTE_MAX_NUMA_NODES) {
 		rte_errno = EPERM;
 		ret = -1;
 		goto unlock;
 	}
 
-	/* find corresponding memseg list to attach to */
+	/* find corresponding memseg list to sync to */
 	wa.va_addr = va_addr;
 	wa.len = len;
 	wa.result = -ENOENT; /* fail unless explicitly told to succeed */
+	wa.attach = attach;
 
 	/* we're already holding a read lock */
-	rte_memseg_list_walk_thread_unsafe(attach_mem_walk, &wa);
+	rte_memseg_list_walk_thread_unsafe(sync_mem_walk, &wa);
 
 	if (wa.result < 0) {
 		rte_errno = -wa.result;
@@ -498,6 +503,18 @@ rte_malloc_heap_memory_attach(const char *heap_name, void *va_addr, size_t len)
 unlock:
 	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
 	return ret;
+}
+
+int
+rte_malloc_heap_memory_attach(const char *heap_name, void *va_addr, size_t len)
+{
+	return sync_memory(heap_name, va_addr, len, true);
+}
+
+int
+rte_malloc_heap_memory_detach(const char *heap_name, void *va_addr, size_t len)
+{
+	return sync_memory(heap_name, va_addr, len, false);
 }
 
 int
