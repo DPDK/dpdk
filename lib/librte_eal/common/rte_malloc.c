@@ -220,6 +220,31 @@ rte_malloc_heap_get_socket(const char *name)
 	return ret;
 }
 
+int
+rte_malloc_heap_socket_is_external(int socket_id)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	unsigned int idx;
+	int ret = -1;
+
+	if (socket_id == SOCKET_ID_ANY)
+		return 0;
+
+	rte_rwlock_read_lock(&mcfg->memory_hotplug_lock);
+	for (idx = 0; idx < RTE_MAX_HEAPS; idx++) {
+		struct malloc_heap *tmp = &mcfg->malloc_heaps[idx];
+
+		if ((int)tmp->socket_id == socket_id) {
+			/* external memory always has large socket ID's */
+			ret = tmp->socket_id >= RTE_MAX_NUMA_NODES;
+			break;
+		}
+	}
+	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
+
+	return ret;
+}
+
 /*
  * Print stats on memory type. If type is NULL, info on all types is printed
  */

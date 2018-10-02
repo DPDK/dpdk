@@ -319,6 +319,7 @@ EXPERIMENTAL {
 	rte_log_register_type_and_pick_level;
 	rte_malloc_dump_heaps;
 	rte_malloc_heap_get_socket;
+	rte_malloc_heap_socket_is_external;
 	rte_mem_alloc_validator_register;
 	rte_mem_alloc_validator_unregister;
 	rte_mem_event_callback_register;

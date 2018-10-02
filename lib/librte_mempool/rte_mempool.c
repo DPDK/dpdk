@@ -428,11 +428,17 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 	rte_iova_t iova;
 	unsigned mz_id, n;
 	int ret;
-	bool no_contig, try_contig, no_pageshift;
+	bool no_contig, try_contig, no_pageshift, external;
 
 	ret = mempool_ops_alloc_once(mp);
 	if (ret != 0)
 		return ret;
+
+	/* check if we can retrieve a valid socket ID */
+	ret = rte_malloc_heap_socket_is_external(mp->socket_id);
+	if (ret < 0)
+		return -EINVAL;
+	external = ret;
 
 	/* mempool must not be populated */
 	if (mp->nb_mem_chunks != 0)
@@ -481,9 +487,19 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 	 * in one contiguous chunk as well (otherwise we might end up wasting a
 	 * 1G page on a 10MB memzone). If we fail to get enough contiguous
 	 * memory, then we'll go and reserve space page-by-page.
+	 *
+	 * We also have to take into account the fact that memory that we're
+	 * going to allocate from can belong to an externally allocated memory
+	 * area, in which case the assumption of IOVA as VA mode being
+	 * synonymous with IOVA contiguousness will not hold. We should also try
+	 * to go for contiguous memory even if we're in no-huge mode, because
+	 * external memory may in fact be IOVA-contiguous.
 	 */
-	no_pageshift = no_contig || rte_eal_iova_mode() == RTE_IOVA_VA;
-	try_contig = !no_contig && !no_pageshift && rte_eal_has_hugepages();
+	external = rte_malloc_heap_socket_is_external(mp->socket_id) == 1;
+	no_pageshift = no_contig ||
+			(!external && rte_eal_iova_mode() == RTE_IOVA_VA);
+	try_contig = !no_contig && !no_pageshift &&
+			(rte_eal_has_hugepages() || external);
 
 	if (no_pageshift) {
 		pg_sz = 0;

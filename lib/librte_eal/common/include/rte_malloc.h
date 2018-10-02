@@ -278,6 +278,21 @@ int __rte_experimental
 rte_malloc_heap_get_socket(const char *name);
 
 /**
+ * Check if a given socket ID refers to externally allocated memory.
+ *
+ * @note Passing SOCKET_ID_ANY will return 0.
+ *
+ * @param socket_id
+ *   Socket ID to check
+ * @return
+ *   1 if socket ID refers to externally allocated memory
+ *   0 if socket ID refers to internal DPDK memory
+ *   -1 if socket ID is invalid
+ */
+int __rte_experimental
+rte_malloc_heap_socket_is_external(int socket_id);
+
+/**
  * Dump statistics.
  *
  * Dump for the specified type to a file. If the type argument is
