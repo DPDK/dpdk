@@ -178,8 +178,7 @@ rte_pipeline_check_params(struct rte_pipeline_params *params)
 	}
 
 	/* socket */
-	if ((params->socket_id < 0) ||
-	    (params->socket_id >= RTE_MAX_NUMA_NODES)) {
+	if (params->socket_id < 0) {
 		RTE_LOG(ERR, PIPELINE,
 			"%s: Incorrect value for parameter socket_id\n",
 			__func__);
