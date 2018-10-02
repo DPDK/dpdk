@@ -311,3 +311,54 @@ rte_malloc_virt2iova(const void *addr)
 
 	return ms->iova + RTE_PTR_DIFF(addr, ms->addr);
 }
+
+int
+rte_malloc_heap_create(const char *heap_name)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	struct malloc_heap *heap = NULL;
+	int i, ret;
+
+	if (heap_name == NULL ||
+			strnlen(heap_name, RTE_HEAP_NAME_MAX_LEN) == 0 ||
+			strnlen(heap_name, RTE_HEAP_NAME_MAX_LEN) ==
+				RTE_HEAP_NAME_MAX_LEN) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+	/* check if there is space in the heap list, or if heap with this name
+	 * already exists.
+	 */
+	rte_rwlock_write_lock(&mcfg->memory_hotplug_lock);
+
+	for (i = 0; i < RTE_MAX_HEAPS; i++) {
+		struct malloc_heap *tmp = &mcfg->malloc_heaps[i];
+		/* existing heap */
+		if (strncmp(heap_name, tmp->name,
+				RTE_HEAP_NAME_MAX_LEN) == 0) {
+			RTE_LOG(ERR, EAL, "Heap %s already exists\n",
+				heap_name);
+			rte_errno = EEXIST;
+			ret = -1;
+			goto unlock;
+		}
+		/* empty heap */
+		if (strnlen(tmp->name, RTE_HEAP_NAME_MAX_LEN) == 0) {
+			heap = tmp;
+			break;
+		}
+	}
+	if (heap == NULL) {
+		RTE_LOG(ERR, EAL, "Cannot create new heap: no space\n");
+		rte_errno = ENOSPC;
+		ret = -1;
+		goto unlock;
+	}
+
+	/* we're sure that we can create a new heap, so do it */
+	ret = malloc_heap_create(heap, heap_name);
+unlock:
+	rte_rwlock_write_unlock(&mcfg->memory_hotplug_lock);
+
+	return ret;
+}

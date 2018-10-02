@@ -34,6 +34,9 @@ malloc_heap_alloc_biggest(const char *type, int socket, unsigned int flags,
 		size_t align, bool contig);
 
 int
+malloc_heap_create(struct malloc_heap *heap, const char *heap_name);
+
+int
 malloc_heap_free(struct malloc_elem *elem);
 
 int

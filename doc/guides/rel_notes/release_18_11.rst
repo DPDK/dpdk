@@ -180,6 +180,8 @@ ABI Changes
          - structure ``rte_mem_config`` has had its ``malloc_heaps`` array
            resized from ``RTE_MAX_NUMA_NODES`` to ``RTE_MAX_HEAPS`` value
          - structure ``rte_malloc_heap`` now has a ``heap_name`` member
+         - structure ``rte_eal_memconfig`` has been extended to contain next
+           socket ID for externally allocated segments
 
 
 Removed Items

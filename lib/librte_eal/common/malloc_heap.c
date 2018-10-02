@@ -29,6 +29,10 @@
 #include "malloc_heap.h"
 #include "malloc_mp.h"
 
+/* start external socket ID's at a very high number */
+#define CONST_MAX(a, b) (a > b ? a : b) /* RTE_MAX is not a constant */
+#define EXTERNAL_HEAP_MIN_SOCKET_ID (CONST_MAX((1 << 8), RTE_MAX_NUMA_NODES))
+
 static unsigned
 check_hugepage_sz(unsigned flags, uint64_t hugepage_sz)
 {
@@ -1020,12 +1024,45 @@ malloc_heap_dump(struct malloc_heap *heap, FILE *f)
 }
 
 int
+malloc_heap_create(struct malloc_heap *heap, const char *heap_name)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	uint32_t next_socket_id = mcfg->next_socket_id;
+
+	/* prevent overflow. did you really create 2 billion heaps??? */
+	if (next_socket_id > INT32_MAX) {
+		RTE_LOG(ERR, EAL, "Cannot assign new socket ID's\n");
+		rte_errno = ENOSPC;
+		return -1;
+	}
+
+	/* initialize empty heap */
+	heap->alloc_count = 0;
+	heap->first = NULL;
+	heap->last = NULL;
+	LIST_INIT(heap->free_head);
+	rte_spinlock_init(&heap->lock);
+	heap->total_size = 0;
+	heap->socket_id = next_socket_id;
+
+	/* we hold a global mem hotplug writelock, so it's safe to increment */
+	mcfg->next_socket_id++;
+
+	/* set up name */
+	strlcpy(heap->name, heap_name, RTE_HEAP_NAME_MAX_LEN);
+	return 0;
+}
+
+int
 rte_eal_malloc_heap_init(void)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	unsigned int i;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		/* assign min socket ID to external heaps */
+		mcfg->next_socket_id = EXTERNAL_HEAP_MIN_SOCKET_ID;
+
 		/* assign names to default DPDK heaps */
 		for (i = 0; i < rte_socket_count(); i++) {
 			struct malloc_heap *heap = &mcfg->malloc_heaps[i];

@@ -264,6 +264,25 @@ rte_malloc_get_socket_stats(int socket,
 		struct rte_malloc_socket_stats *socket_stats);
 
 /**
+ * Creates a new empty malloc heap with a specified name.
+ *
+ * @note Heaps created via this call will automatically get assigned a unique
+ *   socket ID, which can be found using ``rte_malloc_heap_get_socket()``
+ *
+ * @param heap_name
+ *   Name of the heap to create.
+ *
+ * @return
+ *   - 0 on successful creation
+ *   - -1 in case of error, with rte_errno set to one of the following:
+ *     EINVAL - ``heap_name`` was NULL, empty or too long
+ *     EEXIST - heap by name of ``heap_name`` already exists
+ *     ENOSPC - no more space in internal config to store a new heap
+ */
+int __rte_experimental
+rte_malloc_heap_create(const char *heap_name);
+
+/**
  * Find socket ID corresponding to a named heap.
  *
  * @param name

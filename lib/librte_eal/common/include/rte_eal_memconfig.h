@@ -75,6 +75,9 @@ struct rte_mem_config {
 	/* Heaps of Malloc */
 	struct malloc_heap malloc_heaps[RTE_MAX_HEAPS];
 
+	/* next socket ID for external malloc heap */
+	int next_socket_id;
+
 	/* address of mem_config in primary process. used to map shared config into
 	 * exact same address the primary process maps it.
 	 */
