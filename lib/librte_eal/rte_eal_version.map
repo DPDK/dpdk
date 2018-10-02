@@ -322,6 +322,7 @@ EXPERIMENTAL {
 	rte_malloc_heap_destroy;
 	rte_malloc_heap_get_socket;
 	rte_malloc_heap_memory_add;
+	rte_malloc_heap_memory_attach;
 	rte_malloc_heap_memory_remove;
 	rte_malloc_heap_socket_is_external;
 	rte_mem_alloc_validator_register;

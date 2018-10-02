@@ -268,6 +268,10 @@ rte_malloc_get_socket_stats(int socket,
  *
  * @note Multiple memory chunks can be added to the same heap
  *
+ * @note Before accessing this memory in other processes, it needs to be
+ *   attached in each of those processes by calling
+ *   ``rte_malloc_heap_memory_attach`` in each other process.
+ *
  * @note Memory must be previously allocated for DPDK to be able to use it as a
  *   malloc heap. Failing to do so will result in undefined behavior, up to and
  *   including segmentation faults.
@@ -328,6 +332,30 @@ rte_malloc_heap_memory_add(const char *heap_name, void *va_addr, size_t len,
  */
 int __rte_experimental
 rte_malloc_heap_memory_remove(const char *heap_name, void *va_addr, size_t len);
+
+/**
+ * Attach to an already existing chunk of external memory in another process.
+ *
+ * @note This function must be called before any attempt is made to use an
+ *   already existing external memory chunk. This function does *not* need to
+ *   be called if a call to ``rte_malloc_heap_memory_add`` was made in the
+ *   current process.
+ *
+ * @param heap_name
+ *   Heap name to which this chunk of memory belongs
+ * @param va_addr
+ *   Start address of memory chunk to attach to
+ * @param len
+ *   Length of memory chunk to attach to
+ * @return
+ *   0 on successful attach
+ *   -1 on unsuccessful attach, with rte_errno set to indicate cause for error:
+ *     EINVAL - one of the parameters was invalid
+ *     EPERM  - attempted to attach memory to a reserved heap
+ *     ENOENT - heap or memory chunk was not found
+ */
+int __rte_experimental
+rte_malloc_heap_memory_attach(const char *heap_name, void *va_addr, size_t len);
 
 /**
  * Creates a new empty malloc heap with a specified name.
