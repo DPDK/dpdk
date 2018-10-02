@@ -223,7 +223,7 @@ rte_malloc_virt2iova(const void *addr)
 	if (elem == NULL)
 		return RTE_BAD_IOVA;
 
-	if (rte_eal_iova_mode() == RTE_IOVA_VA)
+	if (!elem->msl->external && rte_eal_iova_mode() == RTE_IOVA_VA)
 		return (uintptr_t) addr;
 
 	ms = rte_mem_virt2memseg(addr, elem->msl);

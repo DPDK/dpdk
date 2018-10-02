@@ -1408,6 +1408,9 @@ sync_walk(const struct rte_memseg_list *msl, void *arg __rte_unused)
 	unsigned int i;
 	int msl_idx;
 
+	if (msl->external)
+		return 0;
+
 	msl_idx = msl - mcfg->memsegs;
 	primary_msl = &mcfg->memsegs[msl_idx];
 	local_msl = &local_memsegs[msl_idx];
@@ -1455,6 +1458,9 @@ secondary_msl_create_walk(const struct rte_memseg_list *msl,
 	struct rte_memseg_list *primary_msl, *local_msl;
 	char name[PATH_MAX];
 	int msl_idx, ret;
+
+	if (msl->external)
+		return 0;
 
 	msl_idx = msl - mcfg->memsegs;
 	primary_msl = &mcfg->memsegs[msl_idx];
@@ -1508,6 +1514,9 @@ fd_list_create_walk(const struct rte_memseg_list *msl,
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	unsigned int len;
 	int msl_idx;
+
+	if (msl->external)
+		return 0;
 
 	msl_idx = msl - mcfg->memsegs;
 	len = msl->memseg_arr.len;

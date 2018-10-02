@@ -745,6 +745,9 @@ check_socket(const struct rte_memseg_list *msl, void *arg)
 {
 	int *socket_id = arg;
 
+	if (msl->external)
+		return 0;
+
 	return *socket_id == msl->socket_id;
 }
 
@@ -1079,7 +1082,12 @@ mark_freeable(const struct rte_memseg_list *msl, const struct rte_memseg *ms,
 		void *arg __rte_unused)
 {
 	/* ms is const, so find this memseg */
-	struct rte_memseg *found = rte_mem_virt2memseg(ms->addr, msl);
+	struct rte_memseg *found;
+
+	if (msl->external)
+		return 0;
+
+	found = rte_mem_virt2memseg(ms->addr, msl);
 
 	found->flags &= ~RTE_MEMSEG_FLAG_DO_NOT_FREE;
 

@@ -318,10 +318,14 @@ fslmc_unmap_dma(uint64_t vaddr, uint64_t iovaddr __rte_unused, size_t len)
 
 static int
 fslmc_dmamap_seg(const struct rte_memseg_list *msl __rte_unused,
-		 const struct rte_memseg *ms, void *arg)
+		const struct rte_memseg *ms, void *arg)
 {
 	int *n_segs = arg;
 	int ret;
+
+	/* if IOVA address is invalid, skip */
+	if (ms->iova == RTE_BAD_IOVA)
+		return 0;
 
 	ret = fslmc_map_dma(ms->addr_64, ms->iova, ms->len);
 	if (ret)

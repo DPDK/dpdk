@@ -39,10 +39,14 @@ malloc_elem_find_max_iova_contig(struct malloc_elem *elem, size_t align)
 	contig_seg_start = RTE_PTR_ALIGN_CEIL(data_start, align);
 
 	/* if we're in IOVA as VA mode, or if we're in legacy mode with
-	 * hugepages, all elements are IOVA-contiguous.
+	 * hugepages, all elements are IOVA-contiguous. however, we can only
+	 * make these assumptions about internal memory - externally allocated
+	 * segments have to be checked.
 	 */
-	if (rte_eal_iova_mode() == RTE_IOVA_VA ||
-			(internal_config.legacy_mem && rte_eal_has_hugepages()))
+	if (!elem->msl->external &&
+			(rte_eal_iova_mode() == RTE_IOVA_VA ||
+				(internal_config.legacy_mem &&
+					rte_eal_has_hugepages())))
 		return RTE_PTR_DIFF(data_end, contig_seg_start);
 
 	cur_page = RTE_PTR_ALIGN_FLOOR(contig_seg_start, page_sz);

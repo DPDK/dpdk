@@ -272,6 +272,9 @@ physmem_size(const struct rte_memseg_list *msl, void *arg)
 {
 	uint64_t *total_len = arg;
 
+	if (msl->external)
+		return 0;
+
 	*total_len += msl->memseg_arr.count * msl->page_sz;
 
 	return 0;

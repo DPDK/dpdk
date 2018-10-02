@@ -236,11 +236,14 @@ struct attach_walk_args {
 	int seg_idx;
 };
 static int
-attach_segment(const struct rte_memseg_list *msl __rte_unused,
-		const struct rte_memseg *ms, void *arg)
+attach_segment(const struct rte_memseg_list *msl, const struct rte_memseg *ms,
+		void *arg)
 {
 	struct attach_walk_args *wa = arg;
 	void *addr;
+
+	if (msl->external)
+		return 0;
 
 	addr = mmap(ms->addr, ms->len, PROT_READ | PROT_WRITE,
 			MAP_SHARED | MAP_FIXED, wa->fd_hugepage,

@@ -711,6 +711,9 @@ check_socket_mem(const struct rte_memseg_list *msl, void *arg)
 {
 	int32_t *socket = arg;
 
+	if (msl->external)
+		return 0;
+
 	return *socket == msl->socket_id;
 }
 

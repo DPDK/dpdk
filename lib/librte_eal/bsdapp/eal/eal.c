@@ -502,6 +502,9 @@ check_socket(const struct rte_memseg_list *msl, void *arg)
 {
 	int *socket_id = arg;
 
+	if (msl->external)
+		return 0;
+
 	if (msl->socket_id == *socket_id && msl->memseg_arr.count != 0)
 		return 1;
 

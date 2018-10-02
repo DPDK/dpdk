@@ -568,11 +568,13 @@ static struct rte_pci_driver mlx5_driver;
 static void *uar_base;
 
 static int
-find_lower_va_bound(const struct rte_memseg_list *msl __rte_unused,
+find_lower_va_bound(const struct rte_memseg_list *msl,
 		const struct rte_memseg *ms, void *arg)
 {
 	void **addr = arg;
 
+	if (msl->external)
+		return 0;
 	if (*addr == NULL)
 		*addr = ms->addr;
 	else

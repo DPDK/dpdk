@@ -95,6 +95,9 @@ malloc_add_seg(const struct rte_memseg_list *msl,
 	struct malloc_heap *heap;
 	int msl_idx;
 
+	if (msl->external)
+		return 0;
+
 	heap = &mcfg->malloc_heaps[msl->socket_id];
 
 	/* msl is const, so find it */
@@ -754,8 +757,10 @@ malloc_heap_free(struct malloc_elem *elem)
 	/* anything after this is a bonus */
 	ret = 0;
 
-	/* ...of which we can't avail if we are in legacy mode */
-	if (internal_config.legacy_mem)
+	/* ...of which we can't avail if we are in legacy mode, or if this is an
+	 * externally allocated segment.
+	 */
+	if (internal_config.legacy_mem || msl->external)
 		goto free_unlock;
 
 	/* check if we can free any memory back to the system */

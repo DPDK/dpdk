@@ -115,6 +115,9 @@ find_available_pagesz(const struct rte_memseg_list *msl, void *arg)
 {
 	struct walk_arg *wa = arg;
 
+	if (msl->external)
+		return 0;
+
 	if (msl->page_sz == RTE_PGSIZE_2M)
 		wa->hugepage_2MB_avail = 1;
 	if (msl->page_sz == RTE_PGSIZE_1G)

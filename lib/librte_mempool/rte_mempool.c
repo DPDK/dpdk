@@ -99,25 +99,44 @@ static unsigned optimize_object_size(unsigned obj_size)
 	return new_obj_size * RTE_MEMPOOL_ALIGN;
 }
 
+struct pagesz_walk_arg {
+	int socket_id;
+	size_t min;
+};
+
 static int
 find_min_pagesz(const struct rte_memseg_list *msl, void *arg)
 {
-	size_t *min = arg;
+	struct pagesz_walk_arg *wa = arg;
+	bool valid;
 
-	if (msl->page_sz < *min)
-		*min = msl->page_sz;
+	/*
+	 * we need to only look at page sizes available for a particular socket
+	 * ID.  so, we either need an exact match on socket ID (can match both
+	 * native and external memory), or, if SOCKET_ID_ANY was specified as a
+	 * socket ID argument, we must only look at native memory and ignore any
+	 * page sizes associated with external memory.
+	 */
+	valid = msl->socket_id == wa->socket_id;
+	valid |= wa->socket_id == SOCKET_ID_ANY && msl->external == 0;
+
+	if (valid && msl->page_sz < wa->min)
+		wa->min = msl->page_sz;
 
 	return 0;
 }
 
 static size_t
-get_min_page_size(void)
+get_min_page_size(int socket_id)
 {
-	size_t min_pagesz = SIZE_MAX;
+	struct pagesz_walk_arg wa;
 
-	rte_memseg_list_walk(find_min_pagesz, &min_pagesz);
+	wa.min = SIZE_MAX;
+	wa.socket_id = socket_id;
 
-	return min_pagesz == SIZE_MAX ? (size_t) getpagesize() : min_pagesz;
+	rte_memseg_list_walk(find_min_pagesz, &wa);
+
+	return wa.min == SIZE_MAX ? (size_t) getpagesize() : wa.min;
 }
 
 
@@ -470,7 +489,7 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 		pg_sz = 0;
 		pg_shift = 0;
 	} else if (try_contig) {
-		pg_sz = get_min_page_size();
+		pg_sz = get_min_page_size(mp->socket_id);
 		pg_shift = rte_bsf32(pg_sz);
 	} else {
 		pg_sz = getpagesize();

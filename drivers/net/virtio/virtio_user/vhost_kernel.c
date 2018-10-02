@@ -78,6 +78,9 @@ add_memseg_list(const struct rte_memseg_list *msl, void *arg)
 	void *start_addr;
 	uint64_t len;
 
+	if (msl->external)
+		return 0;
+
 	if (vm->nregions >= max_regions)
 		return -1;
 

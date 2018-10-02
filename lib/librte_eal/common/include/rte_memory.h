@@ -215,6 +215,9 @@ typedef int (*rte_memseg_list_walk_t)(const struct rte_memseg_list *msl,
  * @note This function read-locks the memory hotplug subsystem, and thus cannot
  *       be used within memory-related callback functions.
  *
+ * @note This function will also walk through externally allocated segments. It
+ *       is up to the user to decide whether to skip through these segments.
+ *
  * @param func
  *   Iterator function
  * @param arg
@@ -233,6 +236,9 @@ rte_memseg_walk(rte_memseg_walk_t func, void *arg);
  * @note This function read-locks the memory hotplug subsystem, and thus cannot
  *       be used within memory-related callback functions.
  *
+ * @note This function will also walk through externally allocated segments. It
+ *       is up to the user to decide whether to skip through these segments.
+ *
  * @param func
  *   Iterator function
  * @param arg
@@ -250,6 +256,9 @@ rte_memseg_contig_walk(rte_memseg_contig_walk_t func, void *arg);
  *
  * @note This function read-locks the memory hotplug subsystem, and thus cannot
  *       be used within memory-related callback functions.
+ *
+ * @note This function will also walk through externally allocated segments. It
+ *       is up to the user to decide whether to skip through these segments.
  *
  * @param func
  *   Iterator function

@@ -118,6 +118,12 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* eal: ``rte_memseg_list`` structure now has an additional flag indicating
+  whether the memseg list is externally allocated. This will have implications
+  for any users of memseg-walk-related functions, as they will now have to skip
+  externally allocated segments in most cases if the intent is to only iterate
+  over internal DPDK memory.
+
 * mbuf: The ``__rte_mbuf_raw_free()`` and ``__rte_pktmbuf_prefree_seg()``
   functions were deprecated since 17.05 and are replaced by
   ``rte_mbuf_raw_free()`` and ``rte_pktmbuf_prefree_seg()``.
@@ -160,6 +166,8 @@ ABI Changes
        supporting external memory in DPDK:
          - structure ``rte_memseg_list`` now has a new field indicating length
            of memory addressed by the segment list
+         - structure ``rte_memseg_list`` now has a new flag indicating whether
+           the memseg list refers to external memory
 
 
 Removed Items

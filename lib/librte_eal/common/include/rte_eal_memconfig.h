@@ -34,6 +34,7 @@ struct rte_memseg_list {
 	int socket_id; /**< Socket ID for all memsegs in this list. */
 	volatile uint32_t version; /**< version number for multiprocess sync. */
 	size_t len; /**< Length of memory area covered by this memseg list. */
+	unsigned int external; /**< 1 if this list points to external memory */
 	struct rte_fbarray memseg_arr;
 };
 
