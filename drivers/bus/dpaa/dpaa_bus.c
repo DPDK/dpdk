@@ -165,6 +165,8 @@ dpaa_create_device_list(void)
 			goto cleanup;
 		}
 
+		dev->device.bus = &rte_dpaa_bus.bus;
+
 		cfg = &dpaa_netcfg->port_cfg[i];
 		fman_intf = cfg->fman_if;
 

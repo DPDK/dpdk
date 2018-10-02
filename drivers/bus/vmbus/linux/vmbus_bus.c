@@ -229,6 +229,7 @@ vmbus_scan_one(const char *name)
 	if (dev == NULL)
 		return -1;
 
+	dev->device.bus = &rte_vmbus_bus.bus;
 	dev->device.name = strdup(name);
 	if (!dev->device.name)
 		goto error;

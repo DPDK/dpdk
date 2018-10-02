@@ -223,6 +223,8 @@ pci_scan_one(int dev_pci_fd, struct pci_conf *conf)
 	}
 
 	memset(dev, 0, sizeof(*dev));
+	dev->device.bus = &rte_pci_bus.bus;
+
 	dev->addr.domain = conf->pc_sel.pc_domain;
 	dev->addr.bus = conf->pc_sel.pc_bus;
 	dev->addr.devid = conf->pc_sel.pc_dev;

@@ -3,7 +3,7 @@
 include $(RTE_SDK)/mk/rte.vars.mk
 
 LIB = librte_bus_vmbus.a
-LIBABIVER := 1
+LIBABIVER := 2
 EXPORT_MAP := rte_bus_vmbus_version.map
 
 CFLAGS += -I$(SRCDIR)

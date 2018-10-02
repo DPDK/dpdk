@@ -142,6 +142,7 @@ ifpga_scan_one(struct rte_rawdev *rawdev,
 	if (!afu_dev)
 		goto end;
 
+	afu_dev->device.bus = &rte_ifpga_bus;
 	afu_dev->device.devargs = devargs;
 	afu_dev->device.numa_node = SOCKET_ID_ANY;
 	afu_dev->device.name = devargs->name;

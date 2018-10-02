@@ -228,6 +228,7 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 		return -1;
 
 	memset(dev, 0, sizeof(*dev));
+	dev->device.bus = &rte_pci_bus.bus;
 	dev->addr = *addr;
 
 	/* get vendor id */

@@ -24,7 +24,7 @@ LDLIBS += -lrte_ethdev
 EXPORT_MAP := rte_bus_fslmc_version.map
 
 # library version
-LIBABIVER := 1
+LIBABIVER := 2
 
 SRCS-$(CONFIG_RTE_LIBRTE_FSLMC_BUS) += \
         qbman/qbman_portal.c \

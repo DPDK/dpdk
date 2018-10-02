@@ -161,6 +161,8 @@ scan_one_fslmc_device(char *dev_name)
 		return -ENOMEM;
 	}
 
+	dev->device.bus = &rte_fslmc_bus.bus;
+
 	/* Parse the device name and ID */
 	t_ptr = strtok(dup_dev_name, ".");
 	if (!t_ptr) {

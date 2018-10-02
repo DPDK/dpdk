@@ -197,6 +197,10 @@ ABI Changes
          - structure ``rte_eal_memconfig`` has been extended to contain next
            socket ID for externally allocated segments
 
+* eal: The structure ``rte_device`` got a new field to reference a ``rte_bus``.
+  It is changing the size of the ``struct rte_device`` and the inherited
+  device structures of all buses.
+
 
 Removed Items
 -------------
@@ -232,11 +236,12 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_bbdev.so.1
      librte_bitratestats.so.2
      librte_bpf.so.1
-     librte_bus_dpaa.so.1
-     librte_bus_fslmc.so.1
-     librte_bus_pci.so.1
-     librte_bus_vdev.so.1
-   + librte_bus_vmbus.so.1
+   + librte_bus_dpaa.so.2
+   + librte_bus_fslmc.so.2
+   + librte_bus_ifpga.so.2
+   + librte_bus_pci.so.2
+   + librte_bus_vdev.so.2
+   + librte_bus_vmbus.so.2
      librte_cfgfile.so.2
      librte_cmdline.so.2
      librte_common_octeontx.so.1
