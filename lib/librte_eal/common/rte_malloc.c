@@ -47,10 +47,6 @@ rte_malloc_socket(const char *type, size_t size, unsigned int align,
 	if (!rte_eal_has_hugepages())
 		socket_arg = SOCKET_ID_ANY;
 
-	/* Check socket parameter */
-	if (socket_arg >= RTE_MAX_NUMA_NODES)
-		return NULL;
-
 	return malloc_heap_alloc(type, size, socket_arg, 0,
 			align == 0 ? 1 : align, 0, false);
 }

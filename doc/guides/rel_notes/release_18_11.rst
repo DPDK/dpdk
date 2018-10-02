@@ -123,6 +123,13 @@ API Changes
   for any users of memseg-walk-related functions, as they will now have to skip
   externally allocated segments in most cases if the intent is to only iterate
   over internal DPDK memory.
+  ``socket_id`` parameter across the entire DPDK has gained additional meaning,
+  as some socket ID's will now be representing externally allocated memory. No
+  changes will be required for existing code as backwards compatibility will be
+  kept, and those who do not use this feature will not see these extra socket
+  ID's. Any new API's must not check socket ID parameters themselves, and must
+  instead leave it to the memory subsystem to decide whether socket ID is a
+  valid one.
 
 * mbuf: The ``__rte_mbuf_raw_free()`` and ``__rte_pktmbuf_prefree_seg()``
   functions were deprecated since 17.05 and are replaced by

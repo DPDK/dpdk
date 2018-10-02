@@ -651,7 +651,7 @@ malloc_heap_alloc(const char *type, size_t size, int socket_arg,
 	if (size == 0 || (align && !rte_is_power_of_2(align)))
 		return NULL;
 
-	if (!rte_eal_has_hugepages())
+	if (!rte_eal_has_hugepages() && socket_arg < RTE_MAX_NUMA_NODES)
 		socket_arg = SOCKET_ID_ANY;
 
 	if (socket_arg == SOCKET_ID_ANY)
