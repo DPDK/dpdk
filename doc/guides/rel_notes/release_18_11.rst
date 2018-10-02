@@ -179,6 +179,7 @@ ABI Changes
            ID the malloc heap belongs to
          - structure ``rte_mem_config`` has had its ``malloc_heaps`` array
            resized from ``RTE_MAX_NUMA_NODES`` to ``RTE_MAX_HEAPS`` value
+         - structure ``rte_malloc_heap`` now has a ``heap_name`` member
 
 
 Removed Items

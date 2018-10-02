@@ -202,6 +202,7 @@ rte_malloc_dump_stats(FILE *f, __rte_unused const char *type)
 		malloc_heap_get_stats(heap, &sock_stats);
 
 		fprintf(f, "Heap id:%u\n", heap_id);
+		fprintf(f, "\tHeap name:%s\n", heap->name);
 		fprintf(f, "\tHeap_size:%zu,\n", sock_stats.heap_totalsz_bytes);
 		fprintf(f, "\tFree_size:%zu,\n", sock_stats.heap_freesz_bytes);
 		fprintf(f, "\tAlloc_size:%zu,\n", sock_stats.heap_allocsz_bytes);

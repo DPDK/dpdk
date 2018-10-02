@@ -12,6 +12,7 @@
 
 /* Number of free lists per heap, grouped by size. */
 #define RTE_HEAP_NUM_FREELISTS  13
+#define RTE_HEAP_NAME_MAX_LEN 32
 
 /* dummy definition, for pointers */
 struct malloc_elem;
@@ -28,6 +29,7 @@ struct malloc_heap {
 	unsigned alloc_count;
 	unsigned int socket_id;
 	size_t total_size;
+	char name[RTE_HEAP_NAME_MAX_LEN];
 } __rte_cache_aligned;
 
 #endif /* _RTE_MALLOC_HEAP_H_ */

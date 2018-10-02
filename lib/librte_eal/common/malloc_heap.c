@@ -131,7 +131,6 @@ malloc_add_seg(const struct rte_memseg_list *msl,
 	malloc_heap_add_memory(heap, found_msl, ms->addr, len);
 
 	heap->total_size += len;
-	heap->socket_id = msl->socket_id;
 
 	RTE_LOG(DEBUG, EAL, "Added %zuM to heap on socket %i\n", len >> 20,
 			msl->socket_id);
@@ -1024,6 +1023,22 @@ int
 rte_eal_malloc_heap_init(void)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	unsigned int i;
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		/* assign names to default DPDK heaps */
+		for (i = 0; i < rte_socket_count(); i++) {
+			struct malloc_heap *heap = &mcfg->malloc_heaps[i];
+			char heap_name[RTE_HEAP_NAME_MAX_LEN];
+			int socket_id = rte_socket_id_by_idx(i);
+
+			snprintf(heap_name, sizeof(heap_name) - 1,
+					"socket_%i", socket_id);
+			strlcpy(heap->name, heap_name, RTE_HEAP_NAME_MAX_LEN);
+			heap->socket_id = socket_id;
+		}
+	}
+
 
 	if (register_mp_requests()) {
 		RTE_LOG(ERR, EAL, "Couldn't register malloc multiprocess actions\n");
