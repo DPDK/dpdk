@@ -312,6 +312,21 @@ rte_malloc_virt2iova(const void *addr)
 	return ms->iova + RTE_PTR_DIFF(addr, ms->addr);
 }
 
+static struct malloc_heap *
+find_named_heap(const char *name)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	unsigned int i;
+
+	for (i = 0; i < RTE_MAX_HEAPS; i++) {
+		struct malloc_heap *heap = &mcfg->malloc_heaps[i];
+
+		if (!strncmp(name, heap->name, RTE_HEAP_NAME_MAX_LEN))
+			return heap;
+	}
+	return NULL;
+}
+
 int
 rte_malloc_heap_create(const char *heap_name)
 {
@@ -357,6 +372,49 @@ rte_malloc_heap_create(const char *heap_name)
 
 	/* we're sure that we can create a new heap, so do it */
 	ret = malloc_heap_create(heap, heap_name);
+unlock:
+	rte_rwlock_write_unlock(&mcfg->memory_hotplug_lock);
+
+	return ret;
+}
+
+int
+rte_malloc_heap_destroy(const char *heap_name)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	struct malloc_heap *heap = NULL;
+	int ret;
+
+	if (heap_name == NULL ||
+			strnlen(heap_name, RTE_HEAP_NAME_MAX_LEN) == 0 ||
+			strnlen(heap_name, RTE_HEAP_NAME_MAX_LEN) ==
+				RTE_HEAP_NAME_MAX_LEN) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+	rte_rwlock_write_lock(&mcfg->memory_hotplug_lock);
+
+	/* start from non-socket heaps */
+	heap = find_named_heap(heap_name);
+	if (heap == NULL) {
+		RTE_LOG(ERR, EAL, "Heap %s not found\n", heap_name);
+		rte_errno = ENOENT;
+		ret = -1;
+		goto unlock;
+	}
+	/* we shouldn't be able to destroy internal heaps */
+	if (heap->socket_id < RTE_MAX_NUMA_NODES) {
+		rte_errno = EPERM;
+		ret = -1;
+		goto unlock;
+	}
+	/* sanity checks done, now we can destroy the heap */
+	rte_spinlock_lock(&heap->lock);
+	ret = malloc_heap_destroy(heap);
+
+	/* if we failed, lock is still active */
+	if (ret < 0)
+		rte_spinlock_unlock(&heap->lock);
 unlock:
 	rte_rwlock_write_unlock(&mcfg->memory_hotplug_lock);
 

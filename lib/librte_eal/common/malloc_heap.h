@@ -37,6 +37,9 @@ int
 malloc_heap_create(struct malloc_heap *heap, const char *heap_name);
 
 int
+malloc_heap_destroy(struct malloc_heap *heap);
+
+int
 malloc_heap_free(struct malloc_elem *elem);
 
 int

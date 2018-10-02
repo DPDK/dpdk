@@ -1054,6 +1054,28 @@ malloc_heap_create(struct malloc_heap *heap, const char *heap_name)
 }
 
 int
+malloc_heap_destroy(struct malloc_heap *heap)
+{
+	if (heap->alloc_count != 0) {
+		RTE_LOG(ERR, EAL, "Heap is still in use\n");
+		rte_errno = EBUSY;
+		return -1;
+	}
+	if (heap->first != NULL || heap->last != NULL) {
+		RTE_LOG(ERR, EAL, "Heap still contains memory segments\n");
+		rte_errno = EBUSY;
+		return -1;
+	}
+	if (heap->total_size != 0)
+		RTE_LOG(ERR, EAL, "Total size not zero, heap is likely corrupt\n");
+
+	/* after this, the lock will be dropped */
+	memset(heap, 0, sizeof(*heap));
+
+	return 0;
+}
+
+int
 rte_eal_malloc_heap_init(void)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;

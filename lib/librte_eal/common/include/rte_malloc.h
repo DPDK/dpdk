@@ -283,6 +283,29 @@ int __rte_experimental
 rte_malloc_heap_create(const char *heap_name);
 
 /**
+ * Destroys a previously created malloc heap with specified name.
+ *
+ * @note This function will return a failure result if not all memory allocated
+ *   from the heap has been freed back to the heap
+ *
+ * @note This function will return a failure result if not all memory segments
+ *   were removed from the heap prior to its destruction
+ *
+ * @param heap_name
+ *   Name of the heap to create.
+ *
+ * @return
+ *   - 0 on success
+ *   - -1 in case of error, with rte_errno set to one of the following:
+ *     EINVAL - ``heap_name`` was NULL, empty or too long
+ *     ENOENT - heap by the name of ``heap_name`` was not found
+ *     EPERM  - attempting to destroy reserved heap
+ *     EBUSY  - heap still contains data
+ */
+int __rte_experimental
+rte_malloc_heap_destroy(const char *heap_name);
+
+/**
  * Find socket ID corresponding to a named heap.
  *
  * @param name
