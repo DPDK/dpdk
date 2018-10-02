@@ -329,7 +329,7 @@ rte_sched_port_check_params(struct rte_sched_port_params *params)
 		return -1;
 
 	/* socket */
-	if ((params->socket < 0) || (params->socket >= RTE_MAX_NUMA_NODES))
+	if (params->socket < 0)
 		return -3;
 
 	/* rate */
