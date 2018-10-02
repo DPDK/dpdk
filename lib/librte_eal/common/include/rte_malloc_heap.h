@@ -26,6 +26,7 @@ struct malloc_heap {
 	struct malloc_elem *volatile last;
 
 	unsigned alloc_count;
+	unsigned int socket_id;
 	size_t total_size;
 } __rte_cache_aligned;
 

@@ -168,6 +168,10 @@ ABI Changes
            of memory addressed by the segment list
          - structure ``rte_memseg_list`` now has a new flag indicating whether
            the memseg list refers to external memory
+         - structure ``rte_malloc_heap`` now has a new field indicating socket
+           ID the malloc heap belongs to
+         - structure ``rte_mem_config`` has had its ``malloc_heaps`` array
+           resized from ``RTE_MAX_NUMA_NODES`` to ``RTE_MAX_HEAPS`` value
 
 
 Removed Items

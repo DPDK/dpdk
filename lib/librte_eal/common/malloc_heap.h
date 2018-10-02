@@ -47,6 +47,9 @@ void
 malloc_heap_dump(struct malloc_heap *heap, FILE *f);
 
 int
+malloc_socket_to_heap_id(unsigned int socket_id);
+
+int
 rte_eal_malloc_heap_init(void);
 
 #ifdef __cplusplus

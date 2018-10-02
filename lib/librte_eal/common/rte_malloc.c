@@ -152,11 +152,20 @@ rte_malloc_get_socket_stats(int socket,
 		struct rte_malloc_socket_stats *socket_stats)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	int heap_idx, ret = -1;
 
-	if (socket >= RTE_MAX_NUMA_NODES || socket < 0)
-		return -1;
+	rte_rwlock_read_lock(&mcfg->memory_hotplug_lock);
 
-	return malloc_heap_get_stats(&mcfg->malloc_heaps[socket], socket_stats);
+	heap_idx = malloc_socket_to_heap_id(socket);
+	if (heap_idx < 0)
+		goto unlock;
+
+	ret = malloc_heap_get_stats(&mcfg->malloc_heaps[heap_idx],
+			socket_stats);
+unlock:
+	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
+
+	return ret;
 }
 
 /*
@@ -168,12 +177,14 @@ rte_malloc_dump_heaps(FILE *f)
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	unsigned int idx;
 
-	for (idx = 0; idx < rte_socket_count(); idx++) {
-		unsigned int socket = rte_socket_id_by_idx(idx);
-		fprintf(f, "Heap on socket %i:\n", socket);
-		malloc_heap_dump(&mcfg->malloc_heaps[socket], f);
+	rte_rwlock_read_lock(&mcfg->memory_hotplug_lock);
+
+	for (idx = 0; idx < RTE_MAX_HEAPS; idx++) {
+		fprintf(f, "Heap id: %u\n", idx);
+		malloc_heap_dump(&mcfg->malloc_heaps[idx], f);
 	}
 
+	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
 }
 
 /*
@@ -182,14 +193,19 @@ rte_malloc_dump_heaps(FILE *f)
 void
 rte_malloc_dump_stats(FILE *f, __rte_unused const char *type)
 {
-	unsigned int socket;
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	unsigned int heap_id;
 	struct rte_malloc_socket_stats sock_stats;
-	/* Iterate through all initialised heaps */
-	for (socket=0; socket< RTE_MAX_NUMA_NODES; socket++) {
-		if ((rte_malloc_get_socket_stats(socket, &sock_stats) < 0))
-			continue;
 
-		fprintf(f, "Socket:%u\n", socket);
+	rte_rwlock_read_lock(&mcfg->memory_hotplug_lock);
+
+	/* Iterate through all initialised heaps */
+	for (heap_id = 0; heap_id < RTE_MAX_HEAPS; heap_id++) {
+		struct malloc_heap *heap = &mcfg->malloc_heaps[heap_id];
+
+		malloc_heap_get_stats(heap, &sock_stats);
+
+		fprintf(f, "Heap id:%u\n", heap_id);
 		fprintf(f, "\tHeap_size:%zu,\n", sock_stats.heap_totalsz_bytes);
 		fprintf(f, "\tFree_size:%zu,\n", sock_stats.heap_freesz_bytes);
 		fprintf(f, "\tAlloc_size:%zu,\n", sock_stats.heap_allocsz_bytes);
@@ -198,6 +214,7 @@ rte_malloc_dump_stats(FILE *f, __rte_unused const char *type)
 		fprintf(f, "\tAlloc_count:%u,\n",sock_stats.alloc_count);
 		fprintf(f, "\tFree_count:%u,\n", sock_stats.free_count);
 	}
+	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
 	return;
 }
 

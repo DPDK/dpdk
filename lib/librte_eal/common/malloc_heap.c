@@ -66,6 +66,21 @@ check_hugepage_sz(unsigned flags, uint64_t hugepage_sz)
 	return check_flag & flags;
 }
 
+int
+malloc_socket_to_heap_id(unsigned int socket_id)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	int i;
+
+	for (i = 0; i < RTE_MAX_HEAPS; i++) {
+		struct malloc_heap *heap = &mcfg->malloc_heaps[i];
+
+		if (heap->socket_id == socket_id)
+			return i;
+	}
+	return -1;
+}
+
 /*
  * Expand the heap with a memory area.
  */
@@ -93,12 +108,17 @@ malloc_add_seg(const struct rte_memseg_list *msl,
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	struct rte_memseg_list *found_msl;
 	struct malloc_heap *heap;
-	int msl_idx;
+	int msl_idx, heap_idx;
 
 	if (msl->external)
 		return 0;
 
-	heap = &mcfg->malloc_heaps[msl->socket_id];
+	heap_idx = malloc_socket_to_heap_id(msl->socket_id);
+	if (heap_idx < 0) {
+		RTE_LOG(ERR, EAL, "Memseg list has invalid socket id\n");
+		return -1;
+	}
+	heap = &mcfg->malloc_heaps[heap_idx];
 
 	/* msl is const, so find it */
 	msl_idx = msl - mcfg->memsegs;
@@ -111,6 +131,7 @@ malloc_add_seg(const struct rte_memseg_list *msl,
 	malloc_heap_add_memory(heap, found_msl, ms->addr, len);
 
 	heap->total_size += len;
+	heap->socket_id = msl->socket_id;
 
 	RTE_LOG(DEBUG, EAL, "Added %zuM to heap on socket %i\n", len >> 20,
 			msl->socket_id);
@@ -561,12 +582,14 @@ alloc_more_mem_on_socket(struct malloc_heap *heap, size_t size, int socket,
 
 /* this will try lower page sizes first */
 static void *
-heap_alloc_on_socket(const char *type, size_t size, int socket,
-		unsigned int flags, size_t align, size_t bound, bool contig)
+malloc_heap_alloc_on_heap_id(const char *type, size_t size,
+		unsigned int heap_id, unsigned int flags, size_t align,
+		size_t bound, bool contig)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	struct malloc_heap *heap = &mcfg->malloc_heaps[socket];
+	struct malloc_heap *heap = &mcfg->malloc_heaps[heap_id];
 	unsigned int size_flags = flags & ~RTE_MEMZONE_SIZE_HINT_ONLY;
+	int socket_id;
 	void *ret;
 
 	rte_spinlock_lock(&(heap->lock));
@@ -584,12 +607,28 @@ heap_alloc_on_socket(const char *type, size_t size, int socket,
 	 * we may still be able to allocate memory from appropriate page sizes,
 	 * we just need to request more memory first.
 	 */
+
+	socket_id = rte_socket_id_by_idx(heap_id);
+	/*
+	 * if socket ID is negative, we cannot find a socket ID for this heap -
+	 * which means it's an external heap. those can have unexpected page
+	 * sizes, so if the user asked to allocate from there - assume user
+	 * knows what they're doing, and allow allocating from there with any
+	 * page size flags.
+	 */
+	if (socket_id < 0)
+		size_flags |= RTE_MEMZONE_SIZE_HINT_ONLY;
+
 	ret = heap_alloc(heap, type, size, size_flags, align, bound, contig);
 	if (ret != NULL)
 		goto alloc_unlock;
 
-	if (!alloc_more_mem_on_socket(heap, size, socket, flags, align, bound,
-			contig)) {
+	/* if socket ID is invalid, this is an external heap */
+	if (socket_id < 0)
+		goto alloc_unlock;
+
+	if (!alloc_more_mem_on_socket(heap, size, socket_id, flags, align,
+			bound, contig)) {
 		ret = heap_alloc(heap, type, size, flags, align, bound, contig);
 
 		/* this should have succeeded */
@@ -605,7 +644,7 @@ void *
 malloc_heap_alloc(const char *type, size_t size, int socket_arg,
 		unsigned int flags, size_t align, size_t bound, bool contig)
 {
-	int socket, i, cur_socket;
+	int socket, heap_id, i;
 	void *ret;
 
 	/* return NULL if size is 0 or alignment is not power-of-2 */
@@ -620,22 +659,25 @@ malloc_heap_alloc(const char *type, size_t size, int socket_arg,
 	else
 		socket = socket_arg;
 
-	/* Check socket parameter */
-	if (socket >= RTE_MAX_NUMA_NODES)
+	/* turn socket ID into heap ID */
+	heap_id = malloc_socket_to_heap_id(socket);
+	/* if heap id is negative, socket ID was invalid */
+	if (heap_id < 0)
 		return NULL;
 
-	ret = heap_alloc_on_socket(type, size, socket, flags, align, bound,
-			contig);
+	ret = malloc_heap_alloc_on_heap_id(type, size, heap_id, flags, align,
+			bound, contig);
 	if (ret != NULL || socket_arg != SOCKET_ID_ANY)
 		return ret;
 
-	/* try other heaps */
+	/* try other heaps. we are only iterating through native DPDK sockets,
+	 * so external heaps won't be included.
+	 */
 	for (i = 0; i < (int) rte_socket_count(); i++) {
-		cur_socket = rte_socket_id_by_idx(i);
-		if (cur_socket == socket)
+		if (i == heap_id)
 			continue;
-		ret = heap_alloc_on_socket(type, size, cur_socket, flags,
-				align, bound, contig);
+		ret = malloc_heap_alloc_on_heap_id(type, size, i, flags, align,
+				bound, contig);
 		if (ret != NULL)
 			return ret;
 	}
@@ -643,11 +685,11 @@ malloc_heap_alloc(const char *type, size_t size, int socket_arg,
 }
 
 static void *
-heap_alloc_biggest_on_socket(const char *type, int socket, unsigned int flags,
-		size_t align, bool contig)
+heap_alloc_biggest_on_heap_id(const char *type, unsigned int heap_id,
+		unsigned int flags, size_t align, bool contig)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	struct malloc_heap *heap = &mcfg->malloc_heaps[socket];
+	struct malloc_heap *heap = &mcfg->malloc_heaps[heap_id];
 	void *ret;
 
 	rte_spinlock_lock(&(heap->lock));
@@ -665,7 +707,7 @@ void *
 malloc_heap_alloc_biggest(const char *type, int socket_arg, unsigned int flags,
 		size_t align, bool contig)
 {
-	int socket, i, cur_socket;
+	int socket, i, cur_socket, heap_id;
 	void *ret;
 
 	/* return NULL if align is not power-of-2 */
@@ -680,11 +722,13 @@ malloc_heap_alloc_biggest(const char *type, int socket_arg, unsigned int flags,
 	else
 		socket = socket_arg;
 
-	/* Check socket parameter */
-	if (socket >= RTE_MAX_NUMA_NODES)
+	/* turn socket ID into heap ID */
+	heap_id = malloc_socket_to_heap_id(socket);
+	/* if heap id is negative, socket ID was invalid */
+	if (heap_id < 0)
 		return NULL;
 
-	ret = heap_alloc_biggest_on_socket(type, socket, flags, align,
+	ret = heap_alloc_biggest_on_heap_id(type, heap_id, flags, align,
 			contig);
 	if (ret != NULL || socket_arg != SOCKET_ID_ANY)
 		return ret;
@@ -694,8 +738,8 @@ malloc_heap_alloc_biggest(const char *type, int socket_arg, unsigned int flags,
 		cur_socket = rte_socket_id_by_idx(i);
 		if (cur_socket == socket)
 			continue;
-		ret = heap_alloc_biggest_on_socket(type, cur_socket, flags,
-				align, contig);
+		ret = heap_alloc_biggest_on_heap_id(type, i, flags, align,
+				contig);
 		if (ret != NULL)
 			return ret;
 	}
@@ -760,7 +804,7 @@ malloc_heap_free(struct malloc_elem *elem)
 	/* ...of which we can't avail if we are in legacy mode, or if this is an
 	 * externally allocated segment.
 	 */
-	if (internal_config.legacy_mem || msl->external)
+	if (internal_config.legacy_mem || (msl->external > 0))
 		goto free_unlock;
 
 	/* check if we can free any memory back to the system */
@@ -917,7 +961,7 @@ malloc_heap_resize(struct malloc_elem *elem, size_t size)
 }
 
 /*
- * Function to retrieve data for heap on given socket
+ * Function to retrieve data for a given heap
  */
 int
 malloc_heap_get_stats(struct malloc_heap *heap,
@@ -955,7 +999,7 @@ malloc_heap_get_stats(struct malloc_heap *heap,
 }
 
 /*
- * Function to retrieve data for heap on given socket
+ * Function to retrieve data for a given heap
  */
 void
 malloc_heap_dump(struct malloc_heap *heap, FILE *f)

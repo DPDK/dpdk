@@ -72,8 +72,8 @@ struct rte_mem_config {
 
 	struct rte_tailq_head tailq_head[RTE_MAX_TAILQ]; /**< Tailqs for objects */
 
-	/* Heaps of Malloc per socket */
-	struct malloc_heap malloc_heaps[RTE_MAX_NUMA_NODES];
+	/* Heaps of Malloc */
+	struct malloc_heap malloc_heaps[RTE_MAX_HEAPS];
 
 	/* address of mem_config in primary process. used to map shared config into
 	 * exact same address the primary process maps it.
