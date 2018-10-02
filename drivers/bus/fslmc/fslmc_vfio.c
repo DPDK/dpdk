@@ -221,6 +221,13 @@ fslmc_memevent_cb(enum rte_mem_event type, const void *addr, size_t len,
 					"alloc" : "dealloc",
 				va, virt_addr, iova_addr, map_len);
 
+		/* iova_addr may be set to RTE_BAD_IOVA */
+		if (iova_addr == RTE_BAD_IOVA) {
+			DPAA2_BUS_DEBUG("Segment has invalid iova, skipping\n");
+			cur_len += map_len;
+			continue;
+		}
+
 		if (type == RTE_MEM_EVENT_ALLOC)
 			ret = fslmc_map_dma(virt_addr, iova_addr, map_len);
 		else

@@ -509,7 +509,7 @@ vfio_mem_event_callback(enum rte_mem_event type, const void *addr, size_t len,
 	msl = rte_mem_virt2memseg_list(addr);
 
 	/* for IOVA as VA mode, no need to care for IOVA addresses */
-	if (rte_eal_iova_mode() == RTE_IOVA_VA) {
+	if (rte_eal_iova_mode() == RTE_IOVA_VA && msl->external == 0) {
 		uint64_t vfio_va = (uint64_t)(uintptr_t)addr;
 		if (type == RTE_MEM_EVENT_ALLOC)
 			vfio_dma_mem_map(default_vfio_cfg, vfio_va, vfio_va,
@@ -523,13 +523,19 @@ vfio_mem_event_callback(enum rte_mem_event type, const void *addr, size_t len,
 	/* memsegs are contiguous in memory */
 	ms = rte_mem_virt2memseg(addr, msl);
 	while (cur_len < len) {
+		/* some memory segments may have invalid IOVA */
+		if (ms->iova == RTE_BAD_IOVA) {
+			RTE_LOG(DEBUG, EAL, "Memory segment at %p has bad IOVA, skipping\n",
+					ms->addr);
+			goto next;
+		}
 		if (type == RTE_MEM_EVENT_ALLOC)
 			vfio_dma_mem_map(default_vfio_cfg, ms->addr_64,
 					ms->iova, ms->len, 1);
 		else
 			vfio_dma_mem_map(default_vfio_cfg, ms->addr_64,
 					ms->iova, ms->len, 0);
-
+next:
 		cur_len += ms->len;
 		++ms;
 	}

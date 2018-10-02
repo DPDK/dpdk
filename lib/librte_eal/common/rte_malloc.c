@@ -24,6 +24,7 @@
 #include <rte_malloc.h>
 #include "malloc_elem.h"
 #include "malloc_heap.h"
+#include "eal_memalloc.h"
 
 
 /* Free the memory space back to heap */
@@ -440,15 +441,29 @@ sync_mem_walk(const struct rte_memseg_list *msl, void *arg)
 		msl_idx = msl - mcfg->memsegs;
 		found_msl = &mcfg->memsegs[msl_idx];
 
-		if (wa->attach)
+		if (wa->attach) {
 			ret = rte_fbarray_attach(&found_msl->memseg_arr);
-		else
+		} else {
+			/* notify all subscribers that a memory area is about to
+			 * be removed
+			 */
+			eal_memalloc_mem_event_notify(RTE_MEM_EVENT_FREE,
+					msl->base_va, msl->len);
 			ret = rte_fbarray_detach(&found_msl->memseg_arr);
+		}
 
-		if (ret < 0)
+		if (ret < 0) {
 			wa->result = -rte_errno;
-		else
+		} else {
+			/* notify all subscribers that a new memory area was
+			 * added
+			 */
+			if (wa->attach)
+				eal_memalloc_mem_event_notify(
+						RTE_MEM_EVENT_ALLOC,
+						msl->base_va, msl->len);
 			wa->result = 0;
+		}
 		return 1;
 	}
 	return 0;
@@ -498,6 +513,10 @@ sync_memory(const char *heap_name, void *va_addr, size_t len, bool attach)
 		rte_errno = -wa.result;
 		ret = -1;
 	} else {
+		/* notify all subscribers that a new memory area was added */
+		if (attach)
+			eal_memalloc_mem_event_notify(RTE_MEM_EVENT_ALLOC,
+					va_addr, len);
 		ret = 0;
 	}
 unlock:

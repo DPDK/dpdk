@@ -1031,6 +1031,9 @@ destroy_seg(struct malloc_elem *elem, size_t len)
 
 	msl = elem->msl;
 
+	/* notify all subscribers that a memory area is going to be removed */
+	eal_memalloc_mem_event_notify(RTE_MEM_EVENT_FREE, elem, len);
+
 	/* this element can be removed */
 	malloc_elem_free_list_remove(elem);
 	malloc_elem_hide_region(elem, elem, len);
@@ -1119,6 +1122,10 @@ malloc_heap_add_external_memory(struct malloc_heap *heap, void *va_addr,
 	/* all done! */
 	RTE_LOG(DEBUG, EAL, "Added segment for heap %s starting at %p\n",
 			heap->name, va_addr);
+
+	/* notify all subscribers that a new memory area has been added */
+	eal_memalloc_mem_event_notify(RTE_MEM_EVENT_ALLOC,
+			va_addr, seg_len);
 
 	return 0;
 }
