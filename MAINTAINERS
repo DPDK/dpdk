@@ -515,7 +515,6 @@ F: doc/guides/nics/liquidio.rst
 F: doc/guides/nics/features/liquidio.ini
 
 Cavium OcteonTX
-M: Santosh Shukla <santosh.shukla@caviumnetworks.com>
 M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
 F: drivers/common/octeontx/
 F: drivers/mempool/octeontx/
@@ -901,7 +900,6 @@ T: git://dpdk.org/next/dpdk-next-eventdev
 
 Cavium OCTEONTX ssovf
 M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
-M: Santosh Shukla <santosh.shukla@caviumnetworks.com>
 F: drivers/event/octeontx/
 F: doc/guides/eventdevs/octeontx.rst
 
