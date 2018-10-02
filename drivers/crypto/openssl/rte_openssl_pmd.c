@@ -1509,15 +1509,7 @@ process_openssl_auth_op(struct openssl_qp *qp, struct rte_crypto_op *op,
 
 	srclen = op->sym->auth.data.length;
 
-	if (sess->auth.operation == RTE_CRYPTO_AUTH_OP_VERIFY)
-		dst = qp->temp_digest;
-	else {
-		dst = op->sym->auth.digest.data;
-		if (dst == NULL)
-			dst = rte_pktmbuf_mtod_offset(mbuf_dst, uint8_t *,
-					op->sym->auth.data.offset +
-					op->sym->auth.data.length);
-	}
+	dst = qp->temp_digest;
 
 	switch (sess->auth.mode) {
 	case OPENSSL_AUTH_AS_AUTH:
@@ -1540,6 +1532,15 @@ process_openssl_auth_op(struct openssl_qp *qp, struct rte_crypto_op *op,
 				sess->auth.digest_length) != 0) {
 			op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 		}
+	} else {
+		uint8_t *auth_dst;
+
+		auth_dst = op->sym->auth.digest.data;
+		if (auth_dst == NULL)
+			auth_dst = rte_pktmbuf_mtod_offset(mbuf_dst, uint8_t *,
+					op->sym->auth.data.offset +
+					op->sym->auth.data.length);
+		memcpy(auth_dst, dst, sess->auth.digest_length);
 	}
 
 	if (status != 0)
