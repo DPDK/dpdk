@@ -102,10 +102,8 @@ foreach class:driver_classes
 				lib_version = '@0@.1'.format(version)
 				so_version = '@0@'.format(version)
 			else
-				pver = meson.project_version().split('.')
-				lib_version = '@0@.@1@'.format(pver.get(0),
-						pver.get(1))
-				so_version = lib_version
+				lib_version = major_version
+				so_version = major_version
 			endif
 
 			# now build the static driver

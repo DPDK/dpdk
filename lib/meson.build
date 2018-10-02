@@ -93,10 +93,8 @@ foreach l:libraries
 				lib_version = '@0@.1'.format(version)
 				so_version = '@0@'.format(version)
 			else
-				prj_ver = meson.project_version().split('.')
-				lib_version = '@0@.@1@'.format(
-						prj_ver.get(0), prj_ver.get(1))
-				so_version = lib_version
+				lib_version = major_version
+				so_version = major_version
 			endif
 
 			# first build static lib

@@ -17,7 +17,13 @@ dpdk_drivers = []
 dpdk_extra_ldflags = []
 dpdk_app_link_libraries = []
 
-driver_install_path = join_paths(get_option('libdir'), 'dpdk/drivers')
+# set the major version, which might be used by drivers and libraries
+# depending on the configuration options
+pver = meson.project_version().split('.')
+major_version = '@0@.@1@'.format(pver.get(0), pver.get(1))
+
+driver_install_path = join_paths(get_option('libdir'), 'dpdk',
+	'pmds-' + major_version)
 eal_pmd_path = join_paths(get_option('prefix'), driver_install_path)
 
 # configure the build, and make sure configs here and in config folder are
