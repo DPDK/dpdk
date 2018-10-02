@@ -477,10 +477,16 @@ parallel_test_list = [
         "Report":  None,
     },
     {
-        "Name":    "Fbarray autotest",
-        "Command": "fbarray_autotest",
-        "Func":    default_autotest,
-        "Report":  None,
+	"Name":    "Fbarray autotest",
+	"Command": "fbarray_autotest",
+	"Func":    default_autotest,
+	"Report":  None,
+    },
+    {
+	"Name":    "External memory autotest",
+	"Command": "external_mem_autotest",
+	"Func":    default_autotest,
+	"Report":  None,
     },
     #
     #Please always keep all dump tests at the end and together!

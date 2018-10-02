@@ -164,6 +164,7 @@ test_names = [
 	'eventdev_common_autotest',
 	'eventdev_octeontx_autotest',
 	'eventdev_sw_autotest',
+	'external_mem_autotest',
 	'func_reentrancy_autotest',
 	'flow_classify_autotest',
 	'hash_scaling_autotest',

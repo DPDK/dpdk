@@ -178,6 +178,7 @@ F: lib/librte_eal/common/eal_hugepages.h
 F: lib/librte_eal/linuxapp/eal/eal_mem*
 F: lib/librte_eal/bsdapp/eal/eal_mem*
 F: doc/guides/prog_guide/env_abstraction_layer.rst
+F: test/test/test_external_mem.c
 F: test/test/test_func_reentrancy.c
 F: test/test/test_fbarray.c
 F: test/test/test_malloc.c
