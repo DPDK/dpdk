@@ -156,6 +156,11 @@ ABI Changes
        ``rte_config`` structure on account of improving DPDK usability when
        using either ``--legacy-mem`` or ``--single-file-segments`` flags.
 
+* eal: EAL library ABI version was changed due to previously announced work on
+       supporting external memory in DPDK:
+         - structure ``rte_memseg_list`` now has a new field indicating length
+           of memory addressed by the segment list
+
 
 Removed Items
 -------------

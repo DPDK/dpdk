@@ -171,7 +171,7 @@ virt2memseg(const void *addr, const struct rte_memseg_list *msl)
 
 	/* a memseg list was specified, check if it's the right one */
 	start = msl->base_va;
-	end = RTE_PTR_ADD(start, (size_t)msl->page_sz * msl->memseg_arr.len);
+	end = RTE_PTR_ADD(start, msl->len);
 
 	if (addr < start || addr >= end)
 		return NULL;
@@ -194,8 +194,7 @@ virt2memseg_list(const void *addr)
 		msl = &mcfg->memsegs[msl_idx];
 
 		start = msl->base_va;
-		end = RTE_PTR_ADD(start,
-				(size_t)msl->page_sz * msl->memseg_arr.len);
+		end = RTE_PTR_ADD(start, msl->len);
 		if (addr >= start && addr < end)
 			break;
 	}

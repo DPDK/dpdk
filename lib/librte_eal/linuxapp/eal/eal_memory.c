@@ -863,6 +863,7 @@ alloc_va_space(struct rte_memseg_list *msl)
 		return -1;
 	}
 	msl->base_va = addr;
+	msl->len = mem_sz;
 
 	return 0;
 }
@@ -1371,6 +1372,7 @@ eal_legacy_hugepage_init(void)
 		msl->base_va = addr;
 		msl->page_sz = page_sz;
 		msl->socket_id = 0;
+		msl->len = internal_config.memory;
 
 		/* populate memsegs. each memseg is one page long */
 		for (cur_seg = 0; cur_seg < n_segs; cur_seg++) {
@@ -1617,7 +1619,7 @@ eal_legacy_hugepage_init(void)
 		if (msl->memseg_arr.count > 0)
 			continue;
 		/* this is an unused list, deallocate it */
-		mem_sz = (size_t)msl->page_sz * msl->memseg_arr.len;
+		mem_sz = msl->len;
 		munmap(msl->base_va, mem_sz);
 		msl->base_va = NULL;
 

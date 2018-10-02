@@ -986,7 +986,7 @@ free_seg_walk(const struct rte_memseg_list *msl, void *arg)
 	int msl_idx, seg_idx, ret, dir_fd = -1;
 
 	start_addr = (uintptr_t) msl->base_va;
-	end_addr = start_addr + msl->memseg_arr.len * (size_t)msl->page_sz;
+	end_addr = start_addr + msl->len;
 
 	if ((uintptr_t)wa->ms->addr < start_addr ||
 			(uintptr_t)wa->ms->addr >= end_addr)
@@ -1472,6 +1472,7 @@ secondary_msl_create_walk(const struct rte_memseg_list *msl,
 		return -1;
 	}
 	local_msl->base_va = primary_msl->base_va;
+	local_msl->len = primary_msl->len;
 
 	return 0;
 }

@@ -119,7 +119,7 @@ rte_pci_unmap_device(struct rte_pci_device *dev)
 static int
 find_max_end_va(const struct rte_memseg_list *msl, void *arg)
 {
-	size_t sz = msl->memseg_arr.len * msl->page_sz;
+	size_t sz = msl->len;
 	void *end_va = RTE_PTR_ADD(msl->base_va, sz);
 	void **max_va = arg;
 

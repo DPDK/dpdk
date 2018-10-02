@@ -79,6 +79,7 @@ rte_eal_hugepage_init(void)
 		}
 		msl->base_va = addr;
 		msl->page_sz = page_sz;
+		msl->len = internal_config.memory;
 		msl->socket_id = 0;
 
 		/* populate memsegs. each memseg is 1 page long */
@@ -370,6 +371,7 @@ alloc_va_space(struct rte_memseg_list *msl)
 		return -1;
 	}
 	msl->base_va = addr;
+	msl->len = mem_sz;
 
 	return 0;
 }

@@ -30,9 +30,10 @@ struct rte_memseg_list {
 		uint64_t addr_64;
 		/**< Makes sure addr is always 64-bits */
 	};
-	int socket_id; /**< Socket ID for all memsegs in this list. */
 	uint64_t page_sz; /**< Page size for all memsegs in this list. */
+	int socket_id; /**< Socket ID for all memsegs in this list. */
 	volatile uint32_t version; /**< version number for multiprocess sync. */
+	size_t len; /**< Length of memory area covered by this memseg list. */
 	struct rte_fbarray memseg_arr;
 };
 
