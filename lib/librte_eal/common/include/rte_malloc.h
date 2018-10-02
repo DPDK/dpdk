@@ -264,6 +264,45 @@ rte_malloc_get_socket_stats(int socket,
 		struct rte_malloc_socket_stats *socket_stats);
 
 /**
+ * Add memory chunk to a heap with specified name.
+ *
+ * @note Multiple memory chunks can be added to the same heap
+ *
+ * @note Memory must be previously allocated for DPDK to be able to use it as a
+ *   malloc heap. Failing to do so will result in undefined behavior, up to and
+ *   including segmentation faults.
+ *
+ * @note Calling this function will erase any contents already present at the
+ *   supplied memory address.
+ *
+ * @param heap_name
+ *   Name of the heap to add memory chunk to
+ * @param va_addr
+ *   Start of virtual area to add to the heap
+ * @param len
+ *   Length of virtual area to add to the heap
+ * @param iova_addrs
+ *   Array of page IOVA addresses corresponding to each page in this memory
+ *   area. Can be NULL, in which case page IOVA addresses will be set to
+ *   RTE_BAD_IOVA.
+ * @param n_pages
+ *   Number of elements in the iova_addrs array. Ignored if  ``iova_addrs``
+ *   is NULL.
+ * @param page_sz
+ *   Page size of the underlying memory
+ *
+ * @return
+ *   - 0 on success
+ *   - -1 in case of error, with rte_errno set to one of the following:
+ *     EINVAL - one of the parameters was invalid
+ *     EPERM  - attempted to add memory to a reserved heap
+ *     ENOSPC - no more space in internal config to store a new memory chunk
+ */
+int __rte_experimental
+rte_malloc_heap_memory_add(const char *heap_name, void *va_addr, size_t len,
+		rte_iova_t iova_addrs[], unsigned int n_pages, size_t page_sz);
+
+/**
  * Creates a new empty malloc heap with a specified name.
  *
  * @note Heaps created via this call will automatically get assigned a unique

@@ -328,6 +328,57 @@ find_named_heap(const char *name)
 }
 
 int
+rte_malloc_heap_memory_add(const char *heap_name, void *va_addr, size_t len,
+		rte_iova_t iova_addrs[], unsigned int n_pages, size_t page_sz)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	struct malloc_heap *heap = NULL;
+	unsigned int n;
+	int ret;
+
+	if (heap_name == NULL || va_addr == NULL ||
+			page_sz == 0 || !rte_is_power_of_2(page_sz) ||
+			strnlen(heap_name, RTE_HEAP_NAME_MAX_LEN) == 0 ||
+			strnlen(heap_name, RTE_HEAP_NAME_MAX_LEN) ==
+				RTE_HEAP_NAME_MAX_LEN) {
+		rte_errno = EINVAL;
+		ret = -1;
+		goto unlock;
+	}
+	rte_rwlock_write_lock(&mcfg->memory_hotplug_lock);
+
+	/* find our heap */
+	heap = find_named_heap(heap_name);
+	if (heap == NULL) {
+		rte_errno = ENOENT;
+		ret = -1;
+		goto unlock;
+	}
+	if (heap->socket_id < RTE_MAX_NUMA_NODES) {
+		/* cannot add memory to internal heaps */
+		rte_errno = EPERM;
+		ret = -1;
+		goto unlock;
+	}
+	n = len / page_sz;
+	if (n != n_pages && iova_addrs != NULL) {
+		rte_errno = EINVAL;
+		ret = -1;
+		goto unlock;
+	}
+
+	rte_spinlock_lock(&heap->lock);
+	ret = malloc_heap_add_external_memory(heap, va_addr, iova_addrs, n,
+			page_sz);
+	rte_spinlock_unlock(&heap->lock);
+
+unlock:
+	rte_rwlock_write_unlock(&mcfg->memory_hotplug_lock);
+
+	return ret;
+}
+
+int
 rte_malloc_heap_create(const char *heap_name)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;

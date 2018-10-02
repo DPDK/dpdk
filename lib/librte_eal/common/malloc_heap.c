@@ -1024,6 +1024,80 @@ malloc_heap_dump(struct malloc_heap *heap, FILE *f)
 }
 
 int
+malloc_heap_add_external_memory(struct malloc_heap *heap, void *va_addr,
+		rte_iova_t iova_addrs[], unsigned int n_pages, size_t page_sz)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	char fbarray_name[RTE_FBARRAY_NAME_LEN];
+	struct rte_memseg_list *msl = NULL;
+	struct rte_fbarray *arr;
+	size_t seg_len = n_pages * page_sz;
+	unsigned int i;
+
+	/* first, find a free memseg list */
+	for (i = 0; i < RTE_MAX_MEMSEG_LISTS; i++) {
+		struct rte_memseg_list *tmp = &mcfg->memsegs[i];
+		if (tmp->base_va == NULL) {
+			msl = tmp;
+			break;
+		}
+	}
+	if (msl == NULL) {
+		RTE_LOG(ERR, EAL, "Couldn't find empty memseg list\n");
+		rte_errno = ENOSPC;
+		return -1;
+	}
+
+	snprintf(fbarray_name, sizeof(fbarray_name) - 1, "%s_%p",
+			heap->name, va_addr);
+
+	/* create the backing fbarray */
+	if (rte_fbarray_init(&msl->memseg_arr, fbarray_name, n_pages,
+			sizeof(struct rte_memseg)) < 0) {
+		RTE_LOG(ERR, EAL, "Couldn't create fbarray backing the memseg list\n");
+		return -1;
+	}
+	arr = &msl->memseg_arr;
+
+	/* fbarray created, fill it up */
+	for (i = 0; i < n_pages; i++) {
+		struct rte_memseg *ms;
+
+		rte_fbarray_set_used(arr, i);
+		ms = rte_fbarray_get(arr, i);
+		ms->addr = RTE_PTR_ADD(va_addr, i * page_sz);
+		ms->iova = iova_addrs == NULL ? RTE_BAD_IOVA : iova_addrs[i];
+		ms->hugepage_sz = page_sz;
+		ms->len = page_sz;
+		ms->nchannel = rte_memory_get_nchannel();
+		ms->nrank = rte_memory_get_nrank();
+		ms->socket_id = heap->socket_id;
+	}
+
+	/* set up the memseg list */
+	msl->base_va = va_addr;
+	msl->page_sz = page_sz;
+	msl->socket_id = heap->socket_id;
+	msl->len = seg_len;
+	msl->version = 0;
+	msl->external = 1;
+
+	/* erase contents of new memory */
+	memset(va_addr, 0, seg_len);
+
+	/* now, add newly minted memory to the malloc heap */
+	malloc_heap_add_memory(heap, msl, va_addr, seg_len);
+
+	heap->total_size += seg_len;
+
+	/* all done! */
+	RTE_LOG(DEBUG, EAL, "Added segment for heap %s starting at %p\n",
+			heap->name, va_addr);
+
+	return 0;
+}
+
+int
 malloc_heap_create(struct malloc_heap *heap, const char *heap_name)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
