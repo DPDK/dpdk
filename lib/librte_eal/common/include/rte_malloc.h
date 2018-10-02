@@ -264,6 +264,20 @@ rte_malloc_get_socket_stats(int socket,
 		struct rte_malloc_socket_stats *socket_stats);
 
 /**
+ * Find socket ID corresponding to a named heap.
+ *
+ * @param name
+ *   Heap name to find socket ID for
+ * @return
+ *   Socket ID in case of success (a non-negative number)
+ *   -1 in case of error, with rte_errno set to one of the following:
+ *     EINVAL - ``name`` was NULL
+ *     ENOENT - heap identified by the name ``name`` was not found
+ */
+int __rte_experimental
+rte_malloc_heap_get_socket(const char *name);
+
+/**
  * Dump statistics.
  *
  * Dump for the specified type to a file. If the type argument is

@@ -8,6 +8,7 @@
 #include <string.h>
 #include <sys/queue.h>
 
+#include <rte_errno.h>
 #include <rte_memcpy.h>
 #include <rte_memory.h>
 #include <rte_eal.h>
@@ -181,6 +182,42 @@ rte_malloc_dump_heaps(FILE *f)
 	}
 
 	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
+}
+
+int
+rte_malloc_heap_get_socket(const char *name)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	struct malloc_heap *heap = NULL;
+	unsigned int idx;
+	int ret;
+
+	if (name == NULL ||
+			strnlen(name, RTE_HEAP_NAME_MAX_LEN) == 0 ||
+			strnlen(name, RTE_HEAP_NAME_MAX_LEN) ==
+				RTE_HEAP_NAME_MAX_LEN) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+	rte_rwlock_read_lock(&mcfg->memory_hotplug_lock);
+	for (idx = 0; idx < RTE_MAX_HEAPS; idx++) {
+		struct malloc_heap *tmp = &mcfg->malloc_heaps[idx];
+
+		if (!strncmp(name, tmp->name, RTE_HEAP_NAME_MAX_LEN)) {
+			heap = tmp;
+			break;
+		}
+	}
+
+	if (heap != NULL) {
+		ret = heap->socket_id;
+	} else {
+		rte_errno = ENOENT;
+		ret = -1;
+	}
+	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
+
+	return ret;
 }
 
 /*
