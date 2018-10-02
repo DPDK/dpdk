@@ -379,6 +379,45 @@ unlock:
 }
 
 int
+rte_malloc_heap_memory_remove(const char *heap_name, void *va_addr, size_t len)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	struct malloc_heap *heap = NULL;
+	int ret;
+
+	if (heap_name == NULL || va_addr == NULL || len == 0 ||
+			strnlen(heap_name, RTE_HEAP_NAME_MAX_LEN) == 0 ||
+			strnlen(heap_name, RTE_HEAP_NAME_MAX_LEN) ==
+				RTE_HEAP_NAME_MAX_LEN) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+	rte_rwlock_write_lock(&mcfg->memory_hotplug_lock);
+	/* find our heap */
+	heap = find_named_heap(heap_name);
+	if (heap == NULL) {
+		rte_errno = ENOENT;
+		ret = -1;
+		goto unlock;
+	}
+	if (heap->socket_id < RTE_MAX_NUMA_NODES) {
+		/* cannot remove memory from internal heaps */
+		rte_errno = EPERM;
+		ret = -1;
+		goto unlock;
+	}
+
+	rte_spinlock_lock(&heap->lock);
+	ret = malloc_heap_remove_external_memory(heap, va_addr, len);
+	rte_spinlock_unlock(&heap->lock);
+
+unlock:
+	rte_rwlock_write_unlock(&mcfg->memory_hotplug_lock);
+
+	return ret;
+}
+
+int
 rte_malloc_heap_create(const char *heap_name)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;

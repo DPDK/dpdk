@@ -1023,6 +1023,32 @@ malloc_heap_dump(struct malloc_heap *heap, FILE *f)
 	rte_spinlock_unlock(&heap->lock);
 }
 
+static int
+destroy_seg(struct malloc_elem *elem, size_t len)
+{
+	struct malloc_heap *heap = elem->heap;
+	struct rte_memseg_list *msl;
+
+	msl = elem->msl;
+
+	/* this element can be removed */
+	malloc_elem_free_list_remove(elem);
+	malloc_elem_hide_region(elem, elem, len);
+
+	heap->total_size -= len;
+
+	memset(elem, 0, sizeof(*elem));
+
+	/* destroy the fbarray backing this memory */
+	if (rte_fbarray_destroy(&msl->memseg_arr) < 0)
+		return -1;
+
+	/* reset the memseg list */
+	memset(msl, 0, sizeof(*msl));
+
+	return 0;
+}
+
 int
 malloc_heap_add_external_memory(struct malloc_heap *heap, void *va_addr,
 		rte_iova_t iova_addrs[], unsigned int n_pages, size_t page_sz)
@@ -1095,6 +1121,34 @@ malloc_heap_add_external_memory(struct malloc_heap *heap, void *va_addr,
 			heap->name, va_addr);
 
 	return 0;
+}
+
+int
+malloc_heap_remove_external_memory(struct malloc_heap *heap, void *va_addr,
+		size_t len)
+{
+	struct malloc_elem *elem = heap->first;
+
+	/* find element with specified va address */
+	while (elem != NULL && elem != va_addr) {
+		elem = elem->next;
+		/* stop if we've blown past our VA */
+		if (elem > (struct malloc_elem *)va_addr) {
+			rte_errno = ENOENT;
+			return -1;
+		}
+	}
+	/* check if element was found */
+	if (elem == NULL || elem->msl->len != len) {
+		rte_errno = ENOENT;
+		return -1;
+	}
+	/* if element's size is not equal to segment len, segment is busy */
+	if (elem->state == ELEM_BUSY || elem->size != len) {
+		rte_errno = EBUSY;
+		return -1;
+	}
+	return destroy_seg(elem, len);
 }
 
 int

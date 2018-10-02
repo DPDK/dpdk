@@ -44,6 +44,10 @@ malloc_heap_add_external_memory(struct malloc_heap *heap, void *va_addr,
 		rte_iova_t iova_addrs[], unsigned int n_pages, size_t page_sz);
 
 int
+malloc_heap_remove_external_memory(struct malloc_heap *heap, void *va_addr,
+		size_t len);
+
+int
 malloc_heap_free(struct malloc_elem *elem);
 
 int

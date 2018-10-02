@@ -303,6 +303,33 @@ rte_malloc_heap_memory_add(const char *heap_name, void *va_addr, size_t len,
 		rte_iova_t iova_addrs[], unsigned int n_pages, size_t page_sz);
 
 /**
+ * Remove memory chunk from heap with specified name.
+ *
+ * @note Memory chunk being removed must be the same as one that was added;
+ *   partially removing memory chunks is not supported
+ *
+ * @note Memory area must not contain any allocated elements to allow its
+ *   removal from the heap
+ *
+ * @param heap_name
+ *   Name of the heap to remove memory from
+ * @param va_addr
+ *   Virtual address to remove from the heap
+ * @param len
+ *   Length of virtual area to remove from the heap
+ *
+ * @return
+ *   - 0 on success
+ *   - -1 in case of error, with rte_errno set to one of the following:
+ *     EINVAL - one of the parameters was invalid
+ *     EPERM  - attempted to remove memory from a reserved heap
+ *     ENOENT - heap or memory chunk was not found
+ *     EBUSY  - memory chunk still contains data
+ */
+int __rte_experimental
+rte_malloc_heap_memory_remove(const char *heap_name, void *va_addr, size_t len);
+
+/**
  * Creates a new empty malloc heap with a specified name.
  *
  * @note Heaps created via this call will automatically get assigned a unique
