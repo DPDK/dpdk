@@ -54,6 +54,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Added support for using externally allocated memory in DPDK.**
+
+  DPDK has gained support for creating new ``rte_malloc`` heaps referencing
+  memory that was created outside of DPDK's own page allocator, and using that
+  memory natively with any other DPDK library or data structure.
+
 * **Add support to offload more flow match and actions for CXGBE PMD**
 
   Flow API support has been enhanced for CXGBE Poll Mode Driver to offload:

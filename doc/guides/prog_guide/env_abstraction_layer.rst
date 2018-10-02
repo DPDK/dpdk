@@ -213,6 +213,43 @@ Normally, these options do not need to be changed.
     can later be mapped into that preallocated VA space (if dynamic memory mode
     is enabled), and can optionally be mapped into it at startup.
 
+Support for Externally Allocated Memory
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It is possible to use externally allocated memory in DPDK, using a set of malloc
+heap API's. Support for externally allocated memory is implemented through
+overloading the socket ID - externally allocated heaps will have socket ID's
+that would be considered invalid under normal circumstances. Requesting an
+allocation to take place from a specified externally allocated memory is a
+matter of supplying the correct socket ID to DPDK allocator, either directly
+(e.g. through a call to ``rte_malloc``) or indirectly (through data
+structure-specific allocation API's such as ``rte_ring_create``).
+
+Since there is no way DPDK can verify whether memory are is available or valid,
+this responsibility falls on the shoulders of the user. All multiprocess
+synchronization is also user's responsibility, as well as ensuring  that all
+calls to add/attach/detach/remove memory are done in the correct order. It is
+not required to attach to a memory area in all processes - only attach to memory
+areas as needed.
+
+The expected workflow is as follows:
+
+* Get a pointer to memory area
+* Create a named heap
+* Add memory area(s) to the heap
+    - If IOVA table is not specified, IOVA addresses will be assumed to be
+      unavailable, and DMA mappings will not be performed
+    - Other processes must attach to the memory area before they can use it
+* Get socket ID used for the heap
+* Use normal DPDK allocation procedures, using supplied socket ID
+* If memory area is no longer needed, it can be removed from the heap
+    - Other processes must detach from this memory area before it can be removed
+* If heap is no longer needed, remove it
+    - Socket ID will become invalid and will not be reused
+
+For more information, please refer to ``rte_malloc`` API documentation,
+specifically the ``rte_malloc_heap_*`` family of function calls.
+
 PCI Access
 ~~~~~~~~~~
 
