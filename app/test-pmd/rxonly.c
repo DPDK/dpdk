@@ -130,11 +130,11 @@ pkt_burst_receive(struct fwd_stream *fs)
 		}
 		if (ol_flags & PKT_RX_TIMESTAMP)
 			printf(" - timestamp %"PRIu64" ", mb->timestamp);
-		if (ol_flags & PKT_RX_VLAN)
-			printf(" - VLAN tci=0x%x", mb->vlan_tci);
-		if (ol_flags & PKT_RX_QINQ_STRIPPED)
+		if (ol_flags & PKT_RX_QINQ)
 			printf(" - QinQ VLAN tci=0x%x, VLAN tci outer=0x%x",
 					mb->vlan_tci, mb->vlan_tci_outer);
+		else if (ol_flags & PKT_RX_VLAN)
+			printf(" - VLAN tci=0x%x", mb->vlan_tci);
 		if (mb->packet_type) {
 			rte_get_ptype_name(mb->packet_type, buf, sizeof(buf));
 			printf(" - hw ptype: %s", buf);

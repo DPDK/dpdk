@@ -140,7 +140,7 @@ extern "C" {
  * The 2 vlans have been stripped by the hardware and their tci are
  * saved in mbuf->vlan_tci (inner) and mbuf->vlan_tci_outer (outer).
  * This can only happen if vlan stripping is enabled in the RX
- * configuration of the PMD. If this flag is set,
+ * configuration of the PMD.
  * When PKT_RX_QINQ_STRIPPED is set, the flags (PKT_RX_VLAN |
  * PKT_RX_VLAN_STRIPPED | PKT_RX_QINQ) must also be set.
  */
@@ -170,7 +170,8 @@ extern "C" {
 
 /**
  * The RX packet is a double VLAN, and the outer tci has been
- * saved in in mbuf->vlan_tci_outer.
+ * saved in in mbuf->vlan_tci_outer. If PKT_RX_QINQ set, PKT_RX_VLAN
+ * also should be set and inner tci should be saved to mbuf->vlan_tci.
  * If the flag PKT_RX_QINQ_STRIPPED is also present, both VLANs
  * headers have been stripped from mbuf data, else they are still
  * present.

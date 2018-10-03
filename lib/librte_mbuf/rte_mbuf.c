@@ -297,6 +297,7 @@ const char *rte_get_rx_ol_flag_name(uint64_t mask)
 	case PKT_RX_IEEE1588_PTP: return "PKT_RX_IEEE1588_PTP";
 	case PKT_RX_IEEE1588_TMST: return "PKT_RX_IEEE1588_TMST";
 	case PKT_RX_QINQ_STRIPPED: return "PKT_RX_QINQ_STRIPPED";
+	case PKT_RX_QINQ: return "PKT_RX_QINQ";
 	case PKT_RX_LRO: return "PKT_RX_LRO";
 	case PKT_RX_TIMESTAMP: return "PKT_RX_TIMESTAMP";
 	case PKT_RX_SEC_OFFLOAD: return "PKT_RX_SEC_OFFLOAD";
