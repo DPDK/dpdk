@@ -256,7 +256,7 @@ rte_vfio_get_group_num(const char *sysfs_base,
 		      const char *dev_addr, int *iommu_group_num);
 
 /**
- * Open VFIO container fd or get an existing one
+ * Open a new VFIO container fd
  *
  * This function is only relevant to linux and will return
  * an error on BSD.

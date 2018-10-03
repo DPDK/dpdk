@@ -910,7 +910,15 @@ rte_vfio_enable(const char *modname)
 		return 0;
 	}
 
-	default_vfio_cfg->vfio_container_fd = rte_vfio_get_container_fd();
+	if (internal_config.process_type == RTE_PROC_PRIMARY) {
+		/* open a new container */
+		default_vfio_cfg->vfio_container_fd =
+				rte_vfio_get_container_fd();
+	} else {
+		/* get the default container from the primary process */
+		default_vfio_cfg->vfio_container_fd =
+				vfio_get_default_container_fd();
+	}
 
 	/* check if we have VFIO driver enabled */
 	if (default_vfio_cfg->vfio_container_fd != -1) {
@@ -928,6 +936,45 @@ rte_vfio_is_enabled(const char *modname)
 {
 	const int mod_available = rte_eal_check_module(modname) > 0;
 	return default_vfio_cfg->vfio_enabled && mod_available;
+}
+
+int
+vfio_get_default_container_fd(void)
+{
+	struct rte_mp_msg mp_req, *mp_rep;
+	struct rte_mp_reply mp_reply;
+	struct timespec ts = {.tv_sec = 5, .tv_nsec = 0};
+	struct vfio_mp_param *p = (struct vfio_mp_param *)mp_req.param;
+
+	if (default_vfio_cfg->vfio_enabled)
+		return default_vfio_cfg->vfio_container_fd;
+
+	if (internal_config.process_type == RTE_PROC_PRIMARY) {
+		/* if we were secondary process we would try requesting
+		 * container fd from the primary, but we're the primary
+		 * process so just exit here
+		 */
+		return -1;
+	}
+
+	p->req = SOCKET_REQ_DEFAULT_CONTAINER;
+	strcpy(mp_req.name, EAL_VFIO_MP);
+	mp_req.len_param = sizeof(*p);
+	mp_req.num_fds = 0;
+
+	if (rte_mp_request_sync(&mp_req, &mp_reply, &ts) == 0 &&
+	    mp_reply.nb_received == 1) {
+		mp_rep = &mp_reply.msgs[0];
+		p = (struct vfio_mp_param *)mp_rep->param;
+		if (p->result == SOCKET_OK && mp_rep->num_fds == 1) {
+			free(mp_reply.msgs);
+			return mp_rep->fds[0];
+		}
+		free(mp_reply.msgs);
+	}
+
+	RTE_LOG(ERR, EAL, "  cannot request default container fd\n");
+	return -1;
 }
 
 const struct vfio_iommu_type *
