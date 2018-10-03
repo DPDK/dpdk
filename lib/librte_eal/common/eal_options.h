@@ -63,6 +63,8 @@ enum {
 	OPT_LEGACY_MEM_NUM,
 #define OPT_SINGLE_FILE_SEGMENTS    "single-file-segments"
 	OPT_SINGLE_FILE_SEGMENTS_NUM,
+#define OPT_IOVA_MODE          "iova-mode"
+	OPT_IOVA_MODE_NUM,
 	OPT_LONG_MAX_NUM
 };
 
