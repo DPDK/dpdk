@@ -133,6 +133,8 @@ sfc_ef10_rx_qrefill(struct sfc_ef10_rxq *rxq)
 			struct sfc_ef10_rx_sw_desc *rxd;
 			rte_iova_t phys_addr;
 
+			MBUF_RAW_ALLOC_CHECK(m);
+
 			SFC_ASSERT((id & ~ptr_mask) == 0);
 			rxd = &rxq->sw_ring[id];
 			rxd->mbuf = m;

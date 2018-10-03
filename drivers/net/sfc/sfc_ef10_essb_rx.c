@@ -123,14 +123,22 @@ static struct rte_mbuf *
 sfc_ef10_essb_next_mbuf(const struct sfc_ef10_essb_rxq *rxq,
 			struct rte_mbuf *mbuf)
 {
-	return (struct rte_mbuf *)((uintptr_t)mbuf + rxq->buf_stride);
+	struct rte_mbuf *m;
+
+	m = (struct rte_mbuf *)((uintptr_t)mbuf + rxq->buf_stride);
+	MBUF_RAW_ALLOC_CHECK(m);
+	return m;
 }
 
 static struct rte_mbuf *
 sfc_ef10_essb_mbuf_by_index(const struct sfc_ef10_essb_rxq *rxq,
 			    struct rte_mbuf *mbuf, unsigned int idx)
 {
-	return (struct rte_mbuf *)((uintptr_t)mbuf + idx * rxq->buf_stride);
+	struct rte_mbuf *m;
+
+	m = (struct rte_mbuf *)((uintptr_t)mbuf + idx * rxq->buf_stride);
+	MBUF_RAW_ALLOC_CHECK(m);
+	return m;
 }
 
 static struct rte_mbuf *

@@ -96,13 +96,12 @@ sfc_efx_rx_qrefill(struct sfc_efx_rxq *rxq)
 		     ++i, id = (id + 1) & rxq->ptr_mask) {
 			m = objs[i];
 
+			MBUF_RAW_ALLOC_CHECK(m);
+
 			rxd = &rxq->sw_desc[id];
 			rxd->mbuf = m;
 
-			SFC_ASSERT(rte_mbuf_refcnt_read(m) == 1);
 			m->data_off = RTE_PKTMBUF_HEADROOM;
-			SFC_ASSERT(m->next == NULL);
-			SFC_ASSERT(m->nb_segs == 1);
 			m->port = port_id;
 
 			addr[i] = rte_pktmbuf_iova(m);
