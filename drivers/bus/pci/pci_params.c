@@ -12,13 +12,13 @@
 #include "private.h"
 
 enum pci_params {
-	RTE_PCI_PARAMS_ADDR,
-	RTE_PCI_PARAMS_MAX,
+	RTE_PCI_PARAM_ADDR,
+	RTE_PCI_PARAM_MAX,
 };
 
 static const char * const pci_params_keys[] = {
-	[RTE_PCI_PARAMS_ADDR] = "addr",
-	[RTE_PCI_PARAMS_MAX] = NULL,
+	[RTE_PCI_PARAM_ADDR] = "addr",
+	[RTE_PCI_PARAM_MAX] = NULL,
 };
 
 static int
@@ -47,7 +47,7 @@ pci_dev_match(const struct rte_device *dev,
 		return 0;
 	pdev = RTE_DEV_TO_PCI_CONST(dev);
 	/* if any field does not match. */
-	if (rte_kvargs_process(kvlist, pci_params_keys[RTE_PCI_PARAMS_ADDR],
+	if (rte_kvargs_process(kvlist, pci_params_keys[RTE_PCI_PARAM_ADDR],
 			       &pci_addr_kv_cmp,
 			       (void *)(intptr_t)&pdev->addr))
 		return 1;

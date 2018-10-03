@@ -15,11 +15,11 @@
 #include "ethdev_private.h"
 
 enum eth_params {
-	RTE_ETH_PARAMS_MAX,
+	RTE_ETH_PARAM_MAX,
 };
 
 static const char * const eth_params_keys[] = {
-	[RTE_ETH_PARAMS_MAX] = NULL,
+	[RTE_ETH_PARAM_MAX] = NULL,
 };
 
 struct eth_dev_match_arg {

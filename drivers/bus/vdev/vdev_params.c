@@ -11,11 +11,11 @@
 #include "vdev_private.h"
 
 enum vdev_params {
-	RTE_VDEV_PARAMS_MAX,
+	RTE_VDEV_PARAM_MAX,
 };
 
 static const char * const vdev_params_keys[] = {
-	[RTE_VDEV_PARAMS_MAX] = NULL,
+	[RTE_VDEV_PARAM_MAX] = NULL,
 };
 
 static int
