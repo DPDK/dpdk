@@ -186,7 +186,7 @@ sfc_ef10_rx_prefetch_next(struct sfc_ef10_rxq *rxq, unsigned int next_id)
 	}
 }
 
-static uint16_t
+static struct rte_mbuf **
 sfc_ef10_rx_prepared(struct sfc_ef10_rxq *rxq, struct rte_mbuf **rx_pkts,
 		     uint16_t nb_pkts)
 {
@@ -204,7 +204,7 @@ sfc_ef10_rx_prepared(struct sfc_ef10_rxq *rxq, struct rte_mbuf **rx_pkts,
 		} while (completed != rxq->completed);
 	}
 
-	return n_rx_pkts;
+	return rx_pkts;
 }
 
 static uint16_t
@@ -219,9 +219,10 @@ sfc_ef10_rx_pseudo_hdr_get_hash(const uint8_t *pseudo_hdr)
 	return rte_le_to_cpu_32(*(const uint32_t *)pseudo_hdr);
 }
 
-static uint16_t
+static struct rte_mbuf **
 sfc_ef10_rx_process_event(struct sfc_ef10_rxq *rxq, efx_qword_t rx_ev,
-			  struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+			  struct rte_mbuf **rx_pkts,
+			  struct rte_mbuf ** const rx_pkts_end)
 {
 	const unsigned int ptr_mask = rxq->ptr_mask;
 	unsigned int completed = rxq->completed;
@@ -246,10 +247,10 @@ sfc_ef10_rx_process_event(struct sfc_ef10_rxq *rxq, efx_qword_t rx_ev,
 			rxd = &rxq->sw_ring[completed++ & ptr_mask];
 			rte_mbuf_raw_free(rxd->mbuf);
 		}
-		return 0;
+		return rx_pkts;
 	}
 
-	n_rx_pkts = RTE_MIN(ready, nb_pkts);
+	n_rx_pkts = RTE_MIN(ready, rx_pkts_end - rx_pkts);
 	rxq->prepared = ready - n_rx_pkts;
 	rxq->completed += n_rx_pkts;
 
@@ -329,7 +330,7 @@ sfc_ef10_rx_process_event(struct sfc_ef10_rxq *rxq, efx_qword_t rx_ev,
 		SFC_ASSERT(m->next == NULL);
 	}
 
-	return n_rx_pkts;
+	return rx_pkts;
 }
 
 static bool
@@ -361,26 +362,25 @@ static uint16_t
 sfc_ef10_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
 	struct sfc_ef10_rxq *rxq = sfc_ef10_rxq_by_dp_rxq(rx_queue);
+	struct rte_mbuf ** const rx_pkts_end = &rx_pkts[nb_pkts];
 	unsigned int evq_old_read_ptr;
-	uint16_t n_rx_pkts;
 	efx_qword_t rx_ev;
 
-	n_rx_pkts = sfc_ef10_rx_prepared(rxq, rx_pkts, nb_pkts);
+	rx_pkts = sfc_ef10_rx_prepared(rxq, rx_pkts, nb_pkts);
 
 	if (unlikely(rxq->flags &
 		     (SFC_EF10_RXQ_NOT_RUNNING | SFC_EF10_RXQ_EXCEPTION)))
 		goto done;
 
 	evq_old_read_ptr = rxq->evq_read_ptr;
-	while (n_rx_pkts != nb_pkts && sfc_ef10_rx_get_event(rxq, &rx_ev)) {
+	while (rx_pkts != rx_pkts_end && sfc_ef10_rx_get_event(rxq, &rx_ev)) {
 		/*
 		 * DROP_EVENT is an internal to the NIC, software should
 		 * never see it and, therefore, may ignore it.
 		 */
 
-		n_rx_pkts += sfc_ef10_rx_process_event(rxq, rx_ev,
-						       rx_pkts + n_rx_pkts,
-						       nb_pkts - n_rx_pkts);
+		rx_pkts = sfc_ef10_rx_process_event(rxq, rx_ev,
+						    rx_pkts, rx_pkts_end);
 	}
 
 	sfc_ef10_ev_qclear(rxq->evq_hw_ring, rxq->ptr_mask, evq_old_read_ptr,
@@ -390,7 +390,7 @@ sfc_ef10_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	sfc_ef10_rx_qrefill(rxq);
 
 done:
-	return n_rx_pkts;
+	return nb_pkts - (rx_pkts_end - rx_pkts);
 }
 
 const uint32_t *
