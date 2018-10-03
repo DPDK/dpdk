@@ -28,6 +28,7 @@ static int enetc_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 		uint16_t nb_tx_desc, unsigned int socket_id,
 		const struct rte_eth_txconf *tx_conf);
 static void enetc_tx_queue_release(void *txq);
+static const uint32_t *enetc_supported_ptypes_get(struct rte_eth_dev *dev);
 
 /*
  * The set of PCI devices this driver supports
@@ -50,6 +51,7 @@ static const struct eth_dev_ops enetc_ops = {
 	.rx_queue_release     = enetc_rx_queue_release,
 	.tx_queue_setup       = enetc_tx_queue_setup,
 	.tx_queue_release     = enetc_tx_queue_release,
+	.dev_supported_ptypes_get = enetc_supported_ptypes_get,
 };
 
 /**
@@ -180,6 +182,23 @@ enetc_dev_close(struct rte_eth_dev *dev)
 		dev->data->tx_queues[i] = NULL;
 	}
 	dev->data->nb_tx_queues = 0;
+}
+
+static const uint32_t *
+enetc_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
+{
+	static const uint32_t ptypes[] = {
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L3_IPV4,
+		RTE_PTYPE_L3_IPV6,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_L4_SCTP,
+		RTE_PTYPE_L4_ICMP,
+		RTE_PTYPE_UNKNOWN
+	};
+
+	return ptypes;
 }
 
 /* return 0 means link status changed, -1 means not changed */
