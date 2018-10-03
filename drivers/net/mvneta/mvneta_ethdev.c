@@ -522,6 +522,58 @@ mvneta_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 }
 
 /**
+ * DPDK callback to enable promiscuous mode.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ */
+static void
+mvneta_promiscuous_enable(struct rte_eth_dev *dev)
+{
+	struct mvneta_priv *priv = dev->data->dev_private;
+	int ret, en;
+
+	if (!priv->ppio)
+		return;
+
+	neta_ppio_get_promisc(priv->ppio, &en);
+	if (en) {
+		MVNETA_LOG(INFO, "Promiscuous already enabled");
+		return;
+	}
+
+	ret = neta_ppio_set_promisc(priv->ppio, 1);
+	if (ret)
+		MVNETA_LOG(ERR, "Failed to enable promiscuous mode");
+}
+
+/**
+ * DPDK callback to disable allmulticast mode.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ */
+static void
+mvneta_promiscuous_disable(struct rte_eth_dev *dev)
+{
+	struct mvneta_priv *priv = dev->data->dev_private;
+	int ret, en;
+
+	if (!priv->ppio)
+		return;
+
+	neta_ppio_get_promisc(priv->ppio, &en);
+	if (!en) {
+		MVNETA_LOG(INFO, "Promiscuous already disabled");
+		return;
+	}
+
+	ret = neta_ppio_set_promisc(priv->ppio, 0);
+	if (ret)
+		MVNETA_LOG(ERR, "Failed to disable promiscuous mode");
+}
+
+/**
  * DPDK callback to set the primary MAC address.
  *
  * @param dev
@@ -555,6 +607,8 @@ static const struct eth_dev_ops mvneta_ops = {
 	.dev_set_link_down = mvneta_dev_set_link_down,
 	.dev_close = mvneta_dev_close,
 	.link_update = mvneta_link_update,
+	.promiscuous_enable = mvneta_promiscuous_enable,
+	.promiscuous_disable = mvneta_promiscuous_disable,
 	.mac_addr_set = mvneta_mac_addr_set,
 	.mtu_set = mvneta_mtu_set,
 	.dev_infos_get = mvneta_dev_infos_get,

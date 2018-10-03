@@ -31,6 +31,7 @@ Features of the MVNETA PMD are:
 - Speed capabilities
 - Jumbo frame
 - MTU update
+- Promiscuous mode
 - Link status
 - CRC offload
 - L3 checksum offload
