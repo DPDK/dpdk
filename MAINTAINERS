@@ -660,6 +660,12 @@ F: drivers/net/dpaa2/
 F: doc/guides/nics/dpaa2.rst
 F: doc/guides/nics/features/dpaa2.ini
 
+NXP enetc
+M: Gagandeep Singh <g.singh@nxp.com>
+M: Pankaj Chauhan <pankaj.chauhan@nxp.com>
+F: drivers/net/enetc/
+F: doc/guides/nics/features/enetc.ini
+
 QLogic bnx2x
 M: Harish Patil <harish.patil@cavium.com>
 M: Rasesh Mody <rasesh.mody@cavium.com>

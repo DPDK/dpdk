@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright 2018 NXP
+
+include $(RTE_SDK)/mk/rte.vars.mk
+
+#
+# library name
+#
+LIB = librte_pmd_enetc.a
+
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
+EXPORT_MAP := rte_pmd_enetc_version.map
+LIBABIVER := 1
+
+SRCS-$(CONFIG_RTE_LIBRTE_ENETC_PMD) += enetc_ethdev.c
+
+LDLIBS += -lrte_eal
+LDLIBS += -lrte_ethdev
+LDLIBS += -lrte_bus_pci
+
+include $(RTE_SDK)/mk/rte.lib.mk
