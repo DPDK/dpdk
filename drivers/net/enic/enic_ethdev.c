@@ -37,6 +37,7 @@ static const struct rte_pci_id pci_id_enic_map[] = {
 };
 
 #define ENIC_DEVARG_DISABLE_OVERLAY "disable-overlay"
+#define ENIC_DEVARG_ENABLE_AVX2_RX "enable-avx2-rx"
 #define ENIC_DEVARG_IG_VLAN_REWRITE "ig-vlan-rewrite"
 
 RTE_INIT(enicpmd_init_log)
@@ -915,22 +916,27 @@ static const struct eth_dev_ops enicpmd_eth_dev_ops = {
 	.udp_tunnel_port_del  = enicpmd_dev_udp_tunnel_port_del,
 };
 
-static int enic_parse_disable_overlay(__rte_unused const char *key,
-				      const char *value,
-				      void *opaque)
+static int enic_parse_zero_one(const char *key,
+			       const char *value,
+			       void *opaque)
 {
 	struct enic *enic;
+	bool b;
 
 	enic = (struct enic *)opaque;
 	if (strcmp(value, "0") == 0) {
-		enic->disable_overlay = false;
+		b = false;
 	} else if (strcmp(value, "1") == 0) {
-		enic->disable_overlay = true;
+		b = true;
 	} else {
-		dev_err(enic, "Invalid value for " ENIC_DEVARG_DISABLE_OVERLAY
-			": expected=0|1 given=%s\n", value);
+		dev_err(enic, "Invalid value for %s"
+			": expected=0|1 given=%s\n", key, value);
 		return -EINVAL;
 	}
+	if (strcmp(key, ENIC_DEVARG_DISABLE_OVERLAY) == 0)
+		enic->disable_overlay = b;
+	if (strcmp(key, ENIC_DEVARG_ENABLE_AVX2_RX) == 0)
+		enic->enable_avx2_rx = b;
 	return 0;
 }
 
@@ -971,6 +977,7 @@ static int enic_check_devargs(struct rte_eth_dev *dev)
 {
 	static const char *const valid_keys[] = {
 		ENIC_DEVARG_DISABLE_OVERLAY,
+		ENIC_DEVARG_ENABLE_AVX2_RX,
 		ENIC_DEVARG_IG_VLAN_REWRITE,
 		NULL};
 	struct enic *enic = pmd_priv(dev);
@@ -979,6 +986,7 @@ static int enic_check_devargs(struct rte_eth_dev *dev)
 	ENICPMD_FUNC_TRACE();
 
 	enic->disable_overlay = false;
+	enic->enable_avx2_rx = false;
 	enic->ig_vlan_rewrite_mode = IG_VLAN_REWRITE_MODE_PASS_THRU;
 	if (!dev->device->devargs)
 		return 0;
@@ -986,7 +994,9 @@ static int enic_check_devargs(struct rte_eth_dev *dev)
 	if (!kvlist)
 		return -EINVAL;
 	if (rte_kvargs_process(kvlist, ENIC_DEVARG_DISABLE_OVERLAY,
-			       enic_parse_disable_overlay, enic) < 0 ||
+			       enic_parse_zero_one, enic) < 0 ||
+	    rte_kvargs_process(kvlist, ENIC_DEVARG_ENABLE_AVX2_RX,
+			       enic_parse_zero_one, enic) < 0 ||
 	    rte_kvargs_process(kvlist, ENIC_DEVARG_IG_VLAN_REWRITE,
 			       enic_parse_ig_vlan_rewrite, enic) < 0) {
 		rte_kvargs_free(kvlist);
@@ -1055,4 +1065,5 @@ RTE_PMD_REGISTER_PCI_TABLE(net_enic, pci_id_enic_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_enic, "* igb_uio | uio_pci_generic | vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_enic,
 	ENIC_DEVARG_DISABLE_OVERLAY "=0|1 "
+	ENIC_DEVARG_ENABLE_AVX2_RX "=0|1 "
 	ENIC_DEVARG_IG_VLAN_REWRITE "=trunk|untag|priority|pass");

@@ -351,6 +351,41 @@ suitable for others. Such applications may change the mode by setting
   applications such as OVS-DPDK performance benchmarks that utilize
   only the default VLAN and want to see only untagged packets.
 
+
+Vectorized Rx Handler
+---------------------
+
+ENIC PMD includes a version of the receive handler that is vectorized using
+AVX2 SIMD instructions. It is meant for bulk, throughput oriented workloads
+where reducing cycles/packet in PMD is a priority. In order to use the
+vectorized handler, take the following steps.
+
+- Use a recent version of gcc, icc, or clang and build 64-bit DPDK. If
+  the compiler is known to support AVX2, DPDK build system
+  automatically compiles the vectorized handler. Otherwise, the
+  handler is not available.
+
+- Set ``devargs`` parameter ``enable-avx2-rx=1`` to explicitly request that
+  PMD consider the vectorized handler when selecting the receive handler.
+  For example::
+
+    -w 12:00.0,enable-avx2-rx=1
+
+  As the current implementation is intended for field trials, by default, the
+  vectorized handler is not considerd (``enable-avx2-rx=0``).
+
+- Run on a UCS M4 or later server with CPUs that support AVX2.
+
+PMD selects the vectorized handler when the handler is compiled into
+the driver, the user requests its use via ``enable-avx2-rx=1``, CPU
+supports AVX2, and scatter Rx is not used. To verify that the
+vectorized handler is selected, enable debug logging
+(``--log-level=pmd,debug``) and check the following message.
+
+.. code-block:: console
+
+    enic_use_vector_rx_handler use the non-scatter avx2 Rx handler
+
 .. _enic_limitations:
 
 Limitations

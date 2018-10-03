@@ -106,6 +106,11 @@ struct enic {
 	struct vnic_dev_bar bar0;
 	struct vnic_dev *vdev;
 
+	/*
+	 * mbuf_initializer contains 64 bits of mbuf rearm_data, used by
+	 * the avx2 handler at this time.
+	 */
+	uint64_t mbuf_initializer;
 	unsigned int port_id;
 	bool overlay_offload;
 	struct rte_eth_dev *rte_dev;
@@ -128,6 +133,7 @@ struct enic {
 	u8 filter_actions; /* HW supported actions */
 	bool vxlan;
 	bool disable_overlay; /* devargs disable_overlay=1 */
+	uint8_t enable_avx2_rx;  /* devargs enable-avx2-rx=1 */
 	bool nic_cfg_chk;     /* NIC_CFG_CHK available */
 	bool udp_rss_weak;    /* Bodega style UDP RSS */
 	uint8_t ig_vlan_rewrite_mode; /* devargs ig-vlan-rewrite */
@@ -329,6 +335,7 @@ uint16_t enic_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts);
 int enic_set_mtu(struct enic *enic, uint16_t new_mtu);
 int enic_link_update(struct enic *enic);
+bool enic_use_vector_rx_handler(struct enic *enic);
 void enic_fdir_info(struct enic *enic);
 void enic_fdir_info_get(struct enic *enic, struct rte_eth_fdir_info *stats);
 void copy_fltr_v1(struct filter_v2 *fltr, struct rte_eth_fdir_input *input,

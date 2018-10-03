@@ -514,12 +514,29 @@ static void enic_prep_wq_for_simple_tx(struct enic *enic, uint16_t queue_idx)
 	}
 }
 
+/*
+ * The 'strong' version is in enic_rxtx_vec_avx2.c. This weak version is used
+ * used when that file is not compiled.
+ */
+bool __attribute__((weak))
+enic_use_vector_rx_handler(__rte_unused struct enic *enic)
+{
+	return false;
+}
+
 static void pick_rx_handler(struct enic *enic)
 {
 	struct rte_eth_dev *eth_dev;
 
-	/* Use the non-scatter, simplified RX handler if possible. */
+	/*
+	 * Preference order:
+	 * 1. The vectorized handler if possible and requested.
+	 * 2. The non-scatter, simplified handler if scatter Rx is not used.
+	 * 3. The default handler as a fallback.
+	 */
 	eth_dev = enic->rte_dev;
+	if (enic_use_vector_rx_handler(enic))
+		return;
 	if (enic->rq_count > 0 && enic->rq[0].data_queue_enable == 0) {
 		PMD_INIT_LOG(DEBUG, " use the non-scatter Rx handler");
 		eth_dev->rx_pkt_burst = &enic_noscatter_recv_pkts;
@@ -535,6 +552,24 @@ int enic_enable(struct enic *enic)
 	int err;
 	struct rte_eth_dev *eth_dev = enic->rte_dev;
 	uint64_t simple_tx_offloads;
+	uintptr_t p;
+
+	if (enic->enable_avx2_rx) {
+		struct rte_mbuf mb_def = { .buf_addr = 0 };
+
+		/*
+		 * mbuf_initializer contains const-after-init fields of
+		 * receive mbufs (i.e. 64 bits of fields from rearm_data).
+		 * It is currently used by the vectorized handler.
+		 */
+		mb_def.nb_segs = 1;
+		mb_def.data_off = RTE_PKTMBUF_HEADROOM;
+		mb_def.port = enic->port_id;
+		rte_mbuf_refcnt_set(&mb_def, 1);
+		rte_compiler_barrier();
+		p = (uintptr_t)&mb_def.rearm_data;
+		enic->mbuf_initializer = *(uint64_t *)p;
+	}
 
 	eth_dev->data->dev_link.link_speed = vnic_dev_port_speed(enic->vdev);
 	eth_dev->data->dev_link.link_duplex = ETH_LINK_FULL_DUPLEX;
