@@ -218,6 +218,77 @@ mvneta_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
 }
 
 /**
+ * DPDK callback to change the MTU.
+ *
+ * Setting the MTU affects hardware MRU (packets larger than the MRU
+ * will be dropped).
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param mtu
+ *   New MTU.
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
+ */
+static int
+mvneta_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct mvneta_priv *priv = dev->data->dev_private;
+	uint16_t mbuf_data_size = 0; /* SW buffer size */
+	uint16_t mru;
+	int ret;
+
+	mru = MRVL_NETA_MTU_TO_MRU(mtu);
+	/*
+	 * min_rx_buf_size is equal to mbuf data size
+	 * if pmd didn't set it differently
+	 */
+	mbuf_data_size = dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM;
+	/* Prevent PMD from:
+	 * - setting mru greater than the mbuf size resulting in
+	 * hw and sw buffer size mismatch
+	 * - setting mtu that requires the support of scattered packets
+	 * when this feature has not been enabled/supported so far.
+	 */
+	if (!dev->data->scattered_rx &&
+	    (mru + MRVL_NETA_PKT_OFFS > mbuf_data_size)) {
+		mru = mbuf_data_size - MRVL_NETA_PKT_OFFS;
+		mtu = MRVL_NETA_MRU_TO_MTU(mru);
+		MVNETA_LOG(WARNING, "MTU too big, max MTU possible limitted by"
+			" current mbuf size: %u. Set MTU to %u, MRU to %u",
+			mbuf_data_size, mtu, mru);
+	}
+
+	if (mtu < ETHER_MIN_MTU || mru > MVNETA_PKT_SIZE_MAX) {
+		MVNETA_LOG(ERR, "Invalid MTU [%u] or MRU [%u]", mtu, mru);
+		return -EINVAL;
+	}
+
+	dev->data->mtu = mtu;
+	dev->data->dev_conf.rxmode.max_rx_pkt_len = mru - MV_MH_SIZE;
+
+	if (!priv->ppio)
+		/* It is OK. New MTU will be set later on mvneta_dev_start */
+		return 0;
+
+	ret = neta_ppio_set_mru(priv->ppio, mru);
+	if (ret) {
+		MVNETA_LOG(ERR, "Failed to change MRU");
+		return ret;
+	}
+
+	ret = neta_ppio_set_mtu(priv->ppio, mtu);
+	if (ret) {
+		MVNETA_LOG(ERR, "Failed to change MTU");
+		return ret;
+	}
+	MVNETA_LOG(INFO, "MTU changed to %u, MRU = %u", mtu, mru);
+
+	return 0;
+}
+
+/**
  * DPDK callback to bring the link up.
  *
  * @param dev
@@ -306,6 +377,12 @@ mvneta_dev_start(struct rte_eth_dev *dev)
 	ret = mvneta_alloc_rx_bufs(dev);
 	if (ret)
 		goto out;
+
+	ret = mvneta_mtu_set(dev, dev->data->mtu);
+	if (ret) {
+		MVNETA_LOG(ERR, "Failed to set MTU %d", dev->data->mtu);
+		goto out;
+	}
 
 	ret = mvneta_dev_set_link_up(dev);
 	if (ret) {
@@ -408,6 +485,7 @@ static const struct eth_dev_ops mvneta_ops = {
 	.dev_set_link_down = mvneta_dev_set_link_down,
 	.dev_close = mvneta_dev_close,
 	.mac_addr_set = mvneta_mac_addr_set,
+	.mtu_set = mvneta_mtu_set,
 	.dev_infos_get = mvneta_dev_infos_get,
 	.dev_supported_ptypes_get = mvneta_dev_supported_ptypes_get,
 	.rxq_info_get = mvneta_rxq_info_get,

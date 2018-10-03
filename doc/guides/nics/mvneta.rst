@@ -30,6 +30,7 @@ Features of the MVNETA PMD are:
 - tx/rx_burst
 - Speed capabilities
 - Jumbo frame
+- MTU update
 - CRC offload
 - L3 checksum offload
 - L4 checksum offload
