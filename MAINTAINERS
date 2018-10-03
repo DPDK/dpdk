@@ -664,6 +664,7 @@ NXP enetc
 M: Gagandeep Singh <g.singh@nxp.com>
 M: Pankaj Chauhan <pankaj.chauhan@nxp.com>
 F: drivers/net/enetc/
+F: doc/guides/nics/enetc.rst
 F: doc/guides/nics/features/enetc.ini
 
 QLogic bnx2x

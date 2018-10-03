@@ -21,6 +21,7 @@ Network Interface Controller Drivers
     dpaa2
     e1000em
     ena
+    enetc
     enic
     fm10k
     i40e

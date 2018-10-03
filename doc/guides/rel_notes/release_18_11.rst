@@ -83,6 +83,11 @@ New Features
   Added the new ``mvneta`` net driver for Marvell Armada 3k device. See the
   :doc:`../nics/mvneta` NIC guide for more details on this new driver.
 
+* **Added NXP ENETC PMD.**
+
+  Added the new enetc driver for NXP enetc platform. See the
+  "ENETC Poll Mode Driver" document for more details on this new driver.
+
 * **Updated failsafe driver.**
 
   Updated the failsafe driver including the following changes:
