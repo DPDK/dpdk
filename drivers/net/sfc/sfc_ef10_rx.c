@@ -230,7 +230,7 @@ sfc_ef10_rx_process_event(struct sfc_ef10_rxq *rxq, efx_qword_t rx_ev,
 	struct rte_mbuf *m;
 	struct rte_mbuf *m0;
 	const uint8_t *pseudo_hdr;
-	uint16_t pkt_len;
+	uint16_t seg_len;
 
 	ready = (EFX_QWORD_FIELD(rx_ev, ESF_DZ_RX_DSC_PTR_LBITS) - pending) &
 		EFX_MASK32(ESF_DZ_RX_DSC_PTR_LBITS);
@@ -279,13 +279,13 @@ sfc_ef10_rx_process_event(struct sfc_ef10_rxq *rxq, efx_qword_t rx_ev,
 	m->hash.rss = sfc_ef10_rx_pseudo_hdr_get_hash(pseudo_hdr);
 
 	if (ready == 1)
-		pkt_len = EFX_QWORD_FIELD(rx_ev, ESF_DZ_RX_BYTES) -
+		seg_len = EFX_QWORD_FIELD(rx_ev, ESF_DZ_RX_BYTES) -
 			rxq->prefix_size;
 	else
-		pkt_len = sfc_ef10_rx_pseudo_hdr_get_len(pseudo_hdr);
-	SFC_ASSERT(pkt_len > 0);
-	rte_pktmbuf_data_len(m) = pkt_len;
-	rte_pktmbuf_pkt_len(m) = pkt_len;
+		seg_len = sfc_ef10_rx_pseudo_hdr_get_len(pseudo_hdr);
+	SFC_ASSERT(seg_len > 0);
+	rte_pktmbuf_data_len(m) = seg_len;
+	rte_pktmbuf_pkt_len(m) = seg_len;
 
 	SFC_ASSERT(m->next == NULL);
 
@@ -321,10 +321,10 @@ sfc_ef10_rx_process_event(struct sfc_ef10_rxq *rxq, efx_qword_t rx_ev,
 		 */
 		m->hash.rss = sfc_ef10_rx_pseudo_hdr_get_hash(pseudo_hdr);
 
-		pkt_len = sfc_ef10_rx_pseudo_hdr_get_len(pseudo_hdr);
-		SFC_ASSERT(pkt_len > 0);
-		rte_pktmbuf_data_len(m) = pkt_len;
-		rte_pktmbuf_pkt_len(m) = pkt_len;
+		seg_len = sfc_ef10_rx_pseudo_hdr_get_len(pseudo_hdr);
+		SFC_ASSERT(seg_len > 0);
+		rte_pktmbuf_data_len(m) = seg_len;
+		rte_pktmbuf_pkt_len(m) = seg_len;
 
 		SFC_ASSERT(m->next == NULL);
 	}
