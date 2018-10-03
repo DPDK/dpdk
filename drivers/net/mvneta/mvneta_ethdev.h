@@ -66,6 +66,7 @@ struct mvneta_priv {
 	struct neta_ppio_params ppio_params;
 
 	uint64_t rate_max;
+	struct rte_eth_stats prev_stats;
 };
 
 /** Current log type. */

@@ -695,22 +695,47 @@ mvneta_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	stats->ipackets += ppio_stats.rx_packets +
 			ppio_stats.rx_broadcast_packets +
-			ppio_stats.rx_multicast_packets;
+			ppio_stats.rx_multicast_packets -
+			priv->prev_stats.ipackets;
 	stats->opackets += ppio_stats.tx_packets +
 			ppio_stats.tx_broadcast_packets +
-			ppio_stats.tx_multicast_packets;
-	stats->ibytes += ppio_stats.rx_bytes;
-	stats->obytes += ppio_stats.tx_bytes;
+			ppio_stats.tx_multicast_packets -
+			priv->prev_stats.opackets;
+	stats->ibytes += ppio_stats.rx_bytes - priv->prev_stats.ibytes;
+	stats->obytes += ppio_stats.tx_bytes - priv->prev_stats.obytes;
 	stats->imissed += ppio_stats.rx_discard +
-			  ppio_stats.rx_overrun;
+			  ppio_stats.rx_overrun -
+			  priv->prev_stats.imissed;
 
 	stats->ierrors = ppio_stats.rx_packets_err +
 			ppio_stats.rx_errors +
-			ppio_stats.rx_crc_error;
-	stats->oerrors = ppio_stats.tx_errors;
+			ppio_stats.rx_crc_error -
+			priv->prev_stats.ierrors;
+	stats->oerrors = ppio_stats.tx_errors - priv->prev_stats.oerrors;
 
 	return 0;
 }
+
+/**
+ * DPDK callback to clear device statistics.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ */
+static void
+mvneta_stats_reset(struct rte_eth_dev *dev)
+{
+	struct mvneta_priv *priv = dev->data->dev_private;
+	unsigned int ret;
+
+	if (!priv->ppio)
+		return;
+
+	ret = mvneta_stats_get(dev, &priv->prev_stats);
+	if (unlikely(ret))
+		RTE_LOG(ERR, PMD, "Failed to reset port statistics");
+}
+
 
 static const struct eth_dev_ops mvneta_ops = {
 	.dev_configure = mvneta_dev_configure,
@@ -727,6 +752,7 @@ static const struct eth_dev_ops mvneta_ops = {
 	.mac_addr_set = mvneta_mac_addr_set,
 	.mtu_set = mvneta_mtu_set,
 	.stats_get = mvneta_stats_get,
+	.stats_reset = mvneta_stats_reset,
 	.dev_infos_get = mvneta_dev_infos_get,
 	.dev_supported_ptypes_get = mvneta_dev_supported_ptypes_get,
 	.rxq_info_get = mvneta_rxq_info_get,
