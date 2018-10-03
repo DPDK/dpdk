@@ -38,6 +38,7 @@ Features of the MVNETA PMD are:
 - L3 checksum offload
 - L4 checksum offload
 - Packet type parsing
+- Basic stats
 
 
 Limitations

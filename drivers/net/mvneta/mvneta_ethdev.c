@@ -666,6 +666,52 @@ mvneta_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 	return 0;
 }
 
+/**
+ * DPDK callback to get device statistics.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param stats
+ *   Stats structure output buffer.
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
+ */
+static int
+mvneta_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+{
+	struct mvneta_priv *priv = dev->data->dev_private;
+	struct neta_ppio_statistics ppio_stats;
+	unsigned int ret;
+
+	if (!priv->ppio)
+		return -EPERM;
+
+	ret = neta_ppio_get_statistics(priv->ppio, &ppio_stats);
+	if (unlikely(ret)) {
+		MVNETA_LOG(ERR, "Failed to update port statistics");
+		return ret;
+	}
+
+	stats->ipackets += ppio_stats.rx_packets +
+			ppio_stats.rx_broadcast_packets +
+			ppio_stats.rx_multicast_packets;
+	stats->opackets += ppio_stats.tx_packets +
+			ppio_stats.tx_broadcast_packets +
+			ppio_stats.tx_multicast_packets;
+	stats->ibytes += ppio_stats.rx_bytes;
+	stats->obytes += ppio_stats.tx_bytes;
+	stats->imissed += ppio_stats.rx_discard +
+			  ppio_stats.rx_overrun;
+
+	stats->ierrors = ppio_stats.rx_packets_err +
+			ppio_stats.rx_errors +
+			ppio_stats.rx_crc_error;
+	stats->oerrors = ppio_stats.tx_errors;
+
+	return 0;
+}
+
 static const struct eth_dev_ops mvneta_ops = {
 	.dev_configure = mvneta_dev_configure,
 	.dev_start = mvneta_dev_start,
@@ -680,6 +726,7 @@ static const struct eth_dev_ops mvneta_ops = {
 	.mac_addr_add = mvneta_mac_addr_add,
 	.mac_addr_set = mvneta_mac_addr_set,
 	.mtu_set = mvneta_mtu_set,
+	.stats_get = mvneta_stats_get,
 	.dev_infos_get = mvneta_dev_infos_get,
 	.dev_supported_ptypes_get = mvneta_dev_supported_ptypes_get,
 	.rxq_info_get = mvneta_rxq_info_get,
