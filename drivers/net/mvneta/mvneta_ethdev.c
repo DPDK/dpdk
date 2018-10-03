@@ -574,6 +574,73 @@ mvneta_promiscuous_disable(struct rte_eth_dev *dev)
 }
 
 /**
+ * DPDK callback to remove a MAC address.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param index
+ *   MAC address index.
+ */
+static void
+mvneta_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
+{
+	struct mvneta_priv *priv = dev->data->dev_private;
+	char buf[ETHER_ADDR_FMT_SIZE];
+	int ret;
+
+	if (!priv->ppio)
+		return;
+
+	ret = neta_ppio_remove_mac_addr(priv->ppio,
+				       dev->data->mac_addrs[index].addr_bytes);
+	if (ret) {
+		ether_format_addr(buf, sizeof(buf),
+				  &dev->data->mac_addrs[index]);
+		MVNETA_LOG(ERR, "Failed to remove mac %s", buf);
+	}
+}
+
+/**
+ * DPDK callback to add a MAC address.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param mac_addr
+ *   MAC address to register.
+ * @param index
+ *   MAC address index.
+ * @param vmdq
+ *   VMDq pool index to associate address with (unused).
+ *
+ * @return
+ *   0 on success, negative error value otherwise.
+ */
+static int
+mvneta_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
+		  uint32_t index, uint32_t vmdq __rte_unused)
+{
+	struct mvneta_priv *priv = dev->data->dev_private;
+	char buf[ETHER_ADDR_FMT_SIZE];
+	int ret;
+
+	if (index == 0)
+		/* For setting index 0, mrvl_mac_addr_set() should be used.*/
+		return -1;
+
+	if (!priv->ppio)
+		return 0;
+
+	ret = neta_ppio_add_mac_addr(priv->ppio, mac_addr->addr_bytes);
+	if (ret) {
+		ether_format_addr(buf, sizeof(buf), mac_addr);
+		MVNETA_LOG(ERR, "Failed to add mac %s", buf);
+		return -1;
+	}
+
+	return 0;
+}
+
+/**
  * DPDK callback to set the primary MAC address.
  *
  * @param dev
@@ -609,6 +676,8 @@ static const struct eth_dev_ops mvneta_ops = {
 	.link_update = mvneta_link_update,
 	.promiscuous_enable = mvneta_promiscuous_enable,
 	.promiscuous_disable = mvneta_promiscuous_disable,
+	.mac_addr_remove = mvneta_mac_addr_remove,
+	.mac_addr_add = mvneta_mac_addr_add,
 	.mac_addr_set = mvneta_mac_addr_set,
 	.mtu_set = mvneta_mtu_set,
 	.dev_infos_get = mvneta_dev_infos_get,

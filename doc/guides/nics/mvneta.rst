@@ -32,6 +32,7 @@ Features of the MVNETA PMD are:
 - Jumbo frame
 - MTU update
 - Promiscuous mode
+- Unicast MAC filter
 - Link status
 - CRC offload
 - L3 checksum offload
