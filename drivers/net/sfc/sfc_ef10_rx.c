@@ -359,11 +359,11 @@ sfc_ef10_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	uint16_t n_rx_pkts;
 	efx_qword_t rx_ev;
 
+	n_rx_pkts = sfc_ef10_rx_prepared(rxq, rx_pkts, nb_pkts);
+
 	if (unlikely(rxq->flags &
 		     (SFC_EF10_RXQ_NOT_RUNNING | SFC_EF10_RXQ_EXCEPTION)))
-		return 0;
-
-	n_rx_pkts = sfc_ef10_rx_prepared(rxq, rx_pkts, nb_pkts);
+		goto done;
 
 	evq_old_read_ptr = rxq->evq_read_ptr;
 	while (n_rx_pkts != nb_pkts && sfc_ef10_rx_get_event(rxq, &rx_ev)) {
@@ -383,6 +383,7 @@ sfc_ef10_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	/* It is not a problem if we refill in the case of exception */
 	sfc_ef10_rx_qrefill(rxq);
 
+done:
 	return n_rx_pkts;
 }
 
@@ -594,8 +595,9 @@ sfc_ef10_rx_qstart(struct sfc_dp_rxq *dp_rxq, unsigned int evq_read_ptr)
 {
 	struct sfc_ef10_rxq *rxq = sfc_ef10_rxq_by_dp_rxq(dp_rxq);
 
-	rxq->prepared = 0;
-	rxq->completed = rxq->added = 0;
+	SFC_ASSERT(rxq->prepared == 0);
+	SFC_ASSERT(rxq->completed == 0);
+	SFC_ASSERT(rxq->added == 0);
 
 	sfc_ef10_rx_qrefill(rxq);
 
@@ -642,11 +644,15 @@ sfc_ef10_rx_qpurge(struct sfc_dp_rxq *dp_rxq)
 	unsigned int i;
 	struct sfc_ef10_rx_sw_desc *rxd;
 
+	rxq->prepared = 0;
+
 	for (i = rxq->completed; i != rxq->added; ++i) {
 		rxd = &rxq->sw_ring[i & rxq->ptr_mask];
 		rte_mempool_put(rxq->refill_mb_pool, rxd->mbuf);
 		rxd->mbuf = NULL;
 	}
+
+	rxq->completed = rxq->added = 0;
 
 	rxq->flags &= ~SFC_EF10_RXQ_STARTED;
 }
