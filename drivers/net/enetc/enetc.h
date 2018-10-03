@@ -17,6 +17,13 @@
 /* Max RX rings per ENTEC. */
 #define MAX_RX_RINGS	1
 
+/* Max BD counts per Ring. */
+#define MAX_BD_COUNT   64000
+/* Min BD counts per Ring. */
+#define MIN_BD_COUNT   32
+/* BD ALIGN */
+#define BD_ALIGN       8
+
 /*
  * upper_32_bits - return bits 32-63 of a number
  * @n: the number we're accessing
@@ -84,4 +91,23 @@ struct enetc_eth_adapter {
 #define ENETC_REG_WRITE(addr, val) (*(uint32_t *)addr = val)
 #define ENETC_REG_WRITE_RELAXED(addr, val) (*(uint32_t *)addr = val)
 
+/*
+ * RX/TX ENETC function prototypes
+ */
+uint16_t enetc_xmit_pkts(void *txq, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts);
+uint16_t enetc_recv_pkts(void *rxq, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts);
+
+
+int enetc_refill_rx_ring(struct enetc_bdr *rx_ring, const int buff_cnt);
+
+static inline int
+enetc_bd_unused(struct enetc_bdr *bdr)
+{
+	if (bdr->next_to_clean > bdr->next_to_use)
+		return bdr->next_to_clean - bdr->next_to_use - 1;
+
+	return bdr->bd_count + bdr->next_to_clean - bdr->next_to_use - 1;
+}
 #endif /* _ENETC_H_ */

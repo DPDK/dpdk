@@ -5,6 +5,7 @@ if host_machine.system() != 'linux'
 	build = false
 endif
 
-sources = files('enetc_ethdev.c')
+sources = files('enetc_ethdev.c',
+		'enetc_rxtx.c')
 
 includes += include_directories('base')

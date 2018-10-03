@@ -14,8 +14,9 @@ EXPORT_MAP := rte_pmd_enetc_version.map
 LIBABIVER := 1
 
 SRCS-$(CONFIG_RTE_LIBRTE_ENETC_PMD) += enetc_ethdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_ENETC_PMD) += enetc_rxtx.c
 
-LDLIBS += -lrte_eal
+LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool
 LDLIBS += -lrte_ethdev
 LDLIBS += -lrte_bus_pci
 
