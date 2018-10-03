@@ -32,6 +32,7 @@ Network Interface Controller Drivers
     liquidio
     mlx4
     mlx5
+    mvneta
     mvpp2
     netvsc
     nfp

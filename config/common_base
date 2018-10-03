@@ -401,6 +401,11 @@ CONFIG_RTE_LIBRTE_PMD_FAILSAFE=y
 CONFIG_RTE_LIBRTE_MVPP2_PMD=n
 
 #
+# Compile Marvell MVNETA PMD driver
+#
+CONFIG_RTE_LIBRTE_MVNETA_PMD=n
+
+#
 # Compile support for VMBus library
 #
 CONFIG_RTE_LIBRTE_VMBUS=n

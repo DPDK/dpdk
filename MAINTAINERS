@@ -594,6 +594,14 @@ F: drivers/net/mvpp2/
 F: doc/guides/nics/mvpp2.rst
 F: doc/guides/nics/features/mvpp2.ini
 
+Marvell mvneta
+M: Zyta Szpak <zr@semihalf.com>
+M: Dmitri Epshtein <dima@marvell.com>
+M: Natalie Samsonov <nsamsono@marvell.com>
+F: drivers/net/mvneta/
+F: doc/guides/nics/mvneta.rst
+F: doc/guides/nics/features/mvneta.ini
+
 Mellanox mlx4
 M: Matan Azrad <matan@mellanox.com>
 M: Shahaf Shuler <shahafs@mellanox.com>

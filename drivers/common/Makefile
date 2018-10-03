@@ -8,7 +8,9 @@ ifeq ($(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF)$(CONFIG_RTE_LIBRTE_OCTEONTX_MEMPOO
 DIRS-y += octeontx
 endif
 
-ifeq ($(CONFIG_RTE_LIBRTE_MVPP2_PMD),y)
+MVEP-y := $(CONFIG_RTE_LIBRTE_MVPP2_PMD)
+MVEP-y += $(CONFIG_RTE_LIBRTE_MVNETA_PMD)
+ifneq (,$(findstring y,$(MVEP-y)))
 DIRS-y += mvep
 endif
 

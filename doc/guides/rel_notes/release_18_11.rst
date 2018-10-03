@@ -78,6 +78,11 @@ New Features
   SR-IOV option in Hyper-V and Azure. This is an alternative to the previous
   vdev_netvsc, tap, and failsafe drivers combination.
 
+* **Added a new net driver for Marvell Armada 3k device.**
+
+  Added the new ``mvneta`` net driver for Marvell Armada 3k device. See the
+  :doc:`../nics/mvneta` NIC guide for more details on this new driver.
+
 * **Updated failsafe driver.**
 
   Updated the failsafe driver including the following changes:
