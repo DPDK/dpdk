@@ -6,8 +6,6 @@
 
 #include <rte_ethdev_driver.h>
 #include <rte_kvargs.h>
-#include <rte_log.h>
-#include <rte_malloc.h>
 #include <rte_bus_vdev.h>
 
 #include <stdio.h>
@@ -23,7 +21,7 @@
 
 #include <rte_mvep_common.h>
 
-#include "mvneta_ethdev.h"
+#include "mvneta_rxtx.h"
 
 
 #define MVNETA_IFACE_NAME_ARG "iface"
@@ -305,6 +303,10 @@ mvneta_dev_start(struct rte_eth_dev *dev)
 		priv->uc_mc_flushed = 1;
 	}
 
+	ret = mvneta_alloc_rx_bufs(dev);
+	if (ret)
+		goto out;
+
 	ret = mvneta_dev_set_link_up(dev);
 	if (ret) {
 		MVNETA_LOG(ERR, "Failed to set link up");
@@ -314,6 +316,8 @@ mvneta_dev_start(struct rte_eth_dev *dev)
 	/* start tx queues */
 	for (i = 0; i < dev->data->nb_tx_queues; i++)
 		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+
+	mvneta_set_tx_function(dev);
 
 	return 0;
 
@@ -338,7 +342,7 @@ mvneta_dev_stop(struct rte_eth_dev *dev)
 		return;
 
 	mvneta_dev_set_link_down(dev);
-
+	mvneta_flush_queues(dev);
 	neta_ppio_deinit(priv->ppio);
 
 	priv->ppio = NULL;
@@ -354,9 +358,20 @@ static void
 mvneta_dev_close(struct rte_eth_dev *dev)
 {
 	struct mvneta_priv *priv = dev->data->dev_private;
+	int i;
 
 	if (priv->ppio)
 		mvneta_dev_stop(dev);
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		mvneta_rx_queue_release(dev->data->rx_queues[i]);
+		dev->data->rx_queues[i] = NULL;
+	}
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		mvneta_tx_queue_release(dev->data->tx_queues[i]);
+		dev->data->tx_queues[i] = NULL;
+	}
 }
 
 /**
@@ -395,6 +410,12 @@ static const struct eth_dev_ops mvneta_ops = {
 	.mac_addr_set = mvneta_mac_addr_set,
 	.dev_infos_get = mvneta_dev_infos_get,
 	.dev_supported_ptypes_get = mvneta_dev_supported_ptypes_get,
+	.rxq_info_get = mvneta_rxq_info_get,
+	.txq_info_get = mvneta_txq_info_get,
+	.rx_queue_setup = mvneta_rx_queue_setup,
+	.rx_queue_release = mvneta_rx_queue_release,
+	.tx_queue_setup = mvneta_tx_queue_setup,
+	.tx_queue_release = mvneta_tx_queue_release,
 };
 
 /**
@@ -445,6 +466,8 @@ mvneta_eth_dev_create(struct rte_vdev_device *vdev, const char *name)
 	eth_dev->data->kdrv = RTE_KDRV_NONE;
 	eth_dev->data->dev_private = priv;
 	eth_dev->device = &vdev->device;
+	eth_dev->rx_pkt_burst = mvneta_rx_pkt_burst;
+	mvneta_set_tx_function(eth_dev);
 	eth_dev->dev_ops = &mvneta_ops;
 
 	rte_eth_dev_probing_finish(eth_dev);

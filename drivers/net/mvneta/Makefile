@@ -37,6 +37,6 @@ LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs -lrte_cfgfile
 LDLIBS += -lrte_bus_vdev -lrte_common_mvep
 
 # library source files
-SRCS-$(CONFIG_RTE_LIBRTE_MVNETA_PMD) += mvneta_ethdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_MVNETA_PMD) += mvneta_ethdev.c mvneta_rxtx.c
 
 include $(RTE_SDK)/mk/rte.lib.mk

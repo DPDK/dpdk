@@ -27,9 +27,13 @@ Features of the MVNETA PMD are:
 
 - Start/stop
 - tx/rx_queue_setup
+- tx/rx_burst
 - Speed capabilities
 - Jumbo frame
 - CRC offload
+- L3 checksum offload
+- L4 checksum offload
+- Packet type parsing
 
 
 Limitations

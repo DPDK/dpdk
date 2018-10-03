@@ -21,7 +21,8 @@ else
 endif
 
 sources = files(
-	'mvneta_ethdev.c'
+	'mvneta_ethdev.c',
+	'mvneta_rxtx.c'
 )
 
 deps += ['cfgfile', 'common_mvep']

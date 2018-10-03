@@ -7,6 +7,10 @@
 #ifndef _MVNETA_ETHDEV_H_
 #define _MVNETA_ETHDEV_H_
 
+#include <rte_ethdev.h>
+#include <rte_malloc.h>
+#include <rte_log.h>
+
 /*
  * container_of is defined by both DPDK and MUSDK,
  * we'll declare only one version.
