@@ -656,8 +656,15 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
-	/* autodetect the iova mapping mode (default is iova_pa) */
-	rte_eal_get_configuration()->iova_mode = rte_bus_get_iommu_class();
+	/* if no EAL option "--iova-mode=<pa|va>", use bus IOVA scheme */
+	if (internal_config.iova_mode == RTE_IOVA_DC) {
+		/* autodetect the IOVA mapping mode (default is RTE_IOVA_PA) */
+		rte_eal_get_configuration()->iova_mode =
+			rte_bus_get_iommu_class();
+	} else {
+		rte_eal_get_configuration()->iova_mode =
+			internal_config.iova_mode;
+	}
 
 	if (internal_config.no_hugetlbfs == 0) {
 		/* rte_config isn't initialized yet */

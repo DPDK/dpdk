@@ -133,6 +133,10 @@ See the DPDK Getting Started Guides for more information on these options.
 
     Use malloc instead of hugetlbfs.
 
+*   ``--iova-mode <pa|va>``
+
+    Force IOVA mode to a specific value.
+
 
 Testpmd Command-line Options
 ----------------------------

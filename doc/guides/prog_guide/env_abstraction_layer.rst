@@ -358,6 +358,14 @@ Misc Functions
 
 Locks and atomic operations are per-architecture (i686 and x86_64).
 
+IOVA Mode Configuration
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Auto detection of the IOVA mode, based on probing the bus and IOMMU configuration, may not report
+the desired addressing mode when virtual devices that are not directly attached to the bus are present.
+To facilitate forcing the IOVA mode to a specific value the EAL command line option ``--iova-mode`` can
+be used to select either physical addressing('pa') or virtual addressing('va').
+
 Memory Segments and Memory Zones (memzone)
 ------------------------------------------
 
