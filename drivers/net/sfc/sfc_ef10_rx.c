@@ -238,7 +238,7 @@ sfc_ef10_rx_process_event(struct sfc_ef10_rxq *rxq, efx_qword_t rx_ev,
 		rxq->completed += ready;
 		while (ready-- > 0) {
 			rxd = &rxq->sw_ring[completed++ & ptr_mask];
-			rte_mempool_put(rxq->refill_mb_pool, rxd->mbuf);
+			rte_mbuf_raw_free(rxd->mbuf);
 		}
 		return 0;
 	}
@@ -648,7 +648,7 @@ sfc_ef10_rx_qpurge(struct sfc_dp_rxq *dp_rxq)
 
 	for (i = rxq->completed; i != rxq->added; ++i) {
 		rxd = &rxq->sw_ring[i & rxq->ptr_mask];
-		rte_mempool_put(rxq->refill_mb_pool, rxd->mbuf);
+		rte_mbuf_raw_free(rxd->mbuf);
 		rxd->mbuf = NULL;
 	}
 

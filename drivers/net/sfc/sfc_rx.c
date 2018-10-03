@@ -296,7 +296,7 @@ sfc_efx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 discard:
 		discard_next = ((desc_flags & EFX_PKT_CONT) != 0);
-		rte_mempool_put(rxq->refill_mb_pool, m);
+		rte_mbuf_raw_free(m);
 		rxd->mbuf = NULL;
 	}
 
@@ -498,7 +498,7 @@ sfc_efx_rx_qpurge(struct sfc_dp_rxq *dp_rxq)
 
 	for (i = rxq->completed; i != rxq->added; ++i) {
 		rxd = &rxq->sw_desc[i & rxq->ptr_mask];
-		rte_mempool_put(rxq->refill_mb_pool, rxd->mbuf);
+		rte_mbuf_raw_free(rxd->mbuf);
 		rxd->mbuf = NULL;
 		/* Packed stream relies on 0 in inactive SW desc.
 		 * Rx queue stop is not performance critical, so
