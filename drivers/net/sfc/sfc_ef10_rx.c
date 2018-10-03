@@ -191,14 +191,18 @@ sfc_ef10_rx_prepared(struct sfc_ef10_rxq *rxq, struct rte_mbuf **rx_pkts,
 		     uint16_t nb_pkts)
 {
 	uint16_t n_rx_pkts = RTE_MIN(nb_pkts, rxq->prepared);
-	unsigned int completed = rxq->completed;
-	unsigned int i;
 
-	rxq->prepared -= n_rx_pkts;
-	rxq->completed = completed + n_rx_pkts;
+	if (n_rx_pkts != 0) {
+		unsigned int completed = rxq->completed;
 
-	for (i = 0; i < n_rx_pkts; ++i, ++completed)
-		rx_pkts[i] = rxq->sw_ring[completed & rxq->ptr_mask].mbuf;
+		rxq->prepared -= n_rx_pkts;
+		rxq->completed = completed + n_rx_pkts;
+
+		do {
+			*rx_pkts++ =
+				rxq->sw_ring[completed++ & rxq->ptr_mask].mbuf;
+		} while (completed != rxq->completed);
+	}
 
 	return n_rx_pkts;
 }
