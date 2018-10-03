@@ -88,6 +88,12 @@ New Features
   Added the new enetc driver for NXP enetc platform. See the
   "ENETC Poll Mode Driver" document for more details on this new driver.
 
+* **Updated Solarflare network PMD.**
+
+  Updated the sfc_efx driver including the following changes:
+
+  * Added support for Rx scatter in EF10 datapath implementation.
+
 * **Updated failsafe driver.**
 
   Updated the failsafe driver including the following changes:

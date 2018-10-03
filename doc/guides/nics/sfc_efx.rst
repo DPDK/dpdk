@@ -322,7 +322,7 @@ boolean parameters value.
   **efx** chooses libefx-based datapath which supports Rx scatter.
   **ef10** chooses EF10 (SFN7xxx, SFN8xxx, X2xxx) native datapath which is
   more efficient than libefx-based and provides richer packet type
-  classification, but lacks Rx scatter support.
+  classification.
   **ef10_esps** chooses SFNX2xxx equal stride packed stream datapath
   which may be used on DPDK firmware variant only
   (see notes about its limitations above).

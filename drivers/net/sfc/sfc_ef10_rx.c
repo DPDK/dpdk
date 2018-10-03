@@ -63,6 +63,7 @@ struct sfc_ef10_rxq {
 	efx_qword_t			*evq_hw_ring;
 	struct sfc_ef10_rx_sw_desc	*sw_ring;
 	uint64_t			rearm_data;
+	struct rte_mbuf			*scatter_pkt;
 	uint16_t			prefix_size;
 
 	/* Used on refill */
@@ -192,6 +193,8 @@ sfc_ef10_rx_pending(struct sfc_ef10_rxq *rxq, struct rte_mbuf **rx_pkts,
 {
 	uint16_t n_rx_pkts = RTE_MIN(nb_pkts, rxq->pending - rxq->completed);
 
+	SFC_ASSERT(rxq->pending == rxq->completed || rxq->scatter_pkt == NULL);
+
 	if (n_rx_pkts != 0) {
 		unsigned int completed = rxq->completed;
 
@@ -234,7 +237,13 @@ sfc_ef10_rx_process_event(struct sfc_ef10_rxq *rxq, efx_qword_t rx_ev,
 
 	ready = (EFX_QWORD_FIELD(rx_ev, ESF_DZ_RX_DSC_PTR_LBITS) - pending) &
 		EFX_MASK32(ESF_DZ_RX_DSC_PTR_LBITS);
-	SFC_ASSERT(ready > 0);
+
+	if (ready == 0) {
+		/* Rx abort - it was no enough descriptors for Rx packet */
+		rte_pktmbuf_free(rxq->scatter_pkt);
+		rxq->scatter_pkt = NULL;
+		return rx_pkts;
+	}
 
 	rxq->pending = pending + ready;
 
@@ -250,14 +259,42 @@ sfc_ef10_rx_process_event(struct sfc_ef10_rxq *rxq, efx_qword_t rx_ev,
 		return rx_pkts;
 	}
 
+	/* If scattered packet is in progress */
+	if (rxq->scatter_pkt != NULL) {
+		/* Events for scattered packet frags are not merged */
+		SFC_ASSERT(ready == 1);
+		SFC_ASSERT(rxq->completed == pending);
+
+		/* There is no pseudo-header in scatter segments. */
+		seg_len = EFX_QWORD_FIELD(rx_ev, ESF_DZ_RX_BYTES);
+
+		rxd = &rxq->sw_ring[pending++ & ptr_mask];
+		m = rxd->mbuf;
+
+		MBUF_RAW_ALLOC_CHECK(m);
+
+		m->data_off = RTE_PKTMBUF_HEADROOM;
+		rte_pktmbuf_data_len(m) = seg_len;
+		rte_pktmbuf_pkt_len(m) = seg_len;
+
+		rxq->scatter_pkt->nb_segs++;
+		rte_pktmbuf_pkt_len(rxq->scatter_pkt) += seg_len;
+		rte_pktmbuf_lastseg(rxq->scatter_pkt)->next = m;
+
+		if (~rx_ev.eq_u64[0] &
+		    rte_cpu_to_le_64(1ull << ESF_DZ_RX_CONT_LBN)) {
+			*rx_pkts++ = rxq->scatter_pkt;
+			rxq->scatter_pkt = NULL;
+		}
+		rxq->completed = pending;
+		return rx_pkts;
+	}
+
 	rxd = &rxq->sw_ring[pending++ & ptr_mask];
 
 	sfc_ef10_rx_prefetch_next(rxq, pending & ptr_mask);
 
 	m = rxd->mbuf;
-
-	*rx_pkts++ = m;
-	rxq->completed = pending;
 
 	RTE_BUILD_BUG_ON(sizeof(m->rearm_data[0]) != sizeof(rxq->rearm_data));
 	m->rearm_data[0] = rxq->rearm_data;
@@ -288,6 +325,17 @@ sfc_ef10_rx_process_event(struct sfc_ef10_rxq *rxq, efx_qword_t rx_ev,
 	rte_pktmbuf_pkt_len(m) = seg_len;
 
 	SFC_ASSERT(m->next == NULL);
+
+	if (~rx_ev.eq_u64[0] & rte_cpu_to_le_64(1ull << ESF_DZ_RX_CONT_LBN)) {
+		*rx_pkts++ = m;
+		rxq->completed = pending;
+	} else {
+		/* Events with CONT bit are not merged */
+		SFC_ASSERT(ready == 1);
+		rxq->scatter_pkt = m;
+		rxq->completed = pending;
+		return rx_pkts;
+	}
 
 	/* Remember mbuf to copy offload flags and packet type from */
 	m0 = m;
@@ -649,6 +697,9 @@ sfc_ef10_rx_qpurge(struct sfc_dp_rxq *dp_rxq)
 	unsigned int i;
 	struct sfc_ef10_rx_sw_desc *rxd;
 
+	rte_pktmbuf_free(rxq->scatter_pkt);
+	rxq->scatter_pkt = NULL;
+
 	for (i = rxq->completed; i != rxq->added; ++i) {
 		rxd = &rxq->sw_ring[i & rxq->ptr_mask];
 		rte_mbuf_raw_free(rxd->mbuf);
@@ -666,7 +717,8 @@ struct sfc_dp_rx sfc_ef10_rx = {
 		.type		= SFC_DP_RX,
 		.hw_fw_caps	= SFC_DP_HW_FW_CAP_EF10,
 	},
-	.features		= SFC_DP_RX_FEAT_MULTI_PROCESS |
+	.features		= SFC_DP_RX_FEAT_SCATTER |
+				  SFC_DP_RX_FEAT_MULTI_PROCESS |
 				  SFC_DP_RX_FEAT_TUNNELS |
 				  SFC_DP_RX_FEAT_CHECKSUM,
 	.get_dev_info		= sfc_ef10_rx_get_dev_info,
