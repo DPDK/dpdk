@@ -291,7 +291,7 @@ set fwd
 Set the packet forwarding mode::
 
    testpmd> set fwd (io|mac|macswap|flowgen| \
-                     rxonly|txonly|csum|icmpecho) (""|retry)
+                     rxonly|txonly|csum|icmpecho|noisy) (""|retry)
 
 ``retry`` can be specified for forwarding engines except ``rx_only``.
 
@@ -324,6 +324,10 @@ The available information categories are:
 
 * ``softnic``: Demonstrates the softnic forwarding operation. In this mode, packet forwarding is
   similar to I/O mode except for the fact that packets are loopback to the softnic ports only. Therefore, portmask parameter should be set to softnic port only. The various software based custom NIC pipelines specified through the softnic firmware (DPDK packet framework script) can be tested in this mode. Furthermore, it allows to build 5-level hierarchical QoS scheduler as a default option that can be enabled through CLI once testpmd application is initialised. The user can modify the default scheduler hierarchy or can specify the new QoS Scheduler hierarchy through CLI. Requires ``CONFIG_RTE_LIBRTE_PMD_SOFTNIC=y``.
+
+* ``noisy``: Noisy neighbour simulation.
+  Simulate more realistic behavior of a guest machine engaged in receiving
+  and sending packets performing Virtual Network Function (VNF).
 
 Example::
 

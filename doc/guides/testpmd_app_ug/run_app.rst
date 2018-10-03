@@ -340,6 +340,7 @@ The commandline options are:
        icmpecho
        ieee1588
        tm
+       noisy
 
 *   ``--rss-ip``
 
@@ -510,3 +511,35 @@ The commandline options are:
       allocated area
     * xmemhuge: create and populate mempool using externally and anonymously
       allocated hugepage area
+
+*   ``--noisy-tx-sw-buffer-size``
+
+    Set the number of maximum elements  of the FIFO queue to be created
+    for buffering packets. Only available with the noisy forwarding mode.
+    The default value is 0.
+
+*   ``--noisy-tx-sw-buffer-flushtime=N``
+
+    Set the time before packets in the FIFO queue is flushed.
+    Only available with the noisy forwarding mode. The default value is 0.
+
+*   ``--noisy-lkup-memory=N``
+
+    Set the size of the noisy neighbour simulation memory buffer in MB to N.
+    Only available with the noisy forwarding mode. The default value is 0.
+
+
+*   ``--noisy-lkup-num-reads=N``
+
+    Set the number of reads to be done in noisy neighbour simulation memory buffer to N.
+    Only available with the noisy forwarding mode. The default value is 0.
+
+*   ``--noisy-lkup-num-writes=N``
+
+    Set the number of writes to be done in noisy neighbour simulation memory buffer to N.
+    Only available with the noisy forwarding mode. The default value is 0.
+
+*   ``--noisy-lkup-num-reads-writes=N``
+
+    Set the number of r/w accesses to be done in noisy neighbour simulation memory buffer to N.
+    Only available with the noisy forwarding mode. The default value is 0.

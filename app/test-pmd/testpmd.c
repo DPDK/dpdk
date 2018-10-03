@@ -178,6 +178,7 @@ struct fwd_engine * fwd_engines[] = {
 	&tx_only_engine,
 	&csum_fwd_engine,
 	&icmp_echo_engine,
+	&noisy_vnf_engine,
 #if defined RTE_LIBRTE_PMD_SOFTNIC
 	&softnic_fwd_engine,
 #endif
@@ -272,6 +273,40 @@ int16_t tx_free_thresh = RTE_PMD_PARAM_UNSET;
  * Configurable value of TX RS bit threshold.
  */
 int16_t tx_rs_thresh = RTE_PMD_PARAM_UNSET;
+
+/*
+ * Configurable value of buffered packets before sending.
+ */
+uint16_t noisy_tx_sw_bufsz;
+
+/*
+ * Configurable value of packet buffer timeout.
+ */
+uint16_t noisy_tx_sw_buf_flush_time;
+
+/*
+ * Configurable value for size of VNF internal memory area
+ * used for simulating noisy neighbour behaviour
+ */
+uint64_t noisy_lkup_mem_sz;
+
+/*
+ * Configurable value of number of random writes done in
+ * VNF simulation memory area.
+ */
+uint64_t noisy_lkup_num_writes;
+
+/*
+ * Configurable value of number of random reads done in
+ * VNF simulation memory area.
+ */
+uint64_t noisy_lkup_num_reads;
+
+/*
+ * Configurable value of number of random reads/writes done in
+ * VNF simulation memory area.
+ */
+uint64_t noisy_lkup_num_reads_writes;
 
 /*
  * Receive Side Scaling (RSS) configuration.
