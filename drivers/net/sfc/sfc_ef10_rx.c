@@ -500,21 +500,53 @@ sfc_ef10_supported_ptypes_get(uint32_t tunnel_encaps)
 
 static sfc_dp_rx_qdesc_npending_t sfc_ef10_rx_qdesc_npending;
 static unsigned int
-sfc_ef10_rx_qdesc_npending(__rte_unused struct sfc_dp_rxq *dp_rxq)
+sfc_ef10_rx_qdesc_npending(struct sfc_dp_rxq *dp_rxq)
 {
+	struct sfc_ef10_rxq *rxq = sfc_ef10_rxq_by_dp_rxq(dp_rxq);
+	efx_qword_t rx_ev;
+	const unsigned int evq_old_read_ptr = rxq->evq_read_ptr;
+	unsigned int pending = rxq->pending;
+	unsigned int ready;
+
+	if (unlikely(rxq->flags &
+		     (SFC_EF10_RXQ_NOT_RUNNING | SFC_EF10_RXQ_EXCEPTION)))
+		goto done;
+
+	while (sfc_ef10_rx_get_event(rxq, &rx_ev)) {
+		ready = (EFX_QWORD_FIELD(rx_ev, ESF_DZ_RX_DSC_PTR_LBITS) -
+			 pending) &
+			EFX_MASK32(ESF_DZ_RX_DSC_PTR_LBITS);
+		pending += ready;
+	}
+
 	/*
-	 * Correct implementation requires EvQ polling and events
-	 * processing (keeping all ready mbufs in prepared).
+	 * The function does not process events, so return event queue read
+	 * pointer to the original position to allow the events that were
+	 * read to be processed later
 	 */
-	return -ENOTSUP;
+	rxq->evq_read_ptr = evq_old_read_ptr;
+
+done:
+	return pending - rxq->completed;
 }
 
 static sfc_dp_rx_qdesc_status_t sfc_ef10_rx_qdesc_status;
 static int
-sfc_ef10_rx_qdesc_status(__rte_unused struct sfc_dp_rxq *dp_rxq,
-			 __rte_unused uint16_t offset)
+sfc_ef10_rx_qdesc_status(struct sfc_dp_rxq *dp_rxq, uint16_t offset)
 {
-	return -ENOTSUP;
+	struct sfc_ef10_rxq *rxq = sfc_ef10_rxq_by_dp_rxq(dp_rxq);
+	unsigned int npending = sfc_ef10_rx_qdesc_npending(dp_rxq);
+
+	if (unlikely(offset > rxq->ptr_mask))
+		return -EINVAL;
+
+	if (offset < npending)
+		return RTE_ETH_RX_DESC_DONE;
+
+	if (offset < (rxq->added - rxq->completed))
+		return RTE_ETH_RX_DESC_AVAIL;
+
+	return RTE_ETH_RX_DESC_UNAVAIL;
 }
 
 

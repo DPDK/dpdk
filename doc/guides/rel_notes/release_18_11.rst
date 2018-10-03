@@ -93,6 +93,7 @@ New Features
   Updated the sfc_efx driver including the following changes:
 
   * Added support for Rx scatter in EF10 datapath implementation.
+  * Added support for Rx descriptor status API in EF10 datapath implementation.
 
 * **Updated failsafe driver.**
 
