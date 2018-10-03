@@ -57,7 +57,7 @@ struct sfc_ef10_rxq {
 #define SFC_EF10_RXQ_EXCEPTION		0x4
 #define SFC_EF10_RXQ_RSS_HASH		0x8
 	unsigned int			ptr_mask;
-	unsigned int			prepared;
+	unsigned int			pending;
 	unsigned int			completed;
 	unsigned int			evq_read_ptr;
 	efx_qword_t			*evq_hw_ring;
@@ -187,15 +187,14 @@ sfc_ef10_rx_prefetch_next(struct sfc_ef10_rxq *rxq, unsigned int next_id)
 }
 
 static struct rte_mbuf **
-sfc_ef10_rx_prepared(struct sfc_ef10_rxq *rxq, struct rte_mbuf **rx_pkts,
-		     uint16_t nb_pkts)
+sfc_ef10_rx_pending(struct sfc_ef10_rxq *rxq, struct rte_mbuf **rx_pkts,
+		    uint16_t nb_pkts)
 {
-	uint16_t n_rx_pkts = RTE_MIN(nb_pkts, rxq->prepared);
+	uint16_t n_rx_pkts = RTE_MIN(nb_pkts, rxq->pending - rxq->completed);
 
 	if (n_rx_pkts != 0) {
 		unsigned int completed = rxq->completed;
 
-		rxq->prepared -= n_rx_pkts;
 		rxq->completed = completed + n_rx_pkts;
 
 		do {
@@ -225,42 +224,40 @@ sfc_ef10_rx_process_event(struct sfc_ef10_rxq *rxq, efx_qword_t rx_ev,
 			  struct rte_mbuf ** const rx_pkts_end)
 {
 	const unsigned int ptr_mask = rxq->ptr_mask;
-	unsigned int completed = rxq->completed;
+	unsigned int pending = rxq->pending;
 	unsigned int ready;
 	struct sfc_ef10_rx_sw_desc *rxd;
 	struct rte_mbuf *m;
 	struct rte_mbuf *m0;
-	uint16_t n_rx_pkts;
 	const uint8_t *pseudo_hdr;
 	uint16_t pkt_len;
 
-	ready = (EFX_QWORD_FIELD(rx_ev, ESF_DZ_RX_DSC_PTR_LBITS) - completed) &
+	ready = (EFX_QWORD_FIELD(rx_ev, ESF_DZ_RX_DSC_PTR_LBITS) - pending) &
 		EFX_MASK32(ESF_DZ_RX_DSC_PTR_LBITS);
 	SFC_ASSERT(ready > 0);
+
+	rxq->pending = pending + ready;
 
 	if (rx_ev.eq_u64[0] &
 	    rte_cpu_to_le_64((1ull << ESF_DZ_RX_ECC_ERR_LBN) |
 			     (1ull << ESF_DZ_RX_ECRC_ERR_LBN))) {
-		SFC_ASSERT(rxq->prepared == 0);
-		rxq->completed += ready;
-		while (ready-- > 0) {
-			rxd = &rxq->sw_ring[completed++ & ptr_mask];
+		SFC_ASSERT(rxq->completed == pending);
+		do {
+			rxd = &rxq->sw_ring[pending++ & ptr_mask];
 			rte_mbuf_raw_free(rxd->mbuf);
-		}
+		} while (pending != rxq->pending);
+		rxq->completed = pending;
 		return rx_pkts;
 	}
 
-	n_rx_pkts = RTE_MIN(ready, rx_pkts_end - rx_pkts);
-	rxq->prepared = ready - n_rx_pkts;
-	rxq->completed += n_rx_pkts;
+	rxd = &rxq->sw_ring[pending++ & ptr_mask];
 
-	rxd = &rxq->sw_ring[completed++ & ptr_mask];
-
-	sfc_ef10_rx_prefetch_next(rxq, completed & ptr_mask);
+	sfc_ef10_rx_prefetch_next(rxq, pending & ptr_mask);
 
 	m = rxd->mbuf;
 
 	*rx_pkts++ = m;
+	rxq->completed = pending;
 
 	RTE_BUILD_BUG_ON(sizeof(m->rearm_data[0]) != sizeof(rxq->rearm_data));
 	m->rearm_data[0] = rxq->rearm_data;
@@ -294,15 +291,17 @@ sfc_ef10_rx_process_event(struct sfc_ef10_rxq *rxq, efx_qword_t rx_ev,
 
 	/* Remember mbuf to copy offload flags and packet type from */
 	m0 = m;
-	for (--ready; ready > 0; --ready) {
-		rxd = &rxq->sw_ring[completed++ & ptr_mask];
+	while (pending != rxq->pending) {
+		rxd = &rxq->sw_ring[pending++ & ptr_mask];
 
-		sfc_ef10_rx_prefetch_next(rxq, completed & ptr_mask);
+		sfc_ef10_rx_prefetch_next(rxq, pending & ptr_mask);
 
 		m = rxd->mbuf;
 
-		if (ready > rxq->prepared)
+		if (rx_pkts != rx_pkts_end) {
 			*rx_pkts++ = m;
+			rxq->completed = pending;
+		}
 
 		RTE_BUILD_BUG_ON(sizeof(m->rearm_data[0]) !=
 				 sizeof(rxq->rearm_data));
@@ -366,7 +365,7 @@ sfc_ef10_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	unsigned int evq_old_read_ptr;
 	efx_qword_t rx_ev;
 
-	rx_pkts = sfc_ef10_rx_prepared(rxq, rx_pkts, nb_pkts);
+	rx_pkts = sfc_ef10_rx_pending(rxq, rx_pkts, nb_pkts);
 
 	if (unlikely(rxq->flags &
 		     (SFC_EF10_RXQ_NOT_RUNNING | SFC_EF10_RXQ_EXCEPTION)))
@@ -601,8 +600,8 @@ sfc_ef10_rx_qstart(struct sfc_dp_rxq *dp_rxq, unsigned int evq_read_ptr)
 {
 	struct sfc_ef10_rxq *rxq = sfc_ef10_rxq_by_dp_rxq(dp_rxq);
 
-	SFC_ASSERT(rxq->prepared == 0);
 	SFC_ASSERT(rxq->completed == 0);
+	SFC_ASSERT(rxq->pending == 0);
 	SFC_ASSERT(rxq->added == 0);
 
 	sfc_ef10_rx_qrefill(rxq);
@@ -650,15 +649,13 @@ sfc_ef10_rx_qpurge(struct sfc_dp_rxq *dp_rxq)
 	unsigned int i;
 	struct sfc_ef10_rx_sw_desc *rxd;
 
-	rxq->prepared = 0;
-
 	for (i = rxq->completed; i != rxq->added; ++i) {
 		rxd = &rxq->sw_ring[i & rxq->ptr_mask];
 		rte_mbuf_raw_free(rxd->mbuf);
 		rxd->mbuf = NULL;
 	}
 
-	rxq->completed = rxq->added = 0;
+	rxq->completed = rxq->pending = rxq->added = 0;
 
 	rxq->flags &= ~SFC_EF10_RXQ_STARTED;
 }
