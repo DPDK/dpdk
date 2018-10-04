@@ -1679,9 +1679,9 @@ port_rss_reta_info(portid_t port_id,
  * key of the port.
  */
 void
-port_rss_hash_conf_show(portid_t port_id, char rss_info[], int show_rss_key)
+port_rss_hash_conf_show(portid_t port_id, int show_rss_key)
 {
-	struct rte_eth_rss_conf rss_conf;
+	struct rte_eth_rss_conf rss_conf = {0};
 	uint8_t rss_key[RSS_HASH_KEY_LENGTH];
 	uint64_t rss_hf;
 	uint8_t i;
@@ -1692,7 +1692,6 @@ port_rss_hash_conf_show(portid_t port_id, char rss_info[], int show_rss_key)
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
-	memset(&dev_info, 0, sizeof(dev_info));
 	rte_eth_dev_info_get(port_id, &dev_info);
 	if (dev_info.hash_key_size > 0 &&
 			dev_info.hash_key_size <= sizeof(rss_key))
@@ -1700,12 +1699,6 @@ port_rss_hash_conf_show(portid_t port_id, char rss_info[], int show_rss_key)
 	else {
 		printf("dev_info did not provide a valid hash key size\n");
 		return;
-	}
-
-	rss_conf.rss_hf = 0;
-	for (i = 0; rss_type_table[i].str; i++) {
-		if (!strcmp(rss_info, rss_type_table[i].str))
-			rss_conf.rss_hf = rss_type_table[i].rss_type;
 	}
 
 	/* Get RSS hash key if asked to display it */
