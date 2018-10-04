@@ -8,7 +8,9 @@ LIB = librte_pmd_dsw_event.a
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
+ifneq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)
 CFLAGS += -Wno-format-nonliteral
+endif
 
 LDLIBS += -lrte_eal
 LDLIBS += -lrte_mbuf
