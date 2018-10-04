@@ -103,3 +103,6 @@ dpdk_conf.set('RTE_COMPILE_TIME_CPUFLAGS', ','.join(compile_time_cpuflags))
 dpdk_conf.set_quoted('RTE_EAL_PMD_PATH', eal_pmd_path)
 
 install_headers('rte_config.h', subdir: get_option('include_subdir_arch'))
+
+# enable VFIO only if it is linux OS
+dpdk_conf.set('RTE_EAL_VFIO', host_machine.system() == 'linux')
