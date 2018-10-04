@@ -22,6 +22,10 @@ default_cflags = machine_args
 if cc.has_argument('-Wno-format-truncation')
 	default_cflags += '-Wno-format-truncation'
 endif
+
+# specify -D_GNU_SOURCE unconditionally
+default_cflags += '-D_GNU_SOURCE'
+
 foreach example: examples
 	name = example
 	build = true

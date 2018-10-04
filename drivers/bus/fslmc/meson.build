@@ -26,4 +26,3 @@ sources = files('fslmc_bus.c',
 allow_experimental_apis = true
 
 includes += include_directories('mc', 'qbman/include', 'portal')
-cflags += ['-D_GNU_SOURCE']

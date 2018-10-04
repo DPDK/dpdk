@@ -86,22 +86,6 @@ SRCS-y += rte_cycles.c
 
 CFLAGS_eal_common_cpuflags.o := $(CPUFLAGS_LIST)
 
-CFLAGS_eal.o := -D_GNU_SOURCE
-CFLAGS_eal_interrupts.o := -D_GNU_SOURCE
-CFLAGS_eal_vfio_mp_sync.o := -D_GNU_SOURCE
-CFLAGS_eal_timer.o := -D_GNU_SOURCE
-CFLAGS_eal_lcore.o := -D_GNU_SOURCE
-CFLAGS_eal_memalloc.o := -D_GNU_SOURCE
-CFLAGS_eal_thread.o := -D_GNU_SOURCE
-CFLAGS_eal_log.o := -D_GNU_SOURCE
-CFLAGS_eal_common_log.o := -D_GNU_SOURCE
-CFLAGS_eal_hugepage_info.o := -D_GNU_SOURCE
-CFLAGS_eal_common_whitelist.o := -D_GNU_SOURCE
-CFLAGS_eal_common_options.o := -D_GNU_SOURCE
-CFLAGS_eal_common_thread.o := -D_GNU_SOURCE
-CFLAGS_eal_common_lcore.o := -D_GNU_SOURCE
-CFLAGS_rte_cycles.o := -D_GNU_SOURCE
-
 # workaround for a gcc bug with noreturn attribute
 # http://gcc.gnu.org/bugzilla/show_bug.cgi?id=12603
 ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)

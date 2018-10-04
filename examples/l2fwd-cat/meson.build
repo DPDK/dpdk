@@ -9,7 +9,6 @@
 pqos = cc.find_library('pqos', required: false)
 build = pqos.found()
 ext_deps += pqos
-cflags += '-D_GNU_SOURCE'
 cflags += '-I/usr/local/include' # assume pqos lib installed in /usr/local
 sources = files(
 	'cat.c', 'l2fwd-cat.c'

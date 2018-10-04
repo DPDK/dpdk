@@ -13,7 +13,6 @@ if host_machine.system() == 'linux'
 			'linux/pci_uio.c',
 			'linux/pci_vfio.c')
 	includes += include_directories('linux')
-	cflags += ['-D_GNU_SOURCE']
 else
 	sources += files('bsd/pci.c')
 	includes += include_directories('bsd')

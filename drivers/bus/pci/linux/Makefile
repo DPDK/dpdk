@@ -4,5 +4,3 @@
 SRCS += pci.c
 SRCS += pci_uio.c
 SRCS += pci_vfio.c
-
-CFLAGS += -D_GNU_SOURCE

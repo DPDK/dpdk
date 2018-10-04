@@ -16,7 +16,7 @@ APP = ethtool
 # all source are stored in SRCS-y
 SRCS-y := main.c ethapp.c
 
-CFLAGS += -O3 -D_GNU_SOURCE -pthread -I$(SRCDIR)/../lib
+CFLAGS += -O3 -pthread -I$(SRCDIR)/../lib
 CFLAGS += $(WERROR_FLAGS)
 
 LDLIBS += -L$(subst ethtool-app,lib,$(RTE_OUTPUT))/lib

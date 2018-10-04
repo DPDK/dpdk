@@ -72,8 +72,6 @@ endif
 
 endif
 
-CFLAGS_cmdline.o := -D_GNU_SOURCE
-
 include $(RTE_SDK)/mk/rte.app.mk
 
 endif

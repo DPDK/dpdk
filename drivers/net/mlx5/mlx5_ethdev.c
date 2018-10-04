@@ -3,8 +3,6 @@
  * Copyright 2015 Mellanox Technologies, Ltd
  */
 
-#define _GNU_SOURCE
-
 #include <stddef.h>
 #include <assert.h>
 #include <inttypes.h>

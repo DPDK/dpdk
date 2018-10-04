@@ -2,7 +2,6 @@
  * Copyright(c) 2015 Intel Corporation
  */
 
-#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>

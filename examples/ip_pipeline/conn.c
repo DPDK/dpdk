@@ -8,7 +8,6 @@
 #include <unistd.h>
 #include <sys/types.h>
 
-#define __USE_GNU
 #include <sys/socket.h>
 
 #include <sys/epoll.h>

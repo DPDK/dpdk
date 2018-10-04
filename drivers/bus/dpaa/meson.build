@@ -28,4 +28,3 @@ if cc.has_argument('-Wno-cast-qual')
 endif
 
 includes += include_directories('include', 'base/qbman')
-cflags += ['-D_GNU_SOURCE']

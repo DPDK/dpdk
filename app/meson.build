@@ -11,13 +11,18 @@ apps = ['pdump',
 # for BSD only
 lib_execinfo = cc.find_library('execinfo', required: false)
 
+default_cflags = machine_args
+
+# specify -D_GNU_SOURCE unconditionally
+default_cflags += '-D_GNU_SOURCE'
+
 foreach app:apps
 	build = true
 	name = app
 	allow_experimental_apis = false
 	sources = []
 	includes = []
-	cflags = machine_args
+	cflags = default_cflags
 	objs = [] # other object files to link against, used e.g. for
 	          # instruction-set optimized versions of code
 

@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <errno.h>
-#define __USE_GNU
 #include <sched.h>
 #include <dlfcn.h>
 

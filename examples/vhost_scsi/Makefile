@@ -18,7 +18,7 @@ shared: build/$(APP)-shared
 static: build/$(APP)-static
 	ln -sf $(APP)-static build/$(APP)
 
-CFLAGS += -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64
+CFLAGS += -D_FILE_OFFSET_BITS=64
 LDFLAGS += -pthread
 
 PC_FILE := $(shell pkg-config --path libdpdk)
@@ -57,7 +57,7 @@ please change the definition of the RTE_TARGET environment variable)
 all:
 else
 
-CFLAGS += -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64
+CFLAGS += -D_FILE_OFFSET_BITS=64
 CFLAGS += -O2
 CFLAGS += $(WERROR_FLAGS)
 

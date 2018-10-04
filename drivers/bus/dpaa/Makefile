@@ -14,7 +14,6 @@ CFLAGS := -I$(SRCDIR) $(CFLAGS)
 CFLAGS += -O3 $(WERROR_FLAGS)
 CFLAGS += -Wno-pointer-arith
 CFLAGS += -Wno-cast-qual
-CFLAGS += -D _GNU_SOURCE
 CFLAGS += -I$(RTE_BUS_DPAA)/
 CFLAGS += -I$(RTE_BUS_DPAA)/include
 CFLAGS += -I$(RTE_BUS_DPAA)/base/qbman

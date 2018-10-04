@@ -23,7 +23,6 @@ CFLAGS += -O3 $(shell pkg-config --cflags libdpdk)
 LDFLAGS_SHARED = $(shell pkg-config --libs libdpdk)
 LDFLAGS_STATIC = -Wl,-Bstatic $(shell pkg-config --static --libs libdpdk)
 
-CFLAGS += -D_GNU_SOURCE
 LDFLAGS += -lpqos
 
 build/$(APP)-shared: $(SRCS-y) Makefile $(PC_FILE) | build
@@ -66,7 +65,6 @@ endif
 EXTRA_CFLAGS += -O3 -g -Wfatal-errors
 
 CFLAGS += -I$(PQOS_INSTALL_PATH)/../include
-CFLAGS_cat.o := -D_GNU_SOURCE
 
 LDLIBS += -L$(PQOS_INSTALL_PATH)
 LDLIBS += -lpqos

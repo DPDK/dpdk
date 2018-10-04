@@ -11,7 +11,6 @@ LIB = librte_pmd_dpaa_sec.a
 
 # build flags
 CFLAGS += -DALLOW_EXPERIMENTAL_API
-CFLAGS += -D _GNU_SOURCE
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 

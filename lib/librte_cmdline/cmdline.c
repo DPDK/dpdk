@@ -126,35 +126,11 @@ cmdline_printf(const struct cmdline *cl, const char *fmt, ...)
 	if (!cl || !fmt)
 		return;
 
-#ifdef _GNU_SOURCE
 	if (cl->s_out < 0)
 		return;
 	va_start(ap, fmt);
 	vdprintf(cl->s_out, fmt, ap);
 	va_end(ap);
-#else
-	int ret;
-	char *buf;
-
-	if (cl->s_out < 0)
-		return;
-
-	buf = malloc(BUFSIZ);
-	if (buf == NULL)
-		return;
-	va_start(ap, fmt);
-	ret = vsnprintf(buf, BUFSIZ, fmt, ap);
-	va_end(ap);
-	if (ret < 0) {
-		free(buf);
-		return;
-	}
-	if (ret >= BUFSIZ)
-		ret = BUFSIZ - 1;
-	ret = write(cl->s_out, buf, ret);
-	(void)ret;
-	free(buf);
-#endif
 }
 
 int

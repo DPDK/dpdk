@@ -253,6 +253,9 @@ if cc.has_argument('-Wno-format-truncation')
     cflags += '-Wno-format-truncation'
 endif
 
+# specify -D_GNU_SOURCE unconditionally
+default_cflags += '-D_GNU_SOURCE'
+
 test_dep_objs = []
 compress_test_dep = dependency('zlib', required: false)
 if compress_test_dep.found()

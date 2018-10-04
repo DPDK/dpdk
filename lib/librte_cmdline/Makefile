@@ -25,7 +25,6 @@ SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_vt100.c
 SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_socket.c
 SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_parse_portlist.c
 
-CFLAGS += -D_GNU_SOURCE
 LDLIBS += -lrte_eal
 
 # install includes

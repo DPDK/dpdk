@@ -108,6 +108,9 @@ CFLAGS += -include $(RTE_SDK_BIN)/include/rte_config.h
 LDFLAGS += -L$(RTE_SDK_BIN)/lib
 endif
 
+# always define _GNU_SOURCE
+CFLAGS += -D_GNU_SOURCE
+
 export CFLAGS
 export LDFLAGS
 
