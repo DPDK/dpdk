@@ -308,6 +308,64 @@ vfio_disable_msix(const struct rte_intr_handle *intr_handle) {
 
 	return ret;
 }
+
+/* enable req notifier */
+static int
+vfio_enable_req(const struct rte_intr_handle *intr_handle)
+{
+	int len, ret;
+	char irq_set_buf[IRQ_SET_BUF_LEN];
+	struct vfio_irq_set *irq_set;
+	int *fd_ptr;
+
+	len = sizeof(irq_set_buf);
+
+	irq_set = (struct vfio_irq_set *) irq_set_buf;
+	irq_set->argsz = len;
+	irq_set->count = 1;
+	irq_set->flags = VFIO_IRQ_SET_DATA_EVENTFD |
+			 VFIO_IRQ_SET_ACTION_TRIGGER;
+	irq_set->index = VFIO_PCI_REQ_IRQ_INDEX;
+	irq_set->start = 0;
+	fd_ptr = (int *) &irq_set->data;
+	*fd_ptr = intr_handle->fd;
+
+	ret = ioctl(intr_handle->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
+
+	if (ret) {
+		RTE_LOG(ERR, EAL, "Error enabling req interrupts for fd %d\n",
+						intr_handle->fd);
+		return -1;
+	}
+
+	return 0;
+}
+
+/* disable req notifier */
+static int
+vfio_disable_req(const struct rte_intr_handle *intr_handle)
+{
+	struct vfio_irq_set *irq_set;
+	char irq_set_buf[IRQ_SET_BUF_LEN];
+	int len, ret;
+
+	len = sizeof(struct vfio_irq_set);
+
+	irq_set = (struct vfio_irq_set *) irq_set_buf;
+	irq_set->argsz = len;
+	irq_set->count = 0;
+	irq_set->flags = VFIO_IRQ_SET_DATA_NONE | VFIO_IRQ_SET_ACTION_TRIGGER;
+	irq_set->index = VFIO_PCI_REQ_IRQ_INDEX;
+	irq_set->start = 0;
+
+	ret = ioctl(intr_handle->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
+
+	if (ret)
+		RTE_LOG(ERR, EAL, "Error disabling req interrupts for fd %d\n",
+			intr_handle->fd);
+
+	return ret;
+}
 #endif
 
 static int
@@ -556,6 +614,10 @@ rte_intr_enable(const struct rte_intr_handle *intr_handle)
 		if (vfio_enable_intx(intr_handle))
 			return -1;
 		break;
+	case RTE_INTR_HANDLE_VFIO_REQ:
+		if (vfio_enable_req(intr_handle))
+			return -1;
+		break;
 #endif
 	/* not used at this moment */
 	case RTE_INTR_HANDLE_DEV_EVENT:
@@ -606,6 +668,11 @@ rte_intr_disable(const struct rte_intr_handle *intr_handle)
 		if (vfio_disable_intx(intr_handle))
 			return -1;
 		break;
+	case RTE_INTR_HANDLE_VFIO_REQ:
+		if (vfio_disable_req(intr_handle))
+			return -1;
+		break;
+
 #endif
 	/* not used at this moment */
 	case RTE_INTR_HANDLE_DEV_EVENT:
@@ -679,6 +746,10 @@ eal_intr_process_interrupts(struct epoll_event *events, int nfds)
 			call = true;
 			break;
 		case RTE_INTR_HANDLE_DEV_EVENT:
+			bytes_read = 0;
+			call = true;
+			break;
+		case RTE_INTR_HANDLE_VFIO_REQ:
 			bytes_read = 0;
 			call = true;
 			break;

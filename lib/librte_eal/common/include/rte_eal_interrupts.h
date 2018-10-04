@@ -35,6 +35,7 @@ enum rte_intr_handle_type {
 	RTE_INTR_HANDLE_EXT,          /**< external handler */
 	RTE_INTR_HANDLE_VDEV,         /**< virtual device */
 	RTE_INTR_HANDLE_DEV_EVENT,    /**< device event handle */
+	RTE_INTR_HANDLE_VFIO_REQ,     /**< VFIO request handle */
 	RTE_INTR_HANDLE_MAX           /**< count of elements */
 };
 
