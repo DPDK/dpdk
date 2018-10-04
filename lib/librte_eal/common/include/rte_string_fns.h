@@ -16,6 +16,7 @@ extern "C" {
 #endif
 
 #include <stdio.h>
+#include <string.h>
 
 /**
  * Takes string "string" parameter and splits it at character "delim"
@@ -60,11 +61,9 @@ rte_strlcpy(char *dst, const char *src, size_t size)
 
 /* pull in a strlcpy function */
 #ifdef RTE_EXEC_ENV_BSDAPP
-#include <string.h>
 #ifndef __BSD_VISIBLE /* non-standard functions are hidden */
 #define strlcpy(dst, src, size) rte_strlcpy(dst, src, size)
 #endif
-
 
 #else /* non-BSD platforms */
 #ifdef RTE_USE_LIBBSD
