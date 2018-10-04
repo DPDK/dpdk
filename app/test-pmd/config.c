@@ -461,12 +461,12 @@ port_infos_display(portid_t port_id)
 	if (dev_info.reta_size > 0)
 		printf("Redirection table size: %u\n", dev_info.reta_size);
 	if (!dev_info.flow_type_rss_offloads)
-		printf("No flow type is supported.\n");
+		printf("No RSS offload flow type is supported.\n");
 	else {
 		uint16_t i;
 		char *p;
 
-		printf("Supported flow types:\n");
+		printf("Supported RSS offload flow types:\n");
 		for (i = RTE_ETH_FLOW_UNKNOWN + 1;
 		     i < sizeof(dev_info.flow_type_rss_offloads) * CHAR_BIT; i++) {
 			if (!(dev_info.flow_type_rss_offloads & (1ULL << i)))
