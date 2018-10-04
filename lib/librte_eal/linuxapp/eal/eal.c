@@ -1008,8 +1008,8 @@ rte_eal_init(int argc, char **argv)
 
 	ret = eal_thread_dump_affinity(cpuset, sizeof(cpuset));
 
-	RTE_LOG(DEBUG, EAL, "Master lcore %u is ready (tid=%x;cpuset=[%s%s])\n",
-		rte_config.master_lcore, (int)thread_id, cpuset,
+	RTE_LOG(DEBUG, EAL, "Master lcore %u is ready (tid=%zx;cpuset=[%s%s])\n",
+		rte_config.master_lcore, (uintptr_t)thread_id, cpuset,
 		ret == 0 ? "" : "...");
 
 	RTE_LCORE_FOREACH_SLAVE(i) {

@@ -121,8 +121,8 @@ eal_thread_loop(__attribute__((unused)) void *arg)
 
 	ret = eal_thread_dump_affinity(cpuset, sizeof(cpuset));
 
-	RTE_LOG(DEBUG, EAL, "lcore %u is ready (tid=%x;cpuset=[%s%s])\n",
-		lcore_id, (int)thread_id, cpuset, ret == 0 ? "" : "...");
+	RTE_LOG(DEBUG, EAL, "lcore %u is ready (tid=%zx;cpuset=[%s%s])\n",
+		lcore_id, (uintptr_t)thread_id, cpuset, ret == 0 ? "" : "...");
 
 	/* read on our pipe to get commands */
 	while (1) {
