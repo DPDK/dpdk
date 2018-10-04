@@ -1,6 +1,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Intel Corporation
 
+if host_machine.system() != 'linux'
+        build = false
+endif
 allow_experimental_apis = true
 install_headers('rte_eth_softnic.h')
 sources = files('rte_eth_softnic_tm.c',
