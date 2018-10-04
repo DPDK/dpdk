@@ -2,6 +2,7 @@
  * Copyright(c) 2017-2018 Intel Corporation
  */
 
+#include <fcntl.h>
 #include <inttypes.h>
 #include <limits.h>
 #include <sys/mman.h>
