@@ -1,6 +1,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright 2018 Luca Boccassi <bluca@debian.org>
 
+if host_machine.system() != 'linux'
+        build = false
+endif
 sources = files(
 	'rte_eth_tap.c',
 	'tap_bpf_api.c',
