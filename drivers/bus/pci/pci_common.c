@@ -444,6 +444,16 @@ pci_hot_unplug_handler(struct rte_device *dev)
 		return -1;
 
 	switch (pdev->kdrv) {
+	case RTE_KDRV_VFIO:
+		/*
+		 * vfio kernel module guaranty the pci device would not be
+		 * deleted until the user space release the resource, so no
+		 * need to remap BARs resource here, just directly notify
+		 * the req event to the user space to handle it.
+		 */
+		rte_dev_event_callback_process(dev->name,
+					       RTE_DEV_EVENT_REMOVE);
+		break;
 	case RTE_KDRV_IGB_UIO:
 	case RTE_KDRV_UIO_GENERIC:
 	case RTE_KDRV_NIC_UIO:
