@@ -277,7 +277,7 @@ dev_uev_handler(__rte_unused void *param)
 				return;
 			}
 		}
-		dev_callback_process(uevent.devname, uevent.type);
+		rte_dev_event_callback_process(uevent.devname, uevent.type);
 	}
 }
 

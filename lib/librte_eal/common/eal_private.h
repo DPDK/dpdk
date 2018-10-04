@@ -259,18 +259,6 @@ struct rte_bus *rte_bus_find_by_device_name(const char *str);
 int rte_mp_channel_init(void);
 
 /**
- * Internal Executes all the user application registered callbacks for
- * the specific device. It is for DPDK internal user only. User
- * application should not call it directly.
- *
- * @param device_name
- *  The device name.
- * @param event
- *  the device event type.
- */
-void dev_callback_process(char *device_name, enum rte_dev_event_type event);
-
-/**
  * @internal
  * Parse a device string and store its information in an
  * rte_devargs structure.

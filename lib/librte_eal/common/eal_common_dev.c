@@ -366,8 +366,9 @@ rte_dev_event_callback_unregister(const char *device_name,
 	return ret;
 }
 
-void
-dev_callback_process(char *device_name, enum rte_dev_event_type event)
+void __rte_experimental
+rte_dev_event_callback_process(const char *device_name,
+			       enum rte_dev_event_type event)
 {
 	struct dev_event_callback *cb_lst;
 

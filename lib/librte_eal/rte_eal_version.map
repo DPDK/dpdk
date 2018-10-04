@@ -275,6 +275,7 @@ EXPERIMENTAL {
 	rte_class_register;
 	rte_class_unregister;
 	rte_ctrl_thread_create;
+	rte_dev_event_callback_process;
 	rte_dev_event_callback_register;
 	rte_dev_event_callback_unregister;
 	rte_dev_event_monitor_start;

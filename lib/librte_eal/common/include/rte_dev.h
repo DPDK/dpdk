@@ -39,7 +39,7 @@ struct rte_dev_event {
 	char *devname;			/**< device name */
 };
 
-typedef void (*rte_dev_event_cb_fn)(char *device_name,
+typedef void (*rte_dev_event_cb_fn)(const char *device_name,
 					enum rte_dev_event_type event,
 					void *cb_arg);
 
@@ -453,6 +453,22 @@ int __rte_experimental
 rte_dev_event_callback_unregister(const char *device_name,
 				  rte_dev_event_cb_fn cb_fn,
 				  void *cb_arg);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Executes all the user application registered callbacks for
+ * the specific device.
+ *
+ * @param device_name
+ *  The device name.
+ * @param event
+ *  the device event type.
+ */
+void  __rte_experimental
+rte_dev_event_callback_process(const char *device_name,
+			       enum rte_dev_event_type event);
 
 /**
  * @warning
