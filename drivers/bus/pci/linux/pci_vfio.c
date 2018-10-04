@@ -37,7 +37,9 @@
 
 #ifdef VFIO_PRESENT
 
+#ifndef PAGE_SIZE
 #define PAGE_SIZE   (sysconf(_SC_PAGESIZE))
+#endif
 #define PAGE_MASK   (~(PAGE_SIZE - 1))
 
 static struct rte_tailq_elem rte_vfio_tailq = {
