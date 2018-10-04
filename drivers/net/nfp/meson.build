@@ -1,6 +1,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Intel Corporation
 
+if host_machine.system() != 'linux'
+        build = false
+endif
 sources = files('nfpcore/nfp_cpp_pcie_ops.c',
 	'nfpcore/nfp_nsp.c',
 	'nfpcore/nfp_cppcore.c',
