@@ -936,12 +936,49 @@ sfc_ef10_tx_qreap(struct sfc_dp_txq *dp_txq)
 	txq->flags &= ~SFC_EF10_TXQ_STARTED;
 }
 
+static unsigned int
+sfc_ef10_tx_qdesc_npending(struct sfc_ef10_txq *txq)
+{
+	const unsigned int curr_done = txq->completed - 1;
+	unsigned int anew_done = curr_done;
+	efx_qword_t tx_ev;
+	const unsigned int evq_old_read_ptr = txq->evq_read_ptr;
+
+	if (unlikely(txq->flags &
+		     (SFC_EF10_TXQ_NOT_RUNNING | SFC_EF10_TXQ_EXCEPTION)))
+		return 0;
+
+	while (sfc_ef10_tx_get_event(txq, &tx_ev))
+		anew_done = EFX_QWORD_FIELD(tx_ev, ESF_DZ_TX_DESCR_INDX);
+
+	/*
+	 * The function does not process events, so return event queue read
+	 * pointer to the original position to allow the events that were
+	 * read to be processed later
+	 */
+	txq->evq_read_ptr = evq_old_read_ptr;
+
+	return (anew_done - curr_done) & txq->ptr_mask;
+}
+
 static sfc_dp_tx_qdesc_status_t sfc_ef10_tx_qdesc_status;
 static int
-sfc_ef10_tx_qdesc_status(__rte_unused struct sfc_dp_txq *dp_txq,
-			 __rte_unused uint16_t offset)
+sfc_ef10_tx_qdesc_status(struct sfc_dp_txq *dp_txq,
+			 uint16_t offset)
 {
-	return -ENOTSUP;
+	struct sfc_ef10_txq *txq = sfc_ef10_txq_by_dp_txq(dp_txq);
+	unsigned int npending = sfc_ef10_tx_qdesc_npending(txq);
+
+	if (unlikely(offset > txq->ptr_mask))
+		return -EINVAL;
+
+	if (unlikely(offset >= txq->max_fill_level))
+		return RTE_ETH_TX_DESC_UNAVAIL;
+
+	if (unlikely(offset < npending))
+		return RTE_ETH_TX_DESC_FULL;
+
+	return RTE_ETH_TX_DESC_DONE;
 }
 
 struct sfc_dp_tx sfc_ef10_tx = {

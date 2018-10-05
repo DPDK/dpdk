@@ -95,6 +95,8 @@ New Features
   * Added support for Rx scatter in EF10 datapath implementation.
   * Added support for Rx descriptor status API in EF10 datapath implementation.
   * Added support for TSO in EF10 datapath implementation.
+  * Added support for Tx descriptor status API in EF10 (ef10 and ef10_simple)
+    datapaths implementation.
 
 * **Updated failsafe driver.**
 
