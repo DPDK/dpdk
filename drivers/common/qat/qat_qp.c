@@ -673,7 +673,7 @@ qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 	return resp_counter;
 }
 
-__attribute__((weak)) int
+__rte_weak int
 qat_comp_process_response(void **op __rte_unused, uint8_t *resp __rte_unused)
 {
 	return  0;

@@ -16,7 +16,7 @@ EAL_REGISTER_TAILQ(rte_acl_tailq)
  * If the compiler doesn't support AVX2 instructions,
  * then the dummy one would be used instead for AVX2 classify method.
  */
-int __attribute__ ((weak))
+__rte_weak int
 rte_acl_classify_avx2(__rte_unused const struct rte_acl_ctx *ctx,
 	__rte_unused const uint8_t **data,
 	__rte_unused uint32_t *results,
@@ -26,7 +26,7 @@ rte_acl_classify_avx2(__rte_unused const struct rte_acl_ctx *ctx,
 	return -ENOTSUP;
 }
 
-int __attribute__ ((weak))
+__rte_weak int
 rte_acl_classify_sse(__rte_unused const struct rte_acl_ctx *ctx,
 	__rte_unused const uint8_t **data,
 	__rte_unused uint32_t *results,
@@ -36,7 +36,7 @@ rte_acl_classify_sse(__rte_unused const struct rte_acl_ctx *ctx,
 	return -ENOTSUP;
 }
 
-int __attribute__ ((weak))
+__rte_weak int
 rte_acl_classify_neon(__rte_unused const struct rte_acl_ctx *ctx,
 	__rte_unused const uint8_t **data,
 	__rte_unused uint32_t *results,
@@ -46,7 +46,7 @@ rte_acl_classify_neon(__rte_unused const struct rte_acl_ctx *ctx,
 	return -ENOTSUP;
 }
 
-int __attribute__ ((weak))
+__rte_weak int
 rte_acl_classify_altivec(__rte_unused const struct rte_acl_ctx *ctx,
 	__rte_unused const uint8_t **data,
 	__rte_unused uint32_t *results,

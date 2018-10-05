@@ -68,6 +68,11 @@ typedef uint16_t unaligned_uint16_t;
 /******* Macro to mark functions and fields scheduled for removal *****/
 #define __rte_deprecated	__attribute__((__deprecated__))
 
+/**
+ * Mark a function or variable to a weak reference.
+ */
+#define __rte_weak __attribute__((__weak__))
+
 /*********** Macros to eliminate unused variable warnings ********/
 
 /**

@@ -1918,7 +1918,7 @@ avf_dev_tx_desc_status(void *tx_queue, uint16_t offset)
 	return RTE_ETH_TX_DESC_FULL;
 }
 
-uint16_t __attribute__((weak))
+__rte_weak uint16_t
 avf_recv_pkts_vec(__rte_unused void *rx_queue,
 		  __rte_unused struct rte_mbuf **rx_pkts,
 		  __rte_unused uint16_t nb_pkts)
@@ -1926,7 +1926,7 @@ avf_recv_pkts_vec(__rte_unused void *rx_queue,
 	return 0;
 }
 
-uint16_t __attribute__((weak))
+__rte_weak uint16_t
 avf_recv_scattered_pkts_vec(__rte_unused void *rx_queue,
 			    __rte_unused struct rte_mbuf **rx_pkts,
 			    __rte_unused uint16_t nb_pkts)
@@ -1934,7 +1934,7 @@ avf_recv_scattered_pkts_vec(__rte_unused void *rx_queue,
 	return 0;
 }
 
-uint16_t __attribute__((weak))
+__rte_weak uint16_t
 avf_xmit_fixed_burst_vec(__rte_unused void *tx_queue,
 			 __rte_unused struct rte_mbuf **tx_pkts,
 			 __rte_unused uint16_t nb_pkts)
@@ -1942,13 +1942,13 @@ avf_xmit_fixed_burst_vec(__rte_unused void *tx_queue,
 	return 0;
 }
 
-int __attribute__((weak))
+__rte_weak int
 avf_rxq_vec_setup(__rte_unused struct avf_rx_queue *rxq)
 {
 	return -1;
 }
 
-int __attribute__((weak))
+__rte_weak int
 avf_txq_vec_setup(__rte_unused struct avf_tx_queue *txq)
 {
 	return -1;

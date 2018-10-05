@@ -47,7 +47,7 @@ virtio_rxq_vec_setup(struct virtnet_rx *rxq)
 }
 
 /* Stub for linkage when arch specific implementation is not available */
-uint16_t __attribute__((weak))
+__rte_weak uint16_t
 virtio_recv_pkts_vec(void *rx_queue __rte_unused,
 		     struct rte_mbuf **rx_pkts __rte_unused,
 		     uint16_t nb_pkts __rte_unused)

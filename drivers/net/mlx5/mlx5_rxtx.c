@@ -2324,7 +2324,7 @@ removed_rx_burst(void *dpdk_txq __rte_unused,
  * (e.g.  mlx5_rxtx_vec_sse.c for x86).
  */
 
-uint16_t __attribute__((weak))
+__rte_weak uint16_t
 mlx5_tx_burst_raw_vec(void *dpdk_txq __rte_unused,
 		      struct rte_mbuf **pkts __rte_unused,
 		      uint16_t pkts_n __rte_unused)
@@ -2332,7 +2332,7 @@ mlx5_tx_burst_raw_vec(void *dpdk_txq __rte_unused,
 	return 0;
 }
 
-uint16_t __attribute__((weak))
+__rte_weak uint16_t
 mlx5_tx_burst_vec(void *dpdk_txq __rte_unused,
 		  struct rte_mbuf **pkts __rte_unused,
 		  uint16_t pkts_n __rte_unused)
@@ -2340,7 +2340,7 @@ mlx5_tx_burst_vec(void *dpdk_txq __rte_unused,
 	return 0;
 }
 
-uint16_t __attribute__((weak))
+__rte_weak uint16_t
 mlx5_rx_burst_vec(void *dpdk_txq __rte_unused,
 		  struct rte_mbuf **pkts __rte_unused,
 		  uint16_t pkts_n __rte_unused)
@@ -2348,25 +2348,25 @@ mlx5_rx_burst_vec(void *dpdk_txq __rte_unused,
 	return 0;
 }
 
-int __attribute__((weak))
+__rte_weak int
 mlx5_check_raw_vec_tx_support(struct rte_eth_dev *dev __rte_unused)
 {
 	return -ENOTSUP;
 }
 
-int __attribute__((weak))
+__rte_weak int
 mlx5_check_vec_tx_support(struct rte_eth_dev *dev __rte_unused)
 {
 	return -ENOTSUP;
 }
 
-int __attribute__((weak))
+__rte_weak int
 mlx5_rxq_check_vec_support(struct mlx5_rxq_data *rxq __rte_unused)
 {
 	return -ENOTSUP;
 }
 
-int __attribute__((weak))
+__rte_weak int
 mlx5_check_vec_rx_support(struct rte_eth_dev *dev __rte_unused)
 {
 	return -ENOTSUP;

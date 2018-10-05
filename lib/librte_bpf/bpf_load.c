@@ -131,7 +131,7 @@ rte_bpf_load(const struct rte_bpf_prm *prm)
 	return bpf;
 }
 
-__rte_experimental __attribute__ ((weak)) struct rte_bpf *
+__rte_experimental __rte_weak struct rte_bpf *
 rte_bpf_elf_load(const struct rte_bpf_prm *prm, const char *fname,
 	const char *sname)
 {

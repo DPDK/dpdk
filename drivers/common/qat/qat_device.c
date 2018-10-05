@@ -259,37 +259,37 @@ static struct rte_pci_driver rte_qat_pmd = {
 	.remove = qat_pci_remove
 };
 
-__attribute__((weak)) int
+__rte_weak int
 qat_sym_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused)
 {
 	return 0;
 }
 
-__attribute__((weak)) int
+__rte_weak int
 qat_asym_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused)
 {
 	return 0;
 }
 
-__attribute__((weak)) int
+__rte_weak int
 qat_sym_dev_destroy(struct qat_pci_device *qat_pci_dev __rte_unused)
 {
 	return 0;
 }
 
-__attribute__((weak)) int
+__rte_weak int
 qat_asym_dev_destroy(struct qat_pci_device *qat_pci_dev __rte_unused)
 {
 	return 0;
 }
 
-__attribute__((weak)) int
+__rte_weak int
 qat_comp_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused)
 {
 	return 0;
 }
 
-__attribute__((weak)) int
+__rte_weak int
 qat_comp_dev_destroy(struct qat_pci_device *qat_pci_dev __rte_unused)
 {
 	return 0;
