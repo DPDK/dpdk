@@ -621,8 +621,11 @@ pci_devices_iommu_support_va(void)
 		FOREACH_DEVICE_ON_PCIBUS(dev) {
 			if (!rte_pci_match(drv, dev))
 				continue;
-			if (!pci_one_device_iommu_support_va(dev))
-				return false;
+			/*
+			 * just one PCI device needs to be checked out because
+			 * the IOMMU hardware is the same for all of them.
+			 */
+			return pci_one_device_iommu_support_va(dev);
 		}
 	}
 	return true;
