@@ -563,6 +563,7 @@ Supports L3 checksum offload.
 * **[uses]     rte_eth_txconf,rte_eth_txmode**: ``offloads:DEV_TX_OFFLOAD_IPV4_CKSUM``.
 * **[uses]     mbuf**: ``mbuf.ol_flags:PKT_TX_IP_CKSUM``,
   ``mbuf.ol_flags:PKT_TX_IPV4`` | ``PKT_TX_IPV6``.
+* **[uses]     mbuf**: ``mbuf.l2_len``, ``mbuf.l3_len``.
 * **[provides] mbuf**: ``mbuf.ol_flags:PKT_RX_IP_CKSUM_UNKNOWN`` |
   ``PKT_RX_IP_CKSUM_BAD`` | ``PKT_RX_IP_CKSUM_GOOD`` |
   ``PKT_RX_IP_CKSUM_NONE``.
