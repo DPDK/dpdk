@@ -337,8 +337,7 @@ boolean parameters value.
   Mbuf segments may come from different mempools, and mbuf reference
   counters are treated responsibly.
   **ef10** chooses EF10 (SFN7xxx, SFN8xxx, X2xxx) native datapath which is
-  more efficient than libefx-based but has no VLAN insertion and TSO
-  support yet.
+  more efficient than libefx-based but has no VLAN insertion support yet.
   Mbuf segments may come from different mempools, and mbuf reference
   counters are treated responsibly.
   **ef10_simple** chooses EF10 (SFN7xxx, SFN8xxx, X2xxx) native datapath which

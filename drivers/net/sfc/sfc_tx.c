@@ -190,6 +190,8 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	info.hw_index = txq->hw_index;
 	info.mem_bar = sa->mem_bar.esb_base;
 	info.vi_window_shift = encp->enc_vi_window_shift;
+	info.tso_tcp_header_offset_limit =
+		encp->enc_tx_tso_tcp_header_offset_limit;
 
 	rc = sa->dp_tx->qcreate(sa->eth_dev->data->port_id, sw_index,
 				&RTE_ETH_DEV_TO_PCI(sa->eth_dev)->addr,
