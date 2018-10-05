@@ -14,12 +14,7 @@
 #include "sfc_debug.h"
 #include "sfc_tx.h"
 #include "sfc_ev.h"
-
-/** Standard TSO header length */
-#define SFC_TSOH_STD_LEN        256
-
-/** The number of TSO option descriptors that precede the packet descriptors */
-#define SFC_TSO_OPDESCS_IDX_SHIFT	2
+#include "sfc_tso.h"
 
 int
 sfc_efx_tso_alloc_tsoh_objs(struct sfc_efx_tx_sw_desc *sw_ring,
@@ -57,13 +52,14 @@ sfc_efx_tso_free_tsoh_objs(struct sfc_efx_tx_sw_desc *sw_ring,
 	}
 }
 
-static void
-sfc_efx_tso_prepare_header(struct sfc_efx_txq *txq, struct rte_mbuf **in_seg,
-			   size_t *in_off, unsigned int idx, size_t bytes_left)
+unsigned int
+sfc_tso_prepare_header(uint8_t *tsoh, size_t header_len,
+		       struct rte_mbuf **in_seg, size_t *in_off)
 {
 	struct rte_mbuf *m = *in_seg;
 	size_t bytes_to_copy = 0;
-	uint8_t *tsoh = txq->sw_ring[idx & txq->ptr_mask].tsoh;
+	size_t bytes_left = header_len;
+	unsigned int segments_copied = 0;
 
 	do {
 		bytes_to_copy = MIN(bytes_left, m->data_len);
@@ -77,16 +73,20 @@ sfc_efx_tso_prepare_header(struct sfc_efx_txq *txq, struct rte_mbuf **in_seg,
 		if (bytes_left > 0) {
 			m = m->next;
 			SFC_ASSERT(m != NULL);
+			segments_copied++;
 		}
 	} while (bytes_left > 0);
 
 	if (bytes_to_copy == m->data_len) {
 		*in_seg = m->next;
 		*in_off = 0;
+		segments_copied++;
 	} else {
 		*in_seg = m;
 		*in_off = bytes_to_copy;
 	}
+
+	return segments_copied;
 }
 
 int
@@ -105,7 +105,7 @@ sfc_efx_tso_do(struct sfc_efx_txq *txq, unsigned int idx,
 	size_t header_len = m->l2_len + m->l3_len + m->l4_len;
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(txq->evq->sa->nic);
 
-	idx += SFC_TSO_OPDESCS_IDX_SHIFT;
+	idx += SFC_TSO_OPT_DESCS_NUM;
 
 	/* Packets which have too big headers should be discarded */
 	if (unlikely(header_len > SFC_TSOH_STD_LEN))
@@ -129,9 +129,8 @@ sfc_efx_tso_do(struct sfc_efx_txq *txq, unsigned int idx,
 	 * limitations on address boundaries crossing by DMA descriptor data.
 	 */
 	if (m->data_len < header_len) {
-		sfc_efx_tso_prepare_header(txq, in_seg, in_off, idx,
-					   header_len);
 		tsoh = txq->sw_ring[idx & txq->ptr_mask].tsoh;
+		sfc_tso_prepare_header(tsoh, header_len, in_seg, in_off);
 
 		header_paddr = rte_malloc_virt2iova((void *)tsoh);
 	} else {
