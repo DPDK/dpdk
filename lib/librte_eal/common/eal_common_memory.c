@@ -388,6 +388,66 @@ rte_dump_physmem_layout(FILE *f)
 	rte_memseg_walk(dump_memseg, f);
 }
 
+static int
+check_iova(const struct rte_memseg_list *msl __rte_unused,
+		const struct rte_memseg *ms, void *arg)
+{
+	uint64_t *mask = arg;
+	rte_iova_t iova;
+
+	/* higher address within segment */
+	iova = (ms->iova + ms->len) - 1;
+	if (!(iova & *mask))
+		return 0;
+
+	RTE_LOG(DEBUG, EAL, "memseg iova %"PRIx64", len %zx, out of range\n",
+			    ms->iova, ms->len);
+
+	RTE_LOG(DEBUG, EAL, "\tusing dma mask %"PRIx64"\n", *mask);
+	return 1;
+}
+
+#if defined(RTE_ARCH_64)
+#define MAX_DMA_MASK_BITS 63
+#else
+#define MAX_DMA_MASK_BITS 31
+#endif
+
+/* check memseg iovas are within the required range based on dma mask */
+int __rte_experimental
+rte_eal_check_dma_mask(uint8_t maskbits)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	uint64_t mask;
+
+	/* sanity check */
+	if (maskbits > MAX_DMA_MASK_BITS) {
+		RTE_LOG(ERR, EAL, "wrong dma mask size %u (Max: %u)\n",
+				   maskbits, MAX_DMA_MASK_BITS);
+		return -1;
+	}
+
+	/* create dma mask */
+	mask = ~((1ULL << maskbits) - 1);
+
+	if (rte_memseg_walk(check_iova, &mask))
+		/*
+		 * Dma mask precludes hugepage usage.
+		 * This device can not be used and we do not need to keep
+		 * the dma mask.
+		 */
+		return 1;
+
+	/*
+	 * we need to keep the more restricted maskbit for checking
+	 * potential dynamic memory allocation in the future.
+	 */
+	mcfg->dma_maskbits = mcfg->dma_maskbits == 0 ? maskbits :
+			     RTE_MIN(mcfg->dma_maskbits, maskbits);
+
+	return 0;
+}
+
 /* return the number of memory channels */
 unsigned rte_memory_get_nchannel(void)
 {

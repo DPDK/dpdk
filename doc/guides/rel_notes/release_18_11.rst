@@ -60,6 +60,15 @@ New Features
   memory that was created outside of DPDK's own page allocator, and using that
   memory natively with any other DPDK library or data structure.
 
+* **Added check for ensuring allocated memory addressable by devices.**
+
+  Some devices can have addressing limitations so a new function,
+  ``rte_eal_check_dma_mask``, has been added for checking allocated memory is
+  not out of the device range. Because now memory can be dynamically allocated
+  after initialization, a dma mask is kept and any new allocated memory will be
+  checked out against that dma mask and rejected if out of range. If more than
+  one device has addressing limitations, the dma mask is the more restricted one.
+
 * **Added hot-unplug handle mechanism.**
 
   ``rte_dev_hotplug_handle_enable`` and ``rte_dev_hotplug_handle_disable`` are
@@ -384,6 +393,9 @@ ABI Changes
          - structure ``rte_malloc_heap`` now has a ``heap_name`` member
          - structure ``rte_eal_memconfig`` has been extended to contain next
            socket ID for externally allocated segments
+
+* eal: Added ``dma_maskbits`` to ``rte_mem_config`` for keeping more restricted
+       dma mask based on devices addressing limitations.
 
 * eal: The structure ``rte_device`` got a new field to reference a ``rte_bus``.
   It is changing the size of the ``struct rte_device`` and the inherited

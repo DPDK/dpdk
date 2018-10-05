@@ -86,6 +86,9 @@ struct rte_mem_config {
 	/* legacy mem and single file segments options are shared */
 	uint32_t legacy_mem;
 	uint32_t single_file_segments;
+
+	/* keeps the more restricted dma mask */
+	uint8_t dma_maskbits;
 } __attribute__((__packed__));
 
 

@@ -264,6 +264,8 @@ rte_eal_config_create(void)
 	 * processes could later map the config into this exact location */
 	rte_config.mem_config->mem_cfg_addr = (uintptr_t) rte_mem_cfg_addr;
 
+	rte_config.mem_config->dma_maskbits = 0;
+
 }
 
 /* attach to an existing shared memory config */
