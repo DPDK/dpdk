@@ -2702,6 +2702,14 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 
+	/* NFP can not handle DMA addresses requiring more than 40 bits */
+	if (rte_eal_check_dma_mask(40)) {
+		RTE_LOG(ERR, PMD, "device %s can not be used:",
+				   pci_dev->device.name);
+		RTE_LOG(ERR, PMD, "\trestricted dma mask to 40 bits!\n");
+		return -ENODEV;
+	};
+
 	if ((pci_dev->id.device_id == PCI_DEVICE_ID_NFP4000_PF_NIC) ||
 	    (pci_dev->id.device_id == PCI_DEVICE_ID_NFP6000_PF_NIC)) {
 		port = get_pf_port_number(eth_dev->data->name);
