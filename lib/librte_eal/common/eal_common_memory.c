@@ -38,6 +38,23 @@
 static void *next_baseaddr;
 static uint64_t system_page_sz;
 
+#ifdef RTE_ARCH_64
+/*
+ * Linux kernel uses a really high address as starting address for serving
+ * mmaps calls. If there exists addressing limitations and IOVA mode is VA,
+ * this starting address is likely too high for those devices. However, it
+ * is possible to use a lower address in the process virtual address space
+ * as with 64 bits there is a lot of available space.
+ *
+ * Current known limitations are 39 or 40 bits. Setting the starting address
+ * at 4GB implies there are 508GB or 1020GB for mapping the available
+ * hugepages. This is likely enough for most systems, although a device with
+ * addressing limitations should call rte_eal_check_dma_mask for ensuring all
+ * memory is within supported range.
+ */
+static uint64_t baseaddr = 0x100000000;
+#endif
+
 void *
 eal_get_virtual_area(void *requested_addr, size_t *size,
 		size_t page_sz, int flags, int mmap_flags)
@@ -61,6 +78,11 @@ eal_get_virtual_area(void *requested_addr, size_t *size,
 			rte_eal_process_type() == RTE_PROC_PRIMARY)
 		next_baseaddr = (void *) internal_config.base_virtaddr;
 
+#ifdef RTE_ARCH_64
+	if (next_baseaddr == NULL && internal_config.base_virtaddr == 0 &&
+			rte_eal_process_type() == RTE_PROC_PRIMARY)
+		next_baseaddr = (void *) baseaddr;
+#endif
 	if (requested_addr == NULL && next_baseaddr != NULL) {
 		requested_addr = next_baseaddr;
 		requested_addr = RTE_PTR_ALIGN(requested_addr, page_sz);
@@ -92,7 +114,17 @@ eal_get_virtual_area(void *requested_addr, size_t *size,
 				mmap_flags, -1, 0);
 		if (mapped_addr == MAP_FAILED && allow_shrink)
 			*size -= page_sz;
-	} while (allow_shrink && mapped_addr == MAP_FAILED && *size > 0);
+
+		if (mapped_addr != MAP_FAILED && addr_is_hint &&
+		    mapped_addr != requested_addr) {
+			/* hint was not used. Try with another offset */
+			munmap(mapped_addr, map_sz);
+			mapped_addr = MAP_FAILED;
+			next_baseaddr = RTE_PTR_ADD(next_baseaddr, page_sz);
+			requested_addr = next_baseaddr;
+		}
+	} while ((allow_shrink || addr_is_hint) &&
+		 mapped_addr == MAP_FAILED && *size > 0);
 
 	/* align resulting address - if map failed, we will ignore the value
 	 * anyway, so no need to add additional checks.
