@@ -3732,6 +3732,9 @@ This section lists supported actions and their attributes, if any.
 
   - ``port``: New TCP/UDP destination port number.
 
+- ``mac_swap``: Swap the source and destination MAC addresses in the outermost
+  Ethernet header.
+
 Destroying flow rules
 ~~~~~~~~~~~~~~~~~~~~~
 

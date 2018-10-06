@@ -1568,6 +1568,17 @@ enum rte_flow_action_type {
 	 * See struct rte_flow_action_set_tp.
 	 */
 	RTE_FLOW_ACTION_TYPE_SET_TP_DST,
+
+	/**
+	 * Swap the source and destination MAC addresses in the outermost
+	 * Ethernet header.
+	 *
+	 * If flow pattern does not define a valid RTE_FLOW_ITEM_TYPE_ETH,
+	 * then the PMD should return a RTE_FLOW_ERROR_TYPE_ACTION error.
+	 *
+	 * No associated configuration structure.
+	 */
+	RTE_FLOW_ACTION_TYPE_MAC_SWAP,
 };
 
 /**

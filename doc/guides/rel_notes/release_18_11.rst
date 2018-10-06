@@ -69,6 +69,11 @@ New Features
   * Modify source and destination port numbers in the outermost TCP/UDP
     headers.
 
+* **Added new Flow API action to swap MAC addresses in Ethernet header.**
+
+  Added new Flow API action to swap the source and destination MAC
+  addresses in the outermost Ethernet header.
+
 * **Add support to offload more flow match and actions for CXGBE PMD**
 
   Flow API support has been enhanced for CXGBE Poll Mode Driver to offload:

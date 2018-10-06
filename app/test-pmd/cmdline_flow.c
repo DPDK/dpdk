@@ -255,6 +255,7 @@ enum index {
 	ACTION_SET_TP_SRC_TP_SRC,
 	ACTION_SET_TP_DST,
 	ACTION_SET_TP_DST_TP_DST,
+	ACTION_MAC_SWAP,
 };
 
 /** Maximum size for pattern in struct rte_flow_item_raw. */
@@ -834,6 +835,7 @@ static const enum index next_action[] = {
 	ACTION_SET_IPV6_DST,
 	ACTION_SET_TP_SRC,
 	ACTION_SET_TP_DST,
+	ACTION_MAC_SWAP,
 	ZERO,
 };
 
@@ -2625,6 +2627,14 @@ static const struct token token_list[] = {
 		.args = ARGS(ARGS_ENTRY_HTON
 			     (struct rte_flow_action_set_tp, port)),
 		.call = parse_vc_conf,
+	},
+	[ACTION_MAC_SWAP] = {
+		.name = "mac_swap",
+		.help = "Swap the source and destination MAC addresses"
+			" in the outermost Ethernet header",
+		.priv = PRIV_ACTION(MAC_SWAP, 0),
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.call = parse_vc,
 	},
 };
 

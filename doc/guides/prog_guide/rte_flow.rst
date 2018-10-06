@@ -2184,6 +2184,25 @@ flow pattern item. Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
    | ``port`` | new TCP/UDP destination port |
    +---------------+-------------------------+
 
+Action: ``MAC_SWAP``
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Swap the source and destination MAC addresses in the outermost Ethernet
+header.
+
+It must be used with a valid RTE_FLOW_ITEM_TYPE_ETH flow pattern item.
+Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
+
+.. _table_rte_flow_action_mac_swap:
+
+.. table:: MAC_SWAP
+
+   +---------------+
+   | Field         |
+   +===============+
+   | no properties |
+   +---------------+
+
 Negative types
 ~~~~~~~~~~~~~~
 
