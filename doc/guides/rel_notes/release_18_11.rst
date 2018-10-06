@@ -107,6 +107,10 @@ New Features
   * Support for runtime Rx and Tx queues setup.
   * Support multicast MAC address set.
 
+* **Added a devarg to use PCAP interface physical MAC address.**
+  A new devarg ``phy_mac`` was introduced to allow users to use physical
+  MAC address of the selected PCAP interface.
+
 * **Added Event Ethernet Tx Adapter.**
 
   Added event ethernet Tx adapter library that  provides configuration and

@@ -96,6 +96,16 @@ The different stream types are:
 
         iface=eth0
 
+Runtime Config Options
+^^^^^^^^^^^^^^^^^^^^^^
+
+- Use PCAP interface physical MAC
+
+ In case ``iface=`` configuration is set, user may want to use the selected interface's physical MAC
+ address. This can be done with a ``devarg`` ``phy_mac``, for example::
+
+   --vdev 'net_pcap0,iface=eth0,phy_mac=1'
+
 Examples of Usage
 ^^^^^^^^^^^^^^^^^
 

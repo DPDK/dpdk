@@ -7,6 +7,14 @@
 #include <time.h>
 
 #include <net/if.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+
+#if defined(RTE_EXEC_ENV_BSDAPP)
+#include <sys/sysctl.h>
+#include <net/if_dl.h>
+#endif
 
 #include <pcap.h>
 
@@ -17,6 +25,7 @@
 #include <rte_malloc.h>
 #include <rte_mbuf.h>
 #include <rte_bus_vdev.h>
+#include <rte_string_fns.h>
 
 #define RTE_ETH_PCAP_SNAPSHOT_LEN 65535
 #define RTE_ETH_PCAP_SNAPLEN ETHER_MAX_JUMBO_FRAME_LEN
@@ -29,6 +38,7 @@
 #define ETH_PCAP_RX_IFACE_IN_ARG "rx_iface_in"
 #define ETH_PCAP_TX_IFACE_ARG "tx_iface"
 #define ETH_PCAP_IFACE_ARG    "iface"
+#define ETH_PCAP_PHY_MAC_ARG  "phy_mac"
 
 #define ETH_PCAP_ARG_MAXLEN	64
 
@@ -70,6 +80,7 @@ struct pmd_internals {
 	struct ether_addr eth_addr;
 	int if_index;
 	int single_iface;
+	int phy_mac;
 };
 
 struct pmd_devargs {
@@ -80,6 +91,7 @@ struct pmd_devargs {
 		const char *name;
 		const char *type;
 	} queue[RTE_PMD_PCAP_MAX_QUEUES];
+	int phy_mac;
 };
 
 static const char *valid_arguments[] = {
@@ -89,6 +101,7 @@ static const char *valid_arguments[] = {
 	ETH_PCAP_RX_IFACE_IN_ARG,
 	ETH_PCAP_TX_IFACE_ARG,
 	ETH_PCAP_IFACE_ARG,
+	ETH_PCAP_PHY_MAC_ARG,
 	NULL
 };
 
@@ -859,6 +872,20 @@ open_tx_iface(const char *key, const char *value, void *extra_args)
 	return open_iface(key, value, extra_args);
 }
 
+static int
+select_phy_mac(const char *key __rte_unused, const char *value,
+		void *extra_args)
+{
+	if (extra_args) {
+		const int phy_mac = atoi(value);
+		int *enable_phy_mac = extra_args;
+
+		if (phy_mac)
+			*enable_phy_mac = 1;
+	}
+	return 0;
+}
+
 static struct rte_vdev_driver pmd_pcap_drv;
 
 static int
@@ -894,6 +921,7 @@ pmd_init_internals(struct rte_vdev_device *vdev,
 	(*internals)->eth_addr = (struct ether_addr) {
 		.addr_bytes = { 0x02, 0x70, 0x63, 0x61, 0x70, iface_idx++ }
 	};
+	(*internals)->phy_mac = 0;
 	data = (*eth_dev)->data;
 	data->nb_rx_queues = (uint16_t)nb_rx_queues;
 	data->nb_tx_queues = (uint16_t)nb_tx_queues;
@@ -910,14 +938,95 @@ pmd_init_internals(struct rte_vdev_device *vdev,
 }
 
 static int
+eth_pcap_update_mac(const char *if_name, struct rte_eth_dev *eth_dev,
+		const unsigned int numa_node)
+{
+#if defined(RTE_EXEC_ENV_LINUXAPP)
+	void *mac_addrs;
+	struct ifreq ifr;
+	int if_fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+	if (if_fd == -1)
+		return -1;
+
+	rte_strscpy(ifr.ifr_name, if_name, sizeof(ifr.ifr_name));
+	if (ioctl(if_fd, SIOCGIFHWADDR, &ifr)) {
+		close(if_fd);
+		return -1;
+	}
+
+	mac_addrs = rte_zmalloc_socket(NULL, ETHER_ADDR_LEN, 0, numa_node);
+	if (!mac_addrs) {
+		close(if_fd);
+		return -1;
+	}
+
+	PMD_LOG(INFO, "Setting phy MAC for %s", if_name);
+	eth_dev->data->mac_addrs = mac_addrs;
+	rte_memcpy(eth_dev->data->mac_addrs[0].addr_bytes,
+			ifr.ifr_hwaddr.sa_data, ETHER_ADDR_LEN);
+
+	close(if_fd);
+
+	return 0;
+
+#elif defined(RTE_EXEC_ENV_BSDAPP)
+	void *mac_addrs;
+	struct if_msghdr *ifm;
+	struct sockaddr_dl *sdl;
+	int mib[6];
+	size_t len = 0;
+	char *buf;
+
+	mib[0] = CTL_NET;
+	mib[1] = AF_ROUTE;
+	mib[2] = 0;
+	mib[3] = AF_LINK;
+	mib[4] = NET_RT_IFLIST;
+	mib[5] = if_nametoindex(if_name);
+
+	if (sysctl(mib, 6, NULL, &len, NULL, 0) < 0)
+		return -1;
+
+	if (len == 0)
+		return -1;
+
+	buf = rte_malloc(NULL, len, 0);
+	if (!buf)
+		return -1;
+
+	if (sysctl(mib, 6, buf, &len, NULL, 0) < 0) {
+		rte_free(buf);
+		return -1;
+	}
+	ifm = (struct if_msghdr *)buf;
+	sdl = (struct sockaddr_dl *)(ifm + 1);
+
+	mac_addrs = rte_zmalloc_socket(NULL, ETHER_ADDR_LEN, 0, numa_node);
+	if (!mac_addrs) {
+		rte_free(buf);
+		return -1;
+	}
+
+	PMD_LOG(INFO, "Setting phy MAC for %s", if_name);
+	eth_dev->data->mac_addrs = mac_addrs;
+	rte_memcpy(eth_dev->data->mac_addrs[0].addr_bytes,
+			LLADDR(sdl), ETHER_ADDR_LEN);
+
+	rte_free(buf);
+
+	return 0;
+#else
+	return -1;
+#endif
+}
+
+static int
 eth_from_pcaps_common(struct rte_vdev_device *vdev,
 		struct pmd_devargs *rx_queues, const unsigned int nb_rx_queues,
 		struct pmd_devargs *tx_queues, const unsigned int nb_tx_queues,
-		struct rte_kvargs *kvlist, struct pmd_internals **internals,
-		struct rte_eth_dev **eth_dev)
+		struct pmd_internals **internals, struct rte_eth_dev **eth_dev)
 {
-	struct rte_kvargs_pair *pair = NULL;
-	unsigned int k_idx;
 	unsigned int i;
 
 	/* do some parameter checking */
@@ -949,17 +1058,6 @@ eth_from_pcaps_common(struct rte_vdev_device *vdev,
 		snprintf(tx->type, sizeof(tx->type), "%s", queue->type);
 	}
 
-	for (k_idx = 0; k_idx < kvlist->count; k_idx++) {
-		pair = &kvlist->pairs[k_idx];
-		if (strstr(pair->key, ETH_PCAP_IFACE_ARG) != NULL)
-			break;
-	}
-
-	if (pair == NULL)
-		(*internals)->if_index = 0;
-	else
-		(*internals)->if_index = if_nametoindex(pair->value);
-
 	return 0;
 }
 
@@ -967,21 +1065,32 @@ static int
 eth_from_pcaps(struct rte_vdev_device *vdev,
 		struct pmd_devargs *rx_queues, const unsigned int nb_rx_queues,
 		struct pmd_devargs *tx_queues, const unsigned int nb_tx_queues,
-		struct rte_kvargs *kvlist, int single_iface,
-		unsigned int using_dumpers)
+		int single_iface, unsigned int using_dumpers)
 {
 	struct pmd_internals *internals = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
 	int ret;
 
 	ret = eth_from_pcaps_common(vdev, rx_queues, nb_rx_queues,
-		tx_queues, nb_tx_queues, kvlist, &internals, &eth_dev);
+		tx_queues, nb_tx_queues, &internals, &eth_dev);
 
 	if (ret < 0)
 		return ret;
 
 	/* store weather we are using a single interface for rx/tx or not */
 	internals->single_iface = single_iface;
+
+	if (single_iface) {
+		internals->if_index = if_nametoindex(rx_queues->queue[0].name);
+
+		/* phy_mac arg is applied only only if "iface" devarg is provided */
+		if (rx_queues->phy_mac) {
+			int ret = eth_pcap_update_mac(rx_queues->queue[0].name,
+					eth_dev, vdev->device.numa_node);
+			if (ret == 0)
+				internals->phy_mac = 1;
+		}
+	}
 
 	eth_dev->rx_pkt_burst = eth_pcap_rx;
 
@@ -1039,11 +1148,17 @@ pmd_pcap_probe(struct rte_vdev_device *dev)
 
 		ret = rte_kvargs_process(kvlist, ETH_PCAP_IFACE_ARG,
 				&open_rx_tx_iface, &pcaps);
-
 		if (ret < 0)
 			goto free_kvlist;
 
 		dumpers.queue[0] = pcaps.queue[0];
+
+		ret = rte_kvargs_process(kvlist, ETH_PCAP_PHY_MAC_ARG,
+				&select_phy_mac, &pcaps.phy_mac);
+		if (ret < 0)
+			goto free_kvlist;
+
+		dumpers.phy_mac = pcaps.phy_mac;
 
 		single_iface = 1;
 		pcaps.num_of_queue = 1;
@@ -1089,7 +1204,7 @@ pmd_pcap_probe(struct rte_vdev_device *dev)
 
 create_eth:
 	ret = eth_from_pcaps(dev, &pcaps, pcaps.num_of_queue, &dumpers,
-		dumpers.num_of_queue, kvlist, single_iface, is_tx_pcap);
+		dumpers.num_of_queue, single_iface, is_tx_pcap);
 
 free_kvlist:
 	rte_kvargs_free(kvlist);
@@ -1100,6 +1215,7 @@ free_kvlist:
 static int
 pmd_pcap_remove(struct rte_vdev_device *dev)
 {
+	struct pmd_internals *internals = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
 
 	PMD_LOG(INFO, "Closing pcap ethdev on numa socket %d",
@@ -1112,6 +1228,10 @@ pmd_pcap_remove(struct rte_vdev_device *dev)
 	eth_dev = rte_eth_dev_allocated(rte_vdev_device_name(dev));
 	if (eth_dev == NULL)
 		return -1;
+
+	internals = eth_dev->data->dev_private;
+	if (internals && internals->phy_mac)
+		rte_free(eth_dev->data->mac_addrs);
 
 	rte_free(eth_dev->data->dev_private);
 
@@ -1133,7 +1253,8 @@ RTE_PMD_REGISTER_PARAM_STRING(net_pcap,
 	ETH_PCAP_RX_IFACE_ARG "=<ifc> "
 	ETH_PCAP_RX_IFACE_IN_ARG "=<ifc> "
 	ETH_PCAP_TX_IFACE_ARG "=<ifc> "
-	ETH_PCAP_IFACE_ARG "=<ifc>");
+	ETH_PCAP_IFACE_ARG "=<ifc> "
+	ETH_PCAP_PHY_MAC_ARG "=<int>");
 
 RTE_INIT(eth_pcap_init_log)
 {
