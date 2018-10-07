@@ -192,7 +192,9 @@ find_biggest_element(struct malloc_heap *heap, size_t *size,
 		for (elem = LIST_FIRST(&heap->free_head[idx]);
 				!!elem; elem = LIST_NEXT(elem, free_list)) {
 			size_t cur_size;
-			if (!check_hugepage_sz(flags, elem->msl->page_sz))
+			if ((flags & RTE_MEMZONE_SIZE_HINT_ONLY) == 0 &&
+					!check_hugepage_sz(flags,
+						elem->msl->page_sz))
 				continue;
 			if (contig) {
 				cur_size =
