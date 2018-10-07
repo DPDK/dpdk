@@ -107,6 +107,23 @@ static const struct mlx5_counter_ctrl mlx5_counters_init[] = {
 		.dpdk_name = "rx_bytes_phy",
 		.ctr_name = "rx_bytes_phy",
 	},
+	/* Representor only */
+	{
+		.dpdk_name = "rx_packets",
+		.ctr_name = "vport_rx_packets",
+	},
+	{
+		.dpdk_name = "rx_bytes",
+		.ctr_name = "vport_rx_bytes",
+	},
+	{
+		.dpdk_name = "tx_packets",
+		.ctr_name = "vport_tx_packets",
+	},
+	{
+		.dpdk_name = "tx_bytes",
+		.ctr_name = "vport_tx_bytes",
+	},
 };
 
 static const unsigned int xstats_n = RTE_DIM(mlx5_counters_init);
