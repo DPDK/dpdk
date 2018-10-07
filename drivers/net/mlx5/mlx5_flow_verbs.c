@@ -1113,6 +1113,7 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_FLAG:
 			ret = mlx5_flow_validate_action_flag(action_flags,
+							     attr,
 							     error);
 			if (ret < 0)
 				return ret;
@@ -1121,6 +1122,7 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_MARK:
 			ret = mlx5_flow_validate_action_mark(actions,
 							     action_flags,
+							     attr,
 							     error);
 			if (ret < 0)
 				return ret;
@@ -1128,6 +1130,7 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_DROP:
 			ret = mlx5_flow_validate_action_drop(action_flags,
+							     attr,
 							     error);
 			if (ret < 0)
 				return ret;
@@ -1136,6 +1139,7 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 			ret = mlx5_flow_validate_action_queue(actions,
 							      action_flags, dev,
+							      attr,
 							      error);
 			if (ret < 0)
 				return ret;
@@ -1144,13 +1148,14 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_RSS:
 			ret = mlx5_flow_validate_action_rss(actions,
 							    action_flags, dev,
+							    attr,
 							    error);
 			if (ret < 0)
 				return ret;
 			action_flags |= MLX5_FLOW_ACTION_RSS;
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
-			ret = mlx5_flow_validate_action_count(dev, error);
+			ret = mlx5_flow_validate_action_count(dev, attr, error);
 			if (ret < 0)
 				return ret;
 			action_flags |= MLX5_FLOW_ACTION_COUNT;

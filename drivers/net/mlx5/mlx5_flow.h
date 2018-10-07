@@ -275,21 +275,27 @@ uint64_t mlx5_flow_hashfields_adjust(struct mlx5_flow *dev_flow, int tunnel,
 uint32_t mlx5_flow_adjust_priority(struct rte_eth_dev *dev, int32_t priority,
 				   uint32_t subpriority);
 int mlx5_flow_validate_action_count(struct rte_eth_dev *dev,
+				    const struct rte_flow_attr *attr,
 				    struct rte_flow_error *error);
 int mlx5_flow_validate_action_drop(uint64_t action_flags,
+				   const struct rte_flow_attr *attr,
 				   struct rte_flow_error *error);
 int mlx5_flow_validate_action_flag(uint64_t action_flags,
+				   const struct rte_flow_attr *attr,
 				   struct rte_flow_error *error);
 int mlx5_flow_validate_action_mark(const struct rte_flow_action *action,
 				   uint64_t action_flags,
+				   const struct rte_flow_attr *attr,
 				   struct rte_flow_error *error);
 int mlx5_flow_validate_action_queue(const struct rte_flow_action *action,
 				    uint64_t action_flags,
 				    struct rte_eth_dev *dev,
+				    const struct rte_flow_attr *attr,
 				    struct rte_flow_error *error);
 int mlx5_flow_validate_action_rss(const struct rte_flow_action *action,
 				  uint64_t action_flags,
 				  struct rte_eth_dev *dev,
+				  const struct rte_flow_attr *attr,
 				  struct rte_flow_error *error);
 int mlx5_flow_validate_attributes(struct rte_eth_dev *dev,
 				  const struct rte_flow_attr *attributes,

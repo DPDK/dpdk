@@ -68,21 +68,16 @@ flow_dv_validate_attributes(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
 					  NULL,
 					  "priority out of range");
-	if (attributes->egress)
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
-					  NULL,
-					  "egress is not supported");
 	if (attributes->transfer)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
 					  NULL,
 					  "transfer is not supported");
-	if (!attributes->ingress)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
-					  NULL,
-					  "ingress attribute is mandatory");
+	if (!(attributes->egress ^ attributes->ingress))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR, NULL,
+					  "must specify exactly one of "
+					  "ingress or egress");
 	return 0;
 }
 
@@ -233,7 +228,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			break;
 		case RTE_FLOW_ACTION_TYPE_FLAG:
 			ret = mlx5_flow_validate_action_flag(action_flags,
-							     error);
+							     attr, error);
 			if (ret < 0)
 				return ret;
 			action_flags |= MLX5_FLOW_ACTION_FLAG;
@@ -242,7 +237,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		case RTE_FLOW_ACTION_TYPE_MARK:
 			ret = mlx5_flow_validate_action_mark(actions,
 							     action_flags,
-							     error);
+							     attr, error);
 			if (ret < 0)
 				return ret;
 			action_flags |= MLX5_FLOW_ACTION_MARK;
@@ -250,7 +245,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			break;
 		case RTE_FLOW_ACTION_TYPE_DROP:
 			ret = mlx5_flow_validate_action_drop(action_flags,
-							     error);
+							     attr, error);
 			if (ret < 0)
 				return ret;
 			action_flags |= MLX5_FLOW_ACTION_DROP;
@@ -259,7 +254,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 			ret = mlx5_flow_validate_action_queue(actions,
 							      action_flags, dev,
-							      error);
+							      attr, error);
 			if (ret < 0)
 				return ret;
 			action_flags |= MLX5_FLOW_ACTION_QUEUE;
@@ -268,14 +263,14 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		case RTE_FLOW_ACTION_TYPE_RSS:
 			ret = mlx5_flow_validate_action_rss(actions,
 							    action_flags, dev,
-							    error);
+							    attr, error);
 			if (ret < 0)
 				return ret;
 			action_flags |= MLX5_FLOW_ACTION_RSS;
 			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
-			ret = mlx5_flow_validate_action_count(dev, error);
+			ret = mlx5_flow_validate_action_count(dev, attr, error);
 			if (ret < 0)
 				return ret;
 			action_flags |= MLX5_FLOW_ACTION_COUNT;
@@ -288,7 +283,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 						  "action not supported");
 		}
 	}
-	if (!(action_flags & MLX5_FLOW_FATE_ACTIONS))
+	if (!(action_flags & MLX5_FLOW_FATE_ACTIONS) && attr->ingress)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, actions,
 					  "no fate action is found");
@@ -972,12 +967,14 @@ flow_dv_create_action(const struct rte_flow_action *action,
 		dev_flow->dv.actions[actions_n].tag_value =
 			MLX5_FLOW_MARK_DEFAULT;
 		actions_n++;
+		flow->actions |= MLX5_FLOW_ACTION_FLAG;
 		break;
 	case RTE_FLOW_ACTION_TYPE_MARK:
 		dev_flow->dv.actions[actions_n].type = MLX5DV_FLOW_ACTION_TAG;
 		dev_flow->dv.actions[actions_n].tag_value =
 			((const struct rte_flow_action_mark *)
 			 (action->conf))->id;
+		flow->actions |= MLX5_FLOW_ACTION_MARK;
 		actions_n++;
 		break;
 	case RTE_FLOW_ACTION_TYPE_DROP:
@@ -988,6 +985,7 @@ flow_dv_create_action(const struct rte_flow_action *action,
 		queue = action->conf;
 		flow->rss.queue_num = 1;
 		(*flow->queue)[0] = queue->index;
+		flow->actions |= MLX5_FLOW_ACTION_QUEUE;
 		break;
 	case RTE_FLOW_ACTION_TYPE_RSS:
 		rss = action->conf;
@@ -999,6 +997,7 @@ flow_dv_create_action(const struct rte_flow_action *action,
 		flow->rss.types = rss->types;
 		flow->rss.level = rss->level;
 		/* Added to array only in apply since we need the QP */
+		flow->actions |= MLX5_FLOW_ACTION_RSS;
 		break;
 	default:
 		break;
@@ -1211,7 +1210,8 @@ flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 			dv->actions[n].type = MLX5DV_FLOW_ACTION_DEST_IBV_QP;
 			dv->actions[n].qp = dv->hrxq->qp;
 			n++;
-		} else {
+		} else if (flow->actions &
+			   (MLX5_FLOW_ACTION_QUEUE | MLX5_FLOW_ACTION_RSS)) {
 			struct mlx5_hrxq *hrxq;
 			hrxq = mlx5_hrxq_get(dev, flow->key,
 					     MLX5_RSS_HASH_KEY_LEN,

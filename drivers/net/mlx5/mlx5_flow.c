@@ -645,6 +645,8 @@ mlx5_flow_rxq_flags_clear(struct rte_eth_dev *dev)
  *
  * @param[in] action_flags
  *   Bit-fields that holds the actions detected until now.
+ * @param[in] attr
+ *   Attributes of flow that includes this action.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -653,6 +655,7 @@ mlx5_flow_rxq_flags_clear(struct rte_eth_dev *dev)
  */
 int
 mlx5_flow_validate_action_flag(uint64_t action_flags,
+			       const struct rte_flow_attr *attr,
 			       struct rte_flow_error *error)
 {
 
@@ -669,6 +672,11 @@ mlx5_flow_validate_action_flag(uint64_t action_flags,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "can't have 2 flag"
 					  " actions in same flow");
+	if (attr->egress)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, NULL,
+					  "flag action not supported for "
+					  "egress");
 	return 0;
 }
 
@@ -679,6 +687,8 @@ mlx5_flow_validate_action_flag(uint64_t action_flags,
  *   Pointer to the queue action.
  * @param[in] action_flags
  *   Bit-fields that holds the actions detected until now.
+ * @param[in] attr
+ *   Attributes of flow that includes this action.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -688,6 +698,7 @@ mlx5_flow_validate_action_flag(uint64_t action_flags,
 int
 mlx5_flow_validate_action_mark(const struct rte_flow_action *action,
 			       uint64_t action_flags,
+			       const struct rte_flow_attr *attr,
 			       struct rte_flow_error *error)
 {
 	const struct rte_flow_action_mark *mark = action->conf;
@@ -716,6 +727,11 @@ mlx5_flow_validate_action_mark(const struct rte_flow_action *action,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "can't have 2 mark actions in same"
 					  " flow");
+	if (attr->egress)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, NULL,
+					  "mark action not supported for "
+					  "egress");
 	return 0;
 }
 
@@ -724,6 +740,8 @@ mlx5_flow_validate_action_mark(const struct rte_flow_action *action,
  *
  * @param[in] action_flags
  *   Bit-fields that holds the actions detected until now.
+ * @param[in] attr
+ *   Attributes of flow that includes this action.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -732,6 +750,7 @@ mlx5_flow_validate_action_mark(const struct rte_flow_action *action,
  */
 int
 mlx5_flow_validate_action_drop(uint64_t action_flags,
+			       const struct rte_flow_attr *attr,
 			       struct rte_flow_error *error)
 {
 	if (action_flags & MLX5_FLOW_ACTION_FLAG)
@@ -747,6 +766,11 @@ mlx5_flow_validate_action_drop(uint64_t action_flags,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "can't have 2 fate actions in"
 					  " same flow");
+	if (attr->egress)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, NULL,
+					  "drop action not supported for "
+					  "egress");
 	return 0;
 }
 
@@ -759,6 +783,8 @@ mlx5_flow_validate_action_drop(uint64_t action_flags,
  *   Bit-fields that holds the actions detected until now.
  * @param[in] dev
  *   Pointer to the Ethernet device structure.
+ * @param[in] attr
+ *   Attributes of flow that includes this action.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -769,6 +795,7 @@ int
 mlx5_flow_validate_action_queue(const struct rte_flow_action *action,
 				uint64_t action_flags,
 				struct rte_eth_dev *dev,
+				const struct rte_flow_attr *attr,
 				struct rte_flow_error *error)
 {
 	struct priv *priv = dev->data->dev_private;
@@ -789,6 +816,11 @@ mlx5_flow_validate_action_queue(const struct rte_flow_action *action,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  &queue->index,
 					  "queue is not configured");
+	if (attr->egress)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, NULL,
+					  "queue action not supported for "
+					  "egress");
 	return 0;
 }
 
@@ -801,6 +833,8 @@ mlx5_flow_validate_action_queue(const struct rte_flow_action *action,
  *   Bit-fields that holds the actions detected until now.
  * @param[in] dev
  *   Pointer to the Ethernet device structure.
+ * @param[in] attr
+ *   Attributes of flow that includes this action.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -811,6 +845,7 @@ int
 mlx5_flow_validate_action_rss(const struct rte_flow_action *action,
 			      uint64_t action_flags,
 			      struct rte_eth_dev *dev,
+			      const struct rte_flow_attr *attr,
 			      struct rte_flow_error *error)
 {
 	struct priv *priv = dev->data->dev_private;
@@ -864,6 +899,11 @@ mlx5_flow_validate_action_rss(const struct rte_flow_action *action,
 				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 				 &rss->queue[i], "queue is not configured");
 	}
+	if (attr->egress)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, NULL,
+					  "rss action not supported for "
+					  "egress");
 	return 0;
 }
 
@@ -872,6 +912,8 @@ mlx5_flow_validate_action_rss(const struct rte_flow_action *action,
  *
  * @param[in] dev
  *   Pointer to the Ethernet device structure.
+ * @param[in] attr
+ *   Attributes of flow that includes this action.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -880,6 +922,7 @@ mlx5_flow_validate_action_rss(const struct rte_flow_action *action,
  */
 int
 mlx5_flow_validate_action_count(struct rte_eth_dev *dev,
+				const struct rte_flow_attr *attr,
 				struct rte_flow_error *error)
 {
 	struct priv *priv = dev->data->dev_private;
@@ -888,6 +931,11 @@ mlx5_flow_validate_action_count(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "flow counters are not supported.");
+	if (attr->egress)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, NULL,
+					  "count action not supported for "
+					  "egress");
 	return 0;
 }
 
