@@ -1212,6 +1212,7 @@ F: test/test/test_metrics.c
 Bit-rate statistics
 M: Remy Horton <remy.horton@intel.com>
 F: lib/librte_bitratestats/
+F: test/test/test_bitratestats.c
 
 Latency statistics
 M: Reshma Pattan <reshma.pattan@intel.com>

@@ -494,6 +494,12 @@ parallel_test_list = [
         "Func":    default_autotest,
         "Report":  None,
     },
+    {
+        "Name":    "Bitratestats autotest",
+        "Command": "bitratestats_autotest",
+        "Func":    default_autotest,
+        "Report":  None,
+    },
     #
     #Please always keep all dump tests at the end and together!
     #
