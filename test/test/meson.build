@@ -3,6 +3,7 @@
 
 test_sources = files('commands.c',
 	'packet_burst_generator.c',
+	'sample_packet_forward.c',
 	'test.c',
 	'test_acl.c',
 	'test_alarm.c',

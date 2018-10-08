@@ -166,6 +166,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_REORDER) += test_reorder.c
 
 SRCS-y += virtual_pmd.c
 SRCS-y += packet_burst_generator.c
+SRCS-y += sample_packet_forward.c
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += test_acl.c
 
 ifeq ($(CONFIG_RTE_LIBRTE_PMD_RING),y)

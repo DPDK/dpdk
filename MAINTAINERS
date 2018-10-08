@@ -1250,6 +1250,11 @@ F: test/test/test_resource.c
 F: test/test/virtual_pmd.c
 F: test/test/virtual_pmd.h
 
+Sample packet helper functions for unit test
+M: Reshma Pattan <reshma.pattan@intel.com>
+F: test/test/sample_packet_forward.c
+F: test/test/sample_packet_forward.h
+
 Driver testing tool
 M: Wenzhuo Lu <wenzhuo.lu@intel.com>
 M: Jingjing Wu <jingjing.wu@intel.com>
