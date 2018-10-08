@@ -11,6 +11,7 @@
 #include <rte_string_fns.h>
 #include <rte_flow.h>
 #include <rte_flow_driver.h>
+#include <rte_tailq.h>
 
 #include "rte_eth_softnic_internals.h"
 #include "rte_eth_softnic.h"
@@ -1916,6 +1917,53 @@ pmd_flow_destroy(struct rte_eth_dev *dev,
 }
 
 static int
+pmd_flow_flush(struct rte_eth_dev *dev,
+	struct rte_flow_error *error)
+{
+	struct pmd_internals *softnic = dev->data->dev_private;
+	struct pipeline *pipeline;
+	int fail_to_del_rule = 0;
+	uint32_t i;
+
+	TAILQ_FOREACH(pipeline, &softnic->pipeline_list, node) {
+		/* Remove all the flows added to the tables. */
+		for (i = 0; i < pipeline->n_tables; i++) {
+			struct softnic_table *table = &pipeline->table[i];
+			struct rte_flow *flow;
+			void *temp;
+			int status;
+
+			TAILQ_FOREACH_SAFE(flow, &table->flows, node, temp) {
+				/* Rule delete. */
+				status = softnic_pipeline_table_rule_delete
+						(softnic,
+						pipeline->name,
+						i,
+						&flow->match);
+				if (status)
+					fail_to_del_rule = 1;
+				/* Update dependencies */
+				if (is_meter_action_enable(softnic, table))
+					flow_meter_owner_reset(softnic, flow);
+
+				/* Flow delete. */
+				TAILQ_REMOVE(&table->flows, flow, node);
+				free(flow);
+			}
+		}
+	}
+
+	if (fail_to_del_rule)
+		return rte_flow_error_set(error,
+			EINVAL,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			NULL,
+			"Some of the rules could not be deleted");
+
+	return 0;
+}
+
+static int
 pmd_flow_query(struct rte_eth_dev *dev __rte_unused,
 	struct rte_flow *flow,
 	const struct rte_flow_action *action __rte_unused,
@@ -1971,7 +2019,7 @@ const struct rte_flow_ops pmd_flow_ops = {
 	.validate = pmd_flow_validate,
 	.create = pmd_flow_create,
 	.destroy = pmd_flow_destroy,
-	.flush = NULL,
+	.flush = pmd_flow_flush,
 	.query = pmd_flow_query,
 	.isolate = NULL,
 };
