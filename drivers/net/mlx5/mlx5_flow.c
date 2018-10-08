@@ -452,10 +452,10 @@ mlx5_flow_item_acceptable(const struct rte_flow_item *item,
 		}
 		ret = memcmp(spec, last, size);
 		if (ret != 0)
-			return rte_flow_error_set(error, ENOTSUP,
+			return rte_flow_error_set(error, EINVAL,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
 						  item,
-						  "range is not supported");
+						  "range is not valid");
 	}
 	return 0;
 }
@@ -2336,7 +2336,7 @@ mlx5_flow_query_count(struct rte_flow *flow __rte_unused,
 		}
 		return 0;
 	}
-	return rte_flow_error_set(error, ENOTSUP,
+	return rte_flow_error_set(error, EINVAL,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				  NULL,
 				  "flow does not have counter");
