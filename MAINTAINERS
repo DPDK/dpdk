@@ -1082,8 +1082,10 @@ Packet capture
 M: Reshma Pattan <reshma.pattan@intel.com>
 F: lib/librte_pdump/
 F: doc/guides/prog_guide/pdump_lib.rst
+F: test/test/test_pdump.*
 F: app/pdump/
 F: doc/guides/tools/pdump.rst
+
 
 Packet Framework
 ----------------

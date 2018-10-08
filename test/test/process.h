@@ -9,6 +9,7 @@
 #include <libgen.h> /* basename et al */
 #include <stdlib.h> /* NULL */
 #include <unistd.h> /* readlink */
+#include <sys/wait.h>
 
 #ifdef RTE_EXEC_ENV_BSDAPP
 #define self "curproc"
@@ -17,6 +18,10 @@
 #define self "self"
 #define exe "exe"
 #endif
+
+#include <pthread.h>
+extern void *send_pkts(void *empty);
+extern uint16_t flag_for_send_pkts;
 
 /*
  * launches a second copy of the test process using the given argv parameters,
@@ -31,6 +36,7 @@ process_dup(const char *const argv[], int numargs, const char *env_value)
 	char *argv_cpy[numargs + 1];
 	int i, fd, status;
 	char path[32];
+	pthread_t thread;
 
 	pid_t pid = fork();
 	if (pid < 0)
@@ -61,8 +67,15 @@ process_dup(const char *const argv[], int numargs, const char *env_value)
 			rte_panic("Cannot exec\n");
 	}
 	/* parent process does a wait */
+	if ((strcmp(env_value, "run_pdump_server_tests") == 0))
+		pthread_create(&thread, NULL, &send_pkts, NULL);
+
 	while (wait(&status) != pid)
 		;
+	if ((strcmp(env_value, "run_pdump_server_tests") == 0)) {
+		flag_for_send_pkts = 0;
+		pthread_join(thread, NULL);
+	}
 	return status;
 }
 

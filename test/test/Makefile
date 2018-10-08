@@ -167,6 +167,8 @@ SRCS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR) += test_distributor_perf.c
 
 SRCS-$(CONFIG_RTE_LIBRTE_REORDER) += test_reorder.c
 
+SRCS-$(CONFIG_RTE_LIBRTE_PDUMP) += test_pdump.c
+
 SRCS-y += virtual_pmd.c
 SRCS-y += packet_burst_generator.c
 SRCS-y += sample_packet_forward.c
@@ -222,6 +224,11 @@ CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
 LDLIBS += -lm
+
+ifeq ($(CONFIG_RTE_LIBRTE_PDUMP),y)
+LDLIBS += -lpthread
+endif
+
 ifeq ($(CONFIG_RTE_COMPRESSDEV_TEST),y)
 ifeq ($(CONFIG_RTE_LIBRTE_COMPRESSDEV),y)
 LDLIBS += -lz
