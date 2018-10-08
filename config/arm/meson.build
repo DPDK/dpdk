@@ -53,7 +53,7 @@ flags_cavium = [
 	['RTE_MAX_NUMA_NODES', 2],
 	['RTE_MAX_LCORE', 96],
 	['RTE_MAX_VFIO_GROUPS', 128],
-	['RTE_RING_USE_C11_MEM_MODEL', false]]
+	['RTE_USE_C11_MEM_MODEL', false]]
 flags_dpaa = [
 	['RTE_MACHINE', '"dpaa"'],
 	['RTE_CACHE_LINE_SIZE', 64],

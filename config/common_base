@@ -56,6 +56,11 @@ CONFIG_RTE_MAJOR_ABI=
 CONFIG_RTE_CACHE_LINE_SIZE=64
 
 #
+# Memory model
+#
+CONFIG_RTE_USE_C11_MEM_MODEL=n
+
+#
 # Compile Environment Abstraction Layer
 #
 CONFIG_RTE_LIBRTE_EAL=y
@@ -698,7 +703,6 @@ CONFIG_RTE_LIBRTE_PMD_IFPGA_RAWDEV=y
 # Compile librte_ring
 #
 CONFIG_RTE_LIBRTE_RING=y
-CONFIG_RTE_RING_USE_C11_MEM_MODEL=n
 
 #
 # Compile librte_mempool
