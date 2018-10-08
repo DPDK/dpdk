@@ -570,7 +570,7 @@ failsafe_eth_rmv_event_callback(uint16_t port_id __rte_unused,
 	/* Switch as soon as possible tx_dev. */
 	fs_switch_dev(sdev->fs_dev, sdev);
 	/* Use safe bursts in any case. */
-	set_burst_fn(sdev->fs_dev, 1);
+	failsafe_set_burst_fn(sdev->fs_dev, 1);
 	/*
 	 * Async removal, the sub-PMD will try to unregister
 	 * the callback at the source of the current thread context.

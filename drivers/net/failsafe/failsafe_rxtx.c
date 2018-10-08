@@ -29,7 +29,7 @@ fs_tx_unsafe(struct sub_device *sdev)
 }
 
 void
-set_burst_fn(struct rte_eth_dev *dev, int force_safe)
+failsafe_set_burst_fn(struct rte_eth_dev *dev, int force_safe)
 {
 	struct sub_device *sdev;
 	uint8_t i;
