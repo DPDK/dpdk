@@ -285,7 +285,7 @@ ifcvf_used_ring_log(struct ifcvf_hw *hw, uint32_t queue, uint8_t *log_buf)
 
 	pfn = hw->vring[queue].used / PAGE_SIZE;
 	size = hw->vring[queue].size * sizeof(struct vring_used_elem) +
-			sizeof(__virtio16) * 3;
+			sizeof(uint16_t) * 3;
 
 	for (i = 0; i <= size / PAGE_SIZE; i++)
 		__sync_fetch_and_or_8(&log_buf[(pfn + i) / 8],
