@@ -138,6 +138,7 @@ SRCS-y += test_func_reentrancy.c
 SRCS-y += test_service_cores.c
 
 SRCS-$(CONFIG_RTE_LIBRTE_BITRATE) += test_bitratestats.c
+SRCS-$(CONFIG_RTE_LIBRTE_LATENCY_STATS) += test_latencystats.c
 
 SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += test_cmdline.c
 SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += test_cmdline_num.c

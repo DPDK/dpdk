@@ -1217,6 +1217,7 @@ F: test/test/test_bitratestats.c
 Latency statistics
 M: Reshma Pattan <reshma.pattan@intel.com>
 F: lib/librte_latencystats/
+F: test/test/test_latencystats.c
 
 Telemetry - EXPERIMENTAL
 M: Kevin Laatz <kevin.laatz@intel.com>
