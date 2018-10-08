@@ -488,6 +488,12 @@ parallel_test_list = [
 	"Func":    default_autotest,
 	"Report":  None,
     },
+    {
+        "Name":    "Metrics autotest",
+        "Command": "metrics_autotest",
+        "Func":    default_autotest,
+        "Report":  None,
+    },
     #
     #Please always keep all dump tests at the end and together!
     #

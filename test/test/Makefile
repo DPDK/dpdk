@@ -184,6 +184,8 @@ SRCS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += test_cryptodev_blockcipher.c
 SRCS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += test_cryptodev.c
 SRCS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += test_cryptodev_asym.c
 
+SRCS-$(CONFIG_RTE_LIBRTE_METRICS) += test_metrics.c
+
 ifeq ($(CONFIG_RTE_COMPRESSDEV_TEST),y)
 SRCS-$(CONFIG_RTE_LIBRTE_COMPRESSDEV) += test_compressdev.c
 endif
