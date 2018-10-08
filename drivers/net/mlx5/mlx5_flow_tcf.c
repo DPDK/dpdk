@@ -226,6 +226,9 @@ struct flow_tcf_ptoi {
 };
 
 #define MLX5_TCF_FATE_ACTIONS (MLX5_FLOW_ACTION_DROP | MLX5_FLOW_ACTION_PORT_ID)
+#define MLX5_TCF_VLAN_ACTIONS \
+	(MLX5_FLOW_ACTION_OF_POP_VLAN | MLX5_FLOW_ACTION_OF_PUSH_VLAN | \
+	 MLX5_FLOW_ACTION_OF_SET_VLAN_VID | MLX5_FLOW_ACTION_OF_SET_VLAN_PCP)
 
 /**
  * Retrieve mask for pattern item.
@@ -436,6 +439,7 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 	uint8_t next_protocol = -1;
 	unsigned int tcm_ifindex = 0;
 	struct flow_tcf_ptoi ptoi[PTOI_TABLE_SZ_MAX(dev)];
+	struct rte_eth_dev *port_id_dev = NULL;
 	bool in_port_id_set;
 	int ret;
 
@@ -669,6 +673,7 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 					 "missing data to convert port ID to"
 					 " ifindex");
 			action_flags |= MLX5_FLOW_ACTION_PORT_ID;
+			port_id_dev = &rte_eth_devices[conf.port_id->id];
 			break;
 		case RTE_FLOW_ACTION_TYPE_DROP:
 			if (action_flags & MLX5_TCF_FATE_ACTIONS)
@@ -685,9 +690,21 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 			action_flags |= MLX5_FLOW_ACTION_OF_PUSH_VLAN;
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
+			if (!(action_flags & MLX5_FLOW_ACTION_OF_PUSH_VLAN))
+				return rte_flow_error_set
+					(error, ENOTSUP,
+					 RTE_FLOW_ERROR_TYPE_ACTION, actions,
+					 "vlan modify is not supported,"
+					 " set action must follow push action");
 			action_flags |= MLX5_FLOW_ACTION_OF_SET_VLAN_VID;
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP:
+			if (!(action_flags & MLX5_FLOW_ACTION_OF_PUSH_VLAN))
+				return rte_flow_error_set
+					(error, ENOTSUP,
+					 RTE_FLOW_ERROR_TYPE_ACTION, actions,
+					 "vlan modify is not supported,"
+					 " set action must follow push action");
 			action_flags |= MLX5_FLOW_ACTION_OF_SET_VLAN_PCP;
 			break;
 		default:
@@ -697,6 +714,29 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 						  "action not supported");
 		}
 	}
+	/*
+	 * FW syndrome (0xA9C090):
+	 *     set_flow_table_entry: push vlan action fte in fdb can ONLY be
+	 *     forward to the uplink.
+	 */
+	if ((action_flags & MLX5_FLOW_ACTION_OF_PUSH_VLAN) &&
+	    (action_flags & MLX5_FLOW_ACTION_PORT_ID) &&
+	    ((struct priv *)port_id_dev->data->dev_private)->representor)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION, actions,
+					  "vlan push can only be applied"
+					  " when forwarding to uplink port");
+	/*
+	 * FW syndrome (0x294609):
+	 *     set_flow_table_entry: modify/pop/push actions in fdb flow table
+	 *     are supported only while forwarding to vport.
+	 */
+	if ((action_flags & MLX5_TCF_VLAN_ACTIONS) &&
+	    !(action_flags & MLX5_FLOW_ACTION_PORT_ID))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION, actions,
+					  "vlan actions are supported"
+					  " only with port_id action");
 	if (!(action_flags & MLX5_TCF_FATE_ACTIONS))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, actions,
