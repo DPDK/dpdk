@@ -28,8 +28,9 @@ kni_fifo_put(struct rte_kni_fifo *fifo, void **data, unsigned num)
 {
 	unsigned i = 0;
 	unsigned fifo_write = fifo->write;
-	unsigned fifo_read = fifo->read;
 	unsigned new_write = fifo_write;
+	rte_smp_rmb();
+	unsigned fifo_read = fifo->read;
 
 	for (i = 0; i < num; i++) {
 		new_write = (new_write + 1) & (fifo->len - 1);
@@ -39,6 +40,7 @@ kni_fifo_put(struct rte_kni_fifo *fifo, void **data, unsigned num)
 		fifo->buffer[fifo_write] = data[i];
 		fifo_write = new_write;
 	}
+	rte_smp_wmb();
 	fifo->write = fifo_write;
 	return i;
 }
@@ -51,7 +53,9 @@ kni_fifo_get(struct rte_kni_fifo *fifo, void **data, unsigned num)
 {
 	unsigned i = 0;
 	unsigned new_read = fifo->read;
+	rte_smp_rmb();
 	unsigned fifo_write = fifo->write;
+
 	for (i = 0; i < num; i++) {
 		if (new_read == fifo_write)
 			break;
@@ -59,6 +63,7 @@ kni_fifo_get(struct rte_kni_fifo *fifo, void **data, unsigned num)
 		data[i] = fifo->buffer[new_read];
 		new_read = (new_read + 1) & (fifo->len - 1);
 	}
+	rte_smp_rmb();
 	fifo->read = new_read;
 	return i;
 }
@@ -69,5 +74,8 @@ kni_fifo_get(struct rte_kni_fifo *fifo, void **data, unsigned num)
 static inline uint32_t
 kni_fifo_count(struct rte_kni_fifo *fifo)
 {
-	return (fifo->len + fifo->write - fifo->read) & (fifo->len - 1);
+	unsigned fifo_write = fifo->write;
+	rte_smp_rmb();
+	unsigned fifo_read = fifo->read;
+	return (fifo->len + fifo_write - fifo_read) & (fifo->len - 1);
 }
