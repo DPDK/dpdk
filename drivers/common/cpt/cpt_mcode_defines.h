@@ -12,6 +12,12 @@
  * This file defines macros and structures according to microcode spec
  *
  */
+/* SE opcodes */
+#define CPT_MAJOR_OP_FC		0x33
+#define CPT_MAJOR_OP_HASH	0x34
+#define CPT_MAJOR_OP_HMAC	0x35
+#define CPT_MAJOR_OP_ZUC_SNOW3G	0x37
+#define CPT_MAJOR_OP_KASUMI	0x38
 
 #define CPT_BYTE_16		16
 #define CPT_BYTE_24		24
@@ -53,6 +59,25 @@
 
 /* #define CPT_ALWAYS_USE_SG_MODE */
 #define CPT_ALWAYS_USE_SEPARATE_BUF
+
+/*
+ * Parameters for Flexi Crypto
+ * requests
+ */
+#define VALID_AAD_BUF 0x01
+#define VALID_MAC_BUF 0x02
+#define VALID_IV_BUF 0x04
+#define SINGLE_BUF_INPLACE 0x08
+#define SINGLE_BUF_HEADTAILROOM 0x10
+
+#define ENCR_IV_OFFSET(__d_offs) ((__d_offs >> 32) & 0xffff)
+#define ENCR_OFFSET(__d_offs) ((__d_offs >> 16) & 0xffff)
+#define AUTH_OFFSET(__d_offs) (__d_offs & 0xffff)
+#define ENCR_DLEN(__d_lens) (__d_lens >> 32)
+#define AUTH_DLEN(__d_lens) (__d_lens & 0xffffffff)
+
+/* FC offset_control at start of DPTR in bytes */
+#define OFF_CTRL_LEN  8 /**< bytes */
 
 typedef enum {
 	MD5_TYPE        = 1,
@@ -106,6 +131,48 @@ typedef enum {
 	AES_256_BIT = 0x3
 } mc_aes_type_t;
 
+typedef enum {
+	/* Microcode errors */
+	NO_ERR = 0x00,
+	ERR_OPCODE_UNSUPPORTED = 0x01,
+
+	/* SCATTER GATHER */
+	ERR_SCATTER_GATHER_WRITE_LENGTH = 0x02,
+	ERR_SCATTER_GATHER_LIST = 0x03,
+	ERR_SCATTER_GATHER_NOT_SUPPORTED = 0x04,
+
+	/* SE GC */
+	ERR_GC_LENGTH_INVALID = 0x41,
+	ERR_GC_RANDOM_LEN_INVALID = 0x42,
+	ERR_GC_DATA_LEN_INVALID = 0x43,
+	ERR_GC_DRBG_TYPE_INVALID = 0x44,
+	ERR_GC_CTX_LEN_INVALID = 0x45,
+	ERR_GC_CIPHER_UNSUPPORTED = 0x46,
+	ERR_GC_AUTH_UNSUPPORTED = 0x47,
+	ERR_GC_OFFSET_INVALID = 0x48,
+	ERR_GC_HASH_MODE_UNSUPPORTED = 0x49,
+	ERR_GC_DRBG_ENTROPY_LEN_INVALID = 0x4a,
+	ERR_GC_DRBG_ADDNL_LEN_INVALID = 0x4b,
+	ERR_GC_ICV_MISCOMPARE = 0x4c,
+	ERR_GC_DATA_UNALIGNED = 0x4d,
+
+	/* API Layer */
+	ERR_BAD_ALT_CCODE = 0xfd,
+	ERR_REQ_PENDING = 0xfe,
+	ERR_REQ_TIMEOUT = 0xff,
+
+	ERR_BAD_INPUT_LENGTH = (0x40000000 | 384),    /* 0x40000180 */
+	ERR_BAD_KEY_LENGTH,
+	ERR_BAD_KEY_HANDLE,
+	ERR_BAD_CONTEXT_HANDLE,
+	ERR_BAD_SCALAR_LENGTH,
+	ERR_BAD_DIGEST_LENGTH,
+	ERR_BAD_INPUT_ARG,
+	ERR_BAD_RECORD_PADDING,
+	ERR_NB_REQUEST_PENDING,
+	ERR_EIO,
+	ERR_ENODEV,
+} mc_error_code_t;
 
 typedef struct sglist_comp {
 	union {
@@ -231,6 +298,49 @@ struct cpt_ctx {
 	uint8_t  auth_key[64];
 };
 
+/* Buffer pointer */
+typedef struct buf_ptr {
+	void *vaddr;
+	phys_addr_t dma_addr;
+	uint32_t size;
+	uint32_t resv;
+} buf_ptr_t;
+
+/* IOV Pointer */
+typedef struct{
+	int buf_cnt;
+	buf_ptr_t bufs[0];
+} iov_ptr_t;
+
+typedef union opcode_info {
+	uint16_t flags;
+	struct {
+		uint8_t major;
+		uint8_t minor;
+	} s;
+} opcode_info_t;
+
+typedef struct fc_params {
+	/* 0th cache line */
+	union {
+		buf_ptr_t bufs[1];
+		struct {
+			iov_ptr_t *src_iov;
+			iov_ptr_t *dst_iov;
+		};
+	};
+	void *iv_buf;
+	void *auth_iv_buf;
+	buf_ptr_t meta_buf;
+	buf_ptr_t ctx_buf;
+	uint64_t rsvd2;
+
+	/* 1st cache line */
+	buf_ptr_t aad_buf;
+	buf_ptr_t mac_buf;
+
+} fc_params_t;
+
 typedef struct fc_params digest_params_t;
 
 /* Cipher Algorithms */
@@ -239,7 +349,14 @@ typedef mc_cipher_type_t cipher_type_t;
 /* Auth Algorithms */
 typedef mc_hash_type_t auth_type_t;
 
+/* Helper macros */
+
 #define CPT_P_ENC_CTRL(fctx)  fctx->enc.enc_ctrl.e
+
+#define SRC_IOV_SIZE \
+	(sizeof(iov_ptr_t) + (sizeof(buf_ptr_t) * CPT_MAX_SG_CNT))
+#define DST_IOV_SIZE \
+	(sizeof(iov_ptr_t) + (sizeof(buf_ptr_t) * CPT_MAX_SG_CNT))
 
 #define SESS_PRIV(__sess) \
 	(void *)((uint8_t *)__sess + sizeof(struct cpt_sess_misc))
