@@ -96,6 +96,9 @@ enum rte_table_action_type {
 
 	/** Crypto. */
 	RTE_TABLE_ACTION_SYM_CRYPTO,
+
+	/** Tag. */
+	RTE_TABLE_ACTION_TAG,
 };
 
 /** Common action configuration (per table action profile). */
@@ -768,6 +771,15 @@ struct rte_table_action_sym_crypto_params {
 
 		} aead;
 	};
+};
+
+/**
+ * RTE_TABLE_ACTION_TAG
+ */
+/** Tag action parameters (per table rule). */
+struct rte_table_action_tag_params {
+	/** Tag to be attached to the input packet. */
+	uint32_t tag;
 };
 
 /**

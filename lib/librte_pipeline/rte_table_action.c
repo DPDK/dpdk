@@ -2012,6 +2012,50 @@ pkt_work_sym_crypto(struct rte_mbuf *mbuf, struct sym_crypto_data *data,
 }
 
 /**
+ * RTE_TABLE_ACTION_TAG
+ */
+struct tag_data {
+	uint32_t tag;
+} __attribute__((__packed__));
+
+static int
+tag_apply(struct tag_data *data,
+	struct rte_table_action_tag_params *p)
+{
+	data->tag = p->tag;
+	return 0;
+}
+
+static __rte_always_inline void
+pkt_work_tag(struct rte_mbuf *mbuf,
+	struct tag_data *data)
+{
+	mbuf->hash.fdir.hi = data->tag;
+	mbuf->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
+}
+
+static __rte_always_inline void
+pkt4_work_tag(struct rte_mbuf *mbuf0,
+	struct rte_mbuf *mbuf1,
+	struct rte_mbuf *mbuf2,
+	struct rte_mbuf *mbuf3,
+	struct tag_data *data0,
+	struct tag_data *data1,
+	struct tag_data *data2,
+	struct tag_data *data3)
+{
+	mbuf0->hash.fdir.hi = data0->tag;
+	mbuf1->hash.fdir.hi = data1->tag;
+	mbuf2->hash.fdir.hi = data2->tag;
+	mbuf3->hash.fdir.hi = data3->tag;
+
+	mbuf0->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
+	mbuf1->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
+	mbuf2->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
+	mbuf3->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
+}
+
+/**
  * Action profile
  */
 static int
@@ -2028,6 +2072,7 @@ action_valid(enum rte_table_action_type action)
 	case RTE_TABLE_ACTION_STATS:
 	case RTE_TABLE_ACTION_TIME:
 	case RTE_TABLE_ACTION_SYM_CRYPTO:
+	case RTE_TABLE_ACTION_TAG:
 		return 1;
 	default:
 		return 0;
@@ -2161,6 +2206,9 @@ action_data_size(enum rte_table_action_type action,
 
 	case RTE_TABLE_ACTION_SYM_CRYPTO:
 		return (sizeof(struct sym_crypto_data));
+
+	case RTE_TABLE_ACTION_TAG:
+		return sizeof(struct tag_data);
 
 	default:
 		return 0;
@@ -2418,6 +2466,10 @@ rte_table_action_apply(struct rte_table_action *action,
 		return sym_crypto_apply(action_data,
 				&action->cfg.sym_crypto,
 				action_params);
+
+	case RTE_TABLE_ACTION_TAG:
+		return tag_apply(action_data,
+			action_params);
 
 	default:
 		return -EINVAL;
@@ -2803,6 +2855,14 @@ pkt_work(struct rte_mbuf *mbuf,
 				ip_offset);
 	}
 
+	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_TAG)) {
+		void *data = action_data_get(table_entry,
+			action,
+			RTE_TABLE_ACTION_TAG);
+
+		pkt_work_tag(mbuf, data);
+	}
+
 	return drop_mask;
 }
 
@@ -3109,6 +3169,24 @@ pkt4_work(struct rte_mbuf **mbufs,
 				ip_offset);
 		drop_mask3 |= pkt_work_sym_crypto(mbuf3, data3, &cfg->sym_crypto,
 				ip_offset);
+	}
+
+	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_TAG)) {
+		void *data0 = action_data_get(table_entry0,
+			action,
+			RTE_TABLE_ACTION_TAG);
+		void *data1 = action_data_get(table_entry1,
+			action,
+			RTE_TABLE_ACTION_TAG);
+		void *data2 = action_data_get(table_entry2,
+			action,
+			RTE_TABLE_ACTION_TAG);
+		void *data3 = action_data_get(table_entry3,
+			action,
+			RTE_TABLE_ACTION_TAG);
+
+		pkt4_work_tag(mbuf0, mbuf1, mbuf2, mbuf3,
+			data0, data1, data2, data3);
 	}
 
 	return drop_mask0 |
