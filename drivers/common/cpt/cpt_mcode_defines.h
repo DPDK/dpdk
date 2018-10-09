@@ -18,6 +18,7 @@
 #define CPT_MAJOR_OP_HMAC	0x35
 #define CPT_MAJOR_OP_ZUC_SNOW3G	0x37
 #define CPT_MAJOR_OP_KASUMI	0x38
+#define CPT_MAJOR_OP_MISC	0x01
 
 #define CPT_BYTE_16		16
 #define CPT_BYTE_24		24
@@ -341,6 +342,12 @@ typedef struct fc_params {
 
 } fc_params_t;
 
+/*
+ * Parameters for digest
+ * generate requests
+ * Only src_iov, op, ctx_buf, mac_buf, prep_req
+ * meta_buf, auth_data_len are used for digest gen.
+ */
 typedef struct fc_params digest_params_t;
 
 /* Cipher Algorithms */

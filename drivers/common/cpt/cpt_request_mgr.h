@@ -74,6 +74,8 @@ cpt_pmd_crypto_operation(struct cpt_instance *instance,
 
 	if (likely(cpt_op & CPT_OP_CIPHER_MASK))
 		prep_req = fill_fc_params(op, sess, &mdata, &ret);
+	else
+		prep_req = fill_digest_params(op, sess, &mdata, &ret);
 
 	if (unlikely(!prep_req)) {
 		CPT_LOG_DP_ERR("prep cryto req : op %p, cpt_op 0x%x "
