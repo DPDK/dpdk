@@ -142,4 +142,7 @@ otx_cpt_poll_misc(struct cpt_vf *cptvf);
 int
 otx_cpt_hw_init(struct cpt_vf *cptvf, void *pdev, void *reg_base, char *name);
 
+int
+otx_cpt_deinit_device(void *dev);
+
 #endif /* _OTX_CRYPTODEV_HW_ACCESS_H_ */

@@ -5,6 +5,7 @@ if host_machine.system() != 'linux'
 endif
 
 deps += ['bus_pci']
+deps += ['common_cpt']
 name = 'octeontx_crypto'
 
 sources = files('otx_cryptodev.c',
@@ -12,5 +13,5 @@ sources = files('otx_cryptodev.c',
 		'otx_cryptodev_hw_access.c',
 		'otx_cryptodev_ops.c')
 
-cflags += '-DCPT_MODEL=CRYPTO_OCTEONTX'
 includes += include_directories('../../common/cpt')
+cflags += '-DCPT_MODEL=CRYPTO_OCTEONTX'

@@ -236,3 +236,14 @@ otx_cpt_hw_init(struct cpt_vf *cptvf, void *pdev, void *reg_base, char *name)
 
 	return 0;
 }
+
+int
+otx_cpt_deinit_device(void *dev)
+{
+	struct cpt_vf *cptvf = (struct cpt_vf *)dev;
+
+	/* Do misc work one last time */
+	otx_cpt_poll_misc(cptvf);
+
+	return 0;
+}

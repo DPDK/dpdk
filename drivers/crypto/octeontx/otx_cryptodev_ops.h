@@ -5,6 +5,9 @@
 #ifndef _OTX_CRYPTODEV_OPS_H_
 #define _OTX_CRYPTODEV_OPS_H_
 
+void
+cleanup_global_resources(void);
+
 int
 otx_cpt_dev_create(struct rte_cryptodev *c_dev);
 

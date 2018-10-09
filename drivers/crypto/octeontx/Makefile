@@ -16,6 +16,7 @@ CFLAGS += $(WERROR_FLAGS)
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_cryptodev
 LDLIBS += -lrte_pci -lrte_bus_pci
+LDLIBS += -lrte_common_cpt
 
 VPATH += $(RTE_SDK)/drivers/crypto/octeontx
 
