@@ -66,6 +66,8 @@ New Features
 
   * Modify source and destination IP addresses in the outermost IPv4/IPv6
     headers.
+  * Modify source and destination port numbers in the outermost TCP/UDP
+    headers.
 
 * **Add support to offload more flow match and actions for CXGBE PMD**
 

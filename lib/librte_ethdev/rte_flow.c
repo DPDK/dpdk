@@ -131,6 +131,10 @@ static const struct rte_flow_desc_data rte_flow_desc_action[] = {
 		       sizeof(struct rte_flow_action_set_ipv6)),
 	MK_FLOW_ACTION(SET_IPV6_DST,
 		       sizeof(struct rte_flow_action_set_ipv6)),
+	MK_FLOW_ACTION(SET_TP_SRC,
+		       sizeof(struct rte_flow_action_set_tp)),
+	MK_FLOW_ACTION(SET_TP_DST,
+		       sizeof(struct rte_flow_action_set_tp)),
 };
 
 static int

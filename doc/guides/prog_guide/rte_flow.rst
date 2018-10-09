@@ -2148,6 +2148,42 @@ Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
    | ``ipv6_addr`` | new IPv6 destination address |
    +---------------+------------------------------+
 
+Action: ``SET_TP_SRC``
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Set a new source port number in the outermost TCP/UDP header.
+
+It must be used with a valid RTE_FLOW_ITEM_TYPE_TCP or RTE_FLOW_ITEM_TYPE_UDP
+flow pattern item. Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
+
+.. _table_rte_flow_action_set_tp_src:
+
+.. table:: SET_TP_SRC
+
+   +----------+-------------------------+
+   | Field    | Value                   |
+   +==========+=========================+
+   | ``port`` | new TCP/UDP source port |
+   +---------------+--------------------+
+
+Action: ``SET_TP_DST``
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Set a new destination port number in the outermost TCP/UDP header.
+
+It must be used with a valid RTE_FLOW_ITEM_TYPE_TCP or RTE_FLOW_ITEM_TYPE_UDP
+flow pattern item. Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
+
+.. _table_rte_flow_action_set_tp_dst:
+
+.. table:: SET_TP_DST
+
+   +----------+------------------------------+
+   | Field    | Value                        |
+   +==========+==============================+
+   | ``port`` | new TCP/UDP destination port |
+   +---------------+-------------------------+
+
 Negative types
 ~~~~~~~~~~~~~~
 

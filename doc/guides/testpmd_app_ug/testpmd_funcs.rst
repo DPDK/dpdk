@@ -3722,6 +3722,16 @@ This section lists supported actions and their attributes, if any.
 
   - ``ipv6_addr``: New IPv6 destination address.
 
+- ``of_set_tp_src``: Set a new source port number in the outermost TCP/UDP
+  header.
+
+  - ``port``: New TCP/UDP source port number.
+
+- ``of_set_tp_dst``: Set a new destination port number in the outermost TCP/UDP
+  header.
+
+  - ``port``: New TCP/UDP destination port number.
+
 Destroying flow rules
 ~~~~~~~~~~~~~~~~~~~~~
 
