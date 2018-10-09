@@ -178,6 +178,25 @@ extern "C" {
  */
 #define PKT_RX_QINQ          (1ULL << 20)
 
+/**
+ * Mask of bits used to determine the status of outer RX L4 checksum.
+ * - PKT_RX_OUTER_L4_CKSUM_UNKNOWN: no info about the outer RX L4 checksum
+ * - PKT_RX_OUTER_L4_CKSUM_BAD: the outer L4 checksum in the packet is wrong
+ * - PKT_RX_OUTER_L4_CKSUM_GOOD: the outer L4 checksum in the packet is valid
+ * - PKT_RX_OUTER_L4_CKSUM_INVALID: invalid outer L4 checksum state.
+ *
+ * The detection of PKT_RX_OUTER_L4_CKSUM_GOOD shall be based on the given
+ * HW capability, At minimum, the PMD should support
+ * PKT_RX_OUTER_L4_CKSUM_UNKNOWN and PKT_RX_OUTER_L4_CKSUM_BAD states
+ * if the DEV_RX_OFFLOAD_OUTER_UDP_CKSUM offload is available.
+ */
+#define PKT_RX_OUTER_L4_CKSUM_MASK	((1ULL << 21) | (1ULL << 22))
+
+#define PKT_RX_OUTER_L4_CKSUM_UNKNOWN	0
+#define PKT_RX_OUTER_L4_CKSUM_BAD	(1ULL << 21)
+#define PKT_RX_OUTER_L4_CKSUM_GOOD	(1ULL << 22)
+#define PKT_RX_OUTER_L4_CKSUM_INVALID	((1ULL << 21) | (1ULL << 22))
+
 /* add new RX flags here */
 
 /* add new TX flags here */

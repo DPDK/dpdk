@@ -594,6 +594,15 @@ port_offload_cap_display(portid_t port_id)
 			printf("off\n");
 	}
 
+	if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_OUTER_UDP_CKSUM) {
+		printf("RX Outer UDP checksum:         ");
+		if (ports[port_id].dev_conf.rxmode.offloads &
+		    DEV_RX_OFFLOAD_OUTER_UDP_CKSUM)
+			printf("on\n");
+		else
+			printf("off\n");
+	}
+
 	if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_TCP_LRO) {
 		printf("Large receive offload:         ");
 		if (ports[port_id].dev_conf.rxmode.offloads &
