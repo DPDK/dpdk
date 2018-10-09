@@ -394,12 +394,13 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Disable hardware insertion of a VLAN header in"
 			" packets sent on a port.\n\n"
 
-			"csum set (ip|udp|tcp|sctp|outer-ip) (hw|sw) (port_id)\n"
+			"csum set (ip|udp|tcp|sctp|outer-ip|outer-udp) (hw|sw) (port_id)\n"
 			"    Select hardware or software calculation of the"
 			" checksum when transmitting a packet using the"
 			" csum forward engine.\n"
 			"    ip|udp|tcp|sctp always concern the inner layer.\n"
 			"    outer-ip concerns the outer IP layer in"
+			"    outer-udp concerns the outer UDP layer in"
 			" case the packet is recognized as a tunnel packet by"
 			" the forward engine (vxlan, gre and ipip are supported)\n"
 			"    Please check the NIC datasheet for HW limits.\n\n"
@@ -4159,6 +4160,8 @@ csum_show(int port_id)
 		(tx_offloads & DEV_TX_OFFLOAD_SCTP_CKSUM) ? "hw" : "sw");
 	printf("Outer-Ip checksum offload is %s\n",
 		(tx_offloads & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) ? "hw" : "sw");
+	printf("Outer-Udp checksum offload is %s\n",
+		(tx_offloads & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM) ? "hw" : "sw");
 
 	/* display warnings if configuration is not supported by the NIC */
 	rte_eth_dev_info_get(port_id, &dev_info);
@@ -4185,6 +4188,12 @@ csum_show(int port_id)
 	if ((tx_offloads & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) &&
 		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) == 0) {
 		printf("Warning: hardware outer IP checksum enabled but not "
+			"supported by port %d\n", port_id);
+	}
+	if ((tx_offloads & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM) &&
+		(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM)
+			== 0) {
+		printf("Warning: hardware outer UDP checksum enabled but not "
 			"supported by port %d\n", port_id);
 	}
 }
@@ -4255,6 +4264,15 @@ cmd_csum_parsed(void *parsed_result,
 				printf("Outer IP checksum offload is not "
 				       "supported by port %u\n", res->port_id);
 			}
+		} else if (!strcmp(res->proto, "outer-udp")) {
+			if (hw == 0 || (dev_info.tx_offload_capa &
+					DEV_TX_OFFLOAD_OUTER_UDP_CKSUM)) {
+				csum_offloads |=
+						DEV_TX_OFFLOAD_OUTER_UDP_CKSUM;
+			} else {
+				printf("Outer UDP checksum offload is not "
+				       "supported by port %u\n", res->port_id);
+			}
 		}
 
 		if (hw) {
@@ -4278,7 +4296,7 @@ cmdline_parse_token_string_t cmd_csum_mode =
 				mode, "set");
 cmdline_parse_token_string_t cmd_csum_proto =
 	TOKEN_STRING_INITIALIZER(struct cmd_csum_result,
-				proto, "ip#tcp#udp#sctp#outer-ip");
+				proto, "ip#tcp#udp#sctp#outer-ip#outer-udp");
 cmdline_parse_token_string_t cmd_csum_hwsw =
 	TOKEN_STRING_INITIALIZER(struct cmd_csum_result,
 				hwsw, "hw#sw");
@@ -4289,7 +4307,7 @@ cmdline_parse_token_num_t cmd_csum_portid =
 cmdline_parse_inst_t cmd_csum_set = {
 	.f = cmd_csum_parsed,
 	.data = NULL,
-	.help_str = "csum set ip|tcp|udp|sctp|outer-ip hw|sw <port_id>: "
+	.help_str = "csum set ip|tcp|udp|sctp|outer-ip|outer-udp hw|sw <port_id>: "
 		"Enable/Disable hardware calculation of L3/L4 checksum when "
 		"using csum forward engine",
 	.tokens = {

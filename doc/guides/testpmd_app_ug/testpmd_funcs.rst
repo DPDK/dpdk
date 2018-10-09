@@ -857,7 +857,7 @@ csum set
 Select hardware or software calculation of the checksum when
 transmitting a packet using the ``csum`` forwarding engine::
 
-   testpmd> csum set (ip|udp|tcp|sctp|outer-ip) (hw|sw) (port_id)
+   testpmd> csum set (ip|udp|tcp|sctp|outer-ip|outer-udp) (hw|sw) (port_id)
 
 Where:
 
@@ -865,6 +865,10 @@ Where:
 
 * ``outer-ip`` relates to the outer IP layer (only for IPv4) in the case where the packet is recognized
   as a tunnel packet by the forwarding engine (vxlan, gre and ipip are
+  supported). See also the ``csum parse-tunnel`` command.
+
+* ``outer-udp`` relates to the outer UDP layer in the case where the packet is recognized
+  as a tunnel packet by the forwarding engine (vxlan, vxlan-gpe are
   supported). See also the ``csum parse-tunnel`` command.
 
 .. note::
@@ -940,7 +944,7 @@ Consider a packet in packet like the following::
 
 * If parse-tunnel is enabled, the ``ip|udp|tcp|sctp`` parameters of ``csum set``
   command relate to the inner headers (here ``ipv4_in`` and ``tcp_in``), and the
-  ``outer-ip parameter`` relates to the outer headers (here ``ipv4_out``).
+  ``outer-ip|outer-udp`` parameter relates to the outer headers (here ``ipv4_out`` and ``udp_out``).
 
 * If parse-tunnel is disabled, the ``ip|udp|tcp|sctp`` parameters of ``csum  set``
    command relate to the outer headers, here ``ipv4_out`` and ``udp_out``.
