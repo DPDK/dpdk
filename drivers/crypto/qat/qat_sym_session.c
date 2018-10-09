@@ -498,6 +498,7 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 	struct qat_sym_dev_private *internals = dev->data->dev_private;
 	uint8_t *key_data = auth_xform->key.data;
 	uint8_t key_length = auth_xform->key.length;
+	session->aes_cmac = 0;
 
 	switch (auth_xform->algo) {
 	case RTE_CRYPTO_AUTH_SHA1_HMAC:
@@ -517,6 +518,10 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 		break;
 	case RTE_CRYPTO_AUTH_AES_XCBC_MAC:
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC;
+		break;
+	case RTE_CRYPTO_AUTH_AES_CMAC:
+		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC;
+		session->aes_cmac = 1;
 		break;
 	case RTE_CRYPTO_AUTH_AES_GMAC:
 		if (qat_sym_validate_aes_key(auth_xform->key.length,
@@ -555,7 +560,6 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_AUTH_SHA224:
 	case RTE_CRYPTO_AUTH_SHA384:
 	case RTE_CRYPTO_AUTH_MD5:
-	case RTE_CRYPTO_AUTH_AES_CMAC:
 	case RTE_CRYPTO_AUTH_AES_CBC_MAC:
 		QAT_LOG(ERR, "Crypto: Unsupported hash alg %u",
 				auth_xform->algo);
@@ -817,6 +821,8 @@ static int qat_hash_get_digest_size(enum icp_qat_hw_auth_algo qat_hash_alg)
 		return ICP_QAT_HW_SHA512_STATE1_SZ;
 	case ICP_QAT_HW_AUTH_ALGO_MD5:
 		return ICP_QAT_HW_MD5_STATE1_SZ;
+	case ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC:
+		return ICP_QAT_HW_AES_XCBC_MAC_STATE1_SZ;
 	case ICP_QAT_HW_AUTH_ALGO_DELIMITER:
 		/* return maximum digest size in this case */
 		return ICP_QAT_HW_SHA512_STATE1_SZ;
@@ -843,6 +849,8 @@ static int qat_hash_get_block_size(enum icp_qat_hw_auth_algo qat_hash_alg)
 		return SHA512_CBLOCK;
 	case ICP_QAT_HW_AUTH_ALGO_GALOIS_128:
 		return 16;
+	case ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC:
+		return ICP_QAT_HW_AES_BLK_SZ;
 	case ICP_QAT_HW_AUTH_ALGO_MD5:
 		return MD5_CBLOCK;
 	case ICP_QAT_HW_AUTH_ALGO_DELIMITER:
@@ -991,11 +999,28 @@ static int partial_hash_compute(enum icp_qat_hw_auth_algo hash_alg,
 #define HMAC_OPAD_VALUE	0x5c
 #define HASH_XCBC_PRECOMP_KEY_NUM 3
 
+static const uint8_t AES_CMAC_SEED[ICP_QAT_HW_AES_128_KEY_SZ];
+
+static void aes_cmac_key_derive(uint8_t *base, uint8_t *derived)
+{
+	int i;
+
+	derived[0] = base[0] << 1;
+	for (i = 1; i < ICP_QAT_HW_AES_BLK_SZ ; i++) {
+		derived[i] = base[i] << 1;
+		derived[i - 1] |= base[i] >> 7;
+	}
+
+	if (base[0] & 0x80)
+		derived[ICP_QAT_HW_AES_BLK_SZ - 1] ^= QAT_AES_CMAC_CONST_RB;
+}
+
 static int qat_sym_do_precomputes(enum icp_qat_hw_auth_algo hash_alg,
 				const uint8_t *auth_key,
 				uint16_t auth_keylen,
 				uint8_t *p_state_buf,
-				uint16_t *p_state_len)
+				uint16_t *p_state_len,
+				uint8_t aes_cmac)
 {
 	int block_size;
 	uint8_t ipad[qat_hash_get_block_size(ICP_QAT_HW_AUTH_ALGO_DELIMITER)];
@@ -1003,47 +1028,91 @@ static int qat_sym_do_precomputes(enum icp_qat_hw_auth_algo hash_alg,
 	int i;
 
 	if (hash_alg == ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC) {
-		static uint8_t qat_aes_xcbc_key_seed[
-					ICP_QAT_HW_AES_XCBC_MAC_STATE2_SZ] = {
-			0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
-			0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
-			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
-			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
-			0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
-			0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
-		};
 
-		uint8_t *in = NULL;
-		uint8_t *out = p_state_buf;
-		int x;
-		AES_KEY enc_key;
+		/* CMAC */
+		if (aes_cmac) {
+			AES_KEY enc_key;
+			uint8_t *in = NULL;
+			uint8_t k0[ICP_QAT_HW_AES_128_KEY_SZ];
+			uint8_t *k1, *k2;
 
-		in = rte_zmalloc("working mem for key",
-				ICP_QAT_HW_AES_XCBC_MAC_STATE2_SZ, 16);
-		if (in == NULL) {
-			QAT_LOG(ERR, "Failed to alloc memory");
-			return -ENOMEM;
-		}
+			auth_keylen = ICP_QAT_HW_AES_128_KEY_SZ;
 
-		rte_memcpy(in, qat_aes_xcbc_key_seed,
-				ICP_QAT_HW_AES_XCBC_MAC_STATE2_SZ);
-		for (x = 0; x < HASH_XCBC_PRECOMP_KEY_NUM; x++) {
+			in = rte_zmalloc("AES CMAC K1",
+					 ICP_QAT_HW_AES_128_KEY_SZ, 16);
+
+			if (in == NULL) {
+				QAT_LOG(ERR, "Failed to alloc memory");
+				return -ENOMEM;
+			}
+
+			rte_memcpy(in, AES_CMAC_SEED,
+				   ICP_QAT_HW_AES_128_KEY_SZ);
+			rte_memcpy(p_state_buf, auth_key, auth_keylen);
+
 			if (AES_set_encrypt_key(auth_key, auth_keylen << 3,
 				&enc_key) != 0) {
-				rte_free(in -
-					(x * ICP_QAT_HW_AES_XCBC_MAC_KEY_SZ));
-				memset(out -
-					(x * ICP_QAT_HW_AES_XCBC_MAC_KEY_SZ),
-					0, ICP_QAT_HW_AES_XCBC_MAC_STATE2_SZ);
+				rte_free(in);
 				return -EFAULT;
 			}
-			AES_encrypt(in, out, &enc_key);
-			in += ICP_QAT_HW_AES_XCBC_MAC_KEY_SZ;
-			out += ICP_QAT_HW_AES_XCBC_MAC_KEY_SZ;
+
+			AES_encrypt(in, k0, &enc_key);
+
+			k1 = p_state_buf + ICP_QAT_HW_AES_XCBC_MAC_STATE1_SZ;
+			k2 = k1 + ICP_QAT_HW_AES_XCBC_MAC_STATE1_SZ;
+
+			aes_cmac_key_derive(k0, k1);
+			aes_cmac_key_derive(k1, k2);
+
+			memset(k0, 0, ICP_QAT_HW_AES_128_KEY_SZ);
+			*p_state_len = ICP_QAT_HW_AES_XCBC_MAC_STATE2_SZ;
+			rte_free(in);
+			return 0;
+		} else {
+			static uint8_t qat_aes_xcbc_key_seed[
+					ICP_QAT_HW_AES_XCBC_MAC_STATE2_SZ] = {
+				0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+				0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+				0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+				0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+				0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
+				0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
+			};
+
+			uint8_t *in = NULL;
+			uint8_t *out = p_state_buf;
+			int x;
+			AES_KEY enc_key;
+
+			in = rte_zmalloc("working mem for key",
+					ICP_QAT_HW_AES_XCBC_MAC_STATE2_SZ, 16);
+			if (in == NULL) {
+				QAT_LOG(ERR, "Failed to alloc memory");
+				return -ENOMEM;
+			}
+
+			rte_memcpy(in, qat_aes_xcbc_key_seed,
+					ICP_QAT_HW_AES_XCBC_MAC_STATE2_SZ);
+			for (x = 0; x < HASH_XCBC_PRECOMP_KEY_NUM; x++) {
+				if (AES_set_encrypt_key(auth_key,
+							auth_keylen << 3,
+							&enc_key) != 0) {
+					rte_free(in -
+					  (x * ICP_QAT_HW_AES_XCBC_MAC_KEY_SZ));
+					memset(out -
+					   (x * ICP_QAT_HW_AES_XCBC_MAC_KEY_SZ),
+					  0, ICP_QAT_HW_AES_XCBC_MAC_STATE2_SZ);
+					return -EFAULT;
+				}
+				AES_encrypt(in, out, &enc_key);
+				in += ICP_QAT_HW_AES_XCBC_MAC_KEY_SZ;
+				out += ICP_QAT_HW_AES_XCBC_MAC_KEY_SZ;
+			}
+			*p_state_len = ICP_QAT_HW_AES_XCBC_MAC_STATE2_SZ;
+			rte_free(in - x*ICP_QAT_HW_AES_XCBC_MAC_KEY_SZ);
+			return 0;
 		}
-		*p_state_len = ICP_QAT_HW_AES_XCBC_MAC_STATE2_SZ;
-		rte_free(in - x*ICP_QAT_HW_AES_XCBC_MAC_KEY_SZ);
-		return 0;
+
 	} else if ((hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_128) ||
 		(hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_64)) {
 		uint8_t *in = NULL;
@@ -1417,7 +1486,9 @@ int qat_sym_session_aead_create_cd_auth(struct qat_sym_session *cdesc,
 
 	if (cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2
 		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_KASUMI_F9
-		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_ZUC_3G_128_EIA3)
+		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_ZUC_3G_128_EIA3
+		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC
+			)
 		hash->auth_counter.counter = 0;
 	else
 		hash->auth_counter.counter = rte_bswap32(
@@ -1430,40 +1501,45 @@ int qat_sym_session_aead_create_cd_auth(struct qat_sym_session *cdesc,
 	 */
 	switch (cdesc->qat_hash_alg) {
 	case ICP_QAT_HW_AUTH_ALGO_SHA1:
-		if (qat_sym_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA1,
-			authkey, authkeylen, cdesc->cd_cur_ptr,	&state1_size)) {
+		if (qat_sym_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA1, authkey,
+			authkeylen, cdesc->cd_cur_ptr, &state1_size,
+			cdesc->aes_cmac)) {
 			QAT_LOG(ERR, "(SHA)precompute failed");
 			return -EFAULT;
 		}
 		state2_size = RTE_ALIGN_CEIL(ICP_QAT_HW_SHA1_STATE2_SZ, 8);
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_SHA224:
-		if (qat_sym_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA224,
-			authkey, authkeylen, cdesc->cd_cur_ptr, &state1_size)) {
+		if (qat_sym_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA224, authkey,
+			authkeylen, cdesc->cd_cur_ptr, &state1_size,
+			cdesc->aes_cmac)) {
 			QAT_LOG(ERR, "(SHA)precompute failed");
 			return -EFAULT;
 		}
 		state2_size = ICP_QAT_HW_SHA224_STATE2_SZ;
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_SHA256:
-		if (qat_sym_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA256,
-			authkey, authkeylen, cdesc->cd_cur_ptr,	&state1_size)) {
+		if (qat_sym_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA256, authkey,
+			authkeylen, cdesc->cd_cur_ptr,	&state1_size,
+			cdesc->aes_cmac)) {
 			QAT_LOG(ERR, "(SHA)precompute failed");
 			return -EFAULT;
 		}
 		state2_size = ICP_QAT_HW_SHA256_STATE2_SZ;
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_SHA384:
-		if (qat_sym_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA384,
-			authkey, authkeylen, cdesc->cd_cur_ptr, &state1_size)) {
+		if (qat_sym_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA384, authkey,
+			authkeylen, cdesc->cd_cur_ptr, &state1_size,
+			cdesc->aes_cmac)) {
 			QAT_LOG(ERR, "(SHA)precompute failed");
 			return -EFAULT;
 		}
 		state2_size = ICP_QAT_HW_SHA384_STATE2_SZ;
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_SHA512:
-		if (qat_sym_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA512,
-			authkey, authkeylen, cdesc->cd_cur_ptr,	&state1_size)) {
+		if (qat_sym_do_precomputes(ICP_QAT_HW_AUTH_ALGO_SHA512, authkey,
+			authkeylen, cdesc->cd_cur_ptr,	&state1_size,
+			cdesc->aes_cmac)) {
 			QAT_LOG(ERR, "(SHA)precompute failed");
 			return -EFAULT;
 		}
@@ -1471,10 +1547,16 @@ int qat_sym_session_aead_create_cd_auth(struct qat_sym_session *cdesc,
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC:
 		state1_size = ICP_QAT_HW_AES_XCBC_MAC_STATE1_SZ;
+
+		if (cdesc->aes_cmac)
+			memset(cdesc->cd_cur_ptr, 0, state1_size);
 		if (qat_sym_do_precomputes(ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC,
 			authkey, authkeylen, cdesc->cd_cur_ptr + state1_size,
-			&state2_size)) {
-			QAT_LOG(ERR, "(XCBC)precompute failed");
+			&state2_size, cdesc->aes_cmac)) {
+			cdesc->aes_cmac ? QAT_LOG(ERR,
+						  "(CMAC)precompute failed")
+					: QAT_LOG(ERR,
+						  "(XCBC)precompute failed");
 			return -EFAULT;
 		}
 		break;
@@ -1482,9 +1564,9 @@ int qat_sym_session_aead_create_cd_auth(struct qat_sym_session *cdesc,
 	case ICP_QAT_HW_AUTH_ALGO_GALOIS_64:
 		qat_proto_flag = QAT_CRYPTO_PROTO_FLAG_GCM;
 		state1_size = ICP_QAT_HW_GALOIS_128_STATE1_SZ;
-		if (qat_sym_do_precomputes(cdesc->qat_hash_alg,
-			authkey, authkeylen, cdesc->cd_cur_ptr + state1_size,
-			&state2_size)) {
+		if (qat_sym_do_precomputes(cdesc->qat_hash_alg, authkey,
+			authkeylen, cdesc->cd_cur_ptr + state1_size,
+			&state2_size, cdesc->aes_cmac)) {
 			QAT_LOG(ERR, "(GCM)precompute failed");
 			return -EFAULT;
 		}
@@ -1542,9 +1624,9 @@ int qat_sym_session_aead_create_cd_auth(struct qat_sym_session *cdesc,
 
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_MD5:
-		if (qat_sym_do_precomputes(ICP_QAT_HW_AUTH_ALGO_MD5,
-			authkey, authkeylen, cdesc->cd_cur_ptr,
-			&state1_size)) {
+		if (qat_sym_do_precomputes(ICP_QAT_HW_AUTH_ALGO_MD5, authkey,
+			authkeylen, cdesc->cd_cur_ptr, &state1_size,
+			cdesc->aes_cmac)) {
 			QAT_LOG(ERR, "(MD5)precompute failed");
 			return -EFAULT;
 		}

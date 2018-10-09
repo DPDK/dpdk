@@ -139,6 +139,12 @@ New Features
   A new devarg ``phy_mac`` was introduced to allow users to use physical
   MAC address of the selected PCAP interface.
 
+* **Updated the QAT PMD.**
+
+  The QAT PMD was updated with additional support for:
+
+  * AES-CMAC algorithm.
+
 * **Added Event Ethernet Tx Adapter.**
 
   Added event ethernet Tx adapter library that  provides configuration and

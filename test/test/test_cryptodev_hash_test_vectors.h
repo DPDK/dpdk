@@ -660,25 +660,29 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.test_descr = "CMAC Digest 12B",
 		.test_data = &cmac_test_vector_12,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
 	},
 	{
 		.test_descr = "CMAC Digest Verify 12B",
 		.test_data = &cmac_test_vector_12,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
 	},
 	{
 		.test_descr = "CMAC Digest 16B",
 		.test_data = &cmac_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
 	},
 	{
 		.test_descr = "CMAC Digest Verify 16B",
 		.test_data = &cmac_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
 	}
 };
 

@@ -62,6 +62,7 @@ Hash algorithms:
 * ``RTE_CRYPTO_AUTH_KASUMI_F9``
 * ``RTE_CRYPTO_AUTH_AES_GMAC``
 * ``RTE_CRYPTO_AUTH_ZUC_EIA3``
+* ``RTE_CRYPTO_AUTH_AES_CMAC``
 
 Supported AEAD algorithms:
 

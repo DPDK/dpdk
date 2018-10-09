@@ -154,6 +154,26 @@
 			}, }						\
 		}, }							\
 	},								\
+	{	/* AES CMAC */						\
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,			\
+		{.sym = {						\
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,	\
+			{.auth = {					\
+				.algo = RTE_CRYPTO_AUTH_AES_CMAC,	\
+				.block_size = 16,			\
+				.key_size = {				\
+					.min = 16,			\
+					.max = 16,			\
+					.increment = 0			\
+				},					\
+				.digest_size = {			\
+					.min = 12,			\
+					.max = 16,			\
+					.increment = 4			\
+				}					\
+			}, }						\
+		}, }							\
+	},								\
 	{	/* AES CCM */						\
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,			\
 		{.sym = {						\

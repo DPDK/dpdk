@@ -36,6 +36,8 @@
 					ICP_QAT_HW_CIPHER_KEY_CONVERT, \
 					ICP_QAT_HW_CIPHER_DECRYPT)
 
+#define QAT_AES_CMAC_CONST_RB 0x87
+
 enum qat_sym_proto_flag {
 	QAT_CRYPTO_PROTO_FLAG_NONE = 0,
 	QAT_CRYPTO_PROTO_FLAG_CCM = 1,
@@ -75,6 +77,7 @@ struct qat_sym_session {
 	uint16_t digest_length;
 	rte_spinlock_t lock;	/* protects this struct */
 	enum qat_device_gen min_qat_dev_gen;
+	uint8_t aes_cmac;
 };
 
 int
