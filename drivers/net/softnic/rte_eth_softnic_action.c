@@ -364,6 +364,17 @@ softnic_table_action_profile_create(struct pmd_internals *p,
 		}
 	}
 
+	if (params->action_mask & (1LLU << RTE_TABLE_ACTION_TAG)) {
+		status = rte_table_action_profile_action_register(ap,
+			RTE_TABLE_ACTION_TAG,
+			NULL);
+
+		if (status) {
+			rte_table_action_profile_free(ap);
+			return NULL;
+		}
+	}
+
 	status = rte_table_action_profile_freeze(ap);
 	if (status) {
 		rte_table_action_profile_free(ap);
