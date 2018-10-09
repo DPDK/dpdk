@@ -797,7 +797,7 @@ txa_service_queue_del(uint8_t id,
 
 	if (tx_queue_id == -1) {
 		uint16_t i;
-		int ret;
+		int ret = -1;
 
 		for (i = 0; i < dev->data->nb_tx_queues; i++) {
 			ret = txa_service_queue_del(id, dev, i);
