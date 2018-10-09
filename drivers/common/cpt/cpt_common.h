@@ -18,6 +18,24 @@
 #define AE_TYPE 1
 #define SE_TYPE 2
 
+#ifndef ROUNDUP4
+#define ROUNDUP4(val)	(((val) + 3) & 0xfffffffc)
+#endif
+
+#ifndef ROUNDUP8
+#define ROUNDUP8(val)	(((val) + 7) & 0xfffffff8)
+#endif
+
+#ifndef ROUNDUP16
+#define ROUNDUP16(val)	(((val) + 15) & 0xfffffff0)
+#endif
+
+#ifndef __hot
+#define __hot __attribute__((hot))
+#endif
+
+#define MOD_INC(i, l)   ((i) == (l - 1) ? (i) = 0 : (i)++)
+
 struct cptvf_meta_info {
 	void *cptvf_meta_pool;
 	int cptvf_op_mlen;
@@ -42,6 +60,24 @@ struct pending_queue {
 	struct rid *rid_queue;
 	/** Pending requests count */
 	uint64_t pending_count;
+};
+
+struct cpt_request_info {
+	/** Data path fields */
+	uint64_t comp_baddr;
+	volatile uint64_t *completion_addr;
+	volatile uint64_t *alternate_caddr;
+	void *op;
+	struct {
+		uint64_t ei0;
+		uint64_t ei1;
+		uint64_t ei2;
+		uint64_t ei3;
+	} ist;
+
+	/** Control path fields */
+	uint64_t time_out;
+	uint8_t extra_time;
 };
 
 #endif /* _CPT_COMMON_H_ */

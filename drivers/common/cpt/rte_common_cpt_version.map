@@ -1,0 +1,6 @@
+DPDK_18.11 {
+	global:
+
+	cpt_pmd_ops_helper_get_mlen_direct_mode;
+	cpt_pmd_ops_helper_get_mlen_sg_mode;
+};
