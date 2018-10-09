@@ -7,11 +7,14 @@
 
 #include <stdbool.h>
 
+#include <rte_branch_prediction.h>
 #include <rte_io.h>
 #include <rte_memory.h>
+#include <rte_prefetch.h>
 
 #include "cpt_common.h"
 #include "cpt_hw_types.h"
+#include "cpt_pmd_logs.h"
 
 #define CPT_INTR_POLL_INTERVAL_MS	(50)
 
@@ -182,6 +185,59 @@ otx_cpt_read_vq_doorbell(struct cpt_vf *cptvf)
 	vqx_dbell.u = CPT_READ_CSR(CPT_CSR_REG_BASE(cptvf),
 				   CPTX_VQX_DOORBELL(0, 0));
 	return vqx_dbell.s.dbell_cnt;
+}
+
+static __rte_always_inline void *
+get_cpt_inst(struct command_queue *cqueue)
+{
+	CPT_LOG_DP_DEBUG("CPT queue idx %u\n", cqueue->idx);
+	return &cqueue->qhead[cqueue->idx * CPT_INST_SIZE];
+}
+
+static __rte_always_inline void
+fill_cpt_inst(struct cpt_instance *instance, void *req)
+{
+	struct command_queue *cqueue;
+	cpt_inst_s_t *cpt_ist_p;
+	struct cpt_vf *cptvf = (struct cpt_vf *)instance;
+	struct cpt_request_info *user_req = (struct cpt_request_info *)req;
+	cqueue = &cptvf->cqueue;
+	cpt_ist_p = get_cpt_inst(cqueue);
+	rte_prefetch_non_temporal(cpt_ist_p);
+
+	/* EI0, EI1, EI2, EI3 are already prepared */
+	/* HW W0 */
+	cpt_ist_p->u[0] = 0;
+	/* HW W1 */
+	cpt_ist_p->s8x.res_addr = user_req->comp_baddr;
+	/* HW W2 */
+	cpt_ist_p->u[2] = 0;
+	/* HW W3 */
+	cpt_ist_p->s8x.wq_ptr = 0;
+
+	/* MC EI0 */
+	cpt_ist_p->s8x.ei0 = user_req->ist.ei0;
+	/* MC EI1 */
+	cpt_ist_p->s8x.ei1 = user_req->ist.ei1;
+	/* MC EI2 */
+	cpt_ist_p->s8x.ei2 = user_req->ist.ei2;
+	/* MC EI3 */
+	cpt_ist_p->s8x.ei3 = user_req->ist.ei3;
+}
+
+static __rte_always_inline void
+mark_cpt_inst(struct cpt_instance *instance)
+{
+	struct cpt_vf *cptvf = (struct cpt_vf *)instance;
+	struct command_queue *queue = &cptvf->cqueue;
+	if (unlikely(++queue->idx >= DEFAULT_CMD_QCHUNK_SIZE)) {
+		uint32_t cchunk = queue->cchunk;
+		MOD_INC(cchunk, DEFAULT_CMD_QCHUNKS);
+		queue->qhead = queue->chead[cchunk].head;
+		queue->idx = 0;
+		queue->cchunk = cchunk;
+	}
+
 }
 
 #endif /* _OTX_CRYPTODEV_HW_ACCESS_H_ */
