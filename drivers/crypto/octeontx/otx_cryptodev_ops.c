@@ -341,6 +341,31 @@ otx_cpt_session_clear(struct rte_cryptodev *dev,
 	}
 }
 
+static uint16_t
+otx_cpt_pkt_enqueue(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
+{
+	struct cpt_instance *instance = (struct cpt_instance *)qptr;
+	uint16_t count = 0;
+	int ret;
+	struct cpt_vf *cptvf = (struct cpt_vf *)instance;
+	struct pending_queue *pqueue = &cptvf->pqueue;
+
+	count = DEFAULT_CMD_QLEN - pqueue->pending_count;
+	if (nb_ops > count)
+		nb_ops = count;
+
+	count = 0;
+	while (likely(count < nb_ops)) {
+		ret = cpt_pmd_crypto_operation(instance, ops[count], pqueue,
+						otx_cryptodev_driver_id);
+		if (unlikely(ret))
+			break;
+		count++;
+	}
+	otx_cpt_ring_dbell(instance, count);
+	return count;
+}
+
 static struct rte_cryptodev_ops cptvf_ops = {
 	/* Device related operations */
 	.dev_configure = otx_cpt_dev_config,
@@ -432,7 +457,7 @@ otx_cpt_dev_create(struct rte_cryptodev *c_dev)
 
 	c_dev->dev_ops = &cptvf_ops;
 
-	c_dev->enqueue_burst = NULL;
+	c_dev->enqueue_burst = otx_cpt_pkt_enqueue;
 	c_dev->dequeue_burst = NULL;
 
 	c_dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |

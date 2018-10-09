@@ -5,6 +5,9 @@
 #ifndef _CPT_REQUEST_MGR_H_
 #define _CPT_REQUEST_MGR_H_
 
+#include <rte_branch_prediction.h>
+#include <rte_cycles.h>
+
 #include "cpt_common.h"
 #include "cpt_mcode_defines.h"
 
@@ -34,6 +37,45 @@ cpt_get_session_size(void)
 	return (sizeof(struct cpt_sess_misc) + RTE_ALIGN_CEIL(ctx_len, 8));
 }
 
+static __rte_always_inline int32_t __hot
+cpt_enqueue_req(struct cpt_instance *instance, struct pending_queue *pqueue,
+		void *req)
+{
+	struct cpt_request_info *user_req = (struct cpt_request_info *)req;
+	int32_t ret = 0;
+
+	if (unlikely(!req))
+		return 0;
+
+	if (unlikely(pqueue->pending_count >= DEFAULT_CMD_QLEN))
+		return -EAGAIN;
+
+	fill_cpt_inst(instance, req);
+
+	CPT_LOG_DP_DEBUG("req: %p op: %p ", req, user_req->op);
+
+	/* Fill time_out cycles */
+	user_req->time_out = rte_get_timer_cycles() +
+			DEFAULT_COMMAND_TIMEOUT * rte_get_timer_hz();
+	user_req->extra_time = 0;
+
+	/* Default mode of software queue */
+	mark_cpt_inst(instance);
+
+	pqueue->rid_queue[pqueue->enq_tail].rid =
+		(uintptr_t)user_req;
+	/* We will use soft queue length here to limit
+	 * requests
+	 */
+	MOD_INC(pqueue->enq_tail, DEFAULT_CMD_QLEN);
+	pqueue->pending_count += 1;
+
+	CPT_LOG_DP_DEBUG("Submitted NB cmd with request: %p "
+			 "op: %p", user_req, user_req->op);
+
+	return ret;
+}
+
 static __rte_always_inline int __hot
 cpt_pmd_crypto_operation(struct cpt_instance *instance,
 		struct rte_crypto_op *op, struct pending_queue *pqueue,
@@ -45,7 +87,6 @@ cpt_pmd_crypto_operation(struct cpt_instance *instance,
 	int ret = 0;
 	uint64_t cpt_op;
 	struct cpt_vf *cptvf = (struct cpt_vf *)instance;
-	RTE_SET_USED(pqueue);
 
 	if (unlikely(op->sess_type == RTE_CRYPTO_OP_SESSIONLESS)) {
 		int sess_len;
@@ -82,6 +123,9 @@ cpt_pmd_crypto_operation(struct cpt_instance *instance,
 			       "ret 0x%x", op, (unsigned int)cpt_op, ret);
 		goto req_fail;
 	}
+
+	/* Enqueue prepared instruction to HW */
+	ret = cpt_enqueue_req(instance, pqueue, prep_req);
 
 	if (unlikely(ret)) {
 		if (unlikely(ret == -EAGAIN))

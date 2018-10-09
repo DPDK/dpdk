@@ -187,6 +187,15 @@ otx_cpt_read_vq_doorbell(struct cpt_vf *cptvf)
 	return vqx_dbell.s.dbell_cnt;
 }
 
+static __rte_always_inline void
+otx_cpt_ring_dbell(struct cpt_instance *instance, uint16_t count)
+{
+	struct cpt_vf *cptvf = (struct cpt_vf *)instance;
+	/* Memory barrier to flush pending writes */
+	rte_smp_wmb();
+	otx_cpt_write_vq_doorbell(cptvf, count);
+}
+
 static __rte_always_inline void *
 get_cpt_inst(struct command_queue *cqueue)
 {
@@ -237,7 +246,16 @@ mark_cpt_inst(struct cpt_instance *instance)
 		queue->idx = 0;
 		queue->cchunk = cchunk;
 	}
+}
 
+static __rte_always_inline uint8_t
+check_nb_command_id(struct cpt_request_info *user_req,
+		struct cpt_instance *instance)
+{
+	/* Required for dequeue operation. Adding a dummy routine for now */
+	RTE_SET_USED(user_req);
+	RTE_SET_USED(instance);
+	return 0;
 }
 
 #endif /* _OTX_CRYPTODEV_HW_ACCESS_H_ */

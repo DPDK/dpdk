@@ -15,6 +15,9 @@
  */
 #define CRYPTO_OCTEONTX		0x1
 
+/* Default command timeout in seconds */
+#define DEFAULT_COMMAND_TIMEOUT	4
+
 #define CPT_COUNT_THOLD		32
 #define CPT_TIMER_THOLD		0x3F
 
