@@ -3373,6 +3373,32 @@ fill_fc_params(struct rte_crypto_op *cop,
 	return prep_req;
 }
 
+static __rte_always_inline void
+compl_auth_verify(struct rte_crypto_op *op,
+		      uint8_t *gen_mac,
+		      uint64_t mac_len)
+{
+	uint8_t *mac;
+	struct rte_crypto_sym_op *sym_op = op->sym;
+
+	if (sym_op->auth.digest.data)
+		mac = sym_op->auth.digest.data;
+	else
+		mac = rte_pktmbuf_mtod_offset(sym_op->m_src,
+					      uint8_t *,
+					      sym_op->auth.data.length +
+					      sym_op->auth.data.offset);
+	if (!mac) {
+		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		return;
+	}
+
+	if (memcmp(mac, gen_mac, mac_len))
+		op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+	else
+		op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+}
+
 static __rte_always_inline int
 instance_session_cfg(struct rte_crypto_sym_xform *xform, void *sess)
 {

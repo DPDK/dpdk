@@ -15,6 +15,8 @@
  */
 #define CRYPTO_OCTEONTX		0x1
 
+#define TIME_IN_RESET_COUNT	5
+
 /* Default command timeout in seconds */
 #define DEFAULT_COMMAND_TIMEOUT	4
 

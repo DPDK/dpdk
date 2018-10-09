@@ -175,6 +175,21 @@ typedef enum {
 	ERR_ENODEV,
 } mc_error_code_t;
 
+/**
+ * Enumeration cpt_comp_e
+ *
+ * CPT Completion Enumeration
+ * Enumerates the values of CPT_RES_S[COMPCODE].
+ */
+typedef enum {
+	CPT_8X_COMP_E_NOTDONE    = (0x00),
+	CPT_8X_COMP_E_GOOD       = (0x01),
+	CPT_8X_COMP_E_FAULT      = (0x02),
+	CPT_8X_COMP_E_SWERR      = (0x03),
+	CPT_8X_COMP_E_HWERR      = (0x04),
+	CPT_8X_COMP_E_LAST_ENTRY = (0xFF)
+} cpt_comp_e_t;
+
 typedef struct sglist_comp {
 	union {
 		uint64_t len;

@@ -1,19 +1,20 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2018 Cavium, Inc
  */
-
 #ifndef _OTX_CRYPTODEV_HW_ACCESS_H_
 #define _OTX_CRYPTODEV_HW_ACCESS_H_
 
 #include <stdbool.h>
 
 #include <rte_branch_prediction.h>
+#include <rte_cycles.h>
 #include <rte_io.h>
 #include <rte_memory.h>
 #include <rte_prefetch.h>
 
 #include "cpt_common.h"
 #include "cpt_hw_types.h"
+#include "cpt_mcode_defines.h"
 #include "cpt_pmd_logs.h"
 
 #define CPT_INTR_POLL_INTERVAL_MS	(50)
@@ -252,10 +253,68 @@ static __rte_always_inline uint8_t
 check_nb_command_id(struct cpt_request_info *user_req,
 		struct cpt_instance *instance)
 {
-	/* Required for dequeue operation. Adding a dummy routine for now */
-	RTE_SET_USED(user_req);
-	RTE_SET_USED(instance);
-	return 0;
+	uint8_t ret = ERR_REQ_PENDING;
+	struct cpt_vf *cptvf = (struct cpt_vf *)instance;
+	volatile cpt_res_s_t *cptres;
+
+	cptres = (volatile cpt_res_s_t *)user_req->completion_addr;
+
+	if (unlikely(cptres->s8x.compcode == CPT_8X_COMP_E_NOTDONE)) {
+		/*
+		 * Wait for some time for this command to get completed
+		 * before timing out
+		 */
+		if (rte_get_timer_cycles() < user_req->time_out)
+			return ret;
+		/*
+		 * TODO: See if alternate caddr can be used to not loop
+		 * longer than needed.
+		 */
+		if ((cptres->s8x.compcode == CPT_8X_COMP_E_NOTDONE) &&
+		    (user_req->extra_time < TIME_IN_RESET_COUNT)) {
+			user_req->extra_time++;
+			return ret;
+		}
+
+		if (cptres->s8x.compcode != CPT_8X_COMP_E_NOTDONE)
+			goto complete;
+
+		ret = ERR_REQ_TIMEOUT;
+		CPT_LOG_DP_ERR("Request %p timedout", user_req);
+		otx_cpt_poll_misc(cptvf);
+		goto exit;
+	}
+
+complete:
+	if (likely(cptres->s8x.compcode == CPT_8X_COMP_E_GOOD)) {
+		ret = 0; /* success */
+		if (unlikely((uint8_t)*user_req->alternate_caddr)) {
+			ret = (uint8_t)*user_req->alternate_caddr;
+			CPT_LOG_DP_ERR("Request %p : failed with microcode"
+				" error, MC completion code : 0x%x", user_req,
+				ret);
+		}
+		CPT_LOG_DP_DEBUG("MC status %.8x\n",
+			   *((volatile uint32_t *)user_req->alternate_caddr));
+		CPT_LOG_DP_DEBUG("HW status %.8x\n",
+			   *((volatile uint32_t *)user_req->completion_addr));
+	} else if ((cptres->s8x.compcode == CPT_8X_COMP_E_SWERR) ||
+		   (cptres->s8x.compcode == CPT_8X_COMP_E_FAULT)) {
+		ret = (uint8_t)*user_req->alternate_caddr;
+		if (!ret)
+			ret = ERR_BAD_ALT_CCODE;
+		CPT_LOG_DP_DEBUG("Request %p : failed with %s : err code :%x",
+			   user_req,
+			   (cptres->s8x.compcode == CPT_8X_COMP_E_FAULT) ?
+			   "DMA Fault" : "Software error", ret);
+	} else {
+		CPT_LOG_DP_ERR("Request %p : unexpected completion code %d",
+			   user_req, cptres->s8x.compcode);
+		ret = (uint8_t)*user_req->alternate_caddr;
+	}
+
+exit:
+	return ret;
 }
 
 #endif /* _OTX_CRYPTODEV_HW_ACCESS_H_ */

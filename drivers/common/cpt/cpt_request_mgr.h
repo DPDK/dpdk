@@ -143,4 +143,43 @@ req_fail:
 	return ret;
 }
 
+static __rte_always_inline int32_t __hot
+cpt_dequeue_burst(struct cpt_instance *instance, uint16_t cnt,
+		  void *resp[], uint8_t cc[], struct pending_queue *pqueue)
+{
+	struct cpt_request_info *user_req;
+	struct rid *rid_e;
+	int i, count, pcount;
+	uint8_t ret;
+
+	pcount = pqueue->pending_count;
+	count = (cnt > pcount) ? pcount : cnt;
+
+	for (i = 0; i < count; i++) {
+		rid_e = &pqueue->rid_queue[pqueue->deq_head];
+		user_req = (struct cpt_request_info *)(rid_e->rid);
+
+		if (likely((i+1) < count))
+			rte_prefetch_non_temporal((void *)rid_e[1].rid);
+
+		ret = check_nb_command_id(user_req, instance);
+
+		if (unlikely(ret == ERR_REQ_PENDING)) {
+			/* Stop checking for completions */
+			break;
+		}
+
+		/* Return completion code and op handle */
+		cc[i] = (uint8_t)ret;
+		resp[i] = user_req->op;
+		CPT_LOG_DP_DEBUG("Request %p Op %p completed with code %d",
+			   user_req, user_req->op, ret);
+
+		MOD_INC(pqueue->deq_head, DEFAULT_CMD_QLEN);
+		pqueue->pending_count -= 1;
+	}
+
+	return i;
+}
+
 #endif /* _CPT_REQUEST_MGR_H_ */

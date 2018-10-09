@@ -366,6 +366,51 @@ otx_cpt_pkt_enqueue(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 	return count;
 }
 
+static uint16_t
+otx_cpt_pkt_dequeue(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
+{
+	struct cpt_instance *instance = (struct cpt_instance *)qptr;
+	struct cpt_vf *cptvf = (struct cpt_vf *)instance;
+	struct pending_queue *pqueue = &cptvf->pqueue;
+	uint16_t nb_completed, i = 0;
+	uint8_t compcode[nb_ops];
+
+	nb_completed = cpt_dequeue_burst(instance, nb_ops,
+					 (void **)ops, compcode, pqueue);
+	while (likely(i < nb_completed)) {
+		struct rte_crypto_op *cop;
+		void *metabuf;
+		uintptr_t *rsp;
+		uint8_t status;
+
+		rsp = (void *)ops[i];
+		status = compcode[i];
+		if (likely((i + 1) < nb_completed))
+			rte_prefetch0(ops[i+1]);
+		metabuf = (void *)rsp[0];
+		cop = (void *)rsp[1];
+
+		ops[i] = cop;
+
+		if (likely(status == 0)) {
+			if (likely(!rsp[2]))
+				cop->status =
+					RTE_CRYPTO_OP_STATUS_SUCCESS;
+			else
+				compl_auth_verify(cop, (uint8_t *)rsp[2],
+						  rsp[3]);
+		} else if (status == ERR_GC_ICV_MISCOMPARE) {
+			/*auth data mismatch */
+			cop->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+		} else {
+			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		}
+		free_op_meta(metabuf, cptvf->meta_info.cptvf_meta_pool);
+		i++;
+	}
+	return nb_completed;
+}
+
 static struct rte_cryptodev_ops cptvf_ops = {
 	/* Device related operations */
 	.dev_configure = otx_cpt_dev_config,
@@ -458,7 +503,7 @@ otx_cpt_dev_create(struct rte_cryptodev *c_dev)
 	c_dev->dev_ops = &cptvf_ops;
 
 	c_dev->enqueue_burst = otx_cpt_pkt_enqueue;
-	c_dev->dequeue_burst = NULL;
+	c_dev->dequeue_burst = otx_cpt_pkt_dequeue;
 
 	c_dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
 			RTE_CRYPTODEV_FF_HW_ACCELERATED |
