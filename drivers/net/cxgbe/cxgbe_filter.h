@@ -104,6 +104,18 @@ struct ch_filter_specification {
 	uint8_t dmac[ETHER_ADDR_LEN];   /* new destination MAC address */
 	uint16_t vlan;          /* VLAN Tag to insert */
 
+	/*
+	 * Switch proxy/rewrite fields.  An ingress packet which matches a
+	 * filter with "switch" set will be looped back out as an egress
+	 * packet -- potentially with some header rewriting.
+	 */
+	uint32_t nat_mode:3;	/* specify NAT operation mode */
+
+	uint8_t nat_lip[16];	/* local IP to use after NAT'ing */
+	uint8_t nat_fip[16];	/* foreign IP to use after NAT'ing */
+	uint16_t nat_lport;	/* local port number to use after NAT'ing */
+	uint16_t nat_fport;	/* foreign port number to use after NAT'ing */
+
 	/* Filter rule value/mask pairs. */
 	struct ch_filter_tuple val;
 	struct ch_filter_tuple mask;
@@ -119,6 +131,17 @@ enum {
 	VLAN_REMOVE = 1,
 	VLAN_INSERT,
 	VLAN_REWRITE
+};
+
+enum {
+	NAT_MODE_NONE = 0,	/* No NAT performed */
+	NAT_MODE_DIP,		/* NAT on Dst IP */
+	NAT_MODE_DIP_DP,	/* NAT on Dst IP, Dst Port */
+	NAT_MODE_DIP_DP_SIP,	/* NAT on Dst IP, Dst Port and Src IP */
+	NAT_MODE_DIP_DP_SP,	/* NAT on Dst IP, Dst Port and Src Port */
+	NAT_MODE_SIP_SP,	/* NAT on Src IP and Src Port */
+	NAT_MODE_DIP_SIP_SP,	/* NAT on Dst IP, Src IP and Src Port */
+	NAT_MODE_ALL		/* NAT on entire 4-tuple */
 };
 
 enum filter_type {

@@ -369,13 +369,76 @@ static int cxgbe_get_fidx(struct rte_flow *flow, unsigned int *fidx)
 }
 
 static int
+cxgbe_get_flow_item_index(const struct rte_flow_item items[], u32 type)
+{
+	const struct rte_flow_item *i;
+	int j, index = -ENOENT;
+
+	for (i = items, j = 0; i->type != RTE_FLOW_ITEM_TYPE_END; i++, j++) {
+		if (i->type == type) {
+			index = j;
+			break;
+		}
+	}
+
+	return index;
+}
+
+static int
+ch_rte_parse_nat(uint8_t nmode, struct ch_filter_specification *fs)
+{
+	/* nmode:
+	 * BIT_0 = [src_ip],   BIT_1 = [dst_ip]
+	 * BIT_2 = [src_port], BIT_3 = [dst_port]
+	 *
+	 * Only below cases are supported as per our spec.
+	 */
+	switch (nmode) {
+	case 0:  /* 0000b */
+		fs->nat_mode = NAT_MODE_NONE;
+		break;
+	case 2:  /* 0010b */
+		fs->nat_mode = NAT_MODE_DIP;
+		break;
+	case 5:  /* 0101b */
+		fs->nat_mode = NAT_MODE_SIP_SP;
+		break;
+	case 7:  /* 0111b */
+		fs->nat_mode = NAT_MODE_DIP_SIP_SP;
+		break;
+	case 10: /* 1010b */
+		fs->nat_mode = NAT_MODE_DIP_DP;
+		break;
+	case 11: /* 1011b */
+		fs->nat_mode = NAT_MODE_DIP_DP_SIP;
+		break;
+	case 14: /* 1110b */
+		fs->nat_mode = NAT_MODE_DIP_DP_SP;
+		break;
+	case 15: /* 1111b */
+		fs->nat_mode = NAT_MODE_ALL;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
 ch_rte_parse_atype_switch(const struct rte_flow_action *a,
+			  const struct rte_flow_item items[],
+			  uint8_t *nmode,
 			  struct ch_filter_specification *fs,
 			  struct rte_flow_error *e)
 {
 	const struct rte_flow_action_of_set_vlan_vid *vlanid;
 	const struct rte_flow_action_of_push_vlan *pushvlan;
+	const struct rte_flow_action_set_ipv4 *ipv4;
+	const struct rte_flow_action_set_ipv6 *ipv6;
+	const struct rte_flow_action_set_tp *tp_port;
 	const struct rte_flow_action_phy_port *port;
+	int item_index;
 
 	switch (a->type) {
 	case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
@@ -401,6 +464,94 @@ ch_rte_parse_atype_switch(const struct rte_flow_action *a,
 		port = (const struct rte_flow_action_phy_port *)a->conf;
 		fs->eport = port->index;
 		break;
+	case RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC:
+		item_index = cxgbe_get_flow_item_index(items,
+						       RTE_FLOW_ITEM_TYPE_IPV4);
+		if (item_index < 0)
+			return rte_flow_error_set(e, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION, a,
+						  "No RTE_FLOW_ITEM_TYPE_IPV4 "
+						  "found.");
+
+		ipv4 = (const struct rte_flow_action_set_ipv4 *)a->conf;
+		memcpy(fs->nat_fip, &ipv4->ipv4_addr, sizeof(ipv4->ipv4_addr));
+		*nmode |= 1 << 0;
+		break;
+	case RTE_FLOW_ACTION_TYPE_SET_IPV4_DST:
+		item_index = cxgbe_get_flow_item_index(items,
+						       RTE_FLOW_ITEM_TYPE_IPV4);
+		if (item_index < 0)
+			return rte_flow_error_set(e, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION, a,
+						  "No RTE_FLOW_ITEM_TYPE_IPV4 "
+						  "found.");
+
+		ipv4 = (const struct rte_flow_action_set_ipv4 *)a->conf;
+		memcpy(fs->nat_lip, &ipv4->ipv4_addr, sizeof(ipv4->ipv4_addr));
+		*nmode |= 1 << 1;
+		break;
+	case RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC:
+		item_index = cxgbe_get_flow_item_index(items,
+						       RTE_FLOW_ITEM_TYPE_IPV6);
+		if (item_index < 0)
+			return rte_flow_error_set(e, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION, a,
+						  "No RTE_FLOW_ITEM_TYPE_IPV6 "
+						  "found.");
+
+		ipv6 = (const struct rte_flow_action_set_ipv6 *)a->conf;
+		memcpy(fs->nat_fip, ipv6->ipv6_addr, sizeof(ipv6->ipv6_addr));
+		*nmode |= 1 << 0;
+		break;
+	case RTE_FLOW_ACTION_TYPE_SET_IPV6_DST:
+		item_index = cxgbe_get_flow_item_index(items,
+						       RTE_FLOW_ITEM_TYPE_IPV6);
+		if (item_index < 0)
+			return rte_flow_error_set(e, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION, a,
+						  "No RTE_FLOW_ITEM_TYPE_IPV6 "
+						  "found.");
+
+		ipv6 = (const struct rte_flow_action_set_ipv6 *)a->conf;
+		memcpy(fs->nat_lip, ipv6->ipv6_addr, sizeof(ipv6->ipv6_addr));
+		*nmode |= 1 << 1;
+		break;
+	case RTE_FLOW_ACTION_TYPE_SET_TP_SRC:
+		item_index = cxgbe_get_flow_item_index(items,
+						       RTE_FLOW_ITEM_TYPE_TCP);
+		if (item_index < 0) {
+			item_index =
+				cxgbe_get_flow_item_index(items,
+						RTE_FLOW_ITEM_TYPE_UDP);
+			if (item_index < 0)
+				return rte_flow_error_set(e, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION, a,
+						"No RTE_FLOW_ITEM_TYPE_TCP or "
+						"RTE_FLOW_ITEM_TYPE_UDP found");
+		}
+
+		tp_port = (const struct rte_flow_action_set_tp *)a->conf;
+		fs->nat_fport = be16_to_cpu(tp_port->port);
+		*nmode |= 1 << 2;
+		break;
+	case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
+		item_index = cxgbe_get_flow_item_index(items,
+						       RTE_FLOW_ITEM_TYPE_TCP);
+		if (item_index < 0) {
+			item_index =
+				cxgbe_get_flow_item_index(items,
+						RTE_FLOW_ITEM_TYPE_UDP);
+			if (item_index < 0)
+				return rte_flow_error_set(e, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION, a,
+						"No RTE_FLOW_ITEM_TYPE_TCP or "
+						"RTE_FLOW_ITEM_TYPE_UDP found");
+		}
+
+		tp_port = (const struct rte_flow_action_set_tp *)a->conf;
+		fs->nat_lport = be16_to_cpu(tp_port->port);
+		*nmode |= 1 << 3;
+		break;
 	default:
 		/* We are not supposed to come here */
 		return rte_flow_error_set(e, EINVAL,
@@ -413,10 +564,12 @@ ch_rte_parse_atype_switch(const struct rte_flow_action *a,
 
 static int
 cxgbe_rtef_parse_actions(struct rte_flow *flow,
+			 const struct rte_flow_item items[],
 			 const struct rte_flow_action action[],
 			 struct rte_flow_error *e)
 {
 	struct ch_filter_specification *fs = &flow->fs;
+	uint8_t nmode = 0, nat_ipv4 = 0, nat_ipv6 = 0;
 	const struct rte_flow_action_queue *q;
 	const struct rte_flow_action *a;
 	char abit = 0;
@@ -458,6 +611,17 @@ cxgbe_rtef_parse_actions(struct rte_flow *flow,
 		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
 		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
 		case RTE_FLOW_ACTION_TYPE_PHY_PORT:
+		case RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC:
+		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DST:
+			nat_ipv4++;
+			goto action_switch;
+		case RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC:
+		case RTE_FLOW_ACTION_TYPE_SET_IPV6_DST:
+			nat_ipv6++;
+			goto action_switch;
+		case RTE_FLOW_ACTION_TYPE_SET_TP_SRC:
+		case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
+action_switch:
 			/* We allow multiple switch actions, but switch is
 			 * not compatible with either queue or drop
 			 */
@@ -465,7 +629,14 @@ cxgbe_rtef_parse_actions(struct rte_flow *flow,
 				return rte_flow_error_set(e, EINVAL,
 						RTE_FLOW_ERROR_TYPE_ACTION, a,
 						"overlapping action specified");
-			ret = ch_rte_parse_atype_switch(a, fs, e);
+			if (nat_ipv4 && nat_ipv6)
+				return rte_flow_error_set(e, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION, a,
+					"Can't have one address ipv4 and the"
+					" other ipv6");
+
+			ret = ch_rte_parse_atype_switch(a, items, &nmode, fs,
+							e);
 			if (ret)
 				return ret;
 			fs->action = FILTER_SWITCH;
@@ -478,6 +649,10 @@ cxgbe_rtef_parse_actions(struct rte_flow *flow,
 		}
 	}
 
+	if (ch_rte_parse_nat(nmode, fs))
+		return rte_flow_error_set(e, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, a,
+					  "invalid settings for swich action");
 	return 0;
 }
 
@@ -586,7 +761,7 @@ cxgbe_flow_parse(struct rte_flow *flow,
 	ret = cxgbe_rtef_parse_items(flow, item, e);
 	if (ret)
 		return ret;
-	return cxgbe_rtef_parse_actions(flow, action, e);
+	return cxgbe_rtef_parse_actions(flow, item, action, e);
 }
 
 static int __cxgbe_flow_create(struct rte_eth_dev *dev, struct rte_flow *flow)

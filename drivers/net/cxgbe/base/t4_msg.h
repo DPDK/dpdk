@@ -32,6 +32,7 @@ enum CPL_error {
 
 enum {
 	ULP_MODE_NONE          = 0,
+	ULP_MODE_TCPDDP        = 5,
 };
 
 enum {

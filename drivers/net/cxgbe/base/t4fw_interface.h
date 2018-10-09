@@ -61,6 +61,7 @@ enum fw_wr_opcodes {
 	FW_ETH_TX_PKTS_WR	= 0x09,
 	FW_ETH_TX_PKT_VM_WR	= 0x11,
 	FW_ETH_TX_PKTS_VM_WR	= 0x12,
+	FW_FILTER2_WR		= 0x77,
 	FW_ETH_TX_PKTS2_WR      = 0x78,
 };
 
@@ -165,7 +166,7 @@ enum fw_filter_wr_cookie {
 	FW_FILTER_WR_EINVAL,
 };
 
-struct fw_filter_wr {
+struct fw_filter2_wr {
 	__be32 op_pkd;
 	__be32 len16_pkd;
 	__be64 r3;
@@ -195,6 +196,19 @@ struct fw_filter_wr {
 	__be16 fpm;
 	__be16 r7;
 	__u8   sma[6];
+	__be16 r8;
+	__u8   filter_type_swapmac;
+	__u8   natmode_to_ulp_type;
+	__be16 newlport;
+	__be16 newfport;
+	__u8   newlip[16];
+	__u8   newfip[16];
+	__be32 natseqcheck;
+	__be32 r9;
+	__be64 r10;
+	__be64 r11;
+	__be64 r12;
+	__be64 r13;
 };
 
 #define S_FW_FILTER_WR_TID	12
@@ -299,6 +313,12 @@ struct fw_filter_wr {
 
 #define S_FW_FILTER_WR_MATCHTYPEM	0
 #define V_FW_FILTER_WR_MATCHTYPEM(x)	((x) << S_FW_FILTER_WR_MATCHTYPEM)
+
+#define S_FW_FILTER2_WR_NATMODE		5
+#define V_FW_FILTER2_WR_NATMODE(x)	((x) << S_FW_FILTER2_WR_NATMODE)
+
+#define S_FW_FILTER2_WR_ULP_TYPE	0
+#define V_FW_FILTER2_WR_ULP_TYPE(x)	((x) << S_FW_FILTER2_WR_ULP_TYPE)
 
 /******************************************************************************
  *  C O M M A N D s
@@ -655,6 +675,7 @@ enum fw_params_param_dev {
 	FW_PARAMS_PARAM_DEV_FWREV	= 0x0B, /* fw version */
 	FW_PARAMS_PARAM_DEV_TPREV	= 0x0C, /* tp version */
 	FW_PARAMS_PARAM_DEV_ULPTX_MEMWRITE_DSGL = 0x17,
+	FW_PARAMS_PARAM_DEV_FILTER2_WR	= 0x1D,
 };
 
 /*

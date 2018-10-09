@@ -74,7 +74,9 @@ New Features
   Flow API support has been enhanced for CXGBE Poll Mode Driver to offload:
 
   * Match items: destination MAC address.
-  * Action items: push/pop/rewrite vlan header.
+  * Action items: push/pop/rewrite vlan header,
+    rewrite IP addresses in outermost IPv4/IPv6 header,
+    rewrite port numbers in outermost TCP/UDP header.
 
 * **Added a devarg to use the latest supported vector path in i40e.**
   A new devarg ``use-latest-supported-vec`` was introduced to allow users to
