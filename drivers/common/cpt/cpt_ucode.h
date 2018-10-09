@@ -1226,6 +1226,596 @@ cpt_dec_hmac_prep(uint32_t flags,
 	return 0;
 }
 
+static __rte_always_inline int
+cpt_zuc_snow3g_enc_prep(uint32_t req_flags,
+			uint64_t d_offs,
+			uint64_t d_lens,
+			fc_params_t *params,
+			void *op,
+			void **prep_req)
+{
+	uint32_t size;
+	int32_t inputlen, outputlen;
+	struct cpt_ctx *cpt_ctx;
+	uint32_t mac_len = 0;
+	uint8_t snow3g, j;
+	struct cpt_request_info *req;
+	buf_ptr_t *buf_p;
+	uint32_t encr_offset = 0, auth_offset = 0;
+	uint32_t encr_data_len = 0, auth_data_len = 0;
+	int flags, iv_len = 16, m_size;
+	void *m_vaddr, *c_vaddr;
+	uint64_t m_dma, c_dma, offset_ctrl;
+	uint64_t *offset_vaddr, offset_dma;
+	uint32_t *iv_s, iv[4];
+	vq_cmd_word0_t vq_cmd_w0;
+	vq_cmd_word3_t vq_cmd_w3;
+	opcode_info_t opcode;
+
+	buf_p = &params->meta_buf;
+	m_vaddr = buf_p->vaddr;
+	m_dma = buf_p->dma_addr;
+	m_size = buf_p->size;
+
+	cpt_ctx = params->ctx_buf.vaddr;
+	flags = cpt_ctx->zsk_flags;
+	mac_len = cpt_ctx->mac_len;
+	snow3g = cpt_ctx->snow3g;
+
+	/*
+	 * Save initial space that followed app data for completion code &
+	 * alternate completion code to fall in same cache line as app data
+	 */
+	m_vaddr = (uint8_t *)m_vaddr + COMPLETION_CODE_SIZE;
+	m_dma += COMPLETION_CODE_SIZE;
+	size = (uint8_t *)RTE_PTR_ALIGN((uint8_t *)m_vaddr, 16) -
+		(uint8_t *)m_vaddr;
+
+	c_vaddr = (uint8_t *)m_vaddr + size;
+	c_dma = m_dma + size;
+	size += sizeof(cpt_res_s_t);
+
+	m_vaddr = (uint8_t *)m_vaddr + size;
+	m_dma += size;
+	m_size -= size;
+
+	/* Reserve memory for cpt request info */
+	req = m_vaddr;
+
+	size = sizeof(struct cpt_request_info);
+	m_vaddr = (uint8_t *)m_vaddr + size;
+	m_dma += size;
+	m_size -= size;
+
+	opcode.s.major = CPT_MAJOR_OP_ZUC_SNOW3G;
+
+	/* indicates CPTR ctx, operation type, KEY & IV mode from DPTR */
+	opcode.s.minor = ((1 << 6) | (snow3g << 5) | (0 << 4) |
+			  (0 << 3) | (flags & 0x7));
+
+	if (flags == 0x1) {
+		/*
+		 * Microcode expects offsets in bytes
+		 * TODO: Rounding off
+		 */
+		auth_data_len = AUTH_DLEN(d_lens);
+
+		/* EIA3 or UIA2 */
+		auth_offset = AUTH_OFFSET(d_offs);
+		auth_offset = auth_offset / 8;
+
+		/* consider iv len */
+		auth_offset += iv_len;
+
+		inputlen = auth_offset + (RTE_ALIGN(auth_data_len, 8) / 8);
+		outputlen = mac_len;
+
+		offset_ctrl = rte_cpu_to_be_64((uint64_t)auth_offset);
+
+	} else {
+		/* EEA3 or UEA2 */
+		/*
+		 * Microcode expects offsets in bytes
+		 * TODO: Rounding off
+		 */
+		encr_data_len = ENCR_DLEN(d_lens);
+
+		encr_offset = ENCR_OFFSET(d_offs);
+		encr_offset = encr_offset / 8;
+		/* consider iv len */
+		encr_offset += iv_len;
+
+		inputlen = encr_offset + (RTE_ALIGN(encr_data_len, 8) / 8);
+		outputlen = inputlen;
+
+		/* iv offset is 0 */
+		offset_ctrl = rte_cpu_to_be_64((uint64_t)encr_offset << 16);
+	}
+
+	/* IV */
+	iv_s = (flags == 0x1) ? params->auth_iv_buf :
+		params->iv_buf;
+
+	if (snow3g) {
+		/*
+		 * DPDK seems to provide it in form of IV3 IV2 IV1 IV0
+		 * and BigEndian, MC needs it as IV0 IV1 IV2 IV3
+		 */
+
+		for (j = 0; j < 4; j++)
+			iv[j] = iv_s[3 - j];
+	} else {
+		/* ZUC doesn't need a swap */
+		for (j = 0; j < 4; j++)
+			iv[j] = iv_s[j];
+	}
+
+	/*
+	 * GP op header, lengths are expected in bits.
+	 */
+	vq_cmd_w0.u64 = 0;
+	vq_cmd_w0.s.param1 = rte_cpu_to_be_16(encr_data_len);
+	vq_cmd_w0.s.param2 = rte_cpu_to_be_16(auth_data_len);
+
+	/*
+	 * In 83XX since we have a limitation of
+	 * IV & Offset control word not part of instruction
+	 * and need to be part of Data Buffer, we check if
+	 * head room is there and then only do the Direct mode processing
+	 */
+	if (likely((req_flags & SINGLE_BUF_INPLACE) &&
+		   (req_flags & SINGLE_BUF_HEADTAILROOM))) {
+		void *dm_vaddr = params->bufs[0].vaddr;
+		uint64_t dm_dma_addr = params->bufs[0].dma_addr;
+		/*
+		 * This flag indicates that there is 24 bytes head room and
+		 * 8 bytes tail room available, so that we get to do
+		 * DIRECT MODE with limitation
+		 */
+
+		offset_vaddr = (uint64_t *)((uint8_t *)dm_vaddr -
+					    OFF_CTRL_LEN - iv_len);
+		offset_dma = dm_dma_addr - OFF_CTRL_LEN - iv_len;
+
+		/* DPTR */
+		req->ist.ei1 = offset_dma;
+		/* RPTR should just exclude offset control word */
+		req->ist.ei2 = dm_dma_addr - iv_len;
+		req->alternate_caddr = (uint64_t *)((uint8_t *)dm_vaddr
+						    + outputlen - iv_len);
+
+		vq_cmd_w0.s.dlen = rte_cpu_to_be_16(inputlen + OFF_CTRL_LEN);
+
+		vq_cmd_w0.s.opcode = rte_cpu_to_be_16(opcode.flags);
+
+		if (likely(iv_len)) {
+			uint32_t *iv_d = (uint32_t *)((uint8_t *)offset_vaddr
+						      + OFF_CTRL_LEN);
+			memcpy(iv_d, iv, 16);
+		}
+
+		*offset_vaddr = offset_ctrl;
+	} else {
+		uint32_t i, g_size_bytes, s_size_bytes;
+		uint64_t dptr_dma, rptr_dma;
+		sg_comp_t *gather_comp;
+		sg_comp_t *scatter_comp;
+		uint8_t *in_buffer;
+		uint32_t *iv_d;
+
+		/* save space for iv */
+		offset_vaddr = m_vaddr;
+		offset_dma = m_dma;
+
+		m_vaddr = (uint8_t *)m_vaddr + OFF_CTRL_LEN + iv_len;
+		m_dma += OFF_CTRL_LEN + iv_len;
+		m_size -= OFF_CTRL_LEN + iv_len;
+
+		opcode.s.major |= CPT_DMA_MODE;
+
+		vq_cmd_w0.s.opcode = rte_cpu_to_be_16(opcode.flags);
+
+		/* DPTR has SG list */
+		in_buffer = m_vaddr;
+		dptr_dma = m_dma;
+
+		((uint16_t *)in_buffer)[0] = 0;
+		((uint16_t *)in_buffer)[1] = 0;
+
+		/* TODO Add error check if space will be sufficient */
+		gather_comp = (sg_comp_t *)((uint8_t *)m_vaddr + 8);
+
+		/*
+		 * Input Gather List
+		 */
+		i = 0;
+
+		/* Offset control word followed by iv */
+
+		i = fill_sg_comp(gather_comp, i, offset_dma,
+				 OFF_CTRL_LEN + iv_len);
+
+		/* iv offset is 0 */
+		*offset_vaddr = offset_ctrl;
+
+		iv_d = (uint32_t *)((uint8_t *)offset_vaddr + OFF_CTRL_LEN);
+		memcpy(iv_d, iv, 16);
+
+		/* input data */
+		size = inputlen - iv_len;
+		if (size) {
+			i = fill_sg_comp_from_iov(gather_comp, i,
+						  params->src_iov,
+						  0, &size, NULL, 0);
+			if (size)
+				return ERR_BAD_INPUT_ARG;
+		}
+		((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
+		g_size_bytes = ((i + 3) / 4) * sizeof(sg_comp_t);
+
+		/*
+		 * Output Scatter List
+		 */
+
+		i = 0;
+		scatter_comp =
+			(sg_comp_t *)((uint8_t *)gather_comp + g_size_bytes);
+
+		if (flags == 0x1) {
+			/* IV in SLIST only for EEA3 & UEA2 */
+			iv_len = 0;
+		}
+
+		if (iv_len) {
+			i = fill_sg_comp(scatter_comp, i,
+					 offset_dma + OFF_CTRL_LEN, iv_len);
+		}
+
+		/* Add output data */
+		if (req_flags & VALID_MAC_BUF) {
+			size = outputlen - iv_len - mac_len;
+			if (size) {
+				i = fill_sg_comp_from_iov(scatter_comp, i,
+							  params->dst_iov, 0,
+							  &size, NULL, 0);
+
+				if (size)
+					return ERR_BAD_INPUT_ARG;
+			}
+
+			/* mac data */
+			if (mac_len) {
+				i = fill_sg_comp_from_buf(scatter_comp, i,
+							  &params->mac_buf);
+			}
+		} else {
+			/* Output including mac */
+			size = outputlen - iv_len;
+			if (size) {
+				i = fill_sg_comp_from_iov(scatter_comp, i,
+							  params->dst_iov, 0,
+							  &size, NULL, 0);
+
+				if (size)
+					return ERR_BAD_INPUT_ARG;
+			}
+		}
+		((uint16_t *)in_buffer)[3] = rte_cpu_to_be_16(i);
+		s_size_bytes = ((i + 3) / 4) * sizeof(sg_comp_t);
+
+		size = g_size_bytes + s_size_bytes + SG_LIST_HDR_SIZE;
+
+		/* This is DPTR len incase of SG mode */
+		vq_cmd_w0.s.dlen = rte_cpu_to_be_16(size);
+
+		m_vaddr = (uint8_t *)m_vaddr + size;
+		m_dma += size;
+		m_size -= size;
+
+		/* cpt alternate completion address saved earlier */
+		req->alternate_caddr = (uint64_t *)((uint8_t *)c_vaddr - 8);
+		*req->alternate_caddr = ~((uint64_t)COMPLETION_CODE_INIT);
+		rptr_dma = c_dma - 8;
+
+		req->ist.ei1 = dptr_dma;
+		req->ist.ei2 = rptr_dma;
+	}
+
+	/* First 16-bit swap then 64-bit swap */
+	/* TODO: HACK: Reverse the vq_cmd and cpt_req bit field definitions
+	 * to eliminate all the swapping
+	 */
+	vq_cmd_w0.u64 = rte_cpu_to_be_64(vq_cmd_w0.u64);
+
+	/* vq command w3 */
+	vq_cmd_w3.u64 = 0;
+	vq_cmd_w3.s.grp = 0;
+	vq_cmd_w3.s.cptr = params->ctx_buf.dma_addr +
+		offsetof(struct cpt_ctx, zs_ctx);
+
+	/* 16 byte aligned cpt res address */
+	req->completion_addr = (uint64_t *)((uint8_t *)c_vaddr);
+	*req->completion_addr = COMPLETION_CODE_INIT;
+	req->comp_baddr  = c_dma;
+
+	/* Fill microcode part of instruction */
+	req->ist.ei0 = vq_cmd_w0.u64;
+	req->ist.ei3 = vq_cmd_w3.u64;
+
+	req->op = op;
+
+	*prep_req = req;
+	return 0;
+}
+
+static __rte_always_inline int
+cpt_zuc_snow3g_dec_prep(uint32_t req_flags,
+			uint64_t d_offs,
+			uint64_t d_lens,
+			fc_params_t *params,
+			void *op,
+			void **prep_req)
+{
+	uint32_t size;
+	int32_t inputlen = 0, outputlen;
+	struct cpt_ctx *cpt_ctx;
+	uint8_t snow3g, iv_len = 16;
+	struct cpt_request_info *req;
+	buf_ptr_t *buf_p;
+	uint32_t encr_offset;
+	uint32_t encr_data_len;
+	int flags, m_size;
+	void *m_vaddr, *c_vaddr;
+	uint64_t m_dma, c_dma;
+	uint64_t *offset_vaddr, offset_dma;
+	uint32_t *iv_s, iv[4], j;
+	vq_cmd_word0_t vq_cmd_w0;
+	vq_cmd_word3_t vq_cmd_w3;
+	opcode_info_t opcode;
+
+	buf_p = &params->meta_buf;
+	m_vaddr = buf_p->vaddr;
+	m_dma = buf_p->dma_addr;
+	m_size = buf_p->size;
+
+	/*
+	 * Microcode expects offsets in bytes
+	 * TODO: Rounding off
+	 */
+	encr_offset = ENCR_OFFSET(d_offs) / 8;
+	encr_data_len = ENCR_DLEN(d_lens);
+
+	cpt_ctx = params->ctx_buf.vaddr;
+	flags = cpt_ctx->zsk_flags;
+	snow3g = cpt_ctx->snow3g;
+	/*
+	 * Save initial space that followed app data for completion code &
+	 * alternate completion code to fall in same cache line as app data
+	 */
+	m_vaddr = (uint8_t *)m_vaddr + COMPLETION_CODE_SIZE;
+	m_dma += COMPLETION_CODE_SIZE;
+	size = (uint8_t *)RTE_PTR_ALIGN((uint8_t *)m_vaddr, 16) -
+		(uint8_t *)m_vaddr;
+
+	c_vaddr = (uint8_t *)m_vaddr + size;
+	c_dma = m_dma + size;
+	size += sizeof(cpt_res_s_t);
+
+	m_vaddr = (uint8_t *)m_vaddr + size;
+	m_dma += size;
+	m_size -= size;
+
+	/* Reserve memory for cpt request info */
+	req = m_vaddr;
+
+	size = sizeof(struct cpt_request_info);
+	m_vaddr = (uint8_t *)m_vaddr + size;
+	m_dma += size;
+	m_size -= size;
+
+	opcode.s.major = CPT_MAJOR_OP_ZUC_SNOW3G;
+
+	/* indicates CPTR ctx, operation type, KEY & IV mode from DPTR */
+	opcode.s.minor = ((1 << 6) | (snow3g << 5) | (0 << 4) |
+			  (0 << 3) | (flags & 0x7));
+
+	/* consider iv len */
+	encr_offset += iv_len;
+
+	inputlen = encr_offset +
+		(RTE_ALIGN(encr_data_len, 8) / 8);
+	outputlen = inputlen;
+
+	/* IV */
+	iv_s = params->iv_buf;
+	if (snow3g) {
+		/*
+		 * DPDK seems to provide it in form of IV3 IV2 IV1 IV0
+		 * and BigEndian, MC needs it as IV0 IV1 IV2 IV3
+		 */
+
+		for (j = 0; j < 4; j++)
+			iv[j] = iv_s[3 - j];
+	} else {
+		/* ZUC doesn't need a swap */
+		for (j = 0; j < 4; j++)
+			iv[j] = iv_s[j];
+	}
+
+	/*
+	 * GP op header, lengths are expected in bits.
+	 */
+	vq_cmd_w0.u64 = 0;
+	vq_cmd_w0.s.param1 = rte_cpu_to_be_16(encr_data_len);
+
+	/*
+	 * In 83XX since we have a limitation of
+	 * IV & Offset control word not part of instruction
+	 * and need to be part of Data Buffer, we check if
+	 * head room is there and then only do the Direct mode processing
+	 */
+	if (likely((req_flags & SINGLE_BUF_INPLACE) &&
+		   (req_flags & SINGLE_BUF_HEADTAILROOM))) {
+		void *dm_vaddr = params->bufs[0].vaddr;
+		uint64_t dm_dma_addr = params->bufs[0].dma_addr;
+		/*
+		 * This flag indicates that there is 24 bytes head room and
+		 * 8 bytes tail room available, so that we get to do
+		 * DIRECT MODE with limitation
+		 */
+
+		offset_vaddr = (uint64_t *)((uint8_t *)dm_vaddr -
+					    OFF_CTRL_LEN - iv_len);
+		offset_dma = dm_dma_addr - OFF_CTRL_LEN - iv_len;
+
+		/* DPTR */
+		req->ist.ei1 = offset_dma;
+		/* RPTR should just exclude offset control word */
+		req->ist.ei2 = dm_dma_addr - iv_len;
+		req->alternate_caddr = (uint64_t *)((uint8_t *)dm_vaddr
+						    + outputlen - iv_len);
+
+		vq_cmd_w0.s.dlen = rte_cpu_to_be_16(inputlen + OFF_CTRL_LEN);
+
+		vq_cmd_w0.s.opcode = rte_cpu_to_be_16(opcode.flags);
+
+		if (likely(iv_len)) {
+			uint32_t *iv_d = (uint32_t *)((uint8_t *)offset_vaddr
+						      + OFF_CTRL_LEN);
+			memcpy(iv_d, iv, 16);
+		}
+
+		/* iv offset is 0 */
+		*offset_vaddr = rte_cpu_to_be_64((uint64_t)encr_offset << 16);
+	} else {
+		uint32_t i, g_size_bytes, s_size_bytes;
+		uint64_t dptr_dma, rptr_dma;
+		sg_comp_t *gather_comp;
+		sg_comp_t *scatter_comp;
+		uint8_t *in_buffer;
+		uint32_t *iv_d;
+
+		/* save space for offset and iv... */
+		offset_vaddr = m_vaddr;
+		offset_dma = m_dma;
+
+		m_vaddr = (uint8_t *)m_vaddr + OFF_CTRL_LEN + iv_len;
+		m_dma += OFF_CTRL_LEN + iv_len;
+		m_size -= OFF_CTRL_LEN + iv_len;
+
+		opcode.s.major |= CPT_DMA_MODE;
+
+		vq_cmd_w0.s.opcode = rte_cpu_to_be_16(opcode.flags);
+
+		/* DPTR has SG list */
+		in_buffer = m_vaddr;
+		dptr_dma = m_dma;
+
+		((uint16_t *)in_buffer)[0] = 0;
+		((uint16_t *)in_buffer)[1] = 0;
+
+		/* TODO Add error check if space will be sufficient */
+		gather_comp = (sg_comp_t *)((uint8_t *)m_vaddr + 8);
+
+		/*
+		 * Input Gather List
+		 */
+		i = 0;
+
+		/* Offset control word */
+
+		/* iv offset is 0 */
+		*offset_vaddr = rte_cpu_to_be_64((uint64_t)encr_offset << 16);
+
+		i = fill_sg_comp(gather_comp, i, offset_dma,
+				 OFF_CTRL_LEN + iv_len);
+
+		iv_d = (uint32_t *)((uint8_t *)offset_vaddr + OFF_CTRL_LEN);
+		memcpy(iv_d, iv, 16);
+
+		/* Add input data */
+		size = inputlen - iv_len;
+		if (size) {
+			i = fill_sg_comp_from_iov(gather_comp, i,
+						  params->src_iov,
+						  0, &size, NULL, 0);
+			if (size)
+				return ERR_BAD_INPUT_ARG;
+		}
+		((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
+		g_size_bytes = ((i + 3) / 4) * sizeof(sg_comp_t);
+
+		/*
+		 * Output Scatter List
+		 */
+
+		i = 0;
+		scatter_comp =
+			(sg_comp_t *)((uint8_t *)gather_comp + g_size_bytes);
+
+		/* IV */
+		i = fill_sg_comp(scatter_comp, i,
+				 offset_dma + OFF_CTRL_LEN,
+				 iv_len);
+
+		/* Add output data */
+		size = outputlen - iv_len;
+		if (size) {
+			i = fill_sg_comp_from_iov(scatter_comp, i,
+						  params->dst_iov, 0,
+						  &size, NULL, 0);
+
+			if (size)
+				return ERR_BAD_INPUT_ARG;
+		}
+		((uint16_t *)in_buffer)[3] = rte_cpu_to_be_16(i);
+		s_size_bytes = ((i + 3) / 4) * sizeof(sg_comp_t);
+
+		size = g_size_bytes + s_size_bytes + SG_LIST_HDR_SIZE;
+
+		/* This is DPTR len incase of SG mode */
+		vq_cmd_w0.s.dlen = rte_cpu_to_be_16(size);
+
+		m_vaddr = (uint8_t *)m_vaddr + size;
+		m_dma += size;
+		m_size -= size;
+
+		/* cpt alternate completion address saved earlier */
+		req->alternate_caddr = (uint64_t *)((uint8_t *)c_vaddr - 8);
+		*req->alternate_caddr = ~((uint64_t)COMPLETION_CODE_INIT);
+		rptr_dma = c_dma - 8;
+
+		req->ist.ei1 = dptr_dma;
+		req->ist.ei2 = rptr_dma;
+	}
+
+	/* First 16-bit swap then 64-bit swap */
+	/* TODO: HACK: Reverse the vq_cmd and cpt_req bit field definitions
+	 * to eliminate all the swapping
+	 */
+	vq_cmd_w0.u64 = rte_cpu_to_be_64(vq_cmd_w0.u64);
+
+	/* vq command w3 */
+	vq_cmd_w3.u64 = 0;
+	vq_cmd_w3.s.grp = 0;
+	vq_cmd_w3.s.cptr = params->ctx_buf.dma_addr +
+		offsetof(struct cpt_ctx, zs_ctx);
+
+	/* 16 byte aligned cpt res address */
+	req->completion_addr = (uint64_t *)((uint8_t *)c_vaddr);
+	*req->completion_addr = COMPLETION_CODE_INIT;
+	req->comp_baddr  = c_dma;
+
+	/* Fill microcode part of instruction */
+	req->ist.ei0 = vq_cmd_w0.u64;
+	req->ist.ei3 = vq_cmd_w3.u64;
+
+	req->op = op;
+
+	*prep_req = req;
+	return 0;
+}
+
 static __rte_always_inline void *
 cpt_fc_dec_hmac_prep(uint32_t flags,
 		     uint64_t d_offs,
@@ -1243,6 +1833,9 @@ cpt_fc_dec_hmac_prep(uint32_t flags,
 	if (likely(fc_type == FC_GEN)) {
 		ret = cpt_dec_hmac_prep(flags, d_offs, d_lens,
 					fc_params, op, &prep_req);
+	} else if (fc_type == ZUC_SNOW3G) {
+		ret = cpt_zuc_snow3g_dec_prep(flags, d_offs, d_lens,
+					      fc_params, op, &prep_req);
 	} else {
 		/*
 		 * For AUTH_ONLY case,
@@ -1273,6 +1866,9 @@ cpt_fc_enc_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 	if (likely(fc_type == FC_GEN)) {
 		ret = cpt_enc_hmac_prep(flags, d_offs, d_lens,
 					fc_params, op, &prep_req);
+	} else if (fc_type == ZUC_SNOW3G) {
+		ret = cpt_zuc_snow3g_enc_prep(flags, d_offs, d_lens,
+					      fc_params, op, &prep_req);
 	} else {
 		ret = ERR_EIO;
 	}
