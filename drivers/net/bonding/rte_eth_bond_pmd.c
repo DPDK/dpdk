@@ -3598,7 +3598,7 @@ int bond_logtype;
 
 RTE_INIT(bond_init_log)
 {
-	bond_logtype = rte_log_register("pmd.net.bon");
+	bond_logtype = rte_log_register("pmd.net.bond");
 	if (bond_logtype >= 0)
 		rte_log_set_level(bond_logtype, RTE_LOG_NOTICE);
 }

@@ -789,7 +789,7 @@ RTE_PMD_REGISTER_PARAM_STRING(net_vdev_netvsc,
 /** Initialize driver log type. */
 RTE_INIT(vdev_netvsc_init_log)
 {
-	vdev_netvsc_logtype = rte_log_register("pmd.vdev_netvsc");
+	vdev_netvsc_logtype = rte_log_register("pmd.net.vdev_netvsc");
 	if (vdev_netvsc_logtype >= 0)
 		rte_log_set_level(vdev_netvsc_logtype, RTE_LOG_NOTICE);
 }

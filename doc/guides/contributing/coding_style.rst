@@ -741,8 +741,8 @@ A specialization looks like this:
  * PF/VF mailbox output: ``type.section.name.mbox``
 
 A real world example is the i40e poll mode driver which exposes two
-specializations, one for initialization ``pmd.i40e.init`` and the other for
-the remaining driver logs ``pmd.i40e.driver``.
+specializations, one for initialization ``pmd.net.i40e.init`` and the other for
+the remaining driver logs ``pmd.net.i40e.driver``.
 
 Note that specializations have no formatting rules, but please follow
 a precedent if one exists. In order to see all current log topics and

@@ -3569,7 +3569,7 @@ bool is_bnxt_supported(struct rte_eth_dev *dev)
 
 RTE_INIT(bnxt_init_log)
 {
-	bnxt_logtype_driver = rte_log_register("pmd.bnxt.driver");
+	bnxt_logtype_driver = rte_log_register("pmd.net.bnxt.driver");
 	if (bnxt_logtype_driver >= 0)
 		rte_log_set_level(bnxt_logtype_driver, RTE_LOG_INFO);
 }

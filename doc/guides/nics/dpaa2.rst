@@ -558,7 +558,7 @@ which are lower than logging ``level``.
 
     <dpdk app> <EAL args> --log-level=pmd.net.dpaa2:<level> -- ...
 
-Using ``pmd.dpaa2`` as log matching criteria, all PMD logs can be enabled
+Using ``pmd.net.dpaa2`` as log matching criteria, all PMD logs can be enabled
 which are lower than logging ``level``.
 
 Whitelisting & Blacklisting
