@@ -2117,4 +2117,47 @@ fill_fc_params(struct rte_crypto_op *cop,
 	return prep_req;
 }
 
+static __rte_always_inline int
+instance_session_cfg(struct rte_crypto_sym_xform *xform, void *sess)
+{
+	struct rte_crypto_sym_xform *chain;
+
+	CPT_PMD_INIT_FUNC_TRACE();
+
+	if (cpt_is_algo_supported(xform))
+		goto err;
+
+	chain = xform;
+	while (chain) {
+		switch (chain->type) {
+		case RTE_CRYPTO_SYM_XFORM_AEAD:
+			if (fill_sess_aead(chain, sess))
+				goto err;
+			break;
+		case RTE_CRYPTO_SYM_XFORM_CIPHER:
+			if (fill_sess_cipher(chain, sess))
+				goto err;
+			break;
+		case RTE_CRYPTO_SYM_XFORM_AUTH:
+			if (chain->auth.algo == RTE_CRYPTO_AUTH_AES_GMAC) {
+				if (fill_sess_gmac(chain, sess))
+					goto err;
+			} else {
+				if (fill_sess_auth(chain, sess))
+					goto err;
+			}
+			break;
+		default:
+			CPT_LOG_DP_ERR("Invalid crypto xform type");
+			break;
+		}
+		chain = chain->next;
+	}
+
+	return 0;
+
+err:
+	return -1;
+}
+
 #endif /*_CPT_UCODE_H_ */
