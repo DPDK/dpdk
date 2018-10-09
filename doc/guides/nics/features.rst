@@ -645,7 +645,12 @@ Supports inner packet L4 checksum.
 * **[uses]     rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_OUTER_UDP_CKSUM``.
 * **[provides] mbuf**: ``mbuf.ol_flags:PKT_RX_OUTER_L4_CKSUM_UNKNOWN`` |
   ``PKT_RX_OUTER_L4_CKSUM_BAD`` | ``PKT_RX_OUTER_L4_CKSUM_GOOD`` | ``PKT_RX_OUTER_L4_CKSUM_INVALID``.
+* **[uses]     rte_eth_txconf,rte_eth_txmode**: ``offloads:DEV_TX_OFFLOAD_OUTER_UDP_CKSUM``.
+* **[uses]     mbuf**: ``mbuf.ol_flags:PKT_TX_OUTER_IPV4`` | ``PKT_TX_OUTER_IPV6``.
+  ``mbuf.ol_flags:PKT_TX_OUTER_UDP_CKSUM``.
+* **[uses]     mbuf**: ``mbuf.outer_l2_len``, ``mbuf.outer_l3_len``.
 * **[provides] rte_eth_dev_info**: ``rx_offload_capa,rx_queue_offload_capa:DEV_RX_OFFLOAD_OUTER_UDP_CKSUM``,
+  ``tx_offload_capa,tx_queue_offload_capa:DEV_TX_OFFLOAD_OUTER_UDP_CKSUM``.
 
 
 .. _nic_features_packet_type_parsing:

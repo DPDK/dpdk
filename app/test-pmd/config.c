@@ -773,6 +773,16 @@ port_offload_cap_display(portid_t port_id)
 		else
 			printf("off\n");
 	}
+
+	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM) {
+		printf("TX Outer UDP checksum:         ");
+		if (ports[port_id].dev_conf.txmode.offloads &
+		    DEV_TX_OFFLOAD_OUTER_UDP_CKSUM)
+			printf("on\n");
+		else
+			printf("off\n");
+	}
+
 }
 
 int

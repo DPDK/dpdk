@@ -202,6 +202,17 @@ extern "C" {
 /* add new TX flags here */
 
 /**
+ * Outer UDP checksum offload flag. This flag is used for enabling
+ * outer UDP checksum in PMD. To use outer UDP checksum, the user needs to
+ * 1) Enable the following in mbuff,
+ * a) Fill outer_l2_len and outer_l3_len in mbuf.
+ * b) Set the PKT_TX_OUTER_UDP_CKSUM flag.
+ * c) Set the PKT_TX_OUTER_IPV4 or PKT_TX_OUTER_IPV6 flag.
+ * 2) Configure DEV_TX_OFFLOAD_OUTER_UDP_CKSUM offload flag.
+ */
+#define PKT_TX_OUTER_UDP_CKSUM     (1ULL << 41)
+
+/**
  * UDP Fragmentation Offload flag. This flag is used for enabling UDP
  * fragmentation in SW or in HW. When use UFO, mbuf->tso_segsz is used
  * to store the MSS of UDP fragments.
@@ -368,7 +379,8 @@ extern "C" {
 		PKT_TX_TUNNEL_MASK |	 \
 		PKT_TX_MACSEC |		 \
 		PKT_TX_SEC_OFFLOAD |	\
-		PKT_TX_UDP_SEG)
+		PKT_TX_UDP_SEG |	\
+		PKT_TX_OUTER_UDP_CKSUM)
 
 /**
  * Mbuf having an external buffer attached. shinfo in mbuf must be filled.

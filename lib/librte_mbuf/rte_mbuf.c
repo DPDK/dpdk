@@ -448,6 +448,7 @@ rte_get_tx_ol_flag_list(uint64_t mask, char *buf, size_t buflen)
 		  "PKT_TX_TUNNEL_NONE" },
 		{ PKT_TX_MACSEC, PKT_TX_MACSEC, NULL },
 		{ PKT_TX_SEC_OFFLOAD, PKT_TX_SEC_OFFLOAD, NULL },
+		{ PKT_TX_OUTER_UDP_CKSUM, PKT_TX_OUTER_UDP_CKSUM, NULL },
 	};
 	const char *name;
 	unsigned int i;
