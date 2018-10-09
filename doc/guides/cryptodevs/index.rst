@@ -17,6 +17,7 @@ Crypto Device Drivers
     dpaa2_sec
     dpaa_sec
     kasumi
+    octeontx
     openssl
     mvsam
     null
