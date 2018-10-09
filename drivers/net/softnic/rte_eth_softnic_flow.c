@@ -1168,6 +1168,7 @@ flow_rule_action_get(struct pmd_internals *softnic,
 	struct softnic_table_action_profile_params *params;
 	int n_jump_queue_rss_drop = 0;
 	int n_count = 0;
+	int n_mark = 0;
 
 	profile = softnic_table_action_profile_find(softnic,
 		table->params.action_profile_name);
@@ -1474,6 +1475,40 @@ flow_rule_action_get(struct pmd_internals *softnic,
 			rule_action->action_mask |= 1 << RTE_TABLE_ACTION_STATS;
 			break;
 		} /* RTE_FLOW_ACTION_TYPE_COUNT */
+
+		case RTE_FLOW_ACTION_TYPE_MARK:
+		{
+			const struct rte_flow_action_mark *conf = action->conf;
+
+			if (conf == NULL)
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					action,
+					"MARK: Null configuration");
+
+			if (n_mark)
+				return rte_flow_error_set(error,
+					ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					action,
+					"Only one MARK action per flow");
+
+			if ((params->action_mask &
+				(1LLU << RTE_TABLE_ACTION_TAG)) == 0)
+				return rte_flow_error_set(error,
+					ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL,
+					"MARK action not supported by this table");
+
+			n_mark = 1;
+
+			/* RTE_TABLE_ACTION_TAG */
+			rule_action->tag.tag = conf->id;
+			rule_action->action_mask |= 1 << RTE_TABLE_ACTION_TAG;
+			break;
+		} /* RTE_FLOW_ACTION_TYPE_MARK */
 
 		case RTE_FLOW_ACTION_TYPE_METER:
 		{
