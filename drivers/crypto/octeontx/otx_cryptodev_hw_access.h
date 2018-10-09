@@ -17,6 +17,9 @@
 
 /* Default command queue length */
 #define DEFAULT_CMD_QCHUNKS		2
+#define DEFAULT_CMD_QCHUNK_SIZE		1023
+#define DEFAULT_CMD_QLEN \
+		(DEFAULT_CMD_QCHUNK_SIZE * DEFAULT_CMD_QCHUNKS)
 
 #define CPT_CSR_REG_BASE(cpt)		((cpt)->reg_base)
 
@@ -145,6 +148,12 @@ otx_cpt_hw_init(struct cpt_vf *cptvf, void *pdev, void *reg_base, char *name);
 
 int
 otx_cpt_deinit_device(void *dev);
+
+int
+otx_cpt_get_resource(void *dev, uint8_t group, struct cpt_instance **instance);
+
+int
+otx_cpt_put_resource(struct cpt_instance *instance);
 
 int
 otx_cpt_start_device(void *cptvf);

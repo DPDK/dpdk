@@ -23,6 +23,11 @@ static struct rte_mempool *otx_cpt_meta_pool;
 static int otx_cpt_op_mlen;
 static int otx_cpt_op_sb_mlen;
 
+/* Forward declarations */
+
+static int
+otx_cpt_que_pair_release(struct rte_cryptodev *dev, uint16_t que_pair_id);
+
 /*
  * Initializes global variables used by fast-path code
  *
@@ -131,8 +136,15 @@ static int
 otx_cpt_dev_close(struct rte_cryptodev *c_dev)
 {
 	void *cptvf = c_dev->data->dev_private;
+	int i, ret;
 
 	CPT_PMD_INIT_FUNC_TRACE();
+
+	for (i = 0; i < c_dev->data->nb_queue_pairs; i++) {
+		ret = otx_cpt_que_pair_release(c_dev, i);
+		if (ret)
+			return ret;
+	}
 
 	otx_cpt_periodic_alarm_stop(cptvf);
 	otx_cpt_deinit_device(cptvf);
@@ -168,6 +180,72 @@ otx_cpt_stats_reset(struct rte_cryptodev *dev __rte_unused)
 	CPT_PMD_INIT_FUNC_TRACE();
 }
 
+static int
+otx_cpt_que_pair_setup(struct rte_cryptodev *dev,
+		       uint16_t que_pair_id,
+		       const struct rte_cryptodev_qp_conf *qp_conf,
+		       int socket_id __rte_unused,
+		       struct rte_mempool *session_pool __rte_unused)
+{
+	void *cptvf = dev->data->dev_private;
+	struct cpt_instance *instance = NULL;
+	struct rte_pci_device *pci_dev;
+	int ret = -1;
+
+	CPT_PMD_INIT_FUNC_TRACE();
+
+	if (dev->data->queue_pairs[que_pair_id] != NULL) {
+		ret = otx_cpt_que_pair_release(dev, que_pair_id);
+		if (ret)
+			return ret;
+	}
+
+	if (qp_conf->nb_descriptors > DEFAULT_CMD_QLEN) {
+		CPT_LOG_INFO("Number of descriptors too big %d, using default "
+			     "queue length of %d", qp_conf->nb_descriptors,
+			     DEFAULT_CMD_QLEN);
+	}
+
+	pci_dev = RTE_DEV_TO_PCI(dev->device);
+
+	if (pci_dev->mem_resource[0].addr == NULL) {
+		CPT_LOG_ERR("PCI mem address null");
+		return -EIO;
+	}
+
+	ret = otx_cpt_get_resource(cptvf, 0, &instance);
+	if (ret != 0) {
+		CPT_LOG_ERR("Error getting instance handle from device %s : "
+			    "ret = %d", dev->data->name, ret);
+		return ret;
+	}
+
+	instance->queue_id = que_pair_id;
+	dev->data->queue_pairs[que_pair_id] = instance;
+
+	return 0;
+}
+
+static int
+otx_cpt_que_pair_release(struct rte_cryptodev *dev, uint16_t que_pair_id)
+{
+	struct cpt_instance *instance = dev->data->queue_pairs[que_pair_id];
+	int ret;
+
+	CPT_PMD_INIT_FUNC_TRACE();
+
+	ret = otx_cpt_put_resource(instance);
+	if (ret != 0) {
+		CPT_LOG_ERR("Error putting instance handle of device %s : "
+			    "ret = %d", dev->data->name, ret);
+		return ret;
+	}
+
+	dev->data->queue_pairs[que_pair_id] = NULL;
+
+	return 0;
+}
+
 static struct rte_cryptodev_ops cptvf_ops = {
 	/* Device related operations */
 	.dev_configure = otx_cpt_dev_config,
@@ -178,8 +256,8 @@ static struct rte_cryptodev_ops cptvf_ops = {
 
 	.stats_get = otx_cpt_stats_get,
 	.stats_reset = otx_cpt_stats_reset,
-	.queue_pair_setup = NULL,
-	.queue_pair_release = NULL,
+	.queue_pair_setup = otx_cpt_que_pair_setup,
+	.queue_pair_release = otx_cpt_que_pair_release,
 	.queue_pair_count = NULL,
 
 	/* Crypto related operations */

@@ -1,11 +1,14 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2018 Cavium, Inc
  */
+#include <assert.h>
 #include <string.h>
 #include <unistd.h>
 
 #include <rte_branch_prediction.h>
 #include <rte_common.h>
+#include <rte_errno.h>
+#include <rte_memzone.h>
 
 #include "otx_cryptodev_hw_access.h"
 #include "otx_cryptodev_mbox.h"
@@ -177,6 +180,133 @@ otx_cpt_clear_dovf_intr(struct cpt_vf *cptvf)
 		      CPTX_VQX_MISC_INT(0, 0), vqx_misc_int.u);
 }
 
+/* Write to VQX_CTL register
+ */
+static void
+otx_cpt_write_vq_ctl(struct cpt_vf *cptvf, bool val)
+{
+	cptx_vqx_ctl_t vqx_ctl;
+
+	vqx_ctl.u = CPT_READ_CSR(CPT_CSR_REG_BASE(cptvf),
+				 CPTX_VQX_CTL(0, 0));
+	vqx_ctl.s.ena = val;
+	CPT_WRITE_CSR(CPT_CSR_REG_BASE(cptvf),
+		      CPTX_VQX_CTL(0, 0), vqx_ctl.u);
+}
+
+/* Write to VQX_INPROG register
+ */
+static void
+otx_cpt_write_vq_inprog(struct cpt_vf *cptvf, uint8_t val)
+{
+	cptx_vqx_inprog_t vqx_inprg;
+
+	vqx_inprg.u = CPT_READ_CSR(CPT_CSR_REG_BASE(cptvf),
+				   CPTX_VQX_INPROG(0, 0));
+	vqx_inprg.s.inflight = val;
+	CPT_WRITE_CSR(CPT_CSR_REG_BASE(cptvf),
+		      CPTX_VQX_INPROG(0, 0), vqx_inprg.u);
+}
+
+/* Write to VQX_DONE_WAIT NUMWAIT register
+ */
+static void
+otx_cpt_write_vq_done_numwait(struct cpt_vf *cptvf, uint32_t val)
+{
+	cptx_vqx_done_wait_t vqx_dwait;
+
+	vqx_dwait.u = CPT_READ_CSR(CPT_CSR_REG_BASE(cptvf),
+				   CPTX_VQX_DONE_WAIT(0, 0));
+	vqx_dwait.s.num_wait = val;
+	CPT_WRITE_CSR(CPT_CSR_REG_BASE(cptvf),
+		      CPTX_VQX_DONE_WAIT(0, 0), vqx_dwait.u);
+}
+
+/* Write to VQX_DONE_WAIT NUM_WAIT register
+ */
+static void
+otx_cpt_write_vq_done_timewait(struct cpt_vf *cptvf, uint16_t val)
+{
+	cptx_vqx_done_wait_t vqx_dwait;
+
+	vqx_dwait.u = CPT_READ_CSR(CPT_CSR_REG_BASE(cptvf),
+				   CPTX_VQX_DONE_WAIT(0, 0));
+	vqx_dwait.s.time_wait = val;
+	CPT_WRITE_CSR(CPT_CSR_REG_BASE(cptvf),
+		      CPTX_VQX_DONE_WAIT(0, 0), vqx_dwait.u);
+}
+
+/* Write to VQX_SADDR register
+ */
+static void
+otx_cpt_write_vq_saddr(struct cpt_vf *cptvf, uint64_t val)
+{
+	cptx_vqx_saddr_t vqx_saddr;
+
+	vqx_saddr.u = val;
+	CPT_WRITE_CSR(CPT_CSR_REG_BASE(cptvf),
+		      CPTX_VQX_SADDR(0, 0), vqx_saddr.u);
+}
+
+static void
+otx_cpt_vfvq_init(struct cpt_vf *cptvf)
+{
+	uint64_t base_addr = 0;
+
+	/* Disable the VQ */
+	otx_cpt_write_vq_ctl(cptvf, 0);
+
+	/* Reset the doorbell */
+	otx_cpt_write_vq_doorbell(cptvf, 0);
+	/* Clear inflight */
+	otx_cpt_write_vq_inprog(cptvf, 0);
+
+	/* Write VQ SADDR */
+	base_addr = (uint64_t)(cptvf->cqueue.chead[0].dma_addr);
+	otx_cpt_write_vq_saddr(cptvf, base_addr);
+
+	/* Configure timerhold / coalescence */
+	otx_cpt_write_vq_done_timewait(cptvf, CPT_TIMER_THOLD);
+	otx_cpt_write_vq_done_numwait(cptvf, CPT_COUNT_THOLD);
+
+	/* Enable the VQ */
+	otx_cpt_write_vq_ctl(cptvf, 1);
+}
+
+static int
+cpt_vq_init(struct cpt_vf *cptvf, uint8_t group)
+{
+	int err;
+
+	/* Convey VQ LEN to PF */
+	err = otx_cpt_send_vq_size_msg(cptvf);
+	if (err) {
+		CPT_LOG_ERR("%s: PF not responding to QLEN msg",
+			    cptvf->dev_name);
+		err = -EBUSY;
+		goto cleanup;
+	}
+
+	/* CPT VF device initialization */
+	otx_cpt_vfvq_init(cptvf);
+
+	/* Send msg to PF to assign currnet Q to required group */
+	cptvf->vfgrp = group;
+	err = otx_cpt_send_vf_grp_msg(cptvf, group);
+	if (err) {
+		CPT_LOG_ERR("%s: PF not responding to VF_GRP msg",
+			    cptvf->dev_name);
+		err = -EBUSY;
+		goto cleanup;
+	}
+
+	CPT_LOG_DP_DEBUG("%s: %s done", cptvf->dev_name, __func__);
+	return 0;
+
+cleanup:
+	return err;
+}
+
 void
 otx_cpt_poll_misc(struct cpt_vf *cptvf)
 {
@@ -259,6 +389,156 @@ otx_cpt_deinit_device(void *dev)
 	/* Do misc work one last time */
 	otx_cpt_poll_misc(cptvf);
 
+	return 0;
+}
+
+int
+otx_cpt_get_resource(void *dev, uint8_t group, struct cpt_instance **instance)
+{
+	int ret = -ENOENT, len, qlen, i;
+	int chunk_len, chunks, chunk_size;
+	struct cpt_vf *cptvf = (struct cpt_vf *)dev;
+	struct cpt_instance *cpt_instance;
+	struct command_chunk *chunk_head = NULL, *chunk_prev = NULL;
+	struct command_chunk *chunk = NULL;
+	uint8_t *mem;
+	const struct rte_memzone *rz;
+	uint64_t dma_addr = 0, alloc_len, used_len;
+	uint64_t *next_ptr;
+	uint64_t pg_sz = sysconf(_SC_PAGESIZE);
+
+	CPT_LOG_DP_DEBUG("Initializing cpt resource %s", cptvf->dev_name);
+
+	cpt_instance = &cptvf->instance;
+
+	memset(&cptvf->cqueue, 0, sizeof(cptvf->cqueue));
+	memset(&cptvf->pqueue, 0, sizeof(cptvf->pqueue));
+
+	/* Chunks are of fixed size buffers */
+	chunks = DEFAULT_CMD_QCHUNKS;
+	chunk_len = DEFAULT_CMD_QCHUNK_SIZE;
+
+	qlen = chunks * chunk_len;
+	/* Chunk size includes 8 bytes of next chunk ptr */
+	chunk_size = chunk_len * CPT_INST_SIZE + CPT_NEXT_CHUNK_PTR_SIZE;
+
+	/* For command chunk structures */
+	len = chunks * RTE_ALIGN(sizeof(struct command_chunk), 8);
+
+	/* For pending queue */
+	len += qlen * RTE_ALIGN(sizeof(struct rid), 8);
+
+	/* So that instruction queues start as pg size aligned */
+	len = RTE_ALIGN(len, pg_sz);
+
+	/* For Instruction queues */
+	len += chunks * RTE_ALIGN(chunk_size, 128);
+
+	/* Wastage after instruction queues */
+	len = RTE_ALIGN(len, pg_sz);
+
+	rz = rte_memzone_reserve_aligned(cptvf->dev_name, len, cptvf->node,
+					 RTE_MEMZONE_SIZE_HINT_ONLY |
+					 RTE_MEMZONE_256MB,
+					 RTE_CACHE_LINE_SIZE);
+	if (!rz) {
+		ret = rte_errno;
+		goto cleanup;
+	}
+
+	mem = rz->addr;
+	dma_addr = rz->phys_addr;
+	alloc_len = len;
+
+	memset(mem, 0, len);
+
+	cpt_instance->rsvd = (uintptr_t)rz;
+
+	/* Pending queue setup */
+	cptvf->pqueue.rid_queue = (struct rid *)mem;
+	cptvf->pqueue.enq_tail = 0;
+	cptvf->pqueue.deq_head = 0;
+	cptvf->pqueue.pending_count = 0;
+
+	mem +=  qlen * RTE_ALIGN(sizeof(struct rid), 8);
+	len -=  qlen * RTE_ALIGN(sizeof(struct rid), 8);
+	dma_addr += qlen * RTE_ALIGN(sizeof(struct rid), 8);
+
+	/* Alignment wastage */
+	used_len = alloc_len - len;
+	mem += RTE_ALIGN(used_len, pg_sz) - used_len;
+	len -= RTE_ALIGN(used_len, pg_sz) - used_len;
+	dma_addr += RTE_ALIGN(used_len, pg_sz) - used_len;
+
+	/* Init instruction queues */
+	chunk_head = &cptvf->cqueue.chead[0];
+	i = qlen;
+
+	chunk_prev = NULL;
+	for (i = 0; i < DEFAULT_CMD_QCHUNKS; i++) {
+		int csize;
+
+		chunk = &cptvf->cqueue.chead[i];
+		chunk->head = mem;
+		chunk->dma_addr = dma_addr;
+
+		csize = RTE_ALIGN(chunk_size, 128);
+		mem += csize;
+		dma_addr += csize;
+		len -= csize;
+
+		if (chunk_prev) {
+			next_ptr = (uint64_t *)(chunk_prev->head +
+						chunk_size - 8);
+			*next_ptr = (uint64_t)chunk->dma_addr;
+		}
+		chunk_prev = chunk;
+	}
+	/* Circular loop */
+	next_ptr = (uint64_t *)(chunk_prev->head + chunk_size - 8);
+	*next_ptr = (uint64_t)chunk_head->dma_addr;
+
+	assert(!len);
+
+	/* This is used for CPT(0)_PF_Q(0..15)_CTL.size config */
+	cptvf->qsize = chunk_size / 8;
+	cptvf->cqueue.qhead = chunk_head->head;
+	cptvf->cqueue.idx = 0;
+	cptvf->cqueue.cchunk = 0;
+
+	if (cpt_vq_init(cptvf, group)) {
+		CPT_LOG_ERR("Failed to initialize CPT VQ of device %s",
+			    cptvf->dev_name);
+		ret = -EBUSY;
+		goto cleanup;
+	}
+
+	*instance = cpt_instance;
+
+	CPT_LOG_DP_DEBUG("Crypto device (%s) initialized", cptvf->dev_name);
+
+	return 0;
+cleanup:
+	rte_memzone_free(rz);
+	*instance = NULL;
+	return ret;
+}
+
+int
+otx_cpt_put_resource(struct cpt_instance *instance)
+{
+	struct cpt_vf *cptvf = (struct cpt_vf *)instance;
+	struct rte_memzone *rz;
+
+	if (!cptvf) {
+		CPT_LOG_ERR("Invalid CPTVF handle");
+		return -EINVAL;
+	}
+
+	CPT_LOG_DP_DEBUG("Releasing cpt device %s", cptvf->dev_name);
+
+	rz = (struct rte_memzone *)instance->rsvd;
+	rte_memzone_free(rz);
 	return 0;
 }
 

@@ -15,6 +15,9 @@
  */
 #define CRYPTO_OCTEONTX		0x1
 
+#define CPT_COUNT_THOLD		32
+#define CPT_TIMER_THOLD		0x3F
+
 #define AE_TYPE 1
 #define SE_TYPE 2
 

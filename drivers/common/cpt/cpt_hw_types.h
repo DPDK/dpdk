@@ -20,6 +20,9 @@
 #define CPT_VF_INTR_HWERR_MASK  (1<<5)
 #define CPT_VF_INTR_FAULT_MASK  (1<<6)
 
+#define CPT_INST_SIZE           (64)
+#define CPT_NEXT_CHUNK_PTR_SIZE (8)
+
 /*
  * CPT_INST_S software command definitions
  * Words EI (0-3)
