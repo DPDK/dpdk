@@ -844,6 +844,420 @@ cpt_enc_hmac_prep(uint32_t flags,
 	return 0;
 }
 
+static __rte_always_inline int
+cpt_dec_hmac_prep(uint32_t flags,
+		  uint64_t d_offs,
+		  uint64_t d_lens,
+		  fc_params_t *fc_params,
+		  void *op,
+		  void **prep_req)
+{
+	uint32_t iv_offset = 0, size;
+	int32_t inputlen, outputlen, enc_dlen, auth_dlen;
+	struct cpt_ctx *cpt_ctx;
+	int32_t hash_type, mac_len, m_size;
+	uint8_t iv_len = 16;
+	struct cpt_request_info *req;
+	buf_ptr_t *meta_p, *aad_buf = NULL;
+	uint32_t encr_offset, auth_offset;
+	uint32_t encr_data_len, auth_data_len, aad_len = 0;
+	uint32_t passthrough_len = 0;
+	void *m_vaddr, *offset_vaddr;
+	uint64_t m_dma, offset_dma, ctx_dma;
+	opcode_info_t opcode;
+	vq_cmd_word0_t vq_cmd_w0;
+	vq_cmd_word3_t vq_cmd_w3;
+	void *c_vaddr;
+	uint64_t c_dma;
+
+	meta_p = &fc_params->meta_buf;
+	m_vaddr = meta_p->vaddr;
+	m_dma = meta_p->dma_addr;
+	m_size = meta_p->size;
+
+	encr_offset = ENCR_OFFSET(d_offs);
+	auth_offset = AUTH_OFFSET(d_offs);
+	encr_data_len = ENCR_DLEN(d_lens);
+	auth_data_len = AUTH_DLEN(d_lens);
+
+	if (unlikely(flags & VALID_AAD_BUF)) {
+		/*
+		 * We dont support both aad
+		 * and auth data separately
+		 */
+		auth_data_len = 0;
+		auth_offset = 0;
+		aad_len = fc_params->aad_buf.size;
+		aad_buf = &fc_params->aad_buf;
+	}
+
+	cpt_ctx = fc_params->ctx_buf.vaddr;
+	hash_type = cpt_ctx->hash_type;
+	mac_len = cpt_ctx->mac_len;
+
+	if (hash_type == GMAC_TYPE)
+		encr_data_len = 0;
+
+	if (unlikely(!(flags & VALID_IV_BUF))) {
+		iv_len = 0;
+		iv_offset = ENCR_IV_OFFSET(d_offs);
+	}
+
+	if (unlikely(flags & VALID_AAD_BUF)) {
+		/*
+		 * When AAD is given, data above encr_offset is pass through
+		 * Since AAD is given as separate pointer and not as offset,
+		 * this is a special case as we need to fragment input data
+		 * into passthrough + encr_data and then insert AAD in between.
+		 */
+		if (hash_type != GMAC_TYPE) {
+			passthrough_len = encr_offset;
+			auth_offset = passthrough_len + iv_len;
+			encr_offset = passthrough_len + aad_len + iv_len;
+			auth_data_len = aad_len + encr_data_len;
+		} else {
+			passthrough_len = 16 + aad_len;
+			auth_offset = passthrough_len + iv_len;
+			auth_data_len = aad_len;
+		}
+	} else {
+		encr_offset += iv_len;
+		auth_offset += iv_len;
+	}
+
+	/*
+	 * Save initial space that followed app data for completion code &
+	 * alternate completion code to fall in same cache line as app data
+	 */
+	m_vaddr = (uint8_t *)m_vaddr + COMPLETION_CODE_SIZE;
+	m_dma += COMPLETION_CODE_SIZE;
+	size = (uint8_t *)RTE_PTR_ALIGN((uint8_t *)m_vaddr, 16) -
+	       (uint8_t *)m_vaddr;
+	c_vaddr = (uint8_t *)m_vaddr + size;
+	c_dma = m_dma + size;
+	size += sizeof(cpt_res_s_t);
+
+	m_vaddr = (uint8_t *)m_vaddr + size;
+	m_dma += size;
+	m_size -= size;
+
+	/* start cpt request info structure at 8 byte alignment */
+	size = (uint8_t *)RTE_PTR_ALIGN(m_vaddr, 8) -
+		(uint8_t *)m_vaddr;
+
+	req = (struct cpt_request_info *)((uint8_t *)m_vaddr + size);
+
+	size += sizeof(struct cpt_request_info);
+	m_vaddr = (uint8_t *)m_vaddr + size;
+	m_dma += size;
+	m_size -= size;
+
+	/* Decryption */
+	opcode.s.major = CPT_MAJOR_OP_FC;
+	opcode.s.minor = 1;
+
+	enc_dlen = encr_offset + encr_data_len;
+	auth_dlen = auth_offset + auth_data_len;
+
+	if (auth_dlen > enc_dlen) {
+		inputlen = auth_dlen + mac_len;
+		outputlen = auth_dlen;
+	} else {
+		inputlen = enc_dlen + mac_len;
+		outputlen = enc_dlen;
+	}
+
+	if (hash_type == GMAC_TYPE)
+		encr_offset = inputlen;
+
+	vq_cmd_w0.u64 = 0;
+	vq_cmd_w0.s.param1 = rte_cpu_to_be_16(encr_data_len);
+	vq_cmd_w0.s.param2 = rte_cpu_to_be_16(auth_data_len);
+
+	/*
+	 * In 83XX since we have a limitation of
+	 * IV & Offset control word not part of instruction
+	 * and need to be part of Data Buffer, we check if
+	 * head room is there and then only do the Direct mode processing
+	 */
+	if (likely((flags & SINGLE_BUF_INPLACE) &&
+		   (flags & SINGLE_BUF_HEADTAILROOM))) {
+		void *dm_vaddr = fc_params->bufs[0].vaddr;
+		uint64_t dm_dma_addr = fc_params->bufs[0].dma_addr;
+		/*
+		 * This flag indicates that there is 24 bytes head room and
+		 * 8 bytes tail room available, so that we get to do
+		 * DIRECT MODE with limitation
+		 */
+
+		offset_vaddr = (uint8_t *)dm_vaddr - OFF_CTRL_LEN - iv_len;
+		offset_dma = dm_dma_addr - OFF_CTRL_LEN - iv_len;
+		req->ist.ei1 = offset_dma;
+
+		/* RPTR should just exclude offset control word */
+		req->ist.ei2 = dm_dma_addr - iv_len;
+
+		req->alternate_caddr = (uint64_t *)((uint8_t *)dm_vaddr +
+					outputlen - iv_len);
+		/* since this is decryption,
+		 * don't touch the content of
+		 * alternate ccode space as it contains
+		 * hmac.
+		 */
+
+		vq_cmd_w0.s.dlen = rte_cpu_to_be_16(inputlen + OFF_CTRL_LEN);
+
+		vq_cmd_w0.s.opcode = rte_cpu_to_be_16(opcode.flags);
+
+		if (likely(iv_len)) {
+			uint64_t *dest = (uint64_t *)((uint8_t *)offset_vaddr +
+						      OFF_CTRL_LEN);
+			uint64_t *src = fc_params->iv_buf;
+			dest[0] = src[0];
+			dest[1] = src[1];
+		}
+
+		*(uint64_t *)offset_vaddr =
+			rte_cpu_to_be_64(((uint64_t)encr_offset << 16) |
+				((uint64_t)iv_offset << 8) |
+				((uint64_t)auth_offset));
+
+	} else {
+		uint64_t dptr_dma, rptr_dma;
+		uint32_t g_size_bytes, s_size_bytes;
+		sg_comp_t *gather_comp;
+		sg_comp_t *scatter_comp;
+		uint8_t *in_buffer;
+		uint8_t i = 0;
+
+		/* This falls under strict SG mode */
+		offset_vaddr = m_vaddr;
+		offset_dma = m_dma;
+		size = OFF_CTRL_LEN + iv_len;
+
+		m_vaddr = (uint8_t *)m_vaddr + size;
+		m_dma += size;
+		m_size -= size;
+
+		opcode.s.major |= CPT_DMA_MODE;
+
+		vq_cmd_w0.s.opcode = rte_cpu_to_be_16(opcode.flags);
+
+		if (likely(iv_len)) {
+			uint64_t *dest = (uint64_t *)((uint8_t *)offset_vaddr +
+						      OFF_CTRL_LEN);
+			uint64_t *src = fc_params->iv_buf;
+			dest[0] = src[0];
+			dest[1] = src[1];
+		}
+
+		*(uint64_t *)offset_vaddr =
+			rte_cpu_to_be_64(((uint64_t)encr_offset << 16) |
+				((uint64_t)iv_offset << 8) |
+				((uint64_t)auth_offset));
+
+		/* DPTR has SG list */
+		in_buffer = m_vaddr;
+		dptr_dma = m_dma;
+
+		((uint16_t *)in_buffer)[0] = 0;
+		((uint16_t *)in_buffer)[1] = 0;
+
+		/* TODO Add error check if space will be sufficient */
+		gather_comp = (sg_comp_t *)((uint8_t *)m_vaddr + 8);
+
+		/*
+		 * Input Gather List
+		 */
+		i = 0;
+
+		/* Offset control word that includes iv */
+		i = fill_sg_comp(gather_comp, i, offset_dma,
+				 OFF_CTRL_LEN + iv_len);
+
+		/* Add input data */
+		if (flags & VALID_MAC_BUF) {
+			size = inputlen - iv_len - mac_len;
+			if (size) {
+				/* input data only */
+				if (unlikely(flags & SINGLE_BUF_INPLACE)) {
+					i = fill_sg_comp_from_buf_min(
+							gather_comp, i,
+							fc_params->bufs,
+							&size);
+				} else {
+					uint32_t aad_offset = aad_len ?
+						passthrough_len : 0;
+
+					i = fill_sg_comp_from_iov(gather_comp,
+							i,
+							fc_params->src_iov,
+							0, &size,
+							aad_buf,
+							aad_offset);
+				}
+				if (size)
+					return ERR_BAD_INPUT_ARG;
+			}
+
+			/* mac data */
+			if (mac_len) {
+				i = fill_sg_comp_from_buf(gather_comp, i,
+							  &fc_params->mac_buf);
+			}
+		} else {
+			/* input data + mac */
+			size = inputlen - iv_len;
+			if (size) {
+				if (unlikely(flags & SINGLE_BUF_INPLACE)) {
+					i = fill_sg_comp_from_buf_min(
+							gather_comp, i,
+							fc_params->bufs,
+							&size);
+				} else {
+					uint32_t aad_offset = aad_len ?
+						passthrough_len : 0;
+
+					if (!fc_params->src_iov)
+						return ERR_BAD_INPUT_ARG;
+
+					i = fill_sg_comp_from_iov(
+							gather_comp, i,
+							fc_params->src_iov,
+							0, &size,
+							aad_buf,
+							aad_offset);
+				}
+
+				if (size)
+					return ERR_BAD_INPUT_ARG;
+			}
+		}
+		((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
+		g_size_bytes = ((i + 3) / 4) * sizeof(sg_comp_t);
+
+		/*
+		 * Output Scatter List
+		 */
+
+		i = 0;
+		scatter_comp =
+			(sg_comp_t *)((uint8_t *)gather_comp + g_size_bytes);
+
+		/* Add iv */
+		if (iv_len) {
+			i = fill_sg_comp(scatter_comp, i,
+					 offset_dma + OFF_CTRL_LEN,
+					 iv_len);
+		}
+
+		/* Add output data */
+		size = outputlen - iv_len;
+		if (size) {
+			if (unlikely(flags & SINGLE_BUF_INPLACE)) {
+				/* handle single buffer here */
+				i = fill_sg_comp_from_buf_min(scatter_comp, i,
+							      fc_params->bufs,
+							      &size);
+			} else {
+				uint32_t aad_offset = aad_len ?
+					passthrough_len : 0;
+
+				if (!fc_params->dst_iov)
+					return ERR_BAD_INPUT_ARG;
+
+				i = fill_sg_comp_from_iov(scatter_comp, i,
+							  fc_params->dst_iov, 0,
+							  &size, aad_buf,
+							  aad_offset);
+			}
+
+			if (unlikely(size))
+				return ERR_BAD_INPUT_ARG;
+		}
+
+		((uint16_t *)in_buffer)[3] = rte_cpu_to_be_16(i);
+		s_size_bytes = ((i + 3) / 4) * sizeof(sg_comp_t);
+
+		size = g_size_bytes + s_size_bytes + SG_LIST_HDR_SIZE;
+
+		/* This is DPTR len incase of SG mode */
+		vq_cmd_w0.s.dlen = rte_cpu_to_be_16(size);
+
+		m_vaddr = (uint8_t *)m_vaddr + size;
+		m_dma += size;
+		m_size -= size;
+
+		/* cpt alternate completion address saved earlier */
+		req->alternate_caddr = (uint64_t *)((uint8_t *)c_vaddr - 8);
+		*req->alternate_caddr = ~((uint64_t)COMPLETION_CODE_INIT);
+		rptr_dma = c_dma - 8;
+		size += COMPLETION_CODE_SIZE;
+
+		req->ist.ei1 = dptr_dma;
+		req->ist.ei2 = rptr_dma;
+	}
+
+	/* First 16-bit swap then 64-bit swap */
+	/* TODO: HACK: Reverse the vq_cmd and cpt_req bit field definitions
+	 * to eliminate all the swapping
+	 */
+	vq_cmd_w0.u64 = rte_cpu_to_be_64(vq_cmd_w0.u64);
+
+	ctx_dma = fc_params->ctx_buf.dma_addr +
+		offsetof(struct cpt_ctx, fctx);
+	/* vq command w3 */
+	vq_cmd_w3.u64 = 0;
+	vq_cmd_w3.s.grp = 0;
+	vq_cmd_w3.s.cptr = ctx_dma;
+
+	/* 16 byte aligned cpt res address */
+	req->completion_addr = (uint64_t *)((uint8_t *)c_vaddr);
+	*req->completion_addr = COMPLETION_CODE_INIT;
+	req->comp_baddr  = c_dma;
+
+	/* Fill microcode part of instruction */
+	req->ist.ei0 = vq_cmd_w0.u64;
+	req->ist.ei3 = vq_cmd_w3.u64;
+
+	req->op = op;
+
+	*prep_req = req;
+	return 0;
+}
+
+static __rte_always_inline void *
+cpt_fc_dec_hmac_prep(uint32_t flags,
+		     uint64_t d_offs,
+		     uint64_t d_lens,
+		     fc_params_t *fc_params,
+		     void *op, int *ret_val)
+{
+	struct cpt_ctx *ctx = fc_params->ctx_buf.vaddr;
+	uint8_t fc_type;
+	void *prep_req = NULL;
+	int ret;
+
+	fc_type = ctx->fc_type;
+
+	if (likely(fc_type == FC_GEN)) {
+		ret = cpt_dec_hmac_prep(flags, d_offs, d_lens,
+					fc_params, op, &prep_req);
+	} else {
+		/*
+		 * For AUTH_ONLY case,
+		 * MC only supports digest generation and verification
+		 * should be done in software by memcmp()
+		 */
+
+		ret = ERR_EIO;
+	}
+
+	if (unlikely(!prep_req))
+		*ret_val = ret;
+	return prep_req;
+}
+
 static __rte_always_inline void *__hot
 cpt_fc_enc_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
 		     fc_params_t *fc_params, void *op, int *ret_val)
@@ -1692,6 +2106,9 @@ fill_fc_params(struct rte_crypto_op *cop,
 	/* Finally prepare the instruction */
 	if (cpt_op & CPT_OP_ENCODE)
 		prep_req = cpt_fc_enc_hmac_prep(flags, d_offs, d_lens,
+						&fc_params, op, op_ret);
+	else
+		prep_req = cpt_fc_dec_hmac_prep(flags, d_offs, d_lens,
 						&fc_params, op, op_ret);
 
 	if (unlikely(!prep_req))
