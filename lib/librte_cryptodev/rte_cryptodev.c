@@ -1477,6 +1477,9 @@ rte_crypto_op_pool_create(const char *name, enum rte_crypto_op_type type,
 		elt_size += sizeof(struct rte_crypto_sym_op);
 	} else if (type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC) {
 		elt_size += sizeof(struct rte_crypto_asym_op);
+	} else if (type == RTE_CRYPTO_OP_TYPE_UNDEFINED) {
+		elt_size += RTE_MAX(sizeof(struct rte_crypto_sym_op),
+		                    sizeof(struct rte_crypto_asym_op));
 	} else {
 		CDEV_LOG_ERR("Invalid op_type\n");
 		return NULL;
