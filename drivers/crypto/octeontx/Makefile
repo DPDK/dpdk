@@ -24,6 +24,7 @@ CFLAGS += -I$(RTE_SDK)/drivers/common/cpt
 
 # PMD code
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_CRYPTO) += otx_cryptodev.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_CRYPTO) += otx_cryptodev_capabilities.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_CRYPTO) += otx_cryptodev_hw_access.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_CRYPTO) += otx_cryptodev_ops.c
 

@@ -8,6 +8,7 @@ deps += ['bus_pci']
 name = 'octeontx_crypto'
 
 sources = files('otx_cryptodev.c',
+		'otx_cryptodev_capabilities.c',
 		'otx_cryptodev_hw_access.c',
 		'otx_cryptodev_ops.c')
 
