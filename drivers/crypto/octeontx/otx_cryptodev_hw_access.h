@@ -7,6 +7,7 @@
 
 #include <stdbool.h>
 
+#include <rte_io.h>
 #include <rte_memory.h>
 
 #include "cpt_common.h"
@@ -15,6 +16,16 @@
 
 /* Default command queue length */
 #define DEFAULT_CMD_QCHUNKS		2
+
+#define CPT_CSR_REG_BASE(cpt)		((cpt)->reg_base)
+
+/* Read hw register */
+#define CPT_READ_CSR(__hw_addr, __offset) \
+	rte_read64_relaxed((uint8_t *)__hw_addr + __offset)
+
+/* Write hw register */
+#define CPT_WRITE_CSR(__hw_addr, __offset, __val) \
+	rte_write64_relaxed((__val), ((uint8_t *)__hw_addr + __offset))
 
 /* cpt instance */
 struct cpt_instance {
