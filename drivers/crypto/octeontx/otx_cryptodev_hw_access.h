@@ -11,6 +11,7 @@
 #include <rte_memory.h>
 
 #include "cpt_common.h"
+#include "cpt_hw_types.h"
 
 #define CPT_INTR_POLL_INTERVAL_MS	(50)
 
@@ -144,5 +145,34 @@ otx_cpt_hw_init(struct cpt_vf *cptvf, void *pdev, void *reg_base, char *name);
 
 int
 otx_cpt_deinit_device(void *dev);
+
+int
+otx_cpt_start_device(void *cptvf);
+
+void
+otx_cpt_stop_device(void *cptvf);
+
+/* Write to VQX_DOORBELL register
+ */
+static __rte_always_inline void
+otx_cpt_write_vq_doorbell(struct cpt_vf *cptvf, uint32_t val)
+{
+	cptx_vqx_doorbell_t vqx_dbell;
+
+	vqx_dbell.u = 0;
+	vqx_dbell.s.dbell_cnt = val * 8; /* Num of Instructions * 8 words */
+	CPT_WRITE_CSR(CPT_CSR_REG_BASE(cptvf),
+		      CPTX_VQX_DOORBELL(0, 0), vqx_dbell.u);
+}
+
+static __rte_always_inline uint32_t
+otx_cpt_read_vq_doorbell(struct cpt_vf *cptvf)
+{
+	cptx_vqx_doorbell_t vqx_dbell;
+
+	vqx_dbell.u = CPT_READ_CSR(CPT_CSR_REG_BASE(cptvf),
+				   CPTX_VQX_DOORBELL(0, 0));
+	return vqx_dbell.s.dbell_cnt;
+}
 
 #endif /* _OTX_CRYPTODEV_HW_ACCESS_H_ */

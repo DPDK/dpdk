@@ -2,6 +2,7 @@
  * Copyright(c) 2018 Cavium, Inc
  */
 #include <string.h>
+#include <unistd.h>
 
 #include <rte_branch_prediction.h>
 #include <rte_common.h>
@@ -259,4 +260,59 @@ otx_cpt_deinit_device(void *dev)
 	otx_cpt_poll_misc(cptvf);
 
 	return 0;
+}
+
+int
+otx_cpt_start_device(void *dev)
+{
+	int rc;
+	struct cpt_vf *cptvf = (struct cpt_vf *)dev;
+
+	rc = otx_cpt_send_vf_up(cptvf);
+	if (rc) {
+		CPT_LOG_ERR("Failed to mark CPT VF device %s UP, rc = %d",
+			    cptvf->dev_name, rc);
+		return -EFAULT;
+	}
+
+	if ((cptvf->vftype != SE_TYPE) && (cptvf->vftype != AE_TYPE)) {
+		CPT_LOG_ERR("Fatal error, unexpected vf type %u, for CPT VF "
+			    "device %s", cptvf->vftype, cptvf->dev_name);
+		return -ENOENT;
+	}
+
+	return 0;
+}
+
+void
+otx_cpt_stop_device(void *dev)
+{
+	int rc;
+	uint32_t pending, retries = 5;
+	struct cpt_vf *cptvf = (struct cpt_vf *)dev;
+
+	/* Wait for pending entries to complete */
+	pending = otx_cpt_read_vq_doorbell(cptvf);
+	while (pending) {
+		CPT_LOG_DP_DEBUG("%s: Waiting for pending %u cmds to complete",
+				 cptvf->dev_name, pending);
+		sleep(1);
+		pending = otx_cpt_read_vq_doorbell(cptvf);
+		retries--;
+		if (!retries)
+			break;
+	}
+
+	if (!retries && pending) {
+		CPT_LOG_ERR("%s: Timeout waiting for commands(%u)",
+			    cptvf->dev_name, pending);
+		return;
+	}
+
+	rc = otx_cpt_send_vf_down(cptvf);
+	if (rc) {
+		CPT_LOG_ERR("Failed to bring down vf %s, rc %d",
+			    cptvf->dev_name, rc);
+		return;
+	}
 }

@@ -5,12 +5,14 @@
 #include <rte_alarm.h>
 #include <rte_bus_pci.h>
 #include <rte_cryptodev.h>
+#include <rte_cryptodev_pmd.h>
 #include <rte_malloc.h>
 
 #include "cpt_pmd_logs.h"
 #include "cpt_pmd_ops_helper.h"
 
 #include "otx_cryptodev.h"
+#include "otx_cryptodev_capabilities.h"
 #include "otx_cryptodev_hw_access.h"
 #include "otx_cryptodev_ops.h"
 
@@ -95,6 +97,97 @@ otx_cpt_periodic_alarm_stop(void *arg)
 	return rte_eal_alarm_cancel(otx_cpt_alarm_cb, arg);
 }
 
+/* PMD ops */
+
+static int
+otx_cpt_dev_config(struct rte_cryptodev *dev __rte_unused,
+		   struct rte_cryptodev_config *config __rte_unused)
+{
+	CPT_PMD_INIT_FUNC_TRACE();
+	return 0;
+}
+
+static int
+otx_cpt_dev_start(struct rte_cryptodev *c_dev)
+{
+	void *cptvf = c_dev->data->dev_private;
+
+	CPT_PMD_INIT_FUNC_TRACE();
+
+	return otx_cpt_start_device(cptvf);
+}
+
+static void
+otx_cpt_dev_stop(struct rte_cryptodev *c_dev)
+{
+	void *cptvf = c_dev->data->dev_private;
+
+	CPT_PMD_INIT_FUNC_TRACE();
+
+	otx_cpt_stop_device(cptvf);
+}
+
+static int
+otx_cpt_dev_close(struct rte_cryptodev *c_dev)
+{
+	void *cptvf = c_dev->data->dev_private;
+
+	CPT_PMD_INIT_FUNC_TRACE();
+
+	otx_cpt_periodic_alarm_stop(cptvf);
+	otx_cpt_deinit_device(cptvf);
+
+	return 0;
+}
+
+static void
+otx_cpt_dev_info_get(struct rte_cryptodev *dev, struct rte_cryptodev_info *info)
+{
+	CPT_PMD_INIT_FUNC_TRACE();
+	if (info != NULL) {
+		info->max_nb_queue_pairs = CPT_NUM_QS_PER_VF;
+		info->feature_flags = dev->feature_flags;
+		info->capabilities = otx_get_capabilities();
+		info->sym.max_nb_sessions = 0;
+		info->driver_id = otx_cryptodev_driver_id;
+		info->min_mbuf_headroom_req = OTX_CPT_MIN_HEADROOM_REQ;
+		info->min_mbuf_tailroom_req = OTX_CPT_MIN_TAILROOM_REQ;
+	}
+}
+
+static void
+otx_cpt_stats_get(struct rte_cryptodev *dev __rte_unused,
+		  struct rte_cryptodev_stats *stats __rte_unused)
+{
+	CPT_PMD_INIT_FUNC_TRACE();
+}
+
+static void
+otx_cpt_stats_reset(struct rte_cryptodev *dev __rte_unused)
+{
+	CPT_PMD_INIT_FUNC_TRACE();
+}
+
+static struct rte_cryptodev_ops cptvf_ops = {
+	/* Device related operations */
+	.dev_configure = otx_cpt_dev_config,
+	.dev_start = otx_cpt_dev_start,
+	.dev_stop = otx_cpt_dev_stop,
+	.dev_close = otx_cpt_dev_close,
+	.dev_infos_get = otx_cpt_dev_info_get,
+
+	.stats_get = otx_cpt_stats_get,
+	.stats_reset = otx_cpt_stats_reset,
+	.queue_pair_setup = NULL,
+	.queue_pair_release = NULL,
+	.queue_pair_count = NULL,
+
+	/* Crypto related operations */
+	.sym_session_get_size = NULL,
+	.sym_session_configure = NULL,
+	.sym_session_clear = NULL
+};
+
 static void
 otx_cpt_common_vars_init(struct cpt_vf *cptvf)
 {
@@ -164,7 +257,7 @@ otx_cpt_dev_create(struct rte_cryptodev *c_dev)
 	/* Initialize data path variables used by common code */
 	otx_cpt_common_vars_init(cptvf);
 
-	c_dev->dev_ops = NULL;
+	c_dev->dev_ops = &cptvf_ops;
 
 	c_dev->enqueue_burst = NULL;
 	c_dev->dequeue_burst = NULL;
