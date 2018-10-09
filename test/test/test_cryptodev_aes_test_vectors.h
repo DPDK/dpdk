@@ -1254,7 +1254,8 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
-			BLOCKCIPHER_TEST_TARGET_PMD_CCP
+			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA1 Encryption Digest "
@@ -1262,7 +1263,8 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 		.test_data = &aes_test_data_13,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_ARMV8 |
-			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM
+			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA1 Encryption Digest "
@@ -1276,7 +1278,8 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_QAT |
 			BLOCKCIPHER_TEST_TARGET_PMD_SCHEDULER |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
-			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC
+			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA1 Decryption Digest "
@@ -1291,7 +1294,8 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
-			BLOCKCIPHER_TEST_TARGET_PMD_CCP
+			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA1 Decryption Digest "
@@ -1300,7 +1304,8 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
-			    BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC
+			    BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
+			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA1 Decryption Digest "
@@ -1308,7 +1313,8 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 		.test_data = &aes_test_data_13,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_ARMV8 |
-			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM
+			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA256 Encryption Digest",
@@ -1322,7 +1328,8 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
-			BLOCKCIPHER_TEST_TARGET_PMD_CCP
+			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA256 Encryption Digest "
@@ -1330,7 +1337,8 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 		.test_data = &aes_test_data_12,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_ARMV8 |
-			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM
+			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA256 Decryption Digest "
@@ -1345,7 +1353,8 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
-			BLOCKCIPHER_TEST_TARGET_PMD_CCP
+			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA256 Decryption Digest "
@@ -1353,7 +1362,8 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 		.test_data = &aes_test_data_12,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_ARMV8 |
-			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM
+			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA512 Encryption Digest",
@@ -1366,7 +1376,8 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
-			BLOCKCIPHER_TEST_TARGET_PMD_CCP
+			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA512 Encryption Digest "
@@ -1376,7 +1387,8 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SESSIONLESS,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB |
 			BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_CCP
+			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA512 Encryption Digest "
@@ -1387,7 +1399,8 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 			BLOCKCIPHER_TEST_FEATURE_SG |
 			BLOCKCIPHER_TEST_FEATURE_OOP,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB |
-			BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
+			BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA512 Decryption Digest "
@@ -1401,7 +1414,8 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
-			BLOCKCIPHER_TEST_TARGET_PMD_CCP
+			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA512 Decryption Digest "
@@ -1415,7 +1429,8 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_QAT |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
-			BLOCKCIPHER_TEST_TARGET_PMD_SCHEDULER
+			BLOCKCIPHER_TEST_TARGET_PMD_SCHEDULER |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-128-CBC XCBC Encryption Digest",
@@ -1443,7 +1458,8 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_QAT |
 			BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
-			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC
+			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA1 Decryption Digest "
@@ -1455,7 +1471,8 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_QAT |
 			BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
-			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC
+			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA224 Encryption Digest",
@@ -1467,7 +1484,8 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_SCHEDULER |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
-			BLOCKCIPHER_TEST_TARGET_PMD_CCP
+			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA224 Decryption Digest "
@@ -1480,7 +1498,8 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_SCHEDULER |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
-			BLOCKCIPHER_TEST_TARGET_PMD_CCP
+			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA384 Encryption Digest",
@@ -1517,7 +1536,8 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SESSIONLESS,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_ARMV8 |
 			BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_CCP
+			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr =
@@ -1528,7 +1548,8 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SESSIONLESS,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_ARMV8 |
 			BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_CCP
+			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 };
 
@@ -1545,7 +1566,8 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
 			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
-			BLOCKCIPHER_TEST_TARGET_PMD_VIRTIO
+			BLOCKCIPHER_TEST_TARGET_PMD_VIRTIO |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-128-CBC Decryption",
@@ -1559,7 +1581,8 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
 			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
-			BLOCKCIPHER_TEST_TARGET_PMD_VIRTIO
+			BLOCKCIPHER_TEST_TARGET_PMD_VIRTIO |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-192-CBC Encryption",
@@ -1572,7 +1595,8 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
-			BLOCKCIPHER_TEST_TARGET_PMD_VIRTIO
+			BLOCKCIPHER_TEST_TARGET_PMD_VIRTIO |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-192-CBC Encryption Scater gather",
@@ -1582,7 +1606,8 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 			BLOCKCIPHER_TEST_FEATURE_OOP,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
-			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC
+			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-192-CBC Decryption",
@@ -1595,7 +1620,8 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
-			BLOCKCIPHER_TEST_TARGET_PMD_VIRTIO
+			BLOCKCIPHER_TEST_TARGET_PMD_VIRTIO |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-192-CBC Decryption Scatter Gather",
@@ -1603,7 +1629,8 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
-			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC
+			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-256-CBC Encryption",
@@ -1617,7 +1644,8 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
 			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
-			BLOCKCIPHER_TEST_TARGET_PMD_VIRTIO
+			BLOCKCIPHER_TEST_TARGET_PMD_VIRTIO |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-256-CBC Decryption",
@@ -1631,7 +1659,8 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
 			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
-			BLOCKCIPHER_TEST_TARGET_PMD_VIRTIO
+			BLOCKCIPHER_TEST_TARGET_PMD_VIRTIO |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-256-CBC OOP Encryption",
@@ -1668,7 +1697,8 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
-			BLOCKCIPHER_TEST_TARGET_PMD_CCP
+			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-128-CTR Decryption",
@@ -1681,7 +1711,8 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
-			BLOCKCIPHER_TEST_TARGET_PMD_CCP
+			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-192-CTR Encryption",
@@ -1693,7 +1724,8 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_SCHEDULER |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
-			BLOCKCIPHER_TEST_TARGET_PMD_CCP
+			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-192-CTR Decryption",
@@ -1705,7 +1737,8 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_SCHEDULER |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
-			BLOCKCIPHER_TEST_TARGET_PMD_CCP
+			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-256-CTR Encryption",
@@ -1718,7 +1751,8 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
-			BLOCKCIPHER_TEST_TARGET_PMD_CCP
+			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-256-CTR Decryption",
@@ -1731,25 +1765,29 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_DPAA_SEC |
 			BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
-			BLOCKCIPHER_TEST_TARGET_PMD_CCP
+			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
+			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-128-CTR Encryption (12-byte IV)",
 		.test_data = &aes_test_data_1_IV_12_bytes,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-192-CTR Encryption (12-byte IV)",
 		.test_data = &aes_test_data_2_IV_12_bytes,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
 		.test_descr = "AES-256-CTR Encryption (12-byte IV)",
 		.test_data = &aes_test_data_3_IV_12_bytes,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	}
 };
 

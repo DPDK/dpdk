@@ -64,6 +64,7 @@
 #define CRYPTODEV_NAME_MVSAM_PMD		crypto_mvsam
 #define CRYPTODEV_NAME_CCP_PMD		crypto_ccp
 #define CRYPTODEV_NAME_VIRTIO_PMD	crypto_virtio
+#define CRYPTODEV_NAME_OCTEONTX_SYM_PMD	crypto_octeontx
 
 /**
  * Write (spread) data from buffer to mbuf data

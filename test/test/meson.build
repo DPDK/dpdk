@@ -145,6 +145,7 @@ test_names = [
 	'cryptodev_sw_mvsam_autotest',
 	'cryptodev_dpaa2_sec_autotest',
 	'cryptodev_dpaa_sec_autotest',
+	'cryptodev_octeontx_autotest',
 	'cycles_autotest',
 	'debug_autotest',
 	'devargs_autotest',
