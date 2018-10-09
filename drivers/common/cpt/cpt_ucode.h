@@ -5,6 +5,10 @@
 #ifndef _CPT_UCODE_H_
 #define _CPT_UCODE_H_
 
+#include <stdbool.h>
+
+#include "cpt_common.h"
+#include "cpt_hw_types.h"
 #include "cpt_mcode_defines.h"
 
 /*
@@ -62,6 +66,14 @@ gen_key_snow3g(uint8_t *ck, uint32_t *keyx)
 			(ck[base + 2] << 8) | (ck[base + 3]);
 		keyx[3 - i] = rte_cpu_to_be_32(keyx[3 - i]);
 	}
+}
+
+static __rte_always_inline void
+cpt_fc_salt_update(void *ctx,
+		   uint8_t *salt)
+{
+	struct cpt_ctx *cpt_ctx = ctx;
+	memcpy(&cpt_ctx->fctx.enc.encr_iv, salt, 4);
 }
 
 static __rte_always_inline int
@@ -310,6 +322,550 @@ success:
 	cpt_ctx->enc_cipher = type;
 
 	return 0;
+}
+
+static __rte_always_inline uint32_t
+fill_sg_comp(sg_comp_t *list,
+	     uint32_t i,
+	     phys_addr_t dma_addr,
+	     uint32_t size)
+{
+	sg_comp_t *to = &list[i>>2];
+
+	to->u.s.len[i%4] = rte_cpu_to_be_16(size);
+	to->ptr[i%4] = rte_cpu_to_be_64(dma_addr);
+	i++;
+	return i;
+}
+
+static __rte_always_inline uint32_t
+fill_sg_comp_from_buf(sg_comp_t *list,
+		      uint32_t i,
+		      buf_ptr_t *from)
+{
+	sg_comp_t *to = &list[i>>2];
+
+	to->u.s.len[i%4] = rte_cpu_to_be_16(from->size);
+	to->ptr[i%4] = rte_cpu_to_be_64(from->dma_addr);
+	i++;
+	return i;
+}
+
+static __rte_always_inline uint32_t
+fill_sg_comp_from_buf_min(sg_comp_t *list,
+			  uint32_t i,
+			  buf_ptr_t *from,
+			  uint32_t *psize)
+{
+	sg_comp_t *to = &list[i >> 2];
+	uint32_t size = *psize;
+	uint32_t e_len;
+
+	e_len = (size > from->size) ? from->size : size;
+	to->u.s.len[i % 4] = rte_cpu_to_be_16(e_len);
+	to->ptr[i % 4] = rte_cpu_to_be_64(from->dma_addr);
+	*psize -= e_len;
+	i++;
+	return i;
+}
+
+/*
+ * This fills the MC expected SGIO list
+ * from IOV given by user.
+ */
+static __rte_always_inline uint32_t
+fill_sg_comp_from_iov(sg_comp_t *list,
+		      uint32_t i,
+		      iov_ptr_t *from, uint32_t from_offset,
+		      uint32_t *psize, buf_ptr_t *extra_buf,
+		      uint32_t extra_offset)
+{
+	int32_t j;
+	uint32_t extra_len = extra_buf ? extra_buf->size : 0;
+	uint32_t size = *psize - extra_len;
+	buf_ptr_t *bufs;
+
+	bufs = from->bufs;
+	for (j = 0; (j < from->buf_cnt) && size; j++) {
+		phys_addr_t e_dma_addr;
+		uint32_t e_len;
+		sg_comp_t *to = &list[i >> 2];
+
+		if (!bufs[j].size)
+			continue;
+
+		if (unlikely(from_offset)) {
+			if (from_offset >= bufs[j].size) {
+				from_offset -= bufs[j].size;
+				continue;
+			}
+			e_dma_addr = bufs[j].dma_addr + from_offset;
+			e_len = (size > (bufs[j].size - from_offset)) ?
+				(bufs[j].size - from_offset) : size;
+			from_offset = 0;
+		} else {
+			e_dma_addr = bufs[j].dma_addr;
+			e_len = (size > bufs[j].size) ?
+				bufs[j].size : size;
+		}
+
+		to->u.s.len[i % 4] = rte_cpu_to_be_16(e_len);
+		to->ptr[i % 4] = rte_cpu_to_be_64(e_dma_addr);
+
+		if (extra_len && (e_len >= extra_offset)) {
+			/* Break the data at given offset */
+			uint32_t next_len = e_len - extra_offset;
+			phys_addr_t next_dma = e_dma_addr + extra_offset;
+
+			if (!extra_offset) {
+				i--;
+			} else {
+				e_len = extra_offset;
+				size -= e_len;
+				to->u.s.len[i % 4] = rte_cpu_to_be_16(e_len);
+			}
+
+			/* Insert extra data ptr */
+			if (extra_len) {
+				i++;
+				to = &list[i >> 2];
+				to->u.s.len[i % 4] =
+					rte_cpu_to_be_16(extra_buf->size);
+				to->ptr[i % 4] =
+					rte_cpu_to_be_64(extra_buf->dma_addr);
+
+				/* size already decremented by extra len */
+			}
+
+			/* insert the rest of the data */
+			if (next_len) {
+				i++;
+				to = &list[i >> 2];
+				to->u.s.len[i % 4] = rte_cpu_to_be_16(next_len);
+				to->ptr[i % 4] = rte_cpu_to_be_64(next_dma);
+				size -= next_len;
+			}
+			extra_len = 0;
+
+		} else {
+			size -= e_len;
+		}
+		if (extra_offset)
+			extra_offset -= size;
+		i++;
+	}
+
+	*psize = size;
+	return (uint32_t)i;
+}
+
+static __rte_always_inline int
+cpt_enc_hmac_prep(uint32_t flags,
+		  uint64_t d_offs,
+		  uint64_t d_lens,
+		  fc_params_t *fc_params,
+		  void *op,
+		  void **prep_req)
+{
+	uint32_t iv_offset = 0;
+	int32_t inputlen, outputlen, enc_dlen, auth_dlen;
+	struct cpt_ctx *cpt_ctx;
+	uint32_t cipher_type, hash_type;
+	uint32_t mac_len, size;
+	uint8_t iv_len = 16;
+	struct cpt_request_info *req;
+	buf_ptr_t *meta_p, *aad_buf = NULL;
+	uint32_t encr_offset, auth_offset;
+	uint32_t encr_data_len, auth_data_len, aad_len = 0;
+	uint32_t passthrough_len = 0;
+	void *m_vaddr, *offset_vaddr;
+	uint64_t m_dma, offset_dma, ctx_dma;
+	vq_cmd_word0_t vq_cmd_w0;
+	vq_cmd_word3_t vq_cmd_w3;
+	void *c_vaddr;
+	uint64_t c_dma;
+	int32_t m_size;
+	opcode_info_t opcode;
+
+	meta_p = &fc_params->meta_buf;
+	m_vaddr = meta_p->vaddr;
+	m_dma = meta_p->dma_addr;
+	m_size = meta_p->size;
+
+	encr_offset = ENCR_OFFSET(d_offs);
+	auth_offset = AUTH_OFFSET(d_offs);
+	encr_data_len = ENCR_DLEN(d_lens);
+	auth_data_len = AUTH_DLEN(d_lens);
+	if (unlikely(flags & VALID_AAD_BUF)) {
+		/*
+		 * We dont support both aad
+		 * and auth data separately
+		 */
+		auth_data_len = 0;
+		auth_offset = 0;
+		aad_len = fc_params->aad_buf.size;
+		aad_buf = &fc_params->aad_buf;
+	}
+	cpt_ctx = fc_params->ctx_buf.vaddr;
+	cipher_type = cpt_ctx->enc_cipher;
+	hash_type = cpt_ctx->hash_type;
+	mac_len = cpt_ctx->mac_len;
+
+	/*
+	 * Save initial space that followed app data for completion code &
+	 * alternate completion code to fall in same cache line as app data
+	 */
+	m_vaddr = (uint8_t *)m_vaddr + COMPLETION_CODE_SIZE;
+	m_dma += COMPLETION_CODE_SIZE;
+	size = (uint8_t *)RTE_PTR_ALIGN((uint8_t *)m_vaddr, 16) -
+		(uint8_t *)m_vaddr;
+
+	c_vaddr = (uint8_t *)m_vaddr + size;
+	c_dma = m_dma + size;
+	size += sizeof(cpt_res_s_t);
+
+	m_vaddr = (uint8_t *)m_vaddr + size;
+	m_dma += size;
+	m_size -= size;
+
+	/* start cpt request info struct at 8 byte boundary */
+	size = (uint8_t *)RTE_PTR_ALIGN(m_vaddr, 8) -
+		(uint8_t *)m_vaddr;
+
+	req = (struct cpt_request_info *)((uint8_t *)m_vaddr + size);
+
+	size += sizeof(struct cpt_request_info);
+	m_vaddr = (uint8_t *)m_vaddr + size;
+	m_dma += size;
+	m_size -= size;
+
+	if (hash_type == GMAC_TYPE)
+		encr_data_len = 0;
+
+	if (unlikely(!(flags & VALID_IV_BUF))) {
+		iv_len = 0;
+		iv_offset = ENCR_IV_OFFSET(d_offs);
+	}
+
+	if (unlikely(flags & VALID_AAD_BUF)) {
+		/*
+		 * When AAD is given, data above encr_offset is pass through
+		 * Since AAD is given as separate pointer and not as offset,
+		 * this is a special case as we need to fragment input data
+		 * into passthrough + encr_data and then insert AAD in between.
+		 */
+		if (hash_type != GMAC_TYPE) {
+			passthrough_len = encr_offset;
+			auth_offset = passthrough_len + iv_len;
+			encr_offset = passthrough_len + aad_len + iv_len;
+			auth_data_len = aad_len + encr_data_len;
+		} else {
+			passthrough_len = 16 + aad_len;
+			auth_offset = passthrough_len + iv_len;
+			auth_data_len = aad_len;
+		}
+	} else {
+		encr_offset += iv_len;
+		auth_offset += iv_len;
+	}
+
+	/* Encryption */
+	opcode.s.major = CPT_MAJOR_OP_FC;
+	opcode.s.minor = 0;
+
+	auth_dlen = auth_offset + auth_data_len;
+	enc_dlen = encr_data_len + encr_offset;
+	if (unlikely(encr_data_len & 0xf)) {
+		if ((cipher_type == DES3_CBC) || (cipher_type == DES3_ECB))
+			enc_dlen = ROUNDUP8(encr_data_len) + encr_offset;
+		else if (likely((cipher_type == AES_CBC) ||
+				(cipher_type == AES_ECB)))
+			enc_dlen = ROUNDUP16(encr_data_len) + encr_offset;
+	}
+
+	if (unlikely(hash_type == GMAC_TYPE)) {
+		encr_offset = auth_dlen;
+		enc_dlen = 0;
+	}
+
+	if (unlikely(auth_dlen > enc_dlen)) {
+		inputlen = auth_dlen;
+		outputlen = auth_dlen + mac_len;
+	} else {
+		inputlen = enc_dlen;
+		outputlen = enc_dlen + mac_len;
+	}
+
+	/* GP op header */
+	vq_cmd_w0.u64 = 0;
+	vq_cmd_w0.s.param1 = rte_cpu_to_be_16(encr_data_len);
+	vq_cmd_w0.s.param2 = rte_cpu_to_be_16(auth_data_len);
+	/*
+	 * In 83XX since we have a limitation of
+	 * IV & Offset control word not part of instruction
+	 * and need to be part of Data Buffer, we check if
+	 * head room is there and then only do the Direct mode processing
+	 */
+	if (likely((flags & SINGLE_BUF_INPLACE) &&
+		   (flags & SINGLE_BUF_HEADTAILROOM))) {
+		void *dm_vaddr = fc_params->bufs[0].vaddr;
+		uint64_t dm_dma_addr = fc_params->bufs[0].dma_addr;
+		/*
+		 * This flag indicates that there is 24 bytes head room and
+		 * 8 bytes tail room available, so that we get to do
+		 * DIRECT MODE with limitation
+		 */
+
+		offset_vaddr = (uint8_t *)dm_vaddr - OFF_CTRL_LEN - iv_len;
+		offset_dma = dm_dma_addr - OFF_CTRL_LEN - iv_len;
+
+		/* DPTR */
+		req->ist.ei1 = offset_dma;
+		/* RPTR should just exclude offset control word */
+		req->ist.ei2 = dm_dma_addr - iv_len;
+		req->alternate_caddr = (uint64_t *)((uint8_t *)dm_vaddr
+						    + outputlen - iv_len);
+
+		vq_cmd_w0.s.dlen = rte_cpu_to_be_16(inputlen + OFF_CTRL_LEN);
+
+		vq_cmd_w0.s.opcode = rte_cpu_to_be_16(opcode.flags);
+
+		if (likely(iv_len)) {
+			uint64_t *dest = (uint64_t *)((uint8_t *)offset_vaddr
+						      + OFF_CTRL_LEN);
+			uint64_t *src = fc_params->iv_buf;
+			dest[0] = src[0];
+			dest[1] = src[1];
+		}
+
+		*(uint64_t *)offset_vaddr =
+			rte_cpu_to_be_64(((uint64_t)encr_offset << 16) |
+				((uint64_t)iv_offset << 8) |
+				((uint64_t)auth_offset));
+
+	} else {
+		uint32_t i, g_size_bytes, s_size_bytes;
+		uint64_t dptr_dma, rptr_dma;
+		sg_comp_t *gather_comp;
+		sg_comp_t *scatter_comp;
+		uint8_t *in_buffer;
+
+		/* This falls under strict SG mode */
+		offset_vaddr = m_vaddr;
+		offset_dma = m_dma;
+		size = OFF_CTRL_LEN + iv_len;
+
+		m_vaddr = (uint8_t *)m_vaddr + size;
+		m_dma += size;
+		m_size -= size;
+
+		opcode.s.major |= CPT_DMA_MODE;
+
+		vq_cmd_w0.s.opcode = rte_cpu_to_be_16(opcode.flags);
+
+		if (likely(iv_len)) {
+			uint64_t *dest = (uint64_t *)((uint8_t *)offset_vaddr
+						      + OFF_CTRL_LEN);
+			uint64_t *src = fc_params->iv_buf;
+			dest[0] = src[0];
+			dest[1] = src[1];
+		}
+
+		*(uint64_t *)offset_vaddr =
+			rte_cpu_to_be_64(((uint64_t)encr_offset << 16) |
+				((uint64_t)iv_offset << 8) |
+				((uint64_t)auth_offset));
+
+		/* DPTR has SG list */
+		in_buffer = m_vaddr;
+		dptr_dma = m_dma;
+
+		((uint16_t *)in_buffer)[0] = 0;
+		((uint16_t *)in_buffer)[1] = 0;
+
+		/* TODO Add error check if space will be sufficient */
+		gather_comp = (sg_comp_t *)((uint8_t *)m_vaddr + 8);
+
+		/*
+		 * Input Gather List
+		 */
+
+		i = 0;
+
+		/* Offset control word that includes iv */
+		i = fill_sg_comp(gather_comp, i, offset_dma,
+				 OFF_CTRL_LEN + iv_len);
+
+		/* Add input data */
+		size = inputlen - iv_len;
+		if (likely(size)) {
+			uint32_t aad_offset = aad_len ? passthrough_len : 0;
+
+			if (unlikely(flags & SINGLE_BUF_INPLACE)) {
+				i = fill_sg_comp_from_buf_min(gather_comp, i,
+							      fc_params->bufs,
+							      &size);
+			} else {
+				i = fill_sg_comp_from_iov(gather_comp, i,
+							  fc_params->src_iov,
+							  0, &size,
+							  aad_buf, aad_offset);
+			}
+
+			if (unlikely(size)) {
+				CPT_LOG_DP_ERR("Insufficient buffer space,"
+					       " size %d needed", size);
+				return ERR_BAD_INPUT_ARG;
+			}
+		}
+		((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
+		g_size_bytes = ((i + 3) / 4) * sizeof(sg_comp_t);
+
+		/*
+		 * Output Scatter list
+		 */
+		i = 0;
+		scatter_comp =
+			(sg_comp_t *)((uint8_t *)gather_comp + g_size_bytes);
+
+		/* Add IV */
+		if (likely(iv_len)) {
+			i = fill_sg_comp(scatter_comp, i,
+					 offset_dma + OFF_CTRL_LEN,
+					 iv_len);
+		}
+
+		/* output data or output data + digest*/
+		if (unlikely(flags & VALID_MAC_BUF)) {
+			size = outputlen - iv_len - mac_len;
+			if (size) {
+				uint32_t aad_offset =
+					aad_len ? passthrough_len : 0;
+
+				if (unlikely(flags & SINGLE_BUF_INPLACE)) {
+					i = fill_sg_comp_from_buf_min(
+							scatter_comp,
+							i,
+							fc_params->bufs,
+							&size);
+				} else {
+					i = fill_sg_comp_from_iov(scatter_comp,
+							i,
+							fc_params->dst_iov,
+							0,
+							&size,
+							aad_buf,
+							aad_offset);
+				}
+				if (size)
+					return ERR_BAD_INPUT_ARG;
+			}
+			/* mac_data */
+			if (mac_len) {
+				i = fill_sg_comp_from_buf(scatter_comp, i,
+							  &fc_params->mac_buf);
+			}
+		} else {
+			/* Output including mac */
+			size = outputlen - iv_len;
+			if (likely(size)) {
+				uint32_t aad_offset =
+					aad_len ? passthrough_len : 0;
+
+				if (unlikely(flags & SINGLE_BUF_INPLACE)) {
+					i = fill_sg_comp_from_buf_min(
+							scatter_comp,
+							i,
+							fc_params->bufs,
+							&size);
+				} else {
+					i = fill_sg_comp_from_iov(scatter_comp,
+							i,
+							fc_params->dst_iov,
+							0,
+							&size,
+							aad_buf,
+							aad_offset);
+				}
+				if (unlikely(size)) {
+					CPT_LOG_DP_ERR("Insufficient buffer"
+						       " space, size %d needed",
+						       size);
+					return ERR_BAD_INPUT_ARG;
+				}
+			}
+		}
+		((uint16_t *)in_buffer)[3] = rte_cpu_to_be_16(i);
+		s_size_bytes = ((i + 3) / 4) * sizeof(sg_comp_t);
+
+		size = g_size_bytes + s_size_bytes + SG_LIST_HDR_SIZE;
+
+		/* This is DPTR len incase of SG mode */
+		vq_cmd_w0.s.dlen = rte_cpu_to_be_16(size);
+
+		m_vaddr = (uint8_t *)m_vaddr + size;
+		m_dma += size;
+		m_size -= size;
+
+		/* cpt alternate completion address saved earlier */
+		req->alternate_caddr = (uint64_t *)((uint8_t *)c_vaddr - 8);
+		*req->alternate_caddr = ~((uint64_t)COMPLETION_CODE_INIT);
+		rptr_dma = c_dma - 8;
+
+		req->ist.ei1 = dptr_dma;
+		req->ist.ei2 = rptr_dma;
+	}
+
+	/* First 16-bit swap then 64-bit swap */
+	/* TODO: HACK: Reverse the vq_cmd and cpt_req bit field definitions
+	 * to eliminate all the swapping
+	 */
+	vq_cmd_w0.u64 = rte_cpu_to_be_64(vq_cmd_w0.u64);
+
+	ctx_dma = fc_params->ctx_buf.dma_addr +
+		offsetof(struct cpt_ctx, fctx);
+	/* vq command w3 */
+	vq_cmd_w3.u64 = 0;
+	vq_cmd_w3.s.grp = 0;
+	vq_cmd_w3.s.cptr = ctx_dma;
+
+	/* 16 byte aligned cpt res address */
+	req->completion_addr = (uint64_t *)((uint8_t *)c_vaddr);
+	*req->completion_addr = COMPLETION_CODE_INIT;
+	req->comp_baddr  = c_dma;
+
+	/* Fill microcode part of instruction */
+	req->ist.ei0 = vq_cmd_w0.u64;
+	req->ist.ei3 = vq_cmd_w3.u64;
+
+	req->op  = op;
+
+	*prep_req = req;
+	return 0;
+}
+
+static __rte_always_inline void *__hot
+cpt_fc_enc_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
+		     fc_params_t *fc_params, void *op, int *ret_val)
+{
+	struct cpt_ctx *ctx = fc_params->ctx_buf.vaddr;
+	uint8_t fc_type;
+	void *prep_req = NULL;
+	int ret;
+
+	fc_type = ctx->fc_type;
+
+	/* Common api for rest of the ops */
+	if (likely(fc_type == FC_GEN)) {
+		ret = cpt_enc_hmac_prep(flags, d_offs, d_lens,
+					fc_params, op, &prep_req);
+	} else {
+		ret = ERR_EIO;
+	}
+
+	if (unlikely(!prep_req))
+		*ret_val = ret;
+	return prep_req;
 }
 
 static __rte_always_inline int
@@ -711,6 +1267,437 @@ fill_sess_gmac(struct rte_crypto_sym_xform *xform,
 	cpt_fc_auth_set_key(ctx, auth_type, NULL, 0, a_form->digest_length);
 
 	return 0;
+}
+
+static __rte_always_inline void *
+alloc_op_meta(struct rte_mbuf *m_src,
+	      buf_ptr_t *buf,
+	      int32_t len,
+	      struct rte_mempool *cpt_meta_pool)
+{
+	uint8_t *mdata;
+
+#ifndef CPT_ALWAYS_USE_SEPARATE_BUF
+	if (likely(m_src && (m_src->nb_segs == 1))) {
+		int32_t tailroom;
+		phys_addr_t mphys;
+
+		/* Check if tailroom is sufficient to hold meta data */
+		tailroom = rte_pktmbuf_tailroom(m_src);
+		if (likely(tailroom > len + 8)) {
+			mdata = (uint8_t *)m_src->buf_addr + m_src->buf_len;
+			mphys = m_src->buf_physaddr + m_src->buf_len;
+			mdata -= len;
+			mphys -= len;
+			buf->vaddr = mdata;
+			buf->dma_addr = mphys;
+			buf->size = len;
+			/* Indicate that this is a mbuf allocated mdata */
+			mdata = (uint8_t *)((uint64_t)mdata | 1ull);
+			return mdata;
+		}
+	}
+#else
+	RTE_SET_USED(m_src);
+#endif
+
+	if (unlikely(rte_mempool_get(cpt_meta_pool, (void **)&mdata) < 0))
+		return NULL;
+
+	buf->vaddr = mdata;
+	buf->dma_addr = rte_mempool_virt2iova(mdata);
+	buf->size = len;
+
+	return mdata;
+}
+
+/**
+ * cpt_free_metabuf - free metabuf to mempool.
+ * @param instance: pointer to instance.
+ * @param objp: pointer to the metabuf.
+ */
+static __rte_always_inline void
+free_op_meta(void *mdata, struct rte_mempool *cpt_meta_pool)
+{
+	bool nofree = ((uintptr_t)mdata & 1ull);
+
+	if (likely(nofree))
+		return;
+	rte_mempool_put(cpt_meta_pool, mdata);
+}
+
+static __rte_always_inline uint32_t
+prepare_iov_from_pkt(struct rte_mbuf *pkt,
+		     iov_ptr_t *iovec, uint32_t start_offset)
+{
+	uint16_t index = 0;
+	void *seg_data = NULL;
+	phys_addr_t seg_phys;
+	int32_t seg_size = 0;
+
+	if (!pkt) {
+		iovec->buf_cnt = 0;
+		return 0;
+	}
+
+	if (!start_offset) {
+		seg_data = rte_pktmbuf_mtod(pkt, void *);
+		seg_phys = rte_pktmbuf_mtophys(pkt);
+		seg_size = pkt->data_len;
+	} else {
+		while (start_offset >= pkt->data_len) {
+			start_offset -= pkt->data_len;
+			pkt = pkt->next;
+		}
+
+		seg_data = rte_pktmbuf_mtod_offset(pkt, void *, start_offset);
+		seg_phys = rte_pktmbuf_mtophys_offset(pkt, start_offset);
+		seg_size = pkt->data_len - start_offset;
+		if (!seg_size)
+			return 1;
+	}
+
+	/* first seg */
+	iovec->bufs[index].vaddr = seg_data;
+	iovec->bufs[index].dma_addr = seg_phys;
+	iovec->bufs[index].size = seg_size;
+	index++;
+	pkt = pkt->next;
+
+	while (unlikely(pkt != NULL)) {
+		seg_data = rte_pktmbuf_mtod(pkt, void *);
+		seg_phys = rte_pktmbuf_mtophys(pkt);
+		seg_size = pkt->data_len;
+		if (!seg_size)
+			break;
+
+		iovec->bufs[index].vaddr = seg_data;
+		iovec->bufs[index].dma_addr = seg_phys;
+		iovec->bufs[index].size = seg_size;
+
+		index++;
+
+		pkt = pkt->next;
+	}
+
+	iovec->buf_cnt = index;
+	return 0;
+}
+
+static __rte_always_inline uint32_t
+prepare_iov_from_pkt_inplace(struct rte_mbuf *pkt,
+			     fc_params_t *param,
+			     uint32_t *flags)
+{
+	uint16_t index = 0;
+	void *seg_data = NULL;
+	phys_addr_t seg_phys;
+	uint32_t seg_size = 0;
+	iov_ptr_t *iovec;
+
+	seg_data = rte_pktmbuf_mtod(pkt, void *);
+	seg_phys = rte_pktmbuf_mtophys(pkt);
+	seg_size = pkt->data_len;
+
+	/* first seg */
+	if (likely(!pkt->next)) {
+		uint32_t headroom, tailroom;
+
+		*flags |= SINGLE_BUF_INPLACE;
+		headroom = rte_pktmbuf_headroom(pkt);
+		tailroom = rte_pktmbuf_tailroom(pkt);
+		if (likely((headroom >= 24) &&
+		    (tailroom >= 8))) {
+			/* In 83XX this is prerequivisit for Direct mode */
+			*flags |= SINGLE_BUF_HEADTAILROOM;
+		}
+		param->bufs[0].vaddr = seg_data;
+		param->bufs[0].dma_addr = seg_phys;
+		param->bufs[0].size = seg_size;
+		return 0;
+	}
+	iovec = param->src_iov;
+	iovec->bufs[index].vaddr = seg_data;
+	iovec->bufs[index].dma_addr = seg_phys;
+	iovec->bufs[index].size = seg_size;
+	index++;
+	pkt = pkt->next;
+
+	while (unlikely(pkt != NULL)) {
+		seg_data = rte_pktmbuf_mtod(pkt, void *);
+		seg_phys = rte_pktmbuf_mtophys(pkt);
+		seg_size = pkt->data_len;
+
+		if (!seg_size)
+			break;
+
+		iovec->bufs[index].vaddr = seg_data;
+		iovec->bufs[index].dma_addr = seg_phys;
+		iovec->bufs[index].size = seg_size;
+
+		index++;
+
+		pkt = pkt->next;
+	}
+
+	iovec->buf_cnt = index;
+	return 0;
+}
+
+static __rte_always_inline void *
+fill_fc_params(struct rte_crypto_op *cop,
+	       struct cpt_sess_misc *sess_misc,
+	       void **mdata_ptr,
+	       int *op_ret)
+{
+	uint32_t space = 0;
+	struct rte_crypto_sym_op *sym_op = cop->sym;
+	void *mdata;
+	uintptr_t *op;
+	uint32_t mc_hash_off;
+	uint32_t flags = 0;
+	uint64_t d_offs, d_lens;
+	void *prep_req = NULL;
+	struct rte_mbuf *m_src, *m_dst;
+	uint8_t cpt_op = sess_misc->cpt_op;
+	uint8_t zsk_flag = sess_misc->zsk_flag;
+	uint8_t aes_gcm = sess_misc->aes_gcm;
+	uint16_t mac_len = sess_misc->mac_len;
+#ifdef CPT_ALWAYS_USE_SG_MODE
+	uint8_t inplace = 0;
+#else
+	uint8_t inplace = 1;
+#endif
+	fc_params_t fc_params;
+	char src[SRC_IOV_SIZE];
+	char dst[SRC_IOV_SIZE];
+	uint32_t iv_buf[4];
+	struct cptvf_meta_info *cpt_m_info =
+				(struct cptvf_meta_info *)(*mdata_ptr);
+
+	if (likely(sess_misc->iv_length)) {
+		flags |= VALID_IV_BUF;
+		fc_params.iv_buf = rte_crypto_op_ctod_offset(cop,
+				   uint8_t *, sess_misc->iv_offset);
+		if (sess_misc->aes_ctr &&
+		    unlikely(sess_misc->iv_length != 16)) {
+			memcpy((uint8_t *)iv_buf,
+				rte_crypto_op_ctod_offset(cop,
+				uint8_t *, sess_misc->iv_offset), 12);
+			iv_buf[3] = rte_cpu_to_be_32(0x1);
+			fc_params.iv_buf = iv_buf;
+		}
+	}
+
+	if (zsk_flag) {
+		fc_params.auth_iv_buf = rte_crypto_op_ctod_offset(cop,
+					uint8_t *,
+					sess_misc->auth_iv_offset);
+		if (zsk_flag == K_F9) {
+			CPT_LOG_DP_ERR("Should not reach here for "
+			"kasumi F9\n");
+		}
+		if (zsk_flag != ZS_EA)
+			inplace = 0;
+	}
+	m_src = sym_op->m_src;
+	m_dst = sym_op->m_dst;
+
+	if (aes_gcm) {
+		uint8_t *salt;
+		uint8_t *aad_data;
+		uint16_t aad_len;
+
+		d_offs = sym_op->aead.data.offset;
+		d_lens = sym_op->aead.data.length;
+		mc_hash_off = sym_op->aead.data.offset +
+			      sym_op->aead.data.length;
+
+		aad_data = sym_op->aead.aad.data;
+		aad_len = sess_misc->aad_length;
+		if (likely((aad_data + aad_len) ==
+			   rte_pktmbuf_mtod_offset(m_src,
+				uint8_t *,
+				sym_op->aead.data.offset))) {
+			d_offs = (d_offs - aad_len) | (d_offs << 16);
+			d_lens = (d_lens + aad_len) | (d_lens << 32);
+		} else {
+			fc_params.aad_buf.vaddr = sym_op->aead.aad.data;
+			fc_params.aad_buf.dma_addr = sym_op->aead.aad.phys_addr;
+			fc_params.aad_buf.size = aad_len;
+			flags |= VALID_AAD_BUF;
+			inplace = 0;
+			d_offs = d_offs << 16;
+			d_lens = d_lens << 32;
+		}
+
+		salt = fc_params.iv_buf;
+		if (unlikely(*(uint32_t *)salt != sess_misc->salt)) {
+			cpt_fc_salt_update(SESS_PRIV(sess_misc), salt);
+			sess_misc->salt = *(uint32_t *)salt;
+		}
+		fc_params.iv_buf = salt + 4;
+		if (likely(mac_len)) {
+			struct rte_mbuf *m = (cpt_op & CPT_OP_ENCODE) ? m_dst :
+					     m_src;
+
+			if (!m)
+				m = m_src;
+
+			/* hmac immediately following data is best case */
+			if (unlikely(rte_pktmbuf_mtod(m, uint8_t *) +
+			    mc_hash_off !=
+			    (uint8_t *)sym_op->aead.digest.data)) {
+				flags |= VALID_MAC_BUF;
+				fc_params.mac_buf.size = sess_misc->mac_len;
+				fc_params.mac_buf.vaddr =
+				  sym_op->aead.digest.data;
+				fc_params.mac_buf.dma_addr =
+				 sym_op->aead.digest.phys_addr;
+				inplace = 0;
+			}
+		}
+	} else {
+		d_offs = sym_op->cipher.data.offset;
+		d_lens = sym_op->cipher.data.length;
+		mc_hash_off = sym_op->cipher.data.offset +
+			      sym_op->cipher.data.length;
+		d_offs = (d_offs << 16) | sym_op->auth.data.offset;
+		d_lens = (d_lens << 32) | sym_op->auth.data.length;
+
+		if (mc_hash_off < (sym_op->auth.data.offset +
+				   sym_op->auth.data.length)){
+			mc_hash_off = (sym_op->auth.data.offset +
+				       sym_op->auth.data.length);
+		}
+		/* for gmac, salt should be updated like in gcm */
+		if (unlikely(sess_misc->is_gmac)) {
+			uint8_t *salt;
+			salt = fc_params.iv_buf;
+			if (unlikely(*(uint32_t *)salt != sess_misc->salt)) {
+				cpt_fc_salt_update(SESS_PRIV(sess_misc), salt);
+				sess_misc->salt = *(uint32_t *)salt;
+			}
+			fc_params.iv_buf = salt + 4;
+		}
+		if (likely(mac_len)) {
+			struct rte_mbuf *m;
+
+			m = (cpt_op & CPT_OP_ENCODE) ? m_dst : m_src;
+			if (!m)
+				m = m_src;
+
+			/* hmac immediately following data is best case */
+			if (unlikely(rte_pktmbuf_mtod(m, uint8_t *) +
+			    mc_hash_off !=
+			     (uint8_t *)sym_op->auth.digest.data)) {
+				flags |= VALID_MAC_BUF;
+				fc_params.mac_buf.size =
+					sess_misc->mac_len;
+				fc_params.mac_buf.vaddr =
+					sym_op->auth.digest.data;
+				fc_params.mac_buf.dma_addr =
+				sym_op->auth.digest.phys_addr;
+				inplace = 0;
+			}
+		}
+	}
+	fc_params.ctx_buf.vaddr = SESS_PRIV(sess_misc);
+	fc_params.ctx_buf.dma_addr = sess_misc->ctx_dma_addr;
+
+	if (unlikely(sess_misc->is_null || sess_misc->cpt_op == CPT_OP_DECODE))
+		inplace = 0;
+
+	if (likely(!m_dst && inplace)) {
+		/* Case of single buffer without AAD buf or
+		 * separate mac buf in place and
+		 * not air crypto
+		 */
+		fc_params.dst_iov = fc_params.src_iov = (void *)src;
+
+		if (unlikely(prepare_iov_from_pkt_inplace(m_src,
+							  &fc_params,
+							  &flags))) {
+			CPT_LOG_DP_ERR("Prepare inplace src iov failed");
+			*op_ret = -1;
+			return NULL;
+		}
+
+	} else {
+		/* Out of place processing */
+		fc_params.src_iov = (void *)src;
+		fc_params.dst_iov = (void *)dst;
+
+		/* Store SG I/O in the api for reuse */
+		if (prepare_iov_from_pkt(m_src, fc_params.src_iov, 0)) {
+			CPT_LOG_DP_ERR("Prepare src iov failed");
+			*op_ret = -1;
+			return NULL;
+		}
+
+		if (unlikely(m_dst != NULL)) {
+			uint32_t pkt_len;
+
+			/* Try to make room as much as src has */
+			m_dst = sym_op->m_dst;
+			pkt_len = rte_pktmbuf_pkt_len(m_dst);
+
+			if (unlikely(pkt_len < rte_pktmbuf_pkt_len(m_src))) {
+				pkt_len = rte_pktmbuf_pkt_len(m_src) - pkt_len;
+				if (!rte_pktmbuf_append(m_dst, pkt_len)) {
+					CPT_LOG_DP_ERR("Not enough space in "
+						       "m_dst %p, need %u"
+						       " more",
+						       m_dst, pkt_len);
+					return NULL;
+				}
+			}
+
+			if (prepare_iov_from_pkt(m_dst, fc_params.dst_iov, 0)) {
+				CPT_LOG_DP_ERR("Prepare dst iov failed for "
+					       "m_dst %p", m_dst);
+				return NULL;
+			}
+		} else {
+			fc_params.dst_iov = (void *)src;
+		}
+	}
+
+	if (likely(flags & SINGLE_BUF_HEADTAILROOM))
+		mdata = alloc_op_meta(m_src,
+				      &fc_params.meta_buf,
+				      cpt_m_info->cptvf_op_sb_mlen,
+				      cpt_m_info->cptvf_meta_pool);
+	else
+		mdata = alloc_op_meta(NULL,
+				      &fc_params.meta_buf,
+				      cpt_m_info->cptvf_op_mlen,
+				      cpt_m_info->cptvf_meta_pool);
+
+	if (unlikely(mdata == NULL)) {
+		CPT_LOG_DP_ERR("Error allocating meta buffer for request");
+		return NULL;
+	}
+
+	op = (uintptr_t *)((uintptr_t)mdata & (uintptr_t)~1ull);
+	op[0] = (uintptr_t)mdata;
+	op[1] = (uintptr_t)cop;
+	op[2] = op[3] = 0; /* Used to indicate auth verify */
+	space += 4 * sizeof(uint64_t);
+
+	fc_params.meta_buf.vaddr = (uint8_t *)op + space;
+	fc_params.meta_buf.dma_addr += space;
+	fc_params.meta_buf.size -= space;
+
+	/* Finally prepare the instruction */
+	if (cpt_op & CPT_OP_ENCODE)
+		prep_req = cpt_fc_enc_hmac_prep(flags, d_offs, d_lens,
+						&fc_params, op, op_ret);
+
+	if (unlikely(!prep_req))
+		free_op_meta(mdata, cpt_m_info->cptvf_meta_pool);
+	*mdata_ptr = mdata;
+	return prep_req;
 }
 
 #endif /*_CPT_UCODE_H_ */
