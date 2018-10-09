@@ -10,6 +10,8 @@
 
 #include "cpt_pmd_logs.h"
 #include "cpt_pmd_ops_helper.h"
+#include "cpt_ucode.h"
+#include "cpt_request_mgr.h"
 
 #include "otx_cryptodev.h"
 #include "otx_cryptodev_capabilities.h"
@@ -246,6 +248,82 @@ otx_cpt_que_pair_release(struct rte_cryptodev *dev, uint16_t que_pair_id)
 	return 0;
 }
 
+static unsigned int
+otx_cpt_get_session_size(struct rte_cryptodev *dev __rte_unused)
+{
+	return cpt_get_session_size();
+}
+
+static void
+otx_cpt_session_init(void *sym_sess, uint8_t driver_id)
+{
+	struct rte_cryptodev_sym_session *sess = sym_sess;
+	struct cpt_sess_misc *cpt_sess =
+	 (struct cpt_sess_misc *) get_sym_session_private_data(sess, driver_id);
+
+	CPT_PMD_INIT_FUNC_TRACE();
+	cpt_sess->ctx_dma_addr = rte_mempool_virt2iova(cpt_sess) +
+			sizeof(struct cpt_sess_misc);
+}
+
+static int
+otx_cpt_session_cfg(struct rte_cryptodev *dev,
+		    struct rte_crypto_sym_xform *xform,
+		    struct rte_cryptodev_sym_session *sess,
+		    struct rte_mempool *mempool)
+{
+	struct rte_crypto_sym_xform *chain;
+	void *sess_private_data = NULL;
+
+	CPT_PMD_INIT_FUNC_TRACE();
+
+	if (cpt_is_algo_supported(xform))
+		goto err;
+
+	if (unlikely(sess == NULL)) {
+		CPT_LOG_ERR("invalid session struct");
+		return -EINVAL;
+	}
+
+	if (rte_mempool_get(mempool, &sess_private_data)) {
+		CPT_LOG_ERR("Could not allocate sess_private_data");
+		return -ENOMEM;
+	}
+
+	chain = xform;
+	while (chain) {
+		switch (chain->type) {
+		default:
+			CPT_LOG_ERR("Invalid crypto xform type");
+			break;
+		}
+		chain = chain->next;
+	}
+	set_sym_session_private_data(sess, dev->driver_id, sess_private_data);
+	otx_cpt_session_init(sess, dev->driver_id);
+	return 0;
+
+err:
+	if (sess_private_data)
+		rte_mempool_put(mempool, sess_private_data);
+	return -EPERM;
+}
+
+static void
+otx_cpt_session_clear(struct rte_cryptodev *dev,
+		  struct rte_cryptodev_sym_session *sess)
+{
+	void *sess_priv = get_sym_session_private_data(sess, dev->driver_id);
+
+	CPT_PMD_INIT_FUNC_TRACE();
+	if (sess_priv) {
+		memset(sess_priv, 0, otx_cpt_get_session_size(dev));
+		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
+		set_sym_session_private_data(sess, dev->driver_id, NULL);
+		rte_mempool_put(sess_mp, sess_priv);
+	}
+}
+
 static struct rte_cryptodev_ops cptvf_ops = {
 	/* Device related operations */
 	.dev_configure = otx_cpt_dev_config,
@@ -261,9 +339,9 @@ static struct rte_cryptodev_ops cptvf_ops = {
 	.queue_pair_count = NULL,
 
 	/* Crypto related operations */
-	.sym_session_get_size = NULL,
-	.sym_session_configure = NULL,
-	.sym_session_clear = NULL
+	.sym_session_get_size = otx_cpt_get_session_size,
+	.sym_session_configure = otx_cpt_session_cfg,
+	.sym_session_clear = otx_cpt_session_clear
 };
 
 static void
