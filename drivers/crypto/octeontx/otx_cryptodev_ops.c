@@ -293,6 +293,23 @@ otx_cpt_session_cfg(struct rte_cryptodev *dev,
 	chain = xform;
 	while (chain) {
 		switch (chain->type) {
+		case RTE_CRYPTO_SYM_XFORM_AEAD:
+			if (fill_sess_aead(chain, sess_private_data))
+				goto err;
+			break;
+		case RTE_CRYPTO_SYM_XFORM_CIPHER:
+			if (fill_sess_cipher(chain, sess_private_data))
+				goto err;
+			break;
+		case RTE_CRYPTO_SYM_XFORM_AUTH:
+			if (chain->auth.algo == RTE_CRYPTO_AUTH_AES_GMAC) {
+				if (fill_sess_gmac(chain, sess_private_data))
+					goto err;
+			} else {
+				if (fill_sess_auth(chain, sess_private_data))
+					goto err;
+			}
+			break;
 		default:
 			CPT_LOG_ERR("Invalid crypto xform type");
 			break;
