@@ -60,6 +60,13 @@ New Features
   memory that was created outside of DPDK's own page allocator, and using that
   memory natively with any other DPDK library or data structure.
 
+* **Added new Flow API actions to rewrite fields in packet headers.**
+
+  Added new Flow API actions to:
+
+  * Modify source and destination IP addresses in the outermost IPv4/IPv6
+    headers.
+
 * **Add support to offload more flow match and actions for CXGBE PMD**
 
   Flow API support has been enhanced for CXGBE Poll Mode Driver to offload:

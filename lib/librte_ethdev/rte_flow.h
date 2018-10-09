@@ -1506,6 +1506,46 @@ enum rte_flow_action_type {
 	 * error.
 	 */
 	RTE_FLOW_ACTION_TYPE_NVGRE_DECAP,
+
+	/**
+	 * Modify IPv4 source address in the outermost IPv4 header.
+	 *
+	 * If flow pattern does not define a valid RTE_FLOW_ITEM_TYPE_IPV4,
+	 * then the PMD should return a RTE_FLOW_ERROR_TYPE_ACTION error.
+	 *
+	 * See struct rte_flow_action_set_ipv4.
+	 */
+	RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC,
+
+	/**
+	 * Modify IPv4 destination address in the outermost IPv4 header.
+	 *
+	 * If flow pattern does not define a valid RTE_FLOW_ITEM_TYPE_IPV4,
+	 * then the PMD should return a RTE_FLOW_ERROR_TYPE_ACTION error.
+	 *
+	 * See struct rte_flow_action_set_ipv4.
+	 */
+	RTE_FLOW_ACTION_TYPE_SET_IPV4_DST,
+
+	/**
+	 * Modify IPv6 source address in the outermost IPv6 header.
+	 *
+	 * If flow pattern does not define a valid RTE_FLOW_ITEM_TYPE_IPV6,
+	 * then the PMD should return a RTE_FLOW_ERROR_TYPE_ACTION error.
+	 *
+	 * See struct rte_flow_action_set_ipv6.
+	 */
+	RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC,
+
+	/**
+	 * Modify IPv6 destination address in the outermost IPv6 header.
+	 *
+	 * If flow pattern does not define a valid RTE_FLOW_ITEM_TYPE_IPV6,
+	 * then the PMD should return a RTE_FLOW_ERROR_TYPE_ACTION error.
+	 *
+	 * See struct rte_flow_action_set_ipv6.
+	 */
+	RTE_FLOW_ACTION_TYPE_SET_IPV6_DST,
 };
 
 /**
@@ -1867,6 +1907,36 @@ struct rte_flow_action_nvgre_encap {
 	 * (terminated by the END pattern item).
 	 */
 	struct rte_flow_item *definition;
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC
+ * RTE_FLOW_ACTION_TYPE_SET_IPV4_DST
+ *
+ * Allows modification of IPv4 source (RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC)
+ * and destination address (RTE_FLOW_ACTION_TYPE_SET_IPV4_DST) in the
+ * specified outermost IPv4 header.
+ */
+struct rte_flow_action_set_ipv4 {
+	rte_be32_t ipv4_addr;
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC
+ * RTE_FLOW_ACTION_TYPE_SET_IPV6_DST
+ *
+ * Allows modification of IPv6 source (RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC)
+ * and destination address (RTE_FLOW_ACTION_TYPE_SET_IPV6_DST) in the
+ * specified outermost IPv6 header.
+ */
+struct rte_flow_action_set_ipv6 {
+	uint8_t ipv6_addr[16];
 };
 
 /*

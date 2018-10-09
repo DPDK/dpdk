@@ -3704,6 +3704,24 @@ This section lists supported actions and their attributes, if any.
 - ``nvgre_decap``: Performs a decapsulation action by stripping all headers of
   the NVGRE tunnel network overlay from the matched flow.
 
+- ``set_ipv4_src``: Set a new IPv4 source address in the outermost IPv4 header.
+
+  - ``ipv4_addr``: New IPv4 source address.
+
+- ``set_ipv4_dst``: Set a new IPv4 destination address in the outermost IPv4
+  header.
+
+  - ``ipv4_addr``: New IPv4 destination address.
+
+- ``set_ipv6_src``: Set a new IPv6 source address in the outermost IPv6 header.
+
+  - ``ipv6_addr``: New IPv6 source address.
+
+- ``set_ipv6_dst``: Set a new IPv6 destination address in the outermost IPv6
+  header.
+
+  - ``ipv6_addr``: New IPv6 destination address.
+
 Destroying flow rules
 ~~~~~~~~~~~~~~~~~~~~~
 

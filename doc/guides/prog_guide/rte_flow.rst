@@ -2076,6 +2076,78 @@ RTE_FLOW_ERROR_TYPE_ACTION error should be returned.
 
 This action modifies the payload of matched flows.
 
+Action: ``SET_IPV4_SRC``
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Set a new IPv4 source address in the outermost IPv4 header.
+
+It must be used with a valid RTE_FLOW_ITEM_TYPE_IPV4 flow pattern item.
+Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
+
+.. _table_rte_flow_action_set_ipv4_src:
+
+.. table:: SET_IPV4_SRC
+
+   +-----------------------------------------+
+   | Field         | Value                   |
+   +===============+=========================+
+   | ``ipv4_addr`` | new IPv4 source address |
+   +---------------+-------------------------+
+
+Action: ``SET_IPV4_DST``
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Set a new IPv4 destination address in the outermost IPv4 header.
+
+It must be used with a valid RTE_FLOW_ITEM_TYPE_IPV4 flow pattern item.
+Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
+
+.. _table_rte_flow_action_set_ipv4_dst:
+
+.. table:: SET_IPV4_DST
+
+   +---------------+------------------------------+
+   | Field         | Value                        |
+   +===============+==============================+
+   | ``ipv4_addr`` | new IPv4 destination address |
+   +---------------+------------------------------+
+
+Action: ``SET_IPV6_SRC``
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Set a new IPv6 source address in the outermost IPv6 header.
+
+It must be used with a valid RTE_FLOW_ITEM_TYPE_IPV6 flow pattern item.
+Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
+
+.. _table_rte_flow_action_set_ipv6_src:
+
+.. table:: SET_IPV6_SRC
+
+   +---------------+-------------------------+
+   | Field         | Value                   |
+   +===============+=========================+
+   | ``ipv6_addr`` | new IPv6 source address |
+   +---------------+-------------------------+
+
+Action: ``SET_IPV6_DST``
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Set a new IPv6 destination address in the outermost IPv6 header.
+
+It must be used with a valid RTE_FLOW_ITEM_TYPE_IPV6 flow pattern item.
+Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
+
+.. _table_rte_flow_action_set_ipv6_dst:
+
+.. table:: SET_IPV6_DST
+
+   +---------------+------------------------------+
+   | Field         | Value                        |
+   +===============+==============================+
+   | ``ipv6_addr`` | new IPv6 destination address |
+   +---------------+------------------------------+
+
 Negative types
 ~~~~~~~~~~~~~~
 
