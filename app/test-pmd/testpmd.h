@@ -122,6 +122,8 @@ struct fwd_stream {
 	unsigned int fwd_dropped; /**< received packets not forwarded */
 	unsigned int rx_bad_ip_csum ; /**< received packets has bad ip checksum */
 	unsigned int rx_bad_l4_csum ; /**< received packets has bad l4 checksum */
+	unsigned int rx_bad_outer_l4_csum;
+	/**< received packets has bad outer l4 checksum */
 	unsigned int gro_times;	/**< GRO operation times */
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 	uint64_t     core_cycles; /**< used for RX and TX processing */
@@ -172,6 +174,8 @@ struct rte_port {
 	void                    *fwd_ctx;   /**< Forwarding mode context */
 	uint64_t                rx_bad_ip_csum; /**< rx pkts with bad ip checksum  */
 	uint64_t                rx_bad_l4_csum; /**< rx pkts with bad l4 checksum */
+	uint64_t                rx_bad_outer_l4_csum;
+	/**< rx pkts with bad outer l4 checksum */
 	uint8_t                 tx_queue_stats_mapping_enabled;
 	uint8_t                 rx_queue_stats_mapping_enabled;
 	volatile uint16_t        port_status;    /**< port started or not */

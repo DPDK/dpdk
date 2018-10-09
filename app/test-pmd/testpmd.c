@@ -1323,8 +1323,9 @@ fwd_port_stats_display(portid_t port_id, struct rte_eth_stats *stats)
 		       (uint64_t) (stats->ipackets + stats->imissed));
 
 		if (cur_fwd_eng == &csum_fwd_engine)
-			printf("  Bad-ipcsum: %-14"PRIu64" Bad-l4csum: %-14"PRIu64" \n",
-			       port->rx_bad_ip_csum, port->rx_bad_l4_csum);
+			printf("  Bad-ipcsum: %-14"PRIu64" Bad-l4csum: %-14"PRIu64"Bad-outer-l4csum: %-14"PRIu64"\n",
+			       port->rx_bad_ip_csum, port->rx_bad_l4_csum,
+			       port->rx_bad_outer_l4_csum);
 		if ((stats->ierrors + stats->rx_nombuf) > 0) {
 			printf("  RX-error: %-"PRIu64"\n",  stats->ierrors);
 			printf("  RX-nombufs: %-14"PRIu64"\n", stats->rx_nombuf);
@@ -1342,8 +1343,9 @@ fwd_port_stats_display(portid_t port_id, struct rte_eth_stats *stats)
 		       (uint64_t) (stats->ipackets + stats->imissed));
 
 		if (cur_fwd_eng == &csum_fwd_engine)
-			printf("  Bad-ipcsum:%14"PRIu64"    Bad-l4csum:%14"PRIu64"\n",
-			       port->rx_bad_ip_csum, port->rx_bad_l4_csum);
+			printf("  Bad-ipcsum:%14"PRIu64"    Bad-l4csum:%14"PRIu64"    Bad-outer-l4csum: %-14"PRIu64"\n",
+			       port->rx_bad_ip_csum, port->rx_bad_l4_csum,
+			       port->rx_bad_outer_l4_csum);
 		if ((stats->ierrors + stats->rx_nombuf) > 0) {
 			printf("  RX-error:%"PRIu64"\n", stats->ierrors);
 			printf("  RX-nombufs:             %14"PRIu64"\n",
@@ -1407,7 +1409,9 @@ fwd_stream_stats_display(streamid_t stream_id)
 	/* if checksum mode */
 	if (cur_fwd_eng == &csum_fwd_engine) {
 	       printf("  RX- bad IP checksum: %-14u  Rx- bad L4 checksum: "
-			"%-14u\n", fs->rx_bad_ip_csum, fs->rx_bad_l4_csum);
+			"%-14u Rx- bad outer L4 checksum: %-14u\n",
+			fs->rx_bad_ip_csum, fs->rx_bad_l4_csum,
+			fs->rx_bad_outer_l4_csum);
 	}
 
 #ifdef RTE_TEST_PMD_RECORD_BURST_STATS
@@ -1661,6 +1665,7 @@ start_packet_forwarding(int with_tx_first)
 		fwd_streams[sm_id]->fwd_dropped = 0;
 		fwd_streams[sm_id]->rx_bad_ip_csum = 0;
 		fwd_streams[sm_id]->rx_bad_l4_csum = 0;
+		fwd_streams[sm_id]->rx_bad_outer_l4_csum = 0;
 
 #ifdef RTE_TEST_PMD_RECORD_BURST_STATS
 		memset(&fwd_streams[sm_id]->rx_burst_stats, 0,
@@ -1765,6 +1770,9 @@ stop_packet_forwarding(void)
 					 fwd_streams[sm_id]->rx_bad_l4_csum);
 		ports[fwd_streams[sm_id]->rx_port].rx_bad_l4_csum =
 							rx_bad_l4_csum;
+
+		ports[fwd_streams[sm_id]->rx_port].rx_bad_outer_l4_csum +=
+				fwd_streams[sm_id]->rx_bad_outer_l4_csum;
 
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 		fwd_cycles = (uint64_t) (fwd_cycles +
