@@ -7,6 +7,7 @@
 #include <rte_common.h>
 
 #include "otx_cryptodev_hw_access.h"
+#include "otx_cryptodev_mbox.h"
 
 #include "cpt_pmd_logs.h"
 #include "cpt_hw_types.h"
@@ -22,8 +23,19 @@ otx_cpt_vf_init(struct cpt_vf *cptvf)
 {
 	int ret = 0;
 
+	/* Check ready with PF */
+	/* Gets chip ID / device Id from PF if ready */
+	ret = otx_cpt_check_pf_ready(cptvf);
+	if (ret) {
+		CPT_LOG_ERR("%s: PF not responding to READY msg",
+				cptvf->dev_name);
+		ret = -EBUSY;
+		goto exit;
+	}
+
 	CPT_LOG_DP_DEBUG("%s: %s done", cptvf->dev_name, __func__);
 
+exit:
 	return ret;
 }
 
@@ -178,6 +190,7 @@ otx_cpt_poll_misc(struct cpt_vf *cptvf)
 	if (likely(intr & CPT_VF_INTR_MBOX_MASK)) {
 		CPT_LOG_DP_DEBUG("%s: Mailbox interrupt 0x%lx on CPT VF %d",
 			cptvf->dev_name, (unsigned int long)intr, cptvf->vfid);
+		otx_cpt_handle_mbox_intr(cptvf);
 		otx_cpt_clear_mbox_intr(cptvf);
 	} else if (unlikely(intr & CPT_VF_INTR_IRDE_MASK)) {
 		otx_cpt_clear_irde_intr(cptvf);
