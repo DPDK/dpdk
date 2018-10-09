@@ -798,6 +798,11 @@ F: drivers/crypto/armv8/
 F: doc/guides/cryptodevs/armv8.rst
 F: doc/guides/cryptodevs/features/armv8.ini
 
+Cavium OCTEON TX crypto
+M: Anoob Joseph <anoob.joseph@caviumnetworks.com>
+F: drivers/common/cpt/
+F: drivers/crypto/octeontx/
+
 Crypto Scheduler
 M: Fan Zhang <roy.fan.zhang@intel.com>
 F: drivers/crypto/scheduler/

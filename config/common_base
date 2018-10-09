@@ -507,6 +507,11 @@ CONFIG_RTE_LIBRTE_PMD_DPAA_SEC=n
 CONFIG_RTE_LIBRTE_DPAA_MAX_CRYPTODEV=4
 
 #
+# Compile PMD for Cavium OCTEON TX crypto device
+#
+CONFIG_RTE_LIBRTE_PMD_OCTEONTX_CRYPTO=y
+
+#
 # Compile PMD for QuickAssist based devices - see docs for details
 #
 CONFIG_RTE_LIBRTE_PMD_QAT=y
