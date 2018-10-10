@@ -1280,6 +1280,7 @@ cmd_port_in_action_profile(struct pmd_internals *softnic,
  *  [stats pkts | bytes | both]
  *  [time]
  *  [tag]
+ *  [decap]
  */
 static void
 cmd_table_action_profile(struct pmd_internals *softnic,
@@ -1616,6 +1617,12 @@ cmd_table_action_profile(struct pmd_internals *softnic,
 		p.action_mask |= 1LLU << RTE_TABLE_ACTION_TAG;
 		t0 += 1;
 	} /* tag */
+
+	if (t0 < n_tokens &&
+		(strcmp(tokens[t0], "decap") == 0)) {
+		p.action_mask |= 1LLU << RTE_TABLE_ACTION_DECAP;
+		t0 += 1;
+	} /* decap */
 
 	if (t0 < n_tokens) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
@@ -3184,6 +3191,7 @@ parse_match(char **tokens,
  *    [stats]
  *    [time]
  *    [tag <tag>]
+ *    [decap <n>]
  *
  * where:
  *    <pa> ::= g | y | r | drop
@@ -3690,6 +3698,22 @@ parse_table_action_tag(char **tokens,
 }
 
 static uint32_t
+parse_table_action_decap(char **tokens,
+	uint32_t n_tokens,
+	struct softnic_table_rule_action *a)
+{
+	if (n_tokens < 2 ||
+		strcmp(tokens[0], "decap"))
+		return 0;
+
+	if (softnic_parser_read_uint16(&a->decap.n, tokens[1]))
+		return 0;
+
+	a->action_mask |= 1 << RTE_TABLE_ACTION_DECAP;
+	return 2;
+}
+
+static uint32_t
 parse_table_action(char **tokens,
 	uint32_t n_tokens,
 	char *out,
@@ -3840,6 +3864,20 @@ parse_table_action(char **tokens,
 		if (n == 0) {
 			snprintf(out, out_size, MSG_ARG_INVALID,
 				"action tag");
+			return 0;
+		}
+
+		tokens += n;
+		n_tokens -= n;
+	}
+
+	if (n_tokens && (strcmp(tokens[0], "decap") == 0)) {
+		uint32_t n;
+
+		n = parse_table_action_decap(tokens, n_tokens, a);
+		if (n == 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"action decap");
 			return 0;
 		}
 

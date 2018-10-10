@@ -898,6 +898,7 @@ struct softnic_table_rule_action {
 	struct rte_table_action_stats_params stats;
 	struct rte_table_action_time_params time;
 	struct rte_table_action_tag_params tag;
+	struct rte_table_action_decap_params decap;
 };
 
 struct rte_flow {
