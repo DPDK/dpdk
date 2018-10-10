@@ -187,11 +187,20 @@ Prerequisites
 -------------
 
 #. Prepare the system as recommended by DPDK suite.  This includes environment
-   variables, hugepages configuration, tool-chains and configuration
+   variables, hugepages configuration, tool-chains and configuration.
 
-#. Insert igb_uio kernel module using the command 'modprobe igb_uio'
+#. ENA PMD can operate with ``vfio-pci`` or ``igb_uio`` driver.
 
-#. Bind the intended ENA device to igb_uio module
+#. Insert ``vfio-pci`` or ``igb_uio`` kernel module using the command
+   ``modprobe vfio-pci`` or ``modprobe igb_uio`` respectively.
+
+#. For ``vfio-pci`` users only:
+   Please make sure that ``IOMMU`` is enabled in your system,
+   or use ``vfio`` driver in ``noiommu`` mode::
+
+     echo 1 > /sys/module/vfio/parameters/enable_unsafe_noiommu_mode
+
+#. Bind the intended ENA device to ``vfio-pci`` or ``igb_uio`` module.
 
 
 At this point the system should be ready to run DPDK applications. Once the
