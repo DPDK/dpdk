@@ -112,7 +112,6 @@ ifcvf_vfio_setup(struct ifcvf_internal *internal)
 	struct rte_pci_device *dev = internal->pdev;
 	char devname[RTE_DEV_NAME_MAX_LEN] = {0};
 	int iommu_group_num;
-	int ret = 0;
 	int i;
 
 	internal->vfio_dev_fd = -1;
@@ -146,9 +145,8 @@ ifcvf_vfio_setup(struct ifcvf_internal *internal)
 		internal->hw.mem_resource[i].len =
 			internal->pdev->mem_resource[i].len;
 	}
-	ret = ifcvf_init_hw(&internal->hw, internal->pdev);
 
-	return ret;
+	return 0;
 
 err:
 	rte_vfio_container_destroy(internal->vfio_container_fd);
@@ -756,6 +754,9 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	internal->pdev = pci_dev;
 	rte_spinlock_init(&internal->lock);
 	if (ifcvf_vfio_setup(internal) < 0)
+		return -1;
+
+	if (ifcvf_init_hw(&internal->hw, internal->pdev) < 0)
 		return -1;
 
 	internal->max_queues = IFCVF_MAX_QUEUES;
