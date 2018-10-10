@@ -16,9 +16,9 @@ for i in `awk 'BEGIN {found=0}
 		/.*;/ {if (found == 1) print $1}' $MAPFILE`
 do
 	SYM=`echo $i | sed -e"s/;//"`
-	objdump -t $OBJFILE | grep -q "\.text.*$SYM"
+	objdump -t $OBJFILE | grep -q "\.text.*$SYM$"
 	IN_TEXT=$?
-	objdump -t $OBJFILE | grep -q "\.text\.experimental.*$SYM"
+	objdump -t $OBJFILE | grep -q "\.text\.experimental.*$SYM$"
 	IN_EXP=$?
 	if [ $IN_TEXT -eq 0 -a $IN_EXP -ne 0 ]
 	then
