@@ -45,13 +45,14 @@ typedef int (*case_func_t)(void* arg);
 typedef void (*case_clean_t)(unsigned lcore_id);
 
 #define MAX_STRING_SIZE                     (256)
-#define MAX_ITER_TIMES                      (16)
-#define MAX_LPM_ITER_TIMES                  (8)
+#define MAX_ITER_MULTI                      (16)
+#define MAX_ITER_ONCE                       (4)
+#define MAX_LPM_ITER_TIMES                  (6)
 
 #define MEMPOOL_ELT_SIZE                    (sizeof(uint32_t))
 #define MEMPOOL_SIZE                        (4)
 
-#define MAX_LCORES	RTE_MAX_MEMZONE / (MAX_ITER_TIMES * 4U)
+#define MAX_LCORES	(RTE_MAX_MEMZONE / (MAX_ITER_MULTI * 4U))
 
 static rte_atomic32_t obj_count = RTE_ATOMIC32_INIT(0);
 static rte_atomic32_t synchro = RTE_ATOMIC32_INIT(0);
@@ -88,7 +89,7 @@ ring_clean(unsigned int lcore_id)
 	char ring_name[MAX_STRING_SIZE];
 	int i;
 
-	for (i = 0; i < MAX_ITER_TIMES; i++) {
+	for (i = 0; i < MAX_ITER_MULTI; i++) {
 		snprintf(ring_name, sizeof(ring_name),
 				"fr_test_%d_%d", lcore_id, i);
 		rp = rte_ring_lookup(ring_name);
@@ -108,25 +109,22 @@ ring_create_lookup(__attribute__((unused)) void *arg)
 	WAIT_SYNCHRO_FOR_SLAVES();
 
 	/* create the same ring simultaneously on all threads */
-	for (i = 0; i < MAX_ITER_TIMES; i++) {
+	for (i = 0; i < MAX_ITER_ONCE; i++) {
 		rp = rte_ring_create("fr_test_once", 4096, SOCKET_ID_ANY, 0);
 		if (rp != NULL)
 			rte_atomic32_inc(&obj_count);
 	}
 
 	/* create/lookup new ring several times */
-	for (i = 0; i < MAX_ITER_TIMES; i++) {
+	for (i = 0; i < MAX_ITER_MULTI; i++) {
 		snprintf(ring_name, sizeof(ring_name), "fr_test_%d_%d", lcore_self, i);
 		rp = rte_ring_create(ring_name, 4096, SOCKET_ID_ANY, 0);
 		if (NULL == rp)
 			return -1;
 		if (rte_ring_lookup(ring_name) != rp)
 			return -1;
-	}
 
-	/* verify all ring created successful */
-	for (i = 0; i < MAX_ITER_TIMES; i++) {
-		snprintf(ring_name, sizeof(ring_name), "fr_test_%d_%d", lcore_self, i);
+		/* verify all ring created successful */
 		if (rte_ring_lookup(ring_name) == NULL)
 			return -1;
 	}
@@ -151,7 +149,7 @@ mempool_clean(unsigned int lcore_id)
 	int i;
 
 	/* verify all ring created successful */
-	for (i = 0; i < MAX_ITER_TIMES; i++) {
+	for (i = 0; i < MAX_ITER_MULTI; i++) {
 		snprintf(mempool_name, sizeof(mempool_name), "fr_test_%d_%d",
 			 lcore_id, i);
 		mp = rte_mempool_lookup(mempool_name);
@@ -171,7 +169,7 @@ mempool_create_lookup(__attribute__((unused)) void *arg)
 	WAIT_SYNCHRO_FOR_SLAVES();
 
 	/* create the same mempool simultaneously on all threads */
-	for (i = 0; i < MAX_ITER_TIMES; i++) {
+	for (i = 0; i < MAX_ITER_ONCE; i++) {
 		mp = rte_mempool_create("fr_test_once",  MEMPOOL_SIZE,
 					MEMPOOL_ELT_SIZE, 0, 0,
 					NULL, NULL,
@@ -182,7 +180,7 @@ mempool_create_lookup(__attribute__((unused)) void *arg)
 	}
 
 	/* create/lookup new ring several times */
-	for (i = 0; i < MAX_ITER_TIMES; i++) {
+	for (i = 0; i < MAX_ITER_MULTI; i++) {
 		snprintf(mempool_name, sizeof(mempool_name), "fr_test_%d_%d", lcore_self, i);
 		mp = rte_mempool_create(mempool_name, MEMPOOL_SIZE,
 						MEMPOOL_ELT_SIZE, 0, 0,
@@ -193,11 +191,8 @@ mempool_create_lookup(__attribute__((unused)) void *arg)
 			return -1;
 		if (rte_mempool_lookup(mempool_name) != mp)
 			return -1;
-	}
 
-	/* verify all ring created successful */
-	for (i = 0; i < MAX_ITER_TIMES; i++) {
-		snprintf(mempool_name, sizeof(mempool_name), "fr_test_%d_%d", lcore_self, i);
+		/* verify all ring created successful */
 		if (rte_mempool_lookup(mempool_name) == NULL)
 			return -1;
 	}
@@ -213,7 +208,7 @@ hash_clean(unsigned lcore_id)
 	struct rte_hash *handle;
 	int i;
 
-	for (i = 0; i < MAX_ITER_TIMES; i++) {
+	for (i = 0; i < MAX_ITER_MULTI; i++) {
 		snprintf(hash_name, sizeof(hash_name), "fr_test_%d_%d",  lcore_id, i);
 
 		if ((handle = rte_hash_find_existing(hash_name)) != NULL)
@@ -241,14 +236,14 @@ hash_create_free(__attribute__((unused)) void *arg)
 
 	/* create the same hash simultaneously on all threads */
 	hash_params.name = "fr_test_once";
-	for (i = 0; i < MAX_ITER_TIMES; i++) {
+	for (i = 0; i < MAX_ITER_ONCE; i++) {
 		handle = rte_hash_create(&hash_params);
 		if (handle != NULL)
 			rte_atomic32_inc(&obj_count);
 	}
 
 	/* create mutiple times simultaneously */
-	for (i = 0; i < MAX_ITER_TIMES; i++) {
+	for (i = 0; i < MAX_ITER_MULTI; i++) {
 		snprintf(hash_name, sizeof(hash_name), "fr_test_%d_%d", lcore_self, i);
 		hash_params.name = hash_name;
 
@@ -261,12 +256,8 @@ hash_create_free(__attribute__((unused)) void *arg)
 			return -1;
 
 		rte_hash_free(handle);
-	}
 
-	/* verify free correct */
-	for (i = 0; i < MAX_ITER_TIMES; i++) {
-		snprintf(hash_name, sizeof(hash_name), "fr_test_%d_%d",  lcore_self, i);
-
+		/* verify free correct */
 		if (NULL != rte_hash_find_existing(hash_name))
 			return -1;
 	}
@@ -281,7 +272,7 @@ fbk_clean(unsigned lcore_id)
 	struct rte_fbk_hash_table *handle;
 	int i;
 
-	for (i = 0; i < MAX_ITER_TIMES; i++) {
+	for (i = 0; i < MAX_ITER_MULTI; i++) {
 		snprintf(fbk_name, sizeof(fbk_name), "fr_test_%d_%d",  lcore_id, i);
 
 		if ((handle = rte_fbk_hash_find_existing(fbk_name)) != NULL)
@@ -309,14 +300,14 @@ fbk_create_free(__attribute__((unused)) void *arg)
 
 	/* create the same fbk hash table simultaneously on all threads */
 	fbk_params.name = "fr_test_once";
-	for (i = 0; i < MAX_ITER_TIMES; i++) {
+	for (i = 0; i < MAX_ITER_ONCE; i++) {
 		handle = rte_fbk_hash_create(&fbk_params);
 		if (handle != NULL)
 			rte_atomic32_inc(&obj_count);
 	}
 
 	/* create mutiple fbk tables simultaneously */
-	for (i = 0; i < MAX_ITER_TIMES; i++) {
+	for (i = 0; i < MAX_ITER_MULTI; i++) {
 		snprintf(fbk_name, sizeof(fbk_name), "fr_test_%d_%d", lcore_self, i);
 		fbk_params.name = fbk_name;
 
@@ -329,12 +320,8 @@ fbk_create_free(__attribute__((unused)) void *arg)
 			return -1;
 
 		rte_fbk_hash_free(handle);
-	}
 
-	/* verify free correct */
-	for (i = 0; i < MAX_ITER_TIMES; i++) {
-		snprintf(fbk_name, sizeof(fbk_name), "fr_test_%d_%d",  lcore_self, i);
-
+		/* verify free correct */
 		if (NULL != rte_fbk_hash_find_existing(fbk_name))
 			return -1;
 	}
@@ -375,7 +362,7 @@ lpm_create_free(__attribute__((unused)) void *arg)
 	WAIT_SYNCHRO_FOR_SLAVES();
 
 	/* create the same lpm simultaneously on all threads */
-	for (i = 0; i < MAX_ITER_TIMES; i++) {
+	for (i = 0; i < MAX_ITER_ONCE; i++) {
 		lpm = rte_lpm_create("fr_test_once",  SOCKET_ID_ANY, &config);
 		if (lpm != NULL)
 			rte_atomic32_inc(&obj_count);
@@ -393,11 +380,8 @@ lpm_create_free(__attribute__((unused)) void *arg)
 			return -1;
 
 		rte_lpm_free(lpm);
-	}
 
-	/* verify free correct */
-	for (i = 0; i < MAX_LPM_ITER_TIMES; i++) {
-		snprintf(lpm_name, sizeof(lpm_name), "fr_test_%d_%d",  lcore_self, i);
+		/* verify free correct */
 		if (NULL != rte_lpm_find_existing(lpm_name))
 			return -1;
 	}
