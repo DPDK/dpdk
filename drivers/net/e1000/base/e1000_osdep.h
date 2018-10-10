@@ -48,7 +48,7 @@
 
 #include "../e1000_logs.h"
 
-#define DELAY(x) rte_delay_us(x)
+#define DELAY(x) rte_delay_us_sleep(x)
 #define usec_delay(x) DELAY(x)
 #define usec_delay_irq(x) DELAY(x)
 #define msec_delay(x) DELAY(1000*(x))

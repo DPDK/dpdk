@@ -93,8 +93,8 @@ typedef uint64_t        u64;
 #define avf_memset(a, b, c, d) memset((a), (b), (c))
 #define avf_memcpy(a, b, c, d) rte_memcpy((a), (b), (c))
 
-#define avf_usec_delay(x) rte_delay_us(x)
-#define avf_msec_delay(x) rte_delay_us(1000*(x))
+#define avf_usec_delay(x) rte_delay_us_sleep(x)
+#define avf_msec_delay(x) avf_usec_delay(1000 * (x))
 
 #define AVF_PCI_REG(reg)		rte_read32(reg)
 #define AVF_PCI_REG_ADDR(a, reg) \

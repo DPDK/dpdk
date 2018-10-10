@@ -5,10 +5,11 @@ version = 2
 
 cflags += ['-DRTE_LIBRTE_IXGBE_BYPASS']
 
+allow_experimental_apis = true
+
 subdir('base')
 objs = [base_objs]
 
-allow_experimental_apis = true
 sources = files(
 	'ixgbe_82599_bypass.c',
 	'ixgbe_bypass.c',

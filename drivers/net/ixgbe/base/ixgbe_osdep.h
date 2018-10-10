@@ -21,7 +21,7 @@
 
 #define ASSERT(x) if(!(x)) rte_panic("IXGBE: x")
 
-#define DELAY(x) rte_delay_us(x)
+#define DELAY(x) rte_delay_us_sleep(x)
 #define usec_delay(x) DELAY(x)
 #define msec_delay(x) DELAY(1000*(x))
 

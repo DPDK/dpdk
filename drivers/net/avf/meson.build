@@ -3,6 +3,8 @@
 
 cflags += ['-Wno-strict-aliasing']
 
+allow_experimental_apis = true
+
 subdir('base')
 objs = [base_objs]
 

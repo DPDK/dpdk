@@ -17,7 +17,7 @@
 #define DEBUGOUT(S, args...)    RTE_LOG(DEBUG, PMD, S, ##args)
 #define STATIC                  static
 
-#define msec_delay	rte_delay_ms
+#define msec_delay(x)	rte_delay_us_sleep(1000 * (x))
 
 #define IFCVF_READ_REG8(reg)		rte_read8(reg)
 #define IFCVF_WRITE_REG8(val, reg)	rte_write8((val), (reg))

@@ -205,9 +205,9 @@ struct i40e_spinlock {
 #define i40e_memcpy(a, b, c, d) rte_memcpy((a), (b), (c))
 
 #define DIV_ROUND_UP(n,d) (((n) + (d) - 1) / (d))
-#define DELAY(x) rte_delay_us(x)
-#define i40e_usec_delay(x) rte_delay_us(x)
-#define i40e_msec_delay(x) rte_delay_us(1000*(x))
+#define DELAY(x) rte_delay_us_sleep(x)
+#define i40e_usec_delay(x) DELAY(x)
+#define i40e_msec_delay(x) DELAY(1000 * (x))
 #define udelay(x) DELAY(x)
 #define msleep(x) DELAY(1000*(x))
 #define usleep_range(min, max) msleep(DIV_ROUND_UP(min, 1000))
