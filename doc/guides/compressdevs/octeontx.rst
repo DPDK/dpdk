@@ -1,12 +1,12 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2018 Cavium Networks.
 
-Octeontx ZIP Compression Poll Mode Driver
-=========================================
+OCTEON TX ZIP Compression Poll Mode Driver
+==========================================
 
-The Octeontx ZIP PMD (**librte_pmd_octeontx_zip**) provides poll mode
+The OCTEON TX ZIP PMD (**librte_pmd_octeontx_zip**) provides poll mode
 compression & decompression driver for ZIP HW offload device, found in
-**Cavium OCTEONTX** SoC family.
+**Cavium OCTEON TX** SoC family.
 
 More information can be found at `Cavium, Inc Official Website
 <http://www.cavium.com/OCTEON-TX_ARM_Processors.html>`_.
@@ -14,7 +14,7 @@ More information can be found at `Cavium, Inc Official Website
 Features
 --------
 
-Octeontx ZIP PMD has support for:
+OCTEON TX ZIP PMD has support for:
 
 Compression/Decompression algorithm:
 
@@ -34,24 +34,24 @@ Limitations
 
 * Chained mbufs are not supported.
 
-Supported OCTEONTX SoCs
------------------------
+Supported OCTEON TX SoCs
+------------------------
 
 - CN83xx
 
 Steps To Setup Platform
 -----------------------
 
-   Octeontx SDK includes kernel image which provides Octeontx ZIP PF
+   OCTEON TX SDK includes kernel image which provides OCTEON TX ZIP PF
    driver to manage configuration of ZIPVF device
    Required version of SDK is "OCTEONTX-SDK-6.2.0-build35" or above.
 
    SDK can be install by using below command.
-   #rpm -ivh CTEONTX-SDK-6.2.0-build35.x86_64.rpm --force --nodeps
+   #rpm -ivh OCTEONTX-SDK-6.2.0-build35.x86_64.rpm --force --nodeps
    It will install OCTEONTX-SDK at following default location
    /usr/local/Cavium_Networks/OCTEONTX-SDK/
 
-   For more information on building and booting linux kernel on OCTEONTX
+   For more information on building and booting linux kernel on OCTEON TX
    please refer /usr/local/Cavium_Networks/OCTEONTX-SDK/docs/OcteonTX-SDK-UG_6.2.0.pdf.
 
    SDK and related information can be obtained from: `Cavium support site <https://support.cavium.com/>`_.
@@ -62,7 +62,7 @@ Installation
 Driver Compilation
 ~~~~~~~~~~~~~~~~~~
 
-To compile the OCTEONTX ZIP PMD for Linux arm64 gcc target, run the
+To compile the OCTEON TX ZIP PMD for Linux arm64 gcc target, run the
 following ``make`` command:
 
    .. code-block:: console
@@ -74,7 +74,7 @@ following ``make`` command:
 Initialization
 --------------
 
-The octeontx zip is exposed as pci device which consists of a set of
+The OCTEON TX zip is exposed as pci device which consists of a set of
 PCIe VF devices. On EAL initialization, ZIP PCIe VF devices will be
 probed. To use the PMD in an application, user must:
 

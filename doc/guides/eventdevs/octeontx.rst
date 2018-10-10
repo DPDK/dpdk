@@ -1,11 +1,11 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2017 Cavium, Inc
 
-OCTEONTX SSOVF Eventdev Driver
-==============================
+OCTEON TX SSOVF Eventdev Driver
+===============================
 
-The OCTEONTX SSOVF PMD (**librte_pmd_octeontx_ssovf**) provides poll mode
-eventdev driver support for the inbuilt event device found in the **Cavium OCTEONTX**
+The OCTEON TX SSOVF PMD (**librte_pmd_octeontx_ssovf**) provides poll mode
+eventdev driver support for the inbuilt event device found in the **Cavium OCTEON TX**
 SoC family as well as their virtual functions (VF) in SR-IOV context.
 
 More information can be found at `Cavium, Inc Official Website
@@ -14,7 +14,7 @@ More information can be found at `Cavium, Inc Official Website
 Features
 --------
 
-Features of the OCTEONTX SSOVF PMD are:
+Features of the OCTEON TX SSOVF PMD are:
 
 - 64 Event queues
 - 32 Event ports
@@ -32,8 +32,8 @@ Features of the OCTEONTX SSOVF PMD are:
   time granularity of 1us.
 - Up to 64 event timer adapters.
 
-Supported OCTEONTX SoCs
------------------------
+Supported OCTEON TX SoCs
+------------------------
 - CN83xx
 
 Prerequisites
@@ -57,7 +57,7 @@ Please note that enabling debugging options may affect system performance.
 Driver Compilation
 ~~~~~~~~~~~~~~~~~~
 
-To compile the OCTEONTX SSOVF PMD for Linux arm64 gcc target, run the
+To compile the OCTEON TX SSOVF PMD for Linux arm64 gcc target, run the
 following ``make`` command:
 
 .. code-block:: console
@@ -69,7 +69,7 @@ following ``make`` command:
 Initialization
 --------------
 
-The octeontx eventdev is exposed as a vdev device which consists of a set
+The OCTEON TX eventdev is exposed as a vdev device which consists of a set
 of SSO group and work-slot PCIe VF devices. On EAL initialization,
 SSO PCIe VF devices will be probed and then the vdev device can be created
 from the application code, or from the EAL command line based on
@@ -90,7 +90,7 @@ Example:
 Selftest
 --------
 
-The functionality of octeontx eventdev can be verified using this option,
+The functionality of OCTEON TX eventdev can be verified using this option,
 various unit and functional tests are run to verify the sanity.
 The tests are run once the vdev creation is successfully complete.
 

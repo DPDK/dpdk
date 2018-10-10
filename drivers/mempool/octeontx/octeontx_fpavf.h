@@ -50,7 +50,7 @@
 #define OCTEONTX_FPAVF_BUF_OFFSET	128
 
 /*
- * In Cavium OcteonTX SoC, all accesses to the device registers are
+ * In Cavium OCTEON TX SoC, all accesses to the device registers are
  * implicitly strongly ordered. So, the relaxed version of IO operation is
  * safe to use with out any IO memory barriers.
  */

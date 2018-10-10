@@ -84,7 +84,7 @@
 #define SSOVF_SELFTEST_ARG               ("selftest")
 
 /*
- * In Cavium OcteonTX SoC, all accesses to the device registers are
+ * In Cavium OCTEON TX SoC, all accesses to the device registers are
  * implictly strongly ordered. So, The relaxed version of IO operation is
  * safe to use with out any IO memory barriers.
  */

@@ -1,12 +1,12 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2017 Cavium, Inc
 
-OCTEONTX Board Support Package
-==============================
+OCTEON TX Board Support Package
+===============================
 
-This doc has information about steps to setup octeontx platform
+This doc has information about steps to setup OCTEON TX platform
 and information about common offload hw block drivers of
-**Cavium OCTEONTX** SoC family.
+**Cavium OCTEON TX** SoC family.
 
 
 More information about SoC can be found at `Cavium, Inc Official Website
@@ -27,11 +27,11 @@ Steps To Setup Platform
 -----------------------
 
 There are three main pre-prerequisites for setting up Platform drivers on
-OCTEONTX compatible board:
+OCTEON TX compatible board:
 
-1. **OCTEONTX Linux kernel PF driver for Network acceleration HW blocks**
+1. **OCTEON TX Linux kernel PF driver for Network acceleration HW blocks**
 
-   The OCTEONTX Linux kernel drivers (includes the required PF driver for the
+   The OCTEON TX Linux kernel drivers (includes the required PF driver for the
    Platform drivers) are available on Github at `octeontx-kmod <https://github.com/caviumnetworks/octeontx-kmod>`_
    along with build, install and dpdk usage instructions.
 
@@ -48,7 +48,7 @@ OCTEONTX compatible board:
 
    As an alternative method, Platform drivers can also be executed using images provided
    as part of SDK from Cavium. The SDK includes all the above prerequisites necessary
-   to bring up a OCTEONTX board.
+   to bring up a OCTEON TX board.
 
    SDK and related information can be obtained from: `Cavium support site <https://support.cavium.com/>`_.
 

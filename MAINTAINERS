@@ -523,7 +523,7 @@ F: drivers/net/liquidio/
 F: doc/guides/nics/liquidio.rst
 F: doc/guides/nics/features/liquidio.ini
 
-Cavium OcteonTX
+Cavium OCTEON TX
 M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
 F: drivers/common/octeontx/
 F: drivers/mempool/octeontx/
@@ -909,7 +909,7 @@ Compression Drivers
 M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 
-Cavium OCTEONTX zipvf
+Cavium OCTEON TX zipvf
 M: Ashish Gupta <ashish.gupta@cavium.com>
 F: drivers/compress/octeontx/
 F: doc/guides/compressdevs/octeontx.rst
@@ -938,12 +938,12 @@ Eventdev Drivers
 M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 
-Cavium OCTEONTX ssovf
+Cavium OCTEON TX ssovf
 M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
 F: drivers/event/octeontx/
 F: doc/guides/eventdevs/octeontx.rst
 
-Cavium OCTEONTX timvf
+Cavium OCTEON TX timvf
 M: Pavan Nikhilesh <pbhagavatula@caviumnetworks.com>
 F: drivers/event/octeontx/timvf_*
 

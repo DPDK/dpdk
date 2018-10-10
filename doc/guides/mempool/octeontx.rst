@@ -1,11 +1,11 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2017 Cavium, Inc
 
-OCTEONTX FPAVF Mempool Driver
-=============================
+OCTEON TX FPAVF Mempool Driver
+==============================
 
-The OCTEONTX FPAVF PMD (**librte_mempool_octeontx**) is a mempool
-driver for offload mempool device found in **Cavium OCTEONTX** SoC
+The OCTEON TX FPAVF PMD (**librte_mempool_octeontx**) is a mempool
+driver for offload mempool device found in **Cavium OCTEON TX** SoC
 family.
 
 More information can be found at `Cavium, Inc Official Website
@@ -14,14 +14,14 @@ More information can be found at `Cavium, Inc Official Website
 Features
 --------
 
-Features of the OCTEONTX FPAVF PMD are:
+Features of the OCTEON TX FPAVF PMD are:
 
 - 32 SR-IOV Virtual functions
 - 32 Pools
 - HW mempool manager
 
-Supported OCTEONTX SoCs
------------------------
+Supported OCTEON TX SoCs
+------------------------
 
 - CN83xx
 
@@ -50,7 +50,7 @@ Please note that enabling debugging options may affect system performance.
 Driver Compilation
 ~~~~~~~~~~~~~~~~~~
 
-To compile the OCTEONTX FPAVF MEMPOOL PMD for Linux arm64 gcc target, run the
+To compile the OCTEON TX FPAVF MEMPOOL PMD for Linux arm64 gcc target, run the
 following ``make`` command:
 
 .. code-block:: console
@@ -62,7 +62,7 @@ following ``make`` command:
 Initialization
 --------------
 
-The octeontx fpavf mempool initialization similar to other mempool
+The OCTEON TX fpavf mempool initialization similar to other mempool
 drivers like ring. However user need to pass --base-virtaddr as
 command line input to application example test_mempool.c application.
 
