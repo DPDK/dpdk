@@ -1033,7 +1033,8 @@ static const char cmd_table_action_profile_help[] =
 "   [sym_crypto dev <CRYPTODEV_NAME> offset <op_offset> "
 "       mempool_create <mempool_name>\n"
 "       mempool_init <mempool_name>]\n"
-"   [tag]\n";
+"   [tag]\n"
+"   [decap]\n";
 
 static void
 cmd_table_action_profile(char **tokens,
@@ -1456,6 +1457,11 @@ cmd_table_action_profile(char **tokens,
 		p.action_mask |= 1LLU << RTE_TABLE_ACTION_TAG;
 		t0 += 1;
 	} /* tag */
+
+	if ((t0 < n_tokens) && (strcmp(tokens[t0], "decap") == 0)) {
+		p.action_mask |= 1LLU << RTE_TABLE_ACTION_DECAP;
+		t0 += 1;
+	} /* decap */
 
 	if (t0 < n_tokens) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
@@ -3114,6 +3120,7 @@ parse_match(char **tokens,
  *          digest_size <size>
  *       data_offset <data_offset>]
  *    [tag <tag>]
+ *    [decap <n>]
  *
  * where:
  *    <pa> ::= g | y | r | drop
@@ -4091,6 +4098,22 @@ parse_table_action_tag(char **tokens,
 }
 
 static uint32_t
+parse_table_action_decap(char **tokens,
+	uint32_t n_tokens,
+	struct table_rule_action *a)
+{
+	if ((n_tokens < 2) ||
+		strcmp(tokens[0], "decap"))
+		return 0;
+
+	if (parser_read_uint16(&a->decap.n, tokens[1]))
+		return 0;
+
+	a->action_mask |= 1 << RTE_TABLE_ACTION_DECAP;
+	return 2;
+}
+
+static uint32_t
 parse_table_action(char **tokens,
 	uint32_t n_tokens,
 	char *out,
@@ -4254,6 +4277,20 @@ parse_table_action(char **tokens,
 		if (n == 0) {
 			snprintf(out, out_size, MSG_ARG_INVALID,
 				"action tag");
+			return 0;
+		}
+
+		tokens += n;
+		n_tokens -= n;
+	}
+
+	if (n_tokens && (strcmp(tokens[0], "decap") == 0)) {
+		uint32_t n;
+
+		n = parse_table_action_decap(tokens, n_tokens, a);
+		if (n == 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"action decap");
 			return 0;
 		}
 
