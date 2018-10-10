@@ -87,7 +87,7 @@ static pthread_t msb_inc_thread_id;
  * containing used to process MSB of the HPET (unfortunately, we need
  * this because hpet is 32 bits by default under linux).
  */
-static void
+static void *
 hpet_msb_inc(__attribute__((unused)) void *arg)
 {
 	uint32_t t;
@@ -98,6 +98,7 @@ hpet_msb_inc(__attribute__((unused)) void *arg)
 			eal_hpet_msb ++;
 		sleep(10);
 	}
+	return NULL;
 }
 
 uint64_t
@@ -178,7 +179,7 @@ rte_eal_hpet_init(int make_default)
 	/* create a thread that will increment a global variable for
 	 * msb (hpet is 32 bits by default under linux) */
 	ret = rte_ctrl_thread_create(&msb_inc_thread_id, "hpet-msb-inc", NULL,
-			(void *(*)(void *))hpet_msb_inc, NULL);
+				     hpet_msb_inc, NULL);
 	if (ret != 0) {
 		RTE_LOG(ERR, EAL, "ERROR: Cannot create HPET timer thread!\n");
 		internal_config.no_hpet = 1;
