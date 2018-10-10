@@ -103,6 +103,13 @@ System Software
 
         uname -r
 
+.. note::
+
+    Kernel version 3.2 is no longer a kernel.org longterm stable kernel.
+    For DPDK 19.02 the minimum required kernel will be updated to
+    the current kernel.org oldest longterm stable supported kernel 3.16,
+    or recent versions of common distributions, notably RHEL/CentOS 7.
+
 *   glibc >= 2.7 (for features related to cpuset)
 
     The version can be checked using the ``ldd --version`` command.
