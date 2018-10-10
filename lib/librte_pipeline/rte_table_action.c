@@ -2056,6 +2056,83 @@ pkt4_work_tag(struct rte_mbuf *mbuf0,
 }
 
 /**
+ * RTE_TABLE_ACTION_DECAP
+ */
+struct decap_data {
+	uint16_t n;
+} __attribute__((__packed__));
+
+static int
+decap_apply(struct decap_data *data,
+	struct rte_table_action_decap_params *p)
+{
+	data->n = p->n;
+	return 0;
+}
+
+static __rte_always_inline void
+pkt_work_decap(struct rte_mbuf *mbuf,
+	struct decap_data *data)
+{
+	uint16_t data_off = mbuf->data_off;
+	uint16_t data_len = mbuf->data_len;
+	uint32_t pkt_len = mbuf->pkt_len;
+	uint16_t n = data->n;
+
+	mbuf->data_off = data_off + n;
+	mbuf->data_len = data_len - n;
+	mbuf->pkt_len = pkt_len - n;
+}
+
+static __rte_always_inline void
+pkt4_work_decap(struct rte_mbuf *mbuf0,
+	struct rte_mbuf *mbuf1,
+	struct rte_mbuf *mbuf2,
+	struct rte_mbuf *mbuf3,
+	struct decap_data *data0,
+	struct decap_data *data1,
+	struct decap_data *data2,
+	struct decap_data *data3)
+{
+	uint16_t data_off0 = mbuf0->data_off;
+	uint16_t data_len0 = mbuf0->data_len;
+	uint32_t pkt_len0 = mbuf0->pkt_len;
+
+	uint16_t data_off1 = mbuf1->data_off;
+	uint16_t data_len1 = mbuf1->data_len;
+	uint32_t pkt_len1 = mbuf1->pkt_len;
+
+	uint16_t data_off2 = mbuf2->data_off;
+	uint16_t data_len2 = mbuf2->data_len;
+	uint32_t pkt_len2 = mbuf2->pkt_len;
+
+	uint16_t data_off3 = mbuf3->data_off;
+	uint16_t data_len3 = mbuf3->data_len;
+	uint32_t pkt_len3 = mbuf3->pkt_len;
+
+	uint16_t n0 = data0->n;
+	uint16_t n1 = data1->n;
+	uint16_t n2 = data2->n;
+	uint16_t n3 = data3->n;
+
+	mbuf0->data_off = data_off0 + n0;
+	mbuf0->data_len = data_len0 - n0;
+	mbuf0->pkt_len = pkt_len0 - n0;
+
+	mbuf1->data_off = data_off1 + n1;
+	mbuf1->data_len = data_len1 - n1;
+	mbuf1->pkt_len = pkt_len1 - n1;
+
+	mbuf2->data_off = data_off2 + n2;
+	mbuf2->data_len = data_len2 - n2;
+	mbuf2->pkt_len = pkt_len2 - n2;
+
+	mbuf3->data_off = data_off3 + n3;
+	mbuf3->data_len = data_len3 - n3;
+	mbuf3->pkt_len = pkt_len3 - n3;
+}
+
+/**
  * Action profile
  */
 static int
@@ -2073,6 +2150,7 @@ action_valid(enum rte_table_action_type action)
 	case RTE_TABLE_ACTION_TIME:
 	case RTE_TABLE_ACTION_SYM_CRYPTO:
 	case RTE_TABLE_ACTION_TAG:
+	case RTE_TABLE_ACTION_DECAP:
 		return 1;
 	default:
 		return 0;
@@ -2209,6 +2287,9 @@ action_data_size(enum rte_table_action_type action,
 
 	case RTE_TABLE_ACTION_TAG:
 		return sizeof(struct tag_data);
+
+	case RTE_TABLE_ACTION_DECAP:
+		return sizeof(struct decap_data);
 
 	default:
 		return 0;
@@ -2469,6 +2550,10 @@ rte_table_action_apply(struct rte_table_action *action,
 
 	case RTE_TABLE_ACTION_TAG:
 		return tag_apply(action_data,
+			action_params);
+
+	case RTE_TABLE_ACTION_DECAP:
+		return decap_apply(action_data,
 			action_params);
 
 	default:
@@ -2801,6 +2886,14 @@ pkt_work(struct rte_mbuf *mbuf,
 			dscp);
 	}
 
+	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_DECAP)) {
+		void *data = action_data_get(table_entry,
+			action,
+			RTE_TABLE_ACTION_DECAP);
+
+		pkt_work_decap(mbuf, data);
+	}
+
 	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_ENCAP)) {
 		void *data =
 			action_data_get(table_entry, action, RTE_TABLE_ACTION_ENCAP);
@@ -3032,6 +3125,24 @@ pkt4_work(struct rte_mbuf **mbufs,
 			data3,
 			&action->dscp_table,
 			dscp3);
+	}
+
+	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_DECAP)) {
+		void *data0 = action_data_get(table_entry0,
+			action,
+			RTE_TABLE_ACTION_DECAP);
+		void *data1 = action_data_get(table_entry1,
+			action,
+			RTE_TABLE_ACTION_DECAP);
+		void *data2 = action_data_get(table_entry2,
+			action,
+			RTE_TABLE_ACTION_DECAP);
+		void *data3 = action_data_get(table_entry3,
+			action,
+			RTE_TABLE_ACTION_DECAP);
+
+		pkt4_work_decap(mbuf0, mbuf1, mbuf2, mbuf3,
+			data0, data1, data2, data3);
 	}
 
 	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_ENCAP)) {

@@ -99,6 +99,9 @@ enum rte_table_action_type {
 
 	/** Tag. */
 	RTE_TABLE_ACTION_TAG,
+
+	/** Packet decapsulations. */
+	RTE_TABLE_ACTION_DECAP,
 };
 
 /** Common action configuration (per table action profile). */
@@ -780,6 +783,15 @@ struct rte_table_action_sym_crypto_params {
 struct rte_table_action_tag_params {
 	/** Tag to be attached to the input packet. */
 	uint32_t tag;
+};
+
+/**
+ * RTE_TABLE_ACTION_DECAP
+ */
+/** Decap action parameters (per table rule). */
+struct rte_table_action_decap_params {
+	/** Number of bytes to be removed from the start of the packet. */
+	uint16_t n;
 };
 
 /**
