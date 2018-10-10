@@ -149,6 +149,7 @@ test_names = [
 	'cryptodev_octeontx_autotest',
 	'cycles_autotest',
 	'debug_autotest',
+	'delay_us_sleep_autotest',
 	'devargs_autotest',
 	'distributor_autotest',
 	'distributor_perf_autotest',

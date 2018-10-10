@@ -279,6 +279,12 @@ parallel_test_list = [
         "Report":  None,
     },
     {
+        "Name":    "Sleep delay",
+        "Command": "delay_us_sleep_autotest",
+        "Func":    default_autotest,
+        "Report":  None,
+    },
+    {
         "Name":    "Rawdev autotest",
         "Command": "rawdev_autotest",
         "Func":    default_autotest,

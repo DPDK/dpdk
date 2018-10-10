@@ -24,6 +24,30 @@
  */
 
 static int
+check_wait_one_second(void)
+{
+	uint64_t cycles, prev_cycles;
+	uint64_t hz = rte_get_timer_hz();
+	uint64_t max_inc = (hz / 100); /* 10 ms max between 2 reads */
+
+	/* check that waiting 1 second is precise */
+	prev_cycles = rte_get_timer_cycles();
+	rte_delay_us(1000000);
+	cycles = rte_get_timer_cycles();
+
+	if ((uint64_t)(cycles - prev_cycles) > (hz + max_inc)) {
+		printf("delay_us is not accurate: too long\n");
+		return -1;
+	}
+	if ((uint64_t)(cycles - prev_cycles) < (hz - max_inc)) {
+		printf("delay_us is not accurate: too short\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
 test_cycles(void)
 {
 	unsigned i;
@@ -43,24 +67,23 @@ test_cycles(void)
 		prev_cycles = cycles;
 	}
 
-	/* check that waiting 1 second is precise */
-	prev_cycles = rte_get_timer_cycles();
-	rte_delay_us(1000000);
-	cycles = rte_get_timer_cycles();
-
-	if ((uint64_t)(cycles - prev_cycles) > (hz + max_inc)) {
-		printf("delay_us is not accurate: too long\n");
-		return -1;
-	}
-	if ((uint64_t)(cycles - prev_cycles) < (hz - max_inc)) {
-		printf("delay_us is not accurate: too short\n");
-		return -1;
-	}
-
-	return 0;
+	return check_wait_one_second();
 }
 
 REGISTER_TEST_COMMAND(cycles_autotest, test_cycles);
+
+/*
+ * One second precision test with rte_delay_us_sleep.
+ */
+
+static int
+test_delay_us_sleep(void)
+{
+	rte_delay_us_callback_register(rte_delay_us_sleep);
+	return check_wait_one_second();
+}
+
+REGISTER_TEST_COMMAND(delay_us_sleep_autotest, test_delay_us_sleep);
 
 /*
  * rte_delay_us_callback test
