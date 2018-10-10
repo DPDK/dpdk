@@ -44,6 +44,7 @@ Hash algorithms:
 AEAD algorithms:
 
 * RTE_CRYPTO_AEAD_AES_CCM
+* RTE_CRYPTO_AEAD_AES_GCM
 
 Limitations
 -----------

@@ -82,6 +82,7 @@ static const unsigned auth_digest_byte_lengths[] = {
 		[SHA_512]	= 64,
 		[AES_XCBC]	= 16,
 		[AES_CMAC]	= 16,
+		[AES_GMAC]	= 12,
 		[NULL_HASH]		= 0
 };
 
@@ -172,6 +173,8 @@ struct aesni_mb_session {
 				const void *ks_ptr[3];
 				uint64_t key[3][16];
 			} exp_3des_keys;
+
+			struct gcm_key_data gcm_key;
 		};
 		/**< Expanded AES keys - Allocating space to
 		 * contain the maximum expanded key size which

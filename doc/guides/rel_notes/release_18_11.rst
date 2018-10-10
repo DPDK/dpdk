@@ -149,6 +149,11 @@ New Features
 
   * AES-CMAC algorithm.
 
+* **Updated the AESNI MB PMD.**
+
+  The AESNI MB PMD has been updated with additional support for AES-GCM
+  algorithm support.
+
 * **Added Event Ethernet Tx Adapter.**
 
   Added event ethernet Tx adapter library that  provides configuration and

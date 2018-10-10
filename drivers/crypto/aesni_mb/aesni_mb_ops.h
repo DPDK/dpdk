@@ -48,6 +48,8 @@ typedef void (*aes_cmac_sub_key_gen_t)
 		(const void *exp_key, void *k2, void *k3);
 typedef void (*aes_cmac_keyexp_t)
 		(const void *key, void *keyexp);
+typedef void (*aes_gcm_keyexp_t)
+		(const void *key, struct gcm_key_data *keyexp);
 
 /** Multi-buffer library function pointer table */
 struct aesni_mb_op_fns {
@@ -95,6 +97,12 @@ struct aesni_mb_op_fns {
 			/**< AES CMAC subkey expansions */
 			aes_cmac_keyexp_t aes_cmac_expkey;
 			/**< AES CMAC key expansions */
+			aes_gcm_keyexp_t aes_gcm_128;
+			/**< AES GCM 128 key expansions */
+			aes_gcm_keyexp_t aes_gcm_192;
+			/**< AES GCM 192 key expansions */
+			aes_gcm_keyexp_t aes_gcm_256;
+			/**< AES GCM 256 key expansions */
 		} keyexp;
 		/**< Key expansion functions */
 #if IMB_VERSION_NUM >= IMB_VERSION(0, 50, 0)
@@ -155,7 +163,10 @@ static const struct aesni_mb_op_fns job_ops[] = {
 					aes_keyexp_256_sse,
 					aes_xcbc_expand_key_sse,
 					aes_cmac_subkey_gen_sse,
-					aes_keyexp_128_enc_sse
+					aes_keyexp_128_enc_sse,
+					aes_gcm_pre_128_sse,
+					aes_gcm_pre_192_sse,
+					aes_gcm_pre_256_sse
 				},
 #if IMB_VERSION_NUM >= IMB_VERSION(0, 50, 0)
 				.multi_block = {
@@ -191,7 +202,10 @@ static const struct aesni_mb_op_fns job_ops[] = {
 					aes_keyexp_256_avx,
 					aes_xcbc_expand_key_avx,
 					aes_cmac_subkey_gen_avx,
-					aes_keyexp_128_enc_avx
+					aes_keyexp_128_enc_avx,
+					aes_gcm_pre_128_avx_gen2,
+					aes_gcm_pre_192_avx_gen2,
+					aes_gcm_pre_256_avx_gen2
 				},
 #if IMB_VERSION_NUM >= IMB_VERSION(0, 50, 0)
 				.multi_block = {
@@ -227,7 +241,10 @@ static const struct aesni_mb_op_fns job_ops[] = {
 					aes_keyexp_256_avx2,
 					aes_xcbc_expand_key_avx2,
 					aes_cmac_subkey_gen_avx2,
-					aes_keyexp_128_enc_avx2
+					aes_keyexp_128_enc_avx2,
+					aes_gcm_pre_128_avx_gen4,
+					aes_gcm_pre_192_avx_gen4,
+					aes_gcm_pre_256_avx_gen4
 				},
 #if IMB_VERSION_NUM >= IMB_VERSION(0, 50, 0)
 				.multi_block = {
@@ -263,7 +280,10 @@ static const struct aesni_mb_op_fns job_ops[] = {
 					aes_keyexp_256_avx512,
 					aes_xcbc_expand_key_avx512,
 					aes_cmac_subkey_gen_avx512,
-					aes_keyexp_128_enc_avx512
+					aes_keyexp_128_enc_avx512,
+					aes_gcm_pre_128_avx_gen4,
+					aes_gcm_pre_192_avx_gen4,
+					aes_gcm_pre_256_avx_gen4
 				},
 #if IMB_VERSION_NUM >= IMB_VERSION(0, 50, 0)
 				.multi_block = {
