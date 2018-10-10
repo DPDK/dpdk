@@ -1169,6 +1169,7 @@ flow_rule_action_get(struct pmd_internals *softnic,
 	int n_jump_queue_rss_drop = 0;
 	int n_count = 0;
 	int n_mark = 0;
+	int n_vxlan_decap = 0;
 
 	profile = softnic_table_action_profile_find(softnic,
 		table->params.action_profile_name);
@@ -1509,6 +1510,40 @@ flow_rule_action_get(struct pmd_internals *softnic,
 			rule_action->action_mask |= 1 << RTE_TABLE_ACTION_TAG;
 			break;
 		} /* RTE_FLOW_ACTION_TYPE_MARK */
+
+		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
+		{
+			const struct rte_flow_action_mark *conf = action->conf;
+
+			if (conf)
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					action,
+					"VXLAN DECAP: Non-null configuration");
+
+			if (n_vxlan_decap)
+				return rte_flow_error_set(error,
+					ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					action,
+					"Only one VXLAN DECAP action per flow");
+
+			if ((params->action_mask &
+				(1LLU << RTE_TABLE_ACTION_DECAP)) == 0)
+				return rte_flow_error_set(error,
+					ENOTSUP,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL,
+					"VXLAN DECAP action not supported by this table");
+
+			n_vxlan_decap = 1;
+
+			/* RTE_TABLE_ACTION_DECAP */
+			rule_action->decap.n = 50; /* Ether/IPv4/UDP/VXLAN */
+			rule_action->action_mask |= 1 << RTE_TABLE_ACTION_DECAP;
+			break;
+		} /* RTE_FLOW_ACTION_TYPE_VXLAN_DECAP */
 
 		case RTE_FLOW_ACTION_TYPE_METER:
 		{
