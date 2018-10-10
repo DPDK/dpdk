@@ -38,7 +38,9 @@
 #define ENIC_PAGE_SIZE          4096
 #define PAGE_ROUND_UP(x) \
 	((((unsigned long)(x)) + ENIC_PAGE_SIZE-1) & (~(ENIC_PAGE_SIZE-1)))
-#define VNIC_FLOW_COUNTER_UPDATE_MSECS 100
+
+/* must be >= VNIC_COUNTER_DMA_MIN_PERIOD */
+#define VNIC_FLOW_COUNTER_UPDATE_MSECS 500
 
 #define ENICPMD_VFIO_PATH          "/dev/vfio/vfio"
 /*#define ENIC_DESC_COUNT_MAKE_ODD (x) do{if ((~(x)) & 1) { (x)--; } }while(0)*/

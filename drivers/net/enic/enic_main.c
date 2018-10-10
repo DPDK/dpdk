@@ -1766,7 +1766,7 @@ int enic_probe(struct enic *enic)
 
 	/*
 	 * Allocate the consistent memory for stats and counters upfront so
-	 * both primary and secondary processes can dump stats.
+	 * both primary and secondary processes can access them.
 	 */
 	err = vnic_dev_alloc_stats_mem(enic->vdev);
 	if (err) {

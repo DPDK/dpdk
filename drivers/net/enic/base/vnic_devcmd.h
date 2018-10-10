@@ -634,6 +634,7 @@ enum vnic_devcmd_cmd {
 	 *     (u32) a2 = DMA period in milliseconds (0 to disable)
 	 */
 	CMD_COUNTER_DMA_CONFIG = _CMDC(_CMD_DIR_WRITE, _CMD_VTYPE_ENET, 88),
+#define VNIC_COUNTER_DMA_MIN_PERIOD 500
 
 	/*
 	 * Clear all counters on a vnic

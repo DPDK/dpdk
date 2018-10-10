@@ -59,6 +59,7 @@ struct vnic_dev {
 		dma_addr_t dma_handle);
 	struct vnic_counter_counts *flow_counters;
 	dma_addr_t flow_counters_pa;
+	u8 flow_counters_dma_active;
 };
 
 #define VNIC_MAX_RES_HDR_SIZE \
@@ -618,18 +619,30 @@ int vnic_dev_stats_dump(struct vnic_dev *vdev, struct vnic_stats **stats)
 /*
  * Configure counter DMA
  */
-int vnic_dev_counter_dma_cfg(struct vnic_dev *vdev, u32 period, u32 counter_idx)
+int vnic_dev_counter_dma_cfg(struct vnic_dev *vdev, u32 period,
+			     u32 num_counters)
 {
 	u64 args[3];
 	int wait = 1000;
+	int err;
 
-	if (!vdev->flow_counters || counter_idx >= VNIC_MAX_FLOW_COUNTERS)
+	if (num_counters > VNIC_MAX_FLOW_COUNTERS)
 		return -ENOMEM;
+	if (period > 0 && (period < VNIC_COUNTER_DMA_MIN_PERIOD ||
+	    num_counters == 0))
+		return -EINVAL;
 
-	args[0] = counter_idx + 1;
+	args[0] = num_counters;
 	args[1] = vdev->flow_counters_pa;
 	args[2] = period;
-	return vnic_dev_cmd_args(vdev, CMD_COUNTER_DMA_CONFIG, args, 3, wait);
+	err =  vnic_dev_cmd_args(vdev, CMD_COUNTER_DMA_CONFIG, args, 3, wait);
+
+	/* record if DMAs need to be stopped on close */
+	if (!err)
+		vdev->flow_counters_dma_active = (num_counters != 0 &&
+						  period != 0);
+
+	return err;
 }
 
 int vnic_dev_close(struct vnic_dev *vdev)
@@ -974,6 +987,7 @@ int vnic_dev_alloc_counter_mem(struct vnic_dev *vdev)
 					     * VNIC_MAX_FLOW_COUNTERS,
 					     &vdev->flow_counters_pa,
 					     (u8 *)name);
+	vdev->flow_counters_dma_active = 0;
 	return vdev->flow_counters == NULL ? -ENOMEM : 0;
 }
 
@@ -991,7 +1005,8 @@ void vnic_dev_unregister(struct vnic_dev *vdev)
 				vdev->stats, vdev->stats_pa);
 		if (vdev->flow_counters) {
 			/* turn off counter DMAs before freeing memory */
-			vnic_dev_counter_dma_cfg(vdev, 0, 0);
+			if (vdev->flow_counters_dma_active)
+				vnic_dev_counter_dma_cfg(vdev, 0, 0);
 
 			vdev->free_consistent(vdev->priv,
 				sizeof(struct vnic_counter_counts)
@@ -1171,19 +1186,16 @@ bool vnic_dev_counter_query(struct vnic_dev *vdev, uint32_t idx,
 	u64 a1 = reset ? 1 : 0;
 	int wait = 1000;
 
-	if (vdev->flow_counters) {
-		/* Using counter DMA API, so counters avail in host memory */
-		*packets = vdev->flow_counters[idx].vcc_packets;
-		*bytes = vdev->flow_counters[idx].vcc_bytes;
-		if (reset)
-			if (vnic_dev_cmd(vdev, CMD_COUNTER_QUERY, &a0, &a1,
-			    wait))
-				return false;
-	} else {
+	if (reset) {
+		/* query/reset returns updated counters */
 		if (vnic_dev_cmd(vdev, CMD_COUNTER_QUERY, &a0, &a1, wait))
 			return false;
 		*packets = a0;
 		*bytes = a1;
+	} else {
+		/* Get values DMA'd from the adapter */
+		*packets = vdev->flow_counters[idx].vcc_packets;
+		*bytes = vdev->flow_counters[idx].vcc_bytes;
 	}
 	return true;
 }

@@ -1444,7 +1444,7 @@ enic_flow_add_filter(struct enic *enic, struct filter_v2 *enic_filter,
 		if (ctr_idx > enic->max_flow_counter) {
 			err = vnic_dev_counter_dma_cfg(enic->vdev,
 						 VNIC_FLOW_COUNTER_UPDATE_MSECS,
-						 ctr_idx);
+						 ctr_idx + 1);
 			if (err) {
 				rte_flow_error_set(error, -err,
 					   RTE_FLOW_ERROR_TYPE_ACTION_CONF,
@@ -1477,7 +1477,7 @@ unwind_ctr_dma_cfg:
 		/* reduce counter DMA size */
 		vnic_dev_counter_dma_cfg(enic->vdev,
 					 VNIC_FLOW_COUNTER_UPDATE_MSECS,
-					 last_max_flow_ctr);
+					 last_max_flow_ctr + 1);
 		enic->max_flow_counter = last_max_flow_ctr;
 	}
 unwind_ctr_alloc:

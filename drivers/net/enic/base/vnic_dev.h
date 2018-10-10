@@ -119,7 +119,7 @@ int vnic_dev_spec(struct vnic_dev *vdev, unsigned int offset, size_t size,
 int vnic_dev_stats_clear(struct vnic_dev *vdev);
 int vnic_dev_stats_dump(struct vnic_dev *vdev, struct vnic_stats **stats);
 int vnic_dev_counter_dma_cfg(struct vnic_dev *vdev, u32 period,
-			     u32 counter_idx);
+			     u32 num_counters);
 int vnic_dev_hang_notify(struct vnic_dev *vdev);
 int vnic_dev_packet_filter(struct vnic_dev *vdev, int directed, int multicast,
 	int broadcast, int promisc, int allmulti);
