@@ -186,6 +186,8 @@ if build
 		'TCA_FLOWER_KEY_TCP_FLAGS_MASK' ],
 		[ 'HAVE_TC_ACT_VLAN', 'linux/tc_act/tc_vlan.h',
 		'TCA_VLAN_PUSH_VLAN_PRIORITY' ],
+		[ 'HAVE_TC_ACT_PEDIT', 'linux/tc_act/tc_pedit.h',
+		'TCA_PEDIT_KEY_EX_HDR_TYPE_UDP' ],
 		[ 'HAVE_RDMA_NL_NLDEV', 'rdma/rdma_netlink.h',
 		'RDMA_NL_NLDEV' ],
 		[ 'HAVE_RDMA_NLDEV_CMD_GET', 'rdma/rdma_netlink.h',

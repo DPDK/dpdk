@@ -357,6 +357,11 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		enum TCA_VLAN_PUSH_VLAN_PRIORITY \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
+		HAVE_TC_ACT_PEDIT \
+		linux/tc_act/tc_pedit.h \
+		enum TCA_PEDIT_KEY_EX_HDR_TYPE_UDP \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
 		HAVE_SUPPORTED_40000baseKR4_Full \
 		/usr/include/linux/ethtool.h \
 		define SUPPORTED_40000baseKR4_Full \

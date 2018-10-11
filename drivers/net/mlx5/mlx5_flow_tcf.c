@@ -53,6 +53,63 @@ struct tc_vlan {
 
 #endif /* HAVE_TC_ACT_VLAN */
 
+#ifdef HAVE_TC_ACT_PEDIT
+
+#include <linux/tc_act/tc_pedit.h>
+
+#else /* HAVE_TC_ACT_VLAN */
+
+enum {
+	TCA_PEDIT_UNSPEC,
+	TCA_PEDIT_TM,
+	TCA_PEDIT_PARMS,
+	TCA_PEDIT_PAD,
+	TCA_PEDIT_PARMS_EX,
+	TCA_PEDIT_KEYS_EX,
+	TCA_PEDIT_KEY_EX,
+	__TCA_PEDIT_MAX
+};
+
+enum {
+	TCA_PEDIT_KEY_EX_HTYPE = 1,
+	TCA_PEDIT_KEY_EX_CMD = 2,
+	__TCA_PEDIT_KEY_EX_MAX
+};
+
+enum pedit_header_type {
+	TCA_PEDIT_KEY_EX_HDR_TYPE_NETWORK = 0,
+	TCA_PEDIT_KEY_EX_HDR_TYPE_ETH = 1,
+	TCA_PEDIT_KEY_EX_HDR_TYPE_IP4 = 2,
+	TCA_PEDIT_KEY_EX_HDR_TYPE_IP6 = 3,
+	TCA_PEDIT_KEY_EX_HDR_TYPE_TCP = 4,
+	TCA_PEDIT_KEY_EX_HDR_TYPE_UDP = 5,
+	__PEDIT_HDR_TYPE_MAX,
+};
+
+enum pedit_cmd {
+	TCA_PEDIT_KEY_EX_CMD_SET = 0,
+	TCA_PEDIT_KEY_EX_CMD_ADD = 1,
+	__PEDIT_CMD_MAX,
+};
+
+struct tc_pedit_key {
+	__u32           mask;  /* AND */
+	__u32           val;   /*XOR */
+	__u32           off;  /*offset */
+	__u32           at;
+	__u32           offmask;
+	__u32           shift;
+};
+
+struct tc_pedit_sel {
+	tc_gen;
+	unsigned char           nkeys;
+	unsigned char           flags;
+	struct tc_pedit_key     keys[0];
+};
+
+#endif /* HAVE_TC_ACT_VLAN */
+
 /* Normally found in linux/netlink.h. */
 #ifndef NETLINK_CAP_ACK
 #define NETLINK_CAP_ACK 10
@@ -159,6 +216,14 @@ struct tc_vlan {
 #define IPV6_ADDR_LEN 16
 #endif
 
+#ifndef IPV4_ADDR_LEN
+#define IPV4_ADDR_LEN 4
+#endif
+
+#ifndef TP_PORT_LEN
+#define TP_PORT_LEN 2 /* Transport Port (UDP/TCP) Length */
+#endif
+
 /** Empty masks for known item types. */
 static const union {
 	struct rte_flow_item_port_id port_id;
@@ -236,6 +301,268 @@ struct flow_tcf_ptoi {
 #define MLX5_TCF_VLAN_ACTIONS \
 	(MLX5_FLOW_ACTION_OF_POP_VLAN | MLX5_FLOW_ACTION_OF_PUSH_VLAN | \
 	 MLX5_FLOW_ACTION_OF_SET_VLAN_VID | MLX5_FLOW_ACTION_OF_SET_VLAN_PCP)
+
+#define MLX5_TCF_PEDIT_ACTIONS \
+	(MLX5_FLOW_ACTION_SET_IPV4_SRC | MLX5_FLOW_ACTION_SET_IPV4_DST | \
+	 MLX5_FLOW_ACTION_SET_IPV6_SRC | MLX5_FLOW_ACTION_SET_IPV6_DST | \
+	 MLX5_FLOW_ACTION_SET_TP_SRC | MLX5_FLOW_ACTION_SET_TP_DST)
+
+#define MLX5_TCF_CONFIG_ACTIONS \
+	(MLX5_FLOW_ACTION_PORT_ID | MLX5_FLOW_ACTION_OF_PUSH_VLAN | \
+	 MLX5_FLOW_ACTION_OF_SET_VLAN_VID | MLX5_FLOW_ACTION_OF_SET_VLAN_PCP | \
+	 MLX5_TCF_PEDIT_ACTIONS)
+
+#define MAX_PEDIT_KEYS 128
+#define SZ_PEDIT_KEY_VAL 4
+
+#define NUM_OF_PEDIT_KEYS(sz) \
+	(((sz) / SZ_PEDIT_KEY_VAL) + (((sz) % SZ_PEDIT_KEY_VAL) ? 1 : 0))
+
+struct pedit_key_ex {
+	enum pedit_header_type htype;
+	enum pedit_cmd cmd;
+};
+
+struct pedit_parser {
+	struct tc_pedit_sel sel;
+	struct tc_pedit_key keys[MAX_PEDIT_KEYS];
+	struct pedit_key_ex keys_ex[MAX_PEDIT_KEYS];
+};
+
+
+/**
+ * Set pedit key of transport (TCP/UDP) port value
+ *
+ * @param[in] actions
+ *   pointer to action specification
+ * @param[in,out] p_parser
+ *   pointer to pedit_parser
+ * @param[in] item_flags
+ *   flags of all items presented
+ */
+static void
+flow_tcf_pedit_key_set_tp_port(const struct rte_flow_action *actions,
+				struct pedit_parser *p_parser,
+				uint64_t item_flags)
+{
+	int idx = p_parser->sel.nkeys;
+
+	if (item_flags & MLX5_FLOW_LAYER_OUTER_L4_UDP)
+		p_parser->keys_ex[idx].htype = TCA_PEDIT_KEY_EX_HDR_TYPE_UDP;
+	if (item_flags & MLX5_FLOW_LAYER_OUTER_L4_TCP)
+		p_parser->keys_ex[idx].htype = TCA_PEDIT_KEY_EX_HDR_TYPE_TCP;
+	p_parser->keys_ex[idx].cmd = TCA_PEDIT_KEY_EX_CMD_SET;
+	/* offset of src/dst port is same for TCP and UDP */
+	p_parser->keys[idx].off =
+		actions->type == RTE_FLOW_ACTION_TYPE_SET_TP_SRC ?
+		offsetof(struct tcp_hdr, src_port) :
+		offsetof(struct tcp_hdr, dst_port);
+	p_parser->keys[idx].mask = 0xFFFF0000;
+	p_parser->keys[idx].val =
+		(__u32)((const struct rte_flow_action_set_tp *)
+				actions->conf)->port;
+	p_parser->sel.nkeys = (++idx);
+}
+
+/**
+ * Set pedit key of ipv6 address
+ *
+ * @param[in] actions
+ *   pointer to action specification
+ * @param[in,out] p_parser
+ *   pointer to pedit_parser
+ */
+static void
+flow_tcf_pedit_key_set_ipv6_addr(const struct rte_flow_action *actions,
+				 struct pedit_parser *p_parser)
+{
+	int idx = p_parser->sel.nkeys;
+	int keys = NUM_OF_PEDIT_KEYS(IPV6_ADDR_LEN);
+	int off_base =
+		actions->type == RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC ?
+		offsetof(struct ipv6_hdr, src_addr) :
+		offsetof(struct ipv6_hdr, dst_addr);
+	const struct rte_flow_action_set_ipv6 *conf =
+		(const struct rte_flow_action_set_ipv6 *)actions->conf;
+
+	for (int i = 0; i < keys; i++, idx++) {
+		p_parser->keys_ex[idx].htype = TCA_PEDIT_KEY_EX_HDR_TYPE_IP6;
+		p_parser->keys_ex[idx].cmd = TCA_PEDIT_KEY_EX_CMD_SET;
+		p_parser->keys[idx].off = off_base + i * SZ_PEDIT_KEY_VAL;
+		p_parser->keys[idx].mask = ~UINT32_MAX;
+		memcpy(&p_parser->keys[idx].val,
+			conf->ipv6_addr + i *  SZ_PEDIT_KEY_VAL,
+			SZ_PEDIT_KEY_VAL);
+	}
+	p_parser->sel.nkeys += keys;
+}
+
+/**
+ * Set pedit key of ipv4 address
+ *
+ * @param[in] actions
+ *   pointer to action specification
+ * @param[in,out] p_parser
+ *   pointer to pedit_parser
+ */
+static void
+flow_tcf_pedit_key_set_ipv4_addr(const struct rte_flow_action *actions,
+				 struct pedit_parser *p_parser)
+{
+	int idx = p_parser->sel.nkeys;
+
+	p_parser->keys_ex[idx].htype = TCA_PEDIT_KEY_EX_HDR_TYPE_IP4;
+	p_parser->keys_ex[idx].cmd = TCA_PEDIT_KEY_EX_CMD_SET;
+	p_parser->keys[idx].off =
+		actions->type == RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC ?
+		offsetof(struct ipv4_hdr, src_addr) :
+		offsetof(struct ipv4_hdr, dst_addr);
+	p_parser->keys[idx].mask = ~UINT32_MAX;
+	p_parser->keys[idx].val =
+		((const struct rte_flow_action_set_ipv4 *)
+		 actions->conf)->ipv4_addr;
+	p_parser->sel.nkeys = (++idx);
+}
+
+/**
+ * Create the pedit's na attribute in netlink message
+ * on pre-allocate message buffer
+ *
+ * @param[in,out] nl
+ *   pointer to pre-allocated netlink message buffer
+ * @param[in,out] actions
+ *   pointer to pointer of actions specification.
+ * @param[in,out] action_flags
+ *   pointer to actions flags
+ * @param[in] item_flags
+ *   flags of all item presented
+ */
+static void
+flow_tcf_create_pedit_mnl_msg(struct nlmsghdr *nl,
+			      const struct rte_flow_action **actions,
+			      uint64_t item_flags)
+{
+	struct pedit_parser p_parser;
+	struct nlattr *na_act_options;
+	struct nlattr *na_pedit_keys;
+
+	memset(&p_parser, 0, sizeof(p_parser));
+	mnl_attr_put_strz(nl, TCA_ACT_KIND, "pedit");
+	na_act_options = mnl_attr_nest_start(nl, TCA_ACT_OPTIONS);
+	/* all modify header actions should be in one tc-pedit action */
+	for (; (*actions)->type != RTE_FLOW_ACTION_TYPE_END; (*actions)++) {
+		switch ((*actions)->type) {
+		case RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC:
+		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DST:
+			flow_tcf_pedit_key_set_ipv4_addr(*actions, &p_parser);
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC:
+		case RTE_FLOW_ACTION_TYPE_SET_IPV6_DST:
+			flow_tcf_pedit_key_set_ipv6_addr(*actions, &p_parser);
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_TP_SRC:
+		case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
+			flow_tcf_pedit_key_set_tp_port(*actions,
+							&p_parser, item_flags);
+			break;
+		default:
+			goto pedit_mnl_msg_done;
+		}
+	}
+pedit_mnl_msg_done:
+	p_parser.sel.action = TC_ACT_PIPE;
+	mnl_attr_put(nl, TCA_PEDIT_PARMS_EX,
+		     sizeof(p_parser.sel) +
+		     p_parser.sel.nkeys * sizeof(struct tc_pedit_key),
+		     &p_parser);
+	na_pedit_keys =
+		mnl_attr_nest_start(nl, TCA_PEDIT_KEYS_EX | NLA_F_NESTED);
+	for (int i = 0; i < p_parser.sel.nkeys; i++) {
+		struct nlattr *na_pedit_key =
+			mnl_attr_nest_start(nl,
+					    TCA_PEDIT_KEY_EX | NLA_F_NESTED);
+		mnl_attr_put_u16(nl, TCA_PEDIT_KEY_EX_HTYPE,
+				 p_parser.keys_ex[i].htype);
+		mnl_attr_put_u16(nl, TCA_PEDIT_KEY_EX_CMD,
+				 p_parser.keys_ex[i].cmd);
+		mnl_attr_nest_end(nl, na_pedit_key);
+	}
+	mnl_attr_nest_end(nl, na_pedit_keys);
+	mnl_attr_nest_end(nl, na_act_options);
+	(*actions)--;
+}
+
+/**
+ * Calculate max memory size of one TC-pedit actions.
+ * One TC-pedit action can contain set of keys each defining
+ * a rewrite element (rte_flow action)
+ *
+ * @param[in,out] actions
+ *   actions specification.
+ * @param[in,out] action_flags
+ *   actions flags
+ * @param[in,out] size
+ *   accumulated size
+ * @return
+ *   Max memory size of one TC-pedit action
+ */
+static int
+flow_tcf_get_pedit_actions_size(const struct rte_flow_action **actions,
+				uint64_t *action_flags)
+{
+	int pedit_size = 0;
+	int keys = 0;
+	uint64_t flags = 0;
+
+	pedit_size += SZ_NLATTR_NEST + /* na_act_index. */
+		      SZ_NLATTR_STRZ_OF("pedit") +
+		      SZ_NLATTR_NEST; /* TCA_ACT_OPTIONS. */
+	for (; (*actions)->type != RTE_FLOW_ACTION_TYPE_END; (*actions)++) {
+		switch ((*actions)->type) {
+		case RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC:
+			keys += NUM_OF_PEDIT_KEYS(IPV4_ADDR_LEN);
+			flags |= MLX5_FLOW_ACTION_SET_IPV4_SRC;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DST:
+			keys += NUM_OF_PEDIT_KEYS(IPV4_ADDR_LEN);
+			flags |= MLX5_FLOW_ACTION_SET_IPV4_DST;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC:
+			keys += NUM_OF_PEDIT_KEYS(IPV6_ADDR_LEN);
+			flags |= MLX5_FLOW_ACTION_SET_IPV6_SRC;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_IPV6_DST:
+			keys += NUM_OF_PEDIT_KEYS(IPV6_ADDR_LEN);
+			flags |= MLX5_FLOW_ACTION_SET_IPV6_DST;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_TP_SRC:
+			/* TCP is as same as UDP */
+			keys += NUM_OF_PEDIT_KEYS(TP_PORT_LEN);
+			flags |= MLX5_FLOW_ACTION_SET_TP_SRC;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
+			/* TCP is as same as UDP */
+			keys += NUM_OF_PEDIT_KEYS(TP_PORT_LEN);
+			flags |= MLX5_FLOW_ACTION_SET_TP_DST;
+			break;
+		default:
+			goto get_pedit_action_size_done;
+		}
+	}
+get_pedit_action_size_done:
+	/* TCA_PEDIT_PARAMS_EX */
+	pedit_size +=
+		SZ_NLATTR_DATA_OF(sizeof(struct tc_pedit_sel) +
+				  keys * sizeof(struct tc_pedit_key));
+	pedit_size += SZ_NLATTR_NEST; /* TCA_PEDIT_KEYS */
+	pedit_size += keys *
+		      /* TCA_PEDIT_KEY_EX + HTYPE + CMD */
+		      (SZ_NLATTR_NEST + SZ_NLATTR_DATA_OF(2) +
+		       SZ_NLATTR_DATA_OF(2));
+	(*action_flags) |= flags;
+	(*actions)--;
+	return pedit_size;
+}
 
 /**
  * Retrieve mask for pattern item.
@@ -440,11 +767,14 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 			of_set_vlan_vid;
 		const struct rte_flow_action_of_set_vlan_pcp *
 			of_set_vlan_pcp;
+		const struct rte_flow_action_set_ipv4 *set_ipv4;
+		const struct rte_flow_action_set_ipv6 *set_ipv6;
 	} conf;
 	uint32_t item_flags = 0;
 	uint32_t action_flags = 0;
 	uint8_t next_protocol = -1;
 	unsigned int tcm_ifindex = 0;
+	uint8_t pedit_validated = 0;
 	struct flow_tcf_ptoi ptoi[PTOI_TABLE_SZ_MAX(dev)];
 	struct rte_eth_dev *port_id_dev = NULL;
 	bool in_port_id_set;
@@ -658,16 +988,20 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 	}
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
 		unsigned int i;
+		uint32_t current_action_flag = 0;
 
 		switch (actions->type) {
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			break;
 		case RTE_FLOW_ACTION_TYPE_PORT_ID:
+			current_action_flag = MLX5_FLOW_ACTION_PORT_ID;
 			if (action_flags & MLX5_TCF_FATE_ACTIONS)
 				return rte_flow_error_set
 					(error, EINVAL,
 					 RTE_FLOW_ERROR_TYPE_ACTION, actions,
 					 "can't have multiple fate actions");
+			if (!actions->conf)
+				break;
 			conf.port_id = actions->conf;
 			if (conf.port_id->original)
 				i = 0;
@@ -682,7 +1016,6 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 					 conf.port_id,
 					 "missing data to convert port ID to"
 					 " ifindex");
-			action_flags |= MLX5_FLOW_ACTION_PORT_ID;
 			port_id_dev = &rte_eth_devices[conf.port_id->id];
 			break;
 		case RTE_FLOW_ACTION_TYPE_DROP:
@@ -691,13 +1024,13 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 					(error, EINVAL,
 					 RTE_FLOW_ERROR_TYPE_ACTION, actions,
 					 "can't have multiple fate actions");
-			action_flags |= MLX5_FLOW_ACTION_DROP;
+			current_action_flag = MLX5_FLOW_ACTION_DROP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
-			action_flags |= MLX5_FLOW_ACTION_OF_POP_VLAN;
+			current_action_flag = MLX5_FLOW_ACTION_OF_POP_VLAN;
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
-			action_flags |= MLX5_FLOW_ACTION_OF_PUSH_VLAN;
+			current_action_flag = MLX5_FLOW_ACTION_OF_PUSH_VLAN;
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
 			if (!(action_flags & MLX5_FLOW_ACTION_OF_PUSH_VLAN))
@@ -706,7 +1039,7 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 					 RTE_FLOW_ERROR_TYPE_ACTION, actions,
 					 "vlan modify is not supported,"
 					 " set action must follow push action");
-			action_flags |= MLX5_FLOW_ACTION_OF_SET_VLAN_VID;
+			current_action_flag = MLX5_FLOW_ACTION_OF_SET_VLAN_VID;
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP:
 			if (!(action_flags & MLX5_FLOW_ACTION_OF_PUSH_VLAN))
@@ -715,7 +1048,25 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 					 RTE_FLOW_ERROR_TYPE_ACTION, actions,
 					 "vlan modify is not supported,"
 					 " set action must follow push action");
-			action_flags |= MLX5_FLOW_ACTION_OF_SET_VLAN_PCP;
+			current_action_flag = MLX5_FLOW_ACTION_OF_SET_VLAN_PCP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC:
+			current_action_flag = MLX5_FLOW_ACTION_SET_IPV4_SRC;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DST:
+			current_action_flag = MLX5_FLOW_ACTION_SET_IPV4_DST;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC:
+			current_action_flag = MLX5_FLOW_ACTION_SET_IPV6_SRC;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_IPV6_DST:
+			current_action_flag = MLX5_FLOW_ACTION_SET_IPV6_DST;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_TP_SRC:
+			current_action_flag = MLX5_FLOW_ACTION_SET_TP_SRC;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
+			current_action_flag = MLX5_FLOW_ACTION_SET_TP_DST;
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
@@ -723,6 +1074,67 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 						  actions,
 						  "action not supported");
 		}
+		if (current_action_flag & MLX5_TCF_CONFIG_ACTIONS) {
+			if (!actions->conf)
+				return rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+						actions,
+						"action configuration not set");
+		}
+		if ((current_action_flag & MLX5_TCF_PEDIT_ACTIONS) &&
+				pedit_validated)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  actions,
+						  "set actions should be "
+						  "listed successively");
+		if ((current_action_flag & ~MLX5_TCF_PEDIT_ACTIONS) &&
+		    (action_flags & MLX5_TCF_PEDIT_ACTIONS))
+			pedit_validated = 1;
+		action_flags |= current_action_flag;
+	}
+	if ((action_flags & MLX5_TCF_PEDIT_ACTIONS) &&
+	    (action_flags & MLX5_FLOW_ACTION_DROP))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  actions,
+					  "set action is not compatible with "
+					  "drop action");
+	if ((action_flags & MLX5_TCF_PEDIT_ACTIONS) &&
+	    !(action_flags & MLX5_FLOW_ACTION_PORT_ID))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  actions,
+					  "set action must be followed by "
+					  "port_id action");
+	if (action_flags &
+	   (MLX5_FLOW_ACTION_SET_IPV4_SRC | MLX5_FLOW_ACTION_SET_IPV4_DST)) {
+		if (!(item_flags & MLX5_FLOW_LAYER_OUTER_L3_IPV4))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  actions,
+						  "no ipv4 item found in"
+						  " pattern");
+	}
+	if (action_flags &
+	   (MLX5_FLOW_ACTION_SET_IPV6_SRC | MLX5_FLOW_ACTION_SET_IPV6_DST)) {
+		if (!(item_flags & MLX5_FLOW_LAYER_OUTER_L3_IPV6))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  actions,
+						  "no ipv6 item found in"
+						  " pattern");
+	}
+	if (action_flags &
+	   (MLX5_FLOW_ACTION_SET_TP_SRC | MLX5_FLOW_ACTION_SET_TP_DST)) {
+		if (!(item_flags &
+		     (MLX5_FLOW_LAYER_OUTER_L4_UDP |
+		      MLX5_FLOW_LAYER_OUTER_L4_TCP)))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  actions,
+						  "no TCP/UDP item found in"
+						  " pattern");
 	}
 	/*
 	 * FW syndrome (0xA9C090):
@@ -894,6 +1306,15 @@ action_of_vlan:
 				SZ_NLATTR_TYPE_OF(uint16_t) + /* VLAN ID. */
 				SZ_NLATTR_TYPE_OF(uint8_t); /* VLAN prio. */
 			break;
+		case RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC:
+		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DST:
+		case RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC:
+		case RTE_FLOW_ACTION_TYPE_SET_IPV6_DST:
+		case RTE_FLOW_ACTION_TYPE_SET_TP_SRC:
+		case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
+			size += flow_tcf_get_pedit_actions_size(&actions,
+								&flags);
+			break;
 		default:
 			DRV_LOG(WARNING,
 				"unsupported action %p type %d,"
@@ -1052,6 +1473,7 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 	struct nlattr *na_flower_act;
 	struct nlattr *na_vlan_id = NULL;
 	struct nlattr *na_vlan_priority = NULL;
+	uint64_t item_flags = 0;
 
 	claim_nonzero(flow_tcf_build_ptoi_table(dev, ptoi,
 						PTOI_TABLE_SZ_MAX(dev)));
@@ -1098,6 +1520,7 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 			tcm->tcm_ifindex = ptoi[i].ifindex;
 			break;
 		case RTE_FLOW_ITEM_TYPE_ETH:
+			item_flags |= MLX5_FLOW_LAYER_OUTER_L2;
 			mask.eth = flow_tcf_item_mask
 				(items, &rte_flow_item_eth_mask,
 				 &flow_tcf_mask_supported.eth,
@@ -1131,6 +1554,7 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
+			item_flags |= MLX5_FLOW_LAYER_OUTER_VLAN;
 			mask.vlan = flow_tcf_item_mask
 				(items, &rte_flow_item_vlan_mask,
 				 &flow_tcf_mask_supported.vlan,
@@ -1163,6 +1587,7 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 						  RTE_BE16(0x0fff)));
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
+			item_flags |= MLX5_FLOW_LAYER_OUTER_L3_IPV4;
 			mask.ipv4 = flow_tcf_item_mask
 				(items, &rte_flow_item_ipv4_mask,
 				 &flow_tcf_mask_supported.ipv4,
@@ -1202,6 +1627,7 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
+			item_flags |= MLX5_FLOW_LAYER_OUTER_L3_IPV6;
 			mask.ipv6 = flow_tcf_item_mask
 				(items, &rte_flow_item_ipv6_mask,
 				 &flow_tcf_mask_supported.ipv6,
@@ -1243,6 +1669,7 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
+			item_flags |= MLX5_FLOW_LAYER_OUTER_L4_UDP;
 			mask.udp = flow_tcf_item_mask
 				(items, &rte_flow_item_udp_mask,
 				 &flow_tcf_mask_supported.udp,
@@ -1272,6 +1699,7 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
+			item_flags |= MLX5_FLOW_LAYER_OUTER_L4_TCP;
 			mask.tcp = flow_tcf_item_mask
 				(items, &rte_flow_item_tcp_mask,
 				 &flow_tcf_mask_supported.tcp,
@@ -1433,6 +1861,18 @@ override_na_vlan_priority:
 					(na_vlan_priority) =
 					conf.of_set_vlan_pcp->vlan_pcp;
 			}
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC:
+		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DST:
+		case RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC:
+		case RTE_FLOW_ACTION_TYPE_SET_IPV6_DST:
+		case RTE_FLOW_ACTION_TYPE_SET_TP_SRC:
+		case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
+			na_act_index =
+				mnl_attr_nest_start(nlh, na_act_index_cur++);
+			flow_tcf_create_pedit_mnl_msg(nlh,
+						      &actions, item_flags);
+			mnl_attr_nest_end(nlh, na_act_index);
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
