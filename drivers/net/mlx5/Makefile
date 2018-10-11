@@ -342,6 +342,16 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		enum TCA_FLOWER_KEY_VLAN_ETH_TYPE \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_TCP_FLAGS \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_TCP_FLAGS \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_TCP_FLAGS_MASK \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_TCP_FLAGS_MASK \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
 		HAVE_TC_ACT_VLAN \
 		linux/tc_act/tc_vlan.h \
 		enum TCA_VLAN_PUSH_VLAN_PRIORITY \

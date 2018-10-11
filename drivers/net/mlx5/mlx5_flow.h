@@ -320,6 +320,7 @@ int mlx5_flow_validate_item_mpls(const struct rte_flow_item *item,
 int mlx5_flow_validate_item_tcp(const struct rte_flow_item *item,
 				uint64_t item_flags,
 				uint8_t target_protocol,
+				const struct rte_flow_item_tcp *flow_mask,
 				struct rte_flow_error *error);
 int mlx5_flow_validate_item_udp(const struct rte_flow_item *item,
 				uint64_t item_flags,

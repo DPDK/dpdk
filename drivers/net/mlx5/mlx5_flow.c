@@ -1223,6 +1223,8 @@ mlx5_flow_validate_item_ipv6(const struct rte_flow_item *item,
  *   Bit-fields that holds the items detected until now.
  * @param[in] target_protocol
  *   The next protocol in the previous item.
+ * @param[in] flow_mask
+ *   mlx5 flow-specific (TCF, DV, verbs, etc.) supported header fields mask.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -1284,12 +1286,14 @@ int
 mlx5_flow_validate_item_tcp(const struct rte_flow_item *item,
 			    uint64_t item_flags,
 			    uint8_t target_protocol,
+			    const struct rte_flow_item_tcp *flow_mask,
 			    struct rte_flow_error *error)
 {
 	const struct rte_flow_item_tcp *mask = item->mask;
 	const int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
 	int ret;
 
+	assert(flow_mask);
 	if (target_protocol != 0xff && target_protocol != IPPROTO_TCP)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
@@ -1309,7 +1313,7 @@ mlx5_flow_validate_item_tcp(const struct rte_flow_item *item,
 		mask = &rte_flow_item_tcp_mask;
 	ret = mlx5_flow_item_acceptable
 		(item, (const uint8_t *)mask,
-		 (const uint8_t *)&rte_flow_item_tcp_mask,
+		 (const uint8_t *)flow_mask,
 		 sizeof(struct rte_flow_item_tcp), error);
 	if (ret < 0)
 		return ret;

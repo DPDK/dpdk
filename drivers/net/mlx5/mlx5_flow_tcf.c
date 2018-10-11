@@ -148,6 +148,12 @@ struct tc_vlan {
 #ifndef HAVE_TCA_FLOWER_KEY_VLAN_ETH_TYPE
 #define TCA_FLOWER_KEY_VLAN_ETH_TYPE 25
 #endif
+#ifndef HAVE_TCA_FLOWER_KEY_TCP_FLAGS
+#define TCA_FLOWER_KEY_TCP_FLAGS 71
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_TCP_FLAGS_MASK
+#define TCA_FLOWER_KEY_TCP_FLAGS_MASK 72
+#endif
 
 #ifndef IPV6_ADDR_LEN
 #define IPV6_ADDR_LEN 16
@@ -204,6 +210,7 @@ static const struct {
 	.tcp.hdr = {
 		.src_port = RTE_BE16(0xffff),
 		.dst_port = RTE_BE16(0xffff),
+		.tcp_flags = 0xff,
 	},
 	.udp.hdr = {
 		.src_port = RTE_BE16(0xffff),
@@ -626,8 +633,11 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 				return -rte_errno;
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
-			ret = mlx5_flow_validate_item_tcp(items, item_flags,
-							  next_protocol, error);
+			ret = mlx5_flow_validate_item_tcp
+					     (items, item_flags,
+					      next_protocol,
+					      &flow_tcf_mask_supported.tcp,
+					      error);
 			if (ret < 0)
 				return ret;
 			item_flags |= MLX5_FLOW_LAYER_OUTER_L4_TCP;
@@ -1288,6 +1298,18 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 				mnl_attr_put_u16(nlh,
 						 TCA_FLOWER_KEY_TCP_DST_MASK,
 						 mask.tcp->hdr.dst_port);
+			}
+			if (mask.tcp->hdr.tcp_flags) {
+				mnl_attr_put_u16
+					(nlh,
+					 TCA_FLOWER_KEY_TCP_FLAGS,
+					 rte_cpu_to_be_16
+						(spec.tcp->hdr.tcp_flags));
+				mnl_attr_put_u16
+					(nlh,
+					 TCA_FLOWER_KEY_TCP_FLAGS_MASK,
+					 rte_cpu_to_be_16
+						(mask.tcp->hdr.tcp_flags));
 			}
 			break;
 		default:

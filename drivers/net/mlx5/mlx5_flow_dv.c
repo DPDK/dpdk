@@ -174,8 +174,11 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 					       MLX5_FLOW_LAYER_OUTER_L4_UDP;
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
-			ret = mlx5_flow_validate_item_tcp(items, item_flags,
-							  next_protocol, error);
+			ret = mlx5_flow_validate_item_tcp
+						(items, item_flags,
+						 next_protocol,
+						 &rte_flow_item_tcp_mask,
+						 error);
 			if (ret < 0)
 				return ret;
 			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L4_TCP :
