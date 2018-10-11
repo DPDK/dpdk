@@ -1354,9 +1354,8 @@ sfc_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
 	struct sfc_rss *rss = &sa->rss;
-	struct sfc_port *port = &sa->port;
 
-	if (rss->context_type != EFX_RX_SCALE_EXCLUSIVE || port->isolated)
+	if (rss->context_type != EFX_RX_SCALE_EXCLUSIVE)
 		return -ENOTSUP;
 
 	if (rss->channels == 0)
