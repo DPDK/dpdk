@@ -196,6 +196,7 @@ static int qat_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		struct rte_pci_device *pci_dev)
 {
 	int ret = 0;
+	int num_pmds_created = 0;
 	struct qat_pci_device *qat_pci_dev;
 
 	QAT_LOG(DEBUG, "Found QAT device at %02x:%02x.%x",
@@ -208,23 +209,33 @@ static int qat_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		return -ENODEV;
 
 	ret = qat_sym_dev_create(qat_pci_dev);
-	if (ret != 0)
-		goto error_out;
+	if (ret == 0)
+		num_pmds_created++;
+	else
+		QAT_LOG(WARNING,
+				"Failed to create QAT SYM PMD on device %s",
+				qat_pci_dev->name);
 
 	ret = qat_comp_dev_create(qat_pci_dev);
-	if (ret != 0)
-		goto error_out;
+	if (ret == 0)
+		num_pmds_created++;
+	else
+		QAT_LOG(WARNING,
+				"Failed to create QAT COMP PMD on device %s",
+				qat_pci_dev->name);
 
 	ret = qat_asym_dev_create(qat_pci_dev);
-	if (ret != 0)
-		goto error_out;
+	if (ret == 0)
+		num_pmds_created++;
+	else
+		QAT_LOG(WARNING,
+				"Failed to create QAT ASYM PMD on device %s",
+				qat_pci_dev->name);
+
+	if (num_pmds_created == 0)
+		qat_pci_dev_destroy(qat_pci_dev, pci_dev);
 
 	return 0;
-
-error_out:
-	qat_pci_dev_destroy(qat_pci_dev, pci_dev);
-	return ret;
-
 }
 
 static int qat_pci_remove(struct rte_pci_device *pci_dev)
