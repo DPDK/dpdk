@@ -667,8 +667,10 @@ vhost_enable_notify_packed(struct virtio_net *dev,
 {
 	uint16_t flags;
 
-	if (!enable)
+	if (!enable) {
 		vq->device_event->flags = VRING_EVENT_F_DISABLE;
+		return;
+	}
 
 	flags = VRING_EVENT_F_ENABLE;
 	if (dev->features & (1ULL << VIRTIO_RING_F_EVENT_IDX)) {
