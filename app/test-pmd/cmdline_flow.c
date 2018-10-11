@@ -259,6 +259,10 @@ enum index {
 	ACTION_DEC_TTL,
 	ACTION_SET_TTL,
 	ACTION_SET_TTL_TTL,
+	ACTION_SET_MAC_SRC,
+	ACTION_SET_MAC_SRC_MAC_SRC,
+	ACTION_SET_MAC_DST,
+	ACTION_SET_MAC_DST_MAC_DST,
 };
 
 /** Maximum size for pattern in struct rte_flow_item_raw. */
@@ -841,6 +845,8 @@ static const enum index next_action[] = {
 	ACTION_MAC_SWAP,
 	ACTION_DEC_TTL,
 	ACTION_SET_TTL,
+	ACTION_SET_MAC_SRC,
+	ACTION_SET_MAC_DST,
 	ZERO,
 };
 
@@ -949,6 +955,12 @@ static const enum index action_set_ipv4_src[] = {
 	ZERO,
 };
 
+static const enum index action_set_mac_src[] = {
+	ACTION_SET_MAC_SRC_MAC_SRC,
+	ACTION_NEXT,
+	ZERO,
+};
+
 static const enum index action_set_ipv4_dst[] = {
 	ACTION_SET_IPV4_DST_IPV4_DST,
 	ACTION_NEXT,
@@ -987,6 +999,12 @@ static const enum index action_set_ttl[] = {
 
 static const enum index action_jump[] = {
 	ACTION_JUMP_GROUP,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_set_mac_dst[] = {
+	ACTION_SET_MAC_DST_MAC_DST,
 	ACTION_NEXT,
 	ZERO,
 };
@@ -2668,6 +2686,38 @@ static const struct token token_list[] = {
 		.next = NEXT(action_set_ttl, NEXT_ENTRY(UNSIGNED)),
 		.args = ARGS(ARGS_ENTRY_HTON
 			     (struct rte_flow_action_set_ttl, ttl_value)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_SET_MAC_SRC] = {
+		.name = "set_mac_src",
+		.help = "set source mac address",
+		.priv = PRIV_ACTION(SET_MAC_SRC,
+			sizeof(struct rte_flow_action_set_mac)),
+		.next = NEXT(action_set_mac_src),
+		.call = parse_vc,
+	},
+	[ACTION_SET_MAC_SRC_MAC_SRC] = {
+		.name = "mac_addr",
+		.help = "new source mac address",
+		.next = NEXT(action_set_mac_src, NEXT_ENTRY(MAC_ADDR)),
+		.args = ARGS(ARGS_ENTRY_HTON
+			     (struct rte_flow_action_set_mac, mac_addr)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_SET_MAC_DST] = {
+		.name = "set_mac_dst",
+		.help = "set destination mac address",
+		.priv = PRIV_ACTION(SET_MAC_DST,
+			sizeof(struct rte_flow_action_set_mac)),
+		.next = NEXT(action_set_mac_dst),
+		.call = parse_vc,
+	},
+	[ACTION_SET_MAC_DST_MAC_DST] = {
+		.name = "mac_addr",
+		.help = "new destination mac address to set",
+		.next = NEXT(action_set_mac_dst, NEXT_ENTRY(MAC_ADDR)),
+		.args = ARGS(ARGS_ENTRY_HTON
+			     (struct rte_flow_action_set_mac, mac_addr)),
 		.call = parse_vc_conf,
 	},
 };

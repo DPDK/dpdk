@@ -3807,6 +3807,14 @@ This section lists supported actions and their attributes, if any.
 - ``set_ttl``: Set TTL value with specificed value
   - ``ttl_value {unsigned}``: The new TTL value to be set
 
+- ``set_mac_src``: set source MAC address
+
+  - ``mac_addr {MAC-48}``: new source MAC address
+
+- ``set_mac_dst``: set destination MAC address
+
+  - ``mac_addr {MAC-48}``: new destination MAC address
+
 Destroying flow rules
 ~~~~~~~~~~~~~~~~~~~~~
 
