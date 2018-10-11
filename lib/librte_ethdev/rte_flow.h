@@ -1593,6 +1593,26 @@ enum rte_flow_action_type {
 	 * See struct rte_flow_action_set_ttl
 	 */
 	RTE_FLOW_ACTION_TYPE_SET_TTL,
+
+	/**
+	 * Set source MAC address from matched flow.
+	 *
+	 * If flow pattern does not define a valid RTE_FLOW_ITEM_TYPE_ETH,
+	 * the PMD should return a RTE_FLOW_ERROR_TYPE_ACTION error.
+	 *
+	 * See struct rte_flow_action_set_mac.
+	 */
+	RTE_FLOW_ACTION_TYPE_SET_MAC_SRC,
+
+	/**
+	 * Set destination MAC address from matched flow.
+	 *
+	 * If flow pattern does not define a valid RTE_FLOW_ITEM_TYPE_ETH,
+	 * the PMD should return a RTE_FLOW_ERROR_TYPE_ACTION error.
+	 *
+	 * See struct rte_flow_action_set_mac.
+	 */
+	RTE_FLOW_ACTION_TYPE_SET_MAC_DST,
 };
 
 /**
@@ -2008,6 +2028,15 @@ struct rte_flow_action_set_tp {
  */
 struct rte_flow_action_set_ttl {
 	uint8_t ttl_value;
+};
+
+/**
+ * RTE_FLOW_ACTION_TYPE_SET_MAC
+ *
+ * Set MAC address from the matched flow
+ */
+struct rte_flow_action_set_mac {
+	uint8_t mac_addr[ETHER_ADDR_LEN];
 };
 
 /*

@@ -2239,6 +2239,36 @@ in pattern, Some PMDs will reject rule because behaviour will be undefined.
    | ``ttl_value`` | new TTL value      |
    +---------------+--------------------+
 
+Action: ``SET_MAC_SRC``
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Set source MAC address
+
+.. _table_rte_flow_action_set_mac_src:
+
+.. table:: SET_MAC_SRC
+
+   +--------------+---------------+
+   | Field        | Value         |
+   +==============+===============+
+   | ``mac_addr`` | MAC address   |
+   +--------------+---------------+
+
+Action: ``SET_MAC_DST``
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Set source MAC address
+
+.. _table_rte_flow_action_set_mac_dst:
+
+.. table:: SET_MAC_DST
+
+   +--------------+---------------+
+   | Field        | Value         |
+   +==============+===============+
+   | ``mac_addr`` | MAC address   |
+   +--------------+---------------+
+
 Negative types
 ~~~~~~~~~~~~~~
 
