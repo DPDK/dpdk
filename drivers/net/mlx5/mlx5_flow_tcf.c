@@ -324,7 +324,8 @@ struct flow_tcf_ptoi {
 	(MLX5_FLOW_ACTION_SET_IPV4_SRC | MLX5_FLOW_ACTION_SET_IPV4_DST | \
 	 MLX5_FLOW_ACTION_SET_IPV6_SRC | MLX5_FLOW_ACTION_SET_IPV6_DST | \
 	 MLX5_FLOW_ACTION_SET_TP_SRC | MLX5_FLOW_ACTION_SET_TP_DST | \
-	 MLX5_FLOW_ACTION_SET_TTL | MLX5_FLOW_ACTION_DEC_TTL)
+	 MLX5_FLOW_ACTION_SET_TTL | MLX5_FLOW_ACTION_DEC_TTL | \
+	 MLX5_FLOW_ACTION_SET_MAC_SRC | MLX5_FLOW_ACTION_SET_MAC_DST)
 
 #define MLX5_TCF_CONFIG_ACTIONS \
 	(MLX5_FLOW_ACTION_PORT_ID | MLX5_FLOW_ACTION_JUMP | \
@@ -349,6 +350,42 @@ struct pedit_parser {
 	struct pedit_key_ex keys_ex[MAX_PEDIT_KEYS];
 };
 
+
+/**
+ * Set pedit key of MAC address
+ *
+ * @param[in] actions
+ *   pointer to action specification
+ * @param[in,out] p_parser
+ *   pointer to pedit_parser
+ */
+static void
+flow_tcf_pedit_key_set_mac(const struct rte_flow_action *actions,
+			   struct pedit_parser *p_parser)
+{
+	int idx = p_parser->sel.nkeys;
+	uint32_t off = actions->type == RTE_FLOW_ACTION_TYPE_SET_MAC_SRC ?
+					offsetof(struct ether_hdr, s_addr) :
+					offsetof(struct ether_hdr, d_addr);
+	const struct rte_flow_action_set_mac *conf =
+		(const struct rte_flow_action_set_mac *)actions->conf;
+
+	p_parser->keys[idx].off = off;
+	p_parser->keys[idx].mask = ~UINT32_MAX;
+	p_parser->keys_ex[idx].htype = TCA_PEDIT_KEY_EX_HDR_TYPE_ETH;
+	p_parser->keys_ex[idx].cmd = TCA_PEDIT_KEY_EX_CMD_SET;
+	memcpy(&p_parser->keys[idx].val,
+		conf->mac_addr, SZ_PEDIT_KEY_VAL);
+	idx++;
+	p_parser->keys[idx].off = off + SZ_PEDIT_KEY_VAL;
+	p_parser->keys[idx].mask = 0xFFFF0000;
+	p_parser->keys_ex[idx].htype = TCA_PEDIT_KEY_EX_HDR_TYPE_ETH;
+	p_parser->keys_ex[idx].cmd = TCA_PEDIT_KEY_EX_CMD_SET;
+	memcpy(&p_parser->keys[idx].val,
+		conf->mac_addr + SZ_PEDIT_KEY_VAL,
+		ETHER_ADDR_LEN - SZ_PEDIT_KEY_VAL);
+	p_parser->sel.nkeys = (++idx);
+}
 
 /**
  * Set pedit key of decrease/set ttl
@@ -530,6 +567,10 @@ flow_tcf_create_pedit_mnl_msg(struct nlmsghdr *nl,
 			flow_tcf_pedit_key_set_dec_ttl(*actions,
 							&p_parser, item_flags);
 			break;
+		case RTE_FLOW_ACTION_TYPE_SET_MAC_SRC:
+		case RTE_FLOW_ACTION_TYPE_SET_MAC_DST:
+			flow_tcf_pedit_key_set_mac(*actions, &p_parser);
+			break;
 		default:
 			goto pedit_mnl_msg_done;
 		}
@@ -617,6 +658,14 @@ flow_tcf_get_pedit_actions_size(const struct rte_flow_action **actions,
 		case RTE_FLOW_ACTION_TYPE_DEC_TTL:
 			keys += NUM_OF_PEDIT_KEYS(TTL_LEN);
 			flags |= MLX5_FLOW_ACTION_DEC_TTL;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_MAC_SRC:
+			keys += NUM_OF_PEDIT_KEYS(ETHER_ADDR_LEN);
+			flags |= MLX5_FLOW_ACTION_SET_MAC_SRC;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_MAC_DST:
+			keys += NUM_OF_PEDIT_KEYS(ETHER_ADDR_LEN);
+			flags |= MLX5_FLOW_ACTION_SET_MAC_DST;
 			break;
 		default:
 			goto get_pedit_action_size_done;
@@ -1161,6 +1210,12 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_DEC_TTL:
 			current_action_flag = MLX5_FLOW_ACTION_DEC_TTL;
 			break;
+		case RTE_FLOW_ACTION_TYPE_SET_MAC_SRC:
+			current_action_flag = MLX5_FLOW_ACTION_SET_MAC_SRC;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_MAC_DST:
+			current_action_flag = MLX5_FLOW_ACTION_SET_MAC_DST;
+			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
@@ -1272,6 +1327,15 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
 						  actions,
 						  "no IP found in pattern");
+	}
+	if (action_flags &
+	    (MLX5_FLOW_ACTION_SET_MAC_SRC | MLX5_FLOW_ACTION_SET_MAC_DST)) {
+		if (!(item_flags & MLX5_FLOW_LAYER_OUTER_L2))
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  actions,
+						  "no ethernet found in"
+						  " pattern");
 	}
 	return 0;
 }
@@ -1434,6 +1498,8 @@ action_of_vlan:
 		case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
 		case RTE_FLOW_ACTION_TYPE_SET_TTL:
 		case RTE_FLOW_ACTION_TYPE_DEC_TTL:
+		case RTE_FLOW_ACTION_TYPE_SET_MAC_SRC:
+		case RTE_FLOW_ACTION_TYPE_SET_MAC_DST:
 			size += flow_tcf_get_pedit_actions_size(&actions,
 								&flags);
 			break;
@@ -2012,6 +2078,8 @@ override_na_vlan_priority:
 		case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
 		case RTE_FLOW_ACTION_TYPE_SET_TTL:
 		case RTE_FLOW_ACTION_TYPE_DEC_TTL:
+		case RTE_FLOW_ACTION_TYPE_SET_MAC_SRC:
+		case RTE_FLOW_ACTION_TYPE_SET_MAC_DST:
 			na_act_index =
 				mnl_attr_nest_start(nlh, na_act_index_cur++);
 			flow_tcf_create_pedit_mnl_msg(nlh,
