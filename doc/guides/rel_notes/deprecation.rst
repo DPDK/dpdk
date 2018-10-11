@@ -79,6 +79,15 @@ Deprecation Notices
   ``rte_security_session`` structure. That would allow upper layer to easily
   associate/de-associate some user defined data with the security session.
 
+* cryptodev: several API and ABI changes are planned for rte_cryptodev
+  in v19.02:
+
+  - The size and layout of ``rte_cryptodev_sym_session`` will change
+    to fix existing issues.
+  - The size and layout of ``rte_cryptodev_qp_conf`` and syntax of
+    ``rte_cryptodev_queue_pair_setup`` will change to to allow to use
+    two different mempools for crypto and device private sessions.
+
 * pdump: As we changed to use generic IPC, some changes in APIs and structure
   are expected in subsequent release.
 
