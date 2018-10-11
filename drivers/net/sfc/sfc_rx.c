@@ -1504,7 +1504,7 @@ sfc_rx_configure(struct sfc_adapter *sa)
 		goto fail_check_mode;
 
 	if (nb_rx_queues == sa->rxq_count)
-		goto done;
+		goto configure_rss;
 
 	if (sa->rxq_info == NULL) {
 		rc = ENOMEM;
@@ -1541,6 +1541,7 @@ sfc_rx_configure(struct sfc_adapter *sa)
 		sa->rxq_count++;
 	}
 
+configure_rss:
 	rss->channels = (dev_conf->rxmode.mq_mode == ETH_MQ_RX_RSS) ?
 			 MIN(sa->rxq_count, EFX_MAXRSS) : 0;
 
@@ -1557,7 +1558,6 @@ sfc_rx_configure(struct sfc_adapter *sa)
 			goto fail_rx_process_adv_conf_rss;
 	}
 
-done:
 	return 0;
 
 fail_rx_process_adv_conf_rss:
