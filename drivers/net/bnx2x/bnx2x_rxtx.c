@@ -12,19 +12,8 @@ static const struct rte_memzone *
 ring_dma_zone_reserve(struct rte_eth_dev *dev, const char *ring_name,
 		      uint16_t queue_id, uint32_t ring_size, int socket_id)
 {
-	char z_name[RTE_MEMZONE_NAMESIZE];
-	const struct rte_memzone *mz;
-
-	snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
-			dev->device->driver->name, ring_name,
-			dev->data->port_id, queue_id);
-
-	mz = rte_memzone_lookup(z_name);
-	if (mz)
-		return mz;
-
-	return rte_memzone_reserve_aligned(z_name, ring_size, socket_id,
-			RTE_MEMZONE_IOVA_CONTIG, BNX2X_PAGE_SIZE);
+	return rte_eth_dma_zone_reserve(dev, ring_name, queue_id,
+			ring_size, BNX2X_PAGE_SIZE, socket_id);
 }
 
 static void

@@ -1873,10 +1873,9 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 	/* Size needs to be multiple of 16, including status entry. */
 	iq->size = cxgbe_roundup(iq->size, 16);
 
-	snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
-		 eth_dev->device->driver->name,
-		 fwevtq ? "fwq_ring" : "rx_ring",
-		 eth_dev->data->port_id, queue_id);
+	snprintf(z_name, sizeof(z_name), "eth_p%d_q%d_%s",
+			eth_dev->data->port_id, queue_id,
+			fwevtq ? "fwq_ring" : "rx_ring");
 	snprintf(z_name_sw, sizeof(z_name_sw), "%s_sw_ring", z_name);
 
 	iq->desc = alloc_ring(iq->size, iq->iqe_len, 0, &iq->phys_addr, NULL, 0,
@@ -1938,10 +1937,9 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 			fl->size = s->fl_starve_thres - 1 + 2 * 8;
 		fl->size = cxgbe_roundup(fl->size, 8);
 
-		snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
-			 eth_dev->device->driver->name,
-			 fwevtq ? "fwq_ring" : "fl_ring",
-			 eth_dev->data->port_id, queue_id);
+		snprintf(z_name, sizeof(z_name), "eth_p%d_q%d_%s",
+				eth_dev->data->port_id, queue_id,
+				fwevtq ? "fwq_ring" : "fl_ring");
 		snprintf(z_name_sw, sizeof(z_name_sw), "%s_sw_ring", z_name);
 
 		fl->desc = alloc_ring(fl->size, sizeof(__be64),
@@ -2144,9 +2142,8 @@ int t4_sge_alloc_eth_txq(struct adapter *adap, struct sge_eth_txq *txq,
 	/* Add status entries */
 	nentries = txq->q.size + s->stat_len / sizeof(struct tx_desc);
 
-	snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
-		 eth_dev->device->driver->name, "tx_ring",
-		 eth_dev->data->port_id, queue_id);
+	snprintf(z_name, sizeof(z_name), "eth_p%d_q%d_%s",
+			eth_dev->data->port_id, queue_id, "tx_ring");
 	snprintf(z_name_sw, sizeof(z_name_sw), "%s_sw_ring", z_name);
 
 	txq->q.desc = alloc_ring(txq->q.size, sizeof(struct tx_desc),
@@ -2223,9 +2220,8 @@ int t4_sge_alloc_ctrl_txq(struct adapter *adap, struct sge_ctrl_txq *txq,
 	/* Add status entries */
 	nentries = txq->q.size + s->stat_len / sizeof(struct tx_desc);
 
-	snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
-		 eth_dev->device->driver->name, "ctrl_tx_ring",
-		 eth_dev->data->port_id, queue_id);
+	snprintf(z_name, sizeof(z_name), "eth_p%d_q%d_%s",
+			eth_dev->data->port_id, queue_id, "ctrl_tx_ring");
 	snprintf(z_name_sw, sizeof(z_name_sw), "%s_sw_ring", z_name);
 
 	txq->q.desc = alloc_ring(txq->q.size, sizeof(struct tx_desc),

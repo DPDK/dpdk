@@ -161,8 +161,8 @@ gpa_zone_reserve(struct rte_eth_dev *dev, uint32_t size,
 	char z_name[RTE_MEMZONE_NAMESIZE];
 	const struct rte_memzone *mz;
 
-	snprintf(z_name, sizeof(z_name), "%s_%d_%s",
-		 dev->device->driver->name, dev->data->port_id, post_string);
+	snprintf(z_name, sizeof(z_name), "eth_p%d_%s",
+			dev->data->port_id, post_string);
 
 	mz = rte_memzone_lookup(z_name);
 	if (!reuse) {

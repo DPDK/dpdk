@@ -3493,9 +3493,8 @@ rte_eth_dma_zone_reserve(const struct rte_eth_dev *dev, const char *ring_name,
 	char z_name[RTE_MEMZONE_NAMESIZE];
 	const struct rte_memzone *mz;
 
-	snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
-		 dev->device->driver->name, ring_name,
-		 dev->data->port_id, queue_id);
+	snprintf(z_name, sizeof(z_name), "eth_p%d_q%d_%s",
+		 dev->data->port_id, queue_id, ring_name);
 
 	mz = rte_memzone_lookup(z_name);
 	if (mz)
