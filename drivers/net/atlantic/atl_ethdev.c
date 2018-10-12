@@ -69,6 +69,10 @@ static int atl_dev_get_eeprom(struct rte_eth_dev *dev,
 static int atl_dev_set_eeprom(struct rte_eth_dev *dev,
 			      struct rte_dev_eeprom_info *eeprom);
 
+/* Regs */
+static int atl_dev_get_regs(struct rte_eth_dev *dev,
+			    struct rte_dev_reg_info *regs);
+
 /* Flow control */
 static int atl_flow_ctrl_get(struct rte_eth_dev *dev,
 			       struct rte_eth_fc_conf *fc_conf);
@@ -228,6 +232,8 @@ static const struct eth_dev_ops atl_eth_dev_ops = {
 
 	/* Link */
 	.link_update	      = atl_dev_link_update,
+
+	.get_reg              = atl_dev_get_regs,
 
 	/* Stats */
 	.stats_get	      = atl_dev_stats_get,
@@ -1122,6 +1128,32 @@ atl_dev_set_eeprom(struct rte_eth_dev *dev, struct rte_dev_eeprom_info *eeprom)
 		return -EINVAL;
 
 	return hw->aq_fw_ops->set_eeprom(hw, eeprom->data, eeprom->length);
+}
+
+static int
+atl_dev_get_regs(struct rte_eth_dev *dev, struct rte_dev_reg_info *regs)
+{
+	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	u32 mif_id;
+	int err;
+
+	if (regs->data == NULL) {
+		regs->length = hw_atl_utils_hw_get_reg_length();
+		regs->width = sizeof(u32);
+		return 0;
+	}
+
+	/* Only full register dump is supported */
+	if (regs->length && regs->length != hw_atl_utils_hw_get_reg_length())
+		return -ENOTSUP;
+
+	err = hw_atl_utils_hw_get_regs(hw, regs->data);
+
+	/* Device version */
+	mif_id = hw_atl_reg_glb_mif_id_get(hw);
+	regs->version = mif_id & 0xFFU;
+
+	return err;
 }
 
 static int
