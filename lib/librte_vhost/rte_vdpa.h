@@ -21,70 +21,138 @@ enum vdpa_addr_type {
 	VDPA_ADDR_MAX
 };
 
+/**
+ * vdpa device address
+ */
 struct rte_vdpa_dev_addr {
+	/** vdpa address type */
 	enum vdpa_addr_type type;
+
+	/** vdpa pci address */
 	union {
 		uint8_t __dummy[64];
 		struct rte_pci_addr pci_addr;
 	};
 };
 
+/**
+ * vdpa device operations
+ */
 struct rte_vdpa_dev_ops {
-	/* Get capabilities of this device */
+	/** Get capabilities of this device */
 	int (*get_queue_num)(int did, uint32_t *queue_num);
+
+	/** Get supported features of this device */
 	int (*get_features)(int did, uint64_t *features);
+
+	/** Get supported protocol features of this device */
 	int (*get_protocol_features)(int did, uint64_t *protocol_features);
 
-	/* Driver configure/close the device */
+	/** Driver configure/close the device */
 	int (*dev_conf)(int vid);
 	int (*dev_close)(int vid);
 
-	/* Enable/disable this vring */
+	/** Enable/disable this vring */
 	int (*set_vring_state)(int vid, int vring, int state);
 
-	/* Set features when changed */
+	/** Set features when changed */
 	int (*set_features)(int vid);
 
-	/* Destination operations when migration done */
+	/** Destination operations when migration done */
 	int (*migration_done)(int vid);
 
-	/* Get the vfio group fd */
+	/** Get the vfio group fd */
 	int (*get_vfio_group_fd)(int vid);
 
-	/* Get the vfio device fd */
+	/** Get the vfio device fd */
 	int (*get_vfio_device_fd)(int vid);
 
-	/* Get the notify area info of the queue */
+	/** Get the notify area info of the queue */
 	int (*get_notify_area)(int vid, int qid,
 			uint64_t *offset, uint64_t *size);
 
-	/* Reserved for future extension */
+	/** Reserved for future extension */
 	void *reserved[5];
 };
 
+/**
+ * vdpa device structure includes device address and device operations.
+ */
 struct rte_vdpa_device {
+	/** vdpa device address */
 	struct rte_vdpa_dev_addr addr;
+	/** vdpa device operations */
 	struct rte_vdpa_dev_ops *ops;
 } __rte_cache_aligned;
 
-/* Register a vdpa device, return did if successful, -1 on failure */
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Register a vdpa device
+ *
+ * @param addr
+ *  the vdpa device address
+ * @param ops
+ *  the vdpa device operations
+ * @return
+ *  device id on success, -1 on failure
+ */
 int __rte_experimental
 rte_vdpa_register_device(struct rte_vdpa_dev_addr *addr,
 		struct rte_vdpa_dev_ops *ops);
 
-/* Unregister a vdpa device, return -1 on failure */
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Unregister a vdpa device
+ *
+ * @param did
+ *  vdpa device id
+ * @return
+ *  device id on success, -1 on failure
+ */
 int __rte_experimental
 rte_vdpa_unregister_device(int did);
 
-/* Find did of a vdpa device, return -1 on failure */
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Find the device id of a vdpa device
+ *
+ * @param addr
+ *  the vdpa device address
+ * @return
+ *  device id on success, -1 on failure
+ */
 int __rte_experimental
 rte_vdpa_find_device_id(struct rte_vdpa_dev_addr *addr);
 
-/* Find a vdpa device based on did */
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Find a vdpa device based on device id
+ *
+ * @param did
+ *  device id
+ * @return
+ *  rte_vdpa_device on success, NULL on failure
+ */
 struct rte_vdpa_device * __rte_experimental
 rte_vdpa_get_device(int did);
 
-/* Get current available vdpa device number */
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Get current available vdpa device number
+ *
+ * @return
+ *  available vdpa device number
+ */
 int __rte_experimental
 rte_vdpa_get_device_num(void);
 #endif /* _RTE_VDPA_H_ */

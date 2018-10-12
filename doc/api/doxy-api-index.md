@@ -37,6 +37,7 @@ The public API headers are grouped by topics:
   [softnic]            (@ref rte_eth_softnic.h),
   [bond]               (@ref rte_eth_bond.h),
   [vhost]              (@ref rte_vhost.h),
+  [vdpa]               (@ref rte_vdpa.h),
   [KNI]                (@ref rte_kni.h),
   [ixgbe]              (@ref rte_pmd_ixgbe.h),
   [i40e]               (@ref rte_pmd_i40e.h),
