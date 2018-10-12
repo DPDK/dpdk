@@ -405,7 +405,8 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 		}
 	}
 
-	dpaa2_vlan_offload_set(dev, ETH_VLAN_FILTER_MASK);
+	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
+		dpaa2_vlan_offload_set(dev, ETH_VLAN_FILTER_MASK);
 
 	/* update the current status */
 	dpaa2_dev_link_update(dev, 0);
