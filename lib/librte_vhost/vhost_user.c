@@ -76,6 +76,7 @@ static const char *vhost_message_str[VHOST_USER_MAX] = {
 	[VHOST_USER_CRYPTO_CREATE_SESS] = "VHOST_USER_CRYPTO_CREATE_SESS",
 	[VHOST_USER_CRYPTO_CLOSE_SESS] = "VHOST_USER_CRYPTO_CLOSE_SESS",
 	[VHOST_USER_POSTCOPY_ADVISE]  = "VHOST_USER_POSTCOPY_ADVISE",
+	[VHOST_USER_POSTCOPY_LISTEN]  = "VHOST_USER_POSTCOPY_LISTEN",
 };
 
 static uint64_t
@@ -132,6 +133,8 @@ vhost_backend_cleanup(struct virtio_net *dev)
 		close(dev->postcopy_ufd);
 		dev->postcopy_ufd = -1;
 	}
+
+	dev->postcopy_listening = 0;
 }
 
 /*
@@ -1549,6 +1552,23 @@ vhost_user_set_postcopy_advise(struct virtio_net **pdev,
 #endif
 }
 
+static int
+vhost_user_set_postcopy_listen(struct virtio_net **pdev,
+			struct VhostUserMsg *msg __rte_unused,
+			int main_fd __rte_unused)
+{
+	struct virtio_net *dev = *pdev;
+
+	if (dev->mem && dev->mem->nregions) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"Regions already registered at postcopy-listen\n");
+		return VH_RESULT_ERR;
+	}
+	dev->postcopy_listening = 1;
+
+	return VH_RESULT_OK;
+}
+
 typedef int (*vhost_message_handler_t)(struct virtio_net **pdev,
 					struct VhostUserMsg *msg,
 					int main_fd);
@@ -1577,6 +1597,7 @@ static vhost_message_handler_t vhost_message_handlers[VHOST_USER_MAX] = {
 	[VHOST_USER_SET_SLAVE_REQ_FD] = vhost_user_set_req_fd,
 	[VHOST_USER_IOTLB_MSG] = vhost_user_iotlb_msg,
 	[VHOST_USER_POSTCOPY_ADVISE] = vhost_user_set_postcopy_advise,
+	[VHOST_USER_POSTCOPY_LISTEN] = vhost_user_set_postcopy_listen,
 };
 
 

@@ -369,6 +369,7 @@ struct virtio_net {
 	rte_spinlock_t		slave_req_lock;
 
 	int			postcopy_ufd;
+	int			postcopy_listening;
 
 	/*
 	 * Device id to identify a specific backend device.
