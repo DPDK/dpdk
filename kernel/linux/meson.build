@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Intel Corporation
 
-subdirs = ['igb_uio']
+subdirs = ['igb_uio', 'kni']
 
 WARN_CROSS_COMPILE='Need "kernel_dir" option for kmod compilation when cross-compiling'
 WARN_NO_HEADERS='Cannot compile kernel modules as requested - are kernel headers installed?'

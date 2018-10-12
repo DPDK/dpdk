@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2018 Luca Boccassi <bluca@debian.org>
+
+ccflags-y := $(MODULE_CFLAGS)
+obj-m := rte_kni.o
+rte_kni-y := $(patsubst $(src)/%.c,%.o,$(wildcard $(src)/*.c)) \
+ $(patsubst $(src)/%.c,%.o,$(wildcard $(src)/ethtool/ixgbe/*.c)) \
+ $(patsubst $(src)/%.c,%.o,$(wildcard $(src)/ethtool/igb/*.c))
