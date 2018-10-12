@@ -1783,6 +1783,11 @@ skip_to_reply:
 	if (unlock_required)
 		vhost_user_unlock_all_queue_pairs(dev);
 
+	/*
+	 * If the request required a reply that was already sent,
+	 * this optional reply-ack won't be sent as the
+	 * VHOST_USER_NEED_REPLY was cleared in send_vhost_reply().
+	 */
 	if (msg.flags & VHOST_USER_NEED_REPLY) {
 		msg.payload.u64 = ret == VH_RESULT_ERR;
 		msg.size = sizeof(msg.payload.u64);
