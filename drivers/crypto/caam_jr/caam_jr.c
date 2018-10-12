@@ -97,6 +97,67 @@ hw_flush_job_ring(struct sec_job_ring_t *job_ring,
 	}
 }
 
+/* Release queue pair */
+static int
+caam_jr_queue_pair_release(struct rte_cryptodev *dev,
+			   uint16_t qp_id)
+{
+	struct sec_job_ring_t *internals;
+	struct caam_jr_qp *qp = NULL;
+
+	PMD_INIT_FUNC_TRACE();
+	CAAM_JR_DEBUG("dev =%p, queue =%d", dev, qp_id);
+
+	internals = dev->data->dev_private;
+	if (qp_id >= internals->max_nb_queue_pairs) {
+		CAAM_JR_ERR("Max supported qpid %d",
+			     internals->max_nb_queue_pairs);
+		return -EINVAL;
+	}
+
+	qp = &internals->qps[qp_id];
+	qp->ring = NULL;
+	dev->data->queue_pairs[qp_id] = NULL;
+
+	return 0;
+}
+
+/* Setup a queue pair */
+static int
+caam_jr_queue_pair_setup(
+		struct rte_cryptodev *dev, uint16_t qp_id,
+		__rte_unused const struct rte_cryptodev_qp_conf *qp_conf,
+		__rte_unused int socket_id,
+		__rte_unused struct rte_mempool *session_pool)
+{
+	struct sec_job_ring_t *internals;
+	struct caam_jr_qp *qp = NULL;
+
+	PMD_INIT_FUNC_TRACE();
+	CAAM_JR_DEBUG("dev =%p, queue =%d, conf =%p", dev, qp_id, qp_conf);
+
+	internals = dev->data->dev_private;
+	if (qp_id >= internals->max_nb_queue_pairs) {
+		CAAM_JR_ERR("Max supported qpid %d",
+			     internals->max_nb_queue_pairs);
+		return -EINVAL;
+	}
+
+	qp = &internals->qps[qp_id];
+	qp->ring = internals;
+	dev->data->queue_pairs[qp_id] = qp;
+
+	return 0;
+}
+
+/* Return the number of allocated queue pairs */
+static uint32_t
+caam_jr_queue_pair_count(struct rte_cryptodev *dev)
+{
+	PMD_INIT_FUNC_TRACE();
+
+	return dev->data->nb_queue_pairs;
+}
 
 static int
 caam_jr_dev_configure(struct rte_cryptodev *dev,
@@ -178,6 +239,9 @@ static struct rte_cryptodev_ops caam_jr_ops = {
 	.dev_stop	      = caam_jr_dev_stop,
 	.dev_close	      = caam_jr_dev_close,
 	.dev_infos_get        = caam_jr_dev_infos_get,
+	.queue_pair_setup     = caam_jr_queue_pair_setup,
+	.queue_pair_release   = caam_jr_queue_pair_release,
+	.queue_pair_count     = caam_jr_queue_pair_count,
 };
 
 
