@@ -17,6 +17,7 @@
 #include <rte_security_driver.h>
 #include <rte_hexdump.h>
 
+#include <caam_jr_capabilities.h>
 #include <caam_jr_config.h>
 #include <caam_jr_hw_specific.h>
 #include <caam_jr_pvt.h>
@@ -439,6 +440,7 @@ caam_jr_dev_infos_get(struct rte_cryptodev *dev,
 	if (info != NULL) {
 		info->max_nb_queue_pairs = internals->max_nb_queue_pairs;
 		info->feature_flags = dev->feature_flags;
+		info->capabilities = caam_jr_get_cryptodev_capabilities();
 		info->sym.max_nb_sessions = internals->max_nb_sessions;
 		info->driver_id = cryptodev_driver_id;
 	}
