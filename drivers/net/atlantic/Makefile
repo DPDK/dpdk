@@ -26,6 +26,8 @@ VPATH += $(SRCDIR)/hw_atl
 #
 SRCS-$(CONFIG_RTE_LIBRTE_ATLANTIC_PMD) += atl_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_ATLANTIC_PMD) += atl_hw_regs.c
+SRCS-$(CONFIG_RTE_LIBRTE_ATLANTIC_PMD) += hw_atl_utils.c
 SRCS-$(CONFIG_RTE_LIBRTE_ATLANTIC_PMD) += hw_atl_llh.c
+SRCS-$(CONFIG_RTE_LIBRTE_ATLANTIC_PMD) += hw_atl_utils_fw2x.c
 
 include $(RTE_SDK)/mk/rte.lib.mk
