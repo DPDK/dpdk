@@ -58,6 +58,19 @@ static int atl_dev_interrupt_action(struct rte_eth_dev *dev,
 				    struct rte_intr_handle *handle);
 static void atl_dev_interrupt_handler(void *param);
 
+/* RSS */
+static int atl_reta_update(struct rte_eth_dev *dev,
+			     struct rte_eth_rss_reta_entry64 *reta_conf,
+			     uint16_t reta_size);
+static int atl_reta_query(struct rte_eth_dev *dev,
+			    struct rte_eth_rss_reta_entry64 *reta_conf,
+			    uint16_t reta_size);
+static int atl_rss_hash_update(struct rte_eth_dev *dev,
+				 struct rte_eth_rss_conf *rss_conf);
+static int atl_rss_hash_conf_get(struct rte_eth_dev *dev,
+				   struct rte_eth_rss_conf *rss_conf);
+
+
 static int eth_atl_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct rte_pci_device *pci_dev);
 static int eth_atl_pci_remove(struct rte_pci_device *pci_dev);
@@ -208,6 +221,11 @@ static const struct eth_dev_ops atl_eth_dev_ops = {
 
 	.rxq_info_get	      = atl_rxq_info_get,
 	.txq_info_get	      = atl_txq_info_get,
+
+	.reta_update          = atl_reta_update,
+	.reta_query           = atl_reta_query,
+	.rss_hash_update      = atl_rss_hash_update,
+	.rss_hash_conf_get    = atl_rss_hash_conf_get,
 };
 
 static inline int32_t
@@ -260,11 +278,17 @@ eth_atl_dev_init(struct rte_eth_dev *eth_dev)
 	/* Hardware configuration - hardcode */
 	adapter->hw_cfg.is_lro = false;
 	adapter->hw_cfg.wol = false;
+	adapter->hw_cfg.is_rss = false;
+	adapter->hw_cfg.num_rss_queues = HW_ATL_B0_RSS_MAX;
+
 	adapter->hw_cfg.link_speed_msk = AQ_NIC_RATE_10G |
 			  AQ_NIC_RATE_5G |
 			  AQ_NIC_RATE_2G5 |
 			  AQ_NIC_RATE_1G |
 			  AQ_NIC_RATE_100M;
+
+	adapter->hw_cfg.aq_rss.indirection_table_size =
+		HW_ATL_B0_RSS_REDIRECTION_MAX;
 
 	hw->aq_nic_cfg = &adapter->hw_cfg;
 
@@ -747,6 +771,10 @@ atl_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->rx_desc_lim = rx_desc_lim;
 	dev_info->tx_desc_lim = tx_desc_lim;
 
+	dev_info->hash_key_size = HW_ATL_B0_RSS_HASHKEY_BITS / 8;
+	dev_info->reta_size = HW_ATL_B0_RSS_REDIRECTION_MAX;
+	dev_info->flow_type_rss_offloads = ATL_RSS_OFFLOAD_ALL;
+
 	dev_info->speed_capa = ETH_LINK_SPEED_1G | ETH_LINK_SPEED_10G;
 	dev_info->speed_capa |= ETH_LINK_SPEED_100M;
 	dev_info->speed_capa |= ETH_LINK_SPEED_2_5G;
@@ -996,6 +1024,85 @@ atl_dev_interrupt_handler(void *param)
 
 	atl_dev_interrupt_get_status(dev);
 	atl_dev_interrupt_action(dev, dev->intr_handle);
+}
+
+static int
+atl_reta_update(struct rte_eth_dev *dev,
+		   struct rte_eth_rss_reta_entry64 *reta_conf,
+		   uint16_t reta_size)
+{
+	int i;
+	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct aq_hw_cfg_s *cf = ATL_DEV_PRIVATE_TO_CFG(dev->data->dev_private);
+
+	for (i = 0; i < reta_size && i < cf->aq_rss.indirection_table_size; i++)
+		cf->aq_rss.indirection_table[i] = min(reta_conf->reta[i],
+					dev->data->nb_rx_queues - 1);
+
+	hw_atl_b0_hw_rss_set(hw, &cf->aq_rss);
+	return 0;
+}
+
+static int
+atl_reta_query(struct rte_eth_dev *dev,
+		    struct rte_eth_rss_reta_entry64 *reta_conf,
+		    uint16_t reta_size)
+{
+	int i;
+	struct aq_hw_cfg_s *cf = ATL_DEV_PRIVATE_TO_CFG(dev->data->dev_private);
+
+	for (i = 0; i < reta_size && i < cf->aq_rss.indirection_table_size; i++)
+		reta_conf->reta[i] = cf->aq_rss.indirection_table[i];
+	reta_conf->mask = ~0U;
+	return 0;
+}
+
+static int
+atl_rss_hash_update(struct rte_eth_dev *dev,
+				 struct rte_eth_rss_conf *rss_conf)
+{
+	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct aq_hw_cfg_s *cfg =
+		ATL_DEV_PRIVATE_TO_CFG(dev->data->dev_private);
+	static u8 def_rss_key[40] = {
+		0x1e, 0xad, 0x71, 0x87, 0x65, 0xfc, 0x26, 0x7d,
+		0x0d, 0x45, 0x67, 0x74, 0xcd, 0x06, 0x1a, 0x18,
+		0xb6, 0xc1, 0xf0, 0xc7, 0xbb, 0x18, 0xbe, 0xf8,
+		0x19, 0x13, 0x4b, 0xa9, 0xd0, 0x3e, 0xfe, 0x70,
+		0x25, 0x03, 0xab, 0x50, 0x6a, 0x8b, 0x82, 0x0c
+	};
+
+	cfg->is_rss = !!rss_conf->rss_hf;
+	if (rss_conf->rss_key) {
+		memcpy(cfg->aq_rss.hash_secret_key, rss_conf->rss_key,
+		       rss_conf->rss_key_len);
+		cfg->aq_rss.hash_secret_key_size = rss_conf->rss_key_len;
+	} else {
+		memcpy(cfg->aq_rss.hash_secret_key, def_rss_key,
+		       sizeof(def_rss_key));
+		cfg->aq_rss.hash_secret_key_size = sizeof(def_rss_key);
+	}
+
+	hw_atl_b0_hw_rss_set(hw, &cfg->aq_rss);
+	hw_atl_b0_hw_rss_hash_set(hw, &cfg->aq_rss);
+	return 0;
+}
+
+static int
+atl_rss_hash_conf_get(struct rte_eth_dev *dev,
+				 struct rte_eth_rss_conf *rss_conf)
+{
+	struct aq_hw_cfg_s *cfg =
+		ATL_DEV_PRIVATE_TO_CFG(dev->data->dev_private);
+
+	rss_conf->rss_hf = cfg->is_rss ? ATL_RSS_OFFLOAD_ALL : 0;
+	if (rss_conf->rss_key) {
+		rss_conf->rss_key_len = cfg->aq_rss.hash_secret_key_size;
+		memcpy(rss_conf->rss_key, cfg->aq_rss.hash_secret_key,
+		       rss_conf->rss_key_len);
+	}
+
+	return 0;
 }
 
 RTE_PMD_REGISTER_PCI(net_atlantic, rte_atl_pmd);

@@ -336,6 +336,7 @@ int
 atl_rx_init(struct rte_eth_dev *eth_dev)
 {
 	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	struct aq_rss_parameters *rss_params = &hw->aq_nic_cfg->aq_rss;
 	struct atl_rx_queue *rxq;
 	uint64_t base_addr = 0;
 	int i = 0;
@@ -379,6 +380,10 @@ atl_rx_init(struct rte_eth_dev *eth_dev)
 		}
 	}
 
+	for (i = rss_params->indirection_table_size; i--;)
+		rss_params->indirection_table[i] = i &
+			(eth_dev->data->nb_rx_queues - 1);
+	hw_atl_b0_hw_rss_set(hw, rss_params);
 	return err;
 }
 

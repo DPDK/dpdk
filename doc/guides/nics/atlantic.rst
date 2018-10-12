@@ -16,6 +16,7 @@ Supported features
 - Promiscuous mode
 - Multicast mode
 - Port statistics
+- RSS (Receive Side Scaling)
 - Checksum offload
 - Jumbo Frame upto 16K
 

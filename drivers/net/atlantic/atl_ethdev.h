@@ -10,6 +10,17 @@
 #include "atl_types.h"
 #include "hw_atl/hw_atl_utils.h"
 
+#define ATL_RSS_OFFLOAD_ALL ( \
+	ETH_RSS_IPV4 | \
+	ETH_RSS_NONFRAG_IPV4_TCP | \
+	ETH_RSS_NONFRAG_IPV4_UDP | \
+	ETH_RSS_IPV6 | \
+	ETH_RSS_NONFRAG_IPV6_TCP | \
+	ETH_RSS_NONFRAG_IPV6_UDP | \
+	ETH_RSS_IPV6_EX | \
+	ETH_RSS_IPV6_TCP_EX | \
+	ETH_RSS_IPV6_UDP_EX)
+
 #define ATL_DEV_PRIVATE_TO_HW(adapter) \
 	(&((struct atl_adapter *)adapter)->hw)
 
@@ -18,6 +29,9 @@
 
 #define ATL_DEV_PRIVATE_TO_INTR(adapter) \
 	(&((struct atl_adapter *)adapter)->intr)
+
+#define ATL_DEV_PRIVATE_TO_CFG(adapter) \
+	(&((struct atl_adapter *)adapter)->hw_cfg)
 
 #define ATL_FLAG_NEED_LINK_UPDATE (uint32_t)(1 << 0)
 #define ATL_FLAG_NEED_LINK_CONFIG (uint32_t)(4 << 0)
