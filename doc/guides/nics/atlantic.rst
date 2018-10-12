@@ -12,6 +12,10 @@ More information can be found at `Aquantia Official Website
 Supported features
 ^^^^^^^^^^^^^^^^^^
 
+- Base L2 features
+- Checksum offload
+- Jumbo Frame upto 16K
+
 Configuration Information
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -28,6 +32,8 @@ Statistics
 
 MTU setting
 ~~~~~~~~~~~
+
+Atlantic NIC supports up to 16K jumbo frame size
 
 Supported Chipsets and NICs
 ---------------------------

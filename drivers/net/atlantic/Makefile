@@ -15,7 +15,7 @@ EXPORT_MAP := rte_pmd_atlantic_version.map
 
 LIBABIVER := 1
 
-LDLIBS += -lrte_eal
+LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev -lrte_net
 LDLIBS += -lrte_bus_pci
 

@@ -27,6 +27,7 @@ static int atl_fw_version_get(struct rte_eth_dev *dev, char *fw_version,
 static void atl_dev_info_get(struct rte_eth_dev *dev,
 			       struct rte_eth_dev_info *dev_info);
 
+static const uint32_t *atl_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 
 static int eth_atl_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct rte_pci_device *pci_dev);
@@ -75,6 +76,18 @@ static struct rte_pci_driver rte_atl_pmd = {
 	.remove = eth_atl_pci_remove,
 };
 
+#define ATL_RX_OFFLOADS (DEV_RX_OFFLOAD_VLAN_STRIP \
+			| DEV_RX_OFFLOAD_IPV4_CKSUM \
+			| DEV_RX_OFFLOAD_UDP_CKSUM \
+			| DEV_RX_OFFLOAD_TCP_CKSUM \
+			| DEV_RX_OFFLOAD_JUMBO_FRAME)
+
+static const struct rte_eth_desc_lim rx_desc_lim = {
+	.nb_max = ATL_MAX_RING_DESC,
+	.nb_min = ATL_MIN_RING_DESC,
+	.nb_align = ATL_RXD_ALIGN,
+};
+
 static const struct eth_dev_ops atl_eth_dev_ops = {
 	.dev_configure	      = atl_dev_configure,
 	.dev_start	      = atl_dev_start,
@@ -84,6 +97,13 @@ static const struct eth_dev_ops atl_eth_dev_ops = {
 
 	.fw_version_get       = atl_fw_version_get,
 	.dev_infos_get	      = atl_dev_info_get,
+	.dev_supported_ptypes_get = atl_dev_supported_ptypes_get,
+
+	/* Queue Control */
+	.rx_queue_start	      = atl_rx_queue_start,
+	.rx_queue_stop	      = atl_rx_queue_stop,
+	.rx_queue_setup       = atl_rx_queue_setup,
+	.rx_queue_release     = atl_rx_queue_release,
 };
 
 static inline int32_t
@@ -220,7 +240,7 @@ atl_dev_start(struct rte_eth_dev *dev)
 	err = atl_rx_init(dev);
 	if (err) {
 		PMD_INIT_LOG(ERR, "Unable to initialize RX hardware");
-		return -EIO;
+		goto error;
 	}
 
 	PMD_INIT_LOG(DEBUG, "FW version: %u.%u.%u",
@@ -229,7 +249,17 @@ atl_dev_start(struct rte_eth_dev *dev)
 		hw->fw_ver_actual & 0xFFFF);
 	PMD_INIT_LOG(DEBUG, "Driver version: %s", ATL_PMD_DRIVER_VERSION);
 
-	return err;
+	err = atl_start_queues(dev);
+	if (err < 0) {
+		PMD_INIT_LOG(ERR, "Unable to start rxtx queues");
+		goto error;
+	}
+
+	return 0;
+
+error:
+	atl_stop_queues(dev);
+	return -EIO;
 }
 
 /*
@@ -244,6 +274,12 @@ atl_dev_stop(struct rte_eth_dev *dev)
 	/* reset the NIC */
 	atl_reset_hw(hw);
 	hw->adapter_stopped = 1;
+
+	atl_stop_queues(dev);
+
+	/* Clear stored conf */
+	dev->data->scattered_rx = 0;
+	dev->data->lro = 0;
 }
 
 /*
@@ -255,6 +291,8 @@ atl_dev_close(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	atl_dev_stop(dev);
+
+	atl_free_queues(dev);
 }
 
 static int
@@ -298,14 +336,47 @@ atl_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 
-	dev_info->max_rx_queues = 0;
-	dev_info->max_rx_queues = 0;
+	dev_info->max_rx_queues = AQ_HW_MAX_RX_QUEUES;
+	dev_info->max_tx_queues = AQ_HW_MAX_TX_QUEUES;
 
+	dev_info->min_rx_bufsize = 1024;
+	dev_info->max_rx_pktlen = HW_ATL_B0_MTU_JUMBO;
+	dev_info->max_mac_addrs = HW_ATL_B0_MAC_MAX;
 	dev_info->max_vfs = pci_dev->max_vfs;
 
 	dev_info->max_hash_mac_addrs = 0;
 	dev_info->max_vmdq_pools = 0;
 	dev_info->vmdq_queue_num = 0;
+
+	dev_info->rx_offload_capa = ATL_RX_OFFLOADS;
+
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_free_thresh = ATL_DEFAULT_RX_FREE_THRESH,
+	};
+
+	dev_info->rx_desc_lim = rx_desc_lim;
+}
+
+static const uint32_t *
+atl_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+{
+	static const uint32_t ptypes[] = {
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L2_ETHER_ARP,
+		RTE_PTYPE_L2_ETHER_VLAN,
+		RTE_PTYPE_L3_IPV4,
+		RTE_PTYPE_L3_IPV6,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_L4_SCTP,
+		RTE_PTYPE_L4_ICMP,
+		RTE_PTYPE_UNKNOWN
+	};
+
+	if (dev->rx_pkt_burst == atl_recv_pkts)
+		return ptypes;
+
+	return NULL;
 }
 
 RTE_PMD_REGISTER_PCI(net_atlantic, rte_atl_pmd);
