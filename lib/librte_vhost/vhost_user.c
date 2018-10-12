@@ -161,6 +161,7 @@ vhost_user_get_features(struct virtio_net **pdev, struct VhostUserMsg *msg,
 
 	msg->payload.u64 = features;
 	msg->size = sizeof(msg->payload.u64);
+	msg->fd_num = 0;
 
 	return VH_RESULT_REPLY;
 }
@@ -179,6 +180,7 @@ vhost_user_get_queue_num(struct virtio_net **pdev, struct VhostUserMsg *msg,
 
 	msg->payload.u64 = (uint64_t)queue_num;
 	msg->size = sizeof(msg->payload.u64);
+	msg->fd_num = 0;
 
 	return VH_RESULT_REPLY;
 }
@@ -1165,6 +1167,7 @@ vhost_user_get_vring_base(struct virtio_net **pdev,
 	vq->batch_copy_elems = NULL;
 
 	msg->size = sizeof(msg->payload.state);
+	msg->fd_num = 0;
 
 	return VH_RESULT_REPLY;
 }
@@ -1224,6 +1227,7 @@ vhost_user_get_protocol_features(struct virtio_net **pdev,
 
 	msg->payload.u64 = protocol_features;
 	msg->size = sizeof(msg->payload.u64);
+	msg->fd_num = 0;
 
 	return VH_RESULT_REPLY;
 }
@@ -1310,6 +1314,7 @@ vhost_user_set_log_base(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	 * any payload in the reply.
 	 */
 	msg->size = 0;
+	msg->fd_num = 0;
 
 	return VH_RESULT_REPLY;
 }
@@ -1556,13 +1561,13 @@ read_vhost_message(int sockfd, struct VhostUserMsg *msg)
 }
 
 static int
-send_vhost_message(int sockfd, struct VhostUserMsg *msg, int *fds, int fd_num)
+send_vhost_message(int sockfd, struct VhostUserMsg *msg)
 {
 	if (!msg)
 		return 0;
 
 	return send_fd_message(sockfd, (char *)msg,
-		VHOST_USER_HDR_SIZE + msg->size, fds, fd_num);
+		VHOST_USER_HDR_SIZE + msg->size, msg->fds, msg->fd_num);
 }
 
 static int
@@ -1576,19 +1581,18 @@ send_vhost_reply(int sockfd, struct VhostUserMsg *msg)
 	msg->flags |= VHOST_USER_VERSION;
 	msg->flags |= VHOST_USER_REPLY_MASK;
 
-	return send_vhost_message(sockfd, msg, NULL, 0);
+	return send_vhost_message(sockfd, msg);
 }
 
 static int
-send_vhost_slave_message(struct virtio_net *dev, struct VhostUserMsg *msg,
-			 int *fds, int fd_num)
+send_vhost_slave_message(struct virtio_net *dev, struct VhostUserMsg *msg)
 {
 	int ret;
 
 	if (msg->flags & VHOST_USER_NEED_REPLY)
 		rte_spinlock_lock(&dev->slave_req_lock);
 
-	ret = send_vhost_message(dev->slave_req_fd, msg, fds, fd_num);
+	ret = send_vhost_message(dev->slave_req_fd, msg);
 	if (ret < 0 && (msg->flags & VHOST_USER_NEED_REPLY))
 		rte_spinlock_unlock(&dev->slave_req_lock);
 
@@ -1820,6 +1824,7 @@ skip_to_reply:
 	if (msg.flags & VHOST_USER_NEED_REPLY) {
 		msg.payload.u64 = ret == VH_RESULT_ERR;
 		msg.size = sizeof(msg.payload.u64);
+		msg.fd_num = 0;
 		send_vhost_reply(fd, &msg);
 	} else if (ret == VH_RESULT_ERR) {
 		RTE_LOG(ERR, VHOST_CONFIG,
@@ -1903,7 +1908,7 @@ vhost_user_iotlb_miss(struct virtio_net *dev, uint64_t iova, uint8_t perm)
 		},
 	};
 
-	ret = send_vhost_message(dev->slave_req_fd, &msg, NULL, 0);
+	ret = send_vhost_message(dev->slave_req_fd, &msg);
 	if (ret < 0) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 				"Failed to send IOTLB miss message (%d)\n",
@@ -1919,8 +1924,6 @@ static int vhost_user_slave_set_vring_host_notifier(struct virtio_net *dev,
 						    uint64_t offset,
 						    uint64_t size)
 {
-	int *fdp = NULL;
-	size_t fd_num = 0;
 	int ret;
 	struct VhostUserMsg msg = {
 		.request.slave = VHOST_USER_SLAVE_VRING_HOST_NOTIFIER_MSG,
@@ -1936,11 +1939,11 @@ static int vhost_user_slave_set_vring_host_notifier(struct virtio_net *dev,
 	if (fd < 0)
 		msg.payload.area.u64 |= VHOST_USER_VRING_NOFD_MASK;
 	else {
-		fdp = &fd;
-		fd_num = 1;
+		msg.fds[0] = fd;
+		msg.fd_num = 1;
 	}
 
-	ret = send_vhost_slave_message(dev, &msg, fdp, fd_num);
+	ret = send_vhost_slave_message(dev, &msg);
 	if (ret < 0) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"Failed to set host notifier (%d)\n", ret);

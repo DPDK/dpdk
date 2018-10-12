@@ -447,6 +447,7 @@ vhost_crypto_msg_post_handler(int vid, void *msg)
 	if (vmsg->request.master == VHOST_USER_CRYPTO_CREATE_SESS) {
 		vhost_crypto_create_sess(vcrypto,
 				&vmsg->payload.crypto_session);
+		vmsg->fd_num = 0;
 		ret = VH_RESULT_REPLY;
 	} else if (vmsg->request.master == VHOST_USER_CRYPTO_CLOSE_SESS) {
 		if (vhost_crypto_close_sess(vcrypto, vmsg->payload.u64))
