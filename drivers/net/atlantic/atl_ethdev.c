@@ -50,6 +50,18 @@ static const uint32_t *atl_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 
 static int atl_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 
+/* VLAN stuff */
+static int atl_vlan_filter_set(struct rte_eth_dev *dev,
+		uint16_t vlan_id, int on);
+
+static int atl_vlan_offload_set(struct rte_eth_dev *dev, int mask);
+
+static void atl_vlan_strip_queue_set(struct rte_eth_dev *dev,
+				     uint16_t queue_id, int on);
+
+static int atl_vlan_tpid_set(struct rte_eth_dev *dev,
+			     enum rte_vlan_type vlan_type, uint16_t tpid);
+
 /* Flow control */
 static int atl_flow_ctrl_get(struct rte_eth_dev *dev,
 			       struct rte_eth_fc_conf *fc_conf);
@@ -222,6 +234,12 @@ static const struct eth_dev_ops atl_eth_dev_ops = {
 	.dev_supported_ptypes_get = atl_dev_supported_ptypes_get,
 
 	.mtu_set              = atl_dev_mtu_set,
+
+	/* VLAN */
+	.vlan_filter_set      = atl_vlan_filter_set,
+	.vlan_offload_set     = atl_vlan_offload_set,
+	.vlan_tpid_set        = atl_vlan_tpid_set,
+	.vlan_strip_queue_set = atl_vlan_strip_queue_set,
 
 	/* Queue Control */
 	.rx_queue_start	      = atl_rx_queue_start,
@@ -1169,6 +1187,147 @@ atl_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
 
 	return 0;
+}
+
+static int
+atl_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
+{
+	struct aq_hw_cfg_s *cfg =
+		ATL_DEV_PRIVATE_TO_CFG(dev->data->dev_private);
+	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int err = 0;
+	int i = 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	for (i = 0; i < HW_ATL_B0_MAX_VLAN_IDS; i++) {
+		if (cfg->vlan_filter[i] == vlan_id) {
+			if (!on) {
+				/* Disable VLAN filter. */
+				hw_atl_rpf_vlan_flr_en_set(hw, 0U, i);
+
+				/* Clear VLAN filter entry */
+				cfg->vlan_filter[i] = 0;
+			}
+			break;
+		}
+	}
+
+	/* VLAN_ID was not found. So, nothing to delete. */
+	if (i == HW_ATL_B0_MAX_VLAN_IDS && !on)
+		goto exit;
+
+	/* VLAN_ID already exist, or already removed above. Nothing to do. */
+	if (i != HW_ATL_B0_MAX_VLAN_IDS)
+		goto exit;
+
+	/* Try to found free VLAN filter to add new VLAN_ID */
+	for (i = 0; i < HW_ATL_B0_MAX_VLAN_IDS; i++) {
+		if (cfg->vlan_filter[i] == 0)
+			break;
+	}
+
+	if (i == HW_ATL_B0_MAX_VLAN_IDS) {
+		/* We have no free VLAN filter to add new VLAN_ID*/
+		err = -ENOMEM;
+		goto exit;
+	}
+
+	cfg->vlan_filter[i] = vlan_id;
+	hw_atl_rpf_vlan_flr_act_set(hw, 1U, i);
+	hw_atl_rpf_vlan_id_flr_set(hw, vlan_id, i);
+	hw_atl_rpf_vlan_flr_en_set(hw, 1U, i);
+
+exit:
+	/* Enable VLAN promisc mode if vlan_filter empty  */
+	for (i = 0; i < HW_ATL_B0_MAX_VLAN_IDS; i++) {
+		if (cfg->vlan_filter[i] != 0)
+			break;
+	}
+
+	hw_atl_rpf_vlan_prom_mode_en_set(hw, i == HW_ATL_B0_MAX_VLAN_IDS);
+
+	return err;
+}
+
+static int
+atl_enable_vlan_filter(struct rte_eth_dev *dev, int en)
+{
+	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct aq_hw_cfg_s *cfg =
+		ATL_DEV_PRIVATE_TO_CFG(dev->data->dev_private);
+	int i;
+
+	PMD_INIT_FUNC_TRACE();
+
+	for (i = 0; i < HW_ATL_B0_MAX_VLAN_IDS; i++) {
+		if (cfg->vlan_filter[i])
+			hw_atl_rpf_vlan_flr_en_set(hw, en, i);
+	}
+	return 0;
+}
+
+static int
+atl_vlan_offload_set(struct rte_eth_dev *dev, int mask)
+{
+	struct aq_hw_cfg_s *cfg =
+		ATL_DEV_PRIVATE_TO_CFG(dev->data->dev_private);
+	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret = 0;
+	int i;
+
+	PMD_INIT_FUNC_TRACE();
+
+	ret = atl_enable_vlan_filter(dev, mask & ETH_VLAN_FILTER_MASK);
+
+	cfg->vlan_strip = !!(mask & ETH_VLAN_STRIP_MASK);
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		hw_atl_rpo_rx_desc_vlan_stripping_set(hw, cfg->vlan_strip, i);
+
+	if (mask & ETH_VLAN_EXTEND_MASK)
+		ret = -ENOTSUP;
+
+	return ret;
+}
+
+static int
+atl_vlan_tpid_set(struct rte_eth_dev *dev, enum rte_vlan_type vlan_type,
+		  uint16_t tpid)
+{
+	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int err = 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	switch (vlan_type) {
+	case ETH_VLAN_TYPE_INNER:
+		hw_atl_rpf_vlan_inner_etht_set(hw, tpid);
+		break;
+	case ETH_VLAN_TYPE_OUTER:
+		hw_atl_rpf_vlan_outer_etht_set(hw, tpid);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Unsupported VLAN type");
+		err = -ENOTSUP;
+	}
+
+	return err;
+}
+
+static void
+atl_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue_id, int on)
+{
+	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (queue_id > dev->data->nb_rx_queues) {
+		PMD_DRV_LOG(ERR, "Invalid queue id");
+		return;
+	}
+
+	hw_atl_rpo_rx_desc_vlan_stripping_set(hw, on, queue_id);
 }
 
 static int

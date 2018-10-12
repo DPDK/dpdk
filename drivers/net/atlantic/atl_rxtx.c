@@ -919,6 +919,8 @@ atl_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	struct atl_adapter *adapter =
 		ATL_DEV_TO_ADAPTER(&rte_eth_devices[rxq->port_id]);
 	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(adapter);
+	struct aq_hw_cfg_s *cfg =
+		ATL_DEV_PRIVATE_TO_CFG(dev->data->dev_private);
 	struct atl_rx_entry *sw_ring = rxq->sw_ring;
 
 	struct rte_mbuf *new_mbuf;
@@ -1036,7 +1038,17 @@ atl_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 			rx_mbuf->ol_flags =
 				atl_desc_to_offload_flags(rxq, &rxd_wb);
+
 			rx_mbuf->packet_type = atl_desc_to_pkt_type(&rxd_wb);
+
+			if (rx_mbuf->packet_type & RTE_PTYPE_L2_ETHER_VLAN) {
+				rx_mbuf->ol_flags |= PKT_RX_VLAN;
+				rx_mbuf->vlan_tci = rxd_wb.vlan;
+
+				if (cfg->vlan_strip)
+					rx_mbuf->ol_flags |=
+						PKT_RX_VLAN_STRIPPED;
+			}
 
 			if (!rx_mbuf_first)
 				rx_mbuf_first = rx_mbuf;

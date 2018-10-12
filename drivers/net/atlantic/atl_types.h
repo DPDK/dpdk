@@ -70,6 +70,8 @@ struct aq_hw_cfg_s {
 	int irq_mask;
 	unsigned int vecs;
 
+	bool vlan_strip;
+	uint32_t vlan_filter[HW_ATL_B0_MAX_VLAN_IDS];
 	uint32_t flow_control;
 
 	struct aq_rss_parameters aq_rss;
