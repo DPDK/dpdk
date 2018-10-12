@@ -651,6 +651,42 @@ atl_stop_queues(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static int
+atl_rx_enable_intr(struct rte_eth_dev *dev, uint16_t queue_id, bool enable)
+{
+	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct atl_rx_queue *rxq;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (queue_id >= dev->data->nb_rx_queues) {
+		PMD_DRV_LOG(ERR, "Invalid RX queue id=%d", queue_id);
+		return -EINVAL;
+	}
+
+	rxq = dev->data->rx_queues[queue_id];
+
+	if (rxq == NULL)
+		return 0;
+
+	/* Mapping interrupt vector */
+	hw_atl_itr_irq_map_en_rx_set(hw, enable, queue_id);
+
+	return 0;
+}
+
+int
+atl_dev_rx_queue_intr_enable(struct rte_eth_dev *eth_dev, uint16_t queue_id)
+{
+	return atl_rx_enable_intr(eth_dev, queue_id, true);
+}
+
+int
+atl_dev_rx_queue_intr_disable(struct rte_eth_dev *eth_dev, uint16_t queue_id)
+{
+	return atl_rx_enable_intr(eth_dev, queue_id, false);
+}
+
 uint16_t
 atl_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 	      uint16_t nb_pkts)

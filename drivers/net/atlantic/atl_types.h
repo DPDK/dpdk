@@ -86,11 +86,13 @@ struct aq_hw_s {
 	void *mmio;
 
 	struct aq_hw_link_status_s aq_link_status;
+	bool is_autoneg;
 
 	struct hw_aq_atl_utils_mbox mbox;
 	struct hw_atl_stats_s last_stats;
 	struct aq_stats_s curr_stats;
 
+	u64 speed;
 	unsigned int chip_features;
 	u32 fw_ver_actual;
 	u32 mbox_addr;

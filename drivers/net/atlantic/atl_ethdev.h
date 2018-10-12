@@ -16,6 +16,16 @@
 #define ATL_DEV_TO_ADAPTER(dev) \
 	((struct atl_adapter *)(dev)->data->dev_private)
 
+#define ATL_DEV_PRIVATE_TO_INTR(adapter) \
+	(&((struct atl_adapter *)adapter)->intr)
+
+#define ATL_FLAG_NEED_LINK_UPDATE (uint32_t)(1 << 0)
+#define ATL_FLAG_NEED_LINK_CONFIG (uint32_t)(4 << 0)
+
+struct atl_interrupt {
+	uint32_t flags;
+	uint32_t mask;
+};
 
 /*
  * Structure to store private data for each driver instance (for each port).
@@ -23,6 +33,7 @@
 struct atl_adapter {
 	struct aq_hw_s             hw;
 	struct aq_hw_cfg_s         hw_cfg;
+	struct atl_interrupt       intr;
 };
 
 /*
@@ -39,6 +50,11 @@ int atl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 int atl_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 		uint16_t nb_tx_desc, unsigned int socket_id,
 		const struct rte_eth_txconf *tx_conf);
+
+int atl_dev_rx_queue_intr_enable(struct rte_eth_dev *eth_dev,
+				 uint16_t queue_id);
+int atl_dev_rx_queue_intr_disable(struct rte_eth_dev *eth_dev,
+				  uint16_t queue_id);
 
 int atl_rx_init(struct rte_eth_dev *dev);
 int atl_tx_init(struct rte_eth_dev *dev);
