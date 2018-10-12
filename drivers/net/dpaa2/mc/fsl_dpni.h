@@ -8,6 +8,7 @@
 #define __FSL_DPNI_H
 
 #include <fsl_dpkg.h>
+#include <fsl_dpopr.h>
 
 struct fsl_mc_io;
 
@@ -77,6 +78,20 @@ struct fsl_mc_io;
  */
 #define DPNI_OPT_NO_FS				0x000020
 
+/**
+ * Enable the Order Restoration support
+ */
+#define DPNI_OPT_HAS_OPR				0x000040
+
+/**
+ * Order Point Records are shared for the entire TC
+ */
+#define DPNI_OPT_OPR_PER_TC				0x000080
+/**
+ * All Tx traffic classes will use a single sender (ignore num_queueus for tx)
+ */
+#define DPNI_OPT_SINGLE_SENDER			0x000100
+
 int dpni_open(struct fsl_mc_io *mc_io,
 	      uint32_t cmd_flags,
 	      int dpni_id,
@@ -88,71 +103,74 @@ int dpni_close(struct fsl_mc_io *mc_io,
 
 /**
  * struct dpni_cfg - Structure representing DPNI configuration
- * @mac_addr:	Primary MAC address
- * @adv:	Advanced parameters; default is all zeros;
- *		use this structure to change default settings
+ * @options: Any combination of the following options:
+ *		DPNI_OPT_TX_FRM_RELEASE
+ *		DPNI_OPT_NO_MAC_FILTER
+ *		DPNI_OPT_HAS_POLICING
+ *		DPNI_OPT_SHARED_CONGESTION
+ *		DPNI_OPT_HAS_KEY_MASKING
+ *		DPNI_OPT_NO_FS
+ *		DPNI_OPT_SINGLE_SENDER
+ * @fs_entries: Number of entries in the flow steering table.
+ *		This table is used to select the ingress queue for
+ *		ingress traffic, targeting a GPP core or another.
+ *		In addition it can be used to discard traffic that
+ *		matches the set rule. It is either an exact match table
+ *		or a TCAM table, depending on DPNI_OPT_ HAS_KEY_MASKING
+ *		bit in OPTIONS field. This field is ignored if
+ *		DPNI_OPT_NO_FS bit is set in OPTIONS field. Otherwise,
+ *		value 0 defaults to 64. Maximum supported value is 1024.
+ *		Note that the total number of entries is limited on the
+ *		SoC to as low as 512 entries if TCAM is used.
+ * @vlan_filter_entries: Number of entries in the VLAN address filtering
+ *		table. This is an exact match table used to filter
+ *		ingress traffic based on VLAN IDs. Value 0 disables VLAN
+ *		filtering. Maximum supported value is 16.
+ * @mac_filter_entries: Number of entries in the MAC address filtering
+ *		table. This is an exact match table and allows both
+ *		unicast and multicast entries. The primary MAC address
+ *		of the network interface is not part of this table,
+ *		this contains only entries in addition to it. This
+ *		field is ignored if DPNI_OPT_ NO_MAC_FILTER is set in
+ *		OPTIONS field. Otherwise, value 0 defaults to 80.
+ *		Maximum supported value is 80.
+ * @num_queues: Number of Tx and Rx queues used for traffic
+ *		distribution. This is orthogonal to QoS and is only
+ *		used to distribute traffic to multiple GPP cores.
+ *		This configuration affects the number of Tx queues
+ *		(logical FQs, all associated with a single CEETM queue),
+ *		Rx queues and Tx confirmation queues, if applicable.
+ *		Value 0 defaults to one queue. Maximum supported value
+ *		is 8.
+ * @num_tcs: Number of traffic classes (TCs), reserved for the DPNI.
+ *		TCs can have different priority levels for the purpose
+ *		of Tx scheduling (see DPNI_SET_TX_PRIORITIES), different
+ *		BPs (DPNI_ SET_POOLS), policers. There are dedicated QM
+ *		queues for traffic classes (including class queues on
+ *		Tx). Value 0 defaults to one TC. Maximum supported value
+ *		is 16. There are maximum 16 TCs for Tx and 8 TCs for Rx.
+ *		When num_tcs>8 Tx will use this value but Rx will have
+ *		only 8 traffic classes.
+ * @num_rx_tcs: if set to other value than zero represents number
+ *		of TCs used for Rx. Maximum value is 8. If set to zero the
+ *		number of Rx TCs will be initialized with the value provided
+ *		in num_tcs parameter.
+ * @qos_entries: Number of entries in the QoS classification table. This
+ *		table is used to select the TC for ingress traffic. It
+ *		is either an exact match or a TCAM table, depending on
+ *		DPNI_OPT_ HAS_KEY_MASKING bit in OPTIONS field. This
+ *		field is ignored if the DPNI has a single TC. Otherwise,
+ *		a value of 0 defaults to 64. Maximum supported value
+ *		is 64.
  */
 struct dpni_cfg {
-	/**
-	 * @options: Any combination of the following options:
-	 *		DPNI_OPT_TX_FRM_RELEASE
-	 *		DPNI_OPT_NO_MAC_FILTER
-	 *		DPNI_OPT_HAS_POLICING
-	 *		DPNI_OPT_SHARED_CONGESTION
-	 *		DPNI_OPT_HAS_KEY_MASKING
-	 *		DPNI_OPT_NO_FS
-	 * @fs_entries: Number of entries in the flow steering table.
-	 *		This table is used to select the ingress queue for
-	 *		ingress traffic, targeting a GPP core or another.
-	 *		In addition it can be used to discard traffic that
-	 *		matches the set rule. It is either an exact match table
-	 *		or a TCAM table, depending on DPNI_OPT_ HAS_KEY_MASKING
-	 *		bit in OPTIONS field. This field is ignored if
-	 *		DPNI_OPT_NO_FS bit is set in OPTIONS field. Otherwise,
-	 *		value 0 defaults to 64. Maximum supported value is 1024.
-	 *		Note that the total number of entries is limited on the
-	 *		SoC to as low as 512 entries if TCAM is used.
-	 * @vlan_filter_entries: Number of entries in the VLAN address filtering
-	 *		table. This is an exact match table used to filter
-	 *		ingress traffic based on VLAN IDs. Value 0 disables VLAN
-	 *		filtering. Maximum supported value is 16.
-	 * @mac_filter_entries: Number of entries in the MAC address filtering
-	 *		table. This is an exact match table and allows both
-	 *		unicast and multicast entries. The primary MAC address
-	 *		of the network interface is not part of this table,
-	 *		this contains only entries in addition to it. This
-	 *		field is ignored if DPNI_OPT_ NO_MAC_FILTER is set in
-	 *		OPTIONS field. Otherwise, value 0 defaults to 80.
-	 *		Maximum supported value is 80.
-	 * @num_queues: Number of Tx and Rx queues used for traffic
-	 *		distribution. This is orthogonal to QoS and is only
-	 *		used to distribute traffic to multiple GPP cores.
-	 *		This configuration affects the number of Tx queues
-	 *		(logical FQs, all associated with a single CEETM queue),
-	 *		Rx queues and Tx confirmation queues, if applicable.
-	 *		Value 0 defaults to one queue. Maximum supported value
-	 *		is 8.
-	 * @num_tcs: Number of traffic classes (TCs), reserved for the DPNI.
-	 *		TCs can have different priority levels for the purpose
-	 *		of Tx scheduling (see DPNI_SET_TX_SELECTION), different
-	 *		BPs (DPNI_ SET_POOLS), policers. There are dedicated QM
-	 *		queues for traffic classes (including class queues on
-	 *		Tx). Value 0 defaults to one TC. Maximum supported value
-	 *		is 8.
-	 * @qos_entries: Number of entries in the QoS classification table. This
-	 *		table is used to select the TC for ingress traffic. It
-	 *		is either an exact match or a TCAM table, depending on
-	 *		DPNI_OPT_ HAS_KEY_MASKING bit in OPTIONS field. This
-	 *		field is ignored if the DPNI has a single TC. Otherwise,
-	 *		a value of 0 defaults to 64. Maximum supported value
-	 *		is 64.
-	 */
 	uint32_t options;
 	uint16_t fs_entries;
 	uint8_t  vlan_filter_entries;
 	uint8_t  mac_filter_entries;
 	uint8_t  num_queues;
 	uint8_t  num_tcs;
+	uint8_t  num_rx_tcs;
 	uint8_t  qos_entries;
 };
 
@@ -172,17 +190,14 @@ int dpni_destroy(struct fsl_mc_io *mc_io,
  * @num_dpbp:	Number of DPBPs
  * @pools:	Array of buffer pools parameters; The number of valid entries
  *		must match 'num_dpbp' value
+ * @pools.dpbp_id:     DPBP object ID
+ * @pools.priority:    Priority mask that indicates TC's used with this buffer.
+ *		       I set to 0x00 MC will assume value 0xff.
+ * @pools.buffer_size: Buffer size
+ * @pools.backup_pool: Backup pool
  */
 struct dpni_pools_cfg {
 	uint8_t num_dpbp;
-	/**
-	 * struct pools - Buffer pools parameters
-	 * @dpbp_id: DPBP object ID
-	 * @priority: priority mask that indicates TC's used with this buffer.
-	 * I set to 0x00 MC will assume value 0xff.
-	 * @buffer_size: Buffer size
-	 * @backup_pool: Backup pool
-	 */
 	struct {
 		int		dpbp_id;
 		uint8_t		priority_mask;
@@ -296,6 +311,8 @@ int dpni_clear_irq_status(struct fsl_mc_io *mc_io,
  *			variants,
  *			- 0x422 - WRIOP version 1.1.2, used on LS1088 and
  *			variants.
+ *			- 0xC00 - WRIOP version 3.0.0, used on LX2160 and
+ *			variants.
  */
 struct dpni_attr {
 	uint32_t options;
@@ -319,6 +336,13 @@ int dpni_get_attributes(struct fsl_mc_io *mc_io,
 /**
  * DPNI errors
  */
+
+/**
+ * Discard error. When set all discarded frames in wriop will be enqueued to
+ * error queue. To be used in dpni_set_errors_behavior() only if error_action
+ * parameter is set to DPNI_ERROR_ACTION_SEND_TO_ERROR_QUEUE.
+ */
+#define DPNI_ERROR_DISC		0x80000000
 
 /**
  * Extract out of frame header error
@@ -408,6 +432,10 @@ int dpni_set_errors_behavior(struct fsl_mc_io *mc_io,
  * Select to modify the data-tail-room setting
  */
 #define DPNI_BUF_LAYOUT_OPT_DATA_TAIL_ROOM	0x00000040
+/**
+ * Select to modify the sw-opaque value setting
+ */
+#define DPNI_BUF_LAYOUT_OPT_SW_OPAQUE		0x00000080
 
 /**
  * struct dpni_buffer_layout - Structure representing DPNI buffer layout
@@ -427,6 +455,7 @@ struct dpni_buffer_layout {
 	int pass_timestamp;
 	int pass_parser_result;
 	int pass_frame_status;
+	int pass_sw_opaque;
 	uint16_t private_data_size;
 	uint16_t data_align;
 	uint16_t data_head_room;
@@ -501,16 +530,48 @@ int dpni_get_tx_data_offset(struct fsl_mc_io *mc_io,
 
 #define DPNI_STATISTICS_CNT		7
 
+/**
+ * union dpni_statistics - Union describing the DPNI statistics
+ * @page_0: Page_0 statistics structure
+ * @page_0.ingress_all_frames: Ingress frame count
+ * @page_0.ingress_all_bytes: Ingress byte count
+ * @page_0.ingress_multicast_frames: Ingress multicast frame count
+ * @page_0.ingress_multicast_bytes: Ingress multicast byte count
+ * @page_0.ingress_broadcast_frames: Ingress broadcast frame count
+ * @page_0.ingress_broadcast_bytes: Ingress broadcast byte count
+ * @page_1: Page_1 statistics structure
+ * @page_1.egress_all_frames: Egress frame count
+ * @page_1.egress_all_bytes: Egress byte count
+ * @page_1.egress_multicast_frames: Egress multicast frame count
+ * @page_1.egress_multicast_bytes: Egress multicast byte count
+ * @page_1.egress_broadcast_frames: Egress broadcast frame count
+ * @page_1.egress_broadcast_bytes: Egress broadcast byte count
+ * @page_2: Page_2 statistics structure
+ * @page_2.ingress_filtered_frames: Ingress filtered frame count
+ * @page_2.ingress_discarded_frames: Ingress discarded frame count
+ * @page_2.ingress_nobuffer_discards: Ingress discarded frame count due to
+ *	lack of buffers
+ * @page_2.egress_discarded_frames: Egress discarded frame count
+ * @page_2.egress_confirmed_frames: Egress confirmed frame count
+ * @page_3: Page_3 statistics structure with values for the selected TC
+ * @page_3.ceetm_dequeue_bytes: Cumulative count of the number of bytes dequeued
+ * @page_3.ceetm_dequeue_frames: Cumulative count of the number of frames
+ *	dequeued
+ * @page_3.ceetm_reject_bytes: Cumulative count of the number of bytes in all
+ *	frames whose enqueue was rejected
+ * @page_3.ceetm_reject_frames: Cumulative count of all frame enqueues rejected
+ * @page_4: congestion point drops for seleted TC
+ * @page_4.cgr_reject_frames: number of rejected frames due to congestion point
+ * @page_4.cgr_reject_bytes: number of rejected bytes due to congestion point
+ * @page_5: policer statistics per TC
+ * @page_5.policer_cnt_red: NUmber of red colored frames
+ * @page_5.policer_cnt_yellow: number of yellow colored frames
+ * @page_5.policer_cnt_green: number of green colored frames
+ * @page_5.policer_cnt_re_red: number of recolored red frames
+ * @page_5.policer_cnt_re_yellow: number of recolored yellow frames
+ * @raw: raw statistics structure, used to index counters
+ */
 union dpni_statistics {
-	/**
-	 * struct page_0 - Page_0 statistics structure
-	 * @ingress_all_frames: Ingress frame count
-	 * @ingress_all_bytes: Ingress byte count
-	 * @ingress_multicast_frames: Ingress multicast frame count
-	 * @ingress_multicast_bytes: Ingress multicast byte count
-	 * @ingress_broadcast_frames: Ingress broadcast frame count
-	 * @ingress_broadcast_bytes: Ingress broadcast byte count
-	 */
 	struct {
 		uint64_t ingress_all_frames;
 		uint64_t ingress_all_bytes;
@@ -519,15 +580,6 @@ union dpni_statistics {
 		uint64_t ingress_broadcast_frames;
 		uint64_t ingress_broadcast_bytes;
 	} page_0;
-	/**
-	 * struct page_1 - Page_1 statistics structure
-	 * @egress_all_frames: Egress frame count
-	 * @egress_all_bytes: Egress byte count
-	 * @egress_multicast_frames: Egress multicast frame count
-	 * @egress_multicast_bytes: Egress multicast byte count
-	 * @egress_broadcast_frames: Egress broadcast frame count
-	 * @egress_broadcast_bytes: Egress broadcast byte count
-	 */
 	struct {
 		uint64_t egress_all_frames;
 		uint64_t egress_all_bytes;
@@ -536,15 +588,6 @@ union dpni_statistics {
 		uint64_t egress_broadcast_frames;
 		uint64_t egress_broadcast_bytes;
 	} page_1;
-	/**
-	 * struct page_2 - Page_2 statistics structure
-	 * @ingress_filtered_frames: Ingress filtered frame count
-	 * @ingress_discarded_frames: Ingress discarded frame count
-	 * @ingress_nobuffer_discards: Ingress discarded frame count due to
-	 *					lack of buffers
-	 * @egress_discarded_frames: Egress discarded frame count
-	 * @egress_confirmed_frames: Egress confirmed frame count
-	 */
 	struct {
 		uint64_t ingress_filtered_frames;
 		uint64_t ingress_discarded_frames;
@@ -552,26 +595,23 @@ union dpni_statistics {
 		uint64_t egress_discarded_frames;
 		uint64_t egress_confirmed_frames;
 	} page_2;
-	/**
-	 * struct page_3 - Page_3 statistics structure with values for the
-	 *			selected TC
-	 * @ceetm_dequeue_bytes: Cumulative count of the number of bytes
-	 *			dequeued
-	 * @ceetm_dequeue_frames: Cumulative count of the number of frames
-	 *			dequeued
-	 * @ceetm_reject_bytes: Cumulative count of the number of bytes in all
-	 *			frames whose enqueue was rejected
-	 * @ceetm_reject_frames: Cumulative count of all frame enqueues rejected
-	 */
 	struct {
 		uint64_t ceetm_dequeue_bytes;
 		uint64_t ceetm_dequeue_frames;
 		uint64_t ceetm_reject_bytes;
 		uint64_t ceetm_reject_frames;
 	} page_3;
-	/**
-	 * struct raw - raw statistics structure, used to index counters
-	 */
+	struct {
+		uint64_t cgr_reject_frames;
+		uint64_t cgr_reject_bytes;
+	} page_4;
+	struct {
+		uint64_t policer_cnt_red;
+		uint64_t policer_cnt_yellow;
+		uint64_t policer_cnt_green;
+		uint64_t policer_cnt_re_red;
+		uint64_t policer_cnt_re_yellow;
+	} page_5;
 	struct {
 		uint64_t counter[DPNI_STATISTICS_CNT];
 	} raw;
@@ -602,10 +642,12 @@ union dpni_statistics {
  * struct - Structure representing DPNI link configuration
  * @rate: Rate
  * @options: Mask of available options; use 'DPNI_LINK_OPT_<X>' values
+ * @advertising: Speeds that are advertised for autoneg (bitmap)
  */
 struct dpni_link_cfg {
 	uint32_t rate;
 	uint64_t options;
+	uint64_t advertising;
 };
 
 int dpni_set_link_cfg(struct fsl_mc_io *mc_io,
@@ -618,11 +660,17 @@ int dpni_set_link_cfg(struct fsl_mc_io *mc_io,
  * @rate:	Rate
  * @options:	Mask of available options; use 'DPNI_LINK_OPT_<X>' values
  * @up:		Link state; '0' for down, '1' for up
+ * @state_valid: Ignore/Update the state of the link
+ * @supported: Speeds capability of the phy (bitmap)
+ * @advertising: Speeds that are advertised for autoneg (bitmap)
  */
 struct dpni_link_state {
 	uint32_t rate;
 	uint64_t options;
 	int up;
+	int     state_valid;
+	uint64_t supported;
+	uint64_t advertising;
 };
 
 int dpni_get_link_state(struct fsl_mc_io *mc_io,
@@ -750,11 +798,20 @@ enum dpni_fs_miss_action {
  * struct dpni_fs_tbl_cfg - Flow Steering table configuration
  * @miss_action:	Miss action selection
  * @default_flow_id:	Used when 'miss_action = DPNI_FS_MISS_EXPLICIT_FLOWID'
+ * @keep_hash_key: used only when miss_action is set to DPNI_FS_MISS_HASH. When
+ *	set to one unclassified frames will be distributed according to previous
+ *	used hash key. If set to zero hash key will be replaced with the key
+ *	provided for flow steering.
+ * @keep_entries: if set to one command will not delete the entries that already
+ *	exist into FS table. Use this option with caution: if the table
+ *	entries	are not compatible with the distribution key the packets
+ *	will not be classified properly.
  */
 struct dpni_fs_tbl_cfg {
 	enum dpni_fs_miss_action miss_action;
 	uint16_t default_flow_id;
 	char keep_hash_key;
+	uint8_t keep_entries;
 };
 
 /**
@@ -915,34 +972,52 @@ int dpni_get_congestion_notification(struct fsl_mc_io *mc_io,
 
 /**
  * struct dpni_queue - Queue structure
- * @user_context:	User data, presented to the user along with any frames
- *			from this queue. Not relevant for Tx queues.
+ * @destination - Destination structure
+ * @destination.id: ID of the destination, only relevant if DEST_TYPE is > 0.
+ *	Identifies either a DPIO or a DPCON object.
+ *	Not relevant for Tx queues.
+ * @destination.type:	May be one of the following:
+ *	0 - No destination, queue can be manually
+ *		queried, but will not push traffic or
+ *		notifications to a DPIO;
+ *	1 - The destination is a DPIO. When traffic
+ *		becomes available in the queue a FQDAN
+ *		(FQ data available notification) will be
+ *		generated to selected DPIO;
+ *	2 - The destination is a DPCON. The queue is
+ *		associated with a DPCON object for the
+ *		purpose of scheduling between multiple
+ *		queues. The DPCON may be independently
+ *		configured to generate notifications.
+ *		Not relevant for Tx queues.
+ * @destination.hold_active: Hold active, maintains a queue scheduled for longer
+ *	in a DPIO during dequeue to reduce spread of traffic.
+ *	Only relevant if queues are
+ *	not affined to a single DPIO.
+ * @user_context: User data, presented to the user along with any frames
+ *	from this queue. Not relevant for Tx queues.
+ * @flc: FD FLow Context structure
+ * @flc.value: Default FLC value for traffic dequeued from
+ *      this queue.  Please check description of FD
+ *      structure for more information.
+ *      Note that FLC values set using dpni_add_fs_entry,
+ *      if any, take precedence over values per queue.
+ * @flc.stash_control: Boolean, indicates whether the 6 lowest
+ *      - significant bits are used for stash control.
+ *      significant bits are used for stash control.  If set, the 6
+ *      least significant bits in value are interpreted as follows:
+ *      - bits 0-1: indicates the number of 64 byte units of context
+ *      that are stashed.  FLC value is interpreted as a memory address
+ *      in this case, excluding the 6 LS bits.
+ *      - bits 2-3: indicates the number of 64 byte units of frame
+ *      annotation to be stashed.  Annotation is placed at FD[ADDR].
+ *      - bits 4-5: indicates the number of 64 byte units of frame
+ *      data to be stashed.  Frame data is placed at FD[ADDR] +
+ *      FD[OFFSET].
+ *      For more details check the Frame Descriptor section in the
+ *      hardware documentation.
  */
 struct dpni_queue {
-	/**
-	 * struct destination - Destination structure
-	 * @id:	ID of the destination, only relevant if DEST_TYPE is > 0.
-	 *			Identifies either a DPIO or a DPCON object.
-	 *			Not relevant for Tx queues.
-	 * @type:	May be one of the following:
-	 *			0 - No destination, queue can be manually
-	 *				queried, but will not push traffic or
-	 *				notifications to a DPIO;
-	 *			1 - The destination is a DPIO. When traffic
-	 *				becomes available in the queue a FQDAN
-	 *				(FQ data available notification) will be
-	 *				generated to selected DPIO;
-	 *			2 - The destination is a DPCON. The queue is
-	 *				associated with a DPCON object for the
-	 *				purpose of scheduling between multiple
-	 *				queues. The DPCON may be independently
-	 *				configured to generate notifications.
-	 *				Not relevant for Tx queues.
-	 * @hold_active: Hold active, maintains a queue scheduled for longer
-	 *		in a DPIO during dequeue to reduce spread of traffic.
-	 *		Only relevant if queues are
-	 *		not affined to a single DPIO.
-	 */
 	struct {
 		uint16_t id;
 		enum dpni_dest type;
@@ -950,28 +1025,6 @@ struct dpni_queue {
 		uint8_t priority;
 	} destination;
 	uint64_t user_context;
-	/**
-	 * struct flc - FD FLow Context structure
-	 * @value: Default FLC value for traffic dequeued from
-	 *      this queue.  Please check description of FD
-	 *      structure for more information.
-	 *      Note that FLC values set using dpni_add_fs_entry,
-	 *      if any, take precedence over values per queue.
-	 * @stash_control: Boolean, indicates whether the 6 lowest
-	 *      - significant bits are used for stash control.
-	 *      significant bits are used for stash control.  If set, the 6
-	 *      least significant bits in value are interpreted as follows:
-	 *      - bits 0-1: indicates the number of 64 byte units of context
-	 *      that are stashed.  FLC value is interpreted as a memory address
-	 *      in this case, excluding the 6 LS bits.
-	 *      - bits 2-3: indicates the number of 64 byte units of frame
-	 *      annotation to be stashed.  Annotation is placed at FD[ADDR].
-	 *      - bits 4-5: indicates the number of 64 byte units of frame
-	 *      data to be stashed.  Frame data is placed at FD[ADDR] +
-	 *      FD[OFFSET].
-	 *      For more details check the Frame Descriptor section in the
-	 *      hardware documentation.
-	 */
 	struct {
 		uint64_t value;
 		char stash_control;
@@ -1132,4 +1185,21 @@ int dpni_get_taildrop(struct fsl_mc_io *mc_io,
 		      uint8_t tc,
 		      uint8_t q_index,
 		      struct dpni_taildrop *taildrop);
+
+int dpni_set_opr(struct fsl_mc_io *mc_io,
+		 uint32_t cmd_flags,
+		 uint16_t token,
+		 uint8_t tc,
+		 uint8_t index,
+		 uint8_t options,
+		 struct opr_cfg *cfg);
+
+int dpni_get_opr(struct fsl_mc_io *mc_io,
+		 uint32_t cmd_flags,
+		 uint16_t token,
+		 uint8_t tc,
+		 uint8_t index,
+		 struct opr_cfg *cfg,
+		 struct opr_qry *qry);
+
 #endif /* __FSL_DPNI_H */
