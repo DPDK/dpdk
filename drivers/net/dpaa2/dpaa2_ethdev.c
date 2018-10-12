@@ -1786,6 +1786,71 @@ static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.rss_hash_conf_get    = dpaa2_dev_rss_hash_conf_get,
 };
 
+/* Populate the mac address from physically available (u-boot/firmware) and/or
+ * one set by higher layers like MC (restool) etc.
+ * Returns the table of MAC entries (multiple entries)
+ */
+static int
+populate_mac_addr(struct fsl_mc_io *dpni_dev, struct dpaa2_dev_priv *priv,
+		  struct ether_addr *mac_entry)
+{
+	int ret;
+	struct ether_addr phy_mac = {}, prime_mac = {};
+
+	/* Get the physical device MAC address */
+	ret = dpni_get_port_mac_addr(dpni_dev, CMD_PRI_LOW, priv->token,
+				     phy_mac.addr_bytes);
+	if (ret) {
+		DPAA2_PMD_ERR("DPNI get physical port MAC failed: %d", ret);
+		goto cleanup;
+	}
+
+	ret = dpni_get_primary_mac_addr(dpni_dev, CMD_PRI_LOW, priv->token,
+					prime_mac.addr_bytes);
+	if (ret) {
+		DPAA2_PMD_ERR("DPNI get Prime port MAC failed: %d", ret);
+		goto cleanup;
+	}
+
+	/* Now that both MAC have been obtained, do:
+	 *  if not_empty_mac(phy) && phy != Prime, overwrite prime with Phy
+	 *     and return phy
+	 *  If empty_mac(phy), return prime.
+	 *  if both are empty, create random MAC, set as prime and return
+	 */
+	if (!is_zero_ether_addr(&phy_mac)) {
+		/* If the addresses are not same, overwrite prime */
+		if (!is_same_ether_addr(&phy_mac, &prime_mac)) {
+			ret = dpni_set_primary_mac_addr(dpni_dev, CMD_PRI_LOW,
+							priv->token,
+							phy_mac.addr_bytes);
+			if (ret) {
+				DPAA2_PMD_ERR("Unable to set MAC Address: %d",
+					      ret);
+				goto cleanup;
+			}
+			memcpy(&prime_mac, &phy_mac, sizeof(struct ether_addr));
+		}
+	} else if (is_zero_ether_addr(&prime_mac)) {
+		/* In case phys and prime, both are zero, create random MAC */
+		eth_random_addr(prime_mac.addr_bytes);
+		ret = dpni_set_primary_mac_addr(dpni_dev, CMD_PRI_LOW,
+						priv->token,
+						prime_mac.addr_bytes);
+		if (ret) {
+			DPAA2_PMD_ERR("Unable to set MAC Address: %d", ret);
+			goto cleanup;
+		}
+	}
+
+	/* prime_mac the final MAC address */
+	memcpy(mac_entry, &prime_mac, sizeof(struct ether_addr));
+	return 0;
+
+cleanup:
+	return -1;
+}
+
 static int
 dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 {
@@ -1868,7 +1933,10 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 		goto init_err;
 	}
 
-	/* Allocate memory for storing MAC addresses */
+	/* Allocate memory for storing MAC addresses.
+	 * Table of mac_filter_entries size is allocated so that RTE ether lib
+	 * can add MAC entries when rte_eth_dev_mac_addr_add is called.
+	 */
 	eth_dev->data->mac_addrs = rte_zmalloc("dpni",
 		ETHER_ADDR_LEN * attr.mac_filter_entries, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
@@ -1879,12 +1947,11 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 		goto init_err;
 	}
 
-	ret = dpni_get_primary_mac_addr(dpni_dev, CMD_PRI_LOW,
-					priv->token,
-			(uint8_t *)(eth_dev->data->mac_addrs[0].addr_bytes));
+	ret = populate_mac_addr(dpni_dev, priv, &eth_dev->data->mac_addrs[0]);
 	if (ret) {
-		DPAA2_PMD_ERR("DPNI get mac address failed:Err Code = %d",
-			     ret);
+		DPAA2_PMD_ERR("Unable to fetch MAC Address for device");
+		rte_free(eth_dev->data->mac_addrs);
+		eth_dev->data->mac_addrs = NULL;
 		goto init_err;
 	}
 
