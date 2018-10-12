@@ -874,7 +874,8 @@ atl_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 				   "queue_id=%u", (unsigned int)rxq->port_id,
 				   (unsigned int)rxq->queue_id);
 				dev->data->rx_mbuf_alloc_failed++;
-						goto err_stop;
+				adapter->sw_stats.rx_nombuf++;
+				goto err_stop;
 			}
 
 			nb_hold++;
@@ -957,6 +958,9 @@ atl_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		 * of returned packets.
 		 */
 		rx_pkts[nb_rx++] = rx_mbuf_first;
+		adapter->sw_stats.q_ipackets[rxq->queue_id]++;
+		adapter->sw_stats.q_ibytes[rxq->queue_id] +=
+			rx_mbuf_first->pkt_len;
 
 		PMD_RX_LOG(ERR, "add mbuf segs=%d pkt_len=%d",
 			rx_mbuf_first->nb_segs,
@@ -1102,6 +1106,8 @@ static inline void
 atl_xmit_pkt(struct aq_hw_s *hw, struct atl_tx_queue *txq,
 	     struct rte_mbuf *tx_pkt)
 {
+	struct atl_adapter *adapter =
+		ATL_DEV_TO_ADAPTER(&rte_eth_devices[txq->port_id]);
 	uint32_t pay_len = 0;
 	int tail = 0;
 	struct atl_tx_entry *tx_entry;
@@ -1182,6 +1188,9 @@ atl_xmit_pkt(struct aq_hw_s *hw, struct atl_tx_queue *txq,
 	txq->tx_tail = tail;
 
 	txq->tx_free -= desc_count;
+
+	adapter->sw_stats.q_opackets[txq->queue_id]++;
+	adapter->sw_stats.q_obytes[txq->queue_id] += pay_len;
 }
 
 uint16_t

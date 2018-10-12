@@ -13,6 +13,7 @@ Supported features
 ^^^^^^^^^^^^^^^^^^
 
 - Base L2 features
+- Port statistics
 - Checksum offload
 - Jumbo Frame upto 16K
 

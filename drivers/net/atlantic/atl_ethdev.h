@@ -33,6 +33,7 @@ struct atl_interrupt {
 struct atl_adapter {
 	struct aq_hw_s             hw;
 	struct aq_hw_cfg_s         hw_cfg;
+	struct atl_sw_stats        sw_stats;
 	struct atl_interrupt       intr;
 };
 

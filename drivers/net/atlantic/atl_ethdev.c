@@ -24,6 +24,18 @@ static void atl_dev_close(struct rte_eth_dev *dev);
 static int  atl_dev_reset(struct rte_eth_dev *dev);
 static int  atl_dev_link_update(struct rte_eth_dev *dev, int wait);
 
+static int atl_dev_xstats_get_names(struct rte_eth_dev *dev __rte_unused,
+				    struct rte_eth_xstat_name *xstats_names,
+				    unsigned int size);
+
+static int atl_dev_stats_get(struct rte_eth_dev *dev,
+				struct rte_eth_stats *stats);
+
+static int atl_dev_xstats_get(struct rte_eth_dev *dev,
+			      struct rte_eth_xstat *stats, unsigned int n);
+
+static void atl_dev_stats_reset(struct rte_eth_dev *dev);
+
 static int atl_fw_version_get(struct rte_eth_dev *dev, char *fw_version,
 			      size_t fw_size);
 
@@ -116,6 +128,33 @@ static const struct rte_eth_desc_lim tx_desc_lim = {
 	.nb_mtu_seg_max = ATL_TX_MAX_SEG,
 };
 
+#define ATL_XSTATS_FIELD(name) { \
+	#name, \
+	offsetof(struct aq_stats_s, name) \
+}
+
+struct atl_xstats_tbl_s {
+	const char *name;
+	unsigned int offset;
+};
+
+static struct atl_xstats_tbl_s atl_xstats_tbl[] = {
+	ATL_XSTATS_FIELD(uprc),
+	ATL_XSTATS_FIELD(mprc),
+	ATL_XSTATS_FIELD(bprc),
+	ATL_XSTATS_FIELD(erpt),
+	ATL_XSTATS_FIELD(uptc),
+	ATL_XSTATS_FIELD(mptc),
+	ATL_XSTATS_FIELD(bptc),
+	ATL_XSTATS_FIELD(erpr),
+	ATL_XSTATS_FIELD(ubrc),
+	ATL_XSTATS_FIELD(ubtc),
+	ATL_XSTATS_FIELD(mbrc),
+	ATL_XSTATS_FIELD(mbtc),
+	ATL_XSTATS_FIELD(bbrc),
+	ATL_XSTATS_FIELD(bbtc),
+};
+
 static const struct eth_dev_ops atl_eth_dev_ops = {
 	.dev_configure	      = atl_dev_configure,
 	.dev_start	      = atl_dev_start,
@@ -127,6 +166,13 @@ static const struct eth_dev_ops atl_eth_dev_ops = {
 
 	/* Link */
 	.link_update	      = atl_dev_link_update,
+
+	/* Stats */
+	.stats_get	      = atl_dev_stats_get,
+	.xstats_get	      = atl_dev_xstats_get,
+	.xstats_get_names     = atl_dev_xstats_get_names,
+	.stats_reset	      = atl_dev_stats_reset,
+	.xstats_reset	      = atl_dev_stats_reset,
 
 	.fw_version_get       = atl_fw_version_get,
 	.dev_infos_get	      = atl_dev_info_get,
@@ -223,6 +269,9 @@ eth_atl_dev_init(struct rte_eth_dev *eth_dev)
 	if (hw->aq_fw_ops->get_mac_permanent(hw,
 			eth_dev->data->mac_addrs->addr_bytes) != 0)
 		return -EINVAL;
+
+	/* Reset the hw statistics */
+	atl_dev_stats_reset(eth_dev);
 
 	rte_intr_callback_register(intr_handle,
 				   atl_dev_interrupt_handler, eth_dev);
@@ -540,6 +589,90 @@ atl_dev_reset(struct rte_eth_dev *dev)
 	ret = eth_atl_dev_init(dev);
 
 	return ret;
+}
+
+
+static int
+atl_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+{
+	struct atl_adapter *adapter = ATL_DEV_TO_ADAPTER(dev);
+	struct aq_hw_s *hw = &adapter->hw;
+	struct atl_sw_stats *swstats = &adapter->sw_stats;
+	unsigned int i;
+
+	hw->aq_fw_ops->update_stats(hw);
+
+	/* Fill out the rte_eth_stats statistics structure */
+	stats->ipackets = hw->curr_stats.dma_pkt_rc;
+	stats->ibytes = hw->curr_stats.dma_oct_rc;
+	stats->imissed = hw->curr_stats.dpc;
+	stats->ierrors = hw->curr_stats.erpt;
+
+	stats->opackets = hw->curr_stats.dma_pkt_tc;
+	stats->obytes = hw->curr_stats.dma_oct_tc;
+	stats->oerrors = 0;
+
+	stats->rx_nombuf = swstats->rx_nombuf;
+
+	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS; i++) {
+		stats->q_ipackets[i] = swstats->q_ipackets[i];
+		stats->q_opackets[i] = swstats->q_opackets[i];
+		stats->q_ibytes[i] = swstats->q_ibytes[i];
+		stats->q_obytes[i] = swstats->q_obytes[i];
+		stats->q_errors[i] = swstats->q_errors[i];
+	}
+	return 0;
+}
+
+static void
+atl_dev_stats_reset(struct rte_eth_dev *dev)
+{
+	struct atl_adapter *adapter = ATL_DEV_TO_ADAPTER(dev);
+	struct aq_hw_s *hw = &adapter->hw;
+
+	hw->aq_fw_ops->update_stats(hw);
+
+	/* Reset software totals */
+	memset(&hw->curr_stats, 0, sizeof(hw->curr_stats));
+
+	memset(&adapter->sw_stats, 0, sizeof(adapter->sw_stats));
+}
+
+static int
+atl_dev_xstats_get_names(struct rte_eth_dev *dev __rte_unused,
+			 struct rte_eth_xstat_name *xstats_names,
+			 unsigned int size)
+{
+	unsigned int i;
+
+	if (!xstats_names)
+		return RTE_DIM(atl_xstats_tbl);
+
+	for (i = 0; i < size && i < RTE_DIM(atl_xstats_tbl); i++)
+		snprintf(xstats_names[i].name, RTE_ETH_XSTATS_NAME_SIZE, "%s",
+			atl_xstats_tbl[i].name);
+
+	return size;
+}
+
+static int
+atl_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *stats,
+		   unsigned int n)
+{
+	struct atl_adapter *adapter = ATL_DEV_TO_ADAPTER(dev);
+	struct aq_hw_s *hw = &adapter->hw;
+	unsigned int i;
+
+	if (!stats)
+		return 0;
+
+	for (i = 0; i < n && i < RTE_DIM(atl_xstats_tbl); i++) {
+		stats[i].id = i;
+		stats[i].value = *(u64 *)((uint8_t *)&hw->curr_stats +
+					atl_xstats_tbl[i].offset);
+	}
+
+	return n;
 }
 
 static int

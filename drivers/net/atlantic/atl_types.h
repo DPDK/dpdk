@@ -140,4 +140,45 @@ struct aq_fw_ops {
 	int (*set_eeprom)(struct aq_hw_s *self, u32 *data, u32 len);
 };
 
+struct atl_sw_stats {
+	u64 crcerrs;
+	u64 errbc;
+	u64 mspdc;
+	u64 mpctotal;
+	u64 mpc[8];
+	u64 mlfc;
+	u64 mrfc;
+	u64 rlec;
+	u64 lxontxc;
+	u64 lxonrxc;
+	u64 lxofftxc;
+	u64 lxoffrxc;
+	u64 pxontxc[8];
+	u64 pxonrxc[8];
+	u64 pxofftxc[8];
+	u64 pxoffrxc[8];
+	u64 gprc;
+	u64 bprc;
+	u64 mprc;
+	u64 gptc;
+	u64 gorc;
+	u64 gotc;
+	u64 tor;
+	u64 tpr;
+	u64 tpt;
+	u64 mptc;
+	u64 bptc;
+	u64 xec;
+	u64 fccrc;
+	u64 ldpcec;
+	u64 pcrc8ec;
+
+	u64 rx_nombuf;
+	u64 q_ipackets[RTE_ETHDEV_QUEUE_STAT_CNTRS];
+	u64 q_opackets[RTE_ETHDEV_QUEUE_STAT_CNTRS];
+	u64 q_ibytes[RTE_ETHDEV_QUEUE_STAT_CNTRS];
+	u64 q_obytes[RTE_ETHDEV_QUEUE_STAT_CNTRS];
+	u64 q_errors[RTE_ETHDEV_QUEUE_STAT_CNTRS];
+};
+
 #endif
