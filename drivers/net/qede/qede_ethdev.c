@@ -1380,14 +1380,11 @@ qede_link_update(struct rte_eth_dev *eth_dev, __rte_unused int wait_to_complete)
 
 static void qede_promiscuous_enable(struct rte_eth_dev *eth_dev)
 {
-#ifdef RTE_LIBRTE_QEDE_DEBUG_INIT
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
+	enum qed_filter_rx_mode_type type = QED_FILTER_RX_MODE_TYPE_PROMISC;
 
 	PMD_INIT_FUNC_TRACE(edev);
-#endif
-
-	enum qed_filter_rx_mode_type type = QED_FILTER_RX_MODE_TYPE_PROMISC;
 
 	if (rte_eth_allmulticast_get(eth_dev->data->port_id) == 1)
 		type |= QED_FILTER_RX_MODE_TYPE_MULTI_PROMISC;
@@ -1397,12 +1394,10 @@ static void qede_promiscuous_enable(struct rte_eth_dev *eth_dev)
 
 static void qede_promiscuous_disable(struct rte_eth_dev *eth_dev)
 {
-#ifdef RTE_LIBRTE_QEDE_DEBUG_INIT
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
 
 	PMD_INIT_FUNC_TRACE(edev);
-#endif
 
 	if (rte_eth_allmulticast_get(eth_dev->data->port_id) == 1)
 		qed_configure_filter_rx_mode(eth_dev,
@@ -2648,12 +2643,10 @@ static int qede_eth_dev_init(struct rte_eth_dev *eth_dev)
 
 static int qede_dev_common_uninit(struct rte_eth_dev *eth_dev)
 {
-#ifdef RTE_LIBRTE_QEDE_DEBUG_INIT
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
 
 	PMD_INIT_FUNC_TRACE(edev);
-#endif
 
 	/* only uninitialize in the primary process */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
