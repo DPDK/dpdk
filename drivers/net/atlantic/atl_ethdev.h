@@ -29,11 +29,16 @@ struct atl_adapter {
  * RX/TX function prototypes
  */
 void atl_rx_queue_release(void *rxq);
+void atl_tx_queue_release(void *txq);
 
 int atl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 		uint16_t nb_rx_desc, unsigned int socket_id,
 		const struct rte_eth_rxconf *rx_conf,
 		struct rte_mempool *mb_pool);
+
+int atl_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
+		uint16_t nb_tx_desc, unsigned int socket_id,
+		const struct rte_eth_txconf *tx_conf);
 
 int atl_rx_init(struct rte_eth_dev *dev);
 int atl_tx_init(struct rte_eth_dev *dev);
@@ -45,6 +50,8 @@ void atl_free_queues(struct rte_eth_dev *dev);
 int atl_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int atl_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 
+int atl_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
+int atl_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 
 uint16_t atl_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts);

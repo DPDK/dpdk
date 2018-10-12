@@ -4,6 +4,7 @@
 
 #include <rte_malloc.h>
 #include <rte_ethdev_driver.h>
+#include <rte_net.h>
 
 #include "atl_ethdev.h"
 #include "atl_hw_regs.h"
@@ -13,11 +14,34 @@
 #include "hw_atl/hw_atl_b0.h"
 #include "hw_atl/hw_atl_b0_internal.h"
 
+#define ATL_TX_CKSUM_OFFLOAD_MASK (			 \
+	PKT_TX_IP_CKSUM |				 \
+	PKT_TX_L4_MASK |				 \
+	PKT_TX_TCP_SEG)
+
+#define ATL_TX_OFFLOAD_MASK (				 \
+	PKT_TX_VLAN |					 \
+	PKT_TX_IP_CKSUM |				 \
+	PKT_TX_L4_MASK |				 \
+	PKT_TX_TCP_SEG)
+
+#define ATL_TX_OFFLOAD_NOTSUP_MASK \
+	(PKT_TX_OFFLOAD_MASK ^ ATL_TX_OFFLOAD_MASK)
+
 /**
  * Structure associated with each descriptor of the RX ring of a RX queue.
  */
 struct atl_rx_entry {
 	struct rte_mbuf *mbuf;
+};
+
+/**
+ * Structure associated with each descriptor of the TX ring of a TX queue.
+ */
+struct atl_tx_entry {
+	struct rte_mbuf *mbuf;
+	uint16_t next_id;
+	uint16_t last_id;
 };
 
 /**
@@ -37,6 +61,22 @@ struct atl_rx_queue {
 	uint16_t		buff_size;
 	bool			l3_csum_enabled;
 	bool			l4_csum_enabled;
+};
+
+/**
+ * Structure associated with each TX queue.
+ */
+struct atl_tx_queue {
+	struct hw_atl_txd_s	*hw_ring;
+	uint64_t		hw_ring_phys_addr;
+	struct atl_tx_entry	*sw_ring;
+	uint16_t		nb_tx_desc;
+	uint16_t		tx_tail;
+	uint16_t		tx_head;
+	uint16_t		queue_id;
+	uint16_t		port_id;
+	uint16_t		tx_free_thresh;
+	uint16_t		tx_free;
 };
 
 static inline void
@@ -147,10 +187,149 @@ atl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 	return 0;
 }
 
-int
-atl_tx_init(struct rte_eth_dev *eth_dev __rte_unused)
+static inline void
+atl_reset_tx_queue(struct atl_tx_queue *txq)
 {
+	struct atl_tx_entry *tx_entry;
+	union hw_atl_txc_s *txc;
+	uint16_t i;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (!txq) {
+		PMD_DRV_LOG(ERR, "Pointer to txq is NULL");
+		return;
+	}
+
+	tx_entry = txq->sw_ring;
+
+	for (i = 0; i < txq->nb_tx_desc; i++) {
+		txc = (union hw_atl_txc_s *)&txq->hw_ring[i];
+		txc->flags1 = 0;
+		txc->flags2 = 2;
+	}
+
+	for (i = 0; i < txq->nb_tx_desc; i++) {
+		txq->hw_ring[i].dd = 1;
+		tx_entry[i].mbuf = NULL;
+	}
+
+	txq->tx_tail = 0;
+	txq->tx_head = 0;
+	txq->tx_free = txq->nb_tx_desc - 1;
+}
+
+int
+atl_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
+		   uint16_t nb_tx_desc, unsigned int socket_id,
+		   const struct rte_eth_txconf *tx_conf)
+{
+	struct atl_tx_queue *txq;
+	const struct rte_memzone *mz;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* make sure a valid number of descriptors have been requested */
+	if (nb_tx_desc < AQ_HW_MIN_TX_RING_SIZE ||
+		nb_tx_desc > AQ_HW_MAX_TX_RING_SIZE) {
+		PMD_INIT_LOG(ERR, "Number of Tx descriptors must be "
+			"less than or equal to %d, "
+			"greater than or equal to %d", AQ_HW_MAX_TX_RING_SIZE,
+			AQ_HW_MIN_TX_RING_SIZE);
+		return -EINVAL;
+	}
+
+	/*
+	 * if this queue existed already, free the associated memory. The
+	 * queue cannot be reused in case we need to allocate memory on
+	 * different socket than was previously used.
+	 */
+	if (dev->data->tx_queues[tx_queue_id] != NULL) {
+		atl_tx_queue_release(dev->data->tx_queues[tx_queue_id]);
+		dev->data->tx_queues[tx_queue_id] = NULL;
+	}
+
+	/* allocate memory for the queue structure */
+	txq = rte_zmalloc_socket("atlantic Tx queue", sizeof(*txq),
+				 RTE_CACHE_LINE_SIZE, socket_id);
+	if (txq == NULL) {
+		PMD_INIT_LOG(ERR, "Cannot allocate queue structure");
+		return -ENOMEM;
+	}
+
+	/* setup queue */
+	txq->nb_tx_desc = nb_tx_desc;
+	txq->port_id = dev->data->port_id;
+	txq->queue_id = tx_queue_id;
+	txq->tx_free_thresh = tx_conf->tx_free_thresh;
+
+
+	/* allocate memory for the software ring */
+	txq->sw_ring = rte_zmalloc_socket("atlantic sw tx ring",
+				nb_tx_desc * sizeof(struct atl_tx_entry),
+				RTE_CACHE_LINE_SIZE, socket_id);
+	if (txq->sw_ring == NULL) {
+		PMD_INIT_LOG(ERR,
+			"Port %d: Cannot allocate software ring for queue %d",
+			txq->port_id, txq->queue_id);
+		rte_free(txq);
+		return -ENOMEM;
+	}
+
+	/*
+	 * allocate memory for the hardware descriptor ring. A memzone large
+	 * enough to hold the maximum ring size is requested to allow for
+	 * resizing in later calls to the queue setup function.
+	 */
+	mz = rte_eth_dma_zone_reserve(dev, "tx hw_ring", tx_queue_id,
+				HW_ATL_B0_MAX_TXD * sizeof(struct hw_atl_txd_s),
+				128, socket_id);
+	if (mz == NULL) {
+		PMD_INIT_LOG(ERR,
+			"Port %d: Cannot allocate hardware ring for queue %d",
+			txq->port_id, txq->queue_id);
+		rte_free(txq->sw_ring);
+		rte_free(txq);
+		return -ENOMEM;
+	}
+	txq->hw_ring = mz->addr;
+	txq->hw_ring_phys_addr = mz->iova;
+
+	atl_reset_tx_queue(txq);
+
+	dev->data->tx_queues[tx_queue_id] = txq;
 	return 0;
+}
+
+int
+atl_tx_init(struct rte_eth_dev *eth_dev)
+{
+	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	struct atl_tx_queue *txq;
+	uint64_t base_addr = 0;
+	int i = 0;
+	int err = 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+		txq = eth_dev->data->tx_queues[i];
+		base_addr = txq->hw_ring_phys_addr;
+
+		err = hw_atl_b0_hw_ring_tx_init(hw, base_addr,
+						txq->queue_id,
+						txq->nb_tx_desc, 0,
+						txq->port_id);
+
+		if (err) {
+			PMD_INIT_LOG(ERR,
+				"Port %d: Cannot init TX queue %d",
+				txq->port_id, txq->queue_id);
+			break;
+		}
+	}
+
+	return err;
 }
 
 int
@@ -325,12 +504,75 @@ atl_rx_queue_release(void *rx_queue)
 	}
 }
 
-uint16_t
-atl_prep_pkts(void *tx_queue __rte_unused,
-	      struct rte_mbuf **tx_pkts __rte_unused,
-	      uint16_t nb_pkts __rte_unused)
+static void
+atl_tx_queue_release_mbufs(struct atl_tx_queue *txq)
 {
+	int i;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (txq->sw_ring != NULL) {
+		for (i = 0; i < txq->nb_tx_desc; i++) {
+			if (txq->sw_ring[i].mbuf != NULL) {
+				rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
+				txq->sw_ring[i].mbuf = NULL;
+			}
+		}
+	}
+}
+
+int
+atl_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (tx_queue_id < dev->data->nb_tx_queues) {
+		hw_atl_b0_hw_ring_tx_start(hw, tx_queue_id);
+
+		rte_wmb();
+		hw_atl_b0_hw_tx_ring_tail_update(hw, 0, tx_queue_id);
+		dev->data->tx_queue_state[tx_queue_id] =
+			RTE_ETH_QUEUE_STATE_STARTED;
+	} else {
+		return -1;
+	}
+
 	return 0;
+}
+
+int
+atl_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct atl_tx_queue *txq;
+
+	PMD_INIT_FUNC_TRACE();
+
+	txq = dev->data->tx_queues[tx_queue_id];
+
+	hw_atl_b0_hw_ring_tx_stop(hw, tx_queue_id);
+
+	atl_tx_queue_release_mbufs(txq);
+	atl_reset_tx_queue(txq);
+	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	return 0;
+}
+
+void
+atl_tx_queue_release(void *tx_queue)
+{
+	PMD_INIT_FUNC_TRACE();
+
+	if (tx_queue != NULL) {
+		struct atl_tx_queue *txq = (struct atl_tx_queue *)tx_queue;
+
+		atl_tx_queue_release_mbufs(txq);
+		rte_free(txq->sw_ring);
+		rte_free(txq);
+	}
 }
 
 void
@@ -345,6 +587,12 @@ atl_free_queues(struct rte_eth_dev *dev)
 		dev->data->rx_queues[i] = 0;
 	}
 	dev->data->nb_rx_queues = 0;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		atl_tx_queue_release(dev->data->tx_queues[i]);
+		dev->data->tx_queues[i] = 0;
+	}
+	dev->data->nb_tx_queues = 0;
 }
 
 int
@@ -353,6 +601,15 @@ atl_start_queues(struct rte_eth_dev *dev)
 	int i;
 
 	PMD_INIT_FUNC_TRACE();
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		if (atl_tx_queue_start(dev, i) != 0) {
+			PMD_DRV_LOG(ERR,
+				"Port %d: Start Tx queue %d failed",
+				dev->data->port_id, i);
+			return -1;
+		}
+	}
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		if (atl_rx_queue_start(dev, i) != 0) {
@@ -373,6 +630,15 @@ atl_stop_queues(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		if (atl_tx_queue_stop(dev, i) != 0) {
+			PMD_DRV_LOG(ERR,
+				"Port %d: Stop Tx queue %d failed",
+				dev->data->port_id, i);
+			return -1;
+		}
+	}
+
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		if (atl_rx_queue_stop(dev, i) != 0) {
 			PMD_DRV_LOG(ERR,
@@ -383,6 +649,47 @@ atl_stop_queues(struct rte_eth_dev *dev)
 	}
 
 	return 0;
+}
+
+uint16_t
+atl_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
+	      uint16_t nb_pkts)
+{
+	int i, ret;
+	uint64_t ol_flags;
+	struct rte_mbuf *m;
+
+	PMD_INIT_FUNC_TRACE();
+
+	for (i = 0; i < nb_pkts; i++) {
+		m = tx_pkts[i];
+		ol_flags = m->ol_flags;
+
+		if (m->nb_segs > AQ_HW_MAX_SEGS_SIZE) {
+			rte_errno = -EINVAL;
+			return i;
+		}
+
+		if (ol_flags & ATL_TX_OFFLOAD_NOTSUP_MASK) {
+			rte_errno = -ENOTSUP;
+			return i;
+		}
+
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+		ret = rte_validate_tx_offload(m);
+		if (ret != 0) {
+			rte_errno = ret;
+			return i;
+		}
+#endif
+		ret = rte_net_intel_cksum_prepare(m);
+		if (ret != 0) {
+			rte_errno = ret;
+			return i;
+		}
+	}
+
+	return i;
 }
 
 static uint64_t
@@ -653,12 +960,233 @@ err_stop:
 	return nb_rx;
 }
 
+static void
+atl_xmit_cleanup(struct atl_tx_queue *txq)
+{
+	struct atl_tx_entry *sw_ring;
+	struct hw_atl_txd_s *txd;
+	int to_clean = 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (txq != NULL) {
+		sw_ring = txq->sw_ring;
+		int head = txq->tx_head;
+		int cnt;
+		int i;
+
+		for (i = 0, cnt = head; ; i++) {
+			txd = &txq->hw_ring[cnt];
+
+			if (txd->dd)
+				to_clean++;
+
+			cnt = (cnt + 1) % txq->nb_tx_desc;
+			if (cnt == txq->tx_tail)
+				break;
+		}
+
+		if (to_clean == 0)
+			return;
+
+		while (to_clean) {
+			txd = &txq->hw_ring[head];
+
+			struct atl_tx_entry *rx_entry = &sw_ring[head];
+
+			if (rx_entry->mbuf) {
+				rte_pktmbuf_free_seg(rx_entry->mbuf);
+				rx_entry->mbuf = NULL;
+			}
+
+			if (txd->dd)
+				to_clean--;
+
+			txd->buf_addr = 0;
+			txd->flags = 0;
+
+			head = (head + 1) % txq->nb_tx_desc;
+			txq->tx_free++;
+		}
+
+		txq->tx_head = head;
+	}
+}
+
+static int
+atl_tso_setup(struct rte_mbuf *tx_pkt, union hw_atl_txc_s *txc)
+{
+	uint32_t tx_cmd = 0;
+	uint64_t ol_flags = tx_pkt->ol_flags;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (ol_flags & PKT_TX_TCP_SEG) {
+		PMD_DRV_LOG(DEBUG, "xmit TSO pkt");
+
+		tx_cmd |= tx_desc_cmd_lso | tx_desc_cmd_l4cs;
+
+		txc->cmd = 0x4;
+
+		if (ol_flags & PKT_TX_IPV6)
+			txc->cmd |= 0x2;
+
+		txc->l2_len = tx_pkt->l2_len;
+		txc->l3_len = tx_pkt->l3_len;
+		txc->l4_len = tx_pkt->l4_len;
+
+		txc->mss_len = tx_pkt->tso_segsz;
+	}
+
+	if (ol_flags & PKT_TX_VLAN) {
+		tx_cmd |= tx_desc_cmd_vlan;
+		txc->vlan_tag = tx_pkt->vlan_tci;
+	}
+
+	if (tx_cmd) {
+		txc->type = tx_desc_type_ctx;
+		txc->idx = 0;
+	}
+
+	return tx_cmd;
+}
+
+static inline void
+atl_setup_csum_offload(struct rte_mbuf *mbuf, struct hw_atl_txd_s *txd,
+		       uint32_t tx_cmd)
+{
+	txd->cmd |= tx_desc_cmd_fcs;
+	txd->cmd |= (mbuf->ol_flags & PKT_TX_IP_CKSUM) ? tx_desc_cmd_ipv4 : 0;
+	/* L4 csum requested */
+	txd->cmd |= (mbuf->ol_flags & PKT_TX_L4_MASK) ? tx_desc_cmd_l4cs : 0;
+	txd->cmd |= tx_cmd;
+}
+
+static inline void
+atl_xmit_pkt(struct aq_hw_s *hw, struct atl_tx_queue *txq,
+	     struct rte_mbuf *tx_pkt)
+{
+	uint32_t pay_len = 0;
+	int tail = 0;
+	struct atl_tx_entry *tx_entry;
+	uint64_t buf_dma_addr;
+	struct rte_mbuf *m_seg;
+	union hw_atl_txc_s *txc = NULL;
+	struct hw_atl_txd_s *txd = NULL;
+	u32 tx_cmd = 0U;
+	int desc_count = 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	tail = txq->tx_tail;
+
+	txc = (union hw_atl_txc_s *)&txq->hw_ring[tail];
+
+	txc->flags1 = 0U;
+	txc->flags2 = 0U;
+
+	tx_cmd = atl_tso_setup(tx_pkt, txc);
+
+	if (tx_cmd) {
+		/* We've consumed the first desc, adjust counters */
+		tail = (tail + 1) % txq->nb_tx_desc;
+		txq->tx_tail = tail;
+		txq->tx_free -= 1;
+
+		txd = &txq->hw_ring[tail];
+		txd->flags = 0U;
+	} else {
+		txd = (struct hw_atl_txd_s *)txc;
+	}
+
+	txd->ct_en = !!tx_cmd;
+
+	txd->type = tx_desc_type_desc;
+
+	atl_setup_csum_offload(tx_pkt, txd, tx_cmd);
+
+	if (tx_cmd)
+		txd->ct_idx = 0;
+
+	pay_len = tx_pkt->pkt_len;
+
+	txd->pay_len = pay_len;
+
+	for (m_seg = tx_pkt; m_seg; m_seg = m_seg->next) {
+		if (desc_count > 0) {
+			txd = &txq->hw_ring[tail];
+			txd->flags = 0U;
+		}
+
+		buf_dma_addr = rte_mbuf_data_iova(m_seg);
+		txd->buf_addr = rte_cpu_to_le_64(buf_dma_addr);
+
+		txd->type = tx_desc_type_desc;
+		txd->len = m_seg->data_len;
+		txd->pay_len = pay_len;
+
+		/* Store mbuf for freeing later */
+		tx_entry = &txq->sw_ring[tail];
+
+		if (tx_entry->mbuf)
+			rte_pktmbuf_free_seg(tx_entry->mbuf);
+		tx_entry->mbuf = m_seg;
+
+		tail = (tail + 1) % txq->nb_tx_desc;
+
+		desc_count++;
+	}
+
+	// Last descriptor requires EOP and WB
+	txd->eop = 1U;
+	txd->cmd |= tx_desc_cmd_wb;
+
+	hw_atl_b0_hw_tx_ring_tail_update(hw, tail, txq->queue_id);
+
+	txq->tx_tail = tail;
+
+	txq->tx_free -= desc_count;
+}
 
 uint16_t
-atl_xmit_pkts(void *tx_queue __rte_unused,
-	      struct rte_mbuf **tx_pkts __rte_unused,
-	      uint16_t nb_pkts __rte_unused)
+atl_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
-	return 0;
+	struct rte_eth_dev *dev = NULL;
+	struct aq_hw_s *hw = NULL;
+	struct atl_tx_queue *txq = tx_queue;
+	struct rte_mbuf *tx_pkt;
+	uint16_t nb_tx;
+
+	dev = &rte_eth_devices[txq->port_id];
+	hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	PMD_TX_LOG(DEBUG,
+		"port %d txq %d pkts: %d tx_free=%d tx_tail=%d tx_head=%d",
+		txq->port_id, txq->queue_id, nb_pkts, txq->tx_free,
+		txq->tx_tail, txq->tx_head);
+
+	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
+		tx_pkt = *tx_pkts++;
+
+		/* Clean Tx queue if needed */
+		if (txq->tx_free < txq->tx_free_thresh)
+			atl_xmit_cleanup(txq);
+
+		/* Check if we have enough free descriptors */
+		if (txq->tx_free < tx_pkt->nb_segs)
+			break;
+
+		/* check mbuf is valid */
+		if ((tx_pkt->nb_segs == 0) ||
+			((tx_pkt->nb_segs > 1) && (tx_pkt->next == NULL)))
+			break;
+
+		/* Send the packet */
+		atl_xmit_pkt(hw, txq, tx_pkt);
+	}
+
+	PMD_TX_LOG(DEBUG, "atl_xmit_pkts %d transmitted", nb_tx);
+
+	return nb_tx;
 }
 

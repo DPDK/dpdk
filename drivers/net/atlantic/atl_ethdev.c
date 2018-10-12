@@ -82,10 +82,25 @@ static struct rte_pci_driver rte_atl_pmd = {
 			| DEV_RX_OFFLOAD_TCP_CKSUM \
 			| DEV_RX_OFFLOAD_JUMBO_FRAME)
 
+#define ATL_TX_OFFLOADS (DEV_TX_OFFLOAD_VLAN_INSERT \
+			| DEV_TX_OFFLOAD_IPV4_CKSUM \
+			| DEV_TX_OFFLOAD_UDP_CKSUM \
+			| DEV_TX_OFFLOAD_TCP_CKSUM \
+			| DEV_TX_OFFLOAD_TCP_TSO \
+			| DEV_TX_OFFLOAD_MULTI_SEGS)
+
 static const struct rte_eth_desc_lim rx_desc_lim = {
 	.nb_max = ATL_MAX_RING_DESC,
 	.nb_min = ATL_MIN_RING_DESC,
 	.nb_align = ATL_RXD_ALIGN,
+};
+
+static const struct rte_eth_desc_lim tx_desc_lim = {
+	.nb_max = ATL_MAX_RING_DESC,
+	.nb_min = ATL_MIN_RING_DESC,
+	.nb_align = ATL_TXD_ALIGN,
+	.nb_seg_max = ATL_TX_MAX_SEG,
+	.nb_mtu_seg_max = ATL_TX_MAX_SEG,
 };
 
 static const struct eth_dev_ops atl_eth_dev_ops = {
@@ -104,6 +119,11 @@ static const struct eth_dev_ops atl_eth_dev_ops = {
 	.rx_queue_stop	      = atl_rx_queue_stop,
 	.rx_queue_setup       = atl_rx_queue_setup,
 	.rx_queue_release     = atl_rx_queue_release,
+
+	.tx_queue_start	      = atl_tx_queue_start,
+	.tx_queue_stop	      = atl_tx_queue_stop,
+	.tx_queue_setup       = atl_tx_queue_setup,
+	.tx_queue_release     = atl_tx_queue_release,
 };
 
 static inline int32_t
@@ -350,11 +370,19 @@ atl_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->rx_offload_capa = ATL_RX_OFFLOADS;
 
+	dev_info->tx_offload_capa = ATL_TX_OFFLOADS;
+
+
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_free_thresh = ATL_DEFAULT_RX_FREE_THRESH,
 	};
 
+	dev_info->default_txconf = (struct rte_eth_txconf) {
+		.tx_free_thresh = ATL_DEFAULT_TX_FREE_THRESH,
+	};
+
 	dev_info->rx_desc_lim = rx_desc_lim;
+	dev_info->tx_desc_lim = tx_desc_lim;
 }
 
 static const uint32_t *
