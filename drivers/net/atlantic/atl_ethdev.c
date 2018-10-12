@@ -48,6 +48,12 @@ static void atl_dev_info_get(struct rte_eth_dev *dev,
 
 static const uint32_t *atl_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 
+/* Flow control */
+static int atl_flow_ctrl_get(struct rte_eth_dev *dev,
+			       struct rte_eth_fc_conf *fc_conf);
+static int atl_flow_ctrl_set(struct rte_eth_dev *dev,
+			       struct rte_eth_fc_conf *fc_conf);
+
 static void atl_dev_link_status_print(struct rte_eth_dev *dev);
 
 /* Interrupts */
@@ -219,6 +225,10 @@ static const struct eth_dev_ops atl_eth_dev_ops = {
 	.rx_descriptor_status = atl_dev_rx_descriptor_status,
 	.tx_descriptor_status = atl_dev_tx_descriptor_status,
 
+	/* Flow Control */
+	.flow_ctrl_get	      = atl_flow_ctrl_get,
+	.flow_ctrl_set	      = atl_flow_ctrl_set,
+
 	.rxq_info_get	      = atl_rxq_info_get,
 	.txq_info_get	      = atl_txq_info_get,
 
@@ -287,6 +297,7 @@ eth_atl_dev_init(struct rte_eth_dev *eth_dev)
 			  AQ_NIC_RATE_1G |
 			  AQ_NIC_RATE_100M;
 
+	adapter->hw_cfg.flow_control = (AQ_NIC_FC_RX | AQ_NIC_FC_TX);
 	adapter->hw_cfg.aq_rss.indirection_table_size =
 		HW_ATL_B0_RSS_REDIRECTION_MAX;
 
@@ -1024,6 +1035,49 @@ atl_dev_interrupt_handler(void *param)
 
 	atl_dev_interrupt_get_status(dev);
 	atl_dev_interrupt_action(dev, dev->intr_handle);
+}
+
+
+static int
+atl_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
+{
+	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (hw->aq_nic_cfg->flow_control == AQ_NIC_FC_OFF)
+		fc_conf->mode = RTE_FC_NONE;
+	else if (hw->aq_nic_cfg->flow_control & (AQ_NIC_FC_RX | AQ_NIC_FC_TX))
+		fc_conf->mode = RTE_FC_FULL;
+	else if (hw->aq_nic_cfg->flow_control & AQ_NIC_FC_RX)
+		fc_conf->mode = RTE_FC_RX_PAUSE;
+	else if (hw->aq_nic_cfg->flow_control & AQ_NIC_FC_RX)
+		fc_conf->mode = RTE_FC_TX_PAUSE;
+
+	return 0;
+}
+
+static int
+atl_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
+{
+	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t old_flow_control = hw->aq_nic_cfg->flow_control;
+
+
+	if (hw->aq_fw_ops->set_flow_control == NULL)
+		return -ENOTSUP;
+
+	if (fc_conf->mode == RTE_FC_NONE)
+		hw->aq_nic_cfg->flow_control = AQ_NIC_FC_OFF;
+	else if (fc_conf->mode == RTE_FC_RX_PAUSE)
+		hw->aq_nic_cfg->flow_control = AQ_NIC_FC_RX;
+	else if (fc_conf->mode == RTE_FC_TX_PAUSE)
+		hw->aq_nic_cfg->flow_control = AQ_NIC_FC_TX;
+	else if (fc_conf->mode == RTE_FC_FULL)
+		hw->aq_nic_cfg->flow_control = (AQ_NIC_FC_RX | AQ_NIC_FC_TX);
+
+	if (old_flow_control != hw->aq_nic_cfg->flow_control)
+		return hw->aq_fw_ops->set_flow_control(hw);
+
+	return 0;
 }
 
 static int
