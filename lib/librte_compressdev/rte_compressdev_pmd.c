@@ -92,24 +92,20 @@ rte_compressdev_pmd_create(const char *name,
 	struct rte_compressdev *compressdev;
 
 	if (params->name[0] != '\0') {
-		COMPRESSDEV_LOG(INFO, "[%s] User specified device name = %s\n",
-				device->driver->name, params->name);
+		COMPRESSDEV_LOG(INFO, "User specified device name = %s\n",
+				params->name);
 		name = params->name;
 	}
 
-	COMPRESSDEV_LOG(INFO, "[%s] - Creating compressdev %s\n",
-			device->driver->name, name);
+	COMPRESSDEV_LOG(INFO, "Creating compressdev %s\n", name);
 
-	COMPRESSDEV_LOG(INFO,
-	"[%s] - Init parameters - name: %s, socket id: %d",
-			device->driver->name, name,
-			params->socket_id);
+	COMPRESSDEV_LOG(INFO, "Init parameters - name: %s, socket id: %d",
+			name, params->socket_id);
 
 	/* allocate device structure */
 	compressdev = rte_compressdev_pmd_allocate(name, params->socket_id);
 	if (compressdev == NULL) {
-		COMPRESSDEV_LOG(ERR, "[%s] Failed to allocate comp device %s",
-				device->driver->name, name);
+		COMPRESSDEV_LOG(ERR, "Failed to allocate comp device %s", name);
 		return NULL;
 	}
 
@@ -123,8 +119,8 @@ rte_compressdev_pmd_create(const char *name,
 
 		if (compressdev->data->dev_private == NULL) {
 			COMPRESSDEV_LOG(ERR,
-		"[%s] Cannot allocate memory for compressdev %s private data",
-					device->driver->name, name);
+					"Cannot allocate memory for compressdev"
+					" %s private data", name);
 
 			rte_compressdev_pmd_release_device(compressdev);
 			return NULL;
@@ -141,8 +137,7 @@ rte_compressdev_pmd_destroy(struct rte_compressdev *compressdev)
 {
 	int retval;
 
-	COMPRESSDEV_LOG(INFO, "[%s] Closing comp device %s",
-			compressdev->device->driver->name,
+	COMPRESSDEV_LOG(INFO, "Closing comp device %s",
 			compressdev->device->name);
 
 	/* free comp device */
