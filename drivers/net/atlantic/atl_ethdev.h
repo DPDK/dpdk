@@ -21,4 +21,19 @@ struct atl_adapter {
 	struct aq_hw_cfg_s         hw_cfg;
 };
 
+/*
+ * RX/TX function prototypes
+ */
+int atl_rx_init(struct rte_eth_dev *dev);
+int atl_tx_init(struct rte_eth_dev *dev);
+
+uint16_t atl_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts);
+
+uint16_t atl_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts);
+
+uint16_t atl_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts);
+
 #endif /* _ATLANTIC_ETHDEV_H_ */

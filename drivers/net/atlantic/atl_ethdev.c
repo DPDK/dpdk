@@ -104,6 +104,9 @@ eth_atl_dev_init(struct rte_eth_dev *eth_dev)
 	PMD_INIT_FUNC_TRACE();
 
 	eth_dev->dev_ops = &atl_eth_dev_ops;
+	eth_dev->rx_pkt_burst = &atl_recv_pkts;
+	eth_dev->tx_pkt_burst = &atl_xmit_pkts;
+	eth_dev->tx_pkt_prepare = &atl_prep_pkts;
 
 	/* For secondary processes, the primary process has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
@@ -155,6 +158,8 @@ eth_atl_dev_uninit(struct rte_eth_dev *eth_dev)
 		atl_dev_close(eth_dev);
 
 	eth_dev->dev_ops = NULL;
+	eth_dev->rx_pkt_burst = NULL;
+	eth_dev->tx_pkt_burst = NULL;
 
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;
@@ -208,6 +213,15 @@ atl_dev_start(struct rte_eth_dev *dev)
 	err = hw_atl_b0_hw_init(hw, dev->data->mac_addrs->addr_bytes);
 
 	hw_atl_b0_hw_start(hw);
+	/* initialize transmission unit */
+	atl_tx_init(dev);
+
+	/* This can fail when allocating mbufs for descriptor rings */
+	err = atl_rx_init(dev);
+	if (err) {
+		PMD_INIT_LOG(ERR, "Unable to initialize RX hardware");
+		return -EIO;
+	}
 
 	PMD_INIT_LOG(DEBUG, "FW version: %u.%u.%u",
 		hw->fw_ver_actual >> 24,
