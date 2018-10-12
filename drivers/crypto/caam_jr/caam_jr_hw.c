@@ -91,18 +91,6 @@ hw_handle_jr_err(union hw_error_code hw_error_code __rte_unused)
 	CAAM_JR_DEBUG(" Not implemented");
 }
 
-uint32_t
-caam_jr_enable_irqs(uint32_t uio_fd __rte_unused)
-{
-	return 0;
-}
-
-uint32_t
-caam_jr_disable_irqs(uint32_t uio_fd __rte_unused)
-{
-	return 0;
-}
-
 int
 hw_reset_job_ring(struct sec_job_ring_t *job_ring)
 {

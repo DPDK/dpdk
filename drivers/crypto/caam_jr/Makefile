@@ -32,6 +32,7 @@ LIBABIVER := 1
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_CAAM_JR) += caam_jr.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_CAAM_JR) += caam_jr_hw.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_CAAM_JR) += caam_jr_uio.c
 # library dependencies
 
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
