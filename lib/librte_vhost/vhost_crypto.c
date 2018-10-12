@@ -425,35 +425,33 @@ vhost_crypto_close_sess(struct vhost_crypto *vcrypto, uint64_t session_id)
 	return 0;
 }
 
-static int
-vhost_crypto_msg_post_handler(int vid, void *msg, uint32_t *require_reply)
+static enum vh_result
+vhost_crypto_msg_post_handler(int vid, void *msg)
 {
 	struct virtio_net *dev = get_device(vid);
 	struct vhost_crypto *vcrypto;
 	VhostUserMsg *vmsg = msg;
-	int ret = 0;
+	enum vh_result ret = VH_RESULT_OK;
 
-	if (dev == NULL || require_reply == NULL) {
+	if (dev == NULL) {
 		VC_LOG_ERR("Invalid vid %i", vid);
-		return -EINVAL;
+		return VH_RESULT_ERR;
 	}
 
 	vcrypto = dev->extern_data;
 	if (vcrypto == NULL) {
 		VC_LOG_ERR("Cannot find required data, is it initialized?");
-		return -ENOENT;
+		return VH_RESULT_ERR;
 	}
-
-	*require_reply = 0;
 
 	if (vmsg->request.master == VHOST_USER_CRYPTO_CREATE_SESS) {
 		vhost_crypto_create_sess(vcrypto,
 				&vmsg->payload.crypto_session);
-		*require_reply = 1;
-	} else if (vmsg->request.master == VHOST_USER_CRYPTO_CLOSE_SESS)
-		ret = vhost_crypto_close_sess(vcrypto, vmsg->payload.u64);
-	else
-		ret = -EINVAL;
+		ret = VH_RESULT_REPLY;
+	} else if (vmsg->request.master == VHOST_USER_CRYPTO_CLOSE_SESS) {
+		if (vhost_crypto_close_sess(vcrypto, vmsg->payload.u64))
+			ret = VH_RESULT_ERR;
+	}
 
 	return ret;
 }

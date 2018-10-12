@@ -71,16 +71,6 @@ static const char *vhost_message_str[VHOST_USER_MAX] = {
 	[VHOST_USER_CRYPTO_CLOSE_SESS] = "VHOST_USER_CRYPTO_CLOSE_SESS",
 };
 
-/* The possible results of a message handling function */
-enum vh_result {
-	/* Message handling failed */
-	VH_RESULT_ERR   = -1,
-	/* Message handling successful */
-	VH_RESULT_OK    =  0,
-	/* Message handling successful and reply prepared */
-	VH_RESULT_REPLY =  1,
-};
-
 static uint64_t
 get_blk_size(int fd)
 {
@@ -1738,14 +1728,11 @@ vhost_user_msg_handler(int vid, int fd)
 	}
 
 	if (dev->extern_ops.pre_msg_handle) {
-		uint32_t need_reply;
-
 		ret = (*dev->extern_ops.pre_msg_handle)(dev->vid,
-				(void *)&msg, &need_reply, &skip_master);
-		if (ret < 0)
+				(void *)&msg, &skip_master);
+		if (ret == VH_RESULT_ERR)
 			goto skip_to_reply;
-
-		if (need_reply)
+		else if (ret == VH_RESULT_REPLY)
 			send_vhost_reply(fd, &msg);
 
 		if (skip_master)
@@ -1783,15 +1770,12 @@ vhost_user_msg_handler(int vid, int fd)
 	}
 
 skip_to_post_handle:
-	if (!ret && dev->extern_ops.post_msg_handle) {
-		uint32_t need_reply;
-
+	if (ret != VH_RESULT_ERR && dev->extern_ops.post_msg_handle) {
 		ret = (*dev->extern_ops.post_msg_handle)(
-				dev->vid, (void *)&msg, &need_reply);
-		if (ret < 0)
+				dev->vid, (void *)&msg);
+		if (ret == VH_RESULT_ERR)
 			goto skip_to_reply;
-
-		if (need_reply)
+		else if (ret == VH_RESULT_REPLY)
 			send_vhost_reply(fd, &msg);
 	}
 
@@ -1800,10 +1784,10 @@ skip_to_reply:
 		vhost_user_unlock_all_queue_pairs(dev);
 
 	if (msg.flags & VHOST_USER_NEED_REPLY) {
-		msg.payload.u64 = !!ret;
+		msg.payload.u64 = ret == VH_RESULT_ERR;
 		msg.size = sizeof(msg.payload.u64);
 		send_vhost_reply(fd, &msg);
-	} else if (ret) {
+	} else if (ret == VH_RESULT_ERR) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"vhost message handling failed.\n");
 		return -1;
