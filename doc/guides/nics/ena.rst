@@ -113,10 +113,6 @@ Configuration information
    * **CONFIG_RTE_LIBRTE_ENA_PMD** (default y): Enables or disables inclusion
      of the ENA PMD driver in the DPDK compilation.
 
-
-   * **CONFIG_RTE_LIBRTE_ENA_DEBUG_INIT** (default y): Enables or disables debug
-     logging of device initialization within the ENA PMD driver.
-
    * **CONFIG_RTE_LIBRTE_ENA_DEBUG_RX** (default n): Enables or disables debug
      logging of RX logic within the ENA PMD driver.
 
