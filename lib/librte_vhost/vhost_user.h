@@ -50,7 +50,8 @@ typedef enum VhostUserRequest {
 	VHOST_USER_IOTLB_MSG = 22,
 	VHOST_USER_CRYPTO_CREATE_SESS = 26,
 	VHOST_USER_CRYPTO_CLOSE_SESS = 27,
-	VHOST_USER_MAX = 28
+	VHOST_USER_POSTCOPY_ADVISE = 28,
+	VHOST_USER_MAX = 29
 } VhostUserRequest;
 
 typedef enum VhostUserSlaveRequest {

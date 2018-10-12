@@ -24,12 +24,18 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <assert.h>
 #ifdef RTE_LIBRTE_VHOST_NUMA
 #include <numaif.h>
+#endif
+#ifdef RTE_LIBRTE_VHOST_POSTCOPY
+#include <linux/userfaultfd.h>
 #endif
 
 #include <rte_common.h>
@@ -69,6 +75,7 @@ static const char *vhost_message_str[VHOST_USER_MAX] = {
 	[VHOST_USER_IOTLB_MSG]  = "VHOST_USER_IOTLB_MSG",
 	[VHOST_USER_CRYPTO_CREATE_SESS] = "VHOST_USER_CRYPTO_CREATE_SESS",
 	[VHOST_USER_CRYPTO_CLOSE_SESS] = "VHOST_USER_CRYPTO_CLOSE_SESS",
+	[VHOST_USER_POSTCOPY_ADVISE]  = "VHOST_USER_POSTCOPY_ADVISE",
 };
 
 static uint64_t
@@ -119,6 +126,11 @@ vhost_backend_cleanup(struct virtio_net *dev)
 	if (dev->slave_req_fd >= 0) {
 		close(dev->slave_req_fd);
 		dev->slave_req_fd = -1;
+	}
+
+	if (dev->postcopy_ufd >= 0) {
+		close(dev->postcopy_ufd);
+		dev->postcopy_ufd = -1;
 	}
 }
 
@@ -1500,6 +1512,43 @@ vhost_user_iotlb_msg(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	return VH_RESULT_OK;
 }
 
+static int
+vhost_user_set_postcopy_advise(struct virtio_net **pdev,
+			struct VhostUserMsg *msg,
+			int main_fd __rte_unused)
+{
+	struct virtio_net *dev = *pdev;
+#ifdef RTE_LIBRTE_VHOST_POSTCOPY
+	struct uffdio_api api_struct;
+
+	dev->postcopy_ufd = syscall(__NR_userfaultfd, O_CLOEXEC | O_NONBLOCK);
+
+	if (dev->postcopy_ufd == -1) {
+		RTE_LOG(ERR, VHOST_CONFIG, "Userfaultfd not available: %s\n",
+			strerror(errno));
+		return VH_RESULT_ERR;
+	}
+	api_struct.api = UFFD_API;
+	api_struct.features = 0;
+	if (ioctl(dev->postcopy_ufd, UFFDIO_API, &api_struct)) {
+		RTE_LOG(ERR, VHOST_CONFIG, "UFFDIO_API ioctl failure: %s\n",
+			strerror(errno));
+		close(dev->postcopy_ufd);
+		dev->postcopy_ufd = -1;
+		return VH_RESULT_ERR;
+	}
+	msg->fds[0] = dev->postcopy_ufd;
+	msg->fd_num = 1;
+
+	return VH_RESULT_REPLY;
+#else
+	dev->postcopy_ufd = -1;
+	msg->fd_num = 0;
+
+	return VH_RESULT_ERR;
+#endif
+}
+
 typedef int (*vhost_message_handler_t)(struct virtio_net **pdev,
 					struct VhostUserMsg *msg,
 					int main_fd);
@@ -1527,6 +1576,7 @@ static vhost_message_handler_t vhost_message_handlers[VHOST_USER_MAX] = {
 	[VHOST_USER_NET_SET_MTU] = vhost_user_net_set_mtu,
 	[VHOST_USER_SET_SLAVE_REQ_FD] = vhost_user_set_req_fd,
 	[VHOST_USER_IOTLB_MSG] = vhost_user_iotlb_msg,
+	[VHOST_USER_POSTCOPY_ADVISE] = vhost_user_set_postcopy_advise,
 };
 
 
