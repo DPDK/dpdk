@@ -77,6 +77,7 @@ static const char *vhost_message_str[VHOST_USER_MAX] = {
 	[VHOST_USER_CRYPTO_CLOSE_SESS] = "VHOST_USER_CRYPTO_CLOSE_SESS",
 	[VHOST_USER_POSTCOPY_ADVISE]  = "VHOST_USER_POSTCOPY_ADVISE",
 	[VHOST_USER_POSTCOPY_LISTEN]  = "VHOST_USER_POSTCOPY_LISTEN",
+	[VHOST_USER_POSTCOPY_END]  = "VHOST_USER_POSTCOPY_END",
 };
 
 static int send_vhost_reply(int sockfd, struct VhostUserMsg *msg);
@@ -1636,6 +1637,25 @@ vhost_user_set_postcopy_listen(struct virtio_net **pdev,
 	return VH_RESULT_OK;
 }
 
+static int
+vhost_user_postcopy_end(struct virtio_net **pdev, struct VhostUserMsg *msg,
+			int main_fd __rte_unused)
+{
+	struct virtio_net *dev = *pdev;
+
+	dev->postcopy_listening = 0;
+	if (dev->postcopy_ufd >= 0) {
+		close(dev->postcopy_ufd);
+		dev->postcopy_ufd = -1;
+	}
+
+	msg->payload.u64 = 0;
+	msg->size = sizeof(msg->payload.u64);
+	msg->fd_num = 0;
+
+	return VH_RESULT_REPLY;
+}
+
 typedef int (*vhost_message_handler_t)(struct virtio_net **pdev,
 					struct VhostUserMsg *msg,
 					int main_fd);
@@ -1665,6 +1685,7 @@ static vhost_message_handler_t vhost_message_handlers[VHOST_USER_MAX] = {
 	[VHOST_USER_IOTLB_MSG] = vhost_user_iotlb_msg,
 	[VHOST_USER_POSTCOPY_ADVISE] = vhost_user_set_postcopy_advise,
 	[VHOST_USER_POSTCOPY_LISTEN] = vhost_user_set_postcopy_listen,
+	[VHOST_USER_POSTCOPY_END] = vhost_user_postcopy_end,
 };
 
 
