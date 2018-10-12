@@ -3,4 +3,5 @@
 
 sources = files(
 	'atl_ethdev.c',
+	'atl_hw_regs.c',
 )

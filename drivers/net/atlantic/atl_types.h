@@ -22,4 +22,8 @@ typedef uint64_t	u64;
 #define min(a, b)	RTE_MIN(a, b)
 #define max(a, b)	RTE_MAX(a, b)
 
+struct aq_hw_s {
+	void *mmio;
+};
+
 #endif

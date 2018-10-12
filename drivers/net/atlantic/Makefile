@@ -23,5 +23,6 @@ LDLIBS += -lrte_bus_pci
 # all source are stored in SRCS-y
 #
 SRCS-$(CONFIG_RTE_LIBRTE_ATLANTIC_PMD) += atl_ethdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_ATLANTIC_PMD) += atl_hw_regs.c
 
 include $(RTE_SDK)/mk/rte.lib.mk
