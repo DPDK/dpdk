@@ -568,7 +568,8 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		 */
 		cong_notif_cfg.threshold_exit = CONG_EXIT_TX_THRESHOLD;
 		cong_notif_cfg.message_ctx = 0;
-		cong_notif_cfg.message_iova = (size_t)dpaa2_q->cscn;
+		cong_notif_cfg.message_iova =
+				(size_t)DPAA2_VADDR_TO_IOVA(dpaa2_q->cscn);
 		cong_notif_cfg.dest_cfg.dest_type = DPNI_DEST_NONE;
 		cong_notif_cfg.notification_mode =
 					 DPNI_CONG_OPT_WRITE_MEM_ON_ENTER |
