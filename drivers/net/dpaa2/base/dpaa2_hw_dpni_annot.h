@@ -213,6 +213,46 @@ struct dpaa2_annot_hdr {
 #define DPAA2_L3_IPv6_UDP (L3_IPV6_1_PRESENT | L3_IPV6_1_UNICAST | \
 	L3_PROTO_UDP_PRESENT | L4_UNKNOWN_PROTOCOL)
 
+/**
+ * Macros to get values in word5
+ */
+#define SHIM_OFFSET_1(var)		((uint64_t)(var) & 0xFF00000000000000)
+#define SHIM_OFFSET_2(var)		((uint64_t)(var) & 0x00FF000000000000)
+#define IP_PID_OFFSET(var)		((uint64_t)(var) & 0x0000FF0000000000)
+#define ETH_OFFSET(var)			((uint64_t)(var) & 0x000000FF00000000)
+#define LLC_SNAP_OFFSET(var)		((uint64_t)(var) & 0x00000000FF000000)
+#define VLAN_TCI_OFFSET_1(var)		((uint64_t)(var) & 0x0000000000FF0000)
+#define VLAN_TCI_OFFSET_N(var)		((uint64_t)(var) & 0x000000000000FF00)
+#define LAST_ETYPE_OFFSET(var)		((uint64_t)(var) & 0x00000000000000FF)
+
+/**
+ * Macros to get values in word6
+ */
+#define PPPOE_OFFSET(var)		((uint64_t)(var) & 0xFF00000000000000)
+#define MPLS_OFFSET_1(var)		((uint64_t)(var) & 0x00FF000000000000)
+#define MPLS_OFFSET_N(var)		((uint64_t)(var) & 0x0000FF0000000000)
+#define ARP_OR_IP_OFFSET_1(var)		((uint64_t)(var) & 0x000000FF00000000)
+#define IP_N_OR_MIN_ENCAP_OFFSET(var)	((uint64_t)(var) & 0x00000000FF000000)
+#define GRE_OFFSET(var)			((uint64_t)(var) & 0x0000000000FF0000)
+#define L4_OFFSET(var)			((uint64_t)(var) & 0x000000000000FF00)
+#define GTP_OR_ESP_OR_IPSEC_OFFSET(var)	((uint64_t)(var) & 0x00000000000000FF)
+
+/**
+ * Macros to get values in word7
+ */
+#define IPV6_ROUTING_HDR_OFFSET_1(var)	((uint64_t)(var) & 0xFF00000000000000)
+#define IPV6_ROUTING_HDR_OFFSET_2(var)	((uint64_t)(var) & 0x00FF000000000000)
+#define NEXT_HDR_OFFSET(var)		((uint64_t)(var) & 0x0000FF0000000000)
+#define IPV6_FRAG_OFFSET(var)		((uint64_t)(var) & 0x000000FF00000000)
+#define GROSS_RUNNING_SUM(var)		((uint64_t)(var) & 0x00000000FFFF0000)
+#define RUNNING_SUM(var)		((uint64_t)(var) & 0x000000000000FFFF)
+
+/**
+ * Macros to get values in word8
+ */
+#define PARSE_ERROR_CODE(var)		((uint64_t)(var) & 0xFF00000000000000)
+#define SOFT_PARSING_CONTEXT(var)	((uint64_t)(var) & 0x00FFFFFFFFFFFFFF)
+
 /* Debug frame, otherwise supposed to be discarded */
 #define DPAA2_ETH_FAS_DISC	      0x80000000
 /* MACSEC frame */

@@ -25,6 +25,10 @@
 #include "dpaa2_ethdev.h"
 #include "base/dpaa2_hw_dpni_annot.h"
 
+static inline uint32_t __attribute__((hot))
+dpaa2_dev_rx_parse_slow(struct rte_mbuf *mbuf,
+			struct dpaa2_annot_hdr *annotation);
+
 #define DPAA2_MBUF_TO_CONTIG_FD(_mbuf, _fd, _bpid)  do { \
 	DPAA2_SET_FD_ADDR(_fd, DPAA2_MBUF_VADDR_TO_IOVA(_mbuf)); \
 	DPAA2_SET_FD_LEN(_fd, _mbuf->data_len); \
@@ -39,8 +43,6 @@ static inline void __attribute__((hot))
 dpaa2_dev_rx_parse_new(struct rte_mbuf *m, const struct qbman_fd *fd)
 {
 	uint16_t frc = DPAA2_GET_FD_FRC_PARSE_SUM(fd);
-
-	DPAA2_PMD_DP_DEBUG("frc = 0x%x\t", frc);
 
 	m->packet_type = RTE_PTYPE_UNKNOWN;
 	switch (frc) {
@@ -95,31 +97,45 @@ dpaa2_dev_rx_parse_new(struct rte_mbuf *m, const struct qbman_fd *fd)
 		m->packet_type = RTE_PTYPE_L2_ETHER |
 			RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_ICMP;
 		break;
-	case DPAA2_PKT_TYPE_VLAN_1:
-	case DPAA2_PKT_TYPE_VLAN_2:
-		m->ol_flags |= PKT_RX_VLAN;
-		break;
-	/* More switch cases can be added */
-	/* TODO: Add handling for checksum error check from FRC */
 	default:
-		m->packet_type = RTE_PTYPE_UNKNOWN;
+		m->packet_type = dpaa2_dev_rx_parse_slow(m,
+		  (void *)((size_t)DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd))
+			 + DPAA2_FD_PTA_SIZE));
 	}
 	m->hash.rss = fd->simple.flc_hi;
 	m->ol_flags |= PKT_RX_RSS_HASH;
 }
 
 static inline uint32_t __attribute__((hot))
-dpaa2_dev_rx_parse_slow(struct dpaa2_annot_hdr *annotation)
+dpaa2_dev_rx_parse_slow(struct rte_mbuf *mbuf,
+			struct dpaa2_annot_hdr *annotation)
 {
 	uint32_t pkt_type = RTE_PTYPE_UNKNOWN;
+	uint16_t *vlan_tci;
 
-	DPAA2_PMD_DP_DEBUG("(slow parse) Annotation = 0x%" PRIx64 "\t",
-			   annotation->word4);
+	DPAA2_PMD_DP_DEBUG("(slow parse)annotation(3)=0x%" PRIx64 "\t"
+			"(4)=0x%" PRIx64 "\t",
+			annotation->word3, annotation->word4);
+
+	if (BIT_ISSET_AT_POS(annotation->word3, L2_VLAN_1_PRESENT)) {
+		vlan_tci = rte_pktmbuf_mtod_offset(mbuf, uint16_t *,
+			(VLAN_TCI_OFFSET_1(annotation->word5) >> 16));
+		mbuf->vlan_tci = rte_be_to_cpu_16(*vlan_tci);
+		mbuf->ol_flags |= PKT_RX_VLAN;
+		pkt_type |= RTE_PTYPE_L2_ETHER_VLAN;
+	} else if (BIT_ISSET_AT_POS(annotation->word3, L2_VLAN_N_PRESENT)) {
+		vlan_tci = rte_pktmbuf_mtod_offset(mbuf, uint16_t *,
+			(VLAN_TCI_OFFSET_1(annotation->word5) >> 16));
+		mbuf->vlan_tci = rte_be_to_cpu_16(*vlan_tci);
+		mbuf->ol_flags |= PKT_RX_VLAN | PKT_RX_QINQ;
+		pkt_type |= RTE_PTYPE_L2_ETHER_QINQ;
+	}
+
 	if (BIT_ISSET_AT_POS(annotation->word3, L2_ARP_PRESENT)) {
-		pkt_type = RTE_PTYPE_L2_ETHER_ARP;
+		pkt_type |= RTE_PTYPE_L2_ETHER_ARP;
 		goto parse_done;
 	} else if (BIT_ISSET_AT_POS(annotation->word3, L2_ETH_MAC_PRESENT)) {
-		pkt_type = RTE_PTYPE_L2_ETHER;
+		pkt_type |= RTE_PTYPE_L2_ETHER;
 	} else {
 		goto parse_done;
 	}
@@ -179,15 +195,14 @@ dpaa2_dev_rx_parse(struct rte_mbuf *mbuf, void *hw_annot_addr)
 	DPAA2_PMD_DP_DEBUG("(fast parse) Annotation = 0x%" PRIx64 "\t",
 			   annotation->word4);
 
-	/* Check offloads first */
-	if (BIT_ISSET_AT_POS(annotation->word3,
-			     L2_VLAN_1_PRESENT | L2_VLAN_N_PRESENT))
-		mbuf->ol_flags |= PKT_RX_VLAN;
-
 	if (BIT_ISSET_AT_POS(annotation->word8, DPAA2_ETH_FAS_L3CE))
 		mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
 	else if (BIT_ISSET_AT_POS(annotation->word8, DPAA2_ETH_FAS_L4CE))
 		mbuf->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+
+	/* Check detailed parsing requirement */
+	if (annotation->word3 & 0x7FFFFC3FFFF)
+		return dpaa2_dev_rx_parse_slow(mbuf, annotation);
 
 	/* Return some common types from parse processing */
 	switch (annotation->word4) {
@@ -211,7 +226,7 @@ dpaa2_dev_rx_parse(struct rte_mbuf *mbuf, void *hw_annot_addr)
 		break;
 	}
 
-	return dpaa2_dev_rx_parse_slow(annotation);
+	return dpaa2_dev_rx_parse_slow(mbuf, annotation);
 }
 
 static inline struct rte_mbuf *__attribute__((hot))
