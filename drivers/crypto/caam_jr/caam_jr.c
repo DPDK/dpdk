@@ -24,8 +24,11 @@
 
 /* RTA header files */
 #include <hw/desc/common.h>
+#include <hw/desc/algo.h>
+#include <hw/desc/ipsec.h>
 #include <of.h>
 
+#define CAAM_JR_DBG	0
 #define CRYPTODEV_NAME_CAAM_JR_PMD	crypto_caam_jr
 static uint8_t cryptodev_driver_id;
 int caam_jr_logtype;
@@ -159,6 +162,214 @@ caam_jr_queue_pair_count(struct rte_cryptodev *dev)
 	return dev->data->nb_queue_pairs;
 }
 
+/* Returns the size of the aesni gcm session structure */
+static unsigned int
+caam_jr_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
+{
+	PMD_INIT_FUNC_TRACE();
+
+	return sizeof(struct caam_jr_session);
+}
+
+static int
+caam_jr_cipher_init(struct rte_cryptodev *dev __rte_unused,
+		    struct rte_crypto_sym_xform *xform,
+		    struct caam_jr_session *session)
+{
+	PMD_INIT_FUNC_TRACE();
+	session->cipher_alg = xform->cipher.algo;
+	session->iv.length = xform->cipher.iv.length;
+	session->iv.offset = xform->cipher.iv.offset;
+	session->cipher_key.data = rte_zmalloc(NULL, xform->cipher.key.length,
+					       RTE_CACHE_LINE_SIZE);
+	if (session->cipher_key.data == NULL && xform->cipher.key.length > 0) {
+		CAAM_JR_ERR("No Memory for cipher key\n");
+		return -ENOMEM;
+	}
+	session->cipher_key.length = xform->cipher.key.length;
+
+	memcpy(session->cipher_key.data, xform->cipher.key.data,
+	       xform->cipher.key.length);
+	session->dir = (xform->cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT) ?
+			DIR_ENC : DIR_DEC;
+
+	return 0;
+}
+
+static int
+caam_jr_auth_init(struct rte_cryptodev *dev __rte_unused,
+		  struct rte_crypto_sym_xform *xform,
+		  struct caam_jr_session *session)
+{
+	PMD_INIT_FUNC_TRACE();
+	session->auth_alg = xform->auth.algo;
+	session->auth_key.data = rte_zmalloc(NULL, xform->auth.key.length,
+					     RTE_CACHE_LINE_SIZE);
+	if (session->auth_key.data == NULL && xform->auth.key.length > 0) {
+		CAAM_JR_ERR("No Memory for auth key\n");
+		return -ENOMEM;
+	}
+	session->auth_key.length = xform->auth.key.length;
+	session->digest_length = xform->auth.digest_length;
+
+	memcpy(session->auth_key.data, xform->auth.key.data,
+	       xform->auth.key.length);
+	session->dir = (xform->auth.op == RTE_CRYPTO_AUTH_OP_GENERATE) ?
+			DIR_ENC : DIR_DEC;
+
+	return 0;
+}
+
+static int
+caam_jr_aead_init(struct rte_cryptodev *dev __rte_unused,
+		  struct rte_crypto_sym_xform *xform,
+		  struct caam_jr_session *session)
+{
+	PMD_INIT_FUNC_TRACE();
+	session->aead_alg = xform->aead.algo;
+	session->iv.length = xform->aead.iv.length;
+	session->iv.offset = xform->aead.iv.offset;
+	session->auth_only_len = xform->aead.aad_length;
+	session->aead_key.data = rte_zmalloc(NULL, xform->aead.key.length,
+					     RTE_CACHE_LINE_SIZE);
+	if (session->aead_key.data == NULL && xform->aead.key.length > 0) {
+		CAAM_JR_ERR("No Memory for aead key\n");
+		return -ENOMEM;
+	}
+	session->aead_key.length = xform->aead.key.length;
+	session->digest_length = xform->aead.digest_length;
+
+	memcpy(session->aead_key.data, xform->aead.key.data,
+	       xform->aead.key.length);
+	session->dir = (xform->aead.op == RTE_CRYPTO_AEAD_OP_ENCRYPT) ?
+			DIR_ENC : DIR_DEC;
+
+	return 0;
+}
+
+static int
+caam_jr_set_session_parameters(struct rte_cryptodev *dev,
+			       struct rte_crypto_sym_xform *xform, void *sess)
+{
+	struct sec_job_ring_t *internals = dev->data->dev_private;
+	struct caam_jr_session *session = sess;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (unlikely(sess == NULL)) {
+		CAAM_JR_ERR("invalid session struct");
+		return -EINVAL;
+	}
+
+	/* Default IV length = 0 */
+	session->iv.length = 0;
+
+	/* Cipher Only */
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER && xform->next == NULL) {
+		session->auth_alg = RTE_CRYPTO_AUTH_NULL;
+		caam_jr_cipher_init(dev, xform, session);
+
+	/* Authentication Only */
+	} else if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
+		   xform->next == NULL) {
+		session->cipher_alg = RTE_CRYPTO_CIPHER_NULL;
+		caam_jr_auth_init(dev, xform, session);
+
+	/* Cipher then Authenticate */
+	} else if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
+		   xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH) {
+		if (xform->cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT) {
+			caam_jr_cipher_init(dev, xform, session);
+			caam_jr_auth_init(dev, xform->next, session);
+		} else {
+			CAAM_JR_ERR("Not supported: Auth then Cipher");
+			goto err1;
+		}
+
+	/* Authenticate then Cipher */
+	} else if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
+		   xform->next->type == RTE_CRYPTO_SYM_XFORM_CIPHER) {
+		if (xform->next->cipher.op == RTE_CRYPTO_CIPHER_OP_DECRYPT) {
+			caam_jr_auth_init(dev, xform, session);
+			caam_jr_cipher_init(dev, xform->next, session);
+		} else {
+			CAAM_JR_ERR("Not supported: Auth then Cipher");
+			goto err1;
+		}
+
+	/* AEAD operation for AES-GCM kind of Algorithms */
+	} else if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD &&
+		   xform->next == NULL) {
+		caam_jr_aead_init(dev, xform, session);
+
+	} else {
+		CAAM_JR_ERR("Invalid crypto type");
+		return -EINVAL;
+	}
+	session->ctx_pool = internals->ctx_pool;
+
+	return 0;
+
+err1:
+	rte_free(session->cipher_key.data);
+	rte_free(session->auth_key.data);
+	memset(session, 0, sizeof(struct caam_jr_session));
+
+	return -EINVAL;
+}
+
+static int
+caam_jr_sym_session_configure(struct rte_cryptodev *dev,
+			      struct rte_crypto_sym_xform *xform,
+			      struct rte_cryptodev_sym_session *sess,
+			      struct rte_mempool *mempool)
+{
+	void *sess_private_data;
+	int ret;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (rte_mempool_get(mempool, &sess_private_data)) {
+		CAAM_JR_ERR("Couldn't get object from session mempool");
+		return -ENOMEM;
+	}
+
+	memset(sess_private_data, 0, sizeof(struct caam_jr_session));
+	ret = caam_jr_set_session_parameters(dev, xform, sess_private_data);
+	if (ret != 0) {
+		CAAM_JR_ERR("failed to configure session parameters");
+		/* Return session to mempool */
+		rte_mempool_put(mempool, sess_private_data);
+		return ret;
+	}
+
+	set_sym_session_private_data(sess, dev->driver_id, sess_private_data);
+
+	return 0;
+}
+
+/* Clear the memory of session so it doesn't leave key material behind */
+static void
+caam_jr_sym_session_clear(struct rte_cryptodev *dev,
+		struct rte_cryptodev_sym_session *sess)
+{
+	uint8_t index = dev->driver_id;
+	void *sess_priv = get_sym_session_private_data(sess, index);
+	struct caam_jr_session *s = (struct caam_jr_session *)sess_priv;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (sess_priv) {
+		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
+
+		rte_free(s->cipher_key.data);
+		rte_free(s->auth_key.data);
+		memset(s, 0, sizeof(struct caam_jr_session));
+		set_sym_session_private_data(sess, index, NULL);
+		rte_mempool_put(sess_mp, sess_priv);
+	}
+}
+
 static int
 caam_jr_dev_configure(struct rte_cryptodev *dev,
 		       struct rte_cryptodev_config *config __rte_unused)
@@ -242,6 +453,9 @@ static struct rte_cryptodev_ops caam_jr_ops = {
 	.queue_pair_setup     = caam_jr_queue_pair_setup,
 	.queue_pair_release   = caam_jr_queue_pair_release,
 	.queue_pair_count     = caam_jr_queue_pair_count,
+	.sym_session_get_size = caam_jr_sym_session_get_size,
+	.sym_session_configure = caam_jr_sym_session_configure,
+	.sym_session_clear    = caam_jr_sym_session_clear
 };
 
 
