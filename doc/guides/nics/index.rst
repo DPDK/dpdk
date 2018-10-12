@@ -12,6 +12,7 @@ Network Interface Controller Drivers
     features
     build_and_test
     ark
+    atlantic
     avp
     axgbe
     bnx2x

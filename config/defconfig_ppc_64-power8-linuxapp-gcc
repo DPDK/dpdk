@@ -48,6 +48,7 @@ CONFIG_RTE_LIBRTE_EAL_VMWARE_TSC_MAP_SUPPORT=n
 
 # Note: Initially, all of the PMD drivers compilation are turned off on Power
 # Will turn on them only after the successful testing on Power
+CONFIG_RTE_LIBRTE_ATLANTIC_PMD=n
 CONFIG_RTE_LIBRTE_IXGBE_PMD=n
 CONFIG_RTE_LIBRTE_VIRTIO_PMD=y
 CONFIG_RTE_LIBRTE_VMXNET3_PMD=n
