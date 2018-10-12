@@ -623,6 +623,101 @@ caam_jr_dequeue_burst(void *qp, struct rte_crypto_op **ops,
 	return num_rx;
 }
 
+/**
+ * packet looks like:
+ *		|<----data_len------->|
+ *    |ip_header|ah_header|icv|payload|
+ *              ^
+ *		|
+ *	   mbuf->pkt.data
+ */
+static inline struct caam_jr_op_ctx *
+build_auth_only_sg(struct rte_crypto_op *op, struct caam_jr_session *ses)
+{
+	struct rte_crypto_sym_op *sym = op->sym;
+	struct rte_mbuf *mbuf = sym->m_src;
+	struct caam_jr_op_ctx *ctx;
+	struct sec4_sg_entry *sg;
+	int	length;
+	struct sec_cdb *cdb;
+	uint64_t sdesc_offset;
+	struct sec_job_descriptor_t *jobdescr;
+	uint8_t extra_segs;
+
+	PMD_INIT_FUNC_TRACE();
+	if (is_decode(ses))
+		extra_segs = 2;
+	else
+		extra_segs = 1;
+
+	if ((mbuf->nb_segs + extra_segs) > MAX_SG_ENTRIES) {
+		CAAM_JR_DP_ERR("Auth: Max sec segs supported is %d",
+				MAX_SG_ENTRIES);
+		return NULL;
+	}
+
+	ctx = caam_jr_alloc_ctx(ses);
+	if (!ctx)
+		return NULL;
+
+	ctx->op = op;
+
+	cdb = ses->cdb;
+	sdesc_offset = (size_t) ((char *)&cdb->sh_desc - (char *)cdb);
+
+	jobdescr = (struct sec_job_descriptor_t *) ctx->jobdes.desc;
+
+	SEC_JD_INIT(jobdescr);
+	SEC_JD_SET_SD(jobdescr,
+		(phys_addr_t)(caam_jr_dma_vtop(cdb)) + sdesc_offset,
+		cdb->sh_hdr.hi.field.idlen);
+
+	/* output */
+	SEC_JD_SET_OUT_PTR(jobdescr, (uint64_t)sym->auth.digest.phys_addr,
+			0, ses->digest_length);
+
+	/*input */
+	sg = &ctx->sg[0];
+	length = sym->auth.data.length;
+	sg->ptr = cpu_to_caam64(rte_pktmbuf_iova(mbuf) + sym->auth.data.offset);
+	sg->len = cpu_to_caam32(mbuf->data_len - sym->auth.data.offset);
+
+	/* Successive segs */
+	mbuf = mbuf->next;
+	while (mbuf) {
+		sg++;
+		sg->ptr = cpu_to_caam64(rte_pktmbuf_iova(mbuf));
+		sg->len = cpu_to_caam32(mbuf->data_len);
+		mbuf = mbuf->next;
+	}
+
+	if (is_decode(ses)) {
+		/* digest verification case */
+		sg++;
+		/* hash result or digest, save digest first */
+		rte_memcpy(ctx->digest, sym->auth.digest.data,
+			   ses->digest_length);
+#if CAAM_JR_DBG
+		rte_hexdump(stdout, "ICV", ctx->digest, ses->digest_length);
+#endif
+		sg->ptr = cpu_to_caam64(caam_jr_vtop_ctx(ctx, ctx->digest));
+		sg->len = cpu_to_caam32(ses->digest_length);
+		length += ses->digest_length;
+	} else {
+		length -= ses->digest_length;
+	}
+
+	/* last element*/
+	sg->len |= cpu_to_caam32(SEC4_SG_LEN_FIN);
+
+	SEC_JD_SET_IN_PTR(jobdescr,
+		(uint64_t)caam_jr_vtop_ctx(ctx, &ctx->sg[0]), 0, length);
+	/* enabling sg list */
+	(jobdescr)->seq_in.command.word  |= 0x01000000;
+
+	return ctx;
+}
+
 static inline struct caam_jr_op_ctx *
 build_auth_only(struct rte_crypto_op *op, struct caam_jr_session *ses)
 {
@@ -689,6 +784,123 @@ build_auth_only(struct rte_crypto_op *op, struct caam_jr_session *ses)
 }
 
 static inline struct caam_jr_op_ctx *
+build_cipher_only_sg(struct rte_crypto_op *op, struct caam_jr_session *ses)
+{
+	struct rte_crypto_sym_op *sym = op->sym;
+	struct rte_mbuf *mbuf = sym->m_src;
+	struct caam_jr_op_ctx *ctx;
+	struct sec4_sg_entry *sg, *in_sg;
+	int length;
+	struct sec_cdb *cdb;
+	uint64_t sdesc_offset;
+	uint8_t *IV_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
+			ses->iv.offset);
+	struct sec_job_descriptor_t *jobdescr;
+	uint8_t reg_segs;
+
+	PMD_INIT_FUNC_TRACE();
+	if (sym->m_dst) {
+		mbuf = sym->m_dst;
+		reg_segs = mbuf->nb_segs + sym->m_src->nb_segs + 2;
+	} else {
+		mbuf = sym->m_src;
+		reg_segs = mbuf->nb_segs * 2 + 2;
+	}
+
+	if (reg_segs > MAX_SG_ENTRIES) {
+		CAAM_JR_DP_ERR("Cipher: Max sec segs supported is %d",
+				MAX_SG_ENTRIES);
+		return NULL;
+	}
+
+	ctx = caam_jr_alloc_ctx(ses);
+	if (!ctx)
+		return NULL;
+
+	ctx->op = op;
+	cdb = ses->cdb;
+	sdesc_offset = (size_t) ((char *)&cdb->sh_desc - (char *)cdb);
+
+	jobdescr = (struct sec_job_descriptor_t *) ctx->jobdes.desc;
+
+	SEC_JD_INIT(jobdescr);
+	SEC_JD_SET_SD(jobdescr,
+		(phys_addr_t)(caam_jr_dma_vtop(cdb)) + sdesc_offset,
+		cdb->sh_hdr.hi.field.idlen);
+
+#if CAAM_JR_DBG
+	CAAM_JR_INFO("mbuf offset =%d, cipher offset = %d, length =%d+%d",
+			sym->m_src->data_off, sym->cipher.data.offset,
+			sym->cipher.data.length, ses->iv.length);
+#endif
+	/* output */
+	if (sym->m_dst)
+		mbuf = sym->m_dst;
+	else
+		mbuf = sym->m_src;
+
+	sg = &ctx->sg[0];
+	length = sym->cipher.data.length;
+
+	sg->ptr = cpu_to_caam64(rte_pktmbuf_iova(mbuf)
+		+ sym->cipher.data.offset);
+	sg->len = cpu_to_caam32(mbuf->data_len - sym->cipher.data.offset);
+
+	/* Successive segs */
+	mbuf = mbuf->next;
+	while (mbuf) {
+		sg++;
+		sg->ptr = cpu_to_caam64(rte_pktmbuf_iova(mbuf));
+		sg->len = cpu_to_caam32(mbuf->data_len);
+		mbuf = mbuf->next;
+	}
+	/* last element*/
+	sg->len |= cpu_to_caam32(SEC4_SG_LEN_FIN);
+
+	SEC_JD_SET_OUT_PTR(jobdescr,
+			(uint64_t)caam_jr_vtop_ctx(ctx, &ctx->sg[0]), 0,
+			length);
+	/*enabling sg bit */
+	(jobdescr)->seq_out.command.word  |= 0x01000000;
+
+	/*input */
+	sg++;
+	mbuf = sym->m_src;
+	in_sg = sg;
+
+	length = sym->cipher.data.length + ses->iv.length;
+
+	/* IV */
+	sg->ptr = cpu_to_caam64(caam_jr_dma_vtop(IV_ptr));
+	sg->len = cpu_to_caam32(ses->iv.length);
+
+	/* 1st seg */
+	sg++;
+	sg->ptr = cpu_to_caam64(rte_pktmbuf_iova(mbuf)
+				+ sym->cipher.data.offset);
+	sg->len = cpu_to_caam32(mbuf->data_len - sym->cipher.data.offset);
+
+	/* Successive segs */
+	mbuf = mbuf->next;
+	while (mbuf) {
+		sg++;
+		sg->ptr = cpu_to_caam64(rte_pktmbuf_iova(mbuf));
+		sg->len = cpu_to_caam32(mbuf->data_len);
+		mbuf = mbuf->next;
+	}
+	/* last element*/
+	sg->len |= cpu_to_caam32(SEC4_SG_LEN_FIN);
+
+
+	SEC_JD_SET_IN_PTR(jobdescr, (uint64_t)caam_jr_vtop_ctx(ctx, in_sg), 0,
+				length);
+	/*enabling sg bit */
+	(jobdescr)->seq_in.command.word  |= 0x01000000;
+
+	return ctx;
+}
+
+static inline struct caam_jr_op_ctx *
 build_cipher_only(struct rte_crypto_op *op, struct caam_jr_session *ses)
 {
 	struct rte_crypto_sym_op *sym = op->sym;
@@ -748,6 +960,161 @@ build_cipher_only(struct rte_crypto_op *op, struct caam_jr_session *ses)
 	sg->len = cpu_to_caam32(sym->cipher.data.length);
 	/* last element*/
 	sg->len |= cpu_to_caam32(SEC4_SG_LEN_FIN);
+
+	return ctx;
+}
+
+/* For decapsulation:
+ *     Input:
+ * +----+----------------+--------------------------------+-----+
+ * | IV | Auth-only data | Authenticated & Encrypted data | ICV |
+ * +----+----------------+--------------------------------+-----+
+ *     Output:
+ * +----+--------------------------+
+ * | Decrypted & authenticated data |
+ * +----+--------------------------+
+ */
+
+static inline struct caam_jr_op_ctx *
+build_cipher_auth_sg(struct rte_crypto_op *op, struct caam_jr_session *ses)
+{
+	struct rte_crypto_sym_op *sym = op->sym;
+	struct caam_jr_op_ctx *ctx;
+	struct sec4_sg_entry *sg, *out_sg, *in_sg;
+	struct rte_mbuf *mbuf;
+	uint32_t length = 0;
+	struct sec_cdb *cdb;
+	uint64_t sdesc_offset;
+	uint8_t req_segs;
+	uint8_t *IV_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
+			ses->iv.offset);
+	struct sec_job_descriptor_t *jobdescr;
+	uint32_t auth_only_len;
+
+	PMD_INIT_FUNC_TRACE();
+	auth_only_len = op->sym->auth.data.length -
+				op->sym->cipher.data.length;
+
+	if (sym->m_dst) {
+		mbuf = sym->m_dst;
+		req_segs = mbuf->nb_segs + sym->m_src->nb_segs + 3;
+	} else {
+		mbuf = sym->m_src;
+		req_segs = mbuf->nb_segs * 2 + 3;
+	}
+
+	if (req_segs > MAX_SG_ENTRIES) {
+		CAAM_JR_DP_ERR("Cipher-Auth: Max sec segs supported is %d",
+				MAX_SG_ENTRIES);
+		return NULL;
+	}
+
+	ctx = caam_jr_alloc_ctx(ses);
+	if (!ctx)
+		return NULL;
+
+	ctx->op = op;
+	cdb = ses->cdb;
+	sdesc_offset = (size_t) ((char *)&cdb->sh_desc - (char *)cdb);
+
+	jobdescr = (struct sec_job_descriptor_t *) ctx->jobdes.desc;
+
+	SEC_JD_INIT(jobdescr);
+	SEC_JD_SET_SD(jobdescr,
+		(phys_addr_t)(caam_jr_dma_vtop(cdb)) + sdesc_offset,
+		cdb->sh_hdr.hi.field.idlen);
+
+	/* output */
+	if (sym->m_dst)
+		mbuf = sym->m_dst;
+	else
+		mbuf = sym->m_src;
+
+	out_sg = &ctx->sg[0];
+	if (is_encode(ses))
+		length = sym->auth.data.length + ses->digest_length;
+	else
+		length = sym->auth.data.length;
+
+	sg = &ctx->sg[0];
+
+	/* 1st seg */
+	sg->ptr = cpu_to_caam64(rte_pktmbuf_iova(mbuf)
+		+ sym->auth.data.offset);
+	sg->len = cpu_to_caam32(mbuf->data_len - sym->auth.data.offset);
+
+	/* Successive segs */
+	mbuf = mbuf->next;
+	while (mbuf) {
+		sg++;
+		sg->ptr = cpu_to_caam64(rte_pktmbuf_iova(mbuf));
+		sg->len = cpu_to_caam32(mbuf->data_len);
+		mbuf = mbuf->next;
+	}
+
+	if (is_encode(ses)) {
+		/* set auth output */
+		sg++;
+		sg->ptr = cpu_to_caam64(sym->auth.digest.phys_addr);
+		sg->len = cpu_to_caam32(ses->digest_length);
+	}
+	/* last element*/
+	sg->len |= cpu_to_caam32(SEC4_SG_LEN_FIN);
+
+	SEC_JD_SET_OUT_PTR(jobdescr,
+			   (uint64_t)caam_jr_dma_vtop(out_sg), 0, length);
+	/* set sg bit */
+	(jobdescr)->seq_out.command.word  |= 0x01000000;
+
+	/* input */
+	sg++;
+	mbuf = sym->m_src;
+	in_sg = sg;
+	if (is_encode(ses))
+		length = ses->iv.length + sym->auth.data.length;
+	else
+		length = ses->iv.length + sym->auth.data.length
+						+ ses->digest_length;
+
+	sg->ptr = cpu_to_caam64(caam_jr_dma_vtop(IV_ptr));
+	sg->len = cpu_to_caam32(ses->iv.length);
+
+	sg++;
+	/* 1st seg */
+	sg->ptr = cpu_to_caam64(rte_pktmbuf_iova(mbuf)
+		+ sym->auth.data.offset);
+	sg->len = cpu_to_caam32(mbuf->data_len - sym->auth.data.offset);
+
+	/* Successive segs */
+	mbuf = mbuf->next;
+	while (mbuf) {
+		sg++;
+		sg->ptr = cpu_to_caam64(rte_pktmbuf_iova(mbuf));
+		sg->len = cpu_to_caam32(mbuf->data_len);
+		mbuf = mbuf->next;
+	}
+
+	if (is_decode(ses)) {
+		sg++;
+		rte_memcpy(ctx->digest, sym->auth.digest.data,
+		       ses->digest_length);
+		sg->ptr = cpu_to_caam64(caam_jr_dma_vtop(ctx->digest));
+		sg->len = cpu_to_caam32(ses->digest_length);
+	}
+	/* last element*/
+	sg->len |= cpu_to_caam32(SEC4_SG_LEN_FIN);
+
+	SEC_JD_SET_IN_PTR(jobdescr, (uint64_t)caam_jr_dma_vtop(in_sg), 0,
+				length);
+	/* set sg bit */
+	(jobdescr)->seq_in.command.word  |= 0x01000000;
+	/* Auth_only_len is set as 0 in descriptor and it is
+	 * overwritten here in the jd which will update
+	 * the DPOVRD reg.
+	 */
+	if (auth_only_len)
+		/* set sg bit */
+		(jobdescr)->dpovrd = 0x80000000 | auth_only_len;
 
 	return ctx;
 }
@@ -899,8 +1266,14 @@ caam_jr_enqueue_op(struct rte_crypto_op *op, struct caam_jr_qp *qp)
 		else if (is_cipher_only(ses))
 			ctx = build_cipher_only(op, ses);
 	} else {
-		if (is_aead(ses))
+		if (is_auth_cipher(ses))
+			ctx = build_cipher_auth_sg(op, ses);
+		else if (is_aead(ses))
 			goto err1;
+		else if (is_auth_only(ses))
+			ctx = build_auth_only_sg(op, ses);
+		else if (is_cipher_only(ses))
+			ctx = build_cipher_only_sg(op, ses);
 	}
 err1:
 	if (unlikely(!ctx)) {
