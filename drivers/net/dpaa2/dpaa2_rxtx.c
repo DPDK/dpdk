@@ -34,8 +34,10 @@
 } while (0)
 
 static inline void __attribute__((hot))
-dpaa2_dev_rx_parse_frc(struct rte_mbuf *m, uint16_t frc)
+dpaa2_dev_rx_parse_new(struct rte_mbuf *m, const struct qbman_fd *fd)
 {
+	uint16_t frc = DPAA2_GET_FD_FRC_PARSE_SUM(fd);
+
 	DPAA2_PMD_DP_DEBUG("frc = 0x%x\t", frc);
 
 	m->packet_type = RTE_PTYPE_UNKNOWN;
@@ -100,6 +102,8 @@ dpaa2_dev_rx_parse_frc(struct rte_mbuf *m, uint16_t frc)
 	default:
 		m->packet_type = RTE_PTYPE_UNKNOWN;
 	}
+	m->hash.rss = fd->simple.flc_hi;
+	m->ol_flags |= PKT_RX_RSS_HASH;
 }
 
 static inline uint32_t __attribute__((hot))
@@ -236,8 +240,7 @@ eth_sg_fd_to_mbuf(const struct qbman_fd *fd)
 	first_seg->nb_segs = 1;
 	first_seg->next = NULL;
 	if (dpaa2_svr_family == SVR_LX2160A)
-		dpaa2_dev_rx_parse_frc(first_seg,
-				DPAA2_GET_FD_FRC_PARSE_SUM(fd));
+		dpaa2_dev_rx_parse_new(first_seg, fd);
 	else
 		first_seg->packet_type = dpaa2_dev_rx_parse(first_seg,
 			(void *)((size_t)DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd))
@@ -293,7 +296,7 @@ eth_fd_to_mbuf(const struct qbman_fd *fd)
 	 */
 
 	if (dpaa2_svr_family == SVR_LX2160A)
-		dpaa2_dev_rx_parse_frc(mbuf, DPAA2_GET_FD_FRC_PARSE_SUM(fd));
+		dpaa2_dev_rx_parse_new(mbuf, fd);
 	else
 		mbuf->packet_type = dpaa2_dev_rx_parse(mbuf,
 			(void *)((size_t)DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd))
