@@ -78,12 +78,13 @@ do { \
 #define lower_32_bits(x) ((uint32_t)(x))
 #define upper_32_bits(x) ((uint32_t)(((x) >> 16) >> 16))
 
-
 #define __iomem
 
 #define __raw_readb(p)	(*(const volatile unsigned char *)(p))
 #define __raw_readl(p)	(*(const volatile unsigned int *)(p))
 #define __raw_writel(v, p) {*(volatile unsigned int *)(p) = (v); }
+
+#define dma_wmb()		rte_smp_mb()
 
 #define atomic_t                rte_atomic32_t
 #define atomic_read(v)          rte_atomic32_read(v)

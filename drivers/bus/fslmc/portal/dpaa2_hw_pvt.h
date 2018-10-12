@@ -38,6 +38,10 @@
 #define DPAA2_DQRR_RING_SIZE	16
 	/** <Maximum number of slots available in RX ring*/
 
+#define DPAA2_SWP_CENA_REGION		0
+#define DPAA2_SWP_CINH_REGION		1
+#define DPAA2_SWP_CENA_MEM_REGION	2
+
 #define MC_PORTAL_INDEX		0
 #define NUM_DPIO_REGIONS	2
 #define NUM_DQS_PER_QUEUE       2

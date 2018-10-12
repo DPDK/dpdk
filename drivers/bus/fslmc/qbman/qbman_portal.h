@@ -1,12 +1,17 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  * Copyright (C) 2014-2016 Freescale Semiconductor, Inc.
+ * Copyright 2018 NXP
  *
  */
+
+#ifndef _QBMAN_PORTAL_H_
+#define _QBMAN_PORTAL_H_
 
 #include "qbman_sys.h"
 #include <fsl_qbman_portal.h>
 
+uint32_t qman_version;
 #define QMAN_REV_4000   0x04000000
 #define QMAN_REV_4100   0x04010000
 #define QMAN_REV_4101   0x04010001
@@ -14,12 +19,13 @@
 /* All QBMan command and result structures use this "valid bit" encoding */
 #define QB_VALID_BIT ((uint32_t)0x80)
 
+/* All QBMan command use this "Read trigger bit" encoding */
+#define QB_RT_BIT ((uint32_t)0x100)
+
 /* Management command result codes */
 #define QBMAN_MC_RSLT_OK      0xf0
 
 /* QBMan DQRR size is set at runtime in qbman_portal.c */
-
-#define QBMAN_EQCR_SIZE 8
 
 static inline uint8_t qm_cyc_diff(uint8_t ringsize, uint8_t first,
 				  uint8_t last)
@@ -51,6 +57,10 @@ struct qbman_swp {
 #endif
 		uint32_t valid_bit; /* 0x00 or 0x80 */
 	} mc;
+	/* Management response */
+	struct {
+		uint32_t valid_bit; /* 0x00 or 0x80 */
+	} mr;
 	/* Push dequeues */
 	uint32_t sdq;
 	/* Volatile dequeues */
@@ -87,6 +97,8 @@ struct qbman_swp {
 	struct {
 		uint32_t pi;
 		uint32_t pi_vb;
+		uint32_t pi_ring_size;
+		uint32_t pi_mask;
 		uint32_t ci;
 		int available;
 	} eqcr;
@@ -141,4 +153,16 @@ static inline void *qbman_swp_mc_complete(struct qbman_swp *swp, void *cmd,
  * an inline) is necessary to work with different descriptor types and to work
  * correctly with const and non-const inputs (and similarly-qualified outputs).
  */
-#define qb_cl(d) (&(d)->donot_manipulate_directly[0])
+#define qb_cl(d) (&(d)->dont_manipulate_directly[0])
+
+#ifdef RTE_ARCH_ARM64
+	#define clean(p) \
+			{ asm volatile("dc cvac, %0;" : : "r" (p) : "memory"); }
+	#define invalidate(p) \
+			{ asm volatile("dc ivac, %0" : : "r"(p) : "memory"); }
+#else
+	#define clean(p)
+	#define invalidate(p)
+#endif
+
+#endif

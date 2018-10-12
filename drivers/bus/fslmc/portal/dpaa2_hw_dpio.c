@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016 NXP
+ *   Copyright 2016-2018 NXP
  *
  */
 #include <unistd.h>
@@ -178,68 +178,6 @@ static int dpaa2_dpio_intr_init(struct dpaa2_dpio_dev *dpio_dev)
 #endif
 
 static int
-configure_dpio_qbman_swp(struct dpaa2_dpio_dev *dpio_dev)
-{
-	struct qbman_swp_desc p_des;
-	struct dpio_attr attr;
-
-	dpio_dev->dpio = malloc(sizeof(struct fsl_mc_io));
-	if (!dpio_dev->dpio) {
-		DPAA2_BUS_ERR("Memory allocation failure");
-		return -1;
-	}
-
-	dpio_dev->dpio->regs = dpio_dev->mc_portal;
-	if (dpio_open(dpio_dev->dpio, CMD_PRI_LOW, dpio_dev->hw_id,
-		      &dpio_dev->token)) {
-		DPAA2_BUS_ERR("Failed to allocate IO space");
-		free(dpio_dev->dpio);
-		return -1;
-	}
-
-	if (dpio_reset(dpio_dev->dpio, CMD_PRI_LOW, dpio_dev->token)) {
-		DPAA2_BUS_ERR("Failed to reset dpio");
-		dpio_close(dpio_dev->dpio, CMD_PRI_LOW, dpio_dev->token);
-		free(dpio_dev->dpio);
-		return -1;
-	}
-
-	if (dpio_enable(dpio_dev->dpio, CMD_PRI_LOW, dpio_dev->token)) {
-		DPAA2_BUS_ERR("Failed to Enable dpio");
-		dpio_close(dpio_dev->dpio, CMD_PRI_LOW, dpio_dev->token);
-		free(dpio_dev->dpio);
-		return -1;
-	}
-
-	if (dpio_get_attributes(dpio_dev->dpio, CMD_PRI_LOW,
-				dpio_dev->token, &attr)) {
-		DPAA2_BUS_ERR("DPIO Get attribute failed");
-		dpio_disable(dpio_dev->dpio, CMD_PRI_LOW, dpio_dev->token);
-		dpio_close(dpio_dev->dpio, CMD_PRI_LOW,  dpio_dev->token);
-		free(dpio_dev->dpio);
-		return -1;
-	}
-
-	/* Configure & setup SW portal */
-	p_des.block = NULL;
-	p_des.idx = attr.qbman_portal_id;
-	p_des.cena_bar = (void *)(dpio_dev->qbman_portal_ce_paddr);
-	p_des.cinh_bar = (void *)(dpio_dev->qbman_portal_ci_paddr);
-	p_des.irq = -1;
-	p_des.qman_version = attr.qbman_version;
-
-	dpio_dev->sw_portal = qbman_swp_init(&p_des);
-	if (dpio_dev->sw_portal == NULL) {
-		DPAA2_BUS_ERR("QBMan SW Portal Init failed");
-		dpio_close(dpio_dev->dpio, CMD_PRI_LOW, dpio_dev->token);
-		free(dpio_dev->dpio);
-		return -1;
-	}
-
-	return 0;
-}
-
-static int
 dpaa2_configure_stashing(struct dpaa2_dpio_dev *dpio_dev, int cpu_id)
 {
 	int sdest, ret;
@@ -402,15 +340,17 @@ dpaa2_create_dpio_device(int vdev_fd,
 			 struct vfio_device_info *obj_info,
 			 int object_id)
 {
-	struct dpaa2_dpio_dev *dpio_dev;
+	struct dpaa2_dpio_dev *dpio_dev = NULL;
 	struct vfio_region_info reg_info = { .argsz = sizeof(reg_info)};
+	struct qbman_swp_desc p_des;
+	struct dpio_attr attr;
 
 	if (obj_info->num_regions < NUM_DPIO_REGIONS) {
 		DPAA2_BUS_ERR("Not sufficient number of DPIO regions");
 		return -1;
 	}
 
-	dpio_dev = rte_malloc(NULL, sizeof(struct dpaa2_dpio_dev),
+	dpio_dev = rte_zmalloc(NULL, sizeof(struct dpaa2_dpio_dev),
 			      RTE_CACHE_LINE_SIZE);
 	if (!dpio_dev) {
 		DPAA2_BUS_ERR("Memory allocation failed for DPIO Device");
@@ -423,45 +363,33 @@ dpaa2_create_dpio_device(int vdev_fd,
 	/* Using single portal  for all devices */
 	dpio_dev->mc_portal = rte_mcp_ptr_list[MC_PORTAL_INDEX];
 
-	reg_info.index = 0;
-	if (ioctl(vdev_fd, VFIO_DEVICE_GET_REGION_INFO, &reg_info)) {
-		DPAA2_BUS_ERR("vfio: error getting region info");
-		rte_free(dpio_dev);
-		return -1;
+	dpio_dev->dpio = malloc(sizeof(struct fsl_mc_io));
+	if (!dpio_dev->dpio) {
+		DPAA2_BUS_ERR("Memory allocation failure");
+		goto err;
 	}
 
-	dpio_dev->ce_size = reg_info.size;
-	dpio_dev->qbman_portal_ce_paddr = (size_t)mmap(NULL, reg_info.size,
-				PROT_WRITE | PROT_READ, MAP_SHARED,
-				vdev_fd, reg_info.offset);
-
-	reg_info.index = 1;
-	if (ioctl(vdev_fd, VFIO_DEVICE_GET_REGION_INFO, &reg_info)) {
-		DPAA2_BUS_ERR("vfio: error getting region info");
-		rte_free(dpio_dev);
-		return -1;
+	dpio_dev->dpio->regs = dpio_dev->mc_portal;
+	if (dpio_open(dpio_dev->dpio, CMD_PRI_LOW, dpio_dev->hw_id,
+		      &dpio_dev->token)) {
+		DPAA2_BUS_ERR("Failed to allocate IO space");
+		goto err;
 	}
 
-	dpio_dev->ci_size = reg_info.size;
-	dpio_dev->qbman_portal_ci_paddr = (size_t)mmap(NULL, reg_info.size,
-				PROT_WRITE | PROT_READ, MAP_SHARED,
-				vdev_fd, reg_info.offset);
-
-	if (configure_dpio_qbman_swp(dpio_dev)) {
-		DPAA2_BUS_ERR(
-			     "Fail to configure the dpio qbman portal for %d",
-			     dpio_dev->hw_id);
-		rte_free(dpio_dev);
-		return -1;
+	if (dpio_reset(dpio_dev->dpio, CMD_PRI_LOW, dpio_dev->token)) {
+		DPAA2_BUS_ERR("Failed to reset dpio");
+		goto err;
 	}
 
-	io_space_count++;
-	dpio_dev->index = io_space_count;
+	if (dpio_enable(dpio_dev->dpio, CMD_PRI_LOW, dpio_dev->token)) {
+		DPAA2_BUS_ERR("Failed to Enable dpio");
+		goto err;
+	}
 
-	if (rte_dpaa2_vfio_setup_intr(&dpio_dev->intr_handle, vdev_fd, 1)) {
-		DPAA2_BUS_ERR("Fail to setup interrupt for %d",
-			      dpio_dev->hw_id);
-		rte_free(dpio_dev);
+	if (dpio_get_attributes(dpio_dev->dpio, CMD_PRI_LOW,
+				dpio_dev->token, &attr)) {
+		DPAA2_BUS_ERR("DPIO Get attribute failed");
+		goto err;
 	}
 
 	/* find the SoC type for the first time */
@@ -483,9 +411,67 @@ dpaa2_create_dpio_device(int vdev_fd,
 		dpaa2_svr_family = (mc_plat_info.svr & 0xffff0000);
 	}
 
+	if (dpaa2_svr_family == SVR_LX2160A)
+		reg_info.index = DPAA2_SWP_CENA_MEM_REGION;
+	else
+		reg_info.index = DPAA2_SWP_CENA_REGION;
+
+	if (ioctl(vdev_fd, VFIO_DEVICE_GET_REGION_INFO, &reg_info)) {
+		DPAA2_BUS_ERR("vfio: error getting region info");
+		goto err;
+	}
+
+	dpio_dev->ce_size = reg_info.size;
+	dpio_dev->qbman_portal_ce_paddr = (size_t)mmap(NULL, reg_info.size,
+				PROT_WRITE | PROT_READ, MAP_SHARED,
+				vdev_fd, reg_info.offset);
+
+	reg_info.index = DPAA2_SWP_CINH_REGION;
+	if (ioctl(vdev_fd, VFIO_DEVICE_GET_REGION_INFO, &reg_info)) {
+		DPAA2_BUS_ERR("vfio: error getting region info");
+		goto err;
+	}
+
+	dpio_dev->ci_size = reg_info.size;
+	dpio_dev->qbman_portal_ci_paddr = (size_t)mmap(NULL, reg_info.size,
+				PROT_WRITE | PROT_READ, MAP_SHARED,
+				vdev_fd, reg_info.offset);
+
+	/* Configure & setup SW portal */
+	p_des.block = NULL;
+	p_des.idx = attr.qbman_portal_id;
+	p_des.cena_bar = (void *)(dpio_dev->qbman_portal_ce_paddr);
+	p_des.cinh_bar = (void *)(dpio_dev->qbman_portal_ci_paddr);
+	p_des.irq = -1;
+	p_des.qman_version = attr.qbman_version;
+
+	dpio_dev->sw_portal = qbman_swp_init(&p_des);
+	if (dpio_dev->sw_portal == NULL) {
+		DPAA2_BUS_ERR("QBMan SW Portal Init failed");
+		goto err;
+	}
+
+	io_space_count++;
+	dpio_dev->index = io_space_count;
+
+	if (rte_dpaa2_vfio_setup_intr(&dpio_dev->intr_handle, vdev_fd, 1)) {
+		DPAA2_BUS_ERR("Fail to setup interrupt for %d",
+			      dpio_dev->hw_id);
+		goto err;
+	}
+
 	TAILQ_INSERT_TAIL(&dpio_dev_list, dpio_dev, next);
 
 	return 0;
+
+err:
+	if (dpio_dev->dpio) {
+		dpio_disable(dpio_dev->dpio, CMD_PRI_LOW, dpio_dev->token);
+		dpio_close(dpio_dev->dpio, CMD_PRI_LOW,  dpio_dev->token);
+		free(dpio_dev->dpio);
+	}
+	rte_free(dpio_dev);
+	return -1;
 }
 
 void
