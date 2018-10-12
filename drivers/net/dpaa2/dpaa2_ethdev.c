@@ -291,6 +291,35 @@ fail:
 	return -1;
 }
 
+static void
+dpaa2_free_rx_tx_queues(struct rte_eth_dev *dev)
+{
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct dpaa2_queue *dpaa2_q;
+	int i;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* Queue allocation base */
+	if (priv->rx_vq[0]) {
+		/* cleaning up queue storage */
+		for (i = 0; i < priv->nb_rx_queues; i++) {
+			dpaa2_q = (struct dpaa2_queue *)priv->rx_vq[i];
+			if (dpaa2_q->q_storage)
+				rte_free(dpaa2_q->q_storage);
+		}
+		/* cleanup tx queue cscn */
+		for (i = 0; i < priv->nb_tx_queues; i++) {
+			dpaa2_q = (struct dpaa2_queue *)priv->tx_vq[i];
+			if (!dpaa2_q->cscn)
+				rte_free(dpaa2_q->cscn);
+		}
+		/*free memory for all queues (RX+TX) */
+		rte_free(priv->rx_vq[0]);
+		priv->rx_vq[0] = NULL;
+	}
+}
+
 static int
 dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 {
@@ -868,22 +897,12 @@ dpaa2_dev_stop(struct rte_eth_dev *dev)
 static void
 dpaa2_dev_close(struct rte_eth_dev *dev)
 {
-	struct rte_eth_dev_data *data = dev->data;
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
-	int i, ret;
+	int ret;
 	struct rte_eth_link link;
-	struct dpaa2_queue *dpaa2_q;
 
 	PMD_INIT_FUNC_TRACE();
-
-	for (i = 0; i < data->nb_tx_queues; i++) {
-		dpaa2_q = (struct dpaa2_queue *)data->tx_queues[i];
-		if (!dpaa2_q->cscn) {
-			rte_free(dpaa2_q->cscn);
-			dpaa2_q->cscn = NULL;
-		}
-	}
 
 	/* Clean the device first */
 	ret = dpni_reset(dpni, CMD_PRI_LOW, priv->token);
@@ -2027,8 +2046,7 @@ dpaa2_dev_uninit(struct rte_eth_dev *eth_dev)
 {
 	struct dpaa2_dev_priv *priv = eth_dev->data->dev_private;
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
-	int i, ret;
-	struct dpaa2_queue *dpaa2_q;
+	int ret;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -2042,17 +2060,7 @@ dpaa2_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	dpaa2_dev_close(eth_dev);
 
-	if (priv->rx_vq[0]) {
-		/* cleaning up queue storage */
-		for (i = 0; i < priv->nb_rx_queues; i++) {
-			dpaa2_q = (struct dpaa2_queue *)priv->rx_vq[i];
-			if (dpaa2_q->q_storage)
-				rte_free(dpaa2_q->q_storage);
-		}
-		/*free the all queue memory */
-		rte_free(priv->rx_vq[0]);
-		priv->rx_vq[0] = NULL;
-	}
+	dpaa2_free_rx_tx_queues(eth_dev);
 
 	/* free memory for storing MAC addresses */
 	if (eth_dev->data->mac_addrs) {
