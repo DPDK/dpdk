@@ -6,6 +6,11 @@
 
 #include "atl_ethdev.h"
 #include "atl_common.h"
+#include "atl_hw_regs.h"
+#include "atl_logs.h"
+#include "hw_atl/hw_atl_llh.h"
+#include "hw_atl/hw_atl_b0.h"
+#include "hw_atl/hw_atl_b0_internal.h"
 
 static int eth_atl_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_atl_dev_uninit(struct rte_eth_dev *eth_dev);
@@ -15,6 +20,13 @@ static int  atl_dev_start(struct rte_eth_dev *dev);
 static void atl_dev_stop(struct rte_eth_dev *dev);
 static void atl_dev_close(struct rte_eth_dev *dev);
 static int  atl_dev_reset(struct rte_eth_dev *dev);
+
+static int atl_fw_version_get(struct rte_eth_dev *dev, char *fw_version,
+			      size_t fw_size);
+
+static void atl_dev_info_get(struct rte_eth_dev *dev,
+			       struct rte_eth_dev_info *dev_info);
+
 
 static int eth_atl_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct rte_pci_device *pci_dev);
@@ -69,26 +81,83 @@ static const struct eth_dev_ops atl_eth_dev_ops = {
 	.dev_stop	      = atl_dev_stop,
 	.dev_close	      = atl_dev_close,
 	.dev_reset	      = atl_dev_reset,
-	.dev_infos_get        = atl_dev_info_get,
+
+	.fw_version_get       = atl_fw_version_get,
+	.dev_infos_get	      = atl_dev_info_get,
 };
+
+static inline int32_t
+atl_reset_hw(struct aq_hw_s *hw)
+{
+	return hw_atl_b0_hw_reset(hw);
+}
 
 static int
 eth_atl_dev_init(struct rte_eth_dev *eth_dev)
 {
+	struct atl_adapter *adapter =
+		(struct atl_adapter *)eth_dev->data->dev_private;
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	int err = 0;
+
+	PMD_INIT_FUNC_TRACE();
+
 	eth_dev->dev_ops = &atl_eth_dev_ops;
+
+	/* For secondary processes, the primary process has done all the work */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
+	/* Vendor and Device ID need to be set before init of shared code */
+	hw->device_id = pci_dev->id.device_id;
+	hw->vendor_id = pci_dev->id.vendor_id;
+	hw->mmio = (void *)pci_dev->mem_resource[0].addr;
+
+	/* Hardware configuration - hardcode */
+	adapter->hw_cfg.is_lro = false;
+	adapter->hw_cfg.wol = false;
+
+	hw->aq_nic_cfg = &adapter->hw_cfg;
 
 	/* Allocate memory for storing MAC addresses */
 	eth_dev->data->mac_addrs = rte_zmalloc("atlantic", ETHER_ADDR_LEN, 0);
-	if (eth_dev->data->mac_addrs == NULL)
+	if (eth_dev->data->mac_addrs == NULL) {
+		PMD_INIT_LOG(ERR, "MAC Malloc failed");
 		return -ENOMEM;
+	}
 
-	return 0;
+	err = hw_atl_utils_initfw(hw, &hw->aq_fw_ops);
+	if (err)
+		return err;
+
+	/* Copy the permanent MAC address */
+	if (hw->aq_fw_ops->get_mac_permanent(hw,
+			eth_dev->data->mac_addrs->addr_bytes) != 0)
+		return -EINVAL;
+
+	return err;
 }
 
 static int
 eth_atl_dev_uninit(struct rte_eth_dev *eth_dev)
 {
+	struct aq_hw_s *hw;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -EPERM;
+
+	hw = ATL_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+
+	if (hw->adapter_stopped == 0)
+		atl_dev_close(eth_dev);
+
+	eth_dev->dev_ops = NULL;
+
 	rte_free(eth_dev->data->mac_addrs);
+	eth_dev->data->mac_addrs = NULL;
 
 	return 0;
 }
@@ -118,25 +187,60 @@ atl_dev_configure(struct rte_eth_dev *dev __rte_unused)
  * It returns 0 on success.
  */
 static int
-atl_dev_start(struct rte_eth_dev *dev __rte_unused)
+atl_dev_start(struct rte_eth_dev *dev)
 {
-	return 0;
+	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int status;
+	int err;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* set adapter started */
+	hw->adapter_stopped = 0;
+
+	/* reinitialize adapter
+	 * this calls reset and start
+	 */
+	status = atl_reset_hw(hw);
+	if (status != 0)
+		return -EIO;
+
+	err = hw_atl_b0_hw_init(hw, dev->data->mac_addrs->addr_bytes);
+
+	hw_atl_b0_hw_start(hw);
+
+	PMD_INIT_LOG(DEBUG, "FW version: %u.%u.%u",
+		hw->fw_ver_actual >> 24,
+		(hw->fw_ver_actual >> 16) & 0xFF,
+		hw->fw_ver_actual & 0xFFFF);
+	PMD_INIT_LOG(DEBUG, "Driver version: %s", ATL_PMD_DRIVER_VERSION);
+
+	return err;
 }
 
 /*
  * Stop device: disable rx and tx functions to allow for reconfiguring.
  */
 static void
-atl_dev_stop(struct rte_eth_dev *dev __rte_unused)
+atl_dev_stop(struct rte_eth_dev *dev)
 {
+	struct aq_hw_s *hw =
+		ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/* reset the NIC */
+	atl_reset_hw(hw);
+	hw->adapter_stopped = 1;
 }
 
 /*
  * Reset and stop device.
  */
 static void
-atl_dev_close(struct rte_eth_dev *dev __rte_unused)
+atl_dev_close(struct rte_eth_dev *dev)
 {
+	PMD_INIT_FUNC_TRACE();
+
+	atl_dev_stop(dev);
 }
 
 static int
@@ -151,6 +255,28 @@ atl_dev_reset(struct rte_eth_dev *dev)
 	ret = eth_atl_dev_init(dev);
 
 	return ret;
+}
+
+static int
+atl_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
+{
+	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t fw_ver = 0;
+	unsigned int ret = 0;
+
+	ret = hw_atl_utils_get_fw_version(hw, &fw_ver);
+	if (ret)
+		return -EIO;
+
+	ret = snprintf(fw_version, fw_size, "%u.%u.%u", fw_ver >> 24,
+		       (fw_ver >> 16) & 0xFFU, fw_ver & 0xFFFFU);
+
+	ret += 1; /* add string null-terminator */
+
+	if (fw_size < ret)
+		return ret;
+
+	return 0;
 }
 
 static void

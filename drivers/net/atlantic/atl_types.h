@@ -76,6 +76,10 @@ struct aq_hw_cfg_s {
 };
 
 struct aq_hw_s {
+	u16 device_id;
+	u16 vendor_id;
+	bool adapter_stopped;
+
 	u8 rbl_enabled:1;
 	struct aq_hw_cfg_s *aq_nic_cfg;
 	const struct aq_fw_ops *aq_fw_ops;
