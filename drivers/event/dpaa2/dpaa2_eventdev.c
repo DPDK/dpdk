@@ -109,8 +109,8 @@ skip_linking:
 	evq_info = &dpaa2_portal->evq_info[queue_id];
 
 	while (nb_events) {
-		frames_to_send = (nb_events >> 3) ?
-			MAX_TX_RING_SLOTS : nb_events;
+		frames_to_send = (nb_events > dpaa2_eqcr_size) ?
+			dpaa2_eqcr_size : nb_events;
 
 		for (loop = 0; loop < frames_to_send; loop++) {
 			const struct rte_event *event = &ev[num_tx + loop];

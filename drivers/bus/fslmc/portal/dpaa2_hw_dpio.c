@@ -53,6 +53,11 @@ static uint32_t io_space_count;
 /* Variable to store DPAA2 platform type */
 uint32_t dpaa2_svr_family;
 
+/* Variable to store DPAA2 DQRR size */
+uint8_t dpaa2_dqrr_size;
+/* Variable to store DPAA2 EQCR size */
+uint8_t dpaa2_eqcr_size;
+
 /*Stashing Macros default for LS208x*/
 static int dpaa2_core_cluster_base = 0x04;
 static int dpaa2_cluster_sz = 2;
@@ -125,7 +130,7 @@ static void dpaa2_affine_dpio_intr_to_respective_core(int32_t dpio_id)
 		 cpu_mask, token);
 	ret = system(command);
 	if (ret < 0)
-		DPAA2_BUS_WARN(
+		DPAA2_BUS_DEBUG(
 			"Failed to affine interrupts on respective core");
 	else
 		DPAA2_BUS_DEBUG(" %s command is executed", command);
@@ -409,6 +414,14 @@ dpaa2_create_dpio_device(int vdev_fd,
 			DPAA2_BUS_DEBUG("LX2160 Platform Detected");
 		}
 		dpaa2_svr_family = (mc_plat_info.svr & 0xffff0000);
+
+		if (dpaa2_svr_family == SVR_LX2160A) {
+			dpaa2_dqrr_size = DPAA2_LX2_DQRR_RING_SIZE;
+			dpaa2_eqcr_size = DPAA2_LX2_EQCR_RING_SIZE;
+		} else {
+			dpaa2_dqrr_size = DPAA2_DQRR_RING_SIZE;
+			dpaa2_eqcr_size = DPAA2_EQCR_RING_SIZE;
+		}
 	}
 
 	if (dpaa2_svr_family == SVR_LX2160A)
@@ -492,7 +505,7 @@ dpaa2_alloc_dq_storage(struct queue_storage_info_t *q_storage)
 
 	for (i = 0; i < NUM_DQS_PER_QUEUE; i++) {
 		q_storage->dq_storage[i] = rte_malloc(NULL,
-			DPAA2_DQRR_RING_SIZE * sizeof(struct qbman_result),
+			dpaa2_dqrr_size * sizeof(struct qbman_result),
 			RTE_CACHE_LINE_SIZE);
 		if (!q_storage->dq_storage[i])
 			goto fail;

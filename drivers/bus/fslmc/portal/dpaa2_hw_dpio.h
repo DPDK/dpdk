@@ -30,6 +30,10 @@ RTE_DECLARE_PER_LCORE(struct dpaa2_io_portal_t, _dpaa2_io);
 
 /* Variable to store DPAA2 platform type */
 extern uint32_t dpaa2_svr_family;
+/* Variable to store DPAA2 DQRR size */
+extern uint8_t dpaa2_dqrr_size;
+/* Variable to store DPAA2 EQCR size */
+extern uint8_t dpaa2_eqcr_size;
 
 extern struct dpaa2_io_portal_t dpaa2_io_portal[RTE_MAX_LCORE];
 

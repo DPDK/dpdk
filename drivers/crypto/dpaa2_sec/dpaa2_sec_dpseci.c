@@ -1237,7 +1237,8 @@ dpaa2_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 	swp = DPAA2_PER_LCORE_PORTAL;
 
 	while (nb_ops) {
-		frames_to_send = (nb_ops >> 3) ? MAX_TX_RING_SLOTS : nb_ops;
+		frames_to_send = (nb_ops > dpaa2_eqcr_size) ?
+			dpaa2_eqcr_size : nb_ops;
 
 		for (loop = 0; loop < frames_to_send; loop++) {
 			/*Clear the unused FD fields before sending*/
@@ -1396,8 +1397,8 @@ dpaa2_sec_dequeue_burst(void *qp, struct rte_crypto_op **ops,
 
 	qbman_pull_desc_clear(&pulldesc);
 	qbman_pull_desc_set_numframes(&pulldesc,
-				      (nb_ops > DPAA2_DQRR_RING_SIZE) ?
-				      DPAA2_DQRR_RING_SIZE : nb_ops);
+				      (nb_ops > dpaa2_dqrr_size) ?
+				      dpaa2_dqrr_size : nb_ops);
 	qbman_pull_desc_set_fq(&pulldesc, fqid);
 	qbman_pull_desc_set_storage(&pulldesc, dq_storage,
 				    (dma_addr_t)DPAA2_VADDR_TO_IOVA(dq_storage),

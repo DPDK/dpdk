@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016 NXP
+ *   Copyright 2016-2018 NXP
  *
  */
 
@@ -32,11 +32,23 @@
 #define VLAN_TAG_SIZE   4 /** < Vlan Header Length */
 #endif
 
-#define MAX_TX_RING_SLOTS	8
-	/** <Maximum number of slots available in TX ring*/
+/* Maximum number of slots available in TX ring */
+#define MAX_TX_RING_SLOTS			32
 
-#define DPAA2_DQRR_RING_SIZE	16
-	/** <Maximum number of slots available in RX ring*/
+/* Maximum number of slots available in RX ring */
+#define DPAA2_EQCR_RING_SIZE		8
+/* Maximum number of slots available in RX ring on LX2 */
+#define DPAA2_LX2_EQCR_RING_SIZE	32
+
+/* Maximum number of slots available in RX ring */
+#define DPAA2_DQRR_RING_SIZE		16
+/* Maximum number of slots available in RX ring on LX2 */
+#define DPAA2_LX2_DQRR_RING_SIZE	32
+
+/* EQCR shift to get EQCR size (2 >> 3) = 8 for LS2/LS2 */
+#define DPAA2_EQCR_SHIFT		3
+/* EQCR shift to get EQCR size for LX2 (2 >> 5) = 32 for LX2 */
+#define DPAA2_LX2_EQCR_SHIFT		5
 
 #define DPAA2_SWP_CENA_REGION		0
 #define DPAA2_SWP_CINH_REGION		1
