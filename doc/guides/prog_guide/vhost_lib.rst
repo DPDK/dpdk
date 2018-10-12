@@ -106,6 +106,14 @@ The following is an overview of some key Vhost API functions:
     Enabling this flag with these Qemu version results in Qemu being blocked
     when multiple queue pairs are declared.
 
+  - ``RTE_VHOST_USER_POSTCOPY_SUPPORT``
+
+    Postcopy live-migration support will be enabled when this flag is set.
+    It is disabled by default.
+
+    Enabling this flag should only be done when the calling application does
+    not pre-fault the guest shared memory, otherwise migration would fail.
+
 * ``rte_vhost_driver_set_features(path, features)``
 
   This function sets the feature bits the vhost-user driver supports. The

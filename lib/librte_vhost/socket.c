@@ -51,6 +51,8 @@ struct vhost_user_socket {
 	uint64_t supported_features;
 	uint64_t features;
 
+	uint64_t protocol_features;
+
 	/*
 	 * Device id to identify a specific backend device.
 	 * It's set to -1 for the default software implementation.
@@ -726,7 +728,7 @@ rte_vhost_driver_get_protocol_features(const char *path,
 	did = vsocket->vdpa_dev_id;
 	vdpa_dev = rte_vdpa_get_device(did);
 	if (!vdpa_dev || !vdpa_dev->ops->get_protocol_features) {
-		*protocol_features = VHOST_USER_PROTOCOL_FEATURES;
+		*protocol_features = vsocket->protocol_features;
 		goto unlock_exit;
 	}
 
@@ -739,7 +741,7 @@ rte_vhost_driver_get_protocol_features(const char *path,
 		goto unlock_exit;
 	}
 
-	*protocol_features = VHOST_USER_PROTOCOL_FEATURES
+	*protocol_features = vsocket->protocol_features
 		& vdpa_protocol_features;
 
 unlock_exit:
@@ -858,16 +860,38 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 	vsocket->use_builtin_virtio_net = true;
 	vsocket->supported_features = VIRTIO_NET_SUPPORTED_FEATURES;
 	vsocket->features           = VIRTIO_NET_SUPPORTED_FEATURES;
+	vsocket->protocol_features  = VHOST_USER_PROTOCOL_FEATURES;
 
-	/* Dequeue zero copy can't assure descriptors returned in order */
+	/*
+	 * Dequeue zero copy can't assure descriptors returned in order.
+	 * Also, it requires that the guest memory is populated, which is
+	 * not compatible with postcopy.
+	 */
 	if (vsocket->dequeue_zero_copy) {
 		vsocket->supported_features &= ~(1ULL << VIRTIO_F_IN_ORDER);
 		vsocket->features &= ~(1ULL << VIRTIO_F_IN_ORDER);
+
+		RTE_LOG(INFO, VHOST_CONFIG,
+			"Dequeue zero copy requested, disabling postcopy support\n");
+		vsocket->protocol_features &=
+			~(1ULL << VHOST_USER_PROTOCOL_F_PAGEFAULT);
 	}
 
 	if (!(flags & RTE_VHOST_USER_IOMMU_SUPPORT)) {
 		vsocket->supported_features &= ~(1ULL << VIRTIO_F_IOMMU_PLATFORM);
 		vsocket->features &= ~(1ULL << VIRTIO_F_IOMMU_PLATFORM);
+	}
+
+	if (!(flags & RTE_VHOST_USER_POSTCOPY_SUPPORT)) {
+		vsocket->protocol_features &=
+			~(1ULL << VHOST_USER_PROTOCOL_F_PAGEFAULT);
+	} else {
+#ifndef RTE_LIBRTE_VHOST_POSTCOPY
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"Postcopy requested but not compiled\n");
+		ret = -1;
+		goto out_mutex;
+#endif
 	}
 
 	if ((flags & RTE_VHOST_USER_CLIENT) != 0) {
