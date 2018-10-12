@@ -1118,6 +1118,8 @@ int dpaa2_dev_stats_get(struct rte_eth_dev *dev,
 	int32_t  retcode;
 	uint8_t page0 = 0, page1 = 1, page2 = 2;
 	union dpni_statistics value;
+	int i;
+	struct dpaa2_queue *dpaa2_rxq, *dpaa2_txq;
 
 	memset(&value, 0, sizeof(union dpni_statistics));
 
@@ -1164,6 +1166,21 @@ int dpaa2_dev_stats_get(struct rte_eth_dev *dev,
 
 	stats->oerrors = value.page_2.egress_discarded_frames;
 	stats->imissed = value.page_2.ingress_nobuffer_discards;
+
+	/* Fill in per queue stats */
+	for (i = 0; (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) &&
+		(i < priv->nb_rx_queues || i < priv->nb_tx_queues); ++i) {
+		dpaa2_rxq = (struct dpaa2_queue *)priv->rx_vq[i];
+		dpaa2_txq = (struct dpaa2_queue *)priv->tx_vq[i];
+		if (dpaa2_rxq)
+			stats->q_ipackets[i] = dpaa2_rxq->rx_pkts;
+		if (dpaa2_txq)
+			stats->q_opackets[i] = dpaa2_txq->tx_pkts;
+
+		/* Byte counting is not implemented */
+		stats->q_ibytes[i]   = 0;
+		stats->q_obytes[i]   = 0;
+	}
 
 	return 0;
 
@@ -1324,6 +1341,8 @@ dpaa2_dev_stats_reset(struct rte_eth_dev *dev)
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
 	int32_t  retcode;
+	int i;
+	struct dpaa2_queue *dpaa2_q;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1335,6 +1354,19 @@ dpaa2_dev_stats_reset(struct rte_eth_dev *dev)
 	retcode =  dpni_reset_statistics(dpni, CMD_PRI_LOW, priv->token);
 	if (retcode)
 		goto error;
+
+	/* Reset the per queue stats in dpaa2_queue structure */
+	for (i = 0; i < priv->nb_rx_queues; i++) {
+		dpaa2_q = (struct dpaa2_queue *)priv->rx_vq[i];
+		if (dpaa2_q)
+			dpaa2_q->rx_pkts = 0;
+	}
+
+	for (i = 0; i < priv->nb_tx_queues; i++) {
+		dpaa2_q = (struct dpaa2_queue *)priv->tx_vq[i];
+		if (dpaa2_q)
+			dpaa2_q->tx_pkts = 0;
+	}
 
 	return;
 
