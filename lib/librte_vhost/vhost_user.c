@@ -826,7 +826,7 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 			int main_fd __rte_unused)
 {
 	struct virtio_net *dev = *pdev;
-	struct VhostUserMemory memory = msg->payload.memory;
+	struct VhostUserMemory *memory = &msg->payload.memory;
 	struct rte_vhost_mem_region *reg;
 	void *mmap_addr;
 	uint64_t mmap_size;
@@ -836,17 +836,17 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	int populate;
 	int fd;
 
-	if (memory.nregions > VHOST_MEMORY_MAX_NREGIONS) {
+	if (memory->nregions > VHOST_MEMORY_MAX_NREGIONS) {
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"too many memory regions (%u)\n", memory.nregions);
+			"too many memory regions (%u)\n", memory->nregions);
 		return VH_RESULT_ERR;
 	}
 
-	if (dev->mem && !vhost_memory_changed(&memory, dev->mem)) {
+	if (dev->mem && !vhost_memory_changed(memory, dev->mem)) {
 		RTE_LOG(INFO, VHOST_CONFIG,
 			"(%d) memory regions not changed\n", dev->vid);
 
-		for (i = 0; i < memory.nregions; i++)
+		for (i = 0; i < memory->nregions; i++)
 			close(msg->fds[i]);
 
 		return VH_RESULT_OK;
@@ -878,25 +878,25 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	}
 
 	dev->mem = rte_zmalloc("vhost-mem-table", sizeof(struct rte_vhost_memory) +
-		sizeof(struct rte_vhost_mem_region) * memory.nregions, 0);
+		sizeof(struct rte_vhost_mem_region) * memory->nregions, 0);
 	if (dev->mem == NULL) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"(%d) failed to allocate memory for dev->mem\n",
 			dev->vid);
 		return VH_RESULT_ERR;
 	}
-	dev->mem->nregions = memory.nregions;
+	dev->mem->nregions = memory->nregions;
 
-	for (i = 0; i < memory.nregions; i++) {
+	for (i = 0; i < memory->nregions; i++) {
 		fd  = msg->fds[i];
 		reg = &dev->mem->regions[i];
 
-		reg->guest_phys_addr = memory.regions[i].guest_phys_addr;
-		reg->guest_user_addr = memory.regions[i].userspace_addr;
-		reg->size            = memory.regions[i].memory_size;
+		reg->guest_phys_addr = memory->regions[i].guest_phys_addr;
+		reg->guest_user_addr = memory->regions[i].userspace_addr;
+		reg->size            = memory->regions[i].memory_size;
 		reg->fd              = fd;
 
-		mmap_offset = memory.regions[i].mmap_offset;
+		mmap_offset = memory->regions[i].mmap_offset;
 
 		/* Check for memory_size + mmap_offset overflow */
 		if (mmap_offset >= -reg->size) {
