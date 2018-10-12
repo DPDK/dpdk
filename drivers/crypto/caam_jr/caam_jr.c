@@ -21,6 +21,7 @@
 #include <caam_jr_config.h>
 #include <caam_jr_hw_specific.h>
 #include <caam_jr_pvt.h>
+#include <caam_jr_desc.h>
 #include <caam_jr_log.h>
 
 /* RTA header files */
@@ -52,6 +53,343 @@ static enum sec_driver_state_e g_driver_state = SEC_DRIVER_STATE_IDLE;
 /* The number of job rings used by SEC user space driver */
 static int g_job_rings_no;
 static int g_job_rings_max;
+
+struct sec_outring_entry {
+	phys_addr_t desc;	/* Pointer to completed descriptor */
+	uint32_t status;	/* Status for completed descriptor */
+} __rte_packed;
+
+/* virtual address conversin when mempool support is available for ctx */
+static inline phys_addr_t
+caam_jr_vtop_ctx(struct caam_jr_op_ctx *ctx, void *vaddr)
+{
+	PMD_INIT_FUNC_TRACE();
+	return (size_t)vaddr - ctx->vtop_offset;
+}
+
+static inline void
+caam_jr_op_ending(struct caam_jr_op_ctx *ctx)
+{
+	PMD_INIT_FUNC_TRACE();
+	/* report op status to sym->op and then free the ctx memeory  */
+	rte_mempool_put(ctx->ctx_pool, (void *)ctx);
+}
+
+static inline struct caam_jr_op_ctx *
+caam_jr_alloc_ctx(struct caam_jr_session *ses)
+{
+	struct caam_jr_op_ctx *ctx;
+	int ret;
+
+	PMD_INIT_FUNC_TRACE();
+	ret = rte_mempool_get(ses->ctx_pool, (void **)(&ctx));
+	if (!ctx || ret) {
+		CAAM_JR_DP_WARN("Alloc sec descriptor failed!");
+		return NULL;
+	}
+	/*
+	 * Clear SG memory. There are 16 SG entries of 16 Bytes each.
+	 * one call to dcbz_64() clear 64 bytes, hence calling it 4 times
+	 * to clear all the SG entries. caam_jr_alloc_ctx() is called for
+	 * each packet, memset is costlier than dcbz_64().
+	 */
+	dcbz_64(&ctx->sg[SG_CACHELINE_0]);
+	dcbz_64(&ctx->sg[SG_CACHELINE_1]);
+	dcbz_64(&ctx->sg[SG_CACHELINE_2]);
+	dcbz_64(&ctx->sg[SG_CACHELINE_3]);
+
+	ctx->ctx_pool = ses->ctx_pool;
+	ctx->vtop_offset = (size_t) ctx - rte_mempool_virt2iova(ctx);
+
+	return ctx;
+}
+
+static inline int
+is_cipher_only(struct caam_jr_session *ses)
+{
+	PMD_INIT_FUNC_TRACE();
+	return ((ses->cipher_alg != RTE_CRYPTO_CIPHER_NULL) &&
+		(ses->auth_alg == RTE_CRYPTO_AUTH_NULL));
+}
+
+static inline int
+is_auth_only(struct caam_jr_session *ses)
+{
+	PMD_INIT_FUNC_TRACE();
+	return ((ses->cipher_alg == RTE_CRYPTO_CIPHER_NULL) &&
+		(ses->auth_alg != RTE_CRYPTO_AUTH_NULL));
+}
+
+static inline int
+is_aead(struct caam_jr_session *ses)
+{
+	PMD_INIT_FUNC_TRACE();
+	return ((ses->cipher_alg == 0) &&
+		(ses->auth_alg == 0) &&
+		(ses->aead_alg != 0));
+}
+
+static inline int
+is_auth_cipher(struct caam_jr_session *ses)
+{
+	PMD_INIT_FUNC_TRACE();
+	return ((ses->cipher_alg != RTE_CRYPTO_CIPHER_NULL) &&
+		(ses->auth_alg != RTE_CRYPTO_AUTH_NULL));
+}
+
+static inline int
+is_encode(struct caam_jr_session *ses)
+{
+	PMD_INIT_FUNC_TRACE();
+	return ses->dir == DIR_ENC;
+}
+
+static inline int
+is_decode(struct caam_jr_session *ses)
+{
+	PMD_INIT_FUNC_TRACE();
+	return ses->dir == DIR_DEC;
+}
+
+static inline void
+caam_auth_alg(struct caam_jr_session *ses, struct alginfo *alginfo_a)
+{
+	PMD_INIT_FUNC_TRACE();
+	switch (ses->auth_alg) {
+	case RTE_CRYPTO_AUTH_NULL:
+		ses->digest_length = 0;
+		break;
+	case RTE_CRYPTO_AUTH_MD5_HMAC:
+		alginfo_a->algtype = OP_ALG_ALGSEL_MD5;
+		alginfo_a->algmode = OP_ALG_AAI_HMAC;
+		break;
+	case RTE_CRYPTO_AUTH_SHA1_HMAC:
+		alginfo_a->algtype = OP_ALG_ALGSEL_SHA1;
+		alginfo_a->algmode = OP_ALG_AAI_HMAC;
+		break;
+	case RTE_CRYPTO_AUTH_SHA224_HMAC:
+		alginfo_a->algtype = OP_ALG_ALGSEL_SHA224;
+		alginfo_a->algmode = OP_ALG_AAI_HMAC;
+		break;
+	case RTE_CRYPTO_AUTH_SHA256_HMAC:
+		alginfo_a->algtype = OP_ALG_ALGSEL_SHA256;
+		alginfo_a->algmode = OP_ALG_AAI_HMAC;
+		break;
+	case RTE_CRYPTO_AUTH_SHA384_HMAC:
+		alginfo_a->algtype = OP_ALG_ALGSEL_SHA384;
+		alginfo_a->algmode = OP_ALG_AAI_HMAC;
+		break;
+	case RTE_CRYPTO_AUTH_SHA512_HMAC:
+		alginfo_a->algtype = OP_ALG_ALGSEL_SHA512;
+		alginfo_a->algmode = OP_ALG_AAI_HMAC;
+		break;
+	default:
+		CAAM_JR_DEBUG("unsupported auth alg %u", ses->auth_alg);
+	}
+}
+
+static inline void
+caam_cipher_alg(struct caam_jr_session *ses, struct alginfo *alginfo_c)
+{
+	PMD_INIT_FUNC_TRACE();
+	switch (ses->cipher_alg) {
+	case RTE_CRYPTO_CIPHER_NULL:
+		break;
+	case RTE_CRYPTO_CIPHER_AES_CBC:
+		alginfo_c->algtype = OP_ALG_ALGSEL_AES;
+		alginfo_c->algmode = OP_ALG_AAI_CBC;
+		break;
+	case RTE_CRYPTO_CIPHER_3DES_CBC:
+		alginfo_c->algtype = OP_ALG_ALGSEL_3DES;
+		alginfo_c->algmode = OP_ALG_AAI_CBC;
+		break;
+	case RTE_CRYPTO_CIPHER_AES_CTR:
+		alginfo_c->algtype = OP_ALG_ALGSEL_AES;
+		alginfo_c->algmode = OP_ALG_AAI_CTR;
+		break;
+	default:
+		CAAM_JR_DEBUG("unsupported cipher alg %d", ses->cipher_alg);
+	}
+}
+
+static inline void
+caam_aead_alg(struct caam_jr_session *ses, struct alginfo *alginfo)
+{
+	PMD_INIT_FUNC_TRACE();
+	switch (ses->aead_alg) {
+	case RTE_CRYPTO_AEAD_AES_GCM:
+		alginfo->algtype = OP_ALG_ALGSEL_AES;
+		alginfo->algmode = OP_ALG_AAI_GCM;
+		break;
+	default:
+		CAAM_JR_DEBUG("unsupported AEAD alg %d", ses->aead_alg);
+	}
+}
+
+/* prepare command block of the session */
+static int
+caam_jr_prep_cdb(struct caam_jr_session *ses)
+{
+	struct alginfo alginfo_c = {0}, alginfo_a = {0}, alginfo = {0};
+	int32_t shared_desc_len = 0;
+	struct sec_cdb *cdb;
+	int err;
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+	int swap = false;
+#else
+	int swap = true;
+#endif
+
+	PMD_INIT_FUNC_TRACE();
+	if (ses->cdb)
+		caam_jr_dma_free(ses->cdb);
+
+	cdb = caam_jr_dma_mem_alloc(L1_CACHE_BYTES, sizeof(struct sec_cdb));
+	if (!cdb) {
+		CAAM_JR_ERR("failed to allocate memory for cdb\n");
+		return -1;
+	}
+
+	ses->cdb = cdb;
+
+	memset(cdb, 0, sizeof(struct sec_cdb));
+
+	if (is_cipher_only(ses)) {
+		caam_cipher_alg(ses, &alginfo_c);
+		if (alginfo_c.algtype == (unsigned int)CAAM_JR_ALG_UNSUPPORT) {
+			CAAM_JR_ERR("not supported cipher alg");
+			rte_free(cdb);
+			return -ENOTSUP;
+		}
+
+		alginfo_c.key = (size_t)ses->cipher_key.data;
+		alginfo_c.keylen = ses->cipher_key.length;
+		alginfo_c.key_enc_flags = 0;
+		alginfo_c.key_type = RTA_DATA_IMM;
+
+		shared_desc_len = cnstr_shdsc_blkcipher(
+						cdb->sh_desc, true,
+						swap, &alginfo_c,
+						NULL,
+						ses->iv.length,
+						ses->dir);
+	} else if (is_auth_only(ses)) {
+		caam_auth_alg(ses, &alginfo_a);
+		if (alginfo_a.algtype == (unsigned int)CAAM_JR_ALG_UNSUPPORT) {
+			CAAM_JR_ERR("not supported auth alg");
+			rte_free(cdb);
+			return -ENOTSUP;
+		}
+
+		alginfo_a.key = (size_t)ses->auth_key.data;
+		alginfo_a.keylen = ses->auth_key.length;
+		alginfo_a.key_enc_flags = 0;
+		alginfo_a.key_type = RTA_DATA_IMM;
+
+		shared_desc_len = cnstr_shdsc_hmac(cdb->sh_desc, true,
+						   swap, &alginfo_a,
+						   !ses->dir,
+						   ses->digest_length);
+	} else if (is_aead(ses)) {
+		caam_aead_alg(ses, &alginfo);
+		if (alginfo.algtype == (unsigned int)CAAM_JR_ALG_UNSUPPORT) {
+			CAAM_JR_ERR("not supported aead alg");
+			rte_free(cdb);
+			return -ENOTSUP;
+		}
+		alginfo.key = (size_t)ses->aead_key.data;
+		alginfo.keylen = ses->aead_key.length;
+		alginfo.key_enc_flags = 0;
+		alginfo.key_type = RTA_DATA_IMM;
+
+		if (ses->dir == DIR_ENC)
+			shared_desc_len = cnstr_shdsc_gcm_encap(
+					cdb->sh_desc, true, swap,
+					&alginfo,
+					ses->iv.length,
+					ses->digest_length);
+		else
+			shared_desc_len = cnstr_shdsc_gcm_decap(
+					cdb->sh_desc, true, swap,
+					&alginfo,
+					ses->iv.length,
+					ses->digest_length);
+	} else {
+		caam_cipher_alg(ses, &alginfo_c);
+		if (alginfo_c.algtype == (unsigned int)CAAM_JR_ALG_UNSUPPORT) {
+			CAAM_JR_ERR("not supported cipher alg");
+			rte_free(cdb);
+			return -ENOTSUP;
+		}
+
+		alginfo_c.key = (size_t)ses->cipher_key.data;
+		alginfo_c.keylen = ses->cipher_key.length;
+		alginfo_c.key_enc_flags = 0;
+		alginfo_c.key_type = RTA_DATA_IMM;
+
+		caam_auth_alg(ses, &alginfo_a);
+		if (alginfo_a.algtype == (unsigned int)CAAM_JR_ALG_UNSUPPORT) {
+			CAAM_JR_ERR("not supported auth alg");
+			rte_free(cdb);
+			return -ENOTSUP;
+		}
+
+		alginfo_a.key = (size_t)ses->auth_key.data;
+		alginfo_a.keylen = ses->auth_key.length;
+		alginfo_a.key_enc_flags = 0;
+		alginfo_a.key_type = RTA_DATA_IMM;
+
+		cdb->sh_desc[0] = alginfo_c.keylen;
+		cdb->sh_desc[1] = alginfo_a.keylen;
+		err = rta_inline_query(IPSEC_AUTH_VAR_AES_DEC_BASE_DESC_LEN,
+				       MIN_JOB_DESC_SIZE,
+				       (unsigned int *)cdb->sh_desc,
+				       &cdb->sh_desc[2], 2);
+
+		if (err < 0) {
+			CAAM_JR_ERR("Crypto: Incorrect key lengths");
+			rte_free(cdb);
+			return err;
+		}
+		if (cdb->sh_desc[2] & 1)
+			alginfo_c.key_type = RTA_DATA_IMM;
+		else {
+			alginfo_c.key = (size_t)caam_jr_mem_vtop(
+						(void *)(size_t)alginfo_c.key);
+			alginfo_c.key_type = RTA_DATA_PTR;
+		}
+		if (cdb->sh_desc[2] & (1<<1))
+			alginfo_a.key_type = RTA_DATA_IMM;
+		else {
+			alginfo_a.key = (size_t)caam_jr_mem_vtop(
+						(void *)(size_t)alginfo_a.key);
+			alginfo_a.key_type = RTA_DATA_PTR;
+		}
+		cdb->sh_desc[0] = 0;
+		cdb->sh_desc[1] = 0;
+		cdb->sh_desc[2] = 0;
+			/* Auth_only_len is set as 0 here and it will be
+			 * overwritten in fd for each packet.
+			 */
+			shared_desc_len = cnstr_shdsc_authenc(cdb->sh_desc,
+					true, swap, &alginfo_c, &alginfo_a,
+					ses->iv.length, 0,
+					ses->digest_length, ses->dir);
+	}
+
+	if (shared_desc_len < 0) {
+		CAAM_JR_ERR("error in preparing command block");
+		return shared_desc_len;
+	}
+
+#if CAAM_JR_DBG
+	SEC_DUMP_DESC(cdb->sh_desc);
+#endif
+
+	cdb->sh_hdr.hi.field.idlen = shared_desc_len;
+
+	return 0;
+}
 
 /* @brief Poll the HW for already processed jobs in the JR
  * and silently discard the available jobs or notify them to UA
@@ -99,6 +437,559 @@ hw_flush_job_ring(struct sec_job_ring_t *job_ring,
 		ASSERT(notified_descs != NULL);
 		*notified_descs = discarded_descs_no;
 	}
+}
+
+/* @brief Poll the HW for already processed jobs in the JR
+ * and notify the available jobs to UA.
+ *
+ * @param [in]  job_ring	The job ring to poll.
+ * @param [in]  limit           The maximum number of jobs to notify.
+ *                              If set to negative value, all available jobs are
+ *				notified.
+ *
+ * @retval >=0 for No of jobs notified to UA.
+ * @retval -1 for error
+ */
+static int
+hw_poll_job_ring(struct sec_job_ring_t *job_ring,
+		 struct rte_crypto_op **ops, int32_t limit,
+		 struct caam_jr_qp *jr_qp)
+{
+	int32_t jobs_no_to_notify = 0; /* the number of done jobs to notify*/
+	int32_t number_of_jobs_available = 0;
+	int32_t notified_descs_no = 0;
+	uint32_t sec_error_code = 0;
+	struct job_descriptor *current_desc;
+	phys_addr_t current_desc_addr;
+	phys_addr_t *temp_addr;
+	struct caam_jr_op_ctx *ctx;
+
+	PMD_INIT_FUNC_TRACE();
+	/* TODO check for ops have memory*/
+	/* check here if any JR error that cannot be written
+	 * in the output status word has occurred
+	 */
+	if (JR_REG_JRINT_JRE_EXTRACT(GET_JR_REG(JRINT, job_ring))) {
+		CAAM_JR_INFO("err received");
+		sec_error_code = JR_REG_JRINT_ERR_TYPE_EXTRACT(
+					GET_JR_REG(JRINT, job_ring));
+		if (unlikely(sec_error_code)) {
+			hw_job_ring_error_print(job_ring, sec_error_code);
+			return -1;
+		}
+	}
+	/* compute the number of jobs available in the job ring based on the
+	 * producer and consumer index values.
+	 */
+	number_of_jobs_available = hw_get_no_finished_jobs(job_ring);
+	/* Compute the number of notifications that need to be raised to UA
+	 * If limit > total number of done jobs -> notify all done jobs
+	 * If limit = 0 -> error
+	 * If limit < total number of done jobs -> notify a number
+	 * of done jobs equal with limit
+	 */
+	jobs_no_to_notify = (limit > number_of_jobs_available) ?
+				number_of_jobs_available : limit;
+	CAAM_JR_DP_DEBUG(
+		"Jr[%p] pi[%d] ci[%d].limit =%d Available=%d.Jobs to notify=%d",
+		job_ring, job_ring->pidx, job_ring->cidx,
+		limit, number_of_jobs_available, jobs_no_to_notify);
+
+	rte_smp_rmb();
+
+	while (jobs_no_to_notify > notified_descs_no) {
+		static uint64_t false_alarm;
+		static uint64_t real_poll;
+
+		/* Get job status here */
+		sec_error_code = job_ring->output_ring[job_ring->cidx].status;
+		/* Get completed descriptor */
+		temp_addr = &(job_ring->output_ring[job_ring->cidx].desc);
+		current_desc_addr = (phys_addr_t)sec_read_addr(temp_addr);
+
+		real_poll++;
+		/* todo check if it is false alarm no desc present */
+		if (!current_desc_addr) {
+			false_alarm++;
+			printf("false alarm %" PRIu64 "real %" PRIu64
+				" sec_err =0x%x cidx Index =0%d\n",
+				false_alarm, real_poll,
+				sec_error_code, job_ring->cidx);
+			rte_panic("CAAM JR descriptor NULL");
+			return notified_descs_no;
+		}
+		current_desc = (struct job_descriptor *)
+				caam_jr_dma_ptov(current_desc_addr);
+		/* now increment the consumer index for the current job ring,
+		 * AFTER saving job in temporary location!
+		 */
+		job_ring->cidx = SEC_CIRCULAR_COUNTER(job_ring->cidx,
+				 SEC_JOB_RING_SIZE);
+		/* Signal that the job has been processed and the slot is free*/
+		hw_remove_entries(job_ring, 1);
+		/*TODO for multiple ops, packets*/
+		ctx = container_of(current_desc, struct caam_jr_op_ctx, jobdes);
+		if (unlikely(sec_error_code)) {
+			CAAM_JR_ERR("desc at cidx %d generated error 0x%x\n",
+				job_ring->cidx, sec_error_code);
+			hw_handle_job_ring_error(job_ring, sec_error_code);
+			//todo improve with exact errors
+			ctx->op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+			jr_qp->rx_errs++;
+		} else {
+			ctx->op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+#if CAAM_JR_DBG
+			if (ctx->op->sym->m_dst) {
+				rte_hexdump(stdout, "PROCESSED",
+				rte_pktmbuf_mtod(ctx->op->sym->m_dst, void *),
+				rte_pktmbuf_data_len(ctx->op->sym->m_dst));
+			} else {
+				rte_hexdump(stdout, "PROCESSED",
+				rte_pktmbuf_mtod(ctx->op->sym->m_src, void *),
+				rte_pktmbuf_data_len(ctx->op->sym->m_src));
+			}
+#endif
+		}
+		if (ctx->op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
+			struct ip *ip4_hdr;
+
+			if (ctx->op->sym->m_dst) {
+				/*TODO check for ip header or other*/
+				ip4_hdr = (struct ip *)
+				rte_pktmbuf_mtod(ctx->op->sym->m_dst, char*);
+				ctx->op->sym->m_dst->pkt_len =
+					rte_be_to_cpu_16(ip4_hdr->ip_len);
+				ctx->op->sym->m_dst->data_len =
+					rte_be_to_cpu_16(ip4_hdr->ip_len);
+			} else {
+				ip4_hdr = (struct ip *)
+				rte_pktmbuf_mtod(ctx->op->sym->m_src, char*);
+				ctx->op->sym->m_src->pkt_len =
+					rte_be_to_cpu_16(ip4_hdr->ip_len);
+				ctx->op->sym->m_src->data_len =
+					rte_be_to_cpu_16(ip4_hdr->ip_len);
+			}
+		}
+		*ops = ctx->op;
+		caam_jr_op_ending(ctx);
+		ops++;
+		notified_descs_no++;
+	}
+	return notified_descs_no;
+}
+
+static uint16_t
+caam_jr_dequeue_burst(void *qp, struct rte_crypto_op **ops,
+		       uint16_t nb_ops)
+{
+	struct caam_jr_qp *jr_qp = (struct caam_jr_qp *)qp;
+	struct sec_job_ring_t *ring = jr_qp->ring;
+	int num_rx;
+	int ret;
+
+	PMD_INIT_FUNC_TRACE();
+	CAAM_JR_DP_DEBUG("Jr[%p]Polling. limit[%d]", ring, nb_ops);
+
+	/* Poll job ring
+	 * If nb_ops < 0 -> poll JR until no more notifications are available.
+	 * If nb_ops > 0 -> poll JR until limit is reached.
+	 */
+
+	/* Run hw poll job ring */
+	num_rx = hw_poll_job_ring(ring, ops, nb_ops, jr_qp);
+	if (num_rx < 0) {
+		CAAM_JR_ERR("Error polling SEC engine (%d)", num_rx);
+		return 0;
+	}
+
+	CAAM_JR_DP_DEBUG("Jr[%p].Jobs notified[%d]. ", ring, num_rx);
+
+	if (ring->jr_mode == SEC_NOTIFICATION_TYPE_NAPI) {
+		if (num_rx < nb_ops) {
+			ret = caam_jr_enable_irqs(ring->irq_fd);
+			SEC_ASSERT(ret == 0, ret,
+			"Failed to enable irqs for job ring %p", ring);
+		}
+	} else if (ring->jr_mode == SEC_NOTIFICATION_TYPE_IRQ) {
+
+		/* Always enable IRQ generation when in pure IRQ mode */
+		ret = caam_jr_enable_irqs(ring->irq_fd);
+		SEC_ASSERT(ret == 0, ret,
+			"Failed to enable irqs for job ring %p", ring);
+	}
+
+	jr_qp->rx_pkts += num_rx;
+
+	return num_rx;
+}
+
+static inline struct caam_jr_op_ctx *
+build_auth_only(struct rte_crypto_op *op, struct caam_jr_session *ses)
+{
+	struct rte_crypto_sym_op *sym = op->sym;
+	struct caam_jr_op_ctx *ctx;
+	struct sec4_sg_entry *sg;
+	rte_iova_t start_addr;
+	struct sec_cdb *cdb;
+	uint64_t sdesc_offset;
+	struct sec_job_descriptor_t *jobdescr;
+
+	PMD_INIT_FUNC_TRACE();
+	ctx = caam_jr_alloc_ctx(ses);
+	if (!ctx)
+		return NULL;
+
+	ctx->op = op;
+
+	cdb = ses->cdb;
+	sdesc_offset = (size_t) ((char *)&cdb->sh_desc - (char *)cdb);
+
+	start_addr = rte_pktmbuf_iova(sym->m_src);
+
+	jobdescr = (struct sec_job_descriptor_t *) ctx->jobdes.desc;
+
+	SEC_JD_INIT(jobdescr);
+	SEC_JD_SET_SD(jobdescr,
+		(phys_addr_t)(caam_jr_dma_vtop(cdb)) + sdesc_offset,
+		cdb->sh_hdr.hi.field.idlen);
+
+	/* output */
+	SEC_JD_SET_OUT_PTR(jobdescr, (uint64_t)sym->auth.digest.phys_addr,
+			0, ses->digest_length);
+
+	/*input */
+	if (is_decode(ses)) {
+		sg = &ctx->sg[0];
+		SEC_JD_SET_IN_PTR(jobdescr,
+			(uint64_t)caam_jr_vtop_ctx(ctx, sg), 0,
+			(sym->auth.data.length + ses->digest_length));
+		/* enabling sg list */
+		(jobdescr)->seq_in.command.word  |= 0x01000000;
+
+		/* hash result or digest, save digest first */
+		rte_memcpy(ctx->digest, sym->auth.digest.data,
+			   ses->digest_length);
+		sg->ptr = cpu_to_caam64(start_addr + sym->auth.data.offset);
+		sg->len = cpu_to_caam32(sym->auth.data.length);
+
+#if CAAM_JR_DBG
+		rte_hexdump(stdout, "ICV", ctx->digest, ses->digest_length);
+#endif
+		/* let's check digest by hw */
+		sg++;
+		sg->ptr = cpu_to_caam64(caam_jr_vtop_ctx(ctx, ctx->digest));
+		sg->len = cpu_to_caam32(ses->digest_length);
+		/* last element*/
+		sg->len |= cpu_to_caam32(SEC4_SG_LEN_FIN);
+	} else {
+		SEC_JD_SET_IN_PTR(jobdescr, (uint64_t)start_addr,
+			sym->auth.data.offset, sym->auth.data.length);
+	}
+	return ctx;
+}
+
+static inline struct caam_jr_op_ctx *
+build_cipher_only(struct rte_crypto_op *op, struct caam_jr_session *ses)
+{
+	struct rte_crypto_sym_op *sym = op->sym;
+	struct caam_jr_op_ctx *ctx;
+	struct sec4_sg_entry *sg;
+	rte_iova_t src_start_addr, dst_start_addr;
+	struct sec_cdb *cdb;
+	uint64_t sdesc_offset;
+	uint8_t *IV_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
+			ses->iv.offset);
+	struct sec_job_descriptor_t *jobdescr;
+
+	PMD_INIT_FUNC_TRACE();
+	ctx = caam_jr_alloc_ctx(ses);
+	if (!ctx)
+		return NULL;
+
+	ctx->op = op;
+	cdb = ses->cdb;
+	sdesc_offset = (size_t) ((char *)&cdb->sh_desc - (char *)cdb);
+
+	src_start_addr = rte_pktmbuf_iova(sym->m_src);
+	if (sym->m_dst)
+		dst_start_addr = rte_pktmbuf_iova(sym->m_dst);
+	else
+		dst_start_addr = src_start_addr;
+
+	jobdescr = (struct sec_job_descriptor_t *) ctx->jobdes.desc;
+
+	SEC_JD_INIT(jobdescr);
+	SEC_JD_SET_SD(jobdescr,
+		(phys_addr_t)(caam_jr_dma_vtop(cdb)) + sdesc_offset,
+		cdb->sh_hdr.hi.field.idlen);
+
+#if CAAM_JR_DBG
+	CAAM_JR_INFO("mbuf offset =%d, cipher offset = %d, length =%d+%d",
+			sym->m_src->data_off, sym->cipher.data.offset,
+			sym->cipher.data.length, ses->iv.length);
+#endif
+	/* output */
+	SEC_JD_SET_OUT_PTR(jobdescr, (uint64_t)dst_start_addr,
+			sym->cipher.data.offset,
+			sym->cipher.data.length + ses->iv.length);
+
+	/*input */
+	sg = &ctx->sg[0];
+	SEC_JD_SET_IN_PTR(jobdescr, (uint64_t)caam_jr_vtop_ctx(ctx, sg), 0,
+				sym->cipher.data.length + ses->iv.length);
+	/*enabling sg bit */
+	(jobdescr)->seq_in.command.word  |= 0x01000000;
+
+	sg->ptr = cpu_to_caam64(caam_jr_dma_vtop(IV_ptr));
+	sg->len = cpu_to_caam32(ses->iv.length);
+
+	sg = &ctx->sg[1];
+	sg->ptr = cpu_to_caam64(src_start_addr + sym->cipher.data.offset);
+	sg->len = cpu_to_caam32(sym->cipher.data.length);
+	/* last element*/
+	sg->len |= cpu_to_caam32(SEC4_SG_LEN_FIN);
+
+	return ctx;
+}
+
+static inline struct caam_jr_op_ctx *
+build_cipher_auth(struct rte_crypto_op *op, struct caam_jr_session *ses)
+{
+	struct rte_crypto_sym_op *sym = op->sym;
+	struct caam_jr_op_ctx *ctx;
+	struct sec4_sg_entry *sg;
+	rte_iova_t src_start_addr, dst_start_addr;
+	uint32_t length = 0;
+	struct sec_cdb *cdb;
+	uint64_t sdesc_offset;
+	uint8_t *IV_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
+			ses->iv.offset);
+	struct sec_job_descriptor_t *jobdescr;
+	uint32_t auth_only_len;
+
+	PMD_INIT_FUNC_TRACE();
+	auth_only_len = op->sym->auth.data.length -
+				op->sym->cipher.data.length;
+
+	src_start_addr = rte_pktmbuf_iova(sym->m_src);
+	if (sym->m_dst)
+		dst_start_addr = rte_pktmbuf_iova(sym->m_dst);
+	else
+		dst_start_addr = src_start_addr;
+
+	ctx = caam_jr_alloc_ctx(ses);
+	if (!ctx)
+		return NULL;
+
+	ctx->op = op;
+	cdb = ses->cdb;
+	sdesc_offset = (size_t) ((char *)&cdb->sh_desc - (char *)cdb);
+
+	jobdescr = (struct sec_job_descriptor_t *) ctx->jobdes.desc;
+
+	SEC_JD_INIT(jobdescr);
+	SEC_JD_SET_SD(jobdescr,
+		(phys_addr_t)(caam_jr_dma_vtop(cdb)) + sdesc_offset,
+		cdb->sh_hdr.hi.field.idlen);
+
+	/* input */
+	sg = &ctx->sg[0];
+	if (is_encode(ses)) {
+		sg->ptr = cpu_to_caam64(caam_jr_dma_vtop(IV_ptr));
+		sg->len = cpu_to_caam32(ses->iv.length);
+		length += ses->iv.length;
+
+		sg++;
+		sg->ptr = cpu_to_caam64(src_start_addr + sym->auth.data.offset);
+		sg->len = cpu_to_caam32(sym->auth.data.length);
+		length += sym->auth.data.length;
+		/* last element*/
+		sg->len |= cpu_to_caam32(SEC4_SG_LEN_FIN);
+	} else {
+		sg->ptr = cpu_to_caam64(caam_jr_dma_vtop(IV_ptr));
+		sg->len = cpu_to_caam32(ses->iv.length);
+		length += ses->iv.length;
+
+		sg++;
+		sg->ptr = cpu_to_caam64(src_start_addr + sym->auth.data.offset);
+		sg->len = cpu_to_caam32(sym->auth.data.length);
+		length += sym->auth.data.length;
+
+		rte_memcpy(ctx->digest, sym->auth.digest.data,
+		       ses->digest_length);
+		sg++;
+		sg->ptr = cpu_to_caam64(caam_jr_dma_vtop(ctx->digest));
+		sg->len = cpu_to_caam32(ses->digest_length);
+		length += ses->digest_length;
+		/* last element*/
+		sg->len |= cpu_to_caam32(SEC4_SG_LEN_FIN);
+	}
+
+	SEC_JD_SET_IN_PTR(jobdescr, (uint64_t)caam_jr_dma_vtop(&ctx->sg[0]), 0,
+				length);
+	/* set sg bit */
+	(jobdescr)->seq_in.command.word  |= 0x01000000;
+
+	/* output */
+	sg = &ctx->sg[6];
+
+	sg->ptr = cpu_to_caam64(dst_start_addr + sym->cipher.data.offset);
+	sg->len = cpu_to_caam32(sym->cipher.data.length);
+	length = sym->cipher.data.length;
+
+	if (is_encode(ses)) {
+		/* set auth output */
+		sg++;
+		sg->ptr = cpu_to_caam64(sym->auth.digest.phys_addr);
+		sg->len = cpu_to_caam32(ses->digest_length);
+		length += ses->digest_length;
+	}
+	/* last element*/
+	sg->len |= cpu_to_caam32(SEC4_SG_LEN_FIN);
+
+	SEC_JD_SET_OUT_PTR(jobdescr,
+			   (uint64_t)caam_jr_dma_vtop(&ctx->sg[6]), 0, length);
+	/* set sg bit */
+	(jobdescr)->seq_out.command.word  |= 0x01000000;
+
+	/* Auth_only_len is set as 0 in descriptor and it is
+	 * overwritten here in the jd which will update
+	 * the DPOVRD reg.
+	 */
+	if (auth_only_len)
+		/* set sg bit */
+		(jobdescr)->dpovrd = 0x80000000 | auth_only_len;
+
+	return ctx;
+}
+static int
+caam_jr_enqueue_op(struct rte_crypto_op *op, struct caam_jr_qp *qp)
+{
+	struct sec_job_ring_t *ring = qp->ring;
+	struct caam_jr_session *ses;
+	struct caam_jr_op_ctx *ctx = NULL;
+	struct sec_job_descriptor_t *jobdescr __rte_unused;
+
+	PMD_INIT_FUNC_TRACE();
+	switch (op->sess_type) {
+	case RTE_CRYPTO_OP_WITH_SESSION:
+		ses = (struct caam_jr_session *)
+		get_sym_session_private_data(op->sym->session,
+					cryptodev_driver_id);
+		break;
+	default:
+		CAAM_JR_DP_ERR("sessionless crypto op not supported");
+		qp->tx_errs++;
+		return -1;
+	}
+
+	if (unlikely(!ses->qp || ses->qp != qp)) {
+		CAAM_JR_DP_DEBUG("Old:sess->qp=%p New qp = %p\n", ses->qp, qp);
+		ses->qp = qp;
+		caam_jr_prep_cdb(ses);
+	}
+
+	if (rte_pktmbuf_is_contiguous(op->sym->m_src)) {
+		if (is_auth_cipher(ses))
+			ctx = build_cipher_auth(op, ses);
+		else if (is_aead(ses))
+			goto err1;
+		else if (is_auth_only(ses))
+			ctx = build_auth_only(op, ses);
+		else if (is_cipher_only(ses))
+			ctx = build_cipher_only(op, ses);
+	} else {
+		if (is_aead(ses))
+			goto err1;
+	}
+err1:
+	if (unlikely(!ctx)) {
+		qp->tx_errs++;
+		CAAM_JR_ERR("not supported sec op");
+		return -1;
+	}
+#if CAAM_JR_DBG
+	if (is_decode(ses))
+		rte_hexdump(stdout, "DECODE",
+			rte_pktmbuf_mtod(op->sym->m_src, void *),
+			rte_pktmbuf_data_len(op->sym->m_src));
+	else
+		rte_hexdump(stdout, "ENCODE",
+			rte_pktmbuf_mtod(op->sym->m_src, void *),
+			rte_pktmbuf_data_len(op->sym->m_src));
+
+	printf("\n JD before conversion\n");
+	for (int i = 0; i < 12; i++)
+		printf("\n 0x%08x", ctx->jobdes.desc[i]);
+#endif
+
+	CAAM_JR_DP_DEBUG("Jr[%p] pi[%d] ci[%d].Before sending desc",
+		      ring, ring->pidx, ring->cidx);
+
+	/* todo - do we want to retry */
+	if (SEC_JOB_RING_IS_FULL(ring->pidx, ring->cidx,
+			 SEC_JOB_RING_SIZE, SEC_JOB_RING_SIZE)) {
+		CAAM_JR_DP_DEBUG("Ring FULL Jr[%p] pi[%d] ci[%d].Size = %d",
+			      ring, ring->pidx, ring->cidx, SEC_JOB_RING_SIZE);
+		caam_jr_op_ending(ctx);
+		qp->tx_ring_full++;
+		return -EBUSY;
+	}
+
+#if CORE_BYTE_ORDER != CAAM_BYTE_ORDER
+	jobdescr = (struct sec_job_descriptor_t *) ctx->jobdes.desc;
+
+	jobdescr->deschdr.command.word =
+		cpu_to_caam32(jobdescr->deschdr.command.word);
+	jobdescr->sd_ptr = cpu_to_caam64(jobdescr->sd_ptr);
+	jobdescr->seq_out.command.word =
+		cpu_to_caam32(jobdescr->seq_out.command.word);
+	jobdescr->seq_out_ptr = cpu_to_caam64(jobdescr->seq_out_ptr);
+	jobdescr->out_ext_length = cpu_to_caam32(jobdescr->out_ext_length);
+	jobdescr->seq_in.command.word =
+		cpu_to_caam32(jobdescr->seq_in.command.word);
+	jobdescr->seq_in_ptr = cpu_to_caam64(jobdescr->seq_in_ptr);
+	jobdescr->in_ext_length = cpu_to_caam32(jobdescr->in_ext_length);
+	jobdescr->load_dpovrd.command.word =
+		cpu_to_caam32(jobdescr->load_dpovrd.command.word);
+	jobdescr->dpovrd = cpu_to_caam32(jobdescr->dpovrd);
+#endif
+
+	/* Set ptr in input ring to current descriptor	*/
+	sec_write_addr(&ring->input_ring[ring->pidx],
+			(phys_addr_t)caam_jr_vtop_ctx(ctx, ctx->jobdes.desc));
+	rte_smp_wmb();
+
+	/* Notify HW that a new job is enqueued */
+	hw_enqueue_desc_on_job_ring(ring);
+
+	/* increment the producer index for the current job ring */
+	ring->pidx = SEC_CIRCULAR_COUNTER(ring->pidx, SEC_JOB_RING_SIZE);
+
+	return 0;
+}
+
+static uint16_t
+caam_jr_enqueue_burst(void *qp, struct rte_crypto_op **ops,
+		       uint16_t nb_ops)
+{
+	/* Function to transmit the frames to given device and queuepair */
+	uint32_t loop;
+	int32_t ret;
+	struct caam_jr_qp *jr_qp = (struct caam_jr_qp *)qp;
+	uint16_t num_tx = 0;
+
+	PMD_INIT_FUNC_TRACE();
+	/*Prepare each packet which is to be sent*/
+	for (loop = 0; loop < nb_ops; loop++) {
+		ret = caam_jr_enqueue_op(ops[loop], jr_qp);
+		if (!ret)
+			num_tx++;
+	}
+
+	jr_qp->tx_pkts += num_tx;
+
+	return num_tx;
 }
 
 /* Release queue pair */
@@ -727,8 +1618,8 @@ caam_jr_dev_init(const char *name,
 	dev->dev_ops = &caam_jr_ops;
 
 	/* register rx/tx burst functions for data path */
-	dev->dequeue_burst = NULL;
-	dev->enqueue_burst = NULL;
+	dev->dequeue_burst = caam_jr_dequeue_burst;
+	dev->enqueue_burst = caam_jr_enqueue_burst;
 	dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
 			RTE_CRYPTODEV_FF_HW_ACCELERATED |
 			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
