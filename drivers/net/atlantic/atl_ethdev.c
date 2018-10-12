@@ -48,6 +48,8 @@ static void atl_dev_info_get(struct rte_eth_dev *dev,
 
 static const uint32_t *atl_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 
+static int atl_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
+
 /* Flow control */
 static int atl_flow_ctrl_get(struct rte_eth_dev *dev,
 			       struct rte_eth_fc_conf *fc_conf);
@@ -218,6 +220,8 @@ static const struct eth_dev_ops atl_eth_dev_ops = {
 	.fw_version_get       = atl_fw_version_get,
 	.dev_infos_get	      = atl_dev_info_get,
 	.dev_supported_ptypes_get = atl_dev_supported_ptypes_get,
+
+	.mtu_set              = atl_dev_mtu_set,
 
 	/* Queue Control */
 	.rx_queue_start	      = atl_rx_queue_start,
@@ -1147,6 +1151,23 @@ atl_set_default_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
 {
 	atl_remove_mac_addr(dev, 0);
 	atl_add_mac_addr(dev, addr, 0, 0);
+	return 0;
+}
+
+static int
+atl_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct rte_eth_dev_info dev_info;
+	uint32_t frame_size = mtu + ETHER_HDR_LEN + ETHER_CRC_LEN;
+
+	atl_dev_info_get(dev, &dev_info);
+
+	if ((mtu < ETHER_MIN_MTU) || (frame_size > dev_info.max_rx_pktlen))
+		return -EINVAL;
+
+	/* update max frame size */
+	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
+
 	return 0;
 }
 
