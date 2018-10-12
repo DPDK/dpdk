@@ -27,7 +27,6 @@
 /* RTA header files */
 #include <hw/desc/common.h>
 #include <hw/desc/algo.h>
-#include <hw/desc/ipsec.h>
 #include <of.h>
 
 #define CAAM_JR_DBG	0
@@ -186,7 +185,15 @@ is_auth_cipher(struct caam_jr_session *ses)
 {
 	PMD_INIT_FUNC_TRACE();
 	return ((ses->cipher_alg != RTE_CRYPTO_CIPHER_NULL) &&
-		(ses->auth_alg != RTE_CRYPTO_AUTH_NULL));
+		(ses->auth_alg != RTE_CRYPTO_AUTH_NULL) &&
+		(ses->proto_alg != RTE_SECURITY_PROTOCOL_IPSEC));
+}
+
+static inline int
+is_proto_ipsec(struct caam_jr_session *ses)
+{
+	PMD_INIT_FUNC_TRACE();
+	return (ses->proto_alg == RTE_SECURITY_PROTOCOL_IPSEC);
 }
 
 static inline int
@@ -212,27 +219,39 @@ caam_auth_alg(struct caam_jr_session *ses, struct alginfo *alginfo_a)
 		ses->digest_length = 0;
 		break;
 	case RTE_CRYPTO_AUTH_MD5_HMAC:
-		alginfo_a->algtype = OP_ALG_ALGSEL_MD5;
+		alginfo_a->algtype =
+			(ses->proto_alg == RTE_SECURITY_PROTOCOL_IPSEC) ?
+			OP_PCL_IPSEC_HMAC_MD5_96 : OP_ALG_ALGSEL_MD5;
 		alginfo_a->algmode = OP_ALG_AAI_HMAC;
 		break;
 	case RTE_CRYPTO_AUTH_SHA1_HMAC:
-		alginfo_a->algtype = OP_ALG_ALGSEL_SHA1;
+		alginfo_a->algtype =
+			(ses->proto_alg == RTE_SECURITY_PROTOCOL_IPSEC) ?
+			OP_PCL_IPSEC_HMAC_SHA1_96 : OP_ALG_ALGSEL_SHA1;
 		alginfo_a->algmode = OP_ALG_AAI_HMAC;
 		break;
 	case RTE_CRYPTO_AUTH_SHA224_HMAC:
-		alginfo_a->algtype = OP_ALG_ALGSEL_SHA224;
+		alginfo_a->algtype =
+			(ses->proto_alg == RTE_SECURITY_PROTOCOL_IPSEC) ?
+			OP_PCL_IPSEC_HMAC_SHA1_160 : OP_ALG_ALGSEL_SHA224;
 		alginfo_a->algmode = OP_ALG_AAI_HMAC;
 		break;
 	case RTE_CRYPTO_AUTH_SHA256_HMAC:
-		alginfo_a->algtype = OP_ALG_ALGSEL_SHA256;
+		alginfo_a->algtype =
+			(ses->proto_alg == RTE_SECURITY_PROTOCOL_IPSEC) ?
+			OP_PCL_IPSEC_HMAC_SHA2_256_128 : OP_ALG_ALGSEL_SHA256;
 		alginfo_a->algmode = OP_ALG_AAI_HMAC;
 		break;
 	case RTE_CRYPTO_AUTH_SHA384_HMAC:
-		alginfo_a->algtype = OP_ALG_ALGSEL_SHA384;
+		alginfo_a->algtype =
+			(ses->proto_alg == RTE_SECURITY_PROTOCOL_IPSEC) ?
+			OP_PCL_IPSEC_HMAC_SHA2_384_192 : OP_ALG_ALGSEL_SHA384;
 		alginfo_a->algmode = OP_ALG_AAI_HMAC;
 		break;
 	case RTE_CRYPTO_AUTH_SHA512_HMAC:
-		alginfo_a->algtype = OP_ALG_ALGSEL_SHA512;
+		alginfo_a->algtype =
+			(ses->proto_alg == RTE_SECURITY_PROTOCOL_IPSEC) ?
+			OP_PCL_IPSEC_HMAC_SHA2_512_256 : OP_ALG_ALGSEL_SHA512;
 		alginfo_a->algmode = OP_ALG_AAI_HMAC;
 		break;
 	default:
@@ -248,15 +267,21 @@ caam_cipher_alg(struct caam_jr_session *ses, struct alginfo *alginfo_c)
 	case RTE_CRYPTO_CIPHER_NULL:
 		break;
 	case RTE_CRYPTO_CIPHER_AES_CBC:
-		alginfo_c->algtype = OP_ALG_ALGSEL_AES;
+		alginfo_c->algtype =
+			(ses->proto_alg == RTE_SECURITY_PROTOCOL_IPSEC) ?
+			OP_PCL_IPSEC_AES_CBC : OP_ALG_ALGSEL_AES;
 		alginfo_c->algmode = OP_ALG_AAI_CBC;
 		break;
 	case RTE_CRYPTO_CIPHER_3DES_CBC:
-		alginfo_c->algtype = OP_ALG_ALGSEL_3DES;
+		alginfo_c->algtype =
+			(ses->proto_alg == RTE_SECURITY_PROTOCOL_IPSEC) ?
+			OP_PCL_IPSEC_3DES : OP_ALG_ALGSEL_3DES;
 		alginfo_c->algmode = OP_ALG_AAI_CBC;
 		break;
 	case RTE_CRYPTO_CIPHER_AES_CTR:
-		alginfo_c->algtype = OP_ALG_ALGSEL_AES;
+		alginfo_c->algtype =
+			(ses->proto_alg == RTE_SECURITY_PROTOCOL_IPSEC) ?
+			OP_PCL_IPSEC_AES_CTR : OP_ALG_ALGSEL_AES;
 		alginfo_c->algmode = OP_ALG_AAI_CTR;
 		break;
 	default:
@@ -420,6 +445,22 @@ caam_jr_prep_cdb(struct caam_jr_session *ses)
 		cdb->sh_desc[0] = 0;
 		cdb->sh_desc[1] = 0;
 		cdb->sh_desc[2] = 0;
+		if (is_proto_ipsec(ses)) {
+			if (ses->dir == DIR_ENC) {
+				shared_desc_len = cnstr_shdsc_ipsec_new_encap(
+						cdb->sh_desc,
+						true, swap, SHR_SERIAL,
+						&ses->encap_pdb,
+						(uint8_t *)&ses->ip4_hdr,
+						&alginfo_c, &alginfo_a);
+			} else if (ses->dir == DIR_DEC) {
+				shared_desc_len = cnstr_shdsc_ipsec_new_decap(
+						cdb->sh_desc,
+						true, swap, SHR_SERIAL,
+						&ses->decap_pdb,
+						&alginfo_c, &alginfo_a);
+			}
+		} else {
 			/* Auth_only_len is set as 0 here and it will be
 			 * overwritten in fd for each packet.
 			 */
@@ -427,6 +468,7 @@ caam_jr_prep_cdb(struct caam_jr_session *ses)
 					true, swap, &alginfo_c, &alginfo_a,
 					ses->iv.length, 0,
 					ses->digest_length, ses->dir);
+		}
 	}
 
 	if (shared_desc_len < 0) {
@@ -1281,6 +1323,50 @@ build_cipher_auth(struct rte_crypto_op *op, struct caam_jr_session *ses)
 
 	return ctx;
 }
+
+static inline struct caam_jr_op_ctx *
+build_proto(struct rte_crypto_op *op, struct caam_jr_session *ses)
+{
+	struct rte_crypto_sym_op *sym = op->sym;
+	struct caam_jr_op_ctx *ctx = NULL;
+	phys_addr_t src_start_addr, dst_start_addr;
+	struct sec_cdb *cdb;
+	uint64_t sdesc_offset;
+	struct sec_job_descriptor_t *jobdescr;
+
+	PMD_INIT_FUNC_TRACE();
+	ctx = caam_jr_alloc_ctx(ses);
+	if (!ctx)
+		return NULL;
+	ctx->op = op;
+
+	src_start_addr = rte_pktmbuf_iova(sym->m_src);
+	if (sym->m_dst)
+		dst_start_addr = rte_pktmbuf_iova(sym->m_dst);
+	else
+		dst_start_addr = src_start_addr;
+
+	cdb = ses->cdb;
+	sdesc_offset = (size_t) ((char *)&cdb->sh_desc - (char *)cdb);
+
+	jobdescr = (struct sec_job_descriptor_t *) ctx->jobdes.desc;
+
+	SEC_JD_INIT(jobdescr);
+	SEC_JD_SET_SD(jobdescr,
+		(phys_addr_t)(caam_jr_dma_vtop(cdb)) + sdesc_offset,
+			cdb->sh_hdr.hi.field.idlen);
+
+	/* output */
+	SEC_JD_SET_OUT_PTR(jobdescr, (uint64_t)dst_start_addr, 0,
+			sym->m_src->buf_len - sym->m_src->data_off);
+	/* input */
+	SEC_JD_SET_IN_PTR(jobdescr, (uint64_t)src_start_addr, 0,
+			sym->m_src->pkt_len);
+	sym->m_src->packet_type &= ~RTE_PTYPE_L4_MASK;
+
+	return ctx;
+}
+
 static int
 caam_jr_enqueue_op(struct rte_crypto_op *op, struct caam_jr_qp *qp)
 {
@@ -1295,6 +1381,11 @@ caam_jr_enqueue_op(struct rte_crypto_op *op, struct caam_jr_qp *qp)
 		ses = (struct caam_jr_session *)
 		get_sym_session_private_data(op->sym->session,
 					cryptodev_driver_id);
+		break;
+	case RTE_CRYPTO_OP_SECURITY_SESSION:
+		ses = (struct caam_jr_session *)
+			get_sec_session_private_data(
+					op->sym->sec_session);
 		break;
 	default:
 		CAAM_JR_DP_ERR("sessionless crypto op not supported");
@@ -1317,6 +1408,8 @@ caam_jr_enqueue_op(struct rte_crypto_op *op, struct caam_jr_qp *qp)
 			ctx = build_auth_only(op, ses);
 		else if (is_cipher_only(ses))
 			ctx = build_cipher_only(op, ses);
+		else if (is_proto_ipsec(ses))
+			ctx = build_proto(op, ses);
 	} else {
 		if (is_auth_cipher(ses))
 			ctx = build_cipher_auth_sg(op, ses);
@@ -1688,6 +1781,228 @@ caam_jr_sym_session_clear(struct rte_cryptodev *dev,
 }
 
 static int
+caam_jr_set_ipsec_session(__rte_unused struct rte_cryptodev *dev,
+			  struct rte_security_session_conf *conf,
+			  void *sess)
+{
+	struct sec_job_ring_t *internals = dev->data->dev_private;
+	struct rte_security_ipsec_xform *ipsec_xform = &conf->ipsec;
+	struct rte_crypto_auth_xform *auth_xform;
+	struct rte_crypto_cipher_xform *cipher_xform;
+	struct caam_jr_session *session = (struct caam_jr_session *)sess;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (ipsec_xform->direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS) {
+		cipher_xform = &conf->crypto_xform->cipher;
+		auth_xform = &conf->crypto_xform->next->auth;
+	} else {
+		auth_xform = &conf->crypto_xform->auth;
+		cipher_xform = &conf->crypto_xform->next->cipher;
+	}
+	session->proto_alg = conf->protocol;
+	session->cipher_key.data = rte_zmalloc(NULL,
+					       cipher_xform->key.length,
+					       RTE_CACHE_LINE_SIZE);
+	if (session->cipher_key.data == NULL &&
+			cipher_xform->key.length > 0) {
+		CAAM_JR_ERR("No Memory for cipher key\n");
+		return -ENOMEM;
+	}
+
+	session->cipher_key.length = cipher_xform->key.length;
+	session->auth_key.data = rte_zmalloc(NULL,
+					auth_xform->key.length,
+					RTE_CACHE_LINE_SIZE);
+	if (session->auth_key.data == NULL &&
+			auth_xform->key.length > 0) {
+		CAAM_JR_ERR("No Memory for auth key\n");
+		rte_free(session->cipher_key.data);
+		return -ENOMEM;
+	}
+	session->auth_key.length = auth_xform->key.length;
+	memcpy(session->cipher_key.data, cipher_xform->key.data,
+			cipher_xform->key.length);
+	memcpy(session->auth_key.data, auth_xform->key.data,
+			auth_xform->key.length);
+
+	switch (auth_xform->algo) {
+	case RTE_CRYPTO_AUTH_SHA1_HMAC:
+		session->auth_alg = RTE_CRYPTO_AUTH_SHA1_HMAC;
+		break;
+	case RTE_CRYPTO_AUTH_MD5_HMAC:
+		session->auth_alg = RTE_CRYPTO_AUTH_MD5_HMAC;
+		break;
+	case RTE_CRYPTO_AUTH_SHA256_HMAC:
+		session->auth_alg = RTE_CRYPTO_AUTH_SHA256_HMAC;
+		break;
+	case RTE_CRYPTO_AUTH_SHA384_HMAC:
+		session->auth_alg = RTE_CRYPTO_AUTH_SHA384_HMAC;
+		break;
+	case RTE_CRYPTO_AUTH_SHA512_HMAC:
+		session->auth_alg = RTE_CRYPTO_AUTH_SHA512_HMAC;
+		break;
+	case RTE_CRYPTO_AUTH_AES_CMAC:
+		session->auth_alg = RTE_CRYPTO_AUTH_AES_CMAC;
+		break;
+	case RTE_CRYPTO_AUTH_NULL:
+		session->auth_alg = RTE_CRYPTO_AUTH_NULL;
+		break;
+	case RTE_CRYPTO_AUTH_SHA224_HMAC:
+	case RTE_CRYPTO_AUTH_AES_XCBC_MAC:
+	case RTE_CRYPTO_AUTH_SNOW3G_UIA2:
+	case RTE_CRYPTO_AUTH_SHA1:
+	case RTE_CRYPTO_AUTH_SHA256:
+	case RTE_CRYPTO_AUTH_SHA512:
+	case RTE_CRYPTO_AUTH_SHA224:
+	case RTE_CRYPTO_AUTH_SHA384:
+	case RTE_CRYPTO_AUTH_MD5:
+	case RTE_CRYPTO_AUTH_AES_GMAC:
+	case RTE_CRYPTO_AUTH_KASUMI_F9:
+	case RTE_CRYPTO_AUTH_AES_CBC_MAC:
+	case RTE_CRYPTO_AUTH_ZUC_EIA3:
+		CAAM_JR_ERR("Crypto: Unsupported auth alg %u\n",
+			auth_xform->algo);
+		goto out;
+	default:
+		CAAM_JR_ERR("Crypto: Undefined Auth specified %u\n",
+			auth_xform->algo);
+		goto out;
+	}
+
+	switch (cipher_xform->algo) {
+	case RTE_CRYPTO_CIPHER_AES_CBC:
+		session->cipher_alg = RTE_CRYPTO_CIPHER_AES_CBC;
+		break;
+	case RTE_CRYPTO_CIPHER_3DES_CBC:
+		session->cipher_alg = RTE_CRYPTO_CIPHER_3DES_CBC;
+		break;
+	case RTE_CRYPTO_CIPHER_AES_CTR:
+		session->cipher_alg = RTE_CRYPTO_CIPHER_AES_CTR;
+		break;
+	case RTE_CRYPTO_CIPHER_NULL:
+	case RTE_CRYPTO_CIPHER_SNOW3G_UEA2:
+	case RTE_CRYPTO_CIPHER_3DES_ECB:
+	case RTE_CRYPTO_CIPHER_AES_ECB:
+	case RTE_CRYPTO_CIPHER_KASUMI_F8:
+		CAAM_JR_ERR("Crypto: Unsupported Cipher alg %u\n",
+			cipher_xform->algo);
+		goto out;
+	default:
+		CAAM_JR_ERR("Crypto: Undefined Cipher specified %u\n",
+			cipher_xform->algo);
+		goto out;
+	}
+
+	if (ipsec_xform->direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS) {
+		memset(&session->encap_pdb, 0, sizeof(struct ipsec_encap_pdb) +
+				sizeof(session->ip4_hdr));
+		session->ip4_hdr.ip_v = IPVERSION;
+		session->ip4_hdr.ip_hl = 5;
+		session->ip4_hdr.ip_len = rte_cpu_to_be_16(
+						sizeof(session->ip4_hdr));
+		session->ip4_hdr.ip_tos = ipsec_xform->tunnel.ipv4.dscp;
+		session->ip4_hdr.ip_id = 0;
+		session->ip4_hdr.ip_off = 0;
+		session->ip4_hdr.ip_ttl = ipsec_xform->tunnel.ipv4.ttl;
+		session->ip4_hdr.ip_p = (ipsec_xform->proto ==
+				RTE_SECURITY_IPSEC_SA_PROTO_ESP) ? IPPROTO_ESP
+				: IPPROTO_AH;
+		session->ip4_hdr.ip_sum = 0;
+		session->ip4_hdr.ip_src = ipsec_xform->tunnel.ipv4.src_ip;
+		session->ip4_hdr.ip_dst = ipsec_xform->tunnel.ipv4.dst_ip;
+		session->ip4_hdr.ip_sum = calc_chksum((uint16_t *)
+						(void *)&session->ip4_hdr,
+						sizeof(struct ip));
+
+		session->encap_pdb.options =
+			(IPVERSION << PDBNH_ESP_ENCAP_SHIFT) |
+			PDBOPTS_ESP_OIHI_PDB_INL |
+			PDBOPTS_ESP_IVSRC |
+			PDBHMO_ESP_ENCAP_DTTL;
+		session->encap_pdb.spi = ipsec_xform->spi;
+		session->encap_pdb.ip_hdr_len = sizeof(struct ip);
+
+		session->dir = DIR_ENC;
+	} else if (ipsec_xform->direction ==
+			RTE_SECURITY_IPSEC_SA_DIR_INGRESS) {
+		memset(&session->decap_pdb, 0, sizeof(struct ipsec_decap_pdb));
+		session->decap_pdb.options = sizeof(struct ip) << 16;
+		session->dir = DIR_DEC;
+	} else
+		goto out;
+	session->ctx_pool = internals->ctx_pool;
+
+	return 0;
+out:
+	rte_free(session->auth_key.data);
+	rte_free(session->cipher_key.data);
+	memset(session, 0, sizeof(struct caam_jr_session));
+	return -1;
+}
+
+static int
+caam_jr_security_session_create(void *dev,
+				struct rte_security_session_conf *conf,
+				struct rte_security_session *sess,
+				struct rte_mempool *mempool)
+{
+	void *sess_private_data;
+	struct rte_cryptodev *cdev = (struct rte_cryptodev *)dev;
+	int ret;
+
+	PMD_INIT_FUNC_TRACE();
+	if (rte_mempool_get(mempool, &sess_private_data)) {
+		CAAM_JR_ERR("Couldn't get object from session mempool");
+		return -ENOMEM;
+	}
+
+	switch (conf->protocol) {
+	case RTE_SECURITY_PROTOCOL_IPSEC:
+		ret = caam_jr_set_ipsec_session(cdev, conf,
+				sess_private_data);
+		break;
+	case RTE_SECURITY_PROTOCOL_MACSEC:
+		return -ENOTSUP;
+	default:
+		return -EINVAL;
+	}
+	if (ret != 0) {
+		CAAM_JR_ERR("failed to configure session parameters");
+		/* Return session to mempool */
+		rte_mempool_put(mempool, sess_private_data);
+		return ret;
+	}
+
+	set_sec_session_private_data(sess, sess_private_data);
+
+	return ret;
+}
+
+/* Clear the memory of session so it doesn't leave key material behind */
+static int
+caam_jr_security_session_destroy(void *dev __rte_unused,
+				 struct rte_security_session *sess)
+{
+	PMD_INIT_FUNC_TRACE();
+	void *sess_priv = get_sec_session_private_data(sess);
+
+	struct caam_jr_session *s = (struct caam_jr_session *)sess_priv;
+
+	if (sess_priv) {
+		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
+
+		rte_free(s->cipher_key.data);
+		rte_free(s->auth_key.data);
+		memset(sess, 0, sizeof(struct caam_jr_session));
+		set_sec_session_private_data(sess, NULL);
+		rte_mempool_put(sess_mp, sess_priv);
+	}
+	return 0;
+}
+
+
+static int
 caam_jr_dev_configure(struct rte_cryptodev *dev,
 		       struct rte_cryptodev_config *config __rte_unused)
 {
@@ -1778,6 +2093,14 @@ static struct rte_cryptodev_ops caam_jr_ops = {
 	.sym_session_clear    = caam_jr_sym_session_clear
 };
 
+static struct rte_security_ops caam_jr_security_ops = {
+	.session_create = caam_jr_security_session_create,
+	.session_update = NULL,
+	.session_stats_get = NULL,
+	.session_destroy = caam_jr_security_session_destroy,
+	.set_pkt_metadata = NULL,
+	.capabilities_get = caam_jr_get_security_capabilities
+};
 
 /* @brief Flush job rings of any processed descs.
  * The processed descs are silently dropped,
@@ -1997,6 +2320,7 @@ caam_jr_dev_init(const char *name,
 		 struct rte_cryptodev_pmd_init_params *init_params)
 {
 	struct rte_cryptodev *dev;
+	struct rte_security_ctx *security_instance;
 	struct uio_job_ring *job_ring;
 	char str[RTE_CRYPTODEV_NAME_MAX_LEN];
 
@@ -2065,6 +2389,20 @@ caam_jr_dev_init(const char *name,
 		CAAM_JR_WARN("Device already init by primary process");
 		return 0;
 	}
+
+	/*TODO free it during teardown*/
+	security_instance = rte_malloc("caam_jr",
+				sizeof(struct rte_security_ctx), 0);
+	if (security_instance == NULL) {
+		CAAM_JR_ERR("memory allocation failed\n");
+		//todo error handling.
+		goto cleanup2;
+	}
+
+	security_instance->device = (void *)dev;
+	security_instance->ops = &caam_jr_security_ops;
+	security_instance->sess_cnt = 0;
+	dev->security_ctx = security_instance;
 
 	RTE_LOG(INFO, PMD, "%s cryptodev init\n", dev->data->name);
 

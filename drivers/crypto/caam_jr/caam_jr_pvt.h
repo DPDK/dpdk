@@ -5,6 +5,8 @@
 #ifndef CAAM_JR_PVT_H
 #define CAAM_JR_PVT_H
 
+#include <hw/desc/ipsec.h>
+
 /* NXP CAAM JR PMD device name */
 
 #define CAAM_JR_ALG_UNSUPPORT	(-1)
@@ -110,6 +112,7 @@ struct caam_jr_session {
 	enum rte_crypto_cipher_algorithm cipher_alg; /* Cipher Algorithm*/
 	enum rte_crypto_auth_algorithm auth_alg; /* Authentication Algorithm*/
 	enum rte_crypto_aead_algorithm aead_alg; /* AEAD Algorithm*/
+	enum rte_security_session_protocol proto_alg; /* Security Algorithm*/
 	union {
 		struct {
 			uint8_t *data;	/* pointer to key data */
@@ -132,7 +135,9 @@ struct caam_jr_session {
 	} iv;	/* Initialisation vector parameters */
 	uint16_t auth_only_len; /* Length of data for Auth only */
 	uint32_t digest_length;
+	struct ipsec_encap_pdb encap_pdb;
 	struct ip ip4_hdr;
+	struct ipsec_decap_pdb decap_pdb;
 	struct caam_jr_qp *qp;
 	struct sec_cdb *cdb;	/* cmd block associated with qp */
 	struct rte_mempool *ctx_pool; /* session mempool for caam_jr_op_ctx */
