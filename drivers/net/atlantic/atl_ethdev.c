@@ -64,6 +64,18 @@ static int atl_dev_interrupt_action(struct rte_eth_dev *dev,
 				    struct rte_intr_handle *handle);
 static void atl_dev_interrupt_handler(void *param);
 
+
+static int atl_add_mac_addr(struct rte_eth_dev *dev,
+			    struct ether_addr *mac_addr,
+			    uint32_t index, uint32_t pool);
+static void atl_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index);
+static int atl_set_default_mac_addr(struct rte_eth_dev *dev,
+					   struct ether_addr *mac_addr);
+
+static int atl_dev_set_mc_addr_list(struct rte_eth_dev *dev,
+				    struct ether_addr *mc_addr_set,
+				    uint32_t nb_mc_addr);
+
 /* RSS */
 static int atl_reta_update(struct rte_eth_dev *dev,
 			     struct rte_eth_rss_reta_entry64 *reta_conf,
@@ -229,6 +241,11 @@ static const struct eth_dev_ops atl_eth_dev_ops = {
 	.flow_ctrl_get	      = atl_flow_ctrl_get,
 	.flow_ctrl_set	      = atl_flow_ctrl_set,
 
+	/* MAC */
+	.mac_addr_add	      = atl_add_mac_addr,
+	.mac_addr_remove      = atl_remove_mac_addr,
+	.mac_addr_set	      = atl_set_default_mac_addr,
+	.set_mc_addr_list     = atl_dev_set_mc_addr_list,
 	.rxq_info_get	      = atl_rxq_info_get,
 	.txq_info_get	      = atl_txq_info_get,
 
@@ -1076,6 +1093,94 @@ atl_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 
 	if (old_flow_control != hw->aq_nic_cfg->flow_control)
 		return hw->aq_fw_ops->set_flow_control(hw);
+
+	return 0;
+}
+
+static int
+atl_update_mac_addr(struct rte_eth_dev *dev, uint32_t index,
+		    u8 *mac_addr, bool enable)
+{
+	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	unsigned int h = 0U;
+	unsigned int l = 0U;
+	int err;
+
+	if (mac_addr) {
+		h = (mac_addr[0] << 8) | (mac_addr[1]);
+		l = (mac_addr[2] << 24) | (mac_addr[3] << 16) |
+			(mac_addr[4] << 8) | mac_addr[5];
+	}
+
+	hw_atl_rpfl2_uc_flr_en_set(hw, 0U, index);
+	hw_atl_rpfl2unicast_dest_addresslsw_set(hw, l, index);
+	hw_atl_rpfl2unicast_dest_addressmsw_set(hw, h, index);
+
+	if (enable)
+		hw_atl_rpfl2_uc_flr_en_set(hw, 1U, index);
+
+	err = aq_hw_err_from_flags(hw);
+
+	return err;
+}
+
+static int
+atl_add_mac_addr(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
+			uint32_t index __rte_unused, uint32_t pool __rte_unused)
+{
+	if (is_zero_ether_addr(mac_addr)) {
+		PMD_DRV_LOG(ERR, "Invalid Ethernet Address");
+		return -EINVAL;
+	}
+
+	return atl_update_mac_addr(dev, index, (u8 *)mac_addr, true);
+}
+
+static void
+atl_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index)
+{
+	atl_update_mac_addr(dev, index, NULL, false);
+}
+
+static int
+atl_set_default_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
+{
+	atl_remove_mac_addr(dev, 0);
+	atl_add_mac_addr(dev, addr, 0, 0);
+	return 0;
+}
+
+static int
+atl_dev_set_mc_addr_list(struct rte_eth_dev *dev,
+			  struct ether_addr *mc_addr_set,
+			  uint32_t nb_mc_addr)
+{
+	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	u32 i;
+
+	if (nb_mc_addr > AQ_HW_MULTICAST_ADDRESS_MAX - HW_ATL_B0_MAC_MIN)
+		return -EINVAL;
+
+	/* Update whole uc filters table */
+	for (i = 0; i < AQ_HW_MULTICAST_ADDRESS_MAX - HW_ATL_B0_MAC_MIN; i++) {
+		u8 *mac_addr = NULL;
+		u32 l = 0, h = 0;
+
+		if (i < nb_mc_addr) {
+			mac_addr = mc_addr_set[i].addr_bytes;
+			l = (mac_addr[2] << 24) | (mac_addr[3] << 16) |
+				(mac_addr[4] << 8) | mac_addr[5];
+			h = (mac_addr[0] << 8) | mac_addr[1];
+		}
+
+		hw_atl_rpfl2_uc_flr_en_set(hw, 0U, HW_ATL_B0_MAC_MIN + i);
+		hw_atl_rpfl2unicast_dest_addresslsw_set(hw, l,
+							HW_ATL_B0_MAC_MIN + i);
+		hw_atl_rpfl2unicast_dest_addressmsw_set(hw, h,
+							HW_ATL_B0_MAC_MIN + i);
+		hw_atl_rpfl2_uc_flr_en_set(hw, !!mac_addr,
+					   HW_ATL_B0_MAC_MIN + i);
+	}
 
 	return 0;
 }
