@@ -554,10 +554,12 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		}
 		fd = qbman_result_DQ_fd(dq_storage);
 
-		next_fd = qbman_result_DQ_fd(dq_storage + 1);
-		/* Prefetch Annotation address for the parse results */
-		rte_prefetch0((void *)(size_t)(DPAA2_GET_FD_ADDR(next_fd)
-				+ DPAA2_FD_PTA_SIZE + 16));
+		if (dpaa2_svr_family != SVR_LX2160A) {
+			next_fd = qbman_result_DQ_fd(dq_storage + 1);
+			/* Prefetch Annotation address for the parse results */
+			rte_prefetch0((void *)(size_t)(DPAA2_GET_FD_ADDR(
+				      next_fd) + DPAA2_FD_PTA_SIZE + 16));
+		}
 
 		if (unlikely(DPAA2_FD_GET_FORMAT(fd) == qbman_fd_sg))
 			bufs[num_rx] = eth_sg_fd_to_mbuf(fd);
