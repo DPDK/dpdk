@@ -79,6 +79,9 @@ static const char *vhost_message_str[VHOST_USER_MAX] = {
 	[VHOST_USER_POSTCOPY_LISTEN]  = "VHOST_USER_POSTCOPY_LISTEN",
 };
 
+static int send_vhost_reply(int sockfd, struct VhostUserMsg *msg);
+static int read_vhost_message(int sockfd, struct VhostUserMsg *msg);
+
 static uint64_t
 get_blk_size(int fd)
 {
@@ -823,7 +826,7 @@ vhost_memory_changed(struct VhostUserMemory *new,
 
 static int
 vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
-			int main_fd __rte_unused)
+			int main_fd)
 {
 	struct virtio_net *dev = *pdev;
 	struct VhostUserMemory *memory = &msg->payload.memory;
@@ -967,11 +970,49 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 			mmap_offset);
 
 		if (dev->postcopy_listening) {
+			/*
+			 * We haven't a better way right now than sharing
+			 * DPDK's virtual address with Qemu, so that Qemu can
+			 * retrieve the region offset when handling userfaults.
+			 */
+			memory->regions[i].userspace_addr =
+				reg->host_user_addr;
+		}
+	}
+	if (dev->postcopy_listening) {
+		/* Send the addresses back to qemu */
+		msg->fd_num = 0;
+		send_vhost_reply(main_fd, msg);
+
+		/* Wait for qemu to acknolwedge it's got the addresses
+		 * we've got to wait before we're allowed to generate faults.
+		 */
+		VhostUserMsg ack_msg;
+		if (read_vhost_message(main_fd, &ack_msg) <= 0) {
+			RTE_LOG(ERR, VHOST_CONFIG,
+				"Failed to read qemu ack on postcopy set-mem-table\n");
+			goto err_mmap;
+		}
+		if (ack_msg.request.master != VHOST_USER_SET_MEM_TABLE) {
+			RTE_LOG(ERR, VHOST_CONFIG,
+				"Bad qemu ack on postcopy set-mem-table (%d)\n",
+				ack_msg.request.master);
+			goto err_mmap;
+		}
+
+		/* Now userfault register and we can use the memory */
+		for (i = 0; i < memory->nregions; i++) {
 #ifdef RTE_LIBRTE_VHOST_POSTCOPY
+			reg = &dev->mem->regions[i];
 			struct uffdio_register reg_struct;
 
-			reg_struct.range.start = (uint64_t)(uintptr_t)mmap_addr;
-			reg_struct.range.len = mmap_size;
+			/*
+			 * Let's register all the mmap'ed area to ensure
+			 * alignment on page boundary.
+			 */
+			reg_struct.range.start =
+				(uint64_t)(uintptr_t)reg->mmap_addr;
+			reg_struct.range.len = reg->mmap_size;
 			reg_struct.mode = UFFDIO_REGISTER_MODE_MISSING;
 
 			if (ioctl(dev->postcopy_ufd, UFFDIO_REGISTER,
