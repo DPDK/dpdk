@@ -62,6 +62,13 @@ static void atl_vlan_strip_queue_set(struct rte_eth_dev *dev,
 static int atl_vlan_tpid_set(struct rte_eth_dev *dev,
 			     enum rte_vlan_type vlan_type, uint16_t tpid);
 
+/* EEPROM */
+static int atl_dev_get_eeprom_length(struct rte_eth_dev *dev);
+static int atl_dev_get_eeprom(struct rte_eth_dev *dev,
+			      struct rte_dev_eeprom_info *eeprom);
+static int atl_dev_set_eeprom(struct rte_eth_dev *dev,
+			      struct rte_dev_eeprom_info *eeprom);
+
 /* Flow control */
 static int atl_flow_ctrl_get(struct rte_eth_dev *dev,
 			       struct rte_eth_fc_conf *fc_conf);
@@ -258,6 +265,11 @@ static const struct eth_dev_ops atl_eth_dev_ops = {
 	.rx_queue_count       = atl_rx_queue_count,
 	.rx_descriptor_status = atl_dev_rx_descriptor_status,
 	.tx_descriptor_status = atl_dev_tx_descriptor_status,
+
+	/* EEPROM */
+	.get_eeprom_length    = atl_dev_get_eeprom_length,
+	.get_eeprom           = atl_dev_get_eeprom,
+	.set_eeprom           = atl_dev_set_eeprom,
 
 	/* Flow Control */
 	.flow_ctrl_get	      = atl_flow_ctrl_get,
@@ -1076,6 +1088,41 @@ atl_dev_interrupt_handler(void *param)
 	atl_dev_interrupt_action(dev, dev->intr_handle);
 }
 
+#define SFP_EEPROM_SIZE 0xff
+
+static int
+atl_dev_get_eeprom_length(struct rte_eth_dev *dev __rte_unused)
+{
+	return SFP_EEPROM_SIZE;
+}
+
+static int
+atl_dev_get_eeprom(struct rte_eth_dev *dev, struct rte_dev_eeprom_info *eeprom)
+{
+	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (hw->aq_fw_ops->get_eeprom == NULL)
+		return -ENOTSUP;
+
+	if (eeprom->length != SFP_EEPROM_SIZE || eeprom->data == NULL)
+		return -EINVAL;
+
+	return hw->aq_fw_ops->get_eeprom(hw, eeprom->data, eeprom->length);
+}
+
+static int
+atl_dev_set_eeprom(struct rte_eth_dev *dev, struct rte_dev_eeprom_info *eeprom)
+{
+	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (hw->aq_fw_ops->set_eeprom == NULL)
+		return -ENOTSUP;
+
+	if (eeprom->length != SFP_EEPROM_SIZE || eeprom->data == NULL)
+		return -EINVAL;
+
+	return hw->aq_fw_ops->set_eeprom(hw, eeprom->data, eeprom->length);
+}
 
 static int
 atl_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
