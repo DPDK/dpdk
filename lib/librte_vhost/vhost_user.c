@@ -953,8 +953,10 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg)
 			vring_invalidate(dev, vq);
 
 			dev = translate_ring_addresses(dev, i);
-			if (!dev)
-				return VH_RESULT_ERR;
+			if (!dev) {
+				dev = *pdev;
+				goto err_mmap;
+			}
 
 			*pdev = dev;
 		}
