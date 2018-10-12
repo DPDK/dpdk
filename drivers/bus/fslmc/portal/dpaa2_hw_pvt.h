@@ -210,6 +210,12 @@ enum qbman_fd_format {
 #define DPAA2_RESET_FD_CTRL(fd)	 ((fd)->simple.ctrl = 0)
 
 #define	DPAA2_SET_FD_ASAL(fd, asal)	((fd)->simple.ctrl |= (asal << 16))
+
+#define DPAA2_RESET_FD_FLC(fd)	do {	\
+	(fd)->simple.flc_lo = 0;	\
+	(fd)->simple.flc_hi = 0;	\
+} while (0)
+
 #define DPAA2_SET_FD_FLC(fd, addr)	do { \
 	(fd)->simple.flc_lo = lower_32_bits((size_t)(addr));	\
 	(fd)->simple.flc_hi = upper_32_bits((uint64_t)(addr));	\

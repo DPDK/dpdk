@@ -30,7 +30,9 @@
 	DPAA2_SET_FD_LEN(_fd, _mbuf->data_len); \
 	DPAA2_SET_ONLY_FD_BPID(_fd, _bpid); \
 	DPAA2_SET_FD_OFFSET(_fd, _mbuf->data_off); \
-	DPAA2_SET_FD_ASAL(_fd, DPAA2_ASAL_VAL); \
+	DPAA2_SET_FD_FRC(_fd, 0);		\
+	DPAA2_RESET_FD_CTRL(_fd);		\
+	DPAA2_RESET_FD_FLC(_fd);		\
 } while (0)
 
 static inline void __attribute__((hot))
@@ -689,7 +691,6 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	/*Prepare enqueue descriptor*/
 	qbman_eq_desc_clear(&eqdesc);
 	qbman_eq_desc_set_no_orp(&eqdesc, DPAA2_EQ_RESP_ERR_FQ);
-	qbman_eq_desc_set_response(&eqdesc, 0, 0);
 	qbman_eq_desc_set_qd(&eqdesc, priv->qdid,
 			     dpaa2_q->flow_id, dpaa2_q->tc_index);
 	/*Clear the unused FD fields before sending*/
@@ -717,9 +718,6 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 				(*bufs)->seqn = DPAA2_INVALID_MBUF_SEQN;
 			}
 
-			fd_arr[loop].simple.frc = 0;
-			DPAA2_RESET_FD_CTRL((&fd_arr[loop]));
-			DPAA2_SET_FD_FLC((&fd_arr[loop]), (size_t)NULL);
 			if (likely(RTE_MBUF_DIRECT(*bufs))) {
 				mp = (*bufs)->pool;
 				/* Check the basic scenario and set
