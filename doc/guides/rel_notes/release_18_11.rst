@@ -116,6 +116,12 @@ New Features
   Added the new enetc driver for NXP enetc platform. See the
   "ENETC Poll Mode Driver" document for more details on this new driver.
 
+* **Added Ethernet poll mode driver for Aquantia aQtion family of 10G devices.**
+
+  Added the new ``atlantic`` ethernet poll mode driver for Aquantia XGBE devices.
+  See the :doc:`../nics/atlantic` nic driver guide for more details on this
+  driver.
+
 * **Updated Solarflare network PMD.**
 
   Updated the sfc_efx driver including the following changes:
