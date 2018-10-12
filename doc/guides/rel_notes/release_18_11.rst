@@ -157,6 +157,18 @@ New Features
   as cipher, cipher-authentication chaining, and aead encryption and
   decryption. This is achieved by calling DPDK Cryptodev APIs.
 
+* **Added cryptodev port to port library.**
+
+  Cryptodev port is a shim layer in the port library that interacts with DPDK
+  Cryptodev PMDs including burst enqueuing and dequeuing crypto operations.
+
+* **Added symmetric cryptographic actions to the pipeline library.**
+
+  In the pipeline library an added symmetric crypto action parsing and action
+  handler are implemented. The action allows automatically preparing the crypto
+  operation with the rules specified such as algorithm, key, and IV, etc for
+  the cryptodev port to process.
+
 * **Added support for GEN3 devices to Intel QAT driver .**
 
   Added support for the third generation of Intel QuickAssist devices.
