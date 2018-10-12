@@ -75,15 +75,47 @@ do_recursive_call(void)
 
 int last_test_result;
 
+#define MAX_EXTRA_ARGS 32
+
 int
 main(int argc, char **argv)
 {
 #ifdef RTE_LIBRTE_CMDLINE
 	struct cmdline *cl;
 #endif
+	char *extra_args;
 	int ret;
 
-	ret = rte_eal_init(argc, argv);
+	extra_args = getenv("DPDK_TEST_PARAMS");
+	if (extra_args != NULL && strlen(extra_args) > 0) {
+		char **all_argv;
+		char *eargv[MAX_EXTRA_ARGS];
+		int all_argc;
+		int eargc;
+		int i;
+
+		RTE_LOG(INFO, APP, "Using additional DPDK_TEST_PARAMS: '%s'\n",
+				extra_args);
+		eargc = rte_strsplit(extra_args, strlen(extra_args),
+				eargv, MAX_EXTRA_ARGS, ' ');
+
+		/* merge argc/argv and the environment args */
+		all_argc = argc + eargc;
+		all_argv = malloc(sizeof(*all_argv) * (all_argc + 1));
+		if (all_argv == NULL)
+			return -1;
+
+		for (i = 0; i < argc; i++)
+			all_argv[i] = argv[i];
+		for (i = 0; i < eargc; i++)
+			all_argv[argc + i] = eargv[i];
+		all_argv[all_argc] = NULL;
+
+		/* call eal_init with combined args */
+		ret = rte_eal_init(all_argc, all_argv);
+		free(all_argv);
+	} else
+		ret = rte_eal_init(argc, argv);
 	if (ret < 0) {
 		ret = -1;
 		goto out;

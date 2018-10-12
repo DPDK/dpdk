@@ -301,6 +301,14 @@ New Features
   computation to the NIST Cryptographic Algorithm Validation Program (CAVP)
   test vectors.
 
+* **Allow unit test binary to take parameters from the environment**
+
+  The unit test "test", or "dpdk-test", binary is often called from scripts,
+  which can make passing additional parameters, such as a coremask, to it more
+  awkward. Support has been added to the application to allow it to take
+  additional command-line parameter values from the "DPDK_TEST_PARAMS"
+  environment variable to make this application easier to use.
+
 
 API Changes
 -----------
