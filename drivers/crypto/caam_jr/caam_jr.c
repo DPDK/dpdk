@@ -98,6 +98,89 @@ hw_flush_job_ring(struct sec_job_ring_t *job_ring,
 }
 
 
+static int
+caam_jr_dev_configure(struct rte_cryptodev *dev,
+		       struct rte_cryptodev_config *config __rte_unused)
+{
+	char str[20];
+	struct sec_job_ring_t *internals;
+
+	PMD_INIT_FUNC_TRACE();
+
+	internals = dev->data->dev_private;
+	sprintf(str, "ctx_pool_%d", dev->data->dev_id);
+	if (!internals->ctx_pool) {
+		internals->ctx_pool = rte_mempool_create((const char *)str,
+						CTX_POOL_NUM_BUFS,
+						sizeof(struct caam_jr_op_ctx),
+						CTX_POOL_CACHE_SIZE, 0,
+						NULL, NULL, NULL, NULL,
+						SOCKET_ID_ANY, 0);
+		if (!internals->ctx_pool) {
+			CAAM_JR_ERR("%s create failed\n", str);
+			return -ENOMEM;
+		}
+	} else
+		CAAM_JR_INFO("mempool already created for dev_id : %d",
+				dev->data->dev_id);
+
+	return 0;
+}
+
+static int
+caam_jr_dev_start(struct rte_cryptodev *dev __rte_unused)
+{
+	PMD_INIT_FUNC_TRACE();
+	return 0;
+}
+
+static void
+caam_jr_dev_stop(struct rte_cryptodev *dev __rte_unused)
+{
+	PMD_INIT_FUNC_TRACE();
+}
+
+static int
+caam_jr_dev_close(struct rte_cryptodev *dev)
+{
+	struct sec_job_ring_t *internals;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (dev == NULL)
+		return -ENOMEM;
+
+	internals = dev->data->dev_private;
+	rte_mempool_free(internals->ctx_pool);
+	internals->ctx_pool = NULL;
+
+	return 0;
+}
+
+static void
+caam_jr_dev_infos_get(struct rte_cryptodev *dev,
+		       struct rte_cryptodev_info *info)
+{
+	struct sec_job_ring_t *internals = dev->data->dev_private;
+
+	PMD_INIT_FUNC_TRACE();
+	if (info != NULL) {
+		info->max_nb_queue_pairs = internals->max_nb_queue_pairs;
+		info->feature_flags = dev->feature_flags;
+		info->sym.max_nb_sessions = internals->max_nb_sessions;
+		info->driver_id = cryptodev_driver_id;
+	}
+}
+
+static struct rte_cryptodev_ops caam_jr_ops = {
+	.dev_configure	      = caam_jr_dev_configure,
+	.dev_start	      = caam_jr_dev_start,
+	.dev_stop	      = caam_jr_dev_stop,
+	.dev_close	      = caam_jr_dev_close,
+	.dev_infos_get        = caam_jr_dev_infos_get,
+};
+
+
 /* @brief Flush job rings of any processed descs.
  * The processed descs are silently dropped,
  * WITHOUT being notified to UA.
@@ -361,7 +444,20 @@ caam_jr_dev_init(const char *name,
 	}
 
 	dev->driver_id = cryptodev_driver_id;
-	dev->dev_ops = NULL;
+	dev->dev_ops = &caam_jr_ops;
+
+	/* register rx/tx burst functions for data path */
+	dev->dequeue_burst = NULL;
+	dev->enqueue_burst = NULL;
+	dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
+			RTE_CRYPTODEV_FF_HW_ACCELERATED |
+			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
+			RTE_CRYPTODEV_FF_SECURITY |
+			RTE_CRYPTODEV_FF_IN_PLACE_SGL |
+			RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT |
+			RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT |
+			RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT |
+			RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT;
 
 	/* For secondary processes, we don't initialise any further as primary
 	 * has already done this work. Only check we don't need a different
