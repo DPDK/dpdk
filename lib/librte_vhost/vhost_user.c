@@ -1151,7 +1151,7 @@ vhost_user_get_vring_base(struct virtio_net **pdev,
 
 	msg->size = sizeof(msg->payload.state);
 
-	return VH_RESULT_OK;
+	return VH_RESULT_REPLY;
 }
 
 /*
@@ -1208,7 +1208,7 @@ vhost_user_get_protocol_features(struct virtio_net **pdev,
 	msg->payload.u64 = protocol_features;
 	msg->size = sizeof(msg->payload.u64);
 
-	return VH_RESULT_OK;
+	return VH_RESULT_REPLY;
 }
 
 static int
@@ -1288,7 +1288,7 @@ vhost_user_set_log_base(struct virtio_net **pdev, struct VhostUserMsg *msg)
 
 	msg->size = sizeof(msg->payload.u64);
 
-	return VH_RESULT_OK;
+	return VH_RESULT_REPLY;
 }
 
 static int vhost_user_set_log_fd(struct virtio_net **pdev __rte_unused,
