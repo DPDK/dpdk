@@ -52,6 +52,11 @@ int atl_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 		uint16_t nb_tx_desc, unsigned int socket_id,
 		const struct rte_eth_txconf *tx_conf);
 
+uint32_t atl_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+
+int atl_dev_rx_descriptor_status(void *rx_queue, uint16_t offset);
+int atl_dev_tx_descriptor_status(void *tx_queue, uint16_t offset);
+
 int atl_dev_rx_queue_intr_enable(struct rte_eth_dev *eth_dev,
 				 uint16_t queue_id);
 int atl_dev_rx_queue_intr_disable(struct rte_eth_dev *eth_dev,
@@ -69,6 +74,12 @@ int atl_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 
 int atl_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 int atl_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
+
+void atl_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+	struct rte_eth_rxq_info *qinfo);
+
+void atl_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+	struct rte_eth_txq_info *qinfo);
 
 uint16_t atl_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts);

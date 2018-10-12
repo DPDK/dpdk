@@ -191,6 +191,13 @@ static const struct eth_dev_ops atl_eth_dev_ops = {
 
 	.rx_queue_intr_enable = atl_dev_rx_queue_intr_enable,
 	.rx_queue_intr_disable = atl_dev_rx_queue_intr_disable,
+
+	.rx_queue_count       = atl_rx_queue_count,
+	.rx_descriptor_status = atl_dev_rx_descriptor_status,
+	.tx_descriptor_status = atl_dev_tx_descriptor_status,
+
+	.rxq_info_get	      = atl_rxq_info_get,
+	.txq_info_get	      = atl_txq_info_get,
 };
 
 static inline int32_t

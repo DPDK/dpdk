@@ -651,6 +651,109 @@ atl_stop_queues(struct rte_eth_dev *dev)
 	return 0;
 }
 
+void
+atl_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+		 struct rte_eth_rxq_info *qinfo)
+{
+	struct atl_rx_queue *rxq;
+
+	PMD_INIT_FUNC_TRACE();
+
+	rxq = dev->data->rx_queues[queue_id];
+
+	qinfo->mp = rxq->mb_pool;
+	qinfo->scattered_rx = dev->data->scattered_rx;
+	qinfo->nb_desc = rxq->nb_rx_desc;
+}
+
+void
+atl_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+		 struct rte_eth_txq_info *qinfo)
+{
+	struct atl_tx_queue *txq;
+
+	PMD_INIT_FUNC_TRACE();
+
+	txq = dev->data->tx_queues[queue_id];
+
+	qinfo->nb_desc = txq->nb_tx_desc;
+}
+
+/* Return Rx queue avail count */
+
+uint32_t
+atl_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct atl_rx_queue *rxq;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (rx_queue_id >= dev->data->nb_rx_queues) {
+		PMD_DRV_LOG(ERR, "Invalid RX queue id=%d", rx_queue_id);
+		return 0;
+	}
+
+	rxq = dev->data->rx_queues[rx_queue_id];
+
+	if (rxq == NULL)
+		return 0;
+
+	return rxq->nb_rx_desc - rxq->nb_rx_hold;
+}
+
+int
+atl_dev_rx_descriptor_status(void *rx_queue, uint16_t offset)
+{
+	struct atl_rx_queue *rxq = rx_queue;
+	struct hw_atl_rxd_wb_s *rxd;
+	uint32_t idx;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (unlikely(offset >= rxq->nb_rx_desc))
+		return -EINVAL;
+
+	if (offset >= rxq->nb_rx_desc - rxq->nb_rx_hold)
+		return RTE_ETH_RX_DESC_UNAVAIL;
+
+	idx = rxq->rx_tail + offset;
+
+	if (idx >= rxq->nb_rx_desc)
+		idx -= rxq->nb_rx_desc;
+
+	rxd = (struct hw_atl_rxd_wb_s *)&rxq->hw_ring[idx];
+
+	if (rxd->dd)
+		return RTE_ETH_RX_DESC_DONE;
+
+	return RTE_ETH_RX_DESC_AVAIL;
+}
+
+int
+atl_dev_tx_descriptor_status(void *tx_queue, uint16_t offset)
+{
+	struct atl_tx_queue *txq = tx_queue;
+	struct hw_atl_txd_s *txd;
+	uint32_t idx;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (unlikely(offset >= txq->nb_tx_desc))
+		return -EINVAL;
+
+	idx = txq->tx_tail + offset;
+
+	if (idx >= txq->nb_tx_desc)
+		idx -= txq->nb_tx_desc;
+
+	txd = &txq->hw_ring[idx];
+
+	if (txd->dd)
+		return RTE_ETH_TX_DESC_DONE;
+
+	return RTE_ETH_TX_DESC_FULL;
+}
+
 static int
 atl_rx_enable_intr(struct rte_eth_dev *dev, uint16_t queue_id, bool enable)
 {
