@@ -11,6 +11,8 @@ struct qdma_io_meta;
 #define DPAA2_QDMA_MAX_FLE 3
 #define DPAA2_QDMA_MAX_SDD 2
 
+#define DPAA2_DPDMAI_MAX_QUEUES	8
+
 /** FLE pool size: 3 Frame list + 2 source/destination descriptor */
 #define QDMA_FLE_POOL_SIZE (sizeof(struct qdma_io_meta) + \
 		sizeof(struct qbman_fle) * DPAA2_QDMA_MAX_FLE + \
@@ -142,9 +144,9 @@ struct dpaa2_dpdmai_dev {
 	/** Number of queue in this DPDMAI device */
 	uint8_t num_queues;
 	/** RX queues */
-	struct dpaa2_queue rx_queue[DPDMAI_PRIO_NUM];
+	struct dpaa2_queue rx_queue[DPAA2_DPDMAI_MAX_QUEUES];
 	/** TX queues */
-	struct dpaa2_queue tx_queue[DPDMAI_PRIO_NUM];
+	struct dpaa2_queue tx_queue[DPAA2_DPDMAI_MAX_QUEUES];
 };
 
 #endif /* __DPAA2_QDMA_H__ */

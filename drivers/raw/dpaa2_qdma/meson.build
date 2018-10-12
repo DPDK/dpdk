@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright 2018 NXP
 
+version = 2
+
 build = dpdk_conf.has('RTE_LIBRTE_DPAA2_MEMPOOL')
 deps += ['rawdev', 'mempool_dpaa2', 'ring']
 sources = files('dpaa2_qdma.c')

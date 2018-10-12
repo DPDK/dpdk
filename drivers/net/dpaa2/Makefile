@@ -25,7 +25,7 @@ CFLAGS += -I$(RTE_SDK)/lib/librte_eal/linuxapp/eal
 EXPORT_MAP := rte_pmd_dpaa2_version.map
 
 # library version
-LIBABIVER := 1
+LIBABIVER := 2
 
 # depends on fslmc bus which uses experimental API
 CFLAGS += -DALLOW_EXPERIMENTAL_API

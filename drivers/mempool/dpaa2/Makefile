@@ -19,7 +19,7 @@ CFLAGS += -I$(RTE_SDK)/lib/librte_eal/linuxapp/eal
 EXPORT_MAP := rte_mempool_dpaa2_version.map
 
 # Lbrary version
-LIBABIVER := 1
+LIBABIVER := 2
 
 # depends on fslmc bus which uses experimental API
 CFLAGS += -DALLOW_EXPERIMENTAL_API

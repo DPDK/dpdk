@@ -805,7 +805,7 @@ dpaa2_dpdmai_dev_uninit(struct rte_rawdev *rawdev)
 		DPAA2_QDMA_ERR("dmdmai disable failed");
 
 	/* Set up the DQRR storage for Rx */
-	for (i = 0; i < DPDMAI_PRIO_NUM; i++) {
+	for (i = 0; i < dpdmai_dev->num_queues; i++) {
 		struct dpaa2_queue *rxq = &(dpdmai_dev->rx_queue[i]);
 
 		if (rxq->q_storage) {
@@ -856,17 +856,17 @@ dpaa2_dpdmai_dev_init(struct rte_rawdev *rawdev, int dpdmai_id)
 			       ret);
 		goto init_err;
 	}
-	dpdmai_dev->num_queues = attr.num_of_priorities;
+	dpdmai_dev->num_queues = attr.num_of_queues;
 
 	/* Set up Rx Queues */
-	for (i = 0; i < attr.num_of_priorities; i++) {
+	for (i = 0; i < dpdmai_dev->num_queues; i++) {
 		struct dpaa2_queue *rxq;
 
 		memset(&rx_queue_cfg, 0, sizeof(struct dpdmai_rx_queue_cfg));
 		ret = dpdmai_set_rx_queue(&dpdmai_dev->dpdmai,
 					  CMD_PRI_LOW,
 					  dpdmai_dev->token,
-					  i, &rx_queue_cfg);
+					  i, 0, &rx_queue_cfg);
 		if (ret) {
 			DPAA2_QDMA_ERR("Setting Rx queue failed with err: %d",
 				       ret);
@@ -893,9 +893,9 @@ dpaa2_dpdmai_dev_init(struct rte_rawdev *rawdev, int dpdmai_id)
 	}
 
 	/* Get Rx and Tx queues FQID's */
-	for (i = 0; i < DPDMAI_PRIO_NUM; i++) {
+	for (i = 0; i < dpdmai_dev->num_queues; i++) {
 		ret = dpdmai_get_rx_queue(&dpdmai_dev->dpdmai, CMD_PRI_LOW,
-					  dpdmai_dev->token, i, &rx_attr);
+					  dpdmai_dev->token, i, 0, &rx_attr);
 		if (ret) {
 			DPAA2_QDMA_ERR("Reading device failed with err: %d",
 				       ret);
@@ -904,7 +904,7 @@ dpaa2_dpdmai_dev_init(struct rte_rawdev *rawdev, int dpdmai_id)
 		dpdmai_dev->rx_queue[i].fqid = rx_attr.fqid;
 
 		ret = dpdmai_get_tx_queue(&dpdmai_dev->dpdmai, CMD_PRI_LOW,
-					  dpdmai_dev->token, i, &tx_attr);
+					  dpdmai_dev->token, i, 0, &tx_attr);
 		if (ret) {
 			DPAA2_QDMA_ERR("Reading device failed with err: %d",
 				       ret);

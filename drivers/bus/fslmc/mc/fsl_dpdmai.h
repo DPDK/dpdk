@@ -39,6 +39,7 @@ int dpdmai_close(struct fsl_mc_io *mc_io,
  *	should be configured with 0
  */
 struct dpdmai_cfg {
+	uint8_t num_queues;
 	uint8_t priorities[DPDMAI_PRIO_NUM];
 };
 
@@ -78,6 +79,7 @@ int dpdmai_reset(struct fsl_mc_io *mc_io,
 struct dpdmai_attr {
 	int id;
 	uint8_t num_of_priorities;
+	uint8_t num_of_queues;
 };
 
 int dpdmai_get_attributes(struct fsl_mc_io *mc_io,
@@ -149,6 +151,7 @@ struct dpdmai_rx_queue_cfg {
 int dpdmai_set_rx_queue(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,
+			uint8_t queue_idx,
 			uint8_t priority,
 			const struct dpdmai_rx_queue_cfg *cfg);
 
@@ -168,6 +171,7 @@ struct dpdmai_rx_queue_attr {
 int dpdmai_get_rx_queue(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,
+			uint8_t queue_idx,
 			uint8_t priority,
 			struct dpdmai_rx_queue_attr *attr);
 
@@ -183,6 +187,7 @@ struct dpdmai_tx_queue_attr {
 int dpdmai_get_tx_queue(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,
+			uint8_t queue_idx,
 			uint8_t priority,
 			struct dpdmai_tx_queue_attr *attr);
 

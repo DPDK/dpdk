@@ -82,6 +82,7 @@ int dpbp_get_attributes(struct fsl_mc_io *mc_io,
 /**
  * BPSCN write will attempt to allocate into a cache (coherent write)
  */
+#define DPBP_NOTIF_OPT_COHERENT_WRITE	0x00000001
 int dpbp_get_api_version(struct fsl_mc_io *mc_io,
 			 uint32_t cmd_flags,
 			 uint16_t *major_ver,

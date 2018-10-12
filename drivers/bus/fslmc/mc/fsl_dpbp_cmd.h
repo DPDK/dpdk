@@ -9,13 +9,15 @@
 
 /* DPBP Version */
 #define DPBP_VER_MAJOR				3
-#define DPBP_VER_MINOR				3
+#define DPBP_VER_MINOR				4
 
 /* Command versioning */
 #define DPBP_CMD_BASE_VERSION			1
+#define DPBP_CMD_VERSION_2			2
 #define DPBP_CMD_ID_OFFSET			4
 
 #define DPBP_CMD(id)	((id << DPBP_CMD_ID_OFFSET) | DPBP_CMD_BASE_VERSION)
+#define DPBP_CMD_V2(id)	((id << DPBP_CMD_ID_OFFSET) | DPBP_CMD_VERSION_2)
 
 /* Command IDs */
 #define DPBP_CMDID_CLOSE		DPBP_CMD(0x800)
@@ -37,8 +39,8 @@
 #define DPBP_CMDID_GET_IRQ_STATUS	DPBP_CMD(0x016)
 #define DPBP_CMDID_CLEAR_IRQ_STATUS	DPBP_CMD(0x017)
 
-#define DPBP_CMDID_SET_NOTIFICATIONS	DPBP_CMD(0x1b0)
-#define DPBP_CMDID_GET_NOTIFICATIONS	DPBP_CMD(0x1b1)
+#define DPBP_CMDID_SET_NOTIFICATIONS	DPBP_CMD_V2(0x1b0)
+#define DPBP_CMDID_GET_NOTIFICATIONS	DPBP_CMD_V2(0x1b1)
 
 #define DPBP_CMDID_GET_FREE_BUFFERS_NUM	DPBP_CMD(0x1b2)
 
@@ -68,8 +70,8 @@ struct dpbp_cmd_set_notifications {
 	uint32_t depletion_exit;
 	uint32_t surplus_entry;
 	uint32_t surplus_exit;
-	uint16_t options;
-	uint16_t pad[3];
+	uint32_t options;
+	uint16_t pad[2];
 	uint64_t message_ctx;
 	uint64_t message_iova;
 };
@@ -79,8 +81,8 @@ struct dpbp_rsp_get_notifications {
 	uint32_t depletion_exit;
 	uint32_t surplus_entry;
 	uint32_t surplus_exit;
-	uint16_t options;
-	uint16_t pad[3];
+	uint32_t options;
+	uint16_t pad[2];
 	uint64_t message_ctx;
 	uint64_t message_iova;
 };

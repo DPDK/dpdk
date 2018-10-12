@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright 2018 NXP
 
+version = 2
+
 if host_machine.system() != 'linux'
         build = false
 endif

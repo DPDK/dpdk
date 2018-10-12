@@ -117,3 +117,13 @@ DPDK_18.05 {
 	rte_dpaa2_memsegs;
 
 } DPDK_18.02;
+
+DPDK_18.11 {
+	global:
+
+	dpci_get_link_state;
+	dpci_get_opr;
+	dpci_get_peer_attributes;
+	dpci_set_opr;
+
+} DPDK_18.05;

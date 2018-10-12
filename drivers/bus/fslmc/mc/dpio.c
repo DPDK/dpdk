@@ -268,6 +268,15 @@ int dpio_reset(struct fsl_mc_io *mc_io,
 	return mc_send_command(mc_io, &cmd);
 }
 
+/**
+ * dpio_get_attributes() - Retrieve DPIO attributes
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPIO object
+ * @attr:	Returned object's attributes
+ *
+ * Return:	'0' on Success; Error code otherwise
+ */
 int dpio_get_attributes(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,

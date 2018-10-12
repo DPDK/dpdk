@@ -265,6 +265,15 @@ int dpci_reset(struct fsl_mc_io *mc_io,
 	return mc_send_command(mc_io, &cmd);
 }
 
+/**
+ * dpci_get_attributes() - Retrieve DPCI attributes.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPCI object
+ * @attr:	Returned object's attributes
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
 int dpci_get_attributes(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,
@@ -292,6 +301,94 @@ int dpci_get_attributes(struct fsl_mc_io *mc_io,
 	return 0;
 }
 
+/**
+ * dpci_get_peer_attributes() - Retrieve peer DPCI attributes.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPCI object
+ * @attr:	Returned peer attributes
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpci_get_peer_attributes(struct fsl_mc_io *mc_io,
+			     uint32_t cmd_flags,
+			     uint16_t token,
+			     struct dpci_peer_attr *attr)
+{
+	struct dpci_rsp_get_peer_attr *rsp_params;
+	struct mc_command cmd = { 0 };
+	int err;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPCI_CMDID_GET_PEER_ATTR,
+					  cmd_flags,
+					  token);
+
+	/* send command to mc*/
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	/* retrieve response parameters */
+	rsp_params = (struct dpci_rsp_get_peer_attr *)cmd.params;
+	attr->peer_id = le32_to_cpu(rsp_params->id);
+	attr->num_of_priorities = rsp_params->num_of_priorities;
+
+	return 0;
+}
+
+/**
+ * dpci_get_link_state() - Retrieve the DPCI link state.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPCI object
+ * @up:		Returned link state; returns '1' if link is up, '0' otherwise
+ *
+ * DPCI can be connected to another DPCI, together they
+ * create a 'link'. In order to use the DPCI Tx and Rx queues,
+ * both objects must be enabled.
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpci_get_link_state(struct fsl_mc_io *mc_io,
+			uint32_t cmd_flags,
+			uint16_t token,
+			int *up)
+{
+	struct dpci_rsp_get_link_state *rsp_params;
+	struct mc_command cmd = { 0 };
+	int err;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPCI_CMDID_GET_LINK_STATE,
+					  cmd_flags,
+					  token);
+
+	/* send command to mc*/
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	/* retrieve response parameters */
+	rsp_params = (struct dpci_rsp_get_link_state *)cmd.params;
+	*up = dpci_get_field(rsp_params->up, UP);
+
+	return 0;
+}
+
+/**
+ * dpci_set_rx_queue() - Set Rx queue configuration
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPCI object
+ * @priority:	Select the queue relative to number of
+ *			priorities configured at DPCI creation; use
+ *			DPCI_ALL_QUEUES to configure all Rx queues
+ *			identically.
+ * @cfg:	Rx queue configuration
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
 int dpci_set_rx_queue(struct fsl_mc_io *mc_io,
 		      uint32_t cmd_flags,
 		      uint16_t token,
@@ -314,6 +411,9 @@ int dpci_set_rx_queue(struct fsl_mc_io *mc_io,
 	dpci_set_field(cmd_params->dest_type,
 		       DEST_TYPE,
 		       cfg->dest_cfg.dest_type);
+	dpci_set_field(cmd_params->dest_type,
+		       ORDER_PRESERVATION,
+		       cfg->order_preservation_en);
 
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
@@ -435,6 +535,103 @@ int dpci_get_api_version(struct fsl_mc_io *mc_io,
 	rsp_params = (struct dpci_rsp_get_api_version *)cmd.params;
 	*major_ver = le16_to_cpu(rsp_params->major);
 	*minor_ver = le16_to_cpu(rsp_params->minor);
+
+	return 0;
+}
+
+/**
+ * dpci_set_opr() - Set Order Restoration configuration.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPCI object
+ * @index:	The queue index
+ * @options:	Configuration mode options
+ *		can be OPR_OPT_CREATE or OPR_OPT_RETIRE
+ * @cfg:	Configuration options for the OPR
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpci_set_opr(struct fsl_mc_io *mc_io,
+		 uint32_t cmd_flags,
+		 uint16_t token,
+		 uint8_t index,
+		 uint8_t options,
+		 struct opr_cfg *cfg)
+{
+	struct dpci_cmd_set_opr *cmd_params;
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPCI_CMDID_SET_OPR,
+					  cmd_flags,
+					  token);
+	cmd_params = (struct dpci_cmd_set_opr *)cmd.params;
+	cmd_params->index = index;
+	cmd_params->options = options;
+	cmd_params->oloe = cfg->oloe;
+	cmd_params->oeane = cfg->oeane;
+	cmd_params->olws = cfg->olws;
+	cmd_params->oa = cfg->oa;
+	cmd_params->oprrws = cfg->oprrws;
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+/**
+ * dpci_get_opr() - Retrieve Order Restoration config and query.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPCI object
+ * @index:	The queue index
+ * @cfg:	Returned OPR configuration
+ * @qry:	Returned OPR query
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpci_get_opr(struct fsl_mc_io *mc_io,
+		 uint32_t cmd_flags,
+		 uint16_t token,
+		 uint8_t index,
+		 struct opr_cfg *cfg,
+		 struct opr_qry *qry)
+{
+	struct dpci_rsp_get_opr *rsp_params;
+	struct dpci_cmd_get_opr *cmd_params;
+	struct mc_command cmd = { 0 };
+	int err;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPCI_CMDID_GET_OPR,
+					  cmd_flags,
+					  token);
+	cmd_params = (struct dpci_cmd_get_opr *)cmd.params;
+	cmd_params->index = index;
+
+	/* send command to mc*/
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	/* retrieve response parameters */
+	rsp_params = (struct dpci_rsp_get_opr *)cmd.params;
+	cfg->oloe = rsp_params->oloe;
+	cfg->oeane = rsp_params->oeane;
+	cfg->olws = rsp_params->olws;
+	cfg->oa = rsp_params->oa;
+	cfg->oprrws = rsp_params->oprrws;
+	qry->rip = dpci_get_field(rsp_params->flags, RIP);
+	qry->enable = dpci_get_field(rsp_params->flags, OPR_ENABLE);
+	qry->nesn = le16_to_cpu(rsp_params->nesn);
+	qry->ndsn = le16_to_cpu(rsp_params->ndsn);
+	qry->ea_tseq = le16_to_cpu(rsp_params->ea_tseq);
+	qry->tseq_nlis = dpci_get_field(rsp_params->tseq_nlis, TSEQ_NLIS);
+	qry->ea_hseq = le16_to_cpu(rsp_params->ea_hseq);
+	qry->hseq_nlis = dpci_get_field(rsp_params->hseq_nlis, HSEQ_NLIS);
+	qry->ea_hptr = le16_to_cpu(rsp_params->ea_hptr);
+	qry->ea_tptr = le16_to_cpu(rsp_params->ea_tptr);
+	qry->opr_vid = le16_to_cpu(rsp_params->opr_vid);
+	qry->opr_id = le16_to_cpu(rsp_params->opr_id);
 
 	return 0;
 }

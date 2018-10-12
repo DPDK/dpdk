@@ -25,7 +25,7 @@ LDLIBS += -lrte_common_dpaax
 
 EXPORT_MAP := rte_pmd_dpaa2_cmdif_version.map
 
-LIBABIVER := 1
+LIBABIVER := 2
 
 #
 # all source are stored in SRCS-y
