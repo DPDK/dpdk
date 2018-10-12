@@ -132,6 +132,7 @@ typedef struct VhostUserMsg {
 		VhostUserVringArea area;
 	} payload;
 	int fds[VHOST_MEMORY_MAX_NREGIONS];
+	int fd_num;
 } __attribute((packed)) VhostUserMsg;
 
 #define VHOST_USER_HDR_SIZE offsetof(VhostUserMsg, payload.u64)
@@ -146,7 +147,8 @@ int vhost_user_iotlb_miss(struct virtio_net *dev, uint64_t iova, uint8_t perm);
 int vhost_user_host_notifier_ctrl(int vid, bool enable);
 
 /* socket.c */
-int read_fd_message(int sockfd, char *buf, int buflen, int *fds, int fd_num);
+int read_fd_message(int sockfd, char *buf, int buflen, int *fds, int max_fds,
+		int *fd_num);
 int send_fd_message(int sockfd, char *buf, int buflen, int *fds, int fd_num);
 
 #endif

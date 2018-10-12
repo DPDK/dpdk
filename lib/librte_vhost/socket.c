@@ -94,17 +94,22 @@ static struct vhost_user vhost_user = {
 	.mutex = PTHREAD_MUTEX_INITIALIZER,
 };
 
-/* return bytes# of read on success or negative val on failure. */
+/*
+ * return bytes# of read on success or negative val on failure. Update fdnum
+ * with number of fds read.
+ */
 int
-read_fd_message(int sockfd, char *buf, int buflen, int *fds, int fd_num)
+read_fd_message(int sockfd, char *buf, int buflen, int *fds, int max_fds,
+		int *fd_num)
 {
 	struct iovec iov;
 	struct msghdr msgh;
-	size_t fdsize = fd_num * sizeof(int);
-	char control[CMSG_SPACE(fdsize)];
+	char control[CMSG_SPACE(max_fds * sizeof(int))];
 	struct cmsghdr *cmsg;
 	int got_fds = 0;
 	int ret;
+
+	*fd_num = 0;
 
 	memset(&msgh, 0, sizeof(msgh));
 	iov.iov_base = buf;
@@ -131,13 +136,14 @@ read_fd_message(int sockfd, char *buf, int buflen, int *fds, int fd_num)
 		if ((cmsg->cmsg_level == SOL_SOCKET) &&
 			(cmsg->cmsg_type == SCM_RIGHTS)) {
 			got_fds = (cmsg->cmsg_len - CMSG_LEN(0)) / sizeof(int);
+			*fd_num = got_fds;
 			memcpy(fds, CMSG_DATA(cmsg), got_fds * sizeof(int));
 			break;
 		}
 	}
 
 	/* Clear out unused file descriptors */
-	while (got_fds < fd_num)
+	while (got_fds < max_fds)
 		fds[got_fds++] = -1;
 
 	return ret;

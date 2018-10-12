@@ -1509,7 +1509,7 @@ read_vhost_message(int sockfd, struct VhostUserMsg *msg)
 	int ret;
 
 	ret = read_fd_message(sockfd, (char *)msg, VHOST_USER_HDR_SIZE,
-		msg->fds, VHOST_MEMORY_MAX_NREGIONS);
+		msg->fds, VHOST_MEMORY_MAX_NREGIONS, &msg->fd_num);
 	if (ret <= 0)
 		return ret;
 
