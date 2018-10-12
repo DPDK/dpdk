@@ -20,7 +20,7 @@ struct fsl_mc_io;
 /**
  * Maximum number of Tx/Rx priorities per DPSECI object
  */
-#define DPSECI_PRIO_NUM		8
+#define DPSECI_MAX_QUEUE_NUM		16
 
 /**
  * All queues considered; see dpseci_set_rx_queue()
@@ -58,7 +58,7 @@ struct dpseci_cfg {
 	uint32_t options;
 	uint8_t num_tx_queues;
 	uint8_t num_rx_queues;
-	uint8_t priorities[DPSECI_PRIO_NUM];
+	uint8_t priorities[DPSECI_MAX_QUEUE_NUM];
 };
 
 int dpseci_create(struct fsl_mc_io *mc_io,
@@ -259,6 +259,10 @@ int dpseci_get_tx_queue(struct fsl_mc_io *mc_io,
  *			implemented in this version of SEC.
  * @aes_acc_num:	The number of copies of the AES module that are
  *			implemented in this version of SEC.
+ * @ccha_acc_num:	The number of copies of the ChaCha20 module that are
+ *			implemented in this version of SEC.
+ * @ptha_acc_num:	The number of copies of the Poly1305 module that are
+ *			implemented in this version of SEC.
  **/
 
 struct dpseci_sec_attr {
@@ -279,6 +283,8 @@ struct dpseci_sec_attr {
 	uint8_t arc4_acc_num;
 	uint8_t des_acc_num;
 	uint8_t aes_acc_num;
+	uint8_t ccha_acc_num;
+	uint8_t ptha_acc_num;
 };
 
 int dpseci_get_sec_attr(struct fsl_mc_io *mc_io,
@@ -316,6 +322,21 @@ int dpseci_get_api_version(struct fsl_mc_io *mc_io,
 			   uint32_t cmd_flags,
 			   uint16_t *major_ver,
 			   uint16_t *minor_ver);
+
+int dpseci_set_opr(struct fsl_mc_io *mc_io,
+		   uint32_t cmd_flags,
+		   uint16_t token,
+		   uint8_t index,
+		   uint8_t options,
+		   struct opr_cfg *cfg);
+
+int dpseci_get_opr(struct fsl_mc_io *mc_io,
+		   uint32_t cmd_flags,
+		   uint16_t token,
+		   uint8_t index,
+		   struct opr_cfg *cfg,
+		   struct opr_qry *qry);
+
 /**
  * enum dpseci_congestion_unit - DPSECI congestion units
  * @DPSECI_CONGESTION_UNIT_BYTES: bytes units

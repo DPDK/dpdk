@@ -6,6 +6,7 @@
  */
 #include <fsl_mc_sys.h>
 #include <fsl_mc_cmd.h>
+#include <fsl_dpopr.h>
 #include <fsl_dpseci.h>
 #include <fsl_dpseci_cmd.h>
 
@@ -116,11 +117,13 @@ int dpseci_create(struct fsl_mc_io *mc_io,
 					  cmd_flags,
 					  dprc_token);
 	cmd_params = (struct dpseci_cmd_create *)cmd.params;
-	for (i = 0; i < DPSECI_PRIO_NUM; i++)
+	for (i = 0; i < 8; i++)
 		cmd_params->priorities[i] = cfg->priorities[i];
+	for (i = 0; i < 8; i++)
+		cmd_params->priorities2[i] = cfg->priorities[8 + i];
 	cmd_params->num_tx_queues = cfg->num_tx_queues;
 	cmd_params->num_rx_queues = cfg->num_rx_queues;
-	cmd_params->options = cfg->options;
+	cmd_params->options = cpu_to_le32(cfg->options);
 
 	/* send command to mc*/
 	err = mc_send_command(mc_io, &cmd);
@@ -302,7 +305,7 @@ int dpseci_get_attributes(struct fsl_mc_io *mc_io,
 	/* retrieve response parameters */
 	rsp_params = (struct dpseci_rsp_get_attr *)cmd.params;
 	attr->id = le32_to_cpu(rsp_params->id);
-	attr->options = rsp_params->options;
+	attr->options = le32_to_cpu(rsp_params->options);
 	attr->num_tx_queues = rsp_params->num_tx_queues;
 	attr->num_rx_queues = rsp_params->num_rx_queues;
 
@@ -490,6 +493,8 @@ int dpseci_get_sec_attr(struct fsl_mc_io *mc_io,
 	attr->arc4_acc_num = rsp_params->arc4_acc_num;
 	attr->des_acc_num = rsp_params->des_acc_num;
 	attr->aes_acc_num = rsp_params->aes_acc_num;
+	attr->ccha_acc_num = rsp_params->ccha_acc_num;
+	attr->ptha_acc_num = rsp_params->ptha_acc_num;
 
 	return 0;
 }
@@ -569,6 +574,113 @@ int dpseci_get_api_version(struct fsl_mc_io *mc_io,
 	return 0;
 }
 
+/**
+ * dpseci_set_opr() - Set Order Restoration configuration.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPSECI object
+ * @index:	The queue index
+ * @options:	Configuration mode options
+ *			can be OPR_OPT_CREATE or OPR_OPT_RETIRE
+ * @cfg:	Configuration options for the OPR
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpseci_set_opr(struct fsl_mc_io *mc_io,
+		   uint32_t cmd_flags,
+		   uint16_t token,
+		   uint8_t index,
+		   uint8_t options,
+		   struct opr_cfg *cfg)
+{
+	struct dpseci_cmd_set_opr *cmd_params;
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPSECI_CMDID_SET_OPR,
+					  cmd_flags,
+					  token);
+	cmd_params = (struct dpseci_cmd_set_opr *)cmd.params;
+	cmd_params->index = index;
+	cmd_params->options = options;
+	cmd_params->oloe = cfg->oloe;
+	cmd_params->oeane = cfg->oeane;
+	cmd_params->olws = cfg->olws;
+	cmd_params->oa = cfg->oa;
+	cmd_params->oprrws = cfg->oprrws;
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+/**
+ * dpseci_get_opr() - Retrieve Order Restoration config and query.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPSECI object
+ * @index:	The queue index
+ * @cfg:	Returned OPR configuration
+ * @qry:	Returned OPR query
+ *
+ * Return:     '0' on Success; Error code otherwise.
+ */
+int dpseci_get_opr(struct fsl_mc_io *mc_io,
+		   uint32_t cmd_flags,
+		   uint16_t token,
+		   uint8_t index,
+		   struct opr_cfg *cfg,
+		   struct opr_qry *qry)
+{
+	struct dpseci_rsp_get_opr *rsp_params;
+	struct dpseci_cmd_get_opr *cmd_params;
+	struct mc_command cmd = { 0 };
+	int err;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPSECI_CMDID_GET_OPR,
+					  cmd_flags,
+					  token);
+	cmd_params = (struct dpseci_cmd_get_opr *)cmd.params;
+	cmd_params->index = index;
+
+	/* send command to mc*/
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	/* retrieve response parameters */
+	rsp_params = (struct dpseci_rsp_get_opr *)cmd.params;
+	cfg->oloe = rsp_params->oloe;
+	cfg->oeane = rsp_params->oeane;
+	cfg->olws = rsp_params->olws;
+	cfg->oa = rsp_params->oa;
+	cfg->oprrws = rsp_params->oprrws;
+	qry->rip = dpseci_get_field(rsp_params->flags, RIP);
+	qry->enable = dpseci_get_field(rsp_params->flags, OPR_ENABLE);
+	qry->nesn = le16_to_cpu(rsp_params->nesn);
+	qry->ndsn = le16_to_cpu(rsp_params->ndsn);
+	qry->ea_tseq = le16_to_cpu(rsp_params->ea_tseq);
+	qry->tseq_nlis = dpseci_get_field(rsp_params->tseq_nlis, TSEQ_NLIS);
+	qry->ea_hseq = le16_to_cpu(rsp_params->ea_hseq);
+	qry->hseq_nlis = dpseci_get_field(rsp_params->hseq_nlis, HSEQ_NLIS);
+	qry->ea_hptr = le16_to_cpu(rsp_params->ea_hptr);
+	qry->ea_tptr = le16_to_cpu(rsp_params->ea_tptr);
+	qry->opr_vid = le16_to_cpu(rsp_params->opr_vid);
+	qry->opr_id = le16_to_cpu(rsp_params->opr_id);
+
+	return 0;
+}
+
+/**
+ * dpseci_set_congestion_notification() - Set congestion group
+ *	notification configuration
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPSECI object
+ * @cfg:	congestion notification configuration
+ *
+ * Return:	'0' on success, error code otherwise
+ */
 int dpseci_set_congestion_notification(
 			struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
@@ -604,6 +716,16 @@ int dpseci_set_congestion_notification(
 	return mc_send_command(mc_io, &cmd);
 }
 
+/**
+ * dpseci_get_congestion_notification() - Get congestion group
+ *	notification configuration
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPSECI object
+ * @cfg:	congestion notification configuration
+ *
+ * Return:	'0' on success, error code otherwise
+ */
 int dpseci_get_congestion_notification(
 				struct fsl_mc_io *mc_io,
 				uint32_t cmd_flags,

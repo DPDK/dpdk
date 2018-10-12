@@ -24,6 +24,7 @@
 #include <dpaa2_hw_pvt.h>
 #include <dpaa2_hw_dpio.h>
 #include <dpaa2_hw_mempool.h>
+#include <fsl_dpopr.h>
 #include <fsl_dpseci.h>
 #include <fsl_mc_sys.h>
 
