@@ -9,7 +9,7 @@
 #include <inttypes.h>
 #include <string.h>
 #include <stdbool.h>
-
+#include <netinet/in.h>
 
 typedef uint8_t		u8;
 typedef int8_t		s8;
@@ -22,6 +22,7 @@ typedef uint64_t	u64;
 #define min(a, b)	RTE_MIN(a, b)
 #define max(a, b)	RTE_MAX(a, b)
 
+#include "hw_atl/hw_atl_b0_internal.h"
 #include "hw_atl/hw_atl_utils.h"
 
 struct aq_hw_link_status_s {
@@ -50,8 +51,18 @@ struct aq_stats_s {
 	u64 dma_oct_tc;
 };
 
+struct aq_rss_parameters {
+	u16 base_cpu_number;
+	u16 indirection_table_size;
+	u16 hash_secret_key_size;
+	u32 hash_secret_key[HW_ATL_B0_RSS_HASHKEY_BITS / 8];
+	u8 indirection_table[HW_ATL_B0_RSS_REDIRECTION_MAX];
+};
+
 struct aq_hw_cfg_s {
 	bool is_lro;
+	bool is_rss;
+	unsigned int num_rss_queues;
 	int wol;
 
 	int link_speed_msk;
@@ -60,6 +71,8 @@ struct aq_hw_cfg_s {
 	unsigned int vecs;
 
 	uint32_t flow_control;
+
+	struct aq_rss_parameters aq_rss;
 };
 
 struct aq_hw_s {
