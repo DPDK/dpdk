@@ -22,6 +22,10 @@ static int  atl_dev_set_link_up(struct rte_eth_dev *dev);
 static int  atl_dev_set_link_down(struct rte_eth_dev *dev);
 static void atl_dev_close(struct rte_eth_dev *dev);
 static int  atl_dev_reset(struct rte_eth_dev *dev);
+static void atl_dev_promiscuous_enable(struct rte_eth_dev *dev);
+static void atl_dev_promiscuous_disable(struct rte_eth_dev *dev);
+static void atl_dev_allmulticast_enable(struct rte_eth_dev *dev);
+static void atl_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static int  atl_dev_link_update(struct rte_eth_dev *dev, int wait);
 
 static int atl_dev_xstats_get_names(struct rte_eth_dev *dev __rte_unused,
@@ -163,6 +167,12 @@ static const struct eth_dev_ops atl_eth_dev_ops = {
 	.dev_set_link_down    = atl_dev_set_link_down,
 	.dev_close	      = atl_dev_close,
 	.dev_reset	      = atl_dev_reset,
+
+	/* PROMISC */
+	.promiscuous_enable   = atl_dev_promiscuous_enable,
+	.promiscuous_disable  = atl_dev_promiscuous_disable,
+	.allmulticast_enable  = atl_dev_allmulticast_enable,
+	.allmulticast_disable = atl_dev_allmulticast_disable,
 
 	/* Link */
 	.link_update	      = atl_dev_link_update,
@@ -812,6 +822,40 @@ atl_dev_link_update(struct rte_eth_dev *dev, int wait __rte_unused)
 	return 0;
 }
 
+static void
+atl_dev_promiscuous_enable(struct rte_eth_dev *dev)
+{
+	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	hw_atl_rpfl2promiscuous_mode_en_set(hw, true);
+}
+
+static void
+atl_dev_promiscuous_disable(struct rte_eth_dev *dev)
+{
+	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	hw_atl_rpfl2promiscuous_mode_en_set(hw, false);
+}
+
+static void
+atl_dev_allmulticast_enable(struct rte_eth_dev *dev)
+{
+	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	hw_atl_rpfl2_accept_all_mc_packets_set(hw, true);
+}
+
+static void
+atl_dev_allmulticast_disable(struct rte_eth_dev *dev)
+{
+	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (dev->data->promiscuous == 1)
+		return; /* must remain in all_multicast mode */
+
+	hw_atl_rpfl2_accept_all_mc_packets_set(hw, false);
+}
 
 /**
  * It clears the interrupt causes and enables the interrupt.

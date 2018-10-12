@@ -13,6 +13,8 @@ Supported features
 ^^^^^^^^^^^^^^^^^^
 
 - Base L2 features
+- Promiscuous mode
+- Multicast mode
 - Port statistics
 - Checksum offload
 - Jumbo Frame upto 16K
