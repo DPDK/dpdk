@@ -104,6 +104,58 @@ caam_jr_alloc_ctx(struct caam_jr_session *ses)
 	return ctx;
 }
 
+static
+void caam_jr_stats_get(struct rte_cryptodev *dev,
+			struct rte_cryptodev_stats *stats)
+{
+	struct caam_jr_qp **qp = (struct caam_jr_qp **)
+					dev->data->queue_pairs;
+	int i;
+
+	PMD_INIT_FUNC_TRACE();
+	if (stats == NULL) {
+		CAAM_JR_ERR("Invalid stats ptr NULL");
+		return;
+	}
+	for (i = 0; i < dev->data->nb_queue_pairs; i++) {
+		if (qp[i] == NULL) {
+			CAAM_JR_WARN("Uninitialised queue pair");
+			continue;
+		}
+
+		stats->enqueued_count += qp[i]->tx_pkts;
+		stats->dequeued_count += qp[i]->rx_pkts;
+		stats->enqueue_err_count += qp[i]->tx_errs;
+		stats->dequeue_err_count += qp[i]->rx_errs;
+		CAAM_JR_INFO("extra stats:\n\tRX Poll ERR = %" PRIu64
+			     "\n\tTX Ring Full = %" PRIu64,
+			     qp[i]->rx_poll_err,
+			     qp[i]->tx_ring_full);
+	}
+}
+
+static
+void caam_jr_stats_reset(struct rte_cryptodev *dev)
+{
+	int i;
+	struct caam_jr_qp **qp = (struct caam_jr_qp **)
+				   (dev->data->queue_pairs);
+
+	PMD_INIT_FUNC_TRACE();
+	for (i = 0; i < dev->data->nb_queue_pairs; i++) {
+		if (qp[i] == NULL) {
+			CAAM_JR_WARN("Uninitialised queue pair");
+			continue;
+		}
+		qp[i]->rx_pkts = 0;
+		qp[i]->rx_errs = 0;
+		qp[i]->rx_poll_err = 0;
+		qp[i]->tx_pkts = 0;
+		qp[i]->tx_errs = 0;
+		qp[i]->tx_ring_full = 0;
+	}
+}
+
 static inline int
 is_cipher_only(struct caam_jr_session *ses)
 {
@@ -1716,6 +1768,8 @@ static struct rte_cryptodev_ops caam_jr_ops = {
 	.dev_stop	      = caam_jr_dev_stop,
 	.dev_close	      = caam_jr_dev_close,
 	.dev_infos_get        = caam_jr_dev_infos_get,
+	.stats_get	      = caam_jr_stats_get,
+	.stats_reset	      = caam_jr_stats_reset,
 	.queue_pair_setup     = caam_jr_queue_pair_setup,
 	.queue_pair_release   = caam_jr_queue_pair_release,
 	.queue_pair_count     = caam_jr_queue_pair_count,
