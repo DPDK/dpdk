@@ -118,6 +118,12 @@ apply_profile(int profile_id)
 	struct profile *p = &profiles[profile_id];
 	const uint8_t core_off = 1;
 
+	if (p->num_cores > rte_lcore_count() + 1) {
+		printf("insufficent cores to run (%s)",
+			p->name);
+		return;
+	}
+
 	for (i = 0; i < p->num_cores; i++) {
 		uint32_t core = i + core_off;
 		ret = rte_service_lcore_add(core);
