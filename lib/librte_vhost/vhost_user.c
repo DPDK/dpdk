@@ -965,6 +965,32 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct VhostUserMsg *msg,
 			mmap_size,
 			alignment,
 			mmap_offset);
+
+		if (dev->postcopy_listening) {
+#ifdef RTE_LIBRTE_VHOST_POSTCOPY
+			struct uffdio_register reg_struct;
+
+			reg_struct.range.start = (uint64_t)(uintptr_t)mmap_addr;
+			reg_struct.range.len = mmap_size;
+			reg_struct.mode = UFFDIO_REGISTER_MODE_MISSING;
+
+			if (ioctl(dev->postcopy_ufd, UFFDIO_REGISTER,
+						&reg_struct)) {
+				RTE_LOG(ERR, VHOST_CONFIG,
+					"Failed to register ufd for region %d: (ufd = %d) %s\n",
+					i, dev->postcopy_ufd,
+					strerror(errno));
+				goto err_mmap;
+			}
+			RTE_LOG(INFO, VHOST_CONFIG,
+				"\t userfaultfd registered for range : %llx - %llx\n",
+				reg_struct.range.start,
+				reg_struct.range.start +
+				reg_struct.range.len - 1);
+#else
+			goto err_mmap;
+#endif
+		}
 	}
 
 	for (i = 0; i < dev->nr_vring; i++) {
