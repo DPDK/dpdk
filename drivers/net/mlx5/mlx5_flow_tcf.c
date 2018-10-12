@@ -124,6 +124,9 @@ struct tc_pedit_sel {
 #ifndef TCA_CLS_FLAGS_SKIP_SW
 #define TCA_CLS_FLAGS_SKIP_SW (1 << 1)
 #endif
+#ifndef HAVE_TCA_CHAIN
+#define TCA_CHAIN 11
+#endif
 #ifndef HAVE_TCA_FLOWER_ACT
 #define TCA_FLOWER_ACT 3
 #endif
@@ -211,6 +214,9 @@ struct tc_pedit_sel {
 #ifndef HAVE_TCA_FLOWER_KEY_TCP_FLAGS_MASK
 #define TCA_FLOWER_KEY_TCP_FLAGS_MASK 72
 #endif
+#ifndef HAVE_TC_ACT_GOTO_CHAIN
+#define TC_ACT_GOTO_CHAIN 0x20000000
+#endif
 
 #ifndef IPV6_ADDR_LEN
 #define IPV6_ADDR_LEN 16
@@ -297,7 +303,14 @@ struct flow_tcf_ptoi {
 	unsigned int ifindex; /**< Network interface index. */
 };
 
-#define MLX5_TCF_FATE_ACTIONS (MLX5_FLOW_ACTION_DROP | MLX5_FLOW_ACTION_PORT_ID)
+/* Due to a limitation on driver/FW. */
+#define MLX5_TCF_GROUP_ID_MAX 3
+#define MLX5_TCF_GROUP_PRIORITY_MAX 14
+
+#define MLX5_TCF_FATE_ACTIONS \
+	(MLX5_FLOW_ACTION_DROP | MLX5_FLOW_ACTION_PORT_ID | \
+	 MLX5_FLOW_ACTION_JUMP)
+
 #define MLX5_TCF_VLAN_ACTIONS \
 	(MLX5_FLOW_ACTION_OF_POP_VLAN | MLX5_FLOW_ACTION_OF_PUSH_VLAN | \
 	 MLX5_FLOW_ACTION_OF_SET_VLAN_VID | MLX5_FLOW_ACTION_OF_SET_VLAN_PCP)
@@ -308,9 +321,9 @@ struct flow_tcf_ptoi {
 	 MLX5_FLOW_ACTION_SET_TP_SRC | MLX5_FLOW_ACTION_SET_TP_DST)
 
 #define MLX5_TCF_CONFIG_ACTIONS \
-	(MLX5_FLOW_ACTION_PORT_ID | MLX5_FLOW_ACTION_OF_PUSH_VLAN | \
-	 MLX5_FLOW_ACTION_OF_SET_VLAN_VID | MLX5_FLOW_ACTION_OF_SET_VLAN_PCP | \
-	 MLX5_TCF_PEDIT_ACTIONS)
+	(MLX5_FLOW_ACTION_PORT_ID | MLX5_FLOW_ACTION_JUMP | \
+	 MLX5_FLOW_ACTION_OF_PUSH_VLAN | MLX5_FLOW_ACTION_OF_SET_VLAN_VID | \
+	 MLX5_FLOW_ACTION_OF_SET_VLAN_PCP | MLX5_TCF_PEDIT_ACTIONS)
 
 #define MAX_PEDIT_KEYS 128
 #define SZ_PEDIT_KEY_VAL 4
@@ -704,14 +717,25 @@ flow_tcf_validate_attributes(const struct rte_flow_attr *attr,
 			     struct rte_flow_error *error)
 {
 	/*
-	 * Supported attributes: no groups, some priorities and ingress only.
-	 * Don't care about transfer as it is the caller's problem.
+	 * Supported attributes: groups, some priorities and ingress only.
+	 * group is supported only if kernel supports chain. Don't care about
+	 * transfer as it is the caller's problem.
 	 */
-	if (attr->group)
+	if (attr->group > MLX5_TCF_GROUP_ID_MAX)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ATTR_GROUP, attr,
-					  "groups are not supported");
-	if (attr->priority > 0xfffe)
+					  "group ID larger than "
+					  RTE_STR(MLX5_TCF_GROUP_ID_MAX)
+					  " isn't supported");
+	else if (attr->group > 0 &&
+		 attr->priority > MLX5_TCF_GROUP_PRIORITY_MAX)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
+					  attr,
+					  "lowest priority level is "
+					  RTE_STR(MLX5_TCF_GROUP_PRIORITY_MAX)
+					  " when group is configured");
+	else if (attr->priority > 0xfffe)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
 					  attr,
@@ -762,6 +786,7 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 	} spec, mask;
 	union {
 		const struct rte_flow_action_port_id *port_id;
+		const struct rte_flow_action_jump *jump;
 		const struct rte_flow_action_of_push_vlan *of_push_vlan;
 		const struct rte_flow_action_of_set_vlan_vid *
 			of_set_vlan_vid;
@@ -995,11 +1020,6 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_PORT_ID:
 			current_action_flag = MLX5_FLOW_ACTION_PORT_ID;
-			if (action_flags & MLX5_TCF_FATE_ACTIONS)
-				return rte_flow_error_set
-					(error, EINVAL,
-					 RTE_FLOW_ERROR_TYPE_ACTION, actions,
-					 "can't have multiple fate actions");
 			if (!actions->conf)
 				break;
 			conf.port_id = actions->conf;
@@ -1018,12 +1038,19 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 					 " ifindex");
 			port_id_dev = &rte_eth_devices[conf.port_id->id];
 			break;
-		case RTE_FLOW_ACTION_TYPE_DROP:
-			if (action_flags & MLX5_TCF_FATE_ACTIONS)
+		case RTE_FLOW_ACTION_TYPE_JUMP:
+			current_action_flag = MLX5_FLOW_ACTION_JUMP;
+			if (!actions->conf)
+				break;
+			conf.jump = actions->conf;
+			if (attr->group >= conf.jump->group)
 				return rte_flow_error_set
-					(error, EINVAL,
-					 RTE_FLOW_ERROR_TYPE_ACTION, actions,
-					 "can't have multiple fate actions");
+					(error, ENOTSUP,
+					 RTE_FLOW_ERROR_TYPE_ACTION,
+					 actions,
+					 "can jump only to a group forward");
+			break;
+		case RTE_FLOW_ACTION_TYPE_DROP:
 			current_action_flag = MLX5_FLOW_ACTION_DROP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
@@ -1082,7 +1109,7 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 						"action configuration not set");
 		}
 		if ((current_action_flag & MLX5_TCF_PEDIT_ACTIONS) &&
-				pedit_validated)
+		    pedit_validated)
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
 						  actions,
@@ -1091,6 +1118,13 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 		if ((current_action_flag & ~MLX5_TCF_PEDIT_ACTIONS) &&
 		    (action_flags & MLX5_TCF_PEDIT_ACTIONS))
 			pedit_validated = 1;
+		if ((current_action_flag & MLX5_TCF_FATE_ACTIONS) &&
+		    (action_flags & MLX5_TCF_FATE_ACTIONS))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  actions,
+						  "can't have multiple fate"
+						  " actions");
 		action_flags |= current_action_flag;
 	}
 	if ((action_flags & MLX5_TCF_PEDIT_ACTIONS) &&
@@ -1179,7 +1213,8 @@ flow_tcf_validate(struct rte_eth_dev *dev,
  *   Maximum size of memory for items.
  */
 static int
-flow_tcf_get_items_and_size(const struct rte_flow_item items[],
+flow_tcf_get_items_and_size(const struct rte_flow_attr *attr,
+			    const struct rte_flow_item items[],
 			    uint64_t *item_flags)
 {
 	int size = 0;
@@ -1188,6 +1223,8 @@ flow_tcf_get_items_and_size(const struct rte_flow_item items[],
 	size += SZ_NLATTR_STRZ_OF("flower") +
 		SZ_NLATTR_NEST + /* TCA_OPTIONS. */
 		SZ_NLATTR_TYPE_OF(uint32_t); /* TCA_CLS_FLAGS_SKIP_SW. */
+	if (attr->group > 0)
+		size += SZ_NLATTR_TYPE_OF(uint32_t); /* TCA_CHAIN. */
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
 		switch (items->type) {
 		case RTE_FLOW_ITEM_TYPE_VOID:
@@ -1276,6 +1313,13 @@ flow_tcf_get_actions_and_size(const struct rte_flow_action actions[],
 				SZ_NLATTR_NEST + /* TCA_ACT_OPTIONS. */
 				SZ_NLATTR_TYPE_OF(struct tc_mirred);
 			flags |= MLX5_FLOW_ACTION_PORT_ID;
+			break;
+		case RTE_FLOW_ACTION_TYPE_JUMP:
+			size += SZ_NLATTR_NEST + /* na_act_index. */
+				SZ_NLATTR_STRZ_OF("gact") +
+				SZ_NLATTR_NEST + /* TCA_ACT_OPTIONS. */
+				SZ_NLATTR_TYPE_OF(struct tc_gact);
+			flags |= MLX5_FLOW_ACTION_JUMP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_DROP:
 			size += SZ_NLATTR_NEST + /* na_act_index. */
@@ -1371,7 +1415,7 @@ flow_tcf_nl_brand(struct nlmsghdr *nlh, uint32_t handle)
  *   otherwise NULL and rte_ernno is set.
  */
 static struct mlx5_flow *
-flow_tcf_prepare(const struct rte_flow_attr *attr __rte_unused,
+flow_tcf_prepare(const struct rte_flow_attr *attr,
 		 const struct rte_flow_item items[],
 		 const struct rte_flow_action actions[],
 		 uint64_t *item_flags, uint64_t *action_flags,
@@ -1384,7 +1428,7 @@ flow_tcf_prepare(const struct rte_flow_attr *attr __rte_unused,
 	struct nlmsghdr *nlh;
 	struct tcmsg *tcm;
 
-	size += flow_tcf_get_items_and_size(items, item_flags);
+	size += flow_tcf_get_items_and_size(attr, items, item_flags);
 	size += flow_tcf_get_actions_and_size(actions, action_flags);
 	dev_flow = rte_zmalloc(__func__, size, MNL_ALIGNTO);
 	if (!dev_flow) {
@@ -1455,6 +1499,7 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 	} spec, mask;
 	union {
 		const struct rte_flow_action_port_id *port_id;
+		const struct rte_flow_action_jump *jump;
 		const struct rte_flow_action_of_push_vlan *of_push_vlan;
 		const struct rte_flow_action_of_set_vlan_vid *
 			of_set_vlan_vid;
@@ -1490,6 +1535,8 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 	 */
 	tcm->tcm_info = TC_H_MAKE((attr->priority + 1) << 16,
 				  RTE_BE16(ETH_P_ALL));
+	if (attr->group > 0)
+		mnl_attr_put_u32(nlh, TCA_CHAIN, attr->group);
 	mnl_attr_put_strz(nlh, TCA_KIND, "flower");
 	na_flower = mnl_attr_nest_start(nlh, TCA_OPTIONS);
 	mnl_attr_put_u32(nlh, TCA_FLOWER_FLAGS, TCA_CLS_FLAGS_SKIP_SW);
@@ -1778,6 +1825,23 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 					.action = TC_ACT_STOLEN,
 					.eaction = TCA_EGRESS_REDIR,
 					.ifindex = ptoi[i].ifindex,
+				     });
+			mnl_attr_nest_end(nlh, na_act);
+			mnl_attr_nest_end(nlh, na_act_index);
+			break;
+		case RTE_FLOW_ACTION_TYPE_JUMP:
+			conf.jump = actions->conf;
+			na_act_index =
+				mnl_attr_nest_start(nlh, na_act_index_cur++);
+			assert(na_act_index);
+			mnl_attr_put_strz(nlh, TCA_ACT_KIND, "gact");
+			na_act = mnl_attr_nest_start(nlh, TCA_ACT_OPTIONS);
+			assert(na_act);
+			mnl_attr_put(nlh, TCA_GACT_PARMS,
+				     sizeof(struct tc_gact),
+				     &(struct tc_gact){
+					.action = TC_ACT_GOTO_CHAIN |
+						  conf.jump->group,
 				     });
 			mnl_attr_nest_end(nlh, na_act);
 			mnl_attr_nest_end(nlh, na_act_index);

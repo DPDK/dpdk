@@ -207,6 +207,11 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		enum IFLA_PHYS_PORT_NAME \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
+		HAVE_TCA_CHAIN \
+		linux/rtnetlink.h \
+		enum TCA_CHAIN \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
 		HAVE_TCA_FLOWER_ACT \
 		linux/pkt_cls.h \
 		enum TCA_FLOWER_ACT \
@@ -350,6 +355,11 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		HAVE_TCA_FLOWER_KEY_TCP_FLAGS_MASK \
 		linux/pkt_cls.h \
 		enum TCA_FLOWER_KEY_TCP_FLAGS_MASK \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TC_ACT_GOTO_CHAIN \
+		linux/pkt_cls.h \
+		define TC_ACT_GOTO_CHAIN \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
 		HAVE_TC_ACT_VLAN \
