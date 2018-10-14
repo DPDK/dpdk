@@ -201,17 +201,17 @@ int avf_txq_vec_setup(struct avf_tx_queue *txq);
 
 static inline
 void avf_dump_rx_descriptor(struct avf_rx_queue *rxq,
-			    const void *desc,
+			    const volatile void *desc,
 			    uint16_t rx_id)
 {
 #ifdef RTE_LIBRTE_AVF_16BYTE_RX_DESC
-	const union avf_16byte_rx_desc *rx_desc = desc;
+	const volatile union avf_16byte_rx_desc *rx_desc = desc;
 
 	printf("Queue %d Rx_desc %d: QW0: 0x%016"PRIx64" QW1: 0x%016"PRIx64"\n",
 	       rxq->queue_id, rx_id, rx_desc->read.pkt_addr,
 	       rx_desc->read.hdr_addr);
 #else
-	const union avf_32byte_rx_desc *rx_desc = desc;
+	const volatile union avf_32byte_rx_desc *rx_desc = desc;
 
 	printf("Queue %d Rx_desc %d: QW0: 0x%016"PRIx64" QW1: 0x%016"PRIx64
 	       " QW2: 0x%016"PRIx64" QW3: 0x%016"PRIx64"\n", rxq->queue_id,
@@ -225,10 +225,10 @@ void avf_dump_rx_descriptor(struct avf_rx_queue *rxq,
  */
 static inline
 void avf_dump_tx_descriptor(const struct avf_tx_queue *txq,
-			    const void *desc, uint16_t tx_id)
+			    const volatile void *desc, uint16_t tx_id)
 {
 	const char *name;
-	const struct avf_tx_desc *tx_desc = desc;
+	const volatile struct avf_tx_desc *tx_desc = desc;
 	enum avf_tx_desc_dtype_value type;
 
 	type = (enum avf_tx_desc_dtype_value)rte_le_to_cpu_64(
