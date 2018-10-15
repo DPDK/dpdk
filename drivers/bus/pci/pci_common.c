@@ -404,6 +404,33 @@ pci_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 }
 
 static int
+pci_hot_unplug_handler(struct rte_device *dev)
+{
+	struct rte_pci_device *pdev = NULL;
+	int ret = 0;
+
+	pdev = RTE_DEV_TO_PCI(dev);
+	if (!pdev)
+		return -1;
+
+	switch (pdev->kdrv) {
+	case RTE_KDRV_IGB_UIO:
+	case RTE_KDRV_UIO_GENERIC:
+	case RTE_KDRV_NIC_UIO:
+		/* BARs resource is invalid, remap it to be safe. */
+		ret = pci_uio_remap_resource(pdev);
+		break;
+	default:
+		RTE_LOG(DEBUG, EAL,
+			"Not managed by a supported kernel driver, skipped\n");
+		ret = -1;
+		break;
+	}
+
+	return ret;
+}
+
+static int
 pci_plug(struct rte_device *dev)
 {
 	return pci_probe_all_drivers(RTE_DEV_TO_PCI(dev));
@@ -434,6 +461,7 @@ struct rte_pci_bus rte_pci_bus = {
 		.parse = pci_parse,
 		.get_iommu_class = rte_pci_get_iommu_class,
 		.dev_iterate = rte_pci_dev_iterate,
+		.hot_unplug_handler = pci_hot_unplug_handler,
 	},
 	.device_list = TAILQ_HEAD_INITIALIZER(rte_pci_bus.device_list),
 	.driver_list = TAILQ_HEAD_INITIALIZER(rte_pci_bus.driver_list),

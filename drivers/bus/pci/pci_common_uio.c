@@ -146,6 +146,39 @@ pci_uio_unmap(struct mapped_pci_resource *uio_res)
 	}
 }
 
+/* remap the PCI resource of a PCI device in anonymous virtual memory */
+int
+pci_uio_remap_resource(struct rte_pci_device *dev)
+{
+	int i;
+	void *map_address;
+
+	if (dev == NULL)
+		return -1;
+
+	/* Remap all BARs */
+	for (i = 0; i != PCI_MAX_RESOURCE; i++) {
+		/* skip empty BAR */
+		if (dev->mem_resource[i].phys_addr == 0)
+			continue;
+		map_address = mmap(dev->mem_resource[i].addr,
+				(size_t)dev->mem_resource[i].len,
+				PROT_READ | PROT_WRITE,
+				MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+		if (map_address == MAP_FAILED) {
+			RTE_LOG(ERR, EAL,
+				"Cannot remap resource for device %s\n",
+				dev->name);
+			return -1;
+		}
+		RTE_LOG(INFO, EAL,
+			"Successful remap resource for device %s\n",
+			dev->name);
+	}
+
+	return 0;
+}
+
 static struct mapped_pci_resource *
 pci_uio_find_resource(struct rte_pci_device *dev)
 {

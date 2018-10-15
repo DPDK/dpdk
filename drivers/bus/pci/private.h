@@ -127,6 +127,18 @@ void pci_uio_free_resource(struct rte_pci_device *dev,
 		struct mapped_pci_resource *uio_res);
 
 /**
+ * Remap the PCI resource of a PCI device in anonymous virtual memory.
+ *
+ * @param dev
+ *   Point to the struct rte pci device.
+ * @return
+ *   - On success, zero.
+ *   - On failure, a negative value.
+ */
+int
+pci_uio_remap_resource(struct rte_pci_device *dev);
+
+/**
  * Map device memory to uio resource
  *
  * This function is private to EAL.
