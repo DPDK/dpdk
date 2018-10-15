@@ -182,6 +182,21 @@ typedef int (*rte_bus_parse_t)(const char *name, void *addr);
 typedef int (*rte_bus_hot_unplug_handler_t)(struct rte_device *dev);
 
 /**
+ * Implement a specific sigbus handler, which is responsible for handling
+ * the sigbus error which is either original memory error, or specific memory
+ * error that caused of device be hot-unplugged. When sigbus error be captured,
+ * it could call this function to handle sigbus error.
+ * @param failure_addr
+ *	Pointer of the fault address of the sigbus error.
+ *
+ * @return
+ *	0 for success handle the sigbus for hot-unplug.
+ *	1 for not process it, because it is a generic sigbus error.
+ *	-1 for failed to handle the sigbus for hot-unplug.
+ */
+typedef int (*rte_bus_sigbus_handler_t)(const void *failure_addr);
+
+/**
  * Bus scan policies
  */
 enum rte_bus_scan_mode {
@@ -228,6 +243,9 @@ struct rte_bus {
 	rte_dev_iterate_t dev_iterate; /**< Device iterator. */
 	rte_bus_hot_unplug_handler_t hot_unplug_handler;
 				/**< handle hot-unplug failure on the bus */
+	rte_bus_sigbus_handler_t sigbus_handler;
+					/**< handle sigbus error on the bus */
+
 };
 
 /**
