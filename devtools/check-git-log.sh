@@ -108,6 +108,7 @@ bad=$(echo "$headlines" | grep -E --color=always \
 	-e ':.*\<nvm\>' \
 	-e ':.*\<numa\>' \
 	-e ':.*\<pci\>' \
+	-e ':.*\<phy\>' \
 	-e ':.*\<pmd\>' \
 	-e ':.*\<rss\>' \
 	-e ':.*\<sctp\>' \
