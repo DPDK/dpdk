@@ -60,6 +60,11 @@ New Features
   memory that was created outside of DPDK's own page allocator, and using that
   memory natively with any other DPDK library or data structure.
 
+* **Added hot-unplug handle mechanism.**
+
+  ``rte_dev_hotplug_handle_enable`` and ``rte_dev_hotplug_handle_disable`` are
+  for enabling or disabling hotplug handle mechanism.
+
 * **Added new Flow API actions to rewrite fields in packet headers.**
 
   Added new Flow API actions to:

@@ -19,3 +19,17 @@ rte_dev_event_monitor_stop(void)
 	RTE_LOG(ERR, EAL, "Device event is not supported for FreeBSD\n");
 	return -1;
 }
+
+int __rte_experimental
+rte_dev_hotplug_handle_enable(void)
+{
+	RTE_LOG(ERR, EAL, "Device event is not supported for FreeBSD\n");
+	return -1;
+}
+
+int __rte_experimental
+rte_dev_hotplug_handle_disable(void)
+{
+	RTE_LOG(ERR, EAL, "Device event is not supported for FreeBSD\n");
+	return -1;
+}

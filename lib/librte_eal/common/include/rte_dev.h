@@ -480,4 +480,30 @@ rte_dev_event_monitor_start(void);
 int __rte_experimental
 rte_dev_event_monitor_stop(void);
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Enable hotplug handling for devices.
+ *
+ * @return
+ *   - On success, zero.
+ *   - On failure, a negative value.
+ */
+int __rte_experimental
+rte_dev_hotplug_handle_enable(void);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Disable hotplug handling for devices.
+ *
+ * @return
+ *   - On success, zero.
+ *   - On failure, a negative value.
+ */
+int __rte_experimental
+rte_dev_hotplug_handle_disable(void);
+
 #endif /* _RTE_DEV_H_ */

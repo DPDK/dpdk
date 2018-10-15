@@ -317,4 +317,26 @@ rte_devargs_layers_parse(struct rte_devargs *devargs,
  */
 int rte_bus_sigbus_handler(const void *failure_addr);
 
+/**
+ * @internal
+ * Register the sigbus handler.
+ *
+ * @return
+ *   - On success, zero.
+ *   - On failure, a negative value.
+ */
+int
+dev_sigbus_handler_register(void);
+
+/**
+ * @internal
+ * Unregister the sigbus handler.
+ *
+ * @return
+ *   - On success, zero.
+ *   - On failure, a negative value.
+ */
+int
+dev_sigbus_handler_unregister(void);
+
 #endif /* _EAL_PRIVATE_H_ */

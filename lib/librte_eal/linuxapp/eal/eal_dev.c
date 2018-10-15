@@ -4,6 +4,8 @@
 
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <signal.h>
 #include <sys/socket.h>
 #include <linux/netlink.h>
 
@@ -14,14 +16,31 @@
 #include <rte_malloc.h>
 #include <rte_interrupts.h>
 #include <rte_alarm.h>
+#include <rte_bus.h>
+#include <rte_eal.h>
+#include <rte_spinlock.h>
+#include <rte_errno.h>
 
 #include "eal_private.h"
 
 static struct rte_intr_handle intr_handle = {.fd = -1 };
 static bool monitor_started;
+static bool hotplug_handle;
 
 #define EAL_UEV_MSG_LEN 4096
 #define EAL_UEV_MSG_ELEM_LEN 128
+
+/*
+ * spinlock for device hot-unplug failure handling. If it try to access bus or
+ * device, such as handle sigbus on bus or handle memory failure for device
+ * just need to use this lock. It could protect the bus and the device to avoid
+ * race condition.
+ */
+static rte_spinlock_t failure_handle_lock = RTE_SPINLOCK_INITIALIZER;
+
+static struct sigaction sigbus_action_old;
+
+static int sigbus_need_recover;
 
 static void dev_uev_handler(__rte_unused void *param);
 
@@ -32,6 +51,55 @@ enum eal_dev_event_subsystem {
 	EAL_DEV_EVENT_SUBSYSTEM_VFIO, /* VFIO driver device event */
 	EAL_DEV_EVENT_SUBSYSTEM_MAX
 };
+
+static void
+sigbus_action_recover(void)
+{
+	if (sigbus_need_recover) {
+		sigaction(SIGBUS, &sigbus_action_old, NULL);
+		sigbus_need_recover = 0;
+	}
+}
+
+static void sigbus_handler(int signum, siginfo_t *info,
+				void *ctx __rte_unused)
+{
+	int ret;
+
+	RTE_LOG(DEBUG, EAL, "Thread[%d] catch SIGBUS, fault address:%p\n",
+		(int)pthread_self(), info->si_addr);
+
+	rte_spinlock_lock(&failure_handle_lock);
+	ret = rte_bus_sigbus_handler(info->si_addr);
+	rte_spinlock_unlock(&failure_handle_lock);
+	if (ret == -1) {
+		rte_exit(EXIT_FAILURE,
+			 "Failed to handle SIGBUS for hot-unplug, "
+			 "(rte_errno: %s)!", strerror(rte_errno));
+	} else if (ret == 1) {
+		if (sigbus_action_old.sa_flags == SA_SIGINFO
+		    && sigbus_action_old.sa_sigaction) {
+			(*(sigbus_action_old.sa_sigaction))(signum,
+							    info, ctx);
+		} else if (sigbus_action_old.sa_flags != SA_SIGINFO
+			   && sigbus_action_old.sa_handler) {
+			(*(sigbus_action_old.sa_handler))(signum);
+		} else {
+			rte_exit(EXIT_FAILURE,
+				 "Failed to handle generic SIGBUS!");
+		}
+	}
+
+	RTE_LOG(DEBUG, EAL, "Success to handle SIGBUS for hot-unplug!\n");
+}
+
+static int cmp_dev_name(const struct rte_device *dev,
+	const void *_name)
+{
+	const char *name = _name;
+
+	return strcmp(dev->name, name);
+}
 
 static int
 dev_uev_socket_fd_create(void)
@@ -147,6 +215,9 @@ dev_uev_handler(__rte_unused void *param)
 	struct rte_dev_event uevent;
 	int ret;
 	char buf[EAL_UEV_MSG_LEN];
+	struct rte_bus *bus;
+	struct rte_device *dev;
+	const char *busname = "";
 
 	memset(&uevent, 0, sizeof(struct rte_dev_event));
 	memset(buf, 0, EAL_UEV_MSG_LEN);
@@ -171,8 +242,43 @@ dev_uev_handler(__rte_unused void *param)
 	RTE_LOG(DEBUG, EAL, "receive uevent(name:%s, type:%d, subsystem:%d)\n",
 		uevent.devname, uevent.type, uevent.subsystem);
 
-	if (uevent.devname)
+	switch (uevent.subsystem) {
+	case EAL_DEV_EVENT_SUBSYSTEM_PCI:
+	case EAL_DEV_EVENT_SUBSYSTEM_UIO:
+		busname = "pci";
+		break;
+	default:
+		break;
+	}
+
+	if (uevent.devname) {
+		if (uevent.type == RTE_DEV_EVENT_REMOVE && hotplug_handle) {
+			rte_spinlock_lock(&failure_handle_lock);
+			bus = rte_bus_find_by_name(busname);
+			if (bus == NULL) {
+				RTE_LOG(ERR, EAL, "Cannot find bus (%s)\n",
+					busname);
+				return;
+			}
+
+			dev = bus->find_device(NULL, cmp_dev_name,
+					       uevent.devname);
+			if (dev == NULL) {
+				RTE_LOG(ERR, EAL, "Cannot find device (%s) on "
+					"bus (%s)\n", uevent.devname, busname);
+				return;
+			}
+
+			ret = bus->hot_unplug_handler(dev);
+			rte_spinlock_unlock(&failure_handle_lock);
+			if (ret) {
+				RTE_LOG(ERR, EAL, "Can not handle hot-unplug "
+					"for device (%s)\n", dev->name);
+				return;
+			}
+		}
 		dev_callback_process(uevent.devname, uevent.type);
+	}
 }
 
 int __rte_experimental
@@ -220,5 +326,67 @@ rte_dev_event_monitor_stop(void)
 	close(intr_handle.fd);
 	intr_handle.fd = -1;
 	monitor_started = false;
+
 	return 0;
+}
+
+int
+dev_sigbus_handler_register(void)
+{
+	sigset_t mask;
+	struct sigaction action;
+
+	rte_errno = 0;
+
+	if (sigbus_need_recover)
+		return 0;
+
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGBUS);
+	action.sa_flags = SA_SIGINFO;
+	action.sa_mask = mask;
+	action.sa_sigaction = sigbus_handler;
+	sigbus_need_recover = !sigaction(SIGBUS, &action, &sigbus_action_old);
+
+	return rte_errno;
+}
+
+int
+dev_sigbus_handler_unregister(void)
+{
+	rte_errno = 0;
+
+	sigbus_action_recover();
+
+	return rte_errno;
+}
+
+int __rte_experimental
+rte_dev_hotplug_handle_enable(void)
+{
+	int ret = 0;
+
+	ret = dev_sigbus_handler_register();
+	if (ret < 0)
+		RTE_LOG(ERR, EAL,
+			"fail to register sigbus handler for devices.\n");
+
+	hotplug_handle = true;
+
+	return ret;
+}
+
+int __rte_experimental
+rte_dev_hotplug_handle_disable(void)
+{
+	int ret = 0;
+
+	ret = dev_sigbus_handler_unregister();
+	if (ret < 0)
+		RTE_LOG(ERR, EAL,
+			"fail to unregister sigbus handler for devices.\n");
+
+	hotplug_handle = false;
+
+	return ret;
 }
