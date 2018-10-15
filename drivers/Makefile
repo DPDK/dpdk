@@ -5,6 +5,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 
 DIRS-y += common
 DIRS-y += bus
+DEPDIRS-bus := common
 DIRS-y += mempool
 DEPDIRS-mempool := common bus
 DIRS-y += net
