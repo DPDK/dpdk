@@ -337,7 +337,6 @@ The libraries prepended with a plus sign were incremented in this version.
    + librte_bus_vmbus.so.2
      librte_cfgfile.so.2
      librte_cmdline.so.2
-     librte_common_octeontx.so.1
      librte_compressdev.so.1
      librte_cryptodev.so.5
      librte_distributor.so.1
@@ -368,12 +367,10 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_pmd_bond.so.2
      librte_pmd_i40e.so.2
      librte_pmd_ixgbe.so.2
-     librte_pmd_dpaa2_cmdif.so.1
      librte_pmd_dpaa2_qdma.so.1
      librte_pmd_ring.so.2
      librte_pmd_softnic.so.1
      librte_pmd_vhost.so.2
-   + librte_pmd_netvsc.so.1
      librte_port.so.3
      librte_power.so.1
      librte_rawdev.so.1
