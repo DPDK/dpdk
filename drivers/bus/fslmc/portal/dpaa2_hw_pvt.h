@@ -9,6 +9,7 @@
 #define _DPAA2_HW_PVT_H_
 
 #include <rte_eventdev.h>
+#include <dpaax_iova_table.h>
 
 #include <mc/fsl_mc_sys.h>
 #include <fsl_qbman_portal.h>
@@ -275,28 +276,26 @@ extern struct dpaa2_memseg_list rte_dpaa2_memsegs;
 #ifdef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
 extern uint8_t dpaa2_virt_mode;
 static void *dpaa2_mem_ptov(phys_addr_t paddr) __attribute__((unused));
-/* todo - this is costly, need to write a fast coversion routine */
+
 static void *dpaa2_mem_ptov(phys_addr_t paddr)
 {
-	struct dpaa2_memseg *ms;
+	void *va;
 
 	if (dpaa2_virt_mode)
 		return (void *)(size_t)paddr;
 
-	/* Check if the address is already part of the memseg list internally
-	 * maintained by the dpaa2 driver.
-	 */
-	TAILQ_FOREACH(ms, &rte_dpaa2_memsegs, next) {
-		if (paddr >= ms->iova && paddr <
-			ms->iova + ms->len)
-			return RTE_PTR_ADD(ms->vaddr, (uintptr_t)(paddr - ms->iova));
-	}
+	va = (void *)dpaax_iova_table_get_va(paddr);
+	if (likely(va != NULL))
+		return va;
 
 	/* If not, Fallback to full memseg list searching */
-	return rte_mem_iova2virt(paddr);
+	va = rte_mem_iova2virt(paddr);
+
+	return va;
 }
 
 static phys_addr_t dpaa2_mem_vtop(uint64_t vaddr) __attribute__((unused));
+
 static phys_addr_t dpaa2_mem_vtop(uint64_t vaddr)
 {
 	const struct rte_memseg *memseg;
