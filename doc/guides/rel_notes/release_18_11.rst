@@ -342,6 +342,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_cryptodev.so.5
      librte_distributor.so.1
    + librte_eal.so.9
+     librte_efd.so.1
    + librte_ethdev.so.11
    + librte_eventdev.so.6
      librte_flow_classify.so.1
@@ -355,6 +356,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_latencystats.so.1
      librte_lpm.so.2
      librte_mbuf.so.4
+     librte_member.so.1
      librte_mempool.so.5
      librte_meter.so.2
      librte_metrics.so.1
