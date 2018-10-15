@@ -342,7 +342,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_cryptodev.so.5
      librte_distributor.so.1
    + librte_eal.so.9
-     librte_ethdev.so.10
+   + librte_ethdev.so.11
    + librte_eventdev.so.6
      librte_flow_classify.so.1
      librte_gro.so.1

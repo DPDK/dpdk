@@ -16,7 +16,7 @@ LDLIBS += -lrte_mbuf -lrte_kvargs
 
 EXPORT_MAP := rte_ethdev_version.map
 
-LIBABIVER := 10
+LIBABIVER := 11
 
 SRCS-y += ethdev_private.c
 SRCS-y += rte_ethdev.c

@@ -539,7 +539,13 @@ struct rte_eth_dev {
 	eth_rx_burst_t rx_pkt_burst; /**< Pointer to PMD receive function. */
 	eth_tx_burst_t tx_pkt_burst; /**< Pointer to PMD transmit function. */
 	eth_tx_prep_t tx_pkt_prepare; /**< Pointer to PMD transmit prepare function. */
-	struct rte_eth_dev_data *data;  /**< Pointer to device data */
+	/**
+	 * Next two fields are per-device data but *data is shared between
+	 * primary and secondary processes and *process_private is per-process
+	 * private. The second one is managed by PMDs if necessary.
+	 */
+	struct rte_eth_dev_data *data;  /**< Pointer to device data. */
+	void *process_private; /**< Pointer to per-process device data. */
 	const struct eth_dev_ops *dev_ops; /**< Functions exported by PMD */
 	struct rte_device *device; /**< Backing device */
 	struct rte_intr_handle *intr_handle; /**< Device interrupt handle */
