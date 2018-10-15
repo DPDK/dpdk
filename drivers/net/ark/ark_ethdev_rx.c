@@ -25,6 +25,9 @@ static uint32_t eth_ark_rx_jumbo(struct ark_rx_queue *queue,
 				 struct rte_mbuf *mbuf0,
 				 uint32_t cons_index);
 static inline int eth_ark_rx_seed_mbufs(struct ark_rx_queue *queue);
+static int eth_ark_rx_seed_recovery(struct ark_rx_queue *queue,
+				    uint32_t *pnb,
+				    struct rte_mbuf **mbufs);
 
 /* ************************************************************************* */
 struct ark_rx_queue {
@@ -196,20 +199,25 @@ eth_ark_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	/* populate mbuf reserve */
 	status = eth_ark_rx_seed_mbufs(queue);
 
+	if (queue->seed_index != nb_desc) {
+		PMD_DRV_LOG(ERR, "ARK: Failed to allocate %u mbufs for RX queue %d\n",
+			    nb_desc, qidx);
+		status = -1;
+	}
 	/* MPU Setup */
 	if (status == 0)
 		status = eth_ark_rx_hw_setup(dev, queue, qidx, queue_idx);
 
 	if (unlikely(status != 0)) {
-		struct rte_mbuf *mbuf;
+		struct rte_mbuf **mbuf;
 
 		PMD_DRV_LOG(ERR, "Failed to initialize RX queue %d %s\n",
 			    qidx,
 			    __func__);
 		/* Free the mbufs allocated */
-		for (i = 0, mbuf = queue->reserve_q[0];
-		     i < nb_desc; ++i, mbuf++) {
-			rte_pktmbuf_free(mbuf);
+		for (i = 0, mbuf = queue->reserve_q;
+		     i < queue->seed_index; ++i, mbuf++) {
+			rte_pktmbuf_free(*mbuf);
 		}
 		rte_free(queue->reserve_q);
 		rte_free(queue->paddress_q);
@@ -446,8 +454,13 @@ eth_ark_rx_seed_mbufs(struct ark_rx_queue *queue)
 	struct rte_mbuf **mbufs = &queue->reserve_q[seed_m];
 	int status = rte_pktmbuf_alloc_bulk(queue->mb_pool, mbufs, nb);
 
-	if (unlikely(status != 0))
-		return -1;
+	if (unlikely(status != 0)) {
+		/* Try to recover from lack of mbufs in pool */
+		status = eth_ark_rx_seed_recovery(queue, &nb, mbufs);
+		if (unlikely(status != 0)) {
+			return -1;
+		}
+	}
 
 	if (ARK_RX_DEBUG) {		/* DEBUG */
 		while (count != nb) {
@@ -493,6 +506,29 @@ eth_ark_rx_seed_mbufs(struct ark_rx_queue *queue)
 	} /* switch */
 
 	return 0;
+}
+
+int
+eth_ark_rx_seed_recovery(struct ark_rx_queue *queue,
+			 uint32_t *pnb,
+			 struct rte_mbuf **mbufs)
+{
+	int status = -1;
+
+	/* Ignore small allocation failures */
+	if (*pnb <= 64)
+		return -1;
+
+	*pnb = 64U;
+	status = rte_pktmbuf_alloc_bulk(queue->mb_pool, mbufs, *pnb);
+	if (status != 0) {
+		PMD_DRV_LOG(ERR,
+			    "ARK: Could not allocate %u mbufs from pool for RX queue %u;"
+			    " %u free buffers remaining in queue\n",
+			    *pnb, queue->queue_index,
+			    queue->seed_index - queue->cons_index);
+	}
+	return status;
 }
 
 void
