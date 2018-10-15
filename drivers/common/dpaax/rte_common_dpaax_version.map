@@ -1,0 +1,11 @@
+DPDK_18.11 {
+	global:
+
+	dpaax_iova_table_update;
+	dpaax_iova_table_depopulate;
+	dpaax_iova_table_dump;
+	dpaax_iova_table_p;
+	dpaax_iova_table_populate;
+
+	local: *;
+};

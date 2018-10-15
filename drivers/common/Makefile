@@ -14,4 +14,8 @@ ifneq (,$(findstring y,$(MVEP-y)))
 DIRS-y += mvep
 endif
 
+ifeq ($(CONFIG_RTE_LIBRTE_COMMON_DPAAX),y)
+DIRS-y += dpaax
+endif
+
 include $(RTE_SDK)/mk/rte.subdir.mk
