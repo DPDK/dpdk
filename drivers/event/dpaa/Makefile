@@ -34,5 +34,6 @@ LDLIBS += -lrte_mempool_dpaa
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
 LDLIBS += -lrte_eventdev -lrte_pmd_dpaa -lrte_bus_vdev
+LDLIBS += -lrte_common_dpaax
 
 include $(RTE_SDK)/mk/rte.lib.mk

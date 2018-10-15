@@ -34,6 +34,7 @@
 
 #include <rte_dpaa_bus.h>
 #include <rte_dpaa_logs.h>
+#include <dpaax_iova_table.h>
 
 #include <fsl_usd.h>
 #include <fsl_qman.h>
@@ -547,6 +548,9 @@ rte_dpaa_bus_probe(void)
 			dpaa_svr_family = svr_ver & SVR_MASK;
 		fclose(svr_file);
 	}
+
+	/* And initialize the PA->VA translation table */
+	dpaax_iova_table_populate();
 
 	/* For each registered driver, and device, call the driver->probe */
 	TAILQ_FOREACH(dev, &rte_dpaa_bus.device_list, next) {

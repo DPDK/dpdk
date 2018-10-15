@@ -107,6 +107,12 @@ dpaa_mem_vtop(void *vaddr)
 static inline void *
 dpaa_mem_ptov(rte_iova_t paddr)
 {
+	void *va;
+
+	va = (void *)dpaax_iova_table_get_va(paddr);
+	if (likely(va))
+		return va;
+
 	return rte_mem_iova2virt(paddr);
 }
 

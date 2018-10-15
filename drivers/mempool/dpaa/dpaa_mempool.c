@@ -26,6 +26,7 @@
 #include <rte_ring.h>
 
 #include <dpaa_mempool.h>
+#include <dpaax_iova_table.h>
 
 /* List of all the memseg information locally maintained in dpaa driver. This
  * is to optimize the PA_to_VA searches until a better mechanism (algo) is
@@ -284,6 +285,9 @@ dpaa_populate(struct rte_mempool *mp, unsigned int max_objs,
 		DPAA_MEMPOOL_ERR("Invalid mempool provided\n");
 		return 0;
 	}
+
+	/* Update the PA-VA Table */
+	dpaax_iova_table_update(paddr, vaddr, len);
 
 	bp_info = DPAA_MEMPOOL_TO_POOL_INFO(mp);
 	total_elt_sz = mp->header_size + mp->elt_size + mp->trailer_size;
