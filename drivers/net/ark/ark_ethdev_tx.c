@@ -65,7 +65,7 @@ eth_ark_tx_meta_from_mbuf(struct ark_tx_meta *meta,
 			  uint8_t flags)
 {
 	meta->physaddr = rte_mbuf_data_iova(mbuf);
-	meta->delta_ns = 0;
+	meta->user1 = (uint32_t)mbuf->udata64;
 	meta->data_len = rte_pktmbuf_data_len(mbuf);
 	meta->flags = flags;
 }

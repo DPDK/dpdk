@@ -19,7 +19,7 @@
 /* struct defining Tx meta data --  fixed in FPGA -- 16 bytes */
 struct ark_tx_meta {
 	uint64_t physaddr;
-	uint32_t delta_ns;
+	uint32_t user1;
 	uint16_t data_len;		/* of this MBUF */
 #define   ARK_DDM_EOP   0x01
 #define   ARK_DDM_SOP   0x02
@@ -34,7 +34,10 @@ struct ark_tx_meta {
  * structs will never be instantiated in ram memory
  */
 #define ARK_DDM_CFG 0x0000
-#define ARK_DDM_CONST 0xfacecafe
+/* Set unique HW ID for hardware version */
+#define ARK_DDM_CONST2 (0x324d4444)
+#define ARK_DDM_CONST1 (0xfacecafe)
+
 struct ark_ddm_cfg_t {
 	uint32_t r0;
 	volatile uint32_t tlp_stats_clear;
