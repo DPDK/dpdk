@@ -403,6 +403,36 @@ pci_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 	return NULL;
 }
 
+/*
+ * find the device which encounter the failure, by iterate over all device on
+ * PCI bus to check if the memory failure address is located in the range
+ * of the BARs of the device.
+ */
+static struct rte_pci_device *
+pci_find_device_by_addr(const void *failure_addr)
+{
+	struct rte_pci_device *pdev = NULL;
+	uint64_t check_point, start, end, len;
+	int i;
+
+	check_point = (uint64_t)(uintptr_t)failure_addr;
+
+	FOREACH_DEVICE_ON_PCIBUS(pdev) {
+		for (i = 0; i != RTE_DIM(pdev->mem_resource); i++) {
+			start = (uint64_t)(uintptr_t)pdev->mem_resource[i].addr;
+			len = pdev->mem_resource[i].len;
+			end = start + len;
+			if (check_point >= start && check_point < end) {
+				RTE_LOG(DEBUG, EAL, "Failure address %16.16"
+					PRIx64" belongs to device %s!\n",
+					check_point, pdev->device.name);
+				return pdev;
+			}
+		}
+	}
+	return NULL;
+}
+
 static int
 pci_hot_unplug_handler(struct rte_device *dev)
 {
@@ -427,6 +457,29 @@ pci_hot_unplug_handler(struct rte_device *dev)
 		break;
 	}
 
+	return ret;
+}
+
+static int
+pci_sigbus_handler(const void *failure_addr)
+{
+	struct rte_pci_device *pdev = NULL;
+	int ret = 0;
+
+	pdev = pci_find_device_by_addr(failure_addr);
+	if (!pdev) {
+		/* It is a generic sigbus error, no bus would handle it. */
+		ret = 1;
+	} else {
+		/* The sigbus error is caused of hot-unplug. */
+		ret = pci_hot_unplug_handler(&pdev->device);
+		if (ret) {
+			RTE_LOG(ERR, EAL,
+				"Failed to handle hot-unplug for device %s",
+				pdev->name);
+			ret = -1;
+		}
+	}
 	return ret;
 }
 
@@ -462,6 +515,7 @@ struct rte_pci_bus rte_pci_bus = {
 		.get_iommu_class = rte_pci_get_iommu_class,
 		.dev_iterate = rte_pci_dev_iterate,
 		.hot_unplug_handler = pci_hot_unplug_handler,
+		.sigbus_handler = pci_sigbus_handler,
 	},
 	.device_list = TAILQ_HEAD_INITIALIZER(rte_pci_bus.device_list),
 	.driver_list = TAILQ_HEAD_INITIALIZER(rte_pci_bus.driver_list),
