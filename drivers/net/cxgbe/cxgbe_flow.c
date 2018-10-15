@@ -552,6 +552,16 @@ ch_rte_parse_atype_switch(const struct rte_flow_action *a,
 		fs->nat_lport = be16_to_cpu(tp_port->port);
 		*nmode |= 1 << 3;
 		break;
+	case RTE_FLOW_ACTION_TYPE_MAC_SWAP:
+		item_index = cxgbe_get_flow_item_index(items,
+						       RTE_FLOW_ITEM_TYPE_ETH);
+		if (item_index < 0)
+			return rte_flow_error_set(e, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION, a,
+						  "No RTE_FLOW_ITEM_TYPE_ETH "
+						  "found");
+		fs->swapmac = 1;
+		break;
 	default:
 		/* We are not supposed to come here */
 		return rte_flow_error_set(e, EINVAL,
@@ -611,6 +621,7 @@ cxgbe_rtef_parse_actions(struct rte_flow *flow,
 		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
 		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
 		case RTE_FLOW_ACTION_TYPE_PHY_PORT:
+		case RTE_FLOW_ACTION_TYPE_MAC_SWAP:
 		case RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC:
 		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DST:
 			nat_ipv4++;

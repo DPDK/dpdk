@@ -93,7 +93,8 @@ New Features
   * Match items: destination MAC address.
   * Action items: push/pop/rewrite vlan header,
     rewrite IP addresses in outermost IPv4/IPv6 header,
-    rewrite port numbers in outermost TCP/UDP header.
+    rewrite port numbers in outermost TCP/UDP header,
+    swap MAC addresses in outermost Ethernet header.
 
 * **Added a devarg to use the latest supported vector path in i40e.**
   A new devarg ``use-latest-supported-vec`` was introduced to allow users to

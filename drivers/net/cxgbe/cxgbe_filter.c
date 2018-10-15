@@ -92,6 +92,9 @@ int validate_filter(struct adapter *adapter, struct ch_filter_specification *fs)
 	if (!fs->cap && fs->nat_mode && !adapter->params.filter2_wr_support)
 		return -EOPNOTSUPP;
 
+	if (!fs->cap && fs->swapmac && !adapter->params.filter2_wr_support)
+		return -EOPNOTSUPP;
+
 	return 0;
 }
 
@@ -456,6 +459,7 @@ static void mk_act_open_req6(struct filter_entry *f, struct rte_mbuf *mbuf,
 			    V_RSS_QUEUE(f->fs.iq) |
 			    F_T5_OPT_2_VALID |
 			    F_RX_CHANNEL |
+			    V_SACK_EN(f->fs.swapmac) |
 			    V_CONG_CNTRL((f->fs.action == FILTER_DROP) |
 					 (f->fs.dirsteer << 1)) |
 			    V_CCTRL_ECN(f->fs.action == FILTER_SWITCH));
@@ -502,6 +506,7 @@ static void mk_act_open_req(struct filter_entry *f, struct rte_mbuf *mbuf,
 			    V_RSS_QUEUE(f->fs.iq) |
 			    F_T5_OPT_2_VALID |
 			    F_RX_CHANNEL |
+			    V_SACK_EN(f->fs.swapmac) |
 			    V_CONG_CNTRL((f->fs.action == FILTER_DROP) |
 					 (f->fs.dirsteer << 1)) |
 			    V_CCTRL_ECN(f->fs.action == FILTER_SWITCH));
@@ -773,9 +778,13 @@ int set_filter_wr(struct rte_eth_dev *dev, unsigned int fidx)
 	fwr->fp = cpu_to_be16(f->fs.val.fport);
 	fwr->fpm = cpu_to_be16(f->fs.mask.fport);
 
-	if (adapter->params.filter2_wr_support && f->fs.nat_mode) {
+	if (adapter->params.filter2_wr_support) {
+		fwr->filter_type_swapmac =
+			 V_FW_FILTER2_WR_SWAPMAC(f->fs.swapmac);
 		fwr->natmode_to_ulp_type =
-			V_FW_FILTER2_WR_ULP_TYPE(ULP_MODE_TCPDDP) |
+			V_FW_FILTER2_WR_ULP_TYPE(f->fs.nat_mode ?
+						 ULP_MODE_TCPDDP :
+						 ULP_MODE_NONE) |
 			V_FW_FILTER2_WR_NATMODE(f->fs.nat_mode);
 		memcpy(fwr->newlip, f->fs.nat_lip, sizeof(fwr->newlip));
 		memcpy(fwr->newfip, f->fs.nat_fip, sizeof(fwr->newfip));

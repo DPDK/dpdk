@@ -163,6 +163,9 @@ struct work_request_hdr {
 #define S_CCTRL_ECN    27
 #define V_CCTRL_ECN(x) ((x) << S_CCTRL_ECN)
 
+#define S_SACK_EN    30
+#define V_SACK_EN(x) ((x) << S_SACK_EN)
+
 #define S_T5_OPT_2_VALID    31
 #define V_T5_OPT_2_VALID(x) ((x) << S_T5_OPT_2_VALID)
 #define F_T5_OPT_2_VALID    V_T5_OPT_2_VALID(1U)
