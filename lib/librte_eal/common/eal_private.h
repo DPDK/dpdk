@@ -304,4 +304,17 @@ int
 rte_devargs_layers_parse(struct rte_devargs *devargs,
 			 const char *devstr);
 
+/**
+ * Iterate over all buses to find the corresponding bus to handle the sigbus
+ * error.
+ * @param failure_addr
+ *	Pointer of the fault address of the sigbus error.
+ *
+ * @return
+ *	 0 success to handle the sigbus.
+ *	-1 failed to handle the sigbus
+ *	 1 no bus can handler the sigbus
+ */
+int rte_bus_sigbus_handler(const void *failure_addr);
+
 #endif /* _EAL_PRIVATE_H_ */

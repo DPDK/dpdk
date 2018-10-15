@@ -37,6 +37,7 @@
 #include <rte_bus.h>
 #include <rte_debug.h>
 #include <rte_string_fns.h>
+#include <rte_errno.h>
 
 #include "eal_private.h"
 
@@ -241,4 +242,46 @@ rte_bus_get_iommu_class(void)
 		mode = RTE_IOVA_PA;
 	}
 	return mode;
+}
+
+static int
+bus_handle_sigbus(const struct rte_bus *bus,
+			const void *failure_addr)
+{
+	int ret;
+
+	if (!bus->sigbus_handler)
+		return -1;
+
+	ret = bus->sigbus_handler(failure_addr);
+
+	/* find bus but handle failed, keep the errno be set. */
+	if (ret < 0 && rte_errno == 0)
+		rte_errno = ENOTSUP;
+
+	return ret > 0;
+}
+
+int
+rte_bus_sigbus_handler(const void *failure_addr)
+{
+	struct rte_bus *bus;
+
+	int ret = 0;
+	int old_errno = rte_errno;
+
+	rte_errno = 0;
+
+	bus = rte_bus_find(NULL, bus_handle_sigbus, failure_addr);
+	/* can not find bus. */
+	if (!bus)
+		return 1;
+	/* find bus but handle failed, pass on the new errno. */
+	else if (rte_errno != 0)
+		return -1;
+
+	/* restore the old errno. */
+	rte_errno = old_errno;
+
+	return ret;
 }
