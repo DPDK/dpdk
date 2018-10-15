@@ -200,6 +200,33 @@ There is no RTE API to add a VF's MAC address from the PF. On ixgbe, the
 ``rte_eth_dev_mac_addr_add()`` function can be used to add a VF's MAC address,
 as a workaround.
 
+X550 does not support legacy interrupt mode
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Desccription
+^^^^^^^^^^^^
+X550 cannot get interrupts if using ``uio_pci_generic`` module or using legacy
+interrupt mode of ``igb_uio`` or ``vfio``. Because the errata of X550 states
+that the Interrupt Status bit is not implemented. The errata is the item #22
+from `X550 spec update <https://www.intel.com/content/dam/www/public/us/en/
+documents/specification-updates/ethernet-x550-spec-update.pdf>`_
+
+Implication
+^^^^^^^^^^^
+When using ``uio_pci_generic`` module or using legacy interrupt mode of
+``igb_uio`` or ``vfio``, the Interrupt Status bit would be checked if the
+interrupt is coming. Since the bit is not implemented in X550, the irq cannot
+be handled correctly and cannot report the event fd to DPDK apps. Then apps
+cannot get interrupts and ``dmesg`` will show messages like ``irq #No.: ``
+``nobody cared.``
+
+Workaround
+^^^^^^^^^^
+Do not bind the ``uio_pci_generic`` module in X550 NICs.
+Do not bind ``igb_uio`` with legacy mode in X550 NICs.
+Before binding ``vfio`` with legacy mode in X550 NICs, use ``modprobe vfio ``
+``nointxmask=1`` to load ``vfio`` module if the intx is not shared with other
+devices.
 
 Inline crypto processing support
 --------------------------------
