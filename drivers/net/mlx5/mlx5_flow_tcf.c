@@ -93,19 +93,20 @@ enum pedit_cmd {
 };
 
 struct tc_pedit_key {
-	__u32           mask;  /* AND */
-	__u32           val;   /*XOR */
-	__u32           off;  /*offset */
-	__u32           at;
-	__u32           offmask;
-	__u32           shift;
+	__u32 mask; /* AND */
+	__u32 val; /*XOR */
+	__u32 off; /*offset */
+	__u32 at;
+	__u32 offmask;
+	__u32 shift;
 };
 
+__extension__
 struct tc_pedit_sel {
 	tc_gen;
-	unsigned char           nkeys;
-	unsigned char           flags;
-	struct tc_pedit_key     keys[0];
+	unsigned char nkeys;
+	unsigned char flags;
+	struct tc_pedit_key keys[0];
 };
 
 #endif /* HAVE_TC_ACT_VLAN */
