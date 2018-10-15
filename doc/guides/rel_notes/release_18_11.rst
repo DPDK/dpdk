@@ -380,7 +380,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_security.so.1
      librte_table.so.3
      librte_timer.so.1
-     librte_vhost.so.3
+     librte_vhost.so.4
 
 
 Known Issues
