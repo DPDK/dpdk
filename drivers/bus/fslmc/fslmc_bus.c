@@ -496,6 +496,10 @@ rte_dpaa2_get_iommu_class(void)
 	if (TAILQ_EMPTY(&rte_fslmc_bus.device_list))
 		return RTE_IOVA_DC;
 
+#ifdef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
+	return RTE_IOVA_PA;
+#endif
+
 	/* check if all devices on the bus support Virtual addressing or not */
 	has_iova_va = fslmc_all_device_support_iova();
 
