@@ -490,9 +490,6 @@ static int eth_event_callback(portid_t port_id,
 static void eth_dev_event_callback(char *device_name,
 				enum rte_dev_event_type type,
 				void *param);
-static int eth_dev_event_callback_register(void);
-static int eth_dev_event_callback_unregister(void);
-
 
 /*
  * Check if all the ports are started.
@@ -2280,39 +2277,6 @@ reset_port(portid_t pid)
 	printf("Done\n");
 }
 
-static int
-eth_dev_event_callback_register(void)
-{
-	int ret;
-
-	/* register the device event callback */
-	ret = rte_dev_event_callback_register(NULL,
-		eth_dev_event_callback, NULL);
-	if (ret) {
-		printf("Failed to register device event callback\n");
-		return -1;
-	}
-
-	return 0;
-}
-
-
-static int
-eth_dev_event_callback_unregister(void)
-{
-	int ret;
-
-	/* unregister the device event callback */
-	ret = rte_dev_event_callback_unregister(NULL,
-		eth_dev_event_callback, NULL);
-	if (ret < 0) {
-		printf("Failed to unregister device event callback\n");
-		return -1;
-	}
-
-	return 0;
-}
-
 void
 attach_port(char *identifier)
 {
@@ -2419,14 +2383,26 @@ pmd_test_exit(void)
 
 	if (hot_plug) {
 		ret = rte_dev_event_monitor_stop();
-		if (ret)
+		if (ret) {
 			RTE_LOG(ERR, EAL,
 				"fail to stop device event monitor.");
+			return;
+		}
 
-		ret = eth_dev_event_callback_unregister();
-		if (ret)
+		ret = rte_dev_event_callback_unregister(NULL,
+			eth_dev_event_callback, NULL);
+		if (ret < 0) {
 			RTE_LOG(ERR, EAL,
-				"fail to unregister all event callbacks.");
+				"fail to unregister device event callback.\n");
+			return;
+		}
+
+		ret = rte_dev_hotplug_handle_disable();
+		if (ret) {
+			RTE_LOG(ERR, EAL,
+				"fail to disable hotplug handling.\n");
+			return;
+		}
 	}
 
 	printf("\nBye...\n");
@@ -2570,6 +2546,9 @@ static void
 eth_dev_event_callback(char *device_name, enum rte_dev_event_type type,
 			     __rte_unused void *arg)
 {
+	uint16_t port_id;
+	int ret;
+
 	if (type >= RTE_DEV_EVENT_MAX) {
 		fprintf(stderr, "%s called upon invalid event %d\n",
 			__func__, type);
@@ -2580,9 +2559,13 @@ eth_dev_event_callback(char *device_name, enum rte_dev_event_type type,
 	case RTE_DEV_EVENT_REMOVE:
 		RTE_LOG(ERR, EAL, "The device: %s has been removed!\n",
 			device_name);
-		/* TODO: After finish failure handle, begin to stop
-		 * packet forward, stop port, close port, detach port.
-		 */
+		ret = rte_eth_dev_get_port_by_name(device_name, &port_id);
+		if (ret) {
+			RTE_LOG(ERR, EAL, "can not get port by device %s!\n",
+				device_name);
+			return;
+		}
+		rmv_event_callback((void *)(intptr_t)port_id);
 		break;
 	case RTE_DEV_EVENT_ADD:
 		RTE_LOG(ERR, EAL, "The device: %s has been added!\n",
@@ -3105,14 +3088,27 @@ main(int argc, char** argv)
 	init_config();
 
 	if (hot_plug) {
-		/* enable hot plug monitoring */
-		ret = rte_dev_event_monitor_start();
+		ret = rte_dev_hotplug_handle_enable();
 		if (ret) {
-			rte_errno = EINVAL;
+			RTE_LOG(ERR, EAL,
+				"fail to enable hotplug handling.");
 			return -1;
 		}
-		eth_dev_event_callback_register();
 
+		ret = rte_dev_event_monitor_start();
+		if (ret) {
+			RTE_LOG(ERR, EAL,
+				"fail to start device event monitoring.");
+			return -1;
+		}
+
+		ret = rte_dev_event_callback_register(NULL,
+			eth_dev_event_callback, NULL);
+		if (ret) {
+			RTE_LOG(ERR, EAL,
+				"fail  to register device event callback\n");
+			return -1;
+		}
 	}
 
 	if (start_port(RTE_PORT_ALL) != 0)
