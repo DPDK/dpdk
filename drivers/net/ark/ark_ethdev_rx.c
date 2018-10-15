@@ -53,7 +53,7 @@ struct ark_rx_queue {
 	/* The queue Index is used within the dpdk device structures */
 	uint16_t queue_index;
 
-	uint32_t pad1;
+	uint32_t last_cons;
 
 	/* separate cache line */
 	/* second cache line - fields only used in slow path */
@@ -105,7 +105,10 @@ eth_ark_rx_update_cons_index(struct ark_rx_queue *queue, uint32_t cons_index)
 {
 	queue->cons_index = cons_index;
 	eth_ark_rx_seed_mbufs(queue);
-	ark_mpu_set_producer(queue->mpu, queue->seed_index);
+	if (((cons_index - queue->last_cons) >= 64U)) {
+		queue->last_cons = cons_index;
+		ark_mpu_set_producer(queue->mpu, queue->seed_index);
+	}
 }
 
 /* ************************************************************************* */
