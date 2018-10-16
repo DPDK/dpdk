@@ -220,6 +220,13 @@ DPDK_18.08 {
 
 } DPDK_18.05;
 
+DPDK_18.11 {
+	global:
+
+	rte_eth_dev_release_port_secondary;
+
+} DPDK_18.08;
+
 EXPERIMENTAL {
 	global:
 

@@ -61,11 +61,25 @@ struct rte_eth_dev *rte_eth_dev_attach_secondary(const char *name);
  * Release the specified ethdev port.
  *
  * @param eth_dev
- * The *eth_dev* pointer is the address of the *rte_eth_dev* structure.
+ * Device to be detached.
  * @return
  *   - 0 on success, negative on error
  */
 int rte_eth_dev_release_port(struct rte_eth_dev *eth_dev);
+
+/**
+ * @internal
+ * Release the specified ethdev port in the local process.
+ * Only set ethdev state to unused, but not reset shared data since
+ * it assume other processes is still using it. typically it is
+ * called by a secondary process.
+ *
+ * @param eth_dev
+ * Device to be detached.
+ * @return
+ *   - 0 on success, negative on error
+ */
+int rte_eth_dev_release_port_secondary(struct rte_eth_dev *eth_dev);
 
 /**
  * @internal

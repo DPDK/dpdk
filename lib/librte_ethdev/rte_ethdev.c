@@ -363,6 +363,18 @@ rte_eth_dev_attach_secondary(const char *name)
 }
 
 int
+rte_eth_dev_release_port_secondary(struct rte_eth_dev *eth_dev)
+{
+	if (eth_dev == NULL)
+		return -EINVAL;
+
+	_rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_DESTROY, NULL);
+	eth_dev->state = RTE_ETH_DEV_UNUSED;
+
+	return 0;
+}
+
+int
 rte_eth_dev_release_port(struct rte_eth_dev *eth_dev)
 {
 	if (eth_dev == NULL)
@@ -3578,9 +3590,10 @@ rte_eth_dev_destroy(struct rte_eth_dev *ethdev,
 			return ret;
 	}
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		rte_free(ethdev->data->dev_private);
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return rte_eth_dev_release_port_secondary(ethdev);
 
+	rte_free(ethdev->data->dev_private);
 	ethdev->data->dev_private = NULL;
 
 	return rte_eth_dev_release_port(ethdev);
