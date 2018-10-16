@@ -24,6 +24,9 @@ extern "C" {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0)
 #define VFIO_PRESENT
 #endif /* kernel version >= 3.6.0 */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 0, 0)
+#define HAVE_VFIO_DEV_REQ_INTERFACE
+#endif /* kernel version >= 4.0.0 */
 #endif /* RTE_EAL_VFIO */
 
 #ifdef VFIO_PRESENT
