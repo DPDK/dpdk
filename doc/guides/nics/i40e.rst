@@ -433,6 +433,9 @@ steering can be used with rte_flow API.
 GTPv1 package is released, and it can be downloaded from
 https://downloadcenter.intel.com/download/27587.
 
+PPPoE package is released, and it can be downloaded from
+https://downloadcenter.intel.com/download/28040.
+
 Load a profile which supports GTP and store backup profile:
 
 .. code-block:: console
