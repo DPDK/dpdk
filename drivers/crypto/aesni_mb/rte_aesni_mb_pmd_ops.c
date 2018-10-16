@@ -535,14 +535,12 @@ aesni_mb_pmd_qp_set_unique_name(struct rte_cryptodev *dev,
 /** Create a ring to place processed operations on */
 static struct rte_ring *
 aesni_mb_pmd_qp_create_processed_ops_ring(struct aesni_mb_qp *qp,
-		const char *str, unsigned int ring_size, int socket_id)
+		unsigned int ring_size, int socket_id)
 {
 	struct rte_ring *r;
 	char ring_name[RTE_CRYPTODEV_NAME_MAX_LEN];
 
-	unsigned int n = snprintf(ring_name, sizeof(ring_name),
-				"%s_%s",
-				qp->name, str);
+	unsigned int n = snprintf(ring_name, sizeof(ring_name), "%s", qp->name);
 
 	if (n >= sizeof(ring_name))
 		return NULL;
@@ -600,7 +598,7 @@ aesni_mb_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	qp->op_fns = &job_ops[internals->vector_mode];
 
 	qp->ingress_queue = aesni_mb_pmd_qp_create_processed_ops_ring(qp,
-			"ingress", qp_conf->nb_descriptors, socket_id);
+			qp_conf->nb_descriptors, socket_id);
 	if (qp->ingress_queue == NULL) {
 		ret = -1;
 		goto qp_setup_cleanup;
