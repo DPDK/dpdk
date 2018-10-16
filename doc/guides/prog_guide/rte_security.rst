@@ -10,8 +10,8 @@ The security library provides a framework for management and provisioning
 of security protocol operations offloaded to hardware based devices. The
 library defines generic APIs to create and free security sessions which can
 support full protocol offload as well as inline crypto operation with
-NIC or crypto devices. The framework currently only supports the IPSec protocol
-and associated operations, other protocols will be added in future.
+NIC or crypto devices. The framework currently only supports the IPsec and PDCP
+protocol and associated operations, other protocols will be added in future.
 
 Design Principles
 -----------------
@@ -253,6 +253,49 @@ for any protocol header addition.
         +--------|--------+
                  V
 
+PDCP Flow Diagram
+~~~~~~~~~~~~~~~~~
+
+Based on 3GPP TS 36.323 Evolved Universal Terrestrial Radio Access (E-UTRA);
+Packet Data Convergence Protocol (PDCP) specification
+
+.. code-block:: c
+
+        Transmitting PDCP Entity          Receiving PDCP Entity
+                  |                                   ^
+                  |                       +-----------|-----------+
+                  V                       | In order delivery and |
+        +---------|----------+            | Duplicate detection   |
+        | Sequence Numbering |            |  (Data Plane only)    |
+        +---------|----------+            +-----------|-----------+
+                  |                                   |
+        +---------|----------+            +-----------|----------+
+        | Header Compression*|            | Header Decompression*|
+        | (Data-Plane only)  |            |   (Data Plane only)  |
+        +---------|----------+            +-----------|----------+
+                  |                                   |
+        +---------|-----------+           +-----------|----------+
+        | Integrity Protection|           |Integrity Verification|
+        | (Control Plane only)|           | (Control Plane only) |
+        +---------|-----------+           +-----------|----------+
+        +---------|-----------+            +----------|----------+
+        |     Ciphering       |            |     Deciphering     |
+        +---------|-----------+            +----------|----------+
+        +---------|-----------+            +----------|----------+
+        |   Add PDCP header   |            | Remove PDCP Header  |
+        +---------|-----------+            +----------|----------+
+                  |                                   |
+                  +----------------->>----------------+
+
+
+.. note::
+
+    * Header Compression and decompression are not supported currently.
+
+Just like IPsec, in case of PDCP also header addition/deletion, cipher/
+de-cipher, integrity protection/verification is done based on the action
+type chosen.
+
 Device Features and Capabilities
 ---------------------------------
 
@@ -271,7 +314,7 @@ structure in the *DPDK API Reference*.
 
 Each driver (crypto or ethernet) defines its own private array of capabilities
 for the operations it supports. Below is an example of the capabilities for a
-PMD which supports the IPSec protocol.
+PMD which supports the IPsec and PDCP protocol.
 
 .. code-block:: c
 
@@ -295,6 +338,24 @@ PMD which supports the IPSec protocol.
                         .mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
                         .direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS,
                         .options = { 0 }
+                },
+                .crypto_capabilities = pmd_capabilities
+        },
+        { /* PDCP Lookaside Protocol offload Data Plane */
+                .action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+                .protocol = RTE_SECURITY_PROTOCOL_PDCP,
+                .pdcp = {
+                        .domain = RTE_SECURITY_PDCP_MODE_DATA,
+                        .capa_flags = 0
+                },
+                .crypto_capabilities = pmd_capabilities
+        },
+        { /* PDCP Lookaside Protocol offload Control */
+                .action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+                .protocol = RTE_SECURITY_PROTOCOL_PDCP,
+                .pdcp = {
+                        .domain = RTE_SECURITY_PDCP_MODE_CONTROL,
+                        .capa_flags = 0
                 },
                 .crypto_capabilities = pmd_capabilities
         },
@@ -429,6 +490,7 @@ Security Session configuration structure is defined as ``rte_security_session_co
         union {
                 struct rte_security_ipsec_xform ipsec;
                 struct rte_security_macsec_xform macsec;
+                struct rte_security_pdcp_xform pdcp;
         };
         /**< Configuration parameters for security session */
         struct rte_crypto_sym_xform *crypto_xform;
@@ -463,15 +525,17 @@ The ``rte_security_session_protocol`` is defined as
 .. code-block:: c
 
     enum rte_security_session_protocol {
-        RTE_SECURITY_PROTOCOL_IPSEC,
+        RTE_SECURITY_PROTOCOL_IPSEC = 1,
         /**< IPsec Protocol */
         RTE_SECURITY_PROTOCOL_MACSEC,
         /**< MACSec Protocol */
+        RTE_SECURITY_PROTOCOL_PDCP,
+        /**< PDCP Protocol */
     };
 
-Currently the library defines configuration parameters for IPSec only. For other
-protocols like MACSec, structures and enums are defined as place holders which
-will be updated in the future.
+Currently the library defines configuration parameters for IPsec and PDCP only.
+For other protocols like MACSec, structures and enums are defined as place holders
+which will be updated in the future.
 
 IPsec related configuration parameters are defined in ``rte_security_ipsec_xform``
 
@@ -492,6 +556,35 @@ IPsec related configuration parameters are defined in ``rte_security_ipsec_xform
         /**< IPsec SA Mode - transport/tunnel */
         struct rte_security_ipsec_tunnel_param tunnel;
         /**< Tunnel parameters, NULL for transport mode */
+    };
+
+PDCP related configuration parameters are defined in ``rte_security_pdcp_xform``
+
+.. code-block:: c
+
+    struct rte_security_pdcp_xform {
+        int8_t bearer;	/**< PDCP bearer ID */
+        /** Enable in order delivery, this field shall be set only if
+         * driver/HW is capable. See RTE_SECURITY_PDCP_ORDERING_CAP.
+         */
+        uint8_t en_ordering;
+        /** Notify driver/HW to detect and remove duplicate packets.
+         * This field should be set only when driver/hw is capable.
+         * See RTE_SECURITY_PDCP_DUP_DETECT_CAP.
+         */
+        uint8_t remove_duplicates;
+        /** PDCP mode of operation: Control or data */
+        enum rte_security_pdcp_domain domain;
+        /** PDCP Frame Direction 0:UL 1:DL */
+        enum rte_security_pdcp_direction pkt_dir;
+        /** Sequence number size, 5/7/12/15/18 */
+        enum rte_security_pdcp_sn_size sn_size;
+        /** Starting Hyper Frame Number to be used together with the SN
+         * from the PDCP frames
+         */
+        uint32_t hfn;
+        /** HFN Threshold for key renegotiation */
+        uint32_t hfn_threshold;
     };
 
 

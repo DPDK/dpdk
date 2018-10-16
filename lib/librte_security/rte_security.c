@@ -131,6 +131,10 @@ rte_security_capability_get(struct rte_security_ctx *instance,
 					capability->ipsec.direction ==
 							idx->ipsec.direction)
 					return capability;
+			} else if (idx->protocol == RTE_SECURITY_PROTOCOL_PDCP) {
+				if (capability->pdcp.domain ==
+							idx->pdcp.domain)
+					return capability;
 			}
 		}
 	}
