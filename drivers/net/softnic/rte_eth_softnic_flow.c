@@ -1634,6 +1634,198 @@ flow_rule_action_get(struct pmd_internals *softnic,
 			break;
 		} /* RTE_FLOW_ACTION_TYPE_METER */
 
+		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+		{
+			const struct rte_flow_action_vxlan_encap *conf =
+				action->conf;
+			const struct rte_flow_item *item;
+			union flow_item spec, mask;
+			int disabled = 0, status;
+			size_t size;
+
+			if (conf == NULL)
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					action,
+					"VXLAN ENCAP: Null configuration");
+
+			item = conf->definition;
+			if (item == NULL)
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION,
+					action,
+					"VXLAN ENCAP: Null configuration definition");
+
+			if (!(params->action_mask &
+					(1LLU << RTE_TABLE_ACTION_ENCAP)))
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					NULL,
+					"VXLAN ENCAP: Encap action not enabled for this table");
+
+			/* Check for Ether. */
+			flow_item_skip_void(&item);
+			status = flow_item_proto_preprocess(item, &spec, &mask,
+				&size, &disabled, error);
+			if (status)
+				return status;
+
+			if (item->type != RTE_FLOW_ITEM_TYPE_ETH) {
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item,
+					"VXLAN ENCAP: first encap item should be ether");
+			}
+			ether_addr_copy(&spec.eth.dst,
+					&rule_action->encap.vxlan.ether.da);
+			ether_addr_copy(&spec.eth.src,
+					&rule_action->encap.vxlan.ether.sa);
+
+			item++;
+
+			/* Check for VLAN. */
+			flow_item_skip_void(&item);
+			status = flow_item_proto_preprocess(item, &spec, &mask,
+					&size, &disabled, error);
+			if (status)
+				return status;
+
+			if (item->type == RTE_FLOW_ITEM_TYPE_VLAN) {
+				if (!params->encap.vxlan.vlan)
+					return rte_flow_error_set(error,
+						ENOTSUP,
+						RTE_FLOW_ERROR_TYPE_ITEM,
+						item,
+						"VXLAN ENCAP: vlan encap not supported by table");
+
+				uint16_t tci = rte_ntohs(spec.vlan.tci);
+				rule_action->encap.vxlan.vlan.pcp =
+					tci >> 13;
+				rule_action->encap.vxlan.vlan.dei =
+					(tci >> 12) & 0x1;
+				rule_action->encap.vxlan.vlan.vid =
+					tci & 0xfff;
+
+				item++;
+
+				flow_item_skip_void(&item);
+				status = flow_item_proto_preprocess(item, &spec,
+						&mask, &size, &disabled, error);
+				if (status)
+					return status;
+			} else {
+				if (params->encap.vxlan.vlan)
+					return rte_flow_error_set(error,
+						ENOTSUP,
+						RTE_FLOW_ERROR_TYPE_ITEM,
+						item,
+						"VXLAN ENCAP: expecting vlan encap item");
+			}
+
+			/* Check for IPV4/IPV6. */
+			switch (item->type) {
+			case RTE_FLOW_ITEM_TYPE_IPV4:
+			{
+				rule_action->encap.vxlan.ipv4.sa =
+					rte_ntohl(spec.ipv4.hdr.src_addr);
+				rule_action->encap.vxlan.ipv4.da =
+					rte_ntohl(spec.ipv4.hdr.dst_addr);
+				rule_action->encap.vxlan.ipv4.dscp =
+					spec.ipv4.hdr.type_of_service >> 2;
+				rule_action->encap.vxlan.ipv4.ttl =
+					spec.ipv4.hdr.time_to_live;
+				break;
+			}
+			case RTE_FLOW_ITEM_TYPE_IPV6:
+			{
+				uint32_t vtc_flow;
+
+				memcpy(&rule_action->encap.vxlan.ipv6.sa,
+						&spec.ipv6.hdr.src_addr,
+						sizeof(spec.ipv6.hdr.src_addr));
+				memcpy(&rule_action->encap.vxlan.ipv6.da,
+						&spec.ipv6.hdr.dst_addr,
+						sizeof(spec.ipv6.hdr.dst_addr));
+				vtc_flow = rte_ntohl(spec.ipv6.hdr.vtc_flow);
+				rule_action->encap.vxlan.ipv6.flow_label =
+						vtc_flow & 0xfffff;
+				rule_action->encap.vxlan.ipv6.dscp =
+						(vtc_flow >> 22) & 0x3f;
+				rule_action->encap.vxlan.ipv6.hop_limit =
+					spec.ipv6.hdr.hop_limits;
+				break;
+			}
+			default:
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item,
+					"VXLAN ENCAP: encap item after ether should be ipv4/ipv6");
+			}
+
+			item++;
+
+			/* Check for UDP. */
+			flow_item_skip_void(&item);
+			status = flow_item_proto_preprocess(item, &spec, &mask,
+					&size, &disabled, error);
+			if (status)
+				return status;
+
+			if (item->type != RTE_FLOW_ITEM_TYPE_UDP) {
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item,
+					"VXLAN ENCAP: encap item after ipv4/ipv6 should be udp");
+			}
+			rule_action->encap.vxlan.udp.sp =
+				rte_ntohs(spec.udp.hdr.src_port);
+			rule_action->encap.vxlan.udp.dp =
+				rte_ntohs(spec.udp.hdr.dst_port);
+
+			item++;
+
+			/* Check for VXLAN. */
+			flow_item_skip_void(&item);
+			status = flow_item_proto_preprocess(item, &spec, &mask,
+					&size, &disabled, error);
+			if (status)
+				return status;
+
+			if (item->type != RTE_FLOW_ITEM_TYPE_VXLAN) {
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item,
+					"VXLAN ENCAP: encap item after udp should be vxlan");
+			}
+			rule_action->encap.vxlan.vxlan.vni =
+				(spec.vxlan.vni[0] << 16U |
+					spec.vxlan.vni[1] << 8U
+					| spec.vxlan.vni[2]);
+
+			item++;
+
+			/* Check for END. */
+			flow_item_skip_void(&item);
+
+			if (item->type != RTE_FLOW_ITEM_TYPE_END)
+				return rte_flow_error_set(error,
+					EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item,
+					"VXLAN ENCAP: expecting END item");
+
+			rule_action->encap.type = RTE_TABLE_ACTION_ENCAP_VXLAN;
+			rule_action->action_mask |= 1 << RTE_TABLE_ACTION_ENCAP;
+			break;
+		} /* RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP */
+
 		default:
 			return -ENOTSUP;
 		}
