@@ -3802,6 +3802,11 @@ This section lists supported actions and their attributes, if any.
 - ``mac_swap``: Swap the source and destination MAC addresses in the outermost
   Ethernet header.
 
+- ``dec_ttl``: Performs a decrease TTL value action
+
+- ``set_ttl``: Set TTL value with specificed value
+  - ``ttl_value {unsigned}``: The new TTL value to be set
+
 Destroying flow rules
 ~~~~~~~~~~~~~~~~~~~~~
 

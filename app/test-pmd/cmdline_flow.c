@@ -256,6 +256,9 @@ enum index {
 	ACTION_SET_TP_DST,
 	ACTION_SET_TP_DST_TP_DST,
 	ACTION_MAC_SWAP,
+	ACTION_DEC_TTL,
+	ACTION_SET_TTL,
+	ACTION_SET_TTL_TTL,
 };
 
 /** Maximum size for pattern in struct rte_flow_item_raw. */
@@ -836,6 +839,8 @@ static const enum index next_action[] = {
 	ACTION_SET_TP_SRC,
 	ACTION_SET_TP_DST,
 	ACTION_MAC_SWAP,
+	ACTION_DEC_TTL,
+	ACTION_SET_TTL,
 	ZERO,
 };
 
@@ -970,6 +975,12 @@ static const enum index action_set_tp_src[] = {
 
 static const enum index action_set_tp_dst[] = {
 	ACTION_SET_TP_DST_TP_DST,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_set_ttl[] = {
+	ACTION_SET_TTL_TTL,
 	ACTION_NEXT,
 	ZERO,
 };
@@ -2635,6 +2646,29 @@ static const struct token token_list[] = {
 		.priv = PRIV_ACTION(MAC_SWAP, 0),
 		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
 		.call = parse_vc,
+	},
+	[ACTION_DEC_TTL] = {
+		.name = "dec_ttl",
+		.help = "decrease network TTL if available",
+		.priv = PRIV_ACTION(DEC_TTL, 0),
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.call = parse_vc,
+	},
+	[ACTION_SET_TTL] = {
+		.name = "set_ttl",
+		.help = "set ttl value",
+		.priv = PRIV_ACTION(SET_TTL,
+			sizeof(struct rte_flow_action_set_ttl)),
+		.next = NEXT(action_set_ttl),
+		.call = parse_vc,
+	},
+	[ACTION_SET_TTL_TTL] = {
+		.name = "ttl_value",
+		.help = "new ttl value to set",
+		.next = NEXT(action_set_ttl, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY_HTON
+			     (struct rte_flow_action_set_ttl, ttl_value)),
+		.call = parse_vc_conf,
 	},
 };
 
