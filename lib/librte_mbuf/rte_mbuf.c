@@ -296,6 +296,8 @@ const char *rte_get_rx_ol_flag_name(uint64_t mask)
 	case PKT_RX_VLAN_STRIPPED: return "PKT_RX_VLAN_STRIPPED";
 	case PKT_RX_IEEE1588_PTP: return "PKT_RX_IEEE1588_PTP";
 	case PKT_RX_IEEE1588_TMST: return "PKT_RX_IEEE1588_TMST";
+	case PKT_RX_FDIR_ID: return "PKT_RX_FDIR_ID";
+	case PKT_RX_FDIR_FLX: return "PKT_RX_FDIR_FLX";
 	case PKT_RX_QINQ_STRIPPED: return "PKT_RX_QINQ_STRIPPED";
 	case PKT_RX_QINQ: return "PKT_RX_QINQ";
 	case PKT_RX_LRO: return "PKT_RX_LRO";
@@ -339,6 +341,8 @@ rte_get_rx_ol_flag_list(uint64_t mask, char *buf, size_t buflen)
 		{ PKT_RX_VLAN_STRIPPED, PKT_RX_VLAN_STRIPPED, NULL },
 		{ PKT_RX_IEEE1588_PTP, PKT_RX_IEEE1588_PTP, NULL },
 		{ PKT_RX_IEEE1588_TMST, PKT_RX_IEEE1588_TMST, NULL },
+		{ PKT_RX_FDIR_ID, PKT_RX_FDIR_ID, NULL },
+		{ PKT_RX_FDIR_FLX, PKT_RX_FDIR_FLX, NULL },
 		{ PKT_RX_QINQ_STRIPPED, PKT_RX_QINQ_STRIPPED, NULL },
 		{ PKT_RX_LRO, PKT_RX_LRO, NULL },
 		{ PKT_RX_TIMESTAMP, PKT_RX_TIMESTAMP, NULL },
@@ -386,7 +390,7 @@ rte_get_rx_ol_flag_list(uint64_t mask, char *buf, size_t buflen)
 const char *rte_get_tx_ol_flag_name(uint64_t mask)
 {
 	switch (mask) {
-	case PKT_TX_VLAN_PKT: return "PKT_TX_VLAN_PKT";
+	case PKT_TX_VLAN: return "PKT_TX_VLAN";
 	case PKT_TX_IP_CKSUM: return "PKT_TX_IP_CKSUM";
 	case PKT_TX_TCP_CKSUM: return "PKT_TX_TCP_CKSUM";
 	case PKT_TX_SCTP_CKSUM: return "PKT_TX_SCTP_CKSUM";
@@ -406,8 +410,10 @@ const char *rte_get_tx_ol_flag_name(uint64_t mask)
 	case PKT_TX_TUNNEL_VXLAN_GPE: return "PKT_TX_TUNNEL_VXLAN_GPE";
 	case PKT_TX_TUNNEL_IP: return "PKT_TX_TUNNEL_IP";
 	case PKT_TX_TUNNEL_UDP: return "PKT_TX_TUNNEL_UDP";
+	case PKT_TX_QINQ: return "PKT_TX_QINQ";
 	case PKT_TX_MACSEC: return "PKT_TX_MACSEC";
 	case PKT_TX_SEC_OFFLOAD: return "PKT_TX_SEC_OFFLOAD";
+	case PKT_TX_UDP_SEG: return "PKT_TX_UDP_SEG";
 	default: return NULL;
 	}
 }
@@ -417,7 +423,7 @@ int
 rte_get_tx_ol_flag_list(uint64_t mask, char *buf, size_t buflen)
 {
 	const struct flag_mask tx_flags[] = {
-		{ PKT_TX_VLAN_PKT, PKT_TX_VLAN_PKT, NULL },
+		{ PKT_TX_VLAN, PKT_TX_VLAN, NULL },
 		{ PKT_TX_IP_CKSUM, PKT_TX_IP_CKSUM, NULL },
 		{ PKT_TX_TCP_CKSUM, PKT_TX_L4_MASK, NULL },
 		{ PKT_TX_SCTP_CKSUM, PKT_TX_L4_MASK, NULL },
@@ -430,24 +436,18 @@ rte_get_tx_ol_flag_list(uint64_t mask, char *buf, size_t buflen)
 		{ PKT_TX_OUTER_IP_CKSUM, PKT_TX_OUTER_IP_CKSUM, NULL },
 		{ PKT_TX_OUTER_IPV4, PKT_TX_OUTER_IPV4, NULL },
 		{ PKT_TX_OUTER_IPV6, PKT_TX_OUTER_IPV6, NULL },
-		{ PKT_TX_TUNNEL_VXLAN, PKT_TX_TUNNEL_MASK,
-		  "PKT_TX_TUNNEL_NONE" },
-		{ PKT_TX_TUNNEL_GRE, PKT_TX_TUNNEL_MASK,
-		  "PKT_TX_TUNNEL_NONE" },
-		{ PKT_TX_TUNNEL_IPIP, PKT_TX_TUNNEL_MASK,
-		  "PKT_TX_TUNNEL_NONE" },
-		{ PKT_TX_TUNNEL_GENEVE, PKT_TX_TUNNEL_MASK,
-		  "PKT_TX_TUNNEL_NONE" },
-		{ PKT_TX_TUNNEL_MPLSINUDP, PKT_TX_TUNNEL_MASK,
-		  "PKT_TX_TUNNEL_NONE" },
-		{ PKT_TX_TUNNEL_VXLAN_GPE, PKT_TX_TUNNEL_MASK,
-		  "PKT_TX_TUNNEL_NONE" },
-		{ PKT_TX_TUNNEL_IP, PKT_TX_TUNNEL_MASK,
-		  "PKT_TX_TUNNEL_NONE" },
-		{ PKT_TX_TUNNEL_UDP, PKT_TX_TUNNEL_MASK,
-		  "PKT_TX_TUNNEL_NONE" },
+		{ PKT_TX_TUNNEL_VXLAN, PKT_TX_TUNNEL_MASK, NULL },
+		{ PKT_TX_TUNNEL_GRE, PKT_TX_TUNNEL_MASK, NULL },
+		{ PKT_TX_TUNNEL_IPIP, PKT_TX_TUNNEL_MASK, NULL },
+		{ PKT_TX_TUNNEL_GENEVE, PKT_TX_TUNNEL_MASK, NULL },
+		{ PKT_TX_TUNNEL_MPLSINUDP, PKT_TX_TUNNEL_MASK, NULL },
+		{ PKT_TX_TUNNEL_VXLAN_GPE, PKT_TX_TUNNEL_MASK, NULL },
+		{ PKT_TX_TUNNEL_IP, PKT_TX_TUNNEL_MASK, NULL },
+		{ PKT_TX_TUNNEL_UDP, PKT_TX_TUNNEL_MASK, NULL },
+		{ PKT_TX_QINQ, PKT_TX_QINQ, NULL },
 		{ PKT_TX_MACSEC, PKT_TX_MACSEC, NULL },
 		{ PKT_TX_SEC_OFFLOAD, PKT_TX_SEC_OFFLOAD, NULL },
+		{ PKT_TX_UDP_SEG, PKT_TX_UDP_SEG, NULL },
 		{ PKT_TX_OUTER_UDP_CKSUM, PKT_TX_OUTER_UDP_CKSUM, NULL },
 	};
 	const char *name;
