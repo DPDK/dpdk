@@ -154,6 +154,11 @@ New Features
   The AESNI MB PMD has been updated with additional support for AES-GCM
   algorithm support.
 
+* **Added NXP CAAM JR PMD.**
+
+  Added the new caam job ring driver for NXP platforms. See the
+  "NXP CAAM JOB RING (caam_jr)" document for more details on this new driver.
+
 * **Added Event Ethernet Tx Adapter.**
 
   Added event ethernet Tx adapter library that  provides configuration and
