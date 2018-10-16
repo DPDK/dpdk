@@ -19,8 +19,7 @@ LDLIBS += -lpthread
 ifeq ($(CONFIG_RTE_LIBRTE_VHOST_NUMA),y)
 LDLIBS += -lnuma
 endif
-LDLIBS += -lrte_eal -lrte_mempool -lrte_mbuf -lrte_ethdev -lrte_net \
-					-lrte_cryptodev -lrte_hash
+LDLIBS += -lrte_eal -lrte_mempool -lrte_mbuf -lrte_ethdev -lrte_net
 
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_VHOST) := fd_man.c iotlb.c socket.c vhost.c \
@@ -31,6 +30,7 @@ SYMLINK-$(CONFIG_RTE_LIBRTE_VHOST)-include += rte_vhost.h rte_vdpa.h
 
 # only compile vhost crypto when cryptodev is enabled
 ifeq ($(CONFIG_RTE_LIBRTE_CRYPTODEV),y)
+LDLIBS += -lrte_cryptodev -lrte_hash
 SRCS-$(CONFIG_RTE_LIBRTE_VHOST) += vhost_crypto.c
 SYMLINK-$(CONFIG_RTE_LIBRTE_VHOST)-include += rte_vhost_crypto.h
 endif
