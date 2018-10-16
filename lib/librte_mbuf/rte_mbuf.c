@@ -414,6 +414,7 @@ const char *rte_get_tx_ol_flag_name(uint64_t mask)
 	case PKT_TX_MACSEC: return "PKT_TX_MACSEC";
 	case PKT_TX_SEC_OFFLOAD: return "PKT_TX_SEC_OFFLOAD";
 	case PKT_TX_UDP_SEG: return "PKT_TX_UDP_SEG";
+	case PKT_TX_OUTER_UDP_CKSUM: return "PKT_TX_OUTER_UDP_CKSUM";
 	default: return NULL;
 	}
 }
