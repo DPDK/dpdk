@@ -1579,6 +1579,20 @@ enum rte_flow_action_type {
 	 * No associated configuration structure.
 	 */
 	RTE_FLOW_ACTION_TYPE_MAC_SWAP,
+
+	/**
+	 * Decrease TTL value directly
+	 *
+	 * No associated configuration structure.
+	 */
+	RTE_FLOW_ACTION_TYPE_DEC_TTL,
+
+	/**
+	 * Set TTL value
+	 *
+	 * See struct rte_flow_action_set_ttl
+	 */
+	RTE_FLOW_ACTION_TYPE_SET_TTL,
 };
 
 /**
@@ -1985,6 +1999,15 @@ struct rte_flow_action_set_ipv6 {
  */
 struct rte_flow_action_set_tp {
 	rte_be16_t port;
+};
+
+/**
+ * RTE_FLOW_ACTION_TYPE_SET_TTL
+ *
+ * Set the TTL value directly for IPv4 or IPv6
+ */
+struct rte_flow_action_set_ttl {
+	uint8_t ttl_value;
 };
 
 /*

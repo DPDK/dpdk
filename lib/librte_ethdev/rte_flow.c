@@ -136,6 +136,8 @@ static const struct rte_flow_desc_data rte_flow_desc_action[] = {
 	MK_FLOW_ACTION(SET_TP_DST,
 		       sizeof(struct rte_flow_action_set_tp)),
 	MK_FLOW_ACTION(MAC_SWAP, 0),
+	MK_FLOW_ACTION(DEC_TTL, 0),
+	MK_FLOW_ACTION(SET_TTL, sizeof(struct rte_flow_action_set_ttl)),
 };
 
 static int

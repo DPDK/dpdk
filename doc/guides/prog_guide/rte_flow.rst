@@ -2203,6 +2203,42 @@ Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
    | no properties |
    +---------------+
 
+Action: ``DEC_TTL``
+^^^^^^^^^^^^^^^^^^^
+
+Decrease TTL value.
+
+If there is no valid RTE_FLOW_ITEM_TYPE_IPV4 or RTE_FLOW_ITEM_TYPE_IPV6
+in pattern, Some PMDs will reject rule because behaviour will be undefined.
+
+.. _table_rte_flow_action_dec_ttl:
+
+.. table:: DEC_TTL
+
+   +---------------+
+   | Field         |
+   +===============+
+   | no properties |
+   +---------------+
+
+Action: ``SET_TTL``
+^^^^^^^^^^^^^^^^^^^
+
+Assigns a new TTL value.
+
+If there is no valid RTE_FLOW_ITEM_TYPE_IPV4 or RTE_FLOW_ITEM_TYPE_IPV6
+in pattern, Some PMDs will reject rule because behaviour will be undefined.
+
+.. _table_rte_flow_action_set_ttl:
+
+.. table:: SET_TTL
+
+   +---------------+--------------------+
+   | Field         | Value              |
+   +===============+====================+
+   | ``ttl_value`` | new TTL value      |
+   +---------------+--------------------+
+
 Negative types
 ~~~~~~~~~~~~~~
 
