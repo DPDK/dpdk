@@ -780,6 +780,8 @@ flow_dv_translate_item_nvgre(void *matcher, void *key,
 	const struct rte_flow_item_nvgre *nvgre_v = item->spec;
 	void *misc_m = MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters);
 	void *misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
+	const char *tni_flow_id_m = (const char *)nvgre_m->tni;
+	const char *tni_flow_id_v = (const char *)nvgre_v->tni;
 	char *gre_key_m;
 	char *gre_key_v;
 	int size;
@@ -792,9 +794,9 @@ flow_dv_translate_item_nvgre(void *matcher, void *key,
 	size = sizeof(nvgre_m->tni) + sizeof(nvgre_m->flow_id);
 	gre_key_m = MLX5_ADDR_OF(fte_match_set_misc, misc_m, gre_key_h);
 	gre_key_v = MLX5_ADDR_OF(fte_match_set_misc, misc_v, gre_key_h);
-	memcpy(gre_key_m, nvgre_m->tni, size);
+	memcpy(gre_key_m, tni_flow_id_m, size);
 	for (i = 0; i < size; ++i)
-		gre_key_v[i] = gre_key_m[i] & ((const char *)(nvgre_v->tni))[i];
+		gre_key_v[i] = gre_key_m[i] & tni_flow_id_v[i];
 	flow_dv_translate_item_gre(matcher, key, item, inner);
 }
 
