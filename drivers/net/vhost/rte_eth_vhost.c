@@ -1344,8 +1344,7 @@ rte_pmd_vhost_probe(struct rte_vdev_device *dev)
 
 	VHOST_LOG(INFO, "Initializing pmd_vhost for %s\n", name);
 
-	if (rte_eal_process_type() == RTE_PROC_SECONDARY &&
-	    strlen(rte_vdev_device_args(dev)) == 0) {
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 		eth_dev = rte_eth_dev_attach_secondary(name);
 		if (!eth_dev) {
 			VHOST_LOG(ERR, "Failed to probe %s\n", name);
@@ -1435,6 +1434,9 @@ rte_pmd_vhost_remove(struct rte_vdev_device *dev)
 	eth_dev = rte_eth_dev_allocated(name);
 	if (eth_dev == NULL)
 		return -ENODEV;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return rte_eth_dev_release_port_secondary(eth_dev);
 
 	eth_dev_close(eth_dev);
 

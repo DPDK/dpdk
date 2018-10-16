@@ -614,8 +614,7 @@ rte_pmd_null_probe(struct rte_vdev_device *dev)
 	params = rte_vdev_device_args(dev);
 	PMD_LOG(INFO, "Initializing pmd_null for %s", name);
 
-	if (rte_eal_process_type() == RTE_PROC_SECONDARY &&
-	    strlen(params) == 0) {
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 		eth_dev = rte_eth_dev_attach_secondary(name);
 		if (!eth_dev) {
 			PMD_LOG(ERR, "Failed to probe %s", name);
@@ -679,6 +678,9 @@ rte_pmd_null_remove(struct rte_vdev_device *dev)
 	eth_dev = rte_eth_dev_allocated(rte_vdev_device_name(dev));
 	if (eth_dev == NULL)
 		return -1;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return rte_eth_dev_release_port_secondary(eth_dev);
 
 	rte_free(eth_dev->data->dev_private);
 

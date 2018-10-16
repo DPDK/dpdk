@@ -1133,6 +1133,11 @@ octeontx_remove(struct rte_vdev_device *dev)
 		if (eth_dev == NULL)
 			return -ENODEV;
 
+		if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+			rte_eth_dev_release_port_secondary(eth_dev);
+			continue;
+		}
+
 		nic = octeontx_pmd_priv(eth_dev);
 		rte_event_dev_stop(nic->evdev);
 		PMD_INIT_LOG(INFO, "Closing octeontx device %s", octtx_name);
@@ -1142,6 +1147,9 @@ octeontx_remove(struct rte_vdev_device *dev)
 		rte_eth_dev_release_port(eth_dev);
 		rte_event_dev_close(nic->evdev);
 	}
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
 
 	/* Free FC resource */
 	octeontx_pko_fc_free();

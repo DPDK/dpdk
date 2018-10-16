@@ -1122,8 +1122,7 @@ pmd_pcap_probe(struct rte_vdev_device *dev)
 	start_cycles = rte_get_timer_cycles();
 	hz = rte_get_timer_hz();
 
-	if (rte_eal_process_type() == RTE_PROC_SECONDARY &&
-	    strlen(rte_vdev_device_args(dev)) == 0) {
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 		eth_dev = rte_eth_dev_attach_secondary(name);
 		if (!eth_dev) {
 			PMD_LOG(ERR, "Failed to probe %s", name);
@@ -1228,6 +1227,9 @@ pmd_pcap_remove(struct rte_vdev_device *dev)
 	eth_dev = rte_eth_dev_allocated(rte_vdev_device_name(dev));
 	if (eth_dev == NULL)
 		return -1;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return rte_eth_dev_release_port_secondary(eth_dev);
 
 	internals = eth_dev->data->dev_private;
 	if (internals && internals->phy_mac)

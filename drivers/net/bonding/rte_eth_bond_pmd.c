@@ -3152,8 +3152,7 @@ bond_probe(struct rte_vdev_device *dev)
 	name = rte_vdev_device_name(dev);
 	RTE_BOND_LOG(INFO, "Initializing pmd_bond for %s", name);
 
-	if (rte_eal_process_type() == RTE_PROC_SECONDARY &&
-	    strlen(rte_vdev_device_args(dev)) == 0) {
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 		eth_dev = rte_eth_dev_attach_secondary(name);
 		if (!eth_dev) {
 			RTE_BOND_LOG(ERR, "Failed to probe %s", name);
@@ -3267,6 +3266,9 @@ bond_remove(struct rte_vdev_device *dev)
 	eth_dev = rte_eth_dev_allocated(name);
 	if (eth_dev == NULL)
 		return -ENODEV;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return rte_eth_dev_release_port_secondary(eth_dev);
 
 	RTE_ASSERT(eth_dev->device == &dev->device);
 

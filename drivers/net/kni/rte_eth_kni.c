@@ -410,8 +410,7 @@ eth_kni_probe(struct rte_vdev_device *vdev)
 	params = rte_vdev_device_args(vdev);
 	PMD_LOG(INFO, "Initializing eth_kni for %s", name);
 
-	if (rte_eal_process_type() == RTE_PROC_SECONDARY &&
-	    strlen(params) == 0) {
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 		eth_dev = rte_eth_dev_attach_secondary(name);
 		if (!eth_dev) {
 			PMD_LOG(ERR, "Failed to probe %s", name);
@@ -463,6 +462,9 @@ eth_kni_remove(struct rte_vdev_device *vdev)
 	eth_dev = rte_eth_dev_allocated(name);
 	if (eth_dev == NULL)
 		return -1;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return rte_eth_dev_release_port_secondary(eth_dev);
 
 	eth_kni_dev_stop(eth_dev);
 
