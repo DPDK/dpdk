@@ -888,6 +888,12 @@ rte_eal_init(int argc, char **argv)
 		}
 	}
 
+	/* register multi-process action callbacks for hotplug */
+	if (rte_mp_dev_hotplug_init() < 0) {
+		rte_eal_init_alert("failed to register mp callback for hotplug\n");
+		return -1;
+	}
+
 	if (rte_bus_scan()) {
 		rte_eal_init_alert("Cannot scan the buses for devices\n");
 		rte_errno = ENODEV;

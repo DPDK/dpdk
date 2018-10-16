@@ -65,6 +65,13 @@ New Features
   ``rte_dev_hotplug_handle_enable`` and ``rte_dev_hotplug_handle_disable`` are
   for enabling or disabling hotplug handle mechanism.
 
+* **Support device multi-process hotplug.**
+
+  Hotplug and hot-unplug for devices will now be supported in multiprocessing
+  scenario. Any ethdev devices created in the primary process will be regarded
+  as shared and will be available for all DPDK processes. Synchronization
+  between processes will be done using DPDK IPC.
+
 * **Added new Flow API actions to rewrite fields in packet headers.**
 
   Added new Flow API actions to:
@@ -198,6 +205,11 @@ API Changes
 
 * eal: The parameters of the function ``rte_devargs_remove()`` have changed
   from bus and device names to ``struct rte_devargs``.
+
+* eal: The scope of ``rte_eal_hotplug_add()``/``rte_dev_probe()``
+  and ``rte_eal_hotplug_remove()``/``rte_dev_remove()`` is extended.
+  In multi-process model, they will guarantee that the device is
+  attached or detached on all processes.
 
 * mbuf: The ``__rte_mbuf_raw_free()`` and ``__rte_pktmbuf_prefree_seg()``
   functions were deprecated since 17.05 and are replaced by

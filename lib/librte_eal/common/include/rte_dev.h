@@ -192,6 +192,9 @@ int rte_eal_dev_detach(struct rte_device *dev);
 /**
  * Hotplug add a given device to a specific bus.
  *
+ * In multi-process, it will request other processes to add the same device.
+ * A failure, in any process, will rollback the action
+ *
  * @param busname
  *   The bus name the device is added to.
  * @param devname
@@ -211,6 +214,9 @@ int rte_eal_hotplug_add(const char *busname, const char *devname,
  *
  * Add matching devices.
  *
+ * In multi-process, it will request other processes to add the same device.
+ * A failure, in any process, will rollback the action
+ *
  * @param devargs
  *   Device arguments including bus, class and driver properties.
  * @return
@@ -220,6 +226,9 @@ int __rte_experimental rte_dev_probe(const char *devargs);
 
 /**
  * Hotplug remove a given device from a specific bus.
+ *
+ * In multi-process, it will request other processes to remove the same device.
+ * A failure, in any process, will rollback the action
  *
  * @param busname
  *   The bus name the device is removed from.
@@ -235,6 +244,9 @@ int rte_eal_hotplug_remove(const char *busname, const char *devname);
  * @b EXPERIMENTAL: this API may change without prior notice
  *
  * Remove one device.
+ *
+ * In multi-process, it will request other processes to remove the same device.
+ * A failure, in any process, will rollback the action
  *
  * @param dev
  *   Data structure of the device to remove.

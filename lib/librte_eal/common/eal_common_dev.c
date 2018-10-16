@@ -19,8 +19,10 @@
 #include <rte_log.h>
 #include <rte_spinlock.h>
 #include <rte_malloc.h>
+#include <rte_string_fns.h>
 
 #include "eal_private.h"
+#include "hotplug_mp.h"
 
 /**
  * The device event callback description.
@@ -127,37 +129,58 @@ int rte_eal_dev_detach(struct rte_device *dev)
 	return ret;
 }
 
-int
-rte_eal_hotplug_add(const char *busname, const char *devname,
-		    const char *drvargs)
+/* helper function to build devargs, caller should free the memory */
+static int
+build_devargs(const char *busname, const char *devname,
+	      const char *drvargs, char **devargs)
 {
-	int ret;
-	char *devargs = NULL;
 	int length;
 
 	length = snprintf(NULL, 0, "%s:%s,%s", busname, devname, drvargs);
 	if (length < 0)
 		return -EINVAL;
-	devargs = malloc(length + 1);
-	if (devargs == NULL)
+
+	*devargs = malloc(length + 1);
+	if (*devargs == NULL)
 		return -ENOMEM;
-	ret = snprintf(devargs, length + 1, "%s:%s,%s", busname, devname, drvargs);
-	if (ret < 0)
+
+	length = snprintf(*devargs, length + 1, "%s:%s,%s",
+			busname, devname, drvargs);
+	if (length < 0) {
+		free(*devargs);
 		return -EINVAL;
+	}
+
+	return 0;
+}
+
+int
+rte_eal_hotplug_add(const char *busname, const char *devname,
+		    const char *drvargs)
+{
+
+	char *devargs;
+	int ret;
+
+	ret = build_devargs(busname, devname, drvargs, &devargs);
+	if (ret != 0)
+		return ret;
 
 	ret = rte_dev_probe(devargs);
-
 	free(devargs);
+
 	return ret;
 }
 
-int __rte_experimental
-rte_dev_probe(const char *devargs)
+/* probe device at local process. */
+int
+local_dev_probe(const char *devargs, struct rte_device **new_dev)
 {
 	struct rte_device *dev;
 	struct rte_devargs *da;
 	int ret;
 
+	*new_dev = NULL;
 	da = calloc(1, sizeof(*da));
 	if (da == NULL)
 		return -ENOMEM;
@@ -200,6 +223,8 @@ rte_dev_probe(const char *devargs)
 			dev->name);
 		goto err_devarg;
 	}
+
+	*new_dev = dev;
 	return 0;
 
 err_devarg:
@@ -207,6 +232,99 @@ err_devarg:
 		free(da->args);
 		free(da);
 	}
+	return ret;
+}
+
+int __rte_experimental
+rte_dev_probe(const char *devargs)
+{
+	struct eal_dev_mp_req req;
+	struct rte_device *dev;
+	int ret;
+
+	memset(&req, 0, sizeof(req));
+	req.t = EAL_DEV_REQ_TYPE_ATTACH;
+	strlcpy(req.devargs, devargs, EAL_DEV_MP_DEV_ARGS_MAX_LEN);
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		/**
+		 * If in secondary process, just send IPC request to
+		 * primary process.
+		 */
+		ret = eal_dev_hotplug_request_to_primary(&req);
+		if (ret != 0) {
+			RTE_LOG(ERR, EAL,
+				"Failed to send hotplug request to primary\n");
+			return -ENOMSG;
+		}
+		if (req.result != 0)
+			RTE_LOG(ERR, EAL,
+				"Failed to hotplug add device\n");
+		return req.result;
+	}
+
+	/* attach a shared device from primary start from here: */
+
+	/* primary attach the new device itself. */
+	ret = local_dev_probe(devargs, &dev);
+
+	if (ret != 0) {
+		RTE_LOG(ERR, EAL,
+			"Failed to attach device on primary process\n");
+
+		/**
+		 * it is possible that secondary process failed to attached a
+		 * device that primary process have during initialization,
+		 * so for -EEXIST case, we still need to sync with secondary
+		 * process.
+		 */
+		if (ret != -EEXIST)
+			return ret;
+	}
+
+	/* primary send attach sync request to secondary. */
+	ret = eal_dev_hotplug_request_to_secondary(&req);
+
+	/* if any communication error, we need to rollback. */
+	if (ret != 0) {
+		RTE_LOG(ERR, EAL,
+			"Failed to send hotplug add request to secondary\n");
+		ret = -ENOMSG;
+		goto rollback;
+	}
+
+	/**
+	 * if any secondary failed to attach, we need to consider if rollback
+	 * is necessary.
+	 */
+	if (req.result != 0) {
+		RTE_LOG(ERR, EAL,
+			"Failed to attach device on secondary process\n");
+		ret = req.result;
+
+		/* for -EEXIST, we don't need to rollback. */
+		if (ret == -EEXIST)
+			return ret;
+		goto rollback;
+	}
+
+	return 0;
+
+rollback:
+	req.t = EAL_DEV_REQ_TYPE_ATTACH_ROLLBACK;
+
+	/* primary send rollback request to secondary. */
+	if (eal_dev_hotplug_request_to_secondary(&req) != 0)
+		RTE_LOG(WARNING, EAL,
+			"Failed to rollback device attach on secondary."
+			"Devices in secondary may not sync with primary\n");
+
+	/* primary rollback itself. */
+	if (local_dev_remove(dev) != 0)
+		RTE_LOG(WARNING, EAL,
+			"Failed to rollback device attach on primary."
+			"Devices in secondary may not sync with primary\n");
+
 	return ret;
 }
 
@@ -231,8 +349,9 @@ rte_eal_hotplug_remove(const char *busname, const char *devname)
 	return rte_dev_remove(dev);
 }
 
-int __rte_experimental
-rte_dev_remove(struct rte_device *dev)
+/* remove device at local process. */
+int
+local_dev_remove(struct rte_device *dev)
 {
 	int ret;
 
@@ -248,10 +367,106 @@ rte_dev_remove(struct rte_device *dev)
 	}
 
 	ret = dev->bus->unplug(dev);
-	if (ret)
+	if (ret) {
 		RTE_LOG(ERR, EAL, "Driver cannot detach the device (%s)\n",
 			dev->name);
+		return ret;
+	}
+
 	rte_devargs_remove(dev->devargs);
+
+	return 0;
+}
+
+int __rte_experimental
+rte_dev_remove(struct rte_device *dev)
+{
+	struct eal_dev_mp_req req;
+	char *devargs;
+	int ret;
+
+	ret = build_devargs(dev->devargs->bus->name, dev->name, "", &devargs);
+	if (ret != 0)
+		return ret;
+
+	memset(&req, 0, sizeof(req));
+	req.t = EAL_DEV_REQ_TYPE_DETACH;
+	strlcpy(req.devargs, devargs, EAL_DEV_MP_DEV_ARGS_MAX_LEN);
+	free(devargs);
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		/**
+		 * If in secondary process, just send IPC request to
+		 * primary process.
+		 */
+		ret = eal_dev_hotplug_request_to_primary(&req);
+		if (ret != 0) {
+			RTE_LOG(ERR, EAL,
+				"Failed to send hotplug request to primary\n");
+			return -ENOMSG;
+		}
+		if (req.result != 0)
+			RTE_LOG(ERR, EAL,
+				"Failed to hotplug remove device\n");
+		return req.result;
+	}
+
+	/* detach a device from primary start from here: */
+
+	/* primary send detach sync request to secondary */
+	ret = eal_dev_hotplug_request_to_secondary(&req);
+
+	/**
+	 * if communication error, we need to rollback, because it is possible
+	 * part of the secondary processes still detached it successfully.
+	 */
+	if (ret != 0) {
+		RTE_LOG(ERR, EAL,
+			"Failed to send device detach request to secondary\n");
+		ret = -ENOMSG;
+		goto rollback;
+	}
+
+	/**
+	 * if any secondary failed to detach, we need to consider if rollback
+	 * is necessary.
+	 */
+	if (req.result != 0) {
+		RTE_LOG(ERR, EAL,
+			"Failed to detach device on secondary process\n");
+		ret = req.result;
+		/**
+		 * if -ENOENT, we don't need to rollback, since devices is
+		 * already detached on secondary process.
+		 */
+		if (ret != -ENOENT)
+			goto rollback;
+	}
+
+	/* primary detach the device itself. */
+	ret = local_dev_remove(dev);
+
+	/* if primary failed, still need to consider if rollback is necessary */
+	if (ret != 0) {
+		RTE_LOG(ERR, EAL,
+			"Failed to detach device on primary process\n");
+		/* if -ENOENT, we don't need to rollback */
+		if (ret == -ENOENT)
+			return ret;
+		goto rollback;
+	}
+
+	return 0;
+
+rollback:
+	req.t = EAL_DEV_REQ_TYPE_DETACH_ROLLBACK;
+
+	/* primary send rollback request to secondary. */
+	if (eal_dev_hotplug_request_to_secondary(&req) != 0)
+		RTE_LOG(WARNING, EAL,
+			"Failed to rollback device detach on secondary."
+			"Devices in secondary may not sync with primary\n");
+
 	return ret;
 }
 

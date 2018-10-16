@@ -292,6 +292,28 @@ int
 rte_devargs_layers_parse(struct rte_devargs *devargs,
 			 const char *devstr);
 
+/*
+ * probe a device at local process.
+ *
+ * @param devargs
+ *   Device arguments including bus, class and driver properties.
+ * @param new_dev
+ *   new device be probed as output.
+ * @return
+ *   0 on success, negative on error.
+ */
+int local_dev_probe(const char *devargs, struct rte_device **new_dev);
+
+/**
+ * Hotplug remove a given device from a specific bus at local process.
+ *
+ * @param dev
+ *   Data structure of the device to remove.
+ * @return
+ *   0 on success, negative on error.
+ */
+int local_dev_remove(struct rte_device *dev);
+
 /**
  * Iterate over all buses to find the corresponding bus to handle the sigbus
  * error.

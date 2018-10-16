@@ -1,0 +1,221 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright(c) 2018 Intel Corporation
+ */
+#include <string.h>
+
+#include <rte_eal.h>
+#include <rte_alarm.h>
+#include <rte_string_fns.h>
+#include <rte_devargs.h>
+
+#include "hotplug_mp.h"
+#include "eal_private.h"
+
+#define MP_TIMEOUT_S 5 /**< 5 seconds timeouts */
+
+static int cmp_dev_name(const struct rte_device *dev, const void *_name)
+{
+	const char *name = _name;
+
+	return strcmp(dev->name, name);
+}
+
+struct mp_reply_bundle {
+	struct rte_mp_msg msg;
+	void *peer;
+};
+
+static int
+handle_secondary_request(const struct rte_mp_msg *msg, const void *peer)
+{
+	RTE_SET_USED(msg);
+	RTE_SET_USED(peer);
+	return -ENOTSUP;
+}
+
+static void __handle_primary_request(void *param)
+{
+	struct mp_reply_bundle *bundle = param;
+	struct rte_mp_msg *msg = &bundle->msg;
+	const struct eal_dev_mp_req *req =
+		(const struct eal_dev_mp_req *)msg->param;
+	struct rte_mp_msg mp_resp;
+	struct eal_dev_mp_req *resp =
+		(struct eal_dev_mp_req *)mp_resp.param;
+	struct rte_devargs *da;
+	struct rte_device *dev;
+	struct rte_bus *bus;
+	int ret = 0;
+
+	memset(&mp_resp, 0, sizeof(mp_resp));
+
+	switch (req->t) {
+	case EAL_DEV_REQ_TYPE_ATTACH:
+	case EAL_DEV_REQ_TYPE_DETACH_ROLLBACK:
+		ret = local_dev_probe(req->devargs, &dev);
+		break;
+	case EAL_DEV_REQ_TYPE_DETACH:
+	case EAL_DEV_REQ_TYPE_ATTACH_ROLLBACK:
+		da = calloc(1, sizeof(*da));
+		if (da == NULL) {
+			ret = -ENOMEM;
+			goto quit;
+		}
+
+		ret = rte_devargs_parse(da, req->devargs);
+		if (ret != 0)
+			goto quit;
+
+		bus = rte_bus_find_by_name(da->bus->name);
+		if (bus == NULL) {
+			RTE_LOG(ERR, EAL, "Cannot find bus (%s)\n", da->bus->name);
+			ret = -ENOENT;
+			goto quit;
+		}
+
+		dev = bus->find_device(NULL, cmp_dev_name, da->name);
+		if (dev == NULL) {
+			RTE_LOG(ERR, EAL, "Cannot find plugged device (%s)\n", da->name);
+			ret = -ENOENT;
+			goto quit;
+		}
+
+		ret = local_dev_remove(dev);
+quit:
+		break;
+	default:
+		ret = -EINVAL;
+	}
+
+	strlcpy(mp_resp.name, EAL_DEV_MP_ACTION_REQUEST, sizeof(mp_resp.name));
+	mp_resp.len_param = sizeof(*req);
+	memcpy(resp, req, sizeof(*resp));
+	resp->result = ret;
+	if (rte_mp_reply(&mp_resp, bundle->peer) < 0)
+		RTE_LOG(ERR, EAL, "failed to send reply to primary request\n");
+
+	free(bundle->peer);
+	free(bundle);
+}
+
+static int
+handle_primary_request(const struct rte_mp_msg *msg, const void *peer)
+{
+	struct rte_mp_msg mp_resp;
+	const struct eal_dev_mp_req *req =
+		(const struct eal_dev_mp_req *)msg->param;
+	struct eal_dev_mp_req *resp =
+		(struct eal_dev_mp_req *)mp_resp.param;
+	struct mp_reply_bundle *bundle;
+	int ret = 0;
+
+	memset(&mp_resp, 0, sizeof(mp_resp));
+	strlcpy(mp_resp.name, EAL_DEV_MP_ACTION_REQUEST, sizeof(mp_resp.name));
+	mp_resp.len_param = sizeof(*req);
+	memcpy(resp, req, sizeof(*resp));
+
+	bundle = calloc(1, sizeof(*bundle));
+	if (bundle == NULL) {
+		resp->result = -ENOMEM;
+		ret = rte_mp_reply(&mp_resp, peer);
+		if (ret)
+			RTE_LOG(ERR, EAL, "failed to send reply to primary request\n");
+		return ret;
+	}
+
+	bundle->msg = *msg;
+	/**
+	 * We need to send reply on interrupt thread, but peer can't be
+	 * parsed directly, so this is a temporal hack, need to be fixed
+	 * when it is ready.
+	 */
+	bundle->peer = (void *)strdup(peer);
+
+	/**
+	 * We are at IPC callback thread, sync IPC is not allowed due to
+	 * dead lock, so we delegate the task to interrupt thread.
+	 */
+	ret = rte_eal_alarm_set(1, __handle_primary_request, bundle);
+	if (ret != 0) {
+		resp->result = ret;
+		ret = rte_mp_reply(&mp_resp, peer);
+		if  (ret != 0) {
+			RTE_LOG(ERR, EAL, "failed to send reply to primary request\n");
+			return ret;
+		}
+	}
+	return 0;
+}
+
+int eal_dev_hotplug_request_to_primary(struct eal_dev_mp_req *req)
+{
+	RTE_SET_USED(req);
+	return -ENOTSUP;
+}
+
+int eal_dev_hotplug_request_to_secondary(struct eal_dev_mp_req *req)
+{
+	struct rte_mp_msg mp_req;
+	struct rte_mp_reply mp_reply;
+	struct timespec ts = {.tv_sec = MP_TIMEOUT_S, .tv_nsec = 0};
+	int ret;
+	int i;
+
+	memset(&mp_req, 0, sizeof(mp_req));
+	memcpy(mp_req.param, req, sizeof(*req));
+	mp_req.len_param = sizeof(*req);
+	strlcpy(mp_req.name, EAL_DEV_MP_ACTION_REQUEST, sizeof(mp_req.name));
+
+	ret = rte_mp_request_sync(&mp_req, &mp_reply, &ts);
+	if (ret != 0) {
+		RTE_LOG(ERR, EAL, "rte_mp_request_sync failed\n");
+		return ret;
+	}
+
+	if (mp_reply.nb_sent != mp_reply.nb_received) {
+		RTE_LOG(ERR, EAL, "not all secondary reply\n");
+		return -1;
+	}
+
+	req->result = 0;
+	for (i = 0; i < mp_reply.nb_received; i++) {
+		struct eal_dev_mp_req *resp =
+			(struct eal_dev_mp_req *)mp_reply.msgs[i].param;
+		if (resp->result != 0) {
+			req->result = resp->result;
+			if (req->t == EAL_DEV_REQ_TYPE_ATTACH &&
+				req->result != -EEXIST)
+				break;
+			if (req->t == EAL_DEV_REQ_TYPE_DETACH &&
+				req->result != -ENOENT)
+				break;
+		}
+	}
+
+	return 0;
+}
+
+int rte_mp_dev_hotplug_init(void)
+{
+	int ret;
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		ret = rte_mp_action_register(EAL_DEV_MP_ACTION_REQUEST,
+					handle_secondary_request);
+		if (ret != 0) {
+			RTE_LOG(ERR, EAL, "Couldn't register '%s' action\n",
+				EAL_DEV_MP_ACTION_REQUEST);
+			return ret;
+		}
+	} else {
+		ret = rte_mp_action_register(EAL_DEV_MP_ACTION_REQUEST,
+					handle_primary_request);
+		if (ret != 0) {
+			RTE_LOG(ERR, EAL, "Couldn't register '%s' action\n",
+				EAL_DEV_MP_ACTION_REQUEST);
+			return ret;
+		}
+	}
+
+	return 0;
+}
