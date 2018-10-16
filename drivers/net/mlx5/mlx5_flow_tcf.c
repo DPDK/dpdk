@@ -231,6 +231,10 @@ struct tc_pedit_sel {
 #define TP_PORT_LEN 2 /* Transport Port (UDP/TCP) Length */
 #endif
 
+#ifndef TTL_LEN
+#define TTL_LEN 1
+#endif
+
 /** Empty masks for known item types. */
 static const union {
 	struct rte_flow_item_port_id port_id;
@@ -319,12 +323,14 @@ struct flow_tcf_ptoi {
 #define MLX5_TCF_PEDIT_ACTIONS \
 	(MLX5_FLOW_ACTION_SET_IPV4_SRC | MLX5_FLOW_ACTION_SET_IPV4_DST | \
 	 MLX5_FLOW_ACTION_SET_IPV6_SRC | MLX5_FLOW_ACTION_SET_IPV6_DST | \
-	 MLX5_FLOW_ACTION_SET_TP_SRC | MLX5_FLOW_ACTION_SET_TP_DST)
+	 MLX5_FLOW_ACTION_SET_TP_SRC | MLX5_FLOW_ACTION_SET_TP_DST | \
+	 MLX5_FLOW_ACTION_SET_TTL | MLX5_FLOW_ACTION_DEC_TTL)
 
 #define MLX5_TCF_CONFIG_ACTIONS \
 	(MLX5_FLOW_ACTION_PORT_ID | MLX5_FLOW_ACTION_JUMP | \
 	 MLX5_FLOW_ACTION_OF_PUSH_VLAN | MLX5_FLOW_ACTION_OF_SET_VLAN_VID | \
-	 MLX5_FLOW_ACTION_OF_SET_VLAN_PCP | MLX5_TCF_PEDIT_ACTIONS)
+	 MLX5_FLOW_ACTION_OF_SET_VLAN_PCP | \
+	 (MLX5_TCF_PEDIT_ACTIONS & ~MLX5_FLOW_ACTION_DEC_TTL))
 
 #define MAX_PEDIT_KEYS 128
 #define SZ_PEDIT_KEY_VAL 4
@@ -343,6 +349,46 @@ struct pedit_parser {
 	struct pedit_key_ex keys_ex[MAX_PEDIT_KEYS];
 };
 
+
+/**
+ * Set pedit key of decrease/set ttl
+ *
+ * @param[in] actions
+ *   pointer to action specification
+ * @param[in,out] p_parser
+ *   pointer to pedit_parser
+ * @param[in] item_flags
+ *   flags of all items presented
+ */
+static void
+flow_tcf_pedit_key_set_dec_ttl(const struct rte_flow_action *actions,
+				struct pedit_parser *p_parser,
+				uint64_t item_flags)
+{
+	int idx = p_parser->sel.nkeys;
+
+	p_parser->keys[idx].mask = 0xFFFFFF00;
+	if (item_flags & MLX5_FLOW_LAYER_OUTER_L3_IPV4) {
+		p_parser->keys_ex[idx].htype = TCA_PEDIT_KEY_EX_HDR_TYPE_IP4;
+		p_parser->keys[idx].off =
+			offsetof(struct ipv4_hdr, time_to_live);
+	}
+	if (item_flags & MLX5_FLOW_LAYER_OUTER_L3_IPV6) {
+		p_parser->keys_ex[idx].htype = TCA_PEDIT_KEY_EX_HDR_TYPE_IP6;
+		p_parser->keys[idx].off =
+			offsetof(struct ipv6_hdr, hop_limits);
+	}
+	if (actions->type == RTE_FLOW_ACTION_TYPE_DEC_TTL) {
+		p_parser->keys_ex[idx].cmd = TCA_PEDIT_KEY_EX_CMD_ADD;
+		p_parser->keys[idx].val = 0x000000FF;
+	} else {
+		p_parser->keys_ex[idx].cmd = TCA_PEDIT_KEY_EX_CMD_SET;
+		p_parser->keys[idx].val =
+			(__u32)((const struct rte_flow_action_set_ttl *)
+			 actions->conf)->ttl_value;
+	}
+	p_parser->sel.nkeys = (++idx);
+}
 
 /**
  * Set pedit key of transport (TCP/UDP) port value
@@ -479,6 +525,11 @@ flow_tcf_create_pedit_mnl_msg(struct nlmsghdr *nl,
 			flow_tcf_pedit_key_set_tp_port(*actions,
 							&p_parser, item_flags);
 			break;
+		case RTE_FLOW_ACTION_TYPE_SET_TTL:
+		case RTE_FLOW_ACTION_TYPE_DEC_TTL:
+			flow_tcf_pedit_key_set_dec_ttl(*actions,
+							&p_parser, item_flags);
+			break;
 		default:
 			goto pedit_mnl_msg_done;
 		}
@@ -558,6 +609,14 @@ flow_tcf_get_pedit_actions_size(const struct rte_flow_action **actions,
 			/* TCP is as same as UDP */
 			keys += NUM_OF_PEDIT_KEYS(TP_PORT_LEN);
 			flags |= MLX5_FLOW_ACTION_SET_TP_DST;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_TTL:
+			keys += NUM_OF_PEDIT_KEYS(TTL_LEN);
+			flags |= MLX5_FLOW_ACTION_SET_TTL;
+			break;
+		case RTE_FLOW_ACTION_TYPE_DEC_TTL:
+			keys += NUM_OF_PEDIT_KEYS(TTL_LEN);
+			flags |= MLX5_FLOW_ACTION_DEC_TTL;
 			break;
 		default:
 			goto get_pedit_action_size_done;
@@ -1096,6 +1155,12 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
 			current_action_flag = MLX5_FLOW_ACTION_SET_TP_DST;
 			break;
+		case RTE_FLOW_ACTION_TYPE_SET_TTL:
+			current_action_flag = MLX5_FLOW_ACTION_SET_TTL;
+			break;
+		case RTE_FLOW_ACTION_TYPE_DEC_TTL:
+			current_action_flag = MLX5_FLOW_ACTION_DEC_TTL;
+			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
@@ -1198,6 +1263,16 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, actions,
 					  "no fate action is found");
+	if (action_flags &
+	   (MLX5_FLOW_ACTION_SET_TTL | MLX5_FLOW_ACTION_DEC_TTL)) {
+		if (!(item_flags &
+		     (MLX5_FLOW_LAYER_OUTER_L3_IPV4 |
+		      MLX5_FLOW_LAYER_OUTER_L3_IPV6)))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  actions,
+						  "no IP found in pattern");
+	}
 	return 0;
 }
 
@@ -1357,6 +1432,8 @@ action_of_vlan:
 		case RTE_FLOW_ACTION_TYPE_SET_IPV6_DST:
 		case RTE_FLOW_ACTION_TYPE_SET_TP_SRC:
 		case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
+		case RTE_FLOW_ACTION_TYPE_SET_TTL:
+		case RTE_FLOW_ACTION_TYPE_DEC_TTL:
 			size += flow_tcf_get_pedit_actions_size(&actions,
 								&flags);
 			break;
@@ -1933,6 +2010,8 @@ override_na_vlan_priority:
 		case RTE_FLOW_ACTION_TYPE_SET_IPV6_DST:
 		case RTE_FLOW_ACTION_TYPE_SET_TP_SRC:
 		case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
+		case RTE_FLOW_ACTION_TYPE_SET_TTL:
+		case RTE_FLOW_ACTION_TYPE_DEC_TTL:
 			na_act_index =
 				mnl_attr_nest_start(nlh, na_act_index_cur++);
 			flow_tcf_create_pedit_mnl_msg(nlh,
