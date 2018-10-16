@@ -527,6 +527,7 @@ Supports VLAN offload to hardware.
 
 * **[uses]       rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_VLAN_STRIP,DEV_RX_OFFLOAD_VLAN_FILTER,DEV_RX_OFFLOAD_VLAN_EXTEND``.
 * **[uses]       rte_eth_txconf,rte_eth_txmode**: ``offloads:DEV_TX_OFFLOAD_VLAN_INSERT``.
+* **[uses]       mbuf**: ``mbuf.ol_flags:PKT_TX_VLAN``, ``mbuf.vlan_tci``.
 * **[implements] eth_dev_ops**: ``vlan_offload_set``.
 * **[provides]   mbuf**: ``mbuf.ol_flags:PKT_RX_VLAN_STRIPPED``, ``mbuf.ol_flags:PKT_RX_VLAN`` ``mbuf.vlan_tci``.
 * **[provides]   rte_eth_dev_info**: ``rx_offload_capa,rx_queue_offload_capa:DEV_RX_OFFLOAD_VLAN_STRIP``,
@@ -544,7 +545,7 @@ Supports QinQ (queue in queue) offload.
 
 * **[uses]     rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_QINQ_STRIP``.
 * **[uses]     rte_eth_txconf,rte_eth_txmode**: ``offloads:DEV_TX_OFFLOAD_QINQ_INSERT``.
-* **[uses]     mbuf**: ``mbuf.ol_flags:PKT_TX_QINQ_PKT``.
+* **[uses]     mbuf**: ``mbuf.ol_flags:PKT_TX_QINQ``, ``mbuf.vlan_tci_outer``.
 * **[provides] mbuf**: ``mbuf.ol_flags:PKT_RX_QINQ_STRIPPED``, ``mbuf.ol_flags:PKT_RX_QINQ``,
   ``mbuf.ol_flags:PKT_RX_VLAN_STRIPPED``, ``mbuf.ol_flags:PKT_RX_VLAN``
   ``mbuf.vlan_tci``, ``mbuf.vlan_tci_outer``.
