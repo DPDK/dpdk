@@ -2038,7 +2038,7 @@ lio_eth_dev_uninit(struct rte_eth_dev *eth_dev)
 	PMD_INIT_FUNC_TRACE();
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return -EPERM;
+		return 0;
 
 	/* lio_free_sc_buffer_pool */
 	lio_free_sc_buffer_pool(lio_dev);

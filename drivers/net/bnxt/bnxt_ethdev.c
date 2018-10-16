@@ -3542,7 +3542,11 @@ static int bnxt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 static int bnxt_pci_remove(struct rte_pci_device *pci_dev)
 {
-	return rte_eth_dev_pci_generic_remove(pci_dev, bnxt_dev_uninit);
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		return rte_eth_dev_pci_generic_remove(pci_dev,
+				bnxt_dev_uninit);
+	else
+		return rte_eth_dev_pci_generic_remove(pci_dev, NULL);
 }
 
 static struct rte_pci_driver bnxt_rte_pmd = {

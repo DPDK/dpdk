@@ -1703,7 +1703,7 @@ static int eth_ena_dev_uninit(struct rte_eth_dev *eth_dev)
 		(struct ena_adapter *)(eth_dev->data->dev_private);
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return -EPERM;
+		return 0;
 
 	if (adapter->state != ENA_ADAPTER_STATE_CLOSED)
 		ena_close(eth_dev);
