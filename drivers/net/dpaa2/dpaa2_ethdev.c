@@ -1412,7 +1412,7 @@ dpaa2_dev_link_update(struct rte_eth_dev *dev,
 
 	ret = dpni_get_link_state(dpni, CMD_PRI_LOW, priv->token, &state);
 	if (ret < 0) {
-		DPAA2_PMD_ERR("error: dpni_get_link_state %d", ret);
+		DPAA2_PMD_DEBUG("error: dpni_get_link_state %d", ret);
 		return -1;
 	}
 
@@ -1474,7 +1474,7 @@ dpaa2_dev_set_link_up(struct rte_eth_dev *dev)
 	}
 	ret = dpni_get_link_state(dpni, CMD_PRI_LOW, priv->token, &state);
 	if (ret < 0) {
-		DPAA2_PMD_ERR("Unable to get link state (%d)", ret);
+		DPAA2_PMD_DEBUG("Unable to get link state (%d)", ret);
 		return -1;
 	}
 
