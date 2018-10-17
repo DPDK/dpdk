@@ -372,8 +372,6 @@ local_dev_remove(struct rte_device *dev)
 		return ret;
 	}
 
-	rte_devargs_remove(dev->devargs);
-
 	return 0;
 }
 

@@ -522,6 +522,7 @@ pci_unplug(struct rte_device *dev)
 	ret = rte_pci_detach_dev(pdev);
 	if (ret == 0) {
 		rte_pci_remove_device(pdev);
+		rte_devargs_remove(dev->devargs);
 		free(pdev);
 	}
 	return ret;
