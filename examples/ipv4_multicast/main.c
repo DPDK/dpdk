@@ -773,7 +773,7 @@ main(int argc, char **argv)
 			qconf->tx_queue_id[portid] = queueid;
 			queueid++;
 		}
-
+		rte_eth_allmulticast_enable(portid);
 		/* Start device */
 		ret = rte_eth_dev_start(portid);
 		if (ret < 0)
