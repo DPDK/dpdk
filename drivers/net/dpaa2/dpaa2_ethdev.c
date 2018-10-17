@@ -1846,7 +1846,10 @@ populate_mac_addr(struct fsl_mc_io *dpni_dev, struct dpaa2_dev_priv *priv,
 		  struct ether_addr *mac_entry)
 {
 	int ret;
-	struct ether_addr phy_mac = {}, prime_mac = {};
+	struct ether_addr phy_mac, prime_mac;
+
+	memset(&phy_mac, 0, sizeof(struct ether_addr));
+	memset(&prime_mac, 0, sizeof(struct ether_addr));
 
 	/* Get the physical device MAC address */
 	ret = dpni_get_port_mac_addr(dpni_dev, CMD_PRI_LOW, priv->token,
