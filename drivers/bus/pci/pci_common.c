@@ -23,6 +23,7 @@
 #include <rte_string_fns.h>
 #include <rte_common.h>
 #include <rte_devargs.h>
+#include <rte_vfio.h>
 
 #include "private.h"
 
