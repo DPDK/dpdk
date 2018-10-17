@@ -92,6 +92,7 @@ set_policy_defaults(struct channel_packet *pkt)
 	pkt->timer_policy.hours_to_use_traffic_profile[0] = 8;
 	pkt->timer_policy.hours_to_use_traffic_profile[1] = 10;
 
+	pkt->core_type = CORE_TYPE_VIRTUAL;
 	pkt->workload = LOW;
 	pkt->policy_to_use = TIME;
 	pkt->command = PKT_POLICY;
