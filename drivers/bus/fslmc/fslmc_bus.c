@@ -386,11 +386,11 @@ rte_fslmc_probe(void)
 	 * This has to be done before probe as some device initialization
 	 * (during) probe allocate memory (dpaa2_sec) which needs to be pinned
 	 * to this table.
+	 *
+	 * Error is ignored as relevant logs are handled within dpaax and
+	 * handling for unavailable dpaax table too is transparent to caller.
 	 */
-	ret = dpaax_iova_table_populate();
-	if (ret) {
-		DPAA2_BUS_WARN("PA->VA Translation table not available;");
-	}
+	dpaax_iova_table_populate();
 
 	TAILQ_FOREACH(dev, &rte_fslmc_bus.device_list, next) {
 		TAILQ_FOREACH(drv, &rte_fslmc_bus.driver_list, next) {
