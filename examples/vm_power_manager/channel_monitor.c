@@ -41,7 +41,7 @@ static volatile unsigned run_loop = 1;
 static int global_event_fd;
 static unsigned int policy_is_set;
 static struct epoll_event *global_events_list;
-static struct policy policies[MAX_VMS];
+static struct policy policies[MAX_CLIENTS];
 
 void channel_monitor_exit(void)
 {
@@ -199,7 +199,7 @@ update_policy(struct channel_packet *pkt)
 	RTE_LOG(INFO, CHANNEL_MONITOR,
 			"Applying policy for %s\n", pkt->vm_name);
 
-	for (i = 0; i < MAX_VMS; i++) {
+	for (i = 0; i < MAX_CLIENTS; i++) {
 		if (strcmp(policies[i].pkt.vm_name, pkt->vm_name) == 0) {
 			/* Copy the contents of *pkt into the policy.pkt */
 			policies[i].pkt = *pkt;
@@ -214,7 +214,7 @@ update_policy(struct channel_packet *pkt)
 		}
 	}
 	if (!updated) {
-		for (i = 0; i < MAX_VMS; i++) {
+		for (i = 0; i < MAX_CLIENTS; i++) {
 			if (policies[i].enabled == 0) {
 				policies[i].pkt = *pkt;
 				get_pcpu_to_control(&policies[i]);
@@ -238,7 +238,7 @@ remove_policy(struct channel_packet *pkt __rte_unused)
 	 * Disabling the policy is simply a case of setting
 	 * enabled to 0
 	 */
-	for (i = 0; i < MAX_VMS; i++) {
+	for (i = 0; i < MAX_CLIENTS; i++) {
 		if (strcmp(policies[i].pkt.vm_name, pkt->vm_name) == 0) {
 			policies[i].enabled = 0;
 			return 0;
@@ -609,7 +609,7 @@ run_channel_monitor(void)
 		if (policy_is_set) {
 			int j;
 
-			for (j = 0; j < MAX_VMS; j++) {
+			for (j = 0; j < MAX_CLIENTS; j++) {
 				if (policies[j].enabled == 1)
 					apply_policy(&policies[j]);
 			}

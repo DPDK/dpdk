@@ -37,7 +37,7 @@ struct sockaddr_un _sockaddr_un;
 #define UNIX_PATH_MAX sizeof(_sockaddr_un.sun_path)
 #endif
 
-#define MAX_VMS 4
+#define MAX_CLIENTS 64
 #define MAX_VCPUS 20
 
 
@@ -47,7 +47,7 @@ struct libvirt_vm_info {
 	uint8_t num_cpus;
 };
 
-struct libvirt_vm_info lvm_info[MAX_VMS];
+struct libvirt_vm_info lvm_info[MAX_CLIENTS];
 /* Communication Channel Status */
 enum channel_status { CHANNEL_MGR_CHANNEL_DISCONNECTED = 0,
 	CHANNEL_MGR_CHANNEL_CONNECTED,
