@@ -66,7 +66,7 @@ static void
 core_share_status(int pNo)
 {
 
-	int noVms, noVcpus, z, x, t;
+	int noVms = 0, noVcpus = 0, z, x, t;
 
 	get_all_vm(&noVms, &noVcpus);
 
