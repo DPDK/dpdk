@@ -69,8 +69,8 @@ read_memory_node(unsigned int *count)
 
 	ret = glob(MEM_NODE_PATH_GLOB, 0, NULL, &result);
 	if (ret != 0) {
-		DPAAX_ERR("Unable to glob device-tree memory node: (%s)(%d)",
-			   MEM_NODE_PATH_GLOB, ret);
+		DPAAX_DEBUG("Unable to glob device-tree memory node: (%s)(%d)",
+			    MEM_NODE_PATH_GLOB, ret);
 		goto out;
 	}
 
@@ -78,8 +78,8 @@ read_memory_node(unsigned int *count)
 		/* Either more than one memory@<addr> node found, or none.
 		 * In either case, cannot work ahead.
 		 */
-		DPAAX_ERR("Found (%zu) entries in device-tree. Not supported!",
-			  result.gl_pathc);
+		DPAAX_DEBUG("Found (%zu) entries in device-tree. Not supported!",
+			    result.gl_pathc);
 		goto out;
 	}
 
@@ -87,28 +87,29 @@ read_memory_node(unsigned int *count)
 		    result.gl_pathv[0]);
 	fd = open(result.gl_pathv[0], O_RDONLY);
 	if (fd < 0) {
-		DPAAX_ERR("Unable to open the device-tree node: (%s)(fd=%d)",
-			  MEM_NODE_PATH_GLOB, fd);
+		DPAAX_DEBUG("Unable to open the device-tree node: (%s)(fd=%d)",
+			    MEM_NODE_PATH_GLOB, fd);
 		goto cleanup;
 	}
 
 	/* Stat to get the file size */
 	ret = fstat(fd, &statbuf);
 	if (ret != 0) {
-		DPAAX_ERR("Unable to get device-tree memory node size.");
+		DPAAX_DEBUG("Unable to get device-tree memory node size.");
 		goto cleanup;
 	}
 
 	DPAAX_DEBUG("Size of device-tree mem node: %lu", statbuf.st_size);
 	if (statbuf.st_size > MEM_NODE_FILE_LEN) {
-		DPAAX_WARN("More memory nodes available than assumed.");
-		DPAAX_WARN("System may not work properly!");
+		DPAAX_DEBUG("More memory nodes available than assumed.");
+		DPAAX_DEBUG("System may not work properly!");
 	}
 
 	ret = read(fd, file_data, statbuf.st_size > MEM_NODE_FILE_LEN ?
 				  MEM_NODE_FILE_LEN : statbuf.st_size);
 	if (ret <= 0) {
-		DPAAX_ERR("Unable to read device-tree memory node: (%d)", ret);
+		DPAAX_DEBUG("Unable to read device-tree memory node: (%d)",
+			    ret);
 		goto cleanup;
 	}
 
@@ -117,15 +118,15 @@ read_memory_node(unsigned int *count)
 	 */
 	*count = (statbuf.st_size / 16);
 	if ((*count) <= 0 || (statbuf.st_size % 16 != 0)) {
-		DPAAX_ERR("Invalid memory node values or count. (size=%lu)",
-			  statbuf.st_size);
+		DPAAX_DEBUG("Invalid memory node values or count. (size=%lu)",
+			    statbuf.st_size);
 		goto cleanup;
 	}
 
 	/* each entry is of 16 bytes, and size/16 is total count of entries */
 	nodes = malloc(sizeof(struct reg_node) * (*count));
 	if (!nodes) {
-		DPAAX_ERR("Failure in allocating working memory.");
+		DPAAX_DEBUG("Failure in allocating working memory.");
 		goto cleanup;
 	}
 	memset(nodes, 0, sizeof(struct reg_node) * (*count));
@@ -420,9 +421,9 @@ dpaax_memevent_cb(enum rte_mem_event type, const void *addr, size_t len,
 			ret = dpaax_iova_table_update(phys_addr, 0, map_len);
 
 		if (ret != 0) {
-			DPAAX_ERR("PA-Table entry update failed. "
-				  "Map=%d, addr=%p, len=%zu, err:(%d)",
-				  type, va, map_len, ret);
+			DPAAX_DEBUG("PA-Table entry update failed. "
+				    "Map=%d, addr=%p, len=%zu, err:(%d)",
+				    type, va, map_len, ret);
 			return;
 		}
 
@@ -460,5 +461,5 @@ RTE_INIT(dpaax_log)
 {
 	dpaax_logger = rte_log_register("pmd.common.dpaax");
 	if (dpaax_logger >= 0)
-		rte_log_set_level(dpaax_logger, RTE_LOG_NOTICE);
+		rte_log_set_level(dpaax_logger, RTE_LOG_ERR);
 }
