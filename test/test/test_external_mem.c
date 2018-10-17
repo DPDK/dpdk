@@ -362,6 +362,7 @@ test_external_mem(void)
 	rte_iova_t iova[len / pgsz];
 	void *addr;
 	int ret, n_pages;
+	int i;
 
 	/* create external memory area */
 	n_pages = RTE_DIM(iova);
@@ -372,7 +373,7 @@ test_external_mem(void)
 			__func__, __LINE__);
 		return -1;
 	}
-	for (int i = 0; i < n_pages; i++) {
+	for (i = 0; i < n_pages; i++) {
 		/* arbitrary IOVA */
 		rte_iova_t tmp = 0x100000000 + i * pgsz;
 		iova[i] = tmp;
