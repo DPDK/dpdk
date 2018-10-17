@@ -199,7 +199,7 @@ see :doc:`compiling`.
 
 The application is located in the ``vm_power_manager`` sub-directory.
 
-To build just the ``vm_power_manager`` application:
+To build just the ``vm_power_manager`` application using ``make``:
 
 .. code-block:: console
 
@@ -207,6 +207,22 @@ To build just the ``vm_power_manager`` application:
   export RTE_TARGET=build
   cd ${RTE_SDK}/examples/vm_power_manager/
   make
+
+The resulting binary will be ${RTE_SDK}/build/examples/vm_power_manager
+
+To build just the ``vm_power_manager`` application using ``meson/ninja``:
+
+.. code-block:: console
+
+  export RTE_SDK=/path/to/rte_sdk
+  cd ${RTE_SDK}
+  meson build
+  cd build
+  ninja
+  meson configure -Dexamples=vm_power_manager
+  ninja
+
+The resulting binary will be ${RTE_SDK}/build/examples/dpdk-vm_power_manager
 
 Running
 ~~~~~~~
@@ -630,7 +646,7 @@ For compiling and running l3fwd-power, see :doc:`l3_forward_power_man`.
 
 The application is located in the ``guest_cli`` sub-directory under ``vm_power_manager``.
 
-To build just the ``guest_vm_power_manager`` application:
+To build just the ``guest_vm_power_manager`` application using ``make``:
 
 .. code-block:: console
 
@@ -638,6 +654,22 @@ To build just the ``guest_vm_power_manager`` application:
   export RTE_TARGET=build
   cd ${RTE_SDK}/examples/vm_power_manager/guest_cli/
   make
+
+The resulting binary will be ${RTE_SDK}/build/examples/guest_cli
+
+To build just the ``vm_power_manager`` application using ``meson/ninja``:
+
+.. code-block:: console
+
+  export RTE_SDK=/path/to/rte_sdk
+  cd ${RTE_SDK}
+  meson build
+  cd build
+  ninja
+  meson configure -Dexamples=vm_power_manager/guest_cli
+  ninja
+
+The resulting binary will be ${RTE_SDK}/build/examples/guest_cli
 
 Running
 ~~~~~~~
