@@ -13,6 +13,7 @@
 
 #include <sys/queue.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/select.h>
 
@@ -285,6 +286,38 @@ open_non_blocking_channel(struct channel_info *info)
 }
 
 static int
+open_host_channel(struct channel_info *info)
+{
+	int flags;
+
+	info->fd = open(info->channel_path, O_RDWR | O_RSYNC);
+	if (info->fd == -1) {
+		RTE_LOG(ERR, CHANNEL_MANAGER, "Error(%s) opening fifo for '%s'\n",
+				strerror(errno),
+				info->channel_path);
+		return -1;
+	}
+
+	/* Get current flags */
+	flags = fcntl(info->fd, F_GETFL, 0);
+	if (flags < 0) {
+		RTE_LOG(WARNING, CHANNEL_MANAGER, "Error(%s) fcntl get flags socket for"
+				"'%s'\n", strerror(errno), info->channel_path);
+		return 1;
+	}
+	/* Set to Non Blocking */
+	flags |= O_NONBLOCK;
+	if (fcntl(info->fd, F_SETFL, flags) < 0) {
+		RTE_LOG(WARNING, CHANNEL_MANAGER,
+				"Error(%s) setting non-blocking "
+				"socket for '%s'\n",
+				strerror(errno), info->channel_path);
+		return -1;
+	}
+	return 0;
+}
+
+static int
 setup_channel_info(struct virtual_machine_info **vm_info_dptr,
 		struct channel_info **chan_info_dptr, unsigned channel_num)
 {
@@ -294,6 +327,7 @@ setup_channel_info(struct virtual_machine_info **vm_info_dptr,
 	chan_info->channel_num = channel_num;
 	chan_info->priv_info = (void *)vm_info;
 	chan_info->status = CHANNEL_MGR_CHANNEL_DISCONNECTED;
+	chan_info->type = CHANNEL_TYPE_BINARY;
 	if (open_non_blocking_channel(chan_info) < 0) {
 		RTE_LOG(ERR, CHANNEL_MANAGER, "Could not open channel: "
 				"'%s' for VM '%s'\n",
@@ -313,6 +347,42 @@ setup_channel_info(struct virtual_machine_info **vm_info_dptr,
 	vm_info->channels[channel_num] = chan_info;
 	chan_info->status = CHANNEL_MGR_CHANNEL_CONNECTED;
 	rte_spinlock_unlock(&(vm_info->config_spinlock));
+	return 0;
+}
+
+static void
+fifo_path(char *dst, unsigned int len)
+{
+	snprintf(dst, len, "%sfifo", CHANNEL_MGR_SOCKET_PATH);
+}
+
+static int
+setup_host_channel_info(struct channel_info **chan_info_dptr,
+		unsigned int channel_num)
+{
+	struct channel_info *chan_info = *chan_info_dptr;
+
+	chan_info->channel_num = channel_num;
+	chan_info->priv_info = (void *)NULL;
+	chan_info->status = CHANNEL_MGR_CHANNEL_DISCONNECTED;
+	chan_info->type = CHANNEL_TYPE_JSON;
+
+	fifo_path(chan_info->channel_path, sizeof(chan_info->channel_path));
+
+	if (open_host_channel(chan_info) < 0) {
+		RTE_LOG(ERR, CHANNEL_MANAGER, "Could not open host channel: "
+				"'%s'\n",
+				chan_info->channel_path);
+		return -1;
+	}
+	if (add_channel_to_monitor(&chan_info) < 0) {
+		RTE_LOG(ERR, CHANNEL_MANAGER, "Could add channel: "
+				"'%s' to epoll ctl\n",
+				chan_info->channel_path);
+		return -1;
+
+	}
+	chan_info->status = CHANNEL_MGR_CHANNEL_CONNECTED;
 	return 0;
 }
 
@@ -467,6 +537,45 @@ add_channels(const char *vm_name, unsigned *channel_list,
 		num_channels_enabled++;
 
 	}
+	return num_channels_enabled;
+}
+
+int
+add_host_channel(void)
+{
+	struct channel_info *chan_info;
+	char socket_path[PATH_MAX];
+	int num_channels_enabled = 0;
+	int ret;
+
+	fifo_path(socket_path, sizeof(socket_path));
+
+	ret = mkfifo(socket_path, 0660);
+	if ((errno != EEXIST) && (ret < 0)) {
+		RTE_LOG(ERR, CHANNEL_MANAGER, "Cannot create fifo '%s' error: "
+				"%s\n", socket_path, strerror(errno));
+		return 0;
+	}
+
+	if (access(socket_path, F_OK) < 0) {
+		RTE_LOG(ERR, CHANNEL_MANAGER, "Channel path '%s' error: "
+				"%s\n", socket_path, strerror(errno));
+		return 0;
+	}
+	chan_info = rte_malloc(NULL, sizeof(*chan_info), 0);
+	if (chan_info == NULL) {
+		RTE_LOG(ERR, CHANNEL_MANAGER, "Error allocating memory for "
+				"channel '%s'\n", socket_path);
+		return 0;
+	}
+	snprintf(chan_info->channel_path,
+			sizeof(chan_info->channel_path), "%s", socket_path);
+	if (setup_host_channel_info(&chan_info, 0) < 0) {
+		rte_free(chan_info);
+		return 0;
+	}
+	num_channels_enabled++;
+
 	return num_channels_enabled;
 }
 

@@ -85,6 +85,33 @@ core_share_status(int pNo)
 	}
 }
 
+
+static int
+pcpu_monitor(struct policy *pol, struct core_info *ci, int pcpu, int count)
+{
+	int ret = 0;
+
+	if (pol->pkt.policy_to_use == BRANCH_RATIO) {
+		ci->cd[pcpu].oob_enabled = 1;
+		ret = add_core_to_monitor(pcpu);
+		if (ret == 0)
+			RTE_LOG(INFO, CHANNEL_MONITOR,
+					"Monitoring pcpu %d OOB for %s\n",
+					pcpu, pol->pkt.vm_name);
+		else
+			RTE_LOG(ERR, CHANNEL_MONITOR,
+					"Error monitoring pcpu %d OOB for %s\n",
+					pcpu, pol->pkt.vm_name);
+
+	} else {
+		pol->core_share[count].pcpu = pcpu;
+		RTE_LOG(INFO, CHANNEL_MONITOR,
+				"Monitoring pcpu %d for %s\n",
+				pcpu, pol->pkt.vm_name);
+	}
+	return ret;
+}
+
 static void
 get_pcpu_to_control(struct policy *pol)
 {
@@ -94,33 +121,41 @@ get_pcpu_to_control(struct policy *pol)
 	int pcpu, count;
 	uint64_t mask_u64b;
 	struct core_info *ci;
-	int ret;
 
 	ci = get_core_info();
 
-	RTE_LOG(INFO, CHANNEL_MONITOR, "Looking for pcpu for %s\n",
-			pol->pkt.vm_name);
-	get_info_vm(pol->pkt.vm_name, &info);
+	RTE_LOG(INFO, CHANNEL_MONITOR,
+			"Looking for pcpu for %s\n", pol->pkt.vm_name);
 
-	for (count = 0; count < pol->pkt.num_vcpu; count++) {
-		mask_u64b = info.pcpu_mask[pol->pkt.vcpu_to_control[count]];
-		for (pcpu = 0; mask_u64b; mask_u64b &= ~(1ULL << pcpu++)) {
-			if ((mask_u64b >> pcpu) & 1) {
-				if (pol->pkt.policy_to_use == BRANCH_RATIO) {
-					ci->cd[pcpu].oob_enabled = 1;
-					ret = add_core_to_monitor(pcpu);
-					if (ret == 0)
-						printf("Monitoring pcpu %d via Branch Ratio\n",
-								pcpu);
-					else
-						printf("Failed to start OOB Monitoring pcpu %d\n",
-								pcpu);
-
-				} else {
-					pol->core_share[count].pcpu = pcpu;
-					printf("Monitoring pcpu %d\n", pcpu);
-				}
+	/*
+	 * So now that we're handling virtual and physical cores, we need to
+	 * differenciate between them when adding them to the branch monitor.
+	 * Virtual cores need to be converted to physical cores.
+	 */
+	if (pol->pkt.core_type == CORE_TYPE_VIRTUAL) {
+		/*
+		 * If the cores in the policy are virtual, we need to map them
+		 * to physical core. We look up the vm info and use that for
+		 * the mapping.
+		 */
+		get_info_vm(pol->pkt.vm_name, &info);
+		for (count = 0; count < pol->pkt.num_vcpu; count++) {
+			mask_u64b =
+				info.pcpu_mask[pol->pkt.vcpu_to_control[count]];
+			for (pcpu = 0; mask_u64b;
+					mask_u64b &= ~(1ULL << pcpu++)) {
+				if ((mask_u64b >> pcpu) & 1)
+					pcpu_monitor(pol, ci, pcpu, count);
 			}
+		}
+	} else {
+		/*
+		 * If the cores in the policy are physical, we just use
+		 * those core id's directly.
+		 */
+		for (count = 0; count < pol->pkt.num_vcpu; count++) {
+			pcpu = pol->pkt.vcpu_to_control[count];
+			pcpu_monitor(pol, ci, pcpu, count);
 		}
 	}
 }
@@ -160,8 +195,13 @@ update_policy(struct channel_packet *pkt)
 	unsigned int updated = 0;
 	int i;
 
+
+	RTE_LOG(INFO, CHANNEL_MONITOR,
+			"Applying policy for %s\n", pkt->vm_name);
+
 	for (i = 0; i < MAX_VMS; i++) {
 		if (strcmp(policies[i].pkt.vm_name, pkt->vm_name) == 0) {
+			/* Copy the contents of *pkt into the policy.pkt */
 			policies[i].pkt = *pkt;
 			get_pcpu_to_control(&policies[i]);
 			if (get_pfid(&policies[i]) == -1) {
@@ -187,6 +227,24 @@ update_policy(struct channel_packet *pkt)
 		}
 	}
 	return 0;
+}
+
+static int
+remove_policy(struct channel_packet *pkt __rte_unused)
+{
+	int i;
+
+	/*
+	 * Disabling the policy is simply a case of setting
+	 * enabled to 0
+	 */
+	for (i = 0; i < MAX_VMS; i++) {
+		if (strcmp(policies[i].pkt.vm_name, pkt->vm_name) == 0) {
+			policies[i].enabled = 0;
+			return 0;
+		}
+	}
+	return -1;
 }
 
 static uint64_t
@@ -346,7 +404,6 @@ apply_policy(struct policy *pol)
 		apply_workload_profile(pol);
 }
 
-
 static int
 process_request(struct channel_packet *pkt, struct channel_info *chan_info)
 {
@@ -355,6 +412,8 @@ process_request(struct channel_packet *pkt, struct channel_info *chan_info)
 	if (chan_info == NULL)
 		return -1;
 
+	RTE_LOG(INFO, CHANNEL_MONITOR, "Processing Request %s\n", pkt->vm_name);
+
 	if (rte_atomic32_cmpset(&(chan_info->status), CHANNEL_MGR_CHANNEL_CONNECTED,
 			CHANNEL_MGR_CHANNEL_PROCESSING) == 0)
 		return -1;
@@ -362,10 +421,12 @@ process_request(struct channel_packet *pkt, struct channel_info *chan_info)
 	if (pkt->command == CPU_POWER) {
 		core_mask = get_pcpus_mask(chan_info, pkt->resource_id);
 		if (core_mask == 0) {
-			RTE_LOG(ERR, CHANNEL_MONITOR, "Error get physical CPU mask for "
-				"channel '%s' using vCPU(%u)\n", chan_info->channel_path,
-				(unsigned)pkt->unit);
-			return -1;
+			/*
+			 * Core mask will be 0 in the case where
+			 * hypervisor is not available so we're working in
+			 * the host, so use the core as the mask.
+			 */
+			core_mask = 1ULL << pkt->resource_id;
 		}
 		if (__builtin_popcountll(core_mask) == 1) {
 
@@ -421,12 +482,20 @@ process_request(struct channel_packet *pkt, struct channel_info *chan_info)
 	}
 
 	if (pkt->command == PKT_POLICY) {
-		RTE_LOG(INFO, CHANNEL_MONITOR, "\nProcessing Policy request from Guest\n");
+		RTE_LOG(INFO, CHANNEL_MONITOR,
+				"\nProcessing Policy request\n");
 		update_policy(pkt);
 		policy_is_set = 1;
 	}
 
-	/* Return is not checked as channel status may have been set to DISABLED
+	if (pkt->command == PKT_POLICY_REMOVE) {
+		RTE_LOG(INFO, CHANNEL_MONITOR,
+				 "Removing policy %s\n", pkt->vm_name);
+		remove_policy(pkt);
+	}
+
+	/*
+	 * Return is not checked as channel status may have been set to DISABLED
 	 * from management thread
 	 */
 	rte_atomic32_cmpset(&(chan_info->status), CHANNEL_MGR_CHANNEL_PROCESSING,
@@ -448,13 +517,16 @@ add_channel_to_monitor(struct channel_info **chan_info)
 				"to epoll\n", info->channel_path);
 		return -1;
 	}
+	RTE_LOG(ERR, CHANNEL_MONITOR, "Added channel '%s' "
+			"to monitor\n", info->channel_path);
 	return 0;
 }
 
 int
 remove_channel_from_monitor(struct channel_info *chan_info)
 {
-	if (epoll_ctl(global_event_fd, EPOLL_CTL_DEL, chan_info->fd, NULL) < 0) {
+	if (epoll_ctl(global_event_fd, EPOLL_CTL_DEL,
+			chan_info->fd, NULL) < 0) {
 		RTE_LOG(ERR, CHANNEL_MONITOR, "Unable to remove channel '%s' "
 				"from epoll\n", chan_info->channel_path);
 		return -1;
@@ -467,11 +539,13 @@ channel_monitor_init(void)
 {
 	global_event_fd = epoll_create1(0);
 	if (global_event_fd == 0) {
-		RTE_LOG(ERR, CHANNEL_MONITOR, "Error creating epoll context with "
-				"error %s\n", strerror(errno));
+		RTE_LOG(ERR, CHANNEL_MONITOR,
+				"Error creating epoll context with error %s\n",
+				strerror(errno));
 		return -1;
 	}
-	global_events_list = rte_malloc("epoll_events", sizeof(*global_events_list)
+	global_events_list = rte_malloc("epoll_events",
+			sizeof(*global_events_list)
 			* MAX_EVENTS, RTE_CACHE_LINE_SIZE);
 	if (global_events_list == NULL) {
 		RTE_LOG(ERR, CHANNEL_MONITOR, "Unable to rte_malloc for "
