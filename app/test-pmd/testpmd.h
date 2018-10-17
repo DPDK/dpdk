@@ -764,6 +764,9 @@ int check_nb_rxq(queueid_t rxq);
 queueid_t get_allowed_max_nb_txq(portid_t *pid);
 int check_nb_txq(queueid_t txq);
 
+void dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
+	 uint16_t nb_pkts, int is_rx);
+
 /*
  * Work-around of a compilation error with ICC on invocations of the
  * rte_be_to_cpu_16() function.
