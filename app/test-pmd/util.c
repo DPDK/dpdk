@@ -21,7 +21,7 @@ print_ether_addr(const char *what, struct ether_addr *eth_addr)
 	printf("%s%s", what, buf);
 }
 
-void
+static inline void
 dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 	      uint16_t nb_pkts, int is_rx)
 {
@@ -148,4 +148,21 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 		rte_get_rx_ol_flag_list(mb->ol_flags, buf, sizeof(buf));
 		printf("  ol_flags: %s\n", buf);
 	}
+}
+
+uint16_t
+dump_rx_pkts(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
+	     uint16_t nb_pkts, __rte_unused uint16_t max_pkts,
+	     __rte_unused void *user_param)
+{
+	dump_pkt_burst(port_id, queue, pkts, nb_pkts, 1);
+	return nb_pkts;
+}
+
+uint16_t
+dump_tx_pkts(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
+	     uint16_t nb_pkts, __rte_unused void *user_param)
+{
+	dump_pkt_burst(port_id, queue, pkts, nb_pkts, 0);
+	return nb_pkts;
 }

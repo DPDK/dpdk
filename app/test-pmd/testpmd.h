@@ -191,6 +191,8 @@ struct rte_port {
 	uint32_t                mc_addr_nb; /**< nb. of addr. in mc_addr_pool */
 	uint8_t                 slave_flag; /**< bonding slave port */
 	struct port_flow        *flow_list; /**< Associated flows. */
+	const struct rte_eth_rxtx_callback *rx_dump_cb[MAX_QUEUE_ID+1];
+	const struct rte_eth_rxtx_callback *tx_dump_cb[MAX_QUEUE_ID+1];
 #ifdef SOFTNIC
 	struct softnic_port     softport;  /**< softnic params */
 #endif
@@ -764,8 +766,17 @@ int check_nb_rxq(queueid_t rxq);
 queueid_t get_allowed_max_nb_txq(portid_t *pid);
 int check_nb_txq(queueid_t txq);
 
-void dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
-	 uint16_t nb_pkts, int is_rx);
+uint16_t dump_rx_pkts(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
+		      uint16_t nb_pkts, __rte_unused uint16_t max_pkts,
+		      __rte_unused void *user_param);
+
+uint16_t dump_tx_pkts(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
+		      uint16_t nb_pkts, __rte_unused void *user_param);
+
+void add_rx_dump_callbacks(portid_t portid);
+void remove_rx_dump_callbacks(portid_t portid);
+void add_tx_dump_callbacks(portid_t portid);
+void remove_tx_dump_callbacks(portid_t portid);
 
 /*
  * Work-around of a compilation error with ICC on invocations of the

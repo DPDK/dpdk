@@ -2706,6 +2706,73 @@ set_pkt_forwarding_mode(const char *fwd_mode_name)
 }
 
 void
+add_rx_dump_callbacks(portid_t portid)
+{
+	struct rte_eth_dev_info dev_info;
+	uint16_t queue;
+
+	if (port_id_is_invalid(portid, ENABLED_WARN))
+		return;
+
+	rte_eth_dev_info_get(portid, &dev_info);
+	for (queue = 0; queue < dev_info.nb_rx_queues; queue++)
+		if (!ports[portid].rx_dump_cb[queue])
+			ports[portid].rx_dump_cb[queue] =
+				rte_eth_add_rx_callback(portid, queue,
+					dump_rx_pkts, NULL);
+}
+
+void
+add_tx_dump_callbacks(portid_t portid)
+{
+	struct rte_eth_dev_info dev_info;
+	uint16_t queue;
+
+	if (port_id_is_invalid(portid, ENABLED_WARN))
+		return;
+	rte_eth_dev_info_get(portid, &dev_info);
+	for (queue = 0; queue < dev_info.nb_tx_queues; queue++)
+		if (!ports[portid].tx_dump_cb[queue])
+			ports[portid].tx_dump_cb[queue] =
+				rte_eth_add_tx_callback(portid, queue,
+							dump_tx_pkts, NULL);
+}
+
+void
+remove_rx_dump_callbacks(portid_t portid)
+{
+	struct rte_eth_dev_info dev_info;
+	uint16_t queue;
+
+	if (port_id_is_invalid(portid, ENABLED_WARN))
+		return;
+	rte_eth_dev_info_get(portid, &dev_info);
+	for (queue = 0; queue < dev_info.nb_rx_queues; queue++)
+		if (ports[portid].rx_dump_cb[queue]) {
+			rte_eth_remove_rx_callback(portid, queue,
+				ports[portid].rx_dump_cb[queue]);
+			ports[portid].rx_dump_cb[queue] = NULL;
+		}
+}
+
+void
+remove_tx_dump_callbacks(portid_t portid)
+{
+	struct rte_eth_dev_info dev_info;
+	uint16_t queue;
+
+	if (port_id_is_invalid(portid, ENABLED_WARN))
+		return;
+	rte_eth_dev_info_get(portid, &dev_info);
+	for (queue = 0; queue < dev_info.nb_tx_queues; queue++)
+		if (ports[portid].tx_dump_cb[queue]) {
+			rte_eth_remove_tx_callback(portid, queue,
+				ports[portid].tx_dump_cb[queue]);
+			ports[portid].tx_dump_cb[queue] = NULL;
+		}
+}
+
+void
 set_verbose_level(uint16_t vb_level)
 {
 	printf("Change verbose level from %u to %u\n",

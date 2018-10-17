@@ -70,10 +70,6 @@ pkt_burst_receive(struct fwd_stream *fs)
 	fs->rx_burst_stats.pkt_burst_spread[nb_rx]++;
 #endif
 	fs->rx_packets += nb_rx;
-
-	/*
-	 * Dump each received packet if verbose_level > 0.
-	 */
 	for (i = 0; i < nb_rx; i++)
 		rte_pktmbuf_free(pkts_burst[i]);
 
