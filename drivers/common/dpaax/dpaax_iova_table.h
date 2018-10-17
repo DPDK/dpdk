@@ -74,6 +74,9 @@ dpaax_iova_table_get_va(phys_addr_t paddr) {
 	size_t offset = paddr & DPAAX_MEM_SPLIT_MASK_OFF;
 	struct dpaax_iovat_element *entry;
 
+	if (unlikely(dpaax_iova_table_p == NULL))
+		return NULL;
+
 	entry = dpaax_iova_table_p->entries;
 
 	do {

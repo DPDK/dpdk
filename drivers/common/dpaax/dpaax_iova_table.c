@@ -272,6 +272,9 @@ dpaax_iova_table_update(phys_addr_t paddr, void *vaddr, size_t length)
 	uintptr_t align_vaddr;
 	phys_addr_t align_paddr;
 
+	if (unlikely(dpaax_iova_table_p == NULL))
+		return -1;
+
 	align_paddr = paddr & DPAAX_MEM_SPLIT_MASK;
 	align_vaddr = ((uintptr_t)vaddr & DPAAX_MEM_SPLIT_MASK);
 
