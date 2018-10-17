@@ -43,7 +43,8 @@ static unsigned char *global_cpumaps;
 static virVcpuInfo *global_vircpuinfo;
 static size_t global_maplen;
 
-static unsigned global_n_host_cpus;
+static unsigned int global_n_host_cpus;
+static bool global_hypervisor_available;
 
 /*
  * Represents a single Virtual Machine
@@ -198,7 +199,11 @@ get_pcpus_mask(struct channel_info *chan_info, unsigned vcpu)
 {
 	struct virtual_machine_info *vm_info =
 			(struct virtual_machine_info *)chan_info->priv_info;
-	return rte_atomic64_read(&vm_info->pcpu_mask[vcpu]);
+
+	if (global_hypervisor_available && (vm_info != NULL))
+		return rte_atomic64_read(&vm_info->pcpu_mask[vcpu]);
+	else
+		return 0;
 }
 
 static inline int
@@ -559,6 +564,8 @@ get_all_vm(int *num_vm, int *num_vcpu)
 				VIR_CONNECT_LIST_DOMAINS_PERSISTENT;
 	unsigned int domain_flag = VIR_DOMAIN_VCPU_CONFIG;
 
+	if (!global_hypervisor_available)
+		return;
 
 	memset(global_cpumaps, 0, CHANNEL_CMDS_MAX_CPUS*global_maplen);
 	if (virNodeGetInfo(global_vir_conn_ptr, &node_info)) {
@@ -768,38 +775,42 @@ connect_hypervisor(const char *path)
 	}
 	return 0;
 }
-
 int
-channel_manager_init(const char *path)
+channel_manager_init(const char *path __rte_unused)
 {
 	virNodeInfo info;
 
 	LIST_INIT(&vm_list_head);
 	if (connect_hypervisor(path) < 0) {
-		RTE_LOG(ERR, CHANNEL_MANAGER, "Unable to initialize channel manager\n");
-		return -1;
+		global_n_host_cpus = 64;
+		global_hypervisor_available = 0;
+		RTE_LOG(INFO, CHANNEL_MANAGER, "Unable to initialize channel manager\n");
+	} else {
+		global_hypervisor_available = 1;
+
+		global_maplen = VIR_CPU_MAPLEN(CHANNEL_CMDS_MAX_CPUS);
+
+		global_vircpuinfo = rte_zmalloc(NULL,
+				sizeof(*global_vircpuinfo) *
+				CHANNEL_CMDS_MAX_CPUS, RTE_CACHE_LINE_SIZE);
+		if (global_vircpuinfo == NULL) {
+			RTE_LOG(ERR, CHANNEL_MANAGER, "Error allocating memory for CPU Info\n");
+			goto error;
+		}
+		global_cpumaps = rte_zmalloc(NULL,
+				CHANNEL_CMDS_MAX_CPUS * global_maplen,
+				RTE_CACHE_LINE_SIZE);
+		if (global_cpumaps == NULL)
+			goto error;
+
+		if (virNodeGetInfo(global_vir_conn_ptr, &info)) {
+			RTE_LOG(ERR, CHANNEL_MANAGER, "Unable to retrieve node Info\n");
+			goto error;
+		}
+		global_n_host_cpus = (unsigned int)info.cpus;
 	}
 
-	global_maplen = VIR_CPU_MAPLEN(CHANNEL_CMDS_MAX_CPUS);
 
-	global_vircpuinfo = rte_zmalloc(NULL, sizeof(*global_vircpuinfo) *
-			CHANNEL_CMDS_MAX_CPUS, RTE_CACHE_LINE_SIZE);
-	if (global_vircpuinfo == NULL) {
-		RTE_LOG(ERR, CHANNEL_MANAGER, "Error allocating memory for CPU Info\n");
-		goto error;
-	}
-	global_cpumaps = rte_zmalloc(NULL, CHANNEL_CMDS_MAX_CPUS * global_maplen,
-			RTE_CACHE_LINE_SIZE);
-	if (global_cpumaps == NULL) {
-		goto error;
-	}
-
-	if (virNodeGetInfo(global_vir_conn_ptr, &info)) {
-		RTE_LOG(ERR, CHANNEL_MANAGER, "Unable to retrieve node Info\n");
-		goto error;
-	}
-
-	global_n_host_cpus = (unsigned)info.cpus;
 
 	if (global_n_host_cpus > CHANNEL_CMDS_MAX_CPUS) {
 		RTE_LOG(WARNING, CHANNEL_MANAGER, "The number of host CPUs(%u) exceeds the "
@@ -811,7 +822,8 @@ channel_manager_init(const char *path)
 
 	return 0;
 error:
-	disconnect_hypervisor();
+	if (global_hypervisor_available)
+		disconnect_hypervisor();
 	return -1;
 }
 
@@ -838,7 +850,10 @@ channel_manager_exit(void)
 		rte_free(vm_info);
 	}
 
-	rte_free(global_cpumaps);
-	rte_free(global_vircpuinfo);
-	disconnect_hypervisor();
+	if (global_hypervisor_available) {
+		/* Only needed if hypervisor available */
+		rte_free(global_cpumaps);
+		rte_free(global_vircpuinfo);
+		disconnect_hypervisor();
+	}
 }
