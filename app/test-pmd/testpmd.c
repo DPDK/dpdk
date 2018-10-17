@@ -2000,7 +2000,7 @@ start_port(portid_t pid)
 					return -1;
 				}
 			}
-
+			configure_rxtx_dump_callbacks(0);
 			printf("Configuring Port %d (socket %u)\n", pi,
 					port->socket_id);
 			/* configure port */
@@ -2099,7 +2099,7 @@ start_port(portid_t pid)
 				return -1;
 			}
 		}
-
+		configure_rxtx_dump_callbacks(verbose_level);
 		/* start port */
 		if (rte_eth_dev_start(pi) < 0) {
 			printf("Fail to start port %d\n", pi);

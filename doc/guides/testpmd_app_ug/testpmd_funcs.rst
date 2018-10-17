@@ -449,7 +449,12 @@ Set the debug verbosity level::
 
    testpmd> set verbose (level)
 
-Currently the only available levels are 0 (silent except for error) and 1 (fully verbose).
+Available levels are as following:
+
+* ``0`` silent except for error.
+* ``1`` fully verbose except for Tx packets.
+* ``2`` fully verbose except for Rx packets.
+* ``> 2`` fully verbose.
 
 set log
 ~~~~~~~

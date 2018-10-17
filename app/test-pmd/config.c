@@ -50,6 +50,7 @@
 #endif
 #include <rte_gro.h>
 #include <cmdline_parse_etheraddr.h>
+#include <rte_config.h>
 
 #include "testpmd.h"
 
@@ -2773,11 +2774,35 @@ remove_tx_dump_callbacks(portid_t portid)
 }
 
 void
+configure_rxtx_dump_callbacks(uint16_t verbose)
+{
+	portid_t portid;
+
+#ifndef RTE_ETHDEV_RXTX_CALLBACKS
+		TESTPMD_LOG(ERR, "setting rxtx callbacks is not enabled\n");
+		return;
+#endif
+
+	RTE_ETH_FOREACH_DEV(portid)
+	{
+		if (verbose == 1 || verbose > 2)
+			add_rx_dump_callbacks(portid);
+		else
+			remove_rx_dump_callbacks(portid);
+		if (verbose >= 2)
+			add_tx_dump_callbacks(portid);
+		else
+			remove_tx_dump_callbacks(portid);
+	}
+}
+
+void
 set_verbose_level(uint16_t vb_level)
 {
 	printf("Change verbose level from %u to %u\n",
 	       (unsigned int) verbose_level, (unsigned int) vb_level);
 	verbose_level = vb_level;
+	configure_rxtx_dump_callbacks(verbose_level);
 }
 
 void

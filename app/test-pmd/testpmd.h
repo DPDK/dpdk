@@ -777,6 +777,7 @@ void add_rx_dump_callbacks(portid_t portid);
 void remove_rx_dump_callbacks(portid_t portid);
 void add_tx_dump_callbacks(portid_t portid);
 void remove_tx_dump_callbacks(portid_t portid);
+void configure_rxtx_dump_callbacks(uint16_t verbose);
 
 /*
  * Work-around of a compilation error with ICC on invocations of the
