@@ -200,6 +200,14 @@ New Features
   See the :doc:`../prog_guide/power_man` section of the DPDK Programmers
   Guide document for more information.
 
+* **Added JSON power policy interface for containers.**
+
+  Extended the Power Library and vm_power_manager sample app to allow power
+  policies to be submitted via a FIFO using JSON formatted strings. Previously
+  limited to Virtual Machines, this feature extends power policy functionality
+  to containers and host applications that need to have their cores frequency
+  controlled based on the rules contained in the policy.
+
 * **Added ability to switch queue deferred start flag on testpmd app.**
 
   Added a console command to testpmd app, giving ability to switch

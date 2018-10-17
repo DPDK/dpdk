@@ -337,6 +337,270 @@ monitoring of branch ratio on cores doing busy polling via PMDs.
   and will need to be adjusted for different workloads.
 
 
+
+JSON API
+~~~~~~~~
+
+In addition to the command line interface for host command and a virtio-serial
+interface for VM power policies, there is also a JSON interface through which
+power commands and policies can be sent. This functionality adds a dependency
+on the Jansson library, and the Jansson development package must be installed
+on the system before the JSON parsing functionality is included in the app.
+This is achieved by:
+
+  .. code-block:: javascript
+
+    apt-get install libjansson-dev
+
+The command and package name may be different depending on your operating
+system. It's worth noting that the app will successfully build without this
+package present, but a warning is shown during compilation, and the JSON
+parsing functionality will not be present in the app.
+
+Sending a command or policy to the power manager application is achieved by
+simply opening a fifo file, writing a JSON string to that fifo, and closing
+the file.
+
+The fifo is at /tmp/powermonitor/fifo
+
+The jason string can be a policy or instruction, and takes the following
+format:
+
+  .. code-block:: javascript
+
+    {"packet_type": {
+      "pair_1": value,
+      "pair_2": value
+    }}
+
+The 'packet_type' header can contain one of two values, depending on
+whether a policy or power command is being sent. The two possible values are
+"policy" and "instruction", and the expected name-value pairs is different
+depending on which type is being sent.
+
+The pairs are the format of standard JSON name-value pairs. The value type
+varies between the different name/value pairs, and may be integers, strings,
+arrays, etc. Examples of policies follow later in this document. The allowed
+names and value types are as follows:
+
+
+:Pair Name: "name"
+:Description: Name of the VM or Host. Allows the parser to associate the
+  policy with the relevant VM or Host OS.
+:Type: string
+:Values: any valid string
+:Required: yes
+:Example:
+
+    .. code-block:: javascript
+
+      "name", "ubuntu2"
+
+
+:Pair Name: "command"
+:Description: The type of packet we're sending to the power manager. We can be
+  creating or destroying a policy, or sending a direct command to adjust
+  the frequency of a core, similar to the command line interface.
+:Type: string
+:Values:
+
+  :CREATE: used when creating a new policy,
+  :DESTROY: used when removing a policy,
+  :POWER: used when sending an immediate command, max, min, etc.
+:Required: yes
+:Example:
+
+    .. code-block:: javascript
+
+      "command", "CREATE"
+
+
+:Pair Name: "policy_type"
+:Description: Type of policy to apply. Please see vm_power_manager documentation
+  for more information on the types of policies that may be used.
+:Type: string
+:Values:
+
+  :TIME: Time-of-day policy. Frequencies of the relevant cores are
+    scaled up/down depending on busy and quiet hours.
+  :TRAFFIC: This policy takes statistics from the NIC and scales up
+    and down accordingly.
+  :WORKLOAD: This policy looks at how heavily loaded the cores are,
+    and scales up and down accordingly.
+  :BRANCH_RATIO: This out-of-band policy can look at the ratio between
+    branch hits and misses on a core, and is useful for detecting
+    how much packet processing a core is doing.
+:Required: only for CREATE/DESTROY command
+:Example:
+
+  .. code-block:: javascript
+
+    "policy_type", "TIME"
+
+:Pair Name: "busy_hours"
+:Description: The hours of the day in which we scale up the cores for busy
+  times.
+:Type: array of integers
+:Values: array with list of hour numbers, (0-23)
+:Required: only for TIME policy
+:Example:
+
+  .. code-block:: javascript
+
+    "busy_hours":[ 17, 18, 19, 20, 21, 22, 23 ]
+
+:Pair Name: "quiet_hours"
+:Description: The hours of the day in which we scale down the cores for quiet
+  times.
+:Type: array of integers
+:Values: array with list of hour numbers, (0-23)
+:Required: only for TIME policy
+:Example:
+
+  .. code-block:: javascript
+
+    "quiet_hours":[ 2, 3, 4, 5, 6 ]
+
+:Pair Name: "avg_packet_thresh"
+:Description: Threshold below which the frequency will be set to min for
+  the TRAFFIC policy. If the traffic rate is above this and below max, the
+  frequency will be set to medium.
+:Type: integer
+:Values: The number of packets below which the TRAFFIC policy applies the
+  minimum frequency, or medium frequency if between avg and max thresholds.
+:Required: only for TRAFFIC policy
+:Example:
+
+  .. code-block:: javascript
+
+    "avg_packet_thresh": 100000
+
+:Pair Name: "max_packet_thresh"
+:Description: Threshold above which the frequency will be set to max for
+  the TRAFFIC policy
+:Type: integer
+:Values: The number of packets per interval above which the TRAFFIC policy
+  applies the maximum frequency
+:Required: only for TRAFFIC policy
+:Example:
+
+  .. code-block:: javascript
+
+    "max_packet_thresh": 500000
+
+:Pair Name: "core_list"
+:Description: The cores to which to apply the policy.
+:Type: array of integers
+:Values: array with list of virtual CPUs.
+:Required: only policy CREATE/DESTROY
+:Example:
+
+  .. code-block:: javascript
+
+    "core_list":[ 10, 11 ]
+
+:Pair Name: "workload"
+:Description: When our policy is of type WORKLOAD, we need to specify how
+  heavy our workload is.
+:Type: string
+:Values:
+
+  :HIGH: For cores running workloads that require high frequencies
+  :MEDIUM: For cores running workloads that require medium frequencies
+  :LOW: For cores running workloads that require low frequencies
+:Required: only for WORKLOAD policy types
+:Example:
+
+  .. code-block:: javascript
+
+    "workload", "MEDIUM"
+
+:Pair Name: "mac_list"
+:Description: When our policy is of type TRAFFIC, we need to specify the
+  MAC addresses that the host needs to monitor
+:Type: string
+:Values: array with a list of mac address strings.
+:Required: only for TRAFFIC policy types
+:Example:
+
+  .. code-block:: javascript
+
+    "mac_list":[ "de:ad:be:ef:01:01", "de:ad:be:ef:01:02" ]
+
+:Pair Name: "unit"
+:Description: the type of power operation to apply in the command
+:Type: string
+:Values:
+
+  :SCALE_MAX: Scale frequency of this core to maximum
+  :SCALE_MIN: Scale frequency of this core to minimum
+  :SCALE_UP: Scale up frequency of this core
+  :SCALE_DOWN: Scale down frequency of this core
+  :ENABLE_TURBO: Enable Turbo Boost for this core
+  :DISABLE_TURBO: Disable Turbo Boost for this core
+:Required: only for POWER instruction
+:Example:
+
+  .. code-block:: javascript
+
+    "unit", "SCALE_MAX"
+
+:Pair Name: "resource_id"
+:Description: The core to which to apply the power command.
+:Type: integer
+:Values: valid core id for VM or host OS.
+:Required: only POWER instruction
+:Example:
+
+  .. code-block:: javascript
+
+    "resource_id": 10
+
+JSON API Examples
+~~~~~~~~~~~~~~~~~
+
+Profile create example:
+
+  .. code-block:: javascript
+
+    {"policy": {
+      "name": "ubuntu",
+      "command": "create",
+      "policy_type": "TIME",
+      "busy_hours":[ 17, 18, 19, 20, 21, 22, 23 ],
+      "quiet_hours":[ 2, 3, 4, 5, 6 ],
+      "core_list":[ 11 ]
+    }}
+
+Profile destroy example:
+
+  .. code-block:: javascript
+
+    {"profile": {
+      "name": "ubuntu",
+      "command": "destroy",
+    }}
+
+Power command example:
+
+  .. code-block:: javascript
+
+    {"command": {
+      "name": "ubuntu",
+      "unit": "SCALE_MAX",
+      "resource_id": 10
+    }}
+
+To send a JSON string to the Power Manager application, simply paste the
+example JSON string into a text file and cat it into the fifo:
+
+  .. code-block:: console
+
+    cat file.json >/tmp/powermonitor/fifo
+
+The console of the Power Manager application should indicate the command that
+was just received via the fifo.
+
 Compiling and Running the Guest Applications
 --------------------------------------------
 

@@ -31,6 +31,12 @@ CFLAGS += $(WERROR_FLAGS)
 
 LDLIBS += -lvirt
 
+JANSSON := $(shell pkg-config --exists jansson; echo $$?)
+ifeq ($(JANSSON), 0)
+LDLIBS += $(shell pkg-config --libs jansson)
+CFLAGS += -DUSE_JANSSON
+endif
+
 ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
 
 ifeq ($(CONFIG_RTE_LIBRTE_IXGBE_PMD),y)
