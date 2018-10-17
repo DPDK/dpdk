@@ -361,7 +361,7 @@ get_pcpu_to_control(struct policy *pol)
 
 	ci = get_core_info();
 
-	RTE_LOG(INFO, CHANNEL_MONITOR,
+	RTE_LOG(DEBUG, CHANNEL_MONITOR,
 			"Looking for pcpu for %s\n", pol->pkt.vm_name);
 
 	/*
@@ -528,8 +528,6 @@ apply_traffic_profile(struct policy *pol)
 
 	diff = get_pkt_diff(pol);
 
-	RTE_LOG(INFO, CHANNEL_MONITOR, "Applying traffic profile\n");
-
 	if (diff >= (pol->pkt.traffic_policy.max_max_packet_thresh)) {
 		for (count = 0; count < pol->pkt.num_vcpu; count++) {
 			if (pol->core_share[count].status != 1)
@@ -573,9 +571,6 @@ apply_time_profile(struct policy *pol)
 				if (pol->core_share[count].status != 1) {
 					power_manager_scale_core_max(
 						pol->core_share[count].pcpu);
-				RTE_LOG(INFO, CHANNEL_MONITOR,
-					"Scaling up core %d to max\n",
-					pol->core_share[count].pcpu);
 				}
 			}
 			break;
@@ -585,9 +580,6 @@ apply_time_profile(struct policy *pol)
 				if (pol->core_share[count].status != 1) {
 					power_manager_scale_core_min(
 						pol->core_share[count].pcpu);
-				RTE_LOG(INFO, CHANNEL_MONITOR,
-					"Scaling down core %d to min\n",
-					pol->core_share[count].pcpu);
 			}
 		}
 			break;
@@ -648,8 +640,6 @@ process_request(struct channel_packet *pkt, struct channel_info *chan_info)
 
 	if (chan_info == NULL)
 		return -1;
-
-	RTE_LOG(INFO, CHANNEL_MONITOR, "Processing Request %s\n", pkt->vm_name);
 
 	if (rte_atomic32_cmpset(&(chan_info->status), CHANNEL_MGR_CHANNEL_CONNECTED,
 			CHANNEL_MGR_CHANNEL_PROCESSING) == 0)
@@ -719,8 +709,8 @@ process_request(struct channel_packet *pkt, struct channel_info *chan_info)
 	}
 
 	if (pkt->command == PKT_POLICY) {
-		RTE_LOG(INFO, CHANNEL_MONITOR,
-				"\nProcessing Policy request\n");
+		RTE_LOG(INFO, CHANNEL_MONITOR, "Processing policy request %s\n",
+				pkt->vm_name);
 		update_policy(pkt);
 		policy_is_set = 1;
 	}
@@ -904,7 +894,8 @@ run_channel_monitor(void)
 					global_events_list[i].data.ptr;
 			if ((global_events_list[i].events & EPOLLERR) ||
 				(global_events_list[i].events & EPOLLHUP)) {
-				RTE_LOG(DEBUG, CHANNEL_MONITOR, "Remote closed connection for "
+				RTE_LOG(INFO, CHANNEL_MONITOR,
+						"Remote closed connection for "
 						"channel '%s'\n",
 						chan_info->channel_path);
 				remove_channel(&chan_info);
