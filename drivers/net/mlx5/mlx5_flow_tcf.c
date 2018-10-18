@@ -2116,8 +2116,8 @@ override_na_vlan_priority:
 /**
  * Send Netlink message with acknowledgment.
  *
- * @param nl
- *   Libmnl socket to use.
+ * @param ctx
+ *   Flow context to use.
  * @param nlh
  *   Message to send. This function always raises the NLM_F_ACK flag before
  *   sending.
@@ -2126,12 +2126,13 @@ override_na_vlan_priority:
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-flow_tcf_nl_ack(struct mnl_socket *nl, struct nlmsghdr *nlh)
+flow_tcf_nl_ack(struct mlx5_flow_tcf_context *ctx, struct nlmsghdr *nlh)
 {
 	alignas(struct nlmsghdr)
 	uint8_t ans[mnl_nlmsg_size(sizeof(struct nlmsgerr)) +
 		    nlh->nlmsg_len - sizeof(*nlh)];
-	uint32_t seq = random();
+	uint32_t seq = ctx->seq++;
+	struct mnl_socket *nl = ctx->nl;
 	int ret;
 
 	nlh->nlmsg_flags |= NLM_F_ACK;
@@ -2166,7 +2167,7 @@ flow_tcf_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 	       struct rte_flow_error *error)
 {
 	struct priv *priv = dev->data->dev_private;
-	struct mnl_socket *nl = priv->tcf_context->nl;
+	struct mlx5_flow_tcf_context *ctx = priv->tcf_context;
 	struct mlx5_flow *dev_flow;
 	struct nlmsghdr *nlh;
 
@@ -2176,7 +2177,7 @@ flow_tcf_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 	nlh = dev_flow->tcf.nlh;
 	nlh->nlmsg_type = RTM_NEWTFILTER;
 	nlh->nlmsg_flags = NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL;
-	if (!flow_tcf_nl_ack(nl, nlh))
+	if (!flow_tcf_nl_ack(ctx, nlh))
 		return 0;
 	return rte_flow_error_set(error, rte_errno,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -2195,7 +2196,7 @@ static void
 flow_tcf_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 {
 	struct priv *priv = dev->data->dev_private;
-	struct mnl_socket *nl = priv->tcf_context->nl;
+	struct mlx5_flow_tcf_context *ctx = priv->tcf_context;
 	struct mlx5_flow *dev_flow;
 	struct nlmsghdr *nlh;
 
@@ -2209,7 +2210,7 @@ flow_tcf_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 	nlh = dev_flow->tcf.nlh;
 	nlh->nlmsg_type = RTM_DELTFILTER;
 	nlh->nlmsg_flags = NLM_F_REQUEST;
-	flow_tcf_nl_ack(nl, nlh);
+	flow_tcf_nl_ack(ctx, nlh);
 }
 
 /**
@@ -2302,7 +2303,6 @@ mlx5_flow_tcf_init(struct mlx5_flow_tcf_context *ctx,
 {
 	struct nlmsghdr *nlh;
 	struct tcmsg *tcm;
-	struct mnl_socket *nl = ctx->nl;
 	alignas(struct nlmsghdr)
 	uint8_t buf[mnl_nlmsg_size(sizeof(*tcm) + 128)];
 
@@ -2316,7 +2316,7 @@ mlx5_flow_tcf_init(struct mlx5_flow_tcf_context *ctx,
 	tcm->tcm_handle = TC_H_MAKE(TC_H_INGRESS, 0);
 	tcm->tcm_parent = TC_H_INGRESS;
 	/* Ignore errors when qdisc is already absent. */
-	if (flow_tcf_nl_ack(nl, nlh) &&
+	if (flow_tcf_nl_ack(ctx, nlh) &&
 	    rte_errno != EINVAL && rte_errno != ENOENT)
 		return rte_flow_error_set(error, rte_errno,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -2332,7 +2332,7 @@ mlx5_flow_tcf_init(struct mlx5_flow_tcf_context *ctx,
 	tcm->tcm_handle = TC_H_MAKE(TC_H_INGRESS, 0);
 	tcm->tcm_parent = TC_H_INGRESS;
 	mnl_attr_put_strz_check(nlh, sizeof(buf), TCA_KIND, "ingress");
-	if (flow_tcf_nl_ack(nl, nlh))
+	if (flow_tcf_nl_ack(ctx, nlh))
 		return rte_flow_error_set(error, rte_errno,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "netlink: failed to create ingress"
@@ -2373,7 +2373,7 @@ error:
 /**
  * Destroy a libmnl context.
  *
- * @param nl
+ * @param ctx
  *   Libmnl socket of the @p NETLINK_ROUTE kind.
  */
 void
