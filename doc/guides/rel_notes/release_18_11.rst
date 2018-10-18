@@ -146,6 +146,11 @@ New Features
   A new devarg ``phy_mac`` was introduced to allow users to use physical
   MAC address of the selected PCAP interface.
 
+* **Added classification and metering support to SoftNIC PMD.**
+
+  Added support for flow classification (rte_flow API), and metering and
+  policing (rte_mtr API) to the SoftNIC PMD.
+
 * **Added support for GEN3 devices to Intel QAT driver .**
 
   Added support for the third generation of Intel QuickAssist devices.

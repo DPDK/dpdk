@@ -248,3 +248,123 @@ command description provided in `softnic/rte_eth_softnic_cli.c`.
 
         thread 1 pipeline RX enable        (Soft NIC rx pipeline enable on cpu thread id 1)
         thread 1 pipeline TX enable        (Soft NIC tx pipeline enable on cpu thread id 1)
+
+QoS API Support:
+----------------
+
+SoftNIC PMD implements ethdev traffic management APIs ``rte_tm.h`` that
+allow building and committing traffic manager hierarchy, configuring hierarchy
+nodes of the Quality of Service (QoS) scheduler supported by DPDK librte_sched
+library. Furthermore, APIs for run-time update to the traffic manager hierarchy
+are supported by PMD.
+
+SoftNIC PMD also implements ethdev traffic metering and policing APIs
+``rte_mtr.h`` that enables metering and marking of the packets with the
+appropriate color (green, yellow or red), according to the traffic metering
+algorithm. For the meter output color, policer actions like
+`keep the packet color same`, `change the packet color` or `drop the packet`
+can be configured.
+
+.. Note::
+
+    The SoftNIC does not support the meter object shared by several flows,
+    thus only supports creating meter object private to the flow. Once meter
+    object is successfully created, it can be linked to the specific flow by
+    specifying the ``meter`` flow action in the flow rule.
+
+Flow API support:
+-----------------
+
+The SoftNIC PMD implements ethdev flow APIs ``rte_flow.h`` that allow validating
+flow rules, adding flow rules to the SoftNIC pipeline as table rules, deleting
+and querying the flow rules. The PMD provides new cli command for creating the
+flow group and their mapping to the SoftNIC pipeline and table. This cli should
+be configured as part of firmware file.
+
+    .. code-block:: console
+
+        flowapi map group <group_id> ingress | egress pipeline <pipeline_name> \
+            table <table_id>
+
+From the flow attributes of the flow, PMD uses the group id to get the mapped
+pipeline and table. PMD supports number of flow actions such as
+``JMP, QUEUE, RSS, DROP, COUNT, METER, VXLAN`` etc.
+
+.. Note::
+
+    The flow must have one terminating actions i.e.
+    ``JMP or RSS or QUEUE or DROP``. For the count and drop actions the
+    underlying PMD doesn't support the functionality yet. So it is not
+    recommended for use.
+
+The flow API can be tested with the help of testpmd application. The SoftNIC
+firmware specifies CLI commands for port configuration, pipeline creation,
+action profile creation and table creation. Once application gets initialized,
+the flow rules can be added through the testpmd CLI.
+The PMD will translate the flow rules to the SoftNIC pipeline tables rules.
+
+Example:
+~~~~~~~~
+Example demonstrates the flow queue action using the SoftNIC firmware and testpmd
+commands.
+
+* Prepare SoftNIC firmware
+
+    .. code-block:: console
+
+        link LINK0 dev 0000:83:00.0
+        link LINK1 dev 0000:81:00.0
+        pipeline RX period 10 offset_port_id 0
+        pipeline RX port in bsz 32 link LINK0 rxq 0
+        pipeline RX port in bsz 32 link LINK1 rxq 0
+        pipeline RX port out bsz 32 swq RXQ0
+        pipeline RX port out bsz 32 swq RXQ1
+        table action profile AP0 ipv4 offset 278 fwd
+        pipeline RX table match hash ext key 16 mask
+            00FF0000FFFFFFFFFFFFFFFFFFFFFFFF \
+            offset 278 buckets 16K size 65K action AP0
+        pipeline RX port in 0 table 0
+        pipeline RX port in 1 table 0
+        flowapi map group 0 ingress pipeline RX table 0
+        pipeline TX period 10 offset_port_id 0
+        pipeline TX port in bsz 32 swq TXQ0
+        pipeline TX port in bsz 32 swq TXQ1
+        pipeline TX port out bsz 32 link LINK0 txq 0
+        pipeline TX port out bsz 32 link LINK1 txq 0
+        pipeline TX table match hash ext key 16 mask
+            00FF0000FFFFFFFFFFFFFFFFFFFFFFFF \
+            offset 278 buckets 16K size 65K action AP0
+        pipeline TX port in 0 table 0
+        pipeline TX port in 1 table 0
+        pipeline TX table 0 rule add match hash ipv4_5tuple
+            1.10.11.12 2.20.21.22 100 200 6 action fwd port 0
+        pipeline TX table 0 rule add match hash ipv4_5tuple
+            1.10.11.13 2.20.21.23 100 200 6 action fwd port 1
+        thread 25 pipeline RX enable
+        thread 25 pipeline TX enable
+
+* Run testpmd:
+
+    .. code-block:: console
+
+        ./x86_64-native-linuxapp-gcc/app/testpmd -l 23-25  -n 4 \
+                                    --vdev 'net_softnic0, \
+                                    firmware=./drivers/net/softnic/ \
+                                        firmware.cli, \
+                                    cpu_id=1,conn_port=8086' -- \
+                                    -i --forward-mode=softnic --rxq=2, \
+                                    --txq=2, --disable-rss --portmask=0x4
+
+* Configure flow rules on softnic:
+
+    .. code-block:: console
+
+        flow create 2 group 0 ingress pattern eth / ipv4 proto mask 255 src \
+            mask 255.255.255.255 dst mask  255.255.255.255 src spec
+            1.10.11.12 dst spec 2.20.21.22 proto spec 6 / tcp src mask 65535 \
+            dst mask 65535 src spec 100 dst spec 200 / end actions queue \
+            index 0 / end
+        flow create 2 group 0 ingress pattern eth / ipv4 proto mask 255 src \
+            mask 255.255.255.255 dst mask  255.255.255.255 src spec 1.10.11.13 \
+            dst spec 2.20.21.23 proto spec 6 / tcp src mask 65535 dst mask \
+            65535 src spec 100 dst spec 200 / end actions queue index 1 / end
