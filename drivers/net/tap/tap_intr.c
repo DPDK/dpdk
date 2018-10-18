@@ -51,6 +51,7 @@ static int
 tap_rx_intr_vec_install(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
+	struct pmd_process_private *process_private = dev->process_private;
 	unsigned int rxqs_n = pmd->dev->data->nb_rx_queues;
 	struct rte_intr_handle *intr_handle = &pmd->intr_handle;
 	unsigned int n = RTE_MIN(rxqs_n, (uint32_t)RTE_MAX_RXTX_INTR_VEC_ID);
@@ -71,7 +72,7 @@ tap_rx_intr_vec_install(struct rte_eth_dev *dev)
 		struct rx_queue *rxq = pmd->dev->data->rx_queues[i];
 
 		/* Skip queues that cannot request interrupts. */
-		if (!rxq || rxq->fd <= 0) {
+		if (!rxq || process_private->rxq_fds[i] <= 0) {
 			/* Use invalid intr_vec[] index to disable entry. */
 			intr_handle->intr_vec[i] =
 				RTE_INTR_VEC_RXTX_OFFSET +
@@ -79,7 +80,7 @@ tap_rx_intr_vec_install(struct rte_eth_dev *dev)
 			continue;
 		}
 		intr_handle->intr_vec[i] = RTE_INTR_VEC_RXTX_OFFSET + count;
-		intr_handle->efds[count] = rxq->fd;
+		intr_handle->efds[count] = process_private->rxq_fds[i];
 		count++;
 	}
 	if (!count)

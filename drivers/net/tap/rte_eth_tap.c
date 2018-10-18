@@ -315,6 +315,7 @@ static uint16_t
 pmd_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
 	struct rx_queue *rxq = queue;
+	struct pmd_process_private *process_private;
 	uint16_t num_rx;
 	unsigned long num_rx_bytes = 0;
 	uint32_t trigger = tap_trigger;
@@ -323,6 +324,7 @@ pmd_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		return 0;
 	if (trigger)
 		rxq->trigger_seen = trigger;
+	process_private = rte_eth_devices[rxq->in_port].process_private;
 	rte_compiler_barrier();
 	for (num_rx = 0; num_rx < nb_pkts; ) {
 		struct rte_mbuf *mbuf = rxq->pool;
@@ -331,9 +333,9 @@ pmd_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		uint16_t data_off = rte_pktmbuf_headroom(mbuf);
 		int len;
 
-		len = readv(rxq->fd, *rxq->iovecs,
-			    1 +
-			    (rxq->rxmode->offloads & DEV_RX_OFFLOAD_SCATTER ?
+		len = readv(process_private->rxq_fds[rxq->queue_id],
+			*rxq->iovecs,
+			1 + (rxq->rxmode->offloads & DEV_RX_OFFLOAD_SCATTER ?
 			     rxq->nb_rx_desc : 1));
 		if (len < (int)sizeof(struct tun_pi))
 			break;
@@ -494,6 +496,9 @@ tap_write_mbufs(struct tx_queue *txq, uint16_t num_mbufs,
 {
 	int i;
 	uint16_t l234_hlen;
+	struct pmd_process_private *process_private;
+
+	process_private = rte_eth_devices[txq->out_port].process_private;
 
 	for (i = 0; i < num_mbufs; i++) {
 		struct rte_mbuf *mbuf = pmbufs[i];
@@ -595,7 +600,7 @@ tap_write_mbufs(struct tx_queue *txq, uint16_t num_mbufs,
 			tap_tx_l4_cksum(l4_cksum, l4_phdr_cksum, l4_raw_cksum);
 
 		/* copy the tx frame data */
-		n = writev(txq->fd, iovecs, j);
+		n = writev(process_private->txq_fds[txq->queue_id], iovecs, j);
 		if (n <= 0)
 			break;
 		(*num_packets)++;
@@ -970,19 +975,20 @@ tap_dev_close(struct rte_eth_dev *dev)
 {
 	int i;
 	struct pmd_internals *internals = dev->data->dev_private;
+	struct pmd_process_private *process_private = dev->process_private;
 
 	tap_link_set_down(dev);
 	tap_flow_flush(dev, NULL);
 	tap_flow_implicit_flush(internals, NULL);
 
 	for (i = 0; i < RTE_PMD_TAP_MAX_QUEUES; i++) {
-		if (internals->rxq[i].fd != -1) {
-			close(internals->rxq[i].fd);
-			internals->rxq[i].fd = -1;
+		if (process_private->rxq_fds[i] != -1) {
+			close(process_private->rxq_fds[i]);
+			process_private->rxq_fds[i] = -1;
 		}
-		if (internals->txq[i].fd != -1) {
-			close(internals->txq[i].fd);
-			internals->txq[i].fd = -1;
+		if (process_private->txq_fds[i] != -1) {
+			close(process_private->txq_fds[i]);
+			process_private->txq_fds[i] = -1;
 		}
 	}
 
@@ -1006,10 +1012,14 @@ static void
 tap_rx_queue_release(void *queue)
 {
 	struct rx_queue *rxq = queue;
+	struct pmd_process_private *process_private;
 
-	if (rxq && (rxq->fd > 0)) {
-		close(rxq->fd);
-		rxq->fd = -1;
+	if (!rxq)
+		return;
+	process_private = rte_eth_devices[rxq->in_port].process_private;
+	if (process_private->rxq_fds[rxq->queue_id] > 0) {
+		close(process_private->rxq_fds[rxq->queue_id]);
+		process_private->rxq_fds[rxq->queue_id] = -1;
 		rte_pktmbuf_free(rxq->pool);
 		rte_free(rxq->iovecs);
 		rxq->pool = NULL;
@@ -1021,10 +1031,15 @@ static void
 tap_tx_queue_release(void *queue)
 {
 	struct tx_queue *txq = queue;
+	struct pmd_process_private *process_private;
 
-	if (txq && (txq->fd > 0)) {
-		close(txq->fd);
-		txq->fd = -1;
+	if (!txq)
+		return;
+	process_private = rte_eth_devices[txq->out_port].process_private;
+
+	if (process_private->txq_fds[txq->queue_id] > 0) {
+		close(process_private->txq_fds[txq->queue_id]);
+		process_private->txq_fds[txq->queue_id] = -1;
 	}
 }
 
@@ -1209,18 +1224,19 @@ tap_setup_queue(struct rte_eth_dev *dev,
 	int *other_fd;
 	const char *dir;
 	struct pmd_internals *pmd = dev->data->dev_private;
+	struct pmd_process_private *process_private = dev->process_private;
 	struct rx_queue *rx = &internals->rxq[qid];
 	struct tx_queue *tx = &internals->txq[qid];
 	struct rte_gso_ctx *gso_ctx;
 
 	if (is_rx) {
-		fd = &rx->fd;
-		other_fd = &tx->fd;
+		fd = &process_private->rxq_fds[qid];
+		other_fd = &process_private->txq_fds[qid];
 		dir = "rx";
 		gso_ctx = NULL;
 	} else {
-		fd = &tx->fd;
-		other_fd = &rx->fd;
+		fd = &process_private->txq_fds[qid];
+		other_fd = &process_private->rxq_fds[qid];
 		dir = "tx";
 		gso_ctx = &tx->gso_ctx;
 	}
@@ -1273,6 +1289,7 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 		   struct rte_mempool *mp)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
+	struct pmd_process_private *process_private = dev->process_private;
 	struct rx_queue *rxq = &internals->rxq[rx_queue_id];
 	struct rte_mbuf **tmp = &rxq->pool;
 	long iov_max = sysconf(_SC_IOV_MAX);
@@ -1332,7 +1349,8 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	TAP_LOG(DEBUG, "  RX TUNTAP device name %s, qid %d on fd %d",
-		internals->name, rx_queue_id, internals->rxq[rx_queue_id].fd);
+		internals->name, rx_queue_id,
+		process_private->rxq_fds[rx_queue_id]);
 
 	return 0;
 
@@ -1352,6 +1370,7 @@ tap_tx_queue_setup(struct rte_eth_dev *dev,
 		   const struct rte_eth_txconf *tx_conf)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
+	struct pmd_process_private *process_private = dev->process_private;
 	struct tx_queue *txq;
 	int ret;
 	uint64_t offloads;
@@ -1374,7 +1393,8 @@ tap_tx_queue_setup(struct rte_eth_dev *dev,
 		return -1;
 	TAP_LOG(DEBUG,
 		"  TX TUNTAP device name %s, qid %d on fd %d csum %s",
-		internals->name, tx_queue_id, internals->txq[tx_queue_id].fd,
+		internals->name, tx_queue_id,
+		process_private->txq_fds[tx_queue_id],
 		txq->csum ? "on" : "off");
 
 	return 0;
@@ -1622,6 +1642,7 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 	int numa_node = rte_socket_id();
 	struct rte_eth_dev *dev;
 	struct pmd_internals *pmd;
+	struct pmd_process_private *process_private;
 	struct rte_eth_dev_data *data;
 	struct ifreq ifr;
 	int i;
@@ -1636,7 +1657,16 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 		goto error_exit_nodev;
 	}
 
+	process_private = (struct pmd_process_private *)
+		rte_zmalloc_socket(tap_name, sizeof(struct pmd_process_private),
+			RTE_CACHE_LINE_SIZE, dev->device->numa_node);
+
+	if (process_private == NULL) {
+		TAP_LOG(ERR, "Failed to alloc memory for process private");
+		return -1;
+	}
 	pmd = dev->data->dev_private;
+	dev->process_private = process_private;
 	pmd->dev = dev;
 	snprintf(pmd->name, sizeof(pmd->name), "%s", tap_name);
 	pmd->type = type;
@@ -1672,8 +1702,8 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 	/* Presetup the fds to -1 as being not valid */
 	pmd->ka_fd = -1;
 	for (i = 0; i < RTE_PMD_TAP_MAX_QUEUES; i++) {
-		pmd->rxq[i].fd = -1;
-		pmd->txq[i].fd = -1;
+		process_private->rxq_fds[i] = -1;
+		process_private->txq_fds[i] = -1;
 	}
 
 	if (pmd->type == ETH_TUNTAP_TYPE_TAP) {
@@ -2072,6 +2102,7 @@ rte_pmd_tap_remove(struct rte_vdev_device *dev)
 {
 	struct rte_eth_dev *eth_dev = NULL;
 	struct pmd_internals *internals;
+	struct pmd_process_private *process_private;
 	int i;
 
 	/* find the ethdev entry */
@@ -2083,6 +2114,7 @@ rte_pmd_tap_remove(struct rte_vdev_device *dev)
 		return rte_eth_dev_release_port_secondary(eth_dev);
 
 	internals = eth_dev->data->dev_private;
+	process_private = eth_dev->process_private;
 
 	TAP_LOG(DEBUG, "Closing %s Ethernet device on numa %u",
 		(internals->type == ETH_TUNTAP_TYPE_TAP) ? "TAP" : "TUN",
@@ -2094,18 +2126,19 @@ rte_pmd_tap_remove(struct rte_vdev_device *dev)
 		tap_nl_final(internals->nlsk_fd);
 	}
 	for (i = 0; i < RTE_PMD_TAP_MAX_QUEUES; i++) {
-		if (internals->rxq[i].fd != -1) {
-			close(internals->rxq[i].fd);
-			internals->rxq[i].fd = -1;
+		if (process_private->rxq_fds[i] != -1) {
+			close(process_private->rxq_fds[i]);
+			process_private->rxq_fds[i] = -1;
 		}
-		if (internals->txq[i].fd != -1) {
-			close(internals->txq[i].fd);
-			internals->txq[i].fd = -1;
+		if (process_private->txq_fds[i] != -1) {
+			close(process_private->txq_fds[i]);
+			process_private->txq_fds[i] = -1;
 		}
 	}
 
 	close(internals->ioctl_sock);
 	rte_free(eth_dev->data->dev_private);
+	rte_free(eth_dev->process_private);
 	rte_eth_dev_release_port(eth_dev);
 
 	if (internals->ka_fd != -1) {
