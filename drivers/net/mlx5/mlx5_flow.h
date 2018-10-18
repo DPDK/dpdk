@@ -268,6 +268,11 @@ typedef void (*mlx5_flow_remove_t)(struct rte_eth_dev *dev,
 				   struct rte_flow *flow);
 typedef void (*mlx5_flow_destroy_t)(struct rte_eth_dev *dev,
 				    struct rte_flow *flow);
+typedef int (*mlx5_flow_query_t)(struct rte_eth_dev *dev,
+				 struct rte_flow *flow,
+				 const struct rte_flow_action *actions,
+				 void *data,
+				 struct rte_flow_error *error);
 struct mlx5_flow_driver_ops {
 	mlx5_flow_validate_t validate;
 	mlx5_flow_prepare_t prepare;
@@ -275,6 +280,7 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_apply_t apply;
 	mlx5_flow_remove_t remove;
 	mlx5_flow_destroy_t destroy;
+	mlx5_flow_query_t query;
 };
 
 /* mlx5_flow.c */

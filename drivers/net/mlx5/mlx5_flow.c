@@ -1653,6 +1653,17 @@ flow_null_destroy(struct rte_eth_dev *dev __rte_unused,
 {
 }
 
+static int
+flow_null_query(struct rte_eth_dev *dev __rte_unused,
+		struct rte_flow *flow __rte_unused,
+		const struct rte_flow_action *actions __rte_unused,
+		void *data __rte_unused,
+		struct rte_flow_error *error __rte_unused)
+{
+	rte_errno = ENOTSUP;
+	return -rte_errno;
+}
+
 /* Void driver to protect from null pointer reference. */
 const struct mlx5_flow_driver_ops mlx5_flow_null_drv_ops = {
 	.validate = flow_null_validate,
@@ -1661,6 +1672,7 @@ const struct mlx5_flow_driver_ops mlx5_flow_null_drv_ops = {
 	.apply = flow_null_apply,
 	.remove = flow_null_remove,
 	.destroy = flow_null_destroy,
+	.query = flow_null_query,
 };
 
 /**
@@ -2344,92 +2356,45 @@ mlx5_flow_isolate(struct rte_eth_dev *dev,
 }
 
 /**
- * Query flow counter.
+ * Query a flow.
  *
- * @param flow
- *   Pointer to the flow.
- *
- * @return
- *   0 on success, a negative errno value otherwise and rte_errno is set.
+ * @see rte_flow_query()
+ * @see rte_flow_ops
  */
 static int
-mlx5_flow_query_count(struct rte_flow *flow __rte_unused,
-		      void *data __rte_unused,
-		      struct rte_flow_error *error)
+flow_drv_query(struct rte_eth_dev *dev,
+	       struct rte_flow *flow,
+	       const struct rte_flow_action *actions,
+	       void *data,
+	       struct rte_flow_error *error)
 {
-#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
-	if (flow->actions & MLX5_FLOW_ACTION_COUNT) {
-		struct rte_flow_query_count *qc = data;
-		uint64_t counters[2] = {0, 0};
-		struct ibv_query_counter_set_attr query_cs_attr = {
-			.cs = flow->counter->cs,
-			.query_flags = IBV_COUNTER_SET_FORCE_UPDATE,
-		};
-		struct ibv_counter_set_data query_out = {
-			.out = counters,
-			.outlen = 2 * sizeof(uint64_t),
-		};
-		int err = mlx5_glue->query_counter_set(&query_cs_attr,
-						       &query_out);
+	const struct mlx5_flow_driver_ops *fops;
+	enum mlx5_flow_drv_type ftype = flow->drv_type;
 
-		if (err)
-			return rte_flow_error_set
-				(error, err,
-				 RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				 NULL,
-				 "cannot read counter");
-		qc->hits_set = 1;
-		qc->bytes_set = 1;
-		qc->hits = counters[0] - flow->counter->hits;
-		qc->bytes = counters[1] - flow->counter->bytes;
-		if (qc->reset) {
-			flow->counter->hits = counters[0];
-			flow->counter->bytes = counters[1];
-		}
-		return 0;
-	}
-	return rte_flow_error_set(error, EINVAL,
-				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				  NULL,
-				  "flow does not have counter");
-#endif
-	return rte_flow_error_set(error, ENOTSUP,
-				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				  NULL,
-				  "counters are not available");
+	assert(ftype > MLX5_FLOW_TYPE_MIN && ftype < MLX5_FLOW_TYPE_MAX);
+	fops = flow_get_drv_ops(ftype);
+
+	return fops->query(dev, flow, actions, data, error);
 }
 
 /**
- * Query a flows.
+ * Query a flow.
  *
  * @see rte_flow_query()
  * @see rte_flow_ops
  */
 int
-mlx5_flow_query(struct rte_eth_dev *dev __rte_unused,
+mlx5_flow_query(struct rte_eth_dev *dev,
 		struct rte_flow *flow,
 		const struct rte_flow_action *actions,
 		void *data,
 		struct rte_flow_error *error)
 {
-	int ret = 0;
+	int ret;
 
-	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
-		switch (actions->type) {
-		case RTE_FLOW_ACTION_TYPE_VOID:
-			break;
-		case RTE_FLOW_ACTION_TYPE_COUNT:
-			ret = mlx5_flow_query_count(flow, data, error);
-			break;
-		default:
-			return rte_flow_error_set(error, ENOTSUP,
-						  RTE_FLOW_ERROR_TYPE_ACTION,
-						  actions,
-						  "action not supported");
-		}
-		if (ret < 0)
-			return ret;
-	}
+	ret = flow_drv_query(dev, flow, actions, data, error);
+	if (ret < 0)
+		return ret;
 	return 0;
 }
 

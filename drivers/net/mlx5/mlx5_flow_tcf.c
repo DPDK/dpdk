@@ -2238,6 +2238,23 @@ flow_tcf_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 	rte_free(dev_flow);
 }
 
+/**
+ * Query a flow.
+ *
+ * @see rte_flow_query()
+ * @see rte_flow_ops
+ */
+static int
+flow_tcf_query(struct rte_eth_dev *dev __rte_unused,
+	       struct rte_flow *flow __rte_unused,
+	       const struct rte_flow_action *actions __rte_unused,
+	       void *data __rte_unused,
+	       struct rte_flow_error *error __rte_unused)
+{
+	rte_errno = ENOTSUP;
+	return -rte_errno;
+}
+
 const struct mlx5_flow_driver_ops mlx5_flow_tcf_drv_ops = {
 	.validate = flow_tcf_validate,
 	.prepare = flow_tcf_prepare,
@@ -2245,6 +2262,7 @@ const struct mlx5_flow_driver_ops mlx5_flow_tcf_drv_ops = {
 	.apply = flow_tcf_apply,
 	.remove = flow_tcf_remove,
 	.destroy = flow_tcf_destroy,
+	.query = flow_tcf_query,
 };
 
 /**

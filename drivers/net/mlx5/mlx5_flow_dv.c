@@ -1363,6 +1363,24 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 	}
 }
 
+/**
+ * Query a flow.
+ *
+ * @see rte_flow_query()
+ * @see rte_flow_ops
+ */
+static int
+flow_dv_query(struct rte_eth_dev *dev __rte_unused,
+	      struct rte_flow *flow __rte_unused,
+	      const struct rte_flow_action *actions __rte_unused,
+	      void *data __rte_unused,
+	      struct rte_flow_error *error __rte_unused)
+{
+	rte_errno = ENOTSUP;
+	return -rte_errno;
+}
+
+
 const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
 	.validate = flow_dv_validate,
 	.prepare = flow_dv_prepare,
@@ -1370,6 +1388,7 @@ const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
 	.apply = flow_dv_apply,
 	.remove = flow_dv_remove,
 	.destroy = flow_dv_destroy,
+	.query = flow_dv_query,
 };
 
 #endif /* HAVE_IBV_FLOW_DV_SUPPORT */
