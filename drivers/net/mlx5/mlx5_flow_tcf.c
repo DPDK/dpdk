@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <libmnl/libmnl.h>
+#include <linux/gen_stats.h>
 #include <linux/if_ether.h>
 #include <linux/netlink.h>
 #include <linux/pkt_cls.h>
@@ -26,6 +27,7 @@
 #include <rte_ether.h>
 #include <rte_flow.h>
 #include <rte_malloc.h>
+#include <rte_common.h>
 
 #include "mlx5.h"
 #include "mlx5_flow.h"
@@ -235,6 +237,10 @@ struct tc_pedit_sel {
 #define TTL_LEN 1
 #endif
 
+#ifndef TCA_ACT_MAX_PRIO
+#define TCA_ACT_MAX_PRIO 32
+#endif
+
 /**
  * Structure for holding netlink context.
  * Note the size of the message buffer which is MNL_SOCKET_BUFFER_SIZE.
@@ -246,6 +252,14 @@ struct mlx5_flow_tcf_context {
 	uint32_t seq; /* Message sequence number. */
 	uint32_t buf_size; /* Message buffer size. */
 	uint8_t *buf; /* Message buffer. */
+};
+
+/** Structure used when extracting the values of a flow counters
+ * from a netlink message.
+ */
+struct flow_tcf_stats_basic {
+	bool valid;
+	struct gnet_stats_basic counters;
 };
 
 /** Empty masks for known item types. */
@@ -363,6 +377,43 @@ struct pedit_parser {
 	struct pedit_key_ex keys_ex[MAX_PEDIT_KEYS];
 };
 
+/**
+ * Create space for using the implicitly created TC flow counter.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ *
+ * @return
+ *   A pointer to the counter data structure, NULL otherwise and
+ *   rte_errno is set.
+ */
+static struct mlx5_flow_counter *
+flow_tcf_counter_new(void)
+{
+	struct mlx5_flow_counter *cnt;
+
+	/*
+	 * eswitch counter cannot be shared and its id is unknown.
+	 * currently returning all with id 0.
+	 * in the future maybe better to switch to unique numbers.
+	 */
+	struct mlx5_flow_counter tmpl = {
+		.ref_cnt = 1,
+		.shared = 0,
+		.id = 0,
+		.cs = NULL,
+		.hits = 0,
+		.bytes = 0,
+	};
+	cnt = rte_calloc(__func__, 1, sizeof(*cnt), 0);
+	if (!cnt) {
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	*cnt = tmpl;
+	/* Implicit counter, do not add to list. */
+	return cnt;
+}
 
 /**
  * Set pedit key of MAC address
@@ -1175,6 +1226,8 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_DROP:
 			current_action_flag = MLX5_FLOW_ACTION_DROP;
 			break;
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+			break;
 		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
 			current_action_flag = MLX5_FLOW_ACTION_OF_POP_VLAN;
 			break;
@@ -1481,6 +1534,8 @@ flow_tcf_get_actions_and_size(const struct rte_flow_action actions[],
 				SZ_NLATTR_TYPE_OF(struct tc_gact);
 			flags |= MLX5_FLOW_ACTION_DROP;
 			break;
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+			break;
 		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
 			flags |= MLX5_FLOW_ACTION_OF_POP_VLAN;
 			goto action_of_vlan;
@@ -1620,6 +1675,38 @@ flow_tcf_prepare(const struct rte_flow_attr *attr,
 }
 
 /**
+ * Make adjustments for supporting count actions.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] dev_flow
+ *   Pointer to mlx5_flow.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 On success else a negative errno value is returned and rte_errno is set.
+ */
+static int
+flow_tcf_translate_action_count(struct rte_eth_dev *dev __rte_unused,
+				  struct mlx5_flow *dev_flow,
+				  struct rte_flow_error *error)
+{
+	struct rte_flow *flow = dev_flow->flow;
+
+	if (!flow->counter) {
+		flow->counter = flow_tcf_counter_new();
+		if (!flow->counter)
+			return rte_flow_error_set(error, rte_errno,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL,
+						  "cannot get counter"
+						  " context.");
+	}
+	return 0;
+}
+
+/**
  * Translate flow for Linux TC flower and construct Netlink message.
  *
  * @param[in] priv
@@ -1676,6 +1763,7 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 	struct nlattr *na_vlan_id = NULL;
 	struct nlattr *na_vlan_priority = NULL;
 	uint64_t item_flags = 0;
+	int ret;
 
 	claim_nonzero(flow_tcf_build_ptoi_table(dev, ptoi,
 						PTOI_TABLE_SZ_MAX(dev)));
@@ -2018,6 +2106,16 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 			mnl_attr_nest_end(nlh, na_act);
 			mnl_attr_nest_end(nlh, na_act_index);
 			break;
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+			/*
+			 * Driver adds the count action implicitly for
+			 * each rule it creates.
+			 */
+			ret = flow_tcf_translate_action_count(dev,
+							      dev_flow, error);
+			if (ret < 0)
+				return ret;
+			break;
 		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
 			conf.of_push_vlan = NULL;
 			vlan_act = TCA_VLAN_ACT_POP;
@@ -2202,6 +2300,12 @@ flow_tcf_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 
 	if (!flow)
 		return;
+	if (flow->counter) {
+		if (--flow->counter->ref_cnt == 0) {
+			rte_free(flow->counter);
+			flow->counter = NULL;
+		}
+	}
 	dev_flow = LIST_FIRST(&flow->dev_flows);
 	if (!dev_flow)
 		return;
@@ -2239,20 +2343,429 @@ flow_tcf_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 }
 
 /**
+ * Helper routine for figuring the space size required for a parse buffer.
+ *
+ * @param array
+ *   array of values to use.
+ * @param idx
+ *   Current location in array.
+ * @param value
+ *   Value to compare with.
+ *
+ * @return
+ *   The maximum between the given value and the array value on index.
+ */
+static uint16_t
+flow_tcf_arr_val_max(uint16_t array[], int idx, uint16_t value)
+{
+	return idx < 0 ? (value) : RTE_MAX((array)[idx], value);
+}
+
+/**
+ * Parse rtnetlink message attributes filling the attribute table with the info
+ * retrieved.
+ *
+ * @param tb
+ *   Attribute table to be filled.
+ * @param[out] max
+ *   Maxinum entry in the attribute table.
+ * @param rte
+ *   The attributes section in the message to be parsed.
+ * @param len
+ *   The length of the attributes section in the message.
+ */
+static void
+flow_tcf_nl_parse_rtattr(struct rtattr *tb[], int max,
+			 struct rtattr *rta, int len)
+{
+	unsigned short type;
+	memset(tb, 0, sizeof(struct rtattr *) * (max + 1));
+	while (RTA_OK(rta, len)) {
+		type = rta->rta_type;
+		if (type <= max && !tb[type])
+			tb[type] = rta;
+		rta = RTA_NEXT(rta, len);
+	}
+}
+
+/**
+ * Extract flow counters from flower action.
+ *
+ * @param rta
+ *   flower action stats properties in the Netlink message received.
+ * @param rta_type
+ *   The backward sequence of rta_types, as written in the attribute table,
+ *   we need to traverse in order to get to the requested object.
+ * @param idx
+ *   Current location in rta_type table.
+ * @param[out] data
+ *   data holding the count statistics of the rte_flow retrieved from
+ *   the message.
+ *
+ * @return
+ *   0 if data was found and retrieved, -1 otherwise.
+ */
+static int
+flow_tcf_nl_action_stats_parse_and_get(struct rtattr *rta,
+				       uint16_t rta_type[], int idx,
+				       struct gnet_stats_basic *data)
+{
+	int tca_stats_max = flow_tcf_arr_val_max(rta_type, idx,
+						 TCA_STATS_BASIC);
+	struct rtattr *tbs[tca_stats_max + 1];
+
+	if (rta == NULL || idx < 0)
+		return -1;
+	flow_tcf_nl_parse_rtattr(tbs, tca_stats_max,
+				 RTA_DATA(rta), RTA_PAYLOAD(rta));
+	switch (rta_type[idx]) {
+	case TCA_STATS_BASIC:
+		if (tbs[TCA_STATS_BASIC]) {
+			memcpy(data, RTA_DATA(tbs[TCA_STATS_BASIC]),
+			       RTE_MIN(RTA_PAYLOAD(tbs[TCA_STATS_BASIC]),
+			       sizeof(*data)));
+			return 0;
+		}
+		break;
+	default:
+		break;
+	}
+	return -1;
+}
+
+/**
+ * Parse flower single action retrieving the requested action attribute,
+ * if found.
+ *
+ * @param arg
+ *   flower action properties in the Netlink message received.
+ * @param rta_type
+ *   The backward sequence of rta_types, as written in the attribute table,
+ *   we need to traverse in order to get to the requested object.
+ * @param idx
+ *   Current location in rta_type table.
+ * @param[out] data
+ *   Count statistics retrieved from the message query.
+ *
+ * @return
+ *   0 if data was found and retrieved, -1 otherwise.
+ */
+static int
+flow_tcf_nl_parse_one_action_and_get(struct rtattr *arg,
+				     uint16_t rta_type[], int idx, void *data)
+{
+	int tca_act_max = flow_tcf_arr_val_max(rta_type, idx, TCA_ACT_STATS);
+	struct rtattr *tb[tca_act_max + 1];
+
+	if (arg == NULL || idx < 0)
+		return -1;
+	flow_tcf_nl_parse_rtattr(tb, tca_act_max,
+				 RTA_DATA(arg), RTA_PAYLOAD(arg));
+	if (tb[TCA_ACT_KIND] == NULL)
+		return -1;
+	switch (rta_type[idx]) {
+	case TCA_ACT_STATS:
+		if (tb[TCA_ACT_STATS])
+			return flow_tcf_nl_action_stats_parse_and_get
+					(tb[TCA_ACT_STATS],
+					 rta_type, --idx,
+					 (struct gnet_stats_basic *)data);
+		break;
+	default:
+		break;
+	}
+	return -1;
+}
+
+/**
+ * Parse flower action section in the message retrieving the requested
+ * attribute from the first action that provides it.
+ *
+ * @param opt
+ *   flower section in the Netlink message received.
+ * @param rta_type
+ *   The backward sequence of rta_types, as written in the attribute table,
+ *   we need to traverse in order to get to the requested object.
+ * @param idx
+ *   Current location in rta_type table.
+ * @param[out] data
+ *   data retrieved from the message query.
+ *
+ * @return
+ *   0 if data was found and retrieved, -1 otherwise.
+ */
+static int
+flow_tcf_nl_action_parse_and_get(struct rtattr *arg,
+				 uint16_t rta_type[], int idx, void *data)
+{
+	struct rtattr *tb[TCA_ACT_MAX_PRIO + 1];
+	int i;
+
+	if (arg == NULL || idx < 0)
+		return -1;
+	flow_tcf_nl_parse_rtattr(tb, TCA_ACT_MAX_PRIO,
+				 RTA_DATA(arg), RTA_PAYLOAD(arg));
+	switch (rta_type[idx]) {
+	/*
+	 * flow counters are stored in the actions defined by the flow
+	 * and not in the flow itself, therefore we need to traverse the
+	 * flower chain of actions in search for them.
+	 *
+	 * Note that the index is not decremented here.
+	 */
+	case TCA_ACT_STATS:
+		for (i = 0; i <= TCA_ACT_MAX_PRIO; i++) {
+			if (tb[i] &&
+			!flow_tcf_nl_parse_one_action_and_get(tb[i],
+							      rta_type,
+							      idx, data))
+				return 0;
+		}
+		break;
+	default:
+		break;
+	}
+	return -1;
+}
+
+/**
+ * Parse flower classifier options in the message, retrieving the requested
+ * attribute if found.
+ *
+ * @param opt
+ *   flower section in the Netlink message received.
+ * @param rta_type
+ *   The backward sequence of rta_types, as written in the attribute table,
+ *   we need to traverse in order to get to the requested object.
+ * @param idx
+ *   Current location in rta_type table.
+ * @param[out] data
+ *   data retrieved from the message query.
+ *
+ * @return
+ *   0 if data was found and retrieved, -1 otherwise.
+ */
+static int
+flow_tcf_nl_opts_parse_and_get(struct rtattr *opt,
+			       uint16_t rta_type[], int idx, void *data)
+{
+	int tca_flower_max = flow_tcf_arr_val_max(rta_type, idx,
+						  TCA_FLOWER_ACT);
+	struct rtattr *tb[tca_flower_max + 1];
+
+	if (!opt || idx < 0)
+		return -1;
+	flow_tcf_nl_parse_rtattr(tb, tca_flower_max,
+				 RTA_DATA(opt), RTA_PAYLOAD(opt));
+	switch (rta_type[idx]) {
+	case TCA_FLOWER_ACT:
+		if (tb[TCA_FLOWER_ACT])
+			return flow_tcf_nl_action_parse_and_get
+							(tb[TCA_FLOWER_ACT],
+							 rta_type, --idx, data);
+		break;
+	default:
+		break;
+	}
+	return -1;
+}
+
+/**
+ * Parse Netlink reply on filter query, retrieving the flow counters.
+ *
+ * @param nlh
+ *   Message received from Netlink.
+ * @param rta_type
+ *   The backward sequence of rta_types, as written in the attribute table,
+ *   we need to traverse in order to get to the requested object.
+ * @param idx
+ *   Current location in rta_type table.
+ * @param[out] data
+ *   data retrieved from the message query.
+ *
+ * @return
+ *   0 if data was found and retrieved, -1 otherwise.
+ */
+static int
+flow_tcf_nl_filter_parse_and_get(struct nlmsghdr *cnlh,
+				 uint16_t rta_type[], int idx, void *data)
+{
+	struct nlmsghdr *nlh = cnlh;
+	struct tcmsg *t = NLMSG_DATA(nlh);
+	int len = nlh->nlmsg_len;
+	int tca_max = flow_tcf_arr_val_max(rta_type, idx, TCA_OPTIONS);
+	struct rtattr *tb[tca_max + 1];
+
+	if (idx < 0)
+		return -1;
+	if (nlh->nlmsg_type != RTM_NEWTFILTER &&
+	    nlh->nlmsg_type != RTM_GETTFILTER &&
+	    nlh->nlmsg_type != RTM_DELTFILTER)
+		return -1;
+	len -= NLMSG_LENGTH(sizeof(*t));
+	if (len < 0)
+		return -1;
+	flow_tcf_nl_parse_rtattr(tb, tca_max, TCA_RTA(t), len);
+	/* Not a TC flower flow - bail out */
+	if (!tb[TCA_KIND] ||
+	    strcmp(RTA_DATA(tb[TCA_KIND]), "flower"))
+		return -1;
+	switch (rta_type[idx]) {
+	case TCA_OPTIONS:
+		if (tb[TCA_OPTIONS])
+			return flow_tcf_nl_opts_parse_and_get(tb[TCA_OPTIONS],
+							      rta_type,
+							      --idx, data);
+		break;
+	default:
+		break;
+	}
+	return -1;
+}
+
+/**
+ * A callback to parse Netlink reply on TC flower query.
+ *
+ * @param nlh
+ *   Message received from Netlink.
+ * @param[out] data
+ *   Pointer to data area to be filled by the parsing routine.
+ *   assumed to be a pinter to struct flow_tcf_stats_basic.
+ *
+ * @return
+ *   MNL_CB_OK value.
+ */
+static int
+flow_tcf_nl_message_get_stats_basic(const struct nlmsghdr *nlh, void *data)
+{
+	/*
+	 * The backward sequence of rta_types to pass in order to get
+	 *  to the counters.
+	 */
+	uint16_t rta_type[] = { TCA_STATS_BASIC, TCA_ACT_STATS,
+				TCA_FLOWER_ACT, TCA_OPTIONS };
+	struct flow_tcf_stats_basic *sb_data = data;
+	union {
+		const struct nlmsghdr *c;
+		struct nlmsghdr *nc;
+	} tnlh = { .c = nlh };
+
+	if (!flow_tcf_nl_filter_parse_and_get(tnlh.nc, rta_type,
+					      RTE_DIM(rta_type) - 1,
+					      (void *)&sb_data->counters))
+		sb_data->valid = true;
+	return MNL_CB_OK;
+}
+
+/**
+ * Query a TC flower rule for its statistics via netlink.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] flow
+ *   Pointer to the sub flow.
+ * @param[out] data
+ *   data retrieved by the query.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_tcf_query_count(struct rte_eth_dev *dev,
+			  struct rte_flow *flow,
+			  void *data,
+			  struct rte_flow_error *error)
+{
+	struct flow_tcf_stats_basic sb_data = { 0 };
+	struct rte_flow_query_count *qc = data;
+	struct priv *priv = dev->data->dev_private;
+	struct mlx5_flow_tcf_context *ctx = priv->tcf_context;
+	struct mnl_socket *nl = ctx->nl;
+	struct mlx5_flow *dev_flow;
+	struct nlmsghdr *nlh;
+	uint32_t seq = priv->tcf_context->seq++;
+	ssize_t ret;
+	assert(qc);
+
+	dev_flow = LIST_FIRST(&flow->dev_flows);
+	/* E-Switch flow can't be expanded. */
+	assert(!LIST_NEXT(dev_flow, next));
+	if (!dev_flow->flow->counter)
+		goto notsup_exit;
+	nlh = dev_flow->tcf.nlh;
+	nlh->nlmsg_type = RTM_GETTFILTER;
+	nlh->nlmsg_flags = NLM_F_REQUEST | NLM_F_ECHO;
+	nlh->nlmsg_seq = seq;
+	if (mnl_socket_sendto(nl, nlh, nlh->nlmsg_len) == -1)
+		goto error_exit;
+	do {
+		ret = mnl_socket_recvfrom(nl, ctx->buf, ctx->buf_size);
+		if (ret <= 0)
+			break;
+		ret = mnl_cb_run(ctx->buf, ret, seq,
+				 mnl_socket_get_portid(nl),
+				 flow_tcf_nl_message_get_stats_basic,
+				 (void *)&sb_data);
+	} while (ret > 0);
+	/* Return the delta from last reset. */
+	if (sb_data.valid) {
+		/* Return the delta from last reset. */
+		qc->hits_set = 1;
+		qc->bytes_set = 1;
+		qc->hits = sb_data.counters.packets - flow->counter->hits;
+		qc->bytes = sb_data.counters.bytes - flow->counter->bytes;
+		if (qc->reset) {
+			flow->counter->hits = sb_data.counters.packets;
+			flow->counter->bytes = sb_data.counters.bytes;
+		}
+		return 0;
+	}
+	return rte_flow_error_set(error, EINVAL,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL,
+				  "flow does not have counter");
+error_exit:
+	return rte_flow_error_set
+			(error, errno, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			 NULL, "netlink: failed to read flow rule counters");
+notsup_exit:
+	return rte_flow_error_set
+			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			 NULL, "counters are not available.");
+}
+
+/**
  * Query a flow.
  *
  * @see rte_flow_query()
  * @see rte_flow_ops
  */
 static int
-flow_tcf_query(struct rte_eth_dev *dev __rte_unused,
-	       struct rte_flow *flow __rte_unused,
-	       const struct rte_flow_action *actions __rte_unused,
-	       void *data __rte_unused,
-	       struct rte_flow_error *error __rte_unused)
+flow_tcf_query(struct rte_eth_dev *dev,
+	       struct rte_flow *flow,
+	       const struct rte_flow_action *actions,
+	       void *data,
+	       struct rte_flow_error *error)
 {
-	rte_errno = ENOTSUP;
-	return -rte_errno;
+	int ret = -EINVAL;
+
+	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		switch (actions->type) {
+		case RTE_FLOW_ACTION_TYPE_VOID:
+			break;
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+			ret = flow_tcf_query_count(dev, flow, data, error);
+			break;
+		default:
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  actions,
+						  "action not supported");
+		}
+	}
+	return ret;
 }
 
 const struct mlx5_flow_driver_ops mlx5_flow_tcf_drv_ops = {
