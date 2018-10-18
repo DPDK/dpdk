@@ -146,6 +146,11 @@ New Features
   A new devarg ``phy_mac`` was introduced to allow users to use physical
   MAC address of the selected PCAP interface.
 
+* **Added TAP Rx/Tx queues sharing with a secondary process.**
+
+  A secondary process can attach a TAP device created in the primary process,
+  probe the queues, and process Rx/Tx in a secondary process.
+
 * **Added classification and metering support to SoftNIC PMD.**
 
   Added support for flow classification (rte_flow API), and metering and

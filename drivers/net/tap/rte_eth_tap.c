@@ -16,6 +16,8 @@
 #include <rte_debug.h>
 #include <rte_ip.h>
 #include <rte_string_fns.h>
+#include <rte_ethdev.h>
+#include <rte_errno.h>
 
 #include <assert.h>
 #include <sys/types.h>
@@ -62,6 +64,10 @@
 #define TAP_GSO_MBUFS_NUM \
 	(TAP_GSO_MBUFS_PER_CORE * TAP_GSO_MBUF_CACHE_SIZE)
 
+/* IPC key for queue fds sync */
+#define TAP_MP_KEY "tap_mp_sync_queues"
+
+static int tap_devices_count;
 static struct rte_vdev_driver pmd_tap_drv;
 static struct rte_vdev_driver pmd_tun_drv;
 
@@ -98,6 +104,17 @@ enum ioctl_mode {
 	LOCAL_AND_REMOTE,
 	LOCAL_ONLY,
 	REMOTE_ONLY,
+};
+
+/* Message header to synchronize queues via IPC */
+struct ipc_queues {
+	char port_name[RTE_DEV_NAME_MAX_LEN];
+	int rxq_count;
+	int txq_count;
+	/*
+	 * The file descriptors are in the dedicated part
+	 * of the Unix message to be translated by the kernel.
+	 */
 };
 
 static int tap_intr_handle_set(struct rte_eth_dev *dev, int set);
@@ -2006,6 +2023,102 @@ leave:
 	return ret;
 }
 
+/* Request queue file descriptors from secondary to primary. */
+static int
+tap_mp_attach_queues(const char *port_name, struct rte_eth_dev *dev)
+{
+	int ret;
+	struct timespec timeout = {.tv_sec = 1, .tv_nsec = 0};
+	struct rte_mp_msg request, *reply;
+	struct rte_mp_reply replies;
+	struct ipc_queues *request_param = (struct ipc_queues *)request.param;
+	struct ipc_queues *reply_param;
+	struct pmd_process_private *process_private = dev->process_private;
+	int queue, fd_iterator;
+
+	/* Prepare the request */
+	strlcpy(request.name, TAP_MP_KEY, sizeof(request.name));
+	strlcpy(request_param->port_name, port_name,
+		sizeof(request_param->port_name));
+	request.len_param = sizeof(*request_param);
+	/* Send request and receive reply */
+	ret = rte_mp_request_sync(&request, &replies, &timeout);
+	if (ret < 0) {
+		TAP_LOG(ERR, "Failed to request queues from primary: %d",
+			rte_errno);
+		return -1;
+	}
+	reply = &replies.msgs[0];
+	reply_param = (struct ipc_queues *)reply->param;
+	TAP_LOG(DEBUG, "Received IPC reply for %s", reply_param->port_name);
+
+	/* Attach the queues from received file descriptors */
+	dev->data->nb_rx_queues = reply_param->rxq_count;
+	dev->data->nb_tx_queues = reply_param->txq_count;
+	fd_iterator = 0;
+	for (queue = 0; queue < reply_param->rxq_count; queue++)
+		process_private->rxq_fds[queue] = reply->fds[fd_iterator++];
+	for (queue = 0; queue < reply_param->txq_count; queue++)
+		process_private->txq_fds[queue] = reply->fds[fd_iterator++];
+
+	return 0;
+}
+
+/* Send the queue file descriptors from the primary process to secondary. */
+static int
+tap_mp_sync_queues(const struct rte_mp_msg *request, const void *peer)
+{
+	struct rte_eth_dev *dev;
+	struct pmd_process_private *process_private;
+	struct rte_mp_msg reply;
+	const struct ipc_queues *request_param =
+		(const struct ipc_queues *)request->param;
+	struct ipc_queues *reply_param =
+		(struct ipc_queues *)reply.param;
+	uint16_t port_id;
+	int queue;
+	int ret;
+
+	/* Get requested port */
+	TAP_LOG(DEBUG, "Received IPC request for %s", request_param->port_name);
+	ret = rte_eth_dev_get_port_by_name(request_param->port_name, &port_id);
+	if (ret) {
+		TAP_LOG(ERR, "Failed to get port id for %s",
+			request_param->port_name);
+		return -1;
+	}
+	dev = &rte_eth_devices[port_id];
+	process_private = dev->process_private;
+
+	/* Fill file descriptors for all queues */
+	reply.num_fds = 0;
+	reply_param->rxq_count = 0;
+	for (queue = 0; queue < dev->data->nb_rx_queues; queue++) {
+		reply.fds[reply.num_fds++] = process_private->rxq_fds[queue];
+		reply_param->rxq_count++;
+	}
+	RTE_ASSERT(reply_param->rxq_count == dev->data->nb_rx_queues);
+	RTE_ASSERT(reply_param->txq_count == dev->data->nb_tx_queues);
+	RTE_ASSERT(reply.num_fds <= RTE_MP_MAX_FD_NUM);
+
+	reply_param->txq_count = 0;
+	for (queue = 0; queue < dev->data->nb_tx_queues; queue++) {
+		reply.fds[reply.num_fds++] = process_private->txq_fds[queue];
+		reply_param->txq_count++;
+	}
+
+	/* Send reply */
+	strlcpy(reply.name, request->name, sizeof(reply.name));
+	strlcpy(reply_param->port_name, request_param->port_name,
+		sizeof(reply_param->port_name));
+	reply.len_param = sizeof(*reply_param);
+	if (rte_mp_reply(&reply, peer) < 0) {
+		TAP_LOG(ERR, "Failed to reply an IPC request to sync queues");
+		return -1;
+	}
+	return 0;
+}
+
 /* Open a TAP interface device.
  */
 static int
@@ -2019,6 +2132,7 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 	char remote_iface[RTE_ETH_NAME_MAX_LEN];
 	struct ether_addr user_mac = { .addr_bytes = {0} };
 	struct rte_eth_dev *eth_dev;
+	int tap_devices_count_increased = 0;
 
 	strcpy(tuntap_name, "TAP");
 
@@ -2031,9 +2145,28 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 			TAP_LOG(ERR, "Failed to probe %s", name);
 			return -1;
 		}
-		/* TODO: request info from primary to set up Rx and Tx */
 		eth_dev->dev_ops = &ops;
 		eth_dev->device = &dev->device;
+		eth_dev->rx_pkt_burst = pmd_rx_burst;
+		eth_dev->tx_pkt_burst = pmd_tx_burst;
+		if (!rte_eal_primary_proc_alive(NULL)) {
+			TAP_LOG(ERR, "Primary process is missing");
+			return -1;
+		}
+		eth_dev->process_private = (struct pmd_process_private *)
+			rte_zmalloc_socket(name,
+				sizeof(struct pmd_process_private),
+				RTE_CACHE_LINE_SIZE,
+				eth_dev->device->numa_node);
+		if (eth_dev->process_private == NULL) {
+			TAP_LOG(ERR,
+				"Failed to alloc memory for process private");
+			return -1;
+		}
+
+		ret = tap_mp_attach_queues(name, eth_dev);
+		if (ret != 0)
+			return -1;
 		rte_eth_dev_probing_finish(eth_dev);
 		return 0;
 	}
@@ -2081,6 +2214,17 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 	TAP_LOG(NOTICE, "Initializing pmd_tap for %s as %s",
 		name, tap_name);
 
+	/* Register IPC feed callback */
+	if (!tap_devices_count) {
+		ret = rte_mp_action_register(TAP_MP_KEY, tap_mp_sync_queues);
+		if (ret < 0) {
+			TAP_LOG(ERR, "%s: Failed to register IPC callback: %s",
+				tuntap_name, strerror(rte_errno));
+			goto leave;
+		}
+	}
+	tap_devices_count++;
+	tap_devices_count_increased = 1;
 	ret = eth_dev_tap_create(dev, tap_name, remote_iface, &user_mac,
 		ETH_TUNTAP_TYPE_TAP);
 
@@ -2088,6 +2232,11 @@ leave:
 	if (ret == -1) {
 		TAP_LOG(ERR, "Failed to create pmd for %s as %s",
 			name, tap_name);
+		if (tap_devices_count_increased == 1) {
+			if (tap_devices_count == 1)
+				rte_mp_action_unregister(TAP_MP_KEY);
+			tap_devices_count--;
+		}
 		tap_unit--;		/* Restore the unit number */
 	}
 	rte_kvargs_free(kvlist);
@@ -2139,6 +2288,9 @@ rte_pmd_tap_remove(struct rte_vdev_device *dev)
 	close(internals->ioctl_sock);
 	rte_free(eth_dev->data->dev_private);
 	rte_free(eth_dev->process_private);
+	if (tap_devices_count == 1)
+		rte_mp_action_unregister(TAP_MP_KEY);
+	tap_devices_count--;
 	rte_eth_dev_release_port(eth_dev);
 
 	if (internals->ka_fd != -1) {

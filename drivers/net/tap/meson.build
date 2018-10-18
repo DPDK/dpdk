@@ -35,6 +35,7 @@ args = [
 	  'TCA_ACT_BPF_FD' ],
 ]
 config = configuration_data()
+allow_experimental_apis = true
 foreach arg:args
 	config.set(arg[0], cc.has_header_symbol(arg[1], arg[2]))
 endforeach

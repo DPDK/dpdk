@@ -152,6 +152,22 @@ Distribute IPv4 TCP packets using RSS to a given MAC address over queues 0-3::
    testpmd> flow create 0 priority 4 ingress pattern eth dst is 0a:0b:0c:0d:0e:0f \
             / ipv4 / tcp / end actions rss queues 0 1 2 3 end / end
 
+Multi-process sharing
+---------------------
+
+It is possible to attach an existing TAP device in a secondary process,
+by declaring it as a vdev with the same name as in the primary process,
+and without any parameter.
+
+The port attached in a secondary process will give access to the
+statistics and the queues.
+Therefore it can be used for monitoring or Rx/Tx processing.
+
+The IPC synchronization of Rx/Tx queues is currently limited:
+
+  - Maximum 8 queues shared
+  - Synchronized on probing, but not on later port update
+
 Example
 -------
 
