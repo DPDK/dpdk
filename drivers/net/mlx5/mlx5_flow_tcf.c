@@ -235,6 +235,19 @@ struct tc_pedit_sel {
 #define TTL_LEN 1
 #endif
 
+/**
+ * Structure for holding netlink context.
+ * Note the size of the message buffer which is MNL_SOCKET_BUFFER_SIZE.
+ * Using this (8KB) buffer size ensures that netlink messages will never be
+ * truncated.
+ */
+struct mlx5_flow_tcf_context {
+	struct mnl_socket *nl; /* NETLINK_ROUTE libmnl socket. */
+	uint32_t seq; /* Message sequence number. */
+	uint32_t buf_size; /* Message buffer size. */
+	uint8_t *buf; /* Message buffer. */
+};
+
 /** Empty masks for known item types. */
 static const union {
 	struct rte_flow_item_port_id port_id;
@@ -2153,7 +2166,7 @@ flow_tcf_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 	       struct rte_flow_error *error)
 {
 	struct priv *priv = dev->data->dev_private;
-	struct mnl_socket *nl = priv->mnl_socket;
+	struct mnl_socket *nl = priv->tcf_context->nl;
 	struct mlx5_flow *dev_flow;
 	struct nlmsghdr *nlh;
 
@@ -2182,7 +2195,7 @@ static void
 flow_tcf_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 {
 	struct priv *priv = dev->data->dev_private;
-	struct mnl_socket *nl = priv->mnl_socket;
+	struct mnl_socket *nl = priv->tcf_context->nl;
 	struct mlx5_flow *dev_flow;
 	struct nlmsghdr *nlh;
 
@@ -2234,10 +2247,47 @@ const struct mlx5_flow_driver_ops mlx5_flow_tcf_drv_ops = {
 };
 
 /**
- * Initialize ingress qdisc of a given network interface.
+ * Create and configure a libmnl socket for Netlink flow rules.
+ *
+ * @return
+ *   A valid libmnl socket object pointer on success, NULL otherwise and
+ *   rte_errno is set.
+ */
+static struct mnl_socket *
+flow_tcf_mnl_socket_create(void)
+{
+	struct mnl_socket *nl = mnl_socket_open(NETLINK_ROUTE);
+
+	if (nl) {
+		mnl_socket_setsockopt(nl, NETLINK_CAP_ACK, &(int){ 1 },
+				      sizeof(int));
+		if (!mnl_socket_bind(nl, 0, MNL_SOCKET_AUTOPID))
+			return nl;
+	}
+	rte_errno = errno;
+	if (nl)
+		mnl_socket_close(nl);
+	return NULL;
+}
+
+/**
+ * Destroy a libmnl socket.
  *
  * @param nl
  *   Libmnl socket of the @p NETLINK_ROUTE kind.
+ */
+static void
+flow_tcf_mnl_socket_destroy(struct mnl_socket *nl)
+{
+	if (nl)
+		mnl_socket_close(nl);
+}
+
+/**
+ * Initialize ingress qdisc of a given network interface.
+ *
+ * @param ctx
+ *   Pointer to tc-flower context to use.
  * @param ifindex
  *   Index of network interface to initialize.
  * @param[out] error
@@ -2247,11 +2297,12 @@ const struct mlx5_flow_driver_ops mlx5_flow_tcf_drv_ops = {
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_flow_tcf_init(struct mnl_socket *nl, unsigned int ifindex,
-		   struct rte_flow_error *error)
+mlx5_flow_tcf_init(struct mlx5_flow_tcf_context *ctx,
+		   unsigned int ifindex, struct rte_flow_error *error)
 {
 	struct nlmsghdr *nlh;
 	struct tcmsg *tcm;
+	struct mnl_socket *nl = ctx->nl;
 	alignas(struct nlmsghdr)
 	uint8_t buf[mnl_nlmsg_size(sizeof(*tcm) + 128)];
 
@@ -2290,37 +2341,47 @@ mlx5_flow_tcf_init(struct mnl_socket *nl, unsigned int ifindex,
 }
 
 /**
- * Create and configure a libmnl socket for Netlink flow rules.
+ * Create libmnl context for Netlink flow rules.
  *
  * @return
  *   A valid libmnl socket object pointer on success, NULL otherwise and
  *   rte_errno is set.
  */
-struct mnl_socket *
-mlx5_flow_tcf_socket_create(void)
+struct mlx5_flow_tcf_context *
+mlx5_flow_tcf_context_create(void)
 {
-	struct mnl_socket *nl = mnl_socket_open(NETLINK_ROUTE);
-
-	if (nl) {
-		mnl_socket_setsockopt(nl, NETLINK_CAP_ACK, &(int){ 1 },
-				      sizeof(int));
-		if (!mnl_socket_bind(nl, 0, MNL_SOCKET_AUTOPID))
-			return nl;
-	}
-	rte_errno = errno;
-	if (nl)
-		mnl_socket_close(nl);
+	struct mlx5_flow_tcf_context *ctx = rte_zmalloc(__func__,
+							sizeof(*ctx),
+							sizeof(uint32_t));
+	if (!ctx)
+		goto error;
+	ctx->nl = flow_tcf_mnl_socket_create();
+	if (!ctx->nl)
+		goto error;
+	ctx->buf_size = MNL_SOCKET_BUFFER_SIZE;
+	ctx->buf = rte_zmalloc(__func__,
+			       ctx->buf_size, sizeof(uint32_t));
+	if (!ctx->buf)
+		goto error;
+	ctx->seq = random();
+	return ctx;
+error:
+	mlx5_flow_tcf_context_destroy(ctx);
 	return NULL;
 }
 
 /**
- * Destroy a libmnl socket.
+ * Destroy a libmnl context.
  *
  * @param nl
  *   Libmnl socket of the @p NETLINK_ROUTE kind.
  */
 void
-mlx5_flow_tcf_socket_destroy(struct mnl_socket *nl)
+mlx5_flow_tcf_context_destroy(struct mlx5_flow_tcf_context *ctx)
 {
-	mnl_socket_close(nl);
+	if (!ctx)
+		return;
+	flow_tcf_mnl_socket_destroy(ctx->nl);
+	rte_free(ctx->buf);
+	rte_free(ctx);
 }

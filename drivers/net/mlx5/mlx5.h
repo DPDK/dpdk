@@ -169,7 +169,7 @@ struct mlx5_drop {
 	struct mlx5_rxq_ibv *rxq; /* Verbs Rx queue. */
 };
 
-struct mnl_socket;
+struct mlx5_flow_tcf_context;
 
 struct priv {
 	LIST_ENTRY(priv) mem_event_cb; /* Called by memory event callback. */
@@ -236,7 +236,7 @@ struct priv {
 	rte_spinlock_t uar_lock[MLX5_UAR_PAGE_NUM_MAX];
 	/* UAR same-page access control required in 32bit implementations. */
 #endif
-	struct mnl_socket *mnl_socket; /* Libmnl socket. */
+	struct mlx5_flow_tcf_context *tcf_context; /* TC flower context. */
 };
 
 #define PORT_ID(priv) ((priv)->dev_data->port_id)

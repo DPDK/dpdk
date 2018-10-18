@@ -286,8 +286,8 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		close(priv->nl_socket_route);
 	if (priv->nl_socket_rdma >= 0)
 		close(priv->nl_socket_rdma);
-	if (priv->mnl_socket)
-		mlx5_flow_tcf_socket_destroy(priv->mnl_socket);
+	if (priv->tcf_context)
+		mlx5_flow_tcf_context_destroy(priv->tcf_context);
 	ret = mlx5_hrxq_ibv_verify(dev);
 	if (ret)
 		DRV_LOG(WARNING, "port %u some hash Rx queue still remain",
@@ -1138,8 +1138,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	claim_zero(mlx5_mac_addr_add(eth_dev, &mac, 0, 0));
 	if (vf && config.vf_nl_en)
 		mlx5_nl_mac_addr_sync(eth_dev);
-	priv->mnl_socket = mlx5_flow_tcf_socket_create();
-	if (!priv->mnl_socket) {
+	priv->tcf_context = mlx5_flow_tcf_context_create();
+	if (!priv->tcf_context) {
 		err = -rte_errno;
 		DRV_LOG(WARNING,
 			"flow rules relying on switch offloads will not be"
@@ -1154,16 +1154,16 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 			error.message =
 				"cannot retrieve network interface index";
 		} else {
-			err = mlx5_flow_tcf_init(priv->mnl_socket, ifindex,
-						&error);
+			err = mlx5_flow_tcf_init(priv->tcf_context,
+						 ifindex, &error);
 		}
 		if (err) {
 			DRV_LOG(WARNING,
 				"flow rules relying on switch offloads will"
 				" not be supported: %s: %s",
 				error.message, strerror(rte_errno));
-			mlx5_flow_tcf_socket_destroy(priv->mnl_socket);
-			priv->mnl_socket = NULL;
+			mlx5_flow_tcf_context_destroy(priv->tcf_context);
+			priv->tcf_context = NULL;
 		}
 	}
 	TAILQ_INIT(&priv->flows);
@@ -1218,8 +1218,8 @@ error:
 			close(priv->nl_socket_route);
 		if (priv->nl_socket_rdma >= 0)
 			close(priv->nl_socket_rdma);
-		if (priv->mnl_socket)
-			mlx5_flow_tcf_socket_destroy(priv->mnl_socket);
+		if (priv->tcf_context)
+			mlx5_flow_tcf_context_destroy(priv->tcf_context);
 		if (own_domain_id)
 			claim_zero(rte_eth_switch_domain_free(priv->domain_id));
 		rte_free(priv);

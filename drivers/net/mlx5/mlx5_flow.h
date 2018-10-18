@@ -243,7 +243,6 @@ struct rte_flow {
 	struct rte_flow_action_rss rss;/**< RSS context. */
 	uint8_t key[MLX5_RSS_HASH_KEY_LEN]; /**< RSS hash key. */
 	uint16_t (*queue)[]; /**< Destination queues to redirect traffic to. */
-	void *nl_flow; /**< Netlink flow buffer if relevant. */
 	LIST_HEAD(dev_flows, mlx5_flow) dev_flows;
 	/**< Device flows that are part of the flow. */
 	uint32_t actions; /**< Bit-fields which mark all detected actions. */
@@ -350,9 +349,9 @@ int mlx5_flow_validate_item_vxlan_gpe(const struct rte_flow_item *item,
 
 /* mlx5_flow_tcf.c */
 
-int mlx5_flow_tcf_init(struct mnl_socket *nl, unsigned int ifindex,
-		       struct rte_flow_error *error);
-struct mnl_socket *mlx5_flow_tcf_socket_create(void);
-void mlx5_flow_tcf_socket_destroy(struct mnl_socket *nl);
+int mlx5_flow_tcf_init(struct mlx5_flow_tcf_context *ctx,
+		       unsigned int ifindex, struct rte_flow_error *error);
+struct mlx5_flow_tcf_context *mlx5_flow_tcf_context_create(void);
+void mlx5_flow_tcf_context_destroy(struct mlx5_flow_tcf_context *ctx);
 
 #endif /* RTE_PMD_MLX5_FLOW_H_ */
