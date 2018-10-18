@@ -416,8 +416,11 @@ parse_portnuma_config(const char *q_arg)
 		}
 		socket_id = (uint8_t)int_fld[FLD_SOCKET];
 		if (new_socket_id(socket_id)) {
-			print_invalid_socket_id_error();
-			return -1;
+			if (num_sockets >= RTE_MAX_NUMA_NODES) {
+				print_invalid_socket_id_error();
+				return -1;
+			}
+			socket_ids[num_sockets++] = socket_id;
 		}
 		port_numa[port_id] = socket_id;
 	}
@@ -473,8 +476,11 @@ parse_ringnuma_config(const char *q_arg)
 		}
 		socket_id = (uint8_t)int_fld[FLD_SOCKET];
 		if (new_socket_id(socket_id)) {
-			print_invalid_socket_id_error();
-			return -1;
+			if (num_sockets >= RTE_MAX_NUMA_NODES) {
+				print_invalid_socket_id_error();
+				return -1;
+			}
+			socket_ids[num_sockets++] = socket_id;
 		}
 		ring_flag = (uint8_t)int_fld[FLD_FLAG];
 		if ((ring_flag < RX_RING_ONLY) || (ring_flag > RXTX_RING)) {
