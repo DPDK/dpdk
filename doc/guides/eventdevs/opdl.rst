@@ -62,7 +62,7 @@ Queue Dependencies
 As stated the order in which packets travel through queues is static in
 nature. They go through the queues in the order the queues are setup at
 initialisation ``rte_event_queue_setup()``. For example if an application
-sets up 3 queues, Q0, Q1, Q2 and has 3 assoicated ports P0, P1, P2 and
+sets up 3 queues, Q0, Q1, Q2 and has 3 associated ports P0, P1, P2 and
 P3 then packets must be
 
  * Enqueued onto Q0 (typically through P0), then

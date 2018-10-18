@@ -24,7 +24,7 @@ AXGBE PMD has support for:
 - Multicast mode
 - RSS (Receive Side Scaling)
 - Checksum offload
-- Jumbo Frame upto 9K
+- Jumbo Frame up to 9K
 
 
 Configuration Information

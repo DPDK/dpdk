@@ -47,7 +47,7 @@ In this release, the virtio PMD driver provides the basic functionality of packe
 *   The descriptor number for the Rx/Tx queue is hard-coded to be 256 by qemu 2.7 and below.
     If given a different descriptor number by the upper application,
     the virtio PMD generates a warning and fall back to the hard-coded value.
-    Rx queue size can be configureable and up to 1024 since qemu 2.8 and above. Rx queue size is 256
+    Rx queue size can be configurable and up to 1024 since qemu 2.8 and above. Rx queue size is 256
     by default. Tx queue size is still hard-coded to be 256.
 
 *   Features of mac/vlan filter are supported, negotiation with vhost/backend are needed to support them.

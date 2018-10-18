@@ -372,7 +372,7 @@ vectorized handler, take the following steps.
     -w 12:00.0,enable-avx2-rx=1
 
   As the current implementation is intended for field trials, by default, the
-  vectorized handler is not considerd (``enable-avx2-rx=0``).
+  vectorized handler is not considered (``enable-avx2-rx=0``).
 
 - Run on a UCS M4 or later server with CPUs that support AVX2.
 

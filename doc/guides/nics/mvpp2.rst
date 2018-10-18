@@ -584,7 +584,7 @@ MVPP2 PMD supports DPDK traffic metering and policing that allows the following:
 
 For an additional description please refer to DPDK :doc:`Traffic Metering and Policing API <../prog_guide/traffic_metering_and_policing>`.
 
-The policer objects defined by this feature can work with the default policer defined via config file as discribed in :ref:`QoS Support <qossupport>`.
+The policer objects defined by this feature can work with the default policer defined via config file as described in :ref:`QoS Support <qossupport>`.
 
 Limitations
 ~~~~~~~~~~~
