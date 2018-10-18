@@ -1293,6 +1293,7 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->mp = mp;
 	rxq->trigger_seen = 1; /* force initial burst */
 	rxq->in_port = dev->data->port_id;
+	rxq->queue_id = rx_queue_id;
 	rxq->nb_rx_desc = nb_desc;
 	iovecs = rte_zmalloc_socket(dev->device->name, sizeof(*iovecs), 0,
 				    socket_id);
@@ -1359,6 +1360,8 @@ tap_tx_queue_setup(struct rte_eth_dev *dev,
 		return -1;
 	dev->data->tx_queues[tx_queue_id] = &internals->txq[tx_queue_id];
 	txq = dev->data->tx_queues[tx_queue_id];
+	txq->out_port = dev->data->port_id;
+	txq->queue_id = tx_queue_id;
 
 	offloads = tx_conf->offloads | dev->data->dev_conf.txmode.offloads;
 	txq->csum = !!(offloads &
