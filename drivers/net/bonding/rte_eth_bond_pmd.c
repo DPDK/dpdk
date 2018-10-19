@@ -3267,7 +3267,7 @@ bond_remove(struct rte_vdev_device *dev)
 		return -ENODEV;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return rte_eth_dev_release_port_secondary(eth_dev);
+		return rte_eth_dev_release_port(eth_dev);
 
 	RTE_ASSERT(eth_dev->device == &dev->device);
 

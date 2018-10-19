@@ -2265,7 +2265,7 @@ rte_pmd_tap_remove(struct rte_vdev_device *dev)
 	eth_dev->data->mac_addrs = NULL;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return rte_eth_dev_release_port_secondary(eth_dev);
+		return rte_eth_dev_release_port(eth_dev);
 
 	internals = eth_dev->data->dev_private;
 	process_private = eth_dev->process_private;

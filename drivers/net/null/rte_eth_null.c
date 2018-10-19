@@ -679,11 +679,10 @@ rte_pmd_null_remove(struct rte_vdev_device *dev)
 	if (eth_dev == NULL)
 		return -1;
 
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return rte_eth_dev_release_port_secondary(eth_dev);
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		/* mac_addrs must not be freed alone because part of dev_private */
+		eth_dev->data->mac_addrs = NULL;
 
-	/* mac_addrs must not be freed alone because part of dev_private */
-	eth_dev->data->mac_addrs = NULL;
 	rte_eth_dev_release_port(eth_dev);
 
 	return 0;

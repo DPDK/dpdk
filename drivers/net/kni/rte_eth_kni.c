@@ -467,7 +467,7 @@ eth_kni_remove(struct rte_vdev_device *vdev)
 	eth_dev->data->mac_addrs = NULL;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return rte_eth_dev_release_port_secondary(eth_dev);
+		return rte_eth_dev_release_port(eth_dev);
 
 	eth_kni_dev_stop(eth_dev);
 
