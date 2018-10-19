@@ -587,22 +587,20 @@ struct rte_eth_dev_data {
 
 	void *dev_private;              /**< PMD-specific private data */
 
-	struct rte_eth_link dev_link;
-	/**< Link-level information & status */
-
+	struct rte_eth_link dev_link;   /**< Link-level information & status. */
 	struct rte_eth_conf dev_conf;   /**< Configuration applied to device. */
 	uint16_t mtu;                   /**< Maximum Transmission Unit. */
-
 	uint32_t min_rx_buf_size;
-	/**< Common rx buffer size handled by all queues */
+			/**< Common RX buffer size handled by all queues. */
 
 	uint64_t rx_mbuf_alloc_failed; /**< RX ring mbuf allocation failures. */
-	struct ether_addr* mac_addrs;/**< Device Ethernet Link address. */
+	struct ether_addr *mac_addrs;  /**< Device Ethernet link address. */
 	uint64_t mac_pool_sel[ETH_NUM_RECEIVE_MAC_ADDR];
-	/** bitmap array of associating Ethernet MAC addresses to pools */
-	struct ether_addr* hash_mac_addrs;
-	/** Device Ethernet MAC addresses of hash filtering. */
+			/**< Bitmap associating MAC addresses to pools. */
+	struct ether_addr *hash_mac_addrs;
+			/**< Device Ethernet MAC addresses of hash filtering. */
 	uint16_t port_id;           /**< Device [external] port identifier. */
+
 	__extension__
 	uint8_t promiscuous   : 1, /**< RX promiscuous mode ON(1) / OFF(0). */
 		scattered_rx : 1,  /**< RX of scattered packets is ON(1) / OFF(0) */
@@ -610,14 +608,14 @@ struct rte_eth_dev_data {
 		dev_started : 1,   /**< Device state: STARTED(1) / STOPPED(0). */
 		lro         : 1;   /**< RX LRO is ON(1) / OFF(0) */
 	uint8_t rx_queue_state[RTE_MAX_QUEUES_PER_PORT];
-	/** Queues state: STARTED(1) / STOPPED(0) */
+			/**< Queues state: STARTED(1) / STOPPED(0). */
 	uint8_t tx_queue_state[RTE_MAX_QUEUES_PER_PORT];
-	/** Queues state: STARTED(1) / STOPPED(0) */
-	uint32_t dev_flags; /**< Capabilities */
-	enum rte_kernel_driver kdrv;    /**< Kernel driver passthrough */
-	int numa_node;  /**< NUMA node connection */
+			/**< Queues state: STARTED(1) / STOPPED(0). */
+	uint32_t dev_flags;             /**< Capabilities. */
+	enum rte_kernel_driver kdrv;    /**< Kernel driver passthrough. */
+	int numa_node;                  /**< NUMA node connection. */
 	struct rte_vlan_filter_conf vlan_filter_conf;
-	/**< VLAN filter configuration. */
+			/**< VLAN filter configuration. */
 	struct rte_eth_dev_owner owner; /**< The port owner. */
 } __rte_cache_aligned;
 
