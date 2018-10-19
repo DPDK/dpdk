@@ -225,7 +225,10 @@ ixgbe_vf_representor_init(struct rte_eth_dev *ethdev, void *init_params)
 }
 
 int
-ixgbe_vf_representor_uninit(struct rte_eth_dev *ethdev __rte_unused)
+ixgbe_vf_representor_uninit(struct rte_eth_dev *ethdev)
 {
+	/* mac_addrs must not be freed because part of ixgbe_vf_info */
+	ethdev->data->mac_addrs = NULL;
+
 	return 0;
 }

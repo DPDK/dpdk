@@ -2035,9 +2035,6 @@ sfc_eth_dev_uninit(struct rte_eth_dev *dev)
 	sfc_detach(sa);
 	sfc_unprobe(sa);
 
-	rte_free(dev->data->mac_addrs);
-	dev->data->mac_addrs = NULL;
-
 	sfc_kvargs_cleanup(sa);
 
 	sfc_adapter_unlock(sa);

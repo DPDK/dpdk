@@ -1015,12 +1015,22 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 		return 0;
 	}
 
+	/* Reserve an ethdev entry */
+	eth_dev = rte_eth_dev_allocate(octtx_name);
+	if (eth_dev == NULL) {
+		octeontx_log_err("failed to allocate rte_eth_dev");
+		res = -ENOMEM;
+		goto err;
+	}
+	data = eth_dev->data;
+
 	nic = rte_zmalloc_socket(octtx_name, sizeof(*nic), 0, socket_id);
 	if (nic == NULL) {
 		octeontx_log_err("failed to allocate nic structure");
 		res = -ENOMEM;
 		goto err;
 	}
+	data->dev_private = nic;
 
 	nic->port_id = port;
 	nic->evdev = evdev;
@@ -1037,21 +1047,11 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 		goto err;
 	}
 
-	/* Reserve an ethdev entry */
-	eth_dev = rte_eth_dev_allocate(octtx_name);
-	if (eth_dev == NULL) {
-		octeontx_log_err("failed to allocate rte_eth_dev");
-		res = -ENOMEM;
-		goto err;
-	}
-
 	eth_dev->device = &dev->device;
 	eth_dev->intr_handle = NULL;
 	eth_dev->data->kdrv = RTE_KDRV_NONE;
 	eth_dev->data->numa_node = dev->device.numa_node;
 
-	data = eth_dev->data;
-	data->dev_private = nic;
 	data->port_id = eth_dev->data->port_id;
 
 	nic->ev_queues = 1;
@@ -1103,12 +1103,7 @@ err:
 	if (nic)
 		octeontx_port_close(nic);
 
-	if (eth_dev != NULL) {
-		rte_free(eth_dev->data->mac_addrs);
-		rte_free(data);
-		rte_free(nic);
-		rte_eth_dev_release_port(eth_dev);
-	}
+	rte_eth_dev_release_port(eth_dev);
 
 	return res;
 }
@@ -1142,8 +1137,6 @@ octeontx_remove(struct rte_vdev_device *dev)
 		rte_event_dev_stop(nic->evdev);
 		PMD_INIT_LOG(INFO, "Closing octeontx device %s", octtx_name);
 
-		rte_free(eth_dev->data->mac_addrs);
-		rte_free(eth_dev->data->dev_private);
 		rte_eth_dev_release_port(eth_dev);
 		rte_event_dev_close(nic->evdev);
 	}

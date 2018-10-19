@@ -718,9 +718,6 @@ eth_axgbe_dev_uninit(struct rte_eth_dev *eth_dev)
 		return 0;
 
 	pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
-	/*Free macaddres*/
-	rte_free(eth_dev->data->mac_addrs);
-	eth_dev->data->mac_addrs = NULL;
 	eth_dev->dev_ops = NULL;
 	eth_dev->rx_pkt_burst = NULL;
 	eth_dev->tx_pkt_burst = NULL;

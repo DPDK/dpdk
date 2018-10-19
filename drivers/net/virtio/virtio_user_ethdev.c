@@ -422,7 +422,6 @@ virtio_user_eth_dev_alloc(struct rte_vdev_device *vdev)
 	if (!dev) {
 		PMD_INIT_LOG(ERR, "malloc virtio_user_dev failed");
 		rte_eth_dev_release_port(eth_dev);
-		rte_free(hw);
 		return NULL;
 	}
 
@@ -449,7 +448,6 @@ virtio_user_eth_dev_free(struct rte_eth_dev *eth_dev)
 	struct virtio_hw *hw = data->dev_private;
 
 	rte_free(hw->virtio_user_dev);
-	rte_free(hw);
 	rte_eth_dev_release_port(eth_dev);
 }
 
@@ -662,7 +660,6 @@ virtio_user_pmd_remove(struct rte_vdev_device *vdev)
 	dev = hw->virtio_user_dev;
 	virtio_user_dev_uninit(dev);
 
-	rte_free(eth_dev->data->dev_private);
 	rte_eth_dev_release_port(eth_dev);
 
 	return 0;

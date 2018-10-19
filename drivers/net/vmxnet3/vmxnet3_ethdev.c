@@ -368,9 +368,6 @@ eth_vmxnet3_dev_uninit(struct rte_eth_dev *eth_dev)
 	eth_dev->tx_pkt_burst = NULL;
 	eth_dev->tx_pkt_prepare = NULL;
 
-	rte_free(eth_dev->data->mac_addrs);
-	eth_dev->data->mac_addrs = NULL;
-
 	return 0;
 }
 

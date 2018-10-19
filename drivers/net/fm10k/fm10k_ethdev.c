@@ -3234,14 +3234,6 @@ eth_fm10k_dev_uninit(struct rte_eth_dev *dev)
 			fm10k_dev_interrupt_handler_vf, (void *)dev);
 	}
 
-	/* free mac memory */
-	if (dev->data->mac_addrs) {
-		rte_free(dev->data->mac_addrs);
-		dev->data->mac_addrs = NULL;
-	}
-
-	memset(hw, 0, sizeof(*hw));
-
 	return 0;
 }
 

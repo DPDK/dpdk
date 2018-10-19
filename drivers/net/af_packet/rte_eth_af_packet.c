@@ -986,6 +986,9 @@ rte_pmd_af_packet_remove(struct rte_vdev_device *dev)
 	if (eth_dev == NULL)
 		return -1;
 
+	/* mac_addrs must not be freed alone because part of dev_private */
+	eth_dev->data->mac_addrs = NULL;
+
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return rte_eth_dev_release_port_secondary(eth_dev);
 
@@ -995,8 +998,6 @@ rte_pmd_af_packet_remove(struct rte_vdev_device *dev)
 		rte_free(internals->tx_queue[q].rd);
 	}
 	free(internals->if_name);
-
-	rte_free(eth_dev->data->dev_private);
 
 	rte_eth_dev_release_port(eth_dev);
 

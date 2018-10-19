@@ -2780,8 +2780,9 @@ mrvl_eth_dev_create(struct rte_vdev_device *vdev, const char *name)
 	priv = mrvl_priv_create(name);
 	if (!priv) {
 		ret = -ENOMEM;
-		goto out_free_dev;
+		goto out_free;
 	}
+	eth_dev->data->dev_private = priv;
 
 	eth_dev->data->mac_addrs =
 		rte_zmalloc("mac_addrs",
@@ -2789,20 +2790,19 @@ mrvl_eth_dev_create(struct rte_vdev_device *vdev, const char *name)
 	if (!eth_dev->data->mac_addrs) {
 		MRVL_LOG(ERR, "Failed to allocate space for eth addrs");
 		ret = -ENOMEM;
-		goto out_free_priv;
+		goto out_free;
 	}
 
 	memset(&req, 0, sizeof(req));
 	strcpy(req.ifr_name, name);
 	ret = ioctl(fd, SIOCGIFHWADDR, &req);
 	if (ret)
-		goto out_free_mac;
+		goto out_free;
 
 	memcpy(eth_dev->data->mac_addrs[0].addr_bytes,
 	       req.ifr_addr.sa_data, ETHER_ADDR_LEN);
 
 	eth_dev->data->kdrv = RTE_KDRV_NONE;
-	eth_dev->data->dev_private = priv;
 	eth_dev->device = &vdev->device;
 	eth_dev->rx_pkt_burst = mrvl_rx_pkt_burst;
 	mrvl_set_tx_function(eth_dev);
@@ -2810,12 +2810,8 @@ mrvl_eth_dev_create(struct rte_vdev_device *vdev, const char *name)
 
 	rte_eth_dev_probing_finish(eth_dev);
 	return 0;
-out_free_mac:
-	rte_free(eth_dev->data->mac_addrs);
-out_free_dev:
+out_free:
 	rte_eth_dev_release_port(eth_dev);
-out_free_priv:
-	rte_free(priv);
 
 	return ret;
 }
@@ -2839,8 +2835,6 @@ mrvl_eth_dev_destroy(const char *name)
 	priv = eth_dev->data->dev_private;
 	pp2_bpool_deinit(priv->bpool);
 	used_bpools[priv->pp_id] &= ~(1 << priv->bpool_bit);
-	rte_free(priv);
-	rte_free(eth_dev->data->mac_addrs);
 	rte_eth_dev_release_port(eth_dev);
 }
 

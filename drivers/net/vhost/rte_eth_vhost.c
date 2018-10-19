@@ -1222,10 +1222,12 @@ eth_dev_vhost_create(struct rte_vdev_device *dev, char *iface_name,
 	eth_dev = rte_eth_vdev_allocate(dev, sizeof(*internal));
 	if (eth_dev == NULL)
 		goto error;
+	data = eth_dev->data;
 
 	eth_addr = rte_zmalloc_socket(name, sizeof(*eth_addr), 0, numa_node);
 	if (eth_addr == NULL)
 		goto error;
+	data->mac_addrs = eth_addr;
 	*eth_addr = base_eth_addr;
 	eth_addr->addr_bytes[5] = eth_dev->data->port_id;
 
@@ -1255,13 +1257,11 @@ eth_dev_vhost_create(struct rte_vdev_device *dev, char *iface_name,
 	rte_spinlock_init(&vring_state->lock);
 	vring_states[eth_dev->data->port_id] = vring_state;
 
-	data = eth_dev->data;
 	data->nb_rx_queues = queues;
 	data->nb_tx_queues = queues;
 	internal->max_queues = queues;
 	internal->vid = -1;
 	data->dev_link = pmd_link;
-	data->mac_addrs = eth_addr;
 	data->dev_flags = RTE_ETH_DEV_INTR_LSC;
 
 	eth_dev->dev_ops = &ops;
@@ -1293,10 +1293,7 @@ error:
 		free(internal->dev_name);
 	}
 	rte_free(vring_state);
-	rte_free(eth_addr);
-	if (eth_dev)
-		rte_eth_dev_release_port(eth_dev);
-	rte_free(internal);
+	rte_eth_dev_release_port(eth_dev);
 	rte_free(list);
 
 	return -1;

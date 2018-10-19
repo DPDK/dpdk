@@ -118,19 +118,10 @@ eth_dev_vmbus_allocate(struct rte_vmbus_device *dev, size_t private_data_size)
 static void
 eth_dev_vmbus_release(struct rte_eth_dev *eth_dev)
 {
+	/* mac_addrs must not be freed alone because part of dev_private */
+	eth_dev->data->mac_addrs = NULL;
 	/* free ether device */
 	rte_eth_dev_release_port(eth_dev);
-
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		rte_free(eth_dev->data->dev_private);
-
-	eth_dev->data->dev_private = NULL;
-
-	/*
-	 * Secondary process will check the name to attach.
-	 * Clear this field to avoid attaching a released ports.
-	 */
-	eth_dev->data->name[0] = '\0';
 
 	eth_dev->device = NULL;
 	eth_dev->intr_handle = NULL;
@@ -828,8 +819,6 @@ eth_hn_dev_uninit(struct rte_eth_dev *eth_dev)
 	rte_vmbus_chan_close(hv->primary->chan);
 	rte_free(hv->primary);
 	rte_eth_dev_owner_delete(hv->owner.id);
-
-	eth_dev->data->mac_addrs = NULL;
 
 	return 0;
 }

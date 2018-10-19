@@ -1232,11 +1232,9 @@ pmd_pcap_remove(struct rte_vdev_device *dev)
 		return rte_eth_dev_release_port_secondary(eth_dev);
 
 	internals = eth_dev->data->dev_private;
-	if (internals && internals->phy_mac)
-		rte_free(eth_dev->data->mac_addrs);
-
-	rte_free(eth_dev->data->dev_private);
-
+	if (internals != NULL && internals->phy_mac == 0)
+		/* not dynamically allocated, must not be freed */
+		eth_dev->data->mac_addrs = NULL;
 	rte_eth_dev_release_port(eth_dev);
 
 	return 0;

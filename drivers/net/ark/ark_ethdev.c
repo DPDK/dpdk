@@ -509,7 +509,6 @@ eth_ark_dev_uninit(struct rte_eth_dev *dev)
 	dev->dev_ops = NULL;
 	dev->rx_pkt_burst = NULL;
 	dev->tx_pkt_burst = NULL;
-	rte_free(dev->data->mac_addrs);
 	return 0;
 }
 

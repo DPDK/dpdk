@@ -280,7 +280,8 @@ free_args:
 free_subs:
 	fs_sub_device_free(dev);
 free_dev:
-	rte_free(PRIV(dev));
+	/* mac_addrs must not be freed alone because part of dev_private */
+	dev->data->mac_addrs = NULL;
 	rte_eth_dev_release_port(dev);
 	return -1;
 }
@@ -305,7 +306,8 @@ fs_rte_eth_free(const char *name)
 	if (ret)
 		ERROR("Error while destroying hotplug mutex");
 	rte_free(PRIV(dev)->mcast_addrs);
-	rte_free(PRIV(dev));
+	/* mac_addrs must not be freed alone because part of dev_private */
+	dev->data->mac_addrs = NULL;
 	rte_eth_dev_release_port(dev);
 	return ret;
 }

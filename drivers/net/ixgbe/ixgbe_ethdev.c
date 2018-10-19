@@ -1337,12 +1337,6 @@ eth_ixgbe_dev_uninit(struct rte_eth_dev *eth_dev)
 	/* uninitialize PF if max_vfs not zero */
 	ixgbe_pf_host_uninit(eth_dev);
 
-	rte_free(eth_dev->data->mac_addrs);
-	eth_dev->data->mac_addrs = NULL;
-
-	rte_free(eth_dev->data->hash_mac_addrs);
-	eth_dev->data->hash_mac_addrs = NULL;
-
 	/* remove all the fdir filters & hash */
 	ixgbe_fdir_filter_uninit(eth_dev);
 
@@ -1721,9 +1715,6 @@ eth_ixgbevf_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	/* Disable the interrupts for VF */
 	ixgbevf_intr_disable(eth_dev);
-
-	rte_free(eth_dev->data->mac_addrs);
-	eth_dev->data->mac_addrs = NULL;
 
 	rte_intr_disable(intr_handle);
 	rte_intr_callback_unregister(intr_handle,

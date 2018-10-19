@@ -917,9 +917,6 @@ eth_igb_dev_uninit(struct rte_eth_dev *eth_dev)
 	/* Reset any pending lock */
 	igb_reset_swfw_lock(hw);
 
-	rte_free(eth_dev->data->mac_addrs);
-	eth_dev->data->mac_addrs = NULL;
-
 	/* uninitialize PF if max_vfs not zero */
 	igb_pf_host_uninit(eth_dev);
 
@@ -1072,9 +1069,6 @@ eth_igbvf_dev_uninit(struct rte_eth_dev *eth_dev)
 	eth_dev->dev_ops = NULL;
 	eth_dev->rx_pkt_burst = NULL;
 	eth_dev->tx_pkt_burst = NULL;
-
-	rte_free(eth_dev->data->mac_addrs);
-	eth_dev->data->mac_addrs = NULL;
 
 	/* disable uio intr before callback unregister */
 	rte_intr_disable(&pci_dev->intr_handle);

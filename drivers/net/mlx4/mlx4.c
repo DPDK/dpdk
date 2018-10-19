@@ -781,12 +781,17 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		continue;
 port_error:
 		rte_free(priv);
+		if (eth_dev != NULL)
+			eth_dev->data->dev_private = NULL;
 		if (pd)
 			claim_zero(mlx4_glue->dealloc_pd(pd));
 		if (ctx)
 			claim_zero(mlx4_glue->close_device(ctx));
-		if (eth_dev)
+		if (eth_dev != NULL) {
+			/* mac_addrs must not be freed because part of dev_private */
+			eth_dev->data->mac_addrs = NULL;
 			rte_eth_dev_release_port(eth_dev);
+		}
 		break;
 	}
 	/*

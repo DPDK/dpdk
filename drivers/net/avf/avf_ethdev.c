@@ -1303,9 +1303,6 @@ avf_dev_uninit(struct rte_eth_dev *dev)
 	rte_free(vf->aq_resp);
 	vf->aq_resp = NULL;
 
-	rte_free(dev->data->mac_addrs);
-	dev->data->mac_addrs = NULL;
-
 	if (vf->rss_lut) {
 		rte_free(vf->rss_lut);
 		vf->rss_lut = NULL;

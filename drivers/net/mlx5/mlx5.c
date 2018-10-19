@@ -1223,11 +1223,16 @@ error:
 		if (own_domain_id)
 			claim_zero(rte_eth_switch_domain_free(priv->domain_id));
 		rte_free(priv);
+		if (eth_dev != NULL)
+			eth_dev->data->dev_private = NULL;
 	}
 	if (pd)
 		claim_zero(mlx5_glue->dealloc_pd(pd));
-	if (eth_dev)
+	if (eth_dev != NULL) {
+		/* mac_addrs must not be freed alone because part of dev_private */
+		eth_dev->data->mac_addrs = NULL;
 		rte_eth_dev_release_port(eth_dev);
+	}
 	if (ctx)
 		claim_zero(mlx5_glue->close_device(ctx));
 	assert(err > 0);
@@ -1447,8 +1452,8 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			if (!list[i].eth_dev)
 				continue;
 			mlx5_dev_close(list[i].eth_dev);
-			if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-				rte_free(list[i].eth_dev->data->dev_private);
+			/* mac_addrs must not be freed because in dev_private */
+			list[i].eth_dev->data->mac_addrs = NULL;
 			claim_zero(rte_eth_dev_release_port(list[i].eth_dev));
 		}
 		/* Restore original error. */

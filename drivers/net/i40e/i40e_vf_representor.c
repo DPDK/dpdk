@@ -523,7 +523,10 @@ i40e_vf_representor_init(struct rte_eth_dev *ethdev, void *init_params)
 }
 
 int
-i40e_vf_representor_uninit(struct rte_eth_dev *ethdev __rte_unused)
+i40e_vf_representor_uninit(struct rte_eth_dev *ethdev)
 {
+	/* mac_addrs must not be freed because part of i40e_pf_vf */
+	ethdev->data->mac_addrs = NULL;
+
 	return 0;
 }

@@ -787,8 +787,9 @@ mvneta_eth_dev_create(struct rte_vdev_device *vdev, const char *name)
 	priv = rte_zmalloc_socket(name, sizeof(*priv), 0, rte_socket_id());
 	if (!priv) {
 		ret = -ENOMEM;
-		goto out_free_dev;
+		goto out_free;
 	}
+	eth_dev->data->dev_private = priv;
 
 	eth_dev->data->mac_addrs =
 		rte_zmalloc("mac_addrs",
@@ -796,20 +797,19 @@ mvneta_eth_dev_create(struct rte_vdev_device *vdev, const char *name)
 	if (!eth_dev->data->mac_addrs) {
 		MVNETA_LOG(ERR, "Failed to allocate space for eth addrs");
 		ret = -ENOMEM;
-		goto out_free_priv;
+		goto out_free;
 	}
 
 	memset(&req, 0, sizeof(req));
 	strcpy(req.ifr_name, name);
 	ret = ioctl(fd, SIOCGIFHWADDR, &req);
 	if (ret)
-		goto out_free_mac;
+		goto out_free;
 
 	memcpy(eth_dev->data->mac_addrs[0].addr_bytes,
 	       req.ifr_addr.sa_data, ETHER_ADDR_LEN);
 
 	eth_dev->data->kdrv = RTE_KDRV_NONE;
-	eth_dev->data->dev_private = priv;
 	eth_dev->device = &vdev->device;
 	eth_dev->rx_pkt_burst = mvneta_rx_pkt_burst;
 	mvneta_set_tx_function(eth_dev);
@@ -817,11 +817,7 @@ mvneta_eth_dev_create(struct rte_vdev_device *vdev, const char *name)
 
 	rte_eth_dev_probing_finish(eth_dev);
 	return 0;
-out_free_mac:
-	rte_free(eth_dev->data->mac_addrs);
-out_free_priv:
-	rte_free(priv);
-out_free_dev:
+out_free:
 	rte_eth_dev_release_port(eth_dev);
 
 	return ret;
@@ -836,8 +832,6 @@ out_free_dev:
 static void
 mvneta_eth_dev_destroy(struct rte_eth_dev *eth_dev)
 {
-	rte_free(eth_dev->data->dev_private);
-	rte_free(eth_dev->data->mac_addrs);
 	rte_eth_dev_release_port(eth_dev);
 }
 

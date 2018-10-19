@@ -108,11 +108,9 @@ enetc_dev_init(struct rte_eth_dev *eth_dev)
 }
 
 static int
-enetc_dev_uninit(struct rte_eth_dev *eth_dev)
+enetc_dev_uninit(struct rte_eth_dev *eth_dev __rte_unused)
 {
 	PMD_INIT_FUNC_TRACE();
-	rte_free(eth_dev->data->mac_addrs);
-
 	return 0;
 }
 

@@ -388,7 +388,14 @@ rte_eth_dev_release_port(struct rte_eth_dev *eth_dev)
 
 	eth_dev->state = RTE_ETH_DEV_UNUSED;
 
-	memset(eth_dev->data, 0, sizeof(struct rte_eth_dev_data));
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		rte_free(eth_dev->data->rx_queues);
+		rte_free(eth_dev->data->tx_queues);
+		rte_free(eth_dev->data->mac_addrs);
+		rte_free(eth_dev->data->hash_mac_addrs);
+		rte_free(eth_dev->data->dev_private);
+		memset(eth_dev->data, 0, sizeof(struct rte_eth_dev_data));
+	}
 
 	rte_spinlock_unlock(&rte_eth_dev_shared_data->ownership_lock);
 
@@ -3529,7 +3536,7 @@ rte_eth_dev_create(struct rte_device *device, const char *name,
 			if (!ethdev->data->dev_private) {
 				RTE_LOG(ERR, EAL, "failed to allocate private data");
 				retval = -ENOMEM;
-				goto data_alloc_failed;
+				goto probe_failed;
 			}
 		}
 	} else {
@@ -3561,14 +3568,9 @@ rte_eth_dev_create(struct rte_device *device, const char *name,
 	rte_eth_dev_probing_finish(ethdev);
 
 	return retval;
+
 probe_failed:
-	/* free ports private data if primary process */
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		rte_free(ethdev->data->dev_private);
-
-data_alloc_failed:
 	rte_eth_dev_release_port(ethdev);
-
 	return retval;
 }
 
@@ -3591,9 +3593,6 @@ rte_eth_dev_destroy(struct rte_eth_dev *ethdev,
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return rte_eth_dev_release_port_secondary(ethdev);
-
-	rte_free(ethdev->data->dev_private);
-	ethdev->data->dev_private = NULL;
 
 	return rte_eth_dev_release_port(ethdev);
 }

@@ -329,9 +329,6 @@ eth_em_dev_uninit(struct rte_eth_dev *eth_dev)
 	eth_dev->rx_pkt_burst = NULL;
 	eth_dev->tx_pkt_burst = NULL;
 
-	rte_free(eth_dev->data->mac_addrs);
-	eth_dev->data->mac_addrs = NULL;
-
 	/* disable uio intr before callback unregister */
 	rte_intr_disable(intr_handle);
 	rte_intr_callback_unregister(intr_handle,

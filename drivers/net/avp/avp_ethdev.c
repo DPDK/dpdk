@@ -1036,11 +1036,6 @@ eth_avp_dev_uninit(struct rte_eth_dev *eth_dev)
 		return ret;
 	}
 
-	if (eth_dev->data->mac_addrs != NULL) {
-		rte_free(eth_dev->data->mac_addrs);
-		eth_dev->data->mac_addrs = NULL;
-	}
-
 	return 0;
 }
 

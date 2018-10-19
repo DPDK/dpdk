@@ -557,7 +557,6 @@ static int
 pmd_remove(struct rte_vdev_device *vdev)
 {
 	struct rte_eth_dev *dev = NULL;
-	struct pmd_internals *p;
 
 	if (!vdev)
 		return -EINVAL;
@@ -568,12 +567,12 @@ pmd_remove(struct rte_vdev_device *vdev)
 	dev = rte_eth_dev_allocated(rte_vdev_device_name(vdev));
 	if (dev == NULL)
 		return -ENODEV;
-	p = dev->data->dev_private;
 
 	/* Free device data structures*/
-	rte_free(dev->data);
+	pmd_free(dev->data->dev_private);
+	dev->data->dev_private = NULL; /* already freed */
+	dev->data->mac_addrs = NULL; /* statically allocated */
 	rte_eth_dev_release_port(dev);
-	pmd_free(p);
 
 	return 0;
 }

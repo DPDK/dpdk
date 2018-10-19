@@ -1858,6 +1858,8 @@ error_remote:
 error_exit:
 	if (pmd->ioctl_sock > 0)
 		close(pmd->ioctl_sock);
+	/* mac_addrs must not be freed alone because part of dev_private */
+	dev->data->mac_addrs = NULL;
 	rte_eth_dev_release_port(dev);
 
 error_exit_nodev:
@@ -2259,6 +2261,9 @@ rte_pmd_tap_remove(struct rte_vdev_device *dev)
 	if (!eth_dev)
 		return -ENODEV;
 
+	/* mac_addrs must not be freed alone because part of dev_private */
+	eth_dev->data->mac_addrs = NULL;
+
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return rte_eth_dev_release_port_secondary(eth_dev);
 
@@ -2286,7 +2291,6 @@ rte_pmd_tap_remove(struct rte_vdev_device *dev)
 	}
 
 	close(internals->ioctl_sock);
-	rte_free(eth_dev->data->dev_private);
 	rte_free(eth_dev->process_private);
 	if (tap_devices_count == 1)
 		rte_mp_action_unregister(TAP_MP_KEY);

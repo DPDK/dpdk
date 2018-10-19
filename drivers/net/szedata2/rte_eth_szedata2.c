@@ -1544,7 +1544,6 @@ rte_szedata2_eth_dev_uninit(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	free(internals->sze_dev_path);
-	rte_free(dev->data->mac_addrs);
 
 	PMD_DRV_LOG(INFO, "%s device %s successfully uninitialized",
 			RTE_STR(RTE_SZEDATA2_DRIVER_NAME), dev->data->name);

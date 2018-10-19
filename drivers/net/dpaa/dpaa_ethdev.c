@@ -1439,10 +1439,6 @@ dpaa_dev_uninit(struct rte_eth_dev *dev)
 	rte_free(dpaa_intf->tx_queues);
 	dpaa_intf->tx_queues = NULL;
 
-	/* free memory for storing MAC addresses */
-	rte_free(dev->data->mac_addrs);
-	dev->data->mac_addrs = NULL;
-
 	dev->dev_ops = NULL;
 	dev->rx_pkt_burst = NULL;
 	dev->tx_pkt_burst = NULL;
@@ -1544,9 +1540,6 @@ rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv __rte_unused,
 		return 0;
 	}
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		rte_free(eth_dev->data->dev_private);
-
 	rte_eth_dev_release_port(eth_dev);
 	return diag;
 }
@@ -1560,9 +1553,6 @@ rte_dpaa_remove(struct rte_dpaa_device *dpaa_dev)
 
 	eth_dev = dpaa_dev->eth_dev;
 	dpaa_dev_uninit(eth_dev);
-
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		rte_free(eth_dev->data->dev_private);
 
 	rte_eth_dev_release_port(eth_dev);
 

@@ -1728,9 +1728,6 @@ eth_i40e_dev_uninit(struct rte_eth_dev *dev)
 	/* uninitialize pf host driver */
 	i40e_pf_host_uninit(dev);
 
-	rte_free(dev->data->mac_addrs);
-	dev->data->mac_addrs = NULL;
-
 	/* disable uio intr before callback unregister */
 	rte_intr_disable(intr_handle);
 

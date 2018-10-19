@@ -463,6 +463,9 @@ eth_kni_remove(struct rte_vdev_device *vdev)
 	if (eth_dev == NULL)
 		return -1;
 
+	/* mac_addrs must not be freed alone because part of dev_private */
+	eth_dev->data->mac_addrs = NULL;
+
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return rte_eth_dev_release_port_secondary(eth_dev);
 
@@ -470,8 +473,6 @@ eth_kni_remove(struct rte_vdev_device *vdev)
 
 	internals = eth_dev->data->dev_private;
 	rte_kni_release(internals->kni);
-
-	rte_free(internals);
 
 	rte_eth_dev_release_port(eth_dev);
 

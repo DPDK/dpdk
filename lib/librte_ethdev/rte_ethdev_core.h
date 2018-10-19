@@ -585,7 +585,10 @@ struct rte_eth_dev_data {
 
 	struct rte_eth_dev_sriov sriov;    /**< SRIOV data */
 
-	void *dev_private;              /**< PMD-specific private data */
+	void *dev_private;
+			/**< PMD-specific private data.
+			 *   @see rte_eth_dev_release_port()
+			 */
 
 	struct rte_eth_link dev_link;   /**< Link-level information & status. */
 	struct rte_eth_conf dev_conf;   /**< Configuration applied to device. */
@@ -594,11 +597,16 @@ struct rte_eth_dev_data {
 			/**< Common RX buffer size handled by all queues. */
 
 	uint64_t rx_mbuf_alloc_failed; /**< RX ring mbuf allocation failures. */
-	struct ether_addr *mac_addrs;  /**< Device Ethernet link address. */
+	struct ether_addr *mac_addrs;
+			/**< Device Ethernet link address.
+			 *   @see rte_eth_dev_release_port()
+			 */
 	uint64_t mac_pool_sel[ETH_NUM_RECEIVE_MAC_ADDR];
 			/**< Bitmap associating MAC addresses to pools. */
 	struct ether_addr *hash_mac_addrs;
-			/**< Device Ethernet MAC addresses of hash filtering. */
+			/**< Device Ethernet MAC addresses of hash filtering.
+			 *   @see rte_eth_dev_release_port()
+			 */
 	uint16_t port_id;           /**< Device [external] port identifier. */
 
 	__extension__

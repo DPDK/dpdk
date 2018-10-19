@@ -3128,10 +3128,9 @@ bond_alloc(struct rte_vdev_device *dev, uint8_t mode)
 
 err:
 	rte_free(internals);
-	if (eth_dev != NULL) {
-		rte_free(eth_dev->data->mac_addrs);
-		rte_eth_dev_release_port(eth_dev);
-	}
+	if (eth_dev != NULL)
+		eth_dev->data->dev_private = NULL;
+	rte_eth_dev_release_port(eth_dev);
 	return -1;
 }
 
@@ -3292,8 +3291,6 @@ bond_remove(struct rte_vdev_device *dev)
 	rte_mempool_free(internals->mode6.mempool);
 	rte_bitmap_free(internals->vlan_filter_bmp);
 	rte_free(internals->vlan_filter_bmpmem);
-	rte_free(eth_dev->data->dev_private);
-	rte_free(eth_dev->data->mac_addrs);
 
 	rte_eth_dev_release_port(eth_dev);
 

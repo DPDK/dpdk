@@ -2065,12 +2065,6 @@ dpaa2_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	dpaa2_free_rx_tx_queues(eth_dev);
 
-	/* free memory for storing MAC addresses */
-	if (eth_dev->data->mac_addrs) {
-		rte_free(eth_dev->data->mac_addrs);
-		eth_dev->data->mac_addrs = NULL;
-	}
-
 	/* Close the device at underlying layer*/
 	ret = dpni_close(dpni, CMD_PRI_LOW, priv->token);
 	if (ret) {
@@ -2133,8 +2127,6 @@ rte_dpaa2_probe(struct rte_dpaa2_driver *dpaa2_drv,
 		return 0;
 	}
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		rte_free(eth_dev->data->dev_private);
 	rte_eth_dev_release_port(eth_dev);
 	return diag;
 }
@@ -2147,8 +2139,6 @@ rte_dpaa2_remove(struct rte_dpaa2_device *dpaa2_dev)
 	eth_dev = dpaa2_dev->eth_dev;
 	dpaa2_dev_uninit(eth_dev);
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		rte_free(eth_dev->data->dev_private);
 	rte_eth_dev_release_port(eth_dev);
 
 	return 0;

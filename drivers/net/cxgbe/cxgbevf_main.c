@@ -282,14 +282,7 @@ out_free:
 		if (pi->viid != 0)
 			t4_free_vi(adapter, adapter->mbox, adapter->pf,
 				   0, pi->viid);
-		/* Skip first port since it'll be de-allocated by DPDK */
-		if (i == 0)
-			continue;
-		if (pi->eth_dev) {
-			if (pi->eth_dev->data->dev_private)
-				rte_free(pi->eth_dev->data->dev_private);
-			rte_eth_dev_release_port(pi->eth_dev);
-		}
+		rte_eth_dev_release_port(pi->eth_dev);
 	}
 	return -err;
 }
