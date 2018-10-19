@@ -1950,18 +1950,6 @@ port_is_started(portid_t port_id)
 	return 1;
 }
 
-static int
-port_is_closed(portid_t port_id)
-{
-	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return 0;
-
-	if (ports[port_id].port_status != RTE_PORT_CLOSED)
-		return 0;
-
-	return 1;
-}
-
 int
 start_port(portid_t pid)
 {
@@ -2265,6 +2253,8 @@ close_port(portid_t pid)
 			port_flow_flush(pi);
 		rte_eth_dev_close(pi);
 
+		remove_unused_fwd_ports();
+
 		if (rte_atomic16_cmpset(&(port->port_status),
 			RTE_PORT_HANDLING, RTE_PORT_CLOSED) == 0)
 			printf("Port %d cannot be set to closed\n", pi);
@@ -2355,7 +2345,7 @@ detach_port(portid_t port_id)
 
 	printf("Detaching a port...\n");
 
-	if (!port_is_closed(port_id)) {
+	if (ports[port_id].port_status != RTE_PORT_CLOSED) {
 		if (ports[port_id].port_status != RTE_PORT_STOPPED) {
 			printf("Port not stopped\n");
 			return;

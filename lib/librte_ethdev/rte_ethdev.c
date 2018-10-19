@@ -1384,6 +1384,16 @@ rte_eth_dev_close(uint16_t port_id)
 	dev->data->dev_started = 0;
 	(*dev->dev_ops->dev_close)(dev);
 
+	/* check behaviour flag - temporary for PMD migration */
+	if ((dev->data->dev_flags & RTE_ETH_DEV_CLOSE_REMOVE) != 0) {
+		/* new behaviour: send event + reset state + free all data */
+		rte_eth_dev_release_port(dev);
+		return;
+	}
+	RTE_ETHDEV_LOG(DEBUG, "Port closing is using an old behaviour.\n"
+			"The driver %s should migrate to the new behaviour.\n",
+			dev->device->driver->name);
+	/* old behaviour: only free queue arrays */
 	dev->data->nb_rx_queues = 0;
 	rte_free(dev->data->rx_queues);
 	dev->data->rx_queues = NULL;

@@ -309,6 +309,11 @@ API Changes
   functions were deprecated since 17.05 and are replaced by
   ``rte_mbuf_raw_free()`` and ``rte_pktmbuf_prefree_seg()``.
 
+* ethdev: A call to ``rte_eth_dev_release_port()`` has been added in
+  ``rte_eth_dev_close()``. As a consequence, a closed port is freed
+  and seen as invalid because of its state ``RTE_ETH_DEV_UNUSED``.
+  This new behaviour is enabled per driver for a migration period.
+
 * A new device flag, RTE_ETH_DEV_NOLIVE_MAC_ADDR, changes the order of
   actions inside rte_eth_dev_start regarding MAC set. Some NICs do not
   support MAC changes once the port has started and with this new device
