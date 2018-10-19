@@ -2198,6 +2198,31 @@ stop_port(portid_t pid)
 	printf("Done\n");
 }
 
+static void
+remove_unused_fwd_ports(void)
+{
+	int i;
+	int last_port_idx = nb_ports - 1;
+
+	for (i = 0; i <= last_port_idx; i++) { /* iterate in ports_ids */
+		if (rte_eth_devices[ports_ids[i]].state != RTE_ETH_DEV_UNUSED)
+			continue;
+		/* skip unused ports at the end */
+		while (i <= last_port_idx &&
+				rte_eth_devices[ports_ids[last_port_idx]].state
+				== RTE_ETH_DEV_UNUSED)
+			last_port_idx--;
+		if (last_port_idx < i)
+			break;
+		/* overwrite unused port with last valid port */
+		ports_ids[i] = ports_ids[last_port_idx];
+		/* decrease ports count */
+		last_port_idx--;
+	}
+	nb_ports = rte_eth_dev_count_avail();
+	update_fwd_ports(RTE_MAX_ETHPORTS);
+}
+
 void
 close_port(portid_t pid)
 {
@@ -2327,7 +2352,6 @@ void
 detach_port(portid_t port_id)
 {
 	char name[RTE_ETH_NAME_MAX_LEN];
-	uint16_t i;
 
 	printf("Detaching a port...\n");
 
@@ -2344,16 +2368,7 @@ detach_port(portid_t port_id)
 		return;
 	}
 
-	for (i = 0; i < nb_ports; i++) {
-		if (ports_ids[i] == port_id) {
-			ports_ids[i] = ports_ids[nb_ports-1];
-			ports_ids[nb_ports-1] = 0;
-			break;
-		}
-	}
-	nb_ports = rte_eth_dev_count_avail();
-
-	update_fwd_ports(RTE_MAX_ETHPORTS);
+	remove_unused_fwd_ports();
 
 	printf("Port %u is detached. Now total ports is %d\n",
 			port_id, nb_ports);
