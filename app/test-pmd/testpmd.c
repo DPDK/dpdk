@@ -2356,12 +2356,14 @@ detach_port(portid_t port_id)
 	printf("Detaching a port...\n");
 
 	if (!port_is_closed(port_id)) {
-		printf("Please close port first\n");
-		return;
+		if (ports[port_id].port_status != RTE_PORT_STOPPED) {
+			printf("Port not stopped\n");
+			return;
+		}
+		printf("Port was not closed\n");
+		if (ports[port_id].flow_list)
+			port_flow_flush(port_id);
 	}
-
-	if (ports[port_id].flow_list)
-		port_flow_flush(port_id);
 
 	if (rte_eth_dev_detach(port_id, name)) {
 		TESTPMD_LOG(ERR, "Failed to detach port %u\n", port_id);
