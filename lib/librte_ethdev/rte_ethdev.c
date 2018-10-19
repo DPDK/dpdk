@@ -1054,7 +1054,7 @@ rte_eth_speed_bitflag(uint32_t speed, int duplex)
 	}
 }
 
-const char * __rte_experimental
+const char *
 rte_eth_dev_rx_offload_name(uint64_t offload)
 {
 	const char *name = "UNKNOWN";
@@ -1070,7 +1070,7 @@ rte_eth_dev_rx_offload_name(uint64_t offload)
 	return name;
 }
 
-const char * __rte_experimental
+const char *
 rte_eth_dev_tx_offload_name(uint64_t offload)
 {
 	const char *name = "UNKNOWN";

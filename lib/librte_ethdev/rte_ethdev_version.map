@@ -218,6 +218,14 @@ DPDK_18.08 {
 
 } DPDK_18.05;
 
+DPDK_18.11 {
+	global:
+
+	rte_eth_dev_rx_offload_name;
+	rte_eth_dev_tx_offload_name;
+
+} DPDK_18.08;
+
 EXPERIMENTAL {
 	global:
 
@@ -234,8 +242,6 @@ EXPERIMENTAL {
 	rte_eth_dev_owner_set;
 	rte_eth_dev_owner_unset;
 	rte_eth_dev_rx_intr_ctl_q_get_fd;
-	rte_eth_dev_rx_offload_name;
-	rte_eth_dev_tx_offload_name;
 	rte_eth_iterator_cleanup;
 	rte_eth_iterator_init;
 	rte_eth_iterator_next;

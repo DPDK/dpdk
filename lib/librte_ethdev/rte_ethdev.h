@@ -1523,9 +1523,6 @@ uint16_t __rte_experimental rte_eth_dev_count_total(void);
 uint32_t rte_eth_speed_bitflag(uint32_t speed, int duplex);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Get DEV_RX_OFFLOAD_* flag name.
  *
  * @param offload
@@ -1533,12 +1530,9 @@ uint32_t rte_eth_speed_bitflag(uint32_t speed, int duplex);
  * @return
  *   Offload name or 'UNKNOWN' if the flag cannot be recognised.
  */
-const char * __rte_experimental rte_eth_dev_rx_offload_name(uint64_t offload);
+const char *rte_eth_dev_rx_offload_name(uint64_t offload);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Get DEV_TX_OFFLOAD_* flag name.
  *
  * @param offload
@@ -1546,7 +1540,7 @@ const char * __rte_experimental rte_eth_dev_rx_offload_name(uint64_t offload);
  * @return
  *   Offload name or 'UNKNOWN' if the flag cannot be recognised.
  */
-const char * __rte_experimental rte_eth_dev_tx_offload_name(uint64_t offload);
+const char *rte_eth_dev_tx_offload_name(uint64_t offload);
 
 /**
  * Configure an Ethernet device.
