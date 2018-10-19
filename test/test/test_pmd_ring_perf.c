@@ -10,6 +10,7 @@
 #include <rte_launch.h>
 #include <rte_ethdev.h>
 #include <rte_eth_ring.h>
+#include <rte_bus_vdev.h>
 
 #include "test.h"
 
@@ -135,6 +136,8 @@ test_bulk_enqueue_dequeue(void)
 static int
 test_ring_pmd_perf(void)
 {
+	char name[RTE_ETH_NAME_MAX_LEN];
+
 	r = rte_ring_create(RING_NAME, RING_SIZE, rte_socket_id(),
 			RING_F_SP_ENQ|RING_F_SC_DEQ);
 	if (r == NULL && (r = rte_ring_lookup(RING_NAME)) == NULL)
@@ -151,6 +154,11 @@ test_ring_pmd_perf(void)
 	printf("\n### Testing using a single lcore ###\n");
 	test_bulk_enqueue_dequeue();
 
+	/* release port and ring resources */
+	rte_eth_dev_stop(ring_ethdev_port);
+	rte_eth_dev_get_name_by_port(ring_ethdev_port, name);
+	rte_vdev_uninit(name);
+	rte_ring_free(r);
 	return 0;
 }
 
