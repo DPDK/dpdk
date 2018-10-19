@@ -190,6 +190,16 @@ New Features
   collisions.  In addition, the internal hashing algorithm was changed to use
   partial-key hashing to improve memory efficiency and lookup performance.
 
+* **Added Traffic Pattern Aware Power Control Library**
+
+  Added an experimental library. This extend Power Library and provide
+  empty_poll APIs. This feature measure how many times empty_poll are
+  executed per core, use the number of empty polls as a hint for system
+  power management.
+
+  See the :doc:`../prog_guide/power_man` section of the DPDK Programmers
+  Guide document for more information.
+
 * **Added ability to switch queue deferred start flag on testpmd app.**
 
   Added a console command to testpmd app, giving ability to switch

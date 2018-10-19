@@ -7,7 +7,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_power.a
 
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3 -fno-strict-aliasing
-LDLIBS += -lrte_eal
+LDLIBS += -lrte_eal -lrte_timer
 
 EXPORT_MAP := rte_power_version.map
 
@@ -16,8 +16,9 @@ LIBABIVER := 1
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_POWER) := rte_power.c power_acpi_cpufreq.c
 SRCS-$(CONFIG_RTE_LIBRTE_POWER) += power_kvm_vm.c guest_channel.c
+SRCS-$(CONFIG_RTE_LIBRTE_POWER) += rte_power_empty_poll.c
 
 # install this header file
-SYMLINK-$(CONFIG_RTE_LIBRTE_POWER)-include := rte_power.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_POWER)-include := rte_power.h  rte_power_empty_poll.h
 
 include $(RTE_SDK)/mk/rte.lib.mk
