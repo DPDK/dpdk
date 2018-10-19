@@ -2587,6 +2587,10 @@ i40e_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	if (status != I40E_SUCCESS)
 		PMD_DRV_LOG(ERR, "Failed to disable unicast promiscuous");
 
+	/* must remain in all_multicast mode */
+	if (dev->data->all_multicast == 1)
+		return;
+
 	status = i40e_aq_set_vsi_multicast_promiscuous(hw, vsi->seid,
 							false, NULL);
 	if (status != I40E_SUCCESS)
