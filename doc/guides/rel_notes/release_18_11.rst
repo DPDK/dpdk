@@ -133,6 +133,13 @@ New Features
   * Added support for Tx descriptor status API in EF10 (ef10 and ef10_simple)
     datapaths implementation.
 
+* **Updated the enic driver.**
+
+  * Added AVX2-based vectorized Rx handler.
+  * Added VLAN and checksum offloads to the simple Tx handler.
+  * Added the count flow action.
+  * Enabled the virtual address IOVA mode.
+
 * **Updated failsafe driver.**
 
   Updated the failsafe driver including the following changes:
