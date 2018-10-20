@@ -522,10 +522,34 @@ static const uint32_t *enicpmd_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_L4_NONFRAG,
 		RTE_PTYPE_UNKNOWN
 	};
+	static const uint32_t ptypes_overlay[] = {
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L2_ETHER_VLAN,
+		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_L4_FRAG,
+		RTE_PTYPE_L4_NONFRAG,
+		RTE_PTYPE_TUNNEL_GRENAT,
+		RTE_PTYPE_INNER_L2_ETHER,
+		RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_INNER_L4_TCP,
+		RTE_PTYPE_INNER_L4_UDP,
+		RTE_PTYPE_INNER_L4_FRAG,
+		RTE_PTYPE_INNER_L4_NONFRAG,
+		RTE_PTYPE_UNKNOWN
+	};
 
-	if (dev->rx_pkt_burst == enic_recv_pkts ||
-	    dev->rx_pkt_burst == enic_noscatter_recv_pkts)
-		return ptypes;
+	if (dev->rx_pkt_burst != enic_dummy_recv_pkts &&
+	    dev->rx_pkt_burst != NULL) {
+		struct enic *enic = pmd_priv(dev);
+		if (enic->overlay_offload)
+			return ptypes_overlay;
+		else
+			return ptypes;
+	}
 	return NULL;
 }
 
