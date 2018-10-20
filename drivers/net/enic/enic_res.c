@@ -202,6 +202,8 @@ int enic_get_vnic_config(struct enic *enic)
 		DEV_RX_OFFLOAD_UDP_CKSUM |
 		DEV_RX_OFFLOAD_TCP_CKSUM;
 	enic->tx_offload_mask =
+		PKT_TX_IPV6 |
+		PKT_TX_IPV4 |
 		PKT_TX_VLAN |
 		PKT_TX_IP_CKSUM |
 		PKT_TX_L4_MASK |
