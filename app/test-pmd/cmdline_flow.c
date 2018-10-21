@@ -178,6 +178,8 @@ enum index {
 	ITEM_ICMP6_ND_OPT_SLA_ETH_SLA,
 	ITEM_ICMP6_ND_OPT_TLA_ETH,
 	ITEM_ICMP6_ND_OPT_TLA_ETH_TLA,
+	ITEM_META,
+	ITEM_META_DATA,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -546,6 +548,11 @@ static const enum index item_param[] = {
 	ZERO,
 };
 
+static const enum index item_param_is[] = {
+	ITEM_PARAM_IS,
+	ZERO,
+};
+
 static const enum index next_item[] = {
 	ITEM_END,
 	ITEM_VOID,
@@ -584,6 +591,7 @@ static const enum index next_item[] = {
 	ITEM_ICMP6_ND_OPT,
 	ITEM_ICMP6_ND_OPT_SLA_ETH,
 	ITEM_ICMP6_ND_OPT_TLA_ETH,
+	ITEM_META,
 	ZERO,
 };
 
@@ -800,6 +808,12 @@ static const enum index item_icmp6_nd_opt_sla_eth[] = {
 
 static const enum index item_icmp6_nd_opt_tla_eth[] = {
 	ITEM_ICMP6_ND_OPT_TLA_ETH_TLA,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_meta[] = {
+	ITEM_META_DATA,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -2069,6 +2083,20 @@ static const struct token token_list[] = {
 			     item_param),
 		.args = ARGS(ARGS_ENTRY_HTON
 			     (struct rte_flow_item_icmp6_nd_opt_tla_eth, tla)),
+	},
+	[ITEM_META] = {
+		.name = "meta",
+		.help = "match metadata header",
+		.priv = PRIV_ITEM(META, sizeof(struct rte_flow_item_meta)),
+		.next = NEXT(item_meta),
+		.call = parse_vc,
+	},
+	[ITEM_META_DATA] = {
+		.name = "data",
+		.help = "metadata value",
+		.next = NEXT(item_meta, NEXT_ENTRY(UNSIGNED), item_param_is),
+		.args = ARGS(ARGS_ENTRY_MASK_HTON(struct rte_flow_item_meta,
+						  data, "\xff\xff\xff\xff")),
 	},
 
 	/* Validate/create actions. */

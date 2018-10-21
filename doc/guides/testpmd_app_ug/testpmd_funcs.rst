@@ -423,6 +423,12 @@ List port level and all queue level Tx offloading configuration::
 
    testpmd> show port (port_id) tx_offload configuration
 
+show tx metadata setting
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Show Tx metadata value set for a specific port::
+
+   testpmd> show port (port_id) tx_metadata
 
 Configuration Functions
 -----------------------
@@ -1532,7 +1538,8 @@ Enable or disable a per port Tx offloading on all Tx queues of a port::
                   sctp_cksum, tcp_tso, udp_tso, outer_ipv4_cksum,
                   qinq_insert, vxlan_tnl_tso, gre_tnl_tso,
                   ipip_tnl_tso, geneve_tnl_tso, macsec_insert,
-                  mt_lockfree, multi_segs, mbuf_fast_free, security
+                  mt_lockfree, multi_segs, mbuf_fast_free, security,
+                  match_metadata
 
 This command should be run when the port is stopped, or else it will fail.
 
@@ -2027,6 +2034,14 @@ port config udp_tunnel_port
 
 Add/remove UDP tunnel port for VXLAN/GENEVE tunneling protocols::
     testpmd> port config (port_id) udp_tunnel_port add|rm vxlan|geneve (udp_port)
+
+port config tx_metadata
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Set Tx metadata value per port.
+testpmd will add this value to any Tx packet sent from this port::
+
+   testpmd> port config (port_id) tx_metadata (value)
 
 Link Bonding Functions
 ----------------------
@@ -3594,6 +3609,10 @@ This section lists supported pattern items and their attributes, if any.
   link-layer address option.
 
   - ``tla {MAC-48}``: target Ethernet LLA.
+
+- ``meta``: match application specific metadata.
+
+  - ``data {unsigned}``: metadata value.
 
 Actions list
 ^^^^^^^^^^^^

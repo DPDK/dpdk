@@ -17499,7 +17499,8 @@ cmdline_parse_token_string_t cmd_config_per_port_tx_offload_result_offload =
 			  "sctp_cksum#tcp_tso#udp_tso#outer_ipv4_cksum#"
 			  "qinq_insert#vxlan_tnl_tso#gre_tnl_tso#"
 			  "ipip_tnl_tso#geneve_tnl_tso#macsec_insert#"
-			  "mt_lockfree#multi_segs#mbuf_fast_free#security");
+			  "mt_lockfree#multi_segs#mbuf_fast_free#security#"
+			  "match_metadata");
 cmdline_parse_token_string_t cmd_config_per_port_tx_offload_result_on_off =
 	TOKEN_STRING_INITIALIZER
 		(struct cmd_config_per_port_tx_offload_result,
@@ -17580,8 +17581,8 @@ cmdline_parse_inst_t cmd_config_per_port_tx_offload = {
 		    "sctp_cksum|tcp_tso|udp_tso|outer_ipv4_cksum|"
 		    "qinq_insert|vxlan_tnl_tso|gre_tnl_tso|"
 		    "ipip_tnl_tso|geneve_tnl_tso|macsec_insert|"
-		    "mt_lockfree|multi_segs|mbuf_fast_free|security "
-		    "on|off",
+		    "mt_lockfree|multi_segs|mbuf_fast_free|security|"
+		    "match_metadata on|off",
 	.tokens = {
 		(void *)&cmd_config_per_port_tx_offload_result_port,
 		(void *)&cmd_config_per_port_tx_offload_result_config,
@@ -17696,6 +17697,108 @@ cmdline_parse_inst_t cmd_config_per_queue_tx_offload = {
 		(void *)&cmd_config_per_queue_tx_offload_result_on_off,
 		NULL,
 	}
+};
+
+/* *** configure tx_metadata for specific port *** */
+struct cmd_config_tx_metadata_specific_result {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t keyword;
+	uint16_t port_id;
+	cmdline_fixed_string_t item;
+	uint32_t value;
+};
+
+static void
+cmd_config_tx_metadata_specific_parsed(void *parsed_result,
+				__attribute__((unused)) struct cmdline *cl,
+				__attribute__((unused)) void *data)
+{
+	struct cmd_config_tx_metadata_specific_result *res = parsed_result;
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+	ports[res->port_id].tx_metadata = rte_cpu_to_be_32(res->value);
+}
+
+cmdline_parse_token_string_t cmd_config_tx_metadata_specific_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_tx_metadata_specific_result,
+			port, "port");
+cmdline_parse_token_string_t cmd_config_tx_metadata_specific_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_tx_metadata_specific_result,
+			keyword, "config");
+cmdline_parse_token_num_t cmd_config_tx_metadata_specific_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_tx_metadata_specific_result,
+			port_id, UINT16);
+cmdline_parse_token_string_t cmd_config_tx_metadata_specific_item =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_tx_metadata_specific_result,
+			item, "tx_metadata");
+cmdline_parse_token_num_t cmd_config_tx_metadata_specific_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_tx_metadata_specific_result,
+			value, UINT32);
+
+cmdline_parse_inst_t cmd_config_tx_metadata_specific = {
+	.f = cmd_config_tx_metadata_specific_parsed,
+	.data = NULL,
+	.help_str = "port config <port_id> tx_metadata <value>",
+	.tokens = {
+		(void *)&cmd_config_tx_metadata_specific_port,
+		(void *)&cmd_config_tx_metadata_specific_keyword,
+		(void *)&cmd_config_tx_metadata_specific_id,
+		(void *)&cmd_config_tx_metadata_specific_item,
+		(void *)&cmd_config_tx_metadata_specific_value,
+		NULL,
+	},
+};
+
+/* *** display tx_metadata per port configuration *** */
+struct cmd_show_tx_metadata_result {
+	cmdline_fixed_string_t cmd_show;
+	cmdline_fixed_string_t cmd_port;
+	cmdline_fixed_string_t cmd_keyword;
+	portid_t cmd_pid;
+};
+
+static void
+cmd_show_tx_metadata_parsed(void *parsed_result,
+		__attribute__((unused)) struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_show_tx_metadata_result *res = parsed_result;
+
+	if (!rte_eth_dev_is_valid_port(res->cmd_pid)) {
+		printf("invalid port id %u\n", res->cmd_pid);
+		return;
+	}
+	if (!strcmp(res->cmd_keyword, "tx_metadata")) {
+		printf("Port %u tx_metadata: %u\n", res->cmd_pid,
+				ports[res->cmd_pid].tx_metadata);
+	}
+}
+
+cmdline_parse_token_string_t cmd_show_tx_metadata_show =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_tx_metadata_result,
+			cmd_show, "show");
+cmdline_parse_token_string_t cmd_show_tx_metadata_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_tx_metadata_result,
+			cmd_port, "port");
+cmdline_parse_token_num_t cmd_show_tx_metadata_pid =
+	TOKEN_NUM_INITIALIZER(struct cmd_show_tx_metadata_result,
+			cmd_pid, UINT16);
+cmdline_parse_token_string_t cmd_show_tx_metadata_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_tx_metadata_result,
+			cmd_keyword, "tx_metadata");
+
+cmdline_parse_inst_t cmd_show_tx_metadata = {
+	.f = cmd_show_tx_metadata_parsed,
+	.data = NULL,
+	.help_str = "show port <port_id> tx_metadata",
+	.tokens = {
+		(void *)&cmd_show_tx_metadata_show,
+		(void *)&cmd_show_tx_metadata_port,
+		(void *)&cmd_show_tx_metadata_pid,
+		(void *)&cmd_show_tx_metadata_keyword,
+		NULL,
+	},
 };
 
 /* ******************************************************************************** */
@@ -17967,6 +18070,8 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_operate_bpf_ld_parse,
 	(cmdline_parse_inst_t *)&cmd_operate_bpf_unld_parse,
 #endif
+	(cmdline_parse_inst_t *)&cmd_config_tx_metadata_specific,
+	(cmdline_parse_inst_t *)&cmd_show_tx_metadata,
 	NULL,
 };
 

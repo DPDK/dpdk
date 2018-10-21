@@ -253,6 +253,15 @@ pkt_burst_transmit(struct fwd_stream *fs)
 		pkt->l2_len = sizeof(struct ether_hdr);
 		pkt->l3_len = sizeof(struct ipv4_hdr);
 		pkts_burst[nb_pkt] = pkt;
+
+		/*
+		 * If user configured metadata value add it to packet
+		 * and set ol_flags accordingly
+		 */
+		if (ports[fs->tx_port].tx_metadata) {
+			pkt->tx_metadata = ports[fs->tx_port].tx_metadata;
+			pkt->ol_flags |= PKT_TX_METADATA;
+		}
 	}
 	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, pkts_burst, nb_pkt);
 	/*

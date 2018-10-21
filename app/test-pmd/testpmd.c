@@ -1063,6 +1063,10 @@ init_config(void)
 		      DEV_TX_OFFLOAD_MBUF_FAST_FREE))
 			port->dev_conf.txmode.offloads &=
 				~DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+		if (!(port->dev_info.tx_offload_capa &
+			DEV_TX_OFFLOAD_MATCH_METADATA))
+			port->dev_conf.txmode.offloads &=
+				~DEV_TX_OFFLOAD_MATCH_METADATA;
 		if (numa_support) {
 			if (port_numa[pid] != NUMA_NO_CONFIG)
 				port_per_socket[port_numa[pid]]++;
@@ -1091,6 +1095,7 @@ init_config(void)
 		/* set flag to initialize port/queue */
 		port->need_reconfig = 1;
 		port->need_reconfig_queues = 1;
+		port->tx_metadata = 0;
 	}
 
 	/*

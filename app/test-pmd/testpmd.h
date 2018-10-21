@@ -196,6 +196,8 @@ struct rte_port {
 #ifdef SOFTNIC
 	struct softnic_port     softport;  /**< softnic params */
 #endif
+	/**< metadata value to insert in Tx packets. */
+	rte_be32_t		tx_metadata;
 };
 
 /**
