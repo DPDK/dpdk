@@ -414,6 +414,14 @@ enum rte_flow_item_type {
 	 * See struct rte_flow_item_mark.
 	 */
 	RTE_FLOW_ITEM_TYPE_MARK,
+
+	/**
+	 * [META]
+	 *
+	 * Matches a metadata value specified in mbuf metadata field.
+	 * See struct rte_flow_item_meta.
+	 */
+	RTE_FLOW_ITEM_TYPE_META,
 };
 
 /**
@@ -1153,6 +1161,22 @@ struct rte_flow_item_icmp6_nd_opt_tla_eth {
 static const struct rte_flow_item_icmp6_nd_opt_tla_eth
 rte_flow_item_icmp6_nd_opt_tla_eth_mask = {
 	.tla.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+};
+#endif
+
+/**
+ * RTE_FLOW_ITEM_TYPE_META.
+ *
+ * Matches a specified metadata value.
+ */
+struct rte_flow_item_meta {
+	rte_be32_t data;
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_META. */
+#ifndef __cplusplus
+static const struct rte_flow_item_meta rte_flow_item_meta_mask = {
+	.data = RTE_BE32(UINT32_MAX),
 };
 #endif
 

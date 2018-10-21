@@ -1191,6 +1191,27 @@ Normally preceded by any of:
 - `Item: ICMP6_ND_NS`_
 - `Item: ICMP6_ND_OPT`_
 
+Item: ``META``
+^^^^^^^^^^^^^^
+
+Matches an application specific 32 bit metadata item.
+
+- Default ``mask`` matches the specified metadata value.
+
+.. _table_rte_flow_item_meta:
+
+.. table:: META
+
+   +----------+----------+-----------------------+
+   | Field    | Subfield | Value                 |
+   +==========+==========+=======================+
+   | ``spec`` | ``data`` | 32 bit metadata value |
+   +----------+----------------------------------+
+   | ``last`` | ``data`` | ignored               |
+   +----------+----------+-----------------------+
+   | ``mask`` | ``data`` | ignored               |
+   +----------+----------+-----------------------+
+
 Actions
 ~~~~~~~
 

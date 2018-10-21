@@ -202,6 +202,11 @@ extern "C" {
 /* add new TX flags here */
 
 /**
+ * Indicate that the metadata field in the mbuf is in use.
+ */
+#define PKT_TX_METADATA	(1ULL << 40)
+
+/**
  * Outer UDP checksum offload flag. This flag is used for enabling
  * outer UDP checksum in PMD. To use outer UDP checksum, the user needs to
  * 1) Enable the following in mbuff,
@@ -378,9 +383,10 @@ extern "C" {
 		PKT_TX_QINQ_PKT |        \
 		PKT_TX_TUNNEL_MASK |	 \
 		PKT_TX_MACSEC |		 \
-		PKT_TX_SEC_OFFLOAD |	\
-		PKT_TX_UDP_SEG |	\
-		PKT_TX_OUTER_UDP_CKSUM)
+		PKT_TX_SEC_OFFLOAD |	 \
+		PKT_TX_UDP_SEG |	 \
+		PKT_TX_OUTER_UDP_CKSUM | \
+		PKT_TX_METADATA)
 
 /**
  * Mbuf having an external buffer attached. shinfo in mbuf must be filled.
@@ -550,31 +556,47 @@ struct rte_mbuf {
 	/** VLAN TCI (CPU order), valid if PKT_RX_VLAN is set. */
 	uint16_t vlan_tci;
 
+	RTE_STD_C11
 	union {
-		uint32_t rss;     /**< RSS hash result if RSS enabled */
-		struct {
-			RTE_STD_C11
-			union {
-				struct {
-					uint16_t hash;
-					uint16_t id;
+		union {
+			uint32_t rss;     /**< RSS hash result if RSS enabled */
+			struct {
+				union {
+					struct {
+						uint16_t hash;
+						uint16_t id;
+					};
+					uint32_t lo;
+					/**< Second 4 flexible bytes */
 				};
+				uint32_t hi;
+				/**< First 4 flexible bytes or FD ID, dependent
+				 * on PKT_RX_FDIR_* flag in ol_flags.
+				 */
+			} fdir;	/**< Filter identifier if FDIR enabled */
+			struct {
 				uint32_t lo;
-				/**< Second 4 flexible bytes */
-			};
-			uint32_t hi;
-			/**< First 4 flexible bytes or FD ID, dependent on
-			     PKT_RX_FDIR_* flag in ol_flags. */
-		} fdir;           /**< Filter identifier if FDIR enabled */
+				uint32_t hi;
+				/**< The event eth Tx adapter uses this field
+				 * to store Tx queue id.
+				 * @see rte_event_eth_tx_adapter_txq_set()
+				 */
+			} sched;          /**< Hierarchical scheduler */
+			/**< User defined tags. See rte_distributor_process() */
+			uint32_t usr;
+		} hash;                   /**< hash information */
 		struct {
-			uint32_t lo;
-			uint32_t hi;
-			/**< The event eth Tx adapter uses this field to store
-			 * Tx queue id. @see rte_event_eth_tx_adapter_txq_set()
+			/**
+			 * Application specific metadata value
+			 * for egress flow rule match.
+			 * Valid if PKT_TX_METADATA is set.
+			 * Located here to allow conjunct use
+			 * with hash.sched.hi.
 			 */
-		} sched;          /**< Hierarchical scheduler */
-		uint32_t usr;	  /**< User defined tags. See rte_distributor_process() */
-	} hash;                   /**< hash information */
+			uint32_t tx_metadata;
+			uint32_t reserved;
+		};
+	};
 
 	/** Outer VLAN TCI (CPU order), valid if PKT_RX_QINQ is set. */
 	uint16_t vlan_tci_outer;

@@ -415,6 +415,7 @@ const char *rte_get_tx_ol_flag_name(uint64_t mask)
 	case PKT_TX_SEC_OFFLOAD: return "PKT_TX_SEC_OFFLOAD";
 	case PKT_TX_UDP_SEG: return "PKT_TX_UDP_SEG";
 	case PKT_TX_OUTER_UDP_CKSUM: return "PKT_TX_OUTER_UDP_CKSUM";
+	case PKT_TX_METADATA: return "PKT_TX_METADATA";
 	default: return NULL;
 	}
 }
@@ -450,6 +451,7 @@ rte_get_tx_ol_flag_list(uint64_t mask, char *buf, size_t buflen)
 		{ PKT_TX_SEC_OFFLOAD, PKT_TX_SEC_OFFLOAD, NULL },
 		{ PKT_TX_UDP_SEG, PKT_TX_UDP_SEG, NULL },
 		{ PKT_TX_OUTER_UDP_CKSUM, PKT_TX_OUTER_UDP_CKSUM, NULL },
+		{ PKT_TX_METADATA, PKT_TX_METADATA, NULL },
 	};
 	const char *name;
 	unsigned int i;
