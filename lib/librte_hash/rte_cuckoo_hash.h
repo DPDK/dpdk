@@ -142,6 +142,8 @@ struct rte_hash_bucket {
 	hash_sig_t sig_alt[RTE_HASH_BUCKET_ENTRIES];
 
 	uint8_t flag[RTE_HASH_BUCKET_ENTRIES];
+
+	void *next;
 } __rte_cache_aligned;
 
 /** A hash table structure. */
@@ -166,6 +168,7 @@ struct rte_hash {
 	/**< If multi-writer support is enabled. */
 	uint8_t readwrite_concur_support;
 	/**< If read-write concurrency support is enabled */
+	uint8_t ext_table_support;     /**< Enable extendable bucket table */
 	rte_hash_function hash_func;    /**< Function used to calculate hash. */
 	uint32_t hash_func_init_val;    /**< Init value used by hash_func. */
 	rte_hash_cmp_eq_t rte_hash_custom_cmp_eq;
@@ -184,6 +187,8 @@ struct rte_hash {
 	 * to the key table.
 	 */
 	rte_rwlock_t *readwrite_lock; /**< Read-write lock thread-safety. */
+	struct rte_hash_bucket *buckets_ext; /**< Extra buckets array */
+	struct rte_ring *free_ext_bkts; /**< Ring of indexes of free buckets */
 } __rte_cache_aligned;
 
 struct queue_node {

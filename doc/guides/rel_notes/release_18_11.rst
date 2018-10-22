@@ -182,6 +182,13 @@ New Features
   the SW eventdev PMD, sacrifices load balancing performance to
   gain better event scheduling throughput and scalability.
 
+* **Added extendable bucket feature to hash library (rte_hash).**
+
+  This new “extendable bucket” feature provides 100% insertion guarantee to
+  the capacity specified by the user by extending hash table with extra
+  buckets when needed to accommodate the unlikely event of intensive hash
+  collisions.
+
 * **Added ability to switch queue deferred start flag on testpmd app.**
 
   Added a console command to testpmd app, giving ability to switch
