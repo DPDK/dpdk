@@ -15282,6 +15282,408 @@ cmdline_parse_inst_t cmd_set_nvgre_with_vlan = {
 	},
 };
 
+/** Set L2 encapsulation details */
+struct cmd_set_l2_encap_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t l2_encap;
+	cmdline_fixed_string_t pos_token;
+	cmdline_fixed_string_t ip_version;
+	uint32_t vlan_present:1;
+	uint16_t tci;
+	struct ether_addr eth_src;
+	struct ether_addr eth_dst;
+};
+
+cmdline_parse_token_string_t cmd_set_l2_encap_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_l2_encap_result, set, "set");
+cmdline_parse_token_string_t cmd_set_l2_encap_l2_encap =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_l2_encap_result, l2_encap, "l2_encap");
+cmdline_parse_token_string_t cmd_set_l2_encap_l2_encap_with_vlan =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_l2_encap_result, l2_encap,
+				 "l2_encap-with-vlan");
+cmdline_parse_token_string_t cmd_set_l2_encap_ip_version =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_l2_encap_result, pos_token,
+				 "ip-version");
+cmdline_parse_token_string_t cmd_set_l2_encap_ip_version_value =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_l2_encap_result, ip_version,
+				 "ipv4#ipv6");
+cmdline_parse_token_string_t cmd_set_l2_encap_vlan =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_l2_encap_result, pos_token,
+				 "vlan-tci");
+cmdline_parse_token_num_t cmd_set_l2_encap_vlan_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_l2_encap_result, tci, UINT16);
+cmdline_parse_token_string_t cmd_set_l2_encap_eth_src =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_l2_encap_result, pos_token,
+				 "eth-src");
+cmdline_parse_token_etheraddr_t cmd_set_l2_encap_eth_src_value =
+	TOKEN_ETHERADDR_INITIALIZER(struct cmd_set_l2_encap_result, eth_src);
+cmdline_parse_token_string_t cmd_set_l2_encap_eth_dst =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_l2_encap_result, pos_token,
+				 "eth-dst");
+cmdline_parse_token_etheraddr_t cmd_set_l2_encap_eth_dst_value =
+	TOKEN_ETHERADDR_INITIALIZER(struct cmd_set_l2_encap_result, eth_dst);
+
+static void cmd_set_l2_encap_parsed(void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_set_l2_encap_result *res = parsed_result;
+
+	if (strcmp(res->l2_encap, "l2_encap") == 0)
+		l2_encap_conf.select_vlan = 0;
+	else if (strcmp(res->l2_encap, "l2_encap-with-vlan") == 0)
+		l2_encap_conf.select_vlan = 1;
+	if (strcmp(res->ip_version, "ipv4") == 0)
+		l2_encap_conf.select_ipv4 = 1;
+	else if (strcmp(res->ip_version, "ipv6") == 0)
+		l2_encap_conf.select_ipv4 = 0;
+	else
+		return;
+	if (l2_encap_conf.select_vlan)
+		l2_encap_conf.vlan_tci = rte_cpu_to_be_16(res->tci);
+	rte_memcpy(l2_encap_conf.eth_src, res->eth_src.addr_bytes,
+		   ETHER_ADDR_LEN);
+	rte_memcpy(l2_encap_conf.eth_dst, res->eth_dst.addr_bytes,
+		   ETHER_ADDR_LEN);
+}
+
+cmdline_parse_inst_t cmd_set_l2_encap = {
+	.f = cmd_set_l2_encap_parsed,
+	.data = NULL,
+	.help_str = "set l2_encap ip-version ipv4|ipv6"
+		" eth-src <eth-src> eth-dst <eth-dst>",
+	.tokens = {
+		(void *)&cmd_set_l2_encap_set,
+		(void *)&cmd_set_l2_encap_l2_encap,
+		(void *)&cmd_set_l2_encap_ip_version,
+		(void *)&cmd_set_l2_encap_ip_version_value,
+		(void *)&cmd_set_l2_encap_eth_src,
+		(void *)&cmd_set_l2_encap_eth_src_value,
+		(void *)&cmd_set_l2_encap_eth_dst,
+		(void *)&cmd_set_l2_encap_eth_dst_value,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_set_l2_encap_with_vlan = {
+	.f = cmd_set_l2_encap_parsed,
+	.data = NULL,
+	.help_str = "set l2_encap-with-vlan ip-version ipv4|ipv6"
+		" vlan-tci <vlan-tci> eth-src <eth-src> eth-dst <eth-dst>",
+	.tokens = {
+		(void *)&cmd_set_l2_encap_set,
+		(void *)&cmd_set_l2_encap_l2_encap_with_vlan,
+		(void *)&cmd_set_l2_encap_ip_version,
+		(void *)&cmd_set_l2_encap_ip_version_value,
+		(void *)&cmd_set_l2_encap_vlan,
+		(void *)&cmd_set_l2_encap_vlan_value,
+		(void *)&cmd_set_l2_encap_eth_src,
+		(void *)&cmd_set_l2_encap_eth_src_value,
+		(void *)&cmd_set_l2_encap_eth_dst,
+		(void *)&cmd_set_l2_encap_eth_dst_value,
+		NULL,
+	},
+};
+
+/** Set L2 decapsulation details */
+struct cmd_set_l2_decap_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t l2_decap;
+	cmdline_fixed_string_t pos_token;
+	uint32_t vlan_present:1;
+};
+
+cmdline_parse_token_string_t cmd_set_l2_decap_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_l2_decap_result, set, "set");
+cmdline_parse_token_string_t cmd_set_l2_decap_l2_decap =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_l2_decap_result, l2_decap,
+				 "l2_decap");
+cmdline_parse_token_string_t cmd_set_l2_decap_l2_decap_with_vlan =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_l2_decap_result, l2_decap,
+				 "l2_decap-with-vlan");
+
+static void cmd_set_l2_decap_parsed(void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_set_l2_decap_result *res = parsed_result;
+
+	if (strcmp(res->l2_decap, "l2_decap") == 0)
+		l2_decap_conf.select_vlan = 0;
+	else if (strcmp(res->l2_decap, "l2_decap-with-vlan") == 0)
+		l2_decap_conf.select_vlan = 1;
+}
+
+cmdline_parse_inst_t cmd_set_l2_decap = {
+	.f = cmd_set_l2_decap_parsed,
+	.data = NULL,
+	.help_str = "set l2_decap",
+	.tokens = {
+		(void *)&cmd_set_l2_decap_set,
+		(void *)&cmd_set_l2_decap_l2_decap,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_set_l2_decap_with_vlan = {
+	.f = cmd_set_l2_decap_parsed,
+	.data = NULL,
+	.help_str = "set l2_decap-with-vlan",
+	.tokens = {
+		(void *)&cmd_set_l2_decap_set,
+		(void *)&cmd_set_l2_decap_l2_decap_with_vlan,
+		NULL,
+	},
+};
+
+/** Set MPLSoUDP encapsulation details */
+struct cmd_set_mplsoudp_encap_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t mplsoudp;
+	cmdline_fixed_string_t pos_token;
+	cmdline_fixed_string_t ip_version;
+	uint32_t vlan_present:1;
+	uint32_t label;
+	uint16_t udp_src;
+	uint16_t udp_dst;
+	cmdline_ipaddr_t ip_src;
+	cmdline_ipaddr_t ip_dst;
+	uint16_t tci;
+	struct ether_addr eth_src;
+	struct ether_addr eth_dst;
+};
+
+cmdline_parse_token_string_t cmd_set_mplsoudp_encap_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsoudp_encap_result, set,
+				 "set");
+cmdline_parse_token_string_t cmd_set_mplsoudp_encap_mplsoudp_encap =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsoudp_encap_result, mplsoudp,
+				 "mplsoudp_encap");
+cmdline_parse_token_string_t cmd_set_mplsoudp_encap_mplsoudp_encap_with_vlan =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsoudp_encap_result,
+				 mplsoudp, "mplsoudp_encap-with-vlan");
+cmdline_parse_token_string_t cmd_set_mplsoudp_encap_ip_version =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsoudp_encap_result,
+				 pos_token, "ip-version");
+cmdline_parse_token_string_t cmd_set_mplsoudp_encap_ip_version_value =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsoudp_encap_result,
+				 ip_version, "ipv4#ipv6");
+cmdline_parse_token_string_t cmd_set_mplsoudp_encap_label =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsoudp_encap_result,
+				 pos_token, "label");
+cmdline_parse_token_num_t cmd_set_mplsoudp_encap_label_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_mplsoudp_encap_result, label,
+			      UINT32);
+cmdline_parse_token_string_t cmd_set_mplsoudp_encap_udp_src =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsoudp_encap_result,
+				 pos_token, "udp-src");
+cmdline_parse_token_num_t cmd_set_mplsoudp_encap_udp_src_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_mplsoudp_encap_result, udp_src,
+			      UINT16);
+cmdline_parse_token_string_t cmd_set_mplsoudp_encap_udp_dst =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsoudp_encap_result,
+				 pos_token, "udp-dst");
+cmdline_parse_token_num_t cmd_set_mplsoudp_encap_udp_dst_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_mplsoudp_encap_result, udp_dst,
+			      UINT16);
+cmdline_parse_token_string_t cmd_set_mplsoudp_encap_ip_src =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsoudp_encap_result,
+				 pos_token, "ip-src");
+cmdline_parse_token_ipaddr_t cmd_set_mplsoudp_encap_ip_src_value =
+	TOKEN_IPADDR_INITIALIZER(struct cmd_set_mplsoudp_encap_result, ip_src);
+cmdline_parse_token_string_t cmd_set_mplsoudp_encap_ip_dst =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsoudp_encap_result,
+				 pos_token, "ip-dst");
+cmdline_parse_token_ipaddr_t cmd_set_mplsoudp_encap_ip_dst_value =
+	TOKEN_IPADDR_INITIALIZER(struct cmd_set_mplsoudp_encap_result, ip_dst);
+cmdline_parse_token_string_t cmd_set_mplsoudp_encap_vlan =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsoudp_encap_result,
+				 pos_token, "vlan-tci");
+cmdline_parse_token_num_t cmd_set_mplsoudp_encap_vlan_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_mplsoudp_encap_result, tci,
+			      UINT16);
+cmdline_parse_token_string_t cmd_set_mplsoudp_encap_eth_src =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsoudp_encap_result,
+				 pos_token, "eth-src");
+cmdline_parse_token_etheraddr_t cmd_set_mplsoudp_encap_eth_src_value =
+	TOKEN_ETHERADDR_INITIALIZER(struct cmd_set_mplsoudp_encap_result,
+				    eth_src);
+cmdline_parse_token_string_t cmd_set_mplsoudp_encap_eth_dst =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsoudp_encap_result,
+				 pos_token, "eth-dst");
+cmdline_parse_token_etheraddr_t cmd_set_mplsoudp_encap_eth_dst_value =
+	TOKEN_ETHERADDR_INITIALIZER(struct cmd_set_mplsoudp_encap_result,
+				    eth_dst);
+
+static void cmd_set_mplsoudp_encap_parsed(void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_set_mplsoudp_encap_result *res = parsed_result;
+	union {
+		uint32_t mplsoudp_label;
+		uint8_t label[3];
+	} id = {
+		.mplsoudp_label =
+			rte_cpu_to_be_32(res->label) & RTE_BE32(0x00ffffff),
+	};
+
+	if (strcmp(res->mplsoudp, "mplsoudp_encap") == 0)
+		mplsoudp_encap_conf.select_vlan = 0;
+	else if (strcmp(res->mplsoudp, "mplsoudp_encap-with-vlan") == 0)
+		mplsoudp_encap_conf.select_vlan = 1;
+	if (strcmp(res->ip_version, "ipv4") == 0)
+		mplsoudp_encap_conf.select_ipv4 = 1;
+	else if (strcmp(res->ip_version, "ipv6") == 0)
+		mplsoudp_encap_conf.select_ipv4 = 0;
+	else
+		return;
+	rte_memcpy(mplsoudp_encap_conf.label, &id.label[1], 3);
+	mplsoudp_encap_conf.udp_src = rte_cpu_to_be_16(res->udp_src);
+	mplsoudp_encap_conf.udp_dst = rte_cpu_to_be_16(res->udp_dst);
+	if (mplsoudp_encap_conf.select_ipv4) {
+		IPV4_ADDR_TO_UINT(res->ip_src, mplsoudp_encap_conf.ipv4_src);
+		IPV4_ADDR_TO_UINT(res->ip_dst, mplsoudp_encap_conf.ipv4_dst);
+	} else {
+		IPV6_ADDR_TO_ARRAY(res->ip_src, mplsoudp_encap_conf.ipv6_src);
+		IPV6_ADDR_TO_ARRAY(res->ip_dst, mplsoudp_encap_conf.ipv6_dst);
+	}
+	if (mplsoudp_encap_conf.select_vlan)
+		mplsoudp_encap_conf.vlan_tci = rte_cpu_to_be_16(res->tci);
+	rte_memcpy(mplsoudp_encap_conf.eth_src, res->eth_src.addr_bytes,
+		   ETHER_ADDR_LEN);
+	rte_memcpy(mplsoudp_encap_conf.eth_dst, res->eth_dst.addr_bytes,
+		   ETHER_ADDR_LEN);
+}
+
+cmdline_parse_inst_t cmd_set_mplsoudp_encap = {
+	.f = cmd_set_mplsoudp_encap_parsed,
+	.data = NULL,
+	.help_str = "set mplsoudp_encap ip-version ipv4|ipv6 label <label>"
+		" udp-src <udp-src> udp-dst <udp-dst> ip-src <ip-src>"
+		" ip-dst <ip-dst> eth-src <eth-src> eth-dst <eth-dst>",
+	.tokens = {
+		(void *)&cmd_set_mplsoudp_encap_set,
+		(void *)&cmd_set_mplsoudp_encap_mplsoudp_encap,
+		(void *)&cmd_set_mplsoudp_encap_ip_version,
+		(void *)&cmd_set_mplsoudp_encap_ip_version_value,
+		(void *)&cmd_set_mplsoudp_encap_label,
+		(void *)&cmd_set_mplsoudp_encap_label_value,
+		(void *)&cmd_set_mplsoudp_encap_udp_src,
+		(void *)&cmd_set_mplsoudp_encap_udp_src_value,
+		(void *)&cmd_set_mplsoudp_encap_udp_dst,
+		(void *)&cmd_set_mplsoudp_encap_udp_dst_value,
+		(void *)&cmd_set_mplsoudp_encap_ip_src,
+		(void *)&cmd_set_mplsoudp_encap_ip_src_value,
+		(void *)&cmd_set_mplsoudp_encap_ip_dst,
+		(void *)&cmd_set_mplsoudp_encap_ip_dst_value,
+		(void *)&cmd_set_mplsoudp_encap_eth_src,
+		(void *)&cmd_set_mplsoudp_encap_eth_src_value,
+		(void *)&cmd_set_mplsoudp_encap_eth_dst,
+		(void *)&cmd_set_mplsoudp_encap_eth_dst_value,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_set_mplsoudp_encap_with_vlan = {
+	.f = cmd_set_mplsoudp_encap_parsed,
+	.data = NULL,
+	.help_str = "set mplsoudp_encap-with-vlan ip-version ipv4|ipv6"
+		" label <label> udp-src <udp-src> udp-dst <udp-dst>"
+		" ip-src <ip-src> ip-dst <ip-dst> vlan-tci <vlan-tci>"
+		" eth-src <eth-src> eth-dst <eth-dst>",
+	.tokens = {
+		(void *)&cmd_set_mplsoudp_encap_set,
+		(void *)&cmd_set_mplsoudp_encap_mplsoudp_encap_with_vlan,
+		(void *)&cmd_set_mplsoudp_encap_ip_version,
+		(void *)&cmd_set_mplsoudp_encap_ip_version_value,
+		(void *)&cmd_set_mplsoudp_encap_label,
+		(void *)&cmd_set_mplsoudp_encap_label_value,
+		(void *)&cmd_set_mplsoudp_encap_udp_src,
+		(void *)&cmd_set_mplsoudp_encap_udp_src_value,
+		(void *)&cmd_set_mplsoudp_encap_udp_dst,
+		(void *)&cmd_set_mplsoudp_encap_udp_dst_value,
+		(void *)&cmd_set_mplsoudp_encap_ip_src,
+		(void *)&cmd_set_mplsoudp_encap_ip_src_value,
+		(void *)&cmd_set_mplsoudp_encap_ip_dst,
+		(void *)&cmd_set_mplsoudp_encap_ip_dst_value,
+		(void *)&cmd_set_mplsoudp_encap_vlan,
+		(void *)&cmd_set_mplsoudp_encap_vlan_value,
+		(void *)&cmd_set_mplsoudp_encap_eth_src,
+		(void *)&cmd_set_mplsoudp_encap_eth_src_value,
+		(void *)&cmd_set_mplsoudp_encap_eth_dst,
+		(void *)&cmd_set_mplsoudp_encap_eth_dst_value,
+		NULL,
+	},
+};
+
+/** Set MPLSoUDP decapsulation details */
+struct cmd_set_mplsoudp_decap_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t mplsoudp;
+	cmdline_fixed_string_t pos_token;
+	cmdline_fixed_string_t ip_version;
+	uint32_t vlan_present:1;
+};
+
+cmdline_parse_token_string_t cmd_set_mplsoudp_decap_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsoudp_decap_result, set,
+				 "set");
+cmdline_parse_token_string_t cmd_set_mplsoudp_decap_mplsoudp_decap =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsoudp_decap_result, mplsoudp,
+				 "mplsoudp_decap");
+cmdline_parse_token_string_t cmd_set_mplsoudp_decap_mplsoudp_decap_with_vlan =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsoudp_decap_result,
+				 mplsoudp, "mplsoudp_decap-with-vlan");
+cmdline_parse_token_string_t cmd_set_mplsoudp_decap_ip_version =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsoudp_decap_result,
+				 pos_token, "ip-version");
+cmdline_parse_token_string_t cmd_set_mplsoudp_decap_ip_version_value =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsoudp_decap_result,
+				 ip_version, "ipv4#ipv6");
+
+static void cmd_set_mplsoudp_decap_parsed(void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_set_mplsoudp_decap_result *res = parsed_result;
+
+	if (strcmp(res->mplsoudp, "mplsoudp_decap") == 0)
+		mplsoudp_decap_conf.select_vlan = 0;
+	else if (strcmp(res->mplsoudp, "mplsoudp_decap-with-vlan") == 0)
+		mplsoudp_decap_conf.select_vlan = 1;
+	if (strcmp(res->ip_version, "ipv4") == 0)
+		mplsoudp_decap_conf.select_ipv4 = 1;
+	else if (strcmp(res->ip_version, "ipv6") == 0)
+		mplsoudp_decap_conf.select_ipv4 = 0;
+}
+
+cmdline_parse_inst_t cmd_set_mplsoudp_decap = {
+	.f = cmd_set_mplsoudp_decap_parsed,
+	.data = NULL,
+	.help_str = "set mplsoudp_decap ip-version ipv4|ipv6",
+	.tokens = {
+		(void *)&cmd_set_mplsoudp_decap_set,
+		(void *)&cmd_set_mplsoudp_decap_mplsoudp_decap,
+		(void *)&cmd_set_mplsoudp_decap_ip_version,
+		(void *)&cmd_set_mplsoudp_decap_ip_version_value,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_set_mplsoudp_decap_with_vlan = {
+	.f = cmd_set_mplsoudp_decap_parsed,
+	.data = NULL,
+	.help_str = "set mplsoudp_decap-with-vlan ip-version ipv4|ipv6",
+	.tokens = {
+		(void *)&cmd_set_mplsoudp_decap_set,
+		(void *)&cmd_set_mplsoudp_decap_mplsoudp_decap_with_vlan,
+		(void *)&cmd_set_mplsoudp_decap_ip_version,
+		(void *)&cmd_set_mplsoudp_decap_ip_version_value,
+		NULL,
+	},
+};
+
 /* Strict link priority scheduling mode setting */
 static void
 cmd_strict_link_prio_parsed(
@@ -18014,6 +18416,14 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_vxlan_with_vlan,
 	(cmdline_parse_inst_t *)&cmd_set_nvgre,
 	(cmdline_parse_inst_t *)&cmd_set_nvgre_with_vlan,
+	(cmdline_parse_inst_t *)&cmd_set_l2_encap,
+	(cmdline_parse_inst_t *)&cmd_set_l2_encap_with_vlan,
+	(cmdline_parse_inst_t *)&cmd_set_l2_decap,
+	(cmdline_parse_inst_t *)&cmd_set_l2_decap_with_vlan,
+	(cmdline_parse_inst_t *)&cmd_set_mplsoudp_encap,
+	(cmdline_parse_inst_t *)&cmd_set_mplsoudp_encap_with_vlan,
+	(cmdline_parse_inst_t *)&cmd_set_mplsoudp_decap,
+	(cmdline_parse_inst_t *)&cmd_set_mplsoudp_decap_with_vlan,
 	(cmdline_parse_inst_t *)&cmd_ddp_add,
 	(cmdline_parse_inst_t *)&cmd_ddp_del,
 	(cmdline_parse_inst_t *)&cmd_ddp_get_list,

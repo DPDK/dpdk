@@ -245,6 +245,10 @@ enum index {
 	ACTION_VXLAN_DECAP,
 	ACTION_NVGRE_ENCAP,
 	ACTION_NVGRE_DECAP,
+	ACTION_L2_ENCAP,
+	ACTION_L2_DECAP,
+	ACTION_MPLSOUDP_ENCAP,
+	ACTION_MPLSOUDP_DECAP,
 	ACTION_SET_IPV4_SRC,
 	ACTION_SET_IPV4_SRC_IPV4_SRC,
 	ACTION_SET_IPV4_DST,
@@ -315,6 +319,22 @@ struct action_nvgre_encap_data {
 		struct rte_flow_item_ipv6 item_ipv6;
 	};
 	struct rte_flow_item_nvgre item_nvgre;
+};
+
+/** Maximum data size in struct rte_flow_action_raw_encap. */
+#define ACTION_RAW_ENCAP_MAX_DATA 128
+
+/** Storage for struct rte_flow_action_raw_encap including external data. */
+struct action_raw_encap_data {
+	struct rte_flow_action_raw_encap conf;
+	uint8_t data[ACTION_RAW_ENCAP_MAX_DATA];
+	uint8_t preserve[ACTION_RAW_ENCAP_MAX_DATA];
+};
+
+/** Storage for struct rte_flow_action_raw_decap including external data. */
+struct action_raw_decap_data {
+	struct rte_flow_action_raw_decap conf;
+	uint8_t data[ACTION_RAW_ENCAP_MAX_DATA];
 };
 
 /** Maximum number of subsequent tokens and arguments on the stack. */
@@ -850,6 +870,10 @@ static const enum index next_action[] = {
 	ACTION_VXLAN_DECAP,
 	ACTION_NVGRE_ENCAP,
 	ACTION_NVGRE_DECAP,
+	ACTION_L2_ENCAP,
+	ACTION_L2_DECAP,
+	ACTION_MPLSOUDP_ENCAP,
+	ACTION_MPLSOUDP_DECAP,
 	ACTION_SET_IPV4_SRC,
 	ACTION_SET_IPV4_DST,
 	ACTION_SET_IPV6_SRC,
@@ -1051,6 +1075,18 @@ static int parse_vc_action_vxlan_encap(struct context *, const struct token *,
 static int parse_vc_action_nvgre_encap(struct context *, const struct token *,
 				       const char *, unsigned int, void *,
 				       unsigned int);
+static int parse_vc_action_l2_encap(struct context *, const struct token *,
+				    const char *, unsigned int, void *,
+				    unsigned int);
+static int parse_vc_action_l2_decap(struct context *, const struct token *,
+				    const char *, unsigned int, void *,
+				    unsigned int);
+static int parse_vc_action_mplsoudp_encap(struct context *,
+					  const struct token *, const char *,
+					  unsigned int, void *, unsigned int);
+static int parse_vc_action_mplsoudp_decap(struct context *,
+					  const struct token *, const char *,
+					  unsigned int, void *, unsigned int);
 static int parse_destroy(struct context *, const struct token *,
 			 const char *, unsigned int,
 			 void *, unsigned int);
@@ -2583,6 +2619,42 @@ static const struct token token_list[] = {
 		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
 		.call = parse_vc,
 	},
+	[ACTION_MPLSOUDP_ENCAP] = {
+		.name = "mplsoudp_encap",
+		.help = "mplsoudp encapsulation, uses configuration set by"
+			" \"set mplsoudp_encap\"",
+		.priv = PRIV_ACTION(RAW_ENCAP,
+				    sizeof(struct action_raw_encap_data)),
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.call = parse_vc_action_mplsoudp_encap,
+	},
+	[ACTION_L2_ENCAP] = {
+		.name = "l2_encap",
+		.help = "l2 encapsulation, uses configuration set by"
+			" \"set l2_encp\"",
+		.priv = PRIV_ACTION(RAW_ENCAP,
+				    sizeof(struct action_raw_encap_data)),
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.call = parse_vc_action_l2_encap,
+	},
+	[ACTION_L2_DECAP] = {
+		.name = "l2_decap",
+		.help = "l2 decap, uses configuration set by"
+			" \"set l2_decap\"",
+		.priv = PRIV_ACTION(RAW_DECAP,
+				    sizeof(struct action_raw_decap_data)),
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.call = parse_vc_action_l2_decap,
+	},
+	[ACTION_MPLSOUDP_DECAP] = {
+		.name = "mplsoudp_decap",
+		.help = "mplsoudp decapsulation, uses configuration set by"
+			" \"set mplsoudp_decap\"",
+		.priv = PRIV_ACTION(RAW_DECAP,
+				    sizeof(struct action_raw_decap_data)),
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.call = parse_vc_action_mplsoudp_decap,
+	},
 	[ACTION_SET_IPV4_SRC] = {
 		.name = "set_ipv4_src",
 		.help = "Set a new IPv4 source address in the outermost"
@@ -3500,6 +3572,314 @@ parse_vc_action_nvgre_encap(struct context *ctx, const struct token *token,
 	memcpy(action_nvgre_encap_data->item_nvgre.tni, nvgre_encap_conf.tni,
 	       RTE_DIM(nvgre_encap_conf.tni));
 	action->conf = &action_nvgre_encap_data->conf;
+	return ret;
+}
+
+/** Parse l2 encap action. */
+static int
+parse_vc_action_l2_encap(struct context *ctx, const struct token *token,
+			 const char *str, unsigned int len,
+			 void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+	struct rte_flow_action *action;
+	struct action_raw_encap_data *action_encap_data;
+	struct rte_flow_item_eth eth = { .type = 0, };
+	struct rte_flow_item_vlan vlan = {
+		.tci = mplsoudp_encap_conf.vlan_tci,
+		.inner_type = 0,
+	};
+	uint8_t *header;
+	int ret;
+
+	ret = parse_vc(ctx, token, str, len, buf, size);
+	if (ret < 0)
+		return ret;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return ret;
+	if (!out->args.vc.actions_n)
+		return -1;
+	action = &out->args.vc.actions[out->args.vc.actions_n - 1];
+	/* Point to selected object. */
+	ctx->object = out->args.vc.data;
+	ctx->objmask = NULL;
+	/* Copy the headers to the buffer. */
+	action_encap_data = ctx->object;
+	*action_encap_data = (struct action_raw_encap_data) {
+		.conf = (struct rte_flow_action_raw_encap){
+			.data = action_encap_data->data,
+		},
+		.data = {},
+	};
+	header = action_encap_data->data;
+	if (l2_encap_conf.select_vlan)
+		eth.type = rte_cpu_to_be_16(ETHER_TYPE_VLAN);
+	else if (l2_encap_conf.select_ipv4)
+		eth.type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
+	else
+		eth.type = rte_cpu_to_be_16(ETHER_TYPE_IPv6);
+	memcpy(eth.dst.addr_bytes,
+	       l2_encap_conf.eth_dst, ETHER_ADDR_LEN);
+	memcpy(eth.src.addr_bytes,
+	       l2_encap_conf.eth_src, ETHER_ADDR_LEN);
+	memcpy(header, &eth, sizeof(eth));
+	header += sizeof(eth);
+	if (l2_encap_conf.select_vlan) {
+		if (l2_encap_conf.select_ipv4)
+			vlan.inner_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
+		else
+			vlan.inner_type = rte_cpu_to_be_16(ETHER_TYPE_IPv6);
+		memcpy(header, &vlan, sizeof(vlan));
+		header += sizeof(vlan);
+	}
+	action_encap_data->conf.size = header -
+		action_encap_data->data;
+	action->conf = &action_encap_data->conf;
+	return ret;
+}
+
+/** Parse l2 decap action. */
+static int
+parse_vc_action_l2_decap(struct context *ctx, const struct token *token,
+			 const char *str, unsigned int len,
+			 void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+	struct rte_flow_action *action;
+	struct action_raw_decap_data *action_decap_data;
+	struct rte_flow_item_eth eth = { .type = 0, };
+	struct rte_flow_item_vlan vlan = {
+		.tci = mplsoudp_encap_conf.vlan_tci,
+		.inner_type = 0,
+	};
+	uint8_t *header;
+	int ret;
+
+	ret = parse_vc(ctx, token, str, len, buf, size);
+	if (ret < 0)
+		return ret;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return ret;
+	if (!out->args.vc.actions_n)
+		return -1;
+	action = &out->args.vc.actions[out->args.vc.actions_n - 1];
+	/* Point to selected object. */
+	ctx->object = out->args.vc.data;
+	ctx->objmask = NULL;
+	/* Copy the headers to the buffer. */
+	action_decap_data = ctx->object;
+	*action_decap_data = (struct action_raw_decap_data) {
+		.conf = (struct rte_flow_action_raw_decap){
+			.data = action_decap_data->data,
+		},
+		.data = {},
+	};
+	header = action_decap_data->data;
+	if (l2_decap_conf.select_vlan)
+		eth.type = rte_cpu_to_be_16(ETHER_TYPE_VLAN);
+	memcpy(header, &eth, sizeof(eth));
+	header += sizeof(eth);
+	if (l2_decap_conf.select_vlan) {
+		memcpy(header, &vlan, sizeof(vlan));
+		header += sizeof(vlan);
+	}
+	action_decap_data->conf.size = header -
+		action_decap_data->data;
+	action->conf = &action_decap_data->conf;
+	return ret;
+}
+
+/** Parse MPLSOUDP encap action. */
+static int
+parse_vc_action_mplsoudp_encap(struct context *ctx, const struct token *token,
+			       const char *str, unsigned int len,
+			       void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+	struct rte_flow_action *action;
+	struct action_raw_encap_data *action_encap_data;
+	struct rte_flow_item_eth eth = { .type = 0, };
+	struct rte_flow_item_vlan vlan = {
+		.tci = mplsoudp_encap_conf.vlan_tci,
+		.inner_type = 0,
+	};
+	struct rte_flow_item_ipv4 ipv4 = {
+		.hdr =  {
+			.src_addr = mplsoudp_encap_conf.ipv4_src,
+			.dst_addr = mplsoudp_encap_conf.ipv4_dst,
+			.next_proto_id = IPPROTO_UDP,
+		},
+	};
+	struct rte_flow_item_ipv6 ipv6 = {
+		.hdr =  {
+			.proto = IPPROTO_UDP,
+		},
+	};
+	struct rte_flow_item_udp udp = {
+		.hdr = {
+			.src_port = mplsoudp_encap_conf.udp_src,
+			.dst_port = mplsoudp_encap_conf.udp_dst,
+		},
+	};
+	struct rte_flow_item_mpls mpls;
+	uint8_t *header;
+	int ret;
+
+	ret = parse_vc(ctx, token, str, len, buf, size);
+	if (ret < 0)
+		return ret;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return ret;
+	if (!out->args.vc.actions_n)
+		return -1;
+	action = &out->args.vc.actions[out->args.vc.actions_n - 1];
+	/* Point to selected object. */
+	ctx->object = out->args.vc.data;
+	ctx->objmask = NULL;
+	/* Copy the headers to the buffer. */
+	action_encap_data = ctx->object;
+	*action_encap_data = (struct action_raw_encap_data) {
+		.conf = (struct rte_flow_action_raw_encap){
+			.data = action_encap_data->data,
+		},
+		.data = {},
+		.preserve = {},
+	};
+	header = action_encap_data->data;
+	if (mplsoudp_encap_conf.select_vlan)
+		eth.type = rte_cpu_to_be_16(ETHER_TYPE_VLAN);
+	else if (mplsoudp_encap_conf.select_ipv4)
+		eth.type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
+	else
+		eth.type = rte_cpu_to_be_16(ETHER_TYPE_IPv6);
+	memcpy(eth.dst.addr_bytes,
+	       mplsoudp_encap_conf.eth_dst, ETHER_ADDR_LEN);
+	memcpy(eth.src.addr_bytes,
+	       mplsoudp_encap_conf.eth_src, ETHER_ADDR_LEN);
+	memcpy(header, &eth, sizeof(eth));
+	header += sizeof(eth);
+	if (mplsoudp_encap_conf.select_vlan) {
+		if (mplsoudp_encap_conf.select_ipv4)
+			vlan.inner_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
+		else
+			vlan.inner_type = rte_cpu_to_be_16(ETHER_TYPE_IPv6);
+		memcpy(header, &vlan, sizeof(vlan));
+		header += sizeof(vlan);
+	}
+	if (mplsoudp_encap_conf.select_ipv4) {
+		memcpy(header, &ipv4, sizeof(ipv4));
+		header += sizeof(ipv4);
+	} else {
+		memcpy(&ipv6.hdr.src_addr,
+		       &mplsoudp_encap_conf.ipv6_src,
+		       sizeof(mplsoudp_encap_conf.ipv6_src));
+		memcpy(&ipv6.hdr.dst_addr,
+		       &mplsoudp_encap_conf.ipv6_dst,
+		       sizeof(mplsoudp_encap_conf.ipv6_dst));
+		memcpy(header, &ipv6, sizeof(ipv6));
+		header += sizeof(ipv6);
+	}
+	memcpy(header, &udp, sizeof(udp));
+	header += sizeof(udp);
+	memcpy(mpls.label_tc_s, mplsoudp_encap_conf.label,
+	       RTE_DIM(mplsoudp_encap_conf.label));
+	memcpy(header, &mpls, sizeof(mpls));
+	header += sizeof(mpls);
+	action_encap_data->conf.size = header -
+		action_encap_data->data;
+	action->conf = &action_encap_data->conf;
+	return ret;
+}
+
+/** Parse MPLSOUDP decap action. */
+static int
+parse_vc_action_mplsoudp_decap(struct context *ctx, const struct token *token,
+			       const char *str, unsigned int len,
+			       void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+	struct rte_flow_action *action;
+	struct action_raw_decap_data *action_decap_data;
+	struct rte_flow_item_eth eth = { .type = 0, };
+	struct rte_flow_item_vlan vlan = {.tci = 0};
+	struct rte_flow_item_ipv4 ipv4 = {
+		.hdr =  {
+			.next_proto_id = IPPROTO_UDP,
+		},
+	};
+	struct rte_flow_item_ipv6 ipv6 = {
+		.hdr =  {
+			.proto = IPPROTO_UDP,
+		},
+	};
+	struct rte_flow_item_udp udp = {
+		.hdr = {
+			.dst_port = rte_cpu_to_be_16(6635),
+		},
+	};
+	struct rte_flow_item_mpls mpls;
+	uint8_t *header;
+	int ret;
+
+	ret = parse_vc(ctx, token, str, len, buf, size);
+	if (ret < 0)
+		return ret;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return ret;
+	if (!out->args.vc.actions_n)
+		return -1;
+	action = &out->args.vc.actions[out->args.vc.actions_n - 1];
+	/* Point to selected object. */
+	ctx->object = out->args.vc.data;
+	ctx->objmask = NULL;
+	/* Copy the headers to the buffer. */
+	action_decap_data = ctx->object;
+	*action_decap_data = (struct action_raw_decap_data) {
+		.conf = (struct rte_flow_action_raw_decap){
+			.data = action_decap_data->data,
+		},
+		.data = {},
+	};
+	header = action_decap_data->data;
+	if (mplsoudp_decap_conf.select_vlan)
+		eth.type = rte_cpu_to_be_16(ETHER_TYPE_VLAN);
+	else if (mplsoudp_encap_conf.select_ipv4)
+		eth.type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
+	else
+		eth.type = rte_cpu_to_be_16(ETHER_TYPE_IPv6);
+	memcpy(eth.dst.addr_bytes,
+	       mplsoudp_encap_conf.eth_dst, ETHER_ADDR_LEN);
+	memcpy(eth.src.addr_bytes,
+	       mplsoudp_encap_conf.eth_src, ETHER_ADDR_LEN);
+	memcpy(header, &eth, sizeof(eth));
+	header += sizeof(eth);
+	if (mplsoudp_encap_conf.select_vlan) {
+		if (mplsoudp_encap_conf.select_ipv4)
+			vlan.inner_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
+		else
+			vlan.inner_type = rte_cpu_to_be_16(ETHER_TYPE_IPv6);
+		memcpy(header, &vlan, sizeof(vlan));
+		header += sizeof(vlan);
+	}
+	if (mplsoudp_encap_conf.select_ipv4) {
+		memcpy(header, &ipv4, sizeof(ipv4));
+		header += sizeof(ipv4);
+	} else {
+		memcpy(header, &ipv6, sizeof(ipv6));
+		header += sizeof(ipv6);
+	}
+	memcpy(header, &udp, sizeof(udp));
+	header += sizeof(udp);
+	memset(&mpls, 0, sizeof(mpls));
+	memcpy(header, &mpls, sizeof(mpls));
+	header += sizeof(mpls);
+	action_decap_data->conf.size = header -
+		action_decap_data->data;
+	action->conf = &action_decap_data->conf;
 	return ret;
 }
 
