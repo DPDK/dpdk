@@ -25,6 +25,12 @@ struct rte_eth_dev *
 eth_find_device(const struct rte_eth_dev *_start, rte_eth_cmp_t cmp,
 		const void *data);
 
+/* Parse devargs value for representor parameter. */
+typedef int (*rte_eth_devargs_callback_t)(char *str, void *data);
+int rte_eth_devargs_parse_list(char *str, rte_eth_devargs_callback_t callback,
+	void *data);
+int rte_eth_devargs_parse_representor_ports(char *str, void *data);
+
 #ifdef __cplusplus
 }
 #endif
