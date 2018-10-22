@@ -1532,6 +1532,20 @@ enum rte_flow_action_type {
 	RTE_FLOW_ACTION_TYPE_NVGRE_DECAP,
 
 	/**
+	 * Add outer header whose template is provided in its data buffer
+	 *
+	 * See struct rte_flow_action_raw_encap.
+	 */
+	RTE_FLOW_ACTION_TYPE_RAW_ENCAP,
+
+	/**
+	 * Remove outer header whose template is provided in its data buffer.
+	 *
+	 * See struct rte_flow_action_raw_decap
+	 */
+	RTE_FLOW_ACTION_TYPE_RAW_DECAP,
+
+	/**
 	 * Modify IPv4 source address in the outermost IPv4 header.
 	 *
 	 * If flow pattern does not define a valid RTE_FLOW_ITEM_TYPE_IPV4,
@@ -1998,6 +2012,51 @@ struct rte_flow_action_nvgre_encap {
 	 * (terminated by the END pattern item).
 	 */
 	struct rte_flow_item *definition;
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * RTE_FLOW_ACTION_TYPE_RAW_ENCAP
+ *
+ * Raw tunnel end-point encapsulation data definition.
+ *
+ * The data holds the headers definitions to be applied on the packet.
+ * The data must start with ETH header up to the tunnel item header itself.
+ * When used right after RAW_DECAP (for decapsulating L3 tunnel type for
+ * example MPLSoGRE) the data will just hold layer 2 header.
+ *
+ * The preserve parameter holds which bits in the packet the PMD is not allowed
+ * to change, this parameter can also be NULL and then the PMD is allowed
+ * to update any field.
+ *
+ * size holds the number of bytes in @p data and @p preserve.
+ */
+struct rte_flow_action_raw_encap {
+	uint8_t *data; /**< Encapsulation data. */
+	uint8_t *preserve; /**< Bit-mask of @p data to preserve on output. */
+	size_t size; /**< Size of @p data and @p preserve. */
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * RTE_FLOW_ACTION_TYPE_RAW_DECAP
+ *
+ * Raw tunnel end-point decapsulation data definition.
+ *
+ * The data holds the headers definitions to be removed from the packet.
+ * The data must start with ETH header up to the tunnel item header itself.
+ * When used right before RAW_DECAP (for encapsulating L3 tunnel type for
+ * example MPLSoGRE) the data will just hold layer 2 header.
+ *
+ * size holds the number of bytes in @p data.
+ */
+struct rte_flow_action_raw_decap {
+	uint8_t *data; /**< Encapsulation data. */
+	size_t size; /**< Size of @p data and @p preserve. */
 };
 
 /**

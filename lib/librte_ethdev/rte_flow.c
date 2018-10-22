@@ -124,6 +124,8 @@ static const struct rte_flow_desc_data rte_flow_desc_action[] = {
 	MK_FLOW_ACTION(VXLAN_DECAP, 0),
 	MK_FLOW_ACTION(NVGRE_ENCAP, sizeof(struct rte_flow_action_vxlan_encap)),
 	MK_FLOW_ACTION(NVGRE_DECAP, 0),
+	MK_FLOW_ACTION(RAW_ENCAP, sizeof(struct rte_flow_action_raw_encap)),
+	MK_FLOW_ACTION(RAW_DECAP, sizeof(struct rte_flow_action_raw_decap)),
 	MK_FLOW_ACTION(SET_IPV4_SRC,
 		       sizeof(struct rte_flow_action_set_ipv4)),
 	MK_FLOW_ACTION(SET_IPV4_DST,

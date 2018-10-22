@@ -2097,6 +2097,57 @@ RTE_FLOW_ERROR_TYPE_ACTION error should be returned.
 
 This action modifies the payload of matched flows.
 
+Action: ``RAW_ENCAP``
+^^^^^^^^^^^^^^^^^^^^^
+
+Adds outer header whose template is provided in its data buffer,
+as defined in the ``rte_flow_action_raw_encap`` definition.
+
+This action modifies the payload of matched flows. The data supplied must
+be a valid header, either holding layer 2 data in case of adding layer 2 after
+decap layer 3 tunnel (for example MPLSoGRE) or complete tunnel definition
+starting from layer 2 and moving to the tunnel item itself. When applied to
+the original packet the resulting packet must be a valid packet.
+
+.. _table_rte_flow_action_raw_encap:
+
+.. table:: RAW_ENCAP
+
+   +----------------+----------------------------------------+
+   | Field          | Value                                  |
+   +================+========================================+
+   | ``data``       | Encapsulation data                     |
+   +----------------+----------------------------------------+
+   | ``preserve``   | Bit-mask of data to preserve on output |
+   +----------------+----------------------------------------+
+   | ``size``       | Size of data and preserve              |
+   +----------------+----------------------------------------+
+
+Action: ``RAW_DECAP``
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Remove outer header whose template is provided in its data buffer,
+as defined in the ``rte_flow_action_raw_decap``
+
+This action modifies the payload of matched flows. The data supplied must
+be a valid header, either holding layer 2 data in case of removing layer 2
+before eincapsulation of layer 3 tunnel (for example MPLSoGRE) or complete
+tunnel definition starting from layer 2 and moving to the tunnel item itself.
+When applied to the original packet the resulting packet must be a
+valid packet.
+
+.. _table_rte_flow_action_raw_decap:
+
+.. table:: RAW_DECAP
+
+   +----------------+----------------------------------------+
+   | Field          | Value                                  |
+   +================+========================================+
+   | ``data``       | Decapsulation data                     |
+   +----------------+----------------------------------------+
+   | ``size``       | Size of data                           |
+   +----------------+----------------------------------------+
+
 Action: ``SET_IPV4_SRC``
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
