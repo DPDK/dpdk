@@ -137,6 +137,26 @@ static int test_valid_kvargs(void)
 	}
 	rte_kvargs_free(kvlist);
 
+	/* third test using list as value */
+	args = "foo=[0,1],check=value2";
+	valid_keys = valid_keys_list;
+	kvlist = rte_kvargs_parse(args, valid_keys);
+	if (kvlist == NULL) {
+		printf("rte_kvargs_parse() error");
+		goto fail;
+	}
+	if (strcmp(kvlist->pairs[0].value, "[0,1]") != 0) {
+		printf("wrong value %s", kvlist->pairs[0].value);
+		goto fail;
+	}
+	count = kvlist->count;
+	if (count != 2) {
+		printf("invalid count value %d\n", count);
+		rte_kvargs_free(kvlist);
+		goto fail;
+	}
+	rte_kvargs_free(kvlist);
+
 	return 0;
 
  fail:
@@ -162,6 +182,7 @@ static int test_invalid_kvargs(void)
 		"foo=1,,foo=2",    /* empty key/value */
 		"foo=1,foo",       /* no value */
 		"foo=1,=2",        /* no key */
+		"foo=[1,2",        /* no closing bracket in value */
 		",=",              /* also test with a smiley */
 		NULL };
 	const char **args;

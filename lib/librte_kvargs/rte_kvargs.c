@@ -44,6 +44,20 @@ rte_kvargs_tokenize(struct rte_kvargs *kvlist, const char *params)
 		    kvlist->pairs[i].value == NULL)
 			return -1;
 
+		/* Detect list [a,b] to skip comma delimiter in list. */
+		str = kvlist->pairs[i].value;
+		if (str[0] == '[') {
+			/* Find the end of the list. */
+			while (str[strlen(str) - 1] != ']') {
+				/* Restore the comma erased by strtok_r(). */
+				str[strlen(str)] = ',';
+				/* Parse until next comma. */
+				str = strtok_r(NULL, RTE_KVARGS_PAIRS_DELIM, &ctx1);
+				if (str == NULL)
+					return -1; /* no closing bracket */
+			}
+		}
+
 		kvlist->count++;
 		str = NULL;
 	}
