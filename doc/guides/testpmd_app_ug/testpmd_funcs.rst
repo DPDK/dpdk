@@ -2585,13 +2585,16 @@ Add port traffic management private shaper profile
 Add the port traffic management private shaper profile::
 
    testpmd> add port tm node shaper profile (port_id) (shaper_profile_id) \
-   (tb_rate) (tb_size) (packet_length_adjust)
+   (cmit_tb_rate) (cmit_tb_size) (peak_tb_rate) (peak_tb_size) \
+   (packet_length_adjust)
 
 where:
 
 * ``shaper_profile id``: Shaper profile ID for the new profile.
-* ``tb_rate``: Token bucket rate (bytes per second).
-* ``tb_size``: Token bucket size (bytes).
+* ``cmit_tb_rate``: Committed token bucket rate (bytes per second).
+* ``cmit_tb_size``: Committed token bucket size (bytes).
+* ``peak_tb_rate``: Peak token bucket rate (bytes per second).
+* ``peak_tb_size``: Peak token bucket size (bytes).
 * ``packet_length_adjust``: The value (bytes) to be added to the length of
   each packet for the purpose of shaping. This parameter value can be used to
   correct the packet length with the framing overhead bytes that are consumed

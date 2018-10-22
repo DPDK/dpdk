@@ -771,8 +771,10 @@ struct cmd_add_port_tm_node_shaper_profile_result {
 	cmdline_fixed_string_t profile;
 	uint16_t port_id;
 	uint32_t shaper_id;
-	uint64_t tb_rate;
-	uint64_t tb_size;
+	uint64_t cmit_tb_rate;
+	uint64_t cmit_tb_size;
+	uint64_t peak_tb_rate;
+	uint64_t peak_tb_size;
 	uint32_t pktlen_adjust;
 };
 
@@ -807,14 +809,22 @@ cmdline_parse_token_num_t cmd_add_port_tm_node_shaper_profile_shaper_id =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_shaper_profile_result,
 			shaper_id, UINT32);
-cmdline_parse_token_num_t cmd_add_port_tm_node_shaper_profile_tb_rate =
+cmdline_parse_token_num_t cmd_add_port_tm_node_shaper_profile_cmit_tb_rate =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_shaper_profile_result,
-			tb_rate, UINT64);
-cmdline_parse_token_num_t cmd_add_port_tm_node_shaper_profile_tb_size =
+			cmit_tb_rate, UINT64);
+cmdline_parse_token_num_t cmd_add_port_tm_node_shaper_profile_cmit_tb_size =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_shaper_profile_result,
-			tb_size, UINT64);
+			cmit_tb_size, UINT64);
+cmdline_parse_token_num_t cmd_add_port_tm_node_shaper_profile_peak_tb_rate =
+	TOKEN_NUM_INITIALIZER(
+		struct cmd_add_port_tm_node_shaper_profile_result,
+			peak_tb_rate, UINT64);
+cmdline_parse_token_num_t cmd_add_port_tm_node_shaper_profile_peak_tb_size =
+	TOKEN_NUM_INITIALIZER(
+		struct cmd_add_port_tm_node_shaper_profile_result,
+			peak_tb_size, UINT64);
 cmdline_parse_token_num_t cmd_add_port_tm_node_shaper_profile_pktlen_adjust =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_shaper_profile_result,
@@ -838,8 +848,10 @@ static void cmd_add_port_tm_node_shaper_profile_parsed(void *parsed_result,
 	/* Private shaper profile params */
 	memset(&sp, 0, sizeof(struct rte_tm_shaper_params));
 	memset(&error, 0, sizeof(struct rte_tm_error));
-	sp.peak.rate = res->tb_rate;
-	sp.peak.size = res->tb_size;
+	sp.committed.rate = res->cmit_tb_rate;
+	sp.committed.size = res->cmit_tb_size;
+	sp.peak.rate = res->peak_tb_rate;
+	sp.peak.size = res->peak_tb_size;
 	sp.pkt_length_adjust = pkt_len_adjust;
 
 	ret = rte_tm_shaper_profile_add(port_id, shaper_id, &sp, &error);
@@ -862,8 +874,10 @@ cmdline_parse_inst_t cmd_add_port_tm_node_shaper_profile = {
 		(void *)&cmd_add_port_tm_node_shaper_profile_profile,
 		(void *)&cmd_add_port_tm_node_shaper_profile_port_id,
 		(void *)&cmd_add_port_tm_node_shaper_profile_shaper_id,
-		(void *)&cmd_add_port_tm_node_shaper_profile_tb_rate,
-		(void *)&cmd_add_port_tm_node_shaper_profile_tb_size,
+		(void *)&cmd_add_port_tm_node_shaper_profile_cmit_tb_rate,
+		(void *)&cmd_add_port_tm_node_shaper_profile_cmit_tb_size,
+		(void *)&cmd_add_port_tm_node_shaper_profile_peak_tb_rate,
+		(void *)&cmd_add_port_tm_node_shaper_profile_peak_tb_size,
 		(void *)&cmd_add_port_tm_node_shaper_profile_pktlen_adjust,
 		NULL,
 	},
