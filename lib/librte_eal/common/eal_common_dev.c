@@ -387,7 +387,7 @@ rte_dev_remove(struct rte_device *dev)
 		return -ENOENT;
 	}
 
-	ret = build_devargs(dev->devargs->bus->name, dev->name, "", &devargs);
+	ret = build_devargs(dev->bus->name, dev->name, "", &devargs);
 	if (ret != 0)
 		return ret;
 
