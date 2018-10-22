@@ -12,13 +12,16 @@
 
 #include "rte_ethdev.h"
 #include "rte_ethdev_core.h"
+#include "rte_ethdev_driver.h"
 #include "ethdev_private.h"
 
 enum eth_params {
+	RTE_ETH_PARAM_REPRESENTOR,
 	RTE_ETH_PARAM_MAX,
 };
 
 static const char * const eth_params_keys[] = {
+	[RTE_ETH_PARAM_REPRESENTOR] = "representor",
 	[RTE_ETH_PARAM_MAX] = NULL,
 };
 
@@ -34,9 +37,43 @@ struct eth_dev_match_arg {
 	})
 
 static int
+eth_representor_cmp(const char *key __rte_unused,
+		const char *value, void *opaque)
+{
+	int ret;
+	char *values;
+	const struct rte_eth_dev_data *data = opaque;
+	struct rte_eth_devargs representors;
+	uint16_t index;
+
+	if ((data->dev_flags & RTE_ETH_DEV_REPRESENTOR) == 0)
+		return -1; /* not a representor port */
+
+	/* Parse devargs representor values. */
+	values = strdup(value);
+	if (values == NULL)
+		return -1;
+	memset(&representors, 0, sizeof(representors));
+	ret = rte_eth_devargs_parse_list(values,
+			rte_eth_devargs_parse_representor_ports,
+			&representors);
+	free(values);
+	if (ret != 0)
+		return -1; /* invalid devargs value */
+
+	/* Return 0 if representor id is matching one of the values. */
+	for (index = 0; index < representors.nb_representor_ports; index++)
+		if (data->representor_id ==
+				representors.representor_ports[index])
+			return 0;
+	return -1; /* no match */
+}
+
+static int
 eth_dev_match(const struct rte_eth_dev *edev,
 	      const void *_arg)
 {
+	int ret;
 	const struct eth_dev_match_arg *arg = _arg;
 	const struct rte_kvargs *kvlist = arg->kvlist;
 
@@ -47,6 +84,13 @@ eth_dev_match(const struct rte_eth_dev *edev,
 	if (kvlist == NULL)
 		/* Empty string matches everything. */
 		return 0;
+
+	ret = rte_kvargs_process(kvlist,
+			eth_params_keys[RTE_ETH_PARAM_REPRESENTOR],
+			eth_representor_cmp, edev->data);
+	if (ret != 0)
+		return -1;
+
 	return 0;
 }
 

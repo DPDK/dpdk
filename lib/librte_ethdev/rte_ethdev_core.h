@@ -625,6 +625,10 @@ struct rte_eth_dev_data {
 	struct rte_vlan_filter_conf vlan_filter_conf;
 			/**< VLAN filter configuration. */
 	struct rte_eth_dev_owner owner; /**< The port owner. */
+	uint16_t representor_id;
+			/**< Switch-specific identifier.
+			 *   Valid if RTE_ETH_DEV_REPRESENTOR in dev_flags.
+			 */
 } __rte_cache_aligned;
 
 /**

@@ -192,6 +192,7 @@ ixgbe_vf_representor_init(struct rte_eth_dev *ethdev, void *init_params)
 		return -ENODEV;
 
 	ethdev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR;
+	ethdev->data->representor_id = representor->vf_id;
 
 	/* Set representor device ops */
 	ethdev->dev_ops = &ixgbe_vf_representor_dev_ops;
