@@ -25,6 +25,7 @@ DIRS-$(CONFIG_RTE_LIBRTE_ETHER) += librte_ethdev
 DEPDIRS-librte_ethdev := librte_net librte_eal librte_mempool librte_ring
 DEPDIRS-librte_ethdev += librte_mbuf
 DEPDIRS-librte_ethdev += librte_kvargs
+DEPDIRS-librte_ethdev += librte_cmdline
 DIRS-$(CONFIG_RTE_LIBRTE_BBDEV) += librte_bbdev
 DEPDIRS-librte_bbdev := librte_eal librte_mempool librte_mbuf
 DIRS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += librte_cryptodev

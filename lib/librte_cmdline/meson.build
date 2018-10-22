@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
+# This library is processed before EAL
+includes = [global_inc]
+includes += include_directories('../librte_eal/common/include')
+
 version = 2
 sources = files('cmdline.c',
 	'cmdline_cirbuf.c',

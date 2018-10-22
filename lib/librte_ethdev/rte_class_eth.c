@@ -4,6 +4,7 @@
 
 #include <string.h>
 
+#include <cmdline_parse_etheraddr.h>
 #include <rte_class.h>
 #include <rte_compat.h>
 #include <rte_errno.h>
@@ -16,11 +17,13 @@
 #include "ethdev_private.h"
 
 enum eth_params {
+	RTE_ETH_PARAM_MAC,
 	RTE_ETH_PARAM_REPRESENTOR,
 	RTE_ETH_PARAM_MAX,
 };
 
 static const char * const eth_params_keys[] = {
+	[RTE_ETH_PARAM_MAC] = "mac",
 	[RTE_ETH_PARAM_REPRESENTOR] = "representor",
 	[RTE_ETH_PARAM_MAX] = NULL,
 };
@@ -35,6 +38,33 @@ struct eth_dev_match_arg {
 		.device = (d), \
 		.kvlist = (k), \
 	})
+
+static int
+eth_mac_cmp(const char *key __rte_unused,
+		const char *value, void *opaque)
+{
+	int ret;
+	struct ether_addr mac;
+	const struct rte_eth_dev_data *data = opaque;
+	struct rte_eth_dev_info dev_info;
+	uint32_t index;
+
+	/* Parse devargs MAC address. */
+	/*
+	 * cannot use ether_aton_r(value, &mac)
+	 * because of include conflict with rte_ether.h
+	 */
+	ret = cmdline_parse_etheraddr(NULL, value, &mac, sizeof(mac));
+	if (ret < 0)
+		return -1; /* invalid devargs value */
+
+	/* Return 0 if devargs MAC is matching one of the device MACs. */
+	rte_eth_dev_info_get(data->port_id, &dev_info);
+	for (index = 0; index < dev_info.max_mac_addrs; index++)
+		if (is_same_ether_addr(&mac, &data->mac_addrs[index]))
+			return 0;
+	return -1; /* no match */
+}
 
 static int
 eth_representor_cmp(const char *key __rte_unused,
@@ -84,6 +114,12 @@ eth_dev_match(const struct rte_eth_dev *edev,
 	if (kvlist == NULL)
 		/* Empty string matches everything. */
 		return 0;
+
+	ret = rte_kvargs_process(kvlist,
+			eth_params_keys[RTE_ETH_PARAM_MAC],
+			eth_mac_cmp, edev->data);
+	if (ret != 0)
+		return -1;
 
 	ret = rte_kvargs_process(kvlist,
 			eth_params_keys[RTE_ETH_PARAM_REPRESENTOR],
