@@ -338,7 +338,7 @@ i40e_vsi_set_tx_loopback(struct i40e_vsi *vsi, uint8_t on)
 	hw = I40E_VSI_TO_HW(vsi);
 
 	/* Use the FW API if FW >= v5.0 */
-	if (hw->aq.fw_maj_ver < 5) {
+	if (hw->aq.fw_maj_ver < 5 && hw->mac.type != I40E_MAC_X722) {
 		PMD_INIT_LOG(ERR, "FW < v5.0, cannot enable loopback");
 		return -ENOTSUP;
 	}

@@ -5372,7 +5372,7 @@ i40e_enable_pf_lb(struct i40e_pf *pf)
 	int ret;
 
 	/* Use the FW API if FW >= v5.0 */
-	if (hw->aq.fw_maj_ver < 5) {
+	if (hw->aq.fw_maj_ver < 5 && hw->mac.type != I40E_MAC_X722) {
 		PMD_INIT_LOG(ERR, "FW < v5.0, cannot enable loopback");
 		return;
 	}
@@ -5643,7 +5643,7 @@ i40e_vsi_setup(struct i40e_pf *pf,
 		ctxt.flags = I40E_AQ_VSI_TYPE_VF;
 
 		/* Use the VEB configuration if FW >= v5.0 */
-		if (hw->aq.fw_maj_ver >= 5) {
+		if (hw->aq.fw_maj_ver >= 5 || hw->mac.type == I40E_MAC_X722) {
 			/* Configure switch ID */
 			ctxt.info.valid_sections |=
 			rte_cpu_to_le_16(I40E_AQ_VSI_PROP_SWITCH_VALID);
