@@ -1619,6 +1619,35 @@ flow rule using the action l2_decap will use the last configuration set.
 To have a different encapsulation header, one of those commands must be called
 before the flow rule creation.
 
+Config MPLSoGRE Encap outer layers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Configure the outer layer to encapsulate a packet inside a MPLSoGRE tunnel::
+
+ set mplsogre_encap ip-version (ipv4|ipv6) label (label) \
+        ip-src (ip-src) ip-dst (ip-dst) eth-src (eth-src) eth-dst (eth-dst)
+ set mplsogre_encap-with-vlan ip-version (ipv4|ipv6) label (label) \
+        ip-src (ip-src) ip-dst (ip-dst) vlan-tci (vlan-tci) \
+        eth-src (eth-src) eth-dst (eth-dst)
+
+Those command will set an internal configuration inside testpmd, any following
+flow rule using the action mplsogre_encap will use the last configuration set.
+To have a different encapsulation header, one of those commands must be called
+before the flow rule creation.
+
+Config MPLSoGRE Decap outer layers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Configure the outer layer to decapsulate MPLSoGRE packet::
+
+ set mplsogre_decap ip-version (ipv4|ipv6)
+ set mplsogre_decap-with-vlan ip-version (ipv4|ipv6)
+
+Those command will set an internal configuration inside testpmd, any following
+flow rule using the action mplsogre_decap will use the last configuration set.
+To have a different decapsulation header, one of those commands must be called
+before the flow rule creation.
+
 Config MPLSoUDP Encap outer layers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -3858,6 +3887,12 @@ This section lists supported actions and their attributes, if any.
 - ``l2_decap``: Performs a L2 decapsulation, L2 configuration
   is done through `Config L2 Decap`_.
 
+- ``mplsogre_encap``: Performs a MPLSoGRE encapsulation, outer layer
+  configuration is done through `Config MPLSoGRE Encap outer layers`_.
+
+- ``mplsogre_decap``: Performs a MPLSoGRE decapsulation, outer layer
+  configuration is done through `Config MPLSoGRE Decap outer layers`_.
+
 - ``mplsoudp_encap``: Performs a MPLSoUDP encapsulation, outer layer
   configuration is done through `Config MPLSoUDP Encap outer layers`_.
 
@@ -4273,6 +4308,74 @@ L2 with VXLAN header::
  testpmd> set l2_encap-with-vlan
  testpmd> flow create 0 egress pattern eth / end actions l2_encap / mplsoudp_encap /
          queue index 0 / end
+
+Sample MPLSoGRE encapsulation rule
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+MPLSoGRE encapsulation outer layer has default value pre-configured in testpmd
+source code, those can be changed by using the following commands
+
+IPv4 MPLSoGRE outer header::
+
+ testpmd> set mplsogre_encap ip-version ipv4 label 4
+        ip-src 127.0.0.1 ip-dst 128.0.0.1 eth-src 11:11:11:11:11:11
+        eth-dst 22:22:22:22:22:22
+ testpmd> flow create 0 egress pattern eth / end actions l2_decap /
+        mplsogre_encap / end
+
+IPv4 MPLSoGRE with VLAN outer header::
+
+ testpmd> set mplsogre_encap-with-vlan ip-version ipv4 label 4
+        ip-src 127.0.0.1 ip-dst 128.0.0.1 vlan-tci 34
+        eth-src 11:11:11:11:11:11 eth-dst 22:22:22:22:22:22
+ testpmd> flow create 0 egress pattern eth / end actions l2_decap /
+        mplsogre_encap / end
+
+IPv6 MPLSoGRE outer header::
+
+ testpmd> set mplsogre_encap ip-version ipv6 mask 4
+        ip-src ::1 ip-dst ::2222 eth-src 11:11:11:11:11:11
+        eth-dst 22:22:22:22:22:22
+ testpmd> flow create 0 egress pattern eth / end actions l2_decap /
+        mplsogre_encap / end
+
+IPv6 MPLSoGRE with VLAN outer header::
+
+ testpmd> set mplsogre_encap-with-vlan ip-version ipv6 mask 4
+        ip-src ::1 ip-dst ::2222 vlan-tci 34
+        eth-src 11:11:11:11:11:11 eth-dst 22:22:22:22:22:22
+ testpmd> flow create 0 egress pattern eth / end actions l2_decap /
+        mplsogre_encap / end
+
+Sample MPLSoGRE decapsulation rule
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+MPLSoGRE decapsulation outer layer has default value pre-configured in testpmd
+source code, those can be changed by using the following commands
+
+IPv4 MPLSoGRE outer header::
+
+ testpmd> set mplsogre_decap ip-version ipv4
+ testpmd> flow create 0 ingress pattern eth / ipv4 / gre / mpls / end actions
+        mplsogre_decap / l2_encap / end
+
+IPv4 MPLSoGRE with VLAN outer header::
+
+ testpmd> set mplsogre_decap-with-vlan ip-version ipv4
+ testpmd> flow create 0 ingress pattern eth / vlan / ipv4 / gre / mpls / end
+        actions mplsogre_decap / l2_encap / end
+
+IPv6 MPLSoGRE outer header::
+
+ testpmd> set mplsogre_decap ip-version ipv6
+ testpmd> flow create 0 ingress pattern eth / ipv6 / gre / mpls / end
+        actions mplsogre_decap / l2_encap / end
+
+IPv6 MPLSoGRE with VLAN outer header::
+
+ testpmd> set mplsogre_decap-with-vlan ip-version ipv6
+ testpmd> flow create 0 ingress pattern eth / vlan / ipv6 / gre / mpls / end
+        actions mplsogre_decap / l2_encap / end
 
 Sample MPLSoUDP encapsulation rule
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

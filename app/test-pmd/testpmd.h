@@ -527,6 +527,28 @@ struct l2_decap_conf {
 };
 struct l2_decap_conf l2_decap_conf;
 
+/* MPLSoGRE encap parameters. */
+struct mplsogre_encap_conf {
+	uint32_t select_ipv4:1;
+	uint32_t select_vlan:1;
+	uint8_t label[3];
+	rte_be32_t ipv4_src;
+	rte_be32_t ipv4_dst;
+	uint8_t ipv6_src[16];
+	uint8_t ipv6_dst[16];
+	rte_be16_t vlan_tci;
+	uint8_t eth_src[ETHER_ADDR_LEN];
+	uint8_t eth_dst[ETHER_ADDR_LEN];
+};
+struct mplsogre_encap_conf mplsogre_encap_conf;
+
+/* MPLSoGRE decap parameters. */
+struct mplsogre_decap_conf {
+	uint32_t select_ipv4:1;
+	uint32_t select_vlan:1;
+};
+struct mplsogre_decap_conf mplsogre_decap_conf;
+
 /* MPLSoUDP encap parameters. */
 struct mplsoudp_encap_conf {
 	uint32_t select_ipv4:1;

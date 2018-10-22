@@ -15436,6 +15436,229 @@ cmdline_parse_inst_t cmd_set_l2_decap_with_vlan = {
 	},
 };
 
+/** Set MPLSoGRE encapsulation details */
+struct cmd_set_mplsogre_encap_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t mplsogre;
+	cmdline_fixed_string_t pos_token;
+	cmdline_fixed_string_t ip_version;
+	uint32_t vlan_present:1;
+	uint32_t label;
+	cmdline_ipaddr_t ip_src;
+	cmdline_ipaddr_t ip_dst;
+	uint16_t tci;
+	struct ether_addr eth_src;
+	struct ether_addr eth_dst;
+};
+
+cmdline_parse_token_string_t cmd_set_mplsogre_encap_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsogre_encap_result, set,
+				 "set");
+cmdline_parse_token_string_t cmd_set_mplsogre_encap_mplsogre_encap =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsogre_encap_result, mplsogre,
+				 "mplsogre_encap");
+cmdline_parse_token_string_t cmd_set_mplsogre_encap_mplsogre_encap_with_vlan =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsogre_encap_result,
+				 mplsogre, "mplsogre_encap-with-vlan");
+cmdline_parse_token_string_t cmd_set_mplsogre_encap_ip_version =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsogre_encap_result,
+				 pos_token, "ip-version");
+cmdline_parse_token_string_t cmd_set_mplsogre_encap_ip_version_value =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsogre_encap_result,
+				 ip_version, "ipv4#ipv6");
+cmdline_parse_token_string_t cmd_set_mplsogre_encap_label =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsogre_encap_result,
+				 pos_token, "label");
+cmdline_parse_token_num_t cmd_set_mplsogre_encap_label_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_mplsogre_encap_result, label,
+			      UINT32);
+cmdline_parse_token_string_t cmd_set_mplsogre_encap_ip_src =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsogre_encap_result,
+				 pos_token, "ip-src");
+cmdline_parse_token_ipaddr_t cmd_set_mplsogre_encap_ip_src_value =
+	TOKEN_IPADDR_INITIALIZER(struct cmd_set_mplsogre_encap_result, ip_src);
+cmdline_parse_token_string_t cmd_set_mplsogre_encap_ip_dst =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsogre_encap_result,
+				 pos_token, "ip-dst");
+cmdline_parse_token_ipaddr_t cmd_set_mplsogre_encap_ip_dst_value =
+	TOKEN_IPADDR_INITIALIZER(struct cmd_set_mplsogre_encap_result, ip_dst);
+cmdline_parse_token_string_t cmd_set_mplsogre_encap_vlan =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsogre_encap_result,
+				 pos_token, "vlan-tci");
+cmdline_parse_token_num_t cmd_set_mplsogre_encap_vlan_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_mplsogre_encap_result, tci,
+			      UINT16);
+cmdline_parse_token_string_t cmd_set_mplsogre_encap_eth_src =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsogre_encap_result,
+				 pos_token, "eth-src");
+cmdline_parse_token_etheraddr_t cmd_set_mplsogre_encap_eth_src_value =
+	TOKEN_ETHERADDR_INITIALIZER(struct cmd_set_mplsogre_encap_result,
+				    eth_src);
+cmdline_parse_token_string_t cmd_set_mplsogre_encap_eth_dst =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsogre_encap_result,
+				 pos_token, "eth-dst");
+cmdline_parse_token_etheraddr_t cmd_set_mplsogre_encap_eth_dst_value =
+	TOKEN_ETHERADDR_INITIALIZER(struct cmd_set_mplsogre_encap_result,
+				    eth_dst);
+
+static void cmd_set_mplsogre_encap_parsed(void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_set_mplsogre_encap_result *res = parsed_result;
+	union {
+		uint32_t mplsogre_label;
+		uint8_t label[3];
+	} id = {
+		.mplsogre_label =
+			rte_cpu_to_be_32(res->label) & RTE_BE32(0x00ffffff),
+	};
+
+	if (strcmp(res->mplsogre, "mplsogre_encap") == 0)
+		mplsogre_encap_conf.select_vlan = 0;
+	else if (strcmp(res->mplsogre, "mplsogre_encap-with-vlan") == 0)
+		mplsogre_encap_conf.select_vlan = 1;
+	if (strcmp(res->ip_version, "ipv4") == 0)
+		mplsogre_encap_conf.select_ipv4 = 1;
+	else if (strcmp(res->ip_version, "ipv6") == 0)
+		mplsogre_encap_conf.select_ipv4 = 0;
+	else
+		return;
+	rte_memcpy(mplsogre_encap_conf.label, &id.label[1], 3);
+	if (mplsogre_encap_conf.select_ipv4) {
+		IPV4_ADDR_TO_UINT(res->ip_src, mplsogre_encap_conf.ipv4_src);
+		IPV4_ADDR_TO_UINT(res->ip_dst, mplsogre_encap_conf.ipv4_dst);
+	} else {
+		IPV6_ADDR_TO_ARRAY(res->ip_src, mplsogre_encap_conf.ipv6_src);
+		IPV6_ADDR_TO_ARRAY(res->ip_dst, mplsogre_encap_conf.ipv6_dst);
+	}
+	if (mplsogre_encap_conf.select_vlan)
+		mplsogre_encap_conf.vlan_tci = rte_cpu_to_be_16(res->tci);
+	rte_memcpy(mplsogre_encap_conf.eth_src, res->eth_src.addr_bytes,
+		   ETHER_ADDR_LEN);
+	rte_memcpy(mplsogre_encap_conf.eth_dst, res->eth_dst.addr_bytes,
+		   ETHER_ADDR_LEN);
+}
+
+cmdline_parse_inst_t cmd_set_mplsogre_encap = {
+	.f = cmd_set_mplsogre_encap_parsed,
+	.data = NULL,
+	.help_str = "set mplsogre_encap ip-version ipv4|ipv6 label <label>"
+		" ip-src <ip-src> ip-dst <ip-dst> eth-src <eth-src>"
+		" eth-dst <eth-dst>",
+	.tokens = {
+		(void *)&cmd_set_mplsogre_encap_set,
+		(void *)&cmd_set_mplsogre_encap_mplsogre_encap,
+		(void *)&cmd_set_mplsogre_encap_ip_version,
+		(void *)&cmd_set_mplsogre_encap_ip_version_value,
+		(void *)&cmd_set_mplsogre_encap_label,
+		(void *)&cmd_set_mplsogre_encap_label_value,
+		(void *)&cmd_set_mplsogre_encap_ip_src,
+		(void *)&cmd_set_mplsogre_encap_ip_src_value,
+		(void *)&cmd_set_mplsogre_encap_ip_dst,
+		(void *)&cmd_set_mplsogre_encap_ip_dst_value,
+		(void *)&cmd_set_mplsogre_encap_eth_src,
+		(void *)&cmd_set_mplsogre_encap_eth_src_value,
+		(void *)&cmd_set_mplsogre_encap_eth_dst,
+		(void *)&cmd_set_mplsogre_encap_eth_dst_value,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_set_mplsogre_encap_with_vlan = {
+	.f = cmd_set_mplsogre_encap_parsed,
+	.data = NULL,
+	.help_str = "set mplsogre_encap-with-vlan ip-version ipv4|ipv6"
+		" label <label> ip-src <ip-src> ip-dst <ip-dst>"
+		" vlan-tci <vlan-tci> eth-src <eth-src> eth-dst <eth-dst>",
+	.tokens = {
+		(void *)&cmd_set_mplsogre_encap_set,
+		(void *)&cmd_set_mplsogre_encap_mplsogre_encap_with_vlan,
+		(void *)&cmd_set_mplsogre_encap_ip_version,
+		(void *)&cmd_set_mplsogre_encap_ip_version_value,
+		(void *)&cmd_set_mplsogre_encap_label,
+		(void *)&cmd_set_mplsogre_encap_label_value,
+		(void *)&cmd_set_mplsogre_encap_ip_src,
+		(void *)&cmd_set_mplsogre_encap_ip_src_value,
+		(void *)&cmd_set_mplsogre_encap_ip_dst,
+		(void *)&cmd_set_mplsogre_encap_ip_dst_value,
+		(void *)&cmd_set_mplsogre_encap_vlan,
+		(void *)&cmd_set_mplsogre_encap_vlan_value,
+		(void *)&cmd_set_mplsogre_encap_eth_src,
+		(void *)&cmd_set_mplsogre_encap_eth_src_value,
+		(void *)&cmd_set_mplsogre_encap_eth_dst,
+		(void *)&cmd_set_mplsogre_encap_eth_dst_value,
+		NULL,
+	},
+};
+
+/** Set MPLSoGRE decapsulation details */
+struct cmd_set_mplsogre_decap_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t mplsogre;
+	cmdline_fixed_string_t pos_token;
+	cmdline_fixed_string_t ip_version;
+	uint32_t vlan_present:1;
+};
+
+cmdline_parse_token_string_t cmd_set_mplsogre_decap_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsogre_decap_result, set,
+				 "set");
+cmdline_parse_token_string_t cmd_set_mplsogre_decap_mplsogre_decap =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsogre_decap_result, mplsogre,
+				 "mplsogre_decap");
+cmdline_parse_token_string_t cmd_set_mplsogre_decap_mplsogre_decap_with_vlan =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsogre_decap_result,
+				 mplsogre, "mplsogre_decap-with-vlan");
+cmdline_parse_token_string_t cmd_set_mplsogre_decap_ip_version =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsogre_decap_result,
+				 pos_token, "ip-version");
+cmdline_parse_token_string_t cmd_set_mplsogre_decap_ip_version_value =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_mplsogre_decap_result,
+				 ip_version, "ipv4#ipv6");
+
+static void cmd_set_mplsogre_decap_parsed(void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_set_mplsogre_decap_result *res = parsed_result;
+
+	if (strcmp(res->mplsogre, "mplsogre_decap") == 0)
+		mplsogre_decap_conf.select_vlan = 0;
+	else if (strcmp(res->mplsogre, "mplsogre_decap-with-vlan") == 0)
+		mplsogre_decap_conf.select_vlan = 1;
+	if (strcmp(res->ip_version, "ipv4") == 0)
+		mplsogre_decap_conf.select_ipv4 = 1;
+	else if (strcmp(res->ip_version, "ipv6") == 0)
+		mplsogre_decap_conf.select_ipv4 = 0;
+}
+
+cmdline_parse_inst_t cmd_set_mplsogre_decap = {
+	.f = cmd_set_mplsogre_decap_parsed,
+	.data = NULL,
+	.help_str = "set mplsogre_decap ip-version ipv4|ipv6",
+	.tokens = {
+		(void *)&cmd_set_mplsogre_decap_set,
+		(void *)&cmd_set_mplsogre_decap_mplsogre_decap,
+		(void *)&cmd_set_mplsogre_decap_ip_version,
+		(void *)&cmd_set_mplsogre_decap_ip_version_value,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_set_mplsogre_decap_with_vlan = {
+	.f = cmd_set_mplsogre_decap_parsed,
+	.data = NULL,
+	.help_str = "set mplsogre_decap-with-vlan ip-version ipv4|ipv6",
+	.tokens = {
+		(void *)&cmd_set_mplsogre_decap_set,
+		(void *)&cmd_set_mplsogre_decap_mplsogre_decap_with_vlan,
+		(void *)&cmd_set_mplsogre_decap_ip_version,
+		(void *)&cmd_set_mplsogre_decap_ip_version_value,
+		NULL,
+	},
+};
+
 /** Set MPLSoUDP encapsulation details */
 struct cmd_set_mplsoudp_encap_result {
 	cmdline_fixed_string_t set;
@@ -18420,6 +18643,10 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_l2_encap_with_vlan,
 	(cmdline_parse_inst_t *)&cmd_set_l2_decap,
 	(cmdline_parse_inst_t *)&cmd_set_l2_decap_with_vlan,
+	(cmdline_parse_inst_t *)&cmd_set_mplsogre_encap,
+	(cmdline_parse_inst_t *)&cmd_set_mplsogre_encap_with_vlan,
+	(cmdline_parse_inst_t *)&cmd_set_mplsogre_decap,
+	(cmdline_parse_inst_t *)&cmd_set_mplsogre_decap_with_vlan,
 	(cmdline_parse_inst_t *)&cmd_set_mplsoudp_encap,
 	(cmdline_parse_inst_t *)&cmd_set_mplsoudp_encap_with_vlan,
 	(cmdline_parse_inst_t *)&cmd_set_mplsoudp_decap,
