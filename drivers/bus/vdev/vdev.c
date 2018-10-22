@@ -221,6 +221,7 @@ insert_vdev(const char *name, const char *args, struct rte_vdev_device **p_dev)
 		goto fail;
 	}
 
+	dev->device.bus = &rte_vdev_bus;
 	dev->device.devargs = devargs;
 	dev->device.numa_node = SOCKET_ID_ANY;
 	dev->device.name = devargs->name;
