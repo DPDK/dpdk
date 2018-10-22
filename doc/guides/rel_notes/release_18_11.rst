@@ -187,7 +187,8 @@ New Features
   This new “extendable bucket” feature provides 100% insertion guarantee to
   the capacity specified by the user by extending hash table with extra
   buckets when needed to accommodate the unlikely event of intensive hash
-  collisions.
+  collisions.  In addition, the internal hashing algorithm was changed to use
+  partial-key hashing to improve memory efficiency and lookup performance.
 
 * **Added ability to switch queue deferred start flag on testpmd app.**
 

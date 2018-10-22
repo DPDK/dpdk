@@ -129,17 +129,14 @@ struct rte_hash_key {
 enum rte_hash_sig_compare_function {
 	RTE_HASH_COMPARE_SCALAR = 0,
 	RTE_HASH_COMPARE_SSE,
-	RTE_HASH_COMPARE_AVX2,
 	RTE_HASH_COMPARE_NUM
 };
 
 /** Bucket structure */
 struct rte_hash_bucket {
-	hash_sig_t sig_current[RTE_HASH_BUCKET_ENTRIES];
+	uint16_t sig_current[RTE_HASH_BUCKET_ENTRIES];
 
 	uint32_t key_idx[RTE_HASH_BUCKET_ENTRIES];
-
-	hash_sig_t sig_alt[RTE_HASH_BUCKET_ENTRIES];
 
 	uint8_t flag[RTE_HASH_BUCKET_ENTRIES];
 
@@ -193,6 +190,7 @@ struct rte_hash {
 
 struct queue_node {
 	struct rte_hash_bucket *bkt; /* Current bucket on the bfs search */
+	uint32_t cur_bkt_idx;
 
 	struct queue_node *prev;     /* Parent(bucket) in search path */
 	int prev_slot;               /* Parent(slot) in search path */

@@ -40,7 +40,10 @@ extern "C" {
 /** Flag to indicate the extendabe bucket table feature should be used */
 #define RTE_HASH_EXTRA_FLAGS_EXT_TABLE 0x08
 
-/** Signature of key that is stored internally. */
+/**
+ * The type of hash value of a key.
+ * It should be a value of at least 32bit with fully random pattern.
+ */
 typedef uint32_t hash_sig_t;
 
 /** Type of function that can be used for calculating the hash value. */
