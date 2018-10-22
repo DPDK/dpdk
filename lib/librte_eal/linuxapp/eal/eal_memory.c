@@ -2135,7 +2135,7 @@ memseg_primary_init(void)
 		uint64_t page_sz;
 		int socket_id;
 	} *memtypes = NULL;
-	int i, hpi_idx, msl_idx;
+	int i, hpi_idx, msl_idx, ret = -1; /* fail unless told to succeed */
 	struct rte_memseg_list *msl;
 	uint64_t max_mem, max_mem_per_type;
 	unsigned int max_seglists_per_type;
@@ -2227,7 +2227,7 @@ memseg_primary_init(void)
 	if (max_seglists_per_type == 0) {
 		RTE_LOG(ERR, EAL, "Cannot accommodate all memory types, please increase %s\n",
 			RTE_STR(CONFIG_RTE_MAX_MEMSEG_LISTS));
-		return -1;
+		goto out;
 	}
 
 	/* go through all mem types and create segment lists */
@@ -2287,21 +2287,25 @@ memseg_primary_init(void)
 				RTE_LOG(ERR, EAL,
 					"No more space in memseg lists, please increase %s\n",
 					RTE_STR(CONFIG_RTE_MAX_MEMSEG_LISTS));
-				return -1;
+				goto out;
 			}
 			msl = &mcfg->memsegs[msl_idx++];
 
 			if (alloc_memseg_list(msl, pagesz, n_segs,
 					socket_id, cur_seglist))
-				return -1;
+				goto out;
 
 			if (alloc_va_space(msl)) {
 				RTE_LOG(ERR, EAL, "Cannot allocate VA space for memseg list\n");
-				return -1;
+				goto out;
 			}
 		}
 	}
-	return 0;
+	/* we're successful */
+	ret = 0;
+out:
+	free(memtypes);
+	return ret;
 }
 
 static int
