@@ -660,6 +660,116 @@ static int test_full_bucket(void)
 	return 0;
 }
 
+/*
+ * Similar to the test above (full bucket test), but for extendable buckets.
+ */
+static int test_extendable_bucket(void)
+{
+	struct rte_hash_parameters params_pseudo_hash = {
+		.name = "test5",
+		.entries = 64,
+		.key_len = sizeof(struct flow_key), /* 13 */
+		.hash_func = pseudo_hash,
+		.hash_func_init_val = 0,
+		.socket_id = 0,
+		.extra_flag = RTE_HASH_EXTRA_FLAGS_EXT_TABLE
+	};
+	struct rte_hash *handle;
+	int pos[64];
+	int expected_pos[64];
+	unsigned int i;
+	struct flow_key rand_keys[64];
+
+	for (i = 0; i < 64; i++) {
+		rand_keys[i].port_dst = i;
+		rand_keys[i].port_src = i+1;
+	}
+
+	handle = rte_hash_create(&params_pseudo_hash);
+	RETURN_IF_ERROR(handle == NULL, "hash creation failed");
+
+	/* Fill bucket */
+	for (i = 0; i < 64; i++) {
+		pos[i] = rte_hash_add_key(handle, &rand_keys[i]);
+		print_key_info("Add", &rand_keys[i], pos[i]);
+		RETURN_IF_ERROR(pos[i] < 0,
+			"failed to add key (pos[%u]=%d)", i, pos[i]);
+		expected_pos[i] = pos[i];
+	}
+
+	/* Lookup */
+	for (i = 0; i < 64; i++) {
+		pos[i] = rte_hash_lookup(handle, &rand_keys[i]);
+		print_key_info("Lkp", &rand_keys[i], pos[i]);
+		RETURN_IF_ERROR(pos[i] != expected_pos[i],
+			"failed to find key (pos[%u]=%d)", i, pos[i]);
+	}
+
+	/* Add - update */
+	for (i = 0; i < 64; i++) {
+		pos[i] = rte_hash_add_key(handle, &rand_keys[i]);
+		print_key_info("Add", &rand_keys[i], pos[i]);
+		RETURN_IF_ERROR(pos[i] != expected_pos[i],
+			"failed to add key (pos[%u]=%d)", i, pos[i]);
+	}
+
+	/* Lookup */
+	for (i = 0; i < 64; i++) {
+		pos[i] = rte_hash_lookup(handle, &rand_keys[i]);
+		print_key_info("Lkp", &rand_keys[i], pos[i]);
+		RETURN_IF_ERROR(pos[i] != expected_pos[i],
+			"failed to find key (pos[%u]=%d)", i, pos[i]);
+	}
+
+	/* Delete 1 key, check other keys are still found */
+	pos[35] = rte_hash_del_key(handle, &rand_keys[35]);
+	print_key_info("Del", &rand_keys[35], pos[35]);
+	RETURN_IF_ERROR(pos[35] != expected_pos[35],
+			"failed to delete key (pos[1]=%d)", pos[35]);
+	pos[20] = rte_hash_lookup(handle, &rand_keys[20]);
+	print_key_info("Lkp", &rand_keys[20], pos[20]);
+	RETURN_IF_ERROR(pos[20] != expected_pos[20],
+			"failed lookup after deleting key from same bucket "
+			"(pos[20]=%d)", pos[20]);
+
+	/* Go back to previous state */
+	pos[35] = rte_hash_add_key(handle, &rand_keys[35]);
+	print_key_info("Add", &rand_keys[35], pos[35]);
+	expected_pos[35] = pos[35];
+	RETURN_IF_ERROR(pos[35] < 0, "failed to add key (pos[1]=%d)", pos[35]);
+
+	/* Delete */
+	for (i = 0; i < 64; i++) {
+		pos[i] = rte_hash_del_key(handle, &rand_keys[i]);
+		print_key_info("Del", &rand_keys[i], pos[i]);
+		RETURN_IF_ERROR(pos[i] != expected_pos[i],
+			"failed to delete key (pos[%u]=%d)", i, pos[i]);
+	}
+
+	/* Lookup */
+	for (i = 0; i < 64; i++) {
+		pos[i] = rte_hash_lookup(handle, &rand_keys[i]);
+		print_key_info("Lkp", &rand_keys[i], pos[i]);
+		RETURN_IF_ERROR(pos[i] != -ENOENT,
+			"fail: found non-existent key (pos[%u]=%d)", i, pos[i]);
+	}
+
+	/* Add again */
+	for (i = 0; i < 64; i++) {
+		pos[i] = rte_hash_add_key(handle, &rand_keys[i]);
+		print_key_info("Add", &rand_keys[i], pos[i]);
+		RETURN_IF_ERROR(pos[i] < 0,
+			"failed to add key (pos[%u]=%d)", i, pos[i]);
+		expected_pos[i] = pos[i];
+	}
+
+	rte_hash_free(handle);
+
+	/* Cover the NULL case. */
+	rte_hash_free(0);
+	return 0;
+}
+
 /******************************************************************************/
 static int
 fbk_hash_unit_test(void)
@@ -1096,7 +1206,7 @@ test_hash_creation_with_good_parameters(void)
  * Test to see the average table utilization (entries added/max entries)
  * before hitting a random entry that cannot be added
  */
-static int test_average_table_utilization(void)
+static int test_average_table_utilization(uint32_t ext_table)
 {
 	struct rte_hash *handle;
 	uint8_t simple_key[MAX_KEYSIZE];
@@ -1107,12 +1217,23 @@ static int test_average_table_utilization(void)
 
 	printf("\n# Running test to determine average utilization"
 	       "\n  before adding elements begins to fail\n");
+	if (ext_table)
+		printf("ext table is enabled\n");
+	else
+		printf("ext table is disabled\n");
+
 	printf("Measuring performance, please wait");
 	fflush(stdout);
 	ut_params.entries = 1 << 16;
 	ut_params.name = "test_average_utilization";
 	ut_params.hash_func = rte_jhash;
+	if (ext_table)
+		ut_params.extra_flag |= RTE_HASH_EXTRA_FLAGS_EXT_TABLE;
+	else
+		ut_params.extra_flag &= ~RTE_HASH_EXTRA_FLAGS_EXT_TABLE;
+
 	handle = rte_hash_create(&ut_params);
+
 	RETURN_IF_ERROR(handle == NULL, "hash creation failed");
 
 	for (j = 0; j < ITERATIONS; j++) {
@@ -1139,6 +1260,14 @@ static int test_average_table_utilization(void)
 			rte_hash_free(handle);
 			return -1;
 		}
+		if (ext_table) {
+			if (cnt != ut_params.entries) {
+				printf("rte_hash_count returned wrong value "
+					"%u, %u, %u\n", j, added_keys, cnt);
+				rte_hash_free(handle);
+				return -1;
+			}
+		}
 
 		average_keys_added += added_keys;
 
@@ -1161,7 +1290,7 @@ static int test_average_table_utilization(void)
 }
 
 #define NUM_ENTRIES 256
-static int test_hash_iteration(void)
+static int test_hash_iteration(uint32_t ext_table)
 {
 	struct rte_hash *handle;
 	unsigned i;
@@ -1177,6 +1306,11 @@ static int test_hash_iteration(void)
 	ut_params.name = "test_hash_iteration";
 	ut_params.hash_func = rte_jhash;
 	ut_params.key_len = 16;
+	if (ext_table)
+		ut_params.extra_flag |= RTE_HASH_EXTRA_FLAGS_EXT_TABLE;
+	else
+		ut_params.extra_flag &= ~RTE_HASH_EXTRA_FLAGS_EXT_TABLE;
+
 	handle = rte_hash_create(&ut_params);
 	RETURN_IF_ERROR(handle == NULL, "hash creation failed");
 
@@ -1186,8 +1320,13 @@ static int test_hash_iteration(void)
 		for (i = 0; i < ut_params.key_len; i++)
 			keys[added_keys][i] = rte_rand() % 255;
 		ret = rte_hash_add_key_data(handle, keys[added_keys], data[added_keys]);
-		if (ret < 0)
+		if (ret < 0) {
+			if (ext_table) {
+				printf("Insertion failed for ext table\n");
+				goto err;
+			}
 			break;
+		}
 	}
 
 	/* Iterate through the hash table */
@@ -1474,6 +1613,8 @@ test_hash(void)
 		return -1;
 	if (test_full_bucket() < 0)
 		return -1;
+	if (test_extendable_bucket() < 0)
+		return -1;
 
 	if (test_fbk_hash_find_existing() < 0)
 		return -1;
@@ -1483,9 +1624,17 @@ test_hash(void)
 		return -1;
 	if (test_hash_creation_with_good_parameters() < 0)
 		return -1;
-	if (test_average_table_utilization() < 0)
+
+	/* ext table disabled */
+	if (test_average_table_utilization(0) < 0)
 		return -1;
-	if (test_hash_iteration() < 0)
+	if (test_hash_iteration(0) < 0)
+		return -1;
+
+	/* ext table enabled */
+	if (test_average_table_utilization(1) < 0)
+		return -1;
+	if (test_hash_iteration(1) < 0)
 		return -1;
 
 	run_hash_func_tests();

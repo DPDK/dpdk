@@ -18,7 +18,8 @@
 #include "test.h"
 
 #define MAX_ENTRIES (1 << 19)
-#define KEYS_TO_ADD (MAX_ENTRIES * 3 / 4) /* 75% table utilization */
+#define KEYS_TO_ADD (MAX_ENTRIES)
+#define ADD_PERCENT 0.75 /* 75% table utilization */
 #define NUM_LOOKUPS (KEYS_TO_ADD * 5) /* Loop among keys added, several times */
 /* BUCKET_SIZE should be same as RTE_HASH_BUCKET_ENTRIES in rte_hash library */
 #define BUCKET_SIZE 8
@@ -78,7 +79,7 @@ static struct rte_hash_parameters ut_params = {
 
 static int
 create_table(unsigned int with_data, unsigned int table_index,
-		unsigned int with_locks)
+		unsigned int with_locks, unsigned int ext)
 {
 	char name[RTE_HASH_NAMESIZE];
 
@@ -95,6 +96,9 @@ create_table(unsigned int with_data, unsigned int table_index,
 				| RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY;
 	else
 		ut_params.extra_flag = 0;
+
+	if (ext)
+		ut_params.extra_flag |= RTE_HASH_EXTRA_FLAGS_EXT_TABLE;
 
 	ut_params.name = name;
 	ut_params.key_len = hashtest_key_lens[table_index];
@@ -117,15 +121,21 @@ create_table(unsigned int with_data, unsigned int table_index,
 
 /* Shuffle the keys that have been added, so lookups will be totally random */
 static void
-shuffle_input_keys(unsigned table_index)
+shuffle_input_keys(unsigned int table_index, unsigned int ext)
 {
 	unsigned i;
 	uint32_t swap_idx;
 	uint8_t temp_key[MAX_KEYSIZE];
 	hash_sig_t temp_signature;
 	int32_t temp_position;
+	unsigned int keys_to_add;
 
-	for (i = KEYS_TO_ADD - 1; i > 0; i--) {
+	if (!ext)
+		keys_to_add = KEYS_TO_ADD * ADD_PERCENT;
+	else
+		keys_to_add = KEYS_TO_ADD;
+
+	for (i = keys_to_add - 1; i > 0; i--) {
 		swap_idx = rte_rand() % i;
 
 		memcpy(temp_key, keys[i], hashtest_key_lens[table_index]);
@@ -147,14 +157,20 @@ shuffle_input_keys(unsigned table_index)
  * ALL can fit in hash table (no errors)
  */
 static int
-get_input_keys(unsigned with_pushes, unsigned table_index)
+get_input_keys(unsigned int with_pushes, unsigned int table_index,
+							unsigned int ext)
 {
 	unsigned i, j;
 	unsigned bucket_idx, incr, success = 1;
 	uint8_t k = 0;
 	int32_t ret;
 	const uint32_t bucket_bitmask = NUM_BUCKETS - 1;
+	unsigned int keys_to_add;
 
+	if (!ext)
+		keys_to_add = KEYS_TO_ADD * ADD_PERCENT;
+	else
+		keys_to_add = KEYS_TO_ADD;
 	/* Reset all arrays */
 	for (i = 0; i < MAX_ENTRIES; i++)
 		slot_taken[i] = 0;
@@ -171,7 +187,7 @@ get_input_keys(unsigned with_pushes, unsigned table_index)
 	 * Regardless a key has been added correctly or not (success),
 	 * the next one to try will be increased by 1.
 	 */
-	for (i = 0; i < KEYS_TO_ADD;) {
+	for (i = 0; i < keys_to_add;) {
 		incr = 0;
 		if (i != 0) {
 			keys[i][0] = ++k;
@@ -235,14 +251,20 @@ get_input_keys(unsigned with_pushes, unsigned table_index)
 }
 
 static int
-timed_adds(unsigned with_hash, unsigned with_data, unsigned table_index)
+timed_adds(unsigned int with_hash, unsigned int with_data,
+				unsigned int table_index, unsigned int ext)
 {
 	unsigned i;
 	const uint64_t start_tsc = rte_rdtsc();
 	void *data;
 	int32_t ret;
+	unsigned int keys_to_add;
+	if (!ext)
+		keys_to_add = KEYS_TO_ADD * ADD_PERCENT;
+	else
+		keys_to_add = KEYS_TO_ADD;
 
-	for (i = 0; i < KEYS_TO_ADD; i++) {
+	for (i = 0; i < keys_to_add; i++) {
 		data = (void *) ((uintptr_t) signatures[i]);
 		if (with_hash && with_data) {
 			ret = rte_hash_add_key_with_hash_data(h[table_index],
@@ -284,22 +306,31 @@ timed_adds(unsigned with_hash, unsigned with_data, unsigned table_index)
 	const uint64_t end_tsc = rte_rdtsc();
 	const uint64_t time_taken = end_tsc - start_tsc;
 
-	cycles[table_index][ADD][with_hash][with_data] = time_taken/KEYS_TO_ADD;
+	cycles[table_index][ADD][with_hash][with_data] = time_taken/keys_to_add;
 
 	return 0;
 }
 
 static int
-timed_lookups(unsigned with_hash, unsigned with_data, unsigned table_index)
+timed_lookups(unsigned int with_hash, unsigned int with_data,
+				unsigned int table_index, unsigned int ext)
 {
 	unsigned i, j;
 	const uint64_t start_tsc = rte_rdtsc();
 	void *ret_data;
 	void *expected_data;
 	int32_t ret;
+	unsigned int keys_to_add, num_lookups;
 
-	for (i = 0; i < NUM_LOOKUPS/KEYS_TO_ADD; i++) {
-		for (j = 0; j < KEYS_TO_ADD; j++) {
+	if (!ext) {
+		keys_to_add = KEYS_TO_ADD * ADD_PERCENT;
+		num_lookups = NUM_LOOKUPS * ADD_PERCENT;
+	} else {
+		keys_to_add = KEYS_TO_ADD;
+		num_lookups = NUM_LOOKUPS;
+	}
+	for (i = 0; i < num_lookups / keys_to_add; i++) {
+		for (j = 0; j < keys_to_add; j++) {
 			if (with_hash && with_data) {
 				ret = rte_hash_lookup_with_hash_data(h[table_index],
 							(const void *) keys[j],
@@ -352,13 +383,14 @@ timed_lookups(unsigned with_hash, unsigned with_data, unsigned table_index)
 	const uint64_t end_tsc = rte_rdtsc();
 	const uint64_t time_taken = end_tsc - start_tsc;
 
-	cycles[table_index][LOOKUP][with_hash][with_data] = time_taken/NUM_LOOKUPS;
+	cycles[table_index][LOOKUP][with_hash][with_data] = time_taken/num_lookups;
 
 	return 0;
 }
 
 static int
-timed_lookups_multi(unsigned with_data, unsigned table_index)
+timed_lookups_multi(unsigned int with_data, unsigned int table_index,
+							unsigned int ext)
 {
 	unsigned i, j, k;
 	int32_t positions_burst[BURST_SIZE];
@@ -367,11 +399,20 @@ timed_lookups_multi(unsigned with_data, unsigned table_index)
 	void *ret_data[BURST_SIZE];
 	uint64_t hit_mask;
 	int ret;
+	unsigned int keys_to_add, num_lookups;
+
+	if (!ext) {
+		keys_to_add = KEYS_TO_ADD * ADD_PERCENT;
+		num_lookups = NUM_LOOKUPS * ADD_PERCENT;
+	} else {
+		keys_to_add = KEYS_TO_ADD;
+		num_lookups = NUM_LOOKUPS;
+	}
 
 	const uint64_t start_tsc = rte_rdtsc();
 
-	for (i = 0; i < NUM_LOOKUPS/KEYS_TO_ADD; i++) {
-		for (j = 0; j < KEYS_TO_ADD/BURST_SIZE; j++) {
+	for (i = 0; i < num_lookups/keys_to_add; i++) {
+		for (j = 0; j < keys_to_add/BURST_SIZE; j++) {
 			for (k = 0; k < BURST_SIZE; k++)
 				keys_burst[k] = keys[j * BURST_SIZE + k];
 			if (with_data) {
@@ -419,19 +460,25 @@ timed_lookups_multi(unsigned with_data, unsigned table_index)
 	const uint64_t end_tsc = rte_rdtsc();
 	const uint64_t time_taken = end_tsc - start_tsc;
 
-	cycles[table_index][LOOKUP_MULTI][0][with_data] = time_taken/NUM_LOOKUPS;
+	cycles[table_index][LOOKUP_MULTI][0][with_data] = time_taken/num_lookups;
 
 	return 0;
 }
 
 static int
-timed_deletes(unsigned with_hash, unsigned with_data, unsigned table_index)
+timed_deletes(unsigned int with_hash, unsigned int with_data,
+				unsigned int table_index, unsigned int ext)
 {
 	unsigned i;
 	const uint64_t start_tsc = rte_rdtsc();
 	int32_t ret;
+	unsigned int keys_to_add;
+	if (!ext)
+		keys_to_add = KEYS_TO_ADD * ADD_PERCENT;
+	else
+		keys_to_add = KEYS_TO_ADD;
 
-	for (i = 0; i < KEYS_TO_ADD; i++) {
+	for (i = 0; i < keys_to_add; i++) {
 		/* There are no delete functions with data, so just call two functions */
 		if (with_hash)
 			ret = rte_hash_del_key_with_hash(h[table_index],
@@ -451,7 +498,7 @@ timed_deletes(unsigned with_hash, unsigned with_data, unsigned table_index)
 	const uint64_t end_tsc = rte_rdtsc();
 	const uint64_t time_taken = end_tsc - start_tsc;
 
-	cycles[table_index][DELETE][with_hash][with_data] = time_taken/KEYS_TO_ADD;
+	cycles[table_index][DELETE][with_hash][with_data] = time_taken/keys_to_add;
 
 	return 0;
 }
@@ -469,7 +516,8 @@ reset_table(unsigned table_index)
 }
 
 static int
-run_all_tbl_perf_tests(unsigned int with_pushes, unsigned int with_locks)
+run_all_tbl_perf_tests(unsigned int with_pushes, unsigned int with_locks,
+						unsigned int ext)
 {
 	unsigned i, j, with_data, with_hash;
 
@@ -478,25 +526,25 @@ run_all_tbl_perf_tests(unsigned int with_pushes, unsigned int with_locks)
 
 	for (with_data = 0; with_data <= 1; with_data++) {
 		for (i = 0; i < NUM_KEYSIZES; i++) {
-			if (create_table(with_data, i, with_locks) < 0)
+			if (create_table(with_data, i, with_locks, ext) < 0)
 				return -1;
 
-			if (get_input_keys(with_pushes, i) < 0)
+			if (get_input_keys(with_pushes, i, ext) < 0)
 				return -1;
 			for (with_hash = 0; with_hash <= 1; with_hash++) {
-				if (timed_adds(with_hash, with_data, i) < 0)
+				if (timed_adds(with_hash, with_data, i, ext) < 0)
 					return -1;
 
 				for (j = 0; j < NUM_SHUFFLES; j++)
-					shuffle_input_keys(i);
+					shuffle_input_keys(i, ext);
 
-				if (timed_lookups(with_hash, with_data, i) < 0)
+				if (timed_lookups(with_hash, with_data, i, ext) < 0)
 					return -1;
 
-				if (timed_lookups_multi(with_data, i) < 0)
+				if (timed_lookups_multi(with_data, i, ext) < 0)
 					return -1;
 
-				if (timed_deletes(with_hash, with_data, i) < 0)
+				if (timed_deletes(with_hash, with_data, i, ext) < 0)
 					return -1;
 
 				/* Print a dot to show progress on operations */
@@ -632,10 +680,16 @@ test_hash_perf(void)
 				printf("\nALL ELEMENTS IN PRIMARY LOCATION\n");
 			else
 				printf("\nELEMENTS IN PRIMARY OR SECONDARY LOCATION\n");
-			if (run_all_tbl_perf_tests(with_pushes, with_locks) < 0)
+			if (run_all_tbl_perf_tests(with_pushes, with_locks, 0) < 0)
 				return -1;
 		}
 	}
+
+	printf("\n EXTENDABLE BUCKETS PERFORMANCE\n");
+
+	if (run_all_tbl_perf_tests(1, 0, 1) < 0)
+		return -1;
+
 	if (fbk_hash_perf_test() < 0)
 		return -1;
 
