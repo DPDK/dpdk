@@ -1318,7 +1318,7 @@ rte_hash_iterate(const struct rte_hash *h, const void **key, void **data, uint32
 	idx = *next % RTE_HASH_BUCKET_ENTRIES;
 
 	/* If current position is empty, go to the next one */
-	while (h->buckets[bucket_idx].key_idx[idx] == EMPTY_SLOT) {
+	while ((position = h->buckets[bucket_idx].key_idx[idx]) == EMPTY_SLOT) {
 		(*next)++;
 		/* End of table */
 		if (*next == total_entries)
@@ -1326,9 +1326,8 @@ rte_hash_iterate(const struct rte_hash *h, const void **key, void **data, uint32
 		bucket_idx = *next / RTE_HASH_BUCKET_ENTRIES;
 		idx = *next % RTE_HASH_BUCKET_ENTRIES;
 	}
+
 	__hash_rw_reader_lock(h);
-	/* Get position of entry in key table */
-	position = h->buckets[bucket_idx].key_idx[idx];
 	next_key = (struct rte_hash_key *) ((char *)h->key_store +
 				position * h->key_entry_size);
 	/* Return key and data */
