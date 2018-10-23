@@ -11,6 +11,12 @@
 extern "C" {
 #endif
 
+/*
+ * Convert rte_eth_dev pointer to port id.
+ * NULL will be translated to RTE_MAX_ETHPORTS.
+ */
+uint16_t eth_dev_to_id(const struct rte_eth_dev *dev);
+
 /* Generic rte_eth_dev comparison function. */
 typedef int (*rte_eth_cmp_t)(const struct rte_eth_dev *, const void *);
 

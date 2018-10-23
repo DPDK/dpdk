@@ -36,11 +36,13 @@
 #include <rte_spinlock.h>
 #include <rte_string_fns.h>
 #include <rte_kvargs.h>
+#include <rte_class.h>
 
 #include "rte_ether.h"
 #include "rte_ethdev.h"
 #include "rte_ethdev_driver.h"
 #include "ethdev_profile.h"
+#include "ethdev_private.h"
 
 int rte_eth_dev_logtype;
 
@@ -184,6 +186,127 @@ enum {
 	STAT_QMAP_TX = 0,
 	STAT_QMAP_RX
 };
+
+int __rte_experimental
+rte_eth_iterator_init(struct rte_dev_iterator *iter, const char *devargs_str)
+{
+	int ret;
+	struct rte_devargs devargs = {.args = NULL};
+	const char *bus_param_key;
+	char *bus_str = NULL;
+	char *cls_str = NULL;
+	int str_size;
+
+	memset(iter, 0, sizeof(*iter));
+
+	/*
+	 * The devargs string may use various syntaxes:
+	 *   - 0000:08:00.0,representor=[1-3]
+	 *   - pci:0000:06:00.0,representor=[0,5]
+	 * A new syntax is in development (not yet supported):
+	 *   - bus=X,paramX=x/class=Y,paramY=y/driver=Z,paramZ=z
+	 */
+
+	/* Split bus, device and parameters. */
+	ret = rte_devargs_parse(&devargs, devargs_str);
+	if (ret != 0)
+		goto error;
+
+	/*
+	 * Assume parameters of old syntax can match only at ethdev level.
+	 * Extra parameters will be ignored, thanks to "+" prefix.
+	 */
+	str_size = strlen(devargs.args) + 2;
+	cls_str = malloc(str_size);
+	if (cls_str == NULL) {
+		ret = -ENOMEM;
+		goto error;
+	}
+	ret = snprintf(cls_str, str_size, "+%s", devargs.args);
+	if (ret != str_size - 1) {
+		ret = -EINVAL;
+		goto error;
+	}
+	iter->cls_str = cls_str;
+	free(devargs.args); /* allocated by rte_devargs_parse() */
+	devargs.args = NULL;
+
+	iter->bus = devargs.bus;
+	if (iter->bus->dev_iterate == NULL) {
+		ret = -ENOTSUP;
+		goto error;
+	}
+
+	/* Convert bus args to new syntax for use with new API dev_iterate. */
+	if (strcmp(iter->bus->name, "vdev") == 0) {
+		bus_param_key = "name";
+	} else if (strcmp(iter->bus->name, "pci") == 0) {
+		bus_param_key = "addr";
+	} else {
+		ret = -ENOTSUP;
+		goto error;
+	}
+	str_size = strlen(bus_param_key) + strlen(devargs.name) + 2;
+	bus_str = malloc(str_size);
+	if (bus_str == NULL) {
+		ret = -ENOMEM;
+		goto error;
+	}
+	ret = snprintf(bus_str, str_size, "%s=%s",
+			bus_param_key, devargs.name);
+	if (ret != str_size - 1) {
+		ret = -EINVAL;
+		goto error;
+	}
+	iter->bus_str = bus_str;
+
+	iter->cls = rte_class_find_by_name("eth");
+	return 0;
+
+error:
+	if (ret == -ENOTSUP)
+		RTE_LOG(ERR, EAL, "Bus %s does not support iterating.\n",
+				iter->bus->name);
+	free(devargs.args);
+	free(bus_str);
+	free(cls_str);
+	return ret;
+}
+
+uint16_t __rte_experimental
+rte_eth_iterator_next(struct rte_dev_iterator *iter)
+{
+	if (iter->cls == NULL) /* invalid ethdev iterator */
+		return RTE_MAX_ETHPORTS;
+
+	do { /* loop to try all matching rte_device */
+		/* If not in middle of rte_eth_dev iteration, */
+		if (iter->class_device == NULL) {
+			/* get next rte_device to try. */
+			iter->device = iter->bus->dev_iterate(
+					iter->device, iter->bus_str, iter);
+			if (iter->device == NULL)
+				break; /* no more rte_device candidate */
+		}
+		/* A device is matching bus part, need to check ethdev part. */
+		iter->class_device = iter->cls->dev_iterate(
+				iter->class_device, iter->cls_str, iter);
+		if (iter->class_device != NULL)
+			return eth_dev_to_id(iter->class_device); /* match */
+	} while (1); /* need to try next rte_device */
+
+	/* No more ethdev port to iterate. */
+	rte_eth_iterator_cleanup(iter);
+	return RTE_MAX_ETHPORTS;
+}
+
+void __rte_experimental
+rte_eth_iterator_cleanup(struct rte_dev_iterator *iter)
+{
+	free(RTE_CAST_FIELD(iter, bus_str, char *)); /* workaround const */
+	free(RTE_CAST_FIELD(iter, cls_str, char *)); /* workaround const */
+	memset(iter, 0, sizeof(*iter));
+}
 
 uint16_t
 rte_eth_find_next(uint16_t port_id)

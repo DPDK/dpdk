@@ -167,6 +167,85 @@ extern int rte_eth_dev_logtype;
 struct rte_mbuf;
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Initializes a device iterator.
+ *
+ * This iterator allows accessing a list of devices matching some devargs.
+ *
+ * @param iter
+ *   Device iterator handle initialized by the function.
+ *   The fields bus_str and cls_str might be dynamically allocated,
+ *   and could be freed by calling rte_eth_iterator_cleanup().
+ *
+ * @param devargs
+ *   Device description string.
+ *
+ * @return
+ *   0 on successful initialization, negative otherwise.
+ */
+__rte_experimental
+int rte_eth_iterator_init(struct rte_dev_iterator *iter, const char *devargs);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Iterates on devices with devargs filter.
+ * The ownership is not checked.
+ *
+ * The next port id is returned, and the iterator is updated.
+ *
+ * @param iter
+ *   Device iterator handle initialized by rte_eth_iterator_init().
+ *   Some fields bus_str and cls_str might be freed when no more port is found,
+ *   by calling rte_eth_iterator_cleanup().
+ *
+ * @return
+ *   A port id if found, RTE_MAX_ETHPORTS otherwise.
+ */
+__rte_experimental
+uint16_t rte_eth_iterator_next(struct rte_dev_iterator *iter);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Free some allocated fields of the iterator.
+ *
+ * This function is automatically called by rte_eth_iterator_next()
+ * on the last iteration (i.e. when no more matching port is found).
+ *
+ * It is safe to call this function twice; it will do nothing more.
+ *
+ * @param iter
+ *   Device iterator handle initialized by rte_eth_iterator_init().
+ *   The fields bus_str and cls_str are freed if needed.
+ */
+__rte_experimental
+void rte_eth_iterator_cleanup(struct rte_dev_iterator *iter);
+
+/**
+ * Macro to iterate over all ethdev ports matching some devargs.
+ *
+ * If a break is done before the end of the loop,
+ * the function rte_eth_iterator_cleanup() must be called.
+ *
+ * @param id
+ *   Iterated port id of type uint16_t.
+ * @param devargs
+ *   Device parameters input as string of type char*.
+ * @param iter
+ *   Iterator handle of type struct rte_dev_iterator, used internally.
+ */
+#define RTE_ETH_FOREACH_MATCHING_DEV(id, devargs, iter) \
+	for (rte_eth_iterator_init(iter, devargs), \
+	     id = rte_eth_iterator_next(iter); \
+	     id != RTE_MAX_ETHPORTS; \
+	     id = rte_eth_iterator_next(iter))
+
+/**
  * A structure used to retrieve statistics for an Ethernet port.
  * Not all statistics fields in struct rte_eth_stats are supported
  * by any type of network interface card (NIC). If any statistics

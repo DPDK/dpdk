@@ -169,6 +169,12 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
  */
 #define RTE_PTR_DIFF(ptr1, ptr2) ((uintptr_t)(ptr1) - (uintptr_t)(ptr2))
 
+/**
+ * Workaround to cast a const field of a structure to non-const type.
+ */
+#define RTE_CAST_FIELD(var, field, type) \
+	(*(type *)((uintptr_t)(var) + offsetof(typeof(*(var)), field)))
+
 /*********** Macros/static functions for doing alignment ********/
 
 

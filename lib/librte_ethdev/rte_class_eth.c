@@ -57,9 +57,14 @@ eth_dev_iterate(const void *start,
 {
 	struct rte_kvargs *kvargs = NULL;
 	struct rte_eth_dev *edev = NULL;
+	const char * const *valid_keys = NULL;
 
 	if (str != NULL) {
-		kvargs = rte_kvargs_parse(str, eth_params_keys);
+		if (str[0] == '+') /* no validation of keys */
+			str++;
+		else
+			valid_keys = eth_params_keys;
+		kvargs = rte_kvargs_parse(str, valid_keys);
 		if (kvargs == NULL) {
 			RTE_LOG(ERR, EAL, "cannot parse argument list\n");
 			rte_errno = EINVAL;
