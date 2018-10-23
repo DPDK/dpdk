@@ -1028,9 +1028,9 @@ flow_dv_create_item(void *matcher, void *key,
 		tmatcher->priority = MLX5_PRIORITY_MAP_L4;
 		dev_flow->verbs.hash_fields |=
 			mlx5_flow_hashfields_adjust(dev_flow, inner,
-						    ETH_RSS_TCP,
-						    (IBV_RX_HASH_SRC_PORT_TCP |
-						     IBV_RX_HASH_DST_PORT_TCP));
+						    ETH_RSS_UDP,
+						    (IBV_RX_HASH_SRC_PORT_UDP |
+						     IBV_RX_HASH_DST_PORT_UDP));
 		break;
 	case RTE_FLOW_ITEM_TYPE_NVGRE:
 		flow_dv_translate_item_nvgre(tmatcher->mask.buf, key, item,
