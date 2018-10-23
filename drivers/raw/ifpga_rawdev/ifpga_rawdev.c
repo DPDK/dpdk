@@ -542,6 +542,7 @@ ifpga_cfg_probe(struct rte_vdev_device *dev)
 	int port;
 	char *name = NULL;
 	char dev_name[RTE_RAWDEV_NAME_MAX_LEN];
+	int ret = -1;
 
 	devargs = dev->device.devargs;
 
@@ -583,7 +584,7 @@ ifpga_cfg_probe(struct rte_vdev_device *dev)
 	snprintf(dev_name, RTE_RAWDEV_NAME_MAX_LEN, "%d|%s",
 	port, name);
 
-	rte_eal_hotplug_add(RTE_STR(IFPGA_BUS_NAME),
+	ret = rte_eal_hotplug_add(RTE_STR(IFPGA_BUS_NAME),
 			dev_name, devargs->args);
 end:
 	if (kvlist)
@@ -591,7 +592,7 @@ end:
 	if (name)
 		free(name);
 
-	return 0;
+	return ret;
 }
 
 static int
