@@ -521,6 +521,7 @@ fill_vec_buf_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		return -1;
 
 	*desc_count = 0;
+	*len = 0;
 
 	while (1) {
 		if (unlikely(vec_id >= BUF_VECTOR_MAX))
