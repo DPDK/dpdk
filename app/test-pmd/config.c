@@ -75,6 +75,10 @@ static const struct {
 };
 
 const struct rss_type_info rss_type_table[] = {
+	{ "all", ETH_RSS_IP | ETH_RSS_TCP |
+			ETH_RSS_UDP | ETH_RSS_SCTP |
+			ETH_RSS_L2_PAYLOAD },
+	{ "none", 0 },
 	{ "ipv4", ETH_RSS_IPV4 },
 	{ "ipv4-frag", ETH_RSS_FRAG_IPV4 },
 	{ "ipv4-tcp", ETH_RSS_NONFRAG_IPV4_TCP },
