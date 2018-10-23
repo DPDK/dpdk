@@ -2246,7 +2246,6 @@ i40evf_dev_close(struct rte_eth_dev *dev)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	rte_eal_alarm_cancel(i40evf_dev_alarm_handler, dev);
 	i40evf_dev_stop(dev);
 	i40e_dev_free_queues(dev);
 	/*
@@ -2260,6 +2259,7 @@ i40evf_dev_close(struct rte_eth_dev *dev)
 	i40evf_reset_vf(hw);
 	i40e_shutdown_adminq(hw);
 	i40evf_disable_irq0(hw);
+	rte_eal_alarm_cancel(i40evf_dev_alarm_handler, dev);
 }
 
 /*
