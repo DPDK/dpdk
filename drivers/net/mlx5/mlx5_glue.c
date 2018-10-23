@@ -263,6 +263,62 @@ mlx5_glue_query_counter_set(struct ibv_query_counter_set_attr *query_attr,
 #endif
 }
 
+static struct ibv_counters *
+mlx5_glue_create_counters(struct ibv_context *context,
+			  struct ibv_counters_init_attr *init_attr)
+{
+#ifndef HAVE_IBV_DEVICE_COUNTERS_SET_V45
+	(void)context;
+	(void)init_attr;
+	return NULL;
+#else
+	return ibv_create_counters(context, init_attr);
+#endif
+}
+
+static int
+mlx5_glue_destroy_counters(struct ibv_counters *counters)
+{
+#ifndef HAVE_IBV_DEVICE_COUNTERS_SET_V45
+	(void)counters;
+	return ENOTSUP;
+#else
+	return ibv_destroy_counters(counters);
+#endif
+}
+
+static int
+mlx5_glue_attach_counters(struct ibv_counters *counters,
+			  struct ibv_counter_attach_attr *attr,
+			  struct ibv_flow *flow)
+{
+#ifndef HAVE_IBV_DEVICE_COUNTERS_SET_V45
+	(void)counters;
+	(void)attr;
+	(void)flow;
+	return ENOTSUP;
+#else
+	return ibv_attach_counters_point_flow(counters, attr, flow);
+#endif
+}
+
+static int
+mlx5_glue_query_counters(struct ibv_counters *counters,
+			 uint64_t *counters_value,
+			 uint32_t ncounters,
+			 uint32_t flags)
+{
+#ifndef HAVE_IBV_DEVICE_COUNTERS_SET_V45
+	(void)counters;
+	(void)counters_value;
+	(void)ncounters;
+	(void)flags;
+	return ENOTSUP;
+#else
+	return ibv_read_counters(counters, counters_value, ncounters, flags);
+#endif
+}
+
 static void
 mlx5_glue_ack_async_event(struct ibv_async_event *event)
 {
@@ -424,6 +480,10 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.destroy_counter_set = mlx5_glue_destroy_counter_set,
 	.describe_counter_set = mlx5_glue_describe_counter_set,
 	.query_counter_set = mlx5_glue_query_counter_set,
+	.create_counters = mlx5_glue_create_counters,
+	.destroy_counters = mlx5_glue_destroy_counters,
+	.attach_counters = mlx5_glue_attach_counters,
+	.query_counters = mlx5_glue_query_counters,
 	.ack_async_event = mlx5_glue_ack_async_event,
 	.get_async_event = mlx5_glue_get_async_event,
 	.port_state_str = mlx5_glue_port_state_str,

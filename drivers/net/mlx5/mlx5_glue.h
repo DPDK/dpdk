@@ -31,6 +31,12 @@ struct ibv_counter_set_init_attr;
 struct ibv_query_counter_set_attr;
 #endif
 
+#ifndef HAVE_IBV_DEVICE_COUNTERS_SET_V45
+struct ibv_counters;
+struct ibv_counters_init_attr;
+struct ibv_counter_attach_attr;
+#endif
+
 #ifndef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
 struct mlx5dv_qp_init_attr;
 #endif
@@ -106,6 +112,17 @@ struct mlx5_glue {
 		 struct ibv_counter_set_description *cs_desc);
 	int (*query_counter_set)(struct ibv_query_counter_set_attr *query_attr,
 				 struct ibv_counter_set_data *cs_data);
+	struct ibv_counters *(*create_counters)
+		(struct ibv_context *context,
+		 struct ibv_counters_init_attr *init_attr);
+	int (*destroy_counters)(struct ibv_counters *counters);
+	int (*attach_counters)(struct ibv_counters *counters,
+			       struct ibv_counter_attach_attr *attr,
+			       struct ibv_flow *flow);
+	int (*query_counters)(struct ibv_counters *counters,
+			      uint64_t *counters_value,
+			      uint32_t ncounters,
+			      uint32_t flags);
 	void (*ack_async_event)(struct ibv_async_event *event);
 	int (*get_async_event)(struct ibv_context *context,
 			       struct ibv_async_event *event);
