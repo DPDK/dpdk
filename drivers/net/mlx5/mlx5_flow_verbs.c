@@ -72,6 +72,7 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 			 }),
 		.hits = 0,
 		.bytes = 0,
+		.ref_cnt = 1,
 	};
 
 	if (!tmpl.cs) {
@@ -80,6 +81,7 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 	}
 	cnt = rte_calloc(__func__, 1, sizeof(*cnt), 0);
 	if (!cnt) {
+		claim_zero(mlx5_glue->destroy_counter_set(tmpl.cs));
 		rte_errno = ENOMEM;
 		return NULL;
 	}
