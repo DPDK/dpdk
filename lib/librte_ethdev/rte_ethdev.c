@@ -203,9 +203,23 @@ rte_eth_iterator_init(struct rte_dev_iterator *iter, const char *devargs_str)
 	 * The devargs string may use various syntaxes:
 	 *   - 0000:08:00.0,representor=[1-3]
 	 *   - pci:0000:06:00.0,representor=[0,5]
+	 *   - class=eth,mac=00:11:22:33:44:55
 	 * A new syntax is in development (not yet supported):
 	 *   - bus=X,paramX=x/class=Y,paramY=y/driver=Z,paramZ=z
 	 */
+
+	/*
+	 * Handle pure class filter (i.e. without any bus-level argument),
+	 * from future new syntax.
+	 * rte_devargs_parse() is not yet supporting the new syntax,
+	 * that's why this simple case is temporarily parsed here.
+	 */
+#define iter_anybus_str "class=eth,"
+	if (strncmp(devargs_str, iter_anybus_str,
+			strlen(iter_anybus_str)) == 0) {
+		iter->cls_str = devargs_str + strlen(iter_anybus_str);
+		goto end;
+	}
 
 	/* Split bus, device and parameters. */
 	ret = rte_devargs_parse(&devargs, devargs_str);
@@ -260,6 +274,7 @@ rte_eth_iterator_init(struct rte_dev_iterator *iter, const char *devargs_str)
 	}
 	iter->bus_str = bus_str;
 
+end:
 	iter->cls = rte_class_find_by_name("eth");
 	return 0;
 
@@ -280,8 +295,10 @@ rte_eth_iterator_next(struct rte_dev_iterator *iter)
 		return RTE_MAX_ETHPORTS;
 
 	do { /* loop to try all matching rte_device */
-		/* If not in middle of rte_eth_dev iteration, */
-		if (iter->class_device == NULL) {
+		/* If not pure ethdev filter and */
+		if (iter->bus != NULL &&
+				/* not in middle of rte_eth_dev iteration, */
+				iter->class_device == NULL) {
 			/* get next rte_device to try. */
 			iter->device = iter->bus->dev_iterate(
 					iter->device, iter->bus_str, iter);
@@ -293,7 +310,7 @@ rte_eth_iterator_next(struct rte_dev_iterator *iter)
 				iter->class_device, iter->cls_str, iter);
 		if (iter->class_device != NULL)
 			return eth_dev_to_id(iter->class_device); /* match */
-	} while (1); /* need to try next rte_device */
+	} while (iter->bus != NULL); /* need to try next rte_device */
 
 	/* No more ethdev port to iterate. */
 	rte_eth_iterator_cleanup(iter);
@@ -303,6 +320,8 @@ rte_eth_iterator_next(struct rte_dev_iterator *iter)
 void __rte_experimental
 rte_eth_iterator_cleanup(struct rte_dev_iterator *iter)
 {
+	if (iter->bus_str == NULL)
+		return; /* nothing to free in pure class filter */
 	free(RTE_CAST_FIELD(iter, bus_str, char *)); /* workaround const */
 	free(RTE_CAST_FIELD(iter, cls_str, char *)); /* workaround const */
 	memset(iter, 0, sizeof(*iter));

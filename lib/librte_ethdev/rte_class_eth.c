@@ -42,7 +42,7 @@ eth_dev_match(const struct rte_eth_dev *edev,
 
 	if (edev->state == RTE_ETH_DEV_UNUSED)
 		return -1;
-	if (edev->device != arg->device)
+	if (arg->device != NULL && arg->device != edev->device)
 		return -1;
 	if (kvlist == NULL)
 		/* Empty string matches everything. */
