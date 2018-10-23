@@ -1485,6 +1485,32 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	return ret;
 }
 
+/**
+ * DPDK callback to remove a PCI device.
+ *
+ * This function removes all Ethernet devices belong to a given PCI device.
+ *
+ * @param[in] pci_dev
+ *   Pointer to the PCI device.
+ *
+ * @return
+ *   0 on success, the function cannot fail.
+ */
+static int
+mlx5_pci_remove(struct rte_pci_device *pci_dev)
+{
+	uint16_t port_id;
+	struct rte_eth_dev *port;
+
+	for (port_id = 0; port_id < RTE_MAX_ETHPORTS; port_id++) {
+		port = &rte_eth_devices[port_id];
+		if (port->state != RTE_ETH_DEV_UNUSED &&
+				port->device == &pci_dev->device)
+			rte_eth_dev_close(port_id);
+	}
+	return 0;
+}
+
 static const struct rte_pci_id mlx5_pci_id_map[] = {
 	{
 		RTE_PCI_DEVICE(PCI_VENDOR_ID_MELLANOX,
@@ -1537,6 +1563,7 @@ static struct rte_pci_driver mlx5_driver = {
 	},
 	.id_table = mlx5_pci_id_map,
 	.probe = mlx5_pci_probe,
+	.remove = mlx5_pci_remove,
 	.drv_flags = (RTE_PCI_DRV_INTR_LSC | RTE_PCI_DRV_INTR_RMV |
 		      RTE_PCI_DRV_PROBE_AGAIN),
 };
