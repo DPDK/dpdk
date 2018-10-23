@@ -162,6 +162,11 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		type 'struct ibv_counter_set_init_attr' \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
+		HAVE_IBV_DEVICE_COUNTERS_SET_V45 \
+		infiniband/verbs.h \
+		type 'struct ibv_counters_init_attr' \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
 		HAVE_RDMA_NL_NLDEV \
 		rdma/rdma_netlink.h \
 		enum RDMA_NL_NLDEV \

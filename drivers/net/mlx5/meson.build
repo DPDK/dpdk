@@ -81,6 +81,8 @@ if build
 		'struct mlx5dv_sw_parsing_caps', 'sw_parsing_offloads' ],
 		[ 'HAVE_IBV_DEVICE_COUNTERS_SET_V42', 'infiniband/verbs.h',
 		'struct ibv_counter_set_init_attr', 'counter_set_id' ],
+		[ 'HAVE_IBV_DEVICE_COUNTERS_SET_V45', 'infiniband/verbs.h',
+		'struct ibv_counters_init_attr', 'comp_mask' ],
 	]
 	# input array for meson symbol search:
 	# [ "MACRO to define if found", "header for the search",
