@@ -2,7 +2,6 @@
  * Copyright 2018 Mellanox Technologies, Ltd
  */
 
-
 #include <sys/queue.h>
 #include <stdalign.h>
 #include <stdint.h>
@@ -542,10 +541,6 @@ flow_dv_translate_item_ipv4(void *matcher, void *key,
 	char *l24_v;
 	uint8_t tos;
 
-	if (!ipv4_v)
-		return;
-	if (!ipv4_m)
-		ipv4_m = &nic_mask;
 	if (inner) {
 		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
 					 inner_headers);
@@ -557,6 +552,10 @@ flow_dv_translate_item_ipv4(void *matcher, void *key,
 	}
 	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_version, 0xf);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_version, 4);
+	if (!ipv4_v)
+		return;
+	if (!ipv4_m)
+		ipv4_m = &nic_mask;
 	l24_m = MLX5_ADDR_OF(fte_match_set_lyr_2_4, headers_m,
 			     dst_ipv4_dst_ipv6.ipv4_layout.ipv4);
 	l24_v = MLX5_ADDR_OF(fte_match_set_lyr_2_4, headers_v,
@@ -625,10 +624,6 @@ flow_dv_translate_item_ipv6(void *matcher, void *key,
 	int i;
 	int size;
 
-	if (!ipv6_v)
-		return;
-	if (!ipv6_m)
-		ipv6_m = &nic_mask;
 	if (inner) {
 		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
 					 inner_headers);
@@ -638,6 +633,12 @@ flow_dv_translate_item_ipv6(void *matcher, void *key,
 					 outer_headers);
 		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
 	}
+	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_version, 0xf);
+	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_version, 6);
+	if (!ipv6_v)
+		return;
+	if (!ipv6_m)
+		ipv6_m = &nic_mask;
 	size = sizeof(ipv6_m->hdr.dst_addr);
 	l24_m = MLX5_ADDR_OF(fte_match_set_lyr_2_4, headers_m,
 			     dst_ipv4_dst_ipv6.ipv6_layout.ipv6);
@@ -653,8 +654,6 @@ flow_dv_translate_item_ipv6(void *matcher, void *key,
 	memcpy(l24_m, ipv6_m->hdr.src_addr, size);
 	for (i = 0; i < size; ++i)
 		l24_v[i] = l24_m[i] & ipv6_v->hdr.src_addr[i];
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_version, 0xf);
-	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_version, 6);
 	/* TOS. */
 	vtc_m = rte_be_to_cpu_32(ipv6_m->hdr.vtc_flow);
 	vtc_v = rte_be_to_cpu_32(ipv6_m->hdr.vtc_flow & ipv6_v->hdr.vtc_flow);
@@ -703,10 +702,6 @@ flow_dv_translate_item_tcp(void *matcher, void *key,
 	void *headers_m;
 	void *headers_v;
 
-	if (!tcp_v)
-		return;
-	if (!tcp_m)
-		tcp_m = &rte_flow_item_tcp_mask;
 	if (inner) {
 		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
 					 inner_headers);
@@ -718,6 +713,10 @@ flow_dv_translate_item_tcp(void *matcher, void *key,
 	}
 	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_protocol, 0xff);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol, IPPROTO_TCP);
+	if (!tcp_v)
+		return;
+	if (!tcp_m)
+		tcp_m = &rte_flow_item_tcp_mask;
 	MLX5_SET(fte_match_set_lyr_2_4, headers_m, tcp_sport,
 		 rte_be_to_cpu_16(tcp_m->hdr.src_port));
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, tcp_sport,
@@ -750,10 +749,6 @@ flow_dv_translate_item_udp(void *matcher, void *key,
 	void *headers_m;
 	void *headers_v;
 
-	if (!udp_v)
-		return;
-	if (!udp_m)
-		udp_m = &rte_flow_item_udp_mask;
 	if (inner) {
 		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
 					 inner_headers);
@@ -765,6 +760,10 @@ flow_dv_translate_item_udp(void *matcher, void *key,
 	}
 	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_protocol, 0xff);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol, IPPROTO_UDP);
+	if (!udp_v)
+		return;
+	if (!udp_m)
+		udp_m = &rte_flow_item_udp_mask;
 	MLX5_SET(fte_match_set_lyr_2_4, headers_m, udp_sport,
 		 rte_be_to_cpu_16(udp_m->hdr.src_port));
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, udp_sport,
@@ -799,10 +798,6 @@ flow_dv_translate_item_gre(void *matcher, void *key,
 	void *misc_m = MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters);
 	void *misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
 
-	if (!gre_v)
-		return;
-	if (!gre_m)
-		gre_m = &rte_flow_item_gre_mask;
 	if (inner) {
 		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
 					 inner_headers);
@@ -814,6 +809,10 @@ flow_dv_translate_item_gre(void *matcher, void *key,
 	}
 	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_protocol, 0xff);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol, IPPROTO_GRE);
+	if (!gre_v)
+		return;
+	if (!gre_m)
+		gre_m = &rte_flow_item_gre_mask;
 	MLX5_SET(fte_match_set_misc, misc_m, gre_protocol,
 		 rte_be_to_cpu_16(gre_m->protocol));
 	MLX5_SET(fte_match_set_misc, misc_v, gre_protocol,
@@ -848,6 +847,7 @@ flow_dv_translate_item_nvgre(void *matcher, void *key,
 	int size;
 	int i;
 
+	flow_dv_translate_item_gre(matcher, key, item, inner);
 	if (!nvgre_v)
 		return;
 	if (!nvgre_m)
@@ -858,7 +858,6 @@ flow_dv_translate_item_nvgre(void *matcher, void *key,
 	memcpy(gre_key_m, tni_flow_id_m, size);
 	for (i = 0; i < size; ++i)
 		gre_key_v[i] = gre_key_m[i] & tni_flow_id_v[i];
-	flow_dv_translate_item_gre(matcher, key, item, inner);
 }
 
 /**
@@ -890,10 +889,6 @@ flow_dv_translate_item_vxlan(void *matcher, void *key,
 	int size;
 	int i;
 
-	if (!vxlan_v)
-		return;
-	if (!vxlan_m)
-		vxlan_m = &rte_flow_item_vxlan_mask;
 	if (inner) {
 		headers_m = MLX5_ADDR_OF(fte_match_param, matcher,
 					 inner_headers);
@@ -909,6 +904,10 @@ flow_dv_translate_item_vxlan(void *matcher, void *key,
 		MLX5_SET(fte_match_set_lyr_2_4, headers_m, udp_dport, 0xFFFF);
 		MLX5_SET(fte_match_set_lyr_2_4, headers_v, udp_dport, dport);
 	}
+	if (!vxlan_v)
+		return;
+	if (!vxlan_m)
+		vxlan_m = &rte_flow_item_vxlan_mask;
 	size = sizeof(vxlan_m->vni);
 	vni_m = MLX5_ADDR_OF(fte_match_set_misc, misc_m, vxlan_vni);
 	vni_v = MLX5_ADDR_OF(fte_match_set_misc, misc_v, vxlan_vni);
