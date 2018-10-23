@@ -13,6 +13,7 @@
 #include <rte_udp.h>
 #include <rte_sctp.h>
 #include <rte_gre.h>
+#include <rte_mpls.h>
 #include <rte_net.h>
 
 /* get l3 packet type from ip6 next protocol */
@@ -274,9 +275,27 @@ uint32_t rte_net_get_ptype(const struct rte_mbuf *m,
 		off += 2 * sizeof(*vh);
 		hdr_lens->l2_len += 2 * sizeof(*vh);
 		proto = vh->eth_proto;
+	} else if ((proto == rte_cpu_to_be_16(ETHER_TYPE_MPLS)) ||
+		(proto == rte_cpu_to_be_16(ETHER_TYPE_MPLSM))) {
+		unsigned int i;
+		const struct mpls_hdr *mh;
+		struct mpls_hdr mh_copy;
+
+#define MAX_MPLS_HDR 5
+		for (i = 0; i < MAX_MPLS_HDR; i++) {
+			mh = rte_pktmbuf_read(m, off + (i * sizeof(*mh)),
+				sizeof(*mh), &mh_copy);
+			if (unlikely(mh == NULL))
+				return pkt_type;
+		}
+		if (i == MAX_MPLS_HDR)
+			return pkt_type;
+		pkt_type = RTE_PTYPE_L2_ETHER_MPLS;
+		hdr_lens->l2_len += (sizeof(*mh) * i);
+		return pkt_type;
 	}
 
- l3:
+l3:
 	if ((layers & RTE_PTYPE_L3_MASK) == 0)
 		return pkt_type;
 
