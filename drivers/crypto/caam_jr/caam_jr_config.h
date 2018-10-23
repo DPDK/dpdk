@@ -7,6 +7,8 @@
 
 #include <rte_byteorder.h>
 
+#include <compat.h>
+
 #ifdef RTE_LIBRTE_PMD_CAAM_JR_BE
 #define CAAM_BYTE_ORDER __BIG_ENDIAN
 #else
@@ -18,8 +20,6 @@
 #else
 #define CORE_BYTE_ORDER __LITTLE_ENDIAN
 #endif
-
-typedef uint64_t	dma_addr_t;
 
 #if CORE_BYTE_ORDER != CAAM_BYTE_ORDER
 
