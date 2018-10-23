@@ -300,6 +300,12 @@ API Changes
 * eal: The parameters of the function ``rte_devargs_remove()`` have changed
   from bus and device names to ``struct rte_devargs``.
 
+* eal: The deprecated functions attach/detach were removed in 18.11.
+  ``rte_eal_dev_attach`` can be replaced by
+  ``rte_dev_probe`` or ``rte_eal_hotplug_add``.
+  ``rte_eal_dev_detach`` can be replaced by
+  ``rte_dev_remove`` or ``rte_eal_hotplug_remove``.
+
 * eal: The scope of ``rte_eal_hotplug_add()``/``rte_dev_probe()``
   and ``rte_eal_hotplug_remove()``/``rte_dev_remove()`` is extended.
   In multi-process model, they will guarantee that the device is

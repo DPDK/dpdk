@@ -177,33 +177,6 @@ __rte_experimental
 int rte_dev_is_probed(const struct rte_device *dev);
 
 /**
- * Attach a device to a registered driver.
- *
- * @param name
- *   The device name, that refers to a pci device (or some private
- *   way of designating a vdev device). Based on this device name, eal
- *   will identify a driver capable of handling it and pass it to the
- *   driver probing function.
- * @param devargs
- *   Device arguments to be passed to the driver.
- * @return
- *   0 on success, negative on error.
- */
-__rte_deprecated
-int rte_eal_dev_attach(const char *name, const char *devargs);
-
-/**
- * Detach a device from its driver.
- *
- * @param dev
- *   A pointer to a rte_device structure.
- * @return
- *   0 on success, negative on error.
- */
-__rte_deprecated
-int rte_eal_dev_detach(struct rte_device *dev);
-
-/**
  * Hotplug add a given device to a specific bus.
  *
  * In multi-process, it will request other processes to add the same device.

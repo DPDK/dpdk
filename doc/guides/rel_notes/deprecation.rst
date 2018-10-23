@@ -49,11 +49,6 @@ Deprecation Notices
   Target release for removal of the legacy API will be defined once most
   PMDs have switched to rte_flow.
 
-* eal: In v18.11 ``rte_eal_dev_attach()`` and ``rte_eal_dev_detach()``
-  will be removed.
-  Hotplug functions ``rte_eal_hotplug_add()`` and ``rte_eal_hotplug_remove()``
-  should be used directly.
-
 * pdump: As we changed to use generic IPC, some changes in APIs and structure
   are expected in subsequent release.
 
