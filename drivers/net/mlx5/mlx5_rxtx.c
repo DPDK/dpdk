@@ -523,6 +523,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		uint8_t tso = txq->tso_en && (buf->ol_flags & PKT_TX_TCP_SEG);
 		uint32_t swp_offsets = 0;
 		uint8_t swp_types = 0;
+		rte_be32_t metadata;
 		uint16_t tso_segsz = 0;
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		uint32_t total_length = 0;
@@ -566,6 +567,9 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		cs_flags = txq_ol_cksum_to_cs(buf);
 		txq_mbuf_to_swp(txq, buf, (uint8_t *)&swp_offsets, &swp_types);
 		raw = ((uint8_t *)(uintptr_t)wqe) + 2 * MLX5_WQE_DWORD_SIZE;
+		/* Copy metadata from mbuf if valid */
+		metadata = buf->ol_flags & PKT_TX_METADATA ? buf->tx_metadata :
+							     0;
 		/* Replace the Ethernet type by the VLAN if necessary. */
 		if (buf->ol_flags & PKT_TX_VLAN_PKT) {
 			uint32_t vlan = rte_cpu_to_be_32(0x81000000 |
@@ -781,7 +785,7 @@ next_pkt:
 				swp_offsets,
 				cs_flags | (swp_types << 8) |
 				(rte_cpu_to_be_16(tso_segsz) << 16),
-				0,
+				metadata,
 				(ehdr << 16) | rte_cpu_to_be_16(tso_header_sz),
 			};
 		} else {
@@ -795,7 +799,7 @@ next_pkt:
 			wqe->eseg = (rte_v128u32_t){
 				swp_offsets,
 				cs_flags | (swp_types << 8),
-				0,
+				metadata,
 				(ehdr << 16) | rte_cpu_to_be_16(pkt_inline_sz),
 			};
 		}
@@ -861,7 +865,7 @@ mlx5_mpw_new(struct mlx5_txq_data *txq, struct mlx5_mpw *mpw, uint32_t length)
 	mpw->wqe->eseg.inline_hdr_sz = 0;
 	mpw->wqe->eseg.rsvd0 = 0;
 	mpw->wqe->eseg.rsvd1 = 0;
-	mpw->wqe->eseg.rsvd2 = 0;
+	mpw->wqe->eseg.flow_table_metadata = 0;
 	mpw->wqe->ctrl[0] = rte_cpu_to_be_32((MLX5_OPC_MOD_MPW << 24) |
 					     (txq->wqe_ci << 8) |
 					     MLX5_OPCODE_TSO);
@@ -948,6 +952,7 @@ mlx5_tx_burst_mpw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		uint32_t length;
 		unsigned int segs_n = buf->nb_segs;
 		uint32_t cs_flags;
+		rte_be32_t metadata;
 
 		/*
 		 * Make sure there is enough room to store this packet and
@@ -964,6 +969,9 @@ mlx5_tx_burst_mpw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		max_elts -= segs_n;
 		--pkts_n;
 		cs_flags = txq_ol_cksum_to_cs(buf);
+		/* Copy metadata from mbuf if valid */
+		metadata = buf->ol_flags & PKT_TX_METADATA ? buf->tx_metadata :
+							     0;
 		/* Retrieve packet information. */
 		length = PKT_LEN(buf);
 		assert(length);
@@ -971,6 +979,7 @@ mlx5_tx_burst_mpw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		if ((mpw.state == MLX5_MPW_STATE_OPENED) &&
 		    ((mpw.len != length) ||
 		     (segs_n != 1) ||
+		     (mpw.wqe->eseg.flow_table_metadata != metadata) ||
 		     (mpw.wqe->eseg.cs_flags != cs_flags)))
 			mlx5_mpw_close(txq, &mpw);
 		if (mpw.state == MLX5_MPW_STATE_CLOSED) {
@@ -984,6 +993,7 @@ mlx5_tx_burst_mpw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			max_wqe -= 2;
 			mlx5_mpw_new(txq, &mpw, length);
 			mpw.wqe->eseg.cs_flags = cs_flags;
+			mpw.wqe->eseg.flow_table_metadata = metadata;
 		}
 		/* Multi-segment packets must be alone in their MPW. */
 		assert((segs_n == 1) || (mpw.pkts_n == 0));
@@ -1082,7 +1092,7 @@ mlx5_mpw_inline_new(struct mlx5_txq_data *txq, struct mlx5_mpw *mpw,
 	mpw->wqe->eseg.cs_flags = 0;
 	mpw->wqe->eseg.rsvd0 = 0;
 	mpw->wqe->eseg.rsvd1 = 0;
-	mpw->wqe->eseg.rsvd2 = 0;
+	mpw->wqe->eseg.flow_table_metadata = 0;
 	inl = (struct mlx5_wqe_inl_small *)
 		(((uintptr_t)mpw->wqe) + 2 * MLX5_WQE_DWORD_SIZE);
 	mpw->data.raw = (uint8_t *)&inl->raw;
@@ -1172,6 +1182,7 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 		uint32_t length;
 		unsigned int segs_n = buf->nb_segs;
 		uint8_t cs_flags;
+		rte_be32_t metadata;
 
 		/*
 		 * Make sure there is enough room to store this packet and
@@ -1193,18 +1204,23 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 		 */
 		max_wqe = (1u << txq->wqe_n) - (txq->wqe_ci - txq->wqe_pi);
 		cs_flags = txq_ol_cksum_to_cs(buf);
+		/* Copy metadata from mbuf if valid */
+		metadata = buf->ol_flags & PKT_TX_METADATA ? buf->tx_metadata :
+							     0;
 		/* Retrieve packet information. */
 		length = PKT_LEN(buf);
 		/* Start new session if packet differs. */
 		if (mpw.state == MLX5_MPW_STATE_OPENED) {
 			if ((mpw.len != length) ||
 			    (segs_n != 1) ||
+			    (mpw.wqe->eseg.flow_table_metadata != metadata) ||
 			    (mpw.wqe->eseg.cs_flags != cs_flags))
 				mlx5_mpw_close(txq, &mpw);
 		} else if (mpw.state == MLX5_MPW_INL_STATE_OPENED) {
 			if ((mpw.len != length) ||
 			    (segs_n != 1) ||
 			    (length > inline_room) ||
+			    (mpw.wqe->eseg.flow_table_metadata != metadata) ||
 			    (mpw.wqe->eseg.cs_flags != cs_flags)) {
 				mlx5_mpw_inline_close(txq, &mpw);
 				inline_room =
@@ -1224,12 +1240,14 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 				max_wqe -= 2;
 				mlx5_mpw_new(txq, &mpw, length);
 				mpw.wqe->eseg.cs_flags = cs_flags;
+				mpw.wqe->eseg.flow_table_metadata = metadata;
 			} else {
 				if (unlikely(max_wqe < wqe_inl_n))
 					break;
 				max_wqe -= wqe_inl_n;
 				mlx5_mpw_inline_new(txq, &mpw, length);
 				mpw.wqe->eseg.cs_flags = cs_flags;
+				mpw.wqe->eseg.flow_table_metadata = metadata;
 			}
 		}
 		/* Multi-segment packets must be alone in their MPW. */
@@ -1461,6 +1479,7 @@ txq_burst_empw(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 		unsigned int do_inline = 0; /* Whether inline is possible. */
 		uint32_t length;
 		uint8_t cs_flags;
+		rte_be32_t metadata;
 
 		/* Multi-segmented packet is handled in slow-path outside. */
 		assert(NB_SEGS(buf) == 1);
@@ -1468,6 +1487,9 @@ txq_burst_empw(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 		if (max_elts - j == 0)
 			break;
 		cs_flags = txq_ol_cksum_to_cs(buf);
+		/* Copy metadata from mbuf if valid */
+		metadata = buf->ol_flags & PKT_TX_METADATA ? buf->tx_metadata :
+							     0;
 		/* Retrieve packet information. */
 		length = PKT_LEN(buf);
 		/* Start new session if:
@@ -1482,6 +1504,7 @@ txq_burst_empw(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 			    (length <= txq->inline_max_packet_sz &&
 			     inl_pad + sizeof(inl_hdr) + length >
 			     mpw_room) ||
+			     (mpw.wqe->eseg.flow_table_metadata != metadata) ||
 			    (mpw.wqe->eseg.cs_flags != cs_flags))
 				max_wqe -= mlx5_empw_close(txq, &mpw);
 		}
@@ -1505,6 +1528,7 @@ txq_burst_empw(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 				    sizeof(inl_hdr) + length <= mpw_room &&
 				    !txq->mpw_hdr_dseg;
 			mpw.wqe->eseg.cs_flags = cs_flags;
+			mpw.wqe->eseg.flow_table_metadata = metadata;
 		} else {
 			/* Evaluate whether the next packet can be inlined.
 			 * Inlininig is possible when:

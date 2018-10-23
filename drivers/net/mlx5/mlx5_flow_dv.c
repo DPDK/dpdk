@@ -36,6 +36,67 @@
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 
 /**
+ * Validate META item.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] item
+ *   Item specification.
+ * @param[in] attr
+ *   Attributes of flow that includes this item.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_item_meta(struct rte_eth_dev *dev,
+			   const struct rte_flow_item *item,
+			   const struct rte_flow_attr *attr,
+			   struct rte_flow_error *error)
+{
+	const struct rte_flow_item_meta *spec = item->spec;
+	const struct rte_flow_item_meta *mask = item->mask;
+	const struct rte_flow_item_meta nic_mask = {
+		.data = RTE_BE32(UINT32_MAX)
+	};
+	int ret;
+	uint64_t offloads = dev->data->dev_conf.txmode.offloads;
+
+	if (!(offloads & DEV_TX_OFFLOAD_MATCH_METADATA))
+		return rte_flow_error_set(error, EPERM,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  NULL,
+					  "match on metadata offload "
+					  "configuration is off for this port");
+	if (!spec)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+					  item->spec,
+					  "data cannot be empty");
+	if (!spec->data)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+					  NULL,
+					  "data cannot be zero");
+	if (!mask)
+		mask = &rte_flow_item_meta_mask;
+	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
+					(const uint8_t *)&nic_mask,
+					sizeof(struct rte_flow_item_meta),
+					error);
+	if (ret < 0)
+		return ret;
+	if (attr->ingress)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
+					  NULL,
+					  "pattern not supported for ingress");
+	return 0;
+}
+
+/**
  * Verify the @p attributes will be correctly understood by the NIC and store
  * them in the @p flow if everything is correct.
  *
@@ -213,6 +274,13 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			if (ret < 0)
 				return ret;
 			item_flags |= MLX5_FLOW_LAYER_MPLS;
+			break;
+		case RTE_FLOW_ITEM_TYPE_META:
+			ret = flow_dv_validate_item_meta(dev, items, attr,
+							 error);
+			if (ret < 0)
+				return ret;
+			item_flags |= MLX5_FLOW_ITEM_METADATA;
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
@@ -857,6 +925,41 @@ flow_dv_translate_item_vxlan(void *matcher, void *key,
 }
 
 /**
+ * Add META item to matcher
+ *
+ * @param[in, out] matcher
+ *   Flow matcher.
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] item
+ *   Flow pattern to translate.
+ * @param[in] inner
+ *   Item is inner pattern.
+ */
+static void
+flow_dv_translate_item_meta(void *matcher, void *key,
+			    const struct rte_flow_item *item)
+{
+	const struct rte_flow_item_meta *meta_m;
+	const struct rte_flow_item_meta *meta_v;
+	void *misc2_m =
+		MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters_2);
+	void *misc2_v =
+		MLX5_ADDR_OF(fte_match_param, key, misc_parameters_2);
+
+	meta_m = (const void *)item->mask;
+	if (!meta_m)
+		meta_m = &rte_flow_item_meta_mask;
+	meta_v = (const void *)item->spec;
+	if (meta_v) {
+		MLX5_SET(fte_match_set_misc2, misc2_m, metadata_reg_a,
+			 rte_be_to_cpu_32(meta_m->data));
+		MLX5_SET(fte_match_set_misc2, misc2_v, metadata_reg_a,
+			 rte_be_to_cpu_32(meta_v->data & meta_m->data));
+	}
+}
+
+/**
  * Update the matcher and the value based the selected item.
  *
  * @param[in, out] matcher
@@ -941,6 +1044,9 @@ flow_dv_create_item(void *matcher, void *key,
 	case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
 		flow_dv_translate_item_vxlan(tmatcher->mask.buf, key, item,
 					     inner);
+		break;
+	case RTE_FLOW_ITEM_TYPE_META:
+		flow_dv_translate_item_meta(tmatcher->mask.buf, key, item);
 		break;
 	default:
 		break;

@@ -22,6 +22,7 @@
 /* HW offload capabilities of vectorized Tx. */
 #define MLX5_VEC_TX_OFFLOAD_CAP \
 	(MLX5_VEC_TX_CKSUM_OFFLOAD_CAP | \
+	 DEV_TX_OFFLOAD_MATCH_METADATA | \
 	 DEV_TX_OFFLOAD_MULTI_SEGS)
 
 /*

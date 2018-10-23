@@ -201,13 +201,15 @@ txq_scatter_v(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
  *   Number of packets to be sent (<= MLX5_VPMD_TX_MAX_BURST).
  * @param cs_flags
  *   Checksum offload flags to be written in the descriptor.
+ * @param metadata
+ *   Metadata value to be written in the descriptor.
  *
  * @return
  *   Number of packets successfully transmitted (<= pkts_n).
  */
 static inline uint16_t
 txq_burst_v(struct mlx5_txq_data *txq, struct rte_mbuf **pkts, uint16_t pkts_n,
-	    uint8_t cs_flags)
+	    uint8_t cs_flags, rte_be32_t metadata)
 {
 	struct rte_mbuf **elts;
 	uint16_t elts_head = txq->elts_head;
@@ -293,11 +295,8 @@ txq_burst_v(struct mlx5_txq_data *txq, struct rte_mbuf **pkts, uint16_t pkts_n,
 	ctrl = vqtbl1q_u8(ctrl, ctrl_shuf_m);
 	vst1q_u8((void *)t_wqe, ctrl);
 	/* Fill ESEG in the header. */
-	vst1q_u8((void *)(t_wqe + 1),
-		 ((uint8x16_t) { 0, 0, 0, 0,
-				 cs_flags, 0, 0, 0,
-				 0, 0, 0, 0,
-				 0, 0, 0, 0 }));
+	vst1q_u32((void *)(t_wqe + 1),
+		 ((uint32x4_t) { 0, cs_flags, metadata, 0 }));
 #ifdef MLX5_PMD_SOFT_COUNTERS
 	txq->stats.opackets += pkts_n;
 #endif

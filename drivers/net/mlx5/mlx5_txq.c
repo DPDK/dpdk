@@ -120,7 +120,6 @@ mlx5_get_tx_port_offloads(struct rte_eth_dev *dev)
 			offloads |= (DEV_TX_OFFLOAD_IP_TNL_TSO |
 				     DEV_TX_OFFLOAD_UDP_TNL_TSO);
 	}
-
 	if (config->tunnel_en) {
 		if (config->hw_csum)
 			offloads |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
@@ -128,6 +127,10 @@ mlx5_get_tx_port_offloads(struct rte_eth_dev *dev)
 			offloads |= (DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
 				     DEV_TX_OFFLOAD_GRE_TNL_TSO);
 	}
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	if (config->dv_flow_en)
+		offloads |= DEV_TX_OFFLOAD_MATCH_METADATA;
+#endif
 	return offloads;
 }
 

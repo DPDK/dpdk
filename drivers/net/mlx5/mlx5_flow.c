@@ -418,7 +418,7 @@ uint32_t mlx5_flow_adjust_priority(struct rte_eth_dev *dev, int32_t priority,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static int
+int
 mlx5_flow_item_acceptable(const struct rte_flow_item *item,
 			  const uint8_t *mask,
 			  const uint8_t *nic_mask,

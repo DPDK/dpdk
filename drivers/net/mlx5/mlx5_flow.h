@@ -43,6 +43,9 @@
 #define MLX5_FLOW_LAYER_GRE (1u << 14)
 #define MLX5_FLOW_LAYER_MPLS (1u << 15)
 
+/* General pattern items bits. */
+#define MLX5_FLOW_ITEM_METADATA (1u << 16)
+
 /* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \
 	(MLX5_FLOW_LAYER_OUTER_L3_IPV4 | MLX5_FLOW_LAYER_OUTER_L3_IPV6)
@@ -316,6 +319,11 @@ int mlx5_flow_validate_action_rss(const struct rte_flow_action *action,
 int mlx5_flow_validate_attributes(struct rte_eth_dev *dev,
 				  const struct rte_flow_attr *attributes,
 				  struct rte_flow_error *error);
+int mlx5_flow_item_acceptable(const struct rte_flow_item *item,
+			      const uint8_t *mask,
+			      const uint8_t *nic_mask,
+			      unsigned int size,
+			      struct rte_flow_error *error);
 int mlx5_flow_validate_item_eth(const struct rte_flow_item *item,
 				uint64_t item_flags,
 				struct rte_flow_error *error);

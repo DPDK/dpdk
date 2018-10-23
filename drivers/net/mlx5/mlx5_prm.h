@@ -159,7 +159,7 @@ struct mlx5_wqe_eth_seg_small {
 	uint8_t	cs_flags;
 	uint8_t	rsvd1;
 	uint16_t mss;
-	uint32_t rsvd2;
+	uint32_t flow_table_metadata;
 	uint16_t inline_hdr_sz;
 	uint8_t inline_hdr[2];
 } __rte_aligned(MLX5_WQE_DWORD_SIZE);
