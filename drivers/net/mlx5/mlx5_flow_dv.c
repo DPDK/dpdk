@@ -225,15 +225,6 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 					((const struct rte_flow_item_ipv6 *)
 					 items->spec)->hdr.proto;
 			break;
-		case RTE_FLOW_ITEM_TYPE_UDP:
-			ret = mlx5_flow_validate_item_udp(items, item_flags,
-							  next_protocol,
-							  error);
-			if (ret < 0)
-				return ret;
-			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L4_UDP :
-					       MLX5_FLOW_LAYER_OUTER_L4_UDP;
-			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			ret = mlx5_flow_validate_item_tcp
 						(items, item_flags,
@@ -244,6 +235,23 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				return ret;
 			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L4_TCP :
 					       MLX5_FLOW_LAYER_OUTER_L4_TCP;
+			break;
+		case RTE_FLOW_ITEM_TYPE_UDP:
+			ret = mlx5_flow_validate_item_udp(items, item_flags,
+							  next_protocol,
+							  error);
+			if (ret < 0)
+				return ret;
+			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L4_UDP :
+					       MLX5_FLOW_LAYER_OUTER_L4_UDP;
+			break;
+		case RTE_FLOW_ITEM_TYPE_GRE:
+		case RTE_FLOW_ITEM_TYPE_NVGRE:
+			ret = mlx5_flow_validate_item_gre(items, item_flags,
+							  next_protocol, error);
+			if (ret < 0)
+				return ret;
+			item_flags |= MLX5_FLOW_LAYER_GRE;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
 			ret = mlx5_flow_validate_item_vxlan(items, item_flags,
@@ -259,21 +267,6 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			if (ret < 0)
 				return ret;
 			item_flags |= MLX5_FLOW_LAYER_VXLAN_GPE;
-			break;
-		case RTE_FLOW_ITEM_TYPE_GRE:
-			ret = mlx5_flow_validate_item_gre(items, item_flags,
-							  next_protocol, error);
-			if (ret < 0)
-				return ret;
-			item_flags |= MLX5_FLOW_LAYER_GRE;
-			break;
-		case RTE_FLOW_ITEM_TYPE_MPLS:
-			ret = mlx5_flow_validate_item_mpls(items, item_flags,
-							   next_protocol,
-							   error);
-			if (ret < 0)
-				return ret;
-			item_flags |= MLX5_FLOW_LAYER_MPLS;
 			break;
 		case RTE_FLOW_ITEM_TYPE_META:
 			ret = flow_dv_validate_item_meta(dev, items, attr,
@@ -982,9 +975,6 @@ flow_dv_create_item(void *matcher, void *key,
 	struct mlx5_flow_dv_matcher *tmatcher = matcher;
 
 	switch (item->type) {
-	case RTE_FLOW_ITEM_TYPE_VOID:
-	case RTE_FLOW_ITEM_TYPE_END:
-		break;
 	case RTE_FLOW_ITEM_TYPE_ETH:
 		flow_dv_translate_item_eth(tmatcher->mask.buf, key, item,
 					   inner);
@@ -1032,13 +1022,13 @@ flow_dv_create_item(void *matcher, void *key,
 						    (IBV_RX_HASH_SRC_PORT_UDP |
 						     IBV_RX_HASH_DST_PORT_UDP));
 		break;
-	case RTE_FLOW_ITEM_TYPE_NVGRE:
-		flow_dv_translate_item_nvgre(tmatcher->mask.buf, key, item,
-					     inner);
-		break;
 	case RTE_FLOW_ITEM_TYPE_GRE:
 		flow_dv_translate_item_gre(tmatcher->mask.buf, key, item,
 					   inner);
+		break;
+	case RTE_FLOW_ITEM_TYPE_NVGRE:
+		flow_dv_translate_item_nvgre(tmatcher->mask.buf, key, item,
+					     inner);
 		break;
 	case RTE_FLOW_ITEM_TYPE_VXLAN:
 	case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
