@@ -1510,37 +1510,6 @@ uint16_t rte_eth_dev_count_avail(void);
 uint16_t __rte_experimental rte_eth_dev_count_total(void);
 
 /**
- * Attach a new Ethernet device specified by arguments.
- *
- * @param devargs
- *  A pointer to a strings array describing the new device
- *  to be attached. The strings should be a pci address like
- *  '0000:01:00.0' or virtual device name like 'net_pcap0'.
- * @param port_id
- *  A pointer to a port identifier actually attached.
- * @return
- *  0 on success and port_id is filled, negative on error
- */
-__rte_deprecated
-int rte_eth_dev_attach(const char *devargs, uint16_t *port_id);
-
-/**
- * Detach a Ethernet device specified by port identifier.
- * This function must be called when the device is in the
- * closed state.
- *
- * @param port_id
- *   The port identifier of the device to detach.
- * @param devname
- *   A pointer to a buffer that will be filled with the device name.
- *   This buffer must be at least RTE_DEV_NAME_MAX_LEN long.
- * @return
- *  0 on success and devname is filled, negative on error
- */
-__rte_deprecated
-int rte_eth_dev_detach(uint16_t port_id, char *devname);
-
-/**
  * Convert a numerical speed in Mbps to a bitmap flag that can be used in
  * the bitmap link_speeds of the struct rte_eth_conf
  *

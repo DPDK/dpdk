@@ -53,7 +53,6 @@ Programmer's Guide
     packet_framework
     vhost_lib
     metrics_lib
-    port_hotplug_framework
     bpf_lib
     source_org
     dev_kit_build_system

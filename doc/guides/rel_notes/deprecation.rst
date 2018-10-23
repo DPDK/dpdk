@@ -49,13 +49,6 @@ Deprecation Notices
   Target release for removal of the legacy API will be defined once most
   PMDs have switched to rte_flow.
 
-* ethdev: In v18.11 ``rte_eth_dev_attach()`` and ``rte_eth_dev_detach()``
-  will be removed.
-  Hotplug functions ``rte_eal_hotplug_add()`` and ``rte_eal_hotplug_remove()``
-  should be used instread.
-  Function ``rte_eth_dev_get_port_by_name()`` may be used to find
-  identifier of the added port.
-
 * eal: In v18.11 ``rte_eal_dev_attach()`` and ``rte_eal_dev_detach()``
   will be removed.
   Hotplug functions ``rte_eal_hotplug_add()`` and ``rte_eal_hotplug_remove()``

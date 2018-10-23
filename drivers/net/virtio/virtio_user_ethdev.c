@@ -635,7 +635,6 @@ end:
 	return ret;
 }
 
-/** Called by rte_eth_dev_detach() */
 static int
 virtio_user_pmd_remove(struct rte_vdev_device *vdev)
 {

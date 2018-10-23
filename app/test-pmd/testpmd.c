@@ -481,6 +481,7 @@ struct nvgre_encap_conf nvgre_encap_conf = {
 };
 
 /* Forward function declarations */
+static void setup_attached_port(portid_t pi);
 static void map_port_queue_stats_mapping_registers(portid_t pi,
 						   struct rte_port *port);
 static void check_all_ports_link_status(uint32_t port_mask);
@@ -2313,7 +2314,7 @@ void
 attach_port(char *identifier)
 {
 	portid_t pi = 0;
-	unsigned int socket_id;
+	struct rte_dev_iterator iterator;
 
 	printf("Attaching a new port...\n");
 
@@ -2322,8 +2323,19 @@ attach_port(char *identifier)
 		return;
 	}
 
-	if (rte_eth_dev_attach(identifier, &pi))
+	if (rte_dev_probe(identifier) != 0) {
+		TESTPMD_LOG(ERR, "Failed to attach port %s\n", identifier);
 		return;
+	}
+
+	RTE_ETH_FOREACH_MATCHING_DEV(pi, identifier, &iterator)
+		setup_attached_port(pi);
+}
+
+static void
+setup_attached_port(portid_t pi)
+{
+	unsigned int socket_id;
 
 	socket_id = (unsigned)rte_eth_dev_socket_id(pi);
 	/* if socket_id is invalid, set to the first available socket. */
@@ -2346,9 +2358,7 @@ attach_port(char *identifier)
 void
 detach_port(portid_t port_id)
 {
-	char name[RTE_ETH_NAME_MAX_LEN];
-
-	printf("Detaching a port...\n");
+	printf("Removing a device...\n");
 
 	if (ports[port_id].port_status != RTE_PORT_CLOSED) {
 		if (ports[port_id].port_status != RTE_PORT_STOPPED) {
@@ -2360,7 +2370,7 @@ detach_port(portid_t port_id)
 			port_flow_flush(port_id);
 	}
 
-	if (rte_eth_dev_detach(port_id, name)) {
+	if (rte_dev_remove(rte_eth_devices[port_id].device) != 0) {
 		TESTPMD_LOG(ERR, "Failed to detach port %u\n", port_id);
 		return;
 	}

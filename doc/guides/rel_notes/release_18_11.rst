@@ -309,6 +309,12 @@ API Changes
   functions were deprecated since 17.05 and are replaced by
   ``rte_mbuf_raw_free()`` and ``rte_pktmbuf_prefree_seg()``.
 
+* ethdev: The deprecated functions attach/detach were removed in 18.11.
+  ``rte_eth_dev_attach`` can be replaced by ``RTE_ETH_FOREACH_MATCHING_DEV``
+  and ``rte_dev_probe`` or ``rte_eal_hotplug_add``.
+  ``rte_eth_dev_detach`` can be replaced by
+  ``rte_dev_remove`` or ``rte_eal_hotplug_remove``.
+
 * ethdev: A call to ``rte_eth_dev_release_port()`` has been added in
   ``rte_eth_dev_close()``. As a consequence, a closed port is freed
   and seen as invalid because of its state ``RTE_ETH_DEV_UNUSED``.

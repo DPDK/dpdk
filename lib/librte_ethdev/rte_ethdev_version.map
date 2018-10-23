@@ -8,14 +8,12 @@ DPDK_2.2 {
 	rte_eth_allmulticast_get;
 	rte_eth_dev_allocate;
 	rte_eth_dev_allocated;
-	rte_eth_dev_attach;
 	rte_eth_dev_callback_register;
 	rte_eth_dev_callback_unregister;
 	rte_eth_dev_close;
 	rte_eth_dev_configure;
 	rte_eth_dev_count;
 	rte_eth_dev_default_mac_addr_set;
-	rte_eth_dev_detach;
 	rte_eth_dev_filter_supported;
 	rte_eth_dev_flow_ctrl_get;
 	rte_eth_dev_flow_ctrl_set;
