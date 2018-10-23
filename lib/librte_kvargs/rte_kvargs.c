@@ -120,6 +120,9 @@ rte_kvargs_process(const struct rte_kvargs *kvlist,
 	const struct rte_kvargs_pair *pair;
 	unsigned i;
 
+	if (kvlist == NULL)
+		return 0;
+
 	for (i = 0; i < kvlist->count; i++) {
 		pair = &kvlist->pairs[i];
 		if (key_match == NULL || strcmp(pair->key, key_match) == 0) {
