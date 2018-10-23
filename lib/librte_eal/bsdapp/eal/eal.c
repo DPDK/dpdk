@@ -610,7 +610,7 @@ rte_eal_init(int argc, char **argv)
 	internal_config.legacy_mem = true;
 
 	if (eal_plugins_init() < 0) {
-		rte_eal_init_alert("Cannot init plugins\n");
+		rte_eal_init_alert("Cannot init plugins");
 		rte_errno = EINVAL;
 		rte_atomic32_clear(&run_once);
 		return -1;
@@ -625,7 +625,7 @@ rte_eal_init(int argc, char **argv)
 	rte_config_init();
 
 	if (rte_eal_intr_init() < 0) {
-		rte_eal_init_alert("Cannot init interrupt-handling thread\n");
+		rte_eal_init_alert("Cannot init interrupt-handling thread");
 		return -1;
 	}
 
@@ -633,7 +633,7 @@ rte_eal_init(int argc, char **argv)
 	 * bus through mp channel in the secondary process before the bus scan.
 	 */
 	if (rte_mp_channel_init() < 0) {
-		rte_eal_init_alert("failed to init mp channel\n");
+		rte_eal_init_alert("failed to init mp channel");
 		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 			rte_errno = EFAULT;
 			return -1;
@@ -641,7 +641,7 @@ rte_eal_init(int argc, char **argv)
 	}
 
 	if (rte_bus_scan()) {
-		rte_eal_init_alert("Cannot scan the buses for devices\n");
+		rte_eal_init_alert("Cannot scan the buses for devices");
 		rte_errno = ENODEV;
 		rte_atomic32_clear(&run_once);
 		return -1;
@@ -688,37 +688,37 @@ rte_eal_init(int argc, char **argv)
 	 * initialize memzones first.
 	 */
 	if (rte_eal_memzone_init() < 0) {
-		rte_eal_init_alert("Cannot init memzone\n");
+		rte_eal_init_alert("Cannot init memzone");
 		rte_errno = ENODEV;
 		return -1;
 	}
 
 	if (rte_eal_memory_init() < 0) {
-		rte_eal_init_alert("Cannot init memory\n");
+		rte_eal_init_alert("Cannot init memory");
 		rte_errno = ENOMEM;
 		return -1;
 	}
 
 	if (rte_eal_malloc_heap_init() < 0) {
-		rte_eal_init_alert("Cannot init malloc heap\n");
+		rte_eal_init_alert("Cannot init malloc heap");
 		rte_errno = ENODEV;
 		return -1;
 	}
 
 	if (rte_eal_tailqs_init() < 0) {
-		rte_eal_init_alert("Cannot init tail queues for objects\n");
+		rte_eal_init_alert("Cannot init tail queues for objects");
 		rte_errno = EFAULT;
 		return -1;
 	}
 
 	if (rte_eal_alarm_init() < 0) {
-		rte_eal_init_alert("Cannot init interrupt-handling thread\n");
+		rte_eal_init_alert("Cannot init interrupt-handling thread");
 		/* rte_eal_alarm_init sets rte_errno on failure. */
 		return -1;
 	}
 
 	if (rte_eal_timer_init() < 0) {
-		rte_eal_init_alert("Cannot init HPET or TSC timers\n");
+		rte_eal_init_alert("Cannot init HPET or TSC timers");
 		rte_errno = ENOTSUP;
 		return -1;
 	}
@@ -768,14 +768,14 @@ rte_eal_init(int argc, char **argv)
 	/* initialize services so vdevs register service during bus_probe. */
 	ret = rte_service_init();
 	if (ret) {
-		rte_eal_init_alert("rte_service_init() failed\n");
+		rte_eal_init_alert("rte_service_init() failed");
 		rte_errno = ENOEXEC;
 		return -1;
 	}
 
 	/* Probe all the buses and devices/drivers on them */
 	if (rte_bus_probe()) {
-		rte_eal_init_alert("Cannot probe devices\n");
+		rte_eal_init_alert("Cannot probe devices");
 		rte_errno = ENOTSUP;
 		return -1;
 	}
