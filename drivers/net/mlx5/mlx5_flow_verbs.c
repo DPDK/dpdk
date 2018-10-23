@@ -34,6 +34,70 @@
 #include "mlx5_flow.h"
 
 /**
+ * Create Verbs flow counter with Verbs library.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in, out] counter
+ *   mlx5 flow counter object, contains the counter id,
+ *   handle of created Verbs flow counter is returned
+ *   in cs field (if counters are supported).
+ *
+ * @return
+ *   0 On success else a negative errno value is returned
+ *   and rte_errno is set.
+ */
+static int
+flow_verbs_counter_create(struct rte_eth_dev *dev,
+			  struct mlx5_flow_counter *counter)
+{
+#if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
+	struct priv *priv = dev->data->dev_private;
+	struct ibv_counter_set_init_attr init = {
+			 .counter_set_id = counter->id};
+
+	counter->cs = mlx5_glue->create_counter_set(priv->ctx, &init);
+	if (!counter->cs) {
+		rte_errno = ENOTSUP;
+		return -ENOTSUP;
+	}
+	return 0;
+#elif defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
+	struct priv *priv = dev->data->dev_private;
+	struct ibv_counters_init_attr init = {0};
+	struct ibv_counter_attach_attr attach = {0};
+	int ret;
+
+	counter->cs = mlx5_glue->create_counters(priv->ctx, &init);
+	if (!counter->cs) {
+		rte_errno = ENOTSUP;
+		return -ENOTSUP;
+	}
+	attach.counter_desc = IBV_COUNTER_PACKETS;
+	attach.index = 0;
+	ret = mlx5_glue->attach_counters(counter->cs, &attach, NULL);
+	if (!ret) {
+		attach.counter_desc = IBV_COUNTER_BYTES;
+		attach.index = 1;
+		ret = mlx5_glue->attach_counters
+					(counter->cs, &attach, NULL);
+	}
+	if (ret) {
+		claim_zero(mlx5_glue->destroy_counters(counter->cs));
+		counter->cs = NULL;
+		rte_errno = ret;
+		return -ret;
+	}
+	return 0;
+#else
+	(void)dev;
+	(void)counter;
+	rte_errno = ENOTSUP;
+	return -ENOTSUP;
+#endif
+}
+
+/**
  * Get a flow counter.
  *
  * @param[in] dev
@@ -51,6 +115,7 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 {
 	struct priv *priv = dev->data->dev_private;
 	struct mlx5_flow_counter *cnt;
+	int ret;
 
 	LIST_FOREACH(cnt, &priv->flow_counters, next) {
 		if (!cnt->shared || cnt->shared != shared)
@@ -60,36 +125,25 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 		cnt->ref_cnt++;
 		return cnt;
 	}
-#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_V42
-
-	struct mlx5_flow_counter tmpl = {
-		.shared = shared,
-		.id = id,
-		.cs = mlx5_glue->create_counter_set
-			(priv->ctx,
-			 &(struct ibv_counter_set_init_attr){
-				 .counter_set_id = id,
-			 }),
-		.hits = 0,
-		.bytes = 0,
-		.ref_cnt = 1,
-	};
-
-	if (!tmpl.cs) {
-		rte_errno = errno;
-		return NULL;
-	}
 	cnt = rte_calloc(__func__, 1, sizeof(*cnt), 0);
 	if (!cnt) {
-		claim_zero(mlx5_glue->destroy_counter_set(tmpl.cs));
 		rte_errno = ENOMEM;
 		return NULL;
 	}
-	*cnt = tmpl;
-	LIST_INSERT_HEAD(&priv->flow_counters, cnt, next);
-	return cnt;
-#endif
-	rte_errno = ENOTSUP;
+	cnt->id = id;
+	cnt->shared = shared;
+	cnt->ref_cnt = 1;
+	cnt->hits = 0;
+	cnt->bytes = 0;
+	/* Create counter with Verbs. */
+	ret = flow_verbs_counter_create(dev, cnt);
+	if (!ret) {
+		LIST_INSERT_HEAD(&priv->flow_counters, cnt, next);
+		return cnt;
+	}
+	/* Some error occurred in Verbs library. */
+	rte_free(cnt);
+	rte_errno = -ret;
 	return NULL;
 }
 
@@ -103,7 +157,11 @@ static void
 flow_verbs_counter_release(struct mlx5_flow_counter *counter)
 {
 	if (--counter->ref_cnt == 0) {
+#if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
 		claim_zero(mlx5_glue->destroy_counter_set(counter->cs));
+#elif defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
+		claim_zero(mlx5_glue->destroy_counters(counter->cs));
+#endif
 		LIST_REMOVE(counter, next);
 		rte_free(counter);
 	}
@@ -117,14 +175,15 @@ flow_verbs_counter_release(struct mlx5_flow_counter *counter)
  */
 static int
 flow_verbs_counter_query(struct rte_eth_dev *dev __rte_unused,
-			 struct rte_flow *flow __rte_unused,
-			 void *data __rte_unused,
+			 struct rte_flow *flow, void *data,
 			 struct rte_flow_error *error)
 {
-#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_V42
+#if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42) || \
+	defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
 	if (flow->actions & MLX5_FLOW_ACTION_COUNT) {
 		struct rte_flow_query_count *qc = data;
 		uint64_t counters[2] = {0, 0};
+#if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
 		struct ibv_query_counter_set_attr query_cs_attr = {
 			.cs = flow->counter->cs,
 			.query_flags = IBV_COUNTER_SET_FORCE_UPDATE,
@@ -135,7 +194,12 @@ flow_verbs_counter_query(struct rte_eth_dev *dev __rte_unused,
 		};
 		int err = mlx5_glue->query_counter_set(&query_cs_attr,
 						       &query_out);
-
+#elif defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
+		int err = mlx5_glue->query_counters
+			       (flow->counter->cs, counters,
+				RTE_DIM(counters),
+				IBV_READ_COUNTERS_ATTR_PREFER_CACHED);
+#endif
 		if (err)
 			return rte_flow_error_set
 				(error, err,
@@ -157,6 +221,8 @@ flow_verbs_counter_query(struct rte_eth_dev *dev __rte_unused,
 				  NULL,
 				  "flow does not have counter");
 #else
+	(void)flow;
+	(void)data;
 	return rte_flow_error_set(error, ENOTSUP,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				  NULL,
@@ -993,7 +1059,8 @@ flow_verbs_translate_action_count(struct rte_eth_dev *dev,
 {
 	const struct rte_flow_action_count *count = action->conf;
 	struct rte_flow *flow = dev_flow->flow;
-#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_V42
+#if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42) || \
+	defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
 	unsigned int size = sizeof(struct ibv_flow_spec_counter_action);
 	struct ibv_flow_spec_counter_action counter = {
 		.type = IBV_FLOW_SPEC_ACTION_COUNT,
@@ -1012,8 +1079,11 @@ flow_verbs_translate_action_count(struct rte_eth_dev *dev,
 						  " context.");
 	}
 	*action_flags |= MLX5_FLOW_ACTION_COUNT;
-#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_V42
+#if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
 	counter.counter_set_handle = flow->counter->cs->handle;
+	flow_verbs_spec_add(dev_flow, &counter, size);
+#elif defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
+	counter.counters = flow->counter->cs;
 	flow_verbs_spec_add(dev_flow, &counter, size);
 #endif
 	return 0;
@@ -1277,7 +1347,8 @@ flow_verbs_get_actions_and_size(const struct rte_flow_action actions[],
 			detected_actions |= MLX5_FLOW_ACTION_RSS;
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
-#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_V42
+#if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42) || \
+	defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
 			size += sizeof(struct ibv_flow_spec_counter_action);
 #endif
 			detected_actions |= MLX5_FLOW_ACTION_COUNT;

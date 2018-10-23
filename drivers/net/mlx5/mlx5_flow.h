@@ -231,7 +231,11 @@ struct mlx5_flow_counter {
 	uint32_t shared:1; /**< Share counter ID with other flow rules. */
 	uint32_t ref_cnt:31; /**< Reference counter. */
 	uint32_t id; /**< Counter ID. */
+#if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
 	struct ibv_counter_set *cs; /**< Holds the counters for the rule. */
+#elif defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
+	struct ibv_counters *cs; /**< Holds the counters for the rule. */
+#endif
 	uint64_t hits; /**< Number of packets matched by the rule. */
 	uint64_t bytes; /**< Number of bytes matched by the rule. */
 };
