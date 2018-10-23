@@ -5702,7 +5702,7 @@ ixgbe_config_rss_filter(struct rte_eth_dev *dev,
 	 */
 	if ((rss_conf.rss_hf & IXGBE_RSS_OFFLOAD_ALL) == 0) {
 		ixgbe_rss_disable(dev);
-		return -EINVAL;
+		return 0;
 	}
 	if (rss_conf.rss_key == NULL)
 		rss_conf.rss_key = rss_intel_key; /* Default hash key */
