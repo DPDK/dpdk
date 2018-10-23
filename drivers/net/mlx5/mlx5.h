@@ -114,7 +114,6 @@ struct mlx5_dev_config {
 	unsigned int tunnel_en:1;
 	/* Whether tunnel stateless offloads are supported. */
 	unsigned int mpls_en:1; /* MPLS over GRE/UDP is enabled. */
-	unsigned int flow_counter_en:1; /* Whether flow counter is supported. */
 	unsigned int cqe_comp:1; /* CQE compression is enabled. */
 	unsigned int tso:1; /* Whether TSO is supported. */
 	unsigned int tx_vec_en:1; /* Tx vector is enabled. */

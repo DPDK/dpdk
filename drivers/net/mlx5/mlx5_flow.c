@@ -921,16 +921,10 @@ mlx5_flow_validate_action_rss(const struct rte_flow_action *action,
  *   0 on success, a negative errno value otherwise and rte_ernno is set.
  */
 int
-mlx5_flow_validate_action_count(struct rte_eth_dev *dev,
+mlx5_flow_validate_action_count(struct rte_eth_dev *dev __rte_unused,
 				const struct rte_flow_attr *attr,
 				struct rte_flow_error *error)
 {
-	struct priv *priv = dev->data->dev_private;
-
-	if (!priv->config.flow_counter_en)
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "flow counters are not supported.");
 	if (attr->egress)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, NULL,
