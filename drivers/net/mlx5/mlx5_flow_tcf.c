@@ -399,11 +399,6 @@ flow_tcf_counter_new(void)
 	 */
 	struct mlx5_flow_counter tmpl = {
 		.ref_cnt = 1,
-		.shared = 0,
-		.id = 0,
-		.cs = NULL,
-		.hits = 0,
-		.bytes = 0,
 	};
 	cnt = rte_calloc(__func__, 1, sizeof(*cnt), 0);
 	if (!cnt) {
