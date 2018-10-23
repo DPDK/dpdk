@@ -1065,15 +1065,16 @@ flow_dv_create_action(const struct rte_flow_action *action,
 	case RTE_FLOW_ACTION_TYPE_FLAG:
 		dev_flow->dv.actions[actions_n].type = MLX5DV_FLOW_ACTION_TAG;
 		dev_flow->dv.actions[actions_n].tag_value =
-			MLX5_FLOW_MARK_DEFAULT;
+			mlx5_flow_mark_set(MLX5_FLOW_MARK_DEFAULT);
 		actions_n++;
 		flow->actions |= MLX5_FLOW_ACTION_FLAG;
 		break;
 	case RTE_FLOW_ACTION_TYPE_MARK:
 		dev_flow->dv.actions[actions_n].type = MLX5DV_FLOW_ACTION_TAG;
 		dev_flow->dv.actions[actions_n].tag_value =
-			((const struct rte_flow_action_mark *)
-			 (action->conf))->id;
+			mlx5_flow_mark_set
+			(((const struct rte_flow_action_mark *)
+			  (action->conf))->id);
 		flow->actions |= MLX5_FLOW_ACTION_MARK;
 		actions_n++;
 		break;
