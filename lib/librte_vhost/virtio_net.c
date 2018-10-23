@@ -1360,8 +1360,10 @@ virtio_dev_tx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			}
 		}
 
-		flush_shadow_used_ring_split(dev, vq);
-		vhost_vring_call_split(dev, vq);
+		if (likely(vq->shadow_used_idx)) {
+			flush_shadow_used_ring_split(dev, vq);
+			vhost_vring_call_split(dev, vq);
+		}
 	}
 
 	rte_prefetch0(&vq->avail->ring[vq->last_avail_idx & (vq->size - 1)]);
@@ -1440,8 +1442,10 @@ virtio_dev_tx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		do_data_copy_dequeue(vq);
 		if (unlikely(i < count))
 			vq->shadow_used_idx = i;
-		flush_shadow_used_ring_split(dev, vq);
-		vhost_vring_call_split(dev, vq);
+		if (likely(vq->shadow_used_idx)) {
+			flush_shadow_used_ring_split(dev, vq);
+			vhost_vring_call_split(dev, vq);
+		}
 	}
 
 	return i;
@@ -1476,8 +1480,10 @@ virtio_dev_tx_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			}
 		}
 
-		flush_shadow_used_ring_packed(dev, vq);
-		vhost_vring_call_packed(dev, vq);
+		if (likely(vq->shadow_used_idx)) {
+			flush_shadow_used_ring_packed(dev, vq);
+			vhost_vring_call_packed(dev, vq);
+		}
 	}
 
 	VHOST_LOG_DEBUG(VHOST_DATA, "(%d) %s\n", dev->vid, __func__);
@@ -1555,8 +1561,10 @@ virtio_dev_tx_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		do_data_copy_dequeue(vq);
 		if (unlikely(i < count))
 			vq->shadow_used_idx = i;
-		flush_shadow_used_ring_packed(dev, vq);
-		vhost_vring_call_packed(dev, vq);
+		if (likely(vq->shadow_used_idx)) {
+			flush_shadow_used_ring_packed(dev, vq);
+			vhost_vring_call_packed(dev, vq);
+		}
 	}
 
 	return i;
