@@ -694,9 +694,10 @@ mlx5_uar_init_secondary(struct rte_eth_dev *dev)
  *
  * @return
  *   A valid Ethernet device object on success, NULL otherwise and rte_errno
- *   is set. The following error is defined:
+ *   is set. The following errors are defined:
  *
  *   EBUSY: device is not supposed to be spawned.
+ *   EEXIST: device is already spawned
  */
 static struct rte_eth_dev *
 mlx5_dev_spawn(struct rte_device *dpdk_dev,
@@ -742,6 +743,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	struct ether_addr mac;
 	char name[RTE_ETH_NAME_MAX_LEN];
 	int own_domain_id = 0;
+	uint16_t port_id;
 	unsigned int i;
 
 	/* Determine if this port representor is supposed to be spawned. */
@@ -763,6 +765,17 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 			rte_errno = EBUSY;
 			return NULL;
 		}
+	}
+	/* Build device name. */
+	if (!switch_info->representor)
+		rte_strlcpy(name, dpdk_dev->name, sizeof(name));
+	else
+		snprintf(name, sizeof(name), "%s_representor_%u",
+			 dpdk_dev->name, switch_info->port_name);
+	/* check if the device is already spawned */
+	if (rte_eth_dev_get_port_by_name(name, &port_id) == 0) {
+		rte_errno = EEXIST;
+		return NULL;
 	}
 	/* Prepare shared data between primary and secondary process. */
 	mlx5_prepare_shared_data();
@@ -870,11 +883,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		DEBUG("ibv_query_device_ex() failed");
 		goto error;
 	}
-	if (!switch_info->representor)
-		rte_strlcpy(name, dpdk_dev->name, sizeof(name));
-	else
-		snprintf(name, sizeof(name), "%s_representor_%u",
-			 dpdk_dev->name, switch_info->port_name);
 	DRV_LOG(DEBUG, "naming Ethernet device \"%s\"", name);
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 		eth_dev = rte_eth_dev_attach_secondary(name);
@@ -1421,9 +1429,9 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		list[i].eth_dev = mlx5_dev_spawn
 			(&pci_dev->device, list[i].ibv_dev, vf, &list[i].info);
 		if (!list[i].eth_dev) {
-			if (rte_errno != EBUSY)
+			if (rte_errno != EBUSY && rte_errno != EEXIST)
 				break;
-			/* Device is disabled, ignore it. */
+			/* Device is disabled or already spawned. Ignore it. */
 			continue;
 		}
 		restore = list[i].eth_dev->data->dev_flags;
@@ -1518,7 +1526,8 @@ static struct rte_pci_driver mlx5_driver = {
 	},
 	.id_table = mlx5_pci_id_map,
 	.probe = mlx5_pci_probe,
-	.drv_flags = RTE_PCI_DRV_INTR_LSC | RTE_PCI_DRV_INTR_RMV,
+	.drv_flags = (RTE_PCI_DRV_INTR_LSC | RTE_PCI_DRV_INTR_RMV |
+		      RTE_PCI_DRV_PROBE_AGAIN),
 };
 
 #ifdef RTE_LIBRTE_MLX5_DLOPEN_DEPS
