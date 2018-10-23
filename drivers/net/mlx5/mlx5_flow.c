@@ -1679,25 +1679,19 @@ const struct mlx5_flow_driver_ops mlx5_flow_null_drv_ops = {
  *   Pointer to the flow attributes.
  *
  * @return
- *   flow driver type if supported, MLX5_FLOW_TYPE_MAX otherwise.
+ *   flow driver type, MLX5_FLOW_TYPE_MAX otherwise.
  */
 static enum mlx5_flow_drv_type
-flow_get_drv_type(struct rte_eth_dev *dev __rte_unused,
-		  const struct rte_flow_attr *attr)
+flow_get_drv_type(struct rte_eth_dev *dev, const struct rte_flow_attr *attr)
 {
-	struct priv *priv __rte_unused = dev->data->dev_private;
+	struct priv *priv = dev->data->dev_private;
 	enum mlx5_flow_drv_type type = MLX5_FLOW_TYPE_MAX;
 
-	if (attr->transfer) {
+	if (attr->transfer)
 		type = MLX5_FLOW_TYPE_TCF;
-	} else {
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
-		type = priv->config.dv_flow_en ?  MLX5_FLOW_TYPE_DV :
-						  MLX5_FLOW_TYPE_VERBS;
-#else
-		type = MLX5_FLOW_TYPE_VERBS;
-#endif
-	}
+	else
+		type = priv->config.dv_flow_en ? MLX5_FLOW_TYPE_DV :
+						 MLX5_FLOW_TYPE_VERBS;
 	return type;
 }
 
