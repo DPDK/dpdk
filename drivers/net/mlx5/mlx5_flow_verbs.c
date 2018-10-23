@@ -60,7 +60,7 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 		cnt->ref_cnt++;
 		return cnt;
 	}
-#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
+#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_V42
 
 	struct mlx5_flow_counter tmpl = {
 		.shared = shared,
@@ -938,7 +938,7 @@ flow_verbs_translate_action_count(struct rte_eth_dev *dev,
 {
 	const struct rte_flow_action_count *count = action->conf;
 	struct rte_flow *flow = dev_flow->flow;
-#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
+#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_V42
 	unsigned int size = sizeof(struct ibv_flow_spec_counter_action);
 	struct ibv_flow_spec_counter_action counter = {
 		.type = IBV_FLOW_SPEC_ACTION_COUNT,
@@ -957,7 +957,7 @@ flow_verbs_translate_action_count(struct rte_eth_dev *dev,
 						  " context.");
 	}
 	*action_flags |= MLX5_FLOW_ACTION_COUNT;
-#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
+#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_V42
 	counter.counter_set_handle = flow->counter->cs->handle;
 	flow_verbs_spec_add(dev_flow, &counter, size);
 #endif
@@ -1222,7 +1222,7 @@ flow_verbs_get_actions_and_size(const struct rte_flow_action actions[],
 			detected_actions |= MLX5_FLOW_ACTION_RSS;
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
-#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
+#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_V42
 			size += sizeof(struct ibv_flow_spec_counter_action);
 #endif
 			detected_actions |= MLX5_FLOW_ACTION_COUNT;
@@ -1665,7 +1665,7 @@ flow_verbs_query_count(struct rte_eth_dev *dev __rte_unused,
 		       void *data __rte_unused,
 		       struct rte_flow_error *error)
 {
-#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
+#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_V42
 	if (flow->actions & MLX5_FLOW_ACTION_COUNT) {
 		struct rte_flow_query_count *qc = data;
 		uint64_t counters[2] = {0, 0};

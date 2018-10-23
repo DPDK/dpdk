@@ -739,7 +739,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	unsigned int mprq_max_stride_size_n = 0;
 	unsigned int mprq_min_stride_num_n = 0;
 	unsigned int mprq_max_stride_num_n = 0;
-#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
+#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_V42
 	struct ibv_counter_set_description cs_desc = { .counter_type = 0 };
 #endif
 	struct ether_addr mac;
@@ -1009,7 +1009,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	config.hw_csum = !!(attr.device_cap_flags_ex & IBV_DEVICE_RAW_IP_CSUM);
 	DRV_LOG(DEBUG, "checksum offloading is %ssupported",
 		(config.hw_csum ? "" : "not "));
-#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
+#ifdef HAVE_IBV_DEVICE_COUNTERS_SET_V42
 	config.flow_counter_en = !!attr.max_counter_sets;
 	mlx5_glue->describe_counter_set(ctx, 0, &cs_desc);
 	DRV_LOG(DEBUG, "counter type = %d, num of cs = %ld, attributes = %d",

@@ -157,7 +157,7 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		enum ETHTOOL_LINK_MODE_100000baseKR4_Full_BIT \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
-		HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT \
+		HAVE_IBV_DEVICE_COUNTERS_SET_V42 \
 		infiniband/verbs.h \
 		type 'struct ibv_counter_set_init_attr' \
 		$(AUTOCONF_OUTPUT)

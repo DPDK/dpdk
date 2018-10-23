@@ -23,7 +23,7 @@
 #define MLX5_GLUE_VERSION ""
 #endif
 
-#ifndef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
+#ifndef HAVE_IBV_DEVICE_COUNTERS_SET_V42
 struct ibv_counter_set;
 struct ibv_counter_set_data;
 struct ibv_counter_set_description;

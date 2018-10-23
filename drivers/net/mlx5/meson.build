@@ -79,7 +79,7 @@ if build
 	has_member_args = [
 		[ 'HAVE_IBV_MLX5_MOD_SWP', 'infiniband/mlx5dv.h',
 		'struct mlx5dv_sw_parsing_caps', 'sw_parsing_offloads' ],
-		[ 'HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT', 'infiniband/verbs.h',
+		[ 'HAVE_IBV_DEVICE_COUNTERS_SET_V42', 'infiniband/verbs.h',
 		'struct ibv_counter_set_init_attr', 'counter_set_id' ],
 	]
 	# input array for meson symbol search:

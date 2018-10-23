@@ -215,7 +215,7 @@ static struct ibv_counter_set *
 mlx5_glue_create_counter_set(struct ibv_context *context,
 			     struct ibv_counter_set_init_attr *init_attr)
 {
-#ifndef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
+#ifndef HAVE_IBV_DEVICE_COUNTERS_SET_V42
 	(void)context;
 	(void)init_attr;
 	return NULL;
@@ -227,7 +227,7 @@ mlx5_glue_create_counter_set(struct ibv_context *context,
 static int
 mlx5_glue_destroy_counter_set(struct ibv_counter_set *cs)
 {
-#ifndef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
+#ifndef HAVE_IBV_DEVICE_COUNTERS_SET_V42
 	(void)cs;
 	return ENOTSUP;
 #else
@@ -240,7 +240,7 @@ mlx5_glue_describe_counter_set(struct ibv_context *context,
 			       uint16_t counter_set_id,
 			       struct ibv_counter_set_description *cs_desc)
 {
-#ifndef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
+#ifndef HAVE_IBV_DEVICE_COUNTERS_SET_V42
 	(void)context;
 	(void)counter_set_id;
 	(void)cs_desc;
@@ -254,7 +254,7 @@ static int
 mlx5_glue_query_counter_set(struct ibv_query_counter_set_attr *query_attr,
 			    struct ibv_counter_set_data *cs_data)
 {
-#ifndef HAVE_IBV_DEVICE_COUNTERS_SET_SUPPORT
+#ifndef HAVE_IBV_DEVICE_COUNTERS_SET_V42
 	(void)query_attr;
 	(void)cs_data;
 	return ENOTSUP;
