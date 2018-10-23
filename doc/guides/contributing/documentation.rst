@@ -615,19 +615,14 @@ The following are some guidelines for use of Doxygen in the DPDK API documentati
   .. code-block:: c
 
      /**
-      * Attach a new Ethernet device specified by arguments.
+      * Try to take the lock.
       *
-      * @param devargs
-      *  A pointer to a strings array describing the new device
-      *  to be attached. The strings should be a pci address like
-      *  `0000:01:00.0` or **virtual** device name like `net_pcap0`.
-      * @param port_id
-      *  A pointer to a port identifier actually attached.
-      *
+      * @param sl
+      *   A pointer to the spinlock.
       * @return
-      *  0 on success and port_id is filled, negative on error.
+      *   1 if the lock is successfully taken; 0 otherwise.
       */
-     int rte_eth_dev_attach(const char *devargs, uint8_t *port_id);
+     int rte_spinlock_trylock(rte_spinlock_t *sl);
 
 * Doxygen supports Markdown style syntax such as bold, italics, fixed width text and lists.
   For example the second line in the ``devargs`` parameter in the previous example will be rendered as:
