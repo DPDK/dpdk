@@ -171,14 +171,13 @@ signal_handler(int signum)
 	/* When we receive a USR2 signal, reset stats */
 	if (signum == SIGUSR2) {
 		memset(&kni_stats, 0, sizeof(kni_stats));
-		printf("\n**Statistics have been reset**\n");
+		printf("\n** Statistics have been reset **\n");
 		return;
 	}
 
 	/* When we receive a RTMIN or SIGINT signal, stop kni processing */
 	if (signum == SIGRTMIN || signum == SIGINT){
-		printf("SIGRTMIN is received, and the KNI processing is "
-							"going to stop\n");
+		printf("\nSIGRTMIN/SIGINT received. KNI processing stopping.\n");
 		rte_atomic32_inc(&kni_stop);
 		return;
         }
@@ -950,6 +949,7 @@ main(int argc, char** argv)
 	unsigned i;
 	void *retval;
 	pthread_t kni_link_tid;
+	int pid;
 
 	/* Associate signal_hanlder function with USR signals */
 	signal(SIGUSR1, signal_handler);
@@ -1005,6 +1005,16 @@ main(int argc, char** argv)
 		kni_alloc(port);
 	}
 	check_all_ports_link_status(ports_mask);
+
+	pid = getpid();
+	RTE_LOG(INFO, APP, "========================\n");
+	RTE_LOG(INFO, APP, "KNI Running\n");
+	RTE_LOG(INFO, APP, "kill -SIGUSR1 %d\n", pid);
+	RTE_LOG(INFO, APP, "    Show KNI Statistics.\n");
+	RTE_LOG(INFO, APP, "kill -SIGUSR2 %d\n", pid);
+	RTE_LOG(INFO, APP, "    Zero KNI Statistics.\n");
+	RTE_LOG(INFO, APP, "========================\n");
+	fflush(stdout);
 
 	ret = rte_ctrl_thread_create(&kni_link_tid,
 				     "KNI link status check", NULL,
