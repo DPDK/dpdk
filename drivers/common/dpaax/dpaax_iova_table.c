@@ -172,7 +172,7 @@ dpaax_iova_table_populate(void)
 	}
 
 	nodes = read_memory_node(&node_count);
-	if (nodes == NULL || node_count <= 0) {
+	if (nodes == NULL) {
 		DPAAX_WARN("PA->VA translation not available;");
 		DPAAX_WARN("Expect performance impact.");
 		return -1;
