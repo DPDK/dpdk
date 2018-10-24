@@ -294,13 +294,14 @@ test_rawdev_attr_set_get(void)
 			      "Attribute (Test1) not set correctly (%" PRIu64 ")",
 			      ret_value);
 
+	free(dummy_value);
+
 	ret_value = 0;
 	ret = rte_rawdev_get_attr(TEST_DEV_ID, "Test2", &ret_value);
 	RTE_TEST_ASSERT_EQUAL(*((int *)(uintptr_t)ret_value), 200,
 			      "Attribute (Test2) not set correctly (%" PRIu64 ")",
 			      ret_value);
 
-	free(dummy_value);
 	return TEST_SUCCESS;
 }
 
