@@ -118,6 +118,79 @@ kni_change_mtu(uint16_t port_id, unsigned int new_mtu)
 					 port_id, kni_pkt_mtu);
 	return 0;
 }
+
+static int
+test_kni_link_change(void)
+{
+	int ret;
+	int pid;
+
+	pid = fork();
+	if (pid < 0) {
+		printf("Error: Failed to fork a process\n");
+		return -1;
+	}
+
+	if (pid == 0) {
+		printf("Starting KNI Link status change tests.\n");
+		if (system(IFCONFIG TEST_KNI_PORT" up") == -1) {
+			ret = -1;
+			goto error;
+		}
+
+		ret = rte_kni_update_link(test_kni_ctx, 1);
+		if (ret < 0) {
+			printf("Failed to change link state to Up ret=%d.\n",
+				ret);
+			goto error;
+		}
+		rte_delay_ms(1000);
+		printf("KNI: Set LINKUP, previous state=%d\n", ret);
+
+		ret = rte_kni_update_link(test_kni_ctx, 0);
+		if (ret != 1) {
+			printf(
+		"Failed! Previous link state should be 1, returned %d.\n",
+				ret);
+			goto error;
+		}
+		rte_delay_ms(1000);
+		printf("KNI: Set LINKDOWN, previous state=%d\n", ret);
+
+		ret = rte_kni_update_link(test_kni_ctx, 1);
+		if (ret != 0) {
+			printf(
+		"Failed! Previous link state should be 0, returned %d.\n",
+				ret);
+			goto error;
+		}
+		printf("KNI: Set LINKUP, previous state=%d\n", ret);
+
+		ret = 0;
+		rte_delay_ms(1000);
+
+error:
+		if (system(IFCONFIG TEST_KNI_PORT" down") == -1)
+			ret = -1;
+
+		printf("KNI: Link status change tests: %s.\n",
+			(ret == 0) ? "Passed" : "Failed");
+		exit(ret);
+	} else {
+		int p_ret, status;
+
+		while (1) {
+			p_ret = waitpid(pid, &status, WNOHANG);
+			if (p_ret != 0) {
+				if (WIFEXITED(status))
+					return WEXITSTATUS(status);
+				return -1;
+			}
+			rte_delay_ms(10);
+			rte_kni_handle_request(test_kni_ctx);
+		}
+	}
+}
 /**
  * This loop fully tests the basic functions of KNI. e.g. transmitting,
  * receiving to, from kernel space, and kernel requests.
@@ -400,6 +473,10 @@ test_kni_processing(uint16_t port_id, struct rte_mempool *mp)
 		ret = -1;
 		goto fail_kni;
 	}
+
+	ret = test_kni_link_change();
+	if (ret != 0)
+		goto fail_kni;
 
 	rte_eal_mp_remote_launch(test_kni_loop, NULL, CALL_MASTER);
 	RTE_LCORE_FOREACH_SLAVE(i) {

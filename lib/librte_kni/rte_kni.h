@@ -233,6 +233,26 @@ int rte_kni_register_handlers(struct rte_kni *kni, struct rte_kni_ops *ops);
 int rte_kni_unregister_handlers(struct rte_kni *kni);
 
 /**
+ * Update link carrier state for KNI port.
+ *
+ * Update the linkup/linkdown state of a KNI interface in the kernel.
+ *
+ * @param kni
+ *  pointer to struct rte_kni.
+ * @param linkup
+ *  New link state:
+ *  0 for linkdown.
+ *  > 0 for linkup.
+ *
+ * @return
+ *  On failure: -1
+ *  Previous link state == linkdown: 0
+ *  Previous link state == linkup: 1
+ */
+int __rte_experimental
+rte_kni_update_link(struct rte_kni *kni, unsigned int linkup);
+
+/**
  *  Close KNI device.
  */
 void rte_kni_close(void);

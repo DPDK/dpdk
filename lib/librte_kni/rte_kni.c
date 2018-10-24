@@ -717,6 +717,47 @@ rte_kni_unregister_handlers(struct rte_kni *kni)
 
 	return 0;
 }
+
+int __rte_experimental
+rte_kni_update_link(struct rte_kni *kni, unsigned int linkup)
+{
+	char path[64];
+	char old_carrier[2];
+	const char *new_carrier;
+	int old_linkup;
+	int fd, ret;
+
+	if (kni == NULL)
+		return -1;
+
+	snprintf(path, sizeof(path), "/sys/devices/virtual/net/%s/carrier",
+		kni->name);
+
+	fd = open(path, O_RDWR);
+	if (fd == -1) {
+		RTE_LOG(ERR, KNI, "Failed to open file: %s.\n", path);
+		return -1;
+	}
+
+	ret = read(fd, old_carrier, 2);
+	if (ret < 1) {
+		close(fd);
+		return -1;
+	}
+	old_linkup = (old_carrier[0] == '1');
+
+	new_carrier = linkup ? "1" : "0";
+	ret = write(fd, new_carrier, 1);
+	if (ret < 1) {
+		RTE_LOG(ERR, KNI, "Failed to write file: %s.\n", path);
+		close(fd);
+		return -1;
+	}
+
+	close(fd);
+	return old_linkup;
+}
+
 void
 rte_kni_close(void)
 {
