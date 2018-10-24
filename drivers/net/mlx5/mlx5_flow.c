@@ -477,7 +477,7 @@ mlx5_flow_item_acceptable(const struct rte_flow_item *item,
  */
 uint64_t
 mlx5_flow_hashfields_adjust(struct mlx5_flow *dev_flow,
-			    int tunnel __rte_unused, uint32_t layer_types,
+			    int tunnel __rte_unused, uint64_t layer_types,
 			    uint64_t hash_fields)
 {
 	struct rte_flow *flow = dev_flow->flow;

@@ -215,7 +215,7 @@ struct mlx5_flow_verbs {
 struct mlx5_flow {
 	LIST_ENTRY(mlx5_flow) next;
 	struct rte_flow *flow; /**< Pointer to the main flow. */
-	uint32_t layers;
+	uint64_t layers;
 	/**< Bit-fields of present layers, see MLX5_FLOW_LAYER_*. */
 	union {
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
@@ -251,7 +251,7 @@ struct rte_flow {
 	uint16_t (*queue)[]; /**< Destination queues to redirect traffic to. */
 	LIST_HEAD(dev_flows, mlx5_flow) dev_flows;
 	/**< Device flows that are part of the flow. */
-	uint32_t actions;
+	uint64_t actions;
 	/**< Bit-fields of detected actions, see MLX5_FLOW_ACTION_*. */
 };
 typedef int (*mlx5_flow_validate_t)(struct rte_eth_dev *dev,
@@ -293,7 +293,7 @@ struct mlx5_flow_driver_ops {
 /* mlx5_flow.c */
 
 uint64_t mlx5_flow_hashfields_adjust(struct mlx5_flow *dev_flow, int tunnel,
-				     uint32_t layer_types,
+				     uint64_t layer_types,
 				     uint64_t hash_fields);
 uint32_t mlx5_flow_adjust_priority(struct rte_eth_dev *dev, int32_t priority,
 				   uint32_t subpriority);

@@ -1114,8 +1114,8 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 		    struct rte_flow_error *error)
 {
 	int ret;
-	uint32_t action_flags = 0;
-	uint32_t item_flags = 0;
+	uint64_t action_flags = 0;
+	uint64_t item_flags = 0;
 	int tunnel = 0;
 	uint8_t next_protocol = 0xff;
 

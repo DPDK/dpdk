@@ -963,8 +963,8 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 		const struct rte_flow_action_set_ipv4 *set_ipv4;
 		const struct rte_flow_action_set_ipv6 *set_ipv6;
 	} conf;
-	uint32_t item_flags = 0;
-	uint32_t action_flags = 0;
+	uint64_t item_flags = 0;
+	uint64_t action_flags = 0;
 	uint8_t next_protocol = -1;
 	unsigned int tcm_ifindex = 0;
 	uint8_t pedit_validated = 0;
@@ -1181,7 +1181,7 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 	}
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
 		unsigned int i;
-		uint32_t current_action_flag = 0;
+		uint64_t current_action_flag = 0;
 
 		switch (actions->type) {
 		case RTE_FLOW_ACTION_TYPE_VOID:
