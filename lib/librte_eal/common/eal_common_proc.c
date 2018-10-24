@@ -939,13 +939,17 @@ rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 	if (check_input(req) == false)
 		return -1;
 
+	reply->nb_sent = 0;
+	reply->nb_received = 0;
+	reply->msgs = NULL;
+
 	if (internal_config.no_shconf) {
 		RTE_LOG(DEBUG, EAL, "No shared files mode enabled, IPC is disabled\n");
 		return 0;
 	}
 
 	if (gettimeofday(&now, NULL) < 0) {
-		RTE_LOG(ERR, EAL, "Faile to get current time\n");
+		RTE_LOG(ERR, EAL, "Failed to get current time\n");
 		rte_errno = errno;
 		return -1;
 	}
@@ -953,10 +957,6 @@ rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 	end.tv_nsec = (now.tv_usec * 1000 + ts->tv_nsec) % 1000000000;
 	end.tv_sec = now.tv_sec + ts->tv_sec +
 			(now.tv_usec * 1000 + ts->tv_nsec) / 1000000000;
-
-	reply->nb_sent = 0;
-	reply->nb_received = 0;
-	reply->msgs = NULL;
 
 	/* for secondary process, send request to the primary process only */
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
