@@ -20,6 +20,7 @@ static: build/$(APP)-static
 
 PC_FILE := $(shell pkg-config --path libdpdk)
 CFLAGS += -O3 $(shell pkg-config --cflags libdpdk)
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 LDFLAGS_SHARED = $(shell pkg-config --libs libdpdk)
 LDFLAGS_STATIC = -Wl,-Bstatic $(shell pkg-config --static --libs libdpdk)
 
@@ -54,6 +55,7 @@ please change the definition of the RTE_TARGET environment variable)
 endif
 
 CFLAGS += -O3
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += $(WERROR_FLAGS)
 
 include $(RTE_SDK)/mk/rte.extapp.mk
