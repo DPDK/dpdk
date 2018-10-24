@@ -151,6 +151,12 @@ New Features
   Added support for flow classification (rte_flow API), and metering and
   policing (rte_mtr API) to the SoftNIC PMD.
 
+* **Added Crypto support to Softnic PMD.**
+
+  The Softnic is now capable of processing symmetric crypto workloads such
+  as cipher, cipher-authentication chaining, and aead encryption and
+  decryption. This is achieved by calling DPDK Cryptodev APIs.
+
 * **Added support for GEN3 devices to Intel QAT driver .**
 
   Added support for the third generation of Intel QuickAssist devices.
