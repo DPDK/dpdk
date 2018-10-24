@@ -166,3 +166,54 @@ dump_tx_pkts(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 	dump_pkt_burst(port_id, queue, pkts, nb_pkts, 0);
 	return nb_pkts;
 }
+
+uint16_t
+tx_pkt_set_md(uint16_t port_id, __rte_unused uint16_t queue,
+	      struct rte_mbuf *pkts[], uint16_t nb_pkts,
+	      __rte_unused void *user_param)
+{
+	uint16_t i = 0;
+
+	/*
+	 * Add metadata value to every Tx packet,
+	 * and set ol_flags accordingly.
+	 */
+	for (i = 0; i < nb_pkts; i++) {
+		pkts[i]->tx_metadata = ports[port_id].tx_metadata;
+		pkts[i]->ol_flags |= PKT_TX_METADATA;
+	}
+	return nb_pkts;
+}
+
+void
+add_tx_md_callback(portid_t portid)
+{
+	struct rte_eth_dev_info dev_info;
+	uint16_t queue;
+
+	if (port_id_is_invalid(portid, ENABLED_WARN))
+		return;
+	rte_eth_dev_info_get(portid, &dev_info);
+	for (queue = 0; queue < dev_info.nb_tx_queues; queue++)
+		if (!ports[portid].tx_set_md_cb[queue])
+			ports[portid].tx_set_md_cb[queue] =
+				rte_eth_add_tx_callback(portid, queue,
+							tx_pkt_set_md, NULL);
+}
+
+void
+remove_tx_md_callback(portid_t portid)
+{
+	struct rte_eth_dev_info dev_info;
+	uint16_t queue;
+
+	if (port_id_is_invalid(portid, ENABLED_WARN))
+		return;
+	rte_eth_dev_info_get(portid, &dev_info);
+	for (queue = 0; queue < dev_info.nb_tx_queues; queue++)
+		if (ports[portid].tx_set_md_cb[queue]) {
+			rte_eth_remove_tx_callback(portid, queue,
+				ports[portid].tx_set_md_cb[queue]);
+			ports[portid].tx_set_md_cb[queue] = NULL;
+		}
+}

@@ -570,11 +570,6 @@ static const enum index item_param[] = {
 	ZERO,
 };
 
-static const enum index item_param_is[] = {
-	ITEM_PARAM_IS,
-	ZERO,
-};
-
 static const enum index next_item[] = {
 	ITEM_END,
 	ITEM_VOID,
@@ -2140,7 +2135,7 @@ static const struct token token_list[] = {
 	[ITEM_META_DATA] = {
 		.name = "data",
 		.help = "metadata value",
-		.next = NEXT(item_meta, NEXT_ENTRY(UNSIGNED), item_param_is),
+		.next = NEXT(item_meta, NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY_MASK_HTON(struct rte_flow_item_meta,
 						  data, "\xff\xff\xff\xff")),
 	},

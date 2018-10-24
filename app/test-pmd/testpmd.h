@@ -198,6 +198,7 @@ struct rte_port {
 #endif
 	/**< metadata value to insert in Tx packets. */
 	rte_be32_t		tx_metadata;
+	const struct rte_eth_rxtx_callback *tx_set_md_cb[MAX_QUEUE_ID+1];
 };
 
 /**
@@ -842,6 +843,12 @@ void remove_rx_dump_callbacks(portid_t portid);
 void add_tx_dump_callbacks(portid_t portid);
 void remove_tx_dump_callbacks(portid_t portid);
 void configure_rxtx_dump_callbacks(uint16_t verbose);
+
+uint16_t tx_pkt_set_md(uint16_t port_id, __rte_unused uint16_t queue,
+		       struct rte_mbuf *pkts[], uint16_t nb_pkts,
+		       __rte_unused void *user_param);
+void add_tx_md_callback(portid_t portid);
+void remove_tx_md_callback(portid_t portid);
 
 /*
  * Work-around of a compilation error with ICC on invocations of the
