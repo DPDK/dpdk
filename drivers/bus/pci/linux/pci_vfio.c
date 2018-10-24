@@ -341,7 +341,7 @@ pci_vfio_enable_notifier(struct rte_pci_device *dev, int vfio_dev_fd)
 		ret = rte_intr_callback_unregister(&dev->vfio_req_intr_handle,
 						 pci_vfio_req_handler,
 						 (void *)&dev->device);
-		if (ret)
+		if (ret < 0)
 			RTE_LOG(ERR, EAL,
 				"Fail to unregister req notifier handler.\n");
 		goto error;
@@ -373,7 +373,7 @@ pci_vfio_disable_notifier(struct rte_pci_device *dev)
 	ret = rte_intr_callback_unregister(&dev->vfio_req_intr_handle,
 					   pci_vfio_req_handler,
 					   (void *)&dev->device);
-	if (ret) {
+	if (ret < 0) {
 		RTE_LOG(ERR, EAL,
 			 "fail to unregister req notifier handler.\n");
 		return -1;
