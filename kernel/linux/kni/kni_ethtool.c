@@ -27,6 +27,8 @@ kni_get_drvinfo(struct net_device *dev, struct ethtool_drvinfo *info)
 	priv->lad_dev->ethtool_ops->get_drvinfo(priv->lad_dev, info);
 }
 
+/* ETHTOOL_GLINKSETTINGS replaces ETHTOOL_GSET */
+#ifndef ETHTOOL_GLINKSETTINGS
 static int
 kni_get_settings(struct net_device *dev, struct ethtool_cmd *ecmd)
 {
@@ -34,7 +36,10 @@ kni_get_settings(struct net_device *dev, struct ethtool_cmd *ecmd)
 
 	return priv->lad_dev->ethtool_ops->get_settings(priv->lad_dev, ecmd);
 }
+#endif
 
+/* ETHTOOL_SLINKSETTINGS replaces ETHTOOL_SSET */
+#ifndef ETHTOOL_SLINKSETTINGS
 static int
 kni_set_settings(struct net_device *dev, struct ethtool_cmd *ecmd)
 {
@@ -42,6 +47,7 @@ kni_set_settings(struct net_device *dev, struct ethtool_cmd *ecmd)
 
 	return priv->lad_dev->ethtool_ops->set_settings(priv->lad_dev, ecmd);
 }
+#endif
 
 static void
 kni_get_wol(struct net_device *dev, struct ethtool_wolinfo *wol)
@@ -190,8 +196,12 @@ kni_get_ethtool_stats(struct net_device *dev, struct ethtool_stats *stats,
 struct ethtool_ops kni_ethtool_ops = {
 	.begin			= kni_check_if_running,
 	.get_drvinfo		= kni_get_drvinfo,
+#ifndef ETHTOOL_GLINKSETTINGS
 	.get_settings		= kni_get_settings,
+#endif
+#ifndef ETHTOOL_SLINKSETTINGS
 	.set_settings		= kni_set_settings,
+#endif
 	.get_regs_len		= kni_get_regs_len,
 	.get_regs		= kni_get_regs,
 	.get_wol		= kni_get_wol,

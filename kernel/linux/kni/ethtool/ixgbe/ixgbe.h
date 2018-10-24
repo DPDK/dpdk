@@ -890,8 +890,10 @@ s32 ixgbe_dcb_hw_ets(struct ixgbe_hw *hw, struct ieee_ets *ets, int max_frame);
 #endif /* CONFIG_DCB */
 
 extern void ixgbe_clean_rx_ring(struct ixgbe_ring *rx_ring);
+#ifndef ETHTOOL_GLINKSETTINGS
 extern int ixgbe_get_settings(struct net_device *netdev,
 			      struct ethtool_cmd *ecmd);
+#endif
 extern int ixgbe_write_uc_addr_list(struct ixgbe_adapter *adapter,
 			    struct net_device *netdev, unsigned int vfn);
 extern void ixgbe_full_sync_mac_table(struct ixgbe_adapter *adapter);

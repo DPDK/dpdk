@@ -135,6 +135,7 @@ static const char igb_gstrings_test[][ETH_GSTRING_LEN] = {
 #define IGB_TEST_LEN (sizeof(igb_gstrings_test) / ETH_GSTRING_LEN)
 #endif /* ETHTOOL_TEST */
 
+#ifndef ETHTOOL_GLINKSETTINGS
 static int igb_get_settings(struct net_device *netdev, struct ethtool_cmd *ecmd)
 {
 	struct igb_adapter *adapter = netdev_priv(netdev);
@@ -259,7 +260,9 @@ static int igb_get_settings(struct net_device *netdev, struct ethtool_cmd *ecmd)
 #endif /* ETH_TP_MDI_X */
 	return 0;
 }
+#endif
 
+#ifndef ETHTOOL_SLINKSETTINGS
 static int igb_set_settings(struct net_device *netdev, struct ethtool_cmd *ecmd)
 {
 	struct igb_adapter *adapter = netdev_priv(netdev);
@@ -364,6 +367,7 @@ static int igb_set_settings(struct net_device *netdev, struct ethtool_cmd *ecmd)
 	clear_bit(__IGB_RESETTING, &adapter->state);
 	return 0;
 }
+#endif
 
 static u32 igb_get_link(struct net_device *netdev)
 {
@@ -2737,8 +2741,12 @@ static int igb_set_rxnfc(struct net_device *dev, struct ethtool_rxnfc *cmd)
 #endif /* ETHTOOL_GRXRINGS */
 
 static const struct ethtool_ops igb_ethtool_ops = {
+#ifndef ETHTOOL_GLINKSETTINGS
 	.get_settings           = igb_get_settings,
+#endif
+#ifndef ETHTOOL_SLINKSETTINGS
 	.set_settings           = igb_set_settings,
+#endif
 	.get_drvinfo            = igb_get_drvinfo,
 	.get_regs_len           = igb_get_regs_len,
 	.get_regs               = igb_get_regs,
