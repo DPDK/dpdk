@@ -505,7 +505,7 @@ mlx5_flow_hashfields_adjust(struct mlx5_flow *dev_flow,
  *   Rx queue to update.
  */
 static void
-mlx5_flow_rxq_tunnel_ptype_update(struct mlx5_rxq_ctrl *rxq_ctrl)
+flow_rxq_tunnel_ptype_update(struct mlx5_rxq_ctrl *rxq_ctrl)
 {
 	unsigned int i;
 	uint32_t tunnel_ptype = 0;
@@ -533,7 +533,7 @@ mlx5_flow_rxq_tunnel_ptype_update(struct mlx5_rxq_ctrl *rxq_ctrl)
  *   Pointer to flow structure.
  */
 static void
-mlx5_flow_rxq_flags_set(struct rte_eth_dev *dev, struct rte_flow *flow)
+flow_rxq_flags_set(struct rte_eth_dev *dev, struct rte_flow *flow)
 {
 	struct priv *priv = dev->data->dev_private;
 	const int mark = !!(flow->actions &
@@ -562,7 +562,7 @@ mlx5_flow_rxq_flags_set(struct rte_eth_dev *dev, struct rte_flow *flow)
 					break;
 				}
 			}
-			mlx5_flow_rxq_tunnel_ptype_update(rxq_ctrl);
+			flow_rxq_tunnel_ptype_update(rxq_ctrl);
 		}
 	}
 }
@@ -577,7 +577,7 @@ mlx5_flow_rxq_flags_set(struct rte_eth_dev *dev, struct rte_flow *flow)
  *   Pointer to the flow.
  */
 static void
-mlx5_flow_rxq_flags_trim(struct rte_eth_dev *dev, struct rte_flow *flow)
+flow_rxq_flags_trim(struct rte_eth_dev *dev, struct rte_flow *flow)
 {
 	struct priv *priv = dev->data->dev_private;
 	const int mark = !!(flow->actions &
@@ -607,7 +607,7 @@ mlx5_flow_rxq_flags_trim(struct rte_eth_dev *dev, struct rte_flow *flow)
 					break;
 				}
 			}
-			mlx5_flow_rxq_tunnel_ptype_update(rxq_ctrl);
+			flow_rxq_tunnel_ptype_update(rxq_ctrl);
 		}
 	}
 }
@@ -619,7 +619,7 @@ mlx5_flow_rxq_flags_trim(struct rte_eth_dev *dev, struct rte_flow *flow)
  *   Pointer to Ethernet device.
  */
 static void
-mlx5_flow_rxq_flags_clear(struct rte_eth_dev *dev)
+flow_rxq_flags_clear(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
 	unsigned int i;
@@ -1908,7 +1908,7 @@ mlx5_flow_validate(struct rte_eth_dev *dev,
  *   Pointer to the RSS action if exist, else return NULL.
  */
 static const struct rte_flow_action_rss*
-mlx5_flow_get_rss_action(const struct rte_flow_action actions[])
+flow_get_rss_action(const struct rte_flow_action actions[])
 {
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
 		switch (actions->type) {
@@ -1923,7 +1923,7 @@ mlx5_flow_get_rss_action(const struct rte_flow_action actions[])
 }
 
 static unsigned int
-mlx5_find_graph_root(const struct rte_flow_item pattern[], uint32_t rss_level)
+find_graph_root(const struct rte_flow_item pattern[], uint32_t rss_level)
 {
 	const struct rte_flow_item *item;
 	unsigned int has_vlan = 0;
@@ -1961,12 +1961,11 @@ mlx5_find_graph_root(const struct rte_flow_item pattern[], uint32_t rss_level)
  *   A flow on success, NULL otherwise and rte_errno is set.
  */
 static struct rte_flow *
-mlx5_flow_list_create(struct rte_eth_dev *dev,
-		      struct mlx5_flows *list,
-		      const struct rte_flow_attr *attr,
-		      const struct rte_flow_item items[],
-		      const struct rte_flow_action actions[],
-		      struct rte_flow_error *error)
+flow_list_create(struct rte_eth_dev *dev, struct mlx5_flows *list,
+		 const struct rte_flow_attr *attr,
+		 const struct rte_flow_item items[],
+		 const struct rte_flow_action actions[],
+		 struct rte_flow_error *error)
 {
 	struct rte_flow *flow = NULL;
 	struct mlx5_flow *dev_flow;
@@ -1986,7 +1985,7 @@ mlx5_flow_list_create(struct rte_eth_dev *dev,
 	if (ret < 0)
 		return NULL;
 	flow_size = sizeof(struct rte_flow);
-	rss = mlx5_flow_get_rss_action(actions);
+	rss = flow_get_rss_action(actions);
 	if (rss)
 		flow_size += RTE_ALIGN_CEIL(rss->queue_num * sizeof(uint16_t),
 					    sizeof(void *));
@@ -2001,7 +2000,7 @@ mlx5_flow_list_create(struct rte_eth_dev *dev,
 	if (rss && rss->types) {
 		unsigned int graph_root;
 
-		graph_root = mlx5_find_graph_root(items, rss->level);
+		graph_root = find_graph_root(items, rss->level);
 		ret = rte_flow_expand_rss(buf, sizeof(expand_buffer.buffer),
 					  items, rss->types,
 					  mlx5_support_expansion,
@@ -2032,7 +2031,7 @@ mlx5_flow_list_create(struct rte_eth_dev *dev,
 			goto error;
 	}
 	TAILQ_INSERT_TAIL(list, flow, next);
-	mlx5_flow_rxq_flags_set(dev, flow);
+	flow_rxq_flags_set(dev, flow);
 	return flow;
 error:
 	ret = rte_errno; /* Save rte_errno before cleanup. */
@@ -2056,9 +2055,9 @@ mlx5_flow_create(struct rte_eth_dev *dev,
 		 const struct rte_flow_action actions[],
 		 struct rte_flow_error *error)
 {
-	return mlx5_flow_list_create
-		(dev, &((struct priv *)dev->data->dev_private)->flows,
-		 attr, items, actions, error);
+	return flow_list_create(dev,
+				&((struct priv *)dev->data->dev_private)->flows,
+				attr, items, actions, error);
 }
 
 /**
@@ -2072,8 +2071,8 @@ mlx5_flow_create(struct rte_eth_dev *dev,
  *   Flow to destroy.
  */
 static void
-mlx5_flow_list_destroy(struct rte_eth_dev *dev, struct mlx5_flows *list,
-		       struct rte_flow *flow)
+flow_list_destroy(struct rte_eth_dev *dev, struct mlx5_flows *list,
+		  struct rte_flow *flow)
 {
 	flow_drv_destroy(dev, flow);
 	TAILQ_REMOVE(list, flow, next);
@@ -2082,7 +2081,7 @@ mlx5_flow_list_destroy(struct rte_eth_dev *dev, struct mlx5_flows *list,
 	 * already clean.
 	 */
 	if (dev->data->dev_started)
-		mlx5_flow_rxq_flags_trim(dev, flow);
+		flow_rxq_flags_trim(dev, flow);
 	rte_free(flow);
 }
 
@@ -2101,7 +2100,7 @@ mlx5_flow_list_flush(struct rte_eth_dev *dev, struct mlx5_flows *list)
 		struct rte_flow *flow;
 
 		flow = TAILQ_FIRST(list);
-		mlx5_flow_list_destroy(dev, list, flow);
+		flow_list_destroy(dev, list, flow);
 	}
 }
 
@@ -2120,7 +2119,7 @@ mlx5_flow_stop(struct rte_eth_dev *dev, struct mlx5_flows *list)
 
 	TAILQ_FOREACH_REVERSE(flow, list, mlx5_flows, next)
 		flow_drv_remove(dev, flow);
-	mlx5_flow_rxq_flags_clear(dev);
+	flow_rxq_flags_clear(dev);
 }
 
 /**
@@ -2145,7 +2144,7 @@ mlx5_flow_start(struct rte_eth_dev *dev, struct mlx5_flows *list)
 		ret = flow_drv_apply(dev, flow, &error);
 		if (ret < 0)
 			goto error;
-		mlx5_flow_rxq_flags_set(dev, flow);
+		flow_rxq_flags_set(dev, flow);
 	}
 	return 0;
 error:
@@ -2254,8 +2253,8 @@ mlx5_ctrl_flow_vlan(struct rte_eth_dev *dev,
 	}
 	for (i = 0; i != priv->reta_idx_n; ++i)
 		queue[i] = (*priv->reta_idx)[i];
-	flow = mlx5_flow_list_create(dev, &priv->ctrl_flows, &attr, items,
-				     actions, &error);
+	flow = flow_list_create(dev, &priv->ctrl_flows,
+				&attr, items, actions, &error);
 	if (!flow)
 		return -rte_errno;
 	return 0;
@@ -2295,7 +2294,7 @@ mlx5_flow_destroy(struct rte_eth_dev *dev,
 {
 	struct priv *priv = dev->data->dev_private;
 
-	mlx5_flow_list_destroy(dev, &priv->flows, flow);
+	flow_list_destroy(dev, &priv->flows, flow);
 	return 0;
 }
 
@@ -2603,9 +2602,8 @@ mlx5_fdir_filter_add(struct rte_eth_dev *dev,
 	ret = mlx5_fdir_filter_convert(dev, fdir_filter, &attributes);
 	if (ret)
 		return ret;
-	flow = mlx5_flow_list_create(dev, &priv->flows, &attributes.attr,
-				     attributes.items, attributes.actions,
-				     &error);
+	flow = flow_list_create(dev, &priv->flows, &attributes.attr,
+				attributes.items, attributes.actions, &error);
 	if (flow) {
 		DRV_LOG(DEBUG, "port %u FDIR created %p", dev->data->port_id,
 			(void *)flow);
