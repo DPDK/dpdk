@@ -39,6 +39,10 @@ static char *lo_mode;
 static char *kthread_mode;
 static uint32_t multiple_kthread_on;
 
+/* Default carrier state for created KNI network interfaces */
+static char *carrier;
+uint32_t dflt_carrier;
+
 #define KNI_DEV_IN_USE_BIT_NUM 0 /* Bit number for device in use */
 
 static int kni_net_id;
@@ -466,6 +470,8 @@ kni_ioctl_create(struct net *net, uint32_t ioctl_num,
 		return -ENODEV;
 	}
 
+	netif_carrier_off(net_dev);
+
 	ret = kni_run_thread(knet, kni, dev_info.force_bind);
 	if (ret != 0)
 		return ret;
@@ -591,6 +597,24 @@ kni_parse_kthread_mode(void)
 }
 
 static int __init
+kni_parse_carrier_state(void)
+{
+	if (!carrier) {
+		dflt_carrier = 0;
+		return 0;
+	}
+
+	if (strcmp(carrier, "off") == 0)
+		dflt_carrier = 0;
+	else if (strcmp(carrier, "on") == 0)
+		dflt_carrier = 1;
+	else
+		return -1;
+
+	return 0;
+}
+
+static int __init
 kni_init(void)
 {
 	int rc;
@@ -604,6 +628,16 @@ kni_init(void)
 		pr_debug("Single kernel thread for all KNI devices\n");
 	else
 		pr_debug("Multiple kernel thread mode enabled\n");
+
+	if (kni_parse_carrier_state() < 0) {
+		pr_err("Invalid parameter for carrier\n");
+		return -EINVAL;
+	}
+
+	if (dflt_carrier == 0)
+		pr_debug("Default carrier state set to off.\n");
+	else
+		pr_debug("Default carrier state set to on.\n");
 
 #ifdef HAVE_SIMPLIFIED_PERNET_OPERATIONS
 	rc = register_pernet_subsys(&kni_net_ops);
@@ -647,19 +681,27 @@ kni_exit(void)
 module_init(kni_init);
 module_exit(kni_exit);
 
-module_param(lo_mode, charp, S_IRUGO | S_IWUSR);
+module_param(lo_mode, charp, 0644);
 MODULE_PARM_DESC(lo_mode,
 "KNI loopback mode (default=lo_mode_none):\n"
-"    lo_mode_none        Kernel loopback disabled\n"
-"    lo_mode_fifo        Enable kernel loopback with fifo\n"
-"    lo_mode_fifo_skb    Enable kernel loopback with fifo and skb buffer\n"
-"\n"
+"\t\tlo_mode_none        Kernel loopback disabled\n"
+"\t\tlo_mode_fifo        Enable kernel loopback with fifo\n"
+"\t\tlo_mode_fifo_skb    Enable kernel loopback with fifo and skb buffer\n"
+"\t\t"
 );
 
-module_param(kthread_mode, charp, S_IRUGO);
+module_param(kthread_mode, charp, 0644);
 MODULE_PARM_DESC(kthread_mode,
 "Kernel thread mode (default=single):\n"
-"    single    Single kernel thread mode enabled.\n"
-"    multiple  Multiple kernel thread mode enabled.\n"
-"\n"
+"\t\tsingle    Single kernel thread mode enabled.\n"
+"\t\tmultiple  Multiple kernel thread mode enabled.\n"
+"\t\t"
+);
+
+module_param(carrier, charp, 0644);
+MODULE_PARM_DESC(carrier,
+"Default carrier state for KNI interface (default=off):\n"
+"\t\toff   Interfaces will be created with carrier state set to off.\n"
+"\t\ton    Interfaces will be created with carrier state set to on.\n"
+"\t\t"
 );
