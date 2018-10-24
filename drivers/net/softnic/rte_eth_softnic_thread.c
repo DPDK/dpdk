@@ -2498,6 +2498,16 @@ action_convert(struct rte_table_action *a,
 			return status;
 	}
 
+	if (action->action_mask & (1LLU << RTE_TABLE_ACTION_SYM_CRYPTO)) {
+		status = rte_table_action_apply(a,
+			data,
+			RTE_TABLE_ACTION_SYM_CRYPTO,
+			&action->sym_crypto);
+
+		if (status)
+			return status;
+	}
+
 	return 0;
 }
 
