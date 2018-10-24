@@ -466,7 +466,7 @@ flow_verbs_translate_item_ipv6(const struct rte_flow_item *item,
 {
 	const struct rte_flow_item_ipv6 *spec = item->spec;
 	const struct rte_flow_item_ipv6 *mask = item->mask;
-	const int tunnel = !!(dev_flow->flow->layers & MLX5_FLOW_LAYER_TUNNEL);
+	const int tunnel = !!(dev_flow->layers & MLX5_FLOW_LAYER_TUNNEL);
 	unsigned int size = sizeof(struct ibv_flow_spec_ipv6);
 	struct ibv_flow_spec_ipv6 ipv6 = {
 		.type = IBV_FLOW_SPEC_IPV6 | (tunnel ? IBV_FLOW_SPEC_INNER : 0),
@@ -590,7 +590,7 @@ flow_verbs_translate_item_tcp(const struct rte_flow_item *item,
 {
 	const struct rte_flow_item_tcp *spec = item->spec;
 	const struct rte_flow_item_tcp *mask = item->mask;
-	const int tunnel = !!(dev_flow->flow->layers & MLX5_FLOW_LAYER_TUNNEL);
+	const int tunnel = !!(dev_flow->layers & MLX5_FLOW_LAYER_TUNNEL);
 	unsigned int size = sizeof(struct ibv_flow_spec_tcp_udp);
 	struct ibv_flow_spec_tcp_udp tcp = {
 		.type = IBV_FLOW_SPEC_TCP | (tunnel ? IBV_FLOW_SPEC_INNER : 0),
@@ -1126,6 +1126,8 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 		return ret;
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
 		int ret = 0;
+
+		tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
 		switch (items->type) {
 		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;
@@ -1237,7 +1239,6 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 		}
 	}
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
-		tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
 		switch (actions->type) {
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			break;
@@ -1380,9 +1381,10 @@ flow_verbs_get_items_and_size(const struct rte_flow_item items[],
 {
 	int size = 0;
 	uint64_t detected_items = 0;
-	const int tunnel = !!(*item_flags & MLX5_FLOW_LAYER_TUNNEL);
 
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
+		int tunnel = !!(detected_items & MLX5_FLOW_LAYER_TUNNEL);
+
 		switch (items->type) {
 		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;
@@ -1578,7 +1580,8 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 						  "action not supported");
 		}
 	}
-	dev_flow->flow->actions |= action_flags;
+	/* Device flow should have action flags by flow_drv_prepare(). */
+	assert(dev_flow->flow->actions == action_flags);
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
 		switch (items->type) {
 		case RTE_FLOW_ITEM_TYPE_VOID:
@@ -1741,7 +1744,7 @@ flow_verbs_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 						     verbs->hash_fields,
 						     (*flow->queue),
 						     flow->rss.queue_num,
-						     !!(flow->layers &
+						     !!(dev_flow->layers &
 						      MLX5_FLOW_LAYER_TUNNEL));
 			if (!hrxq) {
 				rte_flow_error_set

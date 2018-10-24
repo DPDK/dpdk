@@ -215,7 +215,8 @@ struct mlx5_flow_verbs {
 struct mlx5_flow {
 	LIST_ENTRY(mlx5_flow) next;
 	struct rte_flow *flow; /**< Pointer to the main flow. */
-	uint32_t layers; /**< Bit-fields that holds the detected layers. */
+	uint32_t layers;
+	/**< Bit-fields of present layers, see MLX5_FLOW_LAYER_*. */
 	union {
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 		struct mlx5_flow_dv dv;
@@ -244,15 +245,14 @@ struct mlx5_flow_counter {
 struct rte_flow {
 	TAILQ_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
 	enum mlx5_flow_drv_type drv_type; /**< Drvier type. */
-	uint32_t layers;
-	/**< Bit-fields of present layers see MLX5_FLOW_LAYER_*. */
 	struct mlx5_flow_counter *counter; /**< Holds flow counter. */
 	struct rte_flow_action_rss rss;/**< RSS context. */
 	uint8_t key[MLX5_RSS_HASH_KEY_LEN]; /**< RSS hash key. */
 	uint16_t (*queue)[]; /**< Destination queues to redirect traffic to. */
 	LIST_HEAD(dev_flows, mlx5_flow) dev_flows;
 	/**< Device flows that are part of the flow. */
-	uint32_t actions; /**< Bit-fields which mark all detected actions. */
+	uint32_t actions;
+	/**< Bit-fields of detected actions, see MLX5_FLOW_ACTION_*. */
 };
 typedef int (*mlx5_flow_validate_t)(struct rte_eth_dev *dev,
 				    const struct rte_flow_attr *attr,

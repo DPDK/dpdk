@@ -525,20 +525,22 @@ flow_rxq_tunnel_ptype_update(struct mlx5_rxq_ctrl *rxq_ctrl)
 }
 
 /**
- * Set the Rx queue flags (Mark/Flag and Tunnel Ptypes) according to the flow.
+ * Set the Rx queue flags (Mark/Flag and Tunnel Ptypes) according to the devive
+ * flow.
  *
  * @param[in] dev
  *   Pointer to the Ethernet device structure.
- * @param[in] flow
- *   Pointer to flow structure.
+ * @param[in] dev_flow
+ *   Pointer to device flow structure.
  */
 static void
-flow_rxq_flags_set(struct rte_eth_dev *dev, struct rte_flow *flow)
+flow_drv_rxq_flags_set(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow)
 {
 	struct priv *priv = dev->data->dev_private;
+	struct rte_flow *flow = dev_flow->flow;
 	const int mark = !!(flow->actions &
 			    (MLX5_FLOW_ACTION_FLAG | MLX5_FLOW_ACTION_MARK));
-	const int tunnel = !!(flow->layers & MLX5_FLOW_LAYER_TUNNEL);
+	const int tunnel = !!(dev_flow->layers & MLX5_FLOW_LAYER_TUNNEL);
 	unsigned int i;
 
 	for (i = 0; i != flow->rss.queue_num; ++i) {
@@ -556,9 +558,74 @@ flow_rxq_flags_set(struct rte_eth_dev *dev, struct rte_flow *flow)
 
 			/* Increase the counter matching the flow. */
 			for (j = 0; j != MLX5_FLOW_TUNNEL; ++j) {
-				if ((tunnels_info[j].tunnel & flow->layers) ==
+				if ((tunnels_info[j].tunnel &
+				     dev_flow->layers) ==
 				    tunnels_info[j].tunnel) {
 					rxq_ctrl->flow_tunnels_n[j]++;
+					break;
+				}
+			}
+			flow_rxq_tunnel_ptype_update(rxq_ctrl);
+		}
+	}
+}
+
+/**
+ * Set the Rx queue flags (Mark/Flag and Tunnel Ptypes) for a flow
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] flow
+ *   Pointer to flow structure.
+ */
+static void
+flow_rxq_flags_set(struct rte_eth_dev *dev, struct rte_flow *flow)
+{
+	struct mlx5_flow *dev_flow;
+
+	LIST_FOREACH(dev_flow, &flow->dev_flows, next)
+		flow_drv_rxq_flags_set(dev, dev_flow);
+}
+
+/**
+ * Clear the Rx queue flags (Mark/Flag and Tunnel Ptype) associated with the
+ * device flow if no other flow uses it with the same kind of request.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[in] dev_flow
+ *   Pointer to the device flow.
+ */
+static void
+flow_drv_rxq_flags_trim(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct rte_flow *flow = dev_flow->flow;
+	const int mark = !!(flow->actions &
+			    (MLX5_FLOW_ACTION_FLAG | MLX5_FLOW_ACTION_MARK));
+	const int tunnel = !!(dev_flow->layers & MLX5_FLOW_LAYER_TUNNEL);
+	unsigned int i;
+
+	assert(dev->data->dev_started);
+	for (i = 0; i != flow->rss.queue_num; ++i) {
+		int idx = (*flow->queue)[i];
+		struct mlx5_rxq_ctrl *rxq_ctrl =
+			container_of((*priv->rxqs)[idx],
+				     struct mlx5_rxq_ctrl, rxq);
+
+		if (mark) {
+			rxq_ctrl->flow_mark_n--;
+			rxq_ctrl->rxq.mark = !!rxq_ctrl->flow_mark_n;
+		}
+		if (tunnel) {
+			unsigned int j;
+
+			/* Decrease the counter matching the flow. */
+			for (j = 0; j != MLX5_FLOW_TUNNEL; ++j) {
+				if ((tunnels_info[j].tunnel &
+				     dev_flow->layers) ==
+				    tunnels_info[j].tunnel) {
+					rxq_ctrl->flow_tunnels_n[j]--;
 					break;
 				}
 			}
@@ -579,37 +646,10 @@ flow_rxq_flags_set(struct rte_eth_dev *dev, struct rte_flow *flow)
 static void
 flow_rxq_flags_trim(struct rte_eth_dev *dev, struct rte_flow *flow)
 {
-	struct priv *priv = dev->data->dev_private;
-	const int mark = !!(flow->actions &
-			    (MLX5_FLOW_ACTION_FLAG | MLX5_FLOW_ACTION_MARK));
-	const int tunnel = !!(flow->layers & MLX5_FLOW_LAYER_TUNNEL);
-	unsigned int i;
+	struct mlx5_flow *dev_flow;
 
-	assert(dev->data->dev_started);
-	for (i = 0; i != flow->rss.queue_num; ++i) {
-		int idx = (*flow->queue)[i];
-		struct mlx5_rxq_ctrl *rxq_ctrl =
-			container_of((*priv->rxqs)[idx],
-				     struct mlx5_rxq_ctrl, rxq);
-
-		if (mark) {
-			rxq_ctrl->flow_mark_n--;
-			rxq_ctrl->rxq.mark = !!rxq_ctrl->flow_mark_n;
-		}
-		if (tunnel) {
-			unsigned int j;
-
-			/* Decrease the counter matching the flow. */
-			for (j = 0; j != MLX5_FLOW_TUNNEL; ++j) {
-				if ((tunnels_info[j].tunnel & flow->layers) ==
-				    tunnels_info[j].tunnel) {
-					rxq_ctrl->flow_tunnels_n[j]--;
-					break;
-				}
-			}
-			flow_rxq_tunnel_ptype_update(rxq_ctrl);
-		}
-	}
+	LIST_FOREACH(dev_flow, &flow->dev_flows, next)
+		flow_drv_rxq_flags_trim(dev, dev_flow);
 }
 
 /**
@@ -2018,6 +2058,11 @@ flow_list_create(struct rte_eth_dev *dev, struct mlx5_flows *list,
 		if (!dev_flow)
 			goto error;
 		dev_flow->flow = flow;
+		dev_flow->layers = item_flags;
+		/* Store actions once as expanded flows have same actions. */
+		if (i == 0)
+			flow->actions = action_flags;
+		assert(flow->actions == action_flags);
 		LIST_INSERT_HEAD(&flow->dev_flows, dev_flow, next);
 		ret = flow_drv_translate(dev, dev_flow, attr,
 					 buf->entry[i].pattern,

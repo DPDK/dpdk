@@ -177,6 +177,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	if (ret < 0)
 		return ret;
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
+		tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
 		switch (items->type) {
 		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;
@@ -285,7 +286,6 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
 						  actions, "too many actions");
-		tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
 		switch (actions->type) {
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			break;
@@ -1253,13 +1253,15 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		},
 	};
 	void *match_value = dev_flow->dv.value.buf;
-	uint8_t inner = 0;
+	int tunnel = 0;
 
 	if (priority == MLX5_FLOW_PRIO_RSVD)
 		priority = priv->config.flow_prio - 1;
-	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++)
+	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
+		tunnel = !!(dev_flow->layers & MLX5_FLOW_LAYER_TUNNEL);
 		flow_dv_create_item(&matcher, match_value, items, dev_flow,
-				    inner);
+				    tunnel);
+	}
 	matcher.crc = rte_raw_cksum((const void *)matcher.mask.buf,
 				     matcher.mask.size);
 	if (priority == MLX5_FLOW_PRIO_RSVD)
@@ -1324,7 +1326,7 @@ flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 					(dev, flow->key, MLX5_RSS_HASH_KEY_LEN,
 					 dv->hash_fields, (*flow->queue),
 					 flow->rss.queue_num,
-					 !!(flow->layers &
+					 !!(dev_flow->layers &
 					    MLX5_FLOW_LAYER_TUNNEL));
 			if (!hrxq) {
 				rte_flow_error_set
