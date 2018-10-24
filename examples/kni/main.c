@@ -223,7 +223,8 @@ kni_ingress(struct kni_port_params *p)
 		}
 		/* Burst tx to kni */
 		num = rte_kni_tx_burst(p->kni[i], pkts_burst, nb_rx);
-		kni_stats[port_id].rx_packets += num;
+		if (num)
+			kni_stats[port_id].rx_packets += num;
 
 		rte_kni_handle_request(p->kni[i]);
 		if (unlikely(num < nb_rx)) {
@@ -260,7 +261,8 @@ kni_egress(struct kni_port_params *p)
 		}
 		/* Burst tx to eth */
 		nb_tx = rte_eth_tx_burst(port_id, 0, pkts_burst, (uint16_t)num);
-		kni_stats[port_id].tx_packets += nb_tx;
+		if (nb_tx)
+			kni_stats[port_id].tx_packets += nb_tx;
 		if (unlikely(nb_tx < num)) {
 			/* Free mbufs not tx to NIC */
 			kni_burst_free_mbufs(&pkts_burst[nb_tx], num - nb_tx);
