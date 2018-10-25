@@ -1843,6 +1843,9 @@ process_openssl_rsa_op(struct rte_crypto_op *cop,
 	struct rte_crypto_asym_op *op = cop->asym;
 	RSA *rsa = sess->u.r.rsa;
 	uint32_t pad = (op->rsa.pad);
+	uint8_t *tmp;
+
+	cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 
 	switch (pad) {
 	case RTE_CRYPTO_RSA_PKCS1_V1_5_BT0:
@@ -1895,9 +1898,15 @@ process_openssl_rsa_op(struct rte_crypto_op *cop,
 		break;
 
 	case RTE_CRYPTO_ASYM_OP_VERIFY:
+		tmp = rte_malloc(NULL, op->rsa.sign.length, 0);
+		if (tmp == NULL) {
+			OPENSSL_LOG(ERR, "Memory allocation failed");
+			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+			break;
+		}
 		ret = RSA_public_decrypt(op->rsa.sign.length,
 				op->rsa.sign.data,
-				op->rsa.sign.data,
+				tmp,
 				rsa,
 				pad);
 
@@ -1905,13 +1914,12 @@ process_openssl_rsa_op(struct rte_crypto_op *cop,
 				"Length of public_decrypt %d "
 				"length of message %zd\n",
 				ret, op->rsa.message.length);
-
-		if (memcmp(op->rsa.sign.data, op->rsa.message.data,
-					op->rsa.message.length)) {
-			OPENSSL_LOG(ERR,
-					"RSA sign Verification failed");
-			return -1;
+		if ((ret <= 0) || (memcmp(tmp, op->rsa.message.data,
+				op->rsa.message.length))) {
+			OPENSSL_LOG(ERR, "RSA sign Verification failed");
+			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
 		}
+		rte_free(tmp);
 		break;
 
 	default:
