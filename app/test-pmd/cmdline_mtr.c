@@ -1440,7 +1440,7 @@ static void cmd_show_port_meter_stats_parsed(void *parsed_result,
 		printf("\tPkts R: %" PRIu64 "\n",
 			stats.n_pkts[RTE_MTR_RED]);
 	if (stats_mask & RTE_MTR_STATS_N_BYTES_RED)
-		printf("\tBytes Y: %" PRIu64 "\n",
+		printf("\tBytes R: %" PRIu64 "\n",
 			stats.n_bytes[RTE_MTR_RED]);
 	if (stats_mask & RTE_MTR_STATS_N_PKTS_DROPPED)
 		printf("\tPkts DROPPED: %" PRIu64 "\n",
