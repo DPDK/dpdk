@@ -275,7 +275,7 @@ static const uint32_t priority_map_5[][MLX5_PRIORITY_MAP_MAX] = {
 
 /* Tunnel information. */
 struct mlx5_flow_tunnel_info {
-	uint32_t tunnel; /**< Tunnel bit (see MLX5_FLOW_*). */
+	uint64_t tunnel; /**< Tunnel bit (see MLX5_FLOW_*). */
 	uint32_t ptype; /**< Tunnel Ptype (see RTE_PTYPE_*). */
 };
 
@@ -1079,7 +1079,7 @@ mlx5_flow_validate_item_eth(const struct rte_flow_item *item,
  */
 int
 mlx5_flow_validate_item_vlan(const struct rte_flow_item *item,
-			     int64_t item_flags,
+			     uint64_t item_flags,
 			     struct rte_flow_error *error)
 {
 	const struct rte_flow_item_vlan *spec = item->spec;
@@ -1091,11 +1091,11 @@ mlx5_flow_validate_item_vlan(const struct rte_flow_item *item,
 	uint16_t vlan_tag = 0;
 	const int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
 	int ret;
-	const uint32_t l34m = tunnel ? (MLX5_FLOW_LAYER_INNER_L3 |
+	const uint64_t l34m = tunnel ? (MLX5_FLOW_LAYER_INNER_L3 |
 					MLX5_FLOW_LAYER_INNER_L4) :
 				       (MLX5_FLOW_LAYER_OUTER_L3 |
 					MLX5_FLOW_LAYER_OUTER_L4);
-	const uint32_t vlanm = tunnel ? MLX5_FLOW_LAYER_INNER_VLAN :
+	const uint64_t vlanm = tunnel ? MLX5_FLOW_LAYER_INNER_VLAN :
 					MLX5_FLOW_LAYER_OUTER_VLAN;
 
 	if (item_flags & vlanm)
@@ -1145,7 +1145,7 @@ mlx5_flow_validate_item_vlan(const struct rte_flow_item *item,
  */
 int
 mlx5_flow_validate_item_ipv4(const struct rte_flow_item *item,
-			     int64_t item_flags,
+			     uint64_t item_flags,
 			     struct rte_flow_error *error)
 {
 	const struct rte_flow_item_ipv4 *mask = item->mask;

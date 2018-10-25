@@ -336,7 +336,7 @@ int mlx5_flow_validate_item_gre(const struct rte_flow_item *item,
 				uint8_t target_protocol,
 				struct rte_flow_error *error);
 int mlx5_flow_validate_item_ipv4(const struct rte_flow_item *item,
-				 int64_t item_flags,
+				 uint64_t item_flags,
 				 struct rte_flow_error *error);
 int mlx5_flow_validate_item_ipv6(const struct rte_flow_item *item,
 				 uint64_t item_flags,
@@ -355,7 +355,7 @@ int mlx5_flow_validate_item_udp(const struct rte_flow_item *item,
 				uint8_t target_protocol,
 				struct rte_flow_error *error);
 int mlx5_flow_validate_item_vlan(const struct rte_flow_item *item,
-				 int64_t item_flags,
+				 uint64_t item_flags,
 				 struct rte_flow_error *error);
 int mlx5_flow_validate_item_vxlan(const struct rte_flow_item *item,
 				  uint64_t item_flags,
