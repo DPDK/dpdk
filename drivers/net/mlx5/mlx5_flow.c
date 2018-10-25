@@ -1046,15 +1046,13 @@ mlx5_flow_validate_item_eth(const struct rte_flow_item *item,
 	};
 	int ret;
 	int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
+	const uint64_t ethm = tunnel ? MLX5_FLOW_LAYER_INNER_L2	:
+				       MLX5_FLOW_LAYER_OUTER_L2;
 
-	if (item_flags & MLX5_FLOW_LAYER_OUTER_L2)
+	if (item_flags & ethm)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "3 levels of l2 are not supported");
-	if ((item_flags & MLX5_FLOW_LAYER_INNER_L2) && !tunnel)
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "2 L2 without tunnel are not supported");
+					  "multiple L2 layers not supported");
 	if (!mask)
 		mask = &rte_flow_item_eth_mask;
 	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
@@ -1101,7 +1099,7 @@ mlx5_flow_validate_item_vlan(const struct rte_flow_item *item,
 	if (item_flags & vlanm)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "VLAN layer already configured");
+					  "multiple VLAN layers not supported");
 	else if ((item_flags & l34m) != 0)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
@@ -1158,15 +1156,17 @@ mlx5_flow_validate_item_ipv4(const struct rte_flow_item *item,
 		},
 	};
 	const int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
+	const uint64_t l3m = tunnel ? MLX5_FLOW_LAYER_INNER_L3 :
+				      MLX5_FLOW_LAYER_OUTER_L3;
+	const uint64_t l4m = tunnel ? MLX5_FLOW_LAYER_INNER_L4 :
+				      MLX5_FLOW_LAYER_OUTER_L4;
 	int ret;
 
-	if (item_flags & (tunnel ? MLX5_FLOW_LAYER_INNER_L3 :
-				   MLX5_FLOW_LAYER_OUTER_L3))
+	if (item_flags & l3m)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "multiple L3 layers not supported");
-	else if (item_flags & (tunnel ? MLX5_FLOW_LAYER_INNER_L4 :
-					MLX5_FLOW_LAYER_OUTER_L4))
+	else if (item_flags & l4m)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "L3 cannot follow an L4 layer.");
@@ -1214,15 +1214,17 @@ mlx5_flow_validate_item_ipv6(const struct rte_flow_item *item,
 		},
 	};
 	const int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
+	const uint64_t l3m = tunnel ? MLX5_FLOW_LAYER_INNER_L3 :
+				      MLX5_FLOW_LAYER_OUTER_L3;
+	const uint64_t l4m = tunnel ? MLX5_FLOW_LAYER_INNER_L4 :
+				      MLX5_FLOW_LAYER_OUTER_L4;
 	int ret;
 
-	if (item_flags & (tunnel ? MLX5_FLOW_LAYER_INNER_L3 :
-				   MLX5_FLOW_LAYER_OUTER_L3))
+	if (item_flags & l3m)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "multiple L3 layers not supported");
-	else if (item_flags & (tunnel ? MLX5_FLOW_LAYER_INNER_L4 :
-					MLX5_FLOW_LAYER_OUTER_L4))
+	else if (item_flags & l4m)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "L3 cannot follow an L4 layer.");
@@ -1273,6 +1275,10 @@ mlx5_flow_validate_item_udp(const struct rte_flow_item *item,
 {
 	const struct rte_flow_item_udp *mask = item->mask;
 	const int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
+	const uint64_t l3m = tunnel ? MLX5_FLOW_LAYER_INNER_L3 :
+				      MLX5_FLOW_LAYER_OUTER_L3;
+	const uint64_t l4m = tunnel ? MLX5_FLOW_LAYER_INNER_L4 :
+				      MLX5_FLOW_LAYER_OUTER_L4;
 	int ret;
 
 	if (target_protocol != 0xff && target_protocol != IPPROTO_UDP)
@@ -1280,16 +1286,14 @@ mlx5_flow_validate_item_udp(const struct rte_flow_item *item,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "protocol filtering not compatible"
 					  " with UDP layer");
-	if (!(item_flags & (tunnel ? MLX5_FLOW_LAYER_INNER_L3 :
-				     MLX5_FLOW_LAYER_OUTER_L3)))
+	if (!(item_flags & l3m))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "L3 is mandatory to filter on L4");
-	if (item_flags & (tunnel ? MLX5_FLOW_LAYER_INNER_L4 :
-				   MLX5_FLOW_LAYER_OUTER_L4))
+	if (item_flags & l4m)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "L4 layer is already present");
+					  "multiple L4 layers not supported");
 	if (!mask)
 		mask = &rte_flow_item_udp_mask;
 	ret = mlx5_flow_item_acceptable
@@ -1325,6 +1329,10 @@ mlx5_flow_validate_item_tcp(const struct rte_flow_item *item,
 {
 	const struct rte_flow_item_tcp *mask = item->mask;
 	const int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
+	const uint64_t l3m = tunnel ? MLX5_FLOW_LAYER_INNER_L3 :
+				      MLX5_FLOW_LAYER_OUTER_L3;
+	const uint64_t l4m = tunnel ? MLX5_FLOW_LAYER_INNER_L4 :
+				      MLX5_FLOW_LAYER_OUTER_L4;
 	int ret;
 
 	assert(flow_mask);
@@ -1333,16 +1341,14 @@ mlx5_flow_validate_item_tcp(const struct rte_flow_item *item,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "protocol filtering not compatible"
 					  " with TCP layer");
-	if (!(item_flags & (tunnel ? MLX5_FLOW_LAYER_INNER_L3 :
-				     MLX5_FLOW_LAYER_OUTER_L3)))
+	if (!(item_flags & l3m))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "L3 is mandatory to filter on L4");
-	if (item_flags & (tunnel ? MLX5_FLOW_LAYER_INNER_L4 :
-				   MLX5_FLOW_LAYER_OUTER_L4))
+	if (item_flags & l4m)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "L4 layer is already present");
+					  "multiple L4 layers not supported");
 	if (!mask)
 		mask = &rte_flow_item_tcp_mask;
 	ret = mlx5_flow_item_acceptable
@@ -1387,7 +1393,8 @@ mlx5_flow_validate_item_vxlan(const struct rte_flow_item *item,
 	if (item_flags & MLX5_FLOW_LAYER_TUNNEL)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "a tunnel is already present");
+					  "multiple tunnel layers not"
+					  " supported");
 	/*
 	 * Verify only UDPv4 is present as defined in
 	 * https://tools.ietf.org/html/rfc7348
@@ -1473,7 +1480,8 @@ mlx5_flow_validate_item_vxlan_gpe(const struct rte_flow_item *item,
 	if (item_flags & MLX5_FLOW_LAYER_TUNNEL)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "a tunnel is already present");
+					  "multiple tunnel layers not"
+					  " supported");
 	/*
 	 * Verify only UDPv4 is present as defined in
 	 * https://tools.ietf.org/html/rfc7348
@@ -1556,7 +1564,8 @@ mlx5_flow_validate_item_gre(const struct rte_flow_item *item,
 	if (item_flags & MLX5_FLOW_LAYER_TUNNEL)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "a tunnel is already present");
+					  "multiple tunnel layers not"
+					  " supported");
 	if (!(item_flags & MLX5_FLOW_LAYER_OUTER_L3))
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
@@ -1613,8 +1622,8 @@ mlx5_flow_validate_item_mpls(const struct rte_flow_item *item __rte_unused,
 	if (item_flags & MLX5_FLOW_LAYER_TUNNEL)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "a tunnel is already"
-					  " present");
+					  "multiple tunnel layers not"
+					  " supported");
 	if (!mask)
 		mask = &rte_flow_item_mpls_mask;
 	ret = mlx5_flow_item_acceptable
