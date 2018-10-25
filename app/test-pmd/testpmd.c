@@ -2300,8 +2300,11 @@ attach_port(char *identifier)
 		return;
 	}
 
-	RTE_ETH_FOREACH_MATCHING_DEV(pi, identifier, &iterator)
+	RTE_ETH_FOREACH_MATCHING_DEV(pi, identifier, &iterator) {
+		if (port_is_forwarding(pi))
+			continue; /* port was already attached before */
 		setup_attached_port(pi);
+	}
 }
 
 static void
