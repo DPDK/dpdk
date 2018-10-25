@@ -345,6 +345,21 @@ uint8_t rmv_interrupt = 1; /* enabled by default */
 
 uint8_t hot_plug = 0; /**< hotplug disabled by default. */
 
+/* Pretty printing of ethdev events */
+static const char * const eth_event_desc[] = {
+	[RTE_ETH_EVENT_UNKNOWN] = "unknown",
+	[RTE_ETH_EVENT_INTR_LSC] = "link state change",
+	[RTE_ETH_EVENT_QUEUE_STATE] = "queue state",
+	[RTE_ETH_EVENT_INTR_RESET] = "reset",
+	[RTE_ETH_EVENT_VF_MBOX] = "VF mbox",
+	[RTE_ETH_EVENT_IPSEC] = "IPsec",
+	[RTE_ETH_EVENT_MACSEC] = "MACsec",
+	[RTE_ETH_EVENT_INTR_RMV] = "device removal",
+	[RTE_ETH_EVENT_NEW] = "device probed",
+	[RTE_ETH_EVENT_DESTROY] = "device released",
+	[RTE_ETH_EVENT_MAX] = NULL,
+};
+
 /*
  * Display or mask ether events
  * Default to all events except VF_MBOX
@@ -1939,7 +1954,6 @@ start_port(portid_t pid)
 	queueid_t qi;
 	struct rte_port *port;
 	struct ether_addr mac_addr;
-	enum rte_eth_event_type event_type;
 
 	if (port_id_is_invalid(pid, ENABLED_WARN))
 		return 0;
@@ -2093,20 +2107,6 @@ start_port(portid_t pid)
 
 		/* at least one port started, need checking link status */
 		need_check_link_status = 1;
-	}
-
-	for (event_type = RTE_ETH_EVENT_UNKNOWN;
-	     event_type < RTE_ETH_EVENT_MAX;
-	     event_type++) {
-		diag = rte_eth_dev_callback_register(RTE_ETH_ALL,
-						event_type,
-						eth_event_callback,
-						NULL);
-		if (diag) {
-			printf("Failed to setup even callback for event %d\n",
-				event_type);
-			return -1;
-		}
 	}
 
 	if (need_check_link_status == 1 && !no_link_check)
@@ -2527,20 +2527,6 @@ static int
 eth_event_callback(portid_t port_id, enum rte_eth_event_type type, void *param,
 		  void *ret_param)
 {
-	static const char * const event_desc[] = {
-		[RTE_ETH_EVENT_UNKNOWN] = "Unknown",
-		[RTE_ETH_EVENT_INTR_LSC] = "LSC",
-		[RTE_ETH_EVENT_QUEUE_STATE] = "Queue state",
-		[RTE_ETH_EVENT_INTR_RESET] = "Interrupt reset",
-		[RTE_ETH_EVENT_VF_MBOX] = "VF Mbox",
-		[RTE_ETH_EVENT_IPSEC] = "IPsec",
-		[RTE_ETH_EVENT_MACSEC] = "MACsec",
-		[RTE_ETH_EVENT_INTR_RMV] = "device removal",
-		[RTE_ETH_EVENT_NEW] = "device probed",
-		[RTE_ETH_EVENT_DESTROY] = "device released",
-		[RTE_ETH_EVENT_MAX] = NULL,
-	};
-
 	RTE_SET_USED(param);
 	RTE_SET_USED(ret_param);
 
@@ -2550,7 +2536,7 @@ eth_event_callback(portid_t port_id, enum rte_eth_event_type type, void *param,
 		fflush(stderr);
 	} else if (event_print_mask & (UINT32_C(1) << type)) {
 		printf("\nPort %" PRIu16 ": %s event\n", port_id,
-			event_desc[type]);
+			eth_event_desc[type]);
 		fflush(stdout);
 	}
 
@@ -2566,6 +2552,28 @@ eth_event_callback(portid_t port_id, enum rte_eth_event_type type, void *param,
 	default:
 		break;
 	}
+	return 0;
+}
+
+static int
+register_eth_event_callback(void)
+{
+	int ret;
+	enum rte_eth_event_type event;
+
+	for (event = RTE_ETH_EVENT_UNKNOWN;
+			event < RTE_ETH_EVENT_MAX; event++) {
+		ret = rte_eth_dev_callback_register(RTE_ETH_ALL,
+				event,
+				eth_event_callback,
+				NULL);
+		if (ret != 0) {
+			TESTPMD_LOG(ERR, "Failed to register callback for "
+					"%s event\n", eth_event_desc[event]);
+			return -1;
+		}
+	}
+
 	return 0;
 }
 
@@ -3052,6 +3060,10 @@ main(int argc, char** argv)
 	if (testpmd_logtype < 0)
 		rte_panic("Cannot register log type");
 	rte_log_set_level(testpmd_logtype, RTE_LOG_DEBUG);
+
+	ret = register_eth_event_callback();
+	if (ret != 0)
+		rte_panic("Cannot register for ethdev events");
 
 #ifdef RTE_LIBRTE_PDUMP
 	/* initialize packet capture framework */
