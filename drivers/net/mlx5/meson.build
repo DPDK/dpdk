@@ -96,6 +96,8 @@ if build
 		'MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED' ],
 		[ 'HAVE_IBV_MLX5_MOD_CQE_128B_COMP', 'infiniband/mlx5dv.h',
 		'MLX5DV_CONTEXT_FLAGS_CQE_128B_COMP' ],
+		[ 'HAVE_IBV_MLX5_MOD_CQE_128B_PAD', 'infiniband/mlx5dv.h',
+		'MLX5DV_CQ_INIT_ATTR_FLAGS_CQE_PAD' ],
 		[ 'HAVE_IBV_FLOW_DV_SUPPORT', 'infiniband/mlx5dv.h',
 		'MLX5DV_FLOW_ACTION_TAG' ],
 		[ 'HAVE_IBV_DEVICE_MPLS_SUPPORT', 'infiniband/verbs.h',

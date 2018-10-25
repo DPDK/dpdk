@@ -51,6 +51,9 @@
 /* Device parameter to enable RX completion queue compression. */
 #define MLX5_RXQ_CQE_COMP_EN "rxq_cqe_comp_en"
 
+/* Device parameter to enable RX completion entry padding to 128B. */
+#define MLX5_RXQ_CQE_PAD_EN "rxq_cqe_pad_en"
+
 /* Device parameter to enable Multi-Packet Rx queue. */
 #define MLX5_RX_MPRQ_EN "mprq_en"
 
@@ -479,6 +482,8 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 	}
 	if (strcmp(MLX5_RXQ_CQE_COMP_EN, key) == 0) {
 		config->cqe_comp = !!tmp;
+	} else if (strcmp(MLX5_RXQ_CQE_PAD_EN, key) == 0) {
+		config->cqe_pad = !!tmp;
 	} else if (strcmp(MLX5_RX_MPRQ_EN, key) == 0) {
 		config->mprq.enabled = !!tmp;
 	} else if (strcmp(MLX5_RX_MPRQ_LOG_STRIDE_NUM, key) == 0) {
@@ -531,6 +536,7 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 {
 	const char **params = (const char *[]){
 		MLX5_RXQ_CQE_COMP_EN,
+		MLX5_RXQ_CQE_PAD_EN,
 		MLX5_RX_MPRQ_EN,
 		MLX5_RX_MPRQ_LOG_STRIDE_NUM,
 		MLX5_RX_MPRQ_MAX_MEMCPY_LEN,
@@ -723,6 +729,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	struct mlx5dv_context dv_attr = { .comp_mask = 0 };
 	struct mlx5_dev_config config = {
 		.vf = !!vf,
+		.cqe_pad = 0,
 		.mps = MLX5_ARG_UNSET,
 		.tx_vec_en = 1,
 		.rx_vec_en = 1,
@@ -743,6 +750,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	int err = 0;
 	unsigned int mps;
 	unsigned int cqe_comp;
+	unsigned int cqe_pad = 0;
 	unsigned int tunnel_en = 0;
 	unsigned int mpls_en = 0;
 	unsigned int swp = 0;
@@ -863,6 +871,11 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	else
 		cqe_comp = 1;
 	config.cqe_comp = cqe_comp;
+#ifdef HAVE_IBV_MLX5_MOD_CQE_128B_PAD
+	/* Whether device supports 128B Rx CQE padding. */
+	cqe_pad = RTE_CACHE_LINE_SIZE == 128 &&
+		  (dv_attr.flags & MLX5DV_CONTEXT_FLAGS_CQE_128B_PAD);
+#endif
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
 	if (dv_attr.comp_mask & MLX5DV_CONTEXT_MASK_TUNNEL_OFFLOADS) {
 		tunnel_en = ((dv_attr.tunnel_offloads_caps &
@@ -1078,6 +1091,12 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	if (config.cqe_comp && !cqe_comp) {
 		DRV_LOG(WARNING, "Rx CQE compression isn't supported");
 		config.cqe_comp = 0;
+	}
+	if (config.cqe_pad && !cqe_pad) {
+		DRV_LOG(WARNING, "Rx CQE padding isn't supported");
+		config.cqe_pad = 0;
+	} else if (config.cqe_pad) {
+		DRV_LOG(INFO, "Rx CQE padding is enabled");
 	}
 	if (config.mprq.enabled && mprq) {
 		if (config.mprq.stride_num_n > mprq_max_stride_num_n ||

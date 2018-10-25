@@ -841,6 +841,12 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 			" timestamp",
 			dev->data->port_id);
 	}
+#ifdef HAVE_IBV_MLX5_MOD_CQE_128B_PAD
+	if (config->cqe_pad) {
+		attr.cq.mlx5.comp_mask |= MLX5DV_CQ_INIT_ATTR_MASK_FLAGS;
+		attr.cq.mlx5.flags |= MLX5DV_CQ_INIT_ATTR_FLAGS_CQE_PAD;
+	}
+#endif
 	tmpl->cq = mlx5_glue->cq_ex_to_cq
 		(mlx5_glue->dv_create_cq(priv->ctx, &attr.cq.ibv,
 					 &attr.cq.mlx5));
