@@ -777,7 +777,7 @@ void stop_port(portid_t pid);
 void close_port(portid_t pid);
 void reset_port(portid_t pid);
 void attach_port(char *identifier);
-void detach_port(portid_t port_id);
+void detach_port_device(portid_t port_id);
 int all_ports_stopped(void);
 int port_is_stopped(portid_t port_id);
 int port_is_started(portid_t port_id);

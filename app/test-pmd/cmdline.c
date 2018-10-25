@@ -1305,7 +1305,7 @@ static void cmd_operate_detach_port_parsed(void *parsed_result,
 	struct cmd_operate_detach_port_result *res = parsed_result;
 
 	if (!strcmp(res->keyword, "detach"))
-		detach_port(res->port_id);
+		detach_port_device(res->port_id);
 	else
 		printf("Unknown parameter\n");
 }

@@ -2356,9 +2356,18 @@ setup_attached_port(portid_t pi)
 }
 
 void
-detach_port(portid_t port_id)
+detach_port_device(portid_t port_id)
 {
+	struct rte_device *dev;
+	portid_t sibling;
+
 	printf("Removing a device...\n");
+
+	dev = rte_eth_devices[port_id].device;
+	if (dev == NULL) {
+		printf("Device already removed\n");
+		return;
+	}
 
 	if (ports[port_id].port_status != RTE_PORT_CLOSED) {
 		if (ports[port_id].port_status != RTE_PORT_STOPPED) {
@@ -2370,15 +2379,27 @@ detach_port(portid_t port_id)
 			port_flow_flush(port_id);
 	}
 
-	if (rte_dev_remove(rte_eth_devices[port_id].device) != 0) {
-		TESTPMD_LOG(ERR, "Failed to detach port %u\n", port_id);
+	if (rte_dev_remove(dev) != 0) {
+		TESTPMD_LOG(ERR, "Failed to detach device %s\n", dev->name);
 		return;
+	}
+
+	for (sibling = 0; sibling < RTE_MAX_ETHPORTS; sibling++) {
+		if (rte_eth_devices[sibling].device != dev)
+			continue;
+		/* reset mapping between old ports and removed device */
+		rte_eth_devices[sibling].device = NULL;
+		if (ports[sibling].port_status != RTE_PORT_CLOSED) {
+			/* sibling ports are forced to be closed */
+			ports[sibling].port_status = RTE_PORT_CLOSED;
+			printf("Port %u is closed\n", sibling);
+		}
 	}
 
 	remove_unused_fwd_ports();
 
-	printf("Port %u is detached. Now total ports is %d\n",
-			port_id, nb_ports);
+	printf("Device of port %u is detached\n", port_id);
+	printf("Now total ports is %d\n", nb_ports);
 	printf("Done\n");
 	return;
 }
@@ -2411,7 +2432,7 @@ pmd_test_exit(void)
 			 */
 			device = rte_eth_devices[pt_id].device;
 			if (device && !strcmp(device->driver->name, "net_virtio_user"))
-				detach_port(pt_id);
+				detach_port_device(pt_id);
 		}
 	}
 
@@ -2523,7 +2544,7 @@ rmv_event_callback(void *arg)
 	stop_port(port_id);
 	no_link_check = org_no_link_check;
 	close_port(port_id);
-	detach_port(port_id);
+	detach_port_device(port_id);
 	if (need_to_start)
 		start_packet_forwarding(0);
 }
