@@ -204,7 +204,6 @@ struct virtio_pci_ops {
 			     void *dst, int len);
 	void (*write_dev_cfg)(struct virtio_hw *hw, size_t offset,
 			      const void *src, int len);
-	void (*reset)(struct virtio_hw *hw);
 
 	uint8_t (*get_status)(struct virtio_hw *hw);
 	void    (*set_status)(struct virtio_hw *hw, uint8_t status);

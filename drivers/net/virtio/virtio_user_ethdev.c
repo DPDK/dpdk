@@ -331,7 +331,6 @@ virtio_user_notify_queue(struct virtio_hw *hw, struct virtqueue *vq)
 const struct virtio_pci_ops virtio_user_ops = {
 	.read_dev_cfg	= virtio_user_read_dev_config,
 	.write_dev_cfg	= virtio_user_write_dev_config,
-	.reset		= virtio_user_reset,
 	.get_status	= virtio_user_get_status,
 	.set_status	= virtio_user_set_status,
 	.get_features	= virtio_user_get_features,
