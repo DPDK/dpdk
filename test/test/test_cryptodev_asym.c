@@ -153,10 +153,13 @@ test_rsa_sign_verify(void)
 		goto error_exit;
 	}
 	status = TEST_SUCCESS;
-	int ret = 0;
-	ret = rsa_verify(&rsaplaintext, result_op);
-	if (ret)
+	if (result_op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s",
+				__LINE__, "Failed to process asym crypto op");
 		status = TEST_FAILED;
+		goto error_exit;
+	}
 
 error_exit:
 
