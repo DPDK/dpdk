@@ -1467,7 +1467,11 @@ RTE_PMD_REGISTER_VDEV(net_vhost, pmd_vhost_drv);
 RTE_PMD_REGISTER_ALIAS(net_vhost, eth_vhost);
 RTE_PMD_REGISTER_PARAM_STRING(net_vhost,
 	"iface=<ifc> "
-	"queues=<int>");
+	"queues=<int> "
+	"client=<0|1> "
+	"dequeue-zero-copy=<0|1> "
+	"iommu-support=<0|1> "
+	"postcopy-support=<0|1>");
 
 RTE_INIT(vhost_init_log)
 {
