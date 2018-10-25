@@ -674,23 +674,21 @@ rte_pci_get_iommu_class(void)
 int rte_pci_read_config(const struct rte_pci_device *device,
 		void *buf, size_t len, off_t offset)
 {
+	char devname[RTE_DEV_NAME_MAX_LEN] = "";
 	const struct rte_intr_handle *intr_handle = &device->intr_handle;
 
-	switch (intr_handle->type) {
-	case RTE_INTR_HANDLE_UIO:
-	case RTE_INTR_HANDLE_UIO_INTX:
+	switch (device->kdrv) {
+	case RTE_KDRV_IGB_UIO:
 		return pci_uio_read_config(intr_handle, buf, len, offset);
-
 #ifdef VFIO_PRESENT
-	case RTE_INTR_HANDLE_VFIO_MSIX:
-	case RTE_INTR_HANDLE_VFIO_MSI:
-	case RTE_INTR_HANDLE_VFIO_LEGACY:
+	case RTE_KDRV_VFIO:
 		return pci_vfio_read_config(intr_handle, buf, len, offset);
 #endif
 	default:
+		rte_pci_device_name(&device->addr, devname,
+				    RTE_DEV_NAME_MAX_LEN);
 		RTE_LOG(ERR, EAL,
-			"Unknown handle type of fd %d\n",
-					intr_handle->fd);
+			"Unknown driver type for %s\n", devname);
 		return -1;
 	}
 }
@@ -699,23 +697,21 @@ int rte_pci_read_config(const struct rte_pci_device *device,
 int rte_pci_write_config(const struct rte_pci_device *device,
 		const void *buf, size_t len, off_t offset)
 {
+	char devname[RTE_DEV_NAME_MAX_LEN] = "";
 	const struct rte_intr_handle *intr_handle = &device->intr_handle;
 
-	switch (intr_handle->type) {
-	case RTE_INTR_HANDLE_UIO:
-	case RTE_INTR_HANDLE_UIO_INTX:
+	switch (device->kdrv) {
+	case RTE_KDRV_IGB_UIO:
 		return pci_uio_write_config(intr_handle, buf, len, offset);
-
 #ifdef VFIO_PRESENT
-	case RTE_INTR_HANDLE_VFIO_MSIX:
-	case RTE_INTR_HANDLE_VFIO_MSI:
-	case RTE_INTR_HANDLE_VFIO_LEGACY:
+	case RTE_KDRV_VFIO:
 		return pci_vfio_write_config(intr_handle, buf, len, offset);
 #endif
 	default:
+		rte_pci_device_name(&device->addr, devname,
+				    RTE_DEV_NAME_MAX_LEN);
 		RTE_LOG(ERR, EAL,
-			"Unknown handle type of fd %d\n",
-					intr_handle->fd);
+			"Unknown driver type for %s\n", devname);
 		return -1;
 	}
 }
