@@ -392,8 +392,9 @@ bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 	/* Cast to structure, containing bonded device's port id and queue id */
 	struct bond_rx_queue *bd_rx_q = (struct bond_rx_queue *)queue;
 	struct bond_dev_private *internals = bd_rx_q->dev_private;
-	struct ether_addr bond_mac;
-
+	struct rte_eth_dev *bonded_eth_dev =
+					&rte_eth_devices[internals->port_id];
+	struct ether_addr *bond_mac = bonded_eth_dev->data->mac_addrs;
 	struct ether_hdr *hdr;
 
 	const uint16_t ether_type_slow_be = rte_be_to_cpu_16(ETHER_TYPE_SLOW);
@@ -406,7 +407,6 @@ bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 	uint8_t i, j, k;
 	uint8_t subtype;
 
-	rte_eth_macaddr_get(internals->port_id, &bond_mac);
 	/* Copy slave list to protect against slave up/down changes during tx
 	 * bursting */
 	slave_count = internals->active_slave_count;
@@ -449,9 +449,11 @@ bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 			 * in collecting state or bonding interface is not in promiscuous
 			 * mode and packet address does not match. */
 			if (unlikely(is_lacp_packets(hdr->ether_type, subtype, bufs[j]) ||
-				!collecting || (!promisc &&
-					!is_multicast_ether_addr(&hdr->d_addr) &&
-					!is_same_ether_addr(&bond_mac, &hdr->d_addr)))) {
+				!collecting ||
+				(!promisc &&
+				 !is_multicast_ether_addr(&hdr->d_addr) &&
+				 !is_same_ether_addr(bond_mac,
+						     &hdr->d_addr)))) {
 
 				if (hdr->ether_type == ether_type_slow_be) {
 					bond_mode_8023ad_handle_slow_pkt(
