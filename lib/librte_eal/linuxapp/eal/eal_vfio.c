@@ -1042,8 +1042,9 @@ rte_vfio_get_container_fd(void)
 		mp_rep = &mp_reply.msgs[0];
 		p = (struct vfio_mp_param *)mp_rep->param;
 		if (p->result == SOCKET_OK && mp_rep->num_fds == 1) {
+			vfio_container_fd = mp_rep->fds[0];
 			free(mp_reply.msgs);
-			return mp_rep->fds[0];
+			return vfio_container_fd;
 		}
 		free(mp_reply.msgs);
 	}
