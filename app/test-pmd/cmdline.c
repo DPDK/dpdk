@@ -280,6 +280,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set portlist (x[,y]*)\n"
 			"    Set the list of forwarding ports.\n\n"
 
+			"set port setup on (iterator|event)\n"
+			"    Select how attached port is retrieved for setup.\n\n"
+
 			"set tx loopback (port_id) (on|off)\n"
 			"    Enable or disable tx loopback.\n\n"
 
@@ -1245,6 +1248,59 @@ cmdline_parse_inst_t cmd_operate_specific_port = {
 		(void *)&cmd_operate_specific_port_cmd,
 		(void *)&cmd_operate_specific_port_port,
 		(void *)&cmd_operate_specific_port_id,
+		NULL,
+	},
+};
+
+/* *** enable port setup (after attach) via iterator or event *** */
+struct cmd_set_port_setup_on_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t setup;
+	cmdline_fixed_string_t on;
+	cmdline_fixed_string_t mode;
+};
+
+static void cmd_set_port_setup_on_parsed(void *parsed_result,
+				__attribute__((unused)) struct cmdline *cl,
+				__attribute__((unused)) void *data)
+{
+	struct cmd_set_port_setup_on_result *res = parsed_result;
+
+	if (strcmp(res->mode, "event") == 0)
+		setup_on_probe_event = true;
+	else if (strcmp(res->mode, "iterator") == 0)
+		setup_on_probe_event = false;
+	else
+		printf("Unknown mode\n");
+}
+
+cmdline_parse_token_string_t cmd_set_port_setup_on_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_port_setup_on_result,
+			set, "set");
+cmdline_parse_token_string_t cmd_set_port_setup_on_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_port_setup_on_result,
+			port, "port");
+cmdline_parse_token_string_t cmd_set_port_setup_on_setup =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_port_setup_on_result,
+			setup, "setup");
+cmdline_parse_token_string_t cmd_set_port_setup_on_on =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_port_setup_on_result,
+			on, "on");
+cmdline_parse_token_string_t cmd_set_port_setup_on_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_port_setup_on_result,
+			mode, "iterator#event");
+
+cmdline_parse_inst_t cmd_set_port_setup_on = {
+	.f = cmd_set_port_setup_on_parsed,
+	.data = NULL,
+	.help_str = "set port setup on iterator|event",
+	.tokens = {
+		(void *)&cmd_set_port_setup_on_set,
+		(void *)&cmd_set_port_setup_on_port,
+		(void *)&cmd_set_port_setup_on_setup,
+		(void *)&cmd_set_port_setup_on_on,
+		(void *)&cmd_set_port_setup_on_mode,
 		NULL,
 	},
 };
@@ -18529,6 +18585,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_operate_specific_port,
 	(cmdline_parse_inst_t *)&cmd_operate_attach_port,
 	(cmdline_parse_inst_t *)&cmd_operate_detach_port,
+	(cmdline_parse_inst_t *)&cmd_set_port_setup_on,
 	(cmdline_parse_inst_t *)&cmd_config_speed_all,
 	(cmdline_parse_inst_t *)&cmd_config_speed_specific,
 	(cmdline_parse_inst_t *)&cmd_config_loopback_all,

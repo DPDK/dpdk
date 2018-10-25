@@ -609,6 +609,17 @@ For example, to change the port forwarding:
    RX P=1/Q=0 (socket 0) -> TX P=3/Q=0 (socket 0) peer=02:00:00:00:00:03
    RX P=3/Q=0 (socket 0) -> TX P=1/Q=0 (socket 0) peer=02:00:00:00:00:02
 
+set port setup on
+~~~~~~~~~~~~~~~~~
+
+Select how to retrieve new ports created after "port attach" command::
+
+   testpmd> set port setup on (iterator|event)
+
+For each new port, a setup is done.
+It will find the probed ports via RTE_ETH_FOREACH_MATCHING_DEV loop
+in iterator mode, or via RTE_ETH_EVENT_NEW in event mode.
+
 set tx loopback
 ~~~~~~~~~~~~~~~
 

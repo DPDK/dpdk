@@ -345,6 +345,9 @@ uint8_t rmv_interrupt = 1; /* enabled by default */
 
 uint8_t hot_plug = 0; /**< hotplug disabled by default. */
 
+/* After attach, port setup is called on event or by iterator */
+bool setup_on_probe_event = true;
+
 /* Pretty printing of ethdev events */
 static const char * const eth_event_desc[] = {
 	[RTE_ETH_EVENT_UNKNOWN] = "unknown",
@@ -2285,7 +2288,7 @@ reset_port(portid_t pid)
 void
 attach_port(char *identifier)
 {
-	portid_t pi = 0;
+	portid_t pi;
 	struct rte_dev_iterator iterator;
 
 	printf("Attaching a new port...\n");
@@ -2300,7 +2303,19 @@ attach_port(char *identifier)
 		return;
 	}
 
+	/* first attach mode: event */
+	if (setup_on_probe_event) {
+		/* new ports are detected on RTE_ETH_EVENT_NEW event */
+		for (pi = 0; pi < RTE_MAX_ETHPORTS; pi++)
+			if (ports[pi].port_status == RTE_PORT_HANDLING &&
+					ports[pi].need_setup != 0)
+				setup_attached_port(pi);
+		return;
+	}
+
+	/* second attach mode: iterator */
 	RTE_ETH_FOREACH_MATCHING_DEV(pi, identifier, &iterator) {
+		/* setup ports matching the devargs used for probing */
 		if (port_is_forwarding(pi))
 			continue; /* port was already attached before */
 		setup_attached_port(pi);
@@ -2322,6 +2337,7 @@ setup_attached_port(portid_t pi)
 	ports_ids[nb_ports++] = pi;
 	fwd_ports_ids[nb_fwd_ports++] = pi;
 	nb_cfg_ports = nb_fwd_ports;
+	ports[pi].need_setup = 0;
 	ports[pi].port_status = RTE_PORT_STOPPED;
 
 	printf("Port %d is attached. Now total ports is %d\n", pi, nb_ports);
@@ -2540,11 +2556,14 @@ eth_event_callback(portid_t port_id, enum rte_eth_event_type type, void *param,
 		fflush(stdout);
 	}
 
-	if (port_id_is_invalid(port_id, DISABLED_WARN))
-		return 0;
-
 	switch (type) {
+	case RTE_ETH_EVENT_NEW:
+		ports[port_id].need_setup = 1;
+		ports[port_id].port_status = RTE_PORT_HANDLING;
+		break;
 	case RTE_ETH_EVENT_INTR_RMV:
+		if (port_id_is_invalid(port_id, DISABLED_WARN))
+			break;
 		if (rte_eal_alarm_set(100000,
 				rmv_event_callback, (void *)(intptr_t)port_id))
 			fprintf(stderr, "Could not set up deferred device removal\n");
