@@ -1615,31 +1615,6 @@ launch_packet_forwarding(lcore_function_t *pkt_fwd_on_lcore)
 }
 
 /*
- * Update the forward ports list.
- */
-void
-update_fwd_ports(portid_t new_pid)
-{
-	unsigned int i;
-	unsigned int new_nb_fwd_ports = 0;
-	int move = 0;
-
-	for (i = 0; i < nb_fwd_ports; ++i) {
-		if (port_id_is_invalid(fwd_ports_ids[i], DISABLED_WARN))
-			move = 1;
-		else if (move)
-			fwd_ports_ids[new_nb_fwd_ports++] = fwd_ports_ids[i];
-		else
-			new_nb_fwd_ports++;
-	}
-	if (new_pid < RTE_MAX_ETHPORTS)
-		fwd_ports_ids[new_nb_fwd_ports++] = new_pid;
-
-	nb_fwd_ports = new_nb_fwd_ports;
-	nb_cfg_ports = new_nb_fwd_ports;
-}
-
-/*
  * Launch packet forwarding configuration.
  */
 void
@@ -2193,28 +2168,25 @@ stop_port(portid_t pid)
 }
 
 static void
-remove_unused_fwd_ports(void)
+remove_invalid_ports_in(portid_t *array, portid_t *total)
 {
-	int i;
-	int last_port_idx = nb_ports - 1;
+	portid_t i;
+	portid_t new_total = 0;
 
-	for (i = 0; i <= last_port_idx; i++) { /* iterate in ports_ids */
-		if (rte_eth_devices[ports_ids[i]].state != RTE_ETH_DEV_UNUSED)
-			continue;
-		/* skip unused ports at the end */
-		while (i <= last_port_idx &&
-				rte_eth_devices[ports_ids[last_port_idx]].state
-				== RTE_ETH_DEV_UNUSED)
-			last_port_idx--;
-		if (last_port_idx < i)
-			break;
-		/* overwrite unused port with last valid port */
-		ports_ids[i] = ports_ids[last_port_idx];
-		/* decrease ports count */
-		last_port_idx--;
-	}
-	nb_ports = rte_eth_dev_count_avail();
-	update_fwd_ports(RTE_MAX_ETHPORTS);
+	for (i = 0; i < *total; i++)
+		if (!port_id_is_invalid(array[i], DISABLED_WARN)) {
+			array[new_total] = array[i];
+			new_total++;
+		}
+	*total = new_total;
+}
+
+static void
+remove_invalid_ports(void)
+{
+	remove_invalid_ports_in(ports_ids, &nb_ports);
+	remove_invalid_ports_in(fwd_ports_ids, &nb_fwd_ports);
+	nb_cfg_ports = nb_fwd_ports;
 }
 
 void
@@ -2259,7 +2231,7 @@ close_port(portid_t pid)
 			port_flow_flush(pi);
 		rte_eth_dev_close(pi);
 
-		remove_unused_fwd_ports();
+		remove_invalid_ports();
 
 		if (rte_atomic16_cmpset(&(port->port_status),
 			RTE_PORT_HANDLING, RTE_PORT_CLOSED) == 0)
@@ -2344,12 +2316,10 @@ setup_attached_port(portid_t pi)
 	reconfig(pi, socket_id);
 	rte_eth_promiscuous_enable(pi);
 
-	ports_ids[nb_ports] = pi;
-	nb_ports = rte_eth_dev_count_avail();
-
+	ports_ids[nb_ports++] = pi;
+	fwd_ports_ids[nb_fwd_ports++] = pi;
+	nb_cfg_ports = nb_fwd_ports;
 	ports[pi].port_status = RTE_PORT_STOPPED;
-
-	update_fwd_ports(pi);
 
 	printf("Port %d is attached. Now total ports is %d\n", pi, nb_ports);
 	printf("Done\n");
@@ -2396,7 +2366,7 @@ detach_port_device(portid_t port_id)
 		}
 	}
 
-	remove_unused_fwd_ports();
+	remove_invalid_ports();
 
 	printf("Device of port %u is detached\n", port_id);
 	printf("Now total ports is %d\n", nb_ports);
