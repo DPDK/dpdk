@@ -1303,7 +1303,7 @@ eth_ixgbe_dev_uninit(struct rte_eth_dev *eth_dev)
 	PMD_INIT_FUNC_TRACE();
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return -EPERM;
+		return 0;
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 
@@ -1702,7 +1702,7 @@ eth_ixgbevf_dev_uninit(struct rte_eth_dev *eth_dev)
 	PMD_INIT_FUNC_TRACE();
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return -EPERM;
+		return 0;
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 
