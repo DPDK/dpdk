@@ -260,6 +260,13 @@ static void run_hash_func_tests(void)
  *	- lookup (hit)
  *	- delete
  *	- lookup (miss)
+ *
+ * Repeat the test case when 'free on delete' is disabled.
+ *	- add
+ *	- lookup (hit)
+ *	- delete
+ *	- lookup (miss)
+ *	- free
  */
 static int test_add_delete(void)
 {
@@ -295,10 +302,12 @@ static int test_add_delete(void)
 
 	/* repeat test with precomputed hash functions */
 	hash_sig_t hash_value;
-	int pos1, expectedPos1;
+	int pos1, expectedPos1, delPos1;
 
+	ut_params.extra_flag = RTE_HASH_EXTRA_FLAGS_NO_FREE_ON_DEL;
 	handle = rte_hash_create(&ut_params);
 	RETURN_IF_ERROR(handle == NULL, "hash creation failed");
+	ut_params.extra_flag = 0;
 
 	hash_value = rte_hash_hash(handle, &keys[0]);
 	pos1 = rte_hash_add_key_with_hash(handle, &keys[0], hash_value);
@@ -315,11 +324,17 @@ static int test_add_delete(void)
 	print_key_info("Del", &keys[0], pos1);
 	RETURN_IF_ERROR(pos1 != expectedPos1,
 			"failed to delete key (pos1=%d)", pos1);
+	delPos1 = pos1;
 
 	pos1 = rte_hash_lookup_with_hash(handle, &keys[0], hash_value);
 	print_key_info("Lkp", &keys[0], pos1);
 	RETURN_IF_ERROR(pos1 != -ENOENT,
 			"fail: found key after deleting! (pos1=%d)", pos1);
+
+	pos1 = rte_hash_free_key_with_position(handle, delPos1);
+	print_key_info("Free", &keys[0], delPos1);
+	RETURN_IF_ERROR(pos1 != 0,
+			"failed to free key (pos1=%d)", delPos1);
 
 	rte_hash_free(handle);
 
@@ -391,6 +406,84 @@ static int test_add_update_delete(void)
 }
 
 /*
+ * Sequence of operations for a single key with 'disable free on del' set:
+ *	- delete: miss
+ *	- add
+ *	- lookup: hit
+ *	- add: update
+ *	- lookup: hit (updated data)
+ *	- delete: hit
+ *	- delete: miss
+ *	- lookup: miss
+ *	- free: hit
+ *	- lookup: miss
+ */
+static int test_add_update_delete_free(void)
+{
+	struct rte_hash *handle;
+	int pos0, expectedPos0, delPos0, result;
+
+	ut_params.name = "test2";
+	ut_params.extra_flag = RTE_HASH_EXTRA_FLAGS_NO_FREE_ON_DEL;
+	handle = rte_hash_create(&ut_params);
+	RETURN_IF_ERROR(handle == NULL, "hash creation failed");
+	ut_params.extra_flag = 0;
+
+	pos0 = rte_hash_del_key(handle, &keys[0]);
+	print_key_info("Del", &keys[0], pos0);
+	RETURN_IF_ERROR(pos0 != -ENOENT,
+			"fail: found non-existent key (pos0=%d)", pos0);
+
+	pos0 = rte_hash_add_key(handle, &keys[0]);
+	print_key_info("Add", &keys[0], pos0);
+	RETURN_IF_ERROR(pos0 < 0, "failed to add key (pos0=%d)", pos0);
+	expectedPos0 = pos0;
+
+	pos0 = rte_hash_lookup(handle, &keys[0]);
+	print_key_info("Lkp", &keys[0], pos0);
+	RETURN_IF_ERROR(pos0 != expectedPos0,
+			"failed to find key (pos0=%d)", pos0);
+
+	pos0 = rte_hash_add_key(handle, &keys[0]);
+	print_key_info("Add", &keys[0], pos0);
+	RETURN_IF_ERROR(pos0 != expectedPos0,
+			"failed to re-add key (pos0=%d)", pos0);
+
+	pos0 = rte_hash_lookup(handle, &keys[0]);
+	print_key_info("Lkp", &keys[0], pos0);
+	RETURN_IF_ERROR(pos0 != expectedPos0,
+			"failed to find key (pos0=%d)", pos0);
+
+	delPos0 = rte_hash_del_key(handle, &keys[0]);
+	print_key_info("Del", &keys[0], delPos0);
+	RETURN_IF_ERROR(delPos0 != expectedPos0,
+			"failed to delete key (pos0=%d)", delPos0);
+
+	pos0 = rte_hash_del_key(handle, &keys[0]);
+	print_key_info("Del", &keys[0], pos0);
+	RETURN_IF_ERROR(pos0 != -ENOENT,
+			"fail: deleted already deleted key (pos0=%d)", pos0);
+
+	pos0 = rte_hash_lookup(handle, &keys[0]);
+	print_key_info("Lkp", &keys[0], pos0);
+	RETURN_IF_ERROR(pos0 != -ENOENT,
+			"fail: found key after deleting! (pos0=%d)", pos0);
+
+	result = rte_hash_free_key_with_position(handle, delPos0);
+	print_key_info("Free", &keys[0], delPos0);
+	RETURN_IF_ERROR(result != 0,
+			"failed to free key (pos1=%d)", delPos0);
+
+	pos0 = rte_hash_lookup(handle, &keys[0]);
+	print_key_info("Lkp", &keys[0], pos0);
+	RETURN_IF_ERROR(pos0 != -ENOENT,
+			"fail: found key after deleting! (pos0=%d)", pos0);
+
+	rte_hash_free(handle);
+	return 0;
+}
+
+/*
  * Sequence of operations for retrieving a key with its position
  *
  *  - create table
@@ -399,11 +492,20 @@ static int test_add_update_delete(void)
  *  - delete key
  *  - try to get the deleted key: miss
  *
+ * Repeat the test case when 'free on delete' is disabled.
+ *  - create table
+ *  - add key
+ *  - get the key with its position: hit
+ *  - delete key
+ *  - try to get the deleted key: hit
+ *  - free key
+ *  - try to get the deleted key: miss
+ *
  */
 static int test_hash_get_key_with_position(void)
 {
 	struct rte_hash *handle = NULL;
-	int pos, expectedPos, result;
+	int pos, expectedPos, delPos, result;
 	void *key;
 
 	ut_params.name = "hash_get_key_w_pos";
@@ -424,6 +526,38 @@ static int test_hash_get_key_with_position(void)
 			"failed to delete key (pos0=%d)", pos);
 
 	result = rte_hash_get_key_with_position(handle, pos, &key);
+	RETURN_IF_ERROR(result != -ENOENT, "non valid key retrieved");
+
+	rte_hash_free(handle);
+
+	ut_params.name = "hash_get_key_w_pos";
+	ut_params.extra_flag = RTE_HASH_EXTRA_FLAGS_NO_FREE_ON_DEL;
+	handle = rte_hash_create(&ut_params);
+	RETURN_IF_ERROR(handle == NULL, "hash creation failed");
+	ut_params.extra_flag = 0;
+
+	pos = rte_hash_add_key(handle, &keys[0]);
+	print_key_info("Add", &keys[0], pos);
+	RETURN_IF_ERROR(pos < 0, "failed to add key (pos0=%d)", pos);
+	expectedPos = pos;
+
+	result = rte_hash_get_key_with_position(handle, pos, &key);
+	RETURN_IF_ERROR(result != 0, "error retrieving a key");
+
+	delPos = rte_hash_del_key(handle, &keys[0]);
+	print_key_info("Del", &keys[0], delPos);
+	RETURN_IF_ERROR(delPos != expectedPos,
+			"failed to delete key (pos0=%d)", delPos);
+
+	result = rte_hash_get_key_with_position(handle, delPos, &key);
+	RETURN_IF_ERROR(result != -ENOENT, "non valid key retrieved");
+
+	result = rte_hash_free_key_with_position(handle, delPos);
+	print_key_info("Free", &keys[0], delPos);
+	RETURN_IF_ERROR(result != 0,
+			"failed to free key (pos1=%d)", delPos);
+
+	result = rte_hash_get_key_with_position(handle, delPos, &key);
 	RETURN_IF_ERROR(result != -ENOENT, "non valid key retrieved");
 
 	rte_hash_free(handle);
@@ -1608,6 +1742,8 @@ test_hash(void)
 	if (test_hash_find_existing() < 0)
 		return -1;
 	if (test_add_update_delete() < 0)
+		return -1;
+	if (test_add_update_delete_free() < 0)
 		return -1;
 	if (test_five_keys() < 0)
 		return -1;

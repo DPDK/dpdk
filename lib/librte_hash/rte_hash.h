@@ -14,6 +14,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include <rte_compat.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -39,6 +41,11 @@ extern "C" {
 
 /** Flag to indicate the extendabe bucket table feature should be used */
 #define RTE_HASH_EXTRA_FLAGS_EXT_TABLE 0x08
+
+/** Flag to disable freeing of key index on hash delete.
+ * Refer to rte_hash_del_xxx APIs for more details.
+ */
+#define RTE_HASH_EXTRA_FLAGS_NO_FREE_ON_DEL 0x10
 
 /**
  * The type of hash value of a key.
@@ -236,6 +243,10 @@ rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key, hash_sig_t
  * and should only be called from one thread by default.
  * Thread safety can be enabled by setting flag during
  * table creation.
+ * If RTE_HASH_EXTRA_FLAGS_NO_FREE_ON_DEL is enabled,
+ * the key index returned by rte_hash_add_key_xxx APIs will not be
+ * freed by this API. rte_hash_free_key_with_position API must be called
+ * additionally to free the index associated with the key.
  *
  * @param h
  *   Hash table to remove the key from.
@@ -257,6 +268,10 @@ rte_hash_del_key(const struct rte_hash *h, const void *key);
  * and should only be called from one thread by default.
  * Thread safety can be enabled by setting flag during
  * table creation.
+ * If RTE_HASH_EXTRA_FLAGS_NO_FREE_ON_DEL is enabled,
+ * the key index returned by rte_hash_add_key_xxx APIs will not be
+ * freed by this API. rte_hash_free_key_with_position API must be called
+ * additionally to free the index associated with the key.
  *
  * @param h
  *   Hash table to remove the key from.
@@ -294,6 +309,31 @@ rte_hash_del_key_with_hash(const struct rte_hash *h, const void *key, hash_sig_t
 int
 rte_hash_get_key_with_position(const struct rte_hash *h, const int32_t position,
 			       void **key);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Free a hash key in the hash table given the position
+ * of the key. This operation is not multi-thread safe and should
+ * only be called from one thread by default. Thread safety
+ * can be enabled by setting flag during table creation.
+ * If RTE_HASH_EXTRA_FLAGS_NO_FREE_ON_DEL is enabled,
+ * this API must be called, with the key index returned by rte_hash_add_key_xxx
+ * APIs, after the key is deleted using rte_hash_del_key_xxx APIs.
+ * This API does not validate if the key is already freed.
+ *
+ * @param h
+ *   Hash table to free the key from.
+ * @param position
+ *   Position returned when the key was deleted.
+ * @return
+ *   - 0 if freed successfully
+ *   - -EINVAL if the parameters are invalid.
+ */
+int __rte_experimental
+rte_hash_free_key_with_position(const struct rte_hash *h,
+				const int32_t position);
 
 /**
  * Find a key-value pair in the hash table.

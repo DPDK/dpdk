@@ -168,6 +168,12 @@ struct rte_hash {
 	uint8_t readwrite_concur_support;
 	/**< If read-write concurrency support is enabled */
 	uint8_t ext_table_support;     /**< Enable extendable bucket table */
+	uint8_t no_free_on_del;
+	/**< If key index should be freed on calling rte_hash_del_xxx APIs.
+	 * If this is set, rte_hash_free_key_with_position must be called to
+	 * free the key index associated with the deleted entry.
+	 * This flag is enabled by default.
+	 */
 	uint8_t writer_takes_lock;
 	/**< Indicates if the writer threads need to take lock */
 	rte_hash_function hash_func;    /**< Function used to calculate hash. */

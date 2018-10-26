@@ -140,6 +140,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	unsigned int ext_table_support = 0;
 	unsigned int readwrite_concur_support = 0;
 	unsigned int writer_takes_lock = 0;
+	unsigned int no_free_on_del = 0;
 
 	rte_hash_function default_hash_func = (rte_hash_function)rte_jhash;
 
@@ -175,6 +176,9 @@ rte_hash_create(const struct rte_hash_parameters *params)
 
 	if (params->extra_flag & RTE_HASH_EXTRA_FLAGS_EXT_TABLE)
 		ext_table_support = 1;
+
+	if (params->extra_flag & RTE_HASH_EXTRA_FLAGS_NO_FREE_ON_DEL)
+		no_free_on_del = 1;
 
 	/* Store all keys and leave the first entry as a dummy entry for lookup_bulk */
 	if (use_local_cache)
@@ -359,6 +363,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	h->readwrite_concur_support = readwrite_concur_support;
 	h->ext_table_support = ext_table_support;
 	h->writer_takes_lock = writer_takes_lock;
+	h->no_free_on_del = no_free_on_del;
 
 #if defined(RTE_ARCH_X86)
 	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_SSE2))
@@ -1121,7 +1126,6 @@ remove_entry(const struct rte_hash *h, struct rte_hash_bucket *bkt, unsigned i)
 	unsigned lcore_id, n_slots;
 	struct lcore_cache *cached_free_slots;
 
-	bkt->sig_current[i] = NULL_SIGNATURE;
 	if (h->use_local_cache) {
 		lcore_id = rte_lcore_id();
 		cached_free_slots = &h->local_free_slots[lcore_id];
@@ -1183,7 +1187,12 @@ search_and_remove(const struct rte_hash *h, const void *key,
 			k = (struct rte_hash_key *) ((char *)keys +
 					bkt->key_idx[i] * h->key_entry_size);
 			if (rte_hash_cmp_eq(key, k->key, h) == 0) {
-				remove_entry(h, bkt, i);
+				bkt->sig_current[i] = NULL_SIGNATURE;
+				/* Free the key store index if
+				 * no_free_on_del is disabled.
+				 */
+				if (!h->no_free_on_del)
+					remove_entry(h, bkt, i);
 
 				/* Return index where key is stored,
 				 * subtracting the first dummy index
@@ -1296,6 +1305,43 @@ rte_hash_get_key_with_position(const struct rte_hash *h, const int32_t position,
 	    __rte_hash_lookup_with_hash(h, *key, rte_hash_hash(h, *key),
 					NULL)) {
 		return -ENOENT;
+	}
+
+	return 0;
+}
+
+int __rte_experimental
+rte_hash_free_key_with_position(const struct rte_hash *h,
+				const int32_t position)
+{
+	RETURN_IF_TRUE(((h == NULL) || (position == EMPTY_SLOT)), -EINVAL);
+
+	unsigned int lcore_id, n_slots;
+	struct lcore_cache *cached_free_slots;
+	const int32_t total_entries = h->num_buckets * RTE_HASH_BUCKET_ENTRIES;
+
+	/* Out of bounds */
+	if (position >= total_entries)
+		return -EINVAL;
+
+	if (h->use_local_cache) {
+		lcore_id = rte_lcore_id();
+		cached_free_slots = &h->local_free_slots[lcore_id];
+		/* Cache full, need to free it. */
+		if (cached_free_slots->len == LCORE_CACHE_SIZE) {
+			/* Need to enqueue the free slots in global ring. */
+			n_slots = rte_ring_mp_enqueue_burst(h->free_slots,
+						cached_free_slots->objs,
+						LCORE_CACHE_SIZE, NULL);
+			cached_free_slots->len -= n_slots;
+		}
+		/* Put index of new free slot in cache. */
+		cached_free_slots->objs[cached_free_slots->len] =
+					(void *)((uintptr_t)position);
+		cached_free_slots->len++;
+	} else {
+		rte_ring_sp_enqueue(h->free_slots,
+				(void *)((uintptr_t)position));
 	}
 
 	return 0;
