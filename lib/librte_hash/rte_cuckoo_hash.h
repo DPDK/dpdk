@@ -161,11 +161,15 @@ struct rte_hash {
 	/**< Length of hash key. */
 	uint8_t hw_trans_mem_support;
 	/**< If hardware transactional memory is used. */
-	uint8_t multi_writer_support;
-	/**< If multi-writer support is enabled. */
+	uint8_t use_local_cache;
+	/**< If multi-writer support is enabled, use local cache
+	 * to allocate key-store slots.
+	 */
 	uint8_t readwrite_concur_support;
 	/**< If read-write concurrency support is enabled */
 	uint8_t ext_table_support;     /**< Enable extendable bucket table */
+	uint8_t writer_takes_lock;
+	/**< Indicates if the writer threads need to take lock */
 	rte_hash_function hash_func;    /**< Function used to calculate hash. */
 	uint32_t hash_func_init_val;    /**< Init value used by hash_func. */
 	rte_hash_cmp_eq_t rte_hash_custom_cmp_eq;

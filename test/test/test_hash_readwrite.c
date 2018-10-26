@@ -122,10 +122,12 @@ init_params(int use_htm, int use_jhash)
 	if (use_htm)
 		hash_params.extra_flag =
 			RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT |
-			RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY;
+			RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY |
+			RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD;
 	else
 		hash_params.extra_flag =
-			RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY;
+			RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY |
+			RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD;
 
 	hash_params.name = "tests";
 
