@@ -69,7 +69,7 @@
 		I40E_TX_IEEE1588_TMST)
 
 #define I40E_TX_OFFLOAD_NOTSUP_MASK \
-		(PKT_TX_OFFLOAD_MASK ^ I40E_TX_OFFLOAD_MASK)
+		~(PKT_TX_OFFLOAD_MASK & I40E_TX_OFFLOAD_MASK)
 
 static inline void
 i40e_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union i40e_rx_desc *rxdp)
