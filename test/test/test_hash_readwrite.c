@@ -20,6 +20,7 @@
 
 #define TOTAL_ENTRY (5*1024*1024)
 #define TOTAL_INSERT (4.5*1024*1024)
+#define TOTAL_INSERT_EXT (5*1024*1024)
 
 #define NUM_TEST 3
 unsigned int core_cnt[NUM_TEST] = {2, 4, 8};
@@ -120,7 +121,7 @@ test_hash_readwrite_worker(__attribute__((unused)) void *arg)
 }
 
 static int
-init_params(int use_htm, int use_jhash)
+init_params(int use_ext, int use_htm, int use_jhash)
 {
 	unsigned int i;
 
@@ -148,6 +149,13 @@ init_params(int use_htm, int use_jhash)
 		hash_params.extra_flag =
 			RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY |
 			RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD;
+
+	if (use_ext)
+		hash_params.extra_flag |=
+			RTE_HASH_EXTRA_FLAGS_EXT_TABLE;
+	else
+		hash_params.extra_flag &=
+		       ~RTE_HASH_EXTRA_FLAGS_EXT_TABLE;
 
 	hash_params.name = "tests";
 
@@ -187,7 +195,7 @@ err:
 }
 
 static int
-test_hash_readwrite_functional(int use_htm)
+test_hash_readwrite_functional(int use_ext, int use_htm)
 {
 	unsigned int i;
 	const void *next_key;
@@ -198,6 +206,7 @@ test_hash_readwrite_functional(int use_htm)
 	uint32_t lost_keys = 0;
 	int use_jhash = 1;
 	int slave_cnt = rte_lcore_count() - 1;
+	uint32_t tot_insert = 0;
 
 	rte_atomic64_init(&gcycles);
 	rte_atomic64_clear(&gcycles);
@@ -205,11 +214,16 @@ test_hash_readwrite_functional(int use_htm)
 	rte_atomic64_init(&ginsertions);
 	rte_atomic64_clear(&ginsertions);
 
-	if (init_params(use_htm, use_jhash) != 0)
+	if (init_params(use_ext, use_htm, use_jhash) != 0)
 		goto err;
 
+	if (use_ext)
+		tot_insert = TOTAL_INSERT_EXT;
+	else
+		tot_insert = TOTAL_INSERT;
+
 	tbl_rw_test_param.num_insert =
-		TOTAL_INSERT / slave_cnt;
+		tot_insert / slave_cnt;
 
 	tbl_rw_test_param.rounded_tot_insert =
 		tbl_rw_test_param.num_insert
@@ -365,7 +379,7 @@ test_hash_readwrite_perf(struct perf *perf_results, int use_htm,
 	rte_atomic64_init(&gwrite_cycles);
 	rte_atomic64_clear(&gwrite_cycles);
 
-	if (init_params(use_htm, use_jhash) != 0)
+	if (init_params(0, use_htm, use_jhash) != 0)
 		goto err;
 
 	/*
@@ -599,7 +613,7 @@ test_hash_readwrite_main(void)
 	 * than writer threads. This is to timing either reader threads or
 	 * writer threads for performance numbers.
 	 */
-	int use_htm, reader_faster;
+	int use_htm, use_ext,  reader_faster;
 	unsigned int i = 0, core_id = 0;
 
 	if (rte_lcore_count() <= 2) {
@@ -622,7 +636,13 @@ test_hash_readwrite_main(void)
 		printf("Test read-write with Hardware transactional memory\n");
 
 		use_htm = 1;
-		if (test_hash_readwrite_functional(use_htm) < 0)
+		use_ext = 0;
+
+		if (test_hash_readwrite_functional(use_ext, use_htm) < 0)
+			return -1;
+
+		use_ext = 1;
+		if (test_hash_readwrite_functional(use_ext, use_htm) < 0)
 			return -1;
 
 		reader_faster = 1;
@@ -641,8 +661,14 @@ test_hash_readwrite_main(void)
 
 	printf("Test read-write without Hardware transactional memory\n");
 	use_htm = 0;
-	if (test_hash_readwrite_functional(use_htm) < 0)
+	use_ext = 0;
+	if (test_hash_readwrite_functional(use_ext, use_htm) < 0)
 		return -1;
+
+	use_ext = 1;
+	if (test_hash_readwrite_functional(use_ext, use_htm) < 0)
+		return -1;
+
 	reader_faster = 1;
 	if (test_hash_readwrite_perf(&non_htm_results, use_htm,
 							reader_faster) < 0)
