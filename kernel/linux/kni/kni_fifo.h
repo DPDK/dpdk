@@ -8,6 +8,14 @@
 
 #include <exec-env/rte_kni_common.h>
 
+/* Skip some memory barriers on Linux < 3.14 */
+#ifndef smp_load_acquire
+#define smp_load_acquire(a) (*(a))
+#endif
+#ifndef smp_store_release
+#define smp_store_release(a, b) *(a) = (b)
+#endif
+
 /**
  * Adds num elements into the fifo. Return the number actually written
  */
