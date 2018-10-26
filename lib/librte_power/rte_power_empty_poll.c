@@ -8,6 +8,7 @@
 #include <rte_cycles.h>
 #include <rte_atomic.h>
 #include <rte_malloc.h>
+#include <inttypes.h>
 
 #include "rte_power.h"
 #include "rte_power_empty_poll.h"
@@ -226,8 +227,8 @@ update_stats(struct priority_worker *poll_stats)
 
 		/* edpi mean empty poll counter difference per interval */
 		RTE_LOG(DEBUG, POWER, "cur_edpi is too large "
-				"cur edpi %ld "
-				"base edpi %ld\n",
+				"cur edpi %"PRId64" "
+				"base edpi %"PRId64"\n",
 				cur_edpi,
 				s->thresh[s->cur_freq].base_edpi);
 		/* Value to make us fail need debug log*/
@@ -261,7 +262,7 @@ update_stats_normal(struct priority_worker *poll_stats)
 		enum freq_val cur_freq = poll_stats->cur_freq;
 
 		/* edpi mean empty poll counter difference per interval */
-		RTE_LOG(DEBUG, POWER, "cure freq is %d, edpi is %lu\n",
+		RTE_LOG(DEBUG, POWER, "cure freq is %d, edpi is %"PRIu64"\n",
 				cur_freq,
 				poll_stats->thresh[cur_freq].base_edpi);
 		return;
@@ -346,14 +347,14 @@ empty_poll_training(struct priority_worker *poll_stats,
 
 		set_state(poll_stats, MED_NORMAL);
 
-		RTE_LOG(INFO, POWER, "LOW threshold is %lu\n",
+		RTE_LOG(INFO, POWER, "LOW threshold is %"PRIu64"\n",
 				poll_stats->thresh[LOW].base_edpi);
 
-		RTE_LOG(INFO, POWER, "MED threshold is %lu\n",
+		RTE_LOG(INFO, POWER, "MED threshold is %"PRIu64"\n",
 				poll_stats->thresh[MED].base_edpi);
 
 
-		RTE_LOG(INFO, POWER, "HIGH threshold is %lu\n",
+		RTE_LOG(INFO, POWER, "HIGH threshold is %"PRIu64"\n",
 				poll_stats->thresh[HGH].base_edpi);
 
 		RTE_LOG(INFO, POWER, "Training is Complete for %d\n",
