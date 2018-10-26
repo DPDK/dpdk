@@ -7,6 +7,7 @@
 #include "qat_device.h"
 #include "adf_transport_access_macros.h"
 #include "qat_sym_pmd.h"
+#include "qat_comp_pmd.h"
 
 /* Hardware device information per generation */
 __extension__
@@ -14,15 +15,18 @@ struct qat_gen_hw_data qat_gen_config[] =  {
 	[QAT_GEN1] = {
 		.dev_gen = QAT_GEN1,
 		.qp_hw_data = qat_gen1_qps,
+		.comp_num_im_bufs_required = QAT_NUM_INTERM_BUFS_GEN1
 	},
 	[QAT_GEN2] = {
 		.dev_gen = QAT_GEN2,
 		.qp_hw_data = qat_gen1_qps,
 		/* gen2 has same ring layout as gen1 */
+		.comp_num_im_bufs_required = QAT_NUM_INTERM_BUFS_GEN2
 	},
 	[QAT_GEN3] = {
 		.dev_gen = QAT_GEN3,
 		.qp_hw_data = qat_gen3_qps,
+		.comp_num_im_bufs_required = QAT_NUM_INTERM_BUFS_GEN3
 	},
 };
 

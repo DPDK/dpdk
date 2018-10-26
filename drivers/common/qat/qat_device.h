@@ -16,6 +16,12 @@
 
 #define QAT_DEV_NAME_MAX_LEN	64
 
+enum qat_comp_num_im_buffers {
+	QAT_NUM_INTERM_BUFS_GEN1 = 12,
+	QAT_NUM_INTERM_BUFS_GEN2 = 20,
+	QAT_NUM_INTERM_BUFS_GEN3 = 20
+};
+
 /*
  * This struct holds all the data about a QAT pci device
  * including data about all services it supports.
@@ -72,6 +78,7 @@ struct qat_pci_device {
 struct qat_gen_hw_data {
 	enum qat_device_gen dev_gen;
 	const struct qat_qp_hw_data (*qp_hw_data)[ADF_MAX_QPS_ON_ANY_SERVICE];
+	enum qat_comp_num_im_buffers comp_num_im_bufs_required;
 };
 
 extern struct qat_gen_hw_data qat_gen_config[];

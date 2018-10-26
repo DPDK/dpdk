@@ -192,7 +192,7 @@ static void qat_comp_create_req_hdr(struct icp_qat_fw_comn_req_hdr *header,
 }
 
 static int qat_comp_create_templates(struct qat_comp_xform *qat_xform,
-			const struct rte_memzone *interm_buff_mz __rte_unused,
+			const struct rte_memzone *interm_buff_mz,
 			const struct rte_comp_xform *xform)
 {
 	struct icp_qat_fw_comp_req *comp_req;
@@ -280,10 +280,20 @@ static int qat_comp_create_templates(struct qat_comp_xform *qat_xform,
 		ICP_QAT_FW_COMN_CURR_ID_SET(&comp_req->comp_cd_ctrl,
 					    ICP_QAT_FW_SLICE_COMP);
 	} else if (qat_xform->qat_comp_request_type ==
-		   QAT_COMP_REQUEST_DYNAMIC_COMP_STATELESS) {
+			QAT_COMP_REQUEST_DYNAMIC_COMP_STATELESS) {
 
-		QAT_LOG(ERR, "Dynamic huffman encoding not supported");
-		return -EINVAL;
+		ICP_QAT_FW_COMN_NEXT_ID_SET(&comp_req->comp_cd_ctrl,
+				ICP_QAT_FW_SLICE_XLAT);
+		ICP_QAT_FW_COMN_CURR_ID_SET(&comp_req->comp_cd_ctrl,
+				ICP_QAT_FW_SLICE_COMP);
+
+		ICP_QAT_FW_COMN_NEXT_ID_SET(&comp_req->u2.xlt_cd_ctrl,
+				ICP_QAT_FW_SLICE_DRAM_WR);
+		ICP_QAT_FW_COMN_CURR_ID_SET(&comp_req->u2.xlt_cd_ctrl,
+				ICP_QAT_FW_SLICE_XLAT);
+
+		comp_req->u1.xlt_pars.inter_buff_ptr =
+				interm_buff_mz->phys_addr;
 	}
 
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
@@ -334,18 +344,27 @@ qat_comp_private_xform_create(struct rte_compressdev *dev,
 			(struct qat_comp_xform *)*private_xform;
 
 	if (xform->type == RTE_COMP_COMPRESS) {
-		if (xform->compress.deflate.huffman ==
-				RTE_COMP_HUFFMAN_DYNAMIC) {
-			QAT_LOG(ERR,
-			"QAT device doesn't support dynamic compression");
-			return -ENOTSUP;
-		}
 
 		if (xform->compress.deflate.huffman == RTE_COMP_HUFFMAN_FIXED ||
 		  ((xform->compress.deflate.huffman == RTE_COMP_HUFFMAN_DEFAULT)
 				   && qat->interm_buff_mz == NULL))
 			qat_xform->qat_comp_request_type =
 					QAT_COMP_REQUEST_FIXED_COMP_STATELESS;
+
+		else if ((xform->compress.deflate.huffman ==
+				RTE_COMP_HUFFMAN_DYNAMIC ||
+				xform->compress.deflate.huffman ==
+						RTE_COMP_HUFFMAN_DEFAULT) &&
+				qat->interm_buff_mz != NULL)
+
+			qat_xform->qat_comp_request_type =
+					QAT_COMP_REQUEST_DYNAMIC_COMP_STATELESS;
+
+		else {
+			QAT_LOG(ERR,
+					"IM buffers needed for dynamic deflate. Set size in config file");
+			return -EINVAL;
+		}
 
 		qat_xform->checksum_type = xform->compress.chksum;
 

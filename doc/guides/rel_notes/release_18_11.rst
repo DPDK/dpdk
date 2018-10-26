@@ -201,6 +201,11 @@ New Features
   Added the new caam job ring driver for NXP platforms. See the
   "NXP CAAM JOB RING (caam_jr)" document for more details on this new driver.
 
+* **Added support for Dynamic Huffman Encoding to Intel QAT comp PMD.**
+
+  The Intel QuickAssist (QAT) compression PMD has been updated with support
+  for Dynamic Huffman Encoding for the Deflate algorithm.
+
 * **Added Event Ethernet Tx Adapter.**
 
   Added event ethernet Tx adapter library that  provides configuration and
