@@ -243,7 +243,7 @@ rte_pci_detach_dev(struct rte_pci_device *dev)
 
 /*
  * If vendor/device ID match, call the probe() function of all
- * registered driver for the given device. Return -1 if initialization
+ * registered driver for the given device. Return < 0 if initialization
  * failed, return 1 if no driver is found for this device.
  */
 static int
@@ -253,13 +253,13 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 	int rc = 0;
 
 	if (dev == NULL)
-		return -1;
+		return -EINVAL;
 
 	FOREACH_DRIVER_ON_PCIBUS(dr) {
 		rc = rte_pci_probe_one_driver(dr, dev);
 		if (rc < 0)
 			/* negative value is an error */
-			return -1;
+			return rc;
 		if (rc > 0)
 			/* positive value means driver doesn't support it */
 			continue;
