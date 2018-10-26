@@ -587,7 +587,7 @@ port_offload_cap_display(portid_t port_id)
 	if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_QINQ_STRIP) {
 		printf("Double VLANs stripped:         ");
 		if (ports[port_id].dev_conf.rxmode.offloads &
-		    DEV_RX_OFFLOAD_VLAN_EXTEND)
+		    DEV_RX_OFFLOAD_QINQ_STRIP)
 			printf("on\n");
 		else
 			printf("off\n");
