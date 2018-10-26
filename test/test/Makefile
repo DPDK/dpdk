@@ -116,6 +116,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_HASH) += test_hash_functions.c
 SRCS-$(CONFIG_RTE_LIBRTE_HASH) += test_hash_scaling.c
 SRCS-$(CONFIG_RTE_LIBRTE_HASH) += test_hash_multiwriter.c
 SRCS-$(CONFIG_RTE_LIBRTE_HASH) += test_hash_readwrite.c
+SRCS-$(CONFIG_RTE_LIBRTE_HASH) += test_hash_readwrite_lf.c
 
 SRCS-$(CONFIG_RTE_LIBRTE_LPM) += test_lpm.c
 SRCS-$(CONFIG_RTE_LIBRTE_LPM) += test_lpm_perf.c
