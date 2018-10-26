@@ -12,6 +12,7 @@
 #include <rte_malloc.h>
 #include <rte_random.h>
 #include <rte_spinlock.h>
+#include <rte_jhash.h>
 
 #include "test.h"
 
@@ -108,7 +109,7 @@ test_hash_multiwriter(void)
 	struct rte_hash_parameters hash_params = {
 		.entries = nb_entries,
 		.key_len = sizeof(uint32_t),
-		.hash_func = rte_hash_crc,
+		.hash_func = rte_jhash,
 		.hash_func_init_val = 0,
 		.socket_id = rte_socket_id(),
 	};
