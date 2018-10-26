@@ -169,6 +169,11 @@ Larger changes that require different explanations should be separated into logi
 A good way of thinking about whether a patch should be split is to consider whether the change could be
 applied without dependencies as a backport.
 
+It is better to keep the related documentation changes in the same patch
+file as the code, rather than one big documentation patch at then end of a
+patchset. This makes it easier for future maintenance and development of the
+code.
+
 As a guide to how patches should be structured run ``git log`` on similar files.
 
 
