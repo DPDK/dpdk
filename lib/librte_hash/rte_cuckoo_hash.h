@@ -123,7 +123,7 @@ struct rte_hash_key {
 	};
 	/* Variable key size */
 	char key[0];
-} __attribute__((aligned(KEY_ALIGNMENT)));
+};
 
 /* All different signature compare functions */
 enum rte_hash_sig_compare_function {

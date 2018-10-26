@@ -279,7 +279,9 @@ rte_hash_create(const struct rte_hash_parameters *params)
 			rte_ring_sp_enqueue(r_ext, (void *)((uintptr_t) i));
 	}
 
-	const uint32_t key_entry_size = sizeof(struct rte_hash_key) + params->key_len;
+	const uint32_t key_entry_size =
+		RTE_ALIGN(sizeof(struct rte_hash_key) + params->key_len,
+			  KEY_ALIGNMENT);
 	const uint64_t key_tbl_size = (uint64_t) key_entry_size * num_key_slots;
 
 	k = rte_zmalloc_socket(NULL, key_tbl_size,
