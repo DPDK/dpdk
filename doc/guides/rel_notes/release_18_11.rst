@@ -190,6 +190,12 @@ New Features
   collisions.  In addition, the internal hashing algorithm was changed to use
   partial-key hashing to improve memory efficiency and lookup performance.
 
+* **Added lock free reader/writer concurrency to hash library (rte_hash).**
+
+  Lock free reader/writer concurrency prevents the readers from getting
+  blocked due to a pre-empted writer thread. This allows the hash library
+  to be used in scenarios where the writer thread runs on control plane.
+
 * **Added Traffic Pattern Aware Power Control Library**
 
   Added an experimental library. This extend Power Library and provide

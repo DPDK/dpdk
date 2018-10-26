@@ -44,8 +44,17 @@ extern "C" {
 
 /** Flag to disable freeing of key index on hash delete.
  * Refer to rte_hash_del_xxx APIs for more details.
+ * This is enabled by default when RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF
+ * is enabled.
  */
 #define RTE_HASH_EXTRA_FLAGS_NO_FREE_ON_DEL 0x10
+
+/** Flag to support lock free reader writer concurrency. Both single writer
+ * and multi writer use cases are supported.
+ * Currently, extendable bucket table feature is not supported with
+ * this feature.
+ */
+#define RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF 0x20
 
 /**
  * The type of hash value of a key.
@@ -132,7 +141,12 @@ void
 rte_hash_free(struct rte_hash *h);
 
 /**
- * Reset all hash structure, by zeroing all entries
+ * Reset all hash structure, by zeroing all entries.
+ * When RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF is enabled,
+ * it is application's responsibility to make sure that
+ * none of the readers are referencing the hash table
+ * while calling this API.
+ *
  * @param h
  *   Hash table to reset
  */
@@ -156,6 +170,11 @@ rte_hash_count(const struct rte_hash *h);
  * and should only be called from one thread by default.
  * Thread safety can be enabled by setting flag during
  * table creation.
+ * If the key exists already in the table, this API updates its value
+ * with 'data' passed in this API. It is the responsibility of
+ * the application to manage any memory associated with the old value.
+ * The readers might still be using the old value even after this API
+ * has returned.
  *
  * @param h
  *   Hash table to add the key to.
@@ -178,6 +197,11 @@ rte_hash_add_key_data(const struct rte_hash *h, const void *key, void *data);
  * and should only be called from one thread by default.
  * Thread safety can be enabled by setting flag during
  * table creation.
+ * If the key exists already in the table, this API updates its value
+ * with 'data' passed in this API. It is the responsibility of
+ * the application to manage any memory associated with the old value.
+ * The readers might still be using the old value even after this API
+ * has returned.
  *
  * @param h
  *   Hash table to add the key to.
@@ -243,10 +267,14 @@ rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key, hash_sig_t
  * and should only be called from one thread by default.
  * Thread safety can be enabled by setting flag during
  * table creation.
- * If RTE_HASH_EXTRA_FLAGS_NO_FREE_ON_DEL is enabled,
+ * If RTE_HASH_EXTRA_FLAGS_NO_FREE_ON_DEL or
+ * RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF is enabled,
  * the key index returned by rte_hash_add_key_xxx APIs will not be
  * freed by this API. rte_hash_free_key_with_position API must be called
  * additionally to free the index associated with the key.
+ * rte_hash_free_key_with_position API should be called after all
+ * the readers have stopped referencing the entry corresponding to
+ * this key. RCU mechanisms could be used to determine such a state.
  *
  * @param h
  *   Hash table to remove the key from.
@@ -268,10 +296,14 @@ rte_hash_del_key(const struct rte_hash *h, const void *key);
  * and should only be called from one thread by default.
  * Thread safety can be enabled by setting flag during
  * table creation.
- * If RTE_HASH_EXTRA_FLAGS_NO_FREE_ON_DEL is enabled,
+ * If RTE_HASH_EXTRA_FLAGS_NO_FREE_ON_DEL or
+ * RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF is enabled,
  * the key index returned by rte_hash_add_key_xxx APIs will not be
  * freed by this API. rte_hash_free_key_with_position API must be called
  * additionally to free the index associated with the key.
+ * rte_hash_free_key_with_position API should be called after all
+ * the readers have stopped referencing the entry corresponding to
+ * this key. RCU mechanisms could be used to determine such a state.
  *
  * @param h
  *   Hash table to remove the key from.
@@ -318,9 +350,12 @@ rte_hash_get_key_with_position(const struct rte_hash *h, const int32_t position,
  * of the key. This operation is not multi-thread safe and should
  * only be called from one thread by default. Thread safety
  * can be enabled by setting flag during table creation.
- * If RTE_HASH_EXTRA_FLAGS_NO_FREE_ON_DEL is enabled,
- * this API must be called, with the key index returned by rte_hash_add_key_xxx
- * APIs, after the key is deleted using rte_hash_del_key_xxx APIs.
+ * If RTE_HASH_EXTRA_FLAGS_NO_FREE_ON_DEL or
+ * RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF is enabled,
+ * the key index returned by rte_hash_del_key_xxx APIs must be freed
+ * using this API. This API should be called after all the readers
+ * have stopped referencing the entry corresponding to this key.
+ * RCU mechanisms could be used to determine such a state.
  * This API does not validate if the key is already freed.
  *
  * @param h

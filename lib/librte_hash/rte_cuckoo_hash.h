@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2016 Intel Corporation
+ * Copyright(c) 2018 Arm Limited
  */
 
 /* rte_cuckoo_hash.h
@@ -174,6 +175,8 @@ struct rte_hash {
 	 * free the key index associated with the deleted entry.
 	 * This flag is enabled by default.
 	 */
+	uint8_t readwrite_concur_lf_support;
+	/**< If read-write concurrency lock free support is enabled */
 	uint8_t writer_takes_lock;
 	/**< Indicates if the writer threads need to take lock */
 	rte_hash_function hash_func;    /**< Function used to calculate hash. */
@@ -196,6 +199,8 @@ struct rte_hash {
 	rte_rwlock_t *readwrite_lock; /**< Read-write lock thread-safety. */
 	struct rte_hash_bucket *buckets_ext; /**< Extra buckets array */
 	struct rte_ring *free_ext_bkts; /**< Ring of indexes of free buckets */
+	uint32_t *tbl_chng_cnt;
+	/**< Indicates if the hash table changed from last read. */
 } __rte_cache_aligned;
 
 struct queue_node {

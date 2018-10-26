@@ -1,5 +1,6 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2015 Intel Corporation.
+    Copyright(c) 2018 Arm Limited.
 
 .. _Hash_Library:
 
@@ -38,7 +39,7 @@ The main methods exported by the hash are:
 *   Lookup for entry with key: The key is provided as input. If an entry with the specified key is found in the hash (lookup hit),
     then the position of the entry is returned, otherwise (lookup miss) a negative value is returned.
 
-Apart from these method explained above, the API allows the user three more options:
+Apart from these methods explained above, the API provides the user with few more options:
 
 *   Add / lookup / delete with key and precomputed hash: Both the key and its precomputed hash are provided as input. This allows
     the user to perform these operations faster, as hash is already computed.
@@ -47,6 +48,9 @@ Apart from these method explained above, the API allows the user three more opti
     not only the key, but also data which may be either a 8-byte integer or a pointer to external data (if data size is more than 8 bytes).
 
 *   Combination of the two options above: User can provide key, precomputed hash and data.
+
+*   Ability to not free the position of the entry in the hash upon calling delete. This is useful for multi-threaded scenarios where
+    readers continue to use the position even after the entry is deleted.
 
 Also, the API contains a method to allow the user to look up entries in bursts, achieving higher performance
 than looking up individual entries, as the function prefetches next entries at the time it is operating
@@ -83,13 +87,20 @@ For concurrent writes, and concurrent reads and writes the following flag values
    Key add, delete, and table reset are protected from other writer threads. With only this flag set, readers are not protected from ongoing writes.
 
 *  If the read/write concurrency (RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY) is set, multithread read/write operation is safe
-   (i.e., no need to stop the readers from accessing the hash table until writers finish their updates. Reads and writes can operate table concurrently).
+   (i.e., application does not need to stop the readers from accessing the hash table until writers finish their updates. Readers and writers can operate on the table concurrently).
+   The library uses a reader-writer lock to provide the concurrency.
 
 *  In addition to these two flag values, if the transactional memory flag (RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT) is also set,
-   hardware transactional memory will be used to guarantee the thread safety as long as it is supported by the hardware (for example the Intel® TSX support).
+   the reader-writer lock will use hardware transactional memory to guarantee thread safety as long as it is supported by the hardware (for example the Intel® TSX support).
+   If the platform supports Intel® TSX, it is advised to set the transactional memory flag, as this will speed up concurrent table operations.
+   Otherwise concurrent operations will be slower because of the overhead associated with the software locking mechanisms.
 
-If the platform supports Intel® TSX, it is advised to set the transactional memory flag, as this will speed up concurrent table operations.
-Otherwise concurrent operations will be slower because of the overhead associated with the software locking mechanisms.
+*  If lock free read/write concurrency (RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF) is set, read/write concurrency is provided without using reader-writer lock.
+   For platforms (ex: current Arm based platforms), that do not support transactional memory, it is advised to set this flag to achieve greater scalability in performance.
+
+*  If, do not free on delete (RTE_HASH_EXTRA_FLAGS_NO_FREE_ON_DEL) flag is set, the position of the entry in the hash is not freed upon calling delete. This flag is enabled
+   by default when lock free read/write concurrency is set. The application should free the position after all the readers have stopped referencing the position.
+   Where required, the application can make use of RCU mechanisms to determine when the readers have stopped referencing the position.
 
 Implementation Details
 ----------------------
@@ -147,6 +158,14 @@ In the very unlikely event that table enters in a loop where same entries are be
 key is considered not able to be stored.
 With random keys, this method allows the user to get around 90% of the table utilization, without
 having to drop any stored entry (LRU) or allocate more memory (extended buckets).
+
+
+Example of deletion:
+
+Similar to lookup, the key is searched in its primary and secondary buckets. If the key is found, the bucket
+entry is marked as an empty slot. If the hash table was configured with 'no free on delete' or 'lock free read/write concurrency',
+the position of the key is not freed. It is the responsibility of the user to free the position while making sure that
+readers are not referencing the position anymore.
 
 Entry distribution in hash table
 --------------------------------
@@ -239,6 +258,10 @@ The flow table operations on the application side are described below:
 
 *   Delete flow: Delete the flow key from the hash. If the returned position is valid,
     use it to access the flow entry in the flow table to invalidate the information associated with the flow.
+
+*   Free flow: Free flow key position. If 'no free on delete' or 'lock-free read/write concurrency' flags are set,
+    wait till the readers are not referencing the position returned during add/delete flow and then free the position.
+    RCU mechanisms can be used to find out when the readers are not referencing the position anymore.
 
 *   Lookup flow: Lookup for the flow key in the hash.
     If the returned position is valid (flow lookup hit), use the returned position to access the flow entry in the flow table.
