@@ -373,10 +373,6 @@ signal_exit_now(int sigtype)
 	unsigned int portid;
 	int ret;
 
-	RTE_SET_USED(lcore_id);
-	RTE_SET_USED(portid);
-	RTE_SET_USED(ret);
-
 	if (sigtype == SIGINT) {
 		if (empty_poll_on)
 			empty_poll_stop = true;
