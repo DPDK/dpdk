@@ -80,29 +80,23 @@ static uint32_t pseudo_hash(__attribute__((unused)) const void *keys,
 	return 3;
 }
 
+#define UNIT_TEST_HASH_VERBOSE	0
 /*
  * Print out result of unit test hash operation.
  */
-#if defined(UNIT_TEST_HASH_VERBOSE)
 static void print_key_info(const char *msg, const struct flow_key *key,
 								int32_t pos)
 {
-	uint8_t *p = (uint8_t *)key;
-	unsigned i;
+	if (UNIT_TEST_HASH_VERBOSE) {
+		const uint8_t *p = (const uint8_t *)key;
+		unsigned int i;
 
-	printf("%s key:0x", msg);
-	for (i = 0; i < sizeof(struct flow_key); i++) {
-		printf("%02X", p[i]);
+		printf("%s key:0x", msg);
+		for (i = 0; i < sizeof(struct flow_key); i++)
+			printf("%02X", p[i]);
+		printf(" @ pos %d\n", pos);
 	}
-	printf(" @ pos %d\n", pos);
 }
-#else
-static void print_key_info(__attribute__((unused)) const char *msg,
-		__attribute__((unused)) const struct flow_key *key,
-		__attribute__((unused)) int32_t pos)
-{
-}
-#endif
 
 /* Keys used by unit test functions */
 static struct flow_key keys[5] = { {
