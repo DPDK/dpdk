@@ -18,8 +18,8 @@
 
 #define RTE_RWTEST_FAIL 0
 
-#define TOTAL_ENTRY (16*1024*1024)
-#define TOTAL_INSERT (15*1024*1024)
+#define TOTAL_ENTRY (5*1024*1024)
+#define TOTAL_INSERT (4.5*1024*1024)
 
 #define NUM_TEST 3
 unsigned int core_cnt[NUM_TEST] = {2, 4, 8};
@@ -59,8 +59,10 @@ test_hash_readwrite_worker(__attribute__((unused)) void *arg)
 	uint64_t i, offset;
 	uint32_t lcore_id = rte_lcore_id();
 	uint64_t begin, cycles;
-	int ret;
+	int *ret;
 
+	ret = rte_malloc(NULL, sizeof(int) *
+				tbl_rw_test_param.num_insert, 0);
 	for (i = 0; i < rte_lcore_count(); i++) {
 		if (slave_core_ids[i] == lcore_id)
 			break;
@@ -79,13 +81,30 @@ test_hash_readwrite_worker(__attribute__((unused)) void *arg)
 				tbl_rw_test_param.keys + i) > 0)
 			break;
 
-		ret = rte_hash_add_key(tbl_rw_test_param.h,
+		ret[i - offset] = rte_hash_add_key(tbl_rw_test_param.h,
 				     tbl_rw_test_param.keys + i);
-		if (ret < 0)
+		if (ret[i - offset] < 0)
+			break;
+
+		/* lookup a random key */
+		uint32_t rand = rte_rand() % (i + 1 - offset);
+
+		if (rte_hash_lookup(tbl_rw_test_param.h,
+				tbl_rw_test_param.keys + rand) != ret[rand])
+			break;
+
+
+		if (rte_hash_del_key(tbl_rw_test_param.h,
+				tbl_rw_test_param.keys + rand) != ret[rand])
+			break;
+
+		ret[rand] = rte_hash_add_key(tbl_rw_test_param.h,
+					tbl_rw_test_param.keys + rand);
+		if (ret[rand] < 0)
 			break;
 
 		if (rte_hash_lookup(tbl_rw_test_param.h,
-				tbl_rw_test_param.keys + i) != ret)
+			tbl_rw_test_param.keys + rand) != ret[rand])
 			break;
 	}
 
@@ -96,6 +115,7 @@ test_hash_readwrite_worker(__attribute__((unused)) void *arg)
 	for (; i < offset + tbl_rw_test_param.num_insert; i++)
 		tbl_rw_test_param.keys[i] = RTE_RWTEST_FAIL;
 
+	rte_free(ret);
 	return 0;
 }
 
