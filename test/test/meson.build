@@ -173,6 +173,7 @@ test_names = [
 	'hash_functions_autotest',
 	'hash_multiwriter_autotest',
 	'hash_perf_autotest',
+	'hash_readwrite_autotest',
 	'hash_readwrite_lf_autotest',
 	'interrupt_autotest',
 	'kni_autotest',
