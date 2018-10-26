@@ -345,12 +345,6 @@ parallel_test_list = [
         "Report":  None,
     },
     {
-        "Name":    "Hash scaling autotest",
-        "Command": "hash_scaling_autotest",
-        "Func":    default_autotest,
-        "Report":  None,
-    },
-    {
         "Name":    "Hash multiwriter autotest",
         "Command": "hash_multiwriter_autotest",
         "Func":    default_autotest,
