@@ -27,7 +27,6 @@
 #include <rte_spinlock.h>
 #include <rte_ring.h>
 #include <rte_compat.h>
-#include <rte_pause.h>
 
 #include "rte_hash.h"
 #include "rte_cuckoo_hash.h"
@@ -574,14 +573,14 @@ rte_hash_reset(struct rte_hash *h)
 
 	/* clear the free ring */
 	while (rte_ring_dequeue(h->free_slots, &ptr) == 0)
-		rte_pause();
+		continue;
 
 	/* clear free extendable bucket ring and memory */
 	if (h->ext_table_support) {
 		memset(h->buckets_ext, 0, h->num_buckets *
 						sizeof(struct rte_hash_bucket));
 		while (rte_ring_dequeue(h->free_ext_bkts, &ptr) == 0)
-			rte_pause();
+			continue;
 	}
 
 	/* Repopulate the free slots ring. Entry zero is reserved for key misses */
