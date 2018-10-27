@@ -3,4 +3,4 @@
 
 sources = files('main.c')
 allow_experimental_apis = true
-deps = ['ethdev', 'kvargs', 'pdump']
+deps += ['ethdev', 'kvargs', 'pdump']

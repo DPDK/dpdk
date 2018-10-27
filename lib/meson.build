@@ -132,6 +132,7 @@ foreach l:libraries
 					dependencies: shared_deps)
 
 			dpdk_libraries = [shared_lib] + dpdk_libraries
+			dpdk_static_libraries = [static_lib] + dpdk_static_libraries
 		endif # sources.length() > 0
 
 		set_variable('shared_' + libname, shared_dep)

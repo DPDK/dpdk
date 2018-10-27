@@ -9,6 +9,7 @@ cflags += '-DALLOW_EXPERIMENTAL_API'
 jansson = cc.find_library('jansson', required: false)
 if jansson.found()
 	ext_deps += jansson
+	dpdk_app_link_libraries += ['telemetry']
 else
 	build = false
 endif

@@ -21,6 +21,9 @@ toolchain = cc.get_id()
 dpdk_conf.set_quoted('RTE_TOOLCHAIN', toolchain)
 dpdk_conf.set('RTE_TOOLCHAIN_' + toolchain.to_upper(), 1)
 
+add_project_link_arguments('-Wl,--no-as-needed', language: 'c')
+dpdk_extra_ldflags += '-Wl,--no-as-needed'
+
 # use pthreads
 add_project_link_arguments('-pthread', language: 'c')
 dpdk_extra_ldflags += '-pthread'

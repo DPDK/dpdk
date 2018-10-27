@@ -29,7 +29,7 @@ foreach app:apps
 	# use "deps" for internal DPDK dependencies, and "ext_deps" for
 	# external package/library requirements
 	ext_deps = []
-	deps = []
+	deps = dpdk_app_link_libraries
 
 	subdir(name)
 
@@ -43,7 +43,7 @@ foreach app:apps
 
 		link_libs = []
 		if get_option('default_library') == 'static'
-			link_libs = dpdk_drivers
+			link_libs = dpdk_static_libraries + dpdk_drivers
 		endif
 
 		if allow_experimental_apis

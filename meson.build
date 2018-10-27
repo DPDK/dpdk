@@ -12,8 +12,10 @@ project('DPDK', 'C',
 cc = meson.get_compiler('c')
 dpdk_conf = configuration_data()
 dpdk_libraries = []
+dpdk_static_libraries = []
 dpdk_drivers = []
 dpdk_extra_ldflags = []
+dpdk_app_link_libraries = []
 
 driver_install_path = join_paths(get_option('libdir'), 'dpdk/drivers')
 eal_pmd_path = join_paths(get_option('prefix'), driver_install_path)
