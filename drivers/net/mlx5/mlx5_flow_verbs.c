@@ -1669,10 +1669,6 @@ flow_verbs_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 			verbs->hrxq = NULL;
 		}
 	}
-	if (flow->counter) {
-		flow_verbs_counter_release(flow->counter);
-		flow->counter = NULL;
-	}
 }
 
 /**
@@ -1695,6 +1691,10 @@ flow_verbs_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 		dev_flow = LIST_FIRST(&flow->dev_flows);
 		LIST_REMOVE(dev_flow, next);
 		rte_free(dev_flow);
+	}
+	if (flow->counter) {
+		flow_verbs_counter_release(flow->counter);
+		flow->counter = NULL;
 	}
 }
 
