@@ -42,6 +42,7 @@
 #include <rte_devargs.h>
 #include <rte_version.h>
 #include <rte_vfio.h>
+#include <rte_option.h>
 #include <rte_atomic.h>
 #include <malloc_heap.h>
 
@@ -414,12 +415,20 @@ eal_parse_args(int argc, char **argv)
 	argvopt = argv;
 	optind = 1;
 	optreset = 1;
+	opterr = 0;
 
 	while ((opt = getopt_long(argc, argvopt, eal_short_options,
 				  eal_long_options, &option_index)) != EOF) {
 
-		/* getopt is not happy, stop right now */
+		/*
+		 * getopt didn't recognise the option, lets parse the
+		 * registered options to see if the flag is valid
+		 */
 		if (opt == '?') {
+			ret = rte_option_parse(argv[optind-1]);
+			if (ret == 0)
+				continue;
+
 			eal_usage(prgname);
 			ret = -1;
 			goto out;
@@ -790,6 +799,9 @@ rte_eal_init(int argc, char **argv)
 	}
 
 	rte_eal_mcfg_complete();
+
+	/* Call each registered callback, if enabled */
+	rte_option_init();
 
 	return fctret;
 }

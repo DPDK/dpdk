@@ -349,4 +349,25 @@ dev_sigbus_handler_register(void);
 int
 dev_sigbus_handler_unregister(void);
 
+/**
+ * Check if the option is registered.
+ *
+ * @param option
+ *  The option to be parsed.
+ *
+ * @return
+ *  0 on success
+ * @return
+ *  -1 on fail
+ */
+int
+rte_option_parse(const char *opt);
+
+/**
+ * Iterate through the registered options and execute the associated
+ * callback if enabled.
+ */
+void
+rte_option_init(void);
+
 #endif /* _EAL_PRIVATE_H_ */

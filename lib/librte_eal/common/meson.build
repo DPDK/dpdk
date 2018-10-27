@@ -34,6 +34,7 @@ common_sources = files(
 	'malloc_mp.c',
 	'rte_keepalive.c',
 	'rte_malloc.c',
+	'rte_option.c',
 	'rte_reciprocal.c',
 	'rte_service.c'
 )
@@ -71,6 +72,7 @@ common_headers = files(
 	'include/rte_malloc_heap.h',
 	'include/rte_memory.h',
 	'include/rte_memzone.h',
+	'include/rte_option.h',
 	'include/rte_pci_dev_feature_defs.h',
 	'include/rte_pci_dev_features.h',
 	'include/rte_per_lcore.h',
