@@ -17,6 +17,7 @@
 
 #include "rte_telemetry.h"
 #include "rte_telemetry_internal.h"
+#include "rte_telemetry_parser.h"
 
 #define BUF_SIZE 1024
 #define ACTION_POST 1
@@ -283,6 +284,7 @@ rte_telemetry_accept_new_client(struct telemetry_impl *telemetry)
 static int32_t
 rte_telemetry_read_client_sockets(struct telemetry_impl *telemetry)
 {
+	int ret;
 	telemetry_client *client;
 	char client_buf[BUF_SIZE];
 	int bytes;
@@ -293,6 +295,12 @@ rte_telemetry_read_client_sockets(struct telemetry_impl *telemetry)
 		if (bytes > 0) {
 			client_buf[bytes] = '\0';
 			telemetry->request_client = client;
+			ret = rte_telemetry_parse(telemetry, client_buf);
+			if (ret < 0) {
+				TELEMETRY_LOG_WARN("Parse socket input failed: %i",
+						ret);
+				return -1;
+			}
 		}
 	}
 

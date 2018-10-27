@@ -43,6 +43,11 @@ typedef struct telemetry_impl {
 	int register_fail_count;
 } telemetry_impl;
 
+enum rte_telemetry_parser_actions {
+	ACTION_GET = 0,
+	ACTION_DELETE = 2
+};
+
 int32_t
 rte_telemetry_parse_client_message(struct telemetry_impl *telemetry, char *buf);
 
@@ -57,5 +62,13 @@ rte_telemetry_register_client(struct telemetry_impl *telemetry,
 int32_t
 rte_telemetry_unregister_client(struct telemetry_impl *telemetry,
 	const char *client_path);
+
+/**
+ * This is a wrapper for the ethdev api rte_eth_find_next().
+ * If rte_eth_find_next() returns the same port id that we passed it,
+ * then we know that that port is active.
+ */
+int32_t
+rte_telemetry_is_port_active(int port_id);
 
 #endif
