@@ -25,7 +25,7 @@ libraries = [ 'compat', # just a header, used for versioning
 	# add pkt framework libs which use other libs from above
 	'port', 'table', 'pipeline',
 	# flow_classify lib depends on pkt framework table lib
-	'flow_classify', 'bpf']
+	'flow_classify', 'bpf', 'telemetry']
 
 default_cflags = machine_args
 if cc.has_argument('-Wno-format-truncation')

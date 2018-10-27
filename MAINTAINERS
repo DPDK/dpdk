@@ -1201,6 +1201,10 @@ Latency statistics
 M: Reshma Pattan <reshma.pattan@intel.com>
 F: lib/librte_latencystats/
 
+Telemetry - EXPERIMENTAL
+M: Kevin Laatz <kevin.laatz@intel.com>
+F: lib/librte_telemetry/
+
 BPF - EXPERIMENTAL
 M: Konstantin Ananyev <konstantin.ananyev@intel.com>
 F: lib/librte_bpf/

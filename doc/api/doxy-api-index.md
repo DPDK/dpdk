@@ -155,6 +155,7 @@ The public API headers are grouped by topics:
 
 - **debug**:
   [jobstats]           (@ref rte_jobstats.h),
+  [telemetry]          (@ref rte_telemetry.h),
   [pdump]              (@ref rte_pdump.h),
   [hexdump]            (@ref rte_hexdump.h),
   [debug]              (@ref rte_debug.h),

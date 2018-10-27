@@ -1,0 +1,8 @@
+EXPERIMENTAL {
+	global:
+
+	rte_telemetry_cleanup;
+	rte_telemetry_init;
+
+	local: *;
+};
