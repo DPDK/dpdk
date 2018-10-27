@@ -660,6 +660,7 @@ rte_telemetry_initial_accept(struct telemetry_impl *telemetry)
 {
 	uint16_t pid;
 	int ret;
+	int selftest = 0;
 
 	RTE_ETH_FOREACH_DEV(pid) {
 		telemetry->reg_index = rte_telemetry_reg_ethdev_to_metrics(pid);
@@ -672,18 +673,20 @@ rte_telemetry_initial_accept(struct telemetry_impl *telemetry)
 	}
 
 	telemetry->metrics_register_done = 1;
-	ret = rte_telemetry_socket_messaging_testing(telemetry->reg_index,
-		telemetry->server_fd);
-	if (ret < 0)
-		return -1;
+	if (selftest) {
+		ret = rte_telemetry_socket_messaging_testing(telemetry->reg_index,
+				telemetry->server_fd);
+		if (ret < 0)
+			return -1;
 
-	ret = rte_telemetry_parser_test(telemetry);
-	if (ret < 0) {
-		TELEMETRY_LOG_ERR("Parser Tests Failed");
-		return -1;
+		ret = rte_telemetry_parser_test(telemetry);
+		if (ret < 0) {
+			TELEMETRY_LOG_ERR("Parser Tests Failed");
+			return -1;
+		}
+
+		TELEMETRY_LOG_INFO("Success - All Parser Tests Passed");
 	}
-
-	TELEMETRY_LOG_INFO("Success - All Parser Tests Passed");
 
 	return 0;
 }
