@@ -1204,6 +1204,7 @@ F: lib/librte_latencystats/
 Telemetry - EXPERIMENTAL
 M: Kevin Laatz <kevin.laatz@intel.com>
 F: lib/librte_telemetry/
+F: usertools/dpdk-telemetry-client.py
 
 BPF - EXPERIMENTAL
 M: Konstantin Ananyev <konstantin.ananyev@intel.com>
