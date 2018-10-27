@@ -507,6 +507,15 @@ enum rte_iova_mode rte_eal_iova_mode(void);
 const char *
 rte_eal_mbuf_user_pool_ops(void);
 
+/**
+ * Get the runtime directory of DPDK
+ *
+ * @return
+ *  The runtime directory path of DPDK
+ */
+const char *
+rte_eal_get_runtime_dir(void);
+
 #ifdef __cplusplus
 }
 #endif

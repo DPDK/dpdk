@@ -150,7 +150,7 @@ eal_create_runtime_dir(void)
 }
 
 const char *
-eal_get_runtime_dir(void)
+rte_eal_get_runtime_dir(void)
 {
 	return runtime_dir;
 }
