@@ -408,6 +408,13 @@ rte_compressdev_dequeue_burst(uint8_t dev_id, uint16_t qp_id,
  * @note All compression operations are Out-of-place (OOP) operations,
  * as the size of the output data is different to the size of the input data.
  *
+ * @note The rte_comp_op contains both input and output parameters and is the
+ * vehicle for the application to pass data into and out of the PMD. While an
+ * op is inflight, i.e. once it has been enqueued, the private_xform or stream
+ * attached to it and any mbufs or memory referenced by it should not be altered
+ * or freed by the application. The PMD may use or change some of this data at
+ * any time until it has been returned in a dequeue operation.
+ *
  * @note The flush flag only applies to operations which return SUCCESS.
  * In OUT_OF_SPACE cases whether STATEFUL or STATELESS, data in dest buffer
  * is as if flush flag was FLUSH_NONE.
