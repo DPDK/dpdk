@@ -17,3 +17,4 @@ HowTo Guides
     virtio_user_for_container_networking
     virtio_user_as_exceptional_path
     packet_capture_framework
+    telemetry

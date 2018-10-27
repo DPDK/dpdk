@@ -254,6 +254,12 @@ New Features
   to containers and host applications that need to have their cores frequency
   controlled based on the rules contained in the policy.
 
+* **Added Telemetry API.**
+
+  Added the telemetry API which allows applications to transparently expose
+  their telemetry via a UNIX socket in JSON. The JSON can be consumed by any
+  Service Assurance agent, such as CollectD.
+
 * **Added ability to switch queue deferred start flag on testpmd app.**
 
   Added a console command to testpmd app, giving ability to switch
