@@ -46,6 +46,78 @@ rte_telemetry_is_port_active(int port_id)
 	return 0;
 }
 
+static int32_t
+rte_telemetry_update_metrics_ethdev(struct telemetry_impl *telemetry,
+	uint16_t port_id, int reg_start_index)
+{
+	int ret, num_xstats, i;
+	struct rte_eth_xstat *eth_xstats;
+
+	if (!rte_eth_dev_is_valid_port(port_id)) {
+		TELEMETRY_LOG_ERR("port_id: %d is invalid", port_id);
+		ret = rte_telemetry_send_error_response(telemetry, -EINVAL);
+		if (ret < 0)
+			TELEMETRY_LOG_ERR("Could not send error");
+		return -1;
+	}
+
+	ret = rte_telemetry_is_port_active(port_id);
+	if (ret < 1) {
+		ret = rte_telemetry_send_error_response(telemetry, -EINVAL);
+		if (ret < 0)
+			TELEMETRY_LOG_ERR("Could not send error");
+		return -1;
+	}
+
+	num_xstats = rte_eth_xstats_get(port_id, NULL, 0);
+	if (num_xstats < 0) {
+		TELEMETRY_LOG_ERR("rte_eth_xstats_get(%u) failed: %d", port_id,
+				num_xstats);
+		ret = rte_telemetry_send_error_response(telemetry, -EPERM);
+		if (ret < 0)
+			TELEMETRY_LOG_ERR("Could not send error");
+		return -1;
+	}
+
+	eth_xstats = malloc(sizeof(struct rte_eth_xstat) * num_xstats);
+	if (eth_xstats == NULL) {
+		TELEMETRY_LOG_ERR("Failed to malloc memory for xstats");
+		ret = rte_telemetry_send_error_response(telemetry, -ENOMEM);
+		if (ret < 0)
+			TELEMETRY_LOG_ERR("Could not send error");
+		return -1;
+	}
+
+	ret = rte_eth_xstats_get(port_id, eth_xstats, num_xstats);
+	if (ret < 0 || ret > num_xstats) {
+		free(eth_xstats);
+		TELEMETRY_LOG_ERR("rte_eth_xstats_get(%u) len%i failed: %d",
+				port_id, num_xstats, ret);
+		ret = rte_telemetry_send_error_response(telemetry, -EPERM);
+		if (ret < 0)
+			TELEMETRY_LOG_ERR("Could not send error");
+		return -1;
+	}
+
+	uint64_t xstats_values[num_xstats];
+	for (i = 0; i < num_xstats; i++)
+		xstats_values[i] = eth_xstats[i].value;
+
+	ret = rte_metrics_update_values(port_id, reg_start_index, xstats_values,
+			num_xstats);
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("Could not update metrics values");
+		ret = rte_telemetry_send_error_response(telemetry, -EPERM);
+		if (ret < 0)
+			TELEMETRY_LOG_ERR("Could not send error");
+		free(eth_xstats);
+		return -1;
+	}
+
+	free(eth_xstats);
+	return 0;
+}
+
 int32_t
 rte_telemetry_write_to_socket(struct telemetry_impl *telemetry,
 	const char *json_string)
@@ -129,6 +201,68 @@ rte_telemetry_send_error_response(struct telemetry_impl *telemetry,
 
 	return 0;
 }
+
+int32_t
+rte_telemetry_send_ports_stats_values(uint32_t *metric_ids, int num_metric_ids,
+	uint32_t *port_ids, int num_port_ids, struct telemetry_impl *telemetry)
+{
+	int ret, i;
+	char *json_buffer = NULL;
+
+	if (telemetry == NULL) {
+		TELEMETRY_LOG_ERR("Invalid telemetry argument");
+		return -1;
+	}
+
+	if (metric_ids == NULL) {
+		TELEMETRY_LOG_ERR("Invalid metric_ids array");
+		goto einval_fail;
+	}
+
+	if (num_metric_ids < 0) {
+		TELEMETRY_LOG_ERR("Invalid num_metric_ids, must be positive");
+		goto einval_fail;
+	}
+
+	if (port_ids == NULL) {
+		TELEMETRY_LOG_ERR("Invalid port_ids array");
+		goto einval_fail;
+	}
+
+	if (num_port_ids < 0) {
+		TELEMETRY_LOG_ERR("Invalid num_port_ids, must be positive");
+		goto einval_fail;
+	}
+
+	for (i = 0; i < num_port_ids; i++) {
+		if (!rte_eth_dev_is_valid_port(port_ids[i])) {
+			TELEMETRY_LOG_ERR("Port: %d invalid", port_ids[i]);
+			goto einval_fail;
+		}
+
+		ret = rte_telemetry_update_metrics_ethdev(telemetry,
+			port_ids[i], telemetry->reg_index);
+		if (ret < 0) {
+			TELEMETRY_LOG_ERR("Failed to update ethdev metrics");
+			return -1;
+		}
+	}
+
+	ret = rte_telemetry_write_to_socket(telemetry, json_buffer);
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("Could not write to socket");
+		return -1;
+	}
+
+	return 0;
+
+einval_fail:
+	ret = rte_telemetry_send_error_response(telemetry, -EINVAL);
+	if (ret < 0)
+		TELEMETRY_LOG_ERR("Could not send error");
+	return -1;
+}
+
 
 static int32_t
 rte_telemetry_reg_ethdev_to_metrics(uint16_t port_id)

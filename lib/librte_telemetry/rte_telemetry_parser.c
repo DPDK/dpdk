@@ -258,6 +258,7 @@ rte_telemetry_command_ports_all_stat_values(struct telemetry_impl *telemetry,
 	int ret, num_metrics, i, p;
 	struct rte_metric_name *names;
 	uint64_t num_port_ids = 0;
+	uint32_t port_ids[RTE_MAX_ETHPORTS];
 
 	if (telemetry == NULL) {
 		TELEMETRY_LOG_ERR("Invalid telemetry argument");
@@ -313,6 +314,7 @@ rte_telemetry_command_ports_all_stat_values(struct telemetry_impl *telemetry,
 	uint32_t stat_ids[num_metrics];
 
 	RTE_ETH_FOREACH_DEV(p) {
+		port_ids[num_port_ids] = p;
 		num_port_ids++;
 	}
 
@@ -334,6 +336,13 @@ rte_telemetry_command_ports_all_stat_values(struct telemetry_impl *telemetry,
 		num_metrics);
 	if (ret < 0) {
 		TELEMETRY_LOG_ERR("Could not convert stat names to IDs");
+		goto fail;
+	}
+
+	ret = rte_telemetry_send_ports_stats_values(stat_ids, num_metrics,
+		port_ids, num_port_ids, telemetry);
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("Sending ports stats values failed");
 		goto fail;
 	}
 
@@ -428,6 +437,14 @@ rte_telemetry_command_ports_stats_values_by_name(struct telemetry_impl
 		TELEMETRY_LOG_ERR("Could not convert stat names to IDs");
 		return -1;
 	}
+
+	ret = rte_telemetry_send_ports_stats_values(stat_ids, num_stat_names,
+		port_ids, num_port_ids, telemetry);
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("Sending ports stats values failed");
+		return -1;
+	}
+
 	return 0;
 }
 
