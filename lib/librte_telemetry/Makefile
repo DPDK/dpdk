@@ -22,6 +22,7 @@ LIBABIVER := 1
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_TELEMETRY) := rte_telemetry.c
 SRCS-$(CONFIG_RTE_LIBRTE_TELEMETRY) += rte_telemetry_parser.c
+SRCS-$(CONFIG_RTE_LIBRTE_TELEMETRY) += rte_telemetry_parser_test.c
 
 # export include files
 SYMLINK-$(CONFIG_RTE_LIBRTE_TELEMETRY)-include := rte_telemetry.h

@@ -75,4 +75,7 @@ int32_t
 rte_telemetry_send_ports_stats_values(uint32_t *metric_ids, int num_metric_ids,
 	uint32_t *port_ids, int num_port_ids, struct telemetry_impl *telemetry);
 
+int32_t
+rte_telemetry_socket_messaging_testing(int index, int socket);
+
 #endif

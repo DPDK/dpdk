@@ -18,12 +18,31 @@
 #include "rte_telemetry.h"
 #include "rte_telemetry_internal.h"
 #include "rte_telemetry_parser.h"
+#include "rte_telemetry_parser_test.h"
+#include "rte_telemetry_socket_tests.h"
 
 #define BUF_SIZE 1024
 #define ACTION_POST 1
 #define SLEEP_TIME 10
 
+#define SELFTEST_VALID_CLIENT "/var/run/dpdk/valid_client"
+#define SELFTEST_INVALID_CLIENT "/var/run/dpdk/invalid_client"
+#define SOCKET_TEST_CLIENT_PATH "/var/run/dpdk/client"
+
 static telemetry_impl *static_telemetry;
+
+struct telemetry_message_test {
+	char *test_name;
+	int (*test_func_ptr)(struct telemetry_impl *telemetry, int fd);
+};
+
+struct json_data {
+	char *status_code;
+	char *data;
+	int port;
+	char *stat_name;
+	int stat_value;
+};
 
 static void
 rte_telemetry_get_runtime_dir(char *socket_path, size_t size)
@@ -190,7 +209,7 @@ rte_telemetry_send_error_response(struct telemetry_impl *telemetry,
 		return -EPERM;
 	}
 
-	json_buffer = json_dumps(root, JSON_INDENT(2));
+	json_buffer = json_dumps(root, 0);
 	json_decref(root);
 
 	ret = rte_telemetry_write_to_socket(telemetry, json_buffer);
@@ -200,6 +219,304 @@ rte_telemetry_send_error_response(struct telemetry_impl *telemetry,
 	}
 
 	return 0;
+}
+
+static int
+rte_telemetry_get_metrics(struct telemetry_impl *telemetry, uint32_t port_id,
+	struct rte_metric_value *metrics, struct rte_metric_name *names,
+	int num_metrics)
+{
+	int ret, num_values;
+
+	if (num_metrics < 0) {
+		TELEMETRY_LOG_ERR("Invalid metrics count");
+		goto einval_fail;
+	} else if (num_metrics == 0) {
+		TELEMETRY_LOG_ERR("No metrics to display (none have been registered)");
+		goto eperm_fail;
+	}
+
+	if (metrics == NULL) {
+		TELEMETRY_LOG_ERR("Metrics must be initialised.");
+		goto einval_fail;
+	}
+
+	if (names == NULL) {
+		TELEMETRY_LOG_ERR("Names must be initialised.");
+		goto einval_fail;
+	}
+
+	ret = rte_metrics_get_names(names, num_metrics);
+	if (ret < 0 || ret > num_metrics) {
+		TELEMETRY_LOG_ERR("Cannot get metrics names");
+		goto eperm_fail;
+	}
+
+	num_values = rte_metrics_get_values(port_id, NULL, 0);
+	ret = rte_metrics_get_values(port_id, metrics, num_values);
+	if (ret < 0 || ret > num_values) {
+		TELEMETRY_LOG_ERR("Cannot get metrics values");
+		goto eperm_fail;
+	}
+
+	return 0;
+
+eperm_fail:
+	ret = rte_telemetry_send_error_response(telemetry, -EPERM);
+	if (ret < 0)
+		TELEMETRY_LOG_ERR("Could not send error");
+	return -1;
+
+einval_fail:
+	ret = rte_telemetry_send_error_response(telemetry, -EINVAL);
+	if (ret < 0)
+		TELEMETRY_LOG_ERR("Could not send error");
+	return -1;
+
+}
+
+static int32_t
+rte_telemetry_json_format_stat(struct telemetry_impl *telemetry, json_t *stats,
+	const char *metric_name, uint64_t metric_value)
+{
+	int ret;
+	json_t *stat = json_object();
+
+	if (stat == NULL) {
+		TELEMETRY_LOG_ERR("Could not create stat JSON object");
+		goto eperm_fail;
+	}
+
+	ret = json_object_set_new(stat, "name", json_string(metric_name));
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("Stat Name field cannot be set");
+		goto eperm_fail;
+	}
+
+	ret = json_object_set_new(stat, "value", json_integer(metric_value));
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("Stat Value field cannot be set");
+		goto eperm_fail;
+	}
+
+	ret = json_array_append_new(stats, stat);
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("Stat cannot be added to stats json array");
+		goto eperm_fail;
+	}
+
+	return 0;
+
+eperm_fail:
+	ret = rte_telemetry_send_error_response(telemetry, -EPERM);
+	if (ret < 0)
+		TELEMETRY_LOG_ERR("Could not send error");
+	return -1;
+
+}
+
+static int32_t
+rte_telemetry_json_format_port(struct telemetry_impl *telemetry,
+	uint32_t port_id, json_t *ports, uint32_t *metric_ids,
+	uint32_t num_metric_ids)
+{
+	struct rte_metric_value *metrics = 0;
+	struct rte_metric_name *names = 0;
+	int num_metrics, ret, err_ret;
+	json_t *port, *stats;
+	uint32_t i;
+
+	num_metrics = rte_metrics_get_names(NULL, 0);
+	if (num_metrics < 0) {
+		TELEMETRY_LOG_ERR("Cannot get metrics count");
+		goto einval_fail;
+	} else if (num_metrics == 0) {
+		TELEMETRY_LOG_ERR("No metrics to display (none have been registered)");
+		goto eperm_fail;
+	}
+
+	metrics = malloc(sizeof(struct rte_metric_value) * num_metrics);
+	names = malloc(sizeof(struct rte_metric_name) * num_metrics);
+	if (metrics == NULL || names == NULL) {
+		TELEMETRY_LOG_ERR("Cannot allocate memory");
+		free(metrics);
+		free(names);
+
+		err_ret = rte_telemetry_send_error_response(telemetry, -ENOMEM);
+		if (err_ret < 0)
+			TELEMETRY_LOG_ERR("Could not send error");
+		return -1;
+	}
+
+	ret  = rte_telemetry_get_metrics(telemetry, port_id, metrics, names,
+		num_metrics);
+	if (ret < 0) {
+		free(metrics);
+		free(names);
+		TELEMETRY_LOG_ERR("rte_telemetry_get_metrics failed");
+		return -1;
+	}
+
+	port = json_object();
+	stats = json_array();
+	if (port == NULL || stats == NULL) {
+		TELEMETRY_LOG_ERR("Could not create port/stats JSON objects");
+		goto eperm_fail;
+	}
+
+	ret = json_object_set_new(port, "port", json_integer(port_id));
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("Port field cannot be set");
+		goto eperm_fail;
+	}
+
+	for (i = 0; i < num_metric_ids; i++) {
+		int metric_id = metric_ids[i];
+		int metric_index = -1;
+		int metric_name_key = -1;
+		int32_t j;
+		uint64_t metric_value;
+
+		if (metric_id >= num_metrics) {
+			TELEMETRY_LOG_ERR("Metric_id: %d is not valid",
+					metric_id);
+			goto einval_fail;
+		}
+
+		for (j = 0; j < num_metrics; j++) {
+			if (metrics[j].key == metric_id) {
+				metric_name_key = metrics[j].key;
+				metric_index = j;
+				break;
+			}
+		}
+
+		const char *metric_name = names[metric_name_key].name;
+		metric_value = metrics[metric_index].value;
+
+		if (metric_name_key < 0 || metric_index < 0) {
+			TELEMETRY_LOG_ERR("Could not get metric name/index");
+			goto eperm_fail;
+		}
+
+		ret = rte_telemetry_json_format_stat(telemetry, stats,
+			metric_name, metric_value);
+		if (ret < 0) {
+			TELEMETRY_LOG_ERR("Format stat with id: %u failed",
+					metric_id);
+			free(metrics);
+			free(names);
+			return -1;
+		}
+	}
+
+	if (json_array_size(stats) == 0)
+		ret = json_object_set_new(port, "stats", json_null());
+	else
+		ret = json_object_set_new(port, "stats", stats);
+
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("Stats object cannot be set");
+		goto eperm_fail;
+	}
+
+	ret = json_array_append_new(ports, port);
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("Port object cannot be added to ports array");
+		goto eperm_fail;
+	}
+
+	free(metrics);
+	free(names);
+	return 0;
+
+eperm_fail:
+	free(metrics);
+	free(names);
+	ret = rte_telemetry_send_error_response(telemetry, -EPERM);
+	if (ret < 0)
+		TELEMETRY_LOG_ERR("Could not send error");
+	return -1;
+
+einval_fail:
+	free(metrics);
+	free(names);
+	ret = rte_telemetry_send_error_response(telemetry, -EINVAL);
+	if (ret < 0)
+		TELEMETRY_LOG_ERR("Could not send error");
+	return -1;
+}
+
+static int32_t
+rte_telemetry_encode_json_format(struct telemetry_impl *telemetry,
+	uint32_t *port_ids, uint32_t num_port_ids, uint32_t *metric_ids,
+	uint32_t num_metric_ids, char **json_buffer)
+{
+	int ret;
+	json_t *root, *ports;
+	uint32_t i;
+
+	if (num_port_ids <= 0 || num_metric_ids <= 0) {
+		TELEMETRY_LOG_ERR("Please provide port and metric ids to query");
+		goto einval_fail;
+	}
+
+	ports = json_array();
+	if (ports == NULL) {
+		TELEMETRY_LOG_ERR("Could not create ports JSON array");
+		goto eperm_fail;
+	}
+
+	for (i = 0; i < num_port_ids; i++) {
+		if (!rte_eth_dev_is_valid_port(port_ids[i])) {
+			TELEMETRY_LOG_ERR("Port: %d invalid", port_ids[i]);
+			goto einval_fail;
+		}
+	}
+
+	for (i = 0; i < num_port_ids; i++) {
+		ret = rte_telemetry_json_format_port(telemetry, port_ids[i],
+			ports, metric_ids, num_metric_ids);
+		if (ret < 0) {
+			TELEMETRY_LOG_ERR("Format port in JSON failed");
+			return -1;
+		}
+	}
+
+	root = json_object();
+	if (root == NULL) {
+		TELEMETRY_LOG_ERR("Could not create root JSON object");
+		goto eperm_fail;
+	}
+
+	ret = json_object_set_new(root, "status_code",
+		json_string("Status OK: 200"));
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("Status code field cannot be set");
+		goto eperm_fail;
+	}
+
+	ret = json_object_set_new(root, "data", ports);
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("Data field cannot be set");
+		goto eperm_fail;
+	}
+
+	*json_buffer = json_dumps(root, JSON_INDENT(2));
+	json_decref(root);
+	return 0;
+
+eperm_fail:
+	ret = rte_telemetry_send_error_response(telemetry, -EPERM);
+	if (ret < 0)
+		TELEMETRY_LOG_ERR("Could not send error");
+	return -1;
+
+einval_fail:
+	ret = rte_telemetry_send_error_response(telemetry, -EINVAL);
+	if (ret < 0)
+		TELEMETRY_LOG_ERR("Could not send error");
+	return -1;
 }
 
 int32_t
@@ -241,11 +558,18 @@ rte_telemetry_send_ports_stats_values(uint32_t *metric_ids, int num_metric_ids,
 		}
 
 		ret = rte_telemetry_update_metrics_ethdev(telemetry,
-			port_ids[i], telemetry->reg_index);
+				port_ids[i], telemetry->reg_index);
 		if (ret < 0) {
 			TELEMETRY_LOG_ERR("Failed to update ethdev metrics");
 			return -1;
 		}
+	}
+
+	ret = rte_telemetry_encode_json_format(telemetry, port_ids,
+		num_port_ids, metric_ids, num_metric_ids, &json_buffer);
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("JSON encode function failed");
+		return -1;
 	}
 
 	ret = rte_telemetry_write_to_socket(telemetry, json_buffer);
@@ -335,6 +659,7 @@ static int32_t
 rte_telemetry_initial_accept(struct telemetry_impl *telemetry)
 {
 	uint16_t pid;
+	int ret;
 
 	RTE_ETH_FOREACH_DEV(pid) {
 		telemetry->reg_index = rte_telemetry_reg_ethdev_to_metrics(pid);
@@ -347,6 +672,18 @@ rte_telemetry_initial_accept(struct telemetry_impl *telemetry)
 	}
 
 	telemetry->metrics_register_done = 1;
+	ret = rte_telemetry_socket_messaging_testing(telemetry->reg_index,
+		telemetry->server_fd);
+	if (ret < 0)
+		return -1;
+
+	ret = rte_telemetry_parser_test(telemetry);
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("Parser Tests Failed");
+		return -1;
+	}
+
+	TELEMETRY_LOG_INFO("Success - All Parser Tests Passed");
 
 	return 0;
 }
@@ -832,6 +1169,627 @@ fail:
 	TELEMETRY_LOG_WARN("Client attempted to register with invalid message");
 	json_decref(root);
 	return -1;
+}
+
+int32_t
+rte_telemetry_dummy_client_socket(const char *valid_client_path)
+{
+	int sockfd = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+	struct sockaddr_un addr = {0};
+
+	if (sockfd < 0) {
+		TELEMETRY_LOG_ERR("Test socket creation failure");
+		return -1;
+	}
+
+	addr.sun_family = AF_UNIX;
+	strlcpy(addr.sun_path, valid_client_path, sizeof(addr.sun_path));
+	unlink(valid_client_path);
+
+	if (bind(sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+		TELEMETRY_LOG_ERR("Test socket binding failure");
+		return -1;
+	}
+
+	if (listen(sockfd, 1) < 0) {
+		TELEMETRY_LOG_ERR("Listen failure");
+		return -1;
+	}
+
+	return sockfd;
+}
+
+int32_t __rte_experimental
+rte_telemetry_selftest(void)
+{
+	const char *invalid_client_path = SELFTEST_INVALID_CLIENT;
+	const char *valid_client_path = SELFTEST_VALID_CLIENT;
+	int ret, sockfd;
+
+	TELEMETRY_LOG_INFO("Selftest");
+
+	ret = rte_telemetry_init();
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("Valid initialisation test failed");
+		return -1;
+	}
+
+	TELEMETRY_LOG_INFO("Success - Valid initialisation test passed");
+
+	ret = rte_telemetry_init();
+	if (ret != -EALREADY) {
+		TELEMETRY_LOG_ERR("Invalid initialisation test failed");
+		return -1;
+	}
+
+	TELEMETRY_LOG_INFO("Success - Invalid initialisation test passed");
+
+	ret = rte_telemetry_unregister_client(static_telemetry,
+			invalid_client_path);
+	if (ret != -EPERM) {
+		TELEMETRY_LOG_ERR("Invalid unregister test failed");
+		return -1;
+	}
+
+	TELEMETRY_LOG_INFO("Success - Invalid unregister test passed");
+
+	sockfd = rte_telemetry_dummy_client_socket(valid_client_path);
+	if (sockfd < 0) {
+		TELEMETRY_LOG_ERR("Test socket creation failed");
+		return -1;
+	}
+
+	ret = rte_telemetry_register_client(static_telemetry, valid_client_path);
+	if (ret != 0) {
+		TELEMETRY_LOG_ERR("Valid register test failed: %i", ret);
+		return -1;
+	}
+
+	accept(sockfd, NULL, NULL);
+	TELEMETRY_LOG_INFO("Success - Valid register test passed");
+
+	ret = rte_telemetry_register_client(static_telemetry, valid_client_path);
+	if (ret != -EINVAL) {
+		TELEMETRY_LOG_ERR("Invalid register test failed: %i", ret);
+		return -1;
+	}
+
+	TELEMETRY_LOG_INFO("Success - Invalid register test passed");
+
+	ret = rte_telemetry_unregister_client(static_telemetry,
+		invalid_client_path);
+	if (ret != -1) {
+		TELEMETRY_LOG_ERR("Invalid unregister test failed: %i", ret);
+		return -1;
+	}
+
+	TELEMETRY_LOG_INFO("Success - Invalid unregister test passed");
+
+	ret = rte_telemetry_unregister_client(static_telemetry, valid_client_path);
+	if (ret != 0) {
+		TELEMETRY_LOG_ERR("Valid unregister test failed: %i", ret);
+		return -1;
+	}
+
+	TELEMETRY_LOG_INFO("Success - Valid unregister test passed");
+
+	ret = rte_telemetry_cleanup();
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("Cleanup test failed");
+		return -1;
+	}
+
+	TELEMETRY_LOG_INFO("Success - Valid cleanup test passed");
+
+	return 0;
+}
+
+int32_t
+rte_telemetry_socket_messaging_testing(int index, int socket)
+{
+	struct telemetry_impl *telemetry = calloc(1, sizeof(telemetry_impl));
+	int fd, bad_send_fd, send_fd, bad_fd, bad_recv_fd, recv_fd, ret;
+
+	if (telemetry == NULL) {
+		TELEMETRY_LOG_ERR("Could not initialize Telemetry API");
+		return -1;
+	}
+
+	telemetry->server_fd = socket;
+	telemetry->reg_index = index;
+	TELEMETRY_LOG_INFO("Beginning Telemetry socket message Selftest");
+	rte_telemetry_socket_test_setup(telemetry, &send_fd, &recv_fd);
+	TELEMETRY_LOG_INFO("Register valid client test");
+
+	ret = rte_telemetry_socket_register_test(telemetry, &fd, send_fd,
+		recv_fd);
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("Register valid client test failed!");
+		free(telemetry);
+		return -1;
+	}
+
+	TELEMETRY_LOG_INFO("Success - Register valid client test passed!");
+
+	TELEMETRY_LOG_INFO("Register invalid/same client test");
+	ret = rte_telemetry_socket_test_setup(telemetry, &bad_send_fd,
+		&bad_recv_fd);
+	ret = rte_telemetry_socket_register_test(telemetry, &bad_fd,
+		bad_send_fd, bad_recv_fd);
+	if (!ret) {
+		TELEMETRY_LOG_ERR("Register invalid/same client test failed!");
+		free(telemetry);
+		return -1;
+	}
+
+	TELEMETRY_LOG_INFO("Success - Register invalid/same client test passed!");
+
+	ret = rte_telemetry_json_socket_message_test(telemetry, fd);
+	if (ret < 0) {
+		free(telemetry);
+		return -1;
+	}
+
+	free(telemetry);
+	return 0;
+}
+
+int32_t
+rte_telemetry_socket_register_test(struct telemetry_impl *telemetry, int *fd,
+	int send_fd, int recv_fd)
+{
+	int ret;
+	char good_req_string[BUF_SIZE];
+
+	snprintf(good_req_string, sizeof(good_req_string),
+	"{\"action\":1,\"command\":\"clients\",\"data\":{\"client_path\""
+		":\"%s\"}}", SOCKET_TEST_CLIENT_PATH);
+
+	listen(recv_fd, 1);
+
+	ret = send(send_fd, good_req_string, strlen(good_req_string), 0);
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("Could not send message over socket");
+		return -1;
+	}
+
+	rte_telemetry_run(telemetry);
+
+	if (telemetry->register_fail_count != 0)
+		return -1;
+
+	*fd = accept(recv_fd, NULL, NULL);
+
+	return 0;
+}
+
+int32_t
+rte_telemetry_socket_test_setup(struct telemetry_impl *telemetry, int *send_fd,
+	int *recv_fd)
+{
+	int ret;
+	const char *client_path = SOCKET_TEST_CLIENT_PATH;
+	char socket_path[BUF_SIZE];
+	struct sockaddr_un addr = {0};
+	struct sockaddr_un addrs = {0};
+	*send_fd = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+	*recv_fd = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+
+	listen(telemetry->server_fd, 5);
+	addr.sun_family = AF_UNIX;
+	rte_telemetry_get_runtime_dir(socket_path, sizeof(socket_path));
+	strlcpy(addr.sun_path, socket_path, sizeof(addr.sun_path));
+
+	ret = connect(*send_fd, (struct sockaddr *) &addr, sizeof(addr));
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("Could not connect socket");
+		return -1;
+	}
+
+	telemetry->accept_fd = accept(telemetry->server_fd, NULL, NULL);
+
+	addrs.sun_family = AF_UNIX;
+	strlcpy(addrs.sun_path, client_path, sizeof(addrs.sun_path));
+	unlink(client_path);
+
+	ret = bind(*recv_fd, (struct sockaddr *)&addrs, sizeof(addrs));
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("Could not bind socket");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int32_t
+rte_telemetry_stat_parse(char *buf, struct json_data *json_data_struct)
+{
+	json_error_t error;
+	json_t *root = json_loads(buf, 0, &error);
+	int arraylen, i;
+	json_t *status, *dataArray, *port, *stats, *name, *value, *dataArrayObj,
+	       *statsArrayObj;
+
+	stats = NULL;
+	port = NULL;
+	name = NULL;
+
+	if (buf == NULL) {
+		TELEMETRY_LOG_ERR("JSON message is NULL");
+		return -EINVAL;
+	}
+
+	if (root == NULL) {
+		TELEMETRY_LOG_ERR("Could not load JSON object from data passed in : %s",
+				error.text);
+		return -EPERM;
+	} else if (!json_is_object(root)) {
+		TELEMETRY_LOG_ERR("JSON Request is not a JSON object");
+		json_decref(root);
+		return -EINVAL;
+	}
+
+	status = json_object_get(root, "status_code");
+	if (!status) {
+		TELEMETRY_LOG_ERR("Request does not have status field");
+		return -EINVAL;
+	} else if (!json_is_string(status)) {
+		TELEMETRY_LOG_ERR("Status value is not a string");
+		return -EINVAL;
+	}
+
+	json_data_struct->status_code = strdup(json_string_value(status));
+
+	dataArray = json_object_get(root, "data");
+	if (dataArray == NULL) {
+		TELEMETRY_LOG_ERR("Request does not have data field");
+		return -EINVAL;
+	}
+
+	arraylen = json_array_size(dataArray);
+	if (arraylen == 0) {
+		json_data_struct->data = "null";
+		return -EINVAL;
+	}
+
+	for (i = 0; i < arraylen; i++) {
+		dataArrayObj = json_array_get(dataArray, i);
+		port = json_object_get(dataArrayObj, "port");
+		stats = json_object_get(dataArrayObj, "stats");
+	}
+
+	if (port == NULL) {
+		TELEMETRY_LOG_ERR("Request does not have port field");
+		return -EINVAL;
+	}
+
+	if (!json_is_integer(port)) {
+		TELEMETRY_LOG_ERR("Port value is not an integer");
+		return -EINVAL;
+	}
+
+	json_data_struct->port = json_integer_value(port);
+
+	if (stats == NULL) {
+		TELEMETRY_LOG_ERR("Request does not have stats field");
+		return -EINVAL;
+	}
+
+	arraylen = json_array_size(stats);
+	for (i = 0; i < arraylen; i++) {
+		statsArrayObj = json_array_get(stats, i);
+		name = json_object_get(statsArrayObj, "name");
+		value = json_object_get(statsArrayObj, "value");
+	}
+
+	if (name == NULL) {
+		TELEMETRY_LOG_ERR("Request does not have name field");
+		return -EINVAL;
+	}
+
+	if (!json_is_string(name)) {
+		TELEMETRY_LOG_ERR("Stat name value is not a string");
+		return -EINVAL;
+	}
+
+	json_data_struct->stat_name = strdup(json_string_value(name));
+
+	if (value == NULL) {
+		TELEMETRY_LOG_ERR("Request does not have value field");
+		return -EINVAL;
+	}
+
+	if (!json_is_integer(value)) {
+		TELEMETRY_LOG_ERR("Stat value is not an integer");
+		return -EINVAL;
+	}
+
+	json_data_struct->stat_value = json_integer_value(value);
+
+	return 0;
+}
+
+static void
+rte_telemetry_free_test_data(struct json_data *data)
+{
+	free(data->status_code);
+	free(data->stat_name);
+	free(data);
+}
+
+int32_t
+rte_telemetry_valid_json_test(struct telemetry_impl *telemetry, int fd)
+{
+	int ret;
+	int port = 0;
+	int value = 0;
+	int fail_count = 0;
+	int buffer_read = 0;
+	char buf[BUF_SIZE];
+	struct json_data *data_struct;
+	errno = 0;
+	const char *status = "Status OK: 200";
+	const char *name = "rx_good_packets";
+	const char *valid_json_message = "{\"action\":0,\"command\":"
+	"\"ports_stats_values_by_name\",\"data\":{\"ports\""
+	":[0],\"stats\":[\"rx_good_packets\"]}}";
+
+	ret = send(fd, valid_json_message, strlen(valid_json_message), 0);
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("Could not send message over socket");
+		return -1;
+	}
+
+	rte_telemetry_run(telemetry);
+	buffer_read = recv(fd, buf, BUF_SIZE-1, 0);
+
+	if (buffer_read == -1) {
+		TELEMETRY_LOG_ERR("Read error");
+		return -1;
+	}
+
+	buf[buffer_read] = '\0';
+	data_struct = calloc(1, sizeof(struct json_data));
+	ret = rte_telemetry_stat_parse(buf, data_struct);
+
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("Could not parse stats");
+		fail_count++;
+	}
+
+	if (strcmp(data_struct->status_code, status) != 0) {
+		TELEMETRY_LOG_ERR("Status code is invalid");
+		fail_count++;
+	}
+
+	if (data_struct->port != port) {
+		TELEMETRY_LOG_ERR("Port is invalid");
+		fail_count++;
+	}
+
+	if (strcmp(data_struct->stat_name, name) != 0) {
+		TELEMETRY_LOG_ERR("Stat name is invalid");
+		fail_count++;
+	}
+
+	if (data_struct->stat_value != value) {
+		TELEMETRY_LOG_ERR("Stat value is invalid");
+		fail_count++;
+	}
+
+	rte_telemetry_free_test_data(data_struct);
+	if (fail_count > 0)
+		return -1;
+
+	TELEMETRY_LOG_INFO("Success - Passed valid JSON message test passed");
+
+	return 0;
+}
+
+int32_t
+rte_telemetry_invalid_json_test(struct telemetry_impl *telemetry, int fd)
+{
+	int ret;
+	char buf[BUF_SIZE];
+	int fail_count = 0;
+	const char *invalid_json = "{]";
+	const char *status = "Status Error: Unknown";
+	const char *data = "null";
+	struct json_data *data_struct;
+	int buffer_read = 0;
+	errno = 0;
+
+	ret = send(fd, invalid_json, strlen(invalid_json), 0);
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("Could not send message over socket");
+		return -1;
+	}
+
+	rte_telemetry_run(telemetry);
+	buffer_read = recv(fd, buf, BUF_SIZE-1, 0);
+
+	if (buffer_read == -1) {
+		TELEMETRY_LOG_ERR("Read error");
+		return -1;
+	}
+
+	buf[buffer_read] = '\0';
+
+	data_struct = calloc(1, sizeof(struct json_data));
+	ret = rte_telemetry_stat_parse(buf, data_struct);
+
+	if (ret < 0)
+		TELEMETRY_LOG_ERR("Could not parse stats");
+
+	if (strcmp(data_struct->status_code, status) != 0) {
+		TELEMETRY_LOG_ERR("Status code is invalid");
+		fail_count++;
+	}
+
+	if (strcmp(data_struct->data, data) != 0) {
+		TELEMETRY_LOG_ERR("Data status is invalid");
+		fail_count++;
+	}
+
+	rte_telemetry_free_test_data(data_struct);
+	if (fail_count > 0)
+		return -1;
+
+	TELEMETRY_LOG_INFO("Success - Passed invalid JSON message test");
+
+	return 0;
+}
+
+int32_t
+rte_telemetry_json_contents_test(struct telemetry_impl *telemetry, int fd)
+{
+	int ret;
+	char buf[BUF_SIZE];
+	int fail_count = 0;
+	char *status = "Status Error: Invalid Argument 404";
+	char *data = "null";
+	struct json_data *data_struct;
+	const char *invalid_contents = "{\"action\":0,\"command\":"
+	"\"ports_stats_values_by_name\",\"data\":{\"ports\""
+	":[0],\"stats\":[\"some_invalid_param\","
+	"\"another_invalid_param\"]}}";
+	int buffer_read = 0;
+	errno = 0;
+
+	ret = send(fd, invalid_contents, strlen(invalid_contents), 0);
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("Could not send message over socket");
+		return -1;
+	}
+
+	rte_telemetry_run(telemetry);
+	buffer_read = recv(fd, buf, BUF_SIZE-1, 0);
+
+	if (buffer_read == -1) {
+		TELEMETRY_LOG_ERR("Read error");
+		return -1;
+	}
+
+	buf[buffer_read] = '\0';
+	data_struct = calloc(1, sizeof(struct json_data));
+	ret = rte_telemetry_stat_parse(buf, data_struct);
+
+	if (ret < 0)
+		TELEMETRY_LOG_ERR("Could not parse stats");
+
+	if (strcmp(data_struct->status_code, status) != 0) {
+		TELEMETRY_LOG_ERR("Status code is invalid");
+		fail_count++;
+	}
+
+	if (strcmp(data_struct->data, data) != 0) {
+		TELEMETRY_LOG_ERR("Data status is invalid");
+		fail_count++;
+	}
+
+	rte_telemetry_free_test_data(data_struct);
+	if (fail_count > 0)
+		return -1;
+
+	TELEMETRY_LOG_INFO("Success - Passed invalid JSON content test");
+
+	return 0;
+}
+
+int32_t
+rte_telemetry_json_empty_test(struct telemetry_impl *telemetry, int fd)
+{
+	int ret;
+	char buf[BUF_SIZE];
+	int fail_count = 0;
+	const char *status = "Status Error: Invalid Argument 404";
+	char *data = "null";
+	struct json_data *data_struct;
+	const char *empty_json  = "{}";
+	int buffer_read = 0;
+	errno = 0;
+
+	ret = (send(fd, empty_json, strlen(empty_json), 0));
+	if (ret < 0) {
+		TELEMETRY_LOG_ERR("Could not send message over socket");
+		return -1;
+	}
+
+	rte_telemetry_run(telemetry);
+	buffer_read = recv(fd, buf, BUF_SIZE-1, 0);
+
+	if (buffer_read == -1) {
+		TELEMETRY_LOG_ERR("Read error");
+		return -1;
+	}
+
+	buf[buffer_read] = '\0';
+	data_struct = calloc(1, sizeof(struct json_data));
+	ret = rte_telemetry_stat_parse(buf, data_struct);
+
+	if (ret < 0)
+		TELEMETRY_LOG_ERR("Could not parse stats");
+
+	if (strcmp(data_struct->status_code, status) != 0) {
+		TELEMETRY_LOG_ERR("Status code is invalid");
+		fail_count++;
+	}
+
+	if (strcmp(data_struct->data, data) != 0) {
+		TELEMETRY_LOG_ERR("Data status is invalid");
+		fail_count++;
+	}
+
+	rte_telemetry_free_test_data(data_struct);
+
+	if (fail_count > 0)
+		return -1;
+
+	TELEMETRY_LOG_INFO("Success - Passed JSON empty message test");
+
+	return 0;
+}
+
+int32_t
+rte_telemetry_json_socket_message_test(struct telemetry_impl *telemetry, int fd)
+{
+	uint16_t i;
+	int ret, fail_count;
+
+	fail_count = 0;
+	struct telemetry_message_test socket_json_tests[] = {
+		{.test_name = "Invalid JSON test",
+			.test_func_ptr = rte_telemetry_invalid_json_test},
+		{.test_name = "Valid JSON test",
+			.test_func_ptr = rte_telemetry_valid_json_test},
+		{.test_name = "JSON contents test",
+			.test_func_ptr = rte_telemetry_json_contents_test},
+		{.test_name = "JSON empty tests",
+			.test_func_ptr = rte_telemetry_json_empty_test}
+		};
+
+#define NUM_TESTS RTE_DIM(socket_json_tests)
+
+	for (i = 0; i < NUM_TESTS; i++) {
+		TELEMETRY_LOG_INFO("%s", socket_json_tests[i].test_name);
+		ret = (socket_json_tests[i].test_func_ptr)
+			(telemetry, fd);
+		if (ret < 0) {
+			TELEMETRY_LOG_ERR("%s failed",
+					socket_json_tests[i].test_name);
+			fail_count++;
+		}
+	}
+
+	if (fail_count > 0) {
+		TELEMETRY_LOG_ERR("Failed %i JSON socket message test(s)",
+				fail_count);
+		return -1;
+	}
+
+	TELEMETRY_LOG_INFO("Success - All JSON tests passed");
+
+	return 0;
 }
 
 int telemetry_log_level;

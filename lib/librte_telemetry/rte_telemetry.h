@@ -48,4 +48,19 @@ rte_telemetry_init(void);
 int32_t __rte_experimental
 rte_telemetry_cleanup(void);
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Runs various tests to ensure telemetry initialisation and register/unregister
+ * functions are working correctly.
+ *
+ * @return
+ *  0 on success when all tests have passed
+ * @return
+ *  -1 on failure when the test has failed
+ */
+int32_t __rte_experimental
+rte_telemetry_selftest(void);
+
 #endif
