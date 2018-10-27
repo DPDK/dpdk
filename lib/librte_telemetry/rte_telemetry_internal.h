@@ -24,9 +24,13 @@ extern int telemetry_log_level;
 	TELEMETRY_LOG(INFO, fmt, ## args)
 
 typedef struct telemetry_impl {
+	int accept_fd;
+	int server_fd;
 	pthread_t thread_id;
 	int thread_status;
 	uint32_t socket_id;
+	int reg_index;
+	int metrics_register_done;
 } telemetry_impl;
 
 #endif
