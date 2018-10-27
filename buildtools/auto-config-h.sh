@@ -23,7 +23,7 @@ name=${5:?define/type/function name required}
 
 : ${CC:=cc}
 
-temp=$(mktemp -t dpdk.${0##*/}.XXX.c)
+temp=$(mktemp -t dpdk.${0##*/}.c.XXXXXX)
 
 case $type in
 define)
@@ -86,7 +86,7 @@ printf "\
 " "$include" "$code" > "${temp}" &&
 if ${CC} ${CPPFLAGS} ${EXTRA_CPPFLAGS} ${CFLAGS} ${EXTRA_CFLAGS} \
 	${AUTO_CONFIG_CFLAGS} \
-	-c -o ${temp}.o "${temp}" 1>&${out} 2>&${err}
+	-xc -c -o ${temp}.o "${temp}" 1>&${out} 2>&${err}
 then
 	rm -f "${temp}" "${temp}.o"
 	printf "\
