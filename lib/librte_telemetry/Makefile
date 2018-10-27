@@ -13,6 +13,7 @@ CFLAGS += -DALLOW_EXPERIMENTAL_API
 LDLIBS += -lrte_eal -lrte_ethdev
 LDLIBS += -lrte_metrics
 LDLIBS += -lpthread
+LDLIBS += -ljansson
 
 EXPORT_MAP := rte_telemetry_version.map
 
