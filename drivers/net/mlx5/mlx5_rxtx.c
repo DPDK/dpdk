@@ -417,20 +417,17 @@ mlx5_tx_descriptor_status(void *tx_queue, uint16_t offset)
 }
 
 /**
- * DPDK callback to check the status of a rx descriptor.
+ * Internal function to compute the number of used descriptors in an RX queue
  *
- * @param rx_queue
- *   The rx queue.
- * @param[in] offset
- *   The index of the descriptor in the ring.
+ * @param rxq
+ *   The Rx queue.
  *
  * @return
- *   The status of the tx descriptor.
+ *   The number of used rx descriptor.
  */
-int
-mlx5_rx_descriptor_status(void *rx_queue, uint16_t offset)
+static uint32_t
+rx_queue_count(struct mlx5_rxq_data *rxq)
 {
-	struct mlx5_rxq_data *rxq = rx_queue;
 	struct rxq_zip *zip = &rxq->zip;
 	volatile struct mlx5_cqe *cqe;
 	const unsigned int cqe_n = (1 << rxq->cqe_n);
@@ -461,9 +458,70 @@ mlx5_rx_descriptor_status(void *rx_queue, uint16_t offset)
 		cqe = &(*rxq->cqes)[cq_ci & cqe_cnt];
 	}
 	used = RTE_MIN(used, (1U << rxq->elts_n) - 1);
-	if (offset < used)
+	return used;
+}
+
+/**
+ * DPDK callback to check the status of a rx descriptor.
+ *
+ * @param rx_queue
+ *   The Rx queue.
+ * @param[in] offset
+ *   The index of the descriptor in the ring.
+ *
+ * @return
+ *   The status of the tx descriptor.
+ */
+int
+mlx5_rx_descriptor_status(void *rx_queue, uint16_t offset)
+{
+	struct mlx5_rxq_data *rxq = rx_queue;
+	struct mlx5_rxq_ctrl *rxq_ctrl =
+			container_of(rxq, struct mlx5_rxq_ctrl, rxq);
+	struct rte_eth_dev *dev = ETH_DEV(rxq_ctrl->priv);
+
+	if (dev->rx_pkt_burst != mlx5_rx_burst) {
+		rte_errno = ENOTSUP;
+		return -rte_errno;
+	}
+	if (offset >= (1 << rxq->elts_n)) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	if (offset < rx_queue_count(rxq))
 		return RTE_ETH_RX_DESC_DONE;
 	return RTE_ETH_RX_DESC_AVAIL;
+}
+
+/**
+ * DPDK callback to get the number of used descriptors in a RX queue
+ *
+ * @param dev
+ *   Pointer to the device structure.
+ *
+ * @param rx_queue_id
+ *   The Rx queue.
+ *
+ * @return
+ *   The number of used rx descriptor.
+ *   -EINVAL if the queue is invalid
+ */
+uint32_t
+mlx5_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct mlx5_rxq_data *rxq;
+
+	if (dev->rx_pkt_burst != mlx5_rx_burst) {
+		rte_errno = ENOTSUP;
+		return -rte_errno;
+	}
+	rxq = (*priv->rxqs)[rx_queue_id];
+	if (!rxq) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	return rx_queue_count(rxq);
 }
 
 /**
