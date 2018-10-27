@@ -174,7 +174,7 @@ rte_comp_op_alloc(struct rte_mempool *mempool)
 	int retval;
 
 	retval = rte_comp_op_raw_bulk_alloc(mempool, &op, 1);
-	if (unlikely(retval < 0))
+	if (unlikely(retval != 1))
 		return NULL;
 
 	rte_comp_op_reset(op);
@@ -186,12 +186,12 @@ int __rte_experimental
 rte_comp_op_bulk_alloc(struct rte_mempool *mempool,
 		struct rte_comp_op **ops, uint16_t nb_ops)
 {
-	int ret;
+	int retval;
 	uint16_t i;
 
-	ret = rte_comp_op_raw_bulk_alloc(mempool, ops, nb_ops);
-	if (unlikely(ret < nb_ops))
-		return ret;
+	retval = rte_comp_op_raw_bulk_alloc(mempool, ops, nb_ops);
+	if (unlikely(retval != nb_ops))
+		return 0;
 
 	for (i = 0; i < nb_ops; i++)
 		rte_comp_op_reset(ops[i]);
