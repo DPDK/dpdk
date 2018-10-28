@@ -25,7 +25,7 @@ typedef int (parse_cb)(struct rte_eth_dev *dev, const char *params,
 uint64_t hotplug_poll = FAILSAFE_HOTPLUG_DEFAULT_TIMEOUT_MS;
 int mac_from_arg = 0;
 
-const char *pmd_failsafe_init_parameters[] = {
+static const char * const pmd_failsafe_init_parameters[] = {
 	PMD_FAILSAFE_HOTPLUG_POLL_KVARG,
 	PMD_FAILSAFE_MAC_KVARG,
 	NULL,

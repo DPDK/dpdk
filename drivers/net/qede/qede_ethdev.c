@@ -1089,7 +1089,7 @@ static void qede_dev_stop(struct rte_eth_dev *eth_dev)
 	DP_INFO(edev, "Device is stopped\n");
 }
 
-const char *valid_args[] = {
+static const char * const valid_args[] = {
 	QEDE_NPAR_TX_SWITCHING,
 	QEDE_VF_TX_SWITCHING,
 	NULL,

@@ -35,7 +35,7 @@
 #include "rte_eventdev.h"
 #include "rte_eventdev_pmd.h"
 
-struct rte_eventdev rte_event_devices[RTE_EVENT_MAX_DEVS];
+static struct rte_eventdev rte_event_devices[RTE_EVENT_MAX_DEVS];
 
 struct rte_eventdev *rte_eventdevs = &rte_event_devices[0];
 

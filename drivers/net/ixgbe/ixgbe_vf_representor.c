@@ -135,7 +135,7 @@ ixgbe_vf_representor_vlan_strip_queue_set(struct rte_eth_dev *ethdev,
 		representor->vf_id, on);
 }
 
-struct eth_dev_ops ixgbe_vf_representor_dev_ops = {
+static const struct eth_dev_ops ixgbe_vf_representor_dev_ops = {
 	.dev_infos_get		= ixgbe_vf_representor_dev_infos_get,
 
 	.dev_start		= ixgbe_vf_representor_dev_start,

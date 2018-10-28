@@ -1811,7 +1811,7 @@ tap_flow_implicit_flush(struct pmd_internals *pmd, struct rte_flow_error *error)
 #define KEY_IDX_OFFSET (3 * MAX_RSS_KEYS)
 #define SEC_NAME_CLS_Q "cls_q"
 
-const char *sec_name[SEC_MAX] = {
+static const char *sec_name[SEC_MAX] = {
 	[SEC_L3_L4] = "l3_l4",
 };
 

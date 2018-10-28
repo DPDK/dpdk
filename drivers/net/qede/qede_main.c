@@ -17,7 +17,7 @@
 /* Global variable to hold absolute path of fw file */
 char fw_file[PATH_MAX];
 
-const char *QEDE_DEFAULT_FIRMWARE =
+static const char * const QEDE_DEFAULT_FIRMWARE =
 	"/lib/firmware/qed/qed_init_values-8.37.7.0.bin";
 
 static void

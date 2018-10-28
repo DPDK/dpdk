@@ -41,7 +41,7 @@ static struct vdev_device_list vdev_device_list =
 static rte_spinlock_recursive_t vdev_device_list_lock =
 	RTE_SPINLOCK_RECURSIVE_INITIALIZER;
 
-struct vdev_driver_list vdev_driver_list =
+static struct vdev_driver_list vdev_driver_list =
 	TAILQ_HEAD_INITIALIZER(vdev_driver_list);
 
 struct vdev_custom_scan {

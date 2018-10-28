@@ -25,7 +25,7 @@
 TAILQ_HEAD(rte_devargs_list, rte_devargs);
 
 /** Global list of user devices */
-struct rte_devargs_list devargs_list =
+static struct rte_devargs_list devargs_list =
 	TAILQ_HEAD_INITIALIZER(devargs_list);
 
 static size_t

@@ -21,8 +21,6 @@ struct i40e_diag_reg_test_info {
 	u32 stride;	/* bytes between each element */
 };
 
-extern struct i40e_diag_reg_test_info i40e_reg_list[];
-
 enum i40e_status_code i40e_diag_set_loopback(struct i40e_hw *hw,
 					     enum i40e_lb_mode mode);
 enum i40e_status_code i40e_diag_fw_alive_test(struct i40e_hw *hw);

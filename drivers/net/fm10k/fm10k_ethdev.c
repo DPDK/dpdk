@@ -72,7 +72,7 @@ struct fm10k_xstats_name_off {
 	unsigned offset;
 };
 
-struct fm10k_xstats_name_off fm10k_hw_stats_strings[] = {
+static const struct fm10k_xstats_name_off fm10k_hw_stats_strings[] = {
 	{"completion_timeout_count", offsetof(struct fm10k_hw_stats, timeout)},
 	{"unsupported_requests_count", offsetof(struct fm10k_hw_stats, ur)},
 	{"completer_abort_count", offsetof(struct fm10k_hw_stats, ca)},
@@ -87,7 +87,7 @@ struct fm10k_xstats_name_off fm10k_hw_stats_strings[] = {
 #define FM10K_NB_HW_XSTATS (sizeof(fm10k_hw_stats_strings) / \
 		sizeof(fm10k_hw_stats_strings[0]))
 
-struct fm10k_xstats_name_off fm10k_hw_stats_rx_q_strings[] = {
+static const struct fm10k_xstats_name_off fm10k_hw_stats_rx_q_strings[] = {
 	{"packets", offsetof(struct fm10k_hw_stats_q, rx_packets)},
 	{"bytes", offsetof(struct fm10k_hw_stats_q, rx_bytes)},
 	{"dropped", offsetof(struct fm10k_hw_stats_q, rx_drops)},
@@ -96,7 +96,7 @@ struct fm10k_xstats_name_off fm10k_hw_stats_rx_q_strings[] = {
 #define FM10K_NB_RX_Q_XSTATS (sizeof(fm10k_hw_stats_rx_q_strings) / \
 		sizeof(fm10k_hw_stats_rx_q_strings[0]))
 
-struct fm10k_xstats_name_off fm10k_hw_stats_tx_q_strings[] = {
+static const struct fm10k_xstats_name_off fm10k_hw_stats_tx_q_strings[] = {
 	{"packets", offsetof(struct fm10k_hw_stats_q, tx_packets)},
 	{"bytes", offsetof(struct fm10k_hw_stats_q, tx_bytes)},
 };

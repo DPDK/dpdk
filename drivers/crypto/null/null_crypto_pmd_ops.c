@@ -308,7 +308,7 @@ null_crypto_pmd_sym_session_clear(struct rte_cryptodev *dev,
 	}
 }
 
-struct rte_cryptodev_ops pmd_ops = {
+static struct rte_cryptodev_ops pmd_ops = {
 		.dev_configure		= null_crypto_pmd_config,
 		.dev_start		= null_crypto_pmd_start,
 		.dev_stop		= null_crypto_pmd_stop,

@@ -5,7 +5,7 @@
 #include <tap_bpf.h>
 
 /* bpf_insn array matching cls_q section. See tap_bpf_program.c file */
-struct bpf_insn cls_q_insns[] = {
+static struct bpf_insn cls_q_insns[] = {
 	{0x61,    2,    1,       52, 0x00000000},
 	{0x18,    3,    0,        0, 0xdeadbeef},
 	{0x00,    0,    0,        0, 0x00000000},
@@ -24,7 +24,7 @@ struct bpf_insn cls_q_insns[] = {
 };
 
 /* bpf_insn array matching l3_l4 section. see tap_bpf_program.c file */
-struct bpf_insn l3_l4_hash_insns[] = {
+static struct bpf_insn l3_l4_hash_insns[] = {
 	{0xbf,    7,    1,        0, 0x00000000},
 	{0x61,    8,    7,       16, 0x00000000},
 	{0x61,    6,    7,       76, 0x00000000},

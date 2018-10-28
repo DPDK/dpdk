@@ -667,7 +667,7 @@ action_switch:
 	return 0;
 }
 
-struct chrte_fparse parseitem[] = {
+static struct chrte_fparse parseitem[] = {
 	[RTE_FLOW_ITEM_TYPE_ETH] = {
 		.fptr  = ch_rte_parsetype_eth,
 		.dmask = &(const struct rte_flow_item_eth){

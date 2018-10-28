@@ -55,7 +55,7 @@ static enum i40e_status_code i40e_diag_reg_pattern_test(struct i40e_hw *hw,
 	return I40E_SUCCESS;
 }
 
-struct i40e_diag_reg_test_info i40e_reg_list[] = {
+static struct i40e_diag_reg_test_info i40e_reg_list[] = {
 	/* offset               mask         elements   stride */
 	{I40E_QTX_CTL(0),       0x0000FFBF, 1, I40E_QTX_CTL(1) - I40E_QTX_CTL(0)},
 	{I40E_PFINT_ITR0(0),    0x00000FFF, 3, I40E_PFINT_ITR0(1) - I40E_PFINT_ITR0(0)},

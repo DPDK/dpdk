@@ -28,7 +28,7 @@
 #define PMD_PARAM_TM_QSIZE2                                "tm_qsize2"
 #define PMD_PARAM_TM_QSIZE3                                "tm_qsize3"
 
-static const char *pmd_valid_args[] = {
+static const char * const pmd_valid_args[] = {
 	PMD_PARAM_FIRMWARE,
 	PMD_PARAM_CONN_PORT,
 	PMD_PARAM_CPU_ID,
@@ -47,7 +47,7 @@ static const char welcome[] =
 
 static const char prompt[] = "softnic> ";
 
-struct softnic_conn_params conn_params_default = {
+static const struct softnic_conn_params conn_params_default = {
 	.welcome = welcome,
 	.prompt = prompt,
 	.addr = "0.0.0.0",

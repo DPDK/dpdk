@@ -17,7 +17,7 @@
 /* Array of memzone pointers */
 static const struct rte_memzone *ecore_mz_mapping[RTE_MAX_MEMZONE];
 /* Counter to track current memzone allocated */
-uint16_t ecore_mz_count;
+static uint16_t ecore_mz_count;
 
 unsigned long qede_log2_align(unsigned long n)
 {

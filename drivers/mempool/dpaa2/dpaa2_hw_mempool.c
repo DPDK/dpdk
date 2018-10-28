@@ -402,7 +402,7 @@ dpaa2_populate(struct rte_mempool *mp, unsigned int max_objs,
 					       obj_cb, obj_cb_arg);
 }
 
-struct rte_mempool_ops dpaa2_mpool_ops = {
+static const struct rte_mempool_ops dpaa2_mpool_ops = {
 	.name = DPAA2_MEMPOOL_OPS_NAME,
 	.alloc = rte_hw_mbuf_create_pool,
 	.free = rte_hw_mbuf_free_pool,

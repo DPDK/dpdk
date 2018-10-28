@@ -21,7 +21,7 @@
 /* This data structure contaings all configurations information
  * related to usages of DPA devices.
  */
-struct netcfg_info *netcfg;
+static struct netcfg_info *netcfg;
 /* fd to open a socket for making ioctl request to disable/enable shared
  *  interfaces.
  */

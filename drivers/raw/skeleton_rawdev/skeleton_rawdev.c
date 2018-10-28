@@ -32,7 +32,7 @@
 int skeleton_pmd_logtype;
 
 /* Count of instances */
-uint16_t skeldev_init_once;
+static uint16_t skeldev_init_once;
 
 /**< Rawdev Skeleton dummy driver name */
 #define SKELETON_PMD_RAWDEV_NAME rawdev_skeleton

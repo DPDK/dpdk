@@ -420,7 +420,7 @@ i40e_vf_representor_vlan_pvid_set(struct rte_eth_dev *ethdev, uint16_t vlan_id,
 		representor->vf_id, vlan_id);
 }
 
-struct eth_dev_ops i40e_representor_dev_ops = {
+static const struct eth_dev_ops i40e_representor_dev_ops = {
 	.dev_infos_get        = i40e_vf_representor_dev_infos_get,
 
 	.dev_start            = i40e_vf_representor_dev_start,

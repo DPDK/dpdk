@@ -4311,7 +4311,7 @@ enum rte_eth_switch_domain_state {
  * RTE_MAX_ETHPORTS elements as there cannot be more active switch domains than
  * ethdev ports in a single process.
  */
-struct rte_eth_dev_switch {
+static struct rte_eth_dev_switch {
 	enum rte_eth_switch_domain_state state;
 } rte_eth_switch_domains[RTE_MAX_ETHPORTS];
 

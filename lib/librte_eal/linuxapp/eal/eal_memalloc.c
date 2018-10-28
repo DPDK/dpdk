@@ -61,7 +61,7 @@ const int anonymous_hugepages_supported =
  * and/or memfd with hugetlbfs, so we need to be able to adjust this flag at
  * runtime, and fall back to anonymous memory.
  */
-int memfd_create_supported =
+static int memfd_create_supported =
 #ifdef MFD_HUGETLB
 #define MEMFD_SUPPORTED
 		1;

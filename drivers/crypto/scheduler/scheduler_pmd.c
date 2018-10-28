@@ -38,7 +38,7 @@ struct scheduler_init_params {
 #define RTE_CRYPTODEV_VDEV_COREMASK		("coremask")
 #define RTE_CRYPTODEV_VDEV_CORELIST		("corelist")
 
-const char *scheduler_valid_params[] = {
+static const char * const scheduler_valid_params[] = {
 	RTE_CRYPTODEV_VDEV_NAME,
 	RTE_CRYPTODEV_VDEV_SLAVE,
 	RTE_CRYPTODEV_VDEV_MODE,

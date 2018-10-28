@@ -81,7 +81,7 @@ enum pdump_by {
 	DEVICE_ID = 2
 };
 
-const char *valid_pdump_arguments[] = {
+static const char * const valid_pdump_arguments[] = {
 	PDUMP_PORT_ARG,
 	PDUMP_PCI_ARG,
 	PDUMP_QUEUE_ARG,
@@ -136,9 +136,9 @@ struct parse_val {
 	uint64_t val;
 };
 
-int num_tuples;
+static int num_tuples;
 static struct rte_eth_conf port_conf_default;
-volatile uint8_t quit_signal;
+static volatile uint8_t quit_signal;
 
 /**< display usage */
 static void

@@ -9,7 +9,7 @@
 #include <rte_class.h>
 #include <rte_debug.h>
 
-struct rte_class_list rte_class_list =
+static struct rte_class_list rte_class_list =
 	TAILQ_HEAD_INITIALIZER(rte_class_list);
 
 __rte_experimental void

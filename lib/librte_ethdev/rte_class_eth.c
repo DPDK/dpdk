@@ -166,7 +166,7 @@ eth_dev_iterate(const void *start,
 	return edev;
 }
 
-struct rte_class rte_class_eth = {
+static struct rte_class rte_class_eth = {
 	.dev_iterate = eth_dev_iterate,
 };
 

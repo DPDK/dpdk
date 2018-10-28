@@ -522,7 +522,7 @@ scheduler_pmd_sym_session_clear(struct rte_cryptodev *dev,
 	}
 }
 
-struct rte_cryptodev_ops scheduler_pmd_ops = {
+static struct rte_cryptodev_ops scheduler_pmd_ops = {
 		.dev_configure		= scheduler_pmd_config,
 		.dev_start		= scheduler_pmd_start,
 		.dev_stop		= scheduler_pmd_stop,

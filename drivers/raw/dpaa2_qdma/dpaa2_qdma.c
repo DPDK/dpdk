@@ -34,10 +34,10 @@ static struct qdma_hw_queue_list qdma_queue_list
 	= TAILQ_HEAD_INITIALIZER(qdma_queue_list);
 
 /* QDMA Virtual Queues */
-struct qdma_virt_queue *qdma_vqs;
+static struct qdma_virt_queue *qdma_vqs;
 
 /* QDMA per core data */
-struct qdma_per_core_info qdma_core_info[RTE_MAX_LCORE];
+static struct qdma_per_core_info qdma_core_info[RTE_MAX_LCORE];
 
 static struct qdma_hw_queue *
 alloc_hw_queue(uint32_t lcore_id)

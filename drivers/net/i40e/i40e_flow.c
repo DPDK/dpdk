@@ -133,8 +133,8 @@ const struct rte_flow_ops i40e_flow_ops = {
 	.flush = i40e_flow_flush,
 };
 
-union i40e_filter_t cons_filter;
-enum rte_filter_type cons_filter_type = RTE_ETH_FILTER_NONE;
+static union i40e_filter_t cons_filter;
+static enum rte_filter_type cons_filter_type = RTE_ETH_FILTER_NONE;
 
 /* Pattern matched ethertype filter */
 static enum rte_flow_item_type pattern_ethertype[] = {

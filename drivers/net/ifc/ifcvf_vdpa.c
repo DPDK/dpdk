@@ -718,7 +718,7 @@ ifcvf_get_protocol_features(int did __rte_unused, uint64_t *features)
 	return 0;
 }
 
-struct rte_vdpa_dev_ops ifcvf_ops = {
+static struct rte_vdpa_dev_ops ifcvf_ops = {
 	.get_queue_num = ifcvf_get_queue_num,
 	.get_features = ifcvf_get_vdpa_features,
 	.get_protocol_features = ifcvf_get_protocol_features,

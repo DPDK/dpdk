@@ -2270,7 +2270,7 @@ dpaa_sec_capabilities_get(void *device __rte_unused)
 	return dpaa_sec_security_cap;
 }
 
-struct rte_security_ops dpaa_sec_security_ops = {
+static const struct rte_security_ops dpaa_sec_security_ops = {
 	.session_create = dpaa_sec_security_session_create,
 	.session_update = NULL,
 	.session_stats_get = NULL,

@@ -21,8 +21,8 @@ struct crc_pclmulqdq_ctx {
 	__m128i rk7_rk8;
 };
 
-struct crc_pclmulqdq_ctx crc32_eth_pclmulqdq __rte_aligned(16);
-struct crc_pclmulqdq_ctx crc16_ccitt_pclmulqdq __rte_aligned(16);
+static struct crc_pclmulqdq_ctx crc32_eth_pclmulqdq __rte_aligned(16);
+static struct crc_pclmulqdq_ctx crc16_ccitt_pclmulqdq __rte_aligned(16);
 /**
  * @brief Performs one folding round
  *

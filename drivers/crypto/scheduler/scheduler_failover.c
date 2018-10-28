@@ -197,7 +197,7 @@ scheduler_create_private_ctx(__rte_unused struct rte_cryptodev *dev)
 	return 0;
 }
 
-struct rte_cryptodev_scheduler_ops scheduler_fo_ops = {
+static struct rte_cryptodev_scheduler_ops scheduler_fo_ops = {
 	slave_attach,
 	slave_detach,
 	scheduler_start,
@@ -208,7 +208,7 @@ struct rte_cryptodev_scheduler_ops scheduler_fo_ops = {
 	NULL	/*option_get */
 };
 
-struct rte_cryptodev_scheduler fo_scheduler = {
+static struct rte_cryptodev_scheduler fo_scheduler = {
 		.name = "failover-scheduler",
 		.description = "scheduler which enqueues to the primary slave, "
 				"and only then enqueues to the secondary slave "

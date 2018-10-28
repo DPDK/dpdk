@@ -533,7 +533,7 @@ zip_pmd_dequeue_burst_sync(void *queue_pair,
 	return nb_dequeued;
 }
 
-struct rte_compressdev_ops octtx_zip_pmd_ops = {
+static struct rte_compressdev_ops octtx_zip_pmd_ops = {
 		.dev_configure		= zip_pmd_config,
 		.dev_start		= zip_pmd_start,
 		.dev_stop		= zip_pmd_stop,

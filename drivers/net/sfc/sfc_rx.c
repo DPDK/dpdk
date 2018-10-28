@@ -1126,7 +1126,7 @@ sfc_rx_qfini(struct sfc_adapter *sa, unsigned int sw_index)
 /*
  * Mapping between RTE RSS hash functions and their EFX counterparts.
  */
-struct sfc_rss_hf_rte_to_efx sfc_rss_hf_map[] = {
+static const struct sfc_rss_hf_rte_to_efx sfc_rss_hf_map[] = {
 	{ ETH_RSS_NONFRAG_IPV4_TCP,
 	  EFX_RX_HASH(IPV4_TCP, 4TUPLE) },
 	{ ETH_RSS_NONFRAG_IPV4_UDP,
