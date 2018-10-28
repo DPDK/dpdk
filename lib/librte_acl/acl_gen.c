@@ -163,7 +163,7 @@ acl_count_sequential_groups(struct rte_acl_bitset *bits, int zero_one)
 
 	for (n = QRANGE_MIN; n < UINT8_MAX + 1; n++) {
 		if (bits->bits[n / (sizeof(bits_t) * 8)] &
-				(1 << (n % (sizeof(bits_t) * 8)))) {
+				(1U << (n % (sizeof(bits_t) * 8)))) {
 			if (zero_one == 1 && last_bit != 1)
 				ranges++;
 			last_bit = 1;

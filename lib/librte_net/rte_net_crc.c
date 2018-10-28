@@ -69,8 +69,8 @@ reflect_32bits(uint32_t val)
 	uint32_t i, res = 0;
 
 	for (i = 0; i < 32; i++)
-		if ((val & (1 << i)) != 0)
-			res |= (uint32_t)(1 << (31 - i));
+		if ((val & (1U << i)) != 0)
+			res |= (uint32_t)(1U << (31 - i));
 
 	return res;
 }
