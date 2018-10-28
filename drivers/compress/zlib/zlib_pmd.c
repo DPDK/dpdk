@@ -425,10 +425,8 @@ static struct rte_vdev_driver zlib_pmd_drv = {
 };
 
 RTE_PMD_REGISTER_VDEV(COMPRESSDEV_NAME_ZLIB_PMD, zlib_pmd_drv);
-RTE_INIT(zlib_init_log);
 
-static void
-zlib_init_log(void)
+RTE_INIT(zlib_init_log)
 {
 	zlib_logtype_driver = rte_log_register("pmd.compress.zlib");
 	if (zlib_logtype_driver >= 0)

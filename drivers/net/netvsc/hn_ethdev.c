@@ -879,9 +879,7 @@ static struct rte_vmbus_driver rte_netvsc_pmd = {
 RTE_PMD_REGISTER_VMBUS(net_netvsc, rte_netvsc_pmd);
 RTE_PMD_REGISTER_KMOD_DEP(net_netvsc, "* uio_hv_generic");
 
-RTE_INIT(hn_init_log);
-static void
-hn_init_log(void)
+RTE_INIT(hn_init_log)
 {
 	hn_logtype_init = rte_log_register("pmd.net.netvsc.init");
 	if (hn_logtype_init >= 0)
