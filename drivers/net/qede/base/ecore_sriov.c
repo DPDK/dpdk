@@ -31,7 +31,7 @@ static enum _ecore_status_t ecore_sriov_eqe_event(struct ecore_hwfn *p_hwfn,
 						  union event_ring_data *data,
 						  u8 fw_return_code);
 
-const char *ecore_channel_tlvs_string[] = {
+const char *qede_ecore_channel_tlvs_string[] = {
 	"CHANNEL_TLV_NONE",	/* ends tlv sequence */
 	"CHANNEL_TLV_ACQUIRE",
 	"CHANNEL_TLV_VPORT_START",
@@ -1280,7 +1280,7 @@ static void ecore_iov_lock_vf_pf_channel(struct ecore_hwfn *p_hwfn,
 			   ECORE_MSG_IOV,
 			   "VF[%d]: vf pf channel locked by %s\n",
 			   vf->abs_vf_id,
-			   ecore_channel_tlvs_string[tlv]);
+			   qede_ecore_channel_tlvs_string[tlv]);
 	else
 		DP_VERBOSE(p_hwfn,
 			   ECORE_MSG_IOV,
@@ -1298,7 +1298,7 @@ static void ecore_iov_unlock_vf_pf_channel(struct ecore_hwfn *p_hwfn,
 			   ECORE_MSG_IOV,
 			   "VF[%d]: vf pf channel unlocked by %s\n",
 			   vf->abs_vf_id,
-			   ecore_channel_tlvs_string[expected_tlv]);
+			   qede_ecore_channel_tlvs_string[expected_tlv]);
 	else
 		DP_VERBOSE(p_hwfn,
 			   ECORE_MSG_IOV,
@@ -1338,7 +1338,7 @@ void ecore_dp_tlv_list(struct ecore_hwfn *p_hwfn, void *tlvs_list)
 		if (ecore_iov_tlv_supported(tlv->type))
 			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
 				   "TLV number %d: type %s, length %d\n",
-				   i, ecore_channel_tlvs_string[tlv->type],
+				   i, qede_ecore_channel_tlvs_string[tlv->type],
 				   tlv->length);
 		else
 			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
@@ -2919,7 +2919,7 @@ void *ecore_iov_search_list_tlvs(struct ecore_hwfn *p_hwfn,
 		if (p_tlv->type == req_type) {
 			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
 				   "Extended tlv type %s, length %d found\n",
-				   ecore_channel_tlvs_string[p_tlv->type],
+				   qede_ecore_channel_tlvs_string[p_tlv->type],
 				   p_tlv->length);
 			return p_tlv;
 		}

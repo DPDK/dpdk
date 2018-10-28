@@ -63,7 +63,7 @@ struct scheduler_qp_ctx {
 } __rte_cache_aligned;
 
 
-extern uint8_t cryptodev_driver_id;
+extern uint8_t cryptodev_scheduler_driver_id;
 
 static __rte_always_inline uint16_t
 get_max_enqueue_order_count(struct rte_ring *order_ring, uint16_t nb_ops)

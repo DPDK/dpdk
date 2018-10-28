@@ -297,7 +297,7 @@ static void qede_print_adapter_info(struct qede_dev *qdev)
 		(info->mfw_rev >> 16) & 0xff,
 		(info->mfw_rev >> 8) & 0xff, (info->mfw_rev) & 0xff);
 	DP_INFO(edev, " Management Firmware version : %s\n", ver_str);
-	DP_INFO(edev, " Firmware file : %s\n", fw_file);
+	DP_INFO(edev, " Firmware file : %s\n", qede_fw_file);
 	DP_INFO(edev, "*********************************\n");
 }
 

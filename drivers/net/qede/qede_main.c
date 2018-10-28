@@ -15,7 +15,7 @@
 #define QEDE_ALARM_TIMEOUT_US 100000
 
 /* Global variable to hold absolute path of fw file */
-char fw_file[PATH_MAX];
+char qede_fw_file[PATH_MAX];
 
 static const char * const QEDE_DEFAULT_FIRMWARE =
 	"/lib/firmware/qed/qed_init_values-8.37.7.0.bin";
@@ -126,11 +126,11 @@ static int qed_load_firmware_data(struct ecore_dev *edev)
 	const char *fw = RTE_LIBRTE_QEDE_FW;
 
 	if (strcmp(fw, "") == 0)
-		strcpy(fw_file, QEDE_DEFAULT_FIRMWARE);
+		strcpy(qede_fw_file, QEDE_DEFAULT_FIRMWARE);
 	else
-		strcpy(fw_file, fw);
+		strcpy(qede_fw_file, fw);
 
-	fd = open(fw_file, O_RDONLY);
+	fd = open(qede_fw_file, O_RDONLY);
 	if (fd < 0) {
 		DP_ERR(edev, "Can't open firmware file\n");
 		return -ENOENT;
@@ -234,7 +234,8 @@ static int qed_slowpath_start(struct ecore_dev *edev,
 #ifdef CONFIG_ECORE_BINARY_FW
 		rc = qed_load_firmware_data(edev);
 		if (rc) {
-			DP_ERR(edev, "Failed to find fw file %s\n", fw_file);
+			DP_ERR(edev, "Failed to find fw file %s\n",
+				qede_fw_file);
 			goto err;
 		}
 #endif

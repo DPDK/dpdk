@@ -104,14 +104,14 @@ static struct feature_info port_features[] = {
 		.resource_size = sizeof(struct feature_port_header),
 		.feature_index = PORT_FEATURE_ID_HEADER,
 		.revision_id = PORT_HEADER_REVISION,
-		.ops = &port_hdr_ops,
+		.ops = &ifpga_rawdev_port_hdr_ops,
 	},
 	{
 		.name = PORT_FEATURE_ERR,
 		.resource_size = sizeof(struct feature_port_error),
 		.feature_index = PORT_FEATURE_ID_ERROR,
 		.revision_id = PORT_ERR_REVISION,
-		.ops = &port_error_ops,
+		.ops = &ifpga_rawdev_port_error_ops,
 	},
 	{
 		.name = PORT_FEATURE_UMSG,
@@ -124,14 +124,14 @@ static struct feature_info port_features[] = {
 		.resource_size = sizeof(struct feature_port_uint),
 		.feature_index = PORT_FEATURE_ID_UINT,
 		.revision_id = PORT_UINT_REVISION,
-		.ops = &port_uint_ops,
+		.ops = &ifpga_rawdev_port_uint_ops,
 	},
 	{
 		.name = PORT_FEATURE_STP,
 		.resource_size = PORT_FEATURE_STP_REGION_SIZE,
 		.feature_index = PORT_FEATURE_ID_STP,
 		.revision_id = PORT_STP_REVISION,
-		.ops = &port_stp_ops,
+		.ops = &ifpga_rawdev_port_stp_ops,
 	},
 	{
 		.name = PORT_FEATURE_UAFU,

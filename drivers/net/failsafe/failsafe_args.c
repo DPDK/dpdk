@@ -22,8 +22,8 @@
 typedef int (parse_cb)(struct rte_eth_dev *dev, const char *params,
 		uint8_t head);
 
-uint64_t hotplug_poll = FAILSAFE_HOTPLUG_DEFAULT_TIMEOUT_MS;
-int mac_from_arg = 0;
+uint64_t failsafe_hotplug_poll = FAILSAFE_HOTPLUG_DEFAULT_TIMEOUT_MS;
+int failsafe_mac_from_arg;
 
 static const char * const pmd_failsafe_init_parameters[] = {
 	PMD_FAILSAFE_HOTPLUG_POLL_KVARG,
@@ -420,7 +420,7 @@ failsafe_args_parse(struct rte_eth_dev *dev, const char *params)
 		if (arg_count == 1) {
 			ret = rte_kvargs_process(kvlist,
 					PMD_FAILSAFE_HOTPLUG_POLL_KVARG,
-					&fs_get_u64_arg, &hotplug_poll);
+					&fs_get_u64_arg, &failsafe_hotplug_poll);
 			if (ret < 0)
 				goto free_kvlist;
 		}
@@ -435,7 +435,7 @@ failsafe_args_parse(struct rte_eth_dev *dev, const char *params)
 			if (ret < 0)
 				goto free_kvlist;
 
-			mac_from_arg = 1;
+			failsafe_mac_from_arg = 1;
 		}
 	}
 	PRIV(dev)->state = DEV_PARSED;

@@ -334,7 +334,7 @@ bond_ethdev_tx_burst_8023ad_fast_queue(void *queue, struct rte_mbuf **bufs,
 
 	dist_slave_count = 0;
 	for (i = 0; i < slave_count; i++) {
-		struct port *port = &mode_8023ad_ports[slave_port_ids[i]];
+		struct port *port = &bond_mode_8023ad_ports[slave_port_ids[i]];
 
 		if (ACTOR_STATE(port, DISTRIBUTING))
 			dist_slave_port_ids[dist_slave_count++] =
@@ -420,7 +420,7 @@ bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 	}
 	for (i = 0; i < slave_count && num_rx_total < nb_pkts; i++) {
 		j = num_rx_total;
-		collecting = ACTOR_STATE(&mode_8023ad_ports[slaves[idx]],
+		collecting = ACTOR_STATE(&bond_mode_8023ad_ports[slaves[idx]],
 					 COLLECTING);
 
 		/* Read packets from this slave */
@@ -1312,7 +1312,7 @@ bond_ethdev_tx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 
 	dist_slave_count = 0;
 	for (i = 0; i < slave_count; i++) {
-		struct port *port = &mode_8023ad_ports[slave_port_ids[i]];
+		struct port *port = &bond_mode_8023ad_ports[slave_port_ids[i]];
 
 		if (ACTOR_STATE(port, DISTRIBUTING))
 			dist_slave_port_ids[dist_slave_count++] =
@@ -1367,7 +1367,7 @@ bond_ethdev_tx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 
 	/* Check for LACP control packets and send if available */
 	for (i = 0; i < slave_count; i++) {
-		struct port *port = &mode_8023ad_ports[slave_port_ids[i]];
+		struct port *port = &bond_mode_8023ad_ports[slave_port_ids[i]];
 		struct rte_mbuf *ctrl_pkt = NULL;
 
 		if (likely(rte_ring_empty(port->tx_ring)))
@@ -1718,7 +1718,7 @@ slave_configure_slow_queue(struct rte_eth_dev *bonded_eth_dev,
 	int errval = 0;
 	struct bond_dev_private *internals = (struct bond_dev_private *)
 		bonded_eth_dev->data->dev_private;
-	struct port *port = &mode_8023ad_ports[slave_eth_dev->data->port_id];
+	struct port *port = &bond_mode_8023ad_ports[slave_eth_dev->data->port_id];
 
 	if (port->slow_pool == NULL) {
 		char mem_name[256];
@@ -2157,7 +2157,7 @@ bond_ethdev_stop(struct rte_eth_dev *eth_dev)
 
 		/* Discard all messages to/from mode 4 state machines */
 		for (i = 0; i < internals->active_slave_count; i++) {
-			port = &mode_8023ad_ports[internals->active_slaves[i]];
+			port = &bond_mode_8023ad_ports[internals->active_slaves[i]];
 
 			RTE_ASSERT(port->rx_ring != NULL);
 			while (rte_ring_dequeue(port->rx_ring, &pkt) != -ENOENT)

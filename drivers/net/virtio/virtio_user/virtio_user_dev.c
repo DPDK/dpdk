@@ -344,12 +344,12 @@ virtio_user_dev_setup(struct virtio_user_dev *dev)
 			PMD_DRV_LOG(ERR, "Server mode doesn't support vhost-kernel!");
 			return -1;
 		}
-		dev->ops = &ops_user;
+		dev->ops = &virtio_ops_user;
 	} else {
 		if (is_vhost_user_by_type(dev->path)) {
-			dev->ops = &ops_user;
+			dev->ops = &virtio_ops_user;
 		} else {
-			dev->ops = &ops_kernel;
+			dev->ops = &virtio_ops_kernel;
 
 			dev->vhostfds = malloc(dev->max_queue_pairs *
 					       sizeof(int));

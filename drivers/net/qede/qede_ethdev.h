@@ -118,7 +118,7 @@
 
 
 
-extern char fw_file[];
+extern char qede_fw_file[];
 
 /* Number of PF connections - 32 RX + 32 TX */
 #define QEDE_PF_NUM_CONNS		(64)

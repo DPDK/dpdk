@@ -42,9 +42,9 @@ struct fman_crc64_t {
 	uint64_t initial;
 	uint64_t table[1 << 8];
 };
-extern struct fman_crc64_t FMAN_CRC64_ECMA_182;
+extern struct fman_crc64_t fman_crc64_ecma_182;
 #define DECLARE_FMAN_CRC64_TABLE() \
-struct fman_crc64_t FMAN_CRC64_ECMA_182 = { \
+struct fman_crc64_t fman_crc64_ecma_182 = { \
 	0xFFFFFFFFFFFFFFFFULL, \
 	{ \
 		0x0000000000000000ULL, 0xb32e4cbe03a75f6fULL, \
@@ -183,7 +183,7 @@ struct fman_crc64_t FMAN_CRC64_ECMA_182 = { \
  */
 static inline uint64_t fman_crc64_init(void)
 {
-	return FMAN_CRC64_ECMA_182.initial;
+	return fman_crc64_ecma_182.initial;
 }
 
 /* Updates the CRC with arbitrary data */
@@ -192,7 +192,7 @@ static inline uint64_t fman_crc64_update(uint64_t crc,
 {
 	uint8_t *p = data;
 	while (len--)
-		crc = FMAN_CRC64_ECMA_182.table[(crc ^ *(p++)) & 0xff] ^
+		crc = fman_crc64_ecma_182.table[(crc ^ *(p++)) & 0xff] ^
 				(crc >> 8);
 	return crc;
 }

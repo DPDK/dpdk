@@ -174,7 +174,7 @@ struct mode8023ad_private {
  * The pool of *port* structures. The size of the pool
  * is configured at compile-time in the <rte_eth_bond_8023ad.c> file.
  */
-extern struct port mode_8023ad_ports[];
+extern struct port bond_mode_8023ad_ports[];
 
 /* Forward declaration */
 struct bond_dev_private;

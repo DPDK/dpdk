@@ -88,7 +88,7 @@ struct virtio_user_backend_ops {
 			 int enable);
 };
 
-struct virtio_user_backend_ops ops_user;
-struct virtio_user_backend_ops ops_kernel;
+extern struct virtio_user_backend_ops virtio_ops_user;
+extern struct virtio_user_backend_ops virtio_ops_kernel;
 
 #endif

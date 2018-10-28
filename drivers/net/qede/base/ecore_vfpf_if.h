@@ -698,6 +698,6 @@ enum {
 
 /*!!!!! Make sure to update STRINGS structure accordingly !!!!!*/
 };
-extern const char *ecore_channel_tlvs_string[];
+extern const char *qede_ecore_channel_tlvs_string[];
 
 #endif /* __ECORE_VF_PF_IF_H__ */

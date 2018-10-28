@@ -14,7 +14,7 @@
 #include "rte_cryptodev_scheduler.h"
 #include "scheduler_pmd_private.h"
 
-uint8_t cryptodev_driver_id;
+uint8_t cryptodev_scheduler_driver_id;
 
 struct scheduler_init_params {
 	struct rte_cryptodev_pmd_init_params def_p;
@@ -91,7 +91,7 @@ cryptodev_scheduler_create(const char *name,
 		return -EFAULT;
 	}
 
-	dev->driver_id = cryptodev_driver_id;
+	dev->driver_id = cryptodev_scheduler_driver_id;
 	dev->dev_ops = rte_crypto_scheduler_pmd_ops;
 
 	sched_ctx = dev->data->dev_private;
@@ -569,4 +569,4 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_SCHEDULER_PMD,
 	"slave=<name>");
 RTE_PMD_REGISTER_CRYPTO_DRIVER(scheduler_crypto_drv,
 		cryptodev_scheduler_pmd_drv.driver,
-		cryptodev_driver_id);
+		cryptodev_scheduler_driver_id);

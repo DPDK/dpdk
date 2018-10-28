@@ -417,4 +417,4 @@ static struct rte_cryptodev_scheduler psd_scheduler = {
 		.ops = &scheduler_ps_ops
 };
 
-struct rte_cryptodev_scheduler *pkt_size_based_distr_scheduler = &psd_scheduler;
+struct rte_cryptodev_scheduler *crypto_scheduler_pkt_size_based_distr = &psd_scheduler;

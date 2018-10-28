@@ -209,4 +209,4 @@ static struct rte_cryptodev_scheduler scheduler = {
 		.ops = &scheduler_rr_ops
 };
 
-struct rte_cryptodev_scheduler *roundrobin_scheduler = &scheduler;
+struct rte_cryptodev_scheduler *crypto_scheduler_roundrobin = &scheduler;

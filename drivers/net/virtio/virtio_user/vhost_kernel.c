@@ -364,7 +364,7 @@ vhost_kernel_enable_queue_pair(struct virtio_user_dev *dev,
 	return 0;
 }
 
-struct virtio_user_backend_ops ops_kernel = {
+struct virtio_user_backend_ops virtio_ops_kernel = {
 	.setup = vhost_kernel_setup,
 	.send_request = vhost_kernel_ioctl,
 	.enable_qp = vhost_kernel_enable_queue_pair

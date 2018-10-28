@@ -32,7 +32,7 @@ static void *ecore_vf_pf_prep(struct ecore_hwfn *p_hwfn, u16 type, u16 length)
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
 		   "preparing to send %s tlv over vf pf channel\n",
-		   ecore_channel_tlvs_string[type]);
+		   qede_ecore_channel_tlvs_string[type]);
 
 	/* Reset Request offset */
 	p_iov->offset = (u8 *)(p_iov->vf2pf_request);
@@ -1184,7 +1184,7 @@ ecore_vf_handle_vp_update_is_needed(struct ecore_hwfn *p_hwfn,
 		return !!p_data->sge_tpa_params;
 	default:
 		DP_INFO(p_hwfn, "Unexpected vport-update TLV[%d] %s\n",
-			tlv, ecore_channel_tlvs_string[tlv]);
+			tlv, qede_ecore_channel_tlvs_string[tlv]);
 		return false;
 	}
 }
@@ -1208,7 +1208,7 @@ ecore_vf_handle_vp_update_tlvs_resp(struct ecore_hwfn *p_hwfn,
 		if (p_resp && p_resp->hdr.status)
 			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
 				   "TLV[%d] type %s Configuration %s\n",
-				   tlv, ecore_channel_tlvs_string[tlv],
+				   tlv, qede_ecore_channel_tlvs_string[tlv],
 				   (p_resp && p_resp->hdr.status) ? "succeeded"
 								  : "failed");
 	}

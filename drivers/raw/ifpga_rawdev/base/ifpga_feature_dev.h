@@ -156,10 +156,10 @@ struct fpga_uafu_irq_set {
 
 int port_set_irq(struct ifpga_port_hw *port, u32 feature_id, void *irq_set);
 
-extern struct feature_ops port_hdr_ops;
-extern struct feature_ops port_error_ops;
-extern struct feature_ops port_stp_ops;
-extern struct feature_ops port_uint_ops;
+extern struct feature_ops ifpga_rawdev_port_hdr_ops;
+extern struct feature_ops ifpga_rawdev_port_error_ops;
+extern struct feature_ops ifpga_rawdev_port_stp_ops;
+extern struct feature_ops ifpga_rawdev_port_uint_ops;
 
 /* help functions for feature ops */
 int fpga_msix_set_block(struct feature *feature, unsigned int start,

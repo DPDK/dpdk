@@ -71,7 +71,7 @@ failsafe_hotplug_alarm_install(struct rte_eth_dev *dev)
 		return -EINVAL;
 	if (PRIV(dev)->pending_alarm)
 		return 0;
-	ret = rte_eal_alarm_set(hotplug_poll * 1000,
+	ret = rte_eal_alarm_set(failsafe_hotplug_poll * 1000,
 				fs_hotplug_alarm,
 				dev);
 	if (ret) {
@@ -225,7 +225,7 @@ fs_eth_dev_create(struct rte_vdev_device *vdev)
 		goto unregister_new_callback;
 	}
 	mac = &dev->data->mac_addrs[0];
-	if (mac_from_arg) {
+	if (failsafe_mac_from_arg) {
 		/*
 		 * If MAC address was provided as a parameter,
 		 * apply to all probed slaves.

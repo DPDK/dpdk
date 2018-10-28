@@ -410,4 +410,4 @@ static struct rte_cryptodev_scheduler mc_scheduler = {
 		.ops = &scheduler_mc_ops
 };
 
-struct rte_cryptodev_scheduler *multicore_scheduler = &mc_scheduler;
+struct rte_cryptodev_scheduler *crypto_scheduler_multicore = &mc_scheduler;

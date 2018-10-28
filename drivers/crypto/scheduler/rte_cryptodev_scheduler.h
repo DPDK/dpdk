@@ -270,13 +270,13 @@ struct rte_cryptodev_scheduler {
 };
 
 /** Round-robin mode scheduler */
-extern struct rte_cryptodev_scheduler *roundrobin_scheduler;
+extern struct rte_cryptodev_scheduler *crypto_scheduler_roundrobin;
 /** Packet-size based distribution mode scheduler */
-extern struct rte_cryptodev_scheduler *pkt_size_based_distr_scheduler;
+extern struct rte_cryptodev_scheduler *crypto_scheduler_pkt_size_based_distr;
 /** Fail-over mode scheduler */
-extern struct rte_cryptodev_scheduler *failover_scheduler;
+extern struct rte_cryptodev_scheduler *crypto_scheduler_failover;
 /** multi-core mode scheduler */
-extern struct rte_cryptodev_scheduler *multicore_scheduler;
+extern struct rte_cryptodev_scheduler *crypto_scheduler_multicore;
 
 #ifdef __cplusplus
 }

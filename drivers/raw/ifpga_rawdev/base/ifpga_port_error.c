@@ -136,7 +136,7 @@ static int port_error_set_prop(struct feature *feature,
 	return -ENOENT;
 }
 
-struct feature_ops port_error_ops = {
+struct feature_ops ifpga_rawdev_port_error_ops = {
 	.init = port_error_init,
 	.uinit = port_error_uinit,
 	.get_prop = port_error_get_prop,

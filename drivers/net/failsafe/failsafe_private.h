@@ -239,8 +239,8 @@ int failsafe_eth_new_event_callback(uint16_t port_id,
 extern const char pmd_failsafe_driver_name[];
 extern const struct eth_dev_ops failsafe_ops;
 extern const struct rte_flow_ops fs_flow_ops;
-extern uint64_t hotplug_poll;
-extern int mac_from_arg;
+extern uint64_t failsafe_hotplug_poll;
+extern int failsafe_mac_from_arg;
 
 /* HELPERS */
 

@@ -217,4 +217,4 @@ static struct rte_cryptodev_scheduler fo_scheduler = {
 		.ops = &scheduler_fo_ops
 };
 
-struct rte_cryptodev_scheduler *failover_scheduler = &fo_scheduler;
+struct rte_cryptodev_scheduler *crypto_scheduler_failover = &fo_scheduler;

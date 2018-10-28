@@ -326,7 +326,7 @@ static int port_hdr_set_prop(struct feature *feature, struct feature_prop *prop)
 	return -ENOENT;
 }
 
-struct feature_ops port_hdr_ops = {
+struct feature_ops ifpga_rawdev_port_hdr_ops = {
 	.init = port_hdr_init,
 	.uinit = port_hdr_uinit,
 	.get_prop = port_hdr_get_prop,
@@ -354,7 +354,7 @@ static void port_stp_uinit(struct feature *feature)
 	dev_info(NULL, "port stp uinit.\n");
 }
 
-struct feature_ops port_stp_ops = {
+struct feature_ops ifpga_rawdev_port_stp_ops = {
 	.init = port_stp_init,
 	.uinit = port_stp_uinit,
 };
@@ -382,7 +382,7 @@ static void port_uint_uinit(struct feature *feature)
 	dev_info(NULL, "PORT UINT UInit.\n");
 }
 
-struct feature_ops port_uint_ops = {
+struct feature_ops ifpga_rawdev_port_uint_ops = {
 	.init = port_uint_init,
 	.uinit = port_uint_uinit,
 };
