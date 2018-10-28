@@ -795,6 +795,9 @@ rte_service_dump_one(FILE *f, struct rte_service_spec_impl *s,
 		return;
 	}
 
+	if (f == NULL)
+		return;
+
 	fprintf(f, "  %s: stats %d\tcalls %"PRIu64"\tcycles %"
 			PRIu64"\tavg: %"PRIu64"\n",
 			s->spec.name, service_stats_enabled(s), s->calls,
