@@ -31,12 +31,15 @@ ccp_check_pci_uio_module(void)
 	while (uio_module_names[i] != NULL) {
 		while (fgets(buf, sizeof(buf), fp) != NULL) {
 			if (!strncmp(buf, uio_module_names[i],
-				     strlen(uio_module_names[i])))
+				     strlen(uio_module_names[i]))) {
+				fclose(fp);
 				return i;
+			}
 		}
 		i++;
 		rewind(fp);
 	}
+	fclose(fp);
 	printf("Insert igb_uio or uio_pci_generic kernel module(s)");
 	return -1;/* uio not inserted */
 }
