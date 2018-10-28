@@ -71,9 +71,6 @@ struct cryptodev_driver {
 	uint8_t id;
 };
 
-/** pointer to global crypto devices data structure. */
-extern struct rte_cryptodev_global *rte_cryptodev_globals;
-
 /**
  * Get the rte_cryptodev structure device pointer for the device. Assumes a
  * valid device index.

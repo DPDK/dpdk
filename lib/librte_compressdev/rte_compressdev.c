@@ -18,18 +18,14 @@
 #define RTE_COMPRESSDEV_DETACHED  (0)
 #define RTE_COMPRESSDEV_ATTACHED  (1)
 
-struct rte_compressdev rte_comp_devices[RTE_COMPRESS_MAX_DEVS];
-
-struct rte_compressdev *rte_compressdevs = &rte_comp_devices[0];
+static struct rte_compressdev rte_comp_devices[RTE_COMPRESS_MAX_DEVS];
 
 static struct rte_compressdev_global compressdev_globals = {
-		.devs			= &rte_comp_devices[0],
+		.devs			= rte_comp_devices,
 		.data			= { NULL },
 		.nb_devs		= 0,
 		.max_devs		= RTE_COMPRESS_MAX_DEVS
 };
-
-struct rte_compressdev_global *rte_compressdev_globals = &compressdev_globals;
 
 const struct rte_compressdev_capabilities * __rte_experimental
 rte_compressdev_capability_get(uint8_t dev_id,
@@ -78,7 +74,7 @@ rte_compressdev_get_feature_name(uint64_t flag)
 static struct rte_compressdev *
 rte_compressdev_get_dev(uint8_t dev_id)
 {
-	return &rte_compressdev_globals->devs[dev_id];
+	return &compressdev_globals.devs[dev_id];
 }
 
 struct rte_compressdev * __rte_experimental
@@ -90,8 +86,8 @@ rte_compressdev_pmd_get_named_dev(const char *name)
 	if (name == NULL)
 		return NULL;
 
-	for (i = 0; i < rte_compressdev_globals->max_devs; i++) {
-		dev = &rte_compressdev_globals->devs[i];
+	for (i = 0; i < compressdev_globals.max_devs; i++) {
+		dev = &compressdev_globals.devs[i];
 
 		if ((dev->attached == RTE_COMPRESSDEV_ATTACHED) &&
 				(strcmp(dev->data->name, name) == 0))
@@ -106,7 +102,7 @@ rte_compressdev_is_valid_dev(uint8_t dev_id)
 {
 	struct rte_compressdev *dev = NULL;
 
-	if (dev_id >= rte_compressdev_globals->nb_devs)
+	if (dev_id >= compressdev_globals.nb_devs)
 		return 0;
 
 	dev = rte_compressdev_get_dev(dev_id);
@@ -125,10 +121,10 @@ rte_compressdev_get_dev_id(const char *name)
 	if (name == NULL)
 		return -1;
 
-	for (i = 0; i < rte_compressdev_globals->nb_devs; i++)
-		if ((strcmp(rte_compressdev_globals->devs[i].data->name, name)
+	for (i = 0; i < compressdev_globals.nb_devs; i++)
+		if ((strcmp(compressdev_globals.devs[i].data->name, name)
 				== 0) &&
-				(rte_compressdev_globals->devs[i].attached ==
+				(compressdev_globals.devs[i].attached ==
 						RTE_COMPRESSDEV_ATTACHED))
 			return i;
 
@@ -138,7 +134,7 @@ rte_compressdev_get_dev_id(const char *name)
 uint8_t __rte_experimental
 rte_compressdev_count(void)
 {
-	return rte_compressdev_globals->nb_devs;
+	return compressdev_globals.nb_devs;
 }
 
 uint8_t __rte_experimental
@@ -146,8 +142,8 @@ rte_compressdev_devices_get(const char *driver_name, uint8_t *devices,
 	uint8_t nb_devices)
 {
 	uint8_t i, count = 0;
-	struct rte_compressdev *devs = rte_compressdev_globals->devs;
-	uint8_t max_devs = rte_compressdev_globals->max_devs;
+	struct rte_compressdev *devs = compressdev_globals.devs;
+	uint8_t max_devs = compressdev_globals.max_devs;
 
 	for (i = 0; i < max_devs && count < nb_devices;	i++) {
 
@@ -578,7 +574,7 @@ uint16_t __rte_experimental
 rte_compressdev_dequeue_burst(uint8_t dev_id, uint16_t qp_id,
 		struct rte_comp_op **ops, uint16_t nb_ops)
 {
-	struct rte_compressdev *dev = &rte_compressdevs[dev_id];
+	struct rte_compressdev *dev = &rte_comp_devices[dev_id];
 
 	nb_ops = (*dev->dequeue_burst)
 			(dev->data->queue_pairs[qp_id], ops, nb_ops);
@@ -590,7 +586,7 @@ uint16_t __rte_experimental
 rte_compressdev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
 		struct rte_comp_op **ops, uint16_t nb_ops)
 {
-	struct rte_compressdev *dev = &rte_compressdevs[dev_id];
+	struct rte_compressdev *dev = &rte_comp_devices[dev_id];
 
 	return (*dev->enqueue_burst)(
 			dev->data->queue_pairs[qp_id], ops, nb_ops);

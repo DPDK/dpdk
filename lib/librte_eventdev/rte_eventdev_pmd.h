@@ -87,8 +87,6 @@ struct rte_eventdev_global {
 	uint8_t nb_devs;	/**< Number of devices found */
 };
 
-extern struct rte_eventdev_global *rte_eventdev_globals;
-/** Pointer to global event devices data structure. */
 extern struct rte_eventdev *rte_eventdevs;
 /** The pool of rte_eventdev structures. */
 

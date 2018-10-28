@@ -73,8 +73,6 @@ struct rte_rawdev_global {
 	uint16_t nb_devs;
 };
 
-extern struct rte_rawdev_global *rte_rawdev_globals;
-/** Pointer to global raw devices data structure. */
 extern struct rte_rawdev *rte_rawdevs;
 /** The pool of rte_rawdev structures. */
 

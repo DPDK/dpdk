@@ -37,20 +37,18 @@
 
 static struct rte_eventdev rte_event_devices[RTE_EVENT_MAX_DEVS];
 
-struct rte_eventdev *rte_eventdevs = &rte_event_devices[0];
+struct rte_eventdev *rte_eventdevs = rte_event_devices;
 
 static struct rte_eventdev_global eventdev_globals = {
 	.nb_devs		= 0
 };
-
-struct rte_eventdev_global *rte_eventdev_globals = &eventdev_globals;
 
 /* Event dev north bound API implementation */
 
 uint8_t
 rte_event_dev_count(void)
 {
-	return rte_eventdev_globals->nb_devs;
+	return eventdev_globals.nb_devs;
 }
 
 int
@@ -62,7 +60,7 @@ rte_event_dev_get_dev_id(const char *name)
 	if (!name)
 		return -EINVAL;
 
-	for (i = 0; i < rte_eventdev_globals->nb_devs; i++) {
+	for (i = 0; i < eventdev_globals.nb_devs; i++) {
 		cmp = (strncmp(rte_event_devices[i].data->name, name,
 				RTE_EVENTDEV_NAME_MAX_LEN) == 0) ||
 			(rte_event_devices[i].dev ? (strncmp(

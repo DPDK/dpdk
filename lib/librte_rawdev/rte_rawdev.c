@@ -35,21 +35,19 @@
 /* dynamic log identifier */
 int librawdev_logtype;
 
-struct rte_rawdev rte_rawdevices[RTE_RAWDEV_MAX_DEVS];
+static struct rte_rawdev rte_rawdevices[RTE_RAWDEV_MAX_DEVS];
 
-struct rte_rawdev *rte_rawdevs = &rte_rawdevices[0];
+struct rte_rawdev *rte_rawdevs = rte_rawdevices;
 
 static struct rte_rawdev_global rawdev_globals = {
 	.nb_devs		= 0
 };
 
-struct rte_rawdev_global *rte_rawdev_globals = &rawdev_globals;
-
 /* Raw device, northbound API implementation */
 uint8_t
 rte_rawdev_count(void)
 {
-	return rte_rawdev_globals->nb_devs;
+	return rawdev_globals.nb_devs;
 }
 
 uint16_t
@@ -60,7 +58,7 @@ rte_rawdev_get_dev_id(const char *name)
 	if (!name)
 		return -EINVAL;
 
-	for (i = 0; i < rte_rawdev_globals->nb_devs; i++)
+	for (i = 0; i < rawdev_globals.nb_devs; i++)
 		if ((strcmp(rte_rawdevices[i].name, name)
 				== 0) &&
 				(rte_rawdevices[i].attached ==

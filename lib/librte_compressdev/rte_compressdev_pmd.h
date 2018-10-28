@@ -51,11 +51,6 @@ struct rte_compressdev_global {
 	uint8_t max_devs;		/**< Max number of devices */
 };
 
-/** Pointer to global array of comp devices */
-extern struct rte_compressdev *rte_compressdevs;
-/** Pointer to global comp devices data structure */
-extern struct rte_compressdev_global *rte_compressdev_globals;
-
 /**
  * Get the rte_compressdev structure device pointer for the named device.
  *
