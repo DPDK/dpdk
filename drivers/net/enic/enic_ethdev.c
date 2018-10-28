@@ -1030,7 +1030,6 @@ static int enic_check_devargs(struct rte_eth_dev *dev)
 	return 0;
 }
 
-struct enic *enicpmd_list_head = NULL;
 /* Initialize the driver
  * It returns 0 on success.
  */

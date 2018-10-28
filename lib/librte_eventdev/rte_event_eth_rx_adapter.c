@@ -1125,7 +1125,6 @@ rxa_poll(struct rte_event_eth_rx_adapter *rx_adapter)
 	wrr_pos = rx_adapter->wrr_pos;
 	max_nb_rx = rx_adapter->max_nb_rx;
 	buf = &rx_adapter->event_enqueue_buffer;
-	stats = &rx_adapter->stats;
 
 	/* Iterate through a WRR sequence */
 	for (num_queue = 0; num_queue < rx_adapter->wrr_len; num_queue++) {

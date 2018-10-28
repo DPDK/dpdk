@@ -455,7 +455,6 @@ ssovf_eth_rx_adapter_queue_del(const struct rte_eventdev *dev,
 	const struct octeontx_nic *nic = eth_dev->data->dev_private;
 	pki_del_qos_t pki_qos;
 	RTE_SET_USED(dev);
-	RTE_SET_USED(rx_queue_id);
 
 	ret = strncmp(eth_dev->data->name, "eth_octeontx", 12);
 	if (ret)
@@ -467,7 +466,7 @@ ssovf_eth_rx_adapter_queue_del(const struct rte_eventdev *dev,
 	ret = octeontx_pki_port_delete_qos(nic->port_id, &pki_qos);
 	if (ret < 0)
 		ssovf_log_err("Failed to delete QOS port=%d, q=%d",
-				nic->port_id, queue_conf->ev.queue_id);
+				nic->port_id, rx_queue_id);
 	return ret;
 }
 

@@ -12,12 +12,12 @@
  * ZIP compression coding Enumeration
  * Enumerates ZIP_INST_S[CC].
  */
-enum {
+enum zip_cc {
 	ZIP_CC_DEFAULT = 0,
 	ZIP_CC_DYN_HUFF,
 	ZIP_CC_FIXED_HUFF,
 	ZIP_CC_LZS
-} zip_cc;
+};
 
 /**
  * Register (NCB) zip_vq#_ena

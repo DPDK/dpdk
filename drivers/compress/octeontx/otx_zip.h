@@ -79,7 +79,7 @@ int octtx_zip_logtype_driver;
 	ZIP_PMD_LOG(ERR, fmt, ## args)
 
 /* resources required to process stream */
-enum {
+enum NUM_BUFS_PER_STREAM {
 	RES_BUF = 0,
 	CMD_BUF,
 	HASH_CTX_BUF,
@@ -88,7 +88,7 @@ enum {
 	OUT_DATA_BUF,
 	HISTORY_DATA_BUF,
 	MAX_BUFS_PER_STREAM
-} NUM_BUFS_PER_STREAM;
+};
 
 struct zip_stream;
 struct zipvf_qp;
@@ -106,7 +106,7 @@ struct zip_stream {
 	comp_func_t func;
 	/* function to process comp operation */
 	void *bufs[MAX_BUFS_PER_STREAM];
-} _rte_cache_aligned;
+} __rte_cache_aligned;
 
 
 /**

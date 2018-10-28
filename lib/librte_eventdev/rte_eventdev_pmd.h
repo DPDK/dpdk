@@ -467,7 +467,7 @@ typedef int (*eventdev_eth_rx_adapter_caps_get_t)
 					const struct rte_eth_dev *eth_dev,
 					uint32_t *caps);
 
-struct rte_event_eth_rx_adapter_queue_conf *queue_conf;
+struct rte_event_eth_rx_adapter_queue_conf;
 
 /**
  * Retrieve the event device's timer adapter capabilities, as well as the ops
@@ -592,7 +592,7 @@ typedef int (*eventdev_eth_rx_adapter_stop_t)
 					(const struct rte_eventdev *dev,
 					const struct rte_eth_dev *eth_dev);
 
-struct rte_event_eth_rx_adapter_stats *stats;
+struct rte_event_eth_rx_adapter_stats;
 
 /**
  * Retrieve ethernet Rx adapter statistics.
