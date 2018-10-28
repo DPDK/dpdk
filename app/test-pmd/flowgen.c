@@ -123,7 +123,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 	struct ipv4_hdr *ip_hdr;
 	struct udp_hdr *udp_hdr;
 	uint16_t vlan_tci, vlan_tci_outer;
-	uint64_t ol_flags;
+	uint64_t ol_flags = 0;
 	uint16_t nb_rx;
 	uint16_t nb_tx;
 	uint16_t nb_pkt;
@@ -155,7 +155,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 
 	tx_offloads = ports[fs->tx_port].dev_conf.txmode.offloads;
 	if (tx_offloads	& DEV_TX_OFFLOAD_VLAN_INSERT)
-		ol_flags = PKT_TX_VLAN_PKT;
+		ol_flags |= PKT_TX_VLAN_PKT;
 	if (tx_offloads & DEV_TX_OFFLOAD_QINQ_INSERT)
 		ol_flags |= PKT_TX_QINQ_PKT;
 	if (tx_offloads	& DEV_TX_OFFLOAD_MACSEC_INSERT)
