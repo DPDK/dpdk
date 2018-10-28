@@ -102,25 +102,6 @@ static inline void bnxt_reuse_rx_mbuf(struct bnxt_rx_ring_info *rxr,
 	rxr->rx_prod = prod;
 }
 
-#ifdef BNXT_DEBUG
-static void bnxt_reuse_ag_mbuf(struct bnxt_rx_ring_info *rxr, uint16_t cons,
-			       struct rte_mbuf *mbuf)
-{
-	uint16_t prod = rxr->ag_prod;
-	struct bnxt_sw_rx_bd *prod_rx_buf;
-	struct rx_prod_pkt_bd *prod_bd, *cons_bd;
-
-	prod_rx_buf = &rxr->ag_buf_ring[prod];
-
-	prod_rx_buf->mbuf = mbuf;
-
-	prod_bd = &rxr->ag_desc_ring[prod];
-	cons_bd = &rxr->ag_desc_ring[cons];
-
-	prod_bd->address = cons_bd->addr;
-}
-#endif
-
 static inline
 struct rte_mbuf *bnxt_consume_rx_buf(struct bnxt_rx_ring_info *rxr,
 				     uint16_t cons)
@@ -377,9 +358,6 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	uint32_t tmp_raw_cons = *raw_cons;
 	uint16_t cons, prod, cp_cons =
 	    RING_CMP(cpr->cp_ring_struct, tmp_raw_cons);
-#ifdef BNXT_DEBUG
-	uint16_t ag_cons;
-#endif
 	struct rte_mbuf *mbuf;
 	int rc = 0;
 	uint8_t agg_buf = 0;
@@ -482,8 +460,6 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	if (rxcmp1->errors_v2 & RX_CMP_L2_ERRORS) {
 		/* Re-install the mbuf back to the rx ring */
 		bnxt_reuse_rx_mbuf(rxr, cons, mbuf);
-		if (agg_buf)
-			bnxt_reuse_ag_mbuf(rxr, ag_cons, mbuf);
 
 		rc = -EIO;
 		goto next_rx;
