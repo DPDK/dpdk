@@ -184,6 +184,9 @@ int virtio_user_stop_device(struct virtio_user_dev *dev)
 	uint32_t i;
 
 	pthread_mutex_lock(&dev->mutex);
+	if (!dev->started)
+		goto out;
+
 	for (i = 0; i < dev->max_queue_pairs; ++i)
 		dev->ops->enable_qp(dev, i, 0);
 
@@ -193,6 +196,7 @@ int virtio_user_stop_device(struct virtio_user_dev *dev)
 		return -1;
 	}
 	dev->started = false;
+out:
 	pthread_mutex_unlock(&dev->mutex);
 
 	return 0;
