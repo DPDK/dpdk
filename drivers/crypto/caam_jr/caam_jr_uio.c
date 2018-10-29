@@ -332,7 +332,7 @@ free_job_ring(uint32_t uio_fd)
 	struct uio_job_ring *job_ring = NULL;
 	int i;
 
-	if (!job_ring->uio_fd)
+	if (!uio_fd)
 		return;
 
 	for (i = 0; i < MAX_SEC_JOB_RINGS; i++) {
