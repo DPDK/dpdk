@@ -28,7 +28,6 @@ static int
 virtio_user_server_reconnect(struct virtio_user_dev *dev)
 {
 	int ret;
-	int flag;
 	int connectfd;
 	struct rte_eth_dev *eth_dev = &rte_eth_devices[dev->port_id];
 
@@ -48,9 +47,6 @@ virtio_user_server_reconnect(struct virtio_user_dev *dev)
 	dev->device_features &= ~(dev->unsupported_features);
 
 	dev->features &= dev->device_features;
-
-	flag = fcntl(connectfd, F_GETFD);
-	fcntl(connectfd, F_SETFL, flag | O_NONBLOCK);
 
 	ret = virtio_user_start_device(dev);
 	if (ret < 0)
