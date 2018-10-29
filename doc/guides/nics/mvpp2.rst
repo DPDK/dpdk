@@ -644,7 +644,7 @@ Node which has a parent is called a leaf whereas node without
 parent is called a non-leaf (root).
 MVPP2 PMD supports two level hierarchy where level 0 represents ports and level 1 represents tx queues of a given port.
 
-.. figure:: img/mvpp2_tm.svg
+.. figure:: img/mvpp2_tm.*
 
 Nodes hold following types of settings:
 
