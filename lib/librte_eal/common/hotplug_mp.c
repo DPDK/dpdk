@@ -355,6 +355,7 @@ int eal_dev_hotplug_request_to_primary(struct eal_dev_mp_req *req)
 	resp = (struct eal_dev_mp_req *)mp_reply.msgs[0].param;
 	req->result = resp->result;
 
+	free(mp_reply.msgs);
 	return ret;
 }
 
@@ -379,6 +380,7 @@ int eal_dev_hotplug_request_to_secondary(struct eal_dev_mp_req *req)
 
 	if (mp_reply.nb_sent != mp_reply.nb_received) {
 		RTE_LOG(ERR, EAL, "not all secondary reply\n");
+		free(mp_reply.msgs);
 		return -1;
 	}
 
@@ -397,6 +399,7 @@ int eal_dev_hotplug_request_to_secondary(struct eal_dev_mp_req *req)
 		}
 	}
 
+	free(mp_reply.msgs);
 	return 0;
 }
 
