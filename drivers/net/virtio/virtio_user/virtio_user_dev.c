@@ -134,9 +134,6 @@ virtio_user_start_device(struct virtio_user_dev *dev)
 	if (is_vhost_user_by_type(dev->path) && dev->vhostfd < 0)
 		goto error;
 
-	/* Do not check return as already done in init, or reset in stop */
-	dev->ops->send_request(dev, VHOST_USER_SET_OWNER, NULL);
-
 	/* Step 0: tell vhost to create queues */
 	if (virtio_user_queue_setup(dev, virtio_user_create_queue) < 0)
 		goto error;
@@ -181,7 +178,9 @@ error:
 
 int virtio_user_stop_device(struct virtio_user_dev *dev)
 {
+	struct vhost_vring_state state;
 	uint32_t i;
+	int error = 0;
 
 	pthread_mutex_lock(&dev->mutex);
 	if (!dev->started)
@@ -190,16 +189,23 @@ int virtio_user_stop_device(struct virtio_user_dev *dev)
 	for (i = 0; i < dev->max_queue_pairs; ++i)
 		dev->ops->enable_qp(dev, i, 0);
 
-	if (dev->ops->send_request(dev, VHOST_USER_RESET_OWNER, NULL) < 0) {
-		PMD_DRV_LOG(INFO, "Failed to reset the device\n");
-		pthread_mutex_unlock(&dev->mutex);
-		return -1;
+	/* Stop the backend. */
+	for (i = 0; i < dev->max_queue_pairs * 2; ++i) {
+		state.index = i;
+		if (dev->ops->send_request(dev, VHOST_USER_GET_VRING_BASE,
+					   &state) < 0) {
+			PMD_DRV_LOG(ERR, "get_vring_base failed, index=%u\n",
+				    i);
+			error = -1;
+			goto out;
+		}
 	}
+
 	dev->started = false;
 out:
 	pthread_mutex_unlock(&dev->mutex);
 
-	return 0;
+	return error;
 }
 
 static inline void
