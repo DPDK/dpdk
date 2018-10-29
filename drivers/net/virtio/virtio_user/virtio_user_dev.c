@@ -422,7 +422,7 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 	dev->queue_size = queue_size;
 	dev->mac_specified = 0;
 	dev->frontend_features = 0;
-	dev->unsupported_features = 0;
+	dev->unsupported_features = ~VIRTIO_USER_SUPPORTED_FEATURES;
 	parse_mac(dev, mac);
 
 	if (*ifname) {
@@ -458,22 +458,16 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 		dev->device_features = VIRTIO_USER_SUPPORTED_FEATURES;
 	}
 
-	if (!mrg_rxbuf) {
-		dev->device_features &= ~(1ull << VIRTIO_NET_F_MRG_RXBUF);
+	if (!mrg_rxbuf)
 		dev->unsupported_features |= (1ull << VIRTIO_NET_F_MRG_RXBUF);
-	}
 
-	if (!in_order) {
-		dev->device_features &= ~(1ull << VIRTIO_F_IN_ORDER);
+	if (!in_order)
 		dev->unsupported_features |= (1ull << VIRTIO_F_IN_ORDER);
-	}
 
-	if (dev->mac_specified) {
+	if (dev->mac_specified)
 		dev->frontend_features |= (1ull << VIRTIO_NET_F_MAC);
-	} else {
-		dev->device_features &= ~(1ull << VIRTIO_NET_F_MAC);
+	else
 		dev->unsupported_features |= (1ull << VIRTIO_NET_F_MAC);
-	}
 
 	if (cq) {
 		/* device does not really need to know anything about CQ,
@@ -481,14 +475,8 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 		 */
 		dev->frontend_features |= (1ull << VIRTIO_NET_F_CTRL_VQ);
 	} else {
-		dev->device_features &= ~(1ull << VIRTIO_NET_F_CTRL_VQ);
-		/* Also disable features depends on VIRTIO_NET_F_CTRL_VQ */
-		dev->device_features &= ~(1ull << VIRTIO_NET_F_CTRL_RX);
-		dev->device_features &= ~(1ull << VIRTIO_NET_F_CTRL_VLAN);
-		dev->device_features &= ~(1ull << VIRTIO_NET_F_GUEST_ANNOUNCE);
-		dev->device_features &= ~(1ull << VIRTIO_NET_F_MQ);
-		dev->device_features &= ~(1ull << VIRTIO_NET_F_CTRL_MAC_ADDR);
 		dev->unsupported_features |= (1ull << VIRTIO_NET_F_CTRL_VQ);
+		/* Also disable features that depend on VIRTIO_NET_F_CTRL_VQ */
 		dev->unsupported_features |= (1ull << VIRTIO_NET_F_CTRL_RX);
 		dev->unsupported_features |= (1ull << VIRTIO_NET_F_CTRL_VLAN);
 		dev->unsupported_features |=
@@ -502,9 +490,12 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 	if (is_vhost_user_by_type(dev->path))
 		dev->frontend_features |= (1ull << VIRTIO_NET_F_STATUS);
 
+	/*
+	 * Device features =
+	 *     (frontend_features | backend_features) & ~unsupported_features;
+	 */
 	dev->device_features |= dev->frontend_features;
-	dev->device_features &= VIRTIO_USER_SUPPORTED_FEATURES;
-	dev->unsupported_features |= ~VIRTIO_USER_SUPPORTED_FEATURES;
+	dev->device_features &= ~dev->unsupported_features;
 
 	if (rte_mem_event_callback_register(VIRTIO_USER_MEM_EVENT_CLB_NAME,
 				virtio_user_mem_event_cb, dev)) {
