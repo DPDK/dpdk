@@ -1288,6 +1288,7 @@ virtio_interrupt_handler(void *param)
 	struct rte_eth_dev *dev = param;
 	struct virtio_hw *hw = dev->data->dev_private;
 	uint8_t isr;
+	uint16_t status;
 
 	/* Read interrupt status which clears interrupt */
 	isr = vtpci_isr(hw);
@@ -1301,12 +1302,17 @@ virtio_interrupt_handler(void *param)
 			_rte_eth_dev_callback_process(dev,
 						      RTE_ETH_EVENT_INTR_LSC,
 						      NULL);
-	}
 
-	if (isr & VIRTIO_NET_S_ANNOUNCE) {
-		virtio_notify_peers(dev);
-		if (hw->cvq)
-			virtio_ack_link_announce(dev);
+		if (vtpci_with_feature(hw, VIRTIO_NET_F_STATUS)) {
+			vtpci_read_dev_config(hw,
+				offsetof(struct virtio_net_config, status),
+				&status, sizeof(status));
+			if (status & VIRTIO_NET_S_ANNOUNCE) {
+				virtio_notify_peers(dev);
+				if (hw->cvq)
+					virtio_ack_link_announce(dev);
+			}
+		}
 	}
 }
 
