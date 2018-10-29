@@ -1203,10 +1203,12 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 		dv_attr.flags |= IBV_FLOW_ATTR_FLAGS_EGRESS;
 	cache_matcher->matcher_object =
 		mlx5_glue->dv_create_flow_matcher(priv->ctx, &dv_attr);
-	if (!cache_matcher->matcher_object)
+	if (!cache_matcher->matcher_object) {
+		rte_free(cache_matcher);
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL, "cannot create matcher");
+	}
 	rte_atomic32_inc(&cache_matcher->refcnt);
 	LIST_INSERT_HEAD(&priv->matchers, cache_matcher, next);
 	dev_flow->dv.matcher = cache_matcher;
