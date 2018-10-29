@@ -421,6 +421,7 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 	dev->queue_pairs = 1; /* mq disabled by default */
 	dev->queue_size = queue_size;
 	dev->mac_specified = 0;
+	dev->frontend_features = 0;
 	dev->unsupported_features = 0;
 	parse_mac(dev, mac);
 
@@ -468,7 +469,7 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 	}
 
 	if (dev->mac_specified) {
-		dev->device_features |= (1ull << VIRTIO_NET_F_MAC);
+		dev->frontend_features |= (1ull << VIRTIO_NET_F_MAC);
 	} else {
 		dev->device_features &= ~(1ull << VIRTIO_NET_F_MAC);
 		dev->unsupported_features |= (1ull << VIRTIO_NET_F_MAC);
@@ -478,7 +479,7 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 		/* device does not really need to know anything about CQ,
 		 * so if necessary, we just claim to support CQ
 		 */
-		dev->device_features |= (1ull << VIRTIO_NET_F_CTRL_VQ);
+		dev->frontend_features |= (1ull << VIRTIO_NET_F_CTRL_VQ);
 	} else {
 		dev->device_features &= ~(1ull << VIRTIO_NET_F_CTRL_VQ);
 		/* Also disable features depends on VIRTIO_NET_F_CTRL_VQ */
@@ -499,8 +500,9 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 
 	/* The backend will not report this feature, we add it explicitly */
 	if (is_vhost_user_by_type(dev->path))
-		dev->device_features |= (1ull << VIRTIO_NET_F_STATUS);
+		dev->frontend_features |= (1ull << VIRTIO_NET_F_STATUS);
 
+	dev->device_features |= dev->frontend_features;
 	dev->device_features &= VIRTIO_USER_SUPPORTED_FEATURES;
 	dev->unsupported_features |= ~VIRTIO_USER_SUPPORTED_FEATURES;
 

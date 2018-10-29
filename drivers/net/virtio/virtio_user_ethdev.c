@@ -43,6 +43,8 @@ virtio_user_server_reconnect(struct virtio_user_dev *dev)
 		return -1;
 	}
 
+	dev->device_features |= dev->frontend_features;
+
 	/* umask vhost-user unsupported features */
 	dev->device_features &= ~(dev->unsupported_features);
 
