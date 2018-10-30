@@ -1041,7 +1041,95 @@ pipeline_table_create(const char *pipeline_name,
 	memcpy(&table->params, params, sizeof(*params));
 	table->ap = ap;
 	table->a = action;
+	TAILQ_INIT(&table->rules);
+	table->rule_default = NULL;
+
 	pipeline->n_tables++;
 
 	return 0;
+}
+
+struct table_rule *
+table_rule_find(struct table *table,
+    struct table_rule_match *match)
+{
+	struct table_rule *rule;
+
+	TAILQ_FOREACH(rule, &table->rules, node)
+		if (memcmp(&rule->match, match, sizeof(*match)) == 0)
+			return rule;
+
+	return NULL;
+}
+
+void
+table_rule_add(struct table *table,
+    struct table_rule *new_rule)
+{
+	struct table_rule *existing_rule;
+
+	existing_rule = table_rule_find(table, &new_rule->match);
+	if (existing_rule == NULL)
+		TAILQ_INSERT_TAIL(&table->rules, new_rule, node);
+	else {
+		TAILQ_INSERT_AFTER(&table->rules, existing_rule, new_rule, node);
+		TAILQ_REMOVE(&table->rules, existing_rule, node);
+		free(existing_rule);
+	}
+}
+
+void
+table_rule_add_bulk(struct table *table,
+    struct table_rule_list *list,
+    uint32_t n_rules)
+{
+	uint32_t i;
+
+	for (i = 0; i < n_rules; i++) {
+		struct table_rule *existing_rule, *new_rule;
+
+		new_rule = TAILQ_FIRST(list);
+		if (new_rule == NULL)
+			break;
+
+		TAILQ_REMOVE(list, new_rule, node);
+
+		existing_rule = table_rule_find(table, &new_rule->match);
+		if (existing_rule == NULL)
+			TAILQ_INSERT_TAIL(&table->rules, new_rule, node);
+		else {
+			TAILQ_INSERT_AFTER(&table->rules, existing_rule, new_rule, node);
+			TAILQ_REMOVE(&table->rules, existing_rule, node);
+			free(existing_rule);
+		}
+	}
+}
+
+void
+table_rule_delete(struct table *table,
+    struct table_rule_match *match)
+{
+	struct table_rule *rule;
+
+	rule = table_rule_find(table, match);
+	if (rule == NULL)
+		return;
+
+	TAILQ_REMOVE(&table->rules, rule, node);
+	free(rule);
+}
+
+void
+table_rule_default_add(struct table *table,
+	struct table_rule *rule)
+{
+	free(table->rule_default);
+	table->rule_default = rule;
+}
+
+void
+table_rule_default_delete(struct table *table)
+{
+	free(table->rule_default);
+	table->rule_default = NULL;
 }

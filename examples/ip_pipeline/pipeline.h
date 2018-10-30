@@ -143,6 +143,10 @@ struct table_params {
 	const char *action_profile_name;
 };
 
+struct table_rule;
+
+TAILQ_HEAD(table_rule_list, table_rule);
+
 struct port_in {
 	struct port_in_params params;
 	struct port_in_action_profile *ap;
@@ -153,6 +157,8 @@ struct table {
 	struct table_params params;
 	struct table_action_profile *ap;
 	struct rte_table_action *a;
+	struct table_rule_list rules;
+	struct table_rule *rule_default;
 };
 
 struct pipeline {
@@ -286,6 +292,13 @@ struct table_rule_action {
 	struct rte_table_action_decap_params decap;
 };
 
+struct table_rule {
+	TAILQ_ENTRY(table_rule) node;
+	struct table_rule_match match;
+	struct table_rule_action action;
+	void *data;
+};
+
 int
 pipeline_port_in_stats_read(const char *pipeline_name,
 	uint32_t port_id,
@@ -380,5 +393,28 @@ pipeline_table_rule_ttl_read(const char *pipeline_name,
 	void *data,
 	struct rte_table_action_ttl_counters *stats,
 	int clear);
+struct table_rule *
+table_rule_find(struct table *table,
+	struct table_rule_match *match);
+
+void
+table_rule_add(struct table *table,
+	struct table_rule *rule);
+
+void
+table_rule_add_bulk(struct table *table,
+	struct table_rule_list *list,
+	uint32_t n_rules);
+
+void
+table_rule_delete(struct table *table,
+	struct table_rule_match *match);
+
+void
+table_rule_default_add(struct table *table,
+	struct table_rule *rule);
+
+void
+table_rule_default_delete(struct table *table);
 
 #endif /* _INCLUDE_PIPELINE_H_ */
