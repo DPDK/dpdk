@@ -4407,7 +4407,6 @@ cmd_pipeline_table_rule_add_default(char **tokens,
 	size_t out_size)
 {
 	struct table_rule_action action;
-	void *data;
 	char *pipeline_name;
 	uint32_t table_id;
 	int status;
@@ -4513,8 +4512,7 @@ cmd_pipeline_table_rule_add_default(char **tokens,
 
 	status = pipeline_table_rule_add_default(pipeline_name,
 		table_id,
-		&action,
-		&data);
+		&action);
 	if (status) {
 		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
 		return;

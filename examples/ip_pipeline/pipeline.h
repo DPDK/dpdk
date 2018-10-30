@@ -341,8 +341,7 @@ pipeline_table_rule_add_bulk(const char *pipeline_name,
 int
 pipeline_table_rule_add_default(const char *pipeline_name,
 	uint32_t table_id,
-	struct table_rule_action *action,
-	void **data);
+	struct table_rule_action *action);
 
 int
 pipeline_table_rule_delete(const char *pipeline_name,
