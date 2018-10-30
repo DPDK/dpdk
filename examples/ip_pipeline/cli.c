@@ -5407,6 +5407,92 @@ cmd_pipeline_table_rule_ttl_read(char **tokens,
 		stats.n_packets);
 }
 
+static const char cmd_pipeline_table_rule_time_read_help[] =
+"pipeline <pipeline_name> table <table_id> rule read time\n"
+"     match <match>\n";
+
+static void
+cmd_pipeline_table_rule_time_read(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	struct table_rule_match m;
+	char *pipeline_name;
+	uint64_t timestamp;
+	uint32_t table_id, n_tokens_parsed;
+	int status;
+
+	if (n_tokens < 7) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+
+	if (strcmp(tokens[2], "table") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "table");
+		return;
+	}
+
+	if (parser_read_uint32(&table_id, tokens[3]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "table_id");
+		return;
+	}
+
+	if (strcmp(tokens[4], "rule") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "rule");
+		return;
+	}
+
+	if (strcmp(tokens[5], "read") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "read");
+		return;
+	}
+
+	if (strcmp(tokens[6], "time") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "time");
+		return;
+	}
+
+	n_tokens -= 7;
+	tokens += 7;
+
+	/* match */
+	if ((n_tokens == 0) || strcmp(tokens[0], "match")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "match");
+		return;
+	}
+
+	n_tokens_parsed = parse_match(tokens,
+		n_tokens,
+		out,
+		out_size,
+		&m);
+	if (n_tokens_parsed == 0)
+		return;
+	n_tokens -= n_tokens_parsed;
+	tokens += n_tokens_parsed;
+
+	/* end */
+	if (n_tokens) {
+		snprintf(out, out_size, MSG_ARG_INVALID, tokens[0]);
+		return;
+	}
+
+	/* Read table rule timestamp. */
+	status = pipeline_table_rule_time_read(pipeline_name,
+		table_id,
+		&m,
+		&timestamp);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+
+	/* Print stats. */
+	snprintf(out, out_size, "Packets: %" PRIu64 "\n", timestamp);
+}
 
 static const char cmd_thread_pipeline_enable_help[] =
 "thread <thread_id> pipeline <pipeline_name> enable\n";
@@ -5537,6 +5623,7 @@ cmd_help(char **tokens, uint32_t n_tokens, char *out, size_t out_size)
 			"\tpipeline table rule meter read\n"
 			"\tpipeline table dscp\n"
 			"\tpipeline table rule ttl read\n"
+			"\tpipeline table rule time read\n"
 			"\tthread pipeline enable\n"
 			"\tthread pipeline disable\n\n");
 		return;
@@ -5786,6 +5873,15 @@ cmd_help(char **tokens, uint32_t n_tokens, char *out, size_t out_size)
 			(strcmp(tokens[4], "read") == 0)) {
 			snprintf(out, out_size, "\n%s\n",
 				cmd_pipeline_table_rule_ttl_read_help);
+			return;
+		}
+
+		if ((n_tokens == 5) &&
+			(strcmp(tokens[2], "rule") == 0) &&
+			(strcmp(tokens[3], "time") == 0) &&
+			(strcmp(tokens[4], "read") == 0)) {
+			snprintf(out, out_size, "\n%s\n",
+				cmd_pipeline_table_rule_time_read_help);
 			return;
 		}
 	}
@@ -6093,6 +6189,16 @@ cli_process(char *in, char *out, size_t out_size)
 			(strcmp(tokens[5], "read") == 0) &&
 			(strcmp(tokens[6], "ttl") == 0)) {
 			cmd_pipeline_table_rule_ttl_read(tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if ((n_tokens >= 7) &&
+			(strcmp(tokens[2], "table") == 0) &&
+			(strcmp(tokens[4], "rule") == 0) &&
+			(strcmp(tokens[5], "read") == 0) &&
+			(strcmp(tokens[6], "time") == 0)) {
+			cmd_pipeline_table_rule_time_read(tokens, n_tokens,
 				out, out_size);
 			return;
 		}

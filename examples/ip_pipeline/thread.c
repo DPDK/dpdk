@@ -584,6 +584,7 @@ enum pipeline_req_type {
 	PIPELINE_REQ_TABLE_RULE_MTR_READ,
 	PIPELINE_REQ_TABLE_DSCP_TABLE_UPDATE,
 	PIPELINE_REQ_TABLE_RULE_TTL_READ,
+	PIPELINE_REQ_TABLE_RULE_TIME_READ,
 	PIPELINE_REQ_MAX
 };
 
@@ -647,6 +648,10 @@ struct pipeline_msg_req_table_rule_ttl_read {
 	int clear;
 };
 
+struct pipeline_msg_req_table_rule_time_read {
+	void *data;
+};
+
 struct pipeline_msg_req {
 	enum pipeline_req_type type;
 	uint32_t id; /* Port IN, port OUT or table ID */
@@ -666,6 +671,7 @@ struct pipeline_msg_req {
 		struct pipeline_msg_req_table_rule_mtr_read table_rule_mtr_read;
 		struct pipeline_msg_req_table_dscp_table_update table_dscp_table_update;
 		struct pipeline_msg_req_table_rule_ttl_read table_rule_ttl_read;
+		struct pipeline_msg_req_table_rule_time_read table_rule_time_read;
 	};
 };
 
@@ -705,6 +711,10 @@ struct pipeline_msg_rsp_table_rule_ttl_read {
 	struct rte_table_action_ttl_counters stats;
 };
 
+struct pipeline_msg_rsp_table_rule_time_read {
+	uint64_t timestamp;
+};
+
 struct pipeline_msg_rsp {
 	int status;
 
@@ -719,6 +729,7 @@ struct pipeline_msg_rsp {
 		struct pipeline_msg_rsp_table_rule_stats_read table_rule_stats_read;
 		struct pipeline_msg_rsp_table_rule_mtr_read table_rule_mtr_read;
 		struct pipeline_msg_rsp_table_rule_ttl_read table_rule_ttl_read;
+		struct pipeline_msg_rsp_table_rule_time_read table_rule_time_read;
 	};
 };
 
@@ -2167,6 +2178,71 @@ pipeline_table_rule_ttl_read(const char *pipeline_name,
 	return status;
 }
 
+int
+pipeline_table_rule_time_read(const char *pipeline_name,
+	uint32_t table_id,
+	struct table_rule_match *match,
+	uint64_t *timestamp)
+{
+	struct pipeline *p;
+	struct table *table;
+	struct pipeline_msg_req *req;
+	struct pipeline_msg_rsp *rsp;
+	struct table_rule *rule;
+	int status;
+
+	/* Check input params */
+	if ((pipeline_name == NULL) ||
+		(match == NULL) ||
+		(timestamp == NULL))
+		return -1;
+
+	p = pipeline_find(pipeline_name);
+	if ((p == NULL) ||
+		(table_id >= p->n_tables) ||
+		match_check(match, p, table_id))
+		return -1;
+
+	table = &p->table[table_id];
+
+	rule = table_rule_find(table, match);
+	if (rule == NULL)
+		return -1;
+
+	if (!pipeline_is_running(p)) {
+		status = rte_table_action_time_read(table->a,
+				rule->data,
+				timestamp);
+
+		return status;
+	}
+
+	/* Allocate request */
+	req = pipeline_msg_alloc();
+	if (req == NULL)
+		return -1;
+
+	/* Write request */
+	req->type = PIPELINE_REQ_TABLE_RULE_TIME_READ;
+	req->id = table_id;
+	req->table_rule_time_read.data = rule->data;
+
+	/* Send request and wait for response */
+	rsp = pipeline_msg_send_recv(p, req);
+	if (rsp == NULL)
+		return -1;
+
+	/* Read response */
+	status = rsp->status;
+	if (status == 0)
+		*timestamp = rsp->table_rule_time_read.timestamp;
+
+	/* Free response */
+	pipeline_msg_free(rsp);
+
+	return status;
+}
+
 /**
  * Data plane threads: message handling
  */
@@ -2942,6 +3018,22 @@ pipeline_msg_handle_table_rule_ttl_read(struct pipeline_data *p,
 	return rsp;
 }
 
+static struct pipeline_msg_rsp *
+pipeline_msg_handle_table_rule_time_read(struct pipeline_data *p,
+	struct pipeline_msg_req *req)
+{
+	struct pipeline_msg_rsp *rsp = (struct pipeline_msg_rsp *) req;
+	uint32_t table_id = req->id;
+	void *data = req->table_rule_time_read.data;
+	struct rte_table_action *a = p->table_data[table_id].a;
+
+	rsp->status = rte_table_action_time_read(a,
+		data,
+		&rsp->table_rule_time_read.timestamp);
+
+	return rsp;
+}
+
 static void
 pipeline_msg_handle(struct pipeline_data *p)
 {
@@ -3016,6 +3108,10 @@ pipeline_msg_handle(struct pipeline_data *p)
 
 		case PIPELINE_REQ_TABLE_RULE_TTL_READ:
 			rsp = pipeline_msg_handle_table_rule_ttl_read(p, req);
+			break;
+
+		case PIPELINE_REQ_TABLE_RULE_TIME_READ:
+			rsp = pipeline_msg_handle_table_rule_time_read(p, req);
 			break;
 
 		default:

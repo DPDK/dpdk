@@ -389,6 +389,13 @@ pipeline_table_rule_ttl_read(const char *pipeline_name,
 	struct table_rule_match *match,
 	struct rte_table_action_ttl_counters *stats,
 	int clear);
+
+int
+pipeline_table_rule_time_read(const char *pipeline_name,
+	uint32_t table_id,
+	struct table_rule_match *match,
+	uint64_t *timestamp);
+
 struct table_rule *
 table_rule_find(struct table *table,
 	struct table_rule_match *match);
