@@ -1619,7 +1619,9 @@ mlx5_flow_validate_item_mpls(const struct rte_flow_item *item __rte_unused,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "protocol filtering not compatible"
 					  " with MPLS layer");
-	if (item_flags & MLX5_FLOW_LAYER_TUNNEL)
+	/* Multi-tunnel isn't allowed but MPLS over GRE is an exception. */
+	if ((item_flags & MLX5_FLOW_LAYER_TUNNEL) &&
+	    !(item_flags & MLX5_FLOW_LAYER_GRE))
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "multiple tunnel layers not"
