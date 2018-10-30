@@ -1796,31 +1796,37 @@ pipeline_table_rule_delete_default(const char *pipeline_name,
 int
 pipeline_table_rule_stats_read(const char *pipeline_name,
 	uint32_t table_id,
-	void *data,
+	struct table_rule_match *match,
 	struct rte_table_action_stats_counters *stats,
 	int clear)
 {
 	struct pipeline *p;
+	struct table *table;
 	struct pipeline_msg_req *req;
 	struct pipeline_msg_rsp *rsp;
+	struct table_rule *rule;
 	int status;
 
 	/* Check input params */
 	if ((pipeline_name == NULL) ||
-		(data == NULL) ||
+		(match == NULL) ||
 		(stats == NULL))
 		return -1;
 
 	p = pipeline_find(pipeline_name);
 	if ((p == NULL) ||
-		(table_id >= p->n_tables))
+		(table_id >= p->n_tables) ||
+		match_check(match, p, table_id))
+		return -1;
+
+	table = &p->table[table_id];
+	rule = table_rule_find(table, match);
+	if (rule == NULL)
 		return -1;
 
 	if (!pipeline_is_running(p)) {
-		struct rte_table_action *a = p->table[table_id].a;
-
-		status = rte_table_action_stats_read(a,
-			data,
+		status = rte_table_action_stats_read(table->a,
+			rule->data,
 			stats,
 			clear);
 
@@ -1835,7 +1841,7 @@ pipeline_table_rule_stats_read(const char *pipeline_name,
 	/* Write request */
 	req->type = PIPELINE_REQ_TABLE_RULE_STATS_READ;
 	req->id = table_id;
-	req->table_rule_stats_read.data = data;
+	req->table_rule_stats_read.data = rule->data;
 	req->table_rule_stats_read.clear = clear;
 
 	/* Send request and wait for response */
@@ -1845,7 +1851,7 @@ pipeline_table_rule_stats_read(const char *pipeline_name,
 
 	/* Read response */
 	status = rsp->status;
-	if (status)
+	if (status == 0)
 		memcpy(stats, &rsp->table_rule_stats_read.stats, sizeof(*stats));
 
 	/* Free response */

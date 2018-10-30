@@ -355,7 +355,7 @@ pipeline_table_rule_delete_default(const char *pipeline_name,
 int
 pipeline_table_rule_stats_read(const char *pipeline_name,
 	uint32_t table_id,
-	void *data,
+	struct table_rule_match *match,
 	struct rte_table_action_stats_counters *stats,
 	int clear);
 
