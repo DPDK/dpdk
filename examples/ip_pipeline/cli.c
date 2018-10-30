@@ -4739,6 +4739,420 @@ cmd_pipeline_table_rule_delete_default(char **tokens,
 	}
 }
 
+static void
+ether_addr_show(FILE *f, struct ether_addr *addr)
+{
+	fprintf(f, "%02x:%02x:%02x:%02x:%02x:%02x",
+		(uint32_t)addr->addr_bytes[0], (uint32_t)addr->addr_bytes[1],
+		(uint32_t)addr->addr_bytes[2], (uint32_t)addr->addr_bytes[3],
+		(uint32_t)addr->addr_bytes[4], (uint32_t)addr->addr_bytes[5]);
+}
+
+static void
+ipv4_addr_show(FILE *f, uint32_t addr)
+{
+	fprintf(f, "%u.%u.%u.%u",
+		addr >> 24,
+		(addr >> 16) & 0xFF,
+		(addr >> 8) & 0xFF,
+		addr & 0xFF);
+}
+
+static void
+ipv6_addr_show(FILE *f, uint8_t *addr)
+{
+	fprintf(f, "%02x%02x:%02x%02x:%02x%02x:%02x%02x:"
+		"%02x%02x:%02x%02x:%02x%02x:%02x%02x:",
+		(uint32_t)addr[0], (uint32_t)addr[1],
+		(uint32_t)addr[2], (uint32_t)addr[3],
+		(uint32_t)addr[4], (uint32_t)addr[5],
+		(uint32_t)addr[6], (uint32_t)addr[7],
+		(uint32_t)addr[8], (uint32_t)addr[9],
+		(uint32_t)addr[10], (uint32_t)addr[11],
+		(uint32_t)addr[12], (uint32_t)addr[13],
+		(uint32_t)addr[14], (uint32_t)addr[15]);
+}
+
+static const char *
+policer_action_string(enum rte_table_action_policer action) {
+	switch (action) {
+		case RTE_TABLE_ACTION_POLICER_COLOR_GREEN: return "G";
+		case RTE_TABLE_ACTION_POLICER_COLOR_YELLOW: return "Y";
+		case RTE_TABLE_ACTION_POLICER_COLOR_RED: return "R";
+		case RTE_TABLE_ACTION_POLICER_DROP: return "D";
+		default: return "?";
+	}
+}
+
+static int
+table_rule_show(const char *pipeline_name,
+	uint32_t table_id,
+	const char *file_name)
+{
+	struct pipeline *p;
+	struct table *table;
+	struct table_rule *rule;
+	FILE *f = NULL;
+	uint32_t i;
+
+	/* Check input params. */
+	if ((pipeline_name == NULL) ||
+		(file_name == NULL))
+		return -1;
+
+	p = pipeline_find(pipeline_name);
+	if ((p == NULL) ||
+		(table_id >= p->n_tables))
+		return -1;
+
+	table = &p->table[table_id];
+
+	/* Open file. */
+	f = fopen(file_name, "w");
+	if (f == NULL)
+		return -1;
+
+	/* Write table rules to file. */
+	TAILQ_FOREACH(rule, &table->rules, node) {
+		struct table_rule_match *m = &rule->match;
+		struct table_rule_action *a = &rule->action;
+
+		fprintf(f, "match ");
+		switch (m->match_type) {
+		case TABLE_ACL:
+			fprintf(f, "acl priority %u ",
+				m->match.acl.priority);
+
+			fprintf(f, m->match.acl.ip_version ? "ipv4 " : "ipv6 ");
+
+			if (m->match.acl.ip_version)
+				ipv4_addr_show(f, m->match.acl.ipv4.sa);
+			else
+				ipv6_addr_show(f, m->match.acl.ipv6.sa);
+
+			fprintf(f, "%u",	m->match.acl.sa_depth);
+
+			if (m->match.acl.ip_version)
+				ipv4_addr_show(f, m->match.acl.ipv4.da);
+			else
+				ipv6_addr_show(f, m->match.acl.ipv6.da);
+
+			fprintf(f, "%u",	m->match.acl.da_depth);
+
+			fprintf(f, "%u %u %u %u %u ",
+				(uint32_t)m->match.acl.sp0,
+				(uint32_t)m->match.acl.sp1,
+				(uint32_t)m->match.acl.dp0,
+				(uint32_t)m->match.acl.dp1,
+				(uint32_t)m->match.acl.proto);
+			break;
+
+		case TABLE_ARRAY:
+			fprintf(f, "array %u ",
+				m->match.array.pos);
+			break;
+
+		case TABLE_HASH:
+			fprintf(f, "hash raw ");
+			for (i = 0; i < table->params.match.hash.key_size; i++)
+				fprintf(f, "%02x", m->match.hash.key[i]);
+			fprintf(f, " ");
+			break;
+
+		case TABLE_LPM:
+			fprintf(f, "lpm ");
+
+			fprintf(f, m->match.lpm.ip_version ? "ipv4 " : "ipv6 ");
+
+			if (m->match.acl.ip_version)
+				ipv4_addr_show(f, m->match.lpm.ipv4);
+			else
+				ipv6_addr_show(f, m->match.lpm.ipv6);
+
+			fprintf(f, "%u ",
+				(uint32_t)m->match.lpm.depth);
+			break;
+
+		default:
+			fprintf(f, "unknown ");
+		}
+
+		fprintf(f, "action ");
+		if (a->action_mask & (1LLU << RTE_TABLE_ACTION_FWD)) {
+			fprintf(f, "fwd ");
+			switch (a->fwd.action) {
+			case RTE_PIPELINE_ACTION_DROP:
+				fprintf(f, "drop ");
+				break;
+
+			case RTE_PIPELINE_ACTION_PORT:
+				fprintf(f, "port %u ", a->fwd.id);
+				break;
+
+			case RTE_PIPELINE_ACTION_PORT_META:
+				fprintf(f, "meta ");
+				break;
+
+			case RTE_PIPELINE_ACTION_TABLE:
+			default:
+				fprintf(f, "table %u ", a->fwd.id);
+			}
+		}
+
+		if (a->action_mask & (1LLU << RTE_TABLE_ACTION_LB)) {
+			fprintf(f, "balance ");
+			for (i = 0; i < RTE_DIM(a->lb.out); i++)
+				fprintf(f, "%u ", a->lb.out[i]);
+		}
+
+		if (a->action_mask & (1LLU << RTE_TABLE_ACTION_MTR)) {
+			fprintf(f, "mtr ");
+			for (i = 0; i < RTE_TABLE_ACTION_TC_MAX; i++)
+				if (a->mtr.tc_mask & (1 << i)) {
+					struct rte_table_action_mtr_tc_params *p =
+						&a->mtr.mtr[i];
+					enum rte_table_action_policer ga =
+						p->policer[e_RTE_METER_GREEN];
+					enum rte_table_action_policer ya =
+						p->policer[e_RTE_METER_YELLOW];
+					enum rte_table_action_policer ra =
+						p->policer[e_RTE_METER_RED];
+
+					fprintf(f, "tc%u meter %u policer g %s y %s r %s ",
+						i,
+						a->mtr.mtr[i].meter_profile_id,
+						policer_action_string(ga),
+						policer_action_string(ya),
+						policer_action_string(ra));
+				}
+		}
+
+		if (a->action_mask & (1LLU << RTE_TABLE_ACTION_TM))
+			fprintf(f, "tm subport %u pipe %u ",
+				a->tm.subport_id,
+				a->tm.pipe_id);
+
+		if (a->action_mask & (1LLU << RTE_TABLE_ACTION_ENCAP)) {
+			fprintf(f, "encap ");
+			switch (a->encap.type) {
+			case RTE_TABLE_ACTION_ENCAP_ETHER:
+				fprintf(f, "ether ");
+				ether_addr_show(f, &a->encap.ether.ether.da);
+				fprintf(f, " ");
+				ether_addr_show(f, &a->encap.ether.ether.sa);
+				fprintf(f, " ");
+				break;
+
+			case RTE_TABLE_ACTION_ENCAP_VLAN:
+				fprintf(f, "vlan ");
+				ether_addr_show(f, &a->encap.vlan.ether.da);
+				fprintf(f, " ");
+				ether_addr_show(f, &a->encap.vlan.ether.sa);
+				fprintf(f, " pcp %u dei %u vid %u ",
+					a->encap.vlan.vlan.pcp,
+					a->encap.vlan.vlan.dei,
+					a->encap.vlan.vlan.vid);
+				break;
+
+			case RTE_TABLE_ACTION_ENCAP_QINQ:
+				fprintf(f, "qinq ");
+				ether_addr_show(f, &a->encap.qinq.ether.da);
+				fprintf(f, " ");
+				ether_addr_show(f, &a->encap.qinq.ether.sa);
+				fprintf(f, " pcp %u dei %u vid %u pcp %u dei %u vid %u ",
+					a->encap.qinq.svlan.pcp,
+					a->encap.qinq.svlan.dei,
+					a->encap.qinq.svlan.vid,
+					a->encap.qinq.cvlan.pcp,
+					a->encap.qinq.cvlan.dei,
+					a->encap.qinq.cvlan.vid);
+				break;
+
+			case RTE_TABLE_ACTION_ENCAP_MPLS:
+				fprintf(f, "mpls %s ", (a->encap.mpls.unicast) ?
+					"unicast " : "multicast ");
+				ether_addr_show(f, &a->encap.mpls.ether.da);
+				fprintf(f, " ");
+				ether_addr_show(f, &a->encap.mpls.ether.sa);
+				fprintf(f, " ");
+				for (i = 0; i < a->encap.mpls.mpls_count; i++) {
+					struct rte_table_action_mpls_hdr *l =
+						&a->encap.mpls.mpls[i];
+
+					fprintf(f, "label%u %u %u %u ",
+						i,
+						l->label,
+						l->tc,
+						l->ttl);
+				}
+				break;
+
+			case RTE_TABLE_ACTION_ENCAP_PPPOE:
+				fprintf(f, "pppoe ");
+				ether_addr_show(f, &a->encap.pppoe.ether.da);
+				fprintf(f, " ");
+				ether_addr_show(f, &a->encap.pppoe.ether.sa);
+				fprintf(f, " %u ", a->encap.pppoe.pppoe.session_id);
+				break;
+
+			case RTE_TABLE_ACTION_ENCAP_VXLAN:
+				fprintf(f, "vxlan ether ");
+				ether_addr_show(f, &a->encap.vxlan.ether.da);
+				fprintf(f, " ");
+				ether_addr_show(f, &a->encap.vxlan.ether.sa);
+				if (table->ap->params.encap.vxlan.vlan)
+					fprintf(f, " vlan pcp %u dei %u vid %u ",
+						a->encap.vxlan.vlan.pcp,
+						a->encap.vxlan.vlan.dei,
+						a->encap.vxlan.vlan.vid);
+				if (table->ap->params.encap.vxlan.ip_version) {
+					fprintf(f, " ipv4 ");
+					ipv4_addr_show(f, a->encap.vxlan.ipv4.sa);
+					fprintf(f, " ");
+					ipv4_addr_show(f, a->encap.vxlan.ipv4.da);
+					fprintf(f, " %u %u ",
+						(uint32_t)a->encap.vxlan.ipv4.dscp,
+						(uint32_t)a->encap.vxlan.ipv4.ttl);
+				} else {
+					fprintf(f, " ipv6 ");
+					ipv6_addr_show(f, a->encap.vxlan.ipv6.sa);
+					fprintf(f, " ");
+					ipv6_addr_show(f, a->encap.vxlan.ipv6.da);
+					fprintf(f, " %u %u %u ",
+						a->encap.vxlan.ipv6.flow_label,
+						(uint32_t)a->encap.vxlan.ipv6.dscp,
+						(uint32_t)a->encap.vxlan.ipv6.hop_limit);
+					fprintf(f, " udp %u %u vxlan %u ",
+						a->encap.vxlan.udp.sp,
+						a->encap.vxlan.udp.dp,
+						a->encap.vxlan.vxlan.vni);
+				}
+				break;
+
+			default:
+				fprintf(f, "unknown ");
+			}
+		}
+
+		if (a->action_mask & (1LLU << RTE_TABLE_ACTION_NAT)) {
+			fprintf(f, "nat %s ", (a->nat.ip_version) ? "ipv4 " : "ipv6 ");
+			if (a->nat.ip_version)
+				ipv4_addr_show(f, a->nat.addr.ipv4);
+			else
+				ipv6_addr_show(f, a->nat.addr.ipv6);
+			fprintf(f, " %u ", (uint32_t)(a->nat.port));
+		}
+
+		if (a->action_mask & (1LLU << RTE_TABLE_ACTION_TTL))
+			fprintf(f, "ttl %s ", (a->ttl.decrement) ? "dec" : "keep");
+
+		if (a->action_mask & (1LLU << RTE_TABLE_ACTION_STATS))
+			fprintf(f, "stats ");
+
+		if (a->action_mask & (1LLU << RTE_TABLE_ACTION_TIME))
+			fprintf(f, "time ");
+
+		if (a->action_mask & (1LLU << RTE_TABLE_ACTION_SYM_CRYPTO))
+			fprintf(f, "sym_crypto ");
+
+		if (a->action_mask & (1LLU << RTE_TABLE_ACTION_TAG))
+			fprintf(f, "tag %u ", a->tag.tag);
+
+		if (a->action_mask & (1LLU << RTE_TABLE_ACTION_DECAP))
+			fprintf(f, "decap %u ", a->decap.n);
+
+		/* end */
+		fprintf(f, "\n");
+	}
+
+	/* Write table default rule to file. */
+	if (table->rule_default) {
+		struct table_rule_action *a = &table->rule_default->action;
+
+		fprintf(f, "# match default action fwd ");
+
+		switch (a->fwd.action) {
+		case RTE_PIPELINE_ACTION_DROP:
+			fprintf(f, "drop ");
+			break;
+
+		case RTE_PIPELINE_ACTION_PORT:
+			fprintf(f, "port %u ", a->fwd.id);
+			break;
+
+		case RTE_PIPELINE_ACTION_PORT_META:
+			fprintf(f, "meta ");
+			break;
+
+		case RTE_PIPELINE_ACTION_TABLE:
+		default:
+			fprintf(f, "table %u ", a->fwd.id);
+		}
+	} else
+		fprintf(f, "# match default action fwd drop ");
+
+	fprintf(f, "\n");
+
+	/* Close file. */
+	fclose(f);
+
+	return 0;
+}
+
+static const char cmd_pipeline_table_rule_show_help[] =
+"pipeline <pipeline_name> table <table_id> rule show\n"
+"     file <file_name>\n";
+
+static void
+cmd_pipeline_table_rule_show(char **tokens,
+	uint32_t n_tokens,
+	char *out,
+	size_t out_size)
+{
+	char *file_name = NULL, *pipeline_name;
+	uint32_t table_id;
+	int status;
+
+	if (n_tokens != 8) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+
+	if (strcmp(tokens[2], "table") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "table");
+		return;
+	}
+
+	if (parser_read_uint32(&table_id, tokens[3]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "table_id");
+		return;
+	}
+
+	if (strcmp(tokens[4], "rule") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "rule");
+		return;
+	}
+
+	if (strcmp(tokens[5], "show") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "show");
+		return;
+	}
+
+	if (strcmp(tokens[6], "file") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "file");
+		return;
+	}
+
+	file_name = tokens[7];
+
+	status = table_rule_show(pipeline_name, table_id, file_name);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+}
 
 static const char cmd_pipeline_table_rule_stats_read_help[] =
 "pipeline <pipeline_name> table <table_id> rule read stats [clear]\n"
@@ -5617,6 +6031,7 @@ cmd_help(char **tokens, uint32_t n_tokens, char *out, size_t out_size)
 			"\tpipeline table rule add bulk\n"
 			"\tpipeline table rule delete\n"
 			"\tpipeline table rule delete default\n"
+			"\tpipeline table rule show\n"
 			"\tpipeline table rule stats read\n"
 			"\tpipeline table meter profile add\n"
 			"\tpipeline table meter profile delete\n"
@@ -5828,6 +6243,14 @@ cmd_help(char **tokens, uint32_t n_tokens, char *out, size_t out_size)
 			(strcmp(tokens[4], "default") == 0)) {
 			snprintf(out, out_size, "\n%s\n",
 				cmd_pipeline_table_rule_delete_default_help);
+			return;
+		}
+
+		if ((n_tokens == 4) &&
+			(strcmp(tokens[2], "rule") == 0) &&
+			(strcmp(tokens[3], "show") == 0)) {
+			snprintf(out, out_size, "\n%s\n",
+				cmd_pipeline_table_rule_show_help);
 			return;
 		}
 
@@ -6131,6 +6554,15 @@ cli_process(char *in, char *out, size_t out_size)
 				}
 
 			cmd_pipeline_table_rule_delete(tokens, n_tokens,
+				out, out_size);
+			return;
+		}
+
+		if ((n_tokens >= 6) &&
+			(strcmp(tokens[2], "table") == 0) &&
+			(strcmp(tokens[4], "rule") == 0) &&
+			(strcmp(tokens[5], "show") == 0)) {
+			cmd_pipeline_table_rule_show(tokens, n_tokens,
 				out, out_size);
 			return;
 		}
