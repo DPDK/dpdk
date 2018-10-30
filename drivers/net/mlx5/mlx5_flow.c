@@ -239,7 +239,6 @@ static const struct rte_flow_ops mlx5_flow_ops = {
 /* Convert FDIR request to Generic flow. */
 struct mlx5_fdir {
 	struct rte_flow_attr attr;
-	struct rte_flow_action actions[2];
 	struct rte_flow_item items[4];
 	struct rte_flow_item_eth l2;
 	struct rte_flow_item_eth l2_mask;
@@ -259,6 +258,7 @@ struct mlx5_fdir {
 		struct rte_flow_item_udp udp;
 		struct rte_flow_item_tcp tcp;
 	} l4_mask;
+	struct rte_flow_action actions[2];
 	struct rte_flow_action_queue queue;
 };
 
@@ -2136,6 +2136,7 @@ flow_list_destroy(struct rte_eth_dev *dev, struct mlx5_flows *list,
 	 */
 	if (dev->data->dev_started)
 		flow_rxq_flags_trim(dev, flow);
+	rte_free(flow->fdir);
 	rte_free(flow);
 }
 
@@ -2453,7 +2454,7 @@ mlx5_flow_query(struct rte_eth_dev *dev,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_fdir_filter_convert(struct rte_eth_dev *dev,
+flow_fdir_filter_convert(struct rte_eth_dev *dev,
 			 const struct rte_eth_fdir_filter *fdir_filter,
 			 struct mlx5_fdir *attributes)
 {
@@ -2625,6 +2626,69 @@ mlx5_fdir_filter_convert(struct rte_eth_dev *dev,
 	return 0;
 }
 
+#define FLOW_FDIR_CMP(f1, f2, fld) \
+	memcmp(&(f1)->fld, &(f2)->fld, sizeof(f1->fld))
+
+/**
+ * Compare two FDIR flows. If items and actions are identical, the two flows are
+ * regarded as same.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param f1
+ *   FDIR flow to compare.
+ * @param f2
+ *   FDIR flow to compare.
+ *
+ * @return
+ *   Zero on match, 1 otherwise.
+ */
+static int
+flow_fdir_cmp(const struct mlx5_fdir *f1, const struct mlx5_fdir *f2)
+{
+	if (FLOW_FDIR_CMP(f1, f2, attr) ||
+	    FLOW_FDIR_CMP(f1, f2, l2) ||
+	    FLOW_FDIR_CMP(f1, f2, l2_mask) ||
+	    FLOW_FDIR_CMP(f1, f2, l3) ||
+	    FLOW_FDIR_CMP(f1, f2, l3_mask) ||
+	    FLOW_FDIR_CMP(f1, f2, l4) ||
+	    FLOW_FDIR_CMP(f1, f2, l4_mask) ||
+	    FLOW_FDIR_CMP(f1, f2, actions[0]))
+		return 1;
+	if (f1->actions[0].type == RTE_FLOW_ACTION_TYPE_QUEUE &&
+	    FLOW_FDIR_CMP(f1, f2, queue))
+		return 1;
+	return 0;
+}
+
+/**
+ * Search device flow list to find out a matched FDIR flow.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param fdir_flow
+ *   FDIR flow to lookup.
+ *
+ * @return
+ *   Pointer of flow if found, NULL otherwise.
+ */
+static struct rte_flow *
+flow_fdir_filter_lookup(struct rte_eth_dev *dev, struct mlx5_fdir *fdir_flow)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct rte_flow *flow = NULL;
+
+	assert(fdir_flow);
+	TAILQ_FOREACH(flow, &priv->flows, next) {
+		if (flow->fdir && !flow_fdir_cmp(flow->fdir, fdir_flow)) {
+			DRV_LOG(DEBUG, "port %u found FDIR flow %p",
+				dev->data->port_id, (void *)flow);
+			break;
+		}
+	}
+	return flow;
+}
+
 /**
  * Add new flow director filter and store it in list.
  *
@@ -2637,32 +2701,38 @@ mlx5_fdir_filter_convert(struct rte_eth_dev *dev,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_fdir_filter_add(struct rte_eth_dev *dev,
+flow_fdir_filter_add(struct rte_eth_dev *dev,
 		     const struct rte_eth_fdir_filter *fdir_filter)
 {
 	struct priv *priv = dev->data->dev_private;
-	struct mlx5_fdir attributes = {
-		.attr.group = 0,
-		.l2_mask = {
-			.dst.addr_bytes = "\x00\x00\x00\x00\x00\x00",
-			.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
-			.type = 0,
-		},
-	};
-	struct rte_flow_error error;
+	struct mlx5_fdir *fdir_flow;
 	struct rte_flow *flow;
 	int ret;
 
-	ret = mlx5_fdir_filter_convert(dev, fdir_filter, &attributes);
-	if (ret)
-		return ret;
-	flow = flow_list_create(dev, &priv->flows, &attributes.attr,
-				attributes.items, attributes.actions, &error);
-	if (flow) {
-		DRV_LOG(DEBUG, "port %u FDIR created %p", dev->data->port_id,
-			(void *)flow);
-		return 0;
+	fdir_flow = rte_zmalloc(__func__, sizeof(*fdir_flow), 0);
+	if (!fdir_flow) {
+		rte_errno = ENOMEM;
+		return -rte_errno;
 	}
+	ret = flow_fdir_filter_convert(dev, fdir_filter, fdir_flow);
+	if (ret)
+		goto error;
+	flow = flow_fdir_filter_lookup(dev, fdir_flow);
+	if (flow) {
+		rte_errno = EEXIST;
+		goto error;
+	}
+	flow = flow_list_create(dev, &priv->flows, &fdir_flow->attr,
+				fdir_flow->items, fdir_flow->actions, NULL);
+	if (!flow)
+		goto error;
+	assert(!flow->fdir);
+	flow->fdir = fdir_flow;
+	DRV_LOG(DEBUG, "port %u created FDIR flow %p",
+		dev->data->port_id, (void *)flow);
+	return 0;
+error:
+	rte_free(fdir_flow);
 	return -rte_errno;
 }
 
@@ -2678,12 +2748,28 @@ mlx5_fdir_filter_add(struct rte_eth_dev *dev,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_fdir_filter_delete(struct rte_eth_dev *dev __rte_unused,
-			const struct rte_eth_fdir_filter *fdir_filter
-			__rte_unused)
+flow_fdir_filter_delete(struct rte_eth_dev *dev,
+			const struct rte_eth_fdir_filter *fdir_filter)
 {
-	rte_errno = ENOTSUP;
-	return -rte_errno;
+	struct priv *priv = dev->data->dev_private;
+	struct rte_flow *flow;
+	struct mlx5_fdir fdir_flow = {
+		.attr.group = 0,
+	};
+	int ret;
+
+	ret = flow_fdir_filter_convert(dev, fdir_filter, &fdir_flow);
+	if (ret)
+		return -rte_errno;
+	flow = flow_fdir_filter_lookup(dev, &fdir_flow);
+	if (!flow) {
+		rte_errno = ENOENT;
+		return -rte_errno;
+	}
+	flow_list_destroy(dev, &priv->flows, flow);
+	DRV_LOG(DEBUG, "port %u deleted FDIR flow %p",
+		dev->data->port_id, (void *)flow);
+	return 0;
 }
 
 /**
@@ -2698,15 +2784,15 @@ mlx5_fdir_filter_delete(struct rte_eth_dev *dev __rte_unused,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_fdir_filter_update(struct rte_eth_dev *dev,
+flow_fdir_filter_update(struct rte_eth_dev *dev,
 			const struct rte_eth_fdir_filter *fdir_filter)
 {
 	int ret;
 
-	ret = mlx5_fdir_filter_delete(dev, fdir_filter);
+	ret = flow_fdir_filter_delete(dev, fdir_filter);
 	if (ret)
 		return ret;
-	return mlx5_fdir_filter_add(dev, fdir_filter);
+	return flow_fdir_filter_add(dev, fdir_filter);
 }
 
 /**
@@ -2716,7 +2802,7 @@ mlx5_fdir_filter_update(struct rte_eth_dev *dev,
  *   Pointer to Ethernet device.
  */
 static void
-mlx5_fdir_filter_flush(struct rte_eth_dev *dev)
+flow_fdir_filter_flush(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
 
@@ -2732,7 +2818,7 @@ mlx5_fdir_filter_flush(struct rte_eth_dev *dev)
  *   Resulting flow director information.
  */
 static void
-mlx5_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir_info *fdir_info)
+flow_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir_info *fdir_info)
 {
 	struct rte_eth_fdir_masks *mask =
 		&dev->data->dev_conf.fdir_conf.mask;
@@ -2762,7 +2848,7 @@ mlx5_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir_info *fdir_info)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_fdir_ctrl_func(struct rte_eth_dev *dev, enum rte_filter_op filter_op,
+flow_fdir_ctrl_func(struct rte_eth_dev *dev, enum rte_filter_op filter_op,
 		    void *arg)
 {
 	enum rte_fdir_mode fdir_mode =
@@ -2779,16 +2865,16 @@ mlx5_fdir_ctrl_func(struct rte_eth_dev *dev, enum rte_filter_op filter_op,
 	}
 	switch (filter_op) {
 	case RTE_ETH_FILTER_ADD:
-		return mlx5_fdir_filter_add(dev, arg);
+		return flow_fdir_filter_add(dev, arg);
 	case RTE_ETH_FILTER_UPDATE:
-		return mlx5_fdir_filter_update(dev, arg);
+		return flow_fdir_filter_update(dev, arg);
 	case RTE_ETH_FILTER_DELETE:
-		return mlx5_fdir_filter_delete(dev, arg);
+		return flow_fdir_filter_delete(dev, arg);
 	case RTE_ETH_FILTER_FLUSH:
-		mlx5_fdir_filter_flush(dev);
+		flow_fdir_filter_flush(dev);
 		break;
 	case RTE_ETH_FILTER_INFO:
-		mlx5_fdir_info_get(dev, arg);
+		flow_fdir_info_get(dev, arg);
 		break;
 	default:
 		DRV_LOG(DEBUG, "port %u unknown operation %u",
@@ -2829,7 +2915,7 @@ mlx5_dev_filter_ctrl(struct rte_eth_dev *dev,
 		*(const void **)arg = &mlx5_flow_ops;
 		return 0;
 	case RTE_ETH_FILTER_FDIR:
-		return mlx5_fdir_ctrl_func(dev, filter_op, arg);
+		return flow_fdir_ctrl_func(dev, filter_op, arg);
 	default:
 		DRV_LOG(ERR, "port %u filter type (%d) not supported",
 			dev->data->port_id, filter_type);
