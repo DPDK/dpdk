@@ -349,11 +349,36 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 			if (ret < 0) {
 				rte_pci_insert_device(dev2, dev);
 			} else { /* already registered */
-				dev2->kdrv = dev->kdrv;
-				dev2->max_vfs = dev->max_vfs;
-				pci_name_set(dev2);
-				memmove(dev2->mem_resource, dev->mem_resource,
-					sizeof(dev->mem_resource));
+				if (!rte_dev_is_probed(&dev2->device)) {
+					dev2->kdrv = dev->kdrv;
+					dev2->max_vfs = dev->max_vfs;
+					pci_name_set(dev2);
+					memmove(dev2->mem_resource,
+						dev->mem_resource,
+						sizeof(dev->mem_resource));
+				} else {
+					/**
+					 * If device is plugged and driver is
+					 * probed already, (This happens when
+					 * we call rte_dev_probe which will
+					 * scan all device on the bus) we don't
+					 * need to do anything here unless...
+					 **/
+					if (dev2->kdrv != dev->kdrv ||
+						dev2->max_vfs != dev->max_vfs)
+						/*
+						 * This should not happens.
+						 * But it is still possible if
+						 * we unbind a device from
+						 * vfio or uio before hotplug
+						 * remove and rebind it with
+						 * a different configure.
+						 * So we just print out the
+						 * error as an alarm.
+						 */
+						RTE_LOG(ERR, EAL, "Unexpected device scan at %s!\n",
+							filename);
+				}
 				free(dev);
 			}
 			return 0;
