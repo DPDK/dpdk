@@ -149,3 +149,7 @@ In this particular case:
 *   Every packet which color has improved is dropped (this particular case can't happen, so these values will not be used).
 
 *   For the rest of the cases, the color is changed to red.
+
+.. note::
+    * In color blind mode, first row GREEN colour is only valid.
+    * To drop the packet, policer_table action has to be set to DROP.
