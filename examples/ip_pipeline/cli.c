@@ -5065,15 +5065,98 @@ cmd_pipeline_table_meter_profile_delete(char **tokens,
 
 
 static const char cmd_pipeline_table_rule_meter_read_help[] =
-"pipeline <pipeline_name> table <table_id> rule read meter [clear]\n";
+"pipeline <pipeline_name> table <table_id> rule read meter [clear]\n"
+"     match <match>\n";
 
 static void
 cmd_pipeline_table_rule_meter_read(char **tokens,
-	uint32_t n_tokens __rte_unused,
+	uint32_t n_tokens,
 	char *out,
 	size_t out_size)
 {
-	snprintf(out, out_size, MSG_CMD_UNIMPLEM, tokens[0]);
+	struct table_rule_match m;
+	struct rte_table_action_mtr_counters stats;
+	char *pipeline_name;
+	uint32_t table_id, n_tokens_parsed;
+	int clear = 0, status;
+
+	if (n_tokens < 7) {
+		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
+		return;
+	}
+
+	pipeline_name = tokens[1];
+
+	if (strcmp(tokens[2], "table") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "table");
+		return;
+	}
+
+	if (parser_read_uint32(&table_id, tokens[3]) != 0) {
+		snprintf(out, out_size, MSG_ARG_INVALID, "table_id");
+		return;
+	}
+
+	if (strcmp(tokens[4], "rule") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "rule");
+		return;
+	}
+
+	if (strcmp(tokens[5], "read") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "read");
+		return;
+	}
+
+	if (strcmp(tokens[6], "meter") != 0) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "meter");
+		return;
+	}
+
+	n_tokens -= 7;
+	tokens += 7;
+
+	/* clear */
+	if (n_tokens && (strcmp(tokens[0], "clear") == 0)) {
+		clear = 1;
+
+		n_tokens--;
+		tokens++;
+	}
+
+	/* match */
+	if ((n_tokens == 0) || strcmp(tokens[0], "match")) {
+		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "match");
+		return;
+	}
+
+	n_tokens_parsed = parse_match(tokens,
+		n_tokens,
+		out,
+		out_size,
+		&m);
+	if (n_tokens_parsed == 0)
+		return;
+	n_tokens -= n_tokens_parsed;
+	tokens += n_tokens_parsed;
+
+	/* end */
+	if (n_tokens) {
+		snprintf(out, out_size, MSG_ARG_INVALID, tokens[0]);
+		return;
+	}
+
+	/* Read table rule meter stats. */
+	status = pipeline_table_rule_mtr_read(pipeline_name,
+		table_id,
+		&m,
+		&stats,
+		clear);
+	if (status) {
+		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
+		return;
+	}
+
+	/* Print stats. */
 }
 
 

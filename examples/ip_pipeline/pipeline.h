@@ -373,8 +373,7 @@ pipeline_table_mtr_profile_delete(const char *pipeline_name,
 int
 pipeline_table_rule_mtr_read(const char *pipeline_name,
 	uint32_t table_id,
-	void *data,
-	uint32_t tc_mask,
+	struct table_rule_match *match,
 	struct rte_table_action_mtr_counters *stats,
 	int clear);
 
