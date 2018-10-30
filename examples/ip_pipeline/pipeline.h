@@ -386,7 +386,7 @@ pipeline_table_dscp_table_update(const char *pipeline_name,
 int
 pipeline_table_rule_ttl_read(const char *pipeline_name,
 	uint32_t table_id,
-	void *data,
+	struct table_rule_match *match,
 	struct rte_table_action_ttl_counters *stats,
 	int clear);
 struct table_rule *
