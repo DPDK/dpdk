@@ -4321,7 +4321,6 @@ cmd_pipeline_table_rule_add(char **tokens,
 	struct table_rule_match m;
 	struct table_rule_action a;
 	char *pipeline_name;
-	void *data;
 	uint32_t table_id, t0, n_tokens_parsed;
 	int status;
 
@@ -4379,8 +4378,7 @@ cmd_pipeline_table_rule_add(char **tokens,
 		return;
 	}
 
-	status = pipeline_table_rule_add(pipeline_name, table_id,
-		&m, &a, &data);
+	status = pipeline_table_rule_add(pipeline_name, table_id, &m, &a);
 	if (status) {
 		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
 		return;

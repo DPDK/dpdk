@@ -1210,19 +1210,19 @@ int
 pipeline_table_rule_add(const char *pipeline_name,
 	uint32_t table_id,
 	struct table_rule_match *match,
-	struct table_rule_action *action,
-	void **data)
+	struct table_rule_action *action)
 {
 	struct pipeline *p;
+	struct table *table;
 	struct pipeline_msg_req *req;
 	struct pipeline_msg_rsp *rsp;
+	struct table_rule *rule;
 	int status;
 
 	/* Check input params */
 	if ((pipeline_name == NULL) ||
 		(match == NULL) ||
-		(action == NULL) ||
-		(data == NULL))
+		(action == NULL))
 		return -1;
 
 	p = pipeline_find(pipeline_name);
@@ -1232,16 +1232,26 @@ pipeline_table_rule_add(const char *pipeline_name,
 		action_check(action, p, table_id))
 		return -1;
 
+	table = &p->table[table_id];
+
+	rule = calloc(1, sizeof(struct table_rule));
+	if (rule == NULL)
+		return -1;
+
+	memcpy(&rule->match, match, sizeof(*match));
+	memcpy(&rule->action, action, sizeof(*action));
+
 	if (!pipeline_is_running(p)) {
-		struct rte_table_action *a = p->table[table_id].a;
 		union table_rule_match_low_level match_ll;
 		struct rte_pipeline_table_entry *data_in, *data_out;
 		int key_found;
 		uint8_t *buffer;
 
 		buffer = calloc(TABLE_RULE_ACTION_SIZE_MAX, sizeof(uint8_t));
-		if (buffer == NULL)
+		if (buffer == NULL) {
+			free(rule);
 			return -1;
+		}
 
 		/* Table match-action rule conversion */
 		data_in = (struct rte_pipeline_table_entry *)buffer;
@@ -1249,12 +1259,14 @@ pipeline_table_rule_add(const char *pipeline_name,
 		status = match_convert(match, &match_ll, 1);
 		if (status) {
 			free(buffer);
+			free(rule);
 			return -1;
 		}
 
-		status = action_convert(a, action, data_in);
+		status = action_convert(table->a, action, data_in);
 		if (status) {
 			free(buffer);
+			free(rule);
 			return -1;
 		}
 
@@ -1267,11 +1279,13 @@ pipeline_table_rule_add(const char *pipeline_name,
 				&data_out);
 		if (status) {
 			free(buffer);
+			free(rule);
 			return -1;
 		}
 
 		/* Write Response */
-		*data = data_out;
+		rule->data = data_out;
+		table_rule_add(table, rule);
 
 		free(buffer);
 		return 0;
@@ -1279,8 +1293,10 @@ pipeline_table_rule_add(const char *pipeline_name,
 
 	/* Allocate request */
 	req = pipeline_msg_alloc();
-	if (req == NULL)
+	if (req == NULL) {
+		free(rule);
 		return -1;
+	}
 
 	/* Write request */
 	req->type = PIPELINE_REQ_TABLE_RULE_ADD;
@@ -1290,13 +1306,18 @@ pipeline_table_rule_add(const char *pipeline_name,
 
 	/* Send request and wait for response */
 	rsp = pipeline_msg_send_recv(p, req);
-	if (rsp == NULL)
+	if (rsp == NULL) {
+		free(rule);
 		return -1;
+	}
 
 	/* Read response */
 	status = rsp->status;
-	if (status == 0)
-		*data = rsp->table_rule_add.data;
+	if (status == 0) {
+		rule->data = rsp->table_rule_add.data;
+		table_rule_add(table, rule);
+	} else
+		free(rule);
 
 	/* Free response */
 	pipeline_msg_free(rsp);
