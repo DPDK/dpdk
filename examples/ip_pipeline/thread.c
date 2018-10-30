@@ -609,10 +609,7 @@ struct pipeline_msg_req_table_rule_add_default {
 };
 
 struct pipeline_msg_req_table_rule_add_bulk {
-	struct table_rule_match *match;
-	struct table_rule_action *action;
-	void **data;
-	uint32_t n_rules;
+	struct table_rule_list *list;
 	int bulk;
 };
 
@@ -1206,6 +1203,128 @@ action_convert(struct rte_table_action *a,
 	struct table_rule_action *action,
 	struct rte_pipeline_table_entry *data);
 
+struct table_ll {
+	struct rte_pipeline *p;
+	int table_id;
+	struct rte_table_action *a;
+	int bulk_supported;
+};
+
+static int
+table_rule_add_bulk_ll(struct table_ll *table,
+	struct table_rule_list *list,
+	uint32_t *n_rules)
+{
+	union table_rule_match_low_level *match_ll = NULL;
+	uint8_t *action_ll = NULL;
+	void **match_ll_ptr = NULL;
+	struct rte_pipeline_table_entry **action_ll_ptr = NULL;
+	struct rte_pipeline_table_entry **entries_ptr = NULL;
+	int *found = NULL;
+	struct table_rule *rule;
+	uint32_t n, i;
+	int status = 0;
+
+	n = 0;
+	TAILQ_FOREACH(rule, list, node)
+		n++;
+
+	/* Memory allocation */
+	match_ll = calloc(n, sizeof(union table_rule_match_low_level));
+	action_ll = calloc(n, TABLE_RULE_ACTION_SIZE_MAX);
+
+	match_ll_ptr = calloc(n, sizeof(void *));
+	action_ll_ptr = calloc(n, sizeof(struct rte_pipeline_table_entry *));
+
+	entries_ptr = calloc(n, sizeof(struct rte_pipeline_table_entry *));
+	found = calloc(n, sizeof(int));
+
+	if (match_ll == NULL ||
+		action_ll == NULL ||
+		match_ll_ptr == NULL ||
+		action_ll_ptr == NULL ||
+		entries_ptr == NULL ||
+		found == NULL) {
+			status = -ENOMEM;
+			goto table_rule_add_bulk_ll_free;
+	}
+
+	/* Init */
+	for (i = 0; i < n; i++) {
+		match_ll_ptr[i] = (void *)&match_ll[i];
+		action_ll_ptr[i] = (struct rte_pipeline_table_entry *)
+			&action_ll[i * TABLE_RULE_ACTION_SIZE_MAX];
+	}
+
+	/* Rule (match, action) conversion */
+	i = 0;
+	TAILQ_FOREACH(rule, list, node) {
+		status = match_convert(&rule->match, match_ll_ptr[i], 1);
+		if (status)
+			goto table_rule_add_bulk_ll_free;
+
+		status = action_convert(table->a, &rule->action, action_ll_ptr[i]);
+		if (status)
+			goto table_rule_add_bulk_ll_free;
+
+		i++;
+	}
+
+	/* Add rule (match, action) to table */
+	if (table->bulk_supported) {
+		status = rte_pipeline_table_entry_add_bulk(table->p,
+			table->table_id,
+			match_ll_ptr,
+			action_ll_ptr,
+			n,
+			found,
+			entries_ptr);
+		if (status)
+			goto table_rule_add_bulk_ll_free;
+	} else
+		for (i = 0; i < n; i++) {
+			status = rte_pipeline_table_entry_add(table->p,
+				table->table_id,
+				match_ll_ptr[i],
+				action_ll_ptr[i],
+				&found[i],
+				&entries_ptr[i]);
+			if (status) {
+				if (i == 0)
+					goto table_rule_add_bulk_ll_free;
+
+				/* No roll-back. */
+				status = 0;
+				n = i;
+				break;
+			}
+		}
+
+	/* Write back to the rule list. */
+	i = 0;
+	TAILQ_FOREACH(rule, list, node) {
+		if (i >= n)
+			break;
+
+		rule->data = entries_ptr[i];
+
+		i++;
+	}
+
+	*n_rules = n;
+
+	/* Free */
+table_rule_add_bulk_ll_free:
+	free(found);
+	free(entries_ptr);
+	free(action_ll_ptr);
+	free(match_ll_ptr);
+	free(action_ll);
+	free(match_ll);
+
+	return status;
+}
+
 int
 pipeline_table_rule_add(const char *pipeline_name,
 	uint32_t table_id,
@@ -1408,156 +1527,119 @@ pipeline_table_rule_add_default(const char *pipeline_name,
 	return status;
 }
 
+static uint32_t
+table_rule_list_free(struct table_rule_list *list)
+{
+	uint32_t n = 0;
+
+	if (!list)
+		return 0;
+
+	for ( ; ; ) {
+		struct table_rule *rule;
+
+		rule = TAILQ_FIRST(list);
+		if (rule == NULL)
+			break;
+
+		TAILQ_REMOVE(list, rule, node);
+		free(rule);
+		n++;
+	}
+
+	free(list);
+	return n;
+}
+
 int
 pipeline_table_rule_add_bulk(const char *pipeline_name,
 	uint32_t table_id,
-	struct table_rule_match *match,
-	struct table_rule_action *action,
-	void **data,
-	uint32_t *n_rules)
+	struct table_rule_list *list,
+	uint32_t *n_rules_added,
+	uint32_t *n_rules_not_added)
 {
 	struct pipeline *p;
+	struct table *table;
 	struct pipeline_msg_req *req;
 	struct pipeline_msg_rsp *rsp;
-	uint32_t i;
-	int status;
+	struct table_rule *rule;
+	int status = 0;
 
 	/* Check input params */
 	if ((pipeline_name == NULL) ||
-		(match == NULL) ||
-		(action == NULL) ||
-		(data == NULL) ||
-		(n_rules == NULL) ||
-		(*n_rules == 0))
-		return -1;
+		(list == NULL) ||
+		TAILQ_EMPTY(list) ||
+		(n_rules_added == NULL) ||
+		(n_rules_not_added == NULL)) {
+		table_rule_list_free(list);
+		return -EINVAL;
+	}
 
 	p = pipeline_find(pipeline_name);
 	if ((p == NULL) ||
-		(table_id >= p->n_tables))
-		return -1;
+		(table_id >= p->n_tables)) {
+		table_rule_list_free(list);
+		return -EINVAL;
+	}
 
-	for (i = 0; i < *n_rules; i++)
-		if (match_check(match, p, table_id) ||
-			action_check(action, p, table_id))
-			return -1;
+	table = &p->table[table_id];
+
+	TAILQ_FOREACH(rule, list, node)
+		if (match_check(&rule->match, p, table_id) ||
+			action_check(&rule->action, p, table_id)) {
+			table_rule_list_free(list);
+			return -EINVAL;
+		}
 
 	if (!pipeline_is_running(p)) {
-		struct rte_table_action *a = p->table[table_id].a;
-		union table_rule_match_low_level *match_ll;
-		uint8_t *action_ll;
-		void **match_ll_ptr;
-		struct rte_pipeline_table_entry **action_ll_ptr;
-		struct rte_pipeline_table_entry **entries_ptr =
-			(struct rte_pipeline_table_entry **)data;
-		uint32_t bulk =
-			(p->table[table_id].params.match_type == TABLE_ACL) ? 1 : 0;
-		int *found;
+		struct table_ll table_ll = {
+			.p = p->p,
+			.table_id = table_id,
+			.a = table->a,
+			.bulk_supported = table->params.match_type == TABLE_ACL,
+		};
 
-		/* Memory allocation */
-		match_ll = calloc(*n_rules, sizeof(union table_rule_match_low_level));
-		action_ll = calloc(*n_rules, TABLE_RULE_ACTION_SIZE_MAX);
-		match_ll_ptr = calloc(*n_rules, sizeof(void *));
-		action_ll_ptr =
-			calloc(*n_rules, sizeof(struct rte_pipeline_table_entry *));
-		found = calloc(*n_rules, sizeof(int));
-
-		if (match_ll == NULL ||
-			action_ll == NULL ||
-			match_ll_ptr == NULL ||
-			action_ll_ptr == NULL ||
-			found == NULL)
-			goto fail;
-
-		for (i = 0; i < *n_rules; i++) {
-			match_ll_ptr[i] = (void *)&match_ll[i];
-			action_ll_ptr[i] =
-				(struct rte_pipeline_table_entry *)&action_ll[i * TABLE_RULE_ACTION_SIZE_MAX];
+		status = table_rule_add_bulk_ll(&table_ll, list, n_rules_added);
+		if (status) {
+			table_rule_list_free(list);
+			return status;
 		}
 
-		/* Rule match conversion */
-		for (i = 0; i < *n_rules; i++) {
-			status = match_convert(&match[i], match_ll_ptr[i], 1);
-			if (status)
-				goto fail;
-		}
-
-		/* Rule action conversion */
-		for (i = 0; i < *n_rules; i++) {
-			status = action_convert(a, &action[i], action_ll_ptr[i]);
-			if (status)
-				goto fail;
-		}
-
-		/* Add rule (match, action) to table */
-		if (bulk) {
-			status = rte_pipeline_table_entry_add_bulk(p->p,
-				table_id,
-				match_ll_ptr,
-				action_ll_ptr,
-				*n_rules,
-				found,
-				entries_ptr);
-			if (status)
-				*n_rules = 0;
-		} else {
-			for (i = 0; i < *n_rules; i++) {
-				status = rte_pipeline_table_entry_add(p->p,
-					table_id,
-					match_ll_ptr[i],
-					action_ll_ptr[i],
-					&found[i],
-					&entries_ptr[i]);
-				if (status) {
-					*n_rules = i;
-					break;
-				}
-			}
-		}
-
-		/* Free */
-		free(found);
-		free(action_ll_ptr);
-		free(match_ll_ptr);
-		free(action_ll);
-		free(match_ll);
-
-		return status;
-
-fail:
-		free(found);
-		free(action_ll_ptr);
-		free(match_ll_ptr);
-		free(action_ll);
-		free(match_ll);
-
-		*n_rules = 0;
-		return -1;
+		table_rule_add_bulk(table, list, *n_rules_added);
+		*n_rules_not_added = table_rule_list_free(list);
+		return 0;
 	}
 
 	/* Allocate request */
 	req = pipeline_msg_alloc();
-	if (req == NULL)
-		return -1;
+	if (req == NULL) {
+		table_rule_list_free(list);
+		return -ENOMEM;
+	}
 
 	/* Write request */
 	req->type = PIPELINE_REQ_TABLE_RULE_ADD_BULK;
 	req->id = table_id;
-	req->table_rule_add_bulk.match = match;
-	req->table_rule_add_bulk.action = action;
-	req->table_rule_add_bulk.data = data;
-	req->table_rule_add_bulk.n_rules = *n_rules;
-	req->table_rule_add_bulk.bulk =
-		(p->table[table_id].params.match_type == TABLE_ACL) ? 1 : 0;
+	req->table_rule_add_bulk.list = list;
+	req->table_rule_add_bulk.bulk = table->params.match_type == TABLE_ACL;
 
 	/* Send request and wait for response */
 	rsp = pipeline_msg_send_recv(p, req);
-	if (rsp == NULL)
-		return -1;
+	if (rsp == NULL) {
+		table_rule_list_free(list);
+		return -ENOMEM;
+	}
 
 	/* Read response */
 	status = rsp->status;
-	if (status == 0)
-		*n_rules = rsp->table_rule_add_bulk.n_rules;
+	if (status == 0) {
+		*n_rules_added = rsp->table_rule_add_bulk.n_rules;
+
+		table_rule_add_bulk(table, list, *n_rules_added);
+		*n_rules_not_added = table_rule_list_free(list);
+	} else
+		table_rule_list_free(list);
+
 
 	/* Free response */
 	pipeline_msg_free(rsp);
@@ -2626,107 +2708,32 @@ static struct pipeline_msg_rsp *
 pipeline_msg_handle_table_rule_add_bulk(struct pipeline_data *p,
 	struct pipeline_msg_req *req)
 {
-
 	struct pipeline_msg_rsp *rsp = (struct pipeline_msg_rsp *) req;
 
 	uint32_t table_id = req->id;
-	struct table_rule_match *match = req->table_rule_add_bulk.match;
-	struct table_rule_action *action = req->table_rule_add_bulk.action;
-	struct rte_pipeline_table_entry **data =
-		(struct rte_pipeline_table_entry **)req->table_rule_add_bulk.data;
-	uint32_t n_rules = req->table_rule_add_bulk.n_rules;
+	struct table_rule_list *list = req->table_rule_add_bulk.list;
 	uint32_t bulk = req->table_rule_add_bulk.bulk;
 
-	struct rte_table_action *a = p->table_data[table_id].a;
-	union table_rule_match_low_level *match_ll;
-	uint8_t *action_ll;
-	void **match_ll_ptr;
-	struct rte_pipeline_table_entry **action_ll_ptr;
-	int *found, status;
-	uint32_t i;
+	uint32_t n_rules_added;
+	int status;
 
-	/* Memory allocation */
-	match_ll = calloc(n_rules, sizeof(union table_rule_match_low_level));
-	action_ll = calloc(n_rules, TABLE_RULE_ACTION_SIZE_MAX);
-	match_ll_ptr = calloc(n_rules, sizeof(void *));
-	action_ll_ptr =
-		calloc(n_rules, sizeof(struct rte_pipeline_table_entry *));
-	found = calloc(n_rules, sizeof(int));
+	struct table_ll table_ll = {
+		.p = p->p,
+		.table_id = table_id,
+		.a = p->table_data[table_id].a,
+		.bulk_supported = bulk,
+	};
 
-	if ((match_ll == NULL) ||
-		(action_ll == NULL) ||
-		(match_ll_ptr == NULL) ||
-		(action_ll_ptr == NULL) ||
-		(found == NULL))
-		goto fail;
-
-	for (i = 0; i < n_rules; i++) {
-		match_ll_ptr[i] = (void *)&match_ll[i];
-		action_ll_ptr[i] =
-			(struct rte_pipeline_table_entry *)&action_ll[i * TABLE_RULE_ACTION_SIZE_MAX];
+	status = table_rule_add_bulk_ll(&table_ll, list, &n_rules_added);
+	if (status) {
+		rsp->status = -1;
+		rsp->table_rule_add_bulk.n_rules = 0;
+		return rsp;
 	}
-
-	/* Rule match conversion */
-	for (i = 0; i < n_rules; i++) {
-		status = match_convert(&match[i], match_ll_ptr[i], 1);
-		if (status)
-			goto fail;
-	}
-
-	/* Rule action conversion */
-	for (i = 0; i < n_rules; i++) {
-		status = action_convert(a, &action[i], action_ll_ptr[i]);
-		if (status)
-			goto fail;
-	}
-
-	/* Add rule (match, action) to table */
-	if (bulk) {
-		status = rte_pipeline_table_entry_add_bulk(p->p,
-			table_id,
-			match_ll_ptr,
-			action_ll_ptr,
-			n_rules,
-			found,
-			data);
-		if (status)
-			n_rules = 0;
-	} else
-		for (i = 0; i < n_rules; i++) {
-			status = rte_pipeline_table_entry_add(p->p,
-				table_id,
-				match_ll_ptr[i],
-				action_ll_ptr[i],
-				&found[i],
-				&data[i]);
-			if (status) {
-				n_rules = i;
-				break;
-			}
-		}
 
 	/* Write response */
 	rsp->status = 0;
-	rsp->table_rule_add_bulk.n_rules = n_rules;
-
-	/* Free */
-	free(found);
-	free(action_ll_ptr);
-	free(match_ll_ptr);
-	free(action_ll);
-	free(match_ll);
-
-	return rsp;
-
-fail:
-	free(found);
-	free(action_ll_ptr);
-	free(match_ll_ptr);
-	free(action_ll);
-	free(match_ll);
-
-	rsp->status = -1;
-	rsp->table_rule_add_bulk.n_rules = 0;
+	rsp->table_rule_add_bulk.n_rules = n_rules_added;
 	return rsp;
 }
 

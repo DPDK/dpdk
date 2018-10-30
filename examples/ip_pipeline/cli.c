@@ -4523,7 +4523,7 @@ cmd_pipeline_table_rule_add_default(char **tokens,
 
 
 static const char cmd_pipeline_table_rule_add_bulk_help[] =
-"pipeline <pipeline_name> table <table_id> rule add bulk <file_name> <n_rules>\n"
+"pipeline <pipeline_name> table <table_id> rule add bulk <file_name>\n"
 "\n"
 "  File <file_name>:\n"
 "  - line format: match <match> action <action>\n";
@@ -4531,8 +4531,7 @@ static const char cmd_pipeline_table_rule_add_bulk_help[] =
 static int
 cli_rule_file_process(const char *file_name,
 	size_t line_len_max,
-	struct table_rule_match *m,
-	struct table_rule_action *a,
+	struct table_rule_list **rule_list,
 	uint32_t *n_rules,
 	uint32_t *line_number,
 	char *out,
@@ -4544,14 +4543,12 @@ cmd_pipeline_table_rule_add_bulk(char **tokens,
 	char *out,
 	size_t out_size)
 {
-	struct table_rule_match *match;
-	struct table_rule_action *action;
-	void **data;
+	struct table_rule_list *list = NULL;
 	char *pipeline_name, *file_name;
-	uint32_t table_id, n_rules, n_rules_parsed, line_number;
+	uint32_t table_id, n_rules, n_rules_added, n_rules_not_added, line_number;
 	int status;
 
-	if (n_tokens != 9) {
+	if (n_tokens != 8) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
 		return;
 	}
@@ -4585,68 +4582,33 @@ cmd_pipeline_table_rule_add_bulk(char **tokens,
 
 	file_name = tokens[7];
 
-	if ((parser_read_uint32(&n_rules, tokens[8]) != 0) ||
-		(n_rules == 0)) {
-		snprintf(out, out_size, MSG_ARG_INVALID, "n_rules");
-		return;
-	}
-
-	/* Memory allocation. */
-	match = calloc(n_rules, sizeof(struct table_rule_match));
-	action = calloc(n_rules, sizeof(struct table_rule_action));
-	data = calloc(n_rules, sizeof(void *));
-	if ((match == NULL) || (action == NULL) || (data == NULL)) {
-		snprintf(out, out_size, MSG_OUT_OF_MEMORY);
-		free(data);
-		free(action);
-		free(match);
-		return;
-	}
-
-	/* Load rule file */
-	n_rules_parsed = n_rules;
+	/* Load rules from file. */
 	status = cli_rule_file_process(file_name,
 		1024,
-		match,
-		action,
-		&n_rules_parsed,
+		&list,
+		&n_rules,
 		&line_number,
 		out,
 		out_size);
 	if (status) {
 		snprintf(out, out_size, MSG_FILE_ERR, file_name, line_number);
-		free(data);
-		free(action);
-		free(match);
-		return;
-	}
-	if (n_rules_parsed != n_rules) {
-		snprintf(out, out_size, MSG_FILE_NOT_ENOUGH, file_name);
-		free(data);
-		free(action);
-		free(match);
 		return;
 	}
 
 	/* Rule bulk add */
 	status = pipeline_table_rule_add_bulk(pipeline_name,
 		table_id,
-		match,
-		action,
-		data,
-		&n_rules);
+		list,
+		&n_rules_added,
+		&n_rules_not_added);
 	if (status) {
 		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
-		free(data);
-		free(action);
-		free(match);
 		return;
 	}
 
-	/* Memory free */
-	free(data);
-	free(action);
-	free(match);
+	snprintf(out, out_size, "Added %u rules out of %u.\n",
+		n_rules_added,
+		n_rules);
 }
 
 
@@ -5950,44 +5912,56 @@ cli_script_process(const char *file_name,
 static int
 cli_rule_file_process(const char *file_name,
 	size_t line_len_max,
-	struct table_rule_match *m,
-	struct table_rule_action *a,
+	struct table_rule_list **rule_list,
 	uint32_t *n_rules,
 	uint32_t *line_number,
 	char *out,
 	size_t out_size)
 {
-	FILE *f = NULL;
+	struct table_rule_list *list = NULL;
 	char *line = NULL;
-	uint32_t rule_id, line_id;
+	FILE *f = NULL;
+	uint32_t rule_id = 0, line_id = 0;
 	int status = 0;
 
 	/* Check input arguments */
 	if ((file_name == NULL) ||
 		(strlen(file_name) == 0) ||
-		(line_len_max == 0)) {
-		*line_number = 0;
-		return -EINVAL;
+		(line_len_max == 0) ||
+		(rule_list == NULL) ||
+		(n_rules == NULL) ||
+		(line_number == NULL) ||
+		(out == NULL)) {
+		status = -EINVAL;
+		goto cli_rule_file_process_free;
 	}
 
 	/* Memory allocation */
+	list = malloc(sizeof(struct table_rule_list));
+	if (list == NULL) {
+		status = -ENOMEM;
+		goto cli_rule_file_process_free;
+	}
+
+	TAILQ_INIT(list);
+
 	line = malloc(line_len_max + 1);
 	if (line == NULL) {
-		*line_number = 0;
-		return -ENOMEM;
+		status = -ENOMEM;
+		goto cli_rule_file_process_free;
 	}
 
 	/* Open file */
 	f = fopen(file_name, "r");
 	if (f == NULL) {
-		*line_number = 0;
-		free(line);
-		return -EIO;
+		status = -EIO;
+		goto cli_rule_file_process_free;
 	}
 
 	/* Read file */
-	for (line_id = 1, rule_id = 0; rule_id < *n_rules; line_id++) {
+	for (line_id = 1, rule_id = 0; ; line_id++) {
 		char *tokens[CMD_MAX_TOKENS];
+		struct table_rule *rule = NULL;
 		uint32_t n_tokens, n_tokens_parsed, t0;
 
 		/* Read next line from file. */
@@ -6003,7 +5977,7 @@ cli_rule_file_process(const char *file_name,
 		status = parse_tokenize_string(line, tokens, &n_tokens);
 		if (status) {
 			status = -EINVAL;
-			break;
+			goto cli_rule_file_process_free;
 		}
 
 		/* Empty line. */
@@ -6011,15 +5985,24 @@ cli_rule_file_process(const char *file_name,
 			continue;
 		t0 = 0;
 
+		/* Rule alloc and insert. */
+		rule = calloc(1, sizeof(struct table_rule));
+		if (rule == NULL) {
+			status = -ENOMEM;
+			goto cli_rule_file_process_free;
+		}
+
+		TAILQ_INSERT_TAIL(list, rule, node);
+
 		/* Rule match. */
 		n_tokens_parsed = parse_match(tokens + t0,
 			n_tokens - t0,
 			out,
 			out_size,
-			&m[rule_id]);
+			&rule->match);
 		if (n_tokens_parsed == 0) {
 			status = -EINVAL;
-			break;
+			goto cli_rule_file_process_free;
 		}
 		t0 += n_tokens_parsed;
 
@@ -6028,17 +6011,17 @@ cli_rule_file_process(const char *file_name,
 			n_tokens - t0,
 			out,
 			out_size,
-			&a[rule_id]);
+			&rule->action);
 		if (n_tokens_parsed == 0) {
 			status = -EINVAL;
-			break;
+			goto cli_rule_file_process_free;
 		}
 		t0 += n_tokens_parsed;
 
 		/* Line completed. */
 		if (t0 < n_tokens) {
 			status = -EINVAL;
-			break;
+			goto cli_rule_file_process_free;
 		}
 
 		/* Increment rule count */
@@ -6051,7 +6034,31 @@ cli_rule_file_process(const char *file_name,
 	/* Memory free */
 	free(line);
 
+	*rule_list = list;
 	*n_rules = rule_id;
 	*line_number = line_id;
+	return 0;
+
+cli_rule_file_process_free:
+	*rule_list = NULL;
+	*n_rules = rule_id;
+	*line_number = line_id;
+
+	for ( ; ; ) {
+		struct table_rule *rule;
+
+		rule = TAILQ_FIRST(list);
+		if (rule == NULL)
+			break;
+
+		TAILQ_REMOVE(list, rule, node);
+		free(rule);
+	}
+
+	if (f)
+		fclose(f);
+	free(line);
+	free(list);
+
 	return status;
 }
