@@ -1741,6 +1741,7 @@ pipeline_table_rule_delete_default(const char *pipeline_name,
 	uint32_t table_id)
 {
 	struct pipeline *p;
+	struct table *table;
 	struct pipeline_msg_req *req;
 	struct pipeline_msg_rsp *rsp;
 	int status;
@@ -1754,10 +1755,15 @@ pipeline_table_rule_delete_default(const char *pipeline_name,
 		(table_id >= p->n_tables))
 		return -1;
 
+	table = &p->table[table_id];
+
 	if (!pipeline_is_running(p)) {
 		status = rte_pipeline_table_default_entry_delete(p->p,
 			table_id,
 			NULL);
+
+		if (status == 0)
+			table_rule_default_delete(table);
 
 		return status;
 	}
@@ -1778,6 +1784,8 @@ pipeline_table_rule_delete_default(const char *pipeline_name,
 
 	/* Read response */
 	status = rsp->status;
+	if (status == 0)
+		table_rule_default_delete(table);
 
 	/* Free response */
 	pipeline_msg_free(rsp);
