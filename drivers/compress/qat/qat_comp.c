@@ -141,6 +141,14 @@ qat_comp_process_response(void **op, uint8_t *resp)
 				resp_msg->comn_resp.comn_status)) !=
 				ICP_QAT_FW_COMN_STATUS_FLAG_OK) {
 
+		if (unlikely((ICP_QAT_FW_COMN_RESP_XLAT_STAT_GET(
+				resp_msg->comn_resp.comn_status) !=
+				ICP_QAT_FW_COMN_STATUS_FLAG_OK) &&
+				(qat_xform->qat_comp_request_type
+				== QAT_COMP_REQUEST_DYNAMIC_COMP_STATELESS)))
+			QAT_DP_LOG(ERR, "QAT intermediate buffer may be too "
+			    "small for output, try configuring a larger size");
+
 		rx_op->status = RTE_COMP_OP_STATUS_ERROR;
 		rx_op->debug_status =
 			*((uint16_t *)(&resp_msg->comn_resp.comn_error));

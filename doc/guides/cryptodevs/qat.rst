@@ -156,6 +156,7 @@ These are the build configuration options affecting QAT, and their default value
 	CONFIG_RTE_LIBRTE_PMD_QAT_SYM=n
 	CONFIG_RTE_PMD_QAT_MAX_PCI_DEVICES=48
 	CONFIG_RTE_PMD_QAT_COMP_SGL_MAX_SEGMENTS=16
+	CONFIG_RTE_PMD_QAT_COMP_IM_BUFFER_SIZE=65536
 
 CONFIG_RTE_LIBRTE_PMD_QAT must be enabled for any QAT PMD to be built.
 
@@ -168,13 +169,29 @@ options and is built by default.
 The number of VFs per PF varies - see table below. If multiple QAT packages are
 installed on a platform then CONFIG_RTE_PMD_QAT_MAX_PCI_DEVICES should be
 adjusted to the number of VFs which the QAT common code will need to handle.
-Note, there is a separate config item for max cryptodevs CONFIG_RTE_CRYPTO_MAX_DEVS,
-if necessary this should be adjusted to handle the total of QAT and other devices
-which the process will use.
+Note, there are separate config items for max cryptodevs CONFIG_RTE_CRYPTO_MAX_DEVS
+and max compressdevs CONFIG_RTE_COMPRESS_MAX_DEVS, if necessary these should be
+adjusted to handle the total of QAT and other devices which the process will use.
 
 QAT allocates internal structures to handle SGLs. For the compression service
 CONFIG_RTE_PMD_QAT_COMP_SGL_MAX_SEGMENTS can be changed if more segments are needed.
 An extra (max_inflight_ops x 16) bytes per queue_pair will be used for every increment.
+
+QAT compression PMD needs intermediate buffers to support Deflate compression
+with Dynamic Huffman encoding. CONFIG_RTE_PMD_QAT_COMP_IM_BUFFER_SIZE
+specifies the size of a single buffer, the PMD will allocate a multiple of these,
+plus some extra space for associated meta-data. For GEN2 devices, 20 buffers plus
+1472 bytes are allocated.
+
+.. Note::
+
+	If the compressed output of a Deflate operation using Dynamic Huffman
+        Encoding is too big to fit in an intermediate buffer, then the
+        operation will return RTE_COMP_OP_STATUS_ERROR and an error will be
+        displayed. Options for the application in this case
+        are to split the input data into smaller chunks and resubmit
+        in multiple operations or to configure QAT with
+        larger intermediate buffers.
 
 
 Device and driver naming
