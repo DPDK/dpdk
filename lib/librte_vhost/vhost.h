@@ -275,7 +275,8 @@ struct vring_packed_desc_event {
 				(1ULL << VIRTIO_RING_F_EVENT_IDX) | \
 				(1ULL << VIRTIO_NET_F_MTU)  | \
 				(1ULL << VIRTIO_F_IN_ORDER) | \
-				(1ULL << VIRTIO_F_IOMMU_PLATFORM))
+				(1ULL << VIRTIO_F_IOMMU_PLATFORM) | \
+				(1ULL << VIRTIO_F_RING_PACKED))
 
 
 struct guest_page {
