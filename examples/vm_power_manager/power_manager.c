@@ -95,6 +95,7 @@ power_manager_init(void)
 	unsigned int i, num_cpus = 0, num_freqs = 0;
 	int ret = 0;
 	struct core_info *ci;
+	unsigned int max_core_num;
 
 	rte_power_set_env(PM_ENV_ACPI_CPUFREQ);
 
@@ -105,7 +106,12 @@ power_manager_init(void)
 		return -1;
 	}
 
-	for (i = 0; i < ci->core_count; i++) {
+	if (ci->core_count > POWER_MGR_MAX_CPUS)
+		max_core_num = POWER_MGR_MAX_CPUS;
+	else
+		max_core_num = ci->core_count;
+
+	for (i = 0; i < max_core_num; i++) {
 		if (ci->cd[i].global_enabled_cpus) {
 			if (rte_power_init(i) < 0)
 				RTE_LOG(ERR, POWER_MANAGER,
@@ -165,6 +171,7 @@ power_manager_exit(void)
 	unsigned int i;
 	int ret = 0;
 	struct core_info *ci;
+	unsigned int max_core_num;
 
 	ci = get_core_info();
 	if (!ci) {
@@ -173,7 +180,12 @@ power_manager_exit(void)
 		return -1;
 	}
 
-	for (i = 0; i < ci->core_count; i++) {
+	if (ci->core_count > POWER_MGR_MAX_CPUS)
+		max_core_num = POWER_MGR_MAX_CPUS;
+	else
+		max_core_num = ci->core_count;
+
+	for (i = 0; i < max_core_num; i++) {
 		if (ci->cd[i].global_enabled_cpus) {
 			if (rte_power_exit(i) < 0) {
 				RTE_LOG(ERR, POWER_MANAGER, "Unable to shutdown power manager "
