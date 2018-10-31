@@ -43,13 +43,21 @@ print_usage () {
 	END_OF_HELP
 }
 
-check_forbidden_additions() {
+check_forbidden_additions() { # <patch>
 	# refrain from new additions of rte_panic() and rte_exit()
 	# multiple folders and expressions are separated by spaces
 	awk -v FOLDERS="lib drivers" \
 		-v EXPRESSIONS="rte_panic\\\( rte_exit\\\(" \
 		-v RET_ON_FAIL=1 \
-		-f $(dirname $(readlink -e $0))/check-forbidden-tokens.awk -
+		-f $(dirname $(readlink -e $0))/check-forbidden-tokens.awk \
+		"$1"
+	# svg figures must be included with wildcard extension
+	# because of png conversion for pdf docs
+	awk -v FOLDERS='doc' \
+		-v EXPRESSIONS='::[[:space:]]*[^[:space:]]*\\.svg' \
+		-v RET_ON_FAIL=1 \
+		-f $(dirname $(readlink -e $0))/check-forbidden-tokens.awk \
+		"$1"
 }
 
 number=0
@@ -115,7 +123,7 @@ check () { # <patch> <commit> <title>
 	fi
 
 	! $verbose || printf '\nChecking forbidden tokens additions:\n'
-	report=$(check_forbidden_additions <"$tmpinput")
+	report=$(check_forbidden_additions "$tmpinput")
 	if [ $? -ne 0 ] ; then
 		$headline_printed || print_headline "$3"
 		printf '%s\n' "$report"
