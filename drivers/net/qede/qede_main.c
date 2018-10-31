@@ -288,6 +288,7 @@ static int qed_slowpath_start(struct ecore_dev *edev,
 	drv_load_params.mfw_timeout_val = ECORE_LOAD_REQ_LOCK_TO_DEFAULT;
 	drv_load_params.avoid_eng_reset = false;
 	drv_load_params.override_force_load = ECORE_OVERRIDE_FORCE_LOAD_ALWAYS;
+	hw_init_params.avoid_eng_affin = false;
 	hw_init_params.p_drv_load_params = &drv_load_params;
 
 	rc = ecore_hw_init(edev, &hw_init_params);

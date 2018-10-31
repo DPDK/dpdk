@@ -3429,6 +3429,14 @@ ecore_hw_init_pf(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
+	/* Use the leading hwfn since in CMT only NIG #0 is operational */
+	if (IS_LEAD_HWFN(p_hwfn)) {
+		rc = ecore_llh_hw_init_pf(p_hwfn, p_ptt,
+					p_params->avoid_eng_affin);
+		if (rc)
+			return rc;
+	}
+
 	if (p_params->b_hw_start) {
 		/* enable interrupts */
 		rc = ecore_int_igu_enable(p_hwfn, p_ptt, p_params->int_mode);
