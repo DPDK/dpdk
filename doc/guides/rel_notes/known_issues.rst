@@ -787,3 +787,21 @@ PHY link up fails when rebinding i40e NICs to kernel driver
 
 **Driver/Module**:
    Poll Mode Driver (PMD).
+
+
+Restricted vdev ethdev operations supported in secondary process
+----------------------------------------------------------------
+**Description**
+   In current virtual device sharing model, Ethernet device data structure will be
+   shared between primary and secondary process. Only those Ethernet device operations
+   which based on it are workable in secondary process.
+
+**Implication**
+   Some Ethernet device operations like device start/stop will be failed on virtual
+   device in secondary process.
+
+**Affected Environment/Platform**:
+   ALL.
+
+**Driver/Module**:
+   Virtual Device Poll Mode Driver (PMD).
