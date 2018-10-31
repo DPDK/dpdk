@@ -828,6 +828,9 @@ softnic_table_action_profile_create(struct pmd_internals *p,
 	const char *name,
 	struct softnic_table_action_profile_params *params);
 
+enum rte_table_action_policer
+softnic_table_action_policer(enum rte_mtr_policer_action action);
+
 /**
  * Pipeline
  */

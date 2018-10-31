@@ -65,6 +65,27 @@ softnic_mtr_meter_profile_find(struct pmd_internals *p,
 	return NULL;
 }
 
+enum rte_table_action_policer
+softnic_table_action_policer(enum rte_mtr_policer_action action)
+{
+	switch (action) {
+	case MTR_POLICER_ACTION_COLOR_GREEN:
+		return RTE_TABLE_ACTION_POLICER_COLOR_GREEN;
+
+		/* FALLTHROUGH */
+	case MTR_POLICER_ACTION_COLOR_YELLOW:
+		return RTE_TABLE_ACTION_POLICER_COLOR_YELLOW;
+
+		/* FALLTHROUGH */
+	case MTR_POLICER_ACTION_COLOR_RED:
+		return RTE_TABLE_ACTION_POLICER_COLOR_RED;
+
+		/* FALLTHROUGH */
+	default:
+		return RTE_TABLE_ACTION_POLICER_DROP;
+	}
+}
+
 static int
 meter_profile_check(struct rte_eth_dev *dev,
 	uint32_t meter_profile_id,
@@ -542,7 +563,7 @@ pmd_mtr_policer_actions_update(struct rte_eth_dev *dev,
 		for (i = 0; i < RTE_MTR_COLORS; i++)
 			if (action_mask & (1 << i))
 				action.mtr.mtr[0].policer[i] =
-					(enum rte_table_action_policer)actions[i];
+					softnic_table_action_policer(actions[i]);
 
 		/* Re-add the rule */
 		status = softnic_pipeline_table_rule_add(p,
