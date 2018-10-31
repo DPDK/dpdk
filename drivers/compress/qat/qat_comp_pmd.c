@@ -165,11 +165,14 @@ qat_comp_setup_inter_buffers(struct qat_comp_dev_private *comp_dev,
 	}
 
 	/* Create a memzone to hold intermediate buffers and associated
-	 * meta-data needed by the firmware. The memzone contains:
+	 * meta-data needed by the firmware. The memzone contains 3 parts:
 	 *  - a list of num_im_sgls physical pointers to sgls
-	 *  - the num_im_sgl sgl structures, each pointing to 2 flat buffers
-	 *  - the flat buffers: num_im_sgl * 2
-	 * where num_im_sgls depends on the hardware generation of the device
+	 *  - the num_im_sgl sgl structures, each pointing to
+	 *    QAT_NUM_BUFS_IN_IM_SGL flat buffers
+	 *  - the flat buffers: num_im_sgl * QAT_NUM_BUFS_IN_IM_SGL
+	 *    buffers, each of buff_size
+	 * num_im_sgls depends on the hardware generation of the device
+	 * buff_size comes from the user via the config file
 	 */
 
 	size_of_ptr_array = num_im_sgls * sizeof(phys_addr_t);
@@ -202,30 +205,31 @@ qat_comp_setup_inter_buffers(struct qat_comp_dev_private *comp_dev,
 		    offset_of_sgls + i * sizeof(struct qat_inter_sgl);
 		struct qat_inter_sgl *sgl =
 		    (struct qat_inter_sgl *)(mz_start +	curr_sgl_offset);
+		int lb;
 		array_of_pointers->pointer[i] = mz_start_phys + curr_sgl_offset;
 
 		sgl->num_bufs = QAT_NUM_BUFS_IN_IM_SGL;
 		sgl->num_mapped_bufs = 0;
 		sgl->resrvd = 0;
-		sgl->buffers[0].addr = mz_start_phys + offset_of_flat_buffs +
-			((i * QAT_NUM_BUFS_IN_IM_SGL) * buff_size);
-		sgl->buffers[0].len = buff_size;
-		sgl->buffers[0].resrvd = 0;
-		sgl->buffers[1].addr = mz_start_phys + offset_of_flat_buffs +
-			(((i * QAT_NUM_BUFS_IN_IM_SGL) + 1) * buff_size);
-		sgl->buffers[1].len = buff_size;
-		sgl->buffers[1].resrvd = 0;
 
 #if QAT_IM_BUFFER_DEBUG
 		QAT_LOG(DEBUG, "  : phys addr of sgl[%i] in array_of_pointers"
-			    "= 0x%"PRIx64, i, array_of_pointers->pointer[i]);
+			" = 0x%"PRIx64, i, array_of_pointers->pointer[i]);
 		QAT_LOG(DEBUG, "  : virt address of sgl[%i] = %p", i, sgl);
-		QAT_LOG(DEBUG, "  : sgl->buffers[0].addr = 0x%"PRIx64", len=%d",
-			sgl->buffers[0].addr, sgl->buffers[0].len);
-		QAT_LOG(DEBUG, "  : sgl->buffers[1].addr = 0x%"PRIx64", len=%d",
-			sgl->buffers[1].addr, sgl->buffers[1].len);
+#endif
+		for (lb = 0; lb < QAT_NUM_BUFS_IN_IM_SGL; lb++) {
+			sgl->buffers[lb].addr =
+			  mz_start_phys + offset_of_flat_buffs +
+			  (((i * QAT_NUM_BUFS_IN_IM_SGL) + lb) * buff_size);
+			sgl->buffers[lb].len = buff_size;
+			sgl->buffers[lb].resrvd = 0;
+#if QAT_IM_BUFFER_DEBUG
+			QAT_LOG(DEBUG,
+			  "  : sgl->buffers[%d].addr = 0x%"PRIx64", len=%d",
+			  lb, sgl->buffers[lb].addr, sgl->buffers[lb].len);
 #endif
 		}
+	}
 #if QAT_IM_BUFFER_DEBUG
 	QAT_DP_HEXDUMP_LOG(DEBUG,  "IM buffer memzone start:",
 			mz_start, offset_of_flat_buffs + 32);
