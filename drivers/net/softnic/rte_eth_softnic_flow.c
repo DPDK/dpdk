@@ -56,7 +56,7 @@ flow_attr_map_set(struct pmd_internals *softnic,
 
 	map = (ingress) ? &softnic->flow.ingress_map[group_id] :
 		&softnic->flow.egress_map[group_id];
-	strcpy(map->pipeline_name, pipeline_name);
+	strlcpy(map->pipeline_name, pipeline_name, sizeof(map->pipeline_name));
 	map->table_id = table_id;
 	map->valid = 1;
 

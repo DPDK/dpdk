@@ -1867,7 +1867,7 @@ cmd_pipeline_port_in(struct pmd_internals *softnic,
 
 		p.type = PORT_IN_RXQ;
 
-		strcpy(p.dev_name, tokens[t0 + 1]);
+		strlcpy(p.dev_name, tokens[t0 + 1], sizeof(p.dev_name));
 
 		if (strcmp(tokens[t0 + 2], "rxq") != 0) {
 			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "rxq");
@@ -1890,7 +1890,7 @@ cmd_pipeline_port_in(struct pmd_internals *softnic,
 
 		p.type = PORT_IN_SWQ;
 
-		strcpy(p.dev_name, tokens[t0 + 1]);
+		strlcpy(p.dev_name, tokens[t0 + 1], sizeof(p.dev_name));
 
 		t0 += 2;
 	} else if (strcmp(tokens[t0], "tmgr") == 0) {
@@ -1902,7 +1902,7 @@ cmd_pipeline_port_in(struct pmd_internals *softnic,
 
 		p.type = PORT_IN_TMGR;
 
-		strcpy(p.dev_name, tokens[t0 + 1]);
+		strlcpy(p.dev_name, tokens[t0 + 1], sizeof(p.dev_name));
 
 		t0 += 2;
 	} else if (strcmp(tokens[t0], "tap") == 0) {
@@ -1914,7 +1914,7 @@ cmd_pipeline_port_in(struct pmd_internals *softnic,
 
 		p.type = PORT_IN_TAP;
 
-		strcpy(p.dev_name, tokens[t0 + 1]);
+		strlcpy(p.dev_name, tokens[t0 + 1], sizeof(p.dev_name));
 
 		if (strcmp(tokens[t0 + 2], "mempool") != 0) {
 			snprintf(out, out_size, MSG_ARG_NOT_FOUND,
@@ -2009,7 +2009,8 @@ cmd_pipeline_port_in(struct pmd_internals *softnic,
 			return;
 		}
 
-		strcpy(p.action_profile_name, tokens[t0 + 1]);
+		strlcpy(p.action_profile_name, tokens[t0 + 1],
+			sizeof(p.action_profile_name));
 
 		t0 += 2;
 	}
@@ -2096,7 +2097,7 @@ cmd_pipeline_port_out(struct pmd_internals *softnic,
 
 		p.type = PORT_OUT_TXQ;
 
-		strcpy(p.dev_name, tokens[7]);
+		strlcpy(p.dev_name, tokens[7], sizeof(p.dev_name));
 
 		if (strcmp(tokens[8], "txq") != 0) {
 			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "txq");
@@ -2117,7 +2118,7 @@ cmd_pipeline_port_out(struct pmd_internals *softnic,
 
 		p.type = PORT_OUT_SWQ;
 
-		strcpy(p.dev_name, tokens[7]);
+		strlcpy(p.dev_name, tokens[7], sizeof(p.dev_name));
 	} else if (strcmp(tokens[6], "tmgr") == 0) {
 		if (n_tokens != 8) {
 			snprintf(out, out_size, MSG_ARG_MISMATCH,
@@ -2127,7 +2128,7 @@ cmd_pipeline_port_out(struct pmd_internals *softnic,
 
 		p.type = PORT_OUT_TMGR;
 
-		strcpy(p.dev_name, tokens[7]);
+		strlcpy(p.dev_name, tokens[7], sizeof(p.dev_name));
 	} else if (strcmp(tokens[6], "tap") == 0) {
 		if (n_tokens != 8) {
 			snprintf(out, out_size, MSG_ARG_MISMATCH,
@@ -2137,7 +2138,7 @@ cmd_pipeline_port_out(struct pmd_internals *softnic,
 
 		p.type = PORT_OUT_TAP;
 
-		strcpy(p.dev_name, tokens[7]);
+		strlcpy(p.dev_name, tokens[7], sizeof(p.dev_name));
 	} else if (strcmp(tokens[6], "sink") == 0) {
 		if ((n_tokens != 7) && (n_tokens != 11)) {
 			snprintf(out, out_size, MSG_ARG_MISMATCH,
@@ -2485,7 +2486,8 @@ cmd_pipeline_table(struct pmd_internals *softnic,
 			return;
 		}
 
-		strcpy(p.action_profile_name, tokens[t0 + 1]);
+		strlcpy(p.action_profile_name, tokens[t0 + 1],
+			sizeof(p.action_profile_name));
 
 		t0 += 2;
 	}
