@@ -509,6 +509,8 @@ err:
 
 static void ena_close(struct rte_eth_dev *dev)
 {
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct ena_adapter *adapter =
 		(struct ena_adapter *)(dev->data->dev_private);
 
@@ -518,6 +520,25 @@ static void ena_close(struct rte_eth_dev *dev)
 
 	ena_rx_queue_release_all(dev);
 	ena_tx_queue_release_all(dev);
+
+	rte_free(adapter->drv_stats);
+	adapter->drv_stats = NULL;
+
+	rte_intr_disable(intr_handle);
+	rte_intr_callback_unregister(intr_handle,
+				     ena_interrupt_handler_rte,
+				     adapter);
+
+	/*
+	 * Pass the information to the rte_eth_dev_close() that it should also
+	 * release the private port resources.
+	 */
+	dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
+	/*
+	 * MAC is not allocated dynamically. Setting NULL should prevent from
+	 * release of the resource in the rte_eth_dev_release_port().
+	 */
+	dev->data->mac_addrs = NULL;
 }
 
 static int
@@ -1683,8 +1704,6 @@ err:
 
 static int eth_ena_dev_uninit(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct ena_adapter *adapter =
 		(struct ena_adapter *)(eth_dev->data->dev_private);
 
@@ -1698,14 +1717,6 @@ static int eth_ena_dev_uninit(struct rte_eth_dev *eth_dev)
 	eth_dev->rx_pkt_burst = NULL;
 	eth_dev->tx_pkt_burst = NULL;
 	eth_dev->tx_pkt_prepare = NULL;
-
-	rte_free(adapter->drv_stats);
-	adapter->drv_stats = NULL;
-
-	rte_intr_disable(intr_handle);
-	rte_intr_callback_unregister(intr_handle,
-				     ena_interrupt_handler_rte,
-				     adapter);
 
 	adapter->state = ENA_ADAPTER_STATE_FREE;
 
