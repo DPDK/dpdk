@@ -360,8 +360,10 @@ eth_vmxnet3_dev_uninit(struct rte_eth_dev *eth_dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	if (hw->adapter_stopped == 0)
-		vmxnet3_dev_close(eth_dev);
+	if (hw->adapter_stopped == 0) {
+		PMD_INIT_LOG(DEBUG, "Device has not been closed.");
+		return -EBUSY;
+	}
 
 	eth_dev->dev_ops = NULL;
 	eth_dev->rx_pkt_burst = NULL;
@@ -805,7 +807,7 @@ vmxnet3_dev_stop(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	if (hw->adapter_stopped == 1) {
-		PMD_INIT_LOG(DEBUG, "Device already closed.");
+		PMD_INIT_LOG(DEBUG, "Device already stopped.");
 		return;
 	}
 
@@ -829,7 +831,6 @@ vmxnet3_dev_stop(struct rte_eth_dev *dev)
 	/* reset the device */
 	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD, VMXNET3_CMD_RESET_DEV);
 	PMD_INIT_LOG(DEBUG, "Device reset.");
-	hw->adapter_stopped = 0;
 
 	vmxnet3_dev_clear_queues(dev);
 
@@ -839,6 +840,30 @@ vmxnet3_dev_stop(struct rte_eth_dev *dev)
 	link.link_speed = ETH_SPEED_NUM_10G;
 	link.link_autoneg = ETH_LINK_FIXED;
 	rte_eth_linkstatus_set(dev, &link);
+
+	hw->adapter_stopped = 1;
+}
+
+static void
+vmxnet3_free_queues(struct rte_eth_dev *dev)
+{
+	int i;
+
+	PMD_INIT_FUNC_TRACE();
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		void *rxq = dev->data->rx_queues[i];
+
+		vmxnet3_dev_rx_queue_release(rxq);
+	}
+	dev->data->nb_rx_queues = 0;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		void *txq = dev->data->tx_queues[i];
+
+		vmxnet3_dev_tx_queue_release(txq);
+	}
+	dev->data->nb_tx_queues = 0;
 }
 
 /*
@@ -847,12 +872,16 @@ vmxnet3_dev_stop(struct rte_eth_dev *dev)
 static void
 vmxnet3_dev_close(struct rte_eth_dev *dev)
 {
-	struct vmxnet3_hw *hw = dev->data->dev_private;
-
 	PMD_INIT_FUNC_TRACE();
 
 	vmxnet3_dev_stop(dev);
-	hw->adapter_stopped = 1;
+	vmxnet3_free_queues(dev);
+
+	/*
+	 * flag to rte_eth_dev_close() that it should release the port resources
+	 * (calling rte_eth_dev_release_port()) in addition to closing it.
+	 */
+	dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 }
 
 static void
