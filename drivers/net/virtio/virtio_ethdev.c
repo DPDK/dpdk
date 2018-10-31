@@ -1679,11 +1679,6 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	if (ret < 0)
 		goto out;
 
-	/* Setup interrupt callback  */
-	if (eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
-		rte_intr_callback_register(eth_dev->intr_handle,
-			virtio_interrupt_handler, eth_dev);
-
 	return 0;
 
 out:
@@ -1706,11 +1701,6 @@ eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 	eth_dev->tx_pkt_burst = NULL;
 	eth_dev->rx_pkt_burst = NULL;
 
-	/* reset interrupt callback  */
-	if (eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
-		rte_intr_callback_unregister(eth_dev->intr_handle,
-						virtio_interrupt_handler,
-						eth_dev);
 	if (eth_dev->device)
 		rte_pci_unmap_device(RTE_ETH_DEV_TO_PCI(eth_dev));
 
@@ -1969,6 +1959,12 @@ virtio_dev_start(struct rte_eth_dev *dev)
 	    dev->data->dev_conf.intr_conf.rxq) {
 		virtio_intr_disable(dev);
 
+		/* Setup interrupt callback  */
+		if (dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
+			rte_intr_callback_register(dev->intr_handle,
+						   virtio_interrupt_handler,
+						   dev);
+
 		if (virtio_intr_enable(dev) < 0) {
 			PMD_DRV_LOG(ERR, "interrupt enable failed");
 			return -EIO;
@@ -2078,8 +2074,16 @@ virtio_dev_stop(struct rte_eth_dev *dev)
 	PMD_INIT_LOG(DEBUG, "stop");
 
 	rte_spinlock_lock(&hw->state_lock);
-	if (intr_conf->lsc || intr_conf->rxq)
+	if (intr_conf->lsc || intr_conf->rxq) {
 		virtio_intr_disable(dev);
+
+		/* Reset interrupt callback  */
+		if (dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC) {
+			rte_intr_callback_unregister(dev->intr_handle,
+						     virtio_interrupt_handler,
+						     dev);
+		}
+	}
 
 	hw->started = 0;
 	memset(&link, 0, sizeof(link));
