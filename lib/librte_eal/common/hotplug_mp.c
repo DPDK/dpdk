@@ -243,7 +243,7 @@ static void __handle_primary_request(void *param)
 		da = calloc(1, sizeof(*da));
 		if (da == NULL) {
 			ret = -ENOMEM;
-			goto quit;
+			break;
 		}
 
 		ret = rte_devargs_parse(da, req->devargs);
@@ -266,6 +266,8 @@ static void __handle_primary_request(void *param)
 
 		ret = local_dev_remove(dev);
 quit:
+		free(da->args);
+		free(da);
 		break;
 	default:
 		ret = -EINVAL;
