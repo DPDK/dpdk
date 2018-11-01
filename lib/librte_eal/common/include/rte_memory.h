@@ -467,6 +467,16 @@ unsigned rte_memory_get_nrank(void);
 int __rte_experimental rte_mem_check_dma_mask(uint8_t maskbits);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ *  Set dma mask to use once memory initialization is done.
+ *  Previous function rte_mem_check_dma_mask can not be used
+ *  safely until memory has been initialized.
+ */
+void __rte_experimental rte_mem_set_dma_mask(uint8_t maskbits);
+
+/**
  * Drivers based on uio will not load unless physical
  * addresses are obtainable. It is only possible to get
  * physical addresses when running as a privileged user.

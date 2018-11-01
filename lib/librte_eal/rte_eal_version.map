@@ -334,6 +334,7 @@ EXPERIMENTAL {
 	rte_mem_event_callback_register;
 	rte_mem_event_callback_unregister;
 	rte_mem_iova2virt;
+	rte_mem_set_dma_mask;
 	rte_mem_virt2memseg;
 	rte_mem_virt2memseg_list;
 	rte_memseg_contig_walk;

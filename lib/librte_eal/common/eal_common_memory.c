@@ -480,6 +480,22 @@ rte_mem_check_dma_mask(uint8_t maskbits)
 	return 0;
 }
 
+/*
+ * Set dma mask to use when memory initialization is done.
+ *
+ * This function should ONLY be used by code executed before the memory
+ * initialization. PMDs should use rte_mem_check_dma_mask if addressing
+ * limitations by the device.
+ */
+void __rte_experimental
+rte_mem_set_dma_mask(uint8_t maskbits)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+
+	mcfg->dma_maskbits = mcfg->dma_maskbits == 0 ? maskbits :
+			     RTE_MIN(mcfg->dma_maskbits, maskbits);
+}
+
 /* return the number of memory channels */
 unsigned rte_memory_get_nchannel(void)
 {
