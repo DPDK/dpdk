@@ -167,9 +167,6 @@ extern int rte_eth_dev_logtype;
 struct rte_mbuf;
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Initializes a device iterator.
  *
  * This iterator allows accessing a list of devices matching some devargs.
@@ -185,13 +182,9 @@ struct rte_mbuf;
  * @return
  *   0 on successful initialization, negative otherwise.
  */
-__rte_experimental
 int rte_eth_iterator_init(struct rte_dev_iterator *iter, const char *devargs);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Iterates on devices with devargs filter.
  * The ownership is not checked.
  *
@@ -205,13 +198,9 @@ int rte_eth_iterator_init(struct rte_dev_iterator *iter, const char *devargs);
  * @return
  *   A port id if found, RTE_MAX_ETHPORTS otherwise.
  */
-__rte_experimental
 uint16_t rte_eth_iterator_next(struct rte_dev_iterator *iter);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Free some allocated fields of the iterator.
  *
  * This function is automatically called by rte_eth_iterator_next()
@@ -223,7 +212,6 @@ uint16_t rte_eth_iterator_next(struct rte_dev_iterator *iter);
  *   Device iterator handle initialized by rte_eth_iterator_init().
  *   The fields bus_str and cls_str are freed if needed.
  */
-__rte_experimental
 void rte_eth_iterator_cleanup(struct rte_dev_iterator *iter);
 
 /**
