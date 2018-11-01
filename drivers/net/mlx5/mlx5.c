@@ -75,6 +75,12 @@
  */
 #define MLX5_TXQS_MIN_INLINE "txqs_min_inline"
 
+/*
+ * Device parameter to configure the number of TX queues threshold for
+ * enabling vectorized Tx.
+ */
+#define MLX5_TXQS_MAX_VEC "txqs_max_vec"
+
 /* Device parameter to enable multi-packet send WQEs. */
 #define MLX5_TXQ_MPW_EN "txq_mpw_en"
 
@@ -496,6 +502,8 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		config->txq_inline = tmp;
 	} else if (strcmp(MLX5_TXQS_MIN_INLINE, key) == 0) {
 		config->txqs_inline = tmp;
+	} else if (strcmp(MLX5_TXQS_MAX_VEC, key) == 0) {
+		config->txqs_vec = tmp;
 	} else if (strcmp(MLX5_TXQ_MPW_EN, key) == 0) {
 		config->mps = !!tmp;
 	} else if (strcmp(MLX5_TXQ_MPW_HDR_DSEG_EN, key) == 0) {
@@ -543,6 +551,7 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 		MLX5_RXQS_MIN_MPRQ,
 		MLX5_TXQ_INLINE,
 		MLX5_TXQS_MIN_INLINE,
+		MLX5_TXQS_MAX_VEC,
 		MLX5_TXQ_MPW_EN,
 		MLX5_TXQ_MPW_HDR_DSEG_EN,
 		MLX5_TXQ_MAX_INLINE_LEN,
@@ -1432,6 +1441,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		.rx_vec_en = 1,
 		.txq_inline = MLX5_ARG_UNSET,
 		.txqs_inline = MLX5_ARG_UNSET,
+		.txqs_vec = MLX5_ARG_UNSET,
 		.inline_max_packet_sz = MLX5_ARG_UNSET,
 		.vf_nl_en = 1,
 		.mprq = {
@@ -1443,6 +1453,9 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	};
 	/* Device speicific configuration. */
 	switch (pci_dev->id.device_id) {
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX5BF:
+		dev_config.txqs_vec = MLX5_VPMD_MAX_TXQS_BLUEFIELD;
+		break;
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX4VF:
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX4LXVF:
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX5VF:
@@ -1452,6 +1465,9 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	default:
 		break;
 	}
+	/* Set architecture-dependent default value if unset. */
+	if (dev_config.txqs_vec == MLX5_ARG_UNSET)
+		dev_config.txqs_vec = MLX5_VPMD_MAX_TXQS;
 	for (i = 0; i != n; ++i) {
 		uint32_t restore;
 

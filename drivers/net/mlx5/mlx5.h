@@ -140,6 +140,7 @@ struct mlx5_dev_config {
 	unsigned int ind_table_max_size; /* Maximum indirection table size. */
 	int txq_inline; /* Maximum packet size for inlining. */
 	int txqs_inline; /* Queue number threshold for inlining. */
+	int txqs_vec; /* Queue number threshold for vectorized Tx. */
 	int inline_max_packet_sz; /* Max packet size for inlining. */
 };
 

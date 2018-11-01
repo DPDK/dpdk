@@ -60,8 +60,13 @@
 /* Maximum Packet headers size (L2+L3+L4) for TSO. */
 #define MLX5_MAX_TSO_HEADER 192
 
-/* Default minimum number of Tx queues for vectorized Tx. */
-#define MLX5_VPMD_MIN_TXQS 4
+/* Default maximum number of Tx queues for vectorized Tx. */
+#if defined(RTE_ARCH_ARM64)
+#define MLX5_VPMD_MAX_TXQS 8
+#else
+#define MLX5_VPMD_MAX_TXQS 4
+#endif
+#define MLX5_VPMD_MAX_TXQS_BLUEFIELD 16
 
 /* Threshold of buffer replenishment for vectorized Rx. */
 #define MLX5_VPMD_RXQ_RPLNSH_THRESH(n) \

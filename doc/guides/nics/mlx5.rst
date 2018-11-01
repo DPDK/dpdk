@@ -338,6 +338,20 @@ Run-time configuration
 
         - Set to 8 by default.
 
+- ``txqs_max_vec`` parameter [int]
+
+  Enable vectorized Tx only when the number of TX queues is less than or
+  equal to this value. Effective only when ``tx_vec_en`` is enabled.
+
+  On ConnectX-5:
+
+        - Set to 8 by default on ARMv8.
+        - Set to 4 by default otherwise.
+
+  On Bluefield
+
+        - Set to 16 by default.
+
 - ``txq_mpw_en`` parameter [int]
 
   A nonzero value enables multi-packet send (MPS) for ConnectX-4 Lx and
@@ -383,7 +397,7 @@ Run-time configuration
 - ``tx_vec_en`` parameter [int]
 
   A nonzero value enables Tx vector on ConnectX-5 and Bluefield NICs if the number of
-  global Tx queues on the port is lesser than MLX5_VPMD_MIN_TXQS.
+  global Tx queues on the port is less than ``txqs_max_vec``.
 
   This option cannot be used with certain offloads such as ``DEV_TX_OFFLOAD_TCP_TSO,
   DEV_TX_OFFLOAD_VXLAN_TNL_TSO, DEV_TX_OFFLOAD_GRE_TNL_TSO, DEV_TX_OFFLOAD_VLAN_INSERT``.

@@ -277,7 +277,7 @@ mlx5_check_vec_tx_support(struct rte_eth_dev *dev)
 	uint64_t offloads = dev->data->dev_conf.txmode.offloads;
 
 	if (!priv->config.tx_vec_en ||
-	    priv->txqs_n > MLX5_VPMD_MIN_TXQS ||
+	    priv->txqs_n > (unsigned int)priv->config.txqs_vec ||
 	    priv->config.mps != MLX5_MPW_ENHANCED ||
 	    offloads & ~MLX5_VEC_TX_OFFLOAD_CAP)
 		return -ENOTSUP;
