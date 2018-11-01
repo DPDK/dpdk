@@ -704,8 +704,8 @@ mlx5_uar_init_secondary(struct rte_eth_dev *dev)
  *   Backing DPDK device.
  * @param ibv_dev
  *   Verbs device.
- * @param vf
- *   If nonzero, enable VF-specific features.
+ * @param config
+ *   Device configuration parameters.
  * @param[in] switch_info
  *   Switch properties of Ethernet device.
  *
@@ -719,7 +719,7 @@ mlx5_uar_init_secondary(struct rte_eth_dev *dev)
 static struct rte_eth_dev *
 mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	       struct ibv_device *ibv_dev,
-	       int vf,
+	       struct mlx5_dev_config config,
 	       const struct mlx5_switch_info *switch_info)
 {
 	struct ibv_context *ctx;
@@ -727,24 +727,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	struct ibv_port_attr port_attr;
 	struct ibv_pd *pd = NULL;
 	struct mlx5dv_context dv_attr = { .comp_mask = 0 };
-	struct mlx5_dev_config config = {
-		.vf = !!vf,
-		.cqe_pad = 0,
-		.mps = MLX5_ARG_UNSET,
-		.tx_vec_en = 1,
-		.rx_vec_en = 1,
-		.mpw_hdr_dseg = 0,
-		.txq_inline = MLX5_ARG_UNSET,
-		.txqs_inline = MLX5_ARG_UNSET,
-		.inline_max_packet_sz = MLX5_ARG_UNSET,
-		.vf_nl_en = 1,
-		.mprq = {
-			.enabled = 0,
-			.stride_num_n = MLX5_MPRQ_STRIDE_NUM_N,
-			.max_memcpy_len = MLX5_MPRQ_MEMCPY_DEFAULT_LEN,
-			.min_rxqs_num = MLX5_MPRQ_MIN_RXQS,
-		},
-	};
 	struct rte_eth_dev *eth_dev = NULL;
 	struct priv *priv = NULL;
 	int err = 0;
@@ -1176,7 +1158,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	eth_dev->dev_ops = &mlx5_dev_ops;
 	/* Register MAC address. */
 	claim_zero(mlx5_mac_addr_add(eth_dev, &mac, 0, 0));
-	if (vf && config.vf_nl_en)
+	if (config.vf && config.vf_nl_en)
 		mlx5_nl_mac_addr_sync(eth_dev);
 	priv->tcf_context = mlx5_flow_tcf_context_create();
 	if (!priv->tcf_context) {
@@ -1345,7 +1327,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 {
 	struct ibv_device **ibv_list;
 	unsigned int n = 0;
-	int vf;
+	struct mlx5_dev_config dev_config;
 	int ret;
 
 	assert(pci_drv == &mlx5_driver);
@@ -1443,21 +1425,39 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	 */
 	if (n)
 		qsort(list, n, sizeof(*list), mlx5_dev_spawn_data_cmp);
+	/* Default configuration. */
+	dev_config = (struct mlx5_dev_config){
+		.mps = MLX5_ARG_UNSET,
+		.tx_vec_en = 1,
+		.rx_vec_en = 1,
+		.txq_inline = MLX5_ARG_UNSET,
+		.txqs_inline = MLX5_ARG_UNSET,
+		.inline_max_packet_sz = MLX5_ARG_UNSET,
+		.vf_nl_en = 1,
+		.mprq = {
+			.enabled = 0, /* Disabled by default. */
+			.stride_num_n = MLX5_MPRQ_STRIDE_NUM_N,
+			.max_memcpy_len = MLX5_MPRQ_MEMCPY_DEFAULT_LEN,
+			.min_rxqs_num = MLX5_MPRQ_MIN_RXQS,
+		},
+	};
+	/* Device speicific configuration. */
 	switch (pci_dev->id.device_id) {
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX4VF:
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX4LXVF:
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX5VF:
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX5EXVF:
-		vf = 1;
+		dev_config.vf = 1;
 		break;
 	default:
-		vf = 0;
+		break;
 	}
 	for (i = 0; i != n; ++i) {
 		uint32_t restore;
 
-		list[i].eth_dev = mlx5_dev_spawn
-			(&pci_dev->device, list[i].ibv_dev, vf, &list[i].info);
+		list[i].eth_dev = mlx5_dev_spawn(&pci_dev->device,
+						 list[i].ibv_dev, dev_config,
+						 &list[i].info);
 		if (!list[i].eth_dev) {
 			if (rte_errno != EBUSY && rte_errno != EEXIST)
 				break;
