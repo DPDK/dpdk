@@ -1764,6 +1764,8 @@ mlx5_ind_table_ibv_verify(struct rte_eth_dev *dev)
  *   first queue index will be taken for the indirection table.
  * @param queues_n
  *   Number of queues.
+ * @param tunnel
+ *   Tunnel type.
  *
  * @return
  *   The Verbs object initialised, NULL otherwise and rte_errno is set.
@@ -1779,6 +1781,9 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 	struct mlx5_hrxq *hrxq;
 	struct mlx5_ind_table_ibv *ind_tbl;
 	struct ibv_qp *qp;
+#ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
+	struct mlx5dv_qp_init_attr qp_init_attr = {0};
+#endif
 	int err;
 
 	queues_n = hash_fields ? queues_n : 1;
@@ -1794,6 +1799,20 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 		rss_key = rss_hash_default_key;
 	}
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
+	if (tunnel) {
+		qp_init_attr.comp_mask =
+				MLX5DV_QP_INIT_ATTR_MASK_QP_CREATE_FLAGS;
+		qp_init_attr.create_flags = MLX5DV_QP_CREATE_TUNNEL_OFFLOADS;
+	}
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	if (dev->data->dev_conf.lpbk_mode) {
+		/* Allow packet sent from NIC loop back w/o source MAC check. */
+		qp_init_attr.comp_mask |=
+				MLX5DV_QP_INIT_ATTR_MASK_QP_CREATE_FLAGS;
+		qp_init_attr.create_flags |=
+				MLX5DV_QP_CREATE_TIR_ALLOW_SELF_LOOPBACK_UC;
+	}
+#endif
 	qp = mlx5_glue->dv_create_qp
 		(priv->ctx,
 		 &(struct ibv_qp_init_attr_ex){
@@ -1814,11 +1833,7 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 			.rwq_ind_tbl = ind_tbl->ind_table,
 			.pd = priv->pd,
 		 },
-		 &(struct mlx5dv_qp_init_attr){
-			.comp_mask = tunnel ?
-				MLX5DV_QP_INIT_ATTR_MASK_QP_CREATE_FLAGS : 0,
-			.create_flags = MLX5DV_QP_CREATE_TUNNEL_OFFLOADS,
-		 });
+		 &qp_init_attr);
 #else
 	qp = mlx5_glue->create_qp_ex
 		(priv->ctx,
