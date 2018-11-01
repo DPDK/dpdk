@@ -170,6 +170,7 @@ struct mlx5_flow_dv_match_params {
 };
 
 #define MLX5_DV_MAX_NUMBER_OF_ACTIONS 8
+#define MLX5_ENCAP_MAX_LEN 132
 
 /* Matcher structure. */
 struct mlx5_flow_dv_matcher {
@@ -183,6 +184,19 @@ struct mlx5_flow_dv_matcher {
 	struct mlx5_flow_dv_match_params mask; /**< Matcher mask. */
 };
 
+/* Encap/decap resource structure. */
+struct mlx5_flow_dv_encap_decap_resource {
+	LIST_ENTRY(mlx5_flow_dv_encap_decap_resource) next;
+	/* Pointer to next element. */
+	rte_atomic32_t refcnt; /**< Reference counter. */
+	struct ibv_flow_action *verbs_action;
+	/**< Verbs encap/decap action object. */
+	uint8_t buf[MLX5_ENCAP_MAX_LEN];
+	size_t size;
+	uint8_t reformat_type;
+	uint8_t ft_type;
+};
+
 /* DV flows structure. */
 struct mlx5_flow_dv {
 	uint64_t hash_fields; /**< Fields that participate in the hash. */
@@ -191,12 +205,12 @@ struct mlx5_flow_dv {
 	struct mlx5_flow_dv_matcher *matcher; /**< Cache to matcher. */
 	struct mlx5_flow_dv_match_params value;
 	/**< Holds the value that the packet is compared to. */
+	struct mlx5_flow_dv_encap_decap_resource *encap_decap;
+	/**< Pointer to encap/decap resource in cache. */
 	struct ibv_flow *flow; /**< Installed flow. */
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	struct mlx5dv_flow_action_attr actions[MLX5_DV_MAX_NUMBER_OF_ACTIONS];
 	/**< Action list. */
-	struct ibv_flow_action *encap_decap_verbs_action;
-	/**< Verbs encap/decap object. */
 #endif
 	int actions_n; /**< number of actions. */
 };

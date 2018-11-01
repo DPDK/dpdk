@@ -35,8 +35,6 @@
 
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 
-#define MLX5_ENCAP_MAX_LEN 132
-
 /**
  * Validate META item.
  *
@@ -269,6 +267,77 @@ flow_dv_validate_action_raw_decap(uint64_t action_flags,
 					 NULL, "decap action not supported"
 					 " for egress");
 	}
+	return 0;
+}
+
+
+/**
+ * Find existing encap/decap resource or create and register a new one.
+ *
+ * @param dev[in, out]
+ *   Pointer to rte_eth_dev structure.
+ * @param[in, out] resource
+ *   Pointer to encap/decap resource.
+ * @parm[in, out] dev_flow
+ *   Pointer to the dev_flow.
+ * @param[out] error
+ *   pointer to error structure.
+ *
+ * @return
+ *   0 on success otherwise -errno and errno is set.
+ */
+static int
+flow_dv_encap_decap_resource_register
+			(struct rte_eth_dev *dev,
+			 struct mlx5_flow_dv_encap_decap_resource *resource,
+			 struct mlx5_flow *dev_flow,
+			 struct rte_flow_error *error)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct mlx5_flow_dv_encap_decap_resource *cache_resource;
+
+	/* Lookup a matching resource from cache. */
+	LIST_FOREACH(cache_resource, &priv->encaps_decaps, next) {
+		if (resource->reformat_type == cache_resource->reformat_type &&
+		    resource->ft_type == cache_resource->ft_type &&
+		    resource->size == cache_resource->size &&
+		    !memcmp((const void *)resource->buf,
+			    (const void *)cache_resource->buf,
+			    resource->size)) {
+			DRV_LOG(DEBUG, "encap/decap resource %p: refcnt %d++",
+				(void *)cache_resource,
+				rte_atomic32_read(&cache_resource->refcnt));
+			rte_atomic32_inc(&cache_resource->refcnt);
+			dev_flow->dv.encap_decap = cache_resource;
+			return 0;
+		}
+	}
+	/* Register new encap/decap resource. */
+	cache_resource = rte_calloc(__func__, 1, sizeof(*cache_resource), 0);
+	if (!cache_resource)
+		return rte_flow_error_set(error, ENOMEM,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "cannot allocate resource memory");
+	*cache_resource = *resource;
+	cache_resource->verbs_action =
+		mlx5_glue->dv_create_flow_action_packet_reformat
+			(priv->ctx, cache_resource->size,
+			 (cache_resource->size ? cache_resource->buf : NULL),
+			 cache_resource->reformat_type,
+			 cache_resource->ft_type);
+	if (!cache_resource->verbs_action) {
+		rte_free(cache_resource);
+		return rte_flow_error_set(error, ENOMEM,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "cannot create action");
+	}
+	rte_atomic32_init(&cache_resource->refcnt);
+	rte_atomic32_inc(&cache_resource->refcnt);
+	LIST_INSERT_HEAD(&priv->encaps_decaps, cache_resource, next);
+	dev_flow->dv.encap_decap = cache_resource;
+	DRV_LOG(DEBUG, "new encap/decap resource %p: refcnt %d++",
+		(void *)cache_resource,
+		rte_atomic32_read(&cache_resource->refcnt));
 	return 0;
 }
 
@@ -513,31 +582,33 @@ flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
  *   Pointer to rte_eth_dev structure.
  * @param[in] action
  *   Pointer to action structure.
+ * @param[in, out] dev_flow
+ *   Pointer to the mlx5_flow.
  * @param[out] error
  *   Pointer to the error structure.
  *
  * @return
- *   Pointer to action on success, NULL otherwise and rte_errno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static struct ibv_flow_action *
+static int
 flow_dv_create_action_l2_encap(struct rte_eth_dev *dev,
 			       const struct rte_flow_action *action,
+			       struct mlx5_flow *dev_flow,
 			       struct rte_flow_error *error)
 {
-	struct ibv_flow_action *verbs_action = NULL;
 	const struct rte_flow_item *encap_data;
 	const struct rte_flow_action_raw_encap *raw_encap_data;
-	struct priv *priv = dev->data->dev_private;
-	uint8_t buf[MLX5_ENCAP_MAX_LEN];
-	uint8_t *buf_ptr = buf;
-	size_t size = 0;
-	int convert_result = 0;
+	struct mlx5_flow_dv_encap_decap_resource res = {
+		.reformat_type =
+			MLX5DV_FLOW_ACTION_PACKET_REFORMAT_TYPE_L2_TO_L2_TUNNEL,
+		.ft_type = MLX5DV_FLOW_TABLE_TYPE_NIC_TX,
+	};
 
 	if (action->type == RTE_FLOW_ACTION_TYPE_RAW_ENCAP) {
 		raw_encap_data =
 			(const struct rte_flow_action_raw_encap *)action->conf;
-		buf_ptr = raw_encap_data->data;
-		size = raw_encap_data->size;
+		res.size = raw_encap_data->size;
+		memcpy(res.buf, raw_encap_data->data, res.size);
 	} else {
 		if (action->type == RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP)
 			encap_data =
@@ -547,19 +618,15 @@ flow_dv_create_action_l2_encap(struct rte_eth_dev *dev,
 			encap_data =
 				((const struct rte_flow_action_nvgre_encap *)
 						action->conf)->definition;
-		convert_result = flow_dv_convert_encap_data(encap_data, buf,
-							    &size, error);
-		if (convert_result)
-			return NULL;
+		if (flow_dv_convert_encap_data(encap_data, res.buf,
+					       &res.size, error))
+			return -rte_errno;
 	}
-	verbs_action = mlx5_glue->dv_create_flow_action_packet_reformat
-		(priv->ctx, size, buf_ptr,
-		 MLX5DV_FLOW_ACTION_PACKET_REFORMAT_TYPE_L2_TO_L2_TUNNEL,
-		 MLX5DV_FLOW_TABLE_TYPE_NIC_TX);
-	if (!verbs_action)
-		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
-				   NULL, "cannot create L2 encap action");
-	return verbs_action;
+	if (flow_dv_encap_decap_resource_register(dev, &res, dev_flow, error))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL, "can't create L2 encap action");
+	return 0;
 }
 
 /**
@@ -567,27 +634,31 @@ flow_dv_create_action_l2_encap(struct rte_eth_dev *dev,
  *
  * @param[in] dev
  *   Pointer to rte_eth_dev structure.
+ * @param[in, out] dev_flow
+ *   Pointer to the mlx5_flow.
  * @param[out] error
  *   Pointer to the error structure.
  *
  * @return
- *   Pointer to action on success, NULL otherwise and rte_errno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static struct ibv_flow_action *
+static int
 flow_dv_create_action_l2_decap(struct rte_eth_dev *dev,
+			       struct mlx5_flow *dev_flow,
 			       struct rte_flow_error *error)
 {
-	struct ibv_flow_action *verbs_action = NULL;
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_flow_dv_encap_decap_resource res = {
+		.size = 0,
+		.reformat_type =
+			MLX5DV_FLOW_ACTION_PACKET_REFORMAT_TYPE_L2_TUNNEL_TO_L2,
+		.ft_type = MLX5DV_FLOW_TABLE_TYPE_NIC_RX,
+	};
 
-	verbs_action = mlx5_glue->dv_create_flow_action_packet_reformat
-		(priv->ctx, 0, NULL,
-		 MLX5DV_FLOW_ACTION_PACKET_REFORMAT_TYPE_L2_TUNNEL_TO_L2,
-		 MLX5DV_FLOW_TABLE_TYPE_NIC_RX);
-	if (!verbs_action)
-		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
-				   NULL, "cannot create L2 decap action");
-	return verbs_action;
+	if (flow_dv_encap_decap_resource_register(dev, &res, dev_flow, error))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL, "can't create L2 decap action");
+	return 0;
 }
 
 /**
@@ -597,41 +668,39 @@ flow_dv_create_action_l2_decap(struct rte_eth_dev *dev,
  *   Pointer to rte_eth_dev structure.
  * @param[in] action
  *   Pointer to action structure.
+ * @param[in, out] dev_flow
+ *   Pointer to the mlx5_flow.
  * @param[in] attr
  *   Pointer to the flow attributes.
  * @param[out] error
  *   Pointer to the error structure.
  *
  * @return
- *   Pointer to action on success, NULL otherwise and rte_errno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static struct ibv_flow_action *
+static int
 flow_dv_create_action_raw_encap(struct rte_eth_dev *dev,
 				const struct rte_flow_action *action,
+				struct mlx5_flow *dev_flow,
 				const struct rte_flow_attr *attr,
 				struct rte_flow_error *error)
 {
-	struct ibv_flow_action *verbs_action = NULL;
 	const struct rte_flow_action_raw_encap *encap_data;
-	struct priv *priv = dev->data->dev_private;
-	enum mlx5dv_flow_action_packet_reformat_type reformat_type;
-	enum mlx5dv_flow_table_type ft_type;
+	struct mlx5_flow_dv_encap_decap_resource res;
 
 	encap_data = (const struct rte_flow_action_raw_encap *)action->conf;
-	reformat_type = attr->egress ?
+	res.size = encap_data->size;
+	memcpy(res.buf, encap_data->data, res.size);
+	res.reformat_type = attr->egress ?
 		MLX5DV_FLOW_ACTION_PACKET_REFORMAT_TYPE_L2_TO_L3_TUNNEL :
 		MLX5DV_FLOW_ACTION_PACKET_REFORMAT_TYPE_L3_TUNNEL_TO_L2;
-	ft_type = attr->egress ?
-			MLX5DV_FLOW_TABLE_TYPE_NIC_TX :
-			MLX5DV_FLOW_TABLE_TYPE_NIC_RX;
-	verbs_action = mlx5_glue->dv_create_flow_action_packet_reformat
-				(priv->ctx, encap_data->size,
-				(encap_data->size ? encap_data->data : NULL),
-				reformat_type, ft_type);
-	if (!verbs_action)
-		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
-				   NULL, "cannot create encap action");
-	return verbs_action;
+	res.ft_type = attr->egress ? MLX5DV_FLOW_TABLE_TYPE_NIC_TX :
+				     MLX5DV_FLOW_TABLE_TYPE_NIC_RX;
+	if (flow_dv_encap_decap_resource_register(dev, &res, dev_flow, error))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL, "can't create encap action");
+	return 0;
 }
 
 /**
@@ -1697,15 +1766,13 @@ flow_dv_create_action(struct rte_eth_dev *dev,
 		break;
 	case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 	case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
+		if (flow_dv_create_action_l2_encap(dev, action,
+						   dev_flow, error))
+			return -rte_errno;
 		dev_flow->dv.actions[actions_n].type =
 			MLX5DV_FLOW_ACTION_IBV_FLOW_ACTION;
 		dev_flow->dv.actions[actions_n].action =
-				flow_dv_create_action_l2_encap(dev, action,
-							       error);
-		if (!(dev_flow->dv.actions[actions_n].action))
-			return -rte_errno;
-		dev_flow->dv.encap_decap_verbs_action =
-			dev_flow->dv.actions[actions_n].action;
+			dev_flow->dv.encap_decap->verbs_action;
 		flow->actions |= action->type ==
 				 RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP ?
 				 MLX5_FLOW_ACTION_VXLAN_ENCAP :
@@ -1714,14 +1781,12 @@ flow_dv_create_action(struct rte_eth_dev *dev,
 		break;
 	case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
 	case RTE_FLOW_ACTION_TYPE_NVGRE_DECAP:
+		if (flow_dv_create_action_l2_decap(dev, dev_flow, error))
+			return -rte_errno;
 		dev_flow->dv.actions[actions_n].type =
 			MLX5DV_FLOW_ACTION_IBV_FLOW_ACTION;
 		dev_flow->dv.actions[actions_n].action =
-				flow_dv_create_action_l2_decap(dev, error);
-		if (!(dev_flow->dv.actions[actions_n].action))
-			return -rte_errno;
-		dev_flow->dv.encap_decap_verbs_action =
-			dev_flow->dv.actions[actions_n].action;
+			dev_flow->dv.encap_decap->verbs_action;
 		flow->actions |= action->type ==
 				 RTE_FLOW_ACTION_TYPE_VXLAN_DECAP ?
 				 MLX5_FLOW_ACTION_VXLAN_DECAP :
@@ -1731,27 +1796,23 @@ flow_dv_create_action(struct rte_eth_dev *dev,
 	case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
 		/* Handle encap action with preceding decap */
 		if (flow->actions & MLX5_FLOW_ACTION_RAW_DECAP) {
+			if (flow_dv_create_action_raw_encap(dev, action,
+							    dev_flow,
+							    attr, error))
+				return -rte_errno;
 			dev_flow->dv.actions[actions_n].type =
 				MLX5DV_FLOW_ACTION_IBV_FLOW_ACTION;
 			dev_flow->dv.actions[actions_n].action =
-					flow_dv_create_action_raw_encap
-								(dev, action,
-								 attr, error);
-			if (!(dev_flow->dv.actions[actions_n].action))
-				return -rte_errno;
-			dev_flow->dv.encap_decap_verbs_action =
-				dev_flow->dv.actions[actions_n].action;
+					dev_flow->dv.encap_decap->verbs_action;
 		} else {
 			/* Handle encap action without preceding decap */
+			if (flow_dv_create_action_l2_encap(dev, action,
+							   dev_flow, error))
+				return -rte_errno;
 			dev_flow->dv.actions[actions_n].type =
 				MLX5DV_FLOW_ACTION_IBV_FLOW_ACTION;
 			dev_flow->dv.actions[actions_n].action =
-					flow_dv_create_action_l2_encap
-							(dev, action, error);
-			if (!(dev_flow->dv.actions[actions_n].action))
-				return -rte_errno;
-			dev_flow->dv.encap_decap_verbs_action =
-				dev_flow->dv.actions[actions_n].action;
+					dev_flow->dv.encap_decap->verbs_action;
 		}
 		flow->actions |= MLX5_FLOW_ACTION_RAW_ENCAP;
 		actions_n++;
@@ -1764,15 +1825,13 @@ flow_dv_create_action(struct rte_eth_dev *dev,
 		}
 		/* Handle decap action only if it isn't followed by encap */
 		if (action_ptr->type != RTE_FLOW_ACTION_TYPE_RAW_ENCAP) {
+			if (flow_dv_create_action_l2_decap(dev, dev_flow,
+							   error))
+				return -rte_errno;
 			dev_flow->dv.actions[actions_n].type =
 				MLX5DV_FLOW_ACTION_IBV_FLOW_ACTION;
 			dev_flow->dv.actions[actions_n].action =
-					flow_dv_create_action_l2_decap(dev,
-								       error);
-			if (!(dev_flow->dv.actions[actions_n].action))
-				return -rte_errno;
-			dev_flow->dv.encap_decap_verbs_action =
-				dev_flow->dv.actions[actions_n].action;
+					dev_flow->dv.encap_decap->verbs_action;
 			actions_n++;
 		}
 		/* If decap is followed by encap, handle it at encap case. */
@@ -2084,6 +2143,37 @@ flow_dv_matcher_release(struct rte_eth_dev *dev,
 }
 
 /**
+ * Release an encap/decap resource.
+ *
+ * @param flow
+ *   Pointer to mlx5_flow.
+ *
+ * @return
+ *   1 while a reference on it exists, 0 when freed.
+ */
+static int
+flow_dv_encap_decap_resource_release(struct mlx5_flow *flow)
+{
+	struct mlx5_flow_dv_encap_decap_resource *cache_resource =
+						flow->dv.encap_decap;
+
+	assert(cache_resource->verbs_action);
+	DRV_LOG(DEBUG, "encap/decap resource %p: refcnt %d--",
+		(void *)cache_resource,
+		rte_atomic32_read(&cache_resource->refcnt));
+	if (rte_atomic32_dec_and_test(&cache_resource->refcnt)) {
+		claim_zero(mlx5_glue->destroy_flow_action
+				(cache_resource->verbs_action));
+		LIST_REMOVE(cache_resource, next);
+		rte_free(cache_resource);
+		DRV_LOG(DEBUG, "encap/decap resource %p: removed",
+			(void *)cache_resource);
+		return 0;
+	}
+	return 1;
+}
+
+/**
  * Remove the flow from the NIC but keeps it in memory.
  *
  * @param[in] dev
@@ -2138,11 +2228,8 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 		LIST_REMOVE(dev_flow, next);
 		if (dev_flow->dv.matcher)
 			flow_dv_matcher_release(dev, dev_flow);
-		if (dev_flow->dv.encap_decap_verbs_action) {
-			claim_zero(mlx5_glue->destroy_flow_action
-				(dev_flow->dv.encap_decap_verbs_action));
-			dev_flow->dv.encap_decap_verbs_action = NULL;
-		}
+		if (dev_flow->dv.encap_decap)
+			flow_dv_encap_decap_resource_release(dev_flow);
 		rte_free(dev_flow);
 	}
 }
