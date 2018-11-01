@@ -321,13 +321,44 @@ alloc_pages_on_heap(struct malloc_heap *heap, uint64_t pg_sz, size_t elt_size,
 		goto fail;
 	}
 
-	if (mcfg->dma_maskbits) {
-		if (rte_mem_check_dma_mask(mcfg->dma_maskbits)) {
+	/*
+	 * Once we have all the memseg lists configured, if there is a dma mask
+	 * set, check iova addresses are not out of range. Otherwise the device
+	 * setting the dma mask could have problems with the mapped memory.
+	 *
+	 * There are two situations when this can happen:
+	 *	1) memory initialization
+	 *	2) dynamic memory allocation
+	 *
+	 * For 1), an error when checking dma mask implies app can not be
+	 * executed. For 2) implies the new memory can not be added.
+	 */
+	if (mcfg->dma_maskbits &&
+	    rte_mem_check_dma_mask(mcfg->dma_maskbits)) {
+		/*
+		 * Currently this can only happen if IOMMU is enabled
+		 * and the address width supported by the IOMMU hw is
+		 * not enough for using the memory mapped IOVAs.
+		 *
+		 * If IOVA is VA, advice to try with '--iova-mode pa'
+		 * which could solve some situations when IOVA VA is not
+		 * really needed.
+		 */
+		RTE_LOG(ERR, EAL,
+			"%s(): couldn't allocate memory due to IOVA exceeding limits of current DMA mask\n",
+			__func__);
+
+		/*
+		 * If IOVA is VA and it is possible to run with IOVA PA,
+		 * because user is root, give and advice for solving the
+		 * problem.
+		 */
+		if ((rte_eal_iova_mode() == RTE_IOVA_VA) &&
+		     rte_eal_using_phys_addrs())
 			RTE_LOG(ERR, EAL,
-				"%s(): couldn't allocate memory due to DMA mask\n",
+				"%s(): Please try initializing EAL with --iova-mode=pa parameter\n",
 				__func__);
-			goto fail;
-		}
+		goto fail;
 	}
 
 	/* add newly minted memsegs to malloc heap */
