@@ -145,7 +145,7 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 	$Q sh -- '$<' '$@' \
 		HAVE_IBV_FLOW_DV_SUPPORT \
 		infiniband/mlx5dv.h \
-		enum MLX5DV_FLOW_ACTION_TAG \
+		func mlx5dv_create_flow_action_packet_reformat \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
 		HAVE_ETHTOOL_LINK_MODE_25G \

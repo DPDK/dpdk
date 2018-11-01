@@ -99,7 +99,7 @@ if build
 		[ 'HAVE_IBV_MLX5_MOD_CQE_128B_PAD', 'infiniband/mlx5dv.h',
 		'MLX5DV_CQ_INIT_ATTR_FLAGS_CQE_PAD' ],
 		[ 'HAVE_IBV_FLOW_DV_SUPPORT', 'infiniband/mlx5dv.h',
-		'MLX5DV_FLOW_ACTION_TAG' ],
+		'mlx5dv_create_flow_action_packet_reformat' ],
 		[ 'HAVE_IBV_DEVICE_MPLS_SUPPORT', 'infiniband/verbs.h',
 		'IBV_FLOW_SPEC_MPLS' ],
 		[ 'HAVE_IBV_WQ_FLAG_RX_END_PADDING', 'infiniband/verbs.h',

@@ -50,6 +50,9 @@ struct mlx5dv_flow_matcher;
 struct mlx5dv_flow_matcher_attr;
 struct mlx5dv_flow_action_attr;
 struct mlx5dv_flow_match_parameters;
+struct ibv_flow_action;
+enum mlx5dv_flow_action_packet_reformat_type { packet_reformat_type = 0, };
+enum mlx5dv_flow_table_type { flow_table_type = 0, };
 #endif
 
 /* LIB_GLUE_VERSION must be updated every time this structure is modified. */
@@ -91,6 +94,7 @@ struct mlx5_glue {
 	struct ibv_flow *(*create_flow)(struct ibv_qp *qp,
 					struct ibv_flow_attr *flow);
 	int (*destroy_flow)(struct ibv_flow *flow_id);
+	int (*destroy_flow_action)(struct ibv_flow_action *action);
 	struct ibv_qp *(*create_qp)(struct ibv_pd *pd,
 				    struct ibv_qp_init_attr *qp_init_attr);
 	struct ibv_qp *(*create_qp_ex)
@@ -154,6 +158,12 @@ struct mlx5_glue {
 			  struct mlx5dv_flow_match_parameters *match_value,
 			  size_t num_actions,
 			  struct mlx5dv_flow_action_attr *actions_attr);
+	struct ibv_flow_action *(*dv_create_flow_action_packet_reformat)
+		(struct ibv_context *ctx,
+		 size_t data_sz,
+		 void *data,
+		 enum mlx5dv_flow_action_packet_reformat_type reformat_type,
+		 enum mlx5dv_flow_table_type ft_type);
 };
 
 const struct mlx5_glue *mlx5_glue;

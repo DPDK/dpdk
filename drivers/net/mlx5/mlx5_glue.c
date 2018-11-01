@@ -174,6 +174,17 @@ mlx5_glue_destroy_flow(struct ibv_flow *flow_id)
 	return ibv_destroy_flow(flow_id);
 }
 
+static int
+mlx5_glue_destroy_flow_action(struct ibv_flow_action *action)
+{
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	return ibv_destroy_flow_action(action);
+#else
+	(void)action;
+	return ENOTSUP;
+#endif
+}
+
 static struct ibv_qp *
 mlx5_glue_create_qp(struct ibv_pd *pd, struct ibv_qp_init_attr *qp_init_attr)
 {
@@ -444,6 +455,30 @@ mlx5_glue_dv_destroy_flow_matcher(struct mlx5dv_flow_matcher *matcher)
 #endif
 }
 
+static struct ibv_flow_action *
+mlx5_glue_dv_create_flow_action_packet_reformat
+		(struct ibv_context *ctx,
+		 size_t data_sz,
+		 void *data,
+		 enum mlx5dv_flow_action_packet_reformat_type reformat_type,
+		 enum mlx5dv_flow_table_type ft_type)
+{
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	return mlx5dv_create_flow_action_packet_reformat(ctx,
+							 data_sz,
+							 data,
+							 reformat_type,
+							 ft_type);
+#else
+	(void)ctx;
+	(void)data_sz;
+	(void)data;
+	(void)reformat_type;
+	(void)ft_type;
+	return NULL;
+#endif
+}
+
 alignas(RTE_CACHE_LINE_SIZE)
 const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.version = MLX5_GLUE_VERSION,
@@ -470,6 +505,7 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.modify_wq = mlx5_glue_modify_wq,
 	.create_flow = mlx5_glue_create_flow,
 	.destroy_flow = mlx5_glue_destroy_flow,
+	.destroy_flow_action = mlx5_glue_destroy_flow_action,
 	.create_qp = mlx5_glue_create_qp,
 	.create_qp_ex = mlx5_glue_create_qp_ex,
 	.destroy_qp = mlx5_glue_destroy_qp,
@@ -497,4 +533,6 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.dv_create_flow_matcher = mlx5_glue_dv_create_flow_matcher,
 	.dv_destroy_flow_matcher = mlx5_glue_dv_destroy_flow_matcher,
 	.dv_create_flow = mlx5_glue_dv_create_flow,
+	.dv_create_flow_action_packet_reformat =
+			mlx5_glue_dv_create_flow_action_packet_reformat,
 };
