@@ -615,7 +615,16 @@ pci_one_device_iommu_support_va(struct rte_pci_device *dev)
 
 	mgaw = ((vtd_cap_reg & VTD_CAP_MGAW_MASK) >> VTD_CAP_MGAW_SHIFT) + 1;
 
-	return rte_mem_check_dma_mask(mgaw) == 0 ? true : false;
+	/*
+	 * Assuming there is no limitation by now. We can not know at this point
+	 * because the memory has not been initialized yet. Setting the dma mask
+	 * will force a check once memory initialization is done. We can not do
+	 * a fallback to IOVA PA now, but if the dma check fails, the error
+	 * message should advice for using '--iova-mode pa' if IOVA VA is the
+	 * current mode.
+	 */
+	rte_mem_set_dma_mask(mgaw);
+	return true;
 }
 #elif defined(RTE_ARCH_PPC_64)
 static bool
