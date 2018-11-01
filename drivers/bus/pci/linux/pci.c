@@ -713,6 +713,7 @@ int rte_pci_read_config(const struct rte_pci_device *device,
 
 	switch (device->kdrv) {
 	case RTE_KDRV_IGB_UIO:
+	case RTE_KDRV_UIO_GENERIC:
 		return pci_uio_read_config(intr_handle, buf, len, offset);
 #ifdef VFIO_PRESENT
 	case RTE_KDRV_VFIO:
@@ -736,6 +737,7 @@ int rte_pci_write_config(const struct rte_pci_device *device,
 
 	switch (device->kdrv) {
 	case RTE_KDRV_IGB_UIO:
+	case RTE_KDRV_UIO_GENERIC:
 		return pci_uio_write_config(intr_handle, buf, len, offset);
 #ifdef VFIO_PRESENT
 	case RTE_KDRV_VFIO:
