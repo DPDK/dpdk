@@ -34,6 +34,8 @@
 
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 
+#define MLX5_ENCAP_MAX_LEN 132
+
 /**
  * Validate META item.
  *
@@ -93,6 +95,305 @@ flow_dv_validate_item_meta(struct rte_eth_dev *dev,
 					  NULL,
 					  "pattern not supported for ingress");
 	return 0;
+}
+
+/**
+ * Validate the L2 encap action.
+ *
+ * @param[in] action_flags
+ *   Holds the actions detected until now.
+ * @param[in] action
+ *   Pointer to the encap action.
+ * @param[in] attr
+ *   Pointer to flow attributes
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_action_l2_encap(uint64_t action_flags,
+				 const struct rte_flow_action *action,
+				 const struct rte_flow_attr *attr,
+				 struct rte_flow_error *error)
+{
+	if (!(action->conf))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "configuration cannot be null");
+	if (action_flags & MLX5_FLOW_ACTION_DROP)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "can't drop and encap in same flow");
+	if (action_flags & MLX5_FLOW_ACTION_VXLAN_ENCAP)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "can only have a single encap"
+					  " action in a flow");
+	if (attr->ingress)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
+					  NULL,
+					  "encap action not supported for "
+					  "ingress");
+	return 0;
+}
+
+/**
+ * Get the size of specific rte_flow_item_type
+ *
+ * @param[in] item_type
+ *   Tested rte_flow_item_type.
+ *
+ * @return
+ *   sizeof struct item_type, 0 if void or irrelevant.
+ */
+static size_t
+flow_dv_get_item_len(const enum rte_flow_item_type item_type)
+{
+	size_t retval;
+
+	switch (item_type) {
+	case RTE_FLOW_ITEM_TYPE_ETH:
+		retval = sizeof(struct rte_flow_item_eth);
+		break;
+	case RTE_FLOW_ITEM_TYPE_VLAN:
+		retval = sizeof(struct rte_flow_item_vlan);
+		break;
+	case RTE_FLOW_ITEM_TYPE_IPV4:
+		retval = sizeof(struct rte_flow_item_ipv4);
+		break;
+	case RTE_FLOW_ITEM_TYPE_IPV6:
+		retval = sizeof(struct rte_flow_item_ipv6);
+		break;
+	case RTE_FLOW_ITEM_TYPE_UDP:
+		retval = sizeof(struct rte_flow_item_udp);
+		break;
+	case RTE_FLOW_ITEM_TYPE_TCP:
+		retval = sizeof(struct rte_flow_item_tcp);
+		break;
+	case RTE_FLOW_ITEM_TYPE_VXLAN:
+		retval = sizeof(struct rte_flow_item_vxlan);
+		break;
+	case RTE_FLOW_ITEM_TYPE_GRE:
+		retval = sizeof(struct rte_flow_item_gre);
+		break;
+	case RTE_FLOW_ITEM_TYPE_NVGRE:
+		retval = sizeof(struct rte_flow_item_nvgre);
+		break;
+	case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
+		retval = sizeof(struct rte_flow_item_vxlan_gpe);
+		break;
+	case RTE_FLOW_ITEM_TYPE_MPLS:
+		retval = sizeof(struct rte_flow_item_mpls);
+		break;
+	case RTE_FLOW_ITEM_TYPE_VOID: /* Fall through. */
+	default:
+		retval = 0;
+		break;
+	}
+	return retval;
+}
+
+#define MLX5_ENCAP_IPV4_VERSION		0x40
+#define MLX5_ENCAP_IPV4_IHL_MIN		0x05
+#define MLX5_ENCAP_IPV4_TTL_DEF		0x40
+#define MLX5_ENCAP_IPV6_VTC_FLOW	0x60000000
+#define MLX5_ENCAP_IPV6_HOP_LIMIT	0xff
+#define MLX5_ENCAP_VXLAN_FLAGS		0x08000000
+#define MLX5_ENCAP_VXLAN_GPE_FLAGS	0x04
+
+/**
+ * Convert the encap action data from list of rte_flow_item to raw buffer
+ *
+ * @param[in] items
+ *   Pointer to rte_flow_item objects list.
+ * @param[out] buf
+ *   Pointer to the output buffer.
+ * @param[out] size
+ *   Pointer to the output buffer size.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
+			   size_t *size, struct rte_flow_error *error)
+{
+	struct ether_hdr *eth = NULL;
+	struct vlan_hdr *vlan = NULL;
+	struct ipv4_hdr *ipv4 = NULL;
+	struct ipv6_hdr *ipv6 = NULL;
+	struct udp_hdr *udp = NULL;
+	struct vxlan_hdr *vxlan = NULL;
+	struct vxlan_gpe_hdr *vxlan_gpe = NULL;
+	size_t len;
+	size_t temp_size = 0;
+
+	if (!items)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL, "invalid empty data");
+	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
+		len = flow_dv_get_item_len(items->type);
+		if (len + temp_size > MLX5_ENCAP_MAX_LEN)
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  (void *)items->type,
+						  "items total size is too big"
+						  " for encap action");
+		rte_memcpy((void *)&buf[temp_size], items->spec, len);
+		switch (items->type) {
+		case RTE_FLOW_ITEM_TYPE_ETH:
+			eth = (struct ether_hdr *)&buf[temp_size];
+			break;
+		case RTE_FLOW_ITEM_TYPE_VLAN:
+			vlan = (struct vlan_hdr *)&buf[temp_size];
+			if (!eth)
+				return rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						(void *)items->type,
+						"eth header not found");
+			if (!eth->ether_type)
+				eth->ether_type = RTE_BE16(ETHER_TYPE_VLAN);
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV4:
+			ipv4 = (struct ipv4_hdr *)&buf[temp_size];
+			if (!vlan && !eth)
+				return rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						(void *)items->type,
+						"neither eth nor vlan"
+						" header found");
+			if (vlan && !vlan->eth_proto)
+				vlan->eth_proto = RTE_BE16(ETHER_TYPE_IPv4);
+			else if (eth && !eth->ether_type)
+				eth->ether_type = RTE_BE16(ETHER_TYPE_IPv4);
+			if (!ipv4->version_ihl)
+				ipv4->version_ihl = MLX5_ENCAP_IPV4_VERSION |
+						    MLX5_ENCAP_IPV4_IHL_MIN;
+			if (!ipv4->time_to_live)
+				ipv4->time_to_live = MLX5_ENCAP_IPV4_TTL_DEF;
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6:
+			ipv6 = (struct ipv6_hdr *)&buf[temp_size];
+			if (!vlan && !eth)
+				return rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						(void *)items->type,
+						"neither eth nor vlan"
+						" header found");
+			if (vlan && !vlan->eth_proto)
+				vlan->eth_proto = RTE_BE16(ETHER_TYPE_IPv6);
+			else if (eth && !eth->ether_type)
+				eth->ether_type = RTE_BE16(ETHER_TYPE_IPv6);
+			if (!ipv6->vtc_flow)
+				ipv6->vtc_flow =
+					RTE_BE32(MLX5_ENCAP_IPV6_VTC_FLOW);
+			if (!ipv6->hop_limits)
+				ipv6->hop_limits = MLX5_ENCAP_IPV6_HOP_LIMIT;
+			break;
+		case RTE_FLOW_ITEM_TYPE_UDP:
+			udp = (struct udp_hdr *)&buf[temp_size];
+			if (!ipv4 && !ipv6)
+				return rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						(void *)items->type,
+						"ip header not found");
+			if (ipv4 && !ipv4->next_proto_id)
+				ipv4->next_proto_id = IPPROTO_UDP;
+			else if (ipv6 && !ipv6->proto)
+				ipv6->proto = IPPROTO_UDP;
+			break;
+		case RTE_FLOW_ITEM_TYPE_VXLAN:
+			vxlan = (struct vxlan_hdr *)&buf[temp_size];
+			if (!udp)
+				return rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						(void *)items->type,
+						"udp header not found");
+			if (!udp->dst_port)
+				udp->dst_port = RTE_BE16(MLX5_UDP_PORT_VXLAN);
+			if (!vxlan->vx_flags)
+				vxlan->vx_flags =
+					RTE_BE32(MLX5_ENCAP_VXLAN_FLAGS);
+			break;
+		case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
+			vxlan_gpe = (struct vxlan_gpe_hdr *)&buf[temp_size];
+			if (!udp)
+				return rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						(void *)items->type,
+						"udp header not found");
+			if (!vxlan_gpe->proto)
+				return rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						(void *)items->type,
+						"next protocol not found");
+			if (!udp->dst_port)
+				udp->dst_port =
+					RTE_BE16(MLX5_UDP_PORT_VXLAN_GPE);
+			if (!vxlan_gpe->vx_flags)
+				vxlan_gpe->vx_flags =
+						MLX5_ENCAP_VXLAN_GPE_FLAGS;
+			break;
+		case RTE_FLOW_ITEM_TYPE_VOID:
+			break;
+		default:
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  (void *)items->type,
+						  "unsupported item type");
+			break;
+		}
+		temp_size += len;
+	}
+	*size = temp_size;
+	return 0;
+}
+
+/**
+ * Convert L2 encap action to DV specification.
+ *
+ * @param[in] dev
+ *   Pointer to rte_eth_dev structure.
+ * @param[in] action
+ *   Pointer to action structure.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   Pointer to action on success, NULL otherwise and rte_errno is set.
+ */
+static struct ibv_flow_action *
+flow_dv_create_action_l2_encap(struct rte_eth_dev *dev,
+			       const struct rte_flow_action *action,
+			       struct rte_flow_error *error)
+{
+	struct ibv_flow_action *verbs_action = NULL;
+	const struct rte_flow_item *encap_data;
+	struct priv *priv = dev->data->dev_private;
+	uint8_t buf[MLX5_ENCAP_MAX_LEN];
+	size_t size = 0;
+	int convert_result = 0;
+
+	encap_data = ((const struct rte_flow_action_vxlan_encap *)
+						action->conf)->definition;
+	convert_result = flow_dv_convert_encap_data(encap_data, buf,
+						    &size, error);
+	if (convert_result)
+		return NULL;
+	verbs_action = mlx5_glue->dv_create_flow_action_packet_reformat
+		(priv->ctx, size, buf,
+		 MLX5DV_FLOW_ACTION_PACKET_REFORMAT_TYPE_L2_TO_L2_TUNNEL,
+		 MLX5DV_FLOW_TABLE_TYPE_NIC_TX);
+	if (!verbs_action)
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+				   NULL, "cannot create L2 encap action");
+	return verbs_action;
 }
 
 /**
@@ -339,6 +640,16 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			action_flags |= MLX5_FLOW_ACTION_COUNT;
 			++actions_n;
 			break;
+		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+			ret = flow_dv_validate_action_l2_encap(action_flags,
+							       actions, attr,
+							       error);
+			if (ret < 0)
+				return ret;
+			action_flags |= MLX5_FLOW_ACTION_VXLAN_ENCAP;
+			++actions_n;
+			break;
+
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
@@ -1045,14 +1356,23 @@ flow_dv_create_item(void *matcher, void *key,
 /**
  * Store the requested actions in an array.
  *
+ * @param[in] dev
+ *   Pointer to rte_eth_dev structure.
  * @param[in] action
  *   Flow action to translate.
  * @param[in, out] dev_flow
  *   Pointer to the mlx5_flow.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static void
-flow_dv_create_action(const struct rte_flow_action *action,
-		      struct mlx5_flow *dev_flow)
+static int
+flow_dv_create_action(struct rte_eth_dev *dev,
+		      const struct rte_flow_action *action,
+		      struct mlx5_flow *dev_flow,
+		      struct rte_flow_error *error)
 {
 	const struct rte_flow_action_queue *queue;
 	const struct rte_flow_action_rss *rss;
@@ -1100,10 +1420,24 @@ flow_dv_create_action(const struct rte_flow_action *action,
 		/* Added to array only in apply since we need the QP */
 		flow->actions |= MLX5_FLOW_ACTION_RSS;
 		break;
+	case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+		dev_flow->dv.actions[actions_n].type =
+			MLX5DV_FLOW_ACTION_IBV_FLOW_ACTION;
+		dev_flow->dv.actions[actions_n].action =
+				flow_dv_create_action_l2_encap(dev, action,
+							       error);
+		if (!(dev_flow->dv.actions[actions_n].action))
+			return -rte_errno;
+		dev_flow->dv.encap_decap_verbs_action =
+			dev_flow->dv.actions[actions_n].action;
+		flow->actions |= MLX5_FLOW_ACTION_VXLAN_ENCAP;
+		actions_n++;
+		break;
 	default:
 		break;
 	}
 	dev_flow->dv.actions_n = actions_n;
+	return 0;
 }
 
 static uint32_t matcher_zero[MLX5_ST_SZ_DW(fte_match_param)] = { 0 };
@@ -1219,7 +1553,6 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 	return 0;
 }
 
-
 /**
  * Fill the flow with DV spec.
  *
@@ -1274,7 +1607,8 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	if (flow_dv_matcher_register(dev, &matcher, dev_flow, error))
 		return -rte_errno;
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++)
-		flow_dv_create_action(actions, dev_flow);
+		if (flow_dv_create_action(dev, actions, dev_flow, error))
+			return -rte_errno;
 	return 0;
 }
 
@@ -1459,6 +1793,11 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 		LIST_REMOVE(dev_flow, next);
 		if (dev_flow->dv.matcher)
 			flow_dv_matcher_release(dev, dev_flow);
+		if (dev_flow->dv.encap_decap_verbs_action) {
+			claim_zero(mlx5_glue->destroy_flow_action
+				(dev_flow->dv.encap_decap_verbs_action));
+			dev_flow->dv.encap_decap_verbs_action = NULL;
+		}
 		rte_free(dev_flow);
 	}
 }

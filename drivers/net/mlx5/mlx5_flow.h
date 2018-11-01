@@ -92,6 +92,7 @@
 #define MLX5_FLOW_ACTION_DEC_TTL (1u << 19)
 #define MLX5_FLOW_ACTION_SET_MAC_SRC (1u << 20)
 #define MLX5_FLOW_ACTION_SET_MAC_DST (1u << 21)
+#define MLX5_FLOW_ACTION_VXLAN_ENCAP (1u << 22)
 
 #define MLX5_FLOW_FATE_ACTIONS \
 	(MLX5_FLOW_ACTION_DROP | MLX5_FLOW_ACTION_QUEUE | MLX5_FLOW_ACTION_RSS)
@@ -181,6 +182,8 @@ struct mlx5_flow_dv {
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	struct mlx5dv_flow_action_attr actions[MLX5_DV_MAX_NUMBER_OF_ACTIONS];
 	/**< Action list. */
+	struct ibv_flow_action *encap_decap_verbs_action;
+	/**< Verbs encap/decap object. */
 #endif
 	int actions_n; /**< number of actions. */
 };
