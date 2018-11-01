@@ -294,7 +294,6 @@ alloc_pages_on_heap(struct malloc_heap *heap, uint64_t pg_sz, size_t elt_size,
 	size_t alloc_sz;
 	int allocd_pages;
 	void *ret, *map_addr;
-	uint64_t mask;
 
 	alloc_sz = (size_t)pg_sz * n_segs;
 
@@ -323,8 +322,7 @@ alloc_pages_on_heap(struct malloc_heap *heap, uint64_t pg_sz, size_t elt_size,
 	}
 
 	if (mcfg->dma_maskbits) {
-		mask = ~((1ULL << mcfg->dma_maskbits) - 1);
-		if (rte_eal_check_dma_mask(mask)) {
+		if (rte_eal_check_dma_mask(mcfg->dma_maskbits)) {
 			RTE_LOG(ERR, EAL,
 				"%s(): couldn't allocate memory due to DMA mask\n",
 				__func__);
