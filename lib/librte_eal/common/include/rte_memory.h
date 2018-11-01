@@ -464,7 +464,7 @@ unsigned rte_memory_get_nchannel(void);
 unsigned rte_memory_get_nrank(void);
 
 /* check memsegs iovas are within a range based on dma mask */
-int __rte_experimental rte_eal_check_dma_mask(uint8_t maskbits);
+int __rte_experimental rte_mem_check_dma_mask(uint8_t maskbits);
 
 /**
  * Drivers based on uio will not load unless physical

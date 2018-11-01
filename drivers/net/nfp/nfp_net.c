@@ -2703,7 +2703,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 
 	/* NFP can not handle DMA addresses requiring more than 40 bits */
-	if (rte_eal_check_dma_mask(40)) {
+	if (rte_mem_check_dma_mask(40)) {
 		RTE_LOG(ERR, PMD, "device %s can not be used:",
 				   pci_dev->device.name);
 		RTE_LOG(ERR, PMD, "\trestricted dma mask to 40 bits!\n");

@@ -615,7 +615,7 @@ pci_one_device_iommu_support_va(struct rte_pci_device *dev)
 
 	mgaw = ((vtd_cap_reg & VTD_CAP_MGAW_MASK) >> VTD_CAP_MGAW_SHIFT) + 1;
 
-	return rte_eal_check_dma_mask(mgaw) == 0 ? true : false;
+	return rte_mem_check_dma_mask(mgaw) == 0 ? true : false;
 }
 #elif defined(RTE_ARCH_PPC_64)
 static bool

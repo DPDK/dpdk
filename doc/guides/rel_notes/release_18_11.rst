@@ -63,7 +63,7 @@ New Features
 * **Added check for ensuring allocated memory addressable by devices.**
 
   Some devices can have addressing limitations so a new function,
-  ``rte_eal_check_dma_mask``, has been added for checking allocated memory is
+  ``rte_mem_check_dma_mask``, has been added for checking allocated memory is
   not out of the device range. Because now memory can be dynamically allocated
   after initialization, a dma mask is kept and any new allocated memory will be
   checked out against that dma mask and rejected if out of range. If more than

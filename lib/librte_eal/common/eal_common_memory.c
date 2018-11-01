@@ -49,7 +49,7 @@ static uint64_t system_page_sz;
  * Current known limitations are 39 or 40 bits. Setting the starting address
  * at 4GB implies there are 508GB or 1020GB for mapping the available
  * hugepages. This is likely enough for most systems, although a device with
- * addressing limitations should call rte_eal_check_dma_mask for ensuring all
+ * addressing limitations should call rte_mem_check_dma_mask for ensuring all
  * memory is within supported range.
  */
 static uint64_t baseaddr = 0x100000000;
@@ -447,7 +447,7 @@ check_iova(const struct rte_memseg_list *msl __rte_unused,
 
 /* check memseg iovas are within the required range based on dma mask */
 int __rte_experimental
-rte_eal_check_dma_mask(uint8_t maskbits)
+rte_mem_check_dma_mask(uint8_t maskbits)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	uint64_t mask;

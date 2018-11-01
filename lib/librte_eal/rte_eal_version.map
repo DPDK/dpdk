@@ -295,7 +295,6 @@ EXPERIMENTAL {
 	rte_devargs_parsef;
 	rte_devargs_remove;
 	rte_devargs_type_count;
-	rte_eal_check_dma_mask;
 	rte_eal_cleanup;
 	rte_fbarray_attach;
 	rte_fbarray_destroy;
@@ -331,6 +330,7 @@ EXPERIMENTAL {
 	rte_malloc_heap_socket_is_external;
 	rte_mem_alloc_validator_register;
 	rte_mem_alloc_validator_unregister;
+	rte_mem_check_dma_mask;
 	rte_mem_event_callback_register;
 	rte_mem_event_callback_unregister;
 	rte_mem_iova2virt;

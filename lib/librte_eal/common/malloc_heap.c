@@ -322,7 +322,7 @@ alloc_pages_on_heap(struct malloc_heap *heap, uint64_t pg_sz, size_t elt_size,
 	}
 
 	if (mcfg->dma_maskbits) {
-		if (rte_eal_check_dma_mask(mcfg->dma_maskbits)) {
+		if (rte_mem_check_dma_mask(mcfg->dma_maskbits)) {
 			RTE_LOG(ERR, EAL,
 				"%s(): couldn't allocate memory due to DMA mask\n",
 				__func__);
