@@ -126,17 +126,55 @@ flow_dv_validate_action_l2_encap(uint64_t action_flags,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "can't drop and encap in same flow");
-	if (action_flags & MLX5_FLOW_ACTION_VXLAN_ENCAP)
+	if (action_flags & (MLX5_FLOW_ACTION_VXLAN_ENCAP |
+			    MLX5_FLOW_ACTION_VXLAN_DECAP))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "can only have a single encap"
-					  " action in a flow");
+					  "can only have a single encap or"
+					  " decap action in a flow");
 	if (attr->ingress)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
 					  NULL,
 					  "encap action not supported for "
 					  "ingress");
+	return 0;
+}
+
+/**
+ * Validate the L2 decap action.
+ *
+ * @param[in] action_flags
+ *   Holds the actions detected until now.
+ * @param[in] attr
+ *   Pointer to flow attributes
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_action_l2_decap(uint64_t action_flags,
+				 const struct rte_flow_attr *attr,
+				 struct rte_flow_error *error)
+{
+	if (action_flags & MLX5_FLOW_ACTION_DROP)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "can't drop and decap in same flow");
+	if (action_flags & (MLX5_FLOW_ACTION_VXLAN_ENCAP |
+			    MLX5_FLOW_ACTION_VXLAN_DECAP))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "can only have a single encap or"
+					  " decap action in a flow");
+	if (attr->egress)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
+					  NULL,
+					  "decap action not supported for "
+					  "egress");
 	return 0;
 }
 
@@ -397,6 +435,34 @@ flow_dv_create_action_l2_encap(struct rte_eth_dev *dev,
 }
 
 /**
+ * Convert L2 decap action to DV specification.
+ *
+ * @param[in] dev
+ *   Pointer to rte_eth_dev structure.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   Pointer to action on success, NULL otherwise and rte_errno is set.
+ */
+static struct ibv_flow_action *
+flow_dv_create_action_l2_decap(struct rte_eth_dev *dev,
+			       struct rte_flow_error *error)
+{
+	struct ibv_flow_action *verbs_action = NULL;
+	struct priv *priv = dev->data->dev_private;
+
+	verbs_action = mlx5_glue->dv_create_flow_action_packet_reformat
+		(priv->ctx, 0, NULL,
+		 MLX5DV_FLOW_ACTION_PACKET_REFORMAT_TYPE_L2_TUNNEL_TO_L2,
+		 MLX5DV_FLOW_TABLE_TYPE_NIC_RX);
+	if (!verbs_action)
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+				   NULL, "cannot create L2 decap action");
+	return verbs_action;
+}
+
+/**
  * Verify the @p attributes will be correctly understood by the NIC and store
  * them in the @p flow if everything is correct.
  *
@@ -649,7 +715,14 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			action_flags |= MLX5_FLOW_ACTION_VXLAN_ENCAP;
 			++actions_n;
 			break;
-
+		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
+			ret = flow_dv_validate_action_l2_decap(action_flags,
+							       attr, error);
+			if (ret < 0)
+				return ret;
+			action_flags |= MLX5_FLOW_ACTION_VXLAN_DECAP;
+			++actions_n;
+			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
@@ -1431,6 +1504,18 @@ flow_dv_create_action(struct rte_eth_dev *dev,
 		dev_flow->dv.encap_decap_verbs_action =
 			dev_flow->dv.actions[actions_n].action;
 		flow->actions |= MLX5_FLOW_ACTION_VXLAN_ENCAP;
+		actions_n++;
+		break;
+	case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
+		dev_flow->dv.actions[actions_n].type =
+			MLX5DV_FLOW_ACTION_IBV_FLOW_ACTION;
+		dev_flow->dv.actions[actions_n].action =
+				flow_dv_create_action_l2_decap(dev, error);
+		if (!(dev_flow->dv.actions[actions_n].action))
+			return -rte_errno;
+		dev_flow->dv.encap_decap_verbs_action =
+			dev_flow->dv.actions[actions_n].action;
+		flow->actions |= MLX5_FLOW_ACTION_VXLAN_DECAP;
 		actions_n++;
 		break;
 	default:
