@@ -1394,7 +1394,7 @@ eal_legacy_hugepage_init(void)
 			addr = RTE_PTR_ADD(addr, (size_t)page_sz);
 		}
 		if (mcfg->dma_maskbits &&
-		    rte_mem_check_dma_mask(mcfg->dma_maskbits)) {
+		    rte_mem_check_dma_mask_thread_unsafe(mcfg->dma_maskbits)) {
 			RTE_LOG(ERR, EAL,
 				"%s(): couldnt allocate memory due to IOVA exceeding limits of current DMA mask.\n",
 				__func__);
@@ -1641,7 +1641,7 @@ eal_legacy_hugepage_init(void)
 	}
 
 	if (mcfg->dma_maskbits &&
-	    rte_mem_check_dma_mask(mcfg->dma_maskbits)) {
+	    rte_mem_check_dma_mask_thread_unsafe(mcfg->dma_maskbits)) {
 		RTE_LOG(ERR, EAL,
 			"%s(): couldn't allocate memory due to IOVA exceeding limits of current DMA mask.\n",
 			__func__);

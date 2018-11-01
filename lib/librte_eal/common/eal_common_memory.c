@@ -446,11 +446,12 @@ check_iova(const struct rte_memseg_list *msl __rte_unused,
 #endif
 
 /* check memseg iovas are within the required range based on dma mask */
-int __rte_experimental
-rte_mem_check_dma_mask(uint8_t maskbits)
+static int __rte_experimental
+check_dma_mask(uint8_t maskbits, bool thread_unsafe)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	uint64_t mask;
+	int ret;
 
 	/* sanity check */
 	if (maskbits > MAX_DMA_MASK_BITS) {
@@ -462,7 +463,12 @@ rte_mem_check_dma_mask(uint8_t maskbits)
 	/* create dma mask */
 	mask = ~((1ULL << maskbits) - 1);
 
-	if (rte_memseg_walk(check_iova, &mask))
+	if (thread_unsafe)
+		ret = rte_memseg_walk_thread_unsafe(check_iova, &mask);
+	else
+		ret = rte_memseg_walk(check_iova, &mask);
+
+	if (ret)
 		/*
 		 * Dma mask precludes hugepage usage.
 		 * This device can not be used and we do not need to keep
@@ -478,6 +484,18 @@ rte_mem_check_dma_mask(uint8_t maskbits)
 			     RTE_MIN(mcfg->dma_maskbits, maskbits);
 
 	return 0;
+}
+
+int __rte_experimental
+rte_mem_check_dma_mask(uint8_t maskbits)
+{
+	return check_dma_mask(maskbits, false);
+}
+
+int __rte_experimental
+rte_mem_check_dma_mask_thread_unsafe(uint8_t maskbits)
+{
+	return check_dma_mask(maskbits, true);
 }
 
 /*

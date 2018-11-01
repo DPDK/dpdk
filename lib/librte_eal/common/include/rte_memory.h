@@ -463,16 +463,43 @@ unsigned rte_memory_get_nchannel(void);
  */
 unsigned rte_memory_get_nrank(void);
 
-/* check memsegs iovas are within a range based on dma mask */
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Check if all currently allocated memory segments are compliant with
+ * supplied DMA address width.
+ *
+ *  @param maskbits
+ *    Address width to check against.
+ */
 int __rte_experimental rte_mem_check_dma_mask(uint8_t maskbits);
 
 /**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *
- *  Set dma mask to use once memory initialization is done.
- *  Previous function rte_mem_check_dma_mask can not be used
- *  safely until memory has been initialized.
+ * Check if all currently allocated memory segments are compliant with
+ * supplied DMA address width. This function will use
+ * rte_memseg_walk_thread_unsafe instead of rte_memseg_walk implying
+ * memory_hotplug_lock will not be acquired avoiding deadlock during
+ * memory initialization.
+ *
+ * This function is just for EAL core memory internal use. Drivers should
+ * use the previous rte_mem_check_dma_mask.
+ *
+ *  @param maskbits
+ *    Address width to check against.
+ */
+int __rte_experimental rte_mem_check_dma_mask_thread_unsafe(uint8_t maskbits);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ *  Set dma mask to use once memory initialization is done. Previous functions
+ *  rte_mem_check_dma_mask and rte_mem_check_dma_mask_thread_unsafe can not be
+ *  used safely until memory has been initialized.
  */
 void __rte_experimental rte_mem_set_dma_mask(uint8_t maskbits);
 

@@ -331,6 +331,7 @@ EXPERIMENTAL {
 	rte_mem_alloc_validator_register;
 	rte_mem_alloc_validator_unregister;
 	rte_mem_check_dma_mask;
+	rte_mem_check_dma_mask_thread_unsafe;
 	rte_mem_event_callback_register;
 	rte_mem_event_callback_unregister;
 	rte_mem_iova2virt;

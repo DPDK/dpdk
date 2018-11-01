@@ -334,7 +334,7 @@ alloc_pages_on_heap(struct malloc_heap *heap, uint64_t pg_sz, size_t elt_size,
 	 * executed. For 2) implies the new memory can not be added.
 	 */
 	if (mcfg->dma_maskbits &&
-	    rte_mem_check_dma_mask(mcfg->dma_maskbits)) {
+	    rte_mem_check_dma_mask_thread_unsafe(mcfg->dma_maskbits)) {
 		/*
 		 * Currently this can only happen if IOMMU is enabled
 		 * and the address width supported by the IOMMU hw is
