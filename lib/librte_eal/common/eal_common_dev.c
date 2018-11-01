@@ -186,7 +186,7 @@ err_devarg:
 	return ret;
 }
 
-int __rte_experimental
+int
 rte_dev_probe(const char *devargs)
 {
 	struct eal_dev_mp_req req;
@@ -322,7 +322,7 @@ local_dev_remove(struct rte_device *dev)
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_dev_remove(struct rte_device *dev)
 {
 	struct eal_dev_mp_req req;

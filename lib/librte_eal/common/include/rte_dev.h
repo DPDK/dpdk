@@ -196,9 +196,6 @@ int rte_eal_hotplug_add(const char *busname, const char *devname,
 			const char *drvargs);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Add matching devices.
  *
  * In multi-process, it will request other processes to add the same device.
@@ -209,7 +206,7 @@ int rte_eal_hotplug_add(const char *busname, const char *devname,
  * @return
  *   0 on success, negative on error.
  */
-int __rte_experimental rte_dev_probe(const char *devargs);
+int rte_dev_probe(const char *devargs);
 
 /**
  * Hotplug remove a given device from a specific bus.
@@ -227,9 +224,6 @@ int __rte_experimental rte_dev_probe(const char *devargs);
 int rte_eal_hotplug_remove(const char *busname, const char *devname);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Remove one device.
  *
  * In multi-process, it will request other processes to remove the same device.
@@ -240,7 +234,7 @@ int rte_eal_hotplug_remove(const char *busname, const char *devname);
  * @return
  *   0 on success, negative on error.
  */
-int __rte_experimental rte_dev_remove(struct rte_device *dev);
+int rte_dev_remove(struct rte_device *dev);
 
 /**
  * Device comparison function.
