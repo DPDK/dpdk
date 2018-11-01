@@ -238,7 +238,7 @@ transform_cipher_param(struct rte_crypto_sym_xform *xform,
 		return ret;
 
 	xform->type = RTE_CRYPTO_SYM_XFORM_CIPHER;
-	xform->cipher.algo = (uint32_t)ret;
+	xform->cipher.algo = (enum rte_crypto_cipher_algorithm)ret;
 	xform->cipher.key.length = param->cipher_key_len;
 	if (xform->cipher.key.length > 0)
 		xform->cipher.key.data = param->cipher_key_buf;
@@ -288,7 +288,7 @@ transform_chain_param(struct rte_crypto_sym_xform *xforms,
 	if (unlikely(ret < 0))
 		return ret;
 	xform_cipher->type = RTE_CRYPTO_SYM_XFORM_CIPHER;
-	xform_cipher->cipher.algo = (uint32_t)ret;
+	xform_cipher->cipher.algo = (enum rte_crypto_cipher_algorithm)ret;
 	xform_cipher->cipher.key.length = param->cipher_key_len;
 	xform_cipher->cipher.key.data = param->cipher_key_buf;
 	ret = get_iv_len(xform_cipher->cipher.algo);
@@ -302,7 +302,7 @@ transform_chain_param(struct rte_crypto_sym_xform *xforms,
 	ret = auth_algo_transform(param->hash_algo);
 	if (unlikely(ret < 0))
 		return ret;
-	xform_auth->auth.algo = (uint32_t)ret;
+	xform_auth->auth.algo = (enum rte_crypto_auth_algorithm)ret;
 	xform_auth->auth.digest_length = param->digest_len;
 	xform_auth->auth.key.length = param->auth_key_len;
 	xform_auth->auth.key.data = param->auth_key_buf;
