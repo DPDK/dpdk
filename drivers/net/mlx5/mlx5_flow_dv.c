@@ -25,6 +25,7 @@
 #include <rte_flow_driver.h>
 #include <rte_malloc.h>
 #include <rte_ip.h>
+#include <rte_gre.h>
 
 #include "mlx5.h"
 #include "mlx5_defs.h"
@@ -126,7 +127,7 @@ flow_dv_validate_action_l2_encap(uint64_t action_flags,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "can't drop and encap in same flow");
-	if (action_flags & (MLX5_FLOW_ACTION_VXLAN_ENCAP |
+	if (action_flags & (MLX5_FLOW_ENCAP_ACTIONS |
 			    MLX5_FLOW_ACTION_VXLAN_DECAP))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
@@ -163,7 +164,7 @@ flow_dv_validate_action_l2_decap(uint64_t action_flags,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "can't drop and decap in same flow");
-	if (action_flags & (MLX5_FLOW_ACTION_VXLAN_ENCAP |
+	if (action_flags & (MLX5_FLOW_ENCAP_ACTIONS |
 			    MLX5_FLOW_ACTION_VXLAN_DECAP))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
@@ -268,6 +269,7 @@ flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
 	struct udp_hdr *udp = NULL;
 	struct vxlan_hdr *vxlan = NULL;
 	struct vxlan_gpe_hdr *vxlan_gpe = NULL;
+	struct gre_hdr *gre = NULL;
 	size_t len;
 	size_t temp_size = 0;
 
@@ -378,6 +380,24 @@ flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
 				vxlan_gpe->vx_flags =
 						MLX5_ENCAP_VXLAN_GPE_FLAGS;
 			break;
+		case RTE_FLOW_ITEM_TYPE_GRE:
+		case RTE_FLOW_ITEM_TYPE_NVGRE:
+			gre = (struct gre_hdr *)&buf[temp_size];
+			if (!gre->proto)
+				return rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						(void *)items->type,
+						"next protocol not found");
+			if (!ipv4 && !ipv6)
+				return rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_ACTION,
+						(void *)items->type,
+						"ip header not found");
+			if (ipv4 && !ipv4->next_proto_id)
+				ipv4->next_proto_id = IPPROTO_GRE;
+			else if (ipv6 && !ipv6->proto)
+				ipv6->proto = IPPROTO_GRE;
+			break;
 		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;
 		default:
@@ -418,7 +438,11 @@ flow_dv_create_action_l2_encap(struct rte_eth_dev *dev,
 	size_t size = 0;
 	int convert_result = 0;
 
-	encap_data = ((const struct rte_flow_action_vxlan_encap *)
+	if (action->type == RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP)
+		encap_data = ((const struct rte_flow_action_vxlan_encap *)
+						action->conf)->definition;
+	else
+		encap_data = ((const struct rte_flow_action_nvgre_encap *)
 						action->conf)->definition;
 	convert_result = flow_dv_convert_encap_data(encap_data, buf,
 						    &size, error);
@@ -707,12 +731,17 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
 			ret = flow_dv_validate_action_l2_encap(action_flags,
 							       actions, attr,
 							       error);
 			if (ret < 0)
 				return ret;
-			action_flags |= MLX5_FLOW_ACTION_VXLAN_ENCAP;
+			action_flags |= actions->type ==
+					RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP ?
+					MLX5_FLOW_ACTION_VXLAN_ENCAP :
+					MLX5_FLOW_ACTION_NVGRE_ENCAP;
+
 			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
@@ -1494,6 +1523,7 @@ flow_dv_create_action(struct rte_eth_dev *dev,
 		flow->actions |= MLX5_FLOW_ACTION_RSS;
 		break;
 	case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+	case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
 		dev_flow->dv.actions[actions_n].type =
 			MLX5DV_FLOW_ACTION_IBV_FLOW_ACTION;
 		dev_flow->dv.actions[actions_n].action =
@@ -1503,7 +1533,10 @@ flow_dv_create_action(struct rte_eth_dev *dev,
 			return -rte_errno;
 		dev_flow->dv.encap_decap_verbs_action =
 			dev_flow->dv.actions[actions_n].action;
-		flow->actions |= MLX5_FLOW_ACTION_VXLAN_ENCAP;
+		flow->actions |= action->type ==
+				 RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP ?
+				 MLX5_FLOW_ACTION_VXLAN_ENCAP :
+				 MLX5_FLOW_ACTION_NVGRE_ENCAP;
 		actions_n++;
 		break;
 	case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
