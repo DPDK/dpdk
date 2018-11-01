@@ -314,24 +314,23 @@ chained_mbuf_decompression(struct rte_comp_op *op, struct isal_comp_qp *qp)
 
 		ret = isal_inflate(qp->state);
 
-		/* Check for first segment, offset needs to be accounted for */
-		if (remaining_data == op->src.length) {
-			consumed_data = src->data_len - qp->state->avail_in -
-					src_remaining_offset;
-		} else
-			consumed_data = src->data_len - qp->state->avail_in;
-
-		op->consumed += consumed_data;
-		remaining_data -= consumed_data;
-
 		if (ret != ISAL_DECOMP_OK) {
 			ISAL_PMD_LOG(ERR, "Decompression operation failed\n");
 			op->status = RTE_COMP_OP_STATUS_ERROR;
 			return ret;
 		}
 
+		/* Check for first segment, offset needs to be accounted for */
+		if (remaining_data == op->src.length) {
+			consumed_data = src->data_len - src_remaining_offset;
+		} else
+			consumed_data = src->data_len;
+
 		if (qp->state->avail_in == 0
 				&& op->consumed != op->src.length) {
+			op->consumed += consumed_data;
+			remaining_data -= consumed_data;
+
 			if (src->next != NULL) {
 				src = src->next;
 				qp->state->next_in =
@@ -460,8 +459,9 @@ process_isal_deflate(struct rte_comp_op *op, struct isal_comp_qp *qp,
 			return ret;
 		}
 	}
-		op->consumed = qp->stream->total_in;
-		op->produced = qp->stream->total_out;
+	op->consumed = qp->stream->total_in;
+	op->produced = qp->stream->total_out;
+	isal_deflate_reset(qp->stream);
 
 	return ret;
 }
@@ -538,6 +538,7 @@ process_isal_inflate(struct rte_comp_op *op, struct isal_comp_qp *qp)
 		op->consumed = op->src.length - qp->state->avail_in;
 	}
 		op->produced = qp->state->total_out;
+	isal_inflate_reset(qp->state);
 
 	return ret;
 }
