@@ -23,7 +23,7 @@ build_map_changes()
 		# does not end in 'map', indicating we have left the map chunk.
 		# When we hit this, turn off the in_map variable, which
 		# supresses the subordonate rules below
-		/[-+] a\/.*\.^(map)/ {in_map=0}
+		/[-+] a\/.*\.[^map]/ {in_map=0}
 
 		# Triggering this rule, which starts a line and ends it
 		# with a { identifies a versioned section.  The section name is
@@ -153,7 +153,6 @@ clean_and_exit_on_sig()
 build_map_changes "$patch" "$mapfile"
 check_for_rule_violations "$mapfile"
 exit_code=$?
-
 rm -f "$mapfile"
 
 exit $exit_code
