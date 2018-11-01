@@ -127,8 +127,7 @@ flow_dv_validate_action_l2_encap(uint64_t action_flags,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "can't drop and encap in same flow");
-	if (action_flags & (MLX5_FLOW_ENCAP_ACTIONS |
-			    MLX5_FLOW_ACTION_VXLAN_DECAP))
+	if (action_flags & (MLX5_FLOW_ENCAP_ACTIONS | MLX5_FLOW_DECAP_ACTIONS))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "can only have a single encap or"
@@ -164,8 +163,7 @@ flow_dv_validate_action_l2_decap(uint64_t action_flags,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "can't drop and decap in same flow");
-	if (action_flags & (MLX5_FLOW_ENCAP_ACTIONS |
-			    MLX5_FLOW_ACTION_VXLAN_DECAP))
+	if (action_flags & (MLX5_FLOW_ENCAP_ACTIONS | MLX5_FLOW_DECAP_ACTIONS))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "can only have a single encap or"
@@ -745,11 +743,16 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
+		case RTE_FLOW_ACTION_TYPE_NVGRE_DECAP:
 			ret = flow_dv_validate_action_l2_decap(action_flags,
 							       attr, error);
 			if (ret < 0)
 				return ret;
-			action_flags |= MLX5_FLOW_ACTION_VXLAN_DECAP;
+			action_flags |= actions->type ==
+					RTE_FLOW_ACTION_TYPE_VXLAN_DECAP ?
+					MLX5_FLOW_ACTION_VXLAN_DECAP :
+					MLX5_FLOW_ACTION_NVGRE_DECAP;
+
 			++actions_n;
 			break;
 		default:
@@ -1540,6 +1543,7 @@ flow_dv_create_action(struct rte_eth_dev *dev,
 		actions_n++;
 		break;
 	case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
+	case RTE_FLOW_ACTION_TYPE_NVGRE_DECAP:
 		dev_flow->dv.actions[actions_n].type =
 			MLX5DV_FLOW_ACTION_IBV_FLOW_ACTION;
 		dev_flow->dv.actions[actions_n].action =
@@ -1548,7 +1552,10 @@ flow_dv_create_action(struct rte_eth_dev *dev,
 			return -rte_errno;
 		dev_flow->dv.encap_decap_verbs_action =
 			dev_flow->dv.actions[actions_n].action;
-		flow->actions |= MLX5_FLOW_ACTION_VXLAN_DECAP;
+		flow->actions |= action->type ==
+				 RTE_FLOW_ACTION_TYPE_VXLAN_DECAP ?
+				 MLX5_FLOW_ACTION_VXLAN_DECAP :
+				 MLX5_FLOW_ACTION_NVGRE_DECAP;
 		actions_n++;
 		break;
 	default:
