@@ -55,6 +55,7 @@ Sample Applications User Guides
     tep_termination
     ptpclient
     performance_thread
+    fips_validation
     ipsec_secgw
     bbdev_app
 

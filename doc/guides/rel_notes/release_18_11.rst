@@ -285,6 +285,12 @@ New Features
   this application doesn't need to launch dedicated worker threads for vhost
   enqueue/dequeue operations.
 
+* **Added cryptodev FIPS validation example application.**
+
+  Added an example application to parse and perform symmetric cryptography
+  computation to the NIST Cryptographic Algorithm Validation Program (CAVP)
+  test vectors.
+
 
 API Changes
 -----------
