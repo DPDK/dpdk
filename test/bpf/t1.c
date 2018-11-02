@@ -20,32 +20,36 @@
  * (011) ret      #1
  * (012) ret      #0
  *
- * To compile:
- * clang -O2 -target bpf -c t1.c
+ * To compile on x86:
+ * clang -O2 -U __GNUC__ -target bpf -c t1.c
+ *
+ * To compile on ARM:
+ * clang -O2 -I/usr/include/aarch64-linux-gnu/ -target bpf -c t1.c
  */
 
 #include <stdint.h>
 #include <net/ethernet.h>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
+#include <arpa/inet.h>
 
 uint64_t
 entry(void *pkt)
 {
 	struct ether_header *ether_header = (void *)pkt;
 
-	if (ether_header->ether_type != __builtin_bswap16(0x0800))
+	if (ether_header->ether_type != htons(0x0800))
 		return 0;
 
 	struct iphdr *iphdr = (void *)(ether_header + 1);
 	if (iphdr->protocol != 17 || (iphdr->frag_off & 0x1ffff) != 0 ||
-			iphdr->daddr != __builtin_bswap32(0x1020304))
+			iphdr->daddr != htonl(0x1020304))
 		return 0;
 
 	int hlen = iphdr->ihl * 4;
 	struct udphdr *udphdr = (void *)iphdr + hlen;
 
-	if (udphdr->dest !=  __builtin_bswap16(5000))
+	if (udphdr->dest != htons(5000))
 		return 0;
 
 	return 1;
