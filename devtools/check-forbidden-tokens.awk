@@ -63,12 +63,7 @@ BEGIN {
 END {
 	if (count > 0) {
 		print "Warning in " substr(last_file,6) ":"
-		print "are you sure you want to add the following:"
-		for (key in expressions) {
-			if (expressions[key] > 0) {
-				print key
-			}
-		}
+		print MESSAGE
 		exit RET_ON_FAIL
 	}
 }
