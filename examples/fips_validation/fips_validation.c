@@ -106,6 +106,12 @@ fips_test_parse_header(void)
 		return ret;
 
 	for (i = 0; i < info.nb_vec_lines; i++) {
+		if (strstr(info.vec[i], "AESVS")) {
+			info.algo = FIPS_TEST_ALGO_AES;
+			ret = parse_test_aes_init();
+			if (ret < 0)
+				return ret;
+		}
 
 		tmp = strstr(info.vec[i], "# Config info for ");
 		if (tmp != NULL) {

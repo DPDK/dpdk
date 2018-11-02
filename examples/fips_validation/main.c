@@ -329,6 +329,340 @@ exit:
 
 }
 
+#define IV_OFF (sizeof(struct rte_crypto_op) + sizeof(struct rte_crypto_sym_op))
+#define CRYPTODEV_FIPS_MAX_RETRIES	16
+
+typedef int (*fips_test_one_case_t)(void);
+typedef int (*fips_prepare_op_t)(void);
+typedef int (*fips_prepare_xform_t)(struct rte_crypto_sym_xform *);
+
+struct fips_test_ops {
+	fips_prepare_xform_t prepare_xform;
+	fips_prepare_op_t prepare_op;
+	fips_test_one_case_t test;
+} test_ops;
+
+static int
+prepare_cipher_op(void)
+{
+	struct rte_crypto_sym_op *sym = env.op->sym;
+	uint8_t *iv = rte_crypto_op_ctod_offset(env.op, uint8_t *, IV_OFF);
+
+	__rte_crypto_op_reset(env.op, RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	rte_pktmbuf_reset(env.mbuf);
+
+	sym->m_src = env.mbuf;
+	sym->cipher.data.offset = 0;
+
+	memcpy(iv, vec.iv.val, vec.iv.len);
+
+	if (info.op == FIPS_TEST_ENC_AUTH_GEN) {
+		uint8_t *pt;
+
+		if (vec.pt.len > RTE_MBUF_MAX_NB_SEGS) {
+			RTE_LOG(ERR, USER1, "PT len %u\n", vec.pt.len);
+			return -EPERM;
+		}
+
+		pt = (uint8_t *)rte_pktmbuf_append(env.mbuf, vec.pt.len);
+
+		if (!pt) {
+			RTE_LOG(ERR, USER1, "Error %i: MBUF too small\n",
+					-ENOMEM);
+			return -ENOMEM;
+		}
+
+		memcpy(pt, vec.pt.val, vec.pt.len);
+		sym->cipher.data.length = vec.pt.len;
+
+	} else {
+		uint8_t *ct;
+
+		if (vec.ct.len > RTE_MBUF_MAX_NB_SEGS) {
+			RTE_LOG(ERR, USER1, "CT len %u\n", vec.ct.len);
+			return -EPERM;
+		}
+
+		ct = (uint8_t *)rte_pktmbuf_append(env.mbuf, vec.ct.len);
+
+		if (!ct) {
+			RTE_LOG(ERR, USER1, "Error %i: MBUF too small\n",
+					-ENOMEM);
+			return -ENOMEM;
+		}
+
+		memcpy(ct, vec.ct.val, vec.ct.len);
+		sym->cipher.data.length = vec.ct.len;
+	}
+
+	rte_crypto_op_attach_sym_session(env.op, env.sess);
+
+	return 0;
+}
+
+static int
+prepare_aes_xform(struct rte_crypto_sym_xform *xform)
+{
+	const struct rte_cryptodev_symmetric_capability *cap;
+	struct rte_cryptodev_sym_capability_idx cap_idx;
+	struct rte_crypto_cipher_xform *cipher_xform = &xform->cipher;
+
+	xform->type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+
+	cipher_xform->algo = RTE_CRYPTO_CIPHER_AES_CBC;
+	cipher_xform->op = (info.op == FIPS_TEST_ENC_AUTH_GEN) ?
+			RTE_CRYPTO_CIPHER_OP_ENCRYPT :
+			RTE_CRYPTO_CIPHER_OP_DECRYPT;
+	cipher_xform->key.data = vec.cipher_auth.key.val;
+	cipher_xform->key.length = vec.cipher_auth.key.len;
+	cipher_xform->iv.length = vec.iv.len;
+	cipher_xform->iv.offset = IV_OFF;
+
+	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_AES_CBC;
+	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+
+	cap = rte_cryptodev_sym_capability_get(env.dev_id, &cap_idx);
+	if (!cap) {
+		RTE_LOG(ERR, USER1, "Failed to get capability for cdev %u\n",
+				env.dev_id);
+		return -EINVAL;
+	}
+
+	if (rte_cryptodev_sym_capability_check_cipher(cap,
+			cipher_xform->key.length,
+			cipher_xform->iv.length) != 0) {
+		RTE_LOG(ERR, USER1, "PMD %s key length %u IV length %u\n",
+				info.device_name, cipher_xform->key.length,
+				cipher_xform->iv.length);
+		return -EPERM;
+	}
+
+	return 0;
+}
+
+static void
+get_writeback_data(struct fips_val *val)
+{
+	val->val = rte_pktmbuf_mtod(env.mbuf, uint8_t *);
+	val->len = rte_pktmbuf_pkt_len(env.mbuf);
+}
+
+static int
+fips_run_test(void)
+{
+	struct rte_crypto_sym_xform xform = {0};
+	uint16_t n_deqd;
+	int ret;
+
+	ret = test_ops.prepare_xform(&xform);
+	if (ret < 0)
+		return ret;
+
+	env.sess = rte_cryptodev_sym_session_create(env.mpool);
+	if (!env.sess)
+		return -ENOMEM;
+
+	ret = rte_cryptodev_sym_session_init(env.dev_id,
+			env.sess, &xform, env.mpool);
+	if (ret < 0) {
+		RTE_LOG(ERR, USER1, "Error %i: Init session\n",
+				ret);
+		return ret;
+	}
+
+	ret = test_ops.prepare_op();
+	if (ret < 0) {
+		RTE_LOG(ERR, USER1, "Error %i: Prepare op\n",
+				ret);
+		return ret;
+	}
+
+	if (rte_cryptodev_enqueue_burst(env.dev_id, 0, &env.op, 1) < 1) {
+		RTE_LOG(ERR, USER1, "Error: Failed enqueue\n");
+		return ret;
+	}
+
+	do {
+		struct rte_crypto_op *deqd_op;
+
+		n_deqd = rte_cryptodev_dequeue_burst(env.dev_id, 0, &deqd_op,
+				1);
+	} while (n_deqd == 0);
+
+	vec.status = env.op->status;
+
+	rte_cryptodev_sym_session_clear(env.dev_id, env.sess);
+	rte_cryptodev_sym_session_free(env.sess);
+	env.sess = NULL;
+
+	return ret;
+}
+
+static int
+fips_generic_test(void)
+{
+	struct fips_val val;
+	int ret;
+
+	fips_test_write_one_case();
+
+	ret = fips_run_test();
+	if (ret < 0) {
+		if (ret == -EPERM) {
+			fprintf(info.fp_wr, "Bypass\n\n");
+			return 0;
+		}
+
+		return ret;
+	}
+
+	get_writeback_data(&val);
+
+	switch (info.file_type) {
+	case FIPS_TYPE_REQ:
+	case FIPS_TYPE_RSP:
+		if (info.parse_writeback == NULL)
+			return -EPERM;
+		ret = info.parse_writeback(&val);
+		if (ret < 0)
+			return ret;
+		break;
+	case FIPS_TYPE_FAX:
+		if (info.kat_check == NULL)
+			return -EPERM;
+		ret = info.kat_check(&val);
+		if (ret < 0)
+			return ret;
+		break;
+	}
+
+	fprintf(info.fp_wr, "\n");
+
+	return 0;
+}
+
+static int
+fips_mct_aes_test(void)
+{
+#define AES_BLOCK_SIZE	16
+#define AES_EXTERN_ITER	100
+#define AES_INTERN_ITER	1000
+	struct fips_val val, val_key;
+	uint8_t prev_out[AES_BLOCK_SIZE] = {0};
+	uint8_t prev_in[AES_BLOCK_SIZE] = {0};
+	uint32_t i, j, k;
+	int ret;
+
+	for (i = 0; i < AES_EXTERN_ITER; i++) {
+		if (i != 0)
+			update_info_vec(i);
+
+		fips_test_write_one_case();
+
+		for (j = 0; j < AES_INTERN_ITER; j++) {
+			ret = fips_run_test();
+			if (ret < 0) {
+				if (ret == -EPERM) {
+					fprintf(info.fp_wr, "Bypass\n");
+					return 0;
+				}
+
+				return ret;
+			}
+
+			get_writeback_data(&val);
+
+			if (info.op == FIPS_TEST_DEC_AUTH_VERIF)
+				memcpy(prev_in, vec.ct.val, AES_BLOCK_SIZE);
+
+			if (j == 0) {
+				memcpy(prev_out, val.val, AES_BLOCK_SIZE);
+
+				if (info.op == FIPS_TEST_ENC_AUTH_GEN) {
+					memcpy(vec.pt.val, vec.iv.val,
+							AES_BLOCK_SIZE);
+					memcpy(vec.iv.val, val.val,
+							AES_BLOCK_SIZE);
+				} else {
+					memcpy(vec.ct.val, vec.iv.val,
+							AES_BLOCK_SIZE);
+					memcpy(vec.iv.val, prev_in,
+							AES_BLOCK_SIZE);
+				}
+				continue;
+			}
+
+			if (info.op == FIPS_TEST_ENC_AUTH_GEN) {
+				memcpy(vec.iv.val, val.val, AES_BLOCK_SIZE);
+				memcpy(vec.pt.val, prev_out, AES_BLOCK_SIZE);
+			} else {
+				memcpy(vec.iv.val, prev_in, AES_BLOCK_SIZE);
+				memcpy(vec.ct.val, prev_out, AES_BLOCK_SIZE);
+			}
+
+			if (j == AES_INTERN_ITER - 1)
+				continue;
+
+			memcpy(prev_out, val.val, AES_BLOCK_SIZE);
+		}
+
+		info.parse_writeback(&val);
+		fprintf(info.fp_wr, "\n");
+
+		if (i == AES_EXTERN_ITER - 1)
+			continue;
+
+		/** update key */
+		memcpy(&val_key, &vec.cipher_auth.key, sizeof(val_key));
+		for (k = 0; k < vec.cipher_auth.key.len; k++) {
+			switch (vec.cipher_auth.key.len) {
+			case 16:
+				val_key.val[k] ^= val.val[k];
+				break;
+			case 24:
+				if (k < 8)
+					val_key.val[k] ^= prev_out[k + 8];
+				else
+					val_key.val[k] ^= val.val[k - 8];
+				break;
+			case 32:
+				if (k < 16)
+					val_key.val[k] ^= prev_out[k];
+				else
+					val_key.val[k] ^= val.val[k - 16];
+				break;
+			default:
+				return -1;
+			}
+		}
+
+		if (info.op == FIPS_TEST_DEC_AUTH_VERIF)
+			memcpy(vec.iv.val, val.val, AES_BLOCK_SIZE);
+	}
+
+	return 0;
+}
+
+static int
+init_test_ops(void)
+{
+	switch (info.algo) {
+	case FIPS_TEST_ALGO_AES:
+		test_ops.prepare_op = prepare_cipher_op;
+		test_ops.prepare_xform  = prepare_aes_xform;
+		if (info.interim_info.aes_data.test_type == AESAVS_TYPE_MCT)
+			test_ops.test = fips_mct_aes_test;
+		else
+			test_ops.test = fips_generic_test;
+		break;
+
+	default:
+		return -1;
+	}
+
+	return 0;
+}
+
 static void
 print_test_block(void)
 {
@@ -345,7 +679,14 @@ fips_test_one_file(void)
 {
 	int fetch_ret = 0, ret;
 
-	while (fetch_ret == 0) {
+
+	ret = init_test_ops();
+	if (ret < 0) {
+		RTE_LOG(ERR, USER1, "Error %i: Init test op\n", ret);
+		return ret;
+	}
+
+	while (ret >= 0 && fetch_ret == 0) {
 		fetch_ret = fips_test_fetch_one_block();
 		if (fetch_ret < 0) {
 			RTE_LOG(ERR, USER1, "Error %i: Fetch block\n",
@@ -365,6 +706,7 @@ fips_test_one_file(void)
 		ret = fips_test_parse_one_case();
 		switch (ret) {
 		case 0:
+			ret = test_ops.test();
 			if (ret == 0)
 				break;
 			RTE_LOG(ERR, USER1, "Error %i: test block\n",
@@ -384,5 +726,7 @@ error_one_case:
 	}
 
 	fips_test_clear();
+
+	return ret;
 
 }

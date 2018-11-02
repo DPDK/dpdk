@@ -40,6 +40,7 @@ Limitations
   the ``.rsp`` files created by the FIPS application.
 
 * Supported test vectors
+    * AES-CBC (128,192,256) - GFSbox, KeySbox, MCT, MMT
 
 Application Information
 -----------------------

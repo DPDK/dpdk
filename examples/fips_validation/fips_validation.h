@@ -23,6 +23,7 @@
 #define FAX_FILE_PERFIX		"fax"
 
 enum fips_test_algorithms {
+		FIPS_TEST_ALGO_AES = 0,
 		FIPS_TEST_ALGO_MAX
 };
 
@@ -77,6 +78,21 @@ struct fips_test_callback {
 	struct fips_val *val;
 };
 
+enum fips_aesavs_test_types {
+	AESAVS_TYPE_GFXBOX = 1,
+	AESAVS_TYPE_KEYSBOX,
+	AESAVS_TYPE_VARKEY,
+	AESAVS_TYPE_VARTXT,
+	AESAVS_TYPE_MMT,
+	AESAVS_TYPE_MCT,
+};
+
+struct aesavs_interim_data {
+	enum fips_aesavs_test_types test_type;
+	uint32_t cipher_algo;
+	uint32_t key_len;
+};
+
 struct fips_test_interim_info {
 	FILE *fp_rd;
 	FILE *fp_wr;
@@ -86,6 +102,11 @@ struct fips_test_interim_info {
 	char *vec[MAX_LINE_PER_VECTOR];
 	uint32_t nb_vec_lines;
 	char device_name[MAX_STRING_SIZE];
+
+	union {
+		struct aesavs_interim_data aes_data;
+
+	} interim_info;
 
 	enum fips_test_op op;
 
@@ -115,6 +136,9 @@ fips_test_parse_one_case(void);
 
 void
 fips_test_write_one_case(void);
+
+int
+parse_test_aes_init(void);
 
 int
 parser_read_uint8_hex(uint8_t *value, const char *p);
