@@ -13,6 +13,7 @@
 #include <fman.h>
 #include <of.h>
 #include <rte_dpaa_logs.h>
+#include <rte_string_fns.h>
 
 #define QMI_PORT_REGS_OFFSET		0x400
 
@@ -183,7 +184,7 @@ fman_if_init(const struct device_node *dpa_node)
 	}
 	memset(__if, 0, sizeof(*__if));
 	INIT_LIST_HEAD(&__if->__if.bpool_list);
-	strncpy(__if->node_path, dpa_node->full_name, PATH_MAX - 1);
+	strlcpy(__if->node_path, dpa_node->full_name, PATH_MAX - 1);
 	__if->node_path[PATH_MAX - 1] = '\0';
 
 	/* Obtain the MAC node used by this interface except macless */
