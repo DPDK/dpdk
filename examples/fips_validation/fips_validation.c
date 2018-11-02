@@ -116,6 +116,11 @@ fips_test_parse_header(void)
 			ret = parse_test_gcm_init();
 			if (ret < 0)
 				return ret;
+		} else if (strstr(info.vec[i], "CMAC")) {
+			info.algo = FIPS_TEST_ALGO_AES_CMAC;
+			ret = parse_test_cmac_init();
+			if (ret < 0)
+				return 0;
 		} else if (strstr(info.vec[i], "HMAC")) {
 			info.algo = FIPS_TEST_ALGO_HMAC;
 			ret = parse_test_hmac_init();

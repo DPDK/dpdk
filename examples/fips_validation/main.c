@@ -688,6 +688,44 @@ prepare_gcm_xform(struct rte_crypto_sym_xform *xform)
 	return 0;
 }
 
+static int
+prepare_cmac_xform(struct rte_crypto_sym_xform *xform)
+{
+	const struct rte_cryptodev_symmetric_capability *cap;
+	struct rte_cryptodev_sym_capability_idx cap_idx;
+	struct rte_crypto_auth_xform *auth_xform = &xform->auth;
+
+	xform->type = RTE_CRYPTO_SYM_XFORM_AUTH;
+
+	auth_xform->algo = RTE_CRYPTO_AUTH_AES_CMAC;
+	auth_xform->op = (info.op == FIPS_TEST_ENC_AUTH_GEN) ?
+			RTE_CRYPTO_AUTH_OP_GENERATE : RTE_CRYPTO_AUTH_OP_VERIFY;
+	auth_xform->digest_length = vec.cipher_auth.digest.len;
+	auth_xform->key.data = vec.cipher_auth.key.val;
+	auth_xform->key.length = vec.cipher_auth.key.len;
+
+	cap_idx.algo.auth = auth_xform->algo;
+	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+
+	cap = rte_cryptodev_sym_capability_get(env.dev_id, &cap_idx);
+	if (!cap) {
+		RTE_LOG(ERR, USER1, "Failed to get capability for cdev %u\n",
+				env.dev_id);
+		return -EINVAL;
+	}
+
+	if (rte_cryptodev_sym_capability_check_auth(cap,
+			auth_xform->key.length,
+			auth_xform->digest_length, 0) != 0) {
+		RTE_LOG(ERR, USER1, "PMD %s key length %u IV length %u\n",
+				info.device_name, auth_xform->key.length,
+				auth_xform->digest_length);
+		return -EPERM;
+	}
+
+	return 0;
+}
+
 static void
 get_writeback_data(struct fips_val *val)
 {
@@ -1046,6 +1084,11 @@ init_test_ops(void)
 	case FIPS_TEST_ALGO_AES_GCM:
 		test_ops.prepare_op = prepare_aead_op;
 		test_ops.prepare_xform = prepare_gcm_xform;
+		test_ops.test = fips_generic_test;
+		break;
+	case FIPS_TEST_ALGO_AES_CMAC:
+		test_ops.prepare_op = prepare_auth_op;
+		test_ops.prepare_xform = prepare_cmac_xform;
 		test_ops.test = fips_generic_test;
 		break;
 	default:
