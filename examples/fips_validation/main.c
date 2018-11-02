@@ -502,6 +502,46 @@ prepare_aes_xform(struct rte_crypto_sym_xform *xform)
 }
 
 static int
+prepare_tdes_xform(struct rte_crypto_sym_xform *xform)
+{
+	const struct rte_cryptodev_symmetric_capability *cap;
+	struct rte_cryptodev_sym_capability_idx cap_idx;
+	struct rte_crypto_cipher_xform *cipher_xform = &xform->cipher;
+
+	xform->type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+
+	cipher_xform->algo = RTE_CRYPTO_CIPHER_3DES_CBC;
+	cipher_xform->op = (info.op == FIPS_TEST_ENC_AUTH_GEN) ?
+			RTE_CRYPTO_CIPHER_OP_ENCRYPT :
+			RTE_CRYPTO_CIPHER_OP_DECRYPT;
+	cipher_xform->key.data = vec.cipher_auth.key.val;
+	cipher_xform->key.length = vec.cipher_auth.key.len;
+	cipher_xform->iv.length = vec.iv.len;
+	cipher_xform->iv.offset = IV_OFF;
+
+	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_3DES_CBC;
+	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+
+	cap = rte_cryptodev_sym_capability_get(env.dev_id, &cap_idx);
+	if (!cap) {
+		RTE_LOG(ERR, USER1, "Failed to get capability for cdev %u\n",
+				env.dev_id);
+		return -EINVAL;
+	}
+
+	if (rte_cryptodev_sym_capability_check_cipher(cap,
+			cipher_xform->key.length,
+			cipher_xform->iv.length) != 0) {
+		RTE_LOG(ERR, USER1, "PMD %s key length %u IV length %u\n",
+				info.device_name, cipher_xform->key.length,
+				cipher_xform->iv.length);
+		return -EPERM;
+	}
+
+	return 0;
+}
+
+static int
 prepare_hmac_xform(struct rte_crypto_sym_xform *xform)
 {
 	const struct rte_cryptodev_symmetric_capability *cap;
@@ -640,6 +680,133 @@ fips_generic_test(void)
 }
 
 static int
+fips_mct_tdes_test(void)
+{
+#define TDES_BLOCK_SIZE		8
+#define TDES_EXTERN_ITER	400
+#define TDES_INTERN_ITER	10000
+	struct fips_val val, val_key;
+	uint8_t prev_out[TDES_BLOCK_SIZE];
+	uint8_t prev_prev_out[TDES_BLOCK_SIZE];
+	uint8_t prev_in[TDES_BLOCK_SIZE];
+	uint32_t i, j, k;
+	int ret;
+
+	for (i = 0; i < TDES_EXTERN_ITER; i++) {
+		if (i != 0)
+			update_info_vec(i);
+
+		fips_test_write_one_case();
+
+		for (j = 0; j < TDES_INTERN_ITER; j++) {
+			ret = fips_run_test();
+			if (ret < 0) {
+				if (ret == -EPERM) {
+					fprintf(info.fp_wr, "Bypass\n");
+					return 0;
+				}
+
+				return ret;
+			}
+
+			get_writeback_data(&val);
+
+			if (info.op == FIPS_TEST_DEC_AUTH_VERIF)
+				memcpy(prev_in, vec.ct.val, TDES_BLOCK_SIZE);
+
+			if (j == 0) {
+				memcpy(prev_out, val.val, TDES_BLOCK_SIZE);
+
+				if (info.op == FIPS_TEST_ENC_AUTH_GEN) {
+					memcpy(vec.pt.val, vec.iv.val,
+							TDES_BLOCK_SIZE);
+					memcpy(vec.iv.val, val.val,
+							TDES_BLOCK_SIZE);
+				} else {
+					memcpy(vec.iv.val, vec.ct.val,
+							TDES_BLOCK_SIZE);
+					memcpy(vec.ct.val, val.val,
+							TDES_BLOCK_SIZE);
+				}
+				continue;
+			}
+
+			if (info.op == FIPS_TEST_ENC_AUTH_GEN) {
+				memcpy(vec.iv.val, val.val, TDES_BLOCK_SIZE);
+				memcpy(vec.pt.val, prev_out, TDES_BLOCK_SIZE);
+			} else {
+				memcpy(vec.iv.val, vec.ct.val, TDES_BLOCK_SIZE);
+				memcpy(vec.ct.val, val.val, TDES_BLOCK_SIZE);
+			}
+
+			if (j == TDES_INTERN_ITER - 1)
+				continue;
+
+			memcpy(prev_out, val.val, TDES_BLOCK_SIZE);
+
+			if (j == TDES_INTERN_ITER - 3)
+				memcpy(prev_prev_out, val.val, TDES_BLOCK_SIZE);
+		}
+
+		info.parse_writeback(&val);
+		fprintf(info.fp_wr, "\n");
+
+		if (i == TDES_EXTERN_ITER - 1)
+			continue;
+
+		/** update key */
+		memcpy(&val_key, &vec.cipher_auth.key, sizeof(val_key));
+
+		if (info.interim_info.tdes_data.nb_keys == 0) {
+			if (memcmp(val_key.val, val_key.val + 8, 8) == 0)
+				info.interim_info.tdes_data.nb_keys = 1;
+			else if (memcmp(val_key.val, val_key.val + 16, 8) == 0)
+				info.interim_info.tdes_data.nb_keys = 2;
+			else
+				info.interim_info.tdes_data.nb_keys = 3;
+
+		}
+
+		for (k = 0; k < TDES_BLOCK_SIZE; k++) {
+
+			switch (info.interim_info.tdes_data.nb_keys) {
+			case 3:
+				val_key.val[k] ^= val.val[k];
+				val_key.val[k + 8] ^= prev_out[k];
+				val_key.val[k + 16] ^= prev_prev_out[k];
+				break;
+			case 2:
+				val_key.val[k] ^= val.val[k];
+				val_key.val[k + 8] ^= prev_out[k];
+				val_key.val[k + 16] ^= val.val[k];
+				break;
+			default: /* case 1 */
+				val_key.val[k] ^= val.val[k];
+				val_key.val[k + 8] ^= val.val[k];
+				val_key.val[k + 16] ^= val.val[k];
+				break;
+			}
+
+		}
+
+		for (k = 0; k < 24; k++)
+			val_key.val[k] = (__builtin_popcount(val_key.val[k]) &
+					0x1) ?
+					val_key.val[k] : (val_key.val[k] ^ 0x1);
+
+		if (info.op == FIPS_TEST_ENC_AUTH_GEN) {
+			memcpy(vec.iv.val, val.val, TDES_BLOCK_SIZE);
+			memcpy(vec.pt.val, prev_out, TDES_BLOCK_SIZE);
+		} else {
+			memcpy(vec.iv.val, prev_out, TDES_BLOCK_SIZE);
+			memcpy(vec.ct.val, val.val, TDES_BLOCK_SIZE);
+		}
+	}
+
+	return 0;
+}
+
+static int
 fips_mct_aes_test(void)
 {
 #define AES_BLOCK_SIZE	16
@@ -757,6 +924,14 @@ init_test_ops(void)
 		test_ops.prepare_op = prepare_auth_op;
 		test_ops.prepare_xform = prepare_hmac_xform;
 		test_ops.test = fips_generic_test;
+		break;
+	case FIPS_TEST_ALGO_TDES:
+		test_ops.prepare_op = prepare_cipher_op;
+		test_ops.prepare_xform  = prepare_tdes_xform;
+		if (info.interim_info.tdes_data.test_type == TDES_MCT)
+			test_ops.test = fips_mct_tdes_test;
+		else
+			test_ops.test = fips_generic_test;
 		break;
 
 	default:

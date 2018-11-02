@@ -42,6 +42,8 @@ Limitations
 * Supported test vectors
     * AES-CBC (128,192,256) - GFSbox, KeySbox, MCT, MMT
     * HMAC (SHA1, SHA224, SHA256, SHA384, SHA512)
+    * TDES-CBC (1 Key, 2 Keys, 3 Keys) - MMT, Monte, Permop, Subkey, Varkey,
+      VarText
 
 Application Information
 -----------------------

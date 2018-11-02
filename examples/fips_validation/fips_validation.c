@@ -116,6 +116,11 @@ fips_test_parse_header(void)
 			ret = parse_test_hmac_init();
 			if (ret < 0)
 				return ret;
+		} else if (strstr(info.vec[i], "TDES")) {
+			info.algo = FIPS_TEST_ALGO_TDES;
+			ret = parse_test_tdes_init();
+			if (ret < 0)
+				return 0;
 		}
 
 		tmp = strstr(info.vec[i], "# Config info for ");
