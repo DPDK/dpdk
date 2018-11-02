@@ -13,5 +13,6 @@ sources = files(
 	'fips_validation.c',
 	'fips_validation_hmac.c',
 	'fips_validation_tdes.c',
+	'fips_validation_gcm.c',
 	'main.c'
 )

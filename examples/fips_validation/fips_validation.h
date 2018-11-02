@@ -24,6 +24,7 @@
 
 enum fips_test_algorithms {
 		FIPS_TEST_ALGO_AES = 0,
+		FIPS_TEST_ALGO_AES_GCM,
 		FIPS_TEST_ALGO_HMAC,
 		FIPS_TEST_ALGO_TDES,
 		FIPS_TEST_ALGO_MAX
@@ -169,6 +170,9 @@ parse_test_tdes_init(void);
 
 int
 parse_test_hmac_init(void);
+
+int
+parse_test_gcm_init(void);
 
 int
 parser_read_uint8_hex(uint8_t *value, const char *p);

@@ -9,6 +9,7 @@ SRCS-y := fips_validation.c
 SRCS-y += fips_validation_aes.c
 SRCS-y += fips_validation_hmac.c
 SRCS-y += fips_validation_tdes.c
+SRCS-y += fips_validation_gcm.c
 SRCS-y += main.c
 
 # Build using pkg-config variables if possible
