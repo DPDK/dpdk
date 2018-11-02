@@ -11,5 +11,6 @@ allow_experimental_apis = true
 sources = files(
 	'fips_validation_aes.c',
 	'fips_validation.c',
+	'fips_validation_hmac.c',
 	'main.c'
 )

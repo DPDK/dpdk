@@ -7,6 +7,7 @@ APP = fips_validation
 # all source are stored in SRCS-y
 SRCS-y := fips_validation.c
 SRCS-y += fips_validation_aes.c
+SRCS-y += fips_validation_hmac.c
 SRCS-y += main.c
 
 # Build using pkg-config variables if possible

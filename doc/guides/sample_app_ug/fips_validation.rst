@@ -41,6 +41,7 @@ Limitations
 
 * Supported test vectors
     * AES-CBC (128,192,256) - GFSbox, KeySbox, MCT, MMT
+    * HMAC (SHA1, SHA224, SHA256, SHA384, SHA512)
 
 Application Information
 -----------------------

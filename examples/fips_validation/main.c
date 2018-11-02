@@ -401,6 +401,67 @@ prepare_cipher_op(void)
 }
 
 static int
+prepare_auth_op(void)
+{
+	struct rte_crypto_sym_op *sym = env.op->sym;
+
+	__rte_crypto_op_reset(env.op, RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	rte_pktmbuf_reset(env.mbuf);
+
+	sym->m_src = env.mbuf;
+	sym->auth.data.offset = 0;
+
+	if (info.op == FIPS_TEST_ENC_AUTH_GEN) {
+		uint8_t *pt;
+
+		if (vec.pt.len > RTE_MBUF_MAX_NB_SEGS) {
+			RTE_LOG(ERR, USER1, "PT len %u\n", vec.pt.len);
+			return -EPERM;
+		}
+
+		pt = (uint8_t *)rte_pktmbuf_append(env.mbuf, vec.pt.len +
+				vec.cipher_auth.digest.len);
+
+		if (!pt) {
+			RTE_LOG(ERR, USER1, "Error %i: MBUF too small\n",
+					-ENOMEM);
+			return -ENOMEM;
+		}
+
+		memcpy(pt, vec.pt.val, vec.pt.len);
+		sym->auth.data.length = vec.pt.len;
+		sym->auth.digest.data = pt + vec.pt.len;
+		sym->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+				env.mbuf, vec.pt.len);
+
+	} else {
+		uint8_t *ct;
+
+		if (vec.ct.len > RTE_MBUF_MAX_NB_SEGS) {
+			RTE_LOG(ERR, USER1, "CT len %u\n", vec.ct.len);
+			return -EPERM;
+		}
+
+		ct = (uint8_t *)rte_pktmbuf_append(env.mbuf,
+				vec.ct.len + vec.cipher_auth.digest.len);
+
+		if (!ct) {
+			RTE_LOG(ERR, USER1, "Error %i: MBUF too small\n",
+					-ENOMEM);
+			return -ENOMEM;
+		}
+
+		memcpy(ct, vec.ct.val, vec.ct.len);
+		sym->auth.data.length = vec.ct.len;
+		sym->auth.digest.data = vec.cipher_auth.digest.val;
+		sym->auth.digest.phys_addr = rte_malloc_virt2iova(
+				sym->auth.digest.data);
+	}
+
+	rte_crypto_op_attach_sym_session(env.op, env.sess);
+}
+
+static int
 prepare_aes_xform(struct rte_crypto_sym_xform *xform)
 {
 	const struct rte_cryptodev_symmetric_capability *cap;
@@ -434,6 +495,43 @@ prepare_aes_xform(struct rte_crypto_sym_xform *xform)
 		RTE_LOG(ERR, USER1, "PMD %s key length %u IV length %u\n",
 				info.device_name, cipher_xform->key.length,
 				cipher_xform->iv.length);
+		return -EPERM;
+	}
+
+	return 0;
+}
+
+static int
+prepare_hmac_xform(struct rte_crypto_sym_xform *xform)
+{
+	const struct rte_cryptodev_symmetric_capability *cap;
+	struct rte_cryptodev_sym_capability_idx cap_idx;
+	struct rte_crypto_auth_xform *auth_xform = &xform->auth;
+
+	xform->type = RTE_CRYPTO_SYM_XFORM_AUTH;
+
+	auth_xform->algo = info.interim_info.hmac_data.algo;
+	auth_xform->op = RTE_CRYPTO_AUTH_OP_GENERATE;
+	auth_xform->digest_length = vec.cipher_auth.digest.len;
+	auth_xform->key.data = vec.cipher_auth.key.val;
+	auth_xform->key.length = vec.cipher_auth.key.len;
+
+	cap_idx.algo.auth = auth_xform->algo;
+	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+
+	cap = rte_cryptodev_sym_capability_get(env.dev_id, &cap_idx);
+	if (!cap) {
+		RTE_LOG(ERR, USER1, "Failed to get capability for cdev %u\n",
+				env.dev_id);
+		return -EINVAL;
+	}
+
+	if (rte_cryptodev_sym_capability_check_auth(cap,
+			auth_xform->key.length,
+			auth_xform->digest_length, 0) != 0) {
+		RTE_LOG(ERR, USER1, "PMD %s key length %u IV length %u\n",
+				info.device_name, auth_xform->key.length,
+				auth_xform->digest_length);
 		return -EPERM;
 	}
 
@@ -654,6 +752,11 @@ init_test_ops(void)
 			test_ops.test = fips_mct_aes_test;
 		else
 			test_ops.test = fips_generic_test;
+		break;
+	case FIPS_TEST_ALGO_HMAC:
+		test_ops.prepare_op = prepare_auth_op;
+		test_ops.prepare_xform = prepare_hmac_xform;
+		test_ops.test = fips_generic_test;
 		break;
 
 	default:

@@ -24,6 +24,7 @@
 
 enum fips_test_algorithms {
 		FIPS_TEST_ALGO_AES = 0,
+		FIPS_TEST_ALGO_HMAC,
 		FIPS_TEST_ALGO_MAX
 };
 
@@ -93,6 +94,10 @@ struct aesavs_interim_data {
 	uint32_t key_len;
 };
 
+struct hmac_interim_data {
+	enum rte_crypto_auth_algorithm algo;
+};
+
 struct fips_test_interim_info {
 	FILE *fp_rd;
 	FILE *fp_wr;
@@ -105,6 +110,7 @@ struct fips_test_interim_info {
 
 	union {
 		struct aesavs_interim_data aes_data;
+		struct hmac_interim_data hmac_data;
 
 	} interim_info;
 
@@ -139,6 +145,9 @@ fips_test_write_one_case(void);
 
 int
 parse_test_aes_init(void);
+
+int
+parse_test_hmac_init(void);
 
 int
 parser_read_uint8_hex(uint8_t *value, const char *p);
