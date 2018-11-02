@@ -69,6 +69,16 @@ New Features
   checked out against that dma mask and rejected if out of range. If more than
   one device has addressing limitations, the dma mask is the more restricted one.
 
+* **Updated the C11 memory model version of ring library.**
+
+  The latency is decreased for architectures using the C11 memory model
+  version of the ring library.
+
+  On Cavium ThunderX2 platform, the changes decreased latency by 27~29%
+  and 3~15% for MPMC and SPSC cases respectively (with 2 lcores). The
+  real improvements may vary with the number of contending lcores and
+  the size of ring.
+
 * **Added hot-unplug handle mechanism.**
 
   ``rte_dev_hotplug_handle_enable`` and ``rte_dev_hotplug_handle_disable`` are

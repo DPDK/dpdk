@@ -61,12 +61,10 @@ __rte_ring_move_prod_head(struct rte_ring *r, unsigned int is_sp,
 	unsigned int max = n;
 	int success;
 
+	*old_head = __atomic_load_n(&r->prod.head, __ATOMIC_ACQUIRE);
 	do {
 		/* Reset n to the initial burst count */
 		n = max;
-
-		*old_head = __atomic_load_n(&r->prod.head,
-					__ATOMIC_ACQUIRE);
 
 		/* load-acquire synchronize with store-release of ht->tail
 		 * in update_tail.
@@ -93,6 +91,7 @@ __rte_ring_move_prod_head(struct rte_ring *r, unsigned int is_sp,
 		if (is_sp)
 			r->prod.head = *new_head, success = 1;
 		else
+			/* on failure, *old_head is updated */
 			success = __atomic_compare_exchange_n(&r->prod.head,
 					old_head, *new_head,
 					0, __ATOMIC_ACQUIRE,
@@ -135,12 +134,10 @@ __rte_ring_move_cons_head(struct rte_ring *r, int is_sc,
 	int success;
 
 	/* move cons.head atomically */
+	*old_head = __atomic_load_n(&r->cons.head, __ATOMIC_ACQUIRE);
 	do {
 		/* Restore n as it may change every loop */
 		n = max;
-
-		*old_head = __atomic_load_n(&r->cons.head,
-					__ATOMIC_ACQUIRE);
 
 		/* this load-acquire synchronize with store-release of ht->tail
 		 * in update_tail.
@@ -166,6 +163,7 @@ __rte_ring_move_cons_head(struct rte_ring *r, int is_sc,
 		if (is_sc)
 			r->cons.head = *new_head, success = 1;
 		else
+			/* on failure, *old_head will be updated */
 			success = __atomic_compare_exchange_n(&r->cons.head,
 							old_head, *new_head,
 							0, __ATOMIC_ACQUIRE,
