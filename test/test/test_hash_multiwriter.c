@@ -39,8 +39,8 @@ struct {
 	struct rte_hash *h;
 } tbl_multiwriter_test_params;
 
-const uint32_t nb_entries = 16*1024*1024;
-const uint32_t nb_total_tsx_insertion = 15*1024*1024;
+const uint32_t nb_entries = 5*1024*1024;
+const uint32_t nb_total_tsx_insertion = 4.5*1024*1024;
 uint32_t rounded_nb_total_tsx_insertion;
 
 static rte_atomic64_t gcycles;
