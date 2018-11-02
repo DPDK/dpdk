@@ -29,7 +29,7 @@ formatted in JSON and sent back to the requesting client.
 Pre-requisites
 ~~~~~~~~~~~~~~
 
-* Python ≥ 2.5
+* Python >= 2.5
 
 * Jansson library for JSON serialization
 
