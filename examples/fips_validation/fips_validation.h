@@ -26,6 +26,7 @@ enum fips_test_algorithms {
 		FIPS_TEST_ALGO_AES = 0,
 		FIPS_TEST_ALGO_AES_GCM,
 		FIPS_TEST_ALGO_AES_CMAC,
+		FIPS_TEST_ALGO_AES_CCM,
 		FIPS_TEST_ALGO_HMAC,
 		FIPS_TEST_ALGO_TDES,
 		FIPS_TEST_ALGO_MAX
@@ -102,6 +103,14 @@ enum fips_tdes_test_types {
 	TDES_MMT /* Multi block Message Test */
 };
 
+enum fips_ccm_test_types {
+	CCM_VADT	= 1, /* Variable Associated Data Test */
+	CCM_VPT,		 /* Variable Payload Test */
+	CCM_VNT,		 /* Variable Nonce Test */
+	CCM_VTT,		 /* Variable Tag Test */
+	CCM_DVPT,	 /*  Decryption-Verification Process Test */
+};
+
 struct aesavs_interim_data {
 	enum fips_aesavs_test_types test_type;
 	uint32_t cipher_algo;
@@ -115,6 +124,15 @@ struct hmac_interim_data {
 struct tdes_interim_data {
 	enum fips_tdes_test_types test_type;
 	uint32_t nb_keys;
+};
+
+struct ccm_interim_data {
+	enum fips_ccm_test_types test_type;
+	uint32_t aad_len;
+	uint32_t pt_len;
+	uint32_t digest_len;
+	uint32_t key_len;
+	uint32_t iv_len;
 };
 
 struct fips_test_interim_info {
@@ -131,6 +149,7 @@ struct fips_test_interim_info {
 		struct aesavs_interim_data aes_data;
 		struct hmac_interim_data hmac_data;
 		struct tdes_interim_data tdes_data;
+		struct ccm_interim_data ccm_data;
 
 	} interim_info;
 
@@ -177,6 +196,9 @@ parse_test_gcm_init(void);
 
 int
 parse_test_cmac_init(void);
+
+int
+parse_test_ccm_init(void);
 
 int
 parser_read_uint8_hex(uint8_t *value, const char *p);

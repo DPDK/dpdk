@@ -470,7 +470,10 @@ prepare_aead_op(void)
 	__rte_crypto_op_reset(env.op, RTE_CRYPTO_OP_TYPE_SYMMETRIC);
 	rte_pktmbuf_reset(env.mbuf);
 
-	memcpy(iv, vec.iv.val, vec.iv.len);
+	if (info.algo == FIPS_TEST_ALGO_AES_CCM)
+		memcpy(iv + 1, vec.iv.val, vec.iv.len);
+	else
+		memcpy(iv, vec.iv.val, vec.iv.len);
 
 	sym->m_src = env.mbuf;
 	sym->aead.data.offset = 0;
@@ -720,6 +723,52 @@ prepare_cmac_xform(struct rte_crypto_sym_xform *xform)
 		RTE_LOG(ERR, USER1, "PMD %s key length %u IV length %u\n",
 				info.device_name, auth_xform->key.length,
 				auth_xform->digest_length);
+		return -EPERM;
+	}
+
+	return 0;
+}
+
+static int
+prepare_ccm_xform(struct rte_crypto_sym_xform *xform)
+{
+	const struct rte_cryptodev_symmetric_capability *cap;
+	struct rte_cryptodev_sym_capability_idx cap_idx;
+	struct rte_crypto_aead_xform *aead_xform = &xform->aead;
+
+	xform->type = RTE_CRYPTO_SYM_XFORM_AEAD;
+
+	aead_xform->algo = RTE_CRYPTO_AEAD_AES_CCM;
+	aead_xform->aad_length = vec.aead.aad.len;
+	aead_xform->digest_length = vec.aead.digest.len;
+	aead_xform->iv.offset = IV_OFF;
+	aead_xform->iv.length = vec.iv.len;
+	aead_xform->key.data = vec.aead.key.val;
+	aead_xform->key.length = vec.aead.key.len;
+	aead_xform->op = (info.op == FIPS_TEST_ENC_AUTH_GEN) ?
+			RTE_CRYPTO_AEAD_OP_ENCRYPT :
+			RTE_CRYPTO_AEAD_OP_DECRYPT;
+
+	cap_idx.algo.aead = aead_xform->algo;
+	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AEAD;
+
+	cap = rte_cryptodev_sym_capability_get(env.dev_id, &cap_idx);
+	if (!cap) {
+		RTE_LOG(ERR, USER1, "Failed to get capability for cdev %u\n",
+				env.dev_id);
+		return -EINVAL;
+	}
+
+	if (rte_cryptodev_sym_capability_check_aead(cap,
+			aead_xform->key.length,
+			aead_xform->digest_length, aead_xform->aad_length,
+			aead_xform->iv.length) != 0) {
+		RTE_LOG(ERR, USER1,
+			"PMD %s key_len %u tag_len %u aad_len %u iv_len %u\n",
+				info.device_name, aead_xform->key.length,
+				aead_xform->digest_length,
+				aead_xform->aad_length,
+				aead_xform->iv.length);
 		return -EPERM;
 	}
 
@@ -1089,6 +1138,11 @@ init_test_ops(void)
 	case FIPS_TEST_ALGO_AES_CMAC:
 		test_ops.prepare_op = prepare_auth_op;
 		test_ops.prepare_xform = prepare_cmac_xform;
+		test_ops.test = fips_generic_test;
+		break;
+	case FIPS_TEST_ALGO_AES_CCM:
+		test_ops.prepare_op = prepare_aead_op;
+		test_ops.prepare_xform = prepare_ccm_xform;
 		test_ops.test = fips_generic_test;
 		break;
 	default:
