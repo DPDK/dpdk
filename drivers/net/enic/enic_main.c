@@ -518,7 +518,7 @@ static void enic_prep_wq_for_simple_tx(struct enic *enic, uint16_t queue_idx)
  * The 'strong' version is in enic_rxtx_vec_avx2.c. This weak version is used
  * used when that file is not compiled.
  */
-bool __attribute__((weak))
+__rte_weak bool
 enic_use_vector_rx_handler(__rte_unused struct enic *enic)
 {
 	return false;
