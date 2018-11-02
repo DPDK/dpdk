@@ -57,6 +57,7 @@ __rte_ring_move_prod_head(struct rte_ring *r, unsigned int is_sp,
 		uint32_t *free_entries)
 {
 	const uint32_t capacity = r->capacity;
+	uint32_t cons_tail;
 	unsigned int max = n;
 	int success;
 
@@ -67,13 +68,18 @@ __rte_ring_move_prod_head(struct rte_ring *r, unsigned int is_sp,
 		*old_head = __atomic_load_n(&r->prod.head,
 					__ATOMIC_ACQUIRE);
 
-		/*
-		 *  The subtraction is done between two unsigned 32bits value
+		/* load-acquire synchronize with store-release of ht->tail
+		 * in update_tail.
+		 */
+		cons_tail = __atomic_load_n(&r->cons.tail,
+					__ATOMIC_ACQUIRE);
+
+		/* The subtraction is done between two unsigned 32bits value
 		 * (the result is always modulo 32 bits even if we have
 		 * *old_head > cons_tail). So 'free_entries' is always between 0
 		 * and capacity (which is < size).
 		 */
-		*free_entries = (capacity + r->cons.tail - *old_head);
+		*free_entries = (capacity + cons_tail - *old_head);
 
 		/* check that we have enough room in ring */
 		if (unlikely(n > *free_entries))
@@ -125,13 +131,21 @@ __rte_ring_move_cons_head(struct rte_ring *r, int is_sc,
 		uint32_t *entries)
 {
 	unsigned int max = n;
+	uint32_t prod_tail;
 	int success;
 
 	/* move cons.head atomically */
 	do {
 		/* Restore n as it may change every loop */
 		n = max;
+
 		*old_head = __atomic_load_n(&r->cons.head,
+					__ATOMIC_ACQUIRE);
+
+		/* this load-acquire synchronize with store-release of ht->tail
+		 * in update_tail.
+		 */
+		prod_tail = __atomic_load_n(&r->prod.tail,
 					__ATOMIC_ACQUIRE);
 
 		/* The subtraction is done between two unsigned 32bits value
@@ -139,7 +153,7 @@ __rte_ring_move_cons_head(struct rte_ring *r, int is_sc,
 		 * cons_head > prod_tail). So 'entries' is always between 0
 		 * and size(ring)-1.
 		 */
-		*entries = (r->prod.tail - *old_head);
+		*entries = (prod_tail - *old_head);
 
 		/* Set the actual entries for dequeue */
 		if (n > *entries)
