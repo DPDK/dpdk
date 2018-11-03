@@ -3850,12 +3850,6 @@ flow_tcf_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 
 	if (!flow)
 		return;
-	if (flow->counter) {
-		if (--flow->counter->ref_cnt == 0) {
-			rte_free(flow->counter);
-			flow->counter = NULL;
-		}
-	}
 	dev_flow = LIST_FIRST(&flow->dev_flows);
 	if (!dev_flow)
 		return;
@@ -3883,6 +3877,12 @@ flow_tcf_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 	if (!flow)
 		return;
 	flow_tcf_remove(dev, flow);
+	if (flow->counter) {
+		if (--flow->counter->ref_cnt == 0) {
+			rte_free(flow->counter);
+			flow->counter = NULL;
+		}
+	}
 	dev_flow = LIST_FIRST(&flow->dev_flows);
 	if (!dev_flow)
 		return;
