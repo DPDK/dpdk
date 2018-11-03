@@ -2799,6 +2799,241 @@ flow_tcf_translate_action_count(struct rte_eth_dev *dev __rte_unused,
 }
 
 /**
+ * Convert VXLAN VNI to 32-bit integer.
+ *
+ * @param[in] vni
+ *   VXLAN VNI in 24-bit wire format.
+ *
+ * @return
+ *   VXLAN VNI as a 32-bit integer value in network endian.
+ */
+static inline rte_be32_t
+vxlan_vni_as_be32(const uint8_t vni[3])
+{
+	union {
+		uint8_t vni[4];
+		rte_be32_t dword;
+	} ret = {
+		.vni = { 0, vni[0], vni[1], vni[2] },
+	};
+	return ret.dword;
+}
+
+/**
+ * Helper function to process RTE_FLOW_ITEM_TYPE_ETH entry in configuration
+ * of action RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP. Fills the MAC address fields
+ * in the encapsulation parameters structure. The item must be prevalidated,
+ * no any validation checks performed by function.
+ *
+ * @param[in] spec
+ *   RTE_FLOW_ITEM_TYPE_ETH entry specification.
+ * @param[in] mask
+ *   RTE_FLOW_ITEM_TYPE_ETH entry mask.
+ * @param[out] encap
+ *   Structure to fill the gathered MAC address data.
+ */
+static void
+flow_tcf_parse_vxlan_encap_eth(const struct rte_flow_item_eth *spec,
+			       const struct rte_flow_item_eth *mask,
+			       struct flow_tcf_vxlan_encap *encap)
+{
+	/* Item must be validated before. No redundant checks. */
+	assert(spec);
+	if (!mask || !memcmp(&mask->dst,
+			     &rte_flow_item_eth_mask.dst,
+			     sizeof(rte_flow_item_eth_mask.dst))) {
+		/*
+		 * Ethernet addresses are not supported by
+		 * tc as tunnel_key parameters. Destination
+		 * address is needed to form encap packet
+		 * header and retrieved by kernel from
+		 * implicit sources (ARP table, etc),
+		 * address masks are not supported at all.
+		 */
+		encap->eth.dst = spec->dst;
+		encap->mask |= FLOW_TCF_ENCAP_ETH_DST;
+	}
+	if (!mask || !memcmp(&mask->src,
+			     &rte_flow_item_eth_mask.src,
+			     sizeof(rte_flow_item_eth_mask.src))) {
+		/*
+		 * Ethernet addresses are not supported by
+		 * tc as tunnel_key parameters. Source ethernet
+		 * address is ignored anyway.
+		 */
+		encap->eth.src = spec->src;
+		encap->mask |= FLOW_TCF_ENCAP_ETH_SRC;
+	}
+}
+
+/**
+ * Helper function to process RTE_FLOW_ITEM_TYPE_IPV4 entry in configuration
+ * of action RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP. Fills the IPV4 address fields
+ * in the encapsulation parameters structure. The item must be prevalidated,
+ * no any validation checks performed by function.
+ *
+ * @param[in] spec
+ *   RTE_FLOW_ITEM_TYPE_IPV4 entry specification.
+ * @param[out] encap
+ *   Structure to fill the gathered IPV4 address data.
+ */
+static void
+flow_tcf_parse_vxlan_encap_ipv4(const struct rte_flow_item_ipv4 *spec,
+				struct flow_tcf_vxlan_encap *encap)
+{
+	/* Item must be validated before. No redundant checks. */
+	assert(spec);
+	encap->ipv4.dst = spec->hdr.dst_addr;
+	encap->ipv4.src = spec->hdr.src_addr;
+	encap->mask |= FLOW_TCF_ENCAP_IPV4_SRC |
+		       FLOW_TCF_ENCAP_IPV4_DST;
+}
+
+/**
+ * Helper function to process RTE_FLOW_ITEM_TYPE_IPV6 entry in configuration
+ * of action RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP. Fills the IPV6 address fields
+ * in the encapsulation parameters structure. The item must be prevalidated,
+ * no any validation checks performed by function.
+ *
+ * @param[in] spec
+ *   RTE_FLOW_ITEM_TYPE_IPV6 entry specification.
+ * @param[out] encap
+ *   Structure to fill the gathered IPV6 address data.
+ */
+static void
+flow_tcf_parse_vxlan_encap_ipv6(const struct rte_flow_item_ipv6 *spec,
+				struct flow_tcf_vxlan_encap *encap)
+{
+	/* Item must be validated before. No redundant checks. */
+	assert(spec);
+	memcpy(encap->ipv6.dst, spec->hdr.dst_addr, IPV6_ADDR_LEN);
+	memcpy(encap->ipv6.src, spec->hdr.src_addr, IPV6_ADDR_LEN);
+	encap->mask |= FLOW_TCF_ENCAP_IPV6_SRC |
+		       FLOW_TCF_ENCAP_IPV6_DST;
+}
+
+/**
+ * Helper function to process RTE_FLOW_ITEM_TYPE_UDP entry in configuration
+ * of action RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP. Fills the UDP port fields
+ * in the encapsulation parameters structure. The item must be prevalidated,
+ * no any validation checks performed by function.
+ *
+ * @param[in] spec
+ *   RTE_FLOW_ITEM_TYPE_UDP entry specification.
+ * @param[in] mask
+ *   RTE_FLOW_ITEM_TYPE_UDP entry mask.
+ * @param[out] encap
+ *   Structure to fill the gathered UDP port data.
+ */
+static void
+flow_tcf_parse_vxlan_encap_udp(const struct rte_flow_item_udp *spec,
+			       const struct rte_flow_item_udp *mask,
+			       struct flow_tcf_vxlan_encap *encap)
+{
+	assert(spec);
+	encap->udp.dst = spec->hdr.dst_port;
+	encap->mask |= FLOW_TCF_ENCAP_UDP_DST;
+	if (!mask || mask->hdr.src_port != RTE_BE16(0x0000)) {
+		encap->udp.src = spec->hdr.src_port;
+		encap->mask |= FLOW_TCF_ENCAP_IPV4_SRC;
+	}
+}
+
+/**
+ * Helper function to process RTE_FLOW_ITEM_TYPE_VXLAN entry in configuration
+ * of action RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP. Fills the VNI fields
+ * in the encapsulation parameters structure. The item must be prevalidated,
+ * no any validation checks performed by function.
+ *
+ * @param[in] spec
+ *   RTE_FLOW_ITEM_TYPE_VXLAN entry specification.
+ * @param[out] encap
+ *   Structure to fill the gathered VNI address data.
+ */
+static void
+flow_tcf_parse_vxlan_encap_vni(const struct rte_flow_item_vxlan *spec,
+			       struct flow_tcf_vxlan_encap *encap)
+{
+	/* Item must be validated before. Do not redundant checks. */
+	assert(spec);
+	memcpy(encap->vxlan.vni, spec->vni, sizeof(encap->vxlan.vni));
+	encap->mask |= FLOW_TCF_ENCAP_VXLAN_VNI;
+}
+
+/**
+ * Populate consolidated encapsulation object from list of pattern items.
+ *
+ * Helper function to process configuration of action such as
+ * RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP. The item list should be
+ * validated, there is no way to return an meaningful error.
+ *
+ * @param[in] action
+ *   RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP action object.
+ *   List of pattern items to gather data from.
+ * @param[out] src
+ *   Structure to fill gathered data.
+ */
+static void
+flow_tcf_vxlan_encap_parse(const struct rte_flow_action *action,
+			   struct flow_tcf_vxlan_encap *encap)
+{
+	union {
+		const struct rte_flow_item_eth *eth;
+		const struct rte_flow_item_ipv4 *ipv4;
+		const struct rte_flow_item_ipv6 *ipv6;
+		const struct rte_flow_item_udp *udp;
+		const struct rte_flow_item_vxlan *vxlan;
+	} spec, mask;
+	const struct rte_flow_item *items;
+
+	assert(action->type == RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP);
+	assert(action->conf);
+
+	items = ((const struct rte_flow_action_vxlan_encap *)
+					action->conf)->definition;
+	assert(items);
+	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
+		switch (items->type) {
+		case RTE_FLOW_ITEM_TYPE_VOID:
+			break;
+		case RTE_FLOW_ITEM_TYPE_ETH:
+			mask.eth = items->mask;
+			spec.eth = items->spec;
+			flow_tcf_parse_vxlan_encap_eth(spec.eth, mask.eth,
+						       encap);
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV4:
+			spec.ipv4 = items->spec;
+			flow_tcf_parse_vxlan_encap_ipv4(spec.ipv4, encap);
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6:
+			spec.ipv6 = items->spec;
+			flow_tcf_parse_vxlan_encap_ipv6(spec.ipv6, encap);
+			break;
+		case RTE_FLOW_ITEM_TYPE_UDP:
+			mask.udp = items->mask;
+			spec.udp = items->spec;
+			flow_tcf_parse_vxlan_encap_udp(spec.udp, mask.udp,
+						       encap);
+			break;
+		case RTE_FLOW_ITEM_TYPE_VXLAN:
+			spec.vxlan = items->spec;
+			flow_tcf_parse_vxlan_encap_vni(spec.vxlan, encap);
+			break;
+		default:
+			assert(false);
+			DRV_LOG(WARNING,
+				"unsupported item %p type %d,"
+				" items must be validated"
+				" before flow creation",
+				(const void *)items, items->type);
+			encap->mask = 0;
+			return;
+		}
+	}
+}
+
+/**
  * Translate flow for Linux TC flower and construct Netlink message.
  *
  * @param[in] priv
@@ -2832,6 +3067,7 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 		const struct rte_flow_item_ipv6 *ipv6;
 		const struct rte_flow_item_tcp *tcp;
 		const struct rte_flow_item_udp *udp;
+		const struct rte_flow_item_vxlan *vxlan;
 	} spec, mask;
 	union {
 		const struct rte_flow_action_port_id *port_id;
@@ -2842,6 +3078,18 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 		const struct rte_flow_action_of_set_vlan_pcp *
 			of_set_vlan_pcp;
 	} conf;
+	union {
+		struct flow_tcf_tunnel_hdr *hdr;
+		struct flow_tcf_vxlan_decap *vxlan;
+	} decap = {
+		.hdr = NULL,
+	};
+	union {
+		struct flow_tcf_tunnel_hdr *hdr;
+		struct flow_tcf_vxlan_encap *vxlan;
+	} encap = {
+		.hdr = NULL,
+	};
 	struct flow_tcf_ptoi ptoi[PTOI_TABLE_SZ_MAX(dev)];
 	struct nlmsghdr *nlh = dev_flow->tcf.nlh;
 	struct tcmsg *tcm = dev_flow->tcf.tcm;
@@ -2859,6 +3107,20 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 
 	claim_nonzero(flow_tcf_build_ptoi_table(dev, ptoi,
 						PTOI_TABLE_SZ_MAX(dev)));
+	if (dev_flow->tcf.tunnel) {
+		switch (dev_flow->tcf.tunnel->type) {
+		case FLOW_TCF_TUNACT_VXLAN_DECAP:
+			decap.vxlan = dev_flow->tcf.vxlan_decap;
+			break;
+		case FLOW_TCF_TUNACT_VXLAN_ENCAP:
+			encap.vxlan = dev_flow->tcf.vxlan_encap;
+			break;
+		/* New tunnel actions can be added here. */
+		default:
+			assert(false);
+			break;
+		}
+	}
 	nlh = dev_flow->tcf.nlh;
 	tcm = dev_flow->tcf.tcm;
 	/* Prepare API must have been called beforehand. */
@@ -2876,7 +3138,6 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 		mnl_attr_put_u32(nlh, TCA_CHAIN, attr->group);
 	mnl_attr_put_strz(nlh, TCA_KIND, "flower");
 	na_flower = mnl_attr_nest_start(nlh, TCA_OPTIONS);
-	mnl_attr_put_u32(nlh, TCA_FLOWER_FLAGS, TCA_CLS_FLAGS_SKIP_SW);
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
 		unsigned int i;
 
@@ -2904,7 +3165,9 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 			tcm->tcm_ifindex = ptoi[i].ifindex;
 			break;
 		case RTE_FLOW_ITEM_TYPE_ETH:
-			item_flags |= MLX5_FLOW_LAYER_OUTER_L2;
+			item_flags |= (item_flags & MLX5_FLOW_LAYER_VXLAN) ?
+				      MLX5_FLOW_LAYER_INNER_L2 :
+				      MLX5_FLOW_LAYER_OUTER_L2;
 			mask.eth = flow_tcf_item_mask
 				(items, &rte_flow_item_eth_mask,
 				 &flow_tcf_mask_supported.eth,
@@ -2915,6 +3178,14 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 			if (mask.eth == &flow_tcf_mask_empty.eth)
 				break;
 			spec.eth = items->spec;
+			if (decap.vxlan &&
+			    !(item_flags & MLX5_FLOW_LAYER_VXLAN)) {
+				DRV_LOG(WARNING,
+					"outer L2 addresses cannot be forced"
+					" for vxlan decapsulation, parameter"
+					" ignored");
+				break;
+			}
 			if (mask.eth->type) {
 				mnl_attr_put_u16(nlh, TCA_FLOWER_KEY_ETH_TYPE,
 						 spec.eth->type);
@@ -2936,8 +3207,11 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 					     ETHER_ADDR_LEN,
 					     mask.eth->src.addr_bytes);
 			}
+			assert(dev_flow->tcf.nlsize >= nlh->nlmsg_len);
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
+			assert(!encap.hdr);
+			assert(!decap.hdr);
 			item_flags |= MLX5_FLOW_LAYER_OUTER_VLAN;
 			mask.vlan = flow_tcf_item_mask
 				(items, &rte_flow_item_vlan_mask,
@@ -2969,6 +3243,7 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 						 rte_be_to_cpu_16
 						 (spec.vlan->tci &
 						  RTE_BE16(0x0fff)));
+			assert(dev_flow->tcf.nlsize >= nlh->nlmsg_len);
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			item_flags |= MLX5_FLOW_LAYER_OUTER_L3_IPV4;
@@ -2979,36 +3254,53 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 				 sizeof(flow_tcf_mask_supported.ipv4),
 				 error);
 			assert(mask.ipv4);
-			if (!eth_type_set || !vlan_eth_type_set)
-				mnl_attr_put_u16(nlh,
+			spec.ipv4 = items->spec;
+			if (!decap.vxlan) {
+				if (!eth_type_set && !vlan_eth_type_set)
+					mnl_attr_put_u16
+						(nlh,
 						 vlan_present ?
 						 TCA_FLOWER_KEY_VLAN_ETH_TYPE :
 						 TCA_FLOWER_KEY_ETH_TYPE,
 						 RTE_BE16(ETH_P_IP));
-			eth_type_set = 1;
-			vlan_eth_type_set = 1;
-			if (mask.ipv4 == &flow_tcf_mask_empty.ipv4)
-				break;
-			spec.ipv4 = items->spec;
-			if (mask.ipv4->hdr.next_proto_id) {
-				mnl_attr_put_u8(nlh, TCA_FLOWER_KEY_IP_PROTO,
-						spec.ipv4->hdr.next_proto_id);
-				ip_proto_set = 1;
+				eth_type_set = 1;
+				vlan_eth_type_set = 1;
+				if (mask.ipv4 == &flow_tcf_mask_empty.ipv4)
+					break;
+				if (mask.ipv4->hdr.next_proto_id) {
+					mnl_attr_put_u8
+						(nlh, TCA_FLOWER_KEY_IP_PROTO,
+						 spec.ipv4->hdr.next_proto_id);
+					ip_proto_set = 1;
+				}
+			} else {
+				assert(mask.ipv4 != &flow_tcf_mask_empty.ipv4);
 			}
 			if (mask.ipv4->hdr.src_addr) {
-				mnl_attr_put_u32(nlh, TCA_FLOWER_KEY_IPV4_SRC,
-						 spec.ipv4->hdr.src_addr);
-				mnl_attr_put_u32(nlh,
-						 TCA_FLOWER_KEY_IPV4_SRC_MASK,
-						 mask.ipv4->hdr.src_addr);
+				mnl_attr_put_u32
+					(nlh, decap.vxlan ?
+					 TCA_FLOWER_KEY_ENC_IPV4_SRC :
+					 TCA_FLOWER_KEY_IPV4_SRC,
+					 spec.ipv4->hdr.src_addr);
+				mnl_attr_put_u32
+					(nlh, decap.vxlan ?
+					 TCA_FLOWER_KEY_ENC_IPV4_SRC_MASK :
+					 TCA_FLOWER_KEY_IPV4_SRC_MASK,
+					 mask.ipv4->hdr.src_addr);
 			}
 			if (mask.ipv4->hdr.dst_addr) {
-				mnl_attr_put_u32(nlh, TCA_FLOWER_KEY_IPV4_DST,
-						 spec.ipv4->hdr.dst_addr);
-				mnl_attr_put_u32(nlh,
-						 TCA_FLOWER_KEY_IPV4_DST_MASK,
-						 mask.ipv4->hdr.dst_addr);
+				mnl_attr_put_u32
+					(nlh, decap.vxlan ?
+					 TCA_FLOWER_KEY_ENC_IPV4_DST :
+					 TCA_FLOWER_KEY_IPV4_DST,
+					 spec.ipv4->hdr.dst_addr);
+				mnl_attr_put_u32
+					(nlh, decap.vxlan ?
+					 TCA_FLOWER_KEY_ENC_IPV4_DST_MASK :
+					 TCA_FLOWER_KEY_IPV4_DST_MASK,
+					 mask.ipv4->hdr.dst_addr);
 			}
+			assert(dev_flow->tcf.nlsize >= nlh->nlmsg_len);
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
 			item_flags |= MLX5_FLOW_LAYER_OUTER_L3_IPV6;
@@ -3019,38 +3311,54 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 				 sizeof(flow_tcf_mask_supported.ipv6),
 				 error);
 			assert(mask.ipv6);
-			if (!eth_type_set || !vlan_eth_type_set)
-				mnl_attr_put_u16(nlh,
+			spec.ipv6 = items->spec;
+			if (!decap.vxlan) {
+				if (!eth_type_set || !vlan_eth_type_set) {
+					mnl_attr_put_u16
+						(nlh,
 						 vlan_present ?
 						 TCA_FLOWER_KEY_VLAN_ETH_TYPE :
 						 TCA_FLOWER_KEY_ETH_TYPE,
 						 RTE_BE16(ETH_P_IPV6));
-			eth_type_set = 1;
-			vlan_eth_type_set = 1;
-			if (mask.ipv6 == &flow_tcf_mask_empty.ipv6)
-				break;
-			spec.ipv6 = items->spec;
-			if (mask.ipv6->hdr.proto) {
-				mnl_attr_put_u8(nlh, TCA_FLOWER_KEY_IP_PROTO,
-						spec.ipv6->hdr.proto);
-				ip_proto_set = 1;
+				}
+				eth_type_set = 1;
+				vlan_eth_type_set = 1;
+				if (mask.ipv6 == &flow_tcf_mask_empty.ipv6)
+					break;
+				if (mask.ipv6->hdr.proto) {
+					mnl_attr_put_u8
+						(nlh, TCA_FLOWER_KEY_IP_PROTO,
+						 spec.ipv6->hdr.proto);
+					ip_proto_set = 1;
+				}
+			} else {
+				assert(mask.ipv6 != &flow_tcf_mask_empty.ipv6);
 			}
 			if (!IN6_IS_ADDR_UNSPECIFIED(mask.ipv6->hdr.src_addr)) {
-				mnl_attr_put(nlh, TCA_FLOWER_KEY_IPV6_SRC,
-					     sizeof(spec.ipv6->hdr.src_addr),
+				mnl_attr_put(nlh, decap.vxlan ?
+					     TCA_FLOWER_KEY_ENC_IPV6_SRC :
+					     TCA_FLOWER_KEY_IPV6_SRC,
+					     IPV6_ADDR_LEN,
 					     spec.ipv6->hdr.src_addr);
-				mnl_attr_put(nlh, TCA_FLOWER_KEY_IPV6_SRC_MASK,
-					     sizeof(mask.ipv6->hdr.src_addr),
+				mnl_attr_put(nlh, decap.vxlan ?
+					     TCA_FLOWER_KEY_ENC_IPV6_SRC_MASK :
+					     TCA_FLOWER_KEY_IPV6_SRC_MASK,
+					     IPV6_ADDR_LEN,
 					     mask.ipv6->hdr.src_addr);
 			}
 			if (!IN6_IS_ADDR_UNSPECIFIED(mask.ipv6->hdr.dst_addr)) {
-				mnl_attr_put(nlh, TCA_FLOWER_KEY_IPV6_DST,
-					     sizeof(spec.ipv6->hdr.dst_addr),
+				mnl_attr_put(nlh, decap.vxlan ?
+					     TCA_FLOWER_KEY_ENC_IPV6_DST :
+					     TCA_FLOWER_KEY_IPV6_DST,
+					     IPV6_ADDR_LEN,
 					     spec.ipv6->hdr.dst_addr);
-				mnl_attr_put(nlh, TCA_FLOWER_KEY_IPV6_DST_MASK,
-					     sizeof(mask.ipv6->hdr.dst_addr),
+				mnl_attr_put(nlh, decap.vxlan ?
+					     TCA_FLOWER_KEY_ENC_IPV6_DST_MASK :
+					     TCA_FLOWER_KEY_IPV6_DST_MASK,
+					     IPV6_ADDR_LEN,
 					     mask.ipv6->hdr.dst_addr);
 			}
+			assert(dev_flow->tcf.nlsize >= nlh->nlmsg_len);
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			item_flags |= MLX5_FLOW_LAYER_OUTER_L4_UDP;
@@ -3061,26 +3369,45 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 				 sizeof(flow_tcf_mask_supported.udp),
 				 error);
 			assert(mask.udp);
-			if (!ip_proto_set)
-				mnl_attr_put_u8(nlh, TCA_FLOWER_KEY_IP_PROTO,
-						IPPROTO_UDP);
-			if (mask.udp == &flow_tcf_mask_empty.udp)
-				break;
 			spec.udp = items->spec;
+			if (!decap.vxlan) {
+				if (!ip_proto_set)
+					mnl_attr_put_u8
+						(nlh, TCA_FLOWER_KEY_IP_PROTO,
+						IPPROTO_UDP);
+				if (mask.udp == &flow_tcf_mask_empty.udp)
+					break;
+			} else {
+				assert(mask.udp != &flow_tcf_mask_empty.udp);
+				decap.vxlan->udp_port =
+					rte_be_to_cpu_16
+						(spec.udp->hdr.dst_port);
+			}
 			if (mask.udp->hdr.src_port) {
-				mnl_attr_put_u16(nlh, TCA_FLOWER_KEY_UDP_SRC,
-						 spec.udp->hdr.src_port);
-				mnl_attr_put_u16(nlh,
-						 TCA_FLOWER_KEY_UDP_SRC_MASK,
-						 mask.udp->hdr.src_port);
+				mnl_attr_put_u16
+					(nlh, decap.vxlan ?
+					 TCA_FLOWER_KEY_ENC_UDP_SRC_PORT :
+					 TCA_FLOWER_KEY_UDP_SRC,
+					 spec.udp->hdr.src_port);
+				mnl_attr_put_u16
+					(nlh, decap.vxlan ?
+					 TCA_FLOWER_KEY_ENC_UDP_SRC_PORT_MASK :
+					 TCA_FLOWER_KEY_UDP_SRC_MASK,
+					 mask.udp->hdr.src_port);
 			}
 			if (mask.udp->hdr.dst_port) {
-				mnl_attr_put_u16(nlh, TCA_FLOWER_KEY_UDP_DST,
-						 spec.udp->hdr.dst_port);
-				mnl_attr_put_u16(nlh,
-						 TCA_FLOWER_KEY_UDP_DST_MASK,
-						 mask.udp->hdr.dst_port);
+				mnl_attr_put_u16
+					(nlh, decap.vxlan ?
+					 TCA_FLOWER_KEY_ENC_UDP_DST_PORT :
+					 TCA_FLOWER_KEY_UDP_DST,
+					 spec.udp->hdr.dst_port);
+				mnl_attr_put_u16
+					(nlh, decap.vxlan ?
+					 TCA_FLOWER_KEY_ENC_UDP_DST_PORT_MASK :
+					 TCA_FLOWER_KEY_UDP_DST_MASK,
+					 mask.udp->hdr.dst_port);
 			}
+			assert(dev_flow->tcf.nlsize >= nlh->nlmsg_len);
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			item_flags |= MLX5_FLOW_LAYER_OUTER_L4_TCP;
@@ -3123,6 +3450,16 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 					 rte_cpu_to_be_16
 						(mask.tcp->hdr.tcp_flags));
 			}
+			assert(dev_flow->tcf.nlsize >= nlh->nlmsg_len);
+			break;
+		case RTE_FLOW_ITEM_TYPE_VXLAN:
+			assert(decap.vxlan);
+			item_flags |= MLX5_FLOW_LAYER_VXLAN;
+			spec.vxlan = items->spec;
+			mnl_attr_put_u32(nlh,
+					 TCA_FLOWER_KEY_ENC_KEY_ID,
+					 vxlan_vni_as_be32(spec.vxlan->vni));
+			assert(dev_flow->tcf.nlsize >= nlh->nlmsg_len);
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
@@ -3156,6 +3493,14 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 			mnl_attr_put_strz(nlh, TCA_ACT_KIND, "mirred");
 			na_act = mnl_attr_nest_start(nlh, TCA_ACT_OPTIONS);
 			assert(na_act);
+			if (encap.hdr) {
+				assert(dev_flow->tcf.tunnel);
+				dev_flow->tcf.tunnel->ifindex_ptr =
+					&((struct tc_mirred *)
+					mnl_attr_get_payload
+					(mnl_nlmsg_get_payload_tail
+						(nlh)))->ifindex;
+			}
 			mnl_attr_put(nlh, TCA_MIRRED_PARMS,
 				     sizeof(struct tc_mirred),
 				     &(struct tc_mirred){
@@ -3273,6 +3618,74 @@ override_na_vlan_priority:
 					conf.of_set_vlan_pcp->vlan_pcp;
 			}
 			break;
+		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
+			assert(decap.vxlan);
+			assert(dev_flow->tcf.tunnel);
+			dev_flow->tcf.tunnel->ifindex_ptr =
+				(unsigned int *)&tcm->tcm_ifindex;
+			na_act_index =
+				mnl_attr_nest_start(nlh, na_act_index_cur++);
+			assert(na_act_index);
+			mnl_attr_put_strz(nlh, TCA_ACT_KIND, "tunnel_key");
+			na_act = mnl_attr_nest_start(nlh, TCA_ACT_OPTIONS);
+			assert(na_act);
+			mnl_attr_put(nlh, TCA_TUNNEL_KEY_PARMS,
+				sizeof(struct tc_tunnel_key),
+				&(struct tc_tunnel_key){
+					.action = TC_ACT_PIPE,
+					.t_action = TCA_TUNNEL_KEY_ACT_RELEASE,
+					});
+			mnl_attr_nest_end(nlh, na_act);
+			mnl_attr_nest_end(nlh, na_act_index);
+			assert(dev_flow->tcf.nlsize >= nlh->nlmsg_len);
+			break;
+		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+			assert(encap.vxlan);
+			flow_tcf_vxlan_encap_parse(actions, encap.vxlan);
+			na_act_index =
+				mnl_attr_nest_start(nlh, na_act_index_cur++);
+			assert(na_act_index);
+			mnl_attr_put_strz(nlh, TCA_ACT_KIND, "tunnel_key");
+			na_act = mnl_attr_nest_start(nlh, TCA_ACT_OPTIONS);
+			assert(na_act);
+			mnl_attr_put(nlh, TCA_TUNNEL_KEY_PARMS,
+				sizeof(struct tc_tunnel_key),
+				&(struct tc_tunnel_key){
+					.action = TC_ACT_PIPE,
+					.t_action = TCA_TUNNEL_KEY_ACT_SET,
+					});
+			if (encap.vxlan->mask & FLOW_TCF_ENCAP_UDP_DST)
+				mnl_attr_put_u16(nlh,
+					 TCA_TUNNEL_KEY_ENC_DST_PORT,
+					 encap.vxlan->udp.dst);
+			if (encap.vxlan->mask & FLOW_TCF_ENCAP_IPV4_SRC)
+				mnl_attr_put_u32(nlh,
+					 TCA_TUNNEL_KEY_ENC_IPV4_SRC,
+					 encap.vxlan->ipv4.src);
+			if (encap.vxlan->mask & FLOW_TCF_ENCAP_IPV4_DST)
+				mnl_attr_put_u32(nlh,
+					 TCA_TUNNEL_KEY_ENC_IPV4_DST,
+					 encap.vxlan->ipv4.dst);
+			if (encap.vxlan->mask & FLOW_TCF_ENCAP_IPV6_SRC)
+				mnl_attr_put(nlh,
+					 TCA_TUNNEL_KEY_ENC_IPV6_SRC,
+					 sizeof(encap.vxlan->ipv6.src),
+					 &encap.vxlan->ipv6.src);
+			if (encap.vxlan->mask & FLOW_TCF_ENCAP_IPV6_DST)
+				mnl_attr_put(nlh,
+					 TCA_TUNNEL_KEY_ENC_IPV6_DST,
+					 sizeof(encap.vxlan->ipv6.dst),
+					 &encap.vxlan->ipv6.dst);
+			if (encap.vxlan->mask & FLOW_TCF_ENCAP_VXLAN_VNI)
+				mnl_attr_put_u32(nlh,
+					 TCA_TUNNEL_KEY_ENC_KEY_ID,
+					 vxlan_vni_as_be32
+						(encap.vxlan->vxlan.vni));
+			mnl_attr_put_u8(nlh, TCA_TUNNEL_KEY_NO_CSUM, 0);
+			mnl_attr_nest_end(nlh, na_act);
+			mnl_attr_nest_end(nlh, na_act_index);
+			assert(dev_flow->tcf.nlsize >= nlh->nlmsg_len);
+			break;
 		case RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC:
 		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DST:
 		case RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC:
@@ -3299,7 +3712,13 @@ override_na_vlan_priority:
 	assert(na_flower);
 	assert(na_flower_act);
 	mnl_attr_nest_end(nlh, na_flower_act);
+	mnl_attr_put_u32(nlh, TCA_FLOWER_FLAGS,	decap.vxlan ?
+						0 : TCA_CLS_FLAGS_SKIP_SW);
 	mnl_attr_nest_end(nlh, na_flower);
+	if (dev_flow->tcf.tunnel && dev_flow->tcf.tunnel->ifindex_ptr)
+		dev_flow->tcf.tunnel->ifindex_org =
+			*dev_flow->tcf.tunnel->ifindex_ptr;
+	assert(dev_flow->tcf.nlsize >= nlh->nlmsg_len);
 	return 0;
 }
 
