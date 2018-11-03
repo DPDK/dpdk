@@ -3725,37 +3725,76 @@ override_na_vlan_priority:
 /**
  * Send Netlink message with acknowledgment.
  *
- * @param ctx
+ * @param tcf
  *   Flow context to use.
  * @param nlh
  *   Message to send. This function always raises the NLM_F_ACK flag before
  *   sending.
+ * @param[in] msglen
+ *   Message length. Message buffer may contain multiple commands and
+ *   nlmsg_len field not always corresponds to actual message length.
+ *   If 0 specified the nlmsg_len field in header is used as message length.
+ * @param[in] cb
+ *   Callback handler for received message.
+ * @param[in] arg
+ *   Context pointer for callback handler.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-flow_tcf_nl_ack(struct mlx5_flow_tcf_context *ctx, struct nlmsghdr *nlh)
+flow_tcf_nl_ack(struct mlx5_flow_tcf_context *tcf,
+		struct nlmsghdr *nlh,
+		uint32_t msglen,
+		mnl_cb_t cb, void *arg)
 {
-	alignas(struct nlmsghdr)
-	uint8_t ans[mnl_nlmsg_size(sizeof(struct nlmsgerr)) +
-		    nlh->nlmsg_len - sizeof(*nlh)];
-	uint32_t seq = ctx->seq++;
-	struct mnl_socket *nl = ctx->nl;
-	int ret;
+	unsigned int portid = mnl_socket_get_portid(tcf->nl);
+	uint32_t seq = tcf->seq++;
+	int err, ret;
 
-	nlh->nlmsg_flags |= NLM_F_ACK;
+	assert(tcf->nl);
+	assert(tcf->buf);
+	if (!seq)
+		/* seq 0 is reserved for kernel event-driven notifications. */
+		seq = tcf->seq++;
 	nlh->nlmsg_seq = seq;
-	ret = mnl_socket_sendto(nl, nlh, nlh->nlmsg_len);
-	if (ret != -1)
-		ret = mnl_socket_recvfrom(nl, ans, sizeof(ans));
-	if (ret != -1)
-		ret = mnl_cb_run
-			(ans, ret, seq, mnl_socket_get_portid(nl), NULL, NULL);
+	if (!msglen) {
+		msglen = nlh->nlmsg_len;
+		nlh->nlmsg_flags |= NLM_F_ACK;
+	}
+	ret = mnl_socket_sendto(tcf->nl, nlh, msglen);
+	err = (ret <= 0) ? errno : 0;
+	nlh = (struct nlmsghdr *)(tcf->buf);
+	/*
+	 * The following loop postpones non-fatal errors until multipart
+	 * messages are complete.
+	 */
 	if (ret > 0)
+		while (true) {
+			ret = mnl_socket_recvfrom(tcf->nl, tcf->buf,
+						  tcf->buf_size);
+			if (ret < 0) {
+				err = errno;
+				if (err != ENOSPC)
+					break;
+			}
+			if (!err) {
+				ret = mnl_cb_run(nlh, ret, seq, portid,
+						 cb, arg);
+				if (ret < 0) {
+					err = errno;
+					break;
+				}
+			}
+			/* Will receive till end of multipart message */
+			if (!(nlh->nlmsg_flags & NLM_F_MULTI) ||
+			      nlh->nlmsg_type == NLMSG_DONE)
+				break;
+		}
+	if (!err)
 		return 0;
-	rte_errno = errno;
-	return -rte_errno;
+	rte_errno = err;
+	return -err;
 }
 
 /**
@@ -3786,7 +3825,7 @@ flow_tcf_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 	nlh = dev_flow->tcf.nlh;
 	nlh->nlmsg_type = RTM_NEWTFILTER;
 	nlh->nlmsg_flags = NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL;
-	if (!flow_tcf_nl_ack(ctx, nlh))
+	if (!flow_tcf_nl_ack(ctx, nlh, 0, NULL, NULL))
 		return 0;
 	return rte_flow_error_set(error, rte_errno,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -3825,7 +3864,7 @@ flow_tcf_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 	nlh = dev_flow->tcf.nlh;
 	nlh->nlmsg_type = RTM_DELTFILTER;
 	nlh->nlmsg_flags = NLM_F_REQUEST;
-	flow_tcf_nl_ack(ctx, nlh);
+	flow_tcf_nl_ack(ctx, nlh, 0, NULL, NULL);
 }
 
 /**
@@ -4358,7 +4397,7 @@ mlx5_flow_tcf_init(struct mlx5_flow_tcf_context *ctx,
 	tcm->tcm_handle = TC_H_MAKE(TC_H_INGRESS, 0);
 	tcm->tcm_parent = TC_H_INGRESS;
 	/* Ignore errors when qdisc is already absent. */
-	if (flow_tcf_nl_ack(ctx, nlh) &&
+	if (flow_tcf_nl_ack(ctx, nlh, 0, NULL, NULL) &&
 	    rte_errno != EINVAL && rte_errno != ENOENT)
 		return rte_flow_error_set(error, rte_errno,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -4374,7 +4413,7 @@ mlx5_flow_tcf_init(struct mlx5_flow_tcf_context *ctx,
 	tcm->tcm_handle = TC_H_MAKE(TC_H_INGRESS, 0);
 	tcm->tcm_parent = TC_H_INGRESS;
 	mnl_attr_put_strz_check(nlh, sizeof(buf), TCA_KIND, "ingress");
-	if (flow_tcf_nl_ack(ctx, nlh))
+	if (flow_tcf_nl_ack(ctx, nlh, 0, NULL, NULL))
 		return rte_flow_error_set(error, rte_errno,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "netlink: failed to create ingress"
