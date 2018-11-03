@@ -3803,6 +3803,496 @@ flow_tcf_nl_ack(struct mlx5_flow_tcf_context *tcf,
 #define MNL_REQUEST_SIZE RTE_MIN(RTE_MAX(sysconf(_SC_PAGESIZE), \
 				 MNL_REQUEST_SIZE_MIN), MNL_REQUEST_SIZE_MAX)
 
+/* Data structures used by flow_tcf_xxx_cb() routines. */
+struct tcf_nlcb_buf {
+	LIST_ENTRY(tcf_nlcb_buf) next;
+	uint32_t size;
+	alignas(struct nlmsghdr)
+	uint8_t msg[]; /**< Netlink message data. */
+};
+
+struct tcf_nlcb_context {
+	unsigned int ifindex; /**< Base interface index. */
+	uint32_t bufsize;
+	LIST_HEAD(, tcf_nlcb_buf) nlbuf;
+};
+
+/**
+ * Allocate space for netlink command in buffer list
+ *
+ * @param[in, out] ctx
+ *   Pointer to callback context with command buffers list.
+ * @param[in] size
+ *   Required size of data buffer to be allocated.
+ *
+ * @return
+ *   Pointer to allocated memory, aligned as message header.
+ *   NULL if some error occurred.
+ */
+static struct nlmsghdr *
+flow_tcf_alloc_nlcmd(struct tcf_nlcb_context *ctx, uint32_t size)
+{
+	struct tcf_nlcb_buf *buf;
+	struct nlmsghdr *nlh;
+
+	size = NLMSG_ALIGN(size);
+	buf = LIST_FIRST(&ctx->nlbuf);
+	if (buf && (buf->size + size) <= ctx->bufsize) {
+		nlh = (struct nlmsghdr *)&buf->msg[buf->size];
+		buf->size += size;
+		return nlh;
+	}
+	if (size > ctx->bufsize) {
+		DRV_LOG(WARNING, "netlink: too long command buffer requested");
+		return NULL;
+	}
+	buf = rte_malloc(__func__,
+			ctx->bufsize + sizeof(struct tcf_nlcb_buf),
+			alignof(struct tcf_nlcb_buf));
+	if (!buf) {
+		DRV_LOG(WARNING, "netlink: no memory for command buffer");
+		return NULL;
+	}
+	LIST_INSERT_HEAD(&ctx->nlbuf, buf, next);
+	buf->size = size;
+	nlh = (struct nlmsghdr *)&buf->msg[0];
+	return nlh;
+}
+
+/**
+ * Set NLM_F_ACK flags in the last netlink command in buffer.
+ * Only last command in the buffer will be acked by system.
+ *
+ * @param[in, out] buf
+ *   Pointer to buffer with netlink commands.
+ */
+static void
+flow_tcf_setack_nlcmd(struct tcf_nlcb_buf *buf)
+{
+	struct nlmsghdr *nlh;
+	uint32_t size = 0;
+
+	assert(buf->size);
+	do {
+		nlh = (struct nlmsghdr *)&buf->msg[size];
+		size += NLMSG_ALIGN(nlh->nlmsg_len);
+		if (size >= buf->size) {
+			nlh->nlmsg_flags |= NLM_F_ACK;
+			break;
+		}
+	} while (true);
+}
+
+/**
+ * Send the buffers with prepared netlink commands. Scans the list and
+ * sends all found buffers. Buffers are sent and freed anyway in order
+ * to prevent memory leakage if some every message in received packet.
+ *
+ * @param[in] tcf
+ *   Context object initialized by mlx5_flow_tcf_context_create().
+ * @param[in, out] ctx
+ *   Pointer to callback context with command buffers list.
+ *
+ * @return
+ *   Zero value on success, negative errno value otherwise
+ *   and rte_errno is set.
+ */
+static int
+flow_tcf_send_nlcmd(struct mlx5_flow_tcf_context *tcf,
+		    struct tcf_nlcb_context *ctx)
+{
+	struct tcf_nlcb_buf *bc, *bn;
+	struct nlmsghdr *nlh;
+	int ret = 0;
+
+	bc = LIST_FIRST(&ctx->nlbuf);
+	while (bc) {
+		int rc;
+
+		bn = LIST_NEXT(bc, next);
+		if (bc->size) {
+			flow_tcf_setack_nlcmd(bc);
+			nlh = (struct nlmsghdr *)&bc->msg;
+			rc = flow_tcf_nl_ack(tcf, nlh, bc->size, NULL, NULL);
+			if (rc && !ret)
+				ret = rc;
+		}
+		rte_free(bc);
+		bc = bn;
+	}
+	LIST_INIT(&ctx->nlbuf);
+	return ret;
+}
+
+/**
+ * Collect local IP address rules with scope link attribute  on specified
+ * network device. This is callback routine called by libmnl mnl_cb_run()
+ * in loop for every message in received packet.
+ *
+ * @param[in] nlh
+ *   Pointer to reply header.
+ * @param[in, out] arg
+ *   Opaque data pointer for this callback.
+ *
+ * @return
+ *   A positive, nonzero value on success, negative errno value otherwise
+ *   and rte_errno is set.
+ */
+static int
+flow_tcf_collect_local_cb(const struct nlmsghdr *nlh, void *arg)
+{
+	struct tcf_nlcb_context *ctx = arg;
+	struct nlmsghdr *cmd;
+	struct ifaddrmsg *ifa;
+	struct nlattr *na;
+	struct nlattr *na_local = NULL;
+	struct nlattr *na_peer = NULL;
+	unsigned char family;
+
+	if (nlh->nlmsg_type != RTM_NEWADDR) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	ifa = mnl_nlmsg_get_payload(nlh);
+	family = ifa->ifa_family;
+	if (ifa->ifa_index != ctx->ifindex ||
+	    ifa->ifa_scope != RT_SCOPE_LINK ||
+	    !(ifa->ifa_flags & IFA_F_PERMANENT) ||
+	    (family != AF_INET && family != AF_INET6))
+		return 1;
+	mnl_attr_for_each(na, nlh, sizeof(*ifa)) {
+		switch (mnl_attr_get_type(na)) {
+		case IFA_LOCAL:
+			na_local = na;
+			break;
+		case IFA_ADDRESS:
+			na_peer = na;
+			break;
+		}
+		if (na_local && na_peer)
+			break;
+	}
+	if (!na_local || !na_peer)
+		return 1;
+	/* Local rule found with scope link, permanent and assigned peer. */
+	cmd = flow_tcf_alloc_nlcmd(ctx, MNL_ALIGN(sizeof(struct nlmsghdr)) +
+					MNL_ALIGN(sizeof(struct ifaddrmsg)) +
+					(family == AF_INET6
+					? 2 * SZ_NLATTR_DATA_OF(IPV6_ADDR_LEN)
+					: 2 * SZ_NLATTR_TYPE_OF(uint32_t)));
+	if (!cmd) {
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+	cmd = mnl_nlmsg_put_header(cmd);
+	cmd->nlmsg_type = RTM_DELADDR;
+	cmd->nlmsg_flags = NLM_F_REQUEST;
+	ifa = mnl_nlmsg_put_extra_header(cmd, sizeof(*ifa));
+	ifa->ifa_flags = IFA_F_PERMANENT;
+	ifa->ifa_scope = RT_SCOPE_LINK;
+	ifa->ifa_index = ctx->ifindex;
+	if (family == AF_INET) {
+		ifa->ifa_family = AF_INET;
+		ifa->ifa_prefixlen = 32;
+		mnl_attr_put_u32(cmd, IFA_LOCAL, mnl_attr_get_u32(na_local));
+		mnl_attr_put_u32(cmd, IFA_ADDRESS, mnl_attr_get_u32(na_peer));
+	} else {
+		ifa->ifa_family = AF_INET6;
+		ifa->ifa_prefixlen = 128;
+		mnl_attr_put(cmd, IFA_LOCAL, IPV6_ADDR_LEN,
+			mnl_attr_get_payload(na_local));
+		mnl_attr_put(cmd, IFA_ADDRESS, IPV6_ADDR_LEN,
+			mnl_attr_get_payload(na_peer));
+	}
+	return 1;
+}
+
+/**
+ * Cleanup the local IP addresses on outer interface.
+ *
+ * @param[in] tcf
+ *   Context object initialized by mlx5_flow_tcf_context_create().
+ * @param[in] ifindex
+ *   Network inferface index to perform cleanup.
+ */
+static void
+flow_tcf_encap_local_cleanup(struct mlx5_flow_tcf_context *tcf,
+			    unsigned int ifindex)
+{
+	struct nlmsghdr *nlh;
+	struct ifaddrmsg *ifa;
+	struct tcf_nlcb_context ctx = {
+		.ifindex = ifindex,
+		.bufsize = MNL_REQUEST_SIZE,
+		.nlbuf = LIST_HEAD_INITIALIZER(),
+	};
+	int ret;
+
+	assert(ifindex);
+	/*
+	 * Seek and destroy leftovers of local IP addresses with
+	 * matching properties "scope link".
+	 */
+	nlh = mnl_nlmsg_put_header(tcf->buf);
+	nlh->nlmsg_type = RTM_GETADDR;
+	nlh->nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
+	ifa = mnl_nlmsg_put_extra_header(nlh, sizeof(*ifa));
+	ifa->ifa_family = AF_UNSPEC;
+	ifa->ifa_index = ifindex;
+	ifa->ifa_scope = RT_SCOPE_LINK;
+	ret = flow_tcf_nl_ack(tcf, nlh, 0, flow_tcf_collect_local_cb, &ctx);
+	if (ret)
+		DRV_LOG(WARNING, "netlink: query device list error %d", ret);
+	ret = flow_tcf_send_nlcmd(tcf, &ctx);
+	if (ret)
+		DRV_LOG(WARNING, "netlink: device delete error %d", ret);
+}
+
+/**
+ * Collect neigh permament rules on specified network device.
+ * This is callback routine called by libmnl mnl_cb_run() in loop for
+ * every message in received packet.
+ *
+ * @param[in] nlh
+ *   Pointer to reply header.
+ * @param[in, out] arg
+ *   Opaque data pointer for this callback.
+ *
+ * @return
+ *   A positive, nonzero value on success, negative errno value otherwise
+ *   and rte_errno is set.
+ */
+static int
+flow_tcf_collect_neigh_cb(const struct nlmsghdr *nlh, void *arg)
+{
+	struct tcf_nlcb_context *ctx = arg;
+	struct nlmsghdr *cmd;
+	struct ndmsg *ndm;
+	struct nlattr *na;
+	struct nlattr *na_ip = NULL;
+	struct nlattr *na_mac = NULL;
+	unsigned char family;
+
+	if (nlh->nlmsg_type != RTM_NEWNEIGH) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	ndm = mnl_nlmsg_get_payload(nlh);
+	family = ndm->ndm_family;
+	if (ndm->ndm_ifindex != (int)ctx->ifindex ||
+	   !(ndm->ndm_state & NUD_PERMANENT) ||
+	   (family != AF_INET && family != AF_INET6))
+		return 1;
+	mnl_attr_for_each(na, nlh, sizeof(*ndm)) {
+		switch (mnl_attr_get_type(na)) {
+		case NDA_DST:
+			na_ip = na;
+			break;
+		case NDA_LLADDR:
+			na_mac = na;
+			break;
+		}
+		if (na_mac && na_ip)
+			break;
+	}
+	if (!na_mac || !na_ip)
+		return 1;
+	/* Neigh rule with permenent attribute found. */
+	cmd = flow_tcf_alloc_nlcmd(ctx, MNL_ALIGN(sizeof(struct nlmsghdr)) +
+					MNL_ALIGN(sizeof(struct ndmsg)) +
+					SZ_NLATTR_DATA_OF(ETHER_ADDR_LEN) +
+					(family == AF_INET6
+					? SZ_NLATTR_DATA_OF(IPV6_ADDR_LEN)
+					: SZ_NLATTR_TYPE_OF(uint32_t)));
+	if (!cmd) {
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+	cmd = mnl_nlmsg_put_header(cmd);
+	cmd->nlmsg_type = RTM_DELNEIGH;
+	cmd->nlmsg_flags = NLM_F_REQUEST;
+	ndm = mnl_nlmsg_put_extra_header(cmd, sizeof(*ndm));
+	ndm->ndm_ifindex = ctx->ifindex;
+	ndm->ndm_state = NUD_PERMANENT;
+	ndm->ndm_flags = 0;
+	ndm->ndm_type = 0;
+	if (family == AF_INET) {
+		ndm->ndm_family = AF_INET;
+		mnl_attr_put_u32(cmd, NDA_DST, mnl_attr_get_u32(na_ip));
+	} else {
+		ndm->ndm_family = AF_INET6;
+		mnl_attr_put(cmd, NDA_DST, IPV6_ADDR_LEN,
+			     mnl_attr_get_payload(na_ip));
+	}
+	mnl_attr_put(cmd, NDA_LLADDR, ETHER_ADDR_LEN,
+		     mnl_attr_get_payload(na_mac));
+	return 1;
+}
+
+/**
+ * Cleanup the neigh rules on outer interface.
+ *
+ * @param[in] tcf
+ *   Context object initialized by mlx5_flow_tcf_context_create().
+ * @param[in] ifindex
+ *   Network inferface index to perform cleanup.
+ */
+static void
+flow_tcf_encap_neigh_cleanup(struct mlx5_flow_tcf_context *tcf,
+			    unsigned int ifindex)
+{
+	struct nlmsghdr *nlh;
+	struct ndmsg *ndm;
+	struct tcf_nlcb_context ctx = {
+		.ifindex = ifindex,
+		.bufsize = MNL_REQUEST_SIZE,
+		.nlbuf = LIST_HEAD_INITIALIZER(),
+	};
+	int ret;
+
+	assert(ifindex);
+	/* Seek and destroy leftovers of neigh rules. */
+	nlh = mnl_nlmsg_put_header(tcf->buf);
+	nlh->nlmsg_type = RTM_GETNEIGH;
+	nlh->nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
+	ndm = mnl_nlmsg_put_extra_header(nlh, sizeof(*ndm));
+	ndm->ndm_family = AF_UNSPEC;
+	ndm->ndm_ifindex = ifindex;
+	ndm->ndm_state = NUD_PERMANENT;
+	ret = flow_tcf_nl_ack(tcf, nlh, 0, flow_tcf_collect_neigh_cb, &ctx);
+	if (ret)
+		DRV_LOG(WARNING, "netlink: query device list error %d", ret);
+	ret = flow_tcf_send_nlcmd(tcf, &ctx);
+	if (ret)
+		DRV_LOG(WARNING, "netlink: device delete error %d", ret);
+}
+
+/**
+ * Collect indices of VXLAN encap/decap interfaces associated with device.
+ * This is callback routine called by libmnl mnl_cb_run() in loop for
+ * every message in received packet.
+ *
+ * @param[in] nlh
+ *   Pointer to reply header.
+ * @param[in, out] arg
+ *   Opaque data pointer for this callback.
+ *
+ * @return
+ *   A positive, nonzero value on success, negative errno value otherwise
+ *   and rte_errno is set.
+ */
+static int
+flow_tcf_collect_vxlan_cb(const struct nlmsghdr *nlh, void *arg)
+{
+	struct tcf_nlcb_context *ctx = arg;
+	struct nlmsghdr *cmd;
+	struct ifinfomsg *ifm;
+	struct nlattr *na;
+	struct nlattr *na_info = NULL;
+	struct nlattr *na_vxlan = NULL;
+	bool found = false;
+	unsigned int vxindex;
+
+	if (nlh->nlmsg_type != RTM_NEWLINK) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	ifm = mnl_nlmsg_get_payload(nlh);
+	if (!ifm->ifi_index) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	mnl_attr_for_each(na, nlh, sizeof(*ifm))
+		if (mnl_attr_get_type(na) == IFLA_LINKINFO) {
+			na_info = na;
+			break;
+		}
+	if (!na_info)
+		return 1;
+	mnl_attr_for_each_nested(na, na_info) {
+		switch (mnl_attr_get_type(na)) {
+		case IFLA_INFO_KIND:
+			if (!strncmp("vxlan", mnl_attr_get_str(na),
+				     mnl_attr_get_len(na)))
+				found = true;
+			break;
+		case IFLA_INFO_DATA:
+			na_vxlan = na;
+			break;
+		}
+		if (found && na_vxlan)
+			break;
+	}
+	if (!found || !na_vxlan)
+		return 1;
+	found = false;
+	mnl_attr_for_each_nested(na, na_vxlan) {
+		if (mnl_attr_get_type(na) == IFLA_VXLAN_LINK &&
+		    mnl_attr_get_u32(na) == ctx->ifindex) {
+			found = true;
+			break;
+		}
+	}
+	if (!found)
+		return 1;
+	/* Attached VXLAN device found, store the command to delete. */
+	vxindex = ifm->ifi_index;
+	cmd = flow_tcf_alloc_nlcmd(ctx, MNL_ALIGN(sizeof(struct nlmsghdr)) +
+					MNL_ALIGN(sizeof(struct ifinfomsg)));
+	if (!nlh) {
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+	cmd = mnl_nlmsg_put_header(cmd);
+	cmd->nlmsg_type = RTM_DELLINK;
+	cmd->nlmsg_flags = NLM_F_REQUEST;
+	ifm = mnl_nlmsg_put_extra_header(cmd, sizeof(*ifm));
+	ifm->ifi_family = AF_UNSPEC;
+	ifm->ifi_index = vxindex;
+	return 1;
+}
+
+/**
+ * Cleanup the outer interface. Removes all found vxlan devices
+ * attached to specified index, flushes the meigh and local IP
+ * datavase.
+ *
+ * @param[in] tcf
+ *   Context object initialized by mlx5_flow_tcf_context_create().
+ * @param[in] ifindex
+ *   Network inferface index to perform cleanup.
+ */
+static void
+flow_tcf_encap_iface_cleanup(struct mlx5_flow_tcf_context *tcf,
+			    unsigned int ifindex)
+{
+	struct nlmsghdr *nlh;
+	struct ifinfomsg *ifm;
+	struct tcf_nlcb_context ctx = {
+		.ifindex = ifindex,
+		.bufsize = MNL_REQUEST_SIZE,
+		.nlbuf = LIST_HEAD_INITIALIZER(),
+	};
+	int ret;
+
+	assert(ifindex);
+	/*
+	 * Seek and destroy leftover VXLAN encap/decap interfaces with
+	 * matching properties.
+	 */
+	nlh = mnl_nlmsg_put_header(tcf->buf);
+	nlh->nlmsg_type = RTM_GETLINK;
+	nlh->nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
+	ifm = mnl_nlmsg_put_extra_header(nlh, sizeof(*ifm));
+	ifm->ifi_family = AF_UNSPEC;
+	ret = flow_tcf_nl_ack(tcf, nlh, 0, flow_tcf_collect_vxlan_cb, &ctx);
+	if (ret)
+		DRV_LOG(WARNING, "netlink: query device list error %d", ret);
+	ret = flow_tcf_send_nlcmd(tcf, &ctx);
+	if (ret)
+		DRV_LOG(WARNING, "netlink: device delete error %d", ret);
+}
+
 /**
  * Emit Netlink message to add/remove local address to the outer device.
  * The address being added is visible within the link only (scope link).
@@ -4461,6 +4951,9 @@ flow_tcf_encap_vtep_acquire(struct mlx5_flow_tcf_context *tcf,
 		uint16_t pcnt;
 
 		/* Not found, we should create the new attached VTEP. */
+		flow_tcf_encap_iface_cleanup(tcf, ifouter);
+		flow_tcf_encap_local_cleanup(tcf, ifouter);
+		flow_tcf_encap_neigh_cleanup(tcf, ifouter);
 		for (pcnt = 0; pcnt <= (MLX5_VXLAN_PORT_MAX
 				     - MLX5_VXLAN_PORT_MIN); pcnt++) {
 			encap_port++;
