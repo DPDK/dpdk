@@ -2422,7 +2422,7 @@ flow_tcf_get_items_and_size(const struct rte_flow_attr *attr,
 		case RTE_FLOW_ITEM_TYPE_IPV6:
 			size += SZ_NLATTR_TYPE_OF(uint16_t) + /* Ether type. */
 				SZ_NLATTR_TYPE_OF(uint8_t) + /* IP proto. */
-				SZ_NLATTR_TYPE_OF(IPV6_ADDR_LEN) * 4;
+				SZ_NLATTR_DATA_OF(IPV6_ADDR_LEN) * 4;
 				/* dst/src IP addr and mask. */
 			flags |= MLX5_FLOW_LAYER_OUTER_L3_IPV6;
 			break;
@@ -2438,6 +2438,10 @@ flow_tcf_get_items_and_size(const struct rte_flow_attr *attr,
 				/* dst/src port and mask. */
 			flags |= MLX5_FLOW_LAYER_OUTER_L4_TCP;
 			break;
+		case RTE_FLOW_ITEM_TYPE_VXLAN:
+			size += SZ_NLATTR_TYPE_OF(uint32_t);
+			flags |= MLX5_FLOW_LAYER_VXLAN;
+			break;
 		default:
 			DRV_LOG(WARNING,
 				"unsupported item %p type %d,"
@@ -2447,6 +2451,69 @@ flow_tcf_get_items_and_size(const struct rte_flow_attr *attr,
 		}
 	}
 	*item_flags = flags;
+	return size;
+}
+
+/**
+ * Calculate size of memory to store the VXLAN encapsultion
+ * related items in the Netlink message buffer. Items list
+ * is specified by RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP action.
+ * The item list should be validated.
+ *
+ * @param[in] action
+ *   RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP action object.
+ *   List of pattern items to scan data from.
+ *
+ * @return
+ *   The size the part of Netlink message buffer to store the
+ *   VXLAN encapsulation item attributes.
+ */
+static int
+flow_tcf_vxlan_encap_size(const struct rte_flow_action *action)
+{
+	const struct rte_flow_item *items;
+	int size = 0;
+
+	assert(action->type == RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP);
+	assert(action->conf);
+
+	items = ((const struct rte_flow_action_vxlan_encap *)
+					action->conf)->definition;
+	assert(items);
+	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
+		switch (items->type) {
+		case RTE_FLOW_ITEM_TYPE_VOID:
+			break;
+		case RTE_FLOW_ITEM_TYPE_ETH:
+			/* This item does not require message buffer. */
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV4:
+			size += SZ_NLATTR_DATA_OF(IPV4_ADDR_LEN) * 2;
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6:
+			size += SZ_NLATTR_DATA_OF(IPV6_ADDR_LEN) * 2;
+			break;
+		case RTE_FLOW_ITEM_TYPE_UDP: {
+			const struct rte_flow_item_udp *udp = items->mask;
+
+			size += SZ_NLATTR_TYPE_OF(uint16_t);
+			if (!udp || udp->hdr.src_port != RTE_BE16(0x0000))
+				size += SZ_NLATTR_TYPE_OF(uint16_t);
+			break;
+		}
+		case RTE_FLOW_ITEM_TYPE_VXLAN:
+			size +=	SZ_NLATTR_TYPE_OF(uint32_t);
+			break;
+		default:
+			assert(false);
+			DRV_LOG(WARNING,
+				"unsupported item %p type %d,"
+				" items must be validated"
+				" before flow creation",
+				(const void *)items, items->type);
+			return 0;
+		}
+	}
 	return size;
 }
 
@@ -2518,6 +2585,29 @@ action_of_vlan:
 				/* VLAN protocol. */
 				SZ_NLATTR_TYPE_OF(uint16_t) + /* VLAN ID. */
 				SZ_NLATTR_TYPE_OF(uint8_t); /* VLAN prio. */
+			break;
+		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+			size += SZ_NLATTR_NEST + /* na_act_index. */
+				SZ_NLATTR_STRZ_OF("tunnel_key") +
+				SZ_NLATTR_NEST + /* TCA_ACT_OPTIONS. */
+				SZ_NLATTR_TYPE_OF(uint8_t);
+			size += SZ_NLATTR_TYPE_OF(struct tc_tunnel_key);
+			size +=	flow_tcf_vxlan_encap_size(actions) +
+				RTE_ALIGN_CEIL /* preceding encap params. */
+				(sizeof(struct flow_tcf_vxlan_encap),
+				MNL_ALIGNTO);
+			flags |= MLX5_FLOW_ACTION_VXLAN_ENCAP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
+			size += SZ_NLATTR_NEST + /* na_act_index. */
+				SZ_NLATTR_STRZ_OF("tunnel_key") +
+				SZ_NLATTR_NEST + /* TCA_ACT_OPTIONS. */
+				SZ_NLATTR_TYPE_OF(uint8_t);
+			size +=	SZ_NLATTR_TYPE_OF(struct tc_tunnel_key);
+			size +=	RTE_ALIGN_CEIL /* preceding decap params. */
+				(sizeof(struct flow_tcf_vxlan_decap),
+				MNL_ALIGNTO);
+			flags |= MLX5_FLOW_ACTION_VXLAN_DECAP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC:
 		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DST:
@@ -2594,12 +2684,15 @@ flow_tcf_prepare(const struct rte_flow_attr *attr,
 		 uint64_t *item_flags, uint64_t *action_flags,
 		 struct rte_flow_error *error)
 {
-	size_t size = sizeof(struct mlx5_flow) +
+	size_t size = RTE_ALIGN_CEIL
+			(sizeof(struct mlx5_flow),
+			 alignof(struct flow_tcf_tunnel_hdr)) +
 		      MNL_ALIGN(sizeof(struct nlmsghdr)) +
 		      MNL_ALIGN(sizeof(struct tcmsg));
 	struct mlx5_flow *dev_flow;
 	struct nlmsghdr *nlh;
 	struct tcmsg *tcm;
+	uint8_t *sp, *tun = NULL;
 
 	size += flow_tcf_get_items_and_size(attr, items, item_flags);
 	size += flow_tcf_get_actions_and_size(actions, action_flags);
@@ -2610,14 +2703,52 @@ flow_tcf_prepare(const struct rte_flow_attr *attr,
 				   "not enough memory to create E-Switch flow");
 		return NULL;
 	}
-	nlh = mnl_nlmsg_put_header((void *)(dev_flow + 1));
+	sp = (uint8_t *)(dev_flow + 1);
+	if (*action_flags & MLX5_FLOW_ACTION_VXLAN_ENCAP) {
+		sp = RTE_PTR_ALIGN
+			(sp, alignof(struct flow_tcf_tunnel_hdr));
+		tun = sp;
+		sp += RTE_ALIGN_CEIL
+			(sizeof(struct flow_tcf_vxlan_encap),
+			MNL_ALIGNTO);
+#ifndef NDEBUG
+		size -= RTE_ALIGN_CEIL
+			(sizeof(struct flow_tcf_vxlan_encap),
+			MNL_ALIGNTO);
+#endif
+	} else if (*action_flags & MLX5_FLOW_ACTION_VXLAN_DECAP) {
+		sp = RTE_PTR_ALIGN
+			(sp, alignof(struct flow_tcf_tunnel_hdr));
+		tun = sp;
+		sp += RTE_ALIGN_CEIL
+			(sizeof(struct flow_tcf_vxlan_decap),
+			MNL_ALIGNTO);
+#ifndef NDEBUG
+		size -= RTE_ALIGN_CEIL
+			(sizeof(struct flow_tcf_vxlan_decap),
+			MNL_ALIGNTO);
+#endif
+	} else {
+		sp = RTE_PTR_ALIGN(sp, MNL_ALIGNTO);
+	}
+	nlh = mnl_nlmsg_put_header(sp);
 	tcm = mnl_nlmsg_put_extra_header(nlh, sizeof(*tcm));
 	*dev_flow = (struct mlx5_flow){
 		.tcf = (struct mlx5_flow_tcf){
+#ifndef NDEBUG
+			.nlsize = size - RTE_ALIGN_CEIL
+				(sizeof(struct mlx5_flow),
+				 alignof(struct flow_tcf_tunnel_hdr)),
+#endif
+			.tunnel = (struct flow_tcf_tunnel_hdr *)tun,
 			.nlh = nlh,
 			.tcm = tcm,
 		},
 	};
+	if (*action_flags & MLX5_FLOW_ACTION_VXLAN_DECAP)
+		dev_flow->tcf.tunnel->type = FLOW_TCF_TUNACT_VXLAN_DECAP;
+	else if (*action_flags & MLX5_FLOW_ACTION_VXLAN_ENCAP)
+		dev_flow->tcf.tunnel->type = FLOW_TCF_TUNACT_VXLAN_ENCAP;
 	/*
 	 * Generate a reasonably unique handle based on the address of the
 	 * target buffer.
