@@ -530,7 +530,15 @@ struct flow_tcf_ptoi {
 
 /* Due to a limitation on driver/FW. */
 #define MLX5_TCF_GROUP_ID_MAX 3
-#define MLX5_TCF_GROUP_PRIORITY_MAX 14
+
+/*
+ * Due to a limitation on driver/FW, priority ranges from 1 to 16 in kernel.
+ * Priority in rte_flow attribute starts from 0 and is added by 1 in
+ * translation. This is subject to be changed to determine the max priority
+ * based on trial-and-error like Verbs driver once the restriction is lifted or
+ * the range is extended.
+ */
+#define MLX5_TCF_GROUP_PRIORITY_MAX 15
 
 #define MLX5_TCF_FATE_ACTIONS \
 	(MLX5_FLOW_ACTION_DROP | MLX5_FLOW_ACTION_PORT_ID | \
@@ -1091,19 +1099,13 @@ flow_tcf_validate_attributes(const struct rte_flow_attr *attr,
 					  "group ID larger than "
 					  RTE_STR(MLX5_TCF_GROUP_ID_MAX)
 					  " isn't supported");
-	else if (attr->group > 0 &&
-		 attr->priority > MLX5_TCF_GROUP_PRIORITY_MAX)
+	else if (attr->priority > MLX5_TCF_GROUP_PRIORITY_MAX)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
 					  attr,
-					  "lowest priority level is "
+					  "priority more than "
 					  RTE_STR(MLX5_TCF_GROUP_PRIORITY_MAX)
-					  " when group is configured");
-	else if (attr->priority > 0xfffe)
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
-					  attr,
-					  "lowest priority level is 0xfffe");
+					  " is not supported");
 	if (!attr->ingress)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
