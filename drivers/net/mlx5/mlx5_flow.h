@@ -219,6 +219,15 @@ struct mlx5_flow_dv {
 struct mlx5_flow_tcf {
 	struct nlmsghdr *nlh;
 	struct tcmsg *tcm;
+	union { /**< Tunnel encap/decap descriptor. */
+		struct flow_tcf_tunnel_hdr *tunnel;
+		struct flow_tcf_vxlan_decap *vxlan_decap;
+		struct flow_tcf_vxlan_encap *vxlan_encap;
+	};
+	uint32_t applied:1; /**< Whether rule is currently applied. */
+#ifndef NDEBUG
+	uint32_t nlsize; /**< Size of NL message buffer for debug check. */
+#endif
 };
 
 /* Verbs specification header. */

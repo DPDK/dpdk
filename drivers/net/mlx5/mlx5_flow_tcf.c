@@ -348,6 +348,100 @@ struct mlx5_flow_tcf_context {
 	uint8_t *buf; /* Message buffer. */
 };
 
+/**
+ * Neigh rule structure. The neigh rule is applied via Netlink to
+ * outer tunnel iface in order to provide destination MAC address
+ * for the VXLAN encapsultion. The neigh rule is implicitly related
+ * to the Flow itself and can be shared by multiple Flows.
+ */
+struct tcf_neigh_rule {
+	LIST_ENTRY(tcf_neigh_rule) next;
+	uint32_t refcnt;
+	struct ether_addr eth;
+	uint16_t mask;
+	union {
+		struct {
+			rte_be32_t dst;
+		} ipv4;
+		struct {
+			uint8_t dst[IPV6_ADDR_LEN];
+		} ipv6;
+	};
+};
+
+/**
+ * Local rule structure. The local rule is applied via Netlink to
+ * outer tunnel iface in order to provide local and peer IP addresses
+ * of the VXLAN tunnel for encapsulation. The local rule is implicitly
+ * related to the Flow itself and can be shared by multiple Flows.
+ */
+struct tcf_local_rule {
+	LIST_ENTRY(tcf_local_rule) next;
+	uint32_t refcnt;
+	uint16_t mask;
+	union {
+		struct {
+			rte_be32_t dst;
+			rte_be32_t src;
+		} ipv4;
+		struct {
+			uint8_t dst[IPV6_ADDR_LEN];
+			uint8_t src[IPV6_ADDR_LEN];
+		} ipv6;
+	};
+};
+
+/** VXLAN virtual netdev. */
+struct tcf_vtep {
+	LIST_ENTRY(tcf_vtep) next;
+	LIST_HEAD(, tcf_neigh_rule) neigh;
+	LIST_HEAD(, tcf_local_rule) local;
+	uint32_t refcnt;
+	unsigned int ifindex; /**< Own interface index. */
+	unsigned int ifouter; /**< Index of device attached to. */
+	uint16_t port;
+	uint8_t created;
+};
+
+/** Tunnel descriptor header, common for all tunnel types. */
+struct flow_tcf_tunnel_hdr {
+	uint32_t type; /**< Tunnel action type. */
+	struct tcf_vtep *vtep; /**< Virtual tunnel endpoint device. */
+	unsigned int ifindex_org; /**< Original dst/src interface */
+	unsigned int *ifindex_ptr; /**< Interface ptr in message. */
+};
+
+struct flow_tcf_vxlan_decap {
+	struct flow_tcf_tunnel_hdr hdr;
+	uint16_t udp_port;
+};
+
+struct flow_tcf_vxlan_encap {
+	struct flow_tcf_tunnel_hdr hdr;
+	uint32_t mask;
+	struct {
+		struct ether_addr dst;
+		struct ether_addr src;
+	} eth;
+	union {
+		struct {
+			rte_be32_t dst;
+			rte_be32_t src;
+		} ipv4;
+		struct {
+			uint8_t dst[IPV6_ADDR_LEN];
+			uint8_t src[IPV6_ADDR_LEN];
+		} ipv6;
+	};
+struct {
+		rte_be16_t src;
+		rte_be16_t dst;
+	} udp;
+	struct {
+		uint8_t vni[3];
+	} vxlan;
+};
+
 /** Structure used when extracting the values of a flow counters
  * from a netlink message.
  */
@@ -365,6 +459,7 @@ static const union {
 	struct rte_flow_item_ipv6 ipv6;
 	struct rte_flow_item_tcp tcp;
 	struct rte_flow_item_udp udp;
+	struct rte_flow_item_vxlan vxlan;
 } flow_tcf_mask_empty;
 
 /** Supported masks for known item types. */
@@ -376,6 +471,7 @@ static const struct {
 	struct rte_flow_item_ipv6 ipv6;
 	struct rte_flow_item_tcp tcp;
 	struct rte_flow_item_udp udp;
+	struct rte_flow_item_vxlan vxlan;
 } flow_tcf_mask_supported = {
 	.port_id = {
 		.id = 0xffffffff,
@@ -412,6 +508,9 @@ static const struct {
 	.udp.hdr = {
 		.src_port = RTE_BE16(0xffff),
 		.dst_port = RTE_BE16(0xffff),
+	},
+	.vxlan = {
+	       .vni = "\xff\xff\xff",
 	},
 };
 
