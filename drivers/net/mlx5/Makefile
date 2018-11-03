@@ -218,6 +218,11 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		enum IFLA_PHYS_PORT_NAME \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
+		HAVE_IFLA_VXLAN_COLLECT_METADATA \
+		linux/if_link.h \
+		enum IFLA_VXLAN_COLLECT_METADATA \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
 		HAVE_TCA_CHAIN \
 		linux/rtnetlink.h \
 		enum TCA_CHAIN \
@@ -376,6 +381,86 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		HAVE_TC_ACT_VLAN \
 		linux/tc_act/tc_vlan.h \
 		enum TCA_VLAN_PUSH_VLAN_PRIORITY \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_ENC_KEY_ID \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_ENC_KEY_ID \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_ENC_IPV4_SRC \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_ENC_IPV4_SRC \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_ENC_IPV4_SRC_MASK \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_ENC_IPV4_SRC_MASK \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_ENC_IPV4_DST \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_ENC_IPV4_DST \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_ENC_IPV4_DST_MASK \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_ENC_IPV4_DST_MASK \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_ENC_IPV6_SRC \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_ENC_IPV6_SRC \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_ENC_IPV6_SRC_MASK \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_ENC_IPV6_SRC_MASK \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_ENC_IPV6_DST \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_ENC_IPV6_DST \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_ENC_IPV6_DST_MASK \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_ENC_IPV6_DST_MASK \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_ENC_UDP_SRC_PORT \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_ENC_UDP_SRC_PORT \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_ENC_UDP_SRC_PORT_MASK \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_ENC_UDP_SRC_PORT_MASK \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_ENC_UDP_DST_PORT \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_ENC_UDP_DST_PORT \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_ENC_UDP_DST_PORT_MASK \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_ENC_UDP_DST_PORT_MASK \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TC_ACT_TUNNEL_KEY \
+		linux/tc_act/tc_tunnel_key.h \
+		define TCA_ACT_TUNNEL_KEY \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_TUNNEL_KEY_ENC_DST_PORT \
+		linux/tc_act/tc_tunnel_key.h \
+		enum TCA_TUNNEL_KEY_ENC_DST_PORT \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_TUNNEL_KEY_NO_CSUM \
+		linux/tc_act/tc_tunnel_key.h \
+		enum TCA_TUNNEL_KEY_NO_CSUM \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
 		HAVE_TC_ACT_PEDIT \
