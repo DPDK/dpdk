@@ -3803,6 +3803,373 @@ flow_tcf_nl_ack(struct mlx5_flow_tcf_context *tcf,
 #define MNL_REQUEST_SIZE RTE_MIN(RTE_MAX(sysconf(_SC_PAGESIZE), \
 				 MNL_REQUEST_SIZE_MIN), MNL_REQUEST_SIZE_MAX)
 
+/**
+ * Emit Netlink message to add/remove local address to the outer device.
+ * The address being added is visible within the link only (scope link).
+ *
+ * Note that an implicit route is maintained by the kernel due to the
+ * presence of a peer address (IFA_ADDRESS).
+ *
+ * These rules are used for encapsultion only and allow to assign
+ * the outer tunnel source IP address.
+ *
+ * @param[in] tcf
+ *   Libmnl socket context object.
+ * @param[in] encap
+ *   Encapsulation properties (source address and its peer).
+ * @param[in] ifindex
+ *   Network interface to apply rule.
+ * @param[in] enable
+ *   Toggle between add and remove.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_tcf_rule_local(struct mlx5_flow_tcf_context *tcf,
+		    const struct flow_tcf_vxlan_encap *encap,
+		    unsigned int ifindex,
+		    bool enable,
+		    struct rte_flow_error *error)
+{
+	struct nlmsghdr *nlh;
+	struct ifaddrmsg *ifa;
+	alignas(struct nlmsghdr)
+	uint8_t buf[mnl_nlmsg_size(sizeof(*ifa) + 128)];
+
+	nlh = mnl_nlmsg_put_header(buf);
+	nlh->nlmsg_type = enable ? RTM_NEWADDR : RTM_DELADDR;
+	nlh->nlmsg_flags =
+		NLM_F_REQUEST | (enable ? NLM_F_CREATE | NLM_F_REPLACE : 0);
+	nlh->nlmsg_seq = 0;
+	ifa = mnl_nlmsg_put_extra_header(nlh, sizeof(*ifa));
+	ifa->ifa_flags = IFA_F_PERMANENT;
+	ifa->ifa_scope = RT_SCOPE_LINK;
+	ifa->ifa_index = ifindex;
+	if (encap->mask & FLOW_TCF_ENCAP_IPV4_SRC) {
+		ifa->ifa_family = AF_INET;
+		ifa->ifa_prefixlen = 32;
+		mnl_attr_put_u32(nlh, IFA_LOCAL, encap->ipv4.src);
+		if (encap->mask & FLOW_TCF_ENCAP_IPV4_DST)
+			mnl_attr_put_u32(nlh, IFA_ADDRESS,
+					      encap->ipv4.dst);
+	} else {
+		assert(encap->mask & FLOW_TCF_ENCAP_IPV6_SRC);
+		ifa->ifa_family = AF_INET6;
+		ifa->ifa_prefixlen = 128;
+		mnl_attr_put(nlh, IFA_LOCAL,
+				  sizeof(encap->ipv6.src),
+				  &encap->ipv6.src);
+		if (encap->mask & FLOW_TCF_ENCAP_IPV6_DST)
+			mnl_attr_put(nlh, IFA_ADDRESS,
+					  sizeof(encap->ipv6.dst),
+					  &encap->ipv6.dst);
+	}
+	if (!flow_tcf_nl_ack(tcf, nlh, 0, NULL, NULL))
+		return 0;
+	return rte_flow_error_set(error, rte_errno,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				  "netlink: cannot complete IFA request"
+				  " (ip addr add)");
+}
+
+/**
+ * Emit Netlink message to add/remove neighbor.
+ *
+ * @param[in] tcf
+ *   Libmnl socket context object.
+ * @param[in] encap
+ *   Encapsulation properties (destination address).
+ * @param[in] ifindex
+ *   Network interface.
+ * @param[in] enable
+ *   Toggle between add and remove.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_tcf_rule_neigh(struct mlx5_flow_tcf_context *tcf,
+		     const struct flow_tcf_vxlan_encap *encap,
+		     unsigned int ifindex,
+		     bool enable,
+		     struct rte_flow_error *error)
+{
+	struct nlmsghdr *nlh;
+	struct ndmsg *ndm;
+	alignas(struct nlmsghdr)
+	uint8_t buf[mnl_nlmsg_size(sizeof(*ndm) + 128)];
+
+	nlh = mnl_nlmsg_put_header(buf);
+	nlh->nlmsg_type = enable ? RTM_NEWNEIGH : RTM_DELNEIGH;
+	nlh->nlmsg_flags =
+		NLM_F_REQUEST | (enable ? NLM_F_CREATE | NLM_F_REPLACE : 0);
+	nlh->nlmsg_seq = 0;
+	ndm = mnl_nlmsg_put_extra_header(nlh, sizeof(*ndm));
+	ndm->ndm_ifindex = ifindex;
+	ndm->ndm_state = NUD_PERMANENT;
+	ndm->ndm_flags = 0;
+	ndm->ndm_type = 0;
+	if (encap->mask & FLOW_TCF_ENCAP_IPV4_DST) {
+		ndm->ndm_family = AF_INET;
+		mnl_attr_put_u32(nlh, NDA_DST, encap->ipv4.dst);
+	} else {
+		assert(encap->mask & FLOW_TCF_ENCAP_IPV6_DST);
+		ndm->ndm_family = AF_INET6;
+		mnl_attr_put(nlh, NDA_DST, sizeof(encap->ipv6.dst),
+						 &encap->ipv6.dst);
+	}
+	if (encap->mask & FLOW_TCF_ENCAP_ETH_SRC && enable)
+		DRV_LOG(WARNING,
+			"outer ethernet source address cannot be "
+			"forced for VXLAN encapsulation");
+	if (encap->mask & FLOW_TCF_ENCAP_ETH_DST)
+		mnl_attr_put(nlh, NDA_LLADDR, sizeof(encap->eth.dst),
+						    &encap->eth.dst);
+	if (!flow_tcf_nl_ack(tcf, nlh, 0, NULL, NULL))
+		return 0;
+	return rte_flow_error_set(error, rte_errno,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				  "netlink: cannot complete ND request"
+				  " (ip neigh)");
+}
+
+/**
+ * Manage the local IP addresses and their peers IP addresses on the
+ * outer interface for encapsulation purposes. The kernel searches the
+ * appropriate device for tunnel egress traffic using the outer source
+ * IP, this IP should be assigned to the outer network device, otherwise
+ * kernel rejects the rule.
+ *
+ * Adds or removes the addresses using the Netlink command like this:
+ *   ip addr add <src_ip> peer <dst_ip> scope link dev <ifouter>
+ *
+ * The addresses are local to the netdev ("scope link"), this reduces
+ * the risk of conflicts. Note that an implicit route is maintained by
+ * the kernel due to the presence of a peer address (IFA_ADDRESS).
+ *
+ * @param[in] tcf
+ *   Libmnl socket context object.
+ * @param[in] vtep
+ *   VTEP object, contains rule database and ifouter index.
+ * @param[in] dev_flow
+ *   Flow object, contains the tunnel parameters (for encap only).
+ * @param[in] enable
+ *   Toggle between add and remove.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_tcf_encap_local(struct mlx5_flow_tcf_context *tcf,
+		     struct tcf_vtep *vtep,
+		     struct mlx5_flow *dev_flow,
+		     bool enable,
+		     struct rte_flow_error *error)
+{
+	const struct flow_tcf_vxlan_encap *encap = dev_flow->tcf.vxlan_encap;
+	struct tcf_local_rule *rule;
+	bool found = false;
+	int ret;
+
+	assert(encap);
+	assert(encap->hdr.type == FLOW_TCF_TUNACT_VXLAN_ENCAP);
+	if (encap->mask & FLOW_TCF_ENCAP_IPV4_SRC) {
+		assert(encap->mask & FLOW_TCF_ENCAP_IPV4_DST);
+		LIST_FOREACH(rule, &vtep->local, next) {
+			if (rule->mask & FLOW_TCF_ENCAP_IPV4_SRC &&
+			    encap->ipv4.src == rule->ipv4.src &&
+			    encap->ipv4.dst == rule->ipv4.dst) {
+				found = true;
+				break;
+			}
+		}
+	} else {
+		assert(encap->mask & FLOW_TCF_ENCAP_IPV6_SRC);
+		assert(encap->mask & FLOW_TCF_ENCAP_IPV6_DST);
+		LIST_FOREACH(rule, &vtep->local, next) {
+			if (rule->mask & FLOW_TCF_ENCAP_IPV6_SRC &&
+			    !memcmp(&encap->ipv6.src, &rule->ipv6.src,
+					    sizeof(encap->ipv6.src)) &&
+			    !memcmp(&encap->ipv6.dst, &rule->ipv6.dst,
+					    sizeof(encap->ipv6.dst))) {
+				found = true;
+				break;
+			}
+		}
+	}
+	if (found) {
+		if (enable) {
+			rule->refcnt++;
+			return 0;
+		}
+		if (!rule->refcnt || !--rule->refcnt) {
+			LIST_REMOVE(rule, next);
+			return flow_tcf_rule_local(tcf, encap,
+					vtep->ifouter, false, error);
+		}
+		return 0;
+	}
+	if (!enable) {
+		DRV_LOG(WARNING, "disabling not existing local rule");
+		rte_flow_error_set(error, ENOENT,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "disabling not existing local rule");
+		return -ENOENT;
+	}
+	rule = rte_zmalloc(__func__, sizeof(struct tcf_local_rule),
+				alignof(struct tcf_local_rule));
+	if (!rule) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "unable to allocate memory for local rule");
+		return -rte_errno;
+	}
+	*rule = (struct tcf_local_rule){.refcnt = 0,
+					.mask = 0,
+					};
+	if (encap->mask & FLOW_TCF_ENCAP_IPV4_SRC) {
+		rule->mask = FLOW_TCF_ENCAP_IPV4_SRC
+			   | FLOW_TCF_ENCAP_IPV4_DST;
+		rule->ipv4.src = encap->ipv4.src;
+		rule->ipv4.dst = encap->ipv4.dst;
+	} else {
+		rule->mask = FLOW_TCF_ENCAP_IPV6_SRC
+			   | FLOW_TCF_ENCAP_IPV6_DST;
+		memcpy(&rule->ipv6.src, &encap->ipv6.src, IPV6_ADDR_LEN);
+		memcpy(&rule->ipv6.dst, &encap->ipv6.dst, IPV6_ADDR_LEN);
+	}
+	ret = flow_tcf_rule_local(tcf, encap, vtep->ifouter, true, error);
+	if (ret) {
+		rte_free(rule);
+		return ret;
+	}
+	rule->refcnt++;
+	LIST_INSERT_HEAD(&vtep->local, rule, next);
+	return 0;
+}
+
+/**
+ * Manage the destination MAC/IP addresses neigh database, kernel uses
+ * this one to determine the destination MAC address within encapsulation
+ * header. Adds or removes the entries using the Netlink command like this:
+ *   ip neigh add dev <ifouter> lladdr <dst_mac> to <dst_ip> nud permanent
+ *
+ * @param[in] tcf
+ *   Libmnl socket context object.
+ * @param[in] vtep
+ *   VTEP object, contains rule database and ifouter index.
+ * @param[in] dev_flow
+ *   Flow object, contains the tunnel parameters (for encap only).
+ * @param[in] enable
+ *   Toggle between add and remove.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_tcf_encap_neigh(struct mlx5_flow_tcf_context *tcf,
+		     struct tcf_vtep *vtep,
+		     struct mlx5_flow *dev_flow,
+		     bool enable,
+		     struct rte_flow_error *error)
+{
+	const struct flow_tcf_vxlan_encap *encap = dev_flow->tcf.vxlan_encap;
+	struct tcf_neigh_rule *rule;
+	bool found = false;
+	int ret;
+
+	assert(encap);
+	assert(encap->hdr.type == FLOW_TCF_TUNACT_VXLAN_ENCAP);
+	if (encap->mask & FLOW_TCF_ENCAP_IPV4_DST) {
+		assert(encap->mask & FLOW_TCF_ENCAP_IPV4_SRC);
+		LIST_FOREACH(rule, &vtep->neigh, next) {
+			if (rule->mask & FLOW_TCF_ENCAP_IPV4_DST &&
+			    encap->ipv4.dst == rule->ipv4.dst) {
+				found = true;
+				break;
+			}
+		}
+	} else {
+		assert(encap->mask & FLOW_TCF_ENCAP_IPV6_SRC);
+		assert(encap->mask & FLOW_TCF_ENCAP_IPV6_DST);
+		LIST_FOREACH(rule, &vtep->neigh, next) {
+			if (rule->mask & FLOW_TCF_ENCAP_IPV6_DST &&
+			    !memcmp(&encap->ipv6.dst, &rule->ipv6.dst,
+						sizeof(encap->ipv6.dst))) {
+				found = true;
+				break;
+			}
+		}
+	}
+	if (found) {
+		if (memcmp(&encap->eth.dst, &rule->eth,
+			   sizeof(encap->eth.dst))) {
+			DRV_LOG(WARNING, "Destination MAC differs"
+					 " in neigh rule");
+			rte_flow_error_set(error, EEXIST,
+					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   NULL, "Different MAC address"
+					   " neigh rule for the same"
+					   " destination IP");
+					return -EEXIST;
+		}
+		if (enable) {
+			rule->refcnt++;
+			return 0;
+		}
+		if (!rule->refcnt || !--rule->refcnt) {
+			LIST_REMOVE(rule, next);
+			return flow_tcf_rule_neigh(tcf, encap,
+						   vtep->ifouter,
+						   false, error);
+		}
+		return 0;
+	}
+	if (!enable) {
+		DRV_LOG(WARNING, "Disabling not existing neigh rule");
+		rte_flow_error_set(error, ENOENT,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "unable to allocate memory for neigh rule");
+		return -ENOENT;
+	}
+	rule = rte_zmalloc(__func__, sizeof(struct tcf_neigh_rule),
+				alignof(struct tcf_neigh_rule));
+	if (!rule) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "unable to allocate memory for neigh rule");
+		return -rte_errno;
+	}
+	*rule = (struct tcf_neigh_rule){.refcnt = 0,
+					.mask = 0,
+					};
+	if (encap->mask & FLOW_TCF_ENCAP_IPV4_DST) {
+		rule->mask = FLOW_TCF_ENCAP_IPV4_DST;
+		rule->ipv4.dst = encap->ipv4.dst;
+	} else {
+		rule->mask = FLOW_TCF_ENCAP_IPV6_DST;
+		memcpy(&rule->ipv6.dst, &encap->ipv6.dst, IPV6_ADDR_LEN);
+	}
+	memcpy(&rule->eth, &encap->eth.dst, sizeof(rule->eth));
+	ret = flow_tcf_rule_neigh(tcf, encap, vtep->ifouter, true, error);
+	if (ret) {
+		rte_free(rule);
+		return ret;
+	}
+	rule->refcnt++;
+	LIST_INSERT_HEAD(&vtep->neigh, rule, next);
+	return 0;
+}
+
 /* VTEP device list is shared between PMD port instances. */
 static LIST_HEAD(, tcf_vtep) vtep_list_vxlan = LIST_HEAD_INITIALIZER();
 static pthread_mutex_t vtep_list_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -4079,6 +4446,7 @@ flow_tcf_encap_vtep_acquire(struct mlx5_flow_tcf_context *tcf,
 {
 	static uint16_t encap_port = MLX5_VXLAN_PORT_MIN - 1;
 	struct tcf_vtep *vtep;
+	int ret;
 
 	assert(ifouter);
 	/* Look whether the attached VTEP for encap is created. */
@@ -4124,6 +4492,20 @@ flow_tcf_encap_vtep_acquire(struct mlx5_flow_tcf_context *tcf,
 	}
 	assert(vtep->ifouter == ifouter);
 	assert(vtep->ifindex);
+	/* Create local ipaddr with peer to specify the outer IPs. */
+	ret = flow_tcf_encap_local(tcf, vtep, dev_flow, true, error);
+	if (!ret) {
+		/* Create neigh rule to specify outer destination MAC. */
+		ret = flow_tcf_encap_neigh(tcf, vtep, dev_flow, true, error);
+		if (ret)
+			flow_tcf_encap_local(tcf, vtep,
+					     dev_flow, false, error);
+	}
+	if (ret) {
+		if (--vtep->refcnt == 0)
+			flow_tcf_vtep_delete(tcf, vtep);
+		return NULL;
+	}
 	return vtep;
 }
 
@@ -4193,6 +4575,9 @@ flow_tcf_vtep_release(struct mlx5_flow_tcf_context *tcf,
 	case FLOW_TCF_TUNACT_VXLAN_DECAP:
 		break;
 	case FLOW_TCF_TUNACT_VXLAN_ENCAP:
+		/* Remove the encap ancillary rules first. */
+		flow_tcf_encap_neigh(tcf, vtep, dev_flow, false, NULL);
+		flow_tcf_encap_local(tcf, vtep, dev_flow, false, NULL);
 		break;
 	default:
 		assert(false);
