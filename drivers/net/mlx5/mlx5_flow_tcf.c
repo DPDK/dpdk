@@ -113,6 +113,39 @@ struct tc_pedit_sel {
 
 #endif /* HAVE_TC_ACT_VLAN */
 
+#ifdef HAVE_TC_ACT_TUNNEL_KEY
+
+#include <linux/tc_act/tc_tunnel_key.h>
+
+#ifndef HAVE_TCA_TUNNEL_KEY_ENC_DST_PORT
+#define TCA_TUNNEL_KEY_ENC_DST_PORT 9
+#endif
+
+#ifndef HAVE_TCA_TUNNEL_KEY_NO_CSUM
+#define TCA_TUNNEL_KEY_NO_CSUM 10
+#endif
+
+#else /* HAVE_TC_ACT_TUNNEL_KEY */
+
+#define TCA_ACT_TUNNEL_KEY 17
+#define TCA_TUNNEL_KEY_ACT_SET 1
+#define TCA_TUNNEL_KEY_ACT_RELEASE 2
+#define TCA_TUNNEL_KEY_PARMS 2
+#define TCA_TUNNEL_KEY_ENC_IPV4_SRC 3
+#define TCA_TUNNEL_KEY_ENC_IPV4_DST 4
+#define TCA_TUNNEL_KEY_ENC_IPV6_SRC 5
+#define TCA_TUNNEL_KEY_ENC_IPV6_DST 6
+#define TCA_TUNNEL_KEY_ENC_KEY_ID 7
+#define TCA_TUNNEL_KEY_ENC_DST_PORT 9
+#define TCA_TUNNEL_KEY_NO_CSUM 10
+
+struct tc_tunnel_key {
+	tc_gen;
+	int t_action;
+};
+
+#endif /* HAVE_TC_ACT_TUNNEL_KEY */
+
 /* Normally found in linux/netlink.h. */
 #ifndef NETLINK_CAP_ACK
 #define NETLINK_CAP_ACK 10
@@ -211,6 +244,45 @@ struct tc_pedit_sel {
 #ifndef HAVE_TCA_FLOWER_KEY_VLAN_ETH_TYPE
 #define TCA_FLOWER_KEY_VLAN_ETH_TYPE 25
 #endif
+#ifndef HAVE_TCA_FLOWER_KEY_ENC_KEY_ID
+#define TCA_FLOWER_KEY_ENC_KEY_ID 26
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_ENC_IPV4_SRC
+#define TCA_FLOWER_KEY_ENC_IPV4_SRC 27
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_ENC_IPV4_SRC_MASK
+#define TCA_FLOWER_KEY_ENC_IPV4_SRC_MASK 28
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_ENC_IPV4_DST
+#define TCA_FLOWER_KEY_ENC_IPV4_DST 29
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_ENC_IPV4_DST_MASK
+#define TCA_FLOWER_KEY_ENC_IPV4_DST_MASK 30
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_ENC_IPV6_SRC
+#define TCA_FLOWER_KEY_ENC_IPV6_SRC 31
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_ENC_IPV6_SRC_MASK
+#define TCA_FLOWER_KEY_ENC_IPV6_SRC_MASK 32
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_ENC_IPV6_DST
+#define TCA_FLOWER_KEY_ENC_IPV6_DST 33
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_ENC_IPV6_DST_MASK
+#define TCA_FLOWER_KEY_ENC_IPV6_DST_MASK 34
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_ENC_UDP_SRC_PORT
+#define TCA_FLOWER_KEY_ENC_UDP_SRC_PORT 43
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_ENC_UDP_SRC_PORT_MASK
+#define TCA_FLOWER_KEY_ENC_UDP_SRC_PORT_MASK 44
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_ENC_UDP_DST_PORT
+#define TCA_FLOWER_KEY_ENC_UDP_DST_PORT 45
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_ENC_UDP_DST_PORT_MASK
+#define TCA_FLOWER_KEY_ENC_UDP_DST_PORT_MASK 46
+#endif
 #ifndef HAVE_TCA_FLOWER_KEY_TCP_FLAGS
 #define TCA_FLOWER_KEY_TCP_FLAGS 71
 #endif
@@ -240,6 +312,28 @@ struct tc_pedit_sel {
 #ifndef TCA_ACT_MAX_PRIO
 #define TCA_ACT_MAX_PRIO 32
 #endif
+
+/** UDP port range of VXLAN devices created by driver. */
+#define MLX5_VXLAN_PORT_MIN 30000
+#define MLX5_VXLAN_PORT_MAX 60000
+#define MLX5_VXLAN_DEVICE_PFX "vmlx_"
+
+/** Tunnel action type, used for @p type in header structure. */
+enum flow_tcf_tunact_type {
+	FLOW_TCF_TUNACT_VXLAN_DECAP,
+	FLOW_TCF_TUNACT_VXLAN_ENCAP,
+};
+
+/** Flags used for @p mask in tunnel action encap descriptors. */
+#define FLOW_TCF_ENCAP_ETH_SRC (1u << 0)
+#define FLOW_TCF_ENCAP_ETH_DST (1u << 1)
+#define FLOW_TCF_ENCAP_IPV4_SRC (1u << 2)
+#define FLOW_TCF_ENCAP_IPV4_DST (1u << 3)
+#define FLOW_TCF_ENCAP_IPV6_SRC (1u << 4)
+#define FLOW_TCF_ENCAP_IPV6_DST (1u << 5)
+#define FLOW_TCF_ENCAP_UDP_SRC (1u << 6)
+#define FLOW_TCF_ENCAP_UDP_DST (1u << 7)
+#define FLOW_TCF_ENCAP_VXLAN_VNI (1u << 8)
 
 /**
  * Structure for holding netlink context.
@@ -346,6 +440,9 @@ struct flow_tcf_ptoi {
 #define MLX5_TCF_VLAN_ACTIONS \
 	(MLX5_FLOW_ACTION_OF_POP_VLAN | MLX5_FLOW_ACTION_OF_PUSH_VLAN | \
 	 MLX5_FLOW_ACTION_OF_SET_VLAN_VID | MLX5_FLOW_ACTION_OF_SET_VLAN_PCP)
+
+#define MLX5_TCF_VXLAN_ACTIONS \
+	(MLX5_FLOW_ACTION_VXLAN_ENCAP | MLX5_FLOW_ACTION_VXLAN_DECAP)
 
 #define MLX5_TCF_PEDIT_ACTIONS \
 	(MLX5_FLOW_ACTION_SET_IPV4_SRC | MLX5_FLOW_ACTION_SET_IPV4_DST | \
