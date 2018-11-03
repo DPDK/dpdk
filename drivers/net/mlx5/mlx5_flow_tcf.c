@@ -1116,6 +1116,665 @@ flow_tcf_validate_attributes(const struct rte_flow_attr *attr,
 }
 
 /**
+ * Validate VXLAN_ENCAP action RTE_FLOW_ITEM_TYPE_ETH item for E-Switch.
+ * The routine checks the L2 fields to be used in encapsulation header.
+ *
+ * @param[in] item
+ *   Pointer to the item structure.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ **/
+static int
+flow_tcf_validate_vxlan_encap_eth(const struct rte_flow_item *item,
+				  struct rte_flow_error *error)
+{
+	const struct rte_flow_item_eth *spec = item->spec;
+	const struct rte_flow_item_eth *mask = item->mask;
+
+	if (!spec) {
+		/*
+		 * Specification for L2 addresses can be empty
+		 * because these ones are optional and not
+		 * required directly by tc rule. Kernel tries
+		 * to resolve these ones on its own
+		 */
+		return 0;
+	}
+	if (!mask) {
+		/* If mask is not specified use the default one. */
+		mask = &rte_flow_item_eth_mask;
+	}
+	if (memcmp(&mask->dst,
+		   &flow_tcf_mask_empty.eth.dst,
+		   sizeof(flow_tcf_mask_empty.eth.dst))) {
+		if (memcmp(&mask->dst,
+			   &rte_flow_item_eth_mask.dst,
+			   sizeof(rte_flow_item_eth_mask.dst)))
+			return rte_flow_error_set
+				(error, ENOTSUP,
+				 RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
+				 "no support for partial mask on"
+				 " \"eth.dst\" field");
+	}
+	if (memcmp(&mask->src,
+		   &flow_tcf_mask_empty.eth.src,
+		   sizeof(flow_tcf_mask_empty.eth.src))) {
+		if (memcmp(&mask->src,
+			   &rte_flow_item_eth_mask.src,
+			   sizeof(rte_flow_item_eth_mask.src)))
+			return rte_flow_error_set
+				(error, ENOTSUP,
+				 RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
+				 "no support for partial mask on"
+				 " \"eth.src\" field");
+	}
+	if (mask->type != RTE_BE16(0x0000)) {
+		if (mask->type != RTE_BE16(0xffff))
+			return rte_flow_error_set
+				(error, ENOTSUP,
+				 RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
+				 "no support for partial mask on"
+				 " \"eth.type\" field");
+		DRV_LOG(WARNING,
+			"outer ethernet type field"
+			" cannot be forced for vxlan"
+			" encapsulation, parameter ignored");
+	}
+	return 0;
+}
+
+/**
+ * Validate VXLAN_ENCAP action RTE_FLOW_ITEM_TYPE_IPV4 item for E-Switch.
+ * The routine checks the IPv4 fields to be used in encapsulation header.
+ *
+ * @param[in] item
+ *   Pointer to the item structure.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ **/
+static int
+flow_tcf_validate_vxlan_encap_ipv4(const struct rte_flow_item *item,
+				   struct rte_flow_error *error)
+{
+	const struct rte_flow_item_ipv4 *spec = item->spec;
+	const struct rte_flow_item_ipv4 *mask = item->mask;
+
+	if (!spec) {
+		/*
+		 * Specification for IP addresses cannot be empty
+		 * because it is required by tunnel_key parameter.
+		 */
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "NULL outer ipv4 address"
+					  " specification for vxlan"
+					  " encapsulation");
+	}
+	if (!mask)
+		mask = &rte_flow_item_ipv4_mask;
+	if (mask->hdr.dst_addr != RTE_BE32(0x00000000)) {
+		if (mask->hdr.dst_addr != RTE_BE32(0xffffffff))
+			return rte_flow_error_set
+				(error, ENOTSUP,
+				 RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
+				 "no support for partial mask on"
+				 " \"ipv4.hdr.dst_addr\" field"
+				 " for vxlan encapsulation");
+		/* More IPv4 address validations can be put here. */
+	} else {
+		/*
+		 * Kernel uses the destination IP address to determine
+		 * the routing path and obtain the MAC destination
+		 * address, so IP destination address must be
+		 * specified in the tc rule.
+		 */
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "outer ipv4 destination address"
+					  " must be specified for"
+					  " vxlan encapsulation");
+	}
+	if (mask->hdr.src_addr != RTE_BE32(0x00000000)) {
+		if (mask->hdr.src_addr != RTE_BE32(0xffffffff))
+			return rte_flow_error_set
+				(error, ENOTSUP,
+				 RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
+				 "no support for partial mask on"
+				 " \"ipv4.hdr.src_addr\" field"
+				 " for vxlan encapsulation");
+		/* More IPv4 address validations can be put here. */
+	} else {
+		/*
+		 * Kernel uses the source IP address to select the
+		 * interface for egress encapsulated traffic, so
+		 * it must be specified in the tc rule.
+		 */
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "outer ipv4 source address"
+					  " must be specified for"
+					  " vxlan encapsulation");
+	}
+	return 0;
+}
+
+/**
+ * Validate VXLAN_ENCAP action RTE_FLOW_ITEM_TYPE_IPV6 item for E-Switch.
+ * The routine checks the IPv6 fields to be used in encapsulation header.
+ *
+ * @param[in] item
+ *   Pointer to the item structure.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_ernno is set.
+ **/
+static int
+flow_tcf_validate_vxlan_encap_ipv6(const struct rte_flow_item *item,
+				   struct rte_flow_error *error)
+{
+	const struct rte_flow_item_ipv6 *spec = item->spec;
+	const struct rte_flow_item_ipv6 *mask = item->mask;
+
+	if (!spec) {
+		/*
+		 * Specification for IP addresses cannot be empty
+		 * because it is required by tunnel_key parameter.
+		 */
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "NULL outer ipv6 address"
+					  " specification for"
+					  " vxlan encapsulation");
+	}
+	if (!mask)
+		mask = &rte_flow_item_ipv6_mask;
+	if (memcmp(&mask->hdr.dst_addr,
+		   &flow_tcf_mask_empty.ipv6.hdr.dst_addr,
+		   IPV6_ADDR_LEN)) {
+		if (memcmp(&mask->hdr.dst_addr,
+			   &rte_flow_item_ipv6_mask.hdr.dst_addr,
+			   IPV6_ADDR_LEN))
+			return rte_flow_error_set
+					(error, ENOTSUP,
+					 RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
+					 "no support for partial mask on"
+					 " \"ipv6.hdr.dst_addr\" field"
+					 " for vxlan encapsulation");
+		/* More IPv6 address validations can be put here. */
+	} else {
+		/*
+		 * Kernel uses the destination IP address to determine
+		 * the routing path and obtain the MAC destination
+		 * address (heigh or gate), so IP destination address
+		 * must be specified within the tc rule.
+		 */
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "outer ipv6 destination address"
+					  " must be specified for"
+					  " vxlan encapsulation");
+	}
+	if (memcmp(&mask->hdr.src_addr,
+		   &flow_tcf_mask_empty.ipv6.hdr.src_addr,
+		   IPV6_ADDR_LEN)) {
+		if (memcmp(&mask->hdr.src_addr,
+			   &rte_flow_item_ipv6_mask.hdr.src_addr,
+			   IPV6_ADDR_LEN))
+			return rte_flow_error_set
+					(error, ENOTSUP,
+					 RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
+					 "no support for partial mask on"
+					 " \"ipv6.hdr.src_addr\" field"
+					 " for vxlan encapsulation");
+		/* More L3 address validation can be put here. */
+	} else {
+		/*
+		 * Kernel uses the source IP address to select the
+		 * interface for egress encapsulated traffic, so
+		 * it must be specified in the tc rule.
+		 */
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "outer L3 source address"
+					  " must be specified for"
+					  " vxlan encapsulation");
+	}
+	return 0;
+}
+
+/**
+ * Validate VXLAN_ENCAP action RTE_FLOW_ITEM_TYPE_UDP item for E-Switch.
+ * The routine checks the UDP fields to be used in encapsulation header.
+ *
+ * @param[in] item
+ *   Pointer to the item structure.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_ernno is set.
+ **/
+static int
+flow_tcf_validate_vxlan_encap_udp(const struct rte_flow_item *item,
+				  struct rte_flow_error *error)
+{
+	const struct rte_flow_item_udp *spec = item->spec;
+	const struct rte_flow_item_udp *mask = item->mask;
+
+	if (!spec) {
+		/*
+		 * Specification for UDP ports cannot be empty
+		 * because it is required by tunnel_key parameter.
+		 */
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "NULL UDP port specification "
+					  " for vxlan encapsulation");
+	}
+	if (!mask)
+		mask = &rte_flow_item_udp_mask;
+	if (mask->hdr.dst_port != RTE_BE16(0x0000)) {
+		if (mask->hdr.dst_port != RTE_BE16(0xffff))
+			return rte_flow_error_set
+					(error, ENOTSUP,
+					 RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
+					 "no support for partial mask on"
+					 " \"udp.hdr.dst_port\" field"
+					 " for vxlan encapsulation");
+		if (!spec->hdr.dst_port)
+			return rte_flow_error_set
+					(error, EINVAL,
+					 RTE_FLOW_ERROR_TYPE_ITEM, item,
+					 "outer UDP remote port cannot be"
+					 " 0 for vxlan encapsulation");
+	} else {
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "outer UDP remote port"
+					  " must be specified for"
+					  " vxlan encapsulation");
+	}
+	if (mask->hdr.src_port != RTE_BE16(0x0000)) {
+		if (mask->hdr.src_port != RTE_BE16(0xffff))
+			return rte_flow_error_set
+					(error, ENOTSUP,
+					 RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
+					 "no support for partial mask on"
+					 " \"udp.hdr.src_port\" field"
+					 " for vxlan encapsulation");
+		DRV_LOG(WARNING,
+			"outer UDP source port cannot be"
+			" forced for vxlan encapsulation,"
+			" parameter ignored");
+	}
+	return 0;
+}
+
+/**
+ * Validate VXLAN_ENCAP action RTE_FLOW_ITEM_TYPE_VXLAN item for E-Switch.
+ * The routine checks the VNIP fields to be used in encapsulation header.
+ *
+ * @param[in] item
+ *   Pointer to the item structure.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_ernno is set.
+ **/
+static int
+flow_tcf_validate_vxlan_encap_vni(const struct rte_flow_item *item,
+				  struct rte_flow_error *error)
+{
+	const struct rte_flow_item_vxlan *spec = item->spec;
+	const struct rte_flow_item_vxlan *mask = item->mask;
+
+	if (!spec) {
+		/* Outer VNI is required by tunnel_key parameter. */
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "NULL VNI specification"
+					  " for vxlan encapsulation");
+	}
+	if (!mask)
+		mask = &rte_flow_item_vxlan_mask;
+	if (!mask->vni[0] && !mask->vni[1] && !mask->vni[2])
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "outer VNI must be specified "
+					  "for vxlan encapsulation");
+	if (mask->vni[0] != 0xff ||
+	    mask->vni[1] != 0xff ||
+	    mask->vni[2] != 0xff)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
+					  "no support for partial mask on"
+					  " \"vxlan.vni\" field");
+
+	if (!spec->vni[0] && !spec->vni[1] && !spec->vni[2])
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "vxlan vni cannot be 0");
+	return 0;
+}
+
+/**
+ * Validate VXLAN_ENCAP action item list for E-Switch.
+ * The routine checks items to be used in encapsulation header.
+ *
+ * @param[in] action
+ *   Pointer to the VXLAN_ENCAP action structure.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_ernno is set.
+ **/
+static int
+flow_tcf_validate_vxlan_encap(const struct rte_flow_action *action,
+			      struct rte_flow_error *error)
+{
+	const struct rte_flow_item *items;
+	int ret;
+	uint32_t item_flags = 0;
+
+	if (!action->conf)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "Missing vxlan tunnel"
+					  " action configuration");
+	items = ((const struct rte_flow_action_vxlan_encap *)
+					action->conf)->definition;
+	if (!items)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "Missing vxlan tunnel"
+					  " encapsulation parameters");
+	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
+		switch (items->type) {
+		case RTE_FLOW_ITEM_TYPE_VOID:
+			break;
+		case RTE_FLOW_ITEM_TYPE_ETH:
+			ret = mlx5_flow_validate_item_eth(items, item_flags,
+							  error);
+			if (ret < 0)
+				return ret;
+			ret = flow_tcf_validate_vxlan_encap_eth(items, error);
+			if (ret < 0)
+				return ret;
+			item_flags |= MLX5_FLOW_LAYER_OUTER_L2;
+			break;
+		break;
+		case RTE_FLOW_ITEM_TYPE_IPV4:
+			ret = mlx5_flow_validate_item_ipv4(items, item_flags,
+							   error);
+			if (ret < 0)
+				return ret;
+			ret = flow_tcf_validate_vxlan_encap_ipv4(items, error);
+			if (ret < 0)
+				return ret;
+			item_flags |= MLX5_FLOW_LAYER_OUTER_L3_IPV4;
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6:
+			ret = mlx5_flow_validate_item_ipv6(items, item_flags,
+							   error);
+			if (ret < 0)
+				return ret;
+			ret = flow_tcf_validate_vxlan_encap_ipv6(items, error);
+			if (ret < 0)
+				return ret;
+			item_flags |= MLX5_FLOW_LAYER_OUTER_L3_IPV6;
+			break;
+		case RTE_FLOW_ITEM_TYPE_UDP:
+			ret = mlx5_flow_validate_item_udp(items, item_flags,
+							   0xFF, error);
+			if (ret < 0)
+				return ret;
+			ret = flow_tcf_validate_vxlan_encap_udp(items, error);
+			if (ret < 0)
+				return ret;
+			item_flags |= MLX5_FLOW_LAYER_OUTER_L4_UDP;
+			break;
+		case RTE_FLOW_ITEM_TYPE_VXLAN:
+			ret = mlx5_flow_validate_item_vxlan(items,
+							    item_flags, error);
+			if (ret < 0)
+				return ret;
+			ret = flow_tcf_validate_vxlan_encap_vni(items, error);
+			if (ret < 0)
+				return ret;
+			item_flags |= MLX5_FLOW_LAYER_VXLAN;
+			break;
+		default:
+			return rte_flow_error_set
+					(error, ENOTSUP,
+					 RTE_FLOW_ERROR_TYPE_ITEM, items,
+					 "vxlan encap item not supported");
+		}
+	}
+	if (!(item_flags & MLX5_FLOW_LAYER_OUTER_L3))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "no outer IP layer found"
+					  " for vxlan encapsulation");
+	if (!(item_flags & MLX5_FLOW_LAYER_OUTER_L4_UDP))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "no outer UDP layer found"
+					  " for vxlan encapsulation");
+	if (!(item_flags & MLX5_FLOW_LAYER_VXLAN))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "no VXLAN VNI found"
+					  " for vxlan encapsulation");
+	return 0;
+}
+
+/**
+ * Validate RTE_FLOW_ITEM_TYPE_IPV4 item if VXLAN_DECAP action
+ * is present in actions list.
+ *
+ * @param[in] ipv4
+ *   Outer IPv4 address item (if any, NULL otherwise).
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_ernno is set.
+ **/
+static int
+flow_tcf_validate_vxlan_decap_ipv4(const struct rte_flow_item *ipv4,
+				   struct rte_flow_error *error)
+{
+	const struct rte_flow_item_ipv4 *spec = ipv4->spec;
+	const struct rte_flow_item_ipv4 *mask = ipv4->mask;
+
+	if (!spec) {
+		/*
+		 * Specification for IP addresses cannot be empty
+		 * because it is required as decap parameter.
+		 */
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, ipv4,
+					  "NULL outer ipv4 address"
+					  " specification for vxlan"
+					  " for vxlan decapsulation");
+	}
+	if (!mask)
+		mask = &rte_flow_item_ipv4_mask;
+	if (mask->hdr.dst_addr != RTE_BE32(0x00000000)) {
+		if (mask->hdr.dst_addr != RTE_BE32(0xffffffff))
+			return rte_flow_error_set
+					(error, ENOTSUP,
+					 RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
+					 "no support for partial mask on"
+					 " \"ipv4.hdr.dst_addr\" field");
+		/* More IP address validations can be put here. */
+	} else {
+		/*
+		 * Kernel uses the destination IP address
+		 * to determine the ingress network interface
+		 * for traffic being decapsulated.
+		 */
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, ipv4,
+					  "outer ipv4 destination address"
+					  " must be specified for"
+					  " vxlan decapsulation");
+	}
+	/* Source IP address is optional for decap. */
+	if (mask->hdr.src_addr != RTE_BE32(0x00000000) &&
+	    mask->hdr.src_addr != RTE_BE32(0xffffffff))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
+					  "no support for partial mask on"
+					  " \"ipv4.hdr.src_addr\" field");
+	return 0;
+}
+
+/**
+ * Validate RTE_FLOW_ITEM_TYPE_IPV6 item if VXLAN_DECAP action
+ * is present in actions list.
+ *
+ * @param[in] ipv6
+ *   Outer IPv6 address item (if any, NULL otherwise).
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_ernno is set.
+ **/
+static int
+flow_tcf_validate_vxlan_decap_ipv6(const struct rte_flow_item *ipv6,
+				   struct rte_flow_error *error)
+{
+	const struct rte_flow_item_ipv6 *spec = ipv6->spec;
+	const struct rte_flow_item_ipv6 *mask = ipv6->mask;
+
+	if (!spec) {
+		/*
+		 * Specification for IP addresses cannot be empty
+		 * because it is required as decap parameter.
+		 */
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, ipv6,
+					  "NULL outer ipv6 address"
+					  " specification for vxlan"
+					  " decapsulation");
+	}
+	if (!mask)
+		mask = &rte_flow_item_ipv6_mask;
+	if (memcmp(&mask->hdr.dst_addr,
+		   &flow_tcf_mask_empty.ipv6.hdr.dst_addr,
+		   IPV6_ADDR_LEN)) {
+		if (memcmp(&mask->hdr.dst_addr,
+			&rte_flow_item_ipv6_mask.hdr.dst_addr,
+			IPV6_ADDR_LEN))
+			return rte_flow_error_set
+					(error, ENOTSUP,
+					 RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
+					 "no support for partial mask on"
+					 " \"ipv6.hdr.dst_addr\" field");
+		/* More IP address validations can be put here. */
+	} else {
+		/*
+		 * Kernel uses the destination IP address
+		 * to determine the ingress network interface
+		 * for traffic being decapsulated.
+		 */
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, ipv6,
+					  "outer ipv6 destination address must be "
+					  "specified for vxlan decapsulation");
+	}
+	/* Source IP address is optional for decap. */
+	if (memcmp(&mask->hdr.src_addr,
+		   &flow_tcf_mask_empty.ipv6.hdr.src_addr,
+		   IPV6_ADDR_LEN)) {
+		if (memcmp(&mask->hdr.src_addr,
+			   &rte_flow_item_ipv6_mask.hdr.src_addr,
+			   IPV6_ADDR_LEN))
+			return rte_flow_error_set
+					(error, ENOTSUP,
+					 RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
+					 "no support for partial mask on"
+					 " \"ipv6.hdr.src_addr\" field");
+	}
+	return 0;
+}
+
+/**
+ * Validate RTE_FLOW_ITEM_TYPE_UDP item if VXLAN_DECAP action
+ * is present in actions list.
+ *
+ * @param[in] udp
+ *   Outer UDP layer item (if any, NULL otherwise).
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_ernno is set.
+ **/
+static int
+flow_tcf_validate_vxlan_decap_udp(const struct rte_flow_item *udp,
+				  struct rte_flow_error *error)
+{
+	const struct rte_flow_item_udp *spec = udp->spec;
+	const struct rte_flow_item_udp *mask = udp->mask;
+
+	if (!spec)
+		/*
+		 * Specification for UDP ports cannot be empty
+		 * because it is required as decap parameter.
+		 */
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, udp,
+					  "NULL UDP port specification"
+					  " for VXLAN decapsulation");
+	if (!mask)
+		mask = &rte_flow_item_udp_mask;
+	if (mask->hdr.dst_port != RTE_BE16(0x0000)) {
+		if (mask->hdr.dst_port != RTE_BE16(0xffff))
+			return rte_flow_error_set
+					(error, ENOTSUP,
+					 RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
+					 "no support for partial mask on"
+					 " \"udp.hdr.dst_port\" field");
+		if (!spec->hdr.dst_port)
+			return rte_flow_error_set
+					(error, EINVAL,
+					 RTE_FLOW_ERROR_TYPE_ITEM, udp,
+					 "zero decap local UDP port");
+	} else {
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, udp,
+					  "outer UDP destination port must be "
+					  "specified for vxlan decapsulation");
+	}
+	if (mask->hdr.src_port != RTE_BE16(0x0000)) {
+		if (mask->hdr.src_port != RTE_BE16(0xffff))
+			return rte_flow_error_set
+					(error, ENOTSUP,
+					 RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
+					 "no support for partial mask on"
+					 " \"udp.hdr.src_port\" field");
+		DRV_LOG(WARNING,
+			"outer UDP local port cannot be "
+			"forced for VXLAN encapsulation, "
+			"parameter ignored");
+	}
+	return 0;
+}
+
+/**
  * Validate flow for E-Switch.
  *
  * @param[in] priv
@@ -1147,6 +1806,7 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 		const struct rte_flow_item_ipv6 *ipv6;
 		const struct rte_flow_item_tcp *tcp;
 		const struct rte_flow_item_udp *udp;
+		const struct rte_flow_item_vxlan *vxlan;
 	} spec, mask;
 	union {
 		const struct rte_flow_action_port_id *port_id;
@@ -1156,6 +1816,7 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 			of_set_vlan_vid;
 		const struct rte_flow_action_of_set_vlan_pcp *
 			of_set_vlan_pcp;
+		const struct rte_flow_action_vxlan_encap *vxlan_encap;
 		const struct rte_flow_action_set_ipv4 *set_ipv4;
 		const struct rte_flow_action_set_ipv6 *set_ipv6;
 	} conf;
@@ -1242,6 +1903,15 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 					 " set action must follow push action");
 			current_action_flag = MLX5_FLOW_ACTION_OF_SET_VLAN_PCP;
 			break;
+		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
+			current_action_flag = MLX5_FLOW_ACTION_VXLAN_DECAP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+			ret = flow_tcf_validate_vxlan_encap(actions, error);
+			if (ret < 0)
+				return ret;
+			current_action_flag = MLX5_FLOW_ACTION_VXLAN_ENCAP;
+			break;
 		case RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC:
 			current_action_flag = MLX5_FLOW_ACTION_SET_IPV4_SRC;
 			break;
@@ -1303,11 +1973,32 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 						  actions,
 						  "can't have multiple fate"
 						  " actions");
+		if ((current_action_flag & MLX5_TCF_VXLAN_ACTIONS) &&
+		    (action_flags & MLX5_TCF_VXLAN_ACTIONS))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  actions,
+						  "can't have multiple vxlan"
+						  " actions");
+		if ((current_action_flag & MLX5_TCF_VXLAN_ACTIONS) &&
+		    (action_flags & MLX5_TCF_VLAN_ACTIONS))
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  actions,
+						  "can't have vxlan and vlan"
+						  " actions in the same rule");
 		action_flags |= current_action_flag;
 	}
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
 		unsigned int i;
 
+		if ((item_flags & MLX5_FLOW_LAYER_TUNNEL) &&
+		    items->type != RTE_FLOW_ITEM_TYPE_ETH)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  items,
+						  "only L2 inner item"
+						  " is supported");
 		switch (items->type) {
 		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;
@@ -1361,7 +2052,9 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 							  error);
 			if (ret < 0)
 				return ret;
-			item_flags |= MLX5_FLOW_LAYER_OUTER_L2;
+			item_flags |= (item_flags & MLX5_FLOW_LAYER_TUNNEL) ?
+					MLX5_FLOW_LAYER_INNER_L2 :
+					MLX5_FLOW_LAYER_OUTER_L2;
 			/* TODO:
 			 * Redundant check due to different supported mask.
 			 * Same for the rest of items.
@@ -1439,6 +2132,12 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 				next_protocol =
 					((const struct rte_flow_item_ipv4 *)
 					 (items->spec))->hdr.next_proto_id;
+			if (action_flags & MLX5_FLOW_ACTION_VXLAN_DECAP) {
+				ret = flow_tcf_validate_vxlan_decap_ipv4
+								(items, error);
+				if (ret < 0)
+					return ret;
+			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
 			ret = mlx5_flow_validate_item_ipv6(items, item_flags,
@@ -1466,6 +2165,12 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 				next_protocol =
 					((const struct rte_flow_item_ipv6 *)
 					 (items->spec))->hdr.proto;
+			if (action_flags & MLX5_FLOW_ACTION_VXLAN_DECAP) {
+				ret = flow_tcf_validate_vxlan_decap_ipv6
+								(items, error);
+				if (ret < 0)
+					return ret;
+			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			ret = mlx5_flow_validate_item_udp(items, item_flags,
@@ -1481,6 +2186,12 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 				 error);
 			if (!mask.udp)
 				return -rte_errno;
+			if (action_flags & MLX5_FLOW_ACTION_VXLAN_DECAP) {
+				ret = flow_tcf_validate_vxlan_decap_udp
+								(items, error);
+				if (ret < 0)
+					return ret;
+			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			ret = mlx5_flow_validate_item_tcp
@@ -1500,10 +2211,40 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 			if (!mask.tcp)
 				return -rte_errno;
 			break;
+		case RTE_FLOW_ITEM_TYPE_VXLAN:
+			if (!(action_flags & MLX5_FLOW_ACTION_VXLAN_DECAP))
+				return rte_flow_error_set
+					(error, ENOTSUP,
+					 RTE_FLOW_ERROR_TYPE_ITEM,
+					 items,
+					 "vni pattern should be followed by"
+					 " vxlan decapsulation action");
+			ret = mlx5_flow_validate_item_vxlan(items,
+							    item_flags, error);
+			if (ret < 0)
+				return ret;
+			item_flags |= MLX5_FLOW_LAYER_VXLAN;
+			mask.vxlan = flow_tcf_item_mask
+				(items, &rte_flow_item_vxlan_mask,
+				 &flow_tcf_mask_supported.vxlan,
+				 &flow_tcf_mask_empty.vxlan,
+				 sizeof(flow_tcf_mask_supported.vxlan), error);
+			if (!mask.vxlan)
+				return -rte_errno;
+			if (mask.vxlan->vni[0] != 0xff ||
+			    mask.vxlan->vni[1] != 0xff ||
+			    mask.vxlan->vni[2] != 0xff)
+				return rte_flow_error_set
+					(error, ENOTSUP,
+					 RTE_FLOW_ERROR_TYPE_ITEM_MASK,
+					 mask.vxlan,
+					 "no support for partial or "
+					 "empty mask on \"vxlan.vni\" field");
+			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
-						  NULL, "item not supported");
+						  items, "item not supported");
 		}
 	}
 	if ((action_flags & MLX5_TCF_PEDIT_ACTIONS) &&
@@ -1572,6 +2313,12 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ACTION, actions,
 					  "vlan actions are supported"
 					  " only with port_id action");
+	if ((action_flags & MLX5_TCF_VXLAN_ACTIONS) &&
+	    !(action_flags & MLX5_FLOW_ACTION_PORT_ID))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "vxlan actions are supported"
+					  " only with port_id action");
 	if (!(action_flags & MLX5_TCF_FATE_ACTIONS))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, actions,
@@ -1594,6 +2341,28 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 						  actions,
 						  "no ethernet found in"
 						  " pattern");
+	}
+	if (action_flags & MLX5_FLOW_ACTION_VXLAN_DECAP) {
+		if (!(item_flags &
+		     (MLX5_FLOW_LAYER_OUTER_L3_IPV4 |
+		      MLX5_FLOW_LAYER_OUTER_L3_IPV6)))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL,
+						  "no outer IP pattern found"
+						  " for vxlan decap action");
+		if (!(item_flags & MLX5_FLOW_LAYER_OUTER_L4_UDP))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL,
+						  "no outer UDP pattern found"
+						  " for vxlan decap action");
+		if (!(item_flags & MLX5_FLOW_LAYER_VXLAN))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL,
+						  "no VNI pattern found"
+						  " for vxlan decap action");
 	}
 	return 0;
 }
