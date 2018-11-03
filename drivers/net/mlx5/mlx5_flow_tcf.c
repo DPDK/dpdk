@@ -1174,6 +1174,137 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 	ret = flow_tcf_validate_attributes(attr, error);
 	if (ret < 0)
 		return ret;
+	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		unsigned int i;
+		uint64_t current_action_flag = 0;
+
+		switch (actions->type) {
+		case RTE_FLOW_ACTION_TYPE_VOID:
+			break;
+		case RTE_FLOW_ACTION_TYPE_PORT_ID:
+			current_action_flag = MLX5_FLOW_ACTION_PORT_ID;
+			if (!actions->conf)
+				break;
+			conf.port_id = actions->conf;
+			if (conf.port_id->original)
+				i = 0;
+			else
+				for (i = 0; ptoi[i].ifindex; ++i)
+					if (ptoi[i].port_id == conf.port_id->id)
+						break;
+			if (!ptoi[i].ifindex)
+				return rte_flow_error_set
+					(error, ENODEV,
+					 RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					 conf.port_id,
+					 "missing data to convert port ID to"
+					 " ifindex");
+			port_id_dev = &rte_eth_devices[conf.port_id->id];
+			break;
+		case RTE_FLOW_ACTION_TYPE_JUMP:
+			current_action_flag = MLX5_FLOW_ACTION_JUMP;
+			if (!actions->conf)
+				break;
+			conf.jump = actions->conf;
+			if (attr->group >= conf.jump->group)
+				return rte_flow_error_set
+					(error, ENOTSUP,
+					 RTE_FLOW_ERROR_TYPE_ACTION,
+					 actions,
+					 "can jump only to a group forward");
+			break;
+		case RTE_FLOW_ACTION_TYPE_DROP:
+			current_action_flag = MLX5_FLOW_ACTION_DROP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+			break;
+		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
+			current_action_flag = MLX5_FLOW_ACTION_OF_POP_VLAN;
+			break;
+		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
+			current_action_flag = MLX5_FLOW_ACTION_OF_PUSH_VLAN;
+			break;
+		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
+			if (!(action_flags & MLX5_FLOW_ACTION_OF_PUSH_VLAN))
+				return rte_flow_error_set
+					(error, ENOTSUP,
+					 RTE_FLOW_ERROR_TYPE_ACTION, actions,
+					 "vlan modify is not supported,"
+					 " set action must follow push action");
+			current_action_flag = MLX5_FLOW_ACTION_OF_SET_VLAN_VID;
+			break;
+		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP:
+			if (!(action_flags & MLX5_FLOW_ACTION_OF_PUSH_VLAN))
+				return rte_flow_error_set
+					(error, ENOTSUP,
+					 RTE_FLOW_ERROR_TYPE_ACTION, actions,
+					 "vlan modify is not supported,"
+					 " set action must follow push action");
+			current_action_flag = MLX5_FLOW_ACTION_OF_SET_VLAN_PCP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC:
+			current_action_flag = MLX5_FLOW_ACTION_SET_IPV4_SRC;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DST:
+			current_action_flag = MLX5_FLOW_ACTION_SET_IPV4_DST;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC:
+			current_action_flag = MLX5_FLOW_ACTION_SET_IPV6_SRC;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_IPV6_DST:
+			current_action_flag = MLX5_FLOW_ACTION_SET_IPV6_DST;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_TP_SRC:
+			current_action_flag = MLX5_FLOW_ACTION_SET_TP_SRC;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
+			current_action_flag = MLX5_FLOW_ACTION_SET_TP_DST;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_TTL:
+			current_action_flag = MLX5_FLOW_ACTION_SET_TTL;
+			break;
+		case RTE_FLOW_ACTION_TYPE_DEC_TTL:
+			current_action_flag = MLX5_FLOW_ACTION_DEC_TTL;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_MAC_SRC:
+			current_action_flag = MLX5_FLOW_ACTION_SET_MAC_SRC;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SET_MAC_DST:
+			current_action_flag = MLX5_FLOW_ACTION_SET_MAC_DST;
+			break;
+		default:
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  actions,
+						  "action not supported");
+		}
+		if (current_action_flag & MLX5_TCF_CONFIG_ACTIONS) {
+			if (!actions->conf)
+				return rte_flow_error_set
+					(error, EINVAL,
+					 RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					 actions,
+					 "action configuration not set");
+		}
+		if ((current_action_flag & MLX5_TCF_PEDIT_ACTIONS) &&
+		    pedit_validated)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  actions,
+						  "set actions should be "
+						  "listed successively");
+		if ((current_action_flag & ~MLX5_TCF_PEDIT_ACTIONS) &&
+		    (action_flags & MLX5_TCF_PEDIT_ACTIONS))
+			pedit_validated = 1;
+		if ((current_action_flag & MLX5_TCF_FATE_ACTIONS) &&
+		    (action_flags & MLX5_TCF_FATE_ACTIONS))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  actions,
+						  "can't have multiple fate"
+						  " actions");
+		action_flags |= current_action_flag;
+	}
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
 		unsigned int i;
 
@@ -1374,136 +1505,6 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
 						  NULL, "item not supported");
 		}
-	}
-	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
-		unsigned int i;
-		uint64_t current_action_flag = 0;
-
-		switch (actions->type) {
-		case RTE_FLOW_ACTION_TYPE_VOID:
-			break;
-		case RTE_FLOW_ACTION_TYPE_PORT_ID:
-			current_action_flag = MLX5_FLOW_ACTION_PORT_ID;
-			if (!actions->conf)
-				break;
-			conf.port_id = actions->conf;
-			if (conf.port_id->original)
-				i = 0;
-			else
-				for (i = 0; ptoi[i].ifindex; ++i)
-					if (ptoi[i].port_id == conf.port_id->id)
-						break;
-			if (!ptoi[i].ifindex)
-				return rte_flow_error_set
-					(error, ENODEV,
-					 RTE_FLOW_ERROR_TYPE_ACTION_CONF,
-					 conf.port_id,
-					 "missing data to convert port ID to"
-					 " ifindex");
-			port_id_dev = &rte_eth_devices[conf.port_id->id];
-			break;
-		case RTE_FLOW_ACTION_TYPE_JUMP:
-			current_action_flag = MLX5_FLOW_ACTION_JUMP;
-			if (!actions->conf)
-				break;
-			conf.jump = actions->conf;
-			if (attr->group >= conf.jump->group)
-				return rte_flow_error_set
-					(error, ENOTSUP,
-					 RTE_FLOW_ERROR_TYPE_ACTION,
-					 actions,
-					 "can jump only to a group forward");
-			break;
-		case RTE_FLOW_ACTION_TYPE_DROP:
-			current_action_flag = MLX5_FLOW_ACTION_DROP;
-			break;
-		case RTE_FLOW_ACTION_TYPE_COUNT:
-			break;
-		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
-			current_action_flag = MLX5_FLOW_ACTION_OF_POP_VLAN;
-			break;
-		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
-			current_action_flag = MLX5_FLOW_ACTION_OF_PUSH_VLAN;
-			break;
-		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
-			if (!(action_flags & MLX5_FLOW_ACTION_OF_PUSH_VLAN))
-				return rte_flow_error_set
-					(error, ENOTSUP,
-					 RTE_FLOW_ERROR_TYPE_ACTION, actions,
-					 "vlan modify is not supported,"
-					 " set action must follow push action");
-			current_action_flag = MLX5_FLOW_ACTION_OF_SET_VLAN_VID;
-			break;
-		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP:
-			if (!(action_flags & MLX5_FLOW_ACTION_OF_PUSH_VLAN))
-				return rte_flow_error_set
-					(error, ENOTSUP,
-					 RTE_FLOW_ERROR_TYPE_ACTION, actions,
-					 "vlan modify is not supported,"
-					 " set action must follow push action");
-			current_action_flag = MLX5_FLOW_ACTION_OF_SET_VLAN_PCP;
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC:
-			current_action_flag = MLX5_FLOW_ACTION_SET_IPV4_SRC;
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DST:
-			current_action_flag = MLX5_FLOW_ACTION_SET_IPV4_DST;
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC:
-			current_action_flag = MLX5_FLOW_ACTION_SET_IPV6_SRC;
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_IPV6_DST:
-			current_action_flag = MLX5_FLOW_ACTION_SET_IPV6_DST;
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_TP_SRC:
-			current_action_flag = MLX5_FLOW_ACTION_SET_TP_SRC;
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
-			current_action_flag = MLX5_FLOW_ACTION_SET_TP_DST;
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_TTL:
-			current_action_flag = MLX5_FLOW_ACTION_SET_TTL;
-			break;
-		case RTE_FLOW_ACTION_TYPE_DEC_TTL:
-			current_action_flag = MLX5_FLOW_ACTION_DEC_TTL;
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_MAC_SRC:
-			current_action_flag = MLX5_FLOW_ACTION_SET_MAC_SRC;
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_MAC_DST:
-			current_action_flag = MLX5_FLOW_ACTION_SET_MAC_DST;
-			break;
-		default:
-			return rte_flow_error_set(error, ENOTSUP,
-						  RTE_FLOW_ERROR_TYPE_ACTION,
-						  actions,
-						  "action not supported");
-		}
-		if (current_action_flag & MLX5_TCF_CONFIG_ACTIONS) {
-			if (!actions->conf)
-				return rte_flow_error_set(error, EINVAL,
-						RTE_FLOW_ERROR_TYPE_ACTION_CONF,
-						actions,
-						"action configuration not set");
-		}
-		if ((current_action_flag & MLX5_TCF_PEDIT_ACTIONS) &&
-		    pedit_validated)
-			return rte_flow_error_set(error, ENOTSUP,
-						  RTE_FLOW_ERROR_TYPE_ACTION,
-						  actions,
-						  "set actions should be "
-						  "listed successively");
-		if ((current_action_flag & ~MLX5_TCF_PEDIT_ACTIONS) &&
-		    (action_flags & MLX5_TCF_PEDIT_ACTIONS))
-			pedit_validated = 1;
-		if ((current_action_flag & MLX5_TCF_FATE_ACTIONS) &&
-		    (action_flags & MLX5_TCF_FATE_ACTIONS))
-			return rte_flow_error_set(error, EINVAL,
-						  RTE_FLOW_ERROR_TYPE_ACTION,
-						  actions,
-						  "can't have multiple fate"
-						  " actions");
-		action_flags |= current_action_flag;
 	}
 	if ((action_flags & MLX5_TCF_PEDIT_ACTIONS) &&
 	    (action_flags & MLX5_FLOW_ACTION_DROP))
