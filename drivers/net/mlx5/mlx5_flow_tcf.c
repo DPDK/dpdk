@@ -3797,6 +3797,417 @@ flow_tcf_nl_ack(struct mlx5_flow_tcf_context *tcf,
 	return -err;
 }
 
+#define MNL_BUF_EXTRA_SPACE 16
+#define MNL_REQUEST_SIZE_MIN 256
+#define MNL_REQUEST_SIZE_MAX 2048
+#define MNL_REQUEST_SIZE RTE_MIN(RTE_MAX(sysconf(_SC_PAGESIZE), \
+				 MNL_REQUEST_SIZE_MIN), MNL_REQUEST_SIZE_MAX)
+
+/* VTEP device list is shared between PMD port instances. */
+static LIST_HEAD(, tcf_vtep) vtep_list_vxlan = LIST_HEAD_INITIALIZER();
+static pthread_mutex_t vtep_list_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/**
+ * Deletes VTEP network device.
+ *
+ * @param[in] tcf
+ *   Context object initialized by mlx5_flow_tcf_context_create().
+ * @param[in] vtep
+ *   Object represinting the network device to delete. Memory
+ *   allocated for this object is freed by routine.
+ */
+static void
+flow_tcf_vtep_delete(struct mlx5_flow_tcf_context *tcf,
+		     struct tcf_vtep *vtep)
+{
+	struct nlmsghdr *nlh;
+	struct ifinfomsg *ifm;
+	alignas(struct nlmsghdr)
+	uint8_t buf[mnl_nlmsg_size(MNL_ALIGN(sizeof(*ifm))) +
+		    MNL_BUF_EXTRA_SPACE];
+	int ret;
+
+	assert(!vtep->refcnt);
+	/* Delete only ifaces those we actually created. */
+	if (vtep->created && vtep->ifindex) {
+		DRV_LOG(INFO, "VTEP delete (%d)", vtep->ifindex);
+		nlh = mnl_nlmsg_put_header(buf);
+		nlh->nlmsg_type = RTM_DELLINK;
+		nlh->nlmsg_flags = NLM_F_REQUEST;
+		ifm = mnl_nlmsg_put_extra_header(nlh, sizeof(*ifm));
+		ifm->ifi_family = AF_UNSPEC;
+		ifm->ifi_index = vtep->ifindex;
+		assert(sizeof(buf) >= nlh->nlmsg_len);
+		ret = flow_tcf_nl_ack(tcf, nlh, 0, NULL, NULL);
+		if (ret)
+			DRV_LOG(WARNING, "netlink: error deleting vxlan"
+					 " encap/decap ifindex %u",
+					 ifm->ifi_index);
+	}
+	rte_free(vtep);
+}
+
+/**
+ * Creates VTEP network device.
+ *
+ * @param[in] tcf
+ *   Context object initialized by mlx5_flow_tcf_context_create().
+ * @param[in] ifouter
+ *   Outer interface to attach new-created VXLAN device
+ *   If zero the VXLAN device will not be attached to any device.
+ *   These VTEPs are used for decapsulation and can be precreated
+ *   and shared between processes.
+ * @param[in] port
+ *   UDP port of created VTEP device.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ * Pointer to created device structure on success,
+ * NULL otherwise and rte_errno is set.
+ */
+#ifdef HAVE_IFLA_VXLAN_COLLECT_METADATA
+static struct tcf_vtep*
+flow_tcf_vtep_create(struct mlx5_flow_tcf_context *tcf,
+		     unsigned int ifouter,
+		     uint16_t port, struct rte_flow_error *error)
+{
+	struct tcf_vtep *vtep;
+	struct nlmsghdr *nlh;
+	struct ifinfomsg *ifm;
+	char name[sizeof(MLX5_VXLAN_DEVICE_PFX) + 24];
+	alignas(struct nlmsghdr)
+	uint8_t buf[mnl_nlmsg_size(sizeof(*ifm)) +
+		    SZ_NLATTR_DATA_OF(sizeof(name)) +
+		    SZ_NLATTR_NEST * 2 +
+		    SZ_NLATTR_STRZ_OF("vxlan") +
+		    SZ_NLATTR_DATA_OF(sizeof(uint32_t)) +
+		    SZ_NLATTR_DATA_OF(sizeof(uint16_t)) +
+		    SZ_NLATTR_DATA_OF(sizeof(uint8_t)) * 3 +
+		    MNL_BUF_EXTRA_SPACE];
+	struct nlattr *na_info;
+	struct nlattr *na_vxlan;
+	rte_be16_t vxlan_port = rte_cpu_to_be_16(port);
+	int ret;
+
+	vtep = rte_zmalloc(__func__, sizeof(*vtep), alignof(struct tcf_vtep));
+	if (!vtep) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "unable to allocate memory for VTEP");
+		return NULL;
+	}
+	*vtep = (struct tcf_vtep){
+			.port = port,
+			.local = LIST_HEAD_INITIALIZER(),
+			.neigh = LIST_HEAD_INITIALIZER(),
+	};
+	memset(buf, 0, sizeof(buf));
+	nlh = mnl_nlmsg_put_header(buf);
+	nlh->nlmsg_type = RTM_NEWLINK;
+	nlh->nlmsg_flags = NLM_F_REQUEST | NLM_F_CREATE  | NLM_F_EXCL;
+	ifm = mnl_nlmsg_put_extra_header(nlh, sizeof(*ifm));
+	ifm->ifi_family = AF_UNSPEC;
+	ifm->ifi_type = 0;
+	ifm->ifi_index = 0;
+	ifm->ifi_flags = IFF_UP;
+	ifm->ifi_change = 0xffffffff;
+	snprintf(name, sizeof(name), "%s%u", MLX5_VXLAN_DEVICE_PFX, port);
+	mnl_attr_put_strz(nlh, IFLA_IFNAME, name);
+	na_info = mnl_attr_nest_start(nlh, IFLA_LINKINFO);
+	assert(na_info);
+	mnl_attr_put_strz(nlh, IFLA_INFO_KIND, "vxlan");
+	na_vxlan = mnl_attr_nest_start(nlh, IFLA_INFO_DATA);
+	if (ifouter)
+		mnl_attr_put_u32(nlh, IFLA_VXLAN_LINK, ifouter);
+	assert(na_vxlan);
+	mnl_attr_put_u8(nlh, IFLA_VXLAN_COLLECT_METADATA, 1);
+	mnl_attr_put_u8(nlh, IFLA_VXLAN_UDP_ZERO_CSUM6_RX, 1);
+	mnl_attr_put_u8(nlh, IFLA_VXLAN_LEARNING, 0);
+	mnl_attr_put_u16(nlh, IFLA_VXLAN_PORT, vxlan_port);
+	mnl_attr_nest_end(nlh, na_vxlan);
+	mnl_attr_nest_end(nlh, na_info);
+	assert(sizeof(buf) >= nlh->nlmsg_len);
+	ret = flow_tcf_nl_ack(tcf, nlh, 0, NULL, NULL);
+	if (ret) {
+		DRV_LOG(WARNING,
+			"netlink: VTEP %s create failure (%d)",
+			name, rte_errno);
+		if (rte_errno != EEXIST || ifouter)
+			/*
+			 * Some unhandled error occurred or device is
+			 * for encapsulation and cannot be shared.
+			 */
+			goto error;
+	} else {
+		/*
+		 * Mark device we actually created.
+		 * We should explicitly delete
+		 * when we do not need it anymore.
+		 */
+		vtep->created = 1;
+	}
+	/* Try to get ifindex of created of pre-existing device. */
+	ret = if_nametoindex(name);
+	if (!ret) {
+		DRV_LOG(WARNING,
+			"VTEP %s failed to get index (%d)", name, errno);
+		rte_flow_error_set
+			(error, -errno,
+			 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			 "netlink: failed to retrieve VTEP ifindex");
+		goto error;
+	}
+	vtep->ifindex = ret;
+	vtep->ifouter = ifouter;
+	memset(buf, 0, sizeof(buf));
+	nlh = mnl_nlmsg_put_header(buf);
+	nlh->nlmsg_type = RTM_NEWLINK;
+	nlh->nlmsg_flags = NLM_F_REQUEST;
+	ifm = mnl_nlmsg_put_extra_header(nlh, sizeof(*ifm));
+	ifm->ifi_family = AF_UNSPEC;
+	ifm->ifi_type = 0;
+	ifm->ifi_index = vtep->ifindex;
+	ifm->ifi_flags = IFF_UP;
+	ifm->ifi_change = IFF_UP;
+	ret = flow_tcf_nl_ack(tcf, nlh, 0, NULL, NULL);
+	if (ret) {
+		rte_flow_error_set(error, -errno,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "netlink: failed to set VTEP link up");
+		DRV_LOG(WARNING, "netlink: VTEP %s set link up failure (%d)",
+			name, rte_errno);
+		goto clean;
+	}
+	ret = mlx5_flow_tcf_init(tcf, vtep->ifindex, error);
+	if (ret) {
+		DRV_LOG(WARNING, "VTEP %s init failure (%d)", name, rte_errno);
+		goto clean;
+	}
+	DRV_LOG(INFO, "VTEP create (%d, %d)", vtep->port, vtep->ifindex);
+	vtep->refcnt = 1;
+	return vtep;
+clean:
+	flow_tcf_vtep_delete(tcf, vtep);
+	return NULL;
+error:
+	rte_free(vtep);
+	return NULL;
+}
+#else
+static struct tcf_vtep*
+flow_tcf_vtep_create(struct mlx5_flow_tcf_context *tcf __rte_unused,
+		     unsigned int ifouter __rte_unused,
+		     uint16_t port __rte_unused,
+		     struct rte_flow_error *error)
+{
+	rte_flow_error_set(error, ENOTSUP,
+			   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			   "netlink: failed to create VTEP, "
+			   "vxlan metadata are not supported by kernel");
+	return NULL;
+}
+#endif /* HAVE_IFLA_VXLAN_COLLECT_METADATA */
+
+/**
+ * Acquire target interface index for VXLAN tunneling decapsulation.
+ * In order to share the UDP port within the other interfaces the
+ * VXLAN device created as not attached to any interface (if created).
+ *
+ * @param[in] tcf
+ *   Context object initialized by mlx5_flow_tcf_context_create().
+ * @param[in] dev_flow
+ *   Flow tcf object with tunnel structure pointer set.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ * @return
+ *   Interface descriptor pointer on success,
+ *   NULL otherwise and rte_errno is set.
+ */
+static struct tcf_vtep*
+flow_tcf_decap_vtep_acquire(struct mlx5_flow_tcf_context *tcf,
+			    struct mlx5_flow *dev_flow,
+			    struct rte_flow_error *error)
+{
+	struct tcf_vtep *vtep;
+	uint16_t port = dev_flow->tcf.vxlan_decap->udp_port;
+
+	LIST_FOREACH(vtep, &vtep_list_vxlan, next) {
+		if (vtep->port == port)
+			break;
+	}
+	if (vtep && vtep->ifouter) {
+		rte_flow_error_set(error, -errno,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Failed to create decap VTEP with specified"
+				   " UDP port, atatched device exists");
+		return NULL;
+	}
+	if (vtep) {
+		/* Device exists, just increment the reference counter. */
+		vtep->refcnt++;
+		assert(vtep->ifindex);
+		return vtep;
+	}
+	/* No decapsulation device exists, try to create the new one. */
+	vtep = flow_tcf_vtep_create(tcf, 0, port, error);
+	if (vtep)
+		LIST_INSERT_HEAD(&vtep_list_vxlan, vtep, next);
+	return vtep;
+}
+
+/**
+ * Aqcuire target interface index for VXLAN tunneling encapsulation.
+ *
+ * @param[in] tcf
+ *   Context object initialized by mlx5_flow_tcf_context_create().
+ * @param[in] ifouter
+ *   Network interface index to attach VXLAN encap device to.
+ * @param[in] dev_flow
+ *   Flow tcf object with tunnel structure pointer set.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ * @return
+ *   Interface descriptor pointer on success,
+ *   NULL otherwise and rte_errno is set.
+ */
+static struct tcf_vtep*
+flow_tcf_encap_vtep_acquire(struct mlx5_flow_tcf_context *tcf,
+			    unsigned int ifouter,
+			    struct mlx5_flow *dev_flow __rte_unused,
+			    struct rte_flow_error *error)
+{
+	static uint16_t encap_port = MLX5_VXLAN_PORT_MIN - 1;
+	struct tcf_vtep *vtep;
+
+	assert(ifouter);
+	/* Look whether the attached VTEP for encap is created. */
+	LIST_FOREACH(vtep, &vtep_list_vxlan, next) {
+		if (vtep->ifouter == ifouter)
+			break;
+	}
+	if (vtep) {
+		/* VTEP already exists, just increment the reference. */
+		vtep->refcnt++;
+	} else {
+		uint16_t pcnt;
+
+		/* Not found, we should create the new attached VTEP. */
+		for (pcnt = 0; pcnt <= (MLX5_VXLAN_PORT_MAX
+				     - MLX5_VXLAN_PORT_MIN); pcnt++) {
+			encap_port++;
+			/* Wraparound the UDP port index. */
+			if (encap_port < MLX5_VXLAN_PORT_MIN ||
+			    encap_port > MLX5_VXLAN_PORT_MAX)
+				encap_port = MLX5_VXLAN_PORT_MIN;
+			/* Check whether UDP port is in already in use. */
+			LIST_FOREACH(vtep, &vtep_list_vxlan, next) {
+				if (vtep->port == encap_port)
+					break;
+			}
+			if (vtep) {
+				/* Port is in use, try the next one. */
+				vtep = NULL;
+				continue;
+			}
+			vtep = flow_tcf_vtep_create(tcf, ifouter,
+						    encap_port, error);
+			if (vtep) {
+				LIST_INSERT_HEAD(&vtep_list_vxlan, vtep, next);
+				break;
+			}
+			if (rte_errno != EEXIST)
+				break;
+		}
+		if (!vtep)
+			return NULL;
+	}
+	assert(vtep->ifouter == ifouter);
+	assert(vtep->ifindex);
+	return vtep;
+}
+
+/**
+ * Acquires target interface index for tunneling of any type.
+ * Creates the new VTEP if needed.
+ *
+ * @param[in] tcf
+ *   Context object initialized by mlx5_flow_tcf_context_create().
+ * @param[in] ifouter
+ *   Network interface index to attach VXLAN encap device to.
+ * @param[in] dev_flow
+ *   Flow tcf object with tunnel structure pointer set.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ * @return
+ *   Interface descriptor pointer on success,
+ *   NULL otherwise and rte_errno is set.
+ */
+static struct tcf_vtep*
+flow_tcf_vtep_acquire(struct mlx5_flow_tcf_context *tcf,
+		      unsigned int ifouter,
+		      struct mlx5_flow *dev_flow,
+		      struct rte_flow_error *error)
+{
+	struct tcf_vtep *vtep = NULL;
+
+	assert(dev_flow->tcf.tunnel);
+	pthread_mutex_lock(&vtep_list_mutex);
+	switch (dev_flow->tcf.tunnel->type) {
+	case FLOW_TCF_TUNACT_VXLAN_ENCAP:
+		vtep = flow_tcf_encap_vtep_acquire(tcf, ifouter,
+						  dev_flow, error);
+		break;
+	case FLOW_TCF_TUNACT_VXLAN_DECAP:
+		vtep = flow_tcf_decap_vtep_acquire(tcf, dev_flow, error);
+		break;
+	default:
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "unsupported tunnel type");
+		break;
+	}
+	pthread_mutex_unlock(&vtep_list_mutex);
+	return vtep;
+}
+
+/**
+ * Release tunneling interface by ifindex. Decrements reference
+ * counter and actually removes the device if counter is zero.
+ *
+ * @param[in] tcf
+ *   Context object initialized by mlx5_flow_tcf_context_create().
+ * @param[in] vtep
+ *   VTEP device descriptor structure.
+ * @param[in] dev_flow
+ *   Flow tcf object with tunnel structure pointer set.
+ */
+static void
+flow_tcf_vtep_release(struct mlx5_flow_tcf_context *tcf,
+		      struct tcf_vtep *vtep,
+		      struct mlx5_flow *dev_flow)
+{
+	assert(dev_flow->tcf.tunnel);
+	pthread_mutex_lock(&vtep_list_mutex);
+	switch (dev_flow->tcf.tunnel->type) {
+	case FLOW_TCF_TUNACT_VXLAN_DECAP:
+		break;
+	case FLOW_TCF_TUNACT_VXLAN_ENCAP:
+		break;
+	default:
+		assert(false);
+		DRV_LOG(WARNING, "Unsupported tunnel type");
+		break;
+	}
+	assert(vtep->refcnt);
+	if (--vtep->refcnt == 0) {
+		LIST_REMOVE(vtep, next);
+		flow_tcf_vtep_delete(tcf, vtep);
+	}
+	pthread_mutex_unlock(&vtep_list_mutex);
+}
+
+
 /**
  * Apply flow to E-Switch by sending Netlink message.
  *
@@ -3822,11 +4233,35 @@ flow_tcf_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 	dev_flow = LIST_FIRST(&flow->dev_flows);
 	/* E-Switch flow can't be expanded. */
 	assert(!LIST_NEXT(dev_flow, next));
+	if (dev_flow->tcf.applied)
+		return 0;
 	nlh = dev_flow->tcf.nlh;
 	nlh->nlmsg_type = RTM_NEWTFILTER;
 	nlh->nlmsg_flags = NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL;
-	if (!flow_tcf_nl_ack(ctx, nlh, 0, NULL, NULL))
+	if (dev_flow->tcf.tunnel) {
+		/*
+		 * Replace the interface index, target for
+		 * encapsulation, source for decapsulation.
+		 */
+		assert(!dev_flow->tcf.tunnel->vtep);
+		assert(dev_flow->tcf.tunnel->ifindex_ptr);
+		/* Acquire actual VTEP device when rule is being applied. */
+		dev_flow->tcf.tunnel->vtep =
+			flow_tcf_vtep_acquire(ctx,
+					dev_flow->tcf.tunnel->ifindex_org,
+					dev_flow, error);
+		if (!dev_flow->tcf.tunnel->vtep)
+			return -rte_errno;
+		DRV_LOG(INFO, "Replace ifindex: %d->%d",
+				dev_flow->tcf.tunnel->vtep->ifindex,
+				dev_flow->tcf.tunnel->ifindex_org);
+		*dev_flow->tcf.tunnel->ifindex_ptr =
+			dev_flow->tcf.tunnel->vtep->ifindex;
+	}
+	if (!flow_tcf_nl_ack(ctx, nlh, 0, NULL, NULL)) {
+		dev_flow->tcf.applied = 1;
 		return 0;
+	}
 	return rte_flow_error_set(error, rte_errno,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 				  "netlink: failed to create TC flow rule");
@@ -3855,10 +4290,20 @@ flow_tcf_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 		return;
 	/* E-Switch flow can't be expanded. */
 	assert(!LIST_NEXT(dev_flow, next));
-	nlh = dev_flow->tcf.nlh;
-	nlh->nlmsg_type = RTM_DELTFILTER;
-	nlh->nlmsg_flags = NLM_F_REQUEST;
-	flow_tcf_nl_ack(ctx, nlh, 0, NULL, NULL);
+	if (dev_flow->tcf.applied) {
+		nlh = dev_flow->tcf.nlh;
+		nlh->nlmsg_type = RTM_DELTFILTER;
+		nlh->nlmsg_flags = NLM_F_REQUEST;
+		flow_tcf_nl_ack(ctx, nlh, 0, NULL, NULL);
+		if (dev_flow->tcf.tunnel) {
+			assert(dev_flow->tcf.tunnel->vtep);
+			flow_tcf_vtep_release(ctx,
+				dev_flow->tcf.tunnel->vtep,
+				dev_flow);
+			dev_flow->tcf.tunnel->vtep = NULL;
+		}
+		dev_flow->tcf.applied = 0;
+	}
 }
 
 /**
@@ -4385,7 +4830,9 @@ mlx5_flow_tcf_init(struct mlx5_flow_tcf_context *ctx,
 	struct nlmsghdr *nlh;
 	struct tcmsg *tcm;
 	alignas(struct nlmsghdr)
-	uint8_t buf[mnl_nlmsg_size(sizeof(*tcm) + 128)];
+	uint8_t buf[mnl_nlmsg_size(sizeof(*tcm)) +
+		    SZ_NLATTR_STRZ_OF("ingress") +
+		    MNL_BUF_EXTRA_SPACE];
 
 	/* Destroy existing ingress qdisc and everything attached to it. */
 	nlh = mnl_nlmsg_put_header(buf);
@@ -4396,6 +4843,7 @@ mlx5_flow_tcf_init(struct mlx5_flow_tcf_context *ctx,
 	tcm->tcm_ifindex = ifindex;
 	tcm->tcm_handle = TC_H_MAKE(TC_H_INGRESS, 0);
 	tcm->tcm_parent = TC_H_INGRESS;
+	assert(sizeof(buf) >= nlh->nlmsg_len);
 	/* Ignore errors when qdisc is already absent. */
 	if (flow_tcf_nl_ack(ctx, nlh, 0, NULL, NULL) &&
 	    rte_errno != EINVAL && rte_errno != ENOENT)
@@ -4413,6 +4861,7 @@ mlx5_flow_tcf_init(struct mlx5_flow_tcf_context *ctx,
 	tcm->tcm_handle = TC_H_MAKE(TC_H_INGRESS, 0);
 	tcm->tcm_parent = TC_H_INGRESS;
 	mnl_attr_put_strz_check(nlh, sizeof(buf), TCA_KIND, "ingress");
+	assert(sizeof(buf) >= nlh->nlmsg_len);
 	if (flow_tcf_nl_ack(ctx, nlh, 0, NULL, NULL))
 		return rte_flow_error_set(error, rte_errno,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
