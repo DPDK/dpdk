@@ -3502,7 +3502,7 @@ accordingly. Possible assignment tokens are:
 - ``spec``: match value according to configured bit-mask.
 - ``last``: specify upper bound to establish a range.
 - ``mask``: specify bit-mask with relevant bits set to one.
-- ``prefix``: generate bit-mask from a prefix length.
+- ``prefix``: generate bit-mask with <prefix-length> most-significant bits set to one.
 
 These yield identical results::
 
