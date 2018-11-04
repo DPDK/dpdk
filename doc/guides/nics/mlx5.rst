@@ -54,6 +54,7 @@ Features
 - Support for scattered TX and RX frames.
 - IPv4, IPv6, TCPv4, TCPv6, UDPv4 and UDPv6 RSS on any number of queues.
 - Several RSS hash keys, one for each flow type.
+- Default RSS operation with no hash key specification.
 - Configurable RETA table.
 - Support for multiple MAC addresses.
 - VLAN filtering.

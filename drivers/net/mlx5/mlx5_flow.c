@@ -912,7 +912,13 @@ mlx5_flow_validate_action_rss(const struct rte_flow_action *action,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  &rss->level,
 					  "tunnel RSS is not supported");
-	if (rss->key_len < MLX5_RSS_HASH_KEY_LEN)
+	/* allow RSS key_len 0 in case of NULL (default) RSS key. */
+	if (rss->key_len == 0 && rss->key != NULL)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					  &rss->key_len,
+					  "RSS hash key length 0");
+	if (rss->key_len > 0 && rss->key_len < MLX5_RSS_HASH_KEY_LEN)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  &rss->key_len,

@@ -1794,10 +1794,6 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 		rte_errno = ENOMEM;
 		return NULL;
 	}
-	if (!rss_key_len) {
-		rss_key_len = MLX5_RSS_HASH_KEY_LEN;
-		rss_key = rss_hash_default_key;
-	}
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
 	if (tunnel) {
 		qp_init_attr.comp_mask =
@@ -1823,11 +1819,8 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 				IBV_QP_INIT_ATTR_RX_HASH,
 			.rx_hash_conf = (struct ibv_rx_hash_conf){
 				.rx_hash_function = IBV_RX_HASH_FUNC_TOEPLITZ,
-				.rx_hash_key_len = rss_key_len ? rss_key_len :
-						   MLX5_RSS_HASH_KEY_LEN,
-				.rx_hash_key = rss_key ?
-					       (void *)(uintptr_t)rss_key :
-					       rss_hash_default_key,
+				.rx_hash_key_len = rss_key_len,
+				.rx_hash_key = (void *)(uintptr_t)rss_key,
 				.rx_hash_fields_mask = hash_fields,
 			},
 			.rwq_ind_tbl = ind_tbl->ind_table,
@@ -1845,11 +1838,8 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 				IBV_QP_INIT_ATTR_RX_HASH,
 			.rx_hash_conf = (struct ibv_rx_hash_conf){
 				.rx_hash_function = IBV_RX_HASH_FUNC_TOEPLITZ,
-				.rx_hash_key_len = rss_key_len ? rss_key_len :
-						   MLX5_RSS_HASH_KEY_LEN,
-				.rx_hash_key = rss_key ?
-					       (void *)(uintptr_t)rss_key :
-					       rss_hash_default_key,
+				.rx_hash_key_len = rss_key_len,
+				.rx_hash_key = (void *)(uintptr_t)rss_key,
 				.rx_hash_fields_mask = hash_fields,
 			},
 			.rwq_ind_tbl = ind_tbl->ind_table,

@@ -1722,6 +1722,7 @@ flow_dv_create_action(struct rte_eth_dev *dev,
 	int actions_n = dev_flow->dv.actions_n;
 	struct rte_flow *flow = dev_flow->flow;
 	const struct rte_flow_action *action_ptr = action;
+	const uint8_t *rss_key;
 
 	switch (action->type) {
 	case RTE_FLOW_ACTION_TYPE_VOID:
@@ -1758,8 +1759,11 @@ flow_dv_create_action(struct rte_eth_dev *dev,
 			memcpy((*flow->queue), rss->queue,
 			       rss->queue_num * sizeof(uint16_t));
 		flow->rss.queue_num = rss->queue_num;
-		memcpy(flow->key, rss->key, MLX5_RSS_HASH_KEY_LEN);
-		flow->rss.types = rss->types;
+		/* NULL RSS key indicates default RSS key. */
+		rss_key = !rss->key ? rss_hash_default_key : rss->key;
+		memcpy(flow->key, rss_key, MLX5_RSS_HASH_KEY_LEN);
+		/* RSS type 0 indicates default RSS type ETH_RSS_IP. */
+		flow->rss.types = !rss->types ? ETH_RSS_IP : rss->types;
 		flow->rss.level = rss->level;
 		/* Added to array only in apply since we need the QP */
 		flow->actions |= MLX5_FLOW_ACTION_RSS;
