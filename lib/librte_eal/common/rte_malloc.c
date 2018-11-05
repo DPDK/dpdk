@@ -349,8 +349,7 @@ rte_malloc_heap_memory_add(const char *heap_name, void *va_addr, size_t len,
 			strnlen(heap_name, RTE_HEAP_NAME_MAX_LEN) ==
 				RTE_HEAP_NAME_MAX_LEN) {
 		rte_errno = EINVAL;
-		ret = -1;
-		goto unlock;
+		return -1;
 	}
 	rte_rwlock_write_lock(&mcfg->memory_hotplug_lock);
 
