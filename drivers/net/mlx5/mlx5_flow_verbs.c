@@ -33,6 +33,9 @@
 #include "mlx5_glue.h"
 #include "mlx5_flow.h"
 
+#define VERBS_SPEC_INNER(item_flags) \
+	(!!((item_flags) & MLX5_FLOW_LAYER_TUNNEL) ? IBV_FLOW_SPEC_INNER : 0)
+
 /**
  * Create Verbs flow counter with Verbs library.
  *
@@ -231,27 +234,26 @@ flow_verbs_counter_query(struct rte_eth_dev *dev __rte_unused,
 }
 
 /**
- * Add a verbs item specification into @p flow.
+ * Add a verbs item specification into @p verbs.
  *
- * @param[in, out] flow
- *   Pointer to flow structure.
+ * @param[out] verbs
+ *   Pointer to verbs structure.
  * @param[in] src
  *   Create specification.
  * @param[in] size
  *   Size in bytes of the specification to copy.
  */
 static void
-flow_verbs_spec_add(struct mlx5_flow *flow, void *src, unsigned int size)
+flow_verbs_spec_add(struct mlx5_flow_verbs *verbs, void *src, unsigned int size)
 {
-	struct mlx5_flow_verbs *verbs = &flow->verbs;
+	void *dst;
 
-	if (verbs->specs) {
-		void *dst;
-
-		dst = (void *)(verbs->specs + verbs->size);
-		memcpy(dst, src, size);
-		++verbs->attr->num_of_specs;
-	}
+	if (!verbs)
+		return;
+	assert(verbs->specs);
+	dst = (void *)(verbs->specs + verbs->size);
+	memcpy(dst, src, size);
+	++verbs->attr->num_of_specs;
 	verbs->size += size;
 }
 
@@ -260,24 +262,23 @@ flow_verbs_spec_add(struct mlx5_flow *flow, void *src, unsigned int size)
  * the input is valid and that there is space to insert the requested item
  * into the flow.
  *
+ * @param[in, out] dev_flow
+ *   Pointer to dev_flow structure.
  * @param[in] item
  *   Item specification.
  * @param[in] item_flags
- *   Bit field with all detected items.
- * @param[in, out] dev_flow
- *   Pointer to dev_flow structure.
+ *   Parsed item flags.
  */
 static void
-flow_verbs_translate_item_eth(const struct rte_flow_item *item,
-			      uint64_t *item_flags,
-			      struct mlx5_flow *dev_flow)
+flow_verbs_translate_item_eth(struct mlx5_flow *dev_flow,
+			      const struct rte_flow_item *item,
+			      uint64_t item_flags)
 {
 	const struct rte_flow_item_eth *spec = item->spec;
 	const struct rte_flow_item_eth *mask = item->mask;
-	const int tunnel = !!(*item_flags & MLX5_FLOW_LAYER_TUNNEL);
 	const unsigned int size = sizeof(struct ibv_flow_spec_eth);
 	struct ibv_flow_spec_eth eth = {
-		.type = IBV_FLOW_SPEC_ETH | (tunnel ? IBV_FLOW_SPEC_INNER : 0),
+		.type = IBV_FLOW_SPEC_ETH | VERBS_SPEC_INNER(item_flags),
 		.size = size,
 	};
 
@@ -298,11 +299,8 @@ flow_verbs_translate_item_eth(const struct rte_flow_item *item,
 			eth.val.src_mac[i] &= eth.mask.src_mac[i];
 		}
 		eth.val.ether_type &= eth.mask.ether_type;
-		dev_flow->verbs.attr->priority = MLX5_PRIORITY_MAP_L2;
 	}
-	flow_verbs_spec_add(dev_flow, &eth, size);
-	*item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L2 :
-				MLX5_FLOW_LAYER_OUTER_L2;
+	flow_verbs_spec_add(&dev_flow->verbs, &eth, size);
 }
 
 /**
@@ -344,24 +342,24 @@ flow_verbs_item_vlan_update(struct ibv_flow_attr *attr,
  * the input is valid and that there is space to insert the requested item
  * into the flow.
  *
- * @param[in] item
- *   Item specification.
- * @param[in, out] item_flags
- *   Bit mask that holds all detected items.
  * @param[in, out] dev_flow
  *   Pointer to dev_flow structure.
+ * @param[in] item
+ *   Item specification.
+ * @param[in] item_flags
+ *   Parsed item flags.
  */
 static void
-flow_verbs_translate_item_vlan(const struct rte_flow_item *item,
-			       uint64_t *item_flags,
-			       struct mlx5_flow *dev_flow)
+flow_verbs_translate_item_vlan(struct mlx5_flow *dev_flow,
+			       const struct rte_flow_item *item,
+			       uint64_t item_flags)
 {
 	const struct rte_flow_item_vlan *spec = item->spec;
 	const struct rte_flow_item_vlan *mask = item->mask;
 	unsigned int size = sizeof(struct ibv_flow_spec_eth);
-	const int tunnel = !!(*item_flags & MLX5_FLOW_LAYER_TUNNEL);
+	const int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
 	struct ibv_flow_spec_eth eth = {
-		.type = IBV_FLOW_SPEC_ETH | (tunnel ? IBV_FLOW_SPEC_INNER : 0),
+		.type = IBV_FLOW_SPEC_ETH | VERBS_SPEC_INNER(item_flags),
 		.size = size,
 	};
 	const uint32_t l2m = tunnel ? MLX5_FLOW_LAYER_INNER_L2 :
@@ -377,16 +375,10 @@ flow_verbs_translate_item_vlan(const struct rte_flow_item *item,
 		eth.mask.ether_type = mask->inner_type;
 		eth.val.ether_type &= eth.mask.ether_type;
 	}
-	if (!(*item_flags & l2m)) {
-		dev_flow->verbs.attr->priority = MLX5_PRIORITY_MAP_L2;
-		flow_verbs_spec_add(dev_flow, &eth, size);
-	} else {
+	if (!(item_flags & l2m))
+		flow_verbs_spec_add(&dev_flow->verbs, &eth, size);
+	else
 		flow_verbs_item_vlan_update(dev_flow->verbs.attr, &eth);
-		size = 0; /* Only an update is done in eth specification. */
-	}
-	*item_flags |= tunnel ?
-		       (MLX5_FLOW_LAYER_INNER_L2 | MLX5_FLOW_LAYER_INNER_VLAN) :
-		       (MLX5_FLOW_LAYER_OUTER_L2 | MLX5_FLOW_LAYER_OUTER_VLAN);
 }
 
 /**
@@ -394,32 +386,28 @@ flow_verbs_translate_item_vlan(const struct rte_flow_item *item,
  * the input is valid and that there is space to insert the requested item
  * into the flow.
  *
+ * @param[in, out] dev_flow
+ *   Pointer to dev_flow structure.
  * @param[in] item
  *   Item specification.
- * @param[in, out] item_flags
- *   Bit mask that marks all detected items.
- * @param[in, out] dev_flow
- *   Pointer to sepacific flow structure.
+ * @param[in] item_flags
+ *   Parsed item flags.
  */
 static void
-flow_verbs_translate_item_ipv4(const struct rte_flow_item *item,
-			       uint64_t *item_flags,
-			       struct mlx5_flow *dev_flow)
+flow_verbs_translate_item_ipv4(struct mlx5_flow *dev_flow,
+			       const struct rte_flow_item *item,
+			       uint64_t item_flags)
 {
 	const struct rte_flow_item_ipv4 *spec = item->spec;
 	const struct rte_flow_item_ipv4 *mask = item->mask;
-	const int tunnel = !!(*item_flags & MLX5_FLOW_LAYER_TUNNEL);
 	unsigned int size = sizeof(struct ibv_flow_spec_ipv4_ext);
 	struct ibv_flow_spec_ipv4_ext ipv4 = {
-		.type = IBV_FLOW_SPEC_IPV4_EXT |
-			(tunnel ? IBV_FLOW_SPEC_INNER : 0),
+		.type = IBV_FLOW_SPEC_IPV4_EXT | VERBS_SPEC_INNER(item_flags),
 		.size = size,
 	};
 
 	if (!mask)
 		mask = &rte_flow_item_ipv4_mask;
-	*item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV4 :
-				MLX5_FLOW_LAYER_OUTER_L3_IPV4;
 	if (spec) {
 		ipv4.val = (struct ibv_flow_ipv4_ext_filter){
 			.src_ip = spec->hdr.src_addr,
@@ -439,12 +427,7 @@ flow_verbs_translate_item_ipv4(const struct rte_flow_item *item,
 		ipv4.val.proto &= ipv4.mask.proto;
 		ipv4.val.tos &= ipv4.mask.tos;
 	}
-	dev_flow->verbs.hash_fields |=
-		mlx5_flow_hashfields_adjust(dev_flow, tunnel,
-					    MLX5_IPV4_LAYER_TYPES,
-					    MLX5_IPV4_IBV_RX_HASH);
-	dev_flow->verbs.attr->priority = MLX5_PRIORITY_MAP_L3;
-	flow_verbs_spec_add(dev_flow, &ipv4, size);
+	flow_verbs_spec_add(&dev_flow->verbs, &ipv4, size);
 }
 
 /**
@@ -452,31 +435,28 @@ flow_verbs_translate_item_ipv4(const struct rte_flow_item *item,
  * the input is valid and that there is space to insert the requested item
  * into the flow.
  *
+ * @param[in, out] dev_flow
+ *   Pointer to dev_flow structure.
  * @param[in] item
  *   Item specification.
- * @param[in, out] item_flags
- *   Bit mask that marks all detected items.
- * @param[in, out] dev_flow
- *   Pointer to sepacific flow structure.
+ * @param[in] item_flags
+ *   Parsed item flags.
  */
 static void
-flow_verbs_translate_item_ipv6(const struct rte_flow_item *item,
-			       uint64_t *item_flags,
-			       struct mlx5_flow *dev_flow)
+flow_verbs_translate_item_ipv6(struct mlx5_flow *dev_flow,
+			       const struct rte_flow_item *item,
+			       uint64_t item_flags)
 {
 	const struct rte_flow_item_ipv6 *spec = item->spec;
 	const struct rte_flow_item_ipv6 *mask = item->mask;
-	const int tunnel = !!(dev_flow->layers & MLX5_FLOW_LAYER_TUNNEL);
 	unsigned int size = sizeof(struct ibv_flow_spec_ipv6);
 	struct ibv_flow_spec_ipv6 ipv6 = {
-		.type = IBV_FLOW_SPEC_IPV6 | (tunnel ? IBV_FLOW_SPEC_INNER : 0),
+		.type = IBV_FLOW_SPEC_IPV6 | VERBS_SPEC_INNER(item_flags),
 		.size = size,
 	};
 
 	if (!mask)
 		mask = &rte_flow_item_ipv6_mask;
-	 *item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV6 :
-				 MLX5_FLOW_LAYER_OUTER_L3_IPV6;
 	if (spec) {
 		unsigned int i;
 		uint32_t vtc_flow_val;
@@ -516,12 +496,7 @@ flow_verbs_translate_item_ipv6(const struct rte_flow_item *item,
 		ipv6.val.next_hdr &= ipv6.mask.next_hdr;
 		ipv6.val.hop_limit &= ipv6.mask.hop_limit;
 	}
-	dev_flow->verbs.hash_fields |=
-		mlx5_flow_hashfields_adjust(dev_flow, tunnel,
-					    MLX5_IPV6_LAYER_TYPES,
-					    MLX5_IPV6_IBV_RX_HASH);
-	dev_flow->verbs.attr->priority = MLX5_PRIORITY_MAP_L3;
-	flow_verbs_spec_add(dev_flow, &ipv6, size);
+	flow_verbs_spec_add(&dev_flow->verbs, &ipv6, size);
 }
 
 /**
@@ -529,78 +504,28 @@ flow_verbs_translate_item_ipv6(const struct rte_flow_item *item,
  * the input is valid and that there is space to insert the requested item
  * into the flow.
  *
+ * @param[in, out] dev_flow
+ *   Pointer to dev_flow structure.
  * @param[in] item
  *   Item specification.
- * @param[in, out] item_flags
- *   Bit mask that marks all detected items.
- * @param[in, out] dev_flow
- *   Pointer to sepacific flow structure.
+ * @param[in] item_flags
+ *   Parsed item flags.
  */
 static void
-flow_verbs_translate_item_udp(const struct rte_flow_item *item,
-			      uint64_t *item_flags,
-			      struct mlx5_flow *dev_flow)
-{
-	const struct rte_flow_item_udp *spec = item->spec;
-	const struct rte_flow_item_udp *mask = item->mask;
-	const int tunnel = !!(*item_flags & MLX5_FLOW_LAYER_TUNNEL);
-	unsigned int size = sizeof(struct ibv_flow_spec_tcp_udp);
-	struct ibv_flow_spec_tcp_udp udp = {
-		.type = IBV_FLOW_SPEC_UDP | (tunnel ? IBV_FLOW_SPEC_INNER : 0),
-		.size = size,
-	};
-
-	if (!mask)
-		mask = &rte_flow_item_udp_mask;
-	*item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L4_UDP :
-				MLX5_FLOW_LAYER_OUTER_L4_UDP;
-	if (spec) {
-		udp.val.dst_port = spec->hdr.dst_port;
-		udp.val.src_port = spec->hdr.src_port;
-		udp.mask.dst_port = mask->hdr.dst_port;
-		udp.mask.src_port = mask->hdr.src_port;
-		/* Remove unwanted bits from values. */
-		udp.val.src_port &= udp.mask.src_port;
-		udp.val.dst_port &= udp.mask.dst_port;
-	}
-	dev_flow->verbs.hash_fields |=
-		mlx5_flow_hashfields_adjust(dev_flow, tunnel, ETH_RSS_UDP,
-					    (IBV_RX_HASH_SRC_PORT_UDP |
-					     IBV_RX_HASH_DST_PORT_UDP));
-	dev_flow->verbs.attr->priority = MLX5_PRIORITY_MAP_L4;
-	flow_verbs_spec_add(dev_flow, &udp, size);
-}
-
-/**
- * Convert the @p item into a Verbs specification. This function assumes that
- * the input is valid and that there is space to insert the requested item
- * into the flow.
- *
- * @param[in] item
- *   Item specification.
- * @param[in, out] item_flags
- *   Bit mask that marks all detected items.
- * @param[in, out] dev_flow
- *   Pointer to sepacific flow structure.
- */
-static void
-flow_verbs_translate_item_tcp(const struct rte_flow_item *item,
-			      uint64_t *item_flags,
-			      struct mlx5_flow *dev_flow)
+flow_verbs_translate_item_tcp(struct mlx5_flow *dev_flow,
+			      const struct rte_flow_item *item,
+			      uint64_t item_flags __rte_unused)
 {
 	const struct rte_flow_item_tcp *spec = item->spec;
 	const struct rte_flow_item_tcp *mask = item->mask;
-	const int tunnel = !!(dev_flow->layers & MLX5_FLOW_LAYER_TUNNEL);
 	unsigned int size = sizeof(struct ibv_flow_spec_tcp_udp);
 	struct ibv_flow_spec_tcp_udp tcp = {
-		.type = IBV_FLOW_SPEC_TCP | (tunnel ? IBV_FLOW_SPEC_INNER : 0),
+		.type = IBV_FLOW_SPEC_TCP | VERBS_SPEC_INNER(item_flags),
 		.size = size,
 	};
 
 	if (!mask)
 		mask = &rte_flow_item_tcp_mask;
-	*item_flags |=  tunnel ? MLX5_FLOW_LAYER_INNER_L4_TCP :
-				 MLX5_FLOW_LAYER_OUTER_L4_TCP;
 	if (spec) {
 		tcp.val.dst_port = spec->hdr.dst_port;
 		tcp.val.src_port = spec->hdr.src_port;
@@ -610,12 +535,7 @@ flow_verbs_translate_item_tcp(const struct rte_flow_item *item,
 		tcp.val.src_port &= tcp.mask.src_port;
 		tcp.val.dst_port &= tcp.mask.dst_port;
 	}
-	dev_flow->verbs.hash_fields |=
-		mlx5_flow_hashfields_adjust(dev_flow, tunnel, ETH_RSS_TCP,
-					    (IBV_RX_HASH_SRC_PORT_TCP |
-					     IBV_RX_HASH_DST_PORT_TCP));
-	dev_flow->verbs.attr->priority = MLX5_PRIORITY_MAP_L4;
-	flow_verbs_spec_add(dev_flow, &tcp, size);
+	flow_verbs_spec_add(&dev_flow->verbs, &tcp, size);
 }
 
 /**
@@ -623,17 +543,56 @@ flow_verbs_translate_item_tcp(const struct rte_flow_item *item,
  * the input is valid and that there is space to insert the requested item
  * into the flow.
  *
+ * @param[in, out] dev_flow
+ *   Pointer to dev_flow structure.
  * @param[in] item
  *   Item specification.
- * @param[in, out] item_flags
- *   Bit mask that marks all detected items.
- * @param[in, out] dev_flow
- *   Pointer to sepacific flow structure.
+ * @param[in] item_flags
+ *   Parsed item flags.
  */
 static void
-flow_verbs_translate_item_vxlan(const struct rte_flow_item *item,
-				uint64_t *item_flags,
-				struct mlx5_flow *dev_flow)
+flow_verbs_translate_item_udp(struct mlx5_flow *dev_flow,
+			      const struct rte_flow_item *item,
+			      uint64_t item_flags __rte_unused)
+{
+	const struct rte_flow_item_udp *spec = item->spec;
+	const struct rte_flow_item_udp *mask = item->mask;
+	unsigned int size = sizeof(struct ibv_flow_spec_tcp_udp);
+	struct ibv_flow_spec_tcp_udp udp = {
+		.type = IBV_FLOW_SPEC_UDP | VERBS_SPEC_INNER(item_flags),
+		.size = size,
+	};
+
+	if (!mask)
+		mask = &rte_flow_item_udp_mask;
+	if (spec) {
+		udp.val.dst_port = spec->hdr.dst_port;
+		udp.val.src_port = spec->hdr.src_port;
+		udp.mask.dst_port = mask->hdr.dst_port;
+		udp.mask.src_port = mask->hdr.src_port;
+		/* Remove unwanted bits from values. */
+		udp.val.src_port &= udp.mask.src_port;
+		udp.val.dst_port &= udp.mask.dst_port;
+	}
+	flow_verbs_spec_add(&dev_flow->verbs, &udp, size);
+}
+
+/**
+ * Convert the @p item into a Verbs specification. This function assumes that
+ * the input is valid and that there is space to insert the requested item
+ * into the flow.
+ *
+ * @param[in, out] dev_flow
+ *   Pointer to dev_flow structure.
+ * @param[in] item
+ *   Item specification.
+ * @param[in] item_flags
+ *   Parsed item flags.
+ */
+static void
+flow_verbs_translate_item_vxlan(struct mlx5_flow *dev_flow,
+				const struct rte_flow_item *item,
+				uint64_t item_flags __rte_unused)
 {
 	const struct rte_flow_item_vxlan *spec = item->spec;
 	const struct rte_flow_item_vxlan *mask = item->mask;
@@ -657,9 +616,7 @@ flow_verbs_translate_item_vxlan(const struct rte_flow_item *item,
 		/* Remove unwanted bits from values. */
 		vxlan.val.tunnel_id &= vxlan.mask.tunnel_id;
 	}
-	flow_verbs_spec_add(dev_flow, &vxlan, size);
-	dev_flow->verbs.attr->priority = MLX5_PRIORITY_MAP_L2;
-	*item_flags |= MLX5_FLOW_LAYER_VXLAN;
+	flow_verbs_spec_add(&dev_flow->verbs, &vxlan, size);
 }
 
 /**
@@ -667,17 +624,17 @@ flow_verbs_translate_item_vxlan(const struct rte_flow_item *item,
  * the input is valid and that there is space to insert the requested item
  * into the flow.
  *
+ * @param[in, out] dev_flow
+ *   Pointer to dev_flow structure.
  * @param[in] item
  *   Item specification.
- * @param[in, out] item_flags
- *   Bit mask that marks all detected items.
- * @param[in, out] dev_flow
- *   Pointer to sepacific flow structure.
+ * @param[in] item_flags
+ *   Parsed item flags.
  */
 static void
-flow_verbs_translate_item_vxlan_gpe(const struct rte_flow_item *item,
-				    uint64_t *item_flags,
-				    struct mlx5_flow *dev_flow)
+flow_verbs_translate_item_vxlan_gpe(struct mlx5_flow *dev_flow,
+				    const struct rte_flow_item *item,
+				    uint64_t item_flags __rte_unused)
 {
 	const struct rte_flow_item_vxlan_gpe *spec = item->spec;
 	const struct rte_flow_item_vxlan_gpe *mask = item->mask;
@@ -701,9 +658,7 @@ flow_verbs_translate_item_vxlan_gpe(const struct rte_flow_item *item,
 		/* Remove unwanted bits from values. */
 		vxlan_gpe.val.tunnel_id &= vxlan_gpe.mask.tunnel_id;
 	}
-	flow_verbs_spec_add(dev_flow, &vxlan_gpe, size);
-	dev_flow->verbs.attr->priority = MLX5_PRIORITY_MAP_L2;
-	*item_flags |= MLX5_FLOW_LAYER_VXLAN_GPE;
+	flow_verbs_spec_add(&dev_flow->verbs, &vxlan_gpe, size);
 }
 
 /**
@@ -763,17 +718,17 @@ flow_verbs_item_gre_ip_protocol_update(struct ibv_flow_attr *attr,
  * the input is valid and that there is space to insert the requested item
  * into the flow.
  *
+ * @param[in, out] dev_flow
+ *   Pointer to dev_flow structure.
  * @param[in] item
  *   Item specification.
- * @param[in, out] item_flags
- *   Bit mask that marks all detected items.
- * @param[in, out] dev_flow
- *   Pointer to sepacific flow structure.
+ * @param[in] item_flags
+ *   Parsed item flags.
  */
 static void
-flow_verbs_translate_item_gre(const struct rte_flow_item *item __rte_unused,
-			      uint64_t *item_flags,
-			      struct mlx5_flow *dev_flow)
+flow_verbs_translate_item_gre(struct mlx5_flow *dev_flow,
+			      const struct rte_flow_item *item __rte_unused,
+			      uint64_t item_flags)
 {
 	struct mlx5_flow_verbs *verbs = &dev_flow->verbs;
 #ifndef HAVE_IBV_DEVICE_MPLS_SUPPORT
@@ -804,7 +759,7 @@ flow_verbs_translate_item_gre(const struct rte_flow_item *item __rte_unused,
 		tunnel.val.key &= tunnel.mask.key;
 	}
 #endif
-	if (*item_flags & MLX5_FLOW_LAYER_OUTER_L3_IPV4)
+	if (item_flags & MLX5_FLOW_LAYER_OUTER_L3_IPV4)
 		flow_verbs_item_gre_ip_protocol_update(verbs->attr,
 						       IBV_FLOW_SPEC_IPV4_EXT,
 						       IPPROTO_GRE);
@@ -812,9 +767,7 @@ flow_verbs_translate_item_gre(const struct rte_flow_item *item __rte_unused,
 		flow_verbs_item_gre_ip_protocol_update(verbs->attr,
 						       IBV_FLOW_SPEC_IPV6,
 						       IPPROTO_GRE);
-	flow_verbs_spec_add(dev_flow, &tunnel, size);
-	verbs->attr->priority = MLX5_PRIORITY_MAP_L2;
-	*item_flags |= MLX5_FLOW_LAYER_GRE;
+	flow_verbs_spec_add(verbs, &tunnel, size);
 }
 
 /**
@@ -822,17 +775,17 @@ flow_verbs_translate_item_gre(const struct rte_flow_item *item __rte_unused,
  * the input is valid and that there is space to insert the requested action
  * into the flow. This function also return the action that was added.
  *
+ * @param[in, out] dev_flow
+ *   Pointer to dev_flow structure.
  * @param[in] item
  *   Item specification.
- * @param[in, out] item_flags
- *   Bit mask that marks all detected items.
- * @param[in, out] dev_flow
- *   Pointer to sepacific flow structure.
+ * @param[in] item_flags
+ *   Parsed item flags.
  */
 static void
-flow_verbs_translate_item_mpls(const struct rte_flow_item *item __rte_unused,
-			       uint64_t *action_flags __rte_unused,
-			       struct mlx5_flow *dev_flow __rte_unused)
+flow_verbs_translate_item_mpls(struct mlx5_flow *dev_flow __rte_unused,
+			       const struct rte_flow_item *item __rte_unused,
+			       uint64_t item_flags __rte_unused)
 {
 #ifdef HAVE_IBV_DEVICE_MPLS_SUPPORT
 	const struct rte_flow_item_mpls *spec = item->spec;
@@ -851,25 +804,24 @@ flow_verbs_translate_item_mpls(const struct rte_flow_item *item __rte_unused,
 		/* Remove unwanted bits from values.  */
 		mpls.val.label &= mpls.mask.label;
 	}
-	flow_verbs_spec_add(dev_flow, &mpls, size);
-	dev_flow->verbs.attr->priority = MLX5_PRIORITY_MAP_L2;
-	*action_flags |= MLX5_FLOW_LAYER_MPLS;
+	flow_verbs_spec_add(&dev_flow->verbs, &mpls, size);
 #endif
 }
 
 /**
  * Convert the @p action into a Verbs specification. This function assumes that
  * the input is valid and that there is space to insert the requested action
- * into the flow. This function also return the action that was added.
+ * into the flow.
  *
- * @param[in, out] action_flags
- *   Pointer to the detected actions.
  * @param[in] dev_flow
  *   Pointer to mlx5_flow.
+ * @param[in] action
+ *   Action configuration.
  */
 static void
-flow_verbs_translate_action_drop(uint64_t *action_flags,
-				 struct mlx5_flow *dev_flow)
+flow_verbs_translate_action_drop
+	(struct mlx5_flow *dev_flow,
+	 const struct rte_flow_action *action __rte_unused)
 {
 	unsigned int size = sizeof(struct ibv_flow_spec_action_drop);
 	struct ibv_flow_spec_action_drop drop = {
@@ -877,26 +829,22 @@ flow_verbs_translate_action_drop(uint64_t *action_flags,
 			.size = size,
 	};
 
-	flow_verbs_spec_add(dev_flow, &drop, size);
-	*action_flags |= MLX5_FLOW_ACTION_DROP;
+	flow_verbs_spec_add(&dev_flow->verbs, &drop, size);
 }
 
 /**
  * Convert the @p action into a Verbs specification. This function assumes that
  * the input is valid and that there is space to insert the requested action
- * into the flow. This function also return the action that was added.
+ * into the flow.
  *
- * @param[in] action
- *   Action configuration.
- * @param[in, out] action_flags
- *   Pointer to the detected actions.
  * @param[in] dev_flow
  *   Pointer to mlx5_flow.
+ * @param[in] action
+ *   Action configuration.
  */
 static void
-flow_verbs_translate_action_queue(const struct rte_flow_action *action,
-				  uint64_t *action_flags,
-				  struct mlx5_flow *dev_flow)
+flow_verbs_translate_action_queue(struct mlx5_flow *dev_flow,
+				  const struct rte_flow_action *action)
 {
 	const struct rte_flow_action_queue *queue = action->conf;
 	struct rte_flow *flow = dev_flow->flow;
@@ -904,13 +852,12 @@ flow_verbs_translate_action_queue(const struct rte_flow_action *action,
 	if (flow->queue)
 		(*flow->queue)[0] = queue->index;
 	flow->rss.queue_num = 1;
-	*action_flags |= MLX5_FLOW_ACTION_QUEUE;
 }
 
 /**
  * Convert the @p action into a Verbs specification. This function assumes that
  * the input is valid and that there is space to insert the requested action
- * into the flow. This function also return the action that was added.
+ * into the flow.
  *
  * @param[in] action
  *   Action configuration.
@@ -920,9 +867,8 @@ flow_verbs_translate_action_queue(const struct rte_flow_action *action,
  *   Pointer to mlx5_flow.
  */
 static void
-flow_verbs_translate_action_rss(const struct rte_flow_action *action,
-				uint64_t *action_flags,
-				struct mlx5_flow *dev_flow)
+flow_verbs_translate_action_rss(struct mlx5_flow *dev_flow,
+				const struct rte_flow_action *action)
 {
 	const struct rte_flow_action_rss *rss = action->conf;
 	const uint8_t *rss_key;
@@ -938,26 +884,22 @@ flow_verbs_translate_action_rss(const struct rte_flow_action *action,
 	/* RSS type 0 indicates default RSS type (ETH_RSS_IP). */
 	flow->rss.types = !rss->types ? ETH_RSS_IP : rss->types;
 	flow->rss.level = rss->level;
-	*action_flags |= MLX5_FLOW_ACTION_RSS;
 }
 
 /**
  * Convert the @p action into a Verbs specification. This function assumes that
  * the input is valid and that there is space to insert the requested action
- * into the flow. This function also return the action that was added.
+ * into the flow.
  *
- * @param[in] action
- *   Action configuration.
- * @param[in, out] action_flags
- *   Pointer to the detected actions.
  * @param[in] dev_flow
  *   Pointer to mlx5_flow.
+ * @param[in] action
+ *   Action configuration.
  */
 static void
 flow_verbs_translate_action_flag
-			(const struct rte_flow_action *action __rte_unused,
-			 uint64_t *action_flags,
-			 struct mlx5_flow *dev_flow)
+	(struct mlx5_flow *dev_flow,
+	 const struct rte_flow_action *action __rte_unused)
 {
 	unsigned int size = sizeof(struct ibv_flow_spec_action_tag);
 	struct ibv_flow_spec_action_tag tag = {
@@ -965,87 +907,44 @@ flow_verbs_translate_action_flag
 		.size = size,
 		.tag_id = mlx5_flow_mark_set(MLX5_FLOW_MARK_DEFAULT),
 	};
-	*action_flags |= MLX5_FLOW_ACTION_MARK;
-	flow_verbs_spec_add(dev_flow, &tag, size);
-}
 
-/**
- * Update verbs specification to modify the flag to mark.
- *
- * @param[in, out] verbs
- *   Pointer to the mlx5_flow_verbs structure.
- * @param[in] mark_id
- *   Mark identifier to replace the flag.
- */
-static void
-flow_verbs_mark_update(struct mlx5_flow_verbs *verbs, uint32_t mark_id)
-{
-	struct ibv_spec_header *hdr;
-	int i;
-
-	if (!verbs)
-		return;
-	/* Update Verbs specification. */
-	hdr = (struct ibv_spec_header *)verbs->specs;
-	if (!hdr)
-		return;
-	for (i = 0; i != verbs->attr->num_of_specs; ++i) {
-		if (hdr->type == IBV_FLOW_SPEC_ACTION_TAG) {
-			struct ibv_flow_spec_action_tag *t =
-				(struct ibv_flow_spec_action_tag *)hdr;
-
-			t->tag_id = mlx5_flow_mark_set(mark_id);
-		}
-		hdr = (struct ibv_spec_header *)((uintptr_t)hdr + hdr->size);
-	}
+	flow_verbs_spec_add(&dev_flow->verbs, &tag, size);
 }
 
 /**
  * Convert the @p action into a Verbs specification. This function assumes that
  * the input is valid and that there is space to insert the requested action
- * into the flow. This function also return the action that was added.
+ * into the flow.
  *
- * @param[in] action
- *   Action configuration.
- * @param[in, out] action_flags
- *   Pointer to the detected actions.
  * @param[in] dev_flow
  *   Pointer to mlx5_flow.
+ * @param[in] action
+ *   Action configuration.
  */
 static void
-flow_verbs_translate_action_mark(const struct rte_flow_action *action,
-				 uint64_t *action_flags,
-				 struct mlx5_flow *dev_flow)
+flow_verbs_translate_action_mark(struct mlx5_flow *dev_flow,
+				 const struct rte_flow_action *action)
 {
 	const struct rte_flow_action_mark *mark = action->conf;
 	unsigned int size = sizeof(struct ibv_flow_spec_action_tag);
 	struct ibv_flow_spec_action_tag tag = {
 		.type = IBV_FLOW_SPEC_ACTION_TAG,
 		.size = size,
+		.tag_id = mlx5_flow_mark_set(mark->id),
 	};
-	struct mlx5_flow_verbs *verbs = &dev_flow->verbs;
 
-	if (*action_flags & MLX5_FLOW_ACTION_FLAG) {
-		flow_verbs_mark_update(verbs, mark->id);
-		size = 0;
-	} else {
-		tag.tag_id = mlx5_flow_mark_set(mark->id);
-		flow_verbs_spec_add(dev_flow, &tag, size);
-	}
-	*action_flags |= MLX5_FLOW_ACTION_MARK;
+	flow_verbs_spec_add(&dev_flow->verbs, &tag, size);
 }
 
 /**
  * Convert the @p action into a Verbs specification. This function assumes that
  * the input is valid and that there is space to insert the requested action
- * into the flow. This function also return the action that was added.
+ * into the flow.
  *
  * @param[in] dev
  *   Pointer to the Ethernet device structure.
  * @param[in] action
  *   Action configuration.
- * @param[in, out] action_flags
- *   Pointer to the detected actions.
  * @param[in] dev_flow
  *   Pointer to mlx5_flow.
  * @param[out] error
@@ -1055,10 +954,9 @@ flow_verbs_translate_action_mark(const struct rte_flow_action *action,
  *   0 On success else a negative errno value is returned and rte_errno is set.
  */
 static int
-flow_verbs_translate_action_count(struct rte_eth_dev *dev,
+flow_verbs_translate_action_count(struct mlx5_flow *dev_flow,
 				  const struct rte_flow_action *action,
-				  uint64_t *action_flags,
-				  struct mlx5_flow *dev_flow,
+				  struct rte_eth_dev *dev,
 				  struct rte_flow_error *error)
 {
 	const struct rte_flow_action_count *count = action->conf;
@@ -1082,13 +980,12 @@ flow_verbs_translate_action_count(struct rte_eth_dev *dev,
 						  "cannot get counter"
 						  " context.");
 	}
-	*action_flags |= MLX5_FLOW_ACTION_COUNT;
 #if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
 	counter.counter_set_handle = flow->counter->cs->handle;
-	flow_verbs_spec_add(dev_flow, &counter, size);
+	flow_verbs_spec_add(&dev_flow->verbs, &counter, size);
 #elif defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
 	counter.counters = flow->counter->cs;
-	flow_verbs_spec_add(dev_flow, &counter, size);
+	flow_verbs_spec_add(&dev_flow->verbs, &counter, size);
 #endif
 	return 0;
 }
@@ -1120,7 +1017,6 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 	int ret;
 	uint64_t action_flags = 0;
 	uint64_t item_flags = 0;
-	int tunnel = 0;
 	uint8_t next_protocol = 0xff;
 
 	if (items == NULL)
@@ -1129,9 +1025,9 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 	if (ret < 0)
 		return ret;
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
+		int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
 		int ret = 0;
 
-		tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
 		switch (items->type) {
 		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;
@@ -1148,8 +1044,10 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 							   error);
 			if (ret < 0)
 				return ret;
-			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_VLAN :
-					       MLX5_FLOW_LAYER_OUTER_VLAN;
+			item_flags |= tunnel ? (MLX5_FLOW_LAYER_INNER_L2 |
+						MLX5_FLOW_LAYER_INNER_VLAN) :
+					       (MLX5_FLOW_LAYER_OUTER_L2 |
+						MLX5_FLOW_LAYER_OUTER_VLAN);
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			ret = mlx5_flow_validate_item_ipv4(items, item_flags,
@@ -1399,8 +1297,11 @@ flow_verbs_get_items_and_size(const struct rte_flow_item items[],
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
 			size += sizeof(struct ibv_flow_spec_eth);
-			detected_items |= tunnel ? MLX5_FLOW_LAYER_INNER_VLAN :
-						   MLX5_FLOW_LAYER_OUTER_VLAN;
+			detected_items |=
+				tunnel ? (MLX5_FLOW_LAYER_INNER_L2 |
+					  MLX5_FLOW_LAYER_INNER_VLAN) :
+					 (MLX5_FLOW_LAYER_OUTER_L2 |
+					  MLX5_FLOW_LAYER_OUTER_VLAN);
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			size += sizeof(struct ibv_flow_spec_ipv4_ext);
@@ -1532,50 +1433,48 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 		     const struct rte_flow_action actions[],
 		     struct rte_flow_error *error)
 {
-	uint64_t action_flags = 0;
+	struct rte_flow *flow = dev_flow->flow;
 	uint64_t item_flags = 0;
+	uint64_t action_flags = 0;
 	uint64_t priority = attr->priority;
+	uint32_t subpriority = 0;
 	struct priv *priv = dev->data->dev_private;
 
 	if (priority == MLX5_FLOW_PRIO_RSVD)
 		priority = priv->config.flow_prio - 1;
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
 		int ret;
+
 		switch (actions->type) {
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			break;
 		case RTE_FLOW_ACTION_TYPE_FLAG:
-			flow_verbs_translate_action_flag(actions,
-							 &action_flags,
-							 dev_flow);
+			flow_verbs_translate_action_flag(dev_flow, actions);
+			action_flags |= MLX5_FLOW_ACTION_FLAG;
 			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
-			flow_verbs_translate_action_mark(actions,
-							 &action_flags,
-							 dev_flow);
+			flow_verbs_translate_action_mark(dev_flow, actions);
+			action_flags |= MLX5_FLOW_ACTION_MARK;
 			break;
 		case RTE_FLOW_ACTION_TYPE_DROP:
-			flow_verbs_translate_action_drop(&action_flags,
-							 dev_flow);
+			flow_verbs_translate_action_drop(dev_flow, actions);
+			action_flags |= MLX5_FLOW_ACTION_DROP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
-			flow_verbs_translate_action_queue(actions,
-							  &action_flags,
-							  dev_flow);
+			flow_verbs_translate_action_queue(dev_flow, actions);
+			action_flags |= MLX5_FLOW_ACTION_QUEUE;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RSS:
-			flow_verbs_translate_action_rss(actions,
-							&action_flags,
-							dev_flow);
+			flow_verbs_translate_action_rss(dev_flow, actions);
+			action_flags |= MLX5_FLOW_ACTION_RSS;
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
-			ret = flow_verbs_translate_action_count(dev,
+			ret = flow_verbs_translate_action_count(dev_flow,
 								actions,
-								&action_flags,
-								dev_flow,
-								error);
+								dev, error);
 			if (ret < 0)
 				return ret;
+			action_flags |= MLX5_FLOW_ACTION_COUNT;
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
@@ -1584,51 +1483,100 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 						  "action not supported");
 		}
 	}
-	/* Device flow should have action flags by flow_drv_prepare(). */
-	assert(dev_flow->flow->actions == action_flags);
+	flow->actions = action_flags;
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
+		int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
+
 		switch (items->type) {
 		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;
 		case RTE_FLOW_ITEM_TYPE_ETH:
-			flow_verbs_translate_item_eth(items, &item_flags,
-						      dev_flow);
+			flow_verbs_translate_item_eth(dev_flow, items,
+						      item_flags);
+			subpriority = MLX5_PRIORITY_MAP_L2;
+			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L2 :
+					       MLX5_FLOW_LAYER_OUTER_L2;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
-			flow_verbs_translate_item_vlan(items, &item_flags,
-						       dev_flow);
+			flow_verbs_translate_item_vlan(dev_flow, items,
+						       item_flags);
+			subpriority = MLX5_PRIORITY_MAP_L2;
+			item_flags |= tunnel ? (MLX5_FLOW_LAYER_INNER_L2 |
+						MLX5_FLOW_LAYER_INNER_VLAN) :
+					       (MLX5_FLOW_LAYER_OUTER_L2 |
+						MLX5_FLOW_LAYER_OUTER_VLAN);
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
-			flow_verbs_translate_item_ipv4(items, &item_flags,
-						       dev_flow);
+			flow_verbs_translate_item_ipv4(dev_flow, items,
+						       item_flags);
+			subpriority = MLX5_PRIORITY_MAP_L3;
+			dev_flow->verbs.hash_fields |=
+				mlx5_flow_hashfields_adjust
+					(dev_flow, tunnel,
+					 MLX5_IPV4_LAYER_TYPES,
+					 MLX5_IPV4_IBV_RX_HASH);
+			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV4 :
+					       MLX5_FLOW_LAYER_OUTER_L3_IPV4;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
-			flow_verbs_translate_item_ipv6(items, &item_flags,
-						       dev_flow);
-			break;
-		case RTE_FLOW_ITEM_TYPE_UDP:
-			flow_verbs_translate_item_udp(items, &item_flags,
-						      dev_flow);
+			flow_verbs_translate_item_ipv6(dev_flow, items,
+						       item_flags);
+			subpriority = MLX5_PRIORITY_MAP_L3;
+			dev_flow->verbs.hash_fields |=
+				mlx5_flow_hashfields_adjust
+					(dev_flow, tunnel,
+					 MLX5_IPV6_LAYER_TYPES,
+					 MLX5_IPV6_IBV_RX_HASH);
+			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV6 :
+					       MLX5_FLOW_LAYER_OUTER_L3_IPV6;
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
-			flow_verbs_translate_item_tcp(items, &item_flags,
-						      dev_flow);
+			flow_verbs_translate_item_tcp(dev_flow, items,
+						      item_flags);
+			subpriority = MLX5_PRIORITY_MAP_L4;
+			dev_flow->verbs.hash_fields |=
+				mlx5_flow_hashfields_adjust
+					(dev_flow, tunnel, ETH_RSS_TCP,
+					 (IBV_RX_HASH_SRC_PORT_TCP |
+					  IBV_RX_HASH_DST_PORT_TCP));
+			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L4_TCP :
+					       MLX5_FLOW_LAYER_OUTER_L4_TCP;
+			break;
+		case RTE_FLOW_ITEM_TYPE_UDP:
+			flow_verbs_translate_item_udp(dev_flow, items,
+						      item_flags);
+			subpriority = MLX5_PRIORITY_MAP_L4;
+			dev_flow->verbs.hash_fields |=
+				mlx5_flow_hashfields_adjust
+					(dev_flow, tunnel, ETH_RSS_UDP,
+					 (IBV_RX_HASH_SRC_PORT_UDP |
+					  IBV_RX_HASH_DST_PORT_UDP));
+			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L4_UDP :
+					       MLX5_FLOW_LAYER_OUTER_L4_UDP;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
-			flow_verbs_translate_item_vxlan(items, &item_flags,
-							dev_flow);
+			flow_verbs_translate_item_vxlan(dev_flow, items,
+							item_flags);
+			subpriority = MLX5_PRIORITY_MAP_L2;
+			item_flags |= MLX5_FLOW_LAYER_VXLAN;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
-			flow_verbs_translate_item_vxlan_gpe(items, &item_flags,
-							    dev_flow);
+			flow_verbs_translate_item_vxlan_gpe(dev_flow, items,
+							    item_flags);
+			subpriority = MLX5_PRIORITY_MAP_L2;
+			item_flags |= MLX5_FLOW_LAYER_VXLAN_GPE;
 			break;
 		case RTE_FLOW_ITEM_TYPE_GRE:
-			flow_verbs_translate_item_gre(items, &item_flags,
-						      dev_flow);
+			flow_verbs_translate_item_gre(dev_flow, items,
+						      item_flags);
+			subpriority = MLX5_PRIORITY_MAP_L2;
+			item_flags |= MLX5_FLOW_LAYER_GRE;
 			break;
 		case RTE_FLOW_ITEM_TYPE_MPLS:
-			flow_verbs_translate_item_mpls(items, &item_flags,
-						       dev_flow);
+			flow_verbs_translate_item_mpls(dev_flow, items,
+						       item_flags);
+			subpriority = MLX5_PRIORITY_MAP_L2;
+			item_flags |= MLX5_FLOW_LAYER_MPLS;
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
@@ -1637,9 +1585,9 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 						  "item not supported");
 		}
 	}
+	dev_flow->layers = item_flags;
 	dev_flow->verbs.attr->priority =
-		mlx5_flow_adjust_priority(dev, priority,
-					  dev_flow->verbs.attr->priority);
+		mlx5_flow_adjust_priority(dev, priority, subpriority);
 	return 0;
 }
 
