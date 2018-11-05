@@ -36,8 +36,11 @@ ipv4_frag_reassemble(struct ip_frag_pkt *fp)
 			/* previous fragment found. */
 			if(fp->frags[i].ofs + fp->frags[i].len == ofs) {
 
+				RTE_ASSERT(curr_idx != i);
+
 				/* adjust start of the last fragment data. */
-				rte_pktmbuf_adj(m, (uint16_t)(m->l2_len + m->l3_len));
+				rte_pktmbuf_adj(m,
+					(uint16_t)(m->l2_len + m->l3_len));
 				rte_pktmbuf_chain(fp->frags[i].mb, m);
 
 				/* this mbuf should not be accessed directly */
@@ -96,14 +99,14 @@ ipv4_frag_reassemble(struct ip_frag_pkt *fp)
  */
 struct rte_mbuf *
 rte_ipv4_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
-		struct rte_ip_frag_death_row *dr, struct rte_mbuf *mb, uint64_t tms,
-		struct ipv4_hdr *ip_hdr)
+	struct rte_ip_frag_death_row *dr, struct rte_mbuf *mb, uint64_t tms,
+	struct ipv4_hdr *ip_hdr)
 {
 	struct ip_frag_pkt *fp;
 	struct ip_frag_key key;
 	const unaligned_uint64_t *psd;
-	uint16_t ip_len;
 	uint16_t flag_offset, ip_ofs, ip_flag;
+	int32_t ip_len;
 
 	flag_offset = rte_be_to_cpu_16(ip_hdr->fragment_offset);
 	ip_ofs = (uint16_t)(flag_offset & IPV4_HDR_OFFSET_MASK);
@@ -116,18 +119,23 @@ rte_ipv4_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
 	key.key_len = IPV4_KEYLEN;
 
 	ip_ofs *= IPV4_HDR_OFFSET_UNITS;
-	ip_len = (uint16_t)(rte_be_to_cpu_16(ip_hdr->total_length) -
-		mb->l3_len);
+	ip_len = rte_be_to_cpu_16(ip_hdr->total_length) - mb->l3_len;
 
 	IP_FRAG_LOG(DEBUG, "%s:%d:\n"
 		"mbuf: %p, tms: %" PRIu64
-		", key: <%" PRIx64 ", %#x>, ofs: %u, len: %u, flags: %#x\n"
+		", key: <%" PRIx64 ", %#x>, ofs: %u, len: %d, flags: %#x\n"
 		"tbl: %p, max_cycles: %" PRIu64 ", entry_mask: %#x, "
 		"max_entries: %u, use_entries: %u\n\n",
 		__func__, __LINE__,
 		mb, tms, key.src_dst[0], key.id, ip_ofs, ip_len, ip_flag,
 		tbl, tbl->max_cycles, tbl->entry_mask, tbl->max_entries,
 		tbl->use_entries);
+
+	/* check that fragment length is greater then zero. */
+	if (ip_len <= 0) {
+		IP_FRAG_MBUF2DR(dr, mb);
+		return NULL;
+	}
 
 	/* try to find/add entry into the fragment's table. */
 	if ((fp = ip_frag_find(tbl, dr, &key, tms)) == NULL) {
