@@ -44,9 +44,17 @@ struct ip_frag {
 
 /** @internal <src addr, dst_addr, id> to uniquely identify fragmented datagram. */
 struct ip_frag_key {
-	uint64_t src_dst[4];      /**< src address, first 8 bytes used for IPv4 */
-	uint32_t id;           /**< dst address */
-	uint32_t key_len;      /**< src/dst key length */
+	uint64_t src_dst[4];
+	/**< src and dst address, only first 8 bytes used for IPv4 */
+	RTE_STD_C11
+	union {
+		uint64_t id_key_len; /**< combined for easy fetch */
+		__extension__
+		struct {
+			uint32_t id;       /**< packet id */
+			uint32_t key_len;  /**< src/dst key length */
+		};
+	};
 };
 
 /**
