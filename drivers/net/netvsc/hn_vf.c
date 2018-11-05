@@ -223,7 +223,7 @@ int hn_vf_link_update(struct rte_eth_dev *dev,
 	rte_spinlock_lock(&hv->vf_lock);
 	vf_dev = hv->vf_dev;
 	if (vf_dev && vf_dev->dev_ops->link_update)
-		ret = (*vf_dev->dev_ops->link_update)(dev, wait_to_complete);
+		ret = (*vf_dev->dev_ops->link_update)(vf_dev, wait_to_complete);
 	rte_spinlock_unlock(&hv->vf_lock);
 
 	return ret;
