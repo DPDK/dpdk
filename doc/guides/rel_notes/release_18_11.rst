@@ -404,6 +404,14 @@ API Changes
 * eventdev: Type of 2nd parameter to ``rte_event_eth_rx_adapter_caps_get()``
   has been changed from uint8_t to uint16_t.
 
+* kni: By default, interface carrier status is ``off`` which means there won't
+  be any traffic. It can be set to ``on`` via ``rte_kni_update_link()`` API
+  or via ``sysfs`` interface:
+  ``echo 1 > /sys/class/net/vEth0/carrier``.
+  Note interface should be ``up`` to be able to read/write sysfs interface.
+  When KNI sample application is used, ``-m`` parameter can be used to
+  automatically update the carrier status for the interface.
+
 
 ABI Changes
 -----------
