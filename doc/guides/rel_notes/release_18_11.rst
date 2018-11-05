@@ -412,6 +412,12 @@ API Changes
   When KNI sample application is used, ``-m`` parameter can be used to
   automatically update the carrier status for the interface.
 
+* kni: When ethtool support enabled (``CONFIG_RTE_KNI_KMOD_ETHTOOL=y``)
+  ethtool commands ``ETHTOOL_GSET & ETHTOOL_SSET`` are no more supported for the
+  kernels that has ``ETHTOOL_GLINKSETTINGS & ETHTOOL_SLINKSETTINGS`` support.
+  This means ``ethtool "-a|--show-pause", "-s|--change"`` won't work, and
+  ``ethtool <iface>`` output will have less information.
+
 
 ABI Changes
 -----------
