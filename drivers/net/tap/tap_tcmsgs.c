@@ -116,7 +116,7 @@ error:
 int
 qdisc_add_multiq(int nlsk_fd, uint16_t ifindex)
 {
-	struct tc_multiq_qopt opt;
+	struct tc_multiq_qopt opt = {0};
 	struct nlmsg msg;
 
 	tc_init_msg(&msg, ifindex, RTM_NEWQDISC,
