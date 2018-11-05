@@ -46,8 +46,6 @@ generate_ipv4_flow(uint16_t port_id, uint16_t rx_q,
 	struct rte_flow_action_queue queue = { .index = rx_q };
 	struct rte_flow_item_eth eth_spec;
 	struct rte_flow_item_eth eth_mask;
-	struct rte_flow_item_vlan vlan_spec;
-	struct rte_flow_item_vlan vlan_mask;
 	struct rte_flow_item_ipv4 ip_spec;
 	struct rte_flow_item_ipv4 ip_mask;
 	int res;
@@ -85,17 +83,6 @@ generate_ipv4_flow(uint16_t port_id, uint16_t rx_q,
 	pattern[0].mask = &eth_mask;
 
 	/*
-	 * setting the second level of the pattern (vlan).
-	 * since in this example we just want to get the
-	 * ipv4 we also set this level to allow all.
-	 */
-	memset(&vlan_spec, 0, sizeof(struct rte_flow_item_vlan));
-	memset(&vlan_mask, 0, sizeof(struct rte_flow_item_vlan));
-	pattern[1].type = RTE_FLOW_ITEM_TYPE_VLAN;
-	pattern[1].spec = &vlan_spec;
-	pattern[1].mask = &vlan_mask;
-
-	/*
 	 * setting the third level of the pattern (ip).
 	 * in this example this is the level we care about
 	 * so we set it according to the parameters.
@@ -106,12 +93,12 @@ generate_ipv4_flow(uint16_t port_id, uint16_t rx_q,
 	ip_mask.hdr.dst_addr = dest_mask;
 	ip_spec.hdr.src_addr = htonl(src_ip);
 	ip_mask.hdr.src_addr = src_mask;
-	pattern[2].type = RTE_FLOW_ITEM_TYPE_IPV4;
-	pattern[2].spec = &ip_spec;
-	pattern[2].mask = &ip_mask;
+	pattern[1].type = RTE_FLOW_ITEM_TYPE_IPV4;
+	pattern[1].spec = &ip_spec;
+	pattern[1].mask = &ip_mask;
 
 	/* the final level must be always type end */
-	pattern[3].type = RTE_FLOW_ITEM_TYPE_END;
+	pattern[2].type = RTE_FLOW_ITEM_TYPE_END;
 
 	res = rte_flow_validate(port_id, &attr, pattern, action, error);
 	if (!res)
