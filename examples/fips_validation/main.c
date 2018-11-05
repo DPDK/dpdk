@@ -459,6 +459,8 @@ prepare_auth_op(void)
 	}
 
 	rte_crypto_op_attach_sym_session(env.op, env.sess);
+
+	return 0;
 }
 
 static int
@@ -526,6 +528,8 @@ prepare_aead_op(void)
 	}
 
 	rte_crypto_op_attach_sym_session(env.op, env.sess);
+
+	return 0;
 }
 
 static int
