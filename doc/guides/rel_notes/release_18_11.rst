@@ -279,6 +279,25 @@ New Features
   their telemetry via a UNIX socket in JSON. The JSON can be consumed by any
   Service Assurance agent, such as CollectD.
 
+* **Updated KNI kernel module, rte_kni library, and KNI sample application.**
+
+  Updated the KNI kernel module with a new kernel module parameter,
+  ``carrier=[on|off]`` to allow the user to control the default carrier
+  state of KNI kernel network interfaces.  The default carrier state
+  is now set to ``off``, so the interfaces cannot be used until the
+  carrier state is set to ``on`` via ``rte_kni_update_link`` or
+  by writing ``1`` to ``/sys/devices/virtual/net/<iface>/carrier``.
+  In previous versions the default carrier state was left undefined.
+  See :doc:`../prog_guide/kernel_nic_interface` for more information.
+
+  Added the new API function ``rte_kni_update_link`` to allow the user
+  to set the carrier state of the KNI kernel network interface.
+
+  Added a new command line flag ``-m`` to the KNI sample application to
+  monitor and automatically reflect the physical NIC carrier state to the
+  KNI kernel network interface with the new ``rte_kni_update_link`` API.
+  See :doc:`../sample_app_ug/kernel_nic_interface` for more information.
+
 * **Added ability to switch queue deferred start flag on testpmd app.**
 
   Added a console command to testpmd app, giving ability to switch
