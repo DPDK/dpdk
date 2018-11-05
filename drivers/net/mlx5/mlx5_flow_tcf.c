@@ -2370,24 +2370,21 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 }
 
 /**
- * Calculate maximum size of memory for flow items of Linux TC flower and
- * extract specified items.
+ * Calculate maximum size of memory for flow items of Linux TC flower.
  *
+ * @param[in] attr
+ *   Pointer to the flow attributes.
  * @param[in] items
  *   Pointer to the list of items.
- * @param[out] item_flags
- *   Pointer to the detected items.
  *
  * @return
  *   Maximum size of memory for items.
  */
 static int
-flow_tcf_get_items_and_size(const struct rte_flow_attr *attr,
-			    const struct rte_flow_item items[],
-			    uint64_t *item_flags)
+flow_tcf_get_items_size(const struct rte_flow_attr *attr,
+			const struct rte_flow_item items[])
 {
 	int size = 0;
-	uint64_t flags = 0;
 
 	size += SZ_NLATTR_STRZ_OF("flower") +
 		SZ_NLATTR_NEST + /* TCA_OPTIONS. */
@@ -2404,7 +2401,6 @@ flow_tcf_get_items_and_size(const struct rte_flow_attr *attr,
 			size += SZ_NLATTR_TYPE_OF(uint16_t) + /* Ether type. */
 				SZ_NLATTR_DATA_OF(ETHER_ADDR_LEN) * 4;
 				/* dst/src MAC addr and mask. */
-			flags |= MLX5_FLOW_LAYER_OUTER_L2;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
 			size += SZ_NLATTR_TYPE_OF(uint16_t) + /* Ether type. */
@@ -2412,37 +2408,31 @@ flow_tcf_get_items_and_size(const struct rte_flow_attr *attr,
 				/* VLAN Ether type. */
 				SZ_NLATTR_TYPE_OF(uint8_t) + /* VLAN prio. */
 				SZ_NLATTR_TYPE_OF(uint16_t); /* VLAN ID. */
-			flags |= MLX5_FLOW_LAYER_OUTER_VLAN;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			size += SZ_NLATTR_TYPE_OF(uint16_t) + /* Ether type. */
 				SZ_NLATTR_TYPE_OF(uint8_t) + /* IP proto. */
 				SZ_NLATTR_TYPE_OF(uint32_t) * 4;
 				/* dst/src IP addr and mask. */
-			flags |= MLX5_FLOW_LAYER_OUTER_L3_IPV4;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
 			size += SZ_NLATTR_TYPE_OF(uint16_t) + /* Ether type. */
 				SZ_NLATTR_TYPE_OF(uint8_t) + /* IP proto. */
 				SZ_NLATTR_DATA_OF(IPV6_ADDR_LEN) * 4;
 				/* dst/src IP addr and mask. */
-			flags |= MLX5_FLOW_LAYER_OUTER_L3_IPV6;
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			size += SZ_NLATTR_TYPE_OF(uint8_t) + /* IP proto. */
 				SZ_NLATTR_TYPE_OF(uint16_t) * 4;
 				/* dst/src port and mask. */
-			flags |= MLX5_FLOW_LAYER_OUTER_L4_UDP;
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			size += SZ_NLATTR_TYPE_OF(uint8_t) + /* IP proto. */
 				SZ_NLATTR_TYPE_OF(uint16_t) * 4;
 				/* dst/src port and mask. */
-			flags |= MLX5_FLOW_LAYER_OUTER_L4_TCP;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
 			size += SZ_NLATTR_TYPE_OF(uint32_t);
-			flags |= MLX5_FLOW_LAYER_VXLAN;
 			break;
 		default:
 			DRV_LOG(WARNING,
@@ -2452,7 +2442,6 @@ flow_tcf_get_items_and_size(const struct rte_flow_attr *attr,
 			break;
 		}
 	}
-	*item_flags = flags;
 	return size;
 }
 
@@ -2668,10 +2657,6 @@ flow_tcf_nl_brand(struct nlmsghdr *nlh, uint32_t handle)
  *   Pointer to the list of items.
  * @param[in] actions
  *   Pointer to the list of actions.
- * @param[out] item_flags
- *   Pointer to bit mask of all items detected.
- * @param[out] action_flags
- *   Pointer to bit mask of all actions detected.
  * @param[out] error
  *   Pointer to the error structure.
  *
@@ -2683,7 +2668,6 @@ static struct mlx5_flow *
 flow_tcf_prepare(const struct rte_flow_attr *attr,
 		 const struct rte_flow_item items[],
 		 const struct rte_flow_action actions[],
-		 uint64_t *item_flags, uint64_t *action_flags,
 		 struct rte_flow_error *error)
 {
 	size_t size = RTE_ALIGN_CEIL
@@ -2692,12 +2676,13 @@ flow_tcf_prepare(const struct rte_flow_attr *attr,
 		      MNL_ALIGN(sizeof(struct nlmsghdr)) +
 		      MNL_ALIGN(sizeof(struct tcmsg));
 	struct mlx5_flow *dev_flow;
+	uint64_t action_flags = 0;
 	struct nlmsghdr *nlh;
 	struct tcmsg *tcm;
 	uint8_t *sp, *tun = NULL;
 
-	size += flow_tcf_get_items_and_size(attr, items, item_flags);
-	size += flow_tcf_get_actions_and_size(actions, action_flags);
+	size += flow_tcf_get_items_size(attr, items);
+	size += flow_tcf_get_actions_and_size(actions, &action_flags);
 	dev_flow = rte_zmalloc(__func__, size, MNL_ALIGNTO);
 	if (!dev_flow) {
 		rte_flow_error_set(error, ENOMEM,
@@ -2706,7 +2691,7 @@ flow_tcf_prepare(const struct rte_flow_attr *attr,
 		return NULL;
 	}
 	sp = (uint8_t *)(dev_flow + 1);
-	if (*action_flags & MLX5_FLOW_ACTION_VXLAN_ENCAP) {
+	if (action_flags & MLX5_FLOW_ACTION_VXLAN_ENCAP) {
 		sp = RTE_PTR_ALIGN
 			(sp, alignof(struct flow_tcf_tunnel_hdr));
 		tun = sp;
@@ -2718,7 +2703,7 @@ flow_tcf_prepare(const struct rte_flow_attr *attr,
 			(sizeof(struct flow_tcf_vxlan_encap),
 			MNL_ALIGNTO);
 #endif
-	} else if (*action_flags & MLX5_FLOW_ACTION_VXLAN_DECAP) {
+	} else if (action_flags & MLX5_FLOW_ACTION_VXLAN_DECAP) {
 		sp = RTE_PTR_ALIGN
 			(sp, alignof(struct flow_tcf_tunnel_hdr));
 		tun = sp;
@@ -2747,9 +2732,9 @@ flow_tcf_prepare(const struct rte_flow_attr *attr,
 			.tcm = tcm,
 		},
 	};
-	if (*action_flags & MLX5_FLOW_ACTION_VXLAN_DECAP)
+	if (action_flags & MLX5_FLOW_ACTION_VXLAN_DECAP)
 		dev_flow->tcf.tunnel->type = FLOW_TCF_TUNACT_VXLAN_DECAP;
-	else if (*action_flags & MLX5_FLOW_ACTION_VXLAN_ENCAP)
+	else if (action_flags & MLX5_FLOW_ACTION_VXLAN_ENCAP)
 		dev_flow->tcf.tunnel->type = FLOW_TCF_TUNACT_VXLAN_ENCAP;
 	/*
 	 * Generate a reasonably unique handle based on the address of the

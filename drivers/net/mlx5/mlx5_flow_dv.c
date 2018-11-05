@@ -1014,10 +1014,6 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
  *   Pointer to the list of items.
  * @param[in] actions
  *   Pointer to the list of actions.
- * @param[out] item_flags
- *   Pointer to bit mask of all items detected.
- * @param[out] action_flags
- *   Pointer to bit mask of all actions detected.
  * @param[out] error
  *   Pointer to the error structure.
  *
@@ -1029,8 +1025,6 @@ static struct mlx5_flow *
 flow_dv_prepare(const struct rte_flow_attr *attr __rte_unused,
 		const struct rte_flow_item items[] __rte_unused,
 		const struct rte_flow_action actions[] __rte_unused,
-		uint64_t *item_flags __rte_unused,
-		uint64_t *action_flags __rte_unused,
 		struct rte_flow_error *error)
 {
 	uint32_t size = sizeof(struct mlx5_flow);

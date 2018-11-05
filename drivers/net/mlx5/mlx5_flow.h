@@ -302,8 +302,7 @@ typedef int (*mlx5_flow_validate_t)(struct rte_eth_dev *dev,
 				    struct rte_flow_error *error);
 typedef struct mlx5_flow *(*mlx5_flow_prepare_t)
 	(const struct rte_flow_attr *attr, const struct rte_flow_item items[],
-	 const struct rte_flow_action actions[], uint64_t *item_flags,
-	 uint64_t *action_flags, struct rte_flow_error *error);
+	 const struct rte_flow_action actions[], struct rte_flow_error *error);
 typedef int (*mlx5_flow_translate_t)(struct rte_eth_dev *dev,
 				     struct mlx5_flow *dev_flow,
 				     const struct rte_flow_attr *attr,

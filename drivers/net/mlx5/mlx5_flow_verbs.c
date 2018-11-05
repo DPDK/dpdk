@@ -1209,23 +1209,18 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 
 /**
  * Calculate the required bytes that are needed for the action part of the verbs
- * flow, in addtion returns bit-fields with all the detected action, in order to
- * avoid another interation over the actions.
+ * flow.
  *
  * @param[in] actions
  *   Pointer to the list of actions.
- * @param[out] action_flags
- *   Pointer to the detected actions.
  *
  * @return
  *   The size of the memory needed for all actions.
  */
 static int
-flow_verbs_get_actions_and_size(const struct rte_flow_action actions[],
-				uint64_t *action_flags)
+flow_verbs_get_actions_size(const struct rte_flow_action actions[])
 {
 	int size = 0;
-	uint64_t detected_actions = 0;
 
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
 		switch (actions->type) {
@@ -1233,128 +1228,89 @@ flow_verbs_get_actions_and_size(const struct rte_flow_action actions[],
 			break;
 		case RTE_FLOW_ACTION_TYPE_FLAG:
 			size += sizeof(struct ibv_flow_spec_action_tag);
-			detected_actions |= MLX5_FLOW_ACTION_FLAG;
 			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
 			size += sizeof(struct ibv_flow_spec_action_tag);
-			detected_actions |= MLX5_FLOW_ACTION_MARK;
 			break;
 		case RTE_FLOW_ACTION_TYPE_DROP:
 			size += sizeof(struct ibv_flow_spec_action_drop);
-			detected_actions |= MLX5_FLOW_ACTION_DROP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
-			detected_actions |= MLX5_FLOW_ACTION_QUEUE;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RSS:
-			detected_actions |= MLX5_FLOW_ACTION_RSS;
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
 #if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42) || \
 	defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
 			size += sizeof(struct ibv_flow_spec_counter_action);
 #endif
-			detected_actions |= MLX5_FLOW_ACTION_COUNT;
 			break;
 		default:
 			break;
 		}
 	}
-	*action_flags = detected_actions;
 	return size;
 }
 
 /**
  * Calculate the required bytes that are needed for the item part of the verbs
- * flow, in addtion returns bit-fields with all the detected action, in order to
- * avoid another interation over the actions.
+ * flow.
  *
- * @param[in] actions
+ * @param[in] items
  *   Pointer to the list of items.
- * @param[in, out] item_flags
- *   Pointer to the detected items.
  *
  * @return
  *   The size of the memory needed for all items.
  */
 static int
-flow_verbs_get_items_and_size(const struct rte_flow_item items[],
-			      uint64_t *item_flags)
+flow_verbs_get_items_size(const struct rte_flow_item items[])
 {
 	int size = 0;
-	uint64_t detected_items = 0;
 
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
-		int tunnel = !!(detected_items & MLX5_FLOW_LAYER_TUNNEL);
-
 		switch (items->type) {
 		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			size += sizeof(struct ibv_flow_spec_eth);
-			detected_items |= tunnel ? MLX5_FLOW_LAYER_INNER_L2 :
-						   MLX5_FLOW_LAYER_OUTER_L2;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
 			size += sizeof(struct ibv_flow_spec_eth);
-			detected_items |=
-				tunnel ? (MLX5_FLOW_LAYER_INNER_L2 |
-					  MLX5_FLOW_LAYER_INNER_VLAN) :
-					 (MLX5_FLOW_LAYER_OUTER_L2 |
-					  MLX5_FLOW_LAYER_OUTER_VLAN);
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			size += sizeof(struct ibv_flow_spec_ipv4_ext);
-			detected_items |= tunnel ?
-					  MLX5_FLOW_LAYER_INNER_L3_IPV4 :
-					  MLX5_FLOW_LAYER_OUTER_L3_IPV4;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
 			size += sizeof(struct ibv_flow_spec_ipv6);
-			detected_items |= tunnel ?
-					  MLX5_FLOW_LAYER_INNER_L3_IPV6 :
-					  MLX5_FLOW_LAYER_OUTER_L3_IPV6;
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			size += sizeof(struct ibv_flow_spec_tcp_udp);
-			detected_items |= tunnel ?
-					  MLX5_FLOW_LAYER_INNER_L4_UDP :
-					  MLX5_FLOW_LAYER_OUTER_L4_UDP;
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			size += sizeof(struct ibv_flow_spec_tcp_udp);
-			detected_items |= tunnel ?
-					  MLX5_FLOW_LAYER_INNER_L4_TCP :
-					  MLX5_FLOW_LAYER_OUTER_L4_TCP;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
 			size += sizeof(struct ibv_flow_spec_tunnel);
-			detected_items |= MLX5_FLOW_LAYER_VXLAN;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
 			size += sizeof(struct ibv_flow_spec_tunnel);
-			detected_items |= MLX5_FLOW_LAYER_VXLAN_GPE;
 			break;
 #ifdef HAVE_IBV_DEVICE_MPLS_SUPPORT
 		case RTE_FLOW_ITEM_TYPE_GRE:
 			size += sizeof(struct ibv_flow_spec_gre);
-			detected_items |= MLX5_FLOW_LAYER_GRE;
 			break;
 		case RTE_FLOW_ITEM_TYPE_MPLS:
 			size += sizeof(struct ibv_flow_spec_mpls);
-			detected_items |= MLX5_FLOW_LAYER_MPLS;
 			break;
 #else
 		case RTE_FLOW_ITEM_TYPE_GRE:
 			size += sizeof(struct ibv_flow_spec_tunnel);
-			detected_items |= MLX5_FLOW_LAYER_TUNNEL;
 			break;
 #endif
 		default:
 			break;
 		}
 	}
-	*item_flags = detected_items;
 	return size;
 }
 
@@ -1369,10 +1325,6 @@ flow_verbs_get_items_and_size(const struct rte_flow_item items[],
  *   Pointer to the list of items.
  * @param[in] actions
  *   Pointer to the list of actions.
- * @param[out] item_flags
- *   Pointer to bit mask of all items detected.
- * @param[out] action_flags
- *   Pointer to bit mask of all actions detected.
  * @param[out] error
  *   Pointer to the error structure.
  *
@@ -1384,15 +1336,13 @@ static struct mlx5_flow *
 flow_verbs_prepare(const struct rte_flow_attr *attr __rte_unused,
 		   const struct rte_flow_item items[],
 		   const struct rte_flow_action actions[],
-		   uint64_t *item_flags,
-		   uint64_t *action_flags,
 		   struct rte_flow_error *error)
 {
 	uint32_t size = sizeof(struct mlx5_flow) + sizeof(struct ibv_flow_attr);
 	struct mlx5_flow *flow;
 
-	size += flow_verbs_get_actions_and_size(actions, action_flags);
-	size += flow_verbs_get_items_and_size(items, item_flags);
+	size += flow_verbs_get_actions_size(actions);
+	size += flow_verbs_get_items_size(items);
 	flow = rte_calloc(__func__, 1, size, 0);
 	if (!flow) {
 		rte_flow_error_set(error, ENOMEM,

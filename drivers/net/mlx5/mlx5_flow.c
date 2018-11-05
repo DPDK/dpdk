@@ -1663,8 +1663,6 @@ static struct mlx5_flow *
 flow_null_prepare(const struct rte_flow_attr *attr __rte_unused,
 		  const struct rte_flow_item items[] __rte_unused,
 		  const struct rte_flow_action actions[] __rte_unused,
-		  uint64_t *item_flags __rte_unused,
-		  uint64_t *action_flags __rte_unused,
 		  struct rte_flow_error *error __rte_unused)
 {
 	rte_errno = ENOTSUP;
@@ -1792,16 +1790,19 @@ flow_drv_validate(struct rte_eth_dev *dev,
  * calculates the size of memory required for device flow, allocates the memory,
  * initializes the device flow and returns the pointer.
  *
+ * @note
+ *   This function initializes device flow structure such as dv, tcf or verbs in
+ *   struct mlx5_flow. However, it is caller's responsibility to initialize the
+ *   rest. For example, adding returning device flow to flow->dev_flow list and
+ *   setting backward reference to the flow should be done out of this function.
+ *   layers field is not filled either.
+ *
  * @param[in] attr
  *   Pointer to the flow attributes.
  * @param[in] items
  *   Pointer to the list of items.
  * @param[in] actions
  *   Pointer to the list of actions.
- * @param[out] item_flags
- *   Pointer to bit mask of all items detected.
- * @param[out] action_flags
- *   Pointer to bit mask of all actions detected.
  * @param[out] error
  *   Pointer to the error structure.
  *
@@ -1809,12 +1810,10 @@ flow_drv_validate(struct rte_eth_dev *dev,
  *   Pointer to device flow on success, otherwise NULL and rte_ernno is set.
  */
 static inline struct mlx5_flow *
-flow_drv_prepare(struct rte_flow *flow,
+flow_drv_prepare(const struct rte_flow *flow,
 		 const struct rte_flow_attr *attr,
 		 const struct rte_flow_item items[],
 		 const struct rte_flow_action actions[],
-		 uint64_t *item_flags,
-		 uint64_t *action_flags,
 		 struct rte_flow_error *error)
 {
 	const struct mlx5_flow_driver_ops *fops;
@@ -1822,8 +1821,7 @@ flow_drv_prepare(struct rte_flow *flow,
 
 	assert(type > MLX5_FLOW_TYPE_MIN && type < MLX5_FLOW_TYPE_MAX);
 	fops = flow_get_drv_ops(type);
-	return fops->prepare(attr, items, actions, item_flags, action_flags,
-			     error);
+	return fops->prepare(attr, items, actions, error);
 }
 
 /**
@@ -1832,6 +1830,12 @@ flow_drv_prepare(struct rte_flow *flow,
  * translates a generic flow into a driver flow. flow_drv_prepare() must
  * precede.
  *
+ * @note
+ *   dev_flow->layers could be filled as a result of parsing during translation
+ *   if needed by flow_drv_apply(). dev_flow->flow->actions can also be filled
+ *   if necessary. As a flow can have multiple dev_flows by RSS flow expansion,
+ *   flow->actions could be overwritten even though all the expanded dev_flows
+ *   have the same actions.
  *
  * @param[in] dev
  *   Pointer to the rte dev structure.
@@ -1895,7 +1899,7 @@ flow_drv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
  * Flow driver remove API. This abstracts calling driver specific functions.
  * Parent flow (rte_flow) should have driver type (drv_type). It removes a flow
  * on device. All the resources of the flow should be freed by calling
- * flow_dv_destroy().
+ * flow_drv_destroy().
  *
  * @param[in] dev
  *   Pointer to Ethernet device.
@@ -2026,8 +2030,6 @@ flow_list_create(struct rte_eth_dev *dev, struct mlx5_flows *list,
 {
 	struct rte_flow *flow = NULL;
 	struct mlx5_flow *dev_flow;
-	uint64_t action_flags = 0;
-	uint64_t item_flags = 0;
 	const struct rte_flow_action_rss *rss;
 	union {
 		struct rte_flow_expand_rss buf;
@@ -2070,16 +2072,10 @@ flow_list_create(struct rte_eth_dev *dev, struct mlx5_flows *list,
 	}
 	for (i = 0; i < buf->entries; ++i) {
 		dev_flow = flow_drv_prepare(flow, attr, buf->entry[i].pattern,
-					    actions, &item_flags, &action_flags,
-					    error);
+					    actions, error);
 		if (!dev_flow)
 			goto error;
 		dev_flow->flow = flow;
-		dev_flow->layers = item_flags;
-		/* Store actions once as expanded flows have same actions. */
-		if (i == 0)
-			flow->actions = action_flags;
-		assert(flow->actions == action_flags);
 		LIST_INSERT_HEAD(&flow->dev_flows, dev_flow, next);
 		ret = flow_drv_translate(dev, dev_flow, attr,
 					 buf->entry[i].pattern,
