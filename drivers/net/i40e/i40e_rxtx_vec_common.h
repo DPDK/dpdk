@@ -192,8 +192,13 @@ static inline int
 i40e_rx_vec_dev_conf_condition_check_default(struct rte_eth_dev *dev)
 {
 #ifndef RTE_LIBRTE_IEEE1588
+	struct i40e_adapter *ad =
+		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	struct rte_fdir_conf *fconf = &dev->data->dev_conf.fdir_conf;
+	struct i40e_rx_queue *rxq;
+	uint16_t desc, i;
+	bool first_queue;
 
 	/* no fdir support */
 	if (fconf->mode != RTE_FDIR_MODE_NONE)
@@ -206,6 +211,39 @@ i40e_rx_vec_dev_conf_condition_check_default(struct rte_eth_dev *dev)
 	/* no QinQ support */
 	if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_EXTEND)
 		return -1;
+
+	/**
+	 * Vector mode is allowed only when number of Rx queue
+	 * descriptor is power of 2.
+	 */
+	if (!dev->data->dev_started) {
+		first_queue = true;
+		for (i = 0; i < dev->data->nb_rx_queues; i++) {
+			rxq = dev->data->rx_queues[i];
+			if (!rxq)
+				continue;
+			desc = rxq->nb_rx_desc;
+			if (first_queue)
+				ad->rx_vec_allowed =
+					rte_is_power_of_2(desc);
+			else
+				ad->rx_vec_allowed =
+					ad->rx_vec_allowed ?
+					rte_is_power_of_2(desc) :
+					ad->rx_vec_allowed;
+			first_queue = false;
+		}
+	} else {
+		/* Only check the first queue's descriptor number */
+		for (i = 0; i < dev->data->nb_rx_queues; i++) {
+			rxq = dev->data->rx_queues[i];
+			if (!rxq)
+				continue;
+			desc = rxq->nb_rx_desc;
+			ad->rx_vec_allowed = rte_is_power_of_2(desc);
+			break;
+		}
+	}
 
 	return 0;
 #else
