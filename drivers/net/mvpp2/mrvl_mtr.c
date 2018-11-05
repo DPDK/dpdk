@@ -422,7 +422,7 @@ mrvl_meter_profile_update(struct rte_eth_dev *dev, uint32_t mtr_id,
 	struct mrvl_priv *priv = dev->data->dev_private;
 	struct mrvl_mtr_profile *profile;
 	struct mrvl_mtr *mtr;
-	int ret, enabled;
+	int ret, enabled = 0;
 
 	if (!priv->ppio)
 		return -rte_mtr_error_set(error, EPERM,
