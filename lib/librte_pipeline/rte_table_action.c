@@ -1694,10 +1694,9 @@ get_block_size(const struct rte_crypto_sym_xform *xform, uint8_t cdev_id)
 
 	rte_cryptodev_info_get(cdev_id, &dev_info);
 
-	for (i = 0;; i++) {
+	for (i = 0; dev_info.capabilities[i].op != RTE_CRYPTO_OP_TYPE_UNDEFINED;
+			i++) {
 		cap = &dev_info.capabilities[i];
-		if (!cap)
-			break;
 
 		if (cap->sym.xform_type != xform->type)
 			continue;
