@@ -598,7 +598,7 @@ reserve_avail_buf_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 						avail_idx, &desc_count,
 						buf_vec, &vec_idx,
 						&buf_id, &len,
-						VHOST_ACCESS_RO) < 0))
+						VHOST_ACCESS_RW) < 0))
 			return -1;
 
 		len = RTE_MIN(len, size);
@@ -1503,7 +1503,7 @@ virtio_dev_tx_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 						vq->last_avail_idx, &desc_count,
 						buf_vec, &nr_vec,
 						&buf_id, &dummy_len,
-						VHOST_ACCESS_RW) < 0))
+						VHOST_ACCESS_RO) < 0))
 			break;
 
 		if (likely(dev->dequeue_zero_copy == 0))
