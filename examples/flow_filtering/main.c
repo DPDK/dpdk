@@ -137,7 +137,7 @@ init_port(void)
 	struct rte_eth_dev_info dev_info;
 
 	rte_eth_dev_info_get(port_id, &dev_info);
-	port_conf.txmode.offloads &= dev_info.rx_offload_capa;
+	port_conf.txmode.offloads &= dev_info.tx_offload_capa;
 	printf(":: initializing port: %d\n", port_id);
 	ret = rte_eth_dev_configure(port_id,
 				nr_queues, nr_queues, &port_conf);
