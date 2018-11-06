@@ -51,14 +51,17 @@ tap_nl_init(uint32_t nl_groups)
 	}
 	if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &sndbuf_size, sizeof(int))) {
 		TAP_LOG(ERR, "Unable to set socket buffer send size");
+		close(fd);
 		return -1;
 	}
 	if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf_size, sizeof(int))) {
 		TAP_LOG(ERR, "Unable to set socket buffer receive size");
+		close(fd);
 		return -1;
 	}
 	if (bind(fd, (struct sockaddr *)&local, sizeof(local)) < 0) {
 		TAP_LOG(ERR, "Unable to bind to the netlink socket");
+		close(fd);
 		return -1;
 	}
 	return fd;
