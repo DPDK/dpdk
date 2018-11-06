@@ -329,6 +329,7 @@ int vmbus_uio_get_subchan(struct vmbus_channel *primary,
 	char chan_path[PATH_MAX], subchan_path[PATH_MAX];
 	struct dirent *ent;
 	DIR *chan_dir;
+	int err;
 
 	snprintf(chan_path, sizeof(chan_path),
 		 "%s/%s/channels",
@@ -344,7 +345,6 @@ int vmbus_uio_get_subchan(struct vmbus_channel *primary,
 	while ((ent = readdir(chan_dir))) {
 		unsigned long relid, subid, monid;
 		char *endp;
-		int err;
 
 		if (ent->d_name[0] == '.')
 			continue;
@@ -364,8 +364,7 @@ int vmbus_uio_get_subchan(struct vmbus_channel *primary,
 		if (err) {
 			VMBUS_LOG(NOTICE, "invalid subchannel id %lu",
 				  subid);
-			closedir(chan_dir);
-			return err;
+			goto fail;
 		}
 
 		if (subid == 0)
@@ -382,17 +381,20 @@ int vmbus_uio_get_subchan(struct vmbus_channel *primary,
 		if (err) {
 			VMBUS_LOG(NOTICE, "invalid monitor id %lu",
 				  monid);
-			return err;
+			goto fail;
 		}
 
 		err = vmbus_chan_create(dev, relid, subid, monid, subchan);
 		if (err) {
 			VMBUS_LOG(NOTICE, "subchannel setup failed");
-			return err;
+			goto fail;
 		}
 		break;
 	}
 	closedir(chan_dir);
 
 	return (ent == NULL) ? -ENOENT : 0;
+fail:
+	closedir(chan_dir);
+	return err;
 }
