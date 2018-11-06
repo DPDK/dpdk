@@ -1617,6 +1617,7 @@ eal_legacy_hugepage_init(void)
 	tmp_hp = NULL;
 
 	munmap(hugepage, nr_hugefiles * sizeof(struct hugepage_file));
+	hugepage = NULL;
 
 	/* we're not going to allocate more pages, so release VA space for
 	 * unused memseg lists
