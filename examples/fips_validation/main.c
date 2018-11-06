@@ -887,9 +887,9 @@ fips_mct_tdes_test(void)
 #define TDES_EXTERN_ITER	400
 #define TDES_INTERN_ITER	10000
 	struct fips_val val, val_key;
-	uint8_t prev_out[TDES_BLOCK_SIZE];
-	uint8_t prev_prev_out[TDES_BLOCK_SIZE];
-	uint8_t prev_in[TDES_BLOCK_SIZE];
+	uint8_t prev_out[TDES_BLOCK_SIZE] = {0};
+	uint8_t prev_prev_out[TDES_BLOCK_SIZE] = {0};
+	uint8_t prev_in[TDES_BLOCK_SIZE] = {0};
 	uint32_t i, j, k;
 	int ret;
 
