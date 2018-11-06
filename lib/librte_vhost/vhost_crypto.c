@@ -198,6 +198,7 @@ struct vhost_crypto {
 	struct rte_hash *session_map;
 	struct rte_mempool *mbuf_pool;
 	struct rte_mempool *sess_pool;
+	struct rte_mempool *wb_pool;
 
 	/** DPDK cryptodev ID */
 	uint8_t cid;
@@ -215,13 +216,20 @@ struct vhost_crypto {
 	uint8_t option;
 } __rte_cache_aligned;
 
+struct vhost_crypto_writeback_data {
+	uint8_t *src;
+	uint8_t *dst;
+	uint64_t len;
+	struct vhost_crypto_writeback_data *next;
+};
+
 struct vhost_crypto_data_req {
 	struct vring_desc *head;
 	struct virtio_net *dev;
 	struct virtio_crypto_inhdr *inhdr;
 	struct vhost_virtqueue *vq;
-	struct vring_desc *wb_desc;
-	uint16_t wb_len;
+	struct vhost_crypto_writeback_data *wb;
+	struct rte_mempool *wb_pool;
 	uint16_t desc_idx;
 	uint16_t len;
 	uint16_t zero_copy;
@@ -506,13 +514,27 @@ move_desc(struct vring_desc *head, struct vring_desc **cur_desc,
 		left -= desc->len;
 	}
 
-	if (unlikely(left > 0)) {
-		VC_LOG_ERR("Incorrect virtio descriptor");
+	if (unlikely(left > 0))
 		return -1;
-	}
 
 	*cur_desc = &head[desc->next];
 	return 0;
+}
+
+static __rte_always_inline void *
+get_data_ptr(struct vhost_crypto_data_req *vc_req, struct vring_desc *cur_desc,
+		uint8_t perm)
+{
+	void *data;
+	uint64_t dlen = cur_desc->len;
+
+	data = IOVA_TO_VVA(void *, vc_req, cur_desc->addr, &dlen, perm);
+	if (unlikely(!data || dlen != cur_desc->len)) {
+		VC_LOG_ERR("Failed to map object");
+		return NULL;
+	}
+
+	return data;
 }
 
 static int
@@ -531,10 +553,8 @@ copy_data(void *dst_data, struct vhost_crypto_data_req *vc_req,
 	dlen = to_copy;
 	src = IOVA_TO_VVA(uint8_t *, vc_req, desc->addr, &dlen,
 			VHOST_ACCESS_RO);
-	if (unlikely(!src || !dlen)) {
-		VC_LOG_ERR("Failed to map descriptor");
+	if (unlikely(!src || !dlen))
 		return -1;
-	}
 
 	rte_memcpy((uint8_t *)data, src, dlen);
 	data += dlen;
@@ -609,73 +629,158 @@ copy_data(void *dst_data, struct vhost_crypto_data_req *vc_req,
 	return 0;
 }
 
-static __rte_always_inline void *
-get_data_ptr(struct vhost_crypto_data_req *vc_req, struct vring_desc **cur_desc,
-		uint32_t size, uint8_t perm)
+static void
+write_back_data(struct vhost_crypto_data_req *vc_req)
 {
-	void *data;
-	uint64_t dlen = (*cur_desc)->len;
+	struct vhost_crypto_writeback_data *wb_data = vc_req->wb, *wb_last;
 
-	data = IOVA_TO_VVA(void *, vc_req, (*cur_desc)->addr, &dlen, perm);
-	if (unlikely(!data || dlen != (*cur_desc)->len)) {
-		VC_LOG_ERR("Failed to map object");
-		return NULL;
+	while (wb_data) {
+		rte_prefetch0(wb_data->next);
+		rte_memcpy(wb_data->dst, wb_data->src, wb_data->len);
+		wb_last = wb_data;
+		wb_data = wb_data->next;
+		rte_mempool_put(vc_req->wb_pool, wb_last);
 	}
-
-	if (unlikely(move_desc(vc_req->head, cur_desc, size) < 0))
-		return NULL;
-
-	return data;
 }
 
-static int
-write_back_data(struct rte_crypto_op *op, struct vhost_crypto_data_req *vc_req)
+static void
+free_wb_data(struct vhost_crypto_writeback_data *wb_data,
+		struct rte_mempool *mp)
 {
-	struct rte_mbuf *mbuf = op->sym->m_dst;
-	struct vring_desc *head = vc_req->head;
-	struct vring_desc *desc = vc_req->wb_desc;
-	int left = vc_req->wb_len;
-	uint32_t to_write;
-	uint8_t *src_data = mbuf->buf_addr, *dst;
-	uint64_t dlen;
+	while (wb_data->next != NULL)
+		free_wb_data(wb_data->next, mp);
 
-	rte_prefetch0(&head[desc->next]);
-	to_write = RTE_MIN(desc->len, (uint32_t)left);
-	dlen = desc->len;
-	dst = IOVA_TO_VVA(uint8_t *, vc_req, desc->addr, &dlen,
-			VHOST_ACCESS_RW);
-	if (unlikely(!dst || dlen != desc->len)) {
-		VC_LOG_ERR("Failed to map descriptor");
-		return -1;
+	rte_mempool_put(mp, wb_data);
+}
+
+/**
+ * The function will allocate a vhost_crypto_writeback_data linked list
+ * containing the source and destination data pointers for the write back
+ * operation after dequeued from Cryptodev PMD queues.
+ *
+ * @param vc_req
+ *   The vhost crypto data request pointer
+ * @param cur_desc
+ *   The pointer of the current in use descriptor pointer. The content of
+ *   cur_desc is expected to be updated after the function execution.
+ * @param end_wb_data
+ *   The last write back data element to be returned. It is used only in cipher
+ *   and hash chain operations.
+ * @param src
+ *   The source data pointer
+ * @param offset
+ *   The offset to both source and destination data. For source data the offset
+ *   is the number of bytes between src and start point of cipher operation. For
+ *   destination data the offset is the number of bytes from *cur_desc->addr
+ *   to the point where the src will be written to.
+ * @param write_back_len
+ *   The size of the write back length.
+ * @return
+ *   The pointer to the start of the write back data linked list.
+ */
+static struct vhost_crypto_writeback_data *
+prepare_write_back_data(struct vhost_crypto_data_req *vc_req,
+		struct vring_desc **cur_desc,
+		struct vhost_crypto_writeback_data **end_wb_data,
+		uint8_t *src,
+		uint32_t offset,
+		uint64_t write_back_len)
+{
+	struct vhost_crypto_writeback_data *wb_data, *head;
+	struct vring_desc *desc = *cur_desc;
+	uint64_t dlen;
+	uint8_t *dst;
+	int ret;
+
+	ret = rte_mempool_get(vc_req->wb_pool, (void **)&head);
+	if (unlikely(ret < 0)) {
+		VC_LOG_ERR("no memory");
+		goto error_exit;
 	}
 
-	rte_memcpy(dst, src_data, to_write);
-	left -= to_write;
-	src_data += to_write;
+	wb_data = head;
 
-	while ((desc->flags & VRING_DESC_F_NEXT) && left > 0) {
-		desc = &head[desc->next];
-		rte_prefetch0(&head[desc->next]);
-		to_write = RTE_MIN(desc->len, (uint32_t)left);
+	if (likely(desc->len > offset)) {
+		wb_data->src = src + offset;
 		dlen = desc->len;
-		dst = IOVA_TO_VVA(uint8_t *, vc_req, desc->addr, &dlen,
-				VHOST_ACCESS_RW);
+		dst = IOVA_TO_VVA(uint8_t *, vc_req, desc->addr,
+			&dlen, VHOST_ACCESS_RW) + offset;
 		if (unlikely(!dst || dlen != desc->len)) {
 			VC_LOG_ERR("Failed to map descriptor");
-			return -1;
+			goto error_exit;
 		}
 
-		rte_memcpy(dst, src_data, to_write);
-		left -= to_write;
-		src_data += to_write;
+		wb_data->dst = dst;
+		wb_data->len = desc->len - offset;
+		write_back_len -= wb_data->len;
+		src += offset + wb_data->len;
+		offset = 0;
+
+		if (unlikely(write_back_len)) {
+			ret = rte_mempool_get(vc_req->wb_pool,
+					(void **)&(wb_data->next));
+			if (unlikely(ret < 0)) {
+				VC_LOG_ERR("no memory");
+				goto error_exit;
+			}
+
+			wb_data = wb_data->next;
+		} else
+			wb_data->next = NULL;
+	} else
+		offset -= desc->len;
+
+	while (write_back_len) {
+		desc = &vc_req->head[desc->next];
+		if (unlikely(!(desc->flags & VRING_DESC_F_WRITE))) {
+			VC_LOG_ERR("incorrect descriptor");
+			goto error_exit;
+		}
+
+		if (desc->len <= offset) {
+			offset -= desc->len;
+			continue;
+		}
+
+		dlen = desc->len;
+		dst = IOVA_TO_VVA(uint8_t *, vc_req, desc->addr, &dlen,
+				VHOST_ACCESS_RW) + offset;
+		if (unlikely(dst == NULL || dlen != desc->len)) {
+			VC_LOG_ERR("Failed to map descriptor");
+			goto error_exit;
+		}
+
+		wb_data->src = src;
+		wb_data->dst = dst;
+		wb_data->len = RTE_MIN(desc->len - offset, write_back_len);
+		write_back_len -= wb_data->len;
+		src += wb_data->len;
+		offset = 0;
+
+		if (write_back_len) {
+			ret = rte_mempool_get(vc_req->wb_pool,
+					(void **)&(wb_data->next));
+			if (unlikely(ret < 0)) {
+				VC_LOG_ERR("no memory");
+				goto error_exit;
+			}
+
+			wb_data = wb_data->next;
+		} else
+			wb_data->next = NULL;
 	}
 
-	if (unlikely(left < 0)) {
-		VC_LOG_ERR("Incorrect virtio descriptor");
-		return -1;
-	}
+	*cur_desc = &vc_req->head[desc->next];
 
-	return 0;
+	*end_wb_data = wb_data;
+
+	return head;
+
+error_exit:
+	if (head)
+		free_wb_data(head, vc_req->wb_pool);
+
+	return NULL;
 }
 
 static uint8_t
@@ -685,6 +790,7 @@ prepare_sym_cipher_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 		struct vring_desc *cur_desc)
 {
 	struct vring_desc *desc = cur_desc;
+	struct vhost_crypto_writeback_data *ewb = NULL;
 	struct rte_mbuf *m_src = op->sym->m_src, *m_dst = op->sym->m_dst;
 	uint8_t *iv_data = rte_crypto_op_ctod_offset(op, uint8_t *, IV_OFFSET);
 	uint8_t ret = 0;
@@ -703,16 +809,25 @@ prepare_sym_cipher_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 	case RTE_VHOST_CRYPTO_ZERO_COPY_ENABLE:
 		m_src->buf_iova = gpa_to_hpa(vcrypto->dev, desc->addr,
 				cipher->para.src_data_len);
-		m_src->buf_addr = get_data_ptr(vc_req, &desc,
-				cipher->para.src_data_len, VHOST_ACCESS_RO);
+		m_src->buf_addr = get_data_ptr(vc_req, desc, VHOST_ACCESS_RO);
 		if (unlikely(m_src->buf_iova == 0 ||
 				m_src->buf_addr == NULL)) {
 			VC_LOG_ERR("zero_copy may fail due to cross page data");
 			ret = VIRTIO_CRYPTO_ERR;
 			goto error_exit;
 		}
+
+		if (unlikely(move_desc(vc_req->head, &desc,
+				cipher->para.src_data_len) < 0)) {
+			VC_LOG_ERR("Incorrect descriptor");
+			ret = VIRTIO_CRYPTO_ERR;
+			goto error_exit;
+		}
+
 		break;
 	case RTE_VHOST_CRYPTO_ZERO_COPY_DISABLE:
+		vc_req->wb_pool = vcrypto->wb_pool;
+
 		if (unlikely(cipher->para.src_data_len >
 				RTE_MBUF_DEFAULT_BUF_SIZE)) {
 			VC_LOG_ERR("Not enough space to do data copy");
@@ -743,10 +858,16 @@ prepare_sym_cipher_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 	case RTE_VHOST_CRYPTO_ZERO_COPY_ENABLE:
 		m_dst->buf_iova = gpa_to_hpa(vcrypto->dev,
 				desc->addr, cipher->para.dst_data_len);
-		m_dst->buf_addr = get_data_ptr(vc_req, &desc,
-				cipher->para.dst_data_len, VHOST_ACCESS_RW);
+		m_dst->buf_addr = get_data_ptr(vc_req, desc, VHOST_ACCESS_RW);
 		if (unlikely(m_dst->buf_iova == 0 || m_dst->buf_addr == NULL)) {
 			VC_LOG_ERR("zero_copy may fail due to cross page data");
+			ret = VIRTIO_CRYPTO_ERR;
+			goto error_exit;
+		}
+
+		if (unlikely(move_desc(vc_req->head, &desc,
+				cipher->para.dst_data_len) < 0)) {
+			VC_LOG_ERR("Incorrect descriptor");
 			ret = VIRTIO_CRYPTO_ERR;
 			goto error_exit;
 		}
@@ -754,13 +875,14 @@ prepare_sym_cipher_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 		m_dst->data_len = cipher->para.dst_data_len;
 		break;
 	case RTE_VHOST_CRYPTO_ZERO_COPY_DISABLE:
-		vc_req->wb_desc = desc;
-		vc_req->wb_len = cipher->para.dst_data_len;
-		if (unlikely(move_desc(vc_req->head, &desc,
-				vc_req->wb_len) < 0)) {
+		vc_req->wb = prepare_write_back_data(vc_req, &desc, &ewb,
+				rte_pktmbuf_mtod(m_src, uint8_t *), 0,
+				cipher->para.dst_data_len);
+		if (unlikely(vc_req->wb == NULL)) {
 			ret = VIRTIO_CRYPTO_ERR;
 			goto error_exit;
 		}
+
 		break;
 	default:
 		ret = VIRTIO_CRYPTO_BADMSG;
@@ -774,7 +896,7 @@ prepare_sym_cipher_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 	op->sym->cipher.data.offset = 0;
 	op->sym->cipher.data.length = cipher->para.src_data_len;
 
-	vc_req->inhdr = get_data_ptr(vc_req, &desc, INHDR_LEN, VHOST_ACCESS_WO);
+	vc_req->inhdr = get_data_ptr(vc_req, desc, VHOST_ACCESS_WO);
 	if (unlikely(vc_req->inhdr == NULL)) {
 		ret = VIRTIO_CRYPTO_BADMSG;
 		goto error_exit;
@@ -786,6 +908,9 @@ prepare_sym_cipher_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 	return 0;
 
 error_exit:
+	if (vc_req->wb)
+		free_wb_data(vc_req->wb, vc_req->wb_pool);
+
 	vc_req->len = INHDR_LEN;
 	return ret;
 }
@@ -796,7 +921,8 @@ prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 		struct virtio_crypto_alg_chain_data_req *chain,
 		struct vring_desc *cur_desc)
 {
-	struct vring_desc *desc = cur_desc;
+	struct vring_desc *desc = cur_desc, *digest_desc;
+	struct vhost_crypto_writeback_data *ewb = NULL, *ewb2 = NULL;
 	struct rte_mbuf *m_src = op->sym->m_src, *m_dst = op->sym->m_dst;
 	uint8_t *iv_data = rte_crypto_op_ctod_offset(op, uint8_t *, IV_OFFSET);
 	uint32_t digest_offset;
@@ -812,21 +938,30 @@ prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 	}
 
 	m_src->data_len = chain->para.src_data_len;
-	m_dst->data_len = chain->para.dst_data_len;
 
 	switch (vcrypto->option) {
 	case RTE_VHOST_CRYPTO_ZERO_COPY_ENABLE:
+		m_dst->data_len = chain->para.dst_data_len;
+
 		m_src->buf_iova = gpa_to_hpa(vcrypto->dev, desc->addr,
 				chain->para.src_data_len);
-		m_src->buf_addr = get_data_ptr(vc_req, &desc,
-				chain->para.src_data_len, VHOST_ACCESS_RO);
+		m_src->buf_addr = get_data_ptr(vc_req, desc, VHOST_ACCESS_RO);
 		if (unlikely(m_src->buf_iova == 0 || m_src->buf_addr == NULL)) {
 			VC_LOG_ERR("zero_copy may fail due to cross page data");
 			ret = VIRTIO_CRYPTO_ERR;
 			goto error_exit;
 		}
+
+		if (unlikely(move_desc(vc_req->head, &desc,
+				chain->para.src_data_len) < 0)) {
+			VC_LOG_ERR("Incorrect descriptor");
+			ret = VIRTIO_CRYPTO_ERR;
+			goto error_exit;
+		}
 		break;
 	case RTE_VHOST_CRYPTO_ZERO_COPY_DISABLE:
+		vc_req->wb_pool = vcrypto->wb_pool;
+
 		if (unlikely(chain->para.src_data_len >
 				RTE_MBUF_DEFAULT_BUF_SIZE)) {
 			VC_LOG_ERR("Not enough space to do data copy");
@@ -838,6 +973,7 @@ prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 			ret = VIRTIO_CRYPTO_BADMSG;
 			goto error_exit;
 		}
+
 		break;
 	default:
 		ret = VIRTIO_CRYPTO_BADMSG;
@@ -856,46 +992,70 @@ prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 	case RTE_VHOST_CRYPTO_ZERO_COPY_ENABLE:
 		m_dst->buf_iova = gpa_to_hpa(vcrypto->dev,
 				desc->addr, chain->para.dst_data_len);
-		m_dst->buf_addr = get_data_ptr(vc_req, &desc,
-				chain->para.dst_data_len, VHOST_ACCESS_RW);
+		m_dst->buf_addr = get_data_ptr(vc_req, desc, VHOST_ACCESS_RW);
 		if (unlikely(m_dst->buf_iova == 0 || m_dst->buf_addr == NULL)) {
 			VC_LOG_ERR("zero_copy may fail due to cross page data");
 			ret = VIRTIO_CRYPTO_ERR;
 			goto error_exit;
 		}
 
+		if (unlikely(move_desc(vc_req->head, &desc,
+				chain->para.dst_data_len) < 0)) {
+			VC_LOG_ERR("Incorrect descriptor");
+			ret = VIRTIO_CRYPTO_ERR;
+			goto error_exit;
+		}
+
 		op->sym->auth.digest.phys_addr = gpa_to_hpa(vcrypto->dev,
 				desc->addr, chain->para.hash_result_len);
-		op->sym->auth.digest.data = get_data_ptr(vc_req, &desc,
-				chain->para.hash_result_len, VHOST_ACCESS_RW);
+		op->sym->auth.digest.data = get_data_ptr(vc_req, desc,
+				VHOST_ACCESS_RW);
 		if (unlikely(op->sym->auth.digest.phys_addr == 0)) {
 			VC_LOG_ERR("zero_copy may fail due to cross page data");
 			ret = VIRTIO_CRYPTO_ERR;
 			goto error_exit;
 		}
-		break;
-	case RTE_VHOST_CRYPTO_ZERO_COPY_DISABLE:
-		digest_offset = m_dst->data_len;
-		digest_addr = rte_pktmbuf_mtod_offset(m_dst, void *,
-				digest_offset);
-
-		vc_req->wb_desc = desc;
-		vc_req->wb_len = m_dst->data_len + chain->para.hash_result_len;
 
 		if (unlikely(move_desc(vc_req->head, &desc,
-				chain->para.dst_data_len) < 0)) {
-			ret = VIRTIO_CRYPTO_BADMSG;
+				chain->para.hash_result_len) < 0)) {
+			VC_LOG_ERR("Incorrect descriptor");
+			ret = VIRTIO_CRYPTO_ERR;
 			goto error_exit;
 		}
 
-		if (unlikely(copy_data(digest_addr, vc_req, &desc,
+		break;
+	case RTE_VHOST_CRYPTO_ZERO_COPY_DISABLE:
+		vc_req->wb = prepare_write_back_data(vc_req, &desc, &ewb,
+				rte_pktmbuf_mtod(m_src, uint8_t *),
+				chain->para.cipher_start_src_offset,
+				chain->para.dst_data_len -
+				chain->para.cipher_start_src_offset);
+		if (unlikely(vc_req->wb == NULL)) {
+			ret = VIRTIO_CRYPTO_ERR;
+			goto error_exit;
+		}
+
+		digest_offset = m_src->data_len;
+		digest_addr = rte_pktmbuf_mtod_offset(m_src, void *,
+				digest_offset);
+		digest_desc = desc;
+
+		/** create a wb_data for digest */
+		ewb->next = prepare_write_back_data(vc_req, &desc, &ewb2,
+				digest_addr, 0, chain->para.hash_result_len);
+		if (unlikely(ewb->next == NULL)) {
+			ret = VIRTIO_CRYPTO_ERR;
+			goto error_exit;
+		}
+
+		if (unlikely(copy_data(digest_addr, vc_req, &digest_desc,
 				chain->para.hash_result_len)) < 0) {
 			ret = VIRTIO_CRYPTO_BADMSG;
 			goto error_exit;
 		}
 
 		op->sym->auth.digest.data = digest_addr;
-		op->sym->auth.digest.phys_addr = rte_pktmbuf_iova_offset(m_dst,
+		op->sym->auth.digest.phys_addr = rte_pktmbuf_iova_offset(m_src,
 				digest_offset);
 		break;
 	default:
@@ -904,7 +1064,7 @@ prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 	}
 
 	/* record inhdr */
-	vc_req->inhdr = get_data_ptr(vc_req, &desc, INHDR_LEN, VHOST_ACCESS_WO);
+	vc_req->inhdr = get_data_ptr(vc_req, desc, VHOST_ACCESS_WO);
 	if (unlikely(vc_req->inhdr == NULL)) {
 		ret = VIRTIO_CRYPTO_BADMSG;
 		goto error_exit;
@@ -927,6 +1087,8 @@ prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 	return 0;
 
 error_exit:
+	if (vc_req->wb)
+		free_wb_data(vc_req->wb, vc_req->wb_pool);
 	vc_req->len = INHDR_LEN;
 	return ret;
 }
@@ -967,7 +1129,7 @@ vhost_crypto_process_one_req(struct vhost_crypto *vcrypto,
 	vc_req->head = head;
 	vc_req->zero_copy = vcrypto->option;
 
-	req = get_data_ptr(vc_req, &desc, sizeof(*req), VHOST_ACCESS_RO);
+	req = get_data_ptr(vc_req, desc, VHOST_ACCESS_RO);
 	if (unlikely(req == NULL)) {
 		switch (vcrypto->option) {
 		case RTE_VHOST_CRYPTO_ZERO_COPY_ENABLE:
@@ -986,6 +1148,12 @@ vhost_crypto_process_one_req(struct vhost_crypto *vcrypto,
 		default:
 			err = VIRTIO_CRYPTO_ERR;
 			VC_LOG_ERR("Invalid option");
+			goto error_exit;
+		}
+	} else {
+		if (unlikely(move_desc(vc_req->head, &desc,
+				sizeof(*req)) < 0)) {
+			VC_LOG_ERR("Incorrect descriptor");
 			goto error_exit;
 		}
 	}
@@ -1062,7 +1230,6 @@ vhost_crypto_finalize_one_request(struct rte_crypto_op *op,
 	struct rte_mbuf *m_dst = op->sym->m_dst;
 	struct vhost_crypto_data_req *vc_req = rte_mbuf_to_priv(m_src);
 	uint16_t desc_idx;
-	int ret = 0;
 
 	if (unlikely(!vc_req)) {
 		VC_LOG_ERR("Failed to retrieve vc_req");
@@ -1077,18 +1244,17 @@ vhost_crypto_finalize_one_request(struct rte_crypto_op *op,
 	if (unlikely(op->status != RTE_CRYPTO_OP_STATUS_SUCCESS))
 		vc_req->inhdr->status = VIRTIO_CRYPTO_ERR;
 	else {
-		if (vc_req->zero_copy == 0) {
-			ret = write_back_data(op, vc_req);
-			if (unlikely(ret != 0))
-				vc_req->inhdr->status = VIRTIO_CRYPTO_ERR;
-		}
+		if (vc_req->zero_copy == 0)
+			write_back_data(vc_req);
 	}
 
 	vc_req->vq->used->ring[desc_idx].id = desc_idx;
 	vc_req->vq->used->ring[desc_idx].len = vc_req->len;
 
-	rte_mempool_put(m_dst->pool, (void *)m_dst);
 	rte_mempool_put(m_src->pool, (void *)m_src);
+
+	if (m_dst)
+		rte_mempool_put(m_dst->pool, (void *)m_dst);
 
 	return vc_req->vq;
 }
@@ -1186,6 +1352,18 @@ rte_vhost_crypto_create(int vid, uint8_t cryptodev_id,
 		goto error_exit;
 	}
 
+	snprintf(name, 127, "WB_POOL_VM_%u", (uint32_t)vid);
+	vcrypto->wb_pool = rte_mempool_create(name,
+			VHOST_CRYPTO_MBUF_POOL_SIZE,
+			sizeof(struct vhost_crypto_writeback_data),
+			128, 0, NULL, NULL, NULL, NULL,
+			rte_socket_id(), 0);
+	if (!vcrypto->wb_pool) {
+		VC_LOG_ERR("Failed to creath mempool");
+		ret = -ENOMEM;
+		goto error_exit;
+	}
+
 	dev->extern_data = vcrypto;
 	dev->extern_ops.pre_msg_handle = NULL;
 	dev->extern_ops.post_msg_handle = vhost_crypto_msg_post_handler;
@@ -1222,6 +1400,7 @@ rte_vhost_crypto_free(int vid)
 
 	rte_hash_free(vcrypto->session_map);
 	rte_mempool_free(vcrypto->mbuf_pool);
+	rte_mempool_free(vcrypto->wb_pool);
 	rte_free(vcrypto);
 
 	dev->extern_data = NULL;
@@ -1257,9 +1436,28 @@ rte_vhost_crypto_set_zero_copy(int vid, enum rte_vhost_crypto_zero_copy option)
 	if (vcrypto->option == (uint8_t)option)
 		return 0;
 
-	if (!(rte_mempool_full(vcrypto->mbuf_pool))) {
+	if (!(rte_mempool_full(vcrypto->mbuf_pool)) ||
+			!(rte_mempool_full(vcrypto->wb_pool))) {
 		VC_LOG_ERR("Cannot update zero copy as mempool is not full");
 		return -EINVAL;
+	}
+
+	if (option == RTE_VHOST_CRYPTO_ZERO_COPY_DISABLE) {
+		char name[128];
+
+		snprintf(name, 127, "WB_POOL_VM_%u", (uint32_t)vid);
+		vcrypto->wb_pool = rte_mempool_create(name,
+				VHOST_CRYPTO_MBUF_POOL_SIZE,
+				sizeof(struct vhost_crypto_writeback_data),
+				128, 0, NULL, NULL, NULL, NULL,
+				rte_socket_id(), 0);
+		if (!vcrypto->wb_pool) {
+			VC_LOG_ERR("Failed to creath mbuf pool");
+			return -ENOMEM;
+		}
+	} else {
+		rte_mempool_free(vcrypto->wb_pool);
+		vcrypto->wb_pool = NULL;
 	}
 
 	vcrypto->option = (uint8_t)option;
@@ -1277,9 +1475,8 @@ rte_vhost_crypto_fetch_requests(int vid, uint32_t qid,
 	struct vhost_virtqueue *vq;
 	uint16_t avail_idx;
 	uint16_t start_idx;
-	uint16_t required;
 	uint16_t count;
-	uint16_t i;
+	uint16_t i = 0;
 
 	if (unlikely(dev == NULL)) {
 		VC_LOG_ERR("Invalid vid %i", vid);
@@ -1311,27 +1508,66 @@ rte_vhost_crypto_fetch_requests(int vid, uint32_t qid,
 	/* for zero copy, we need 2 empty mbufs for src and dst, otherwise
 	 * we need only 1 mbuf as src and dst
 	 */
-	required = count * 2;
-	if (unlikely(rte_mempool_get_bulk(vcrypto->mbuf_pool, (void **)mbufs,
-			required) < 0)) {
-		VC_LOG_ERR("Insufficient memory");
-		return -ENOMEM;
-	}
+	switch (vcrypto->option) {
+	case RTE_VHOST_CRYPTO_ZERO_COPY_ENABLE:
+		if (unlikely(rte_mempool_get_bulk(vcrypto->mbuf_pool,
+				(void **)mbufs, count * 2) < 0)) {
+			VC_LOG_ERR("Insufficient memory");
+			return -ENOMEM;
+		}
 
-	for (i = 0; i < count; i++) {
-		uint16_t used_idx = (start_idx + i) & (vq->size - 1);
-		uint16_t desc_idx = vq->avail->ring[used_idx];
-		struct vring_desc *head = &vq->desc[desc_idx];
-		struct rte_crypto_op *op = ops[i];
+		for (i = 0; i < count; i++) {
+			uint16_t used_idx = (start_idx + i) & (vq->size - 1);
+			uint16_t desc_idx = vq->avail->ring[used_idx];
+			struct vring_desc *head = &vq->desc[desc_idx];
+			struct rte_crypto_op *op = ops[i];
 
-		op->sym->m_src = mbufs[i * 2];
-		op->sym->m_dst = mbufs[i * 2 + 1];
-		op->sym->m_src->data_off = 0;
-		op->sym->m_dst->data_off = 0;
+			op->sym->m_src = mbufs[i * 2];
+			op->sym->m_dst = mbufs[i * 2 + 1];
+			op->sym->m_src->data_off = 0;
+			op->sym->m_dst->data_off = 0;
 
-		if (unlikely(vhost_crypto_process_one_req(vcrypto, vq, op, head,
-				desc_idx)) < 0)
-			break;
+			if (unlikely(vhost_crypto_process_one_req(vcrypto, vq,
+					op, head, desc_idx)) < 0)
+				break;
+		}
+
+		if (unlikely(i < count))
+			rte_mempool_put_bulk(vcrypto->mbuf_pool,
+					(void **)&mbufs[i * 2],
+					(count - i) * 2);
+
+		break;
+
+	case RTE_VHOST_CRYPTO_ZERO_COPY_DISABLE:
+		if (unlikely(rte_mempool_get_bulk(vcrypto->mbuf_pool,
+				(void **)mbufs, count) < 0)) {
+			VC_LOG_ERR("Insufficient memory");
+			return -ENOMEM;
+		}
+
+		for (i = 0; i < count; i++) {
+			uint16_t used_idx = (start_idx + i) & (vq->size - 1);
+			uint16_t desc_idx = vq->avail->ring[used_idx];
+			struct vring_desc *head = &vq->desc[desc_idx];
+			struct rte_crypto_op *op = ops[i];
+
+			op->sym->m_src = mbufs[i];
+			op->sym->m_dst = NULL;
+			op->sym->m_src->data_off = 0;
+
+			if (unlikely(vhost_crypto_process_one_req(vcrypto, vq,
+					op, head, desc_idx)) < 0)
+				break;
+		}
+
+		if (unlikely(i < count))
+			rte_mempool_put_bulk(vcrypto->mbuf_pool,
+					(void **)&mbufs[i],
+					count - i);
+
+		break;
+
 	}
 
 	vq->last_used_idx += i;
