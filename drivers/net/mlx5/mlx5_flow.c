@@ -1178,6 +1178,12 @@ mlx5_flow_validate_item_ipv4(const struct rte_flow_item *item,
 					  "L3 cannot follow an L4 layer.");
 	if (!mask)
 		mask = &rte_flow_item_ipv4_mask;
+	else if (mask->hdr.next_proto_id != 0 &&
+		 mask->hdr.next_proto_id != 0xff)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
+					  "partial mask is not supported"
+					  " for protocol");
 	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
 					(const uint8_t *)&nic_mask,
 					sizeof(struct rte_flow_item_ipv4),

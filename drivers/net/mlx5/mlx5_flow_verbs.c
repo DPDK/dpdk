@@ -1058,10 +1058,17 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 					       MLX5_FLOW_LAYER_OUTER_L3_IPV4;
 			if (items->mask != NULL &&
 			    ((const struct rte_flow_item_ipv4 *)
-			     items->mask)->hdr.next_proto_id)
+			     items->mask)->hdr.next_proto_id) {
 				next_protocol =
 					((const struct rte_flow_item_ipv4 *)
 					 (items->spec))->hdr.next_proto_id;
+				next_protocol &=
+					((const struct rte_flow_item_ipv4 *)
+					 (items->mask))->hdr.next_proto_id;
+			} else {
+				/* Reset for inner layer. */
+				next_protocol = 0xff;
+			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
 			ret = mlx5_flow_validate_item_ipv6(items, item_flags,
@@ -1072,10 +1079,17 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 					       MLX5_FLOW_LAYER_OUTER_L3_IPV6;
 			if (items->mask != NULL &&
 			    ((const struct rte_flow_item_ipv6 *)
-			     items->mask)->hdr.proto)
+			     items->mask)->hdr.proto) {
 				next_protocol =
 					((const struct rte_flow_item_ipv6 *)
 					 items->spec)->hdr.proto;
+				next_protocol &=
+					((const struct rte_flow_item_ipv6 *)
+					 items->mask)->hdr.proto;
+			} else {
+				/* Reset for inner layer. */
+				next_protocol = 0xff;
+			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			ret = mlx5_flow_validate_item_udp(items, item_flags,
@@ -1125,13 +1139,6 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 							   error);
 			if (ret < 0)
 				return ret;
-			if (next_protocol != 0xff &&
-			    next_protocol != IPPROTO_MPLS)
-				return rte_flow_error_set
-					(error, EINVAL,
-					 RTE_FLOW_ERROR_TYPE_ITEM, items,
-					 "protocol filtering not compatible"
-					 " with MPLS layer");
 			item_flags |= MLX5_FLOW_LAYER_MPLS;
 			break;
 		default:
