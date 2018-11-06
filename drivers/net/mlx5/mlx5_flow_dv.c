@@ -1041,6 +1041,39 @@ flow_dv_prepare(const struct rte_flow_attr *attr __rte_unused,
 	return flow;
 }
 
+#ifndef NDEBUG
+/**
+ * Sanity check for match mask and value. Similar to check_valid_spec() in
+ * kernel driver. If unmasked bit is present in value, it returns failure.
+ *
+ * @param match_mask
+ *   pointer to match mask buffer.
+ * @param match_value
+ *   pointer to match value buffer.
+ *
+ * @return
+ *   0 if valid, -EINVAL otherwise.
+ */
+static int
+flow_dv_check_valid_spec(void *match_mask, void *match_value)
+{
+	uint8_t *m = match_mask;
+	uint8_t *v = match_value;
+	unsigned int i;
+
+	for (i = 0; i < MLX5_ST_SZ_DB(fte_match_param); ++i) {
+		if (v[i] & ~m[i]) {
+			DRV_LOG(ERR,
+				"match_value differs from match_criteria"
+				" %p[%u] != %p[%u]",
+				match_value, i, match_mask, i);
+			return -EINVAL;
+		}
+	}
+	return 0;
+}
+#endif
+
 /**
  * Add Ethernet item to matcher and to the value.
  *
@@ -1812,7 +1845,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			flow_dv_translate_item_udp(match_mask, match_value,
 						   items, tunnel);
 			matcher.priority = MLX5_PRIORITY_MAP_L4;
-			dev_flow->verbs.hash_fields |=
+			dev_flow->dv.hash_fields |=
 				mlx5_flow_hashfields_adjust
 					(dev_flow, tunnel, ETH_RSS_UDP,
 					 IBV_RX_HASH_SRC_PORT_UDP |
@@ -1849,6 +1882,8 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			break;
 		}
 	}
+	assert(!flow_dv_check_valid_spec(matcher.mask.buf,
+					 dev_flow->dv.value.buf));
 	dev_flow->layers = item_flags;
 	/* Register matcher. */
 	matcher.crc = rte_raw_cksum((const void *)matcher.mask.buf,
