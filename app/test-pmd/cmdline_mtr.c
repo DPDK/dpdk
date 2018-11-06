@@ -74,7 +74,7 @@ parse_uint(uint64_t *value, const char *str)
 }
 
 static int
-parse_dscp_table_entries(char *str, enum rte_mtr_color *dscp_table)
+parse_dscp_table_entries(char *str, enum rte_mtr_color **dscp_table)
 {
 	char *token;
 	int i = 0;
@@ -84,23 +84,23 @@ parse_dscp_table_entries(char *str, enum rte_mtr_color *dscp_table)
 		return 0;
 
 	/* Allocate memory for dscp table */
-	dscp_table = (enum rte_mtr_color *)malloc(MAX_DSCP_TABLE_ENTRIES *
+	*dscp_table = (enum rte_mtr_color *)malloc(MAX_DSCP_TABLE_ENTRIES *
 		sizeof(enum rte_mtr_color));
-	if (dscp_table == NULL)
+	if (*dscp_table == NULL)
 		return -1;
 
 	while (1) {
 		if (strcmp(token, "G") == 0 ||
 			strcmp(token, "g") == 0)
-			dscp_table[i++] = RTE_MTR_GREEN;
+			*dscp_table[i++] = RTE_MTR_GREEN;
 		else if (strcmp(token, "Y") == 0 ||
 			strcmp(token, "y") == 0)
-			dscp_table[i++] = RTE_MTR_YELLOW;
+			*dscp_table[i++] = RTE_MTR_YELLOW;
 		else if (strcmp(token, "R") == 0 ||
 			strcmp(token, "r") == 0)
-			dscp_table[i++] = RTE_MTR_RED;
+			*dscp_table[i++] = RTE_MTR_RED;
 		else {
-			free(dscp_table);
+			free(*dscp_table);
 			return -1;
 		}
 		if (i == MAX_DSCP_TABLE_ENTRIES)
@@ -108,7 +108,7 @@ parse_dscp_table_entries(char *str, enum rte_mtr_color *dscp_table)
 
 		token = strtok_r(str, PARSE_DELIMITER, &str);
 		if (token == NULL) {
-			free(dscp_table);
+			free(*dscp_table);
 			return -1;
 		}
 	}
@@ -117,7 +117,7 @@ parse_dscp_table_entries(char *str, enum rte_mtr_color *dscp_table)
 
 static int
 parse_meter_color_str(char *c_str, uint32_t *use_prev_meter_color,
-	enum rte_mtr_color *dscp_table)
+	enum rte_mtr_color **dscp_table)
 {
 	char *token;
 	uint64_t previous_mtr_color = 0;
@@ -195,7 +195,7 @@ parse_policer_action_string(char *p_str, uint32_t action_mask,
 
 static int
 parse_multi_token_string(char *t_str, uint16_t *port_id,
-	uint32_t *mtr_id, enum rte_mtr_color *dscp_table)
+	uint32_t *mtr_id, enum rte_mtr_color **dscp_table)
 {
 	char *token;
 	uint64_t val;
@@ -794,7 +794,7 @@ static void cmd_create_port_meter_parsed(void *parsed_result,
 	params.meter_profile_id = res->profile_id;
 
 	/* Parse meter input color string params */
-	ret = parse_meter_color_str(c_str, &use_prev_meter_color, dscp_table);
+	ret = parse_meter_color_str(c_str, &use_prev_meter_color, &dscp_table);
 	if (ret) {
 		printf(" Meter input color params string parse error\n");
 		return;
@@ -1141,7 +1141,7 @@ static void cmd_set_port_meter_dscp_table_parsed(void *parsed_result,
 	int ret;
 
 	/* Parse string */
-	ret = parse_multi_token_string(t_str, &port_id, &mtr_id, dscp_table);
+	ret = parse_multi_token_string(t_str, &port_id, &mtr_id, &dscp_table);
 	if (ret) {
 		printf(" Multi token string parse error\n");
 		return;
