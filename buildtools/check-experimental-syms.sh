@@ -5,6 +5,12 @@
 MAPFILE=$1
 OBJFILE=$2
 
+# added check for "make -C test/" usage
+if [ ! -e $MAPFILE ] || [ ! -f $OBJFILE ]
+then
+	exit 0
+fi
+
 if [ -d $MAPFILE ]
 then
 	exit 0
