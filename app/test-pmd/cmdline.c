@@ -17805,10 +17805,7 @@ search_rx_offload(const char *name)
 		if (!strcasecmp(single_name, name)) {
 			found = 1;
 			break;
-		} else if (!strcasecmp(single_name, "UNKNOWN"))
-			break;
-		else if (single_name == NULL)
-			break;
+		}
 		single_offload <<= 1;
 	}
 
