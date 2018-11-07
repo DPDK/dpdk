@@ -1957,7 +1957,7 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "Invalid L3FWD parameters\n");
 
 	if (init_power_library())
-		rte_exit(EXIT_FAILURE, "init_power_library failed\n");
+		RTE_LOG(ERR, L3FWD_POWER, "init_power_library failed\n");
 
 	if (update_lcore_params() < 0)
 		rte_exit(EXIT_FAILURE, "update_lcore_params failed\n");
