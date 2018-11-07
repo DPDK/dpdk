@@ -189,6 +189,37 @@ test_log2(void)
 }
 
 static int
+test_fls(void)
+{
+	struct fls_test_vector {
+		uint32_t arg;
+		int rc;
+	};
+	int expected, rc;
+	uint32_t i, arg;
+
+	const struct fls_test_vector test[] = {
+		{0x0, 0},
+		{0x1, 1},
+		{0x4000, 15},
+		{0x80000000, 32},
+	};
+
+	for (i = 0; i < RTE_DIM(test); i++) {
+		arg = test[i].arg;
+		rc = rte_fls_u32(arg);
+		expected = test[i].rc;
+		if (rc != expected) {
+			printf("Wrong rte_fls_u32(0x%x) rc=%d, expected=%d\n",
+				arg, rc, expected);
+			return TEST_FAILED;
+		}
+	}
+
+	return 0;
+}
+
+static int
 test_common(void)
 {
 	int ret = 0;
@@ -196,6 +227,7 @@ test_common(void)
 	ret |= test_macros(0);
 	ret |= test_misc();
 	ret |= test_log2();
+	ret |= test_fls();
 
 	return ret;
 }

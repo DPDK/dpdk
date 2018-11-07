@@ -473,6 +473,25 @@ rte_log2_u32(uint32_t v)
 	return rte_bsf32(v);
 }
 
+
+/**
+ * Return the last (most-significant) bit set.
+ *
+ * @note The last (most significant) bit is at position 32.
+ * @note rte_fls_u32(0) = 0, rte_fls_u32(1) = 1, rte_fls_u32(0x80000000) = 32
+ *
+ * @param x
+ *     The input parameter.
+ * @return
+ *     The last (most-significant) bit set, or 0 if the input is 0.
+ */
+static inline int
+rte_fls_u32(uint32_t x)
+{
+	return (x == 0) ? 0 : 32 - __builtin_clz(x);
+}
+
+
 #ifndef offsetof
 /** Return the offset of a field in a structure. */
 #define offsetof(TYPE, MEMBER)  __builtin_offsetof (TYPE, MEMBER)
