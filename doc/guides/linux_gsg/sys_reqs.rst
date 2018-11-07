@@ -64,7 +64,11 @@ Compilation of the DPDK
        x86_x32 ABI is currently supported with distribution packages only on Ubuntu
        higher than 13.10 or recent Debian distribution. The only supported  compiler is gcc 4.9+.
 
-*   libnuma-devel - library for handling NUMA (Non Uniform Memory Access).
+*   Library for handling NUMA (Non Uniform Memory Access).
+
+    * numactl-devel in Red Hat/Fedora;
+
+    * libnuma-dev in Debian/Ubuntu;
 
 *   Python, version 2.7+ or 3.2+, to use various helper scripts included in the DPDK package.
 
