@@ -1732,7 +1732,7 @@ read_vhost_message(int sockfd, struct VhostUserMsg *msg)
 	if (ret <= 0)
 		return ret;
 
-	if (msg && msg->size) {
+	if (msg->size) {
 		if (msg->size > sizeof(msg->payload)) {
 			RTE_LOG(ERR, VHOST_CONFIG,
 				"invalid msg size: %d\n", msg->size);
