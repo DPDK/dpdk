@@ -202,7 +202,7 @@ parse_test_tdes_writeback(struct fips_val *val)
 static int
 writeback_tdes_hex_str(const char *key, char *dst, struct fips_val *val)
 {
-	struct fips_val tmp_val;
+	struct fips_val tmp_val = {0};
 
 	tmp_val.len = 8;
 
