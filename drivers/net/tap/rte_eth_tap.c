@@ -1848,6 +1848,7 @@ disable_rte_flow:
 		TAP_LOG(ERR, "Remote feature requires flow support.");
 		goto error_exit;
 	}
+	rte_eth_dev_probing_finish(dev);
 	return 0;
 
 error_remote:
