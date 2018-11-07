@@ -439,11 +439,7 @@ check_iova(const struct rte_memseg_list *msl __rte_unused,
 	return 1;
 }
 
-#if defined(RTE_ARCH_64)
 #define MAX_DMA_MASK_BITS 63
-#else
-#define MAX_DMA_MASK_BITS 31
-#endif
 
 /* check memseg iovas are within the required range based on dma mask */
 static int __rte_experimental
@@ -453,7 +449,8 @@ check_dma_mask(uint8_t maskbits, bool thread_unsafe)
 	uint64_t mask;
 	int ret;
 
-	/* sanity check */
+	/* Sanity check. We only check width can be managed with 64 bits
+	 * variables. Indeed any higher value is likely wrong. */
 	if (maskbits > MAX_DMA_MASK_BITS) {
 		RTE_LOG(ERR, EAL, "wrong dma mask size %u (Max: %u)\n",
 				   maskbits, MAX_DMA_MASK_BITS);
