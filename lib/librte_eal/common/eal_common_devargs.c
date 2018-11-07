@@ -263,14 +263,38 @@ rte_devargs_parsef(struct rte_devargs *da, const char *format, ...)
 }
 
 int __rte_experimental
-rte_devargs_insert(struct rte_devargs *da)
+rte_devargs_insert(struct rte_devargs **da)
 {
-	int ret;
+	struct rte_devargs *listed_da;
+	void *tmp;
 
-	ret = rte_devargs_remove(da);
-	if (ret < 0)
-		return ret;
-	TAILQ_INSERT_TAIL(&devargs_list, da, next);
+	if (*da == NULL || (*da)->bus == NULL)
+		return -1;
+
+	TAILQ_FOREACH_SAFE(listed_da, &devargs_list, next, tmp) {
+		if (listed_da == *da)
+			/* devargs already in the list */
+			return 0;
+		if (strcmp(listed_da->bus->name, (*da)->bus->name) == 0 &&
+				strcmp(listed_da->name, (*da)->name) == 0) {
+			/* device already in devargs list, must be updated */
+			listed_da->type = (*da)->type;
+			listed_da->policy = (*da)->policy;
+			free(listed_da->args);
+			listed_da->args = (*da)->args;
+			listed_da->bus = (*da)->bus;
+			listed_da->cls = (*da)->cls;
+			listed_da->bus_str = (*da)->bus_str;
+			listed_da->cls_str = (*da)->cls_str;
+			listed_da->data = (*da)->data;
+			/* replace provided devargs with found one */
+			free(*da);
+			*da = listed_da;
+			return 0;
+		}
+	}
+	/* new device in the list */
+	TAILQ_INSERT_TAIL(&devargs_list, *da, next);
 	return 0;
 }
 

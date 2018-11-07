@@ -150,10 +150,11 @@ local_dev_probe(const char *devargs, struct rte_device **new_dev)
 		goto err_devarg;
 	}
 
-	ret = rte_devargs_insert(da);
+	ret = rte_devargs_insert(&da);
 	if (ret)
 		goto err_devarg;
 
+	/* the rte_devargs will be referenced in the matching rte_device */
 	ret = da->bus->scan();
 	if (ret)
 		goto err_devarg;

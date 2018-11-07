@@ -146,6 +146,8 @@ __attribute__((format(printf, 2, 0)));
  *
  * @param da
  *  The devargs structure to insert.
+ *  If a devargs for the same device is already inserted,
+ *  it will be updated and returned. It means *da pointer can change.
  *
  * @return
  *   - 0 on success
@@ -153,7 +155,7 @@ __attribute__((format(printf, 2, 0)));
  */
 __rte_experimental
 int
-rte_devargs_insert(struct rte_devargs *da);
+rte_devargs_insert(struct rte_devargs **da);
 
 /**
  * Add a device to the user device list
