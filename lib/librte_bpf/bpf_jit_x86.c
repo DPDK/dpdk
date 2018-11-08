@@ -209,6 +209,19 @@ emit_sib(struct bpf_jit_state *st, uint32_t scale, uint32_t idx, uint32_t base)
 }
 
 /*
+ * emit OPCODE+REGIDX byte
+ */
+static void
+emit_opcode(struct bpf_jit_state *st, uint8_t ops, uint32_t reg)
+{
+	uint8_t v;
+
+	v = ops | (reg & 7);
+	emit_bytes(st, &v, sizeof(v));
+}
+
+
+/*
  * emit xchg %<sreg>, %<dreg>
  */
 static void
@@ -472,19 +485,18 @@ static void
 emit_ld_imm64(struct bpf_jit_state *st, uint32_t dreg, uint32_t imm0,
 	uint32_t imm1)
 {
+	uint32_t op;
+
 	const uint8_t ops = 0xB8;
 
-	if (imm1 == 0) {
-		emit_mov_imm(st, EBPF_ALU64 | EBPF_MOV | BPF_K, dreg, imm0);
-		return;
-	}
+	op = (imm1 == 0) ? BPF_ALU : EBPF_ALU64;
 
-	emit_rex(st, EBPF_ALU64, 0, dreg);
-	emit_bytes(st, &ops, sizeof(ops));
-	emit_modregrm(st, MOD_DIRECT, 0, dreg);
+	emit_rex(st, op, 0, dreg);
+	emit_opcode(st, ops, dreg);
 
 	emit_imm(st, imm0, sizeof(imm0));
-	emit_imm(st, imm1, sizeof(imm1));
+	if (imm1 != 0)
+		emit_imm(st, imm1, sizeof(imm1));
 }
 
 /*
