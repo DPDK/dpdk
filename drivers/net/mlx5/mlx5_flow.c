@@ -2663,7 +2663,7 @@ flow_fdir_cmp(const struct mlx5_fdir *f1, const struct mlx5_fdir *f2)
 	    FLOW_FDIR_CMP(f1, f2, l3_mask) ||
 	    FLOW_FDIR_CMP(f1, f2, l4) ||
 	    FLOW_FDIR_CMP(f1, f2, l4_mask) ||
-	    FLOW_FDIR_CMP(f1, f2, actions[0]))
+	    FLOW_FDIR_CMP(f1, f2, actions[0].type))
 		return 1;
 	if (f1->actions[0].type == RTE_FLOW_ACTION_TYPE_QUEUE &&
 	    FLOW_FDIR_CMP(f1, f2, queue))
