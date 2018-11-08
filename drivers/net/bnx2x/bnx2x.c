@@ -199,8 +199,12 @@ static int bnx2x_acquire_hw_lock(struct bnx2x_softc *sc, uint32_t resource)
 	uint32_t hw_lock_control_reg;
 	int cnt;
 
+#ifndef RTE_LIBRTE_BNX2X_DEBUG_PERIODIC
 	if (resource)
 		PMD_INIT_FUNC_TRACE(sc);
+#else
+	PMD_INIT_FUNC_TRACE(sc);
+#endif
 
 	/* validate the resource is within range */
 	if (resource > HW_LOCK_MAX_RESOURCE_VALUE) {
@@ -248,8 +252,12 @@ static int bnx2x_release_hw_lock(struct bnx2x_softc *sc, uint32_t resource)
 	int func = SC_FUNC(sc);
 	uint32_t hw_lock_control_reg;
 
+#ifndef RTE_LIBRTE_BNX2X_DEBUG_PERIODIC
 	if (resource)
 		PMD_INIT_FUNC_TRACE(sc);
+#else
+	PMD_INIT_FUNC_TRACE(sc);
+#endif
 
 	/* validate the resource is within range */
 	if (resource > HW_LOCK_MAX_RESOURCE_VALUE) {
@@ -7041,7 +7049,7 @@ void bnx2x_link_status_update(struct bnx2x_softc *sc)
 		}
 		bnx2x_link_report(sc);
 	} else {
-		bnx2x_link_report(sc);
+		bnx2x_link_report_locked(sc);
 		bnx2x_stats_handle(sc, STATS_EVENT_LINK_UP);
 	}
 }
@@ -9388,6 +9396,8 @@ static int bnx2x_prev_unload(struct bnx2x_softc *sc)
 	uint32_t fw, hw_lock_reg, hw_lock_val;
 	uint32_t rc = 0;
 
+	PMD_INIT_FUNC_TRACE(sc);
+
 	/*
 	 * Clear HW from errors which may have resulted from an interrupted
 	 * DMAE transaction.
@@ -9395,22 +9405,23 @@ static int bnx2x_prev_unload(struct bnx2x_softc *sc)
 	bnx2x_prev_interrupted_dmae(sc);
 
 	/* Release previously held locks */
-	if (SC_FUNC(sc) <= 5)
-		hw_lock_reg = (MISC_REG_DRIVER_CONTROL_1 + SC_FUNC(sc) * 8);
-	else
-		hw_lock_reg =
-		    (MISC_REG_DRIVER_CONTROL_7 + (SC_FUNC(sc) - 6) * 8);
+	hw_lock_reg = (SC_FUNC(sc) <= 5) ?
+			(MISC_REG_DRIVER_CONTROL_1 + SC_FUNC(sc) * 8) :
+			(MISC_REG_DRIVER_CONTROL_7 + (SC_FUNC(sc) - 6) * 8);
 
 	hw_lock_val = (REG_RD(sc, hw_lock_reg));
 	if (hw_lock_val) {
 		if (hw_lock_val & HW_LOCK_RESOURCE_NVRAM) {
+			PMD_DRV_LOG(DEBUG, sc, "Releasing previously held NVRAM lock\n");
 			REG_WR(sc, MCP_REG_MCPR_NVM_SW_ARB,
 			       (MCPR_NVM_SW_ARB_ARB_REQ_CLR1 << SC_PORT(sc)));
 		}
+		PMD_DRV_LOG(DEBUG, sc, "Releasing previously held HW lock\n");
 		REG_WR(sc, hw_lock_reg, 0xffffffff);
 	}
 
 	if (MCPR_ACCESS_LOCK_LOCK & REG_RD(sc, MCP_REG_MCPR_ACCESS_LOCK)) {
+		PMD_DRV_LOG(DEBUG, sc, "Releasing previously held ALR\n");
 		REG_WR(sc, MCP_REG_MCPR_ACCESS_LOCK, 0);
 	}
 
@@ -9740,6 +9751,8 @@ int bnx2x_attach(struct bnx2x_softc *sc)
 		sc->fw_seq =
 		    (SHMEM_RD(sc, func_mb[SC_FW_MB_IDX(sc)].drv_mb_header) &
 		     DRV_MSG_SEQ_NUMBER_MASK);
+		PMD_DRV_LOG(DEBUG, sc, "prev unload fw_seq 0x%04x",
+			    sc->fw_seq);
 		bnx2x_prev_unload(sc);
 	}
 
