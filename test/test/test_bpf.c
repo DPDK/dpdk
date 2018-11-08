@@ -48,6 +48,12 @@ struct dummy_vect8 {
 #define TEST_JCC_3	5678
 #define TEST_JCC_4	TEST_FILL_1
 
+#define TEST_IMM_1	UINT64_MAX
+#define TEST_IMM_2	((uint64_t)INT64_MIN)
+#define TEST_IMM_3	((uint64_t)INT64_MAX + INT32_MAX)
+#define TEST_IMM_4	((uint64_t)UINT32_MAX)
+#define TEST_IMM_5	((uint64_t)UINT32_MAX + 1)
+
 struct bpf_test {
 	const char *name;
 	size_t arg_sz;
@@ -267,6 +273,94 @@ test_load1_check(uint64_t rc, const void *arg)
 
 	return cmp_res(__func__, v, rc, dft, dft, sizeof(*dft));
 }
+
+/* load immediate test-cases */
+static const struct ebpf_insn test_ldimm1_prog[] = {
+
+	{
+		.code = (BPF_LD | BPF_IMM | EBPF_DW),
+		.dst_reg = EBPF_REG_0,
+		.imm = (uint32_t)TEST_IMM_1,
+	},
+	{
+		.imm = TEST_IMM_1 >> 32,
+	},
+	{
+		.code = (BPF_LD | BPF_IMM | EBPF_DW),
+		.dst_reg = EBPF_REG_3,
+		.imm = (uint32_t)TEST_IMM_2,
+	},
+	{
+		.imm = TEST_IMM_2 >> 32,
+	},
+	{
+		.code = (BPF_LD | BPF_IMM | EBPF_DW),
+		.dst_reg = EBPF_REG_5,
+		.imm = (uint32_t)TEST_IMM_3,
+	},
+	{
+		.imm = TEST_IMM_3 >> 32,
+	},
+	{
+		.code = (BPF_LD | BPF_IMM | EBPF_DW),
+		.dst_reg = EBPF_REG_7,
+		.imm = (uint32_t)TEST_IMM_4,
+	},
+	{
+		.imm = TEST_IMM_4 >> 32,
+	},
+	{
+		.code = (BPF_LD | BPF_IMM | EBPF_DW),
+		.dst_reg = EBPF_REG_9,
+		.imm = (uint32_t)TEST_IMM_5,
+	},
+	{
+		.imm = TEST_IMM_5 >> 32,
+	},
+	/* return sum */
+	{
+		.code = (EBPF_ALU64 | BPF_ADD | BPF_X),
+		.dst_reg = EBPF_REG_0,
+		.src_reg = EBPF_REG_3,
+	},
+	{
+		.code = (EBPF_ALU64 | BPF_ADD | BPF_X),
+		.dst_reg = EBPF_REG_0,
+		.src_reg = EBPF_REG_5,
+	},
+	{
+		.code = (EBPF_ALU64 | BPF_ADD | BPF_X),
+		.dst_reg = EBPF_REG_0,
+		.src_reg = EBPF_REG_7,
+	},
+	{
+		.code = (EBPF_ALU64 | BPF_ADD | BPF_X),
+		.dst_reg = EBPF_REG_0,
+		.src_reg = EBPF_REG_9,
+	},
+	{
+		.code = (BPF_JMP | EBPF_EXIT),
+	},
+};
+
+static int
+test_ldimm1_check(uint64_t rc, const void *arg)
+{
+	uint64_t v1, v2;
+
+	v1 = TEST_IMM_1;
+	v2 = TEST_IMM_2;
+	v1 += v2;
+	v2 = TEST_IMM_3;
+	v1 += v2;
+	v2 = TEST_IMM_4;
+	v1 += v2;
+	v2 = TEST_IMM_5;
+	v1 += v2;
+
+	return cmp_res(__func__, v1, rc, arg, arg, 0);
+}
+
 
 /* alu mul test-cases */
 static const struct ebpf_insn test_mul1_prog[] = {
@@ -1725,6 +1819,20 @@ static const struct bpf_test tests[] = {
 		},
 		.prepare = test_load1_prepare,
 		.check_result = test_load1_check,
+	},
+	{
+		.name = "test_ldimm1",
+		.arg_sz = sizeof(struct dummy_offset),
+		.prm = {
+			.ins = test_ldimm1_prog,
+			.nb_ins = RTE_DIM(test_ldimm1_prog),
+			.prog_arg = {
+				.type = RTE_BPF_ARG_PTR,
+				.size = sizeof(struct dummy_offset),
+			},
+		},
+		.prepare = test_store1_prepare,
+		.check_result = test_ldimm1_check,
 	},
 	{
 		.name = "test_mul1",
