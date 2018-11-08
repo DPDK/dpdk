@@ -102,8 +102,10 @@ main(int argc, char **argv)
 		/* merge argc/argv and the environment args */
 		all_argc = argc + eargc;
 		all_argv = malloc(sizeof(*all_argv) * (all_argc + 1));
-		if (all_argv == NULL)
-			return -1;
+		if (all_argv == NULL) {
+			ret = -1;
+			goto out;
+		}
 
 		for (i = 0; i < argc; i++)
 			all_argv[i] = argv[i];
