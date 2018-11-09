@@ -6841,20 +6841,26 @@ cli_rule_file_process(const char *file_name,
 	return 0;
 
 cli_rule_file_process_free:
-	*rule_list = NULL;
-	*n_rules = rule_id;
-	*line_number = line_id;
+	if (rule_list != NULL)
+		*rule_list = NULL;
 
-	for ( ; ; ) {
-		struct table_rule *rule;
+	if (n_rules != NULL)
+		*n_rules = rule_id;
 
-		rule = TAILQ_FIRST(list);
-		if (rule == NULL)
-			break;
+	if (line_number != NULL)
+		*line_number = line_id;
 
-		TAILQ_REMOVE(list, rule, node);
-		free(rule);
-	}
+	if (list != NULL)
+		for ( ; ; ) {
+			struct table_rule *rule;
+
+			rule = TAILQ_FIRST(list);
+			if (rule == NULL)
+				break;
+
+			TAILQ_REMOVE(list, rule, node);
+			free(rule);
+		}
 
 	if (f)
 		fclose(f);
