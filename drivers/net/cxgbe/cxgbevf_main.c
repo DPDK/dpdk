@@ -11,6 +11,7 @@
 #include "t4_regs.h"
 #include "t4_msg.h"
 #include "cxgbe.h"
+#include "mps_tcam.h"
 
 /*
  * Figure out how many Ports and Queue Sets we can support.  This depends on
@@ -270,6 +271,11 @@ allocate_mac:
 	cfg_queues(adapter->eth_dev);
 	print_adapter_info(adapter);
 	print_port_info(adapter);
+
+	adapter->mpstcam = t4_init_mpstcam(adapter);
+	if (!adapter->mpstcam)
+		dev_warn(adapter,
+			 "VF could not allocate mps tcam table. Continuing\n");
 
 	err = init_rss(adapter);
 	if (err)

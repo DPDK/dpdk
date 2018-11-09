@@ -236,8 +236,6 @@ struct mpstcam_table *t4_init_mpstcam(struct adapter *adap)
 
 void t4_cleanup_mpstcam(struct adapter *adap)
 {
-	if (adap->mpstcam) {
-		t4_os_free(adap->mpstcam->entry);
+	if (adap->mpstcam)
 		t4_os_free(adap->mpstcam);
-	}
 }
