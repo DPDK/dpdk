@@ -51,7 +51,7 @@ CFLAGS += -D_DEFAULT_SOURCE
 CFLAGS += -D_XOPEN_SOURCE=600
 CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -Wno-strict-prototypes
-CFLAGS += $(shell pkg-config --cflags libmnl)
+CFLAGS += $(shell command -v pkg-config > /dev/null 2>&1 && pkg-config --cflags libmnl)
 ifeq ($(CONFIG_RTE_LIBRTE_MLX5_DLOPEN_DEPS),y)
 CFLAGS += -DMLX5_GLUE='"$(LIB_GLUE)"'
 CFLAGS += -DMLX5_GLUE_VERSION='"$(LIB_GLUE_VERSION)"'
@@ -60,7 +60,7 @@ LDLIBS += -ldl
 else
 LDLIBS += -libverbs -lmlx5
 endif
-LDLIBS += $(shell pkg-config --libs libmnl)
+LDLIBS += $(shell command -v pkg-config > /dev/null 2>&1 && pkg-config --libs libmnl || echo "-lmnl")
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
 LDLIBS += -lrte_bus_pci
