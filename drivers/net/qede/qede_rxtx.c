@@ -235,12 +235,13 @@ static void qede_rx_queue_release_mbufs(struct qede_rx_queue *rxq)
 void qede_rx_queue_release(void *rx_queue)
 {
 	struct qede_rx_queue *rxq = rx_queue;
-	struct qede_dev *qdev = rxq->qdev;
-	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
-
-	PMD_INIT_FUNC_TRACE(edev);
+	struct qede_dev *qdev;
+	struct ecore_dev *edev;
 
 	if (rxq) {
+		qdev = rxq->qdev;
+		edev = QEDE_INIT_EDEV(qdev);
+		PMD_INIT_FUNC_TRACE(edev);
 		qede_rx_queue_release_mbufs(rxq);
 		qdev->ops->common->chain_free(edev, &rxq->rx_bd_ring);
 		qdev->ops->common->chain_free(edev, &rxq->rx_comp_ring);
@@ -399,12 +400,13 @@ static void qede_tx_queue_release_mbufs(struct qede_tx_queue *txq)
 void qede_tx_queue_release(void *tx_queue)
 {
 	struct qede_tx_queue *txq = tx_queue;
-	struct qede_dev *qdev = txq->qdev;
-	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
-
-	PMD_INIT_FUNC_TRACE(edev);
+	struct qede_dev *qdev;
+	struct ecore_dev *edev;
 
 	if (txq) {
+		qdev = txq->qdev;
+		edev = QEDE_INIT_EDEV(qdev);
+		PMD_INIT_FUNC_TRACE(edev);
 		qede_tx_queue_release_mbufs(txq);
 		qdev->ops->common->chain_free(edev, &txq->tx_pbl);
 		rte_free(txq->sw_tx_ring);
