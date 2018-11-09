@@ -3248,15 +3248,26 @@ parse_vc_action_rss(struct context *ctx, const struct token *token,
 			.func = RTE_ETH_HASH_FUNCTION_DEFAULT,
 			.level = 0,
 			.types = rss_hf,
-			.key_len = 0,
+			.key_len = sizeof(action_rss_data->key),
 			.queue_num = RTE_MIN(nb_rxq, ACTION_RSS_QUEUE_NUM),
-			.key = NULL,
+			.key = action_rss_data->key,
 			.queue = action_rss_data->queue,
 		},
+		.key = "testpmd's default RSS hash key, "
+			"override it for better balancing",
 		.queue = { 0 },
 	};
 	for (i = 0; i < action_rss_data->conf.queue_num; ++i)
 		action_rss_data->queue[i] = i;
+	if (!port_id_is_invalid(ctx->port, DISABLED_WARN) &&
+	    ctx->port != (portid_t)RTE_PORT_ALL) {
+		struct rte_eth_dev_info info;
+
+		rte_eth_dev_info_get(ctx->port, &info);
+		action_rss_data->conf.key_len =
+			RTE_MIN(sizeof(action_rss_data->key),
+				info.hash_key_size);
+	}
 	action->conf = &action_rss_data->conf;
 	return ret;
 }
