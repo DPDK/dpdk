@@ -177,6 +177,16 @@ out_free_adapter:
 	return err;
 }
 
+static int eth_cxgbevf_dev_uninit(struct rte_eth_dev *eth_dev)
+{
+	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
+	struct adapter *adap = pi->adapter;
+
+	/* Free up other ports and all resources */
+	cxgbe_close(adap);
+	return 0;
+}
+
 static int eth_cxgbevf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 				 struct rte_pci_device *pci_dev)
 {
@@ -186,7 +196,7 @@ static int eth_cxgbevf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 static int eth_cxgbevf_pci_remove(struct rte_pci_device *pci_dev)
 {
-	return rte_eth_dev_pci_generic_remove(pci_dev, NULL);
+	return rte_eth_dev_pci_generic_remove(pci_dev, eth_cxgbevf_dev_uninit);
 }
 
 static struct rte_pci_driver rte_cxgbevf_pmd = {
