@@ -263,8 +263,8 @@ static u64 hash_filter_ntuple(const struct filter_entry *f)
 	u64 ntuple = 0;
 	u16 tcp_proto = IPPROTO_TCP; /* TCP Protocol Number */
 
-	if (tp->port_shift >= 0)
-		ntuple |= (u64)f->fs.mask.iport << tp->port_shift;
+	if (tp->port_shift >= 0 && f->fs.mask.iport)
+		ntuple |= (u64)f->fs.val.iport << tp->port_shift;
 
 	if (tp->protocol_shift >= 0) {
 		if (!f->fs.val.proto)
@@ -277,9 +277,6 @@ static u64 hash_filter_ntuple(const struct filter_entry *f)
 		ntuple |= (u64)(f->fs.val.ethtype) << tp->ethertype_shift;
 	if (tp->macmatch_shift >= 0 && f->fs.mask.macidx)
 		ntuple |= (u64)(f->fs.val.macidx) << tp->macmatch_shift;
-
-	if (ntuple != tp->hash_filter_mask)
-		return 0;
 
 	return ntuple;
 }
