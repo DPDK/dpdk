@@ -66,6 +66,9 @@ __rte_ring_move_prod_head(struct rte_ring *r, unsigned int is_sp,
 		/* Reset n to the initial burst count */
 		n = max;
 
+		/* Ensure the head is read before tail */
+		__atomic_thread_fence(__ATOMIC_ACQUIRE);
+
 		/* load-acquire synchronize with store-release of ht->tail
 		 * in update_tail.
 		 */
@@ -138,6 +141,9 @@ __rte_ring_move_cons_head(struct rte_ring *r, int is_sc,
 	do {
 		/* Restore n as it may change every loop */
 		n = max;
+
+		/* Ensure the head is read before tail */
+		__atomic_thread_fence(__ATOMIC_ACQUIRE);
 
 		/* this load-acquire synchronize with store-release of ht->tail
 		 * in update_tail.
