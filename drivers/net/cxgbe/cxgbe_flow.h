@@ -10,8 +10,9 @@
 #include "mps_tcam.h"
 #include "cxgbe.h"
 
-#define CXGBE_FLOW_POLL_US  10
-#define CXGBE_FLOW_POLL_CNT 10
+/* Max poll time is 100 * 100msec = 10 sec */
+#define CXGBE_FLOW_POLL_MS  100 /* 100 milliseconds */
+#define CXGBE_FLOW_POLL_CNT 100 /* Max number of times to poll */
 
 struct chrte_fparse {
 	int (*fptr)(const void *mask, /* currently supported mask */

@@ -157,18 +157,18 @@ out:
 /**
  * cxgbe_poll_for_completion: Poll rxq for completion
  * @q: rxq to poll
- * @us: microseconds to delay
+ * @ms: milliseconds to delay
  * @cnt: number of times to poll
  * @c: completion to check for 'done' status
  *
  * Polls the rxq for reples until completion is done or the count
  * expires.
  */
-int cxgbe_poll_for_completion(struct sge_rspq *q, unsigned int us,
+int cxgbe_poll_for_completion(struct sge_rspq *q, unsigned int ms,
 			      unsigned int cnt, struct t4_completion *c)
 {
 	unsigned int i;
-	unsigned int work_done, budget = 4;
+	unsigned int work_done, budget = 32;
 
 	if (!c)
 		return -EINVAL;
@@ -181,7 +181,7 @@ int cxgbe_poll_for_completion(struct sge_rspq *q, unsigned int us,
 			return 0;
 		}
 		t4_os_unlock(&c->lock);
-		udelay(us);
+		rte_delay_ms(ms);
 	}
 	return -ETIMEDOUT;
 }

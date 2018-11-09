@@ -797,7 +797,7 @@ static int __cxgbe_flow_create(struct rte_eth_dev *dev, struct rte_flow *flow)
 
 	/* Poll the FW for reply */
 	err = cxgbe_poll_for_completion(&adap->sge.fw_evtq,
-					CXGBE_FLOW_POLL_US,
+					CXGBE_FLOW_POLL_MS,
 					CXGBE_FLOW_POLL_CNT,
 					&ctx.completion);
 	if (err) {
@@ -883,7 +883,7 @@ static int __cxgbe_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 
 	/* Poll the FW for reply */
 	err = cxgbe_poll_for_completion(&adap->sge.fw_evtq,
-					CXGBE_FLOW_POLL_US,
+					CXGBE_FLOW_POLL_MS,
 					CXGBE_FLOW_POLL_CNT,
 					&ctx.completion);
 	if (err) {
