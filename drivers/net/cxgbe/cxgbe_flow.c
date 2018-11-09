@@ -7,14 +7,12 @@
 
 #define __CXGBE_FILL_FS(__v, __m, fs, elem, e) \
 do { \
-	if (!((fs)->val.elem || (fs)->mask.elem)) { \
-		(fs)->val.elem = (__v); \
-		(fs)->mask.elem = (__m); \
-	} else { \
+	if ((fs)->mask.elem && ((fs)->val.elem != (__v))) \
 		return rte_flow_error_set(e, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, \
-					  NULL, "a filter can be specified" \
-					  " only once"); \
-	} \
+					  NULL, "Redefined match item with" \
+					  " different values found"); \
+	(fs)->val.elem = (__v); \
+	(fs)->mask.elem = (__m); \
 } while (0)
 
 #define __CXGBE_FILL_FS_MEMCPY(__v, __m, fs, elem) \
