@@ -3847,30 +3847,6 @@ flow_tcf_alloc_nlcmd(struct tcf_nlcb_context *ctx, uint32_t size)
 }
 
 /**
- * Set NLM_F_ACK flags in the last netlink command in buffer.
- * Only last command in the buffer will be acked by system.
- *
- * @param[in, out] buf
- *   Pointer to buffer with netlink commands.
- */
-static void
-flow_tcf_setack_nlcmd(struct tcf_nlcb_buf *buf)
-{
-	struct nlmsghdr *nlh;
-	uint32_t size = 0;
-
-	assert(buf->size);
-	do {
-		nlh = (struct nlmsghdr *)&buf->msg[size];
-		size += NLMSG_ALIGN(nlh->nlmsg_len);
-		if (size >= buf->size) {
-			nlh->nlmsg_flags |= NLM_F_ACK;
-			break;
-		}
-	} while (true);
-}
-
-/**
  * Send the buffers with prepared netlink commands. Scans the list and
  * sends all found buffers. Buffers are sent and freed anyway in order
  * to prevent memory leakage if some every message in received packet.
@@ -3888,21 +3864,35 @@ static int
 flow_tcf_send_nlcmd(struct mlx5_flow_tcf_context *tcf,
 		    struct tcf_nlcb_context *ctx)
 {
-	struct tcf_nlcb_buf *bc, *bn;
-	struct nlmsghdr *nlh;
+	struct tcf_nlcb_buf *bc = LIST_FIRST(&ctx->nlbuf);
 	int ret = 0;
 
-	bc = LIST_FIRST(&ctx->nlbuf);
 	while (bc) {
+		struct tcf_nlcb_buf *bn = LIST_NEXT(bc, next);
+		struct nlmsghdr *nlh;
+		uint32_t msg = 0;
 		int rc;
 
-		bn = LIST_NEXT(bc, next);
-		if (bc->size) {
-			flow_tcf_setack_nlcmd(bc);
-			nlh = (struct nlmsghdr *)&bc->msg;
-			rc = flow_tcf_nl_ack(tcf, nlh, bc->size, NULL, NULL);
-			if (rc && !ret)
-				ret = rc;
+		while (msg < bc->size) {
+			/*
+			 * Send Netlink commands from buffer in one by one
+			 * fashion. If we send multiple rule deletion commands
+			 * in one Netlink message and some error occurs it may
+			 * cause multiple ACK error messages and break sequence
+			 * numbers of Netlink communication, because we expect
+			 * the only one ACK reply.
+			 */
+			assert((bc->size - msg) >= sizeof(struct nlmsghdr));
+			nlh = (struct nlmsghdr *)&bc->msg[msg];
+			assert((bc->size - msg) >= nlh->nlmsg_len);
+			msg += nlh->nlmsg_len;
+			rc = flow_tcf_nl_ack(tcf, nlh, 0, NULL, NULL);
+			if (rc) {
+				DRV_LOG(WARNING,
+					"netlink: cleanup error %d", rc);
+				if (!ret)
+					ret = rc;
+			}
 		}
 		rte_free(bc);
 		bc = bn;
