@@ -3935,6 +3935,7 @@ flow_tcf_collect_local_cb(const struct nlmsghdr *nlh, void *arg)
 	struct nlattr *na_local = NULL;
 	struct nlattr *na_peer = NULL;
 	unsigned char family;
+	uint32_t size;
 
 	if (nlh->nlmsg_type != RTM_NEWADDR) {
 		rte_errno = EINVAL;
@@ -3962,11 +3963,11 @@ flow_tcf_collect_local_cb(const struct nlmsghdr *nlh, void *arg)
 	if (!na_local || !na_peer)
 		return 1;
 	/* Local rule found with scope link, permanent and assigned peer. */
-	cmd = flow_tcf_alloc_nlcmd(ctx, MNL_ALIGN(sizeof(struct nlmsghdr)) +
-					MNL_ALIGN(sizeof(struct ifaddrmsg)) +
-					(family == AF_INET6
-					? 2 * SZ_NLATTR_DATA_OF(IPV6_ADDR_LEN)
-					: 2 * SZ_NLATTR_TYPE_OF(uint32_t)));
+	size = MNL_ALIGN(sizeof(struct nlmsghdr)) +
+	       MNL_ALIGN(sizeof(struct ifaddrmsg)) +
+	       (family == AF_INET6 ? 2 * SZ_NLATTR_DATA_OF(IPV6_ADDR_LEN)
+				   : 2 * SZ_NLATTR_TYPE_OF(uint32_t));
+	cmd = flow_tcf_alloc_nlcmd(ctx, size);
 	if (!cmd) {
 		rte_errno = ENOMEM;
 		return -rte_errno;
@@ -3991,6 +3992,7 @@ flow_tcf_collect_local_cb(const struct nlmsghdr *nlh, void *arg)
 		mnl_attr_put(cmd, IFA_ADDRESS, IPV6_ADDR_LEN,
 			mnl_attr_get_payload(na_peer));
 	}
+	assert(size == cmd->nlmsg_len);
 	return 1;
 }
 
@@ -4059,6 +4061,7 @@ flow_tcf_collect_neigh_cb(const struct nlmsghdr *nlh, void *arg)
 	struct nlattr *na_ip = NULL;
 	struct nlattr *na_mac = NULL;
 	unsigned char family;
+	uint32_t size;
 
 	if (nlh->nlmsg_type != RTM_NEWNEIGH) {
 		rte_errno = EINVAL;
@@ -4085,12 +4088,12 @@ flow_tcf_collect_neigh_cb(const struct nlmsghdr *nlh, void *arg)
 	if (!na_mac || !na_ip)
 		return 1;
 	/* Neigh rule with permenent attribute found. */
-	cmd = flow_tcf_alloc_nlcmd(ctx, MNL_ALIGN(sizeof(struct nlmsghdr)) +
-					MNL_ALIGN(sizeof(struct ndmsg)) +
-					SZ_NLATTR_DATA_OF(ETHER_ADDR_LEN) +
-					(family == AF_INET6
-					? SZ_NLATTR_DATA_OF(IPV6_ADDR_LEN)
-					: SZ_NLATTR_TYPE_OF(uint32_t)));
+	size = MNL_ALIGN(sizeof(struct nlmsghdr)) +
+	       MNL_ALIGN(sizeof(struct ndmsg)) +
+	       SZ_NLATTR_DATA_OF(ETHER_ADDR_LEN) +
+	       (family == AF_INET6 ? SZ_NLATTR_DATA_OF(IPV6_ADDR_LEN)
+				   : SZ_NLATTR_TYPE_OF(uint32_t));
+	cmd = flow_tcf_alloc_nlcmd(ctx, size);
 	if (!cmd) {
 		rte_errno = ENOMEM;
 		return -rte_errno;
@@ -4113,6 +4116,7 @@ flow_tcf_collect_neigh_cb(const struct nlmsghdr *nlh, void *arg)
 	}
 	mnl_attr_put(cmd, NDA_LLADDR, ETHER_ADDR_LEN,
 		     mnl_attr_get_payload(na_mac));
+	assert(size == cmd->nlmsg_len);
 	return 1;
 }
 
@@ -4179,6 +4183,7 @@ flow_tcf_collect_vxlan_cb(const struct nlmsghdr *nlh, void *arg)
 	struct nlattr *na_vxlan = NULL;
 	bool found = false;
 	unsigned int vxindex;
+	uint32_t size;
 
 	if (nlh->nlmsg_type != RTM_NEWLINK) {
 		rte_errno = EINVAL;
@@ -4224,8 +4229,9 @@ flow_tcf_collect_vxlan_cb(const struct nlmsghdr *nlh, void *arg)
 		return 1;
 	/* Attached VXLAN device found, store the command to delete. */
 	vxindex = ifm->ifi_index;
-	cmd = flow_tcf_alloc_nlcmd(ctx, MNL_ALIGN(sizeof(struct nlmsghdr)) +
-					MNL_ALIGN(sizeof(struct ifinfomsg)));
+	size = MNL_ALIGN(sizeof(struct nlmsghdr)) +
+	       MNL_ALIGN(sizeof(struct ifinfomsg));
+	cmd = flow_tcf_alloc_nlcmd(ctx, size);
 	if (!cmd) {
 		rte_errno = ENOMEM;
 		return -rte_errno;
@@ -4236,6 +4242,7 @@ flow_tcf_collect_vxlan_cb(const struct nlmsghdr *nlh, void *arg)
 	ifm = mnl_nlmsg_put_extra_header(cmd, sizeof(*ifm));
 	ifm->ifi_family = AF_UNSPEC;
 	ifm->ifi_index = vxindex;
+	assert(size == cmd->nlmsg_len);
 	return 1;
 }
 
