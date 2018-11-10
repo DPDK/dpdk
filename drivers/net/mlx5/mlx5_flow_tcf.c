@@ -4226,7 +4226,7 @@ flow_tcf_collect_vxlan_cb(const struct nlmsghdr *nlh, void *arg)
 	vxindex = ifm->ifi_index;
 	cmd = flow_tcf_alloc_nlcmd(ctx, MNL_ALIGN(sizeof(struct nlmsghdr)) +
 					MNL_ALIGN(sizeof(struct ifinfomsg)));
-	if (!nlh) {
+	if (!cmd) {
 		rte_errno = ENOMEM;
 		return -rte_errno;
 	}
