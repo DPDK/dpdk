@@ -1129,9 +1129,38 @@ rte_hash_add_key_data(const struct rte_hash *h, const void *key, void *data)
 		return ret;
 }
 
+/* Search one bucket to find the match key - uses rw lock */
+static inline int32_t
+search_one_bucket_l(const struct rte_hash *h, const void *key,
+		uint16_t sig, void **data,
+		const struct rte_hash_bucket *bkt)
+{
+	int i;
+	struct rte_hash_key *k, *keys = h->key_store;
+
+	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
+		if (bkt->sig_current[i] == sig &&
+				bkt->key_idx[i] != EMPTY_SLOT) {
+			k = (struct rte_hash_key *) ((char *)keys +
+					bkt->key_idx[i] * h->key_entry_size);
+
+			if (rte_hash_cmp_eq(key, k->key, h) == 0) {
+				if (data != NULL)
+					*data = k->pdata;
+				/*
+				 * Return index where key is stored,
+				 * subtracting the first dummy index
+				 */
+				return bkt->key_idx[i] - 1;
+			}
+		}
+	}
+	return -1;
+}
+
 /* Search one bucket to find the match key */
 static inline int32_t
-search_one_bucket(const struct rte_hash *h, const void *key, uint16_t sig,
+search_one_bucket_lf(const struct rte_hash *h, const void *key, uint16_t sig,
 			void **data, const struct rte_hash_bucket *bkt)
 {
 	int i;
@@ -1163,7 +1192,48 @@ search_one_bucket(const struct rte_hash *h, const void *key, uint16_t sig,
 }
 
 static inline int32_t
-__rte_hash_lookup_with_hash(const struct rte_hash *h, const void *key,
+__rte_hash_lookup_with_hash_l(const struct rte_hash *h, const void *key,
+				hash_sig_t sig, void **data)
+{
+	uint32_t prim_bucket_idx, sec_bucket_idx;
+	struct rte_hash_bucket *bkt, *cur_bkt;
+	int ret;
+	uint16_t short_sig;
+
+	short_sig = get_short_sig(sig);
+	prim_bucket_idx = get_prim_bucket_index(h, sig);
+	sec_bucket_idx = get_alt_bucket_index(h, prim_bucket_idx, short_sig);
+
+	bkt = &h->buckets[prim_bucket_idx];
+
+	__hash_rw_reader_lock(h);
+
+	/* Check if key is in primary location */
+	ret = search_one_bucket_l(h, key, short_sig, data, bkt);
+	if (ret != -1) {
+		__hash_rw_reader_unlock(h);
+		return ret;
+	}
+	/* Calculate secondary hash */
+	bkt = &h->buckets[sec_bucket_idx];
+
+	/* Check if key is in secondary location */
+	FOR_EACH_BUCKET(cur_bkt, bkt) {
+		ret = search_one_bucket_l(h, key, short_sig,
+					data, cur_bkt);
+		if (ret != -1) {
+			__hash_rw_reader_unlock(h);
+			return ret;
+		}
+	}
+
+	__hash_rw_reader_unlock(h);
+
+	return -ENOENT;
+}
+
+static inline int32_t
+__rte_hash_lookup_with_hash_lf(const struct rte_hash *h, const void *key,
 					hash_sig_t sig, void **data)
 {
 	uint32_t prim_bucket_idx, sec_bucket_idx;
@@ -1176,8 +1246,6 @@ __rte_hash_lookup_with_hash(const struct rte_hash *h, const void *key,
 	prim_bucket_idx = get_prim_bucket_index(h, sig);
 	sec_bucket_idx = get_alt_bucket_index(h, prim_bucket_idx, short_sig);
 
-	__hash_rw_reader_lock(h);
-
 	do {
 		/* Load the table change counter before the lookup
 		 * starts. Acquire semantics will make sure that
@@ -1188,7 +1256,7 @@ __rte_hash_lookup_with_hash(const struct rte_hash *h, const void *key,
 
 		/* Check if key is in primary location */
 		bkt = &h->buckets[prim_bucket_idx];
-		ret = search_one_bucket(h, key, short_sig, data, bkt);
+		ret = search_one_bucket_lf(h, key, short_sig, data, bkt);
 		if (ret != -1) {
 			__hash_rw_reader_unlock(h);
 			return ret;
@@ -1198,7 +1266,7 @@ __rte_hash_lookup_with_hash(const struct rte_hash *h, const void *key,
 
 		/* Check if key is in secondary location */
 		FOR_EACH_BUCKET(cur_bkt, bkt) {
-			ret = search_one_bucket(h, key, short_sig,
+			ret = search_one_bucket_lf(h, key, short_sig,
 						data, cur_bkt);
 			if (ret != -1) {
 				__hash_rw_reader_unlock(h);
@@ -1222,9 +1290,17 @@ __rte_hash_lookup_with_hash(const struct rte_hash *h, const void *key,
 					__ATOMIC_ACQUIRE);
 	} while (cnt_b != cnt_a);
 
-	__hash_rw_reader_unlock(h);
-
 	return -ENOENT;
+}
+
+static inline int32_t
+__rte_hash_lookup_with_hash(const struct rte_hash *h, const void *key,
+					hash_sig_t sig, void **data)
+{
+	if (h->readwrite_concur_lf_support)
+		return __rte_hash_lookup_with_hash_lf(h, key, sig, data);
+	else
+		return __rte_hash_lookup_with_hash_l(h, key, sig, data);
 }
 
 int32_t
@@ -1528,7 +1604,197 @@ compare_signatures(uint32_t *prim_hash_matches, uint32_t *sec_hash_matches,
 
 #define PREFETCH_OFFSET 4
 static inline void
-__rte_hash_lookup_bulk(const struct rte_hash *h, const void **keys,
+__rte_hash_lookup_bulk_l(const struct rte_hash *h, const void **keys,
+			int32_t num_keys, int32_t *positions,
+			uint64_t *hit_mask, void *data[])
+{
+	uint64_t hits = 0;
+	int32_t i;
+	int32_t ret;
+	uint32_t prim_hash[RTE_HASH_LOOKUP_BULK_MAX];
+	uint32_t prim_index[RTE_HASH_LOOKUP_BULK_MAX];
+	uint32_t sec_index[RTE_HASH_LOOKUP_BULK_MAX];
+	uint16_t sig[RTE_HASH_LOOKUP_BULK_MAX];
+	const struct rte_hash_bucket *primary_bkt[RTE_HASH_LOOKUP_BULK_MAX];
+	const struct rte_hash_bucket *secondary_bkt[RTE_HASH_LOOKUP_BULK_MAX];
+	uint32_t prim_hitmask[RTE_HASH_LOOKUP_BULK_MAX] = {0};
+	uint32_t sec_hitmask[RTE_HASH_LOOKUP_BULK_MAX] = {0};
+	struct rte_hash_bucket *cur_bkt, *next_bkt;
+
+	/* Prefetch first keys */
+	for (i = 0; i < PREFETCH_OFFSET && i < num_keys; i++)
+		rte_prefetch0(keys[i]);
+
+	/*
+	 * Prefetch rest of the keys, calculate primary and
+	 * secondary bucket and prefetch them
+	 */
+	for (i = 0; i < (num_keys - PREFETCH_OFFSET); i++) {
+		rte_prefetch0(keys[i + PREFETCH_OFFSET]);
+
+		prim_hash[i] = rte_hash_hash(h, keys[i]);
+
+		sig[i] = get_short_sig(prim_hash[i]);
+		prim_index[i] = get_prim_bucket_index(h, prim_hash[i]);
+		sec_index[i] = get_alt_bucket_index(h, prim_index[i], sig[i]);
+
+		primary_bkt[i] = &h->buckets[prim_index[i]];
+		secondary_bkt[i] = &h->buckets[sec_index[i]];
+
+		rte_prefetch0(primary_bkt[i]);
+		rte_prefetch0(secondary_bkt[i]);
+	}
+
+	/* Calculate and prefetch rest of the buckets */
+	for (; i < num_keys; i++) {
+		prim_hash[i] = rte_hash_hash(h, keys[i]);
+
+		sig[i] = get_short_sig(prim_hash[i]);
+		prim_index[i] = get_prim_bucket_index(h, prim_hash[i]);
+		sec_index[i] = get_alt_bucket_index(h, prim_index[i], sig[i]);
+
+		primary_bkt[i] = &h->buckets[prim_index[i]];
+		secondary_bkt[i] = &h->buckets[sec_index[i]];
+
+		rte_prefetch0(primary_bkt[i]);
+		rte_prefetch0(secondary_bkt[i]);
+	}
+
+	__hash_rw_reader_lock(h);
+
+	/* Compare signatures and prefetch key slot of first hit */
+	for (i = 0; i < num_keys; i++) {
+		compare_signatures(&prim_hitmask[i], &sec_hitmask[i],
+			primary_bkt[i], secondary_bkt[i],
+			sig[i], h->sig_cmp_fn);
+
+		if (prim_hitmask[i]) {
+			uint32_t first_hit =
+					__builtin_ctzl(prim_hitmask[i])
+					>> 1;
+			uint32_t key_idx =
+				primary_bkt[i]->key_idx[first_hit];
+			const struct rte_hash_key *key_slot =
+				(const struct rte_hash_key *)(
+				(const char *)h->key_store +
+				key_idx * h->key_entry_size);
+			rte_prefetch0(key_slot);
+			continue;
+		}
+
+		if (sec_hitmask[i]) {
+			uint32_t first_hit =
+					__builtin_ctzl(sec_hitmask[i])
+					>> 1;
+			uint32_t key_idx =
+				secondary_bkt[i]->key_idx[first_hit];
+			const struct rte_hash_key *key_slot =
+				(const struct rte_hash_key *)(
+				(const char *)h->key_store +
+				key_idx * h->key_entry_size);
+			rte_prefetch0(key_slot);
+		}
+	}
+
+	/* Compare keys, first hits in primary first */
+	for (i = 0; i < num_keys; i++) {
+		positions[i] = -ENOENT;
+		while (prim_hitmask[i]) {
+			uint32_t hit_index =
+					__builtin_ctzl(prim_hitmask[i])
+					>> 1;
+			uint32_t key_idx =
+				primary_bkt[i]->key_idx[hit_index];
+			const struct rte_hash_key *key_slot =
+				(const struct rte_hash_key *)(
+				(const char *)h->key_store +
+				key_idx * h->key_entry_size);
+
+			/*
+			 * If key index is 0, do not compare key,
+			 * as it is checking the dummy slot
+			 */
+			if (!!key_idx &
+				!rte_hash_cmp_eq(
+					key_slot->key, keys[i], h)) {
+				if (data != NULL)
+					data[i] = key_slot->pdata;
+
+				hits |= 1ULL << i;
+				positions[i] = key_idx - 1;
+				goto next_key;
+			}
+			prim_hitmask[i] &= ~(3ULL << (hit_index << 1));
+		}
+
+		while (sec_hitmask[i]) {
+			uint32_t hit_index =
+					__builtin_ctzl(sec_hitmask[i])
+					>> 1;
+			uint32_t key_idx =
+				secondary_bkt[i]->key_idx[hit_index];
+			const struct rte_hash_key *key_slot =
+				(const struct rte_hash_key *)(
+				(const char *)h->key_store +
+				key_idx * h->key_entry_size);
+
+			/*
+			 * If key index is 0, do not compare key,
+			 * as it is checking the dummy slot
+			 */
+
+			if (!!key_idx &
+				!rte_hash_cmp_eq(
+					key_slot->key, keys[i], h)) {
+				if (data != NULL)
+					data[i] = key_slot->pdata;
+
+				hits |= 1ULL << i;
+				positions[i] = key_idx - 1;
+				goto next_key;
+			}
+			sec_hitmask[i] &= ~(3ULL << (hit_index << 1));
+		}
+next_key:
+		continue;
+	}
+
+	/* all found, do not need to go through ext bkt */
+	if ((hits == ((1ULL << num_keys) - 1)) || !h->ext_table_support) {
+		if (hit_mask != NULL)
+			*hit_mask = hits;
+		__hash_rw_reader_unlock(h);
+		return;
+	}
+
+	/* need to check ext buckets for match */
+	for (i = 0; i < num_keys; i++) {
+		if ((hits & (1ULL << i)) != 0)
+			continue;
+		next_bkt = secondary_bkt[i]->next;
+		FOR_EACH_BUCKET(cur_bkt, next_bkt) {
+			if (data != NULL)
+				ret = search_one_bucket_l(h, keys[i],
+						sig[i], &data[i], cur_bkt);
+			else
+				ret = search_one_bucket_l(h, keys[i],
+						sig[i], NULL, cur_bkt);
+			if (ret != -1) {
+				positions[i] = ret;
+				hits |= 1ULL << i;
+				break;
+			}
+		}
+	}
+
+	__hash_rw_reader_unlock(h);
+
+	if (hit_mask != NULL)
+		*hit_mask = hits;
+}
+
+static inline void
+__rte_hash_lookup_bulk_lf(const struct rte_hash *h, const void **keys,
 			int32_t num_keys, int32_t *positions,
 			uint64_t *hit_mask, void *data[])
 {
@@ -1586,7 +1852,6 @@ __rte_hash_lookup_bulk(const struct rte_hash *h, const void **keys,
 		rte_prefetch0(secondary_bkt[i]);
 	}
 
-	__hash_rw_reader_lock(h);
 	do {
 		/* Load the table change counter before the lookup
 		 * starts. Acquire semantics will make sure that
@@ -1735,10 +2000,10 @@ next_key:
 		next_bkt = secondary_bkt[i]->next;
 		FOR_EACH_BUCKET(cur_bkt, next_bkt) {
 			if (data != NULL)
-				ret = search_one_bucket(h, keys[i],
+				ret = search_one_bucket_lf(h, keys[i],
 						sig[i], &data[i], cur_bkt);
 			else
-				ret = search_one_bucket(h, keys[i],
+				ret = search_one_bucket_lf(h, keys[i],
 						sig[i], NULL, cur_bkt);
 			if (ret != -1) {
 				positions[i] = ret;
@@ -1748,10 +2013,21 @@ next_key:
 		}
 	}
 
-	__hash_rw_reader_unlock(h);
-
 	if (hit_mask != NULL)
 		*hit_mask = hits;
+}
+
+static inline void
+__rte_hash_lookup_bulk(const struct rte_hash *h, const void **keys,
+			int32_t num_keys, int32_t *positions,
+			uint64_t *hit_mask, void *data[])
+{
+	if (h->readwrite_concur_lf_support)
+		return __rte_hash_lookup_bulk_lf(h, keys, num_keys,
+						positions, hit_mask, data);
+	else
+		return __rte_hash_lookup_bulk_l(h, keys, num_keys,
+						positions, hit_mask, data);
 }
 
 int
