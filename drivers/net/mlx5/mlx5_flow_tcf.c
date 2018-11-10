@@ -5124,6 +5124,13 @@ flow_tcf_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 		dev_flow->tcf.applied = 1;
 		return 0;
 	}
+	if (dev_flow->tcf.tunnel) {
+		/* Rollback the VTEP configuration if rule apply failed. */
+		assert(dev_flow->tcf.tunnel->vtep);
+		flow_tcf_vtep_release(ctx, dev_flow->tcf.tunnel->vtep,
+				      dev_flow);
+		dev_flow->tcf.tunnel->vtep = NULL;
+	}
 	return rte_flow_error_set(error, rte_errno,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 				  "netlink: failed to create TC flow rule");
