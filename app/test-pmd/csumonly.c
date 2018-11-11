@@ -111,7 +111,9 @@ parse_ipv4(struct ipv4_hdr *ipv4_hdr, struct testpmd_offload_info *info)
 	if (info->l4_proto == IPPROTO_TCP) {
 		tcp_hdr = (struct tcp_hdr *)((char *)ipv4_hdr + info->l3_len);
 		info->l4_len = (tcp_hdr->data_off & 0xf0) >> 2;
-	} else
+	} else if (info->l4_proto == IPPROTO_UDP)
+		info->l4_len = sizeof(struct udp_hdr);
+	else
 		info->l4_len = 0;
 }
 
@@ -128,7 +130,9 @@ parse_ipv6(struct ipv6_hdr *ipv6_hdr, struct testpmd_offload_info *info)
 	if (info->l4_proto == IPPROTO_TCP) {
 		tcp_hdr = (struct tcp_hdr *)((char *)ipv6_hdr + info->l3_len);
 		info->l4_len = (tcp_hdr->data_off & 0xf0) >> 2;
-	} else
+	} else if (info->l4_proto == IPPROTO_UDP)
+		info->l4_len = sizeof(struct udp_hdr);
+	else
 		info->l4_len = 0;
 }
 
