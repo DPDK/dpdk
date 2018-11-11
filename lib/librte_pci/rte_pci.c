@@ -30,6 +30,10 @@ get_u8_pciaddr_field(const char *in, void *_u8, char dlm)
 	uint8_t *u8 = _u8;
 	char *end;
 
+	/* empty string is an error though strtoul() returns 0 */
+	if (*in == '\0')
+		return NULL;
+
 	errno = 0;
 	val = strtoul(in, &end, 16);
 	if (errno != 0 || end[0] != dlm || val > UINT8_MAX) {
