@@ -530,11 +530,6 @@ static void ena_close(struct rte_eth_dev *dev)
 				     adapter);
 
 	/*
-	 * Pass the information to the rte_eth_dev_close() that it should also
-	 * release the private port resources.
-	 */
-	dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
-	/*
 	 * MAC is not allocated dynamically. Setting NULL should prevent from
 	 * release of the resource in the rte_eth_dev_release_port().
 	 */
@@ -1665,6 +1660,12 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->data->mac_addrs = (struct ether_addr *)adapter->mac_addr;
 	ether_addr_copy((struct ether_addr *)get_feat_ctx.dev_attr.mac_addr,
 			(struct ether_addr *)adapter->mac_addr);
+
+	/*
+	 * Pass the information to the rte_eth_dev_close() that it should also
+	 * release the private port resources.
+	 */
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 
 	adapter->drv_stats = rte_zmalloc("adapter stats",
 					 sizeof(*adapter->drv_stats),

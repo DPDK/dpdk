@@ -318,6 +318,9 @@ eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 		     hw->perm_addr[0], hw->perm_addr[1], hw->perm_addr[2],
 		     hw->perm_addr[3], hw->perm_addr[4], hw->perm_addr[5]);
 
+	/* Flag to call rte_eth_dev_release_port() in rte_eth_dev_close(). */
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
+
 	/* Put device in Quiesce Mode */
 	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD, VMXNET3_CMD_QUIESCE_DEV);
 
@@ -876,12 +879,6 @@ vmxnet3_dev_close(struct rte_eth_dev *dev)
 
 	vmxnet3_dev_stop(dev);
 	vmxnet3_free_queues(dev);
-
-	/*
-	 * flag to rte_eth_dev_close() that it should release the port resources
-	 * (calling rte_eth_dev_release_port()) in addition to closing it.
-	 */
-	dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 }
 
 static void

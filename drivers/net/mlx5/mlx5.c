@@ -347,11 +347,6 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	memset(priv, 0, sizeof(*priv));
 	priv->domain_id = RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID;
 	/*
-	 * flag to rte_eth_dev_close() that it should release the port resources
-	 * (calling rte_eth_dev_release_port()) in addition to closing it.
-	 */
-	dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
-	/*
 	 * Reset mac_addrs to NULL such that it is not freed as part of
 	 * rte_eth_dev_release_port(). mac_addrs is part of dev_private so
 	 * it is freed when dev_private is freed.
@@ -1114,6 +1109,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		err = ENOMEM;
 		goto error;
 	}
+	/* Flag to call rte_eth_dev_release_port() in rte_eth_dev_close(). */
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 	if (priv->representor) {
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR;
 		eth_dev->data->representor_id = priv->representor_id;
