@@ -1240,17 +1240,6 @@ mlx5_flow_validate_item_ipv6(const struct rte_flow_item *item,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "L3 cannot follow an L4 layer.");
-	/*
-	 * IPv6 is not recognised by the NIC inside a GRE tunnel.
-	 * Such support has to be disabled as the rule will be
-	 * accepted.  Issue reproduced with Mellanox OFED 4.3-3.0.2.1 and
-	 * Mellanox OFED 4.4-1.0.0.0.
-	 */
-	if (tunnel && item_flags & MLX5_FLOW_LAYER_GRE)
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "IPv6 inside a GRE tunnel is"
-					  " not recognised.");
 	if (!mask)
 		mask = &rte_flow_item_ipv6_mask;
 	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
