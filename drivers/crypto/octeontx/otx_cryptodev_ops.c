@@ -216,7 +216,7 @@ otx_cpt_que_pair_setup(struct rte_cryptodev *dev,
 	}
 
 	ret = otx_cpt_get_resource(cptvf, 0, &instance);
-	if (ret != 0) {
+	if (ret != 0 || instance == NULL) {
 		CPT_LOG_ERR("Error getting instance handle from device %s : "
 			    "ret = %d", dev->data->name, ret);
 		return ret;

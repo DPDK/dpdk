@@ -100,8 +100,8 @@ otx_cpt_pci_remove(struct rte_pci_device *pci_dev)
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		rte_free(cryptodev->data->dev_private);
 
-	cryptodev->device = NULL;
 	cryptodev->device->driver = NULL;
+	cryptodev->device = NULL;
 	cryptodev->data = NULL;
 
 	/* free metapool memory */
