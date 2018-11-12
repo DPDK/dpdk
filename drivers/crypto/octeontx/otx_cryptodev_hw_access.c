@@ -9,6 +9,7 @@
 #include <rte_common.h>
 #include <rte_errno.h>
 #include <rte_memzone.h>
+#include <rte_string_fns.h>
 
 #include "otx_cryptodev_hw_access.h"
 #include "otx_cryptodev_mbox.h"
@@ -366,7 +367,9 @@ otx_cpt_hw_init(struct cpt_vf *cptvf, void *pdev, void *reg_base, char *name)
 
 	/* Bar0 base address */
 	cptvf->reg_base = reg_base;
-	strncpy(cptvf->dev_name, name, 32);
+
+	/* Save device name */
+	strlcpy(cptvf->dev_name, name, (sizeof(cptvf->dev_name)));
 
 	cptvf->pdev = pdev;
 
