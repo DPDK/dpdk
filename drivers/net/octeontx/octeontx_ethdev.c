@@ -844,10 +844,11 @@ octeontx_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 		pktbuf_conf.mmask.f_cache_mode = 1;
 
 		pktbuf_conf.wqe_skip = OCTTX_PACKET_WQE_SKIP;
-		pktbuf_conf.first_skip = OCTTX_PACKET_FIRST_SKIP;
+		pktbuf_conf.first_skip = OCTTX_PACKET_FIRST_SKIP(mb_pool);
 		pktbuf_conf.later_skip = OCTTX_PACKET_LATER_SKIP;
 		pktbuf_conf.mbuff_size = (mb_pool->elt_size -
 					RTE_PKTMBUF_HEADROOM -
+					rte_pktmbuf_priv_size(mb_pool) -
 					sizeof(struct rte_mbuf));
 
 		pktbuf_conf.cache_mode = PKI_OPC_MODE_STF2_STT;
