@@ -3717,10 +3717,6 @@ override_na_vlan_priority:
  * @param nlh
  *   Message to send. This function always raises the NLM_F_ACK flag before
  *   sending.
- * @param[in] msglen
- *   Message length. Message buffer may contain multiple commands and
- *   nlmsg_len field not always corresponds to actual message length.
- *   If 0 specified the nlmsg_len field in header is used as message length.
  * @param[in] cb
  *   Callback handler for received message.
  * @param[in] arg
@@ -3732,7 +3728,6 @@ override_na_vlan_priority:
 static int
 flow_tcf_nl_ack(struct mlx5_flow_tcf_context *tcf,
 		struct nlmsghdr *nlh,
-		uint32_t msglen,
 		mnl_cb_t cb, void *arg)
 {
 	unsigned int portid = mnl_socket_get_portid(tcf->nl);
@@ -3745,11 +3740,8 @@ flow_tcf_nl_ack(struct mlx5_flow_tcf_context *tcf,
 		/* seq 0 is reserved for kernel event-driven notifications. */
 		seq = tcf->seq++;
 	nlh->nlmsg_seq = seq;
-	if (!msglen) {
-		msglen = nlh->nlmsg_len;
-		nlh->nlmsg_flags |= NLM_F_ACK;
-	}
-	ret = mnl_socket_sendto(tcf->nl, nlh, msglen);
+	nlh->nlmsg_flags |= NLM_F_ACK;
+	ret = mnl_socket_sendto(tcf->nl, nlh, nlh->nlmsg_len);
 	err = (ret <= 0) ? errno : 0;
 	nlh = (struct nlmsghdr *)(tcf->buf);
 	/*
@@ -3886,7 +3878,7 @@ flow_tcf_send_nlcmd(struct mlx5_flow_tcf_context *tcf,
 			nlh = (struct nlmsghdr *)&bc->msg[msg];
 			assert((bc->size - msg) >= nlh->nlmsg_len);
 			msg += nlh->nlmsg_len;
-			rc = flow_tcf_nl_ack(tcf, nlh, 0, NULL, NULL);
+			rc = flow_tcf_nl_ack(tcf, nlh, NULL, NULL);
 			if (rc) {
 				DRV_LOG(WARNING,
 					"netlink: cleanup error %d", rc);
@@ -4019,7 +4011,7 @@ flow_tcf_encap_local_cleanup(struct mlx5_flow_tcf_context *tcf,
 	ifa->ifa_family = AF_UNSPEC;
 	ifa->ifa_index = ifindex;
 	ifa->ifa_scope = RT_SCOPE_LINK;
-	ret = flow_tcf_nl_ack(tcf, nlh, 0, flow_tcf_collect_local_cb, &ctx);
+	ret = flow_tcf_nl_ack(tcf, nlh, flow_tcf_collect_local_cb, &ctx);
 	if (ret)
 		DRV_LOG(WARNING, "netlink: query device list error %d", ret);
 	ret = flow_tcf_send_nlcmd(tcf, &ctx);
@@ -4140,7 +4132,7 @@ flow_tcf_encap_neigh_cleanup(struct mlx5_flow_tcf_context *tcf,
 	ndm->ndm_family = AF_UNSPEC;
 	ndm->ndm_ifindex = ifindex;
 	ndm->ndm_state = NUD_PERMANENT;
-	ret = flow_tcf_nl_ack(tcf, nlh, 0, flow_tcf_collect_neigh_cb, &ctx);
+	ret = flow_tcf_nl_ack(tcf, nlh, flow_tcf_collect_neigh_cb, &ctx);
 	if (ret)
 		DRV_LOG(WARNING, "netlink: query device list error %d", ret);
 	ret = flow_tcf_send_nlcmd(tcf, &ctx);
@@ -4269,7 +4261,7 @@ flow_tcf_encap_iface_cleanup(struct mlx5_flow_tcf_context *tcf,
 	nlh->nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
 	ifm = mnl_nlmsg_put_extra_header(nlh, sizeof(*ifm));
 	ifm->ifi_family = AF_UNSPEC;
-	ret = flow_tcf_nl_ack(tcf, nlh, 0, flow_tcf_collect_vxlan_cb, &ctx);
+	ret = flow_tcf_nl_ack(tcf, nlh, flow_tcf_collect_vxlan_cb, &ctx);
 	if (ret)
 		DRV_LOG(WARNING, "netlink: query device list error %d", ret);
 	ret = flow_tcf_send_nlcmd(tcf, &ctx);
@@ -4341,7 +4333,7 @@ flow_tcf_rule_local(struct mlx5_flow_tcf_context *tcf,
 					  sizeof(encap->ipv6.dst),
 					  &encap->ipv6.dst);
 	}
-	if (!flow_tcf_nl_ack(tcf, nlh, 0, NULL, NULL))
+	if (!flow_tcf_nl_ack(tcf, nlh, NULL, NULL))
 		return 0;
 	return rte_flow_error_set(error, rte_errno,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -4404,7 +4396,7 @@ flow_tcf_rule_neigh(struct mlx5_flow_tcf_context *tcf,
 	if (encap->mask & FLOW_TCF_ENCAP_ETH_DST)
 		mnl_attr_put(nlh, NDA_LLADDR, sizeof(encap->eth.dst),
 						    &encap->eth.dst);
-	if (!flow_tcf_nl_ack(tcf, nlh, 0, NULL, NULL))
+	if (!flow_tcf_nl_ack(tcf, nlh, NULL, NULL))
 		return 0;
 	return rte_flow_error_set(error, rte_errno,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -4679,7 +4671,7 @@ flow_tcf_vtep_delete(struct mlx5_flow_tcf_context *tcf,
 		ifm->ifi_family = AF_UNSPEC;
 		ifm->ifi_index = vtep->ifindex;
 		assert(sizeof(buf) >= nlh->nlmsg_len);
-		ret = flow_tcf_nl_ack(tcf, nlh, 0, NULL, NULL);
+		ret = flow_tcf_nl_ack(tcf, nlh, NULL, NULL);
 		if (ret)
 			DRV_LOG(WARNING, "netlink: error deleting vxlan"
 					 " encap/decap ifindex %u",
@@ -4769,7 +4761,7 @@ flow_tcf_vtep_create(struct mlx5_flow_tcf_context *tcf,
 	mnl_attr_nest_end(nlh, na_vxlan);
 	mnl_attr_nest_end(nlh, na_info);
 	assert(sizeof(buf) >= nlh->nlmsg_len);
-	ret = flow_tcf_nl_ack(tcf, nlh, 0, NULL, NULL);
+	ret = flow_tcf_nl_ack(tcf, nlh, NULL, NULL);
 	if (ret) {
 		DRV_LOG(WARNING,
 			"netlink: VTEP %s create failure (%d)",
@@ -4811,7 +4803,7 @@ flow_tcf_vtep_create(struct mlx5_flow_tcf_context *tcf,
 	ifm->ifi_index = vtep->ifindex;
 	ifm->ifi_flags = IFF_UP;
 	ifm->ifi_change = IFF_UP;
-	ret = flow_tcf_nl_ack(tcf, nlh, 0, NULL, NULL);
+	ret = flow_tcf_nl_ack(tcf, nlh, NULL, NULL);
 	if (ret) {
 		rte_flow_error_set(error, -errno,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -5120,7 +5112,7 @@ flow_tcf_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 		*dev_flow->tcf.tunnel->ifindex_ptr =
 			dev_flow->tcf.tunnel->vtep->ifindex;
 	}
-	if (!flow_tcf_nl_ack(ctx, nlh, 0, NULL, NULL)) {
+	if (!flow_tcf_nl_ack(ctx, nlh, NULL, NULL)) {
 		dev_flow->tcf.applied = 1;
 		return 0;
 	}
@@ -5163,7 +5155,7 @@ flow_tcf_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 		nlh = dev_flow->tcf.nlh;
 		nlh->nlmsg_type = RTM_DELTFILTER;
 		nlh->nlmsg_flags = NLM_F_REQUEST;
-		flow_tcf_nl_ack(ctx, nlh, 0, NULL, NULL);
+		flow_tcf_nl_ack(ctx, nlh, NULL, NULL);
 		if (dev_flow->tcf.tunnel) {
 			assert(dev_flow->tcf.tunnel->vtep);
 			flow_tcf_vtep_release(ctx,
@@ -5714,7 +5706,7 @@ mlx5_flow_tcf_init(struct mlx5_flow_tcf_context *ctx,
 	tcm->tcm_parent = TC_H_INGRESS;
 	assert(sizeof(buf) >= nlh->nlmsg_len);
 	/* Ignore errors when qdisc is already absent. */
-	if (flow_tcf_nl_ack(ctx, nlh, 0, NULL, NULL) &&
+	if (flow_tcf_nl_ack(ctx, nlh, NULL, NULL) &&
 	    rte_errno != EINVAL && rte_errno != ENOENT)
 		return rte_flow_error_set(error, rte_errno,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -5731,7 +5723,7 @@ mlx5_flow_tcf_init(struct mlx5_flow_tcf_context *ctx,
 	tcm->tcm_parent = TC_H_INGRESS;
 	mnl_attr_put_strz_check(nlh, sizeof(buf), TCA_KIND, "ingress");
 	assert(sizeof(buf) >= nlh->nlmsg_len);
-	if (flow_tcf_nl_ack(ctx, nlh, 0, NULL, NULL))
+	if (flow_tcf_nl_ack(ctx, nlh, NULL, NULL))
 		return rte_flow_error_set(error, rte_errno,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "netlink: failed to create ingress"
