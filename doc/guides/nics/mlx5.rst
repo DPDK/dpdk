@@ -434,6 +434,7 @@ Run-time configuration
 
   A nonzero value enables the DV flow steering assuming it is supported
   by the driver.
+  The DV flow steering is not supported on switchdev mode.
 
   Disabled by default.
 
