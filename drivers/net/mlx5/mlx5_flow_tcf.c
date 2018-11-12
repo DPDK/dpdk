@@ -3732,44 +3732,60 @@ flow_tcf_nl_ack(struct mlx5_flow_tcf_context *tcf,
 {
 	unsigned int portid = mnl_socket_get_portid(tcf->nl);
 	uint32_t seq = tcf->seq++;
-	int err, ret;
+	int ret, err = 0;
 
 	assert(tcf->nl);
 	assert(tcf->buf);
-	if (!seq)
+	if (!seq) {
 		/* seq 0 is reserved for kernel event-driven notifications. */
 		seq = tcf->seq++;
+	}
 	nlh->nlmsg_seq = seq;
 	nlh->nlmsg_flags |= NLM_F_ACK;
 	ret = mnl_socket_sendto(tcf->nl, nlh, nlh->nlmsg_len);
-	err = (ret <= 0) ? errno : 0;
+	if (ret <= 0) {
+		/* Message send error occurres. */
+		rte_errno = errno;
+		return -rte_errno;
+	}
 	nlh = (struct nlmsghdr *)(tcf->buf);
 	/*
 	 * The following loop postpones non-fatal errors until multipart
 	 * messages are complete.
 	 */
-	if (ret > 0)
-		while (true) {
-			ret = mnl_socket_recvfrom(tcf->nl, tcf->buf,
-						  tcf->buf_size);
-			if (ret < 0) {
-				err = errno;
-				if (err != ENOSPC)
-					break;
-			}
-			if (!err) {
-				ret = mnl_cb_run(nlh, ret, seq, portid,
-						 cb, arg);
-				if (ret < 0) {
-					err = errno;
-					break;
-				}
-			}
-			/* Will receive till end of multipart message */
-			if (!(nlh->nlmsg_flags & NLM_F_MULTI) ||
-			      nlh->nlmsg_type == NLMSG_DONE)
+	while (true) {
+		ret = mnl_socket_recvfrom(tcf->nl, tcf->buf, tcf->buf_size);
+		if (ret < 0) {
+			err = errno;
+			/*
+			 * In case of overflow Will receive till
+			 * end of multipart message. We may lost part
+			 * of reply messages but mark and return an error.
+			 */
+			if (err != ENOSPC ||
+			    !(nlh->nlmsg_flags & NLM_F_MULTI) ||
+			    nlh->nlmsg_type == NLMSG_DONE)
 				break;
+		} else {
+			ret = mnl_cb_run(nlh, ret, seq, portid, cb, arg);
+			if (!ret) {
+				/*
+				 * libmnl returns 0 if DONE or
+				 * success ACK message found.
+				 */
+				break;
+			}
+			if (ret < 0) {
+				/*
+				 * ACK message with error found
+				 * or some error occurred.
+				 */
+				err = errno;
+				break;
+			}
+			/* We should continue receiving. */
 		}
+	}
 	if (!err)
 		return 0;
 	rte_errno = err;
