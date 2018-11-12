@@ -12552,13 +12552,16 @@ i40e_rss_conf_init(struct i40e_rte_flow_rss_conf *out,
 	if (in->key_len > RTE_DIM(out->key) ||
 	    in->queue_num > RTE_DIM(out->queue))
 		return -EINVAL;
+	if (!in->key && in->key_len)
+		return -EINVAL;
+	if (in->key)
+		out->conf.key = memcpy(out->key, in->key, in->key_len);
 	out->conf = (struct rte_flow_action_rss){
 		.func = in->func,
 		.level = in->level,
 		.types = in->types,
 		.key_len = in->key_len,
 		.queue_num = in->queue_num,
-		.key = memcpy(out->key, in->key, in->key_len),
 		.queue = memcpy(out->queue, in->queue,
 				sizeof(*in->queue) * in->queue_num),
 	};
