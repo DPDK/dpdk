@@ -5082,6 +5082,134 @@ flow_tcf_vtep_release(struct mlx5_flow_tcf_context *tcf,
 	pthread_mutex_unlock(&vtep_list_mutex);
 }
 
+struct tcf_nlcb_query {
+	uint32_t handle;
+	uint32_t tc_flags;
+	uint32_t flags_valid:1;
+};
+
+/**
+ * Collect queried rule attributes. This is callback routine called by
+ * libmnl mnl_cb_run() in loop for every message in received packet.
+ * Current implementation collects the flower flags only.
+ *
+ * @param[in] nlh
+ *   Pointer to reply header.
+ * @param[in, out] arg
+ *   Context pointer for this callback.
+ *
+ * @return
+ *   A positive, nonzero value on success (required by libmnl
+ *   to continue messages processing).
+ */
+static int
+flow_tcf_collect_query_cb(const struct nlmsghdr *nlh, void *arg)
+{
+	struct tcf_nlcb_query *query = arg;
+	struct tcmsg *tcm = mnl_nlmsg_get_payload(nlh);
+	struct nlattr *na, *na_opt;
+	bool flower = false;
+
+	if (nlh->nlmsg_type != RTM_NEWTFILTER ||
+	    tcm->tcm_handle != query->handle)
+		return 1;
+	mnl_attr_for_each(na, nlh, sizeof(*tcm)) {
+		switch (mnl_attr_get_type(na)) {
+		case TCA_KIND:
+			if (strcmp(mnl_attr_get_payload(na), "flower")) {
+				/* Not flower filter, drop entire message. */
+				return 1;
+			}
+			flower = true;
+			break;
+		case TCA_OPTIONS:
+			if (!flower) {
+				/* Not flower options, drop entire message. */
+				return 1;
+			}
+			/* Check nested flower options. */
+			mnl_attr_for_each_nested(na_opt, na) {
+				switch (mnl_attr_get_type(na_opt)) {
+				case TCA_FLOWER_FLAGS:
+					query->flags_valid = 1;
+					query->tc_flags =
+						mnl_attr_get_u32(na_opt);
+					break;
+				}
+			}
+			break;
+		}
+	}
+	return 1;
+}
+
+/**
+ * Query a TC flower rule flags via netlink.
+ *
+ * @param[in] tcf
+ *   Context object initialized by mlx5_flow_tcf_context_create().
+ * @param[in] dev_flow
+ *   Pointer to the flow.
+ * @param[out] pflags
+ *   pointer to the data retrieved by the query.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise.
+ */
+static int
+flow_tcf_query_flags(struct mlx5_flow_tcf_context *tcf,
+		     struct mlx5_flow *dev_flow,
+		     uint32_t *pflags)
+{
+	struct nlmsghdr *nlh;
+	struct tcmsg *tcm;
+	struct tcf_nlcb_query query = {
+		.handle = dev_flow->tcf.tcm->tcm_handle,
+	};
+
+	nlh = mnl_nlmsg_put_header(tcf->buf);
+	nlh->nlmsg_type = RTM_GETTFILTER;
+	nlh->nlmsg_flags = NLM_F_REQUEST;
+	tcm = mnl_nlmsg_put_extra_header(nlh, sizeof(*tcm));
+	memcpy(tcm, dev_flow->tcf.tcm, sizeof(*tcm));
+	/*
+	 * Ignore Netlink error for filter query operations.
+	 * The reply length is sent by kernel as errno.
+	 * Just check we got the flags option.
+	 */
+	flow_tcf_nl_ack(tcf, nlh, flow_tcf_collect_query_cb, &query);
+	if (!query.flags_valid) {
+		*pflags = 0;
+		return -ENOENT;
+	}
+	*pflags = query.tc_flags;
+	return 0;
+}
+
+/**
+ * Query and check the in_hw set for specified rule.
+ *
+ * @param[in] tcf
+ *   Context object initialized by mlx5_flow_tcf_context_create().
+ * @param[in] dev_flow
+ *   Pointer to the flow to check.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise.
+ */
+static int
+flow_tcf_check_inhw(struct mlx5_flow_tcf_context *tcf,
+		    struct mlx5_flow *dev_flow)
+{
+	uint32_t flags;
+	int ret;
+
+	ret = flow_tcf_query_flags(tcf, dev_flow, &flags);
+	if (ret)
+		return ret;
+	return  (flags & TCA_CLS_FLAGS_IN_HW) ? 0 : -ENOENT;
+}
+
 /**
  * Remove flow from E-Switch by sending Netlink message.
  *
@@ -5173,6 +5301,20 @@ flow_tcf_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 	}
 	if (!flow_tcf_nl_ack(ctx, nlh, NULL, NULL)) {
 		dev_flow->tcf.applied = 1;
+		if (*dev_flow->tcf.ptc_flags & TCA_CLS_FLAGS_SKIP_SW)
+			return 0;
+		/*
+		 * Rule was applied without skip_sw flag set.
+		 * We should check whether the rule was acctually
+		 * accepted by hardware (have look at in_hw flag).
+		 */
+		if (flow_tcf_check_inhw(ctx, dev_flow)) {
+			flow_tcf_remove(dev, flow);
+			return rte_flow_error_set
+				(error, ENOENT,
+				 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				 "netlink: rule has no in_hw flag set");
+		}
 		return 0;
 	}
 	if (dev_flow->tcf.tunnel) {
