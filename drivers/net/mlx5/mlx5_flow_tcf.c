@@ -160,6 +160,9 @@ struct tc_tunnel_key {
 #ifndef TCA_CLS_FLAGS_SKIP_SW
 #define TCA_CLS_FLAGS_SKIP_SW (1 << 1)
 #endif
+#ifndef TCA_CLS_FLAGS_IN_HW
+#define TCA_CLS_FLAGS_IN_HW (1 << 2)
+#endif
 #ifndef HAVE_TCA_CHAIN
 #define TCA_CHAIN 11
 #endif
@@ -3699,6 +3702,8 @@ override_na_vlan_priority:
 	assert(na_flower);
 	assert(na_flower_act);
 	mnl_attr_nest_end(nlh, na_flower_act);
+	dev_flow->tcf.ptc_flags = mnl_attr_get_payload
+					(mnl_nlmsg_get_payload_tail(nlh));
 	mnl_attr_put_u32(nlh, TCA_FLOWER_FLAGS,	decap.vxlan ?
 						0 : TCA_CLS_FLAGS_SKIP_SW);
 	mnl_attr_nest_end(nlh, na_flower);
@@ -5077,6 +5082,44 @@ flow_tcf_vtep_release(struct mlx5_flow_tcf_context *tcf,
 	pthread_mutex_unlock(&vtep_list_mutex);
 }
 
+/**
+ * Remove flow from E-Switch by sending Netlink message.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in, out] flow
+ *   Pointer to the sub flow.
+ */
+static void
+flow_tcf_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct mlx5_flow_tcf_context *ctx = priv->tcf_context;
+	struct mlx5_flow *dev_flow;
+	struct nlmsghdr *nlh;
+
+	if (!flow)
+		return;
+	dev_flow = LIST_FIRST(&flow->dev_flows);
+	if (!dev_flow)
+		return;
+	/* E-Switch flow can't be expanded. */
+	assert(!LIST_NEXT(dev_flow, next));
+	if (dev_flow->tcf.applied) {
+		nlh = dev_flow->tcf.nlh;
+		nlh->nlmsg_type = RTM_DELTFILTER;
+		nlh->nlmsg_flags = NLM_F_REQUEST;
+		flow_tcf_nl_ack(ctx, nlh, NULL, NULL);
+		if (dev_flow->tcf.tunnel) {
+			assert(dev_flow->tcf.tunnel->vtep);
+			flow_tcf_vtep_release(ctx,
+				dev_flow->tcf.tunnel->vtep,
+				dev_flow);
+			dev_flow->tcf.tunnel->vtep = NULL;
+		}
+		dev_flow->tcf.applied = 0;
+	}
+}
 
 /**
  * Apply flow to E-Switch by sending Netlink message.
@@ -5142,45 +5185,6 @@ flow_tcf_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 	return rte_flow_error_set(error, rte_errno,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 				  "netlink: failed to create TC flow rule");
-}
-
-/**
- * Remove flow from E-Switch by sending Netlink message.
- *
- * @param[in] dev
- *   Pointer to Ethernet device.
- * @param[in, out] flow
- *   Pointer to the sub flow.
- */
-static void
-flow_tcf_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
-{
-	struct priv *priv = dev->data->dev_private;
-	struct mlx5_flow_tcf_context *ctx = priv->tcf_context;
-	struct mlx5_flow *dev_flow;
-	struct nlmsghdr *nlh;
-
-	if (!flow)
-		return;
-	dev_flow = LIST_FIRST(&flow->dev_flows);
-	if (!dev_flow)
-		return;
-	/* E-Switch flow can't be expanded. */
-	assert(!LIST_NEXT(dev_flow, next));
-	if (dev_flow->tcf.applied) {
-		nlh = dev_flow->tcf.nlh;
-		nlh->nlmsg_type = RTM_DELTFILTER;
-		nlh->nlmsg_flags = NLM_F_REQUEST;
-		flow_tcf_nl_ack(ctx, nlh, NULL, NULL);
-		if (dev_flow->tcf.tunnel) {
-			assert(dev_flow->tcf.tunnel->vtep);
-			flow_tcf_vtep_release(ctx,
-				dev_flow->tcf.tunnel->vtep,
-				dev_flow);
-			dev_flow->tcf.tunnel->vtep = NULL;
-		}
-		dev_flow->tcf.applied = 0;
-	}
 }
 
 /**

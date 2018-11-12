@@ -219,6 +219,7 @@ struct mlx5_flow_dv {
 struct mlx5_flow_tcf {
 	struct nlmsghdr *nlh;
 	struct tcmsg *tcm;
+	uint32_t *ptc_flags; /**< tc rule applied flags. */
 	union { /**< Tunnel encap/decap descriptor. */
 		struct flow_tcf_tunnel_hdr *tunnel;
 		struct flow_tcf_vxlan_decap *vxlan_decap;
