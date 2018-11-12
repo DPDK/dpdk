@@ -15,8 +15,9 @@ extern "C" {
 #include "rte_branch_prediction.h"
 #include "rte_common.h"
 #include "rte_pause.h"
+#include "rte_cycles.h"
 
-#define RTE_RTM_MAX_RETRIES (10)
+#define RTE_RTM_MAX_RETRIES (20)
 #define RTE_XABORT_LOCK_BUSY (0xff)
 
 #ifndef RTE_FORCE_INTRINSICS
@@ -76,7 +77,7 @@ static inline int rte_tm_supported(void)
 static inline int
 rte_try_tm(volatile int *lock)
 {
-	int retries;
+	int i, retries;
 
 	if (!rte_rtm_supported)
 		return 0;
@@ -96,9 +97,21 @@ rte_try_tm(volatile int *lock)
 		while (*lock)
 			rte_pause();
 
-		if ((status & RTE_XABORT_EXPLICIT) &&
-			(RTE_XABORT_CODE(status) == RTE_XABORT_LOCK_BUSY))
+		if ((status & RTE_XABORT_CONFLICT) ||
+		   ((status & RTE_XABORT_EXPLICIT) &&
+		    (RTE_XABORT_CODE(status) == RTE_XABORT_LOCK_BUSY))) {
+			/* add a small delay before retrying, basing the
+			 * delay on the number of times we've already tried,
+			 * to give a back-off type of behaviour. We
+			 * randomize trycount by taking bits from the tsc count
+			 */
+			int try_count = RTE_RTM_MAX_RETRIES - retries;
+			int pause_count = (rte_rdtsc() & 0x7) | 1;
+			pause_count <<= try_count;
+			for (i = 0; i < pause_count; i++)
+				rte_pause();
 			continue;
+		}
 
 		if ((status & RTE_XABORT_RETRY) == 0) /* do not retry */
 			break;

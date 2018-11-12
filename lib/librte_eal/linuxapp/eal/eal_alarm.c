@@ -30,7 +30,9 @@
 #define NS_PER_US 1000
 #define US_PER_MS 1000
 #define MS_PER_S 1000
+#ifndef US_PER_S
 #define US_PER_S (US_PER_MS * MS_PER_S)
+#endif
 
 #ifdef CLOCK_MONOTONIC_RAW /* Defined in glibc bits/time.h */
 #define CLOCK_TYPE_ID CLOCK_MONOTONIC_RAW
