@@ -13,7 +13,6 @@
 #include <rte_common.h>
 #include <rte_memory.h>         /* for definition of RTE_CACHE_LINE_SIZE */
 #include <rte_log.h>
-#include <rte_memcpy.h>
 #include <rte_prefetch.h>
 #include <rte_branch_prediction.h>
 #include <rte_malloc.h>
@@ -982,7 +981,7 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 	new_k = RTE_PTR_ADD(keys, (uintptr_t)slot_id * h->key_entry_size);
 	new_idx = (uint32_t)((uintptr_t) slot_id);
 	/* Copy key */
-	rte_memcpy(new_k->key, key, h->key_len);
+	memcpy(new_k->key, key, h->key_len);
 	/* Key can be of arbitrary length, so it is not possible to store
 	 * it atomically. Hence the new key element's memory stores
 	 * (key as well as data) should be complete before it is referenced.

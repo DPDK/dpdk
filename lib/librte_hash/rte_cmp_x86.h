@@ -2,6 +2,8 @@
  * Copyright(c) 2015 Intel Corporation
  */
 
+#include <rte_vect.h>
+
 /* Functions to compare multiple of 16 byte keys (up to 128 bytes) */
 static int
 rte_hash_k16_cmp_eq(const void *key1, const void *key2, size_t key_len __rte_unused)
