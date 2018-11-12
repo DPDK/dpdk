@@ -678,24 +678,26 @@ test_hash_readwrite_main(void)
 							reader_faster) < 0)
 		return -1;
 
+	printf("================\n");
 	printf("Results summary:\n");
+	printf("================\n");
 
 	printf("single read: %u\n", htm_results.single_read);
 	printf("single write: %u\n", htm_results.single_write);
 	for (i = 0; i < NUM_TEST; i++) {
-		printf("core_cnt: %u\n", core_cnt[i]);
+		printf("+++ core_cnt: %u +++\n", core_cnt[i]);
 		printf("HTM:\n");
-		printf("read only: %u\n", htm_results.read_only[i]);
-		printf("write only: %u\n", htm_results.write_only[i]);
-		printf("read-write read: %u\n", htm_results.read_write_r[i]);
-		printf("read-write write: %u\n", htm_results.read_write_w[i]);
+		printf("  read only: %u\n", htm_results.read_only[i]);
+		printf("  write only: %u\n", htm_results.write_only[i]);
+		printf("  read-write read: %u\n", htm_results.read_write_r[i]);
+		printf("  read-write write: %u\n", htm_results.read_write_w[i]);
 
 		printf("non HTM:\n");
-		printf("read only: %u\n", non_htm_results.read_only[i]);
-		printf("write only: %u\n", non_htm_results.write_only[i]);
-		printf("read-write read: %u\n",
+		printf("  read only: %u\n", non_htm_results.read_only[i]);
+		printf("  write only: %u\n", non_htm_results.write_only[i]);
+		printf("  read-write read: %u\n",
 			non_htm_results.read_write_r[i]);
-		printf("read-write write: %u\n",
+		printf("  read-write write: %u\n",
 			non_htm_results.read_write_w[i]);
 	}
 
