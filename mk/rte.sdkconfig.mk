@@ -114,8 +114,7 @@ SDK_RELPATH=$(shell $(RTE_SDK)/buildtools/relpath.sh $(abspath $(RTE_SRCDIR)) \
 OUTPUT_RELPATH=$(shell $(RTE_SDK)/buildtools/relpath.sh $(abspath $(RTE_OUTPUT)) \
 				$(abspath $(RTE_SRCDIR)))
 $(RTE_OUTPUT)/Makefile: | $(RTE_OUTPUT)
-	$(Q)$(RTE_SDK)/buildtools/gen-build-mk.sh $(SDK_RELPATH) $(OUTPUT_RELPATH) \
-		> $(RTE_OUTPUT)/Makefile
+	$(Q)$(RTE_SDK)/buildtools/gen-build-mk.sh $(SDK_RELPATH) > $@
 
 # clean installed files, and generate a new config header file
 # if NODOTCONF variable is defined, don't try to rebuild .config
