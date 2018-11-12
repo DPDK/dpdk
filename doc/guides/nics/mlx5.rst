@@ -137,6 +137,11 @@ Limitations
   enabled (``rxq_cqe_comp_en``) at the same time, RSS hash result is not fully
   supported. Some Rx packets may not have PKT_RX_RSS_HASH.
 
+- IPv6 Multicast messages are not supported on VM, while promiscuous mode
+  and allmulticast mode are both set to off.
+  To receive IPv6 Multicast messages on VM, explicitly set the relevant
+  MAC address using rte_eth_dev_mac_addr_add() API.
+
 Statistics
 ----------
 
