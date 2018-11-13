@@ -1093,7 +1093,6 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_conf orig_conf;
-	struct rte_eth_conf local_conf = *dev_conf;
 	int diag;
 	int ret;
 
@@ -1118,7 +1117,7 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	 * Copy the dev_conf parameter into the dev structure.
 	 * rte_eth_dev_info_get() requires dev_conf, copy it before dev_info get
 	 */
-	memcpy(&dev->data->dev_conf, &local_conf, sizeof(dev->data->dev_conf));
+	memcpy(&dev->data->dev_conf, dev_conf, sizeof(dev->data->dev_conf));
 
 	rte_eth_dev_info_get(port_id, &dev_info);
 
@@ -1192,7 +1191,7 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	 * If jumbo frames are enabled, check that the maximum RX packet
 	 * length is supported by the configured device.
 	 */
-	if (local_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
+	if (dev_conf->rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
 		if (dev_conf->rxmode.max_rx_pkt_len > dev_info.max_rx_pktlen) {
 			RTE_ETHDEV_LOG(ERR,
 				"Ethdev port_id=%u max_rx_pkt_len %u > max valid value %u\n",
@@ -1217,23 +1216,23 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	}
 
 	/* Any requested offloading must be within its device capabilities */
-	if ((local_conf.rxmode.offloads & dev_info.rx_offload_capa) !=
-	     local_conf.rxmode.offloads) {
+	if ((dev_conf->rxmode.offloads & dev_info.rx_offload_capa) !=
+	     dev_conf->rxmode.offloads) {
 		RTE_ETHDEV_LOG(ERR,
 			"Ethdev port_id=%u requested Rx offloads 0x%"PRIx64" doesn't match Rx offloads "
 			"capabilities 0x%"PRIx64" in %s()\n",
-			port_id, local_conf.rxmode.offloads,
+			port_id, dev_conf->rxmode.offloads,
 			dev_info.rx_offload_capa,
 			__func__);
 		ret = -EINVAL;
 		goto rollback;
 	}
-	if ((local_conf.txmode.offloads & dev_info.tx_offload_capa) !=
-	     local_conf.txmode.offloads) {
+	if ((dev_conf->txmode.offloads & dev_info.tx_offload_capa) !=
+	     dev_conf->txmode.offloads) {
 		RTE_ETHDEV_LOG(ERR,
 			"Ethdev port_id=%u requested Tx offloads 0x%"PRIx64" doesn't match Tx offloads "
 			"capabilities 0x%"PRIx64" in %s()\n",
-			port_id, local_conf.txmode.offloads,
+			port_id, dev_conf->txmode.offloads,
 			dev_info.tx_offload_capa,
 			__func__);
 		ret = -EINVAL;
