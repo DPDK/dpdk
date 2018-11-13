@@ -8,7 +8,6 @@
 
 /**
  * @file rte_security.h
- * @b EXPERIMENTAL: this API may change without prior notice
  *
  * RTE Security Common Definitions
  *
@@ -330,7 +329,7 @@ struct rte_security_session {
  *  - On success, pointer to session
  *  - On failure, NULL
  */
-struct rte_security_session * __rte_experimental
+struct rte_security_session *
 rte_security_session_create(struct rte_security_ctx *instance,
 			    struct rte_security_session_conf *conf,
 			    struct rte_mempool *mp);
@@ -345,7 +344,7 @@ rte_security_session_create(struct rte_security_ctx *instance,
  *  - On success returns 0
  *  - On failure return errno
  */
-int __rte_experimental
+int
 rte_security_session_update(struct rte_security_ctx *instance,
 			    struct rte_security_session *sess,
 			    struct rte_security_session_conf *conf);
@@ -359,7 +358,7 @@ rte_security_session_update(struct rte_security_ctx *instance,
  *   - Size of the private data, if successful
  *   - 0 if device is invalid or does not support the operation.
  */
-unsigned int __rte_experimental
+unsigned int
 rte_security_session_get_size(struct rte_security_ctx *instance);
 
 /**
@@ -374,7 +373,7 @@ rte_security_session_get_size(struct rte_security_ctx *instance);
  *  - -EINVAL if session is NULL.
  *  - -EBUSY if not all device private data has been freed.
  */
-int __rte_experimental
+int
 rte_security_session_destroy(struct rte_security_ctx *instance,
 			     struct rte_security_session *sess);
 
@@ -391,7 +390,7 @@ rte_security_session_destroy(struct rte_security_ctx *instance,
  *  - On success, zero.
  *  - On failure, a negative value.
  */
-int __rte_experimental
+int
 rte_security_set_pkt_metadata(struct rte_security_ctx *instance,
 			      struct rte_security_session *sess,
 			      struct rte_mbuf *mb, void *params);
@@ -413,7 +412,7 @@ rte_security_set_pkt_metadata(struct rte_security_ctx *instance,
  *  - On success, userdata
  *  - On failure, NULL
  */
-void * __rte_experimental
+void *
 rte_security_get_userdata(struct rte_security_ctx *instance, uint64_t md);
 
 /**
@@ -422,7 +421,7 @@ rte_security_get_userdata(struct rte_security_ctx *instance, uint64_t md);
  * @param	sym_op	crypto operation
  * @param	sess	security session
  */
-static inline int __rte_experimental
+static inline int
 __rte_security_attach_session(struct rte_crypto_sym_op *sym_op,
 			      struct rte_security_session *sess)
 {
@@ -431,13 +430,13 @@ __rte_security_attach_session(struct rte_crypto_sym_op *sym_op,
 	return 0;
 }
 
-static inline void * __rte_experimental
+static inline void *
 get_sec_session_private_data(const struct rte_security_session *sess)
 {
 	return sess->sess_private_data;
 }
 
-static inline void __rte_experimental
+static inline void
 set_sec_session_private_data(struct rte_security_session *sess,
 			     void *private_data)
 {
@@ -453,7 +452,7 @@ set_sec_session_private_data(struct rte_security_session *sess,
  * @param	op	crypto operation
  * @param	sess	security session
  */
-static inline int __rte_experimental
+static inline int
 rte_security_attach_session(struct rte_crypto_op *op,
 			    struct rte_security_session *sess)
 {
@@ -500,7 +499,7 @@ struct rte_security_stats {
  *  - On success return 0
  *  - On failure errno
  */
-int __rte_experimental
+int
 rte_security_session_stats_get(struct rte_security_ctx *instance,
 			       struct rte_security_session *sess,
 			       struct rte_security_stats *stats);
@@ -608,7 +607,7 @@ struct rte_security_capability_idx {
  *   - Returns array of security capabilities.
  *   - Return NULL if no capabilities available.
  */
-const struct rte_security_capability * __rte_experimental
+const struct rte_security_capability *
 rte_security_capabilities_get(struct rte_security_ctx *instance);
 
 /**
@@ -622,7 +621,7 @@ rte_security_capabilities_get(struct rte_security_ctx *instance);
  *     index criteria.
  *   - Return NULL if the capability not matched on security instance.
  */
-const struct rte_security_capability * __rte_experimental
+const struct rte_security_capability *
 rte_security_capability_get(struct rte_security_ctx *instance,
 			    struct rte_security_capability_idx *idx);
 

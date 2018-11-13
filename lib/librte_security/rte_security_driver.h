@@ -8,7 +8,6 @@
 
 /**
  * @file rte_security_driver.h
- * @b EXPERIMENTAL: this API may change without prior notice
  *
  * RTE Security Common Definitions
  *
