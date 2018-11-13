@@ -441,7 +441,7 @@ test_power_acpi_cpufreq(void)
 				"correctly(APCI cpufreq) or operating in another valid "
 				"Power management environment\n", TEST_POWER_LCORE_ID);
 		rte_power_unset_env();
-		return -1;
+		return TEST_SKIPPED;
 	}
 
 	/**
