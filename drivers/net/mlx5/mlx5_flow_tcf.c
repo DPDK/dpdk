@@ -5696,7 +5696,7 @@ flow_tcf_query_count(struct rte_eth_dev *dev,
 			  void *data,
 			  struct rte_flow_error *error)
 {
-	struct flow_tcf_stats_basic sb_data = { 0 };
+	struct flow_tcf_stats_basic sb_data;
 	struct rte_flow_query_count *qc = data;
 	struct priv *priv = dev->data->dev_private;
 	struct mlx5_flow_tcf_context *ctx = priv->tcf_context;
@@ -5707,6 +5707,7 @@ flow_tcf_query_count(struct rte_eth_dev *dev,
 	ssize_t ret;
 	assert(qc);
 
+	memset(&sb_data, 0, sizeof(sb_data));
 	dev_flow = LIST_FIRST(&flow->dev_flows);
 	/* E-Switch flow can't be expanded. */
 	assert(!LIST_NEXT(dev_flow, next));

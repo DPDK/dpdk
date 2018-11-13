@@ -354,10 +354,11 @@ int
 mlx5_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	struct priv *priv = dev->data->dev_private;
-	struct rte_eth_stats tmp = {0};
+	struct rte_eth_stats tmp;
 	unsigned int i;
 	unsigned int idx;
 
+	memset(&tmp, 0, sizeof(tmp));
 	/* Add software counters. */
 	for (i = 0; (i != priv->rxqs_n); ++i) {
 		struct mlx5_rxq_data *rxq = (*priv->rxqs)[i];

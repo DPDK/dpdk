@@ -68,9 +68,10 @@ flow_verbs_counter_create(struct rte_eth_dev *dev,
 #elif defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
 	struct priv *priv = dev->data->dev_private;
 	struct ibv_counters_init_attr init = {0};
-	struct ibv_counter_attach_attr attach = {0};
+	struct ibv_counter_attach_attr attach;
 	int ret;
 
+	memset(&attach, 0, sizeof(attach));
 	counter->cs = mlx5_glue->create_counters(priv->ctx, &init);
 	if (!counter->cs) {
 		rte_errno = ENOTSUP;

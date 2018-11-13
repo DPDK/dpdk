@@ -1782,7 +1782,7 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 	struct mlx5_ind_table_ibv *ind_tbl;
 	struct ibv_qp *qp;
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
-	struct mlx5dv_qp_init_attr qp_init_attr = {0};
+	struct mlx5dv_qp_init_attr qp_init_attr;
 #endif
 	int err;
 
@@ -1795,6 +1795,7 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 		return NULL;
 	}
 #ifdef HAVE_IBV_DEVICE_TUNNEL_SUPPORT
+	memset(&qp_init_attr, 0, sizeof(qp_init_attr));
 	if (tunnel) {
 		qp_init_attr.comp_mask =
 				MLX5DV_QP_INIT_ATTR_MASK_QP_CREATE_FLAGS;
