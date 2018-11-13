@@ -655,6 +655,13 @@ def do_arg_actions():
 
 def main():
     '''program main function'''
+    # check if lspci is installed, suppress any output
+    with open(os.devnull, 'w') as devnull:
+        ret = subprocess.call(['which', 'lspci'],
+                              stdout=devnull, stderr=devnull)
+        if ret != 0:
+            print("'lspci' not found - please install 'pciutils'")
+            sys.exit(1)
     parse_args()
     check_modules()
     clear_data()
