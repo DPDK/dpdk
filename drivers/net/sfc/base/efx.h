@@ -2878,6 +2878,8 @@ typedef struct efx_filter_spec_s {
 	efx_filter_flags_t		efs_flags;
 	uint16_t			efs_dmaq_id;
 	uint32_t			efs_rss_context;
+	uint32_t			efs_mark;
+	/* Fields below here are hashed for software filter lookup */
 	uint16_t			efs_outer_vid;
 	uint16_t			efs_inner_vid;
 	uint8_t				efs_loc_mac[EFX_MAC_ADDR_LEN];
@@ -2891,7 +2893,6 @@ typedef struct efx_filter_spec_s {
 	efx_oword_t			efs_loc_host;
 	uint8_t				efs_vni_or_vsid[EFX_VNI_OR_VSID_LEN];
 	uint8_t				efs_ifrm_loc_mac[EFX_MAC_ADDR_LEN];
-	uint32_t			efs_mark;
 } efx_filter_spec_t;
 
 
