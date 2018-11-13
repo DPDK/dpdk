@@ -1104,6 +1104,22 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_infos_get, -ENOTSUP);
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_configure, -ENOTSUP);
 
+	if (dev->data->dev_started) {
+		RTE_ETHDEV_LOG(ERR,
+			"Port %u must be stopped to allow configuration\n",
+			port_id);
+		return -EBUSY;
+	}
+
+	 /* Store original config, as rollback required on failure */
+	memcpy(&orig_conf, &dev->data->dev_conf, sizeof(dev->data->dev_conf));
+
+	/*
+	 * Copy the dev_conf parameter into the dev structure.
+	 * rte_eth_dev_info_get() requires dev_conf, copy it before dev_info get
+	 */
+	memcpy(&dev->data->dev_conf, &local_conf, sizeof(dev->data->dev_conf));
+
 	rte_eth_dev_info_get(port_id, &dev_info);
 
 	/* If number of queues specified by application for both Rx and Tx is
@@ -1125,28 +1141,17 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		RTE_ETHDEV_LOG(ERR,
 			"Number of RX queues requested (%u) is greater than max supported(%d)\n",
 			nb_rx_q, RTE_MAX_QUEUES_PER_PORT);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto rollback;
 	}
 
 	if (nb_tx_q > RTE_MAX_QUEUES_PER_PORT) {
 		RTE_ETHDEV_LOG(ERR,
 			"Number of TX queues requested (%u) is greater than max supported(%d)\n",
 			nb_tx_q, RTE_MAX_QUEUES_PER_PORT);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto rollback;
 	}
-
-	if (dev->data->dev_started) {
-		RTE_ETHDEV_LOG(ERR,
-			"Port %u must be stopped to allow configuration\n",
-			port_id);
-		return -EBUSY;
-	}
-
-	 /* Store original config, as rollback required on failure */
-	memcpy(&orig_conf, &dev->data->dev_conf, sizeof(dev->data->dev_conf));
-
-	/* Copy the dev_conf parameter into the dev structure */
-	memcpy(&dev->data->dev_conf, &local_conf, sizeof(dev->data->dev_conf));
 
 	/*
 	 * Check that the numbers of RX and TX queues are not greater
