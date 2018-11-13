@@ -354,8 +354,9 @@ mr_insert_dev_cache(struct rte_eth_dev *dev, struct mlx4_mr *mr)
 	DEBUG("port %u inserting MR(%p) to global cache",
 	      dev->data->port_id, (void *)mr);
 	for (n = 0; n < mr->ms_bmp_n; ) {
-		struct mlx4_mr_cache entry = { 0, };
+		struct mlx4_mr_cache entry;
 
+		memset(&entry, 0, sizeof(entry));
 		/* Find a contiguous chunk and advance the index. */
 		n = mr_find_next_chunk(mr, &entry, n);
 		if (!entry.end)
@@ -398,8 +399,9 @@ mr_lookup_dev_list(struct rte_eth_dev *dev, struct mlx4_mr_cache *entry,
 		if (mr->ms_n == 0)
 			continue;
 		for (n = 0; n < mr->ms_bmp_n; ) {
-			struct mlx4_mr_cache ret = { 0, };
+			struct mlx4_mr_cache ret;
 
+			memset(&ret, 0, sizeof(ret));
 			n = mr_find_next_chunk(mr, &ret, n);
 			if (addr >= ret.start && addr < ret.end) {
 				/* Found. */
@@ -688,8 +690,9 @@ alloc_resources:
 	 */
 	for (n = 0; n < ms_n; ++n) {
 		uintptr_t start;
-		struct mlx4_mr_cache ret = { 0, };
+		struct mlx4_mr_cache ret;
 
+		memset(&ret, 0, sizeof(ret));
 		start = data_re.start + n * msl->page_sz;
 		/* Exclude memsegs already registered by other MRs. */
 		if (mr_lookup_dev(dev, &ret, start) == UINT32_MAX) {
@@ -1277,8 +1280,9 @@ mlx4_mr_dump_dev(struct rte_eth_dev *dev)
 		if (mr->ms_n == 0)
 			continue;
 		for (n = 0; n < mr->ms_bmp_n; ) {
-			struct mlx4_mr_cache ret = { 0, };
+			struct mlx4_mr_cache ret;
 
+			memset(&ret, 0, sizeof(ret));
 			n = mr_find_next_chunk(mr, &ret, n);
 			if (!ret.end)
 				break;
