@@ -542,29 +542,6 @@ open_socket_fd(void)
 	return mp_fd;
 }
 
-static int
-unlink_sockets(const char *filter)
-{
-	int dir_fd;
-	DIR *mp_dir;
-	struct dirent *ent;
-
-	mp_dir = opendir(mp_dir_path);
-	if (!mp_dir) {
-		RTE_LOG(ERR, EAL, "Unable to open directory %s\n", mp_dir_path);
-		return -1;
-	}
-	dir_fd = dirfd(mp_dir);
-
-	while ((ent = readdir(mp_dir))) {
-		if (fnmatch(filter, ent->d_name, 0) == 0)
-			unlinkat(dir_fd, ent->d_name, 0);
-	}
-
-	closedir(mp_dir);
-	return 0;
-}
-
 int
 rte_mp_channel_init(void)
 {
@@ -599,13 +576,6 @@ rte_mp_channel_init(void)
 	if (flock(dir_fd, LOCK_EX)) {
 		RTE_LOG(ERR, EAL, "failed to lock %s: %s\n",
 			mp_dir_path, strerror(errno));
-		close(dir_fd);
-		return -1;
-	}
-
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY &&
-			unlink_sockets(mp_filter)) {
-		RTE_LOG(ERR, EAL, "failed to unlink mp sockets\n");
 		close(dir_fd);
 		return -1;
 	}

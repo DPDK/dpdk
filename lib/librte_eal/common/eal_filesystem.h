@@ -25,6 +25,9 @@
 int
 eal_create_runtime_dir(void);
 
+int
+eal_clean_runtime_dir(void);
+
 #define RUNTIME_CONFIG_FNAME "config"
 static inline const char *
 eal_runtime_config_path(void)
