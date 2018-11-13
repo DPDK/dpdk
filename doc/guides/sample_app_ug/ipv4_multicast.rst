@@ -319,7 +319,6 @@ It is the mcast_out_pkt() function that performs the packet duplication (either 
         hdr->pkt.in_port = pkt->pkt.in_port;
         hdr->pkt.vlan_macip = pkt->pkt.vlan_macip;
         hdr->pkt.hash = pkt->pkt.hash;
-        hdr->ol_flags = pkt->ol_flags;
         rte_mbuf_sanity_check(hdr, RTE_MBUF_PKT, 1);
 
         return hdr;

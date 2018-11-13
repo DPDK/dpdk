@@ -266,8 +266,6 @@ mcast_out_pkt(struct rte_mbuf *pkt, int use_clone)
 	hdr->tx_offload = pkt->tx_offload;
 	hdr->hash = pkt->hash;
 
-	hdr->ol_flags = pkt->ol_flags;
-
 	__rte_mbuf_sanity_check(hdr, 1);
 	return hdr;
 }
