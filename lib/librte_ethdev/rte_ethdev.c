@@ -1092,8 +1092,10 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 {
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
+	struct rte_eth_conf orig_conf;
 	struct rte_eth_conf local_conf = *dev_conf;
 	int diag;
+	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
@@ -1140,6 +1142,9 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		return -EBUSY;
 	}
 
+	 /* Store original config, as rollback required on failure */
+	memcpy(&orig_conf, &dev->data->dev_conf, sizeof(dev->data->dev_conf));
+
 	/* Copy the dev_conf parameter into the dev structure */
 	memcpy(&dev->data->dev_conf, &local_conf, sizeof(dev->data->dev_conf));
 
@@ -1151,13 +1156,15 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	if (nb_rx_q > dev_info.max_rx_queues) {
 		RTE_ETHDEV_LOG(ERR, "Ethdev port_id=%u nb_rx_queues=%u > %u\n",
 			port_id, nb_rx_q, dev_info.max_rx_queues);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto rollback;
 	}
 
 	if (nb_tx_q > dev_info.max_tx_queues) {
 		RTE_ETHDEV_LOG(ERR, "Ethdev port_id=%u nb_tx_queues=%u > %u\n",
 			port_id, nb_tx_q, dev_info.max_tx_queues);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto rollback;
 	}
 
 	/* Check that the device supports requested interrupts */
@@ -1165,13 +1172,15 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 			(!(dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC))) {
 		RTE_ETHDEV_LOG(ERR, "Driver %s does not support lsc\n",
 			dev->device->driver->name);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto rollback;
 	}
 	if ((dev_conf->intr_conf.rmv == 1) &&
 			(!(dev->data->dev_flags & RTE_ETH_DEV_INTR_RMV))) {
 		RTE_ETHDEV_LOG(ERR, "Driver %s does not support rmv\n",
 			dev->device->driver->name);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto rollback;
 	}
 
 	/*
@@ -1184,13 +1193,15 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 				"Ethdev port_id=%u max_rx_pkt_len %u > max valid value %u\n",
 				port_id, dev_conf->rxmode.max_rx_pkt_len,
 				dev_info.max_rx_pktlen);
-			return -EINVAL;
+			ret = -EINVAL;
+			goto rollback;
 		} else if (dev_conf->rxmode.max_rx_pkt_len < ETHER_MIN_LEN) {
 			RTE_ETHDEV_LOG(ERR,
 				"Ethdev port_id=%u max_rx_pkt_len %u < min valid value %u\n",
 				port_id, dev_conf->rxmode.max_rx_pkt_len,
 				(unsigned)ETHER_MIN_LEN);
-			return -EINVAL;
+			ret = -EINVAL;
+			goto rollback;
 		}
 	} else {
 		if (dev_conf->rxmode.max_rx_pkt_len < ETHER_MIN_LEN ||
@@ -1209,7 +1220,8 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 			port_id, local_conf.rxmode.offloads,
 			dev_info.rx_offload_capa,
 			__func__);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto rollback;
 	}
 	if ((local_conf.txmode.offloads & dev_info.tx_offload_capa) !=
 	     local_conf.txmode.offloads) {
@@ -1219,7 +1231,8 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 			port_id, local_conf.txmode.offloads,
 			dev_info.tx_offload_capa,
 			__func__);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto rollback;
 	}
 
 	/* Check that device supports requested rss hash functions. */
@@ -1230,7 +1243,8 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 			"Ethdev port_id=%u invalid rss_hf: 0x%"PRIx64", valid value: 0x%"PRIx64"\n",
 			port_id, dev_conf->rx_adv_conf.rss_conf.rss_hf,
 			dev_info.flow_type_rss_offloads);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto rollback;
 	}
 
 	/*
@@ -1241,7 +1255,8 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		RTE_ETHDEV_LOG(ERR,
 			"Port%u rte_eth_dev_rx_queue_config = %d\n",
 			port_id, diag);
-		return diag;
+		ret = diag;
+		goto rollback;
 	}
 
 	diag = rte_eth_dev_tx_queue_config(dev, nb_tx_q);
@@ -1250,7 +1265,8 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 			"Port%u rte_eth_dev_tx_queue_config = %d\n",
 			port_id, diag);
 		rte_eth_dev_rx_queue_config(dev, 0);
-		return diag;
+		ret = diag;
+		goto rollback;
 	}
 
 	diag = (*dev->dev_ops->dev_configure)(dev);
@@ -1259,7 +1275,8 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 			port_id, diag);
 		rte_eth_dev_rx_queue_config(dev, 0);
 		rte_eth_dev_tx_queue_config(dev, 0);
-		return eth_err(port_id, diag);
+		ret = eth_err(port_id, diag);
+		goto rollback;
 	}
 
 	/* Initialize Rx profiling if enabled at compilation time. */
@@ -1269,10 +1286,16 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 			port_id, diag);
 		rte_eth_dev_rx_queue_config(dev, 0);
 		rte_eth_dev_tx_queue_config(dev, 0);
-		return eth_err(port_id, diag);
+		ret = eth_err(port_id, diag);
+		goto rollback;
 	}
 
 	return 0;
+
+rollback:
+	memcpy(&dev->data->dev_conf, &orig_conf, sizeof(dev->data->dev_conf));
+
+	return ret;
 }
 
 void
