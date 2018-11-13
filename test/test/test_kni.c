@@ -549,7 +549,7 @@ test_kni(void)
 	if (!dir) {
 		if (errno == ENOENT) {
 			printf("Cannot run UT due to missing rte_kni module\n");
-			return -1;
+			return TEST_SKIPPED;
 		}
 		printf("opendir: %s", strerror(errno));
 		return -1;
