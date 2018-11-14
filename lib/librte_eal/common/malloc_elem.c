@@ -316,13 +316,15 @@ remove_elem(struct malloc_elem *elem)
 static int
 next_elem_is_adjacent(struct malloc_elem *elem)
 {
-	return elem->next == RTE_PTR_ADD(elem, elem->size);
+	return elem->next == RTE_PTR_ADD(elem, elem->size) &&
+			elem->next->msl == elem->msl;
 }
 
 static int
 prev_elem_is_adjacent(struct malloc_elem *elem)
 {
-	return elem == RTE_PTR_ADD(elem->prev, elem->prev->size);
+	return elem == RTE_PTR_ADD(elem->prev, elem->prev->size) &&
+			elem->prev->msl == elem->msl;
 }
 
 /*
