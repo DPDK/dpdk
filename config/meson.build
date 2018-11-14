@@ -9,8 +9,9 @@ else
 endif
 dpdk_conf.set('RTE_MACHINE', machine)
 machine_args = []
-# ppc64 does not support -march=native
-if host_machine.cpu_family().startswith('ppc') and machine == 'native'
+
+# ppc64 does not support -march= at all, use -mcpu and -mtune for that
+if host_machine.cpu_family().startswith('ppc')
 	machine_args += '-mcpu=' + machine
 	machine_args += '-mtune=' + machine
 else
