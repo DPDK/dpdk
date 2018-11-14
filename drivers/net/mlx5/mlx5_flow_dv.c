@@ -2275,8 +2275,10 @@ flow_dv_query(struct rte_eth_dev *dev __rte_unused,
 	      void *data __rte_unused,
 	      struct rte_flow_error *error __rte_unused)
 {
-	rte_errno = ENOTSUP;
-	return -rte_errno;
+	return rte_flow_error_set(error, ENOTSUP,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL,
+				  "flow query with DV is not supported");
 }
 
 
