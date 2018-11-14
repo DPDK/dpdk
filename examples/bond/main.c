@@ -220,6 +220,7 @@ bond_port_init(struct rte_mempool *mbuf_pool)
 	struct rte_eth_rxconf rxq_conf;
 	struct rte_eth_txconf txq_conf;
 	struct rte_eth_conf local_port_conf = port_conf;
+	uint16_t wait_counter = 20;
 
 	retval = rte_eth_bond_create("net_bonding0", BONDING_MODE_ALB,
 			0 /*SOCKET_ID_ANY*/);
@@ -273,6 +274,20 @@ bond_port_init(struct rte_mempool *mbuf_pool)
 	retval  = rte_eth_dev_start(BOND_PORT);
 	if (retval < 0)
 		rte_exit(retval, "Start port %d failed (res=%d)", BOND_PORT, retval);
+
+	printf("Waiting for slaves to become active...");
+	while (wait_counter) {
+		uint16_t act_slaves[16] = {0};
+		if (rte_eth_bond_active_slaves_get(BOND_PORT, act_slaves, 16) ==
+				slaves_count) {
+			printf("\n");
+			break;
+		}
+		sleep(1);
+		printf("...");
+		if (--wait_counter == 0)
+			rte_exit(-1, "\nFailed to activate slaves\n");
+	}
 
 	rte_eth_promiscuous_enable(BOND_PORT);
 
