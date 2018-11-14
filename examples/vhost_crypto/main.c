@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <stdbool.h>
 #include <assert.h>
@@ -442,6 +443,9 @@ free_resource(void)
 		struct lcore_option *lo = &options.los[i];
 		struct vhost_crypto_info *info = options.infos[i];
 
+		if (!info)
+			continue;
+
 		rte_mempool_free(info->cop_pool);
 		rte_mempool_free(info->sess_pool);
 
@@ -493,6 +497,19 @@ main(int argc, char *argv[])
 		info->nb_vids = lo->nb_sockets;
 
 		rte_cryptodev_info_get(info->cid, &dev_info);
+		if (options.zero_copy == RTE_VHOST_CRYPTO_ZERO_COPY_ENABLE) {
+#define VHOST_CRYPTO_CDEV_NAME_AESNI_MB_PMD	crypto_aesni_mb
+#define VHOST_CRYPTO_CDEV_NAME_AESNI_GCM_PMD	crypto_aesni_gcm
+			if (strstr(dev_info.driver_name,
+				RTE_STR(VHOST_CRYPTO_CDEV_NAME_AESNI_MB_PMD)) ||
+				strstr(dev_info.driver_name,
+				RTE_STR(VHOST_CRYPTO_CDEV_NAME_AESNI_GCM_PMD)))
+			RTE_LOG(ERR, USER1, "Cannot enable zero-copy in %s\n",
+					dev_info.driver_name);
+			ret = -EPERM;
+			goto error_exit;
+		}
+
 		if (dev_info.max_nb_queue_pairs < info->qid + 1) {
 			RTE_LOG(ERR, USER1, "Number of queues cannot over %u",
 					dev_info.max_nb_queue_pairs);
