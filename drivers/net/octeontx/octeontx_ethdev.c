@@ -1238,15 +1238,8 @@ octeontx_probe(struct rte_vdev_device *dev)
 		res = -EINVAL;
 		goto parse_error;
 	}
-	if (pnum > qnum) {
-		/*
-		 * We don't poll on event ports
-		 * that do not have any queues assigned.
-		 */
-		pnum = qnum;
-		PMD_INIT_LOG(INFO,
-			"reducing number of active event ports to %d", pnum);
-	}
+
+	/* Enable all queues available */
 	for (i = 0; i < qnum; i++) {
 		res = rte_event_queue_setup(evdev, i, NULL);
 		if (res < 0) {
@@ -1256,6 +1249,7 @@ octeontx_probe(struct rte_vdev_device *dev)
 		}
 	}
 
+	/* Enable all ports available */
 	for (i = 0; i < pnum; i++) {
 		res = rte_event_port_setup(evdev, i, NULL);
 		if (res < 0) {
@@ -1264,6 +1258,14 @@ octeontx_probe(struct rte_vdev_device *dev)
 						i, res);
 			goto parse_error;
 		}
+	}
+
+	/*
+	 * Do 1:1 links for ports & queues. All queues would be mapped to
+	 * one port. If there are more ports than queues, then some ports
+	 * won't be linked to any queue.
+	 */
+	for (i = 0; i < qnum; i++) {
 		/* Link one queue to one event port */
 		qlist = i;
 		res = rte_event_port_link(evdev, i, &qlist, NULL, 1);
