@@ -571,7 +571,7 @@ mlx4_mr_create(struct rte_eth_dev *dev, struct mlx4_mr_cache *entry,
 	 * Find out a contiguous virtual address chunk in use, to which the
 	 * given address belongs, in order to register maximum range. In the
 	 * best case where mempools are not dynamically recreated and
-	 * '--socket-mem' is speicified as an EAL option, it is very likely to
+	 * '--socket-mem' is specified as an EAL option, it is very likely to
 	 * have only one MR(LKey) per a socket and per a hugepage-size even
 	 * though the system memory is highly fragmented.
 	 */
