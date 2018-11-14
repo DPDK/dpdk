@@ -119,8 +119,8 @@ struct pdump_tuples {
 
 	/* params for packet dumping */
 	enum pdump_by dump_by_type;
-	int rx_vdev_id;
-	int tx_vdev_id;
+	uint16_t rx_vdev_id;
+	uint16_t tx_vdev_id;
 	enum pcap_stream rx_vdev_stream_type;
 	enum pcap_stream tx_vdev_stream_type;
 	bool single_pdump_dev;
@@ -266,7 +266,7 @@ parse_pdump(const char *optarg)
 				&parse_uint_value, &v);
 		if (ret < 0)
 			goto free_kvlist;
-		pt->port = (uint8_t) v.val;
+		pt->port = (uint16_t) v.val;
 		pt->dump_by_type = PORT_ID;
 	} else if (cnt2 == 1) {
 		ret = rte_kvargs_process(kvlist, PDUMP_PCI_ARG,
@@ -435,7 +435,7 @@ disable_pdump(struct pdump_tuples *pt)
 }
 
 static inline void
-pdump_rxtx(struct rte_ring *ring, uint8_t vdev_id, struct pdump_stats *stats)
+pdump_rxtx(struct rte_ring *ring, uint16_t vdev_id, struct pdump_stats *stats)
 {
 	/* write input packets of port to vdev for pdump */
 	struct rte_mbuf *rxtx_bufs[BURST_SIZE];
@@ -462,7 +462,7 @@ pdump_rxtx(struct rte_ring *ring, uint8_t vdev_id, struct pdump_stats *stats)
 }
 
 static void
-free_ring_data(struct rte_ring *ring, uint8_t vdev_id,
+free_ring_data(struct rte_ring *ring, uint16_t vdev_id,
 		struct pdump_stats *stats)
 {
 	while (rte_ring_count(ring))
