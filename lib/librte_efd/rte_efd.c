@@ -692,7 +692,8 @@ rte_efd_create(const char *name, uint32_t max_num_rules, uint32_t key_len,
 			offline_cpu_socket, 0);
 	if (r == NULL) {
 		RTE_LOG(ERR, EFD, "memory allocation failed\n");
-		goto error_unlock_exit;
+		rte_efd_free(table);
+		return NULL;
 	}
 
 	/* Populate free slots ring. Entry zero is reserved for key misses. */
