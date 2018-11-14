@@ -75,6 +75,10 @@ Deprecation Notices
   - Member ``uint16_t min_mtu`` the minimum MTU allowed.
   - Member ``uint16_t max_mtu`` the maximum MTU allowed.
 
+* security: New field ``uint64_t opaque_data`` is planned to be added into
+  ``rte_security_session`` structure. That would allow upper layer to easily
+  associate/de-associate some user defined data with the security session.
+
 * pdump: As we changed to use generic IPC, some changes in APIs and structure
   are expected in subsequent release.
 
