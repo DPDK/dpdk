@@ -53,11 +53,8 @@ AEAD Algorithms
 
 * ``RTE_CRYPTO_AEAD_AES_GCM``
 
-Compilation
------------
-
-The **OCTEON TX** :sup:`®` board must be running the linux kernel based on
-sdk-6.2.0 patch 3. In this, the OCTEON TX crypto PF driver is already built in.
+Config flags
+------------
 
 For compiling the OCTEON TX crypto poll mode driver, please check if the
 CONFIG_RTE_LIBRTE_PMD_OCTEONTX_CRYPTO setting is set to `y` in
@@ -65,23 +62,21 @@ config/common_base file.
 
 * ``CONFIG_RTE_LIBRTE_PMD_OCTEONTX_CRYPTO=y``
 
-The following are the steps to compile the OCTEON TX crypto poll mode driver:
+Compilation
+-----------
 
-.. code-block:: console
+The OCTEON TX crypto poll mode driver can be compiled either natively on
+**OCTEON TX** :sup:`®` board or cross-compiled on an x86 based platform.
 
-        cd <dpdk directory>
-        make config T=arm64-thunderx-linuxapp-gcc
-        make
+Refer :doc:`../platform/octeontx` for details about setting up the platform
+and building DPDK applications.
 
-The example applications can be compiled using the following:
+.. note::
 
-.. code-block:: console
+   OCTEON TX crypto PF driver needs microcode to be available at `/lib/firmware/` directory.
+   Refer SDK documents for further information.
 
-        cd <dpdk directory>
-        export RTE_SDK=$PWD
-        export RTE_TARGET=build
-        cd examples/<application>
-        make
+SDK and related information can be obtained from: `Cavium support site <https://support.cavium.com/>`_.
 
 Execution
 ---------
