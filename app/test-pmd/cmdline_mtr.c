@@ -1148,15 +1148,15 @@ static void cmd_set_port_meter_dscp_table_parsed(void *parsed_result,
 	}
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
-		return;
+		goto free_table;
 
 	/* Update Meter DSCP Table*/
 	ret = rte_mtr_meter_dscp_table_update(port_id, mtr_id,
 		dscp_table, &error);
-	if (ret != 0) {
+	if (ret != 0)
 		print_err_msg(&error);
-		return;
-	}
+
+free_table:
 	free(dscp_table);
 }
 
