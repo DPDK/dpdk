@@ -1096,6 +1096,7 @@ static int ena_create_io_queue(struct ena_ring *ring)
 		{ ENA_ADMIN_PLACEMENT_POLICY_HOST,
 		  0, 0, 0, 0, 0 };
 	uint16_t ena_qid;
+	unsigned int i;
 	int rc;
 
 	adapter = ring->adapter;
@@ -1106,10 +1107,14 @@ static int ena_create_io_queue(struct ena_ring *ring)
 		ctx.direction = ENA_COM_IO_QUEUE_DIRECTION_TX;
 		ctx.mem_queue_type = ena_dev->tx_mem_queue_type;
 		ctx.queue_size = adapter->tx_ring_size;
+		for (i = 0; i < ring->ring_size; i++)
+			ring->empty_tx_reqs[i] = i;
 	} else {
 		ena_qid = ENA_IO_RXQ_IDX(ring->id);
 		ctx.direction = ENA_COM_IO_QUEUE_DIRECTION_RX;
 		ctx.queue_size = adapter->rx_ring_size;
+		for (i = 0; i < ring->ring_size; i++)
+			ring->empty_rx_reqs[i] = i;
 	}
 	ctx.qid = ena_qid;
 	ctx.msix_vector = -1; /* interrupts not used */
@@ -1152,6 +1157,8 @@ static void ena_free_io_queues_all(struct ena_adapter *adapter)
 	for (i = 0; i < nb_txq; ++i) {
 		ena_qid = ENA_IO_TXQ_IDX(i);
 		ena_com_destroy_io_queue(ena_dev, ena_qid);
+
+		ena_tx_queue_release_bufs(&adapter->tx_ring[i]);
 	}
 
 	for (i = 0; i < nb_rxq; ++i) {
