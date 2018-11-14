@@ -77,7 +77,7 @@ eal_memalloc_is_contig(const struct rte_memseg_list *msl, void *start,
 	const struct rte_memseg *ms;
 
 	/* for IOVA_VA, it's always contiguous */
-	if (rte_eal_iova_mode() == RTE_IOVA_VA)
+	if (rte_eal_iova_mode() == RTE_IOVA_VA && !msl->external)
 		return true;
 
 	/* for legacy memory, it's always contiguous */
