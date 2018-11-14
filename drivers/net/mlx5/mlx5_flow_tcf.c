@@ -5648,7 +5648,7 @@ flow_tcf_nl_filter_parse_and_get(struct nlmsghdr *cnlh,
  *   Message received from Netlink.
  * @param[out] data
  *   Pointer to data area to be filled by the parsing routine.
- *   assumed to be a pinter to struct flow_tcf_stats_basic.
+ *   assumed to be a pointer to struct flow_tcf_stats_basic.
  *
  * @return
  *   MNL_CB_OK value.
