@@ -1468,6 +1468,8 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	tmpl->rxq.mp = mp;
 	tmpl->rxq.stats.idx = idx;
 	tmpl->rxq.elts_n = log2above(desc);
+	tmpl->rxq.rq_repl_thresh =
+		MLX5_VPMD_RXQ_RPLNSH_THRESH(1 << tmpl->rxq.elts_n);
 	tmpl->rxq.elts =
 		(struct rte_mbuf *(*)[1 << tmpl->rxq.elts_n])(tmpl + 1);
 #ifndef RTE_ARCH_64

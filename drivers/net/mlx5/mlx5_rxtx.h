@@ -101,6 +101,7 @@ struct mlx5_rxq_data {
 	uint16_t consumed_strd; /* Number of consumed strides in WQE. */
 	uint32_t rq_pi;
 	uint32_t cq_ci;
+	uint16_t rq_repl_thresh; /* Threshold for buffer replenishment. */
 	struct mlx5_mr_ctrl mr_ctrl; /* MR control descriptor. */
 	uint16_t mprq_max_memcpy_len; /* Maximum size of packet to memcpy. */
 	volatile void *wqes;
