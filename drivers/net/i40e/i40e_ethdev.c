@@ -12583,8 +12583,6 @@ i40e_rss_conf_init(struct i40e_rte_flow_rss_conf *out,
 		return -EINVAL;
 	if (!in->key && in->key_len)
 		return -EINVAL;
-	if (in->key)
-		out->conf.key = memcpy(out->key, in->key, in->key_len);
 	out->conf = (struct rte_flow_action_rss){
 		.func = in->func,
 		.level = in->level,
@@ -12594,6 +12592,8 @@ i40e_rss_conf_init(struct i40e_rte_flow_rss_conf *out,
 		.queue = memcpy(out->queue, in->queue,
 				sizeof(*in->queue) * in->queue_num),
 	};
+	if (in->key)
+		out->conf.key = memcpy(out->key, in->key, in->key_len);
 	return 0;
 }
 
