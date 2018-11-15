@@ -162,7 +162,7 @@ void mlx4_tx_queue_release(void *dpdk_txq);
 
 void mlx4_mr_flush_local_cache(struct mlx4_mr_ctrl *mr_ctrl);
 uint32_t mlx4_rx_addr2mr_bh(struct rxq *rxq, uintptr_t addr);
-uint32_t mlx4_tx_addr2mr_bh(struct txq *txq, uintptr_t addr);
+uint32_t mlx4_tx_mb2mr_bh(struct txq *txq, struct rte_mbuf *mb);
 uint32_t mlx4_tx_update_ext_mp(struct txq *txq, uintptr_t addr,
 			       struct rte_mempool *mp);
 
@@ -176,7 +176,7 @@ uint32_t mlx4_tx_update_ext_mp(struct txq *txq, uintptr_t addr,
  * @return
  *   Memory pool where data is located for given mbuf.
  */
-static struct rte_mempool *
+static inline struct rte_mempool *
 mlx4_mb2mp(struct rte_mbuf *buf)
 {
 	if (unlikely(RTE_MBUF_INDIRECT(buf)))
@@ -225,9 +225,10 @@ mlx4_rx_addr2mr(struct rxq *rxq, uintptr_t addr)
  *   Searched LKey on success, UINT32_MAX on no match.
  */
 static __rte_always_inline uint32_t
-mlx4_tx_addr2mr(struct txq *txq, uintptr_t addr)
+mlx4_tx_mb2mr(struct txq *txq, struct rte_mbuf *mb)
 {
 	struct mlx4_mr_ctrl *mr_ctrl = &txq->mr_ctrl;
+	uintptr_t addr = (uintptr_t)mb->buf_addr;
 	uint32_t lkey;
 
 	/* Check generation bit to see if there's any change on existing MRs. */
@@ -238,23 +239,8 @@ mlx4_tx_addr2mr(struct txq *txq, uintptr_t addr)
 				    MLX4_MR_CACHE_N, addr);
 	if (likely(lkey != UINT32_MAX))
 		return lkey;
-	/* Take slower bottom-half (binary search) on miss. */
-	return mlx4_tx_addr2mr_bh(txq, addr);
-}
-
-static __rte_always_inline uint32_t
-mlx4_tx_mb2mr(struct txq *txq, struct rte_mbuf *mb)
-{
-	uintptr_t addr = (uintptr_t)mb->buf_addr;
-	uint32_t lkey = mlx4_tx_addr2mr(txq, addr);
-
-	if (likely(lkey != UINT32_MAX))
-		return lkey;
-	if (rte_errno == ENXIO) {
-		/* Mempool may have externally allocated memory. */
-		lkey = mlx4_tx_update_ext_mp(txq, addr, mlx4_mb2mp(mb));
-	}
-	return lkey;
+	/* Take slower bottom-half on miss. */
+	return mlx4_tx_mb2mr_bh(txq, mb);
 }
 
 #endif /* MLX4_RXTX_H_ */
