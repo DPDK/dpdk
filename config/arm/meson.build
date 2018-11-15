@@ -89,6 +89,9 @@ if cc.sizeof('void *') != 8
 	dpdk_conf.set('RTE_CACHE_LINE_SIZE', 64)
 	dpdk_conf.set('RTE_ARCH_ARM', 1)
 	dpdk_conf.set('RTE_ARCH_ARMv7', 1)
+	# the minimum architecture supported, armv7-a, needs the following,
+	# mk/machine/armv7a/rte.vars.mk sets it too
+	machine_args += '-mfpu=neon'
 else
 	dpdk_conf.set('RTE_CACHE_LINE_SIZE', 128)
 	dpdk_conf.set('RTE_ARCH_ARM64', 1)
