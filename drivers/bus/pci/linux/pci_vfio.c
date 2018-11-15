@@ -19,6 +19,7 @@
 #include <rte_vfio.h>
 #include <rte_eal.h>
 #include <rte_bus.h>
+#include <rte_spinlock.h>
 
 #include "eal_filesystem.h"
 
@@ -34,6 +35,14 @@
  *
  * This file is only compiled if CONFIG_RTE_EAL_VFIO is set to "y".
  */
+
+/*
+ * spinlock for device hot-unplug failure handling. If it try to access bus or
+ * device, such as handle sigbus on bus or handle memory failure for device
+ * just need to use this lock. It could protect the bus and the device to avoid
+ * race condition.
+ */
+static rte_spinlock_t failure_handle_lock = RTE_SPINLOCK_INITIALIZER;
 
 #ifdef VFIO_PRESENT
 
@@ -289,11 +298,12 @@ pci_vfio_req_handler(void *param)
 	int ret;
 	struct rte_device *device = (struct rte_device *)param;
 
+	rte_spinlock_lock(&failure_handle_lock);
 	bus = rte_bus_find_by_device(device);
 	if (bus == NULL) {
 		RTE_LOG(ERR, EAL, "Cannot find bus for device (%s)\n",
 			device->name);
-		return;
+		goto handle_end;
 	}
 
 	/*
@@ -306,6 +316,8 @@ pci_vfio_req_handler(void *param)
 		RTE_LOG(ERR, EAL,
 			"Can not handle hot-unplug for device (%s)\n",
 			device->name);
+handle_end:
+	rte_spinlock_unlock(&failure_handle_lock);
 }
 
 /* enable notifier (only enable req now) */
