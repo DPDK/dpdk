@@ -101,7 +101,7 @@ test_power_kvm_vm(void)
 				"Power management environment\n",
 				TEST_POWER_VM_LCORE_ID);
 		rte_power_unset_env();
-		return -1;
+		return TEST_SKIPPED;
 	}
 
 	/* Test initialisation of previously initialised lcore */
