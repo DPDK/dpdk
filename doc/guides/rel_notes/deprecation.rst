@@ -37,6 +37,12 @@ Deprecation Notices
   - ``eal_parse_pci_DomBDF`` replaced by ``rte_pci_addr_parse``
   - ``rte_eal_compare_pci_addr`` replaced by ``rte_pci_addr_cmp``
 
+* dpaa2: removal of ``rte_dpaa2_memsegs`` structure which has been replaced
+  by a pa-va search library. This structure was earlier being used for holding
+  memory segments used by dpaa2 driver for faster pa->va translation. This
+  structure would be made internal (or removed if all dependencies are cleared)
+  in future releases.
+
 * mbuf: The opaque ``mbuf->hash.sched`` field will be updated to support generic
   definition in line with the ethdev TM and MTR APIs. Currently, this field
   is defined in librte_sched in a non-generic way. The new generic format
