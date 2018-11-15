@@ -890,6 +890,14 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				return ret;
 			item_flags |= MLX5_FLOW_LAYER_VXLAN_GPE;
 			break;
+		case RTE_FLOW_ITEM_TYPE_MPLS:
+			ret = mlx5_flow_validate_item_mpls(items, item_flags,
+							   next_protocol,
+							   error);
+			if (ret < 0)
+				return ret;
+			item_flags |= MLX5_FLOW_LAYER_MPLS;
+			break;
 		case RTE_FLOW_ITEM_TYPE_META:
 			ret = flow_dv_validate_item_meta(dev, items, attr,
 							 error);
@@ -1609,6 +1617,96 @@ flow_dv_translate_item_vxlan(void *matcher, void *key,
 }
 
 /**
+ * Add MPLS item to matcher and to the value.
+ *
+ * @param[in, out] matcher
+ *   Flow matcher.
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] item
+ *   Flow pattern to translate.
+ * @param[in] prev_layer
+ *   The protocol layer indicated in previous item.
+ * @param[in] inner
+ *   Item is inner pattern.
+ */
+static void
+flow_dv_translate_item_mpls(void *matcher, void *key,
+			    const struct rte_flow_item *item,
+			    uint64_t prev_layer,
+			    int inner)
+{
+	const uint32_t *in_mpls_m = item->mask;
+	const uint32_t *in_mpls_v = item->spec;
+	uint32_t *out_mpls_m = 0;
+	uint32_t *out_mpls_v = 0;
+	void *misc_m = MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters);
+	void *misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
+	void *misc2_m = MLX5_ADDR_OF(fte_match_param, matcher,
+				     misc_parameters_2);
+	void *misc2_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_2);
+	void *headers_m = MLX5_ADDR_OF(fte_match_param, matcher, outer_headers);
+	void *headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
+
+	switch (prev_layer) {
+	case MLX5_FLOW_LAYER_OUTER_L4_UDP:
+		MLX5_SET(fte_match_set_lyr_2_4, headers_m, udp_dport, 0xffff);
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v, udp_dport,
+			 MLX5_UDP_PORT_MPLS);
+		break;
+	case MLX5_FLOW_LAYER_GRE:
+		MLX5_SET(fte_match_set_misc, misc_m, gre_protocol, 0xffff);
+		MLX5_SET(fte_match_set_misc, misc_v, gre_protocol,
+			 ETHER_TYPE_MPLS);
+		break;
+	default:
+		MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_protocol, 0xff);
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol,
+			 IPPROTO_MPLS);
+		break;
+	}
+	if (!in_mpls_v)
+		return;
+	if (!in_mpls_m)
+		in_mpls_m = (const uint32_t *)&rte_flow_item_mpls_mask;
+	switch (prev_layer) {
+	case MLX5_FLOW_LAYER_OUTER_L4_UDP:
+		out_mpls_m =
+			(uint32_t *)MLX5_ADDR_OF(fte_match_set_misc2, misc2_m,
+						 outer_first_mpls_over_udp);
+		out_mpls_v =
+			(uint32_t *)MLX5_ADDR_OF(fte_match_set_misc2, misc2_v,
+						 outer_first_mpls_over_udp);
+		break;
+	case MLX5_FLOW_LAYER_GRE:
+		out_mpls_m =
+			(uint32_t *)MLX5_ADDR_OF(fte_match_set_misc2, misc2_m,
+						 outer_first_mpls_over_gre);
+		out_mpls_v =
+			(uint32_t *)MLX5_ADDR_OF(fte_match_set_misc2, misc2_v,
+						 outer_first_mpls_over_gre);
+		break;
+	default:
+		/* Inner MPLS not over GRE is not supported. */
+		if (!inner) {
+			out_mpls_m =
+				(uint32_t *)MLX5_ADDR_OF(fte_match_set_misc2,
+							 misc2_m,
+							 outer_first_mpls);
+			out_mpls_v =
+				(uint32_t *)MLX5_ADDR_OF(fte_match_set_misc2,
+							 misc2_v,
+							 outer_first_mpls);
+		}
+		break;
+	}
+	if (out_mpls_m && out_mpls_v) {
+		*out_mpls_m = *in_mpls_m;
+		*out_mpls_v = *in_mpls_v & *in_mpls_m;
+	}
+}
+
+/**
  * Add META item to matcher
  *
  * @param[in, out] matcher
@@ -1786,6 +1884,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	struct priv *priv = dev->data->dev_private;
 	struct rte_flow *flow = dev_flow->flow;
 	uint64_t item_flags = 0;
+	uint64_t last_item = 0;
 	uint64_t action_flags = 0;
 	uint64_t priority = attr->priority;
 	struct mlx5_flow_dv_matcher matcher = {
@@ -1940,17 +2039,17 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			flow_dv_translate_item_eth(match_mask, match_value,
 						   items, tunnel);
 			matcher.priority = MLX5_PRIORITY_MAP_L2;
-			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L2 :
-					       MLX5_FLOW_LAYER_OUTER_L2;
+			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L2 :
+					     MLX5_FLOW_LAYER_OUTER_L2;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
 			flow_dv_translate_item_vlan(match_mask, match_value,
 						    items, tunnel);
 			matcher.priority = MLX5_PRIORITY_MAP_L2;
-			item_flags |= tunnel ? (MLX5_FLOW_LAYER_INNER_L2 |
-						MLX5_FLOW_LAYER_INNER_VLAN) :
-					       (MLX5_FLOW_LAYER_OUTER_L2 |
-						MLX5_FLOW_LAYER_OUTER_VLAN);
+			last_item = tunnel ? (MLX5_FLOW_LAYER_INNER_L2 |
+					      MLX5_FLOW_LAYER_INNER_VLAN) :
+					     (MLX5_FLOW_LAYER_OUTER_L2 |
+					      MLX5_FLOW_LAYER_OUTER_VLAN);
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			flow_dv_translate_item_ipv4(match_mask, match_value,
@@ -1961,8 +2060,8 @@ flow_dv_translate(struct rte_eth_dev *dev,
 					(dev_flow, tunnel,
 					 MLX5_IPV4_LAYER_TYPES,
 					 MLX5_IPV4_IBV_RX_HASH);
-			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV4 :
-					       MLX5_FLOW_LAYER_OUTER_L3_IPV4;
+			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV4 :
+					     MLX5_FLOW_LAYER_OUTER_L3_IPV4;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
 			flow_dv_translate_item_ipv6(match_mask, match_value,
@@ -1973,8 +2072,8 @@ flow_dv_translate(struct rte_eth_dev *dev,
 					(dev_flow, tunnel,
 					 MLX5_IPV6_LAYER_TYPES,
 					 MLX5_IPV6_IBV_RX_HASH);
-			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV6 :
-					       MLX5_FLOW_LAYER_OUTER_L3_IPV6;
+			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV6 :
+					     MLX5_FLOW_LAYER_OUTER_L3_IPV6;
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			flow_dv_translate_item_tcp(match_mask, match_value,
@@ -1985,8 +2084,8 @@ flow_dv_translate(struct rte_eth_dev *dev,
 					(dev_flow, tunnel, ETH_RSS_TCP,
 					 IBV_RX_HASH_SRC_PORT_TCP |
 					 IBV_RX_HASH_DST_PORT_TCP);
-			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L4_TCP :
-					       MLX5_FLOW_LAYER_OUTER_L4_TCP;
+			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L4_TCP :
+					     MLX5_FLOW_LAYER_OUTER_L4_TCP;
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			flow_dv_translate_item_udp(match_mask, match_value,
@@ -1997,37 +2096,43 @@ flow_dv_translate(struct rte_eth_dev *dev,
 					(dev_flow, tunnel, ETH_RSS_UDP,
 					 IBV_RX_HASH_SRC_PORT_UDP |
 					 IBV_RX_HASH_DST_PORT_UDP);
-			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L4_UDP :
-					       MLX5_FLOW_LAYER_OUTER_L4_UDP;
+			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L4_UDP :
+					     MLX5_FLOW_LAYER_OUTER_L4_UDP;
 			break;
 		case RTE_FLOW_ITEM_TYPE_GRE:
 			flow_dv_translate_item_gre(match_mask, match_value,
 						   items, tunnel);
-			item_flags |= MLX5_FLOW_LAYER_GRE;
+			last_item = MLX5_FLOW_LAYER_GRE;
 			break;
 		case RTE_FLOW_ITEM_TYPE_NVGRE:
 			flow_dv_translate_item_nvgre(match_mask, match_value,
 						     items, tunnel);
-			item_flags |= MLX5_FLOW_LAYER_GRE;
+			last_item = MLX5_FLOW_LAYER_GRE;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
 			flow_dv_translate_item_vxlan(match_mask, match_value,
 						     items, tunnel);
-			item_flags |= MLX5_FLOW_LAYER_VXLAN;
+			last_item = MLX5_FLOW_LAYER_VXLAN;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
 			flow_dv_translate_item_vxlan(match_mask, match_value,
 						     items, tunnel);
-			item_flags |= MLX5_FLOW_LAYER_VXLAN_GPE;
+			last_item = MLX5_FLOW_LAYER_VXLAN_GPE;
+			break;
+		case RTE_FLOW_ITEM_TYPE_MPLS:
+			flow_dv_translate_item_mpls(match_mask, match_value,
+						    items, last_item, tunnel);
+			last_item = MLX5_FLOW_LAYER_MPLS;
 			break;
 		case RTE_FLOW_ITEM_TYPE_META:
 			flow_dv_translate_item_meta(match_mask, match_value,
 						    items);
-			item_flags |= MLX5_FLOW_ITEM_METADATA;
+			last_item = MLX5_FLOW_ITEM_METADATA;
 			break;
 		default:
 			break;
 		}
+		item_flags |= last_item;
 	}
 	assert(!flow_dv_check_valid_spec(matcher.mask.buf,
 					 dev_flow->dv.value.buf));

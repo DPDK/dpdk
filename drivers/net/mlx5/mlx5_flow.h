@@ -114,6 +114,9 @@
 #define IPPROTO_MPLS 137
 #endif
 
+/* UDP port number for MPLS */
+#define MLX5_UDP_PORT_MPLS 6635
+
 /* UDP port numbers for VxLAN. */
 #define MLX5_UDP_PORT_VXLAN 4789
 #define MLX5_UDP_PORT_VXLAN_GPE 4790
