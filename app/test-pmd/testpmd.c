@@ -506,7 +506,7 @@ static void check_all_ports_link_status(uint32_t port_mask);
 static int eth_event_callback(portid_t port_id,
 			      enum rte_eth_event_type type,
 			      void *param, void *ret_param);
-static void eth_dev_event_callback(const char *device_name,
+static void dev_event_callback(const char *device_name,
 				enum rte_dev_event_type type,
 				void *param);
 
@@ -2434,7 +2434,7 @@ pmd_test_exit(void)
 		}
 
 		ret = rte_dev_event_callback_unregister(NULL,
-			eth_dev_event_callback, NULL);
+			dev_event_callback, NULL);
 		if (ret < 0) {
 			RTE_LOG(ERR, EAL,
 				"fail to unregister device event callback.\n");
@@ -2516,8 +2516,14 @@ check_all_ports_link_status(uint32_t port_mask)
 	}
 }
 
+/*
+ * This callback is for remove a port for a device. It has limitation because
+ * it is not for multiple port removal for a device.
+ * TODO: the device detach invoke will plan to be removed from user side to
+ * eal. And convert all PMDs to free port resources on ether device closing.
+ */
 static void
-rmv_event_callback(void *arg)
+rmv_port_callback(void *arg)
 {
 	int need_to_start = 0;
 	int org_no_link_check = no_link_check;
@@ -2565,7 +2571,7 @@ eth_event_callback(portid_t port_id, enum rte_eth_event_type type, void *param,
 		if (port_id_is_invalid(port_id, DISABLED_WARN))
 			break;
 		if (rte_eal_alarm_set(100000,
-				rmv_event_callback, (void *)(intptr_t)port_id))
+				rmv_port_callback, (void *)(intptr_t)port_id))
 			fprintf(stderr, "Could not set up deferred device removal\n");
 		break;
 	default:
@@ -2598,7 +2604,7 @@ register_eth_event_callback(void)
 
 /* This function is used by the interrupt thread */
 static void
-eth_dev_event_callback(const char *device_name, enum rte_dev_event_type type,
+dev_event_callback(const char *device_name, enum rte_dev_event_type type,
 			     __rte_unused void *arg)
 {
 	uint16_t port_id;
@@ -2612,7 +2618,7 @@ eth_dev_event_callback(const char *device_name, enum rte_dev_event_type type,
 
 	switch (type) {
 	case RTE_DEV_EVENT_REMOVE:
-		RTE_LOG(ERR, EAL, "The device: %s has been removed!\n",
+		RTE_LOG(DEBUG, EAL, "The device: %s has been removed!\n",
 			device_name);
 		ret = rte_eth_dev_get_port_by_name(device_name, &port_id);
 		if (ret) {
@@ -2620,7 +2626,19 @@ eth_dev_event_callback(const char *device_name, enum rte_dev_event_type type,
 				device_name);
 			return;
 		}
-		rmv_event_callback((void *)(intptr_t)port_id);
+		/*
+		 * Because the user's callback is invoked in eal interrupt
+		 * callback, the interrupt callback need to be finished before
+		 * it can be unregistered when detaching device. So finish
+		 * callback soon and use a deferred removal to detach device
+		 * is need. It is a workaround, once the device detaching be
+		 * moved into the eal in the future, the deferred removal could
+		 * be deleted.
+		 */
+		if (rte_eal_alarm_set(100000,
+				rmv_port_callback, (void *)(intptr_t)port_id))
+			RTE_LOG(ERR, EAL,
+				"Could not set up deferred device removal\n");
 		break;
 	case RTE_DEV_EVENT_ADD:
 		RTE_LOG(ERR, EAL, "The device: %s has been added!\n",
@@ -3167,7 +3185,7 @@ main(int argc, char** argv)
 		}
 
 		ret = rte_dev_event_callback_register(NULL,
-			eth_dev_event_callback, NULL);
+			dev_event_callback, NULL);
 		if (ret) {
 			RTE_LOG(ERR, EAL,
 				"fail  to register device event callback\n");
