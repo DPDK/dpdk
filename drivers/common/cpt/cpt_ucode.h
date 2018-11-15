@@ -3449,32 +3449,27 @@ find_kasumif9_direction_and_length(uint8_t *src,
 				   uint8_t *addr_direction)
 {
 	uint8_t found = 0;
+	uint32_t pos;
+	uint8_t last_byte;
 	while (!found && counter_num_bytes > 0) {
 		counter_num_bytes--;
 		if (src[counter_num_bytes] == 0x00)
 			continue;
-		if (src[counter_num_bytes] == 0x80) {
-			*addr_direction  =  src[counter_num_bytes - 1] & 0x1;
-			*addr_length_in_bits = counter_num_bytes * 8  - 1;
-			found = 1;
-		} else {
-			int i = 0;
-			uint8_t last_byte = src[counter_num_bytes];
-			for (i = 0; i < 8 && found == 0; i++) {
-				if (last_byte & (1 << i)) {
-					*addr_direction = (last_byte >> (i+1))
-							  & 0x1;
-					if (i != 6)
-						*addr_length_in_bits =
-							counter_num_bytes * 8
-							+ (8 - (i + 2));
-					else
-						*addr_length_in_bits =
-							counter_num_bytes * 8;
-					found = 1;
-					}
-				}
+		pos = rte_bsf32(src[counter_num_bytes]);
+		if (pos == 7) {
+			if (likely(counter_num_bytes > 0)) {
+				last_byte = src[counter_num_bytes - 1];
+				*addr_direction  =  last_byte & 0x1;
+				*addr_length_in_bits = counter_num_bytes * 8
+							- 1;
 			}
+		} else {
+			last_byte = src[counter_num_bytes];
+			*addr_direction = (last_byte >> (pos + 1)) & 0x1;
+			*addr_length_in_bits = counter_num_bytes * 8
+						+ (8 - (pos + 2));
+		}
+		found = 1;
 	}
 }
 
