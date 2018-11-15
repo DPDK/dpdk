@@ -77,6 +77,7 @@ struct pcap_tx_queue {
 struct pmd_internals {
 	struct pcap_rx_queue rx_queue[RTE_PMD_PCAP_MAX_QUEUES];
 	struct pcap_tx_queue tx_queue[RTE_PMD_PCAP_MAX_QUEUES];
+	char devargs[ETH_PCAP_ARG_MAXLEN];
 	struct ether_addr eth_addr;
 	int if_index;
 	int single_iface;
@@ -968,6 +969,9 @@ pmd_init_internals(struct rte_vdev_device *vdev,
 	 */
 	(*eth_dev)->dev_ops = &ops;
 
+	strlcpy((*internals)->devargs, rte_vdev_device_args(vdev),
+			ETH_PCAP_ARG_MAXLEN);
+
 	return 0;
 }
 
@@ -1147,7 +1151,8 @@ pmd_pcap_probe(struct rte_vdev_device *dev)
 	struct rte_kvargs *kvlist;
 	struct pmd_devargs pcaps = {0};
 	struct pmd_devargs dumpers = {0};
-	struct rte_eth_dev *eth_dev;
+	struct rte_eth_dev *eth_dev =  NULL;
+	struct pmd_internals *internal;
 	int single_iface = 0;
 	int ret;
 
@@ -1164,16 +1169,18 @@ pmd_pcap_probe(struct rte_vdev_device *dev)
 			PMD_LOG(ERR, "Failed to probe %s", name);
 			return -1;
 		}
-		/* TODO: request info from primary to set up Rx and Tx */
-		eth_dev->dev_ops = &ops;
-		eth_dev->device = &dev->device;
-		rte_eth_dev_probing_finish(eth_dev);
-		return 0;
-	}
 
-	kvlist = rte_kvargs_parse(rte_vdev_device_args(dev), valid_arguments);
-	if (kvlist == NULL)
-		return -1;
+		internal = eth_dev->data->dev_private;
+
+		kvlist = rte_kvargs_parse(internal->devargs, valid_arguments);
+		if (kvlist == NULL)
+			return -1;
+	} else {
+		kvlist = rte_kvargs_parse(rte_vdev_device_args(dev),
+				valid_arguments);
+		if (kvlist == NULL)
+			return -1;
+	}
 
 	/*
 	 * If iface argument is passed we open the NICs and use them for
@@ -1238,6 +1245,45 @@ pmd_pcap_probe(struct rte_vdev_device *dev)
 		goto free_kvlist;
 
 create_eth:
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		struct pmd_process_private *pp;
+		unsigned int i;
+
+		internal = eth_dev->data->dev_private;
+			pp = (struct pmd_process_private *)
+				rte_zmalloc(NULL,
+					sizeof(struct pmd_process_private),
+					RTE_CACHE_LINE_SIZE);
+
+		if (pp == NULL) {
+			PMD_LOG(ERR,
+				"Failed to allocate memory for process private");
+			return -1;
+		}
+
+		eth_dev->dev_ops = &ops;
+		eth_dev->device = &dev->device;
+
+		/* setup process private */
+		for (i = 0; i < pcaps.num_of_queue; i++)
+			pp->rx_pcap[i] = pcaps.queue[i].pcap;
+
+		for (i = 0; i < dumpers.num_of_queue; i++) {
+			pp->tx_dumper[i] = dumpers.queue[i].dumper;
+			pp->tx_pcap[i] = dumpers.queue[i].pcap;
+		}
+
+		eth_dev->process_private = pp;
+		eth_dev->rx_pkt_burst = eth_pcap_rx;
+		if (is_tx_pcap)
+			eth_dev->tx_pkt_burst = eth_pcap_tx_dumper;
+		else
+			eth_dev->tx_pkt_burst = eth_pcap_tx;
+
+		rte_eth_dev_probing_finish(eth_dev);
+		return 0;
+	}
+
 	ret = eth_from_pcaps(dev, &pcaps, pcaps.num_of_queue, &dumpers,
 		dumpers.num_of_queue, single_iface, is_tx_pcap);
 
