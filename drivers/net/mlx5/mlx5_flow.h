@@ -385,9 +385,10 @@ int mlx5_flow_validate_item_ipv4(const struct rte_flow_item *item,
 int mlx5_flow_validate_item_ipv6(const struct rte_flow_item *item,
 				 uint64_t item_flags,
 				 struct rte_flow_error *error);
-int mlx5_flow_validate_item_mpls(const struct rte_flow_item *item,
+int mlx5_flow_validate_item_mpls(struct rte_eth_dev *dev,
+				 const struct rte_flow_item *item,
 				 uint64_t item_flags,
-				 uint8_t target_protocol,
+				 uint64_t prev_layer,
 				 struct rte_flow_error *error);
 int mlx5_flow_validate_item_tcp(const struct rte_flow_item *item,
 				uint64_t item_flags,

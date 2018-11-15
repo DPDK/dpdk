@@ -775,6 +775,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	int ret;
 	uint64_t action_flags = 0;
 	uint64_t item_flags = 0;
+	uint64_t last_item = 0;
 	int tunnel = 0;
 	uint8_t next_protocol = 0xff;
 	int actions_n = 0;
@@ -794,24 +795,24 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 							  error);
 			if (ret < 0)
 				return ret;
-			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L2 :
-					       MLX5_FLOW_LAYER_OUTER_L2;
+			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L2 :
+					     MLX5_FLOW_LAYER_OUTER_L2;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
 			ret = mlx5_flow_validate_item_vlan(items, item_flags,
 							   error);
 			if (ret < 0)
 				return ret;
-			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_VLAN :
-					       MLX5_FLOW_LAYER_OUTER_VLAN;
+			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_VLAN :
+					     MLX5_FLOW_LAYER_OUTER_VLAN;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			ret = mlx5_flow_validate_item_ipv4(items, item_flags,
 							   error);
 			if (ret < 0)
 				return ret;
-			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV4 :
-					       MLX5_FLOW_LAYER_OUTER_L3_IPV4;
+			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV4 :
+					     MLX5_FLOW_LAYER_OUTER_L3_IPV4;
 			if (items->mask != NULL &&
 			    ((const struct rte_flow_item_ipv4 *)
 			     items->mask)->hdr.next_proto_id) {
@@ -831,8 +832,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 							   error);
 			if (ret < 0)
 				return ret;
-			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV6 :
-					       MLX5_FLOW_LAYER_OUTER_L3_IPV6;
+			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV6 :
+					     MLX5_FLOW_LAYER_OUTER_L3_IPV6;
 			if (items->mask != NULL &&
 			    ((const struct rte_flow_item_ipv6 *)
 			     items->mask)->hdr.proto) {
@@ -855,8 +856,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 						 error);
 			if (ret < 0)
 				return ret;
-			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L4_TCP :
-					       MLX5_FLOW_LAYER_OUTER_L4_TCP;
+			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L4_TCP :
+					     MLX5_FLOW_LAYER_OUTER_L4_TCP;
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			ret = mlx5_flow_validate_item_udp(items, item_flags,
@@ -864,8 +865,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 							  error);
 			if (ret < 0)
 				return ret;
-			item_flags |= tunnel ? MLX5_FLOW_LAYER_INNER_L4_UDP :
-					       MLX5_FLOW_LAYER_OUTER_L4_UDP;
+			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L4_UDP :
+					     MLX5_FLOW_LAYER_OUTER_L4_UDP;
 			break;
 		case RTE_FLOW_ITEM_TYPE_GRE:
 		case RTE_FLOW_ITEM_TYPE_NVGRE:
@@ -873,14 +874,14 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 							  next_protocol, error);
 			if (ret < 0)
 				return ret;
-			item_flags |= MLX5_FLOW_LAYER_GRE;
+			last_item = MLX5_FLOW_LAYER_GRE;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
 			ret = mlx5_flow_validate_item_vxlan(items, item_flags,
 							    error);
 			if (ret < 0)
 				return ret;
-			item_flags |= MLX5_FLOW_LAYER_VXLAN;
+			last_item = MLX5_FLOW_LAYER_VXLAN;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
 			ret = mlx5_flow_validate_item_vxlan_gpe(items,
@@ -888,28 +889,29 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 								error);
 			if (ret < 0)
 				return ret;
-			item_flags |= MLX5_FLOW_LAYER_VXLAN_GPE;
+			last_item = MLX5_FLOW_LAYER_VXLAN_GPE;
 			break;
 		case RTE_FLOW_ITEM_TYPE_MPLS:
-			ret = mlx5_flow_validate_item_mpls(items, item_flags,
-							   next_protocol,
-							   error);
+			ret = mlx5_flow_validate_item_mpls(dev, items,
+							   item_flags,
+							   last_item, error);
 			if (ret < 0)
 				return ret;
-			item_flags |= MLX5_FLOW_LAYER_MPLS;
+			last_item = MLX5_FLOW_LAYER_MPLS;
 			break;
 		case RTE_FLOW_ITEM_TYPE_META:
 			ret = flow_dv_validate_item_meta(dev, items, attr,
 							 error);
 			if (ret < 0)
 				return ret;
-			item_flags |= MLX5_FLOW_ITEM_METADATA;
+			last_item = MLX5_FLOW_ITEM_METADATA;
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
 						  NULL, "item not supported");
 		}
+		item_flags |= last_item;
 	}
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
 		if (actions_n == MLX5_DV_MAX_NUMBER_OF_ACTIONS)
