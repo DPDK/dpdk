@@ -379,17 +379,16 @@ uint32_t mlx5_tx_update_ext_mp(struct mlx5_txq_data *txq, uintptr_t addr,
  *   Address of the lock to use for that UAR access.
  */
 static __rte_always_inline void
-__mlx5_uar_write64_relaxed(uint64_t val, volatile void *addr,
+__mlx5_uar_write64_relaxed(uint64_t val, void *addr,
 			   rte_spinlock_t *lock __rte_unused)
 {
 #ifdef RTE_ARCH_64
-	rte_write64_relaxed(val, addr);
+	*(uint64_t *)addr = val;
 #else /* !RTE_ARCH_64 */
 	rte_spinlock_lock(lock);
-	rte_write32_relaxed(val, addr);
+	*(uint32_t *)addr = val;
 	rte_io_wmb();
-	rte_write32_relaxed(val >> 32,
-			    (volatile void *)((volatile char *)addr + 4));
+	*((uint32_t *)addr + 1) = val >> 32;
 	rte_spinlock_unlock(lock);
 #endif
 }
@@ -407,7 +406,7 @@ __mlx5_uar_write64_relaxed(uint64_t val, volatile void *addr,
  *   Address of the lock to use for that UAR access.
  */
 static __rte_always_inline void
-__mlx5_uar_write64(uint64_t val, volatile void *addr, rte_spinlock_t *lock)
+__mlx5_uar_write64(uint64_t val, void *addr, rte_spinlock_t *lock)
 {
 	rte_io_wmb();
 	__mlx5_uar_write64_relaxed(val, addr, lock);
