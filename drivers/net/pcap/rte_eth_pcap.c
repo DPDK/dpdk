@@ -58,8 +58,8 @@ struct queue_stat {
 };
 
 struct pcap_rx_queue {
-	pcap_t *pcap;
-	uint16_t in_port;
+	uint16_t port_id;
+	uint16_t queue_id;
 	struct rte_mempool *mb_pool;
 	struct queue_stat rx_stat;
 	char name[PATH_MAX];
@@ -67,8 +67,8 @@ struct pcap_rx_queue {
 };
 
 struct pcap_tx_queue {
-	pcap_dumper_t *dumper;
-	pcap_t *pcap;
+	uint16_t port_id;
+	uint16_t queue_id;
 	struct queue_stat tx_stat;
 	char name[PATH_MAX];
 	char type[ETH_PCAP_ARG_MAXLEN];
@@ -81,6 +81,12 @@ struct pmd_internals {
 	int if_index;
 	int single_iface;
 	int phy_mac;
+};
+
+struct pmd_process_private {
+	pcap_t *rx_pcap[RTE_PMD_PCAP_MAX_QUEUES];
+	pcap_t *tx_pcap[RTE_PMD_PCAP_MAX_QUEUES];
+	pcap_dumper_t *tx_dumper[RTE_PMD_PCAP_MAX_QUEUES];
 };
 
 struct pmd_devargs {
@@ -176,14 +182,19 @@ eth_pcap_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
 	unsigned int i;
 	struct pcap_pkthdr header;
+	struct pmd_process_private *pp;
 	const u_char *packet;
 	struct rte_mbuf *mbuf;
 	struct pcap_rx_queue *pcap_q = queue;
 	uint16_t num_rx = 0;
 	uint16_t buf_size;
 	uint32_t rx_bytes = 0;
+	pcap_t *pcap;
 
-	if (unlikely(pcap_q->pcap == NULL || nb_pkts == 0))
+	pp = rte_eth_devices[pcap_q->port_id].process_private;
+	pcap = pp->rx_pcap[pcap_q->queue_id];
+
+	if (unlikely(pcap == NULL || nb_pkts == 0))
 		return 0;
 
 	/* Reads the given number of packets from the pcap file one by one
@@ -191,7 +202,7 @@ eth_pcap_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	 */
 	for (i = 0; i < nb_pkts; i++) {
 		/* Get the next PCAP packet */
-		packet = pcap_next(pcap_q->pcap, &header);
+		packet = pcap_next(pcap, &header);
 		if (unlikely(packet == NULL))
 			break;
 
@@ -220,7 +231,7 @@ eth_pcap_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		}
 
 		mbuf->pkt_len = (uint16_t)header.caplen;
-		mbuf->port = pcap_q->in_port;
+		mbuf->port = pcap_q->port_id;
 		bufs[num_rx] = mbuf;
 		num_rx++;
 		rx_bytes += header.caplen;
@@ -250,12 +261,17 @@ eth_pcap_tx_dumper(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
 	unsigned int i;
 	struct rte_mbuf *mbuf;
+	struct pmd_process_private *pp;
 	struct pcap_tx_queue *dumper_q = queue;
 	uint16_t num_tx = 0;
 	uint32_t tx_bytes = 0;
 	struct pcap_pkthdr header;
+	pcap_dumper_t *dumper;
 
-	if (dumper_q->dumper == NULL || nb_pkts == 0)
+	pp = rte_eth_devices[dumper_q->port_id].process_private;
+	dumper = pp->tx_dumper[dumper_q->queue_id];
+
+	if (dumper == NULL || nb_pkts == 0)
 		return 0;
 
 	/* writes the nb_pkts packets to the previously opened pcap file
@@ -267,12 +283,12 @@ eth_pcap_tx_dumper(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		header.caplen = header.len;
 
 		if (likely(mbuf->nb_segs == 1)) {
-			pcap_dump((u_char *)dumper_q->dumper, &header,
+			pcap_dump((u_char *)dumper, &header,
 				  rte_pktmbuf_mtod(mbuf, void*));
 		} else {
 			if (mbuf->pkt_len <= ETHER_MAX_JUMBO_FRAME_LEN) {
 				eth_pcap_gather_data(tx_pcap_data, mbuf);
-				pcap_dump((u_char *)dumper_q->dumper, &header,
+				pcap_dump((u_char *)dumper, &header,
 					  tx_pcap_data);
 			} else {
 				PMD_LOG(ERR,
@@ -295,7 +311,7 @@ eth_pcap_tx_dumper(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	 * process stops and to make sure the pcap file is actually written,
 	 * we flush the pcap dumper within each burst.
 	 */
-	pcap_dump_flush(dumper_q->dumper);
+	pcap_dump_flush(dumper);
 	dumper_q->tx_stat.pkts += num_tx;
 	dumper_q->tx_stat.bytes += tx_bytes;
 	dumper_q->tx_stat.err_pkts += nb_pkts - num_tx;
@@ -312,24 +328,29 @@ eth_pcap_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	unsigned int i;
 	int ret;
 	struct rte_mbuf *mbuf;
+	struct pmd_process_private *pp;
 	struct pcap_tx_queue *tx_queue = queue;
 	uint16_t num_tx = 0;
 	uint32_t tx_bytes = 0;
+	pcap_t *pcap;
 
-	if (unlikely(nb_pkts == 0 || tx_queue->pcap == NULL))
+	pp = rte_eth_devices[tx_queue->port_id].process_private;
+	pcap = pp->tx_pcap[tx_queue->queue_id];
+
+	if (unlikely(nb_pkts == 0 || pcap == NULL))
 		return 0;
 
 	for (i = 0; i < nb_pkts; i++) {
 		mbuf = bufs[i];
 
 		if (likely(mbuf->nb_segs == 1)) {
-			ret = pcap_sendpacket(tx_queue->pcap,
+			ret = pcap_sendpacket(pcap,
 					rte_pktmbuf_mtod(mbuf, u_char *),
 					mbuf->pkt_len);
 		} else {
 			if (mbuf->pkt_len <= ETHER_MAX_JUMBO_FRAME_LEN) {
 				eth_pcap_gather_data(tx_pcap_data, mbuf);
-				ret = pcap_sendpacket(tx_queue->pcap,
+				ret = pcap_sendpacket(pcap,
 						tx_pcap_data, mbuf->pkt_len);
 			} else {
 				PMD_LOG(ERR,
@@ -430,6 +451,7 @@ eth_dev_start(struct rte_eth_dev *dev)
 {
 	unsigned int i;
 	struct pmd_internals *internals = dev->data->dev_private;
+	struct pmd_process_private *pp = dev->process_private;
 	struct pcap_tx_queue *tx;
 	struct pcap_rx_queue *rx;
 
@@ -438,10 +460,11 @@ eth_dev_start(struct rte_eth_dev *dev)
 		tx = &internals->tx_queue[0];
 		rx = &internals->rx_queue[0];
 
-		if (!tx->pcap && strcmp(tx->type, ETH_PCAP_IFACE_ARG) == 0) {
-			if (open_single_iface(tx->name, &tx->pcap) < 0)
+		if (!pp->tx_pcap[0] &&
+			strcmp(tx->type, ETH_PCAP_IFACE_ARG) == 0) {
+			if (open_single_iface(tx->name, &pp->tx_pcap[0]) < 0)
 				return -1;
-			rx->pcap = tx->pcap;
+			pp->rx_pcap[0] = pp->tx_pcap[0];
 		}
 
 		goto status_up;
@@ -451,13 +474,14 @@ eth_dev_start(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		tx = &internals->tx_queue[i];
 
-		if (!tx->dumper &&
+		if (!pp->tx_dumper[i] &&
 				strcmp(tx->type, ETH_PCAP_TX_PCAP_ARG) == 0) {
-			if (open_single_tx_pcap(tx->name, &tx->dumper) < 0)
+			if (open_single_tx_pcap(tx->name,
+				&pp->tx_dumper[i]) < 0)
 				return -1;
-		} else if (!tx->pcap &&
+		} else if (!pp->tx_pcap[i] &&
 				strcmp(tx->type, ETH_PCAP_TX_IFACE_ARG) == 0) {
-			if (open_single_iface(tx->name, &tx->pcap) < 0)
+			if (open_single_iface(tx->name, &pp->tx_pcap[i]) < 0)
 				return -1;
 		}
 	}
@@ -466,14 +490,14 @@ eth_dev_start(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rx = &internals->rx_queue[i];
 
-		if (rx->pcap != NULL)
+		if (pp->rx_pcap[i] != NULL)
 			continue;
 
 		if (strcmp(rx->type, ETH_PCAP_RX_PCAP_ARG) == 0) {
-			if (open_single_rx_pcap(rx->name, &rx->pcap) < 0)
+			if (open_single_rx_pcap(rx->name, &pp->rx_pcap[i]) < 0)
 				return -1;
 		} else if (strcmp(rx->type, ETH_PCAP_RX_IFACE_ARG) == 0) {
-			if (open_single_iface(rx->name, &rx->pcap) < 0)
+			if (open_single_iface(rx->name, &pp->rx_pcap[i]) < 0)
 				return -1;
 		}
 	}
@@ -500,39 +524,32 @@ eth_dev_stop(struct rte_eth_dev *dev)
 {
 	unsigned int i;
 	struct pmd_internals *internals = dev->data->dev_private;
-	struct pcap_tx_queue *tx;
-	struct pcap_rx_queue *rx;
+	struct pmd_process_private *pp = dev->process_private;
 
 	/* Special iface case. Single pcap is open and shared between tx/rx. */
 	if (internals->single_iface) {
-		tx = &internals->tx_queue[0];
-		rx = &internals->rx_queue[0];
-		pcap_close(tx->pcap);
-		tx->pcap = NULL;
-		rx->pcap = NULL;
+		pcap_close(pp->tx_pcap[0]);
+		pp->tx_pcap[0] = NULL;
+		pp->rx_pcap[0] = NULL;
 		goto status_down;
 	}
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		tx = &internals->tx_queue[i];
-
-		if (tx->dumper != NULL) {
-			pcap_dump_close(tx->dumper);
-			tx->dumper = NULL;
+		if (pp->tx_dumper[i] != NULL) {
+			pcap_dump_close(pp->tx_dumper[i]);
+			pp->tx_dumper[i] = NULL;
 		}
 
-		if (tx->pcap != NULL) {
-			pcap_close(tx->pcap);
-			tx->pcap = NULL;
+		if (pp->tx_pcap[i] != NULL) {
+			pcap_close(pp->tx_pcap[i]);
+			pp->tx_pcap[i] = NULL;
 		}
 	}
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		rx = &internals->rx_queue[i];
-
-		if (rx->pcap != NULL) {
-			pcap_close(rx->pcap);
-			rx->pcap = NULL;
+		if (pp->rx_pcap[i] != NULL) {
+			pcap_close(pp->rx_pcap[i]);
+			pp->rx_pcap[i] = NULL;
 		}
 	}
 
@@ -649,8 +666,9 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 	struct pcap_rx_queue *pcap_q = &internals->rx_queue[rx_queue_id];
 
 	pcap_q->mb_pool = mb_pool;
+	pcap_q->port_id = dev->data->port_id;
+	pcap_q->queue_id = rx_queue_id;
 	dev->data->rx_queues[rx_queue_id] = pcap_q;
-	pcap_q->in_port = dev->data->port_id;
 
 	return 0;
 }
@@ -663,8 +681,11 @@ eth_tx_queue_setup(struct rte_eth_dev *dev,
 		const struct rte_eth_txconf *tx_conf __rte_unused)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
+	struct pcap_tx_queue *pcap_q = &internals->tx_queue[tx_queue_id];
 
-	dev->data->tx_queues[tx_queue_id] = &internals->tx_queue[tx_queue_id];
+	pcap_q->port_id = dev->data->port_id;
+	pcap_q->queue_id = tx_queue_id;
+	dev->data->tx_queues[tx_queue_id] = pcap_q;
 
 	return 0;
 }
@@ -896,16 +917,29 @@ pmd_init_internals(struct rte_vdev_device *vdev,
 		struct rte_eth_dev **eth_dev)
 {
 	struct rte_eth_dev_data *data;
+	struct pmd_process_private *pp;
 	unsigned int numa_node = vdev->device.numa_node;
 
 	PMD_LOG(INFO, "Creating pcap-backed ethdev on numa socket %d",
 		numa_node);
 
+	pp = (struct pmd_process_private *)
+		rte_zmalloc(NULL, sizeof(struct pmd_process_private),
+				RTE_CACHE_LINE_SIZE);
+
+	if (pp == NULL) {
+		PMD_LOG(ERR,
+			"Failed to allocate memory for process private");
+		return -1;
+	}
+
 	/* reserve an ethdev entry */
 	*eth_dev = rte_eth_vdev_allocate(vdev, sizeof(**internals));
-	if (!(*eth_dev))
+	if (!(*eth_dev)) {
+		rte_free(pp);
 		return -1;
-
+	}
+	(*eth_dev)->process_private = pp;
 	/* now put it all together
 	 * - store queue data in internals,
 	 * - store numa_node info in eth_dev
@@ -1027,6 +1061,7 @@ eth_from_pcaps_common(struct rte_vdev_device *vdev,
 		struct pmd_devargs *tx_queues, const unsigned int nb_tx_queues,
 		struct pmd_internals **internals, struct rte_eth_dev **eth_dev)
 {
+	struct pmd_process_private *pp;
 	unsigned int i;
 
 	/* do some parameter checking */
@@ -1039,11 +1074,12 @@ eth_from_pcaps_common(struct rte_vdev_device *vdev,
 			eth_dev) < 0)
 		return -1;
 
+	pp = (*eth_dev)->process_private;
 	for (i = 0; i < nb_rx_queues; i++) {
 		struct pcap_rx_queue *rx = &(*internals)->rx_queue[i];
 		struct devargs_queue *queue = &rx_queues->queue[i];
 
-		rx->pcap = queue->pcap;
+		pp->rx_pcap[i] = queue->pcap;
 		snprintf(rx->name, sizeof(rx->name), "%s", queue->name);
 		snprintf(rx->type, sizeof(rx->type), "%s", queue->type);
 	}
@@ -1052,8 +1088,8 @@ eth_from_pcaps_common(struct rte_vdev_device *vdev,
 		struct pcap_tx_queue *tx = &(*internals)->tx_queue[i];
 		struct devargs_queue *queue = &tx_queues->queue[i];
 
-		tx->dumper = queue->dumper;
-		tx->pcap = queue->pcap;
+		pp->tx_dumper[i] = queue->dumper;
+		pp->tx_pcap[i] = queue->pcap;
 		snprintf(tx->name, sizeof(tx->name), "%s", queue->name);
 		snprintf(tx->type, sizeof(tx->type), "%s", queue->type);
 	}
@@ -1235,6 +1271,7 @@ pmd_pcap_remove(struct rte_vdev_device *dev)
 			eth_dev->data->mac_addrs = NULL;
 	}
 
+	rte_free(eth_dev->process_private);
 	rte_eth_dev_release_port(eth_dev);
 
 	return 0;
