@@ -1045,7 +1045,7 @@ mlx5_rx_addr2mr_bh(struct mlx5_rxq_data *rxq, uintptr_t addr)
  * @return
  *   Searched LKey on success, UINT32_MAX on no match.
  */
-uint32_t
+static uint32_t
 mlx5_tx_addr2mr_bh(struct mlx5_txq_data *txq, uintptr_t addr)
 {
 	struct mlx5_txq_ctrl *txq_ctrl =
@@ -1057,6 +1057,32 @@ mlx5_tx_addr2mr_bh(struct mlx5_txq_data *txq, uintptr_t addr)
 		"Tx queue %u: miss on top-half, mru=%u, head=%u, addr=%p",
 		txq_ctrl->idx, mr_ctrl->mru, mr_ctrl->head, (void *)addr);
 	return mlx5_mr_addr2mr_bh(ETH_DEV(priv), mr_ctrl, addr);
+}
+
+/**
+ * Bottom-half of LKey search on Tx. If it can't be searched in the memseg
+ * list, register the mempool of the mbuf as externally allocated memory.
+ *
+ * @param txq
+ *   Pointer to Tx queue structure.
+ * @param mb
+ *   Pointer to mbuf.
+ *
+ * @return
+ *   Searched LKey on success, UINT32_MAX on no match.
+ */
+uint32_t
+mlx5_tx_mb2mr_bh(struct mlx5_txq_data *txq, struct rte_mbuf *mb)
+{
+	uintptr_t addr = (uintptr_t)mb->buf_addr;
+	uint32_t lkey;
+
+	lkey = mlx5_tx_addr2mr_bh(txq, addr);
+	if (lkey == UINT32_MAX && rte_errno == ENXIO) {
+		/* Mempool may have externally allocated memory. */
+		return mlx5_tx_update_ext_mp(txq, addr, mlx5_mb2mp(mb));
+	}
+	return lkey;
 }
 
 /**
