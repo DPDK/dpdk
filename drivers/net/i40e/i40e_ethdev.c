@@ -11609,6 +11609,32 @@ i40e_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 	return 0;
 }
 
+/**
+ * This function is used to check if the register is valid.
+ * Below is the valid registers list for X722 only:
+ * 0x2b800--0x2bb00
+ * 0x38700--0x38a00
+ * 0x3d800--0x3db00
+ * 0x208e00--0x209000
+ * 0x20be00--0x20c000
+ * 0x263c00--0x264000
+ * 0x265c00--0x266000
+ */
+static inline int i40e_valid_regs(enum i40e_mac_type type, uint32_t reg_offset)
+{
+	if ((type != I40E_MAC_X722) &&
+	    ((reg_offset >= 0x2b800 && reg_offset <= 0x2bb00) ||
+	     (reg_offset >= 0x38700 && reg_offset <= 0x38a00) ||
+	     (reg_offset >= 0x3d800 && reg_offset <= 0x3db00) ||
+	     (reg_offset >= 0x208e00 && reg_offset <= 0x209000) ||
+	     (reg_offset >= 0x20be00 && reg_offset <= 0x20c000) ||
+	     (reg_offset >= 0x263c00 && reg_offset <= 0x264000) ||
+	     (reg_offset >= 0x265c00 && reg_offset <= 0x266000)))
+		return 0;
+	else
+		return 1;
+}
+
 static int i40e_get_regs(struct rte_eth_dev *dev,
 			 struct rte_dev_reg_info *regs)
 {
@@ -11650,8 +11676,11 @@ static int i40e_get_regs(struct rte_eth_dev *dev,
 				reg_offset = arr_idx * reg_info->stride1 +
 					arr_idx2 * reg_info->stride2;
 				reg_offset += reg_info->base_addr;
-				ptr_data[reg_offset >> 2] =
-					I40E_READ_REG(hw, reg_offset);
+				if (!i40e_valid_regs(hw->mac.type, reg_offset))
+					ptr_data[reg_offset >> 2] = 0;
+				else
+					ptr_data[reg_offset >> 2] =
+						I40E_READ_REG(hw, reg_offset);
 			}
 	}
 
