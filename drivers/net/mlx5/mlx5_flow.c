@@ -294,7 +294,7 @@ static struct mlx5_flow_tunnel_info tunnels_info[] = {
 	},
 	{
 		.tunnel = MLX5_FLOW_LAYER_MPLS | MLX5_FLOW_LAYER_OUTER_L4_UDP,
-		.ptype = RTE_PTYPE_TUNNEL_MPLS_IN_GRE | RTE_PTYPE_L4_UDP,
+		.ptype = RTE_PTYPE_TUNNEL_MPLS_IN_UDP | RTE_PTYPE_L4_UDP,
 	},
 	{
 		.tunnel = MLX5_FLOW_LAYER_MPLS,
