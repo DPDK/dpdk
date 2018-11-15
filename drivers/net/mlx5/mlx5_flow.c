@@ -2127,14 +2127,14 @@ static void
 flow_list_destroy(struct rte_eth_dev *dev, struct mlx5_flows *list,
 		  struct rte_flow *flow)
 {
-	flow_drv_destroy(dev, flow);
-	TAILQ_REMOVE(list, flow, next);
 	/*
 	 * Update RX queue flags only if port is started, otherwise it is
 	 * already clean.
 	 */
 	if (dev->data->dev_started)
 		flow_rxq_flags_trim(dev, flow);
+	flow_drv_destroy(dev, flow);
+	TAILQ_REMOVE(list, flow, next);
 	rte_free(flow->fdir);
 	rte_free(flow);
 }
