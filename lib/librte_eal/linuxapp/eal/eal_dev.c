@@ -258,7 +258,7 @@ dev_uev_handler(__rte_unused void *param)
 			if (bus == NULL) {
 				RTE_LOG(ERR, EAL, "Cannot find bus (%s)\n",
 					busname);
-				return;
+				goto failure_handle_err;
 			}
 
 			dev = bus->find_device(NULL, cmp_dev_name,
@@ -266,19 +266,23 @@ dev_uev_handler(__rte_unused void *param)
 			if (dev == NULL) {
 				RTE_LOG(ERR, EAL, "Cannot find device (%s) on "
 					"bus (%s)\n", uevent.devname, busname);
-				return;
+				goto failure_handle_err;
 			}
 
 			ret = bus->hot_unplug_handler(dev);
-			rte_spinlock_unlock(&failure_handle_lock);
 			if (ret) {
 				RTE_LOG(ERR, EAL, "Can not handle hot-unplug "
 					"for device (%s)\n", dev->name);
-				return;
 			}
+			rte_spinlock_unlock(&failure_handle_lock);
 		}
 		rte_dev_event_callback_process(uevent.devname, uevent.type);
 	}
+
+	return;
+
+failure_handle_err:
+	rte_spinlock_unlock(&failure_handle_lock);
 }
 
 int __rte_experimental
