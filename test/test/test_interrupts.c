@@ -424,7 +424,7 @@ test_interrupt(void)
 
 	printf("Check valid alarm interrupt full path\n");
 	if (test_interrupt_full_path_check(
-		TEST_INTERRUPT_HANDLE_VALID_DEV_EVENT) < 0) {
+		TEST_INTERRUPT_HANDLE_VALID_ALARM) < 0) {
 		printf("failure occurred during checking valid alarm "
 						"interrupt full path\n");
 		goto out;
