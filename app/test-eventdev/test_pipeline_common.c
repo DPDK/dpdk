@@ -329,7 +329,7 @@ int
 pipeline_event_tx_adapter_setup(struct evt_options *opt,
 		struct rte_event_port_conf port_conf)
 {
-	int ret;
+	int ret = 0;
 	uint16_t consm;
 
 	RTE_ETH_FOREACH_DEV(consm) {
