@@ -483,7 +483,7 @@ int
 rte_kni_handle_request(struct rte_kni *kni)
 {
 	unsigned ret;
-	struct rte_kni_request *req;
+	struct rte_kni_request *req = NULL;
 
 	if (kni == NULL)
 		return -1;
