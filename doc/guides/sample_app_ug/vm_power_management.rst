@@ -657,6 +657,31 @@ To build just the ``guest_vm_power_manager`` application using ``make``:
 
 The resulting binary will be ${RTE_SDK}/build/examples/guest_cli
 
+.. Note::
+  This sample application conditionally links in the Jansson JSON
+  library, so if you are using a multilib or cross compile environment you
+  may need to set the ``PKG_CONFIG_LIBDIR`` environmental variable to point to
+  the relevant pkgconfig folder so that the correct library is linked in.
+
+  For example, if you are building for a 32-bit target, you could find the
+  correct directory using the following ``find`` command:
+
+  .. code-block:: console
+
+      # find /usr -type d -name pkgconfig
+      /usr/lib/i386-linux-gnu/pkgconfig
+      /usr/lib/x86_64-linux-gnu/pkgconfig
+
+  Then use:
+
+  .. code-block:: console
+
+      export PKG_CONFIG_LIBDIR=/usr/lib/i386-linux-gnu/pkgconfig
+
+  You then use the make command as normal, which should find the 32-bit
+  version of the library, if it installed. If not, the application will
+  be built without the JSON interface functionality.
+
 To build just the ``vm_power_manager`` application using ``meson/ninja``:
 
 .. code-block:: console
