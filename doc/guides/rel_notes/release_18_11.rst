@@ -532,6 +532,8 @@ Known Issues
   driver; the Linux netvsc device must be brought up before the netvsc device is
   unbound and passed to the DPDK.
 
+* IBM Power8 is not supported by this release of DPDK. IBM Power9 is supported.
+
 
 Tested Platforms
 ----------------

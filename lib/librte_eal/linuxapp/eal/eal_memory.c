@@ -847,10 +847,6 @@ alloc_va_space(struct rte_memseg_list *msl)
 	void *addr;
 	int flags = 0;
 
-#ifdef RTE_ARCH_PPC_64
-	flags |= MAP_HUGETLB;
-#endif
-
 	page_sz = msl->page_sz;
 	mem_sz = page_sz * msl->memseg_arr.len;
 

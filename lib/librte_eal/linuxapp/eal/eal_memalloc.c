@@ -753,9 +753,6 @@ mapped:
 	munmap(addr, alloc_sz);
 unmapped:
 	flags = MAP_FIXED;
-#ifdef RTE_ARCH_PPC_64
-	flags |= MAP_HUGETLB;
-#endif
 	new_addr = eal_get_virtual_area(addr, &alloc_sz, alloc_sz, 0, flags);
 	if (new_addr != addr) {
 		if (new_addr != NULL)
