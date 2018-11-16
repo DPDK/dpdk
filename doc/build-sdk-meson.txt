@@ -203,3 +203,9 @@ From examples/helloworld/Makefile::
 
 	build:
 		@mkdir -p $@
+
+NOTE: for --static builds, DPDK needs to be built with Meson >= 0.46 in order to
+fully generate the list of private dependencies. If DPDK is built with an older
+version of Meson, it might be necessary to manually specify dependencies of DPDK
+PMDs/libraries, for example -lmlx5 -lmnl for librte-pmd-mlx5, or the static link
+step might fail.
