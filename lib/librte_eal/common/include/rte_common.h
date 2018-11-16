@@ -270,16 +270,7 @@ rte_is_aligned(void *ptr, unsigned align)
 /**
  * Triggers an error at compilation time if the condition is true.
  */
-#ifndef __OPTIMIZE__
 #define RTE_BUILD_BUG_ON(condition) ((void)sizeof(char[1 - 2*!!(condition)]))
-#else
-extern int RTE_BUILD_BUG_ON_detected_error;
-#define RTE_BUILD_BUG_ON(condition) do {             \
-	((void)sizeof(char[1 - 2*!!(condition)]));   \
-	if (condition)                               \
-		RTE_BUILD_BUG_ON_detected_error = 1; \
-} while(0)
-#endif
 
 /**
  * Combines 32b inputs most significant set bits into the least
