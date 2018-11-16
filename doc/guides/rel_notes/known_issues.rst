@@ -759,3 +759,31 @@ Netvsc driver and application restart
 
 **Driver/Module**:
    ``uio_hv_generic`` module.
+
+
+PHY link up fails when rebinding i40e NICs to kernel driver
+-----------------------------------------------------------
+
+**Description**:
+   Some kernel drivers are not able to handle the link status correctly
+   after DPDK application sets the PHY to link down.
+
+**Implication**:
+   The link status can't be set to "up" after the NIC is rebound to the
+   kernel driver. Before a DPDK application quits it will invoke the
+   function ``i40e_dev_stop()`` which will sets the PHY to link down. Some
+   kernel drivers may not be able to handle the link status correctly after
+   it retakes control of the device. This is a known PHY link configuration
+   issue in the i40e kernel driver. The fix has been addressed in the 2.7.4 rc
+   version. So if the i40e kernel driver is < 2.7.4 and doesn't have the
+   fix backported it will encounter this issue.
+
+**Resolution/Workaround**:
+   First try to remove and reinsert the i40e kernel driver. If that fails
+   reboot the system.
+
+**Affected Environment/Platform**:
+   All.
+
+**Driver/Module**:
+   Poll Mode Driver (PMD).
