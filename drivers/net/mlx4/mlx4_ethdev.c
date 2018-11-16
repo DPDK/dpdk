@@ -360,6 +360,8 @@ mlx4_rxmode_toggle(struct rte_eth_dev *dev, enum rxmode_toggle toggle)
 		mode = "all multicast";
 		dev->data->all_multicast = toggle & 1;
 		break;
+	default:
+		mode = "undefined";
 	}
 	if (!mlx4_flow_sync(priv, &error))
 		return;
