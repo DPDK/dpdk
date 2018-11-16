@@ -702,7 +702,7 @@ txa_service_queue_add(uint8_t id,
 	struct txa_service_queue_info *tqi;
 	struct rte_eth_dev_tx_buffer *tb;
 	struct txa_retry *txa_retry;
-	int ret;
+	int ret = 0;
 
 	txa = txa_service_id_to_data(id);
 
