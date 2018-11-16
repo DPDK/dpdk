@@ -3423,9 +3423,16 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 				     "Failed to parse agg selection mode for bonded device %s",
 				     name);
 		}
-		if (internals->mode == BONDING_MODE_8023AD)
-			rte_eth_bond_8023ad_agg_selection_set(port_id,
-							      agg_mode);
+		if (internals->mode == BONDING_MODE_8023AD) {
+			int ret = rte_eth_bond_8023ad_agg_selection_set(port_id,
+					agg_mode);
+			if (ret < 0) {
+				RTE_BOND_LOG(ERR,
+					"Invalid args for agg selection set for bonded device %s",
+					name);
+				return -1;
+			}
+		}
 	}
 
 	/* Parse/add slave ports to bonded device */
