@@ -1440,8 +1440,7 @@ struct i40e_aqc_cloud_filters_element_data {
 };
 
 /* i40e_aqc_add_rm_cloud_filt_elem_ext is used when
- * I40E_AQC_ADD_REM_CLOUD_CMD_BIG_BUFFER flag is set. refer to
- * DCR288
+ * I40E_AQC_ADD_REM_CLOUD_CMD_BIG_BUFFER flag is set.
  */
 struct i40e_aqc_add_rm_cloud_filt_elem_ext {
 	struct i40e_aqc_cloud_filters_element_data element;
