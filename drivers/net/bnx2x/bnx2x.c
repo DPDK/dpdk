@@ -5809,7 +5809,7 @@ static int bnx2x_set_power_state(struct bnx2x_softc *sc, uint8_t state)
 
 	/* If there is no power capability, silently succeed */
 	if (!(sc->devinfo.pcie_cap_flags & BNX2X_PM_CAPABLE_FLAG)) {
-		PMD_DRV_LOG(WARNING, sc, "No power capability");
+		PMD_DRV_LOG(INFO, sc, "No power capability");
 		return 0;
 	}
 
@@ -6918,19 +6918,19 @@ static void bnx2x_link_report_locked(struct bnx2x_softc *sc)
 		return;
 	}
 
-	PMD_DRV_LOG(INFO, sc, "Change in link status : cur_data = %lx, last_reported_link = %lx\n",
-		    cur_data.link_report_flags,
-		    sc->last_reported_link.link_report_flags);
+	ELINK_DEBUG_P2(sc, "Change in link status : cur_data = %lx, last_reported_link = %lx",
+		       cur_data.link_report_flags,
+		       sc->last_reported_link.link_report_flags);
 
 	sc->link_cnt++;
 
-	PMD_DRV_LOG(INFO, sc, "link status change count = %x\n", sc->link_cnt);
+	ELINK_DEBUG_P1(sc, "link status change count = %x", sc->link_cnt);
 	/* report new link params and remember the state for the next time */
 	rte_memcpy(&sc->last_reported_link, &cur_data, sizeof(cur_data));
 
 	if (bnx2x_test_bit(BNX2X_LINK_REPORT_LINK_DOWN,
 			 &cur_data.link_report_flags)) {
-		PMD_DRV_LOG(INFO, sc, "NIC Link is Down");
+		ELINK_DEBUG_P0(sc, "NIC Link is Down");
 	} else {
 		__rte_unused const char *duplex;
 		__rte_unused const char *flow;
@@ -6938,8 +6938,10 @@ static void bnx2x_link_report_locked(struct bnx2x_softc *sc)
 		if (bnx2x_test_and_clear_bit(BNX2X_LINK_REPORT_FULL_DUPLEX,
 					   &cur_data.link_report_flags)) {
 			duplex = "full";
+				ELINK_DEBUG_P0(sc, "link set to full duplex");
 		} else {
 			duplex = "half";
+				ELINK_DEBUG_P0(sc, "link set to half duplex");
 		}
 
 /*
@@ -7123,7 +7125,7 @@ void bnx2x_periodic_callout(struct bnx2x_softc *sc)
 {
 	if ((sc->state != BNX2X_STATE_OPEN) ||
 	    (atomic_load_acq_long(&sc->periodic_flags) == PERIODIC_STOP)) {
-		PMD_DRV_LOG(INFO, sc, "periodic callout exit (state=0x%x)",
+		PMD_DRV_LOG(DEBUG, sc, "periodic callout exit (state=0x%x)",
 			    sc->state);
 		return;
 	}
@@ -8317,7 +8319,7 @@ static int bnx2x_get_device_info(struct bnx2x_softc *sc)
 		 ((sc->devinfo.bc_ver >> 24) & 0xff),
 		 ((sc->devinfo.bc_ver >> 16) & 0xff),
 		 ((sc->devinfo.bc_ver >> 8) & 0xff));
-	PMD_DRV_LOG(INFO, sc, "Bootcode version: %s", sc->devinfo.bc_ver_str);
+	PMD_DRV_LOG(DEBUG, sc, "Bootcode version: %s", sc->devinfo.bc_ver_str);
 
 	/* get the bootcode shmem address */
 	sc->devinfo.mf_cfg_base = bnx2x_get_shmem_mf_cfg_base(sc);
@@ -11743,42 +11745,36 @@ static const char *get_bnx2x_flags(uint32_t flags)
 	return flag_str;
 }
 
-/*
- * Prints useful adapter info.
- */
+/* Prints useful adapter info. */
 void bnx2x_print_adapter_info(struct bnx2x_softc *sc)
 {
 	int i = 0;
-	__rte_unused uint32_t ext_phy_type;
 
-	PMD_INIT_FUNC_TRACE(sc);
-	if (sc->link_vars.phy_flags & PHY_XGXS_FLAG)
-		ext_phy_type = ELINK_XGXS_EXT_PHY_TYPE(REG_RD(sc,
-							      sc->
-							      devinfo.shmem_base
-							      + offsetof(struct
-									 shmem_region,
-									 dev_info.port_hw_config
-									 [0].external_phy_config)));
-	else
-		ext_phy_type = ELINK_SERDES_EXT_PHY_TYPE(REG_RD(sc,
-								sc->
-								devinfo.shmem_base
-								+
-								offsetof(struct
-									 shmem_region,
-									 dev_info.port_hw_config
-									 [0].external_phy_config)));
-
-	PMD_DRV_LOG(INFO, sc, "\n\n===================================\n");
+	PMD_DRV_LOG(INFO, sc, "========================================");
+	/* DPDK and Driver versions */
+	PMD_DRV_LOG(INFO, sc, "%12s : %s", "DPDK",
+			rte_version());
+	PMD_DRV_LOG(INFO, sc, "%12s : %s", "Driver",
+			bnx2x_pmd_version());
+	/* Firmware versions. */
+	PMD_DRV_LOG(INFO, sc, "%12s : %d.%d.%d",
+		     "Firmware",
+		     BNX2X_5710_FW_MAJOR_VERSION,
+		     BNX2X_5710_FW_MINOR_VERSION,
+		     BNX2X_5710_FW_REVISION_VERSION);
+	PMD_DRV_LOG(INFO, sc, "%12s : %s",
+		     "Bootcode", sc->devinfo.bc_ver_str);
 	/* Hardware chip info. */
 	PMD_DRV_LOG(INFO, sc, "%12s : %#08x", "ASIC", sc->devinfo.chip_id);
 	PMD_DRV_LOG(INFO, sc, "%12s : %c%d", "Rev", (CHIP_REV(sc) >> 12) + 'A',
 		     (CHIP_METAL(sc) >> 4));
-
-	/* Bus info. */
-	PMD_DRV_LOG(INFO, sc,
-		    "%12s : %d, ", "Bus PCIe", sc->devinfo.pcie_link_width);
+	/* Bus PCIe info. */
+	PMD_DRV_LOG(INFO, sc, "%12s : 0x%x", "Vendor Id",
+		    sc->devinfo.vendor_id);
+	PMD_DRV_LOG(INFO, sc, "%12s : 0x%x", "Device Id",
+		    sc->devinfo.device_id);
+	PMD_DRV_LOG(INFO, sc, "%12s : width x%d, ", "Bus PCIe",
+		    sc->devinfo.pcie_link_width);
 	switch (sc->devinfo.pcie_link_speed) {
 	case 1:
 		PMD_DRV_LOG(INFO, sc, "%23s", "2.5 Gbps");
@@ -11792,62 +11788,45 @@ void bnx2x_print_adapter_info(struct bnx2x_softc *sc)
 	default:
 		PMD_DRV_LOG(INFO, sc, "%33s", "Unknown link speed");
 	}
-
 	/* Device features. */
 	PMD_DRV_LOG(INFO, sc, "%12s : ", "Flags");
-
 	/* Miscellaneous flags. */
 	if (sc->devinfo.pcie_cap_flags & BNX2X_MSI_CAPABLE_FLAG) {
 		PMD_DRV_LOG(INFO, sc, "%18s", "MSI");
 		i++;
 	}
-
 	if (sc->devinfo.pcie_cap_flags & BNX2X_MSIX_CAPABLE_FLAG) {
 		if (i > 0)
 			PMD_DRV_LOG(INFO, sc, "|");
 		PMD_DRV_LOG(INFO, sc, "%20s", "MSI-X");
 		i++;
 	}
+	PMD_DRV_LOG(INFO, sc, "%12s : %s", "OVLAN", (OVLAN(sc) ? "YES" : "NO"));
+	PMD_DRV_LOG(INFO, sc, "%12s : %s", "MF", (IS_MF(sc) ? "YES" : "NO"));
+	PMD_DRV_LOG(INFO, sc, "========================================");
+}
 
-	if (IS_PF(sc)) {
-		PMD_DRV_LOG(INFO, sc, "%12s : ", "Queues");
-		switch (sc->sp->rss_rdata.rss_mode) {
-		case ETH_RSS_MODE_DISABLED:
-			PMD_DRV_LOG(INFO, sc, "%19s", "None");
-			break;
-		case ETH_RSS_MODE_REGULAR:
-			PMD_DRV_LOG(INFO, sc,
-				    "%18s : %d", "RSS", sc->num_queues);
-			break;
-		default:
-			PMD_DRV_LOG(INFO, sc, "%22s", "Unknown");
-			break;
-		}
-	}
+/* Prints useful device info. */
+void bnx2x_print_device_info(struct bnx2x_softc *sc)
+{
+	__rte_unused uint32_t ext_phy_type;
+	uint32_t offset, reg_val;
 
-	/* RTE and Driver versions */
-	PMD_DRV_LOG(INFO, sc, "%12s : %s", "DPDK",
-			rte_version());
-	PMD_DRV_LOG(INFO, sc, "%12s : %s", "Driver",
-			bnx2x_pmd_version());
+	PMD_INIT_FUNC_TRACE(sc);
+	offset = offsetof(struct shmem_region,
+			  dev_info.port_hw_config[0].external_phy_config);
+	reg_val = REG_RD(sc, sc->devinfo.shmem_base + offset);
+	if (sc->link_vars.phy_flags & PHY_XGXS_FLAG)
+		ext_phy_type = ELINK_XGXS_EXT_PHY_TYPE(reg_val);
+	else
+		ext_phy_type = ELINK_SERDES_EXT_PHY_TYPE(reg_val);
 
-	/* Firmware versions and device features. */
-	PMD_DRV_LOG(INFO, sc, "%12s : %d.%d.%d",
-		     "Firmware",
-		     BNX2X_5710_FW_MAJOR_VERSION,
-		     BNX2X_5710_FW_MINOR_VERSION,
-		     BNX2X_5710_FW_REVISION_VERSION);
-	PMD_DRV_LOG(INFO, sc, "%12s : %s",
-		     "Bootcode", sc->devinfo.bc_ver_str);
-
-	PMD_DRV_LOG(INFO, sc, "\n\n===================================\n");
+	/* Device features. */
 	PMD_DRV_LOG(INFO, sc, "%12s : %u", "Bnx2x Func", sc->pcie_func);
 	PMD_DRV_LOG(INFO, sc,
 		    "%12s : %s", "Bnx2x Flags", get_bnx2x_flags(sc->flags));
 	PMD_DRV_LOG(INFO, sc, "%12s : %s", "DMAE Is",
 		     (sc->dmae_ready ? "Ready" : "Not Ready"));
-	PMD_DRV_LOG(INFO, sc, "%12s : %s", "OVLAN", (OVLAN(sc) ? "YES" : "NO"));
-	PMD_DRV_LOG(INFO, sc, "%12s : %s", "MF", (IS_MF(sc) ? "YES" : "NO"));
 	PMD_DRV_LOG(INFO, sc, "%12s : %u", "MTU", sc->mtu);
 	PMD_DRV_LOG(INFO, sc,
 		    "%12s : %s", "PHY Type", get_ext_phy_type(ext_phy_type));
@@ -11863,9 +11842,30 @@ void bnx2x_print_adapter_info(struct bnx2x_softc *sc)
 	if (sc->recovery_state)
 		PMD_DRV_LOG(INFO, sc, "%12s : %s", "Recovery",
 			     get_recovery_state(sc->recovery_state));
+	/* Queue info. */
+	if (IS_PF(sc)) {
+		switch (sc->sp->rss_rdata.rss_mode) {
+		case ETH_RSS_MODE_DISABLED:
+			PMD_DRV_LOG(INFO, sc, "%12s : %s", "Queues", "RSS mode - None");
+			break;
+		case ETH_RSS_MODE_REGULAR:
+			PMD_DRV_LOG(INFO, sc, "%12s : %s,", "Queues", "RSS mode - Regular");
+			PMD_DRV_LOG(INFO, sc, "%16d", sc->num_queues);
+			break;
+		default:
+			PMD_DRV_LOG(INFO, sc, "%12s : %s", "Queues", "RSS mode - Unknown");
+			break;
+		}
+	}
 	PMD_DRV_LOG(INFO, sc, "%12s : CQ = %lx,  EQ = %lx", "SPQ Left",
 		     sc->cq_spq_left, sc->eq_spq_left);
+
 	PMD_DRV_LOG(INFO, sc,
 		    "%12s : %x", "Switch", sc->link_params.switch_cfg);
-	PMD_DRV_LOG(INFO, sc, "\n\n===================================\n");
+	PMD_DRV_LOG(INFO, sc, "pcie_bus=%d, pcie_device=%d",
+			sc->pcie_bus, sc->pcie_device);
+	PMD_DRV_LOG(INFO, sc, "bar0.addr=%p, bar1.addr=%p",
+			sc->bar[BAR0].base_addr, sc->bar[BAR1].base_addr);
+	PMD_DRV_LOG(INFO, sc, "port=%d, path=%d, vnic=%d, func=%d",
+			PORT_ID(sc), PATH_ID(sc), VNIC_ID(sc), FUNC_ID(sc));
 }

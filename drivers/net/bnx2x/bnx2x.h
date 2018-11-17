@@ -1937,6 +1937,7 @@ void bnx2x_dump_tx_chain(struct bnx2x_fastpath * fp, int bd_prod, int count);
 int bnx2x_tx_encap(struct bnx2x_tx_queue *txq, struct rte_mbuf *m0);
 uint8_t bnx2x_txeof(struct bnx2x_softc *sc, struct bnx2x_fastpath *fp);
 void bnx2x_print_adapter_info(struct bnx2x_softc *sc);
+void bnx2x_print_device_info(struct bnx2x_softc *sc);
 int bnx2x_intr_legacy(struct bnx2x_softc *sc, int scan_fp);
 void bnx2x_link_status_update(struct bnx2x_softc *sc);
 int bnx2x_complete_sp(struct bnx2x_softc *sc);
@@ -1984,7 +1985,7 @@ bnx2x_set_rx_mode(struct bnx2x_softc *sc)
 			bnx2x_vf_set_rx_mode(sc);
 		}
 	} else {
-		PMD_DRV_LOG(NOTICE, sc, "Card is not ready to change mode");
+		PMD_DRV_LOG(INFO, sc, "Card is not ready to change mode");
 	}
 }
 

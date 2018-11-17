@@ -245,8 +245,7 @@ bnx2x_dev_start(struct rte_eth_dev *dev)
 		return -3;
 	}
 
-	/* Print important adapter info for the user. */
-	bnx2x_print_adapter_info(sc);
+	bnx2x_print_device_info(sc);
 
 	return ret;
 }
@@ -574,6 +573,7 @@ bnx2x_common_dev_init(struct rte_eth_dev *eth_dev, int is_vf)
 	struct rte_pci_device *pci_dev;
 	struct rte_pci_addr pci_addr;
 	struct bnx2x_softc *sc;
+	static bool adapter_info = true;
 
 	/* Extract key data structures */
 	sc = eth_dev->data->dev_private;
@@ -632,8 +632,15 @@ bnx2x_common_dev_init(struct rte_eth_dev *eth_dev, int is_vf)
 		return ret;
 	}
 
+	/* Print important adapter info for the user. */
+	if (adapter_info) {
+		bnx2x_print_adapter_info(sc);
+		adapter_info = false;
+	}
+
 	/* schedule periodic poll for slowpath link events */
 	if (IS_PF(sc)) {
+		PMD_DRV_LOG(DEBUG, sc, "Scheduling periodic poll for slowpath link events");
 		ret = rte_eal_alarm_set(BNX2X_SP_TIMER_PERIOD,
 					bnx2x_periodic_start, (void *)eth_dev);
 		if (ret) {
@@ -644,15 +651,6 @@ bnx2x_common_dev_init(struct rte_eth_dev *eth_dev, int is_vf)
 	}
 
 	eth_dev->data->mac_addrs = (struct ether_addr *)sc->link_params.mac_addr;
-
-	PMD_DRV_LOG(INFO, sc, "pcie_bus=%d, pcie_device=%d",
-			sc->pcie_bus, sc->pcie_device);
-	PMD_DRV_LOG(INFO, sc, "bar0.addr=%p, bar1.addr=%p",
-			sc->bar[BAR0].base_addr, sc->bar[BAR1].base_addr);
-	PMD_DRV_LOG(INFO, sc, "port=%d, path=%d, vnic=%d, func=%d",
-			PORT_ID(sc), PATH_ID(sc), VNIC_ID(sc), FUNC_ID(sc));
-	PMD_DRV_LOG(INFO, sc, "portID=%d vendorID=0x%x deviceID=0x%x",
-			eth_dev->data->port_id, pci_dev->id.vendor_id, pci_dev->id.device_id);
 
 	if (IS_VF(sc)) {
 		rte_spinlock_init(&sc->vf2pf_lock);

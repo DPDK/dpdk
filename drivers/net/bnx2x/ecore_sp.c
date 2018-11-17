@@ -530,17 +530,15 @@ static void __ecore_vlan_mac_h_read_unlock(struct bnx2x_softc *sc,
 #endif
 	} else {
 		o->head_reader--;
-		PMD_DRV_LOG(INFO, sc,
-			    "vlan_mac_lock - decreased readers to %d",
-			    o->head_reader);
+		ECORE_MSG(sc, "vlan_mac_lock - decreased readers to %d",
+			  o->head_reader);
 	}
 
 	/* It's possible a new pending execution was added, and that this reader
 	 * was last - if so we need to execute the command.
 	 */
 	if (!o->head_reader && o->head_exe_request) {
-		PMD_DRV_LOG(INFO, sc,
-			    "vlan_mac_lock - reader release encountered a pending request");
+		ECORE_MSG(sc, "vlan_mac_lock - reader release encountered a pending request");
 
 		/* Writer release will do the trick */
 		__ecore_vlan_mac_h_write_unlock(sc, o);
