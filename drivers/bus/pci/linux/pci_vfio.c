@@ -36,14 +36,6 @@
  * This file is only compiled if CONFIG_RTE_EAL_VFIO is set to "y".
  */
 
-/*
- * spinlock for device hot-unplug failure handling. If it try to access bus or
- * device, such as handle sigbus on bus or handle memory failure for device
- * just need to use this lock. It could protect the bus and the device to avoid
- * race condition.
- */
-static rte_spinlock_t failure_handle_lock = RTE_SPINLOCK_INITIALIZER;
-
 #ifdef VFIO_PRESENT
 
 #ifndef PAGE_SIZE
@@ -291,6 +283,14 @@ pci_vfio_setup_interrupts(struct rte_pci_device *dev, int vfio_dev_fd)
 }
 
 #ifdef HAVE_VFIO_DEV_REQ_INTERFACE
+/*
+ * Spinlock for device hot-unplug failure handling.
+ * If it tries to access bus or device, such as handle sigbus on bus
+ * or handle memory failure for device, just need to use this lock.
+ * It could protect the bus and the device to avoid race condition.
+ */
+static rte_spinlock_t failure_handle_lock = RTE_SPINLOCK_INITIALIZER;
+
 static void
 pci_vfio_req_handler(void *param)
 {
