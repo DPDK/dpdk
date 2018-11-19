@@ -213,3 +213,15 @@ rte_comp_op_free(struct rte_comp_op *op)
 	if (op != NULL && op->mempool != NULL)
 		rte_mempool_put(op->mempool, op);
 }
+
+void __rte_experimental
+rte_comp_op_bulk_free(struct rte_comp_op **ops, uint16_t nb_ops)
+{
+	uint16_t i;
+
+	for (i = 0; i < nb_ops; i++) {
+		if (ops[i] != NULL && ops[i]->mempool != NULL)
+			rte_mempool_put(ops[i]->mempool, ops[i]);
+		ops[i] = NULL;
+	}
+}

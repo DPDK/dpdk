@@ -467,6 +467,20 @@ void __rte_experimental
 rte_comp_op_free(struct rte_comp_op *op);
 
 /**
+ * Bulk free operation structures
+ * If operations have been allocated from an rte_mempool, then the operations
+ * will be returned to the mempool.
+ * The array entry will be cleared.
+ *
+ * @param ops
+ *   Array of Compress operations
+ * @param nb_ops
+ *   Number of operations to free
+ */
+void __rte_experimental
+rte_comp_op_bulk_free(struct rte_comp_op **ops, uint16_t nb_ops);
+
+/**
  * Get the name of a compress service feature flag
  *
  * @param flag

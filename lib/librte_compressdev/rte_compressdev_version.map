@@ -32,6 +32,7 @@ EXPERIMENTAL {
 	rte_comp_get_feature_name;
 	rte_comp_op_alloc;
 	rte_comp_op_bulk_alloc;
+	rte_comp_op_bulk_free;
 	rte_comp_op_free;
 	rte_comp_op_pool_create;
 
