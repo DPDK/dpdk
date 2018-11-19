@@ -68,6 +68,9 @@
 #define E1000_VET_VET_EXT            0xFFFF0000
 #define E1000_VET_VET_EXT_SHIFT      16
 
+/* MSI-X other interrupt vector */
+#define IGB_MSIX_OTHER_INTR_VEC      0
+
 static int  eth_igb_configure(struct rte_eth_dev *dev);
 static int  eth_igb_start(struct rte_eth_dev *dev);
 static void eth_igb_stop(struct rte_eth_dev *dev);
@@ -138,7 +141,7 @@ static void igb_vlan_hw_extend_disable(struct rte_eth_dev *dev);
 static int eth_igb_led_on(struct rte_eth_dev *dev);
 static int eth_igb_led_off(struct rte_eth_dev *dev);
 
-static void igb_intr_disable(struct e1000_hw *hw);
+static void igb_intr_disable(struct rte_eth_dev *dev);
 static int  igb_get_rx_buffer_size(struct e1000_hw *hw);
 static int eth_igb_rar_set(struct rte_eth_dev *dev,
 			   struct ether_addr *mac_addr,
@@ -538,14 +541,31 @@ igb_intr_enable(struct rte_eth_dev *dev)
 		E1000_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+
+	if (rte_intr_allow_others(intr_handle) &&
+		dev->data->dev_conf.intr_conf.lsc != 0) {
+		E1000_WRITE_REG(hw, E1000_EIMS, 1 << IGB_MSIX_OTHER_INTR_VEC);
+	}
 
 	E1000_WRITE_REG(hw, E1000_IMS, intr->mask);
 	E1000_WRITE_FLUSH(hw);
 }
 
 static void
-igb_intr_disable(struct e1000_hw *hw)
+igb_intr_disable(struct rte_eth_dev *dev)
 {
+	struct e1000_hw *hw =
+		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+
+	if (rte_intr_allow_others(intr_handle) &&
+		dev->data->dev_conf.intr_conf.lsc != 0) {
+		E1000_WRITE_REG(hw, E1000_EIMC, 1 << IGB_MSIX_OTHER_INTR_VEC);
+	}
+
 	E1000_WRITE_REG(hw, E1000_IMC, ~0);
 	E1000_WRITE_FLUSH(hw);
 }
@@ -1486,7 +1506,7 @@ eth_igb_stop(struct rte_eth_dev *dev)
 
 	eth_igb_rxtx_control(dev, false);
 
-	igb_intr_disable(hw);
+	igb_intr_disable(dev);
 
 	/* disable intr eventfd mapping */
 	rte_intr_disable(intr_handle);
@@ -2768,12 +2788,15 @@ static int eth_igb_rxq_interrupt_setup(struct rte_eth_dev *dev)
 	uint32_t mask, regval;
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	int misc_shift = rte_intr_allow_others(intr_handle) ? 1 : 0;
 	struct rte_eth_dev_info dev_info;
 
 	memset(&dev_info, 0, sizeof(dev_info));
 	eth_igb_infos_get(dev, &dev_info);
 
-	mask = 0xFFFFFFFF >> (32 - dev_info.max_rx_queues);
+	mask = (0xFFFFFFFF >> (32 - dev_info.max_rx_queues)) << misc_shift;
 	regval = E1000_READ_REG(hw, E1000_EIMS);
 	E1000_WRITE_REG(hw, E1000_EIMS, regval | mask);
 
@@ -2800,7 +2823,7 @@ eth_igb_interrupt_get_status(struct rte_eth_dev *dev)
 	struct e1000_interrupt *intr =
 		E1000_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
 
-	igb_intr_disable(hw);
+	igb_intr_disable(dev);
 
 	/* read-on-clear nic registers here */
 	icr = E1000_READ_REG(hw, E1000_ICR);
@@ -5583,13 +5606,17 @@ eth_igb_configure_msix_intr(struct rte_eth_dev *dev)
 					E1000_GPIE_NSICR);
 		intr_mask = RTE_LEN2MASK(intr_handle->nb_efd, uint32_t) <<
 			misc_shift;
+
+		if (dev->data->dev_conf.intr_conf.lsc != 0)
+			intr_mask |= (1 << IGB_MSIX_OTHER_INTR_VEC);
+
 		regval = E1000_READ_REG(hw, E1000_EIAC);
 		E1000_WRITE_REG(hw, E1000_EIAC, regval | intr_mask);
 
 		/* enable msix_other interrupt */
 		regval = E1000_READ_REG(hw, E1000_EIMS);
 		E1000_WRITE_REG(hw, E1000_EIMS, regval | intr_mask);
-		tmpval = (dev->data->nb_rx_queues | E1000_IVAR_VALID) << 8;
+		tmpval = (IGB_MSIX_OTHER_INTR_VEC | E1000_IVAR_VALID) << 8;
 		E1000_WRITE_REG(hw, E1000_IVAR_MISC, tmpval);
 	}
 
@@ -5598,6 +5625,10 @@ eth_igb_configure_msix_intr(struct rte_eth_dev *dev)
 	 */
 	intr_mask = RTE_LEN2MASK(intr_handle->nb_efd, uint32_t) <<
 		misc_shift;
+
+	if (dev->data->dev_conf.intr_conf.lsc != 0)
+		intr_mask |= (1 << IGB_MSIX_OTHER_INTR_VEC);
+
 	regval = E1000_READ_REG(hw, E1000_EIAM);
 	E1000_WRITE_REG(hw, E1000_EIAM, regval | intr_mask);
 
