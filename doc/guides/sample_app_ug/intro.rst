@@ -10,6 +10,16 @@ DPDK features.  Users interested in getting started with DPDK can take the
 applications, try out the features, and then extend them to fit their needs.
 
 
+Running Sample Applications
+---------------------------
+
+Some sample applications may have their own command-line parameters described in
+their respective guides, however all of them also share the same EAL parameters.
+Please refer to  :doc:`../linux_gsg/linux_eal_parameters` or
+:doc:`../freebsd_gsg/freebsd_eal_parameters` for a list of available EAL
+command-line options.
+
+
 The DPDK Sample Applications
 ----------------------------
 

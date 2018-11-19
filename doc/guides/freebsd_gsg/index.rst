@@ -14,3 +14,4 @@ Getting Started Guide for FreeBSD
     install_from_ports
     build_dpdk
     build_sample_apps
+    freebsd_eal_parameters
