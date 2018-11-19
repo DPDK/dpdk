@@ -142,6 +142,23 @@ New Features
   See the :doc:`../nics/atlantic` nic driver guide for more details on this
   driver.
 
+* **Updated mlx5 driver.**
+
+  Updated the mlx5 driver including the following changes:
+
+  * Improved security of PMD to prevent the NIC from getting stuck when
+    application misbehaves.
+  * reworked flow engine to supported e-switch flow rules (transfer attribute).
+  * Supported header re-write(L2-L4), VXLAN encap/decap, count ,match
+    on TCP flags and multiple flow groups with e-switch flow rules.
+  * Supported match on medatada, VXLAN and MPLS encap/decap with flow rules.
+  * Supported RTE_ETH_DEV_CLOSE_REMOVE flag to provide better support for
+    representors.
+  * Supported meson build.
+  * Fixed build issue with PPC.
+  * Supported BlueField VF.
+  * Supported externally allocated static memory for DMA.
+
 * **Updated Solarflare network PMD.**
 
   Updated the sfc_efx driver including the following changes:
