@@ -30,7 +30,7 @@ Start the vhost_crypto example
 
     ./vhost_crypto [EAL options] --
     		--config (lcore,cdev-id,queue-id)[,(lcore,cdev-id,queue-id)]
-    		--socketfile lcore,PATH
+    		--socket-file lcore,PATH
     		[--zero-copy]
     		[--guest-polling]
 
