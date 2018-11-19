@@ -857,11 +857,9 @@ test_deflate_comp_decomp(const char * const test_bufs[],
 				&compress_xforms[xform_idx]->compress;
 		enum rte_comp_huffman huffman_type =
 			compress_xform->deflate.huffman;
-		char engine[22];
-		if (zlib_dir == ZLIB_COMPRESS || zlib_dir == ZLIB_ALL)
-			strlcpy(engine, "zlib (direct, no pmd)", 22);
-		else
-			strlcpy(engine, "pmd", 22);
+		char engine[] = "zlib (directly, not PMD)";
+		if (zlib_dir != ZLIB_COMPRESS || zlib_dir != ZLIB_ALL)
+			strlcpy(engine, "PMD", sizeof(engine));
 
 		RTE_LOG(DEBUG, USER1, "Buffer %u compressed by %s from %u to"
 			" %u bytes (level = %d, huffman = %s)\n",
@@ -1066,11 +1064,9 @@ test_deflate_comp_decomp(const char * const test_bufs[],
 
 	for (i = 0; i < num_bufs; i++) {
 		priv_data = (struct priv_op_data *)(ops_processed[i] + 1);
-		char engine[22];
-		if (zlib_dir == ZLIB_DECOMPRESS || zlib_dir == ZLIB_ALL)
-			strlcpy(engine, "zlib (direct, no pmd)", 22);
-		else
-			strlcpy(engine, "pmd", 22);
+		char engine[] = "zlib, (directly, no PMD)";
+		if (zlib_dir != ZLIB_DECOMPRESS || zlib_dir != ZLIB_ALL)
+			strlcpy(engine, "pmd", sizeof(engine));
 		RTE_LOG(DEBUG, USER1,
 			"Buffer %u decompressed by %s from %u to %u bytes\n",
 			buf_idx[priv_data->orig_idx], engine,
