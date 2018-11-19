@@ -546,14 +546,27 @@ def show_device_status(devices_type, device_name):
             else:
                 kernel_drv.append(devices[d])
 
+    n_devs = len(dpdk_drv) + len(kernel_drv) + len(no_drv)
+
+    # don't bother displaying anything if there are no devices
+    if n_devs == 0:
+        msg = "No '%s' devices detected" % device_name
+        print("")
+        print(msg)
+        print("".join('=' * len(msg)))
+        return
+
     # print each category separately, so we can clearly see what's used by DPDK
-    display_devices("%s devices using DPDK-compatible driver" % device_name,
-                    dpdk_drv, "drv=%(Driver_str)s unused=%(Module_str)s")
-    display_devices("%s devices using kernel driver" % device_name, kernel_drv,
-                    "if=%(Interface)s drv=%(Driver_str)s "
-                    "unused=%(Module_str)s %(Active)s")
-    display_devices("Other %s devices" % device_name, no_drv,
-                    "unused=%(Module_str)s")
+    if len(dpdk_drv) != 0:
+        display_devices("%s devices using DPDK-compatible driver" % device_name,
+                        dpdk_drv, "drv=%(Driver_str)s unused=%(Module_str)s")
+    if len(kernel_drv) != 0:
+        display_devices("%s devices using kernel driver" % device_name, kernel_drv,
+                        "if=%(Interface)s drv=%(Driver_str)s "
+                        "unused=%(Module_str)s %(Active)s")
+    if len(no_drv) != 0:
+        display_devices("Other %s devices" % device_name, no_drv,
+                        "unused=%(Module_str)s")
 
 def show_status():
     '''Function called when the script is passed the "--status" option.
