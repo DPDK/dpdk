@@ -69,6 +69,13 @@ testsuite_teardown(void)
 {
 	struct comp_testsuite_params *ts_params = &testsuite_params;
 
+	if (rte_mempool_in_use_count(ts_params->large_mbuf_pool))
+		RTE_LOG(ERR, USER1, "Large mbuf pool still has unfreed bufs\n");
+	if (rte_mempool_in_use_count(ts_params->small_mbuf_pool))
+		RTE_LOG(ERR, USER1, "Small mbuf pool still has unfreed bufs\n");
+	if (rte_mempool_in_use_count(ts_params->op_pool))
+		RTE_LOG(ERR, USER1, "op pool still has unfreed ops\n");
+
 	rte_mempool_free(ts_params->large_mbuf_pool);
 	rte_mempool_free(ts_params->small_mbuf_pool);
 	rte_mempool_free(ts_params->op_pool);
@@ -731,6 +738,7 @@ test_deflate_comp_decomp(const char * const test_bufs[],
 		goto exit;
 	}
 
+
 	for (i = 0; i < num_bufs; i++) {
 		ops[i]->m_src = uncomp_bufs[i];
 		ops[i]->m_dst = comp_bufs[i];
@@ -959,12 +967,9 @@ test_deflate_comp_decomp(const char * const test_bufs[],
 
 	/*
 	 * Free the previous compress operations,
-	 * as it is not needed anymore
+	 * as they are not needed anymore
 	 */
-	for (i = 0; i < num_bufs; i++) {
-		rte_comp_op_free(ops_processed[i]);
-		ops_processed[i] = NULL;
-	}
+	rte_comp_op_bulk_free(ops_processed, num_bufs);
 
 	/* Decompress data (either with Zlib API or compressdev API */
 	if (zlib_dir == ZLIB_DECOMPRESS || zlib_dir == ZLIB_ALL) {
