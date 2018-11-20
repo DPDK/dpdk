@@ -805,3 +805,24 @@ Restricted vdev ethdev operations supported in secondary process
 
 **Driver/Module**:
    Virtual Device Poll Mode Driver (PMD).
+
+
+Kernel crash when hot-unplug igb_uio device while DPDK application is running
+-----------------------------------------------------------------------------
+
+**Description**:
+   When device has been bound to igb_uio driver and application is running,
+   hot-unplugging the device may cause kernel crash.
+
+**Reason**:
+   When device is hot-unplugged, igb_uio driver will be removed which will destroy UIO resources.
+   Later trying to access any uio resource will cause kernel crash.
+
+**Resolution/Workaround**:
+   If using DPDK for PCI HW hot-unplug, prefer to bind device with VFIO instead of IGB_UIO.
+
+**Affected Environment/Platform**:
+    ALL.
+
+**Driver/Module**:
+   ``igb_uio`` module.
