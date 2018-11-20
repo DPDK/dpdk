@@ -1306,8 +1306,6 @@ enum rte_eth_dev_state {
 	RTE_ETH_DEV_UNUSED = 0,
 	/** Device is attached when allocated in probing. */
 	RTE_ETH_DEV_ATTACHED,
-	/** The deferred state is useless and replaced by ownership. */
-	RTE_ETH_DEV_DEFERRED,
 	/** Device is in removed state when plug-out is detected. */
 	RTE_ETH_DEV_REMOVED,
 };
