@@ -1165,8 +1165,8 @@ rxa_service_func(void *args)
 	if (rte_spinlock_trylock(&rx_adapter->rx_lock) == 0)
 		return 0;
 	if (!rx_adapter->rxa_started) {
-		return 0;
 		rte_spinlock_unlock(&rx_adapter->rx_lock);
+		return 0;
 	}
 
 	stats = &rx_adapter->stats;
