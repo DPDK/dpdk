@@ -584,6 +584,17 @@ Known Issues
 
 * IBM Power8 is not supported by this release of DPDK. IBM Power9 is supported.
 
+* ``AVX-512`` support has been disabled for ``GCC`` builds [1] because of a crash [2].
+  This can affect ``native`` machine type build targets on the platforms that support
+  ``AVX512F`` like ``Intel Skylake`` processors, and can cause a possible performance drop.
+  The immediate workaround is to use ``clang`` compiler on these platforms.
+  Issue has been identified as a GCC defect and reported to GCC community [3]. Further
+  actions will be taken based on the GCC defect result.
+
+  [1]: Commit 8d07c82b239f ("mk: disable gcc AVX512F support")
+  [2]: https://bugs.dpdk.org/show_bug.cgi?id=97
+  [3]: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=88096
+
 
 Tested Platforms
 ----------------
