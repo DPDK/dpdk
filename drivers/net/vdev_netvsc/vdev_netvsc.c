@@ -191,11 +191,8 @@ vdev_netvsc_foreach_iface(int (*func)(const struct if_nameindex *iface,
 					 req.ifr_name, rte_strerror(errno));
 			continue;
 		}
-		if (req.ifr_hwaddr.sa_family != ARPHRD_ETHER) {
-			DRV_LOG(DEBUG, "interface %s is non-ethernet device",
-				req.ifr_name);
+		if (req.ifr_hwaddr.sa_family != ARPHRD_ETHER)
 			continue;
-		}
 		memcpy(eth_addr.addr_bytes, req.ifr_hwaddr.sa_data,
 		       RTE_DIM(eth_addr.addr_bytes));
 		va_start(ap, is_netvsc);
