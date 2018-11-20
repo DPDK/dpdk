@@ -827,28 +827,6 @@ mp_request_async(const char *dst, struct rte_mp_msg *req,
 		goto fail;
 	}
 
-	/*
-	 * set the alarm before sending message. there are two possible error
-	 * scenarios to consider here:
-	 *
-	 * - if the alarm set fails, we free the memory right there
-	 * - if the alarm set succeeds but sending message fails, then the alarm
-	 *   will trigger and clean up the memory
-	 *
-	 * Even if the alarm triggers too early (i.e. immediately), we're still
-	 * holding the lock to pending requests queue, so the interrupt thread
-	 * will just spin until we release the lock, and either release the
-	 * memory, or doesn't find any pending requests in the queue because we
-	 * never added any due to send message failure.
-	 */
-	if (rte_eal_alarm_set(ts->tv_sec * 1000000 + ts->tv_nsec / 1000,
-			      async_reply_handle, pending_req) < 0) {
-		RTE_LOG(ERR, EAL, "Fail to set alarm for request %s:%s\n",
-			dst, req->name);
-		ret = -1;
-		goto fail;
-	}
-
 	ret = send_msg(dst, req, MP_REQ);
 	if (ret < 0) {
 		RTE_LOG(ERR, EAL, "Fail to send request %s:%s\n",
@@ -859,9 +837,17 @@ mp_request_async(const char *dst, struct rte_mp_msg *req,
 		ret = 0;
 		goto fail;
 	}
-	TAILQ_INSERT_TAIL(&pending_requests.requests, pending_req, next);
-
 	param->user_reply.nb_sent++;
+
+	/* if alarm set fails, we simply ignore the reply */
+	if (rte_eal_alarm_set(ts->tv_sec * 1000000 + ts->tv_nsec / 1000,
+			      async_reply_handle, pending_req) < 0) {
+		RTE_LOG(ERR, EAL, "Fail to set alarm for request %s:%s\n",
+			dst, req->name);
+		ret = -1;
+		goto fail;
+	}
+	TAILQ_INSERT_TAIL(&pending_requests.requests, pending_req, next);
 
 	return 0;
 fail:
