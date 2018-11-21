@@ -1887,9 +1887,23 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
 			current_action_flag = MLX5_FLOW_ACTION_OF_POP_VLAN;
 			break;
-		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
+		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN: {
+			rte_be16_t ethertype;
+
 			current_action_flag = MLX5_FLOW_ACTION_OF_PUSH_VLAN;
+			if (!actions->conf)
+				break;
+			conf.of_push_vlan = actions->conf;
+			ethertype = conf.of_push_vlan->ethertype;
+			if (ethertype != RTE_BE16(ETH_P_8021Q) &&
+			    ethertype != RTE_BE16(ETH_P_8021AD))
+				return rte_flow_error_set
+					(error, EINVAL,
+					 RTE_FLOW_ERROR_TYPE_ACTION, actions,
+					 "vlan push TPID must be "
+					 "802.1Q or 802.1AD");
 			break;
+		}
 		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
 			if (!(action_flags & MLX5_FLOW_ACTION_OF_PUSH_VLAN))
 				return rte_flow_error_set
