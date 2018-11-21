@@ -3246,7 +3246,8 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 			assert(mask.ipv4);
 			spec.ipv4 = items->spec;
 			if (!decap.vxlan) {
-				if (!eth_type_set && !vlan_eth_type_set)
+				if (!eth_type_set ||
+				    (!vlan_eth_type_set && vlan_present))
 					mnl_attr_put_u16
 						(nlh,
 						 vlan_present ?
@@ -3303,14 +3304,14 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 			assert(mask.ipv6);
 			spec.ipv6 = items->spec;
 			if (!decap.vxlan) {
-				if (!eth_type_set || !vlan_eth_type_set) {
+				if (!eth_type_set ||
+				    (!vlan_eth_type_set && vlan_present))
 					mnl_attr_put_u16
 						(nlh,
 						 vlan_present ?
 						 TCA_FLOWER_KEY_VLAN_ETH_TYPE :
 						 TCA_FLOWER_KEY_ETH_TYPE,
 						 RTE_BE16(ETH_P_IPV6));
-				}
 				eth_type_set = 1;
 				vlan_eth_type_set = 1;
 				if (mask.ipv6 == &flow_tcf_mask_empty.ipv6)
