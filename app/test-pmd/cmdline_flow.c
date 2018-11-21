@@ -3808,6 +3808,7 @@ parse_vc_action_mplsogre_encap(struct context *ctx, const struct token *token,
 	header += sizeof(gre);
 	memcpy(mpls.label_tc_s, mplsogre_encap_conf.label,
 	       RTE_DIM(mplsogre_encap_conf.label));
+	mpls.label_tc_s[2] |= 0x1;
 	memcpy(header, &mpls, sizeof(mpls));
 	header += sizeof(mpls);
 	action_encap_data->conf.size = header -
@@ -3998,6 +3999,7 @@ parse_vc_action_mplsoudp_encap(struct context *ctx, const struct token *token,
 	header += sizeof(udp);
 	memcpy(mpls.label_tc_s, mplsoudp_encap_conf.label,
 	       RTE_DIM(mplsoudp_encap_conf.label));
+	mpls.label_tc_s[2] |= 0x1;
 	memcpy(header, &mpls, sizeof(mpls));
 	header += sizeof(mpls);
 	action_encap_data->conf.size = header -
