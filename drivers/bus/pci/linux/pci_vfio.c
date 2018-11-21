@@ -794,11 +794,6 @@ pci_vfio_map_resource_secondary(struct rte_pci_device *dev)
 	snprintf(pci_addr, sizeof(pci_addr), PCI_PRI_FMT,
 			loc->domain, loc->bus, loc->devid, loc->function);
 
-	ret = rte_vfio_setup_device(rte_pci_get_sysfs_path(), pci_addr,
-					&vfio_dev_fd, &device_info);
-	if (ret)
-		return ret;
-
 	/* if we're in a secondary process, just find our tailq entry */
 	TAILQ_FOREACH(vfio_res, vfio_res_list, next) {
 		if (rte_pci_addr_cmp(&vfio_res->pci_addr,
@@ -810,8 +805,13 @@ pci_vfio_map_resource_secondary(struct rte_pci_device *dev)
 	if (vfio_res == NULL) {
 		RTE_LOG(ERR, EAL, "  %s cannot find TAILQ entry for PCI device!\n",
 				pci_addr);
-		goto err_vfio_dev_fd;
+		return -1;
 	}
+
+	ret = rte_vfio_setup_device(rte_pci_get_sysfs_path(), pci_addr,
+					&vfio_dev_fd, &device_info);
+	if (ret)
+		return ret;
 
 	/* map BARs */
 	maps = vfio_res->maps;
