@@ -14,55 +14,55 @@ For increased performance the DPDK Hash requires that all the keys have the same
 Hash API Overview
 -----------------
 
-The main configuration parameters for the hash are:
+The main configuration parameters for the hash table are:
 
-*   Total number of hash entries
+*   Total number of hash entries in the table
 
 *   Size of the key in bytes
 
-*   An extra flag used to describe additional settings, for example the multithreading mode of operation (as will be described later)
+*   An extra flag to describe additional settings, for example the multithreading mode of operation and extendable bucket functionality (as will be described later)
 
-The hash also allows the configuration of some low-level implementation related parameters such as:
+The hash table also allows the configuration of some low-level implementation related parameters such as:
 
-*   Hash function to translate the key into a bucket index
+*   Hash function to translate the key into a hash value
 
-The main methods exported by the hash are:
+The main methods exported by the Hash Library are:
 
-*   Add entry with key: The key is provided as input. If a new entry is successfully added to the hash for the specified key,
-    or there is already an entry in the hash for the specified key, then the position of the entry is returned.
-    If the operation was not successful, for example due to lack of free entries in the hash, then a negative value is returned;
+*   Add entry with key: The key is provided as input. If the new entry is successfully added to the hash table for the specified key,
+    or there is already an entry in the hash table for the specified key, then the position of the entry is returned.
+    If the operation was not successful, for example due to lack of free entries in the hash table, then a negative value is returned.
 
 *   Delete entry with key: The key is provided as input. If an entry with the specified key is found in the hash,
-    then the entry is removed from the hash and the position where the entry was found in the hash is returned.
-    If no entry with the specified key exists in the hash, then a negative value is returned
+    then the entry is removed from the hash table and the position where the entry was found in the hash table is returned.
+    If no entry with the specified key exists in the hash table, then a negative value is returned
 
-*   Lookup for entry with key: The key is provided as input. If an entry with the specified key is found in the hash (lookup hit),
-    then the position of the entry is returned, otherwise (lookup miss) a negative value is returned.
+*   Lookup for entry with key: The key is provided as input. If an entry with the specified key is found in the hash table (i.e., lookup hit),
+    then the position of the entry is returned, otherwise (i.e., lookup miss) a negative value is returned.
 
-Apart from these methods explained above, the API provides the user with few more options:
+Apart from the basic methods explained above, the Hash Library API provides a few more advanced methods to query and update the hash table:
 
-*   Add / lookup / delete with key and precomputed hash: Both the key and its precomputed hash are provided as input. This allows
-    the user to perform these operations faster, as hash is already computed.
+*   Add / lookup / delete entry with key and precomputed hash: Both the key and its precomputed hash are provided as input. This allows
+    the user to perform these operations faster, as the hash value is already computed.
 
-*   Add / lookup with key and data: A pair of key-value is provided as input. This allows the user to store
-    not only the key, but also data which may be either a 8-byte integer or a pointer to external data (if data size is more than 8 bytes).
+*   Add / lookup entry with key and data: A data is provided as input for add. Add allows the user to store
+    not only the key, but also the data which may be either a 8-byte integer or a pointer to external data (if data size is more than 8 bytes).
 
-*   Combination of the two options above: User can provide key, precomputed hash and data.
+*   Combination of the two options above: User can provide key, precomputed hash, and data.
 
-*   Ability to not free the position of the entry in the hash upon calling delete. This is useful for multi-threaded scenarios where
+*   Ability to not free the position of the entry in the hash table upon calling delete. This is useful for multi-threaded scenarios where
     readers continue to use the position even after the entry is deleted.
 
-Also, the API contains a method to allow the user to look up entries in bursts, achieving higher performance
+Also, the API contains a method to allow the user to look up entries in batches, achieving higher performance
 than looking up individual entries, as the function prefetches next entries at the time it is operating
-with the first ones, which reduces significantly the impact of the necessary memory accesses.
+with the current ones, which reduces significantly the performance overhead of the necessary memory accesses.
 
 
 The actual data associated with each key can be either managed by the user using a separate table that
 mirrors the hash in terms of number of entries and position of each entry,
-as shown in the Flow Classification use case describes in the following sections,
+as shown in the Flow Classification use case described in the following sections,
 or stored in the hash table itself.
 
-The example hash tables in the L2/L3 Forwarding sample applications defines which port to forward a packet to based on a packet flow identified by the five-tuple lookup.
+The example hash tables in the L2/L3 Forwarding sample applications define which port to forward a packet to based on a packet flow identified by the five-tuple lookup.
 However, this table could also be used for more sophisticated features and provide many other functions and actions that could be performed on the packets and flows.
 
 Multi-process support
@@ -91,46 +91,53 @@ For concurrent writes, and concurrent reads and writes the following flag values
    The library uses a reader-writer lock to provide the concurrency.
 
 *  In addition to these two flag values, if the transactional memory flag (RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT) is also set,
-   the reader-writer lock will use hardware transactional memory to guarantee thread safety as long as it is supported by the hardware (for example the Intel® TSX support).
+   the reader-writer lock will use hardware transactional memory (e.g., Intel® TSX) if supported to guarantee thread safety.
    If the platform supports Intel® TSX, it is advised to set the transactional memory flag, as this will speed up concurrent table operations.
    Otherwise concurrent operations will be slower because of the overhead associated with the software locking mechanisms.
 
 *  If lock free read/write concurrency (RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF) is set, read/write concurrency is provided without using reader-writer lock.
-   For platforms (ex: current Arm based platforms), that do not support transactional memory, it is advised to set this flag to achieve greater scalability in performance.
+   For platforms (e.g., current ARM based platforms) that do not support transactional memory, it is advised to set this flag to achieve greater scalability in performance.
+   If this flag is set, the (RTE_HASH_EXTRA_FLAGS_NO_FREE_ON_DEL) flag is set by default.
 
-*  If, do not free on delete (RTE_HASH_EXTRA_FLAGS_NO_FREE_ON_DEL) flag is set, the position of the entry in the hash is not freed upon calling delete. This flag is enabled
-   by default when lock free read/write concurrency is set. The application should free the position after all the readers have stopped referencing the position.
+*  If the 'do not free on delete' (RTE_HASH_EXTRA_FLAGS_NO_FREE_ON_DEL) flag is set, the position of the entry in the hash table is not freed upon calling delete(). This flag is enabled
+   by default when the lock free read/write concurrency flag is set. The application should free the position after all the readers have stopped referencing the position.
    Where required, the application can make use of RCU mechanisms to determine when the readers have stopped referencing the position.
 
-Implementation Details
-----------------------
+Extendable Bucket Functionality support
+----------------------------------------
+An extra flag is used to enable this functionality (flag is not set by default). When the (RTE_HASH_EXTRA_FLAGS_EXT_TABLE) is set and
+in the very unlikely case due to excessive hash collisions that a key has failed to be inserted, the hash table bucket is extended with a linked
+list to insert these failed keys. This feature is important for the workloads (e.g. telco workloads) that need to insert up to 100% of the
+hash table size and can't tolerate any key insertion failure (even if very few). Currently the extendable bucket is not supported
+with the lock-free concurrency implementation (RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF).
+
+
+Implementation Details (non Extendable Bucket Case)
+---------------------------------------------------
 
 The hash table has two main tables:
 
-* First table is an array of entries which is further divided into buckets,
-  with the same number of consecutive array entries in each bucket. Each entry contains the computed primary
-  and secondary hashes of a given key (explained below), and an index to the second table.
+* First table is an array of buckets each of which consists of multiple entries,
+  Each entry contains the signature
+  of a given key (explained below), and an index to the second table.
 
 * The second table is an array of all the keys stored in the hash table and its data associated to each key.
 
-The hash library uses the cuckoo hash method to resolve collisions.
+The hash library uses the Cuckoo Hash algorithm to resolve collisions.
 For any input key, there are two possible buckets (primary and secondary/alternative location)
-where that key can be stored in the hash, therefore only the entries within those bucket need to be examined
+to store that key in the hash table, therefore only the entries within those two buckets need to be examined
 when the key is looked up.
-The lookup speed is achieved by reducing the number of entries to be scanned from the total
-number of hash entries down to the number of entries in the two hash buckets,
-as opposed to the basic method of linearly scanning all the entries in the array.
-The hash uses a hash function (configurable) to translate the input key into a 4-byte key signature.
-The bucket index is the key signature modulo the number of hash buckets.
+The Hash Library uses a hash function (configurable) to translate the input key into a 4-byte hash value.
+The bucket index and a 2-byte signature is derived from the hash value using partial-key hashing [partial-key].
 
-Once the buckets are identified, the scope of the hash add,
-delete and lookup operations is reduced to the entries in those buckets (it is very likely that entries are in the primary bucket).
+Once the buckets are identified, the scope of the key add,
+delete, and lookup operations is reduced to the entries in those buckets (it is very likely that entries are in the primary bucket).
 
-To speed up the search logic within the bucket, each hash entry stores the 4-byte key signature together with the full key for each hash entry.
+To speed up the search logic within the bucket, each hash entry stores the 2-byte key signature together with the full key for each hash table entry.
 For large key sizes, comparing the input key against a key from the bucket can take significantly more time than
-comparing the 4-byte signature of the input key against the signature of a key from the bucket.
-Therefore, the signature comparison is done first and the full key comparison done only when the signatures matches.
-The full key comparison is still necessary, as two input keys from the same bucket can still potentially have the same 4-byte hash signature,
+comparing the 2-byte signature of the input key against the signature of a key from the bucket.
+Therefore, the signature comparison is done first and the full key comparison is done only when the signatures matches.
+The full key comparison is still necessary, as two input keys from the same bucket can still potentially have the same 2-byte signature,
 although this event is relatively rare for hash functions providing good uniform distributions for the set of input keys.
 
 Example of lookup:
@@ -139,33 +146,50 @@ First of all, the primary bucket is identified and entry is likely to be stored 
 If signature was stored there, we compare its key against the one provided and return the position
 where it was stored and/or the data associated to that key if there is a match.
 If signature is not in the primary bucket, the secondary bucket is looked up, where same procedure
-is carried out. If there is no match there either, key is considered not to be in the table.
+is carried out. If there is no match there either, key is not in the table and a negative value will be returned.
 
 Example of addition:
 
-Like lookup, the primary and secondary buckets are identified. If there is an empty slot in
-the primary bucket, primary and secondary signatures are stored in that slot, key and data (if any) are added to
-the second table and an index to the position in the second table is stored in the slot of the first table.
+Like lookup, the primary and secondary buckets are identified. If there is an empty entry in
+the primary bucket, a signature is stored in that entry, key and data (if any) are added to
+the second table and the index in the second table is stored in the entry of the first table.
 If there is no space in the primary bucket, one of the entries on that bucket is pushed to its alternative location,
 and the key to be added is inserted in its position.
-To know where the alternative bucket of the evicted entry is, the secondary signature is looked up and alternative bucket index
-is calculated from doing the modulo, as seen above. If there is room in the alternative bucket, the evicted entry
-is stored in it. If not, same process is repeated (one of the entries gets pushed) until a non full bucket is found.
+To know where the alternative bucket of the evicted entry is, a mechanism called partial-key hashing [partial-key] is used.
+If there is room in the alternative bucket, the evicted entry
+is stored in it. If not, same process is repeated (one of the entries gets pushed) until an empty entry is found.
 Notice that despite all the entry movement in the first table, the second table is not touched, which would impact
 greatly in performance.
 
-In the very unlikely event that table enters in a loop where same entries are being evicted indefinitely,
-key is considered not able to be stored.
-With random keys, this method allows the user to get around 90% of the table utilization, without
-having to drop any stored entry (LRU) or allocate more memory (extended buckets).
+In the very unlikely event that an empty entry cannot be found after certain number of displacements,
+key is considered not able to be added (unless extendable bucket flag is set, and in that case the bucket is extended to insert the key, as will be explained later).
+With random keys, this method allows the user to get more than 90% table utilization, without
+having to drop any stored entry (e.g. using a LRU replacement policy) or allocate more memory (extendable buckets or rehashing).
 
 
 Example of deletion:
 
-Similar to lookup, the key is searched in its primary and secondary buckets. If the key is found, the bucket
-entry is marked as an empty slot. If the hash table was configured with 'no free on delete' or 'lock free read/write concurrency',
-the position of the key is not freed. It is the responsibility of the user to free the position while making sure that
+Similar to lookup, the key is searched in its primary and secondary buckets. If the key is found, the
+entry is marked as empty. If the hash table was configured with 'no free on delete' or 'lock free read/write concurrency',
+the position of the key is not freed. It is the responsibility of the user to free the position after
 readers are not referencing the position anymore.
+
+
+Implementation Details (with Extendable Bucket)
+-------------------------------------------------
+When the RTE_HASH_EXTRA_FLAGS_EXT_TABLE flag is set, the hash table implementation still uses the same Cuckoo Hash algorithm to store the keys into
+the first and second tables. However, in the very unlikely event that a key can't be inserted after certain number of the Cuckoo displacements is
+reached, the secondary bucket of this key is extended
+with a linked list of extra buckets and the key is stored in this linked list.
+
+In case of lookup for a certain key, as before, the primary bucket is searched for a match and then the secondary bucket is looked up.
+If there is no match there either, the extendable buckets (linked list of extra buckets) are searched one by one for a possible match and if there is no match
+the key is considered not to be in the table.
+
+The deletion is the same as the case when the RTE_HASH_EXTRA_FLAGS_EXT_TABLE flag is not set. With one exception, if a key is deleted from any bucket
+and an empty location is created, the last entry from the extendable buckets associated with this bucket is displaced into
+this empty location to possibly shorten the linked list.
+
 
 Entry distribution in hash table
 --------------------------------
@@ -271,3 +295,4 @@ References
 ----------
 
 *   Donald E. Knuth, The Art of Computer Programming, Volume 3: Sorting and Searching (2nd Edition), 1998, Addison-Wesley Professional
+* [partial-key] Bin Fan, David G. Andersen, and Michael Kaminsky, MemC3: compact and concurrent MemCache with dumber caching and smarter hashing, 2013, NSDI
