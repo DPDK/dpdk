@@ -87,6 +87,7 @@ struct ena_ring {
 		struct ena_tx_buffer *tx_buffer_info; /* contex of tx packet */
 		struct rte_mbuf **rx_buffer_info; /* contex of rx packet */
 	};
+	struct rte_mbuf **rx_refill_buffer;
 	unsigned int ring_size; /* number of tx/rx_buffer_info's entries */
 
 	struct ena_com_io_cq *ena_com_io_cq;
