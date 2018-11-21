@@ -254,17 +254,9 @@ mcast_out_pkt(struct rte_mbuf *pkt, int use_clone)
 	/* prepend new header */
 	hdr->next = pkt;
 
-
 	/* update header's fields */
 	hdr->pkt_len = (uint16_t)(hdr->data_len + pkt->pkt_len);
 	hdr->nb_segs = pkt->nb_segs + 1;
-
-	/* copy metadata from source packet*/
-	hdr->port = pkt->port;
-	hdr->vlan_tci = pkt->vlan_tci;
-	hdr->vlan_tci_outer = pkt->vlan_tci_outer;
-	hdr->tx_offload = pkt->tx_offload;
-	hdr->hash = pkt->hash;
 
 	__rte_mbuf_sanity_check(hdr, 1);
 	return hdr;
