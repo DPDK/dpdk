@@ -491,6 +491,29 @@ rte_fls_u32(uint32_t x)
 	return (x == 0) ? 0 : 32 - __builtin_clz(x);
 }
 
+/**
+ * Searches the input parameter for the least significant set bit
+ * (starting from zero). Safe version (checks for input parameter being zero).
+ *
+ * @warning ``pos`` must be a valid pointer. It is not checked!
+ *
+ * @param v
+ *     The input parameter.
+ * @param pos
+ *     If ``v`` was not 0, this value will contain position of least significant
+ *     bit within the input parameter.
+ * @return
+ *     Returns 0 if ``v`` was 0, otherwise returns 1.
+ */
+static inline int
+rte_bsf64_safe(uint64_t v, uint32_t *pos)
+{
+	if (v == 0)
+		return 0;
+
+	*pos = __builtin_ctzll(v);
+	return 1;
+}
 
 #ifndef offsetof
 /** Return the offset of a field in a structure. */

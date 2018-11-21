@@ -11,6 +11,11 @@ API and ABI deprecation notices are to be posted here.
 Deprecation Notices
 -------------------
 
+* eal: function ``rte_bsf64`` in ``rte_bitmap.h`` has been renamed to
+  ``rte_bsf64_safe`` and moved to ``rte_common.h``. A new ``rte_bsf64`` function
+  will be added in the next release in ``rte_common.h`` that follows convention
+  set by existing ``rte_bsf32`` function.
+
 * eal: both declaring and identifying devices will be streamlined in v18.11.
   New functions will appear to query a specific port from buses, classes of
   device and device drivers. Device declaration will be made coherent with the
