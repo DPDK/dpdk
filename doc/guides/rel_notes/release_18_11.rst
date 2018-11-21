@@ -848,3 +848,15 @@ Tested Platforms
      * MLNX_OFED 4.4-2.5.3.0
 
   * DPDK application running on ARM cores inside SmartNIC
+
+* ARM SoC combinations from NXP (with integrated NICs)
+
+   * SoC:
+
+     * NXP/Freescale QorIQ LS1046A with ARM Cortex A72
+     * NXP/Freescale QorIQ LS2088A with ARM Cortex A72
+
+   * OS:
+
+     * Ubuntu 18.04.1 LTS with NXP QorIQ LSDK 1809 support packages
+     * Ubuntu 16.04.3 LTS with NXP QorIQ LSDK 1803 support packages
