@@ -149,7 +149,9 @@
 				   PKT_TX_TCP_CKSUM             | \
 				   PKT_TX_UDP_CKSUM             | \
 				   PKT_TX_OUTER_IP_CKSUM        | \
-				   PKT_TX_TCP_SEG)
+				   PKT_TX_TCP_SEG		| \
+				   PKT_TX_IPV4			| \
+				   PKT_TX_IPV6)
 
 #define QEDE_TX_OFFLOAD_MASK (QEDE_TX_CSUM_OFFLOAD_MASK | \
 			      PKT_TX_VLAN_PKT		| \
