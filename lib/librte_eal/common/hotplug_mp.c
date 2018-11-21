@@ -264,6 +264,19 @@ static void __handle_primary_request(void *param)
 			goto quit;
 		}
 
+		if (!rte_dev_is_probed(dev)) {
+			if (req->t == EAL_DEV_REQ_TYPE_ATTACH_ROLLBACK) {
+				/**
+				 * Don't fail the rollback just because there's
+				 * nothing to do.
+				 */
+				ret = 0;
+			} else
+				ret = -ENODEV;
+
+			goto quit;
+		}
+
 		ret = local_dev_remove(dev);
 quit:
 		free(da->args);
