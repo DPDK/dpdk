@@ -219,13 +219,6 @@ struct vhost_msg {
 
 #define VIRTIO_F_RING_PACKED 34
 
-#define VRING_DESC_F_NEXT	1
-#define VRING_DESC_F_WRITE	2
-#define VRING_DESC_F_INDIRECT	4
-
-#define VRING_DESC_F_AVAIL	(1ULL << 7)
-#define VRING_DESC_F_USED	(1ULL << 15)
-
 struct vring_packed_desc {
 	uint64_t addr;
 	uint32_t len;
@@ -233,15 +226,22 @@ struct vring_packed_desc {
 	uint16_t flags;
 };
 
-#define VRING_EVENT_F_ENABLE 0x0
-#define VRING_EVENT_F_DISABLE 0x1
-#define VRING_EVENT_F_DESC 0x2
-
 struct vring_packed_desc_event {
 	uint16_t off_wrap;
 	uint16_t flags;
 };
 #endif
+
+/*
+ * Declare below packed ring defines unconditionally
+ * as Kernel header might use different names.
+ */
+#define VRING_DESC_F_AVAIL	(1ULL << 7)
+#define VRING_DESC_F_USED	(1ULL << 15)
+
+#define VRING_EVENT_F_ENABLE 0x0
+#define VRING_EVENT_F_DISABLE 0x1
+#define VRING_EVENT_F_DESC 0x2
 
 /*
  * Available and used descs are in same order
