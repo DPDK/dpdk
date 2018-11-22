@@ -11,6 +11,9 @@ API and ABI deprecation notices are to be posted here.
 Deprecation Notices
 -------------------
 
+* kvargs: The function ``rte_kvargs_process`` will get a new parameter
+  for returning key match count. It will ease handling of no-match case.
+
 * eal: function ``rte_bsf64`` in ``rte_bitmap.h`` has been renamed to
   ``rte_bsf64_safe`` and moved to ``rte_common.h``. A new ``rte_bsf64`` function
   will be added in the next release in ``rte_common.h`` that follows convention
