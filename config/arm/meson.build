@@ -46,6 +46,7 @@ flags_common_default = [
 
 flags_generic = [
 	['RTE_MACHINE', '"armv8a"'],
+	['RTE_MAX_LCORE', 256],
 	['RTE_CACHE_LINE_SIZE', 128]]
 flags_cavium = [
 	['RTE_MACHINE', '"thunderx"'],
