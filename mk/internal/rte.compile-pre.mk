@@ -8,8 +8,8 @@
 SRCS-all := $(SRCS-y) $(SRCS-n) $(SRCS-)
 
 # convert source to obj file
-src2obj = $(strip $(patsubst %.c,%.o,\
-	$(patsubst %.S,%_s.o,$(1))))
+src2obj = $(strip $(patsubst %.cpp,%.o,$(patsubst %.c,%.o,\
+	$(patsubst %.S,%_s.o,$(1)))))
 
 # add a dot in front of the file name
 dotfile = $(strip $(foreach f,$(1),\
