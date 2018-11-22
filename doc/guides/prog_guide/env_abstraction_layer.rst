@@ -9,7 +9,7 @@ Environment Abstraction Layer
 The Environment Abstraction Layer (EAL) is responsible for gaining access to low-level resources such as hardware and memory space.
 It provides a generic interface that hides the environment specifics from the applications and libraries.
 It is the responsibility of the initialization routine to decide how to allocate these resources
-(that is, memory space, PCI devices, timers, consoles, and so on).
+(that is, memory space, devices, timers, consoles, and so on).
 
 Typical services expected from the EAL are:
 
@@ -21,8 +21,6 @@ Typical services expected from the EAL are:
 
 *   System Memory Reservation:
     The EAL facilitates the reservation of different memory zones, for example, physical memory areas for device interactions.
-
-*   PCI Address Abstraction: The EAL provides an interface to access PCI address space.
 
 *   Trace and Debug Functions: Logs, dump_stack, panic and so on.
 
@@ -39,8 +37,6 @@ EAL in a Linux-userland Execution Environment
 ---------------------------------------------
 
 In a Linux user space environment, the DPDK application runs as a user-space application using the pthread library.
-PCI information about devices and address space is discovered through the /sys kernel interface and through kernel modules such as uio_pci_generic, or igb_uio.
-Refer to the UIO: User-space drivers documentation in the Linux kernel. This memory is mmap'd in the application.
 
 The EAL performs physical memory allocation using mmap() in hugetlbfs (using huge page sizes to increase performance).
 This memory is exposed to DPDK service layers such as the :ref:`Mempool Library <Mempool_Library>`.
@@ -249,15 +245,6 @@ The expected workflow is as follows:
 
 For more information, please refer to ``rte_malloc`` API documentation,
 specifically the ``rte_malloc_heap_*`` family of function calls.
-
-PCI Access
-~~~~~~~~~~
-
-The EAL uses the /sys/bus/pci utilities provided by the kernel to scan the content on the PCI bus.
-To access PCI memory, a kernel module called uio_pci_generic provides a /dev/uioX device file
-and resource files in /sys
-that can be mmap'd to obtain access to PCI address space from the application.
-The DPDK-specific igb_uio module can also be used for this. Both drivers use the uio kernel feature (userland driver).
 
 Per-lcore and Shared Variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
