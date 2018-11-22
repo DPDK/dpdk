@@ -344,7 +344,7 @@ rte_security_session_create(struct rte_security_ctx *instance,
  *  - On success returns 0
  *  - On failure return errno
  */
-int
+int __rte_experimental
 rte_security_session_update(struct rte_security_ctx *instance,
 			    struct rte_security_session *sess,
 			    struct rte_security_session_conf *conf);
@@ -412,7 +412,7 @@ rte_security_set_pkt_metadata(struct rte_security_ctx *instance,
  *  - On success, userdata
  *  - On failure, NULL
  */
-void *
+void * __rte_experimental
 rte_security_get_userdata(struct rte_security_ctx *instance, uint64_t md);
 
 /**
@@ -499,7 +499,7 @@ struct rte_security_stats {
  *  - On success return 0
  *  - On failure errno
  */
-int
+int __rte_experimental
 rte_security_session_stats_get(struct rte_security_ctx *instance,
 			       struct rte_security_session *sess,
 			       struct rte_security_stats *stats);

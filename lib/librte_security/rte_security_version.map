@@ -14,3 +14,11 @@ DPDK_18.11 {
 
 	local: *;
 };
+
+EXPERIMENTAL {
+	global:
+
+	rte_security_get_userdata;
+	rte_security_session_stats_get;
+	rte_security_session_update;
+};
