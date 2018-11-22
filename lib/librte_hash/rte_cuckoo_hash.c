@@ -1347,6 +1347,9 @@ remove_entry(const struct rte_hash *h, struct rte_hash_bucket *bkt, unsigned i)
 			n_slots = rte_ring_mp_enqueue_burst(h->free_slots,
 						cached_free_slots->objs,
 						LCORE_CACHE_SIZE, NULL);
+			ERR_IF_TRUE((n_slots == 0),
+				"%s: could not enqueue free slots in global ring\n",
+				__func__);
 			cached_free_slots->len -= n_slots;
 		}
 		/* Put index of new free slot in cache. */
@@ -1552,6 +1555,7 @@ rte_hash_free_key_with_position(const struct rte_hash *h,
 			n_slots = rte_ring_mp_enqueue_burst(h->free_slots,
 						cached_free_slots->objs,
 						LCORE_CACHE_SIZE, NULL);
+			RETURN_IF_TRUE((n_slots == 0), -EFAULT);
 			cached_free_slots->len -= n_slots;
 		}
 		/* Put index of new free slot in cache. */
