@@ -42,8 +42,6 @@ The tool has a number of command line options:
                                    [ring-size=<ring size>],
                                    [mbuf-size=<mbuf data size>],
                                    [total-num-mbufs=<number of mbufs>]'
-                          [--server-socket-path=<server socket dir>]
-                          [--client-socket-path=<client socket dir>]
 
 The ``--pdump`` command line option is mandatory and it takes various sub arguments which are described in
 below section.
@@ -55,14 +53,6 @@ below section.
       * Parameters inside the square brackets represents optional parameters.
 
       * Multiple instances of ``--pdump`` can be passed to capture packets on different port and queue combinations.
-
-The ``--server-socket-path`` command line option is optional. This represents the server socket directory.
-If no value is passed default values are used i.e. ``/var/run/.dpdk/`` for root users and ``~/.dpdk/``
-for non root users.
-
-The ``--client-socket-path`` command line option is optional. This represents the client socket directory.
-If no value is passed default values are used i.e. ``/var/run/.dpdk/`` for root users and ``~/.dpdk/``
-for non root users.
 
 
 The ``--pdump`` parameters
