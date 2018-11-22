@@ -142,6 +142,31 @@ Limitations
   To receive IPv6 Multicast messages on VM, explicitly set the relevant
   MAC address using rte_eth_dev_mac_addr_add() API.
 
+- E-Switch VXLAN tunnel is not supported together with outer VLAN.
+
+- E-Switch Flows with VNI pattern must include the VXLAN decapsulation action.
+
+- E-Switch VXLAN decapsulation Flow:
+
+  - can be appiled to PF port only.
+  - must specify VF port action (packet redirection from PF to VF).
+  - must specify tunnel outer UDP local (destination) port, wildcards not allowed.
+  - must specify tunnel outer VNI, wildcards not allowed.
+  - must specify tunnel outer local (destination)  IPv4 or IPv6 address, wildcards not allowed.
+  - optionally may specify tunnel outer remote (source) IPv4 or IPv6, wildcards or group IPs allowed.
+  - optionally may specify tunnel inner source and destination MAC addresses.
+
+- E-Switch VXLAN encapsulation Flow:
+
+  - can be applied to VF ports only.
+  - must specify PF port action (packet redirection from VF to PF).
+  - must specify the VXLAN item with tunnel outer parameters.
+  - must specify the tunnel outer VNI in the VXLAN item.
+  - must specify the tunnel outer remote (destination) UDP port in the VXLAN item.
+  - must specify the tunnel outer local (source) IPv4 or IPv6 in the , this address will locally (with scope link) assigned to the outer network interace, wildcards not allowed.
+  - must specify the tunnel outer remote (destination) IPv4 or IPv6 in the VXLAN item, group IPs allowed.
+  - must specify the tunnel outer destination MAC address in the VXLAN item, this address will be used to create neigh rule.
+
 Statistics
 ----------
 
