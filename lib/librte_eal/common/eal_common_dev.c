@@ -168,16 +168,14 @@ local_dev_probe(const char *devargs, struct rte_device **new_dev)
 	}
 
 	ret = dev->bus->plug(dev);
-	if (ret) {
-		if (rte_dev_is_probed(dev)) /* if already succeeded earlier */
-			return ret; /* no rollback */
+	if (ret && !rte_dev_is_probed(dev)) { /* if hasn't ever succeeded */
 		RTE_LOG(ERR, EAL, "Driver cannot attach the device (%s)\n",
 			dev->name);
 		goto err_devarg;
 	}
 
 	*new_dev = dev;
-	return 0;
+	return ret;
 
 err_devarg:
 	if (rte_devargs_remove(da) != 0) {
