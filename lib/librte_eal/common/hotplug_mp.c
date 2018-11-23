@@ -87,7 +87,7 @@ __handle_secondary_request(void *param)
 	const struct eal_dev_mp_req *req =
 		(const struct eal_dev_mp_req *)msg->param;
 	struct eal_dev_mp_req tmp_req;
-	struct rte_devargs *da;
+	struct rte_devargs da;
 	struct rte_device *dev;
 	struct rte_bus *bus;
 	int ret = 0;
@@ -114,15 +114,11 @@ __handle_secondary_request(void *param)
 				goto rollback;
 		}
 	} else if (req->t == EAL_DEV_REQ_TYPE_DETACH) {
-		da = calloc(1, sizeof(*da));
-		if (da == NULL) {
-			ret = -ENOMEM;
-			goto finish;
-		}
-
-		ret = rte_devargs_parse(da, req->devargs);
+		ret = rte_devargs_parse(&da, req->devargs);
 		if (ret != 0)
 			goto finish;
+		free(da.args); /* we don't need those */
+		da.args = NULL;
 
 		ret = eal_dev_hotplug_request_to_secondary(&tmp_req);
 		if (ret != 0) {
@@ -131,16 +127,16 @@ __handle_secondary_request(void *param)
 			goto rollback;
 		}
 
-		bus = rte_bus_find_by_name(da->bus->name);
+		bus = rte_bus_find_by_name(da.bus->name);
 		if (bus == NULL) {
-			RTE_LOG(ERR, EAL, "Cannot find bus (%s)\n", da->bus->name);
+			RTE_LOG(ERR, EAL, "Cannot find bus (%s)\n", da.bus->name);
 			ret = -ENOENT;
 			goto finish;
 		}
 
-		dev = bus->find_device(NULL, cmp_dev_name, da->name);
+		dev = bus->find_device(NULL, cmp_dev_name, da.name);
 		if (dev == NULL) {
-			RTE_LOG(ERR, EAL, "Cannot find plugged device (%s)\n", da->name);
+			RTE_LOG(ERR, EAL, "Cannot find plugged device (%s)\n", da.name);
 			ret = -ENOENT;
 			goto finish;
 		}
