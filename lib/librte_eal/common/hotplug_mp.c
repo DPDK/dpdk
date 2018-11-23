@@ -404,13 +404,13 @@ int eal_dev_hotplug_request_to_secondary(struct eal_dev_mp_req *req)
 		struct eal_dev_mp_req *resp =
 			(struct eal_dev_mp_req *)mp_reply.msgs[i].param;
 		if (resp->result != 0) {
-			req->result = resp->result;
 			if (req->t == EAL_DEV_REQ_TYPE_ATTACH &&
-				req->result != -EEXIST)
-				break;
+				resp->result == -EEXIST)
+				continue;
 			if (req->t == EAL_DEV_REQ_TYPE_DETACH &&
-				req->result != -ENOENT)
-				break;
+				resp->result == -ENOENT)
+				continue;
+			req->result = resp->result;
 		}
 	}
 
