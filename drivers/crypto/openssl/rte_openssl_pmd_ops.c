@@ -906,22 +906,14 @@ static int openssl_set_asym_session_parameters(
 		asym_session->xfrm_type = RTE_CRYPTO_ASYM_XFORM_RSA;
 		break;
 err_rsa:
-		if (n)
-			BN_free(n);
-		if (e)
-			BN_free(e);
-		if (d)
-			BN_free(d);
-		if (p)
-			BN_free(p);
-		if (q)
-			BN_free(q);
-		if (dmp1)
-			BN_free(dmp1);
-		if (dmq1)
-			BN_free(dmq1);
-		if (iqmp)
-			BN_free(iqmp);
+		BN_free(n);
+		BN_free(e);
+		BN_free(d);
+		BN_free(p);
+		BN_free(q);
+		BN_free(dmp1);
+		BN_free(dmq1);
+		BN_free(iqmp);
 
 		return -1;
 	}
@@ -1043,10 +1035,8 @@ err_rsa:
 
 err_dh:
 		OPENSSL_LOG(ERR, " failed to set dh params\n");
-		if (p)
-			BN_free(p);
-		if (g)
-			BN_free(g);
+		BN_free(p);
+		BN_free(g);
 		return -1;
 	}
 	case RTE_CRYPTO_ASYM_XFORM_DSA:
@@ -1112,16 +1102,11 @@ err_dh:
 		break;
 
 err_dsa:
-		if (p)
-			BN_free(p);
-		if (q)
-			BN_free(q);
-		if (g)
-			BN_free(g);
-		if (priv_key)
-			BN_free(priv_key);
-		if (pub_key)
-			BN_free(pub_key);
+		BN_free(p);
+		BN_free(q);
+		BN_free(g);
+		BN_free(priv_key);
+		BN_free(pub_key);
 		return -1;
 	}
 	default:

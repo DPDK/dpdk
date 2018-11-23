@@ -1605,12 +1605,9 @@ process_openssl_dsa_verify_op(struct rte_crypto_op *cop,
 			op->y.length,
 			pub_key);
 	if (!r || !s || !pub_key) {
-		if (r)
-			BN_free(r);
-		if (s)
-			BN_free(s);
-		if (pub_key)
-			BN_free(pub_key);
+		BN_free(r);
+		BN_free(s);
+		BN_free(pub_key);
 
 		cop->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
 		return -1;
@@ -1781,10 +1778,8 @@ process_openssl_modinv_op(struct rte_crypto_op *cop,
 	BIGNUM *res = BN_CTX_get(sess->u.m.ctx);
 
 	if (unlikely(base == NULL || res == NULL)) {
-		if (base)
-			BN_free(base);
-		if (res)
-			BN_free(res);
+		BN_free(base);
+		BN_free(res);
 		cop->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
 		return -1;
 	}
@@ -1812,10 +1807,8 @@ process_openssl_modexp_op(struct rte_crypto_op *cop,
 	BIGNUM *res = BN_CTX_get(sess->u.e.ctx);
 
 	if (unlikely(base == NULL || res == NULL)) {
-		if (base)
-			BN_free(base);
-		if (res)
-			BN_free(res);
+		BN_free(base);
+		BN_free(res);
 		cop->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
 		return -1;
 	}
