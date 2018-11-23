@@ -100,6 +100,14 @@ static const struct mlx5_counter_ctrl mlx5_counters_init[] = {
 		.ctr_name = "rx_packets_phy",
 	},
 	{
+		.dpdk_name = "tx_discards_phy",
+		.ctr_name = "tx_discards_phy",
+	},
+	{
+		.dpdk_name = "rx_discards_phy",
+		.ctr_name = "rx_discards_phy",
+	},
+	{
 		.dpdk_name = "tx_bytes_phy",
 		.ctr_name = "tx_bytes_phy",
 	},
@@ -127,6 +135,24 @@ static const struct mlx5_counter_ctrl mlx5_counters_init[] = {
 };
 
 static const unsigned int xstats_n = RTE_DIM(mlx5_counters_init);
+
+static inline void
+mlx5_read_ib_stat(struct priv *priv, const char *ctr_name, uint64_t *stat)
+{
+	FILE *file;
+	MKSTR(path, "%s/ports/1/hw_counters/%s",
+		  priv->ibdev_path,
+		  ctr_name);
+
+	file = fopen(path, "rb");
+	if (file) {
+		int n = fscanf(file, "%" SCNu64, stat);
+
+		fclose(file);
+		if (n != 1)
+			stat = 0;
+	}
+}
 
 /**
  * Read device counters table.
@@ -164,19 +190,8 @@ mlx5_read_dev_counters(struct rte_eth_dev *dev, uint64_t *stats)
 	}
 	for (i = 0; i != xstats_ctrl->mlx5_stats_n; ++i) {
 		if (xstats_ctrl->info[i].ib) {
-			FILE *file;
-			MKSTR(path, "%s/ports/1/hw_counters/%s",
-			      priv->ibdev_path,
-			      xstats_ctrl->info[i].ctr_name);
-
-			file = fopen(path, "rb");
-			if (file) {
-				int n = fscanf(file, "%" SCNu64, &stats[i]);
-
-				fclose(file);
-				if (n != 1)
-					stats[i] = 0;
-			}
+			mlx5_read_ib_stat(priv, xstats_ctrl->info[i].ctr_name,
+					  &stats[i]);
 		} else {
 			stats[i] = (uint64_t)
 				et_stats->data[xstats_ctrl->dev_table_idx[i]];
@@ -219,10 +234,11 @@ mlx5_ethtool_get_stats_n(struct rte_eth_dev *dev) {
  *   Pointer to Ethernet device.
  */
 void
-mlx5_xstats_init(struct rte_eth_dev *dev)
+mlx5_stats_init(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
 	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
+	struct mlx5_stats_ctrl *stats_ctrl = &priv->stats_ctrl;
 	unsigned int i;
 	unsigned int j;
 	struct ifreq ifr;
@@ -290,6 +306,7 @@ mlx5_xstats_init(struct rte_eth_dev *dev)
 	if (ret)
 		DRV_LOG(ERR, "port %u cannot read device counters: %s",
 			dev->data->port_id, strerror(rte_errno));
+	mlx5_read_ib_stat(priv, "out_of_buffer", &stats_ctrl->imissed_base);
 free:
 	rte_free(strings);
 }
@@ -326,7 +343,7 @@ mlx5_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *stats,
 		if (stats_n < 0)
 			return stats_n;
 		if (xstats_ctrl->stats_n != stats_n)
-			mlx5_xstats_init(dev);
+			mlx5_stats_init(dev);
 		ret = mlx5_read_dev_counters(dev, counters);
 		if (ret)
 			return ret;
@@ -400,6 +417,8 @@ mlx5_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 #endif
 		tmp.oerrors += txq->stats.oerrors;
 	}
+	mlx5_read_ib_stat(priv, "out_of_buffer", &tmp.imissed);
+	tmp.imissed -= priv->stats_ctrl.imissed_base;
 #ifndef MLX5_PMD_SOFT_COUNTERS
 	/* FIXME: retrieve and add hardware counters. */
 #endif
@@ -417,6 +436,7 @@ void
 mlx5_stats_reset(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
+	struct mlx5_stats_ctrl *stats_ctrl = &priv->stats_ctrl;
 	unsigned int i;
 	unsigned int idx;
 
@@ -434,6 +454,7 @@ mlx5_stats_reset(struct rte_eth_dev *dev)
 		(*priv->txqs)[i]->stats =
 			(struct mlx5_txq_stats){ .idx = idx };
 	}
+	mlx5_read_ib_stat(priv, "out_of_buffer", &stats_ctrl->imissed_base);
 #ifndef MLX5_PMD_SOFT_COUNTERS
 	/* FIXME: reset hardware counters. */
 #endif
@@ -463,7 +484,7 @@ mlx5_xstats_reset(struct rte_eth_dev *dev)
 		return;
 	}
 	if (xstats_ctrl->stats_n != stats_n)
-		mlx5_xstats_init(dev);
+		mlx5_stats_init(dev);
 	ret = mlx5_read_dev_counters(dev, counters);
 	if (ret) {
 		DRV_LOG(ERR, "port %u cannot read device counters: %s",

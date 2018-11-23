@@ -181,7 +181,7 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 			dev->data->port_id);
 		goto error;
 	}
-	mlx5_xstats_init(dev);
+	mlx5_stats_init(dev);
 	ret = mlx5_traffic_enable(dev);
 	if (ret) {
 		DRV_LOG(DEBUG, "port %u failed to set defaults flows",

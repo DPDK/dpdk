@@ -91,6 +91,11 @@ struct mlx5_xstats_ctrl {
 	struct mlx5_counter_ctrl info[MLX5_MAX_XSTATS];
 };
 
+struct mlx5_stats_ctrl {
+	/* Base for imissed counter. */
+	uint64_t imissed_base;
+};
+
 /* Flow list . */
 TAILQ_HEAD(mlx5_flows, rte_flow);
 
@@ -224,6 +229,7 @@ struct priv {
 	LIST_HEAD(encap_decap, mlx5_flow_dv_encap_decap_resource) encaps_decaps;
 	uint32_t link_speed_capa; /* Link speed capabilities. */
 	struct mlx5_xstats_ctrl xstats_ctrl; /* Extended stats control. */
+	struct mlx5_stats_ctrl stats_ctrl; /* Stats control. */
 	int primary_socket; /* Unix socket for primary process. */
 	void *uar_base; /* Reserved address space for UAR mapping */
 	struct rte_intr_handle intr_handle_socket; /* Interrupt handler. */
@@ -316,7 +322,7 @@ void mlx5_allmulticast_disable(struct rte_eth_dev *dev);
 
 /* mlx5_stats.c */
 
-void mlx5_xstats_init(struct rte_eth_dev *dev);
+void mlx5_stats_init(struct rte_eth_dev *dev);
 int mlx5_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
 void mlx5_stats_reset(struct rte_eth_dev *dev);
 int mlx5_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *stats,
