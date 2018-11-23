@@ -556,9 +556,11 @@ int rte_eal_has_hugepages(void)
 int
 rte_eal_iopl_init(void)
 {
-	static int fd;
+	static int fd = -1;
 
-	fd = open("/dev/io", O_RDWR);
+	if (fd < 0)
+		fd = open("/dev/io", O_RDWR);
+
 	if (fd < 0)
 		return -1;
 	/* keep fd open for iopl */
