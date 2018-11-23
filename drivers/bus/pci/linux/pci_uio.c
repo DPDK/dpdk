@@ -296,7 +296,7 @@ pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
 	maps = uio_res->maps;
 
 	/* allocate memory to keep path */
-	maps[map_idx].path = rte_malloc(NULL, strlen(devname) + 1, 0);
+	maps[map_idx].path = rte_malloc(NULL, sizeof(devname), 0);
 	if (maps[map_idx].path == NULL) {
 		RTE_LOG(ERR, EAL, "Cannot allocate memory for path: %s\n",
 				strerror(errno));
