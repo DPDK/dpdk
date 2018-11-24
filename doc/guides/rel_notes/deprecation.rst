@@ -11,6 +11,12 @@ API and ABI deprecation notices are to be posted here.
 Deprecation Notices
 -------------------
 
+* linux: Linux kernel version 3.2 (which is the current minimum required
+  version for the DPDK) is not maintained anymore. Therefore the planned
+  minimum required kernel version for DPDK 19.02 will be the next oldest
+  Long Term Stable (LTS) version which is 3.16, but compatibility for
+  recent distribution kernels will be kept.
+
 * kvargs: The function ``rte_kvargs_process`` will get a new parameter
   for returning key match count. It will ease handling of no-match case.
 
