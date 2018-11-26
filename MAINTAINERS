@@ -101,7 +101,6 @@ F: GNUmakefile
 F: Makefile
 F: config/
 F: mk/
-F: pkg/
 F: buildtools/auto-config-h.sh
 F: buildtools/gen-build-mk.sh
 F: buildtools/gen-config-h.sh
