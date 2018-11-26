@@ -1156,18 +1156,18 @@ struct cmd_add_port_tm_node_wred_profile_result {
 	uint16_t port_id;
 	uint32_t wred_profile_id;
 	cmdline_fixed_string_t color_g;
-	uint16_t min_th_g;
-	uint16_t max_th_g;
+	uint64_t min_th_g;
+	uint64_t max_th_g;
 	uint16_t maxp_inv_g;
 	uint16_t wq_log2_g;
 	cmdline_fixed_string_t color_y;
-	uint16_t min_th_y;
-	uint16_t max_th_y;
+	uint64_t min_th_y;
+	uint64_t max_th_y;
 	uint16_t maxp_inv_y;
 	uint16_t wq_log2_y;
 	cmdline_fixed_string_t color_r;
-	uint16_t min_th_r;
-	uint16_t max_th_r;
+	uint64_t min_th_r;
+	uint64_t max_th_r;
 	uint16_t maxp_inv_r;
 	uint16_t wq_log2_r;
 };
@@ -1206,11 +1206,11 @@ cmdline_parse_token_string_t cmd_add_port_tm_node_wred_profile_color_g =
 cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_min_th_g =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
-			min_th_g, UINT16);
+			min_th_g, UINT64);
 cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_max_th_g =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
-			max_th_g, UINT16);
+			max_th_g, UINT64);
 cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_maxp_inv_g =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
@@ -1226,11 +1226,11 @@ cmdline_parse_token_string_t cmd_add_port_tm_node_wred_profile_color_y =
 cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_min_th_y =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
-			min_th_y, UINT16);
+			min_th_y, UINT64);
 cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_max_th_y =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
-			max_th_y, UINT16);
+			max_th_y, UINT64);
 cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_maxp_inv_y =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
@@ -1246,11 +1246,11 @@ cmdline_parse_token_string_t cmd_add_port_tm_node_wred_profile_color_r =
 cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_min_th_r =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
-			min_th_r, UINT16);
+			min_th_r, UINT64);
 cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_max_th_r =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
-			max_th_r, UINT16);
+			max_th_r, UINT64);
 cmdline_parse_token_num_t cmd_add_port_tm_node_wred_profile_maxp_inv_r =
 	TOKEN_NUM_INITIALIZER(
 		struct cmd_add_port_tm_node_wred_profile_result,
