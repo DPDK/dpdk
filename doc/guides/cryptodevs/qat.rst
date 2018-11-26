@@ -7,7 +7,7 @@ Intel(R) QuickAssist (QAT) Crypto Poll Mode Driver
 QAT documentation consists of three parts:
 
 * Details of the symmetric crypto service below.
-* Details of the `compression service <http://dpdk.org/doc/guides/compressdevs/qat_comp.html>`_
+* Details of the `compression service <http://doc.dpdk.org/guides/compressdevs/qat_comp.html>`_
   in the compressdev drivers section.
 * Details of building the common QAT infrastructure and the PMDs to support the
   above services. See :ref:`building_qat` below.
@@ -124,7 +124,7 @@ Configuring and Building the DPDK QAT PMDs
 
 
 Further information on configuring, building and installing DPDK is described
-`here <http://dpdk.org/doc/guides/linux_gsg/build_dpdk.html>`_.
+`here <http://doc.dpdk.org/guides/linux_gsg/build_dpdk.html>`_.
 
 
 Quick instructions for QAT cryptodev PMD are as follows:

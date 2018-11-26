@@ -5,7 +5,7 @@
 
 #include "test_pipeline_common.h"
 
-/* See http://dpdk.org/doc/guides/tools/testeventdev.html for test details */
+/* See http://doc.dpdk.org/guides/tools/testeventdev.html for test details */
 
 static __rte_always_inline int
 pipeline_queue_nb_event_queues(struct evt_options *opt)

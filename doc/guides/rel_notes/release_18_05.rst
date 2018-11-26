@@ -594,7 +594,7 @@ Known Issues
   The issue is explained in more detail, including potential workarounds,
   in the Bugzilla entry referenced below.
 
-  Bugzilla entry: https://dpdk.org/tracker/show_bug.cgi?id=50
+  Bugzilla entry: https://bugs.dpdk.org/show_bug.cgi?id=50
 
 * **pdump is not compatible with old applications.**
 
@@ -619,21 +619,21 @@ Known Issues
   needs to be run per-shell session, or before every test run. This change
   can also be made persistent by adding ``kern.coredump=0`` to ``/etc/sysctl.conf``.
 
-  Bugzilla entry: https://dpdk.org/tracker/show_bug.cgi?id=53
+  Bugzilla entry: https://bugs.dpdk.org/show_bug.cgi?id=53
 
 * **ixgbe PMD crash on hotplug detach when no VF created.**
 
   ixgbe PMD uninit path cause null pointer dereference because of port representor
   cleanup when number of VF is zero.
 
-  Bugzilla entry: https://dpdk.org/tracker/show_bug.cgi?id=57
+  Bugzilla entry: https://bugs.dpdk.org/show_bug.cgi?id=57
 
 * **Bonding PMD may fail to accept new slave ports in certain conditions.**
 
   In certain conditions when using testpmd,
   bonding may fail to register new slave ports.
 
-  Bugzilla entry: https://dpdk.org/tracker/show_bug.cgi?id=52.
+  Bugzilla entry: https://bugs.dpdk.org/show_bug.cgi?id=52.
 
 * **Unexpected performance regression in Vhost library.**
 
@@ -641,7 +641,7 @@ Known Issues
   drop. However, in some setups, bigger performance drops have been measured
   when running micro-benchmarks.
 
-  Bugzilla entry: https://dpdk.org/tracker/show_bug.cgi?id=48
+  Bugzilla entry: https://bugs.dpdk.org/show_bug.cgi?id=48
 
 
 Shared Library Versions

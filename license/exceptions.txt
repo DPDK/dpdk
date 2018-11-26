@@ -1,7 +1,7 @@
 This file will record any exceptions in DPDK Project with respect to DPDK
 IP License policy as defined in DPDK Charter available at:
 
-	http://dpdk.org/about/charter#ip
+	https://www.dpdk.org/charter/
 
 Note that following licenses are not exceptions:-
 	- BSD-3-Clause

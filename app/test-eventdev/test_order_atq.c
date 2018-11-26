@@ -7,7 +7,7 @@
 
 #include "test_order_common.h"
 
-/* See http://dpdk.org/doc/guides/tools/testeventdev.html for test details */
+/* See http://doc.dpdk.org/guides/tools/testeventdev.html for test details */
 
 static inline __attribute__((always_inline)) void
 order_atq_process_stage_0(struct rte_event *const ev)

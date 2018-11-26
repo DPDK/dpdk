@@ -83,7 +83,7 @@ added to by the developer.
 * **API documentation**
 
   The API documentation explains how to use the public DPDK functions.
-  The `API index page <http://dpdk.org/doc/api/>`_ shows the generated API documentation with related groups of functions.
+  The `API index page <http://doc.dpdk.org/api/>`_ shows the generated API documentation with related groups of functions.
 
   The API documentation should be updated via Doxygen comments when new functions are added.
 
@@ -653,7 +653,7 @@ The following are some guidelines for use of Doxygen in the DPDK API documentati
        */
 
   In the API documentation the functions will be rendered as links, see the
-  `online section of the rte_ethdev.h docs <http://dpdk.org/doc/api/rte__ethdev_8h.html>`_ that contains the above text.
+  `online section of the rte_ethdev.h docs <http://doc.dpdk.org/api/rte__ethdev_8h.html>`_ that contains the above text.
 
 * The ``@see`` keyword can be used to create a *see also* link to another file or library.
   This directive should be placed on one line at the bottom of the documentation section.

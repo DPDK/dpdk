@@ -4,7 +4,7 @@ INSTALLING DPDK USING THE MESON BUILD SYSTEM
 NOTE: Compiling and installing DPDK using ``meson`` and ``ninja``, rather
 than using ``make`` (GNU make) is EXPERIMENTAL. Official builds of DPDK
 should always be done using ``make``, as described in the ``Getting Started
-Guide`` documentation, and at "http://dpdk.org/doc/quick-start".
+Guide`` documentation, and at "http://core.dpdk.org/doc/quick-start".
 
 Summary
 --------

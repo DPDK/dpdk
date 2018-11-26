@@ -268,4 +268,4 @@ The typical procedure to achieve this is as follows:
      'not involved', while ``00`` or no mask means 'involved'.
 
    * For more details of the configuration, refer to the
-     `cloud filter test plan <http://dpdk.org/browse/tools/dts/tree/test_plans/cloud_filter_test_plan.rst>`_
+     `cloud filter test plan <http://git.dpdk.org/tools/dts/tree/test_plans/cloud_filter_test_plan.rst>`_

@@ -349,7 +349,7 @@ interconnection without introducing new concepts and whole new API to
 implement them. This is described in `flow API (rte_flow)`_.
 
 .. [6] `Generic flow API (rte_flow)
-       <http://dpdk.org/doc/guides/prog_guide/rte_flow.html>`_
+       <http://doc.dpdk.org/guides/prog_guide/rte_flow.html>`_
 
 Flow API (rte_flow)
 -------------------
@@ -737,7 +737,7 @@ Examples in subsequent sections apply to hypervisor applications only and
 are based on port representors **A**, **B** and **C**.
 
 .. [2] `Flow syntax
-    <http://dpdk.org/doc/guides/testpmd_app_ug/testpmd_funcs.html#flow-syntax>`_
+    <http://doc.dpdk.org/guides/testpmd_app_ug/testpmd_funcs.html#flow-syntax>`_
 
 Associating VF 1 with Physical Port 0
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

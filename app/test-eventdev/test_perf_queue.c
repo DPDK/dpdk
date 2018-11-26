@@ -4,7 +4,7 @@
 
 #include "test_perf_common.h"
 
-/* See http://dpdk.org/doc/guides/tools/testeventdev.html for test details */
+/* See http://doc.dpdk.org/guides/tools/testeventdev.html for test details */
 
 static inline int
 perf_queue_nb_event_queues(struct evt_options *opt)

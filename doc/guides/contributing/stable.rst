@@ -96,7 +96,7 @@ The Stable and LTS release are coordinated on the stable@dpdk.org mailing
 list.
 
 All fix patches to the master branch that are candidates for backporting
-should also be CCed to the `stable@dpdk.org <http://dpdk.org/ml/listinfo/stable>`_
+should also be CCed to the `stable@dpdk.org <http://mails.dpdk.org/listinfo/stable>`_
 mailing list.
 
 
@@ -107,10 +107,10 @@ A Stable Release will be released by:
 
 * Tagging the release with YY.MM.n (year, month, number).
 * Uploading a tarball of the release to dpdk.org.
-* Sending an announcement to the `announce@dpdk.org <http://dpdk.org/ml/listinfo/announce>`_
+* Sending an announcement to the `announce@dpdk.org <http://mails.dpdk.org/listinfo/announce>`_
   list.
 
-Stable releases are available on the `dpdk.org download page <http://dpdk.org/download>`_.
+Stable releases are available on the `dpdk.org download page <http://core.dpdk.org/download/>`_.
 
 
 ABI
