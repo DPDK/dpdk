@@ -2230,6 +2230,8 @@ memseg_primary_init(void)
 				socket_id, hugepage_sz);
 		}
 	}
+	/* number of memtypes could have been lower due to no NUMA support */
+	n_memtypes = cur_type;
 
 	/* set up limits for types */
 	max_mem = (uint64_t)RTE_MAX_MEM_MB << 20;
