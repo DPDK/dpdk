@@ -1,4 +1,3 @@
 DPDK_18.05 {
-
-        local: *;
+	local: *;
 };

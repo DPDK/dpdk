@@ -1,5 +1,5 @@
 EXPERIMENTAL {
-        global:
+	global:
 
 	rte_compressdev_capability_get;
 	rte_compressdev_close;
@@ -35,5 +35,5 @@ EXPERIMENTAL {
 	rte_comp_op_free;
 	rte_comp_op_pool_create;
 
-        local: *;
+	local: *;
 };

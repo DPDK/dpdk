@@ -46,10 +46,9 @@ DPDK_17.08 {
 
 	rte_eth_bond_8023ad_dedicated_queues_enable;
 	rte_eth_bond_8023ad_dedicated_queues_disable;
-        rte_eth_bond_8023ad_agg_selection_get;
-        rte_eth_bond_8023ad_agg_selection_set;
-        rte_eth_bond_8023ad_conf_get;
-        rte_eth_bond_8023ad_setup;
-
+	rte_eth_bond_8023ad_agg_selection_get;
+	rte_eth_bond_8023ad_agg_selection_set;
+	rte_eth_bond_8023ad_conf_get;
+	rte_eth_bond_8023ad_setup;
 
 } DPDK_16.07;

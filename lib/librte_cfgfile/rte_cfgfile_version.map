@@ -22,9 +22,9 @@ DPDK_16.04 {
 } DPDK_2.0;
 
 DPDK_17.05 {
-    global:
+	global:
 
-    rte_cfgfile_load_with_params;
+	rte_cfgfile_load_with_params;
 
 } DPDK_16.04;
 

@@ -35,14 +35,13 @@ DPDK_18.08 {
 } DPDK_17.11;
 
 EXPERIMENTAL {
-        global:
+	global:
 
-        rte_empty_poll_detection;
-        rte_power_empty_poll_stat_fetch;
-        rte_power_empty_poll_stat_free;
-        rte_power_empty_poll_stat_init;
-        rte_power_empty_poll_stat_update;
-        rte_power_poll_stat_fetch;
-        rte_power_poll_stat_update;
-
+	rte_empty_poll_detection;
+	rte_power_empty_poll_stat_fetch;
+	rte_power_empty_poll_stat_free;
+	rte_power_empty_poll_stat_init;
+	rte_power_empty_poll_stat_update;
+	rte_power_poll_stat_fetch;
+	rte_power_poll_stat_update;
 };
