@@ -2,7 +2,7 @@
 # Copyright 2014 6WIND S.A.
 
 Name: dpdk
-Version: 18.08
+Version: 18.11
 Release: 1
 Packager: packaging@6wind.com
 URL: http://dpdk.org
