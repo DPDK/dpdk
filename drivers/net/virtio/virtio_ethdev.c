@@ -335,8 +335,10 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 	void *sw_ring = NULL;
 	int queue_type = virtio_get_queue_type(hw, vtpci_queue_idx);
 	int ret;
+	int numa_node = dev->device->numa_node;
 
-	PMD_INIT_LOG(DEBUG, "setting up queue: %u", vtpci_queue_idx);
+	PMD_INIT_LOG(INFO, "setting up queue: %u on NUMA node %d",
+			vtpci_queue_idx, numa_node);
 
 	/*
 	 * Read the virtqueue size from the Queue Size field
@@ -372,7 +374,7 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 	}
 
 	vq = rte_zmalloc_socket(vq_name, size, RTE_CACHE_LINE_SIZE,
-				SOCKET_ID_ANY);
+				numa_node);
 	if (vq == NULL) {
 		PMD_INIT_LOG(ERR, "can not allocate vq");
 		return -ENOMEM;
@@ -392,7 +394,7 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 		     size, vq->vq_ring_size);
 
 	mz = rte_memzone_reserve_aligned(vq_name, vq->vq_ring_size,
-			SOCKET_ID_ANY, RTE_MEMZONE_IOVA_CONTIG,
+			numa_node, RTE_MEMZONE_IOVA_CONTIG,
 			VIRTIO_PCI_VRING_ALIGN);
 	if (mz == NULL) {
 		if (rte_errno == EEXIST)
@@ -418,7 +420,7 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 		snprintf(vq_hdr_name, sizeof(vq_hdr_name), "port%d_vq%d_hdr",
 			 dev->data->port_id, vtpci_queue_idx);
 		hdr_mz = rte_memzone_reserve_aligned(vq_hdr_name, sz_hdr_mz,
-				SOCKET_ID_ANY, RTE_MEMZONE_IOVA_CONTIG,
+				numa_node, RTE_MEMZONE_IOVA_CONTIG,
 				RTE_CACHE_LINE_SIZE);
 		if (hdr_mz == NULL) {
 			if (rte_errno == EEXIST)
@@ -435,7 +437,7 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 			       sizeof(vq->sw_ring[0]);
 
 		sw_ring = rte_zmalloc_socket("sw_ring", sz_sw,
-				RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+				RTE_CACHE_LINE_SIZE, numa_node);
 		if (!sw_ring) {
 			PMD_INIT_LOG(ERR, "can not allocate RX soft ring");
 			ret = -ENOMEM;
