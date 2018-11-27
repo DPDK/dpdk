@@ -489,6 +489,9 @@ qva_to_vva(struct virtio_net *dev, uint64_t qva, uint64_t *len)
 	struct rte_vhost_mem_region *r;
 	uint32_t i;
 
+	if (unlikely(!dev || !dev->mem))
+		goto out_error;
+
 	/* Find the region where the address lives. */
 	for (i = 0; i < dev->mem->nregions; i++) {
 		r = &dev->mem->regions[i];
@@ -503,6 +506,7 @@ qva_to_vva(struct virtio_net *dev, uint64_t qva, uint64_t *len)
 			       r->host_user_addr;
 		}
 	}
+out_error:
 	*len = 0;
 
 	return 0;
