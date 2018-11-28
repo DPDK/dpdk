@@ -654,6 +654,7 @@ rte_sched_port_config(struct rte_sched_port_params *params)
 				params->red_params[i][j].min_th,
 				params->red_params[i][j].max_th,
 				params->red_params[i][j].maxp_inv) != 0) {
+				rte_free(port);
 				return NULL;
 			}
 		}
@@ -713,6 +714,7 @@ rte_sched_port_config(struct rte_sched_port_params *params)
 				    bmp_mem_size);
 	if (port->bmp == NULL) {
 		RTE_LOG(ERR, SCHED, "Bitmap init error\n");
+		rte_free(port);
 		return NULL;
 	}
 
