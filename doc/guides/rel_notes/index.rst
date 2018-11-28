@@ -8,6 +8,7 @@ Release Notes
     :maxdepth: 1
     :numbered:
 
+    release_19_02
     release_18_11
     release_18_08
     release_18_05
