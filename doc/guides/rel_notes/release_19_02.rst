@@ -55,35 +55,6 @@ New Features
      =========================================================
 
 
-API Changes
------------
-
-.. This section should contain API changes. Sample format:
-
-   * Add a short 1-2 sentence description of the API change.
-     Use fixed width quotes for ``function_names`` or ``struct_names``.
-     Use the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
-
-
-ABI Changes
------------
-
-.. This section should contain ABI changes. Sample format:
-
-   * Add a short 1-2 sentence description of the ABI change
-     that was announced in the previous releases and made in this release.
-     Use fixed width quotes for ``function_names`` or ``struct_names``.
-     Use the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
-
-
 Removed Items
 -------------
 
@@ -97,15 +68,47 @@ Removed Items
    =========================================================
 
 
+API Changes
+-----------
+
+.. This section should contain API changes. Sample format:
+
+   * sample: Add a short 1-2 sentence description of the API change
+     which was announced in the previous releases and made in this release.
+     Start with a scope label like "ethdev:".
+     Use fixed width quotes for ``function_names`` or ``struct_names``.
+     Use the past tense.
+
+   This section is a comment. Do not overwrite or remove it.
+   Also, make sure to start the actual text at the margin.
+   =========================================================
+
+
+ABI Changes
+-----------
+
+.. This section should contain ABI changes. Sample format:
+
+   * sample: Add a short 1-2 sentence description of the ABI change
+     which was announced in the previous releases and made in this release.
+     Start with a scope label like "ethdev:".
+     Use fixed width quotes for ``function_names`` or ``struct_names``.
+     Use the past tense.
+
+   This section is a comment. Do not overwrite or remove it.
+   Also, make sure to start the actual text at the margin.
+   =========================================================
+
+
 Shared Library Versions
 -----------------------
 
 .. Update any library version updated in this release
    and prepend with a ``+`` sign, like this:
 
-     librte_acl.so.2
-   + librte_cfgfile.so.2
-     librte_cmdline.so.2
+     libfoo.so.1
+   + libupdated.so.2
+     libbar.so.1
 
    This section is a comment. Do not overwrite or remove it.
    =========================================================
