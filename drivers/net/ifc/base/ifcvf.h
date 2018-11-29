@@ -121,7 +121,7 @@ struct ifcvf_hw {
 	u8     notify_region;
 	u32    notify_off_multiplier;
 	struct ifcvf_pci_common_cfg *common_cfg;
-	struct ifcvf_net_device_config *dev_cfg;
+	struct ifcvf_net_config *dev_cfg;
 	u8     *isr;
 	u16    *notify_base;
 	u16    *notify_addr[IFCVF_MAX_QUEUES * 2];
