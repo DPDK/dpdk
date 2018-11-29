@@ -912,7 +912,7 @@ rxa_intr_ring_enqueue(struct rte_event_eth_rx_adapter *rx_adapter,
 		 */
 		if (err)
 			RTE_EDEV_LOG_ERR("Failed to enqueue interrupt"
-				" to ring: %s", strerror(err));
+				" to ring: %s", strerror(-err));
 		else
 			rte_eth_dev_rx_intr_disable(port_id, queue);
 	}
