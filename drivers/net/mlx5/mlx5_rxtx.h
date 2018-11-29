@@ -733,10 +733,6 @@ mlx5_tx_dbrec(struct mlx5_txq_data *txq, volatile struct mlx5_wqe *wqe)
  *   Pointer to the Tx queue.
  * @param buf
  *   Pointer to the mbuf.
- * @param tso
- *   TSO offloads enabled.
- * @param vlan
- *   VLAN offloads enabled
  * @param offsets
  *   Pointer to the SWP header offsets.
  * @param swp_types
