@@ -31,6 +31,7 @@ build_map_changes()
 		# Triggering this rule sets in_sec to 1, which actives the
 		# symbol rule below
 		/^.*{/ {
+			gsub("+", "");
 			if (in_map == 1) {
 				sec=$(NF-1); in_sec=1;
 			}
