@@ -115,8 +115,9 @@ check_for_rule_violations()
 				if [ $? -ne 0 ]
 				then
 					echo -n "ERROR: symbol $symname "
-					echo -n "is added in a section "
-					echo -n "other than the EXPERIMENTAL "
+					echo -n "is added in the $secname "
+					echo -n "section, but is expected to "
+					echo -n "be added in the EXPERIMENTAL "
 					echo "section of the version map"
 					ret=1
 				fi
