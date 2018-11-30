@@ -7459,9 +7459,12 @@ i40e_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint64_t hena;
+	int ret;
 
-	i40e_get_rss_key(pf->main_vsi, rss_conf->rss_key,
+	ret = i40e_get_rss_key(pf->main_vsi, rss_conf->rss_key,
 			 &rss_conf->rss_key_len);
+	if (ret)
+		return ret;
 
 	hena = (uint64_t)i40e_read_rx_ctl(hw, I40E_PFQF_HENA(0));
 	hena |= ((uint64_t)i40e_read_rx_ctl(hw, I40E_PFQF_HENA(1))) << 32;
