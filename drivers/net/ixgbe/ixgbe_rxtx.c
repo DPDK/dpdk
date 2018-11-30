@@ -2867,7 +2867,8 @@ ixgbe_get_rx_port_offloads(struct rte_eth_dev *dev)
 	 * mode.
 	 */
 	if ((hw->mac.type == ixgbe_mac_82599EB ||
-	     hw->mac.type == ixgbe_mac_X540) &&
+	     hw->mac.type == ixgbe_mac_X540 ||
+	     hw->mac.type == ixgbe_mac_X550) &&
 	    !RTE_ETH_DEV_SRIOV(dev).active)
 		offloads |= DEV_RX_OFFLOAD_TCP_LRO;
 
