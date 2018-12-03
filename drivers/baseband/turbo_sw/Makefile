@@ -27,8 +27,8 @@ CFLAGS += -I$(FLEXRAN_SDK)/lib_turbo
 CFLAGS += -I$(FLEXRAN_SDK)/lib_crc
 CFLAGS += -I$(FLEXRAN_SDK)/lib_rate_matching
 
-LDLIBS += -L$(FLEXRAN_SDK)/lib_crc -lcrc
 LDLIBS += -L$(FLEXRAN_SDK)/lib_turbo -lturbo
+LDLIBS += -L$(FLEXRAN_SDK)/lib_crc -lcrc
 LDLIBS += -L$(FLEXRAN_SDK)/lib_rate_matching -lrate_matching
 LDLIBS += -L$(FLEXRAN_SDK)/lib_common -lcommon
 LDLIBS += -lstdc++ -lirc -limf -lipps
