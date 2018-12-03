@@ -1893,7 +1893,7 @@ rte_event_dev_xstats_names_get(uint8_t dev_id,
  * @param ids
  *   The id numbers of the stats to get. The ids can be got from the stat
  *   position in the stat list from rte_event_dev_get_xstats_names(), or
- *   by using rte_eventdev_get_xstats_by_name()
+ *   by using rte_event_dev_xstats_by_name_get().
  * @param[out] values
  *   The values for each stats request by ID.
  * @param n
@@ -1921,7 +1921,7 @@ rte_event_dev_xstats_get(uint8_t dev_id,
  *   The stat name to retrieve
  * @param[out] id
  *   If non-NULL, the numerical id of the stat will be returned, so that further
- *   requests for the stat can be got using rte_eventdev_xstats_get, which will
+ *   requests for the stat can be got using rte_event_dev_xstats_get, which will
  *   be faster as it doesn't need to scan a list of names for the stat.
  *   If the stat cannot be found, the id returned will be (unsigned)-1.
  * @return
