@@ -2453,6 +2453,8 @@ i40e_dev_stop(struct rte_eth_dev *dev)
 	pf->tm_conf.committed = false;
 
 	hw->adapter_stopped = 1;
+
+	pf->adapter->rss_reta_updated = 0;
 }
 
 static void
@@ -4263,6 +4265,8 @@ i40e_dev_rss_reta_update(struct rte_eth_dev *dev,
 			lut[i] = reta_conf[idx].reta[shift];
 	}
 	ret = i40e_set_rss_lut(pf->main_vsi, lut, reta_size);
+
+	pf->adapter->rss_reta_updated = 1;
 
 out:
 	rte_free(lut);
@@ -8501,13 +8505,16 @@ i40e_pf_config_rss(struct i40e_pf *pf)
 		return -ENOTSUP;
 	}
 
-	for (i = 0, j = 0; i < hw->func_caps.rss_table_size; i++, j++) {
-		if (j == num)
-			j = 0;
-		lut = (lut << 8) | (j & ((0x1 <<
-			hw->func_caps.rss_table_entry_width) - 1));
-		if ((i & 3) == 3)
-			I40E_WRITE_REG(hw, I40E_PFQF_HLUT(i >> 2), lut);
+	if (pf->adapter->rss_reta_updated == 0) {
+		for (i = 0, j = 0; i < hw->func_caps.rss_table_size; i++, j++) {
+			if (j == num)
+				j = 0;
+			lut = (lut << 8) | (j & ((0x1 <<
+				hw->func_caps.rss_table_entry_width) - 1));
+			if ((i & 3) == 3)
+				I40E_WRITE_REG(hw, I40E_PFQF_HLUT(i >> 2),
+					       rte_bswap32(lut));
+		}
 	}
 
 	rss_conf = pf->dev_data->dev_conf.rx_adv_conf.rss_conf;
