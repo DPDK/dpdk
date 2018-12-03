@@ -1273,7 +1273,7 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_vsi *vsi;
 	int ret;
-	uint32_t len;
+	uint32_t len, val;
 	uint8_t aq_fail = 0;
 
 	PMD_INIT_FUNC_TRACE();
@@ -1323,6 +1323,15 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 	 * for internal switching.
 	 */
 	hw->switch_tag = 0xffff;
+
+	val = I40E_READ_REG(hw, I40E_GL_FWSTS);
+	if (val & I40E_GL_FWSTS_FWS1B_MASK) {
+		PMD_INIT_LOG(ERR, "\nERROR: "
+			"Firmware recovery mode detected. Limiting functionality.\n"
+			"Refer to the Intel(R) Ethernet Adapters and Devices "
+			"User Guide for details on firmware recovery mode.");
+		return -EIO;
+	}
 
 	/* Check if need to support multi-driver */
 	i40e_support_multi_driver(dev);
