@@ -775,6 +775,8 @@ virtio_update_packet_stats(struct virtnet_stats *stats, struct rte_mbuf *mbuf)
 	uint32_t s = mbuf->pkt_len;
 	struct ether_addr *ea;
 
+	stats->bytes += s;
+
 	if (s == 64) {
 		stats->size_bins[1]++;
 	} else if (s > 64 && s < 1024) {
@@ -806,7 +808,6 @@ virtio_rx_stats_updated(struct virtnet_rx *rxvq, struct rte_mbuf *m)
 {
 	VIRTIO_DUMP_PACKET(m, m->data_len);
 
-	rxvq->stats.bytes += m->pkt_len;
 	virtio_update_packet_stats(&rxvq->stats, m);
 }
 
@@ -1310,7 +1311,6 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 		VIRTIO_DUMP_PACKET(rx_pkts[nb_rx],
 			rx_pkts[nb_rx]->data_len);
 
-		rxvq->stats.bytes += rx_pkts[nb_rx]->pkt_len;
 		virtio_update_packet_stats(&rxvq->stats, rx_pkts[nb_rx]);
 		nb_rx++;
 	}
@@ -1423,7 +1423,6 @@ virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		virtqueue_enqueue_xmit(txvq, txm, slots, use_indirect,
 			can_push, 0);
 
-		txvq->stats.bytes += txm->pkt_len;
 		virtio_update_packet_stats(&txvq->stats, txm);
 	}
 
@@ -1498,7 +1497,6 @@ virtio_xmit_pkts_inorder(void *tx_queue,
 			inorder_pkts[nb_inorder_pkts] = txm;
 			nb_inorder_pkts++;
 
-			txvq->stats.bytes += txm->pkt_len;
 			virtio_update_packet_stats(&txvq->stats, txm);
 			continue;
 		}
@@ -1529,7 +1527,6 @@ virtio_xmit_pkts_inorder(void *tx_queue,
 		/* Enqueue Packet buffers */
 		virtqueue_enqueue_xmit(txvq, txm, slots, 0, 0, 1);
 
-		txvq->stats.bytes += txm->pkt_len;
 		virtio_update_packet_stats(&txvq->stats, txm);
 	}
 
