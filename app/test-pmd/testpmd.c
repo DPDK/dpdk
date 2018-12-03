@@ -3104,7 +3104,7 @@ main(int argc, char** argv)
 
 #ifdef RTE_LIBRTE_PDUMP
 	/* initialize packet capture framework */
-	rte_pdump_init(NULL);
+	rte_pdump_init();
 #endif
 
 	count = 0;

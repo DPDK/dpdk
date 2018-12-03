@@ -89,6 +89,10 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* pdump: The ``rte_pdump_set_socket_dir()``, the parameter ``path`` of
+  ``rte_pdump_init()`` and enum ``rte_pdump_socktype`` were deprecated
+  since 18.05 and are removed in this release.
+
 
 ABI Changes
 -----------
@@ -159,7 +163,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_metrics.so.1
      librte_net.so.1
      librte_pci.so.1
-     librte_pdump.so.2
+   + librte_pdump.so.3
      librte_pipeline.so.3
      librte_pmd_bnxt.so.2
      librte_pmd_bond.so.2

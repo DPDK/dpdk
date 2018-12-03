@@ -29,25 +29,16 @@ enum {
 	RTE_PDUMP_FLAG_RXTX = (RTE_PDUMP_FLAG_RX|RTE_PDUMP_FLAG_TX)
 };
 
-enum rte_pdump_socktype {
-	RTE_PDUMP_SOCKET_SERVER = 1,
-	RTE_PDUMP_SOCKET_CLIENT = 2
-};
-
 /**
  * Initialize packet capturing handling
  *
  * Register the IPC action for communication with target (primary) process.
  *
- * @param path
- * This parameter is going to be deprecated; it was used for specifying the
- * directory path for server socket.
- *
  * @return
  *    0 on success, -1 on error
  */
 int
-rte_pdump_init(const char *path);
+rte_pdump_init(void);
 
 /**
  * Un initialize packet capturing handling
@@ -161,29 +152,6 @@ rte_pdump_enable_by_deviceid(char *device_id, uint16_t queue,
 int
 rte_pdump_disable_by_deviceid(char *device_id, uint16_t queue,
 				uint32_t flags);
-
-/**
- * @deprecated
- * Allows applications to set server and client socket paths.
- * If specified path is null default path will be selected, i.e.
- *"/var/run/" for root user and "$HOME" for non root user.
- * Clients also need to call this API to set their server path if the
- * server path is different from default path.
- * This API is not thread-safe.
- *
- * @param path
- * directory path for server or client socket.
- * @param type
- * specifies RTE_PDUMP_SOCKET_SERVER if socket path is for server.
- * (or)
- * specifies RTE_PDUMP_SOCKET_CLIENT if socket path is for client.
- *
- * @return
- * 0 on success, -EINVAL on error
- *
- */
-__rte_deprecated int
-rte_pdump_set_socket_dir(const char *path, enum rte_pdump_socktype type);
 
 #ifdef __cplusplus
 }

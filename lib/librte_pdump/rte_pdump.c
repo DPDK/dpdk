@@ -406,7 +406,7 @@ pdump_server(const struct rte_mp_msg *mp_msg, const void *peer)
 }
 
 int
-rte_pdump_init(const char *path __rte_unused)
+rte_pdump_init(void)
 {
 	return rte_mp_action_register(PDUMP_MP, pdump_server);
 }
@@ -615,11 +615,4 @@ rte_pdump_disable_by_deviceid(char *device_id, uint16_t queue,
 						DISABLE, NULL, NULL, NULL);
 
 	return ret;
-}
-
-int
-rte_pdump_set_socket_dir(const char *path __rte_unused,
-			 enum rte_pdump_socktype type __rte_unused)
-{
-	return 0;
 }

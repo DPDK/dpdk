@@ -34,10 +34,6 @@ or disable the packet capture, and to uninitialize it:
 * ``rte_pdump_uninit()``:
   This API uninitializes the packet capture framework.
 
-* ``rte_pdump_set_socket_dir()``:
-  This API sets the server and client socket paths.
-  Note: This API is not thread-safe.
-
 
 Operation
 ---------
@@ -60,8 +56,8 @@ enabling or disabling the packet capture.
 Implementation Details
 ----------------------
 
-The library API ``rte_pdump_init()``, initializes the packet capture framework by creating the pthread and the server
-socket. The server socket in the pthread context will be listening to the client requests to enable or disable the
+The library API ``rte_pdump_init()``, initializes the packet capture framework by creating the pdump server by calling
+``rte_mp_action_register()`` function. The server will listen to the client requests to enable or disable the
 packet capture.
 
 The library APIs ``rte_pdump_enable()`` and ``rte_pdump_enable_by_deviceid()`` enables the packet capture.
@@ -79,14 +75,8 @@ capture by removing the Ethernet RX and TX callbacks for the given port or devic
 also sends the response back to the client about the status of the request that was processed. After the response is
 received from the server, the client socket is closed.
 
-The library API ``rte_pdump_uninit()``, uninitializes the packet capture framework by closing the pthread and the
-server socket.
-
-The library API ``rte_pdump_set_socket_dir()``, sets the given path as either server socket path
-or client socket path based on the ``type`` argument of the API.
-If the given path is ``NULL``, default path will be selected, i.e. either ``/var/run/.dpdk`` for root user or ``~/.dpdk``
-for non root user. Clients also need to call this API to set their server socket path if the server socket
-path is different from default path.
+The library API ``rte_pdump_uninit()``, uninitializes the packet capture framework by calling ``rte_mp_action_unregister()``
+function.
 
 
 Use Case: Packet Capturing

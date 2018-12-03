@@ -98,10 +98,3 @@ Deprecation Notices
   - The size and layout of ``rte_cryptodev_qp_conf`` and syntax of
     ``rte_cryptodev_queue_pair_setup`` will change to to allow to use
     two different mempools for crypto and device private sessions.
-
-* pdump: As we changed to use generic IPC, some changes in APIs and structure
-  are expected in subsequent release.
-
-  - ``rte_pdump_set_socket_dir`` will be removed;
-  - The parameter, ``path``, of ``rte_pdump_init`` will be removed;
-  - The enum ``rte_pdump_socktype`` will be removed.

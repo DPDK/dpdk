@@ -6,7 +6,6 @@ DPDK_16.07 {
 	rte_pdump_enable;
 	rte_pdump_enable_by_deviceid;
 	rte_pdump_init;
-	rte_pdump_set_socket_dir;
 	rte_pdump_uninit;
 
 	local: *;
