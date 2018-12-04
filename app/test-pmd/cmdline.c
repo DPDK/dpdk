@@ -15567,10 +15567,9 @@ static void cmd_set_mplsogre_encap_parsed(void *parsed_result,
 	struct cmd_set_mplsogre_encap_result *res = parsed_result;
 	union {
 		uint32_t mplsogre_label;
-		uint8_t label[3];
+		uint8_t label[4];
 	} id = {
-		.mplsogre_label =
-			rte_cpu_to_be_32(res->label) & RTE_BE32(0x00ffffff),
+		.mplsogre_label = rte_cpu_to_be_32(res->label<<12),
 	};
 
 	if (strcmp(res->mplsogre, "mplsogre_encap") == 0)
@@ -15583,7 +15582,7 @@ static void cmd_set_mplsogre_encap_parsed(void *parsed_result,
 		mplsogre_encap_conf.select_ipv4 = 0;
 	else
 		return;
-	rte_memcpy(mplsogre_encap_conf.label, &id.label[1], 3);
+	rte_memcpy(mplsogre_encap_conf.label, &id.label, 3);
 	if (mplsogre_encap_conf.select_ipv4) {
 		IPV4_ADDR_TO_UINT(res->ip_src, mplsogre_encap_conf.ipv4_src);
 		IPV4_ADDR_TO_UINT(res->ip_dst, mplsogre_encap_conf.ipv4_dst);
