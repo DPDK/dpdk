@@ -15804,10 +15804,9 @@ static void cmd_set_mplsoudp_encap_parsed(void *parsed_result,
 	struct cmd_set_mplsoudp_encap_result *res = parsed_result;
 	union {
 		uint32_t mplsoudp_label;
-		uint8_t label[3];
+		uint8_t label[4];
 	} id = {
-		.mplsoudp_label =
-			rte_cpu_to_be_32(res->label) & RTE_BE32(0x00ffffff),
+		.mplsoudp_label = rte_cpu_to_be_32(res->label<<12),
 	};
 
 	if (strcmp(res->mplsoudp, "mplsoudp_encap") == 0)
@@ -15820,7 +15819,7 @@ static void cmd_set_mplsoudp_encap_parsed(void *parsed_result,
 		mplsoudp_encap_conf.select_ipv4 = 0;
 	else
 		return;
-	rte_memcpy(mplsoudp_encap_conf.label, &id.label[1], 3);
+	rte_memcpy(mplsoudp_encap_conf.label, &id.label, 3);
 	mplsoudp_encap_conf.udp_src = rte_cpu_to_be_16(res->udp_src);
 	mplsoudp_encap_conf.udp_dst = rte_cpu_to_be_16(res->udp_dst);
 	if (mplsoudp_encap_conf.select_ipv4) {
