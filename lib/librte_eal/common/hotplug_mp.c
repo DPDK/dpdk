@@ -200,6 +200,11 @@ handle_secondary_request(const struct rte_mp_msg *msg, const void *peer)
 	 * when it is ready.
 	 */
 	bundle->peer = strdup(peer);
+	if (bundle->peer == NULL) {
+		free(bundle);
+		RTE_LOG(ERR, EAL, "not enough memory\n");
+		return send_response_to_secondary(req, -ENOMEM, peer);
+	}
 
 	/**
 	 * We are at IPC callback thread, sync IPC is not allowed due to
@@ -313,6 +318,7 @@ handle_primary_request(const struct rte_mp_msg *msg, const void *peer)
 
 	bundle = calloc(1, sizeof(*bundle));
 	if (bundle == NULL) {
+		RTE_LOG(ERR, EAL, "not enough memory\n");
 		resp->result = -ENOMEM;
 		ret = rte_mp_reply(&mp_resp, peer);
 		if (ret)
@@ -327,6 +333,15 @@ handle_primary_request(const struct rte_mp_msg *msg, const void *peer)
 	 * when it is ready.
 	 */
 	bundle->peer = (void *)strdup(peer);
+	if (bundle->peer == NULL) {
+		RTE_LOG(ERR, EAL, "not enough memory\n");
+		free(bundle);
+		resp->result = -ENOMEM;
+		ret = rte_mp_reply(&mp_resp, peer);
+		if (ret)
+			RTE_LOG(ERR, EAL, "failed to send reply to primary request\n");
+		return ret;
+	}
 
 	/**
 	 * We are at IPC callback thread, sync IPC is not allowed due to
