@@ -357,6 +357,12 @@ int vmbus_uio_get_subchan(struct vmbus_channel *primary,
 			continue;
 		}
 
+		if (!vmbus_isnew_subchannel(primary, relid))
+			continue;	/* Already know about you */
+
+		if (!vmbus_uio_ring_present(dev, relid))
+			continue;	/* Ring may not be ready yet */
+
 		snprintf(subchan_path, sizeof(subchan_path), "%s/%lu",
 			 chan_path, relid);
 		err = vmbus_uio_sysfs_read(subchan_path, "subchannel_id",
@@ -369,12 +375,6 @@ int vmbus_uio_get_subchan(struct vmbus_channel *primary,
 
 		if (subid == 0)
 			continue;	/* skip primary channel */
-
-		if (!vmbus_isnew_subchannel(primary, relid))
-			continue;
-
-		if (!vmbus_uio_ring_present(dev, relid))
-			continue;	/* Ring may not be ready yet */
 
 		err = vmbus_uio_sysfs_read(subchan_path, "monitor_id",
 					   &monid, UINT8_MAX);
