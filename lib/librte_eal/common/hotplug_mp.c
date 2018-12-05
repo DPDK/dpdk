@@ -208,6 +208,8 @@ handle_secondary_request(const struct rte_mp_msg *msg, const void *peer)
 	ret = rte_eal_alarm_set(1, __handle_secondary_request, bundle);
 	if (ret != 0) {
 		RTE_LOG(ERR, EAL, "failed to add mp task\n");
+		free(bundle->peer);
+		free(bundle);
 		return send_response_to_secondary(req, ret, peer);
 	}
 	return 0;
@@ -332,6 +334,8 @@ handle_primary_request(const struct rte_mp_msg *msg, const void *peer)
 	 */
 	ret = rte_eal_alarm_set(1, __handle_primary_request, bundle);
 	if (ret != 0) {
+		free(bundle->peer);
+		free(bundle);
 		resp->result = ret;
 		ret = rte_mp_reply(&mp_resp, peer);
 		if  (ret != 0) {
