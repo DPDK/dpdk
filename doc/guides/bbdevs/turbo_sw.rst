@@ -47,8 +47,8 @@ Design Center <https://www.intel.com/content/www/us/en/design/resource-design-ce
 needs to be registered.
 
 Once registered, the user needs to log in, and look for
-*Intel FlexRAN Software Release Package -1-6-0* to download or directly through
-this `link <https://cdrdv2.intel.com/v1/dl/getContent/600609>`_.
+*Intel FlexRAN Software Release Package -18-09* to download or directly through
+this `link <https://cdrdv2.intel.com/v1/dl/getContent/605167>`_.
 
 After download is complete, the user needs to unpack and compile on their
 system before building DPDK.
@@ -65,6 +65,7 @@ The following table maps DPDK versions with past FlexRAN SDK releases:
    18.02                  1.3.0
    18.05                  1.4.0
    18.08                  1.6.0
+   19.02                  18.09
    =====================  ============================
 
 FlexRAN SDK Installation
@@ -83,25 +84,25 @@ The following instructions should be followed in this exact order:
 
         source <path-to-icc-compiler-install-folder>/linux/bin/compilervars.sh intel64 -platform linux
 
-#. Extract the ``flexran-1-6-0-tar.gz.zip`` package:
+#. Extract the ``605167-flexran-18-09-tar.gz`` package:
 
     .. code-block:: console
 
-        unzip flexran-1-6-0-tar.gz.zip
-        tar xvzf flexran-1-6-0-tar.gz -C FlexRAN-1.6.0/
+        mkdir FlexRAN-18.09
+        tar xvzf 605167-flexran-18-09-tar.gz -C FlexRAN-18.09/
 
 #. Run the SDK extractor script and accept the license:
 
     .. code-block:: console
 
-        cd <path-to-workspace>/FlexRAN-1.6.0/
-        ./SDK-R1.6.0.sh
+        cd <path-to-workspace>/FlexRAN-18.09/
+        ./SDK-18.09.sh
 
 #. Generate makefiles based on system configuration:
 
     .. code-block:: console
 
-        cd <path-to-workspace>/FlexRAN-1.6.0/SDK-R1.6.0/sdk/
+        cd <path-to-workspace>/FlexRAN-18.09/SDK-18.09/sdk/
         ./create-makefiles-linux.sh
 
 #. A build folder is generated in this form ``build-<ISA>-<CC>``, enter that
@@ -128,8 +129,8 @@ Example:
 
 .. code-block:: console
 
-    export FLEXRAN_SDK=<path-to-workspace>/FlexRAN-1.6.0/SDK-R1.6.0/sdk/build-avx2-icc/install
-    export DIR_WIRELESS_SDK=<path-to-workspace>/FlexRAN-1.6.0/SDK-R1.6.0/sdk/
+    export FLEXRAN_SDK=<path-to-workspace>/FlexRAN-18.09/SDK-18.09/sdk/build-avx2-icc/install
+    export DIR_WIRELESS_SDK=<path-to-workspace>/FlexRAN-18.09/SDK-18.09/sdk/
 
 
 * Set ``CONFIG_RTE_LIBRTE_PMD_BBDEV_TURBO_SW=y`` in DPDK common configuration

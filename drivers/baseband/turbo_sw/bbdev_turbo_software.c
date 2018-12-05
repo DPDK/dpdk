@@ -835,86 +835,6 @@ enqueue_enc_all_ops(struct turbo_sw_queue *q, struct rte_bbdev_enc_op **ops,
 			NULL);
 }
 
-/* Remove the padding bytes from a cyclic buffer.
- * The input buffer is a data stream wk as described in 3GPP TS 36.212 section
- * 5.1.4.1.2 starting from w0 and with length Ncb bytes.
- * The output buffer is a data stream wk with pruned padding bytes. It's length
- * is 3*D bytes and the order of non-padding bytes is preserved.
- */
-static inline void
-remove_nulls_from_circular_buf(const uint8_t *in, uint8_t *out, uint16_t k,
-		uint16_t ncb)
-{
-	uint32_t in_idx, out_idx, c_idx;
-	const uint32_t d = k + 4;
-	const uint32_t kw = (ncb / 3);
-	const uint32_t nd = kw - d;
-	const uint32_t r_subblock = kw / RTE_BBDEV_C_SUBBLOCK;
-	/* Inter-column permutation pattern */
-	const uint32_t P[RTE_BBDEV_C_SUBBLOCK] = {0, 16, 8, 24, 4, 20, 12, 28,
-			2, 18, 10, 26, 6, 22, 14, 30, 1, 17, 9, 25, 5, 21, 13,
-			29, 3, 19, 11, 27, 7, 23, 15, 31};
-	in_idx = 0;
-	out_idx = 0;
-
-	/* The padding bytes are at the first Nd positions in the first row. */
-	for (c_idx = 0; in_idx < kw; in_idx += r_subblock, ++c_idx) {
-		if (P[c_idx] < nd) {
-			rte_memcpy(&out[out_idx], &in[in_idx + 1],
-					r_subblock - 1);
-			out_idx += r_subblock - 1;
-		} else {
-			rte_memcpy(&out[out_idx], &in[in_idx], r_subblock);
-			out_idx += r_subblock;
-		}
-	}
-
-	/* First and second parity bits sub-blocks are interlaced. */
-	for (c_idx = 0; in_idx < ncb - 2 * r_subblock;
-			in_idx += 2 * r_subblock, ++c_idx) {
-		uint32_t second_block_c_idx = P[c_idx];
-		uint32_t third_block_c_idx = P[c_idx] + 1;
-
-		if (second_block_c_idx < nd && third_block_c_idx < nd) {
-			rte_memcpy(&out[out_idx], &in[in_idx + 2],
-					2 * r_subblock - 2);
-			out_idx += 2 * r_subblock - 2;
-		} else if (second_block_c_idx >= nd &&
-				third_block_c_idx >= nd) {
-			rte_memcpy(&out[out_idx], &in[in_idx], 2 * r_subblock);
-			out_idx += 2 * r_subblock;
-		} else if (second_block_c_idx < nd) {
-			out[out_idx++] = in[in_idx];
-			rte_memcpy(&out[out_idx], &in[in_idx + 2],
-					2 * r_subblock - 2);
-			out_idx += 2 * r_subblock - 2;
-		} else {
-			rte_memcpy(&out[out_idx], &in[in_idx + 1],
-					2 * r_subblock - 1);
-			out_idx += 2 * r_subblock - 1;
-		}
-	}
-
-	/* Last interlaced row is different - its last byte is the only padding
-	 * byte. We can have from 4 up to 28 padding bytes (Nd) per sub-block.
-	 * After interlacing the 1st and 2nd parity sub-blocks we can have 0, 1
-	 * or 2 padding bytes each time we make a step of 2 * R_SUBBLOCK bytes
-	 * (moving to another column). 2nd parity sub-block uses the same
-	 * inter-column permutation pattern as the systematic and 1st parity
-	 * sub-blocks but it adds '1' to the resulting index and calculates the
-	 * modulus of the result and Kw. Last column is mapped to itself (id 31)
-	 * so the first byte taken from the 2nd parity sub-block will be the
-	 * 32nd (31+1) byte, then 64th etc. (step is C_SUBBLOCK == 32) and the
-	 * last byte will be the first byte from the sub-block:
-	 * (32 + 32 * (R_SUBBLOCK-1)) % Kw == Kw % Kw == 0. Nd can't  be smaller
-	 * than 4 so we know that bytes with ids 0, 1, 2 and 3 must be the
-	 * padding bytes. The bytes from the 1st parity sub-block are the bytes
-	 * from the 31st column - Nd can't be greater than 28 so we are sure
-	 * that there are no padding bytes in 31st column.
-	 */
-	rte_memcpy(&out[out_idx], &in[in_idx], 2 * r_subblock - 1);
-}
-
 static inline void
 move_padding_bytes(const uint8_t *in, uint8_t *out, uint16_t k,
 		uint16_t ncb)
@@ -968,13 +888,9 @@ process_dec_cb(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 		struct bblib_deinterleave_ul_request deint_req;
 		struct bblib_deinterleave_ul_response deint_resp;
 
-		/* SW decoder accepts only a circular buffer without NULL bytes
-		 * so the input needs to be converted.
-		 */
-		remove_nulls_from_circular_buf(in, q->deint_input, k, ncb);
-
-		deint_req.pharqbuffer = q->deint_input;
-		deint_req.ncb = ncb_without_null;
+		deint_req.circ_buffer = BBLIB_FULL_CIRCULAR_BUFFER;
+		deint_req.pharqbuffer = in;
+		deint_req.ncb = ncb;
 		deint_resp.pinteleavebuffer = q->deint_output;
 
 #ifdef RTE_BBDEV_OFFLOAD_COST
