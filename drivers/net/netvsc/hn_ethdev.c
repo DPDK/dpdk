@@ -732,6 +732,7 @@ eth_hn_dev_init(struct rte_eth_dev *eth_dev)
 	hv->chim_res  = &vmbus->resource[HV_SEND_BUF_MAP];
 	hv->port_id = eth_dev->data->port_id;
 	hv->latency = HN_CHAN_LATENCY_NS;
+	hv->max_queues = 1;
 
 	err = hn_parse_args(eth_dev);
 	if (err)
@@ -769,6 +770,10 @@ eth_hn_dev_init(struct rte_eth_dev *eth_dev)
 	err = hn_rndis_get_eaddr(hv, hv->mac_addr.addr_bytes);
 	if (err)
 		goto failed;
+
+	/* Multi queue requires later versions of windows server */
+	if (hv->nvs_ver < NVS_VERSION_5)
+		return 0;
 
 	max_chan = rte_vmbus_max_channels(vmbus);
 	PMD_INIT_LOG(DEBUG, "VMBus max channels %d", max_chan);
