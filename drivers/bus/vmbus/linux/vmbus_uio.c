@@ -357,19 +357,25 @@ int vmbus_uio_get_subchan(struct vmbus_channel *primary,
 			continue;
 		}
 
-		if (!vmbus_isnew_subchannel(primary, relid))
-			continue;	/* Already know about you */
+		if (!vmbus_isnew_subchannel(primary, relid)) {
+			VMBUS_LOG(DEBUG, "skip already found channel: %lu",
+				  relid);
+			continue;
+		}
 
-		if (!vmbus_uio_ring_present(dev, relid))
-			continue;	/* Ring may not be ready yet */
+		if (!vmbus_uio_ring_present(dev, relid)) {
+			VMBUS_LOG(DEBUG, "ring mmap not found (yet) for: %lu",
+				  relid);
+			continue;
+		}
 
 		snprintf(subchan_path, sizeof(subchan_path), "%s/%lu",
 			 chan_path, relid);
 		err = vmbus_uio_sysfs_read(subchan_path, "subchannel_id",
 					   &subid, UINT16_MAX);
 		if (err) {
-			VMBUS_LOG(NOTICE, "invalid subchannel id %lu",
-				  subid);
+			VMBUS_LOG(NOTICE, "no subchannel_id in %s:%s",
+				  subchan_path, strerror(-err));
 			goto fail;
 		}
 
@@ -379,14 +385,14 @@ int vmbus_uio_get_subchan(struct vmbus_channel *primary,
 		err = vmbus_uio_sysfs_read(subchan_path, "monitor_id",
 					   &monid, UINT8_MAX);
 		if (err) {
-			VMBUS_LOG(NOTICE, "invalid monitor id %lu",
-				  monid);
+			VMBUS_LOG(NOTICE, "no monitor_id in %s:%s",
+				  subchan_path, strerror(-err));
 			goto fail;
 		}
 
 		err = vmbus_chan_create(dev, relid, subid, monid, subchan);
 		if (err) {
-			VMBUS_LOG(NOTICE, "subchannel setup failed");
+			VMBUS_LOG(ERR, "subchannel setup failed");
 			goto fail;
 		}
 		break;
