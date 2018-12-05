@@ -318,7 +318,7 @@ The available information categories are:
 
 * ``csum``: Changes the checksum field with hardware or software methods depending on the offload flags on the packet.
 
-* ``icmpecho``: Receives a burst of packets, lookup for IMCP echo requests and, if any, send back ICMP echo replies.
+* ``icmpecho``: Receives a burst of packets, lookup for ICMP echo requests and, if any, send back ICMP echo replies.
 
 * ``ieee1588``: Demonstrate L2 IEEE1588 V2 PTP timestamping for RX and TX. Requires ``CONFIG_RTE_LIBRTE_IEEE1588=y``.
 
