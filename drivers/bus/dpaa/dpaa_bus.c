@@ -542,6 +542,10 @@ rte_dpaa_bus_probe(void)
 	unsigned int svr_ver;
 	int probe_all = rte_dpaa_bus.bus.conf.scan_mode != RTE_BUS_SCAN_WHITELIST;
 
+	/* If DPAA bus is not present nothing needs to be done */
+	if (TAILQ_EMPTY(&rte_dpaa_bus.device_list))
+		return 0;
+
 	svr_file = fopen(DPAA_SOC_ID_FILE, "r");
 	if (svr_file) {
 		if (fscanf(svr_file, "svr:%x", &svr_ver) > 0)
@@ -586,8 +590,7 @@ rte_dpaa_bus_probe(void)
 	/* Register DPAA mempool ops only if any DPAA device has
 	 * been detected.
 	 */
-	if (!TAILQ_EMPTY(&rte_dpaa_bus.device_list))
-		rte_mbuf_set_platform_mempool_ops(DPAA_MEMPOOL_OPS_NAME);
+	rte_mbuf_set_platform_mempool_ops(DPAA_MEMPOOL_OPS_NAME);
 
 	return 0;
 }
