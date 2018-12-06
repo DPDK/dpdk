@@ -24,6 +24,7 @@ struct fdset {
 	struct pollfd rwfds[MAX_FDS];
 	struct fdentry fd[MAX_FDS];
 	pthread_mutex_t fd_mutex;
+	pthread_mutex_t fd_pooling_mutex;
 	int num;	/* current fd number of this fdset */
 
 	union pipefds {
