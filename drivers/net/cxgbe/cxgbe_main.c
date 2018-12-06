@@ -122,6 +122,7 @@ int setup_sge_ctrl_txq(struct adapter *adapter)
 	int err = 0, i = 0;
 
 	for_each_port(adapter, i) {
+		struct port_info *pi = adap2pinfo(adapter, i);
 		char name[RTE_ETH_NAME_MAX_LEN];
 		struct sge_ctrl_txq *q = &s->ctrlq[i];
 
@@ -135,16 +136,19 @@ int setup_sge_ctrl_txq(struct adapter *adapter)
 				err);
 			goto out;
 		}
-		snprintf(name, sizeof(name), "cxgbe_ctrl_pool_%d", i);
+		snprintf(name, sizeof(name), "%s_ctrl_pool_%d",
+			 pi->eth_dev->device->driver->name,
+			 pi->eth_dev->data->port_id);
 		q->mb_pool = rte_pktmbuf_pool_create(name, s->ctrlq[i].q.size,
 						     RTE_CACHE_LINE_SIZE,
 						     RTE_MBUF_PRIV_ALIGN,
 						     RTE_MBUF_DEFAULT_BUF_SIZE,
 						     SOCKET_ID_ANY);
 		if (!q->mb_pool) {
-			dev_err(adapter, "Can't create ctrl pool for port: %d",
-				i);
-			err = -ENOMEM;
+			err = -rte_errno;
+			dev_err(adapter,
+				"Can't create ctrl pool for port %d. Err: %d\n",
+				pi->eth_dev->data->port_id, err);
 			goto out;
 		}
 	}
