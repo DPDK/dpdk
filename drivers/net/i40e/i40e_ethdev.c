@@ -3174,20 +3174,20 @@ i40e_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_hw_port_stats *ns = &pf->stats; /* new stats */
+	struct i40e_vsi *vsi;
 	unsigned i;
 
 	/* call read registers - updates values, now write them to struct */
 	i40e_read_stats_registers(pf, hw);
 
-	stats->ipackets = ns->eth.rx_unicast +
-			ns->eth.rx_multicast +
-			ns->eth.rx_broadcast -
-			ns->eth.rx_discards -
+	stats->ipackets = pf->main_vsi->eth_stats.rx_unicast +
+			pf->main_vsi->eth_stats.rx_multicast +
+			pf->main_vsi->eth_stats.rx_broadcast -
 			pf->main_vsi->eth_stats.rx_discards;
 	stats->opackets = ns->eth.tx_unicast +
 			ns->eth.tx_multicast +
 			ns->eth.tx_broadcast;
-	stats->ibytes   = ns->eth.rx_bytes;
+	stats->ibytes   = pf->main_vsi->eth_stats.rx_bytes;
 	stats->obytes   = ns->eth.tx_bytes;
 	stats->oerrors  = ns->eth.tx_errors +
 			pf->main_vsi->eth_stats.tx_errors;
@@ -3198,6 +3198,21 @@ i40e_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->ierrors  = ns->crc_errors +
 			ns->rx_length_errors + ns->rx_undersize +
 			ns->rx_oversize + ns->rx_fragments + ns->rx_jabber;
+
+	if (pf->vfs) {
+		for (i = 0; i < pf->vf_num; i++) {
+			vsi = pf->vfs[i].vsi;
+			i40e_update_vsi_stats(vsi);
+
+			stats->ipackets += (vsi->eth_stats.rx_unicast +
+					vsi->eth_stats.rx_multicast +
+					vsi->eth_stats.rx_broadcast -
+					vsi->eth_stats.rx_discards);
+			stats->ibytes   += vsi->eth_stats.rx_bytes;
+			stats->oerrors  += vsi->eth_stats.tx_errors;
+			stats->imissed  += vsi->eth_stats.rx_discards;
+		}
+	}
 
 	PMD_DRV_LOG(DEBUG, "***************** PF stats start *******************");
 	PMD_DRV_LOG(DEBUG, "rx_bytes:            %"PRIu64"", ns->eth.rx_bytes);
