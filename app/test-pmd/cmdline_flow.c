@@ -4327,6 +4327,8 @@ parse_int(struct context *ctx, const struct token *token,
 	}
 	buf = (uint8_t *)ctx->object + arg->offset;
 	size = arg->size;
+	if (u > RTE_LEN2MASK(size * CHAR_BIT, uint64_t))
+		return -1;
 objmask:
 	switch (size) {
 	case sizeof(uint8_t):
