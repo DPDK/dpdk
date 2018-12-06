@@ -147,15 +147,6 @@ A default validator callback is provided by EAL, which can be enabled with a
 ``--socket-limit`` command-line option, for a simple way to limit maximum amount
 of memory that can be used by DPDK application.
 
-.. note::
-
-    In multiprocess scenario, all related processes (i.e. primary process, and
-    secondary processes running with the same prefix) must be in the same memory
-    modes. That is, if primary process is run in dynamic memory mode, all of its
-    secondary processes must be run in the same mode. The same is applicable to
-    ``--single-file-segments`` command-line option - both primary and secondary
-    processes must shared this mode.
-
 + Legacy memory mode
 
 This mode is enabled by specifying ``--legacy-mem`` command-line switch to the
