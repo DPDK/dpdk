@@ -216,6 +216,8 @@ struct rte_bbdev_op_dec_tb_params {
 	 * operation when r >= cab
 	 */
 	uint32_t eb;
+	/**< The index of the first CB in the inbound mbuf data, default is 0 */
+	uint8_t r;
 };
 
 /**< Operation structure for Turbo decode.

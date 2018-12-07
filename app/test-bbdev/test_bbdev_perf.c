@@ -23,6 +23,7 @@
 #define GET_SOCKET(socket_id) (((socket_id) == SOCKET_ID_ANY) ? 0 : (socket_id))
 
 #define MAX_QUEUES RTE_MAX_LCORE
+#define TEST_REPETITIONS 1000
 
 #define OPS_CACHE_SIZE 256U
 #define OPS_POOL_SIZE_MIN 511U /* 0.5K per queue */
@@ -77,8 +78,9 @@ struct thread_params {
 	uint8_t dev_id;
 	uint16_t queue_id;
 	uint64_t start_time;
-	double mops;
+	double ops_per_sec;
 	double mbps;
+	uint8_t iter_count;
 	rte_atomic16_t nb_dequeued;
 	rte_atomic16_t processing_status;
 	struct test_op_params *op_params;
@@ -757,6 +759,8 @@ copy_reference_dec_op(struct rte_bbdev_dec_op **ops, unsigned int n,
 					turbo_dec->tb_params.c_neg;
 			ops[i]->turbo_dec.tb_params.cab =
 					turbo_dec->tb_params.cab;
+			ops[i]->turbo_dec.tb_params.r =
+					turbo_dec->tb_params.r;
 		} else {
 			ops[i]->turbo_dec.cb_params.e = turbo_dec->cb_params.e;
 			ops[i]->turbo_dec.cb_params.k = turbo_dec->cb_params.k;
@@ -884,47 +888,6 @@ validate_op_chain(struct rte_bbdev_op_data *op,
 }
 
 static int
-validate_dec_buffers(struct rte_bbdev_dec_op *ref_op, struct test_buffers *bufs,
-		const uint16_t num_to_process)
-{
-	int i;
-
-	struct op_data_entries *hard_data_orig =
-			&test_vector.entries[DATA_HARD_OUTPUT];
-	struct op_data_entries *soft_data_orig =
-			&test_vector.entries[DATA_SOFT_OUTPUT];
-
-	for (i = 0; i < num_to_process; i++) {
-		TEST_ASSERT_SUCCESS(validate_op_chain(&bufs->hard_outputs[i],
-				hard_data_orig),
-				"Hard output buffers are not equal");
-		if (ref_op->turbo_dec.op_flags &
-				RTE_BBDEV_TURBO_SOFT_OUTPUT)
-			TEST_ASSERT_SUCCESS(validate_op_chain(
-					&bufs->soft_outputs[i],
-					soft_data_orig),
-					"Soft output buffers are not equal");
-	}
-
-	return TEST_SUCCESS;
-}
-
-static int
-validate_enc_buffers(struct test_buffers *bufs, const uint16_t num_to_process)
-{
-	int i;
-
-	struct op_data_entries *hard_data_orig =
-			&test_vector.entries[DATA_HARD_OUTPUT];
-
-	for (i = 0; i < num_to_process; i++)
-		TEST_ASSERT_SUCCESS(validate_op_chain(&bufs->hard_outputs[i],
-				hard_data_orig), "");
-
-	return TEST_SUCCESS;
-}
-
-static int
 validate_dec_op(struct rte_bbdev_dec_op **ops, const uint16_t n,
 		struct rte_bbdev_dec_op *ref_op, const int vector_mask)
 {
@@ -1014,6 +977,44 @@ create_reference_enc_op(struct rte_bbdev_enc_op *op)
 	for (i = 0; i < entry->nb_segments; ++i)
 		op->turbo_enc.input.length +=
 				entry->segments[i].length;
+}
+
+static uint32_t
+calc_dec_TB_size(struct rte_bbdev_dec_op *op)
+{
+	uint8_t i;
+	uint32_t c, r, tb_size = 0;
+
+	if (op->turbo_dec.code_block_mode) {
+		tb_size = op->turbo_dec.tb_params.k_neg;
+	} else {
+		c = op->turbo_dec.tb_params.c;
+		r = op->turbo_dec.tb_params.r;
+		for (i = 0; i < c-r; i++)
+			tb_size += (r < op->turbo_dec.tb_params.c_neg) ?
+				op->turbo_dec.tb_params.k_neg :
+				op->turbo_dec.tb_params.k_pos;
+	}
+	return tb_size;
+}
+
+static uint32_t
+calc_enc_TB_size(struct rte_bbdev_enc_op *op)
+{
+	uint8_t i;
+	uint32_t c, r, tb_size = 0;
+
+	if (op->turbo_enc.code_block_mode) {
+		tb_size = op->turbo_enc.tb_params.k_neg;
+	} else {
+		c = op->turbo_enc.tb_params.c;
+		r = op->turbo_enc.tb_params.r;
+		for (i = 0; i < c-r; i++)
+			tb_size += (r < op->turbo_enc.tb_params.c_neg) ?
+				op->turbo_enc.tb_params.k_neg :
+				op->turbo_enc.tb_params.k_pos;
+	}
+	return tb_size;
 }
 
 static int
@@ -1163,17 +1164,13 @@ dequeue_event_callback(uint16_t dev_id,
 	int ret;
 	uint16_t i;
 	uint64_t total_time;
-	uint16_t deq, burst_sz, num_to_process;
+	uint16_t deq, burst_sz, num_ops;
 	uint16_t queue_id = INVALID_QUEUE_ID;
 	struct rte_bbdev_dec_op *dec_ops[MAX_BURST];
 	struct rte_bbdev_enc_op *enc_ops[MAX_BURST];
-	struct test_buffers *bufs;
 	struct rte_bbdev_info info;
 
-	/* Input length in bytes, million operations per second,
-	 * million bits per second.
-	 */
-	double in_len;
+	double tb_len_bits;
 
 	struct thread_params *tp = cb_arg;
 	RTE_SET_USED(ret_param);
@@ -1198,7 +1195,7 @@ dequeue_event_callback(uint16_t dev_id,
 	}
 
 	burst_sz = tp->op_params->burst_sz;
-	num_to_process = tp->op_params->num_to_process;
+	num_ops = tp->op_params->num_to_process;
 
 	if (test_vector.op_type == RTE_BBDEV_OP_TURBO_DEC) {
 		deq = rte_bbdev_dequeue_dec_ops(dev_id, queue_id, dec_ops,
@@ -1218,7 +1215,7 @@ dequeue_event_callback(uint16_t dev_id,
 		return;
 	}
 
-	if (rte_atomic16_read(&tp->nb_dequeued) + deq < num_to_process) {
+	if (rte_atomic16_read(&tp->nb_dequeued) + deq < num_ops) {
 		rte_atomic16_add(&tp->nb_dequeued, deq);
 		return;
 	}
@@ -1227,14 +1224,18 @@ dequeue_event_callback(uint16_t dev_id,
 
 	rte_bbdev_info_get(dev_id, &info);
 
-	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
-
 	ret = TEST_SUCCESS;
-	if (test_vector.op_type == RTE_BBDEV_OP_TURBO_DEC)
-		ret = validate_dec_buffers(tp->op_params->ref_dec_op, bufs,
-				num_to_process);
-	else if (test_vector.op_type == RTE_BBDEV_OP_TURBO_ENC)
-		ret = validate_enc_buffers(bufs, num_to_process);
+
+	if (test_vector.op_type == RTE_BBDEV_OP_TURBO_DEC) {
+		struct rte_bbdev_dec_op *ref_op = tp->op_params->ref_dec_op;
+		ret = validate_dec_op(dec_ops, num_ops, ref_op,
+				tp->op_params->vector_mask);
+		rte_bbdev_dec_op_free_bulk(dec_ops, deq);
+	} else if (test_vector.op_type == RTE_BBDEV_OP_TURBO_ENC) {
+		struct rte_bbdev_enc_op *ref_op = tp->op_params->ref_enc_op;
+		ret = validate_enc_op(enc_ops, num_ops, ref_op);
+		rte_bbdev_enc_op_free_bulk(enc_ops, deq);
+	}
 
 	if (ret) {
 		printf("Buffers validation failed\n");
@@ -1243,13 +1244,13 @@ dequeue_event_callback(uint16_t dev_id,
 
 	switch (test_vector.op_type) {
 	case RTE_BBDEV_OP_TURBO_DEC:
-		in_len = tp->op_params->ref_dec_op->turbo_dec.input.length;
+		tb_len_bits = calc_dec_TB_size(tp->op_params->ref_dec_op);
 		break;
 	case RTE_BBDEV_OP_TURBO_ENC:
-		in_len = tp->op_params->ref_enc_op->turbo_enc.input.length;
+		tb_len_bits = calc_enc_TB_size(tp->op_params->ref_enc_op);
 		break;
 	case RTE_BBDEV_OP_NONE:
-		in_len = 0.0;
+		tb_len_bits = 0.0;
 		break;
 	default:
 		printf("Unknown op type: %d\n", test_vector.op_type);
@@ -1257,9 +1258,9 @@ dequeue_event_callback(uint16_t dev_id,
 		return;
 	}
 
-	tp->mops = ((double)num_to_process / 1000000.0) /
+	tp->ops_per_sec = ((double)num_ops) /
 			((double)total_time / (double)rte_get_tsc_hz());
-	tp->mbps = ((double)num_to_process * in_len * 8 / 1000000.0) /
+	tp->mbps = (((double)(num_ops * tb_len_bits)) / 1000000.0) /
 			((double)total_time / (double)rte_get_tsc_hz());
 
 	rte_atomic16_add(&tp->nb_dequeued, deq);
@@ -1270,14 +1271,14 @@ throughput_intr_lcore_dec(void *arg)
 {
 	struct thread_params *tp = arg;
 	unsigned int enqueued;
-	struct rte_bbdev_dec_op *ops[MAX_BURST];
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_to_process = tp->op_params->num_to_process;
+	struct rte_bbdev_dec_op *ops[num_to_process];
 	struct test_buffers *bufs = NULL;
-	unsigned int allocs_failed = 0;
 	struct rte_bbdev_info info;
 	int ret;
+	uint16_t num_to_enq;
 
 	TEST_ASSERT_SUCCESS((burst_sz > MAX_BURST),
 			"BURST_SIZE should be <= %u", MAX_BURST);
@@ -1287,6 +1288,11 @@ throughput_intr_lcore_dec(void *arg)
 			tp->dev_id, queue_id);
 
 	rte_bbdev_info_get(tp->dev_id, &info);
+
+	TEST_ASSERT_SUCCESS((num_to_process > info.drv.queue_size_lim),
+			"NUM_OPS cannot exceed %u for this device",
+			info.drv.queue_size_lim);
+
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
 	rte_atomic16_clear(&tp->processing_status);
@@ -1295,35 +1301,26 @@ throughput_intr_lcore_dec(void *arg)
 	while (rte_atomic16_read(&tp->op_params->sync) == SYNC_WAIT)
 		rte_pause();
 
+	ret = rte_bbdev_dec_op_alloc_bulk(tp->op_params->mp, ops,
+				num_to_process);
+	TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops",
+			num_to_process);
+	if (test_vector.op_type != RTE_BBDEV_OP_NONE)
+		copy_reference_dec_op(ops, num_to_process, 0, bufs->inputs,
+				bufs->hard_outputs, bufs->soft_outputs,
+				tp->op_params->ref_dec_op);
+
 	tp->start_time = rte_rdtsc_precise();
 	for (enqueued = 0; enqueued < num_to_process;) {
 
-		uint16_t num_to_enq = burst_sz;
+		num_to_enq = burst_sz;
 
 		if (unlikely(num_to_process - enqueued < num_to_enq))
 			num_to_enq = num_to_process - enqueued;
 
-		ret = rte_bbdev_dec_op_alloc_bulk(tp->op_params->mp, ops,
-				num_to_enq);
-		if (ret != 0) {
-			allocs_failed++;
-			continue;
-		}
-
-		if (test_vector.op_type != RTE_BBDEV_OP_NONE)
-			copy_reference_dec_op(ops, num_to_enq, enqueued,
-					bufs->inputs,
-					bufs->hard_outputs,
-					bufs->soft_outputs,
-					tp->op_params->ref_dec_op);
-
-		enqueued += rte_bbdev_enqueue_dec_ops(tp->dev_id, queue_id, ops,
-				num_to_enq);
+		enqueued += rte_bbdev_enqueue_dec_ops(tp->dev_id, queue_id,
+				&ops[enqueued], num_to_enq);
 	}
-
-	if (allocs_failed > 0)
-		printf("WARNING: op allocations failed: %u times\n",
-				allocs_failed);
 
 	return TEST_SUCCESS;
 }
@@ -1333,14 +1330,14 @@ throughput_intr_lcore_enc(void *arg)
 {
 	struct thread_params *tp = arg;
 	unsigned int enqueued;
-	struct rte_bbdev_enc_op *ops[MAX_BURST];
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
 	const uint16_t num_to_process = tp->op_params->num_to_process;
+	struct rte_bbdev_enc_op *ops[num_to_process];
 	struct test_buffers *bufs = NULL;
-	unsigned int allocs_failed = 0;
 	struct rte_bbdev_info info;
 	int ret;
+	uint16_t num_to_enq;
 
 	TEST_ASSERT_SUCCESS((burst_sz > MAX_BURST),
 			"BURST_SIZE should be <= %u", MAX_BURST);
@@ -1350,6 +1347,11 @@ throughput_intr_lcore_enc(void *arg)
 			tp->dev_id, queue_id);
 
 	rte_bbdev_info_get(tp->dev_id, &info);
+
+	TEST_ASSERT_SUCCESS((num_to_process > info.drv.queue_size_lim),
+			"NUM_OPS cannot exceed %u for this device",
+			info.drv.queue_size_lim);
+
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
 	rte_atomic16_clear(&tp->processing_status);
@@ -1358,34 +1360,25 @@ throughput_intr_lcore_enc(void *arg)
 	while (rte_atomic16_read(&tp->op_params->sync) == SYNC_WAIT)
 		rte_pause();
 
+	ret = rte_bbdev_enc_op_alloc_bulk(tp->op_params->mp, ops,
+			num_to_process);
+	TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops",
+			num_to_process);
+	if (test_vector.op_type != RTE_BBDEV_OP_NONE)
+		copy_reference_enc_op(ops, num_to_process, 0, bufs->inputs,
+				bufs->hard_outputs, tp->op_params->ref_enc_op);
+
 	tp->start_time = rte_rdtsc_precise();
 	for (enqueued = 0; enqueued < num_to_process;) {
 
-		uint16_t num_to_enq = burst_sz;
+		num_to_enq = burst_sz;
 
 		if (unlikely(num_to_process - enqueued < num_to_enq))
 			num_to_enq = num_to_process - enqueued;
 
-		ret = rte_bbdev_enc_op_alloc_bulk(tp->op_params->mp, ops,
-				num_to_enq);
-		if (ret != 0) {
-			allocs_failed++;
-			continue;
-		}
-
-		if (test_vector.op_type != RTE_BBDEV_OP_NONE)
-			copy_reference_enc_op(ops, num_to_enq, enqueued,
-					bufs->inputs,
-					bufs->hard_outputs,
-					tp->op_params->ref_enc_op);
-
-		enqueued += rte_bbdev_enqueue_enc_ops(tp->dev_id, queue_id, ops,
-				num_to_enq);
+		enqueued += rte_bbdev_enqueue_enc_ops(tp->dev_id, queue_id,
+				&ops[enqueued], num_to_enq);
 	}
-
-	if (allocs_failed > 0)
-		printf("WARNING: op allocations failed: %u times\n",
-				allocs_failed);
 
 	return TEST_SUCCESS;
 }
@@ -1394,86 +1387,97 @@ static int
 throughput_pmd_lcore_dec(void *arg)
 {
 	struct thread_params *tp = arg;
-	unsigned int enqueued, dequeued;
-	struct rte_bbdev_dec_op *ops_enq[MAX_BURST], *ops_deq[MAX_BURST];
-	uint64_t total_time, start_time;
+	uint16_t enq, deq;
+	uint64_t total_time = 0, start_time;
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
-	const uint16_t num_to_process = tp->op_params->num_to_process;
+	const uint16_t num_ops = tp->op_params->num_to_process;
+	struct rte_bbdev_dec_op *ops_enq[num_ops];
+	struct rte_bbdev_dec_op *ops_deq[num_ops];
 	struct rte_bbdev_dec_op *ref_op = tp->op_params->ref_dec_op;
 	struct test_buffers *bufs = NULL;
-	unsigned int allocs_failed = 0;
-	int ret;
+	int i, j, ret;
 	struct rte_bbdev_info info;
-
-	/* Input length in bytes, million operations per second, million bits
-	 * per second.
-	 */
-	double in_len;
+	uint16_t num_to_enq;
 
 	TEST_ASSERT_SUCCESS((burst_sz > MAX_BURST),
 			"BURST_SIZE should be <= %u", MAX_BURST);
 
 	rte_bbdev_info_get(tp->dev_id, &info);
+
+	TEST_ASSERT_SUCCESS((num_ops > info.drv.queue_size_lim),
+			"NUM_OPS cannot exceed %u for this device",
+			info.drv.queue_size_lim);
+
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
 	while (rte_atomic16_read(&tp->op_params->sync) == SYNC_WAIT)
 		rte_pause();
 
-	start_time = rte_rdtsc_precise();
-	for (enqueued = 0, dequeued = 0; dequeued < num_to_process;) {
-		uint16_t deq;
+	ret = rte_bbdev_dec_op_alloc_bulk(tp->op_params->mp, ops_enq, num_ops);
+	TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops", num_ops);
 
-		if (likely(enqueued < num_to_process)) {
+	if (test_vector.op_type != RTE_BBDEV_OP_NONE)
+		copy_reference_dec_op(ops_enq, num_ops, 0, bufs->inputs,
+				bufs->hard_outputs, bufs->soft_outputs, ref_op);
 
-			uint16_t num_to_enq = burst_sz;
+	/* Set counter to validate the ordering */
+	for (j = 0; j < num_ops; ++j)
+		ops_enq[j]->opaque_data = (void *)(uintptr_t)j;
 
-			if (unlikely(num_to_process - enqueued < num_to_enq))
-				num_to_enq = num_to_process - enqueued;
+	for (i = 0; i < TEST_REPETITIONS; ++i) {
 
-			ret = rte_bbdev_dec_op_alloc_bulk(tp->op_params->mp,
-					ops_enq, num_to_enq);
-			if (ret != 0) {
-				allocs_failed++;
-				goto do_dequeue;
-			}
-
-			if (test_vector.op_type != RTE_BBDEV_OP_NONE)
-				copy_reference_dec_op(ops_enq, num_to_enq,
-						enqueued,
-						bufs->inputs,
-						bufs->hard_outputs,
-						bufs->soft_outputs,
-						ref_op);
-
-			enqueued += rte_bbdev_enqueue_dec_ops(tp->dev_id,
-					queue_id, ops_enq, num_to_enq);
+		for (j = 0; j < num_ops; ++j) {
+			struct rte_bbdev_dec_op *op = ops_enq[j];
+			rte_pktmbuf_reset(op->turbo_dec.hard_output.data);
 		}
-do_dequeue:
-		deq = rte_bbdev_dequeue_dec_ops(tp->dev_id, queue_id, ops_deq,
-				burst_sz);
-		dequeued += deq;
-		rte_bbdev_dec_op_free_bulk(ops_enq, deq);
+
+		start_time = rte_rdtsc_precise();
+
+		for (enq = 0, deq = 0; enq < num_ops;) {
+			num_to_enq = burst_sz;
+
+			if (unlikely(num_ops - enq < num_to_enq))
+				num_to_enq = num_ops - enq;
+
+			enq += rte_bbdev_enqueue_dec_ops(tp->dev_id,
+					queue_id, &ops_enq[enq], num_to_enq);
+
+			deq += rte_bbdev_dequeue_dec_ops(tp->dev_id,
+					queue_id, &ops_deq[deq], enq - deq);
+		}
+
+		/* dequeue the remaining */
+		while (deq < enq) {
+			deq += rte_bbdev_dequeue_dec_ops(tp->dev_id,
+					queue_id, &ops_deq[deq], enq - deq);
+		}
+
+		total_time += rte_rdtsc_precise() - start_time;
 	}
-	total_time = rte_rdtsc_precise() - start_time;
 
-	if (allocs_failed > 0)
-		printf("WARNING: op allocations failed: %u times\n",
-				allocs_failed);
-
-	TEST_ASSERT(enqueued == dequeued, "enqueued (%u) != dequeued (%u)",
-			enqueued, dequeued);
+	tp->iter_count = 0;
+	/* get the max of iter_count for all dequeued ops */
+	for (i = 0; i < num_ops; ++i) {
+		tp->iter_count = RTE_MAX(ops_enq[i]->turbo_dec.iter_count,
+				tp->iter_count);
+	}
 
 	if (test_vector.op_type != RTE_BBDEV_OP_NONE) {
-		ret = validate_dec_buffers(ref_op, bufs, num_to_process);
-		TEST_ASSERT_SUCCESS(ret, "Buffers validation failed");
+		ret = validate_dec_op(ops_deq, num_ops, ref_op,
+				tp->op_params->vector_mask);
+		TEST_ASSERT_SUCCESS(ret, "Validation failed!");
 	}
 
-	in_len = ref_op->turbo_dec.input.length;
-	tp->mops = ((double)num_to_process / 1000000.0) /
+	rte_bbdev_dec_op_free_bulk(ops_enq, num_ops);
+
+	double tb_len_bits = calc_dec_TB_size(ref_op);
+
+	tp->ops_per_sec = ((double)num_ops * TEST_REPETITIONS) /
 			((double)total_time / (double)rte_get_tsc_hz());
-	tp->mbps = ((double)num_to_process * in_len * 8 / 1000000.0) /
-			((double)total_time / (double)rte_get_tsc_hz());
+	tp->mbps = (((double)(num_ops * TEST_REPETITIONS * tb_len_bits)) /
+			1000000.0) / ((double)total_time /
+			(double)rte_get_tsc_hz());
 
 	return TEST_SUCCESS;
 }
@@ -1482,91 +1486,94 @@ static int
 throughput_pmd_lcore_enc(void *arg)
 {
 	struct thread_params *tp = arg;
-	unsigned int enqueued, dequeued;
-	struct rte_bbdev_enc_op *ops_enq[MAX_BURST], *ops_deq[MAX_BURST];
-	uint64_t total_time, start_time;
+	uint16_t enq, deq;
+	uint64_t total_time = 0, start_time;
 	const uint16_t queue_id = tp->queue_id;
 	const uint16_t burst_sz = tp->op_params->burst_sz;
-	const uint16_t num_to_process = tp->op_params->num_to_process;
+	const uint16_t num_ops = tp->op_params->num_to_process;
+	struct rte_bbdev_enc_op *ops_enq[num_ops];
+	struct rte_bbdev_enc_op *ops_deq[num_ops];
 	struct rte_bbdev_enc_op *ref_op = tp->op_params->ref_enc_op;
 	struct test_buffers *bufs = NULL;
-	unsigned int allocs_failed = 0;
-	int ret;
+	int i, j, ret;
 	struct rte_bbdev_info info;
-
-	/* Input length in bytes, million operations per second, million bits
-	 * per second.
-	 */
-	double in_len;
+	uint16_t num_to_enq;
 
 	TEST_ASSERT_SUCCESS((burst_sz > MAX_BURST),
 			"BURST_SIZE should be <= %u", MAX_BURST);
 
 	rte_bbdev_info_get(tp->dev_id, &info);
+
+	TEST_ASSERT_SUCCESS((num_ops > info.drv.queue_size_lim),
+			"NUM_OPS cannot exceed %u for this device",
+			info.drv.queue_size_lim);
+
 	bufs = &tp->op_params->q_bufs[GET_SOCKET(info.socket_id)][queue_id];
 
 	while (rte_atomic16_read(&tp->op_params->sync) == SYNC_WAIT)
 		rte_pause();
 
-	start_time = rte_rdtsc_precise();
-	for (enqueued = 0, dequeued = 0; dequeued < num_to_process;) {
-		uint16_t deq;
+	ret = rte_bbdev_enc_op_alloc_bulk(tp->op_params->mp, ops_enq,
+			num_ops);
+	TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops",
+			num_ops);
+	if (test_vector.op_type != RTE_BBDEV_OP_NONE)
+		copy_reference_enc_op(ops_enq, num_ops, 0, bufs->inputs,
+				bufs->hard_outputs, ref_op);
 
-		if (likely(enqueued < num_to_process)) {
+	/* Set counter to validate the ordering */
+	for (j = 0; j < num_ops; ++j)
+		ops_enq[j]->opaque_data = (void *)(uintptr_t)j;
 
-			uint16_t num_to_enq = burst_sz;
+	for (i = 0; i < TEST_REPETITIONS; ++i) {
 
-			if (unlikely(num_to_process - enqueued < num_to_enq))
-				num_to_enq = num_to_process - enqueued;
+		if (test_vector.op_type != RTE_BBDEV_OP_NONE)
+			for (j = 0; j < num_ops; ++j)
+				rte_pktmbuf_reset(
+					ops_enq[j]->turbo_enc.output.data);
 
-			ret = rte_bbdev_enc_op_alloc_bulk(tp->op_params->mp,
-					ops_enq, num_to_enq);
-			if (ret != 0) {
-				allocs_failed++;
-				goto do_dequeue;
-			}
+		start_time = rte_rdtsc_precise();
 
-			if (test_vector.op_type != RTE_BBDEV_OP_NONE)
-				copy_reference_enc_op(ops_enq, num_to_enq,
-						enqueued,
-						bufs->inputs,
-						bufs->hard_outputs,
-						ref_op);
+		for (enq = 0, deq = 0; enq < num_ops;) {
+			num_to_enq = burst_sz;
 
-			enqueued += rte_bbdev_enqueue_enc_ops(tp->dev_id,
-					queue_id, ops_enq, num_to_enq);
+			if (unlikely(num_ops - enq < num_to_enq))
+				num_to_enq = num_ops - enq;
+
+			enq += rte_bbdev_enqueue_enc_ops(tp->dev_id,
+					queue_id, &ops_enq[enq], num_to_enq);
+
+			deq += rte_bbdev_dequeue_enc_ops(tp->dev_id,
+					queue_id, &ops_deq[deq], enq - deq);
 		}
-do_dequeue:
-		deq = rte_bbdev_dequeue_enc_ops(tp->dev_id, queue_id, ops_deq,
-				burst_sz);
-		dequeued += deq;
-		rte_bbdev_enc_op_free_bulk(ops_enq, deq);
+
+		/* dequeue the remaining */
+		while (deq < enq) {
+			deq += rte_bbdev_dequeue_enc_ops(tp->dev_id,
+					queue_id, &ops_deq[deq], enq - deq);
+		}
+
+		total_time += rte_rdtsc_precise() - start_time;
 	}
-	total_time = rte_rdtsc_precise() - start_time;
-
-	if (allocs_failed > 0)
-		printf("WARNING: op allocations failed: %u times\n",
-				allocs_failed);
-
-	TEST_ASSERT(enqueued == dequeued, "enqueued (%u) != dequeued (%u)",
-			enqueued, dequeued);
 
 	if (test_vector.op_type != RTE_BBDEV_OP_NONE) {
-		ret = validate_enc_buffers(bufs, num_to_process);
-		TEST_ASSERT_SUCCESS(ret, "Buffers validation failed");
+		ret = validate_enc_op(ops_deq, num_ops, ref_op);
+		TEST_ASSERT_SUCCESS(ret, "Validation failed!");
 	}
 
-	in_len = ref_op->turbo_enc.input.length;
+	double tb_len_bits = calc_enc_TB_size(ref_op);
 
-	tp->mops = ((double)num_to_process / 1000000.0) /
+	tp->ops_per_sec = ((double)num_ops * TEST_REPETITIONS) /
 			((double)total_time / (double)rte_get_tsc_hz());
-	tp->mbps = ((double)num_to_process * in_len * 8 / 1000000.0) /
-			((double)total_time / (double)rte_get_tsc_hz());
+	tp->mbps = (((double)(num_ops * TEST_REPETITIONS * tb_len_bits))
+			/ 1000000.0) / ((double)total_time /
+			(double)rte_get_tsc_hz());
 
 	return TEST_SUCCESS;
 }
+
 static void
-print_throughput(struct thread_params *t_params, unsigned int used_cores)
+print_enc_throughput(struct thread_params *t_params, unsigned int used_cores)
 {
 	unsigned int lcore_id, iter = 0;
 	double total_mops = 0, total_mbps = 0;
@@ -1574,15 +1581,40 @@ print_throughput(struct thread_params *t_params, unsigned int used_cores)
 	RTE_LCORE_FOREACH(lcore_id) {
 		if (iter++ >= used_cores)
 			break;
-		printf("Throughput for core (%u): %.8lg MOPS, %.8lg Mbps\n",
-				lcore_id, t_params[lcore_id].mops,
+		printf(
+				"Throughput for core (%u): %.8lg Ops/s, %.8lg Mbps\n",
+				lcore_id, t_params[lcore_id].ops_per_sec,
 				t_params[lcore_id].mbps);
-		total_mops += t_params[lcore_id].mops;
+		total_mops += t_params[lcore_id].ops_per_sec;
 		total_mbps += t_params[lcore_id].mbps;
 	}
 	printf(
 		"\nTotal throughput for %u cores: %.8lg MOPS, %.8lg Mbps\n",
 		used_cores, total_mops, total_mbps);
+}
+
+static void
+print_dec_throughput(struct thread_params *t_params, unsigned int used_cores)
+{
+	unsigned int lcore_id, iter = 0;
+	double total_mops = 0, total_mbps = 0;
+	uint8_t iter_count = 0;
+
+	RTE_LCORE_FOREACH(lcore_id) {
+		if (iter++ >= used_cores)
+			break;
+		printf(
+				"Throughput for core (%u): %.8lg Ops/s, %.8lg Mbps @ max %u iterations\n",
+				lcore_id, t_params[lcore_id].ops_per_sec,
+				t_params[lcore_id].mbps,
+				t_params[lcore_id].iter_count);
+		total_mops += t_params[lcore_id].ops_per_sec;
+		total_mbps += t_params[lcore_id].mbps;
+		iter_count = RTE_MAX(iter_count, t_params[lcore_id].iter_count);
+	}
+	printf(
+		"\nTotal throughput for %u cores: %.8lg MOPS, %.8lg Mbps @ max %u iterations\n",
+		used_cores, total_mops, total_mbps, iter_count);
 }
 
 /*
@@ -1677,8 +1709,10 @@ throughput_test(struct active_device *ad,
 
 	/* Print throughput if interrupts are disabled and test passed */
 	if (!intr_enabled) {
-		if (test_vector.op_type != RTE_BBDEV_OP_NONE)
-			print_throughput(t_params, num_lcores);
+		if (test_vector.op_type == RTE_BBDEV_OP_TURBO_DEC)
+			print_dec_throughput(t_params, num_lcores);
+		else
+			print_enc_throughput(t_params, num_lcores);
 		return ret;
 	}
 
@@ -1713,9 +1747,12 @@ throughput_test(struct active_device *ad,
 	}
 
 	/* Print throughput if test passed */
-	if (!ret && test_vector.op_type != RTE_BBDEV_OP_NONE)
-		print_throughput(t_params, num_lcores);
-
+	if (!ret) {
+		if (test_vector.op_type == RTE_BBDEV_OP_TURBO_DEC)
+			print_dec_throughput(t_params, num_lcores);
+		else if (test_vector.op_type == RTE_BBDEV_OP_TURBO_ENC)
+			print_enc_throughput(t_params, num_lcores);
+	}
 	return ret;
 }
 

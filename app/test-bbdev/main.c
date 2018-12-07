@@ -316,8 +316,6 @@ main(int argc, char **argv)
 		return 1;
 	}
 
-	rte_log_set_global_level(RTE_LOG_INFO);
-
 	/* If no argument provided - run all tests */
 	if (test_params.num_tests == 0)
 		return run_all_tests();

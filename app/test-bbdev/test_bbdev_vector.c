@@ -412,6 +412,10 @@ parse_decoder_params(const char *key_token, char *token,
 		vector->mask |= TEST_BBDEV_VF_NUM_MAPS;
 		turbo_dec->num_maps = (uint8_t) strtoul(token, &err, 0);
 		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
+	} else if (!strcmp(key_token, "r")) {
+		vector->mask |= TEST_BBDEV_VF_R;
+		turbo_dec->tb_params.r = (uint8_t) strtoul(token, &err, 0);
+		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
 	} else if (!strcmp(key_token, "code_block_mode")) {
 		vector->mask |= TEST_BBDEV_VF_CODE_BLOCK_MODE;
 		turbo_dec->code_block_mode = (uint8_t) strtoul(token, &err, 0);
@@ -714,6 +718,9 @@ check_decoder(struct test_bbdev_vector *vector)
 		if (!(mask & TEST_BBDEV_VF_CAB))
 			printf(
 				"WARNING: cab was not specified in vector file and will be set to 0\n");
+		if (!(mask & TEST_BBDEV_VF_R))
+			printf(
+				"WARNING: r was not specified in vector file and will be set to 0\n");
 	} else {
 		if (!(mask & TEST_BBDEV_VF_E))
 			printf(
