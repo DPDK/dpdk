@@ -83,6 +83,18 @@ struct turbo_sw_queue {
 	enum rte_bbdev_op_type type;
 } __rte_cache_aligned;
 
+static inline char *
+mbuf_append(struct rte_mbuf *m_head, struct rte_mbuf *m, uint16_t len)
+{
+	if (unlikely(len > rte_pktmbuf_tailroom(m)))
+		return NULL;
+
+	char *tail = (char *)m->buf_addr + m->data_off + m->data_len;
+	m->data_len = (uint16_t)(m->data_len + len);
+	m_head->pkt_len  = (m_head->pkt_len + len);
+	return tail;
+}
+
 /* Calculate index based on Table 5.1.3-3 from TS34.212 */
 static inline int32_t
 compute_idx(uint16_t k)
@@ -437,7 +449,7 @@ is_dec_input_valid(int32_t k_idx, int16_t kw, int16_t in_length)
 		return -1;
 	}
 
-	if (in_length - kw < 0) {
+	if (in_length < kw) {
 		rte_bbdev_log(ERR,
 				"Mismatch between input length (%u) and kw (%u)",
 				in_length, kw);
@@ -456,9 +468,9 @@ is_dec_input_valid(int32_t k_idx, int16_t kw, int16_t in_length)
 static inline void
 process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 		uint8_t r, uint8_t c, uint16_t k, uint16_t ncb,
-		uint32_t e, struct rte_mbuf *m_in, struct rte_mbuf *m_out,
-		uint16_t in_offset, uint16_t out_offset, uint16_t total_left,
-		struct rte_bbdev_stats *q_stats)
+		uint32_t e, struct rte_mbuf *m_in, struct rte_mbuf *m_out_head,
+		struct rte_mbuf *m_out, uint16_t in_offset, uint16_t out_offset,
+		uint16_t in_length, struct rte_bbdev_stats *q_stats)
 {
 	int ret;
 	int16_t k_idx;
@@ -484,7 +496,7 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 	/* CRC24A (for TB) */
 	if ((enc->op_flags & RTE_BBDEV_TURBO_CRC_24A_ATTACH) &&
 		(enc->code_block_mode == 1)) {
-		ret = is_enc_input_valid(k - 24, k_idx, total_left);
+		ret = is_enc_input_valid(k - 24, k_idx, in_length);
 		if (ret != 0) {
 			op->status |= 1 << RTE_BBDEV_DATA_ERROR;
 			return;
@@ -494,7 +506,7 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 		/* Check if there is a room for CRC bits if not use
 		 * the temporary buffer.
 		 */
-		if (rte_pktmbuf_append(m_in, 3) == NULL) {
+		if (mbuf_append(m_in, m_in, 3) == NULL) {
 			rte_memcpy(q->enc_in, in, (k - 24) >> 3);
 			in = q->enc_in;
 		} else {
@@ -517,7 +529,7 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 #endif
 	} else if (enc->op_flags & RTE_BBDEV_TURBO_CRC_24B_ATTACH) {
 		/* CRC24B */
-		ret = is_enc_input_valid(k - 24, k_idx, total_left);
+		ret = is_enc_input_valid(k - 24, k_idx, in_length);
 		if (ret != 0) {
 			op->status |= 1 << RTE_BBDEV_DATA_ERROR;
 			return;
@@ -527,7 +539,7 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 		/* Check if there is a room for CRC bits if this is the last
 		 * CB in TB. If not use temporary buffer.
 		 */
-		if ((c - r == 1) && (rte_pktmbuf_append(m_in, 3) == NULL)) {
+		if ((c - r == 1) && (mbuf_append(m_in, m_in, 3) == NULL)) {
 			rte_memcpy(q->enc_in, in, (k - 24) >> 3);
 			in = q->enc_in;
 		} else if (c - r > 1) {
@@ -549,7 +561,7 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 		q_stats->acc_offload_cycles += rte_rdtsc_precise() - start_time;
 #endif
 	} else {
-		ret = is_enc_input_valid(k, k_idx, total_left);
+		ret = is_enc_input_valid(k, k_idx, in_length);
 		if (ret != 0) {
 			op->status |= 1 << RTE_BBDEV_DATA_ERROR;
 			return;
@@ -570,7 +582,8 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 		out1 = RTE_PTR_ADD(out0, (k >> 3) + 1);
 		out2 = RTE_PTR_ADD(out1, (k >> 3) + 1);
 	} else {
-		out0 = (uint8_t *)rte_pktmbuf_append(m_out, (k >> 3) * 3 + 2);
+		out0 = (uint8_t *)mbuf_append(m_out_head, m_out,
+				(k >> 3) * 3 + 2);
 		if (out0 == NULL) {
 			op->status |= 1 << RTE_BBDEV_DATA_ERROR;
 			rte_bbdev_log(ERR,
@@ -623,7 +636,7 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 		const uint8_t mask_out[] = {0xFF, 0xC0, 0xF0, 0xFC};
 
 		/* get output data starting address */
-		rm_out = (uint8_t *)rte_pktmbuf_append(m_out, out_len);
+		rm_out = (uint8_t *)mbuf_append(m_out_head, m_out, out_len);
 		if (rm_out == NULL) {
 			op->status |= 1 << RTE_BBDEV_DATA_ERROR;
 			rte_bbdev_log(ERR,
@@ -725,14 +738,16 @@ enqueue_enc_one_op(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 	uint16_t out_offset = enc->output.offset;
 	struct rte_mbuf *m_in = enc->input.data;
 	struct rte_mbuf *m_out = enc->output.data;
-	uint16_t total_left = enc->input.length;
+	struct rte_mbuf *m_out_head = enc->output.data;
+	uint32_t in_length, mbuf_total_left = enc->input.length;
+	uint16_t seg_total_left;
 
 	/* Clear op status */
 	op->status = 0;
 
-	if (total_left > RTE_BBDEV_MAX_TB_SIZE >> 3) {
+	if (mbuf_total_left > RTE_BBDEV_MAX_TB_SIZE >> 3) {
 		rte_bbdev_log(ERR, "TB size (%u) is too big, max: %d",
-				total_left, RTE_BBDEV_MAX_TB_SIZE);
+				mbuf_total_left, RTE_BBDEV_MAX_TB_SIZE);
 		op->status = 1 << RTE_BBDEV_DATA_ERROR;
 		return;
 	}
@@ -755,7 +770,10 @@ enqueue_enc_one_op(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 		r = 0;
 	}
 
-	while (total_left > 0 && r < c) {
+	while (mbuf_total_left > 0 && r < c) {
+
+		seg_total_left = rte_pktmbuf_data_len(m_in) - in_offset;
+
 		if (enc->code_block_mode == 0) {
 			k = (r < enc->tb_params.c_neg) ?
 				enc->tb_params.k_neg : enc->tb_params.k_pos;
@@ -769,22 +787,32 @@ enqueue_enc_one_op(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 			e = enc->cb_params.e;
 		}
 
-		process_enc_cb(q, op, r, c, k, ncb, e, m_in,
-				m_out, in_offset, out_offset, total_left,
+		process_enc_cb(q, op, r, c, k, ncb, e, m_in, m_out_head,
+				m_out, in_offset, out_offset, seg_total_left,
 				queue_stats);
 		/* Update total_left */
-		total_left -= (k - crc24_bits) >> 3;
+		in_length = ((k - crc24_bits) >> 3);
+		mbuf_total_left -= in_length;
 		/* Update offsets for next CBs (if exist) */
 		in_offset += (k - crc24_bits) >> 3;
 		if (enc->op_flags & RTE_BBDEV_TURBO_RATE_MATCH)
 			out_offset += e >> 3;
 		else
 			out_offset += (k >> 3) * 3 + 2;
+
+		/* Update offsets */
+		if (seg_total_left == in_length) {
+			/* Go to the next mbuf */
+			m_in = m_in->next;
+			m_out = m_out->next;
+			in_offset = 0;
+			out_offset = 0;
+		}
 		r++;
 	}
 
 	/* check if all input data was processed */
-	if (total_left != 0) {
+	if (mbuf_total_left != 0) {
 		op->status |= 1 << RTE_BBDEV_DATA_ERROR;
 		rte_bbdev_log(ERR,
 				"Mismatch between mbuf length and included CBs sizes");
@@ -903,8 +931,9 @@ move_padding_bytes(const uint8_t *in, uint8_t *out, uint16_t k,
 static inline void
 process_dec_cb(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 		uint8_t c, uint16_t k, uint16_t kw, struct rte_mbuf *m_in,
-		struct rte_mbuf *m_out, uint16_t in_offset, uint16_t out_offset,
-		bool check_crc_24b, uint16_t crc24_overlap, uint16_t total_left,
+		struct rte_mbuf *m_out_head, struct rte_mbuf *m_out,
+		uint16_t in_offset, uint16_t out_offset, bool check_crc_24b,
+		uint16_t crc24_overlap, uint16_t in_length,
 		struct rte_bbdev_stats *q_stats)
 {
 	int ret;
@@ -925,7 +954,7 @@ process_dec_cb(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 
 	k_idx = compute_idx(k);
 
-	ret = is_dec_input_valid(k_idx, kw, total_left);
+	ret = is_dec_input_valid(k_idx, kw, in_length);
 	if (ret != 0) {
 		op->status |= 1 << RTE_BBDEV_DATA_ERROR;
 		return;
@@ -983,7 +1012,8 @@ process_dec_cb(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 	q_stats->acc_offload_cycles += rte_rdtsc_precise() - start_time;
 #endif
 
-	out = (uint8_t *)rte_pktmbuf_append(m_out, ((k - crc24_overlap) >> 3));
+	out = (uint8_t *)mbuf_append(m_out_head, m_out,
+			((k - crc24_overlap) >> 3));
 	if (out == NULL) {
 		op->status |= 1 << RTE_BBDEV_DATA_ERROR;
 		rte_bbdev_log(ERR, "Too little space in output mbuf");
@@ -1038,9 +1068,11 @@ enqueue_dec_one_op(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 	struct rte_bbdev_op_turbo_dec *dec = &op->turbo_dec;
 	struct rte_mbuf *m_in = dec->input.data;
 	struct rte_mbuf *m_out = dec->hard_output.data;
+	struct rte_mbuf *m_out_head = dec->hard_output.data;
 	uint16_t in_offset = dec->input.offset;
-	uint16_t total_left = dec->input.length;
 	uint16_t out_offset = dec->hard_output.offset;
+	uint32_t mbuf_total_left = dec->input.length;
+	uint16_t seg_total_left;
 
 	/* Clear op status */
 	op->status = 0;
@@ -1062,10 +1094,12 @@ enqueue_dec_one_op(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 		RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP))
 		crc24_overlap = 24;
 
-	while (total_left > 0) {
+	while (mbuf_total_left > 0) {
 		if (dec->code_block_mode == 0)
 			k = (r < dec->tb_params.c_neg) ?
 				dec->tb_params.k_neg : dec->tb_params.k_pos;
+
+		seg_total_left = rte_pktmbuf_data_len(m_in) - in_offset;
 
 		/* Calculates circular buffer size (Kw).
 		 * According to 3gpp 36.212 section 5.1.4.2
@@ -1079,23 +1113,32 @@ enqueue_dec_one_op(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 		 */
 		kw = RTE_ALIGN_CEIL(k + 4, RTE_BBDEV_C_SUBBLOCK) * 3;
 
-		process_dec_cb(q, op, c, k, kw, m_in, m_out, in_offset,
-				out_offset, check_bit(dec->op_flags,
+		process_dec_cb(q, op, c, k, kw, m_in, m_out_head, m_out,
+				in_offset, out_offset, check_bit(dec->op_flags,
 				RTE_BBDEV_TURBO_CRC_TYPE_24B), crc24_overlap,
-				total_left, queue_stats);
+				seg_total_left, queue_stats);
 		/* To keep CRC24 attached to end of Code block, use
 		 * RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP flag as it
 		 * removed by default once verified.
 		 */
 
-		/* Update total_left */
-		total_left -= kw;
-		/* Update offsets for next CBs (if exist) */
-		in_offset += kw;
-		out_offset += ((k - crc24_overlap) >> 3);
+		mbuf_total_left -= kw;
+
+		/* Update offsets */
+		if (seg_total_left == kw) {
+			/* Go to the next mbuf */
+			m_in = m_in->next;
+			m_out = m_out->next;
+			in_offset = 0;
+			out_offset = 0;
+		} else {
+			/* Update offsets for next CBs (if exist) */
+			in_offset += kw;
+			out_offset += ((k - crc24_overlap) >> 3);
+		}
 		r++;
 	}
-	if (total_left != 0) {
+	if (mbuf_total_left != 0) {
 		op->status |= 1 << RTE_BBDEV_DATA_ERROR;
 		rte_bbdev_log(ERR,
 				"Mismatch between mbuf length and included Circular buffer sizes");

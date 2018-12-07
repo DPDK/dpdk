@@ -114,6 +114,17 @@ typedef int (test_case_function)(struct active_device *ad,
 		struct test_op_params *op_params);
 
 static inline void
+mbuf_reset(struct rte_mbuf *m)
+{
+	m->pkt_len = 0;
+
+	do {
+		m->data_len = 0;
+		m = m->next;
+	} while (m != NULL);
+}
+
+static inline void
 set_avail_op(struct active_device *ad, enum rte_bbdev_op_type op_type)
 {
 	ad->supported_ops |= (1 << op_type);
@@ -573,6 +584,10 @@ init_op_data_objs(struct rte_bbdev_op_data *bufs,
 				op_type, n * ref_entries->nb_segments,
 				mbuf_pool->size);
 
+		TEST_ASSERT_SUCCESS(((seg->length + RTE_PKTMBUF_HEADROOM) >
+				(uint32_t)UINT16_MAX),
+				"Given data is bigger than allowed mbuf segment size");
+
 		bufs[i].data = m_head;
 		bufs[i].offset = 0;
 		bufs[i].length = 0;
@@ -588,7 +603,6 @@ init_op_data_objs(struct rte_bbdev_op_data *bufs,
 					data, min_alignment);
 			rte_memcpy(data, seg->addr, seg->length);
 			bufs[i].length += seg->length;
-
 
 			for (j = 1; j < ref_entries->nb_segments; ++j) {
 				struct rte_mbuf *m_tail =
@@ -611,6 +625,24 @@ init_op_data_objs(struct rte_bbdev_op_data *bufs,
 						data, min_alignment);
 				rte_memcpy(data, seg->addr, seg->length);
 				bufs[i].length += seg->length;
+
+				ret = rte_pktmbuf_chain(m_head, m_tail);
+				TEST_ASSERT_SUCCESS(ret,
+						"Couldn't chain mbufs from %d data type mbuf pool",
+						op_type);
+			}
+
+		} else {
+
+			/* allocate chained-mbuf for output buffer */
+			for (j = 1; j < ref_entries->nb_segments; ++j) {
+				struct rte_mbuf *m_tail =
+						rte_pktmbuf_alloc(mbuf_pool);
+				TEST_ASSERT_NOT_NULL(m_tail,
+						"Not enough mbufs in %d data type mbuf pool (needed %u, available %u)",
+						op_type,
+						n * ref_entries->nb_segments,
+						mbuf_pool->size);
 
 				ret = rte_pktmbuf_chain(m_head, m_tail);
 				TEST_ASSERT_SUCCESS(ret,
@@ -655,7 +687,7 @@ limit_input_llr_val_range(struct rte_bbdev_op_data *input_ops,
 		while (m != NULL) {
 			int8_t *llr = rte_pktmbuf_mtod_offset(m, int8_t *,
 					input_ops[i].offset);
-			for (byte_idx = 0; byte_idx < input_ops[i].length;
+			for (byte_idx = 0; byte_idx < rte_pktmbuf_data_len(m);
 					++byte_idx)
 				llr[byte_idx] = round((double)max_llr_modulus *
 						llr[byte_idx] / INT8_MAX);
@@ -864,15 +896,18 @@ validate_op_chain(struct rte_bbdev_op_data *op,
 	uint8_t i;
 	struct rte_mbuf *m = op->data;
 	uint8_t nb_dst_segments = orig_op->nb_segments;
+	uint32_t total_data_size = 0;
 
 	TEST_ASSERT(nb_dst_segments == m->nb_segs,
 			"Number of segments differ in original (%u) and filled (%u) op",
 			nb_dst_segments, m->nb_segs);
 
+	/* Validate each mbuf segment length */
 	for (i = 0; i < nb_dst_segments; ++i) {
 		/* Apply offset to the first mbuf segment */
 		uint16_t offset = (i == 0) ? op->offset : 0;
-		uint16_t data_len = m->data_len - offset;
+		uint16_t data_len = rte_pktmbuf_data_len(m) - offset;
+		total_data_size += orig_op->segments[i].length;
 
 		TEST_ASSERT(orig_op->segments[i].length == data_len,
 				"Length of segment differ in original (%u) and filled (%u) op",
@@ -883,6 +918,12 @@ validate_op_chain(struct rte_bbdev_op_data *op,
 				"Output buffers (CB=%u) are not equal", i);
 		m = m->next;
 	}
+
+	/* Validate total mbuf pkt length */
+	uint32_t pkt_len = rte_pktmbuf_pkt_len(op->data) - op->offset;
+	TEST_ASSERT(total_data_size == pkt_len,
+			"Length of data differ in original (%u) and filled (%u) op",
+			total_data_size, pkt_len);
 
 	return TEST_SUCCESS;
 }
@@ -1427,10 +1468,8 @@ throughput_pmd_lcore_dec(void *arg)
 
 	for (i = 0; i < TEST_REPETITIONS; ++i) {
 
-		for (j = 0; j < num_ops; ++j) {
-			struct rte_bbdev_dec_op *op = ops_enq[j];
-			rte_pktmbuf_reset(op->turbo_dec.hard_output.data);
-		}
+		for (j = 0; j < num_ops; ++j)
+			mbuf_reset(ops_enq[j]->turbo_dec.hard_output.data);
 
 		start_time = rte_rdtsc_precise();
 
@@ -1529,8 +1568,7 @@ throughput_pmd_lcore_enc(void *arg)
 
 		if (test_vector.op_type != RTE_BBDEV_OP_NONE)
 			for (j = 0; j < num_ops; ++j)
-				rte_pktmbuf_reset(
-					ops_enq[j]->turbo_enc.output.data);
+				mbuf_reset(ops_enq[j]->turbo_enc.output.data);
 
 		start_time = rte_rdtsc_precise();
 
@@ -2025,7 +2063,7 @@ offload_latency_test_dec(struct rte_mempool *mempool, struct test_buffers *bufs,
 		time_st->enq_acc_total_time += stats.acc_offload_cycles;
 
 		/* ensure enqueue has been completed */
-		rte_delay_ms(10);
+		rte_delay_us(200);
 
 		/* Start time meas for dequeue function offload latency */
 		deq_start_time = rte_rdtsc_precise();
@@ -2106,7 +2144,7 @@ offload_latency_test_enc(struct rte_mempool *mempool, struct test_buffers *bufs,
 		time_st->enq_acc_total_time += stats.acc_offload_cycles;
 
 		/* ensure enqueue has been completed */
-		rte_delay_ms(10);
+		rte_delay_us(200);
 
 		/* Start time meas for dequeue function offload latency */
 		deq_start_time = rte_rdtsc_precise();
