@@ -239,8 +239,13 @@ struct rte_bbdev_stats {
 	uint64_t enqueue_err_count;
 	/** Total error count on operations dequeued */
 	uint64_t dequeue_err_count;
-	/** Offload time */
-	uint64_t offload_time;
+	/** CPU cycles consumed by the (HW/SW) accelerator device to offload
+	 *  the enqueue request to its internal queues.
+	 *  - For a HW device this is the cycles consumed in MMIO write
+	 *  - For a SW (vdev) device, this is the processing time of the
+	 *     bbdev operation
+	 */
+	uint64_t acc_offload_cycles;
 };
 
 /**

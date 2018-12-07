@@ -88,19 +88,19 @@ struct thread_params {
 /* Stores time statistics */
 struct test_time_stats {
 	/* Stores software enqueue total working time */
-	uint64_t enq_sw_tot_time;
+	uint64_t enq_sw_total_time;
 	/* Stores minimum value of software enqueue working time */
 	uint64_t enq_sw_min_time;
 	/* Stores maximum value of software enqueue working time */
 	uint64_t enq_sw_max_time;
 	/* Stores turbo enqueue total working time */
-	uint64_t enq_tur_tot_time;
-	/* Stores minimum value of turbo enqueue working time */
-	uint64_t enq_tur_min_time;
-	/* Stores maximum value of turbo enqueue working time */
-	uint64_t enq_tur_max_time;
+	uint64_t enq_acc_total_time;
+	/* Stores minimum value of accelerator enqueue working time */
+	uint64_t enq_acc_min_time;
+	/* Stores maximum value of accelerator enqueue working time */
+	uint64_t enq_acc_max_time;
 	/* Stores dequeue total working time */
-	uint64_t deq_tot_time;
+	uint64_t deq_total_time;
 	/* Stores minimum value of dequeue working time */
 	uint64_t deq_min_time;
 	/* Stores maximum value of dequeue working time */
@@ -1200,12 +1200,15 @@ dequeue_event_callback(uint16_t dev_id,
 	burst_sz = tp->op_params->burst_sz;
 	num_to_process = tp->op_params->num_to_process;
 
-	if (test_vector.op_type == RTE_BBDEV_OP_TURBO_DEC)
+	if (test_vector.op_type == RTE_BBDEV_OP_TURBO_DEC) {
 		deq = rte_bbdev_dequeue_dec_ops(dev_id, queue_id, dec_ops,
 				burst_sz);
-	else
+		rte_bbdev_dec_op_free_bulk(dec_ops, deq);
+	} else {
 		deq = rte_bbdev_dequeue_enc_ops(dev_id, queue_id, enc_ops,
 				burst_sz);
+		rte_bbdev_enc_op_free_bulk(enc_ops, deq);
+	}
 
 	if (deq < burst_sz) {
 		printf(
@@ -1316,8 +1319,6 @@ throughput_intr_lcore_dec(void *arg)
 
 		enqueued += rte_bbdev_enqueue_dec_ops(tp->dev_id, queue_id, ops,
 				num_to_enq);
-
-		rte_bbdev_dec_op_free_bulk(ops, num_to_enq);
 	}
 
 	if (allocs_failed > 0)
@@ -1380,8 +1381,6 @@ throughput_intr_lcore_enc(void *arg)
 
 		enqueued += rte_bbdev_enqueue_enc_ops(tp->dev_id, queue_id, ops,
 				num_to_enq);
-
-		rte_bbdev_enc_op_free_bulk(ops, num_to_enq);
 	}
 
 	if (allocs_failed > 0)
@@ -1575,13 +1574,14 @@ print_throughput(struct thread_params *t_params, unsigned int used_cores)
 	RTE_LCORE_FOREACH(lcore_id) {
 		if (iter++ >= used_cores)
 			break;
-		printf("\tlcore_id: %u, throughput: %.8lg MOPS, %.8lg Mbps\n",
-		lcore_id, t_params[lcore_id].mops, t_params[lcore_id].mbps);
+		printf("Throughput for core (%u): %.8lg MOPS, %.8lg Mbps\n",
+				lcore_id, t_params[lcore_id].mops,
+				t_params[lcore_id].mbps);
 		total_mops += t_params[lcore_id].mops;
 		total_mbps += t_params[lcore_id].mbps;
 	}
 	printf(
-		"\n\tTotal stats for %u cores: throughput: %.8lg MOPS, %.8lg Mbps\n",
+		"\nTotal throughput for %u cores: %.8lg MOPS, %.8lg Mbps\n",
 		used_cores, total_mops, total_mbps);
 }
 
@@ -1882,7 +1882,7 @@ latency_test(struct active_device *ad,
 	TEST_ASSERT_NOT_NULL(op_type_str, "Invalid op type: %u", op_type);
 
 	printf(
-		"Validation/Latency test: dev: %s, burst size: %u, num ops: %u, op type: %s\n",
+		"\nValidation/Latency test: dev: %s, burst size: %u, num ops: %u, op type: %s\n",
 			info.dev_name, burst_sz, num_to_process, op_type_str);
 
 	if (op_type == RTE_BBDEV_OP_TURBO_DEC)
@@ -1899,10 +1899,10 @@ latency_test(struct active_device *ad,
 	if (iter <= 0)
 		return TEST_FAILED;
 
-	printf("\toperation latency:\n"
-			"\t\tavg latency: %lg cycles, %lg us\n"
-			"\t\tmin latency: %lg cycles, %lg us\n"
-			"\t\tmax latency: %lg cycles, %lg us\n",
+	printf("Operation latency:\n"
+			"\tavg latency: %lg cycles, %lg us\n"
+			"\tmin latency: %lg cycles, %lg us\n"
+			"\tmax latency: %lg cycles, %lg us\n",
 			(double)total_time / (double)iter,
 			(double)(total_time * 1000000) / (double)iter /
 			(double)rte_get_tsc_hz(), (double)min_time,
@@ -1930,7 +1930,7 @@ get_bbdev_queue_stats(uint16_t dev_id, uint16_t queue_id,
 	stats->dequeued_count = q_stats->dequeued_count;
 	stats->enqueue_err_count = q_stats->enqueue_err_count;
 	stats->dequeue_err_count = q_stats->dequeue_err_count;
-	stats->offload_time = q_stats->offload_time;
+	stats->acc_offload_cycles = q_stats->acc_offload_cycles;
 
 	return 0;
 }
@@ -1974,18 +1974,18 @@ offload_latency_test_dec(struct rte_mempool *mempool, struct test_buffers *bufs,
 				queue_id, dev_id);
 
 		enq_sw_last_time = rte_rdtsc_precise() - enq_start_time -
-				stats.offload_time;
+				stats.acc_offload_cycles;
 		time_st->enq_sw_max_time = RTE_MAX(time_st->enq_sw_max_time,
 				enq_sw_last_time);
 		time_st->enq_sw_min_time = RTE_MIN(time_st->enq_sw_min_time,
 				enq_sw_last_time);
-		time_st->enq_sw_tot_time += enq_sw_last_time;
+		time_st->enq_sw_total_time += enq_sw_last_time;
 
-		time_st->enq_tur_max_time = RTE_MAX(time_st->enq_tur_max_time,
-				stats.offload_time);
-		time_st->enq_tur_min_time = RTE_MIN(time_st->enq_tur_min_time,
-				stats.offload_time);
-		time_st->enq_tur_tot_time += stats.offload_time;
+		time_st->enq_acc_max_time = RTE_MAX(time_st->enq_acc_max_time,
+				stats.acc_offload_cycles);
+		time_st->enq_acc_min_time = RTE_MIN(time_st->enq_acc_min_time,
+				stats.acc_offload_cycles);
+		time_st->enq_acc_total_time += stats.acc_offload_cycles;
 
 		/* ensure enqueue has been completed */
 		rte_delay_ms(10);
@@ -2003,7 +2003,7 @@ offload_latency_test_dec(struct rte_mempool *mempool, struct test_buffers *bufs,
 				deq_last_time);
 		time_st->deq_min_time = RTE_MIN(time_st->deq_min_time,
 				deq_last_time);
-		time_st->deq_tot_time += deq_last_time;
+		time_st->deq_total_time += deq_last_time;
 
 		/* Dequeue remaining operations if needed*/
 		while (burst_sz != deq)
@@ -2055,18 +2055,18 @@ offload_latency_test_enc(struct rte_mempool *mempool, struct test_buffers *bufs,
 				queue_id, dev_id);
 
 		enq_sw_last_time = rte_rdtsc_precise() - enq_start_time -
-				stats.offload_time;
+				stats.acc_offload_cycles;
 		time_st->enq_sw_max_time = RTE_MAX(time_st->enq_sw_max_time,
 				enq_sw_last_time);
 		time_st->enq_sw_min_time = RTE_MIN(time_st->enq_sw_min_time,
 				enq_sw_last_time);
-		time_st->enq_sw_tot_time += enq_sw_last_time;
+		time_st->enq_sw_total_time += enq_sw_last_time;
 
-		time_st->enq_tur_max_time = RTE_MAX(time_st->enq_tur_max_time,
-				stats.offload_time);
-		time_st->enq_tur_min_time = RTE_MIN(time_st->enq_tur_min_time,
-				stats.offload_time);
-		time_st->enq_tur_tot_time += stats.offload_time;
+		time_st->enq_acc_max_time = RTE_MAX(time_st->enq_acc_max_time,
+				stats.acc_offload_cycles);
+		time_st->enq_acc_min_time = RTE_MIN(time_st->enq_acc_min_time,
+				stats.acc_offload_cycles);
+		time_st->enq_acc_total_time += stats.acc_offload_cycles;
 
 		/* ensure enqueue has been completed */
 		rte_delay_ms(10);
@@ -2084,7 +2084,7 @@ offload_latency_test_enc(struct rte_mempool *mempool, struct test_buffers *bufs,
 				deq_last_time);
 		time_st->deq_min_time = RTE_MIN(time_st->deq_min_time,
 				deq_last_time);
-		time_st->deq_tot_time += deq_last_time;
+		time_st->deq_total_time += deq_last_time;
 
 		while (burst_sz != deq)
 			deq += rte_bbdev_dequeue_enc_ops(dev_id, queue_id,
@@ -2121,7 +2121,7 @@ offload_cost_test(struct active_device *ad,
 
 	memset(&time_st, 0, sizeof(struct test_time_stats));
 	time_st.enq_sw_min_time = UINT64_MAX;
-	time_st.enq_tur_min_time = UINT64_MAX;
+	time_st.enq_acc_min_time = UINT64_MAX;
 	time_st.deq_min_time = UINT64_MAX;
 
 	TEST_ASSERT_SUCCESS((burst_sz > MAX_BURST),
@@ -2134,7 +2134,7 @@ offload_cost_test(struct active_device *ad,
 	TEST_ASSERT_NOT_NULL(op_type_str, "Invalid op type: %u", op_type);
 
 	printf(
-		"Offload latency test: dev: %s, burst size: %u, num ops: %u, op type: %s\n",
+		"\nOffload latency test: dev: %s, burst size: %u, num ops: %u, op type: %s\n",
 			info.dev_name, burst_sz, num_to_process, op_type_str);
 
 	if (op_type == RTE_BBDEV_OP_TURBO_DEC)
@@ -2149,36 +2149,36 @@ offload_cost_test(struct active_device *ad,
 	if (iter <= 0)
 		return TEST_FAILED;
 
-	printf("\tenq offload cost latency:\n"
-			"\t\tsoftware avg %lg cycles, %lg us\n"
-			"\t\tsoftware min %lg cycles, %lg us\n"
-			"\t\tsoftware max %lg cycles, %lg us\n"
-			"\t\tturbo avg %lg cycles, %lg us\n"
-			"\t\tturbo min %lg cycles, %lg us\n"
-			"\t\tturbo max %lg cycles, %lg us\n",
-			(double)time_st.enq_sw_tot_time / (double)iter,
-			(double)(time_st.enq_sw_tot_time * 1000000) /
+	printf("Enqueue offload cost latency:\n"
+			"\tDriver offload avg %lg cycles, %lg us\n"
+			"\tDriver offload min %lg cycles, %lg us\n"
+			"\tDriver offload max %lg cycles, %lg us\n"
+			"\tAccelerator offload avg %lg cycles, %lg us\n"
+			"\tAccelerator offload min %lg cycles, %lg us\n"
+			"\tAccelerator offload max %lg cycles, %lg us\n",
+			(double)time_st.enq_sw_total_time / (double)iter,
+			(double)(time_st.enq_sw_total_time * 1000000) /
 			(double)iter / (double)rte_get_tsc_hz(),
 			(double)time_st.enq_sw_min_time,
 			(double)(time_st.enq_sw_min_time * 1000000) /
 			rte_get_tsc_hz(), (double)time_st.enq_sw_max_time,
 			(double)(time_st.enq_sw_max_time * 1000000) /
-			rte_get_tsc_hz(), (double)time_st.enq_tur_tot_time /
+			rte_get_tsc_hz(), (double)time_st.enq_acc_total_time /
 			(double)iter,
-			(double)(time_st.enq_tur_tot_time * 1000000) /
+			(double)(time_st.enq_acc_total_time * 1000000) /
 			(double)iter / (double)rte_get_tsc_hz(),
-			(double)time_st.enq_tur_min_time,
-			(double)(time_st.enq_tur_min_time * 1000000) /
-			rte_get_tsc_hz(), (double)time_st.enq_tur_max_time,
-			(double)(time_st.enq_tur_max_time * 1000000) /
+			(double)time_st.enq_acc_min_time,
+			(double)(time_st.enq_acc_min_time * 1000000) /
+			rte_get_tsc_hz(), (double)time_st.enq_acc_max_time,
+			(double)(time_st.enq_acc_max_time * 1000000) /
 			rte_get_tsc_hz());
 
-	printf("\tdeq offload cost latency - one op:\n"
-			"\t\tavg %lg cycles, %lg us\n"
-			"\t\tmin %lg cycles, %lg us\n"
-			"\t\tmax %lg cycles, %lg us\n",
-			(double)time_st.deq_tot_time / (double)iter,
-			(double)(time_st.deq_tot_time * 1000000) /
+	printf("Dequeue offload cost latency - one op:\n"
+			"\tavg %lg cycles, %lg us\n"
+			"\tmin %lg cycles, %lg us\n"
+			"\tmax %lg cycles, %lg us\n",
+			(double)time_st.deq_total_time / (double)iter,
+			(double)(time_st.deq_total_time * 1000000) /
 			(double)iter / (double)rte_get_tsc_hz(),
 			(double)time_st.deq_min_time,
 			(double)(time_st.deq_min_time * 1000000) /
@@ -2194,7 +2194,7 @@ offload_cost_test(struct active_device *ad,
 static int
 offload_latency_empty_q_test_dec(uint16_t dev_id, uint16_t queue_id,
 		const uint16_t num_to_process, uint16_t burst_sz,
-		uint64_t *deq_tot_time, uint64_t *deq_min_time,
+		uint64_t *deq_total_time, uint64_t *deq_min_time,
 		uint64_t *deq_max_time)
 {
 	int i, deq_total;
@@ -2214,7 +2214,7 @@ offload_latency_empty_q_test_dec(uint16_t dev_id, uint16_t queue_id,
 		deq_last_time = rte_rdtsc_precise() - deq_start_time;
 		*deq_max_time = RTE_MAX(*deq_max_time, deq_last_time);
 		*deq_min_time = RTE_MIN(*deq_min_time, deq_last_time);
-		*deq_tot_time += deq_last_time;
+		*deq_total_time += deq_last_time;
 	}
 
 	return i;
@@ -2223,7 +2223,7 @@ offload_latency_empty_q_test_dec(uint16_t dev_id, uint16_t queue_id,
 static int
 offload_latency_empty_q_test_enc(uint16_t dev_id, uint16_t queue_id,
 		const uint16_t num_to_process, uint16_t burst_sz,
-		uint64_t *deq_tot_time, uint64_t *deq_min_time,
+		uint64_t *deq_total_time, uint64_t *deq_min_time,
 		uint64_t *deq_max_time)
 {
 	int i, deq_total;
@@ -2242,7 +2242,7 @@ offload_latency_empty_q_test_enc(uint16_t dev_id, uint16_t queue_id,
 		deq_last_time = rte_rdtsc_precise() - deq_start_time;
 		*deq_max_time = RTE_MAX(*deq_max_time, deq_last_time);
 		*deq_min_time = RTE_MIN(*deq_min_time, deq_last_time);
-		*deq_tot_time += deq_last_time;
+		*deq_total_time += deq_last_time;
 	}
 
 	return i;
@@ -2261,7 +2261,7 @@ offload_latency_empty_q_test(struct active_device *ad,
 	return TEST_SKIPPED;
 #else
 	int iter;
-	uint64_t deq_tot_time, deq_min_time, deq_max_time;
+	uint64_t deq_total_time, deq_min_time, deq_max_time;
 	uint16_t burst_sz = op_params->burst_sz;
 	const uint16_t num_to_process = op_params->num_to_process;
 	const enum rte_bbdev_op_type op_type = test_vector.op_type;
@@ -2269,7 +2269,7 @@ offload_latency_empty_q_test(struct active_device *ad,
 	struct rte_bbdev_info info;
 	const char *op_type_str;
 
-	deq_tot_time = deq_max_time = 0;
+	deq_total_time = deq_max_time = 0;
 	deq_min_time = UINT64_MAX;
 
 	TEST_ASSERT_SUCCESS((burst_sz > MAX_BURST),
@@ -2281,27 +2281,27 @@ offload_latency_empty_q_test(struct active_device *ad,
 	TEST_ASSERT_NOT_NULL(op_type_str, "Invalid op type: %u", op_type);
 
 	printf(
-		"Offload latency empty dequeue test: dev: %s, burst size: %u, num ops: %u, op type: %s\n",
+		"\nOffload latency empty dequeue test: dev: %s, burst size: %u, num ops: %u, op type: %s\n",
 			info.dev_name, burst_sz, num_to_process, op_type_str);
 
 	if (op_type == RTE_BBDEV_OP_TURBO_DEC)
 		iter = offload_latency_empty_q_test_dec(ad->dev_id, queue_id,
-				num_to_process, burst_sz, &deq_tot_time,
+				num_to_process, burst_sz, &deq_total_time,
 				&deq_min_time, &deq_max_time);
 	else
 		iter = offload_latency_empty_q_test_enc(ad->dev_id, queue_id,
-				num_to_process, burst_sz, &deq_tot_time,
+				num_to_process, burst_sz, &deq_total_time,
 				&deq_min_time, &deq_max_time);
 
 	if (iter <= 0)
 		return TEST_FAILED;
 
-	printf("\tempty deq offload\n"
-			"\t\tavg. latency: %lg cycles, %lg us\n"
-			"\t\tmin. latency: %lg cycles, %lg us\n"
-			"\t\tmax. latency: %lg cycles, %lg us\n",
-			(double)deq_tot_time / (double)iter,
-			(double)(deq_tot_time * 1000000) / (double)iter /
+	printf("Empty dequeue offload\n"
+			"\tavg. latency: %lg cycles, %lg us\n"
+			"\tmin. latency: %lg cycles, %lg us\n"
+			"\tmax. latency: %lg cycles, %lg us\n",
+			(double)deq_total_time / (double)iter,
+			(double)(deq_total_time * 1000000) / (double)iter /
 			(double)rte_get_tsc_hz(), (double)deq_min_time,
 			(double)(deq_min_time * 1000000) / rte_get_tsc_hz(),
 			(double)deq_max_time, (double)(deq_max_time * 1000000) /

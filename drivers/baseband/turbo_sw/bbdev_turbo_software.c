@@ -510,9 +510,10 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 #ifdef RTE_BBDEV_OFFLOAD_COST
 		start_time = rte_rdtsc_precise();
 #endif
+		/* CRC24A generation */
 		bblib_lte_crc24a_gen(&crc_req, &crc_resp);
 #ifdef RTE_BBDEV_OFFLOAD_COST
-		q_stats->offload_time += rte_rdtsc_precise() - start_time;
+		q_stats->acc_offload_cycles += rte_rdtsc_precise() - start_time;
 #endif
 	} else if (enc->op_flags & RTE_BBDEV_TURBO_CRC_24B_ATTACH) {
 		/* CRC24B */
@@ -542,9 +543,10 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 #ifdef RTE_BBDEV_OFFLOAD_COST
 		start_time = rte_rdtsc_precise();
 #endif
+		/* CRC24B generation */
 		bblib_lte_crc24b_gen(&crc_req, &crc_resp);
 #ifdef RTE_BBDEV_OFFLOAD_COST
-		q_stats->offload_time += rte_rdtsc_precise() - start_time;
+		q_stats->acc_offload_cycles += rte_rdtsc_precise() - start_time;
 #endif
 	} else {
 		ret = is_enc_input_valid(k, k_idx, total_left);
@@ -596,15 +598,14 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 #ifdef RTE_BBDEV_OFFLOAD_COST
 	start_time = rte_rdtsc_precise();
 #endif
-
+	/* Turbo encoding */
 	if (bblib_turbo_encoder(&turbo_req, &turbo_resp) != 0) {
 		op->status |= 1 << RTE_BBDEV_DRV_ERROR;
 		rte_bbdev_log(ERR, "Turbo Encoder failed");
 		return;
 	}
-
 #ifdef RTE_BBDEV_OFFLOAD_COST
-	q_stats->offload_time += rte_rdtsc_precise() - start_time;
+	q_stats->acc_offload_cycles += rte_rdtsc_precise() - start_time;
 #endif
 
 	/* Restore 3 first bytes of next CB if they were overwritten by CRC*/
@@ -671,23 +672,21 @@ process_enc_cb(struct turbo_sw_queue *q, struct rte_bbdev_enc_op *op,
 #ifdef RTE_BBDEV_OFFLOAD_COST
 		start_time = rte_rdtsc_precise();
 #endif
-
+		/* Rate-Matching */
 		if (bblib_rate_match_dl(&rm_req, &rm_resp) != 0) {
 			op->status |= 1 << RTE_BBDEV_DRV_ERROR;
 			rte_bbdev_log(ERR, "Rate matching failed");
 			return;
 		}
+#ifdef RTE_BBDEV_OFFLOAD_COST
+		q_stats->acc_offload_cycles += rte_rdtsc_precise() - start_time;
+#endif
 
 		/* SW fills an entire last byte even if E%8 != 0. Clear the
 		 * superfluous data bits for consistency with HW device.
 		 */
 		mask_id = (e & 7) >> 1;
 		rm_out[out_len - 1] &= mask_out[mask_id];
-
-#ifdef RTE_BBDEV_OFFLOAD_COST
-		q_stats->offload_time += rte_rdtsc_precise() - start_time;
-#endif
-
 		enc->output.length += rm_resp.OutputLen;
 	} else {
 		/* Rate matching is bypassed */
@@ -798,7 +797,7 @@ enqueue_enc_all_ops(struct turbo_sw_queue *q, struct rte_bbdev_enc_op **ops,
 {
 	uint16_t i;
 #ifdef RTE_BBDEV_OFFLOAD_COST
-	queue_stats->offload_time = 0;
+	queue_stats->acc_offload_cycles = 0;
 #endif
 
 	for (i = 0; i < nb_ops; ++i)
@@ -905,7 +904,8 @@ static inline void
 process_dec_cb(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 		uint8_t c, uint16_t k, uint16_t kw, struct rte_mbuf *m_in,
 		struct rte_mbuf *m_out, uint16_t in_offset, uint16_t out_offset,
-		bool check_crc_24b, uint16_t crc24_overlap, uint16_t total_left)
+		bool check_crc_24b, uint16_t crc24_overlap, uint16_t total_left,
+		struct rte_bbdev_stats *q_stats)
 {
 	int ret;
 	int32_t k_idx;
@@ -917,6 +917,11 @@ process_dec_cb(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 	struct bblib_turbo_decoder_request turbo_req;
 	struct bblib_turbo_decoder_response turbo_resp;
 	struct rte_bbdev_op_turbo_dec *dec = &op->turbo_dec;
+#ifdef RTE_BBDEV_OFFLOAD_COST
+	uint64_t start_time;
+#else
+	RTE_SET_USED(q_stats);
+#endif
 
 	k_idx = compute_idx(k);
 
@@ -942,7 +947,14 @@ process_dec_cb(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 		deint_req.pharqbuffer = q->deint_input;
 		deint_req.ncb = ncb_without_null;
 		deint_resp.pinteleavebuffer = q->deint_output;
+
+#ifdef RTE_BBDEV_OFFLOAD_COST
+		start_time = rte_rdtsc_precise();
+#endif
 		bblib_deinterleave_ul(&deint_req, &deint_resp);
+#ifdef RTE_BBDEV_OFFLOAD_COST
+		q_stats->acc_offload_cycles += rte_rdtsc_precise() - start_time;
+#endif
 	} else
 		move_padding_bytes(in, q->deint_output, k, ncb);
 
@@ -961,7 +973,15 @@ process_dec_cb(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 	adapter_req.ncb = ncb_without_null;
 	adapter_req.pinteleavebuffer = adapter_input;
 	adapter_resp.pharqout = q->adapter_output;
+
+#ifdef RTE_BBDEV_OFFLOAD_COST
+	start_time = rte_rdtsc_precise();
+#endif
+	/* Turbo decode adaptation */
 	bblib_turbo_adapter_ul(&adapter_req, &adapter_resp);
+#ifdef RTE_BBDEV_OFFLOAD_COST
+	q_stats->acc_offload_cycles += rte_rdtsc_precise() - start_time;
+#endif
 
 	out = (uint8_t *)rte_pktmbuf_append(m_out, ((k - crc24_overlap) >> 3));
 	if (out == NULL) {
@@ -986,12 +1006,20 @@ process_dec_cb(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 	turbo_resp.ag_buf = q->ag;
 	turbo_resp.cb_buf = q->code_block;
 	turbo_resp.output = out;
+
+#ifdef RTE_BBDEV_OFFLOAD_COST
+	start_time = rte_rdtsc_precise();
+#endif
+	/* Turbo decode */
 	iter_cnt = bblib_turbo_decoder(&turbo_req, &turbo_resp);
+#ifdef RTE_BBDEV_OFFLOAD_COST
+	q_stats->acc_offload_cycles += rte_rdtsc_precise() - start_time;
+#endif
 	dec->hard_output.length += (k >> 3);
 
 	if (iter_cnt > 0) {
 		/* Temporary solution for returned iter_count from SDK */
-		iter_cnt = (iter_cnt - 1) / 2;
+		iter_cnt = (iter_cnt - 1) >> 1;
 		dec->iter_count = RTE_MAX(iter_cnt, dec->iter_count);
 	} else {
 		op->status |= 1 << RTE_BBDEV_DATA_ERROR;
@@ -1001,7 +1029,8 @@ process_dec_cb(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
 }
 
 static inline void
-enqueue_dec_one_op(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op)
+enqueue_dec_one_op(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op,
+		struct rte_bbdev_stats *queue_stats)
 {
 	uint8_t c, r = 0;
 	uint16_t kw, k = 0;
@@ -1053,7 +1082,7 @@ enqueue_dec_one_op(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op)
 		process_dec_cb(q, op, c, k, kw, m_in, m_out, in_offset,
 				out_offset, check_bit(dec->op_flags,
 				RTE_BBDEV_TURBO_CRC_TYPE_24B), crc24_overlap,
-				total_left);
+				total_left, queue_stats);
 		/* To keep CRC24 attached to end of Code block, use
 		 * RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP flag as it
 		 * removed by default once verified.
@@ -1075,12 +1104,15 @@ enqueue_dec_one_op(struct turbo_sw_queue *q, struct rte_bbdev_dec_op *op)
 
 static inline uint16_t
 enqueue_dec_all_ops(struct turbo_sw_queue *q, struct rte_bbdev_dec_op **ops,
-		uint16_t nb_ops)
+		uint16_t nb_ops, struct rte_bbdev_stats *queue_stats)
 {
 	uint16_t i;
+#ifdef RTE_BBDEV_OFFLOAD_COST
+	queue_stats->acc_offload_cycles = 0;
+#endif
 
 	for (i = 0; i < nb_ops; ++i)
-		enqueue_dec_one_op(q, ops[i]);
+		enqueue_dec_one_op(q, ops[i], queue_stats);
 
 	return rte_ring_enqueue_burst(q->processed_pkts, (void **)ops, nb_ops,
 			NULL);
@@ -1112,7 +1144,7 @@ enqueue_dec_ops(struct rte_bbdev_queue_data *q_data,
 	struct turbo_sw_queue *q = queue;
 	uint16_t nb_enqueued = 0;
 
-	nb_enqueued = enqueue_dec_all_ops(q, ops, nb_ops);
+	nb_enqueued = enqueue_dec_all_ops(q, ops, nb_ops, &q_data->queue_stats);
 
 	q_data->queue_stats.enqueue_err_count += nb_ops - nb_enqueued;
 	q_data->queue_stats.enqueued_count += nb_enqueued;
