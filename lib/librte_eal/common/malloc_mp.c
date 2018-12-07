@@ -209,6 +209,8 @@ handle_alloc_request(const struct malloc_mp_req *m,
 
 	map_addr = ms[0]->addr;
 
+	eal_memalloc_mem_event_notify(RTE_MEM_EVENT_ALLOC, map_addr, alloc_sz);
+
 	/* we have succeeded in allocating memory, but we still need to sync
 	 * with other processes. however, since DPDK IPC is single-threaded, we
 	 * send an asynchronous request and exit this callback.
@@ -258,6 +260,9 @@ handle_request(const struct rte_mp_msg *msg, const void *peer __rte_unused)
 	if (m->t == REQ_TYPE_ALLOC) {
 		ret = handle_alloc_request(m, entry);
 	} else if (m->t == REQ_TYPE_FREE) {
+		eal_memalloc_mem_event_notify(RTE_MEM_EVENT_FREE,
+				m->free_req.addr, m->free_req.len);
+
 		ret = malloc_heap_free_pages(m->free_req.addr,
 				m->free_req.len);
 	} else {
@@ -436,6 +441,9 @@ handle_sync_response(const struct rte_mp_msg *request,
 		memset(&rb_msg, 0, sizeof(rb_msg));
 
 		/* we've failed to sync, so do a rollback */
+		eal_memalloc_mem_event_notify(RTE_MEM_EVENT_FREE,
+				state->map_addr, state->map_len);
+
 		rollback_expand_heap(state->ms, state->ms_len, state->elem,
 				state->map_addr, state->map_len);
 
