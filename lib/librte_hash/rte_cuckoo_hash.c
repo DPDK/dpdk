@@ -2022,11 +2022,11 @@ __rte_hash_lookup_bulk(const struct rte_hash *h, const void **keys,
 			uint64_t *hit_mask, void *data[])
 {
 	if (h->readwrite_concur_lf_support)
-		return __rte_hash_lookup_bulk_lf(h, keys, num_keys,
-						positions, hit_mask, data);
+		__rte_hash_lookup_bulk_lf(h, keys, num_keys, positions,
+					  hit_mask, data);
 	else
-		return __rte_hash_lookup_bulk_l(h, keys, num_keys,
-						positions, hit_mask, data);
+		__rte_hash_lookup_bulk_l(h, keys, num_keys, positions,
+					 hit_mask, data);
 }
 
 int
