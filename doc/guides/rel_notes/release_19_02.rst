@@ -58,6 +58,7 @@ New Features
 
   * Added support for ``RTE_ETH_DEV_CLOSE_REMOVE`` flag.
   * Added the handler to get firmware version string.
+  * Added support for multicast filtering.
 
 
 Removed Items

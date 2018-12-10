@@ -367,6 +367,7 @@ static int enicpmd_dev_configure(struct rte_eth_dev *eth_dev)
 		return ret;
 	}
 
+	enic->mc_count = 0;
 	enic->hw_ip_checksum = !!(eth_dev->data->dev_conf.rxmode.offloads &
 				  DEV_RX_OFFLOAD_CHECKSUM);
 	/* All vlan offload masks to apply the current settings */
@@ -473,7 +474,7 @@ static void enicpmd_dev_info_get(struct rte_eth_dev *eth_dev,
 	 * ignoring vNIC mtu.
 	 */
 	device_info->max_rx_pktlen = enic_mtu_to_max_rx_pktlen(enic->max_mtu);
-	device_info->max_mac_addrs = ENIC_MAX_MAC_ADDR;
+	device_info->max_mac_addrs = ENIC_UNICAST_PERFECT_FILTERS;
 	device_info->rx_offload_capa = enic->rx_offload_capa;
 	device_info->tx_offload_capa = enic->tx_offload_capa;
 	device_info->tx_queue_offload_capa = enic->tx_queue_offload_capa;
@@ -641,6 +642,98 @@ static int enicpmd_set_mac_addr(struct rte_eth_dev *eth_dev,
 	if (ret)
 		return ret;
 	return enic_set_mac_address(enic, addr->addr_bytes);
+}
+
+static void debug_log_add_del_addr(struct ether_addr *addr, bool add)
+{
+	char mac_str[ETHER_ADDR_FMT_SIZE];
+	if (rte_log_get_level(enicpmd_logtype_init) == RTE_LOG_DEBUG) {
+		ether_format_addr(mac_str, ETHER_ADDR_FMT_SIZE, addr);
+		PMD_INIT_LOG(ERR, " %s address %s\n",
+			     add ? "add" : "remove", mac_str);
+	}
+}
+
+static int enicpmd_set_mc_addr_list(struct rte_eth_dev *eth_dev,
+				    struct ether_addr *mc_addr_set,
+				    uint32_t nb_mc_addr)
+{
+	struct enic *enic = pmd_priv(eth_dev);
+	char mac_str[ETHER_ADDR_FMT_SIZE];
+	struct ether_addr *addr;
+	uint32_t i, j;
+	int ret;
+
+	ENICPMD_FUNC_TRACE();
+
+	/* Validate the given addresses first */
+	for (i = 0; i < nb_mc_addr && mc_addr_set != NULL; i++) {
+		addr = &mc_addr_set[i];
+		if (!is_multicast_ether_addr(addr) ||
+		    is_broadcast_ether_addr(addr)) {
+			ether_format_addr(mac_str, ETHER_ADDR_FMT_SIZE, addr);
+			PMD_INIT_LOG(ERR, " invalid multicast address %s\n",
+				     mac_str);
+			return -EINVAL;
+		}
+	}
+
+	/* Flush all if requested */
+	if (nb_mc_addr == 0 || mc_addr_set == NULL) {
+		PMD_INIT_LOG(DEBUG, " flush multicast addresses\n");
+		for (i = 0; i < enic->mc_count; i++) {
+			addr = &enic->mc_addrs[i];
+			debug_log_add_del_addr(addr, false);
+			ret = vnic_dev_del_addr(enic->vdev, addr->addr_bytes);
+			if (ret)
+				return ret;
+		}
+		enic->mc_count = 0;
+		return 0;
+	}
+
+	if (nb_mc_addr > ENIC_MULTICAST_PERFECT_FILTERS) {
+		PMD_INIT_LOG(ERR, " too many multicast addresses: max=%d\n",
+			     ENIC_MULTICAST_PERFECT_FILTERS);
+		return -ENOSPC;
+	}
+	/*
+	 * devcmd is slow, so apply the difference instead of flushing and
+	 * adding everything.
+	 * 1. Delete addresses on the NIC but not on the host
+	 */
+	for (i = 0; i < enic->mc_count; i++) {
+		addr = &enic->mc_addrs[i];
+		for (j = 0; j < nb_mc_addr; j++) {
+			if (is_same_ether_addr(addr, &mc_addr_set[j]))
+				break;
+		}
+		if (j < nb_mc_addr)
+			continue;
+		debug_log_add_del_addr(addr, false);
+		ret = vnic_dev_del_addr(enic->vdev, addr->addr_bytes);
+		if (ret)
+			return ret;
+	}
+	/* 2. Add addresses on the host but not on the NIC */
+	for (i = 0; i < nb_mc_addr; i++) {
+		addr = &mc_addr_set[i];
+		for (j = 0; j < enic->mc_count; j++) {
+			if (is_same_ether_addr(addr, &enic->mc_addrs[j]))
+				break;
+		}
+		if (j < enic->mc_count)
+			continue;
+		debug_log_add_del_addr(addr, true);
+		ret = vnic_dev_add_addr(enic->vdev, addr->addr_bytes);
+		if (ret)
+			return ret;
+	}
+	/* Keep a copy so we can flush/apply later on.. */
+	memcpy(enic->mc_addrs, mc_addr_set,
+	       nb_mc_addr * sizeof(struct ether_addr));
+	enic->mc_count = nb_mc_addr;
+	return 0;
 }
 
 static int enicpmd_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
@@ -951,6 +1044,7 @@ static const struct eth_dev_ops enicpmd_eth_dev_ops = {
 	.mac_addr_add         = enicpmd_add_mac_addr,
 	.mac_addr_remove      = enicpmd_remove_mac_addr,
 	.mac_addr_set         = enicpmd_set_mac_addr,
+	.set_mc_addr_list     = enicpmd_set_mc_addr_list,
 	.filter_ctrl          = enicpmd_dev_filter_ctrl,
 	.reta_query           = enicpmd_dev_rss_reta_query,
 	.reta_update          = enicpmd_dev_rss_reta_update,

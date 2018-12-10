@@ -25,8 +25,6 @@
 #define DRV_DESCRIPTION		"Cisco VIC Ethernet NIC Poll-mode Driver"
 #define DRV_COPYRIGHT		"Copyright 2008-2015 Cisco Systems, Inc"
 
-#define ENIC_MAX_MAC_ADDR	64
-
 #define VLAN_ETH_HLEN           18
 
 #define ENICPMD_SETTING(enic, f) ((enic->config.flags & VENETF_##f) ? 1 : 0)
@@ -196,6 +194,10 @@ struct enic {
 	uint64_t tx_offload_capa; /* DEV_TX_OFFLOAD flags */
 	uint64_t tx_queue_offload_capa; /* DEV_TX_OFFLOAD flags */
 	uint64_t tx_offload_mask; /* PKT_TX flags accepted */
+
+	/* Multicast MAC addresses added to the NIC */
+	uint32_t mc_count;
+	struct ether_addr mc_addrs[ENIC_MULTICAST_PERFECT_FILTERS];
 };
 
 /* Compute ethdev's max packet size from MTU */
