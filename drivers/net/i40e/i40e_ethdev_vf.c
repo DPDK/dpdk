@@ -1256,7 +1256,7 @@ i40evf_uninit_vf(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (hw->adapter_stopped == 0)
+	if (hw->adapter_closed == 0)
 		i40evf_dev_close(dev);
 	rte_free(vf->vf_res);
 	vf->vf_res = NULL;
@@ -1438,6 +1438,7 @@ i40evf_dev_init(struct rte_eth_dev *eth_dev)
 	hw->bus.func = pci_dev->addr.function;
 	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
 	hw->adapter_stopped = 0;
+	hw->adapter_closed = 0;
 
 	if(i40evf_init_vf(eth_dev) != 0) {
 		PMD_INIT_LOG(ERR, "Init vf failed");
@@ -2260,6 +2261,7 @@ i40evf_dev_close(struct rte_eth_dev *dev)
 	i40e_shutdown_adminq(hw);
 	i40evf_disable_irq0(hw);
 	rte_eal_alarm_cancel(i40evf_dev_alarm_handler, dev);
+	hw->adapter_closed = 1;
 }
 
 /*

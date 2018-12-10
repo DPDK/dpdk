@@ -670,6 +670,7 @@ struct i40e_hw {
 	u8 revision_id;
 	u8 port;
 	bool adapter_stopped;
+	bool adapter_closed;
 
 	/* capabilities for entire device and PCI func */
 	struct i40e_hw_capabilities dev_caps;

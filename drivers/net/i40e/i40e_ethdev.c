@@ -1316,6 +1316,7 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 	hw->bus.device = pci_dev->addr.devid;
 	hw->bus.func = pci_dev->addr.function;
 	hw->adapter_stopped = 0;
+	hw->adapter_closed = 0;
 
 	/*
 	 * Switch Tag value should not be identical to either the First Tag
@@ -1713,7 +1714,7 @@ eth_i40e_dev_uninit(struct rte_eth_dev *dev)
 	if (ret)
 		PMD_INIT_LOG(WARNING, "failed to free switch domain: %d", ret);
 
-	if (hw->adapter_stopped == 0)
+	if (hw->adapter_closed == 0)
 		i40e_dev_close(dev);
 
 	dev->dev_ops = NULL;
@@ -2534,6 +2535,8 @@ i40e_dev_close(struct rte_eth_dev *dev)
 	I40E_WRITE_REG(hw, I40E_PFGEN_CTRL,
 			(reg | I40E_PFGEN_CTRL_PFSWR_MASK));
 	I40E_WRITE_FLUSH(hw);
+
+	hw->adapter_closed = 1;
 }
 
 /*
