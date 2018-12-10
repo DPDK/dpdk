@@ -458,6 +458,32 @@ int vnic_dev_cmd_args(struct vnic_dev *vdev, enum vnic_devcmd_cmd cmd,
 	}
 }
 
+int vnic_dev_fw_info(struct vnic_dev *vdev,
+		     struct vnic_devcmd_fw_info **fw_info)
+{
+	char name[NAME_MAX];
+	u64 a0, a1 = 0;
+	int wait = 1000;
+	int err = 0;
+	static u32 instance;
+
+	if (!vdev->fw_info) {
+		snprintf((char *)name, sizeof(name), "vnic_fw_info-%u",
+			 instance++);
+		vdev->fw_info = vdev->alloc_consistent(vdev->priv,
+			sizeof(struct vnic_devcmd_fw_info),
+			&vdev->fw_info_pa, (u8 *)name);
+		if (!vdev->fw_info)
+			return -ENOMEM;
+		a0 = vdev->fw_info_pa;
+		a1 = sizeof(struct vnic_devcmd_fw_info);
+		err = vnic_dev_cmd(vdev, CMD_MCPU_FW_INFO,
+				   &a0, &a1, wait);
+	}
+	*fw_info = vdev->fw_info;
+	return err;
+}
+
 static int vnic_dev_advanced_filters_cap(struct vnic_dev *vdev, u64 *args,
 		int nargs)
 {

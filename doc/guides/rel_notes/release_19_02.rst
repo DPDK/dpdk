@@ -57,6 +57,7 @@ New Features
 * **Updated the enic driver.**
 
   * Added support for ``RTE_ETH_DEV_CLOSE_REMOVE`` flag.
+  * Added the handler to get firmware version string.
 
 
 Removed Items

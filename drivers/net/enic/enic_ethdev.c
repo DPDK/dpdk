@@ -887,6 +887,26 @@ static int enicpmd_dev_udp_tunnel_port_del(struct rte_eth_dev *eth_dev,
 	return update_vxlan_port(enic, ENIC_DEFAULT_VXLAN_PORT);
 }
 
+static int enicpmd_dev_fw_version_get(struct rte_eth_dev *eth_dev,
+				      char *fw_version, size_t fw_size)
+{
+	struct vnic_devcmd_fw_info *info;
+	struct enic *enic;
+	int ret;
+
+	ENICPMD_FUNC_TRACE();
+	if (fw_version == NULL || fw_size <= 0)
+		return -EINVAL;
+	enic = pmd_priv(eth_dev);
+	ret = vnic_dev_fw_info(enic->vdev, &info);
+	if (ret)
+		return ret;
+	snprintf(fw_version, fw_size, "%s %s",
+		 info->fw_version, info->fw_build);
+	fw_version[fw_size - 1] = '\0';
+	return 0;
+}
+
 static const struct eth_dev_ops enicpmd_eth_dev_ops = {
 	.dev_configure        = enicpmd_dev_configure,
 	.dev_start            = enicpmd_dev_start,
@@ -938,6 +958,7 @@ static const struct eth_dev_ops enicpmd_eth_dev_ops = {
 	.rss_hash_update      = enicpmd_dev_rss_hash_update,
 	.udp_tunnel_port_add  = enicpmd_dev_udp_tunnel_port_add,
 	.udp_tunnel_port_del  = enicpmd_dev_udp_tunnel_port_del,
+	.fw_version_get       = enicpmd_dev_fw_version_get,
 };
 
 static int enic_parse_zero_one(const char *key,
