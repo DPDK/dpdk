@@ -154,7 +154,7 @@ test_metrics_update_values(void)
 
 	/* Failed Test: Invalid count size */
 	err = rte_metrics_update_values(RTE_METRICS_GLOBAL,
-			 KEY, &value[0], 0);
+			 KEY, &value[0], ARRAY_SIZE(value));
 	TEST_ASSERT(err < 0, "%s, %d", __func__, __LINE__);
 
 	/* Failed Test: Invalid port_id(lower value) and valid data */
