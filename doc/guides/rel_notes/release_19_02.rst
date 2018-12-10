@@ -54,6 +54,10 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Updated the enic driver.**
+
+  * Added support for ``RTE_ETH_DEV_CLOSE_REMOVE`` flag.
+
 
 Removed Items
 -------------
