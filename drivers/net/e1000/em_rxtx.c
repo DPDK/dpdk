@@ -50,6 +50,8 @@
 #define E1000_RXDCTL_GRAN	0x01000000 /* RXDCTL Granularity */
 
 #define E1000_TX_OFFLOAD_MASK ( \
+		PKT_TX_IPV6 |           \
+		PKT_TX_IPV4 |           \
 		PKT_TX_IP_CKSUM |       \
 		PKT_TX_L4_MASK |        \
 		PKT_TX_VLAN_PKT)

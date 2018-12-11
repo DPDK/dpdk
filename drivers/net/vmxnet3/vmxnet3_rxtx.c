@@ -50,6 +50,8 @@
 
 #define	VMXNET3_TX_OFFLOAD_MASK	( \
 		PKT_TX_VLAN_PKT | \
+		PKT_TX_IPV6 |     \
+		PKT_TX_IPV4 |     \
 		PKT_TX_L4_MASK |  \
 		PKT_TX_TCP_SEG)
 
