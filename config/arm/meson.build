@@ -47,6 +47,7 @@ flags_common_default = [
 flags_generic = [
 	['RTE_MACHINE', '"armv8a"'],
 	['RTE_MAX_LCORE', 256],
+	['RTE_USE_C11_MEM_MODEL', true],
 	['RTE_CACHE_LINE_SIZE', 128]]
 flags_cavium = [
 	['RTE_MACHINE', '"thunderx"'],
@@ -57,11 +58,13 @@ flags_cavium = [
 	['RTE_USE_C11_MEM_MODEL', false]]
 flags_dpaa = [
 	['RTE_MACHINE', '"dpaa"'],
+	['RTE_USE_C11_MEM_MODEL', true],
 	['RTE_CACHE_LINE_SIZE', 64],
 	['RTE_MAX_NUMA_NODES', 1],
 	['RTE_MAX_LCORE', 16]]
 flags_dpaa2 = [
 	['RTE_MACHINE', '"dpaa2"'],
+	['RTE_USE_C11_MEM_MODEL', true],
 	['RTE_CACHE_LINE_SIZE', 64],
 	['RTE_MAX_NUMA_NODES', 1],
 	['RTE_MAX_LCORE', 16],
