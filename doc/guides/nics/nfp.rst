@@ -145,6 +145,18 @@ is no support for RX interrupts and it is not possible either to use those PF
 ports with the device hotplug functionality.
 
 
+PF multiprocess support
+-----------------------
+
+Due to how the driver needs to access the NFP through a CPP interface, which implies
+to use specific registers inside the chip, the number of secondary proceses with PF
+ports is limitted to only one.
+
+This limitation will be solved in future versions but having basic multiprocess support
+is important for allowing development and debugging through the PF using a secondary
+process which will create a CPP bridge for user space tools accessing the NFP.
+
+
 System configuration
 --------------------
 

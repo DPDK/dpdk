@@ -766,9 +766,12 @@ nfp_net_start(struct rte_eth_dev *dev)
 		goto error;
 	}
 
-	if (hw->is_pf)
+	if (hw->is_pf && rte_eal_process_type() == RTE_PROC_PRIMARY)
 		/* Configure the physical port up */
 		nfp_eth_set_configured(hw->cpp, hw->pf_port_idx, 1);
+	else
+		nfp_eth_set_configured(dev->process_private,
+				       hw->pf_port_idx, 1);
 
 	hw->ctrl = new_ctrl;
 
@@ -817,9 +820,12 @@ nfp_net_stop(struct rte_eth_dev *dev)
 			(struct nfp_net_rxq *)dev->data->rx_queues[i]);
 	}
 
-	if (hw->is_pf)
+	if (hw->is_pf && rte_eal_process_type() == RTE_PROC_PRIMARY)
 		/* Configure the physical port down */
 		nfp_eth_set_configured(hw->cpp, hw->pf_port_idx, 0);
+	else
+		nfp_eth_set_configured(dev->process_private,
+				       hw->pf_port_idx, 0);
 }
 
 /* Reset and stop device. The device can not be restarted. */
@@ -2918,16 +2924,16 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		     hw->mac_addr[0], hw->mac_addr[1], hw->mac_addr[2],
 		     hw->mac_addr[3], hw->mac_addr[4], hw->mac_addr[5]);
 
-	/* Registering LSC interrupt handler */
-	rte_intr_callback_register(&pci_dev->intr_handle,
-				   nfp_net_dev_interrupt_handler,
-				   (void *)eth_dev);
-
-	/* Telling the firmware about the LSC interrupt entry */
-	nn_cfg_writeb(hw, NFP_NET_CFG_LSC, NFP_NET_IRQ_LSC_IDX);
-
-	/* Recording current stats counters values */
-	nfp_net_stats_reset(eth_dev);
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		/* Registering LSC interrupt handler */
+		rte_intr_callback_register(&pci_dev->intr_handle,
+					   nfp_net_dev_interrupt_handler,
+					   (void *)eth_dev);
+		/* Telling the firmware about the LSC interrupt entry */
+		nn_cfg_writeb(hw, NFP_NET_CFG_LSC, NFP_NET_IRQ_LSC_IDX);
+		/* Recording current stats counters values */
+		nfp_net_stats_reset(eth_dev);
+	}
 
 	return 0;
 
@@ -2947,7 +2953,7 @@ nfp_pf_create_dev(struct rte_pci_device *dev, int port, int ports,
 	struct rte_eth_dev *eth_dev;
 	struct nfp_net_hw *hw;
 	char *port_name;
-	int ret;
+	int retval;
 
 	port_name = rte_zmalloc("nfp_pf_port_name", 100, 0);
 	if (!port_name)
@@ -2958,51 +2964,76 @@ nfp_pf_create_dev(struct rte_pci_device *dev, int port, int ports,
 	else
 		sprintf(port_name, "%s", dev->device.name);
 
-	eth_dev = rte_eth_dev_allocate(port_name);
-	if (!eth_dev)
-		return -ENOMEM;
 
-	if (port == 0) {
-		*priv = rte_zmalloc(port_name,
-				    sizeof(struct nfp_net_adapter) * ports,
-				    RTE_CACHE_LINE_SIZE);
-		if (!*priv) {
-			rte_eth_dev_release_port(eth_dev);
-			return -ENOMEM;
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		eth_dev = rte_eth_dev_allocate(port_name);
+		if (!eth_dev) {
+			rte_free(port_name);
+			return -ENODEV;
 		}
+		if (port == 0) {
+			*priv = rte_zmalloc(port_name,
+					    sizeof(struct nfp_net_adapter) *
+					    ports, RTE_CACHE_LINE_SIZE);
+			if (!*priv) {
+				rte_free(port_name);
+				rte_eth_dev_release_port(eth_dev);
+				return -ENOMEM;
+			}
+		}
+		eth_dev->data->dev_private = *priv;
+
+		/*
+		 * dev_private pointing to port0 dev_private because we need
+		 * to configure vNIC bars based on port0 at nfp_net_init.
+		 * Then dev_private is adjusted per port.
+		 */
+		hw = (struct nfp_net_hw *)(eth_dev->data->dev_private) + port;
+		hw->cpp = cpp;
+		hw->hwinfo = hwinfo;
+		hw->sym_tbl = sym_tbl;
+		hw->pf_port_idx = phys_port;
+		hw->is_pf = 1;
+		if (ports > 1)
+			hw->pf_multiport_enabled = 1;
+
+		hw->total_ports = ports;
+	} else {
+		eth_dev = rte_eth_dev_attach_secondary(port_name);
+		if (!eth_dev) {
+			RTE_LOG(ERR, EAL, "secondary process attach failed, "
+				"ethdev doesn't exist");
+			rte_free(port_name);
+			return -ENODEV;
+		}
+		eth_dev->process_private = cpp;
 	}
-
-	eth_dev->data->dev_private = *priv;
-
-	/*
-	 * dev_private pointing to port0 dev_private because we need
-	 * to configure vNIC bars based on port0 at nfp_net_init.
-	 * Then dev_private is adjusted per port.
-	 */
-	hw = (struct nfp_net_hw *)(eth_dev->data->dev_private) + port;
-	hw->cpp = cpp;
-	hw->hwinfo = hwinfo;
-	hw->sym_tbl = sym_tbl;
-	hw->pf_port_idx = phys_port;
-	hw->is_pf = 1;
-	if (ports > 1)
-		hw->pf_multiport_enabled = 1;
-
-	hw->total_ports = ports;
 
 	eth_dev->device = &dev->device;
 	rte_eth_copy_pci_info(eth_dev, dev);
 
-	ret = nfp_net_init(eth_dev);
+	retval = nfp_net_init(eth_dev);
 
-	if (ret)
-		rte_eth_dev_release_port(eth_dev);
-	else
+	if (retval) {
+		retval = -ENODEV;
+		goto probe_failed;
+	} else {
 		rte_eth_dev_probing_finish(eth_dev);
+	}
 
 	rte_free(port_name);
 
-	return ret;
+	return retval;
+
+probe_failed:
+	rte_free(port_name);
+	/* free ports private data if primary process */
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		rte_free(eth_dev->data->dev_private);
+
+	rte_eth_dev_release_port(eth_dev);
+
+	return retval;
 }
 
 #define DEFAULT_FW_PATH       "/lib/firmware/netronome"
@@ -3180,10 +3211,12 @@ static int nfp_pf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		return -EIO;
 	}
 
-	if (nfp_fw_setup(dev, cpp, nfp_eth_table, hwinfo)) {
-		PMD_DRV_LOG(INFO, "Error when uploading firmware");
-		ret = -EIO;
-		goto error;
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		if (nfp_fw_setup(dev, cpp, nfp_eth_table, hwinfo)) {
+			PMD_DRV_LOG(INFO, "Error when uploading firmware");
+			ret = -EIO;
+			goto error;
+		}
 	}
 
 	/* Now the symbol table should be there */
