@@ -517,13 +517,8 @@ sync_memory(const char *heap_name, void *va_addr, size_t len, bool attach)
 	if (wa.result < 0) {
 		rte_errno = -wa.result;
 		ret = -1;
-	} else {
-		/* notify all subscribers that a new memory area was added */
-		if (attach)
-			eal_memalloc_mem_event_notify(RTE_MEM_EVENT_ALLOC,
-					va_addr, len);
+	} else
 		ret = 0;
-	}
 unlock:
 	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
 	return ret;
