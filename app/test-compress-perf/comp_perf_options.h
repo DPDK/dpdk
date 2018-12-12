@@ -2,6 +2,9 @@
  * Copyright(c) 2018 Intel Corporation
  */
 
+#ifndef _COMP_PERF_OPS_
+#define _COMP_PERF_OPS_
+
 #define MAX_DRIVER_NAME		64
 #define MAX_INPUT_FILE_NAME	64
 #define MAX_LIST		32
@@ -46,6 +49,13 @@ struct comp_test_data {
 	/* Store TSC duration for all levels (including level 0) */
 	uint64_t comp_tsc_duration[RTE_COMP_LEVEL_MAX + 1];
 	uint64_t decomp_tsc_duration[RTE_COMP_LEVEL_MAX + 1];
+	size_t comp_data_sz;
+	size_t decomp_data_sz;
+	double ratio;
+	double comp_gbps;
+	double decomp_gbps;
+	double comp_tsc_byte;
+	double decomp_tsc_byte;
 };
 
 int
@@ -57,3 +67,5 @@ comp_perf_options_default(struct comp_test_data *test_data);
 
 int
 comp_perf_options_check(struct comp_test_data *test_data);
+
+#endif

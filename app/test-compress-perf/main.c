@@ -5,10 +5,11 @@
 #include <rte_malloc.h>
 #include <rte_eal.h>
 #include <rte_log.h>
-#include <rte_cycles.h>
 #include <rte_compressdev.h>
 
 #include "comp_perf_options.h"
+#include "comp_perf_test_verify.h"
+#include "comp_perf_test_benchmark.h"
 
 #define NUM_MAX_XFORMS 16
 #define NUM_MAX_INFLIGHT_OPS 512
@@ -442,287 +443,7 @@ free_bufs(struct comp_test_data *test_data)
 	}
 }
 
-static int
-main_loop(struct comp_test_data *test_data, uint8_t level,
-			enum rte_comp_xform_type type,
-			uint8_t *output_data_ptr,
-			size_t *output_data_sz,
-			unsigned int benchmarking)
-{
-	uint8_t dev_id = test_data->cdev_id;
-	uint32_t i, iter, num_iter;
-	struct rte_comp_op **ops, **deq_ops;
-	void *priv_xform = NULL;
-	struct rte_comp_xform xform;
-	size_t output_size = 0;
-	struct rte_mbuf **input_bufs, **output_bufs;
-	int res = 0;
-	int allocated = 0;
 
-	if (test_data == NULL || !test_data->burst_sz) {
-		RTE_LOG(ERR, USER1,
-			"Unknown burst size\n");
-		return -1;
-	}
-
-	ops = rte_zmalloc_socket(NULL,
-		2 * test_data->total_bufs * sizeof(struct rte_comp_op *),
-		0, rte_socket_id());
-
-	if (ops == NULL) {
-		RTE_LOG(ERR, USER1,
-			"Can't allocate memory for ops strucures\n");
-		return -1;
-	}
-
-	deq_ops = &ops[test_data->total_bufs];
-
-	if (type == RTE_COMP_COMPRESS) {
-		xform = (struct rte_comp_xform) {
-			.type = RTE_COMP_COMPRESS,
-			.compress = {
-				.algo = RTE_COMP_ALGO_DEFLATE,
-				.deflate.huffman = test_data->huffman_enc,
-				.level = level,
-				.window_size = test_data->window_sz,
-				.chksum = RTE_COMP_CHECKSUM_NONE,
-				.hash_algo = RTE_COMP_HASH_ALGO_NONE
-			}
-		};
-		input_bufs = test_data->decomp_bufs;
-		output_bufs = test_data->comp_bufs;
-	} else {
-		xform = (struct rte_comp_xform) {
-			.type = RTE_COMP_DECOMPRESS,
-			.decompress = {
-				.algo = RTE_COMP_ALGO_DEFLATE,
-				.chksum = RTE_COMP_CHECKSUM_NONE,
-				.window_size = test_data->window_sz,
-				.hash_algo = RTE_COMP_HASH_ALGO_NONE
-			}
-		};
-		input_bufs = test_data->comp_bufs;
-		output_bufs = test_data->decomp_bufs;
-	}
-
-	/* Create private xform */
-	if (rte_compressdev_private_xform_create(dev_id, &xform,
-			&priv_xform) < 0) {
-		RTE_LOG(ERR, USER1, "Private xform could not be created\n");
-		res = -1;
-		goto end;
-	}
-
-	uint64_t tsc_start, tsc_end, tsc_duration;
-
-	tsc_start = tsc_end = tsc_duration = 0;
-	if (benchmarking) {
-		tsc_start = rte_rdtsc();
-		num_iter = test_data->num_iter;
-	} else
-		num_iter = 1;
-
-	for (iter = 0; iter < num_iter; iter++) {
-		uint32_t total_ops = test_data->total_bufs;
-		uint32_t remaining_ops = test_data->total_bufs;
-		uint32_t total_deq_ops = 0;
-		uint32_t total_enq_ops = 0;
-		uint16_t ops_unused = 0;
-		uint16_t num_enq = 0;
-		uint16_t num_deq = 0;
-
-		output_size = 0;
-
-		while (remaining_ops > 0) {
-			uint16_t num_ops = RTE_MIN(remaining_ops,
-						   test_data->burst_sz);
-			uint16_t ops_needed = num_ops - ops_unused;
-
-			/*
-			 * Move the unused operations from the previous
-			 * enqueue_burst call to the front, to maintain order
-			 */
-			if ((ops_unused > 0) && (num_enq > 0)) {
-				size_t nb_b_to_mov =
-				      ops_unused * sizeof(struct rte_comp_op *);
-
-				memmove(ops, &ops[num_enq], nb_b_to_mov);
-			}
-
-			/* Allocate compression operations */
-			if (ops_needed && !rte_comp_op_bulk_alloc(
-						test_data->op_pool,
-						&ops[ops_unused],
-						ops_needed)) {
-				RTE_LOG(ERR, USER1,
-				      "Could not allocate enough operations\n");
-				res = -1;
-				goto end;
-			}
-			allocated += ops_needed;
-
-			for (i = 0; i < ops_needed; i++) {
-				/*
-				 * Calculate next buffer to attach to operation
-				 */
-				uint32_t buf_id = total_enq_ops + i +
-						ops_unused;
-				uint16_t op_id = ops_unused + i;
-				/* Reset all data in output buffers */
-				struct rte_mbuf *m = output_bufs[buf_id];
-
-				m->pkt_len = test_data->seg_sz * m->nb_segs;
-				while (m) {
-					m->data_len = m->buf_len - m->data_off;
-					m = m->next;
-				}
-				ops[op_id]->m_src = input_bufs[buf_id];
-				ops[op_id]->m_dst = output_bufs[buf_id];
-				ops[op_id]->src.offset = 0;
-				ops[op_id]->src.length =
-					rte_pktmbuf_pkt_len(input_bufs[buf_id]);
-				ops[op_id]->dst.offset = 0;
-				ops[op_id]->flush_flag = RTE_COMP_FLUSH_FINAL;
-				ops[op_id]->input_chksum = buf_id;
-				ops[op_id]->private_xform = priv_xform;
-			}
-
-			num_enq = rte_compressdev_enqueue_burst(dev_id, 0, ops,
-								num_ops);
-			ops_unused = num_ops - num_enq;
-			remaining_ops -= num_enq;
-			total_enq_ops += num_enq;
-
-			num_deq = rte_compressdev_dequeue_burst(dev_id, 0,
-							   deq_ops,
-							   test_data->burst_sz);
-			total_deq_ops += num_deq;
-			if (benchmarking == 0) {
-				for (i = 0; i < num_deq; i++) {
-					struct rte_comp_op *op = deq_ops[i];
-					const void *read_data_addr =
-						rte_pktmbuf_read(op->m_dst, 0,
-						op->produced, output_data_ptr);
-					if (read_data_addr == NULL) {
-						RTE_LOG(ERR, USER1,
-				      "Could not copy buffer in destination\n");
-						res = -1;
-						goto end;
-					}
-
-					if (read_data_addr != output_data_ptr)
-						rte_memcpy(output_data_ptr,
-							rte_pktmbuf_mtod(
-							  op->m_dst, uint8_t *),
-							op->produced);
-					output_data_ptr += op->produced;
-					output_size += op->produced;
-
-				}
-			}
-
-			if (iter == num_iter - 1) {
-				for (i = 0; i < num_deq; i++) {
-					struct rte_comp_op *op = deq_ops[i];
-					struct rte_mbuf *m = op->m_dst;
-
-					m->pkt_len = op->produced;
-					uint32_t remaining_data = op->produced;
-					uint16_t data_to_append;
-
-					while (remaining_data > 0) {
-						data_to_append =
-							RTE_MIN(remaining_data,
-							     test_data->seg_sz);
-						m->data_len = data_to_append;
-						remaining_data -=
-								data_to_append;
-						m = m->next;
-					}
-				}
-			}
-			rte_mempool_put_bulk(test_data->op_pool,
-					     (void **)deq_ops, num_deq);
-			allocated -= num_deq;
-		}
-
-		/* Dequeue the last operations */
-		while (total_deq_ops < total_ops) {
-			num_deq = rte_compressdev_dequeue_burst(dev_id, 0,
-						deq_ops, test_data->burst_sz);
-			total_deq_ops += num_deq;
-			if (benchmarking == 0) {
-				for (i = 0; i < num_deq; i++) {
-					struct rte_comp_op *op = deq_ops[i];
-					const void *read_data_addr =
-						rte_pktmbuf_read(op->m_dst,
-							op->dst.offset,
-							op->produced,
-							output_data_ptr);
-					if (read_data_addr == NULL) {
-						RTE_LOG(ERR, USER1,
-				      "Could not copy buffer in destination\n");
-						res = -1;
-						goto end;
-					}
-
-					if (read_data_addr != output_data_ptr)
-						rte_memcpy(output_data_ptr,
-							rte_pktmbuf_mtod(
-							op->m_dst, uint8_t *),
-							op->produced);
-					output_data_ptr += op->produced;
-					output_size += op->produced;
-
-				}
-			}
-
-			if (iter == num_iter - 1) {
-				for (i = 0; i < num_deq; i++) {
-					struct rte_comp_op *op = deq_ops[i];
-					struct rte_mbuf *m = op->m_dst;
-
-					m->pkt_len = op->produced;
-					uint32_t remaining_data = op->produced;
-					uint16_t data_to_append;
-
-					while (remaining_data > 0) {
-						data_to_append =
-						RTE_MIN(remaining_data,
-							test_data->seg_sz);
-						m->data_len = data_to_append;
-						remaining_data -=
-								data_to_append;
-						m = m->next;
-					}
-				}
-			}
-			rte_mempool_put_bulk(test_data->op_pool,
-					     (void **)deq_ops, num_deq);
-			allocated -= num_deq;
-		}
-	}
-
-	if (benchmarking) {
-		tsc_end = rte_rdtsc();
-		tsc_duration = tsc_end - tsc_start;
-
-		if (type == RTE_COMP_COMPRESS)
-			test_data->comp_tsc_duration[level] =
-					tsc_duration / num_iter;
-		else
-			test_data->decomp_tsc_duration[level] =
-					tsc_duration / num_iter;
-	}
-
-	if (benchmarking == 0 && output_data_sz)
-		*output_data_sz = output_size;
-end:
-	rte_mempool_put_bulk(test_data->op_pool, (void **)ops, allocated);
-	rte_compressdev_private_xform_free(dev_id, priv_xform);
-	rte_free(ops);
-	return res;
-}
 
 int
 main(int argc, char **argv)
@@ -745,6 +466,7 @@ main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "Cannot reserve memory in socket %d\n",
 				rte_socket_id());
 
+	ret = EXIT_SUCCESS;
 	cleanup = ST_TEST_DATA;
 	comp_perf_options_default(test_data);
 
@@ -787,9 +509,6 @@ main(int argc, char **argv)
 	else
 		level = test_data->level.list[0];
 
-	size_t comp_data_sz;
-	size_t decomp_data_sz;
-
 	printf("Burst size = %u\n", test_data->burst_sz);
 	printf("File size = %zu\n", test_data->input_data_sz);
 
@@ -800,84 +519,27 @@ main(int argc, char **argv)
 
 	cleanup = ST_DURING_TEST;
 	while (level <= test_data->level.max) {
+
 		/*
 		 * Run a first iteration, to verify compression and
 		 * get the compression ratio for the level
 		 */
-		if (main_loop(test_data, level, RTE_COMP_COMPRESS,
-			      test_data->compressed_data,
-			      &comp_data_sz, 0) < 0) {
-			ret = EXIT_FAILURE;
-			goto end;
-		}
-
-		if (main_loop(test_data, level, RTE_COMP_DECOMPRESS,
-			      test_data->decompressed_data,
-			      &decomp_data_sz, 0) < 0) {
-			ret = EXIT_FAILURE;
-			goto end;
-		}
-
-		if (decomp_data_sz != test_data->input_data_sz) {
-			RTE_LOG(ERR, USER1,
-		   "Decompressed data length not equal to input data length\n");
-			RTE_LOG(ERR, USER1,
-				"Decompressed size = %zu, expected = %zu\n",
-				decomp_data_sz, test_data->input_data_sz);
-			ret = EXIT_FAILURE;
-			goto end;
-		} else {
-			if (memcmp(test_data->decompressed_data,
-					test_data->input_data,
-					test_data->input_data_sz) != 0) {
-				RTE_LOG(ERR, USER1,
-			    "Decompressed data is not the same as file data\n");
-				ret = EXIT_FAILURE;
-				goto end;
-			}
-		}
-
-		double ratio = (double) comp_data_sz /
-						test_data->input_data_sz * 100;
+		if (cperf_verification(test_data, level) != EXIT_SUCCESS)
+			break;
 
 		/*
-		 * Run the tests twice, discarding the first performance
-		 * results, before the cache is warmed up
+		 * Run benchmarking test
 		 */
-		for (i = 0; i < 2; i++) {
-			if (main_loop(test_data, level, RTE_COMP_COMPRESS,
-					NULL, NULL, 1) < 0) {
-				ret = EXIT_FAILURE;
-				goto end;
-			}
-		}
-
-		for (i = 0; i < 2; i++) {
-			if (main_loop(test_data, level, RTE_COMP_DECOMPRESS,
-					NULL, NULL, 1) < 0) {
-				ret = EXIT_FAILURE;
-				goto end;
-			}
-		}
-
-		uint64_t comp_tsc_duration =
-				test_data->comp_tsc_duration[level];
-		double comp_tsc_byte = (double)comp_tsc_duration /
-						test_data->input_data_sz;
-		double comp_gbps = rte_get_tsc_hz() / comp_tsc_byte * 8 /
-				1000000000;
-		uint64_t decomp_tsc_duration =
-				test_data->decomp_tsc_duration[level];
-		double decomp_tsc_byte = (double)decomp_tsc_duration /
-						test_data->input_data_sz;
-		double decomp_gbps = rte_get_tsc_hz() / decomp_tsc_byte * 8 /
-				1000000000;
+		if (cperf_benchmark(test_data, level) != EXIT_SUCCESS)
+			break;
 
 		printf("%6u%12zu%17.2f%19"PRIu64"%21.2f"
 					"%15.2f%21"PRIu64"%23.2f%16.2f\n",
-		       level, comp_data_sz, ratio, comp_tsc_duration,
-		       comp_tsc_byte, comp_gbps, decomp_tsc_duration,
-		       decomp_tsc_byte, decomp_gbps);
+		       level, test_data->comp_data_sz, test_data->ratio,
+		       test_data->comp_tsc_duration[level],
+		       test_data->comp_tsc_byte, test_data->comp_gbps,
+		       test_data->decomp_tsc_duration[level],
+		       test_data->decomp_tsc_byte, test_data->decomp_gbps);
 
 		if (test_data->level.inc != 0)
 			level += test_data->level.inc;
@@ -887,8 +549,6 @@ main(int argc, char **argv)
 			level = test_data->level.list[level_idx];
 		}
 	}
-
-	ret = EXIT_SUCCESS;
 
 end:
 	switch (cleanup) {
