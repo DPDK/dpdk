@@ -68,5 +68,10 @@ Deprecation Notices
   - Member ``uint16_t min_mtu`` the minimum MTU allowed.
   - Member ``uint16_t max_mtu`` the maximum MTU allowed.
 
+* meter: New ``rte_color`` definition will be added in 19.02 and that will
+  replace ``enum rte_meter_color`` in meter library in 19.05. This will help
+  to consolidate color definition, which is currently replicated in many places,
+  such as: rte_meter.h, rte_mtr.h, rte_tm.h.
+
 * crypto/aesni_mb: the minimum supported intel-ipsec-mb library version will be
   changed from 0.49.0 to 0.52.0.
