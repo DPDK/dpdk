@@ -1489,6 +1489,7 @@ int qat_sym_session_aead_create_cd_auth(struct qat_sym_session *cdesc,
 		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_ZUC_3G_128_EIA3
 		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC
 		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_AES_CBC_MAC
+		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_NULL
 			)
 		hash->auth_counter.counter = 0;
 	else {
