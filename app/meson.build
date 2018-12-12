@@ -4,6 +4,7 @@
 apps = ['pdump',
 	'proc-info',
 	'test-bbdev',
+	'test-compress-perf',
 	'test-crypto-perf',
 	'test-eventdev',
 	'test-pmd']

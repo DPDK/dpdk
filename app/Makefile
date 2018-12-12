@@ -11,6 +11,10 @@ ifeq ($(CONFIG_RTE_LIBRTE_BBDEV),y)
 DIRS-$(CONFIG_RTE_TEST_BBDEV) += test-bbdev
 endif
 
+ifeq ($(CONFIG_RTE_LIBRTE_COMPRESSDEV),y)
+DIRS-$(CONFIG_RTE_APP_COMPRESS_PERF) += test-compress-perf
+endif
+
 ifeq ($(CONFIG_RTE_LIBRTE_CRYPTODEV),y)
 DIRS-$(CONFIG_RTE_APP_CRYPTO_PERF) += test-crypto-perf
 endif
