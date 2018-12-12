@@ -565,7 +565,7 @@ comp_perf_options_default(struct comp_test_data *test_data)
 	test_data->seg_sz = 2048;
 	test_data->burst_sz = 32;
 	test_data->pool_sz = 8192;
-	test_data->max_sgl_segs = UINT16_MAX;
+	test_data->max_sgl_segs = 16;
 	test_data->num_iter = 10000;
 	test_data->huffman_enc = RTE_COMP_HUFFMAN_FIXED;
 	test_data->test_op = COMPRESS_DECOMPRESS;
