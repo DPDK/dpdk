@@ -38,6 +38,10 @@ malloc_elem_find_max_iova_contig(struct malloc_elem *elem, size_t align)
 	/* segment must start after header and with specified alignment */
 	contig_seg_start = RTE_PTR_ALIGN_CEIL(data_start, align);
 
+	/* return if aligned address is already out of malloc element */
+	if (contig_seg_start > data_end)
+		return 0;
+
 	/* if we're in IOVA as VA mode, or if we're in legacy mode with
 	 * hugepages, all elements are IOVA-contiguous. however, we can only
 	 * make these assumptions about internal memory - externally allocated
