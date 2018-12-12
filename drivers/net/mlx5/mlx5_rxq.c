@@ -1179,6 +1179,7 @@ mlx5_mprq_free_mp(struct rte_eth_dev *dev)
 			continue;
 		rxq->mprq_mp = NULL;
 	}
+	priv->mprq_mp = NULL;
 	return 0;
 }
 
