@@ -41,4 +41,5 @@ DPDK Tools User Guides
     devbind
     testbbdev
     cryptoperf
+    comp_perf
     testeventdev

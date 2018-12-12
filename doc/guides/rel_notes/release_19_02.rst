@@ -60,6 +60,12 @@ New Features
   * Added the handler to get firmware version string.
   * Added support for multicast filtering.
 
+* **Added a compression performance test tool.**
+
+  Added a new performance test tool to test the compressdev PMD. The tool tests
+  compression ratio and compression throughput. Dynamic compression test is not
+  supported yet.
+
 
 Removed Items
 -------------
