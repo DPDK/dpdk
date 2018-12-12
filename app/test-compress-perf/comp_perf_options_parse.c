@@ -50,8 +50,8 @@ usage(char *progname)
 		"		compressed/decompressed (default: 10000)\n"
 		" --operation [comp/decomp/comp_and_decomp]: perform test on\n"
 		"		compression, decompression or both operations\n"
-		" --huffman-enc [fixed/default]: Huffman encoding\n"
-		"		(default: fixed)\n"
+		" --huffman-enc [fixed/dynamic/default]: Huffman encoding\n"
+		"		(default: dynamic)\n"
 		" --compress-level N: compression level, which could be a single value, list or range\n"
 		"		(default: range between 1 and 9)\n"
 		" --window-sz N: base two log value of compression window size\n"
@@ -431,6 +431,10 @@ parse_huffman_enc(struct comp_test_data *test_data, const char *arg)
 		{
 			"fixed",
 			RTE_COMP_HUFFMAN_FIXED
+		},
+		{
+			"dynamic",
+			RTE_COMP_HUFFMAN_DYNAMIC
 		}
 	};
 
@@ -567,7 +571,7 @@ comp_perf_options_default(struct comp_test_data *test_data)
 	test_data->pool_sz = 8192;
 	test_data->max_sgl_segs = 16;
 	test_data->num_iter = 10000;
-	test_data->huffman_enc = RTE_COMP_HUFFMAN_FIXED;
+	test_data->huffman_enc = RTE_COMP_HUFFMAN_DYNAMIC;
 	test_data->test_op = COMPRESS_DECOMPRESS;
 	test_data->window_sz = -1;
 	test_data->level.min = 1;

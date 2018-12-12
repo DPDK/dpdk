@@ -24,7 +24,7 @@ to check the throughput rate
 Limitations
 ~~~~~~~~~~~
 
-* Stateful operation and dynamic compression are not supported in this version.
+* Stateful operation is not supported in this version.
 
 
 Command line options
@@ -48,7 +48,7 @@ Command line options
 
  ``--operation [comp/decomp/comp_and_decomp]``: perform test on compression, decompression or both operations
 
- ``--huffman-enc [fixed/default]``: Huffman encoding (default: fixed)
+ ``--huffman-enc [fixed/dynamic/default]``: Huffman encoding (default: dynamic)
 
  ``--compress-level N``: compression level, which could be a single value, list or range (default: range between 1 and 9)
 
