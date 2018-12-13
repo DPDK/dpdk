@@ -62,6 +62,12 @@ eal_memalloc_set_seg_fd(int list_idx __rte_unused, int seg_idx __rte_unused,
 }
 
 int
+eal_memalloc_set_seg_list_fd(int list_idx __rte_unused, int fd __rte_unused)
+{
+	return -ENOTSUP;
+}
+
+int
 eal_memalloc_get_seg_fd_offset(int list_idx __rte_unused,
 		int seg_idx __rte_unused, size_t *offset __rte_unused)
 {

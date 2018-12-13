@@ -1529,6 +1529,10 @@ eal_memalloc_set_seg_fd(int list_idx, int seg_idx, int fd)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 
+	/* single file segments mode doesn't support individual segment fd's */
+	if (internal_config.single_file_segments)
+		return -ENOTSUP;
+
 	/* if list is not allocated, allocate it */
 	if (fd_list[list_idx].len == 0) {
 		int len = mcfg->memsegs[list_idx].memseg_arr.len;
@@ -1537,6 +1541,28 @@ eal_memalloc_set_seg_fd(int list_idx, int seg_idx, int fd)
 			return -ENOMEM;
 	}
 	fd_list[list_idx].fds[seg_idx] = fd;
+
+	return 0;
+}
+
+int
+eal_memalloc_set_seg_list_fd(int list_idx, int fd)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+
+	/* non-single file segment mode doesn't support segment list fd's */
+	if (!internal_config.single_file_segments)
+		return -ENOTSUP;
+
+	/* if list is not allocated, allocate it */
+	if (fd_list[list_idx].len == 0) {
+		int len = mcfg->memsegs[list_idx].memseg_arr.len;
+
+		if (alloc_list(list_idx, len) < 0)
+			return -ENOMEM;
+	}
+
+	fd_list[list_idx].memseg_list_fd = fd;
 
 	return 0;
 }
