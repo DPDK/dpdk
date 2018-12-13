@@ -109,6 +109,11 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* eal: Segment fd API on Linux now sets error code to ``ENOTSUP`` in more cases
+  where segment fd API is not expected to be supported:
+
+  - On attempt to get segment fd for an externally allocated memory segment
+
 * pdump: The ``rte_pdump_set_socket_dir()``, the parameter ``path`` of
   ``rte_pdump_init()`` and enum ``rte_pdump_socktype`` were deprecated
   since 18.05 and are removed in this release.

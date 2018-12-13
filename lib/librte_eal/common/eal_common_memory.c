@@ -705,6 +705,12 @@ rte_memseg_get_fd_thread_unsafe(const struct rte_memseg *ms)
 		return -1;
 	}
 
+	/* segment fd API is not supported for external segments */
+	if (msl->external) {
+		rte_errno = ENOTSUP;
+		return -1;
+	}
+
 	ret = eal_memalloc_get_seg_fd(msl_idx, seg_idx);
 	if (ret < 0) {
 		rte_errno = -ret;
@@ -752,6 +758,12 @@ rte_memseg_get_fd_offset_thread_unsafe(const struct rte_memseg *ms,
 
 	if (!rte_fbarray_is_used(arr, seg_idx)) {
 		rte_errno = ENOENT;
+		return -1;
+	}
+
+	/* segment fd API is not supported for external segments */
+	if (msl->external) {
+		rte_errno = ENOTSUP;
 		return -1;
 	}
 
