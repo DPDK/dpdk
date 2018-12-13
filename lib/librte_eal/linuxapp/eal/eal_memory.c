@@ -25,6 +25,10 @@
 #include <sys/time.h>
 #include <signal.h>
 #include <setjmp.h>
+#ifdef F_ADD_SEALS /* if file sealing is supported, so is memfd */
+#include <linux/memfd.h>
+#define MEMFD_SUPPORTED
+#endif
 #ifdef RTE_EAL_NUMA_AWARE_HUGEPAGES
 #include <numa.h>
 #include <numaif.h>
@@ -1341,11 +1345,17 @@ eal_legacy_hugepage_init(void)
 	/* hugetlbfs can be disabled */
 	if (internal_config.no_hugetlbfs) {
 		struct rte_memseg_list *msl;
+		int n_segs, cur_seg, fd, flags;
+#ifdef MEMFD_SUPPORTED
+		int memfd;
+#endif
 		uint64_t page_sz;
-		int n_segs, cur_seg;
 
 		/* nohuge mode is legacy mode */
 		internal_config.legacy_mem = 1;
+
+		/* nohuge mode is single-file segments mode */
+		internal_config.single_file_segments = 1;
 
 		/* create a memseg list */
 		msl = &mcfg->memsegs[0];
@@ -1359,8 +1369,38 @@ eal_legacy_hugepage_init(void)
 			return -1;
 		}
 
+		/* set up parameters for anonymous mmap */
+		fd = -1;
+		flags = MAP_PRIVATE | MAP_ANONYMOUS;
+
+#ifdef MEMFD_SUPPORTED
+		/* create a memfd and store it in the segment fd table */
+		memfd = memfd_create("nohuge", 0);
+		if (memfd < 0) {
+			RTE_LOG(DEBUG, EAL, "Cannot create memfd: %s\n",
+					strerror(errno));
+			RTE_LOG(DEBUG, EAL, "Falling back to anonymous map\n");
+		} else {
+			/* we got an fd - now resize it */
+			if (ftruncate(memfd, internal_config.memory) < 0) {
+				RTE_LOG(ERR, EAL, "Cannot resize memfd: %s\n",
+						strerror(errno));
+				RTE_LOG(ERR, EAL, "Falling back to anonymous map\n");
+				close(memfd);
+			} else {
+				/* creating memfd-backed file was successful.
+				 * we want changes to memfd to be visible to
+				 * other processes (such as vhost backend), so
+				 * map it as shared memory.
+				 */
+				RTE_LOG(DEBUG, EAL, "Using memfd for anonymous memory\n");
+				fd = memfd;
+				flags = MAP_SHARED;
+			}
+		}
+#endif
 		addr = mmap(NULL, internal_config.memory, PROT_READ | PROT_WRITE,
-				MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+				flags, fd, 0);
 		if (addr == MAP_FAILED) {
 			RTE_LOG(ERR, EAL, "%s: mmap() failed: %s\n", __func__,
 					strerror(errno));
@@ -1370,6 +1410,16 @@ eal_legacy_hugepage_init(void)
 		msl->page_sz = page_sz;
 		msl->socket_id = 0;
 		msl->len = internal_config.memory;
+
+		/* we're in single-file segments mode, so only the segment list
+		 * fd needs to be set up.
+		 */
+		if (fd != -1) {
+			if (eal_memalloc_set_seg_list_fd(0, fd) < 0) {
+				RTE_LOG(ERR, EAL, "Cannot set up segment list fd\n");
+				/* not a serious error, proceed */
+			}
+		}
 
 		/* populate memsegs. each memseg is one page long */
 		for (cur_seg = 0; cur_seg < n_segs; cur_seg++) {

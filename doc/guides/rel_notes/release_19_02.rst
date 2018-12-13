@@ -69,6 +69,11 @@ New Features
   chunks of external memory to be registered with DPDK without adding them to
   the malloc heap.
 
+* **Support for using virtio-user without hugepages**
+
+  The --no-huge mode was augmented to use memfd-backed memory (on systems that
+  support memfd), to allow using virtio-user-based NICs without hugepages.
+
 * **Updated the enic driver.**
 
   * Added support for ``RTE_ETH_DEV_CLOSE_REMOVE`` flag.
