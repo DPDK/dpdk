@@ -113,6 +113,8 @@ API Changes
   where segment fd API is not expected to be supported:
 
   - On attempt to get segment fd for an externally allocated memory segment
+  - In cases where memfd support would have been required to provide segment
+    fd's (such as in-memory or no-huge mode)
 
 * pdump: The ``rte_pdump_set_socket_dir()``, the parameter ``path`` of
   ``rte_pdump_init()`` and enum ``rte_pdump_socktype`` were deprecated
