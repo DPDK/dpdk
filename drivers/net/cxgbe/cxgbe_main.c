@@ -415,7 +415,7 @@ static int tid_init(struct tid_info *t)
 		return -ENOMEM;
 
 	t->atid_tab = (union aopen_entry *)&t->tid_tab[t->ntids];
-	t->ftid_tab = (struct filter_entry *)&t->tid_tab[t->natids];
+	t->ftid_tab = (struct filter_entry *)&t->atid_tab[t->natids];
 	t->ftid_bmap_array = t4_os_alloc(ftid_bmap_size);
 	if (!t->ftid_bmap_array) {
 		tid_free(t);
