@@ -634,22 +634,14 @@ qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 	uint32_t head;
 	uint32_t resp_counter = 0;
 	uint8_t *resp_msg;
-	uint8_t hdr_flags;
 
 	rx_queue = &(tmp_qp->rx_q);
 	tx_queue = &(tmp_qp->tx_q);
 	head = rx_queue->head;
 	resp_msg = (uint8_t *)rx_queue->base_addr + rx_queue->head;
-	hdr_flags = ((struct icp_qat_fw_comn_resp_hdr *)resp_msg)->hdr_flags;
 
 	while (*(uint32_t *)resp_msg != ADF_RING_EMPTY_SIG &&
 			resp_counter != nb_ops) {
-
-		if (unlikely(!ICP_QAT_FW_COMN_VALID_FLAG_GET(hdr_flags))) {
-			/* Fatal firmware error */
-			QAT_LOG(ERR, "QAT Firmware returned invalid response");
-			return 0;
-		}
 
 		if (tmp_qp->service_type == QAT_SERVICE_SYMMETRIC)
 			qat_sym_process_response(ops, resp_msg);
