@@ -116,6 +116,9 @@ struct ena_stats {
 #define ENA_STAT_GLOBAL_ENTRY(stat) \
 	ENA_STAT_ENTRY(stat, dev)
 
+#define ENA_MAX_RING_SIZE_RX 1024
+#define ENA_MAX_RING_SIZE_TX 1024
+
 /*
  * Each rte_memzone should have unique name.
  * To satisfy it, count number of allocation and add it to name.
@@ -806,6 +809,9 @@ static void ena_tx_queue_release(void *queue)
 	ena_tx_queue_release_bufs(ring);
 
 	/* Free ring resources */
+	if (ring->push_buf_intermediate_buf)
+		rte_free(ring->push_buf_intermediate_buf);
+
 	if (ring->tx_buffer_info)
 		rte_free(ring->tx_buffer_info);
 
@@ -814,6 +820,7 @@ static void ena_tx_queue_release(void *queue)
 
 	ring->empty_tx_reqs = NULL;
 	ring->tx_buffer_info = NULL;
+	ring->push_buf_intermediate_buf = NULL;
 
 	ring->configured = 0;
 
@@ -937,15 +944,30 @@ static int ena_check_valid_conf(struct ena_adapter *adapter)
 static int
 ena_calc_queue_size(struct ena_calc_queue_size_ctx *ctx)
 {
-	uint32_t tx_queue_size, rx_queue_size;
+	struct ena_admin_feature_llq_desc *llq = &ctx->get_feat_ctx->llq;
+	struct ena_com_dev *ena_dev = ctx->ena_dev;
+	uint32_t tx_queue_size = ENA_MAX_RING_SIZE_TX;
+	uint32_t rx_queue_size = ENA_MAX_RING_SIZE_RX;
 
-	if (ctx->ena_dev->supported_features & BIT(ENA_ADMIN_MAX_QUEUES_EXT)) {
+	if (ena_dev->supported_features & BIT(ENA_ADMIN_MAX_QUEUES_EXT)) {
 		struct ena_admin_queue_ext_feature_fields *max_queue_ext =
 			&ctx->get_feat_ctx->max_queue_ext.max_queue_ext;
-		rx_queue_size = RTE_MIN(max_queue_ext->max_rx_cq_depth,
+		rx_queue_size = RTE_MIN(rx_queue_size,
+			max_queue_ext->max_rx_cq_depth);
+		rx_queue_size = RTE_MIN(rx_queue_size,
 			max_queue_ext->max_rx_sq_depth);
-		tx_queue_size = RTE_MIN(max_queue_ext->max_tx_cq_depth,
-			max_queue_ext->max_tx_sq_depth);
+		tx_queue_size = RTE_MIN(tx_queue_size,
+			max_queue_ext->max_tx_cq_depth);
+
+		if (ena_dev->tx_mem_queue_type ==
+		    ENA_ADMIN_PLACEMENT_POLICY_DEV) {
+			tx_queue_size = RTE_MIN(tx_queue_size,
+				llq->max_llq_depth);
+		} else {
+			tx_queue_size = RTE_MIN(tx_queue_size,
+				max_queue_ext->max_tx_sq_depth);
+		}
+
 		ctx->max_rx_sgl_size = RTE_MIN(ENA_PKT_MAX_BUFS,
 			max_queue_ext->max_per_packet_rx_descs);
 		ctx->max_tx_sgl_size = RTE_MIN(ENA_PKT_MAX_BUFS,
@@ -953,9 +975,22 @@ ena_calc_queue_size(struct ena_calc_queue_size_ctx *ctx)
 	} else {
 		struct ena_admin_queue_feature_desc *max_queues =
 			&ctx->get_feat_ctx->max_queues;
-		rx_queue_size = RTE_MIN(max_queues->max_cq_depth,
+		rx_queue_size = RTE_MIN(rx_queue_size,
+			max_queues->max_cq_depth);
+		rx_queue_size = RTE_MIN(rx_queue_size,
 			max_queues->max_sq_depth);
-		tx_queue_size = rx_queue_size;
+		tx_queue_size = RTE_MIN(tx_queue_size,
+			max_queues->max_cq_depth);
+
+		if (ena_dev->tx_mem_queue_type ==
+		    ENA_ADMIN_PLACEMENT_POLICY_DEV) {
+			tx_queue_size = RTE_MIN(tx_queue_size,
+				llq->max_llq_depth);
+		} else {
+			tx_queue_size = RTE_MIN(tx_queue_size,
+				max_queues->max_sq_depth);
+		}
+
 		ctx->max_rx_sgl_size = RTE_MIN(ENA_PKT_MAX_BUFS,
 			max_queues->max_packet_tx_descs);
 		ctx->max_tx_sgl_size = RTE_MIN(ENA_PKT_MAX_BUFS,
@@ -1277,6 +1312,17 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 
+	txq->push_buf_intermediate_buf =
+		rte_zmalloc("txq->push_buf_intermediate_buf",
+			    txq->tx_max_header_size,
+			    RTE_CACHE_LINE_SIZE);
+	if (!txq->push_buf_intermediate_buf) {
+		RTE_LOG(ERR, PMD, "failed to alloc push buff for LLQ\n");
+		rte_free(txq->tx_buffer_info);
+		rte_free(txq->empty_tx_reqs);
+		return -ENOMEM;
+	}
+
 	for (i = 0; i < txq->ring_size; i++)
 		txq->empty_tx_reqs[i] = i;
 
@@ -1592,28 +1638,87 @@ static void ena_timer_wd_callback(__rte_unused struct rte_timer *timer,
 	}
 }
 
+static inline void
+set_default_llq_configurations(struct ena_llq_configurations *llq_config)
+{
+	llq_config->llq_header_location = ENA_ADMIN_INLINE_HEADER;
+	llq_config->llq_ring_entry_size = ENA_ADMIN_LIST_ENTRY_SIZE_128B;
+	llq_config->llq_stride_ctrl = ENA_ADMIN_MULTIPLE_DESCS_PER_ENTRY;
+	llq_config->llq_num_decs_before_header =
+		ENA_ADMIN_LLQ_NUM_DESCS_BEFORE_HEADER_2;
+	llq_config->llq_ring_entry_size_value = 128;
+}
+
+static int
+ena_set_queues_placement_policy(struct ena_adapter *adapter,
+				struct ena_com_dev *ena_dev,
+				struct ena_admin_feature_llq_desc *llq,
+				struct ena_llq_configurations *llq_default_configurations)
+{
+	int rc;
+	u32 llq_feature_mask;
+
+	llq_feature_mask = 1 << ENA_ADMIN_LLQ;
+	if (!(ena_dev->supported_features & llq_feature_mask)) {
+		RTE_LOG(INFO, PMD,
+			"LLQ is not supported. Fallback to host mode policy.\n");
+		ena_dev->tx_mem_queue_type = ENA_ADMIN_PLACEMENT_POLICY_HOST;
+		return 0;
+	}
+
+	rc = ena_com_config_dev_mode(ena_dev, llq, llq_default_configurations);
+	if (unlikely(rc)) {
+		PMD_INIT_LOG(WARNING, "Failed to config dev mode. "
+			"Fallback to host mode policy.\n");
+		ena_dev->tx_mem_queue_type = ENA_ADMIN_PLACEMENT_POLICY_HOST;
+		return 0;
+	}
+
+	/* Nothing to config, exit */
+	if (ena_dev->tx_mem_queue_type == ENA_ADMIN_PLACEMENT_POLICY_HOST)
+		return 0;
+
+	if (!adapter->dev_mem_base) {
+		RTE_LOG(ERR, PMD, "Unable to access LLQ bar resource. "
+			"Fallback to host mode policy.\n.");
+		ena_dev->tx_mem_queue_type = ENA_ADMIN_PLACEMENT_POLICY_HOST;
+		return 0;
+	}
+
+	ena_dev->mem_bar = adapter->dev_mem_base;
+
+	return 0;
+}
+
 static int ena_calc_io_queue_num(struct ena_com_dev *ena_dev,
 				 struct ena_com_dev_get_features_ctx *get_feat_ctx)
 {
-	uint32_t io_sq_num, io_cq_num, io_queue_num;
+	uint32_t io_tx_sq_num, io_tx_cq_num, io_rx_num, io_queue_num;
 
 	/* Regular queues capabilities */
 	if (ena_dev->supported_features & BIT(ENA_ADMIN_MAX_QUEUES_EXT)) {
 		struct ena_admin_queue_ext_feature_fields *max_queue_ext =
 			&get_feat_ctx->max_queue_ext.max_queue_ext;
-		io_sq_num = max_queue_ext->max_rx_sq_num;
-		io_sq_num = RTE_MIN(io_sq_num, max_queue_ext->max_tx_sq_num);
-
-		io_cq_num = max_queue_ext->max_rx_cq_num;
-		io_cq_num = RTE_MIN(io_cq_num, max_queue_ext->max_tx_cq_num);
+		io_rx_num = RTE_MIN(max_queue_ext->max_rx_sq_num,
+				    max_queue_ext->max_rx_cq_num);
+		io_tx_sq_num = max_queue_ext->max_tx_sq_num;
+		io_tx_cq_num = max_queue_ext->max_tx_cq_num;
 	} else {
 		struct ena_admin_queue_feature_desc *max_queues =
 			&get_feat_ctx->max_queues;
-		io_sq_num = max_queues->max_sq_num;
-		io_cq_num = max_queues->max_cq_num;
+		io_tx_sq_num = max_queues->max_sq_num;
+		io_tx_cq_num = max_queues->max_cq_num;
+		io_rx_num = RTE_MIN(io_tx_sq_num, io_tx_cq_num);
 	}
 
-	io_queue_num = RTE_MIN(io_sq_num, io_cq_num);
+	/* In case of LLQ use the llq number in the get feature cmd */
+	if (ena_dev->tx_mem_queue_type == ENA_ADMIN_PLACEMENT_POLICY_DEV)
+		io_tx_sq_num = get_feat_ctx->llq.max_llq_num;
+
+	io_queue_num = RTE_MIN(rte_lcore_count(), ENA_MAX_NUM_IO_QUEUES);
+	io_queue_num = RTE_MIN(io_queue_num, io_rx_num);
+	io_queue_num = RTE_MIN(io_queue_num, io_tx_sq_num);
+	io_queue_num = RTE_MIN(io_queue_num, io_tx_cq_num);
 
 	if (unlikely(io_queue_num == 0)) {
 		RTE_LOG(ERR, PMD, "Number of IO queues should not be 0\n");
@@ -1632,6 +1737,8 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 		(struct ena_adapter *)(eth_dev->data->dev_private);
 	struct ena_com_dev *ena_dev = &adapter->ena_dev;
 	struct ena_com_dev_get_features_ctx get_feat_ctx;
+	struct ena_llq_configurations llq_config;
+	const char *queue_type_str;
 	int rc;
 
 	static int adapters_found;
@@ -1686,11 +1793,22 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	}
 	adapter->wd_state = wd_state;
 
-	ena_dev->tx_mem_queue_type = ENA_ADMIN_PLACEMENT_POLICY_HOST;
+	set_default_llq_configurations(&llq_config);
+	rc = ena_set_queues_placement_policy(adapter, ena_dev,
+					     &get_feat_ctx.llq, &llq_config);
+	if (unlikely(rc)) {
+		PMD_INIT_LOG(CRIT, "Failed to set placement policy");
+		return rc;
+	}
+
+	if (ena_dev->tx_mem_queue_type == ENA_ADMIN_PLACEMENT_POLICY_HOST)
+		queue_type_str = "Regular";
+	else
+		queue_type_str = "Low latency";
+	RTE_LOG(INFO, PMD, "Placement policy: %s\n", queue_type_str);
 
 	calc_queue_ctx.ena_dev = ena_dev;
 	calc_queue_ctx.get_feat_ctx = &get_feat_ctx;
-
 	adapter->num_queues = ena_calc_io_queue_num(ena_dev,
 						    &get_feat_ctx);
 
@@ -2106,11 +2224,19 @@ static void ena_update_hints(struct ena_adapter *adapter,
 static int ena_check_and_linearize_mbuf(struct ena_ring *tx_ring,
 					struct rte_mbuf *mbuf)
 {
-	int num_segments, rc;
+	struct ena_com_dev *ena_dev;
+	int num_segments, header_len, rc;
 
+	ena_dev = &tx_ring->adapter->ena_dev;
 	num_segments = mbuf->nb_segs;
+	header_len = mbuf->data_len;
 
 	if (likely(num_segments < tx_ring->sgl_size))
+		return 0;
+
+	if (ena_dev->tx_mem_queue_type == ENA_ADMIN_PLACEMENT_POLICY_DEV &&
+	    (num_segments == tx_ring->sgl_size) &&
+	    (header_len < tx_ring->tx_max_header_size))
 		return 0;
 
 	rc = rte_pktmbuf_linearize(mbuf);
@@ -2127,6 +2253,7 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t next_to_use = tx_ring->next_to_use;
 	uint16_t next_to_clean = tx_ring->next_to_clean;
 	struct rte_mbuf *mbuf;
+	uint16_t seg_len;
 	unsigned int ring_size = tx_ring->ring_size;
 	unsigned int ring_mask = ring_size - 1;
 	struct ena_com_tx_ctx ena_tx_ctx;
@@ -2134,6 +2261,8 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct ena_com_buf *ebuf;
 	uint16_t rc, req_id, total_tx_descs = 0;
 	uint16_t sent_idx = 0, empty_tx_reqs;
+	uint16_t push_len = 0;
+	uint16_t delta = 0;
 	int nb_hw_desc;
 
 	/* Check adapter state */
@@ -2166,17 +2295,32 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		       sizeof(struct ena_com_tx_meta));
 		ena_tx_ctx.ena_bufs = ebuf;
 		ena_tx_ctx.req_id = req_id;
+
+		delta = 0;
+		seg_len = mbuf->data_len;
+
 		if (tx_ring->tx_mem_queue_type ==
 				ENA_ADMIN_PLACEMENT_POLICY_DEV) {
-			/* prepare the push buffer with
-			 * virtual address of the data
-			 */
-			ena_tx_ctx.header_len =
-				RTE_MIN(mbuf->data_len,
-					tx_ring->tx_max_header_size);
-			ena_tx_ctx.push_header =
-				(void *)((char *)mbuf->buf_addr +
-					 mbuf->data_off);
+			push_len = RTE_MIN(mbuf->pkt_len,
+					   tx_ring->tx_max_header_size);
+			ena_tx_ctx.header_len = push_len;
+
+			if (likely(push_len <= seg_len)) {
+				/* If the push header is in the single segment,
+				 * then just point it to the 1st mbuf data.
+				 */
+				ena_tx_ctx.push_header =
+					rte_pktmbuf_mtod(mbuf, uint8_t *);
+			} else {
+				/* If the push header lays in the several
+				 * segments, copy it to the intermediate buffer.
+				 */
+				rte_pktmbuf_read(mbuf, 0, push_len,
+					tx_ring->push_buf_intermediate_buf);
+				ena_tx_ctx.push_header =
+					tx_ring->push_buf_intermediate_buf;
+				delta = push_len - seg_len;
+			}
 		} /* there's no else as we take advantage of memset zeroing */
 
 		/* Set TX offloads flags, if applicable */
@@ -2191,20 +2335,30 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		/* Process first segment taking into
 		 * consideration pushed header
 		 */
-		if (mbuf->data_len > ena_tx_ctx.header_len) {
+		if (seg_len > push_len) {
 			ebuf->paddr = mbuf->buf_iova +
 				      mbuf->data_off +
-				      ena_tx_ctx.header_len;
-			ebuf->len = mbuf->data_len - ena_tx_ctx.header_len;
+				      push_len;
+			ebuf->len = seg_len - push_len;
 			ebuf++;
 			tx_info->num_of_bufs++;
 		}
 
 		while ((mbuf = mbuf->next) != NULL) {
-			ebuf->paddr = mbuf->buf_iova + mbuf->data_off;
-			ebuf->len = mbuf->data_len;
+			seg_len = mbuf->data_len;
+
+			/* Skip mbufs if whole data is pushed as a header */
+			if (unlikely(delta > seg_len)) {
+				delta -= seg_len;
+				continue;
+			}
+
+			ebuf->paddr = mbuf->buf_iova + mbuf->data_off + delta;
+			ebuf->len = seg_len - delta;
 			ebuf++;
 			tx_info->num_of_bufs++;
+
+			delta = 0;
 		}
 
 		ena_tx_ctx.num_bufs = tx_info->num_of_bufs;

@@ -110,6 +110,9 @@ struct ena_ring {
 	/* Max length PMD can push to device for LLQ */
 	uint8_t tx_max_header_size;
 	int configured;
+
+	uint8_t *push_buf_intermediate_buf;
+
 	struct ena_adapter *adapter;
 	uint64_t offloads;
 	u16 sgl_size;
