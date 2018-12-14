@@ -82,28 +82,22 @@ struct ena_calc_queue_size_ctx {
 struct ena_stats_tx {
 	u64 cnt;
 	u64 bytes;
-	u64 queue_stop;
 	u64 prepare_ctx_err;
-	u64 queue_wakeup;
-	u64 dma_mapping_err;
 	u64 linearize;
 	u64 linearize_failed;
 	u64 tx_poll;
 	u64 doorbells;
-	u64 missing_tx_comp;
 	u64 bad_req_id;
+	u64 available_desc;
 };
 
 struct ena_stats_rx {
 	u64 cnt;
 	u64 bytes;
-	u64 refil_partial;
+	u64 refill_partial;
 	u64 bad_csum;
-	u64 page_alloc_fail;
-	u64 skb_alloc_fail;
-	u64 dma_mapping_err;
+	u64 mbuf_alloc_fail;
 	u64 bad_desc_num;
-	u64 small_copy_len_pkt;
 	u64 bad_req_id;
 };
 
@@ -167,13 +161,9 @@ struct ena_driver_stats {
 };
 
 struct ena_stats_dev {
-	u64 tx_timeout;
-	u64 io_suspend;
-	u64 io_resume;
 	u64 wd_expired;
-	u64 interface_up;
-	u64 interface_down;
-	u64 admin_q_pause;
+	u64 dev_start;
+	u64 dev_stop;
 };
 
 /* board specific private data structure */
@@ -221,6 +211,8 @@ struct ena_adapter {
 	struct rte_timer timer_wd;
 	uint64_t timestamp_wd;
 	uint64_t keep_alive_timeout;
+
+	struct ena_stats_dev dev_stats;
 
 	bool trigger_reset;
 

@@ -80,7 +80,6 @@
 #define ENA_RX_RSS_TABLE_LOG_SIZE  7
 #define ENA_RX_RSS_TABLE_SIZE	(1 << ENA_RX_RSS_TABLE_LOG_SIZE)
 #define ENA_HASH_KEY_SIZE	40
-#define ENA_ETH_SS_STATS	0xFF
 #define ETH_GSTRING_LEN	32
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
@@ -96,11 +95,6 @@ struct ena_stats {
 	char name[ETH_GSTRING_LEN];
 	int stat_offset;
 };
-
-#define ENA_STAT_ENA_COM_ENTRY(stat) { \
-	.name = #stat, \
-	.stat_offset = offsetof(struct ena_com_stats_admin, stat) \
-}
 
 #define ENA_STAT_ENTRY(stat, stat_type) { \
 	.name = #stat, \
@@ -126,55 +120,36 @@ struct ena_stats {
 uint32_t ena_alloc_cnt;
 
 static const struct ena_stats ena_stats_global_strings[] = {
-	ENA_STAT_GLOBAL_ENTRY(tx_timeout),
-	ENA_STAT_GLOBAL_ENTRY(io_suspend),
-	ENA_STAT_GLOBAL_ENTRY(io_resume),
 	ENA_STAT_GLOBAL_ENTRY(wd_expired),
-	ENA_STAT_GLOBAL_ENTRY(interface_up),
-	ENA_STAT_GLOBAL_ENTRY(interface_down),
-	ENA_STAT_GLOBAL_ENTRY(admin_q_pause),
+	ENA_STAT_GLOBAL_ENTRY(dev_start),
+	ENA_STAT_GLOBAL_ENTRY(dev_stop),
 };
 
 static const struct ena_stats ena_stats_tx_strings[] = {
 	ENA_STAT_TX_ENTRY(cnt),
 	ENA_STAT_TX_ENTRY(bytes),
-	ENA_STAT_TX_ENTRY(queue_stop),
-	ENA_STAT_TX_ENTRY(queue_wakeup),
-	ENA_STAT_TX_ENTRY(dma_mapping_err),
+	ENA_STAT_TX_ENTRY(prepare_ctx_err),
 	ENA_STAT_TX_ENTRY(linearize),
 	ENA_STAT_TX_ENTRY(linearize_failed),
 	ENA_STAT_TX_ENTRY(tx_poll),
 	ENA_STAT_TX_ENTRY(doorbells),
-	ENA_STAT_TX_ENTRY(prepare_ctx_err),
-	ENA_STAT_TX_ENTRY(missing_tx_comp),
 	ENA_STAT_TX_ENTRY(bad_req_id),
+	ENA_STAT_TX_ENTRY(available_desc),
 };
 
 static const struct ena_stats ena_stats_rx_strings[] = {
 	ENA_STAT_RX_ENTRY(cnt),
 	ENA_STAT_RX_ENTRY(bytes),
-	ENA_STAT_RX_ENTRY(refil_partial),
+	ENA_STAT_RX_ENTRY(refill_partial),
 	ENA_STAT_RX_ENTRY(bad_csum),
-	ENA_STAT_RX_ENTRY(page_alloc_fail),
-	ENA_STAT_RX_ENTRY(skb_alloc_fail),
-	ENA_STAT_RX_ENTRY(dma_mapping_err),
+	ENA_STAT_RX_ENTRY(mbuf_alloc_fail),
 	ENA_STAT_RX_ENTRY(bad_desc_num),
-	ENA_STAT_RX_ENTRY(small_copy_len_pkt),
-	ENA_STAT_TX_ENTRY(bad_req_id),
-};
-
-static const struct ena_stats ena_stats_ena_com_strings[] = {
-	ENA_STAT_ENA_COM_ENTRY(aborted_cmd),
-	ENA_STAT_ENA_COM_ENTRY(submitted_cmd),
-	ENA_STAT_ENA_COM_ENTRY(completed_cmd),
-	ENA_STAT_ENA_COM_ENTRY(out_of_space),
-	ENA_STAT_ENA_COM_ENTRY(no_completion),
+	ENA_STAT_RX_ENTRY(bad_req_id),
 };
 
 #define ENA_STATS_ARRAY_GLOBAL	ARRAY_SIZE(ena_stats_global_strings)
 #define ENA_STATS_ARRAY_TX	ARRAY_SIZE(ena_stats_tx_strings)
 #define ENA_STATS_ARRAY_RX	ARRAY_SIZE(ena_stats_rx_strings)
-#define ENA_STATS_ARRAY_ENA_COM	ARRAY_SIZE(ena_stats_ena_com_strings)
 
 #define QUEUE_OFFLOADS (DEV_TX_OFFLOAD_TCP_CKSUM |\
 			DEV_TX_OFFLOAD_UDP_CKSUM |\
@@ -260,11 +235,20 @@ static int ena_rss_reta_update(struct rte_eth_dev *dev,
 static int ena_rss_reta_query(struct rte_eth_dev *dev,
 			      struct rte_eth_rss_reta_entry64 *reta_conf,
 			      uint16_t reta_size);
-static int ena_get_sset_count(struct rte_eth_dev *dev, int sset);
 static void ena_interrupt_handler_rte(void *cb_arg);
 static void ena_timer_wd_callback(struct rte_timer *timer, void *arg);
 static void ena_destroy_device(struct rte_eth_dev *eth_dev);
 static int eth_ena_dev_init(struct rte_eth_dev *eth_dev);
+static int ena_xstats_get_names(struct rte_eth_dev *dev,
+				struct rte_eth_xstat_name *xstats_names,
+				unsigned int n);
+static int ena_xstats_get(struct rte_eth_dev *dev,
+			  struct rte_eth_xstat *stats,
+			  unsigned int n);
+static int ena_xstats_get_by_id(struct rte_eth_dev *dev,
+				const uint64_t *ids,
+				uint64_t *values,
+				unsigned int n);
 
 static const struct eth_dev_ops ena_dev_ops = {
 	.dev_configure        = ena_dev_configure,
@@ -275,6 +259,9 @@ static const struct eth_dev_ops ena_dev_ops = {
 	.dev_stop             = ena_stop,
 	.link_update          = ena_link_update,
 	.stats_get            = ena_stats_get,
+	.xstats_get_names     = ena_xstats_get_names,
+	.xstats_get	      = ena_xstats_get,
+	.xstats_get_by_id     = ena_xstats_get_by_id,
 	.mtu_set              = ena_mtu_set,
 	.rx_queue_release     = ena_rx_queue_release,
 	.tx_queue_release     = ena_tx_queue_release,
@@ -412,6 +399,7 @@ static int validate_tx_req_id(struct ena_ring *tx_ring, u16 req_id)
 		RTE_LOG(ERR, PMD, "Invalid req_id: %hu\n", req_id);
 
 	/* Trigger device reset */
+	++tx_ring->tx_stats.bad_req_id;
 	tx_ring->adapter->reset_reason = ENA_REGS_RESET_INV_TX_REQ_ID;
 	tx_ring->adapter->trigger_reset	= true;
 	return -EFAULT;
@@ -463,24 +451,12 @@ err:
 	ena_com_delete_host_info(ena_dev);
 }
 
-static int
-ena_get_sset_count(struct rte_eth_dev *dev, int sset)
+/* This function calculates the number of xstats based on the current config */
+static unsigned int ena_xstats_calc_num(struct rte_eth_dev *dev)
 {
-	if (sset != ETH_SS_STATS)
-		return -EOPNOTSUPP;
-
-	 /* Workaround for clang:
-	 * touch internal structures to prevent
-	 * compiler error
-	 */
-	ENA_TOUCH(ena_stats_global_strings);
-	ENA_TOUCH(ena_stats_tx_strings);
-	ENA_TOUCH(ena_stats_rx_strings);
-	ENA_TOUCH(ena_stats_ena_com_strings);
-
-	return  dev->data->nb_tx_queues *
-		(ENA_STATS_ARRAY_TX + ENA_STATS_ARRAY_RX) +
-		ENA_STATS_ARRAY_GLOBAL + ENA_STATS_ARRAY_ENA_COM;
+	return ENA_STATS_ARRAY_GLOBAL +
+		(dev->data->nb_tx_queues * ENA_STATS_ARRAY_TX) +
+		(dev->data->nb_rx_queues * ENA_STATS_ARRAY_RX);
 }
 
 static void ena_config_debug_area(struct ena_adapter *adapter)
@@ -488,11 +464,7 @@ static void ena_config_debug_area(struct ena_adapter *adapter)
 	u32 debug_area_size;
 	int rc, ss_count;
 
-	ss_count = ena_get_sset_count(adapter->rte_dev, ETH_SS_STATS);
-	if (ss_count <= 0) {
-		RTE_LOG(ERR, PMD, "SS count is negative\n");
-		return;
-	}
+	ss_count = ena_xstats_calc_num(adapter->rte_dev);
 
 	/* allocate 32 bytes for each string and 64bit for the value */
 	debug_area_size = ss_count * ETH_GSTRING_LEN + sizeof(u64) * ss_count;
@@ -1091,6 +1063,7 @@ static int ena_start(struct rte_eth_dev *dev)
 	rte_timer_reset(&adapter->timer_wd, ticks, PERIODICAL, rte_lcore_id(),
 			ena_timer_wd_callback, adapter);
 
+	++adapter->dev_stats.dev_start;
 	adapter->state = ENA_ADAPTER_STATE_RUNNING;
 
 	return 0;
@@ -1119,6 +1092,7 @@ static void ena_stop(struct rte_eth_dev *dev)
 			RTE_LOG(ERR, PMD, "Device reset failed rc=%d\n", rc);
 	}
 
+	++adapter->dev_stats.dev_stop;
 	adapter->state = ENA_ADAPTER_STATE_STOPPED;
 }
 
@@ -1230,8 +1204,11 @@ static int ena_queue_start(struct ena_ring *ring)
 	ring->next_to_clean = 0;
 	ring->next_to_use = 0;
 
-	if (ring->type == ENA_RING_TYPE_TX)
+	if (ring->type == ENA_RING_TYPE_TX) {
+		ring->tx_stats.available_desc =
+			ena_com_free_desc(ring->ena_com_io_sq);
 		return 0;
+	}
 
 	bufs_num = ring->ring_size - 1;
 	rc = ena_populate_rx_queue(ring, bufs_num);
@@ -1323,7 +1300,6 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 		txq->offloads =
 			tx_conf->offloads | dev->data->dev_conf.txmode.offloads;
 	}
-
 	/* Store pointer to this queue in upper layer */
 	txq->configured = 1;
 	dev->data->tx_queues[queue_idx] = txq;
@@ -1435,7 +1411,7 @@ static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count)
 	rc = rte_mempool_get_bulk(rxq->mb_pool, (void **)mbufs, count);
 	if (unlikely(rc < 0)) {
 		rte_atomic64_inc(&rxq->adapter->drv_stats->rx_nombuf);
-		++rxq->rx_stats.page_alloc_fail;
+		++rxq->rx_stats.mbuf_alloc_fail;
 		PMD_RX_LOG(DEBUG, "there are no enough free buffers");
 		return 0;
 	}
@@ -1473,6 +1449,7 @@ static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count)
 			"buffers (from %d)\n", rxq->id, i, count);
 		rte_mempool_put_bulk(rxq->mb_pool, (void **)(&mbufs[i]),
 				     count - i);
+		++rxq->rx_stats.refill_partial;
 	}
 
 	/* When we submitted free recources to device... */
@@ -1603,6 +1580,7 @@ static void check_for_missing_keep_alive(struct ena_adapter *adapter)
 		RTE_LOG(ERR, PMD, "Keep alive timeout\n");
 		adapter->reset_reason = ENA_REGS_RESET_KEEP_ALIVE_TO;
 		adapter->trigger_reset = true;
+		++adapter->dev_stats.wd_expired;
 	}
 }
 
@@ -2088,6 +2066,7 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			rx_ring->adapter->reset_reason =
 				ENA_REGS_RESET_TOO_MANY_RX_DESCS;
 			rx_ring->adapter->trigger_reset = true;
+			++rx_ring->rx_stats.bad_desc_num;
 			return 0;
 		}
 
@@ -2131,6 +2110,11 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		/* fill mbuf attributes if any */
 		ena_rx_mbuf_prepare(mbuf_head, &ena_rx_ctx);
+
+		if (unlikely(mbuf_head->ol_flags &
+			(PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD)))
+			++rx_ring->rx_stats.bad_csum;
+
 		mbuf_head->hash.rss = ena_rx_ctx.hash;
 
 		/* pass to DPDK application head mbuf */
@@ -2261,9 +2245,14 @@ static int ena_check_and_linearize_mbuf(struct ena_ring *tx_ring,
 	    (header_len < tx_ring->tx_max_header_size))
 		return 0;
 
+	++tx_ring->tx_stats.linearize;
 	rc = rte_pktmbuf_linearize(mbuf);
-	if (unlikely(rc))
+	if (unlikely(rc)) {
 		RTE_LOG(WARNING, PMD, "Mbuf linearize failed\n");
+		rte_atomic64_inc(&tx_ring->adapter->drv_stats->ierrors);
+		++tx_ring->tx_stats.linearize_failed;
+		return rc;
+	}
 
 	return rc;
 }
@@ -2401,15 +2390,18 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		/* prepare the packet's descriptors to dma engine */
 		rc = ena_com_prepare_tx(tx_ring->ena_com_io_sq,
 					&ena_tx_ctx, &nb_hw_desc);
-		if (unlikely(rc))
+		if (unlikely(rc)) {
+			++tx_ring->tx_stats.prepare_ctx_err;
 			break;
-
+		}
 		tx_info->tx_descs = nb_hw_desc;
 
 		next_to_use++;
 		tx_ring->tx_stats.cnt += tx_info->num_of_bufs;
 		tx_ring->tx_stats.bytes += total_length;
 	}
+	tx_ring->tx_stats.available_desc =
+		ena_com_free_desc(tx_ring->ena_com_io_sq);
 
 	/* If there are ready packets to be xmitted... */
 	if (sent_idx > 0) {
@@ -2443,6 +2435,8 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		if (unlikely(total_tx_descs > ENA_RING_DESCS_RATIO(ring_size)))
 			break;
 	}
+	tx_ring->tx_stats.available_desc =
+		ena_com_free_desc(tx_ring->ena_com_io_sq);
 
 	if (total_tx_descs > 0) {
 		/* acknowledge completion of sent packets */
@@ -2450,7 +2444,165 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		tx_ring->next_to_clean = next_to_clean;
 	}
 
+	tx_ring->tx_stats.tx_poll++;
+
 	return sent_idx;
+}
+
+/**
+ * DPDK callback to retrieve names of extended device statistics
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param[out] xstats_names
+ *   Buffer to insert names into.
+ * @param n
+ *   Number of names.
+ *
+ * @return
+ *   Number of xstats names.
+ */
+static int ena_xstats_get_names(struct rte_eth_dev *dev,
+				struct rte_eth_xstat_name *xstats_names,
+				unsigned int n)
+{
+	unsigned int xstats_count = ena_xstats_calc_num(dev);
+	unsigned int stat, i, count = 0;
+
+	if (n < xstats_count || !xstats_names)
+		return xstats_count;
+
+	for (stat = 0; stat < ENA_STATS_ARRAY_GLOBAL; stat++, count++)
+		strcpy(xstats_names[count].name,
+			ena_stats_global_strings[stat].name);
+
+	for (stat = 0; stat < ENA_STATS_ARRAY_RX; stat++)
+		for (i = 0; i < dev->data->nb_rx_queues; i++, count++)
+			snprintf(xstats_names[count].name,
+				sizeof(xstats_names[count].name),
+				"rx_q%d_%s", i,
+				ena_stats_rx_strings[stat].name);
+
+	for (stat = 0; stat < ENA_STATS_ARRAY_TX; stat++)
+		for (i = 0; i < dev->data->nb_tx_queues; i++, count++)
+			snprintf(xstats_names[count].name,
+				sizeof(xstats_names[count].name),
+				"tx_q%d_%s", i,
+				ena_stats_tx_strings[stat].name);
+
+	return xstats_count;
+}
+
+/**
+ * DPDK callback to get extended device statistics.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param[out] stats
+ *   Stats table output buffer.
+ * @param n
+ *   The size of the stats table.
+ *
+ * @return
+ *   Number of xstats on success, negative on failure.
+ */
+static int ena_xstats_get(struct rte_eth_dev *dev,
+			  struct rte_eth_xstat *xstats,
+			  unsigned int n)
+{
+	struct ena_adapter *adapter =
+			(struct ena_adapter *)(dev->data->dev_private);
+	unsigned int xstats_count = ena_xstats_calc_num(dev);
+	unsigned int stat, i, count = 0;
+	int stat_offset;
+	void *stats_begin;
+
+	if (n < xstats_count)
+		return xstats_count;
+
+	if (!xstats)
+		return 0;
+
+	for (stat = 0; stat < ENA_STATS_ARRAY_GLOBAL; stat++, count++) {
+		stat_offset = ena_stats_rx_strings[stat].stat_offset;
+		stats_begin = &adapter->dev_stats;
+
+		xstats[count].id = count;
+		xstats[count].value = *((uint64_t *)
+			((char *)stats_begin + stat_offset));
+	}
+
+	for (stat = 0; stat < ENA_STATS_ARRAY_RX; stat++) {
+		for (i = 0; i < dev->data->nb_rx_queues; i++, count++) {
+			stat_offset = ena_stats_rx_strings[stat].stat_offset;
+			stats_begin = &adapter->rx_ring[i].rx_stats;
+
+			xstats[count].id = count;
+			xstats[count].value = *((uint64_t *)
+				((char *)stats_begin + stat_offset));
+		}
+	}
+
+	for (stat = 0; stat < ENA_STATS_ARRAY_TX; stat++) {
+		for (i = 0; i < dev->data->nb_tx_queues; i++, count++) {
+			stat_offset = ena_stats_tx_strings[stat].stat_offset;
+			stats_begin = &adapter->tx_ring[i].rx_stats;
+
+			xstats[count].id = count;
+			xstats[count].value = *((uint64_t *)
+				((char *)stats_begin + stat_offset));
+		}
+	}
+
+	return count;
+}
+
+static int ena_xstats_get_by_id(struct rte_eth_dev *dev,
+				const uint64_t *ids,
+				uint64_t *values,
+				unsigned int n)
+{
+	struct ena_adapter *adapter =
+		(struct ena_adapter *)(dev->data->dev_private);
+	uint64_t id;
+	uint64_t rx_entries, tx_entries;
+	unsigned int i;
+	int qid;
+	int valid = 0;
+	for (i = 0; i < n; ++i) {
+		id = ids[i];
+		/* Check if id belongs to global statistics */
+		if (id < ENA_STATS_ARRAY_GLOBAL) {
+			values[i] = *((uint64_t *)&adapter->dev_stats + id);
+			++valid;
+			continue;
+		}
+
+		/* Check if id belongs to rx queue statistics */
+		id -= ENA_STATS_ARRAY_GLOBAL;
+		rx_entries = ENA_STATS_ARRAY_RX * dev->data->nb_rx_queues;
+		if (id < rx_entries) {
+			qid = id % dev->data->nb_rx_queues;
+			id /= dev->data->nb_rx_queues;
+			values[i] = *((uint64_t *)
+				&adapter->rx_ring[qid].rx_stats + id);
+			++valid;
+			continue;
+		}
+				/* Check if id belongs to rx queue statistics */
+		id -= rx_entries;
+		tx_entries = ENA_STATS_ARRAY_TX * dev->data->nb_tx_queues;
+		if (id < tx_entries) {
+			qid = id % dev->data->nb_tx_queues;
+			id /= dev->data->nb_tx_queues;
+			values[i] = *((uint64_t *)
+				&adapter->tx_ring[qid].tx_stats + id);
+			++valid;
+			continue;
+		}
+	}
+
+	return valid;
 }
 
 /*********************************************************************
