@@ -345,6 +345,9 @@ rte_malloc_heap_memory_add(const char *heap_name, void *va_addr, size_t len,
 
 	if (heap_name == NULL || va_addr == NULL ||
 			page_sz == 0 || !rte_is_power_of_2(page_sz) ||
+			RTE_ALIGN(len, page_sz) != len ||
+			!rte_is_aligned(va_addr, page_sz) ||
+			((len / page_sz) != n_pages && iova_addrs != NULL) ||
 			strnlen(heap_name, RTE_HEAP_NAME_MAX_LEN) == 0 ||
 			strnlen(heap_name, RTE_HEAP_NAME_MAX_LEN) ==
 				RTE_HEAP_NAME_MAX_LEN) {
@@ -367,11 +370,6 @@ rte_malloc_heap_memory_add(const char *heap_name, void *va_addr, size_t len,
 		goto unlock;
 	}
 	n = len / page_sz;
-	if (n != n_pages && iova_addrs != NULL) {
-		rte_errno = EINVAL;
-		ret = -1;
-		goto unlock;
-	}
 
 	rte_spinlock_lock(&heap->lock);
 	ret = malloc_heap_add_external_memory(heap, va_addr, iova_addrs, n,

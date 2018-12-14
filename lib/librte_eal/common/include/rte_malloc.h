@@ -282,9 +282,9 @@ rte_malloc_get_socket_stats(int socket,
  * @param heap_name
  *   Name of the heap to add memory chunk to
  * @param va_addr
- *   Start of virtual area to add to the heap
+ *   Start of virtual area to add to the heap. Must be aligned by ``page_sz``.
  * @param len
- *   Length of virtual area to add to the heap
+ *   Length of virtual area to add to the heap. Must be aligned by ``page_sz``.
  * @param iova_addrs
  *   Array of page IOVA addresses corresponding to each page in this memory
  *   area. Can be NULL, in which case page IOVA addresses will be set to
