@@ -48,6 +48,7 @@
 #include <rte_log.h>
 #include <rte_malloc.h>
 #include <rte_memzone.h>
+#include <rte_prefetch.h>
 #include <rte_spinlock.h>
 
 #include <sys/time.h>
@@ -88,8 +89,9 @@ typedef uint64_t dma_addr_t;
 #define ENA_TOUCH(x) ((void)(x))
 #define memcpy_toio memcpy
 #define wmb rte_wmb
-#define rmb rte_wmb
+#define rmb rte_rmb
 #define mb rte_mb
+#define mmiowb rte_io_wmb
 #define __iomem
 
 #define US_PER_S 1000000
@@ -156,6 +158,7 @@ do {                                                                   \
 	({(void)flags; rte_spinlock_lock(&spinlock); })
 #define ENA_SPINLOCK_UNLOCK(spinlock, flags)				\
 	({(void)flags; rte_spinlock_unlock(&(spinlock)); })
+#define ENA_SPINLOCK_DESTROY(spinlock) ((void)spinlock)
 
 #define q_waitqueue_t			\
 	struct {			\
@@ -257,7 +260,11 @@ extern uint32_t ena_alloc_cnt;
 #define ENA_MEM_ALLOC(dmadev, size) rte_zmalloc(NULL, size, 1)
 #define ENA_MEM_FREE(dmadev, ptr) ({ENA_TOUCH(dmadev); rte_free(ptr); })
 
+#define ENA_DB_SYNC(mem_handle) ((void)mem_handle)
+
 #define ENA_REG_WRITE32(bus, value, reg)				\
+	({ (void)(bus); rte_write32((value), (reg)); })
+#define ENA_REG_WRITE32_RELAXED(bus, value, reg)			\
 	({ (void)(bus); rte_write32_relaxed((value), (reg)); })
 #define ENA_REG_READ32(bus, reg)					\
 	({ (void)(bus); rte_read32_relaxed((reg)); })
@@ -270,17 +277,43 @@ extern uint32_t ena_alloc_cnt;
 #define msleep(x) rte_delay_us(x * 1000)
 #define udelay(x) rte_delay_us(x)
 
+#define dma_rmb() rmb()
+
 #define MAX_ERRNO       4095
 #define IS_ERR(x) (((unsigned long)x) >= (unsigned long)-MAX_ERRNO)
 #define ERR_PTR(error) ((void *)(long)error)
 #define PTR_ERR(error) ((long)(void *)error)
 #define might_sleep()
 
+#define prefetch(x) rte_prefetch0(x)
+
 #define lower_32_bits(x) ((uint32_t)(x))
 #define upper_32_bits(x) ((uint32_t)(((x) >> 16) >> 16))
+
+#define ENA_TIME_EXPIRE(timeout)  (timeout < rte_get_timer_cycles())
+#define ENA_GET_SYSTEM_TIMEOUT(timeout_us)				\
+    (timeout_us * rte_get_timer_hz() / 1000000 + rte_get_timer_cycles())
+#define ENA_WAIT_EVENT_DESTROY(waitqueue) ((void)(waitqueue))
 
 #ifndef READ_ONCE
 #define READ_ONCE(var) (*((volatile typeof(var) *)(&(var))))
 #endif
+
+#define READ_ONCE8(var) READ_ONCE(var)
+#define READ_ONCE16(var) READ_ONCE(var)
+#define READ_ONCE32(var) READ_ONCE(var)
+
+/* The size must be 8 byte align */
+#define ENA_MEMCPY_TO_DEVICE_64(dst, src, size)				\
+	do {								\
+		int count, i;						\
+		uint64_t *to = (uint64_t *)(dst);			\
+		const uint64_t *from = (const uint64_t *)(src);		\
+		count = (size) / 8;					\
+		for (i = 0; i < count; i++, from++, to++)		\
+			rte_write64_relaxed(*from, to);			\
+	} while(0)
+
+#define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
 
 #endif /* DPDK_ENA_COM_ENA_PLAT_DPDK_H_ */

@@ -947,7 +947,7 @@ ena_calc_queue_size(struct ena_com_dev *ena_dev,
 
 	if (ena_dev->tx_mem_queue_type == ENA_ADMIN_PLACEMENT_POLICY_DEV)
 		queue_size = RTE_MIN(queue_size,
-				     get_feat_ctx->max_queues.max_llq_depth);
+				     get_feat_ctx->max_queues.max_legacy_llq_depth);
 
 	/* Round down to power of 2 */
 	if (!rte_is_power_of_2(queue_size))
@@ -1472,7 +1472,7 @@ static int ena_device_init(struct ena_com_dev *ena_dev,
 	ena_dev->dma_addr_bits = ena_com_get_dma_width(ena_dev);
 
 	/* ENA device administration layer init */
-	rc = ena_com_admin_init(ena_dev, &aenq_handlers, true);
+	rc = ena_com_admin_init(ena_dev, &aenq_handlers);
 	if (rc) {
 		RTE_LOG(ERR, PMD,
 			"cannot initialize ena admin queue with device\n");
