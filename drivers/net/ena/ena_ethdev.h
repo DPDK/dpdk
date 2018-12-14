@@ -45,7 +45,6 @@
 #define ENA_MEM_BAR	2
 
 #define ENA_MAX_NUM_QUEUES	128
-#define ENA_DEFAULT_RING_SIZE	(1024)
 #define ENA_MIN_FRAME_LEN	64
 #define ENA_NAME_MAX_LEN	20
 #define ENA_PKT_MAX_BUFS	17
@@ -69,6 +68,15 @@ struct ena_tx_buffer {
 	unsigned int tx_descs;
 	unsigned int num_of_bufs;
 	struct ena_com_buf bufs[ENA_PKT_MAX_BUFS];
+};
+
+struct ena_calc_queue_size_ctx {
+	struct ena_com_dev_get_features_ctx *get_feat_ctx;
+	struct ena_com_dev *ena_dev;
+	u16 rx_queue_size;
+	u16 tx_queue_size;
+	u16 max_tx_sgl_size;
+	u16 max_rx_sgl_size;
 };
 
 struct ena_ring {
@@ -176,6 +184,7 @@ struct ena_adapter {
 	/* RX */
 	struct ena_ring rx_ring[ENA_MAX_NUM_QUEUES] __rte_cache_aligned;
 	int rx_ring_size;
+	u16 max_rx_sgl_size;
 
 	u16 num_queues;
 	u16 max_mtu;
