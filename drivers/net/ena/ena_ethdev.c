@@ -1988,6 +1988,8 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			segments++;
 			next_to_clean++;
 		}
+		if (unlikely(rc))
+			break;
 
 		/* fill mbuf attributes if any */
 		ena_rx_mbuf_prepare(mbuf_head, &ena_rx_ctx);
