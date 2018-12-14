@@ -107,6 +107,7 @@ qat_qps_per_service(const struct qat_qp_hw_data *qp_hw_data,
 
 /* Needed for weak function*/
 int
-qat_comp_process_response(void **op __rte_unused, uint8_t *resp __rte_unused);
+qat_comp_process_response(void **op __rte_unused, uint8_t *resp __rte_unused,
+			  uint64_t *dequeue_err_count);
 
 #endif /* _QAT_QP_H_ */

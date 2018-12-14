@@ -109,7 +109,7 @@ qat_comp_build_request(void *in_op, uint8_t *out_msg,
 }
 
 int
-qat_comp_process_response(void **op, uint8_t *resp)
+qat_comp_process_response(void **op, uint8_t *resp, uint64_t *dequeue_err_count)
 {
 	struct icp_qat_fw_comp_resp *resp_msg =
 			(struct icp_qat_fw_comp_resp *)resp;
@@ -135,6 +135,7 @@ qat_comp_process_response(void **op, uint8_t *resp)
 			rx_op->debug_status = ERR_CODE_QAT_COMP_WRONG_FW;
 			*op = (void *)rx_op;
 			QAT_DP_LOG(ERR, "QAT has wrong firmware");
+			++(*dequeue_err_count);
 			return 0;
 		}
 	}
@@ -152,6 +153,7 @@ qat_comp_process_response(void **op, uint8_t *resp)
 			QAT_DP_LOG(ERR, "QAT intermediate buffer may be too "
 			    "small for output, try configuring a larger size");
 
+		++(*dequeue_err_count);
 		rx_op->status = RTE_COMP_OP_STATUS_ERROR;
 		rx_op->debug_status =
 			*((uint16_t *)(&resp_msg->comn_resp.comn_error));

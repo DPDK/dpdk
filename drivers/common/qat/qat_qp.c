@@ -646,7 +646,8 @@ qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 		if (tmp_qp->service_type == QAT_SERVICE_SYMMETRIC)
 			qat_sym_process_response(ops, resp_msg);
 		else if (tmp_qp->service_type == QAT_SERVICE_COMPRESSION)
-			qat_comp_process_response(ops, resp_msg);
+			qat_comp_process_response(ops, resp_msg,
+					&tmp_qp->stats.dequeue_err_count);
 
 		head = adf_modulo(head + rx_queue->msg_size,
 				  rx_queue->modulo_mask);
@@ -674,7 +675,8 @@ qat_dequeue_op_burst(void *qp, void **ops, uint16_t nb_ops)
 }
 
 __rte_weak int
-qat_comp_process_response(void **op __rte_unused, uint8_t *resp __rte_unused)
+qat_comp_process_response(void **op __rte_unused, uint8_t *resp __rte_unused,
+			  uint64_t *dequeue_err_count __rte_unused)
 {
 	return  0;
 }
