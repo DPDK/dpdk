@@ -793,7 +793,7 @@ eth_hn_dev_init(struct rte_eth_dev *eth_dev)
 
 		err = hn_vf_add(eth_dev, hv);
 		if (err)
-			goto failed;
+			hv->vf_present = 0;
 	}
 
 	return 0;
