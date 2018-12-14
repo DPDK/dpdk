@@ -2128,8 +2128,10 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 	desc_in_use = desc_in_use - completed + 1;
 	/* Burst refill to save doorbells, memory barriers, const interval */
-	if (ring_size - desc_in_use > ENA_RING_DESCS_RATIO(ring_size))
+	if (ring_size - desc_in_use > ENA_RING_DESCS_RATIO(ring_size)) {
+		ena_com_update_dev_comp_head(rx_ring->ena_com_io_cq);
 		ena_populate_rx_queue(rx_ring, ring_size - desc_in_use);
+	}
 
 	return recv_idx;
 }
@@ -2440,8 +2442,9 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	if (total_tx_descs > 0) {
 		/* acknowledge completion of sent packets */
-		ena_com_comp_ack(tx_ring->ena_com_io_sq, total_tx_descs);
 		tx_ring->next_to_clean = next_to_clean;
+		ena_com_comp_ack(tx_ring->ena_com_io_sq, total_tx_descs);
+		ena_com_update_dev_comp_head(tx_ring->ena_com_io_cq);
 	}
 
 	tx_ring->tx_stats.tx_poll++;
