@@ -1994,6 +1994,9 @@ static void ena_infos_get(struct rte_eth_dev *dev,
 	dev_info->tx_offload_capa = tx_feat;
 	dev_info->tx_queue_offload_capa = tx_feat;
 
+	dev_info->flow_type_rss_offloads = ETH_RSS_IP | ETH_RSS_TCP |
+					   ETH_RSS_UDP;
+
 	dev_info->min_rx_bufsize = ENA_MIN_FRAME_LEN;
 	dev_info->max_rx_pktlen  = adapter->max_mtu;
 	dev_info->max_mac_addrs = 1;
