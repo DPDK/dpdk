@@ -1387,7 +1387,7 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	for (i = 0; i < nb_desc; i++)
-		rxq->empty_tx_reqs[i] = i;
+		rxq->empty_rx_reqs[i] = i;
 
 	/* Store pointer to this queue in upper layer */
 	rxq->configured = 1;
