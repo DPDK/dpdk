@@ -29,13 +29,10 @@
 #include "channel_manager.h"
 #include "channel_commands.h"
 #include "channel_monitor.h"
+#include "power_manager.h"
 
 
 #define RTE_LOGTYPE_CHANNEL_MANAGER RTE_LOGTYPE_USER1
-
-#define ITERATIVE_BITMASK_CHECK_64(mask_u64b, i) \
-		for (i = 0; mask_u64b; mask_u64b &= ~(1ULL << i++)) \
-		if ((mask_u64b >> i) & 1) \
 
 /* Global pointer to libvirt connection */
 static virConnectPtr global_vir_conn_ptr;
@@ -54,7 +51,7 @@ struct virtual_machine_info {
 	char name[CHANNEL_MGR_MAX_NAME_LEN];
 	rte_atomic64_t pcpu_mask[CHANNEL_CMDS_MAX_CPUS];
 	struct channel_info *channels[CHANNEL_CMDS_MAX_VM_CHANNELS];
-	uint64_t channel_mask;
+	char channel_mask[POWER_MGR_MAX_CPUS];
 	uint8_t num_channels;
 	enum vm_status status;
 	virDomainPtr domainPtr;
@@ -135,12 +132,14 @@ update_pcpus:
 }
 
 int
-set_pcpus_mask(char *vm_name, unsigned vcpu, uint64_t core_mask)
+set_pcpus_mask(char *vm_name, unsigned int vcpu, char *core_mask)
 {
 	unsigned i = 0;
 	int flags = VIR_DOMAIN_AFFECT_LIVE|VIR_DOMAIN_AFFECT_CONFIG;
 	struct virtual_machine_info *vm_info;
-	uint64_t mask = core_mask;
+	char mask[POWER_MGR_MAX_CPUS];
+
+	memcpy(mask, core_mask, POWER_MGR_MAX_CPUS);
 
 	if (vcpu >= CHANNEL_CMDS_MAX_CPUS) {
 		RTE_LOG(ERR, CHANNEL_MANAGER, "vCPU(%u) exceeds max allowable(%d)\n",
@@ -156,8 +155,8 @@ set_pcpus_mask(char *vm_name, unsigned vcpu, uint64_t core_mask)
 
 	if (!virDomainIsActive(vm_info->domainPtr)) {
 		RTE_LOG(ERR, CHANNEL_MANAGER, "Unable to set vCPU(%u) to pCPU "
-				"mask(0x%"PRIx64") for VM '%s', VM is not active\n",
-				vcpu, core_mask, vm_info->name);
+				" for VM '%s', VM is not active\n",
+				vcpu, vm_info->name);
 		return -1;
 	}
 
@@ -167,22 +166,27 @@ set_pcpus_mask(char *vm_name, unsigned vcpu, uint64_t core_mask)
 		return -1;
 	}
 	memset(global_cpumaps, 0 , CHANNEL_CMDS_MAX_CPUS * global_maplen);
-	ITERATIVE_BITMASK_CHECK_64(mask, i) {
+	for (i = 0; i < POWER_MGR_MAX_CPUS; i++) {
+		if (mask[i] != 1)
+			continue;
 		VIR_USE_CPU(global_cpumaps, i);
 		if (i >= global_n_host_cpus) {
 			RTE_LOG(ERR, CHANNEL_MANAGER, "CPU(%u) exceeds the available "
-					"number of CPUs(%u)\n", i, global_n_host_cpus);
+					"number of CPUs(%u)\n",
+					i, global_n_host_cpus);
 			return -1;
 		}
 	}
 	if (virDomainPinVcpuFlags(vm_info->domainPtr, vcpu, global_cpumaps,
 			global_maplen, flags) < 0) {
 		RTE_LOG(ERR, CHANNEL_MANAGER, "Unable to set vCPU(%u) to pCPU "
-				"mask(0x%"PRIx64") for VM '%s'\n", vcpu, core_mask,
+				" for VM '%s'\n", vcpu,
 				vm_info->name);
 		return -1;
 	}
-	rte_atomic64_set(&vm_info->pcpu_mask[vcpu], core_mask);
+	rte_spinlock_lock(&(vm_info->config_spinlock));
+	memcpy(&vm_info->pcpu_mask[vcpu], mask, POWER_MGR_MAX_CPUS);
+	rte_spinlock_unlock(&(vm_info->config_spinlock));
 	return 0;
 
 }
@@ -190,7 +194,11 @@ set_pcpus_mask(char *vm_name, unsigned vcpu, uint64_t core_mask)
 int
 set_pcpu(char *vm_name, unsigned vcpu, unsigned core_num)
 {
-	uint64_t mask = 1ULL << core_num;
+	char mask[POWER_MGR_MAX_CPUS];
+
+	memset(mask, 0, POWER_MGR_MAX_CPUS);
+
+	mask[core_num] = 1;
 
 	return set_pcpus_mask(vm_name, vcpu, mask);
 }
@@ -211,7 +219,7 @@ static inline int
 channel_exists(struct virtual_machine_info *vm_info, unsigned channel_num)
 {
 	rte_spinlock_lock(&(vm_info->config_spinlock));
-	if (vm_info->channel_mask & (1ULL << channel_num)) {
+	if (vm_info->channel_mask[channel_num] == 1) {
 		rte_spinlock_unlock(&(vm_info->config_spinlock));
 		return 1;
 	}
@@ -343,7 +351,7 @@ setup_channel_info(struct virtual_machine_info **vm_info_dptr,
 	}
 	rte_spinlock_lock(&(vm_info->config_spinlock));
 	vm_info->num_channels++;
-	vm_info->channel_mask |= 1ULL << channel_num;
+	vm_info->channel_mask[channel_num] = 1;
 	vm_info->channels[channel_num] = chan_info;
 	chan_info->status = CHANNEL_MGR_CHANNEL_CONNECTED;
 	rte_spinlock_unlock(&(vm_info->config_spinlock));
@@ -590,7 +598,7 @@ remove_channel(struct channel_info **chan_info_dptr)
 	vm_info = (struct virtual_machine_info *)chan_info->priv_info;
 
 	rte_spinlock_lock(&(vm_info->config_spinlock));
-	vm_info->channel_mask &= ~(1ULL << chan_info->channel_num);
+	vm_info->channel_mask[chan_info->channel_num] = 0;
 	vm_info->num_channels--;
 	rte_spinlock_unlock(&(vm_info->config_spinlock));
 
@@ -603,7 +611,7 @@ set_channel_status_all(const char *vm_name, enum channel_status status)
 {
 	struct virtual_machine_info *vm_info;
 	unsigned i;
-	uint64_t mask;
+	char mask[POWER_MGR_MAX_CPUS];
 	int num_channels_changed = 0;
 
 	if (!(status == CHANNEL_MGR_CHANNEL_CONNECTED ||
@@ -619,8 +627,10 @@ set_channel_status_all(const char *vm_name, enum channel_status status)
 	}
 
 	rte_spinlock_lock(&(vm_info->config_spinlock));
-	mask = vm_info->channel_mask;
-	ITERATIVE_BITMASK_CHECK_64(mask, i) {
+	memcpy(mask, (char *)vm_info->channel_mask, POWER_MGR_MAX_CPUS);
+	for (i = 0; i < POWER_MGR_MAX_CPUS; i++) {
+		if (mask[i] != 1)
+			continue;
 		vm_info->channels[i]->status = status;
 		num_channels_changed++;
 	}
@@ -665,8 +675,7 @@ get_all_vm(int *num_vm, int *num_vcpu)
 
 	virNodeInfo node_info;
 	virDomainPtr *domptr;
-	uint64_t mask;
-	int i, ii, numVcpus[MAX_VCPUS], cpu, n_vcpus;
+	int i, ii, numVcpus[MAX_VCPUS], n_vcpus;
 	unsigned int jj;
 	const char *vm_name;
 	unsigned int domain_flags = VIR_CONNECT_LIST_DOMAINS_RUNNING |
@@ -714,15 +723,11 @@ get_all_vm(int *num_vm, int *num_vcpu)
 
 		/* Save pcpu in use by libvirt VMs */
 		for (ii = 0; ii < n_vcpus; ii++) {
-			mask = 0;
 			for (jj = 0; jj < global_n_host_cpus; jj++) {
 				if (VIR_CPU_USABLE(global_cpumaps,
 						global_maplen, ii, jj) > 0) {
-					mask |= 1ULL << jj;
+					lvm_info[i].pcpus[ii] = jj;
 				}
-			}
-			ITERATIVE_BITMASK_CHECK_64(mask, cpu) {
-				lvm_info[i].pcpus[ii] = cpu;
 			}
 		}
 	}
@@ -733,7 +738,7 @@ get_info_vm(const char *vm_name, struct vm_info *info)
 {
 	struct virtual_machine_info *vm_info;
 	unsigned i, channel_num = 0;
-	uint64_t mask;
+	char mask[POWER_MGR_MAX_CPUS];
 
 	vm_info = find_domain_by_name(vm_name);
 	if (vm_info == NULL) {
@@ -746,13 +751,18 @@ get_info_vm(const char *vm_name, struct vm_info *info)
 
 	rte_spinlock_lock(&(vm_info->config_spinlock));
 
-	mask = vm_info->channel_mask;
-	ITERATIVE_BITMASK_CHECK_64(mask, i) {
+	memcpy(mask, (char *)vm_info->channel_mask, POWER_MGR_MAX_CPUS);
+	for (i = 0; i < POWER_MGR_MAX_CPUS; i++) {
+		if (mask[i] != 1)
+			continue;
 		info->channels[channel_num].channel_num = i;
 		memcpy(info->channels[channel_num].channel_path,
-				vm_info->channels[i]->channel_path, UNIX_PATH_MAX);
-		info->channels[channel_num].status = vm_info->channels[i]->status;
-		info->channels[channel_num].fd = vm_info->channels[i]->fd;
+				vm_info->channels[i]->channel_path,
+				UNIX_PATH_MAX);
+		info->channels[channel_num].status =
+				vm_info->channels[i]->status;
+		info->channels[channel_num].fd =
+				vm_info->channels[i]->fd;
 		channel_num++;
 	}
 
@@ -822,7 +832,7 @@ add_vm(const char *vm_name)
 	}
 	strncpy(new_domain->name, vm_name, sizeof(new_domain->name));
 	new_domain->name[sizeof(new_domain->name) - 1] = '\0';
-	new_domain->channel_mask = 0;
+	memset(new_domain->channel_mask, 0, POWER_MGR_MAX_CPUS);
 	new_domain->num_channels = 0;
 
 	if (!virDomainIsActive(dom_ptr))
@@ -940,16 +950,19 @@ void
 channel_manager_exit(void)
 {
 	unsigned i;
-	uint64_t mask;
+	char mask[POWER_MGR_MAX_CPUS];
 	struct virtual_machine_info *vm_info;
 
 	LIST_FOREACH(vm_info, &vm_list_head, vms_info) {
 
 		rte_spinlock_lock(&(vm_info->config_spinlock));
 
-		mask = vm_info->channel_mask;
-		ITERATIVE_BITMASK_CHECK_64(mask, i) {
-			remove_channel_from_monitor(vm_info->channels[i]);
+		memcpy(mask, (char *)vm_info->channel_mask, POWER_MGR_MAX_CPUS);
+		for (i = 0; i < POWER_MGR_MAX_CPUS; i++) {
+			if (mask[i] != 1)
+				continue;
+			remove_channel_from_monitor(
+					vm_info->channels[i]);
 			close(vm_info->channels[i]->fd);
 			rte_free(vm_info->channels[i]);
 		}

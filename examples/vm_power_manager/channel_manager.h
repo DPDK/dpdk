@@ -149,7 +149,7 @@ uint64_t get_pcpus_mask(struct channel_info *chan_info, unsigned vcpu);
  *  - 0 on success.
  *  - Negative on error.
  */
-int set_pcpus_mask(char *vm_name, unsigned vcpu, uint64_t core_mask);
+int set_pcpus_mask(char *vm_name, unsigned int vcpu, char *core_mask);
 
 /**
  * Set the Physical CPU for the specified vCPU.

@@ -128,7 +128,7 @@ struct cmd_set_pcpu_mask_result {
 	cmdline_fixed_string_t set_pcpu_mask;
 	cmdline_fixed_string_t vm_name;
 	uint8_t vcpu;
-	uint64_t core_mask;
+	char core_mask[POWER_MGR_MAX_CPUS];
 };
 
 static void
@@ -139,10 +139,10 @@ cmd_set_pcpu_mask_parsed(void *parsed_result, struct cmdline *cl,
 
 	if (set_pcpus_mask(res->vm_name, res->vcpu, res->core_mask) == 0)
 		cmdline_printf(cl, "Pinned vCPU(%"PRId8") to pCPU core "
-				"mask(0x%"PRIx64")\n", res->vcpu, res->core_mask);
+				"\n", res->vcpu);
 	else
 		cmdline_printf(cl, "Unable to pin vCPU(%"PRId8") to pCPU core "
-				"mask(0x%"PRIx64")\n", res->vcpu, res->core_mask);
+				"\n", res->vcpu);
 }
 
 cmdline_parse_token_string_t cmd_set_pcpu_mask =
