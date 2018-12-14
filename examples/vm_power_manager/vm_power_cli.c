@@ -95,8 +95,8 @@ cmd_show_vm_parsed(void *parsed_result, struct cmdline *cl,
 	}
 	cmdline_printf(cl, "Virtual CPU(s): %u\n", info.num_vcpus);
 	for (i = 0; i < info.num_vcpus; i++) {
-		cmdline_printf(cl, "  [%u]: Physical CPU Mask 0x%"PRIx64"\n", i,
-				info.pcpu_mask[i]);
+		cmdline_printf(cl, "  [%u]: Physical CPU %d\n", i,
+				info.pcpu_map[i]);
 	}
 }
 

@@ -356,7 +356,6 @@ get_pcpu_to_control(struct policy *pol)
 	/* Convert vcpu to pcpu. */
 	struct vm_info info;
 	int pcpu, count;
-	uint64_t mask_u64b;
 	struct core_info *ci;
 
 	ci = get_core_info();
@@ -377,13 +376,8 @@ get_pcpu_to_control(struct policy *pol)
 		 */
 		get_info_vm(pol->pkt.vm_name, &info);
 		for (count = 0; count < pol->pkt.num_vcpu; count++) {
-			mask_u64b =
-				info.pcpu_mask[pol->pkt.vcpu_to_control[count]];
-			for (pcpu = 0; mask_u64b;
-					mask_u64b &= ~(1ULL << pcpu++)) {
-				if ((mask_u64b >> pcpu) & 1)
-					pcpu_monitor(pol, ci, pcpu, count);
-			}
+			pcpu = info.pcpu_map[pol->pkt.vcpu_to_control[count]];
+			pcpu_monitor(pol, ci, pcpu, count);
 		}
 	} else {
 		/*
@@ -636,8 +630,6 @@ apply_policy(struct policy *pol)
 static int
 process_request(struct channel_packet *pkt, struct channel_info *chan_info)
 {
-	uint64_t core_mask;
-
 	if (chan_info == NULL)
 		return -1;
 
@@ -646,41 +638,31 @@ process_request(struct channel_packet *pkt, struct channel_info *chan_info)
 		return -1;
 
 	if (pkt->command == CPU_POWER) {
-		core_mask = get_pcpus_mask(chan_info, pkt->resource_id);
-		if (core_mask == 0) {
-			/*
-			 * Core mask will be 0 in the case where
-			 * hypervisor is not available so we're working in
-			 * the host, so use the core as the mask.
-			 */
-			core_mask = 1ULL << pkt->resource_id;
-		}
-		if (__builtin_popcountll(core_mask) == 1) {
+		unsigned int core_num;
 
-			unsigned core_num = __builtin_ffsll(core_mask) - 1;
+		core_num = get_pcpu(chan_info, pkt->resource_id);
 
-			switch (pkt->unit) {
-			case(CPU_POWER_SCALE_MIN):
-					power_manager_scale_core_min(core_num);
+		switch (pkt->unit) {
+		case(CPU_POWER_SCALE_MIN):
+			power_manager_scale_core_min(core_num);
 			break;
-			case(CPU_POWER_SCALE_MAX):
-					power_manager_scale_core_max(core_num);
+		case(CPU_POWER_SCALE_MAX):
+			power_manager_scale_core_max(core_num);
 			break;
-			case(CPU_POWER_SCALE_DOWN):
-					power_manager_scale_core_down(core_num);
+		case(CPU_POWER_SCALE_DOWN):
+			power_manager_scale_core_down(core_num);
 			break;
-			case(CPU_POWER_SCALE_UP):
-					power_manager_scale_core_up(core_num);
+		case(CPU_POWER_SCALE_UP):
+			power_manager_scale_core_up(core_num);
 			break;
-			case(CPU_POWER_ENABLE_TURBO):
-				power_manager_enable_turbo_core(core_num);
+		case(CPU_POWER_ENABLE_TURBO):
+			power_manager_enable_turbo_core(core_num);
 			break;
-			case(CPU_POWER_DISABLE_TURBO):
-				power_manager_disable_turbo_core(core_num);
+		case(CPU_POWER_DISABLE_TURBO):
+			power_manager_disable_turbo_core(core_num);
 			break;
-			default:
-				break;
-			}
+		default:
+			break;
 		}
 	}
 

@@ -49,7 +49,7 @@ static bool global_hypervisor_available;
  */
 struct virtual_machine_info {
 	char name[CHANNEL_MGR_MAX_NAME_LEN];
-	rte_atomic64_t pcpu_mask[CHANNEL_CMDS_MAX_CPUS];
+	uint16_t pcpu_map[CHANNEL_CMDS_MAX_CPUS];
 	struct channel_info *channels[CHANNEL_CMDS_MAX_VM_CHANNELS];
 	char channel_mask[POWER_MGR_MAX_CPUS];
 	uint8_t num_channels;
@@ -79,7 +79,6 @@ update_pcpus_mask(struct virtual_machine_info *vm_info)
 	virVcpuInfoPtr cpuinfo;
 	unsigned i, j;
 	int n_vcpus;
-	uint64_t mask;
 
 	memset(global_cpumaps, 0, CHANNEL_CMDS_MAX_CPUS*global_maplen);
 
@@ -119,27 +118,24 @@ update_pcpus:
 				n_vcpus);
 		vm_info->info.nrVirtCpu = n_vcpus;
 	}
+	rte_spinlock_lock(&(vm_info->config_spinlock));
 	for (i = 0; i < vm_info->info.nrVirtCpu; i++) {
-		mask = 0;
 		for (j = 0; j < global_n_host_cpus; j++) {
-			if (VIR_CPU_USABLE(global_cpumaps, global_maplen, i, j) > 0) {
-				mask |= 1ULL << j;
-			}
+			if (VIR_CPU_USABLE(global_cpumaps,
+					global_maplen, i, j) <= 0)
+				continue;
+			vm_info->pcpu_map[i] = j;
 		}
-		rte_atomic64_set(&vm_info->pcpu_mask[i], mask);
 	}
+	rte_spinlock_unlock(&(vm_info->config_spinlock));
 	return 0;
 }
 
 int
-set_pcpus_mask(char *vm_name, unsigned int vcpu, char *core_mask)
+set_pcpu(char *vm_name, unsigned int vcpu, unsigned int pcpu)
 {
-	unsigned i = 0;
 	int flags = VIR_DOMAIN_AFFECT_LIVE|VIR_DOMAIN_AFFECT_CONFIG;
 	struct virtual_machine_info *vm_info;
-	char mask[POWER_MGR_MAX_CPUS];
-
-	memcpy(mask, core_mask, POWER_MGR_MAX_CPUS);
 
 	if (vcpu >= CHANNEL_CMDS_MAX_CPUS) {
 		RTE_LOG(ERR, CHANNEL_MANAGER, "vCPU(%u) exceeds max allowable(%d)\n",
@@ -166,17 +162,16 @@ set_pcpus_mask(char *vm_name, unsigned int vcpu, char *core_mask)
 		return -1;
 	}
 	memset(global_cpumaps, 0 , CHANNEL_CMDS_MAX_CPUS * global_maplen);
-	for (i = 0; i < POWER_MGR_MAX_CPUS; i++) {
-		if (mask[i] != 1)
-			continue;
-		VIR_USE_CPU(global_cpumaps, i);
-		if (i >= global_n_host_cpus) {
-			RTE_LOG(ERR, CHANNEL_MANAGER, "CPU(%u) exceeds the available "
-					"number of CPUs(%u)\n",
-					i, global_n_host_cpus);
-			return -1;
-		}
+
+	VIR_USE_CPU(global_cpumaps, pcpu);
+
+	if (pcpu >= global_n_host_cpus) {
+		RTE_LOG(ERR, CHANNEL_MANAGER, "CPU(%u) exceeds the available "
+				"number of CPUs(%u)\n",
+				pcpu, global_n_host_cpus);
+		return -1;
 	}
+
 	if (virDomainPinVcpuFlags(vm_info->domainPtr, vcpu, global_cpumaps,
 			global_maplen, flags) < 0) {
 		RTE_LOG(ERR, CHANNEL_MANAGER, "Unable to set vCPU(%u) to pCPU "
@@ -185,33 +180,24 @@ set_pcpus_mask(char *vm_name, unsigned int vcpu, char *core_mask)
 		return -1;
 	}
 	rte_spinlock_lock(&(vm_info->config_spinlock));
-	memcpy(&vm_info->pcpu_mask[vcpu], mask, POWER_MGR_MAX_CPUS);
+	vm_info->pcpu_map[vcpu] = pcpu;
 	rte_spinlock_unlock(&(vm_info->config_spinlock));
 	return 0;
-
 }
 
-int
-set_pcpu(char *vm_name, unsigned vcpu, unsigned core_num)
-{
-	char mask[POWER_MGR_MAX_CPUS];
-
-	memset(mask, 0, POWER_MGR_MAX_CPUS);
-
-	mask[core_num] = 1;
-
-	return set_pcpus_mask(vm_name, vcpu, mask);
-}
-
-uint64_t
-get_pcpus_mask(struct channel_info *chan_info, unsigned vcpu)
+uint16_t
+get_pcpu(struct channel_info *chan_info, unsigned int vcpu)
 {
 	struct virtual_machine_info *vm_info =
 			(struct virtual_machine_info *)chan_info->priv_info;
 
-	if (global_hypervisor_available && (vm_info != NULL))
-		return rte_atomic64_read(&vm_info->pcpu_mask[vcpu]);
-	else
+	if (global_hypervisor_available && (vm_info != NULL)) {
+		uint16_t pcpu;
+		rte_spinlock_lock(&(vm_info->config_spinlock));
+		pcpu = vm_info->pcpu_map[vcpu];
+		rte_spinlock_unlock(&(vm_info->config_spinlock));
+		return pcpu;
+	} else
 		return 0;
 }
 
@@ -771,9 +757,11 @@ get_info_vm(const char *vm_name, struct vm_info *info)
 	rte_spinlock_unlock(&(vm_info->config_spinlock));
 
 	memcpy(info->name, vm_info->name, sizeof(vm_info->name));
+	rte_spinlock_lock(&(vm_info->config_spinlock));
 	for (i = 0; i < info->num_vcpus; i++) {
-		info->pcpu_mask[i] = rte_atomic64_read(&vm_info->pcpu_mask[i]);
+		info->pcpu_map[i] = vm_info->pcpu_map[i];
 	}
+	rte_spinlock_unlock(&(vm_info->config_spinlock));
 	return 0;
 }
 
@@ -823,7 +811,7 @@ add_vm(const char *vm_name)
 	}
 
 	for (i = 0; i < CHANNEL_CMDS_MAX_CPUS; i++) {
-		rte_atomic64_init(&new_domain->pcpu_mask[i]);
+		new_domain->pcpu_map[i] = 0;
 	}
 	if (update_pcpus_mask(new_domain) < 0) {
 		RTE_LOG(ERR, CHANNEL_MANAGER, "Error getting physical CPU pinning\n");
