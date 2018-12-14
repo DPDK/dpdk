@@ -5,7 +5,6 @@
 #include <unistd.h>
 #include <limits.h>
 #include <string.h>
-#include <dirent.h>
 
 #include <rte_errno.h>
 #include <rte_log.h>

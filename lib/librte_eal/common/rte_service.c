@@ -7,7 +7,6 @@
 #include <inttypes.h>
 #include <limits.h>
 #include <string.h>
-#include <dirent.h>
 
 #include <rte_compat.h>
 #include <rte_service.h>
