@@ -160,6 +160,7 @@ static const struct ena_stats ena_stats_rx_strings[] = {
 	ENA_STAT_RX_ENTRY(dma_mapping_err),
 	ENA_STAT_RX_ENTRY(bad_desc_num),
 	ENA_STAT_RX_ENTRY(small_copy_len_pkt),
+	ENA_STAT_TX_ENTRY(bad_req_id),
 };
 
 static const struct ena_stats ena_stats_ena_com_strings[] = {
@@ -390,6 +391,7 @@ static inline int validate_rx_req_id(struct ena_ring *rx_ring, uint16_t req_id)
 
 	rx_ring->adapter->reset_reason = ENA_REGS_RESET_INV_RX_REQ_ID;
 	rx_ring->adapter->trigger_reset = true;
+	++rx_ring->rx_stats.bad_req_id;
 
 	return -EFAULT;
 }
@@ -971,6 +973,8 @@ static int ena_stats_get(struct rte_eth_dev *dev,
 		(struct ena_adapter *)(dev->data->dev_private);
 	struct ena_com_dev *ena_dev = &adapter->ena_dev;
 	int rc;
+	int i;
+	int max_rings_stats;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return -ENOTSUP;
@@ -998,6 +1002,27 @@ static int ena_stats_get(struct rte_eth_dev *dev,
 	stats->ierrors = rte_atomic64_read(&adapter->drv_stats->ierrors);
 	stats->oerrors = rte_atomic64_read(&adapter->drv_stats->oerrors);
 	stats->rx_nombuf = rte_atomic64_read(&adapter->drv_stats->rx_nombuf);
+
+	max_rings_stats = RTE_MIN(dev->data->nb_rx_queues,
+		RTE_ETHDEV_QUEUE_STAT_CNTRS);
+	for (i = 0; i < max_rings_stats; ++i) {
+		struct ena_stats_rx *rx_stats = &adapter->rx_ring[i].rx_stats;
+
+		stats->q_ibytes[i] = rx_stats->bytes;
+		stats->q_ipackets[i] = rx_stats->cnt;
+		stats->q_errors[i] = rx_stats->bad_desc_num +
+			rx_stats->bad_req_id;
+	}
+
+	max_rings_stats = RTE_MIN(dev->data->nb_tx_queues,
+		RTE_ETHDEV_QUEUE_STAT_CNTRS);
+	for (i = 0; i < max_rings_stats; ++i) {
+		struct ena_stats_tx *tx_stats = &adapter->tx_ring[i].tx_stats;
+
+		stats->q_obytes[i] = tx_stats->bytes;
+		stats->q_opackets[i] = tx_stats->cnt;
+	}
+
 	return 0;
 }
 
@@ -1410,6 +1435,7 @@ static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count)
 	rc = rte_mempool_get_bulk(rxq->mb_pool, (void **)mbufs, count);
 	if (unlikely(rc < 0)) {
 		rte_atomic64_inc(&rxq->adapter->drv_stats->rx_nombuf);
+		++rxq->rx_stats.page_alloc_fail;
 		PMD_RX_LOG(DEBUG, "there are no enough free buffers");
 		return 0;
 	}
@@ -2110,8 +2136,10 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		/* pass to DPDK application head mbuf */
 		rx_pkts[recv_idx] = mbuf_head;
 		recv_idx++;
+		rx_ring->rx_stats.bytes += mbuf_head->pkt_len;
 	}
 
+	rx_ring->rx_stats.cnt += recv_idx;
 	rx_ring->next_to_clean = next_to_clean;
 
 	desc_in_use = desc_in_use - completed + 1;
@@ -2258,6 +2286,7 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t push_len = 0;
 	uint16_t delta = 0;
 	int nb_hw_desc;
+	uint32_t total_length;
 
 	/* Check adapter state */
 	if (unlikely(tx_ring->adapter->state != ENA_ADAPTER_STATE_RUNNING)) {
@@ -2272,6 +2301,7 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	for (sent_idx = 0; sent_idx < nb_pkts; sent_idx++) {
 		mbuf = tx_pkts[sent_idx];
+		total_length = 0;
 
 		rc = ena_check_and_linearize_mbuf(tx_ring, mbuf);
 		if (unlikely(rc))
@@ -2337,6 +2367,7 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			ebuf++;
 			tx_info->num_of_bufs++;
 		}
+		total_length += mbuf->data_len;
 
 		while ((mbuf = mbuf->next) != NULL) {
 			seg_len = mbuf->data_len;
@@ -2349,6 +2380,7 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 			ebuf->paddr = mbuf->buf_iova + mbuf->data_off + delta;
 			ebuf->len = seg_len - delta;
+			total_length += ebuf->len;
 			ebuf++;
 			tx_info->num_of_bufs++;
 
@@ -2375,6 +2407,8 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		tx_info->tx_descs = nb_hw_desc;
 
 		next_to_use++;
+		tx_ring->tx_stats.cnt += tx_info->num_of_bufs;
+		tx_ring->tx_stats.bytes += total_length;
 	}
 
 	/* If there are ready packets to be xmitted... */
@@ -2382,7 +2416,7 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		/* ...let HW do its best :-) */
 		rte_wmb();
 		ena_com_write_sq_doorbell(tx_ring->ena_com_io_sq);
-
+		tx_ring->tx_stats.doorbells++;
 		tx_ring->next_to_use = next_to_use;
 	}
 

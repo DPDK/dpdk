@@ -79,6 +79,34 @@ struct ena_calc_queue_size_ctx {
 	u16 max_rx_sgl_size;
 };
 
+struct ena_stats_tx {
+	u64 cnt;
+	u64 bytes;
+	u64 queue_stop;
+	u64 prepare_ctx_err;
+	u64 queue_wakeup;
+	u64 dma_mapping_err;
+	u64 linearize;
+	u64 linearize_failed;
+	u64 tx_poll;
+	u64 doorbells;
+	u64 missing_tx_comp;
+	u64 bad_req_id;
+};
+
+struct ena_stats_rx {
+	u64 cnt;
+	u64 bytes;
+	u64 refil_partial;
+	u64 bad_csum;
+	u64 page_alloc_fail;
+	u64 skb_alloc_fail;
+	u64 dma_mapping_err;
+	u64 bad_desc_num;
+	u64 small_copy_len_pkt;
+	u64 bad_req_id;
+};
+
 struct ena_ring {
 	u16 next_to_use;
 	u16 next_to_clean;
@@ -116,6 +144,11 @@ struct ena_ring {
 	struct ena_adapter *adapter;
 	uint64_t offloads;
 	u16 sgl_size;
+
+	union {
+		struct ena_stats_rx rx_stats;
+		struct ena_stats_tx tx_stats;
+	};
 } __rte_cache_aligned;
 
 enum ena_adapter_state {
@@ -141,33 +174,6 @@ struct ena_stats_dev {
 	u64 interface_up;
 	u64 interface_down;
 	u64 admin_q_pause;
-};
-
-struct ena_stats_tx {
-	u64 cnt;
-	u64 bytes;
-	u64 queue_stop;
-	u64 prepare_ctx_err;
-	u64 queue_wakeup;
-	u64 dma_mapping_err;
-	u64 linearize;
-	u64 linearize_failed;
-	u64 tx_poll;
-	u64 doorbells;
-	u64 missing_tx_comp;
-	u64 bad_req_id;
-};
-
-struct ena_stats_rx {
-	u64 cnt;
-	u64 bytes;
-	u64 refil_partial;
-	u64 bad_csum;
-	u64 page_alloc_fail;
-	u64 skb_alloc_fail;
-	u64 dma_mapping_err;
-	u64 bad_desc_num;
-	u64 small_copy_len_pkt;
 };
 
 /* board specific private data structure */
