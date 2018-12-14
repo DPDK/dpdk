@@ -54,6 +54,15 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Added support to free hugepages exactly as originally allocated.**
+
+  Some applications using memory event callbacks (especially for managing
+  RDMA memory regions) require that memory be freed back to the system
+  exactly as it was originally allocated. These applications typically
+  also require that a malloc allocation not span across two separate
+  hugepage allocations.  A new ``--match-allocations`` EAL init flag has
+  been added to fulfill both of these requirements.
+
 * **Updated the enic driver.**
 
   * Added support for ``RTE_ETH_DEV_CLOSE_REMOVE`` flag.

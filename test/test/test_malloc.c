@@ -262,13 +262,26 @@ test_multi_alloc_statistics(void)
 	struct rte_malloc_socket_stats pre_stats, post_stats ,first_stats, second_stats;
 	size_t size = 2048;
 	int align = 1024;
-#ifndef RTE_MALLOC_DEBUG
-	int trailer_size = 0;
-#else
-	int trailer_size = RTE_CACHE_LINE_SIZE;
-#endif
-	int overhead = RTE_CACHE_LINE_SIZE + trailer_size;
+	int overhead = 0;
 
+	/* Dynamically calculate the overhead by allocating one cacheline and
+	 * then comparing what was allocated from the heap.
+	 */
+	rte_malloc_get_socket_stats(socket, &pre_stats);
+
+	void *dummy = rte_malloc_socket(NULL, RTE_CACHE_LINE_SIZE, 0, socket);
+	if (dummy == NULL)
+		return -1;
+
+	rte_malloc_get_socket_stats(socket, &post_stats);
+
+	/* after subtracting cache line, remainder is overhead */
+	overhead = post_stats.heap_allocsz_bytes - pre_stats.heap_allocsz_bytes;
+	overhead -= RTE_CACHE_LINE_SIZE;
+
+	rte_free(dummy);
+
+	/* Now start the real tests */
 	rte_malloc_get_socket_stats(socket, &pre_stats);
 
 	void *p1 = rte_malloc_socket("stats", size , align, socket);

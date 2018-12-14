@@ -65,6 +65,8 @@ enum {
 	OPT_SINGLE_FILE_SEGMENTS_NUM,
 #define OPT_IOVA_MODE          "iova-mode"
 	OPT_IOVA_MODE_NUM,
+#define OPT_MATCH_ALLOCATIONS  "match-allocations"
+	OPT_MATCH_ALLOCATIONS_NUM,
 	OPT_LONG_MAX_NUM
 };
 

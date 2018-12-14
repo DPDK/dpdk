@@ -57,6 +57,8 @@ struct internal_config {
 	/**< true to enable legacy memory behavior (no dynamic allocation,
 	 * IOVA-contiguous segments).
 	 */
+	volatile unsigned match_allocations;
+	/**< true to free hugepages exactly as allocated */
 	volatile unsigned single_file_segments;
 	/**< true if storing all pages within single files (per-page-size,
 	 * per-node) non-legacy mode only.

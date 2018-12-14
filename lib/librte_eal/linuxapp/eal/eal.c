@@ -518,6 +518,7 @@ eal_usage(const char *prgname)
 	       "  --"OPT_VFIO_INTR"         Interrupt mode for VFIO (legacy|msi|msix)\n"
 	       "  --"OPT_LEGACY_MEM"        Legacy memory mode (no dynamic allocation, contiguous segments)\n"
 	       "  --"OPT_SINGLE_FILE_SEGMENTS" Put all hugepage memory in single files\n"
+	       "  --"OPT_MATCH_ALLOCATIONS" Free hugepages exactly as allocated\n"
 	       "\n");
 	/* Allow the application to print its usage message too if hook is set */
 	if ( rte_application_usage_hook ) {
@@ -784,6 +785,10 @@ eal_parse_args(int argc, char **argv)
 		case OPT_MBUF_POOL_OPS_NAME_NUM:
 			internal_config.user_mbuf_pool_ops_name =
 			    strdup(optarg);
+			break;
+
+		case OPT_MATCH_ALLOCATIONS_NUM:
+			internal_config.match_allocations = 1;
 			break;
 
 		default:

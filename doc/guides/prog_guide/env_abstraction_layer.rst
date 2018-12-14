@@ -169,6 +169,20 @@ not allow acquiring or releasing hugepages from the system at runtime.
 If neither ``-m`` nor ``--socket-mem`` were specified, the entire available
 hugepage memory will be preallocated.
 
++ Hugepage allocation matching
+
+This behavior is enabled by specifying the ``--match-allocations`` command-line
+switch to the EAL. This switch is Linux-only and not supported with
+``--legacy-mem`` nor ``--no-huge``.
+
+Some applications using memory event callbacks may require that hugepages be
+freed exactly as they were allocated. These applications may also require
+that any allocation from the malloc heap not span across allocations
+associated with two different memory event callbacks. Hugepage allocation
+matching can be used by these types of applications to satisfy both of these
+requirements. This can result in some increased memory usage which is
+very dependent on the memory allocation patterns of the application.
+
 + 32-bit support
 
 Additional restrictions are present when running in 32-bit mode. In dynamic

@@ -90,6 +90,10 @@ Memory-related options
     Unlink hugepage files after creating them (implies no secondary process
     support).
 
+*   ``--match-allocations``
+
+    Free hugepages back to system exactly as they were originally allocated.
+
 Other options
 ~~~~~~~~~~~~~
 

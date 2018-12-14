@@ -94,7 +94,7 @@ malloc_heap_add_memory(struct malloc_heap *heap, struct rte_memseg_list *msl,
 {
 	struct malloc_elem *elem = start;
 
-	malloc_elem_init(elem, heap, msl, len);
+	malloc_elem_init(elem, heap, msl, len, elem, len);
 
 	malloc_elem_insert(elem);
 
@@ -857,6 +857,13 @@ malloc_heap_free(struct malloc_elem *elem)
 	if (elem->size < page_sz)
 		goto free_unlock;
 
+	/* if user requested to match allocations, the sizes must match - if not,
+	 * we will defer freeing these hugepages until the entire original allocation
+	 * can be freed
+	 */
+	if (internal_config.match_allocations && elem->size != elem->orig_size)
+		goto free_unlock;
+
 	/* probably, but let's make sure, as we may not be using up full page */
 	start = elem;
 	len = elem->size;
@@ -1258,6 +1265,10 @@ rte_eal_malloc_heap_init(void)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	unsigned int i;
+
+	if (internal_config.match_allocations) {
+		RTE_LOG(DEBUG, EAL, "Hugepages will be freed exactly as allocated.\n");
+	}
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		/* assign min socket ID to external heaps */

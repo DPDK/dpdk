@@ -79,6 +79,7 @@ eal_long_options[] = {
 	{OPT_VMWARE_TSC_MAP,    0, NULL, OPT_VMWARE_TSC_MAP_NUM   },
 	{OPT_LEGACY_MEM,        0, NULL, OPT_LEGACY_MEM_NUM       },
 	{OPT_SINGLE_FILE_SEGMENTS, 0, NULL, OPT_SINGLE_FILE_SEGMENTS_NUM},
+	{OPT_MATCH_ALLOCATIONS, 0, NULL, OPT_MATCH_ALLOCATIONS_NUM},
 	{0,                     0, NULL, 0                        }
 };
 
@@ -1422,6 +1423,16 @@ eal_check_common_options(struct internal_config *internal_cfg)
 			internal_cfg->in_memory) {
 		RTE_LOG(ERR, EAL, "Option --"OPT_LEGACY_MEM" is not compatible "
 				"with --"OPT_IN_MEMORY"\n");
+		return -1;
+	}
+	if (internal_cfg->legacy_mem && internal_cfg->match_allocations) {
+		RTE_LOG(ERR, EAL, "Option --"OPT_LEGACY_MEM" is not compatible "
+				"with --"OPT_MATCH_ALLOCATIONS"\n");
+		return -1;
+	}
+	if (internal_cfg->no_hugetlbfs && internal_cfg->match_allocations) {
+		RTE_LOG(ERR, EAL, "Option --"OPT_NO_HUGE" is not compatible "
+				"with --"OPT_MATCH_ALLOCATIONS"\n");
 		return -1;
 	}
 
