@@ -116,7 +116,7 @@ struct ena_stats {
 #define ENA_STAT_GLOBAL_ENTRY(stat) \
 	ENA_STAT_ENTRY(stat, dev)
 
-#define ENA_MAX_RING_SIZE_RX 1024
+#define ENA_MAX_RING_SIZE_RX 8192
 #define ENA_MAX_RING_SIZE_TX 1024
 
 /*
