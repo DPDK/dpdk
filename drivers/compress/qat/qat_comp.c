@@ -36,6 +36,7 @@ qat_comp_build_request(void *in_op, uint8_t *out_msg,
 		QAT_DP_LOG(ERR, "QAT PMD only supports stateless compression "
 				"operation requests, op (%p) is not a "
 				"stateless operation.", op);
+		op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
 		return -EINVAL;
 	}
 
@@ -61,6 +62,7 @@ qat_comp_build_request(void *in_op, uint8_t *out_msg,
 				RTE_PMD_QAT_COMP_SGL_MAX_SEGMENTS);
 		if (ret) {
 			QAT_DP_LOG(ERR, "QAT PMD Cannot fill source sgl array");
+			op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
 			return ret;
 		}
 
@@ -71,6 +73,7 @@ qat_comp_build_request(void *in_op, uint8_t *out_msg,
 				RTE_PMD_QAT_COMP_SGL_MAX_SEGMENTS);
 		if (ret) {
 			QAT_DP_LOG(ERR, "QAT PMD Cannot fill dest. sgl array");
+			op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
 			return ret;
 		}
 
