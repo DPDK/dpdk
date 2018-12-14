@@ -1305,6 +1305,55 @@ get_count:
 	return 0;
 }
 
+/*
+ * Clear the packet count for the specified filter.
+ */
+int cxgbe_clear_filter_count(struct adapter *adapter, unsigned int fidx,
+			     int hash, bool clear_byte)
+{
+	u64 tcb_mask = 0, tcb_val = 0;
+	struct filter_entry *f = NULL;
+	u16 tcb_word = 0;
+
+	if (is_hashfilter(adapter) && hash) {
+		if (fidx >= adapter->tids.ntids)
+			return -ERANGE;
+
+		/* No hitcounts supported for T5 hashfilters */
+		if (is_t5(adapter->params.chip))
+			return 0;
+
+		f = adapter->tids.tid_tab[fidx];
+	} else {
+		if (fidx >= adapter->tids.nftids)
+			return -ERANGE;
+
+		f = &adapter->tids.ftid_tab[fidx];
+	}
+
+	if (!f || !f->valid)
+		return -EINVAL;
+
+	tcb_word = W_TCB_TIMESTAMP;
+	tcb_mask = V_TCB_TIMESTAMP(M_TCB_TIMESTAMP);
+	tcb_val = V_TCB_TIMESTAMP(0ULL);
+
+	set_tcb_field(adapter, f->tid, tcb_word, tcb_mask, tcb_val, 1);
+
+	if (clear_byte) {
+		tcb_word = W_TCB_T_RTT_TS_RECENT_AGE;
+		tcb_mask =
+			V_TCB_T_RTT_TS_RECENT_AGE(M_TCB_T_RTT_TS_RECENT_AGE) |
+			V_TCB_T_RTSEQ_RECENT(M_TCB_T_RTSEQ_RECENT);
+		tcb_val = V_TCB_T_RTT_TS_RECENT_AGE(0ULL) |
+			  V_TCB_T_RTSEQ_RECENT(0ULL);
+
+		set_tcb_field(adapter, f->tid, tcb_word, tcb_mask, tcb_val, 1);
+	}
+
+	return 0;
+}
+
 /**
  * Handle a Hash filter delete reply.
  */

@@ -22,9 +22,15 @@
 #define V_TCB_TIMESTAMP(x) ((x) << S_TCB_TIMESTAMP)
 
 /* 223:192 */
+#define W_TCB_T_RTT_TS_RECENT_AGE    6
 #define S_TCB_T_RTT_TS_RECENT_AGE    0
 #define M_TCB_T_RTT_TS_RECENT_AGE    0xffffffffULL
 #define V_TCB_T_RTT_TS_RECENT_AGE(x) ((x) << S_TCB_T_RTT_TS_RECENT_AGE)
+
+/* 255:224 */
+#define S_TCB_T_RTSEQ_RECENT    0
+#define M_TCB_T_RTSEQ_RECENT    0xffffffffULL
+#define V_TCB_T_RTSEQ_RECENT(x) ((x) << S_TCB_T_RTSEQ_RECENT)
 
 #define S_TF_CCTRL_RFR    62
 

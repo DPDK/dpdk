@@ -947,6 +947,7 @@ cxgbe_flow_query(struct rte_eth_dev *dev, struct rte_flow *flow,
 		 const struct rte_flow_action *action, void *data,
 		 struct rte_flow_error *e)
 {
+	struct adapter *adap = ethdev2adap(flow->dev);
 	struct ch_filter_specification fs;
 	struct rte_flow_query_count *c;
 	struct filter_entry *f;
@@ -985,6 +986,8 @@ cxgbe_flow_query(struct rte_eth_dev *dev, struct rte_flow *flow,
 	/* Query was successful */
 	c->bytes_set = 1;
 	c->hits_set = 1;
+	if (c->reset)
+		cxgbe_clear_filter_count(adap, flow->fidx, f->fs.cap, true);
 
 	return 0; /* success / partial_success */
 }
