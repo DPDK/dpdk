@@ -199,6 +199,17 @@ hn_tx_pool_init(struct rte_eth_dev *dev)
 	return 0;
 }
 
+void
+hn_tx_pool_uninit(struct rte_eth_dev *dev)
+{
+	struct hn_data *hv = dev->data->dev_private;
+
+	if (hv->tx_pool) {
+		rte_mempool_free(hv->tx_pool);
+		hv->tx_pool = NULL;
+	}
+}
+
 static void hn_reset_txagg(struct hn_tx_queue *txq)
 {
 	txq->agg_szleft = txq->agg_szmax;
