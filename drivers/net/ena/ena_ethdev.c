@@ -2363,7 +2363,16 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		ena_tx_ctx.num_bufs = tx_info->num_of_bufs;
 
-		/* Write data to device */
+		if (ena_com_is_doorbell_needed(tx_ring->ena_com_io_sq,
+					       &ena_tx_ctx)) {
+			RTE_LOG(DEBUG, PMD, "llq tx max burst size of queue %d"
+				" achieved, writing doorbell to send burst\n",
+				tx_ring->id);
+			rte_wmb();
+			ena_com_write_sq_doorbell(tx_ring->ena_com_io_sq);
+		}
+
+		/* prepare the packet's descriptors to dma engine */
 		rc = ena_com_prepare_tx(tx_ring->ena_com_io_sq,
 					&ena_tx_ctx, &nb_hw_desc);
 		if (unlikely(rc))
