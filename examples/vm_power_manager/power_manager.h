@@ -33,7 +33,7 @@ core_info_init(void);
 #define RTE_LOGTYPE_POWER_MANAGER RTE_LOGTYPE_USER1
 
 /* Maximum number of CPUS to manage */
-#define POWER_MGR_MAX_CPUS 64
+#define POWER_MGR_MAX_CPUS 256
 /**
  * Initialize power management.
  * Initializes resources and verifies the number of CPUs on the system.

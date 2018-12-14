@@ -14,17 +14,13 @@ extern "C" {
 #include <rte_atomic.h>
 
 /* Maximum number of CPUs */
-#define CHANNEL_CMDS_MAX_CPUS        64
-#if CHANNEL_CMDS_MAX_CPUS > 64
-#error Maximum number of cores is 64, overflow is guaranteed to \
-    cause problems with VM Power Management
-#endif
+#define CHANNEL_CMDS_MAX_CPUS        256
 
 /* Maximum name length including '\0' terminator */
 #define CHANNEL_MGR_MAX_NAME_LEN    64
 
 /* Maximum number of channels to each Virtual Machine */
-#define CHANNEL_MGR_MAX_CHANNELS    64
+#define CHANNEL_MGR_MAX_CHANNELS    256
 
 /* Hypervisor Path for libvirt(qemu/KVM) */
 #define CHANNEL_MGR_DEFAULT_HV_PATH "qemu:///system"
