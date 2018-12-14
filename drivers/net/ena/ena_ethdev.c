@@ -262,6 +262,8 @@ static int ena_rss_reta_query(struct rte_eth_dev *dev,
 static int ena_get_sset_count(struct rte_eth_dev *dev, int sset);
 static void ena_interrupt_handler_rte(void *cb_arg);
 static void ena_timer_wd_callback(struct rte_timer *timer, void *arg);
+static void ena_destroy_device(struct rte_eth_dev *eth_dev);
+static int eth_ena_dev_init(struct rte_eth_dev *eth_dev);
 
 static const struct eth_dev_ops ena_dev_ops = {
 	.dev_configure        = ena_dev_configure,
@@ -546,65 +548,14 @@ static void ena_close(struct rte_eth_dev *dev)
 static int
 ena_dev_reset(struct rte_eth_dev *dev)
 {
-	struct rte_mempool *mb_pool_rx[ENA_MAX_NUM_QUEUES];
-	struct rte_eth_dev *eth_dev;
-	struct rte_pci_device *pci_dev;
-	struct rte_intr_handle *intr_handle;
-	struct ena_com_dev *ena_dev;
-	struct ena_com_dev_get_features_ctx get_feat_ctx;
-	struct ena_adapter *adapter;
-	int nb_queues;
-	int rc, i;
-	bool wd_state;
+	int rc = 0;
 
-	adapter = (struct ena_adapter *)(dev->data->dev_private);
-	ena_dev = &adapter->ena_dev;
-	eth_dev = adapter->rte_dev;
-	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	intr_handle = &pci_dev->intr_handle;
-	nb_queues = eth_dev->data->nb_rx_queues;
-
-	ena_com_set_admin_running_state(ena_dev, false);
-
-	rc = ena_com_dev_reset(ena_dev, adapter->reset_reason);
+	ena_destroy_device(dev);
+	rc = eth_ena_dev_init(dev);
 	if (rc)
-		RTE_LOG(ERR, PMD, "Device reset failed\n");
-
-	for (i = 0; i < nb_queues; i++)
-		mb_pool_rx[i] = adapter->rx_ring[i].mb_pool;
-
-	ena_rx_queue_release_all(eth_dev);
-	ena_tx_queue_release_all(eth_dev);
-
-	rte_intr_disable(intr_handle);
-
-	ena_com_abort_admin_commands(ena_dev);
-	ena_com_wait_for_abort_completion(ena_dev);
-	ena_com_admin_destroy(ena_dev);
-	ena_com_mmio_reg_read_request_destroy(ena_dev);
-
-	rc = ena_device_init(ena_dev, &get_feat_ctx, &wd_state);
-	if (rc) {
 		PMD_INIT_LOG(CRIT, "Cannot initialize device\n");
-		return rc;
-	}
-	adapter->wd_state = wd_state;
 
-	rte_intr_enable(intr_handle);
-	ena_com_set_admin_polling_mode(ena_dev, false);
-	ena_com_admin_aenq_enable(ena_dev);
-
-	for (i = 0; i < nb_queues; ++i)
-		ena_rx_queue_setup(eth_dev, i, adapter->rx_ring[i].ring_size, 0,
-			NULL, mb_pool_rx[i]);
-
-	for (i = 0; i < nb_queues; ++i)
-		ena_tx_queue_setup(eth_dev, i, adapter->tx_ring[i].ring_size, 0,
-			NULL);
-
-	adapter->trigger_reset = false;
-
-	return 0;
+	return rc;
 }
 
 static int ena_rss_reta_update(struct rte_eth_dev *dev,
@@ -774,11 +725,6 @@ static void ena_rx_queue_release(void *queue)
 {
 	struct ena_ring *ring = (struct ena_ring *)queue;
 
-	ena_assert_msg(ring->configured,
-		       "API violation - releasing not configured queue");
-	ena_assert_msg(ring->adapter->state != ENA_ADAPTER_STATE_RUNNING,
-		       "API violation");
-
 	/* Free ring resources */
 	if (ring->rx_buffer_info)
 		rte_free(ring->rx_buffer_info);
@@ -801,11 +747,6 @@ static void ena_rx_queue_release(void *queue)
 static void ena_tx_queue_release(void *queue)
 {
 	struct ena_ring *ring = (struct ena_ring *)queue;
-
-	ena_assert_msg(ring->configured,
-		       "API violation. Releasing not configured queue");
-	ena_assert_msg(ring->adapter->state != ENA_ADAPTER_STATE_RUNNING,
-		       "API violation");
 
 	/* Free ring resources */
 	if (ring->push_buf_intermediate_buf)
@@ -1146,10 +1087,18 @@ static void ena_stop(struct rte_eth_dev *dev)
 {
 	struct ena_adapter *adapter =
 		(struct ena_adapter *)(dev->data->dev_private);
+	struct ena_com_dev *ena_dev = &adapter->ena_dev;
+	int rc;
 
 	rte_timer_stop_sync(&adapter->timer_wd);
 	ena_queue_stop_all(dev, ENA_RING_TYPE_TX);
 	ena_queue_stop_all(dev, ENA_RING_TYPE_RX);
+
+	if (adapter->trigger_reset) {
+		rc = ena_com_dev_reset(ena_dev, adapter->reset_reason);
+		if (rc)
+			RTE_LOG(ERR, PMD, "Device reset failed rc=%d\n", rc);
+	}
 
 	adapter->state = ENA_ADAPTER_STATE_STOPPED;
 }
@@ -1908,23 +1857,42 @@ err:
 	return rc;
 }
 
-static int eth_ena_dev_uninit(struct rte_eth_dev *eth_dev)
+static void ena_destroy_device(struct rte_eth_dev *eth_dev)
 {
 	struct ena_adapter *adapter =
 		(struct ena_adapter *)(eth_dev->data->dev_private);
+	struct ena_com_dev *ena_dev = &adapter->ena_dev;
 
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return 0;
+	if (adapter->state == ENA_ADAPTER_STATE_FREE)
+		return;
+
+	ena_com_set_admin_running_state(ena_dev, false);
 
 	if (adapter->state != ENA_ADAPTER_STATE_CLOSED)
 		ena_close(eth_dev);
+
+	ena_com_delete_debug_area(ena_dev);
+	ena_com_delete_host_info(ena_dev);
+
+	ena_com_abort_admin_commands(ena_dev);
+	ena_com_wait_for_abort_completion(ena_dev);
+	ena_com_admin_destroy(ena_dev);
+	ena_com_mmio_reg_read_request_destroy(ena_dev);
+
+	adapter->state = ENA_ADAPTER_STATE_FREE;
+}
+
+static int eth_ena_dev_uninit(struct rte_eth_dev *eth_dev)
+{
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
+	ena_destroy_device(eth_dev);
 
 	eth_dev->dev_ops = NULL;
 	eth_dev->rx_pkt_burst = NULL;
 	eth_dev->tx_pkt_burst = NULL;
 	eth_dev->tx_pkt_prepare = NULL;
-
-	adapter->state = ENA_ADAPTER_STATE_FREE;
 
 	return 0;
 }
