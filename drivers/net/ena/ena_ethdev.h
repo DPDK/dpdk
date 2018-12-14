@@ -158,6 +158,7 @@ struct ena_driver_stats {
 	rte_atomic64_t ierrors;
 	rte_atomic64_t oerrors;
 	rte_atomic64_t rx_nombuf;
+	rte_atomic64_t rx_drops;
 };
 
 struct ena_stats_dev {

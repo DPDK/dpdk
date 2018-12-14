@@ -935,6 +935,7 @@ static void ena_stats_restart(struct rte_eth_dev *dev)
 	rte_atomic64_init(&adapter->drv_stats->ierrors);
 	rte_atomic64_init(&adapter->drv_stats->oerrors);
 	rte_atomic64_init(&adapter->drv_stats->rx_nombuf);
+	rte_atomic64_init(&adapter->drv_stats->rx_drops);
 }
 
 static int ena_stats_get(struct rte_eth_dev *dev,
@@ -967,10 +968,9 @@ static int ena_stats_get(struct rte_eth_dev *dev,
 					ena_stats.rx_bytes_low);
 	stats->obytes = __MERGE_64B_H_L(ena_stats.tx_bytes_high,
 					ena_stats.tx_bytes_low);
-	stats->imissed = __MERGE_64B_H_L(ena_stats.rx_drops_high,
-					 ena_stats.rx_drops_low);
 
 	/* Driver related stats */
+	stats->imissed = rte_atomic64_read(&adapter->drv_stats->rx_drops);
 	stats->ierrors = rte_atomic64_read(&adapter->drv_stats->ierrors);
 	stats->oerrors = rte_atomic64_read(&adapter->drv_stats->oerrors);
 	stats->rx_nombuf = rte_atomic64_read(&adapter->drv_stats->rx_nombuf);
@@ -2691,8 +2691,14 @@ static void ena_keep_alive(void *adapter_data,
 			   __rte_unused struct ena_admin_aenq_entry *aenq_e)
 {
 	struct ena_adapter *adapter = (struct ena_adapter *)adapter_data;
+	struct ena_admin_aenq_keep_alive_desc *desc;
+	uint64_t rx_drops;
 
 	adapter->timestamp_wd = rte_get_timer_cycles();
+
+	desc = (struct ena_admin_aenq_keep_alive_desc *)aenq_e;
+	rx_drops = ((uint64_t)desc->rx_drops_high << 32) | desc->rx_drops_low;
+	rte_atomic64_set(&adapter->drv_stats->rx_drops, rx_drops);
 }
 
 /**
