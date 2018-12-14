@@ -553,7 +553,7 @@ ena_dev_reset(struct rte_eth_dev *dev)
 	ena_destroy_device(dev);
 	rc = eth_ena_dev_init(dev);
 	if (rc)
-		PMD_INIT_LOG(CRIT, "Cannot initialize device\n");
+		PMD_INIT_LOG(CRIT, "Cannot initialize device");
 
 	return rc;
 }
@@ -880,7 +880,7 @@ static int ena_check_valid_conf(struct ena_adapter *adapter)
 
 	if (max_frame_len > adapter->max_mtu || max_frame_len < ENA_MIN_MTU) {
 		PMD_INIT_LOG(ERR, "Unsupported MTU of %d. "
-				  "max mtu: %d, min mtu: %d\n",
+				  "max mtu: %d, min mtu: %d",
 			     max_frame_len, adapter->max_mtu, ENA_MIN_MTU);
 		return ENA_COM_UNSUPPORTED;
 	}
@@ -984,7 +984,7 @@ static int ena_stats_get(struct rte_eth_dev *dev,
 	memset(&ena_stats, 0, sizeof(ena_stats));
 	rc = ena_com_get_dev_basic_stats(ena_dev, &ena_stats);
 	if (unlikely(rc)) {
-		RTE_LOG(ERR, PMD, "Could not retrieve statistics from ENA");
+		RTE_LOG(ERR, PMD, "Could not retrieve statistics from ENA\n");
 		return rc;
 	}
 
@@ -1013,12 +1013,12 @@ static int ena_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	struct ena_com_dev *ena_dev;
 	int rc = 0;
 
-	ena_assert_msg(dev->data != NULL, "Uninitialized device");
-	ena_assert_msg(dev->data->dev_private != NULL, "Uninitialized device");
+	ena_assert_msg(dev->data != NULL, "Uninitialized device\n");
+	ena_assert_msg(dev->data->dev_private != NULL, "Uninitialized device\n");
 	adapter = (struct ena_adapter *)(dev->data->dev_private);
 
 	ena_dev = &adapter->ena_dev;
-	ena_assert_msg(ena_dev != NULL, "Uninitialized device");
+	ena_assert_msg(ena_dev != NULL, "Uninitialized device\n");
 
 	if (mtu > ena_get_mtu_conf(adapter) || mtu < ENA_MIN_MTU) {
 		RTE_LOG(ERR, PMD,
@@ -1204,7 +1204,7 @@ static int ena_queue_start(struct ena_ring *ring)
 
 	rc = ena_create_io_queue(ring);
 	if (rc) {
-		PMD_INIT_LOG(ERR, "Failed to create IO queue!\n");
+		PMD_INIT_LOG(ERR, "Failed to create IO queue!");
 		return rc;
 	}
 
@@ -1248,7 +1248,7 @@ static int ena_tx_queue_setup(struct rte_eth_dev *dev,
 
 	if (!rte_is_power_of_2(nb_desc)) {
 		RTE_LOG(ERR, PMD,
-			"Unsupported size of TX queue: %d is not a power of 2.",
+			"Unsupported size of TX queue: %d is not a power of 2.\n",
 			nb_desc);
 		return -EINVAL;
 	}
@@ -1337,7 +1337,7 @@ static int ena_rx_queue_setup(struct rte_eth_dev *dev,
 
 	if (!rte_is_power_of_2(nb_desc)) {
 		RTE_LOG(ERR, PMD,
-			"Unsupported size of RX queue: %d is not a power of 2.",
+			"Unsupported size of RX queue: %d is not a power of 2.\n",
 			nb_desc);
 		return -EINVAL;
 	}
@@ -1410,7 +1410,7 @@ static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count)
 		return 0;
 
 	in_use = rxq->next_to_use - rxq->next_to_clean;
-	ena_assert_msg(((in_use + count) < ring_size), "bad ring state");
+	ena_assert_msg(((in_use + count) < ring_size), "bad ring state\n");
 
 	/* get resources for incoming packets */
 	rc = rte_mempool_get_bulk(rxq->mb_pool, (void **)mbufs, count);
@@ -1643,7 +1643,7 @@ ena_set_queues_placement_policy(struct ena_adapter *adapter,
 	rc = ena_com_config_dev_mode(ena_dev, llq, llq_default_configurations);
 	if (unlikely(rc)) {
 		PMD_INIT_LOG(WARNING, "Failed to config dev mode. "
-			"Fallback to host mode policy.\n");
+			"Fallback to host mode policy.");
 		ena_dev->tx_mem_queue_type = ENA_ADMIN_PLACEMENT_POLICY_HOST;
 		return 0;
 	}
@@ -1945,12 +1945,12 @@ static void ena_infos_get(struct rte_eth_dev *dev,
 	uint64_t rx_feat = 0, tx_feat = 0;
 	int rc = 0;
 
-	ena_assert_msg(dev->data != NULL, "Uninitialized device");
-	ena_assert_msg(dev->data->dev_private != NULL, "Uninitialized device");
+	ena_assert_msg(dev->data != NULL, "Uninitialized device\n");
+	ena_assert_msg(dev->data->dev_private != NULL, "Uninitialized device\n");
 	adapter = (struct ena_adapter *)(dev->data->dev_private);
 
 	ena_dev = &adapter->ena_dev;
-	ena_assert_msg(ena_dev != NULL, "Uninitialized device");
+	ena_assert_msg(ena_dev != NULL, "Uninitialized device\n");
 
 	dev_info->speed_capa =
 			ETH_LINK_SPEED_1G   |
