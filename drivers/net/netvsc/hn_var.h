@@ -97,8 +97,9 @@ struct hn_data {
 	struct rte_eth_dev *vf_dev;		/* Subordinate device */
 	rte_spinlock_t  vf_lock;
 	uint16_t	port_id;
-	bool		closed;
-	bool		vf_present;
+	uint8_t		closed;
+	uint8_t		vf_present;
+	uint8_t		vlan_strip;
 	uint32_t	link_status;
 	uint32_t	link_speed;
 

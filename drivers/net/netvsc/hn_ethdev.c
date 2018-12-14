@@ -378,6 +378,8 @@ static int hn_dev_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
+	hv->vlan_strip = !!(rxmode->offloads & DEV_RX_OFFLOAD_VLAN_STRIP);
+
 	err = hn_rndis_conf_offload(hv, txmode->offloads,
 				    rxmode->offloads);
 	if (err) {
