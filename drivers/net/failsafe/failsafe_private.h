@@ -399,9 +399,6 @@ fs_lock(struct rte_eth_dev *dev, unsigned int is_alarm)
 			return ret;
 		}
 	}
-	DEBUG("Hot-plug mutex was locked by thread %" FS_THREADID_FMT "%s",
-	      (FS_THREADID_TYPE)pthread_self(),
-	      PRIV(dev)->alarm_lock ? " by the hot-plug alarm" : "");
 	return ret;
 }
 
@@ -413,7 +410,6 @@ static inline void
 fs_unlock(struct rte_eth_dev *dev, unsigned int is_alarm)
 {
 	int ret;
-	unsigned int prev_alarm_lock = PRIV(dev)->alarm_lock;
 
 	if (is_alarm) {
 		RTE_ASSERT(PRIV(dev)->alarm_lock == 1);
@@ -422,10 +418,6 @@ fs_unlock(struct rte_eth_dev *dev, unsigned int is_alarm)
 	ret = pthread_mutex_unlock(&PRIV(dev)->hotplug_mutex);
 	if (ret)
 		ERROR("Cannot unlock hot-plug mutex(%s)", strerror(ret));
-	else
-		DEBUG("Hot-plug mutex was unlocked by thread %" FS_THREADID_FMT "%s",
-		      (FS_THREADID_TYPE)pthread_self(),
-		      prev_alarm_lock ? " by the hot-plug alarm" : "");
 }
 
 /*
