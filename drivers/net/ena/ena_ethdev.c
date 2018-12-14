@@ -1910,6 +1910,8 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 				    &ena_rx_ctx);
 		if (unlikely(rc)) {
 			RTE_LOG(ERR, PMD, "ena_com_rx_pkt error %d\n", rc);
+			rx_ring->adapter->reset_reason =
+				ENA_REGS_RESET_TOO_MANY_RX_DESCS;
 			rx_ring->adapter->trigger_reset = true;
 			return 0;
 		}
