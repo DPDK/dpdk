@@ -124,54 +124,7 @@ cmdline_parse_inst_t cmd_show_vm_set = {
 };
 
 /* *** vCPU to pCPU mapping operations *** */
-struct cmd_set_pcpu_mask_result {
-	cmdline_fixed_string_t set_pcpu_mask;
-	cmdline_fixed_string_t vm_name;
-	uint8_t vcpu;
-	char core_mask[POWER_MGR_MAX_CPUS];
-};
 
-static void
-cmd_set_pcpu_mask_parsed(void *parsed_result, struct cmdline *cl,
-		__attribute__((unused)) void *data)
-{
-	struct cmd_set_pcpu_mask_result *res = parsed_result;
-
-	if (set_pcpus_mask(res->vm_name, res->vcpu, res->core_mask) == 0)
-		cmdline_printf(cl, "Pinned vCPU(%"PRId8") to pCPU core "
-				"\n", res->vcpu);
-	else
-		cmdline_printf(cl, "Unable to pin vCPU(%"PRId8") to pCPU core "
-				"\n", res->vcpu);
-}
-
-cmdline_parse_token_string_t cmd_set_pcpu_mask =
-		TOKEN_STRING_INITIALIZER(struct cmd_set_pcpu_mask_result,
-				set_pcpu_mask, "set_pcpu_mask");
-cmdline_parse_token_string_t cmd_set_pcpu_mask_vm_name =
-		TOKEN_STRING_INITIALIZER(struct cmd_set_pcpu_mask_result,
-				vm_name, NULL);
-cmdline_parse_token_num_t set_pcpu_mask_vcpu =
-		TOKEN_NUM_INITIALIZER(struct cmd_set_pcpu_mask_result,
-				vcpu, UINT8);
-cmdline_parse_token_num_t set_pcpu_mask_core_mask =
-		TOKEN_NUM_INITIALIZER(struct cmd_set_pcpu_mask_result,
-				core_mask, UINT64);
-
-
-cmdline_parse_inst_t cmd_set_pcpu_mask_set = {
-		.f = cmd_set_pcpu_mask_parsed,
-		.data = NULL,
-		.help_str = "set_pcpu_mask <vm_name> <vcpu> <pcpu>, Set the binding "
-				"of Virtual CPU on VM to the Physical CPU mask.",
-				.tokens = {
-						(void *)&cmd_set_pcpu_mask,
-						(void *)&cmd_set_pcpu_mask_vm_name,
-						(void *)&set_pcpu_mask_vcpu,
-						(void *)&set_pcpu_mask_core_mask,
-						NULL,
-		},
-};
 
 struct cmd_set_pcpu_result {
 	cmdline_fixed_string_t set_pcpu;
@@ -428,105 +381,6 @@ cmdline_parse_inst_t cmd_channels_status_op_set = {
 };
 
 /* *** CPU Frequency operations *** */
-struct cmd_show_cpu_freq_mask_result {
-	cmdline_fixed_string_t show_cpu_freq_mask;
-	uint64_t core_mask;
-};
-
-static void
-cmd_show_cpu_freq_mask_parsed(void *parsed_result, struct cmdline *cl,
-		       __attribute__((unused)) void *data)
-{
-	struct cmd_show_cpu_freq_mask_result *res = parsed_result;
-	unsigned i;
-	uint64_t mask = res->core_mask;
-	uint32_t freq;
-
-	for (i = 0; mask; mask &= ~(1ULL << i++)) {
-		if ((mask >> i) & 1) {
-			freq = power_manager_get_current_frequency(i);
-			if (freq > 0)
-				cmdline_printf(cl, "Core %u: %"PRId32"\n", i, freq);
-		}
-	}
-}
-
-cmdline_parse_token_string_t cmd_show_cpu_freq_mask =
-	TOKEN_STRING_INITIALIZER(struct cmd_show_cpu_freq_mask_result,
-			show_cpu_freq_mask, "show_cpu_freq_mask");
-cmdline_parse_token_num_t cmd_show_cpu_freq_mask_core_mask =
-	TOKEN_NUM_INITIALIZER(struct cmd_show_cpu_freq_mask_result,
-			core_mask, UINT64);
-
-cmdline_parse_inst_t cmd_show_cpu_freq_mask_set = {
-	.f = cmd_show_cpu_freq_mask_parsed,
-	.data = NULL,
-	.help_str = "show_cpu_freq_mask <mask>, Get the current frequency for each "
-			"core specified in the mask",
-	.tokens = {
-		(void *)&cmd_show_cpu_freq_mask,
-		(void *)&cmd_show_cpu_freq_mask_core_mask,
-		NULL,
-	},
-};
-
-struct cmd_set_cpu_freq_mask_result {
-	cmdline_fixed_string_t set_cpu_freq_mask;
-	uint64_t core_mask;
-	cmdline_fixed_string_t cmd;
-};
-
-static void
-cmd_set_cpu_freq_mask_parsed(void *parsed_result, struct cmdline *cl,
-			__attribute__((unused)) void *data)
-{
-	struct cmd_set_cpu_freq_mask_result *res = parsed_result;
-	int ret = -1;
-
-	if (!strcmp(res->cmd , "up"))
-		ret = power_manager_scale_mask_up(res->core_mask);
-	else if (!strcmp(res->cmd , "down"))
-		ret = power_manager_scale_mask_down(res->core_mask);
-	else if (!strcmp(res->cmd , "min"))
-		ret = power_manager_scale_mask_min(res->core_mask);
-	else if (!strcmp(res->cmd , "max"))
-		ret = power_manager_scale_mask_max(res->core_mask);
-	else if (!strcmp(res->cmd, "enable_turbo"))
-		ret = power_manager_enable_turbo_mask(res->core_mask);
-	else if (!strcmp(res->cmd, "disable_turbo"))
-		ret = power_manager_disable_turbo_mask(res->core_mask);
-	if (ret < 0) {
-		cmdline_printf(cl, "Error scaling core_mask(0x%"PRIx64") '%s' , not "
-				"all cores specified have been scaled\n",
-				res->core_mask, res->cmd);
-	};
-}
-
-cmdline_parse_token_string_t cmd_set_cpu_freq_mask =
-	TOKEN_STRING_INITIALIZER(struct cmd_set_cpu_freq_mask_result,
-			set_cpu_freq_mask, "set_cpu_freq_mask");
-cmdline_parse_token_num_t cmd_set_cpu_freq_mask_core_mask =
-	TOKEN_NUM_INITIALIZER(struct cmd_set_cpu_freq_mask_result,
-			core_mask, UINT64);
-cmdline_parse_token_string_t cmd_set_cpu_freq_mask_result =
-	TOKEN_STRING_INITIALIZER(struct cmd_set_cpu_freq_mask_result,
-			cmd, "up#down#min#max#enable_turbo#disable_turbo");
-
-cmdline_parse_inst_t cmd_set_cpu_freq_mask_set = {
-	.f = cmd_set_cpu_freq_mask_parsed,
-	.data = NULL,
-	.help_str = "set_cpu_freq <core_mask> <up|down|min|max|enable_turbo|disable_turbo>, adjust the current "
-			"frequency for the cores specified in <core_mask>",
-	.tokens = {
-		(void *)&cmd_set_cpu_freq_mask,
-		(void *)&cmd_set_cpu_freq_mask_core_mask,
-		(void *)&cmd_set_cpu_freq_mask_result,
-		NULL,
-	},
-};
-
-
-
 struct cmd_show_cpu_freq_result {
 	cmdline_fixed_string_t show_cpu_freq;
 	uint8_t core_num;
@@ -627,11 +481,8 @@ cmdline_parse_ctx_t main_ctx[] = {
 		(cmdline_parse_inst_t *)&cmd_channels_op_set,
 		(cmdline_parse_inst_t *)&cmd_channels_status_op_set,
 		(cmdline_parse_inst_t *)&cmd_show_vm_set,
-		(cmdline_parse_inst_t *)&cmd_show_cpu_freq_mask_set,
-		(cmdline_parse_inst_t *)&cmd_set_cpu_freq_mask_set,
 		(cmdline_parse_inst_t *)&cmd_show_cpu_freq_set,
 		(cmdline_parse_inst_t *)&cmd_set_cpu_freq_set,
-		(cmdline_parse_inst_t *)&cmd_set_pcpu_mask_set,
 		(cmdline_parse_inst_t *)&cmd_set_pcpu_set,
 		NULL,
 };

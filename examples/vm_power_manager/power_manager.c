@@ -33,20 +33,6 @@
 	rte_spinlock_unlock(&global_core_freq_info[core_num].power_sl); \
 } while (0)
 
-#define POWER_SCALE_MASK(DIRECTION, core_mask, ret) do { \
-	int i; \
-	for (i = 0; core_mask; core_mask &= ~(1 << i++)) { \
-		if ((core_mask >> i) & 1) { \
-			if (!(ci.cd[i].global_enabled_cpus)) \
-				continue; \
-			rte_spinlock_lock(&global_core_freq_info[i].power_sl); \
-			if (rte_power_freq_##DIRECTION(i) != 1) \
-				ret = -1; \
-			rte_spinlock_unlock(&global_core_freq_info[i].power_sl); \
-		} \
-	} \
-} while (0)
-
 struct freq_info {
 	rte_spinlock_t power_sl;
 	uint32_t freqs[RTE_MAX_LCORE_FREQS];
@@ -196,60 +182,6 @@ power_manager_exit(void)
 		}
 		remove_core_from_monitor(i);
 	}
-	return ret;
-}
-
-int
-power_manager_scale_mask_up(uint64_t core_mask)
-{
-	int ret = 0;
-
-	POWER_SCALE_MASK(up, core_mask, ret);
-	return ret;
-}
-
-int
-power_manager_scale_mask_down(uint64_t core_mask)
-{
-	int ret = 0;
-
-	POWER_SCALE_MASK(down, core_mask, ret);
-	return ret;
-}
-
-int
-power_manager_scale_mask_min(uint64_t core_mask)
-{
-	int ret = 0;
-
-	POWER_SCALE_MASK(min, core_mask, ret);
-	return ret;
-}
-
-int
-power_manager_scale_mask_max(uint64_t core_mask)
-{
-	int ret = 0;
-
-	POWER_SCALE_MASK(max, core_mask, ret);
-	return ret;
-}
-
-int
-power_manager_enable_turbo_mask(uint64_t core_mask)
-{
-	int ret = 0;
-
-	POWER_SCALE_MASK(enable_turbo, core_mask, ret);
-	return ret;
-}
-
-int
-power_manager_disable_turbo_mask(uint64_t core_mask)
-{
-	int ret = 0;
-
-	POWER_SCALE_MASK(disable_turbo, core_mask, ret);
 	return ret;
 }
 

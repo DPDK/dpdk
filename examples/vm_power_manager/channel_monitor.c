@@ -681,30 +681,6 @@ process_request(struct channel_packet *pkt, struct channel_info *chan_info)
 			default:
 				break;
 			}
-		} else {
-			switch (pkt->unit) {
-			case(CPU_POWER_SCALE_MIN):
-					power_manager_scale_mask_min(core_mask);
-			break;
-			case(CPU_POWER_SCALE_MAX):
-					power_manager_scale_mask_max(core_mask);
-			break;
-			case(CPU_POWER_SCALE_DOWN):
-					power_manager_scale_mask_down(core_mask);
-			break;
-			case(CPU_POWER_SCALE_UP):
-					power_manager_scale_mask_up(core_mask);
-			break;
-			case(CPU_POWER_ENABLE_TURBO):
-				power_manager_enable_turbo_mask(core_mask);
-			break;
-			case(CPU_POWER_DISABLE_TURBO):
-				power_manager_disable_turbo_mask(core_mask);
-			break;
-			default:
-				break;
-			}
-
 		}
 	}
 
