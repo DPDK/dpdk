@@ -51,7 +51,7 @@ M: Akhil Goyal <akhil.goyal@nxp.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 
 Next-eventdev Tree
-M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
+M: Jerin Jacob <jerinj@marvell.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 
 Next-qos Tree
@@ -219,7 +219,7 @@ F: lib/librte_eal/common/arch/arm/
 F: lib/librte_eal/common/include/arch/arm/
 
 ARM v8
-M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
+M: Jerin Jacob <jerinj@marvell.com>
 M: Gavin Hu <gavin.hu@arm.com>
 F: lib/librte_eal/common/include/arch/arm/*_64.h
 F: lib/librte_net/net_crc_neon.h
@@ -356,7 +356,7 @@ F: doc/guides/prog_guide/rte_security.rst
 Compression API - EXPERIMENTAL
 M: Fiona Trahe <fiona.trahe@intel.com>
 M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
-M: Ashish Gupta <ashish.gupta@caviumnetworks.com>
+M: Ashish Gupta <ashish.gupta@marvell.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 F: lib/librte_compressdev/
 F: drivers/compress/
@@ -365,7 +365,7 @@ F: doc/guides/prog_guide/compressdev.rst
 F: doc/guides/compressdevs/features/default.ini
 
 Eventdev API
-M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
+M: Jerin Jacob <jerinj@marvell.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: lib/librte_eventdev/
 F: drivers/event/skeleton/
@@ -509,21 +509,21 @@ F: doc/guides/nics/bnxt.rst
 F: doc/guides/nics/features/bnxt.ini
 
 Cavium ThunderX nicvf
-M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
-M: Maciej Czekaj <maciej.czekaj@caviumnetworks.com>
+M: Jerin Jacob <jerinj@marvell.com>
+M: Maciej Czekaj <mczekaj@marvell.com>
 F: drivers/net/thunderx/
 F: doc/guides/nics/thunderx.rst
 F: doc/guides/nics/features/thunderx.ini
 
 Cavium LiquidIO
-M: Shijith Thotton <shijith.thotton@cavium.com>
-M: Srisivasubramanian Srinivasan <ssrinivasan@cavium.com>
+M: Shijith Thotton <sthotton@marvell.com>
+M: Srisivasubramanian Srinivasan <srinivasan@marvell.com>
 F: drivers/net/liquidio/
 F: doc/guides/nics/liquidio.rst
 F: doc/guides/nics/features/liquidio.ini
 
 Cavium OCTEON TX
-M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
+M: Jerin Jacob <jerinj@marvell.com>
 F: drivers/common/octeontx/
 F: drivers/mempool/octeontx/
 F: drivers/net/octeontx/
@@ -675,16 +675,15 @@ F: doc/guides/nics/enetc.rst
 F: doc/guides/nics/features/enetc.ini
 
 QLogic bnx2x
-M: Harish Patil <harish.patil@cavium.com>
-M: Rasesh Mody <rasesh.mody@cavium.com>
+M: Rasesh Mody <rmody@marvell.com>
+M: Shahed Shaikh <shshaikh@marvell.com>
 F: drivers/net/bnx2x/
 F: doc/guides/nics/bnx2x.rst
 F: doc/guides/nics/features/bnx2x*.ini
 
 QLogic qede PMD
-M: Rasesh Mody <rasesh.mody@cavium.com>
-M: Harish Patil <harish.patil@cavium.com>
-M: Shahed Shaikh <shahed.shaikh@cavium.com>
+M: Rasesh Mody <rmody@marvell.com>
+M: Shahed Shaikh <shshaikh@marvell.com>
 F: drivers/net/qede/
 F: doc/guides/nics/qede.rst
 F: doc/guides/nics/features/qede*.ini
@@ -799,13 +798,13 @@ F: doc/guides/cryptodevs/ccp.rst
 F: doc/guides/cryptodevs/features/ccp.ini
 
 ARMv8 Crypto
-M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
+M: Jerin Jacob <jerinj@marvell.com>
 F: drivers/crypto/armv8/
 F: doc/guides/cryptodevs/armv8.rst
 F: doc/guides/cryptodevs/features/armv8.ini
 
 Cavium OCTEON TX crypto
-M: Anoob Joseph <anoob.joseph@caviumnetworks.com>
+M: Anoob Joseph <anoobj@marvell.com>
 F: drivers/common/cpt/
 F: drivers/crypto/octeontx/
 F: doc/guides/cryptodevs/octeontx.rst
@@ -909,7 +908,7 @@ M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 
 Cavium OCTEON TX zipvf
-M: Ashish Gupta <ashish.gupta@cavium.com>
+M: Ashish Gupta <ashish.gupta@marvell.com>
 F: drivers/compress/octeontx/
 F: doc/guides/compressdevs/octeontx.rst
 F: doc/guides/compressdevs/features/octeontx.ini
@@ -926,7 +925,7 @@ F: doc/guides/compressdevs/isal.rst
 F: doc/guides/compressdevs/features/isal.ini
 
 ZLIB
-M: Sunila Sahu <sunila.sahu@caviumnetworks.com>
+M: Sunila Sahu <ssahu@marvell.com>
 F: drivers/compress/zlib/
 F: doc/guides/compressdevs/zlib.rst
 F: doc/guides/compressdevs/features/zlib.ini
@@ -934,16 +933,16 @@ F: doc/guides/compressdevs/features/zlib.ini
 
 Eventdev Drivers
 ----------------
-M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
+M: Jerin Jacob <jerinj@marvell.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 
 Cavium OCTEON TX ssovf
-M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
+M: Jerin Jacob <jerinj@marvell.com>
 F: drivers/event/octeontx/
 F: doc/guides/eventdevs/octeontx.rst
 
 Cavium OCTEON TX timvf
-M: Pavan Nikhilesh <pbhagavatula@caviumnetworks.com>
+M: Pavan Nikhilesh <pbhagavatula@marvell.com>
 F: drivers/event/octeontx/timvf_*
 
 NXP DPAA eventdev
@@ -1247,7 +1246,7 @@ F: app/test-crypto-perf/
 F: doc/guides/tools/cryptoperf.rst
 
 Eventdev test application
-M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
+M: Jerin Jacob <jerinj@marvell.com>
 F: app/test-eventdev/
 F: doc/guides/tools/testeventdev.rst
 F: doc/guides/tools/img/eventdev_*
