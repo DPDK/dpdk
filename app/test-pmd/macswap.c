@@ -66,7 +66,11 @@
 #include <rte_flow.h>
 
 #include "testpmd.h"
+#ifdef RTE_ARCH_X86
+#include "macswap_sse.h"
+#else
 #include "macswap.h"
+#endif
 
 /*
  * MAC swap forwarding mode: Swap the source and the destination Ethernet
