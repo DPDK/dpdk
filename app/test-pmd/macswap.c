@@ -66,6 +66,7 @@
 #include <rte_flow.h>
 
 #include "testpmd.h"
+#include "macswap.h"
 
 /*
  * MAC swap forwarding mode: Swap the source and the destination Ethernet
@@ -76,15 +77,9 @@ pkt_burst_mac_swap(struct fwd_stream *fs)
 {
 	struct rte_mbuf  *pkts_burst[MAX_PKT_BURST];
 	struct rte_port  *txp;
-	struct rte_mbuf  *mb;
-	struct ether_hdr *eth_hdr;
-	struct ether_addr addr;
 	uint16_t nb_rx;
 	uint16_t nb_tx;
-	uint16_t i;
 	uint32_t retry;
-	uint64_t ol_flags = 0;
-	uint64_t tx_offloads;
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 	uint64_t start_tsc;
 	uint64_t end_tsc;
@@ -108,32 +103,9 @@ pkt_burst_mac_swap(struct fwd_stream *fs)
 #endif
 	fs->rx_packets += nb_rx;
 	txp = &ports[fs->tx_port];
-	tx_offloads = txp->dev_conf.txmode.offloads;
-	if (tx_offloads	& DEV_TX_OFFLOAD_VLAN_INSERT)
-		ol_flags = PKT_TX_VLAN_PKT;
-	if (tx_offloads & DEV_TX_OFFLOAD_QINQ_INSERT)
-		ol_flags |= PKT_TX_QINQ_PKT;
-	if (tx_offloads & DEV_TX_OFFLOAD_MACSEC_INSERT)
-		ol_flags |= PKT_TX_MACSEC;
-	for (i = 0; i < nb_rx; i++) {
-		if (likely(i < nb_rx - 1))
-			rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[i + 1],
-						       void *));
-		mb = pkts_burst[i];
-		eth_hdr = rte_pktmbuf_mtod(mb, struct ether_hdr *);
 
-		/* Swap dest and src mac addresses. */
-		ether_addr_copy(&eth_hdr->d_addr, &addr);
-		ether_addr_copy(&eth_hdr->s_addr, &eth_hdr->d_addr);
-		ether_addr_copy(&addr, &eth_hdr->s_addr);
+	do_macswap(pkts_burst, nb_rx, txp);
 
-		mb->ol_flags &= IND_ATTACHED_MBUF | EXT_ATTACHED_MBUF;
-		mb->ol_flags |= ol_flags;
-		mb->l2_len = sizeof(struct ether_hdr);
-		mb->l3_len = sizeof(struct ipv4_hdr);
-		mb->vlan_tci = txp->tx_vlan_id;
-		mb->vlan_tci_outer = txp->tx_vlan_id_outer;
-	}
 	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, pkts_burst, nb_rx);
 	/*
 	 * Retry if necessary
