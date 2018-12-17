@@ -278,7 +278,7 @@ vring_desc_init_packed(struct virtqueue *vq, int n)
 
 /* Chain all the descriptors in the ring with an END */
 static inline void
-vring_desc_init(struct vring_desc *dp, uint16_t n)
+vring_desc_init_split(struct vring_desc *dp, uint16_t n)
 {
 	uint16_t i;
 

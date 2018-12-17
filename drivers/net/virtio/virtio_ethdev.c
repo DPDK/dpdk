@@ -299,20 +299,22 @@ virtio_init_vring(struct virtqueue *vq)
 
 	PMD_INIT_FUNC_TRACE();
 
-	/*
-	 * Reinitialise since virtio port might have been stopped and restarted
-	 */
 	memset(ring_mem, 0, vq->vq_ring_size);
-	vring_init(vr, size, ring_mem, VIRTIO_PCI_VRING_ALIGN);
+
 	vq->vq_used_cons_idx = 0;
 	vq->vq_desc_head_idx = 0;
 	vq->vq_avail_idx = 0;
 	vq->vq_desc_tail_idx = (uint16_t)(vq->vq_nentries - 1);
 	vq->vq_free_cnt = vq->vq_nentries;
 	memset(vq->vq_descx, 0, sizeof(struct vq_desc_extra) * vq->vq_nentries);
-
-	vring_desc_init(vr->desc, size);
-
+	if (vtpci_packed_queue(vq->hw)) {
+		vring_init_packed(&vq->ring_packed, ring_mem,
+				  VIRTIO_PCI_VRING_ALIGN, size);
+		vring_desc_init_packed(vq, size);
+	} else {
+		vring_init_split(vr, ring_mem, VIRTIO_PCI_VRING_ALIGN, size);
+		vring_desc_init_split(vr->desc, size);
+	}
 	/*
 	 * Disable device(host) interrupting guest
 	 */
@@ -384,11 +386,16 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 	vq->hw = hw;
 	vq->vq_queue_index = vtpci_queue_idx;
 	vq->vq_nentries = vq_size;
+	vq->event_flags_shadow = 0;
+	if (vtpci_packed_queue(hw)) {
+		vq->avail_wrap_counter = 1;
+		vq->used_wrap_counter = 1;
+	}
 
 	/*
 	 * Reserve a memzone for vring elements
 	 */
-	size = vring_size(vq_size, VIRTIO_PCI_VRING_ALIGN);
+	size = vring_size(hw, vq_size, VIRTIO_PCI_VRING_ALIGN);
 	vq->vq_ring_size = RTE_ALIGN_CEIL(size, VIRTIO_PCI_VRING_ALIGN);
 	PMD_INIT_LOG(DEBUG, "vring_size: %d, rounded_vring_size: %d",
 		     size, vq->vq_ring_size);
@@ -491,7 +498,8 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 		for (i = 0; i < vq_size; i++) {
 			struct vring_desc *start_dp = txr[i].tx_indir;
 
-			vring_desc_init(start_dp, RTE_DIM(txr[i].tx_indir));
+			vring_desc_init_split(start_dp,
+					      RTE_DIM(txr[i].tx_indir));
 
 			/* first indirect descriptor is always the tx header */
 			start_dp->addr = txvq->virtio_net_hdr_mem
@@ -1488,7 +1496,8 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 
 	/* Setting up rx_header size for the device */
 	if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF) ||
-	    vtpci_with_feature(hw, VIRTIO_F_VERSION_1))
+	    vtpci_with_feature(hw, VIRTIO_F_VERSION_1) ||
+	    vtpci_with_feature(hw, VIRTIO_F_RING_PACKED))
 		hw->vtnet_hdr_size = sizeof(struct virtio_net_hdr_mrg_rxbuf);
 	else
 		hw->vtnet_hdr_size = sizeof(struct virtio_net_hdr);
@@ -1908,7 +1917,8 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 
 	if (vtpci_with_feature(hw, VIRTIO_F_IN_ORDER)) {
 		hw->use_inorder_tx = 1;
-		if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF)) {
+		if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF) &&
+		    !vtpci_packed_queue(hw)) {
 			hw->use_inorder_rx = 1;
 			hw->use_simple_rx = 0;
 		} else {
