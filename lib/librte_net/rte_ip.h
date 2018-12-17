@@ -310,16 +310,20 @@ rte_ipv4_phdr_cksum(const struct ipv4_hdr *ipv4_hdr, uint64_t ol_flags)
  * @param l4_hdr
  *   The pointer to the beginning of the L4 header.
  * @return
- *   The complemented checksum to set in the IP packet.
+ *   The complemented checksum to set in the IP packet
+ *   or 0 on error
  */
 static inline uint16_t
 rte_ipv4_udptcp_cksum(const struct ipv4_hdr *ipv4_hdr, const void *l4_hdr)
 {
 	uint32_t cksum;
-	uint32_t l4_len;
+	uint32_t l3_len, l4_len;
 
-	l4_len = (uint32_t)(rte_be_to_cpu_16(ipv4_hdr->total_length) -
-		sizeof(struct ipv4_hdr));
+	l3_len = rte_be_to_cpu_16(ipv4_hdr->total_length);
+	if (l3_len < sizeof(struct ipv4_hdr))
+		return 0;
+
+	l4_len = l3_len - sizeof(struct ipv4_hdr);
 
 	cksum = rte_raw_cksum(l4_hdr, l4_len);
 	cksum += rte_ipv4_phdr_cksum(ipv4_hdr, 0);
