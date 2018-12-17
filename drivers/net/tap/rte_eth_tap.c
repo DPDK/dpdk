@@ -281,13 +281,27 @@ tap_verify_csum(struct rte_mbuf *mbuf)
 		l3_len = 4 * (iph->version_ihl & 0xf);
 		if (unlikely(l2_len + l3_len > rte_pktmbuf_data_len(mbuf)))
 			return;
+		/* check that the total length reported by header is not
+		 * greater than the total received size
+		 */
+		if (l2_len + rte_be_to_cpu_16(iph->total_length) >
+				rte_pktmbuf_data_len(mbuf))
+			return;
 
 		cksum = ~rte_raw_cksum(iph, l3_len);
 		mbuf->ol_flags |= cksum ?
 			PKT_RX_IP_CKSUM_BAD :
 			PKT_RX_IP_CKSUM_GOOD;
 	} else if (l3 == RTE_PTYPE_L3_IPV6) {
+		struct ipv6_hdr *iph = l3_hdr;
+
 		l3_len = sizeof(struct ipv6_hdr);
+		/* check that the total length reported by header is not
+		 * greater than the total received size
+		 */
+		if (l2_len + l3_len + rte_be_to_cpu_16(iph->payload_len) >
+				rte_pktmbuf_data_len(mbuf))
+			return;
 	} else {
 		/* IPv6 extensions are not supported */
 		return;
