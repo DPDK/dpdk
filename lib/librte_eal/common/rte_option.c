@@ -35,10 +35,11 @@ void __rte_experimental
 rte_option_register(struct rte_option *opt)
 {
 	TAILQ_FOREACH(option, &rte_option_list, next) {
-		if (strcmp(opt->opt_str, option->opt_str) == 0)
+		if (strcmp(opt->opt_str, option->opt_str) == 0) {
 			RTE_LOG(INFO, EAL, "Option %s has already been registered.\n",
 					opt->opt_str);
 			return;
+		}
 	}
 
 	TAILQ_INSERT_HEAD(&rte_option_list, opt, next);
