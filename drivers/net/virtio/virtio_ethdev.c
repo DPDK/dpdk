@@ -390,6 +390,9 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 	if (vtpci_packed_queue(hw)) {
 		vq->avail_wrap_counter = 1;
 		vq->used_wrap_counter = 1;
+		vq->avail_used_flags =
+			VRING_DESC_F_AVAIL(vq->avail_wrap_counter) |
+			VRING_DESC_F_USED(!vq->avail_wrap_counter);
 	}
 
 	/*
@@ -497,17 +500,26 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 		memset(txr, 0, vq_size * sizeof(*txr));
 		for (i = 0; i < vq_size; i++) {
 			struct vring_desc *start_dp = txr[i].tx_indir;
-
-			vring_desc_init_split(start_dp,
-					      RTE_DIM(txr[i].tx_indir));
+			struct vring_packed_desc *start_dp_packed =
+				txr[i].tx_indir_pq;
 
 			/* first indirect descriptor is always the tx header */
-			start_dp->addr = txvq->virtio_net_hdr_mem
-				+ i * sizeof(*txr)
-				+ offsetof(struct virtio_tx_region, tx_hdr);
-
-			start_dp->len = hw->vtnet_hdr_size;
-			start_dp->flags = VRING_DESC_F_NEXT;
+			if (vtpci_packed_queue(hw)) {
+				start_dp_packed->addr = txvq->virtio_net_hdr_mem
+					+ i * sizeof(*txr)
+					+ offsetof(struct virtio_tx_region,
+						   tx_hdr);
+				start_dp_packed->len = hw->vtnet_hdr_size;
+			} else {
+				vring_desc_init_split(start_dp,
+						      RTE_DIM(txr[i].tx_indir));
+				start_dp->addr = txvq->virtio_net_hdr_mem
+					+ i * sizeof(*txr)
+					+ offsetof(struct virtio_tx_region,
+						   tx_hdr);
+				start_dp->len = hw->vtnet_hdr_size;
+				start_dp->flags = VRING_DESC_F_NEXT;
+			}
 		}
 	}
 
@@ -1336,6 +1348,23 @@ set_rxtx_funcs(struct rte_eth_dev *eth_dev)
 {
 	struct virtio_hw *hw = eth_dev->data->dev_private;
 
+	if (vtpci_packed_queue(hw)) {
+		PMD_INIT_LOG(INFO,
+			"virtio: using packed ring standard Tx path on port %u",
+			eth_dev->data->port_id);
+		eth_dev->tx_pkt_burst = virtio_xmit_pkts_packed;
+	} else {
+		if (hw->use_inorder_tx) {
+			PMD_INIT_LOG(INFO, "virtio: using inorder Tx path on port %u",
+				eth_dev->data->port_id);
+			eth_dev->tx_pkt_burst = virtio_xmit_pkts_inorder;
+		} else {
+			PMD_INIT_LOG(INFO, "virtio: using standard Tx path on port %u",
+				eth_dev->data->port_id);
+			eth_dev->tx_pkt_burst = virtio_xmit_pkts;
+		}
+	}
+
 	if (hw->use_simple_rx) {
 		PMD_INIT_LOG(INFO, "virtio: using simple Rx path on port %u",
 			eth_dev->data->port_id);
@@ -1356,15 +1385,6 @@ set_rxtx_funcs(struct rte_eth_dev *eth_dev)
 		eth_dev->rx_pkt_burst = &virtio_recv_pkts;
 	}
 
-	if (hw->use_inorder_tx) {
-		PMD_INIT_LOG(INFO, "virtio: using inorder Tx path on port %u",
-			eth_dev->data->port_id);
-		eth_dev->tx_pkt_burst = virtio_xmit_pkts_inorder;
-	} else {
-		PMD_INIT_LOG(INFO, "virtio: using standard Tx path on port %u",
-			eth_dev->data->port_id);
-		eth_dev->tx_pkt_burst = virtio_xmit_pkts;
-	}
 }
 
 /* Only support 1:1 queue/interrupt mapping so far.

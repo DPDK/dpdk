@@ -247,8 +247,12 @@ struct virtio_net_hdr_mrg_rxbuf {
 #define VIRTIO_MAX_TX_INDIRECT 8
 struct virtio_tx_region {
 	struct virtio_net_hdr_mrg_rxbuf tx_hdr;
-	struct vring_desc tx_indir[VIRTIO_MAX_TX_INDIRECT]
-			   __attribute__((__aligned__(16)));
+	union {
+		struct vring_desc tx_indir[VIRTIO_MAX_TX_INDIRECT]
+			__attribute__((__aligned__(16)));
+		struct vring_packed_desc tx_indir_pq[VIRTIO_MAX_TX_INDIRECT]
+			__attribute__((__aligned__(16)));
+	};
 };
 
 static inline int
@@ -380,6 +384,7 @@ virtio_get_queue_type(struct virtio_hw *hw, uint16_t vtpci_queue_idx)
 #define VIRTQUEUE_NUSED(vq) ((uint16_t)((vq)->vq_ring.used->idx - (vq)->vq_used_cons_idx))
 
 void vq_ring_free_chain(struct virtqueue *vq, uint16_t desc_idx);
+void vq_ring_free_chain_packed(struct virtqueue *vq, uint16_t used_idx);
 void vq_ring_free_inorder(struct virtqueue *vq, uint16_t desc_idx,
 			  uint16_t num);
 
@@ -411,6 +416,17 @@ static inline int
 virtqueue_kick_prepare(struct virtqueue *vq)
 {
 	return !(vq->vq_ring.used->flags & VRING_USED_F_NO_NOTIFY);
+}
+
+static inline int
+virtqueue_kick_prepare_packed(struct virtqueue *vq)
+{
+	uint16_t flags;
+
+	virtio_mb();
+	flags = vq->ring_packed.device_event->desc_event_flags;
+
+	return flags != RING_EVENT_FLAGS_DISABLE;
 }
 
 static inline void
