@@ -11,6 +11,7 @@ Network Interface Controller Drivers
     overview
     features
     build_and_test
+    af_packet
     ark
     atlantic
     avp
