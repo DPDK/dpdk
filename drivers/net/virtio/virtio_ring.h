@@ -15,6 +15,10 @@
 #define VRING_DESC_F_WRITE      2
 /* This means the buffer contains a list of buffer descriptors. */
 #define VRING_DESC_F_INDIRECT   4
+/* This flag means the descriptor was made available by the driver */
+#define VRING_DESC_F_AVAIL(b)   ((uint16_t)(b) << 7)
+/* This flag means the descriptor was used by the device */
+#define VRING_DESC_F_USED(b)    ((uint16_t)(b) << 15)
 
 /* The Host uses this in used->flags to advise the Guest: don't kick me
  * when you add a buffer.  It's unreliable, so it's simply an
@@ -52,6 +56,32 @@ struct vring_used {
 	uint16_t flags;
 	volatile uint16_t idx;
 	struct vring_used_elem ring[0];
+};
+
+/* For support of packed virtqueues in Virtio 1.1 the format of descriptors
+ * looks like this.
+ */
+struct vring_packed_desc {
+	uint64_t addr;
+	uint32_t len;
+	uint16_t id;
+	uint16_t flags;
+};
+
+#define RING_EVENT_FLAGS_ENABLE 0x0
+#define RING_EVENT_FLAGS_DISABLE 0x1
+#define RING_EVENT_FLAGS_DESC 0x2
+struct vring_packed_desc_event {
+	uint16_t desc_event_off_wrap;
+	uint16_t desc_event_flags;
+};
+
+struct vring_packed {
+	unsigned int num;
+	struct vring_packed_desc *desc_packed;
+	struct vring_packed_desc_event *driver_event;
+	struct vring_packed_desc_event *device_event;
+
 };
 
 struct vring {

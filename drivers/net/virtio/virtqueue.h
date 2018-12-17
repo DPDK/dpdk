@@ -161,11 +161,17 @@ struct virtio_pmd_ctrl {
 struct vq_desc_extra {
 	void *cookie;
 	uint16_t ndescs;
+	uint16_t next;
 };
 
 struct virtqueue {
 	struct virtio_hw  *hw; /**< virtio_hw structure pointer. */
 	struct vring vq_ring;  /**< vring keeping desc, used and avail */
+	struct vring_packed ring_packed;  /**< vring keeping descs */
+	bool avail_wrap_counter;
+	bool used_wrap_counter;
+	uint16_t event_flags_shadow;
+	uint16_t avail_used_flags;
 	/**
 	 * Last consumed descriptor in the used table,
 	 * trails vq_ring.used->idx.

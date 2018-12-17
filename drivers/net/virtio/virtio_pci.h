@@ -113,6 +113,7 @@ struct virtnet_ctl;
 
 #define VIRTIO_F_VERSION_1		32
 #define VIRTIO_F_IOMMU_PLATFORM	33
+#define VIRTIO_F_RING_PACKED		34
 
 /*
  * Some VirtIO feature bits (currently bits 28 through 31) are
