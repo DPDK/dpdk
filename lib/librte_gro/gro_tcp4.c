@@ -198,7 +198,8 @@ gro_tcp4_reassemble(struct rte_mbuf *pkt,
 	struct ipv4_hdr *ipv4_hdr;
 	struct tcp_hdr *tcp_hdr;
 	uint32_t sent_seq;
-	uint16_t tcp_dl, ip_id, hdr_len, frag_off;
+	int32_t tcp_dl;
+	uint16_t ip_id, hdr_len, frag_off;
 	uint8_t is_atomic;
 
 	struct tcp4_flow_key key;
