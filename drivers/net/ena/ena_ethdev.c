@@ -770,17 +770,13 @@ static void ena_tx_queue_release(void *queue)
 
 static void ena_rx_queue_release_bufs(struct ena_ring *ring)
 {
-	unsigned int ring_mask = ring->ring_size - 1;
+	unsigned int i;
 
-	while (ring->next_to_clean != ring->next_to_use) {
-		struct rte_mbuf *m =
-			ring->rx_buffer_info[ring->next_to_clean & ring_mask];
-
-		if (m)
-			rte_mbuf_raw_free(m);
-
-		ring->next_to_clean++;
-	}
+	for (i = 0; i < ring->ring_size; ++i)
+		if (ring->rx_buffer_info[i]) {
+			rte_mbuf_raw_free(ring->rx_buffer_info[i]);
+			ring->rx_buffer_info[i] = NULL;
+		}
 }
 
 static void ena_tx_queue_release_bufs(struct ena_ring *ring)
@@ -792,8 +788,6 @@ static void ena_tx_queue_release_bufs(struct ena_ring *ring)
 
 		if (tx_buf->mbuf)
 			rte_pktmbuf_free(tx_buf->mbuf);
-
-		ring->next_to_clean++;
 	}
 }
 
@@ -2077,10 +2071,14 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		while (segments < ena_rx_ctx.descs) {
 			req_id = ena_rx_ctx.ena_bufs[segments].req_id;
 			rc = validate_rx_req_id(rx_ring, req_id);
-			if (unlikely(rc))
+			if (unlikely(rc)) {
+				if (segments != 0)
+					rte_mbuf_raw_free(mbuf_head);
 				break;
+			}
 
 			mbuf = rx_buff_info[req_id];
+			rx_buff_info[req_id] = NULL;
 			mbuf->data_len = ena_rx_ctx.ena_bufs[segments].len;
 			mbuf->data_off = RTE_PKTMBUF_HEADROOM;
 			mbuf->refcnt = 1;
