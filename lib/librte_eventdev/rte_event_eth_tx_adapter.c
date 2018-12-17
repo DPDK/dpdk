@@ -59,6 +59,20 @@ do {\
 		return -EINVAL; \
 } while (0)
 
+#define TXA_CHECK_TXQ(dev, queue) \
+do {\
+	if ((dev)->data->nb_tx_queues == 0) { \
+		RTE_EDEV_LOG_ERR("No tx queues configured"); \
+		return -EINVAL; \
+	} \
+	if ((queue) != -1 && \
+		(uint16_t)(queue) >= (dev)->data->nb_tx_queues) { \
+		RTE_EDEV_LOG_ERR("Invalid tx queue_id %" PRIu16, \
+				(uint16_t)(queue)); \
+		return -EINVAL; \
+	} \
+} while (0)
+
 /* Tx retry callback structure */
 struct txa_retry {
 	/* Ethernet port id */
@@ -795,20 +809,35 @@ txa_service_queue_del(uint8_t id,
 	struct rte_eth_dev_tx_buffer *tb;
 	uint16_t port_id;
 
-	if (tx_queue_id == -1) {
-		uint16_t i;
-		int ret = -1;
+	txa = txa_service_id_to_data(id);
+	port_id = dev->data->port_id;
 
-		for (i = 0; i < dev->data->nb_tx_queues; i++) {
-			ret = txa_service_queue_del(id, dev, i);
-			if (ret != 0)
-				break;
+	if (tx_queue_id == -1) {
+		uint16_t i, q, nb_queues;
+		int ret = 0;
+
+		nb_queues = txa->nb_queues;
+		if (nb_queues == 0)
+			return 0;
+
+		i = 0;
+		q = 0;
+		tqi = txa->txa_ethdev[port_id].queues;
+
+		while (i < nb_queues) {
+
+			if (tqi[q].added) {
+				ret = txa_service_queue_del(id, dev, q);
+				if (ret != 0)
+					break;
+			}
+			i++;
+			q++;
 		}
 		return ret;
 	}
 
 	txa = txa_service_id_to_data(id);
-	port_id = dev->data->port_id;
 
 	tqi = txa_service_queue(txa, port_id, tx_queue_id);
 	if (tqi == NULL || !tqi->added)
@@ -999,11 +1028,7 @@ rte_event_eth_tx_adapter_queue_add(uint8_t id,
 	TXA_CHECK_OR_ERR_RET(id);
 
 	eth_dev = &rte_eth_devices[eth_dev_id];
-	if (queue != -1 && (uint16_t)queue >= eth_dev->data->nb_tx_queues) {
-		RTE_EDEV_LOG_ERR("Invalid tx queue_id %" PRIu16,
-				(uint16_t)queue);
-		return -EINVAL;
-	}
+	TXA_CHECK_TXQ(eth_dev, queue);
 
 	caps = 0;
 	if (txa_dev_caps_get(id))
@@ -1034,11 +1059,6 @@ rte_event_eth_tx_adapter_queue_del(uint8_t id,
 	TXA_CHECK_OR_ERR_RET(id);
 
 	eth_dev = &rte_eth_devices[eth_dev_id];
-	if (queue != -1 && (uint16_t)queue >= eth_dev->data->nb_tx_queues) {
-		RTE_EDEV_LOG_ERR("Invalid tx queue_id %" PRIu16,
-				(uint16_t)queue);
-		return -EINVAL;
-	}
 
 	caps = 0;
 
