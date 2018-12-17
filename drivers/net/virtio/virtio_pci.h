@@ -315,6 +315,12 @@ vtpci_with_feature(struct virtio_hw *hw, uint64_t bit)
 	return (hw->guest_features & (1ULL << bit)) != 0;
 }
 
+static inline int
+vtpci_packed_queue(struct virtio_hw *hw)
+{
+	return vtpci_with_feature(hw, VIRTIO_F_RING_PACKED);
+}
+
 /*
  * Function declaration from virtio_pci.c
  */
