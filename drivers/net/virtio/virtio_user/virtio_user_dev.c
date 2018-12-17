@@ -58,6 +58,8 @@ virtio_user_kick_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 
 	state.index = queue_sel;
 	state.num = 0; /* no reservation */
+	if (dev->features & (1ULL << VIRTIO_F_RING_PACKED))
+		state.num |= (1 << 15);
 	dev->ops->send_request(dev, VHOST_USER_SET_VRING_BASE, &state);
 
 	dev->ops->send_request(dev, VHOST_USER_SET_VRING_ADDR, &addr);
@@ -407,12 +409,13 @@ virtio_user_dev_setup(struct virtio_user_dev *dev)
 	 1ULL << VIRTIO_NET_F_GUEST_TSO4	|	\
 	 1ULL << VIRTIO_NET_F_GUEST_TSO6	|	\
 	 1ULL << VIRTIO_F_IN_ORDER		|	\
-	 1ULL << VIRTIO_F_VERSION_1)
+	 1ULL << VIRTIO_F_VERSION_1		|	\
+	 1ULL << VIRTIO_F_RING_PACKED)
 
 int
 virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 		     int cq, int queue_size, const char *mac, char **ifname,
-		     int mrg_rxbuf, int in_order)
+		     int mrg_rxbuf, int in_order, int packed_vq)
 {
 	pthread_mutex_init(&dev->mutex, NULL);
 	snprintf(dev->path, PATH_MAX, "%s", path);
@@ -464,10 +467,17 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 	if (!in_order)
 		dev->unsupported_features |= (1ull << VIRTIO_F_IN_ORDER);
 
-	if (dev->mac_specified)
-		dev->frontend_features |= (1ull << VIRTIO_NET_F_MAC);
+	if (packed_vq)
+		dev->device_features |= (1ull << VIRTIO_F_RING_PACKED);
 	else
+		dev->device_features &= ~(1ull << VIRTIO_F_RING_PACKED);
+
+	if (dev->mac_specified) {
+		dev->device_features |= (1ull << VIRTIO_NET_F_MAC);
+	} else {
+		dev->device_features &= ~(1ull << VIRTIO_NET_F_MAC);
 		dev->unsupported_features |= (1ull << VIRTIO_NET_F_MAC);
+	}
 
 	if (cq) {
 		/* device does not really need to know anything about CQ,
