@@ -73,9 +73,14 @@ int virtio_dev_tx_queue_setup_finish(struct rte_eth_dev *dev,
 
 uint16_t virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts);
+uint16_t virtio_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts);
 
 uint16_t virtio_recv_mergeable_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts);
+
+uint16_t virtio_recv_mergeable_pkts_packed(void *rx_queue,
+		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 
 uint16_t virtio_recv_mergeable_pkts_inorder(void *rx_queue,
 		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
