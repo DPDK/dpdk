@@ -23,6 +23,7 @@ static void ice_dev_info_get(struct rte_eth_dev *dev,
 			     struct rte_eth_dev_info *dev_info);
 static int ice_link_update(struct rte_eth_dev *dev,
 			   int wait_to_complete);
+static int ice_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 
 static const struct rte_pci_id pci_id_ice_map[] = {
 	{ RTE_PCI_DEVICE(ICE_INTEL_VENDOR_ID, ICE_DEV_ID_E810C_BACKPLANE) },
@@ -48,6 +49,7 @@ static const struct eth_dev_ops ice_eth_dev_ops = {
 	.dev_infos_get                = ice_dev_info_get,
 	.dev_supported_ptypes_get     = ice_dev_supported_ptypes_get,
 	.link_update                  = ice_link_update,
+	.mtu_set                      = ice_mtu_set,
 	.rxq_info_get                 = ice_rxq_info_get,
 	.txq_info_get                 = ice_txq_info_get,
 	.rx_queue_count               = ice_rx_queue_count,
@@ -1039,6 +1041,7 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		DEV_RX_OFFLOAD_UDP_CKSUM |
 		DEV_RX_OFFLOAD_TCP_CKSUM |
 		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+		DEV_RX_OFFLOAD_JUMBO_FRAME |
 		DEV_RX_OFFLOAD_KEEP_CRC;
 	dev_info->tx_offload_capa =
 		DEV_TX_OFFLOAD_IPV4_CKSUM |
@@ -1221,6 +1224,38 @@ out:
 	ice_atomic_write_link_status(dev, &link);
 	if (link.link_status == old.link_status)
 		return -1;
+
+	return 0;
+}
+
+static int
+ice_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct rte_eth_dev_data *dev_data = pf->dev_data;
+	uint32_t frame_size = mtu + ETHER_HDR_LEN
+			      + ETHER_CRC_LEN + ICE_VLAN_TAG_SIZE;
+
+	/* check if mtu is within the allowed range */
+	if (mtu < ETHER_MIN_MTU || frame_size > ICE_FRAME_SIZE_MAX)
+		return -EINVAL;
+
+	/* mtu setting is forbidden if port is start */
+	if (dev_data->dev_started) {
+		PMD_DRV_LOG(ERR,
+			    "port %d must be stopped before configuration",
+			    dev_data->port_id);
+		return -EBUSY;
+	}
+
+	if (frame_size > ETHER_MAX_LEN)
+		dev_data->dev_conf.rxmode.offloads |=
+			DEV_RX_OFFLOAD_JUMBO_FRAME;
+	else
+		dev_data->dev_conf.rxmode.offloads &=
+			~DEV_RX_OFFLOAD_JUMBO_FRAME;
+
+	dev_data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
 
 	return 0;
 }
