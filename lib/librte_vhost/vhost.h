@@ -18,6 +18,7 @@
 #include <rte_log.h>
 #include <rte_ether.h>
 #include <rte_rwlock.h>
+#include <rte_malloc.h>
 
 #include "rte_vhost.h"
 #include "rte_vdpa.h"
@@ -752,6 +753,45 @@ vhost_vring_call_packed(struct virtio_net *dev, struct vhost_virtqueue *vq)
 kick:
 	if (kick)
 		eventfd_write(vq->callfd, (eventfd_t)1);
+}
+
+static __rte_always_inline void *
+alloc_copy_ind_table(struct virtio_net *dev, struct vhost_virtqueue *vq,
+		uint64_t desc_addr, uint64_t desc_len)
+{
+	void *idesc;
+	uint64_t src, dst;
+	uint64_t len, remain = desc_len;
+
+	idesc = rte_malloc(__func__, desc_len, 0);
+	if (unlikely(!idesc))
+		return 0;
+
+	dst = (uint64_t)(uintptr_t)idesc;
+
+	while (remain) {
+		len = remain;
+		src = vhost_iova_to_vva(dev, vq, desc_addr, &len,
+				VHOST_ACCESS_RO);
+		if (unlikely(!src || !len)) {
+			rte_free(idesc);
+			return 0;
+		}
+
+		rte_memcpy((void *)(uintptr_t)dst, (void *)(uintptr_t)src, len);
+
+		remain -= len;
+		dst += len;
+		desc_addr += len;
+	}
+
+	return idesc;
+}
+
+static __rte_always_inline void
+free_ind_table(void *idesc)
+{
+	rte_free(idesc);
 }
 
 #endif /* _VHOST_NET_CDEV_H_ */
