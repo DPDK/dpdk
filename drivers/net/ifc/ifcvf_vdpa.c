@@ -8,6 +8,7 @@
 #include <sys/ioctl.h>
 #include <sys/epoll.h>
 #include <linux/virtio_net.h>
+#include <stdbool.h>
 
 #include <rte_malloc.h>
 #include <rte_memory.h>
@@ -31,9 +32,11 @@
 #endif
 
 #define IFCVF_VDPA_MODE		"vdpa"
+#define IFCVF_SW_FALLBACK_LM	"sw-live-migration"
 
 static const char * const ifcvf_valid_arguments[] = {
 	IFCVF_VDPA_MODE,
+	IFCVF_SW_FALLBACK_LM,
 	NULL
 };
 
@@ -56,6 +59,7 @@ struct ifcvf_internal {
 	rte_atomic32_t dev_attached;
 	rte_atomic32_t running;
 	rte_spinlock_t lock;
+	bool sw_lm;
 };
 
 struct internal_list {
@@ -767,6 +771,7 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct ifcvf_internal *internal = NULL;
 	struct internal_list *list = NULL;
 	int vdpa_mode = 0;
+	int sw_fallback_lm = 0;
 	struct rte_kvargs *kvlist = NULL;
 	int ret = 0;
 
@@ -825,6 +830,14 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	internal->dev_addr.pci_addr = pci_dev->addr;
 	internal->dev_addr.type = PCI_ADDR;
 	list->internal = internal;
+
+	if (rte_kvargs_count(kvlist, IFCVF_SW_FALLBACK_LM)) {
+		ret = rte_kvargs_process(kvlist, IFCVF_SW_FALLBACK_LM,
+				&open_int, &sw_fallback_lm);
+		if (ret < 0)
+			goto error;
+	}
+	internal->sw_lm = sw_fallback_lm;
 
 	internal->did = rte_vdpa_register_device(&internal->dev_addr,
 				&ifcvf_ops);
