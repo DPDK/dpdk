@@ -974,6 +974,38 @@ ice_rxd_error_to_pkt_flags(uint64_t qword)
 	return flags;
 }
 
+static inline void
+ice_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union ice_rx_desc *rxdp)
+{
+	if (rte_le_to_cpu_64(rxdp->wb.qword1.status_error_len) &
+	    (1 << ICE_RX_DESC_STATUS_L2TAG1P_S)) {
+		mb->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
+		mb->vlan_tci =
+			rte_le_to_cpu_16(rxdp->wb.qword0.lo_dword.l2tag1);
+		PMD_RX_LOG(DEBUG, "Descriptor l2tag1: %u",
+			   rte_le_to_cpu_16(rxdp->wb.qword0.lo_dword.l2tag1));
+	} else {
+		mb->vlan_tci = 0;
+	}
+
+#ifndef RTE_LIBRTE_ICE_16BYTE_RX_DESC
+	if (rte_le_to_cpu_16(rxdp->wb.qword2.ext_status) &
+	    (1 << ICE_RX_DESC_EXT_STATUS_L2TAG2P_S)) {
+		mb->ol_flags |= PKT_RX_QINQ_STRIPPED | PKT_RX_QINQ |
+				PKT_RX_VLAN_STRIPPED | PKT_RX_VLAN;
+		mb->vlan_tci_outer = mb->vlan_tci;
+		mb->vlan_tci = rte_le_to_cpu_16(rxdp->wb.qword2.l2tag2_2);
+		PMD_RX_LOG(DEBUG, "Descriptor l2tag2_1: %u, l2tag2_2: %u",
+			   rte_le_to_cpu_16(rxdp->wb.qword2.l2tag2_1),
+			   rte_le_to_cpu_16(rxdp->wb.qword2.l2tag2_2));
+	} else {
+		mb->vlan_tci_outer = 0;
+	}
+#endif
+	PMD_RX_LOG(DEBUG, "Mbuf vlan_tci: %u, vlan_tci_outer: %u",
+		   mb->vlan_tci, mb->vlan_tci_outer);
+}
+
 const uint32_t *
 ice_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 {
@@ -1124,6 +1156,7 @@ ice_recv_pkts(void *rx_queue,
 		rxm->pkt_len = rx_packet_len;
 		rxm->data_len = rx_packet_len;
 		rxm->port = rxq->port_id;
+		ice_rxd_to_vlan_tci(rxm, rxdp);
 		rxm->packet_type = ptype_tbl[(uint8_t)((qword1 &
 							ICE_RXD_QW1_PTYPE_M) >>
 						       ICE_RXD_QW1_PTYPE_S)];
@@ -1371,6 +1404,12 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			}
 		}
 
+		/* Descriptor based VLAN insertion */
+		if (ol_flags & (PKT_TX_VLAN | PKT_TX_QINQ)) {
+			td_cmd |= ICE_TX_DESC_CMD_IL2TAG1;
+			td_tag = tx_pkt->vlan_tci;
+		}
+
 		/* Enable checksum offloading */
 		if (ol_flags & ICE_TX_CKSUM_OFFLOAD_MASK) {
 			ice_txd_enable_checksum(ol_flags, &td_cmd,
@@ -1379,6 +1418,10 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		if (nb_ctx) {
 			/* Setup TX context descriptor if required */
+			volatile struct ice_tx_ctx_desc *ctx_txd =
+				(volatile struct ice_tx_ctx_desc *)
+					&tx_ring[tx_id];
+			uint16_t cd_l2tag2 = 0;
 			uint64_t cd_type_cmd_tso_mss = ICE_TX_DESC_DTYPE_CTX;
 
 			txn = &sw_ring[txe->next_id];
@@ -1391,6 +1434,17 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			if (ol_flags & PKT_TX_TCP_SEG)
 				cd_type_cmd_tso_mss |=
 					ice_set_tso_ctx(tx_pkt, tx_offload);
+
+			/* TX context descriptor based double VLAN insert */
+			if (ol_flags & PKT_TX_QINQ) {
+				cd_l2tag2 = tx_pkt->vlan_tci_outer;
+				cd_type_cmd_tso_mss |=
+					((uint64_t)ICE_TX_CTX_DESC_IL2TAG2 <<
+					 ICE_TXD_CTX_QW1_CMD_S);
+			}
+			ctx_txd->l2tag2 = rte_cpu_to_le_16(cd_l2tag2);
+			ctx_txd->qw1 =
+				rte_cpu_to_le_64(cd_type_cmd_tso_mss);
 
 			txe->last_id = tx_last;
 			tx_id = txe->next_id;

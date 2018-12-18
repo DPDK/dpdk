@@ -64,6 +64,22 @@ Driver compilation and testing
 Refer to the document :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
 for details.
 
+Sample Application Notes
+------------------------
+
+Vlan filter
+~~~~~~~~~~~
+
+Vlan filter only works when Promiscuous mode is off.
+
+To start ``testpmd``, and add vlan 10 to port 0:
+
+.. code-block:: console
+
+    ./app/testpmd -l 0-15 -n 4 -- -i
+    ...
+
+    testpmd> rx_vlan add 10 0
 
 Limitations or Known issues
 ---------------------------
