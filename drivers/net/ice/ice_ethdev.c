@@ -21,6 +21,8 @@ static void ice_dev_close(struct rte_eth_dev *dev);
 static int ice_dev_reset(struct rte_eth_dev *dev);
 static void ice_dev_info_get(struct rte_eth_dev *dev,
 			     struct rte_eth_dev_info *dev_info);
+static int ice_link_update(struct rte_eth_dev *dev,
+			   int wait_to_complete);
 
 static const struct rte_pci_id pci_id_ice_map[] = {
 	{ RTE_PCI_DEVICE(ICE_INTEL_VENDOR_ID, ICE_DEV_ID_E810C_BACKPLANE) },
@@ -44,6 +46,7 @@ static const struct eth_dev_ops ice_eth_dev_ops = {
 	.tx_queue_setup               = ice_tx_queue_setup,
 	.tx_queue_release             = ice_tx_queue_release,
 	.dev_infos_get                = ice_dev_info_get,
+	.link_update                  = ice_link_update,
 };
 
 static void
@@ -330,6 +333,187 @@ ice_init_mac_address(struct rte_eth_dev *dev)
 	return 0;
 }
 
+/* Enable IRQ0 */
+static void
+ice_pf_enable_irq0(struct ice_hw *hw)
+{
+	/* reset the registers */
+	ICE_WRITE_REG(hw, PFINT_OICR_ENA, 0);
+	ICE_READ_REG(hw, PFINT_OICR);
+
+#ifdef ICE_LSE_SPT
+	ICE_WRITE_REG(hw, PFINT_OICR_ENA,
+		      (uint32_t)(PFINT_OICR_ENA_INT_ENA_M &
+				 (~PFINT_OICR_LINK_STAT_CHANGE_M)));
+
+	ICE_WRITE_REG(hw, PFINT_OICR_CTL,
+		      (0 & PFINT_OICR_CTL_MSIX_INDX_M) |
+		      ((0 << PFINT_OICR_CTL_ITR_INDX_S) &
+		       PFINT_OICR_CTL_ITR_INDX_M) |
+		      PFINT_OICR_CTL_CAUSE_ENA_M);
+
+	ICE_WRITE_REG(hw, PFINT_FW_CTL,
+		      (0 & PFINT_FW_CTL_MSIX_INDX_M) |
+		      ((0 << PFINT_FW_CTL_ITR_INDX_S) &
+		       PFINT_FW_CTL_ITR_INDX_M) |
+		      PFINT_FW_CTL_CAUSE_ENA_M);
+#else
+	ICE_WRITE_REG(hw, PFINT_OICR_ENA, PFINT_OICR_ENA_INT_ENA_M);
+#endif
+
+	ICE_WRITE_REG(hw, GLINT_DYN_CTL(0),
+		      GLINT_DYN_CTL_INTENA_M |
+		      GLINT_DYN_CTL_CLEARPBA_M |
+		      GLINT_DYN_CTL_ITR_INDX_M);
+
+	ice_flush(hw);
+}
+
+/* Disable IRQ0 */
+static void
+ice_pf_disable_irq0(struct ice_hw *hw)
+{
+	/* Disable all interrupt types */
+	ICE_WRITE_REG(hw, GLINT_DYN_CTL(0), GLINT_DYN_CTL_WB_ON_ITR_M);
+	ice_flush(hw);
+}
+
+#ifdef ICE_LSE_SPT
+static void
+ice_handle_aq_msg(struct rte_eth_dev *dev)
+{
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ice_ctl_q_info *cq = &hw->adminq;
+	struct ice_rq_event_info event;
+	uint16_t pending, opcode;
+	int ret;
+
+	event.buf_len = ICE_AQ_MAX_BUF_LEN;
+	event.msg_buf = rte_zmalloc(NULL, event.buf_len, 0);
+	if (!event.msg_buf) {
+		PMD_DRV_LOG(ERR, "Failed to allocate mem");
+		return;
+	}
+
+	pending = 1;
+	while (pending) {
+		ret = ice_clean_rq_elem(hw, cq, &event, &pending);
+
+		if (ret != ICE_SUCCESS) {
+			PMD_DRV_LOG(INFO,
+				    "Failed to read msg from AdminQ, "
+				    "adminq_err: %u",
+				    hw->adminq.sq_last_status);
+			break;
+		}
+		opcode = rte_le_to_cpu_16(event.desc.opcode);
+
+		switch (opcode) {
+		case ice_aqc_opc_get_link_status:
+			ret = ice_link_update(dev, 0);
+			if (!ret)
+				_rte_eth_dev_callback_process
+					(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
+			break;
+		default:
+			PMD_DRV_LOG(DEBUG, "Request %u is not supported yet",
+				    opcode);
+			break;
+		}
+	}
+	rte_free(event.msg_buf);
+}
+#endif
+
+/**
+ * Interrupt handler triggered by NIC for handling
+ * specific interrupt.
+ *
+ * @param handle
+ *  Pointer to interrupt handle.
+ * @param param
+ *  The address of parameter (struct rte_eth_dev *) regsitered before.
+ *
+ * @return
+ *  void
+ */
+static void
+ice_interrupt_handler(void *param)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t oicr;
+	uint32_t reg;
+	uint8_t pf_num;
+	uint8_t event;
+	uint16_t queue;
+#ifdef ICE_LSE_SPT
+	uint32_t int_fw_ctl;
+#endif
+
+	/* Disable interrupt */
+	ice_pf_disable_irq0(hw);
+
+	/* read out interrupt causes */
+	oicr = ICE_READ_REG(hw, PFINT_OICR);
+#ifdef ICE_LSE_SPT
+	int_fw_ctl = ICE_READ_REG(hw, PFINT_FW_CTL);
+#endif
+
+	/* No interrupt event indicated */
+	if (!(oicr & PFINT_OICR_INTEVENT_M)) {
+		PMD_DRV_LOG(INFO, "No interrupt event");
+		goto done;
+	}
+
+#ifdef ICE_LSE_SPT
+	if (int_fw_ctl & PFINT_FW_CTL_INTEVENT_M) {
+		PMD_DRV_LOG(INFO, "FW_CTL: link state change event");
+		ice_handle_aq_msg(dev);
+	}
+#else
+	if (oicr & PFINT_OICR_LINK_STAT_CHANGE_M) {
+		PMD_DRV_LOG(INFO, "OICR: link state change event");
+		ice_link_update(dev, 0);
+	}
+#endif
+
+	if (oicr & PFINT_OICR_MAL_DETECT_M) {
+		PMD_DRV_LOG(WARNING, "OICR: MDD event");
+		reg = ICE_READ_REG(hw, GL_MDET_TX_PQM);
+		if (reg & GL_MDET_TX_PQM_VALID_M) {
+			pf_num = (reg & GL_MDET_TX_PQM_PF_NUM_M) >>
+				 GL_MDET_TX_PQM_PF_NUM_S;
+			event = (reg & GL_MDET_TX_PQM_MAL_TYPE_M) >>
+				GL_MDET_TX_PQM_MAL_TYPE_S;
+			queue = (reg & GL_MDET_TX_PQM_QNUM_M) >>
+				GL_MDET_TX_PQM_QNUM_S;
+
+			PMD_DRV_LOG(WARNING, "Malicious Driver Detection event "
+				    "%d by PQM on TX queue %d PF# %d",
+				    event, queue, pf_num);
+		}
+
+		reg = ICE_READ_REG(hw, GL_MDET_TX_TCLAN);
+		if (reg & GL_MDET_TX_TCLAN_VALID_M) {
+			pf_num = (reg & GL_MDET_TX_TCLAN_PF_NUM_M) >>
+				 GL_MDET_TX_TCLAN_PF_NUM_S;
+			event = (reg & GL_MDET_TX_TCLAN_MAL_TYPE_M) >>
+				GL_MDET_TX_TCLAN_MAL_TYPE_S;
+			queue = (reg & GL_MDET_TX_TCLAN_QNUM_M) >>
+				GL_MDET_TX_TCLAN_QNUM_S;
+
+			PMD_DRV_LOG(WARNING, "Malicious Driver Detection event "
+				    "%d by TCLAN on TX queue %d PF# %d",
+				    event, queue, pf_num);
+		}
+	}
+done:
+	/* Enable interrupt */
+	ice_pf_enable_irq0(hw);
+	rte_intr_enable(dev->intr_handle);
+}
+
 /*  Initialize SW parameters of PF */
 static int
 ice_pf_sw_init(struct rte_eth_dev *dev)
@@ -487,6 +671,7 @@ static int
 ice_dev_init(struct rte_eth_dev *dev)
 {
 	struct rte_pci_device *pci_dev;
+	struct rte_intr_handle *intr_handle;
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	int ret;
@@ -494,6 +679,7 @@ ice_dev_init(struct rte_eth_dev *dev)
 	dev->dev_ops = &ice_eth_dev_ops;
 
 	pci_dev = RTE_DEV_TO_PCI(dev->device);
+	intr_handle = &pci_dev->intr_handle;
 
 	pf->adapter = ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	pf->adapter->eth_dev = dev;
@@ -538,6 +724,15 @@ ice_dev_init(struct rte_eth_dev *dev)
 		PMD_INIT_LOG(ERR, "Failed to setup PF");
 		goto err_pf_setup;
 	}
+
+	/* register callback func to eal lib */
+	rte_intr_callback_register(intr_handle,
+				   ice_interrupt_handler, dev);
+
+	ice_pf_enable_irq0(hw);
+
+	/* enable uio intr after callback register */
+	rte_intr_enable(intr_handle);
 
 	return 0;
 
@@ -585,6 +780,8 @@ ice_dev_stop(struct rte_eth_dev *dev)
 {
 	struct rte_eth_dev_data *data = dev->data;
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct rte_pci_device *pci_dev = ICE_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	uint16_t i;
 
 	/* avoid stopping again */
@@ -601,6 +798,13 @@ ice_dev_stop(struct rte_eth_dev *dev)
 
 	/* Clear all queues and release mbufs */
 	ice_clear_queues(dev);
+
+	/* Clean datapath event and queue/vec mapping */
+	rte_intr_efd_disable(intr_handle);
+	if (intr_handle->intr_vec) {
+		rte_free(intr_handle->intr_vec);
+		intr_handle->intr_vec = NULL;
+	}
 
 	pf->adapter_stopped = true;
 }
@@ -627,6 +831,8 @@ ice_dev_uninit(struct rte_eth_dev *dev)
 {
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
 	ice_dev_close(dev);
 
@@ -636,6 +842,13 @@ ice_dev_uninit(struct rte_eth_dev *dev)
 
 	rte_free(dev->data->mac_addrs);
 	dev->data->mac_addrs = NULL;
+
+	/* disable uio intr before callback unregister */
+	rte_intr_disable(intr_handle);
+
+	/* register callback func to eal lib */
+	rte_intr_callback_unregister(intr_handle,
+				     ice_interrupt_handler, dev);
 
 	ice_release_vsi(pf->main_vsi);
 	ice_sched_cleanup_all(hw);
@@ -754,6 +967,9 @@ ice_dev_start(struct rte_eth_dev *dev)
 				     NULL);
 	if (ret != ICE_SUCCESS)
 		PMD_DRV_LOG(WARNING, "Fail to set phy mask");
+
+	/* Call get_link_info aq commond to enable/disable LSE */
+	ice_link_update(dev, 0);
 
 	pf->adapter_stopped = false;
 
@@ -891,6 +1107,122 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->default_txportconf.nb_queues = 1;
 	dev_info->default_rxportconf.ring_size = ICE_BUF_SIZE_MIN;
 	dev_info->default_txportconf.ring_size = ICE_BUF_SIZE_MIN;
+}
+
+static inline int
+ice_atomic_read_link_status(struct rte_eth_dev *dev,
+			    struct rte_eth_link *link)
+{
+	struct rte_eth_link *dst = link;
+	struct rte_eth_link *src = &dev->data->dev_link;
+
+	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
+				*(uint64_t *)src) == 0)
+		return -1;
+
+	return 0;
+}
+
+static inline int
+ice_atomic_write_link_status(struct rte_eth_dev *dev,
+			     struct rte_eth_link *link)
+{
+	struct rte_eth_link *dst = &dev->data->dev_link;
+	struct rte_eth_link *src = link;
+
+	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
+				*(uint64_t *)src) == 0)
+		return -1;
+
+	return 0;
+}
+
+static int
+ice_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
+{
+#define CHECK_INTERVAL 100  /* 100ms */
+#define MAX_REPEAT_TIME 10  /* 1s (10 * 100ms) in total */
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ice_link_status link_status;
+	struct rte_eth_link link, old;
+	int status;
+	unsigned int rep_cnt = MAX_REPEAT_TIME;
+	bool enable_lse = dev->data->dev_conf.intr_conf.lsc ? true : false;
+
+	memset(&link, 0, sizeof(link));
+	memset(&old, 0, sizeof(old));
+	memset(&link_status, 0, sizeof(link_status));
+	ice_atomic_read_link_status(dev, &old);
+
+	do {
+		/* Get link status information from hardware */
+		status = ice_aq_get_link_info(hw->port_info, enable_lse,
+					      &link_status, NULL);
+		if (status != ICE_SUCCESS) {
+			link.link_speed = ETH_SPEED_NUM_100M;
+			link.link_duplex = ETH_LINK_FULL_DUPLEX;
+			PMD_DRV_LOG(ERR, "Failed to get link info");
+			goto out;
+		}
+
+		link.link_status = link_status.link_info & ICE_AQ_LINK_UP;
+		if (!wait_to_complete || link.link_status)
+			break;
+
+		rte_delay_ms(CHECK_INTERVAL);
+	} while (--rep_cnt);
+
+	if (!link.link_status)
+		goto out;
+
+	/* Full-duplex operation at all supported speeds */
+	link.link_duplex = ETH_LINK_FULL_DUPLEX;
+
+	/* Parse the link status */
+	switch (link_status.link_speed) {
+	case ICE_AQ_LINK_SPEED_10MB:
+		link.link_speed = ETH_SPEED_NUM_10M;
+		break;
+	case ICE_AQ_LINK_SPEED_100MB:
+		link.link_speed = ETH_SPEED_NUM_100M;
+		break;
+	case ICE_AQ_LINK_SPEED_1000MB:
+		link.link_speed = ETH_SPEED_NUM_1G;
+		break;
+	case ICE_AQ_LINK_SPEED_2500MB:
+		link.link_speed = ETH_SPEED_NUM_2_5G;
+		break;
+	case ICE_AQ_LINK_SPEED_5GB:
+		link.link_speed = ETH_SPEED_NUM_5G;
+		break;
+	case ICE_AQ_LINK_SPEED_10GB:
+		link.link_speed = ETH_SPEED_NUM_10G;
+		break;
+	case ICE_AQ_LINK_SPEED_20GB:
+		link.link_speed = ETH_SPEED_NUM_20G;
+		break;
+	case ICE_AQ_LINK_SPEED_25GB:
+		link.link_speed = ETH_SPEED_NUM_25G;
+		break;
+	case ICE_AQ_LINK_SPEED_40GB:
+		link.link_speed = ETH_SPEED_NUM_40G;
+		break;
+	case ICE_AQ_LINK_SPEED_UNKNOWN:
+	default:
+		PMD_DRV_LOG(ERR, "Unknown link speed");
+		link.link_speed = ETH_SPEED_NUM_NONE;
+		break;
+	}
+
+	link.link_autoneg = !(dev->data->dev_conf.link_speeds &
+			      ETH_LINK_SPEED_FIXED);
+
+out:
+	ice_atomic_write_link_status(dev, &link);
+	if (link.link_status == old.link_status)
+		return -1;
+
+	return 0;
 }
 
 static int
