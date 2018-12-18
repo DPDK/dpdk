@@ -134,4 +134,9 @@ void ice_rx_queue_release(void *rxq);
 void ice_tx_queue_release(void *txq);
 void ice_clear_queues(struct rte_eth_dev *dev);
 void ice_free_queues(struct rte_eth_dev *dev);
+uint32_t ice_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+void ice_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+		      struct rte_eth_rxq_info *qinfo);
+void ice_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+		      struct rte_eth_txq_info *qinfo);
 #endif /* _ICE_RXTX_H_ */

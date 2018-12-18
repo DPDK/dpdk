@@ -881,6 +881,72 @@ ice_tx_queue_release(void *txq)
 }
 
 void
+ice_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+		 struct rte_eth_rxq_info *qinfo)
+{
+	struct ice_rx_queue *rxq;
+
+	rxq = dev->data->rx_queues[queue_id];
+
+	qinfo->mp = rxq->mp;
+	qinfo->scattered_rx = dev->data->scattered_rx;
+	qinfo->nb_desc = rxq->nb_rx_desc;
+
+	qinfo->conf.rx_free_thresh = rxq->rx_free_thresh;
+	qinfo->conf.rx_drop_en = rxq->drop_en;
+	qinfo->conf.rx_deferred_start = rxq->rx_deferred_start;
+}
+
+void
+ice_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+		 struct rte_eth_txq_info *qinfo)
+{
+	struct ice_tx_queue *txq;
+
+	txq = dev->data->tx_queues[queue_id];
+
+	qinfo->nb_desc = txq->nb_tx_desc;
+
+	qinfo->conf.tx_thresh.pthresh = txq->pthresh;
+	qinfo->conf.tx_thresh.hthresh = txq->hthresh;
+	qinfo->conf.tx_thresh.wthresh = txq->wthresh;
+
+	qinfo->conf.tx_free_thresh = txq->tx_free_thresh;
+	qinfo->conf.tx_rs_thresh = txq->tx_rs_thresh;
+	qinfo->conf.offloads = txq->offloads;
+	qinfo->conf.tx_deferred_start = txq->tx_deferred_start;
+}
+
+uint32_t
+ice_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+#define ICE_RXQ_SCAN_INTERVAL 4
+	volatile union ice_rx_desc *rxdp;
+	struct ice_rx_queue *rxq;
+	uint16_t desc = 0;
+
+	rxq = dev->data->rx_queues[rx_queue_id];
+	rxdp = &rxq->rx_ring[rxq->rx_tail];
+	while ((desc < rxq->nb_rx_desc) &&
+	       ((rte_le_to_cpu_64(rxdp->wb.qword1.status_error_len) &
+		 ICE_RXD_QW1_STATUS_M) >> ICE_RXD_QW1_STATUS_S) &
+	       (1 << ICE_RX_DESC_STATUS_DD_S)) {
+		/**
+		 * Check the DD bit of a rx descriptor of each 4 in a group,
+		 * to avoid checking too frequently and downgrading performance
+		 * too much.
+		 */
+		desc += ICE_RXQ_SCAN_INTERVAL;
+		rxdp += ICE_RXQ_SCAN_INTERVAL;
+		if (rxq->rx_tail + desc >= rxq->nb_rx_desc)
+			rxdp = &(rxq->rx_ring[rxq->rx_tail +
+				 desc - rxq->nb_rx_desc]);
+	}
+
+	return desc;
+}
+
+void
 ice_clear_queues(struct rte_eth_dev *dev)
 {
 	uint16_t i;
