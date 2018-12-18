@@ -24,6 +24,13 @@ static void ice_dev_info_get(struct rte_eth_dev *dev,
 static int ice_link_update(struct rte_eth_dev *dev,
 			   int wait_to_complete);
 static int ice_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
+static int ice_macaddr_set(struct rte_eth_dev *dev,
+			   struct ether_addr *mac_addr);
+static int ice_macaddr_add(struct rte_eth_dev *dev,
+			   struct ether_addr *mac_addr,
+			   __rte_unused uint32_t index,
+			   uint32_t pool);
+static void ice_macaddr_remove(struct rte_eth_dev *dev, uint32_t index);
 
 static const struct rte_pci_id pci_id_ice_map[] = {
 	{ RTE_PCI_DEVICE(ICE_INTEL_VENDOR_ID, ICE_DEV_ID_E810C_BACKPLANE) },
@@ -50,6 +57,9 @@ static const struct eth_dev_ops ice_eth_dev_ops = {
 	.dev_supported_ptypes_get     = ice_dev_supported_ptypes_get,
 	.link_update                  = ice_link_update,
 	.mtu_set                      = ice_mtu_set,
+	.mac_addr_set                 = ice_macaddr_set,
+	.mac_addr_add                 = ice_macaddr_add,
+	.mac_addr_remove              = ice_macaddr_remove,
 	.rxq_info_get                 = ice_rxq_info_get,
 	.txq_info_get                 = ice_txq_info_get,
 	.rx_queue_count               = ice_rx_queue_count,
@@ -339,6 +349,130 @@ ice_init_mac_address(struct rte_eth_dev *dev)
 	return 0;
 }
 
+/* Find out specific MAC filter */
+static struct ice_mac_filter *
+ice_find_mac_filter(struct ice_vsi *vsi, struct ether_addr *macaddr)
+{
+	struct ice_mac_filter *f;
+
+	TAILQ_FOREACH(f, &vsi->mac_list, next) {
+		if (is_same_ether_addr(macaddr, &f->mac_info.mac_addr))
+			return f;
+	}
+
+	return NULL;
+}
+
+static int
+ice_add_mac_filter(struct ice_vsi *vsi, struct ether_addr *mac_addr)
+{
+	struct ice_fltr_list_entry *m_list_itr = NULL;
+	struct ice_mac_filter *f;
+	struct LIST_HEAD_TYPE list_head;
+	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
+	int ret = 0;
+
+	/* If it's added and configured, return */
+	f = ice_find_mac_filter(vsi, mac_addr);
+	if (f) {
+		PMD_DRV_LOG(INFO, "This MAC filter already exists.");
+		return 0;
+	}
+
+	INIT_LIST_HEAD(&list_head);
+
+	m_list_itr = (struct ice_fltr_list_entry *)
+		ice_malloc(hw, sizeof(*m_list_itr));
+	if (!m_list_itr) {
+		ret = -ENOMEM;
+		goto DONE;
+	}
+	ice_memcpy(m_list_itr->fltr_info.l_data.mac.mac_addr,
+		   mac_addr, ETH_ALEN, ICE_NONDMA_TO_NONDMA);
+	m_list_itr->fltr_info.src_id = ICE_SRC_ID_VSI;
+	m_list_itr->fltr_info.fltr_act = ICE_FWD_TO_VSI;
+	m_list_itr->fltr_info.lkup_type = ICE_SW_LKUP_MAC;
+	m_list_itr->fltr_info.flag = ICE_FLTR_TX;
+	m_list_itr->fltr_info.vsi_handle = vsi->idx;
+
+	LIST_ADD(&m_list_itr->list_entry, &list_head);
+
+	/* Add the mac */
+	ret = ice_add_mac(hw, &list_head);
+	if (ret != ICE_SUCCESS) {
+		PMD_DRV_LOG(ERR, "Failed to add MAC filter");
+		ret = -EINVAL;
+		goto DONE;
+	}
+	/* Add the mac addr into mac list */
+	f = rte_zmalloc(NULL, sizeof(*f), 0);
+	if (!f) {
+		PMD_DRV_LOG(ERR, "failed to allocate memory");
+		ret = -ENOMEM;
+		goto DONE;
+	}
+	rte_memcpy(&f->mac_info.mac_addr, mac_addr, ETH_ADDR_LEN);
+	TAILQ_INSERT_TAIL(&vsi->mac_list, f, next);
+	vsi->mac_num++;
+
+	ret = 0;
+
+DONE:
+	rte_free(m_list_itr);
+	return ret;
+}
+
+static int
+ice_remove_mac_filter(struct ice_vsi *vsi, struct ether_addr *mac_addr)
+{
+	struct ice_fltr_list_entry *m_list_itr = NULL;
+	struct ice_mac_filter *f;
+	struct LIST_HEAD_TYPE list_head;
+	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
+	int ret = 0;
+
+	/* Can't find it, return an error */
+	f = ice_find_mac_filter(vsi, mac_addr);
+	if (!f)
+		return -EINVAL;
+
+	INIT_LIST_HEAD(&list_head);
+
+	m_list_itr = (struct ice_fltr_list_entry *)
+		ice_malloc(hw, sizeof(*m_list_itr));
+	if (!m_list_itr) {
+		ret = -ENOMEM;
+		goto DONE;
+	}
+	ice_memcpy(m_list_itr->fltr_info.l_data.mac.mac_addr,
+		   mac_addr, ETH_ALEN, ICE_NONDMA_TO_NONDMA);
+	m_list_itr->fltr_info.src_id = ICE_SRC_ID_VSI;
+	m_list_itr->fltr_info.fltr_act = ICE_FWD_TO_VSI;
+	m_list_itr->fltr_info.lkup_type = ICE_SW_LKUP_MAC;
+	m_list_itr->fltr_info.flag = ICE_FLTR_TX;
+	m_list_itr->fltr_info.vsi_handle = vsi->idx;
+
+	LIST_ADD(&m_list_itr->list_entry, &list_head);
+
+	/* remove the mac filter */
+	ret = ice_remove_mac(hw, &list_head);
+	if (ret != ICE_SUCCESS) {
+		PMD_DRV_LOG(ERR, "Failed to remove MAC filter");
+		ret = -EINVAL;
+		goto DONE;
+	}
+
+	/* Remove the mac addr from mac list */
+	TAILQ_REMOVE(&vsi->mac_list, f, next);
+	rte_free(f);
+	vsi->mac_num--;
+
+	ret = 0;
+DONE:
+	rte_free(m_list_itr);
+	return ret;
+}
+
 /* Enable IRQ0 */
 static void
 ice_pf_enable_irq0(struct ice_hw *hw)
@@ -547,6 +681,9 @@ ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type)
 	struct ice_vsi *vsi = NULL;
 	struct ice_vsi_ctx vsi_ctx;
 	int ret;
+	struct ether_addr broadcast = {
+		.addr_bytes = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff} };
+	struct ether_addr mac_addr;
 	uint16_t max_txqs[ICE_MAX_TRAFFIC_CLASS] = { 0 };
 	uint8_t tc_bitmap = 0x1;
 
@@ -631,6 +768,21 @@ ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type)
 	vsi->info = vsi_ctx.info;
 	pf->vsis_allocated = vsi_ctx.vsis_allocd;
 	pf->vsis_unallocated = vsi_ctx.vsis_unallocated;
+
+	/* MAC configuration */
+	rte_memcpy(pf->dev_addr.addr_bytes,
+		   hw->port_info->mac.perm_addr,
+		   ETH_ADDR_LEN);
+
+	rte_memcpy(&mac_addr, &pf->dev_addr, ETHER_ADDR_LEN);
+	ret = ice_add_mac_filter(vsi, &mac_addr);
+	if (ret != ICE_SUCCESS)
+		PMD_INIT_LOG(ERR, "Failed to add dflt MAC filter");
+
+	rte_memcpy(&mac_addr, &broadcast, ETHER_ADDR_LEN);
+	ret = ice_add_mac_filter(vsi, &mac_addr);
+	if (ret != ICE_SUCCESS)
+		PMD_INIT_LOG(ERR, "Failed to add MAC filter");
 
 	/* At the beginning, only TC0. */
 	/* What we need here is the maximam number of the TX queues.
@@ -1258,6 +1410,89 @@ ice_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	dev_data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
 
 	return 0;
+}
+
+static int ice_macaddr_set(struct rte_eth_dev *dev,
+			   struct ether_addr *mac_addr)
+{
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct ice_vsi *vsi = pf->main_vsi;
+	struct ice_mac_filter *f;
+	uint8_t flags = 0;
+	int ret;
+
+	if (!is_valid_assigned_ether_addr(mac_addr)) {
+		PMD_DRV_LOG(ERR, "Tried to set invalid MAC address.");
+		return -EINVAL;
+	}
+
+	TAILQ_FOREACH(f, &vsi->mac_list, next) {
+		if (is_same_ether_addr(&pf->dev_addr, &f->mac_info.mac_addr))
+			break;
+	}
+
+	if (!f) {
+		PMD_DRV_LOG(ERR, "Failed to find filter for default mac");
+		return -EIO;
+	}
+
+	ret = ice_remove_mac_filter(vsi, &f->mac_info.mac_addr);
+	if (ret != ICE_SUCCESS) {
+		PMD_DRV_LOG(ERR, "Failed to delete mac filter");
+		return -EIO;
+	}
+	ret = ice_add_mac_filter(vsi, mac_addr);
+	if (ret != ICE_SUCCESS) {
+		PMD_DRV_LOG(ERR, "Failed to add mac filter");
+		return -EIO;
+	}
+	memcpy(&pf->dev_addr, mac_addr, ETH_ADDR_LEN);
+
+	flags = ICE_AQC_MAN_MAC_UPDATE_LAA_WOL;
+	ret = ice_aq_manage_mac_write(hw, mac_addr->addr_bytes, flags, NULL);
+	if (ret != ICE_SUCCESS)
+		PMD_DRV_LOG(ERR, "Failed to set manage mac");
+
+	return 0;
+}
+
+/* Add a MAC address, and update filters */
+static int
+ice_macaddr_add(struct rte_eth_dev *dev,
+		struct ether_addr *mac_addr,
+		__rte_unused uint32_t index,
+		__rte_unused uint32_t pool)
+{
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct ice_vsi *vsi = pf->main_vsi;
+	int ret;
+
+	ret = ice_add_mac_filter(vsi, mac_addr);
+	if (ret != ICE_SUCCESS) {
+		PMD_DRV_LOG(ERR, "Failed to add MAC filter");
+		return -EINVAL;
+	}
+
+	return ICE_SUCCESS;
+}
+
+/* Remove a MAC address, and update filters */
+static void
+ice_macaddr_remove(struct rte_eth_dev *dev, uint32_t index)
+{
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct ice_vsi *vsi = pf->main_vsi;
+	struct rte_eth_dev_data *data = dev->data;
+	struct ether_addr *macaddr;
+	int ret;
+
+	macaddr = &data->mac_addrs[index];
+	ret = ice_remove_mac_filter(vsi, macaddr);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to remove MAC filter");
+		return;
+	}
 }
 
 static int
