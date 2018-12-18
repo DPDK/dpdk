@@ -139,4 +139,6 @@ void ice_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 		      struct rte_eth_rxq_info *qinfo);
 void ice_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 		      struct rte_eth_txq_info *qinfo);
+void ice_set_default_ptype_table(struct rte_eth_dev *dev);
+const uint32_t *ice_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 #endif /* _ICE_RXTX_H_ */

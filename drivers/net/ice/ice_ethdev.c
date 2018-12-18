@@ -46,6 +46,7 @@ static const struct eth_dev_ops ice_eth_dev_ops = {
 	.tx_queue_setup               = ice_tx_queue_setup,
 	.tx_queue_release             = ice_tx_queue_release,
 	.dev_infos_get                = ice_dev_info_get,
+	.dev_supported_ptypes_get     = ice_dev_supported_ptypes_get,
 	.link_update                  = ice_link_update,
 	.rxq_info_get                 = ice_rxq_info_get,
 	.txq_info_get                 = ice_txq_info_get,
@@ -681,6 +682,7 @@ ice_dev_init(struct rte_eth_dev *dev)
 
 	dev->dev_ops = &ice_eth_dev_ops;
 
+	ice_set_default_ptype_table(dev);
 	pci_dev = RTE_DEV_TO_PCI(dev->device);
 	intr_handle = &pci_dev->intr_handle;
 
