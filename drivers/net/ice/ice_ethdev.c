@@ -52,6 +52,8 @@ static int ice_rx_queue_intr_enable(struct rte_eth_dev *dev,
 				    uint16_t queue_id);
 static int ice_rx_queue_intr_disable(struct rte_eth_dev *dev,
 				     uint16_t queue_id);
+static int ice_fw_version_get(struct rte_eth_dev *dev, char *fw_version,
+			      size_t fw_size);
 static int ice_vlan_pvid_set(struct rte_eth_dev *dev,
 			     uint16_t pvid, int on);
 
@@ -92,6 +94,7 @@ static const struct eth_dev_ops ice_eth_dev_ops = {
 	.rss_hash_conf_get            = ice_rss_hash_conf_get,
 	.rx_queue_intr_enable         = ice_rx_queue_intr_enable,
 	.rx_queue_intr_disable        = ice_rx_queue_intr_disable,
+	.fw_version_get               = ice_fw_version_get,
 	.vlan_pvid_set                = ice_vlan_pvid_set,
 	.rxq_info_get                 = ice_rxq_info_get,
 	.txq_info_get                 = ice_txq_info_get,
@@ -2480,6 +2483,24 @@ static int ice_rx_queue_intr_disable(struct rte_eth_dev *dev,
 	ICE_WRITE_REG(hw, GLINT_DYN_CTL(msix_intr), GLINT_DYN_CTL_WB_ON_ITR_M);
 
 	return 0;
+}
+
+static int
+ice_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
+{
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
+
+	ret = snprintf(fw_version, fw_size, "%d.%d.%05d %d.%d",
+		       hw->fw_maj_ver, hw->fw_min_ver, hw->fw_build,
+		       hw->api_maj_ver, hw->api_min_ver);
+
+	/* add the size of '\0' */
+	ret += 1;
+	if (fw_size < (u32)ret)
+		return ret;
+	else
+		return 0;
 }
 
 static int
