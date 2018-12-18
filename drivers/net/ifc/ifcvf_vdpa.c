@@ -17,6 +17,8 @@
 #include <rte_vfio.h>
 #include <rte_spinlock.h>
 #include <rte_log.h>
+#include <rte_kvargs.h>
+#include <rte_devargs.h>
 
 #include "base/ifcvf.h"
 
@@ -27,6 +29,13 @@
 #ifndef PAGE_SIZE
 #define PAGE_SIZE 4096
 #endif
+
+#define IFCVF_VDPA_MODE		"vdpa"
+
+static const char * const ifcvf_valid_arguments[] = {
+	IFCVF_VDPA_MODE,
+	NULL
+};
 
 static int ifcvf_vdpa_logtype;
 
@@ -735,6 +744,21 @@ static struct rte_vdpa_dev_ops ifcvf_ops = {
 	.get_notify_area = ifcvf_get_notify_area,
 };
 
+static inline int
+open_int(const char *key __rte_unused, const char *value, void *extra_args)
+{
+	uint16_t *n = extra_args;
+
+	if (value == NULL || extra_args == NULL)
+		return -EINVAL;
+
+	*n = (uint16_t)strtoul(value, NULL, 0);
+	if (*n == USHRT_MAX && errno == ERANGE)
+		return -1;
+
+	return 0;
+}
+
 static int
 ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		struct rte_pci_device *pci_dev)
@@ -742,9 +766,30 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	uint64_t features;
 	struct ifcvf_internal *internal = NULL;
 	struct internal_list *list = NULL;
+	int vdpa_mode = 0;
+	struct rte_kvargs *kvlist = NULL;
+	int ret = 0;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
+
+	kvlist = rte_kvargs_parse(pci_dev->device.devargs->args,
+			ifcvf_valid_arguments);
+	if (kvlist == NULL)
+		return 1;
+
+	/* probe only when vdpa mode is specified */
+	if (rte_kvargs_count(kvlist, IFCVF_VDPA_MODE) == 0) {
+		rte_kvargs_free(kvlist);
+		return 1;
+	}
+
+	ret = rte_kvargs_process(kvlist, IFCVF_VDPA_MODE, &open_int,
+			&vdpa_mode);
+	if (ret < 0 || vdpa_mode == 0) {
+		rte_kvargs_free(kvlist);
+		return 1;
+	}
 
 	list = rte_zmalloc("ifcvf", sizeof(*list), 0);
 	if (list == NULL)
@@ -795,9 +840,11 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	rte_atomic32_set(&internal->started, 1);
 	update_datapath(internal);
 
+	rte_kvargs_free(kvlist);
 	return 0;
 
 error:
+	rte_kvargs_free(kvlist);
 	rte_free(list);
 	rte_free(internal);
 	return -1;

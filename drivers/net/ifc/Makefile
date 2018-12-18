@@ -10,6 +10,7 @@ LIB = librte_pmd_ifc.a
 
 LDLIBS += -lpthread
 LDLIBS += -lrte_eal -lrte_pci -lrte_vhost -lrte_bus_pci
+LDLIBS += -lrte_kvargs
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
