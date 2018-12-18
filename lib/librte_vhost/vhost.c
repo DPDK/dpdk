@@ -401,19 +401,6 @@ vhost_attach_vdpa_device(int vid, int did)
 }
 
 void
-vhost_detach_vdpa_device(int vid)
-{
-	struct virtio_net *dev = get_device(vid);
-
-	if (dev == NULL)
-		return;
-
-	vhost_user_host_notifier_ctrl(vid, false);
-
-	dev->vdpa_dev_id = -1;
-}
-
-void
 vhost_set_ifname(int vid, const char *if_name, unsigned int if_len)
 {
 	struct virtio_net *dev;
