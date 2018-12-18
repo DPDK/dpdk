@@ -1490,6 +1490,64 @@ ice_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 	return NULL;
 }
 
+int
+ice_rx_descriptor_status(void *rx_queue, uint16_t offset)
+{
+	struct ice_rx_queue *rxq = rx_queue;
+	volatile uint64_t *status;
+	uint64_t mask;
+	uint32_t desc;
+
+	if (unlikely(offset >= rxq->nb_rx_desc))
+		return -EINVAL;
+
+	if (offset >= rxq->nb_rx_desc - rxq->nb_rx_hold)
+		return RTE_ETH_RX_DESC_UNAVAIL;
+
+	desc = rxq->rx_tail + offset;
+	if (desc >= rxq->nb_rx_desc)
+		desc -= rxq->nb_rx_desc;
+
+	status = &rxq->rx_ring[desc].wb.qword1.status_error_len;
+	mask = rte_cpu_to_le_64((1ULL << ICE_RX_DESC_STATUS_DD_S) <<
+				ICE_RXD_QW1_STATUS_S);
+	if (*status & mask)
+		return RTE_ETH_RX_DESC_DONE;
+
+	return RTE_ETH_RX_DESC_AVAIL;
+}
+
+int
+ice_tx_descriptor_status(void *tx_queue, uint16_t offset)
+{
+	struct ice_tx_queue *txq = tx_queue;
+	volatile uint64_t *status;
+	uint64_t mask, expect;
+	uint32_t desc;
+
+	if (unlikely(offset >= txq->nb_tx_desc))
+		return -EINVAL;
+
+	desc = txq->tx_tail + offset;
+	/* go to next desc that has the RS bit */
+	desc = ((desc + txq->tx_rs_thresh - 1) / txq->tx_rs_thresh) *
+		txq->tx_rs_thresh;
+	if (desc >= txq->nb_tx_desc) {
+		desc -= txq->nb_tx_desc;
+		if (desc >= txq->nb_tx_desc)
+			desc -= txq->nb_tx_desc;
+	}
+
+	status = &txq->tx_ring[desc].cmd_type_offset_bsz;
+	mask = rte_cpu_to_le_64(ICE_TXD_QW1_DTYPE_M);
+	expect = rte_cpu_to_le_64(ICE_TX_DESC_DTYPE_DESC_DONE <<
+				  ICE_TXD_QW1_DTYPE_S);
+	if ((*status & mask) == expect)
+		return RTE_ETH_TX_DESC_DONE;
+
+	return RTE_ETH_TX_DESC_FULL;
+}
+
 void
 ice_clear_queues(struct rte_eth_dev *dev)
 {
