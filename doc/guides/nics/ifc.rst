@@ -31,13 +31,22 @@ IFCVF's vendor ID and device ID are same as that of virtio net pci device,
 with its specific subsystem vendor ID and device ID. To let the device be
 probed by IFCVF driver, adding "vdpa=1" parameter helps to specify that this
 device is to be used in vDPA mode, rather than polling mode, virtio pmd will
-skip when it detects this message.
+skip when it detects this message. If no this parameter specified, device
+will not be used as a vDPA device, and it will be driven by virtio pmd.
 
 Different VF devices serve different virtio frontends which are in different
 VMs, so each VF needs to have its own DMA address translation service. During
 the driver probe a new container is created for this device, with this
 container vDPA driver can program DMA remapping table with the VM's memory
 region information.
+
+The device argument "sw-live-migration=1" will configure the driver into SW
+assisted live migration mode. In this mode, the driver will set up a SW relay
+thread when LM happens, this thread will help device to log dirty pages. Thus
+this mode does not require HW to implement a dirty page logging function block,
+but will consume some percentage of CPU resource depending on the network
+throughput. If no this parameter specified, driver will rely on device's logging
+capability.
 
 Key IFCVF vDPA driver ops
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -70,6 +79,7 @@ Features
 Features of the IFCVF driver are:
 
 - Compatibility with virtio 0.95 and 1.0.
+- SW assisted vDPA live migration.
 
 
 Prerequisites
