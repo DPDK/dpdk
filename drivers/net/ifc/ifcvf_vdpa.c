@@ -556,6 +556,9 @@ ifcvf_dev_config(int vid)
 	rte_atomic32_set(&internal->dev_attached, 1);
 	update_datapath(internal);
 
+	if (rte_vhost_host_notifier_ctrl(vid, true) != 0)
+		DRV_LOG(NOTICE, "vDPA (%d): software relay is used.", did);
+
 	return 0;
 }
 

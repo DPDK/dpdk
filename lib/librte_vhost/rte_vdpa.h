@@ -11,6 +11,8 @@
  * Device specific vhost lib
  */
 
+#include <stdbool.h>
+
 #include <rte_pci.h>
 #include "rte_vhost.h"
 
@@ -155,4 +157,20 @@ rte_vdpa_get_device(int did);
  */
 int __rte_experimental
 rte_vdpa_get_device_num(void);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Enable/Disable host notifier mapping for a vdpa port.
+ *
+ * @param vid
+ *  vhost device id
+ * @param enable
+ *  true for host notifier map, false for host notifier unmap
+ * @return
+ *  0 on success, -1 on failure
+ */
+int __rte_experimental
+rte_vhost_host_notifier_ctrl(int vid, bool enable);
 #endif /* _RTE_VDPA_H_ */

@@ -2049,11 +2049,6 @@ skip_to_reply:
 		if (vdpa_dev->ops->dev_conf)
 			vdpa_dev->ops->dev_conf(dev->vid);
 		dev->flags |= VIRTIO_DEV_VDPA_CONFIGURED;
-		if (vhost_user_host_notifier_ctrl(dev->vid, true) != 0) {
-			RTE_LOG(INFO, VHOST_CONFIG,
-				"(%d) software relay is used for vDPA, performance may be low.\n",
-				dev->vid);
-		}
 	}
 
 	return 0;
@@ -2148,7 +2143,7 @@ static int vhost_user_slave_set_vring_host_notifier(struct virtio_net *dev,
 	return process_slave_message_reply(dev, &msg);
 }
 
-int vhost_user_host_notifier_ctrl(int vid, bool enable)
+int rte_vhost_host_notifier_ctrl(int vid, bool enable)
 {
 	struct virtio_net *dev;
 	struct rte_vdpa_device *vdpa_dev;
