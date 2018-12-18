@@ -134,6 +134,14 @@ void ice_rx_queue_release(void *rxq);
 void ice_tx_queue_release(void *txq);
 void ice_clear_queues(struct rte_eth_dev *dev);
 void ice_free_queues(struct rte_eth_dev *dev);
+uint16_t ice_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+		       uint16_t nb_pkts);
+uint16_t ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+		       uint16_t nb_pkts);
+void ice_set_rx_function(struct rte_eth_dev *dev);
+uint16_t ice_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
+		       uint16_t nb_pkts);
+void ice_set_tx_function(struct rte_eth_dev *dev);
 uint32_t ice_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 void ice_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 		      struct rte_eth_rxq_info *qinfo);

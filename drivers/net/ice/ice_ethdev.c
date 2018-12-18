@@ -681,6 +681,9 @@ ice_dev_init(struct rte_eth_dev *dev)
 	int ret;
 
 	dev->dev_ops = &ice_eth_dev_ops;
+	dev->rx_pkt_burst = ice_recv_pkts;
+	dev->tx_pkt_burst = ice_xmit_pkts;
+	dev->tx_pkt_prepare = ice_prep_pkts;
 
 	ice_set_default_ptype_table(dev);
 	pci_dev = RTE_DEV_TO_PCI(dev->device);
@@ -962,6 +965,8 @@ ice_dev_start(struct rte_eth_dev *dev)
 		goto rx_err;
 	}
 
+	ice_set_rx_function(dev);
+
 	ret = ice_aq_set_event_mask(hw, hw->port_info->lport,
 				    ((u16)(ICE_AQ_LINK_EVENT_LINK_FAULT |
 				     ICE_AQ_LINK_EVENT_PHY_TEMP_ALARM |
@@ -1029,13 +1034,59 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_mac_addrs = vsi->max_macaddrs;
 	dev_info->max_vfs = pci_dev->max_vfs;
 
-	dev_info->rx_offload_capa = 0;
-	dev_info->tx_offload_capa = 0;
+	dev_info->rx_offload_capa =
+		DEV_RX_OFFLOAD_IPV4_CKSUM |
+		DEV_RX_OFFLOAD_UDP_CKSUM |
+		DEV_RX_OFFLOAD_TCP_CKSUM |
+		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+		DEV_RX_OFFLOAD_KEEP_CRC;
+	dev_info->tx_offload_capa =
+		DEV_TX_OFFLOAD_IPV4_CKSUM |
+		DEV_TX_OFFLOAD_UDP_CKSUM |
+		DEV_TX_OFFLOAD_TCP_CKSUM |
+		DEV_TX_OFFLOAD_SCTP_CKSUM |
+		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+		DEV_TX_OFFLOAD_TCP_TSO |
+		DEV_TX_OFFLOAD_MULTI_SEGS;
 	dev_info->rx_queue_offload_capa = 0;
 	dev_info->tx_queue_offload_capa = 0;
 
 	dev_info->reta_size = hw->func_caps.common_cap.rss_table_size;
 	dev_info->hash_key_size = (VSIQF_HKEY_MAX_INDEX + 1) * sizeof(uint32_t);
+
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_thresh = {
+			.pthresh = ICE_DEFAULT_RX_PTHRESH,
+			.hthresh = ICE_DEFAULT_RX_HTHRESH,
+			.wthresh = ICE_DEFAULT_RX_WTHRESH,
+		},
+		.rx_free_thresh = ICE_DEFAULT_RX_FREE_THRESH,
+		.rx_drop_en = 0,
+		.offloads = 0,
+	};
+
+	dev_info->default_txconf = (struct rte_eth_txconf) {
+		.tx_thresh = {
+			.pthresh = ICE_DEFAULT_TX_PTHRESH,
+			.hthresh = ICE_DEFAULT_TX_HTHRESH,
+			.wthresh = ICE_DEFAULT_TX_WTHRESH,
+		},
+		.tx_free_thresh = ICE_DEFAULT_TX_FREE_THRESH,
+		.tx_rs_thresh = ICE_DEFAULT_TX_RSBIT_THRESH,
+		.offloads = 0,
+	};
+
+	dev_info->rx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = ICE_MAX_RING_DESC,
+		.nb_min = ICE_MIN_RING_DESC,
+		.nb_align = ICE_ALIGN_RING_DESC,
+	};
+
+	dev_info->tx_desc_lim = (struct rte_eth_desc_lim) {
+		.nb_max = ICE_MAX_RING_DESC,
+		.nb_min = ICE_MIN_RING_DESC,
+		.nb_align = ICE_ALIGN_RING_DESC,
+	};
 
 	dev_info->speed_capa = ETH_LINK_SPEED_10M |
 			       ETH_LINK_SPEED_100M |
