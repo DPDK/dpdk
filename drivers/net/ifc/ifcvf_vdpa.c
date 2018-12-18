@@ -22,7 +22,7 @@
 
 #define DRV_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, ifcvf_vdpa_logtype, \
-		"%s(): " fmt "\n", __func__, ##args)
+		"IFCVF %s(): " fmt "\n", __func__, ##args)
 
 #ifndef PAGE_SIZE
 #define PAGE_SIZE 4096
@@ -756,11 +756,16 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	internal->pdev = pci_dev;
 	rte_spinlock_init(&internal->lock);
-	if (ifcvf_vfio_setup(internal) < 0)
-		return -1;
 
-	if (ifcvf_init_hw(&internal->hw, internal->pdev) < 0)
-		return -1;
+	if (ifcvf_vfio_setup(internal) < 0) {
+		DRV_LOG(ERR, "failed to setup device %s", pci_dev->name);
+		goto error;
+	}
+
+	if (ifcvf_init_hw(&internal->hw, internal->pdev) < 0) {
+		DRV_LOG(ERR, "failed to init device %s", pci_dev->name);
+		goto error;
+	}
 
 	internal->max_queues = IFCVF_MAX_QUEUES;
 	features = ifcvf_get_features(&internal->hw);
@@ -782,8 +787,10 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	internal->did = rte_vdpa_register_device(&internal->dev_addr,
 				&ifcvf_ops);
-	if (internal->did < 0)
+	if (internal->did < 0) {
+		DRV_LOG(ERR, "failed to register device %s", pci_dev->name);
 		goto error;
+	}
 
 	rte_atomic32_set(&internal->started, 1);
 	update_datapath(internal);
