@@ -6,12 +6,19 @@
 
 #include "base/ice_sched.h"
 #include "ice_ethdev.h"
+#include "ice_rxtx.h"
 
 #define ICE_MAX_QP_NUM "max_queue_pair_num"
 #define ICE_DFLT_OUTER_TAG_TYPE ICE_AQ_VSI_OUTER_TAG_VLAN_9100
 
 int ice_logtype_init;
 int ice_logtype_driver;
+
+static int ice_dev_configure(struct rte_eth_dev *dev);
+static int ice_dev_start(struct rte_eth_dev *dev);
+static void ice_dev_stop(struct rte_eth_dev *dev);
+static void ice_dev_close(struct rte_eth_dev *dev);
+static int ice_dev_reset(struct rte_eth_dev *dev);
 
 static const struct rte_pci_id pci_id_ice_map[] = {
 	{ RTE_PCI_DEVICE(ICE_INTEL_VENDOR_ID, ICE_DEV_ID_E810C_BACKPLANE) },
@@ -21,7 +28,19 @@ static const struct rte_pci_id pci_id_ice_map[] = {
 };
 
 static const struct eth_dev_ops ice_eth_dev_ops = {
-	.dev_configure                = NULL,
+	.dev_configure                = ice_dev_configure,
+	.dev_start                    = ice_dev_start,
+	.dev_stop                     = ice_dev_stop,
+	.dev_close                    = ice_dev_close,
+	.dev_reset                    = ice_dev_reset,
+	.rx_queue_start               = ice_rx_queue_start,
+	.rx_queue_stop                = ice_rx_queue_stop,
+	.tx_queue_start               = ice_tx_queue_start,
+	.tx_queue_stop                = ice_tx_queue_stop,
+	.rx_queue_setup               = ice_rx_queue_setup,
+	.rx_queue_release             = ice_rx_queue_release,
+	.tx_queue_setup               = ice_tx_queue_setup,
+	.tx_queue_release             = ice_tx_queue_release,
 };
 
 static void
@@ -559,10 +578,40 @@ ice_release_vsi(struct ice_vsi *vsi)
 }
 
 static void
+ice_dev_stop(struct rte_eth_dev *dev)
+{
+	struct rte_eth_dev_data *data = dev->data;
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	uint16_t i;
+
+	/* avoid stopping again */
+	if (pf->adapter_stopped)
+		return;
+
+	/* stop and clear all Rx queues */
+	for (i = 0; i < data->nb_rx_queues; i++)
+		ice_rx_queue_stop(dev, i);
+
+	/* stop and clear all Tx queues */
+	for (i = 0; i < data->nb_tx_queues; i++)
+		ice_tx_queue_stop(dev, i);
+
+	/* Clear all queues and release mbufs */
+	ice_clear_queues(dev);
+
+	pf->adapter_stopped = true;
+}
+
+static void
 ice_dev_close(struct rte_eth_dev *dev)
 {
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	ice_dev_stop(dev);
+
+	/* release all queue resource */
+	ice_free_queues(dev);
 
 	ice_res_pool_destroy(&pf->msix_pool);
 	ice_release_vsi(pf->main_vsi);
@@ -589,6 +638,154 @@ ice_dev_uninit(struct rte_eth_dev *dev)
 	ice_sched_cleanup_all(hw);
 	rte_free(hw->port_info);
 	ice_shutdown_all_ctrlq(hw);
+
+	return 0;
+}
+
+static int
+ice_dev_configure(__rte_unused struct rte_eth_dev *dev)
+{
+	struct ice_adapter *ad =
+		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+
+	/* Initialize to TRUE. If any of Rx queues doesn't meet the
+	 * bulk allocation or vector Rx preconditions we will reset it.
+	 */
+	ad->rx_bulk_alloc_allowed = true;
+	ad->tx_simple_allowed = true;
+
+	return 0;
+}
+
+static int ice_init_rss(struct ice_pf *pf)
+{
+	struct ice_hw *hw = ICE_PF_TO_HW(pf);
+	struct ice_vsi *vsi = pf->main_vsi;
+	struct rte_eth_dev *dev = pf->adapter->eth_dev;
+	struct rte_eth_rss_conf *rss_conf;
+	struct ice_aqc_get_set_rss_keys key;
+	uint16_t i, nb_q;
+	int ret = 0;
+
+	rss_conf = &dev->data->dev_conf.rx_adv_conf.rss_conf;
+	nb_q = dev->data->nb_rx_queues;
+	vsi->rss_key_size = ICE_AQC_GET_SET_RSS_KEY_DATA_RSS_KEY_SIZE;
+	vsi->rss_lut_size = hw->func_caps.common_cap.rss_table_size;
+
+	if (!vsi->rss_key)
+		vsi->rss_key = rte_zmalloc(NULL,
+					   vsi->rss_key_size, 0);
+	if (!vsi->rss_lut)
+		vsi->rss_lut = rte_zmalloc(NULL,
+					   vsi->rss_lut_size, 0);
+
+	/* configure RSS key */
+	if (!rss_conf->rss_key) {
+		/* Calculate the default hash key */
+		for (i = 0; i <= vsi->rss_key_size; i++)
+			vsi->rss_key[i] = (uint8_t)rte_rand();
+	} else {
+		rte_memcpy(vsi->rss_key, rss_conf->rss_key,
+			   RTE_MIN(rss_conf->rss_key_len,
+				   vsi->rss_key_size));
+	}
+	rte_memcpy(key.standard_rss_key, vsi->rss_key, vsi->rss_key_size);
+	ret = ice_aq_set_rss_key(hw, vsi->idx, &key);
+	if (ret)
+		return -EINVAL;
+
+	/* init RSS LUT table */
+	for (i = 0; i < vsi->rss_lut_size; i++)
+		vsi->rss_lut[i] = i % nb_q;
+
+	ret = ice_aq_set_rss_lut(hw, vsi->idx,
+				 ICE_AQC_GSET_RSS_LUT_TABLE_TYPE_PF,
+				 vsi->rss_lut, vsi->rss_lut_size);
+	if (ret)
+		return -EINVAL;
+
+	return 0;
+}
+
+static int
+ice_dev_start(struct rte_eth_dev *dev)
+{
+	struct rte_eth_dev_data *data = dev->data;
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	uint16_t nb_rxq = 0;
+	uint16_t nb_txq, i;
+	int ret;
+
+	/* program Tx queues' context in hardware */
+	for (nb_txq = 0; nb_txq < data->nb_tx_queues; nb_txq++) {
+		ret = ice_tx_queue_start(dev, nb_txq);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "fail to start Tx queue %u", nb_txq);
+			goto tx_err;
+		}
+	}
+
+	/* program Rx queues' context in hardware*/
+	for (nb_rxq = 0; nb_rxq < data->nb_rx_queues; nb_rxq++) {
+		ret = ice_rx_queue_start(dev, nb_rxq);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "fail to start Rx queue %u", nb_rxq);
+			goto rx_err;
+		}
+	}
+
+	ret = ice_init_rss(pf);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to enable rss for PF");
+		goto rx_err;
+	}
+
+	ret = ice_aq_set_event_mask(hw, hw->port_info->lport,
+				    ((u16)(ICE_AQ_LINK_EVENT_LINK_FAULT |
+				     ICE_AQ_LINK_EVENT_PHY_TEMP_ALARM |
+				     ICE_AQ_LINK_EVENT_EXCESSIVE_ERRORS |
+				     ICE_AQ_LINK_EVENT_SIGNAL_DETECT |
+				     ICE_AQ_LINK_EVENT_AN_COMPLETED |
+				     ICE_AQ_LINK_EVENT_PORT_TX_SUSPENDED)),
+				     NULL);
+	if (ret != ICE_SUCCESS)
+		PMD_DRV_LOG(WARNING, "Fail to set phy mask");
+
+	pf->adapter_stopped = false;
+
+	return 0;
+
+	/* stop the started queues if failed to start all queues */
+rx_err:
+	for (i = 0; i < nb_rxq; i++)
+		ice_rx_queue_stop(dev, i);
+tx_err:
+	for (i = 0; i < nb_txq; i++)
+		ice_tx_queue_stop(dev, i);
+
+	return -EIO;
+}
+
+static int
+ice_dev_reset(struct rte_eth_dev *dev)
+{
+	int ret;
+
+	if (dev->data->sriov.active)
+		return -ENOTSUP;
+
+	ret = ice_dev_uninit(dev);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "failed to uninit device, status = %d", ret);
+		return -ENXIO;
+	}
+
+	ret = ice_dev_init(dev);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "failed to init device, status = %d", ret);
+		return -ENXIO;
+	}
 
 	return 0;
 }

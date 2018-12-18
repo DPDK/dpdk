@@ -5,7 +5,8 @@ subdir('base')
 objs = [base_objs]
 
 sources = files(
-	'ice_ethdev.c'
+	'ice_ethdev.c',
+	'ice_rxtx.c'
 	)
 
 deps += ['hash']
