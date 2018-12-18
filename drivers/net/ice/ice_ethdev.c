@@ -59,6 +59,14 @@ static int ice_vlan_pvid_set(struct rte_eth_dev *dev,
 static int ice_get_eeprom_length(struct rte_eth_dev *dev);
 static int ice_get_eeprom(struct rte_eth_dev *dev,
 			  struct rte_dev_eeprom_info *eeprom);
+static int ice_stats_get(struct rte_eth_dev *dev,
+			 struct rte_eth_stats *stats);
+static void ice_stats_reset(struct rte_eth_dev *dev);
+static int ice_xstats_get(struct rte_eth_dev *dev,
+			  struct rte_eth_xstat *xstats, unsigned int n);
+static int ice_xstats_get_names(struct rte_eth_dev *dev,
+				struct rte_eth_xstat_name *xstats_names,
+				unsigned int limit);
 
 static const struct rte_pci_id pci_id_ice_map[] = {
 	{ RTE_PCI_DEVICE(ICE_INTEL_VENDOR_ID, ICE_DEV_ID_E810C_BACKPLANE) },
@@ -104,7 +112,91 @@ static const struct eth_dev_ops ice_eth_dev_ops = {
 	.get_eeprom_length            = ice_get_eeprom_length,
 	.get_eeprom                   = ice_get_eeprom,
 	.rx_queue_count               = ice_rx_queue_count,
+	.stats_get                    = ice_stats_get,
+	.stats_reset                  = ice_stats_reset,
+	.xstats_get                   = ice_xstats_get,
+	.xstats_get_names             = ice_xstats_get_names,
+	.xstats_reset                 = ice_stats_reset,
 };
+
+/* store statistics names and its offset in stats structure */
+struct ice_xstats_name_off {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	unsigned int offset;
+};
+
+static const struct ice_xstats_name_off ice_stats_strings[] = {
+	{"rx_unicast_packets", offsetof(struct ice_eth_stats, rx_unicast)},
+	{"rx_multicast_packets", offsetof(struct ice_eth_stats, rx_multicast)},
+	{"rx_broadcast_packets", offsetof(struct ice_eth_stats, rx_broadcast)},
+	{"rx_dropped", offsetof(struct ice_eth_stats, rx_discards)},
+	{"rx_unknown_protocol_packets", offsetof(struct ice_eth_stats,
+		rx_unknown_protocol)},
+	{"tx_unicast_packets", offsetof(struct ice_eth_stats, tx_unicast)},
+	{"tx_multicast_packets", offsetof(struct ice_eth_stats, tx_multicast)},
+	{"tx_broadcast_packets", offsetof(struct ice_eth_stats, tx_broadcast)},
+	{"tx_dropped", offsetof(struct ice_eth_stats, tx_discards)},
+};
+
+#define ICE_NB_ETH_XSTATS (sizeof(ice_stats_strings) / \
+		sizeof(ice_stats_strings[0]))
+
+static const struct ice_xstats_name_off ice_hw_port_strings[] = {
+	{"tx_link_down_dropped", offsetof(struct ice_hw_port_stats,
+		tx_dropped_link_down)},
+	{"rx_crc_errors", offsetof(struct ice_hw_port_stats, crc_errors)},
+	{"rx_illegal_byte_errors", offsetof(struct ice_hw_port_stats,
+		illegal_bytes)},
+	{"rx_error_bytes", offsetof(struct ice_hw_port_stats, error_bytes)},
+	{"mac_local_errors", offsetof(struct ice_hw_port_stats,
+		mac_local_faults)},
+	{"mac_remote_errors", offsetof(struct ice_hw_port_stats,
+		mac_remote_faults)},
+	{"rx_len_errors", offsetof(struct ice_hw_port_stats,
+		rx_len_errors)},
+	{"tx_xon_packets", offsetof(struct ice_hw_port_stats, link_xon_tx)},
+	{"rx_xon_packets", offsetof(struct ice_hw_port_stats, link_xon_rx)},
+	{"tx_xoff_packets", offsetof(struct ice_hw_port_stats, link_xoff_tx)},
+	{"rx_xoff_packets", offsetof(struct ice_hw_port_stats, link_xoff_rx)},
+	{"rx_size_64_packets", offsetof(struct ice_hw_port_stats, rx_size_64)},
+	{"rx_size_65_to_127_packets", offsetof(struct ice_hw_port_stats,
+		rx_size_127)},
+	{"rx_size_128_to_255_packets", offsetof(struct ice_hw_port_stats,
+		rx_size_255)},
+	{"rx_size_256_to_511_packets", offsetof(struct ice_hw_port_stats,
+		rx_size_511)},
+	{"rx_size_512_to_1023_packets", offsetof(struct ice_hw_port_stats,
+		rx_size_1023)},
+	{"rx_size_1024_to_1522_packets", offsetof(struct ice_hw_port_stats,
+		rx_size_1522)},
+	{"rx_size_1523_to_max_packets", offsetof(struct ice_hw_port_stats,
+		rx_size_big)},
+	{"rx_undersized_errors", offsetof(struct ice_hw_port_stats,
+		rx_undersize)},
+	{"rx_oversize_errors", offsetof(struct ice_hw_port_stats,
+		rx_oversize)},
+	{"rx_mac_short_pkt_dropped", offsetof(struct ice_hw_port_stats,
+		mac_short_pkt_dropped)},
+	{"rx_fragmented_errors", offsetof(struct ice_hw_port_stats,
+		rx_fragments)},
+	{"rx_jabber_errors", offsetof(struct ice_hw_port_stats, rx_jabber)},
+	{"tx_size_64_packets", offsetof(struct ice_hw_port_stats, tx_size_64)},
+	{"tx_size_65_to_127_packets", offsetof(struct ice_hw_port_stats,
+		tx_size_127)},
+	{"tx_size_128_to_255_packets", offsetof(struct ice_hw_port_stats,
+		tx_size_255)},
+	{"tx_size_256_to_511_packets", offsetof(struct ice_hw_port_stats,
+		tx_size_511)},
+	{"tx_size_512_to_1023_packets", offsetof(struct ice_hw_port_stats,
+		tx_size_1023)},
+	{"tx_size_1024_to_1522_packets", offsetof(struct ice_hw_port_stats,
+		tx_size_1522)},
+	{"tx_size_1523_to_max_packets", offsetof(struct ice_hw_port_stats,
+		tx_size_big)},
+};
+
+#define ICE_NB_HW_PORT_XSTATS (sizeof(ice_hw_port_strings) / \
+		sizeof(ice_hw_port_strings[0]))
 
 static void
 ice_init_controlq_parameter(struct ice_hw *hw)
@@ -2630,6 +2722,480 @@ ice_get_eeprom(struct rte_eth_dev *dev,
 	}
 
 	return 0;
+}
+
+static void
+ice_stat_update_32(struct ice_hw *hw,
+		   uint32_t reg,
+		   bool offset_loaded,
+		   uint64_t *offset,
+		   uint64_t *stat)
+{
+	uint64_t new_data;
+
+	new_data = (uint64_t)ICE_READ_REG(hw, reg);
+	if (!offset_loaded)
+		*offset = new_data;
+
+	if (new_data >= *offset)
+		*stat = (uint64_t)(new_data - *offset);
+	else
+		*stat = (uint64_t)((new_data +
+				    ((uint64_t)1 << ICE_32_BIT_WIDTH))
+				   - *offset);
+}
+
+static void
+ice_stat_update_40(struct ice_hw *hw,
+		   uint32_t hireg,
+		   uint32_t loreg,
+		   bool offset_loaded,
+		   uint64_t *offset,
+		   uint64_t *stat)
+{
+	uint64_t new_data;
+
+	new_data = (uint64_t)ICE_READ_REG(hw, loreg);
+	new_data |= (uint64_t)(ICE_READ_REG(hw, hireg) & ICE_8_BIT_MASK) <<
+		    ICE_32_BIT_WIDTH;
+
+	if (!offset_loaded)
+		*offset = new_data;
+
+	if (new_data >= *offset)
+		*stat = new_data - *offset;
+	else
+		*stat = (uint64_t)((new_data +
+				    ((uint64_t)1 << ICE_40_BIT_WIDTH)) -
+				   *offset);
+
+	*stat &= ICE_40_BIT_MASK;
+}
+
+/* Get all the statistics of a VSI */
+static void
+ice_update_vsi_stats(struct ice_vsi *vsi)
+{
+	struct ice_eth_stats *oes = &vsi->eth_stats_offset;
+	struct ice_eth_stats *nes = &vsi->eth_stats;
+	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
+	int idx = rte_le_to_cpu_16(vsi->vsi_id);
+
+	ice_stat_update_40(hw, GLV_GORCH(idx), GLV_GORCL(idx),
+			   vsi->offset_loaded, &oes->rx_bytes,
+			   &nes->rx_bytes);
+	ice_stat_update_40(hw, GLV_UPRCH(idx), GLV_UPRCL(idx),
+			   vsi->offset_loaded, &oes->rx_unicast,
+			   &nes->rx_unicast);
+	ice_stat_update_40(hw, GLV_MPRCH(idx), GLV_MPRCL(idx),
+			   vsi->offset_loaded, &oes->rx_multicast,
+			   &nes->rx_multicast);
+	ice_stat_update_40(hw, GLV_BPRCH(idx), GLV_BPRCL(idx),
+			   vsi->offset_loaded, &oes->rx_broadcast,
+			   &nes->rx_broadcast);
+	/* exclude CRC bytes */
+	nes->rx_bytes -= (nes->rx_unicast + nes->rx_multicast +
+			  nes->rx_broadcast) * ETHER_CRC_LEN;
+
+	ice_stat_update_32(hw, GLV_RDPC(idx), vsi->offset_loaded,
+			   &oes->rx_discards, &nes->rx_discards);
+	/* GLV_REPC not supported */
+	/* GLV_RMPC not supported */
+	ice_stat_update_32(hw, GLSWID_RUPP(idx), vsi->offset_loaded,
+			   &oes->rx_unknown_protocol,
+			   &nes->rx_unknown_protocol);
+	ice_stat_update_40(hw, GLV_GOTCH(idx), GLV_GOTCL(idx),
+			   vsi->offset_loaded, &oes->tx_bytes,
+			   &nes->tx_bytes);
+	ice_stat_update_40(hw, GLV_UPTCH(idx), GLV_UPTCL(idx),
+			   vsi->offset_loaded, &oes->tx_unicast,
+			   &nes->tx_unicast);
+	ice_stat_update_40(hw, GLV_MPTCH(idx), GLV_MPTCL(idx),
+			   vsi->offset_loaded, &oes->tx_multicast,
+			   &nes->tx_multicast);
+	ice_stat_update_40(hw, GLV_BPTCH(idx), GLV_BPTCL(idx),
+			   vsi->offset_loaded,  &oes->tx_broadcast,
+			   &nes->tx_broadcast);
+	/* GLV_TDPC not supported */
+	ice_stat_update_32(hw, GLV_TEPC(idx), vsi->offset_loaded,
+			   &oes->tx_errors, &nes->tx_errors);
+	vsi->offset_loaded = true;
+
+	PMD_DRV_LOG(DEBUG, "************** VSI[%u] stats start **************",
+		    vsi->vsi_id);
+	PMD_DRV_LOG(DEBUG, "rx_bytes:            %"PRIu64"", nes->rx_bytes);
+	PMD_DRV_LOG(DEBUG, "rx_unicast:          %"PRIu64"", nes->rx_unicast);
+	PMD_DRV_LOG(DEBUG, "rx_multicast:        %"PRIu64"", nes->rx_multicast);
+	PMD_DRV_LOG(DEBUG, "rx_broadcast:        %"PRIu64"", nes->rx_broadcast);
+	PMD_DRV_LOG(DEBUG, "rx_discards:         %"PRIu64"", nes->rx_discards);
+	PMD_DRV_LOG(DEBUG, "rx_unknown_protocol: %"PRIu64"",
+		    nes->rx_unknown_protocol);
+	PMD_DRV_LOG(DEBUG, "tx_bytes:            %"PRIu64"", nes->tx_bytes);
+	PMD_DRV_LOG(DEBUG, "tx_unicast:          %"PRIu64"", nes->tx_unicast);
+	PMD_DRV_LOG(DEBUG, "tx_multicast:        %"PRIu64"", nes->tx_multicast);
+	PMD_DRV_LOG(DEBUG, "tx_broadcast:        %"PRIu64"", nes->tx_broadcast);
+	PMD_DRV_LOG(DEBUG, "tx_discards:         %"PRIu64"", nes->tx_discards);
+	PMD_DRV_LOG(DEBUG, "tx_errors:           %"PRIu64"", nes->tx_errors);
+	PMD_DRV_LOG(DEBUG, "************** VSI[%u] stats end ****************",
+		    vsi->vsi_id);
+}
+
+static void
+ice_read_stats_registers(struct ice_pf *pf, struct ice_hw *hw)
+{
+	struct ice_hw_port_stats *ns = &pf->stats; /* new stats */
+	struct ice_hw_port_stats *os = &pf->stats_offset; /* old stats */
+
+	/* Get statistics of struct ice_eth_stats */
+	ice_stat_update_40(hw, GLPRT_GORCH(hw->port_info->lport),
+			   GLPRT_GORCL(hw->port_info->lport),
+			   pf->offset_loaded, &os->eth.rx_bytes,
+			   &ns->eth.rx_bytes);
+	ice_stat_update_40(hw, GLPRT_UPRCH(hw->port_info->lport),
+			   GLPRT_UPRCL(hw->port_info->lport),
+			   pf->offset_loaded, &os->eth.rx_unicast,
+			   &ns->eth.rx_unicast);
+	ice_stat_update_40(hw, GLPRT_MPRCH(hw->port_info->lport),
+			   GLPRT_MPRCL(hw->port_info->lport),
+			   pf->offset_loaded, &os->eth.rx_multicast,
+			   &ns->eth.rx_multicast);
+	ice_stat_update_40(hw, GLPRT_BPRCH(hw->port_info->lport),
+			   GLPRT_BPRCL(hw->port_info->lport),
+			   pf->offset_loaded, &os->eth.rx_broadcast,
+			   &ns->eth.rx_broadcast);
+	ice_stat_update_32(hw, PRTRPB_RDPC,
+			   pf->offset_loaded, &os->eth.rx_discards,
+			   &ns->eth.rx_discards);
+
+	/* Workaround: CRC size should not be included in byte statistics,
+	 * so subtract ETHER_CRC_LEN from the byte counter for each rx packet.
+	 */
+	ns->eth.rx_bytes -= (ns->eth.rx_unicast + ns->eth.rx_multicast +
+			     ns->eth.rx_broadcast) * ETHER_CRC_LEN;
+
+	/* GLPRT_REPC not supported */
+	/* GLPRT_RMPC not supported */
+	ice_stat_update_32(hw, GLSWID_RUPP(hw->port_info->lport),
+			   pf->offset_loaded,
+			   &os->eth.rx_unknown_protocol,
+			   &ns->eth.rx_unknown_protocol);
+	ice_stat_update_40(hw, GLPRT_GOTCH(hw->port_info->lport),
+			   GLPRT_GOTCL(hw->port_info->lport),
+			   pf->offset_loaded, &os->eth.tx_bytes,
+			   &ns->eth.tx_bytes);
+	ice_stat_update_40(hw, GLPRT_UPTCH(hw->port_info->lport),
+			   GLPRT_UPTCL(hw->port_info->lport),
+			   pf->offset_loaded, &os->eth.tx_unicast,
+			   &ns->eth.tx_unicast);
+	ice_stat_update_40(hw, GLPRT_MPTCH(hw->port_info->lport),
+			   GLPRT_MPTCL(hw->port_info->lport),
+			   pf->offset_loaded, &os->eth.tx_multicast,
+			   &ns->eth.tx_multicast);
+	ice_stat_update_40(hw, GLPRT_BPTCH(hw->port_info->lport),
+			   GLPRT_BPTCL(hw->port_info->lport),
+			   pf->offset_loaded, &os->eth.tx_broadcast,
+			   &ns->eth.tx_broadcast);
+	ns->eth.tx_bytes -= (ns->eth.tx_unicast + ns->eth.tx_multicast +
+			     ns->eth.tx_broadcast) * ETHER_CRC_LEN;
+
+	/* GLPRT_TEPC not supported */
+
+	/* additional port specific stats */
+	ice_stat_update_32(hw, GLPRT_TDOLD(hw->port_info->lport),
+			   pf->offset_loaded, &os->tx_dropped_link_down,
+			   &ns->tx_dropped_link_down);
+	ice_stat_update_32(hw, GLPRT_CRCERRS(hw->port_info->lport),
+			   pf->offset_loaded, &os->crc_errors,
+			   &ns->crc_errors);
+	ice_stat_update_32(hw, GLPRT_ILLERRC(hw->port_info->lport),
+			   pf->offset_loaded, &os->illegal_bytes,
+			   &ns->illegal_bytes);
+	/* GLPRT_ERRBC not supported */
+	ice_stat_update_32(hw, GLPRT_MLFC(hw->port_info->lport),
+			   pf->offset_loaded, &os->mac_local_faults,
+			   &ns->mac_local_faults);
+	ice_stat_update_32(hw, GLPRT_MRFC(hw->port_info->lport),
+			   pf->offset_loaded, &os->mac_remote_faults,
+			   &ns->mac_remote_faults);
+
+	ice_stat_update_32(hw, GLPRT_RLEC(hw->port_info->lport),
+			   pf->offset_loaded, &os->rx_len_errors,
+			   &ns->rx_len_errors);
+
+	ice_stat_update_32(hw, GLPRT_LXONRXC(hw->port_info->lport),
+			   pf->offset_loaded, &os->link_xon_rx,
+			   &ns->link_xon_rx);
+	ice_stat_update_32(hw, GLPRT_LXOFFRXC(hw->port_info->lport),
+			   pf->offset_loaded, &os->link_xoff_rx,
+			   &ns->link_xoff_rx);
+	ice_stat_update_32(hw, GLPRT_LXONTXC(hw->port_info->lport),
+			   pf->offset_loaded, &os->link_xon_tx,
+			   &ns->link_xon_tx);
+	ice_stat_update_32(hw, GLPRT_LXOFFTXC(hw->port_info->lport),
+			   pf->offset_loaded, &os->link_xoff_tx,
+			   &ns->link_xoff_tx);
+	ice_stat_update_40(hw, GLPRT_PRC64H(hw->port_info->lport),
+			   GLPRT_PRC64L(hw->port_info->lport),
+			   pf->offset_loaded, &os->rx_size_64,
+			   &ns->rx_size_64);
+	ice_stat_update_40(hw, GLPRT_PRC127H(hw->port_info->lport),
+			   GLPRT_PRC127L(hw->port_info->lport),
+			   pf->offset_loaded, &os->rx_size_127,
+			   &ns->rx_size_127);
+	ice_stat_update_40(hw, GLPRT_PRC255H(hw->port_info->lport),
+			   GLPRT_PRC255L(hw->port_info->lport),
+			   pf->offset_loaded, &os->rx_size_255,
+			   &ns->rx_size_255);
+	ice_stat_update_40(hw, GLPRT_PRC511H(hw->port_info->lport),
+			   GLPRT_PRC511L(hw->port_info->lport),
+			   pf->offset_loaded, &os->rx_size_511,
+			   &ns->rx_size_511);
+	ice_stat_update_40(hw, GLPRT_PRC1023H(hw->port_info->lport),
+			   GLPRT_PRC1023L(hw->port_info->lport),
+			   pf->offset_loaded, &os->rx_size_1023,
+			   &ns->rx_size_1023);
+	ice_stat_update_40(hw, GLPRT_PRC1522H(hw->port_info->lport),
+			   GLPRT_PRC1522L(hw->port_info->lport),
+			   pf->offset_loaded, &os->rx_size_1522,
+			   &ns->rx_size_1522);
+	ice_stat_update_40(hw, GLPRT_PRC9522H(hw->port_info->lport),
+			   GLPRT_PRC9522L(hw->port_info->lport),
+			   pf->offset_loaded, &os->rx_size_big,
+			   &ns->rx_size_big);
+	ice_stat_update_32(hw, GLPRT_RUC(hw->port_info->lport),
+			   pf->offset_loaded, &os->rx_undersize,
+			   &ns->rx_undersize);
+	ice_stat_update_32(hw, GLPRT_RFC(hw->port_info->lport),
+			   pf->offset_loaded, &os->rx_fragments,
+			   &ns->rx_fragments);
+	ice_stat_update_32(hw, GLPRT_ROC(hw->port_info->lport),
+			   pf->offset_loaded, &os->rx_oversize,
+			   &ns->rx_oversize);
+	ice_stat_update_32(hw, GLPRT_RJC(hw->port_info->lport),
+			   pf->offset_loaded, &os->rx_jabber,
+			   &ns->rx_jabber);
+	ice_stat_update_40(hw, GLPRT_PTC64H(hw->port_info->lport),
+			   GLPRT_PTC64L(hw->port_info->lport),
+			   pf->offset_loaded, &os->tx_size_64,
+			   &ns->tx_size_64);
+	ice_stat_update_40(hw, GLPRT_PTC127H(hw->port_info->lport),
+			   GLPRT_PTC127L(hw->port_info->lport),
+			   pf->offset_loaded, &os->tx_size_127,
+			   &ns->tx_size_127);
+	ice_stat_update_40(hw, GLPRT_PTC255H(hw->port_info->lport),
+			   GLPRT_PTC255L(hw->port_info->lport),
+			   pf->offset_loaded, &os->tx_size_255,
+			   &ns->tx_size_255);
+	ice_stat_update_40(hw, GLPRT_PTC511H(hw->port_info->lport),
+			   GLPRT_PTC511L(hw->port_info->lport),
+			   pf->offset_loaded, &os->tx_size_511,
+			   &ns->tx_size_511);
+	ice_stat_update_40(hw, GLPRT_PTC1023H(hw->port_info->lport),
+			   GLPRT_PTC1023L(hw->port_info->lport),
+			   pf->offset_loaded, &os->tx_size_1023,
+			   &ns->tx_size_1023);
+	ice_stat_update_40(hw, GLPRT_PTC1522H(hw->port_info->lport),
+			   GLPRT_PTC1522L(hw->port_info->lport),
+			   pf->offset_loaded, &os->tx_size_1522,
+			   &ns->tx_size_1522);
+	ice_stat_update_40(hw, GLPRT_PTC9522H(hw->port_info->lport),
+			   GLPRT_PTC9522L(hw->port_info->lport),
+			   pf->offset_loaded, &os->tx_size_big,
+			   &ns->tx_size_big);
+
+	/* GLPRT_MSPDC not supported */
+	/* GLPRT_XEC not supported */
+
+	pf->offset_loaded = true;
+
+	if (pf->main_vsi)
+		ice_update_vsi_stats(pf->main_vsi);
+}
+
+/* Get all statistics of a port */
+static int
+ice_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+{
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ice_hw_port_stats *ns = &pf->stats; /* new stats */
+
+	/* call read registers - updates values, now write them to struct */
+	ice_read_stats_registers(pf, hw);
+
+	stats->ipackets = ns->eth.rx_unicast +
+			  ns->eth.rx_multicast +
+			  ns->eth.rx_broadcast -
+			  ns->eth.rx_discards -
+			  pf->main_vsi->eth_stats.rx_discards;
+	stats->opackets = ns->eth.tx_unicast +
+			  ns->eth.tx_multicast +
+			  ns->eth.tx_broadcast;
+	stats->ibytes   = ns->eth.rx_bytes;
+	stats->obytes   = ns->eth.tx_bytes;
+	stats->oerrors  = ns->eth.tx_errors +
+			  pf->main_vsi->eth_stats.tx_errors;
+
+	/* Rx Errors */
+	stats->imissed  = ns->eth.rx_discards +
+			  pf->main_vsi->eth_stats.rx_discards;
+	stats->ierrors  = ns->crc_errors +
+			  ns->rx_undersize +
+			  ns->rx_oversize + ns->rx_fragments + ns->rx_jabber;
+
+	PMD_DRV_LOG(DEBUG, "*************** PF stats start *****************");
+	PMD_DRV_LOG(DEBUG, "rx_bytes:	%"PRIu64"", ns->eth.rx_bytes);
+	PMD_DRV_LOG(DEBUG, "rx_unicast:	%"PRIu64"", ns->eth.rx_unicast);
+	PMD_DRV_LOG(DEBUG, "rx_multicast:%"PRIu64"", ns->eth.rx_multicast);
+	PMD_DRV_LOG(DEBUG, "rx_broadcast:%"PRIu64"", ns->eth.rx_broadcast);
+	PMD_DRV_LOG(DEBUG, "rx_discards:%"PRIu64"", ns->eth.rx_discards);
+	PMD_DRV_LOG(DEBUG, "vsi rx_discards:%"PRIu64"",
+		    pf->main_vsi->eth_stats.rx_discards);
+	PMD_DRV_LOG(DEBUG, "rx_unknown_protocol:  %"PRIu64"",
+		    ns->eth.rx_unknown_protocol);
+	PMD_DRV_LOG(DEBUG, "tx_bytes:	%"PRIu64"", ns->eth.tx_bytes);
+	PMD_DRV_LOG(DEBUG, "tx_unicast:	%"PRIu64"", ns->eth.tx_unicast);
+	PMD_DRV_LOG(DEBUG, "tx_multicast:%"PRIu64"", ns->eth.tx_multicast);
+	PMD_DRV_LOG(DEBUG, "tx_broadcast:%"PRIu64"", ns->eth.tx_broadcast);
+	PMD_DRV_LOG(DEBUG, "tx_discards:%"PRIu64"", ns->eth.tx_discards);
+	PMD_DRV_LOG(DEBUG, "vsi tx_discards:%"PRIu64"",
+		    pf->main_vsi->eth_stats.tx_discards);
+	PMD_DRV_LOG(DEBUG, "tx_errors:		%"PRIu64"", ns->eth.tx_errors);
+
+	PMD_DRV_LOG(DEBUG, "tx_dropped_link_down:	%"PRIu64"",
+		    ns->tx_dropped_link_down);
+	PMD_DRV_LOG(DEBUG, "crc_errors:	%"PRIu64"", ns->crc_errors);
+	PMD_DRV_LOG(DEBUG, "illegal_bytes:	%"PRIu64"",
+		    ns->illegal_bytes);
+	PMD_DRV_LOG(DEBUG, "error_bytes:	%"PRIu64"", ns->error_bytes);
+	PMD_DRV_LOG(DEBUG, "mac_local_faults:	%"PRIu64"",
+		    ns->mac_local_faults);
+	PMD_DRV_LOG(DEBUG, "mac_remote_faults:	%"PRIu64"",
+		    ns->mac_remote_faults);
+	PMD_DRV_LOG(DEBUG, "link_xon_rx:	%"PRIu64"", ns->link_xon_rx);
+	PMD_DRV_LOG(DEBUG, "link_xoff_rx:	%"PRIu64"", ns->link_xoff_rx);
+	PMD_DRV_LOG(DEBUG, "link_xon_tx:	%"PRIu64"", ns->link_xon_tx);
+	PMD_DRV_LOG(DEBUG, "link_xoff_tx:	%"PRIu64"", ns->link_xoff_tx);
+	PMD_DRV_LOG(DEBUG, "rx_size_64:		%"PRIu64"", ns->rx_size_64);
+	PMD_DRV_LOG(DEBUG, "rx_size_127:	%"PRIu64"", ns->rx_size_127);
+	PMD_DRV_LOG(DEBUG, "rx_size_255:	%"PRIu64"", ns->rx_size_255);
+	PMD_DRV_LOG(DEBUG, "rx_size_511:	%"PRIu64"", ns->rx_size_511);
+	PMD_DRV_LOG(DEBUG, "rx_size_1023:	%"PRIu64"", ns->rx_size_1023);
+	PMD_DRV_LOG(DEBUG, "rx_size_1522:	%"PRIu64"", ns->rx_size_1522);
+	PMD_DRV_LOG(DEBUG, "rx_size_big:	%"PRIu64"", ns->rx_size_big);
+	PMD_DRV_LOG(DEBUG, "rx_undersize:	%"PRIu64"", ns->rx_undersize);
+	PMD_DRV_LOG(DEBUG, "rx_fragments:	%"PRIu64"", ns->rx_fragments);
+	PMD_DRV_LOG(DEBUG, "rx_oversize:	%"PRIu64"", ns->rx_oversize);
+	PMD_DRV_LOG(DEBUG, "rx_jabber:		%"PRIu64"", ns->rx_jabber);
+	PMD_DRV_LOG(DEBUG, "tx_size_64:		%"PRIu64"", ns->tx_size_64);
+	PMD_DRV_LOG(DEBUG, "tx_size_127:	%"PRIu64"", ns->tx_size_127);
+	PMD_DRV_LOG(DEBUG, "tx_size_255:	%"PRIu64"", ns->tx_size_255);
+	PMD_DRV_LOG(DEBUG, "tx_size_511:	%"PRIu64"", ns->tx_size_511);
+	PMD_DRV_LOG(DEBUG, "tx_size_1023:	%"PRIu64"", ns->tx_size_1023);
+	PMD_DRV_LOG(DEBUG, "tx_size_1522:	%"PRIu64"", ns->tx_size_1522);
+	PMD_DRV_LOG(DEBUG, "tx_size_big:	%"PRIu64"", ns->tx_size_big);
+	PMD_DRV_LOG(DEBUG, "rx_len_errors:	%"PRIu64"", ns->rx_len_errors);
+	PMD_DRV_LOG(DEBUG, "************* PF stats end ****************");
+	return 0;
+}
+
+/* Reset the statistics */
+static void
+ice_stats_reset(struct rte_eth_dev *dev)
+{
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/* Mark PF and VSI stats to update the offset, aka "reset" */
+	pf->offset_loaded = false;
+	if (pf->main_vsi)
+		pf->main_vsi->offset_loaded = false;
+
+	/* read the stats, reading current register values into offset */
+	ice_read_stats_registers(pf, hw);
+}
+
+static uint32_t
+ice_xstats_calc_num(void)
+{
+	uint32_t num;
+
+	num = ICE_NB_ETH_XSTATS + ICE_NB_HW_PORT_XSTATS;
+
+	return num;
+}
+
+static int
+ice_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
+	       unsigned int n)
+{
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	unsigned int i;
+	unsigned int count;
+	struct ice_hw_port_stats *hw_stats = &pf->stats;
+
+	count = ice_xstats_calc_num();
+	if (n < count)
+		return count;
+
+	ice_read_stats_registers(pf, hw);
+
+	if (!xstats)
+		return 0;
+
+	count = 0;
+
+	/* Get stats from ice_eth_stats struct */
+	for (i = 0; i < ICE_NB_ETH_XSTATS; i++) {
+		xstats[count].value =
+			*(uint64_t *)((char *)&hw_stats->eth +
+				      ice_stats_strings[i].offset);
+		xstats[count].id = count;
+		count++;
+	}
+
+	/* Get individiual stats from ice_hw_port struct */
+	for (i = 0; i < ICE_NB_HW_PORT_XSTATS; i++) {
+		xstats[count].value =
+			*(uint64_t *)((char *)hw_stats +
+				      ice_hw_port_strings[i].offset);
+		xstats[count].id = count;
+		count++;
+	}
+
+	return count;
+}
+
+static int ice_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
+				struct rte_eth_xstat_name *xstats_names,
+				__rte_unused unsigned int limit)
+{
+	unsigned int count = 0;
+	unsigned int i;
+
+	if (!xstats_names)
+		return ice_xstats_calc_num();
+
+	/* Note: limit checked in rte_eth_xstats_names() */
+
+	/* Get stats from ice_eth_stats struct */
+	for (i = 0; i < ICE_NB_ETH_XSTATS; i++) {
+		snprintf(xstats_names[count].name,
+			 sizeof(xstats_names[count].name),
+			 "%s", ice_stats_strings[i].name);
+		count++;
+	}
+
+	/* Get individiual stats from ice_hw_port struct */
+	for (i = 0; i < ICE_NB_HW_PORT_XSTATS; i++) {
+		snprintf(xstats_names[count].name,
+			 sizeof(xstats_names[count].name),
+			 "%s", ice_hw_port_strings[i].name);
+		count++;
+	}
+
+	return count;
 }
 
 static int
