@@ -111,6 +111,10 @@ ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
 	buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mp) -
 			      RTE_PKTMBUF_HEADROOM);
 
+	/* Check if scattered RX needs to be used. */
+	if ((rxq->max_pkt_len + 2 * ICE_VLAN_TAG_SIZE) > buf_size)
+		dev->data->scattered_rx = 1;
+
 	rxq->qrx_tail = hw->hw_addr + QRX_TAIL(rxq->reg_idx);
 
 	/* Init the Rx tail register*/
@@ -1020,6 +1024,430 @@ ice_rxd_to_vlan_tci(struct rte_mbuf *mb, volatile union ice_rx_desc *rxdp)
 		   mb->vlan_tci, mb->vlan_tci_outer);
 }
 
+#ifdef RTE_LIBRTE_ICE_RX_ALLOW_BULK_ALLOC
+#define ICE_LOOK_AHEAD 8
+#if (ICE_LOOK_AHEAD != 8)
+#error "PMD ICE: ICE_LOOK_AHEAD must be 8\n"
+#endif
+static inline int
+ice_rx_scan_hw_ring(struct ice_rx_queue *rxq)
+{
+	volatile union ice_rx_desc *rxdp;
+	struct ice_rx_entry *rxep;
+	struct rte_mbuf *mb;
+	uint16_t pkt_len;
+	uint64_t qword1;
+	uint32_t rx_status;
+	int32_t s[ICE_LOOK_AHEAD], nb_dd;
+	int32_t i, j, nb_rx = 0;
+	uint64_t pkt_flags = 0;
+	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
+
+	rxdp = &rxq->rx_ring[rxq->rx_tail];
+	rxep = &rxq->sw_ring[rxq->rx_tail];
+
+	qword1 = rte_le_to_cpu_64(rxdp->wb.qword1.status_error_len);
+	rx_status = (qword1 & ICE_RXD_QW1_STATUS_M) >> ICE_RXD_QW1_STATUS_S;
+
+	/* Make sure there is at least 1 packet to receive */
+	if (!(rx_status & (1 << ICE_RX_DESC_STATUS_DD_S)))
+		return 0;
+
+	/**
+	 * Scan LOOK_AHEAD descriptors at a time to determine which
+	 * descriptors reference packets that are ready to be received.
+	 */
+	for (i = 0; i < ICE_RX_MAX_BURST; i += ICE_LOOK_AHEAD,
+	     rxdp += ICE_LOOK_AHEAD, rxep += ICE_LOOK_AHEAD) {
+		/* Read desc statuses backwards to avoid race condition */
+		for (j = ICE_LOOK_AHEAD - 1; j >= 0; j--) {
+			qword1 = rte_le_to_cpu_64(
+					rxdp[j].wb.qword1.status_error_len);
+			s[j] = (qword1 & ICE_RXD_QW1_STATUS_M) >>
+			       ICE_RXD_QW1_STATUS_S;
+		}
+
+		rte_smp_rmb();
+
+		/* Compute how many status bits were set */
+		for (j = 0, nb_dd = 0; j < ICE_LOOK_AHEAD; j++)
+			nb_dd += s[j] & (1 << ICE_RX_DESC_STATUS_DD_S);
+
+		nb_rx += nb_dd;
+
+		/* Translate descriptor info to mbuf parameters */
+		for (j = 0; j < nb_dd; j++) {
+			mb = rxep[j].mbuf;
+			qword1 = rte_le_to_cpu_64(
+					rxdp[j].wb.qword1.status_error_len);
+			pkt_len = ((qword1 & ICE_RXD_QW1_LEN_PBUF_M) >>
+				   ICE_RXD_QW1_LEN_PBUF_S) - rxq->crc_len;
+			mb->data_len = pkt_len;
+			mb->pkt_len = pkt_len;
+			mb->ol_flags = 0;
+			pkt_flags = ice_rxd_status_to_pkt_flags(qword1);
+			pkt_flags |= ice_rxd_error_to_pkt_flags(qword1);
+			if (pkt_flags & PKT_RX_RSS_HASH)
+				mb->hash.rss =
+					rte_le_to_cpu_32(
+						rxdp[j].wb.qword0.hi_dword.rss);
+			mb->packet_type = ptype_tbl[(uint8_t)(
+						(qword1 &
+						 ICE_RXD_QW1_PTYPE_M) >>
+						ICE_RXD_QW1_PTYPE_S)];
+			ice_rxd_to_vlan_tci(mb, &rxdp[j]);
+
+			mb->ol_flags |= pkt_flags;
+		}
+
+		for (j = 0; j < ICE_LOOK_AHEAD; j++)
+			rxq->rx_stage[i + j] = rxep[j].mbuf;
+
+		if (nb_dd != ICE_LOOK_AHEAD)
+			break;
+	}
+
+	/* Clear software ring entries */
+	for (i = 0; i < nb_rx; i++)
+		rxq->sw_ring[rxq->rx_tail + i].mbuf = NULL;
+
+	PMD_RX_LOG(DEBUG, "ice_rx_scan_hw_ring: "
+		   "port_id=%u, queue_id=%u, nb_rx=%d",
+		   rxq->port_id, rxq->queue_id, nb_rx);
+
+	return nb_rx;
+}
+
+static inline uint16_t
+ice_rx_fill_from_stage(struct ice_rx_queue *rxq,
+		       struct rte_mbuf **rx_pkts,
+		       uint16_t nb_pkts)
+{
+	uint16_t i;
+	struct rte_mbuf **stage = &rxq->rx_stage[rxq->rx_next_avail];
+
+	nb_pkts = (uint16_t)RTE_MIN(nb_pkts, rxq->rx_nb_avail);
+
+	for (i = 0; i < nb_pkts; i++)
+		rx_pkts[i] = stage[i];
+
+	rxq->rx_nb_avail = (uint16_t)(rxq->rx_nb_avail - nb_pkts);
+	rxq->rx_next_avail = (uint16_t)(rxq->rx_next_avail + nb_pkts);
+
+	return nb_pkts;
+}
+
+static inline int
+ice_rx_alloc_bufs(struct ice_rx_queue *rxq)
+{
+	volatile union ice_rx_desc *rxdp;
+	struct ice_rx_entry *rxep;
+	struct rte_mbuf *mb;
+	uint16_t alloc_idx, i;
+	uint64_t dma_addr;
+	int diag;
+
+	/* Allocate buffers in bulk */
+	alloc_idx = (uint16_t)(rxq->rx_free_trigger -
+			       (rxq->rx_free_thresh - 1));
+	rxep = &rxq->sw_ring[alloc_idx];
+	diag = rte_mempool_get_bulk(rxq->mp, (void *)rxep,
+				    rxq->rx_free_thresh);
+	if (unlikely(diag != 0)) {
+		PMD_RX_LOG(ERR, "Failed to get mbufs in bulk");
+		return -ENOMEM;
+	}
+
+	rxdp = &rxq->rx_ring[alloc_idx];
+	for (i = 0; i < rxq->rx_free_thresh; i++) {
+		if (likely(i < (rxq->rx_free_thresh - 1)))
+			/* Prefetch next mbuf */
+			rte_prefetch0(rxep[i + 1].mbuf);
+
+		mb = rxep[i].mbuf;
+		rte_mbuf_refcnt_set(mb, 1);
+		mb->next = NULL;
+		mb->data_off = RTE_PKTMBUF_HEADROOM;
+		mb->nb_segs = 1;
+		mb->port = rxq->port_id;
+		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(mb));
+		rxdp[i].read.hdr_addr = 0;
+		rxdp[i].read.pkt_addr = dma_addr;
+	}
+
+	/* Update rx tail regsiter */
+	rte_wmb();
+	ICE_PCI_REG_WRITE(rxq->qrx_tail, rxq->rx_free_trigger);
+
+	rxq->rx_free_trigger =
+		(uint16_t)(rxq->rx_free_trigger + rxq->rx_free_thresh);
+	if (rxq->rx_free_trigger >= rxq->nb_rx_desc)
+		rxq->rx_free_trigger = (uint16_t)(rxq->rx_free_thresh - 1);
+
+	return 0;
+}
+
+static inline uint16_t
+rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+{
+	struct ice_rx_queue *rxq = (struct ice_rx_queue *)rx_queue;
+	uint16_t nb_rx = 0;
+	struct rte_eth_dev *dev;
+
+	if (!nb_pkts)
+		return 0;
+
+	if (rxq->rx_nb_avail)
+		return ice_rx_fill_from_stage(rxq, rx_pkts, nb_pkts);
+
+	nb_rx = (uint16_t)ice_rx_scan_hw_ring(rxq);
+	rxq->rx_next_avail = 0;
+	rxq->rx_nb_avail = nb_rx;
+	rxq->rx_tail = (uint16_t)(rxq->rx_tail + nb_rx);
+
+	if (rxq->rx_tail > rxq->rx_free_trigger) {
+		if (ice_rx_alloc_bufs(rxq) != 0) {
+			uint16_t i, j;
+
+			dev = ICE_VSI_TO_ETH_DEV(rxq->vsi);
+			dev->data->rx_mbuf_alloc_failed +=
+				rxq->rx_free_thresh;
+			PMD_RX_LOG(DEBUG, "Rx mbuf alloc failed for "
+				   "port_id=%u, queue_id=%u",
+				   rxq->port_id, rxq->queue_id);
+			rxq->rx_nb_avail = 0;
+			rxq->rx_tail = (uint16_t)(rxq->rx_tail - nb_rx);
+			for (i = 0, j = rxq->rx_tail; i < nb_rx; i++, j++)
+				rxq->sw_ring[j].mbuf = rxq->rx_stage[i];
+
+			return 0;
+		}
+	}
+
+	if (rxq->rx_tail >= rxq->nb_rx_desc)
+		rxq->rx_tail = 0;
+
+	if (rxq->rx_nb_avail)
+		return ice_rx_fill_from_stage(rxq, rx_pkts, nb_pkts);
+
+	return 0;
+}
+
+static uint16_t
+ice_recv_pkts_bulk_alloc(void *rx_queue,
+			 struct rte_mbuf **rx_pkts,
+			 uint16_t nb_pkts)
+{
+	uint16_t nb_rx = 0;
+	uint16_t n;
+	uint16_t count;
+
+	if (unlikely(nb_pkts == 0))
+		return nb_rx;
+
+	if (likely(nb_pkts <= ICE_RX_MAX_BURST))
+		return rx_recv_pkts(rx_queue, rx_pkts, nb_pkts);
+
+	while (nb_pkts) {
+		n = RTE_MIN(nb_pkts, ICE_RX_MAX_BURST);
+		count = rx_recv_pkts(rx_queue, &rx_pkts[nb_rx], n);
+		nb_rx = (uint16_t)(nb_rx + count);
+		nb_pkts = (uint16_t)(nb_pkts - count);
+		if (count < n)
+			break;
+	}
+
+	return nb_rx;
+}
+#else
+static uint16_t
+ice_recv_pkts_bulk_alloc(void __rte_unused *rx_queue,
+			 struct rte_mbuf __rte_unused **rx_pkts,
+			 uint16_t __rte_unused nb_pkts)
+{
+	return 0;
+}
+#endif /* RTE_LIBRTE_ICE_RX_ALLOW_BULK_ALLOC */
+
+static uint16_t
+ice_recv_scattered_pkts(void *rx_queue,
+			struct rte_mbuf **rx_pkts,
+			uint16_t nb_pkts)
+{
+	struct ice_rx_queue *rxq = rx_queue;
+	volatile union ice_rx_desc *rx_ring = rxq->rx_ring;
+	volatile union ice_rx_desc *rxdp;
+	union ice_rx_desc rxd;
+	struct ice_rx_entry *sw_ring = rxq->sw_ring;
+	struct ice_rx_entry *rxe;
+	struct rte_mbuf *first_seg = rxq->pkt_first_seg;
+	struct rte_mbuf *last_seg = rxq->pkt_last_seg;
+	struct rte_mbuf *nmb; /* new allocated mbuf */
+	struct rte_mbuf *rxm; /* pointer to store old mbuf in SW ring */
+	uint16_t rx_id = rxq->rx_tail;
+	uint16_t nb_rx = 0;
+	uint16_t nb_hold = 0;
+	uint16_t rx_packet_len;
+	uint32_t rx_status;
+	uint64_t qword1;
+	uint64_t dma_addr;
+	uint64_t pkt_flags = 0;
+	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
+	struct rte_eth_dev *dev;
+
+	while (nb_rx < nb_pkts) {
+		rxdp = &rx_ring[rx_id];
+		qword1 = rte_le_to_cpu_64(rxdp->wb.qword1.status_error_len);
+		rx_status = (qword1 & ICE_RXD_QW1_STATUS_M) >>
+			    ICE_RXD_QW1_STATUS_S;
+
+		/* Check the DD bit first */
+		if (!(rx_status & (1 << ICE_RX_DESC_STATUS_DD_S)))
+			break;
+
+		/* allocate mbuf */
+		nmb = rte_mbuf_raw_alloc(rxq->mp);
+		if (unlikely(!nmb)) {
+			dev = ICE_VSI_TO_ETH_DEV(rxq->vsi);
+			dev->data->rx_mbuf_alloc_failed++;
+			break;
+		}
+		rxd = *rxdp; /* copy descriptor in ring to temp variable*/
+
+		nb_hold++;
+		rxe = &sw_ring[rx_id]; /* get corresponding mbuf in SW ring */
+		rx_id++;
+		if (unlikely(rx_id == rxq->nb_rx_desc))
+			rx_id = 0;
+
+		/* Prefetch next mbuf */
+		rte_prefetch0(sw_ring[rx_id].mbuf);
+
+		/**
+		 * When next RX descriptor is on a cache line boundary,
+		 * prefetch the next 4 RX descriptors and next 8 pointers
+		 * to mbufs.
+		 */
+		if ((rx_id & 0x3) == 0) {
+			rte_prefetch0(&rx_ring[rx_id]);
+			rte_prefetch0(&sw_ring[rx_id]);
+		}
+
+		rxm = rxe->mbuf;
+		rxe->mbuf = nmb;
+		dma_addr =
+			rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb));
+
+		/* Set data buffer address and data length of the mbuf */
+		rxdp->read.hdr_addr = 0;
+		rxdp->read.pkt_addr = dma_addr;
+		rx_packet_len = (qword1 & ICE_RXD_QW1_LEN_PBUF_M) >>
+				ICE_RXD_QW1_LEN_PBUF_S;
+		rxm->data_len = rx_packet_len;
+		rxm->data_off = RTE_PKTMBUF_HEADROOM;
+		ice_rxd_to_vlan_tci(rxm, rxdp);
+		rxm->packet_type = ptype_tbl[(uint8_t)((qword1 &
+							ICE_RXD_QW1_PTYPE_M) >>
+						       ICE_RXD_QW1_PTYPE_S)];
+
+		/**
+		 * If this is the first buffer of the received packet, set the
+		 * pointer to the first mbuf of the packet and initialize its
+		 * context. Otherwise, update the total length and the number
+		 * of segments of the current scattered packet, and update the
+		 * pointer to the last mbuf of the current packet.
+		 */
+		if (!first_seg) {
+			first_seg = rxm;
+			first_seg->nb_segs = 1;
+			first_seg->pkt_len = rx_packet_len;
+		} else {
+			first_seg->pkt_len =
+				(uint16_t)(first_seg->pkt_len +
+					   rx_packet_len);
+			first_seg->nb_segs++;
+			last_seg->next = rxm;
+		}
+
+		/**
+		 * If this is not the last buffer of the received packet,
+		 * update the pointer to the last mbuf of the current scattered
+		 * packet and continue to parse the RX ring.
+		 */
+		if (!(rx_status & (1 << ICE_RX_DESC_STATUS_EOF_S))) {
+			last_seg = rxm;
+			continue;
+		}
+
+		/**
+		 * This is the last buffer of the received packet. If the CRC
+		 * is not stripped by the hardware:
+		 *  - Subtract the CRC length from the total packet length.
+		 *  - If the last buffer only contains the whole CRC or a part
+		 *  of it, free the mbuf associated to the last buffer. If part
+		 *  of the CRC is also contained in the previous mbuf, subtract
+		 *  the length of that CRC part from the data length of the
+		 *  previous mbuf.
+		 */
+		rxm->next = NULL;
+		if (unlikely(rxq->crc_len > 0)) {
+			first_seg->pkt_len -= ETHER_CRC_LEN;
+			if (rx_packet_len <= ETHER_CRC_LEN) {
+				rte_pktmbuf_free_seg(rxm);
+				first_seg->nb_segs--;
+				last_seg->data_len =
+					(uint16_t)(last_seg->data_len -
+					(ETHER_CRC_LEN - rx_packet_len));
+				last_seg->next = NULL;
+			} else
+				rxm->data_len = (uint16_t)(rx_packet_len -
+							   ETHER_CRC_LEN);
+		}
+
+		first_seg->port = rxq->port_id;
+		first_seg->ol_flags = 0;
+
+		pkt_flags = ice_rxd_status_to_pkt_flags(qword1);
+		pkt_flags |= ice_rxd_error_to_pkt_flags(qword1);
+		if (pkt_flags & PKT_RX_RSS_HASH)
+			first_seg->hash.rss =
+				rte_le_to_cpu_32(rxd.wb.qword0.hi_dword.rss);
+
+		first_seg->ol_flags |= pkt_flags;
+		/* Prefetch data of first segment, if configured to do so. */
+		rte_prefetch0(RTE_PTR_ADD(first_seg->buf_addr,
+					  first_seg->data_off));
+		rx_pkts[nb_rx++] = first_seg;
+		first_seg = NULL;
+	}
+
+	/* Record index of the next RX descriptor to probe. */
+	rxq->rx_tail = rx_id;
+	rxq->pkt_first_seg = first_seg;
+	rxq->pkt_last_seg = last_seg;
+
+	/**
+	 * If the number of free RX descriptors is greater than the RX free
+	 * threshold of the queue, advance the Receive Descriptor Tail (RDT)
+	 * register. Update the RDT with the value of the last processed RX
+	 * descriptor minus 1, to guarantee that the RDT register is never
+	 * equal to the RDH register, which creates a "full" ring situtation
+	 * from the hardware point of view.
+	 */
+	nb_hold = (uint16_t)(nb_hold + rxq->nb_rx_hold);
+	if (nb_hold > rxq->rx_free_thresh) {
+		rx_id = (uint16_t)(rx_id == 0 ?
+				   (rxq->nb_rx_desc - 1) : (rx_id - 1));
+		/* write TAIL register */
+		ICE_PCI_REG_WRITE(rxq->qrx_tail, rx_id);
+		nb_hold = 0;
+	}
+	rxq->nb_rx_hold = nb_hold;
+
+	/* return received packet in the burst */
+	return nb_rx;
+}
+
 const uint32_t *
 ice_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 {
@@ -1053,7 +1481,11 @@ ice_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_UNKNOWN
 	};
 
-	if (dev->rx_pkt_burst == ice_recv_pkts)
+	if (dev->rx_pkt_burst == ice_recv_pkts ||
+#ifdef RTE_LIBRTE_ICE_RX_ALLOW_BULK_ALLOC
+	    dev->rx_pkt_burst == ice_recv_pkts_bulk_alloc ||
+#endif
+	    dev->rx_pkt_burst == ice_recv_scattered_pkts)
 		return ptypes;
 	return NULL;
 }
@@ -1310,6 +1742,20 @@ ice_xmit_cleanup(struct ice_tx_queue *txq)
 	return 0;
 }
 
+/* Construct the tx flags */
+static inline uint64_t
+ice_build_ctob(uint32_t td_cmd,
+	       uint32_t td_offset,
+	       uint16_t size,
+	       uint32_t td_tag)
+{
+	return rte_cpu_to_le_64(ICE_TX_DESC_DTYPE_DATA |
+				((uint64_t)td_cmd << ICE_TXD_QW1_CMD_S) |
+				((uint64_t)td_offset << ICE_TXD_QW1_OFFSET_S) |
+				((uint64_t)size << ICE_TXD_QW1_TX_BUF_SZ_S) |
+				((uint64_t)td_tag << ICE_TXD_QW1_L2TAG1_S));
+}
+
 /* Check if the context descriptor is needed for TX offloading */
 static inline uint16_t
 ice_calc_context_desc(uint64_t flags)
@@ -1528,10 +1974,213 @@ end_of_tx:
 	return nb_tx;
 }
 
+static inline int __attribute__((always_inline))
+ice_tx_free_bufs(struct ice_tx_queue *txq)
+{
+	struct ice_tx_entry *txep;
+	uint16_t i;
+
+	if ((txq->tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
+	     rte_cpu_to_le_64(ICE_TXD_QW1_DTYPE_M)) !=
+	    rte_cpu_to_le_64(ICE_TX_DESC_DTYPE_DESC_DONE))
+		return 0;
+
+	txep = &txq->sw_ring[txq->tx_next_dd - (txq->tx_rs_thresh - 1)];
+
+	for (i = 0; i < txq->tx_rs_thresh; i++)
+		rte_prefetch0((txep + i)->mbuf);
+
+	if (txq->offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE) {
+		for (i = 0; i < txq->tx_rs_thresh; ++i, ++txep) {
+			rte_mempool_put(txep->mbuf->pool, txep->mbuf);
+			txep->mbuf = NULL;
+		}
+	} else {
+		for (i = 0; i < txq->tx_rs_thresh; ++i, ++txep) {
+			rte_pktmbuf_free_seg(txep->mbuf);
+			txep->mbuf = NULL;
+		}
+	}
+
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + txq->tx_rs_thresh);
+	txq->tx_next_dd = (uint16_t)(txq->tx_next_dd + txq->tx_rs_thresh);
+	if (txq->tx_next_dd >= txq->nb_tx_desc)
+		txq->tx_next_dd = (uint16_t)(txq->tx_rs_thresh - 1);
+
+	return txq->tx_rs_thresh;
+}
+
+/* Populate 4 descriptors with data from 4 mbufs */
+static inline void
+tx4(volatile struct ice_tx_desc *txdp, struct rte_mbuf **pkts)
+{
+	uint64_t dma_addr;
+	uint32_t i;
+
+	for (i = 0; i < 4; i++, txdp++, pkts++) {
+		dma_addr = rte_mbuf_data_iova(*pkts);
+		txdp->buf_addr = rte_cpu_to_le_64(dma_addr);
+		txdp->cmd_type_offset_bsz =
+			ice_build_ctob((uint32_t)ICE_TD_CMD, 0,
+				       (*pkts)->data_len, 0);
+	}
+}
+
+/* Populate 1 descriptor with data from 1 mbuf */
+static inline void
+tx1(volatile struct ice_tx_desc *txdp, struct rte_mbuf **pkts)
+{
+	uint64_t dma_addr;
+
+	dma_addr = rte_mbuf_data_iova(*pkts);
+	txdp->buf_addr = rte_cpu_to_le_64(dma_addr);
+	txdp->cmd_type_offset_bsz =
+		ice_build_ctob((uint32_t)ICE_TD_CMD, 0,
+			       (*pkts)->data_len, 0);
+}
+
+static inline void
+ice_tx_fill_hw_ring(struct ice_tx_queue *txq, struct rte_mbuf **pkts,
+		    uint16_t nb_pkts)
+{
+	volatile struct ice_tx_desc *txdp = &txq->tx_ring[txq->tx_tail];
+	struct ice_tx_entry *txep = &txq->sw_ring[txq->tx_tail];
+	const int N_PER_LOOP = 4;
+	const int N_PER_LOOP_MASK = N_PER_LOOP - 1;
+	int mainpart, leftover;
+	int i, j;
+
+	/**
+	 * Process most of the packets in chunks of N pkts.  Any
+	 * leftover packets will get processed one at a time.
+	 */
+	mainpart = nb_pkts & ((uint32_t)~N_PER_LOOP_MASK);
+	leftover = nb_pkts & ((uint32_t)N_PER_LOOP_MASK);
+	for (i = 0; i < mainpart; i += N_PER_LOOP) {
+		/* Copy N mbuf pointers to the S/W ring */
+		for (j = 0; j < N_PER_LOOP; ++j)
+			(txep + i + j)->mbuf = *(pkts + i + j);
+		tx4(txdp + i, pkts + i);
+	}
+
+	if (unlikely(leftover > 0)) {
+		for (i = 0; i < leftover; ++i) {
+			(txep + mainpart + i)->mbuf = *(pkts + mainpart + i);
+			tx1(txdp + mainpart + i, pkts + mainpart + i);
+		}
+	}
+}
+
+static inline uint16_t
+tx_xmit_pkts(struct ice_tx_queue *txq,
+	     struct rte_mbuf **tx_pkts,
+	     uint16_t nb_pkts)
+{
+	volatile struct ice_tx_desc *txr = txq->tx_ring;
+	uint16_t n = 0;
+
+	/**
+	 * Begin scanning the H/W ring for done descriptors when the number
+	 * of available descriptors drops below tx_free_thresh. For each done
+	 * descriptor, free the associated buffer.
+	 */
+	if (txq->nb_tx_free < txq->tx_free_thresh)
+		ice_tx_free_bufs(txq);
+
+	/* Use available descriptor only */
+	nb_pkts = (uint16_t)RTE_MIN(txq->nb_tx_free, nb_pkts);
+	if (unlikely(!nb_pkts))
+		return 0;
+
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_pkts);
+	if ((txq->tx_tail + nb_pkts) > txq->nb_tx_desc) {
+		n = (uint16_t)(txq->nb_tx_desc - txq->tx_tail);
+		ice_tx_fill_hw_ring(txq, tx_pkts, n);
+		txr[txq->tx_next_rs].cmd_type_offset_bsz |=
+			rte_cpu_to_le_64(((uint64_t)ICE_TX_DESC_CMD_RS) <<
+					 ICE_TXD_QW1_CMD_S);
+		txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
+		txq->tx_tail = 0;
+	}
+
+	/* Fill hardware descriptor ring with mbuf data */
+	ice_tx_fill_hw_ring(txq, tx_pkts + n, (uint16_t)(nb_pkts - n));
+	txq->tx_tail = (uint16_t)(txq->tx_tail + (nb_pkts - n));
+
+	/* Determin if RS bit needs to be set */
+	if (txq->tx_tail > txq->tx_next_rs) {
+		txr[txq->tx_next_rs].cmd_type_offset_bsz |=
+			rte_cpu_to_le_64(((uint64_t)ICE_TX_DESC_CMD_RS) <<
+					 ICE_TXD_QW1_CMD_S);
+		txq->tx_next_rs =
+			(uint16_t)(txq->tx_next_rs + txq->tx_rs_thresh);
+		if (txq->tx_next_rs >= txq->nb_tx_desc)
+			txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
+	}
+
+	if (txq->tx_tail >= txq->nb_tx_desc)
+		txq->tx_tail = 0;
+
+	/* Update the tx tail register */
+	rte_wmb();
+	ICE_PCI_REG_WRITE(txq->qtx_tail, txq->tx_tail);
+
+	return nb_pkts;
+}
+
+static uint16_t
+ice_xmit_pkts_simple(void *tx_queue,
+		     struct rte_mbuf **tx_pkts,
+		     uint16_t nb_pkts)
+{
+	uint16_t nb_tx = 0;
+
+	if (likely(nb_pkts <= ICE_TX_MAX_BURST))
+		return tx_xmit_pkts((struct ice_tx_queue *)tx_queue,
+				    tx_pkts, nb_pkts);
+
+	while (nb_pkts) {
+		uint16_t ret, num = (uint16_t)RTE_MIN(nb_pkts,
+						      ICE_TX_MAX_BURST);
+
+		ret = tx_xmit_pkts((struct ice_tx_queue *)tx_queue,
+				   &tx_pkts[nb_tx], num);
+		nb_tx = (uint16_t)(nb_tx + ret);
+		nb_pkts = (uint16_t)(nb_pkts - ret);
+		if (ret < num)
+			break;
+	}
+
+	return nb_tx;
+}
+
 void __attribute__((cold))
 ice_set_rx_function(struct rte_eth_dev *dev)
 {
-	dev->rx_pkt_burst = ice_recv_pkts;
+	PMD_INIT_FUNC_TRACE();
+	struct ice_adapter *ad =
+		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+
+	if (dev->data->scattered_rx) {
+		/* Set the non-LRO scattered function */
+		PMD_INIT_LOG(DEBUG,
+			     "Using a Scattered function on port %d.",
+			     dev->data->port_id);
+		dev->rx_pkt_burst = ice_recv_scattered_pkts;
+	} else if (ad->rx_bulk_alloc_allowed) {
+		PMD_INIT_LOG(DEBUG,
+			     "Rx Burst Bulk Alloc Preconditions are "
+			     "satisfied. Rx Burst Bulk Alloc function "
+			     "will be used on port %d.",
+			     dev->data->port_id);
+		dev->rx_pkt_burst = ice_recv_pkts_bulk_alloc;
+	} else {
+		PMD_INIT_LOG(DEBUG,
+			     "Rx Burst Bulk Alloc Preconditions are not "
+			     "satisfied, Normal Rx will be used on port %d.",
+			     dev->data->port_id);
+		dev->rx_pkt_burst = ice_recv_pkts;
+	}
 }
 
 /*********************************************************************
@@ -1585,8 +2234,18 @@ ice_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 void __attribute__((cold))
 ice_set_tx_function(struct rte_eth_dev *dev)
 {
+	struct ice_adapter *ad =
+		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+
+	if (ad->tx_simple_allowed) {
+		PMD_INIT_LOG(DEBUG, "Simple tx finally be used.");
+		dev->tx_pkt_burst = ice_xmit_pkts_simple;
+		dev->tx_pkt_prepare = NULL;
+	} else {
+		PMD_INIT_LOG(DEBUG, "Normal tx finally be used.");
 		dev->tx_pkt_burst = ice_xmit_pkts;
 		dev->tx_pkt_prepare = ice_prep_pkts;
+	}
 }
 
 /* For each value it means, datasheet of hardware can tell more details
