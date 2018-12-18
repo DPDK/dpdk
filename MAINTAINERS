@@ -597,6 +597,8 @@ M: Qiming Yang <qiming.yang@intel.com>
 M: Wenzhuo Lu <wenzhuo.lu@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/ice/
+F: doc/guides/nics/ice.rst
+F: doc/guides/nics/features/ice.ini
 
 Marvell mvpp2
 M: Tomasz Duszynski <tdu@semihalf.com>

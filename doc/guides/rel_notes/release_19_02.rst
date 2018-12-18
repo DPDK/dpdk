@@ -80,6 +80,11 @@ New Features
   * Added the handler to get firmware version string.
   * Added support for multicast filtering.
 
+* **Added ICE net PMD**
+
+  Added the new ``ice`` net driver for Intel® Ethernet Network Adapters E810.
+  See the :doc:`../nics/ice` NIC guide for more details on this new driver.
+
 * **Added support for SW-assisted VDPA live migration.**
 
   This SW-assisted VDPA live migration facility helps VDPA devices without
