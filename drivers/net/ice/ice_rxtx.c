@@ -946,6 +946,20 @@ ice_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	return desc;
 }
 
+/* Translate the rx descriptor status to pkt flags */
+static inline uint64_t
+ice_rxd_status_to_pkt_flags(uint64_t qword)
+{
+	uint64_t flags;
+
+	/* Check if RSS_HASH */
+	flags = (((qword >> ICE_RX_DESC_STATUS_FLTSTAT_S) &
+		  ICE_RX_DESC_FLTSTAT_RSS_HASH) ==
+		 ICE_RX_DESC_FLTSTAT_RSS_HASH) ? PKT_RX_RSS_HASH : 0;
+
+	return flags;
+}
+
 /* Rx L3/L4 checksum */
 static inline uint64_t
 ice_rxd_error_to_pkt_flags(uint64_t qword)
@@ -1094,6 +1108,7 @@ ice_recv_pkts(void *rx_queue,
 	struct ice_rx_queue *rxq = rx_queue;
 	volatile union ice_rx_desc *rx_ring = rxq->rx_ring;
 	volatile union ice_rx_desc *rxdp;
+	union ice_rx_desc rxd;
 	struct ice_rx_entry *sw_ring = rxq->sw_ring;
 	struct ice_rx_entry *rxe;
 	struct rte_mbuf *nmb; /* new allocated mbuf */
@@ -1126,6 +1141,7 @@ ice_recv_pkts(void *rx_queue,
 			dev->data->rx_mbuf_alloc_failed++;
 			break;
 		}
+		rxd = *rxdp; /* copy descriptor in ring to temp variable*/
 
 		nb_hold++;
 		rxe = &sw_ring[rx_id]; /* get corresponding mbuf in SW ring */
@@ -1160,7 +1176,11 @@ ice_recv_pkts(void *rx_queue,
 		rxm->packet_type = ptype_tbl[(uint8_t)((qword1 &
 							ICE_RXD_QW1_PTYPE_M) >>
 						       ICE_RXD_QW1_PTYPE_S)];
+		pkt_flags = ice_rxd_status_to_pkt_flags(qword1);
 		pkt_flags |= ice_rxd_error_to_pkt_flags(qword1);
+		if (pkt_flags & PKT_RX_RSS_HASH)
+			rxm->hash.rss =
+				rte_le_to_cpu_32(rxd.wb.qword0.hi_dword.rss);
 		rxm->ol_flags |= pkt_flags;
 		/* copy old mbuf to rx_pkts */
 		rx_pkts[nb_rx++] = rxm;

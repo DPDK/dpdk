@@ -28,6 +28,16 @@ static int ice_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 static int ice_vlan_tpid_set(struct rte_eth_dev *dev,
 			     enum rte_vlan_type vlan_type,
 			     uint16_t tpid);
+static int ice_rss_reta_update(struct rte_eth_dev *dev,
+			       struct rte_eth_rss_reta_entry64 *reta_conf,
+			       uint16_t reta_size);
+static int ice_rss_reta_query(struct rte_eth_dev *dev,
+			      struct rte_eth_rss_reta_entry64 *reta_conf,
+			      uint16_t reta_size);
+static int ice_rss_hash_update(struct rte_eth_dev *dev,
+			       struct rte_eth_rss_conf *rss_conf);
+static int ice_rss_hash_conf_get(struct rte_eth_dev *dev,
+				 struct rte_eth_rss_conf *rss_conf);
 static int ice_vlan_filter_set(struct rte_eth_dev *dev,
 			       uint16_t vlan_id,
 			       int on);
@@ -72,6 +82,10 @@ static const struct eth_dev_ops ice_eth_dev_ops = {
 	.vlan_filter_set              = ice_vlan_filter_set,
 	.vlan_offload_set             = ice_vlan_offload_set,
 	.vlan_tpid_set                = ice_vlan_tpid_set,
+	.reta_update                  = ice_rss_reta_update,
+	.reta_query                   = ice_rss_reta_query,
+	.rss_hash_update              = ice_rss_hash_update,
+	.rss_hash_conf_get            = ice_rss_hash_conf_get,
 	.vlan_pvid_set                = ice_vlan_pvid_set,
 	.rxq_info_get                 = ice_rxq_info_get,
 	.txq_info_get                 = ice_txq_info_get,
@@ -1526,6 +1540,7 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->reta_size = hw->func_caps.common_cap.rss_table_size;
 	dev_info->hash_key_size = (VSIQF_HKEY_MAX_INDEX + 1) * sizeof(uint32_t);
+	dev_info->flow_type_rss_offloads = ICE_RSS_OFFLOAD_ALL;
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_thresh = {
@@ -2007,6 +2022,234 @@ ice_vlan_tpid_set(struct rte_eth_dev *dev,
 		    "ICE GL_SWT_L2TAGCTRL[%d]", reg_w, reg_id);
 
 	return ret;
+}
+
+static int
+ice_get_rss_lut(struct ice_vsi *vsi, uint8_t *lut, uint16_t lut_size)
+{
+	struct ice_pf *pf = ICE_VSI_TO_PF(vsi);
+	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
+	int ret;
+
+	if (!lut)
+		return -EINVAL;
+
+	if (pf->flags & ICE_FLAG_RSS_AQ_CAPABLE) {
+		ret = ice_aq_get_rss_lut(hw, vsi->idx, TRUE,
+					 lut, lut_size);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Failed to get RSS lookup table");
+			return -EINVAL;
+		}
+	} else {
+		uint64_t *lut_dw = (uint64_t *)lut;
+		uint16_t i, lut_size_dw = lut_size / 4;
+
+		for (i = 0; i < lut_size_dw; i++)
+			lut_dw[i] = ICE_READ_REG(hw, PFQF_HLUT(i));
+	}
+
+	return 0;
+}
+
+static int
+ice_set_rss_lut(struct ice_vsi *vsi, uint8_t *lut, uint16_t lut_size)
+{
+	struct ice_pf *pf = ICE_VSI_TO_PF(vsi);
+	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
+	int ret;
+
+	if (!vsi || !lut)
+		return -EINVAL;
+
+	if (pf->flags & ICE_FLAG_RSS_AQ_CAPABLE) {
+		ret = ice_aq_set_rss_lut(hw, vsi->idx, TRUE,
+					 lut, lut_size);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Failed to set RSS lookup table");
+			return -EINVAL;
+		}
+	} else {
+		uint64_t *lut_dw = (uint64_t *)lut;
+		uint16_t i, lut_size_dw = lut_size / 4;
+
+		for (i = 0; i < lut_size_dw; i++)
+			ICE_WRITE_REG(hw, PFQF_HLUT(i), lut_dw[i]);
+
+		ice_flush(hw);
+	}
+
+	return 0;
+}
+
+static int
+ice_rss_reta_update(struct rte_eth_dev *dev,
+		    struct rte_eth_rss_reta_entry64 *reta_conf,
+		    uint16_t reta_size)
+{
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint16_t i, lut_size = hw->func_caps.common_cap.rss_table_size;
+	uint16_t idx, shift;
+	uint8_t *lut;
+	int ret;
+
+	if (reta_size != lut_size ||
+	    reta_size > ETH_RSS_RETA_SIZE_512) {
+		PMD_DRV_LOG(ERR,
+			    "The size of hash lookup table configured (%d)"
+			    "doesn't match the number hardware can "
+			    "supported (%d)",
+			    reta_size, lut_size);
+		return -EINVAL;
+	}
+
+	lut = rte_zmalloc(NULL, reta_size, 0);
+	if (!lut) {
+		PMD_DRV_LOG(ERR, "No memory can be allocated");
+		return -ENOMEM;
+	}
+	ret = ice_get_rss_lut(pf->main_vsi, lut, reta_size);
+	if (ret)
+		goto out;
+
+	for (i = 0; i < reta_size; i++) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		if (reta_conf[idx].mask & (1ULL << shift))
+			lut[i] = reta_conf[idx].reta[shift];
+	}
+	ret = ice_set_rss_lut(pf->main_vsi, lut, reta_size);
+
+out:
+	rte_free(lut);
+
+	return ret;
+}
+
+static int
+ice_rss_reta_query(struct rte_eth_dev *dev,
+		   struct rte_eth_rss_reta_entry64 *reta_conf,
+		   uint16_t reta_size)
+{
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint16_t i, lut_size = hw->func_caps.common_cap.rss_table_size;
+	uint16_t idx, shift;
+	uint8_t *lut;
+	int ret;
+
+	if (reta_size != lut_size ||
+	    reta_size > ETH_RSS_RETA_SIZE_512) {
+		PMD_DRV_LOG(ERR,
+			    "The size of hash lookup table configured (%d)"
+			    "doesn't match the number hardware can "
+			    "supported (%d)",
+			    reta_size, lut_size);
+		return -EINVAL;
+	}
+
+	lut = rte_zmalloc(NULL, reta_size, 0);
+	if (!lut) {
+		PMD_DRV_LOG(ERR, "No memory can be allocated");
+		return -ENOMEM;
+	}
+
+	ret = ice_get_rss_lut(pf->main_vsi, lut, reta_size);
+	if (ret)
+		goto out;
+
+	for (i = 0; i < reta_size; i++) {
+		idx = i / RTE_RETA_GROUP_SIZE;
+		shift = i % RTE_RETA_GROUP_SIZE;
+		if (reta_conf[idx].mask & (1ULL << shift))
+			reta_conf[idx].reta[shift] = lut[i];
+	}
+
+out:
+	rte_free(lut);
+
+	return ret;
+}
+
+static int
+ice_set_rss_key(struct ice_vsi *vsi, uint8_t *key, uint8_t key_len)
+{
+	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
+	int ret = 0;
+
+	if (!key || key_len == 0) {
+		PMD_DRV_LOG(DEBUG, "No key to be configured");
+		return 0;
+	} else if (key_len != (VSIQF_HKEY_MAX_INDEX + 1) *
+		   sizeof(uint32_t)) {
+		PMD_DRV_LOG(ERR, "Invalid key length %u", key_len);
+		return -EINVAL;
+	}
+
+	struct ice_aqc_get_set_rss_keys *key_dw =
+		(struct ice_aqc_get_set_rss_keys *)key;
+
+	ret = ice_aq_set_rss_key(hw, vsi->idx, key_dw);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to configure RSS key via AQ");
+		ret = -EINVAL;
+	}
+
+	return ret;
+}
+
+static int
+ice_get_rss_key(struct ice_vsi *vsi, uint8_t *key, uint8_t *key_len)
+{
+	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
+	int ret;
+
+	if (!key || !key_len)
+		return -EINVAL;
+
+	ret = ice_aq_get_rss_key
+		(hw, vsi->idx,
+		 (struct ice_aqc_get_set_rss_keys *)key);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to get RSS key via AQ");
+		return -EINVAL;
+	}
+	*key_len = (VSIQF_HKEY_MAX_INDEX + 1) * sizeof(uint32_t);
+
+	return 0;
+}
+
+static int
+ice_rss_hash_update(struct rte_eth_dev *dev,
+		    struct rte_eth_rss_conf *rss_conf)
+{
+	enum ice_status status = ICE_SUCCESS;
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct ice_vsi *vsi = pf->main_vsi;
+
+	/* set hash key */
+	status = ice_set_rss_key(vsi, rss_conf->rss_key, rss_conf->rss_key_len);
+	if (status)
+		return status;
+
+	/* TODO: hash enable config, ice_add_rss_cfg */
+	return 0;
+}
+
+static int
+ice_rss_hash_conf_get(struct rte_eth_dev *dev,
+		      struct rte_eth_rss_conf *rss_conf)
+{
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct ice_vsi *vsi = pf->main_vsi;
+
+	ice_get_rss_key(vsi, rss_conf->rss_key,
+			&rss_conf->rss_key_len);
+
+	/* TODO: default set to 0 as hf config is not supported now */
+	rss_conf->rss_hf = 0;
+	return 0;
 }
 
 static int
