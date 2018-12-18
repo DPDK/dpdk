@@ -56,6 +56,9 @@ static int ice_fw_version_get(struct rte_eth_dev *dev, char *fw_version,
 			      size_t fw_size);
 static int ice_vlan_pvid_set(struct rte_eth_dev *dev,
 			     uint16_t pvid, int on);
+static int ice_get_eeprom_length(struct rte_eth_dev *dev);
+static int ice_get_eeprom(struct rte_eth_dev *dev,
+			  struct rte_dev_eeprom_info *eeprom);
 
 static const struct rte_pci_id pci_id_ice_map[] = {
 	{ RTE_PCI_DEVICE(ICE_INTEL_VENDOR_ID, ICE_DEV_ID_E810C_BACKPLANE) },
@@ -98,6 +101,8 @@ static const struct eth_dev_ops ice_eth_dev_ops = {
 	.vlan_pvid_set                = ice_vlan_pvid_set,
 	.rxq_info_get                 = ice_rxq_info_get,
 	.txq_info_get                 = ice_txq_info_get,
+	.get_eeprom_length            = ice_get_eeprom_length,
+	.get_eeprom                   = ice_get_eeprom,
 	.rx_queue_count               = ice_rx_queue_count,
 };
 
@@ -2580,6 +2585,46 @@ ice_vlan_pvid_set(struct rte_eth_dev *dev, uint16_t pvid, int on)
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "Failed to set pvid.");
 		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
+ice_get_eeprom_length(struct rte_eth_dev *dev)
+{
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/* Convert word count to byte count */
+	return hw->nvm.sr_words << 1;
+}
+
+static int
+ice_get_eeprom(struct rte_eth_dev *dev,
+	       struct rte_dev_eeprom_info *eeprom)
+{
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint16_t *data = eeprom->data;
+	uint16_t offset, length, i;
+	enum ice_status ret_code = ICE_SUCCESS;
+
+	offset = eeprom->offset >> 1;
+	length = eeprom->length >> 1;
+
+	if (offset > hw->nvm.sr_words ||
+	    offset + length > hw->nvm.sr_words) {
+		PMD_DRV_LOG(ERR, "Requested EEPROM bytes out of range.");
+		return -EINVAL;
+	}
+
+	eeprom->magic = hw->vendor_id | (hw->device_id << 16);
+
+	for (i = 0; i < length; i++) {
+		ret_code = ice_read_sr_word(hw, offset + i, &data[i]);
+		if (ret_code != ICE_SUCCESS) {
+			PMD_DRV_LOG(ERR, "EEPROM read failed.");
+			return -EIO;
+		}
 	}
 
 	return 0;
