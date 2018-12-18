@@ -781,16 +781,16 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	internal->dev_addr.type = PCI_ADDR;
 	list->internal = internal;
 
-	pthread_mutex_lock(&internal_list_lock);
-	TAILQ_INSERT_TAIL(&internal_list, list, next);
-	pthread_mutex_unlock(&internal_list_lock);
-
 	internal->did = rte_vdpa_register_device(&internal->dev_addr,
 				&ifcvf_ops);
 	if (internal->did < 0) {
 		DRV_LOG(ERR, "failed to register device %s", pci_dev->name);
 		goto error;
 	}
+
+	pthread_mutex_lock(&internal_list_lock);
+	TAILQ_INSERT_TAIL(&internal_list, list, next);
+	pthread_mutex_unlock(&internal_list_lock);
 
 	rte_atomic32_set(&internal->started, 1);
 	update_datapath(internal);
