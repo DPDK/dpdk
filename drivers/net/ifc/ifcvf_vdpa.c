@@ -31,6 +31,9 @@
 #define PAGE_SIZE 4096
 #endif
 
+#define IFCVF_USED_RING_LEN(size) \
+	((size) * sizeof(struct vring_used_elem) + sizeof(uint16_t) * 3)
+
 #define IFCVF_VDPA_MODE		"vdpa"
 #define IFCVF_SW_FALLBACK_LM	"sw-live-migration"
 
@@ -289,21 +292,6 @@ vdpa_ifcvf_start(struct ifcvf_internal *internal)
 }
 
 static void
-ifcvf_used_ring_log(struct ifcvf_hw *hw, uint32_t queue, uint8_t *log_buf)
-{
-	uint32_t i, size;
-	uint64_t pfn;
-
-	pfn = hw->vring[queue].used / PAGE_SIZE;
-	size = hw->vring[queue].size * sizeof(struct vring_used_elem) +
-			sizeof(uint16_t) * 3;
-
-	for (i = 0; i <= size / PAGE_SIZE; i++)
-		__sync_fetch_and_or_8(&log_buf[(pfn + i) / 8],
-				1 << ((pfn + i) % 8));
-}
-
-static void
 vdpa_ifcvf_stop(struct ifcvf_internal *internal)
 {
 	struct ifcvf_hw *hw = &internal->hw;
@@ -311,7 +299,7 @@ vdpa_ifcvf_stop(struct ifcvf_internal *internal)
 	int vid;
 	uint64_t features;
 	uint64_t log_base, log_size;
-	uint8_t *log_buf;
+	uint64_t len;
 
 	vid = internal->vid;
 	ifcvf_stop_hw(hw);
@@ -330,9 +318,10 @@ vdpa_ifcvf_stop(struct ifcvf_internal *internal)
 		 * IFCVF marks dirty memory pages for only packet buffer,
 		 * SW helps to mark the used ring as dirty after device stops.
 		 */
-		log_buf = (uint8_t *)(uintptr_t)log_base;
-		for (i = 0; i < hw->nr_vring; i++)
-			ifcvf_used_ring_log(hw, i, log_buf);
+		for (i = 0; i < hw->nr_vring; i++) {
+			len = IFCVF_USED_RING_LEN(hw->vring[i].size);
+			rte_vhost_log_used_vring(vid, i, 0, len);
+		}
 	}
 }
 
