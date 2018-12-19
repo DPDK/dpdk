@@ -1000,7 +1000,6 @@ eth_dev_close(struct rte_eth_dev *dev)
 		for (i = 0; i < dev->data->nb_tx_queues; i++)
 			rte_free(dev->data->tx_queues[i]);
 
-	rte_free(dev->data->mac_addrs);
 	free(internal->dev_name);
 	free(internal->iface_name);
 	rte_free(internal);
