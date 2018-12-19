@@ -19,41 +19,45 @@
 #include <rte_log.h>
 #include <rte_io.h>
 
-#define dev_printf(level, fmt, args...) \
-	RTE_LOG(level, PMD, "rte_cxgbe_pmd: " fmt, ## args)
+#define dev_printf(level, fmt, ...) \
+	RTE_LOG(level, PMD, "rte_cxgbe_pmd: " fmt, ##__VA_ARGS__)
 
-#define dev_err(x, args...) dev_printf(ERR, args)
-#define dev_info(x, args...) dev_printf(INFO, args)
-#define dev_warn(x, args...) dev_printf(WARNING, args)
+#define dev_err(x, fmt, ...) dev_printf(ERR, fmt, ##__VA_ARGS__)
+#define dev_info(x, fmt, ...) dev_printf(INFO, fmt, ##__VA_ARGS__)
+#define dev_warn(x, fmt, ...) dev_printf(WARNING, fmt, ##__VA_ARGS__)
 
 #ifdef RTE_LIBRTE_CXGBE_DEBUG
-#define dev_debug(x, args...) dev_printf(DEBUG, args)
+#define dev_debug(x, fmt, ...) dev_printf(INFO, fmt, ##__VA_ARGS__)
 #else
-#define dev_debug(x, args...) do { } while (0)
+#define dev_debug(x, fmt, ...) do { } while (0)
 #endif
 
 #ifdef RTE_LIBRTE_CXGBE_DEBUG_REG
-#define CXGBE_DEBUG_REG(x, args...) dev_printf(DEBUG, "REG:" args)
+#define CXGBE_DEBUG_REG(x, fmt, ...) \
+	dev_printf(INFO, "REG:" fmt, ##__VA_ARGS__)
 #else
-#define CXGBE_DEBUG_REG(x, args...) do { } while (0)
+#define CXGBE_DEBUG_REG(x, fmt, ...) do { } while (0)
 #endif
 
 #ifdef RTE_LIBRTE_CXGBE_DEBUG_MBOX
-#define CXGBE_DEBUG_MBOX(x, args...) dev_printf(DEBUG, "MBOX:" args)
+#define CXGBE_DEBUG_MBOX(x, fmt, ...) \
+	dev_printf(INFO, "MBOX:" fmt, ##__VA_ARGS__)
 #else
-#define CXGBE_DEBUG_MBOX(x, args...) do { } while (0)
+#define CXGBE_DEBUG_MBOX(x, fmt, ...) do { } while (0)
 #endif
 
 #ifdef RTE_LIBRTE_CXGBE_DEBUG_TX
-#define CXGBE_DEBUG_TX(x, args...) dev_printf(DEBUG, "TX:" args)
+#define CXGBE_DEBUG_TX(x, fmt, ...) \
+	dev_printf(INFO, "TX:" fmt, ##__VA_ARGS__)
 #else
-#define CXGBE_DEBUG_TX(x, args...) do { } while (0)
+#define CXGBE_DEBUG_TX(x, fmt, ...) do { } while (0)
 #endif
 
 #ifdef RTE_LIBRTE_CXGBE_DEBUG_RX
-#define CXGBE_DEBUG_RX(x, args...) dev_printf(DEBUG, "RX:" args)
+#define CXGBE_DEBUG_RX(x, fmt, ...) \
+	dev_printf(INFO, "RX:" fmt, ##__VA_ARGS__)
 #else
-#define CXGBE_DEBUG_RX(x, args...) do { } while (0)
+#define CXGBE_DEBUG_RX(x, fmt, ...) do { } while (0)
 #endif
 
 #ifdef RTE_LIBRTE_CXGBE_DEBUG
@@ -63,9 +67,9 @@
 #define CXGBE_FUNC_TRACE() do { } while (0)
 #endif
 
-#define pr_err(y, args...) dev_err(0, y, ##args)
-#define pr_warn(y, args...) dev_warn(0, y, ##args)
-#define pr_info(y, args...) dev_info(0, y, ##args)
+#define pr_err(fmt, ...) dev_err(0, fmt, ##__VA_ARGS__)
+#define pr_warn(fmt, ...) dev_warn(0, fmt, ##__VA_ARGS__)
+#define pr_info(fmt, ...) dev_info(0, fmt, ##__VA_ARGS__)
 #define BUG() pr_err("BUG at %s:%d", __func__, __LINE__)
 
 #define ASSERT(x) do {\
