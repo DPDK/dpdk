@@ -466,7 +466,7 @@ extern struct rte_bbdev rte_bbdev_devices[];
  *   The number of operations actually enqueued (this is the number of processed
  *   entries in the @p ops array).
  */
-static inline uint16_t
+static inline uint16_t __rte_experimental
 rte_bbdev_enqueue_enc_ops(uint16_t dev_id, uint16_t queue_id,
 		struct rte_bbdev_enc_op **ops, uint16_t num_ops)
 {
@@ -496,7 +496,7 @@ rte_bbdev_enqueue_enc_ops(uint16_t dev_id, uint16_t queue_id,
  *   The number of operations actually enqueued (this is the number of processed
  *   entries in the @p ops array).
  */
-static inline uint16_t
+static inline uint16_t __rte_experimental
 rte_bbdev_enqueue_dec_ops(uint16_t dev_id, uint16_t queue_id,
 		struct rte_bbdev_dec_op **ops, uint16_t num_ops)
 {
@@ -526,7 +526,7 @@ rte_bbdev_enqueue_dec_ops(uint16_t dev_id, uint16_t queue_id,
  *   The number of operations actually dequeued (this is the number of entries
  *   copied into the @p ops array).
  */
-static inline uint16_t
+static inline uint16_t __rte_experimental
 rte_bbdev_dequeue_enc_ops(uint16_t dev_id, uint16_t queue_id,
 		struct rte_bbdev_enc_op **ops, uint16_t num_ops)
 {
@@ -557,7 +557,7 @@ rte_bbdev_dequeue_enc_ops(uint16_t dev_id, uint16_t queue_id,
  *   copied into the @p ops array).
  */
 
-static inline uint16_t
+static inline uint16_t __rte_experimental
 rte_bbdev_dequeue_dec_ops(uint16_t dev_id, uint16_t queue_id,
 		struct rte_bbdev_dec_op **ops, uint16_t num_ops)
 {

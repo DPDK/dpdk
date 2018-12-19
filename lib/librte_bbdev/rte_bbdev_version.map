@@ -6,9 +6,13 @@ EXPERIMENTAL {
 	rte_bbdev_callback_unregister;
 	rte_bbdev_close;
 	rte_bbdev_count;
+	rte_bbdev_dec_op_alloc_bulk;
+	rte_bbdev_dec_op_free_bulk;
 	rte_bbdev_dequeue_dec_ops;
 	rte_bbdev_dequeue_enc_ops;
 	rte_bbdev_devices;
+	rte_bbdev_enc_op_alloc_bulk;
+	rte_bbdev_enc_op_free_bulk;
 	rte_bbdev_enqueue_dec_ops;
 	rte_bbdev_enqueue_enc_ops;
 	rte_bbdev_find_next;
