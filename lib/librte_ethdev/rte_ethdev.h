@@ -80,6 +80,7 @@
  * rte_eth_dev_stop()/rte_eth_dev_start(). The following configuration will
  * be retained:
  *
+ *     - MTU
  *     - flow control settings
  *     - receive mode configuration (promiscuous mode, hardware checksum mode,
  *       RSS/VMDQ settings etc.)
