@@ -246,7 +246,7 @@ static void get_mbox_rpl(struct adapter *adap, __be64 *rpl, int nflit,
 			 u32 mbox_addr)
 {
 	for ( ; nflit; nflit--, mbox_addr += 8)
-		*rpl++ = htobe64(t4_read_reg64(adap, mbox_addr));
+		*rpl++ = cpu_to_be64(t4_read_reg64(adap, mbox_addr));
 }
 
 /*
@@ -335,7 +335,7 @@ int t4_wr_mbox_meat_timeout(struct adapter *adap, int mbox,
 		return -EINVAL;
 	}
 
-	bzero(p, size);
+	memset(p, 0, size);
 	memcpy(p, (const __be64 *)cmd, size);
 
 	/*
