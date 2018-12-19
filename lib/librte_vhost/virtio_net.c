@@ -755,7 +755,6 @@ virtio_dev_rx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct buf_vector buf_vec[BUF_VECTOR_MAX];
 	uint16_t avail_head;
 
-	rte_prefetch0(&vq->avail->ring[vq->last_avail_idx & (vq->size - 1)]);
 	avail_head = *((volatile uint16_t *)&vq->avail->idx);
 
 	/*
@@ -763,6 +762,8 @@ virtio_dev_rx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	 * desc reads needs to be enforced.
 	 */
 	rte_smp_rmb();
+
+	rte_prefetch0(&vq->avail->ring[vq->last_avail_idx & (vq->size - 1)]);
 
 	for (pkt_idx = 0; pkt_idx < count; pkt_idx++) {
 		uint32_t pkt_len = pkts[pkt_idx]->pkt_len + dev->vhost_hlen;
@@ -1339,8 +1340,6 @@ virtio_dev_tx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		}
 	}
 
-	rte_prefetch0(&vq->avail->ring[vq->last_avail_idx & (vq->size - 1)]);
-
 	free_entries = *((volatile uint16_t *)&vq->avail->idx) -
 			vq->last_avail_idx;
 	if (free_entries == 0)
@@ -1351,6 +1350,8 @@ virtio_dev_tx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	 * desc reads needs to be enforced.
 	 */
 	rte_smp_rmb();
+
+	rte_prefetch0(&vq->avail->ring[vq->last_avail_idx & (vq->size - 1)]);
 
 	VHOST_LOG_DEBUG(VHOST_DATA, "(%d) %s\n", dev->vid, __func__);
 
