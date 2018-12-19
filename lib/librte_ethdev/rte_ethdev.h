@@ -82,8 +82,8 @@
  *
  *     - MTU
  *     - flow control settings
- *     - receive mode configuration (promiscuous mode, hardware checksum mode,
- *       RSS/VMDQ settings etc.)
+ *     - receive mode configuration (promiscuous mode, all-multicast mode,
+ *       hardware checksum mode, RSS/VMDQ settings etc.)
  *     - VLAN filtering configuration
  *     - default MAC address
  *     - MAC addresses supplied to MAC address array
