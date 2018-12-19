@@ -85,6 +85,7 @@
  *     - receive mode configuration (promiscuous mode, hardware checksum mode,
  *       RSS/VMDQ settings etc.)
  *     - VLAN filtering configuration
+ *     - default MAC address
  *     - MAC addresses supplied to MAC address array
  *     - flow director filtering mode (but not filtering rules)
  *     - NIC queue statistics mappings
