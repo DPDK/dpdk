@@ -4,8 +4,10 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <unistd.h>
 #include <sys/queue.h>
+#include <string.h>
 
 #include <rte_common.h>
 #include <rte_memory.h>
@@ -22,28 +24,44 @@
 /*
  * rwlock test
  * ===========
- *
- * - There is a global rwlock and a table of rwlocks (one per lcore).
- *
- * - The test function takes all of these locks and launches the
- *   ``test_rwlock_per_core()`` function on each core (except the master).
- *
- *   - The function takes the global write lock, display something,
- *     then releases the global lock.
- *   - Then, it takes the per-lcore write lock, display something, and
- *     releases the per-core lock.
- *   - Finally, a read lock is taken during 100 ms, then released.
- *
- * - The main function unlocks the per-lcore locks sequentially and
- *   waits between each lock. This triggers the display of a message
- *   for each core, in the correct order.
- *
- *   Then, it tries to take the global write lock and display the last
- *   message. The autotest script checks that the message order is correct.
+ * Provides UT for rte_rwlock API.
+ * Main concern is on functional testing, but also provides some
+ * performance measurements.
+ * Obviously for proper testing need to be executed with more than one lcore.
  */
+
+#define ITER_NUM	0x80
+
+#define TEST_SEC	5
 
 static rte_rwlock_t sl;
 static rte_rwlock_t sl_tab[RTE_MAX_LCORE];
+
+enum {
+	LC_TYPE_RDLOCK,
+	LC_TYPE_WRLOCK,
+};
+
+static struct {
+	rte_rwlock_t lock;
+	uint64_t tick;
+	volatile union {
+		uint8_t u8[RTE_CACHE_LINE_SIZE];
+		uint64_t u64[RTE_CACHE_LINE_SIZE / sizeof(uint64_t)];
+	} data;
+} __rte_cache_aligned try_rwlock_data;
+
+struct try_rwlock_lcore {
+	int32_t rc;
+	int32_t type;
+	struct {
+		uint64_t tick;
+		uint64_t fail;
+		uint64_t success;
+	} stat;
+} __rte_cache_aligned;
+
+static struct try_rwlock_lcore try_lcore_data[RTE_MAX_LCORE];
 
 static int
 test_rwlock_per_core(__attribute__((unused)) void *arg)
@@ -65,8 +83,27 @@ test_rwlock_per_core(__attribute__((unused)) void *arg)
 	return 0;
 }
 
+/*
+ * - There is a global rwlock and a table of rwlocks (one per lcore).
+ *
+ * - The test function takes all of these locks and launches the
+ *   ``test_rwlock_per_core()`` function on each core (except the master).
+ *
+ *   - The function takes the global write lock, display something,
+ *     then releases the global lock.
+ *   - Then, it takes the per-lcore write lock, display something, and
+ *     releases the per-core lock.
+ *   - Finally, a read lock is taken during 100 ms, then released.
+ *
+ * - The main function unlocks the per-lcore locks sequentially and
+ *   waits between each lock. This triggers the display of a message
+ *   for each core, in the correct order.
+ *
+ *   Then, it tries to take the global write lock and display the last
+ *   message. The autotest script checks that the message order is correct.
+ */
 static int
-test_rwlock(void)
+rwlock_test1(void)
 {
 	int i;
 
@@ -96,6 +133,340 @@ test_rwlock(void)
 	rte_eal_mp_wait_lcore();
 
 	return 0;
+}
+
+static int
+try_read(uint32_t lc)
+{
+	int32_t rc;
+	uint32_t i;
+
+	rc = rte_rwlock_read_trylock(&try_rwlock_data.lock);
+	if (rc != 0)
+		return rc;
+
+	for (i = 0; i != RTE_DIM(try_rwlock_data.data.u64); i++) {
+
+		/* race condition occurred, lock doesn't work properly */
+		if (try_rwlock_data.data.u64[i] != 0) {
+			printf("%s(%u) error: unexpected data pattern\n",
+				__func__, lc);
+			rte_memdump(stdout, NULL,
+				(void *)(uintptr_t)&try_rwlock_data.data,
+				sizeof(try_rwlock_data.data));
+			rc = -EFAULT;
+			break;
+		}
+	}
+
+	rte_rwlock_read_unlock(&try_rwlock_data.lock);
+	return rc;
+}
+
+static int
+try_write(uint32_t lc)
+{
+	int32_t rc;
+	uint32_t i, v;
+
+	v = RTE_MAX(lc % UINT8_MAX, 1U);
+
+	rc = rte_rwlock_write_trylock(&try_rwlock_data.lock);
+	if (rc != 0)
+		return rc;
+
+	/* update by bytes in reverese order */
+	for (i = RTE_DIM(try_rwlock_data.data.u8); i-- != 0; ) {
+
+		/* race condition occurred, lock doesn't work properly */
+		if (try_rwlock_data.data.u8[i] != 0) {
+			printf("%s:%d(%u) error: unexpected data pattern\n",
+				__func__, __LINE__, lc);
+			rte_memdump(stdout, NULL,
+				(void *)(uintptr_t)&try_rwlock_data.data,
+				sizeof(try_rwlock_data.data));
+			rc = -EFAULT;
+			break;
+		}
+
+		try_rwlock_data.data.u8[i] = v;
+	}
+
+	/* restore by bytes in reverese order */
+	for (i = RTE_DIM(try_rwlock_data.data.u8); i-- != 0; ) {
+
+		/* race condition occurred, lock doesn't work properly */
+		if (try_rwlock_data.data.u8[i] != v) {
+			printf("%s:%d(%u) error: unexpected data pattern\n",
+				__func__, __LINE__, lc);
+			rte_memdump(stdout, NULL,
+				(void *)(uintptr_t)&try_rwlock_data.data,
+				sizeof(try_rwlock_data.data));
+			rc = -EFAULT;
+			break;
+		}
+
+		try_rwlock_data.data.u8[i] = 0;
+	}
+
+	rte_rwlock_write_unlock(&try_rwlock_data.lock);
+	return rc;
+}
+
+static int
+try_read_lcore(__rte_unused void *data)
+{
+	int32_t rc;
+	uint32_t i, lc;
+	uint64_t ftm, stm, tm;
+	struct try_rwlock_lcore *lcd;
+
+	lc = rte_lcore_id();
+	lcd = try_lcore_data + lc;
+	lcd->type = LC_TYPE_RDLOCK;
+
+	ftm = try_rwlock_data.tick;
+	stm = rte_get_timer_cycles();
+
+	do {
+		for (i = 0; i != ITER_NUM; i++) {
+			rc = try_read(lc);
+			if (rc == 0)
+				lcd->stat.success++;
+			else if (rc == -EBUSY)
+				lcd->stat.fail++;
+			else
+				break;
+			rc = 0;
+		}
+		tm = rte_get_timer_cycles() - stm;
+	} while (tm < ftm && rc == 0);
+
+	lcd->rc = rc;
+	lcd->stat.tick = tm;
+	return rc;
+}
+
+static int
+try_write_lcore(__rte_unused void *data)
+{
+	int32_t rc;
+	uint32_t i, lc;
+	uint64_t ftm, stm, tm;
+	struct try_rwlock_lcore *lcd;
+
+	lc = rte_lcore_id();
+	lcd = try_lcore_data + lc;
+	lcd->type = LC_TYPE_WRLOCK;
+
+	ftm = try_rwlock_data.tick;
+	stm = rte_get_timer_cycles();
+
+	do {
+		for (i = 0; i != ITER_NUM; i++) {
+			rc = try_write(lc);
+			if (rc == 0)
+				lcd->stat.success++;
+			else if (rc == -EBUSY)
+				lcd->stat.fail++;
+			else
+				break;
+			rc = 0;
+		}
+		tm = rte_get_timer_cycles() - stm;
+	} while (tm < ftm && rc == 0);
+
+	lcd->rc = rc;
+	lcd->stat.tick = tm;
+	return rc;
+}
+
+static void
+print_try_lcore_stats(const struct try_rwlock_lcore *tlc, uint32_t lc)
+{
+	uint64_t f, s;
+
+	f = RTE_MAX(tlc->stat.fail, 1ULL);
+	s = RTE_MAX(tlc->stat.success, 1ULL);
+
+	printf("try_lcore_data[%u]={\n"
+		"\trc=%d,\n"
+		"\ttype=%s,\n"
+		"\tfail=%" PRIu64 ",\n"
+		"\tsuccess=%" PRIu64 ",\n"
+		"\tcycles=%" PRIu64 ",\n"
+		"\tcycles/op=%#Lf,\n"
+		"\tcycles/success=%#Lf,\n"
+		"\tsuccess/fail=%#Lf,\n"
+		"};\n",
+		lc,
+		tlc->rc,
+		tlc->type == LC_TYPE_RDLOCK ? "RDLOCK" : "WRLOCK",
+		tlc->stat.fail,
+		tlc->stat.success,
+		tlc->stat.tick,
+		(long double)tlc->stat.tick /
+		(tlc->stat.fail + tlc->stat.success),
+		(long double)tlc->stat.tick / s,
+		(long double)tlc->stat.success / f);
+}
+
+static void
+collect_try_lcore_stats(struct try_rwlock_lcore *tlc,
+	const struct try_rwlock_lcore *lc)
+{
+	tlc->stat.tick += lc->stat.tick;
+	tlc->stat.fail += lc->stat.fail;
+	tlc->stat.success += lc->stat.success;
+}
+
+/*
+ * Process collected results:
+ *  - check status
+ *  - collect and print statistics
+ */
+static int
+process_try_lcore_stats(void)
+{
+	int32_t rc;
+	uint32_t lc, rd, wr;
+	struct try_rwlock_lcore rlc, wlc;
+
+	memset(&rlc, 0, sizeof(rlc));
+	memset(&wlc, 0, sizeof(wlc));
+
+	rlc.type = LC_TYPE_RDLOCK;
+	wlc.type = LC_TYPE_WRLOCK;
+	rd = 0;
+	wr = 0;
+
+	rc = 0;
+	RTE_LCORE_FOREACH(lc) {
+		rc |= try_lcore_data[lc].rc;
+		if (try_lcore_data[lc].type == LC_TYPE_RDLOCK) {
+			collect_try_lcore_stats(&rlc, try_lcore_data + lc);
+			rd++;
+		} else {
+			collect_try_lcore_stats(&wlc, try_lcore_data + lc);
+			wr++;
+		}
+	}
+
+	if (rc == 0) {
+		RTE_LCORE_FOREACH(lc)
+			print_try_lcore_stats(try_lcore_data + lc, lc);
+
+		if (rd != 0) {
+			printf("aggregated stats for %u RDLOCK cores:\n", rd);
+			print_try_lcore_stats(&rlc, rd);
+		}
+
+		if (wr != 0) {
+			printf("aggregated stats for %u WRLOCK cores:\n", wr);
+			print_try_lcore_stats(&wlc, wr);
+		}
+	}
+
+	return rc;
+}
+
+static void
+try_test_reset(void)
+{
+	memset(&try_lcore_data, 0, sizeof(try_lcore_data));
+	memset(&try_rwlock_data, 0, sizeof(try_rwlock_data));
+	try_rwlock_data.tick = TEST_SEC * rte_get_tsc_hz();
+}
+
+/* all lcores grab RDLOCK */
+static int
+try_rwlock_test_rda(void)
+{
+	try_test_reset();
+
+	/* start read test on all avaialble lcores */
+	rte_eal_mp_remote_launch(try_read_lcore, NULL, CALL_MASTER);
+	rte_eal_mp_wait_lcore();
+
+	return process_try_lcore_stats();
+}
+
+/* all slave lcores grab RDLOCK, master one grabs WRLOCK */
+static int
+try_rwlock_test_rds_wrm(void)
+{
+	try_test_reset();
+
+	rte_eal_mp_remote_launch(try_read_lcore, NULL, SKIP_MASTER);
+	try_write_lcore(NULL);
+	rte_eal_mp_wait_lcore();
+
+	return process_try_lcore_stats();
+}
+
+/* master and even slave lcores grab RDLOCK, odd lcores grab WRLOCK */
+static int
+try_rwlock_test_rde_wro(void)
+{
+	uint32_t lc, mlc;
+
+	try_test_reset();
+
+	mlc = rte_get_master_lcore();
+
+	RTE_LCORE_FOREACH(lc) {
+		if (lc != mlc) {
+			if ((lc & 1) == 0)
+				rte_eal_remote_launch(try_read_lcore,
+						NULL, lc);
+			else
+				rte_eal_remote_launch(try_write_lcore,
+						NULL, lc);
+		}
+	}
+	try_read_lcore(NULL);
+	rte_eal_mp_wait_lcore();
+
+	return process_try_lcore_stats();
+}
+
+static int
+test_rwlock(void)
+{
+	uint32_t i;
+	int32_t rc, ret;
+
+	static const struct {
+		const char *name;
+		int (*ftst)(void);
+	} test[] = {
+		{
+			.name = "rwlock_test1",
+			.ftst = rwlock_test1,
+		},
+		{
+			.name = "try_rwlock_test_rda",
+			.ftst = try_rwlock_test_rda,
+		},
+		{
+			.name = "try_rwlock_test_rds_wrm",
+			.ftst = try_rwlock_test_rds_wrm,
+		},
+		{
+			.name = "try_rwlock_test_rde_wro",
+			.ftst = try_rwlock_test_rde_wro,
+		},
+	};
+
+	ret = 0;
+	for (i = 0; i != RTE_DIM(test); i++) {
+		printf("starting test %s;\n", test[i].name);
+		rc = test[i].ftst();
+		printf("test %s completed with status %d\n", test[i].name, rc);
+		ret |= rc;
+	}
+
+	return ret;
 }
 
 REGISTER_TEST_COMMAND(rwlock_autotest, test_rwlock);
