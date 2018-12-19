@@ -76,6 +76,36 @@ rte_rwlock_read_lock(rte_rwlock_t *rwl)
 }
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * try to take a read lock.
+ *
+ * @param rwl
+ *   A pointer to a rwlock structure.
+ * @return
+ *   - zero if the lock is successfully taken
+ *   - -EBUSY if lock could not be acquired for reading because a
+ *     writer holds the lock
+ */
+static inline __rte_experimental int
+rte_rwlock_read_trylock(rte_rwlock_t *rwl)
+{
+	int32_t x;
+	int success = 0;
+
+	while (success == 0) {
+		x = rwl->cnt;
+		/* write lock is held */
+		if (x < 0)
+			return -EBUSY;
+		success = rte_atomic32_cmpset((volatile uint32_t *)&rwl->cnt,
+					      (uint32_t)x, (uint32_t)(x + 1));
+	}
+	return 0;
+}
+
+/**
  * Release a read lock.
  *
  * @param rwl
@@ -85,6 +115,32 @@ static inline void
 rte_rwlock_read_unlock(rte_rwlock_t *rwl)
 {
 	rte_atomic32_dec((rte_atomic32_t *)(intptr_t)&rwl->cnt);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * try to take a write lock.
+ *
+ * @param rwl
+ *   A pointer to a rwlock structure.
+ * @return
+ *   - zero if the lock is successfully taken
+ *   - -EBUSY if lock could not be acquired for writing because
+ *     it was already locked for reading or writing
+ */
+static inline __rte_experimental int
+rte_rwlock_write_trylock(rte_rwlock_t *rwl)
+{
+	int32_t x;
+
+	x = rwl->cnt;
+	if (x != 0 || rte_atomic32_cmpset((volatile uint32_t *)&rwl->cnt,
+				0, (uint32_t)-1) == 0)
+		return -EBUSY;
+
+	return 0;
 }
 
 /**
