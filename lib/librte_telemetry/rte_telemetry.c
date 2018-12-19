@@ -558,7 +558,7 @@ rte_telemetry_send_ports_stats_values(uint32_t *metric_ids, int num_metric_ids,
 		}
 
 		ret = rte_telemetry_update_metrics_ethdev(telemetry,
-				port_ids[i], telemetry->reg_index);
+				port_ids[i], telemetry->reg_index[i]);
 		if (ret < 0) {
 			TELEMETRY_LOG_ERR("Failed to update ethdev metrics");
 			return -1;
@@ -658,23 +658,45 @@ free_xstats:
 static int32_t
 rte_telemetry_initial_accept(struct telemetry_impl *telemetry)
 {
+	struct driver_index {
+		const void *dev_ops;
+		int reg_index;
+	} drv_idx[RTE_MAX_ETHPORTS];
+	int nb_drv_idx = 0;
 	uint16_t pid;
 	int ret;
 	int selftest = 0;
 
 	RTE_ETH_FOREACH_DEV(pid) {
-		telemetry->reg_index = rte_telemetry_reg_ethdev_to_metrics(pid);
-		break;
-	}
+		int i;
+		/* Different device types have different numbers of stats, so
+		 * first check if the stats for this type of device have
+		 * already been registered
+		 */
+		for (i = 0; i < nb_drv_idx; i++) {
+			if (rte_eth_devices[pid].dev_ops == drv_idx[i].dev_ops) {
+				telemetry->reg_index[pid] = drv_idx[i].reg_index;
+				break;
+			}
+		}
+		if (i < nb_drv_idx)
+			continue; /* we found a match, go to next port */
 
-	if (telemetry->reg_index < 0) {
-		TELEMETRY_LOG_ERR("Failed to register ethdev metrics");
-		return -1;
+		/* No match, register a new set of xstats for this port */
+		ret = rte_telemetry_reg_ethdev_to_metrics(pid);
+		if (ret < 0) {
+			TELEMETRY_LOG_ERR("Failed to register ethdev metrics");
+			return -1;
+		}
+		telemetry->reg_index[pid] = ret;
+		drv_idx[nb_drv_idx].dev_ops = rte_eth_devices[pid].dev_ops;
+		drv_idx[nb_drv_idx].reg_index = ret;
+		nb_drv_idx++;
 	}
 
 	telemetry->metrics_register_done = 1;
 	if (selftest) {
-		ret = rte_telemetry_socket_messaging_testing(telemetry->reg_index,
+		ret = rte_telemetry_socket_messaging_testing(telemetry->reg_index[0],
 				telemetry->server_fd);
 		if (ret < 0)
 			return -1;
@@ -1299,7 +1321,7 @@ rte_telemetry_socket_messaging_testing(int index, int socket)
 	}
 
 	telemetry->server_fd = socket;
-	telemetry->reg_index = index;
+	telemetry->reg_index[0] = index;
 	TELEMETRY_LOG_INFO("Beginning Telemetry socket message Selftest");
 	rte_telemetry_socket_test_setup(telemetry, &send_fd, &recv_fd);
 	TELEMETRY_LOG_INFO("Register valid client test");
