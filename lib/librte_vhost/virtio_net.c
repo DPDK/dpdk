@@ -481,6 +481,12 @@ fill_vec_buf_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	if (unlikely(!desc_is_avail(&descs[avail_idx], wrap_counter)))
 		return -1;
 
+	/*
+	 * The ordering between desc flags and desc
+	 * content reads need to be enforced.
+	 */
+	rte_smp_rmb();
+
 	*desc_count = 0;
 	*len = 0;
 
