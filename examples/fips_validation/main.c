@@ -13,12 +13,18 @@
 #include <rte_string_fns.h>
 
 #include "fips_validation.h"
+#include "fips_dev_self_test.h"
 
 #define REQ_FILE_PATH_KEYWORD	"req-file"
 #define RSP_FILE_PATH_KEYWORD	"rsp-file"
 #define FOLDER_KEYWORD		"path-is-folder"
 #define CRYPTODEV_KEYWORD	"cryptodev"
 #define CRYPTODEV_ID_KEYWORD	"cryptodev-id"
+#define CRYPTODEV_ST_KEYWORD	"self-test"
+#define CRYPTODEV_BK_ID_KEYWORD	"broken-test-id"
+#define CRYPTODEV_BK_DIR_KEY	"broken-test-dir"
+#define CRYPTODEV_ENC_KEYWORD	"enc"
+#define CRYPTODEV_DEC_KEYWORD	"dec"
 
 struct fips_test_vector vec;
 struct fips_test_interim_info info;
@@ -35,6 +41,8 @@ struct cryptodev_fips_validate_env {
 	struct rte_mbuf *mbuf;
 	struct rte_crypto_op *op;
 	struct rte_cryptodev_sym_session *sess;
+	uint32_t self_test;
+	struct fips_dev_broken_test_config *broken_test_config;
 } env;
 
 static int
@@ -45,6 +53,18 @@ cryptodev_fips_validate_app_int(void)
 	uint32_t sess_sz = rte_cryptodev_sym_get_private_session_size(
 			env.dev_id);
 	int ret;
+
+	if (env.self_test) {
+		ret = fips_dev_self_test(env.dev_id, env.broken_test_config);
+		if (ret < 0) {
+			struct rte_cryptodev *cryptodev =
+					rte_cryptodev_pmd_get_dev(env.dev_id);
+
+			rte_cryptodev_pmd_destroy(cryptodev);
+
+			return ret;
+		}
+	}
 
 	ret = rte_cryptodev_configure(env.dev_id, &conf);
 	if (ret < 0)
@@ -176,9 +196,14 @@ cryptodev_fips_validate_usage(const char *prgname)
 		"  --%s: RESPONSE-FILE-PATH\n"
 		"  --%s: indicating both paths are folders\n"
 		"  --%s: CRYPTODEV-NAME\n"
-		"  --%s: CRYPTODEV-ID-NAME\n",
+		"  --%s: CRYPTODEV-ID-NAME\n"
+		"  --%s: self test indicator\n"
+		"  --%s: self broken test ID\n"
+		"  --%s: self broken test direction\n",
 		prgname, REQ_FILE_PATH_KEYWORD, RSP_FILE_PATH_KEYWORD,
-		FOLDER_KEYWORD, CRYPTODEV_KEYWORD, CRYPTODEV_ID_KEYWORD);
+		FOLDER_KEYWORD, CRYPTODEV_KEYWORD, CRYPTODEV_ID_KEYWORD,
+		CRYPTODEV_ST_KEYWORD, CRYPTODEV_BK_ID_KEYWORD,
+		CRYPTODEV_BK_DIR_KEY);
 }
 
 static int
@@ -194,6 +219,9 @@ cryptodev_fips_validate_parse_args(int argc, char **argv)
 			{FOLDER_KEYWORD, no_argument, 0, 0},
 			{CRYPTODEV_KEYWORD, required_argument, 0, 0},
 			{CRYPTODEV_ID_KEYWORD, required_argument, 0, 0},
+			{CRYPTODEV_ST_KEYWORD, no_argument, 0, 0},
+			{CRYPTODEV_BK_ID_KEYWORD, required_argument, 0, 0},
+			{CRYPTODEV_BK_DIR_KEY, required_argument, 0, 0},
 			{NULL, 0, 0, 0}
 	};
 
@@ -224,6 +252,56 @@ cryptodev_fips_validate_parse_args(int argc, char **argv)
 					CRYPTODEV_ID_KEYWORD) == 0) {
 				ret = parse_cryptodev_id_arg(optarg);
 				if (ret < 0) {
+					cryptodev_fips_validate_usage(prgname);
+					return -EINVAL;
+				}
+			} else if (strcmp(lgopts[option_index].name,
+					CRYPTODEV_ST_KEYWORD) == 0) {
+				env.self_test = 1;
+			} else if (strcmp(lgopts[option_index].name,
+					CRYPTODEV_BK_ID_KEYWORD) == 0) {
+				if (!env.broken_test_config) {
+					env.broken_test_config = rte_malloc(
+						NULL,
+						sizeof(*env.broken_test_config),
+						0);
+					if (!env.broken_test_config)
+						return -ENOMEM;
+
+					env.broken_test_config->expect_fail_dir =
+						self_test_dir_enc_auth_gen;
+				}
+
+				if (parser_read_uint32(
+					&env.broken_test_config->expect_fail_test_idx,
+						optarg) < 0) {
+					rte_free(env.broken_test_config);
+					cryptodev_fips_validate_usage(prgname);
+					return -EINVAL;
+				}
+			} else if (strcmp(lgopts[option_index].name,
+					CRYPTODEV_BK_DIR_KEY) == 0) {
+				if (!env.broken_test_config) {
+					env.broken_test_config = rte_malloc(
+						NULL,
+						sizeof(*env.broken_test_config),
+						0);
+					if (!env.broken_test_config)
+						return -ENOMEM;
+
+					env.broken_test_config->
+						expect_fail_test_idx = 0;
+				}
+
+				if (strcmp(optarg, CRYPTODEV_ENC_KEYWORD) == 0)
+					env.broken_test_config->expect_fail_dir =
+						self_test_dir_enc_auth_gen;
+				else if (strcmp(optarg, CRYPTODEV_DEC_KEYWORD)
+						== 0)
+					env.broken_test_config->expect_fail_dir =
+						self_test_dir_dec_auth_verify;
+				else {
+					rte_free(env.broken_test_config);
 					cryptodev_fips_validate_usage(prgname);
 					return -EINVAL;
 				}
