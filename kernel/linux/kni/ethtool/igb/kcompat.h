@@ -3930,7 +3930,8 @@ skb_set_hash(struct sk_buff *skb, __u32 hash, __always_unused int type)
 #endif
 
 #if (defined(RHEL_RELEASE_CODE) && \
-	(RHEL_RELEASE_VERSION(7, 5) <= RHEL_RELEASE_CODE))
+	(RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 5)) && \
+	(RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(8, 0)))
 #define ndo_change_mtu ndo_change_mtu_rh74
 #endif
 
