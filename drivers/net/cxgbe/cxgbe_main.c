@@ -33,9 +33,9 @@
 #include <rte_dev.h>
 #include <rte_kvargs.h>
 
-#include "common.h"
-#include "t4_regs.h"
-#include "t4_msg.h"
+#include "base/common.h"
+#include "base/t4_regs.h"
+#include "base/t4_msg.h"
 #include "cxgbe.h"
 #include "clip_tbl.h"
 #include "l2t.h"

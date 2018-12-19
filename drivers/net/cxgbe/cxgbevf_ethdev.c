@@ -28,7 +28,7 @@
 /*
  *... and the PCI ID Table itself ...
  */
-#include "t4_pci_id_tbl.h"
+#include "base/t4_pci_id_tbl.h"
 
 /*
  * Get port statistics.

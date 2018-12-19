@@ -57,7 +57,7 @@
 /*
  *... and the PCI ID Table itself ...
  */
-#include "t4_pci_id_tbl.h"
+#include "base/t4_pci_id_tbl.h"
 
 uint16_t cxgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			 uint16_t nb_pkts)

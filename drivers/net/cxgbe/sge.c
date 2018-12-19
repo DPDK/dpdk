@@ -33,9 +33,9 @@
 #include <rte_random.h>
 #include <rte_dev.h>
 
-#include "common.h"
-#include "t4_regs.h"
-#include "t4_msg.h"
+#include "base/common.h"
+#include "base/t4_regs.h"
+#include "base/t4_msg.h"
 #include "cxgbe.h"
 
 static inline void ship_tx_pkt_coalesce_wr(struct adapter *adap,

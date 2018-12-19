@@ -6,7 +6,7 @@
 #ifndef _CXGBE_FILTER_H_
 #define _CXGBE_FILTER_H_
 
-#include "t4_msg.h"
+#include "base/t4_msg.h"
 /*
  * Defined bit width of user definable filter tuples
  */

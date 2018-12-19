@@ -6,8 +6,8 @@
 #ifndef _CXGBE_H_
 #define _CXGBE_H_
 
-#include "common.h"
-#include "t4_regs.h"
+#include "base/common.h"
+#include "base/t4_regs.h"
 
 #define CXGBE_MIN_RING_DESC_SIZE      128  /* Min TX/RX descriptor ring size */
 #define CXGBE_MAX_RING_DESC_SIZE      4096 /* Max TX/RX descriptor ring size */

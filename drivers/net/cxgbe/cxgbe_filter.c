@@ -3,9 +3,10 @@
  * All rights reserved.
  */
 #include <rte_net.h>
-#include "common.h"
-#include "t4_tcb.h"
-#include "t4_regs.h"
+
+#include "base/common.h"
+#include "base/t4_tcb.h"
+#include "base/t4_regs.h"
 #include "cxgbe_filter.h"
 #include "clip_tbl.h"
 #include "l2t.h"

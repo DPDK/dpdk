@@ -14,9 +14,9 @@
 #include <rte_rwlock.h>
 #include <rte_ethdev.h>
 
-#include "cxgbe_compat.h"
+#include "../cxgbe_compat.h"
+#include "../cxgbe_ofld.h"
 #include "t4_regs_values.h"
-#include "cxgbe_ofld.h"
 
 enum {
 	MAX_ETH_QSETS = 64,           /* # of Ethernet Tx/Rx queue sets */

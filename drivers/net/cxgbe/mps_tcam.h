@@ -6,7 +6,7 @@
 #ifndef _CXGBE_MPSTCAM_H_
 #define _CXGBE_MPSTCAM_H_
 
-#include "common.h"
+#include "base/common.h"
 
 enum {
 	MPS_ENTRY_UNUSED,	/* Keep this first so memset 0 renders

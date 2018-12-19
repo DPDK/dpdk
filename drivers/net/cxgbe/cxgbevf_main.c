@@ -7,9 +7,9 @@
 #include <rte_ethdev_pci.h>
 #include <rte_malloc.h>
 
-#include "common.h"
-#include "t4_regs.h"
-#include "t4_msg.h"
+#include "base/common.h"
+#include "base/t4_regs.h"
+#include "base/t4_msg.h"
 #include "cxgbe.h"
 #include "mps_tcam.h"
 

@@ -5,7 +5,7 @@
 #ifndef _CXGBE_L2T_H_
 #define _CXGBE_L2T_H_
 
-#include "t4_msg.h"
+#include "base/t4_msg.h"
 
 enum {
 	L2T_SIZE = 4096       /* # of L2T entries */

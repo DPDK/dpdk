@@ -9,8 +9,6 @@ include $(RTE_SDK)/mk/rte.vars.mk
 #
 LIB = librte_pmd_cxgbe.a
 
-CFLAGS += -I$(SRCDIR)/base/
-CFLAGS += -I$(SRCDIR)
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 

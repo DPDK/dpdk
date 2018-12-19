@@ -2,7 +2,7 @@
  * Copyright(c) 2018 Chelsio Communications.
  * All rights reserved.
  */
-#include "common.h"
+#include "base/common.h"
 #include "cxgbe_flow.h"
 
 #define __CXGBE_FILL_FS(__v, __m, fs, elem, e) \
