@@ -1437,8 +1437,6 @@ virtio_dev_tx_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 {
 	uint16_t i;
 
-	rte_prefetch0(&vq->desc_packed[vq->last_avail_idx]);
-
 	if (unlikely(dev->dequeue_zero_copy)) {
 		struct zcopy_mbuf *zmbuf, *next;
 
