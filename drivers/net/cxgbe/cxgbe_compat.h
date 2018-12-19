@@ -276,12 +276,12 @@ static inline void writel_relaxed(unsigned int val, volatile void __iomem *addr)
  * Multiplies an integer by a fraction, while avoiding unnecessary
  * overflow or loss of precision.
  */
-#define mult_frac(x, numer, denom)(                     \
-{                                                       \
-	typeof(x) quot = (x) / (denom);                 \
-	typeof(x) rem  = (x) % (denom);                 \
-	(quot * (numer)) + ((rem * (numer)) / (denom)); \
-}                                                       \
-)
+static inline unsigned int mult_frac(unsigned int x, unsigned int numer,
+				     unsigned int denom)
+{
+	unsigned int quot = x / denom;
+	unsigned int rem = x % denom;
 
+	return (quot * numer) + ((rem * numer) / denom);
+}
 #endif /* _CXGBE_COMPAT_H_ */

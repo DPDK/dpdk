@@ -522,7 +522,7 @@ void t4_read_rss_key(struct adapter *adap, u32 *key);
 
 enum t4_bar2_qtype { T4_BAR2_QTYPE_EGRESS, T4_BAR2_QTYPE_INGRESS };
 int t4_bar2_sge_qregs(struct adapter *adapter, unsigned int qid,
-		      unsigned int qtype, u64 *pbar2_qoffset,
+		      enum t4_bar2_qtype qtype, u64 *pbar2_qoffset,
 		      unsigned int *pbar2_qid);
 
 int t4_init_sge_params(struct adapter *adapter);
