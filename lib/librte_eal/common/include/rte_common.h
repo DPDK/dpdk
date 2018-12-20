@@ -547,6 +547,24 @@ rte_bsf64_safe(uint64_t v, uint32_t *pos)
 	return 1;
 }
 
+/**
+ * Return the last (most-significant) bit set.
+ *
+ * @note The last (most significant) bit is at position 64.
+ * @note rte_fls_u64(0) = 0, rte_fls_u64(1) = 1,
+ *       rte_fls_u64(0x8000000000000000) = 64
+ *
+ * @param x
+ *     The input parameter.
+ * @return
+ *     The last (most-significant) bit set, or 0 if the input is 0.
+ */
+static inline int
+rte_fls_u64(uint64_t x)
+{
+	return (x == 0) ? 0 : 64 - __builtin_clzll(x);
+}
+
 #ifndef offsetof
 /** Return the offset of a field in a structure. */
 #define offsetof(TYPE, MEMBER)  __builtin_offsetof (TYPE, MEMBER)

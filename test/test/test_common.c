@@ -242,12 +242,33 @@ test_fls(void)
 	};
 
 	for (i = 0; i < RTE_DIM(test); i++) {
+		uint64_t arg64;
+
 		arg = test[i].arg;
 		rc = rte_fls_u32(arg);
 		expected = test[i].rc;
 		if (rc != expected) {
 			printf("Wrong rte_fls_u32(0x%x) rc=%d, expected=%d\n",
 				arg, rc, expected);
+			return TEST_FAILED;
+		}
+		/* 64-bit version */
+		arg = test[i].arg;
+		rc = rte_fls_u64(arg);
+		expected = test[i].rc;
+		if (rc != expected) {
+			printf("Wrong rte_fls_u64(0x%x) rc=%d, expected=%d\n",
+				arg, rc, expected);
+			return TEST_FAILED;
+		}
+		/* 64-bit version shifted by 32 bits */
+		arg64 = (uint64_t)test[i].arg << 32;
+		rc = rte_fls_u64(arg64);
+		/* don't shift zero */
+		expected = test[i].rc == 0 ? 0 : test[i].rc + 32;
+		if (rc != expected) {
+			printf("Wrong rte_fls_u64(0x%" PRIx64 ") rc=%d, expected=%d\n",
+				arg64, rc, expected);
 			return TEST_FAILED;
 		}
 	}
