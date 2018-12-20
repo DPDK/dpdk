@@ -1330,7 +1330,7 @@ virtio_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 
 uint16_t
-virtio_recv_mergeable_pkts_inorder(void *rx_queue,
+virtio_recv_pkts_inorder(void *rx_queue,
 			struct rte_mbuf **rx_pkts,
 			uint16_t nb_pkts)
 {
@@ -1387,10 +1387,14 @@ virtio_recv_mergeable_pkts_inorder(void *rx_queue,
 		header = (struct virtio_net_hdr_mrg_rxbuf *)
 			 ((char *)rxm->buf_addr + RTE_PKTMBUF_HEADROOM
 			 - hdr_size);
-		seg_num = header->num_buffers;
 
-		if (seg_num == 0)
+		if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF)) {
+			seg_num = header->num_buffers;
+			if (seg_num == 0)
+				seg_num = 1;
+		} else {
 			seg_num = 1;
+		}
 
 		rxm->data_off = RTE_PKTMBUF_HEADROOM;
 		rxm->nb_segs = seg_num;

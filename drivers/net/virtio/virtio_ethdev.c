@@ -1481,10 +1481,9 @@ set_rxtx_funcs(struct rte_eth_dev *eth_dev)
 			eth_dev->rx_pkt_burst = virtio_recv_pkts_vec;
 		} else if (hw->use_inorder_rx) {
 			PMD_INIT_LOG(INFO,
-				"virtio: using inorder mergeable buffer Rx path on port %u",
+				"virtio: using inorder Rx path on port %u",
 				eth_dev->data->port_id);
-			eth_dev->rx_pkt_burst =
-				&virtio_recv_mergeable_pkts_inorder;
+			eth_dev->rx_pkt_burst =	&virtio_recv_pkts_inorder;
 		} else if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF)) {
 			PMD_INIT_LOG(INFO,
 				"virtio: using mergeable buffer Rx path on port %u",
@@ -2049,13 +2048,8 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 
 	if (vtpci_with_feature(hw, VIRTIO_F_IN_ORDER)) {
 		hw->use_inorder_tx = 1;
-		if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF) &&
-		    !vtpci_packed_queue(hw)) {
-			hw->use_inorder_rx = 1;
-			hw->use_simple_rx = 0;
-		} else {
-			hw->use_inorder_rx = 0;
-		}
+		hw->use_inorder_rx = 1;
+		hw->use_simple_rx = 0;
 	}
 
 	if (vtpci_packed_queue(hw)) {

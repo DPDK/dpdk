@@ -83,7 +83,7 @@ uint16_t virtio_recv_mergeable_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 uint16_t virtio_recv_mergeable_pkts_packed(void *rx_queue,
 		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 
-uint16_t virtio_recv_mergeable_pkts_inorder(void *rx_queue,
+uint16_t virtio_recv_pkts_inorder(void *rx_queue,
 		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 
 uint16_t virtio_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
