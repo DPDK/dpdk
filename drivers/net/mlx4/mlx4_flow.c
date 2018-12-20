@@ -205,9 +205,7 @@ mlx4_flow_merge_eth(struct rte_flow *flow,
 	const char *msg;
 	unsigned int i;
 
-	if (!mask) {
-		flow->promisc = 1;
-	} else {
+	if (mask) {
 		uint32_t sum_dst = 0;
 		uint32_t sum_src = 0;
 
@@ -249,6 +247,10 @@ mlx4_flow_merge_eth(struct rte_flow *flow,
 		.type = IBV_FLOW_SPEC_ETH,
 		.size = sizeof(*eth),
 	};
+	if (!mask) {
+		flow->ibv_attr->type = IBV_FLOW_ATTR_ALL_DEFAULT;
+		return 0;
+	}
 	memcpy(eth->val.dst_mac, spec->dst.addr_bytes, ETHER_ADDR_LEN);
 	memcpy(eth->mask.dst_mac, mask->dst.addr_bytes, ETHER_ADDR_LEN);
 	/* Remove unwanted bits from values. */
@@ -311,6 +313,8 @@ mlx4_flow_merge_vlan(struct rte_flow *flow,
 	eth->val.vlan_tag = spec->tci;
 	eth->mask.vlan_tag = mask->tci;
 	eth->val.vlan_tag &= eth->mask.vlan_tag;
+	if (flow->ibv_attr->type == IBV_FLOW_ATTR_ALL_DEFAULT)
+		flow->ibv_attr->type = IBV_FLOW_ATTR_NORMAL;
 	return 0;
 error:
 	return rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM,
