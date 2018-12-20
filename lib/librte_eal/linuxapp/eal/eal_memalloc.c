@@ -214,18 +214,12 @@ get_file_size(int fd)
 }
 
 static inline uint32_t
-bsf64(uint64_t v)
-{
-	return (uint32_t)__builtin_ctzll(v);
-}
-
-static inline uint32_t
 log2_u64(uint64_t v)
 {
 	if (v == 0)
 		return 0;
 	v = rte_align64pow2(v);
-	return bsf64(v);
+	return rte_bsf64(v);
 }
 
 static int

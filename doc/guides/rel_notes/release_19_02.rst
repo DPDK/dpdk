@@ -115,7 +115,9 @@ API Changes
    =========================================================
 
 * eal: Function ``rte_bsf64`` in ``rte_bitmap.h`` has been renamed to
-  ``rte_bsf64_safe`` and moved to ``rte_common.h``.
+  ``rte_bsf64_safe`` and moved to ``rte_common.h``. A new ``rte_bsf64`` function
+  has been added in ``rte_common.h`` that follows convention set by existing
+  ``rte_bsf32`` function.
 
 * eal: Segment fd API on Linux now sets error code to ``ENOTSUP`` in more cases
   where segment fd API is not expected to be supported:

@@ -51,11 +51,47 @@ test_macros(int __rte_unused unused_parm)
 }
 
 static int
+test_bsf(void)
+{
+	uint32_t shift, pos;
+
+	/* safe versions should be able to handle 0 */
+	if (rte_bsf32_safe(0, &pos) != 0)
+		FAIL("rte_bsf32_safe");
+	if (rte_bsf64_safe(0, &pos) != 0)
+		FAIL("rte_bsf64_safe");
+
+	for (shift = 0; shift < 63; shift++) {
+		uint32_t val32;
+		uint64_t val64;
+
+		val64 = 1ULL << shift;
+		if ((uint32_t)rte_bsf64(val64) != shift)
+			FAIL("rte_bsf64");
+		if (rte_bsf64_safe(val64, &pos) != 1)
+			FAIL("rte_bsf64_safe");
+		if (pos != shift)
+			FAIL("rte_bsf64_safe");
+
+		if (shift > 31)
+			continue;
+
+		val32 = 1U << shift;
+		if ((uint32_t)rte_bsf32(val32) != shift)
+			FAIL("rte_bsf32");
+		if (rte_bsf32_safe(val32, &pos) != 1)
+			FAIL("rte_bsf32_safe");
+		if (pos != shift)
+			FAIL("rte_bsf32_safe");
+	}
+
+	return 0;
+}
+
+static int
 test_misc(void)
 {
 	char memdump[] = "memdump_test";
-	if (rte_bsf32(129))
-		FAIL("rte_bsf32");
 
 	rte_memdump(stdout, "test", memdump, sizeof(memdump));
 	rte_hexdump(stdout, "test", memdump, sizeof(memdump));
@@ -226,6 +262,7 @@ test_common(void)
 	ret |= test_align();
 	ret |= test_macros(0);
 	ret |= test_misc();
+	ret |= test_bsf();
 	ret |= test_log2();
 	ret |= test_fls();
 
