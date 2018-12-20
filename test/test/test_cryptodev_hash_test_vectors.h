@@ -96,7 +96,8 @@ sha1_test_vector = {
 			0x35, 0x62, 0xFB, 0xFA, 0x93, 0xFD, 0x7D, 0x70,
 			0xA6, 0x7D, 0x45, 0xCA
 		},
-		.len = 20
+		.len = 20,
+		.truncated_len = 20
 	}
 };
 
@@ -140,7 +141,8 @@ sha224_test_vector = {
 			0x39, 0x26, 0xDF, 0xB5, 0x78, 0x62, 0xB2, 0x6E,
 			0x5E, 0x8F, 0x25, 0x84
 		},
-		.len = 28
+		.len = 28,
+		.truncated_len = 28
 	}
 };
 
@@ -186,7 +188,8 @@ sha256_test_vector = {
 			0x1F, 0xC7, 0x84, 0xEE, 0x76, 0xA6, 0x39, 0x15,
 			0x76, 0x2F, 0x87, 0xF9, 0x01, 0x06, 0xF3, 0xB7
 		},
-		.len = 32
+		.len = 32,
+		.truncated_len = 32
 	}
 };
 
@@ -234,7 +237,8 @@ sha384_test_vector = {
 			0xAD, 0x41, 0xAB, 0x15, 0xB0, 0x03, 0x15, 0xEC,
 			0x9E, 0x3D, 0xED, 0xCB, 0x80, 0x7B, 0xF4, 0xB6
 		},
-		.len = 48
+		.len = 48,
+		.truncated_len = 48
 	}
 };
 
@@ -288,7 +292,8 @@ sha512_test_vector = {
 			0x64, 0x4E, 0x15, 0x68, 0x12, 0x67, 0x26, 0x0F,
 			0x2C, 0x3C, 0x83, 0x25, 0x27, 0x86, 0xF0, 0xDB
 		},
-		.len = 64
+		.len = 64,
+		.truncated_len = 64
 	}
 };
 
@@ -428,6 +433,9 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
 			    BLOCKCIPHER_TEST_TARGET_PMD_CCP |
 			    BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 52, 0)
+			    BLOCKCIPHER_TEST_TARGET_PMD_MB |
+#endif
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
@@ -437,6 +445,9 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
 			    BLOCKCIPHER_TEST_TARGET_PMD_CCP |
 			    BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 52, 0)
+			    BLOCKCIPHER_TEST_TARGET_PMD_MB |
+#endif
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
@@ -496,6 +507,9 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
 			    BLOCKCIPHER_TEST_TARGET_PMD_CCP |
 			    BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 52, 0)
+			    BLOCKCIPHER_TEST_TARGET_PMD_MB |
+#endif
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
@@ -505,6 +519,9 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
 			    BLOCKCIPHER_TEST_TARGET_PMD_CCP |
 			    BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 52, 0)
+			    BLOCKCIPHER_TEST_TARGET_PMD_MB |
+#endif
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
@@ -542,6 +559,9 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
 			    BLOCKCIPHER_TEST_TARGET_PMD_CCP |
 			    BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 52, 0)
+			    BLOCKCIPHER_TEST_TARGET_PMD_MB |
+#endif
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
@@ -551,6 +571,9 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
 			    BLOCKCIPHER_TEST_TARGET_PMD_CCP |
 			    BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 52, 0)
+			    BLOCKCIPHER_TEST_TARGET_PMD_MB |
+#endif
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
@@ -590,6 +613,9 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
 			    BLOCKCIPHER_TEST_TARGET_PMD_CCP |
 			    BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 52, 0)
+			    BLOCKCIPHER_TEST_TARGET_PMD_MB |
+#endif
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
@@ -599,6 +625,9 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
 			    BLOCKCIPHER_TEST_TARGET_PMD_CCP |
 			    BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 52, 0)
+			    BLOCKCIPHER_TEST_TARGET_PMD_MB |
+#endif
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
@@ -638,6 +667,9 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
 			    BLOCKCIPHER_TEST_TARGET_PMD_CCP |
 			    BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 52, 0)
+			    BLOCKCIPHER_TEST_TARGET_PMD_MB |
+#endif
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{
@@ -647,6 +679,9 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
 			    BLOCKCIPHER_TEST_TARGET_PMD_CCP |
 			    BLOCKCIPHER_TEST_TARGET_PMD_MVSAM |
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 52, 0)
+			    BLOCKCIPHER_TEST_TARGET_PMD_MB |
+#endif
 			    BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
 	{

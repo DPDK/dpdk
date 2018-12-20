@@ -104,6 +104,7 @@ New Features
 
   * Add support for intel-ipsec-mb version 0.52.
   * Add AES-GMAC algorithm support.
+  * Add Plain SHA1, SHA224, SHA256, SHA384, and SHA512 algorithms support.
 
 * **Enabled checksum support in the ISA-L compressdev driver.**
 

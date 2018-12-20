@@ -41,6 +41,11 @@ Hash algorithms:
 * RTE_CRYPTO_HASH_AES_XCBC_HMAC
 * RTE_CRYPTO_HASH_AES_CMAC
 * RTE_CRYPTO_HASH_AES_GMAC
+* RTE_CRYPTO_HASH_SHA1
+* RTE_CRYPTO_HASH_SHA224
+* RTE_CRYPTO_HASH_SHA256
+* RTE_CRYPTO_HASH_SHA384
+* RTE_CRYPTO_HASH_SHA512
 
 AEAD algorithms:
 
@@ -55,6 +60,7 @@ Limitations
 * RTE_CRYPTO_AEAD_AES_GCM only works properly when the multi-buffer library is
   0.51.0 or newer.
 * RTE_CRYPTO_HASH_AES_GMAC is supported by library version v0.51 or later.
+* RTE_CRYPTO_HASH_SHA* is supported by library version v0.52 or later.
 
 
 Installation

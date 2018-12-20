@@ -109,6 +109,13 @@ static const unsigned auth_digest_byte_lengths[] = {
 		[AES_CMAC]	= 16,
 		[AES_GMAC]	= 12,
 		[NULL_HASH]	= 0,
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 52, 0)
+		[PLAIN_SHA1]	= 20,
+		[PLAIN_SHA_224]	= 28,
+		[PLAIN_SHA_256]	= 32,
+		[PLAIN_SHA_384]	= 48,
+		[PLAIN_SHA_512]	= 64
+#endif
 	/**< Vector mode dependent pointer table of the multi-buffer APIs */
 
 };

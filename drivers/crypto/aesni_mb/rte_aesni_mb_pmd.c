@@ -107,6 +107,7 @@ aesni_mb_set_session_auth_parameters(const MB_MGR *mb_mgr,
 	hash_one_block_t hash_oneblock_fn;
 	unsigned int key_larger_block_size = 0;
 	uint8_t hashed_key[HMAC_MAX_BLOCK_SIZE] = { 0 };
+	uint32_t auth_precompute = 1;
 
 	if (xform == NULL) {
 		sess->auth.algo = NULL_HASH;
@@ -237,6 +238,10 @@ aesni_mb_set_session_auth_parameters(const MB_MGR *mb_mgr,
 			key_larger_block_size = 1;
 		}
 		break;
+	case RTE_CRYPTO_AUTH_SHA1:
+		sess->auth.algo = PLAIN_SHA1;
+		auth_precompute = 0;
+		break;
 	case RTE_CRYPTO_AUTH_SHA224_HMAC:
 		sess->auth.algo = SHA_224;
 		hash_oneblock_fn = mb_mgr->sha224_one_block;
@@ -247,6 +252,10 @@ aesni_mb_set_session_auth_parameters(const MB_MGR *mb_mgr,
 				hashed_key);
 			key_larger_block_size = 1;
 		}
+		break;
+	case RTE_CRYPTO_AUTH_SHA224:
+		sess->auth.algo = PLAIN_SHA_224;
+		auth_precompute = 0;
 		break;
 	case RTE_CRYPTO_AUTH_SHA256_HMAC:
 		sess->auth.algo = SHA_256;
@@ -259,6 +268,10 @@ aesni_mb_set_session_auth_parameters(const MB_MGR *mb_mgr,
 			key_larger_block_size = 1;
 		}
 		break;
+	case RTE_CRYPTO_AUTH_SHA256:
+		sess->auth.algo = PLAIN_SHA_256;
+		auth_precompute = 0;
+		break;
 	case RTE_CRYPTO_AUTH_SHA384_HMAC:
 		sess->auth.algo = SHA_384;
 		hash_oneblock_fn = mb_mgr->sha384_one_block;
@@ -270,6 +283,10 @@ aesni_mb_set_session_auth_parameters(const MB_MGR *mb_mgr,
 			key_larger_block_size = 1;
 		}
 		break;
+	case RTE_CRYPTO_AUTH_SHA384:
+		sess->auth.algo = PLAIN_SHA_384;
+		auth_precompute = 0;
+		break;
 	case RTE_CRYPTO_AUTH_SHA512_HMAC:
 		sess->auth.algo = SHA_512;
 		hash_oneblock_fn = mb_mgr->sha512_one_block;
@@ -280,6 +297,10 @@ aesni_mb_set_session_auth_parameters(const MB_MGR *mb_mgr,
 				hashed_key);
 			key_larger_block_size = 1;
 		}
+		break;
+	case RTE_CRYPTO_AUTH_SHA512:
+		sess->auth.algo = PLAIN_SHA_512;
+		auth_precompute = 0;
 		break;
 	default:
 		AESNI_MB_LOG(ERR, "Unsupported authentication algorithm selection");
@@ -301,6 +322,10 @@ aesni_mb_set_session_auth_parameters(const MB_MGR *mb_mgr,
 		sess->auth.gen_digest_len = full_digest_size;
 	else
 		sess->auth.gen_digest_len = sess->auth.req_digest_len;
+
+	/* Plain SHA does not require precompute key */
+	if (auth_precompute == 0)
+		return 0;
 
 	/* Calculate Authentication precomputes */
 	if (key_larger_block_size) {
