@@ -100,6 +100,10 @@ New Features
   devices to track dirty pages caused by DMA. IFC driver has enabled this
   SW-assisted live migration mode.
 
+* **Updated the AESNI-MB PMD.**
+
+  * Add support for intel-ipsec-mb version 0.52.
+
 * **Enabled checksum support in the ISA-L compressdev driver.**
 
   Added support for both adler and crc32 checksums in the ISA-L PMD.
