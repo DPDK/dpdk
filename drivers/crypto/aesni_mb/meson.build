@@ -8,5 +8,5 @@ else
 	ext_deps += lib
 endif
 
-sources = files('rte_aesni_mb_pmd.c', 'rte_aesni_mb_pmd_ops.c')
+sources = files('rte_aesni_mb_pmd_compat.c', 'rte_aesni_mb_pmd_ops_compat.c')
 deps += ['bus_vdev']

@@ -23,7 +23,7 @@ LDLIBS += -lrte_cryptodev
 LDLIBS += -lrte_bus_vdev
 
 # library source files
-SRCS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += rte_aesni_mb_pmd.c
-SRCS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += rte_aesni_mb_pmd_ops.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += rte_aesni_mb_pmd_compat.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += rte_aesni_mb_pmd_ops_compat.c
 
 include $(RTE_SDK)/mk/rte.lib.mk
