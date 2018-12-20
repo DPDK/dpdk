@@ -394,6 +394,7 @@ rte_malloc_heap_memory_remove(const char *heap_name, void *va_addr, size_t len)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	struct malloc_heap *heap = NULL;
+	struct rte_memseg_list *msl;
 	int ret;
 
 	if (heap_name == NULL || va_addr == NULL || len == 0 ||
@@ -418,9 +419,19 @@ rte_malloc_heap_memory_remove(const char *heap_name, void *va_addr, size_t len)
 		goto unlock;
 	}
 
+	msl = malloc_heap_find_external_seg(va_addr, len);
+	if (msl == NULL) {
+		ret = -1;
+		goto unlock;
+	}
+
 	rte_spinlock_lock(&heap->lock);
 	ret = malloc_heap_remove_external_memory(heap, va_addr, len);
 	rte_spinlock_unlock(&heap->lock);
+	if (ret != 0)
+		goto unlock;
+
+	ret = malloc_heap_destroy_external_seg(msl);
 
 unlock:
 	rte_rwlock_write_unlock(&mcfg->memory_hotplug_lock);
@@ -428,63 +439,12 @@ unlock:
 	return ret;
 }
 
-struct sync_mem_walk_arg {
-	void *va_addr;
-	size_t len;
-	int result;
-	bool attach;
-};
-
-static int
-sync_mem_walk(const struct rte_memseg_list *msl, void *arg)
-{
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	struct sync_mem_walk_arg *wa = arg;
-	size_t len = msl->page_sz * msl->memseg_arr.len;
-
-	if (msl->base_va == wa->va_addr &&
-			len == wa->len) {
-		struct rte_memseg_list *found_msl;
-		int msl_idx, ret;
-
-		/* msl is const */
-		msl_idx = msl - mcfg->memsegs;
-		found_msl = &mcfg->memsegs[msl_idx];
-
-		if (wa->attach) {
-			ret = rte_fbarray_attach(&found_msl->memseg_arr);
-		} else {
-			/* notify all subscribers that a memory area is about to
-			 * be removed
-			 */
-			eal_memalloc_mem_event_notify(RTE_MEM_EVENT_FREE,
-					msl->base_va, msl->len);
-			ret = rte_fbarray_detach(&found_msl->memseg_arr);
-		}
-
-		if (ret < 0) {
-			wa->result = -rte_errno;
-		} else {
-			/* notify all subscribers that a new memory area was
-			 * added
-			 */
-			if (wa->attach)
-				eal_memalloc_mem_event_notify(
-						RTE_MEM_EVENT_ALLOC,
-						msl->base_va, msl->len);
-			wa->result = 0;
-		}
-		return 1;
-	}
-	return 0;
-}
-
 static int
 sync_memory(const char *heap_name, void *va_addr, size_t len, bool attach)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	struct malloc_heap *heap = NULL;
-	struct sync_mem_walk_arg wa;
+	struct rte_memseg_list *msl;
 	int ret;
 
 	if (heap_name == NULL || va_addr == NULL || len == 0 ||
@@ -511,19 +471,36 @@ sync_memory(const char *heap_name, void *va_addr, size_t len, bool attach)
 	}
 
 	/* find corresponding memseg list to sync to */
-	wa.va_addr = va_addr;
-	wa.len = len;
-	wa.result = -ENOENT; /* fail unless explicitly told to succeed */
-	wa.attach = attach;
-
-	/* we're already holding a read lock */
-	rte_memseg_list_walk_thread_unsafe(sync_mem_walk, &wa);
-
-	if (wa.result < 0) {
-		rte_errno = -wa.result;
+	msl = malloc_heap_find_external_seg(va_addr, len);
+	if (msl == NULL) {
 		ret = -1;
-	} else
-		ret = 0;
+		goto unlock;
+	}
+
+	if (attach) {
+		ret = rte_fbarray_attach(&msl->memseg_arr);
+		if (ret == 0) {
+			/* notify all subscribers that a new memory area was
+			 * added.
+			 */
+			eal_memalloc_mem_event_notify(RTE_MEM_EVENT_ALLOC,
+					va_addr, len);
+		} else {
+			ret = -1;
+			goto unlock;
+		}
+	} else {
+		/* notify all subscribers that a memory area is about to
+		 * be removed.
+		 */
+		eal_memalloc_mem_event_notify(RTE_MEM_EVENT_FREE,
+				msl->base_va, msl->len);
+		ret = rte_fbarray_detach(&msl->memseg_arr);
+		if (ret < 0) {
+			ret = -1;
+			goto unlock;
+		}
+	}
 unlock:
 	rte_rwlock_read_unlock(&mcfg->memory_hotplug_lock);
 	return ret;

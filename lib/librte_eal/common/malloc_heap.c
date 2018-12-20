@@ -1074,12 +1074,9 @@ malloc_heap_dump(struct malloc_heap *heap, FILE *f)
 }
 
 static int
-destroy_seg(struct malloc_elem *elem, size_t len)
+destroy_elem(struct malloc_elem *elem, size_t len)
 {
 	struct malloc_heap *heap = elem->heap;
-	struct rte_memseg_list *msl;
-
-	msl = elem->msl;
 
 	/* notify all subscribers that a memory area is going to be removed */
 	eal_memalloc_mem_event_notify(RTE_MEM_EVENT_FREE, elem, len);
@@ -1091,13 +1088,6 @@ destroy_seg(struct malloc_elem *elem, size_t len)
 	heap->total_size -= len;
 
 	memset(elem, 0, sizeof(*elem));
-
-	/* destroy the fbarray backing this memory */
-	if (rte_fbarray_destroy(&msl->memseg_arr) < 0)
-		return -1;
-
-	/* reset the memseg list */
-	memset(msl, 0, sizeof(*msl));
 
 	return 0;
 }
@@ -1165,6 +1155,62 @@ malloc_heap_create_external_seg(void *va_addr, rte_iova_t iova_addrs[],
 	return msl;
 }
 
+struct extseg_walk_arg {
+	void *va_addr;
+	size_t len;
+	struct rte_memseg_list *msl;
+};
+
+static int
+extseg_walk(const struct rte_memseg_list *msl, void *arg)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	struct extseg_walk_arg *wa = arg;
+
+	if (msl->base_va == wa->va_addr && msl->len == wa->len) {
+		unsigned int found_idx;
+
+		/* msl is const */
+		found_idx = msl - mcfg->memsegs;
+		wa->msl = &mcfg->memsegs[found_idx];
+		return 1;
+	}
+	return 0;
+}
+
+struct rte_memseg_list *
+malloc_heap_find_external_seg(void *va_addr, size_t len)
+{
+	struct extseg_walk_arg wa;
+	int res;
+
+	wa.va_addr = va_addr;
+	wa.len = len;
+
+	res = rte_memseg_list_walk_thread_unsafe(extseg_walk, &wa);
+
+	if (res != 1) {
+		/* 0 means nothing was found, -1 shouldn't happen */
+		if (res == 0)
+			rte_errno = ENOENT;
+		return NULL;
+	}
+	return wa.msl;
+}
+
+int
+malloc_heap_destroy_external_seg(struct rte_memseg_list *msl)
+{
+	/* destroy the fbarray backing this memory */
+	if (rte_fbarray_destroy(&msl->memseg_arr) < 0)
+		return -1;
+
+	/* reset the memseg list */
+	memset(msl, 0, sizeof(*msl));
+
+	return 0;
+}
+
 int
 malloc_heap_add_external_memory(struct malloc_heap *heap,
 		struct rte_memseg_list *msl)
@@ -1213,7 +1259,7 @@ malloc_heap_remove_external_memory(struct malloc_heap *heap, void *va_addr,
 		rte_errno = EBUSY;
 		return -1;
 	}
-	return destroy_seg(elem, len);
+	return destroy_elem(elem, len);
 }
 
 int
