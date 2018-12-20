@@ -26,7 +26,7 @@ rte_option_parse(const char *opt)
 
 	/* Check if the option is registered */
 	TAILQ_FOREACH(option, &rte_option_list, next) {
-		if (strcmp(&opt[2], option->opt_str) == 0) {
+		if (strcmp(&opt[2], option->name) == 0) {
 			option->enabled = 1;
 			return 0;
 		}
@@ -41,9 +41,9 @@ rte_option_register(struct rte_option *opt)
 	struct rte_option *option;
 
 	TAILQ_FOREACH(option, &rte_option_list, next) {
-		if (strcmp(opt->opt_str, option->opt_str) == 0) {
+		if (strcmp(opt->name, option->name) == 0) {
 			RTE_LOG(INFO, EAL, "Option %s has already been registered.\n",
-					opt->opt_str);
+					opt->name);
 			return;
 		}
 	}
@@ -75,6 +75,6 @@ rte_option_usage(void)
 
 	printf("EAL dynamic options:\n");
 	TAILQ_FOREACH(option, &rte_option_list, next)
-		printf("  --%-*s %s\n", 17, option->opt_str, option->usage);
+		printf("  --%-*s %s\n", 17, option->name, option->usage);
 	printf("\n");
 }
