@@ -359,6 +359,28 @@ i40evf_execute_vf_cmd(struct rte_eth_dev *dev, struct vf_cmd_info *args)
 		} while (i++ < MAX_TRY_TIMES);
 		_clear_cmd(vf);
 		break;
+	case VIRTCHNL_OP_REQUEST_QUEUES:
+		/**
+		 * ignore async reply, only wait for system message,
+		 * vf_reset = true if get VIRTCHNL_EVENT_RESET_IMPENDING,
+		 * if not, means request queues failed.
+		 */
+		err = -1;
+		do {
+			ret = i40evf_read_pfmsg(dev, &info);
+			vf->cmd_retval = info.result;
+			if (ret == I40EVF_MSG_SYS && vf->vf_reset) {
+				err = 0;
+				break;
+			} else if (ret == I40EVF_MSG_ERR ||
+					   ret == I40EVF_MSG_CMD) {
+				break;
+			}
+			rte_delay_ms(ASQ_DELAY_MS);
+			/* If don't read msg or read sys event, continue */
+		} while (i++ < MAX_TRY_TIMES);
+		_clear_cmd(vf);
+		break;
 
 	default:
 		/* for other adminq in running time, waiting the cmd done flag */
@@ -1013,6 +1035,28 @@ i40evf_add_vlan(struct rte_eth_dev *dev, uint16_t vlanid)
 }
 
 static int
+i40evf_request_queues(struct rte_eth_dev *dev, uint16_t num)
+{
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct virtchnl_vf_res_request vfres;
+	struct vf_cmd_info args;
+	int err;
+
+	vfres.num_queue_pairs = num;
+
+	args.ops = VIRTCHNL_OP_REQUEST_QUEUES;
+	args.in_args = (u8 *)&vfres;
+	args.in_args_size = sizeof(vfres);
+	args.out_buffer = vf->aq_resp;
+	args.out_size = I40E_AQ_BUF_SZ;
+	err = i40evf_execute_vf_cmd(dev, &args);
+	if (err)
+		PMD_DRV_LOG(ERR, "fail to execute command OP_REQUEST_QUEUES");
+
+	return err;
+}
+
+static int
 i40evf_del_vlan(struct rte_eth_dev *dev, uint16_t vlanid)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
@@ -1522,8 +1566,11 @@ RTE_PMD_REGISTER_KMOD_DEP(net_i40e_vf, "* igb_uio | vfio-pci");
 static int
 i40evf_dev_configure(struct rte_eth_dev *dev)
 {
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct i40e_adapter *ad =
 		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	uint16_t num_queue_pairs = RTE_MAX(dev->data->nb_rx_queues,
+				dev->data->nb_tx_queues);
 
 	/* Initialize to TRUE. If any of Rx queues doesn't meet the bulk
 	 * allocation or vector Rx preconditions we will reset it.
@@ -1532,6 +1579,20 @@ i40evf_dev_configure(struct rte_eth_dev *dev)
 	ad->rx_vec_allowed = true;
 	ad->tx_simple_allowed = true;
 	ad->tx_vec_allowed = true;
+
+	if (num_queue_pairs > vf->vsi_res->num_queue_pairs) {
+		int ret = 0;
+
+		PMD_DRV_LOG(INFO, "change queue pairs from %u to %u",
+			    vf->vsi_res->num_queue_pairs, num_queue_pairs);
+		ret = i40evf_request_queues(dev, num_queue_pairs);
+		if (ret != 0)
+			return ret;
+
+		ret = i40evf_dev_reset(dev);
+		if (ret != 0)
+			return ret;
+	}
 
 	return i40evf_init_vlan(dev);
 }
@@ -2151,8 +2212,8 @@ i40evf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 
-	dev_info->max_rx_queues = vf->vsi_res->num_queue_pairs;
-	dev_info->max_tx_queues = vf->vsi_res->num_queue_pairs;
+	dev_info->max_rx_queues = I40E_MAX_QP_NUM_PER_VF;
+	dev_info->max_tx_queues = I40E_MAX_QP_NUM_PER_VF;
 	dev_info->min_rx_bufsize = I40E_BUF_SIZE_MIN;
 	dev_info->max_rx_pktlen = I40E_FRAME_SIZE_MAX;
 	dev_info->hash_key_size = (I40E_VFQF_HKEY_MAX_INDEX + 1) * sizeof(uint32_t);
