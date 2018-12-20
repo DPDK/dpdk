@@ -213,22 +213,13 @@ get_file_size(int fd)
 	return st.st_size;
 }
 
-static inline uint32_t
-log2_u64(uint64_t v)
-{
-	if (v == 0)
-		return 0;
-	v = rte_align64pow2(v);
-	return rte_bsf64(v);
-}
-
 static int
 pagesz_flags(uint64_t page_sz)
 {
 	/* as per mmap() manpage, all page sizes are log2 of page size
 	 * shifted by MAP_HUGE_SHIFT
 	 */
-	int log2 = log2_u64(page_sz);
+	int log2 = rte_log2_u64(page_sz);
 	return log2 << RTE_MAP_HUGE_SHIFT;
 }
 

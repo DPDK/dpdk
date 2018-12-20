@@ -213,10 +213,28 @@ test_log2(void)
 	const uint32_t step = 1;
 
 	for (i = 0; i < max; i = i + step) {
+		uint64_t i64;
+
+		/* extend range for 64-bit */
+		i64 = (uint64_t)i << 32;
+		base = (uint32_t)ceilf(log2(i64));
+		compare = rte_log2_u64(i64);
+		if (base != compare) {
+			printf("Wrong rte_log2_u64(%" PRIx64 ") val %x, expected %x\n",
+				i64, compare, base);
+			return TEST_FAILED;
+		}
+
 		base = (uint32_t)ceilf(log2((uint32_t)i));
-		compare = rte_log2_u32(i);
+		compare = rte_log2_u32((uint32_t)i);
 		if (base != compare) {
 			printf("Wrong rte_log2_u32(%x) val %x, expected %x\n",
+				i, compare, base);
+			return TEST_FAILED;
+		}
+		compare = rte_log2_u64((uint64_t)i);
+		if (base != compare) {
+			printf("Wrong rte_log2_u64(%x) val %x, expected %x\n",
 				i, compare, base);
 			return TEST_FAILED;
 		}

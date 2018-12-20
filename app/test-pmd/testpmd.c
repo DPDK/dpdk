@@ -649,22 +649,13 @@ calc_mem_size(uint32_t nb_mbufs, uint32_t mbuf_sz, size_t pgsz, size_t *out)
 	return 0;
 }
 
-static inline uint32_t
-log2_u64(uint64_t v)
-{
-	if (v == 0)
-		return 0;
-	v = rte_align64pow2(v);
-	return rte_bsf64(v);
-}
-
 static int
 pagesz_flags(uint64_t page_sz)
 {
 	/* as per mmap() manpage, all page sizes are log2 of page size
 	 * shifted by MAP_HUGE_SHIFT
 	 */
-	int log2 = log2_u64(page_sz);
+	int log2 = rte_log2_u64(page_sz);
 
 	return (log2 << HUGE_SHIFT);
 }

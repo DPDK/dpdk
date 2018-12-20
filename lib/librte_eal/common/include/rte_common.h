@@ -565,6 +565,24 @@ rte_fls_u64(uint64_t x)
 	return (x == 0) ? 0 : 64 - __builtin_clzll(x);
 }
 
+/**
+ * Return the rounded-up log2 of a 64-bit integer.
+ *
+ * @param v
+ *     The input parameter.
+ * @return
+ *     The rounded-up log2 of the input, or 0 if the input is 0.
+ */
+static inline uint32_t
+rte_log2_u64(uint64_t v)
+{
+	if (v == 0)
+		return 0;
+	v = rte_align64pow2(v);
+	/* we checked for v being 0 already, so no undefined behavior */
+	return rte_bsf64(v);
+}
+
 #ifndef offsetof
 /** Return the offset of a field in a structure. */
 #define offsetof(TYPE, MEMBER)  __builtin_offsetof (TYPE, MEMBER)
