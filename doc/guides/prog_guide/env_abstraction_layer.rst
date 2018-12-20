@@ -226,17 +226,26 @@ Normally, these options do not need to be changed.
 Support for Externally Allocated Memory
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-It is possible to use externally allocated memory in DPDK, using a set of malloc
-heap API's. Support for externally allocated memory is implemented through
-overloading the socket ID - externally allocated heaps will have socket ID's
-that would be considered invalid under normal circumstances. Requesting an
-allocation to take place from a specified externally allocated memory is a
-matter of supplying the correct socket ID to DPDK allocator, either directly
-(e.g. through a call to ``rte_malloc``) or indirectly (through data
-structure-specific allocation API's such as ``rte_ring_create``).
+It is possible to use externally allocated memory in DPDK. There are two ways in
+which using externally allocated memory can work: the malloc heap API's, and
+manual memory management.
 
-Since there is no way DPDK can verify whether memory are is available or valid,
-this responsibility falls on the shoulders of the user. All multiprocess
++ Using heap API's for externally allocated memory
+
+Using using a set of malloc heap API's is the recommended way to use externally
+allocated memory in DPDK. In this way, support for externally allocated memory
+is implemented through overloading the socket ID - externally allocated heaps
+will have socket ID's that would be considered invalid under normal
+circumstances. Requesting an allocation to take place from a specified
+externally allocated memory is a matter of supplying the correct socket ID to
+DPDK allocator, either directly (e.g. through a call to ``rte_malloc``) or
+indirectly (through data structure-specific allocation API's such as
+``rte_ring_create``). Using these API's also ensures that mapping of externally
+allocated memory for DMA is also performed on any memory segment that is added
+to a DPDK malloc heap.
+
+Since there is no way DPDK can verify whether memory is available or valid, this
+responsibility falls on the shoulders of the user. All multiprocess
 synchronization is also user's responsibility, as well as ensuring  that all
 calls to add/attach/detach/remove memory are done in the correct order. It is
 not required to attach to a memory area in all processes - only attach to memory
@@ -259,6 +268,37 @@ The expected workflow is as follows:
 
 For more information, please refer to ``rte_malloc`` API documentation,
 specifically the ``rte_malloc_heap_*`` family of function calls.
+
++ Using externally allocated memory without DPDK API's
+
+While using heap API's is the recommended method of using externally allocated
+memory in DPDK, there are certain use cases where the overhead of DPDK heap API
+is undesirable - for example, when manual memory management is performed on an
+externally allocated area. To support use cases where externally allocated
+memory will not be used as part of normal DPDK workflow, there is also another
+set of API's under the ``rte_extmem_*`` namespace.
+
+These API's are (as their name implies) intended to allow registering or
+unregistering externally allocated memory to/from DPDK's internal page table, to
+allow API's like ``rte_virt2memseg`` etc. to work with externally allocated
+memory. Memory added this way will not be available for any regular DPDK
+allocators; DPDK will leave this memory for the user application to manage.
+
+The expected workflow is as follows:
+
+* Get a pointer to memory area
+* Register memory within DPDK
+    - If IOVA table is not specified, IOVA addresses will be assumed to be
+      unavailable
+* Perform DMA mapping with ``rte_vfio_dma_map`` if needed
+* Use the memory area in your application
+* If memory area is no longer needed, it can be unregistered
+    - If the area was mapped for DMA, unmapping must be performed before
+      unregistering memory
+
+Since these externally allocated memory areas will not be managed by DPDK, it is
+therefore up to the user application to decide how to use them and what to do
+with them once they're registered.
 
 Per-lcore and Shared Variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

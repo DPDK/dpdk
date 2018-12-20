@@ -63,6 +63,12 @@ New Features
   hugepage allocations.  A new ``--match-allocations`` EAL init flag has
   been added to fulfill both of these requirements.
 
+* **Added API to register external memory in DPDK.**
+
+  A new ``rte_extmem_register``/``rte_extmem_unregister`` API was added to allow
+  chunks of external memory to be registered with DPDK without adding them to
+  the malloc heap.
+
 * **Updated the enic driver.**
 
   * Added support for ``RTE_ETH_DEV_CLOSE_REMOVE`` flag.
