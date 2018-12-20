@@ -901,8 +901,11 @@ rte_eal_init(int argc, char **argv)
 	 * whether we are primary or secondary process, but we cannot remove
 	 * primary process' files because secondary should be able to run even
 	 * if primary process is dead.
+	 *
+	 * In no_shconf mode, no runtime directory is created in the first
+	 * place, so no cleanup needed.
 	 */
-	if (eal_clean_runtime_dir() < 0) {
+	if (!internal_config.no_shconf && eal_clean_runtime_dir() < 0) {
 		rte_eal_init_alert("Cannot clear runtime directory\n");
 		return -1;
 	}
