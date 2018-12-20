@@ -56,7 +56,7 @@ rte_option_register(struct rte_option *opt)
 
 	TAILQ_FOREACH(option, &rte_option_list, next) {
 		if (strcmp(opt->name, option->name) == 0) {
-			RTE_LOG(INFO, EAL, "Option %s has already been registered.\n",
+			RTE_LOG(ERR, EAL, "Option %s has already been registered.\n",
 					opt->name);
 			return;
 		}
