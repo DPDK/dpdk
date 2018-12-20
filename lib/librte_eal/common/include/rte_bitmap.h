@@ -93,12 +93,6 @@ __rte_bitmap_index2_set(struct rte_bitmap *bmp)
 	bmp->index2 = (((bmp->index1 << RTE_BITMAP_SLAB_BIT_SIZE_LOG2) + bmp->offset1) << RTE_BITMAP_CL_SLAB_SIZE_LOG2);
 }
 
-static inline int __rte_deprecated
-rte_bsf64(uint64_t slab, uint32_t *pos)
-{
-	return rte_bsf64_safe(slab, pos);
-}
-
 static inline uint32_t
 __rte_bitmap_get_memory_footprint(uint32_t n_bits,
 	uint32_t *array1_byte_offset, uint32_t *array1_slabs,
