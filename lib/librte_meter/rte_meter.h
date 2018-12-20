@@ -26,13 +26,22 @@ extern "C" {
  *
  ***/
 
-/** Packet Color Set */
-enum rte_meter_color {
-	e_RTE_METER_GREEN = 0, /**< Green */
-	e_RTE_METER_YELLOW,    /**< Yellow */
-	e_RTE_METER_RED,       /**< Red */
-	e_RTE_METER_COLORS     /**< Number of available colors */
+/**
+ * Color
+ */
+enum rte_color {
+	RTE_COLOR_GREEN = 0, /**< Green */
+	RTE_COLOR_YELLOW, /**< Yellow */
+	RTE_COLOR_RED, /**< Red */
+	RTE_COLORS /**< Number of colors */
 };
+
+/* New rte_color is defined and used to deprecate rte_meter_color soon. */
+#define rte_meter_color rte_color
+#define e_RTE_METER_GREEN RTE_COLOR_GREEN
+#define e_RTE_METER_YELLOW RTE_COLOR_YELLOW
+#define e_RTE_METER_RED RTE_COLOR_RED
+#define e_RTE_METER_COLORS RTE_COLORS
 
 /** srTCM parameters per metered traffic flow. The CIR, CBS and EBS parameters only
 count bytes of IP packets and do not include link specific headers. At least one of

@@ -51,6 +51,7 @@
 #include <stdint.h>
 
 #include <rte_common.h>
+#include <rte_meter.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -115,15 +116,12 @@ extern "C" {
  */
 #define RTE_TM_NODE_LEVEL_ID_ANY                     UINT32_MAX
 
-/**
- * Color
- */
-enum rte_tm_color {
-	RTE_TM_GREEN = 0, /**< Green */
-	RTE_TM_YELLOW, /**< Yellow */
-	RTE_TM_RED, /**< Red */
-	RTE_TM_COLORS /**< Number of colors */
-};
+/* New rte_color is defined and used to deprecate rte_tm_color soon. */
+#define rte_tm_color rte_color
+#define RTE_TM_GREEN RTE_COLOR_GREEN
+#define RTE_TM_YELLOW RTE_COLOR_YELLOW
+#define RTE_TM_RED RTE_COLOR_RED
+#define RTE_TM_COLORS RTE_COLORS
 
 /**
  * Node statistics counter type

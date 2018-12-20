@@ -11,7 +11,7 @@
 libraries = [ 'compat', # just a header, used for versioning
 	'cmdline', # ethdev depends on cmdline for parsing functions
 	'kvargs', # eal depends on kvargs
-	'eal', 'ring', 'mempool', 'mbuf', 'net', 'ethdev', 'pci', # core
+	'eal', 'ring', 'mempool', 'mbuf', 'net', 'meter', 'ethdev', 'pci', # core
 	'metrics', # bitrate/latency stats depends on this
 	'hash',    # efd depends on this
 	'timer',   # eventdev depends on this
@@ -20,7 +20,7 @@ libraries = [ 'compat', # just a header, used for versioning
 	'distributor', 'efd', 'eventdev',
 	'gro', 'gso', 'ip_frag', 'jobstats',
 	'kni', 'latencystats', 'lpm', 'member',
-	'meter', 'power', 'pdump', 'rawdev',
+	'power', 'pdump', 'rawdev',
 	'reorder', 'sched', 'security', 'vhost',
 	# add pkt framework libs which use other libs from above
 	'port', 'table', 'pipeline',

@@ -76,20 +76,18 @@
 #include <stdint.h>
 #include <rte_compat.h>
 #include <rte_common.h>
+#include <rte_meter.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/**
- * Color
- */
-enum rte_mtr_color {
-	RTE_MTR_GREEN = 0, /**< Green */
-	RTE_MTR_YELLOW, /**< Yellow */
-	RTE_MTR_RED, /**< Red */
-	RTE_MTR_COLORS /**< Number of colors. */
-};
+/* New rte_color is defined and used to deprecate rte_mtr_color soon. */
+#define rte_mtr_color rte_color
+#define RTE_MTR_GREEN RTE_COLOR_GREEN
+#define RTE_MTR_YELLOW RTE_COLOR_YELLOW
+#define RTE_MTR_RED RTE_COLOR_RED
+#define RTE_MTR_COLORS RTE_COLORS
 
 /**
  * Statistics counter type
