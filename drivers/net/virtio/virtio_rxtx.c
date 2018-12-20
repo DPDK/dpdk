@@ -980,7 +980,7 @@ virtio_dev_tx_queue_setup_finish(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static void
+static inline void
 virtio_discard_rxbuf(struct virtqueue *vq, struct rte_mbuf *m)
 {
 	int error;
@@ -999,7 +999,7 @@ virtio_discard_rxbuf(struct virtqueue *vq, struct rte_mbuf *m)
 	}
 }
 
-static void
+static inline void
 virtio_discard_rxbuf_inorder(struct virtqueue *vq, struct rte_mbuf *m)
 {
 	int error;
@@ -1011,7 +1011,7 @@ virtio_discard_rxbuf_inorder(struct virtqueue *vq, struct rte_mbuf *m)
 	}
 }
 
-static void
+static inline void
 virtio_update_packet_stats(struct virtnet_stats *stats, struct rte_mbuf *mbuf)
 {
 	uint32_t s = mbuf->pkt_len;
@@ -1054,7 +1054,7 @@ virtio_rx_stats_updated(struct virtnet_rx *rxvq, struct rte_mbuf *m)
 }
 
 /* Optionally fill offload information in structure */
-static int
+static inline int
 virtio_rx_offload(struct rte_mbuf *m, struct virtio_net_hdr *hdr)
 {
 	struct rte_net_hdr_lens hdr_lens;
