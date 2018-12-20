@@ -1102,9 +1102,10 @@ destroy_seg(struct malloc_elem *elem, size_t len)
 	return 0;
 }
 
-int
-malloc_heap_add_external_memory(struct malloc_heap *heap, void *va_addr,
-		rte_iova_t iova_addrs[], unsigned int n_pages, size_t page_sz)
+struct rte_memseg_list *
+malloc_heap_create_external_seg(void *va_addr, rte_iova_t iova_addrs[],
+		unsigned int n_pages, size_t page_sz, const char *seg_name,
+		unsigned int socket_id)
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	char fbarray_name[RTE_FBARRAY_NAME_LEN];
@@ -1124,17 +1125,17 @@ malloc_heap_add_external_memory(struct malloc_heap *heap, void *va_addr,
 	if (msl == NULL) {
 		RTE_LOG(ERR, EAL, "Couldn't find empty memseg list\n");
 		rte_errno = ENOSPC;
-		return -1;
+		return NULL;
 	}
 
 	snprintf(fbarray_name, sizeof(fbarray_name) - 1, "%s_%p",
-			heap->name, va_addr);
+			seg_name, va_addr);
 
 	/* create the backing fbarray */
 	if (rte_fbarray_init(&msl->memseg_arr, fbarray_name, n_pages,
 			sizeof(struct rte_memseg)) < 0) {
 		RTE_LOG(ERR, EAL, "Couldn't create fbarray backing the memseg list\n");
-		return -1;
+		return NULL;
 	}
 	arr = &msl->memseg_arr;
 
@@ -1150,32 +1151,39 @@ malloc_heap_add_external_memory(struct malloc_heap *heap, void *va_addr,
 		ms->len = page_sz;
 		ms->nchannel = rte_memory_get_nchannel();
 		ms->nrank = rte_memory_get_nrank();
-		ms->socket_id = heap->socket_id;
+		ms->socket_id = socket_id;
 	}
 
 	/* set up the memseg list */
 	msl->base_va = va_addr;
 	msl->page_sz = page_sz;
-	msl->socket_id = heap->socket_id;
+	msl->socket_id = socket_id;
 	msl->len = seg_len;
 	msl->version = 0;
 	msl->external = 1;
 
+	return msl;
+}
+
+int
+malloc_heap_add_external_memory(struct malloc_heap *heap,
+		struct rte_memseg_list *msl)
+{
 	/* erase contents of new memory */
-	memset(va_addr, 0, seg_len);
+	memset(msl->base_va, 0, msl->len);
 
 	/* now, add newly minted memory to the malloc heap */
-	malloc_heap_add_memory(heap, msl, va_addr, seg_len);
+	malloc_heap_add_memory(heap, msl, msl->base_va, msl->len);
 
-	heap->total_size += seg_len;
+	heap->total_size += msl->len;
 
 	/* all done! */
 	RTE_LOG(DEBUG, EAL, "Added segment for heap %s starting at %p\n",
-			heap->name, va_addr);
+			heap->name, msl->base_va);
 
 	/* notify all subscribers that a new memory area has been added */
 	eal_memalloc_mem_event_notify(RTE_MEM_EVENT_ALLOC,
-			va_addr, seg_len);
+			msl->base_va, msl->len);
 
 	return 0;
 }

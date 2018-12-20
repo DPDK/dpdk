@@ -340,6 +340,7 @@ rte_malloc_heap_memory_add(const char *heap_name, void *va_addr, size_t len,
 {
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	struct malloc_heap *heap = NULL;
+	struct rte_memseg_list *msl;
 	unsigned int n;
 	int ret;
 
@@ -371,9 +372,15 @@ rte_malloc_heap_memory_add(const char *heap_name, void *va_addr, size_t len,
 	}
 	n = len / page_sz;
 
+	msl = malloc_heap_create_external_seg(va_addr, iova_addrs, n, page_sz,
+			heap_name, heap->socket_id);
+	if (msl == NULL) {
+		ret = -1;
+		goto unlock;
+	}
+
 	rte_spinlock_lock(&heap->lock);
-	ret = malloc_heap_add_external_memory(heap, va_addr, iova_addrs, n,
-			page_sz);
+	ret = malloc_heap_add_external_memory(heap, msl);
 	rte_spinlock_unlock(&heap->lock);
 
 unlock:
