@@ -6,6 +6,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 # library name
 LIB = librte_power.a
 
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3 -fno-strict-aliasing
 LDLIBS += -lrte_eal -lrte_timer
 
@@ -17,6 +18,7 @@ LIBABIVER := 1
 SRCS-$(CONFIG_RTE_LIBRTE_POWER) := rte_power.c power_acpi_cpufreq.c
 SRCS-$(CONFIG_RTE_LIBRTE_POWER) += power_kvm_vm.c guest_channel.c
 SRCS-$(CONFIG_RTE_LIBRTE_POWER) += rte_power_empty_poll.c
+SRCS-$(CONFIG_RTE_LIBRTE_POWER) += power_pstate_cpufreq.c
 
 # install this header file
 SYMLINK-$(CONFIG_RTE_LIBRTE_POWER)-include := rte_power.h  rte_power_empty_poll.h

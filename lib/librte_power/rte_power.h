@@ -20,7 +20,8 @@ extern "C" {
 #endif
 
 /* Power Management Environment State */
-enum power_management_env {PM_ENV_NOT_SET, PM_ENV_ACPI_CPUFREQ, PM_ENV_KVM_VM};
+enum power_management_env {PM_ENV_NOT_SET, PM_ENV_ACPI_CPUFREQ, PM_ENV_KVM_VM,
+		PM_ENV_PSTATE_CPUFREQ};
 
 /**
  * Set the default power management implementation. If this is not called prior
