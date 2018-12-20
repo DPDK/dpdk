@@ -20,9 +20,13 @@ static struct rte_option *option;
 int
 rte_option_parse(const char *opt)
 {
+	if (strlen(opt) <= 2 ||
+	    strncmp(opt, "--", 2))
+		return -1;
+
 	/* Check if the option is registered */
 	TAILQ_FOREACH(option, &rte_option_list, next) {
-		if (strcmp(opt, option->opt_str) == 0) {
+		if (strcmp(&opt[2], option->opt_str) == 0) {
 			option->enabled = 1;
 			return 0;
 		}

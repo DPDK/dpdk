@@ -1820,7 +1820,7 @@ rte_telemetry_json_socket_message_test(struct telemetry_impl *telemetry, int fd)
 int telemetry_log_level;
 
 static struct rte_option option = {
-	.opt_str = "--telemetry",
+	.opt_str = "telemetry",
 	.cb = &rte_telemetry_init,
 	.enabled = 0
 };
