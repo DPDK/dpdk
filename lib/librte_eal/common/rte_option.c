@@ -2,6 +2,7 @@
  * Copyright(c) 2018 Intel Corporation.
  */
 
+#include <getopt.h>
 #include <unistd.h>
 #include <string.h>
 
@@ -9,6 +10,8 @@
 #include <rte_option.h>
 
 #include "eal_private.h"
+#include "eal_internal_cfg.h" /* Necessary for eal_options.h */
+#include "eal_options.h"
 
 TAILQ_HEAD(rte_option_list, rte_option);
 
@@ -39,6 +42,17 @@ void __rte_experimental
 rte_option_register(struct rte_option *opt)
 {
 	struct rte_option *option;
+	const struct option *gopt;
+
+	gopt = &eal_long_options[0];
+	while (gopt->name != NULL) {
+		if (strcmp(gopt->name, opt->name) == 0) {
+			RTE_LOG(ERR, EAL, "Option %s is already a common EAL option.\n",
+					opt->name);
+			return;
+		}
+		gopt++;
+	}
 
 	TAILQ_FOREACH(option, &rte_option_list, next) {
 		if (strcmp(opt->name, option->name) == 0) {
