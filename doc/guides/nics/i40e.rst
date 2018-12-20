@@ -129,13 +129,16 @@ Please note that enabling debugging options may affect system performance.
 Runtime Config Options
 ~~~~~~~~~~~~~~~~~~~~~~
 
-- ``Number of Queues per VF`` (default ``4``)
+- ``Reserved number of Queues per VF`` (default ``4``)
 
-  The number of queue per VF is determined by its host PF. If the PCI address
-  of an i40e PF is aaaa:bb.cc, the number of queues per VF can be configured
-  with EAL parameter like -w aaaa:bb.cc,queue-num-per-vf=n. The value n can be
-  1, 2, 4, 8 or 16. If no such parameter is configured, the number of queues
-  per VF is 4 by default.
+  The number of reserved queue per VF is determined by its host PF. If the
+  PCI address of an i40e PF is aaaa:bb.cc, the number of reserved queues per
+  VF can be configured with EAL parameter like -w aaaa:bb.cc,queue-num-per-vf=n.
+  The value n can be 1, 2, 4, 8 or 16. If no such parameter is configured, the
+  number of reserved queues per VF is 4 by default. If VF request more than
+  reserved queues per VF, PF will able to allocate max to 16 queues after a VF
+  reset.
+
 
 - ``Support multiple driver`` (default ``disable``)
 

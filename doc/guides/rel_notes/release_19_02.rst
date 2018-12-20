@@ -80,6 +80,14 @@ New Features
   * Added the handler to get firmware version string.
   * Added support for multicast filtering.
 
+* **Added dynamic queues allocation support for i40e VF.**
+
+  Previously, available queues of VF is reserved by PF at initialize stage.
+  Now both DPDK PF and Kernel PF (>=2.1.14) will support dynamic queue
+  allocation. At runtime, when VF request more queue number exceed the initial
+  reserved amount, PF can allocate up to 16 queues as the request after a VF
+  reset.
+
 * **Added ICE net PMD**
 
   Added the new ``ice`` net driver for Intel® Ethernet Network Adapters E810.
