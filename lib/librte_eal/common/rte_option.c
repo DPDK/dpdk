@@ -15,11 +15,11 @@ TAILQ_HEAD(rte_option_list, rte_option);
 struct rte_option_list rte_option_list =
 	TAILQ_HEAD_INITIALIZER(rte_option_list);
 
-static struct rte_option *option;
-
 int
 rte_option_parse(const char *opt)
 {
+	struct rte_option *option;
+
 	if (strlen(opt) <= 2 ||
 	    strncmp(opt, "--", 2))
 		return -1;
@@ -38,6 +38,8 @@ rte_option_parse(const char *opt)
 void __rte_experimental
 rte_option_register(struct rte_option *opt)
 {
+	struct rte_option *option;
+
 	TAILQ_FOREACH(option, &rte_option_list, next) {
 		if (strcmp(opt->opt_str, option->opt_str) == 0) {
 			RTE_LOG(INFO, EAL, "Option %s has already been registered.\n",
@@ -52,6 +54,8 @@ rte_option_register(struct rte_option *opt)
 void
 rte_option_init(void)
 {
+	struct rte_option *option;
+
 	TAILQ_FOREACH(option, &rte_option_list, next) {
 		if (option->enabled)
 			option->cb();
