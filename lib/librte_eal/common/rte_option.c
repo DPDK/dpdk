@@ -61,3 +61,20 @@ rte_option_init(void)
 			option->cb();
 	}
 }
+
+void
+rte_option_usage(void)
+{
+	struct rte_option *option;
+	int opt_count = 0;
+
+	TAILQ_FOREACH(option, &rte_option_list, next)
+		opt_count += 1;
+	if (opt_count == 0)
+		return;
+
+	printf("EAL dynamic options:\n");
+	TAILQ_FOREACH(option, &rte_option_list, next)
+		printf("  --%-*s %s\n", 17, option->opt_str, option->usage);
+	printf("\n");
+}

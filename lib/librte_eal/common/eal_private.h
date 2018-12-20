@@ -374,4 +374,11 @@ rte_option_parse(const char *opt);
 void
 rte_option_init(void);
 
+/**
+ * Iterate through the registered options and show the associated
+ * usage string.
+ */
+void
+rte_option_usage(void);
+
 #endif /* _EAL_PRIVATE_H_ */
