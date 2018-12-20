@@ -63,13 +63,11 @@
  * function can be used to retrieve the adapter's service function ID.
  *
  * The ethernet port and transmit queue index to transmit the mbuf on are
- * specified using the mbuf port and the higher 16 bits of
- * struct rte_mbuf::hash::sched:hi. The application should use the
- * rte_event_eth_tx_adapter_txq_set() and rte_event_eth_tx_adapter_txq_get()
- * functions to access the transmit queue index since it is expected that the
- * transmit queue will be eventually defined within struct rte_mbuf and using
- * these macros will help with minimizing application impact due to
- * a change in how the transmit queue index is specified.
+ * specified using the mbuf port struct rte_mbuf::hash::txadapter:txq.
+ * The application should use the rte_event_eth_tx_adapter_txq_set()
+ * and rte_event_eth_tx_adapter_txq_get() functions to access the transmit
+ * queue index, using these macros will help with minimizing application
+ * impact due to a change in how the transmit queue index is specified.
  */
 
 #ifdef __cplusplus
@@ -300,8 +298,7 @@ rte_event_eth_tx_adapter_queue_del(uint8_t id,
 static __rte_always_inline void __rte_experimental
 rte_event_eth_tx_adapter_txq_set(struct rte_mbuf *pkt, uint16_t queue)
 {
-	uint16_t *p = (uint16_t *)&pkt->hash.sched.hi;
-	p[1] = queue;
+	pkt->hash.txadapter.txq = queue;
 }
 
 /**
@@ -320,8 +317,7 @@ rte_event_eth_tx_adapter_txq_set(struct rte_mbuf *pkt, uint16_t queue)
 static __rte_always_inline uint16_t __rte_experimental
 rte_event_eth_tx_adapter_txq_get(struct rte_mbuf *pkt)
 {
-	uint16_t *p = (uint16_t *)&pkt->hash.sched.hi;
-	return p[1];
+	return pkt->hash.txadapter.txq;
 }
 
 /**

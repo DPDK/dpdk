@@ -76,7 +76,7 @@ create_mempool(void)
 }
 
 static void
-prepare_pkt(struct rte_mbuf *mbuf)
+prepare_pkt(struct rte_sched_port *port, struct rte_mbuf *mbuf)
 {
 	struct ether_hdr *eth_hdr;
 	struct vlan_hdr *vlan1, *vlan2;
@@ -95,7 +95,8 @@ prepare_pkt(struct rte_mbuf *mbuf)
 	ip_hdr->dst_addr = IPv4(0,0,TC,QUEUE);
 
 
-	rte_sched_port_pkt_write(mbuf, SUBPORT, PIPE, TC, QUEUE, e_RTE_METER_YELLOW);
+	rte_sched_port_pkt_write(port, mbuf, SUBPORT, PIPE, TC, QUEUE,
+					e_RTE_METER_YELLOW);
 
 	/* 64 byte packet */
 	mbuf->pkt_len  = 60;
@@ -138,7 +139,7 @@ test_sched(void)
 	for (i = 0; i < 10; i++) {
 		in_mbufs[i] = rte_pktmbuf_alloc(mp);
 		TEST_ASSERT_NOT_NULL(in_mbufs[i], "Packet allocation failed\n");
-		prepare_pkt(in_mbufs[i]);
+		prepare_pkt(port, in_mbufs[i]);
 	}
 
 
@@ -155,7 +156,7 @@ test_sched(void)
 		color = rte_sched_port_pkt_read_color(out_mbufs[i]);
 		TEST_ASSERT_EQUAL(color, e_RTE_METER_YELLOW, "Wrong color\n");
 
-		rte_sched_port_pkt_read_tree_path(out_mbufs[i],
+		rte_sched_port_pkt_read_tree_path(port, out_mbufs[i],
 				&subport, &pipe, &traffic_class, &queue);
 
 		TEST_ASSERT_EQUAL(subport, SUBPORT, "Wrong subport\n");

@@ -574,14 +574,25 @@ struct rte_mbuf {
 				 * on PKT_RX_FDIR_* flag in ol_flags.
 				 */
 			} fdir;	/**< Filter identifier if FDIR enabled */
+			struct rte_mbuf_sched {
+				uint32_t queue_id;   /**< Queue ID. */
+				uint8_t traffic_class;
+				/**< Traffic class ID. Traffic class 0
+				 * is the highest priority traffic class.
+				 */
+				uint8_t color;
+				/**< Color. @see enum rte_color.*/
+				uint16_t reserved;   /**< Reserved. */
+			} sched; /**< Hierarchical scheduler */
 			struct {
-				uint32_t lo;
-				uint32_t hi;
+				uint32_t reserved1;
+				uint16_t reserved2;
+				uint16_t txq;
 				/**< The event eth Tx adapter uses this field
 				 * to store Tx queue id.
 				 * @see rte_event_eth_tx_adapter_txq_set()
 				 */
-			} sched;          /**< Hierarchical scheduler */
+			} txadapter; /**< Eventdev ethdev Tx adapter */
 			/**< User defined tags. See rte_distributor_process() */
 			uint32_t usr;
 		} hash;                   /**< hash information */
@@ -2288,6 +2299,108 @@ rte_pktmbuf_linearize(struct rte_mbuf *mbuf)
  *   the packet.
  */
 void rte_pktmbuf_dump(FILE *f, const struct rte_mbuf *m, unsigned dump_len);
+
+/**
+ * Get the value of mbuf sched queue_id field.
+ */
+static inline uint32_t
+rte_mbuf_sched_queue_get(const struct rte_mbuf *m)
+{
+	return m->hash.sched.queue_id;
+}
+
+/**
+ * Get the value of mbuf sched traffic_class field.
+ */
+static inline uint8_t
+rte_mbuf_sched_traffic_class_get(const struct rte_mbuf *m)
+{
+	return m->hash.sched.traffic_class;
+}
+
+/**
+ * Get the value of mbuf sched color field.
+ */
+static inline uint8_t
+rte_mbuf_sched_color_get(const struct rte_mbuf *m)
+{
+	return m->hash.sched.color;
+}
+
+/**
+ * Get the values of mbuf sched queue_id, traffic_class and color.
+ *
+ * @param m
+ *   Mbuf to read
+ * @param queue_id
+ *  Returns the queue id
+ * @param traffic_class
+ *  Returns the traffic class id
+ * @param color
+ *  Returns the colour id
+ */
+static inline void
+rte_mbuf_sched_get(const struct rte_mbuf *m, uint32_t *queue_id,
+			uint8_t *traffic_class,
+			uint8_t *color)
+{
+	struct rte_mbuf_sched sched = m->hash.sched;
+
+	*queue_id = sched.queue_id;
+	*traffic_class = sched.traffic_class;
+	*color = sched.color;
+}
+
+/**
+ * Set the mbuf sched queue_id to the defined value.
+ */
+static inline void
+rte_mbuf_sched_queue_set(struct rte_mbuf *m, uint32_t queue_id)
+{
+	m->hash.sched.queue_id = queue_id;
+}
+
+/**
+ * Set the mbuf sched traffic_class id to the defined value.
+ */
+static inline void
+rte_mbuf_sched_traffic_class_set(struct rte_mbuf *m, uint8_t traffic_class)
+{
+	m->hash.sched.traffic_class = traffic_class;
+}
+
+/**
+ * Set the mbuf sched color id to the defined value.
+ */
+static inline void
+rte_mbuf_sched_color_set(struct rte_mbuf *m, uint8_t color)
+{
+	m->hash.sched.color = color;
+}
+
+/**
+ * Set the mbuf sched queue_id, traffic_class and color.
+ *
+ * @param m
+ *   Mbuf to set
+ * @param queue_id
+ *  Queue id value to be set
+ * @param traffic_class
+ *  Traffic class id value to be set
+ * @param color
+ *  Color id to be set
+ */
+static inline void
+rte_mbuf_sched_set(struct rte_mbuf *m, uint32_t queue_id,
+			uint8_t traffic_class,
+			uint8_t color)
+{
+	m->hash.sched = (struct rte_mbuf_sched){
+				.queue_id = queue_id,
+				.traffic_class = traffic_class,
+				.color = color,
+			};
+}
 
 #ifdef __cplusplus
 }

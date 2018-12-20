@@ -150,6 +150,11 @@ API Changes
   ``rte_malloc_get_socket_stats()`` are no longer safe to call concurrently with
   ``rte_malloc_heap_create()`` or ``rte_malloc_heap_destroy()`` function calls.
 
+* sched: As result of the new format of the mbuf sched field, the
+  functions ``rte_sched_port_pkt_write()`` and
+  ``rte_sched_port_pkt_read_tree_path()`` got an additional parameter of
+  type ``struct rte_sched_port``.
+
 * pdump: The ``rte_pdump_set_socket_dir()``, the parameter ``path`` of
   ``rte_pdump_init()`` and enum ``rte_pdump_socktype`` were deprecated
   since 18.05 and are removed in this release.
@@ -169,6 +174,9 @@ ABI Changes
    This section is a comment. Do not overwrite or remove it.
    Also, make sure to start the actual text at the margin.
    =========================================================
+
+* mbuf: The format of the sched field of ``rte_mbuf`` has been changed
+  to include the following fields: ``queue ID``, ``traffic class``, ``color``.
 
 
 Shared Library Versions
@@ -217,7 +225,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_kvargs.so.1
      librte_latencystats.so.1
      librte_lpm.so.2
-     librte_mbuf.so.4
+   + librte_mbuf.so.5
      librte_member.so.1
      librte_mempool.so.5
      librte_meter.so.2
@@ -239,7 +247,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_rawdev.so.1
      librte_reorder.so.1
      librte_ring.so.2
-     librte_sched.so.1
+   + librte_sched.so.2
      librte_security.so.1
      librte_table.so.3
      librte_timer.so.1

@@ -107,14 +107,6 @@ mtr_cfg_check(struct rte_table_action_mtr_config *mtr)
 	return 0;
 }
 
-#define MBUF_SCHED_QUEUE_TC_COLOR(queue, tc, color)        \
-	((uint16_t)((((uint64_t)(queue)) & 0x3) |          \
-	((((uint64_t)(tc)) & 0x3) << 2) |                  \
-	((((uint64_t)(color)) & 0x3) << 4)))
-
-#define MBUF_SCHED_COLOR(sched, color)                     \
-	(((sched) & (~0x30LLU)) | ((color) << 4))
-
 struct mtr_trtcm_data {
 	struct rte_meter_trtcm trtcm;
 	uint64_t stats[e_RTE_METER_COLORS];
@@ -176,7 +168,7 @@ mtr_data_size(struct rte_table_action_mtr_config *mtr)
 struct dscp_table_entry_data {
 	enum rte_meter_color color;
 	uint16_t tc;
-	uint16_t queue_tc_color;
+	uint16_t tc_queue;
 };
 
 struct dscp_table_data {
@@ -319,8 +311,7 @@ pkt_work_mtr(struct rte_mbuf *mbuf,
 	uint32_t dscp,
 	uint16_t total_length)
 {
-	uint64_t drop_mask, sched;
-	uint64_t *sched_ptr = (uint64_t *) &mbuf->hash.sched;
+	uint64_t drop_mask;
 	struct dscp_table_entry_data *dscp_entry = &dscp_table->entry[dscp];
 	enum rte_meter_color color_in, color_meter, color_policer;
 	uint32_t tc, mp_id;
@@ -329,7 +320,6 @@ pkt_work_mtr(struct rte_mbuf *mbuf,
 	color_in = dscp_entry->color;
 	data += tc;
 	mp_id = MTR_TRTCM_DATA_METER_PROFILE_ID_GET(data);
-	sched = *sched_ptr;
 
 	/* Meter */
 	color_meter = rte_meter_trtcm_color_aware_check(
@@ -346,7 +336,7 @@ pkt_work_mtr(struct rte_mbuf *mbuf,
 	drop_mask = MTR_TRTCM_DATA_POLICER_ACTION_DROP_GET(data, color_meter);
 	color_policer =
 		MTR_TRTCM_DATA_POLICER_ACTION_COLOR_GET(data, color_meter);
-	*sched_ptr = MBUF_SCHED_COLOR(sched, color_policer);
+	rte_mbuf_sched_color_set(mbuf, (uint8_t)color_policer);
 
 	return drop_mask;
 }
@@ -368,9 +358,8 @@ tm_cfg_check(struct rte_table_action_tm_config *tm)
 }
 
 struct tm_data {
-	uint16_t queue_tc_color;
-	uint16_t subport;
-	uint32_t pipe;
+	uint32_t queue_id;
+	uint32_t reserved;
 } __attribute__((__packed__));
 
 static int
@@ -397,9 +386,9 @@ tm_apply(struct tm_data *data,
 		return status;
 
 	/* Apply */
-	data->queue_tc_color = 0;
-	data->subport = (uint16_t) p->subport_id;
-	data->pipe = p->pipe_id;
+	data->queue_id = p->subport_id <<
+				(__builtin_ctz(cfg->n_pipes_per_subport) + 4) |
+				p->pipe_id << 4;
 
 	return 0;
 }
@@ -411,12 +400,11 @@ pkt_work_tm(struct rte_mbuf *mbuf,
 	uint32_t dscp)
 {
 	struct dscp_table_entry_data *dscp_entry = &dscp_table->entry[dscp];
-	struct tm_data *sched_ptr = (struct tm_data *) &mbuf->hash.sched;
-	struct tm_data sched;
-
-	sched = *data;
-	sched.queue_tc_color = dscp_entry->queue_tc_color;
-	*sched_ptr = sched;
+	uint32_t queue_id = data->queue_id |
+				(dscp_entry->tc << 2) |
+				dscp_entry->tc_queue;
+	rte_mbuf_sched_set(mbuf, queue_id, dscp_entry->tc,
+				(uint8_t)dscp_entry->color);
 }
 
 /**
@@ -2580,17 +2568,13 @@ rte_table_action_dscp_table_update(struct rte_table_action *action,
 			&action->dscp_table.entry[i];
 		struct rte_table_action_dscp_table_entry *entry =
 			&table->entry[i];
-		uint16_t queue_tc_color =
-			MBUF_SCHED_QUEUE_TC_COLOR(entry->tc_queue_id,
-				entry->tc_id,
-				entry->color);
 
 		if ((dscp_mask & (1LLU << i)) == 0)
 			continue;
 
 		data->color = entry->color;
 		data->tc = entry->tc_id;
-		data->queue_tc_color = queue_tc_color;
+		data->tc_queue = entry->tc_queue_id;
 	}
 
 	return 0;

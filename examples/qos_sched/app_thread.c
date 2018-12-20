@@ -73,8 +73,11 @@ app_rx_thread(struct thread_conf **confs)
 			for(i = 0; i < nb_rx; i++) {
 				get_pkt_sched(rx_mbufs[i],
 						&subport, &pipe, &traffic_class, &queue, &color);
-				rte_sched_port_pkt_write(rx_mbufs[i], subport, pipe,
-						traffic_class, queue, (enum rte_meter_color) color);
+				rte_sched_port_pkt_write(conf->sched_port,
+						rx_mbufs[i],
+						subport, pipe,
+						traffic_class, queue,
+						(enum rte_meter_color) color);
 			}
 
 			if (unlikely(rte_ring_sp_enqueue_bulk(conf->rx_ring,

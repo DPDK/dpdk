@@ -355,6 +355,8 @@ rte_sched_queue_read_stats(struct rte_sched_port *port,
  * Scheduler hierarchy path write to packet descriptor. Typically
  * called by the packet classification stage.
  *
+ * @param port
+ *   Handle to port scheduler instance
  * @param pkt
  *   Packet descriptor handle
  * @param subport
@@ -369,7 +371,8 @@ rte_sched_queue_read_stats(struct rte_sched_port *port,
  *   Packet color set
  */
 void
-rte_sched_port_pkt_write(struct rte_mbuf *pkt,
+rte_sched_port_pkt_write(struct rte_sched_port *port,
+			 struct rte_mbuf *pkt,
 			 uint32_t subport, uint32_t pipe, uint32_t traffic_class,
 			 uint32_t queue, enum rte_meter_color color);
 
@@ -379,6 +382,8 @@ rte_sched_port_pkt_write(struct rte_mbuf *pkt,
  * enqueue operation. The subport, pipe, traffic class and queue
  * parameters need to be pre-allocated by the caller.
  *
+ * @param port
+ *   Handle to port scheduler instance
  * @param pkt
  *   Packet descriptor handle
  * @param subport
@@ -392,7 +397,8 @@ rte_sched_port_pkt_write(struct rte_mbuf *pkt,
  *
  */
 void
-rte_sched_port_pkt_read_tree_path(const struct rte_mbuf *pkt,
+rte_sched_port_pkt_read_tree_path(struct rte_sched_port *port,
+				  const struct rte_mbuf *pkt,
 				  uint32_t *subport, uint32_t *pipe,
 				  uint32_t *traffic_class, uint32_t *queue);
 

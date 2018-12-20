@@ -44,16 +44,6 @@ Deprecation Notices
   structure would be made internal (or removed if all dependencies are cleared)
   in future releases.
 
-* mbuf: The opaque ``mbuf->hash.sched`` field will be updated to support generic
-  definition in line with the ethdev TM and MTR APIs. Currently, this field
-  is defined in librte_sched in a non-generic way. The new generic format
-  will contain: queue ID, traffic class, color. Field size will not change.
-
-* sched: Some API functions will change prototype due to the above
-  deprecation note for mbuf->hash.sched, e.g. ``rte_sched_port_pkt_write()``
-  and ``rte_sched_port_pkt_read()`` will likely have an additional parameter
-  of type ``struct rte_sched_port``.
-
 * mbuf: the macro ``RTE_MBUF_INDIRECT()`` will be removed in v18.08 or later and
   replaced with ``RTE_MBUF_CLONED()`` which is already added in v18.05. As
   ``EXT_ATTACHED_MBUF`` is newly introduced in v18.05, ``RTE_MBUF_INDIRECT()``
