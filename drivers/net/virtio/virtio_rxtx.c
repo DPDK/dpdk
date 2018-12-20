@@ -1931,7 +1931,6 @@ virtio_xmit_pkts_packed(void *tx_queue, struct rte_mbuf **tx_pkts,
 		/* Enqueue Packet buffers */
 		virtqueue_enqueue_xmit_packed(txvq, txm, slots, can_push);
 
-		txvq->stats.bytes += txm->pkt_len;
 		virtio_update_packet_stats(&txvq->stats, txm);
 	}
 
