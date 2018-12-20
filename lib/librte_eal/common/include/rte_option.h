@@ -57,8 +57,12 @@ struct rte_option {
  *
  * @param opt
  *  Structure describing the option to parse.
+ *
+ * @return
+ *  0 on success, <0 otherwise.
  */
-void __rte_experimental
+__rte_experimental
+int
 rte_option_register(struct rte_option *opt);
 
 #ifdef __cplusplus

@@ -38,7 +38,8 @@ rte_option_parse(const char *opt)
 	return -1;
 }
 
-void __rte_experimental
+__rte_experimental
+int
 rte_option_register(struct rte_option *opt)
 {
 	struct rte_option *option;
@@ -49,7 +50,7 @@ rte_option_register(struct rte_option *opt)
 		if (strcmp(gopt->name, opt->name) == 0) {
 			RTE_LOG(ERR, EAL, "Option %s is already a common EAL option.\n",
 					opt->name);
-			return;
+			return -1;
 		}
 		gopt++;
 	}
@@ -58,11 +59,12 @@ rte_option_register(struct rte_option *opt)
 		if (strcmp(opt->name, option->name) == 0) {
 			RTE_LOG(ERR, EAL, "Option %s has already been registered.\n",
 					opt->name);
-			return;
+			return -1;
 		}
 	}
 
 	TAILQ_INSERT_HEAD(&rte_option_list, opt, next);
+	return 0;
 }
 
 void
