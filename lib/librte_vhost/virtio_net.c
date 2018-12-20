@@ -97,6 +97,8 @@ flush_shadow_used_ring_packed(struct virtio_net *dev,
 {
 	int i;
 	uint16_t used_idx = vq->last_used_idx;
+	uint16_t head_idx = vq->last_used_idx;
+	uint16_t head_flags = 0;
 
 	/* Split loop in two to save memory barriers */
 	for (i = 0; i < vq->shadow_used_idx; i++) {
@@ -126,12 +128,17 @@ flush_shadow_used_ring_packed(struct virtio_net *dev,
 			flags &= ~VRING_DESC_F_AVAIL;
 		}
 
-		vq->desc_packed[vq->last_used_idx].flags = flags;
+		if (i > 0) {
+			vq->desc_packed[vq->last_used_idx].flags = flags;
 
-		vhost_log_cache_used_vring(dev, vq,
+			vhost_log_cache_used_vring(dev, vq,
 					vq->last_used_idx *
 					sizeof(struct vring_packed_desc),
 					sizeof(struct vring_packed_desc));
+		} else {
+			head_idx = vq->last_used_idx;
+			head_flags = flags;
+		}
 
 		vq->last_used_idx += vq->shadow_used_packed[i].count;
 		if (vq->last_used_idx >= vq->size) {
@@ -140,7 +147,13 @@ flush_shadow_used_ring_packed(struct virtio_net *dev,
 		}
 	}
 
-	rte_smp_wmb();
+	vq->desc_packed[head_idx].flags = head_flags;
+
+	vhost_log_cache_used_vring(dev, vq,
+				head_idx *
+				sizeof(struct vring_packed_desc),
+				sizeof(struct vring_packed_desc));
+
 	vq->shadow_used_idx = 0;
 	vhost_log_cache_sync(dev, vq);
 }

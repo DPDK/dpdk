@@ -457,12 +457,9 @@ vhost_log_cache_sync(struct virtio_net *dev, struct vhost_virtqueue *vq)
 		   !dev->log_base))
 		return;
 
-	log_base = (unsigned long *)(uintptr_t)dev->log_base;
+	rte_smp_wmb();
 
-	/*
-	 * It is expected a write memory barrier has been issued
-	 * before this function is called.
-	 */
+	log_base = (unsigned long *)(uintptr_t)dev->log_base;
 
 	for (i = 0; i < vq->log_cache_nb_elem; i++) {
 		struct log_cache_entry *elem = vq->log_cache + i;
