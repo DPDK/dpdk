@@ -5,6 +5,15 @@
 #ifndef TEST_CRYPTODEV_HASH_TEST_VECTORS_H_
 #define TEST_CRYPTODEV_HASH_TEST_VECTORS_H_
 
+#ifdef RTE_LIBRTE_PMD_AESNI_MB
+#include <intel-ipsec-mb.h>
+#endif
+
+#if !defined(IMB_VERSION_NUM)
+#define IMB_VERSION(a, b, c) (((a) << 16) + ((b) << 8) + (c))
+#define IMB_VERSION_NUM IMB_VERSION(0, 49, 0)
+#endif
+
 static const uint8_t plaintext_hash[] = {
 	"What a lousy earth! He wondered how many people "
 	"were destitute that same night even in his own "

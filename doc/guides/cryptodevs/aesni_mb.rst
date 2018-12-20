@@ -40,6 +40,7 @@ Hash algorithms:
 * RTE_CRYPTO_HASH_SHA512_HMAC
 * RTE_CRYPTO_HASH_AES_XCBC_HMAC
 * RTE_CRYPTO_HASH_AES_CMAC
+* RTE_CRYPTO_HASH_AES_GMAC
 
 AEAD algorithms:
 
@@ -53,6 +54,7 @@ Limitations
 * Only in-place is currently supported (destination address is the same as source address).
 * RTE_CRYPTO_AEAD_AES_GCM only works properly when the multi-buffer library is
   0.51.0 or newer.
+* RTE_CRYPTO_HASH_AES_GMAC is supported by library version v0.51 or later.
 
 
 Installation

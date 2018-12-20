@@ -9228,6 +9228,7 @@ static struct unit_test_suite cryptodev_aesni_mb_testsuite  = {
 	.setup = testsuite_setup,
 	.teardown = testsuite_teardown,
 	.unit_test_cases = {
+#if IMB_VERSION_NUM >= IMB_VERSION(0, 51, 0)
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_GCM_authenticated_encryption_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -9341,6 +9342,20 @@ static struct unit_test_suite cryptodev_aesni_mb_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_GCM_authenticated_decryption_sessionless_test_case_1),
 
+		/** AES GMAC Authentication */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GMAC_authentication_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GMAC_authentication_verify_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GMAC_authentication_test_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GMAC_authentication_verify_test_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GMAC_authentication_test_case_3),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GMAC_authentication_verify_test_case_3),
+#endif /* IMB_VERSION_NUM >= IMB_VERSION(0, 51, 0) */
 
 		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_mb_all),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_mb_all),

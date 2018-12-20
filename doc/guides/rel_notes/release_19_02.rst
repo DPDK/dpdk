@@ -103,6 +103,7 @@ New Features
 * **Updated the AESNI-MB PMD.**
 
   * Add support for intel-ipsec-mb version 0.52.
+  * Add AES-GMAC algorithm support.
 
 * **Enabled checksum support in the ISA-L compressdev driver.**
 

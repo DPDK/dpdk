@@ -360,6 +360,31 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 			}, }
 		}, }
 	},
+	{	/* AES GMAC (AUTH) */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_AES_GMAC,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 32,
+					.increment = 8
+				},
+				.digest_size = {
+					.min = 8,
+					.max = 16,
+					.increment = 4
+				},
+				.iv_size = {
+					.min = 12,
+					.max = 12,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 
