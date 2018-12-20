@@ -852,6 +852,48 @@ unlock:
 	return ret;
 }
 
+static int
+sync_memory(void *va_addr, size_t len, bool attach)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+	struct rte_memseg_list *msl;
+	int ret = 0;
+
+	if (va_addr == NULL || len == 0) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+	rte_rwlock_write_lock(&mcfg->memory_hotplug_lock);
+
+	/* find our segment */
+	msl = malloc_heap_find_external_seg(va_addr, len);
+	if (msl == NULL) {
+		rte_errno = ENOENT;
+		ret = -1;
+		goto unlock;
+	}
+	if (attach)
+		ret = rte_fbarray_attach(&msl->memseg_arr);
+	else
+		ret = rte_fbarray_detach(&msl->memseg_arr);
+
+unlock:
+	rte_rwlock_write_unlock(&mcfg->memory_hotplug_lock);
+	return ret;
+}
+
+int __rte_experimental
+rte_extmem_attach(void *va_addr, size_t len)
+{
+	return sync_memory(va_addr, len, true);
+}
+
+int __rte_experimental
+rte_extmem_detach(void *va_addr, size_t len)
+{
+	return sync_memory(va_addr, len, false);
+}
+
 /* init memory subsystem */
 int
 rte_eal_memory_init(void)

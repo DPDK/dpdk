@@ -435,6 +435,10 @@ rte_memseg_get_fd_offset_thread_unsafe(const struct rte_memseg *ms,
  * @note This API will not perform any DMA mapping. It is expected that user
  *   will do that themselves.
  *
+ * @note Before accessing this memory in other processes, it needs to be
+ *   attached in each of those processes by calling ``rte_extmem_attach`` in
+ *   each other process.
+ *
  * @param va_addr
  *   Start of virtual area to register. Must be aligned by ``page_sz``.
  * @param len
@@ -472,6 +476,9 @@ rte_extmem_register(void *va_addr, size_t len, rte_iova_t iova_addrs[],
  * @note This API will not perform any DMA unmapping. It is expected that user
  *   will do that themselves.
  *
+ * @note Before calling this function, all other processes must call
+ *   ``rte_extmem_detach`` to detach from the memory area.
+ *
  * @param va_addr
  *   Start of virtual area to unregister
  * @param len
@@ -485,6 +492,58 @@ rte_extmem_register(void *va_addr, size_t len, rte_iova_t iova_addrs[],
  */
 int __rte_experimental
 rte_extmem_unregister(void *va_addr, size_t len);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Attach to external memory chunk registered in another process.
+ *
+ * @note Using this API is mutually exclusive with ``rte_malloc`` family of
+ *   API's.
+ *
+ * @note This API will not perform any DMA mapping. It is expected that user
+ *   will do that themselves.
+ *
+ * @param va_addr
+ *   Start of virtual area to register
+ * @param len
+ *   Length of virtual area to register
+ *
+ * @return
+ *   - 0 on success
+ *   - -1 in case of error, with rte_errno set to one of the following:
+ *     EINVAL - one of the parameters was invalid
+ *     ENOENT - memory chunk was not found
+ */
+int __rte_experimental
+rte_extmem_attach(void *va_addr, size_t len);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Detach from external memory chunk registered in another process.
+ *
+ * @note Using this API is mutually exclusive with ``rte_malloc`` family of
+ *   API's.
+ *
+ * @note This API will not perform any DMA unmapping. It is expected that user
+ *   will do that themselves.
+ *
+ * @param va_addr
+ *   Start of virtual area to unregister
+ * @param len
+ *   Length of virtual area to unregister
+ *
+ * @return
+ *   - 0 on success
+ *   - -1 in case of error, with rte_errno set to one of the following:
+ *     EINVAL - one of the parameters was invalid
+ *     ENOENT - memory chunk was not found
+ */
+int __rte_experimental
+rte_extmem_detach(void *va_addr, size_t len);
 
 /**
  * Dump the physical memory layout to a file.

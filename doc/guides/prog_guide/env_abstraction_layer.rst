@@ -290,11 +290,14 @@ The expected workflow is as follows:
 * Register memory within DPDK
     - If IOVA table is not specified, IOVA addresses will be assumed to be
       unavailable
+    - Other processes must attach to the memory area before they can use it
 * Perform DMA mapping with ``rte_vfio_dma_map`` if needed
 * Use the memory area in your application
 * If memory area is no longer needed, it can be unregistered
     - If the area was mapped for DMA, unmapping must be performed before
       unregistering memory
+    - Other processes must detach from the memory area before it can be
+      unregistered
 
 Since these externally allocated memory areas will not be managed by DPDK, it is
 therefore up to the user application to decide how to use them and what to do

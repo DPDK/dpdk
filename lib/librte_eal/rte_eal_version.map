@@ -296,6 +296,8 @@ EXPERIMENTAL {
 	rte_devargs_remove;
 	rte_devargs_type_count;
 	rte_eal_cleanup;
+	rte_extmem_attach;
+	rte_extmem_detach;
 	rte_extmem_register;
 	rte_extmem_unregister;
 	rte_fbarray_attach;
