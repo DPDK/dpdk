@@ -922,6 +922,7 @@ int __rte_experimental
 rte_eal_cleanup(void)
 {
 	rte_service_finalize();
+	rte_mp_channel_cleanup();
 	return 0;
 }
 

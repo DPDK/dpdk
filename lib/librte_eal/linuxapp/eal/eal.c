@@ -1237,6 +1237,7 @@ rte_eal_cleanup(void)
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		rte_memseg_walk(mark_freeable, NULL);
 	rte_service_finalize();
+	rte_mp_channel_cleanup();
 	return 0;
 }
 

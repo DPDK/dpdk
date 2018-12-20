@@ -255,8 +255,12 @@ struct rte_bus *rte_bus_find_by_device_name(const char *str);
  *   0 on success;
  *   (<0) on failure.
  */
-
 int rte_mp_channel_init(void);
+
+/**
+ * Primary/secondary communication cleanup.
+ */
+void rte_mp_channel_cleanup(void);
 
 /**
  * @internal
