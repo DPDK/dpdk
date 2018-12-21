@@ -451,7 +451,7 @@ sfc_tx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 	if (txq->offloads & DEV_TX_OFFLOAD_TCP_TSO)
 		flags |= EFX_TXQ_FATSOV2;
 
-	rc = efx_tx_qcreate(sa->nic, sw_index, 0, &txq->mem,
+	rc = efx_tx_qcreate(sa->nic, txq->hw_index, 0, &txq->mem,
 			    txq_info->entries, 0 /* not used on EF10 */,
 			    flags, evq->common,
 			    &txq->common, &desc_index);
