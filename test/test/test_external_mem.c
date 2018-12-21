@@ -23,7 +23,35 @@
 #define EXTERNAL_MEM_SZ (RTE_PGSIZE_4K << 10) /* 4M of data */
 
 static int
-test_invalid_param(void *addr, size_t len, size_t pgsz, rte_iova_t *iova,
+check_mem(void *addr, rte_iova_t *iova, size_t pgsz, int n_pages)
+{
+	int i;
+
+	/* check that we can get this memory from EAL now */
+	for (i = 0; i < n_pages; i++) {
+		const struct rte_memseg *ms;
+		void *cur = RTE_PTR_ADD(addr, pgsz * i);
+
+		ms = rte_mem_virt2memseg(cur, NULL);
+		if (ms == NULL) {
+			printf("%s():%i: Failed to retrieve memseg for external mem\n",
+				__func__, __LINE__);
+			return -1;
+		}
+		if (ms->addr != cur) {
+			printf("%s():%i: VA mismatch\n", __func__, __LINE__);
+			return -1;
+		}
+		if (ms->iova != iova[i]) {
+			printf("%s():%i: IOVA mismatch\n", __func__, __LINE__);
+			return -1;
+		}
+	}
+	return 0;
+}
+
+static int
+test_malloc_invalid_param(void *addr, size_t len, size_t pgsz, rte_iova_t *iova,
 		int n_pages)
 {
 	static const char * const names[] = {
@@ -223,11 +251,12 @@ fail:
 }
 
 static int
-test_basic(void *addr, size_t len, size_t pgsz, rte_iova_t *iova, int n_pages)
+test_malloc_basic(void *addr, size_t len, size_t pgsz, rte_iova_t *iova,
+		int n_pages)
 {
 	const char *heap_name = "heap";
 	void *ptr = NULL;
-	int socket_id, i;
+	int socket_id;
 	const struct rte_memzone *mz = NULL;
 
 	/* create heap */
@@ -261,26 +290,9 @@ test_basic(void *addr, size_t len, size_t pgsz, rte_iova_t *iova, int n_pages)
 		goto fail;
 	}
 
-	/* check that we can get this memory from EAL now */
-	for (i = 0; i < n_pages; i++) {
-		const struct rte_memseg *ms;
-		void *cur = RTE_PTR_ADD(addr, pgsz * i);
-
-		ms = rte_mem_virt2memseg(cur, NULL);
-		if (ms == NULL) {
-			printf("%s():%i: Failed to retrieve memseg for external mem\n",
-				__func__, __LINE__);
-			goto fail;
-		}
-		if (ms->addr != cur) {
-			printf("%s():%i: VA mismatch\n", __func__, __LINE__);
-			goto fail;
-		}
-		if (ms->iova != iova[i]) {
-			printf("%s():%i: IOVA mismatch\n", __func__, __LINE__);
-			goto fail;
-		}
-	}
+	/* check if memory is accessible from EAL */
+	if (check_mem(addr, iova, pgsz, n_pages) < 0)
+		goto fail;
 
 	/* allocate - this now should succeed */
 	ptr = rte_malloc_socket("EXTMEM", 64, 0, socket_id);
@@ -379,8 +391,8 @@ test_external_mem(void)
 		iova[i] = tmp;
 	}
 
-	ret = test_invalid_param(addr, len, pgsz, iova, n_pages);
-	ret |= test_basic(addr, len, pgsz, iova, n_pages);
+	ret = test_malloc_invalid_param(addr, len, pgsz, iova, n_pages);
+	ret |= test_malloc_basic(addr, len, pgsz, iova, n_pages);
 
 	munmap(addr, len);
 
