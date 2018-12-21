@@ -391,6 +391,144 @@ fail:
 	return -1;
 }
 
+static int
+test_extmem_invalid_param(void *addr, size_t len, size_t pgsz, rte_iova_t *iova,
+		int n_pages)
+{
+	/* these calls may fail for other reasons, so check errno */
+	if (rte_extmem_unregister(addr, len) >= 0 ||
+			rte_errno != ENOENT) {
+		printf("%s():%i: Unregistered non-existent memory\n",
+			__func__, __LINE__);
+		return -1;
+	}
+
+	if (rte_extmem_attach(addr, len) >= 0 ||
+			rte_errno != ENOENT) {
+		printf("%s():%i: Attached to non-existent memory\n",
+			__func__, __LINE__);
+		return -1;
+	}
+	if (rte_extmem_attach(addr, len) >= 0 ||
+			rte_errno != ENOENT) {
+		printf("%s():%i: Detached from non-existent memory\n",
+			__func__, __LINE__);
+		return -1;
+	}
+
+	/* zero length */
+	if (rte_extmem_register(addr, 0, NULL, 0, pgsz) >= 0 ||
+			rte_errno != EINVAL) {
+		printf("%s():%i: Registered memory with invalid parameters\n",
+			__func__, __LINE__);
+		return -1;
+	}
+
+	if (rte_extmem_unregister(addr, 0) >= 0 ||
+			rte_errno != EINVAL) {
+		printf("%s():%i: Unregistered memory with invalid parameters\n",
+			__func__, __LINE__);
+		return -1;
+	}
+
+	if (rte_extmem_attach(addr, 0) >= 0 ||
+			rte_errno != EINVAL) {
+		printf("%s():%i: Attached memory with invalid parameters\n",
+			__func__, __LINE__);
+		return -1;
+	}
+	if (rte_extmem_attach(addr, 0) >= 0 ||
+			rte_errno != EINVAL) {
+		printf("%s():%i: Detached memory with invalid parameters\n",
+			__func__, __LINE__);
+		return -1;
+	}
+
+	/* zero address */
+	if (rte_extmem_register(NULL, len, NULL, 0, pgsz) >= 0 ||
+			rte_errno != EINVAL) {
+		printf("%s():%i: Registered memory with invalid parameters\n",
+			__func__, __LINE__);
+		return -1;
+	}
+
+	if (rte_extmem_unregister(NULL, len) >= 0 ||
+			rte_errno != EINVAL) {
+		printf("%s():%i: Unregistered memory with invalid parameters\n",
+			__func__, __LINE__);
+		return -1;
+	}
+
+	if (rte_extmem_attach(NULL, len) >= 0 ||
+			rte_errno != EINVAL) {
+		printf("%s():%i: Attached memory with invalid parameters\n",
+			__func__, __LINE__);
+		return -1;
+	}
+	if (rte_extmem_attach(NULL, len) >= 0 ||
+			rte_errno != EINVAL) {
+		printf("%s():%i: Detached memory with invalid parameters\n",
+			__func__, __LINE__);
+		return -1;
+	}
+
+	/* the following tests are only valid if IOVA table is not NULL */
+	if (iova != NULL) {
+		/* wrong page count */
+		if (rte_extmem_register(addr, len,
+				iova, 0, pgsz) >= 0 || rte_errno != EINVAL) {
+			printf("%s():%i: Registered memory with invalid parameters\n",
+				__func__, __LINE__);
+			return -1;
+		}
+		if (rte_extmem_register(addr, len,
+				iova, n_pages - 1, pgsz) >= 0 ||
+				rte_errno != EINVAL) {
+			printf("%s():%i: Registered memory with invalid parameters\n",
+				__func__, __LINE__);
+			return -1;
+		}
+		if (rte_extmem_register(addr, len,
+				iova, n_pages + 1, pgsz) >= 0 ||
+				rte_errno != EINVAL) {
+			printf("%s():%i: Registered memory with invalid parameters\n",
+				__func__, __LINE__);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+static int
+test_extmem_basic(void *addr, size_t len, size_t pgsz, rte_iova_t *iova,
+		int n_pages)
+{
+	/* register memory */
+	if (rte_extmem_register(addr, len, iova, n_pages, pgsz) != 0) {
+		printf("%s():%i: Failed to register memory\n",
+			__func__, __LINE__);
+		goto fail;
+	}
+
+	/* check if memory is accessible from EAL */
+	if (check_mem(addr, iova, pgsz, n_pages) < 0)
+		goto fail;
+
+	if (rte_extmem_unregister(addr, len) != 0) {
+		printf("%s():%i: Removing memory from heap failed\n",
+			__func__, __LINE__);
+		goto fail;
+	}
+
+	return 0;
+fail:
+	/* even if something failed, attempt to clean up */
+	rte_extmem_unregister(addr, len);
+
+	return -1;
+}
+
 /* we need to test attach/detach in secondary processes. */
 static int
 test_external_mem(void)
@@ -417,11 +555,19 @@ test_external_mem(void)
 		iova[i] = tmp;
 	}
 
+	/* test external heap memory */
 	ret = test_malloc_invalid_param(addr, len, pgsz, iova, n_pages);
 	ret |= test_malloc_basic(addr, len, pgsz, iova, n_pages);
 	/* when iova table is NULL, everything should still work */
 	ret |= test_malloc_invalid_param(addr, len, pgsz, NULL, n_pages);
 	ret |= test_malloc_basic(addr, len, pgsz, NULL, n_pages);
+
+	/* test non-heap memory */
+	ret |= test_extmem_invalid_param(addr, len, pgsz, iova, n_pages);
+	ret |= test_extmem_basic(addr, len, pgsz, iova, n_pages);
+	/* when iova table is NULL, everything should still work */
+	ret |= test_extmem_invalid_param(addr, len, pgsz, NULL, n_pages);
+	ret |= test_extmem_basic(addr, len, pgsz, NULL, n_pages);
 
 	munmap(addr, len);
 
