@@ -31,6 +31,7 @@ check_mem(void *addr, rte_iova_t *iova, size_t pgsz, int n_pages)
 	for (i = 0; i < n_pages; i++) {
 		const struct rte_memseg *ms;
 		void *cur = RTE_PTR_ADD(addr, pgsz * i);
+		rte_iova_t expected_iova;
 
 		ms = rte_mem_virt2memseg(cur, NULL);
 		if (ms == NULL) {
@@ -42,7 +43,8 @@ check_mem(void *addr, rte_iova_t *iova, size_t pgsz, int n_pages)
 			printf("%s():%i: VA mismatch\n", __func__, __LINE__);
 			return -1;
 		}
-		if (ms->iova != iova[i]) {
+		expected_iova = (iova == NULL) ? RTE_BAD_IOVA : iova[i];
+		if (ms->iova != expected_iova) {
 			printf("%s():%i: IOVA mismatch\n", __func__, __LINE__);
 			return -1;
 		}
@@ -218,24 +220,29 @@ test_malloc_invalid_param(void *addr, size_t len, size_t pgsz, rte_iova_t *iova,
 		goto fail;
 	}
 
-	/* wrong page count */
-	if (rte_malloc_heap_memory_add(valid_name, addr, len,
-			iova, 0, pgsz) >= 0 || rte_errno != EINVAL) {
-		printf("%s():%i: Added memory with invalid parameters\n",
-			__func__, __LINE__);
-		goto fail;
-	}
-	if (rte_malloc_heap_memory_add(valid_name, addr, len,
-			iova, n_pages - 1, pgsz) >= 0 || rte_errno != EINVAL) {
-		printf("%s():%i: Added memory with invalid parameters\n",
-			__func__, __LINE__);
-		goto fail;
-	}
-	if (rte_malloc_heap_memory_add(valid_name, addr, len,
-			iova, n_pages + 1, pgsz) >= 0 || rte_errno != EINVAL) {
-		printf("%s():%i: Added memory with invalid parameters\n",
-			__func__, __LINE__);
-		goto fail;
+	/* the following tests are only valid if IOVA table is not NULL */
+	if (iova != NULL) {
+		/* wrong page count */
+		if (rte_malloc_heap_memory_add(valid_name, addr, len,
+				iova, 0, pgsz) >= 0 || rte_errno != EINVAL) {
+			printf("%s():%i: Added memory with invalid parameters\n",
+				__func__, __LINE__);
+			goto fail;
+		}
+		if (rte_malloc_heap_memory_add(valid_name, addr, len,
+				iova, n_pages - 1, pgsz) >= 0 ||
+				rte_errno != EINVAL) {
+			printf("%s():%i: Added memory with invalid parameters\n",
+				__func__, __LINE__);
+			goto fail;
+		}
+		if (rte_malloc_heap_memory_add(valid_name, addr, len,
+				iova, n_pages + 1, pgsz) >= 0 ||
+				rte_errno != EINVAL) {
+			printf("%s():%i: Added memory with invalid parameters\n",
+				__func__, __LINE__);
+			goto fail;
+		}
 	}
 
 	/* tests passed, destroy heap */
@@ -257,7 +264,7 @@ test_malloc_basic(void *addr, size_t len, size_t pgsz, rte_iova_t *iova,
 	const char *heap_name = "heap";
 	void *ptr = NULL;
 	int socket_id;
-	const struct rte_memzone *mz = NULL;
+	const struct rte_memzone *mz = NULL, *contig_mz = NULL;
 
 	/* create heap */
 	if (rte_malloc_heap_create(heap_name) != 0) {
@@ -322,12 +329,19 @@ test_malloc_basic(void *addr, size_t len, size_t pgsz, rte_iova_t *iova,
 		goto fail;
 	}
 
-	/* try allocating an IOVA-contiguous memzone - this should succeed
-	 * because we've set up a contiguous IOVA table.
-	 */
-	mz = rte_memzone_reserve("heap_test", pgsz * 2, socket_id,
-			RTE_MEMZONE_IOVA_CONTIG);
+	/* try allocating a memzone */
+	mz = rte_memzone_reserve("heap_test", pgsz * 2, socket_id, 0);
 	if (mz == NULL) {
+		printf("%s():%i: Failed to reserve memzone\n",
+			__func__, __LINE__);
+		goto fail;
+	}
+	/* try allocating an IOVA-contiguous memzone - this should succeed
+	 * if we've set up a contiguous IOVA table, and fail if we haven't.
+	 */
+	contig_mz = rte_memzone_reserve("heap_test_contig", pgsz * 2, socket_id,
+			RTE_MEMZONE_IOVA_CONTIG);
+	if ((iova == NULL) != (contig_mz == NULL)) {
 		printf("%s():%i: Failed to reserve memzone\n",
 			__func__, __LINE__);
 		goto fail;
@@ -342,6 +356,8 @@ test_malloc_basic(void *addr, size_t len, size_t pgsz, rte_iova_t *iova,
 
 	rte_memzone_free(mz);
 	mz = NULL;
+	rte_memzone_free(contig_mz);
+	contig_mz = NULL;
 
 	if (rte_malloc_heap_memory_remove(heap_name, addr, len) != 0) {
 		printf("%s():%i: Removing memory from heap failed\n",
@@ -356,6 +372,7 @@ test_malloc_basic(void *addr, size_t len, size_t pgsz, rte_iova_t *iova,
 
 	return 0;
 fail:
+	rte_memzone_free(contig_mz);
 	rte_memzone_free(mz);
 	rte_free(ptr);
 	/* even if something failed, attempt to clean up */
@@ -393,6 +410,9 @@ test_external_mem(void)
 
 	ret = test_malloc_invalid_param(addr, len, pgsz, iova, n_pages);
 	ret |= test_malloc_basic(addr, len, pgsz, iova, n_pages);
+	/* when iova table is NULL, everything should still work */
+	ret |= test_malloc_invalid_param(addr, len, pgsz, NULL, n_pages);
+	ret |= test_malloc_basic(addr, len, pgsz, NULL, n_pages);
 
 	munmap(addr, len);
 
