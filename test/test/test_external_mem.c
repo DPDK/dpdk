@@ -13,6 +13,7 @@
 #include <rte_common.h>
 #include <rte_debug.h>
 #include <rte_eal.h>
+#include <rte_eal_memconfig.h>
 #include <rte_errno.h>
 #include <rte_malloc.h>
 #include <rte_ring.h>
@@ -29,11 +30,19 @@ check_mem(void *addr, rte_iova_t *iova, size_t pgsz, int n_pages)
 
 	/* check that we can get this memory from EAL now */
 	for (i = 0; i < n_pages; i++) {
+		const struct rte_memseg_list *msl;
 		const struct rte_memseg *ms;
 		void *cur = RTE_PTR_ADD(addr, pgsz * i);
 		rte_iova_t expected_iova;
 
-		ms = rte_mem_virt2memseg(cur, NULL);
+		msl = rte_mem_virt2memseg_list(cur);
+		if (!msl->external) {
+			printf("%s():%i: Memseg list is not marked as external\n",
+				__func__, __LINE__);
+			return -1;
+		}
+
+		ms = rte_mem_virt2memseg(cur, msl);
 		if (ms == NULL) {
 			printf("%s():%i: Failed to retrieve memseg for external mem\n",
 				__func__, __LINE__);
