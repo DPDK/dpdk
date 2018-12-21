@@ -251,6 +251,9 @@ rte_malloc_validate(const void *ptr, size_t *size);
 /**
  * Get heap statistics for the specified heap.
  *
+ * @note This function is not thread-safe with respect to
+ *    ``rte_malloc_heap_create()``/``rte_malloc_heap_destroy()`` functions.
+ *
  * @param socket
  *   An unsigned integer specifying the socket to get heap statistics for
  * @param socket_stats
@@ -461,6 +464,9 @@ rte_malloc_heap_socket_is_external(int socket_id);
  * Dump for the specified type to a file. If the type argument is
  * NULL, all memory types will be dumped.
  *
+ * @note This function is not thread-safe with respect to
+ *    ``rte_malloc_heap_create()``/``rte_malloc_heap_destroy()`` functions.
+ *
  * @param f
  *   A pointer to a file for output
  * @param type
@@ -472,6 +478,9 @@ rte_malloc_dump_stats(FILE *f, const char *type);
 
 /**
  * Dump contents of all malloc heaps to a file.
+ *
+ * @note This function is not thread-safe with respect to
+ *    ``rte_malloc_heap_create()``/``rte_malloc_heap_destroy()`` functions.
  *
  * @param f
  *   A pointer to a file for output

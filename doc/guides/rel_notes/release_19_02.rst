@@ -126,6 +126,10 @@ API Changes
   - In cases where memfd support would have been required to provide segment
     fd's (such as in-memory or no-huge mode)
 
+* eal: Functions ``rte_malloc_dump_stats()``, ``rte_malloc_dump_heaps()`` and
+  ``rte_malloc_get_socket_stats()`` are no longer safe to call concurrently with
+  ``rte_malloc_heap_create()`` or ``rte_malloc_heap_destroy()`` function calls.
+
 * pdump: The ``rte_pdump_set_socket_dir()``, the parameter ``path`` of
   ``rte_pdump_init()`` and enum ``rte_pdump_socktype`` were deprecated
   since 18.05 and are removed in this release.
