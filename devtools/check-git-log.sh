@@ -90,9 +90,10 @@ bad=$(echo "$headlines" | grep -E --color=always \
 	-e ':.*\<[hsf]w\>' \
 	-e ':.*\<l[234]\>' \
 	-e ':.*\<api\>' \
-	-e ':.*\<arm\>' \
-	-e ':.*\<armv7\>' \
-	-e ':.*\<armv8\>' \
+	-e ':.*\<ARM\>' \
+	-e ':.*\<(Aarch64|AArch64|AARCH64|Aarch32|AArch32|AARCH32)\>' \
+	-e ':.*\<(Armv7|ARMv7|ArmV7|armV7|ARMV7)\>' \
+	-e ':.*\<(Armv8|ARMv8|ArmV8|armV8|ARMV8)\>' \
 	-e ':.*\<crc\>' \
 	-e ':.*\<dma\>' \
 	-e ':.*\<eeprom\>' \
