@@ -133,6 +133,11 @@ static int
 null_crypto_pmd_qp_release(struct rte_cryptodev *dev, uint16_t qp_id)
 {
 	if (dev->data->queue_pairs[qp_id] != NULL) {
+		struct null_crypto_qp *qp = dev->data->queue_pairs[qp_id];
+
+		if (qp->processed_pkts)
+			rte_ring_free(qp->processed_pkts);
+
 		rte_free(dev->data->queue_pairs[qp_id]);
 		dev->data->queue_pairs[qp_id] = NULL;
 	}

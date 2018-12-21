@@ -142,6 +142,11 @@ static int
 snow3g_pmd_qp_release(struct rte_cryptodev *dev, uint16_t qp_id)
 {
 	if (dev->data->queue_pairs[qp_id] != NULL) {
+		struct snow3g_qp *qp = dev->data->queue_pairs[qp_id];
+
+		if (qp->processed_ops)
+			rte_ring_free(qp->processed_ops);
+
 		rte_free(dev->data->queue_pairs[qp_id]);
 		dev->data->queue_pairs[qp_id] = NULL;
 	}
