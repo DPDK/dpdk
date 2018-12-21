@@ -9,6 +9,7 @@ support for the following hardware accelerator devices:
 
 * ``Intel QuickAssist Technology C62x``
 * ``Intel QuickAssist Technology C3xxx``
+* ``Intel QuickAssist Technology DH895x``
 
 
 Features

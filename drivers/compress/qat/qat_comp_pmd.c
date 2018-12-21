@@ -484,10 +484,6 @@ static const struct rte_driver compdev_qat_driver = {
 int
 qat_comp_dev_create(struct qat_pci_device *qat_pci_dev)
 {
-	if (qat_pci_dev->qat_dev_gen == QAT_GEN1) {
-		QAT_LOG(ERR, "Compression PMD not supported on QAT dh895xcc");
-		return 0;
-	}
 	if (qat_pci_dev->qat_dev_gen == QAT_GEN3) {
 		QAT_LOG(ERR, "Compression PMD not supported on QAT c4xxx");
 		return 0;

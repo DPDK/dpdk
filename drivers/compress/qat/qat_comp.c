@@ -270,7 +270,7 @@ static int qat_comp_create_templates(struct qat_comp_xform *qat_xform,
 	    ICP_QAT_FW_COMP_NOT_AUTO_SELECT_BEST,
 	    ICP_QAT_FW_COMP_NOT_ENH_AUTO_SELECT_BEST,
 	    ICP_QAT_FW_COMP_NOT_DISABLE_TYPE0_ENH_AUTO_SELECT_BEST,
-	    ICP_QAT_FW_COMP_DISABLE_SECURE_RAM_USED_AS_INTMD_BUF);
+	    ICP_QAT_FW_COMP_ENABLE_SECURE_RAM_USED_AS_INTMD_BUF);
 
 	comp_req->cd_pars.sl.comp_slice_cfg_word[0] =
 	    ICP_QAT_HW_COMPRESSION_CONFIG_BUILD(
