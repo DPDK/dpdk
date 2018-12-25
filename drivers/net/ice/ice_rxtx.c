@@ -94,6 +94,7 @@ ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
 	/*default use 32 byte descriptor, vlan tag extract to L2TAG2(1st)*/
 	rx_ctx.l2tsel = 1;
 	rx_ctx.showiv = 0;
+	rx_ctx.crcstrip = (rxq->crc_len == 0) ? 1 : 0;
 
 	err = ice_clear_rxq_ctx(hw, rxq->reg_idx);
 	if (err) {
