@@ -53,7 +53,7 @@ applications and the Environment Abstraction Layer (EAL) options.
 Explanation
 -----------
 
-The example is build from 2 main files,
+The example is built from 2 files,
 ``main.c`` which holds the example logic and ``flow_blocks.c`` that holds the
 implementation for building the flow rule.
 
@@ -380,13 +380,9 @@ This function is located in the ``flow_blocks.c`` file.
    {
            struct rte_flow_attr attr;
            struct rte_flow_item pattern[MAX_PATTERN_NUM];
-           struct rte_flow_action action[MAX_PATTERN_NUM];
+           struct rte_flow_action action[MAX_ACTION_NUM];
            struct rte_flow *flow = NULL;
            struct rte_flow_action_queue queue = { .index = rx_q };
-           struct rte_flow_item_eth eth_spec;
-           struct rte_flow_item_eth eth_mask;
-           struct rte_flow_item_vlan vlan_spec;
-           struct rte_flow_item_vlan vlan_mask;
            struct rte_flow_item_ipv4 ip_spec;
            struct rte_flow_item_ipv4 ip_mask;
 
@@ -404,37 +400,19 @@ This function is located in the ``flow_blocks.c`` file.
             * create the action sequence.
             * one action only,  move packet to queue
             */
-
            action[0].type = RTE_FLOW_ACTION_TYPE_QUEUE;
            action[0].conf = &queue;
            action[1].type = RTE_FLOW_ACTION_TYPE_END;
 
            /*
-            * set the first level of the pattern (eth).
+            * set the first level of the pattern (ETH).
             * since in this example we just want to get the
             * ipv4 we set this level to allow all.
             */
-           memset(&eth_spec, 0, sizeof(struct rte_flow_item_eth));
-           memset(&eth_mask, 0, sizeof(struct rte_flow_item_eth));
-           eth_spec.type = 0;
-           eth_mask.type = 0;
            pattern[0].type = RTE_FLOW_ITEM_TYPE_ETH;
-           pattern[0].spec = &eth_spec;
-           pattern[0].mask = &eth_mask;
 
            /*
-            * setting the second level of the pattern (vlan).
-            * since in this example we just want to get the
-            * ipv4 we also set this level to allow all.
-            */
-           memset(&vlan_spec, 0, sizeof(struct rte_flow_item_vlan));
-           memset(&vlan_mask, 0, sizeof(struct rte_flow_item_vlan));
-           pattern[1].type = RTE_FLOW_ITEM_TYPE_VLAN;
-           pattern[1].spec = &vlan_spec;
-           pattern[1].mask = &vlan_mask;
-
-           /*
-            * setting the third level of the pattern (ip).
+            * setting the second level of the pattern (IP).
             * in this example this is the level we care about
             * so we set it according to the parameters.
             */
@@ -444,12 +422,12 @@ This function is located in the ``flow_blocks.c`` file.
            ip_mask.hdr.dst_addr = dest_mask;
            ip_spec.hdr.src_addr = htonl(src_ip);
            ip_mask.hdr.src_addr = src_mask;
-           pattern[2].type = RTE_FLOW_ITEM_TYPE_IPV4;
-           pattern[2].spec = &ip_spec;
-           pattern[2].mask = &ip_mask;
+           pattern[1].type = RTE_FLOW_ITEM_TYPE_IPV4;
+           pattern[1].spec = &ip_spec;
+           pattern[1].mask = &ip_mask;
 
            /* the final level must be always type end */
-           pattern[3].type = RTE_FLOW_ITEM_TYPE_END;
+           pattern[2].type = RTE_FLOW_ITEM_TYPE_END;
 
            int res = rte_flow_validate(port_id, &attr, pattern, action, error);
            if(!res)
@@ -464,14 +442,10 @@ The first part of the function is declaring the structures that will be used.
 
    struct rte_flow_attr attr;
    struct rte_flow_item pattern[MAX_PATTERN_NUM];
-   struct rte_flow_action action[MAX_PATTERN_NUM];
+   struct rte_flow_action action[MAX_ACTION_NUM];
    struct rte_flow *flow;
    struct rte_flow_error error;
    struct rte_flow_action_queue queue = { .index = rx_q };
-   struct rte_flow_item_eth eth_spec;
-   struct rte_flow_item_eth eth_mask;
-   struct rte_flow_item_vlan vlan_spec;
-   struct rte_flow_item_vlan vlan_mask;
    struct rte_flow_item_ipv4 ip_spec;
    struct rte_flow_item_ipv4 ip_mask;
 
@@ -491,33 +465,17 @@ the rule. In this case send the packet to queue.
    action[0].conf = &queue;
    action[1].type = RTE_FLOW_ACTION_TYPE_END;
 
-The forth part is responsible for creating the pattern and is build from
-number of step. In each step we build one level of the pattern starting with
+The fourth part is responsible for creating the pattern and is built from
+number of steps. In each step we build one level of the pattern starting with
 the lowest one.
 
 Setting the first level of the pattern ETH:
 
 .. code-block:: c
 
-   memset(&eth_spec, 0, sizeof(struct rte_flow_item_eth));
-   memset(&eth_mask, 0, sizeof(struct rte_flow_item_eth));
-   eth_spec.type = 0;
-   eth_mask.type = 0;
    pattern[0].type = RTE_FLOW_ITEM_TYPE_ETH;
-   pattern[0].spec = &eth_spec;
-   pattern[0].mask = &eth_mask;
 
-Setting the second level of the pattern VLAN:
-
-.. code-block:: c
-
-   memset(&vlan_spec, 0, sizeof(struct rte_flow_item_vlan));
-   memset(&vlan_mask, 0, sizeof(struct rte_flow_item_vlan));
-   pattern[1].type = RTE_FLOW_ITEM_TYPE_VLAN;
-   pattern[1].spec = &vlan_spec;
-   pattern[1].mask = &vlan_mask;
-
-Setting the third level ip:
+Setting the second level of the pattern IP:
 
 .. code-block:: c
 
@@ -527,15 +485,15 @@ Setting the third level ip:
    ip_mask.hdr.dst_addr = dest_mask;
    ip_spec.hdr.src_addr = htonl(src_ip);
    ip_mask.hdr.src_addr = src_mask;
-   pattern[2].type = RTE_FLOW_ITEM_TYPE_IPV4;
-   pattern[2].spec = &ip_spec;
-   pattern[2].mask = &ip_mask;
+   pattern[1].type = RTE_FLOW_ITEM_TYPE_IPV4;
+   pattern[1].spec = &ip_spec;
+   pattern[1].mask = &ip_mask;
 
 Closing the pattern part.
 
 .. code-block:: c
 
-   pattern[3].type = RTE_FLOW_ITEM_TYPE_END;
+   pattern[2].type = RTE_FLOW_ITEM_TYPE_END;
 
 The last part of the function is to validate the rule and create it.
 
