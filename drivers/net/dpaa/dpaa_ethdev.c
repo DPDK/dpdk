@@ -1223,8 +1223,12 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 	PMD_INIT_FUNC_TRACE();
 
 	/* For secondary processes, the primary has done all the work */
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		eth_dev->dev_ops = &dpaa_devops;
+		/* Plugging of UCODE burst API not supported in Secondary */
+		eth_dev->rx_pkt_burst = dpaa_eth_queue_rx;
 		return 0;
+	}
 
 	dpaa_device = DEV_TO_DPAA_DEVICE(eth_dev->device);
 	dev_id = dpaa_device->id.dev_id;
