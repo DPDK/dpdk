@@ -245,12 +245,15 @@ static const uint32_t *
 dpaa_supported_ptypes_get(struct rte_eth_dev *dev)
 {
 	static const uint32_t ptypes[] = {
-		/*todo -= add more types */
 		RTE_PTYPE_L2_ETHER,
-		RTE_PTYPE_L3_IPV4,
-		RTE_PTYPE_L3_IPV4_EXT,
-		RTE_PTYPE_L3_IPV6,
-		RTE_PTYPE_L3_IPV6_EXT,
+		RTE_PTYPE_L2_ETHER_VLAN,
+		RTE_PTYPE_L2_ETHER_ARP,
+		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_L4_ICMP,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_L4_FRAG,
 		RTE_PTYPE_L4_TCP,
 		RTE_PTYPE_L4_UDP,
 		RTE_PTYPE_L4_SCTP
