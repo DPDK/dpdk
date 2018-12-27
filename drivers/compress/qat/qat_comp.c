@@ -117,6 +117,9 @@ qat_comp_process_response(void **op, uint8_t *resp, uint64_t *dequeue_err_count)
 			(resp_msg->opaque_data);
 	struct qat_comp_xform *qat_xform = (struct qat_comp_xform *)
 				(rx_op->private_xform);
+	int err = resp_msg->comn_resp.comn_status &
+			((1 << QAT_COMN_RESP_CMP_STATUS_BITPOS) |
+			 (1 << QAT_COMN_RESP_XLAT_STATUS_BITPOS));
 
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 	QAT_DP_LOG(DEBUG, "Direction: %s",
@@ -140,21 +143,31 @@ qat_comp_process_response(void **op, uint8_t *resp, uint64_t *dequeue_err_count)
 		}
 	}
 
-	if ((ICP_QAT_FW_COMN_RESP_CMP_STAT_GET(resp_msg->comn_resp.comn_status)
-		| ICP_QAT_FW_COMN_RESP_XLAT_STAT_GET(
-				resp_msg->comn_resp.comn_status)) !=
-				ICP_QAT_FW_COMN_STATUS_FLAG_OK) {
-
-		if (unlikely((ICP_QAT_FW_COMN_RESP_XLAT_STAT_GET(
-				resp_msg->comn_resp.comn_status) !=
-				ICP_QAT_FW_COMN_STATUS_FLAG_OK) &&
-				(qat_xform->qat_comp_request_type
-				== QAT_COMP_REQUEST_DYNAMIC_COMP_STATELESS)))
+	if (err) {
+		if (unlikely((err & (1 << QAT_COMN_RESP_XLAT_STATUS_BITPOS))
+			     &&	(qat_xform->qat_comp_request_type
+				 == QAT_COMP_REQUEST_DYNAMIC_COMP_STATELESS))) {
 			QAT_DP_LOG(ERR, "QAT intermediate buffer may be too "
 			    "small for output, try configuring a larger size");
+		}
+
+		int8_t cmp_err_code =
+			(int8_t)resp_msg->comn_resp.comn_error.cmp_err_code;
+		int8_t xlat_err_code =
+			(int8_t)resp_msg->comn_resp.comn_error.xlat_err_code;
+
+		if ((cmp_err_code == ERR_CODE_OVERFLOW_ERROR && !xlat_err_code)
+				||
+		    (!cmp_err_code && xlat_err_code == ERR_CODE_OVERFLOW_ERROR)
+				||
+		    (cmp_err_code == ERR_CODE_OVERFLOW_ERROR &&
+		     xlat_err_code == ERR_CODE_OVERFLOW_ERROR))
+			rx_op->status =
+				RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED;
+		else
+			rx_op->status = RTE_COMP_OP_STATUS_ERROR;
 
 		++(*dequeue_err_count);
-		rx_op->status = RTE_COMP_OP_STATUS_ERROR;
 		rx_op->debug_status =
 			*((uint16_t *)(&resp_msg->comn_resp.comn_error));
 	} else {
