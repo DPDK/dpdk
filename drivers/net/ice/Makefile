@@ -11,7 +11,8 @@ LIB = librte_pmd_ice.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
-LDLIBS += -lrte_eal -lrte_ethdev -lrte_kvargs -lrte_bus_pci -lrte_mempool
+LDLIBS += -lrte_eal -lrte_mbuf -lrte_ethdev -lrte_kvargs
+LDLIBS += -lrte_bus_pci -lrte_mempool
 
 EXPORT_MAP := rte_pmd_ice_version.map
 
