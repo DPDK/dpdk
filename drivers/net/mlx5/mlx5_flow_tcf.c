@@ -1879,17 +1879,16 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
 		unsigned int i;
 
-		if ((item_flags & MLX5_FLOW_LAYER_TUNNEL) &&
-		    items->type != RTE_FLOW_ITEM_TYPE_ETH)
-			return rte_flow_error_set(error, ENOTSUP,
-						  RTE_FLOW_ERROR_TYPE_ITEM,
-						  items,
-						  "only L2 inner item"
-						  " is supported");
 		switch (items->type) {
 		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;
 		case RTE_FLOW_ITEM_TYPE_PORT_ID:
+			if (item_flags & MLX5_FLOW_LAYER_TUNNEL)
+				return rte_flow_error_set
+					(error, ENOTSUP,
+					 RTE_FLOW_ERROR_TYPE_ITEM, items,
+					 "inner tunnel port id"
+					 " item is not supported");
 			mask.port_id = flow_tcf_item_mask
 				(items, &rte_flow_item_port_id_mask,
 				 &flow_tcf_mask_supported.port_id,
@@ -1940,8 +1939,8 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 			if (ret < 0)
 				return ret;
 			item_flags |= (item_flags & MLX5_FLOW_LAYER_TUNNEL) ?
-					MLX5_FLOW_LAYER_INNER_L2 :
-					MLX5_FLOW_LAYER_OUTER_L2;
+				      MLX5_FLOW_LAYER_INNER_L2 :
+				      MLX5_FLOW_LAYER_OUTER_L2;
 			/* TODO:
 			 * Redundant check due to different supported mask.
 			 * Same for the rest of items.
@@ -1964,6 +1963,12 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 					 " \"type\" field");
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
+			if (item_flags & MLX5_FLOW_LAYER_TUNNEL)
+				return rte_flow_error_set
+					(error, ENOTSUP,
+					 RTE_FLOW_ERROR_TYPE_ITEM, items,
+					 "inner tunnel VLAN"
+					 " is not supported");
 			ret = mlx5_flow_validate_item_vlan(items, item_flags,
 							   error);
 			if (ret < 0)
@@ -1998,7 +2003,9 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 							   error);
 			if (ret < 0)
 				return ret;
-			item_flags |= MLX5_FLOW_LAYER_OUTER_L3_IPV4;
+			item_flags |= (item_flags & MLX5_FLOW_LAYER_TUNNEL) ?
+				      MLX5_FLOW_LAYER_INNER_L3_IPV4 :
+				      MLX5_FLOW_LAYER_OUTER_L3_IPV4;
 			mask.ipv4 = flow_tcf_item_mask
 				(items, &rte_flow_item_ipv4_mask,
 				 &flow_tcf_mask_supported.ipv4,
@@ -2025,7 +2032,9 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 							   error);
 			if (ret < 0)
 				return ret;
-			item_flags |= MLX5_FLOW_LAYER_OUTER_L3_IPV6;
+			item_flags |= (item_flags & MLX5_FLOW_LAYER_TUNNEL) ?
+				      MLX5_FLOW_LAYER_INNER_L3_IPV6 :
+				      MLX5_FLOW_LAYER_OUTER_L3_IPV6;
 			mask.ipv6 = flow_tcf_item_mask
 				(items, &rte_flow_item_ipv6_mask,
 				 &flow_tcf_mask_supported.ipv6,
@@ -2052,7 +2061,9 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 							  next_protocol, error);
 			if (ret < 0)
 				return ret;
-			item_flags |= MLX5_FLOW_LAYER_OUTER_L4_UDP;
+			item_flags |= (item_flags & MLX5_FLOW_LAYER_TUNNEL) ?
+				      MLX5_FLOW_LAYER_INNER_L4_UDP :
+				      MLX5_FLOW_LAYER_OUTER_L4_UDP;
 			mask.udp = flow_tcf_item_mask
 				(items, &rte_flow_item_udp_mask,
 				 &flow_tcf_mask_supported.udp,
@@ -2076,7 +2087,9 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 					      error);
 			if (ret < 0)
 				return ret;
-			item_flags |= MLX5_FLOW_LAYER_OUTER_L4_TCP;
+			item_flags |= (item_flags & MLX5_FLOW_LAYER_TUNNEL) ?
+				      MLX5_FLOW_LAYER_INNER_L4_TCP :
+				      MLX5_FLOW_LAYER_OUTER_L4_TCP;
 			mask.tcp = flow_tcf_item_mask
 				(items, &rte_flow_item_tcp_mask,
 				 &flow_tcf_mask_supported.tcp,
@@ -2087,13 +2100,12 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 				return -rte_errno;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
-			if (!(action_flags & MLX5_FLOW_ACTION_VXLAN_DECAP))
+			if (item_flags & MLX5_FLOW_LAYER_OUTER_VLAN)
 				return rte_flow_error_set
 					(error, ENOTSUP,
-					 RTE_FLOW_ERROR_TYPE_ITEM,
-					 items,
-					 "vni pattern should be followed by"
-					 " vxlan decapsulation action");
+					 RTE_FLOW_ERROR_TYPE_ITEM, items,
+					 "vxlan tunnel over vlan"
+					 " is not supported");
 			ret = mlx5_flow_validate_item_vxlan(items,
 							    item_flags, error);
 			if (ret < 0)
