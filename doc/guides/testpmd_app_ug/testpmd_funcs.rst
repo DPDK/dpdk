@@ -1149,7 +1149,7 @@ set eth-peer
 
 Set the forwarding peer address for certain port::
 
-   testpmd> set eth-peer (port_id) (perr_addr)
+   testpmd> set eth-peer (port_id) (peer_addr)
 
 This is equivalent to the ``--eth-peer`` command-line option.
 
