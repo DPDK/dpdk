@@ -2420,6 +2420,7 @@ flow_tcf_get_items_size(const struct rte_flow_attr *attr,
 	int size = 0;
 
 	size += SZ_NLATTR_STRZ_OF("flower") +
+		SZ_NLATTR_TYPE_OF(uint16_t) + /* Outer ether type. */
 		SZ_NLATTR_NEST + /* TCA_OPTIONS. */
 		SZ_NLATTR_TYPE_OF(uint32_t); /* TCA_CLS_FLAGS_SKIP_SW. */
 	if (attr->group > 0)
@@ -2431,26 +2432,22 @@ flow_tcf_get_items_size(const struct rte_flow_attr *attr,
 		case RTE_FLOW_ITEM_TYPE_PORT_ID:
 			break;
 		case RTE_FLOW_ITEM_TYPE_ETH:
-			size += SZ_NLATTR_TYPE_OF(uint16_t) + /* Ether type. */
-				SZ_NLATTR_DATA_OF(ETHER_ADDR_LEN) * 4;
+			size += SZ_NLATTR_DATA_OF(ETHER_ADDR_LEN) * 4;
 				/* dst/src MAC addr and mask. */
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
-			size += SZ_NLATTR_TYPE_OF(uint16_t) + /* Ether type. */
-				SZ_NLATTR_TYPE_OF(uint16_t) +
+			size +=	SZ_NLATTR_TYPE_OF(uint16_t) +
 				/* VLAN Ether type. */
 				SZ_NLATTR_TYPE_OF(uint8_t) + /* VLAN prio. */
 				SZ_NLATTR_TYPE_OF(uint16_t); /* VLAN ID. */
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
-			size += SZ_NLATTR_TYPE_OF(uint16_t) + /* Ether type. */
-				SZ_NLATTR_TYPE_OF(uint8_t) + /* IP proto. */
+			size +=	SZ_NLATTR_TYPE_OF(uint8_t) + /* IP proto. */
 				SZ_NLATTR_TYPE_OF(uint32_t) * 4;
 				/* dst/src IP addr and mask. */
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
-			size += SZ_NLATTR_TYPE_OF(uint16_t) + /* Ether type. */
-				SZ_NLATTR_TYPE_OF(uint8_t) + /* IP proto. */
+			size +=	SZ_NLATTR_TYPE_OF(uint8_t) + /* IP proto. */
 				SZ_NLATTR_DATA_OF(IPV6_ADDR_LEN) * 4;
 				/* dst/src IP addr and mask. */
 			break;
@@ -3124,9 +3121,9 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 	struct nlmsghdr *nlh = dev_flow->tcf.nlh;
 	struct tcmsg *tcm = dev_flow->tcf.tcm;
 	uint32_t na_act_index_cur;
-	bool eth_type_set = 0;
-	bool vlan_present = 0;
-	bool vlan_eth_type_set = 0;
+	rte_be16_t inner_etype = RTE_BE16(ETH_P_ALL);
+	rte_be16_t outer_etype = RTE_BE16(ETH_P_ALL);
+	rte_be16_t vlan_etype = RTE_BE16(ETH_P_ALL);
 	bool ip_proto_set = 0;
 	bool tunnel_outer = 0;
 	struct nlattr *na_flower;
@@ -3164,8 +3161,7 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 	 * Priority cannot be zero to prevent the kernel from picking one
 	 * automatically.
 	 */
-	tcm->tcm_info = TC_H_MAKE((attr->priority + 1) << 16,
-				  RTE_BE16(ETH_P_ALL));
+	tcm->tcm_info = TC_H_MAKE((attr->priority + 1) << 16, outer_etype);
 	if (attr->group > 0)
 		mnl_attr_put_u32(nlh, TCA_CHAIN, attr->group);
 	mnl_attr_put_strz(nlh, TCA_KIND, "flower");
@@ -3210,17 +3206,18 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 			if (mask.eth == &flow_tcf_mask_empty.eth)
 				break;
 			spec.eth = items->spec;
+			if (mask.eth->type) {
+				if (item_flags & MLX5_FLOW_LAYER_TUNNEL)
+					inner_etype = spec.eth->type;
+				else
+					outer_etype = spec.eth->type;
+			}
 			if (tunnel_outer) {
 				DRV_LOG(WARNING,
 					"outer L2 addresses cannot be"
 					" forced is outer ones for tunnel,"
 					" parameter is ignored");
 				break;
-			}
-			if (mask.eth->type) {
-				mnl_attr_put_u16(nlh, TCA_FLOWER_KEY_ETH_TYPE,
-						 spec.eth->type);
-				eth_type_set = 1;
 			}
 			if (!is_zero_ether_addr(&mask.eth->dst)) {
 				mnl_attr_put(nlh, TCA_FLOWER_KEY_ETH_DST,
@@ -3252,20 +3249,14 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 				 sizeof(flow_tcf_mask_supported.vlan),
 				 error);
 			assert(mask.vlan);
-			if (!eth_type_set)
-				mnl_attr_put_u16(nlh, TCA_FLOWER_KEY_ETH_TYPE,
-						 RTE_BE16(ETH_P_8021Q));
-			eth_type_set = 1;
-			vlan_present = 1;
 			if (mask.vlan == &flow_tcf_mask_empty.vlan)
 				break;
 			spec.vlan = items->spec;
-			if (mask.vlan->inner_type) {
-				mnl_attr_put_u16(nlh,
-						 TCA_FLOWER_KEY_VLAN_ETH_TYPE,
-						 spec.vlan->inner_type);
-				vlan_eth_type_set = 1;
-			}
+			assert(outer_etype == RTE_BE16(ETH_P_ALL) ||
+			       outer_etype == RTE_BE16(ETH_P_8021Q));
+			outer_etype = RTE_BE16(ETH_P_8021Q);
+			if (mask.vlan->inner_type)
+				vlan_etype = spec.vlan->inner_type;
 			if (mask.vlan->tci & RTE_BE16(0xe000))
 				mnl_attr_put_u8(nlh, TCA_FLOWER_KEY_VLAN_PRIO,
 						(rte_be_to_cpu_16
@@ -3288,19 +3279,20 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 				 sizeof(flow_tcf_mask_supported.ipv4),
 				 error);
 			assert(mask.ipv4);
-			spec.ipv4 = items->spec;
-			if (!tunnel_outer) {
-				if (!eth_type_set ||
-				    (!vlan_eth_type_set && vlan_present))
-					mnl_attr_put_u16
-						(nlh,
-						 vlan_present ?
-						 TCA_FLOWER_KEY_VLAN_ETH_TYPE :
-						 TCA_FLOWER_KEY_ETH_TYPE,
-						 RTE_BE16(ETH_P_IP));
-				eth_type_set = 1;
-				vlan_eth_type_set = 1;
+			if (item_flags & MLX5_FLOW_LAYER_TUNNEL) {
+				assert(inner_etype == RTE_BE16(ETH_P_ALL) ||
+				       inner_etype == RTE_BE16(ETH_P_IP));
+				inner_etype = RTE_BE16(ETH_P_IP);
+			} else if (outer_etype == RTE_BE16(ETH_P_8021Q)) {
+				assert(vlan_etype == RTE_BE16(ETH_P_ALL) ||
+				       vlan_etype == RTE_BE16(ETH_P_IP));
+				vlan_etype = RTE_BE16(ETH_P_IP);
+			} else {
+				assert(outer_etype == RTE_BE16(ETH_P_ALL) ||
+				       outer_etype == RTE_BE16(ETH_P_IP));
+				outer_etype = RTE_BE16(ETH_P_IP);
 			}
+			spec.ipv4 = items->spec;
 			if (!tunnel_outer && mask.ipv4->hdr.next_proto_id) {
 				/*
 				 * No way to set IP protocol for outer tunnel
@@ -3371,19 +3363,20 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 				 sizeof(flow_tcf_mask_supported.ipv6),
 				 error);
 			assert(mask.ipv6);
-			spec.ipv6 = items->spec;
-			if (!tunnel_outer) {
-				if (!eth_type_set ||
-				    (!vlan_eth_type_set && vlan_present))
-					mnl_attr_put_u16
-						(nlh,
-						 vlan_present ?
-						 TCA_FLOWER_KEY_VLAN_ETH_TYPE :
-						 TCA_FLOWER_KEY_ETH_TYPE,
-						 RTE_BE16(ETH_P_IPV6));
-				eth_type_set = 1;
-				vlan_eth_type_set = 1;
+			if (item_flags & MLX5_FLOW_LAYER_TUNNEL) {
+				assert(inner_etype == RTE_BE16(ETH_P_ALL) ||
+				       inner_etype == RTE_BE16(ETH_P_IPV6));
+				inner_etype = RTE_BE16(ETH_P_IPV6);
+			} else if (outer_etype == RTE_BE16(ETH_P_8021Q)) {
+				assert(vlan_etype == RTE_BE16(ETH_P_ALL) ||
+				       vlan_etype == RTE_BE16(ETH_P_IPV6));
+				vlan_etype = RTE_BE16(ETH_P_IPV6);
+			} else {
+				assert(outer_etype == RTE_BE16(ETH_P_ALL) ||
+				       outer_etype == RTE_BE16(ETH_P_IPV6));
+				outer_etype = RTE_BE16(ETH_P_IPV6);
 			}
+			spec.ipv6 = items->spec;
 			if (!tunnel_outer && mask.ipv6->hdr.proto) {
 				/*
 				 * No way to set IP protocol for outer tunnel
@@ -3558,6 +3551,34 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
 						  NULL, "item not supported");
 		}
+	}
+	/*
+	 * Set the ether_type flower key and tc rule protocol:
+	 * - if there is nor VLAN neither VXLAN the key is taken from
+	 *   eth item directly or deduced from L3 items.
+	 * - if there is vlan item then key is fixed to 802.1q.
+	 * - if there is vxlan item then key is set to inner tunnel type.
+	 * - simultaneous vlan and vxlan items are prohibited.
+	 */
+	if (outer_etype != RTE_BE16(ETH_P_ALL)) {
+		tcm->tcm_info = TC_H_MAKE((attr->priority + 1) << 16,
+					   outer_etype);
+		if (item_flags & MLX5_FLOW_LAYER_TUNNEL) {
+			if (inner_etype != RTE_BE16(ETH_P_ALL))
+				mnl_attr_put_u16(nlh,
+						 TCA_FLOWER_KEY_ETH_TYPE,
+						 inner_etype);
+		} else {
+			mnl_attr_put_u16(nlh,
+					 TCA_FLOWER_KEY_ETH_TYPE,
+					 outer_etype);
+			if (outer_etype == RTE_BE16(ETH_P_8021Q) &&
+			    vlan_etype != RTE_BE16(ETH_P_ALL))
+				mnl_attr_put_u16(nlh,
+						 TCA_FLOWER_KEY_VLAN_ETH_TYPE,
+						 vlan_etype);
+		}
+		assert(dev_flow->tcf.nlsize >= nlh->nlmsg_len);
 	}
 	na_flower_act = mnl_attr_nest_start(nlh, TCA_FLOWER_ACT);
 	na_act_index_cur = 1;
