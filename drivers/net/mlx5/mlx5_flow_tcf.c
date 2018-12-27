@@ -1695,9 +1695,12 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 		const struct rte_flow_action_set_ipv6 *set_ipv6;
 	} conf;
 	const struct rte_flow_item *outer_udp = NULL;
+	rte_be16_t inner_etype = RTE_BE16(ETH_P_ALL);
+	rte_be16_t outer_etype = RTE_BE16(ETH_P_ALL);
+	rte_be16_t vlan_etype = RTE_BE16(ETH_P_ALL);
 	uint64_t item_flags = 0;
 	uint64_t action_flags = 0;
-	uint8_t next_protocol = -1;
+	uint8_t next_protocol = 0xff;
 	unsigned int tcm_ifindex = 0;
 	uint8_t pedit_validated = 0;
 	struct flow_tcf_ptoi ptoi[PTOI_TABLE_SZ_MAX(dev)];
@@ -1963,6 +1966,32 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 					 mask.eth,
 					 "no support for partial mask on"
 					 " \"type\" field");
+			assert(items->spec);
+			spec.eth = items->spec;
+			if (mask.eth->type &&
+			    (item_flags & MLX5_FLOW_LAYER_TUNNEL) &&
+			    inner_etype != RTE_BE16(ETH_P_ALL) &&
+			    inner_etype != spec.eth->type)
+				return rte_flow_error_set
+					(error, EINVAL,
+					 RTE_FLOW_ERROR_TYPE_ITEM,
+					 items,
+					 "inner eth_type conflict");
+			if (mask.eth->type &&
+			    !(item_flags & MLX5_FLOW_LAYER_TUNNEL) &&
+			    outer_etype != RTE_BE16(ETH_P_ALL) &&
+			    outer_etype != spec.eth->type)
+				return rte_flow_error_set
+					(error, EINVAL,
+					 RTE_FLOW_ERROR_TYPE_ITEM,
+					 items,
+					 "outer eth_type conflict");
+			if (mask.eth->type) {
+				if (item_flags & MLX5_FLOW_LAYER_TUNNEL)
+					inner_etype = spec.eth->type;
+				else
+					outer_etype = spec.eth->type;
+			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
 			if (item_flags & MLX5_FLOW_LAYER_TUNNEL)
@@ -1999,6 +2028,27 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 					 "no support for partial masks on"
 					 " \"tci\" (PCP and VID parts) and"
 					 " \"inner_type\" fields");
+			if (outer_etype != RTE_BE16(ETH_P_ALL) &&
+			    outer_etype != RTE_BE16(ETH_P_8021Q))
+				return rte_flow_error_set
+					(error, EINVAL,
+					 RTE_FLOW_ERROR_TYPE_ITEM,
+					 items,
+					 "outer eth_type conflict,"
+					 " must be 802.1Q");
+			outer_etype = RTE_BE16(ETH_P_8021Q);
+			assert(items->spec);
+			spec.vlan = items->spec;
+			if (mask.vlan->inner_type &&
+			    vlan_etype != RTE_BE16(ETH_P_ALL) &&
+			    vlan_etype != spec.vlan->inner_type)
+				return rte_flow_error_set
+					(error, EINVAL,
+					 RTE_FLOW_ERROR_TYPE_ITEM,
+					 items,
+					 "vlan eth_type conflict");
+			if (mask.vlan->inner_type)
+				vlan_etype = spec.vlan->inner_type;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			ret = mlx5_flow_validate_item_ipv4(items, item_flags,
@@ -2028,6 +2078,37 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 				next_protocol =
 					((const struct rte_flow_item_ipv4 *)
 					 (items->spec))->hdr.next_proto_id;
+			if (item_flags & MLX5_FLOW_LAYER_TUNNEL) {
+				if (inner_etype != RTE_BE16(ETH_P_ALL) &&
+				    inner_etype != RTE_BE16(ETH_P_IP))
+					return rte_flow_error_set
+						(error, EINVAL,
+						 RTE_FLOW_ERROR_TYPE_ITEM,
+						 items,
+						 "inner eth_type conflict,"
+						 " IPv4 is required");
+				inner_etype = RTE_BE16(ETH_P_IP);
+			} else if (item_flags & MLX5_FLOW_LAYER_OUTER_VLAN) {
+				if (vlan_etype != RTE_BE16(ETH_P_ALL) &&
+				    vlan_etype != RTE_BE16(ETH_P_IP))
+					return rte_flow_error_set
+						(error, EINVAL,
+						 RTE_FLOW_ERROR_TYPE_ITEM,
+						 items,
+						 "vlan eth_type conflict,"
+						 " IPv4 is required");
+				vlan_etype = RTE_BE16(ETH_P_IP);
+			} else {
+				if (outer_etype != RTE_BE16(ETH_P_ALL) &&
+				    outer_etype != RTE_BE16(ETH_P_IP))
+					return rte_flow_error_set
+						(error, EINVAL,
+						 RTE_FLOW_ERROR_TYPE_ITEM,
+						 items,
+						 "eth_type conflict,"
+						 " IPv4 is required");
+				outer_etype = RTE_BE16(ETH_P_IP);
+			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
 			ret = mlx5_flow_validate_item_ipv6(items, item_flags,
@@ -2057,6 +2138,37 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 				next_protocol =
 					((const struct rte_flow_item_ipv6 *)
 					 (items->spec))->hdr.proto;
+			if (item_flags & MLX5_FLOW_LAYER_TUNNEL) {
+				if (inner_etype != RTE_BE16(ETH_P_ALL) &&
+				    inner_etype != RTE_BE16(ETH_P_IPV6))
+					return rte_flow_error_set
+						(error, EINVAL,
+						 RTE_FLOW_ERROR_TYPE_ITEM,
+						 items,
+						 "inner eth_type conflict,"
+						 " IPv6 is required");
+				inner_etype = RTE_BE16(ETH_P_IPV6);
+			} else if (item_flags & MLX5_FLOW_LAYER_OUTER_VLAN) {
+				if (vlan_etype != RTE_BE16(ETH_P_ALL) &&
+				    vlan_etype != RTE_BE16(ETH_P_IPV6))
+					return rte_flow_error_set
+						(error, EINVAL,
+						 RTE_FLOW_ERROR_TYPE_ITEM,
+						 items,
+						 "vlan eth_type conflict,"
+						 " IPv6 is required");
+				vlan_etype = RTE_BE16(ETH_P_IPV6);
+			} else {
+				if (outer_etype != RTE_BE16(ETH_P_ALL) &&
+				    outer_etype != RTE_BE16(ETH_P_IPV6))
+					return rte_flow_error_set
+						(error, EINVAL,
+						 RTE_FLOW_ERROR_TYPE_ITEM,
+						 items,
+						 "eth_type conflict,"
+						 " IPv6 is required");
+				outer_etype = RTE_BE16(ETH_P_IPV6);
+			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			ret = mlx5_flow_validate_item_udp(items, item_flags,
