@@ -479,6 +479,26 @@ mlx5_glue_dv_create_flow_action_packet_reformat
 #endif
 }
 
+static struct ibv_flow_action *
+mlx5_glue_dv_create_flow_action_modify_header
+					(struct ibv_context *ctx,
+					 size_t actions_sz,
+					 uint64_t actions[],
+					 enum mlx5dv_flow_table_type ft_type)
+{
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	return mlx5dv_create_flow_action_modify_header(ctx, actions_sz,
+						       actions, ft_type);
+#else
+	(void)ctx;
+	(void)actions_sz;
+	(void)actions;
+	(void)ft_type;
+	return NULL;
+#endif
+}
+
+
 alignas(RTE_CACHE_LINE_SIZE)
 const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.version = MLX5_GLUE_VERSION,
@@ -535,4 +555,6 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.dv_create_flow = mlx5_glue_dv_create_flow,
 	.dv_create_flow_action_packet_reformat =
 			mlx5_glue_dv_create_flow_action_packet_reformat,
+	.dv_create_flow_action_modify_header =
+			mlx5_glue_dv_create_flow_action_modify_header,
 };

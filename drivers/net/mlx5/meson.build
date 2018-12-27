@@ -4,7 +4,7 @@
 
 pmd_dlopen = get_option('enable_driver_mlx_glue')
 LIB_GLUE_BASE = 'librte_pmd_mlx5_glue.so'
-LIB_GLUE_VERSION = '18.11.0'
+LIB_GLUE_VERSION = '19.02.0'
 LIB_GLUE = LIB_GLUE_BASE + '.' + LIB_GLUE_VERSION
 if pmd_dlopen
 	dpdk_conf.set('RTE_LIBRTE_MLX5_DLOPEN_DEPS', 1)

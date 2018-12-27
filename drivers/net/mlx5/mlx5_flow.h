@@ -69,6 +69,18 @@
 	(MLX5_FLOW_LAYER_INNER_L2 | MLX5_FLOW_LAYER_INNER_L3 | \
 	 MLX5_FLOW_LAYER_INNER_L4)
 
+/* Layer Masks. */
+#define MLX5_FLOW_LAYER_L2 \
+	(MLX5_FLOW_LAYER_OUTER_L2 | MLX5_FLOW_LAYER_INNER_L2)
+#define MLX5_FLOW_LAYER_L3_IPV4 \
+	(MLX5_FLOW_LAYER_OUTER_L3_IPV4 | MLX5_FLOW_LAYER_INNER_L3_IPV4)
+#define MLX5_FLOW_LAYER_L3_IPV6 \
+	(MLX5_FLOW_LAYER_OUTER_L3_IPV6 | MLX5_FLOW_LAYER_INNER_L3_IPV6)
+#define MLX5_FLOW_LAYER_L3 \
+	(MLX5_FLOW_LAYER_L3_IPV4 | MLX5_FLOW_LAYER_L3_IPV6)
+#define MLX5_FLOW_LAYER_L4 \
+	(MLX5_FLOW_LAYER_OUTER_L4 | MLX5_FLOW_LAYER_INNER_L4)
+
 /* Actions */
 #define MLX5_FLOW_ACTION_DROP (1u << 0)
 #define MLX5_FLOW_ACTION_QUEUE (1u << 1)
@@ -109,6 +121,17 @@
 #define MLX5_FLOW_DECAP_ACTIONS	(MLX5_FLOW_ACTION_VXLAN_DECAP | \
 				 MLX5_FLOW_ACTION_NVGRE_DECAP | \
 				 MLX5_FLOW_ACTION_RAW_DECAP)
+
+#define MLX5_FLOW_MODIFY_HDR_ACTIONS (MLX5_FLOW_ACTION_SET_IPV4_SRC | \
+				      MLX5_FLOW_ACTION_SET_IPV4_DST | \
+				      MLX5_FLOW_ACTION_SET_IPV6_SRC | \
+				      MLX5_FLOW_ACTION_SET_IPV6_DST | \
+				      MLX5_FLOW_ACTION_SET_TP_SRC | \
+				      MLX5_FLOW_ACTION_SET_TP_DST | \
+				      MLX5_FLOW_ACTION_SET_TTL | \
+				      MLX5_FLOW_ACTION_DEC_TTL | \
+				      MLX5_FLOW_ACTION_SET_MAC_SRC | \
+				      MLX5_FLOW_ACTION_SET_MAC_DST)
 
 #ifndef IPPROTO_MPLS
 #define IPPROTO_MPLS 137
@@ -153,9 +176,6 @@
 /* IBV hash source bits  for IPV6. */
 #define MLX5_IPV6_IBV_RX_HASH (IBV_RX_HASH_SRC_IPV6 | IBV_RX_HASH_DST_IPV6)
 
-/* Max number of actions per DV flow. */
-#define MLX5_DV_MAX_NUMBER_OF_ACTIONS 8
-
 enum mlx5_flow_drv_type {
 	MLX5_FLOW_TYPE_MIN,
 	MLX5_FLOW_TYPE_DV,
@@ -172,9 +192,6 @@ struct mlx5_flow_dv_match_params {
 	/**< Matcher value. This value is used as the mask or as a key. */
 };
 
-#define MLX5_DV_MAX_NUMBER_OF_ACTIONS 8
-#define MLX5_ENCAP_MAX_LEN 132
-
 /* Matcher structure. */
 struct mlx5_flow_dv_matcher {
 	LIST_ENTRY(mlx5_flow_dv_matcher) next;
@@ -186,6 +203,8 @@ struct mlx5_flow_dv_matcher {
 	uint8_t egress; /**< Egress matcher. */
 	struct mlx5_flow_dv_match_params mask; /**< Matcher mask. */
 };
+
+#define MLX5_ENCAP_MAX_LEN 132
 
 /* Encap/decap resource structure. */
 struct mlx5_flow_dv_encap_decap_resource {
@@ -200,6 +219,29 @@ struct mlx5_flow_dv_encap_decap_resource {
 	uint8_t ft_type;
 };
 
+/* Number of modification commands. */
+#define MLX5_MODIFY_NUM 8
+
+/* Modify resource structure */
+struct mlx5_flow_dv_modify_hdr_resource {
+	LIST_ENTRY(mlx5_flow_dv_modify_hdr_resource) next;
+	/* Pointer to next element. */
+	rte_atomic32_t refcnt; /**< Reference counter. */
+	struct ibv_flow_action *verbs_action;
+	/**< Verbs modify header action object. */
+	uint8_t ft_type; /**< Flow table type, Rx or Tx. */
+	uint32_t actions_num; /**< Number of modification actions. */
+	struct mlx5_modification_cmd actions[MLX5_MODIFY_NUM];
+	/**< Modification actions. */
+};
+
+/*
+ * Max number of actions per DV flow.
+ * See CREATE_FLOW_MAX_FLOW_ACTIONS_SUPPORTED
+ * In rdma-core file providers/mlx5/verbs.c
+ */
+#define MLX5_DV_MAX_NUMBER_OF_ACTIONS 8
+
 /* DV flows structure. */
 struct mlx5_flow_dv {
 	uint64_t hash_fields; /**< Fields that participate in the hash. */
@@ -210,6 +252,8 @@ struct mlx5_flow_dv {
 	/**< Holds the value that the packet is compared to. */
 	struct mlx5_flow_dv_encap_decap_resource *encap_decap;
 	/**< Pointer to encap/decap resource in cache. */
+	struct mlx5_flow_dv_modify_hdr_resource *modify_hdr;
+	/**< Pointer to modify header resource in cache. */
 	struct ibv_flow *flow; /**< Installed flow. */
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	struct mlx5dv_flow_action_attr actions[MLX5_DV_MAX_NUMBER_OF_ACTIONS];
