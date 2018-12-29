@@ -4584,8 +4584,7 @@ flow_tcf_encap_local(struct mlx5_flow_tcf_context *tcf,
 		     struct rte_flow_error *error)
 {
 	const struct flow_tcf_vxlan_encap *encap = dev_flow->tcf.vxlan_encap;
-	struct tcf_local_rule *rule;
-	bool found = false;
+	struct tcf_local_rule *rule = NULL;
 	int ret;
 
 	assert(encap);
@@ -4596,7 +4595,6 @@ flow_tcf_encap_local(struct mlx5_flow_tcf_context *tcf,
 			if (rule->mask & FLOW_TCF_ENCAP_IPV4_SRC &&
 			    encap->ipv4.src == rule->ipv4.src &&
 			    encap->ipv4.dst == rule->ipv4.dst) {
-				found = true;
 				break;
 			}
 		}
@@ -4609,12 +4607,11 @@ flow_tcf_encap_local(struct mlx5_flow_tcf_context *tcf,
 					    sizeof(encap->ipv6.src)) &&
 			    !memcmp(&encap->ipv6.dst, &rule->ipv6.dst,
 					    sizeof(encap->ipv6.dst))) {
-				found = true;
 				break;
 			}
 		}
 	}
-	if (found) {
+	if (rule) {
 		if (enable) {
 			rule->refcnt++;
 			return 0;
@@ -4693,8 +4690,7 @@ flow_tcf_encap_neigh(struct mlx5_flow_tcf_context *tcf,
 		     struct rte_flow_error *error)
 {
 	const struct flow_tcf_vxlan_encap *encap = dev_flow->tcf.vxlan_encap;
-	struct tcf_neigh_rule *rule;
-	bool found = false;
+	struct tcf_neigh_rule *rule = NULL;
 	int ret;
 
 	assert(encap);
@@ -4704,7 +4700,6 @@ flow_tcf_encap_neigh(struct mlx5_flow_tcf_context *tcf,
 		LIST_FOREACH(rule, &vtep->neigh, next) {
 			if (rule->mask & FLOW_TCF_ENCAP_IPV4_DST &&
 			    encap->ipv4.dst == rule->ipv4.dst) {
-				found = true;
 				break;
 			}
 		}
@@ -4715,12 +4710,11 @@ flow_tcf_encap_neigh(struct mlx5_flow_tcf_context *tcf,
 			if (rule->mask & FLOW_TCF_ENCAP_IPV6_DST &&
 			    !memcmp(&encap->ipv6.dst, &rule->ipv6.dst,
 						sizeof(encap->ipv6.dst))) {
-				found = true;
 				break;
 			}
 		}
 	}
-	if (found) {
+	if (rule) {
 		if (memcmp(&encap->eth.dst, &rule->eth,
 			   sizeof(encap->eth.dst))) {
 			DRV_LOG(WARNING, "Destination MAC differs"
