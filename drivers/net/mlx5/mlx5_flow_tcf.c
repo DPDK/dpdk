@@ -436,7 +436,7 @@ struct flow_tcf_vxlan_encap {
 			uint8_t src[IPV6_ADDR_LEN];
 		} ipv6;
 	};
-struct {
+	struct {
 		rte_be16_t src;
 		rte_be16_t dst;
 	} udp;
@@ -1281,7 +1281,7 @@ flow_tcf_validate_vxlan_encap_ipv4(const struct rte_flow_item *item,
  *   Pointer to the error structure.
  *
  * @return
- *   0 on success, a negative errno value otherwise and rte_ernno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  **/
 static int
 flow_tcf_validate_vxlan_encap_ipv6(const struct rte_flow_item *item,
@@ -1367,7 +1367,7 @@ flow_tcf_validate_vxlan_encap_ipv6(const struct rte_flow_item *item,
  *   Pointer to the error structure.
  *
  * @return
- *   0 on success, a negative errno value otherwise and rte_ernno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  **/
 static int
 flow_tcf_validate_vxlan_encap_udp(const struct rte_flow_item *item,
@@ -1435,7 +1435,7 @@ flow_tcf_validate_vxlan_encap_udp(const struct rte_flow_item *item,
  *   Pointer to the error structure.
  *
  * @return
- *   0 on success, a negative errno value otherwise and rte_ernno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  **/
 static int
 flow_tcf_validate_vxlan_encap_vni(const struct rte_flow_item *item,
@@ -1483,7 +1483,7 @@ flow_tcf_validate_vxlan_encap_vni(const struct rte_flow_item *item,
  *   Pointer to the error structure.
  *
  * @return
- *   0 on success, a negative errno value otherwise and rte_ernno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  **/
 static int
 flow_tcf_validate_vxlan_encap(const struct rte_flow_action *action,
@@ -1663,7 +1663,7 @@ flow_tcf_validate_vxlan_decap_udp(const struct rte_flow_item *udp,
  *   Pointer to the error structure.
  *
  * @return
- *   0 on success, a negative errno value otherwise and rte_ernno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
 flow_tcf_validate(struct rte_eth_dev *dev,
@@ -2702,7 +2702,7 @@ flow_tcf_nl_brand(struct nlmsghdr *nlh, uint32_t handle)
  *
  * @return
  *   Pointer to mlx5_flow object on success,
- *   otherwise NULL and rte_ernno is set.
+ *   otherwise NULL and rte_errno is set.
  */
 static struct mlx5_flow *
 flow_tcf_prepare(const struct rte_flow_attr *attr,
@@ -3077,7 +3077,7 @@ flow_tcf_vxlan_encap_parse(const struct rte_flow_action *action,
  *   Pointer to the error structure.
  *
  * @return
- *   0 on success, a negative errno value otherwise and rte_ernno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
 flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
@@ -4374,8 +4374,8 @@ flow_tcf_collect_vxlan_cb(const struct nlmsghdr *nlh, void *arg)
 
 /**
  * Cleanup the outer interface. Removes all found vxlan devices
- * attached to specified index, flushes the meigh and local IP
- * datavase.
+ * attached to specified index, flushes the neigh and local IP
+ * database.
  *
  * @param[in] tcf
  *   Context object initialized by mlx5_flow_tcf_context_create().
@@ -5383,7 +5383,7 @@ flow_tcf_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
  *   Pointer to the error structure.
  *
  * @return
- *   0 on success, a negative errno value otherwise and rte_ernno is set.
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
 flow_tcf_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
