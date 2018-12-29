@@ -316,9 +316,8 @@ struct tc_tunnel_key {
 #define TCA_ACT_MAX_PRIO 32
 #endif
 
-/** UDP port range of VXLAN devices created by driver. */
-#define MLX5_VXLAN_PORT_MIN 30000
-#define MLX5_VXLAN_PORT_MAX 60000
+/** Parameters of VXLAN devices created by driver. */
+#define MLX5_VXLAN_DEFAULT_VNI	1
 #define MLX5_VXLAN_DEVICE_PFX "vmlx_"
 
 /** Tunnel action type, used for @p type in header structure. */
@@ -4918,7 +4917,6 @@ flow_tcf_vtep_delete(struct mlx5_flow_tcf_context *tcf,
  * Pointer to created device structure on success,
  * NULL otherwise and rte_errno is set.
  */
-#ifdef HAVE_IFLA_VXLAN_COLLECT_METADATA
 static struct tcf_vtep*
 flow_tcf_vtep_create(struct mlx5_flow_tcf_context *tcf,
 		     uint16_t port, struct rte_flow_error *error)
@@ -4968,10 +4966,24 @@ flow_tcf_vtep_create(struct mlx5_flow_tcf_context *tcf,
 	mnl_attr_put_strz(nlh, IFLA_INFO_KIND, "vxlan");
 	na_vxlan = mnl_attr_nest_start(nlh, IFLA_INFO_DATA);
 	assert(na_vxlan);
+#ifdef HAVE_IFLA_VXLAN_COLLECT_METADATA
+	/*
+	 * RH 7.2 does not support metadata for tunnel device.
+	 * It does not matter because we are going to use the
+	 * hardware offload by mlx5 driver.
+	 */
 	mnl_attr_put_u8(nlh, IFLA_VXLAN_COLLECT_METADATA, 1);
+#endif
 	mnl_attr_put_u8(nlh, IFLA_VXLAN_UDP_ZERO_CSUM6_RX, 1);
 	mnl_attr_put_u8(nlh, IFLA_VXLAN_LEARNING, 0);
 	mnl_attr_put_u16(nlh, IFLA_VXLAN_PORT, vxlan_port);
+#ifndef HAVE_IFLA_VXLAN_COLLECT_METADATA
+	/*
+	 *  We must specify VNI explicitly if metadata not supported.
+	 *  Note, VNI is transferred with native endianness format.
+	 */
+	mnl_attr_put_u16(nlh, IFLA_VXLAN_ID, MLX5_VXLAN_DEFAULT_VNI);
+#endif
 	mnl_attr_nest_end(nlh, na_vxlan);
 	mnl_attr_nest_end(nlh, na_info);
 	assert(sizeof(buf) >= nlh->nlmsg_len);
@@ -5040,19 +5052,6 @@ error:
 	rte_free(vtep);
 	return NULL;
 }
-#else
-static struct tcf_vtep*
-flow_tcf_vtep_create(struct mlx5_flow_tcf_context *tcf __rte_unused,
-		     uint16_t port __rte_unused,
-		     struct rte_flow_error *error)
-{
-	rte_flow_error_set(error, ENOTSUP,
-			   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-			   "netlink: failed to create VTEP, "
-			   "vxlan metadata are not supported by kernel");
-	return NULL;
-}
-#endif /* HAVE_IFLA_VXLAN_COLLECT_METADATA */
 
 /**
  * Acquire target interface index for VXLAN tunneling decapsulation.
