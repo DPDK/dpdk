@@ -4574,8 +4574,8 @@ flow_tcf_rule_neigh(struct mlx5_flow_tcf_context *tcf,
  *
  * @param[in] tcf
  *   Libmnl socket context object.
- * @param[in] vtep
- *   VTEP object, contains rule database and ifouter index.
+ * @param[in] iface
+ *   Object, contains rule database and ifouter index.
  * @param[in] dev_flow
  *   Flow object, contains the tunnel parameters (for encap only).
  * @param[in] enable
@@ -4588,7 +4588,7 @@ flow_tcf_rule_neigh(struct mlx5_flow_tcf_context *tcf,
  */
 static int
 flow_tcf_encap_local(struct mlx5_flow_tcf_context *tcf,
-		     struct tcf_vtep *vtep,
+		     struct tcf_irule *iface,
 		     struct mlx5_flow *dev_flow,
 		     bool enable,
 		     struct rte_flow_error *error)
@@ -4601,7 +4601,7 @@ flow_tcf_encap_local(struct mlx5_flow_tcf_context *tcf,
 	assert(encap->hdr.type == FLOW_TCF_TUNACT_VXLAN_ENCAP);
 	if (encap->mask & FLOW_TCF_ENCAP_IPV4_SRC) {
 		assert(encap->mask & FLOW_TCF_ENCAP_IPV4_DST);
-		LIST_FOREACH(rule, &vtep->local, next) {
+		LIST_FOREACH(rule, &iface->local, next) {
 			if (rule->mask & FLOW_TCF_ENCAP_IPV4_SRC &&
 			    encap->ipv4.src == rule->ipv4.src &&
 			    encap->ipv4.dst == rule->ipv4.dst) {
@@ -4611,7 +4611,7 @@ flow_tcf_encap_local(struct mlx5_flow_tcf_context *tcf,
 	} else {
 		assert(encap->mask & FLOW_TCF_ENCAP_IPV6_SRC);
 		assert(encap->mask & FLOW_TCF_ENCAP_IPV6_DST);
-		LIST_FOREACH(rule, &vtep->local, next) {
+		LIST_FOREACH(rule, &iface->local, next) {
 			if (rule->mask & FLOW_TCF_ENCAP_IPV6_SRC &&
 			    !memcmp(&encap->ipv6.src, &rule->ipv6.src,
 					    sizeof(encap->ipv6.src)) &&
@@ -4629,7 +4629,7 @@ flow_tcf_encap_local(struct mlx5_flow_tcf_context *tcf,
 		if (!rule->refcnt || !--rule->refcnt) {
 			LIST_REMOVE(rule, next);
 			return flow_tcf_rule_local(tcf, encap,
-					vtep->ifouter, false, error);
+					iface->ifouter, false, error);
 		}
 		return 0;
 	}
@@ -4662,13 +4662,13 @@ flow_tcf_encap_local(struct mlx5_flow_tcf_context *tcf,
 		memcpy(&rule->ipv6.src, &encap->ipv6.src, IPV6_ADDR_LEN);
 		memcpy(&rule->ipv6.dst, &encap->ipv6.dst, IPV6_ADDR_LEN);
 	}
-	ret = flow_tcf_rule_local(tcf, encap, vtep->ifouter, true, error);
+	ret = flow_tcf_rule_local(tcf, encap, iface->ifouter, true, error);
 	if (ret) {
 		rte_free(rule);
 		return ret;
 	}
 	rule->refcnt++;
-	LIST_INSERT_HEAD(&vtep->local, rule, next);
+	LIST_INSERT_HEAD(&iface->local, rule, next);
 	return 0;
 }
 
@@ -4680,8 +4680,8 @@ flow_tcf_encap_local(struct mlx5_flow_tcf_context *tcf,
  *
  * @param[in] tcf
  *   Libmnl socket context object.
- * @param[in] vtep
- *   VTEP object, contains rule database and ifouter index.
+ * @param[in] iface
+ *   Object, contains rule database and ifouter index.
  * @param[in] dev_flow
  *   Flow object, contains the tunnel parameters (for encap only).
  * @param[in] enable
@@ -4694,7 +4694,7 @@ flow_tcf_encap_local(struct mlx5_flow_tcf_context *tcf,
  */
 static int
 flow_tcf_encap_neigh(struct mlx5_flow_tcf_context *tcf,
-		     struct tcf_vtep *vtep,
+		     struct tcf_irule *iface,
 		     struct mlx5_flow *dev_flow,
 		     bool enable,
 		     struct rte_flow_error *error)
@@ -4707,7 +4707,7 @@ flow_tcf_encap_neigh(struct mlx5_flow_tcf_context *tcf,
 	assert(encap->hdr.type == FLOW_TCF_TUNACT_VXLAN_ENCAP);
 	if (encap->mask & FLOW_TCF_ENCAP_IPV4_DST) {
 		assert(encap->mask & FLOW_TCF_ENCAP_IPV4_SRC);
-		LIST_FOREACH(rule, &vtep->neigh, next) {
+		LIST_FOREACH(rule, &iface->neigh, next) {
 			if (rule->mask & FLOW_TCF_ENCAP_IPV4_DST &&
 			    encap->ipv4.dst == rule->ipv4.dst) {
 				break;
@@ -4716,7 +4716,7 @@ flow_tcf_encap_neigh(struct mlx5_flow_tcf_context *tcf,
 	} else {
 		assert(encap->mask & FLOW_TCF_ENCAP_IPV6_SRC);
 		assert(encap->mask & FLOW_TCF_ENCAP_IPV6_DST);
-		LIST_FOREACH(rule, &vtep->neigh, next) {
+		LIST_FOREACH(rule, &iface->neigh, next) {
 			if (rule->mask & FLOW_TCF_ENCAP_IPV6_DST &&
 			    !memcmp(&encap->ipv6.dst, &rule->ipv6.dst,
 						sizeof(encap->ipv6.dst))) {
@@ -4743,7 +4743,7 @@ flow_tcf_encap_neigh(struct mlx5_flow_tcf_context *tcf,
 		if (!rule->refcnt || !--rule->refcnt) {
 			LIST_REMOVE(rule, next);
 			return flow_tcf_rule_neigh(tcf, encap,
-						   vtep->ifouter,
+						   iface->ifouter,
 						   false, error);
 		}
 		return 0;
@@ -4774,13 +4774,13 @@ flow_tcf_encap_neigh(struct mlx5_flow_tcf_context *tcf,
 		memcpy(&rule->ipv6.dst, &encap->ipv6.dst, IPV6_ADDR_LEN);
 	}
 	memcpy(&rule->eth, &encap->eth.dst, sizeof(rule->eth));
-	ret = flow_tcf_rule_neigh(tcf, encap, vtep->ifouter, true, error);
+	ret = flow_tcf_rule_neigh(tcf, encap, iface->ifouter, true, error);
 	if (ret) {
 		rte_free(rule);
 		return ret;
 	}
 	rule->refcnt++;
-	LIST_INSERT_HEAD(&vtep->neigh, rule, next);
+	LIST_INSERT_HEAD(&iface->neigh, rule, next);
 	return 0;
 }
 
@@ -5197,12 +5197,12 @@ flow_tcf_encap_vtep_acquire(struct mlx5_flow_tcf_context *tcf,
 	}
 	dev_flow->tcf.vxlan_encap->iface = iface;
 	/* Create local ipaddr with peer to specify the outer IPs. */
-	ret = flow_tcf_encap_local(tcf, vtep, dev_flow, true, error);
+	ret = flow_tcf_encap_local(tcf, iface, dev_flow, true, error);
 	if (!ret) {
 		/* Create neigh rule to specify outer destination MAC. */
-		ret = flow_tcf_encap_neigh(tcf, vtep, dev_flow, true, error);
+		ret = flow_tcf_encap_neigh(tcf, iface, dev_flow, true, error);
 		if (ret)
-			flow_tcf_encap_local(tcf, vtep,
+			flow_tcf_encap_local(tcf, iface,
 					     dev_flow, false, error);
 	}
 	if (ret) {
@@ -5286,8 +5286,8 @@ flow_tcf_vtep_release(struct mlx5_flow_tcf_context *tcf,
 		/* Remove the encap ancillary rules first. */
 		iface = dev_flow->tcf.vxlan_encap->iface;
 		assert(iface);
-		flow_tcf_encap_neigh(tcf, vtep, dev_flow, false, NULL);
-		flow_tcf_encap_local(tcf, vtep, dev_flow, false, NULL);
+		flow_tcf_encap_neigh(tcf, iface, dev_flow, false, NULL);
+		flow_tcf_encap_local(tcf, iface, dev_flow, false, NULL);
 		flow_tcf_encap_irule_release(iface);
 		dev_flow->tcf.vxlan_encap->iface = NULL;
 		break;
