@@ -394,6 +394,15 @@ struct tcf_local_rule {
 	};
 };
 
+/** Outer interface VXLAN encapsulation rules container. */
+struct tcf_irule {
+	LIST_ENTRY(tcf_irule) next;
+	LIST_HEAD(, tcf_neigh_rule) neigh;
+	LIST_HEAD(, tcf_local_rule) local;
+	uint32_t refcnt;
+	unsigned int ifouter; /**< Own interface index. */
+};
+
 /** VXLAN virtual netdev. */
 struct tcf_vtep {
 	LIST_ENTRY(tcf_vtep) next;
@@ -421,6 +430,7 @@ struct flow_tcf_vxlan_decap {
 
 struct flow_tcf_vxlan_encap {
 	struct flow_tcf_tunnel_hdr hdr;
+	struct tcf_irule *iface;
 	uint32_t mask;
 	struct {
 		struct ether_addr dst;
@@ -4774,9 +4784,88 @@ flow_tcf_encap_neigh(struct mlx5_flow_tcf_context *tcf,
 	return 0;
 }
 
+/* VXLAN encap rule database for outer interfaces. */
+static  LIST_HEAD(, tcf_irule) iface_list_vxlan = LIST_HEAD_INITIALIZER();
+
 /* VTEP device list is shared between PMD port instances. */
 static LIST_HEAD(, tcf_vtep) vtep_list_vxlan = LIST_HEAD_INITIALIZER();
 static pthread_mutex_t vtep_list_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/**
+ * Acquire the VXLAN encap rules container for specified interface.
+ * First looks for the container in the existing ones list, creates
+ * and initializes the new container if existing not found.
+ *
+ * @param[in] tcf
+ *   Context object initialized by mlx5_flow_tcf_context_create().
+ * @param[in] ifouter
+ *   Network interface index to create VXLAN encap rules on.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ * @return
+ *   Rule container pointer on success,
+ *   NULL otherwise and rte_errno is set.
+ */
+static struct tcf_irule*
+flow_tcf_encap_irule_acquire(struct mlx5_flow_tcf_context *tcf,
+			     unsigned int ifouter,
+			     struct rte_flow_error *error)
+{
+	struct tcf_irule *iface;
+
+	/* Look whether the container for encap rules is created. */
+	assert(ifouter);
+	LIST_FOREACH(iface, &iface_list_vxlan, next) {
+		if (iface->ifouter == ifouter)
+			break;
+	}
+	if (iface) {
+		/* Container already exists, just increment the reference. */
+		iface->refcnt++;
+		return iface;
+	}
+	/* Not found, we should create the new container. */
+	iface = rte_zmalloc(__func__, sizeof(*iface),
+			    alignof(struct tcf_irule));
+	if (!iface) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "unable to allocate memory for container");
+		return NULL;
+	}
+	*iface = (struct tcf_irule){
+			.local = LIST_HEAD_INITIALIZER(),
+			.neigh = LIST_HEAD_INITIALIZER(),
+			.ifouter = ifouter,
+			.refcnt = 1,
+	};
+	/* Interface cleanup for new container created. */
+	flow_tcf_encap_iface_cleanup(tcf, ifouter);
+	flow_tcf_encap_local_cleanup(tcf, ifouter);
+	flow_tcf_encap_neigh_cleanup(tcf, ifouter);
+	LIST_INSERT_HEAD(&iface_list_vxlan, iface, next);
+	return iface;
+}
+
+/**
+ * Releases VXLAN encap rules container by pointer. Decrements the
+ * reference cointer and deletes the container if counter is zero.
+ *
+ * @param[in] irule
+ *   VXLAN rule container pointer to release.
+ */
+static void
+flow_tcf_encap_irule_release(struct tcf_irule *iface)
+{
+	assert(iface->refcnt);
+	if (--iface->refcnt == 0) {
+		/* Reference counter is zero, delete the container. */
+		assert(LIST_EMPTY(&iface->local));
+		assert(LIST_EMPTY(&iface->neigh));
+		LIST_REMOVE(iface, next);
+		rte_free(iface);
+	}
+}
 
 /**
  * Deletes VTEP network device.
@@ -5050,6 +5139,7 @@ flow_tcf_encap_vtep_acquire(struct mlx5_flow_tcf_context *tcf,
 {
 	static uint16_t encap_port = MLX5_VXLAN_PORT_MIN - 1;
 	struct tcf_vtep *vtep;
+	struct tcf_irule *iface;
 	int ret;
 
 	assert(ifouter);
@@ -5099,6 +5189,13 @@ flow_tcf_encap_vtep_acquire(struct mlx5_flow_tcf_context *tcf,
 	}
 	assert(vtep->ifouter == ifouter);
 	assert(vtep->ifindex);
+	iface = flow_tcf_encap_irule_acquire(tcf, ifouter, error);
+	if (!iface) {
+		if (--vtep->refcnt == 0)
+			flow_tcf_vtep_delete(tcf, vtep);
+		return NULL;
+	}
+	dev_flow->tcf.vxlan_encap->iface = iface;
 	/* Create local ipaddr with peer to specify the outer IPs. */
 	ret = flow_tcf_encap_local(tcf, vtep, dev_flow, true, error);
 	if (!ret) {
@@ -5109,6 +5206,8 @@ flow_tcf_encap_vtep_acquire(struct mlx5_flow_tcf_context *tcf,
 					     dev_flow, false, error);
 	}
 	if (ret) {
+		dev_flow->tcf.vxlan_encap->iface = NULL;
+		flow_tcf_encap_irule_release(iface);
 		if (--vtep->refcnt == 0)
 			flow_tcf_vtep_delete(tcf, vtep);
 		return NULL;
@@ -5181,11 +5280,18 @@ flow_tcf_vtep_release(struct mlx5_flow_tcf_context *tcf,
 	switch (dev_flow->tcf.tunnel->type) {
 	case FLOW_TCF_TUNACT_VXLAN_DECAP:
 		break;
-	case FLOW_TCF_TUNACT_VXLAN_ENCAP:
+	case FLOW_TCF_TUNACT_VXLAN_ENCAP: {
+		struct tcf_irule *iface;
+
 		/* Remove the encap ancillary rules first. */
+		iface = dev_flow->tcf.vxlan_encap->iface;
+		assert(iface);
 		flow_tcf_encap_neigh(tcf, vtep, dev_flow, false, NULL);
 		flow_tcf_encap_local(tcf, vtep, dev_flow, false, NULL);
+		flow_tcf_encap_irule_release(iface);
+		dev_flow->tcf.vxlan_encap->iface = NULL;
 		break;
+	}
 	default:
 		assert(false);
 		DRV_LOG(WARNING, "Unsupported tunnel type");
