@@ -406,11 +406,8 @@ struct tcf_irule {
 /** VXLAN virtual netdev. */
 struct tcf_vtep {
 	LIST_ENTRY(tcf_vtep) next;
-	LIST_HEAD(, tcf_neigh_rule) neigh;
-	LIST_HEAD(, tcf_local_rule) local;
 	uint32_t refcnt;
 	unsigned int ifindex; /**< Own interface index. */
-	unsigned int ifouter; /**< Index of device attached to. */
 	uint16_t port;
 	uint8_t created;
 };
@@ -4912,11 +4909,6 @@ flow_tcf_vtep_delete(struct mlx5_flow_tcf_context *tcf,
  *
  * @param[in] tcf
  *   Context object initialized by mlx5_flow_tcf_context_create().
- * @param[in] ifouter
- *   Outer interface to attach new-created VXLAN device
- *   If zero the VXLAN device will not be attached to any device.
- *   These VTEPs are used for decapsulation and can be precreated
- *   and shared between processes.
  * @param[in] port
  *   UDP port of created VTEP device.
  * @param[out] error
@@ -4929,7 +4921,6 @@ flow_tcf_vtep_delete(struct mlx5_flow_tcf_context *tcf,
 #ifdef HAVE_IFLA_VXLAN_COLLECT_METADATA
 static struct tcf_vtep*
 flow_tcf_vtep_create(struct mlx5_flow_tcf_context *tcf,
-		     unsigned int ifouter,
 		     uint16_t port, struct rte_flow_error *error)
 {
 	struct tcf_vtep *vtep;
@@ -4959,8 +4950,6 @@ flow_tcf_vtep_create(struct mlx5_flow_tcf_context *tcf,
 	}
 	*vtep = (struct tcf_vtep){
 			.port = port,
-			.local = LIST_HEAD_INITIALIZER(),
-			.neigh = LIST_HEAD_INITIALIZER(),
 	};
 	memset(buf, 0, sizeof(buf));
 	nlh = mnl_nlmsg_put_header(buf);
@@ -4978,8 +4967,6 @@ flow_tcf_vtep_create(struct mlx5_flow_tcf_context *tcf,
 	assert(na_info);
 	mnl_attr_put_strz(nlh, IFLA_INFO_KIND, "vxlan");
 	na_vxlan = mnl_attr_nest_start(nlh, IFLA_INFO_DATA);
-	if (ifouter)
-		mnl_attr_put_u32(nlh, IFLA_VXLAN_LINK, ifouter);
 	assert(na_vxlan);
 	mnl_attr_put_u8(nlh, IFLA_VXLAN_COLLECT_METADATA, 1);
 	mnl_attr_put_u8(nlh, IFLA_VXLAN_UDP_ZERO_CSUM6_RX, 1);
@@ -4993,7 +4980,7 @@ flow_tcf_vtep_create(struct mlx5_flow_tcf_context *tcf,
 		DRV_LOG(WARNING,
 			"netlink: VTEP %s create failure (%d)",
 			name, rte_errno);
-		if (rte_errno != EEXIST || ifouter)
+		if (rte_errno != EEXIST)
 			/*
 			 * Some unhandled error occurred or device is
 			 * for encapsulation and cannot be shared.
@@ -5019,7 +5006,6 @@ flow_tcf_vtep_create(struct mlx5_flow_tcf_context *tcf,
 		goto error;
 	}
 	vtep->ifindex = ret;
-	vtep->ifouter = ifouter;
 	memset(buf, 0, sizeof(buf));
 	nlh = mnl_nlmsg_put_header(buf);
 	nlh->nlmsg_type = RTM_NEWLINK;
@@ -5057,7 +5043,6 @@ error:
 #else
 static struct tcf_vtep*
 flow_tcf_vtep_create(struct mlx5_flow_tcf_context *tcf __rte_unused,
-		     unsigned int ifouter __rte_unused,
 		     uint16_t port __rte_unused,
 		     struct rte_flow_error *error)
 {
@@ -5096,13 +5081,6 @@ flow_tcf_decap_vtep_acquire(struct mlx5_flow_tcf_context *tcf,
 		if (vtep->port == port)
 			break;
 	}
-	if (vtep && vtep->ifouter) {
-		rte_flow_error_set(error, -errno,
-				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				   "Failed to create decap VTEP with specified"
-				   " UDP port, atatched device exists");
-		return NULL;
-	}
 	if (vtep) {
 		/* Device exists, just increment the reference counter. */
 		vtep->refcnt++;
@@ -5110,7 +5088,7 @@ flow_tcf_decap_vtep_acquire(struct mlx5_flow_tcf_context *tcf,
 		return vtep;
 	}
 	/* No decapsulation device exists, try to create the new one. */
-	vtep = flow_tcf_vtep_create(tcf, 0, port, error);
+	vtep = flow_tcf_vtep_create(tcf, port, error);
 	if (vtep)
 		LIST_INSERT_HEAD(&vtep_list_vxlan, vtep, next);
 	return vtep;
@@ -5134,60 +5112,31 @@ flow_tcf_decap_vtep_acquire(struct mlx5_flow_tcf_context *tcf,
 static struct tcf_vtep*
 flow_tcf_encap_vtep_acquire(struct mlx5_flow_tcf_context *tcf,
 			    unsigned int ifouter,
-			    struct mlx5_flow *dev_flow __rte_unused,
+			    struct mlx5_flow *dev_flow,
 			    struct rte_flow_error *error)
 {
-	static uint16_t encap_port = MLX5_VXLAN_PORT_MIN - 1;
+	static uint16_t port;
 	struct tcf_vtep *vtep;
 	struct tcf_irule *iface;
 	int ret;
 
 	assert(ifouter);
-	/* Look whether the attached VTEP for encap is created. */
+	/* Look whether the VTEP for specified port is created. */
+	port = rte_be_to_cpu_16(dev_flow->tcf.vxlan_encap->udp.dst);
 	LIST_FOREACH(vtep, &vtep_list_vxlan, next) {
-		if (vtep->ifouter == ifouter)
+		if (vtep->port == port)
 			break;
 	}
 	if (vtep) {
 		/* VTEP already exists, just increment the reference. */
 		vtep->refcnt++;
 	} else {
-		uint16_t pcnt;
-
-		/* Not found, we should create the new attached VTEP. */
-		flow_tcf_encap_iface_cleanup(tcf, ifouter);
-		flow_tcf_encap_local_cleanup(tcf, ifouter);
-		flow_tcf_encap_neigh_cleanup(tcf, ifouter);
-		for (pcnt = 0; pcnt <= (MLX5_VXLAN_PORT_MAX
-				     - MLX5_VXLAN_PORT_MIN); pcnt++) {
-			encap_port++;
-			/* Wraparound the UDP port index. */
-			if (encap_port < MLX5_VXLAN_PORT_MIN ||
-			    encap_port > MLX5_VXLAN_PORT_MAX)
-				encap_port = MLX5_VXLAN_PORT_MIN;
-			/* Check whether UDP port is in already in use. */
-			LIST_FOREACH(vtep, &vtep_list_vxlan, next) {
-				if (vtep->port == encap_port)
-					break;
-			}
-			if (vtep) {
-				/* Port is in use, try the next one. */
-				vtep = NULL;
-				continue;
-			}
-			vtep = flow_tcf_vtep_create(tcf, ifouter,
-						    encap_port, error);
-			if (vtep) {
-				LIST_INSERT_HEAD(&vtep_list_vxlan, vtep, next);
-				break;
-			}
-			if (rte_errno != EEXIST)
-				break;
-		}
+		/* Not found, we should create the new VTEP. */
+		vtep = flow_tcf_vtep_create(tcf, port, error);
 		if (!vtep)
 			return NULL;
+		LIST_INSERT_HEAD(&vtep_list_vxlan, vtep, next);
 	}
-	assert(vtep->ifouter == ifouter);
 	assert(vtep->ifindex);
 	iface = flow_tcf_encap_irule_acquire(tcf, ifouter, error);
 	if (!iface) {
@@ -5222,7 +5171,7 @@ flow_tcf_encap_vtep_acquire(struct mlx5_flow_tcf_context *tcf,
  * @param[in] tcf
  *   Context object initialized by mlx5_flow_tcf_context_create().
  * @param[in] ifouter
- *   Network interface index to attach VXLAN encap device to.
+ *   Network interface index to create VXLAN encap rules on.
  * @param[in] dev_flow
  *   Flow tcf object with tunnel structure pointer set.
  * @param[out] error
