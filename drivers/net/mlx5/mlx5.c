@@ -1586,6 +1586,14 @@ static const struct rte_pci_id mlx5_pci_id_map[] = {
 			       PCI_DEVICE_ID_MELLANOX_CONNECTX5BFVF)
 	},
 	{
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_MELLANOX,
+				PCI_DEVICE_ID_MELLANOX_CONNECTX6)
+	},
+	{
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_MELLANOX,
+				PCI_DEVICE_ID_MELLANOX_CONNECTX6VF)
+	},
+	{
 		.vendor_id = 0
 	}
 };
