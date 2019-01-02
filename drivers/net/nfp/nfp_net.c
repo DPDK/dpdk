@@ -766,12 +766,14 @@ nfp_net_start(struct rte_eth_dev *dev)
 		goto error;
 	}
 
-	if (hw->is_pf && rte_eal_process_type() == RTE_PROC_PRIMARY)
-		/* Configure the physical port up */
-		nfp_eth_set_configured(hw->cpp, hw->pf_port_idx, 1);
-	else
-		nfp_eth_set_configured(dev->process_private,
-				       hw->pf_port_idx, 1);
+	if (hw->is_pf) {
+		if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+			/* Configure the physical port up */
+			nfp_eth_set_configured(hw->cpp, hw->pf_port_idx, 1);
+		else
+			nfp_eth_set_configured(dev->process_private,
+					       hw->pf_port_idx, 1);
+	}
 
 	hw->ctrl = new_ctrl;
 
@@ -820,12 +822,14 @@ nfp_net_stop(struct rte_eth_dev *dev)
 			(struct nfp_net_rxq *)dev->data->rx_queues[i]);
 	}
 
-	if (hw->is_pf && rte_eal_process_type() == RTE_PROC_PRIMARY)
-		/* Configure the physical port down */
-		nfp_eth_set_configured(hw->cpp, hw->pf_port_idx, 0);
-	else
-		nfp_eth_set_configured(dev->process_private,
-				       hw->pf_port_idx, 0);
+	if (hw->is_pf) {
+		if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+			/* Configure the physical port down */
+			nfp_eth_set_configured(hw->cpp, hw->pf_port_idx, 0);
+		else
+			nfp_eth_set_configured(dev->process_private,
+					       hw->pf_port_idx, 0);
+	}
 }
 
 /* Reset and stop device. The device can not be restarted. */
