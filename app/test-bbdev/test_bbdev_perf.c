@@ -2104,7 +2104,10 @@ offload_latency_test_dec(struct rte_mempool *mempool, struct test_buffers *bufs,
 		if (unlikely(num_to_process - dequeued < burst_sz))
 			burst_sz = num_to_process - dequeued;
 
-		rte_bbdev_dec_op_alloc_bulk(mempool, ops_enq, burst_sz);
+		ret = rte_bbdev_dec_op_alloc_bulk(mempool, ops_enq, burst_sz);
+		TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops",
+				burst_sz);
+
 		if (test_vector.op_type != RTE_BBDEV_OP_NONE)
 			copy_reference_dec_op(ops_enq, burst_sz, dequeued,
 					bufs->inputs,
@@ -2186,7 +2189,10 @@ offload_latency_test_enc(struct rte_mempool *mempool, struct test_buffers *bufs,
 		if (unlikely(num_to_process - dequeued < burst_sz))
 			burst_sz = num_to_process - dequeued;
 
-		rte_bbdev_enc_op_alloc_bulk(mempool, ops_enq, burst_sz);
+		ret = rte_bbdev_enc_op_alloc_bulk(mempool, ops_enq, burst_sz);
+		TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops",
+				burst_sz);
+
 		if (test_vector.op_type != RTE_BBDEV_OP_NONE)
 			copy_reference_enc_op(ops_enq, burst_sz, dequeued,
 					bufs->inputs,
