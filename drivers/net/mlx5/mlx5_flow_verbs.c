@@ -121,13 +121,13 @@ flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 	struct mlx5_flow_counter *cnt;
 	int ret;
 
-	LIST_FOREACH(cnt, &priv->flow_counters, next) {
-		if (!cnt->shared || cnt->shared != shared)
-			continue;
-		if (cnt->id != id)
-			continue;
-		cnt->ref_cnt++;
-		return cnt;
+	if (shared) {
+		LIST_FOREACH(cnt, &priv->flow_counters, next) {
+			if (cnt->shared && cnt->id == id) {
+				cnt->ref_cnt++;
+				return cnt;
+			}
+		}
 	}
 	cnt = rte_calloc(__func__, 1, sizeof(*cnt), 0);
 	if (!cnt) {
