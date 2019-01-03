@@ -474,17 +474,14 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 					  "packed virtqueues\n");
 			return -1;
 		}
-		dev->device_features |= (1ull << VIRTIO_F_RING_PACKED);
 	} else {
-		dev->device_features &= ~(1ull << VIRTIO_F_RING_PACKED);
+		dev->unsupported_features |= (1ull << VIRTIO_F_RING_PACKED);
 	}
 
-	if (dev->mac_specified) {
-		dev->device_features |= (1ull << VIRTIO_NET_F_MAC);
-	} else {
-		dev->device_features &= ~(1ull << VIRTIO_NET_F_MAC);
+	if (dev->mac_specified)
+		dev->frontend_features |= (1ull << VIRTIO_NET_F_MAC);
+	else
 		dev->unsupported_features |= (1ull << VIRTIO_NET_F_MAC);
-	}
 
 	if (cq) {
 		/* device does not really need to know anything about CQ,

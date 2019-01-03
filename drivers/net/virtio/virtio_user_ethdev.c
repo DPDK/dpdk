@@ -361,7 +361,7 @@ static const char *valid_args[] = {
 	VIRTIO_USER_ARG_MRG_RXBUF,
 #define VIRTIO_USER_ARG_IN_ORDER       "in_order"
 	VIRTIO_USER_ARG_IN_ORDER,
-#define VIRTIO_USER_ARG_PACKED_VQ "packed_vq"
+#define VIRTIO_USER_ARG_PACKED_VQ      "packed_vq"
 	VIRTIO_USER_ARG_PACKED_VQ,
 	NULL
 };
@@ -466,11 +466,11 @@ virtio_user_pmd_probe(struct rte_vdev_device *dev)
 	uint64_t server_mode = VIRTIO_USER_DEF_SERVER_MODE;
 	uint64_t mrg_rxbuf = 1;
 	uint64_t in_order = 1;
+	uint64_t packed_vq = 0;
 	char *path = NULL;
 	char *ifname = NULL;
 	char *mac_addr = NULL;
 	int ret = -1;
-	uint64_t packed_vq = 0;
 
 	kvlist = rte_kvargs_parse(rte_vdev_device_args(dev), valid_args);
 	if (!kvlist) {
@@ -689,4 +689,5 @@ RTE_PMD_REGISTER_PARAM_STRING(net_virtio_user,
 	"iface=<string> "
 	"server=<0|1> "
 	"mrg_rxbuf=<0|1> "
-	"in_order=<0|1>");
+	"in_order=<0|1> "
+	"packed_vq=<0|1>");
