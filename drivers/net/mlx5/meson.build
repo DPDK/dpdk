@@ -104,6 +104,8 @@ if build
 		'IBV_FLOW_SPEC_MPLS' ],
 		[ 'HAVE_IBV_WQ_FLAG_RX_END_PADDING', 'infiniband/verbs.h',
 		'IBV_WQ_FLAG_RX_END_PADDING' ],
+		[ 'HAVE_IBV_DEVX_OBJ', 'infiniband/mlx5dv.h',
+		'mlx5dv_devx_obj_create' ],
 		[ 'HAVE_SUPPORTED_40000baseKR4_Full', 'linux/ethtool.h',
 		'SUPPORTED_40000baseKR4_Full' ],
 		[ 'HAVE_SUPPORTED_40000baseCR4_Full', 'linux/ethtool.h',

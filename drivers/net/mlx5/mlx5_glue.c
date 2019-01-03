@@ -498,6 +498,98 @@ mlx5_glue_dv_create_flow_action_modify_header
 #endif
 }
 
+static struct ibv_context *
+mlx5_glue_dv_open_device(struct ibv_device *device)
+{
+#ifdef HAVE_IBV_DEVX_OBJ
+	return mlx5dv_open_device(device,
+				  &(struct mlx5dv_context_attr){
+					.flags = MLX5DV_CONTEXT_FLAGS_DEVX,
+				  });
+#else
+	(void)device;
+	return NULL;
+#endif
+}
+
+static struct mlx5dv_devx_obj *
+mlx5_glue_devx_obj_create(struct ibv_context *ctx,
+			  const void *in, size_t inlen,
+			  void *out, size_t outlen)
+{
+#ifdef HAVE_IBV_DEVX_OBJ
+	return mlx5dv_devx_obj_create(ctx, in, inlen, out, outlen);
+#else
+	(void)ctx;
+	(void)in;
+	(void)inlen;
+	(void)out;
+	(void)outlen;
+	return NULL;
+#endif
+}
+
+static int
+mlx5_glue_devx_obj_destroy(struct mlx5dv_devx_obj *obj)
+{
+#ifdef HAVE_IBV_DEVX_OBJ
+	return mlx5dv_devx_obj_destroy(obj);
+#else
+	(void)obj;
+	return -ENOTSUP;
+#endif
+}
+
+static int
+mlx5_glue_devx_obj_query(struct mlx5dv_devx_obj *obj,
+			 const void *in, size_t inlen,
+			 void *out, size_t outlen)
+{
+#ifdef HAVE_IBV_DEVX_OBJ
+	return mlx5dv_devx_obj_query(obj, in, inlen, out, outlen);
+#else
+	(void)obj;
+	(void)in;
+	(void)inlen;
+	(void)out;
+	(void)outlen;
+	return -ENOTSUP;
+#endif
+}
+
+static int
+mlx5_glue_devx_obj_modify(struct mlx5dv_devx_obj *obj,
+			  const void *in, size_t inlen,
+			  void *out, size_t outlen)
+{
+#ifdef HAVE_IBV_DEVX_OBJ
+	return mlx5dv_devx_obj_modify(obj, in, inlen, out, outlen);
+#else
+	(void)obj;
+	(void)in;
+	(void)inlen;
+	(void)out;
+	(void)outlen;
+	return -ENOTSUP;
+#endif
+}
+
+static int
+mlx5_glue_devx_general_cmd(struct ibv_context *ctx,
+			   const void *in, size_t inlen,
+			   void *out, size_t outlen)
+{
+#ifdef HAVE_IBV_DEVX_OBJ
+	return mlx5dv_devx_general_cmd(ctx, in, inlen, out, outlen);
+#else
+	(void)ctx;
+	(void)in;
+	(void)inlen;
+	(void)out;
+	(void)outlen;
+	return -ENOTSUP;
+#endif
+}
 
 alignas(RTE_CACHE_LINE_SIZE)
 const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
@@ -557,4 +649,10 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 			mlx5_glue_dv_create_flow_action_packet_reformat,
 	.dv_create_flow_action_modify_header =
 			mlx5_glue_dv_create_flow_action_modify_header,
+	.dv_open_device = mlx5_glue_dv_open_device,
+	.devx_obj_create = mlx5_glue_devx_obj_create,
+	.devx_obj_destroy = mlx5_glue_devx_obj_destroy,
+	.devx_obj_query = mlx5_glue_devx_obj_query,
+	.devx_obj_modify = mlx5_glue_devx_obj_modify,
+	.devx_general_cmd = mlx5_glue_devx_general_cmd,
 };

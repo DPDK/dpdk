@@ -55,6 +55,10 @@ enum mlx5dv_flow_action_packet_reformat_type { packet_reformat_type = 0, };
 enum mlx5dv_flow_table_type { flow_table_type = 0, };
 #endif
 
+#ifndef HAVE_IBV_DEVX_OBJ
+struct mlx5dv_devx_obj;
+#endif
+
 /* LIB_GLUE_VERSION must be updated every time this structure is modified. */
 struct mlx5_glue {
 	const char *version;
@@ -169,6 +173,21 @@ struct mlx5_glue {
 					 size_t actions_sz,
 					 uint64_t actions[],
 					 enum mlx5dv_flow_table_type ft_type);
+	struct ibv_context *(*dv_open_device)(struct ibv_device *device);
+	struct mlx5dv_devx_obj *(*devx_obj_create)
+					(struct ibv_context *ctx,
+					 const void *in, size_t inlen,
+					 void *out, size_t outlen);
+	int (*devx_obj_destroy)(struct mlx5dv_devx_obj *obj);
+	int (*devx_obj_query)(struct mlx5dv_devx_obj *obj,
+			      const void *in, size_t inlen,
+			      void *out, size_t outlen);
+	int (*devx_obj_modify)(struct mlx5dv_devx_obj *obj,
+			       const void *in, size_t inlen,
+			       void *out, size_t outlen);
+	int (*devx_general_cmd)(struct ibv_context *context,
+				const void *in, size_t inlen,
+				void *out, size_t outlen);
 };
 
 const struct mlx5_glue *mlx5_glue;
