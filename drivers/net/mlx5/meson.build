@@ -46,6 +46,7 @@ if build
 		'mlx5_trigger.c',
 		'mlx5_txq.c',
 		'mlx5_vlan.c',
+		'mlx5_devx_cmds.c',
 	)
 	if dpdk_conf.has('RTE_ARCH_X86_64') or dpdk_conf.has('RTE_ARCH_ARM64')
 		sources += files('mlx5_rxtx_vec.c')
@@ -106,6 +107,8 @@ if build
 		'IBV_WQ_FLAG_RX_END_PADDING' ],
 		[ 'HAVE_IBV_DEVX_OBJ', 'infiniband/mlx5dv.h',
 		'mlx5dv_devx_obj_create' ],
+		[ 'HAVE_IBV_FLOW_DEVX_COUNTERS', 'infiniband/mlx5dv.h',
+		'MLX5DV_FLOW_ACTION_COUNTER_DEVX' ],
 		[ 'HAVE_SUPPORTED_40000baseKR4_Full', 'linux/ethtool.h',
 		'SUPPORTED_40000baseKR4_Full' ],
 		[ 'HAVE_SUPPORTED_40000baseCR4_Full', 'linux/ethtool.h',

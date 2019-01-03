@@ -35,6 +35,10 @@
 
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 
+#ifndef HAVE_IBV_FLOW_DEVX_COUNTERS
+#define MLX5DV_FLOW_ACTION_COUNTER_DEVX 0
+#endif
+
 union flow_dv_attr {
 	struct {
 		uint32_t valid:1;
@@ -566,6 +570,36 @@ flow_dv_validate_item_meta(struct rte_eth_dev *dev,
 					  NULL,
 					  "pattern not supported for ingress");
 	return 0;
+}
+
+/**
+ * Validate count action.
+ *
+ * @param[in] dev
+ *   device otr.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_action_count(struct rte_eth_dev *dev,
+			      struct rte_flow_error *error)
+{
+	struct priv *priv = dev->data->dev_private;
+
+	if (!priv->config.devx)
+		goto notsup_err;
+#ifdef HAVE_IBV_FLOW_DEVX_COUNTERS
+	return 0;
+#endif
+notsup_err:
+	return rte_flow_error_set
+		      (error, ENOTSUP,
+		       RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+		       NULL,
+		       "count action not supported");
 }
 
 /**
@@ -1456,6 +1490,87 @@ flow_dv_modify_hdr_resource_register
 }
 
 /**
+ * Get or create a flow counter.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] shared
+ *   Indicate if this counter is shared with other flows.
+ * @param[in] id
+ *   Counter identifier.
+ *
+ * @return
+ *   pointer to flow counter on success, NULL otherwise and rte_errno is set.
+ */
+static struct mlx5_flow_counter *
+flow_dv_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct mlx5_flow_counter *cnt = NULL;
+	struct mlx5_devx_counter_set *dcs = NULL;
+	int ret;
+
+	if (!priv->config.devx) {
+		ret = -ENOTSUP;
+		goto error_exit;
+	}
+	if (shared) {
+		LIST_FOREACH(cnt, &priv->flow_counters, next) {
+			if (cnt->shared && cnt->id == id) {
+				cnt->ref_cnt++;
+				return cnt;
+			}
+		}
+	}
+	cnt = rte_calloc(__func__, 1, sizeof(*cnt), 0);
+	dcs = rte_calloc(__func__, 1, sizeof(*dcs), 0);
+	if (!dcs || !cnt) {
+		ret = -ENOMEM;
+		goto error_exit;
+	}
+	ret = mlx5_devx_cmd_flow_counter_alloc(priv->ctx, dcs);
+	if (ret)
+		goto error_exit;
+	struct mlx5_flow_counter tmpl = {
+		.shared = shared,
+		.ref_cnt = 1,
+		.id = id,
+		.dcs = dcs,
+	};
+	*cnt = tmpl;
+	LIST_INSERT_HEAD(&priv->flow_counters, cnt, next);
+	return cnt;
+error_exit:
+	rte_free(cnt);
+	rte_free(dcs);
+	rte_errno = -ret;
+	return NULL;
+}
+
+/**
+ * Release a flow counter.
+ *
+ * @param[in] counter
+ *   Pointer to the counter handler.
+ */
+static void
+flow_dv_counter_release(struct mlx5_flow_counter *counter)
+{
+	int ret;
+
+	if (!counter)
+		return;
+	if (--counter->ref_cnt == 0) {
+		ret = mlx5_devx_cmd_flow_counter_free(counter->dcs->obj);
+		if (ret)
+			DRV_LOG(ERR, "Failed to free devx counters, %d", ret);
+		LIST_REMOVE(counter, next);
+		rte_free(counter->dcs);
+		rte_free(counter);
+	}
+}
+
+/**
  * Verify the @p attributes will be correctly understood by the NIC and store
  * them in the @p flow if everything is correct.
  *
@@ -1717,7 +1832,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
-			ret = mlx5_flow_validate_action_count(dev, attr, error);
+			ret = flow_dv_validate_action_count(dev, error);
 			if (ret < 0)
 				return ret;
 			action_flags |= MLX5_FLOW_ACTION_COUNT;
@@ -2741,6 +2856,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		const struct rte_flow_action_queue *queue;
 		const struct rte_flow_action_rss *rss;
 		const struct rte_flow_action *action = actions;
+		const struct rte_flow_action_count *count = action->conf;
 		const uint8_t *rss_key;
 
 		switch (actions->type) {
@@ -2789,6 +2905,37 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			flow->rss.level = rss->level;
 			action_flags |= MLX5_FLOW_ACTION_RSS;
 			break;
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+			if (!priv->config.devx) {
+				rte_errno = ENOTSUP;
+				goto cnt_err;
+			}
+			flow->counter =
+				flow_dv_counter_new(dev,
+						    count->shared, count->id);
+			if (flow->counter == NULL)
+				goto cnt_err;
+			dev_flow->dv.actions[actions_n].type =
+					MLX5DV_FLOW_ACTION_COUNTER_DEVX;
+			dev_flow->dv.actions[actions_n].obj =
+						flow->counter->dcs->obj;
+			action_flags |= MLX5_FLOW_ACTION_COUNT;
+			++actions_n;
+			break;
+cnt_err:
+			if (rte_errno == ENOTSUP)
+				return rte_flow_error_set
+					      (error, ENOTSUP,
+					       RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					       NULL,
+					       "count action not supported");
+			else
+				return rte_flow_error_set
+						(error, rte_errno,
+						 RTE_FLOW_ERROR_TYPE_ACTION,
+						 action,
+						 "cannot create counter"
+						  " object.");
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
 			if (flow_dv_create_action_l2_encap(dev, actions,
@@ -3279,8 +3426,6 @@ flow_dv_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 			dv->hrxq = NULL;
 		}
 	}
-	if (flow->counter)
-		flow->counter = NULL;
 }
 
 /**
@@ -3299,6 +3444,10 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 	if (!flow)
 		return;
 	flow_dv_remove(dev, flow);
+	if (flow->counter) {
+		flow_dv_counter_release(flow->counter);
+		flow->counter = NULL;
+	}
 	while (!LIST_EMPTY(&flow->dev_flows)) {
 		dev_flow = LIST_FIRST(&flow->dev_flows);
 		LIST_REMOVE(dev_flow, next);
@@ -3313,22 +3462,91 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 }
 
 /**
+ * Query a dv flow  rule for its statistics via devx.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] flow
+ *   Pointer to the sub flow.
+ * @param[out] data
+ *   data retrieved by the query.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_query_count(struct rte_eth_dev *dev, struct rte_flow *flow,
+		    void *data, struct rte_flow_error *error)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct rte_flow_query_count *qc = data;
+	uint64_t pkts = 0;
+	uint64_t bytes = 0;
+	int err;
+
+	if (!priv->config.devx)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "counters are not supported");
+	if (flow->counter) {
+		err = mlx5_devx_cmd_flow_counter_query
+						(flow->counter->dcs,
+						 qc->reset, &pkts, &bytes);
+		if (err)
+			return rte_flow_error_set
+				(error, err,
+				 RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				 NULL,
+				 "cannot read counters");
+		qc->hits_set = 1;
+		qc->bytes_set = 1;
+		qc->hits = pkts - flow->counter->hits;
+		qc->bytes = bytes - flow->counter->bytes;
+		if (qc->reset) {
+			flow->counter->hits = pkts;
+			flow->counter->bytes = bytes;
+		}
+		return 0;
+	}
+	return rte_flow_error_set(error, EINVAL,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL,
+				  "counters are not available");
+}
+
+/**
  * Query a flow.
  *
  * @see rte_flow_query()
  * @see rte_flow_ops
  */
 static int
-flow_dv_query(struct rte_eth_dev *dev __rte_unused,
+flow_dv_query(struct rte_eth_dev *dev,
 	      struct rte_flow *flow __rte_unused,
 	      const struct rte_flow_action *actions __rte_unused,
 	      void *data __rte_unused,
 	      struct rte_flow_error *error __rte_unused)
 {
-	return rte_flow_error_set(error, ENOTSUP,
-				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				  NULL,
-				  "flow query with DV is not supported");
+	int ret = -EINVAL;
+
+	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		switch (actions->type) {
+		case RTE_FLOW_ACTION_TYPE_VOID:
+			break;
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+			ret = flow_dv_query_count(dev, flow, data, error);
+			break;
+		default:
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  actions,
+						  "action not supported");
+		}
+	}
+	return ret;
 }
 
 

@@ -98,6 +98,12 @@ struct mlx5_stats_ctrl {
 	uint64_t imissed_base;
 };
 
+/* devx counter object */
+struct mlx5_devx_counter_set {
+	struct mlx5dv_devx_obj *obj;
+	int id; /* Flow counter ID */
+};
+
 /* Flow list . */
 TAILQ_HEAD(mlx5_flows, rte_flow);
 
@@ -131,6 +137,7 @@ struct mlx5_dev_config {
 	unsigned int vf_nl_en:1; /* Enable Netlink requests in VF mode. */
 	unsigned int dv_flow_en:1; /* Enable DV flow. */
 	unsigned int swp:1; /* Tx generic tunnel checksum and TSO offload. */
+	unsigned int devx:1; /* Whether devx interface is available or not. */
 	struct {
 		unsigned int enabled:1; /* Whether MPRQ is enabled. */
 		unsigned int stride_num_n; /* Number of strides. */
@@ -412,4 +419,12 @@ unsigned int mlx5_nl_ifindex(int nl, const char *name);
 int mlx5_nl_switch_info(int nl, unsigned int ifindex,
 			struct mlx5_switch_info *info);
 
+/* mlx5_devx_cmds.c */
+
+int mlx5_devx_cmd_flow_counter_alloc(struct ibv_context *ctx,
+				     struct mlx5_devx_counter_set *dcx);
+int mlx5_devx_cmd_flow_counter_free(struct mlx5dv_devx_obj *obj);
+int mlx5_devx_cmd_flow_counter_query(struct mlx5_devx_counter_set *dcx,
+				     int clear,
+				     uint64_t *pkts, uint64_t *bytes);
 #endif /* RTE_PMD_MLX5_H_ */

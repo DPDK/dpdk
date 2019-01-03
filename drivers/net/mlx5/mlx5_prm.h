@@ -368,6 +368,7 @@ typedef uint8_t u8;
 #define __mlx5_dw_bit_off(typ, fld) (32 - __mlx5_bit_sz(typ, fld) - \
 				    (__mlx5_bit_off(typ, fld) & 0x1f))
 #define __mlx5_dw_off(typ, fld) (__mlx5_bit_off(typ, fld) / 32)
+#define __mlx5_64_off(typ, fld) (__mlx5_bit_off(typ, fld) / 64)
 #define __mlx5_dw_mask(typ, fld) (__mlx5_mask(typ, fld) << \
 				  __mlx5_dw_bit_off(typ, fld))
 #define __mlx5_mask(typ, fld) ((u32)((1ull << __mlx5_bit_sz(typ, fld)) - 1))
@@ -375,6 +376,7 @@ typedef uint8_t u8;
 #define __mlx5_16_bit_off(typ, fld) (16 - __mlx5_bit_sz(typ, fld) - \
 				    (__mlx5_bit_off(typ, fld) & 0xf))
 #define __mlx5_mask16(typ, fld) ((u16)((1ull << __mlx5_bit_sz(typ, fld)) - 1))
+#define MLX5_ST_SZ_BYTES(typ) (sizeof(struct mlx5_ifc_##typ##_bits) / 8)
 #define MLX5_ST_SZ_DW(typ) (sizeof(struct mlx5_ifc_##typ##_bits) / 32)
 #define MLX5_ST_SZ_DB(typ) (sizeof(struct mlx5_ifc_##typ##_bits) / 8)
 #define MLX5_BYTE_OFF(typ, fld) (__mlx5_bit_off(typ, fld) / 8)
@@ -391,10 +393,16 @@ typedef uint8_t u8;
 				 (((_v) & __mlx5_mask(typ, fld)) << \
 				   __mlx5_dw_bit_off(typ, fld))); \
 	} while (0)
+#define MLX5_GET(typ, p, fld) \
+	((rte_be_to_cpu_32(*((__be32 *)(p) +\
+	__mlx5_dw_off(typ, fld))) >> __mlx5_dw_bit_off(typ, fld)) & \
+	__mlx5_mask(typ, fld))
 #define MLX5_GET16(typ, p, fld) \
 	((rte_be_to_cpu_16(*((__be16 *)(p) + \
 	  __mlx5_16_off(typ, fld))) >> __mlx5_16_bit_off(typ, fld)) & \
 	 __mlx5_mask16(typ, fld))
+#define MLX5_GET64(typ, p, fld) rte_be_to_cpu_64(*((__be64 *)(p) + \
+						   __mlx5_64_off(typ, fld)))
 #define MLX5_FLD_SZ_BYTES(typ, fld) (__mlx5_bit_sz(typ, fld) / 8)
 
 struct mlx5_ifc_fte_match_set_misc_bits {
@@ -498,6 +506,69 @@ enum {
 	MLX5_MATCH_CRITERIA_ENABLE_MISC_BIT,
 	MLX5_MATCH_CRITERIA_ENABLE_INNER_BIT,
 	MLX5_MATCH_CRITERIA_ENABLE_MISC2_BIT
+};
+
+enum {
+	MLX5_CMD_OP_ALLOC_FLOW_COUNTER = 0x939,
+	MLX5_CMD_OP_QUERY_FLOW_COUNTER = 0x93b,
+};
+
+/* Flow counters. */
+struct mlx5_ifc_alloc_flow_counter_out_bits {
+	u8         status[0x8];
+	u8         reserved_at_8[0x18];
+	u8         syndrome[0x20];
+	u8         flow_counter_id[0x20];
+	u8         reserved_at_60[0x20];
+};
+
+struct mlx5_ifc_alloc_flow_counter_in_bits {
+	u8         opcode[0x10];
+	u8         reserved_at_10[0x10];
+	u8         reserved_at_20[0x10];
+	u8         op_mod[0x10];
+	u8         reserved_at_40[0x40];
+};
+
+struct mlx5_ifc_dealloc_flow_counter_out_bits {
+	u8         status[0x8];
+	u8         reserved_at_8[0x18];
+	u8         syndrome[0x20];
+	u8         reserved_at_40[0x40];
+};
+
+struct mlx5_ifc_dealloc_flow_counter_in_bits {
+	u8         opcode[0x10];
+	u8         reserved_at_10[0x10];
+	u8         reserved_at_20[0x10];
+	u8         op_mod[0x10];
+	u8         flow_counter_id[0x20];
+	u8         reserved_at_60[0x20];
+};
+
+struct mlx5_ifc_traffic_counter_bits {
+	u8         packets[0x40];
+	u8         octets[0x40];
+};
+
+struct mlx5_ifc_query_flow_counter_out_bits {
+	u8         status[0x8];
+	u8         reserved_at_8[0x18];
+	u8         syndrome[0x20];
+	u8         reserved_at_40[0x40];
+	struct mlx5_ifc_traffic_counter_bits flow_statistics[];
+};
+
+struct mlx5_ifc_query_flow_counter_in_bits {
+	u8         opcode[0x10];
+	u8         reserved_at_10[0x10];
+	u8         reserved_at_20[0x10];
+	u8         op_mod[0x10];
+	u8         reserved_at_40[0x80];
+	u8         clear[0x1];
+	u8         reserved_at_c1[0xf];
+	u8         num_of_counters[0x10];
+	u8         flow_counter_id[0x20];
 };
 
 /* CQE format mask. */

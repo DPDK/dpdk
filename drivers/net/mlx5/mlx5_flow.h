@@ -21,6 +21,9 @@
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
 
+#include "mlx5.h"
+#include "mlx5_prm.h"
+
 /* Pattern outer Layer bits. */
 #define MLX5_FLOW_LAYER_OUTER_L2 (1u << 0)
 #define MLX5_FLOW_LAYER_OUTER_L3_IPV4 (1u << 1)
@@ -319,11 +322,14 @@ struct mlx5_flow_counter {
 	uint32_t shared:1; /**< Share counter ID with other flow rules. */
 	uint32_t ref_cnt:31; /**< Reference counter. */
 	uint32_t id; /**< Counter ID. */
+	union {  /**< Holds the counters for the rule. */
 #if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
-	struct ibv_counter_set *cs; /**< Holds the counters for the rule. */
+		struct ibv_counter_set *cs;
 #elif defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
-	struct ibv_counters *cs; /**< Holds the counters for the rule. */
+		struct ibv_counters *cs;
 #endif
+		struct mlx5_devx_counter_set *dcs;
+	};
 	uint64_t hits; /**< Number of packets matched by the rule. */
 	uint64_t bytes; /**< Number of bytes matched by the rule. */
 };

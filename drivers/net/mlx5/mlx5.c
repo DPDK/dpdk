@@ -727,7 +727,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	       struct mlx5_dev_config config,
 	       const struct mlx5_switch_info *switch_info)
 {
-	struct ibv_context *ctx;
+	struct ibv_context *ctx = NULL;
 	struct ibv_device_attr_ex attr;
 	struct ibv_port_attr port_attr;
 	struct ibv_pd *pd = NULL;
@@ -786,10 +786,16 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	/* Prepare shared data between primary and secondary process. */
 	mlx5_prepare_shared_data();
 	errno = 0;
-	ctx = mlx5_glue->open_device(ibv_dev);
-	if (!ctx) {
-		rte_errno = errno ? errno : ENODEV;
-		return NULL;
+	ctx = mlx5_glue->dv_open_device(ibv_dev);
+	if (ctx) {
+		config.devx = 1;
+		DRV_LOG(DEBUG, "DEVX is supported");
+	} else {
+		ctx = mlx5_glue->open_device(ibv_dev);
+		if (!ctx) {
+			rte_errno = errno ? errno : ENODEV;
+			return NULL;
+		}
 	}
 #ifdef HAVE_IBV_MLX5_MOD_SWP
 	dv_attr.comp_mask |= MLX5DV_CONTEXT_MASK_SWP;
