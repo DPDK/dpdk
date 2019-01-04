@@ -304,7 +304,7 @@ The available information categories are:
 * ``mac``: Changes the source and the destination Ethernet addresses of packets before forwarding them.
   Default application behaviour is to set source Ethernet address to that of the transmitting interface, and destination
   address to a dummy value (set during init). The user may specify a target destination Ethernet address via the 'eth-peer' or
-  'eth-peer-configfile' command-line options. It is not currently possible to specify a specific source Ethernet address.
+  'eth-peers-configfile' command-line options. It is not currently possible to specify a specific source Ethernet address.
 
 * ``macswap``: MAC swap forwarding mode.
   Swaps the source and the destination Ethernet addresses of packets before forwarding them.
