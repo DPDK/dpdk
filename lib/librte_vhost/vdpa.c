@@ -178,6 +178,9 @@ rte_vdpa_relay_vring_avail(int vid, uint16_t qid, void *vring_m)
 	while (idx_m != idx) {
 		/* avail entry copy */
 		desc_id = vq->avail->ring[idx_m & (vq->size - 1)];
+		if (unlikely(desc_id >= vq->size))
+			return -1;
+
 		s_vring->avail->ring[idx_m & (vq->size - 1)] = desc_id;
 		desc_ring = vq->desc;
 
@@ -205,15 +208,14 @@ rte_vdpa_relay_vring_avail(int vid, uint16_t qid, void *vring_m)
 
 		/* check if the buf addr is within the guest memory */
 		do {
+			if (unlikely(desc_id >= vq->size))
+				goto fail;
 			desc = desc_ring[desc_id];
 			perm = desc.flags & VRING_DESC_F_WRITE ?
 				VHOST_ACCESS_WO : VHOST_ACCESS_RO;
 			if (invalid_desc_check(dev, vq, desc.addr, desc.len,
-						perm)) {
-				if (unlikely(idesc))
-					free_ind_table(idesc);
-				return -1;
-			}
+						perm))
+				goto fail;
 			desc_id = desc.next;
 		} while (desc.flags & VRING_DESC_F_NEXT);
 
@@ -232,6 +234,11 @@ rte_vdpa_relay_vring_avail(int vid, uint16_t qid, void *vring_m)
 		vhost_avail_event(vq) = idx;
 
 	return ret;
+
+fail:
+	if (unlikely(idesc))
+		free_ind_table(idesc);
+	return -1;
 }
 
 int __rte_experimental
@@ -270,6 +277,9 @@ rte_vdpa_relay_vring_used(int vid, uint16_t qid, void *vring_m)
 		desc_id = vq->used->ring[idx & (vq->size - 1)].id;
 		desc_ring = vq->desc;
 
+		if (unlikely(desc_id >= vq->size))
+			return -1;
+
 		if (vq->desc[desc_id].flags & VRING_DESC_F_INDIRECT) {
 			dlen = vq->desc[desc_id].len;
 			desc_ring = (struct vring_desc *)(uintptr_t)
@@ -294,6 +304,8 @@ rte_vdpa_relay_vring_used(int vid, uint16_t qid, void *vring_m)
 
 		/* dirty page logging for DMA writeable buffer */
 		do {
+			if (unlikely(desc_id >= vq->size))
+				goto fail;
 			desc = desc_ring[desc_id];
 			if (desc.flags & VRING_DESC_F_WRITE)
 				vhost_log_write(dev, desc.addr, desc.len);
@@ -315,4 +327,9 @@ rte_vdpa_relay_vring_used(int vid, uint16_t qid, void *vring_m)
 		vring_used_event(s_vring) = idx_m;
 
 	return ret;
+
+fail:
+	if (unlikely(idesc))
+		free_ind_table(idesc);
+	return -1;
 }
