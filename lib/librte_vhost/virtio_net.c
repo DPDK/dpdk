@@ -312,6 +312,9 @@ fill_vec_buf_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct vring_desc *descs = vq->desc;
 	struct vring_desc *idesc = NULL;
 
+	if (unlikely(idx >= vq->size))
+		return -1;
+
 	*desc_chain_head = idx;
 
 	if (vq->desc[idx].flags & VRING_DESC_F_INDIRECT) {
