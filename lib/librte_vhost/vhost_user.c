@@ -541,7 +541,7 @@ translate_ring_addresses(struct virtio_net *dev, int vq_index)
 {
 	struct vhost_virtqueue *vq = dev->virtqueue[vq_index];
 	struct vhost_vring_addr *addr = &vq->ring_addrs;
-	uint64_t len;
+	uint64_t len, expected_len;
 
 	if (vq_is_packed(dev)) {
 		len = sizeof(struct vring_packed_desc) * vq->size;
@@ -607,11 +607,12 @@ translate_ring_addresses(struct virtio_net *dev, int vq_index)
 	addr = &vq->ring_addrs;
 
 	len = sizeof(struct vring_avail) + sizeof(uint16_t) * vq->size;
+	if (dev->features & (1ULL << VIRTIO_RING_F_EVENT_IDX))
+		len += sizeof(uint16_t);
+	expected_len = len;
 	vq->avail = (struct vring_avail *)(uintptr_t)ring_addr_to_vva(dev,
 			vq, addr->avail_user_addr, &len);
-	if (vq->avail == 0 ||
-			len != sizeof(struct vring_avail) +
-			sizeof(uint16_t) * vq->size) {
+	if (vq->avail == 0 || len != expected_len) {
 		RTE_LOG(DEBUG, VHOST_CONFIG,
 			"(%d) failed to map avail ring.\n",
 			dev->vid);
@@ -620,10 +621,12 @@ translate_ring_addresses(struct virtio_net *dev, int vq_index)
 
 	len = sizeof(struct vring_used) +
 		sizeof(struct vring_used_elem) * vq->size;
+	if (dev->features & (1ULL << VIRTIO_RING_F_EVENT_IDX))
+		len += sizeof(uint16_t);
+	expected_len = len;
 	vq->used = (struct vring_used *)(uintptr_t)ring_addr_to_vva(dev,
 			vq, addr->used_user_addr, &len);
-	if (vq->used == 0 || len != sizeof(struct vring_used) +
-			sizeof(struct vring_used_elem) * vq->size) {
+	if (vq->used == 0 || len != expected_len) {
 		RTE_LOG(DEBUG, VHOST_CONFIG,
 			"(%d) failed to map used ring.\n",
 			dev->vid);
