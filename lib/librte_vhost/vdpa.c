@@ -190,10 +190,10 @@ rte_vdpa_relay_vring_avail(int vid, uint16_t qid, void *vring_m)
 			if (unlikely(!desc_ring))
 				return -1;
 
-			if (unlikely(dlen < vq->desc[idx].len)) {
+			if (unlikely(dlen < vq->desc[desc_id].len)) {
 				idesc = alloc_copy_ind_table(dev, vq,
-						vq->desc[idx].addr,
-						vq->desc[idx].len);
+						vq->desc[desc_id].addr,
+						vq->desc[desc_id].len);
 				if (unlikely(!idesc))
 					return -1;
 
@@ -279,10 +279,10 @@ rte_vdpa_relay_vring_used(int vid, uint16_t qid, void *vring_m)
 			if (unlikely(!desc_ring))
 				return -1;
 
-			if (unlikely(dlen < vq->desc[idx].len)) {
+			if (unlikely(dlen < vq->desc[desc_id].len)) {
 				idesc = alloc_copy_ind_table(dev, vq,
-						vq->desc[idx].addr,
-						vq->desc[idx].len);
+						vq->desc[desc_id].addr,
+						vq->desc[desc_id].len);
 				if (unlikely(!idesc))
 					return -1;
 
