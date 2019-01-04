@@ -110,3 +110,45 @@ rte_meter_trtcm_config(struct rte_meter_trtcm *m,
 
 	return 0;
 }
+
+int __rte_experimental
+rte_meter_trtcm_rfc4115_profile_config(
+	struct rte_meter_trtcm_rfc4115_profile *p,
+	struct rte_meter_trtcm_rfc4115_params *params)
+{
+	uint64_t hz = rte_get_tsc_hz();
+
+	/* Check input parameters */
+	if ((p == NULL) ||
+		(params == NULL) ||
+		(params->cir != 0 && params->cbs == 0) ||
+		(params->eir != 0 && params->ebs == 0))
+		return -EINVAL;
+
+	/* Initialize trTCM run-time structure */
+	p->cbs = params->cbs;
+	p->ebs = params->ebs;
+	rte_meter_get_tb_params(hz, params->cir, &p->cir_period,
+		&p->cir_bytes_per_period);
+	rte_meter_get_tb_params(hz, params->eir, &p->eir_period,
+		&p->eir_bytes_per_period);
+
+	return 0;
+}
+
+int __rte_experimental
+rte_meter_trtcm_rfc4115_config(
+	struct rte_meter_trtcm_rfc4115 *m,
+	struct rte_meter_trtcm_rfc4115_profile *p)
+{
+	/* Check input parameters */
+	if ((m == NULL) || (p == NULL))
+		return -EINVAL;
+
+	/* Initialize trTCM run-time structure */
+	m->time_tc = m->time_te = rte_get_tsc_cycles();
+	m->tc = p->cbs;
+	m->te = p->ebs;
+
+	return 0;
+}

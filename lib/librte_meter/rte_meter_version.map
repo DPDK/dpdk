@@ -17,3 +17,12 @@ DPDK_18.08 {
 	rte_meter_srtcm_profile_config;
 	rte_meter_trtcm_profile_config;
 };
+
+EXPERIMENTAL {
+	global:
+
+	rte_meter_trtcm_rfc4115_color_aware_check;
+	rte_meter_trtcm_rfc4115_color_blind_check;
+	rte_meter_trtcm_rfc4115_config;
+	rte_meter_trtcm_rfc4115_profile_config;
+};

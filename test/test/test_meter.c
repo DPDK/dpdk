@@ -32,8 +32,10 @@
 
 #define TM_TEST_TRTCM_CIR_DF 46000000
 #define TM_TEST_TRTCM_PIR_DF 69000000
+#define TM_TEST_TRTCM_EIR_DF 69000000
 #define TM_TEST_TRTCM_CBS_DF 2048
 #define TM_TEST_TRTCM_PBS_DF 4096
+#define TM_TEST_TRTCM_EBS_DF 4096
 
 static struct rte_meter_srtcm_params sparams =
 				{.cir = TM_TEST_SRTCM_CIR_DF,
@@ -45,6 +47,12 @@ static struct	rte_meter_trtcm_params tparams=
 				 .pir = TM_TEST_TRTCM_PIR_DF,
 				 .cbs = TM_TEST_TRTCM_CBS_DF,
 				 .pbs = TM_TEST_TRTCM_PBS_DF,};
+
+static struct rte_meter_trtcm_rfc4115_params rfc4115params =
+				{.cir = TM_TEST_TRTCM_CIR_DF,
+				 .eir = TM_TEST_TRTCM_EIR_DF,
+				 .cbs = TM_TEST_TRTCM_CBS_DF,
+				 .ebs = TM_TEST_TRTCM_EBS_DF,};
 
 /**
  * functional test for rte_meter_srtcm_config
@@ -144,6 +152,45 @@ tm_test_trtcm_config(void)
 	/* usual parameter, should be successful */
 	if (rte_meter_trtcm_profile_config(&tp, &tparams) != 0)
 		melog(TRTCM_CFG_MSG);
+
+	return 0;
+}
+
+/**
+ * functional test for rte_meter_trtcm_rfc4115_config
+ */
+static inline int
+tm_test_trtcm_rfc4115_config(void)
+{
+	struct rte_meter_trtcm_rfc4115_profile tp;
+	struct  rte_meter_trtcm_rfc4115_params rfc4115params1;
+#define TRTCM_RFC4115_CFG_MSG "trtcm_rfc4115_config"
+
+	/* invalid parameter test */
+	if (rte_meter_trtcm_rfc4115_profile_config(NULL, NULL) == 0)
+		melog(TRTCM_RFC4115_CFG_MSG);
+	if (rte_meter_trtcm_rfc4115_profile_config(&tp, NULL) == 0)
+		melog(TRTCM_RFC4115_CFG_MSG);
+	if (rte_meter_trtcm_rfc4115_profile_config(NULL, &rfc4115params) == 0)
+		melog(TRTCM_RFC4115_CFG_MSG);
+
+	/*
+	 * cbs and pbs should be none-zero if cir and eir are none-zero
+	 * respectively
+	 */
+	rfc4115params1 = rfc4115params;
+	rfc4115params1.cbs = 0;
+	if (rte_meter_trtcm_rfc4115_profile_config(&tp, &rfc4115params1) == 0)
+		melog(TRTCM_RFC4115_CFG_MSG);
+
+	rfc4115params1 = rfc4115params;
+	rfc4115params1.ebs = 0;
+	if (rte_meter_trtcm_rfc4115_profile_config(&tp, &rfc4115params1) == 0)
+		melog(TRTCM_RFC4115_CFG_MSG);
+
+	/* usual parameter, should be successful */
+	if (rte_meter_trtcm_rfc4115_profile_config(&tp, &rfc4115params) != 0)
+		melog(TRTCM_RFC4115_CFG_MSG);
 
 	return 0;
 }
@@ -261,6 +308,65 @@ tm_test_trtcm_color_blind_check(void)
 		&tm, &tp, time, TM_TEST_TRTCM_PBS_DF + 1)
 		!= e_RTE_METER_RED)
 		melog(TRTCM_BLIND_CHECK_MSG" RED");
+
+	return 0;
+}
+
+/**
+ * functional test for rte_meter_trtcm_rfc4115_color_blind_check
+ */
+static inline int
+tm_test_trtcm_rfc4115_color_blind_check(void)
+{
+#define TRTCM_RFC4115_BLIND_CHECK_MSG "trtcm_rfc4115_blind_check"
+
+	uint64_t time;
+	struct rte_meter_trtcm_rfc4115_profile tp;
+	struct rte_meter_trtcm_rfc4115 tm;
+	uint64_t hz = rte_get_tsc_hz();
+
+	/* Test green */
+	if (rte_meter_trtcm_rfc4115_profile_config(&tp, &rfc4115params) != 0)
+		melog(TRTCM_RFC4115_BLIND_CHECK_MSG);
+	if (rte_meter_trtcm_rfc4115_config(&tm, &tp) != 0)
+		melog(TRTCM_RFC4115_BLIND_CHECK_MSG);
+	time = rte_get_tsc_cycles() + hz;
+	if (rte_meter_trtcm_rfc4115_color_blind_check(
+		&tm, &tp, time, TM_TEST_TRTCM_CBS_DF - 1)
+		!= e_RTE_METER_GREEN)
+		melog(TRTCM_RFC4115_BLIND_CHECK_MSG" GREEN");
+
+	/* Test yellow */
+	if (rte_meter_trtcm_rfc4115_profile_config(&tp, &rfc4115params) != 0)
+		melog(TRTCM_RFC4115_BLIND_CHECK_MSG);
+	if (rte_meter_trtcm_rfc4115_config(&tm, &tp) != 0)
+		melog(TRTCM_RFC4115_BLIND_CHECK_MSG);
+	time = rte_get_tsc_cycles() + hz;
+	if (rte_meter_trtcm_rfc4115_color_blind_check(
+		&tm, &tp, time, TM_TEST_TRTCM_CBS_DF + 1)
+		!= e_RTE_METER_YELLOW)
+		melog(TRTCM_RFC4115_BLIND_CHECK_MSG" YELLOW");
+
+	if (rte_meter_trtcm_rfc4115_profile_config(&tp, &rfc4115params) != 0)
+		melog(TRTCM_RFC4115_BLIND_CHECK_MSG);
+	if (rte_meter_trtcm_rfc4115_config(&tm, &tp) != 0)
+		melog(TRTCM_RFC4115_BLIND_CHECK_MSG);
+	time = rte_get_tsc_cycles() + hz;
+	if (rte_meter_trtcm_rfc4115_color_blind_check(
+		&tm, &tp, time, TM_TEST_TRTCM_EBS_DF - 1)
+		!= e_RTE_METER_YELLOW)
+		melog(TRTCM_RFC4115_BLIND_CHECK_MSG" YELLOW");
+
+	/* Test red */
+	if (rte_meter_trtcm_rfc4115_profile_config(&tp, &rfc4115params) != 0)
+		melog(TRTCM_RFC4115_BLIND_CHECK_MSG);
+	if (rte_meter_trtcm_rfc4115_config(&tm, &tp) != 0)
+		melog(TRTCM_RFC4115_BLIND_CHECK_MSG);
+	time = rte_get_tsc_cycles() + hz;
+	if (rte_meter_trtcm_rfc4115_color_blind_check(
+		&tm, &tp, time, TM_TEST_TRTCM_EBS_DF + 1)
+		!= e_RTE_METER_RED)
+		melog(TRTCM_RFC4115_BLIND_CHECK_MSG" RED");
 
 	return 0;
 }
@@ -474,6 +580,103 @@ tm_test_trtcm_color_aware_check(void)
 }
 
 /**
+ * @in[4] : the flags packets carries.
+ * @in[4] : the flags function expect to return.
+ * It will do blind check at the time of 1 second from beginning.
+ * At the time, it will use packets length of cbs -1, cbs + 1,
+ * ebs -1 and ebs +1 with flag in[0], in[1], in[2] and in[3] to do
+ * aware check, expect flag out[0], out[1], out[2] and out[3]
+ */
+static inline int
+tm_test_trtcm_rfc4115_aware_check
+(enum rte_meter_color in[4], enum rte_meter_color out[4])
+{
+#define TRTCM_RFC4115_AWARE_CHECK_MSG "trtcm_rfc4115_aware_check"
+	struct rte_meter_trtcm_rfc4115_profile tp;
+	struct rte_meter_trtcm_rfc4115 tm;
+	uint64_t time;
+	uint64_t hz = rte_get_tsc_hz();
+
+	if (rte_meter_trtcm_rfc4115_profile_config(&tp, &rfc4115params) != 0)
+		melog(TRTCM_AWARE_CHECK_MSG);
+	if (rte_meter_trtcm_rfc4115_config(&tm, &tp) != 0)
+		melog(TRTCM_RFC4115_AWARE_CHECK_MSG);
+	time = rte_get_tsc_cycles() + hz;
+	if (rte_meter_trtcm_rfc4115_color_aware_check(
+		&tm, &tp, time, TM_TEST_TRTCM_CBS_DF - 1, in[0]) != out[0])
+		melog(TRTCM_RFC4115_AWARE_CHECK_MSG" %u:%u", in[0], out[0]);
+
+	if (rte_meter_trtcm_rfc4115_profile_config(&tp, &rfc4115params) != 0)
+		melog(TRTCM_RFC4115_AWARE_CHECK_MSG);
+	if (rte_meter_trtcm_rfc4115_config(&tm, &tp) != 0)
+		melog(TRTCM_RFC4115_AWARE_CHECK_MSG);
+	time = rte_get_tsc_cycles() + hz;
+	if (rte_meter_trtcm_rfc4115_color_aware_check(
+		&tm, &tp, time, TM_TEST_TRTCM_CBS_DF + 1, in[1]) != out[1])
+		melog(TRTCM_RFC4115_AWARE_CHECK_MSG" %u:%u", in[1], out[1]);
+
+	if (rte_meter_trtcm_rfc4115_profile_config(&tp, &rfc4115params) != 0)
+		melog(TRTCM_RFC4115_AWARE_CHECK_MSG);
+	if (rte_meter_trtcm_rfc4115_config(&tm, &tp) != 0)
+		melog(TRTCM_RFC4115_AWARE_CHECK_MSG);
+	time = rte_get_tsc_cycles() + hz;
+	if (rte_meter_trtcm_rfc4115_color_aware_check(
+		&tm, &tp, time, TM_TEST_TRTCM_EBS_DF - 1, in[2]) != out[2])
+		melog(TRTCM_RFC4115_AWARE_CHECK_MSG" %u:%u", in[2], out[2]);
+
+	if (rte_meter_trtcm_rfc4115_profile_config(&tp, &rfc4115params) != 0)
+		melog(TRTCM_RFC4115_AWARE_CHECK_MSG);
+	if (rte_meter_trtcm_rfc4115_config(&tm, &tp) != 0)
+		melog(TRTCM_RFC4115_AWARE_CHECK_MSG);
+	time = rte_get_tsc_cycles() + hz;
+	if (rte_meter_trtcm_rfc4115_color_aware_check(
+		&tm, &tp, time, TM_TEST_TRTCM_EBS_DF + 1, in[3]) != out[3])
+		melog(TRTCM_RFC4115_AWARE_CHECK_MSG" %u:%u", in[3], out[3]);
+
+	return 0;
+}
+
+/**
+ * functional test for rte_meter_trtcm_rfc4115_color_aware_check
+ */
+static inline int
+tm_test_trtcm_rfc4115_color_aware_check(void)
+{
+	enum rte_meter_color in[4], out[4];
+	/**
+	  * test 4 points that will produce green, yellow, yellow, red flag
+	  * if using blind check
+	  */
+
+	/* previouly have a green, test points should keep unchanged */
+	in[0] = in[1] = in[2] = in[3] = e_RTE_METER_GREEN;
+	out[0] = e_RTE_METER_GREEN;
+	out[1] = e_RTE_METER_YELLOW;
+	out[2] = e_RTE_METER_YELLOW;
+	out[3] = e_RTE_METER_RED;
+	if (tm_test_trtcm_rfc4115_aware_check(in, out) != 0)
+		return -1;
+
+	in[0] = in[1] = in[2] = in[3] = e_RTE_METER_YELLOW;
+	out[0] = e_RTE_METER_YELLOW;
+	out[1] = e_RTE_METER_YELLOW;
+	out[2] = e_RTE_METER_YELLOW;
+	out[3] = e_RTE_METER_RED;
+	if (tm_test_trtcm_rfc4115_aware_check(in, out) != 0)
+		return -1;
+
+	in[0] = in[1] = in[2] = in[3] = e_RTE_METER_RED;
+	out[0] = e_RTE_METER_RED;
+	out[1] = e_RTE_METER_RED;
+	out[2] = e_RTE_METER_RED;
+	out[3] = e_RTE_METER_RED;
+	if (tm_test_trtcm_rfc4115_aware_check(in, out) != 0)
+		return -1;
+
+	return 0;
+}
+
+/**
  * test main entrance for library meter
  */
 static int
@@ -485,16 +688,25 @@ test_meter(void)
 	if (tm_test_trtcm_config() != 0)
 		return -1;
 
+	if (tm_test_trtcm_rfc4115_config() != 0)
+		return -1;
+
 	if (tm_test_srtcm_color_blind_check() != 0)
 		return -1;
 
 	if (tm_test_trtcm_color_blind_check() != 0)
 		return -1;
 
+	if (tm_test_trtcm_rfc4115_color_blind_check() != 0)
+		return -1;
+
 	if (tm_test_srtcm_color_aware_check() != 0)
 		return -1;
 
 	if (tm_test_trtcm_color_aware_check() != 0)
+		return -1;
+
+	if (tm_test_trtcm_rfc4115_color_aware_check() != 0)
 		return -1;
 
 	return 0;
