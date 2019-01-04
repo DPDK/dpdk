@@ -157,6 +157,7 @@ rte_vdpa_relay_vring_avail(int vid, uint16_t qid, void *vring_m)
 	struct vring_desc *idesc = NULL;
 	struct vring *s_vring;
 	uint64_t dlen;
+	uint32_t nr_descs;
 	int ret;
 	uint8_t perm;
 
@@ -183,9 +184,14 @@ rte_vdpa_relay_vring_avail(int vid, uint16_t qid, void *vring_m)
 
 		s_vring->avail->ring[idx_m & (vq->size - 1)] = desc_id;
 		desc_ring = vq->desc;
+		nr_descs = vq->size;
 
 		if (vq->desc[desc_id].flags & VRING_DESC_F_INDIRECT) {
 			dlen = vq->desc[desc_id].len;
+			nr_descs = dlen / sizeof(struct vring_desc);
+			if (unlikely(nr_descs > vq->size))
+				return -1;
+
 			desc_ring = (struct vring_desc *)(uintptr_t)
 				vhost_iova_to_vva(dev, vq,
 						vq->desc[desc_id].addr, &dlen,
@@ -209,6 +215,8 @@ rte_vdpa_relay_vring_avail(int vid, uint16_t qid, void *vring_m)
 		/* check if the buf addr is within the guest memory */
 		do {
 			if (unlikely(desc_id >= vq->size))
+				goto fail;
+			if (unlikely(nr_descs-- == 0))
 				goto fail;
 			desc = desc_ring[desc_id];
 			perm = desc.flags & VRING_DESC_F_WRITE ?
@@ -252,6 +260,7 @@ rte_vdpa_relay_vring_used(int vid, uint16_t qid, void *vring_m)
 	struct vring_desc *idesc = NULL;
 	struct vring *s_vring;
 	uint64_t dlen;
+	uint32_t nr_descs;
 	int ret;
 
 	if (!dev || !vring_m)
@@ -276,12 +285,17 @@ rte_vdpa_relay_vring_used(int vid, uint16_t qid, void *vring_m)
 
 		desc_id = vq->used->ring[idx & (vq->size - 1)].id;
 		desc_ring = vq->desc;
+		nr_descs = vq->size;
 
 		if (unlikely(desc_id >= vq->size))
 			return -1;
 
 		if (vq->desc[desc_id].flags & VRING_DESC_F_INDIRECT) {
 			dlen = vq->desc[desc_id].len;
+			nr_descs = dlen / sizeof(struct vring_desc);
+			if (unlikely(nr_descs > vq->size))
+				return -1;
+
 			desc_ring = (struct vring_desc *)(uintptr_t)
 				vhost_iova_to_vva(dev, vq,
 						vq->desc[desc_id].addr, &dlen,
@@ -305,6 +319,8 @@ rte_vdpa_relay_vring_used(int vid, uint16_t qid, void *vring_m)
 		/* dirty page logging for DMA writeable buffer */
 		do {
 			if (unlikely(desc_id >= vq->size))
+				goto fail;
+			if (unlikely(nr_descs-- == 0))
 				goto fail;
 			desc = desc_ring[desc_id];
 			if (desc.flags & VRING_DESC_F_WRITE)
