@@ -351,7 +351,7 @@ ixgbe_vf_reset_event(struct rte_eth_dev *dev, uint16_t vf)
 	int rar_entry = hw->mac.num_rar_entries - (vf + 1);
 	uint32_t vmolr = IXGBE_READ_REG(hw, IXGBE_VMOLR(vf));
 
-	vmolr |= (IXGBE_VMOLR_ROPE | IXGBE_VMOLR_ROMPE |
+	vmolr |= (IXGBE_VMOLR_ROPE |
 			IXGBE_VMOLR_BAM | IXGBE_VMOLR_AUPE);
 	IXGBE_WRITE_REG(hw, IXGBE_VMOLR(vf), vmolr);
 
@@ -503,6 +503,7 @@ ixgbe_vf_set_multicast(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 	const uint32_t IXGBE_MTA_BIT_MASK = (0x1 << IXGBE_MTA_BIT_SHIFT) - 1;
 	uint32_t reg_val;
 	int i;
+	u32 vmolr = IXGBE_READ_REG(hw, IXGBE_VMOLR(vf));
 
 	/* Disable multicast promiscuous first */
 	ixgbe_disable_vf_mc_promisc(dev, vf);
@@ -516,6 +517,12 @@ ixgbe_vf_set_multicast(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 		vfinfo->vf_mc_hashes[i] = hash_list[i];
 	}
 
+	if (nb_entries == 0) {
+		vmolr &= ~IXGBE_VMOLR_ROMPE;
+		IXGBE_WRITE_REG(hw, IXGBE_VMOLR(vf), vmolr);
+		return 0;
+	}
+
 	for (i = 0; i < vfinfo->num_vf_mc_hashes; i++) {
 		mta_idx = (vfinfo->vf_mc_hashes[i] >> IXGBE_MTA_BIT_SHIFT)
 				& IXGBE_MTA_INDEX_MASK;
@@ -524,6 +531,9 @@ ixgbe_vf_set_multicast(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 		reg_val |= (1 << mta_shift);
 		IXGBE_WRITE_REG(hw, IXGBE_MTA(mta_idx), reg_val);
 	}
+
+	vmolr |= IXGBE_VMOLR_ROMPE;
+	IXGBE_WRITE_REG(hw, IXGBE_VMOLR(vf), vmolr);
 
 	return 0;
 }
