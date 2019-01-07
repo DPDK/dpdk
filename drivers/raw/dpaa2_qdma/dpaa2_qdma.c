@@ -313,7 +313,7 @@ rte_qdma_vq_create(uint32_t lcore_id, uint32_t flags)
 		qdma_vqs[i].exclusive_hw_queue = 1;
 	} else {
 		/* Allocate a Ring for Virutal Queue in VQ mode */
-		sprintf(ring_name, "status ring %d", i);
+		snprintf(ring_name, sizeof(ring_name), "status ring %d", i);
 		qdma_vqs[i].status_ring = rte_ring_create(ring_name,
 			qdma_dev.fle_pool_count, rte_socket_id(), 0);
 		if (!qdma_vqs[i].status_ring) {

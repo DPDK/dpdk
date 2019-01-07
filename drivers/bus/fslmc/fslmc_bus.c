@@ -297,8 +297,8 @@ rte_fslmc_scan(void)
 		goto scan_fail;
 
 	/* Scan devices on the group */
-	sprintf(fslmc_dirpath, "%s/%d/devices", VFIO_IOMMU_GROUP_PATH,
-		groupid);
+	snprintf(fslmc_dirpath, sizeof(fslmc_dirpath), "%s/%d/devices",
+			VFIO_IOMMU_GROUP_PATH, groupid);
 	dir = opendir(fslmc_dirpath);
 	if (!dir) {
 		DPAA2_BUS_ERR("Unable to open VFIO group directory");

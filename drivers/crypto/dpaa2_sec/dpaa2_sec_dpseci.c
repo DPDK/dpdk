@@ -3371,14 +3371,15 @@ dpaa2_sec_dev_init(struct rte_cryptodev *cryptodev)
 			     retcode);
 		goto init_error;
 	}
-	sprintf(cryptodev->data->name, "dpsec-%u", hw_id);
+	snprintf(cryptodev->data->name, sizeof(cryptodev->data->name),
+			"dpsec-%u", hw_id);
 
 	internals->max_nb_queue_pairs = attr.num_tx_queues;
 	cryptodev->data->nb_queue_pairs = internals->max_nb_queue_pairs;
 	internals->hw = dpseci;
 	internals->token = token;
 
-	sprintf(str, "fle_pool_%d", cryptodev->data->dev_id);
+	snprintf(str, sizeof(str), "fle_pool_%d", cryptodev->data->dev_id);
 	internals->fle_pool = rte_mempool_create((const char *)str,
 			FLE_POOL_NUM_BUFS,
 			FLE_POOL_BUF_SIZE,
@@ -3409,7 +3410,8 @@ cryptodev_dpaa2_sec_probe(struct rte_dpaa2_driver *dpaa2_drv __rte_unused,
 
 	int retval;
 
-	sprintf(cryptodev_name, "dpsec-%d", dpaa2_dev->object_id);
+	snprintf(cryptodev_name, sizeof(cryptodev_name), "dpsec-%d",
+			dpaa2_dev->object_id);
 
 	cryptodev = rte_cryptodev_pmd_allocate(cryptodev_name, rte_socket_id());
 	if (cryptodev == NULL)

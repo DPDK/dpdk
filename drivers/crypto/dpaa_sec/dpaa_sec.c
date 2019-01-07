@@ -2469,7 +2469,7 @@ dpaa_sec_dev_configure(struct rte_cryptodev *dev,
 	PMD_INIT_FUNC_TRACE();
 
 	internals = dev->data->dev_private;
-	sprintf(str, "ctx_pool_%d", dev->data->dev_id);
+	snprintf(str, sizeof(str), "ctx_pool_%d", dev->data->dev_id);
 	if (!internals->ctx_pool) {
 		internals->ctx_pool = rte_mempool_create((const char *)str,
 							CTX_POOL_NUM_BUFS,
@@ -2675,7 +2675,8 @@ cryptodev_dpaa_sec_probe(struct rte_dpaa_driver *dpaa_drv __rte_unused,
 
 	int retval;
 
-	sprintf(cryptodev_name, "dpaa_sec-%d", dpaa_dev->id.dev_id);
+	snprintf(cryptodev_name, sizeof(cryptodev_name), "dpaa_sec-%d",
+			dpaa_dev->id.dev_id);
 
 	cryptodev = rte_cryptodev_pmd_allocate(cryptodev_name, rte_socket_id());
 	if (cryptodev == NULL)

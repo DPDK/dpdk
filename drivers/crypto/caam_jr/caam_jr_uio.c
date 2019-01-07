@@ -284,11 +284,11 @@ uio_map_registers(int uio_device_fd, int uio_device_id,
 	memset(uio_map_size_str, 0, sizeof(uio_map_size_str));
 
 	/* Compose string: /sys/class/uio/uioX */
-	sprintf(uio_sys_root, "%s/%s%d", SEC_UIO_DEVICE_SYS_ATTR_PATH,
-		"uio", uio_device_id);
+	snprintf(uio_sys_root, sizeof(uio_sys_root), "%s/%s%d",
+			SEC_UIO_DEVICE_SYS_ATTR_PATH, "uio", uio_device_id);
 	/* Compose string: maps/mapY */
-	sprintf(uio_sys_map_subdir, "%s%d", SEC_UIO_DEVICE_SYS_MAP_ATTR,
-		uio_map_id);
+	snprintf(uio_sys_map_subdir, sizeof(uio_sys_map_subdir), "%s%d",
+			SEC_UIO_DEVICE_SYS_MAP_ATTR, uio_map_id);
 
 	/* Read first (and only) line from file
 	 * /sys/class/uio/uioX/maps/mapY/size
@@ -389,9 +389,8 @@ uio_job_ring *config_job_ring(void)
 
 	/* Find UIO device created by SEC kernel driver for this job ring. */
 	memset(uio_device_file_name, 0, sizeof(uio_device_file_name));
-
-	sprintf(uio_device_file_name, "%s%d", SEC_UIO_DEVICE_FILE_NAME,
-		job_ring->uio_minor_number);
+	snprintf(uio_device_file_name, sizeof(uio_device_file_name), "%s%d",
+			SEC_UIO_DEVICE_FILE_NAME, job_ring->uio_minor_number);
 
 	/* Open device file */
 	job_ring->uio_fd = open(uio_device_file_name, O_RDWR);
