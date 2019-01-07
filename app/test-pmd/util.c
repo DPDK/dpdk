@@ -36,6 +36,7 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 	uint32_t sw_packet_type;
 	uint16_t udp_port;
 	uint32_t vx_vni;
+	const char *reason;
 
 	if (!nb_pkts)
 		return;
@@ -147,6 +148,8 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 		printf("\n");
 		rte_get_rx_ol_flag_list(mb->ol_flags, buf, sizeof(buf));
 		printf("  ol_flags: %s\n", buf);
+		if (rte_mbuf_check(mb, 1, &reason) < 0)
+			printf("INVALID mbuf: %s\n", reason);
 	}
 }
 
