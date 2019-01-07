@@ -1049,6 +1049,29 @@ rte_mbuf_ext_refcnt_update(struct rte_mbuf_ext_shared_info *shinfo,
 void
 rte_mbuf_sanity_check(const struct rte_mbuf *m, int is_header);
 
+/**
+ * Sanity checks on a mbuf.
+ *
+ * Almost like rte_mbuf_sanity_check(), but this function gives the reason
+ * if corruption is detected rather than panic.
+ *
+ * @param m
+ *   The mbuf to be checked.
+ * @param is_header
+ *   True if the mbuf is a packet header, false if it is a sub-segment
+ *   of a packet (in this case, some fields like nb_segs are not checked)
+ * @param reason
+ *   A reference to a string pointer where to store the reason why a mbuf is
+ *   considered invalid.
+ * @return
+ *   - 0 if no issue has been found, reason is left untouched.
+ *   - -1 if a problem is detected, reason then points to a string describing
+ *     the reason why the mbuf is deemed invalid.
+ */
+__rte_experimental
+int rte_mbuf_check(const struct rte_mbuf *m, int is_header,
+		   const char **reason);
+
 #define MBUF_RAW_ALLOC_CHECK(m) do {				\
 	RTE_ASSERT(rte_mbuf_refcnt_read(m) == 1);		\
 	RTE_ASSERT((m)->next == NULL);				\

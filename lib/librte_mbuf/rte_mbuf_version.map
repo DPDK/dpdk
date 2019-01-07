@@ -45,3 +45,9 @@ DPDK_18.08 {
 	rte_mbuf_user_mempool_ops;
 	rte_pktmbuf_pool_create_by_ops;
 } DPDK_16.11;
+
+EXPERIMENTAL {
+	global:
+
+	rte_mbuf_check;
+} DPDK_18.08;

@@ -171,47 +171,79 @@ rte_pktmbuf_pool_create(const char *name, unsigned int n,
 void
 rte_mbuf_sanity_check(const struct rte_mbuf *m, int is_header)
 {
+	const char *reason;
+
+	if (rte_mbuf_check(m, is_header, &reason))
+		rte_panic("%s\n", reason);
+}
+
+__rte_experimental
+int rte_mbuf_check(const struct rte_mbuf *m, int is_header,
+		   const char **reason)
+{
 	unsigned int nb_segs, pkt_len;
 
-	if (m == NULL)
-		rte_panic("mbuf is NULL\n");
+	if (m == NULL) {
+		*reason = "mbuf is NULL";
+		return -1;
+	}
 
 	/* generic checks */
-	if (m->pool == NULL)
-		rte_panic("bad mbuf pool\n");
-	if (m->buf_iova == 0)
-		rte_panic("bad IO addr\n");
-	if (m->buf_addr == NULL)
-		rte_panic("bad virt addr\n");
+	if (m->pool == NULL) {
+		*reason = "bad mbuf pool";
+		return -1;
+	}
+	if (m->buf_iova == 0) {
+		*reason = "bad IO addr";
+		return -1;
+	}
+	if (m->buf_addr == NULL) {
+		*reason = "bad virt addr";
+		return -1;
+	}
 
 	uint16_t cnt = rte_mbuf_refcnt_read(m);
-	if ((cnt == 0) || (cnt == UINT16_MAX))
-		rte_panic("bad ref cnt\n");
+	if ((cnt == 0) || (cnt == UINT16_MAX)) {
+		*reason = "bad ref cnt";
+		return -1;
+	}
 
 	/* nothing to check for sub-segments */
 	if (is_header == 0)
-		return;
+		return 0;
 
 	/* data_len is supposed to be not more than pkt_len */
-	if (m->data_len > m->pkt_len)
-		rte_panic("bad data_len\n");
+	if (m->data_len > m->pkt_len) {
+		*reason = "bad data_len";
+		return -1;
+	}
 
 	nb_segs = m->nb_segs;
 	pkt_len = m->pkt_len;
 
 	do {
-		if (m->data_off > m->buf_len)
-			rte_panic("data offset too big in mbuf segment\n");
-		if (m->data_off + m->data_len > m->buf_len)
-			rte_panic("data length too big in mbuf segment\n");
+		if (m->data_off > m->buf_len) {
+			*reason = "data offset too big in mbuf segment";
+			return -1;
+		}
+		if (m->data_off + m->data_len > m->buf_len) {
+			*reason = "data length too big in mbuf segment";
+			return -1;
+		}
 		nb_segs -= 1;
 		pkt_len -= m->data_len;
 	} while ((m = m->next) != NULL);
 
-	if (nb_segs)
-		rte_panic("bad nb_segs\n");
-	if (pkt_len)
-		rte_panic("bad pkt_len\n");
+	if (nb_segs) {
+		*reason = "bad nb_segs";
+		return -1;
+	}
+	if (pkt_len) {
+		*reason = "bad pkt_len";
+		return -1;
+	}
+
+	return 0;
 }
 
 /* dump a mbuf on console */
