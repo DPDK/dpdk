@@ -445,6 +445,11 @@ power_acpi_cpufreq_freqs(unsigned int lcore_id, uint32_t *freqs, uint32_t num)
 		return 0;
 	}
 
+	if (freqs == NULL) {
+		RTE_LOG(ERR, POWER, "NULL buffer supplied\n");
+		return 0;
+	}
+
 	pi = &lcore_power_info[lcore_id];
 	if (num < pi->nb_freqs) {
 		RTE_LOG(ERR, POWER, "Buffer size is not enough\n");
