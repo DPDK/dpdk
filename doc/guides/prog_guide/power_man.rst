@@ -184,7 +184,7 @@ API Overview for Empty Poll Power Management
 
 * **Update Valid Poll Counter**: update the valid poll counter.
 
-* **Set the Fequence Index**: update the power state/frequency mapping.
+* **Set the Frequency Index**: update the power state/frequency mapping.
 
 * **Detect empty poll state change**: empty poll state change detection algorithm then take action.
 
