@@ -581,7 +581,7 @@ power_pstate_cpufreq_freqs(unsigned int lcore_id, uint32_t *freqs, uint32_t num)
 
 	if (lcore_id >= RTE_MAX_LCORE) {
 		RTE_LOG(ERR, POWER, "Invalid lcore ID\n");
-		return -1;
+		return 0;
 	}
 
 	if (freqs == NULL) {
