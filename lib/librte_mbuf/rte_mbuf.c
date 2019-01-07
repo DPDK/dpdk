@@ -200,6 +200,10 @@ rte_mbuf_sanity_check(const struct rte_mbuf *m, int is_header)
 	pkt_len = m->pkt_len;
 
 	do {
+		if (m->data_off > m->buf_len)
+			rte_panic("data offset too big in mbuf segment\n");
+		if (m->data_off + m->data_len > m->buf_len)
+			rte_panic("data length too big in mbuf segment\n");
 		nb_segs -= 1;
 		pkt_len -= m->data_len;
 	} while ((m = m->next) != NULL);
