@@ -372,18 +372,22 @@ test_power_acpi_cpufreq(void)
 	int ret = -1;
 	enum power_management_env env;
 
-	ret = rte_power_set_env(PM_ENV_ACPI_CPUFREQ);
-	if (ret != 0) {
-		printf("Failed on setting environment to PM_ENV_ACPI_CPUFREQ, this "
-				"may occur if environment is not configured correctly or "
-				" operating in another valid Power management environment\n");
-		return -1;
+	/* Test initialisation of a valid lcore */
+	ret = rte_power_init(TEST_POWER_LCORE_ID);
+	if (ret < 0) {
+		printf("Cannot initialise power management for lcore %u, this "
+				"may occur if environment is not configured "
+				"correctly(APCI cpufreq) or operating in another valid "
+				"Power management environment\n",
+				TEST_POWER_LCORE_ID);
+		rte_power_unset_env();
+		return TEST_SKIPPED;
 	}
 
 	/* Test environment configuration */
 	env = rte_power_get_env();
-	if (env != PM_ENV_ACPI_CPUFREQ) {
-		printf("Unexpectedly got an environment other than ACPI cpufreq\n");
+	if ((env != PM_ENV_ACPI_CPUFREQ) && (env != PM_ENV_PSTATE_CPUFREQ)) {
+		printf("Unexpectedly got an environment other than ACPI/PSTATE\n");
 		goto fail_all;
 	}
 
@@ -422,6 +426,14 @@ test_power_acpi_cpufreq(void)
 		printf("rte_power_freq_min should not be NULL, environment has not "
 				"been initialised\n");
 		goto fail_all;
+	}
+
+	ret = rte_power_exit(TEST_POWER_LCORE_ID);
+	if (ret < 0) {
+		printf("Cannot exit power management for lcore %u\n",
+						TEST_POWER_LCORE_ID);
+		rte_power_unset_env();
+		return -1;
 	}
 
 	/* test of init power management for an invalid lcore */
@@ -532,12 +544,6 @@ test_power_acpi_caps(void)
 	struct rte_power_core_capabilities caps;
 	int ret;
 
-	ret = rte_power_set_env(PM_ENV_ACPI_CPUFREQ);
-	if (ret) {
-		printf("Error setting ACPI environment\n");
-		return -1;
-	}
-
 	ret = rte_power_init(TEST_POWER_LCORE_ID);
 	if (ret < 0) {
 		printf("Cannot initialise power management for lcore %u, this "
@@ -550,11 +556,11 @@ test_power_acpi_caps(void)
 
 	ret = rte_power_get_capabilities(TEST_POWER_LCORE_ID, &caps);
 	if (ret) {
-		printf("ACPI: Error getting capabilities\n");
+		printf("POWER: Error getting capabilities\n");
 		return -1;
 	}
 
-	printf("ACPI: Capabilities %"PRIx64"\n", caps.capabilities);
+	printf("POWER: Capabilities %"PRIx64"\n", caps.capabilities);
 
 	rte_power_unset_env();
 	return 0;
