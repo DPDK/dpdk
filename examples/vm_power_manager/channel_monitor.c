@@ -640,7 +640,10 @@ process_request(struct channel_packet *pkt, struct channel_info *chan_info)
 	if (pkt->command == CPU_POWER) {
 		unsigned int core_num;
 
-		core_num = get_pcpu(chan_info, pkt->resource_id);
+		if (pkt->core_type == CORE_TYPE_VIRTUAL)
+			core_num = get_pcpu(chan_info, pkt->resource_id);
+		else
+			core_num = pkt->resource_id;
 
 		switch (pkt->unit) {
 		case(CPU_POWER_SCALE_MIN):
