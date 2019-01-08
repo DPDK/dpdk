@@ -36,6 +36,12 @@
 #define NUM_MAX_INFLIGHT_OPS 128
 #define CACHE_SIZE 0
 
+#define ZLIB_CRC_CHECKSUM_WINDOW_BITS 31
+#define ZLIB_HEADER_SIZE 2
+#define ZLIB_TRAILER_SIZE 4
+#define GZIP_HEADER_SIZE 10
+#define GZIP_TRAILER_SIZE 8
+
 const char *
 huffman_type_strings[] = {
 	[RTE_COMP_HUFFMAN_DEFAULT]	= "PMD default",
@@ -325,6 +331,10 @@ compress_zlib(struct rte_comp_op *op,
 	 * When doing raw DEFLATE, this number will be negative.
 	 */
 	window_bits = -(xform->compress.window_size);
+	if (xform->compress.chksum == RTE_COMP_CHECKSUM_ADLER32)
+		window_bits *= -1;
+	else if (xform->compress.chksum == RTE_COMP_CHECKSUM_CRC32)
+		window_bits = ZLIB_CRC_CHECKSUM_WINDOW_BITS;
 
 	comp_level = xform->compress.level;
 
@@ -408,8 +418,19 @@ compress_zlib(struct rte_comp_op *op,
 	}
 
 	op->consumed = stream.total_in;
-	op->produced = stream.total_out;
+	if (xform->compress.chksum == RTE_COMP_CHECKSUM_ADLER32) {
+		rte_pktmbuf_adj(op->m_dst, ZLIB_HEADER_SIZE);
+		op->produced = stream.total_out -
+				(ZLIB_HEADER_SIZE + ZLIB_TRAILER_SIZE);
+	} else if (xform->compress.chksum == RTE_COMP_CHECKSUM_CRC32) {
+		rte_pktmbuf_adj(op->m_dst, GZIP_HEADER_SIZE);
+		op->produced = stream.total_out -
+				(GZIP_HEADER_SIZE + GZIP_TRAILER_SIZE);
+	} else
+		op->produced = stream.total_out;
+
 	op->status = RTE_COMP_OP_STATUS_SUCCESS;
+	op->output_chksum = stream.adler;
 
 	deflateReset(&stream);
 
@@ -443,7 +464,6 @@ decompress_zlib(struct rte_comp_op *op,
 	 * When doing raw DEFLATE, this number will be negative.
 	 */
 	window_bits = -(xform->decompress.window_size);
-
 	ret = inflateInit2(&stream, window_bits);
 
 	if (ret != Z_OK) {
@@ -659,6 +679,7 @@ test_deflate_comp_decomp(const char * const test_bufs[],
 	const struct rte_compressdev_capabilities *capa =
 		rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
 	char *contig_buf = NULL;
+	uint64_t compress_checksum[num_bufs];
 
 	/* Initialize all arrays to NULL */
 	memset(uncomp_bufs, 0, sizeof(struct rte_mbuf *) * num_bufs);
@@ -846,6 +867,7 @@ test_deflate_comp_decomp(const char * const test_bufs[],
 					&ops_processed[num_total_deqd], num_bufs);
 			num_total_deqd += num_deqd;
 			deqd_retries++;
+
 		} while (num_total_deqd < num_enqd);
 
 		deqd_retries = 0;
@@ -879,6 +901,8 @@ test_deflate_comp_decomp(const char * const test_bufs[],
 			ops_processed[i]->consumed == 0 ? 0 :
 			(float)ops_processed[i]->produced /
 			ops_processed[i]->consumed * 100);
+		if (compress_xform->chksum != RTE_COMP_CHECKSUM_NONE)
+			compress_checksum[i] = ops_processed[i]->output_chksum;
 		ops[i] = NULL;
 	}
 
@@ -1111,10 +1135,22 @@ test_deflate_comp_decomp(const char * const test_bufs[],
 
 		buf2 = rte_pktmbuf_read(ops_processed[i]->m_dst, 0,
 				ops_processed[i]->produced, contig_buf);
-
 		if (compare_buffers(buf1, strlen(buf1) + 1,
 				buf2, ops_processed[i]->produced) < 0)
 			goto exit;
+
+		/* Test checksums */
+		if (compress_xforms[0]->compress.chksum !=
+				RTE_COMP_CHECKSUM_NONE) {
+			if (ops_processed[i]->output_chksum !=
+					compress_checksum[i]) {
+				RTE_LOG(ERR, USER1, "The checksums differ\n"
+			"Compression Checksum: %" PRIu64 "\tDecompression "
+			"Checksum: %" PRIu64 "\n", compress_checksum[i],
+			ops_processed[i]->output_chksum);
+				goto exit;
+			}
+		}
 
 		rte_free(contig_buf);
 		contig_buf = NULL;
@@ -1467,6 +1503,164 @@ test_compressdev_deflate_stateless_sgl(void)
 	}
 
 	return TEST_SUCCESS;
+
+}
+
+static int
+test_compressdev_deflate_stateless_checksum(void)
+{
+	struct comp_testsuite_params *ts_params = &testsuite_params;
+	const char *test_buffer;
+	uint16_t i;
+	int ret;
+	const struct rte_compressdev_capabilities *capab;
+
+	capab = rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
+	TEST_ASSERT(capab != NULL, "Failed to retrieve device capabilities");
+
+	/* Check if driver supports any checksum */
+	if ((capab->comp_feature_flags & RTE_COMP_FF_CRC32_CHECKSUM) == 0 &&
+			(capab->comp_feature_flags &
+			RTE_COMP_FF_ADLER32_CHECKSUM) == 0 &&
+			(capab->comp_feature_flags &
+			RTE_COMP_FF_CRC32_ADLER32_CHECKSUM) == 0)
+		return -ENOTSUP;
+
+	struct rte_comp_xform *compress_xform =
+			rte_malloc(NULL, sizeof(struct rte_comp_xform), 0);
+	if (compress_xform == NULL) {
+		RTE_LOG(ERR, USER1, "Compress xform could not be created\n");
+		ret = TEST_FAILED;
+		return ret;
+	}
+
+	memcpy(compress_xform, ts_params->def_comp_xform,
+			sizeof(struct rte_comp_xform));
+
+	struct rte_comp_xform *decompress_xform =
+			rte_malloc(NULL, sizeof(struct rte_comp_xform), 0);
+	if (decompress_xform == NULL) {
+		RTE_LOG(ERR, USER1, "Decompress xform could not be created\n");
+		rte_free(compress_xform);
+		ret = TEST_FAILED;
+		return ret;
+	}
+
+	memcpy(decompress_xform, ts_params->def_decomp_xform,
+			sizeof(struct rte_comp_xform));
+
+	/* Check if driver supports crc32 checksum and test */
+	if ((capab->comp_feature_flags & RTE_COMP_FF_CRC32_CHECKSUM)) {
+		compress_xform->compress.chksum = RTE_COMP_CHECKSUM_CRC32;
+		decompress_xform->decompress.chksum = RTE_COMP_CHECKSUM_CRC32;
+
+		for (i = 0; i < RTE_DIM(compress_test_bufs); i++) {
+			test_buffer = compress_test_bufs[i];
+
+			/* Generate zlib checksum and test against selected
+			 * drivers decompression checksum
+			 */
+			if (test_deflate_comp_decomp(&test_buffer, 1,
+					&i,
+					&compress_xform,
+					&decompress_xform,
+					1,
+					RTE_COMP_OP_STATELESS,
+					0,
+					ZLIB_COMPRESS) < 0) {
+				ret = TEST_FAILED;
+				goto exit;
+			}
+
+			/* Generate compression and decompression
+			 * checksum of selected driver
+			 */
+			if (test_deflate_comp_decomp(&test_buffer, 1,
+					&i,
+					&compress_xform,
+					&decompress_xform,
+					1,
+					RTE_COMP_OP_STATELESS,
+					0,
+					ZLIB_NONE) < 0) {
+				ret = TEST_FAILED;
+				goto exit;
+			}
+		}
+	}
+
+	/* Check if driver supports adler32 checksum and test */
+	if ((capab->comp_feature_flags & RTE_COMP_FF_ADLER32_CHECKSUM)) {
+		compress_xform->compress.chksum = RTE_COMP_CHECKSUM_ADLER32;
+		decompress_xform->decompress.chksum = RTE_COMP_CHECKSUM_ADLER32;
+
+		for (i = 0; i < RTE_DIM(compress_test_bufs); i++) {
+			test_buffer = compress_test_bufs[i];
+
+			/* Generate zlib checksum and test against selected
+			 * drivers decompression checksum
+			 */
+			if (test_deflate_comp_decomp(&test_buffer, 1,
+					&i,
+					&compress_xform,
+					&decompress_xform,
+					1,
+					RTE_COMP_OP_STATELESS,
+					0,
+					ZLIB_COMPRESS) < 0) {
+				ret = TEST_FAILED;
+				goto exit;
+			}
+			/* Generate compression and decompression
+			 * checksum of selected driver
+			 */
+			if (test_deflate_comp_decomp(&test_buffer, 1,
+					&i,
+					&compress_xform,
+					&decompress_xform,
+					1,
+					RTE_COMP_OP_STATELESS,
+					0,
+					ZLIB_NONE) < 0) {
+				ret = TEST_FAILED;
+				goto exit;
+			}
+		}
+	}
+
+	/* Check if driver supports combined crc and adler checksum and test */
+	if ((capab->comp_feature_flags & RTE_COMP_FF_CRC32_ADLER32_CHECKSUM)) {
+		compress_xform->compress.chksum =
+				RTE_COMP_CHECKSUM_CRC32_ADLER32;
+		decompress_xform->decompress.chksum =
+				RTE_COMP_CHECKSUM_CRC32_ADLER32;
+
+		for (i = 0; i < RTE_DIM(compress_test_bufs); i++) {
+			test_buffer = compress_test_bufs[i];
+
+			/* Generate compression and decompression
+			 * checksum of selected driver
+			 */
+			if (test_deflate_comp_decomp(&test_buffer, 1,
+					&i,
+					&compress_xform,
+					&decompress_xform,
+					1,
+					RTE_COMP_OP_STATELESS,
+					0,
+					ZLIB_NONE) < 0) {
+				ret = TEST_FAILED;
+				goto exit;
+			}
+		}
+	}
+
+	ret = TEST_SUCCESS;
+
+exit:
+	rte_free(compress_xform);
+	rte_free(decompress_xform);
+	return ret;
 }
 
 static struct unit_test_suite compressdev_testsuite  = {
@@ -1488,6 +1682,8 @@ static struct unit_test_suite compressdev_testsuite  = {
 			test_compressdev_deflate_stateless_multi_xform),
 		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
 			test_compressdev_deflate_stateless_sgl),
+		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
+			test_compressdev_deflate_stateless_checksum),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
