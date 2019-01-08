@@ -621,13 +621,13 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 	int mmap_flags;
 
 	if (internal_config.in_memory && !memfd_create_supported) {
-		int pagesz_flag, flags;
+		const int in_memory_flags = MAP_HUGETLB | MAP_FIXED |
+				MAP_PRIVATE | MAP_ANONYMOUS;
+		int pagesz_flag;
 
 		pagesz_flag = pagesz_flags(alloc_sz);
-		flags = pagesz_flag | MAP_HUGETLB | MAP_FIXED |
-				MAP_PRIVATE | MAP_ANONYMOUS;
 		fd = -1;
-		mmap_flags = flags;
+		mmap_flags = in_memory_flags | pagesz_flag;
 
 		/* single-file segments codepath will never be active
 		 * here because in-memory mode is incompatible with the
