@@ -176,7 +176,7 @@ prepare_numa(int *oldpolicy, struct bitmask *oldmask, int socket_id)
 		RTE_LOG(ERR, EAL,
 			"Failed to get current mempolicy: %s. "
 			"Assuming MPOL_DEFAULT.\n", strerror(errno));
-		oldpolicy = MPOL_DEFAULT;
+		*oldpolicy = MPOL_DEFAULT;
 	}
 	RTE_LOG(DEBUG, EAL,
 		"Setting policy MPOL_PREFERRED for socket %d\n",
