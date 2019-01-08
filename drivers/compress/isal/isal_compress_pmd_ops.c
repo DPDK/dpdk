@@ -17,7 +17,9 @@ static const struct rte_compressdev_capabilities isal_pmd_capabilities[] = {
 					RTE_COMP_FF_OOP_LB_IN_SGL_OUT |
 					RTE_COMP_FF_SHAREABLE_PRIV_XFORM |
 					RTE_COMP_FF_HUFFMAN_FIXED |
-					RTE_COMP_FF_HUFFMAN_DYNAMIC,
+					RTE_COMP_FF_HUFFMAN_DYNAMIC |
+					RTE_COMP_FF_CRC32_CHECKSUM |
+					RTE_COMP_FF_ADLER32_CHECKSUM,
 		.window_size = {
 			.min = 15,
 			.max = 15,

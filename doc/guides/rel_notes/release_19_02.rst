@@ -100,6 +100,11 @@ New Features
   devices to track dirty pages caused by DMA. IFC driver has enabled this
   SW-assisted live migration mode.
 
+* **Enabled checksum support in the ISA-L compressdev driver.**
+
+  Added support for both adler and crc32 checksums in the ISA-L PMD.
+  This aids data integrity across both compression and decompression.
+
 * **Added a compression performance test tool.**
 
   Added a new performance test tool to test the compressdev PMD. The tool tests

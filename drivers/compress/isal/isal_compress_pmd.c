@@ -16,6 +16,8 @@
 #define RTE_COMP_ISAL_LEVEL_ONE 1
 #define RTE_COMP_ISAL_LEVEL_TWO 2
 #define RTE_COMP_ISAL_LEVEL_THREE 3 /* Optimised for AVX512 & AVX2 only */
+#define CHKSUM_SZ_CRC 8
+#define CHKSUM_SZ_ADLER 4
 
 int isal_logtype_driver;
 
@@ -43,12 +45,6 @@ isal_comp_set_priv_xform_parameters(struct isal_priv_xform *priv_xform,
 		}
 		priv_xform->compress.algo = RTE_COMP_ALGO_DEFLATE;
 
-		/* Set private xform checksum - raw deflate by default */
-		if (xform->compress.chksum != RTE_COMP_CHECKSUM_NONE) {
-			ISAL_PMD_LOG(ERR, "Checksum not supported\n");
-			return -ENOTSUP;
-		}
-
 		/* Set private xform window size, 32K supported */
 		if (xform->compress.window_size == RTE_COMP_ISAL_WINDOW_SIZE)
 			priv_xform->compress.window_size =
@@ -75,6 +71,28 @@ isal_comp_set_priv_xform_parameters(struct isal_priv_xform *priv_xform,
 		default:
 			ISAL_PMD_LOG(ERR, "Huffman code not supported\n");
 			return -ENOTSUP;
+		}
+
+		/* Set private xform checksum */
+		switch (xform->compress.chksum) {
+		/* Raw deflate by default */
+		case(RTE_COMP_CHECKSUM_NONE):
+			priv_xform->compress.chksum = IGZIP_DEFLATE;
+			break;
+		case(RTE_COMP_CHECKSUM_CRC32):
+			priv_xform->compress.chksum = IGZIP_GZIP_NO_HDR;
+			break;
+		case(RTE_COMP_CHECKSUM_ADLER32):
+			priv_xform->compress.chksum = IGZIP_ZLIB_NO_HDR;
+			break;
+		case(RTE_COMP_CHECKSUM_CRC32_ADLER32):
+			ISAL_PMD_LOG(ERR, "Combined CRC and ADLER checksum not"
+					" supported\n");
+			return -ENOTSUP;
+		default:
+			ISAL_PMD_LOG(ERR, "Checksum type not supported\n");
+			priv_xform->compress.chksum = IGZIP_DEFLATE;
+			break;
 		}
 
 		/* Set private xform level.
@@ -170,10 +188,26 @@ isal_comp_set_priv_xform_parameters(struct isal_priv_xform *priv_xform,
 		}
 		priv_xform->decompress.algo = RTE_COMP_ALGO_DEFLATE;
 
-		/* Set private xform checksum - raw deflate by default */
-		if (xform->compress.chksum != RTE_COMP_CHECKSUM_NONE) {
-			ISAL_PMD_LOG(ERR, "Checksum not supported\n");
+		/* Set private xform checksum */
+		switch (xform->decompress.chksum) {
+		/* Raw deflate by default */
+		case(RTE_COMP_CHECKSUM_NONE):
+			priv_xform->decompress.chksum = ISAL_DEFLATE;
+			break;
+		case(RTE_COMP_CHECKSUM_CRC32):
+			priv_xform->decompress.chksum = ISAL_GZIP_NO_HDR_VER;
+			break;
+		case(RTE_COMP_CHECKSUM_ADLER32):
+			priv_xform->decompress.chksum = ISAL_ZLIB_NO_HDR_VER;
+			break;
+		case(RTE_COMP_CHECKSUM_CRC32_ADLER32):
+			ISAL_PMD_LOG(ERR, "Combined CRC and ADLER checksum not"
+					" supported\n");
 			return -ENOTSUP;
+		default:
+			ISAL_PMD_LOG(ERR, "Checksum type not supported\n");
+			priv_xform->decompress.chksum = ISAL_DEFLATE;
+			break;
 		}
 
 		/* Set private xform window size, 32K supported */
@@ -376,6 +410,9 @@ process_isal_deflate(struct rte_comp_op *op, struct isal_comp_qp *qp,
 
 	qp->stream->level_buf = temp_level_buf;
 
+	/* Set Checksum flag */
+	qp->stream->gzip_flag = priv_xform->compress.chksum;
+
 	/* Stateless operation, input will be consumed in one go */
 	qp->stream->flush = NO_FLUSH;
 
@@ -459,8 +496,18 @@ process_isal_deflate(struct rte_comp_op *op, struct isal_comp_qp *qp,
 			return ret;
 		}
 	}
+
 	op->consumed = qp->stream->total_in;
-	op->produced = qp->stream->total_out;
+	if (qp->stream->gzip_flag == IGZIP_DEFLATE) {
+		op->produced = qp->stream->total_out;
+	} else if (qp->stream->gzip_flag == IGZIP_ZLIB_NO_HDR) {
+		op->produced = qp->stream->total_out - CHKSUM_SZ_ADLER;
+		op->output_chksum = qp->stream->internal_state.crc + 1;
+	} else {
+		op->produced = qp->stream->total_out - CHKSUM_SZ_CRC;
+		op->output_chksum = qp->stream->internal_state.crc;
+	}
+
 	isal_deflate_reset(qp->stream);
 
 	return ret;
@@ -468,7 +515,8 @@ process_isal_deflate(struct rte_comp_op *op, struct isal_comp_qp *qp,
 
 /* Stateless Decompression Function */
 static int
-process_isal_inflate(struct rte_comp_op *op, struct isal_comp_qp *qp)
+process_isal_inflate(struct rte_comp_op *op, struct isal_comp_qp *qp,
+		struct isal_priv_xform *priv_xform)
 {
 	int ret = 0;
 
@@ -476,6 +524,9 @@ process_isal_inflate(struct rte_comp_op *op, struct isal_comp_qp *qp)
 
 	/* Initialize decompression state */
 	isal_inflate_init(qp->state);
+
+	/* Set Checksum flag */
+	qp->state->crc_flag = priv_xform->decompress.chksum;
 
 	if (op->m_src->pkt_len < (op->src.length + op->src.offset)) {
 		ISAL_PMD_LOG(ERR, "Input mbuf(s) not big enough.\n");
@@ -531,13 +582,16 @@ process_isal_inflate(struct rte_comp_op *op, struct isal_comp_qp *qp)
 			return -1;
 		}
 
-		if (ret != ISAL_DECOMP_OK) {
+		if (ret != ISAL_DECOMP_OK && ret != ISAL_END_INPUT) {
+			ISAL_PMD_LOG(ERR, "Decompression operation failed\n");
 			op->status = RTE_COMP_OP_STATUS_ERROR;
 			return ret;
 		}
 		op->consumed = op->src.length - qp->state->avail_in;
 	}
-		op->produced = qp->state->total_out;
+	op->produced = qp->state->total_out;
+	op->output_chksum = qp->state->crc;
+
 	isal_inflate_reset(qp->state);
 
 	return ret;
@@ -553,7 +607,7 @@ process_op(struct isal_comp_qp *qp, struct rte_comp_op *op,
 		process_isal_deflate(op, qp, priv_xform);
 		break;
 	case RTE_COMP_DECOMPRESS:
-		process_isal_inflate(op, qp);
+		process_isal_inflate(op, qp, priv_xform);
 		break;
 	default:
 		ISAL_PMD_LOG(ERR, "Operation Not Supported\n");
