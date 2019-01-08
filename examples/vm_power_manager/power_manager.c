@@ -83,7 +83,7 @@ power_manager_init(void)
 	struct core_info *ci;
 	unsigned int max_core_num;
 
-	rte_power_set_env(PM_ENV_ACPI_CPUFREQ);
+	rte_power_set_env(PM_ENV_NOT_SET);
 
 	ci = get_core_info();
 	if (!ci) {
