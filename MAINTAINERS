@@ -1120,6 +1120,8 @@ F: examples/server_node_efd/
 F: doc/guides/sample_app_ug/server_node_efd.rst
 
 Hashes
+M: Yipeng Wang <yipeng1.wang@intel.com>
+M: Sameh Gobriel <sameh.gobriel@intel.com>
 M: Bruce Richardson <bruce.richardson@intel.com>
 M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: lib/librte_hash/
