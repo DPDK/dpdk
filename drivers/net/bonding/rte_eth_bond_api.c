@@ -19,7 +19,10 @@ int
 check_for_bonded_ethdev(const struct rte_eth_dev *eth_dev)
 {
 	/* Check valid pointer */
-	if (eth_dev->device->driver->name == NULL)
+	if (eth_dev == NULL ||
+		eth_dev->device == NULL ||
+		eth_dev->device->driver == NULL ||
+		eth_dev->device->driver->name == NULL)
 		return -1;
 
 	/* return 0 if driver name matches */
