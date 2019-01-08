@@ -166,6 +166,10 @@ power_set_governor_userspace(struct rte_power_info *pi)
 	val = fputs(POWER_GOVERNOR_USERSPACE, f);
 	FOPS_OR_ERR_GOTO(val, out);
 
+	/* We need to flush to see if the fputs succeeds */
+	val = fflush(f);
+	FOPS_OR_ERR_GOTO(val, out);
+
 	ret = 0;
 	RTE_LOG(INFO, POWER, "Power management governor of lcore %u has been "
 			"set to user space successfully\n", pi->lcore_id);
