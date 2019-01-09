@@ -926,7 +926,8 @@ siena_tx_qcreate(
 	EFX_STATIC_ASSERT(ISP2(EFX_TXQ_MINNDESCS));
 
 	if (!ISP2(ndescs) ||
-	    (ndescs < EFX_TXQ_MINNDESCS) || (ndescs > EFX_EVQ_MAXNEVS)) {
+	    (ndescs < EFX_TXQ_MINNDESCS) ||
+	    (ndescs > encp->enc_txq_max_ndescs)) {
 		rc = EINVAL;
 		goto fail1;
 	}
