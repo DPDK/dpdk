@@ -7,6 +7,13 @@
  * for Solarflare) and Solarflare Communications, Inc.
  */
 
+#ifndef _SFC_TSO_H
+#define _SFC_TSO_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Standard TSO header length */
 #define SFC_TSOH_STD_LEN	256
 
@@ -21,3 +28,9 @@
 
 unsigned int sfc_tso_prepare_header(uint8_t *tsoh, size_t header_len,
 				    struct rte_mbuf **in_seg, size_t *in_off);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif  /* _SFC_TSO_H */
