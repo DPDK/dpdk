@@ -210,6 +210,11 @@ These options can be modified in the ``.config`` file.
 
   This option has no performance impact.
 
+- ``CONFIG_RTE_IBVERBS_LINK_STATIC`` (default **n**)
+
+  Embed static flavour of the dependencies **libibverbs** and **libmlx5**
+  in the PMD shared library or the executable static binary.
+
 - ``CONFIG_RTE_LIBRTE_MLX5_DEBUG`` (default **n**)
 
   Toggle debugging code and stricter compilation flags. Enabling this option
@@ -577,8 +582,21 @@ RMDA Core with Linux Kernel
   - rdma-core version 18.0 or above built with 32bit support.
   - Kernel version 4.14.41 or above.
 
+- Starting with rdma-core v21, static libraries can be built::
+
+    cd build
+    CFLAGS=-fPIC cmake -DIN_PLACE=1 -DENABLE_STATIC=1 -GNinja ..
+    ninja
+
 .. _`Linux installation documentation`: https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/plain/Documentation/admin-guide/README.rst
 .. _`RDMA Core installation documentation`: https://raw.githubusercontent.com/linux-rdma/rdma-core/master/README.md
+
+If rdma-core libraries are built but not installed, DPDK makefile can link them,
+thanks to these environment variables:
+
+   - ``EXTRA_CFLAGS=-I/path/to/rdma-core/build/include``
+   - ``EXTRA_LDFLAGS=-L/path/to/rdma-core/build/lib``
+   - ``PKG_CONFIG_PATH=/path/to/rdma-core/build/lib/pkgconfig``
 
 Mellanox OFED
 ^^^^^^^^^^^^^

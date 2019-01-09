@@ -58,6 +58,8 @@ CFLAGS += -DMLX5_GLUE='"$(LIB_GLUE)"'
 CFLAGS += -DMLX5_GLUE_VERSION='"$(LIB_GLUE_VERSION)"'
 CFLAGS_mlx5_glue.o += -fPIC
 LDLIBS += -ldl
+else ifeq ($(CONFIG_RTE_IBVERBS_LINK_STATIC),y)
+LDLIBS += $(shell $(RTE_SDK)/buildtools/options-ibverbs-static.sh)
 else
 LDLIBS += -libverbs -lmlx5
 endif
