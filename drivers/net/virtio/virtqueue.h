@@ -437,14 +437,13 @@ virtqueue_kick_prepare_packed(struct virtqueue *vq)
 	return flags != RING_EVENT_FLAGS_DISABLE;
 }
 
+/*
+ * virtqueue_kick_prepare*() or the virtio_wmb() should be called
+ * before this function to be sure that all the data is visible to vhost.
+ */
 static inline void
 virtqueue_notify(struct virtqueue *vq)
 {
-	/*
-	 * Ensure updated avail->idx is visible to host.
-	 * For virtio on IA, the notificaiton is through io port operation
-	 * which is a serialization instruction itself.
-	 */
 	VTPCI_OPS(vq->hw)->notify_queue(vq->hw, vq);
 }
 
