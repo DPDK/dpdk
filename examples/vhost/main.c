@@ -55,9 +55,6 @@
 
 #define INVALID_PORT_ID 0xFF
 
-/* Max number of devices. Limited by vmdq. */
-#define MAX_DEVICES 64
-
 /* Maximum long option length for option parsing. */
 #define MAX_LONG_OPT_SZ 64
 
@@ -215,21 +212,6 @@ get_eth_conf(struct rte_eth_conf *eth_conf, uint32_t num_devices)
 }
 
 /*
- * Validate the device number according to the max pool number gotten form
- * dev_info. If the device number is invalid, give the error message and
- * return -1. Each device must have its own pool.
- */
-static inline int
-validate_num_devices(uint32_t max_nb_devices)
-{
-	if (num_devices > max_nb_devices) {
-		RTE_LOG(ERR, VHOST_PORT, "invalid number of devices\n");
-		return -1;
-	}
-	return 0;
-}
-
-/*
  * Initialises a given port using global settings and with the rx buffers
  * coming from the mbuf_pool passed as parameter
  */
@@ -269,10 +251,6 @@ port_init(uint16_t port)
 		tx_ring_size = 64;
 
 	tx_rings = (uint16_t)rte_lcore_count();
-
-	retval = validate_num_devices(MAX_DEVICES);
-	if (retval < 0)
-		return retval;
 
 	/* Get port configuration. */
 	retval = get_eth_conf(&port_conf, num_devices);
