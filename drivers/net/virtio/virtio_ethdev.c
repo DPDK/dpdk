@@ -1613,6 +1613,8 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 	if (virtio_negotiate_features(hw, req_features) < 0)
 		return -1;
 
+	hw->weak_barriers = !vtpci_with_feature(hw, VIRTIO_F_ORDER_PLATFORM);
+
 	if (!hw->virtio_user_dev) {
 		pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 		rte_eth_copy_pci_info(eth_dev, pci_dev);

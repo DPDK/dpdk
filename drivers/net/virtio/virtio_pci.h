@@ -129,6 +129,12 @@ struct virtnet_ctl;
  */
 #define VIRTIO_F_IN_ORDER 35
 
+/*
+ * This feature indicates that memory accesses by the driver and the device
+ * are ordered in a way described by the platform.
+ */
+#define VIRTIO_F_ORDER_PLATFORM 36
+
 /* The Guest publishes the used index for which it expects an interrupt
  * at the end of the avail ring. Host should ignore the avail->flags field. */
 /* The Host publishes the avail index for which it expects a kick
@@ -241,6 +247,7 @@ struct virtio_hw {
 	uint8_t     use_simple_rx;
 	uint8_t     use_inorder_rx;
 	uint8_t     use_inorder_tx;
+	uint8_t     weak_barriers;
 	bool        has_tx_offload;
 	bool        has_rx_offload;
 	uint16_t    port_id;

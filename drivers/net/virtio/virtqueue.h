@@ -19,15 +19,40 @@
 struct rte_mbuf;
 
 /*
- * Per virtio_config.h in Linux.
+ * Per virtio_ring.h in Linux.
  *     For virtio_pci on SMP, we don't need to order with respect to MMIO
  *     accesses through relaxed memory I/O windows, so smp_mb() et al are
  *     sufficient.
  *
+ *     For using virtio to talk to real devices (eg. vDPA) we do need real
+ *     barriers.
  */
-#define virtio_mb()	rte_smp_mb()
-#define virtio_rmb()	rte_smp_rmb()
-#define virtio_wmb()	rte_smp_wmb()
+static inline void
+virtio_mb(uint8_t weak_barriers)
+{
+	if (weak_barriers)
+		rte_smp_mb();
+	else
+		rte_mb();
+}
+
+static inline void
+virtio_rmb(uint8_t weak_barriers)
+{
+	if (weak_barriers)
+		rte_smp_rmb();
+	else
+		rte_cio_rmb();
+}
+
+static inline void
+virtio_wmb(uint8_t weak_barriers)
+{
+	if (weak_barriers)
+		rte_smp_wmb();
+	else
+		rte_cio_wmb();
+}
 
 #ifdef RTE_PMD_PACKET_PREFETCH
 #define rte_packet_prefetch(p)  rte_prefetch1(p)
@@ -325,7 +350,7 @@ virtqueue_enable_intr_packed(struct virtqueue *vq)
 
 
 	if (vq->event_flags_shadow == RING_EVENT_FLAGS_DISABLE) {
-		virtio_wmb();
+		virtio_wmb(vq->hw->weak_barriers);
 		vq->event_flags_shadow = RING_EVENT_FLAGS_ENABLE;
 		*event_flags = vq->event_flags_shadow;
 	}
@@ -391,7 +416,7 @@ void vq_ring_free_inorder(struct virtqueue *vq, uint16_t desc_idx,
 static inline void
 vq_update_avail_idx(struct virtqueue *vq)
 {
-	virtio_wmb();
+	virtio_wmb(vq->hw->weak_barriers);
 	vq->vq_ring.avail->idx = vq->vq_avail_idx;
 }
 
@@ -419,7 +444,7 @@ virtqueue_kick_prepare(struct virtqueue *vq)
 	 * Ensure updated avail->idx is visible to vhost before reading
 	 * the used->flags.
 	 */
-	virtio_mb();
+	virtio_mb(vq->hw->weak_barriers);
 	return !(vq->vq_ring.used->flags & VRING_USED_F_NO_NOTIFY);
 }
 
@@ -431,7 +456,7 @@ virtqueue_kick_prepare_packed(struct virtqueue *vq)
 	/*
 	 * Ensure updated data is visible to vhost before reading the flags.
 	 */
-	virtio_mb();
+	virtio_mb(vq->hw->weak_barriers);
 	flags = vq->ring_packed.device_event->desc_event_flags;
 
 	return flags != RING_EVENT_FLAGS_DISABLE;
