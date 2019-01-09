@@ -108,7 +108,7 @@ build_proto_compound_fd(dpaa2_sec_session *sess,
 	/* Configure FD as a FRAME LIST */
 	DPAA2_SET_FD_ADDR(fd, DPAA2_VADDR_TO_IOVA(op_fle));
 	DPAA2_SET_FD_COMPOUND_FMT(fd);
-	DPAA2_SET_FD_FLC(fd, (ptrdiff_t)flc);
+	DPAA2_SET_FD_FLC(fd, DPAA2_VADDR_TO_IOVA(flc));
 
 	/* Configure Output FLE with dst mbuf data  */
 	DPAA2_SET_FLE_ADDR(op_fle, DPAA2_MBUF_VADDR_TO_IOVA(dst_mbuf));
@@ -160,7 +160,7 @@ build_proto_fd(dpaa2_sec_session *sess,
 	DPAA2_SET_FD_ADDR(fd, DPAA2_MBUF_VADDR_TO_IOVA(sym_op->m_src));
 	DPAA2_SET_FD_OFFSET(fd, sym_op->m_src->data_off);
 	DPAA2_SET_FD_LEN(fd, sym_op->m_src->pkt_len);
-	DPAA2_SET_FD_FLC(fd, (ptrdiff_t)flc);
+	DPAA2_SET_FD_FLC(fd, DPAA2_VADDR_TO_IOVA(flc));
 
 	/* save physical address of mbuf */
 	op->sym->aead.digest.phys_addr = mbuf->buf_iova;
