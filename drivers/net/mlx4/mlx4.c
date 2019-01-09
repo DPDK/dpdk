@@ -838,7 +838,7 @@ static struct rte_pci_driver mlx4_driver = {
 		     RTE_PCI_DRV_INTR_RMV,
 };
 
-#ifdef RTE_LIBRTE_MLX4_DLOPEN_DEPS
+#ifdef RTE_IBVERBS_LINK_DLOPEN
 
 /**
  * Suffix RTE_EAL_PMD_PATH with "-glue".
@@ -986,7 +986,7 @@ RTE_INIT(rte_mlx4_pmd_init)
 	 * using this PMD, which is not supported in forked processes.
 	 */
 	setenv("RDMAV_HUGEPAGES_SAFE", "1", 1);
-#ifdef RTE_LIBRTE_MLX4_DLOPEN_DEPS
+#ifdef RTE_IBVERBS_LINK_DLOPEN
 	if (mlx4_glue_init())
 		return;
 	assert(mlx4_glue);

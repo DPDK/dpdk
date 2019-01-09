@@ -1615,7 +1615,7 @@ static struct rte_pci_driver mlx5_driver = {
 		      RTE_PCI_DRV_PROBE_AGAIN),
 };
 
-#ifdef RTE_LIBRTE_MLX5_DLOPEN_DEPS
+#ifdef RTE_IBVERBS_LINK_DLOPEN
 
 /**
  * Suffix RTE_EAL_PMD_PATH with "-glue".
@@ -1776,7 +1776,7 @@ RTE_INIT(rte_mlx5_pmd_init)
 	 * cleanup all the Verbs resources even when the device was removed.
 	 */
 	setenv("MLX5_DEVICE_FATAL_CLEANUP", "1", 1);
-#ifdef RTE_LIBRTE_MLX5_DLOPEN_DEPS
+#ifdef RTE_IBVERBS_LINK_DLOPEN
 	if (mlx5_glue_init())
 		return;
 	assert(mlx5_glue);

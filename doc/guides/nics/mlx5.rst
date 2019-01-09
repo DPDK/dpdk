@@ -191,7 +191,7 @@ These options can be modified in the ``.config`` file.
 
   Toggle compilation of librte_pmd_mlx5 itself.
 
-- ``CONFIG_RTE_LIBRTE_MLX5_DLOPEN_DEPS`` (default **n**)
+- ``CONFIG_RTE_IBVERBS_LINK_DLOPEN`` (default **n**)
 
   Build PMD with additional code to make it loadable without hard
   dependencies on **libibverbs** nor **libmlx5**, which may not be installed
@@ -224,7 +224,7 @@ Environment variables
   A list of directories in which to search for the rdma-core "glue" plug-in,
   separated by colons or semi-colons.
 
-  Only matters when compiled with ``CONFIG_RTE_LIBRTE_MLX5_DLOPEN_DEPS``
+  Only matters when compiled with ``CONFIG_RTE_IBVERBS_LINK_DLOPEN``
   enabled and most useful when ``CONFIG_RTE_EAL_PMD_PATH`` is also set,
   since ``LD_LIBRARY_PATH`` has no effect in this case.
 

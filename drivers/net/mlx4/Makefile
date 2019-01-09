@@ -14,7 +14,7 @@ LIB_GLUE_VERSION = 18.02.0
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4_flow.c
-ifneq ($(CONFIG_RTE_LIBRTE_MLX4_DLOPEN_DEPS),y)
+ifneq ($(CONFIG_RTE_IBVERBS_LINK_DLOPEN),y)
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4_glue.c
 endif
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4_intr.c
@@ -24,7 +24,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4_rxtx.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4_txq.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4_utils.c
 
-ifeq ($(CONFIG_RTE_LIBRTE_MLX4_DLOPEN_DEPS),y)
+ifeq ($(CONFIG_RTE_IBVERBS_LINK_DLOPEN),y)
 INSTALL-$(CONFIG_RTE_LIBRTE_MLX4_PMD)-lib += $(LIB_GLUE)
 endif
 
@@ -38,7 +38,7 @@ CFLAGS += -D_DEFAULT_SOURCE
 CFLAGS += -D_XOPEN_SOURCE=600
 CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -DALLOW_EXPERIMENTAL_API
-ifeq ($(CONFIG_RTE_LIBRTE_MLX4_DLOPEN_DEPS),y)
+ifeq ($(CONFIG_RTE_IBVERBS_LINK_DLOPEN),y)
 CFLAGS += -DMLX4_GLUE='"$(LIB_GLUE)"'
 CFLAGS += -DMLX4_GLUE_VERSION='"$(LIB_GLUE_VERSION)"'
 CFLAGS_mlx4_glue.o += -fPIC
@@ -103,7 +103,7 @@ $(SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD):.c=.o): mlx4_autoconf.h
 # Generate dependency plug-in for rdma-core when the PMD must not be linked
 # directly, so that applications do not inherit this dependency.
 
-ifeq ($(CONFIG_RTE_LIBRTE_MLX4_DLOPEN_DEPS),y)
+ifeq ($(CONFIG_RTE_IBVERBS_LINK_DLOPEN),y)
 
 $(LIB): $(LIB_GLUE)
 

@@ -2,12 +2,12 @@
 # Copyright 2018 6WIND S.A.
 # Copyright 2018 Mellanox Technologies, Ltd
 
-pmd_dlopen = get_option('enable_driver_mlx_glue')
+pmd_dlopen = (get_option('ibverbs_link') == 'dlopen')
 LIB_GLUE_BASE = 'librte_pmd_mlx4_glue.so'
 LIB_GLUE_VERSION = '18.02.0'
 LIB_GLUE = LIB_GLUE_BASE + '.' + LIB_GLUE_VERSION
 if pmd_dlopen
-	dpdk_conf.set('RTE_LIBRTE_MLX4_DLOPEN_DEPS', 1)
+	dpdk_conf.set('RTE_IBVERBS_LINK_DLOPEN', 1)
 	cflags += [
 		'-DMLX4_GLUE="@0@"'.format(LIB_GLUE),
 		'-DMLX4_GLUE_VERSION="@0@"'.format(LIB_GLUE_VERSION),

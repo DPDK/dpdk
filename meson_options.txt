@@ -2,8 +2,8 @@ option('allow_invalid_socket_id', type: 'boolean', value: false,
 	description: 'allow out-of-range NUMA socket id\'s for platforms that don\'t report the value correctly')
 option('drivers_install_subdir', type: 'string', value: 'dpdk/pmds-<VERSION>',
 	description: 'Subdirectory of libdir where to install PMDs. Defaults to using a versioned subdirectory.')
-option('enable_driver_mlx_glue', type: 'boolean', value: false,
-	description: 'Enable glue library for Mellanox PMDs')
+option('ibverbs_link', type: 'combo', choices : ['shared', 'dlopen'], value: 'shared',
+	description: 'Linkage method (shared/dlopen) for Mellanox PMDs with ibverbs dependencies.')
 option('enable_kmods', type: 'boolean', value: true,
 	description: 'build kernel modules')
 option('enable_docs', type: 'boolean', value: false,

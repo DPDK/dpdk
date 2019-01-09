@@ -12,7 +12,7 @@ LIB_GLUE_VERSION = 19.02.0
 
 # Sources.
 SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5.c
-ifneq ($(CONFIG_RTE_LIBRTE_MLX5_DLOPEN_DEPS),y)
+ifneq ($(CONFIG_RTE_IBVERBS_LINK_DLOPEN),y)
 SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_glue.c
 endif
 SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_rxq.c
@@ -38,7 +38,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_socket.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_nl.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_devx_cmds.c
 
-ifeq ($(CONFIG_RTE_LIBRTE_MLX5_DLOPEN_DEPS),y)
+ifeq ($(CONFIG_RTE_IBVERBS_LINK_DLOPEN),y)
 INSTALL-$(CONFIG_RTE_LIBRTE_MLX5_PMD)-lib += $(LIB_GLUE)
 endif
 
@@ -53,7 +53,7 @@ CFLAGS += -D_XOPEN_SOURCE=600
 CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -Wno-strict-prototypes
 CFLAGS += $(shell command -v pkg-config > /dev/null 2>&1 && pkg-config --cflags libmnl)
-ifeq ($(CONFIG_RTE_LIBRTE_MLX5_DLOPEN_DEPS),y)
+ifeq ($(CONFIG_RTE_IBVERBS_LINK_DLOPEN),y)
 CFLAGS += -DMLX5_GLUE='"$(LIB_GLUE)"'
 CFLAGS += -DMLX5_GLUE_VERSION='"$(LIB_GLUE_VERSION)"'
 CFLAGS_mlx5_glue.o += -fPIC
@@ -536,7 +536,7 @@ $(SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD):.c=.o): mlx5_autoconf.h
 # Generate dependency plug-in for rdma-core when the PMD must not be linked
 # directly, so that applications do not inherit this dependency.
 
-ifeq ($(CONFIG_RTE_LIBRTE_MLX5_DLOPEN_DEPS),y)
+ifeq ($(CONFIG_RTE_IBVERBS_LINK_DLOPEN),y)
 
 $(LIB): $(LIB_GLUE)
 

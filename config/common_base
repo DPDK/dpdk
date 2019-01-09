@@ -320,7 +320,6 @@ CONFIG_RTE_LIBRTE_AVF_16BYTE_RX_DESC=n
 #
 CONFIG_RTE_LIBRTE_MLX4_PMD=n
 CONFIG_RTE_LIBRTE_MLX4_DEBUG=n
-CONFIG_RTE_LIBRTE_MLX4_DLOPEN_DEPS=n
 
 #
 # Compile burst-oriented Mellanox ConnectX-4, ConnectX-5,
@@ -328,7 +327,11 @@ CONFIG_RTE_LIBRTE_MLX4_DLOPEN_DEPS=n
 #
 CONFIG_RTE_LIBRTE_MLX5_PMD=n
 CONFIG_RTE_LIBRTE_MLX5_DEBUG=n
-CONFIG_RTE_LIBRTE_MLX5_DLOPEN_DEPS=n
+
+# Linking method for mlx4/5 dependency on ibverbs and related libraries
+# Default linking is dynamic by linker.
+# Other option is dynamic by dlopen at run-time.
+CONFIG_RTE_IBVERBS_LINK_DLOPEN=n
 
 #
 # Compile burst-oriented Netronome NFP PMD driver
