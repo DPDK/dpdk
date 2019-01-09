@@ -1683,15 +1683,18 @@ dpaa_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 				nb_ops = loop;
 				goto send_pkts;
 			}
-			if (unlikely(!ses->qp)) {
+			if (unlikely(!ses->qp[rte_lcore_id() % MAX_DPAA_CORES])) {
 				if (dpaa_sec_attach_sess_q(qp, ses)) {
 					frames_to_send = loop;
 					nb_ops = loop;
 					goto send_pkts;
 				}
-			} else if (unlikely(ses->qp != qp)) {
+			} else if (unlikely(ses->qp[rte_lcore_id() %
+						MAX_DPAA_CORES] != qp)) {
 				DPAA_SEC_DP_ERR("Old:sess->qp = %p"
-					" New qp = %p\n", ses->qp, qp);
+					" New qp = %p\n",
+					ses->qp[rte_lcore_id() %
+					MAX_DPAA_CORES], qp);
 				frames_to_send = loop;
 				nb_ops = loop;
 				goto send_pkts;
@@ -1743,7 +1746,7 @@ dpaa_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 			}
 
 			fd = &fds[loop];
-			inq[loop] = ses->inq;
+			inq[loop] = ses->inq[rte_lcore_id() % MAX_DPAA_CORES];
 			fd->opaque_addr = 0;
 			fd->cmd = 0;
 			qm_fd_addr_set64(fd, dpaa_mem_vtop(cf->sg));
@@ -1969,7 +1972,7 @@ dpaa_sec_attach_sess_q(struct dpaa_sec_qp *qp, dpaa_sec_session *sess)
 {
 	int ret;
 
-	sess->qp = qp;
+	sess->qp[rte_lcore_id() % MAX_DPAA_CORES] = qp;
 	ret = dpaa_sec_prep_cdb(sess);
 	if (ret) {
 		DPAA_SEC_ERR("Unable to prepare sec cdb");
@@ -1982,7 +1985,8 @@ dpaa_sec_attach_sess_q(struct dpaa_sec_qp *qp, dpaa_sec_session *sess)
 			return ret;
 		}
 	}
-	ret = dpaa_sec_init_rx(sess->inq, dpaa_mem_vtop(&sess->cdb),
+	ret = dpaa_sec_init_rx(sess->inq[rte_lcore_id() % MAX_DPAA_CORES],
+			       dpaa_mem_vtop(&sess->cdb),
 			       qman_fq_fqid(&qp->outq));
 	if (ret)
 		DPAA_SEC_ERR("Unable to init sec queue");
@@ -1996,6 +2000,7 @@ dpaa_sec_set_session_parameters(struct rte_cryptodev *dev,
 {
 	struct dpaa_sec_dev_private *internals = dev->data->dev_private;
 	dpaa_sec_session *session = sess;
+	uint32_t i;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -2052,12 +2057,15 @@ dpaa_sec_set_session_parameters(struct rte_cryptodev *dev,
 	}
 	session->ctx_pool = internals->ctx_pool;
 	rte_spinlock_lock(&internals->lock);
-	session->inq = dpaa_sec_attach_rxq(internals);
-	rte_spinlock_unlock(&internals->lock);
-	if (session->inq == NULL) {
-		DPAA_SEC_ERR("unable to attach sec queue");
-		goto err1;
+	for (i = 0; i < MAX_DPAA_CORES; i++) {
+		session->inq[i] = dpaa_sec_attach_rxq(internals);
+		if (session->inq[i] == NULL) {
+			DPAA_SEC_ERR("unable to attach sec queue");
+			rte_spinlock_unlock(&internals->lock);
+			goto err1;
+		}
 	}
+	rte_spinlock_unlock(&internals->lock);
 
 	return 0;
 
@@ -2117,8 +2125,9 @@ dpaa_sec_sym_session_clear(struct rte_cryptodev *dev,
 	if (sess_priv) {
 		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
 
-		if (s->inq)
-			dpaa_sec_detach_rxq(qi, s->inq);
+		if (s->inq[rte_lcore_id() % MAX_DPAA_CORES])
+			dpaa_sec_detach_rxq(qi,
+				s->inq[rte_lcore_id() % MAX_DPAA_CORES]);
 		rte_free(s->cipher_key.data);
 		rte_free(s->auth_key.data);
 		memset(s, 0, sizeof(dpaa_sec_session));
@@ -2137,6 +2146,7 @@ dpaa_sec_set_ipsec_session(__rte_unused struct rte_cryptodev *dev,
 	struct rte_crypto_auth_xform *auth_xform = NULL;
 	struct rte_crypto_cipher_xform *cipher_xform = NULL;
 	dpaa_sec_session *session = (dpaa_sec_session *)sess;
+	uint32_t i;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -2256,12 +2266,15 @@ dpaa_sec_set_ipsec_session(__rte_unused struct rte_cryptodev *dev,
 		goto out;
 	session->ctx_pool = internals->ctx_pool;
 	rte_spinlock_lock(&internals->lock);
-	session->inq = dpaa_sec_attach_rxq(internals);
-	rte_spinlock_unlock(&internals->lock);
-	if (session->inq == NULL) {
-		DPAA_SEC_ERR("unable to attach sec queue");
-		goto out;
+	for (i = 0; i < MAX_DPAA_CORES; i++) {
+		session->inq[i] = dpaa_sec_attach_rxq(internals);
+		if (session->inq[i] == NULL) {
+			DPAA_SEC_ERR("unable to attach sec queue");
+			rte_spinlock_unlock(&internals->lock);
+			goto out;
+		}
 	}
+	rte_spinlock_unlock(&internals->lock);
 
 	return 0;
 out:
@@ -2282,6 +2295,7 @@ dpaa_sec_set_pdcp_session(struct rte_cryptodev *dev,
 	struct rte_crypto_cipher_xform *cipher_xform = NULL;
 	dpaa_sec_session *session = (dpaa_sec_session *)sess;
 	struct dpaa_sec_dev_private *dev_priv = dev->data->dev_private;
+	uint32_t i;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -2363,12 +2377,15 @@ dpaa_sec_set_pdcp_session(struct rte_cryptodev *dev,
 
 	session->ctx_pool = dev_priv->ctx_pool;
 	rte_spinlock_lock(&dev_priv->lock);
-	session->inq = dpaa_sec_attach_rxq(dev_priv);
-	rte_spinlock_unlock(&dev_priv->lock);
-	if (session->inq == NULL) {
-		DPAA_SEC_ERR("unable to attach sec queue");
-		goto out;
+	for (i = 0; i < MAX_DPAA_CORES; i++) {
+		session->inq[i] = dpaa_sec_attach_rxq(dev_priv);
+		if (session->inq[i] == NULL) {
+			DPAA_SEC_ERR("unable to attach sec queue");
+			rte_spinlock_unlock(&dev_priv->lock);
+			goto out;
+		}
 	}
+	rte_spinlock_unlock(&dev_priv->lock);
 	return 0;
 out:
 	rte_free(session->auth_key.data);
@@ -2630,7 +2647,7 @@ dpaa_sec_dev_init(struct rte_cryptodev *cryptodev)
 
 	flags = QMAN_FQ_FLAG_LOCKED | QMAN_FQ_FLAG_DYNAMIC_FQID |
 		QMAN_FQ_FLAG_TO_DCPORTAL;
-	for (i = 0; i < internals->max_nb_sessions; i++) {
+	for (i = 0; i < MAX_DPAA_CORES * internals->max_nb_sessions; i++) {
 		/* create rx qman fq for sessions*/
 		ret = qman_create_fq(0, flags, &internals->inq[i]);
 		if (unlikely(ret != 0)) {

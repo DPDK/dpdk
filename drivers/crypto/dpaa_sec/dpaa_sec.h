@@ -10,6 +10,7 @@
 #define CRYPTODEV_NAME_DPAA_SEC_PMD	crypto_dpaa_sec
 /**< NXP DPAA - SEC PMD device name */
 
+#define MAX_DPAA_CORES		4
 #define NUM_POOL_CHANNELS	4
 #define DPAA_SEC_BURST		7
 #define DPAA_SEC_ALG_UNSUPPORT	(-1)
@@ -26,7 +27,7 @@
 #define CTX_POOL_NUM_BUFS	32000
 #define CTX_POOL_BUF_SIZE	sizeof(struct dpaa_sec_op_ctx)
 #define CTX_POOL_CACHE_SIZE	512
-#define RTE_DPAA_SEC_PMD_MAX_NB_SESSIONS 2048
+#define RTE_DPAA_SEC_PMD_MAX_NB_SESSIONS 1024
 
 #define DIR_ENC                 1
 #define DIR_DEC                 0
@@ -142,8 +143,8 @@ typedef struct dpaa_sec_session_entry {
 		};
 		struct sec_pdcp_ctxt pdcp;
 	};
-	struct dpaa_sec_qp *qp;
-	struct qman_fq *inq;
+	struct dpaa_sec_qp *qp[MAX_DPAA_CORES];
+	struct qman_fq *inq[MAX_DPAA_CORES];
 	struct sec_cdb cdb;	/**< cmd block associated with qp */
 	struct rte_mempool *ctx_pool; /* session mempool for dpaa_sec_op_ctx */
 } dpaa_sec_session;
@@ -158,7 +159,7 @@ struct dpaa_sec_qp {
 };
 
 #define RTE_DPAA_MAX_NB_SEC_QPS 2
-#define RTE_DPAA_MAX_RX_QUEUE RTE_DPAA_SEC_PMD_MAX_NB_SESSIONS
+#define RTE_DPAA_MAX_RX_QUEUE (MAX_DPAA_CORES * RTE_DPAA_SEC_PMD_MAX_NB_SESSIONS)
 #define DPAA_MAX_DEQUEUE_NUM_FRAMES 63
 
 /* internal sec queue interface */
