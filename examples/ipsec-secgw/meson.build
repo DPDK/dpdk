@@ -6,7 +6,7 @@
 # To build this example as a standalone application with an already-installed
 # DPDK instance, use 'make'
 
-deps += ['security', 'lpm', 'acl', 'hash']
+deps += ['security', 'lpm', 'acl', 'hash', 'ipsec']
 allow_experimental_apis = true
 sources = files(
 	'esp.c', 'ipsec.c', 'ipsec-secgw.c', 'parser.c',

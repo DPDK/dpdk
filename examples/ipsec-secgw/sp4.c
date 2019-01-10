@@ -504,3 +504,28 @@ sp4_init(struct socket_ctx *ctx, int32_t socket_id)
 		RTE_LOG(WARNING, IPSEC, "No IPv4 SP Outbound rule "
 			"specified\n");
 }
+
+/*
+ * Search though SP rules for given SPI.
+ */
+int
+sp4_spi_present(uint32_t spi, int inbound)
+{
+	uint32_t i, num;
+	const struct acl4_rules *acr;
+
+	if (inbound != 0) {
+		acr = acl4_rules_in;
+		num = nb_acl4_rules_in;
+	} else {
+		acr = acl4_rules_out;
+		num = nb_acl4_rules_out;
+	}
+
+	for (i = 0; i != num; i++) {
+		if (acr[i].data.userdata == PROTECT(spi))
+			return i;
+	}
+
+	return -ENOENT;
+}

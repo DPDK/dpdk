@@ -11,6 +11,7 @@
 #include <rte_crypto.h>
 #include <rte_security.h>
 #include <rte_flow.h>
+#include <rte_ipsec.h>
 
 #define RTE_LOGTYPE_IPSEC       RTE_LOGTYPE_USER1
 #define RTE_LOGTYPE_IPSEC_ESP   RTE_LOGTYPE_USER2
@@ -70,7 +71,20 @@ struct ip_addr {
 
 #define MAX_KEY_SIZE		32
 
+/*
+ * application wide SA parameters
+ */
+struct app_sa_prm {
+	uint32_t enable; /* use librte_ipsec API for ipsec pkt processing */
+	uint32_t window_size; /* replay window size */
+	uint32_t enable_esn;  /* enable/disable ESN support */
+	uint64_t flags;       /* rte_ipsec_sa_prm.flags */
+};
+
+extern struct app_sa_prm app_sa_prm;
+
 struct ipsec_sa {
+	struct rte_ipsec_session ips; /* one session per sa for now */
 	uint32_t spi;
 	uint32_t cdev_id_qp;
 	uint64_t seq;
@@ -244,6 +258,16 @@ sp4_init(struct socket_ctx *ctx, int32_t socket_id);
 
 void
 sp6_init(struct socket_ctx *ctx, int32_t socket_id);
+
+/*
+ * Search through SP rules for given SPI.
+ * Returns first rule index if found(greater or equal then zero),
+ * or -ENOENT otherwise.
+ */
+int
+sp4_spi_present(uint32_t spi, int inbound);
+int
+sp6_spi_present(uint32_t spi, int inbound);
 
 void
 sa_init(struct socket_ctx *ctx, int32_t socket_id);

@@ -168,6 +168,9 @@ static uint32_t frame_size;
 static uint64_t dev_rx_offload = UINT64_MAX;
 static uint64_t dev_tx_offload = UINT64_MAX;
 
+/* application wide librte_ipsec/SA parameters */
+struct app_sa_prm app_sa_prm = {.enable = 0};
+
 struct lcore_rx_queue {
 	uint16_t port_id;
 	uint8_t queue_id;
@@ -1087,6 +1090,10 @@ print_usage(const char *prgname)
 		" [-P]"
 		" [-u PORTMASK]"
 		" [-j FRAMESIZE]"
+		" [-l]"
+		" [-w REPLAY_WINDOW_SIZE]"
+		" [-e]"
+		" [-a]"
 		" -f CONFIG_FILE"
 		" --config (port,queue,lcore)[,(port,queue,lcore)]"
 		" [--single-sa SAIDX]"
@@ -1099,6 +1106,11 @@ print_usage(const char *prgname)
 		"  -u PORTMASK: Hexadecimal bitmask of unprotected ports\n"
 		"  -j FRAMESIZE: Enable jumbo frame with 'FRAMESIZE' as maximum\n"
 		"                packet size\n"
+		"  -l enables code-path that uses librte_ipsec\n"
+		"  -w REPLAY_WINDOW_SIZE specifies IPsec SQN replay window\n"
+		"     size for each SA\n"
+		"  -e enables ESN\n"
+		"  -a enables SA SQN atomic behaviour\n"
 		"  -f CONFIG_FILE: Configuration file\n"
 		"  --config (port,queue,lcore): Rx queue configuration\n"
 		"  --single-sa SAIDX: Use single SA index for outbound traffic,\n"
@@ -1216,6 +1228,20 @@ parse_config(const char *q_arg)
 	return 0;
 }
 
+static void
+print_app_sa_prm(const struct app_sa_prm *prm)
+{
+	printf("librte_ipsec usage: %s\n",
+		(prm->enable == 0) ? "disabled" : "enabled");
+
+	if (prm->enable == 0)
+		return;
+
+	printf("replay window size: %u\n", prm->window_size);
+	printf("ESN: %s\n", (prm->enable_esn == 0) ? "disabled" : "enabled");
+	printf("SA flags: %#" PRIx64 "\n", prm->flags);
+}
+
 static int32_t
 parse_args(int32_t argc, char **argv)
 {
@@ -1227,7 +1253,7 @@ parse_args(int32_t argc, char **argv)
 
 	argvopt = argv;
 
-	while ((opt = getopt_long(argc, argvopt, "p:Pu:f:j:",
+	while ((opt = getopt_long(argc, argvopt, "aelp:Pu:f:j:w:",
 				lgopts, &option_index)) != EOF) {
 
 		switch (opt) {
@@ -1282,6 +1308,21 @@ parse_args(int32_t argc, char **argv)
 				}
 			}
 			printf("Enabled jumbo frames size %u\n", frame_size);
+			break;
+		case 'l':
+			app_sa_prm.enable = 1;
+			break;
+		case 'w':
+			app_sa_prm.enable = 1;
+			app_sa_prm.window_size = parse_decimal(optarg);
+			break;
+		case 'e':
+			app_sa_prm.enable = 1;
+			app_sa_prm.enable_esn = 1;
+			break;
+		case 'a':
+			app_sa_prm.enable = 1;
+			app_sa_prm.flags |= RTE_IPSEC_SAFLAG_SQN_ATOM;
 			break;
 		case CMD_LINE_OPT_CONFIG_NUM:
 			ret = parse_config(optarg);
@@ -1344,6 +1385,8 @@ parse_args(int32_t argc, char **argv)
 		printf("Mandatory option \"-f\" not present\n");
 		return -1;
 	}
+
+	print_app_sa_prm(&app_sa_prm);
 
 	if (optind >= 0)
 		argv[optind-1] = prgname;
@@ -2035,11 +2078,13 @@ main(int32_t argc, char **argv)
 		if (socket_ctx[socket_id].mbuf_pool)
 			continue;
 
-		sa_init(&socket_ctx[socket_id], socket_id);
-
+		/* initilaze SPD */
 		sp4_init(&socket_ctx[socket_id], socket_id);
 
 		sp6_init(&socket_ctx[socket_id], socket_id);
+
+		/* initilaze SAD */
+		sa_init(&socket_ctx[socket_id], socket_id);
 
 		rt_init(&socket_ctx[socket_id], socket_id);
 
