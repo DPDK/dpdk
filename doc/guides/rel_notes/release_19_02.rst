@@ -123,6 +123,20 @@ New Features
 
   See :doc:`../prog_guide/ipsec_lib` for more information.
 
+* **Updated the ipsec-secgw sample application.**
+
+  The ``ipsec-secgw`` sample application has been updated to use the new
+  ``librte_ipsec`` library also added in this release.
+  The original functionality of ipsec-secgw is retained, a new command line
+  parameter ``-l`` has  been added to ipsec-secgw to use the IPsec library,
+  instead of the existing IPsec code in the application.
+
+  The IPsec library does not support all the functionality of the existing
+  ipsec-secgw application, its is planned to add the outstanding functionality
+  in future releases.
+
+  See :doc:`../sample_app_ug/ipsec_secgw` for more information.
+
 * **Enabled checksum support in the ISA-L compressdev driver.**
 
   Added support for both adler and crc32 checksums in the ISA-L PMD.

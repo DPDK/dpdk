@@ -76,7 +76,7 @@ Compiling the Application
 
 To compile the sample application see :doc:`compiling`.
 
-The application is located in the ``rpsec-secgw`` sub-directory.
+The application is located in the ``ipsec-secgw`` sub-directory.
 
 #. [Optional] Build the application for debugging:
    This option adds some extra flags, disables compiler optimizations and
@@ -93,6 +93,7 @@ The application has a number of command line options::
 
    ./build/ipsec-secgw [EAL options] --
                         -p PORTMASK -P -u PORTMASK -j FRAMESIZE
+                        -l -w REPLAY_WINOW_SIZE -e -a
                         --config (port,queue,lcore)[,(port,queue,lcore]
                         --single-sa SAIDX
                         --rxoffload MASK
@@ -113,6 +114,18 @@ Where:
 *   ``-j FRAMESIZE``: *optional*. Enables jumbo frames with the maximum size
     specified as FRAMESIZE. If an invalid value is provided as FRAMESIZE
     then the default value 9000 is used.
+
+*   ``-l``: enables code-path that uses librte_ipsec.
+
+*   ``-w REPLAY_WINOW_SIZE``: specifies the IPsec sequence number replay window
+    size for each Security Association (available only with librte_ipsec
+    code path).
+
+*   ``-e``: enables Security Association extended sequence number processing
+    (available only with librte_ipsec code path).
+
+*   ``-a``: enables Security Association sequence number atomic behaviour
+    (available only with librte_ipsec code path).
 
 *   ``--config (port,queue,lcore)[,(port,queue,lcore)]``: determines which queues
     from which ports are mapped to which cores.
@@ -225,7 +238,7 @@ accordingly.
 
 
 Configuration File Syntax
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 As mention in the overview, the Security Policies are ACL rules.
 The application parsers the rules specified in the configuration file and
@@ -571,6 +584,11 @@ Example SA rules:
     mode ipv4-tunnel src 172.16.1.5 dst 172.16.2.5 \
     type lookaside-protocol-offload port_id 4
 
+    sa in 35 aead_algo aes-128-gcm \
+    aead_key de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef \
+    mode ipv4-tunnel src 172.16.2.5 dst 172.16.1.5 \
+    type inline-crypto-offload port_id 0
+
 Routing rule syntax
 ^^^^^^^^^^^^^^^^^^^
 
@@ -667,3 +685,86 @@ Example Neighbour rules:
 .. code-block:: console
 
     neigh port 0 DE:AD:BE:EF:01:02
+
+Test directory
+--------------
+
+The test directory contains scripts for testing the various encryption
+algorithms.
+
+The purpose of the scripts is to automate ipsec-secgw testing
+using another system running linux as a DUT.
+
+The user must setup the following environment variables:
+
+*   ``SGW_PATH``: path to the ipsec-secgw binary to test.
+
+*   ``REMOTE_HOST``: IP address/hostname of the DUT.
+
+*   ``REMOTE_IFACE``: interface name for the test-port on the DUT.
+
+*   ``ETH_DEV``: ethernet device to be used on the SUT by DPDK ('-w <pci-id>')
+
+Also the user can optionally setup:
+
+*   ``SGW_LCORE``: lcore to run ipsec-secgw on (default value is 0)
+
+*   ``CRYPTO_DEV``: crypto device to be used ('-w <pci-id>'). If none specified
+    appropriate vdevs will be created by the script
+
+Note that most of the tests require the appropriate crypto PMD/device to be
+available.
+
+Server configuration
+~~~~~~~~~~~~~~~~~~~~
+
+Two servers are required for the tests, SUT and DUT.
+
+Make sure the user from the SUT can ssh to the DUT without entering the password.
+To enable this feature keys must be setup on the DUT.
+
+``ssh-keygen`` will make a private & public key pair on the SUT.
+
+``ssh-copy-id`` <user name>@<target host name> on the SUT will copy the public
+key to the DUT. It will ask for credentials so that it can upload the public key.
+
+The SUT and DUT are connected through at least 2 NIC ports.
+
+One NIC port is expected to be managed by linux on both machines and will be
+used as a control path.
+
+The second NIC port (test-port) should be bound to DPDK on the SUT, and should
+be managed by linux on the DUT.
+
+The script starts ``ipsec-secgw`` with 2 NIC devices: ``test-port`` and
+``tap vdev``.
+
+It then configures the local tap interface and the remote interface and IPsec
+policies in the following way:
+
+Traffic going over the test-port in both directions has to be protected by IPsec.
+
+Traffic going over the TAP port in both directions does not have to be protected.
+
+i.e:
+
+DUT OS(NIC1)--(IPsec)-->(NIC1)ipsec-secgw(TAP)--(plain)-->(TAP)SUT OS
+
+SUT OS(TAP)--(plain)-->(TAP)psec-secgw(NIC1)--(IPsec)-->(NIC1)DUT OS
+
+It then tries to perform some data transfer using the scheme decribed above.
+
+usage
+~~~~~
+
+In the ipsec-secgw/test directory
+
+to run one test for IPv4 or IPv6
+
+/bin/bash linux_test(4|6).sh <ipsec_mode>
+
+to run all tests for IPv4 or IPv6
+
+/bin/bash run_test.sh -4|-6
+
+For the list of available modes please refer to run_test.sh.
