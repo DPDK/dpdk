@@ -317,6 +317,8 @@ struct rte_security_session_conf {
 struct rte_security_session {
 	void *sess_private_data;
 	/**< Private session material */
+	uint64_t opaque_data;
+	/**< Opaque user defined data */
 };
 
 /**

@@ -212,6 +212,10 @@ ABI Changes
   ``rte_cryptodev_sym_session`` has been updated to contain more information
   to ensure safely accessing the session and session private data.
 
+* security: New field ``uint64_t opaque_data`` is added into
+  ``rte_security_session`` structure. That would allow upper layer to easily
+  associate/de-associate some user defined data with the security session.
+
 
 Shared Library Versions
 -----------------------
@@ -282,7 +286,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_reorder.so.1
      librte_ring.so.2
    + librte_sched.so.2
-     librte_security.so.1
+   + librte_security.so.2
      librte_table.so.3
      librte_timer.so.1
      librte_vhost.so.4

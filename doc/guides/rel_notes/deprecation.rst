@@ -71,9 +71,5 @@ Deprecation Notices
   - Member ``uint16_t min_mtu`` the minimum MTU allowed.
   - Member ``uint16_t max_mtu`` the maximum MTU allowed.
 
-* security: New field ``uint64_t opaque_data`` is planned to be added into
-  ``rte_security_session`` structure. That would allow upper layer to easily
-  associate/de-associate some user defined data with the security session.
-
 * crypto/aesni_mb: the minimum supported intel-ipsec-mb library version will be
   changed from 0.49.0 to 0.52.0.
