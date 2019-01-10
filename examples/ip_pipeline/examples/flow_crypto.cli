@@ -21,14 +21,13 @@
 ; 5   Crypto Operation 1792             160
 
 mempool MEMPOOL0 buffer 2304 pool 32K cache 256 cpu 1
-mempool MEMPOOL_SESSION0 buffer 1024 pool 1024 cache 128 cpu 1
 
-link LINK0 dev 0000:81:00.0 rxq 1 128 MEMPOOL0 txq 1 512 promiscuous on
+link LINK0 dev 81:00.0 rxq 1 128 MEMPOOL0 txq 1 512 promiscuous on
 
 #Cryptodev
-cryptodev CRYPTO0 dev crypto_aesni_gcm0 queue 1 1024
+cryptodev CRYPTO0 dev crypto_aesni_gcm0 queue 1 1024 max_sessions 512
 
-table action profile AP0 ipv4 offset 270 fwd sym_crypto dev CRYPTO0 offset 1792 mempool_create MEMPOOL_SESSION0 mempool_init MEMPOOL_SESSION0
+table action profile AP0 ipv4 offset 270 fwd sym_crypto dev CRYPTO0 offset 1792
 table action profile AP1 ipv4 offset 270 fwd
 
 pipeline PIPELINE0 period 10 offset_port_id 0 cpu 1
@@ -46,7 +45,7 @@ pipeline PIPELINE0 table match stub action AP1
 pipeline PIPELINE0 port in 0 table 0
 pipeline PIPELINE0 port in 1 table 1
 
-thread 24 pipeline PIPELINE0 enable
+thread 2 pipeline PIPELINE0 enable
 
 pipeline PIPELINE0 table 0 rule add match default action fwd port 2
 

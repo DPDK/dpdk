@@ -323,7 +323,7 @@ flow_create_failure:
 				ipsec_ctx->session_pool);
 		rte_cryptodev_sym_session_init(ipsec_ctx->tbl[cdev_id_qp].id,
 				sa->crypto_session, sa->xforms,
-				ipsec_ctx->session_pool);
+				ipsec_ctx->session_priv_pool);
 
 		rte_cryptodev_info_get(ipsec_ctx->tbl[cdev_id_qp].id,
 				&cdev_info);

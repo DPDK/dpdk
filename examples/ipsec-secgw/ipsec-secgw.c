@@ -55,7 +55,7 @@
 
 #define CDEV_QUEUE_DESC 2048
 #define CDEV_MAP_ENTRIES 16384
-#define CDEV_MP_NB_OBJS 2048
+#define CDEV_MP_NB_OBJS 1024
 #define CDEV_MP_CACHE_SZ 64
 #define MAX_QUEUE_PAIRS 1
 
@@ -820,11 +820,15 @@ main_loop(__attribute__((unused)) void *dummy)
 	qconf->inbound.sa_ctx = socket_ctx[socket_id].sa_in;
 	qconf->inbound.cdev_map = cdev_map_in;
 	qconf->inbound.session_pool = socket_ctx[socket_id].session_pool;
+	qconf->inbound.session_priv_pool =
+			socket_ctx[socket_id].session_priv_pool;
 	qconf->outbound.sp4_ctx = socket_ctx[socket_id].sp_ip4_out;
 	qconf->outbound.sp6_ctx = socket_ctx[socket_id].sp_ip6_out;
 	qconf->outbound.sa_ctx = socket_ctx[socket_id].sa_out;
 	qconf->outbound.cdev_map = cdev_map_out;
 	qconf->outbound.session_pool = socket_ctx[socket_id].session_pool;
+	qconf->outbound.session_priv_pool =
+			socket_ctx[socket_id].session_priv_pool;
 
 	if (qconf->nb_rx_queue == 0) {
 		RTE_LOG(INFO, IPSEC, "lcore %u has nothing to do\n", lcore_id);
@@ -1460,10 +1464,10 @@ cryptodevs_init(void)
 		dev_conf.nb_queue_pairs = qp;
 
 		uint32_t dev_max_sess = cdev_info.sym.max_nb_sessions;
-		if (dev_max_sess != 0 && dev_max_sess < (CDEV_MP_NB_OBJS / 2))
+		if (dev_max_sess != 0 && dev_max_sess < CDEV_MP_NB_OBJS)
 			rte_exit(EXIT_FAILURE,
 				"Device does not support at least %u "
-				"sessions", CDEV_MP_NB_OBJS / 2);
+				"sessions", CDEV_MP_NB_OBJS);
 
 		if (!socket_ctx[dev_conf.socket_id].session_pool) {
 			char mp_name[RTE_MEMPOOL_NAMESIZE];
@@ -1471,6 +1475,19 @@ cryptodevs_init(void)
 
 			snprintf(mp_name, RTE_MEMPOOL_NAMESIZE,
 					"sess_mp_%u", dev_conf.socket_id);
+			sess_mp = rte_cryptodev_sym_session_pool_create(
+					mp_name, CDEV_MP_NB_OBJS,
+					0, CDEV_MP_CACHE_SZ, 0,
+					dev_conf.socket_id);
+			socket_ctx[dev_conf.socket_id].session_pool = sess_mp;
+		}
+
+		if (!socket_ctx[dev_conf.socket_id].session_priv_pool) {
+			char mp_name[RTE_MEMPOOL_NAMESIZE];
+			struct rte_mempool *sess_mp;
+
+			snprintf(mp_name, RTE_MEMPOOL_NAMESIZE,
+					"sess_mp_priv_%u", dev_conf.socket_id);
 			sess_mp = rte_mempool_create(mp_name,
 					CDEV_MP_NB_OBJS,
 					max_sess_sz,
@@ -1478,15 +1495,18 @@ cryptodevs_init(void)
 					0, NULL, NULL, NULL,
 					NULL, dev_conf.socket_id,
 					0);
-			if (sess_mp == NULL)
-				rte_exit(EXIT_FAILURE,
-					"Cannot create session pool on socket %d\n",
-					dev_conf.socket_id);
-			else
-				printf("Allocated session pool on socket %d\n",
-					dev_conf.socket_id);
-			socket_ctx[dev_conf.socket_id].session_pool = sess_mp;
+			socket_ctx[dev_conf.socket_id].session_priv_pool =
+					sess_mp;
 		}
+
+		if (!socket_ctx[dev_conf.socket_id].session_priv_pool ||
+				!socket_ctx[dev_conf.socket_id].session_pool)
+			rte_exit(EXIT_FAILURE,
+				"Cannot create session pool on socket %d\n",
+				dev_conf.socket_id);
+		else
+			printf("Allocated session pool on socket %d\n",
+					dev_conf.socket_id);
 
 		if (rte_cryptodev_configure(cdev_id, &dev_conf))
 			rte_panic("Failed to initialize cryptodev %u\n",
@@ -1494,9 +1514,9 @@ cryptodevs_init(void)
 
 		qp_conf.nb_descriptors = CDEV_QUEUE_DESC;
 		qp_conf.mp_session =
-				socket_ctx[dev_conf.socket_id].session_pool;
+			socket_ctx[dev_conf.socket_id].session_pool;
 		qp_conf.mp_session_private =
-				socket_ctx[dev_conf.socket_id].session_pool;
+			socket_ctx[dev_conf.socket_id].session_priv_pool;
 		for (qp = 0; qp < dev_conf.nb_queue_pairs; qp++)
 			if (rte_cryptodev_queue_pair_setup(cdev_id, qp,
 					&qp_conf, dev_conf.socket_id))
@@ -1521,7 +1541,7 @@ cryptodevs_init(void)
 				snprintf(mp_name, RTE_MEMPOOL_NAMESIZE,
 						"sess_mp_%u", socket_id);
 				sess_mp = rte_mempool_create(mp_name,
-						CDEV_MP_NB_OBJS,
+						(CDEV_MP_NB_OBJS * 2),
 						max_sess_sz,
 						CDEV_MP_CACHE_SZ,
 						0, NULL, NULL, NULL,

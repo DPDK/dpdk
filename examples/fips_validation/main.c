@@ -29,6 +29,8 @@ struct cryptodev_fips_validate_env {
 	uint32_t is_path_folder;
 	uint32_t dev_id;
 	struct rte_mempool *mpool;
+	struct rte_mempool *sess_mpool;
+	struct rte_mempool *sess_priv_mpool;
 	struct rte_mempool *op_pool;
 	struct rte_mbuf *mbuf;
 	struct rte_crypto_op *op;
@@ -40,6 +42,8 @@ cryptodev_fips_validate_app_int(void)
 {
 	struct rte_cryptodev_config conf = {rte_socket_id(), 1};
 	struct rte_cryptodev_qp_conf qp_conf = {128, NULL, NULL};
+	uint32_t sess_sz = rte_cryptodev_sym_get_private_session_size(
+			env.dev_id);
 	int ret;
 
 	ret = rte_cryptodev_configure(env.dev_id, &conf);
@@ -58,6 +62,17 @@ cryptodev_fips_validate_app_int(void)
 
 	ret = -ENOMEM;
 
+	env.sess_mpool = rte_cryptodev_sym_session_pool_create(
+			"FIPS_SESS_MEMPOOL", 16, 0, 0, 0, rte_socket_id());
+	if (!env.sess_mpool)
+		goto error_exit;
+
+	env.sess_priv_mpool = rte_mempool_create("FIPS_SESS_PRIV_MEMPOOL",
+			16, sess_sz, 0, 0, NULL, NULL, NULL,
+			NULL, rte_socket_id(), 0);
+	if (!env.sess_priv_mpool)
+		goto error_exit;
+
 	env.op_pool = rte_crypto_op_pool_create(
 			"FIPS_OP_POOL",
 			RTE_CRYPTO_OP_TYPE_SYMMETRIC,
@@ -75,10 +90,23 @@ cryptodev_fips_validate_app_int(void)
 	if (!env.op)
 		goto error_exit;
 
+	qp_conf.mp_session = env.sess_mpool;
+	qp_conf.mp_session_private = env.sess_priv_mpool;
+
+	ret = rte_cryptodev_queue_pair_setup(env.dev_id, 0, &qp_conf,
+			rte_socket_id());
+	if (ret < 0)
+		goto error_exit;
+
 	return 0;
 
 error_exit:
+
 	rte_mempool_free(env.mpool);
+	if (env.sess_mpool)
+		rte_mempool_free(env.sess_mpool);
+	if (env.sess_priv_mpool)
+		rte_mempool_free(env.sess_priv_mpool);
 	if (env.op_pool)
 		rte_mempool_free(env.op_pool);
 
@@ -93,6 +121,8 @@ cryptodev_fips_validate_app_uninit(void)
 	rte_cryptodev_sym_session_clear(env.dev_id, env.sess);
 	rte_cryptodev_sym_session_free(env.sess);
 	rte_mempool_free(env.mpool);
+	rte_mempool_free(env.sess_mpool);
+	rte_mempool_free(env.sess_priv_mpool);
 	rte_mempool_free(env.op_pool);
 }
 
@@ -797,12 +827,12 @@ fips_run_test(void)
 	if (ret < 0)
 		return ret;
 
-	env.sess = rte_cryptodev_sym_session_create(env.mpool);
+	env.sess = rte_cryptodev_sym_session_create(env.sess_mpool);
 	if (!env.sess)
 		return -ENOMEM;
 
 	ret = rte_cryptodev_sym_session_init(env.dev_id,
-			env.sess, &xform, env.mpool);
+			env.sess, &xform, env.sess_priv_mpool);
 	if (ret < 0) {
 		RTE_LOG(ERR, USER1, "Error %i: Init session\n",
 				ret);

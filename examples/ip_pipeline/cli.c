@@ -790,7 +790,8 @@ cmd_kni(char **tokens,
 static const char cmd_cryptodev_help[] =
 "cryptodev <cryptodev_name>\n"
 "   dev <device_name> | dev_id <device_id>\n"
-"   queue <n_queues> <queue_size>\n";
+"   queue <n_queues> <queue_size>\n"
+"   max_sessions <n_sessions>";
 
 static void
 cmd_cryptodev(char **tokens,
@@ -802,7 +803,7 @@ cmd_cryptodev(char **tokens,
 	char *name;
 
 	memset(&params, 0, sizeof(params));
-	if (n_tokens != 7) {
+	if (n_tokens != 9) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
 		return;
 	}
@@ -825,7 +826,7 @@ cmd_cryptodev(char **tokens,
 
 	if (strcmp(tokens[4], "queue")) {
 		snprintf(out, out_size,	MSG_ARG_NOT_FOUND,
-			"4");
+			"queue");
 		return;
 	}
 
@@ -836,6 +837,18 @@ cmd_cryptodev(char **tokens,
 	}
 
 	if (parser_read_uint32(&params.queue_size, tokens[6]) < 0) {
+		snprintf(out, out_size,	MSG_ARG_INVALID,
+			"queue_size");
+		return;
+	}
+
+	if (strcmp(tokens[7], "max_sessions")) {
+		snprintf(out, out_size,	MSG_ARG_NOT_FOUND,
+			"max_sessions");
+		return;
+	}
+
+	if (parser_read_uint32(&params.session_pool_size, tokens[8]) < 0) {
 		snprintf(out, out_size,	MSG_ARG_INVALID,
 			"queue_size");
 		return;
@@ -1030,9 +1043,7 @@ static const char cmd_table_action_profile_help[] =
 "       stats none | pkts]\n"
 "   [stats pkts | bytes | both]\n"
 "   [time]\n"
-"   [sym_crypto dev <CRYPTODEV_NAME> offset <op_offset> "
-"       mempool_create <mempool_name>\n"
-"       mempool_init <mempool_name>]\n"
+"   [sym_crypto dev <CRYPTODEV_NAME> offset <op_offset>]\n"
 "   [tag]\n"
 "   [decap]\n";
 
@@ -1404,13 +1415,10 @@ cmd_table_action_profile(char **tokens,
 
 	if ((t0 < n_tokens) && (strcmp(tokens[t0], "sym_crypto") == 0)) {
 		struct cryptodev *cryptodev;
-		struct mempool *mempool;
 
-		if (n_tokens < t0 + 9 ||
+		if (n_tokens < t0 + 5 ||
 				strcmp(tokens[t0 + 1], "dev") ||
-				strcmp(tokens[t0 + 3], "offset") ||
-				strcmp(tokens[t0 + 5], "mempool_create") ||
-				strcmp(tokens[t0 + 7], "mempool_init")) {
+				strcmp(tokens[t0 + 3], "offset")) {
 			snprintf(out, out_size, MSG_ARG_MISMATCH,
 				"table action profile sym_crypto");
 			return;
@@ -1432,25 +1440,12 @@ cmd_table_action_profile(char **tokens,
 			return;
 		}
 
-		mempool = mempool_find(tokens[t0 + 6]);
-		if (mempool == NULL) {
-			snprintf(out, out_size, MSG_ARG_INVALID,
-				"table action profile sym_crypto");
-			return;
-		}
-		p.sym_crypto.mp_create = mempool->m;
-
-		mempool = mempool_find(tokens[t0 + 8]);
-		if (mempool == NULL) {
-			snprintf(out, out_size, MSG_ARG_INVALID,
-				"table action profile sym_crypto");
-			return;
-		}
-		p.sym_crypto.mp_init = mempool->m;
+		p.sym_crypto.mp_create = cryptodev->mp_create;
+		p.sym_crypto.mp_init = cryptodev->mp_init;
 
 		p.action_mask |= 1LLU << RTE_TABLE_ACTION_SYM_CRYPTO;
 
-		t0 += 9;
+		t0 += 5;
 	} /* sym_crypto */
 
 	if ((t0 < n_tokens) && (strcmp(tokens[t0], "tag") == 0)) {
