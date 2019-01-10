@@ -100,6 +100,12 @@ New Features
   devices to track dirty pages caused by DMA. IFC driver has enabled this
   SW-assisted live migration mode.
 
+* **Added security checks to cryptodev symmetric session operations.**
+
+  Added a set of security checks to the access cryptodev symmetric session.
+  The checks include the session's user data read/write check and the
+  session private data referencing status check while freeing a session.
+
 * **Updated the AESNI-MB PMD.**
 
   * Add support for intel-ipsec-mb version 0.52.

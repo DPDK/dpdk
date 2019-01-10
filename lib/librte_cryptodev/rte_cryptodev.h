@@ -959,6 +959,7 @@ struct rte_cryptodev_sym_session {
 	/**< session user data will be placed after sess_data */
 	__extension__ struct {
 		void *data;
+		uint16_t refcnt;
 	} sess_data[0];
 	/**< Driver specific session material, variable size */
 };

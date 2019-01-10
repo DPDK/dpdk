@@ -1216,7 +1216,7 @@ rte_cryptodev_sym_session_init(uint8_t dev_id,
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->sym_session_configure, -ENOTSUP);
 
-	if (sess->sess_data[index].data == NULL) {
+	if (sess->sess_data[index].refcnt == 0) {
 		ret = dev->dev_ops->sym_session_configure(dev, xforms,
 							sess, mp);
 		if (ret < 0) {
@@ -1227,6 +1227,7 @@ rte_cryptodev_sym_session_init(uint8_t dev_id,
 		}
 	}
 
+	sess->sess_data[index].refcnt++;
 	return 0;
 }
 
@@ -1372,11 +1373,16 @@ rte_cryptodev_sym_session_clear(uint8_t dev_id,
 		struct rte_cryptodev_sym_session *sess)
 {
 	struct rte_cryptodev *dev;
+	uint8_t driver_id;
 
 	dev = rte_cryptodev_pmd_get_dev(dev_id);
 
 	if (dev == NULL || sess == NULL)
 		return -EINVAL;
+
+	driver_id = dev->driver_id;
+	if (--sess->sess_data[driver_id].refcnt != 0)
+		return -EBUSY;
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->sym_session_clear, -ENOTSUP);
 
@@ -1407,16 +1413,14 @@ int
 rte_cryptodev_sym_session_free(struct rte_cryptodev_sym_session *sess)
 {
 	uint8_t i;
-	void *sess_priv;
 	struct rte_mempool *sess_mp;
 
 	if (sess == NULL)
 		return -EINVAL;
 
 	/* Check that all device private data has been freed */
-	for (i = 0; i < nb_drivers; i++) {
-		sess_priv = get_sym_session_private_data(sess, i);
-		if (sess_priv != NULL)
+	for (i = 0; i < sess->nb_drivers; i++) {
+		if (sess->sess_data[i].refcnt != 0)
 			return -EBUSY;
 	}
 
