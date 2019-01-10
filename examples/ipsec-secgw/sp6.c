@@ -34,7 +34,7 @@ enum {
 
 #define IP6_ADDR_SIZE 16
 
-struct rte_acl_field_def ip6_defs[IP6_NUM] = {
+static struct rte_acl_field_def ip6_defs[IP6_NUM] = {
 	{
 	.type = RTE_ACL_FIELD_TYPE_BITMASK,
 	.size = sizeof(uint8_t),
@@ -116,11 +116,11 @@ struct rte_acl_field_def ip6_defs[IP6_NUM] = {
 
 RTE_ACL_RULE_DEF(acl6_rules, RTE_DIM(ip6_defs));
 
-struct acl6_rules acl6_rules_out[MAX_ACL_RULE_NUM];
-uint32_t nb_acl6_rules_out;
+static struct acl6_rules acl6_rules_out[MAX_ACL_RULE_NUM];
+static uint32_t nb_acl6_rules_out;
 
-struct acl6_rules acl6_rules_in[MAX_ACL_RULE_NUM];
-uint32_t nb_acl6_rules_in;
+static struct acl6_rules acl6_rules_in[MAX_ACL_RULE_NUM];
+static uint32_t nb_acl6_rules_in;
 
 void
 parse_sp6_tokens(char **tokens, uint32_t n_tokens,

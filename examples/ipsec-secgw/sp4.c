@@ -44,7 +44,7 @@ enum {
 	RTE_ACL_IPV4_NUM
 };
 
-struct rte_acl_field_def ip4_defs[NUM_FIELDS_IPV4] = {
+static struct rte_acl_field_def ip4_defs[NUM_FIELDS_IPV4] = {
 	{
 	.type = RTE_ACL_FIELD_TYPE_BITMASK,
 	.size = sizeof(uint8_t),
@@ -85,11 +85,11 @@ struct rte_acl_field_def ip4_defs[NUM_FIELDS_IPV4] = {
 
 RTE_ACL_RULE_DEF(acl4_rules, RTE_DIM(ip4_defs));
 
-struct acl4_rules acl4_rules_out[MAX_ACL_RULE_NUM];
-uint32_t nb_acl4_rules_out;
+static struct acl4_rules acl4_rules_out[MAX_ACL_RULE_NUM];
+static uint32_t nb_acl4_rules_out;
 
-struct acl4_rules acl4_rules_in[MAX_ACL_RULE_NUM];
-uint32_t nb_acl4_rules_in;
+static struct acl4_rules acl4_rules_in[MAX_ACL_RULE_NUM];
+static uint32_t nb_acl4_rules_in;
 
 void
 parse_sp4_tokens(char **tokens, uint32_t n_tokens,
