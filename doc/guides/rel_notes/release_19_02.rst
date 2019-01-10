@@ -173,6 +173,11 @@ API Changes
 * cryptodev: The parameter ``session_pool`` in the function
   ``rte_cryptodev_queue_pair_setup()`` is removed.
 
+* cryptodev: a new function ``rte_cryptodev_sym_session_pool_create()`` is
+  introduced. This function is now mandatory when creating symmetric session
+  header mempool. Please note all crypto applications are required to use this
+  function from now on.
+
 
 ABI Changes
 -----------

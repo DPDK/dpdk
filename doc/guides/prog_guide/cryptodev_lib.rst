@@ -455,21 +455,23 @@ Crypto workloads.
 
 .. figure:: img/cryptodev_sym_sess.*
 
-The Crypto device framework provides APIs to allocate and initialize sessions
-for crypto devices, where sessions are mempool objects.
-It is the application's responsibility to create and manage the session mempools.
-This approach allows for different scenarios such as having a single session
-mempool for all crypto devices (where the mempool object size is big
-enough to hold the private session of any crypto device), as well as having
-multiple session mempools of different sizes for better memory usage.
+The Crypto device framework provides APIs to create session mempool and allocate
+and initialize sessions for crypto devices, where sessions are mempool objects.
+The application has to use ``rte_cryptodev_sym_session_pool_create()`` to
+create the session header mempool that creates a mempool with proper element
+size automatically and stores necessary information for safely accessing the
+session in the mempool's private data field.
 
-An application can use ``rte_cryptodev_sym_get_private_session_size()`` to
-get the private session size of given crypto device. This function would allow
-an application to calculate the max device session size of all crypto devices
-to create a single session mempool.
-If instead an application creates multiple session mempools, the Crypto device
-framework also provides ``rte_cryptodev_sym_get_header_session_size`` to get
-the size of an uninitialized session.
+To create a mempool for storing session private data, the application has two
+options. The first is to create another mempool with elt size equal to or
+bigger than the maximum session private data size of all crypto devices that
+will share the same session header. The creation of the mempool shall use the
+traditional ``rte_mempool_create()`` with the correct ``elt_size``. The other
+option is to change the ``elt_size`` parameter in
+``rte_cryptodev_sym_session_pool_create()`` to the correct value. The first
+option is more complex to implement but may result in better memory usage as
+a session header normally takes smaller memory footprint as the session private
+data.
 
 Once the session mempools have been created, ``rte_cryptodev_sym_session_create()``
 is used to allocate an uninitialized session from the given mempool.
@@ -623,7 +625,8 @@ using one of the crypto PMDs available in DPDK.
     #define IV_OFFSET            (sizeof(struct rte_crypto_op) + \
                                  sizeof(struct rte_crypto_sym_op))
 
-    struct rte_mempool *mbuf_pool, *crypto_op_pool, *session_pool;
+    struct rte_mempool *mbuf_pool, *crypto_op_pool;
+    struct rte_mempool *session_pool, *session_priv_pool;
     unsigned int session_size;
     int ret;
 
@@ -673,28 +676,50 @@ using one of the crypto PMDs available in DPDK.
     /* Get private session data size. */
     session_size = rte_cryptodev_sym_get_private_session_size(cdev_id);
 
+    #ifdef USE_TWO_MEMPOOLS
+    /* Create session mempool for the session header. */
+    session_pool = rte_cryptodev_sym_session_pool_create("session_pool",
+                                    MAX_SESSIONS,
+                                    0,
+                                    POOL_CACHE_SIZE,
+                                    0,
+                                    socket_id);
+
     /*
-     * Create session mempool, with two objects per session,
-     * one for the session header and another one for the
+     * Create session private data mempool for the
      * private session data for the crypto device.
      */
-    session_pool = rte_mempool_create("session_pool",
-                                    MAX_SESSIONS * 2,
+    session_priv_pool = rte_mempool_create("session_pool",
+                                    MAX_SESSIONS,
                                     session_size,
                                     POOL_CACHE_SIZE,
                                     0, NULL, NULL, NULL,
                                     NULL, socket_id,
                                     0);
 
+    #else
+    /* Use of the same mempool for session header and private data */
+	session_pool = rte_cryptodev_sym_session_pool_create("session_pool",
+                                    MAX_SESSIONS * 2,
+                                    session_size,
+                                    POOL_CACHE_SIZE,
+                                    0,
+                                    socket_id);
+
+	session_priv_pool = session_pool;
+
+    #endif
+
     /* Configure the crypto device. */
     struct rte_cryptodev_config conf = {
         .nb_queue_pairs = 1,
         .socket_id = socket_id
     };
+
     struct rte_cryptodev_qp_conf qp_conf = {
         .nb_descriptors = 2048,
         .mp_session = session_pool,
-        .mp_session_private = session_pool
+        .mp_session_private = session_priv_pool
     };
 
     if (rte_cryptodev_configure(cdev_id, &conf) < 0)
@@ -732,7 +757,7 @@ using one of the crypto PMDs available in DPDK.
         rte_exit(EXIT_FAILURE, "Session could not be created\n");
 
     if (rte_cryptodev_sym_session_init(cdev_id, session,
-                    &cipher_xform, session_pool) < 0)
+                    &cipher_xform, session_priv_pool) < 0)
         rte_exit(EXIT_FAILURE, "Session could not be initialized "
                     "for the crypto device\n");
 

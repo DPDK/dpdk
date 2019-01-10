@@ -102,6 +102,7 @@ EXPERIMENTAL {
 	rte_cryptodev_asym_xform_capability_check_modlen;
 	rte_cryptodev_asym_xform_capability_check_optype;
 	rte_cryptodev_sym_session_get_user_data;
+	rte_cryptodev_sym_session_pool_create;
 	rte_cryptodev_sym_session_set_user_data;
 	rte_crypto_asym_op_strings;
 	rte_crypto_asym_xform_strings;

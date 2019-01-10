@@ -189,6 +189,16 @@ const char *rte_crypto_asym_op_strings[] = {
 	[RTE_CRYPTO_ASYM_OP_SHARED_SECRET_COMPUTE] = "sharedsecret_compute",
 };
 
+/**
+ * The private data structure stored in the session mempool private data.
+ */
+struct rte_cryptodev_sym_session_pool_private_data {
+	uint16_t nb_drivers;
+	/**< number of elements in sess_data array */
+	uint16_t user_data_sz;
+	/**< session user data will be placed after sess_data */
+};
+
 int
 rte_cryptodev_get_cipher_algo_enum(enum rte_crypto_cipher_algorithm *algo_enum,
 		const char *algo_string)
@@ -1221,6 +1231,46 @@ rte_cryptodev_asym_session_init(uint8_t dev_id,
 	}
 
 	return 0;
+}
+
+struct rte_mempool * __rte_experimental
+rte_cryptodev_sym_session_pool_create(const char *name, uint32_t nb_elts,
+	uint32_t elt_size, uint32_t cache_size, uint16_t user_data_size,
+	int socket_id)
+{
+	struct rte_mempool *mp;
+	struct rte_cryptodev_sym_session_pool_private_data *pool_priv;
+	uint32_t obj_sz;
+
+	obj_sz = rte_cryptodev_sym_get_header_session_size() + user_data_size;
+	if (obj_sz > elt_size)
+		CDEV_LOG_INFO("elt_size %u is expanded to %u\n", elt_size,
+				obj_sz);
+	else
+		obj_sz = elt_size;
+
+	mp = rte_mempool_create(name, nb_elts, obj_sz, cache_size,
+			(uint32_t)(sizeof(*pool_priv)),
+			NULL, NULL, NULL, NULL,
+			socket_id, 0);
+	if (mp == NULL) {
+		CDEV_LOG_ERR("%s(name=%s) failed, rte_errno=%d\n",
+			__func__, name, rte_errno);
+		return NULL;
+	}
+
+	pool_priv = rte_mempool_get_priv(mp);
+	if (!pool_priv) {
+		CDEV_LOG_ERR("%s(name=%s) failed to get private data\n",
+			__func__, name);
+		rte_mempool_free(mp);
+		return NULL;
+	}
+
+	pool_priv->nb_drivers = nb_drivers;
+	pool_priv->user_data_sz = user_data_size;
+
+	return mp;
 }
 
 struct rte_cryptodev_sym_session *
