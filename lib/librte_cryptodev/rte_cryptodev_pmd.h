@@ -475,14 +475,23 @@ RTE_INIT(init_ ##driver_id)\
 static inline void *
 get_sym_session_private_data(const struct rte_cryptodev_sym_session *sess,
 		uint8_t driver_id) {
-	return sess->sess_private_data[driver_id];
+	if (unlikely(sess->nb_drivers <= driver_id))
+		return NULL;
+
+	return sess->sess_data[driver_id].data;
 }
 
 static inline void
 set_sym_session_private_data(struct rte_cryptodev_sym_session *sess,
 		uint8_t driver_id, void *private_data)
 {
-	sess->sess_private_data[driver_id] = private_data;
+	if (unlikely(sess->nb_drivers <= driver_id)) {
+		CDEV_LOG_ERR("Set private data for driver %u not allowed\n",
+				driver_id);
+		return;
+	}
+
+	sess->sess_data[driver_id].data = private_data;
 }
 
 static inline void *

@@ -176,7 +176,8 @@ API Changes
 * cryptodev: a new function ``rte_cryptodev_sym_session_pool_create()`` is
   introduced. This function is now mandatory when creating symmetric session
   header mempool. Please note all crypto applications are required to use this
-  function from now on.
+  function from now on. Failed to do so will cause
+  ``rte_cryptodev_sym_session_create()`` function call return error.
 
 
 ABI Changes
@@ -200,6 +201,10 @@ ABI Changes
 * cryptodev: as shown in the the 18.11 deprecation notice, the structure
   ``rte_cryptodev_qp_conf`` has been added two parameters of symmetric session
   mempool and symmetric session private data mempool.
+
+* cryptodev: as shown in the the 18.11 deprecation notice, the structure
+  ``rte_cryptodev_sym_session`` has been updated to contain more information
+  to ensure safely accessing the session and session private data.
 
 
 Shared Library Versions

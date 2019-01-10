@@ -75,11 +75,5 @@ Deprecation Notices
   ``rte_security_session`` structure. That would allow upper layer to easily
   associate/de-associate some user defined data with the security session.
 
-* cryptodev: several API and ABI changes are planned for rte_cryptodev
-  in v19.02:
-
-  - The size and layout of ``rte_cryptodev_sym_session`` will change
-    to fix existing issues.
-
 * crypto/aesni_mb: the minimum supported intel-ipsec-mb library version will be
   changed from 0.49.0 to 0.52.0.

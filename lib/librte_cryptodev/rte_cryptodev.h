@@ -953,8 +953,12 @@ rte_cryptodev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
  * has a fixed algo, key, op-type, digest_len etc.
  */
 struct rte_cryptodev_sym_session {
-	__extension__ void *sess_private_data[0];
-	/**< Private symmetric session material */
+	uint16_t nb_drivers;
+	/**< number of elements in sess_data array */
+	__extension__ struct {
+		void *data;
+	} sess_data[0];
+	/**< Driver specific session material, variable size */
 };
 
 /** Cryptodev asymmetric crypto session */
