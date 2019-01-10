@@ -247,4 +247,7 @@ int
 sa_check_offloads(uint16_t port_id, uint64_t *rx_offloads,
 		uint64_t *tx_offloads);
 
+int
+add_dst_ethaddr(uint16_t port, const struct ether_addr *addr);
+
 #endif /* __IPSEC_H__ */

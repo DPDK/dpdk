@@ -14,14 +14,14 @@ struct parse_status {
 	char parse_msg[256];
 };
 
-#define	APP_CHECK(exp, status, fmt, ...)				\
+#define	APP_CHECK(exp, st, fmt, ...)					\
 do {									\
 	if (!(exp)) {							\
-		sprintf(status->parse_msg, fmt "\n",			\
+		sprintf((st)->parse_msg, fmt "\n",			\
 			## __VA_ARGS__);				\
-		status->status = -1;					\
+		(st)->status = -1;					\
 	} else								\
-		status->status = 0;					\
+		(st)->status = 0;					\
 } while (0)
 
 #define APP_CHECK_PRESENCE(val, str, status)				\

@@ -306,6 +306,46 @@ parse_range(const char *token, uint16_t *low, uint16_t *high)
 	return 0;
 }
 
+/*
+ * helper function for parse_mac, parse one section of the ether addr.
+ */
+static const char *
+parse_uint8x16(const char *s, uint8_t *v, uint8_t ls)
+{
+	char *end;
+	unsigned long t;
+
+	errno = 0;
+	t = strtoul(s, &end, 16);
+	if (errno != 0 || end[0] != ls || t > UINT8_MAX)
+		return NULL;
+	v[0] = t;
+	return end + 1;
+}
+
+static int
+parse_mac(const char *str, struct ether_addr *addr)
+{
+	uint32_t i;
+
+	static const uint8_t stop_sym[RTE_DIM(addr->addr_bytes)] = {
+		[0] = ':',
+		[1] = ':',
+		[2] = ':',
+		[3] = ':',
+		[4] = ':',
+		[5] = 0,
+	};
+
+	for (i = 0; i != RTE_DIM(addr->addr_bytes); i++) {
+		str = parse_uint8x16(str, addr->addr_bytes + i, stop_sym[i]);
+		if (str == NULL)
+			return -EINVAL;
+	}
+
+	return 0;
+}
+
 /** sp add parse */
 struct cfg_sp_add_cfg_item {
 	cmdline_fixed_string_t sp_keyword;
@@ -444,11 +484,61 @@ cmdline_parse_inst_t cfg_rt_add_rule = {
 	},
 };
 
+/* neigh add parse */
+struct cfg_neigh_add_item {
+	cmdline_fixed_string_t neigh;
+	cmdline_fixed_string_t pstr;
+	uint16_t port;
+	cmdline_fixed_string_t mac;
+};
+
+static void
+cfg_parse_neigh(void *parsed_result, __rte_unused struct cmdline *cl,
+	void *data)
+{
+	int32_t rc;
+	struct cfg_neigh_add_item *res;
+	struct parse_status *st;
+	struct ether_addr mac;
+
+	st = data;
+	res = parsed_result;
+	rc = parse_mac(res->mac, &mac);
+	APP_CHECK(rc == 0, st, "invalid ether addr:%s", res->mac);
+	rc = add_dst_ethaddr(res->port, &mac);
+	APP_CHECK(rc == 0, st, "invalid port numer:%hu", res->port);
+	if (st->status < 0)
+		return;
+}
+
+cmdline_parse_token_string_t cfg_add_neigh_start =
+	TOKEN_STRING_INITIALIZER(struct cfg_neigh_add_item, neigh, "neigh");
+cmdline_parse_token_string_t cfg_add_neigh_pstr =
+	TOKEN_STRING_INITIALIZER(struct cfg_neigh_add_item, pstr, "port");
+cmdline_parse_token_num_t cfg_add_neigh_port =
+	TOKEN_NUM_INITIALIZER(struct cfg_neigh_add_item, port, UINT16);
+cmdline_parse_token_string_t cfg_add_neigh_mac =
+	TOKEN_STRING_INITIALIZER(struct cfg_neigh_add_item, mac, NULL);
+
+cmdline_parse_inst_t cfg_neigh_add_rule = {
+	.f = cfg_parse_neigh,
+	.data = NULL,
+	.help_str = "",
+	.tokens = {
+		(void *)&cfg_add_neigh_start,
+		(void *)&cfg_add_neigh_pstr,
+		(void *)&cfg_add_neigh_port,
+		(void *)&cfg_add_neigh_mac,
+		NULL,
+	},
+};
+
 /** set of cfg items */
 cmdline_parse_ctx_t ipsec_ctx[] = {
 	(cmdline_parse_inst_t *)&cfg_sp_add_rule,
 	(cmdline_parse_inst_t *)&cfg_sa_add_rule,
 	(cmdline_parse_inst_t *)&cfg_rt_add_rule,
+	(cmdline_parse_inst_t *)&cfg_neigh_add_rule,
 	NULL,
 };
 
@@ -474,6 +564,7 @@ parse_cfg_file(const char *cfg_filename)
 	cfg_sp_add_rule.data = &status;
 	cfg_sa_add_rule.data = &status;
 	cfg_rt_add_rule.data = &status;
+	cfg_neigh_add_rule.data = &status;
 
 	do {
 		char oneline[1024];

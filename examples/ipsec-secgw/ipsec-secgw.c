@@ -104,9 +104,9 @@ static uint16_t nb_txd = IPSEC_SECGW_TX_DESC_DEFAULT;
 #define ETHADDR(a, b, c, d, e, f) (__BYTES_TO_UINT64(a, b, c, d, e, f, 0, 0))
 
 #define ETHADDR_TO_UINT64(addr) __BYTES_TO_UINT64( \
-		addr.addr_bytes[0], addr.addr_bytes[1], \
-		addr.addr_bytes[2], addr.addr_bytes[3], \
-		addr.addr_bytes[4], addr.addr_bytes[5], \
+		(addr)->addr_bytes[0], (addr)->addr_bytes[1], \
+		(addr)->addr_bytes[2], (addr)->addr_bytes[3], \
+		(addr)->addr_bytes[4], (addr)->addr_bytes[5], \
 		0, 0)
 
 /* port/source ethernet addr and destination ethernet addr */
@@ -1246,6 +1246,19 @@ print_ethaddr(const char *name, const struct ether_addr *eth_addr)
 	printf("%s%s", name, buf);
 }
 
+/*
+ * Update destination ethaddr for the port.
+ */
+int
+add_dst_ethaddr(uint16_t port, const struct ether_addr *addr)
+{
+	if (port > RTE_DIM(ethaddr_tbl))
+		return -EINVAL;
+
+	ethaddr_tbl[port].dst = ETHADDR_TO_UINT64(addr);
+	return 0;
+}
+
 /* Check the link status of all ports in up to 9s, and print them finally */
 static void
 check_all_ports_link_status(uint32_t port_mask)
@@ -1645,7 +1658,7 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads)
 	printf("Configuring device port %u:\n", portid);
 
 	rte_eth_macaddr_get(portid, &ethaddr);
-	ethaddr_tbl[portid].src = ETHADDR_TO_UINT64(ethaddr);
+	ethaddr_tbl[portid].src = ETHADDR_TO_UINT64(&ethaddr);
 	print_ethaddr("Address: ", &ethaddr);
 	printf("\n");
 

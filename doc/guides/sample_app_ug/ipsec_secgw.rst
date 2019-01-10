@@ -217,7 +217,7 @@ Configurations
 --------------
 
 The following sections provide the syntax of configurations to initialize
-your SP, SA and Routing tables.
+your SP, SA, Routing and Neighbour tables.
 Configurations shall be specified in the configuration file to be passed to
 the application. The file is then parsed by the application. The successful
 parsing will result in the appropriate rules being applied to the tables
@@ -238,8 +238,8 @@ General rule syntax
 
 The parse treats one line in the configuration file as one configuration
 item (unless the line concatenation symbol exists). Every configuration
-item shall follow the syntax of either SP, SA, or Routing rules specified
-below.
+item shall follow the syntax of either SP, SA, Routing or Neighbour
+rules specified below.
 
 The configuration parser supports the following special symbols:
 
@@ -631,3 +631,39 @@ Example SP rules:
     rt ipv4 dst 172.16.1.5/32 port 0
 
     rt ipv6 dst 1111:1111:1111:1111:1111:1111:1111:5555/116 port 0
+
+Neighbour rule syntax
+^^^^^^^^^^^^^^^^^^^^^
+
+The Neighbour rule syntax is shown as follows:
+
+.. code-block:: console
+
+    neigh <port> <dst_mac>
+
+
+where each options means:
+
+``<port>``
+
+ * The output port id
+
+ * Optional: No
+
+ * Syntax: *port X*
+
+``<dst_mac>``
+
+ * The destination ethernet address to use for that port
+
+ * Optional: No
+
+ * Syntax:
+
+   * XX:XX:XX:XX:XX:XX
+
+Example Neighbour rules:
+
+.. code-block:: console
+
+    neigh port 0 DE:AD:BE:EF:01:02
