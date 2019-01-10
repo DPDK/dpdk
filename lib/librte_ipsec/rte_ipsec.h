@@ -145,6 +145,8 @@ rte_ipsec_pkt_process(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 	return ss->pkt_func.process(ss, mb, num);
 }
 
+#include <rte_ipsec_group.h>
+
 #ifdef __cplusplus
 }
 #endif
