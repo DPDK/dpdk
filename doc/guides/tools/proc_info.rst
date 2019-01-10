@@ -18,7 +18,8 @@ The application has a number of command line options:
 .. code-block:: console
 
    ./$(RTE_TARGET)/app/dpdk-procinfo -- -m | [-p PORTMASK] [--stats | --xstats |
-   --stats-reset | --xstats-reset] [ --show-port | --show-tm | --show-crypto ]
+   --stats-reset | --xstats-reset] [ --show-port | --show-tm | --show-crypto |
+   --show-ring[=name] ]
 
 Parameters
 ~~~~~~~~~~
@@ -53,6 +54,11 @@ configurations and statistics.
 **--show-crypto**
 The show-crypto parameter displays available cryptodev configurations,
 settings and stats per node.
+
+**--show-ring[=name]**
+The show-ring pararmeter display current allocation of all ring with
+debug information. Specifying the name allows to display details for specific
+ring. For invalid or no ring name, whole list is dump.
 
 Limitations
 -----------

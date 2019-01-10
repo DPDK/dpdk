@@ -82,6 +82,9 @@ static uint32_t enable_shw_port;
 static uint32_t enable_shw_tm;
 /**< Enable show crypto. */
 static uint32_t enable_shw_crypto;
+/**< Enable show ring. */
+static uint32_t enable_shw_ring;
+static char *ring_name;
 
 /**< display usage */
 static void
@@ -104,7 +107,8 @@ proc_info_usage(const char *prgname)
 		"  --host-id STRING: host id used to identify the system process is running on\n"
 		"  --show-port: to display ports information\n"
 		"  --show-tm: to display traffic manager information for ports\n"
-		"  --show-crypto: to display crypto information\n",
+		"  --show-crypto: to display crypto information\n"
+		"  --show-ring[=name]: to display ring information\n",
 		prgname);
 }
 
@@ -214,6 +218,7 @@ proc_info_parse_args(int argc, char **argv)
 		{"show-port", 0, NULL, 0},
 		{"show-tm", 0, NULL, 0},
 		{"show-crypto", 0, NULL, 0},
+		{"show-ring", optional_argument, NULL, 0},
 		{NULL, 0, 0, 0}
 	};
 
@@ -266,6 +271,11 @@ proc_info_parse_args(int argc, char **argv)
 			else if (!strncmp(long_option[option_index].name,
 					"show-crypto", MAX_LONG_OPT_SZ))
 				enable_shw_crypto = 1;
+			else if (!strncmp(long_option[option_index].name,
+					"show-ring", MAX_LONG_OPT_SZ)) {
+				enable_shw_ring = 1;
+				ring_name = optarg;
+			}
 			break;
 		case 1:
 			/* Print xstat single value given by name*/
@@ -1070,6 +1080,44 @@ show_crypto(void)
 	STATS_BDR_STR(50, "");
 }
 
+static void
+show_ring(char *name)
+{
+	snprintf(bdr_str, MAX_STRING_LEN, " show - RING %"PRIu64,
+			rte_get_tsc_hz());
+	STATS_BDR_STR(10, bdr_str);
+
+	if (name != NULL) {
+		struct rte_ring *ptr = rte_ring_lookup(name);
+		if (ptr != NULL) {
+			printf("  - Name (%s) on socket (%d)\n"
+				"  - flags:\n"
+				"\t  -- Single Producer Enqueue (%u)\n"
+				"\t  -- Single Consmer Dequeue (%u)\n",
+				ptr->name,
+				ptr->memzone->socket_id,
+				ptr->flags & RING_F_SP_ENQ,
+				ptr->flags & RING_F_SC_DEQ);
+			printf("  - size (%u) mask (0x%x) capacity (%u)\n",
+				ptr->size,
+				ptr->mask,
+				ptr->capacity);
+			printf("  - count (%u) free count (%u)\n",
+				rte_ring_count(ptr),
+				rte_ring_free_count(ptr));
+			printf("  - full (%d) empty (%d)\n",
+				rte_ring_full(ptr),
+				rte_ring_empty(ptr));
+
+			STATS_BDR_STR(50, "");
+			return;
+		}
+	}
+
+	rte_ring_list_dump(stdout);
+	STATS_BDR_STR(50, "");
+}
+
 int
 main(int argc, char **argv)
 {
@@ -1157,6 +1205,8 @@ main(int argc, char **argv)
 		show_tm();
 	if (enable_shw_crypto)
 		show_crypto();
+	if (enable_shw_ring)
+		show_ring(ring_name);
 
 	ret = rte_eal_cleanup();
 	if (ret)
