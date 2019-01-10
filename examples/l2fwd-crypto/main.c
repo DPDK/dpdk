@@ -2443,9 +2443,11 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 		}
 
 		qp_conf.nb_descriptors = 2048;
+		qp_conf.mp_session = session_pool_socket[socket_id];
+		qp_conf.mp_session_private = session_pool_socket[socket_id];
 
 		retval = rte_cryptodev_queue_pair_setup(cdev_id, 0, &qp_conf,
-				socket_id, session_pool_socket[socket_id]);
+				socket_id);
 		if (retval < 0) {
 			printf("Failed to setup queue pair %u on cryptodev %u",
 					0, cdev_id);

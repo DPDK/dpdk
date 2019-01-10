@@ -186,8 +186,7 @@ static int
 otx_cpt_que_pair_setup(struct rte_cryptodev *dev,
 		       uint16_t que_pair_id,
 		       const struct rte_cryptodev_qp_conf *qp_conf,
-		       int socket_id __rte_unused,
-		       struct rte_mempool *session_pool __rte_unused)
+		       int socket_id __rte_unused)
 {
 	void *cptvf = dev->data->dev_private;
 	struct cpt_instance *instance = NULL;

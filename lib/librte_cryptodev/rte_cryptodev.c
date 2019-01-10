@@ -941,8 +941,7 @@ rte_cryptodev_close(uint8_t dev_id)
 
 int
 rte_cryptodev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
-		const struct rte_cryptodev_qp_conf *qp_conf, int socket_id,
-		struct rte_mempool *session_pool)
+		const struct rte_cryptodev_qp_conf *qp_conf, int socket_id)
 
 {
 	struct rte_cryptodev *dev;
@@ -958,6 +957,17 @@ rte_cryptodev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
 		return -EINVAL;
 	}
 
+	if (!qp_conf) {
+		CDEV_LOG_ERR("qp_conf cannot be NULL\n");
+		return -EINVAL;
+	}
+
+	if ((qp_conf->mp_session && !qp_conf->mp_session_private) ||
+			(!qp_conf->mp_session && qp_conf->mp_session_private)) {
+		CDEV_LOG_ERR("Invalid mempools\n");
+		return -EINVAL;
+	}
+
 	if (dev->data->dev_started) {
 		CDEV_LOG_ERR(
 		    "device %d must be stopped to allow configuration", dev_id);
@@ -967,7 +977,7 @@ rte_cryptodev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->queue_pair_setup, -ENOTSUP);
 
 	return (*dev->dev_ops->queue_pair_setup)(dev, queue_pair_id, qp_conf,
-			socket_id, session_pool);
+			socket_id);
 }
 
 

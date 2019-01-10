@@ -218,6 +218,9 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs,
 			session_pool_socket[socket_id] = sess_mp;
 		}
 
+		qp_conf.mp_session = session_pool_socket[socket_id];
+		qp_conf.mp_session_private = session_pool_socket[socket_id];
+
 		ret = rte_cryptodev_configure(cdev_id, &conf);
 		if (ret < 0) {
 			printf("Failed to configure cryptodev %u", cdev_id);
@@ -226,8 +229,7 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs,
 
 		for (j = 0; j < opts->nb_qps; j++) {
 			ret = rte_cryptodev_queue_pair_setup(cdev_id, j,
-				&qp_conf, socket_id,
-				session_pool_socket[socket_id]);
+				&qp_conf, socket_id);
 			if (ret < 0) {
 				printf("Failed to setup queue pair %u on "
 					"cryptodev %u",	j, cdev_id);

@@ -80,9 +80,6 @@ Deprecation Notices
 
   - The size and layout of ``rte_cryptodev_sym_session`` will change
     to fix existing issues.
-  - The size and layout of ``rte_cryptodev_qp_conf`` and syntax of
-    ``rte_cryptodev_queue_pair_setup`` will change to to allow to use
-    two different mempools for crypto and device private sessions.
 
 * crypto/aesni_mb: the minimum supported intel-ipsec-mb library version will be
   changed from 0.49.0 to 0.52.0.

@@ -121,9 +121,19 @@ Each queue pairs resources may be allocated on a specified socket.
                 const struct rte_cryptodev_qp_conf *qp_conf,
                 int socket_id)
 
-    struct rte_cryptodev_qp_conf {
+   struct rte_cryptodev_qp_conf {
         uint32_t nb_descriptors; /**< Number of descriptors per queue pair */
+        struct rte_mempool *mp_session;
+        /**< The mempool for creating session in sessionless mode */
+        struct rte_mempool *mp_session_private;
+        /**< The mempool for creating sess private data in sessionless mode */
     };
+
+
+The fields ``mp_session`` and ``mp_session_private`` are used for creating
+temporary session to process the crypto operations in the session-less mode.
+They can be the same other different mempools. Please note not all Cryptodev
+PMDs supports session-less mode.
 
 
 Logical Cores, Memory and Queues Pair Relationships
@@ -682,14 +692,15 @@ using one of the crypto PMDs available in DPDK.
         .socket_id = socket_id
     };
     struct rte_cryptodev_qp_conf qp_conf = {
-        .nb_descriptors = 2048
+        .nb_descriptors = 2048,
+        .mp_session = session_pool,
+        .mp_session_private = session_pool
     };
 
     if (rte_cryptodev_configure(cdev_id, &conf) < 0)
         rte_exit(EXIT_FAILURE, "Failed to configure cryptodev %u", cdev_id);
 
-    if (rte_cryptodev_queue_pair_setup(cdev_id, 0, &qp_conf,
-                            socket_id, session_pool) < 0)
+    if (rte_cryptodev_queue_pair_setup(cdev_id, 0, &qp_conf, socket_id) < 0)
         rte_exit(EXIT_FAILURE, "Failed to setup queue pair\n");
 
     if (rte_cryptodev_start(cdev_id) < 0)

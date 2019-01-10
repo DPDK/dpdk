@@ -171,6 +171,8 @@ struct aesni_mb_qp {
 	/**< Ring for placing operations ready for processing */
 	struct rte_mempool *sess_mp;
 	/**< Session Mempool */
+	struct rte_mempool *sess_mp_priv;
+	/**< Session Private Data Mempool */
 	struct rte_cryptodev_stats stats;
 	/**< Queue pair statistics */
 	uint8_t digest_idx;

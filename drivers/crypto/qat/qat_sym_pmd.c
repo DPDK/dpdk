@@ -127,7 +127,7 @@ static int qat_sym_qp_release(struct rte_cryptodev *dev, uint16_t queue_pair_id)
 
 static int qat_sym_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	const struct rte_cryptodev_qp_conf *qp_conf,
-	int socket_id, struct rte_mempool *session_pool __rte_unused)
+	int socket_id)
 {
 	struct qat_qp *qp;
 	int ret = 0;

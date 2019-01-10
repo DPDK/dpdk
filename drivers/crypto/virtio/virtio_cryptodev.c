@@ -36,8 +36,7 @@ static void virtio_crypto_dev_stats_reset(struct rte_cryptodev *dev);
 static int virtio_crypto_qp_setup(struct rte_cryptodev *dev,
 		uint16_t queue_pair_id,
 		const struct rte_cryptodev_qp_conf *qp_conf,
-		int socket_id,
-		struct rte_mempool *session_pool);
+		int socket_id);
 static int virtio_crypto_qp_release(struct rte_cryptodev *dev,
 		uint16_t queue_pair_id);
 static void virtio_crypto_dev_free_mbufs(struct rte_cryptodev *dev);
@@ -585,8 +584,7 @@ virtio_crypto_dev_stats_reset(struct rte_cryptodev *dev)
 static int
 virtio_crypto_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 		const struct rte_cryptodev_qp_conf *qp_conf,
-		int socket_id,
-		struct rte_mempool *session_pool __rte_unused)
+		int socket_id)
 {
 	int ret;
 	struct virtqueue *vq;

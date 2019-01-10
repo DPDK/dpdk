@@ -390,8 +390,7 @@ scheduler_pmd_qp_release(struct rte_cryptodev *dev, uint16_t qp_id)
 /** Setup a queue pair */
 static int
 scheduler_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
-	const struct rte_cryptodev_qp_conf *qp_conf, int socket_id,
-	struct rte_mempool *session_pool)
+	const struct rte_cryptodev_qp_conf *qp_conf, int socket_id)
 {
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
 	struct scheduler_qp_ctx *qp_ctx;
@@ -419,7 +418,7 @@ scheduler_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		 * must be big enough for all the drivers used.
 		 */
 		ret = rte_cryptodev_queue_pair_setup(slave_id, qp_id,
-				qp_conf, socket_id, session_pool);
+				qp_conf, socket_id);
 		if (ret < 0)
 			return ret;
 	}

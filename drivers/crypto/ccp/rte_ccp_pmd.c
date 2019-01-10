@@ -179,7 +179,7 @@ get_ccp_session(struct ccp_qp *qp, struct rte_crypto_op *op)
 		if (unlikely(ccp_set_session_parameters(sess, op->sym->xform,
 							internals) != 0)) {
 			rte_mempool_put(qp->sess_mp, _sess);
-			rte_mempool_put(qp->sess_mp, _sess_private_data);
+			rte_mempool_put(qp->sess_mp_priv, _sess_private_data);
 			sess = NULL;
 		}
 		op->sym->session = (struct rte_cryptodev_sym_session *)_sess;
@@ -241,6 +241,13 @@ ccp_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 	for (i = 0; i < nb_dequeued; i++)
 		if (unlikely(ops[i]->sess_type ==
 			     RTE_CRYPTO_OP_SESSIONLESS)) {
+			struct ccp_session *sess = (struct ccp_session *)
+					get_sym_session_private_data(
+						ops[i]->sym->session,
+						ccp_cryptodev_driver_id);
+
+			rte_mempool_put(qp->sess_mp_priv,
+					sess);
 			rte_mempool_put(qp->sess_mp,
 					ops[i]->sym->session);
 			ops[i]->sym->session = NULL;

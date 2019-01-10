@@ -546,11 +546,12 @@ configure_cryptodev(void)
 			TEST_CDEV_ID, conf.nb_queue_pairs);
 
 	qp_conf.nb_descriptors = DEFAULT_NUM_OPS_INFLIGHT;
+	qp_conf.mp_session = params.session_mpool;
+	qp_conf.mp_session_private = params.session_mpool;
 
 	TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
 			TEST_CDEV_ID, TEST_CDEV_QP_ID, &qp_conf,
-			rte_cryptodev_socket_id(TEST_CDEV_ID),
-			params.session_mpool),
+			rte_cryptodev_socket_id(TEST_CDEV_ID)),
 			"Failed to setup queue pair %u on cryptodev %u\n",
 			TEST_CDEV_QP_ID, TEST_CDEV_ID);
 

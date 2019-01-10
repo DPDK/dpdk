@@ -170,6 +170,9 @@ API Changes
   ``rte_pdump_init()`` and enum ``rte_pdump_socktype`` were deprecated
   since 18.05 and are removed in this release.
 
+* cryptodev: The parameter ``session_pool`` in the function
+  ``rte_cryptodev_queue_pair_setup()`` is removed.
+
 
 ABI Changes
 -----------
@@ -188,6 +191,10 @@ ABI Changes
 
 * mbuf: The format of the sched field of ``rte_mbuf`` has been changed
   to include the following fields: ``queue ID``, ``traffic class``, ``color``.
+
+* cryptodev: as shown in the the 18.11 deprecation notice, the structure
+  ``rte_cryptodev_qp_conf`` has been added two parameters of symmetric session
+  mempool and symmetric session private data mempool.
 
 
 Shared Library Versions
@@ -220,7 +227,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_cfgfile.so.2
      librte_cmdline.so.2
      librte_compressdev.so.1
-     librte_cryptodev.so.5
+   + librte_cryptodev.so.6
      librte_distributor.so.1
      librte_eal.so.9
      librte_efd.so.1

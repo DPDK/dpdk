@@ -101,7 +101,7 @@ softnic_cryptodev_create(struct pmd_internals *p,
 	queue_conf.nb_descriptors = params->queue_size;
 	for (i = 0; i < params->n_queues; i++) {
 		status = rte_cryptodev_queue_pair_setup(dev_id, i,
-				&queue_conf, socket_id, NULL);
+				&queue_conf, socket_id);
 		if (status < 0)
 			return NULL;
 	}

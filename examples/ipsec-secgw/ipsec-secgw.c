@@ -1493,10 +1493,13 @@ cryptodevs_init(void)
 					cdev_id);
 
 		qp_conf.nb_descriptors = CDEV_QUEUE_DESC;
+		qp_conf.mp_session =
+				socket_ctx[dev_conf.socket_id].session_pool;
+		qp_conf.mp_session_private =
+				socket_ctx[dev_conf.socket_id].session_pool;
 		for (qp = 0; qp < dev_conf.nb_queue_pairs; qp++)
 			if (rte_cryptodev_queue_pair_setup(cdev_id, qp,
-					&qp_conf, dev_conf.socket_id,
-					socket_ctx[dev_conf.socket_id].session_pool))
+					&qp_conf, dev_conf.socket_id))
 				rte_panic("Failed to setup queue %u for "
 						"cdev_id %u\n",	0, cdev_id);
 

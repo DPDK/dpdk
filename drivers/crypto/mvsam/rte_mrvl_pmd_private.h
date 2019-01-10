@@ -51,6 +51,9 @@ struct mrvl_crypto_qp {
 	/** Session Mempool. */
 	struct rte_mempool *sess_mp;
 
+	/** Session Private Data Mempool. */
+	struct rte_mempool *sess_mp_priv;
+
 	/** Queue pair statistics. */
 	struct rte_cryptodev_stats stats;
 

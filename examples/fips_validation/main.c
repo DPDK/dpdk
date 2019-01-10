@@ -39,7 +39,7 @@ static int
 cryptodev_fips_validate_app_int(void)
 {
 	struct rte_cryptodev_config conf = {rte_socket_id(), 1};
-	struct rte_cryptodev_qp_conf qp_conf = {128};
+	struct rte_cryptodev_qp_conf qp_conf = {128, NULL, NULL};
 	int ret;
 
 	ret = rte_cryptodev_configure(env.dev_id, &conf);
@@ -52,7 +52,7 @@ cryptodev_fips_validate_app_int(void)
 		return ret;
 
 	ret = rte_cryptodev_queue_pair_setup(env.dev_id, 0, &qp_conf,
-			rte_socket_id(), env.mpool);
+			rte_socket_id());
 	if (ret < 0)
 		return ret;
 

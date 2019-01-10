@@ -188,13 +188,12 @@ typedef void (*cryptodev_info_get_t)(struct rte_cryptodev *dev,
  * @param	qp_id		Queue Pair Index
  * @param	qp_conf		Queue configuration structure
  * @param	socket_id	Socket Index
- * @param	session_pool	Pointer to device session mempool
  *
  * @return	Returns 0 on success.
  */
 typedef int (*cryptodev_queue_pair_setup_t)(struct rte_cryptodev *dev,
 		uint16_t qp_id,	const struct rte_cryptodev_qp_conf *qp_conf,
-		int socket_id, struct rte_mempool *session_pool);
+		int socket_id);
 
 /**
  * Release memory resources allocated by given queue pair.

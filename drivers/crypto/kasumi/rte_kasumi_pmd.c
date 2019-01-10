@@ -145,7 +145,8 @@ kasumi_get_session(struct kasumi_qp *qp, struct rte_crypto_op *op)
 		if (rte_mempool_get(qp->sess_mp, (void **)&_sess))
 			return NULL;
 
-		if (rte_mempool_get(qp->sess_mp, (void **)&_sess_private_data))
+		if (rte_mempool_get(qp->sess_mp_priv,
+				(void **)&_sess_private_data))
 			return NULL;
 
 		sess = (struct kasumi_session *)_sess_private_data;
@@ -153,7 +154,7 @@ kasumi_get_session(struct kasumi_qp *qp, struct rte_crypto_op *op)
 		if (unlikely(kasumi_set_session_parameters(sess,
 				op->sym->xform) != 0)) {
 			rte_mempool_put(qp->sess_mp, _sess);
-			rte_mempool_put(qp->sess_mp, _sess_private_data);
+			rte_mempool_put(qp->sess_mp_priv, _sess_private_data);
 			sess = NULL;
 		}
 		op->sym->session = (struct rte_cryptodev_sym_session *)_sess;
@@ -325,7 +326,7 @@ process_ops(struct rte_crypto_op **ops, struct kasumi_session *session,
 			memset(session, 0, sizeof(struct kasumi_session));
 			memset(ops[i]->sym->session, 0,
 					rte_cryptodev_sym_get_header_session_size());
-			rte_mempool_put(qp->sess_mp, session);
+			rte_mempool_put(qp->sess_mp_priv, session);
 			rte_mempool_put(qp->sess_mp, ops[i]->sym->session);
 			ops[i]->sym->session = NULL;
 		}

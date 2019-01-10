@@ -495,6 +495,10 @@ enum rte_cryptodev_event_type {
 /** Crypto device queue pair configuration structure. */
 struct rte_cryptodev_qp_conf {
 	uint32_t nb_descriptors; /**< Number of descriptors per queue pair */
+	struct rte_mempool *mp_session;
+	/**< The mempool for creating session in sessionless mode */
+	struct rte_mempool *mp_session_private;
+	/**< The mempool for creating sess private data in sessionless mode */
 };
 
 /**
@@ -672,16 +676,12 @@ rte_cryptodev_close(uint8_t dev_id);
  *				- 1] previously supplied to
  *				rte_cryptodev_configure().
  * @param	qp_conf		The pointer to the configuration data to be
- *				used for the queue pair. NULL value is
- *				allowed, in which case default configuration
- *				will be used.
+ *				used for the queue pair.
  * @param	socket_id	The *socket_id* argument is the socket
  *				identifier in case of NUMA. The value can be
  *				*SOCKET_ID_ANY* if there is no NUMA constraint
  *				for the DMA memory allocated for the receive
  *				queue pair.
- * @param	session_pool	Pointer to device session mempool, used
- *				for session-less operations.
  *
  * @return
  *   - 0: Success, queue pair correctly set up.
@@ -689,8 +689,7 @@ rte_cryptodev_close(uint8_t dev_id);
  */
 extern int
 rte_cryptodev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
-		const struct rte_cryptodev_qp_conf *qp_conf, int socket_id,
-		struct rte_mempool *session_pool);
+		const struct rte_cryptodev_qp_conf *qp_conf, int socket_id);
 
 /**
  * Get the number of queue pairs on a specific crypto device

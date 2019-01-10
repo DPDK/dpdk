@@ -36,6 +36,8 @@ struct zuc_qp {
 	/**< Ring for placing processed ops */
 	struct rte_mempool *sess_mp;
 	/**< Session Mempool */
+	struct rte_mempool *sess_mp_priv;
+	/**< Session Private Data Mempool */
 	struct rte_cryptodev_stats qp_stats;
 	/**< Queue pair statistics */
 	uint8_t temp_digest[ZUC_DIGEST_LENGTH];

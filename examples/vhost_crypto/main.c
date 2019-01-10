@@ -463,7 +463,7 @@ free_resource(void)
 int
 main(int argc, char *argv[])
 {
-	struct rte_cryptodev_qp_conf qp_conf = {NB_CRYPTO_DESCRIPTORS};
+	struct rte_cryptodev_qp_conf qp_conf;
 	struct rte_cryptodev_config config;
 	struct rte_cryptodev_info dev_info;
 	char name[128];
@@ -551,11 +551,14 @@ main(int argc, char *argv[])
 
 		options.infos[i] = info;
 
+		qp_conf.nb_descriptors = NB_CRYPTO_DESCRIPTORS;
+		qp_conf.mp_session = info->sess_pool;
+		qp_conf.mp_session_private = info->sess_pool;
+
 		for (j = 0; j < dev_info.max_nb_queue_pairs; j++) {
 			ret = rte_cryptodev_queue_pair_setup(info->cid, j,
 					&qp_conf, rte_lcore_to_socket_id(
-							lo->lcore_id),
-					info->sess_pool);
+							lo->lcore_id));
 			if (ret < 0) {
 				RTE_LOG(ERR, USER1, "Failed to configure qp\n");
 				goto error_exit;

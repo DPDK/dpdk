@@ -1540,8 +1540,7 @@ static int
 caam_jr_queue_pair_setup(
 		struct rte_cryptodev *dev, uint16_t qp_id,
 		__rte_unused const struct rte_cryptodev_qp_conf *qp_conf,
-		__rte_unused int socket_id,
-		__rte_unused struct rte_mempool *session_pool)
+		__rte_unused int socket_id)
 {
 	struct sec_job_ring_t *internals;
 	struct caam_jr_qp *qp = NULL;

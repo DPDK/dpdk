@@ -1661,8 +1661,7 @@ dpaa_sec_queue_pair_release(struct rte_cryptodev *dev,
 static int
 dpaa_sec_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		__rte_unused const struct rte_cryptodev_qp_conf *qp_conf,
-		__rte_unused int socket_id,
-		__rte_unused struct rte_mempool *session_pool)
+		__rte_unused int socket_id)
 {
 	struct dpaa_sec_dev_private *internals;
 	struct dpaa_sec_qp *qp = NULL;

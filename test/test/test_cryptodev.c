@@ -461,12 +461,13 @@ testsuite_setup(void)
 			dev_id, ts_params->conf.nb_queue_pairs);
 
 	ts_params->qp_conf.nb_descriptors = DEFAULT_NUM_OPS_INFLIGHT;
+	ts_params->qp_conf.mp_session = ts_params->session_mpool;
+	ts_params->qp_conf.mp_session_private = ts_params->session_mpool;
 
 	for (qp_id = 0; qp_id < info.max_nb_queue_pairs; qp_id++) {
 		TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
 			dev_id, qp_id, &ts_params->qp_conf,
-			rte_cryptodev_socket_id(dev_id),
-			ts_params->session_mpool),
+			rte_cryptodev_socket_id(dev_id)),
 			"Failed to setup queue pair %u on cryptodev %u",
 			qp_id, dev_id);
 	}
@@ -519,8 +520,7 @@ ut_setup(void)
 		TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
 			ts_params->valid_devs[0], qp_id,
 			&ts_params->qp_conf,
-			rte_cryptodev_socket_id(ts_params->valid_devs[0]),
-			ts_params->session_mpool),
+			rte_cryptodev_socket_id(ts_params->valid_devs[0])),
 			"Failed to setup queue pair %u on cryptodev %u",
 			qp_id, ts_params->valid_devs[0]);
 	}
@@ -709,13 +709,14 @@ test_queue_pair_descriptor_setup(void)
 	 * freed so are re-used if ring is released and re-created.
 	 */
 	qp_conf.nb_descriptors = MIN_NUM_OPS_INFLIGHT; /* min size*/
+	qp_conf.mp_session = ts_params->session_mpool;
+	qp_conf.mp_session_private = ts_params->session_mpool;
 
 	for (qp_id = 0; qp_id < ts_params->conf.nb_queue_pairs; qp_id++) {
 		TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
 				ts_params->valid_devs[0], qp_id, &qp_conf,
 				rte_cryptodev_socket_id(
-						ts_params->valid_devs[0]),
-				ts_params->session_mpool),
+						ts_params->valid_devs[0])),
 				"Failed test for "
 				"rte_cryptodev_queue_pair_setup: num_inflights "
 				"%u on qp %u on cryptodev %u",
@@ -729,8 +730,7 @@ test_queue_pair_descriptor_setup(void)
 		TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
 				ts_params->valid_devs[0], qp_id, &qp_conf,
 				rte_cryptodev_socket_id(
-						ts_params->valid_devs[0]),
-				ts_params->session_mpool),
+						ts_params->valid_devs[0])),
 				"Failed test for"
 				" rte_cryptodev_queue_pair_setup: num_inflights"
 				" %u on qp %u on cryptodev %u",
@@ -744,8 +744,7 @@ test_queue_pair_descriptor_setup(void)
 		TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
 				ts_params->valid_devs[0], qp_id, &qp_conf,
 				rte_cryptodev_socket_id(
-						ts_params->valid_devs[0]),
-				ts_params->session_mpool),
+						ts_params->valid_devs[0])),
 				"Failed test for "
 				"rte_cryptodev_queue_pair_setup: num_inflights"
 				" %u on qp %u on cryptodev %u",
@@ -760,8 +759,7 @@ test_queue_pair_descriptor_setup(void)
 		TEST_ASSERT_FAIL(rte_cryptodev_queue_pair_setup(
 				ts_params->valid_devs[0], qp_id, &qp_conf,
 				rte_cryptodev_socket_id(
-						ts_params->valid_devs[0]),
-				ts_params->session_mpool),
+						ts_params->valid_devs[0])),
 				"Unexpectedly passed test for "
 				"rte_cryptodev_queue_pair_setup:"
 				"num_inflights %u on qp %u on cryptodev %u",
@@ -776,8 +774,7 @@ test_queue_pair_descriptor_setup(void)
 		TEST_ASSERT_FAIL(rte_cryptodev_queue_pair_setup(
 				ts_params->valid_devs[0], qp_id, &qp_conf,
 				rte_cryptodev_socket_id(
-						ts_params->valid_devs[0]),
-				ts_params->session_mpool),
+						ts_params->valid_devs[0])),
 				"Unexpectedly passed test for "
 				"rte_cryptodev_queue_pair_setup:"
 				"num_inflights %u on qp %u on cryptodev %u",
@@ -791,8 +788,7 @@ test_queue_pair_descriptor_setup(void)
 		TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
 				ts_params->valid_devs[0], qp_id, &qp_conf,
 				rte_cryptodev_socket_id(
-						ts_params->valid_devs[0]),
-				ts_params->session_mpool),
+						ts_params->valid_devs[0])),
 				"Failed test for"
 				" rte_cryptodev_queue_pair_setup:"
 				"num_inflights %u on qp %u on cryptodev %u",
@@ -807,8 +803,7 @@ test_queue_pair_descriptor_setup(void)
 		TEST_ASSERT_FAIL(rte_cryptodev_queue_pair_setup(
 				ts_params->valid_devs[0], qp_id, &qp_conf,
 				rte_cryptodev_socket_id(
-						ts_params->valid_devs[0]),
-				ts_params->session_mpool),
+						ts_params->valid_devs[0])),
 				"Unexpectedly passed test for "
 				"rte_cryptodev_queue_pair_setup:"
 				"num_inflights %u on qp %u on cryptodev %u",
@@ -824,8 +819,7 @@ test_queue_pair_descriptor_setup(void)
 	TEST_ASSERT_FAIL(rte_cryptodev_queue_pair_setup(
 			ts_params->valid_devs[0],
 			qp_id, &qp_conf,
-			rte_cryptodev_socket_id(ts_params->valid_devs[0]),
-			ts_params->session_mpool),
+			rte_cryptodev_socket_id(ts_params->valid_devs[0])),
 			"Failed test for rte_cryptodev_queue_pair_setup:"
 			"invalid qp %u on cryptodev %u",
 			qp_id, ts_params->valid_devs[0]);
@@ -835,8 +829,7 @@ test_queue_pair_descriptor_setup(void)
 	TEST_ASSERT_FAIL(rte_cryptodev_queue_pair_setup(
 			ts_params->valid_devs[0],
 			qp_id, &qp_conf,
-			rte_cryptodev_socket_id(ts_params->valid_devs[0]),
-			ts_params->session_mpool),
+			rte_cryptodev_socket_id(ts_params->valid_devs[0])),
 			"Failed test for rte_cryptodev_queue_pair_setup:"
 			"invalid qp %u on cryptodev %u",
 			qp_id, ts_params->valid_devs[0]);

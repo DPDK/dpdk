@@ -383,11 +383,12 @@ testsuite_setup(void)
 
 	/* configure qp */
 	ts_params->qp_conf.nb_descriptors = DEFAULT_NUM_OPS_INFLIGHT;
+	ts_params->qp_conf.mp_session = ts_params->session_mpool;
+	ts_params->qp_conf.mp_session_private = ts_params->session_mpool;
 	for (qp_id = 0; qp_id < info.max_nb_queue_pairs; qp_id++) {
 		TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
 			dev_id, qp_id, &ts_params->qp_conf,
-			rte_cryptodev_socket_id(dev_id),
-			ts_params->session_mpool),
+			rte_cryptodev_socket_id(dev_id)),
 			"Failed to setup queue pair %u on cryptodev %u ASYM",
 			qp_id, dev_id);
 	}
@@ -449,8 +450,7 @@ ut_setup(void)
 		TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
 			ts_params->valid_devs[0], qp_id,
 			&ts_params->qp_conf,
-			rte_cryptodev_socket_id(ts_params->valid_devs[0]),
-			ts_params->session_mpool),
+			rte_cryptodev_socket_id(ts_params->valid_devs[0])),
 			"Failed to setup queue pair %u on cryptodev %u",
 			qp_id, ts_params->valid_devs[0]);
 	}

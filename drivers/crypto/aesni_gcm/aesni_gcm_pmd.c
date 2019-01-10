@@ -151,7 +151,8 @@ aesni_gcm_get_session(struct aesni_gcm_qp *qp, struct rte_crypto_op *op)
 		if (rte_mempool_get(qp->sess_mp, (void **)&_sess))
 			return NULL;
 
-		if (rte_mempool_get(qp->sess_mp, (void **)&_sess_private_data))
+		if (rte_mempool_get(qp->sess_mp_priv,
+				(void **)&_sess_private_data))
 			return NULL;
 
 		sess = (struct aesni_gcm_session *)_sess_private_data;
@@ -159,7 +160,7 @@ aesni_gcm_get_session(struct aesni_gcm_qp *qp, struct rte_crypto_op *op)
 		if (unlikely(aesni_gcm_set_session_parameters(qp->ops,
 				sess, sym_op->xform) != 0)) {
 			rte_mempool_put(qp->sess_mp, _sess);
-			rte_mempool_put(qp->sess_mp, _sess_private_data);
+			rte_mempool_put(qp->sess_mp_priv, _sess_private_data);
 			sess = NULL;
 		}
 		sym_op->session = (struct rte_cryptodev_sym_session *)_sess;
@@ -419,7 +420,7 @@ handle_completed_gcm_crypto_op(struct aesni_gcm_qp *qp,
 		memset(sess, 0, sizeof(struct aesni_gcm_session));
 		memset(op->sym->session, 0,
 				rte_cryptodev_sym_get_header_session_size());
-		rte_mempool_put(qp->sess_mp, sess);
+		rte_mempool_put(qp->sess_mp_priv, sess);
 		rte_mempool_put(qp->sess_mp, op->sym->session);
 		op->sym->session = NULL;
 	}

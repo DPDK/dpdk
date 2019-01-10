@@ -198,7 +198,7 @@ snow3g_pmd_qp_create_processed_ops_ring(struct snow3g_qp *qp,
 static int
 snow3g_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		const struct rte_cryptodev_qp_conf *qp_conf,
-		int socket_id, struct rte_mempool *session_pool)
+		int socket_id)
 {
 	struct snow3g_qp *qp = NULL;
 
@@ -223,7 +223,8 @@ snow3g_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	if (qp->processed_ops == NULL)
 		goto qp_setup_cleanup;
 
-	qp->sess_mp = session_pool;
+	qp->sess_mp = qp_conf->mp_session;
+	qp->sess_mp_priv = qp_conf->mp_session_private;
 
 	memset(&qp->qp_stats, 0, sizeof(qp->qp_stats));
 
