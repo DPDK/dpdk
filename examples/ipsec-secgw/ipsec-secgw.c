@@ -629,32 +629,45 @@ process_pkts_outbound_nosp(struct ipsec_ctx *ipsec_ctx,
 		struct ipsec_traffic *traffic)
 {
 	struct rte_mbuf *m;
-	uint32_t nb_pkts_out, i;
+	uint32_t nb_pkts_out, i, n;
 	struct ip *ip;
 
 	/* Drop any IPsec traffic from protected ports */
 	for (i = 0; i < traffic->ipsec.num; i++)
 		rte_pktmbuf_free(traffic->ipsec.pkts[i]);
 
-	traffic->ipsec.num = 0;
+	n = 0;
 
-	for (i = 0; i < traffic->ip4.num; i++)
-		traffic->ip4.res[i] = single_sa_idx;
+	for (i = 0; i < traffic->ip4.num; i++) {
+		traffic->ipsec.pkts[n] = traffic->ip4.pkts[i];
+		traffic->ipsec.res[n++] = single_sa_idx;
+	}
 
-	for (i = 0; i < traffic->ip6.num; i++)
-		traffic->ip6.res[i] = single_sa_idx;
+	for (i = 0; i < traffic->ip6.num; i++) {
+		traffic->ipsec.pkts[n] = traffic->ip6.pkts[i];
+		traffic->ipsec.res[n++] = single_sa_idx;
+	}
 
-	nb_pkts_out = ipsec_outbound(ipsec_ctx, traffic->ip4.pkts,
-			traffic->ip4.res, traffic->ip4.num,
+	traffic->ip4.num = 0;
+	traffic->ip6.num = 0;
+	traffic->ipsec.num = n;
+
+	nb_pkts_out = ipsec_outbound(ipsec_ctx, traffic->ipsec.pkts,
+			traffic->ipsec.res, traffic->ipsec.num,
 			MAX_PKT_BURST);
 
 	/* They all sue the same SA (ip4 or ip6 tunnel) */
 	m = traffic->ipsec.pkts[i];
 	ip = rte_pktmbuf_mtod(m, struct ip *);
-	if (ip->ip_v == IPVERSION)
+	if (ip->ip_v == IPVERSION) {
 		traffic->ip4.num = nb_pkts_out;
-	else
+		for (i = 0; i < nb_pkts_out; i++)
+			traffic->ip4.pkts[i] = traffic->ipsec.pkts[i];
+	} else {
 		traffic->ip6.num = nb_pkts_out;
+		for (i = 0; i < nb_pkts_out; i++)
+			traffic->ip6.pkts[i] = traffic->ipsec.pkts[i];
+	}
 }
 
 static inline int32_t
