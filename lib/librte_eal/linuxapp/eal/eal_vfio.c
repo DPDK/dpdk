@@ -857,7 +857,8 @@ rte_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 	/* if there are no active device groups, unregister the callback to
 	 * avoid spurious attempts to map/unmap memory from VFIO.
 	 */
-	if (vfio_cfg == default_vfio_cfg && vfio_cfg->vfio_active_groups == 0)
+	if (vfio_cfg == default_vfio_cfg && vfio_cfg->vfio_active_groups == 0 &&
+			rte_eal_process_type() != RTE_PROC_SECONDARY)
 		rte_mem_event_callback_unregister(VFIO_MEM_EVENT_CLB_NAME,
 				NULL);
 
