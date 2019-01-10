@@ -29,12 +29,19 @@
 #include <rte_branch_prediction.h>
 #include <rte_string_fns.h>
 #include <rte_metrics.h>
+#include <rte_cycles.h>
+#include <rte_security.h>
+#include <rte_cryptodev.h>
 
 /* Maximum long option length for option parsing. */
 #define MAX_LONG_OPT_SZ 64
 #define RTE_LOGTYPE_APP RTE_LOGTYPE_USER1
 
 #define MAX_STRING_LEN 256
+
+#define STATS_BDR_FMT "========================================"
+#define STATS_BDR_STR(w, s) printf("%.*s%s%.*s\n", w, \
+	STATS_BDR_FMT, s, w, STATS_BDR_FMT)
 
 /**< mask of enabled ports */
 static uint32_t enabled_port_mask;
@@ -65,6 +72,12 @@ static char *xstats_name;
 static uint32_t nb_xstats_ids;
 static uint64_t xstats_ids[MAX_NB_XSTATS_IDS];
 
+/* show border */
+static char bdr_str[MAX_STRING_LEN];
+
+/**< Enable show port. */
+static uint32_t enable_shw_port;
+
 /**< display usage */
 static void
 proc_info_usage(const char *prgname)
@@ -83,7 +96,8 @@ proc_info_usage(const char *prgname)
 		"  --stats-reset: to reset port statistics\n"
 		"  --xstats-reset: to reset port extended statistics\n"
 		"  --collectd-format: to print statistics to STDOUT in expected by collectd format\n"
-		"  --host-id STRING: host id used to identify the system process is running on\n",
+		"  --host-id STRING: host id used to identify the system process is running on\n"
+		"  --show-port: to display ports information\n",
 		prgname);
 }
 
@@ -190,6 +204,7 @@ proc_info_parse_args(int argc, char **argv)
 		{"collectd-format", 0, NULL, 0},
 		{"xstats-ids", 1, NULL, 1},
 		{"host-id", 0, NULL, 0},
+		{"show-port", 0, NULL, 0},
 		{NULL, 0, 0, 0}
 	};
 
@@ -233,6 +248,9 @@ proc_info_parse_args(int argc, char **argv)
 			else if (!strncmp(long_option[option_index].name, "xstats-reset",
 					MAX_LONG_OPT_SZ))
 				reset_xstats = 1;
+			else if (!strncmp(long_option[option_index].name,
+					"show-port", MAX_LONG_OPT_SZ))
+				enable_shw_port = 1;
 			break;
 		case 1:
 			/* Print xstat single value given by name*/
@@ -584,6 +602,98 @@ metrics_display(int port_id)
 	rte_free(names);
 }
 
+static void
+show_port(void)
+{
+	uint16_t i = 0;
+	int ret = 0, j, k;
+
+	snprintf(bdr_str, MAX_STRING_LEN, " show - Port PMD %"PRIu64,
+			rte_get_tsc_hz());
+	STATS_BDR_STR(10, bdr_str);
+
+	RTE_ETH_FOREACH_DEV(i) {
+		uint16_t mtu = 0;
+		struct rte_eth_link link;
+		struct rte_eth_dev_info dev_info;
+		struct rte_eth_rxq_info queue_info;
+		struct rte_eth_rss_conf rss_conf;
+
+		memset(&rss_conf, 0, sizeof(rss_conf));
+
+		snprintf(bdr_str, MAX_STRING_LEN, " Port (%u)", i);
+		STATS_BDR_STR(5, bdr_str);
+		printf("  - generic config\n");
+
+		printf("\t  -- Socket %d\n", rte_eth_dev_socket_id(i));
+		rte_eth_link_get(i, &link);
+		printf("\t  -- link speed %d duplex %d,"
+				" auto neg %d status %d\n",
+				link.link_speed,
+				link.link_duplex,
+				link.link_autoneg,
+				link.link_status);
+		printf("\t  -- promiscuous (%d)\n",
+				rte_eth_promiscuous_get(i));
+		ret = rte_eth_dev_get_mtu(i, &mtu);
+		if (ret == 0)
+			printf("\t  -- mtu (%d)\n", mtu);
+
+		rte_eth_dev_info_get(i, &dev_info);
+
+		printf("  - queue\n");
+		for (j = 0; j < dev_info.nb_rx_queues; j++) {
+			ret = rte_eth_rx_queue_info_get(i, j, &queue_info);
+			if (ret == 0) {
+				printf("\t  -- queue %d rx scatter %d"
+						" descriptors %d"
+						" offloads 0x%"PRIx64
+						" mempool socket %d\n",
+						j,
+						queue_info.scattered_rx,
+						queue_info.nb_desc,
+						queue_info.conf.offloads,
+						queue_info.mp->socket_id);
+			}
+		}
+
+		ret = rte_eth_dev_rss_hash_conf_get(i, &rss_conf);
+		if (ret == 0) {
+			if (rss_conf.rss_key) {
+				printf("  - RSS\n");
+				printf("\t  -- RSS len %u key (hex):",
+						rss_conf.rss_key_len);
+				for (k = 0; k < rss_conf.rss_key_len; k++)
+					printf(" %x", rss_conf.rss_key[k]);
+				printf("\t  -- hf 0x%"PRIx64"\n",
+						rss_conf.rss_hf);
+			}
+		}
+
+		printf("  - cyrpto context\n");
+		void *p_ctx = rte_eth_dev_get_sec_ctx(i);
+		printf("\t  -- security context - %p\n", p_ctx);
+
+		if (p_ctx) {
+			printf("\t  -- size %u\n",
+					rte_security_session_get_size(p_ctx));
+			const struct rte_security_capability *s_cap =
+				rte_security_capabilities_get(p_ctx);
+			if (s_cap) {
+				printf("\t  -- action (0x%x), protocol (0x%x),"
+						" offload flags (0x%x)\n",
+						s_cap->action,
+						s_cap->protocol,
+						s_cap->ol_flags);
+				printf("\t  -- capabilities - oper type %x\n",
+						s_cap->crypto_capabilities->op);
+			}
+		}
+	}
+
+	STATS_BDR_STR(50, "");
+}
+
 int
 main(int argc, char **argv)
 {
@@ -664,9 +774,16 @@ main(int argc, char **argv)
 	if (enable_metrics)
 		metrics_display(RTE_METRICS_GLOBAL);
 
+	/* show information for PMD */
+	if (enable_shw_port)
+		show_port();
+
 	ret = rte_eal_cleanup();
 	if (ret)
 		printf("Error from rte_eal_cleanup(), %d\n", ret);
+
+	snprintf(bdr_str, MAX_STRING_LEN, " ");
+	STATS_BDR_STR(50, bdr_str);
 
 	return 0;
 }

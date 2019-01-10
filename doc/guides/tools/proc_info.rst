@@ -6,7 +6,8 @@ dpdk-procinfo Application
 
 The dpdk-procinfo application is a Data Plane Development Kit (DPDK) application
 that runs as a DPDK secondary process and is capable of retrieving port
-statistics, resetting port statistics and printing DPDK memory information.
+statistics, resetting port statistics, printing DPDK memory information and
+displaying debug information for port.
 This application extends the original functionality that was supported by
 dump_cfg.
 
@@ -17,7 +18,7 @@ The application has a number of command line options:
 .. code-block:: console
 
    ./$(RTE_TARGET)/app/dpdk-procinfo -- -m | [-p PORTMASK] [--stats | --xstats |
-   --stats-reset | --xstats-reset]
+   --stats-reset | --xstats-reset] [ --show-port ]
 
 Parameters
 ~~~~~~~~~~
@@ -40,6 +41,10 @@ The xstats-reset parameter controls the resetting of extended port statistics.
 If no port mask is specified xstats are reset for all DPDK ports.
 
 **-m**: Print DPDK memory information.
+
+**--show-port**
+The show-port parameter displays port level various configuration informationi
+associated to RX port queue pair.
 
 Limitations
 -----------
