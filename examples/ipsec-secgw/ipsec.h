@@ -186,6 +186,14 @@ uint16_t
 ipsec_outbound(struct ipsec_ctx *ctx, struct rte_mbuf *pkts[],
 		uint32_t sa_idx[], uint16_t nb_pkts, uint16_t len);
 
+uint16_t
+ipsec_inbound_cqp_dequeue(struct ipsec_ctx *ctx, struct rte_mbuf *pkts[],
+		uint16_t len);
+
+uint16_t
+ipsec_outbound_cqp_dequeue(struct ipsec_ctx *ctx, struct rte_mbuf *pkts[],
+		uint16_t len);
+
 static inline uint16_t
 ipsec_metadata_size(void)
 {
@@ -249,5 +257,8 @@ sa_check_offloads(uint16_t port_id, uint64_t *rx_offloads,
 
 int
 add_dst_ethaddr(uint16_t port, const struct ether_addr *addr);
+
+void
+enqueue_cop_burst(struct cdev_qp *cqp);
 
 #endif /* __IPSEC_H__ */
