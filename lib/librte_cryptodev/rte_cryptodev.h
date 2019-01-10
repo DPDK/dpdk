@@ -955,6 +955,8 @@ rte_cryptodev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
 struct rte_cryptodev_sym_session {
 	uint16_t nb_drivers;
 	/**< number of elements in sess_data array */
+	uint16_t user_data_sz;
+	/**< session user data will be placed after sess_data */
 	__extension__ struct {
 		void *data;
 	} sess_data[0];
@@ -1128,7 +1130,8 @@ rte_cryptodev_asym_session_clear(uint8_t dev_id,
 			struct rte_cryptodev_asym_session *sess);
 
 /**
- * Get the size of the header session, for all registered drivers.
+ * Get the size of the header session, for all registered drivers excluding
+ * the user data size.
  *
  * @return
  *   Size of the symmetric eader session.

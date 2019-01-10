@@ -992,6 +992,7 @@ rte_cryptodev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
 		}
 
 		s.nb_drivers = pool_priv->nb_drivers;
+		s.user_data_sz = pool_priv->user_data_sz;
 
 		if ((rte_cryptodev_sym_get_existing_header_session_size(&s) >
 			obj_size) || (s.nb_drivers <= dev->driver_id) ||
@@ -1307,7 +1308,8 @@ rte_cryptodev_sym_session_pool_create(const char *name, uint32_t nb_elts,
 static unsigned int
 rte_cryptodev_sym_session_data_size(struct rte_cryptodev_sym_session *sess)
 {
-	return (sizeof(sess->sess_data[0]) * sess->nb_drivers);
+	return (sizeof(sess->sess_data[0]) * sess->nb_drivers) +
+			sess->user_data_sz;
 }
 
 struct rte_cryptodev_sym_session *
@@ -1335,7 +1337,7 @@ rte_cryptodev_sym_session_create(struct rte_mempool *mp)
 	}
 
 	sess->nb_drivers = pool_priv->nb_drivers;
-
+	sess->user_data_sz = pool_priv->user_data_sz;
 
 	/* Clear device session pointer.
 	 * Include the flag indicating presence of user data
@@ -1538,6 +1540,9 @@ rte_cryptodev_sym_session_set_user_data(
 	if (sess == NULL)
 		return -EINVAL;
 
+	if (sess->user_data_sz < size)
+		return -ENOMEM;
+
 	rte_memcpy(sess->sess_data + sess->nb_drivers, data, size);
 	return 0;
 }
@@ -1546,7 +1551,7 @@ void * __rte_experimental
 rte_cryptodev_sym_session_get_user_data(
 					struct rte_cryptodev_sym_session *sess)
 {
-	if (sess == NULL)
+	if (sess == NULL || sess->user_data_sz == 0)
 		return NULL;
 
 	return (void *)(sess->sess_data + sess->nb_drivers);

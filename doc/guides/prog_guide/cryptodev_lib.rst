@@ -327,6 +327,10 @@ the set API to set the user data and retrieve it using get API.
 	void * rte_cryptodev_sym_session_get_user_data(
 		struct rte_cryptodev_sym_session *sess);
 
+Please note the ``size`` passed to set API cannot be bigger than the predefined
+``user_data_sz`` when creating the session header mempool, otherwise the
+function will return error. Also when ``user_data_sz`` was defined as ``0`` when
+creating the session header mempool, the get API will always return ``NULL``.
 
 For session-less mode, the private user data information can be placed along with the
 ``struct rte_crypto_op``. The ``rte_crypto_op::private_data_offset`` indicates the
