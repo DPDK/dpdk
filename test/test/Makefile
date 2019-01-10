@@ -207,6 +207,9 @@ SRCS-$(CONFIG_RTE_LIBRTE_KVARGS) += test_kvargs.c
 
 SRCS-$(CONFIG_RTE_LIBRTE_BPF) += test_bpf.c
 
+SRCS-$(CONFIG_RTE_LIBRTE_IPSEC) += test_ipsec.c
+LDLIBS += -lrte_ipsec
+
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 CFLAGS += -O3
