@@ -112,6 +112,17 @@ New Features
   * Add AES-GMAC algorithm support.
   * Add Plain SHA1, SHA224, SHA256, SHA384, and SHA512 algorithms support.
 
+* **Added IPsec Library.**
+
+  Added an experimental library ``librte_ipsec`` to provide ESP tunnel and
+  transport support for IPv4 and IPv6 packets.
+
+  The library provides support for AES-CBC ciphering and AES-CBC with HMAC-SHA1
+  algorithm-chaining, and AES-GCM and NULL algorithms only at present. It is
+  planned to add more algorithms in future releases.
+
+  See :doc:`../prog_guide/ipsec_lib` for more information.
+
 * **Enabled checksum support in the ISA-L compressdev driver.**
 
   Added support for both adler and crc32 checksums in the ISA-L PMD.

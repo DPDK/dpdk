@@ -1042,6 +1042,7 @@ T: git://dpdk.org/next/dpdk-next-crypto
 F: lib/librte_ipsec/
 M: Bernard Iremonger <bernard.iremonger@intel.com>
 F: test/test/test_ipsec.c
+F: doc/guides/prog_guide/ipsec_lib.rst
 
 Flow Classify - EXPERIMENTAL
 M: Bernard Iremonger <bernard.iremonger@intel.com>
