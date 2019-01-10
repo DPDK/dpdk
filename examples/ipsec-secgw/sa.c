@@ -1017,3 +1017,38 @@ outbound_sa_lookup(struct sa_ctx *sa_ctx, uint32_t sa_idx[],
 	for (i = 0; i < nb_pkts; i++)
 		sa[i] = &sa_ctx->sa[sa_idx[i]];
 }
+
+/*
+ * Select HW offloads to be used.
+ */
+int
+sa_check_offloads(uint16_t port_id, uint64_t *rx_offloads,
+		uint64_t *tx_offloads)
+{
+	struct ipsec_sa *rule;
+	uint32_t idx_sa;
+
+	*rx_offloads = 0;
+	*tx_offloads = 0;
+
+	/* Check for inbound rules that use offloads and use this port */
+	for (idx_sa = 0; idx_sa < nb_sa_in; idx_sa++) {
+		rule = &sa_in[idx_sa];
+		if ((rule->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO ||
+				rule->type ==
+				RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL)
+				&& rule->portid == port_id)
+			*rx_offloads |= DEV_RX_OFFLOAD_SECURITY;
+	}
+
+	/* Check for outbound rules that use offloads and use this port */
+	for (idx_sa = 0; idx_sa < nb_sa_out; idx_sa++) {
+		rule = &sa_out[idx_sa];
+		if ((rule->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO ||
+				rule->type ==
+				RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL)
+				&& rule->portid == port_id)
+			*tx_offloads |= DEV_TX_OFFLOAD_SECURITY;
+	}
+	return 0;
+}

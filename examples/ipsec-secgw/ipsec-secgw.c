@@ -124,6 +124,8 @@ struct ethaddr_info ethaddr_tbl[RTE_MAX_ETHPORTS] = {
 #define CMD_LINE_OPT_CONFIG		"config"
 #define CMD_LINE_OPT_SINGLE_SA		"single-sa"
 #define CMD_LINE_OPT_CRYPTODEV_MASK	"cryptodev_mask"
+#define CMD_LINE_OPT_RX_OFFLOAD		"rxoffload"
+#define CMD_LINE_OPT_TX_OFFLOAD		"txoffload"
 
 enum {
 	/* long options mapped to a short option */
@@ -135,12 +137,16 @@ enum {
 	CMD_LINE_OPT_CONFIG_NUM,
 	CMD_LINE_OPT_SINGLE_SA_NUM,
 	CMD_LINE_OPT_CRYPTODEV_MASK_NUM,
+	CMD_LINE_OPT_RX_OFFLOAD_NUM,
+	CMD_LINE_OPT_TX_OFFLOAD_NUM,
 };
 
 static const struct option lgopts[] = {
 	{CMD_LINE_OPT_CONFIG, 1, 0, CMD_LINE_OPT_CONFIG_NUM},
 	{CMD_LINE_OPT_SINGLE_SA, 1, 0, CMD_LINE_OPT_SINGLE_SA_NUM},
 	{CMD_LINE_OPT_CRYPTODEV_MASK, 1, 0, CMD_LINE_OPT_CRYPTODEV_MASK_NUM},
+	{CMD_LINE_OPT_RX_OFFLOAD, 1, 0, CMD_LINE_OPT_RX_OFFLOAD_NUM},
+	{CMD_LINE_OPT_TX_OFFLOAD, 1, 0, CMD_LINE_OPT_TX_OFFLOAD_NUM},
 	{NULL, 0, 0, 0}
 };
 
@@ -154,6 +160,13 @@ static uint32_t nb_lcores;
 static uint32_t single_sa;
 static uint32_t single_sa_idx;
 static uint32_t frame_size;
+
+/*
+ * RX/TX HW offload capabilities to enable/use on ethernet ports.
+ * By default all capabilities are enabled.
+ */
+static uint64_t dev_rx_offload = UINT64_MAX;
+static uint64_t dev_tx_offload = UINT64_MAX;
 
 struct lcore_rx_queue {
 	uint16_t port_id;
@@ -208,8 +221,6 @@ static struct rte_eth_conf port_conf = {
 	},
 	.txmode = {
 		.mq_mode = ETH_MQ_TX_NONE,
-		.offloads = (DEV_TX_OFFLOAD_IPV4_CKSUM |
-			     DEV_TX_OFFLOAD_MULTI_SEGS),
 	},
 };
 
@@ -315,7 +326,8 @@ prepare_traffic(struct rte_mbuf **pkts, struct ipsec_traffic *t,
 }
 
 static inline void
-prepare_tx_pkt(struct rte_mbuf *pkt, uint16_t port)
+prepare_tx_pkt(struct rte_mbuf *pkt, uint16_t port,
+		const struct lcore_conf *qconf)
 {
 	struct ip *ip;
 	struct ether_hdr *ethhdr;
@@ -325,14 +337,19 @@ prepare_tx_pkt(struct rte_mbuf *pkt, uint16_t port)
 	ethhdr = (struct ether_hdr *)rte_pktmbuf_prepend(pkt, ETHER_HDR_LEN);
 
 	if (ip->ip_v == IPVERSION) {
-		pkt->ol_flags |= PKT_TX_IP_CKSUM | PKT_TX_IPV4;
+		pkt->ol_flags |= qconf->outbound.ipv4_offloads;
 		pkt->l3_len = sizeof(struct ip);
 		pkt->l2_len = ETHER_HDR_LEN;
 
 		ip->ip_sum = 0;
+
+		/* calculate IPv4 cksum in SW */
+		if ((pkt->ol_flags & PKT_TX_IP_CKSUM) == 0)
+			ip->ip_sum = rte_ipv4_cksum((struct ipv4_hdr *)ip);
+
 		ethhdr->ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
 	} else {
-		pkt->ol_flags |= PKT_TX_IPV6;
+		pkt->ol_flags |= qconf->outbound.ipv6_offloads;
 		pkt->l3_len = sizeof(struct ip6_hdr);
 		pkt->l2_len = ETHER_HDR_LEN;
 
@@ -346,18 +363,19 @@ prepare_tx_pkt(struct rte_mbuf *pkt, uint16_t port)
 }
 
 static inline void
-prepare_tx_burst(struct rte_mbuf *pkts[], uint16_t nb_pkts, uint16_t port)
+prepare_tx_burst(struct rte_mbuf *pkts[], uint16_t nb_pkts, uint16_t port,
+		const struct lcore_conf *qconf)
 {
 	int32_t i;
 	const int32_t prefetch_offset = 2;
 
 	for (i = 0; i < (nb_pkts - prefetch_offset); i++) {
 		rte_mbuf_prefetch_part2(pkts[i + prefetch_offset]);
-		prepare_tx_pkt(pkts[i], port);
+		prepare_tx_pkt(pkts[i], port, qconf);
 	}
 	/* Process left packets */
 	for (; i < nb_pkts; i++)
-		prepare_tx_pkt(pkts[i], port);
+		prepare_tx_pkt(pkts[i], port, qconf);
 }
 
 /* Send burst of packets on an output interface */
@@ -371,7 +389,7 @@ send_burst(struct lcore_conf *qconf, uint16_t n, uint16_t port)
 	queueid = qconf->tx_queue_id[port];
 	m_table = (struct rte_mbuf **)qconf->tx_mbufs[port].m_table;
 
-	prepare_tx_burst(m_table, n, port);
+	prepare_tx_burst(m_table, n, port, qconf);
 
 	ret = rte_eth_tx_burst(port, queueid, m_table, n);
 	if (unlikely(ret < n)) {
@@ -958,6 +976,8 @@ print_usage(const char *prgname)
 		" --config (port,queue,lcore)[,(port,queue,lcore)]"
 		" [--single-sa SAIDX]"
 		" [--cryptodev_mask MASK]"
+		" [--" CMD_LINE_OPT_RX_OFFLOAD " RX_OFFLOAD_MASK]"
+		" [--" CMD_LINE_OPT_TX_OFFLOAD " TX_OFFLOAD_MASK]"
 		"\n\n"
 		"  -p PORTMASK: Hexadecimal bitmask of ports to configure\n"
 		"  -P : Enable promiscuous mode\n"
@@ -970,8 +990,29 @@ print_usage(const char *prgname)
 		"                     bypassing the SP\n"
 		"  --cryptodev_mask MASK: Hexadecimal bitmask of the crypto\n"
 		"                         devices to configure\n"
+		"  --" CMD_LINE_OPT_RX_OFFLOAD
+		": bitmask of the RX HW offload capabilities to enable/use\n"
+		"                         (DEV_RX_OFFLOAD_*)\n"
+		"  --" CMD_LINE_OPT_TX_OFFLOAD
+		": bitmask of the TX HW offload capabilities to enable/use\n"
+		"                         (DEV_TX_OFFLOAD_*)\n"
 		"\n",
 		prgname);
+}
+
+static int
+parse_mask(const char *str, uint64_t *val)
+{
+	char *end;
+	unsigned long t;
+
+	errno = 0;
+	t = strtoul(str, &end, 0);
+	if (errno != 0 || end[0] != 0)
+		return -EINVAL;
+
+	*val = t;
+	return 0;
 }
 
 static int32_t
@@ -1159,6 +1200,24 @@ parse_args(int32_t argc, char **argv)
 
 			/* else */
 			enabled_cryptodev_mask = ret;
+			break;
+		case CMD_LINE_OPT_RX_OFFLOAD_NUM:
+			ret = parse_mask(optarg, &dev_rx_offload);
+			if (ret != 0) {
+				printf("Invalid argument for \'%s\': %s\n",
+					CMD_LINE_OPT_RX_OFFLOAD, optarg);
+				print_usage(prgname);
+				return -1;
+			}
+			break;
+		case CMD_LINE_OPT_TX_OFFLOAD_NUM:
+			ret = parse_mask(optarg, &dev_tx_offload);
+			if (ret != 0) {
+				printf("Invalid argument for \'%s\': %s\n",
+					CMD_LINE_OPT_TX_OFFLOAD, optarg);
+				print_usage(prgname);
+				return -1;
+			}
 			break;
 		default:
 			print_usage(prgname);
@@ -1566,7 +1625,7 @@ cryptodevs_init(void)
 }
 
 static void
-port_init(uint16_t portid)
+port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads)
 {
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_txconf *txconf;
@@ -1578,6 +1637,10 @@ port_init(uint16_t portid)
 	struct rte_eth_conf local_port_conf = port_conf;
 
 	rte_eth_dev_info_get(portid, &dev_info);
+
+	/* limit allowed HW offloafs, as user requested */
+	dev_info.rx_offload_capa &= dev_rx_offload;
+	dev_info.tx_offload_capa &= dev_tx_offload;
 
 	printf("Configuring device port %u:\n", portid);
 
@@ -1607,13 +1670,37 @@ port_init(uint16_t portid)
 		local_port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	}
 
-	if (dev_info.rx_offload_capa & DEV_RX_OFFLOAD_SECURITY)
-		local_port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_SECURITY;
-	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_SECURITY)
-		local_port_conf.txmode.offloads |= DEV_TX_OFFLOAD_SECURITY;
+	local_port_conf.rxmode.offloads |= req_rx_offloads;
+	local_port_conf.txmode.offloads |= req_tx_offloads;
+
+	/* Check that all required capabilities are supported */
+	if ((local_port_conf.rxmode.offloads & dev_info.rx_offload_capa) !=
+			local_port_conf.rxmode.offloads)
+		rte_exit(EXIT_FAILURE,
+			"Error: port %u required RX offloads: 0x%" PRIx64
+			", avaialbe RX offloads: 0x%" PRIx64 "\n",
+			portid, local_port_conf.rxmode.offloads,
+			dev_info.rx_offload_capa);
+
+	if ((local_port_conf.txmode.offloads & dev_info.tx_offload_capa) !=
+			local_port_conf.txmode.offloads)
+		rte_exit(EXIT_FAILURE,
+			"Error: port %u required TX offloads: 0x%" PRIx64
+			", avaialbe TX offloads: 0x%" PRIx64 "\n",
+			portid, local_port_conf.txmode.offloads,
+			dev_info.tx_offload_capa);
+
 	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
 		local_port_conf.txmode.offloads |=
 			DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+
+	if (dev_info.tx_offload_capa & DEV_TX_OFFLOAD_IPV4_CKSUM)
+		local_port_conf.txmode.offloads |= DEV_TX_OFFLOAD_IPV4_CKSUM;
+
+	printf("port %u configurng rx_offloads=0x%" PRIx64
+		", tx_offloads=0x%" PRIx64 "\n",
+		portid, local_port_conf.rxmode.offloads,
+		local_port_conf.txmode.offloads);
 
 	local_port_conf.rx_adv_conf.rss_conf.rss_hf &=
 		dev_info.flow_type_rss_offloads;
@@ -1662,6 +1749,13 @@ port_init(uint16_t portid)
 
 		qconf = &lcore_conf[lcore_id];
 		qconf->tx_queue_id[portid] = tx_queueid;
+
+		/* Pre-populate pkt offloads based on capabilities */
+		qconf->outbound.ipv4_offloads = PKT_TX_IPV4;
+		qconf->outbound.ipv6_offloads = PKT_TX_IPV6;
+		if (local_port_conf.txmode.offloads & DEV_TX_OFFLOAD_IPV4_CKSUM)
+			qconf->outbound.ipv4_offloads |= PKT_TX_IP_CKSUM;
+
 		tx_queueid++;
 
 		/* init RX queues */
@@ -1772,6 +1866,7 @@ main(int32_t argc, char **argv)
 	uint32_t lcore_id;
 	uint8_t socket_id;
 	uint16_t portid;
+	uint64_t req_rx_offloads, req_tx_offloads;
 
 	/* init EAL */
 	ret = rte_eal_init(argc, argv);
@@ -1827,7 +1922,8 @@ main(int32_t argc, char **argv)
 		if ((enabled_port_mask & (1 << portid)) == 0)
 			continue;
 
-		port_init(portid);
+		sa_check_offloads(portid, &req_rx_offloads, &req_tx_offloads);
+		port_init(portid, req_rx_offloads, req_tx_offloads);
 	}
 
 	cryptodevs_init();

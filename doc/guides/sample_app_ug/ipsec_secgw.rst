@@ -95,6 +95,8 @@ The application has a number of command line options::
                         -p PORTMASK -P -u PORTMASK -j FRAMESIZE
                         --config (port,queue,lcore)[,(port,queue,lcore]
                         --single-sa SAIDX
+                        --rxoffload MASK
+                        --txoffload MASK
                         -f CONFIG_FILE_PATH
 
 Where:
@@ -118,6 +120,16 @@ Where:
 *   ``--single-sa SAIDX``: use a single SA for outbound traffic, bypassing the SP
     on both Inbound and Outbound. This option is meant for debugging/performance
     purposes.
+
+*   ``--rxoffload MASK``: RX HW offload capabilities to enable/use on this port
+    (bitmask of DEV_RX_OFFLOAD_* values). It is an optional parameter and
+    allows user to disable some of the RX HW offload capabilities.
+    By default all HW RX offloads are enabled.
+
+*   ``--txoffload MASK``: TX HW offload capabilities to enable/use on this port
+    (bitmask of DEV_TX_OFFLOAD_* values). It is an optional parameter and
+    allows user to disable some of the TX HW offload capabilities.
+    By default all HW TX offloads are enabled.
 
 *   ``-f CONFIG_FILE_PATH``: the full path of text-based file containing all
     configuration items for running the application (See Configuration file

@@ -147,6 +147,8 @@ struct ipsec_ctx {
 	struct rte_mempool *session_priv_pool;
 	struct rte_mbuf *ol_pkts[MAX_PKT_BURST] __rte_aligned(sizeof(void *));
 	uint16_t ol_pkts_cnt;
+	uint64_t ipv4_offloads;
+	uint64_t ipv6_offloads;
 };
 
 struct cdev_key {
@@ -240,5 +242,9 @@ sa_init(struct socket_ctx *ctx, int32_t socket_id);
 
 void
 rt_init(struct socket_ctx *ctx, int32_t socket_id);
+
+int
+sa_check_offloads(uint16_t port_id, uint64_t *rx_offloads,
+		uint64_t *tx_offloads);
 
 #endif /* __IPSEC_H__ */
