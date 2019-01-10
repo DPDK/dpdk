@@ -287,6 +287,7 @@ struct softnic_cryptodev_params {
 	uint32_t dev_id; /**< Valid only when *dev_name* is NULL. */
 	uint32_t n_queues;
 	uint32_t queue_size;
+	uint32_t session_pool_size;
 };
 
 struct softnic_cryptodev {
@@ -294,6 +295,8 @@ struct softnic_cryptodev {
 	char name[NAME_SIZE];
 	uint16_t dev_id;
 	uint32_t n_queues;
+	struct rte_mempool *mp_create;
+	struct rte_mempool *mp_init;
 };
 
 TAILQ_HEAD(softnic_cryptodev_list, softnic_cryptodev);

@@ -1092,7 +1092,7 @@ cmd_tap(struct pmd_internals *softnic,
 
 /**
  * cryptodev <tap_name> dev <device_name> | dev_id <device_id>
- * queue <n_queues> <queue_size>
+ * queue <n_queues> <queue_size> max_sessions <n_sessions>
  **/
 
 static void
@@ -1106,7 +1106,7 @@ cmd_cryptodev(struct pmd_internals *softnic,
 	char *name;
 
 	memset(&params, 0, sizeof(params));
-	if (n_tokens != 7) {
+	if (n_tokens != 9) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
 		return;
 	}
@@ -1142,6 +1142,19 @@ cmd_cryptodev(struct pmd_internals *softnic,
 	if (softnic_parser_read_uint32(&params.queue_size, tokens[6]) < 0) {
 		snprintf(out, out_size,	MSG_ARG_INVALID,
 			"queue_size");
+		return;
+	}
+
+	if (strcmp(tokens[7], "max_sessions")) {
+		snprintf(out, out_size,	MSG_ARG_NOT_FOUND,
+			"4");
+		return;
+	}
+
+	if (softnic_parser_read_uint32(&params.session_pool_size, tokens[8])
+			< 0) {
+		snprintf(out, out_size,	MSG_ARG_INVALID,
+			"q");
 		return;
 	}
 
@@ -1738,6 +1751,41 @@ cmd_table_action_profile(struct pmd_internals *softnic,
 		p.action_mask |= 1LLU << RTE_TABLE_ACTION_DECAP;
 		t0 += 1;
 	} /* decap */
+
+	if (t0 < n_tokens && (strcmp(tokens[t0], "sym_crypto") == 0)) {
+		struct softnic_cryptodev *cryptodev;
+
+		if (n_tokens < t0 + 5 ||
+				strcmp(tokens[t0 + 1], "dev") ||
+				strcmp(tokens[t0 + 3], "offset")) {
+			snprintf(out, out_size, MSG_ARG_MISMATCH,
+				"table action profile sym_crypto");
+			return;
+		}
+
+		cryptodev = softnic_cryptodev_find(softnic, tokens[t0 + 2]);
+		if (cryptodev == NULL) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+				"table action profile sym_crypto");
+			return;
+		}
+
+		p.sym_crypto.cryptodev_id = cryptodev->dev_id;
+
+		if (softnic_parser_read_uint32(&p.sym_crypto.op_offset,
+				tokens[t0 + 4]) != 0) {
+			snprintf(out, out_size, MSG_ARG_INVALID,
+					"table action profile sym_crypto");
+			return;
+		}
+
+		p.sym_crypto.mp_create = cryptodev->mp_create;
+		p.sym_crypto.mp_init = cryptodev->mp_init;
+
+		p.action_mask |= 1LLU << RTE_TABLE_ACTION_SYM_CRYPTO;
+
+		t0 += 5;
+	} /* sym_crypto */
 
 	if (t0 < n_tokens) {
 		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
