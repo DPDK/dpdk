@@ -25,6 +25,7 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 	struct rte_mempool *mbuf_pool,
 	struct rte_mempool *op_mpool,
 	struct rte_mempool *sess_mpool,
+	struct rte_mempool *sess_priv_mpool,
 	uint8_t dev_id,
 	int driver_id,
 	char *test_msg)
@@ -347,7 +348,7 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 		sess = rte_cryptodev_sym_session_create(sess_mpool);
 
 		rte_cryptodev_sym_session_init(dev_id, sess, init_xform,
-				sess_mpool);
+				sess_priv_mpool);
 		if (!sess) {
 			snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN, "line %u "
 				"FAILED: %s", __LINE__,
@@ -616,6 +617,7 @@ int
 test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 	struct rte_mempool *op_mpool,
 	struct rte_mempool *sess_mpool,
+	struct rte_mempool *sess_priv_mpool,
 	uint8_t dev_id,
 	int driver_id,
 	enum blockcipher_test_type test_type)
@@ -731,7 +733,8 @@ test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 			continue;
 
 		status = test_blockcipher_one_case(tc, mbuf_pool, op_mpool,
-			sess_mpool, dev_id, driver_id, test_msg);
+			sess_mpool, sess_priv_mpool, dev_id, driver_id,
+			test_msg);
 
 		printf("  %u) TestCase %s %s\n", test_index ++,
 			tc->test_descr, test_msg);

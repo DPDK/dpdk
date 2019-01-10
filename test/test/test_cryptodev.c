@@ -48,6 +48,7 @@ struct crypto_testsuite_params {
 	struct rte_mempool *large_mbuf_pool;
 	struct rte_mempool *op_mpool;
 	struct rte_mempool *session_mpool;
+	struct rte_mempool *session_priv_mpool;
 	struct rte_cryptodev_config conf;
 	struct rte_cryptodev_qp_conf qp_conf;
 
@@ -444,16 +445,23 @@ testsuite_setup(void)
 		return TEST_FAILED;
 	}
 
-	ts_params->session_mpool = rte_mempool_create(
-				"test_sess_mp",
-				MAX_NB_SESSIONS * 2,
-				session_size,
-				0, 0, NULL, NULL, NULL,
-				NULL, SOCKET_ID_ANY,
-				0);
-
+	ts_params->session_mpool = rte_cryptodev_sym_session_pool_create(
+			"test_sess_mp", MAX_NB_SESSIONS, 0, 0, 0,
+			SOCKET_ID_ANY);
 	TEST_ASSERT_NOT_NULL(ts_params->session_mpool,
 			"session mempool allocation failed");
+
+	ts_params->session_priv_mpool = rte_mempool_create(
+			"test_sess_mp_priv",
+			MAX_NB_SESSIONS,
+			session_size,
+			0, 0, NULL, NULL, NULL,
+			NULL, SOCKET_ID_ANY,
+			0);
+	TEST_ASSERT_NOT_NULL(ts_params->session_priv_mpool,
+			"session mempool allocation failed");
+
+
 
 	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(dev_id,
 			&ts_params->conf),
@@ -462,7 +470,7 @@ testsuite_setup(void)
 
 	ts_params->qp_conf.nb_descriptors = DEFAULT_NUM_OPS_INFLIGHT;
 	ts_params->qp_conf.mp_session = ts_params->session_mpool;
-	ts_params->qp_conf.mp_session_private = ts_params->session_mpool;
+	ts_params->qp_conf.mp_session_private = ts_params->session_priv_mpool;
 
 	for (qp_id = 0; qp_id < info.max_nb_queue_pairs; qp_id++) {
 		TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
@@ -491,6 +499,11 @@ testsuite_teardown(void)
 	}
 
 	/* Free session mempools */
+	if (ts_params->session_priv_mpool != NULL) {
+		rte_mempool_free(ts_params->session_priv_mpool);
+		ts_params->session_priv_mpool = NULL;
+	}
+
 	if (ts_params->session_mpool != NULL) {
 		rte_mempool_free(ts_params->session_mpool);
 		ts_params->session_mpool = NULL;
@@ -510,6 +523,9 @@ ut_setup(void)
 
 	/* Reconfigure device to default parameters */
 	ts_params->conf.socket_id = SOCKET_ID_ANY;
+	ts_params->qp_conf.nb_descriptors = MAX_NUM_OPS_INFLIGHT;
+	ts_params->qp_conf.mp_session = ts_params->session_mpool;
+	ts_params->qp_conf.mp_session_private = ts_params->session_priv_mpool;
 
 	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(ts_params->valid_devs[0],
 			&ts_params->conf),
@@ -710,7 +726,7 @@ test_queue_pair_descriptor_setup(void)
 	 */
 	qp_conf.nb_descriptors = MIN_NUM_OPS_INFLIGHT; /* min size*/
 	qp_conf.mp_session = ts_params->session_mpool;
-	qp_conf.mp_session_private = ts_params->session_mpool;
+	qp_conf.mp_session_private = ts_params->session_priv_mpool;
 
 	for (qp_id = 0; qp_id < ts_params->conf.nb_queue_pairs; qp_id++) {
 		TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
@@ -1337,7 +1353,7 @@ test_AES_CBC_HMAC_SHA1_encrypt_digest(void)
 	/* Create crypto session*/
 	rte_cryptodev_sym_session_init(ts_params->valid_devs[0],
 			ut_params->sess, &ut_params->cipher_xform,
-			ts_params->session_mpool);
+			ts_params->session_priv_mpool);
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
 	/* Generate crypto op data structure */
@@ -1551,7 +1567,7 @@ test_AES_cipheronly_mb_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)),
@@ -1570,7 +1586,7 @@ test_AES_docsis_mb_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)),
@@ -1589,7 +1605,7 @@ test_AES_docsis_qat_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD)),
@@ -1608,7 +1624,7 @@ test_DES_docsis_qat_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD)),
@@ -1627,7 +1643,7 @@ test_authonly_mb_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)),
@@ -1646,7 +1662,7 @@ test_authonly_qat_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD)),
@@ -1664,7 +1680,7 @@ test_AES_chain_mb_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)),
@@ -1685,7 +1701,7 @@ test_AES_cipheronly_scheduler_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD)),
@@ -1704,7 +1720,7 @@ test_AES_chain_scheduler_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD)),
@@ -1723,7 +1739,7 @@ test_authonly_scheduler_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD)),
@@ -1744,7 +1760,7 @@ test_AES_chain_openssl_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD)),
@@ -1763,7 +1779,7 @@ test_AES_cipheronly_openssl_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD)),
@@ -1782,7 +1798,7 @@ test_AES_chain_ccp_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_CCP_PMD)),
@@ -1801,7 +1817,7 @@ test_AES_cipheronly_ccp_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_CCP_PMD)),
@@ -1820,7 +1836,7 @@ test_AES_chain_qat_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD)),
@@ -1839,7 +1855,7 @@ test_AES_cipheronly_qat_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD)),
@@ -1858,7 +1874,7 @@ test_AES_cipheronly_virtio_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_VIRTIO_PMD)),
@@ -1877,7 +1893,7 @@ test_AES_chain_caam_jr_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_CAAM_JR_PMD)),
@@ -1896,7 +1912,7 @@ test_AES_cipheronly_caam_jr_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_CAAM_JR_PMD)),
@@ -1915,7 +1931,7 @@ test_authonly_caam_jr_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_CAAM_JR_PMD)),
@@ -1935,7 +1951,7 @@ test_AES_chain_dpaa_sec_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_DPAA_SEC_PMD)),
@@ -1954,7 +1970,7 @@ test_AES_cipheronly_dpaa_sec_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_DPAA_SEC_PMD)),
@@ -1973,7 +1989,7 @@ test_authonly_dpaa_sec_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_DPAA_SEC_PMD)),
@@ -1992,7 +2008,7 @@ test_AES_chain_dpaa2_sec_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD)),
@@ -2011,7 +2027,7 @@ test_AES_cipheronly_dpaa2_sec_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD)),
@@ -2030,7 +2046,7 @@ test_authonly_dpaa2_sec_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD)),
@@ -2049,7 +2065,7 @@ test_authonly_openssl_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD)),
@@ -2068,7 +2084,7 @@ test_authonly_ccp_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_CCP_PMD)),
@@ -2087,7 +2103,7 @@ test_AES_chain_armv8_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_ARMV8_PMD)),
@@ -2106,7 +2122,7 @@ test_AES_chain_mrvl_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_MVSAM_PMD)),
@@ -2125,7 +2141,7 @@ test_AES_cipheronly_mrvl_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_MVSAM_PMD)),
@@ -2144,7 +2160,7 @@ test_authonly_mrvl_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_MVSAM_PMD)),
@@ -2163,7 +2179,7 @@ test_3DES_chain_mrvl_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_MVSAM_PMD)),
@@ -2182,7 +2198,7 @@ test_3DES_cipheronly_mrvl_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_MVSAM_PMD)),
@@ -2201,6 +2217,7 @@ test_AES_chain_octeontx_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->session_mpool,
+		ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_OCTEONTX_SYM_PMD)),
@@ -2219,6 +2236,7 @@ test_AES_cipheronly_octeontx_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->session_mpool,
+		ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_OCTEONTX_SYM_PMD)),
@@ -2237,6 +2255,7 @@ test_3DES_chain_octeontx_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->session_mpool,
+		ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_OCTEONTX_SYM_PMD)),
@@ -2255,6 +2274,7 @@ test_3DES_cipheronly_octeontx_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->session_mpool,
+		ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_OCTEONTX_SYM_PMD)),
@@ -2273,6 +2293,7 @@ test_authonly_octeontx_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->session_mpool,
+		ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_OCTEONTX_SYM_PMD)),
@@ -2315,7 +2336,8 @@ create_wireless_algo_hash_session(uint8_t dev_id,
 			ts_params->session_mpool);
 
 	rte_cryptodev_sym_session_init(dev_id, ut_params->sess,
-			&ut_params->auth_xform, ts_params->session_mpool);
+			&ut_params->auth_xform,
+			ts_params->session_priv_mpool);
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 	return 0;
 }
@@ -2352,7 +2374,8 @@ create_wireless_algo_cipher_session(uint8_t dev_id,
 			ts_params->session_mpool);
 
 	rte_cryptodev_sym_session_init(dev_id, ut_params->sess,
-			&ut_params->cipher_xform, ts_params->session_mpool);
+			&ut_params->cipher_xform,
+			ts_params->session_priv_mpool);
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 	return 0;
 }
@@ -2468,7 +2491,8 @@ create_wireless_algo_cipher_auth_session(uint8_t dev_id,
 			ts_params->session_mpool);
 
 	rte_cryptodev_sym_session_init(dev_id, ut_params->sess,
-			&ut_params->cipher_xform, ts_params->session_mpool);
+			&ut_params->cipher_xform,
+			ts_params->session_priv_mpool);
 
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 	return 0;
@@ -2527,7 +2551,8 @@ create_wireless_cipher_auth_session(uint8_t dev_id,
 			ts_params->session_mpool);
 
 	rte_cryptodev_sym_session_init(dev_id, ut_params->sess,
-			&ut_params->cipher_xform, ts_params->session_mpool);
+			&ut_params->cipher_xform,
+			ts_params->session_priv_mpool);
 
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 	return 0;
@@ -2589,7 +2614,8 @@ create_wireless_algo_auth_cipher_session(uint8_t dev_id,
 			ts_params->session_mpool);
 
 	rte_cryptodev_sym_session_init(dev_id, ut_params->sess,
-			&ut_params->auth_xform, ts_params->session_mpool);
+			&ut_params->auth_xform,
+			ts_params->session_priv_mpool);
 
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
@@ -5075,7 +5101,7 @@ test_3DES_chain_qat_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD)),
@@ -5094,7 +5120,7 @@ test_DES_cipheronly_qat_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD)),
@@ -5113,7 +5139,7 @@ test_DES_cipheronly_openssl_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD)),
@@ -5132,7 +5158,7 @@ test_DES_docsis_openssl_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD)),
@@ -5151,7 +5177,7 @@ test_DES_cipheronly_mb_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)),
@@ -5169,7 +5195,7 @@ test_3DES_cipheronly_mb_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)),
@@ -5188,7 +5214,7 @@ test_DES_docsis_mb_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)),
@@ -5207,7 +5233,7 @@ test_3DES_chain_caam_jr_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_CAAM_JR_PMD)),
@@ -5226,7 +5252,7 @@ test_3DES_cipheronly_caam_jr_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_CAAM_JR_PMD)),
@@ -5245,7 +5271,7 @@ test_3DES_chain_dpaa_sec_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_DPAA_SEC_PMD)),
@@ -5264,7 +5290,7 @@ test_3DES_cipheronly_dpaa_sec_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_DPAA_SEC_PMD)),
@@ -5283,7 +5309,7 @@ test_3DES_chain_dpaa2_sec_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD)),
@@ -5302,7 +5328,7 @@ test_3DES_cipheronly_dpaa2_sec_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD)),
@@ -5321,7 +5347,7 @@ test_3DES_chain_ccp_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_CCP_PMD)),
@@ -5340,7 +5366,7 @@ test_3DES_cipheronly_ccp_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_CCP_PMD)),
@@ -5359,7 +5385,7 @@ test_3DES_cipheronly_qat_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD)),
@@ -5378,7 +5404,7 @@ test_3DES_chain_openssl_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD)),
@@ -5397,7 +5423,7 @@ test_3DES_cipheronly_openssl_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool,
-		ts_params->session_mpool,
+		ts_params->session_mpool, ts_params->session_priv_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
 		RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD)),
@@ -5443,7 +5469,8 @@ create_aead_session(uint8_t dev_id, enum rte_crypto_aead_algorithm algo,
 			ts_params->session_mpool);
 
 	rte_cryptodev_sym_session_init(dev_id, ut_params->sess,
-			&ut_params->aead_xform, ts_params->session_mpool);
+			&ut_params->aead_xform,
+			ts_params->session_priv_mpool);
 
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
@@ -6547,7 +6574,7 @@ static int MD5_HMAC_create_session(struct crypto_testsuite_params *ts_params,
 
 	rte_cryptodev_sym_session_init(ts_params->valid_devs[0],
 			ut_params->sess, &ut_params->auth_xform,
-			ts_params->session_mpool);
+			ts_params->session_priv_mpool);
 
 	if (ut_params->sess == NULL)
 		return TEST_FAILED;
@@ -6728,7 +6755,7 @@ test_multi_session(void)
 
 		rte_cryptodev_sym_session_init(ts_params->valid_devs[0],
 				sessions[i], &ut_params->auth_xform,
-				ts_params->session_mpool);
+				ts_params->session_priv_mpool);
 		TEST_ASSERT_NOT_NULL(sessions[i],
 				"Session creation failed at session number %u",
 				i);
@@ -6766,7 +6793,7 @@ test_multi_session(void)
 	/* Next session create should fail */
 	rte_cryptodev_sym_session_init(ts_params->valid_devs[0],
 			sessions[i], &ut_params->auth_xform,
-			ts_params->session_mpool);
+			ts_params->session_priv_mpool);
 	TEST_ASSERT_NULL(sessions[i],
 			"Session creation succeeded unexpectedly!");
 
@@ -6847,7 +6874,7 @@ test_multi_session_random_usage(void)
 				ts_params->valid_devs[0],
 				sessions[i],
 				&ut_paramz[i].ut_params.auth_xform,
-				ts_params->session_mpool);
+				ts_params->session_priv_mpool);
 
 		TEST_ASSERT_NOT_NULL(sessions[i],
 				"Session creation failed at session number %u",
@@ -6925,7 +6952,7 @@ test_null_cipher_only_operation(void)
 	rte_cryptodev_sym_session_init(ts_params->valid_devs[0],
 				ut_params->sess,
 				&ut_params->cipher_xform,
-				ts_params->session_mpool);
+				ts_params->session_priv_mpool);
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
 	/* Generate Crypto op data structure */
@@ -6998,7 +7025,7 @@ test_null_auth_only_operation(void)
 	/* Create Crypto session*/
 	rte_cryptodev_sym_session_init(ts_params->valid_devs[0],
 			ut_params->sess, &ut_params->auth_xform,
-			ts_params->session_mpool);
+			ts_params->session_priv_mpool);
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
 	/* Generate Crypto op data structure */
@@ -7077,7 +7104,7 @@ test_null_cipher_auth_operation(void)
 	/* Create Crypto session*/
 	rte_cryptodev_sym_session_init(ts_params->valid_devs[0],
 			ut_params->sess, &ut_params->cipher_xform,
-			ts_params->session_mpool);
+			ts_params->session_priv_mpool);
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
 	/* Generate Crypto op data structure */
@@ -7165,7 +7192,7 @@ test_null_auth_cipher_operation(void)
 	/* Create Crypto session*/
 	rte_cryptodev_sym_session_init(ts_params->valid_devs[0],
 			ut_params->sess, &ut_params->cipher_xform,
-			ts_params->session_mpool);
+			ts_params->session_priv_mpool);
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
 	/* Generate Crypto op data structure */
@@ -7235,7 +7262,7 @@ test_null_invalid_operation(void)
 	/* Create Crypto session*/
 	ret = rte_cryptodev_sym_session_init(ts_params->valid_devs[0],
 			ut_params->sess, &ut_params->cipher_xform,
-			ts_params->session_mpool);
+			ts_params->session_priv_mpool);
 	TEST_ASSERT(ret < 0,
 			"Session creation succeeded unexpectedly");
 
@@ -7253,7 +7280,7 @@ test_null_invalid_operation(void)
 	/* Create Crypto session*/
 	ret = rte_cryptodev_sym_session_init(ts_params->valid_devs[0],
 			ut_params->sess, &ut_params->auth_xform,
-			ts_params->session_mpool);
+			ts_params->session_priv_mpool);
 	TEST_ASSERT(ret < 0,
 			"Session creation succeeded unexpectedly");
 
@@ -7294,7 +7321,7 @@ test_null_burst_operation(void)
 	/* Create Crypto session*/
 	rte_cryptodev_sym_session_init(ts_params->valid_devs[0],
 			ut_params->sess, &ut_params->cipher_xform,
-			ts_params->session_mpool);
+			ts_params->session_priv_mpool);
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
 	TEST_ASSERT_EQUAL(rte_crypto_op_bulk_alloc(ts_params->op_mpool,
@@ -7429,7 +7456,7 @@ static int create_gmac_session(uint8_t dev_id,
 
 	rte_cryptodev_sym_session_init(dev_id, ut_params->sess,
 			&ut_params->auth_xform,
-			ts_params->session_mpool);
+			ts_params->session_priv_mpool);
 
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
@@ -7809,7 +7836,7 @@ create_auth_session(struct crypto_unittest_params *ut_params,
 
 	rte_cryptodev_sym_session_init(dev_id, ut_params->sess,
 				&ut_params->auth_xform,
-				ts_params->session_mpool);
+				ts_params->session_priv_mpool);
 
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
@@ -7862,7 +7889,7 @@ create_auth_cipher_session(struct crypto_unittest_params *ut_params,
 
 	rte_cryptodev_sym_session_init(dev_id, ut_params->sess,
 				&ut_params->auth_xform,
-				ts_params->session_mpool);
+				ts_params->session_priv_mpool);
 
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
@@ -8740,12 +8767,14 @@ test_scheduler_attach_slave_op(void)
 	for (i = 0; i < rte_cryptodev_count() && nb_devs_attached < 2;
 			i++) {
 		struct rte_cryptodev_info info;
+		unsigned int session_size;
 
 		rte_cryptodev_info_get(i, &info);
 		if (info.driver_id != rte_cryptodev_driver_id_get(
 				RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)))
 			continue;
 
+		session_size = rte_cryptodev_sym_get_private_session_size(i);
 		/*
 		 * Create the session mempool again, since now there are new devices
 		 * to use the mempool.
@@ -8754,8 +8783,10 @@ test_scheduler_attach_slave_op(void)
 			rte_mempool_free(ts_params->session_mpool);
 			ts_params->session_mpool = NULL;
 		}
-		unsigned int session_size =
-			rte_cryptodev_sym_get_private_session_size(i);
+		if (ts_params->session_priv_mpool) {
+			rte_mempool_free(ts_params->session_priv_mpool);
+			ts_params->session_priv_mpool = NULL;
+		}
 
 		if (info.sym.max_nb_sessions != 0 &&
 				info.sym.max_nb_sessions < MAX_NB_SESSIONS) {
@@ -8766,21 +8797,39 @@ test_scheduler_attach_slave_op(void)
 			return TEST_FAILED;
 		}
 		/*
-		 * Create mempool with maximum number of sessions * 2,
+		 * Create mempool with maximum number of sessions,
 		 * to include the session headers
 		 */
 		if (ts_params->session_mpool == NULL) {
-			ts_params->session_mpool = rte_mempool_create(
-					"test_sess_mp",
-					MAX_NB_SESSIONS * 2,
+			ts_params->session_mpool =
+				rte_cryptodev_sym_session_pool_create(
+						"test_sess_mp",
+						MAX_NB_SESSIONS, 0, 0, 0,
+						SOCKET_ID_ANY);
+			TEST_ASSERT_NOT_NULL(ts_params->session_mpool,
+					"session mempool allocation failed");
+		}
+
+		/*
+		 * Create mempool with maximum number of sessions,
+		 * to include device specific session private data
+		 */
+		if (ts_params->session_priv_mpool == NULL) {
+			ts_params->session_priv_mpool = rte_mempool_create(
+					"test_sess_mp_priv",
+					MAX_NB_SESSIONS,
 					session_size,
 					0, 0, NULL, NULL, NULL,
 					NULL, SOCKET_ID_ANY,
 					0);
 
-			TEST_ASSERT_NOT_NULL(ts_params->session_mpool,
+			TEST_ASSERT_NOT_NULL(ts_params->session_priv_mpool,
 					"session mempool allocation failed");
 		}
+
+		ts_params->qp_conf.mp_session = ts_params->session_mpool;
+		ts_params->qp_conf.mp_session_private =
+				ts_params->session_priv_mpool;
 
 		ret = rte_cryptodev_scheduler_slave_attach(sched_id,
 				(uint8_t)i);
