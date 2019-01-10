@@ -56,12 +56,35 @@ struct rte_ipsec_sa_prm {
 };
 
 /**
+ * Indicates that SA will(/will not) need an 'atomic' access
+ * to sequence number and replay window.
+ * 'atomic' here means:
+ * functions:
+ *  - rte_ipsec_pkt_crypto_prepare
+ *  - rte_ipsec_pkt_process
+ * can be safely used in MT environment, as long as the user can guarantee
+ * that they obey multiple readers/single writer model for SQN+replay_window
+ * operations.
+ * To be more specific:
+ * for outbound SA there are no restrictions.
+ * for inbound SA the caller has to guarantee that at any given moment
+ * only one thread is executing rte_ipsec_pkt_process() for given SA.
+ * Note that it is caller responsibility to maintain correct order
+ * of packets to be processed.
+ * In other words - it is a caller responsibility to serialize process()
+ * invocations.
+ */
+#define	RTE_IPSEC_SAFLAG_SQN_ATOM	(1ULL << 0)
+
+/**
  * SA type is an 64-bit value that contain the following information:
  * - IP version (IPv4/IPv6)
  * - IPsec proto (ESP/AH)
  * - inbound/outbound
  * - mode (TRANSPORT/TUNNEL)
  * - for TUNNEL outer IP version (IPv4/IPv6)
+ * - are SA SQN operations 'atomic'
+ * - ESN enabled/disabled
  * ...
  */
 
@@ -70,6 +93,8 @@ enum {
 	RTE_SATP_LOG2_PROTO,
 	RTE_SATP_LOG2_DIR,
 	RTE_SATP_LOG2_MODE,
+	RTE_SATP_LOG2_SQN = RTE_SATP_LOG2_MODE + 2,
+	RTE_SATP_LOG2_ESN,
 	RTE_SATP_LOG2_NUM
 };
 
@@ -89,6 +114,14 @@ enum {
 #define RTE_IPSEC_SATP_MODE_TRANS	(0ULL << RTE_SATP_LOG2_MODE)
 #define RTE_IPSEC_SATP_MODE_TUNLV4	(1ULL << RTE_SATP_LOG2_MODE)
 #define RTE_IPSEC_SATP_MODE_TUNLV6	(2ULL << RTE_SATP_LOG2_MODE)
+
+#define RTE_IPSEC_SATP_SQN_MASK		(1ULL << RTE_SATP_LOG2_SQN)
+#define RTE_IPSEC_SATP_SQN_RAW		(0ULL << RTE_SATP_LOG2_SQN)
+#define RTE_IPSEC_SATP_SQN_ATOM		(1ULL << RTE_SATP_LOG2_SQN)
+
+#define RTE_IPSEC_SATP_ESN_MASK		(1ULL << RTE_SATP_LOG2_ESN)
+#define RTE_IPSEC_SATP_ESN_DISABLE	(0ULL << RTE_SATP_LOG2_ESN)
+#define RTE_IPSEC_SATP_ESN_ENABLE	(1ULL << RTE_SATP_LOG2_ESN)
 
 /**
  * get type of given SA

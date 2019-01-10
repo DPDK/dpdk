@@ -15,6 +15,8 @@
 
 #define IS_ESN(sa)	((sa)->sqn_mask == UINT64_MAX)
 
+#define	SQN_ATOMIC(sa)	((sa)->type & RTE_IPSEC_SATP_SQN_ATOM)
+
 /*
  * gets SQN.hi32 bits, SQN supposed to be in network byte order.
  */
@@ -140,8 +142,12 @@ esn_outb_update_sqn(struct rte_ipsec_sa *sa, uint32_t *num)
 	uint64_t n, s, sqn;
 
 	n = *num;
-	sqn = sa->sqn.outb + n;
-	sa->sqn.outb = sqn;
+	if (SQN_ATOMIC(sa))
+		sqn = (uint64_t)rte_atomic64_add_return(&sa->sqn.outb.atom, n);
+	else {
+		sqn = sa->sqn.outb.raw + n;
+		sa->sqn.outb.raw = sqn;
+	}
 
 	/* overflow */
 	if (sqn > sa->sqn_mask) {
@@ -230,5 +236,108 @@ rsn_size(uint32_t nb_bucket)
 	sz = RTE_ALIGN_CEIL(sz, RTE_CACHE_LINE_SIZE);
 	return sz;
 }
+
+/**
+ * Copy replay window and SQN.
+ */
+static inline void
+rsn_copy(const struct rte_ipsec_sa *sa, uint32_t dst, uint32_t src)
+{
+	uint32_t i, n;
+	struct replay_sqn *d;
+	const struct replay_sqn *s;
+
+	d = sa->sqn.inb.rsn[dst];
+	s = sa->sqn.inb.rsn[src];
+
+	n = sa->replay.nb_bucket;
+
+	d->sqn = s->sqn;
+	for (i = 0; i != n; i++)
+		d->window[i] = s->window[i];
+}
+
+/**
+ * Get RSN for read-only access.
+ */
+static inline struct replay_sqn *
+rsn_acquire(struct rte_ipsec_sa *sa)
+{
+	uint32_t n;
+	struct replay_sqn *rsn;
+
+	n = sa->sqn.inb.rdidx;
+	rsn = sa->sqn.inb.rsn[n];
+
+	if (!SQN_ATOMIC(sa))
+		return rsn;
+
+	/* check there are no writers */
+	while (rte_rwlock_read_trylock(&rsn->rwl) < 0) {
+		rte_pause();
+		n = sa->sqn.inb.rdidx;
+		rsn = sa->sqn.inb.rsn[n];
+		rte_compiler_barrier();
+	}
+
+	return rsn;
+}
+
+/**
+ * Release read-only access for RSN.
+ */
+static inline void
+rsn_release(struct rte_ipsec_sa *sa, struct replay_sqn *rsn)
+{
+	if (SQN_ATOMIC(sa))
+		rte_rwlock_read_unlock(&rsn->rwl);
+}
+
+/**
+ * Start RSN update.
+ */
+static inline struct replay_sqn *
+rsn_update_start(struct rte_ipsec_sa *sa)
+{
+	uint32_t k, n;
+	struct replay_sqn *rsn;
+
+	n = sa->sqn.inb.wridx;
+
+	/* no active writers */
+	RTE_ASSERT(n == sa->sqn.inb.rdidx);
+
+	if (!SQN_ATOMIC(sa))
+		return sa->sqn.inb.rsn[n];
+
+	k = REPLAY_SQN_NEXT(n);
+	sa->sqn.inb.wridx = k;
+
+	rsn = sa->sqn.inb.rsn[k];
+	rte_rwlock_write_lock(&rsn->rwl);
+	rsn_copy(sa, k, n);
+
+	return rsn;
+}
+
+/**
+ * Finish RSN update.
+ */
+static inline void
+rsn_update_finish(struct rte_ipsec_sa *sa, struct replay_sqn *rsn)
+{
+	uint32_t n;
+
+	if (!SQN_ATOMIC(sa))
+		return;
+
+	n = sa->sqn.inb.wridx;
+	RTE_ASSERT(n != sa->sqn.inb.rdidx);
+	RTE_ASSERT(rsn - sa->sqn.inb.rsn == n);
+
+	rte_rwlock_write_unlock(&rsn->rwl);
+	sa->sqn.inb.rdidx = n;
+}
+
 
 #endif /* _IPSEC_SQN_H_ */

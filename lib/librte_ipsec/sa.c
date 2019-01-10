@@ -80,21 +80,37 @@ rte_ipsec_sa_type(const struct rte_ipsec_sa *sa)
 }
 
 static int32_t
-ipsec_sa_size(uint32_t wsz, uint64_t type, uint32_t *nb_bucket)
+ipsec_sa_size(uint64_t type, uint32_t *wnd_sz, uint32_t *nb_bucket)
 {
-	uint32_t n, sz;
+	uint32_t n, sz, wsz;
 
+	wsz = *wnd_sz;
 	n = 0;
-	if (wsz != 0 && (type & RTE_IPSEC_SATP_DIR_MASK) ==
-			RTE_IPSEC_SATP_DIR_IB)
-		n = replay_num_bucket(wsz);
+
+	if ((type & RTE_IPSEC_SATP_DIR_MASK) == RTE_IPSEC_SATP_DIR_IB) {
+
+		/*
+		 * RFC 4303 recommends 64 as minimum window size.
+		 * there is no point to use ESN mode without SQN window,
+		 * so make sure we have at least 64 window when ESN is enalbed.
+		 */
+		wsz = ((type & RTE_IPSEC_SATP_ESN_MASK) ==
+			RTE_IPSEC_SATP_ESN_DISABLE) ?
+			wsz : RTE_MAX(wsz, (uint32_t)WINDOW_BUCKET_SIZE);
+		if (wsz != 0)
+			n = replay_num_bucket(wsz);
+	}
 
 	if (n > WINDOW_BUCKET_MAX)
 		return -EINVAL;
 
+	*wnd_sz = wsz;
 	*nb_bucket = n;
 
 	sz = rsn_size(n);
+	if ((type & RTE_IPSEC_SATP_SQN_MASK) == RTE_IPSEC_SATP_SQN_ATOM)
+		sz *= REPLAY_SQN_NUM;
+
 	sz += sizeof(struct rte_ipsec_sa);
 	return sz;
 }
@@ -158,6 +174,18 @@ fill_sa_type(const struct rte_ipsec_sa_prm *prm, uint64_t *type)
 	} else
 		return -EINVAL;
 
+	/* check for ESN flag */
+	if (prm->ipsec_xform.options.esn == 0)
+		tp |= RTE_IPSEC_SATP_ESN_DISABLE;
+	else
+		tp |= RTE_IPSEC_SATP_ESN_ENABLE;
+
+	/* interpret flags */
+	if (prm->flags & RTE_IPSEC_SAFLAG_SQN_ATOM)
+		tp |= RTE_IPSEC_SATP_SQN_ATOM;
+	else
+		tp |= RTE_IPSEC_SATP_SQN_RAW;
+
 	*type = tp;
 	return 0;
 }
@@ -191,7 +219,7 @@ esp_inb_tun_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm)
 static void
 esp_outb_init(struct rte_ipsec_sa *sa, uint32_t hlen)
 {
-	sa->sqn.outb = 1;
+	sa->sqn.outb.raw = 1;
 
 	/* these params may differ with new algorithms support */
 	sa->ctp.auth.offset = hlen;
@@ -277,11 +305,26 @@ esp_sa_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm,
 	return 0;
 }
 
+/*
+ * helper function, init SA replay structure.
+ */
+static void
+fill_sa_replay(struct rte_ipsec_sa *sa, uint32_t wnd_sz, uint32_t nb_bucket)
+{
+	sa->replay.win_sz = wnd_sz;
+	sa->replay.nb_bucket = nb_bucket;
+	sa->replay.bucket_index_mask = nb_bucket - 1;
+	sa->sqn.inb.rsn[0] = (struct replay_sqn *)(sa + 1);
+	if ((sa->type & RTE_IPSEC_SATP_SQN_MASK) == RTE_IPSEC_SATP_SQN_ATOM)
+		sa->sqn.inb.rsn[1] = (struct replay_sqn *)
+			((uintptr_t)sa->sqn.inb.rsn[0] + rsn_size(nb_bucket));
+}
+
 int __rte_experimental
 rte_ipsec_sa_size(const struct rte_ipsec_sa_prm *prm)
 {
 	uint64_t type;
-	uint32_t nb;
+	uint32_t nb, wsz;
 	int32_t rc;
 
 	if (prm == NULL)
@@ -293,7 +336,8 @@ rte_ipsec_sa_size(const struct rte_ipsec_sa_prm *prm)
 		return rc;
 
 	/* determine required size */
-	return ipsec_sa_size(prm->replay_win_sz, type, &nb);
+	wsz = prm->replay_win_sz;
+	return ipsec_sa_size(type, &wsz, &nb);
 }
 
 int __rte_experimental
@@ -301,7 +345,7 @@ rte_ipsec_sa_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm,
 	uint32_t size)
 {
 	int32_t rc, sz;
-	uint32_t nb;
+	uint32_t nb, wsz;
 	uint64_t type;
 	struct crypto_xform cxf;
 
@@ -314,7 +358,8 @@ rte_ipsec_sa_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm,
 		return rc;
 
 	/* determine required size */
-	sz = ipsec_sa_size(prm->replay_win_sz, type, &nb);
+	wsz = prm->replay_win_sz;
+	sz = ipsec_sa_size(type, &wsz, &nb);
 	if (sz < 0)
 		return sz;
 	else if (size < (uint32_t)sz)
@@ -347,12 +392,8 @@ rte_ipsec_sa_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm,
 		rte_ipsec_sa_fini(sa);
 
 	/* fill replay window related fields */
-	if (nb != 0) {
-		sa->replay.win_sz = prm->replay_win_sz;
-		sa->replay.nb_bucket = nb;
-		sa->replay.bucket_index_mask = sa->replay.nb_bucket - 1;
-		sa->sqn.inb = (struct replay_sqn *)(sa + 1);
-	}
+	if (nb != 0)
+		fill_sa_replay(sa, wsz, nb);
 
 	return sz;
 }
@@ -877,7 +918,7 @@ inb_pkt_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 	struct rte_mbuf *dr[num];
 
 	sa = ss->sa;
-	rsn = sa->sqn.inb;
+	rsn = rsn_acquire(sa);
 
 	k = 0;
 	for (i = 0; i != num; i++) {
@@ -895,6 +936,8 @@ inb_pkt_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 			rte_errno = -rc;
 		}
 	}
+
+	rsn_release(sa, rsn);
 
 	/* update cops */
 	lksd_none_cop_prepare(ss, mb, cop, k);
@@ -1058,7 +1101,7 @@ esp_inb_rsn_update(struct rte_ipsec_sa *sa, const uint32_t sqn[],
 	uint32_t i, k;
 	struct replay_sqn *rsn;
 
-	rsn = sa->sqn.inb;
+	rsn = rsn_update_start(sa);
 
 	k = 0;
 	for (i = 0; i != num; i++) {
@@ -1068,6 +1111,7 @@ esp_inb_rsn_update(struct rte_ipsec_sa *sa, const uint32_t sqn[],
 			dr[i - k] = mb[i];
 	}
 
+	rsn_update_finish(sa, rsn);
 	return k;
 }
 

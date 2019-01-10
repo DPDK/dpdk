@@ -5,6 +5,8 @@
 #ifndef _SA_H_
 #define _SA_H_
 
+#include <rte_rwlock.h>
+
 #define IPSEC_MAX_HDR_SIZE	64
 #define IPSEC_MAX_IV_SIZE	16
 #define IPSEC_MAX_IV_QWORD	(IPSEC_MAX_IV_SIZE / sizeof(uint64_t))
@@ -36,7 +38,11 @@ union sym_op_data {
 	};
 };
 
+#define REPLAY_SQN_NUM		2
+#define REPLAY_SQN_NEXT(n)	((n) ^ 1)
+
 struct replay_sqn {
+	rte_rwlock_t rwl;
 	uint64_t sqn;
 	__extension__ uint64_t window[0];
 };
@@ -74,10 +80,21 @@ struct rte_ipsec_sa {
 
 	/*
 	 * sqn and replay window
+	 * In case of SA handled by multiple threads *sqn* cacheline
+	 * could be shared by multiple cores.
+	 * To minimise perfomance impact, we try to locate in a separate
+	 * place from other frequently accesed data.
 	 */
 	union {
-		uint64_t outb;
-		struct replay_sqn *inb;
+		union {
+			rte_atomic64_t atom;
+			uint64_t raw;
+		} outb;
+		struct {
+			uint32_t rdidx; /* read index */
+			uint32_t wridx; /* write index */
+			struct replay_sqn *rsn[REPLAY_SQN_NUM];
+		} inb;
 	} sqn;
 
 } __rte_cache_aligned;
