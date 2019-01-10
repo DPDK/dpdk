@@ -169,6 +169,14 @@ eal_option_device_parse(void)
 	return ret;
 }
 
+const char *
+eal_get_hugefile_prefix(void)
+{
+	if (internal_config.hugefile_prefix != NULL)
+		return internal_config.hugefile_prefix;
+	return HUGEFILE_PREFIX_DEFAULT;
+}
+
 void
 eal_reset_internal_config(struct internal_config *internal_cfg)
 {
@@ -177,7 +185,7 @@ eal_reset_internal_config(struct internal_config *internal_cfg)
 	internal_cfg->memory = 0;
 	internal_cfg->force_nrank = 0;
 	internal_cfg->force_nchannel = 0;
-	internal_cfg->hugefile_prefix = HUGEFILE_PREFIX_DEFAULT;
+	internal_cfg->hugefile_prefix = NULL;
 	internal_cfg->hugepage_dir = NULL;
 	internal_cfg->force_sockets = 0;
 	/* zero out the NUMA config */
@@ -1348,6 +1356,19 @@ eal_auto_detect_cores(struct rte_config *cfg)
 }
 
 int
+eal_cleanup_config(struct internal_config *internal_cfg)
+{
+	if (internal_cfg->hugefile_prefix != NULL)
+		free(internal_cfg->hugefile_prefix);
+	if (internal_cfg->hugepage_dir != NULL)
+		free(internal_cfg->hugepage_dir);
+	if (internal_cfg->user_mbuf_pool_ops_name != NULL)
+		free(internal_cfg->user_mbuf_pool_ops_name);
+
+	return 0;
+}
+
+int
 eal_adjust_config(struct internal_config *internal_cfg)
 {
 	int i;
@@ -1387,7 +1408,7 @@ eal_check_common_options(struct internal_config *internal_cfg)
 		RTE_LOG(ERR, EAL, "Invalid process type specified\n");
 		return -1;
 	}
-	if (index(internal_cfg->hugefile_prefix, '%') != NULL) {
+	if (index(eal_get_hugefile_prefix(), '%') != NULL) {
 		RTE_LOG(ERR, EAL, "Invalid char, '%%', in --"OPT_FILE_PREFIX" "
 			"option\n");
 		return -1;

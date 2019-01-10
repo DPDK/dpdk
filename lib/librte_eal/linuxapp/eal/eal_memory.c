@@ -438,7 +438,7 @@ find_numasocket(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
 	}
 
 	snprintf(hugedir_str, sizeof(hugedir_str),
-			"%s/%s", hpi->hugedir, internal_config.hugefile_prefix);
+			"%s/%s", hpi->hugedir, eal_get_hugefile_prefix());
 
 	/* parse numa map */
 	while (fgets(buf, sizeof(buf), f) != NULL) {

@@ -125,7 +125,7 @@ eal_create_runtime_dir(void)
 
 	/* create prefix-specific subdirectory under DPDK runtime dir */
 	ret = snprintf(runtime_dir, sizeof(runtime_dir), "%s/%s",
-			tmp, internal_config.hugefile_prefix);
+			tmp, eal_get_hugefile_prefix());
 	if (ret < 0 || ret == sizeof(runtime_dir)) {
 		RTE_LOG(ERR, EAL, "Error creating prefix-specific runtime path name\n");
 		return -1;
@@ -727,13 +727,31 @@ eal_parse_args(int argc, char **argv)
 			exit(EXIT_SUCCESS);
 
 		case OPT_HUGE_DIR_NUM:
-			internal_config.hugepage_dir = strdup(optarg);
+		{
+			char *hdir = strdup(optarg);
+			if (hdir == NULL)
+				RTE_LOG(ERR, EAL, "Could not store hugepage directory\n");
+			else {
+				/* free old hugepage dir */
+				if (internal_config.hugepage_dir != NULL)
+					free(internal_config.hugepage_dir);
+				internal_config.hugepage_dir = hdir;
+			}
 			break;
-
+		}
 		case OPT_FILE_PREFIX_NUM:
-			internal_config.hugefile_prefix = strdup(optarg);
+		{
+			char *prefix = strdup(optarg);
+			if (prefix == NULL)
+				RTE_LOG(ERR, EAL, "Could not store file prefix\n");
+			else {
+				/* free old prefix */
+				if (internal_config.hugefile_prefix != NULL)
+					free(internal_config.hugefile_prefix);
+				internal_config.hugefile_prefix = prefix;
+			}
 			break;
-
+		}
 		case OPT_SOCKET_MEM_NUM:
 			if (eal_parse_socket_arg(optarg,
 					internal_config.socket_mem) < 0) {
@@ -783,10 +801,21 @@ eal_parse_args(int argc, char **argv)
 			break;
 
 		case OPT_MBUF_POOL_OPS_NAME_NUM:
-			internal_config.user_mbuf_pool_ops_name =
-			    strdup(optarg);
-			break;
+		{
+			char *ops_name = strdup(optarg);
+			if (ops_name == NULL)
+				RTE_LOG(ERR, EAL, "Could not store mbuf pool ops name\n");
+			else {
+				/* free old ops name */
+				if (internal_config.user_mbuf_pool_ops_name !=
+						NULL)
+					free(internal_config.user_mbuf_pool_ops_name);
 
+				internal_config.user_mbuf_pool_ops_name =
+						ops_name;
+			}
+			break;
+		}
 		case OPT_MATCH_ALLOCATIONS_NUM:
 			internal_config.match_allocations = 1;
 			break;
@@ -1238,6 +1267,7 @@ rte_eal_cleanup(void)
 		rte_memseg_walk(mark_freeable, NULL);
 	rte_service_finalize();
 	rte_mp_channel_cleanup();
+	eal_cleanup_config(&internal_config);
 	return 0;
 }
 

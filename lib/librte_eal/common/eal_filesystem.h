@@ -28,6 +28,10 @@ eal_create_runtime_dir(void);
 int
 eal_clean_runtime_dir(void);
 
+/** Function to return hugefile prefix that's currently set up */
+const char *
+eal_get_hugefile_prefix(void);
+
 #define RUNTIME_CONFIG_FNAME "config"
 static inline const char *
 eal_runtime_config_path(void)
@@ -89,7 +93,7 @@ static inline const char *
 eal_get_hugefile_path(char *buffer, size_t buflen, const char *hugedir, int f_id)
 {
 	snprintf(buffer, buflen, HUGEFILE_FMT, hugedir,
-			internal_config.hugefile_prefix, f_id);
+			eal_get_hugefile_prefix(), f_id);
 	buffer[buflen - 1] = '\0';
 	return buffer;
 }
