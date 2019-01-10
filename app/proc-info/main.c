@@ -85,6 +85,9 @@ static uint32_t enable_shw_crypto;
 /**< Enable show ring. */
 static uint32_t enable_shw_ring;
 static char *ring_name;
+/**< Enable show mempool. */
+static uint32_t enable_shw_mempool;
+static char *mempool_name;
 
 /**< display usage */
 static void
@@ -108,7 +111,8 @@ proc_info_usage(const char *prgname)
 		"  --show-port: to display ports information\n"
 		"  --show-tm: to display traffic manager information for ports\n"
 		"  --show-crypto: to display crypto information\n"
-		"  --show-ring[=name]: to display ring information\n",
+		"  --show-ring[=name]: to display ring information\n"
+		"  --show-mempool[=name]: to display mempool information\n",
 		prgname);
 }
 
@@ -219,6 +223,7 @@ proc_info_parse_args(int argc, char **argv)
 		{"show-tm", 0, NULL, 0},
 		{"show-crypto", 0, NULL, 0},
 		{"show-ring", optional_argument, NULL, 0},
+		{"show-mempool", optional_argument, NULL, 0},
 		{NULL, 0, 0, 0}
 	};
 
@@ -275,6 +280,10 @@ proc_info_parse_args(int argc, char **argv)
 					"show-ring", MAX_LONG_OPT_SZ)) {
 				enable_shw_ring = 1;
 				ring_name = optarg;
+			} else if (!strncmp(long_option[option_index].name,
+					"show-mempool", MAX_LONG_OPT_SZ)) {
+				enable_shw_mempool = 1;
+				mempool_name = optarg;
 			}
 			break;
 		case 1:
@@ -1118,6 +1127,58 @@ show_ring(char *name)
 	STATS_BDR_STR(50, "");
 }
 
+static void
+show_mempool(char *name)
+{
+	uint64_t flags = 0;
+
+	snprintf(bdr_str, MAX_STRING_LEN, " show - MEMPOOL %"PRIu64,
+			rte_get_tsc_hz());
+	STATS_BDR_STR(10, bdr_str);
+
+	if (name != NULL) {
+		struct rte_mempool *ptr = rte_mempool_lookup(name);
+		if (ptr != NULL) {
+			flags = ptr->flags;
+			printf("  - Name: %s on socket %d\n"
+				"  - flags:\n"
+				"\t  -- No spread (%c)\n"
+				"\t  -- No cache align (%c)\n"
+				"\t  -- SP put (%c), SC get (%c)\n"
+				"\t  -- Pool created (%c)\n"
+				"\t  -- No IOVA config (%c)\n",
+				ptr->name,
+				ptr->socket_id,
+				(flags & MEMPOOL_F_NO_SPREAD) ? 'y' : 'n',
+				(flags & MEMPOOL_F_NO_CACHE_ALIGN) ? 'y' : 'n',
+				(flags & MEMPOOL_F_SP_PUT) ? 'y' : 'n',
+				(flags & MEMPOOL_F_SC_GET) ? 'y' : 'n',
+				(flags & MEMPOOL_F_POOL_CREATED) ? 'y' : 'n',
+				(flags & MEMPOOL_F_NO_IOVA_CONTIG) ? 'y' : 'n');
+			printf("  - Size %u Cache %u element %u\n"
+				"  - header %u trailer %u\n"
+				"  - private data size %u\n",
+				ptr->size,
+				ptr->cache_size,
+				ptr->elt_size,
+				ptr->header_size,
+				ptr->trailer_size,
+				ptr->private_data_size);
+			printf("  - memezone - socket %d\n",
+				ptr->mz->socket_id);
+			printf("  - Count: avail (%u), in use (%u)\n",
+				rte_mempool_avail_count(ptr),
+				rte_mempool_in_use_count(ptr));
+
+			STATS_BDR_STR(50, "");
+			return;
+		}
+	}
+
+	rte_mempool_list_dump(stdout);
+	STATS_BDR_STR(50, "");
+}
+
 int
 main(int argc, char **argv)
 {
@@ -1207,6 +1268,8 @@ main(int argc, char **argv)
 		show_crypto();
 	if (enable_shw_ring)
 		show_ring(ring_name);
+	if (enable_shw_mempool)
+		show_mempool(mempool_name);
 
 	ret = rte_eal_cleanup();
 	if (ret)

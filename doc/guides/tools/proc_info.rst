@@ -19,7 +19,7 @@ The application has a number of command line options:
 
    ./$(RTE_TARGET)/app/dpdk-procinfo -- -m | [-p PORTMASK] [--stats | --xstats |
    --stats-reset | --xstats-reset] [ --show-port | --show-tm | --show-crypto |
-   --show-ring[=name] ]
+   --show-ring[=name] | --show-mempool[=name] ]
 
 Parameters
 ~~~~~~~~~~
@@ -59,6 +59,11 @@ settings and stats per node.
 The show-ring pararmeter display current allocation of all ring with
 debug information. Specifying the name allows to display details for specific
 ring. For invalid or no ring name, whole list is dump.
+
+**--show-mempool[=name]**
+The show-mempool parameter display current allocation of all mempool
+debug information. Specifying the name allows to display details for specific
+specific mempool. For invalid or no mempool name, whole list is dump.
 
 Limitations
 -----------
