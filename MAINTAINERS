@@ -1036,6 +1036,13 @@ M: Jiayu Hu <jiayu.hu@intel.com>
 F: lib/librte_gso/
 F: doc/guides/prog_guide/generic_segmentation_offload_lib.rst
 
+IPsec - EXPERIMENTAL
+M: Konstantin Ananyev <konstantin.ananyev@intel.com>
+T: git://dpdk.org/next/dpdk-next-crypto
+F: lib/librte_ipsec/
+M: Bernard Iremonger <bernard.iremonger@intel.com>
+F: test/test/test_ipsec.c
+
 Flow Classify - EXPERIMENTAL
 M: Bernard Iremonger <bernard.iremonger@intel.com>
 F: lib/librte_flow_classify/
@@ -1076,7 +1083,6 @@ F: lib/librte_pdump/
 F: doc/guides/prog_guide/pdump_lib.rst
 F: app/pdump/
 F: doc/guides/tools/pdump.rst
-
 
 Packet Framework
 ----------------

@@ -935,6 +935,11 @@ CONFIG_RTE_LIBRTE_BPF=y
 CONFIG_RTE_LIBRTE_BPF_ELF=n
 
 #
+# Compile librte_ipsec
+#
+CONFIG_RTE_LIBRTE_IPSEC=y
+
+#
 # Compile the test application
 #
 CONFIG_RTE_APP_TEST=y

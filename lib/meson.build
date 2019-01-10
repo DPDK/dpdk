@@ -22,6 +22,8 @@ libraries = [ 'compat', # just a header, used for versioning
 	'kni', 'latencystats', 'lpm', 'member',
 	'power', 'pdump', 'rawdev',
 	'reorder', 'sched', 'security', 'vhost',
+	#ipsec lib depends on crypto and security
+	'ipsec',
 	# add pkt framework libs which use other libs from above
 	'port', 'table', 'pipeline',
 	# flow_classify lib depends on pkt framework table lib

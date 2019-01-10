@@ -107,6 +107,8 @@ DEPDIRS-librte_gso := librte_eal librte_mbuf librte_ethdev librte_net
 DEPDIRS-librte_gso += librte_mempool
 DIRS-$(CONFIG_RTE_LIBRTE_BPF) += librte_bpf
 DEPDIRS-librte_bpf := librte_eal librte_mempool librte_mbuf librte_ethdev
+DIRS-$(CONFIG_RTE_LIBRTE_IPSEC) += librte_ipsec
+DEPDIRS-librte_ipsec := librte_eal librte_mbuf librte_cryptodev librte_security
 DIRS-$(CONFIG_RTE_LIBRTE_TELEMETRY) += librte_telemetry
 DEPDIRS-librte_telemetry := librte_eal librte_metrics librte_ethdev
 

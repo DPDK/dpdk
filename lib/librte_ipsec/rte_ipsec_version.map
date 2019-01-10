@@ -1,0 +1,10 @@
+EXPERIMENTAL {
+	global:
+
+	rte_ipsec_sa_fini;
+	rte_ipsec_sa_init;
+	rte_ipsec_sa_size;
+	rte_ipsec_sa_type;
+
+	local: *;
+};

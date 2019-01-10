@@ -67,6 +67,8 @@ ifeq ($(CONFIG_RTE_LIBRTE_BPF_ELF),y)
 _LDLIBS-$(CONFIG_RTE_LIBRTE_BPF)            += -lelf
 endif
 
+_LDLIBS-$(CONFIG_RTE_LIBRTE_IPSEC)            += -lrte_ipsec
+
 _LDLIBS-y += --whole-archive
 
 _LDLIBS-$(CONFIG_RTE_LIBRTE_CFGFILE)        += -lrte_cfgfile
