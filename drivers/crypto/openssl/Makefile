@@ -9,6 +9,7 @@ LIB = librte_pmd_openssl.a
 # build flags
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 # library version
 LIBABIVER := 1

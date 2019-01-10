@@ -24,4 +24,5 @@ else
 
 endif
 
+allow_experimental_apis = true
 deps += ['bus_vdev']

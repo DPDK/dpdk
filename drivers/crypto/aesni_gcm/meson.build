@@ -8,5 +8,6 @@ else
 	ext_deps += lib
 endif
 
+allow_experimental_apis = true
 sources = files('aesni_gcm_pmd.c', 'aesni_gcm_pmd_ops.c')
 deps += ['bus_vdev']

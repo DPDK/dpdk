@@ -15,6 +15,7 @@ LIB = librte_pmd_snow3g.a
 # build flags
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 # library version
 LIBABIVER := 1

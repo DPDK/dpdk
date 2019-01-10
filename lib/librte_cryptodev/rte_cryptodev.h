@@ -1133,6 +1133,21 @@ unsigned int
 rte_cryptodev_sym_get_header_session_size(void);
 
 /**
+ * Get the size of the header session from created session.
+ *
+ * @param sess
+ *   The sym cryptodev session pointer
+ *
+ * @return
+ *   - If sess is not NULL, return the size of the header session including
+ *   the private data size defined within sess.
+ *   - If sess is NULL, return 0.
+ */
+unsigned int __rte_experimental
+rte_cryptodev_sym_get_existing_header_session_size(
+		struct rte_cryptodev_sym_session *sess);
+
+/**
  * Get the size of the asymmetric session header, for all registered drivers.
  *
  * @return

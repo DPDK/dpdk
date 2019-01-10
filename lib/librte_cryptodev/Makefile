@@ -12,6 +12,7 @@ LIBABIVER := 6
 # build flags
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 LDLIBS += -lrte_eal -lrte_mempool -lrte_ring -lrte_mbuf
 LDLIBS += -lrte_kvargs
 

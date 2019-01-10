@@ -1408,6 +1408,16 @@ rte_cryptodev_sym_get_header_session_size(void)
 }
 
 unsigned int __rte_experimental
+rte_cryptodev_sym_get_existing_header_session_size(
+		struct rte_cryptodev_sym_session *sess)
+{
+	if (!sess)
+		return 0;
+	else
+		return rte_cryptodev_sym_get_header_session_size();
+}
+
+unsigned int __rte_experimental
 rte_cryptodev_asym_get_header_session_size(void)
 {
 	/*
