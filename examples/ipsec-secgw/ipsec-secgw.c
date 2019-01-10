@@ -229,19 +229,6 @@ static struct rte_eth_conf port_conf = {
 
 static struct socket_ctx socket_ctx[NB_SOCKETS];
 
-struct traffic_type {
-	const uint8_t *data[MAX_PKT_BURST * 2];
-	struct rte_mbuf *pkts[MAX_PKT_BURST * 2];
-	uint32_t res[MAX_PKT_BURST * 2];
-	uint32_t num;
-};
-
-struct ipsec_traffic {
-	struct traffic_type ipsec;
-	struct traffic_type ip4;
-	struct traffic_type ip6;
-};
-
 static inline void
 prepare_one_packet(struct rte_mbuf *pkt, struct ipsec_traffic *t)
 {
@@ -258,6 +245,8 @@ prepare_one_packet(struct rte_mbuf *pkt, struct ipsec_traffic *t)
 			t->ip4.data[t->ip4.num] = nlp;
 			t->ip4.pkts[(t->ip4.num)++] = pkt;
 		}
+		pkt->l2_len = 0;
+		pkt->l3_len = sizeof(struct ip);
 	} else if (eth->ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv6)) {
 		nlp = (uint8_t *)rte_pktmbuf_adj(pkt, ETHER_HDR_LEN);
 		nlp = RTE_PTR_ADD(nlp, offsetof(struct ip6_hdr, ip6_nxt));
@@ -267,6 +256,8 @@ prepare_one_packet(struct rte_mbuf *pkt, struct ipsec_traffic *t)
 			t->ip6.data[t->ip6.num] = nlp;
 			t->ip6.pkts[(t->ip6.num)++] = pkt;
 		}
+		pkt->l2_len = 0;
+		pkt->l3_len = sizeof(struct ip6_hdr);
 	} else {
 		/* Unknown/Unsupported type, drop the packet */
 		RTE_LOG(ERR, IPSEC, "Unsupported packet type\n");
@@ -516,10 +507,15 @@ process_pkts_inbound(struct ipsec_ctx *ipsec_ctx,
 	n_ip4 = traffic->ip4.num;
 	n_ip6 = traffic->ip6.num;
 
-	nb_pkts_in = ipsec_inbound(ipsec_ctx, traffic->ipsec.pkts,
-			traffic->ipsec.num, MAX_PKT_BURST);
-
-	split46_traffic(traffic, traffic->ipsec.pkts, nb_pkts_in);
+	if (app_sa_prm.enable == 0) {
+		nb_pkts_in = ipsec_inbound(ipsec_ctx, traffic->ipsec.pkts,
+				traffic->ipsec.num, MAX_PKT_BURST);
+		split46_traffic(traffic, traffic->ipsec.pkts, nb_pkts_in);
+	} else {
+		inbound_sa_lookup(ipsec_ctx->sa_ctx, traffic->ipsec.pkts,
+			traffic->ipsec.saptr, traffic->ipsec.num);
+		ipsec_process(ipsec_ctx, traffic);
+	}
 
 	inbound_sp_sa(ipsec_ctx->sp4_ctx, ipsec_ctx->sa_ctx, &traffic->ip4,
 			n_ip4);
@@ -575,20 +571,27 @@ process_pkts_outbound(struct ipsec_ctx *ipsec_ctx,
 
 	outbound_sp(ipsec_ctx->sp6_ctx, &traffic->ip6, &traffic->ipsec);
 
-	nb_pkts_out = ipsec_outbound(ipsec_ctx, traffic->ipsec.pkts,
-			traffic->ipsec.res, traffic->ipsec.num,
-			MAX_PKT_BURST);
+	if (app_sa_prm.enable == 0) {
 
-	for (i = 0; i < nb_pkts_out; i++) {
-		m = traffic->ipsec.pkts[i];
-		struct ip *ip = rte_pktmbuf_mtod(m, struct ip *);
-		if (ip->ip_v == IPVERSION) {
-			idx = traffic->ip4.num++;
-			traffic->ip4.pkts[idx] = m;
-		} else {
-			idx = traffic->ip6.num++;
-			traffic->ip6.pkts[idx] = m;
+		nb_pkts_out = ipsec_outbound(ipsec_ctx, traffic->ipsec.pkts,
+				traffic->ipsec.res, traffic->ipsec.num,
+				MAX_PKT_BURST);
+
+		for (i = 0; i < nb_pkts_out; i++) {
+			m = traffic->ipsec.pkts[i];
+			struct ip *ip = rte_pktmbuf_mtod(m, struct ip *);
+			if (ip->ip_v == IPVERSION) {
+				idx = traffic->ip4.num++;
+				traffic->ip4.pkts[idx] = m;
+			} else {
+				idx = traffic->ip6.num++;
+				traffic->ip6.pkts[idx] = m;
+			}
 		}
+	} else {
+		outbound_sa_lookup(ipsec_ctx->sa_ctx, traffic->ipsec.res,
+			traffic->ipsec.saptr, traffic->ipsec.num);
+		ipsec_process(ipsec_ctx, traffic);
 	}
 }
 
@@ -611,19 +614,26 @@ process_pkts_inbound_nosp(struct ipsec_ctx *ipsec_ctx,
 
 	traffic->ip6.num = 0;
 
-	nb_pkts_in = ipsec_inbound(ipsec_ctx, traffic->ipsec.pkts,
-			traffic->ipsec.num, MAX_PKT_BURST);
+	if (app_sa_prm.enable == 0) {
 
-	for (i = 0; i < nb_pkts_in; i++) {
-		m = traffic->ipsec.pkts[i];
-		struct ip *ip = rte_pktmbuf_mtod(m, struct ip *);
-		if (ip->ip_v == IPVERSION) {
-			idx = traffic->ip4.num++;
-			traffic->ip4.pkts[idx] = m;
-		} else {
-			idx = traffic->ip6.num++;
-			traffic->ip6.pkts[idx] = m;
+		nb_pkts_in = ipsec_inbound(ipsec_ctx, traffic->ipsec.pkts,
+				traffic->ipsec.num, MAX_PKT_BURST);
+
+		for (i = 0; i < nb_pkts_in; i++) {
+			m = traffic->ipsec.pkts[i];
+			struct ip *ip = rte_pktmbuf_mtod(m, struct ip *);
+			if (ip->ip_v == IPVERSION) {
+				idx = traffic->ip4.num++;
+				traffic->ip4.pkts[idx] = m;
+			} else {
+				idx = traffic->ip6.num++;
+				traffic->ip6.pkts[idx] = m;
+			}
 		}
+	} else {
+		inbound_sa_lookup(ipsec_ctx->sa_ctx, traffic->ipsec.pkts,
+			traffic->ipsec.saptr, traffic->ipsec.num);
+		ipsec_process(ipsec_ctx, traffic);
 	}
 }
 
@@ -655,21 +665,28 @@ process_pkts_outbound_nosp(struct ipsec_ctx *ipsec_ctx,
 	traffic->ip6.num = 0;
 	traffic->ipsec.num = n;
 
-	nb_pkts_out = ipsec_outbound(ipsec_ctx, traffic->ipsec.pkts,
-			traffic->ipsec.res, traffic->ipsec.num,
-			MAX_PKT_BURST);
+	if (app_sa_prm.enable == 0) {
 
-	/* They all sue the same SA (ip4 or ip6 tunnel) */
-	m = traffic->ipsec.pkts[i];
-	ip = rte_pktmbuf_mtod(m, struct ip *);
-	if (ip->ip_v == IPVERSION) {
-		traffic->ip4.num = nb_pkts_out;
-		for (i = 0; i < nb_pkts_out; i++)
-			traffic->ip4.pkts[i] = traffic->ipsec.pkts[i];
+		nb_pkts_out = ipsec_outbound(ipsec_ctx, traffic->ipsec.pkts,
+				traffic->ipsec.res, traffic->ipsec.num,
+				MAX_PKT_BURST);
+
+		/* They all sue the same SA (ip4 or ip6 tunnel) */
+		m = traffic->ipsec.pkts[0];
+		ip = rte_pktmbuf_mtod(m, struct ip *);
+		if (ip->ip_v == IPVERSION) {
+			traffic->ip4.num = nb_pkts_out;
+			for (i = 0; i < nb_pkts_out; i++)
+				traffic->ip4.pkts[i] = traffic->ipsec.pkts[i];
+		} else {
+			traffic->ip6.num = nb_pkts_out;
+			for (i = 0; i < nb_pkts_out; i++)
+				traffic->ip6.pkts[i] = traffic->ipsec.pkts[i];
+		}
 	} else {
-		traffic->ip6.num = nb_pkts_out;
-		for (i = 0; i < nb_pkts_out; i++)
-			traffic->ip6.pkts[i] = traffic->ipsec.pkts[i];
+		outbound_sa_lookup(ipsec_ctx->sa_ctx, traffic->ipsec.res,
+			traffic->ipsec.saptr, traffic->ipsec.num);
+		ipsec_process(ipsec_ctx, traffic);
 	}
 }
 
@@ -870,25 +887,31 @@ drain_inbound_crypto_queues(const struct lcore_conf *qconf,
 	uint32_t n;
 	struct ipsec_traffic trf;
 
-	/* dequeue packets from crypto-queue */
-	n = ipsec_inbound_cqp_dequeue(ctx, trf.ipsec.pkts,
+	if (app_sa_prm.enable == 0) {
+
+		/* dequeue packets from crypto-queue */
+		n = ipsec_inbound_cqp_dequeue(ctx, trf.ipsec.pkts,
 			RTE_DIM(trf.ipsec.pkts));
-	if (n == 0)
-		return;
 
-	trf.ip4.num = 0;
-	trf.ip6.num = 0;
+		trf.ip4.num = 0;
+		trf.ip6.num = 0;
 
-	/* split traffic by ipv4-ipv6 */
-	split46_traffic(&trf, trf.ipsec.pkts, n);
+		/* split traffic by ipv4-ipv6 */
+		split46_traffic(&trf, trf.ipsec.pkts, n);
+	} else
+		ipsec_cqp_process(ctx, &trf);
 
 	/* process ipv4 packets */
-	inbound_sp_sa(ctx->sp4_ctx, ctx->sa_ctx, &trf.ip4, 0);
-	route4_pkts(qconf->rt4_ctx, trf.ip4.pkts, trf.ip4.num);
+	if (trf.ip4.num != 0) {
+		inbound_sp_sa(ctx->sp4_ctx, ctx->sa_ctx, &trf.ip4, 0);
+		route4_pkts(qconf->rt4_ctx, trf.ip4.pkts, trf.ip4.num);
+	}
 
 	/* process ipv6 packets */
-	inbound_sp_sa(ctx->sp6_ctx, ctx->sa_ctx, &trf.ip6, 0);
-	route6_pkts(qconf->rt6_ctx, trf.ip6.pkts, trf.ip6.num);
+	if (trf.ip6.num != 0) {
+		inbound_sp_sa(ctx->sp6_ctx, ctx->sa_ctx, &trf.ip6, 0);
+		route6_pkts(qconf->rt6_ctx, trf.ip6.pkts, trf.ip6.num);
+	}
 }
 
 static void
@@ -898,23 +921,27 @@ drain_outbound_crypto_queues(const struct lcore_conf *qconf,
 	uint32_t n;
 	struct ipsec_traffic trf;
 
-	/* dequeue packets from crypto-queue */
-	n = ipsec_outbound_cqp_dequeue(ctx, trf.ipsec.pkts,
+	if (app_sa_prm.enable == 0) {
+
+		/* dequeue packets from crypto-queue */
+		n = ipsec_outbound_cqp_dequeue(ctx, trf.ipsec.pkts,
 			RTE_DIM(trf.ipsec.pkts));
-	if (n == 0)
-		return;
 
-	trf.ip4.num = 0;
-	trf.ip6.num = 0;
+		trf.ip4.num = 0;
+		trf.ip6.num = 0;
 
-	/* split traffic by ipv4-ipv6 */
-	split46_traffic(&trf, trf.ipsec.pkts, n);
+		/* split traffic by ipv4-ipv6 */
+		split46_traffic(&trf, trf.ipsec.pkts, n);
+	} else
+		ipsec_cqp_process(ctx, &trf);
 
 	/* process ipv4 packets */
-	route4_pkts(qconf->rt4_ctx, trf.ip4.pkts, trf.ip4.num);
+	if (trf.ip4.num != 0)
+		route4_pkts(qconf->rt4_ctx, trf.ip4.pkts, trf.ip4.num);
 
 	/* process ipv6 packets */
-	route6_pkts(qconf->rt6_ctx, trf.ip6.pkts, trf.ip6.num);
+	if (trf.ip6.num != 0)
+		route6_pkts(qconf->rt6_ctx, trf.ip6.pkts, trf.ip6.num);
 }
 
 /* main processing loop */

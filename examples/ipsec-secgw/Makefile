@@ -13,6 +13,7 @@ SRCS-y += sp4.c
 SRCS-y += sp6.c
 SRCS-y += sa.c
 SRCS-y += rt.c
+SRCS-y += ipsec_process.c
 SRCS-y += ipsec-secgw.c
 
 CFLAGS += -gdwarf-2

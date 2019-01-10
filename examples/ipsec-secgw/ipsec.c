@@ -39,7 +39,7 @@ set_ipsec_conf(struct ipsec_sa *sa, struct rte_security_ipsec_xform *ipsec)
 	ipsec->esn_soft_limit = IPSEC_OFFLOAD_ESN_SOFTLIMIT;
 }
 
-static inline int
+int
 create_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa)
 {
 	struct rte_cryptodev_info cdev_info;

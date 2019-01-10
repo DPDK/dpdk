@@ -192,6 +192,20 @@ struct cnt_blk {
 	uint32_t cnt;
 } __attribute__((packed));
 
+struct traffic_type {
+	const uint8_t *data[MAX_PKT_BURST * 2];
+	struct rte_mbuf *pkts[MAX_PKT_BURST * 2];
+	struct ipsec_sa *saptr[MAX_PKT_BURST * 2];
+	uint32_t res[MAX_PKT_BURST * 2];
+	uint32_t num;
+};
+
+struct ipsec_traffic {
+	struct traffic_type ipsec;
+	struct traffic_type ip4;
+	struct traffic_type ip6;
+};
+
 uint16_t
 ipsec_inbound(struct ipsec_ctx *ctx, struct rte_mbuf *pkts[],
 		uint16_t nb_pkts, uint16_t len);
@@ -207,6 +221,12 @@ ipsec_inbound_cqp_dequeue(struct ipsec_ctx *ctx, struct rte_mbuf *pkts[],
 uint16_t
 ipsec_outbound_cqp_dequeue(struct ipsec_ctx *ctx, struct rte_mbuf *pkts[],
 		uint16_t len);
+
+void
+ipsec_process(struct ipsec_ctx *ctx, struct ipsec_traffic *trf);
+
+void
+ipsec_cqp_process(struct ipsec_ctx *ctx, struct ipsec_traffic *trf);
 
 static inline uint16_t
 ipsec_metadata_size(void)
@@ -284,5 +304,8 @@ add_dst_ethaddr(uint16_t port, const struct ether_addr *addr);
 
 void
 enqueue_cop_burst(struct cdev_qp *cqp);
+
+int
+create_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa);
 
 #endif /* __IPSEC_H__ */
