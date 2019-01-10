@@ -32,6 +32,7 @@
 #include <rte_cycles.h>
 #include <rte_security.h>
 #include <rte_cryptodev.h>
+#include <rte_tm.h>
 
 /* Maximum long option length for option parsing. */
 #define MAX_LONG_OPT_SZ 64
@@ -77,6 +78,8 @@ static char bdr_str[MAX_STRING_LEN];
 
 /**< Enable show port. */
 static uint32_t enable_shw_port;
+/**< Enable show tm. */
+static uint32_t enable_shw_tm;
 
 /**< display usage */
 static void
@@ -97,7 +100,8 @@ proc_info_usage(const char *prgname)
 		"  --xstats-reset: to reset port extended statistics\n"
 		"  --collectd-format: to print statistics to STDOUT in expected by collectd format\n"
 		"  --host-id STRING: host id used to identify the system process is running on\n"
-		"  --show-port: to display ports information\n",
+		"  --show-port: to display ports information\n"
+		"  --show-tm: to display traffic manager information for ports\n",
 		prgname);
 }
 
@@ -205,6 +209,7 @@ proc_info_parse_args(int argc, char **argv)
 		{"xstats-ids", 1, NULL, 1},
 		{"host-id", 0, NULL, 0},
 		{"show-port", 0, NULL, 0},
+		{"show-tm", 0, NULL, 0},
 		{NULL, 0, 0, 0}
 	};
 
@@ -251,6 +256,9 @@ proc_info_parse_args(int argc, char **argv)
 			else if (!strncmp(long_option[option_index].name,
 					"show-port", MAX_LONG_OPT_SZ))
 				enable_shw_port = 1;
+			else if (!strncmp(long_option[option_index].name,
+					"show-tm", MAX_LONG_OPT_SZ))
+				enable_shw_tm = 1;
 			break;
 		case 1:
 			/* Print xstat single value given by name*/
@@ -694,6 +702,284 @@ show_port(void)
 	STATS_BDR_STR(50, "");
 }
 
+static void
+display_nodecap_info(int is_leaf, struct rte_tm_node_capabilities *cap)
+{
+	if (cap == NULL)
+		return;
+
+	if (!is_leaf) {
+		printf("\t  -- nonleaf sched max:\n"
+			"\t\t  + children (%u)\n"
+			"\t\t  + sp priorities (%u)\n"
+			"\t\t  + wfq children per group (%u)\n"
+			"\t\t  + wfq groups (%u)\n"
+			"\t\t  + wfq weight (%u)\n",
+			cap->nonleaf.sched_n_children_max,
+			cap->nonleaf.sched_sp_n_priorities_max,
+			cap->nonleaf.sched_wfq_n_children_per_group_max,
+			cap->nonleaf.sched_wfq_n_groups_max,
+			cap->nonleaf.sched_wfq_weight_max);
+	} else {
+		printf("\t  -- leaf cman support:\n"
+			"\t\t  + wred pkt mode (%d)\n"
+			"\t\t  + wred byte mode (%d)\n"
+			"\t\t  + head drop (%d)\n"
+			"\t\t  + wred context private (%d)\n"
+			"\t\t  + wred context shared (%u)\n",
+			cap->leaf.cman_wred_packet_mode_supported,
+			cap->leaf.cman_wred_byte_mode_supported,
+			cap->leaf.cman_head_drop_supported,
+			cap->leaf.cman_wred_context_private_supported,
+			cap->leaf.cman_wred_context_shared_n_max);
+	}
+}
+
+static void
+display_levelcap_info(int is_leaf, struct rte_tm_level_capabilities *cap)
+{
+	if (cap == NULL)
+		return;
+
+	if (!is_leaf) {
+		printf("\t  -- shaper private: (%d) dual rate (%d)\n",
+			cap->nonleaf.shaper_private_supported,
+			cap->nonleaf.shaper_private_dual_rate_supported);
+		printf("\t  -- shaper share: (%u)\n",
+			cap->nonleaf.shaper_shared_n_max);
+		printf("\t  -- non leaf sched MAX:\n"
+			"\t\t  + children (%u)\n"
+			"\t\t  + sp (%u)\n"
+			"\t\t  + wfq children per group (%u)\n"
+			"\t\t  + wfq groups (%u)\n"
+			"\t\t  + wfq weight (%u)\n",
+			cap->nonleaf.sched_n_children_max,
+			cap->nonleaf.sched_sp_n_priorities_max,
+			cap->nonleaf.sched_wfq_n_children_per_group_max,
+			cap->nonleaf.sched_wfq_n_groups_max,
+			cap->nonleaf.sched_wfq_weight_max);
+	} else {
+		printf("\t  -- shaper private: (%d) dual rate (%d)\n",
+			cap->leaf.shaper_private_supported,
+			cap->leaf.shaper_private_dual_rate_supported);
+		printf("\t  -- shaper share: (%u)\n",
+			cap->leaf.shaper_shared_n_max);
+		printf("  -- leaf cman support:\n"
+			"\t\t  + wred pkt mode (%d)\n"
+			"\t\t  + wred byte mode (%d)\n"
+			"\t\t  + head drop (%d)\n"
+			"\t\t  + wred context private (%d)\n"
+			"\t\t  + wred context shared (%u)\n",
+			cap->leaf.cman_wred_packet_mode_supported,
+			cap->leaf.cman_wred_byte_mode_supported,
+			cap->leaf.cman_head_drop_supported,
+			cap->leaf.cman_wred_context_private_supported,
+			cap->leaf.cman_wred_context_shared_n_max);
+	}
+}
+
+static void
+show_tm(void)
+{
+	int ret = 0, check_for_leaf = 0, is_leaf = 0;
+	unsigned int j, k;
+	uint16_t i = 0;
+
+	snprintf(bdr_str, MAX_STRING_LEN, " show - TM PMD %"PRIu64,
+			rte_get_tsc_hz());
+	STATS_BDR_STR(10, bdr_str);
+
+	RTE_ETH_FOREACH_DEV(i) {
+		struct rte_eth_dev_info dev_info;
+		struct rte_tm_capabilities cap;
+		struct rte_tm_error error;
+		struct rte_tm_node_capabilities capnode;
+		struct rte_tm_level_capabilities caplevel;
+		uint32_t n_leaf_nodes = 0;
+
+		memset(&cap, 0, sizeof(cap));
+		memset(&error, 0, sizeof(error));
+
+		rte_eth_dev_info_get(i, &dev_info);
+		printf("  - Generic for port (%u)\n"
+			"\t  -- driver name %s\n"
+			"\t  -- max vf (%u)\n"
+			"\t  -- max tx queues (%u)\n"
+			"\t  -- number of tx queues (%u)\n",
+			i,
+			dev_info.driver_name,
+			dev_info.max_vfs,
+			dev_info.max_tx_queues,
+			dev_info.nb_tx_queues);
+
+		ret = rte_tm_capabilities_get(i, &cap, &error);
+		if (ret)
+			continue;
+
+		printf("  - MAX: nodes (%u) levels (%u) children (%u)\n",
+			cap.n_nodes_max,
+			cap.n_levels_max,
+			cap.sched_n_children_max);
+
+		printf("  - identical nodes: non leaf (%d) leaf (%d)\n",
+			cap.non_leaf_nodes_identical,
+			cap.leaf_nodes_identical);
+
+		printf("  - Shaper MAX:\n"
+			"\t  -- total (%u)\n"
+			"\t  -- private (%u) private dual (%d)\n"
+			"\t  -- shared (%u) shared dual (%u)\n",
+			cap.shaper_n_max,
+			cap.shaper_private_n_max,
+			cap.shaper_private_dual_rate_n_max,
+			cap.shaper_shared_n_max,
+			cap.shaper_shared_dual_rate_n_max);
+
+		printf("  - mark support:\n");
+		printf("\t  -- vlan dei: GREEN (%d) YELLOW (%d) RED (%d)\n",
+			cap.mark_vlan_dei_supported[RTE_TM_GREEN],
+			cap.mark_vlan_dei_supported[RTE_TM_YELLOW],
+			cap.mark_vlan_dei_supported[RTE_TM_RED]);
+		printf("\t  -- ip ecn tcp: GREEN (%d) YELLOW (%d) RED (%d)\n",
+			cap.mark_ip_ecn_tcp_supported[RTE_TM_GREEN],
+			cap.mark_ip_ecn_tcp_supported[RTE_TM_YELLOW],
+			cap.mark_ip_ecn_tcp_supported[RTE_TM_RED]);
+		printf("\t  -- ip ecn sctp: GREEN (%d) YELLOW (%d) RED (%d)\n",
+			cap.mark_ip_ecn_sctp_supported[RTE_TM_GREEN],
+			cap.mark_ip_ecn_sctp_supported[RTE_TM_YELLOW],
+			cap.mark_ip_ecn_sctp_supported[RTE_TM_RED]);
+		printf("\t  -- ip dscp: GREEN (%d) YELLOW (%d) RED (%d)\n",
+			cap.mark_ip_dscp_supported[RTE_TM_GREEN],
+			cap.mark_ip_dscp_supported[RTE_TM_YELLOW],
+			cap.mark_ip_dscp_supported[RTE_TM_RED]);
+
+		printf("  - mask stats (0x%"PRIx64")"
+			" dynamic update (0x%"PRIx64")\n",
+			cap.stats_mask,
+			cap.dynamic_update_mask);
+
+		printf("  - sched MAX:\n"
+			"\t  -- total (%u)\n"
+			"\t  -- sp levels (%u)\n"
+			"\t  -- wfq children per group (%u)\n"
+			"\t  -- wfq groups (%u)\n"
+			"\t  -- wfq weight (%u)\n",
+			cap.sched_sp_n_priorities_max,
+			cap.sched_sp_n_priorities_max,
+			cap.sched_wfq_n_children_per_group_max,
+			cap.sched_wfq_n_groups_max,
+			cap.sched_wfq_weight_max);
+
+		printf("  - CMAN support:\n"
+			"\t  -- WRED mode: pkt (%d) byte (%d)\n"
+			"\t  -- head drop (%d)\n",
+			cap.cman_wred_packet_mode_supported,
+			cap.cman_wred_byte_mode_supported,
+			cap.cman_head_drop_supported);
+		printf("\t  -- MAX WRED CONTEXT:"
+			" total (%u) private (%u) shared (%u)\n",
+			cap.cman_wred_context_n_max,
+			cap.cman_wred_context_private_n_max,
+			cap.cman_wred_context_shared_n_max);
+
+		for (j = 0; j < cap.n_nodes_max; j++) {
+			memset(&capnode, 0, sizeof(capnode));
+			ret = rte_tm_node_capabilities_get(i, j,
+					&capnode, &error);
+			if (ret)
+				continue;
+
+			check_for_leaf = 1;
+
+			printf("  NODE %u\n", j);
+			printf("\t  - shaper private: (%d) dual rate (%d)\n",
+				capnode.shaper_private_supported,
+				capnode.shaper_private_dual_rate_supported);
+			printf("\t  - shaper shared max: (%u)\n",
+				capnode.shaper_shared_n_max);
+			printf("\t  - stats mask %"PRIx64"\n",
+				capnode.stats_mask);
+
+			ret = rte_tm_node_type_get(i, j, &is_leaf, &error);
+			if (ret)
+				continue;
+
+			display_nodecap_info(is_leaf, &capnode);
+		}
+
+		for (j = 0; j < cap.n_levels_max; j++) {
+			memset(&caplevel, 0, sizeof(caplevel));
+			ret = rte_tm_level_capabilities_get(i, j,
+					&caplevel, &error);
+			if (ret)
+				continue;
+
+			printf("  - Level %u\n", j);
+			printf("\t  -- node MAX: %u non leaf %u leaf %u\n",
+				caplevel.n_nodes_max,
+				caplevel.n_nodes_nonleaf_max,
+				caplevel.n_nodes_leaf_max);
+			printf("\t  -- indetical: non leaf %u leaf %u\n",
+				caplevel.non_leaf_nodes_identical,
+				caplevel.leaf_nodes_identical);
+
+			for (k = 0; k < caplevel.n_nodes_max; k++) {
+				ret = rte_tm_node_type_get(i, k,
+					&is_leaf, &error);
+				if (ret)
+					continue;
+
+				display_levelcap_info(is_leaf, &caplevel);
+			}
+		}
+
+		if (check_for_leaf) {
+			ret = rte_tm_get_number_of_leaf_nodes(i,
+					&n_leaf_nodes, &error);
+			if (ret == 0)
+				printf("  - leaf nodes (%u)\n", n_leaf_nodes);
+		}
+
+		for (j = 0; j < n_leaf_nodes; j++) {
+			struct rte_tm_node_stats stats;
+			memset(&stats, 0, sizeof(stats));
+
+			ret = rte_tm_node_stats_read(i, j,
+					&stats, &cap.stats_mask, 0, &error);
+			if (ret)
+				continue;
+
+			printf("  - STATS for node (%u)\n", j);
+			printf("  -- pkts (%"PRIu64") bytes (%"PRIu64")\n",
+				stats.n_pkts, stats.n_bytes);
+
+			ret = rte_tm_node_type_get(i, j, &is_leaf, &error);
+			if (ret || (!is_leaf))
+				continue;
+
+			printf("  -- leaf queued:"
+				" pkts (%"PRIu64") bytes (%"PRIu64")\n",
+				stats.leaf.n_pkts_queued,
+				stats.leaf.n_bytes_queued);
+			printf("  - dropped:\n"
+				"\t  -- GREEN:"
+				" pkts (%"PRIu64") bytes (%"PRIu64")\n"
+				"\t  -- YELLOW:"
+				" pkts (%"PRIu64") bytes (%"PRIu64")\n"
+				"\t  -- RED:"
+				" pkts (%"PRIu64") bytes (%"PRIu64")\n",
+				stats.leaf.n_pkts_dropped[RTE_TM_GREEN],
+				stats.leaf.n_bytes_dropped[RTE_TM_GREEN],
+				stats.leaf.n_pkts_dropped[RTE_TM_YELLOW],
+				stats.leaf.n_bytes_dropped[RTE_TM_YELLOW],
+				stats.leaf.n_pkts_dropped[RTE_TM_RED],
+				stats.leaf.n_bytes_dropped[RTE_TM_RED]);
+		}
+	}
+
+	STATS_BDR_STR(50, "");
+}
+
 int
 main(int argc, char **argv)
 {
@@ -777,6 +1063,8 @@ main(int argc, char **argv)
 	/* show information for PMD */
 	if (enable_shw_port)
 		show_port();
+	if (enable_shw_tm)
+		show_tm();
 
 	ret = rte_eal_cleanup();
 	if (ret)
