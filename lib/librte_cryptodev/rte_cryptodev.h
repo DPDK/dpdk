@@ -953,6 +953,8 @@ rte_cryptodev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
  * has a fixed algo, key, op-type, digest_len etc.
  */
 struct rte_cryptodev_sym_session {
+	uint64_t opaque_data;
+	/**< Can be used for external metadata */
 	uint16_t nb_drivers;
 	/**< number of elements in sess_data array */
 	uint16_t user_data_sz;

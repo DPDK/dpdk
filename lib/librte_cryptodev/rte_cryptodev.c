@@ -1339,6 +1339,7 @@ rte_cryptodev_sym_session_create(struct rte_mempool *mp)
 
 	sess->nb_drivers = pool_priv->nb_drivers;
 	sess->user_data_sz = pool_priv->user_data_sz;
+	sess->opaque_data = 0;
 
 	/* Clear device session pointer.
 	 * Include the flag indicating presence of user data

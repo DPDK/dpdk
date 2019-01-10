@@ -315,6 +315,13 @@
        class="st2"
        y="129.23468"
        x="-204.95244">uint16_t refcnt;</text>
+<text
+       transform="scale(0.71276665,1.4029837)"
+       style="font-size:14.02988338px;font-family:Calibri;overflow:visible;color-interpolation-filters:sRGB;fill:#386288;fill-rule:evenodd;stroke-width:1.40298378;stroke-linecap:square;stroke-miterlimit:3"
+       id="text24-5-5-1-4-3"
+       class="st2"
+       y="72.641953"
+       x="-242.00067">uint64_t opaque_data;</text>
 </g><g
      transform="matrix(1.022976,0,0,0.71529071,199.82034,-39.936699)"
      id="shape19-6-5"><title
