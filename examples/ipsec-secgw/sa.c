@@ -947,10 +947,15 @@ int
 inbound_sa_check(struct sa_ctx *sa_ctx, struct rte_mbuf *m, uint32_t sa_idx)
 {
 	struct ipsec_mbuf_metadata *priv;
+	struct ipsec_sa *sa;
 
 	priv = get_priv(m);
+	sa = priv->sa;
+	if (sa != NULL)
+		return (sa_ctx->sa[sa_idx].spi == sa->spi);
 
-	return (sa_ctx->sa[sa_idx].spi == priv->sa->spi);
+	RTE_LOG(ERR, IPSEC, "SA not saved in private data\n");
+	return 0;
 }
 
 static inline void
