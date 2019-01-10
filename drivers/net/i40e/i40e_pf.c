@@ -1295,6 +1295,7 @@ i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 	uint16_t vf_id = abs_vf_id - hw->func_caps.vf_base_id;
 	struct rte_pmd_i40e_mb_event_param ret_param;
 	bool b_op = TRUE;
+	int ret;
 
 	if (vf_id > pf->vf_num - 1 || !pf->vfs) {
 		PMD_DRV_LOG(ERR, "invalid argument");
@@ -1306,6 +1307,30 @@ i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 		PMD_DRV_LOG(ERR, "NO VSI associated with VF found");
 		i40e_pf_host_send_msg_to_vf(vf, opcode,
 			I40E_ERR_NO_AVAILABLE_VSI, NULL, 0);
+		return;
+	}
+
+	/* perform basic checks on the msg */
+	ret = virtchnl_vc_validate_vf_msg(&vf->version, opcode, msg, msglen);
+
+	/* perform additional checks specific to this driver */
+	if (opcode == VIRTCHNL_OP_CONFIG_RSS_KEY) {
+		struct virtchnl_rss_key *vrk = (struct virtchnl_rss_key *)msg;
+
+		if (vrk->key_len != ((I40E_PFQF_HKEY_MAX_INDEX + 1) * 4))
+			ret = VIRTCHNL_ERR_PARAM;
+	} else if (opcode == VIRTCHNL_OP_CONFIG_RSS_LUT) {
+		struct virtchnl_rss_lut *vrl = (struct virtchnl_rss_lut *)msg;
+
+		if (vrl->lut_entries != ((I40E_VFQF_HLUT1_MAX_INDEX + 1) * 4))
+			ret = VIRTCHNL_ERR_PARAM;
+	}
+
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Invalid message from VF %u, opcode %u, len %u",
+			    vf_id, opcode, msglen);
+		i40e_pf_host_send_msg_to_vf(vf, opcode,
+					    I40E_ERR_PARAM, NULL, 0);
 		return;
 	}
 
