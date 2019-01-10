@@ -80,6 +80,8 @@ static char bdr_str[MAX_STRING_LEN];
 static uint32_t enable_shw_port;
 /**< Enable show tm. */
 static uint32_t enable_shw_tm;
+/**< Enable show crypto. */
+static uint32_t enable_shw_crypto;
 
 /**< display usage */
 static void
@@ -101,7 +103,8 @@ proc_info_usage(const char *prgname)
 		"  --collectd-format: to print statistics to STDOUT in expected by collectd format\n"
 		"  --host-id STRING: host id used to identify the system process is running on\n"
 		"  --show-port: to display ports information\n"
-		"  --show-tm: to display traffic manager information for ports\n",
+		"  --show-tm: to display traffic manager information for ports\n"
+		"  --show-crypto: to display crypto information\n",
 		prgname);
 }
 
@@ -210,6 +213,7 @@ proc_info_parse_args(int argc, char **argv)
 		{"host-id", 0, NULL, 0},
 		{"show-port", 0, NULL, 0},
 		{"show-tm", 0, NULL, 0},
+		{"show-crypto", 0, NULL, 0},
 		{NULL, 0, 0, 0}
 	};
 
@@ -259,6 +263,9 @@ proc_info_parse_args(int argc, char **argv)
 			else if (!strncmp(long_option[option_index].name,
 					"show-tm", MAX_LONG_OPT_SZ))
 				enable_shw_tm = 1;
+			else if (!strncmp(long_option[option_index].name,
+					"show-crypto", MAX_LONG_OPT_SZ))
+				enable_shw_crypto = 1;
 			break;
 		case 1:
 			/* Print xstat single value given by name*/
@@ -980,6 +987,89 @@ show_tm(void)
 	STATS_BDR_STR(50, "");
 }
 
+static void
+display_crypto_feature_info(uint64_t x)
+{
+	if (x == 0)
+		return;
+
+	printf("\t  -- feature flags\n");
+	printf("\t\t  + symmetric (%c), asymmetric (%c)\n"
+		"\t\t  + symmetric operation chaining (%c)\n",
+		(x & RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO) ? 'y' : 'n',
+		(x & RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO) ? 'y' : 'n',
+		(x & RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING) ? 'y' : 'n');
+	printf("\t\t  + CPU: SSE (%c), AVX (%c), AVX2 (%c), AVX512 (%c)\n",
+		(x & RTE_CRYPTODEV_FF_CPU_SSE) ? 'y' : 'n',
+		(x & RTE_CRYPTODEV_FF_CPU_AVX) ? 'y' : 'n',
+		(x & RTE_CRYPTODEV_FF_CPU_AVX2) ? 'y' : 'n',
+		(x & RTE_CRYPTODEV_FF_CPU_AVX512) ? 'y' : 'n');
+	printf("\t\t  + AESNI: CPU (%c), HW (%c)\n",
+		(x & RTE_CRYPTODEV_FF_CPU_AESNI) ? 'y' : 'n',
+		(x & RTE_CRYPTODEV_FF_HW_ACCELERATED) ? 'y' : 'n');
+	printf("\t\t  + INLINE (%c)\n",
+		(x & RTE_CRYPTODEV_FF_SECURITY) ? 'y' : 'n');
+	printf("\t\t  + ARM: NEON (%c), CE (%c)\n",
+		(x & RTE_CRYPTODEV_FF_CPU_NEON) ? 'y' : 'n',
+		(x & RTE_CRYPTODEV_FF_CPU_ARM_CE) ? 'y' : 'n');
+	printf("\t  -- buffer offload\n");
+	printf("\t\t  + IN_PLACE_SGL (%c)\n",
+		(x & RTE_CRYPTODEV_FF_IN_PLACE_SGL) ? 'y' : 'n');
+	printf("\t\t  + OOP_SGL_IN_SGL_OUT (%c)\n",
+		(x & RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT) ? 'y' : 'n');
+	printf("\t\t  + OOP_SGL_IN_LB_OUT (%c)\n",
+		(x & RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT) ? 'y' : 'n');
+	printf("\t\t  + OOP_LB_IN_SGL_OUT (%c)\n",
+		(x & RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT) ? 'y' : 'n');
+	printf("\t\t  + OOP_LB_IN_LB_OUT (%c)\n",
+		(x & RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT) ? 'y' : 'n');
+}
+
+static void
+show_crypto(void)
+{
+	uint8_t crypto_dev_count = rte_cryptodev_count(), i;
+
+	snprintf(bdr_str, MAX_STRING_LEN, " show - CRYPTO PMD %"PRIu64,
+			rte_get_tsc_hz());
+	STATS_BDR_STR(10, bdr_str);
+
+	for (i = 0; i < crypto_dev_count; i++) {
+		struct rte_cryptodev_info dev_info;
+		struct rte_cryptodev_stats stats;
+
+		rte_cryptodev_info_get(i, &dev_info);
+
+		printf("  - device (%u)\n", i);
+		printf("\t  -- name (%s)\n"
+			"\t  -- driver (%s)\n"
+			"\t  -- id (%u) on socket (%d)\n"
+			"\t  -- queue pairs (%d)\n",
+			rte_cryptodev_name_get(i),
+			dev_info.driver_name,
+			dev_info.driver_id,
+			dev_info.device->numa_node,
+			rte_cryptodev_queue_pair_count(i));
+
+		display_crypto_feature_info(dev_info.feature_flags);
+
+		memset(&stats, 0, sizeof(0));
+		if (rte_cryptodev_stats_get(i, &stats) == 0) {
+			printf("\t  -- stats\n");
+			printf("\t\t  + enqueue count (%"PRIu64")"
+				" error (%"PRIu64")\n",
+				stats.enqueued_count,
+				stats.enqueue_err_count);
+			printf("\t\t  + dequeue count (%"PRIu64")"
+				" error (%"PRIu64")\n",
+				stats.dequeued_count,
+				stats.dequeue_err_count);
+		}
+	}
+
+	STATS_BDR_STR(50, "");
+}
+
 int
 main(int argc, char **argv)
 {
@@ -1065,6 +1155,8 @@ main(int argc, char **argv)
 		show_port();
 	if (enable_shw_tm)
 		show_tm();
+	if (enable_shw_crypto)
+		show_crypto();
 
 	ret = rte_eal_cleanup();
 	if (ret)

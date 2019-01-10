@@ -18,7 +18,7 @@ The application has a number of command line options:
 .. code-block:: console
 
    ./$(RTE_TARGET)/app/dpdk-procinfo -- -m | [-p PORTMASK] [--stats | --xstats |
-   --stats-reset | --xstats-reset] [ --show-port | --show-tm ]
+   --stats-reset | --xstats-reset] [ --show-port | --show-tm | --show-crypto ]
 
 Parameters
 ~~~~~~~~~~
@@ -49,6 +49,10 @@ associated to RX port queue pair.
 **--show-tm**
 The show-tm parameter displays per port traffic manager settings, current
 configurations and statistics.
+
+**--show-crypto**
+The show-crypto parameter displays available cryptodev configurations,
+settings and stats per node.
 
 Limitations
 -----------
