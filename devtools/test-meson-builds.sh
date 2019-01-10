@@ -24,7 +24,7 @@ build () # <directory> <meson options>
 {
 	builddir=$1
 	shift
-	if [ ! -d "$builddir" ] ; then
+	if [ ! -f "$builddir/build.ninja" ] ; then
 		options="--werror -Dexamples=all $*"
 		echo "$MESON $options $srcdir $builddir"
 		$MESON $options $srcdir $builddir
