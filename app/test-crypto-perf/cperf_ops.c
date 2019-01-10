@@ -469,6 +469,7 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 
 static struct rte_cryptodev_sym_session *
 cperf_create_session(struct rte_mempool *sess_mp,
+	struct rte_mempool *priv_mp,
 	uint8_t dev_id,
 	const struct cperf_options *options,
 	const struct cperf_test_vector *test_vector,
@@ -505,7 +506,7 @@ cperf_create_session(struct rte_mempool *sess_mp,
 		}
 		/* create crypto session */
 		rte_cryptodev_sym_session_init(dev_id, sess, &cipher_xform,
-				sess_mp);
+				priv_mp);
 	/*
 	 *  auth only
 	 */
@@ -533,7 +534,7 @@ cperf_create_session(struct rte_mempool *sess_mp,
 		}
 		/* create crypto session */
 		rte_cryptodev_sym_session_init(dev_id, sess, &auth_xform,
-				sess_mp);
+				priv_mp);
 	/*
 	 * cipher and auth
 	 */
@@ -592,12 +593,12 @@ cperf_create_session(struct rte_mempool *sess_mp,
 			cipher_xform.next = &auth_xform;
 			/* create crypto session */
 			rte_cryptodev_sym_session_init(dev_id,
-					sess, &cipher_xform, sess_mp);
+					sess, &cipher_xform, priv_mp);
 		} else { /* auth then cipher */
 			auth_xform.next = &cipher_xform;
 			/* create crypto session */
 			rte_cryptodev_sym_session_init(dev_id,
-					sess, &auth_xform, sess_mp);
+					sess, &auth_xform, priv_mp);
 		}
 	} else { /* options->op_type == CPERF_AEAD */
 		aead_xform.type = RTE_CRYPTO_SYM_XFORM_AEAD;
@@ -618,7 +619,7 @@ cperf_create_session(struct rte_mempool *sess_mp,
 
 		/* Create crypto session */
 		rte_cryptodev_sym_session_init(dev_id,
-					sess, &aead_xform, sess_mp);
+					sess, &aead_xform, priv_mp);
 	}
 
 	return sess;

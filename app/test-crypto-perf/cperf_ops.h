@@ -13,7 +13,7 @@
 
 
 typedef struct rte_cryptodev_sym_session *(*cperf_sessions_create_t)(
-		struct rte_mempool *sess_mp,
+		struct rte_mempool *sess_mp, struct rte_mempool *sess_priv_mp,
 		uint8_t dev_id, const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector,
 		uint16_t iv_offset);
