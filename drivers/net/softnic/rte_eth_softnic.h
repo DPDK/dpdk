@@ -26,6 +26,26 @@ extern "C" {
 #define SOFTNIC_CPU_ID                                     0
 #endif
 
+/**
+ * Service cores:
+ *
+ * 0 = The current device is run explicitly by the application. The firmware
+ *     creates one or several pipelines for the current device and maps them to
+ *     CPU cores that should not be service cores. The application is required
+ *     to call rte_pmd_softnic_run() for the current device on each of these CPU
+ *     cores in order to make the current device work.
+ *
+ * 1 = The current device is run on the service cores transparently to the
+ *     application. The firmware creates one or several pipelines for the
+ *     current device and maps them to CPU cores that should be service cores.
+ *     Each of these service cores is calling rte_pmd_softnic_run() for the
+ *     current device in order to make the current device work. The application
+ *     is not allowed to call rte_pmd_softnic_run() for the current device.
+ */
+#ifndef SOFTNIC_SC
+#define SOFTNIC_SC                                         1
+#endif
+
 /** Traffic Manager: Number of scheduler queues. */
 #ifndef SOFTNIC_TM_N_QUEUES
 #define SOFTNIC_TM_N_QUEUES                                (64 * 1024)

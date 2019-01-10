@@ -22,6 +22,7 @@
 #define PMD_PARAM_FIRMWARE                                 "firmware"
 #define PMD_PARAM_CONN_PORT                                "conn_port"
 #define PMD_PARAM_CPU_ID                                   "cpu_id"
+#define PMD_PARAM_SC                                       "sc"
 #define PMD_PARAM_TM_N_QUEUES                              "tm_n_queues"
 #define PMD_PARAM_TM_QSIZE0                                "tm_qsize0"
 #define PMD_PARAM_TM_QSIZE1                                "tm_qsize1"
@@ -32,6 +33,7 @@ static const char * const pmd_valid_args[] = {
 	PMD_PARAM_FIRMWARE,
 	PMD_PARAM_CONN_PORT,
 	PMD_PARAM_CPU_ID,
+	PMD_PARAM_SC,
 	PMD_PARAM_TM_N_QUEUES,
 	PMD_PARAM_TM_QSIZE0,
 	PMD_PARAM_TM_QSIZE1,
@@ -426,6 +428,7 @@ pmd_parse_args(struct pmd_params *p, const char *params)
 	memset(p, 0, sizeof(*p));
 	p->firmware = SOFTNIC_FIRMWARE;
 	p->cpu_id = SOFTNIC_CPU_ID;
+	p->sc = SOFTNIC_SC;
 	p->tm.n_queues = SOFTNIC_TM_N_QUEUES;
 	p->tm.qsize[0] = SOFTNIC_TM_QUEUE_SIZE;
 	p->tm.qsize[1] = SOFTNIC_TM_QUEUE_SIZE;
@@ -452,6 +455,14 @@ pmd_parse_args(struct pmd_params *p, const char *params)
 	if (rte_kvargs_count(kvlist, PMD_PARAM_CPU_ID) == 1) {
 		ret = rte_kvargs_process(kvlist, PMD_PARAM_CPU_ID,
 			&get_uint32, &p->cpu_id);
+		if (ret < 0)
+			goto out_free;
+	}
+
+	/* Service cores (optional) */
+	if (rte_kvargs_count(kvlist, PMD_PARAM_SC) == 1) {
+		ret = rte_kvargs_process(kvlist, PMD_PARAM_SC,
+			&get_uint32, &p->sc);
 		if (ret < 0)
 			goto out_free;
 	}

@@ -7,6 +7,7 @@
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <rte_lcore.h>
+#include <rte_service_component.h>
 #include <rte_ring.h>
 
 #include <rte_table_acl.h>
@@ -41,7 +42,7 @@ softnic_thread_init(struct pmd_internals *softnic)
 {
 	uint32_t i;
 
-	RTE_LCORE_FOREACH_SLAVE(i) {
+	for (i = 0; i < RTE_MAX_LCORE; i++) {
 		char ring_name[NAME_MAX];
 		struct rte_ring *msgq_req, *msgq_rsp;
 		struct softnic_thread *t = &softnic->thread[i];
@@ -80,7 +81,7 @@ softnic_thread_init(struct pmd_internals *softnic)
 		/* Master thread records */
 		t->msgq_req = msgq_req;
 		t->msgq_rsp = msgq_rsp;
-		t->enabled = 1;
+		t->service_id = UINT32_MAX;
 
 		/* Data plane thread records */
 		t_data->n_pipelines = 0;
@@ -96,12 +97,103 @@ softnic_thread_init(struct pmd_internals *softnic)
 }
 
 static inline int
+thread_is_valid(struct pmd_internals *softnic, uint32_t thread_id)
+{
+	struct rte_config *cfg = rte_eal_get_configuration();
+	enum rte_lcore_role_t role;
+
+	if ((thread_id >= RTE_MAX_LCORE) ||
+		(thread_id == cfg->master_lcore))
+		return 0; /* FALSE */
+
+	role = cfg->lcore_role[thread_id];
+
+	if ((softnic->params.sc && (role == ROLE_SERVICE)) ||
+		(!softnic->params.sc && (role == ROLE_RTE)))
+		return 1; /* TRUE */
+
+	return 0; /* FALSE */
+}
+
+static inline int
 thread_is_running(uint32_t thread_id)
 {
 	enum rte_lcore_state_t thread_state;
 
 	thread_state = rte_eal_get_lcore_state(thread_id);
 	return (thread_state == RUNNING)? 1 : 0;
+}
+
+static int32_t
+rte_pmd_softnic_run_internal(void *arg);
+
+static inline int
+thread_sc_service_up(struct pmd_internals *softnic, uint32_t thread_id)
+{
+	struct rte_service_spec service_params;
+	struct softnic_thread *t = &softnic->thread[thread_id];
+	struct rte_eth_dev *dev;
+	int status;
+	uint16_t port_id;
+
+	/* service params */
+	rte_eth_dev_get_port_by_name(softnic->params.name, &port_id);
+	dev = &rte_eth_devices[port_id];
+	snprintf(service_params.name, sizeof(service_params.name), "%s_%u",
+		softnic->params.name,
+		thread_id);
+	service_params.callback = rte_pmd_softnic_run_internal;
+	service_params.callback_userdata = dev;
+	service_params.capabilities = 0;
+	service_params.socket_id = (int)softnic->params.cpu_id;
+
+	/* service register */
+	status = rte_service_component_register(&service_params, &t->service_id);
+	if (status)
+		return status;
+
+	status = rte_service_component_runstate_set(t->service_id, 1);
+	if (status) {
+		rte_service_component_unregister(t->service_id);
+		t->service_id = UINT32_MAX;
+		return status;
+	}
+
+	status = rte_service_runstate_set(t->service_id, 1);
+	if (status) {
+		rte_service_component_runstate_set(t->service_id, 0);
+		rte_service_component_unregister(t->service_id);
+		t->service_id = UINT32_MAX;
+		return status;
+	}
+
+	/* service map to thread */
+	status = rte_service_map_lcore_set(t->service_id, thread_id, 1);
+	if (status) {
+		rte_service_runstate_set(t->service_id, 0);
+		rte_service_component_runstate_set(t->service_id, 0);
+		rte_service_component_unregister(t->service_id);
+		t->service_id = UINT32_MAX;
+		return status;
+	}
+
+	return 0;
+}
+
+static inline void
+thread_sc_service_down(struct pmd_internals *softnic, uint32_t thread_id)
+{
+	struct softnic_thread *t = &softnic->thread[thread_id];
+
+	/* service unmap from thread */
+	rte_service_map_lcore_set(t->service_id, thread_id, 0);
+
+	/* service unregister */
+	rte_service_runstate_set(t->service_id, 0);
+	rte_service_component_runstate_set(t->service_id, 0);
+	rte_service_component_unregister(t->service_id);
+
+	t->service_id = UINT32_MAX;
 }
 
 /**
@@ -200,31 +292,33 @@ softnic_thread_pipeline_enable(struct pmd_internals *softnic,
 	const char *pipeline_name)
 {
 	struct pipeline *p = softnic_pipeline_find(softnic, pipeline_name);
-	struct softnic_thread *t;
 	struct thread_msg_req *req;
 	struct thread_msg_rsp *rsp;
-	uint32_t i;
+	uint32_t n_pipelines, i;
 	int status;
 
 	/* Check input params */
-	if ((thread_id >= RTE_MAX_LCORE) ||
+	if (!thread_is_valid(softnic, thread_id) ||
 		(p == NULL) ||
 		(p->n_ports_in == 0) ||
 		(p->n_ports_out == 0) ||
-		(p->n_tables == 0))
-		return -1;
-
-	t = &softnic->thread[thread_id];
-	if ((t->enabled == 0) ||
+		(p->n_tables == 0) ||
 		p->enabled)
 		return -1;
+
+	n_pipelines = softnic_pipeline_thread_count(softnic, thread_id);
+	if (n_pipelines >= THREAD_PIPELINES_MAX)
+		return -1;
+
+	if (softnic->params.sc && (n_pipelines == 0)) {
+		status = thread_sc_service_up(softnic, thread_id);
+		if (status)
+			return status;
+	}
 
 	if (!thread_is_running(thread_id)) {
 		struct softnic_thread_data *td = &softnic->thread_data[thread_id];
 		struct pipeline_data *tdp = &td->pipeline_data[td->n_pipelines];
-
-		if (td->n_pipelines >= THREAD_PIPELINES_MAX)
-			return -1;
 
 		/* Data plane thread */
 		td->p[td->n_pipelines] = p->p;
@@ -292,25 +386,19 @@ softnic_thread_pipeline_disable(struct pmd_internals *softnic,
 	const char *pipeline_name)
 {
 	struct pipeline *p = softnic_pipeline_find(softnic, pipeline_name);
-	struct softnic_thread *t;
 	struct thread_msg_req *req;
 	struct thread_msg_rsp *rsp;
+	uint32_t n_pipelines;
 	int status;
 
 	/* Check input params */
-	if ((thread_id >= RTE_MAX_LCORE) ||
-		(p == NULL))
-		return -1;
-
-	t = &softnic->thread[thread_id];
-	if (t->enabled == 0)
+	if (!thread_is_valid(softnic, thread_id) ||
+		(p == NULL) ||
+		(p->enabled && (p->thread_id != thread_id)))
 		return -1;
 
 	if (p->enabled == 0)
 		return 0;
-
-	if (p->thread_id != thread_id)
-		return -1;
 
 	if (!thread_is_running(thread_id)) {
 		struct softnic_thread_data *td = &softnic->thread_data[thread_id];
@@ -341,6 +429,9 @@ softnic_thread_pipeline_disable(struct pmd_internals *softnic,
 			break;
 		}
 
+		if (softnic->params.sc && (td->n_pipelines == 0))
+			thread_sc_service_down(softnic, thread_id);
+
 		return 0;
 	}
 
@@ -369,6 +460,10 @@ softnic_thread_pipeline_disable(struct pmd_internals *softnic,
 		return status;
 
 	p->enabled = 0;
+
+	n_pipelines = softnic_pipeline_thread_count(softnic, thread_id);
+	if (softnic->params.sc && (n_pipelines == 0))
+		thread_sc_service_down(softnic, thread_id);
 
 	return 0;
 }
@@ -409,11 +504,6 @@ thread_msg_handle_pipeline_enable(struct softnic_thread_data *t,
 	uint32_t i;
 
 	/* Request */
-	if (t->n_pipelines >= THREAD_PIPELINES_MAX) {
-		rsp->status = -1;
-		return rsp;
-	}
-
 	t->p[t->n_pipelines] = req->pipeline_enable.p;
 
 	p->p = req->pipeline_enable.p;
@@ -2938,17 +3028,13 @@ pipeline_msg_handle(struct pipeline_data *p)
 /**
  * Data plane threads: main
  */
-int
-rte_pmd_softnic_run(uint16_t port_id)
+static int32_t
+rte_pmd_softnic_run_internal(void *arg)
 {
-	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	struct rte_eth_dev *dev = arg;
 	struct pmd_internals *softnic;
 	struct softnic_thread_data *t;
 	uint32_t thread_id, j;
-
-#ifdef RTE_LIBRTE_ETHDEV_DEBUG
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, 0);
-#endif
 
 	softnic = dev->data->dev_private;
 	thread_id = rte_lcore_id();
@@ -3002,4 +3088,16 @@ rte_pmd_softnic_run(uint16_t port_id)
 	}
 
 	return 0;
+}
+
+int
+rte_pmd_softnic_run(uint16_t port_id)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, 0);
+#endif
+
+	return (int)rte_pmd_softnic_run_internal(dev);
 }

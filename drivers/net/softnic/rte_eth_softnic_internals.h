@@ -38,6 +38,7 @@ struct pmd_params {
 	const char *firmware;
 	uint16_t conn_port;
 	uint32_t cpu_id;
+	int sc; /**< Service cores. */
 
 	/** Traffic Management (TM) */
 	struct {
@@ -547,7 +548,7 @@ struct softnic_thread {
 	struct rte_ring *msgq_req;
 	struct rte_ring *msgq_rsp;
 
-	uint32_t enabled;
+	uint32_t service_id;
 };
 
 /**
@@ -842,6 +843,9 @@ softnic_pipeline_free(struct pmd_internals *p);
 
 void
 softnic_pipeline_disable_all(struct pmd_internals *p);
+
+uint32_t
+softnic_pipeline_thread_count(struct pmd_internals *p, uint32_t thread_id);
 
 struct pipeline *
 softnic_pipeline_find(struct pmd_internals *p, const char *name);

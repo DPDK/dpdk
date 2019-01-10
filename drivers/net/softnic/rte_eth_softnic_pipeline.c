@@ -108,6 +108,19 @@ softnic_pipeline_disable_all(struct pmd_internals *p)
 				pipeline->name);
 }
 
+uint32_t
+softnic_pipeline_thread_count(struct pmd_internals *p, uint32_t thread_id)
+{
+	struct pipeline *pipeline;
+	uint32_t count = 0;
+
+	TAILQ_FOREACH(pipeline, &p->pipeline_list, node)
+		if ((pipeline->enabled) && (pipeline->thread_id == thread_id))
+			count++;
+
+	return count;
+}
+
 struct pipeline *
 softnic_pipeline_find(struct pmd_internals *p,
 	const char *name)
