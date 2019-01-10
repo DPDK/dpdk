@@ -26,8 +26,9 @@ enum rte_vhost_crypto_zero_copy {
  *  The identifier of DPDK Cryptodev, the same cryptodev_id can be assigned to
  *  multiple Vhost-crypto devices.
  * @param sess_pool
- *  The pointer to the created cryptodev session pool with the private data size
- *  matches the target DPDK Cryptodev.
+ *  The pointer to the created cryptodev session pool.
+ * @param sess_priv_pool
+ *  The pointer to the created cryptodev session private data mempool.
  * @param socket_id
  *  NUMA Socket ID to allocate resources on. *
  * @return
@@ -36,7 +37,9 @@ enum rte_vhost_crypto_zero_copy {
  */
 int __rte_experimental
 rte_vhost_crypto_create(int vid, uint8_t cryptodev_id,
-		struct rte_mempool *sess_pool, int socket_id);
+		struct rte_mempool *sess_pool,
+		struct rte_mempool *sess_priv_pool,
+		int socket_id);
 
 /**
  *  Free the Vhost-crypto instance

@@ -46,6 +46,7 @@ struct vhost_crypto_info {
 	int vids[MAX_NB_SOCKETS];
 	uint32_t nb_vids;
 	struct rte_mempool *sess_pool;
+	struct rte_mempool *sess_priv_pool;
 	struct rte_mempool *cop_pool;
 	uint8_t cid;
 	uint32_t qid;
@@ -289,6 +290,7 @@ new_device(int vid)
 	}
 
 	ret = rte_vhost_crypto_create(vid, info->cid, info->sess_pool,
+			info->sess_priv_pool,
 			rte_lcore_to_socket_id(options.los[i].lcore_id));
 	if (ret) {
 		RTE_LOG(ERR, USER1, "Cannot create vhost crypto\n");
@@ -448,6 +450,7 @@ free_resource(void)
 
 		rte_mempool_free(info->cop_pool);
 		rte_mempool_free(info->sess_pool);
+		rte_mempool_free(info->sess_priv_pool);
 
 		for (j = 0; j < lo->nb_sockets; j++) {
 			rte_vhost_driver_unregister(lo->socket_files[i]);
@@ -528,11 +531,17 @@ main(int argc, char *argv[])
 		}
 
 		snprintf(name, 127, "SESS_POOL_%u", lo->lcore_id);
-		info->sess_pool = rte_mempool_create(name, SESSION_MAP_ENTRIES,
+		info->sess_pool = rte_cryptodev_sym_session_pool_create(name,
+				SESSION_MAP_ENTRIES, 0, 0, 0,
+				rte_lcore_to_socket_id(lo->lcore_id));
+
+		snprintf(name, 127, "SESS_POOL_PRIV_%u", lo->lcore_id);
+		info->sess_priv_pool = rte_mempool_create(name,
+				SESSION_MAP_ENTRIES,
 				rte_cryptodev_sym_get_private_session_size(
 				info->cid), 64, 0, NULL, NULL, NULL, NULL,
 				rte_lcore_to_socket_id(lo->lcore_id), 0);
-		if (!info->sess_pool) {
+		if (!info->sess_priv_pool || info->sess_pool) {
 			RTE_LOG(ERR, USER1, "Failed to create mempool");
 			goto error_exit;
 		}

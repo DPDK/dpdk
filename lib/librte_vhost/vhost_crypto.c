@@ -198,6 +198,7 @@ struct vhost_crypto {
 	struct rte_hash *session_map;
 	struct rte_mempool *mbuf_pool;
 	struct rte_mempool *sess_pool;
+	struct rte_mempool *sess_priv_pool;
 	struct rte_mempool *wb_pool;
 
 	/** DPDK cryptodev ID */
@@ -369,7 +370,7 @@ vhost_crypto_create_sess(struct vhost_crypto *vcrypto,
 	}
 
 	if (rte_cryptodev_sym_session_init(vcrypto->cid, session, &xform1,
-			vcrypto->sess_pool) < 0) {
+			vcrypto->sess_priv_pool) < 0) {
 		VC_LOG_ERR("Failed to initialize session");
 		sess_param->session_id = -VIRTIO_CRYPTO_ERR;
 		return;
@@ -1293,7 +1294,9 @@ vhost_crypto_complete_one_vm_requests(struct rte_crypto_op **ops,
 
 int __rte_experimental
 rte_vhost_crypto_create(int vid, uint8_t cryptodev_id,
-		struct rte_mempool *sess_pool, int socket_id)
+		struct rte_mempool *sess_pool,
+		struct rte_mempool *sess_priv_pool,
+		int socket_id)
 {
 	struct virtio_net *dev = get_device(vid);
 	struct rte_hash_parameters params = {0};
@@ -1321,6 +1324,7 @@ rte_vhost_crypto_create(int vid, uint8_t cryptodev_id,
 	}
 
 	vcrypto->sess_pool = sess_pool;
+	vcrypto->sess_priv_pool = sess_priv_pool;
 	vcrypto->cid = cryptodev_id;
 	vcrypto->cache_session_id = UINT64_MAX;
 	vcrypto->last_session_id = 1;
