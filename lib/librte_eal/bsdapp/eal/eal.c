@@ -3,8 +3,6 @@
  * Copyright(c) 2014 6WIND S.A.
  */
 
-#include <dirent.h>
-#include <fnmatch.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -146,86 +144,10 @@ eal_create_runtime_dir(void)
 int
 eal_clean_runtime_dir(void)
 {
-	DIR *dir;
-	struct dirent *dirent;
-	int dir_fd, fd, lck_result;
-	static const char * const filters[] = {
-		"fbarray_*",
-		"mp_socket_*"
-	};
-
-	/* open directory */
-	dir = opendir(runtime_dir);
-	if (!dir) {
-		RTE_LOG(ERR, EAL, "Unable to open runtime directory %s\n",
-				runtime_dir);
-		goto error;
-	}
-	dir_fd = dirfd(dir);
-
-	/* lock the directory before doing anything, to avoid races */
-	if (flock(dir_fd, LOCK_EX) < 0) {
-		RTE_LOG(ERR, EAL, "Unable to lock runtime directory %s\n",
-			runtime_dir);
-		goto error;
-	}
-
-	dirent = readdir(dir);
-	if (!dirent) {
-		RTE_LOG(ERR, EAL, "Unable to read runtime directory %s\n",
-				runtime_dir);
-		goto error;
-	}
-
-	while (dirent != NULL) {
-		unsigned int f_idx;
-		bool skip = true;
-
-		/* skip files that don't match the patterns */
-		for (f_idx = 0; f_idx < RTE_DIM(filters); f_idx++) {
-			const char *filter = filters[f_idx];
-
-			if (fnmatch(filter, dirent->d_name, 0) == 0) {
-				skip = false;
-				break;
-			}
-		}
-		if (skip) {
-			dirent = readdir(dir);
-			continue;
-		}
-
-		/* try and lock the file */
-		fd = openat(dir_fd, dirent->d_name, O_RDONLY);
-
-		/* skip to next file */
-		if (fd == -1) {
-			dirent = readdir(dir);
-			continue;
-		}
-
-		/* non-blocking lock */
-		lck_result = flock(fd, LOCK_EX | LOCK_NB);
-
-		/* if lock succeeds, remove the file */
-		if (lck_result != -1)
-			unlinkat(dir_fd, dirent->d_name, 0);
-		close(fd);
-		dirent = readdir(dir);
-	}
-
-	/* closedir closes dir_fd and drops the lock */
-	closedir(dir);
+	/* FreeBSD doesn't need this implemented for now, because, unlike Linux,
+	 * FreeBSD doesn't create per-process files, so no need to clean up.
+	 */
 	return 0;
-
-error:
-	if (dir)
-		closedir(dir);
-
-	RTE_LOG(ERR, EAL, "Error while clearing runtime dir: %s\n",
-		strerror(errno));
-
-	return -1;
 }
 
 
