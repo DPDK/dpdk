@@ -33,6 +33,7 @@
 #include <rte_security.h>
 #include <rte_cryptodev.h>
 #include <rte_tm.h>
+#include <rte_hexdump.h>
 
 /* Maximum long option length for option parsing. */
 #define MAX_LONG_OPT_SZ 64
@@ -88,6 +89,9 @@ static char *ring_name;
 /**< Enable show mempool. */
 static uint32_t enable_shw_mempool;
 static char *mempool_name;
+/**< Enable iter mempool. */
+static uint32_t enable_iter_mempool;
+static char *mempool_iter_name;
 
 /**< display usage */
 static void
@@ -112,7 +116,8 @@ proc_info_usage(const char *prgname)
 		"  --show-tm: to display traffic manager information for ports\n"
 		"  --show-crypto: to display crypto information\n"
 		"  --show-ring[=name]: to display ring information\n"
-		"  --show-mempool[=name]: to display mempool information\n",
+		"  --show-mempool[=name]: to display mempool information\n"
+		"  --iter-mempool=name: iterate mempool elements to display content\n",
 		prgname);
 }
 
@@ -224,6 +229,7 @@ proc_info_parse_args(int argc, char **argv)
 		{"show-crypto", 0, NULL, 0},
 		{"show-ring", optional_argument, NULL, 0},
 		{"show-mempool", optional_argument, NULL, 0},
+		{"iter-mempool", required_argument, NULL, 0},
 		{NULL, 0, 0, 0}
 	};
 
@@ -284,6 +290,10 @@ proc_info_parse_args(int argc, char **argv)
 					"show-mempool", MAX_LONG_OPT_SZ)) {
 				enable_shw_mempool = 1;
 				mempool_name = optarg;
+			} else if (!strncmp(long_option[option_index].name,
+					"iter-mempool", MAX_LONG_OPT_SZ)) {
+				enable_iter_mempool = 1;
+				mempool_iter_name = optarg;
 			}
 			break;
 		case 1:
@@ -1179,6 +1189,40 @@ show_mempool(char *name)
 	STATS_BDR_STR(50, "");
 }
 
+static void
+mempool_itr_obj(struct rte_mempool *mp, void *opaque,
+		void *obj, unsigned int obj_idx)
+{
+	printf("  - obj_idx %u opaque %p obj %p\n",
+			obj_idx, opaque, obj);
+
+	if (obj)
+		rte_hexdump(stdout, " Obj Content",
+				obj, (mp->elt_size > 256)?256:mp->elt_size);
+}
+
+static void
+iter_mempool(char *name)
+{
+	snprintf(bdr_str, MAX_STRING_LEN, " iter - MEMPOOL %"PRIu64,
+			rte_get_tsc_hz());
+	STATS_BDR_STR(10, bdr_str);
+
+	if (name != NULL) {
+		struct rte_mempool *ptr = rte_mempool_lookup(name);
+		if (ptr != NULL) {
+			/* iterate each object */
+			uint32_t ret = rte_mempool_obj_iter(ptr,
+					mempool_itr_obj, NULL);
+			printf("\n  - iterated %u objects\n", ret);
+			STATS_BDR_STR(50, "");
+			return;
+		}
+	}
+
+	STATS_BDR_STR(50, "");
+}
+
 int
 main(int argc, char **argv)
 {
@@ -1270,6 +1314,8 @@ main(int argc, char **argv)
 		show_ring(ring_name);
 	if (enable_shw_mempool)
 		show_mempool(mempool_name);
+	if (enable_iter_mempool)
+		iter_mempool(mempool_iter_name);
 
 	ret = rte_eal_cleanup();
 	if (ret)
