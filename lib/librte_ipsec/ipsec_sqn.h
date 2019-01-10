@@ -16,6 +16,45 @@
 #define IS_ESN(sa)	((sa)->sqn_mask == UINT64_MAX)
 
 /*
+ * gets SQN.hi32 bits, SQN supposed to be in network byte order.
+ */
+static inline rte_be32_t
+sqn_hi32(rte_be64_t sqn)
+{
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+	return (sqn >> 32);
+#else
+	return sqn;
+#endif
+}
+
+/*
+ * gets SQN.low32 bits, SQN supposed to be in network byte order.
+ */
+static inline rte_be32_t
+sqn_low32(rte_be64_t sqn)
+{
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+	return sqn;
+#else
+	return (sqn >> 32);
+#endif
+}
+
+/*
+ * gets SQN.low16 bits, SQN supposed to be in network byte order.
+ */
+static inline rte_be16_t
+sqn_low16(rte_be64_t sqn)
+{
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+	return sqn;
+#else
+	return (sqn >> 48);
+#endif
+}
+
+/*
  * for given size, calculate required number of buckets.
  */
 static uint32_t
@@ -29,6 +68,153 @@ replay_num_bucket(uint32_t wsz)
 
 	return nb;
 }
+
+/*
+ * According to RFC4303 A2.1, determine the high-order bit of sequence number.
+ * use 32bit arithmetic inside, return uint64_t.
+ */
+static inline uint64_t
+reconstruct_esn(uint64_t t, uint32_t sqn, uint32_t w)
+{
+	uint32_t th, tl, bl;
+
+	tl = t;
+	th = t >> 32;
+	bl = tl - w + 1;
+
+	/* case A: window is within one sequence number subspace */
+	if (tl >= (w - 1))
+		th += (sqn < bl);
+	/* case B: window spans two sequence number subspaces */
+	else if (th != 0)
+		th -= (sqn >= bl);
+
+	/* return constructed sequence with proper high-order bits */
+	return (uint64_t)th << 32 | sqn;
+}
+
+/**
+ * Perform the replay checking.
+ *
+ * struct rte_ipsec_sa contains the window and window related parameters,
+ * such as the window size, bitmask, and the last acknowledged sequence number.
+ *
+ * Based on RFC 6479.
+ * Blocks are 64 bits unsigned integers
+ */
+static inline int32_t
+esn_inb_check_sqn(const struct replay_sqn *rsn, const struct rte_ipsec_sa *sa,
+	uint64_t sqn)
+{
+	uint32_t bit, bucket;
+
+	/* replay not enabled */
+	if (sa->replay.win_sz == 0)
+		return 0;
+
+	/* seq is larger than lastseq */
+	if (sqn > rsn->sqn)
+		return 0;
+
+	/* seq is outside window */
+	if (sqn == 0 || sqn + sa->replay.win_sz < rsn->sqn)
+		return -EINVAL;
+
+	/* seq is inside the window */
+	bit = sqn & WINDOW_BIT_LOC_MASK;
+	bucket = (sqn >> WINDOW_BUCKET_BITS) & sa->replay.bucket_index_mask;
+
+	/* already seen packet */
+	if (rsn->window[bucket] & ((uint64_t)1 << bit))
+		return -EINVAL;
+
+	return 0;
+}
+
+/**
+ * For outbound SA perform the sequence number update.
+ */
+static inline uint64_t
+esn_outb_update_sqn(struct rte_ipsec_sa *sa, uint32_t *num)
+{
+	uint64_t n, s, sqn;
+
+	n = *num;
+	sqn = sa->sqn.outb + n;
+	sa->sqn.outb = sqn;
+
+	/* overflow */
+	if (sqn > sa->sqn_mask) {
+		s = sqn - sa->sqn_mask;
+		*num = (s < n) ?  n - s : 0;
+	}
+
+	return sqn - n;
+}
+
+/**
+ * For inbound SA perform the sequence number and replay window update.
+ */
+static inline int32_t
+esn_inb_update_sqn(struct replay_sqn *rsn, const struct rte_ipsec_sa *sa,
+	uint64_t sqn)
+{
+	uint32_t bit, bucket, last_bucket, new_bucket, diff, i;
+
+	/* replay not enabled */
+	if (sa->replay.win_sz == 0)
+		return 0;
+
+	/* handle ESN */
+	if (IS_ESN(sa))
+		sqn = reconstruct_esn(rsn->sqn, sqn, sa->replay.win_sz);
+
+	/* seq is outside window*/
+	if (sqn == 0 || sqn + sa->replay.win_sz < rsn->sqn)
+		return -EINVAL;
+
+	/* update the bit */
+	bucket = (sqn >> WINDOW_BUCKET_BITS);
+
+	/* check if the seq is within the range */
+	if (sqn > rsn->sqn) {
+		last_bucket = rsn->sqn >> WINDOW_BUCKET_BITS;
+		diff = bucket - last_bucket;
+		/* seq is way after the range of WINDOW_SIZE */
+		if (diff > sa->replay.nb_bucket)
+			diff = sa->replay.nb_bucket;
+
+		for (i = 0; i != diff; i++) {
+			new_bucket = (i + last_bucket + 1) &
+				sa->replay.bucket_index_mask;
+			rsn->window[new_bucket] = 0;
+		}
+		rsn->sqn = sqn;
+	}
+
+	bucket &= sa->replay.bucket_index_mask;
+	bit = (uint64_t)1 << (sqn & WINDOW_BIT_LOC_MASK);
+
+	/* already seen packet */
+	if (rsn->window[bucket] & bit)
+		return -EINVAL;
+
+	rsn->window[bucket] |= bit;
+	return 0;
+}
+
+/**
+ * To achieve ability to do multiple readers single writer for
+ * SA replay window information and sequence number (RSN)
+ * basic RCU schema is used:
+ * SA have 2 copies of RSN (one for readers, another for writers).
+ * Each RSN contains a rwlock that has to be grabbed (for read/write)
+ * to avoid races between readers and writer.
+ * Writer is responsible to make a copy or reader RSN, update it
+ * and mark newly updated RSN as readers one.
+ * That approach is intended to minimize contention and cache sharing
+ * between writer and readers.
+ */
 
 /**
  * Based on number of buckets calculated required size for the
