@@ -17,8 +17,10 @@ LIBABIVER := 1
 
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_IPSEC) += sa.c
+SRCS-$(CONFIG_RTE_LIBRTE_IPSEC) += ses.c
 
 # install header files
+SYMLINK-$(CONFIG_RTE_LIBRTE_IPSEC)-include += rte_ipsec.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_IPSEC)-include += rte_ipsec_sa.h
 
 include $(RTE_SDK)/mk/rte.lib.mk

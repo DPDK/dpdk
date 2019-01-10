@@ -2,7 +2,7 @@
  * Copyright(c) 2018 Intel Corporation
  */
 
-#include <rte_ipsec_sa.h>
+#include <rte_ipsec.h>
 #include <rte_esp.h>
 #include <rte_ip.h>
 #include <rte_errno.h>
@@ -332,4 +332,23 @@ rte_ipsec_sa_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm,
 	}
 
 	return sz;
+}
+
+int
+ipsec_sa_pkt_func_select(const struct rte_ipsec_session *ss,
+	const struct rte_ipsec_sa *sa, struct rte_ipsec_sa_pkt_func *pf)
+{
+	int32_t rc;
+
+	RTE_SET_USED(sa);
+
+	rc = 0;
+	pf[0] = (struct rte_ipsec_sa_pkt_func) { 0 };
+
+	switch (ss->type) {
+	default:
+		rc = -ENOTSUP;
+	}
+
+	return rc;
 }

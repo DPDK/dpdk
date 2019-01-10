@@ -82,4 +82,8 @@ struct rte_ipsec_sa {
 
 } __rte_cache_aligned;
 
+int
+ipsec_sa_pkt_func_select(const struct rte_ipsec_session *ss,
+	const struct rte_ipsec_sa *sa, struct rte_ipsec_sa_pkt_func *pf);
+
 #endif /* _SA_H_ */

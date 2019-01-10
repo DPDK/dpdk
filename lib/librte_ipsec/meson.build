@@ -3,8 +3,8 @@
 
 allow_experimental_apis = true
 
-sources=files('sa.c')
+sources=files('sa.c', 'ses.c')
 
-install_headers = files('rte_ipsec_sa.h')
+install_headers = files('rte_ipsec.h', 'rte_ipsec_sa.h')
 
 deps += ['mbuf', 'net', 'cryptodev', 'security']
