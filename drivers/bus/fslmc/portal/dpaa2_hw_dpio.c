@@ -229,7 +229,7 @@ dpaa2_configure_stashing(struct dpaa2_dpio_dev *dpio_dev, int lcoreid)
 	return 0;
 }
 
-struct dpaa2_dpio_dev *dpaa2_get_qbman_swp(int lcoreid)
+static struct dpaa2_dpio_dev *dpaa2_get_qbman_swp(int lcoreid)
 {
 	struct dpaa2_dpio_dev *dpio_dev = NULL;
 	int ret;

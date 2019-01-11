@@ -37,8 +37,6 @@ extern uint8_t dpaa2_eqcr_size;
 
 extern struct dpaa2_io_portal_t dpaa2_io_portal[RTE_MAX_LCORE];
 
-struct dpaa2_dpio_dev *dpaa2_get_qbman_swp(int cpu_id);
-
 /* Affine a DPIO portal to current processing thread */
 int dpaa2_affine_qbman_swp(void);
 
