@@ -187,6 +187,8 @@ scan_one_fslmc_device(char *dev_name)
 		dev->dev_type = DPAA2_MPORTAL;
 	else if (!strncmp("dpdmai", t_ptr, 6))
 		dev->dev_type = DPAA2_QDMA;
+	else if (!strncmp("dpdmux", t_ptr, 6))
+		dev->dev_type = DPAA2_MUX;
 	else
 		dev->dev_type = DPAA2_UNKNOWN;
 
@@ -245,7 +247,8 @@ rte_fslmc_parse(const char *name, void *addr)
 	    strncmp("dpio", t_ptr, 4) &&
 	    strncmp("dpci", t_ptr, 4) &&
 	    strncmp("dpmcp", t_ptr, 5) &&
-	    strncmp("dpdmai", t_ptr, 6)) {
+	    strncmp("dpdmai", t_ptr, 6) &&
+	    strncmp("dpdmux", t_ptr, 6)) {
 		DPAA2_BUS_ERR("Unknown or unsupported device");
 		goto err_out;
 	}
