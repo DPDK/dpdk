@@ -509,7 +509,7 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	const struct qbman_fd *fd, *next_fd;
 	struct qbman_pull_desc pulldesc;
 	struct queue_storage_info_t *q_storage = dpaa2_q->q_storage;
-	struct rte_eth_dev *dev = dpaa2_q->dev;
+	struct rte_eth_dev_data *eth_data = dpaa2_q->eth_data;
 
 	if (unlikely(!DPAA2_PER_LCORE_ETHRX_DPIO)) {
 		ret = dpaa2_affine_qbman_ethrx_swp();
@@ -613,9 +613,10 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			bufs[num_rx] = eth_sg_fd_to_mbuf(fd);
 		else
 			bufs[num_rx] = eth_fd_to_mbuf(fd);
-		bufs[num_rx]->port = dev->data->port_id;
+		bufs[num_rx]->port = eth_data->port_id;
 
-		if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+		if (eth_data->dev_conf.rxmode.offloads &
+				DEV_RX_OFFLOAD_VLAN_STRIP)
 			rte_vlan_strip(bufs[num_rx]);
 
 		dq_storage++;
@@ -716,8 +717,8 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	struct qbman_swp *swp;
 	uint16_t num_tx = 0;
 	uint16_t bpid;
-	struct rte_eth_dev *dev = dpaa2_q->dev;
-	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct rte_eth_dev_data *eth_data = dpaa2_q->eth_data;
+	struct dpaa2_dev_priv *priv = eth_data->dev_private;
 	uint32_t flags[MAX_TX_RING_SLOTS] = {0};
 
 	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
@@ -729,7 +730,8 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	}
 	swp = DPAA2_PER_LCORE_PORTAL;
 
-	DPAA2_PMD_DP_DEBUG("===> dev =%p, fqid =%d\n", dev, dpaa2_q->fqid);
+	DPAA2_PMD_DP_DEBUG("===> eth_data =%p, fqid =%d\n",
+			eth_data, dpaa2_q->fqid);
 
 	/*Prepare enqueue descriptor*/
 	qbman_eq_desc_clear(&eqdesc);
@@ -772,7 +774,7 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 				    rte_mbuf_refcnt_read((*bufs)) == 1)) {
 					if (unlikely(((*bufs)->ol_flags
 						& PKT_TX_VLAN_PKT) ||
-						(dev->data->dev_conf.txmode.offloads
+						(eth_data->dev_conf.txmode.offloads
 						& DEV_TX_OFFLOAD_VLAN_INSERT))) {
 						ret = rte_vlan_insert(bufs);
 						if (ret)
@@ -794,7 +796,7 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			}
 
 			if (unlikely(((*bufs)->ol_flags & PKT_TX_VLAN_PKT) ||
-				(dev->data->dev_conf.txmode.offloads
+				(eth_data->dev_conf.txmode.offloads
 				& DEV_TX_OFFLOAD_VLAN_INSERT))) {
 				int ret = rte_vlan_insert(bufs);
 				if (ret)

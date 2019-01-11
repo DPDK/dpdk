@@ -244,7 +244,7 @@ dpaa2_alloc_rx_tx_queues(struct rte_eth_dev *dev)
 	}
 
 	for (i = 0; i < priv->nb_rx_queues; i++) {
-		mc_q->dev = dev;
+		mc_q->eth_data = dev->data;
 		priv->rx_vq[i] = mc_q++;
 		dpaa2_q = (struct dpaa2_queue *)priv->rx_vq[i];
 		dpaa2_q->q_storage = rte_malloc("dq_storage",
@@ -260,7 +260,7 @@ dpaa2_alloc_rx_tx_queues(struct rte_eth_dev *dev)
 	}
 
 	for (i = 0; i < priv->nb_tx_queues; i++) {
-		mc_q->dev = dev;
+		mc_q->eth_data = dev->data;
 		mc_q->flow_id = 0xffff;
 		priv->tx_vq[i] = mc_q++;
 		dpaa2_q = (struct dpaa2_queue *)priv->tx_vq[i];

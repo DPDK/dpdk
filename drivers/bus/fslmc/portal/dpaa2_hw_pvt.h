@@ -127,7 +127,10 @@ typedef void (dpaa2_queue_cb_dqrr_t)(struct qbman_swp *swp,
 
 struct dpaa2_queue {
 	struct rte_mempool *mb_pool; /**< mbuf pool to populate RX ring. */
-	void *dev;
+	union {
+		struct rte_eth_dev_data *eth_data;
+		void *dev;
+	};
 	int32_t eventfd;	/*!< Event Fd of this queue */
 	uint32_t fqid;		/*!< Unique ID of this queue */
 	uint8_t tc_index;	/*!< traffic class identifier */
