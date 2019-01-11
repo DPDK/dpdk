@@ -201,7 +201,7 @@ struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d)
 	p->vdq.valid_bit = QB_VALID_BIT;
 	p->dqrr.valid_bit = QB_VALID_BIT;
 	qman_version = p->desc.qman_version;
-	if ((qman_version & 0xFFFF0000) < QMAN_REV_4100) {
+	if ((qman_version & QMAN_REV_MASK) < QMAN_REV_4100) {
 		p->dqrr.dqrr_size = 4;
 		p->dqrr.reset_bug = 1;
 	} else {
@@ -1315,9 +1315,9 @@ const struct qbman_result *qbman_swp_dqrr_next_mem_back(struct qbman_swp *s)
 	 */
 	flags = p->dq.stat;
 	response_verb = verb & QBMAN_RESPONSE_VERB_MASK;
-	if ((response_verb == QBMAN_RESULT_DQ) &&
-	    (flags & QBMAN_DQ_STAT_VOLATILE) &&
-	    (flags & QBMAN_DQ_STAT_EXPIRED))
+	if ((response_verb == QBMAN_RESULT_DQ)
+			&& (flags & QBMAN_DQ_STAT_VOLATILE)
+			&& (flags & QBMAN_DQ_STAT_EXPIRED))
 		atomic_inc(&s->vdq.busy);
 	return p;
 }

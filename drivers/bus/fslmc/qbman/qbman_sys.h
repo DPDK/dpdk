@@ -387,6 +387,10 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 {
 	uint32_t reg;
 	int i;
+	int cena_region_size = 4*1024;
+
+	if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000)
+		cena_region_size = 64*1024;
 #ifdef RTE_ARCH_64
 	uint8_t wn = CENA_WRITE_ENABLE;
 #else
@@ -396,7 +400,8 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 	s->addr_cena = d->cena_bar;
 	s->addr_cinh = d->cinh_bar;
 	s->idx = (uint32_t)d->idx;
-	s->cena = malloc(64*1024);
+	s->cena = malloc(cena_region_size);
+
 	if (!s->cena) {
 		pr_err("Could not allocate page for cena shadow\n");
 		return -1;
@@ -412,12 +417,12 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 	QBMAN_BUG_ON(reg);
 #endif
 	if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000)
-		memset(s->addr_cena, 0, 64*1024);
+		memset(s->addr_cena, 0, cena_region_size);
 	else {
 		/* Invalidate the portal memory.
 		 * This ensures no stale cache lines
 		 */
-		for (i = 0; i < 0x1000; i += 64)
+		for (i = 0; i < cena_region_size; i += 64)
 			dccivac(s->addr_cena + i);
 	}
 
@@ -425,12 +430,12 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 		reg = qbman_set_swp_cfg(dqrr_size, wn,
 					0, 3, 2, 3, 1, 1, 1, 1, 1, 1);
 	else {
-		if ((d->qman_version & QMAN_REV_MASK) < QMAN_REV_5000)
-			reg = qbman_set_swp_cfg(dqrr_size, wn,
-						1, 3, 2, 2, 1, 1, 1, 1, 1, 1);
-		else
+		if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000)
 			reg = qbman_set_swp_cfg(dqrr_size, wn,
 						1, 3, 2, 0, 1, 1, 1, 1, 1, 1);
+		else
+			reg = qbman_set_swp_cfg(dqrr_size, wn,
+						1, 3, 2, 2, 1, 1, 1, 1, 1, 1);
 	}
 
 	if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000) {
