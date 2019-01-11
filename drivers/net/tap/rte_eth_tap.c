@@ -79,8 +79,6 @@ static const char *valid_arguments[] = {
 	NULL
 };
 
-static char tuntap_name[8];
-
 static volatile uint32_t tap_trigger;	/* Rx trigger */
 
 static struct rte_eth_link pmd_link = {
@@ -150,18 +148,17 @@ tun_alloc(struct pmd_internals *pmd, int is_keepalive)
 
 	fd = open(TUN_TAP_DEV_PATH, O_RDWR);
 	if (fd < 0) {
-		TAP_LOG(ERR, "Unable to create %s interface", tuntap_name);
+		TAP_LOG(ERR, "Unable to open %s interface", TUN_TAP_DEV_PATH);
 		goto error;
 	}
 
 #ifdef IFF_MULTI_QUEUE
 	/* Grab the TUN features to verify we can work multi-queue */
 	if (ioctl(fd, TUNGETFEATURES, &features) < 0) {
-		TAP_LOG(ERR, "%s unable to get TUN/TAP features",
-			tuntap_name);
+		TAP_LOG(ERR, "unable to get TUN/TAP features");
 		goto error;
 	}
-	TAP_LOG(DEBUG, "%s Features %08x", tuntap_name, features);
+	TAP_LOG(DEBUG, "%s Features %08x", TUN_TAP_DEV_PATH, features);
 
 	if (features & IFF_MULTI_QUEUE) {
 		TAP_LOG(DEBUG, "  Multi-queue support for %d queues",
@@ -1668,8 +1665,12 @@ static const struct eth_dev_ops ops = {
 	.filter_ctrl            = tap_dev_filter_ctrl,
 };
 
+static const char *tuntap_types[ETH_TUNTAP_TYPE_MAX] = {
+	"UNKNOWN", "TUN", "TAP"
+};
+
 static int
-eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
+eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 		   char *remote_iface, struct ether_addr *mac_addr,
 		   enum rte_tuntap_type type)
 {
@@ -1677,12 +1678,12 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 	struct rte_eth_dev *dev;
 	struct pmd_internals *pmd;
 	struct pmd_process_private *process_private;
+	const char *tuntap_name = tuntap_types[type];
 	struct rte_eth_dev_data *data;
 	struct ifreq ifr;
 	int i;
 
-	TAP_LOG(DEBUG, "%s device on numa %u",
-			tuntap_name, rte_socket_id());
+	TAP_LOG(DEBUG, "%s device on numa %u", tuntap_name, rte_socket_id());
 
 	dev = rte_eth_vdev_allocate(vdev, sizeof(*pmd));
 	if (!dev) {
@@ -2016,8 +2017,6 @@ rte_pmd_tun_probe(struct rte_vdev_device *dev)
 	char remote_iface[RTE_ETH_NAME_MAX_LEN];
 	struct rte_eth_dev *eth_dev;
 
-	strcpy(tuntap_name, "TUN");
-
 	name = rte_vdev_device_name(dev);
 	params = rte_vdev_device_args(dev);
 	memset(remote_iface, 0, RTE_ETH_NAME_MAX_LEN);
@@ -2182,8 +2181,6 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 	struct rte_eth_dev *eth_dev;
 	int tap_devices_count_increased = 0;
 
-	strcpy(tuntap_name, "TAP");
-
 	name = rte_vdev_device_name(dev);
 	params = rte_vdev_device_args(dev);
 
@@ -2266,8 +2263,8 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 	if (!tap_devices_count) {
 		ret = rte_mp_action_register(TAP_MP_KEY, tap_mp_sync_queues);
 		if (ret < 0) {
-			TAP_LOG(ERR, "%s: Failed to register IPC callback: %s",
-				tuntap_name, strerror(rte_errno));
+			TAP_LOG(ERR, "tap: Failed to register IPC callback: %s",
+				strerror(rte_errno));
 			goto leave;
 		}
 	}
@@ -2316,8 +2313,7 @@ rte_pmd_tap_remove(struct rte_vdev_device *dev)
 	process_private = eth_dev->process_private;
 
 	TAP_LOG(DEBUG, "Closing %s Ethernet device on numa %u",
-		(internals->type == ETH_TUNTAP_TYPE_TAP) ? "TAP" : "TUN",
-		rte_socket_id());
+		tuntap_types[internals->type], rte_socket_id());
 
 	if (internals->nlsk_fd) {
 		tap_flow_flush(eth_dev, NULL);
