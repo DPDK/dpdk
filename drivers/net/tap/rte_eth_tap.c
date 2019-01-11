@@ -853,6 +853,8 @@ tap_dev_stop(struct rte_eth_dev *dev)
 static int
 tap_dev_configure(struct rte_eth_dev *dev)
 {
+	struct pmd_internals *pmd = dev->data->dev_private;
+
 	if (dev->data->nb_rx_queues > RTE_PMD_TAP_MAX_QUEUES) {
 		TAP_LOG(ERR,
 			"%s: number of rx queues %d exceeds max num of queues %d",
@@ -870,11 +872,11 @@ tap_dev_configure(struct rte_eth_dev *dev)
 		return -1;
 	}
 
-	TAP_LOG(INFO, "%s: %p: TX configured queues number: %u",
-		dev->device->name, (void *)dev, dev->data->nb_tx_queues);
+	TAP_LOG(INFO, "%s: %s: TX configured queues number: %u",
+		dev->device->name, pmd->name, dev->data->nb_tx_queues);
 
-	TAP_LOG(INFO, "%s: %p: RX configured queues number: %u",
-		dev->device->name, (void *)dev, dev->data->nb_rx_queues);
+	TAP_LOG(INFO, "%s: %s: RX configured queues number: %u",
+		dev->device->name, pmd->name, dev->data->nb_rx_queues);
 
 	return 0;
 }
