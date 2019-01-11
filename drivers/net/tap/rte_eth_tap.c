@@ -148,7 +148,7 @@ tun_alloc(struct pmd_internals *pmd, int is_keepalive)
 	 */
 	ifr.ifr_flags = (pmd->type == ETH_TUNTAP_TYPE_TAP) ?
 		IFF_TAP : IFF_TUN | IFF_POINTOPOINT;
-	snprintf(ifr.ifr_name, IFNAMSIZ, "%s", pmd->name);
+	strlcpy(ifr.ifr_name, pmd->name, IFNAMSIZ);
 
 	TAP_LOG(DEBUG, "ifr_name '%s'", ifr.ifr_name);
 
