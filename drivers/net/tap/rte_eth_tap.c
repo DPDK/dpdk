@@ -37,6 +37,7 @@
 #include <linux/if_tun.h>
 #include <linux/if_ether.h>
 #include <fcntl.h>
+#include <ctype.h>
 
 #include <tap_rss.h>
 #include <rte_eth_tap.h>
@@ -1884,6 +1885,24 @@ error_exit_nodev:
 	return -EINVAL;
 }
 
+/* make sure name is a possible Linux network device name */
+static bool
+is_valid_iface(const char *name)
+{
+	if (*name == '\0')
+		return false;
+
+	if (strnlen(name, IFNAMSIZ) == IFNAMSIZ)
+		return false;
+
+	while (*name) {
+		if (*name == '/' || *name == ':' || isspace(*name))
+			return false;
+		name++;
+	}
+	return true;
+}
+
 static int
 set_interface_name(const char *key __rte_unused,
 		   const char *value,
@@ -1891,12 +1910,17 @@ set_interface_name(const char *key __rte_unused,
 {
 	char *name = (char *)extra_args;
 
-	if (value)
+	if (value) {
+		if (!is_valid_iface(value)) {
+			TAP_LOG(ERR, "TAP invalid remote interface name (%s)",
+				value);
+			return -1;
+		}
 		strlcpy(name, value, RTE_ETH_NAME_MAX_LEN);
-	else
+	} else {
 		snprintf(name, RTE_ETH_NAME_MAX_LEN, "%s%d",
 			 DEFAULT_TAP_NAME, tap_unit - 1);
-
+	}
 	return 0;
 }
 
@@ -1907,8 +1931,14 @@ set_remote_iface(const char *key __rte_unused,
 {
 	char *name = (char *)extra_args;
 
-	if (value)
+	if (value) {
+		if (!is_valid_iface(value)) {
+			TAP_LOG(ERR, "TAP invalid remote interface name (%s)",
+				value);
+			return -1;
+		}
 		strlcpy(name, value, RTE_ETH_NAME_MAX_LEN);
+	}
 
 	return 0;
 }
