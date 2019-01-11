@@ -2053,7 +2053,7 @@ rte_pmd_tun_probe(struct rte_vdev_device *dev)
 	}
 	pmd_link.link_speed = ETH_SPEED_NUM_10G;
 
-	TAP_LOG(NOTICE, "Initializing pmd_tun for %s as %s",
+	TAP_LOG(DEBUG, "Initializing pmd_tun for %s as %s",
 		name, tun_name);
 
 	ret = eth_dev_tap_create(dev, tun_name, remote_iface, 0,
@@ -2258,8 +2258,7 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 	}
 	pmd_link.link_speed = speed;
 
-	TAP_LOG(NOTICE, "Initializing pmd_tap for %s as %s",
-		name, tap_name);
+	TAP_LOG(DEBUG, "Initializing pmd_tap for %s", name);
 
 	/* Register IPC feed callback */
 	if (!tap_devices_count) {
