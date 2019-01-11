@@ -149,7 +149,7 @@ virtio_pq_send_command(struct virtnet_ctl *cvq, struct virtio_pmd_ctrl *ctrl,
 	int head;
 	struct vring_packed_desc *desc = vq->ring_packed.desc_packed;
 	struct virtio_pmd_ctrl *result;
-	int wrap_counter;
+	bool avail_wrap_counter, used_wrap_counter;
 	uint16_t flags;
 	int sum = 0;
 	int k;
@@ -161,7 +161,8 @@ virtio_pq_send_command(struct virtnet_ctl *cvq, struct virtio_pmd_ctrl *ctrl,
 	 * One RX packet for ACK.
 	 */
 	head = vq->vq_avail_idx;
-	wrap_counter = vq->avail_wrap_counter;
+	avail_wrap_counter = vq->avail_wrap_counter;
+	used_wrap_counter = vq->used_wrap_counter;
 	desc[head].flags = VRING_DESC_F_NEXT;
 	desc[head].addr = cvq->virtio_net_hdr_mem;
 	desc[head].len = sizeof(struct virtio_net_ctrl_hdr);
@@ -199,8 +200,8 @@ virtio_pq_send_command(struct virtnet_ctl *cvq, struct virtio_pmd_ctrl *ctrl,
 		 VRING_DESC_F_USED(!vq->avail_wrap_counter);
 	desc[vq->vq_avail_idx].flags = flags;
 	flags = VRING_DESC_F_NEXT;
-	flags |= VRING_DESC_F_AVAIL(wrap_counter) |
-		 VRING_DESC_F_USED(!wrap_counter);
+	flags |= VRING_DESC_F_AVAIL(avail_wrap_counter) |
+		 VRING_DESC_F_USED(!avail_wrap_counter);
 	desc[head].flags = flags;
 	rte_smp_wmb();
 
@@ -216,7 +217,7 @@ virtio_pq_send_command(struct virtnet_ctl *cvq, struct virtio_pmd_ctrl *ctrl,
 	do {
 		rte_rmb();
 		usleep(100);
-	} while (!desc_is_used(&desc[head], vq));
+	} while (!__desc_is_used(&desc[head], used_wrap_counter));
 
 	/* now get used descriptors */
 	while (desc_is_used(&desc[vq->vq_used_cons_idx], vq)) {

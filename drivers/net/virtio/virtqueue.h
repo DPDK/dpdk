@@ -281,7 +281,7 @@ struct virtio_tx_region {
 };
 
 static inline int
-desc_is_used(struct vring_packed_desc *desc, struct virtqueue *vq)
+__desc_is_used(struct vring_packed_desc *desc, bool wrap_counter)
 {
 	uint16_t used, avail, flags;
 
@@ -289,7 +289,13 @@ desc_is_used(struct vring_packed_desc *desc, struct virtqueue *vq)
 	used = !!(flags & VRING_DESC_F_USED(1));
 	avail = !!(flags & VRING_DESC_F_AVAIL(1));
 
-	return avail == used && used == vq->used_wrap_counter;
+	return avail == used && used == wrap_counter;
+}
+
+static inline int
+desc_is_used(struct vring_packed_desc *desc, struct virtqueue *vq)
+{
+	return __desc_is_used(desc, vq->used_wrap_counter);
 }
 
 
