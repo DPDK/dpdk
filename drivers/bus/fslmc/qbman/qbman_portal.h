@@ -98,7 +98,7 @@ struct qbman_swp {
 		uint32_t pi;
 		uint32_t pi_vb;
 		uint32_t pi_ring_size;
-		uint32_t pi_mask;
+		uint32_t pi_ci_mask;
 		uint32_t ci;
 		int available;
 	} eqcr;

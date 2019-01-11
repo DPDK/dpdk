@@ -251,21 +251,21 @@ struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d)
 	}
 
 	for (mask_size = p->eqcr.pi_ring_size; mask_size > 0; mask_size >>= 1)
-		p->eqcr.pi_mask = (p->eqcr.pi_mask<<1) + 1;
+		p->eqcr.pi_ci_mask = (p->eqcr.pi_ci_mask<<1) + 1;
 	eqcr_pi = qbman_cinh_read(&p->sys, QBMAN_CINH_SWP_EQCR_PI);
-	p->eqcr.pi = eqcr_pi & p->eqcr.pi_mask;
+	p->eqcr.pi = eqcr_pi & p->eqcr.pi_ci_mask;
 	p->eqcr.pi_vb = eqcr_pi & QB_VALID_BIT;
 	if ((p->desc.qman_version & QMAN_REV_MASK) >= QMAN_REV_5000
 			&& (d->cena_access_mode == qman_cena_fastest_access))
-		p->eqcr.ci = qbman_cinh_read(&p->sys,
-				QBMAN_CINH_SWP_EQCR_CI) & p->eqcr.pi_mask;
+		p->eqcr.ci = qbman_cinh_read(&p->sys, QBMAN_CINH_SWP_EQCR_PI)
+					     & p->eqcr.pi_ci_mask;
 	else
-		p->eqcr.ci = qbman_cinh_read(&p->sys,
-				QBMAN_CINH_SWP_EQCR_PI) & p->eqcr.pi_mask;
+		p->eqcr.ci = qbman_cinh_read(&p->sys, QBMAN_CINH_SWP_EQCR_CI)
+					     & p->eqcr.pi_ci_mask;
 	p->eqcr.available = p->eqcr.pi_ring_size -
 				qm_cyc_diff(p->eqcr.pi_ring_size,
-				p->eqcr.ci & (p->eqcr.pi_mask<<1),
-				p->eqcr.pi & (p->eqcr.pi_mask<<1));
+				p->eqcr.ci & (p->eqcr.pi_ci_mask<<1),
+				p->eqcr.pi & (p->eqcr.pi_ci_mask<<1));
 
 	portal_idx_map[p->desc.idx] = p;
 	return p;
@@ -646,8 +646,8 @@ static int qbman_swp_enqueue_ring_mode_direct(struct qbman_swp *s,
 	const uint32_t *cl = qb_cl(d);
 	uint32_t eqcr_ci, full_mask, half_mask;
 
-	half_mask = (s->eqcr.pi_mask>>1);
-	full_mask = s->eqcr.pi_mask;
+	half_mask = (s->eqcr.pi_ci_mask>>1);
+	full_mask = s->eqcr.pi_ci_mask;
 	if (!s->eqcr.available) {
 		eqcr_ci = s->eqcr.ci;
 		s->eqcr.ci = qbman_cena_read_reg(&s->sys,
@@ -685,8 +685,8 @@ static int qbman_swp_enqueue_ring_mode_mem_back(struct qbman_swp *s,
 	const uint32_t *cl = qb_cl(d);
 	uint32_t eqcr_ci, full_mask, half_mask;
 
-	half_mask = (s->eqcr.pi_mask>>1);
-	full_mask = s->eqcr.pi_mask;
+	half_mask = (s->eqcr.pi_ci_mask>>1);
+	full_mask = s->eqcr.pi_ci_mask;
 	if (!s->eqcr.available) {
 		eqcr_ci = s->eqcr.ci;
 		s->eqcr.ci = qbman_cena_read_reg(&s->sys,
@@ -743,8 +743,8 @@ static int qbman_swp_enqueue_multiple_direct(struct qbman_swp *s,
 	int i, num_enqueued = 0;
 	uint64_t addr_cena;
 
-	half_mask = (s->eqcr.pi_mask>>1);
-	full_mask = s->eqcr.pi_mask;
+	half_mask = (s->eqcr.pi_ci_mask>>1);
+	full_mask = s->eqcr.pi_ci_mask;
 	if (!s->eqcr.available) {
 		eqcr_ci = s->eqcr.ci;
 		s->eqcr.ci = qbman_cena_read_reg(&s->sys,
@@ -811,8 +811,8 @@ static int qbman_swp_enqueue_multiple_mem_back(struct qbman_swp *s,
 	uint32_t eqcr_ci, eqcr_pi, half_mask, full_mask;
 	int i, num_enqueued = 0;
 
-	half_mask = (s->eqcr.pi_mask>>1);
-	full_mask = s->eqcr.pi_mask;
+	half_mask = (s->eqcr.pi_ci_mask>>1);
+	full_mask = s->eqcr.pi_ci_mask;
 	if (!s->eqcr.available) {
 		eqcr_ci = s->eqcr.ci;
 		s->eqcr.ci = qbman_cena_read_reg(&s->sys,
@@ -833,15 +833,6 @@ static int qbman_swp_enqueue_multiple_mem_back(struct qbman_swp *s,
 				QBMAN_CENA_SWP_EQCR(eqcr_pi & half_mask));
 		memcpy(&p[1], &cl[1], 28);
 		memcpy(&p[8], &fd[i], sizeof(*fd));
-		eqcr_pi++;
-	}
-
-	/* Set the verb byte, have to substitute in the valid-bit */
-	eqcr_pi = s->eqcr.pi;
-	for (i = 0; i < num_enqueued; i++) {
-		p = qbman_cena_write_start_wo_shadow(&s->sys,
-				QBMAN_CENA_SWP_EQCR(eqcr_pi & half_mask));
-		p[0] = cl[0] | s->eqcr.pi_vb;
 		if (flags && (flags[i] & QBMAN_ENQUEUE_FLAG_DCA)) {
 			struct qbman_eq_desc *d = (struct qbman_eq_desc *)p;
 
@@ -849,6 +840,8 @@ static int qbman_swp_enqueue_multiple_mem_back(struct qbman_swp *s,
 				((flags[i]) & QBMAN_EQCR_DCA_IDXMASK);
 		}
 		eqcr_pi++;
+		p[0] = cl[0] | s->eqcr.pi_vb;
+
 		if (!(eqcr_pi & half_mask))
 			s->eqcr.pi_vb ^= QB_VALID_BIT;
 	}
@@ -880,8 +873,8 @@ static int qbman_swp_enqueue_multiple_desc_direct(struct qbman_swp *s,
 	int i, num_enqueued = 0;
 	uint64_t addr_cena;
 
-	half_mask = (s->eqcr.pi_mask>>1);
-	full_mask = s->eqcr.pi_mask;
+	half_mask = (s->eqcr.pi_ci_mask>>1);
+	full_mask = s->eqcr.pi_ci_mask;
 	if (!s->eqcr.available) {
 		eqcr_ci = s->eqcr.ci;
 		s->eqcr.ci = qbman_cena_read_reg(&s->sys,
@@ -943,8 +936,8 @@ static int qbman_swp_enqueue_multiple_desc_mem_back(struct qbman_swp *s,
 	uint32_t eqcr_ci, eqcr_pi, half_mask, full_mask;
 	int i, num_enqueued = 0;
 
-	half_mask = (s->eqcr.pi_mask>>1);
-	full_mask = s->eqcr.pi_mask;
+	half_mask = (s->eqcr.pi_ci_mask>>1);
+	full_mask = s->eqcr.pi_ci_mask;
 	if (!s->eqcr.available) {
 		eqcr_ci = s->eqcr.ci;
 		s->eqcr.ci = qbman_cena_read_reg(&s->sys,
