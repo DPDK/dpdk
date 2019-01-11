@@ -4159,9 +4159,6 @@ rte_eth_tx_burst(uint16_t port_id, uint16_t queue_id,
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Process a burst of output packets on a transmit queue of an Ethernet device.
  *
  * The rte_eth_tx_prepare() function is invoked to prepare output packets to be
