@@ -518,6 +518,11 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			return 0;
 		}
 	}
+
+	if (unlikely(!rte_dpaa2_bpid_info &&
+		     rte_eal_process_type() == RTE_PROC_SECONDARY))
+		rte_dpaa2_bpid_info = dpaa2_q->bp_array;
+
 	swp = DPAA2_PER_LCORE_ETHRX_PORTAL;
 	pull_size = (nb_pkts > dpaa2_dqrr_size) ? dpaa2_dqrr_size : nb_pkts;
 	if (unlikely(!q_storage->active_dqs)) {

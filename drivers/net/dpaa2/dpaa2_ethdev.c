@@ -485,6 +485,7 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 	dpaa2_q = (struct dpaa2_queue *)priv->rx_vq[rx_queue_id];
 	dpaa2_q->mb_pool = mb_pool; /**< mbuf pool to populate RX ring. */
+	dpaa2_q->bp_array = rte_dpaa2_bpid_info;
 
 	/*Get the flow id from given VQ id*/
 	flow_id = rx_queue_id % priv->nb_rx_queues;
