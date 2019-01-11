@@ -468,6 +468,17 @@ __extension__
 typedef uint64_t MARKER64[0]; /**< marker that allows us to overwrite 8 bytes
                                * with a single assignment */
 
+struct rte_mbuf_sched {
+	uint32_t queue_id;   /**< Queue ID. */
+	uint8_t traffic_class;
+	/**< Traffic class ID. Traffic class 0
+	 * is the highest priority traffic class.
+	 */
+	uint8_t color;
+	/**< Color. @see enum rte_color.*/
+	uint16_t reserved;   /**< Reserved. */
+}; /**< Hierarchical scheduler */
+
 /**
  * The generic rte_mbuf, containing a packet mbuf.
  */
@@ -574,16 +585,8 @@ struct rte_mbuf {
 				 * on PKT_RX_FDIR_* flag in ol_flags.
 				 */
 			} fdir;	/**< Filter identifier if FDIR enabled */
-			struct rte_mbuf_sched {
-				uint32_t queue_id;   /**< Queue ID. */
-				uint8_t traffic_class;
-				/**< Traffic class ID. Traffic class 0
-				 * is the highest priority traffic class.
-				 */
-				uint8_t color;
-				/**< Color. @see enum rte_color.*/
-				uint16_t reserved;   /**< Reserved. */
-			} sched; /**< Hierarchical scheduler */
+			struct rte_mbuf_sched sched;
+			/**< Hierarchical scheduler : 8 bytes */
 			struct {
 				uint32_t reserved1;
 				uint16_t reserved2;
