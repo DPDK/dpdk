@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016 NXP
+ *   Copyright 2016-2018 NXP
  *
  */
 
@@ -27,6 +27,56 @@ static int
 dpaa2_distset_to_dpkg_profile_cfg(
 		uint64_t req_dist_set,
 		struct dpkg_profile_cfg *kg_cfg);
+
+int
+rte_pmd_dpaa2_set_custom_hash(uint16_t port_id,
+			      uint16_t offset,
+			      uint8_t size)
+{
+	struct rte_eth_dev *eth_dev = &rte_eth_devices[port_id];
+	struct dpaa2_dev_priv *priv = eth_dev->data->dev_private;
+	struct fsl_mc_io *dpni = priv->hw;
+	struct dpni_rx_tc_dist_cfg tc_cfg;
+	struct dpkg_profile_cfg kg_cfg;
+	void *p_params;
+	int ret, tc_index = 0;
+
+	p_params = rte_zmalloc(
+		NULL, DIST_PARAM_IOVA_SIZE, RTE_CACHE_LINE_SIZE);
+	if (!p_params) {
+		DPAA2_PMD_ERR("Unable to allocate flow-dist parameters");
+		return -ENOMEM;
+	}
+
+	kg_cfg.extracts[0].type = DPKG_EXTRACT_FROM_DATA;
+	kg_cfg.extracts[0].extract.from_data.offset = offset;
+	kg_cfg.extracts[0].extract.from_data.size = size;
+	kg_cfg.num_extracts = 1;
+
+	ret = dpkg_prepare_key_cfg(&kg_cfg, p_params);
+	if (ret) {
+		DPAA2_PMD_ERR("Unable to prepare extract parameters");
+		rte_free(p_params);
+		return ret;
+	}
+
+	memset(&tc_cfg, 0, sizeof(struct dpni_rx_tc_dist_cfg));
+	tc_cfg.key_cfg_iova = (size_t)(DPAA2_VADDR_TO_IOVA(p_params));
+	tc_cfg.dist_size = eth_dev->data->nb_rx_queues;
+	tc_cfg.dist_mode = DPNI_DIST_MODE_HASH;
+
+	ret = dpni_set_rx_tc_dist(dpni, CMD_PRI_LOW, priv->token, tc_index,
+				  &tc_cfg);
+	rte_free(p_params);
+	if (ret) {
+		DPAA2_PMD_ERR(
+			     "Setting distribution for Rx failed with err: %d",
+			     ret);
+		return ret;
+	}
+
+	return 0;
+}
 
 int
 dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
