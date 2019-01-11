@@ -176,7 +176,7 @@ static int vfio_map_irq_region(struct fslmc_vfio_group *group)
 	vaddr = (unsigned long *)mmap(NULL, 0x1000, PROT_WRITE |
 		PROT_READ, MAP_SHARED, container_device_fd, 0x6030000);
 	if (vaddr == MAP_FAILED) {
-		DPAA2_BUS_ERR("Unable to map region (errno = %d)", errno);
+		DPAA2_BUS_INFO("Unable to map region (errno = %d)", errno);
 		return -errno;
 	}
 
