@@ -42,6 +42,7 @@ dpaa2_dev_rx_parse_slow(struct rte_mbuf *mbuf,
 static inline void __attribute__((hot))
 dpaa2_dev_rx_parse_new(struct rte_mbuf *m, const struct qbman_fd *fd)
 {
+	struct dpaa2_annot_hdr *annotation;
 	uint16_t frc = DPAA2_GET_FD_FRC_PARSE_SUM(fd);
 
 	m->packet_type = RTE_PTYPE_UNKNOWN;
@@ -104,6 +105,19 @@ dpaa2_dev_rx_parse_new(struct rte_mbuf *m, const struct qbman_fd *fd)
 	}
 	m->hash.rss = fd->simple.flc_hi;
 	m->ol_flags |= PKT_RX_RSS_HASH;
+
+	if (dpaa2_enable_ts == PMD_DPAA2_ENABLE_TS) {
+		annotation = (struct dpaa2_annot_hdr *)
+			((size_t)DPAA2_IOVA_TO_VADDR(
+			DPAA2_GET_FD_ADDR(fd)) + DPAA2_FD_PTA_SIZE);
+		m->timestamp = annotation->word2;
+		m->ol_flags |= PKT_RX_TIMESTAMP;
+		DPAA2_PMD_DP_DEBUG("pkt timestamp:0x%" PRIx64 "", m->timestamp);
+	}
+
+	DPAA2_PMD_DP_DEBUG("HW frc = 0x%x\t packet type =0x%x "
+		"ol_flags =0x%" PRIx64 "",
+		frc, m->packet_type, m->ol_flags);
 }
 
 static inline uint32_t __attribute__((hot))
@@ -204,6 +218,10 @@ dpaa2_dev_rx_parse(struct rte_mbuf *mbuf, void *hw_annot_addr)
 		mbuf->ol_flags |= PKT_RX_IP_CKSUM_BAD;
 	else if (BIT_ISSET_AT_POS(annotation->word8, DPAA2_ETH_FAS_L4CE))
 		mbuf->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+
+	mbuf->ol_flags |= PKT_RX_TIMESTAMP;
+	mbuf->timestamp = annotation->word2;
+	DPAA2_PMD_DP_DEBUG("pkt timestamp: 0x%" PRIx64 "", mbuf->timestamp);
 
 	/* Check detailed parsing requirement */
 	if (annotation->word3 & 0x7FFFFC3FFFF)

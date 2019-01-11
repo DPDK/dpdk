@@ -9,6 +9,7 @@
 #define _DPAA2_ETHDEV_H
 
 #include <rte_event_eth_rx_adapter.h>
+#include <rte_pmd_dpaa2.h>
 
 #include <mc/fsl_dpni.h>
 #include <mc/fsl_mc_sys.h>
@@ -82,6 +83,9 @@
 			(0x0003 | DPAA2_PKT_TYPE_IPV6_EXT)
 #define DPAA2_PKT_TYPE_VLAN_1		0x0160
 #define DPAA2_PKT_TYPE_VLAN_2		0x0260
+
+/* enable timestamp in mbuf*/
+extern enum pmd_dpaa2_ts dpaa2_enable_ts;
 
 struct dpaa2_dev_priv {
 	void *hw;

@@ -296,8 +296,10 @@ dpaa2_attach_bp_list(struct dpaa2_dev_priv *priv,
 			 DPNI_BUF_LAYOUT_OPT_FRAME_STATUS |
 			 DPNI_BUF_LAYOUT_OPT_PARSER_RESULT |
 			 DPNI_BUF_LAYOUT_OPT_DATA_ALIGN |
+			 DPNI_BUF_LAYOUT_OPT_TIMESTAMP |
 			 DPNI_BUF_LAYOUT_OPT_PRIVATE_DATA_SIZE;
 
+	layout.pass_timestamp = true;
 	layout.pass_frame_status = 1;
 	layout.private_data_size = DPAA2_FD_PTA_SIZE;
 	layout.pass_parser_result = 1;

@@ -18,3 +18,5 @@ includes += include_directories('base', 'mc')
 
 # depends on fslmc bus which uses experimental API
 allow_experimental_apis = true
+
+install_headers('rte_pmd_dpaa2.h')

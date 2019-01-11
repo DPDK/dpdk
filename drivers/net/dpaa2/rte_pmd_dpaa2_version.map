@@ -10,3 +10,9 @@ DPDK_17.11 {
 	dpaa2_eth_eventq_detach;
 
 } DPDK_17.05;
+
+EXPERIMENTAL {
+	global:
+
+	rte_pmd_dpaa2_set_timestamp;
+} DPDK_17.11;
