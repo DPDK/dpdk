@@ -11,6 +11,8 @@
 #include <rte_event_eth_rx_adapter.h>
 #include <rte_pmd_dpaa2.h>
 
+#include <dpaa2_hw_pvt.h>
+
 #include <mc/fsl_dpni.h>
 #include <mc/fsl_mc_sys.h>
 

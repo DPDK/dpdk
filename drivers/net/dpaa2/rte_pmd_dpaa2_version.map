@@ -14,5 +14,6 @@ DPDK_17.11 {
 EXPERIMENTAL {
 	global:
 
+	rte_pmd_dpaa2_mux_flow_create;
 	rte_pmd_dpaa2_set_timestamp;
 } DPDK_17.11;
