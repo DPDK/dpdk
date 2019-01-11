@@ -418,9 +418,8 @@ dpaa2_create_dpio_device(int vdev_fd,
 			goto err;
 	}
 
-	dpio_dev->dpio = malloc(sizeof(struct fsl_mc_io));
-	memset(dpio_dev->dpio, 0, sizeof(struct fsl_mc_io));
-
+	dpio_dev->dpio = rte_zmalloc(NULL, sizeof(struct fsl_mc_io),
+				     RTE_CACHE_LINE_SIZE);
 	if (!dpio_dev->dpio) {
 		DPAA2_BUS_ERR("Memory allocation failure");
 		goto err;
@@ -535,9 +534,26 @@ err:
 	if (dpio_dev->dpio) {
 		dpio_disable(dpio_dev->dpio, CMD_PRI_LOW, dpio_dev->token);
 		dpio_close(dpio_dev->dpio, CMD_PRI_LOW,  dpio_dev->token);
-		free(dpio_dev->dpio);
+		rte_free(dpio_dev->dpio);
 	}
+
 	rte_free(dpio_dev);
+
+	/* For each element in the list, cleanup */
+	TAILQ_FOREACH(dpio_dev, &dpio_dev_list, next) {
+		if (dpio_dev->dpio) {
+			dpio_disable(dpio_dev->dpio, CMD_PRI_LOW,
+				dpio_dev->token);
+			dpio_close(dpio_dev->dpio, CMD_PRI_LOW,
+				dpio_dev->token);
+			rte_free(dpio_dev->dpio);
+		}
+		rte_free(dpio_dev);
+	}
+
+	/* Preventing re-use of the list with old entries */
+	TAILQ_INIT(&dpio_dev_list);
+
 	return -1;
 }
 

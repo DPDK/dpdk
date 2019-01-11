@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2015-2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016 NXP
+ *   Copyright 2016-2018 NXP
  *
  */
 
@@ -610,6 +610,15 @@ fslmc_process_mcp(struct rte_dpaa2_device *dev)
 
 	/* check the MC version compatibility */
 	dpmng.regs = (void *)v_addr;
+
+	/* In case of secondary processes, MC version check is no longer
+	 * required.
+	 */
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		rte_mcp_ptr_list[0] = (void *)v_addr;
+		return 0;
+	}
+
 	if (mc_get_version(&dpmng, CMD_PRI_LOW, &mc_ver_info)) {
 		DPAA2_BUS_ERR("Unable to obtain MC version");
 		ret = -1;
@@ -653,6 +662,15 @@ fslmc_vfio_process_group(void)
 	/* Search the MCP as that should be initialized first. */
 	TAILQ_FOREACH_SAFE(dev, &rte_fslmc_bus.device_list, next, dev_temp) {
 		if (dev->dev_type == DPAA2_MPORTAL) {
+			if (dev->device.devargs &&
+			    dev->device.devargs->policy == RTE_DEV_BLACKLISTED) {
+				DPAA2_BUS_LOG(DEBUG, "%s Blacklisted, skipping",
+					      dev->device.name);
+				TAILQ_REMOVE(&rte_fslmc_bus.device_list,
+						dev, next);
+				continue;
+			}
+
 			ret = fslmc_process_mcp(dev);
 			if (ret) {
 				DPAA2_BUS_ERR("Unable to map MC Portal");
@@ -677,6 +695,13 @@ fslmc_vfio_process_group(void)
 	}
 
 	TAILQ_FOREACH_SAFE(dev, &rte_fslmc_bus.device_list, next, dev_temp) {
+		if (dev->device.devargs &&
+		    dev->device.devargs->policy == RTE_DEV_BLACKLISTED) {
+			DPAA2_BUS_LOG(DEBUG, "%s Blacklisted, skipping",
+				      dev->device.name);
+			TAILQ_REMOVE(&rte_fslmc_bus.device_list, dev, next);
+			continue;
+		}
 		switch (dev->dev_type) {
 		case DPAA2_ETH:
 		case DPAA2_CRYPTO:
@@ -689,10 +714,17 @@ fslmc_vfio_process_group(void)
 			}
 			break;
 		case DPAA2_CON:
-		case DPAA2_IO:
 		case DPAA2_CI:
 		case DPAA2_BPOOL:
 		case DPAA2_MUX:
+			/* IN case of secondary processes, all control objects
+			 * like dpbp, dpcon, dpci are not initialized/required
+			 * - all of these are assumed to be initialized and made
+			 *   available by primary.
+			 */
+			if (rte_eal_process_type() == RTE_PROC_SECONDARY)
+				continue;
+
 			/* Call the object creation routine and remove the
 			 * device entry from device list
 			 */
@@ -703,12 +735,15 @@ fslmc_vfio_process_group(void)
 				return -1;
 			}
 
-			/* This device is not required to be in the DPDK
-			 * exposed device list.
-			 */
-			TAILQ_REMOVE(&rte_fslmc_bus.device_list, dev, next);
-			free(dev);
-			dev = NULL;
+			break;
+		case DPAA2_IO:
+			ret = fslmc_process_iodevices(dev);
+			if (ret) {
+				DPAA2_BUS_DEBUG("Dev (%s) init failed",
+						dev->device.name);
+				return -1;
+			}
+
 			break;
 		case DPAA2_UNKNOWN:
 		default:
