@@ -389,7 +389,8 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 	int i;
 	int cena_region_size = 4*1024;
 
-	if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000)
+	if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000
+			&& (d->cena_access_mode == qman_cena_fastest_access))
 		cena_region_size = 64*1024;
 #ifdef RTE_ARCH_64
 	uint8_t wn = CENA_WRITE_ENABLE;
@@ -416,7 +417,8 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 	reg = qbman_cinh_read(s, QBMAN_CINH_SWP_CFG);
 	QBMAN_BUG_ON(reg);
 #endif
-	if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000)
+	if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000
+			&& (d->cena_access_mode == qman_cena_fastest_access))
 		memset(s->addr_cena, 0, cena_region_size);
 	else {
 		/* Invalidate the portal memory.
@@ -426,11 +428,12 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 			dccivac(s->addr_cena + i);
 	}
 
-	if (s->eqcr_mode == qman_eqcr_vb_array)
+	if (s->eqcr_mode == qman_eqcr_vb_array) {
 		reg = qbman_set_swp_cfg(dqrr_size, wn,
 					0, 3, 2, 3, 1, 1, 1, 1, 1, 1);
-	else {
-		if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000)
+	} else {
+		if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000 &&
+			    (d->cena_access_mode == qman_cena_fastest_access))
 			reg = qbman_set_swp_cfg(dqrr_size, wn,
 						1, 3, 2, 0, 1, 1, 1, 1, 1, 1);
 		else
@@ -438,11 +441,11 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 						1, 3, 2, 2, 1, 1, 1, 1, 1, 1);
 	}
 
-	if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000) {
+	if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000
+			&& (d->cena_access_mode == qman_cena_fastest_access))
 		reg |= 1 << SWP_CFG_CPBS_SHIFT | /* memory-backed mode */
 		       1 << SWP_CFG_VPM_SHIFT |  /* VDQCR read triggered mode */
 		       1 << SWP_CFG_CPM_SHIFT;   /* CR read triggered mode */
-	}
 
 	qbman_cinh_write(s, QBMAN_CINH_SWP_CFG, reg);
 	reg = qbman_cinh_read(s, QBMAN_CINH_SWP_CFG);
@@ -452,7 +455,8 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 		return -1;
 	}
 
-	if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000) {
+	if ((d->qman_version & QMAN_REV_MASK) >= QMAN_REV_5000
+			&& (d->cena_access_mode == qman_cena_fastest_access)) {
 		qbman_cinh_write(s, QBMAN_CINH_SWP_EQCR_PI, QMAN_RT_MODE);
 		qbman_cinh_write(s, QBMAN_CINH_SWP_RCR_PI, QMAN_RT_MODE);
 	}

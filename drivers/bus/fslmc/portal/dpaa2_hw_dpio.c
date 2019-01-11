@@ -509,6 +509,8 @@ dpaa2_create_dpio_device(int vdev_fd,
 	p_des.cinh_bar = (void *)(dpio_dev->qbman_portal_ci_paddr);
 	p_des.irq = -1;
 	p_des.qman_version = attr.qbman_version;
+	p_des.eqcr_mode = qman_eqcr_vb_ring;
+	p_des.cena_access_mode = qman_cena_fastest_access;
 
 	dpio_dev->sw_portal = qbman_swp_init(&p_des);
 	if (dpio_dev->sw_portal == NULL) {
