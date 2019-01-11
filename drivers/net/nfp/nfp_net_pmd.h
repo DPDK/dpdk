@@ -456,6 +456,7 @@ struct nfp_net_hw {
 
 	struct nfp_hwinfo *hwinfo;
 	struct nfp_rtsym_table *sym_tbl;
+	uint32_t nfp_cpp_service_id;
 };
 
 struct nfp_net_adapter {
