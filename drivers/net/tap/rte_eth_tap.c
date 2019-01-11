@@ -1892,10 +1892,10 @@ set_interface_name(const char *key __rte_unused,
 	char *name = (char *)extra_args;
 
 	if (value)
-		strlcpy(name, value, RTE_ETH_NAME_MAX_LEN - 1);
+		strlcpy(name, value, RTE_ETH_NAME_MAX_LEN);
 	else
-		snprintf(name, RTE_ETH_NAME_MAX_LEN - 1, "%s%d",
-			 DEFAULT_TAP_NAME, (tap_unit - 1));
+		snprintf(name, RTE_ETH_NAME_MAX_LEN, "%s%d",
+			 DEFAULT_TAP_NAME, tap_unit - 1);
 
 	return 0;
 }
