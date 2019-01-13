@@ -71,9 +71,6 @@
 
 #define INVALID_PORT_ID 0xFFFF
 
-/* Size of buffers used for snprintfs. */
-#define MAX_PRINT_BUFF 6072
-
 /* Maximum character device basename size. */
 #define MAX_BASENAME_SZ 20
 
