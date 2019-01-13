@@ -371,6 +371,8 @@ enum flow_tcf_tunact_type {
 #define FLOW_TCF_ENCAP_UDP_SRC (1u << 6)
 #define FLOW_TCF_ENCAP_UDP_DST (1u << 7)
 #define FLOW_TCF_ENCAP_VXLAN_VNI (1u << 8)
+#define FLOW_TCF_ENCAP_IP_TTL (1u << 9)
+#define FLOW_TCF_ENCAP_IP_TOS (1u << 10)
 
 /**
  * Structure for holding netlink context.
@@ -463,6 +465,8 @@ struct flow_tcf_vxlan_encap {
 	struct flow_tcf_tunnel_hdr hdr;
 	struct tcf_irule *iface;
 	uint32_t mask;
+	uint8_t ip_tos;
+	uint8_t ip_ttl_hop;
 	struct {
 		struct ether_addr dst;
 		struct ether_addr src;
@@ -1309,6 +1313,20 @@ flow_tcf_validate_vxlan_encap_ipv4(const struct rte_flow_item *item,
 					  " must be specified for"
 					  " vxlan encapsulation");
 	}
+	if (mask->hdr.type_of_service &&
+	    mask->hdr.type_of_service != 0xff)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
+					  "no support for partial mask on"
+					  " \"ipv4.hdr.type_of_service\" field"
+					  " for vxlan encapsulation");
+	if (mask->hdr.time_to_live &&
+	    mask->hdr.time_to_live != 0xff)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
+					  "no support for partial mask on"
+					  " \"ipv4.hdr.time_to_live\" field"
+					  " for vxlan encapsulation");
 	return 0;
 }
 
@@ -1330,6 +1348,7 @@ flow_tcf_validate_vxlan_encap_ipv6(const struct rte_flow_item *item,
 {
 	const struct rte_flow_item_ipv6 *spec = item->spec;
 	const struct rte_flow_item_ipv6 *mask = item->mask;
+	uint8_t msk6;
 
 	if (!spec) {
 		/*
@@ -1395,6 +1414,20 @@ flow_tcf_validate_vxlan_encap_ipv6(const struct rte_flow_item *item,
 					  " must be specified for"
 					  " vxlan encapsulation");
 	}
+	msk6 = (rte_be_to_cpu_32(mask->hdr.vtc_flow) >>
+		IPV6_HDR_TC_SHIFT) & 0xff;
+	if (msk6 && msk6 != 0xff)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
+					  "no support for partial mask on"
+					  " \"ipv6.hdr.vtc_flow.tos\" field"
+					  " for vxlan encapsulation");
+	if (mask->hdr.hop_limits && mask->hdr.hop_limits != 0xff)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
+					  "no support for partial mask on"
+					  " \"ipv6.hdr.hop_limits\" field"
+					  " for vxlan encapsulation");
 	return 0;
 }
 
@@ -2482,16 +2515,31 @@ flow_tcf_get_items_size(const struct rte_flow_attr *attr,
 				SZ_NLATTR_TYPE_OF(uint8_t) + /* VLAN prio. */
 				SZ_NLATTR_TYPE_OF(uint16_t); /* VLAN ID. */
 			break;
-		case RTE_FLOW_ITEM_TYPE_IPV4:
+		case RTE_FLOW_ITEM_TYPE_IPV4: {
+			const struct rte_flow_item_ipv4 *ipv4 = items->mask;
+
 			size +=	SZ_NLATTR_TYPE_OF(uint8_t) + /* IP proto. */
 				SZ_NLATTR_TYPE_OF(uint32_t) * 4;
 				/* dst/src IP addr and mask. */
+			if (ipv4 && ipv4->hdr.time_to_live)
+				size += SZ_NLATTR_TYPE_OF(uint8_t) * 2;
+			if (ipv4 && ipv4->hdr.type_of_service)
+				size += SZ_NLATTR_TYPE_OF(uint8_t) * 2;
 			break;
-		case RTE_FLOW_ITEM_TYPE_IPV6:
+		}
+		case RTE_FLOW_ITEM_TYPE_IPV6: {
+			const struct rte_flow_item_ipv6 *ipv6 = items->mask;
+
 			size +=	SZ_NLATTR_TYPE_OF(uint8_t) + /* IP proto. */
 				SZ_NLATTR_DATA_OF(IPV6_ADDR_LEN) * 4;
 				/* dst/src IP addr and mask. */
+			if (ipv6 && ipv6->hdr.hop_limits)
+				size += SZ_NLATTR_TYPE_OF(uint8_t) * 2;
+			if (ipv6 && (rte_be_to_cpu_32(ipv6->hdr.vtc_flow) &
+				     (0xfful << IPV6_HDR_TC_SHIFT)))
+				size += SZ_NLATTR_TYPE_OF(uint8_t) * 2;
 			break;
+		}
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			size += SZ_NLATTR_TYPE_OF(uint8_t) + /* IP proto. */
 				SZ_NLATTR_TYPE_OF(uint16_t) * 4;
@@ -2559,12 +2607,27 @@ flow_tcf_vxlan_encap_size(const struct rte_flow_action *action)
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			/* This item does not require message buffer. */
 			break;
-		case RTE_FLOW_ITEM_TYPE_IPV4:
+		case RTE_FLOW_ITEM_TYPE_IPV4: {
+			const struct rte_flow_item_ipv4 *ipv4 = items->mask;
+
 			size += SZ_NLATTR_DATA_OF(IPV4_ADDR_LEN) * 2;
+			if (ipv4 && ipv4->hdr.time_to_live)
+				size += SZ_NLATTR_TYPE_OF(uint8_t) * 2;
+			if (ipv4 && ipv4->hdr.type_of_service)
+				size += SZ_NLATTR_TYPE_OF(uint8_t) * 2;
 			break;
-		case RTE_FLOW_ITEM_TYPE_IPV6:
+		}
+		case RTE_FLOW_ITEM_TYPE_IPV6: {
+			const struct rte_flow_item_ipv6 *ipv6 = items->mask;
+
 			size += SZ_NLATTR_DATA_OF(IPV6_ADDR_LEN) * 2;
+			if (ipv6 && ipv6->hdr.hop_limits)
+				size += SZ_NLATTR_TYPE_OF(uint8_t) * 2;
+			if (ipv6 && (rte_be_to_cpu_32(ipv6->hdr.vtc_flow) &
+				     (0xfful << IPV6_HDR_TC_SHIFT)))
+				size += SZ_NLATTR_TYPE_OF(uint8_t) * 2;
 			break;
+		}
 		case RTE_FLOW_ITEM_TYPE_UDP: {
 			const struct rte_flow_item_udp *udp = items->mask;
 
@@ -2942,11 +3005,14 @@ flow_tcf_parse_vxlan_encap_eth(const struct rte_flow_item_eth *spec,
  *
  * @param[in] spec
  *   RTE_FLOW_ITEM_TYPE_IPV4 entry specification.
+ * @param[in] mask
+ *  RTE_FLOW_ITEM_TYPE_IPV4 entry mask.
  * @param[out] encap
  *   Structure to fill the gathered IPV4 address data.
  */
 static void
 flow_tcf_parse_vxlan_encap_ipv4(const struct rte_flow_item_ipv4 *spec,
+				const struct rte_flow_item_ipv4 *mask,
 				struct flow_tcf_vxlan_encap *encap)
 {
 	/* Item must be validated before. No redundant checks. */
@@ -2955,6 +3021,14 @@ flow_tcf_parse_vxlan_encap_ipv4(const struct rte_flow_item_ipv4 *spec,
 	encap->ipv4.src = spec->hdr.src_addr;
 	encap->mask |= FLOW_TCF_ENCAP_IPV4_SRC |
 		       FLOW_TCF_ENCAP_IPV4_DST;
+	if (mask && mask->hdr.type_of_service) {
+		encap->mask |= FLOW_TCF_ENCAP_IP_TOS;
+		encap->ip_tos = spec->hdr.type_of_service;
+	}
+	if (mask && mask->hdr.time_to_live) {
+		encap->mask |= FLOW_TCF_ENCAP_IP_TTL;
+		encap->ip_ttl_hop = spec->hdr.time_to_live;
+	}
 }
 
 /**
@@ -2965,11 +3039,14 @@ flow_tcf_parse_vxlan_encap_ipv4(const struct rte_flow_item_ipv4 *spec,
  *
  * @param[in] spec
  *   RTE_FLOW_ITEM_TYPE_IPV6 entry specification.
+ * @param[in] mask
+ *  RTE_FLOW_ITEM_TYPE_IPV6 entry mask.
  * @param[out] encap
  *   Structure to fill the gathered IPV6 address data.
  */
 static void
 flow_tcf_parse_vxlan_encap_ipv6(const struct rte_flow_item_ipv6 *spec,
+				const struct rte_flow_item_ipv6 *mask,
 				struct flow_tcf_vxlan_encap *encap)
 {
 	/* Item must be validated before. No redundant checks. */
@@ -2978,6 +3055,19 @@ flow_tcf_parse_vxlan_encap_ipv6(const struct rte_flow_item_ipv6 *spec,
 	memcpy(encap->ipv6.src, spec->hdr.src_addr, IPV6_ADDR_LEN);
 	encap->mask |= FLOW_TCF_ENCAP_IPV6_SRC |
 		       FLOW_TCF_ENCAP_IPV6_DST;
+	if (mask) {
+		if ((rte_be_to_cpu_32(mask->hdr.vtc_flow) >>
+		    IPV6_HDR_TC_SHIFT) & 0xff) {
+			encap->mask |= FLOW_TCF_ENCAP_IP_TOS;
+			encap->ip_tos = (rte_be_to_cpu_32
+						(spec->hdr.vtc_flow) >>
+						 IPV6_HDR_TC_SHIFT) & 0xff;
+		}
+		if (mask->hdr.hop_limits) {
+			encap->mask |= FLOW_TCF_ENCAP_IP_TTL;
+			encap->ip_ttl_hop = spec->hdr.hop_limits;
+		}
+	}
 }
 
 /**
@@ -3072,11 +3162,15 @@ flow_tcf_vxlan_encap_parse(const struct rte_flow_action *action,
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			spec.ipv4 = items->spec;
-			flow_tcf_parse_vxlan_encap_ipv4(spec.ipv4, encap);
+			mask.ipv4 = items->mask;
+			flow_tcf_parse_vxlan_encap_ipv4(spec.ipv4, mask.ipv4,
+							encap);
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
 			spec.ipv6 = items->spec;
-			flow_tcf_parse_vxlan_encap_ipv6(spec.ipv6, encap);
+			mask.ipv6 = items->mask;
+			flow_tcf_parse_vxlan_encap_ipv6(spec.ipv6, mask.ipv6,
+							encap);
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			mask.udp = items->mask;
@@ -3389,10 +3483,35 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 					 TCA_FLOWER_KEY_IPV4_DST_MASK,
 					 mask.ipv4->hdr.dst_addr);
 			}
+			if (mask.ipv4->hdr.time_to_live) {
+				mnl_attr_put_u8
+					(nlh, tunnel_outer ?
+					 TCA_FLOWER_KEY_ENC_IP_TTL :
+					 TCA_FLOWER_KEY_IP_TTL,
+					 spec.ipv4->hdr.time_to_live);
+				mnl_attr_put_u8
+					(nlh, tunnel_outer ?
+					 TCA_FLOWER_KEY_ENC_IP_TTL_MASK :
+					 TCA_FLOWER_KEY_IP_TTL_MASK,
+					 mask.ipv4->hdr.time_to_live);
+			}
+			if (mask.ipv4->hdr.type_of_service) {
+				mnl_attr_put_u8
+					(nlh, tunnel_outer ?
+					 TCA_FLOWER_KEY_ENC_IP_TOS :
+					 TCA_FLOWER_KEY_IP_TOS,
+					 spec.ipv4->hdr.type_of_service);
+				mnl_attr_put_u8
+					(nlh, tunnel_outer ?
+					 TCA_FLOWER_KEY_ENC_IP_TOS_MASK :
+					 TCA_FLOWER_KEY_IP_TOS_MASK,
+					 mask.ipv4->hdr.type_of_service);
+			}
 			assert(dev_flow->tcf.nlsize >= nlh->nlmsg_len);
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6: {
 			bool ipv6_src, ipv6_dst;
+			uint8_t msk6, tos6;
 
 			item_flags |= (item_flags & MLX5_FLOW_LAYER_TUNNEL) ?
 				      MLX5_FLOW_LAYER_INNER_L3_IPV6 :
@@ -3477,6 +3596,33 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 					     TCA_FLOWER_KEY_IPV6_DST_MASK,
 					     IPV6_ADDR_LEN,
 					     mask.ipv6->hdr.dst_addr);
+			}
+			if (mask.ipv6->hdr.hop_limits) {
+				mnl_attr_put_u8
+					(nlh, tunnel_outer ?
+					 TCA_FLOWER_KEY_ENC_IP_TTL :
+					 TCA_FLOWER_KEY_IP_TTL,
+					 spec.ipv6->hdr.hop_limits);
+				mnl_attr_put_u8
+					(nlh, tunnel_outer ?
+					 TCA_FLOWER_KEY_ENC_IP_TTL_MASK :
+					 TCA_FLOWER_KEY_IP_TTL_MASK,
+					 mask.ipv6->hdr.hop_limits);
+			}
+			msk6 = (rte_be_to_cpu_32(mask.ipv6->hdr.vtc_flow) >>
+				IPV6_HDR_TC_SHIFT) & 0xff;
+			if (msk6) {
+				tos6 = (rte_be_to_cpu_32
+					(spec.ipv6->hdr.vtc_flow) >>
+						IPV6_HDR_TC_SHIFT) & 0xff;
+				mnl_attr_put_u8
+					(nlh, tunnel_outer ?
+					 TCA_FLOWER_KEY_ENC_IP_TOS :
+					 TCA_FLOWER_KEY_IP_TOS, tos6);
+				mnl_attr_put_u8
+					(nlh, tunnel_outer ?
+					 TCA_FLOWER_KEY_ENC_IP_TOS_MASK :
+					 TCA_FLOWER_KEY_IP_TOS_MASK, msk6);
 			}
 			assert(dev_flow->tcf.nlsize >= nlh->nlmsg_len);
 			break;
@@ -3830,6 +3976,14 @@ override_na_vlan_priority:
 					 TCA_TUNNEL_KEY_ENC_IPV6_DST,
 					 sizeof(encap.vxlan->ipv6.dst),
 					 &encap.vxlan->ipv6.dst);
+			if (encap.vxlan->mask & FLOW_TCF_ENCAP_IP_TTL)
+				mnl_attr_put_u8(nlh,
+					 TCA_TUNNEL_KEY_ENC_TTL,
+					 encap.vxlan->ip_ttl_hop);
+			if (encap.vxlan->mask & FLOW_TCF_ENCAP_IP_TOS)
+				mnl_attr_put_u8(nlh,
+					 TCA_TUNNEL_KEY_ENC_TOS,
+					 encap.vxlan->ip_tos);
 			if (encap.vxlan->mask & FLOW_TCF_ENCAP_VXLAN_VNI)
 				mnl_attr_put_u32(nlh,
 					 TCA_TUNNEL_KEY_ENC_KEY_ID,
