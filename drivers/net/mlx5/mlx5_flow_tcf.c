@@ -538,11 +538,15 @@ static const struct {
 	},
 	.ipv4.hdr = {
 		.next_proto_id = 0xff,
+		.time_to_live = 0xff,
+		.type_of_service = 0xff,
 		.src_addr = RTE_BE32(0xffffffff),
 		.dst_addr = RTE_BE32(0xffffffff),
 	},
 	.ipv6.hdr = {
 		.proto = 0xff,
+		.vtc_flow = RTE_BE32(0xfful << IPV6_HDR_FL_SHIFT),
+		.hop_limits = 0xff,
 		.src_addr =
 			"\xff\xff\xff\xff\xff\xff\xff\xff"
 			"\xff\xff\xff\xff\xff\xff\xff\xff",
@@ -1595,8 +1599,9 @@ flow_tcf_validate_vxlan_encap(const struct rte_flow_action *action,
 			break;
 		break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
-			ret = mlx5_flow_validate_item_ipv4(items, item_flags,
-							   error);
+			ret = mlx5_flow_validate_item_ipv4
+					(items, item_flags,
+					 &flow_tcf_mask_supported.ipv4, error);
 			if (ret < 0)
 				return ret;
 			ret = flow_tcf_validate_vxlan_encap_ipv4(items, error);
@@ -1605,8 +1610,9 @@ flow_tcf_validate_vxlan_encap(const struct rte_flow_action *action,
 			item_flags |= MLX5_FLOW_LAYER_OUTER_L3_IPV4;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
-			ret = mlx5_flow_validate_item_ipv6(items, item_flags,
-							   error);
+			ret = mlx5_flow_validate_item_ipv6
+					(items, item_flags,
+					 &flow_tcf_mask_supported.ipv6, error);
 			if (ret < 0)
 				return ret;
 			ret = flow_tcf_validate_vxlan_encap_ipv6(items, error);
@@ -2125,8 +2131,9 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 				vlan_etype = spec.vlan->inner_type;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
-			ret = mlx5_flow_validate_item_ipv4(items, item_flags,
-							   error);
+			ret = mlx5_flow_validate_item_ipv4
+					(items, item_flags,
+					 &flow_tcf_mask_supported.ipv4, error);
 			if (ret < 0)
 				return ret;
 			item_flags |= (item_flags & MLX5_FLOW_LAYER_TUNNEL) ?
@@ -2185,8 +2192,9 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
-			ret = mlx5_flow_validate_item_ipv6(items, item_flags,
-							   error);
+			ret = mlx5_flow_validate_item_ipv6
+					(items, item_flags,
+					 &flow_tcf_mask_supported.ipv6, error);
 			if (ret < 0)
 				return ret;
 			item_flags |= (item_flags & MLX5_FLOW_LAYER_TUNNEL) ?
