@@ -125,6 +125,14 @@ struct tc_pedit_sel {
 #define TCA_TUNNEL_KEY_NO_CSUM 10
 #endif
 
+#ifndef HAVE_TCA_TUNNEL_KEY_ENC_TOS
+#define TCA_TUNNEL_KEY_ENC_TOS 12
+#endif
+
+#ifndef	HAVE_TCA_TUNNEL_KEY_ENC_TTL
+#define TCA_TUNNEL_KEY_ENC_TTL 13
+#endif
+
 #else /* HAVE_TC_ACT_TUNNEL_KEY */
 
 #define TCA_ACT_TUNNEL_KEY 17
@@ -138,6 +146,8 @@ struct tc_pedit_sel {
 #define TCA_TUNNEL_KEY_ENC_KEY_ID 7
 #define TCA_TUNNEL_KEY_ENC_DST_PORT 9
 #define TCA_TUNNEL_KEY_NO_CSUM 10
+#define TCA_TUNNEL_KEY_ENC_TOS 12
+#define TCA_TUNNEL_KEY_ENC_TTL 13
 
 struct tc_tunnel_key {
 	tc_gen;
@@ -292,6 +302,31 @@ struct tc_tunnel_key {
 #ifndef HAVE_TCA_FLOWER_KEY_TCP_FLAGS_MASK
 #define TCA_FLOWER_KEY_TCP_FLAGS_MASK 72
 #endif
+#ifndef	HAVE_TCA_FLOWER_KEY_IP_TOS
+#define	TCA_FLOWER_KEY_IP_TOS 73
+#endif
+#ifndef	HAVE_TCA_FLOWER_KEY_IP_TOS_MASK
+#define TCA_FLOWER_KEY_IP_TOS_MASK 74
+#endif
+#ifndef	HAVE_TCA_FLOWER_KEY_IP_TTL
+#define TCA_FLOWER_KEY_IP_TTL 75
+#endif
+#ifndef HAVE_TCA_FLOWER_KEY_IP_TTL_MASK
+#define TCA_FLOWER_KEY_IP_TTL_MASK 76
+#endif
+#ifndef	HAVE_TCA_FLOWER_KEY_ENC_IP_TOS
+#define TCA_FLOWER_KEY_ENC_IP_TOS 80
+#endif
+#ifndef	HAVE_TCA_FLOWER_KEY_ENC_IP_TOS_MASK
+#define TCA_FLOWER_KEY_ENC_IP_TOS_MASK 81
+#endif
+#ifndef	HAVE_TCA_FLOWER_KEY_ENC_IP_TTL
+#define	TCA_FLOWER_KEY_ENC_IP_TTL 82
+#endif
+#ifndef	HAVE_TCA_FLOWER_KEY_ENC_IP_TTL_MASK
+#define TCA_FLOWER_KEY_ENC_IP_TTL_MASK 83
+#endif
+
 #ifndef HAVE_TC_ACT_GOTO_CHAIN
 #define TC_ACT_GOTO_CHAIN 0x20000000
 #endif

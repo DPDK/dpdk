@@ -386,6 +386,26 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		enum TCA_FLOWER_KEY_TCP_FLAGS_MASK \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_IP_TOS \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_IP_TOS \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_IP_TOS_MASK \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_IP_TOS_MASK \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_IP_TTL \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_IP_TTL \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_IP_TTL_MASK \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_IP_TTL_MASK \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
 		HAVE_TC_ACT_GOTO_CHAIN \
 		linux/pkt_cls.h \
 		define TC_ACT_GOTO_CHAIN \
@@ -461,6 +481,26 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		enum TCA_FLOWER_KEY_ENC_UDP_DST_PORT_MASK \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_ENC_IP_TOS \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_ENC_IP_TOS \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_ENC_IP_TOS_MASK \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_ENC_IP_TOS_MASK \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_ENC_IP_TTL \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_ENC_IP_TTL \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_FLOWER_KEY_ENC_IP_TTL_MASK \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_ENC_IP_TTL_MASK \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
 		HAVE_TC_ACT_TUNNEL_KEY \
 		linux/tc_act/tc_tunnel_key.h \
 		define TCA_ACT_TUNNEL_KEY \
@@ -469,6 +509,16 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		HAVE_TCA_TUNNEL_KEY_ENC_DST_PORT \
 		linux/tc_act/tc_tunnel_key.h \
 		enum TCA_TUNNEL_KEY_ENC_DST_PORT \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_TUNNEL_KEY_ENC_TOS \
+		linux/tc_act/tc_tunnel_key.h \
+		enum TCA_TUNNEL_KEY_ENC_TOS \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TCA_TUNNEL_KEY_ENC_TTL \
+		linux/tc_act/tc_tunnel_key.h \
+		enum TCA_TUNNEL_KEY_ENC_TTL \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
 		HAVE_TCA_TUNNEL_KEY_NO_CSUM \
