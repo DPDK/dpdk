@@ -1198,7 +1198,7 @@ destroy_device(int vid)
 
 /*
  * A new device is added to a data core. First the device is added to the main linked list
- * and the allocated to a specific data core.
+ * and then allocated to a specific data core.
  */
 static int
 new_device(int vid)
