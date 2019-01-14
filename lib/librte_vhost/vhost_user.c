@@ -2048,7 +2048,7 @@ skip_to_reply:
 	vdpa_dev = rte_vdpa_get_device(did);
 	if (vdpa_dev && virtio_is_ready(dev) &&
 			!(dev->flags & VIRTIO_DEV_VDPA_CONFIGURED) &&
-			msg.request.master == VHOST_USER_SET_VRING_ENABLE) {
+			msg.request.master == VHOST_USER_SET_VRING_CALL) {
 		if (vdpa_dev->ops->dev_conf)
 			vdpa_dev->ops->dev_conf(dev->vid);
 		dev->flags |= VIRTIO_DEV_VDPA_CONFIGURED;
