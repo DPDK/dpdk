@@ -179,7 +179,7 @@ uint32_t mlx4_tx_update_ext_mp(struct txq *txq, uintptr_t addr,
 static inline struct rte_mempool *
 mlx4_mb2mp(struct rte_mbuf *buf)
 {
-	if (unlikely(RTE_MBUF_INDIRECT(buf)))
+	if (unlikely(RTE_MBUF_CLONED(buf)))
 		return rte_mbuf_from_indirect(buf)->pool;
 	return buf->pool;
 }

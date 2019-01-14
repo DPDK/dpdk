@@ -44,13 +44,6 @@ Deprecation Notices
   structure would be made internal (or removed if all dependencies are cleared)
   in future releases.
 
-* mbuf: the macro ``RTE_MBUF_INDIRECT()`` will be removed in v18.08 or later and
-  replaced with ``RTE_MBUF_CLONED()`` which is already added in v18.05. As
-  ``EXT_ATTACHED_MBUF`` is newly introduced in v18.05, ``RTE_MBUF_INDIRECT()``
-  can no longer be mutually exclusive with ``RTE_MBUF_DIRECT()`` if the new
-  experimental API ``rte_pktmbuf_attach_extbuf()`` is used. Removal of the macro
-  is to fix this semantic inconsistency.
-
 * ethdev: the legacy filter API, including
   ``rte_eth_dev_filter_supported()``, ``rte_eth_dev_filter_ctrl()`` as well
   as filter types MACVLAN, ETHERTYPE, FLEXIBLE, SYN, NTUPLE, TUNNEL, FDIR,

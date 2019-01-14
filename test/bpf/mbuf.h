@@ -520,14 +520,21 @@ struct rte_mbuf {
 
 
 /**
- * Returns TRUE if given mbuf is indirect, or FALSE otherwise.
+ * Returns TRUE if given mbuf is cloned by mbuf indirection, or FALSE
+ * otherwise.
+ *
+ * If a mbuf has its data in another mbuf and references it by mbuf
+ * indirection, this mbuf can be defined as a cloned mbuf.
  */
-#define RTE_MBUF_INDIRECT(mb)   ((mb)->ol_flags & IND_ATTACHED_MBUF)
+#define RTE_MBUF_CLONED(mb)     ((mb)->ol_flags & IND_ATTACHED_MBUF)
 
 /**
  * Returns TRUE if given mbuf is direct, or FALSE otherwise.
+ *
+ * If a mbuf embeds its own data after the rte_mbuf structure, this mbuf
+ * can be defined as a direct mbuf.
  */
-#define RTE_MBUF_DIRECT(mb)     (!RTE_MBUF_INDIRECT(mb))
+#define RTE_MBUF_DIRECT(mb)     (!RTE_MBUF_CLONED(mb))
 
 /**
  * Private data in case of pktmbuf pool.

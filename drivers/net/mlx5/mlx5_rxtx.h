@@ -622,7 +622,7 @@ mlx5_tx_complete(struct mlx5_txq_data *txq)
 static inline struct rte_mempool *
 mlx5_mb2mp(struct rte_mbuf *buf)
 {
-	if (unlikely(RTE_MBUF_INDIRECT(buf)))
+	if (unlikely(RTE_MBUF_CLONED(buf)))
 		return rte_mbuf_from_indirect(buf)->pool;
 	return buf->pool;
 }

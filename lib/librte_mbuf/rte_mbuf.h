@@ -834,12 +834,6 @@ rte_mbuf_to_priv(struct rte_mbuf *m)
 #define RTE_MBUF_CLONED(mb)     ((mb)->ol_flags & IND_ATTACHED_MBUF)
 
 /**
- * Deprecated.
- * Use RTE_MBUF_CLONED().
- */
-#define RTE_MBUF_INDIRECT(mb)   RTE_MBUF_CLONED(mb)
-
-/**
  * Returns TRUE if given mbuf has an external buffer, or FALSE otherwise.
  *
  * External buffer is a user-provided anonymous buffer.
@@ -1632,7 +1626,7 @@ __rte_pktmbuf_free_direct(struct rte_mbuf *m)
 {
 	struct rte_mbuf *md;
 
-	RTE_ASSERT(RTE_MBUF_INDIRECT(m));
+	RTE_ASSERT(RTE_MBUF_CLONED(m));
 
 	md = rte_mbuf_from_indirect(m);
 

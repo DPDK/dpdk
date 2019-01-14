@@ -192,6 +192,9 @@ API Changes
   ``rte_malloc_get_socket_stats()`` are no longer safe to call concurrently with
   ``rte_malloc_heap_create()`` or ``rte_malloc_heap_destroy()`` function calls.
 
+* mbuf: ``RTE_MBUF_INDIRECT()``, which was deprecated in 18.05, was replaced
+  with ``RTE_MBUF_CLONED()`` and removed in 19.02.
+
 * sched: As result of the new format of the mbuf sched field, the
   functions ``rte_sched_port_pkt_write()`` and
   ``rte_sched_port_pkt_read_tree_path()`` got an additional parameter of
