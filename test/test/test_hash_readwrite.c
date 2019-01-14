@@ -39,7 +39,7 @@ static struct perf htm_results, non_htm_results;
 
 struct {
 	uint32_t *keys;
-	uint32_t *found;
+	uint8_t *found;
 	uint32_t num_insert;
 	uint32_t rounded_tot_insert;
 	struct rte_hash *h;
@@ -126,7 +126,7 @@ init_params(int use_ext, int use_htm, int use_jhash)
 	unsigned int i;
 
 	uint32_t *keys = NULL;
-	uint32_t *found = NULL;
+	uint8_t *found = NULL;
 	struct rte_hash *handle;
 
 	struct rte_hash_parameters hash_params = {
@@ -173,7 +173,7 @@ init_params(int use_ext, int use_htm, int use_jhash)
 		goto err;
 	}
 
-	found = rte_zmalloc(NULL, sizeof(uint32_t) * TOTAL_ENTRY, 0);
+	found = rte_zmalloc(NULL, sizeof(uint8_t) * TOTAL_ENTRY, 0);
 	if (found == NULL) {
 		printf("RTE_ZMALLOC failed\n");
 		goto err;
@@ -361,7 +361,7 @@ test_hash_readwrite_perf(struct perf *perf_results, int use_htm,
 
 	const void *next_key;
 	void *next_data;
-	uint32_t iter = 0;
+	uint32_t iter;
 	int use_jhash = 0;
 
 	uint32_t duplicated_keys = 0;
@@ -536,6 +536,8 @@ test_hash_readwrite_perf(struct perf *perf_results, int use_htm,
 
 		rte_eal_mp_wait_lcore();
 
+		iter = 0;
+		memset(tbl_rw_test_param.found, 0, TOTAL_ENTRY);
 		while (rte_hash_iterate(tbl_rw_test_param.h,
 				&next_key, &next_data, &iter) >= 0) {
 			/* Search for the key in the list of keys added .*/
@@ -619,7 +621,7 @@ test_hash_readwrite_main(void)
 	if (rte_lcore_count() <= 2) {
 		printf("More than two lcores are required "
 			"to do read write test\n");
-		return 0;
+		return -1;
 	}
 
 	RTE_LCORE_FOREACH_SLAVE(core_id) {
