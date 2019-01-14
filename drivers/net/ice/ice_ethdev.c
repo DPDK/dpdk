@@ -2183,14 +2183,20 @@ ice_vsi_config_vlan_filter(struct ice_vsi *vsi, bool on)
 	if (ret) {
 		PMD_DRV_LOG(INFO, "Update VSI failed to %s vlan rx pruning",
 			    on ? "enable" : "disable");
-		ret = -EINVAL;
+		return -EINVAL;
 	} else {
 		vsi->info.valid_sections |=
 			rte_cpu_to_le_16(ICE_AQ_VSI_PROP_SW_VALID |
 					 ICE_AQ_VSI_PROP_SECURITY_VALID);
 	}
 
-	return ret;
+	/* consist with other drivers, allow untagged packet when vlan filter on */
+	if (on)
+		ret = ice_add_vlan_filter(vsi, 0);
+	else
+		ret = ice_remove_vlan_filter(vsi, 0);
+
+	return 0;
 }
 
 static int
