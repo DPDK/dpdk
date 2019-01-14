@@ -35,6 +35,13 @@ do_macswap(struct rte_mbuf *pkts[], uint16_t nb,
 	r = nb;
 
 	while (r >= 4) {
+		if (r >= 8) {
+			rte_prefetch0(rte_pktmbuf_mtod(pkts[i + 4], void *));
+			rte_prefetch0(rte_pktmbuf_mtod(pkts[i + 5], void *));
+			rte_prefetch0(rte_pktmbuf_mtod(pkts[i + 6], void *));
+			rte_prefetch0(rte_pktmbuf_mtod(pkts[i + 7], void *));
+		}
+
 		mb[0] = pkts[i++];
 		eth_hdr[0] = rte_pktmbuf_mtod(mb[0], struct ether_hdr *);
 		addr0 = _mm_loadu_si128((__m128i *)eth_hdr[0]);
