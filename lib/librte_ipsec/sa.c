@@ -526,7 +526,7 @@ esp_outb_tun_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 	/* update spi, seqn and iv */
 	esph = (struct esp_hdr *)(ph + sa->hdr_len);
 	iv = (uint64_t *)(esph + 1);
-	rte_memcpy(iv, ivp, sa->iv_len);
+	copy_iv(iv, ivp, sa->iv_len);
 
 	esph->spi = sa->spi;
 	esph->seq = sqn_low32(sqc);
@@ -689,7 +689,7 @@ esp_outb_trs_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 	/* update spi, seqn and iv */
 	esph = (struct esp_hdr *)(ph + uhlen);
 	iv = (uint64_t *)(esph + 1);
-	rte_memcpy(iv, ivp, sa->iv_len);
+	copy_iv(iv, ivp, sa->iv_len);
 
 	esph->spi = sa->spi;
 	esph->seq = sqn_low32(sqc);
@@ -821,7 +821,7 @@ esp_inb_tun_cop_prepare(struct rte_crypto_op *cop,
 		ivc = rte_crypto_op_ctod_offset(cop, uint64_t *, sa->iv_ofs);
 		ivp = rte_pktmbuf_mtod_offset(mb, uint64_t *,
 			pofs + sizeof(struct esp_hdr));
-		rte_memcpy(ivc, ivp, sa->iv_len);
+		copy_iv(ivc, ivp, sa->iv_len);
 	}
 	return 0;
 }

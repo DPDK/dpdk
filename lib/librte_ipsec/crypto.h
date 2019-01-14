@@ -77,6 +77,31 @@ gen_iv(uint64_t iv[IPSEC_MAX_IV_QWORD], rte_be64_t sqn)
 }
 
 /*
+ * Helper routine to copy IV
+ * Righ now we support only algorithms with IV length equals 0/8/16 bytes.
+ */
+static inline void
+copy_iv(uint64_t dst[IPSEC_MAX_IV_QWORD],
+	const uint64_t src[IPSEC_MAX_IV_QWORD], uint32_t len)
+{
+	RTE_BUILD_BUG_ON(IPSEC_MAX_IV_SIZE != 2 * sizeof(uint64_t));
+
+	switch (len) {
+	case IPSEC_MAX_IV_SIZE:
+		dst[1] = src[1];
+		/* fallthrough */
+	case sizeof(uint64_t):
+		dst[0] = src[0];
+		/* fallthrough */
+	case 0:
+		break;
+	default:
+		/* should never happen */
+		RTE_ASSERT(NULL);
+	}
+}
+
+/*
  * from RFC 4303 3.3.2.1.4:
  * If the ESN option is enabled for the SA, the high-order 32
  * bits of the sequence number are appended after the Next Header field
