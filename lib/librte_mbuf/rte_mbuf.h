@@ -1492,13 +1492,6 @@ rte_pktmbuf_ext_shinfo_init_helper(void *buf_addr, uint16_t *buf_len,
  *   attached with appropriate free callback and its IO address.
  * - Smaller metadata is required to maintain shared data such as refcnt.
  *
- * @warning
- * @b EXPERIMENTAL: This API may change without prior notice.
- * Once external buffer is enabled by allowing experimental API,
- * ``RTE_MBUF_DIRECT()`` and ``RTE_MBUF_INDIRECT()`` are no longer
- * exclusive. A mbuf can be considered direct if it is neither indirect nor
- * having external buffer.
- *
  * @param m
  *   The pointer to the mbuf.
  * @param buf_addr
@@ -1510,7 +1503,7 @@ rte_pktmbuf_ext_shinfo_init_helper(void *buf_addr, uint16_t *buf_len,
  * @param shinfo
  *   User-provided memory for shared data of the external buffer.
  */
-static inline void __rte_experimental
+static inline void
 rte_pktmbuf_attach_extbuf(struct rte_mbuf *m, void *buf_addr,
 	rte_iova_t buf_iova, uint16_t buf_len,
 	struct rte_mbuf_ext_shared_info *shinfo)
