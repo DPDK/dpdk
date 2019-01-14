@@ -144,6 +144,8 @@ Quick instructions for QAT compressdev PMD are as follows:
 	make
 
 
+.. _building_qat_config:
+
 Build Configuration
 ~~~~~~~~~~~~~~~~~~~
 
@@ -179,8 +181,8 @@ An extra (max_inflight_ops x 16) bytes per queue_pair will be used for every inc
 QAT compression PMD needs intermediate buffers to support Deflate compression
 with Dynamic Huffman encoding. CONFIG_RTE_PMD_QAT_COMP_IM_BUFFER_SIZE
 specifies the size of a single buffer, the PMD will allocate a multiple of these,
-plus some extra space for associated meta-data. For GEN2 devices, 20 buffers plus
-1472 bytes are allocated.
+plus some extra space for associated meta-data. For GEN2 devices, 20 buffers are
+allocated while for GEN1 devices, 12 buffers are allocated, plus 1472 bytes overhead.
 
 .. Note::
 
