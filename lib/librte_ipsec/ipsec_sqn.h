@@ -333,7 +333,7 @@ rsn_update_finish(struct rte_ipsec_sa *sa, struct replay_sqn *rsn)
 
 	n = sa->sqn.inb.wridx;
 	RTE_ASSERT(n != sa->sqn.inb.rdidx);
-	RTE_ASSERT(rsn - sa->sqn.inb.rsn == n);
+	RTE_ASSERT(rsn == sa->sqn.inb.rsn[n]);
 
 	rte_rwlock_write_unlock(&rsn->rwl);
 	sa->sqn.inb.rdidx = n;
