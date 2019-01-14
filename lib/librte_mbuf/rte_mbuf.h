@@ -791,7 +791,55 @@ rte_mbuf_from_indirect(struct rte_mbuf *mi)
 }
 
 /**
- * Return the buffer address embedded in the given mbuf.
+ * Return address of buffer embedded in the given mbuf.
+ *
+ * The return value shall be same as mb->buf_addr if the mbuf is already
+ * initialized and direct. However, this API is useful if mempool of the
+ * mbuf is already known because it doesn't need to access mbuf contents in
+ * order to get the mempool pointer.
+ *
+ * @warning
+ * @b EXPERIMENTAL: This API may change without prior notice.
+ * This will be used by rte_mbuf_to_baddr() which has redundant code once
+ * experimental tag is removed.
+ *
+ * @param mb
+ *   The pointer to the mbuf.
+ * @param mp
+ *   The pointer to the mempool of the mbuf.
+ * @return
+ *   The pointer of the mbuf buffer.
+ */
+static inline char * __rte_experimental
+rte_mbuf_buf_addr(struct rte_mbuf *mb, struct rte_mempool *mp)
+{
+	return (char *)mb + sizeof(*mb) + rte_pktmbuf_priv_size(mp);
+}
+
+/**
+ * Return the default address of the beginning of the mbuf data.
+ *
+ * @warning
+ * @b EXPERIMENTAL: This API may change without prior notice.
+ *
+ * @param mb
+ *   The pointer to the mbuf.
+ * @return
+ *   The pointer of the beginning of the mbuf data.
+ */
+static inline char * __rte_experimental
+rte_mbuf_data_addr_default(struct rte_mbuf *mb)
+{
+	return rte_mbuf_buf_addr(mb, mb->pool) + RTE_PKTMBUF_HEADROOM;
+}
+
+/**
+ * Return address of buffer embedded in the given mbuf.
+ *
+ * @note: Accessing mempool pointer of a mbuf is expensive because the
+ * pointer is stored in the 2nd cache line of mbuf. If mempool is known, it
+ * is better not to reference the mempool pointer in mbuf but calling
+ * rte_mbuf_buf_addr() would be more efficient.
  *
  * @param md
  *   The pointer to the mbuf.
@@ -801,9 +849,13 @@ rte_mbuf_from_indirect(struct rte_mbuf *mi)
 static inline char *
 rte_mbuf_to_baddr(struct rte_mbuf *md)
 {
+#ifdef ALLOW_EXPERIMENTAL_API
+	return rte_mbuf_buf_addr(md, md->pool);
+#else
 	char *buffer_addr;
 	buffer_addr = (char *)md + sizeof(*md) + rte_pktmbuf_priv_size(md->pool);
 	return buffer_addr;
+#endif
 }
 
 /**
