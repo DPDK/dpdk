@@ -647,11 +647,10 @@ static int enicpmd_set_mac_addr(struct rte_eth_dev *eth_dev,
 static void debug_log_add_del_addr(struct ether_addr *addr, bool add)
 {
 	char mac_str[ETHER_ADDR_FMT_SIZE];
-	if (rte_log_get_level(enicpmd_logtype_init) == RTE_LOG_DEBUG) {
-		ether_format_addr(mac_str, ETHER_ADDR_FMT_SIZE, addr);
-		PMD_INIT_LOG(ERR, " %s address %s\n",
-			     add ? "add" : "remove", mac_str);
-	}
+
+	ether_format_addr(mac_str, ETHER_ADDR_FMT_SIZE, addr);
+	PMD_INIT_LOG(DEBUG, " %s address %s\n",
+		     add ? "add" : "remove", mac_str);
 }
 
 static int enicpmd_set_mc_addr_list(struct rte_eth_dev *eth_dev,
