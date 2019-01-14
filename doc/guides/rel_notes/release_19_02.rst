@@ -334,6 +334,21 @@ Known Issues
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* ``AVX-512`` support has been disabled for ``GCC`` builds when ``binutils 2.30``
+  is detected [1] because of a crash [2]. This can affect ``native`` machine type
+  build targets on the platforms that support ``AVX512F`` like ``Intel Skylake``
+  processors, and can cause a possible performance drop. The immediate workaround
+  is to use ``clang`` compiler on these platforms.
+  Initial workaround in DPDK v18.11 was to disable ``AVX-512`` support for ``GCC``
+  completely, but based on information on defect submitted to GCC community [3],
+  issue has been identified as ``binutils 2.30`` issue. Since currently only GCC
+  generates ``AVX-512`` instructions, the scope is limited to ``GCC`` and
+  ``binutils 2.30``
+
+  - [1]: Commit ("mk: fix scope of disabling AVX512F support")
+  - [2]: https://bugs.dpdk.org/show_bug.cgi?id=97
+  - [3]: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=88096
+
 
 Tested Platforms
 ----------------

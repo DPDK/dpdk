@@ -43,6 +43,14 @@ toolchain = cc.get_id()
 dpdk_conf.set_quoted('RTE_TOOLCHAIN', toolchain)
 dpdk_conf.set('RTE_TOOLCHAIN_' + toolchain.to_upper(), 1)
 
+# get binutils version for the workaround of Bug 97
+ldver = run_command('ld', '-v').stdout().strip()
+if ldver.contains('2.30')
+	if cc.has_argument('-mno-avx512f')
+		machine_args += '-mno-avx512f'
+	endif
+endif
+
 add_project_link_arguments('-Wl,--no-as-needed', language: 'c')
 dpdk_extra_ldflags += '-Wl,--no-as-needed'
 

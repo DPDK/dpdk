@@ -826,3 +826,38 @@ Kernel crash when hot-unplug igb_uio device while DPDK application is running
 
 **Driver/Module**:
    ``igb_uio`` module.
+
+
+AVX-512 support disabled
+------------------------
+
+**Description**:
+   ``AVX-512`` support has been disabled on some conditions.
+   This shouldn't be confused with ``CONFIG_RTE_ENABLE_AVX512`` config option which is already
+   disabled by default. This config option defines if ``AVX-512`` specific implementations of
+   some file to be used or not. What has been disabled is compiler feature to produce ``AVX-512``
+   instructions from any source code.
+
+   On DPDK v18.11 ``AVX-512`` is disabled for all ``GCC`` builds which reported to cause a performance
+   drop.
+
+   On DPDK v19.02 ``AVX-512`` disable scope is reduced to ``GCC`` and ``binutils version 2.30`` based
+   on information accured from the GCC community defect.
+
+**Reason**:
+   Generated ``AVX-512`` code cause crash:
+   https://bugs.dpdk.org/show_bug.cgi?id=97
+   https://gcc.gnu.org/bugzilla/show_bug.cgi?id=88096
+
+**Resolution/Workaround**:
+   * Update ``binutils`` to newer version than ``2.30``.
+
+   OR
+
+   * Use different compiler, like ``clang`` for this case.
+
+**Affected Environment/Platform**:
+    ``GCC`` and ``binutils version 2.30``.
+
+**Driver/Module**:
+    ALL.

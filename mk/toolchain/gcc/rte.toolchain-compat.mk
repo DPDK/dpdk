@@ -20,6 +20,16 @@ HOST_GCC_MINOR = $(shell echo __GNUC_MINOR__ | $(HOSTCC) -E -x c - | tail -n 1)
 HOST_GCC_PATCHLEVEL = $(shell echo __GNUC_PATCHLEVEL__ | $(HOSTCC) -E -x c - | tail -n 1)
 HOST_GCC_VERSION = $(HOST_GCC_MAJOR)$(HOST_GCC_MINOR)
 
+LD_VERSION = $(shell $(LD) -v)
+# disable AVX512F support for GCC & binutils 2.30 as a workaround for Bug 97
+ifneq ($(filter 2.30%,$(LD_VERSION)),)
+FORCE_DISABLE_AVX512 := y
+# print warning only once for librte_eal
+ifneq ($(filter %librte_eal,$(CURDIR)),)
+$(warning AVX512 support disabled because of ld 2.30. See Bug 97)
+endif
+endif
+
 # if GCC is older than 4.x
 ifeq ($(shell test $(GCC_VERSION) -lt 40 && echo 1), 1)
 	MACHINE_CFLAGS =
