@@ -76,7 +76,7 @@ do_macswap(struct rte_mbuf *pkts[], uint16_t nb,
 		eth_hdr[0] = rte_pktmbuf_mtod(mb[0], struct ether_hdr *);
 
 		/* Swap dest and src mac addresses. */
-		addr0 = _mm_loadu_si128((__m128i *)eth_hdr);
+		addr0 = _mm_loadu_si128((__m128i *)eth_hdr[0]);
 		addr0 = _mm_shuffle_epi8(addr0, shfl_msk);
 		_mm_storeu_si128((__m128i *)eth_hdr[0], addr0);
 
