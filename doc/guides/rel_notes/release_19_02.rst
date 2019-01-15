@@ -147,6 +147,14 @@ New Features
   Added a new performance test tool to test the compressdev PMD. The tool tests
   compression ratio and compression throughput.
 
+* **Added intel_pstate support to Power Management library.**
+
+  Previously, using the power management library required the
+  disabling of the intel_pstate kernel driver, and the enabling of the
+  acpi_cpufreq kernel driver. This is no longer the case, as the use of
+  the intel_pstate kernel driver is now supported, and automatically
+  detected by the library.
+
 
 Removed Items
 -------------

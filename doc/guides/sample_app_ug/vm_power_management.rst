@@ -131,10 +131,15 @@ can be accessed.
 Host Operating System
 ~~~~~~~~~~~~~~~~~~~~~
 
-The Host OS must also have the *apci_cpufreq* module installed, in some cases
-the *intel_pstate* driver may be the default Power Management environment.
-To enable *acpi_cpufreq* and disable *intel_pstate*, add the following
-to the grub Linux command line:
+The DPDK Power Library can use either the *acpi_cpufreq* or *intel_pstate*
+kernel driver for the management of core frequencies. In many cases
+the *intel_pstate* driver is the default Power Management environment.
+
+Should the *acpi-cpufreq* driver be required, the *intel_pstate* module must
+be disabled, and *apci_cpufreq* module loaded in its place.
+
+To disable *intel_pstate* driver, add the following to the grub Linux
+command line:
 
 .. code-block:: console
 
