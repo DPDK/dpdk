@@ -4183,7 +4183,8 @@ i40e_get_rss_lut(struct i40e_vsi *vsi, uint8_t *lut, uint16_t lut_size)
 		return -EINVAL;
 
 	if (pf->flags & I40E_FLAG_RSS_AQ_CAPABLE) {
-		ret = i40e_aq_get_rss_lut(hw, vsi->vsi_id, TRUE,
+		ret = i40e_aq_get_rss_lut(hw, vsi->vsi_id,
+					  vsi->type != I40E_VSI_SRIOV,
 					  lut, lut_size);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "Failed to get RSS lookup table");
@@ -4222,7 +4223,8 @@ i40e_set_rss_lut(struct i40e_vsi *vsi, uint8_t *lut, uint16_t lut_size)
 	hw = I40E_VSI_TO_HW(vsi);
 
 	if (pf->flags & I40E_FLAG_RSS_AQ_CAPABLE) {
-		ret = i40e_aq_set_rss_lut(hw, vsi->vsi_id, TRUE,
+		ret = i40e_aq_set_rss_lut(hw, vsi->vsi_id,
+					  vsi->type != I40E_VSI_SRIOV,
 					  lut, lut_size);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "Failed to set RSS lookup table");
