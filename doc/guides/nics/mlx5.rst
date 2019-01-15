@@ -233,20 +233,6 @@ Environment variables
   enabled and most useful when ``CONFIG_RTE_EAL_PMD_PATH`` is also set,
   since ``LD_LIBRARY_PATH`` has no effect in this case.
 
-- ``MLX5_PMD_ENABLE_PADDING``
-
-  Enables HW packet padding in PCI bus transactions.
-
-  When packet size is cache aligned and CRC stripping is enabled, 4 fewer
-  bytes are written to the PCI bus. Enabling padding makes such packets
-  aligned again.
-
-  In cases where PCI bandwidth is the bottleneck, padding can improve
-  performance by 10%.
-
-  This is disabled by default since this can also decrease performance for
-  unaligned packet sizes.
-
 - ``MLX5_SHUT_UP_BF``
 
   Configures HW Tx doorbell register as IO-mapped.
@@ -300,6 +286,19 @@ Run-time configuration
   Supported on:
 
   - CPU having 128B cacheline with ConnectX-5 and Bluefield.
+
+- ``rxq_pkt_pad_en`` parameter [int]
+
+  A nonzero value enables padding Rx packet to the size of cacheline on PCI
+  transaction. This feature would waste PCI bandwidth but could improve
+  performance by avoiding partial cacheline write which may cause costly
+  read-modify-copy in memory transaction on some architectures. Disabled by
+  default.
+
+  Supported on:
+
+  - x86_64 with ConnectX-4, ConnectX-4 LX, ConnectX-5, ConnectX-6 and Bluefield.
+  - POWER8 and ARMv8 with ConnectX-4 LX, ConnectX-5, ConnectX-6 and Bluefield.
 
 - ``mprq_en`` parameter [int]
 
