@@ -160,6 +160,9 @@ power_init_for_setting_freq(struct pstate_power_info *pi)
 			pi->lcore_id);
 
 	f_max = fopen(fullpath_max, "rw+");
+	if (f_max == NULL)
+		fclose(f_min);
+
 	FOPEN_OR_ERR_RET(f_max, -1);
 
 	pi->f_cur_min = f_min;
@@ -398,6 +401,9 @@ power_get_available_freqs(struct pstate_power_info *pi)
 	FOPEN_OR_ERR_RET(f_min, ret);
 
 	f_max = fopen(fullpath_max, "r");
+	if (f_max == NULL)
+		fclose(f_min);
+
 	FOPEN_OR_ERR_RET(f_max, ret);
 
 	s_min = fgets(buf_min, sizeof(buf_min), f_min);
