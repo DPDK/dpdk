@@ -733,13 +733,16 @@ add_one_guest_page(struct virtio_net *dev, uint64_t guest_phys_addr,
 		   uint64_t host_phys_addr, uint64_t size)
 {
 	struct guest_page *page, *last_page;
+	struct guest_page *old_pages;
 
 	if (dev->nr_guest_pages == dev->max_guest_pages) {
 		dev->max_guest_pages *= 2;
+		old_pages = dev->guest_pages;
 		dev->guest_pages = realloc(dev->guest_pages,
 					dev->max_guest_pages * sizeof(*page));
 		if (!dev->guest_pages) {
 			RTE_LOG(ERR, VHOST_CONFIG, "cannot realloc guest_pages\n");
+			free(old_pages);
 			return -1;
 		}
 	}
