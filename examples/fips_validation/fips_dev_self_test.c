@@ -1449,7 +1449,7 @@ run_single_test(uint8_t dev_id,
 		return -ENOMEM;
 
 	ret = rte_cryptodev_sym_session_init(dev_id,
-			sess, &xform, env->sess_pool);
+			sess, &xform, env->sess_priv_pool);
 	if (ret < 0) {
 		RTE_LOG(ERR, PMD, "Error %i: Init session\n", ret);
 		return ret;
