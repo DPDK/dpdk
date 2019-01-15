@@ -353,11 +353,19 @@ port_init(uint16_t port)
 static int
 us_vhost_parse_socket_path(const char *q_arg)
 {
+	char *old;
+
 	/* parse number string */
 	if (strnlen(q_arg, PATH_MAX) == PATH_MAX)
 		return -1;
 
+	old = socket_files;
 	socket_files = realloc(socket_files, PATH_MAX * (nb_sockets + 1));
+	if (socket_files == NULL) {
+		free(old);
+		return -1;
+	}
+
 	snprintf(socket_files + nb_sockets * PATH_MAX, PATH_MAX, "%s", q_arg);
 	nb_sockets++;
 
