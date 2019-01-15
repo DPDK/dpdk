@@ -90,17 +90,15 @@ BIOS Settings
 The following are some recommendations on BIOS settings. Different platforms will have different BIOS naming
 so the following is mainly for reference:
 
-#. Before starting consider resetting all BIOS settings to their default.
+#. Establish the steady state for the system, consider reviewing BIOS settings desired for best performance characteristic e.g. optimize for performance or energy efficiency.
 
-#. Disable all power saving options such as: Power performance tuning, CPU P-State, CPU C3 Report and CPU C6 Report.
+#. Match the BIOS settings to the needs of the application you are testing.
 
-#. Select **Performance** as the CPU Power and Performance policy.
+#. Typically, **Performance** as the CPU Power and Performance policy is a reasonable starting point.
 
-#. Disable Turbo Boost to ensure the performance scaling increases with the number of cores.
+#. Consider using Turbo Boost to increase the frequency on cores.
 
-#. Set memory frequency to the highest available number, NOT auto.
-
-#. Disable all virtualization options when you test the physical function of the NIC, and turn on ``VT-d`` if you wants to use VFIO.
+#. Disable all virtualization options when you test the physical function of the NIC, and turn on VT-d if you wants to use VFIO.
 
 
 Linux boot command line
