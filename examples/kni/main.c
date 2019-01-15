@@ -132,6 +132,7 @@ static int kni_config_network_interface(uint16_t port_id, uint8_t if_up);
 static int kni_config_mac_address(uint16_t port_id, uint8_t mac_addr[]);
 
 static rte_atomic32_t kni_stop = RTE_ATOMIC32_INIT(0);
+static rte_atomic32_t kni_pause = RTE_ATOMIC32_INIT(0);
 
 /* Print out statistics on packets handled */
 static void
@@ -276,6 +277,7 @@ main_loop(__rte_unused void *arg)
 {
 	uint16_t i;
 	int32_t f_stop;
+	int32_t f_pause;
 	const unsigned lcore_id = rte_lcore_id();
 	enum lcore_rxtx {
 		LCORE_NONE,
@@ -304,8 +306,11 @@ main_loop(__rte_unused void *arg)
 					kni_port_params_array[i]->port_id);
 		while (1) {
 			f_stop = rte_atomic32_read(&kni_stop);
+			f_pause = rte_atomic32_read(&kni_pause);
 			if (f_stop)
 				break;
+			if (f_pause)
+				continue;
 			kni_ingress(kni_port_params_array[i]);
 		}
 	} else if (flag == LCORE_TX) {
@@ -314,8 +319,11 @@ main_loop(__rte_unused void *arg)
 					kni_port_params_array[i]->port_id);
 		while (1) {
 			f_stop = rte_atomic32_read(&kni_stop);
+			f_pause = rte_atomic32_read(&kni_pause);
 			if (f_stop)
 				break;
+			if (f_pause)
+				continue;
 			kni_egress(kni_port_params_array[i]);
 		}
 	} else
@@ -807,11 +815,15 @@ kni_config_network_interface(uint16_t port_id, uint8_t if_up)
 	RTE_LOG(INFO, APP, "Configure network interface of %d %s\n",
 					port_id, if_up ? "up" : "down");
 
+	rte_atomic32_inc(&kni_pause);
+
 	if (if_up != 0) { /* Configure network interface up */
 		rte_eth_dev_stop(port_id);
 		ret = rte_eth_dev_start(port_id);
 	} else /* Configure network interface down */
 		rte_eth_dev_stop(port_id);
+
+	rte_atomic32_dec(&kni_pause);
 
 	if (ret < 0)
 		RTE_LOG(ERR, APP, "Failed to start port %d\n", port_id);
