@@ -881,12 +881,15 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 		attr.wq.ibv.create_flags |= IBV_WQ_FLAGS_SCATTER_FCS;
 		attr.wq.ibv.comp_mask |= IBV_WQ_INIT_ATTR_FLAGS;
 	}
-#ifdef HAVE_IBV_WQ_FLAG_RX_END_PADDING
 	if (config->hw_padding) {
+#if defined(HAVE_IBV_WQ_FLAG_RX_END_PADDING)
 		attr.wq.ibv.create_flags |= IBV_WQ_FLAG_RX_END_PADDING;
 		attr.wq.ibv.comp_mask |= IBV_WQ_INIT_ATTR_FLAGS;
-	}
+#elif defined(HAVE_IBV_WQ_FLAGS_PCI_WRITE_END_PADDING)
+		attr.wq.ibv.create_flags |= IBV_WQ_FLAGS_PCI_WRITE_END_PADDING;
+		attr.wq.ibv.comp_mask |= IBV_WQ_INIT_ATTR_FLAGS;
 #endif
+	}
 #ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
 	attr.wq.mlx5 = (struct mlx5dv_wq_init_attr){
 		.comp_mask = 0,

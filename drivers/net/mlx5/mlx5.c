@@ -1066,8 +1066,11 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 				 IBV_RAW_PACKET_CAP_SCATTER_FCS);
 	DRV_LOG(DEBUG, "FCS stripping configuration is %ssupported",
 		(config.hw_fcs_strip ? "" : "not "));
-#ifdef HAVE_IBV_WQ_FLAG_RX_END_PADDING
+#if defined(HAVE_IBV_WQ_FLAG_RX_END_PADDING)
 	hw_padding = !!attr.rx_pad_end_addr_align;
+#elif defined(HAVE_IBV_WQ_FLAGS_PCI_WRITE_END_PADDING)
+	hw_padding = !!(attr.device_cap_flags_ex &
+			IBV_DEVICE_PCI_WRITE_END_PADDING);
 #endif
 	if (config.hw_padding && !hw_padding) {
 		DRV_LOG(DEBUG, "Rx end alignment padding isn't supported");

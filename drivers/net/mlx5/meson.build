@@ -103,6 +103,8 @@ if build
 		'mlx5dv_create_flow_action_packet_reformat' ],
 		[ 'HAVE_IBV_DEVICE_MPLS_SUPPORT', 'infiniband/verbs.h',
 		'IBV_FLOW_SPEC_MPLS' ],
+		[ 'HAVE_IBV_WQ_FLAGS_PCI_WRITE_END_PADDING', 'infiniband/verbs.h',
+		'IBV_WQ_FLAGS_PCI_WRITE_END_PADDING' ],
 		[ 'HAVE_IBV_WQ_FLAG_RX_END_PADDING', 'infiniband/verbs.h',
 		'IBV_WQ_FLAG_RX_END_PADDING' ],
 		[ 'HAVE_IBV_DEVX_OBJ', 'infiniband/mlx5dv.h',
