@@ -1271,7 +1271,10 @@ i40e_pf_host_process_cmd_request_queues(struct i40e_pf_vf *vf, uint8_t *msg)
 	} else {
 		i40e_vc_notify_vf_reset(vf);
 		vf->vsi->nb_qps = req_pairs;
-		pf->vf_nb_qps = req_pairs;
+		if (rte_is_power_of_2(req_pairs))
+			pf->vf_nb_qps = req_pairs;
+		else
+			pf->vf_nb_qps = i40e_align_floor(req_pairs) << 1;
 		i40e_pf_host_process_cmd_reset_vf(vf);
 
 		return 0;
