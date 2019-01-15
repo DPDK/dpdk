@@ -541,7 +541,7 @@ main(int argc, char *argv[])
 				rte_cryptodev_sym_get_private_session_size(
 				info->cid), 64, 0, NULL, NULL, NULL, NULL,
 				rte_lcore_to_socket_id(lo->lcore_id), 0);
-		if (!info->sess_priv_pool || info->sess_pool) {
+		if (!info->sess_priv_pool || !info->sess_pool) {
 			RTE_LOG(ERR, USER1, "Failed to create mempool");
 			goto error_exit;
 		}
@@ -562,7 +562,7 @@ main(int argc, char *argv[])
 
 		qp_conf.nb_descriptors = NB_CRYPTO_DESCRIPTORS;
 		qp_conf.mp_session = info->sess_pool;
-		qp_conf.mp_session_private = info->sess_pool;
+		qp_conf.mp_session_private = info->sess_priv_pool;
 
 		for (j = 0; j < dev_info.max_nb_queue_pairs; j++) {
 			ret = rte_cryptodev_queue_pair_setup(info->cid, j,
