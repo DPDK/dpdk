@@ -7,6 +7,7 @@
 
 #include "ice_type.h"
 
+#include "ice_flex_pipe.h"
 #include "ice_switch.h"
 
 enum ice_status ice_nvm_validate_checksum(struct ice_hw *hw);
