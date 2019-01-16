@@ -1862,13 +1862,13 @@ sfc_eth_dev_secondary_set_ops(struct rte_eth_dev *dev)
 
 	dp_rx = sfc_dp_find_rx_by_name(&sfc_dp_head, sa->dp_rx_name);
 	if (dp_rx == NULL) {
-		sfc_err(sa, "cannot find %s Rx datapath", sa->dp_tx_name);
+		sfc_err(sa, "cannot find %s Rx datapath", sa->dp_rx_name);
 		rc = ENOENT;
 		goto fail_dp_rx;
 	}
 	if (~dp_rx->features & SFC_DP_RX_FEAT_MULTI_PROCESS) {
 		sfc_err(sa, "%s Rx datapath does not support multi-process",
-			sa->dp_tx_name);
+			sa->dp_rx_name);
 		rc = EINVAL;
 		goto fail_dp_rx_multi_process;
 	}
