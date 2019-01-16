@@ -1712,6 +1712,77 @@ ice_aq_alloc_free_res(struct ice_hw *hw, u16 num_entries,
 	return ice_aq_send_cmd(hw, &desc, buf, buf_size, cd);
 }
 
+/**
+ * ice_alloc_hw_res - allocate resource
+ * @hw: pointer to the hw struct
+ * @type: type of resource
+ * @num: number of resources to allocate
+ * @sh: shared if true, dedicated if false
+ * @res: pointer to array that will receive the resources
+ */
+enum ice_status
+ice_alloc_hw_res(struct ice_hw *hw, u16 type, u16 num, bool sh, u16 *res)
+{
+	struct ice_aqc_alloc_free_res_elem *buf;
+	enum ice_status status;
+	u16 buf_len;
+
+	buf_len = sizeof(*buf) + sizeof(buf->elem) * (num - 1);
+	buf = (struct ice_aqc_alloc_free_res_elem *)
+		ice_malloc(hw, buf_len);
+	if (!buf)
+		return ICE_ERR_NO_MEMORY;
+
+	/* Prepare buffer to allocate resource. */
+	buf->num_elems = CPU_TO_LE16(num);
+	buf->res_type = CPU_TO_LE16(type | (sh ? ICE_AQC_RES_TYPE_FLAG_SHARED :
+		ICE_AQC_RES_TYPE_FLAG_DEDICATED));
+	status = ice_aq_alloc_free_res(hw, 1, buf, buf_len,
+				       ice_aqc_opc_alloc_res, NULL);
+	if (status)
+		goto ice_alloc_res_exit;
+
+	ice_memcpy(res, buf->elem, sizeof(buf->elem) * num,
+		   ICE_NONDMA_TO_NONDMA);
+
+ice_alloc_res_exit:
+	ice_free(hw, buf);
+	return status;
+}
+
+/**
+ * ice_free_hw_res - free allocated hw resource
+ * @hw: pointer to the hw struct
+ * @type: type of resource to free
+ * @num: number of resources
+ * @res: pointer to array that contains the resources to free
+ */
+enum ice_status
+ice_free_hw_res(struct ice_hw *hw, u16 type, u16 num, u16 *res)
+{
+	struct ice_aqc_alloc_free_res_elem *buf;
+	enum ice_status status;
+	u16 buf_len;
+
+	buf_len = sizeof(*buf) + sizeof(buf->elem) * (num - 1);
+	buf = (struct ice_aqc_alloc_free_res_elem *)ice_malloc(hw, buf_len);
+	if (!buf)
+		return ICE_ERR_NO_MEMORY;
+
+	/* Prepare buffer to free resource. */
+	buf->num_elems = CPU_TO_LE16(num);
+	buf->res_type = CPU_TO_LE16(type);
+	ice_memcpy(buf->elem, res, sizeof(buf->elem) * num,
+		   ICE_NONDMA_TO_NONDMA);
+
+	status = ice_aq_alloc_free_res(hw, num, buf, buf_len,
+				       ice_aqc_opc_free_res, NULL);
+	if (status)
+		ice_debug(hw, ICE_DBG_SW, "CQ CMD Buffer:\n");
+
+	ice_free(hw, buf);
+	return status;
+}
 
 /**
  * ice_get_num_per_func - determine number of resources per PF
