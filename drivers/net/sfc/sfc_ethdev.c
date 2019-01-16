@@ -537,8 +537,7 @@ sfc_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			mac_stats[EFX_MAC_VADAPTER_TX_UNICAST_BYTES] +
 			mac_stats[EFX_MAC_VADAPTER_TX_MULTICAST_BYTES] +
 			mac_stats[EFX_MAC_VADAPTER_TX_BROADCAST_BYTES];
-		stats->imissed = mac_stats[EFX_MAC_VADAPTER_RX_OVERFLOW];
-		stats->ierrors = mac_stats[EFX_MAC_VADAPTER_RX_BAD_PACKETS];
+		stats->imissed = mac_stats[EFX_MAC_VADAPTER_RX_BAD_PACKETS];
 		stats->oerrors = mac_stats[EFX_MAC_VADAPTER_TX_BAD_PACKETS];
 	} else {
 		stats->ipackets = mac_stats[EFX_MAC_RX_PKTS];
