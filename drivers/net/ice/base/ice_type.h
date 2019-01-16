@@ -704,7 +704,6 @@ struct ice_hw {
 
 	u8 ucast_shared;	/* true if VSIs can share unicast addr */
 
-
 };
 
 /* Statistics collected by each port, VSI, VEB, and S-channel */
