@@ -704,6 +704,42 @@ struct ice_hw {
 
 	u8 ucast_shared;	/* true if VSIs can share unicast addr */
 
+	/* Active package version (currently active) */
+	struct ice_pkg_ver active_pkg_ver;
+	u8 active_pkg_name[ICE_PKG_NAME_SIZE];
+
+	/* Driver's package ver - (from the Metadata seg) */
+	struct ice_pkg_ver pkg_ver;
+	u8 pkg_name[ICE_PKG_NAME_SIZE];
+
+	/* Driver's Ice package version (from the Ice seg) */
+	struct ice_pkg_ver ice_pkg_ver;
+	u8 ice_pkg_name[ICE_PKG_NAME_SIZE];
+
+	/* Pointer to the ice segment */
+	struct ice_seg *seg;
+
+	/* Pointer to allocated copy of pkg memory */
+	u8 *pkg_copy;
+
+	/* tunneling info */
+	struct ice_tunnel_table tnl;
+
+	/* PTYPE group and XLT1 management */
+#define ICE_MAX_PTGS	256
+	struct ice_ptg_entry ptg_tbl[ICE_BLK_COUNT][ICE_MAX_PTGS];
+
+#define ICE_XLT1_CNT	1024
+	struct ice_ptg_ptype xlt1_tbl[ICE_BLK_COUNT][ICE_XLT1_CNT];
+#define ICE_PKG_FILENAME	"package_file"
+#define ICE_PKG_FILENAME_EXT	"pkg"
+#define ICE_PKG_FILE_MAJ_VER	1
+#define ICE_PKG_FILE_MIN_VER	0
+
+	/* HW block tables */
+	struct ice_blk_info blk[ICE_BLK_COUNT];
+	struct ice_lock fl_profs_locks[ICE_BLK_COUNT];	/* lock fltr profiles */
+	struct LIST_HEAD_TYPE fl_profs[ICE_BLK_COUNT];
 };
 
 /* Statistics collected by each port, VSI, VEB, and S-channel */
