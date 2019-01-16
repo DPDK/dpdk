@@ -1415,6 +1415,21 @@ eal_check_common_options(struct internal_config *internal_cfg)
 		RTE_LOG(ERR, EAL, "Invalid process type specified\n");
 		return -1;
 	}
+	if (internal_cfg->hugefile_prefix != NULL &&
+			strlen(internal_cfg->hugefile_prefix) < 1) {
+		RTE_LOG(ERR, EAL, "Invalid length of --" OPT_FILE_PREFIX " option\n");
+		return -1;
+	}
+	if (internal_cfg->hugepage_dir != NULL &&
+			strlen(internal_cfg->hugepage_dir) < 1) {
+		RTE_LOG(ERR, EAL, "Invalid length of --" OPT_HUGE_DIR" option\n");
+		return -1;
+	}
+	if (internal_cfg->user_mbuf_pool_ops_name != NULL &&
+			strlen(internal_cfg->user_mbuf_pool_ops_name) < 1) {
+		RTE_LOG(ERR, EAL, "Invalid length of --" OPT_MBUF_POOL_OPS_NAME" option\n");
+		return -1;
+	}
 	if (index(eal_get_hugefile_prefix(), '%') != NULL) {
 		RTE_LOG(ERR, EAL, "Invalid char, '%%', in --"OPT_FILE_PREFIX" "
 			"option\n");
