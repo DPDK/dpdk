@@ -3034,6 +3034,42 @@ static void ice_fill_blk_tbls(struct ice_hw *hw, enum ice_block block_id)
 }
 
 /**
+ * ice_free_flow_profs - free flow profile entries
+ * @hw: pointer to the hardware structure
+ */
+static void ice_free_flow_profs(struct ice_hw *hw)
+{
+	u8 i;
+
+	for (i = 0; i < ICE_BLK_COUNT; i++) {
+		struct ice_flow_prof *p, *tmp;
+
+		if (!&hw->fl_profs[i])
+			continue;
+
+		/* This call is being made as part of resource deallocation
+		 * during unload. Lock acquire and release will not be
+		 * necessary here.
+		 */
+		LIST_FOR_EACH_ENTRY_SAFE(p, tmp, &hw->fl_profs[i],
+					 ice_flow_prof, l_entry) {
+			struct ice_flow_entry *e, *t;
+
+			LIST_FOR_EACH_ENTRY_SAFE(e, t, &p->entries,
+						 ice_flow_entry, l_entry)
+				ice_flow_rem_entry(hw, ICE_FLOW_ENTRY_HNDL(e));
+
+			LIST_DEL(&p->l_entry);
+			if (p->acts)
+				ice_free(hw, p->acts);
+			ice_free(hw, p);
+		}
+
+		ice_destroy_lock(&hw->fl_profs_locks[i]);
+	}
+}
+
+/**
  * ice_free_prof_map - frees the profile map
  * @hw: pointer to the hardware structure
  * @blk: the hw block which contains the profile map to be freed
@@ -3096,6 +3132,8 @@ void ice_free_hw_tbls(struct ice_hw *hw)
 	}
 
 	ice_memset(hw->blk, 0, sizeof(hw->blk), ICE_NONDMA_MEM);
+
+	ice_free_flow_profs(hw);
 }
 
 /**
