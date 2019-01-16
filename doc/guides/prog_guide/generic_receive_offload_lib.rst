@@ -191,3 +191,22 @@ Header fields deciding if packets are neighbors include:
         ignore IPv4 ID fields for the packets whose DF bit is 1.
         Additionally, packets which have different value of DF bit can't
         be merged.
+
+GRO Library Limitations
+-----------------------
+
+- GRO library uses MBUF->l2_len/l3_len/l4_len/outer_l2_len/
+  outer_l3_len/packet_type to get protocol headers for the
+  input packet, rather than parsing the packet header. Therefore,
+  before call GRO APIs to merge packets, user applications
+  must set MBUF->l2_len/l3_len/l4_len/outer_l2_len/outer_l3_len/
+  packet_type to the same values as the protocol headers of the
+  packet.
+
+- GRO library doesn't support to process the packets with IPv4
+  Options or VLAN tagged.
+
+- GRO library just supports to process the packet organized
+  in a single MBUF. If the input packet consists of multiple
+  MBUFs (i.e. chained MBUFs), GRO reassembly behaviors are
+  unknown.
