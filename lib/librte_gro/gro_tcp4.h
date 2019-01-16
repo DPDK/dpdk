@@ -17,6 +17,11 @@
  */
 #define MAX_IPV4_PKT_LENGTH UINT16_MAX
 
+/* The maximum TCP header length */
+#define MAX_TCP_HLEN 60
+#define INVALID_TCP_HDRLEN(len) \
+	(((len) < sizeof(struct tcp_hdr)) || ((len) > MAX_TCP_HLEN))
+
 /* Header fields representing a TCP/IPv4 flow */
 struct tcp4_flow_key {
 	struct ether_addr eth_saddr;
