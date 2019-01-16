@@ -457,6 +457,8 @@ LIST_HEAD(ice_list_head, ice_list_entry);
 
 /*Note parameters are swapped*/
 #define LIST_FIRST_ENTRY(head, type, field) (type *)((head)->lh_first)
+#define LIST_NEXT_ENTRY(entry, type, field) \
+	((type *)(entry)->field.next.le_next)
 #define LIST_ADD(entry, list_head)    LIST_INSERT_HEAD(list_head, entry, next)
 #define LIST_ADD_AFTER(entry, list_entry) \
 	LIST_INSERT_AFTER(list_entry, entry, next)
