@@ -735,7 +735,7 @@ static u16 ice_clean_sq(struct ice_hw *hw, struct ice_ctl_q_info *cq)
  * Returns true if the firmware has processed all descriptors on the
  * admin send queue. Returns false if there are still requests pending.
  */
-bool ice_sq_done(struct ice_hw *hw, struct ice_ctl_q_info *cq)
+static bool ice_sq_done(struct ice_hw *hw, struct ice_ctl_q_info *cq)
 {
 	/* AQ designers suggest use of head for better
 	 * timing reliability than DD bit

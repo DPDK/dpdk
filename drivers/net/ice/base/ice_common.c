@@ -60,16 +60,6 @@ static enum ice_status ice_set_mac_type(struct ice_hw *hw)
 	return status;
 }
 
-#if defined(FPGA_SUPPORT) || defined(CVL_A0_SUPPORT)
-void ice_dev_onetime_setup(struct ice_hw *hw)
-{
-	/* configure Rx - set non pxe mode */
-	wr32(hw, GLLAN_RCTL_0, 0x1);
-
-
-
-}
-#endif /* FPGA_SUPPORT || CVL_A0_SUPPORT */
 
 /**
  * ice_clear_pf_cfg - Clear PF configuration
@@ -830,10 +820,6 @@ enum ice_status ice_init_hw(struct ice_hw *hw)
 	if (status)
 		goto err_unroll_sched;
 
-#if defined(FPGA_SUPPORT) || defined(CVL_A0_SUPPORT)
-	/* some of the register write workarounds to get Rx working */
-	ice_dev_onetime_setup(hw);
-#endif /* FPGA_SUPPORT || CVL_A0_SUPPORT */
 
 	/* Get MAC information */
 	/* A single port can report up to two (LAN and WoL) addresses */
