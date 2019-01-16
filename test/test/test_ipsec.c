@@ -4,9 +4,6 @@
 
 #include <time.h>
 
-#include <netinet/in.h>
-#include <netinet/ip.h>
-
 #include <rte_common.h>
 #include <rte_hexdump.h>
 #include <rte_mbuf.h>
