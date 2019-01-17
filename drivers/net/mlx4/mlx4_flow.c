@@ -248,6 +248,7 @@ mlx4_flow_merge_eth(struct rte_flow *flow,
 		.size = sizeof(*eth),
 	};
 	if (!mask) {
+		eth->val.dst_mac[0] = 0xff;
 		flow->ibv_attr->type = IBV_FLOW_ATTR_ALL_DEFAULT;
 		return 0;
 	}
