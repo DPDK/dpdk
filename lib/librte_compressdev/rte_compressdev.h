@@ -73,6 +73,12 @@ rte_compressdev_capability_get(uint8_t dev_id,
 /**< Utilises CPU SIMD AVX512 instructions */
 #define	RTE_COMPDEV_FF_CPU_NEON			(1ULL << 5)
 /**< Utilises CPU NEON instructions */
+#define RTE_COMPDEV_FF_OP_DONE_IN_DEQUEUE	(1ULL << 6)
+/**< A PMD should set this if the bulk of the
+ * processing is done during the dequeue. It should leave it
+ * cleared if the processing is done during the enqueue (default).
+ * Applications can use this as a hint for tuning.
+ */
 
 /**
  * Get the name of a compress device feature flag.

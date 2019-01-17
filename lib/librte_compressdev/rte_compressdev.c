@@ -66,6 +66,8 @@ rte_compressdev_get_feature_name(uint64_t flag)
 		return "CPU_AVX512";
 	case RTE_COMPDEV_FF_CPU_NEON:
 		return "CPU_NEON";
+	case RTE_COMPDEV_FF_OP_DONE_IN_DEQUEUE:
+		return "OP_DONE_IN_DEQ";
 	default:
 		return NULL;
 	}
