@@ -87,6 +87,18 @@ sfc_port_update_mac_stats(struct sfc_adapter *sa)
 	return 0;
 }
 
+static void
+sfc_port_reset_sw_stats(struct sfc_adapter *sa)
+{
+	struct sfc_port *port = &sa->port;
+
+	/*
+	 * Reset diff stats explicitly since check which does not allow
+	 * the statistics to grow backward could deny it.
+	 */
+	port->ipackets = 0;
+}
+
 int
 sfc_port_reset_mac_stats(struct sfc_adapter *sa)
 {
@@ -95,6 +107,8 @@ sfc_port_reset_mac_stats(struct sfc_adapter *sa)
 
 	rte_spinlock_lock(&port->mac_stats_lock);
 	rc = efx_mac_stats_clear(sa->nic);
+	if (rc == 0)
+		sfc_port_reset_sw_stats(sa);
 	rte_spinlock_unlock(&port->mac_stats_lock);
 
 	return rc;

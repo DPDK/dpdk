@@ -149,6 +149,8 @@ struct sfc_port {
 	uint64_t			mac_stats_last_request_timestamp;
 
 	uint32_t		mac_stats_mask[EFX_MAC_STATS_MASK_NPAGES];
+
+	uint64_t			ipackets;
 };
 
 struct sfc_rss_hf_rte_to_efx {

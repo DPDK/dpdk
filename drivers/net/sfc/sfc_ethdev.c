@@ -503,6 +503,29 @@ sfc_tx_queue_release(void *queue)
 	sfc_adapter_unlock(sa);
 }
 
+/*
+ * Some statistics are computed as A - B where A and B each increase
+ * monotonically with some hardware counter(s) and the counters are read
+ * asynchronously.
+ *
+ * If packet X is counted in A, but not counted in B yet, computed value is
+ * greater than real.
+ *
+ * If packet X is not counted in A at the moment of reading the counter,
+ * but counted in B at the moment of reading the counter, computed value
+ * is less than real.
+ *
+ * However, counter which grows backward is worse evil than slightly wrong
+ * value. So, let's try to guarantee that it never happens except may be
+ * the case when the MAC stats are zeroed as a result of a NIC reset.
+ */
+static void
+sfc_update_diff_stat(uint64_t *stat, uint64_t newval)
+{
+	if ((int64_t)(newval - *stat) > 0 || newval == 0)
+		*stat = newval;
+}
+
 static int
 sfc_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
@@ -540,7 +563,6 @@ sfc_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		stats->imissed = mac_stats[EFX_MAC_VADAPTER_RX_BAD_PACKETS];
 		stats->oerrors = mac_stats[EFX_MAC_VADAPTER_TX_BAD_PACKETS];
 	} else {
-		stats->ipackets = mac_stats[EFX_MAC_RX_PKTS];
 		stats->opackets = mac_stats[EFX_MAC_TX_PKTS];
 		stats->ibytes = mac_stats[EFX_MAC_RX_OCTETS];
 		stats->obytes = mac_stats[EFX_MAC_TX_OCTETS];
@@ -566,6 +588,13 @@ sfc_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			mac_stats[EFX_MAC_RX_ALIGN_ERRORS] +
 			mac_stats[EFX_MAC_RX_JABBER_PKTS];
 		/* no oerrors counters supported on EF10 */
+
+		/* Exclude missed, errors and pauses from Rx packets */
+		sfc_update_diff_stat(&port->ipackets,
+			mac_stats[EFX_MAC_RX_PKTS] -
+			mac_stats[EFX_MAC_RX_PAUSE_PKTS] -
+			stats->imissed - stats->ierrors);
+		stats->ipackets = port->ipackets;
 	}
 
 unlock:
