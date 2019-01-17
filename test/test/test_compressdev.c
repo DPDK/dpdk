@@ -58,6 +58,13 @@ enum zlib_direction {
 	ZLIB_ALL
 };
 
+enum varied_buff {
+	LB_BOTH = 0,	/* both input and output are linear*/
+	SGL_BOTH,	/* both input and output are chained */
+	SGL_TO_LB,	/* input buffer is chained */
+	LB_TO_SGL	/* output buffer is chained */
+};
+
 struct priv_op_data {
 	uint16_t orig_idx;
 };
@@ -81,7 +88,7 @@ struct interim_data_params {
 
 struct test_data_params {
 	enum rte_comp_op_type state;
-	unsigned int sgl;
+	enum varied_buff buff_type;
 	enum zlib_direction zlib_dir;
 	unsigned int out_of_space;
 };
@@ -368,7 +375,7 @@ compress_zlib(struct rte_comp_op *op,
 	}
 
 	/* Assuming stateless operation */
-	/* SGL */
+	/* SGL Input */
 	if (op->m_src->nb_segs > 1) {
 		single_src_buf = rte_malloc(NULL,
 				rte_pktmbuf_pkt_len(op->m_src), 0);
@@ -376,14 +383,10 @@ compress_zlib(struct rte_comp_op *op,
 			RTE_LOG(ERR, USER1, "Buffer could not be allocated\n");
 			goto exit;
 		}
-		single_dst_buf = rte_malloc(NULL,
-				rte_pktmbuf_pkt_len(op->m_dst), 0);
-		if (single_dst_buf == NULL) {
-			RTE_LOG(ERR, USER1, "Buffer could not be allocated\n");
-			goto exit;
-		}
-		if (rte_pktmbuf_read(op->m_src, 0,
-					rte_pktmbuf_pkt_len(op->m_src),
+
+		if (rte_pktmbuf_read(op->m_src, op->src.offset,
+					rte_pktmbuf_pkt_len(op->m_src) -
+					op->src.offset,
 					single_src_buf) == NULL) {
 			RTE_LOG(ERR, USER1,
 				"Buffer could not be read entirely\n");
@@ -392,15 +395,32 @@ compress_zlib(struct rte_comp_op *op,
 
 		stream.avail_in = op->src.length;
 		stream.next_in = single_src_buf;
-		stream.avail_out = rte_pktmbuf_pkt_len(op->m_dst);
-		stream.next_out = single_dst_buf;
 
 	} else {
 		stream.avail_in = op->src.length;
-		stream.next_in = rte_pktmbuf_mtod(op->m_src, uint8_t *);
-		stream.avail_out = op->m_dst->data_len;
-		stream.next_out = rte_pktmbuf_mtod(op->m_dst, uint8_t *);
+		stream.next_in = rte_pktmbuf_mtod_offset(op->m_src, uint8_t *,
+				op->src.offset);
 	}
+	/* SGL output */
+	if (op->m_dst->nb_segs > 1) {
+
+		single_dst_buf = rte_malloc(NULL,
+				rte_pktmbuf_pkt_len(op->m_dst), 0);
+			if (single_dst_buf == NULL) {
+				RTE_LOG(ERR, USER1,
+					"Buffer could not be allocated\n");
+			goto exit;
+		}
+
+		stream.avail_out = op->m_dst->pkt_len;
+		stream.next_out = single_dst_buf;
+
+	} else {/* linear output */
+		stream.avail_out = op->m_dst->data_len;
+		stream.next_out = rte_pktmbuf_mtod_offset(op->m_dst, uint8_t *,
+				op->dst.offset);
+	}
+
 	/* Stateless operation, all buffer will be compressed in one go */
 	zlib_flush = map_zlib_flush_flag(op->flush_flag);
 	ret = deflate(&stream, zlib_flush);
@@ -414,14 +434,14 @@ compress_zlib(struct rte_comp_op *op,
 		goto exit;
 
 	/* Copy data to destination SGL */
-	if (op->m_src->nb_segs > 1) {
+	if (op->m_dst->nb_segs > 1) {
 		uint32_t remaining_data = stream.total_out;
 		uint8_t *src_data = single_dst_buf;
 		struct rte_mbuf *dst_buf = op->m_dst;
 
 		while (remaining_data > 0) {
-			uint8_t *dst_data = rte_pktmbuf_mtod(dst_buf,
-					uint8_t *);
+			uint8_t *dst_data = rte_pktmbuf_mtod_offset(dst_buf,
+						uint8_t *, op->dst.offset);
 			/* Last segment */
 			if (remaining_data < dst_buf->data_len) {
 				memcpy(dst_data, src_data, remaining_data);
@@ -438,12 +458,14 @@ compress_zlib(struct rte_comp_op *op,
 	op->consumed = stream.total_in;
 	if (xform->compress.chksum == RTE_COMP_CHECKSUM_ADLER32) {
 		rte_pktmbuf_adj(op->m_dst, ZLIB_HEADER_SIZE);
-		op->produced = stream.total_out -
-				(ZLIB_HEADER_SIZE + ZLIB_TRAILER_SIZE);
+		rte_pktmbuf_trim(op->m_dst, ZLIB_TRAILER_SIZE);
+		op->produced = stream.total_out - (ZLIB_HEADER_SIZE +
+				ZLIB_TRAILER_SIZE);
 	} else if (xform->compress.chksum == RTE_COMP_CHECKSUM_CRC32) {
 		rte_pktmbuf_adj(op->m_dst, GZIP_HEADER_SIZE);
-		op->produced = stream.total_out -
-				(GZIP_HEADER_SIZE + GZIP_TRAILER_SIZE);
+		rte_pktmbuf_trim(op->m_dst, GZIP_TRAILER_SIZE);
+		op->produced = stream.total_out - (GZIP_HEADER_SIZE +
+				GZIP_TRAILER_SIZE);
 	} else
 		op->produced = stream.total_out;
 
@@ -679,7 +701,7 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 	struct rte_comp_xform **decompress_xforms = int_data->decompress_xforms;
 	unsigned int num_xforms = int_data->num_xforms;
 	enum rte_comp_op_type state = test_data->state;
-	unsigned int sgl = test_data->sgl;
+	unsigned int buff_type = test_data->buff_type;
 	unsigned int out_of_space = test_data->out_of_space;
 	enum zlib_direction zlib_dir = test_data->zlib_dir;
 	int ret_status = -1;
@@ -715,7 +737,7 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 	memset(ops_processed, 0, sizeof(struct rte_comp_op *) * num_bufs);
 	memset(priv_xforms, 0, sizeof(void *) * num_bufs);
 
-	if (sgl)
+	if (buff_type == SGL_BOTH)
 		buf_pool = ts_params->small_mbuf_pool;
 	else
 		buf_pool = ts_params->large_mbuf_pool;
@@ -730,7 +752,7 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 		goto exit;
 	}
 
-	if (sgl) {
+	if (buff_type == SGL_BOTH || buff_type == SGL_TO_LB) {
 		for (i = 0; i < num_bufs; i++) {
 			data_size = strlen(test_bufs[i]) + 1;
 			if (prepare_sgl_bufs(test_bufs[i], uncomp_bufs[i],
@@ -757,7 +779,7 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 		goto exit;
 	}
 
-	if (sgl) {
+	if (buff_type == SGL_BOTH || buff_type == LB_TO_SGL) {
 		for (i = 0; i < num_bufs; i++) {
 			if (out_of_space == 1 && oos_zlib_decompress)
 				data_size = OUT_OF_SPACE_BUF;
@@ -983,7 +1005,7 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 		goto exit;
 	}
 
-	if (sgl) {
+	if (buff_type == SGL_BOTH || buff_type == LB_TO_SGL) {
 		for (i = 0; i < num_bufs; i++) {
 			priv_data = (struct priv_op_data *)
 					(ops_processed[i] + 1);
@@ -1295,7 +1317,7 @@ test_compressdev_deflate_stateless_fixed(void)
 
 	struct test_data_params test_data = {
 		RTE_COMP_OP_STATELESS,
-		0,
+		LB_BOTH,
 		ZLIB_DECOMPRESS,
 		0
 	};
@@ -1365,7 +1387,7 @@ test_compressdev_deflate_stateless_dynamic(void)
 
 	struct test_data_params test_data = {
 		RTE_COMP_OP_STATELESS,
-		0,
+		LB_BOTH,
 		ZLIB_DECOMPRESS,
 		0
 	};
@@ -1418,7 +1440,7 @@ test_compressdev_deflate_stateless_multi_op(void)
 
 	struct test_data_params test_data = {
 		RTE_COMP_OP_STATELESS,
-		0,
+		LB_BOTH,
 		ZLIB_DECOMPRESS,
 		0
 	};
@@ -1467,7 +1489,7 @@ test_compressdev_deflate_stateless_multi_level(void)
 
 	struct test_data_params test_data = {
 		RTE_COMP_OP_STATELESS,
-		0,
+		LB_BOTH,
 		ZLIB_DECOMPRESS,
 		0
 	};
@@ -1556,7 +1578,7 @@ test_compressdev_deflate_stateless_multi_xform(void)
 
 	struct test_data_params test_data = {
 		RTE_COMP_OP_STATELESS,
-		0,
+		LB_BOTH,
 		ZLIB_DECOMPRESS,
 		0
 	};
@@ -1601,7 +1623,7 @@ test_compressdev_deflate_stateless_sgl(void)
 
 	struct test_data_params test_data = {
 		RTE_COMP_OP_STATELESS,
-		1,
+		SGL_BOTH,
 		ZLIB_DECOMPRESS,
 		0
 	};
@@ -1619,6 +1641,36 @@ test_compressdev_deflate_stateless_sgl(void)
 		test_data.zlib_dir = ZLIB_COMPRESS;
 		if (test_deflate_comp_decomp(&int_data, &test_data) < 0)
 			return TEST_FAILED;
+
+		if (capab->comp_feature_flags & RTE_COMP_FF_OOP_SGL_IN_LB_OUT) {
+			/* Compress with compressdev, decompress with Zlib */
+			test_data.zlib_dir = ZLIB_DECOMPRESS;
+			test_data.buff_type = SGL_TO_LB;
+			if (test_deflate_comp_decomp(&int_data, &test_data) < 0)
+				return TEST_FAILED;
+
+			/* Compress with Zlib, decompress with compressdev */
+			test_data.zlib_dir = ZLIB_COMPRESS;
+			test_data.buff_type = SGL_TO_LB;
+			if (test_deflate_comp_decomp(&int_data, &test_data) < 0)
+				return TEST_FAILED;
+		}
+
+		if (capab->comp_feature_flags & RTE_COMP_FF_OOP_LB_IN_SGL_OUT) {
+			/* Compress with compressdev, decompress with Zlib */
+			test_data.zlib_dir = ZLIB_DECOMPRESS;
+			test_data.buff_type = LB_TO_SGL;
+			if (test_deflate_comp_decomp(&int_data, &test_data) < 0)
+				return TEST_FAILED;
+
+			/* Compress with Zlib, decompress with compressdev */
+			test_data.zlib_dir = ZLIB_COMPRESS;
+			test_data.buff_type = LB_TO_SGL;
+			if (test_deflate_comp_decomp(&int_data, &test_data) < 0)
+				return TEST_FAILED;
+		}
+
+
 	}
 
 	return TEST_SUCCESS;
@@ -1678,7 +1730,7 @@ test_compressdev_deflate_stateless_checksum(void)
 
 	struct test_data_params test_data = {
 		RTE_COMP_OP_STATELESS,
-		0,
+		LB_BOTH,
 		ZLIB_DECOMPRESS,
 		0
 	};
@@ -1808,7 +1860,7 @@ test_compressdev_out_of_space_buffer(void)
 
 	struct test_data_params test_data = {
 		RTE_COMP_OP_STATELESS,
-		0,
+		LB_BOTH,
 		ZLIB_DECOMPRESS,
 		1
 	};
@@ -1829,7 +1881,7 @@ test_compressdev_out_of_space_buffer(void)
 	if (capab->comp_feature_flags & RTE_COMP_FF_OOP_SGL_IN_SGL_OUT) {
 		/* Compress with compressdev, decompress with Zlib */
 		test_data.zlib_dir = ZLIB_DECOMPRESS;
-		test_data.sgl = 1;
+		test_data.buff_type = SGL_BOTH;
 		if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
 			ret = TEST_FAILED;
 			goto exit;
@@ -1837,7 +1889,7 @@ test_compressdev_out_of_space_buffer(void)
 
 		/* Compress with Zlib, decompress with compressdev */
 		test_data.zlib_dir = ZLIB_COMPRESS;
-		test_data.sgl = 1;
+		test_data.buff_type = SGL_BOTH;
 		if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
 			ret = TEST_FAILED;
 			goto exit;
