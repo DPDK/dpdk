@@ -19,9 +19,9 @@ Config File Options
 
 The following option can be modified in the ``config`` file.
 
-- ``CONFIG_RTE_LIBRTE_IFCVF_VDPA_PMD`` (default ``y`` for linux)
+- ``CONFIG_RTE_LIBRTE_IFC_PMD`` (default ``y`` for linux)
 
-  Toggle compilation of the ``librte_ifcvf_vdpa`` driver.
+  Toggle compilation of the ``librte_pmd_ifc`` driver.
 
 
 IFCVF vDPA Implementation
