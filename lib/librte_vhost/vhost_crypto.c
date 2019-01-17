@@ -434,33 +434,33 @@ vhost_crypto_close_sess(struct vhost_crypto *vcrypto, uint64_t session_id)
 	return 0;
 }
 
-static enum vh_result
+static enum rte_vhost_msg_result
 vhost_crypto_msg_post_handler(int vid, void *msg)
 {
 	struct virtio_net *dev = get_device(vid);
 	struct vhost_crypto *vcrypto;
 	VhostUserMsg *vmsg = msg;
-	enum vh_result ret = VH_RESULT_OK;
+	enum rte_vhost_msg_result ret = RTE_VHOST_MSG_RESULT_OK;
 
 	if (dev == NULL) {
 		VC_LOG_ERR("Invalid vid %i", vid);
-		return VH_RESULT_ERR;
+		return RTE_VHOST_MSG_RESULT_ERR;
 	}
 
 	vcrypto = dev->extern_data;
 	if (vcrypto == NULL) {
 		VC_LOG_ERR("Cannot find required data, is it initialized?");
-		return VH_RESULT_ERR;
+		return RTE_VHOST_MSG_RESULT_ERR;
 	}
 
 	if (vmsg->request.master == VHOST_USER_CRYPTO_CREATE_SESS) {
 		vhost_crypto_create_sess(vcrypto,
 				&vmsg->payload.crypto_session);
 		vmsg->fd_num = 0;
-		ret = VH_RESULT_REPLY;
+		ret = RTE_VHOST_MSG_RESULT_REPLY;
 	} else if (vmsg->request.master == VHOST_USER_CRYPTO_CLOSE_SESS) {
 		if (vhost_crypto_close_sess(vcrypto, vmsg->payload.u64))
-			ret = VH_RESULT_ERR;
+			ret = RTE_VHOST_MSG_RESULT_ERR;
 	}
 
 	return ret;

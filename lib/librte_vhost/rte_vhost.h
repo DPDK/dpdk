@@ -112,6 +112,59 @@ struct rte_vhost_vring {
 };
 
 /**
+ * Possible results of the vhost user message handling callbacks
+ */
+enum rte_vhost_msg_result {
+	/* Message handling failed */
+	RTE_VHOST_MSG_RESULT_ERR = -1,
+	/* Message handling successful */
+	RTE_VHOST_MSG_RESULT_OK =  0,
+	/* Message handling successful and reply prepared */
+	RTE_VHOST_MSG_RESULT_REPLY =  1,
+};
+
+/**
+ * Function prototype for the vhost backend to handler specific vhost user
+ * messages prior to the master message handling
+ *
+ * @param vid
+ *  vhost device id
+ * @param msg
+ *  Message pointer.
+ * @param skip_master
+ *  If the handler requires skipping the master message handling, this variable
+ *  shall be written 1, otherwise 0.
+ * @return
+ *  VH_RESULT_OK on success, VH_RESULT_REPLY on success with reply,
+ *  VH_RESULT_ERR on failure
+ */
+typedef enum rte_vhost_msg_result (*rte_vhost_msg_pre_handle)(int vid,
+		void *msg, uint32_t *skip_master);
+
+/**
+ * Function prototype for the vhost backend to handler specific vhost user
+ * messages after the master message handling is done
+ *
+ * @param vid
+ *  vhost device id
+ * @param msg
+ *  Message pointer.
+ * @return
+ *  VH_RESULT_OK on success, VH_RESULT_REPLY on success with reply,
+ *  VH_RESULT_ERR on failure
+ */
+typedef enum rte_vhost_msg_result (*rte_vhost_msg_post_handle)(int vid,
+		void *msg);
+
+/**
+ * Optional vhost user message handlers.
+ */
+struct rte_vhost_user_extern_ops {
+	rte_vhost_msg_pre_handle pre_msg_handle;
+	rte_vhost_msg_post_handle post_msg_handle;
+};
+
+/**
  * Device and vring operations.
  */
 struct vhost_device_ops {
@@ -639,6 +692,22 @@ rte_vhost_get_vring_base(int vid, uint16_t queue_id,
 int __rte_experimental
 rte_vhost_set_vring_base(int vid, uint16_t queue_id,
 		uint16_t last_avail_idx, uint16_t last_used_idx);
+
+/**
+ * Register external message handling callbacks
+ *
+ * @param vid
+ *  vhost device ID
+ * @param ops
+ *  virtio external callbacks to register
+ * @param ctx
+ *  additional context passed to the callbacks
+ * @return
+ *  0 on success, -1 on failure
+ */
+int __rte_experimental
+rte_vhost_extern_callback_register(int vid,
+		struct rte_vhost_user_extern_ops const * const ops, void *ctx);
 
 /**
  * Get vdpa device id for vhost device.

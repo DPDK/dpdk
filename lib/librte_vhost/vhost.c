@@ -820,3 +820,16 @@ int rte_vhost_set_vring_base(int vid, uint16_t queue_id,
 
 	return 0;
 }
+
+int rte_vhost_extern_callback_register(int vid,
+		struct rte_vhost_user_extern_ops const * const ops, void *ctx)
+{
+	struct virtio_net *dev = get_device(vid);
+
+	if (!dev)
+		return -1;
+
+	dev->extern_ops = *ops;
+	dev->extern_data = ctx;
+	return 0;
+}

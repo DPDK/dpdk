@@ -85,4 +85,5 @@ EXPERIMENTAL {
 	rte_vhost_va_from_guest_pa;
 	rte_vhost_host_notifier_ctrl;
 	rte_vdpa_relay_vring_used;
+	rte_vhost_extern_callback_register;
 };

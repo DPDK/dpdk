@@ -286,56 +286,6 @@ struct guest_page {
 	uint64_t size;
 };
 
-/* The possible results of a message handling function */
-enum vh_result {
-	/* Message handling failed */
-	VH_RESULT_ERR   = -1,
-	/* Message handling successful */
-	VH_RESULT_OK    =  0,
-	/* Message handling successful and reply prepared */
-	VH_RESULT_REPLY =  1,
-};
-
-/**
- * function prototype for the vhost backend to handler specific vhost user
- * messages prior to the master message handling
- *
- * @param vid
- *  vhost device id
- * @param msg
- *  Message pointer.
- * @param skip_master
- *  If the handler requires skipping the master message handling, this variable
- *  shall be written 1, otherwise 0.
- * @return
- *  VH_RESULT_OK on success, VH_RESULT_REPLY on success with reply,
- *  VH_RESULT_ERR on failure
- */
-typedef enum vh_result (*vhost_msg_pre_handle)(int vid, void *msg,
-		uint32_t *skip_master);
-
-/**
- * function prototype for the vhost backend to handler specific vhost user
- * messages after the master message handling is done
- *
- * @param vid
- *  vhost device id
- * @param msg
- *  Message pointer.
- * @return
- *  VH_RESULT_OK on success, VH_RESULT_REPLY on success with reply,
- *  VH_RESULT_ERR on failure
- */
-typedef enum vh_result (*vhost_msg_post_handle)(int vid, void *msg);
-
-/**
- * pre and post vhost user message handlers
- */
-struct vhost_user_extern_ops {
-	vhost_msg_pre_handle pre_msg_handle;
-	vhost_msg_post_handle post_msg_handle;
-};
-
 /**
  * Device structure contains all configuration information relating
  * to the device.
@@ -379,10 +329,10 @@ struct virtio_net {
 	 */
 	int			vdpa_dev_id;
 
-	/* private data for virtio device */
+	/* context data for the external message handlers */
 	void			*extern_data;
 	/* pre and post vhost user message handlers for the device */
-	struct vhost_user_extern_ops extern_ops;
+	struct rte_vhost_user_extern_ops extern_ops;
 } __rte_cache_aligned;
 
 static __rte_always_inline bool
