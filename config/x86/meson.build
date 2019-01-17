@@ -2,7 +2,16 @@
 # Copyright(c) 2017 Intel Corporation
 
 # for checking defines we need to use the correct compiler flags
-march_opt = '-march=@0@'.format(machine)
+march_opt = ['-march=@0@'.format(machine)]
+
+# get binutils version for the workaround of Bug 97
+ldver = run_command('ld', '-v').stdout().strip()
+if ldver.contains('2.30')
+	if cc.has_argument('-mno-avx512f')
+		march_opt += '-mno-avx512f'
+		message('Binutils 2.30 detected, disabling AVX512 support as workaround for bug #97')
+	endif
+endif
 
 # we require SSE4.2 for DPDK
 sse_errormsg = '''SSE4.2 instruction set is required for DPDK.
