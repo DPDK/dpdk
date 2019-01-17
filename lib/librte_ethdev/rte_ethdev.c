@@ -3588,9 +3588,15 @@ rte_eth_dma_zone_reserve(const struct rte_eth_dev *dev, const char *ring_name,
 {
 	char z_name[RTE_MEMZONE_NAMESIZE];
 	const struct rte_memzone *mz;
+	int rc;
 
-	snprintf(z_name, sizeof(z_name), "eth_p%d_q%d_%s",
-		 dev->data->port_id, queue_id, ring_name);
+	rc = snprintf(z_name, sizeof(z_name), "eth_p%d_q%d_%s",
+		      dev->data->port_id, queue_id, ring_name);
+	if (rc >= RTE_MEMZONE_NAMESIZE) {
+		RTE_ETHDEV_LOG(ERR, "ring name too long\n");
+		rte_errno = ENAMETOOLONG;
+		return NULL;
+	}
 
 	mz = rte_memzone_lookup(z_name);
 	if (mz)
