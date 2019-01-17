@@ -196,13 +196,15 @@ The commandline options are:
 
 *   ``--port-topology=mode``
 
-    Set port topology, where mode is ``paired`` (the default) or ``chained``.
+    Set port topology, where mode is ``paired`` (the default), ``chained`` or ``loop``.
 
     In ``paired`` mode, the forwarding is between pairs of ports, for example: (0,1), (2,3), (4,5).
 
     In ``chained`` mode, the forwarding is to the next available port in the port mask, for example: (0,1), (1,2), (2,0).
 
     The ordering of the ports can be changed using the portlist testpmd runtime function.
+
+    In ``loop`` mode, ingress traffic is simply transmitted back on the same interface.
 
 *   ``--forward-mode=mode``
 
