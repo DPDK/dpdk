@@ -208,7 +208,9 @@ SRCS-$(CONFIG_RTE_LIBRTE_KVARGS) += test_kvargs.c
 SRCS-$(CONFIG_RTE_LIBRTE_BPF) += test_bpf.c
 
 SRCS-$(CONFIG_RTE_LIBRTE_IPSEC) += test_ipsec.c
+ifeq ($(CONFIG_RTE_LIBRTE_IPSEC),y)
 LDLIBS += -lrte_ipsec
+endif
 
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 
