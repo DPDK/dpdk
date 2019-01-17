@@ -18,6 +18,7 @@
 #include <sys/file.h>
 #include <limits.h>
 
+#include <rte_per_lcore.h>
 #include <rte_debug.h>
 #include <rte_string_fns.h>
 
@@ -477,40 +478,50 @@ test_missing_c_flag(void)
 				"-n", "3", "-l", "1," };
 	const char *argv10[] = { prgname, prefix, mp_flag,
 				 "-n", "3", "-l", "1#2" };
+	/* core number is negative value */
+	const char * const argv11[] = { prgname, prefix, mp_flag,
+				"-n", "3", "-l", "-5" };
+	const char * const argv12[] = { prgname, prefix, mp_flag,
+				"-n", "3", "-l", "-5-7" };
+	/* core number is maximum value */
+	const char * const argv13[] = { prgname, prefix, mp_flag,
+				"-n", "3", "-l", RTE_STR(RTE_MAX_LCORE) };
+	const char * const argv14[] = { prgname, prefix, mp_flag,
+				"-n", "3", "-l", "1-"RTE_STR(RTE_MAX_LCORE) };
 	/* sanity check test - valid corelist value */
-	const char *argv11[] = { prgname, prefix, mp_flag,
+	const char * const argv15[] = { prgname, prefix, mp_flag,
 				 "-n", "3", "-l", "1-2,3" };
 
 	/* --lcores flag but no lcores value */
-	const char *argv12[] = { prgname, prefix, mp_flag,
+	const char * const argv16[] = { prgname, prefix, mp_flag,
 				 "-n", "3", "--lcores" };
-	const char *argv13[] = { prgname, prefix, mp_flag,
+	const char * const argv17[] = { prgname, prefix, mp_flag,
 				 "-n", "3", "--lcores", " " };
 	/* bad lcores value */
-	const char *argv14[] = { prgname, prefix, mp_flag,
+	const char * const argv18[] = { prgname, prefix, mp_flag,
 				 "-n", "3", "--lcores", "1-3-5" };
-	const char *argv15[] = { prgname, prefix, mp_flag,
+	const char * const argv19[] = { prgname, prefix, mp_flag,
 				 "-n", "3", "--lcores", "0-1,,2" };
-	const char *argv16[] = { prgname, prefix, mp_flag,
+	const char * const argv20[] = { prgname, prefix, mp_flag,
 				 "-n", "3", "--lcores", "0-,1" };
-	const char *argv17[] = { prgname, prefix, mp_flag,
+	const char * const argv21[] = { prgname, prefix, mp_flag,
 				 "-n", "3", "--lcores", "(0-,2-4)" };
-	const char *argv18[] = { prgname, prefix, mp_flag,
+	const char * const argv22[] = { prgname, prefix, mp_flag,
 				 "-n", "3", "--lcores", "(-1,2)" };
-	const char *argv19[] = { prgname, prefix, mp_flag,
+	const char * const argv23[] = { prgname, prefix, mp_flag,
 				 "-n", "3", "--lcores", "(2-4)@(2-4-6)" };
-	const char *argv20[] = { prgname, prefix, mp_flag,
+	const char * const argv24[] = { prgname, prefix, mp_flag,
 				 "-n", "3", "--lcores", "(a,2)" };
-	const char *argv21[] = { prgname, prefix, mp_flag,
+	const char * const argv25[] = { prgname, prefix, mp_flag,
 				 "-n", "3", "--lcores", "1-3@(1,3)" };
-	const char *argv22[] = { prgname, prefix, mp_flag,
+	const char * const argv26[] = { prgname, prefix, mp_flag,
 				 "-n", "3", "--lcores", "3@((1,3)" };
-	const char *argv23[] = { prgname, prefix, mp_flag,
+	const char * const argv27[] = { prgname, prefix, mp_flag,
 				 "-n", "3", "--lcores", "(4-7)=(1,3)" };
-	const char *argv24[] = { prgname, prefix, mp_flag,
+	const char * const argv28[] = { prgname, prefix, mp_flag,
 				 "-n", "3", "--lcores", "[4-7]@(1,3)" };
 	/* sanity check of tests - valid lcores value */
-	const char *argv25[] = { prgname, prefix, mp_flag,
+	const char * const argv29[] = { prgname, prefix, mp_flag,
 				 "-n", "3", "--lcores",
 				 "0-1,2@(5-7),(3-5)@(0,2),(0,6),7"};
 
@@ -538,31 +549,35 @@ test_missing_c_flag(void)
 			|| launch_proc(argv7) == 0
 			|| launch_proc(argv8) == 0
 			|| launch_proc(argv9) == 0
-			|| launch_proc(argv10) == 0) {
+			|| launch_proc(argv10) == 0
+			|| launch_proc(argv11) == 0
+			|| launch_proc(argv12) == 0
+			|| launch_proc(argv13) == 0
+			|| launch_proc(argv14) == 0) {
 		printf("Error - "
 		       "process ran without error with invalid -l flag\n");
 		return -1;
 	}
-	if (launch_proc(argv11) != 0) {
+	if (launch_proc(argv15) != 0) {
 		printf("Error - "
 		       "process did not run ok with valid corelist value\n");
 		return -1;
 	}
 
 	/* start --lcores tests */
-	if (launch_proc(argv12) == 0 || launch_proc(argv13) == 0 ||
-	    launch_proc(argv14) == 0 || launch_proc(argv15) == 0 ||
-	    launch_proc(argv16) == 0 || launch_proc(argv17) == 0 ||
+	if (launch_proc(argv16) == 0 || launch_proc(argv17) == 0 ||
 	    launch_proc(argv18) == 0 || launch_proc(argv19) == 0 ||
 	    launch_proc(argv20) == 0 || launch_proc(argv21) == 0 ||
-	    launch_proc(argv21) == 0 || launch_proc(argv22) == 0 ||
-	    launch_proc(argv23) == 0 || launch_proc(argv24) == 0) {
+	    launch_proc(argv22) == 0 || launch_proc(argv23) == 0 ||
+	    launch_proc(argv24) == 0 || launch_proc(argv25) == 0 ||
+	    launch_proc(argv26) == 0 || launch_proc(argv27) == 0 ||
+	    launch_proc(argv28) == 0) {
 		printf("Error - "
 		       "process ran without error with invalid --lcore flag\n");
 		return -1;
 	}
 
-	if (launch_proc(argv25) != 0) {
+	if (launch_proc(argv29) != 0) {
 		printf("Error - "
 		       "process did not run ok with valid corelist value\n");
 		return -1;

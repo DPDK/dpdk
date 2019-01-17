@@ -600,7 +600,9 @@ eal_parse_corelist(const char *corelist)
 		if (*corelist == '\0')
 			return -1;
 		errno = 0;
-		idx = strtoul(corelist, &end, 10);
+		idx = strtol(corelist, &end, 10);
+		if (idx < 0 || idx >= (int)cfg->lcore_count)
+			return -1;
 		if (errno || end == NULL)
 			return -1;
 		while (isblank(*end))
@@ -1111,6 +1113,7 @@ eal_parse_common_option(int opt, const char *optarg,
 {
 	static int b_used;
 	static int w_used;
+	struct rte_config *cfg = rte_eal_get_configuration();
 
 	switch (opt) {
 	/* blacklist */
@@ -1153,7 +1156,9 @@ eal_parse_common_option(int opt, const char *optarg,
 	/* corelist */
 	case 'l':
 		if (eal_parse_corelist(optarg) < 0) {
-			RTE_LOG(ERR, EAL, "invalid core list\n");
+			RTE_LOG(ERR, EAL,
+				"invalid core list, please check core numbers are in [0, %u] range\n",
+					cfg->lcore_count-1);
 			return -1;
 		}
 
