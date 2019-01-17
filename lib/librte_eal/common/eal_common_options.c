@@ -1388,6 +1388,8 @@ eal_adjust_config(struct internal_config *internal_cfg)
 	/* default master lcore is the first one */
 	if (!master_lcore_parsed) {
 		cfg->master_lcore = rte_get_next_lcore(-1, 0, 0);
+		if (cfg->master_lcore >= RTE_MAX_LCORE)
+			return -1;
 		lcore_config[cfg->master_lcore].core_role = ROLE_RTE;
 	}
 
