@@ -195,10 +195,10 @@ isal_comp_set_priv_xform_parameters(struct isal_priv_xform *priv_xform,
 			priv_xform->decompress.chksum = ISAL_DEFLATE;
 			break;
 		case(RTE_COMP_CHECKSUM_CRC32):
-			priv_xform->decompress.chksum = ISAL_GZIP_NO_HDR_VER;
+			priv_xform->decompress.chksum = ISAL_GZIP_NO_HDR;
 			break;
 		case(RTE_COMP_CHECKSUM_ADLER32):
-			priv_xform->decompress.chksum = ISAL_ZLIB_NO_HDR_VER;
+			priv_xform->decompress.chksum = ISAL_ZLIB_NO_HDR;
 			break;
 		case(RTE_COMP_CHECKSUM_CRC32_ADLER32):
 			ISAL_PMD_LOG(ERR, "Combined CRC and ADLER checksum not"
