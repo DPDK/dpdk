@@ -59,8 +59,8 @@ struct ipsec_testsuite_params {
 	struct rte_cryptodev_config conf;
 	struct rte_cryptodev_qp_conf qp_conf;
 
-	uint8_t valid_devs[RTE_CRYPTO_MAX_DEVS];
-	uint8_t valid_dev_count;
+	uint8_t valid_dev;
+	uint8_t valid_dev_found;
 };
 
 struct ipsec_unitest_params {
@@ -210,15 +210,111 @@ find_match_auth_algo(const char *auth_keyword)
 	return NULL;
 }
 
+static void
+fill_crypto_xform(struct ipsec_unitest_params *ut_params,
+	const struct supported_auth_algo *auth_algo,
+	const struct supported_cipher_algo *cipher_algo)
+{
+	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+	ut_params->auth_xform.auth.algo = auth_algo->algo;
+	ut_params->auth_xform.auth.key.data = global_key;
+	ut_params->auth_xform.auth.key.length = auth_algo->key_len;
+	ut_params->auth_xform.auth.digest_length = auth_algo->digest_len;
+	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_VERIFY;
+
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	ut_params->cipher_xform.cipher.algo = cipher_algo->algo;
+	ut_params->cipher_xform.cipher.key.data = global_key;
+	ut_params->cipher_xform.cipher.key.length = cipher_algo->key_len;
+	ut_params->cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_DECRYPT;
+	ut_params->cipher_xform.cipher.iv.offset = IV_OFFSET;
+	ut_params->cipher_xform.cipher.iv.length = cipher_algo->iv_len;
+
+	if (ut_params->ipsec_xform.direction ==
+			RTE_SECURITY_IPSEC_SA_DIR_INGRESS) {
+		ut_params->crypto_xforms = &ut_params->auth_xform;
+		ut_params->auth_xform.next = &ut_params->cipher_xform;
+		ut_params->cipher_xform.next = NULL;
+	} else {
+		ut_params->crypto_xforms = &ut_params->cipher_xform;
+		ut_params->cipher_xform.next = &ut_params->auth_xform;
+		ut_params->auth_xform.next = NULL;
+	}
+}
+
+static int
+check_cryptodev_capablity(const struct ipsec_unitest_params *ut,
+		uint8_t dev_id)
+{
+	struct rte_cryptodev_sym_capability_idx cap_idx;
+	const struct rte_cryptodev_symmetric_capability *cap;
+	int rc = -1;
+
+	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+	cap_idx.algo.auth = ut->auth_xform.auth.algo;
+	cap = rte_cryptodev_sym_capability_get(dev_id, &cap_idx);
+
+	if (cap != NULL) {
+		rc = rte_cryptodev_sym_capability_check_auth(cap,
+				ut->auth_xform.auth.key.length,
+				ut->auth_xform.auth.digest_length, 0);
+		if (rc == 0) {
+			cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+			cap_idx.algo.cipher = ut->cipher_xform.cipher.algo;
+			cap = rte_cryptodev_sym_capability_get(
+					dev_id, &cap_idx);
+			if (cap != NULL)
+				rc = rte_cryptodev_sym_capability_check_cipher(
+					cap,
+					ut->cipher_xform.cipher.key.length,
+					ut->cipher_xform.cipher.iv.length);
+		}
+	}
+
+	return rc;
+}
+
 static int
 testsuite_setup(void)
 {
 	struct ipsec_testsuite_params *ts_params = &testsuite_params;
+	struct ipsec_unitest_params *ut_params = &unittest_params;
+	const struct supported_auth_algo *auth_algo;
+	const struct supported_cipher_algo *cipher_algo;
 	struct rte_cryptodev_info info;
-	uint32_t nb_devs, dev_id;
+	uint32_t i, nb_devs, dev_id;
 	size_t sess_sz;
+	int rc;
 
 	memset(ts_params, 0, sizeof(*ts_params));
+
+	uparams.auth = RTE_CRYPTO_SYM_XFORM_AUTH;
+	uparams.cipher = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	strcpy(uparams.auth_algo, "null");
+	strcpy(uparams.cipher_algo, "null");
+
+	auth_algo = find_match_auth_algo(uparams.auth_algo);
+	cipher_algo = find_match_cipher_algo(uparams.cipher_algo);
+	fill_crypto_xform(ut_params, auth_algo, cipher_algo);
+
+	nb_devs = rte_cryptodev_count();
+	if (nb_devs < 1) {
+		RTE_LOG(ERR, USER1, "No crypto devices found?\n");
+		return TEST_FAILED;
+	}
+
+	/* Find first valid crypto device */
+	for (i = 0; i < nb_devs; i++) {
+		rc = check_cryptodev_capablity(ut_params, i);
+		if (rc == 0) {
+			ts_params->valid_dev = i;
+			ts_params->valid_dev_found = 1;
+			break;
+		}
+	}
+
+	if (ts_params->valid_dev_found == 0)
+		return TEST_FAILED;
 
 	ts_params->mbuf_pool = rte_pktmbuf_pool_create(
 			"CRYPTO_MBUFPOOL",
@@ -242,16 +338,8 @@ testsuite_setup(void)
 		return TEST_FAILED;
 	}
 
-	nb_devs = rte_cryptodev_count();
-	if (nb_devs < 1) {
-		RTE_LOG(ERR, USER1, "No crypto devices found?\n");
-		return TEST_FAILED;
-	}
-
-	ts_params->valid_devs[ts_params->valid_dev_count++] = 0;
-
 	/* Set up all the qps on the first of the valid devices found */
-	dev_id = ts_params->valid_devs[0];
+	dev_id = ts_params->valid_dev;
 
 	rte_cryptodev_info_get(dev_id, &info);
 
@@ -350,9 +438,9 @@ ut_setup(void)
 	ts_params->conf.socket_id = SOCKET_ID_ANY;
 
 	/* Start the device */
-	TEST_ASSERT_SUCCESS(rte_cryptodev_start(ts_params->valid_devs[0]),
+	TEST_ASSERT_SUCCESS(rte_cryptodev_start(ts_params->valid_dev),
 			"Failed to start cryptodev %u",
-			ts_params->valid_devs[0]);
+			ts_params->valid_dev);
 
 	return TEST_SUCCESS;
 }
@@ -396,7 +484,7 @@ ut_teardown(void)
 			rte_mempool_avail_count(ts_params->mbuf_pool));
 
 	/* Stop the device */
-	rte_cryptodev_stop(ts_params->valid_devs[0]);
+	rte_cryptodev_stop(ts_params->valid_dev);
 }
 
 #define IPSEC_MAX_PAD_SIZE	UINT8_MAX
@@ -537,37 +625,6 @@ setup_test_string_tunneled(struct rte_mempool *mpool, const char *string,
 }
 
 static int
-check_cryptodev_capablity(const struct ipsec_unitest_params *ut,
-		uint8_t devid)
-{
-	struct rte_cryptodev_sym_capability_idx cap_idx;
-	const struct rte_cryptodev_symmetric_capability *cap;
-	int rc = -1;
-
-	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
-	cap_idx.algo.auth = ut->auth_xform.auth.algo;
-	cap = rte_cryptodev_sym_capability_get(devid, &cap_idx);
-
-	if (cap != NULL) {
-		rc = rte_cryptodev_sym_capability_check_auth(cap,
-				ut->auth_xform.auth.key.length,
-				ut->auth_xform.auth.digest_length, 0);
-		if (rc == 0) {
-			cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
-			cap_idx.algo.cipher = ut->cipher_xform.cipher.algo;
-			cap = rte_cryptodev_sym_capability_get(devid, &cap_idx);
-			if (cap != NULL)
-				rc = rte_cryptodev_sym_capability_check_cipher(
-					cap,
-					ut->cipher_xform.cipher.key.length,
-					ut->cipher_xform.cipher.iv.length);
-		}
-	}
-
-	return rc;
-}
-
-static int
 create_dummy_sec_session(struct ipsec_unitest_params *ut,
 	struct rte_cryptodev_qp_conf *qp, uint32_t j)
 {
@@ -586,91 +643,37 @@ create_dummy_sec_session(struct ipsec_unitest_params *ut,
 
 static int
 create_crypto_session(struct ipsec_unitest_params *ut,
-	struct rte_cryptodev_qp_conf *qp, const uint8_t crypto_dev[],
-	uint32_t crypto_dev_num, uint32_t j)
+	struct rte_cryptodev_qp_conf *qp, uint8_t dev_id, uint32_t j)
 {
 	int32_t rc;
-	uint32_t devnum, i;
 	struct rte_cryptodev_sym_session *s;
-	uint8_t devid[RTE_CRYPTO_MAX_DEVS];
-
-	/* check which cryptodevs support SA */
-	devnum = 0;
-	for (i = 0; i < crypto_dev_num; i++) {
-		if (check_cryptodev_capablity(ut, crypto_dev[i]) == 0)
-			devid[devnum++] = crypto_dev[i];
-	}
-
-	if (devnum == 0)
-		return -ENODEV;
 
 	s = rte_cryptodev_sym_session_create(qp->mp_session);
 	if (s == NULL)
 		return -ENOMEM;
 
-	/* initiliaze SA crypto session for all supported devices */
-	for (i = 0; i != devnum; i++) {
-		rc = rte_cryptodev_sym_session_init(devid[i], s,
+	/* initiliaze SA crypto session for device */
+	rc = rte_cryptodev_sym_session_init(dev_id, s,
 			ut->crypto_xforms, qp->mp_session_private);
-		if (rc != 0)
-			break;
-	}
-
-	if (i == devnum) {
+	if (rc == 0) {
 		ut->ss[j].crypto.ses = s;
 		return 0;
+	} else {
+		/* failure, do cleanup */
+		rte_cryptodev_sym_session_clear(dev_id, s);
+		rte_cryptodev_sym_session_free(s);
+		return rc;
 	}
-
-	/* failure, do cleanup */
-	while (i-- != 0)
-		rte_cryptodev_sym_session_clear(devid[i], s);
-
-	rte_cryptodev_sym_session_free(s);
-	return rc;
 }
 
 static int
 create_session(struct ipsec_unitest_params *ut,
-	struct rte_cryptodev_qp_conf *qp, const uint8_t crypto_dev[],
-	uint32_t crypto_dev_num, uint32_t j)
+	struct rte_cryptodev_qp_conf *qp, uint8_t crypto_dev, uint32_t j)
 {
 	if (ut->ss[j].type == RTE_SECURITY_ACTION_TYPE_NONE)
-		return create_crypto_session(ut, qp, crypto_dev,
-			crypto_dev_num, j);
+		return create_crypto_session(ut, qp, crypto_dev, j);
 	else
 		return create_dummy_sec_session(ut, qp, j);
-}
-
-static void
-fill_crypto_xform(struct ipsec_unitest_params *ut_params,
-	const struct supported_auth_algo *auth_algo,
-	const struct supported_cipher_algo *cipher_algo)
-{
-	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
-	ut_params->auth_xform.auth.algo = auth_algo->algo;
-	ut_params->auth_xform.auth.key.data = global_key;
-	ut_params->auth_xform.auth.key.length = auth_algo->key_len;
-	ut_params->auth_xform.auth.digest_length = auth_algo->digest_len;
-	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_VERIFY;
-
-	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
-	ut_params->cipher_xform.cipher.algo = cipher_algo->algo;
-	ut_params->cipher_xform.cipher.key.data = global_key;
-	ut_params->cipher_xform.cipher.key.length = cipher_algo->key_len;
-	ut_params->cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_DECRYPT;
-	ut_params->cipher_xform.cipher.iv.offset = IV_OFFSET;
-	ut_params->cipher_xform.cipher.iv.length = cipher_algo->iv_len;
-
-	if (ut_params->ipsec_xform.direction ==
-			RTE_SECURITY_IPSEC_SA_DIR_INGRESS) {
-		ut_params->crypto_xforms = &ut_params->auth_xform;
-		ut_params->auth_xform.next = &ut_params->cipher_xform;
-		ut_params->cipher_xform.next = NULL;
-	} else {
-		ut_params->crypto_xforms = &ut_params->cipher_xform;
-		ut_params->cipher_xform.next = &ut_params->auth_xform;
-		ut_params->auth_xform.next = NULL;
-	}
 }
 
 static int
@@ -737,8 +740,7 @@ create_sa(enum rte_security_session_action_type action_type,
 		"failed to allocate memory for rte_ipsec_sa\n");
 
 	ut->ss[j].type = action_type;
-	rc = create_session(ut, &ts->qp_conf, ts->valid_devs,
-		ts->valid_dev_count, j);
+	rc = create_session(ut, &ts->qp_conf, ts->valid_dev, j);
 	if (rc != 0)
 		return TEST_FAILED;
 
@@ -765,14 +767,14 @@ crypto_ipsec(uint16_t num_pkts)
 		RTE_LOG(ERR, USER1, "rte_ipsec_pkt_crypto_prepare fail\n");
 		return TEST_FAILED;
 	}
-	k = rte_cryptodev_enqueue_burst(ts_params->valid_devs[0], 0,
+	k = rte_cryptodev_enqueue_burst(ts_params->valid_dev, 0,
 		ut_params->cop, num_pkts);
 	if (k != num_pkts) {
 		RTE_LOG(ERR, USER1, "rte_cryptodev_enqueue_burst fail\n");
 		return TEST_FAILED;
 	}
 
-	k = rte_cryptodev_dequeue_burst(ts_params->valid_devs[0], 0,
+	k = rte_cryptodev_dequeue_burst(ts_params->valid_dev, 0,
 		ut_params->cop, num_pkts);
 	if (k != num_pkts) {
 		RTE_LOG(ERR, USER1, "rte_cryptodev_dequeue_burst fail\n");
@@ -879,7 +881,7 @@ crypto_ipsec_2sa(void)
 				"rte_ipsec_pkt_crypto_prepare fail\n");
 			return TEST_FAILED;
 		}
-		k = rte_cryptodev_enqueue_burst(ts_params->valid_devs[0], 0,
+		k = rte_cryptodev_enqueue_burst(ts_params->valid_dev, 0,
 				ut_params->cop + i, 1);
 		if (k != 1) {
 			RTE_LOG(ERR, USER1,
@@ -888,7 +890,7 @@ crypto_ipsec_2sa(void)
 		}
 	}
 
-	k = rte_cryptodev_dequeue_burst(ts_params->valid_devs[0], 0,
+	k = rte_cryptodev_dequeue_burst(ts_params->valid_dev, 0,
 		ut_params->cop, BURST_SIZE);
 	if (k != BURST_SIZE) {
 		RTE_LOG(ERR, USER1, "rte_cryptodev_dequeue_burst fail\n");
@@ -1018,7 +1020,7 @@ crypto_ipsec_2sa_4grp(void)
 				"rte_ipsec_pkt_crypto_prepare fail\n");
 			return TEST_FAILED;
 		}
-		k = rte_cryptodev_enqueue_burst(ts_params->valid_devs[0], 0,
+		k = rte_cryptodev_enqueue_burst(ts_params->valid_dev, 0,
 				ut_params->cop + i, 1);
 		if (k != 1) {
 			RTE_LOG(ERR, USER1,
@@ -1027,7 +1029,7 @@ crypto_ipsec_2sa_4grp(void)
 		}
 	}
 
-	k = rte_cryptodev_dequeue_burst(ts_params->valid_devs[0], 0,
+	k = rte_cryptodev_dequeue_burst(ts_params->valid_dev, 0,
 		ut_params->cop, BURST_SIZE);
 	if (k != BURST_SIZE) {
 		RTE_LOG(ERR, USER1, "rte_cryptodev_dequeue_burst fail\n");
@@ -1185,11 +1187,6 @@ test_ipsec_crypto_inb_burst_null_null(int i)
 	uint16_t j;
 	int rc;
 
-	uparams.auth = RTE_CRYPTO_SYM_XFORM_AUTH;
-	uparams.cipher = RTE_CRYPTO_SYM_XFORM_CIPHER;
-	strcpy(uparams.auth_algo, "null");
-	strcpy(uparams.cipher_algo, "null");
-
 	/* create rte_ipsec_sa */
 	rc = create_sa(RTE_SECURITY_ACTION_TYPE_NONE,
 			test_cfg[i].replay_win_sz, test_cfg[i].flags, 0);
@@ -1292,11 +1289,6 @@ test_ipsec_crypto_outb_burst_null_null(int i)
 	uint16_t num_pkts = test_cfg[i].num_pkts;
 	uint16_t j;
 	int32_t rc;
-
-	uparams.auth = RTE_CRYPTO_SYM_XFORM_AUTH;
-	uparams.cipher = RTE_CRYPTO_SYM_XFORM_CIPHER;
-	strcpy(uparams.auth_algo, "null");
-	strcpy(uparams.cipher_algo, "null");
 
 	/* create rte_ipsec_sa*/
 	rc = create_sa(RTE_SECURITY_ACTION_TYPE_NONE,
@@ -1408,11 +1400,6 @@ test_ipsec_inline_crypto_inb_burst_null_null(int i)
 	int32_t rc;
 	uint32_t n;
 
-	uparams.auth = RTE_CRYPTO_SYM_XFORM_AUTH;
-	uparams.cipher = RTE_CRYPTO_SYM_XFORM_CIPHER;
-	strcpy(uparams.auth_algo, "null");
-	strcpy(uparams.cipher_algo, "null");
-
 	/* create rte_ipsec_sa*/
 	rc = create_sa(RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO,
 			test_cfg[i].replay_win_sz, test_cfg[i].flags, 0);
@@ -1491,11 +1478,6 @@ test_ipsec_inline_proto_inb_burst_null_null(int i)
 	uint16_t j;
 	int32_t rc;
 	uint32_t n;
-
-	uparams.auth = RTE_CRYPTO_SYM_XFORM_AUTH;
-	uparams.cipher = RTE_CRYPTO_SYM_XFORM_CIPHER;
-	strcpy(uparams.auth_algo, "null");
-	strcpy(uparams.cipher_algo, "null");
 
 	/* create rte_ipsec_sa*/
 	rc = create_sa(RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL,
@@ -1606,11 +1588,6 @@ test_ipsec_inline_crypto_outb_burst_null_null(int i)
 	int32_t rc;
 	uint32_t n;
 
-	uparams.auth = RTE_CRYPTO_SYM_XFORM_AUTH;
-	uparams.cipher = RTE_CRYPTO_SYM_XFORM_CIPHER;
-	strcpy(uparams.auth_algo, "null");
-	strcpy(uparams.cipher_algo, "null");
-
 	/* create rte_ipsec_sa */
 	rc = create_sa(RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO,
 			test_cfg[i].replay_win_sz, test_cfg[i].flags, 0);
@@ -1690,11 +1667,6 @@ test_ipsec_inline_proto_outb_burst_null_null(int i)
 	int32_t rc;
 	uint32_t n;
 
-	uparams.auth = RTE_CRYPTO_SYM_XFORM_AUTH;
-	uparams.cipher = RTE_CRYPTO_SYM_XFORM_CIPHER;
-	strcpy(uparams.auth_algo, "null");
-	strcpy(uparams.cipher_algo, "null");
-
 	/* create rte_ipsec_sa */
 	rc = create_sa(RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL,
 			test_cfg[i].replay_win_sz, test_cfg[i].flags, 0);
@@ -1771,11 +1743,6 @@ test_ipsec_lksd_proto_inb_burst_null_null(int i)
 	uint16_t num_pkts = test_cfg[i].num_pkts;
 	uint16_t j;
 	int rc;
-
-	uparams.auth = RTE_CRYPTO_SYM_XFORM_AUTH;
-	uparams.cipher = RTE_CRYPTO_SYM_XFORM_CIPHER;
-	strcpy(uparams.auth_algo, "null");
-	strcpy(uparams.cipher_algo, "null");
 
 	/* create rte_ipsec_sa */
 	rc = create_sa(RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
@@ -1891,11 +1858,6 @@ test_ipsec_replay_inb_inside_null_null(int i)
 	struct ipsec_unitest_params *ut_params = &unittest_params;
 	int rc;
 
-	uparams.auth = RTE_CRYPTO_SYM_XFORM_AUTH;
-	uparams.cipher = RTE_CRYPTO_SYM_XFORM_CIPHER;
-	strcpy(uparams.auth_algo, "null");
-	strcpy(uparams.cipher_algo, "null");
-
 	/* create rte_ipsec_sa*/
 	rc = create_sa(RTE_SECURITY_ACTION_TYPE_NONE,
 			test_cfg[i].replay_win_sz, test_cfg[i].flags, 0);
@@ -1989,11 +1951,6 @@ test_ipsec_replay_inb_outside_null_null(int i)
 	struct ipsec_testsuite_params *ts_params = &testsuite_params;
 	struct ipsec_unitest_params *ut_params = &unittest_params;
 	int rc;
-
-	uparams.auth = RTE_CRYPTO_SYM_XFORM_AUTH;
-	uparams.cipher = RTE_CRYPTO_SYM_XFORM_CIPHER;
-	strcpy(uparams.auth_algo, "null");
-	strcpy(uparams.cipher_algo, "null");
 
 	/* create rte_ipsec_sa */
 	rc = create_sa(RTE_SECURITY_ACTION_TYPE_NONE,
@@ -2096,11 +2053,6 @@ test_ipsec_replay_inb_repeat_null_null(int i)
 	struct ipsec_unitest_params *ut_params = &unittest_params;
 	int rc;
 
-	uparams.auth = RTE_CRYPTO_SYM_XFORM_AUTH;
-	uparams.cipher = RTE_CRYPTO_SYM_XFORM_CIPHER;
-	strcpy(uparams.auth_algo, "null");
-	strcpy(uparams.cipher_algo, "null");
-
 	/* create rte_ipsec_sa */
 	rc = create_sa(RTE_SECURITY_ACTION_TYPE_NONE,
 			test_cfg[i].replay_win_sz, test_cfg[i].flags, 0);
@@ -2201,11 +2153,6 @@ test_ipsec_replay_inb_inside_burst_null_null(int i)
 	uint16_t num_pkts = test_cfg[i].num_pkts;
 	int rc;
 	int j;
-
-	uparams.auth = RTE_CRYPTO_SYM_XFORM_AUTH;
-	uparams.cipher = RTE_CRYPTO_SYM_XFORM_CIPHER;
-	strcpy(uparams.auth_algo, "null");
-	strcpy(uparams.cipher_algo, "null");
 
 	/* create rte_ipsec_sa*/
 	rc = create_sa(RTE_SECURITY_ACTION_TYPE_NONE,
@@ -2341,11 +2288,6 @@ test_ipsec_crypto_inb_burst_2sa_null_null(int i)
 	if (num_pkts != BURST_SIZE)
 		return rc;
 
-	uparams.auth = RTE_CRYPTO_SYM_XFORM_AUTH;
-	uparams.cipher = RTE_CRYPTO_SYM_XFORM_CIPHER;
-	strcpy(uparams.auth_algo, "null");
-	strcpy(uparams.cipher_algo, "null");
-
 	/* create rte_ipsec_sa */
 	rc = create_sa(RTE_SECURITY_ACTION_TYPE_NONE,
 			test_cfg[i].replay_win_sz, test_cfg[i].flags, 0);
@@ -2433,11 +2375,6 @@ test_ipsec_crypto_inb_burst_2sa_4grp_null_null(int i)
 
 	if (num_pkts != BURST_SIZE)
 		return rc;
-
-	uparams.auth = RTE_CRYPTO_SYM_XFORM_AUTH;
-	uparams.cipher = RTE_CRYPTO_SYM_XFORM_CIPHER;
-	strcpy(uparams.auth_algo, "null");
-	strcpy(uparams.cipher_algo, "null");
 
 	/* create rte_ipsec_sa */
 	rc = create_sa(RTE_SECURITY_ACTION_TYPE_NONE,
