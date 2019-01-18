@@ -125,15 +125,13 @@ ifpga_scan_one(struct rte_rawdev *rawdev,
 				     IFPGA_AFU_BTS);
 			goto end;
 		}
+		afu_pr_conf.pr_enable = 1;
 	} else {
-		IFPGA_BUS_ERR("arg %s is mandatory for ifpga bus",
-			  IFPGA_AFU_BTS);
-		goto end;
+		afu_pr_conf.pr_enable = 0;
 	}
 
 	afu_pr_conf.afu_id.uuid.uuid_low = 0;
 	afu_pr_conf.afu_id.uuid.uuid_high = 0;
-	afu_pr_conf.pr_enable = path?1:0;
 
 	if (ifpga_find_afu_dev(rawdev, &afu_pr_conf.afu_id))
 		goto end;
