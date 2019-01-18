@@ -135,116 +135,139 @@ test_deps = ['acl',
 	'timer'
 ]
 
-test_names = [
-	'acl_autotest',
-	'alarm_autotest',
-	'atomic_autotest',
-	'barrier_autotest',
-	'bitratestats_autotest',
-	'byteorder_autotest',
-	'cmdline_autotest',
-	'common_autotest',
-	'cpuflags_autotest',
-	'crc_autotest',
-	'cryptodev_qat_autotest',
-	'cryptodev_aesni_mb_autotest',
-	'cryptodev_openssl_autotest',
-	'cryptodev_openssl_asym_autotest',
-	'cryptodev_aesni_gcm_autotest',
-	'cryptodev_null_autotest',
-	'cryptodev_sw_snow3g_autotest',
-	'cryptodev_sw_kasumi_autotest',
-	'cryptodev_sw_zuc_autotest',
-	'cryptodev_sw_armv8_autotest',
-	'cryptodev_sw_mvsam_autotest',
-	'cryptodev_dpaa2_sec_autotest',
-	'cryptodev_dpaa_sec_autotest',
-	'cryptodev_octeontx_autotest',
-	'cycles_autotest',
-	'debug_autotest',
-	'delay_us_sleep_autotest',
-	'devargs_autotest',
-	'distributor_autotest',
-	'distributor_perf_autotest',
-	'eal_flags_autotest',
-	'eal_fs_autotest',
-	'efd_autotest',
-	'efd_perf_autotest',
-	'errno_autotest',
-	'event_crypto_adapter_autotest',
-	'event_eth_rx_adapter_autotest',
-	'event_eth_rx_intr_adapter_autotest',
-	'event_ring_autotest',
-	'event_eth_tx_adapter_autotest',
-	'event_timer_adapter_autotest',
-	'eventdev_common_autotest',
-	'eventdev_octeontx_autotest',
-	'eventdev_sw_autotest',
-	'external_mem_autotest',
-	'fbarray_autotest',
-	'func_reentrancy_autotest',
-	'flow_classify_autotest',
-	'hash_autotest',
-	'hash_functions_autotest',
-	'hash_multiwriter_autotest',
-	'hash_perf_autotest',
-	'hash_readwrite_autotest',
-	'hash_readwrite_lf_autotest',
-	'interrupt_autotest',
-	'ipsec_autotest',
-	'kni_autotest',
-	'kvargs_autotest',
-	'latencystats_autotest',
-	'link_bonding_autotest',
-	'link_bonding_mode4_autotest',
-	'logs_autotest',
-	'lpm6_autotest',
-	'lpm6_perf_autotest',
-	'lpm_autotest',
-	'lpm_perf_autotest',
-	'malloc_autotest',
-	'mbuf_autotest',
-	'member_autotest',
-	'member_perf_autotest',
-	'memcpy_autotest',
-	'memcpy_perf_autotest',
-	'memory_autotest',
-	'mempool_autotest',
-	'mempool_perf_autotest',
-	'memzone_autotest',
-	'meter_autotest',
-	'metrics_autotest',
-	'multiprocess_autotest',
-	'pdump_autotest',
-	'per_lcore_autotest',
-	'pmd_perf_autotest',
-	'power_acpi_cpufreq_autotest',
-	'power_autotest',
-	'power_kvm_vm_autotest',
-	'prefetch_autotest',
-	'reciprocal_division',
-	'reciprocal_division_perf',
-	'red_all',
-	'red_autotest',
-	'red_perf',
-	'reorder_autotest',
-	'ring_autotest',
-	'ring_perf_autotest',
-	'ring_pmd_autotest',
-	'ring_pmd_perf_autotest',
-	'rwlock_autotest',
-	'sched_autotest',
-	'service_autotest',
-	'spinlock_autotest',
-	'string_autotest',
-	'table_autotest',
-	'tailq_autotest',
-	'thash_autotest',
-	'timer_autotest',
-	'timer_perf__autotest',
-	'timer_racecond_autotest',
-	'user_delay_us',
-	'version_autotest',
+# All test cases in fast_parallel_test_names list are parallel
+fast_parallel_test_names = [
+        'acl_autotest',
+        'alarm_autotest',
+        'atomic_autotest',
+        'byteorder_autotest',
+        'cmdline_autotest',
+        'common_autotest',
+        'cpuflags_autotest',
+        'cycles_autotest',
+        'debug_autotest',
+        'eal_flags_autotest',
+        'eal_fs_autotest',
+        'errno_autotest',
+        'event_ring_autotest',
+        'func_reentrancy_autotest',
+        'flow_classify_autotest',
+        'hash_autotest',
+        'interrupt_autotest',
+        'logs_autotest',
+        'lpm_autotest',
+        'lpm6_autotest',
+        'malloc_autotest',
+        'mbuf_autotest',
+        'memcpy_autotest',
+        'memory_autotest',
+        'mempool_autotest',
+        'memzone_autotest',
+        'meter_autotest',
+        'multiprocess_autotest',
+        'per_lcore_autotest',
+        'prefetch_autotest',
+        'red_autotest',
+        'ring_autotest',
+        'ring_pmd_autotest',
+        'rwlock_autotest',
+        'sched_autotest',
+        'spinlock_autotest',
+        'string_autotest',
+        'table_autotest',
+        'tailq_autotest',
+        'timer_autotest',
+        'user_delay_us',
+        'version_autotest',
+]
+
+# All test cases in fast_non_parallel_test_names list are non-parallel
+fast_non_parallel_test_names = [
+        'bitratestats_autotest',
+        'cryptodev_sw_armv8_autotest',
+        'crc_autotest',
+        'cryptodev_openssl_asym_autotest',
+        'cryptodev_sw_mvsam_autotest',
+        'delay_us_sleep_autotest',
+        'devargs_autotest',
+        'distributor_autotest',
+        'eventdev_common_autotest',
+        'eventdev_octeontx_autotest',
+        'eventdev_sw_autotest',
+        'fbarray_autotest',
+        'hash_readwrite_autotest',
+        'hash_readwrite_lf_autotest',
+        'hash_scaling_autotest',
+        'ipsec_autotest',
+        'kni_autotest',
+        'kvargs_autotest',
+        'latencystats_autotest',
+        'member_autotest',
+        'metrics_autotest',
+        'pdump_autotest',
+        'power_acpi_cpufreq_autotest',
+        'power_autotest',
+        'power_kvm_vm_autotest',
+        'reorder_autotest',
+        'service_autotest',
+        'thash_autotest',
+]
+
+# All test cases in perf_test_names list are non-parallel
+perf_test_names = [
+        'ring_perf_autotest',
+        'mempool_perf_autotest',
+        'memcpy_perf_autotest',
+        'hash_perf_autotest',
+        'timer_perf_autotest',
+        'reciprocal_division',
+        'reciprocal_division_perf',
+        'lpm_perf_autotest',
+        'red_all',
+        'barrier_autotest',
+        'hash_multiwriter_autotest',
+        'timer_racecond_autotest',
+        'efd_autotest',
+        'hash_functions_autotest',
+        'eventdev_selftest_sw',
+        'member_perf_autotest',
+        'efd_perf_autotest',
+        'lpm6_perf_autotest',
+        'red_perf',
+        'distributor_perf_autotest',
+        'ring_pmd_perf_autotest',
+        'pmd_perf_autotest',
+]
+
+# All test cases in driver_test_names list are non-parallel
+driver_test_names = [
+        'link_bonding_autotest',
+        'link_bonding_mode4_autotest',
+        'link_bonding_rssconf_autotest',
+        'cryptodev_sw_mrvl_autotest',
+        'cryptodev_dpaa2_sec_autotest',
+        'cryptodev_dpaa_sec_autotest',
+        'cryptodev_qat_autotest',
+        'cryptodev_aesni_mb_autotest',
+        'cryptodev_openssl_autotest',
+        'cryptodev_scheduler_autotest',
+        'cryptodev_aesni_gcm_autotest',
+        'cryptodev_null_autotest',
+        'cryptodev_sw_snow3g_autotest',
+        'cryptodev_sw_kasumi_autotest',
+        'cryptodev_sw_zuc_autotest',
+]
+
+# All test cases in dump_test_names list are non-parallel
+dump_test_names = [
+        'dump_struct_sizes',
+        'dump_mempool',
+        'dump_malloc_stats',
+        'dump_devargs',
+        'dump_log_types',
+        'dump_ring',
+        'dump_physmem',
+        'dump_memzone',
 ]
 
 if dpdk_conf.has('RTE_LIBRTE_PDUMP')
@@ -278,12 +301,14 @@ endif
 default_cflags += '-D_GNU_SOURCE'
 
 test_dep_objs = []
-compress_test_dep = dependency('zlib', required: false)
-if compress_test_dep.found()
-	test_dep_objs += compress_test_dep
-	test_sources += 'test_compressdev.c'
-	test_deps += 'compressdev'
-	test_names += 'compressdev_autotest'
+if dpdk_conf.has('RTE_LIBRTE_COMPRESSDEV')
+	compress_test_dep = dependency('zlib', required: false)
+	if compress_test_dep.found()
+		test_dep_objs += compress_test_dep
+		test_sources += 'test_compressdev.c'
+		test_deps += 'compressdev'
+		fast_non_parallel_test_names += 'compressdev_autotest'
+	endif
 endif
 
 foreach d:test_deps
@@ -309,11 +334,45 @@ if get_option('tests')
 	# some perf tests (eg: memcpy perf autotest)take very long
 	# to complete, so timeout to 10 minutes
 	timeout_seconds = 600
+	timeout_seconds_fast = 10
 
-	foreach t:test_names
-		test(t, dpdk_test,
-			env : ['DPDK_TEST='+t],
+	foreach arg : fast_parallel_test_names
+		test(arg, dpdk_test,
+			env : ['DPDK_TEST=' + arg],
+			args : ['-c f','-n 4', '--file-prefix=@0@'.format(arg)],
+			timeout : timeout_seconds_fast,
+			suite : 'fast-tests')
+	endforeach
+
+	foreach arg : fast_non_parallel_test_names
+		test(arg, dpdk_test,
+			env : ['DPDK_TEST=' + arg],
+			timeout : timeout_seconds_fast,
+			is_parallel : false,
+			suite : 'fast-tests')
+	endforeach
+
+	foreach arg : perf_test_names
+		test(arg, dpdk_test,
+		env : ['DPDK_TEST=' + arg],
+		timeout : timeout_seconds,
+		is_parallel : false,
+		suite : 'perf-tests')
+	endforeach
+
+	foreach arg : driver_test_names
+		test(arg, dpdk_test,
+			env : ['DPDK_TEST=' + arg],
 			timeout : timeout_seconds,
-			is_parallel : false)
+			is_parallel : false,
+			suite : 'driver-tests')
+	endforeach
+
+	foreach arg : dump_test_names
+		test(arg, dpdk_test,
+			env : ['DPDK_TEST=' + arg],
+			timeout : timeout_seconds,
+			is_parallel : false,
+			suite : 'debug-tests')
 	endforeach
 endif
