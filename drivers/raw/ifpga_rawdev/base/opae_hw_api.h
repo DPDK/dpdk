@@ -225,7 +225,8 @@ struct opae_adapter {
 void *opae_adapter_data_alloc(enum opae_adapter_type type);
 #define opae_adapter_data_free(data) opae_free(data)
 
-struct opae_adapter *opae_adapter_alloc(const char *name, void *data);
+int opae_adapter_init(struct opae_adapter *adapter,
+		const char *name, void *data);
 #define opae_adapter_free(adapter) opae_free(adapter)
 
 int opae_adapter_enumerate(struct opae_adapter *adapter);
