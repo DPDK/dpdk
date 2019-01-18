@@ -13,7 +13,7 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif
+#endif /* __cplusplus */
 
 #include <rte_bus.h>
 #include <rte_pci.h>
@@ -142,5 +142,9 @@ RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
 
 #define RTE_PMD_REGISTER_AFU_ALIAS(nm, alias)\
 static const char *afudrvinit_ ## nm ## _alias = RTE_STR(alias)
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
 
 #endif /* _RTE_BUS_IFPGA_H_ */
