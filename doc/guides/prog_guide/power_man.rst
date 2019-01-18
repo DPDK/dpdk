@@ -195,6 +195,8 @@ The mechanism can applied to any device which is based on polling. e.g. NIC, FPG
 References
 ----------
 
-*   l3fwd-power: The sample application in DPDK that performs L3 forwarding with power management.
+*   The :doc:`../sample_app_ug/l3_forward_power_man`
+    chapter in the :doc:`../sample_app_ug/index` section.
 
-*   The "L3 Forwarding with Power Management Sample Application" chapter in the *DPDK Sample Application's User Guide*.
+*   The :doc:`../sample_app_ug/vm_power_management`
+    chapter in the :doc:`../sample_app_ug/index` section.
