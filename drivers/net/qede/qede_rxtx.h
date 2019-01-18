@@ -192,6 +192,8 @@ struct qede_rx_queue {
 	uint16_t queue_id;
 	uint16_t port_id;
 	uint16_t rx_buf_size;
+	uint16_t rx_alloc_count;
+	uint16_t unused;
 	uint64_t rcv_pkts;
 	uint64_t rx_segs;
 	uint64_t rx_hw_errors;
