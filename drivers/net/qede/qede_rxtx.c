@@ -2181,7 +2181,6 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		txq->nb_tx_avail -= bd1->data.nbds;
 		txq->sw_tx_prod++;
-		rte_prefetch0(txq->sw_tx_ring[TX_PROD(txq)].mbuf);
 		bd_prod =
 		    rte_cpu_to_le_16(ecore_chain_get_prod_idx(&txq->tx_pbl));
 #ifdef RTE_LIBRTE_QEDE_DEBUG_TX
