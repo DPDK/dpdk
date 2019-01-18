@@ -10,6 +10,7 @@
 #define IV_OFF (sizeof(struct rte_crypto_op) + sizeof(struct rte_crypto_sym_op))
 
 #define FIPS_DEV_TEST_DATA_MAX_SIZE	8096
+#define AES_CCM_AAD_PAD_SIZE		18
 
 struct fips_dev_self_test_vector {
 	const char *name;
@@ -1236,6 +1237,8 @@ prepare_auth_op(struct rte_crypto_op *op,
 	memcpy(dst, vec->input.data, vec->input.len);
 	sym->auth.data.length = vec->input.len;
 	sym->auth.digest.data = dst + vec->input.len;
+	sym->auth.digest.phys_addr = rte_pktmbuf_iova_offset(mbuf,
+			vec->input.len);
 
 	if (dir == self_test_dir_dec_auth_verify)
 		memcpy(dst + vec->input.len, vec->digest.data, vec->digest.len);
@@ -1277,7 +1280,8 @@ prepare_aead_op(struct rte_crypto_op *op,
 		return -ENOMEM;
 	}
 
-	dst = (uint8_t *)rte_pktmbuf_append(mbuf, len + vec->digest.len);
+	dst = (uint8_t *)rte_pktmbuf_append(mbuf, RTE_ALIGN_CEIL(len +
+			vec->digest.len, 16));
 	if (!dst) {
 		RTE_LOG(ERR, PMD, "Error %i: MBUF too small\n", -ENOMEM);
 		return -ENOMEM;
@@ -1286,12 +1290,32 @@ prepare_aead_op(struct rte_crypto_op *op,
 	sym->m_src = mbuf;
 	sym->aead.data.length = len;
 	sym->aead.data.offset = 0;
-	sym->aead.aad.data = vec->aead.aad.data;
-	sym->aead.digest.data = dst + vec->input.len;
 	memcpy(dst, src, len);
 
+	sym->aead.digest.data = dst + vec->input.len;
+	sym->aead.digest.phys_addr = rte_pktmbuf_iova_offset(mbuf,
+			vec->input.len);
 	if (dir == self_test_dir_dec_auth_verify)
 		memcpy(sym->aead.digest.data, vec->digest.data, vec->digest.len);
+
+	len = (vec->aead.algo == RTE_CRYPTO_AEAD_AES_CCM) ?
+			(vec->aead.aad.len + AES_CCM_AAD_PAD_SIZE) :
+			vec->aead.aad.len;
+
+	dst = rte_malloc(NULL, len, 16);
+	if (!dst) {
+		RTE_LOG(ERR, PMD, "Error %i: Not enough memory\n", -ENOMEM);
+		return -ENOMEM;
+	}
+
+	sym->aead.aad.data = dst;
+	sym->aead.aad.phys_addr = rte_malloc_virt2iova(dst);
+	if (vec->aead.algo == RTE_CRYPTO_AEAD_AES_CCM)
+		memcpy(dst, vec->aead.aad.data,
+				vec->aead.aad.len + AES_CCM_AAD_PAD_SIZE);
+	else
+		memcpy(dst, vec->aead.aad.data,
+				vec->aead.aad.len);
 
 	rte_crypto_op_attach_sym_session(op, session);
 
@@ -1318,7 +1342,7 @@ check_cipher_result(struct rte_crypto_op *op,
 	}
 
 	GET_MBUF_DATA(data, len, mbuf);
-	if (len != src_len)
+	if (!data && !len)
 		return -1;
 
 	ret = memcmp(data, src, src_len);
@@ -1339,7 +1363,7 @@ check_auth_result(struct rte_crypto_op *op,
 	int ret;
 
 	GET_MBUF_DATA(data, len, mbuf);
-	if (len != vec->input.len + vec->digest.len)
+	if (!data && !len)
 		return -1;
 
 	if (dir == self_test_dir_enc_auth_gen) {
@@ -1363,6 +1387,9 @@ check_aead_result(struct rte_crypto_op *op,
 	uint32_t len, src_len;
 	int ret;
 
+	if (op->sym->aead.aad.data)
+		rte_free(op->sym->aead.aad.data);
+
 	if (dir == self_test_dir_enc_auth_gen) {
 		src = vec->output.data;
 		src_len = vec->output.len;
@@ -1372,7 +1399,7 @@ check_aead_result(struct rte_crypto_op *op,
 	}
 
 	GET_MBUF_DATA(data, len, mbuf);
-	if (len != src_len + vec->digest.len)
+	if (!data && !len)
 		return -1;
 
 	ret = memcmp(data, src, src_len);
