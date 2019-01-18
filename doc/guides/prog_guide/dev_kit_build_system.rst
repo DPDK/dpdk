@@ -52,49 +52,6 @@ which is equivalent to:
 
     make O=my_sdk_build_dir
 
-The content of the my_sdk_build_dir is then:
-
-::
-
-    -- .config                         # used configuration
-
-    -- Makefile                        # wrapper that calls head Makefile
-                                       # with $PWD as build directory
-
-
-        -- build                              #All temporary files used during build
-        +--app                                # process, including . o, .d, and .cmd files.
-            |  +-- test                       # For libraries, we have the .a file.
-            |  +-- test.o                     # For applications, we have the elf file.
-            |  `-- ...
-            +-- lib
-                +-- librte_eal
-                |   `-- ...
-                +-- librte_mempool
-                |  +--  mempool-file1.o
-                |  +--  .mempool-file1.o.cmd
-                |  +--  .mempool-file1.o.d
-                |  +--   mempool-file2.o
-                |  +--  .mempool-file2.o.cmd
-                |  +--  .mempool-file2.o.d
-                |  `--  mempool.a
-                `-- ...
-
-    -- include                # All include files installed by libraries
-        +-- librte_mempool.h  # and applications are located in this
-        +-- rte_eal.h         # directory. The installed files can depend
-        +-- rte_spinlock.h    # on configuration if needed (environment,
-        +-- rte_atomic.h      # architecture, ..)
-        `-- \*.h ...
-
-    -- lib                    # all compiled libraries are copied in this
-        +-- librte_eal.a      # directory
-        +-- librte_mempool.a
-        `-- \*.a ...
-
-    -- app                    # All compiled applications are installed
-    + --test                  # here. It includes the binary in elf format
-
 Refer to
 :ref:`Development Kit Root Makefile Help <Development_Kit_Root_Makefile_Help>`
 for details about make commands that can be used from the root of DPDK.
