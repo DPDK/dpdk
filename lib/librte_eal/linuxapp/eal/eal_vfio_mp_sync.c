@@ -77,6 +77,22 @@ vfio_mp_primary(const struct rte_mp_msg *msg, const void *peer)
 			reply.fds[0] = fd;
 		}
 		break;
+	case SOCKET_REQ_IOMMU_TYPE:
+	{
+		int iommu_type_id;
+
+		r->req = SOCKET_REQ_IOMMU_TYPE;
+
+		iommu_type_id = vfio_get_iommu_type();
+
+		if (iommu_type_id < 0)
+			r->result = SOCKET_ERR;
+		else {
+			r->iommu_type_id = iommu_type_id;
+			r->result = SOCKET_OK;
+		}
+		break;
+	}
 	default:
 		RTE_LOG(ERR, EAL, "vfio received invalid message!\n");
 		return -1;
