@@ -1035,7 +1035,7 @@ static const char cmd_table_action_profile_help[] =
 "       tc <n_tc>\n"
 "       stats none | pkts | bytes | both]\n"
 "   [tm spp <n_subports_per_port> pps <n_pipes_per_subport>]\n"
-"   [encap ether | vlan | qinq | mpls | pppoe |\n"
+"   [encap ether | vlan | qinq | mpls | pppoe | qinq_pppoe \n"
 "       vxlan offset <ether_offset> ipv4 | ipv6 vlan on | off]\n"
 "   [nat src | dst\n"
 "       proto udp | tcp]\n"
@@ -1301,7 +1301,10 @@ cmd_table_action_profile(char **tokens,
 
 			p.encap.encap_mask = 1LLU << RTE_TABLE_ACTION_ENCAP_VXLAN;
 			n_extra_tokens = 5;
-		} else {
+		} else if (strcmp(tokens[t0 + 1], "qinq_pppoe") == 0)
+			p.encap.encap_mask =
+				1LLU << RTE_TABLE_ACTION_ENCAP_QINQ_PPPOE;
+		else {
 			snprintf(out, out_size, MSG_ARG_MISMATCH, "encap");
 			return;
 		}
@@ -3085,6 +3088,7 @@ parse_match(char **tokens,
  *       ether <da> <sa>
  *       | vlan <da> <sa> <pcp> <dei> <vid>
  *       | qinq <da> <sa> <pcp> <dei> <vid> <pcp> <dei> <vid>
+ *       | qinq_pppoe <da> <sa> <pcp> <dei> <vid> <pcp> <dei> <vid> <session_id>
  *       | mpls unicast | multicast
  *          <da> <sa>
  *          label0 <label> <tc> <ttl>
@@ -3384,6 +3388,44 @@ parse_table_action_encap(char **tokens,
 		a->encap.type = RTE_TABLE_ACTION_ENCAP_QINQ;
 		a->action_mask |= 1 << RTE_TABLE_ACTION_ENCAP;
 		return 1 + 9;
+	}
+
+	/* qinq_pppoe */
+	if (n_tokens && (strcmp(tokens[0], "qinq_pppoe") == 0)) {
+		uint32_t svlan_pcp, svlan_dei, svlan_vid;
+		uint32_t cvlan_pcp, cvlan_dei, cvlan_vid;
+
+		if ((n_tokens < 10) ||
+			parse_mac_addr(tokens[1],
+				&a->encap.qinq_pppoe.ether.da) ||
+			parse_mac_addr(tokens[2],
+				&a->encap.qinq_pppoe.ether.sa) ||
+			parser_read_uint32(&svlan_pcp, tokens[3]) ||
+			(svlan_pcp > 0x7) ||
+			parser_read_uint32(&svlan_dei, tokens[4]) ||
+			(svlan_dei > 0x1) ||
+			parser_read_uint32(&svlan_vid, tokens[5]) ||
+			(svlan_vid > 0xFFF) ||
+			parser_read_uint32(&cvlan_pcp, tokens[6]) ||
+			(cvlan_pcp > 0x7) ||
+			parser_read_uint32(&cvlan_dei, tokens[7]) ||
+			(cvlan_dei > 0x1) ||
+			parser_read_uint32(&cvlan_vid, tokens[8]) ||
+			(cvlan_vid > 0xFFF) ||
+			parser_read_uint16(&a->encap.qinq_pppoe.pppoe.session_id,
+				tokens[9]))
+			return 0;
+
+		a->encap.qinq_pppoe.svlan.pcp = svlan_pcp & 0x7;
+		a->encap.qinq_pppoe.svlan.dei = svlan_dei & 0x1;
+		a->encap.qinq_pppoe.svlan.vid = svlan_vid & 0xFFF;
+		a->encap.qinq_pppoe.cvlan.pcp = cvlan_pcp & 0x7;
+		a->encap.qinq_pppoe.cvlan.dei = cvlan_dei & 0x1;
+		a->encap.qinq_pppoe.cvlan.vid = cvlan_vid & 0xFFF;
+		a->encap.type = RTE_TABLE_ACTION_ENCAP_QINQ_PPPOE;
+		a->action_mask |= 1 << RTE_TABLE_ACTION_ENCAP;
+		return 1 + 10;
+
 	}
 
 	/* mpls */
