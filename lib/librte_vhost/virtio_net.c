@@ -310,6 +310,7 @@ fill_vec_buf_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	uint32_t len    = 0;
 	uint64_t dlen;
 	uint32_t nr_descs = vq->size;
+	uint32_t cnt    = 0;
 	struct vring_desc *descs = vq->desc;
 	struct vring_desc *idesc = NULL;
 
@@ -348,12 +349,7 @@ fill_vec_buf_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	}
 
 	while (1) {
-		if (unlikely(idx >= vq->size)) {
-			free_ind_table(idesc);
-			return -1;
-		}
-
-		if (unlikely(nr_descs-- == 0)) {
+		if (unlikely(idx >= nr_descs || cnt++ >= nr_descs)) {
 			free_ind_table(idesc);
 			return -1;
 		}
