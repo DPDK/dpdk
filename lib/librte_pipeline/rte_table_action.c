@@ -420,6 +420,7 @@ encap_valid(enum rte_table_action_encap_type encap)
 	case RTE_TABLE_ACTION_ENCAP_MPLS:
 	case RTE_TABLE_ACTION_ENCAP_PPPOE:
 	case RTE_TABLE_ACTION_ENCAP_VXLAN:
+	case RTE_TABLE_ACTION_ENCAP_QINQ_PPPOE:
 		return 1;
 	default:
 		return 0;
@@ -520,6 +521,13 @@ struct encap_vxlan_ipv6_vlan_data {
 	struct vxlan_hdr vxlan;
 } __attribute__((__packed__));
 
+struct encap_qinq_pppoe_data {
+	struct ether_hdr ether;
+	struct vlan_hdr svlan;
+	struct vlan_hdr cvlan;
+	struct pppoe_ppp_hdr pppoe_ppp;
+} __attribute__((__packed__));
+
 static size_t
 encap_data_size(struct rte_table_action_encap_config *encap)
 {
@@ -550,6 +558,9 @@ encap_data_size(struct rte_table_action_encap_config *encap)
 				return sizeof(struct encap_vxlan_ipv6_vlan_data);
 			else
 				return sizeof(struct encap_vxlan_ipv6_data);
+
+	case 1LLU << RTE_TABLE_ACTION_ENCAP_QINQ_PPPOE:
+			return sizeof(struct encap_qinq_pppoe_data);
 
 	default:
 		return 0;
@@ -585,6 +596,9 @@ encap_apply_check(struct rte_table_action_encap_params *p,
 		return 0;
 
 	case RTE_TABLE_ACTION_ENCAP_VXLAN:
+		return 0;
+
+	case RTE_TABLE_ACTION_ENCAP_QINQ_PPPOE:
 		return 0;
 
 	default:
@@ -660,6 +674,38 @@ encap_qinq_apply(void *data,
 		p->qinq.cvlan.dei,
 		p->qinq.cvlan.vid));
 	d->cvlan.eth_proto = rte_htons(ethertype);
+
+	return 0;
+}
+
+static int
+encap_qinq_pppoe_apply(void *data,
+	struct rte_table_action_encap_params *p)
+{
+	struct encap_qinq_pppoe_data *d = data;
+
+	/* Ethernet */
+	ether_addr_copy(&p->qinq.ether.da, &d->ether.d_addr);
+	ether_addr_copy(&p->qinq.ether.sa, &d->ether.s_addr);
+	d->ether.ether_type = rte_htons(ETHER_TYPE_VLAN);
+
+	/* SVLAN */
+	d->svlan.vlan_tci = rte_htons(VLAN(p->qinq.svlan.pcp,
+		p->qinq.svlan.dei,
+		p->qinq.svlan.vid));
+	d->svlan.eth_proto = rte_htons(ETHER_TYPE_VLAN);
+
+	/* CVLAN */
+	d->cvlan.vlan_tci = rte_htons(VLAN(p->qinq.cvlan.pcp,
+		p->qinq.cvlan.dei,
+		p->qinq.cvlan.vid));
+	d->cvlan.eth_proto = rte_htons(ETHER_TYPE_PPPOE_SESSION);
+
+	/* PPPoE and PPP*/
+	d->pppoe_ppp.ver_type_code = rte_htons(0x1100);
+	d->pppoe_ppp.session_id = rte_htons(p->qinq_pppoe.pppoe.session_id);
+	d->pppoe_ppp.length = 0; /* not pre-computed */
+	d->pppoe_ppp.protocol = rte_htons(PPP_PROTOCOL_IP);
 
 	return 0;
 }
@@ -909,6 +955,9 @@ encap_apply(void *data,
 	case RTE_TABLE_ACTION_ENCAP_VXLAN:
 		return encap_vxlan_apply(data, p, cfg);
 
+	case RTE_TABLE_ACTION_ENCAP_QINQ_PPPOE:
+		return encap_qinq_pppoe_apply(data, p);
+
 	default:
 		return -EINVAL;
 	}
@@ -1104,6 +1153,18 @@ pkt_work_encap(struct rte_mbuf *mbuf,
 			sizeof(struct encap_pppoe_data));
 		mbuf->pkt_len = mbuf->data_len = total_length +
 			sizeof(struct encap_pppoe_data);
+		break;
+	}
+
+	case 1LLU << RTE_TABLE_ACTION_ENCAP_QINQ_PPPOE:
+	{
+		struct encap_qinq_pppoe_data *qinq_pppoe =
+			encap(ip, data, sizeof(struct encap_qinq_pppoe_data));
+		qinq_pppoe->pppoe_ppp.length = rte_htons(total_length + 2);
+		mbuf->data_off = ip_offset - (sizeof(struct rte_mbuf) +
+			sizeof(struct encap_qinq_pppoe_data));
+		mbuf->pkt_len = mbuf->data_len = total_length +
+			sizeof(struct encap_qinq_pppoe_data);
 		break;
 	}
 

@@ -380,6 +380,9 @@ enum rte_table_action_encap_type {
 	 * Ether -> { Ether | VLAN | IP | UDP | VXLAN | Ether }
 	 */
 	RTE_TABLE_ACTION_ENCAP_VXLAN,
+
+	/** IP -> { Ether | S-VLAN | C-VLAN | PPPoE | PPP | IP } */
+	RTE_TABLE_ACTION_ENCAP_QINQ_PPPOE,
 };
 
 /** Pre-computed Ethernet header fields for encapsulation action. */
@@ -529,6 +532,16 @@ struct rte_table_action_encap_config {
 	};
 };
 
+/** QinQ_PPPoE encap paramaeters. */
+struct rte_table_encap_ether_qinq_pppoe {
+
+	/** Only valid when *type* is set to QinQ. */
+	struct rte_table_action_ether_hdr ether;
+	struct rte_table_action_vlan_hdr svlan; /**< Service VLAN header. */
+	struct rte_table_action_vlan_hdr cvlan; /**< Customer VLAN header. */
+	struct rte_table_action_pppoe_hdr pppoe; /**< PPPoE/PPP headers. */
+};
+
 /** Encap action parameters (per table rule). */
 struct rte_table_action_encap_params {
 	/** Encapsulation type. */
@@ -553,6 +566,9 @@ struct rte_table_action_encap_params {
 
 		/** Only valid when *type* is set to VXLAN. */
 		struct rte_table_action_encap_vxlan_params vxlan;
+
+		/** Only valid when *type* is set to QinQ_PPPoE. */
+		struct rte_table_encap_ether_qinq_pppoe qinq_pppoe;
 	};
 };
 
