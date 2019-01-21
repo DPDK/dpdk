@@ -473,8 +473,6 @@ struct encap_mpls_data {
 	uint32_t mpls_count;
 } __attribute__((__packed__));
 
-#define ETHER_TYPE_PPPOE_SESSION                           0x8864
-
 #define PPP_PROTOCOL_IP                                    0x0021
 
 struct pppoe_ppp_hdr {
