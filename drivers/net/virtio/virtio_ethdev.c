@@ -224,6 +224,17 @@ virtio_send_command_packed(struct virtnet_ctl *cvq,
 		vq->used_wrap_counter ^= 1;
 	}
 
+	PMD_INIT_LOG(DEBUG, "vq->vq_free_cnt=%d\n"
+			"vq->vq_avail_idx=%d\n"
+			"vq->vq_used_cons_idx=%d\n"
+			"vq->avail_wrap_counter=%d\n"
+			"vq->used_wrap_counter=%d\n",
+			vq->vq_free_cnt,
+			vq->vq_avail_idx,
+			vq->vq_used_cons_idx,
+			vq->avail_wrap_counter,
+			vq->used_wrap_counter);
+
 	result = cvq->virtio_net_hdr_mz->addr;
 	return result;
 }

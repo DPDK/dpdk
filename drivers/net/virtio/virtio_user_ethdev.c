@@ -274,7 +274,6 @@ virtio_user_get_queue_num(struct virtio_hw *hw, uint16_t queue_id __rte_unused)
 static void
 virtio_user_setup_queue_packed(struct virtqueue *vq,
 			       struct virtio_user_dev *dev)
-
 {
 	uint16_t queue_idx = vq->vq_queue_index;
 	struct vring_packed *vring;
@@ -300,10 +299,8 @@ virtio_user_setup_queue_packed(struct virtqueue *vq,
 	dev->packed_queues[queue_idx].avail_wrap_counter = true;
 	dev->packed_queues[queue_idx].used_wrap_counter = true;
 
-	for (i = 0; i < vring->num; i++) {
-		vring->desc_packed[i].flags = VRING_DESC_F_USED(1) |
-					      VRING_DESC_F_AVAIL(1);
-	}
+	for (i = 0; i < vring->num; i++)
+		vring->desc_packed[i].flags = 0;
 }
 
 static void

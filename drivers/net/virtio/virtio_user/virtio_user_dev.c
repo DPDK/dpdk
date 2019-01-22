@@ -632,9 +632,9 @@ desc_is_avail(struct vring_packed_desc *desc, bool wrap_counter)
 }
 
 static uint32_t
-virtio_user_handle_ctrl_msg_pq(struct virtio_user_dev *dev,
-			    struct vring_packed *vring,
-			    uint16_t idx_hdr)
+virtio_user_handle_ctrl_msg_packed(struct virtio_user_dev *dev,
+				   struct vring_packed *vring,
+				   uint16_t idx_hdr)
 {
 	struct virtio_net_ctrl_hdr *hdr;
 	virtio_net_ctrl_ack status = ~0;
@@ -671,6 +671,10 @@ virtio_user_handle_ctrl_msg_pq(struct virtio_user_dev *dev,
 	*(virtio_net_ctrl_ack *)(uintptr_t)
 		vring->desc_packed[idx_status].addr = status;
 
+	/* Update used descriptor */
+	vring->desc_packed[idx_hdr].id = vring->desc_packed[idx_status].id;
+	vring->desc_packed[idx_hdr].len = sizeof(status);
+
 	return n_descs;
 }
 
@@ -679,24 +683,25 @@ virtio_user_handle_cq_packed(struct virtio_user_dev *dev, uint16_t queue_idx)
 {
 	struct virtio_user_queue *vq = &dev->packed_queues[queue_idx];
 	struct vring_packed *vring = &dev->packed_vrings[queue_idx];
-	uint16_t id, n_descs;
+	uint16_t n_descs;
 
 	while (desc_is_avail(&vring->desc_packed[vq->used_idx],
 			     vq->used_wrap_counter)) {
-		id = vring->desc_packed[vq->used_idx].id;
 
-		n_descs = virtio_user_handle_ctrl_msg_pq(dev, vring, id);
+		n_descs = virtio_user_handle_ctrl_msg_packed(dev, vring,
+				vq->used_idx);
 
-		do {
-			vring->desc_packed[vq->used_idx].flags =
-				VRING_DESC_F_AVAIL(vq->used_wrap_counter) |
-				VRING_DESC_F_USED(vq->used_wrap_counter);
-			if (++vq->used_idx >= dev->queue_size) {
-				vq->used_idx -= dev->queue_size;
-				vq->used_wrap_counter ^= 1;
-			}
-			n_descs--;
-		} while (n_descs);
+		rte_smp_wmb();
+		vring->desc_packed[vq->used_idx].flags =
+			VRING_DESC_F_WRITE |
+			VRING_DESC_F_AVAIL(vq->used_wrap_counter) |
+			VRING_DESC_F_USED(vq->used_wrap_counter);
+
+		vq->used_idx += n_descs;
+		if (vq->used_idx >= dev->queue_size) {
+			vq->used_idx -= dev->queue_size;
+			vq->used_wrap_counter ^= 1;
+		}
 	}
 }
 
