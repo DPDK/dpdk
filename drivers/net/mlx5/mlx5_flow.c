@@ -947,6 +947,10 @@ mlx5_flow_validate_action_rss(const struct rte_flow_action *action,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 					  NULL, "No Rx queues configured");
+	if (!rss->queue_num)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					  NULL, "No queues configured");
 	for (i = 0; i != rss->queue_num; ++i) {
 		if (!(*priv->rxqs)[rss->queue[i]])
 			return rte_flow_error_set
