@@ -722,7 +722,7 @@ virtio_user_handle_cq(struct virtio_user_dev *dev, uint16_t queue_idx)
 
 		/* Update used ring */
 		uep = &vring->used->ring[avail_idx];
-		uep->id = avail_idx;
+		uep->id = desc_idx;
 		uep->len = n_descs;
 
 		vring->used->idx++;
