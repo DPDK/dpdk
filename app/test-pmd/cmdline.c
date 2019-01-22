@@ -18455,7 +18455,7 @@ cmd_show_tx_metadata_parsed(void *parsed_result,
 	}
 	if (!strcmp(res->cmd_keyword, "tx_metadata")) {
 		printf("Port %u tx_metadata: %u\n", res->cmd_pid,
-				ports[res->cmd_pid].tx_metadata);
+			rte_be_to_cpu_32(ports[res->cmd_pid].tx_metadata));
 	}
 }
 
