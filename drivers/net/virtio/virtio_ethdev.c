@@ -142,16 +142,17 @@ static const struct rte_virtio_xstats_name_off rte_virtio_txq_stat_strings[] = {
 struct virtio_hw_internal virtio_hw_internal[RTE_MAX_ETHPORTS];
 
 static struct virtio_pmd_ctrl *
-virtio_pq_send_command(struct virtnet_ctl *cvq, struct virtio_pmd_ctrl *ctrl,
-		       int *dlen, int pkt_num)
+virtio_send_command_packed(struct virtnet_ctl *cvq,
+			   struct virtio_pmd_ctrl *ctrl,
+			   int *dlen, int pkt_num)
 {
 	struct virtqueue *vq = cvq->vq;
 	int head;
 	struct vring_packed_desc *desc = vq->ring_packed.desc_packed;
 	struct virtio_pmd_ctrl *result;
-	bool avail_wrap_counter, used_wrap_counter;
-	uint16_t flags;
+	bool avail_wrap_counter;
 	int sum = 0;
+	int nb_descs = 0;
 	int k;
 
 	/*
@@ -162,11 +163,10 @@ virtio_pq_send_command(struct virtnet_ctl *cvq, struct virtio_pmd_ctrl *ctrl,
 	 */
 	head = vq->vq_avail_idx;
 	avail_wrap_counter = vq->avail_wrap_counter;
-	used_wrap_counter = vq->used_wrap_counter;
-	desc[head].flags = VRING_DESC_F_NEXT;
 	desc[head].addr = cvq->virtio_net_hdr_mem;
 	desc[head].len = sizeof(struct virtio_net_ctrl_hdr);
 	vq->vq_free_cnt--;
+	nb_descs++;
 	if (++vq->vq_avail_idx >= vq->vq_nentries) {
 		vq->vq_avail_idx -= vq->vq_nentries;
 		vq->avail_wrap_counter ^= 1;
@@ -177,55 +177,51 @@ virtio_pq_send_command(struct virtnet_ctl *cvq, struct virtio_pmd_ctrl *ctrl,
 			+ sizeof(struct virtio_net_ctrl_hdr)
 			+ sizeof(ctrl->status) + sizeof(uint8_t) * sum;
 		desc[vq->vq_avail_idx].len = dlen[k];
-		flags = VRING_DESC_F_NEXT;
+		desc[vq->vq_avail_idx].flags = VRING_DESC_F_NEXT |
+			VRING_DESC_F_AVAIL(vq->avail_wrap_counter) |
+			VRING_DESC_F_USED(!vq->avail_wrap_counter);
 		sum += dlen[k];
 		vq->vq_free_cnt--;
-		flags |= VRING_DESC_F_AVAIL(vq->avail_wrap_counter) |
-			 VRING_DESC_F_USED(!vq->avail_wrap_counter);
-		desc[vq->vq_avail_idx].flags = flags;
-		rte_smp_wmb();
-		vq->vq_free_cnt--;
+		nb_descs++;
 		if (++vq->vq_avail_idx >= vq->vq_nentries) {
 			vq->vq_avail_idx -= vq->vq_nentries;
 			vq->avail_wrap_counter ^= 1;
 		}
 	}
 
-
 	desc[vq->vq_avail_idx].addr = cvq->virtio_net_hdr_mem
 		+ sizeof(struct virtio_net_ctrl_hdr);
 	desc[vq->vq_avail_idx].len = sizeof(ctrl->status);
-	flags = VRING_DESC_F_WRITE;
-	flags |= VRING_DESC_F_AVAIL(vq->avail_wrap_counter) |
-		 VRING_DESC_F_USED(!vq->avail_wrap_counter);
-	desc[vq->vq_avail_idx].flags = flags;
-	flags = VRING_DESC_F_NEXT;
-	flags |= VRING_DESC_F_AVAIL(avail_wrap_counter) |
-		 VRING_DESC_F_USED(!avail_wrap_counter);
-	desc[head].flags = flags;
-	rte_smp_wmb();
-
+	desc[vq->vq_avail_idx].flags = VRING_DESC_F_WRITE |
+		VRING_DESC_F_AVAIL(vq->avail_wrap_counter) |
+		VRING_DESC_F_USED(!vq->avail_wrap_counter);
 	vq->vq_free_cnt--;
+	nb_descs++;
 	if (++vq->vq_avail_idx >= vq->vq_nentries) {
 		vq->vq_avail_idx -= vq->vq_nentries;
 		vq->avail_wrap_counter ^= 1;
 	}
 
+	virtio_wmb(vq->hw->weak_barriers);
+	desc[head].flags = VRING_DESC_F_NEXT |
+		VRING_DESC_F_AVAIL(avail_wrap_counter) |
+		VRING_DESC_F_USED(!avail_wrap_counter);
+
+	virtio_wmb(vq->hw->weak_barriers);
 	virtqueue_notify(vq);
 
 	/* wait for used descriptors in virtqueue */
-	do {
-		rte_rmb();
+	while (!desc_is_used(&desc[head], vq))
 		usleep(100);
-	} while (!__desc_is_used(&desc[head], used_wrap_counter));
+
+	virtio_rmb(vq->hw->weak_barriers);
 
 	/* now get used descriptors */
-	while (desc_is_used(&desc[vq->vq_used_cons_idx], vq)) {
-		vq->vq_free_cnt++;
-		if (++vq->vq_used_cons_idx >= vq->vq_nentries) {
-			vq->vq_used_cons_idx -= vq->vq_nentries;
-			vq->used_wrap_counter ^= 1;
-		}
+	vq->vq_free_cnt += nb_descs;
+	vq->vq_used_cons_idx += nb_descs;
+	if (vq->vq_used_cons_idx >= vq->vq_nentries) {
+		vq->vq_used_cons_idx -= vq->vq_nentries;
+		vq->used_wrap_counter ^= 1;
 	}
 
 	result = cvq->virtio_net_hdr_mz->addr;
@@ -266,7 +262,7 @@ virtio_send_command(struct virtnet_ctl *cvq, struct virtio_pmd_ctrl *ctrl,
 		sizeof(struct virtio_pmd_ctrl));
 
 	if (vtpci_packed_queue(vq->hw)) {
-		result = virtio_pq_send_command(cvq, ctrl, dlen, pkt_num);
+		result = virtio_send_command_packed(cvq, ctrl, dlen, pkt_num);
 		goto out_unlock;
 	}
 

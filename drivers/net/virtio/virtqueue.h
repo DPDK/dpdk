@@ -281,7 +281,7 @@ struct virtio_tx_region {
 };
 
 static inline int
-__desc_is_used(struct vring_packed_desc *desc, bool wrap_counter)
+desc_is_used(struct vring_packed_desc *desc, struct virtqueue *vq)
 {
 	uint16_t used, avail, flags;
 
@@ -289,15 +289,8 @@ __desc_is_used(struct vring_packed_desc *desc, bool wrap_counter)
 	used = !!(flags & VRING_DESC_F_USED(1));
 	avail = !!(flags & VRING_DESC_F_AVAIL(1));
 
-	return avail == used && used == wrap_counter;
+	return avail == used && used == vq->used_wrap_counter;
 }
-
-static inline int
-desc_is_used(struct vring_packed_desc *desc, struct virtqueue *vq)
-{
-	return __desc_is_used(desc, vq->used_wrap_counter);
-}
-
 
 static inline void
 vring_desc_init_packed(struct virtqueue *vq, int n)
@@ -353,7 +346,6 @@ static inline void
 virtqueue_enable_intr_packed(struct virtqueue *vq)
 {
 	uint16_t *event_flags = &vq->ring_packed.driver_event->desc_event_flags;
-
 
 	if (vq->event_flags_shadow == RING_EVENT_FLAGS_DISABLE) {
 		virtio_wmb(vq->hw->weak_barriers);
