@@ -2778,27 +2778,6 @@ action_of_vlan:
 }
 
 /**
- * Brand rtnetlink buffer with unique handle.
- *
- * This handle should be unique for a given network interface to avoid
- * collisions.
- *
- * @param nlh
- *   Pointer to Netlink message.
- * @param handle
- *   Unique 32-bit handle to use.
- */
-static void
-flow_tcf_nl_brand(struct nlmsghdr *nlh, uint32_t handle)
-{
-	struct tcmsg *tcm = mnl_nlmsg_get_payload(nlh);
-
-	tcm->tcm_handle = handle;
-	DRV_LOG(DEBUG, "Netlink msg %p is branded with handle %x",
-		(void *)nlh, handle);
-}
-
-/**
  * Prepare a flow object for Linux TC flower. It calculates the maximum size of
  * memory required, allocates the memory, initializes Netlink message headers
  * and set unique TC message handle.
@@ -2888,20 +2867,6 @@ flow_tcf_prepare(const struct rte_flow_attr *attr,
 		dev_flow->tcf.tunnel->type = FLOW_TCF_TUNACT_VXLAN_DECAP;
 	else if (action_flags & MLX5_FLOW_ACTION_VXLAN_ENCAP)
 		dev_flow->tcf.tunnel->type = FLOW_TCF_TUNACT_VXLAN_ENCAP;
-	/*
-	 * Generate a reasonably unique handle based on the address of the
-	 * target buffer.
-	 *
-	 * This is straightforward on 32-bit systems where the flow pointer can
-	 * be used directly. Otherwise, its least significant part is taken
-	 * after shifting it by the previous power of two of the pointed buffer
-	 * size.
-	 */
-	if (sizeof(dev_flow) <= 4)
-		flow_tcf_nl_brand(nlh, (uintptr_t)dev_flow);
-	else
-		flow_tcf_nl_brand(nlh, (uintptr_t)dev_flow >>
-				       rte_log2_u32(rte_align32prevpow2(size)));
 	return dev_flow;
 }
 
@@ -5593,6 +5558,7 @@ flow_tcf_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 	struct mlx5_flow_tcf_context *ctx = priv->tcf_context;
 	struct mlx5_flow *dev_flow;
 	struct nlmsghdr *nlh;
+	struct tcmsg *tcm;
 
 	if (!flow)
 		return;
@@ -5613,10 +5579,53 @@ flow_tcf_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 				dev_flow);
 			dev_flow->tcf.tunnel->vtep = NULL;
 		}
+		/* Cleanup the rule handle value. */
+		tcm = mnl_nlmsg_get_payload(nlh);
+		tcm->tcm_handle = 0;
 		dev_flow->tcf.applied = 0;
 	}
 }
 
+/**
+ * Fetch the applied rule handle. This is callback routine called by
+ * libmnl mnl_cb_run() in loop for every message in received packet.
+ * When the NLM_F_ECHO flag i sspecified the kernel sends the created
+ * rule descriptor back to the application and we can retrieve the
+ * actual rule handle from updated descriptor.
+ *
+ * @param[in] nlh
+ *   Pointer to reply header.
+ * @param[in, out] arg
+ *   Context pointer for this callback.
+ *
+ * @return
+ *   A positive, nonzero value on success (required by libmnl
+ *   to continue messages processing).
+ */
+static int
+flow_tcf_collect_apply_cb(const struct nlmsghdr *nlh, void *arg)
+{
+	struct nlmsghdr *nlhrq = arg;
+	struct tcmsg *tcmrq = mnl_nlmsg_get_payload(nlhrq);
+	struct tcmsg *tcm = mnl_nlmsg_get_payload(nlh);
+	struct nlattr *na;
+
+	if (nlh->nlmsg_type != RTM_NEWTFILTER ||
+	    nlh->nlmsg_seq != nlhrq->nlmsg_seq)
+		return 1;
+	mnl_attr_for_each(na, nlh, sizeof(*tcm)) {
+		switch (mnl_attr_get_type(na)) {
+		case TCA_KIND:
+			if (strcmp(mnl_attr_get_payload(na), "flower")) {
+				/* Not flower filter, drop entire message. */
+				return 1;
+			}
+			tcmrq->tcm_handle = tcm->tcm_handle;
+			return 1;
+		}
+	}
+	return 1;
+}
 /**
  * Apply flow to E-Switch by sending Netlink message.
  *
@@ -5638,6 +5647,8 @@ flow_tcf_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 	struct mlx5_flow_tcf_context *ctx = priv->tcf_context;
 	struct mlx5_flow *dev_flow;
 	struct nlmsghdr *nlh;
+	struct tcmsg *tcm;
+	int ret;
 
 	dev_flow = LIST_FIRST(&flow->dev_flows);
 	/* E-Switch flow can't be expanded. */
@@ -5646,7 +5657,11 @@ flow_tcf_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 		return 0;
 	nlh = dev_flow->tcf.nlh;
 	nlh->nlmsg_type = RTM_NEWTFILTER;
-	nlh->nlmsg_flags = NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL;
+	nlh->nlmsg_flags = NLM_F_REQUEST | NLM_F_CREATE |
+			   NLM_F_EXCL | NLM_F_ECHO;
+	tcm = mnl_nlmsg_get_payload(nlh);
+	/* Allow kernel to assign handle on its own. */
+	tcm->tcm_handle = 0;
 	if (dev_flow->tcf.tunnel) {
 		/*
 		 * Replace the interface index, target for
@@ -5667,7 +5682,15 @@ flow_tcf_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 		*dev_flow->tcf.tunnel->ifindex_ptr =
 			dev_flow->tcf.tunnel->vtep->ifindex;
 	}
-	if (!flow_tcf_nl_ack(ctx, nlh, NULL, NULL)) {
+	ret = flow_tcf_nl_ack(ctx, nlh, flow_tcf_collect_apply_cb, nlh);
+	if (!ret) {
+		if (!tcm->tcm_handle) {
+			flow_tcf_remove(dev, flow);
+			return rte_flow_error_set
+				(error, ENOENT,
+				 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				 "netlink: rule zero handle returned");
+		}
 		dev_flow->tcf.applied = 1;
 		if (*dev_flow->tcf.ptc_flags & TCA_CLS_FLAGS_SKIP_SW)
 			return 0;
