@@ -582,10 +582,6 @@ eal_parse_socket_arg(char *strval, volatile uint64_t *socket_arg)
 		socket_arg[i] = val;
 	}
 
-	/* check if we have a positive amount of total memory */
-	if (total_mem == 0)
-		return -1;
-
 	return 0;
 }
 
