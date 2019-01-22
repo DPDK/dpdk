@@ -20,6 +20,10 @@ Deprecation Notices
 * kvargs: The function ``rte_kvargs_process`` will get a new parameter
   for returning key match count. It will ease handling of no-match case.
 
+* eal: The ``attr_value`` parameter of ``rte_service_attr_get()``
+  will be changed from ``uint32_t *`` to ``uint64_t *``
+  as the attributes are of type ``uint64_t``.
+
 * eal: both declaring and identifying devices will be streamlined in v18.11.
   New functions will appear to query a specific port from buses, classes of
   device and device drivers. Device declaration will be made coherent with the
