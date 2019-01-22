@@ -2818,12 +2818,22 @@ i40e_queue_region_dcb_configure(struct i40e_hw *hw,
 	struct i40e_dcbx_config *old_cfg = &hw->local_dcbx_config;
 	int32_t ret = -EINVAL;
 	uint16_t i, j, prio_index, region_index;
-	uint8_t tc_map, tc_bw, bw_lf;
+	uint8_t tc_map, tc_bw, bw_lf, dcb_flag = 0;
 
 	if (!info->queue_region_number) {
 		PMD_DRV_LOG(ERR, "No queue region been set before");
 		return ret;
 	}
+
+	for (i = 0; i < info->queue_region_number; i++) {
+		if (info->region[i].user_priority_num) {
+			dcb_flag = 1;
+			break;
+		}
+	}
+
+	if (dcb_flag == 0)
+		return 0;
 
 	dcb_cfg = &dcb_cfg_local;
 	memset(dcb_cfg, 0, sizeof(struct i40e_dcbx_config));
