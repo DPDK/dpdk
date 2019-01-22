@@ -3942,6 +3942,7 @@ skb_set_hash(struct sk_buff *skb, __u32 hash, __always_unused int type)
 
 #if ( LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0) )
 #define dev_open(x) dev_open(x, NULL)
+#define HAVE_NDO_BRIDGE_SETLINK_EXTACK
 #endif /* >= 5.0.0 */
 
 #if defined(timer_setup) && defined(from_timer)
