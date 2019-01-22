@@ -846,6 +846,10 @@ mlx5_flow_validate_action_queue(const struct rte_flow_action *action,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "can't have 2 fate actions in"
 					  " same flow");
+	if (!priv->rxqs_n)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					  NULL, "No Rx queues configured");
 	if (queue->index >= priv->rxqs_n)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
@@ -939,6 +943,10 @@ mlx5_flow_validate_action_rss(const struct rte_flow_action *action,
 					  &rss->types,
 					  "some RSS protocols are not"
 					  " supported");
+	if (!priv->rxqs_n)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					  NULL, "No Rx queues configured");
 	for (i = 0; i != rss->queue_num; ++i) {
 		if (!(*priv->rxqs)[rss->queue[i]])
 			return rte_flow_error_set
@@ -2325,8 +2333,7 @@ mlx5_ctrl_flow_vlan(struct rte_eth_dev *dev,
 	unsigned int i;
 
 	if (!priv->reta_idx_n || !priv->rxqs_n) {
-		rte_errno = EINVAL;
-		return -rte_errno;
+		return 0;
 	}
 	for (i = 0; i != priv->reta_idx_n; ++i)
 		queue[i] = (*priv->reta_idx)[i];
