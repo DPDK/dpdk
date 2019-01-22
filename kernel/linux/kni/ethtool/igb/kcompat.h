@@ -3940,6 +3940,10 @@ skb_set_hash(struct sk_buff *skb, __u32 hash, __always_unused int type)
 #define HAVE_PCI_ENABLE_MSIX
 #endif
 
+#if ( LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0) )
+#define dev_open(x) dev_open(x, NULL)
+#endif /* >= 5.0.0 */
+
 #if defined(timer_setup) && defined(from_timer)
 #define HAVE_TIMER_SETUP
 #endif
