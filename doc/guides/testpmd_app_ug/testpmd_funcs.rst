@@ -1583,6 +1583,10 @@ Configure the outer layer to encapsulate a packet inside a VXLAN tunnel::
  udp-dst (udp-dst) ip-src (ip-src) ip-dst (ip-dst) vlan-tci (vlan-tci) \
  eth-src (eth-src) eth-dst (eth-dst)
 
+ set vxlan-tos-ttl ip-version (ipv4|ipv6) vni (vni) udp-src (udp-src) \
+ udp-dst (udp-dst) ip-tos (ip-tos) ip-ttl (ip-ttl) ip-src (ip-src) \
+ ip-dst (ip-dst) eth-src (eth-src) eth-dst (eth-dst)
+
 Those command will set an internal configuration inside testpmd, any following
 flow rule using the action vxlan_encap will use the last configuration set.
 To have a different encapsulation header, one of those commands must be called
@@ -4241,6 +4245,12 @@ IPv4 VXLAN outer header::
  testpmd> flow create 0 ingress pattern end actions vxlan_encap /
          queue index 0 / end
 
+ testpmd> set vxlan-tos-ttl ip-version ipv4 vni 4 udp-src 4 udp-dst 4 ip-tos 0
+         ip-ttl 255 ip-src 127.0.0.1 ip-dst 128.0.0.1 eth-src 11:11:11:11:11:11
+         eth-dst 22:22:22:22:22:22
+ testpmd> flow create 0 ingress pattern end actions vxlan_encap /
+         queue index 0 / end
+
 IPv6 VXLAN outer header::
 
  testpmd> set vxlan ip-version ipv6 vni 4 udp-src 4 udp-dst 4 ip-src ::1
@@ -4250,6 +4260,12 @@ IPv6 VXLAN outer header::
 
  testpmd> set vxlan-with-vlan ip-version ipv6 vni 4 udp-src 4 udp-dst 4
          ip-src ::1 ip-dst ::2222 vlan-tci 34 eth-src 11:11:11:11:11:11
+         eth-dst 22:22:22:22:22:22
+ testpmd> flow create 0 ingress pattern end actions vxlan_encap /
+         queue index 0 / end
+
+ testpmd> set vxlan-tos-ttl ip-version ipv6 vni 4 udp-src 4 udp-dst 4
+         ip-tos 0 ip-ttl 255 ::1 ip-dst ::2222 eth-src 11:11:11:11:11:11
          eth-dst 22:22:22:22:22:22
  testpmd> flow create 0 ingress pattern end actions vxlan_encap /
          queue index 0 / end

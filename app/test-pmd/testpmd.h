@@ -488,6 +488,7 @@ extern uint16_t gso_max_segment_size;
 struct vxlan_encap_conf {
 	uint32_t select_ipv4:1;
 	uint32_t select_vlan:1;
+	uint32_t select_tos_ttl:1;
 	uint8_t vni[3];
 	rte_be16_t udp_src;
 	rte_be16_t udp_dst;
@@ -496,6 +497,8 @@ struct vxlan_encap_conf {
 	uint8_t ipv6_src[16];
 	uint8_t ipv6_dst[16];
 	rte_be16_t vlan_tci;
+	uint8_t ip_tos;
+	uint8_t ip_ttl;
 	uint8_t eth_src[ETHER_ADDR_LEN];
 	uint8_t eth_dst[ETHER_ADDR_LEN];
 };

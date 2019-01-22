@@ -469,6 +469,7 @@ uint8_t gro_flush_cycles = GRO_DEFAULT_FLUSH_CYCLES;
 struct vxlan_encap_conf vxlan_encap_conf = {
 	.select_ipv4 = 1,
 	.select_vlan = 0,
+	.select_tos_ttl = 0,
 	.vni = "\x00\x00\x00",
 	.udp_src = 0,
 	.udp_dst = RTE_BE16(4789),
@@ -479,6 +480,8 @@ struct vxlan_encap_conf vxlan_encap_conf = {
 	.ipv6_dst = "\x00\x00\x00\x00\x00\x00\x00\x00"
 		"\x00\x00\x00\x00\x00\x00\x11\x11",
 	.vlan_tci = 0,
+	.ip_tos = 0,
+	.ip_ttl = 255,
 	.eth_src = "\x00\x00\x00\x00\x00\x00",
 	.eth_dst = "\xff\xff\xff\xff\xff\xff",
 };

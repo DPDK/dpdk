@@ -3501,6 +3501,38 @@ parse_vc_action_vxlan_encap(struct context *ctx, const struct token *token,
 	if (!vxlan_encap_conf.select_vlan)
 		action_vxlan_encap_data->items[1].type =
 			RTE_FLOW_ITEM_TYPE_VOID;
+	if (vxlan_encap_conf.select_tos_ttl) {
+		if (vxlan_encap_conf.select_ipv4) {
+			static struct rte_flow_item_ipv4 ipv4_mask_tos;
+
+			memcpy(&ipv4_mask_tos, &rte_flow_item_ipv4_mask,
+			       sizeof(ipv4_mask_tos));
+			ipv4_mask_tos.hdr.type_of_service = 0xff;
+			ipv4_mask_tos.hdr.time_to_live = 0xff;
+			action_vxlan_encap_data->item_ipv4.hdr.type_of_service =
+					vxlan_encap_conf.ip_tos;
+			action_vxlan_encap_data->item_ipv4.hdr.time_to_live =
+					vxlan_encap_conf.ip_ttl;
+			action_vxlan_encap_data->items[2].mask =
+							&ipv4_mask_tos;
+		} else {
+			static struct rte_flow_item_ipv6 ipv6_mask_tos;
+
+			memcpy(&ipv6_mask_tos, &rte_flow_item_ipv6_mask,
+			       sizeof(ipv6_mask_tos));
+			ipv6_mask_tos.hdr.vtc_flow |=
+				RTE_BE32(0xfful << IPV6_HDR_TC_SHIFT);
+			ipv6_mask_tos.hdr.hop_limits = 0xff;
+			action_vxlan_encap_data->item_ipv6.hdr.vtc_flow |=
+				rte_cpu_to_be_32
+					((uint32_t)vxlan_encap_conf.ip_tos <<
+					 IPV6_HDR_TC_SHIFT);
+			action_vxlan_encap_data->item_ipv6.hdr.hop_limits =
+					vxlan_encap_conf.ip_ttl;
+			action_vxlan_encap_data->items[2].mask =
+							&ipv6_mask_tos;
+		}
+	}
 	memcpy(action_vxlan_encap_data->item_vxlan.vni, vxlan_encap_conf.vni,
 	       RTE_DIM(vxlan_encap_conf.vni));
 	action->conf = &action_vxlan_encap_data->conf;

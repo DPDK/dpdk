@@ -794,6 +794,12 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" eth-dst (eth-dst)\n"
 			"       Configure the VXLAN encapsulation for flows.\n\n"
 
+			"vxlan-tos-ttl ip-version (ipv4|ipv6) vni (vni) udp-src"
+			" (udp-src) udp-dst (udp-dst) ip-tos (ip-tos) ip-ttl (ip-ttl)"
+			" ip-src (ip-src) ip-dst (ip-dst) eth-src (eth-src)"
+			" eth-dst (eth-dst)\n"
+			"       Configure the VXLAN encapsulation for flows.\n\n"
+
 			"nvgre ip-version (ipv4|ipv6) tni (tni) ip-src"
 			" (ip-src) ip-dst (ip-dst) eth-src (eth-src) eth-dst"
 			" (eth-dst)\n"
@@ -15034,6 +15040,8 @@ struct cmd_set_vxlan_result {
 	cmdline_ipaddr_t ip_src;
 	cmdline_ipaddr_t ip_dst;
 	uint16_t tci;
+	uint8_t tos;
+	uint8_t ttl;
 	struct ether_addr eth_src;
 	struct ether_addr eth_dst;
 };
@@ -15042,6 +15050,9 @@ cmdline_parse_token_string_t cmd_set_vxlan_set =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_vxlan_result, set, "set");
 cmdline_parse_token_string_t cmd_set_vxlan_vxlan =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_vxlan_result, vxlan, "vxlan");
+cmdline_parse_token_string_t cmd_set_vxlan_vxlan_tos_ttl =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_vxlan_result, vxlan,
+				 "vxlan-tos-ttl");
 cmdline_parse_token_string_t cmd_set_vxlan_vxlan_with_vlan =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_vxlan_result, vxlan,
 				 "vxlan-with-vlan");
@@ -15066,6 +15077,16 @@ cmdline_parse_token_string_t cmd_set_vxlan_udp_dst =
 				 "udp-dst");
 cmdline_parse_token_num_t cmd_set_vxlan_udp_dst_value =
 	TOKEN_NUM_INITIALIZER(struct cmd_set_vxlan_result, udp_dst, UINT16);
+cmdline_parse_token_string_t cmd_set_vxlan_ip_tos =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_vxlan_result, pos_token,
+				 "ip-tos");
+cmdline_parse_token_num_t cmd_set_vxlan_ip_tos_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_vxlan_result, tos, UINT8);
+cmdline_parse_token_string_t cmd_set_vxlan_ip_ttl =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_vxlan_result, pos_token,
+				 "ip-ttl");
+cmdline_parse_token_num_t cmd_set_vxlan_ip_ttl_value =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_vxlan_result, ttl, UINT8);
 cmdline_parse_token_string_t cmd_set_vxlan_ip_src =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_vxlan_result, pos_token,
 				 "ip-src");
@@ -15104,10 +15125,15 @@ static void cmd_set_vxlan_parsed(void *parsed_result,
 		.vxlan_id = rte_cpu_to_be_32(res->vni) & RTE_BE32(0x00ffffff),
 	};
 
+	vxlan_encap_conf.select_tos_ttl = 0;
 	if (strcmp(res->vxlan, "vxlan") == 0)
 		vxlan_encap_conf.select_vlan = 0;
 	else if (strcmp(res->vxlan, "vxlan-with-vlan") == 0)
 		vxlan_encap_conf.select_vlan = 1;
+	else if (strcmp(res->vxlan, "vxlan-tos-ttl") == 0) {
+		vxlan_encap_conf.select_vlan = 0;
+		vxlan_encap_conf.select_tos_ttl = 1;
+	}
 	if (strcmp(res->ip_version, "ipv4") == 0)
 		vxlan_encap_conf.select_ipv4 = 1;
 	else if (strcmp(res->ip_version, "ipv6") == 0)
@@ -15117,6 +15143,8 @@ static void cmd_set_vxlan_parsed(void *parsed_result,
 	rte_memcpy(vxlan_encap_conf.vni, &id.vni[1], 3);
 	vxlan_encap_conf.udp_src = rte_cpu_to_be_16(res->udp_src);
 	vxlan_encap_conf.udp_dst = rte_cpu_to_be_16(res->udp_dst);
+	vxlan_encap_conf.ip_tos = res->tos;
+	vxlan_encap_conf.ip_ttl = res->ttl;
 	if (vxlan_encap_conf.select_ipv4) {
 		IPV4_ADDR_TO_UINT(res->ip_src, vxlan_encap_conf.ipv4_src);
 		IPV4_ADDR_TO_UINT(res->ip_dst, vxlan_encap_conf.ipv4_dst);
@@ -15149,6 +15177,40 @@ cmdline_parse_inst_t cmd_set_vxlan = {
 		(void *)&cmd_set_vxlan_udp_src_value,
 		(void *)&cmd_set_vxlan_udp_dst,
 		(void *)&cmd_set_vxlan_udp_dst_value,
+		(void *)&cmd_set_vxlan_ip_src,
+		(void *)&cmd_set_vxlan_ip_src_value,
+		(void *)&cmd_set_vxlan_ip_dst,
+		(void *)&cmd_set_vxlan_ip_dst_value,
+		(void *)&cmd_set_vxlan_eth_src,
+		(void *)&cmd_set_vxlan_eth_src_value,
+		(void *)&cmd_set_vxlan_eth_dst,
+		(void *)&cmd_set_vxlan_eth_dst_value,
+		NULL,
+	},
+};
+
+cmdline_parse_inst_t cmd_set_vxlan_tos_ttl = {
+	.f = cmd_set_vxlan_parsed,
+	.data = NULL,
+	.help_str = "set vxlan-tos-ttl ip-version ipv4|ipv6 vni <vni> udp-src"
+		" <udp-src> udp-dst <udp-dst> ip-tos <ip-tos> ip-ttl <ip-ttl>"
+		" ip-src <ip-src> ip-dst <ip-dst> eth-src <eth-src>"
+		" eth-dst <eth-dst>",
+	.tokens = {
+		(void *)&cmd_set_vxlan_set,
+		(void *)&cmd_set_vxlan_vxlan_tos_ttl,
+		(void *)&cmd_set_vxlan_ip_version,
+		(void *)&cmd_set_vxlan_ip_version_value,
+		(void *)&cmd_set_vxlan_vni,
+		(void *)&cmd_set_vxlan_vni_value,
+		(void *)&cmd_set_vxlan_udp_src,
+		(void *)&cmd_set_vxlan_udp_src_value,
+		(void *)&cmd_set_vxlan_udp_dst,
+		(void *)&cmd_set_vxlan_udp_dst_value,
+		(void *)&cmd_set_vxlan_ip_tos,
+		(void *)&cmd_set_vxlan_ip_tos_value,
+		(void *)&cmd_set_vxlan_ip_ttl,
+		(void *)&cmd_set_vxlan_ip_ttl_value,
 		(void *)&cmd_set_vxlan_ip_src,
 		(void *)&cmd_set_vxlan_ip_src_value,
 		(void *)&cmd_set_vxlan_ip_dst,
@@ -18696,6 +18758,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_port_tm_hierarchy_default,
 #endif
 	(cmdline_parse_inst_t *)&cmd_set_vxlan,
+	(cmdline_parse_inst_t *)&cmd_set_vxlan_tos_ttl,
 	(cmdline_parse_inst_t *)&cmd_set_vxlan_with_vlan,
 	(cmdline_parse_inst_t *)&cmd_set_nvgre,
 	(cmdline_parse_inst_t *)&cmd_set_nvgre_with_vlan,
