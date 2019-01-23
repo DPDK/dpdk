@@ -1493,9 +1493,6 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 		goto err_setup_pf_switch;
 	}
 
-	/* reset all stats of the device, including pf and main vsi */
-	i40e_dev_stats_reset(dev);
-
 	vsi = pf->main_vsi;
 
 	/* Disable double vlan by default */
@@ -1589,6 +1586,9 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 	/* initialize rss configuration from rte_flow */
 	memset(&pf->rss_info, 0,
 		sizeof(struct i40e_rte_flow_rss_conf));
+
+	/* reset all stats of the device, including pf and main vsi */
+	i40e_dev_stats_reset(dev);
 
 	return 0;
 
@@ -3458,6 +3458,31 @@ i40e_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
 		return ret;
 	else
 		return 0;
+}
+
+/*
+ * When using NVM 6.01(for X710 XL710 XXV710)/3.33(for X722) or later,
+ * the Rx data path does not hang if the FW LLDP is stopped.
+ * return true if lldp need to stop
+ * return false if we cannot disable the LLDP to avoid Rx data path blocking.
+ */
+static bool
+i40e_need_stop_lldp(struct rte_eth_dev *dev)
+{
+	double nvm_ver;
+	char ver_str[64] = {0};
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	i40e_fw_version_get(dev, ver_str, 64);
+	nvm_ver = atof(ver_str);
+	if ((hw->mac.type == I40E_MAC_X722 ||
+	     hw->mac.type == I40E_MAC_X722_VF) &&
+	     ((uint32_t)(nvm_ver * 1000) >= (uint32_t)(3.33 * 1000)))
+		return true;
+	else if ((uint32_t)(nvm_ver * 1000) >= (uint32_t)(6.01 * 1000))
+		return true;
+
+	return false;
 }
 
 static void
@@ -11427,11 +11452,7 @@ i40e_dcb_init_configure(struct rte_eth_dev *dev, bool sw_dcb)
 	 * LLDP MIB change event.
 	 */
 	if (sw_dcb == TRUE) {
-		/* When using NVM 6.01 or later, the RX data path does
-		 * not hang if the FW LLDP is stopped.
-		 */
-		if (((hw->nvm.version >> 12) & 0xf) >= 6 &&
-		    ((hw->nvm.version >> 4) & 0xff) >= 1) {
+		if (i40e_need_stop_lldp(dev)) {
 			ret = i40e_aq_stop_lldp(hw, TRUE, NULL);
 			if (ret != I40E_SUCCESS)
 				PMD_INIT_LOG(DEBUG, "Failed to stop lldp");

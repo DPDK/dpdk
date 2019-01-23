@@ -704,3 +704,9 @@ See :numref:`figure_intel_perf_test_setup` for the performance test setup.
    * Start creating a stream on packet generator.
 
    * Set the Ethernet II type to 0x0800.
+
+Tx bytes affected by the link status change
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For firmware versions prior to 6.01 for X710 series and 3.33 for X722 series, the tx_bytes statistics data is affected by
+the link down event. Each time the link status changes to down, the tx_bytes decreases 110 bytes.
