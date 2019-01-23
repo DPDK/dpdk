@@ -675,7 +675,7 @@ pci_vfio_map_resource_primary(struct rte_pci_device *dev)
 	vfio_res = rte_zmalloc("VFIO_RES", sizeof(*vfio_res), 0);
 	if (vfio_res == NULL) {
 		RTE_LOG(ERR, EAL,
-			"%s(): cannot store uio mmap details\n", __func__);
+			"%s(): cannot store vfio mmap details\n", __func__);
 		goto err_vfio_dev_fd;
 	}
 	memcpy(&vfio_res->pci_addr, &dev->addr, sizeof(vfio_res->pci_addr));
