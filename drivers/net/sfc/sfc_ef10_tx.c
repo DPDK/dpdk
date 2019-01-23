@@ -381,6 +381,9 @@ sfc_ef10_xmit_tso_pkt(struct sfc_ef10_txq * const txq, struct rte_mbuf *m_seg,
 		hdr_addr = rte_pktmbuf_mtod(m_seg, uint8_t *);
 		hdr_iova = rte_mbuf_data_iova(m_seg);
 		if (rte_pktmbuf_data_len(m_seg) == header_len) {
+			/* Cannot send a packet that consists only of header */
+			if (unlikely(m_seg->next == NULL))
+				return EMSGSIZE;
 			/*
 			 * Associate header mbuf with header descriptor
 			 * which is located after TSO descriptors.
@@ -408,6 +411,10 @@ sfc_ef10_xmit_tso_pkt(struct sfc_ef10_txq * const txq, struct rte_mbuf *m_seg,
 		hdr_iova = txq->tsoh_iova + hdr_addr_off;
 		copied_segs = sfc_tso_prepare_header(hdr_addr, header_len,
 						     &m_seg, &in_off);
+
+		/* Cannot send a packet that consists only of header */
+		if (unlikely(m_seg == NULL))
+			return EMSGSIZE;
 
 		m_seg_to_free_up_to = m_seg;
 		/*
