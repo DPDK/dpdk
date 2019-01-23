@@ -354,6 +354,11 @@ struct tc_tunnel_key {
 /** Parameters of VXLAN devices created by driver. */
 #define MLX5_VXLAN_DEFAULT_VNI	1
 #define MLX5_VXLAN_DEVICE_PFX "vmlx_"
+/**
+ * Timeout in milliseconds to wait VXLAN UDP offloaded port
+ * registration  completed within the mlx5 driver.
+ */
+#define MLX5_VXLAN_WAIT_PORT_REG_MS 250
 
 /** Tunnel action type, used for @p type in header structure. */
 enum flow_tcf_tunact_type {
@@ -445,7 +450,8 @@ struct tcf_vtep {
 	uint32_t refcnt;
 	unsigned int ifindex; /**< Own interface index. */
 	uint16_t port;
-	uint8_t created;
+	uint32_t created:1; /**< Actually created by PMD. */
+	uint32_t waitreg:1; /**< Wait for VXLAN UDP port registration. */
 };
 
 /** Tunnel descriptor header, common for all tunnel types. */
@@ -5167,6 +5173,7 @@ flow_tcf_vtep_create(struct mlx5_flow_tcf_context *tcf,
 		 * when we do not need it anymore.
 		 */
 		vtep->created = 1;
+		vtep->waitreg = 1;
 	}
 	/* Try to get ifindex of created of pre-existing device. */
 	ret = if_nametoindex(name);
@@ -5648,6 +5655,8 @@ flow_tcf_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 	struct mlx5_flow *dev_flow;
 	struct nlmsghdr *nlh;
 	struct tcmsg *tcm;
+	uint64_t start = 0;
+	uint64_t twait = 0;
 	int ret;
 
 	dev_flow = LIST_FIRST(&flow->dev_flows);
@@ -5681,8 +5690,44 @@ flow_tcf_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 				dev_flow->tcf.tunnel->ifindex_org);
 		*dev_flow->tcf.tunnel->ifindex_ptr =
 			dev_flow->tcf.tunnel->vtep->ifindex;
+		if (dev_flow->tcf.tunnel->vtep->waitreg) {
+			/* Clear wait flag for VXLAN port registration. */
+			dev_flow->tcf.tunnel->vtep->waitreg = 0;
+			twait = rte_get_timer_hz();
+			assert(twait > MS_PER_S);
+			twait = twait * MLX5_VXLAN_WAIT_PORT_REG_MS;
+			twait = twait / MS_PER_S;
+			start = rte_get_timer_cycles();
+		}
 	}
-	ret = flow_tcf_nl_ack(ctx, nlh, flow_tcf_collect_apply_cb, nlh);
+	/*
+	 * Kernel creates the VXLAN devices and registers UDP ports to
+	 * be hardware offloaded within the NIC kernel drivers. The
+	 * registration process is being performed into context of
+	 * working kernel thread and the race conditions might happen.
+	 * The VXLAN device is created and success is returned to
+	 * calling application, but the UDP port registration process
+	 * is not completed yet. The next applied rule may be rejected
+	 * by the driver with ENOSUP code. We are going to wait a bit,
+	 * allowing registration process to be completed. The waiting
+	 * is performed once after device been created.
+	 */
+	do {
+		struct timespec onems;
+
+		ret = flow_tcf_nl_ack(ctx, nlh,
+				      flow_tcf_collect_apply_cb, nlh);
+		if (!ret || ret != -ENOTSUP || !twait)
+			break;
+		/* Wait one millisecond and try again till timeout. */
+		onems.tv_sec = 0;
+		onems.tv_nsec = NS_PER_S / MS_PER_S;
+		nanosleep(&onems, 0);
+		if ((rte_get_timer_cycles() - start) > twait) {
+			/* Timeout elapsed, try once more and exit. */
+			twait = 0;
+		}
+	} while (true);
 	if (!ret) {
 		if (!tcm->tcm_handle) {
 			flow_tcf_remove(dev, flow);
