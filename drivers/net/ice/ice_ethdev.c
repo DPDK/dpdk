@@ -1899,7 +1899,9 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 			       ETH_LINK_SPEED_10G |
 			       ETH_LINK_SPEED_20G |
 			       ETH_LINK_SPEED_25G |
-			       ETH_LINK_SPEED_40G;
+			       ETH_LINK_SPEED_40G |
+			       ETH_LINK_SPEED_50G |
+			       ETH_LINK_SPEED_100G;
 
 	dev_info->nb_rx_queues = dev->data->nb_rx_queues;
 	dev_info->nb_tx_queues = dev->data->nb_tx_queues;
@@ -2009,6 +2011,12 @@ ice_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 		break;
 	case ICE_AQ_LINK_SPEED_40GB:
 		link.link_speed = ETH_SPEED_NUM_40G;
+		break;
+	case ICE_AQ_LINK_SPEED_50GB:
+		link.link_speed = ETH_SPEED_NUM_50G;
+		break;
+	case ICE_AQ_LINK_SPEED_100GB:
+		link.link_speed = ETH_SPEED_NUM_100G;
 		break;
 	case ICE_AQ_LINK_SPEED_UNKNOWN:
 	default:
