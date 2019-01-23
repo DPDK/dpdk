@@ -88,17 +88,3 @@ Limitations or Known issues
 ~~~~~~~~~~~~~~~~
 
 Ice code released in 19.02 is for evaluation only.
-
-
-Promiscuous mode not supported
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-As promiscuous mode is not supported as this stage, a port can only receive the
-packets which destination MAC address is this port's own.
-
-
-TX anti-spoofing cannot be disabled
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-TX anti-spoofing is enabled by default. At this stage it's not supported to
-disable it. So any TX packet which source MAC address is not this port's own
-will be dropped by HW. It means io-fwd is not supported now. Recommand to use
-MAC-fwd for evaluation.

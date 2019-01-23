@@ -38,6 +38,10 @@ static int ice_rss_hash_update(struct rte_eth_dev *dev,
 			       struct rte_eth_rss_conf *rss_conf);
 static int ice_rss_hash_conf_get(struct rte_eth_dev *dev,
 				 struct rte_eth_rss_conf *rss_conf);
+static void ice_promisc_enable(struct rte_eth_dev *dev);
+static void ice_promisc_disable(struct rte_eth_dev *dev);
+static void ice_allmulti_enable(struct rte_eth_dev *dev);
+static void ice_allmulti_disable(struct rte_eth_dev *dev);
 static int ice_vlan_filter_set(struct rte_eth_dev *dev,
 			       uint16_t vlan_id,
 			       int on);
@@ -103,6 +107,10 @@ static const struct eth_dev_ops ice_eth_dev_ops = {
 	.reta_query                   = ice_rss_reta_query,
 	.rss_hash_update              = ice_rss_hash_update,
 	.rss_hash_conf_get            = ice_rss_hash_conf_get,
+	.promiscuous_enable           = ice_promisc_enable,
+	.promiscuous_disable          = ice_promisc_disable,
+	.allmulticast_enable          = ice_allmulti_enable,
+	.allmulticast_disable         = ice_allmulti_disable,
 	.rx_queue_intr_enable         = ice_rx_queue_intr_enable,
 	.rx_queue_intr_disable        = ice_rx_queue_intr_disable,
 	.fw_version_get               = ice_fw_version_get,
@@ -1709,6 +1717,7 @@ ice_dev_start(struct rte_eth_dev *dev)
 	struct rte_eth_dev_data *data = dev->data;
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct ice_vsi *vsi = pf->main_vsi;
 	uint16_t nb_rxq = 0;
 	uint16_t nb_txq, i;
 	int ret;
@@ -1742,6 +1751,14 @@ ice_dev_start(struct rte_eth_dev *dev)
 	/* enable Rx interrput and mapping Rx queue to interrupt vector */
 	if (ice_rxq_intr_setup(dev))
 		return -EIO;
+
+	/* Enable receiving broadcast packets and transmitting packets */
+	ret = ice_set_vsi_promisc(hw, vsi->idx,
+				  ICE_PROMISC_BCAST_RX | ICE_PROMISC_BCAST_TX |
+				  ICE_PROMISC_UCAST_TX | ICE_PROMISC_MCAST_TX,
+				  0);
+	if (ret != ICE_SUCCESS)
+		PMD_DRV_LOG(INFO, "fail to set vsi broadcast");
 
 	ret = ice_aq_set_event_mask(hw, hw->port_info->lport,
 				    ((u16)(ICE_AQ_LINK_EVENT_LINK_FAULT |
@@ -2554,6 +2571,75 @@ ice_rss_hash_conf_get(struct rte_eth_dev *dev,
 	/* TODO: default set to 0 as hf config is not supported now */
 	rss_conf->rss_hf = 0;
 	return 0;
+}
+
+static void
+ice_promisc_enable(struct rte_eth_dev *dev)
+{
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ice_vsi *vsi = pf->main_vsi;
+	uint8_t pmask;
+	uint16_t status;
+
+	pmask = ICE_PROMISC_UCAST_RX | ICE_PROMISC_UCAST_TX |
+		ICE_PROMISC_MCAST_RX | ICE_PROMISC_MCAST_TX;
+
+	status = ice_set_vsi_promisc(hw, vsi->idx, pmask, 0);
+	if (status != ICE_SUCCESS)
+		PMD_DRV_LOG(ERR, "Failed to enable promisc, err=%d", status);
+}
+
+static void
+ice_promisc_disable(struct rte_eth_dev *dev)
+{
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ice_vsi *vsi = pf->main_vsi;
+	uint16_t status;
+	uint8_t pmask;
+
+	pmask = ICE_PROMISC_UCAST_RX | ICE_PROMISC_UCAST_TX |
+		ICE_PROMISC_MCAST_RX | ICE_PROMISC_MCAST_TX;
+
+	status = ice_clear_vsi_promisc(hw, vsi->idx, pmask, 0);
+	if (status != ICE_SUCCESS)
+		PMD_DRV_LOG(ERR, "Failed to clear promisc, err=%d", status);
+}
+
+static void
+ice_allmulti_enable(struct rte_eth_dev *dev)
+{
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ice_vsi *vsi = pf->main_vsi;
+	uint8_t pmask;
+	uint16_t status;
+
+	pmask = ICE_PROMISC_MCAST_RX | ICE_PROMISC_MCAST_TX;
+
+	status = ice_set_vsi_promisc(hw, vsi->idx, pmask, 0);
+	if (status != ICE_SUCCESS)
+		PMD_DRV_LOG(ERR, "Failed to enable allmulti, err=%d", status);
+}
+
+static void
+ice_allmulti_disable(struct rte_eth_dev *dev)
+{
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ice_vsi *vsi = pf->main_vsi;
+	uint16_t status;
+	uint8_t pmask;
+
+	if (dev->data->promiscuous == 1)
+		return; /* must remain in all_multicast mode */
+
+	pmask = ICE_PROMISC_MCAST_RX | ICE_PROMISC_MCAST_TX;
+
+	status = ice_clear_vsi_promisc(hw, vsi->idx, pmask, 0);
+	if (status != ICE_SUCCESS)
+		PMD_DRV_LOG(ERR, "Failed to clear allmulti, err=%d", status);
 }
 
 static int ice_rx_queue_intr_enable(struct rte_eth_dev *dev,
