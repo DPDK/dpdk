@@ -584,9 +584,12 @@ m_ifcvf_start(struct ifcvf_internal *internal)
 		}
 		hw->vring[i].desc = gpa;
 
-		hw->vring[i].avail = m_vring_iova +
-			(char *)internal->m_vring[i].avail -
-			(char *)internal->m_vring[i].desc;
+		gpa = hva_to_gpa(vid, (uint64_t)(uintptr_t)vq.avail);
+		if (gpa == 0) {
+			DRV_LOG(ERR, "Fail to get GPA for available ring.");
+			return -1;
+		}
+		hw->vring[i].avail = gpa;
 
 		hw->vring[i].used = m_vring_iova +
 			(char *)internal->m_vring[i].used -
@@ -674,13 +677,6 @@ m_disable_vfio_intr(struct ifcvf_internal *internal)
 }
 
 static void
-update_avail_ring(struct ifcvf_internal *internal, uint16_t qid)
-{
-	rte_vdpa_relay_vring_avail(internal->vid, qid, &internal->m_vring[qid]);
-	ifcvf_notify_queue(&internal->hw, qid);
-}
-
-static void
 update_used_ring(struct ifcvf_internal *internal, uint16_t qid)
 {
 	rte_vdpa_relay_vring_used(internal->vid, qid, &internal->m_vring[qid]);
@@ -703,12 +699,10 @@ vring_relay(void *arg)
 	vid = internal->vid;
 	q_num = rte_vhost_get_vring_num(vid);
 	/* prepare the mediated vring */
-	for (qid = 0; qid < q_num; qid++) {
+	for (qid = 0; qid < q_num; qid++)
 		rte_vhost_get_vring_base(vid, qid,
 				&internal->m_vring[qid].avail->idx,
 				&internal->m_vring[qid].used->idx);
-		rte_vdpa_relay_vring_avail(vid, qid, &internal->m_vring[qid]);
-	}
 
 	/* add notify fd and interrupt fd to epoll */
 	epfd = epoll_create(IFCVF_MAX_QUEUES * 2);
@@ -775,7 +769,7 @@ vring_relay(void *arg)
 			if (events[i].data.u32 & 1)
 				update_used_ring(internal, qid);
 			else
-				update_avail_ring(internal, qid);
+				ifcvf_notify_queue(&internal->hw, qid);
 		}
 	}
 
@@ -818,13 +812,14 @@ static int
 ifcvf_sw_fallback_switchover(struct ifcvf_internal *internal)
 {
 	int ret;
+	int vid = internal->vid;
 
 	/* stop the direct IO data path */
 	unset_notify_relay(internal);
 	vdpa_ifcvf_stop(internal);
 	vdpa_disable_vfio_intr(internal);
 
-	ret = rte_vhost_host_notifier_ctrl(internal->vid, false);
+	ret = rte_vhost_host_notifier_ctrl(vid, false);
 	if (ret && ret != -ENOTSUP)
 		goto error;
 
@@ -842,6 +837,8 @@ ifcvf_sw_fallback_switchover(struct ifcvf_internal *internal)
 	ret = setup_vring_relay(internal);
 	if (ret)
 		goto stop_vf;
+
+	rte_vhost_host_notifier_ctrl(vid, true);
 
 	internal->sw_fallback_running = true;
 

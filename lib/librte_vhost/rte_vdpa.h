@@ -178,25 +178,6 @@ rte_vhost_host_notifier_ctrl(int vid, bool enable);
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *
- * Synchronize the available ring from guest to mediated ring, help to
- * check desc validity to protect against malicious guest driver.
- *
- * @param vid
- *  vhost device id
- * @param qid
- *  vhost queue id
- * @param vring_m
- *  mediated virtio ring pointer
- * @return
- *  number of synced available entries on success, -1 on failure
- */
-int __rte_experimental
-rte_vdpa_relay_vring_avail(int vid, uint16_t qid, void *vring_m);
-
-/**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Synchronize the used ring from mediated ring to guest, log dirty
  * page for each writeable buffer, caller should handle the used
  * ring logging before device stop.
