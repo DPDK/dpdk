@@ -71,7 +71,6 @@ static void virtio_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index);
 static int virtio_mac_addr_set(struct rte_eth_dev *dev,
 				struct ether_addr *mac_addr);
 
-static int virtio_intr_enable(struct rte_eth_dev *dev);
 static int virtio_intr_disable(struct rte_eth_dev *dev);
 
 static int virtio_dev_queue_stats_mapping_set(
