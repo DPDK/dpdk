@@ -2464,6 +2464,7 @@ rte_mbuf_sched_set(struct rte_mbuf *m, uint32_t queue_id,
 				.queue_id = queue_id,
 				.traffic_class = traffic_class,
 				.color = color,
+				.reserved = 0,
 			};
 }
 
