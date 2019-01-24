@@ -1456,6 +1456,7 @@ virtio_recv_pkts_inorder(void *rx_queue,
 
 		prev = rcv_pkts[nb_rx];
 		if (likely(VIRTQUEUE_NUSED(vq) >= rcv_cnt)) {
+			virtio_rmb(hw->weak_barriers);
 			num = virtqueue_dequeue_rx_inorder(vq, rcv_pkts, len,
 							   rcv_cnt);
 			uint16_t extra_idx = 0;
@@ -1642,6 +1643,7 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 
 		prev = rcv_pkts[nb_rx];
 		if (likely(VIRTQUEUE_NUSED(vq) >= rcv_cnt)) {
+			virtio_rmb(hw->weak_barriers);
 			num = virtqueue_dequeue_burst_rx(vq, rcv_pkts, len,
 							   rcv_cnt);
 			uint16_t extra_idx = 0;
