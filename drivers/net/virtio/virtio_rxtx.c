@@ -124,6 +124,7 @@ virtqueue_dequeue_burst_rx_packed(struct virtqueue *vq,
 		used_idx = vq->vq_used_cons_idx;
 		if (!desc_is_used(&desc[used_idx], vq))
 			return i;
+		virtio_rmb(vq->hw->weak_barriers);
 		len[i] = desc[used_idx].len;
 		id = desc[used_idx].id;
 		cookie = (struct rte_mbuf *)vq->vq_descx[id].cookie;
