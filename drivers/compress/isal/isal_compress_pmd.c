@@ -354,12 +354,6 @@ chained_mbuf_decompression(struct rte_comp_op *op, struct isal_comp_qp *qp)
 
 		ret = isal_inflate(qp->state);
 
-		if (ret != ISAL_DECOMP_OK) {
-			ISAL_PMD_LOG(ERR, "Decompression operation failed\n");
-			op->status = RTE_COMP_OP_STATUS_ERROR;
-			return ret;
-		}
-
 		/* Check for first segment, offset needs to be accounted for */
 		if (remaining_data == op->src.length) {
 			consumed_data = src->data_len - src_remaining_offset;
@@ -378,6 +372,20 @@ chained_mbuf_decompression(struct rte_comp_op *op, struct isal_comp_qp *qp)
 				qp->state->avail_in =
 					RTE_MIN(remaining_data, src->data_len);
 			}
+		}
+
+		if (ret == ISAL_OUT_OVERFLOW) {
+			ISAL_PMD_LOG(ERR, "Decompression operation ran "
+				"out of space, but can be recovered.\n%d bytes "
+				"consumed\t%d bytes produced\n",
+				consumed_data, qp->state->total_out);
+				op->status =
+				RTE_COMP_OP_STATUS_OUT_OF_SPACE_RECOVERABLE;
+			return ret;
+		} else if (ret < 0) {
+			ISAL_PMD_LOG(ERR, "Decompression operation failed\n");
+			op->status = RTE_COMP_OP_STATUS_ERROR;
+			return ret;
 		}
 
 		if (qp->state->avail_out == 0 &&
