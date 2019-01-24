@@ -234,7 +234,7 @@ virtio_xmit_cleanup_packed(struct virtqueue *vq, int num)
 
 	used_idx = vq->vq_used_cons_idx;
 	while (num-- && desc_is_used(&desc[used_idx], vq)) {
-		used_idx = vq->vq_used_cons_idx;
+		virtio_rmb(vq->hw->weak_barriers);
 		id = desc[used_idx].id;
 		dxp = &vq->vq_descx[id];
 		vq->vq_used_cons_idx += dxp->ndescs;
@@ -1940,7 +1940,6 @@ virtio_xmit_pkts_packed(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		/* Positive value indicates it need free vring descriptors */
 		if (unlikely(need > 0)) {
-			virtio_rmb(hw->weak_barriers);
 			need = RTE_MIN(need, (int)nb_pkts);
 			virtio_xmit_cleanup_packed(vq, need);
 			need = slots - vq->vq_free_cnt;
