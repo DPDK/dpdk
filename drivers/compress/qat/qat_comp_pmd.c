@@ -185,7 +185,7 @@ qat_comp_setup_inter_buffers(struct qat_comp_dev_private *comp_dev,
 
 	memzone = rte_memzone_reserve_aligned(inter_buff_mz_name, full_size,
 			comp_dev->compressdev->data->socket_id,
-			RTE_MEMZONE_2MB, QAT_64_BYTE_ALIGN);
+			RTE_MEMZONE_IOVA_CONTIG, QAT_64_BYTE_ALIGN);
 	if (memzone == NULL) {
 		QAT_LOG(ERR, "Can't allocate intermediate buffers"
 				" for device %s", comp_dev->qat_dev->name);
