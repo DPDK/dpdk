@@ -1158,7 +1158,7 @@ test_memory_flags(void)
 	const char *argv1[] = {prgname, "-c", "10", "-n", "2",
 			"--file-prefix=" memtest, "-m", DEFAULT_MEM_SIZE};
 
-	/* invalid (zero) --socket-mem flag */
+	/* valid (zero) --socket-mem flag */
 	const char *argv2[] = {prgname, "-c", "10", "-n", "2",
 			"--file-prefix=" memtest, "--socket-mem=0,0,0,0"};
 
@@ -1256,8 +1256,8 @@ test_memory_flags(void)
 		printf("Error - process failed with valid -m flag!\n");
 		return -1;
 	}
-	if (launch_proc(argv2) == 0) {
-		printf("Error - process run ok with invalid (zero) --socket-mem!\n");
+	if (launch_proc(argv2) != 0) {
+		printf("Error - process failed with valid (zero) --socket-mem!\n");
 		return -1;
 	}
 
