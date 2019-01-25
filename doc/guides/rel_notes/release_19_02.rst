@@ -74,6 +74,25 @@ New Features
   The --no-huge mode was augmented to use memfd-backed memory (on systems that
   support memfd), to allow using virtio-user-based NICs without hugepages.
 
+* **Release of the ENA PMD v2.0.0**
+
+  * Added Low Latency Queue v2 (LLQv2). This feature reduces the latency
+    of the packets by pushing the header directly through the PCI to the
+    device. This allows the NIC to start handle packet right after the doorbell
+    without waiting for DMA.
+  * Added independent configuration of HW Tx and Rx ring depths.
+  * Added support for up to 8k Rx descriptors per ring.
+  * Added additional doorbell check on Tx, to handle Tx more efficiently for big
+    bursts of packets.
+  * Added per queue statistics.
+  * Added extended statistics using xstats DPDK API.
+  * The reset routine was aligned with the DPDK API, so now it can be
+    handled as in other PMDs.
+  * Fixed out of order (OOO) completion.
+  * Fixed memory leaks due to port stops and starts in the middle of
+    traffic.
+  * Updated documentation and features list of the PMD.
+
 * **Updated the enic driver.**
 
   * Added support for ``RTE_ETH_DEV_CLOSE_REMOVE`` flag.
