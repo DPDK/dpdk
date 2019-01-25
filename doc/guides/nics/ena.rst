@@ -183,10 +183,22 @@ Prerequisites
 #. Prepare the system as recommended by DPDK suite.  This includes environment
    variables, hugepages configuration, tool-chains and configuration.
 
-#. ENA PMD can operate with ``vfio-pci`` or ``igb_uio`` driver.
+#. ENA PMD can operate with ``vfio-pci``(*) or ``igb_uio`` driver.
+
+   (*) ENAv2 hardware supports Low Latency Queue v2 (LLQv2). This feature
+   reduces the latency of the packets by pushing the header directly through
+   the PCI to the device, before the DMA is even triggered. For proper work
+   kernel PCI driver must support write combining (WC). In mainline version of
+   ``igb_uio`` (in DPDK repo) it must be enabled by loding module with
+   ``wc_activate=1`` flag (example below). However, mainline's vfio-pci
+   driver in kernel doesn't have WC support yet (planed to be added).
+   If vfio-pci used user should be either turn off ENAv2 (to avoid performance
+   impact) or recompile vfio-pci driver with patch provided in
+   `amzn-github <https://github.com/amzn/amzn-drivers/tree/master/userspace/dpdk/enav2-vfio-patch>`_.
 
 #. Insert ``vfio-pci`` or ``igb_uio`` kernel module using the command
-   ``modprobe vfio-pci`` or ``modprobe igb_uio`` respectively.
+   ``modprobe vfio-pci`` or ``modprobe uio; insmod igb_uio.ko wc_activate=1``
+   respectively.
 
 #. For ``vfio-pci`` users only:
    Please make sure that ``IOMMU`` is enabled in your system,
