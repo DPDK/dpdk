@@ -1715,18 +1715,19 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	static int adapters_found;
 	bool wd_state;
 
-	memset(adapter, 0, sizeof(struct ena_adapter));
-	ena_dev = &adapter->ena_dev;
-
 	eth_dev->dev_ops = &ena_dev_ops;
 	eth_dev->rx_pkt_burst = &eth_ena_recv_pkts;
 	eth_dev->tx_pkt_burst = &eth_ena_xmit_pkts;
 	eth_dev->tx_pkt_prepare = &eth_ena_prep_pkts;
-	adapter->rte_eth_dev_data = eth_dev->data;
-	adapter->rte_dev = eth_dev;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
+
+	memset(adapter, 0, sizeof(struct ena_adapter));
+	ena_dev = &adapter->ena_dev;
+
+	adapter->rte_eth_dev_data = eth_dev->data;
+	adapter->rte_dev = eth_dev;
 
 	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	adapter->pdev = pci_dev;
