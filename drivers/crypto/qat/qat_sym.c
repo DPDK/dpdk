@@ -157,6 +157,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 	uint32_t min_ofs = 0;
 	uint64_t src_buf_start = 0, dst_buf_start = 0;
 	uint8_t do_sgl = 0;
+	uint8_t wireless_auth = 0, in_place = 1;
 	struct rte_crypto_op *op = (struct rte_crypto_op *)in_op;
 	struct qat_sym_op_cookie *cookie =
 				(struct qat_sym_op_cookie *)op_cookie;
@@ -269,6 +270,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 			}
 			auth_ofs = op->sym->auth.data.offset >> 3;
 			auth_len = op->sym->auth.data.length >> 3;
+			wireless_auth = 1;
 
 			auth_param->u1.aad_adr =
 					rte_crypto_op_ctophys_offset(op,
@@ -438,6 +440,7 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 		 * Don't align DMA start. DMA the minimum data-set
 		 * so as not to overwrite data in dest buffer
 		 */
+		in_place = 0;
 		src_buf_start =
 			rte_pktmbuf_iova_offset(op->sym->m_src, min_ofs);
 		dst_buf_start =
@@ -530,6 +533,18 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 	} else {
 		qat_req->comn_mid.src_data_addr = src_buf_start;
 		qat_req->comn_mid.dest_data_addr = dst_buf_start;
+		/* handle case of auth-gen-then-cipher with digest encrypted */
+		if (wireless_auth && in_place &&
+		    (op->sym->auth.digest.phys_addr ==
+				src_buf_start + auth_ofs + auth_len) &&
+		    (auth_ofs + auth_len + ctx->digest_length <=
+				cipher_ofs + cipher_len)) {
+			struct icp_qat_fw_comn_req_hdr *header =
+						&qat_req->comn_hdr;
+			ICP_QAT_FW_LA_DIGEST_IN_BUFFER_SET(
+				header->serv_specif_flags,
+				ICP_QAT_FW_LA_DIGEST_IN_BUFFER);
+		}
 	}
 
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
