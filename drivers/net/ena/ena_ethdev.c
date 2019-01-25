@@ -1687,8 +1687,7 @@ static int ena_calc_io_queue_num(struct ena_com_dev *ena_dev,
 	if (ena_dev->tx_mem_queue_type == ENA_ADMIN_PLACEMENT_POLICY_DEV)
 		io_tx_sq_num = get_feat_ctx->llq.max_llq_num;
 
-	io_queue_num = RTE_MIN(rte_lcore_count(), ENA_MAX_NUM_IO_QUEUES);
-	io_queue_num = RTE_MIN(io_queue_num, io_rx_num);
+	io_queue_num = RTE_MIN(ENA_MAX_NUM_IO_QUEUES, io_rx_num);
 	io_queue_num = RTE_MIN(io_queue_num, io_tx_sq_num);
 	io_queue_num = RTE_MIN(io_queue_num, io_tx_cq_num);
 
