@@ -2683,7 +2683,7 @@ flow_tcf_get_actions_and_size(const struct rte_flow_action actions[],
 			      uint64_t *action_flags)
 {
 	int size = 0;
-	uint64_t flags = 0;
+	uint64_t flags = *action_flags;
 
 	size += SZ_NLATTR_NEST; /* TCA_FLOWER_ACT. */
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
@@ -3779,6 +3779,10 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 					mnl_attr_get_payload
 					(mnl_nlmsg_get_payload_tail
 						(nlh)))->ifindex;
+			} else if (decap.hdr) {
+				assert(dev_flow->tcf.tunnel);
+				dev_flow->tcf.tunnel->ifindex_ptr =
+					(unsigned int *)&tcm->tcm_ifindex;
 			}
 			mnl_attr_put(nlh, TCA_MIRRED_PARMS,
 				     sizeof(struct tc_mirred),
