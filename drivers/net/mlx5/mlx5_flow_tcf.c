@@ -28,6 +28,7 @@
 #include <rte_flow.h>
 #include <rte_malloc.h>
 #include <rte_common.h>
+#include <rte_cycles.h>
 
 #include "mlx5.h"
 #include "mlx5_flow.h"
