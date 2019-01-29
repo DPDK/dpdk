@@ -95,6 +95,7 @@ bad=$(echo "$headlines" | grep -E --color=always \
 	-e ':.*\<(Armv7|ARMv7|ArmV7|armV7|ARMV7)\>' \
 	-e ':.*\<(Armv8|ARMv8|ArmV8|armV8|ARMV8)\>' \
 	-e ':.*\<crc\>' \
+	-e ':.*\<dcb\>' \
 	-e ':.*\<dma\>' \
 	-e ':.*\<eeprom\>' \
 	-e ':.*\<freebsd\>' \
@@ -113,7 +114,9 @@ bad=$(echo "$headlines" | grep -E --color=always \
 	-e ':.*\<pmd\>' \
 	-e ':.*\<rss\>' \
 	-e ':.*\<sctp\>' \
+	-e ':.*\<tos\>' \
 	-e ':.*\<tso\>' \
+	-e ':.*\<ttl\>' \
 	-e ':.*\<udp\>' \
 	-e ':.*\<[Vv]lan\>' \
 	-e ':.*\<vdpa\>' \
