@@ -44,6 +44,32 @@ module.
    Flow Bifurcation Overview
 
 
+Using Flow Bifurcation on Mellanox ConnectX
+-------------------------------------------
+
+The Mellanox devices are :ref:`natively bifurcated <bifurcated_driver>`,
+so there is no need to split into SR-IOV PF/VF
+in order to get the flow bifurcation mechanism.
+The full device is already shared with the kernel driver.
+
+The DPDK application can setup some flow steering rules,
+and let the rest go to the kernel stack.
+In order to define the filters strictly with flow rules,
+the :ref:`flow_isolated_mode` can be configured.
+
+There is no specific instructions to follow.
+The recommended reading is the :doc:`../prog_guide/rte_flow` guide.
+Below is an example of testpmd commands
+for receiving VXLAN 42 in 4 queues of the DPDK port 0,
+while all other packets go to the kernel:
+
+.. code-block:: console
+
+   testpmd> flow isolate 0 true
+   testpmd> flow create 0 ingress pattern eth / ipv4 / udp / vxlan vni is 42 / end \
+            actions rss queues 0 1 2 3 end / end
+
+
 Using Flow Bifurcation on IXGBE in Linux
 ----------------------------------------
 

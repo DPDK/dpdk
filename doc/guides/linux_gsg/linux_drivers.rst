@@ -85,6 +85,8 @@ This can be done by using the DPDK setup script (called dpdk-setup.sh and locate
 
     VFIO can be used without IOMMU. While this is just as unsafe as using UIO, it does make it possible for the user to keep the degree of device access and programming that VFIO has, in situations where IOMMU is not available.
 
+.. _bifurcated_driver:
+
 Bifurcated Driver
 -----------------
 
@@ -99,7 +101,10 @@ Such model has the following benefits:
  - It enables the user to use legacy linux tools such as ``ethtool`` or
    ``ifconfig`` while running DPDK application on the same network ports.
  - It enables the DPDK application to filter only part of the traffic,
-   While the rest will be directed and handled by the kernel driver.
+   while the rest will be directed and handled by the kernel driver.
+   The flow bifurcation is performed by the NIC hardware.
+   As an example, using :ref:`flow_isolated_mode` allows to choose
+   strictly what is received in DPDK.
 
 More about the bifurcated driver can be found in
 `Mellanox Bifurcated DPDK PMD
