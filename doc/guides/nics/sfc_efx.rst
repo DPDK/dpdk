@@ -207,6 +207,8 @@ Supported actions:
 
 Validating flow rules depends on the firmware variant.
 
+The :ref:`flow_isolated_mode` is supported.
+
 Ethernet destinaton individual/group match
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

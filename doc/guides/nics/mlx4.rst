@@ -46,6 +46,8 @@ This capability allows the PMD to coexist with kernel network interfaces
 which remain functional, although they stop receiving unicast packets as
 long as they share the same MAC address.
 
+The :ref:`flow_isolated_mode` is supported.
+
 Compiling librte_pmd_mlx4 causes DPDK to be linked against libibverbs.
 
 Configuration
