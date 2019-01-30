@@ -93,6 +93,22 @@ New Features
     traffic.
   * Updated documentation and features list of the PMD.
 
+* **Updated mlx5 driver.**
+
+  Updated the mlx5 driver including the following changes:
+
+  * Fixed ``imissed`` counter to be reported through ``rte_eth_stats`` instead
+    of ``rte_eth_xstats``.
+  * Added packet header modification through Direct Verbs flow driver.
+  * Added ConnectX-6 PCI device ID to be proved by ``mlx5`` driver.
+  * Added flow counter support to Direct Verbs flow driver though DevX.
+  * Renamed build options for the glue layer to
+    ``CONFIG_RTE_IBVERBS_LINK_DLOPEN`` for make and ``ibverbs_link`` for meson.
+  * Added static linkage of ``mlx`` dependency.
+  * Improved stability of E-Switch flow driver.
+  * Added new make build configuration to set the cacheline size for Bluefield
+    correctly - ``arm64-bluefield-linuxapp-gcc``.
+
 * **Updated the enic driver.**
 
   * Added support for ``RTE_ETH_DEV_CLOSE_REMOVE`` flag.
