@@ -221,6 +221,13 @@ These options can be modified in the ``.config`` file.
   adds additional run-time checks and debugging messages at the cost of
   lower performance.
 
+.. note::
+
+   For Bluefield, target should be set to ``arm64-bluefield-linuxapp-gcc``. This
+   will enable ``CONFIG_RTE_LIBRTE_MLX5_PMD`` and set ``RTE_CACHE_LINE_SIZE`` to
+   64. Default armv8a configuration of make build and meson build set it to 128
+   then brings performance degradation.
+
 Environment variables
 ~~~~~~~~~~~~~~~~~~~~~
 
