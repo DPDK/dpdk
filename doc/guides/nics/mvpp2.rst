@@ -410,7 +410,7 @@ Flow API
 
 PPv2 offers packet classification capabilities via classifier engine which
 can be configured via generic flow API offered by DPDK.
-For an additional description please refer to DPDK :ref:`Generic flow API <Generic_flow_API>`.
+For an additional description please refer to DPDK :doc:`../prog_guide/rte_flow`.
 
 Supported flow actions
 ~~~~~~~~~~~~~~~~~~~~~~

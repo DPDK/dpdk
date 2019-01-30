@@ -2,8 +2,6 @@
     Copyright 2016 6WIND S.A.
     Copyright 2016 Mellanox Technologies, Ltd
 
-.. _Generic_flow_API:
-
 Generic flow API (rte_flow)
 ===========================
 

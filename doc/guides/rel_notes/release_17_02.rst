@@ -77,8 +77,7 @@ New Features
   higher-level than the legacy filtering framework, which it encompasses and
   supersedes (including all functions and filter types) .
 
-  See the :ref:`Generic flow API <Generic_flow_API>` documentation for more
-  information.
+  See the :doc:`../prog_guide/rte_flow` documentation for more information.
 
 * **Added firmware version get API.**
 

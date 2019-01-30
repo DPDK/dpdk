@@ -8,7 +8,7 @@ This document demonstrates some concrete examples for programming flow rules
 with the ``rte_flow`` APIs.
 
 * Detail of the rte_flow APIs can be found in the following link:
-  :ref:`Generic flow API <Generic_flow_API>` .
+  :doc:`../prog_guide/rte_flow`.
 
 * Details of the TestPMD commands to set the flow rules can be found in the
   following link: :ref:`TestPMD Flow rules <testpmd_rte_flow>`
