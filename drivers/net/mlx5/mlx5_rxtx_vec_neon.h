@@ -104,6 +104,8 @@ txq_scatter_v(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 		sizeof(struct mlx5_wqe) / MLX5_WQE_DWORD_SIZE;
 	unsigned int n;
 	volatile struct mlx5_wqe *wqe = NULL;
+	bool metadata_ol =
+		txq->offloads & DEV_TX_OFFLOAD_MATCH_METADATA ? true : false;
 
 	assert(elts_n > pkts_n);
 	mlx5_tx_complete(txq);
@@ -127,6 +129,9 @@ txq_scatter_v(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 		uint8x16_t *t_wqe;
 		uint8_t *dseg;
 		uint8x16_t ctrl;
+		rte_be32_t metadata =
+			metadata_ol && (buf->ol_flags & PKT_TX_METADATA) ?
+			buf->tx_metadata : 0;
 
 		assert(segs_n);
 		max_elts = elts_n - (elts_head - txq->elts_tail);
@@ -164,9 +169,10 @@ txq_scatter_v(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 		ctrl = vqtbl1q_u8(ctrl, ctrl_shuf_m);
 		vst1q_u8((void *)t_wqe, ctrl);
 		/* Fill ESEG in the header. */
-		vst1q_u16((void *)(t_wqe + 1),
-			  ((uint16x8_t) { 0, 0, cs_flags, rte_cpu_to_be_16(len),
-					  0, 0, 0, 0 }));
+		vst1q_u32((void *)(t_wqe + 1),
+			  ((uint32x4_t){ 0,
+					 cs_flags << 16 | rte_cpu_to_be_16(len),
+					 metadata, 0 }));
 		txq->wqe_ci = wqe_ci;
 	}
 	if (!n)

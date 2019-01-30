@@ -104,6 +104,8 @@ txq_scatter_v(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 		sizeof(struct mlx5_wqe) / MLX5_WQE_DWORD_SIZE;
 	unsigned int n;
 	volatile struct mlx5_wqe *wqe = NULL;
+	bool metadata_ol =
+		txq->offloads & DEV_TX_OFFLOAD_MATCH_METADATA ? true : false;
 
 	assert(elts_n > pkts_n);
 	mlx5_tx_complete(txq);
@@ -125,6 +127,9 @@ txq_scatter_v(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 		uint16_t max_wqe;
 		__m128i *t_wqe, *dseg;
 		__m128i ctrl;
+		rte_be32_t metadata =
+			metadata_ol && (buf->ol_flags & PKT_TX_METADATA) ?
+			buf->tx_metadata : 0;
 
 		assert(segs_n);
 		max_elts = elts_n - (elts_head - txq->elts_tail);
@@ -165,9 +170,9 @@ txq_scatter_v(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 		_mm_store_si128(t_wqe, ctrl);
 		/* Fill ESEG in the header. */
 		_mm_store_si128(t_wqe + 1,
-				_mm_set_epi16(0, 0, 0, 0,
-					      rte_cpu_to_be_16(len), cs_flags,
-					      0, 0));
+				_mm_set_epi32(0, metadata,
+					      (rte_cpu_to_be_16(len) << 16) |
+					      cs_flags, 0));
 		txq->wqe_ci = wqe_ci;
 	}
 	if (!n)
