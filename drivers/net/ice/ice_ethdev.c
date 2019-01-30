@@ -1458,15 +1458,14 @@ ice_dev_close(struct rte_eth_dev *dev)
 
 	ice_res_pool_destroy(&pf->msix_pool);
 	ice_release_vsi(pf->main_vsi);
-
+	ice_sched_cleanup_all(hw);
+	rte_free(hw->port_info);
 	ice_shutdown_all_ctrlq(hw);
 }
 
 static int
 ice_dev_uninit(struct rte_eth_dev *dev)
 {
-	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
@@ -1485,11 +1484,6 @@ ice_dev_uninit(struct rte_eth_dev *dev)
 	/* register callback func to eal lib */
 	rte_intr_callback_unregister(intr_handle,
 				     ice_interrupt_handler, dev);
-
-	ice_release_vsi(pf->main_vsi);
-	ice_sched_cleanup_all(hw);
-	rte_free(hw->port_info);
-	ice_shutdown_all_ctrlq(hw);
 
 	return 0;
 }
