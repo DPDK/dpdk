@@ -1258,7 +1258,8 @@ create_eth:
 		if (pp == NULL) {
 			PMD_LOG(ERR,
 				"Failed to allocate memory for process private");
-			return -1;
+			ret = -1;
+			goto free_kvlist;
 		}
 
 		eth_dev->dev_ops = &ops;
@@ -1281,7 +1282,7 @@ create_eth:
 			eth_dev->tx_pkt_burst = eth_pcap_tx;
 
 		rte_eth_dev_probing_finish(eth_dev);
-		return 0;
+		goto free_kvlist;
 	}
 
 	ret = eth_from_pcaps(dev, &pcaps, pcaps.num_of_queue, &dumpers,
