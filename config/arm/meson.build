@@ -12,10 +12,12 @@ machine_args_generic = [
 	['native', ['-march=native']],
 	['0xd03', ['-mcpu=cortex-a53']],
 	['0xd04', ['-mcpu=cortex-a35']],
+	['0xd05', ['-mcpu=cortex-a55']],
 	['0xd07', ['-mcpu=cortex-a57']],
 	['0xd08', ['-mcpu=cortex-a72']],
 	['0xd09', ['-mcpu=cortex-a73']],
 	['0xd0a', ['-mcpu=cortex-a75']],
+	['0xd0b', ['-mcpu=cortex-a76']],
 ]
 machine_args_cavium = [
 	['default', ['-march=armv8-a+crc+crypto','-mcpu=thunderx']],
