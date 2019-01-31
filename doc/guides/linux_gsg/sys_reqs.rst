@@ -70,6 +70,15 @@ Compilation of the DPDK
 
     * libnuma-dev in Debian/Ubuntu;
 
+    .. note::
+
+        On systems with NUMA support, `libnuma-dev` (aka `numactl-devel`)
+        is a recommended dependency when `--legacy-mem` switch is used,
+        and a *required* dependency if default memory mode is used.
+        While DPDK will compile and run without `libnuma`
+        even on NUMA-enabled systems,
+        both usability and performance will be degraded.
+
 *   Python, version 2.7+ or 3.2+, to use various helper scripts included in the DPDK package.
 
 
