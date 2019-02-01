@@ -54,7 +54,7 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
-* **Added support to free hugepages exactly as originally allocated.**
+* **Added support for freeing hugepages exactly as originally allocated.**
 
   Some applications using memory event callbacks (especially for managing
   RDMA memory regions) require that memory be freed back to the system
@@ -69,16 +69,19 @@ New Features
   chunks of external memory to be registered with DPDK without adding them to
   the malloc heap.
 
-* **Support for using virtio-user without hugepages**
+* **Added support for using virtio-user without hugepages.**
 
-  The --no-huge mode was augmented to use memfd-backed memory (on systems that
-  support memfd), to allow using virtio-user-based NICs without hugepages.
+  The ``--no-huge`` mode was augmented to use memfd-backed memory (on systems
+  that support memfd), to allow using virtio-user-based NICs without
+  hugepages.
 
-* **Release of the ENA PMD v2.0.0**
+* **Release of the ENA PMD v2.0.0.**
+
+  Version 2.0.0 of the ENA PMD was added with the following additions:
 
   * Added Low Latency Queue v2 (LLQv2). This feature reduces the latency
     of the packets by pushing the header directly through the PCI to the
-    device. This allows the NIC to start handle packet right after the doorbell
+    device. This allows the NIC to start handle packets right after the doorbell
     without waiting for DMA.
   * Added independent configuration of HW Tx and Rx ring depths.
   * Added support for up to 8k Rx descriptors per ring.
@@ -111,31 +114,31 @@ New Features
 
 * **Updated the enic driver.**
 
-  * Added support for ``RTE_ETH_DEV_CLOSE_REMOVE`` flag.
-  * Added the handler to get firmware version string.
+  * Added support for the ``RTE_ETH_DEV_CLOSE_REMOVE`` flag.
+  * Added a handler to get the firmware version string.
   * Added support for multicast filtering.
 
 * **Added dynamic queues allocation support for i40e VF.**
 
-  Previously, available queues of VF is reserved by PF at initialize stage.
-  Now both DPDK PF and Kernel PF (>=2.1.14) will support dynamic queue
-  allocation. At runtime, when VF request more queue number exceed the initial
-  reserved amount, PF can allocate up to 16 queues as the request after a VF
-  reset.
+  Previously, the available VF queues were reserved by PF at initialization
+  stage. Now both DPDK PF and Kernel PF (>=2.1.14) will support dynamic queue
+  allocation. At runtime, when VF requests for more queue exceed the initial
+  reserved amount, the PF can allocate up to 16 queues as the request after a
+  VF reset.
 
-* **Added ICE net PMD**
+* **Added ICE net PMD.**
 
-  Added the new ``ice`` net driver for Intel® Ethernet Network Adapters E810.
+  Added the new ``ice`` net driver for Intel(R) Ethernet Network Adapters E810.
   See the :doc:`../nics/ice` NIC guide for more details on this new driver.
 
 * **Added support for SW-assisted VDPA live migration.**
 
   This SW-assisted VDPA live migration facility helps VDPA devices without
   logging capability to perform live migration, a mediated SW relay can help
-  devices to track dirty pages caused by DMA. IFC driver has enabled this
+  devices to track dirty pages caused by DMA. the IFC driver has enabled this
   SW-assisted live migration mode.
 
-* **Added security checks to cryptodev symmetric session operations.**
+* **Added security checks to the cryptodev symmetric session operations.**
 
   Added a set of security checks to the access cryptodev symmetric session.
   The checks include the session's user data read/write check and the
@@ -143,9 +146,9 @@ New Features
 
 * **Updated the AESNI-MB PMD.**
 
-  * Add support for intel-ipsec-mb version 0.52.
-  * Add AES-GMAC algorithm support.
-  * Add Plain SHA1, SHA224, SHA256, SHA384, and SHA512 algorithms support.
+  * Added support for intel-ipsec-mb version 0.52.
+  * Added AES-GMAC algorithm support.
+  * Added Plain SHA1, SHA224, SHA256, SHA384, and SHA512 algorithms support.
 
 * **Added IPsec Library.**
 
@@ -161,13 +164,13 @@ New Features
 * **Updated the ipsec-secgw sample application.**
 
   The ``ipsec-secgw`` sample application has been updated to use the new
-  ``librte_ipsec`` library also added in this release.
+  ``librte_ipsec`` library, which has also been added in this release.
   The original functionality of ipsec-secgw is retained, a new command line
   parameter ``-l`` has  been added to ipsec-secgw to use the IPsec library,
   instead of the existing IPsec code in the application.
 
   The IPsec library does not support all the functionality of the existing
-  ipsec-secgw application, its is planned to add the outstanding functionality
+  ipsec-secgw application. It is planned to add the outstanding functionality
   in future releases.
 
   See :doc:`../sample_app_ug/ipsec_secgw` for more information.
@@ -191,19 +194,6 @@ New Features
   detected by the library.
 
 
-Removed Items
--------------
-
-.. This section should contain removed items in this release. Sample format:
-
-   * Add a short 1-2 sentence description of the removed item
-     in the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
-
-
 API Changes
 -----------
 
@@ -220,16 +210,16 @@ API Changes
    =========================================================
 
 * eal: Function ``rte_bsf64`` in ``rte_bitmap.h`` has been renamed to
-  ``rte_bsf64_safe`` and moved to ``rte_common.h``. A new ``rte_bsf64`` function
-  has been added in ``rte_common.h`` that follows convention set by existing
-  ``rte_bsf32`` function.
+  ``rte_bsf64_safe`` and moved to ``rte_common.h``. A new ``rte_bsf64``
+  function has been added in ``rte_common.h`` that follows the convention set
+  by the existing ``rte_bsf32`` function.
 
 * eal: Segment fd API on Linux now sets error code to ``ENOTSUP`` in more cases
-  where segment fd API is not expected to be supported:
+  where segment the fd API is not expected to be supported:
 
-  - On attempt to get segment fd for an externally allocated memory segment
+  - On attempt to get a segment fd for an externally allocated memory segment
   - In cases where memfd support would have been required to provide segment
-    fd's (such as in-memory or no-huge mode)
+    fds (such as in-memory or no-huge mode)
 
 * eal: Functions ``rte_malloc_dump_stats()``, ``rte_malloc_dump_heaps()`` and
   ``rte_malloc_get_socket_stats()`` are no longer safe to call concurrently with
@@ -250,10 +240,10 @@ API Changes
 * cryptodev: The parameter ``session_pool`` in the function
   ``rte_cryptodev_queue_pair_setup()`` is removed.
 
-* cryptodev: a new function ``rte_cryptodev_sym_session_pool_create()`` is
+* cryptodev: a new function ``rte_cryptodev_sym_session_pool_create()`` has been
   introduced. This function is now mandatory when creating symmetric session
   header mempool. Please note all crypto applications are required to use this
-  function from now on. Failed to do so will cause
+  function from now on. Failed to do so will cause a
   ``rte_cryptodev_sym_session_create()`` function call return error.
 
 
@@ -276,14 +266,14 @@ ABI Changes
   to include the following fields: ``queue ID``, ``traffic class``, ``color``.
 
 * cryptodev: as shown in the the 18.11 deprecation notice, the structure
-  ``rte_cryptodev_qp_conf`` has been added two parameters of symmetric session
+  ``rte_cryptodev_qp_conf`` has added two parameters for symmetric session
   mempool and symmetric session private data mempool.
 
 * cryptodev: as shown in the the 18.11 deprecation notice, the structure
   ``rte_cryptodev_sym_session`` has been updated to contain more information
   to ensure safely accessing the session and session private data.
 
-* security: New field ``uint64_t opaque_data`` is added into
+* security: A new field ``uint64_t opaque_data`` has been added to
   ``rte_security_session`` structure. That would allow upper layer to easily
   associate/de-associate some user defined data with the security session.
 
