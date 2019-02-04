@@ -32,10 +32,9 @@ opdl_xstats_init(struct rte_eventdev *dev)
 			uint32_t index = (i * max_num_port_xstat) + j;
 
 			/* Name */
-			sprintf(device->port_xstat[index].stat.name,
-			       "port_%02u_%s",
-			       i,
-			       port_xstat_str[j]);
+			snprintf(device->port_xstat[index].stat.name,
+				sizeof(device->port_xstat[index].stat.name),
+				"port_%02u_%s", i, port_xstat_str[j]);
 
 			/* ID */
 			device->port_xstat[index].id = index;
