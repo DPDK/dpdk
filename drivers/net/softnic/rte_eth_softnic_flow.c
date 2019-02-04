@@ -1283,7 +1283,8 @@ flow_rule_action_get(struct pmd_internals *softnic,
 					action,
 					"QUEUE: Invalid RX queue ID");
 
-			sprintf(name, "RXQ%u", (uint32_t)conf->index);
+			snprintf(name, sizeof(name), "RXQ%u",
+					(uint32_t)conf->index);
 
 			status = softnic_pipeline_port_out_find(softnic,
 				pipeline->name,
@@ -1373,7 +1374,7 @@ flow_rule_action_get(struct pmd_internals *softnic,
 						action,
 						"RSS: Invalid RX queue ID");
 
-				sprintf(name, "RXQ%u",
+				snprintf(name, sizeof(name), "RXQ%u",
 					(uint32_t)conf->queue[i]);
 
 				status = softnic_pipeline_port_out_find(softnic,
