@@ -1133,6 +1133,7 @@ F: test/test/test_func_reentrancy.c
 
 LPM
 M: Bruce Richardson <bruce.richardson@intel.com>
+M: Vladimir Medvedkin <vladimir.medvedkin@intel.com>
 F: lib/librte_lpm/
 F: doc/guides/prog_guide/lpm*
 F: test/test/test_lpm*
