@@ -1972,6 +1972,8 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 	const struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	const struct rte_eth_txmode *txmode = &dev->data->dev_conf.txmode;
 	struct virtio_hw *hw = dev->data->dev_private;
+	uint32_t ether_hdr_len = ETHER_HDR_LEN + VLAN_TAG_LEN +
+		hw->vtnet_hdr_size;
 	uint64_t rx_offloads = rxmode->offloads;
 	uint64_t tx_offloads = txmode->offloads;
 	uint64_t req_features;
@@ -1985,6 +1987,9 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 		if (ret < 0)
 			return ret;
 	}
+
+	if (rxmode->max_rx_pkt_len > hw->max_mtu + ether_hdr_len)
+		req_features &= ~(1ULL << VIRTIO_NET_F_MTU);
 
 	if (rx_offloads & (DEV_RX_OFFLOAD_UDP_CKSUM |
 			   DEV_RX_OFFLOAD_TCP_CKSUM))
@@ -2339,6 +2344,7 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	host_features = VTPCI_OPS(hw)->get_features(hw);
 	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP;
+	dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	if (host_features & (1ULL << VIRTIO_NET_F_GUEST_CSUM)) {
 		dev_info->rx_offload_capa |=
 			DEV_RX_OFFLOAD_TCP_CKSUM |
