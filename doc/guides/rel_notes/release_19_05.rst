@@ -65,6 +65,12 @@ New Features
     process.
   * Added support for Rx packet types list in a secondary process.
 
+* **Updated Mellanox drivers.**
+
+   New features and improvements were done in mlx4 and mlx5 PMDs:
+
+   * Added firmware version reading.
+
 
 Removed Items
 -------------

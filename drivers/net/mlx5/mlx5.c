@@ -374,6 +374,7 @@ const struct eth_dev_ops mlx5_dev_ops = {
 	.xstats_get = mlx5_xstats_get,
 	.xstats_reset = mlx5_xstats_reset,
 	.xstats_get_names = mlx5_xstats_get_names,
+	.fw_version_get = mlx5_fw_version_get,
 	.dev_infos_get = mlx5_dev_infos_get,
 	.dev_supported_ptypes_get = mlx5_dev_supported_ptypes_get,
 	.vlan_filter_set = mlx5_vlan_filter_set,
@@ -403,18 +404,20 @@ const struct eth_dev_ops mlx5_dev_ops = {
 	.is_removed = mlx5_is_removed,
 };
 
+/* Available operations from secondary process. */
 static const struct eth_dev_ops mlx5_dev_sec_ops = {
 	.stats_get = mlx5_stats_get,
 	.stats_reset = mlx5_stats_reset,
 	.xstats_get = mlx5_xstats_get,
 	.xstats_reset = mlx5_xstats_reset,
 	.xstats_get_names = mlx5_xstats_get_names,
+	.fw_version_get = mlx5_fw_version_get,
 	.dev_infos_get = mlx5_dev_infos_get,
 	.rx_descriptor_status = mlx5_rx_descriptor_status,
 	.tx_descriptor_status = mlx5_tx_descriptor_status,
 };
 
-/* Available operators in flow isolated mode. */
+/* Available operations in flow isolated mode. */
 const struct eth_dev_ops mlx5_dev_ops_isolate = {
 	.dev_configure = mlx5_dev_configure,
 	.dev_start = mlx5_dev_start,
@@ -432,6 +435,7 @@ const struct eth_dev_ops mlx5_dev_ops_isolate = {
 	.xstats_get = mlx5_xstats_get,
 	.xstats_reset = mlx5_xstats_reset,
 	.xstats_get_names = mlx5_xstats_get_names,
+	.fw_version_get = mlx5_fw_version_get,
 	.dev_infos_get = mlx5_dev_infos_get,
 	.dev_supported_ptypes_get = mlx5_dev_supported_ptypes_get,
 	.vlan_filter_set = mlx5_vlan_filter_set,

@@ -593,6 +593,32 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 }
 
 /**
+ * Get firmware version of a device.
+ *
+ * @param dev
+ *   Ethernet device port.
+ * @param fw_ver
+ *   String output allocated by caller.
+ * @param fw_size
+ *   Size of the output string, including terminating null byte.
+ *
+ * @return
+ *   0 on success, or the size of the non truncated string if too big.
+ */
+int mlx4_fw_version_get(struct rte_eth_dev *dev, char *fw_ver, size_t fw_size)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct ibv_device_attr *attr = &priv->device_attr;
+	size_t size = strnlen(attr->fw_ver, sizeof(attr->fw_ver)) + 1;
+
+	if (fw_size < size)
+		return size;
+	if (fw_ver != NULL)
+		strlcpy(fw_ver, attr->fw_ver, fw_size);
+	return 0;
+}
+
+/**
  * DPDK callback to get device statistics.
  *
  * @param dev

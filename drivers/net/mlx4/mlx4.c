@@ -237,6 +237,7 @@ static const struct eth_dev_ops mlx4_dev_ops = {
 	.mac_addr_set = mlx4_mac_addr_set,
 	.stats_get = mlx4_stats_get,
 	.stats_reset = mlx4_stats_reset,
+	.fw_version_get = mlx4_fw_version_get,
 	.dev_infos_get = mlx4_dev_infos_get,
 	.dev_supported_ptypes_get = mlx4_dev_supported_ptypes_get,
 	.vlan_filter_set = mlx4_vlan_filter_set,
