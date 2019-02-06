@@ -440,8 +440,8 @@ power_acpi_cpufreq_freqs(unsigned int lcore_id, uint32_t *freqs, uint32_t num)
 {
 	struct rte_power_info *pi;
 
-	if (lcore_id >= RTE_MAX_LCORE || !freqs) {
-		RTE_LOG(ERR, POWER, "Invalid input parameter\n");
+	if (lcore_id >= RTE_MAX_LCORE) {
+		RTE_LOG(ERR, POWER, "Invalid lcore ID\n");
 		return 0;
 	}
 
