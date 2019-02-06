@@ -22,7 +22,6 @@ The main directories that contain files related to documentation are shown below
    |-- librte_acl
    |-- librte_cfgfile
    |-- librte_cmdline
-   |-- librte_compat
    |-- librte_eal
    |   |-- ...
    ...

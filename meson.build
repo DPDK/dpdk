@@ -32,7 +32,7 @@ eal_pmd_path = join_paths(get_option('prefix'), driver_install_path)
 # configure the build, and make sure configs here and in config folder are
 # able to be included in any file. We also store a global array of include dirs
 # for passing to pmdinfogen scripts
-global_inc = include_directories('.', 'config')
+global_inc = include_directories('.', 'config', 'lib/librte_eal/common/include')
 subdir('config')
 
 # build libs and drivers

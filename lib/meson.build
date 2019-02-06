@@ -8,7 +8,7 @@
 # sometimes skip deps that would be implied by others, e.g. if mempool is
 # given as a dep, no need to mention ring. This is especially true for the
 # core libs which are widely reused, so their deps are kept to a minimum.
-libraries = [ 'compat', # just a header, used for versioning
+libraries = [
 	'cmdline', # ethdev depends on cmdline for parsing functions
 	'kvargs', # eal depends on kvargs
 	'eal', 'ring', 'mempool', 'mbuf', 'net', 'meter', 'ethdev', 'pci', # core

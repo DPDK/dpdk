@@ -23,7 +23,6 @@ INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/lib/librte_bpf \
                           @TOPDIR@/lib/librte_cfgfile \
                           @TOPDIR@/lib/librte_cmdline \
-                          @TOPDIR@/lib/librte_compat \
                           @TOPDIR@/lib/librte_compressdev \
                           @TOPDIR@/lib/librte_cryptodev \
                           @TOPDIR@/lib/librte_distributor \

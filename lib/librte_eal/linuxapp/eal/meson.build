@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
-eal_inc += include_directories('include', '../../../librte_compat')
+eal_inc += include_directories('include')
 install_subdir('include/exec-env', install_dir: get_option('includedir'))
 
 env_objs = []

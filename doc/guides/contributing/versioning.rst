@@ -167,7 +167,7 @@ functionality or behavior. When that occurs, it is desirable to allow for
 backward compatibility for a time with older binaries that are dynamically
 linked to the DPDK.
 
-To support backward compatibility the ``lib/librte_compat/rte_compat.h``
+To support backward compatibility the ``rte_compat.h``
 header file provides macros to use when updating exported functions. These
 macros are used in conjunction with the ``rte_<library>_version.map`` file for
 a given library to allow multiple versions of a symbol to exist in a shared
