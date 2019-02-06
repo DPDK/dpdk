@@ -1,8 +1,5 @@
-/*
- * SPDX-License-Identifier: BSD-3-Clause
- *
- *   Copyright 2017 NXP
- *
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright 2017 NXP
  */
 
 #ifndef __DPAA2_EVENTDEV_H__
