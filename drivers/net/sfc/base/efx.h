@@ -1284,6 +1284,7 @@ typedef struct efx_nic_cfg_s {
 	uint32_t		enc_evq_timer_quantum_ns;
 	uint32_t		enc_evq_timer_max_us;
 	uint32_t		enc_clk_mult;
+	uint32_t		enc_ev_desc_size;
 	uint32_t		enc_rx_desc_size;
 	uint32_t		enc_tx_desc_size;
 	uint32_t		enc_rx_prefix_size;
@@ -1987,8 +1988,27 @@ efx_ev_fini(
 #define	EFX_EVQ_MAXNEVS		32768
 #define	EFX_EVQ_MINNEVS		512
 
+/*
+ * This macro is deprecated and will be removed.
+ * Use the function efx_evq_size() instead.
+ */
 #define	EFX_EVQ_SIZE(_nevs)	((_nevs) * sizeof (efx_qword_t))
+
+/*
+ * This macro is deprecated and will be removed.
+ * Use the function efx_evq_nbufs() instead.
+ */
 #define	EFX_EVQ_NBUFS(_nevs)	(EFX_EVQ_SIZE(_nevs) / EFX_BUF_SIZE)
+
+extern	__checkReturn	size_t
+efx_evq_size(
+	__in	const efx_nic_t *enp,
+	__in	unsigned int ndescs);
+
+extern	__checkReturn	unsigned int
+efx_evq_nbufs(
+	__in	const efx_nic_t *enp,
+	__in	unsigned int ndescs);
 
 #define	EFX_EVQ_FLAGS_TYPE_MASK		(0x3)
 #define	EFX_EVQ_FLAGS_TYPE_AUTO		(0x0)

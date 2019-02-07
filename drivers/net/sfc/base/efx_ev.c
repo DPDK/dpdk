@@ -173,6 +173,24 @@ fail1:
 	return (rc);
 }
 
+	__checkReturn	size_t
+efx_evq_size(
+	__in	const efx_nic_t *enp,
+	__in	unsigned int ndescs)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+
+	return (ndescs * encp->enc_ev_desc_size);
+}
+
+	__checkReturn	unsigned int
+efx_evq_nbufs(
+	__in	const efx_nic_t *enp,
+	__in	unsigned int ndescs)
+{
+	return (efx_evq_size(enp, ndescs) / EFX_BUF_SIZE);
+}
+
 		void
 efx_ev_fini(
 	__in	efx_nic_t *enp)

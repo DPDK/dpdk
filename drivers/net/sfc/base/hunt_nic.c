@@ -186,6 +186,7 @@ hunt_board_cfg(
 	/* Checksums for TSO sends can be incorrect on Huntington. */
 	encp->enc_bug61297_workaround = B_TRUE;
 
+	encp->enc_ev_desc_size = EF10_EVQ_DESC_SIZE;
 	encp->enc_rx_desc_size = EF10_RXQ_DESC_SIZE;
 	encp->enc_tx_desc_size = EF10_TXQ_DESC_SIZE;
 

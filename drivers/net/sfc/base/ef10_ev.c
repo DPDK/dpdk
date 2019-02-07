@@ -123,7 +123,7 @@ efx_mcdi_init_evq(
 {
 	efx_mcdi_req_t req;
 	EFX_MCDI_DECLARE_BUF(payload,
-		MC_CMD_INIT_EVQ_IN_LEN(EFX_EVQ_NBUFS(EF10_EVQ_MAXNEVS)),
+		MC_CMD_INIT_EVQ_IN_LEN(EF10_EVQ_MAXNBUFS),
 		MC_CMD_INIT_EVQ_OUT_LEN);
 	efx_qword_t *dma_addr;
 	uint64_t addr;
@@ -133,8 +133,8 @@ efx_mcdi_init_evq(
 	int ev_cut_through;
 	efx_rc_t rc;
 
-	npages = EFX_EVQ_NBUFS(nevs);
-	if (MC_CMD_INIT_EVQ_IN_LEN(npages) > MC_CMD_INIT_EVQ_IN_LENMAX) {
+	npages = efx_evq_nbufs(enp, nevs);
+	if (npages > EF10_EVQ_MAXNBUFS) {
 		rc = EINVAL;
 		goto fail1;
 	}
@@ -259,7 +259,7 @@ efx_mcdi_init_evq_v2(
 {
 	efx_mcdi_req_t req;
 	EFX_MCDI_DECLARE_BUF(payload,
-		MC_CMD_INIT_EVQ_V2_IN_LEN(EFX_EVQ_NBUFS(EF10_EVQ_MAXNEVS)),
+		MC_CMD_INIT_EVQ_V2_IN_LEN(EF10_EVQ_MAXNBUFS),
 		MC_CMD_INIT_EVQ_V2_OUT_LEN);
 	boolean_t interrupting;
 	unsigned int evq_type;
@@ -269,8 +269,8 @@ efx_mcdi_init_evq_v2(
 	int i;
 	efx_rc_t rc;
 
-	npages = EFX_EVQ_NBUFS(nevs);
-	if (MC_CMD_INIT_EVQ_V2_IN_LEN(npages) > MC_CMD_INIT_EVQ_V2_IN_LENMAX) {
+	npages = efx_evq_nbufs(enp, nevs);
+	if (npages > EF10_EVQ_MAXNBUFS) {
 		rc = EINVAL;
 		goto fail1;
 	}
