@@ -312,6 +312,7 @@ efx_tx_qcreate(
 {
 	const efx_tx_ops_t *etxop = enp->en_etxop;
 	efx_txq_t *etp;
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
 	efx_rc_t rc;
 
 	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
@@ -320,12 +321,22 @@ efx_tx_qcreate(
 	EFSYS_ASSERT3U(enp->en_tx_qcount + 1, <,
 	    enp->en_nic_cfg.enc_txq_limit);
 
+	EFSYS_ASSERT(ISP2(encp->enc_txq_max_ndescs));
+	EFSYS_ASSERT(ISP2(encp->enc_txq_min_ndescs));
+
+	if (!ISP2(ndescs) ||
+	    ndescs < encp->enc_txq_min_ndescs ||
+	    ndescs > encp->enc_txq_max_ndescs) {
+		rc = EINVAL;
+		goto fail1;
+	}
+
 	/* Allocate an TXQ object */
 	EFSYS_KMEM_ALLOC(enp->en_esip, sizeof (efx_txq_t), etp);
 
 	if (etp == NULL) {
 		rc = ENOMEM;
-		goto fail1;
+		goto fail2;
 	}
 
 	etp->et_magic = EFX_TXQ_MAGIC;
@@ -339,16 +350,18 @@ efx_tx_qcreate(
 
 	if ((rc = etxop->etxo_qcreate(enp, index, label, esmp,
 	    ndescs, id, flags, eep, etp, addedp)) != 0)
-		goto fail2;
+		goto fail3;
 
 	enp->en_tx_qcount++;
 	*etpp = etp;
 
 	return (0);
 
+fail3:
+	EFSYS_PROBE(fail3);
+	EFSYS_KMEM_FREE(enp->en_esip, sizeof (efx_txq_t), etp);
 fail2:
 	EFSYS_PROBE(fail2);
-	EFSYS_KMEM_FREE(enp->en_esip, sizeof (efx_txq_t), etp);
 fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
 	return (rc);
@@ -922,18 +935,9 @@ siena_tx_qcreate(
 	    (1 << FRF_AZ_TX_DESCQ_LABEL_WIDTH));
 	EFSYS_ASSERT3U(label, <, EFX_EV_TX_NLABELS);
 
-	EFSYS_ASSERT(ISP2(encp->enc_txq_max_ndescs));
-	EFSYS_ASSERT(ISP2(encp->enc_txq_min_ndescs));
-
-	if (!ISP2(ndescs) ||
-	    (ndescs < encp->enc_txq_min_ndescs) ||
-	    (ndescs > encp->enc_txq_max_ndescs)) {
-		rc = EINVAL;
-		goto fail1;
-	}
 	if (index >= encp->enc_txq_limit) {
 		rc = EINVAL;
-		goto fail2;
+		goto fail1;
 	}
 	for (size = 0;
 	    (1U << size) <= encp->enc_txq_max_ndescs / encp->enc_txq_min_ndescs;
@@ -942,13 +946,13 @@ siena_tx_qcreate(
 			break;
 	if (id + (1 << size) >= encp->enc_buftbl_limit) {
 		rc = EINVAL;
-		goto fail3;
+		goto fail2;
 	}
 
 	inner_csum = EFX_TXQ_CKSUM_INNER_IPV4 | EFX_TXQ_CKSUM_INNER_TCPUDP;
 	if ((flags & inner_csum) != 0) {
 		rc = EINVAL;
-		goto fail4;
+		goto fail3;
 	}
 
 	/* Set up the new descriptor queue */
@@ -973,8 +977,6 @@ siena_tx_qcreate(
 
 	return (0);
 
-fail4:
-	EFSYS_PROBE(fail4);
 fail3:
 	EFSYS_PROBE(fail3);
 fail2:
