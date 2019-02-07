@@ -174,8 +174,15 @@ struct sfc_rss {
 	uint8_t				key[EFX_RSS_KEY_SIZE];
 };
 
+/* Adapter private data shared by primary and secondary processes */
+struct sfc_adapter_shared {
+	struct rte_pci_addr		pci_addr;
+	uint16_t			port_id;
+};
+
 /* Adapter process private data */
 struct sfc_adapter_priv {
+	struct sfc_adapter_shared	*shared;
 	const struct sfc_dp_rx		*dp_rx;
 	const struct sfc_dp_tx		*dp_tx;
 	uint32_t			logtype_main;
@@ -200,6 +207,12 @@ struct sfc_adapter {
 	struct sfc_adapter_priv		priv;
 
 	/*
+	 * Temporary placeholder for multi-process shared data for
+	 * transition.
+	 */
+	struct sfc_adapter_shared	_shared;
+
+	/*
 	 * PMD setup and configuration is not thread safe. Since it is not
 	 * performance sensitive, it is better to guarantee thread-safety
 	 * and add device level lock. Adapter control operations which
@@ -207,8 +220,6 @@ struct sfc_adapter {
 	 */
 	rte_spinlock_t			lock;
 	enum sfc_adapter_state		state;
-	struct rte_pci_addr		pci_addr;
-	uint16_t			port_id;
 	struct rte_eth_dev		*eth_dev;
 	struct rte_kvargs		*kvargs;
 	int				socket_id;

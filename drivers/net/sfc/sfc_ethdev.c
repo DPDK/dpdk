@@ -2023,6 +2023,7 @@ static int
 sfc_eth_dev_init(struct rte_eth_dev *dev)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_adapter_shared *sas;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	uint32_t logtype_main;
 	int rc;
@@ -2034,6 +2035,9 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 	logtype_main = sfc_register_logtype(&pci_dev->addr,
 					    SFC_LOGTYPE_MAIN_STR,
 					    RTE_LOG_NOTICE);
+
+	sa->priv.shared = &sa->_shared;
+	sas = sa->priv.shared;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return -sfc_eth_dev_secondary_init(dev, logtype_main);
@@ -2047,8 +2051,8 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 	dev->process_private = sa;
 
 	/* Required for logging */
-	sa->pci_addr = pci_dev->addr;
-	sa->port_id = dev->data->port_id;
+	sas->pci_addr = pci_dev->addr;
+	sas->port_id = dev->data->port_id;
 	sa->priv.logtype_main = logtype_main;
 
 	sa->eth_dev = dev;

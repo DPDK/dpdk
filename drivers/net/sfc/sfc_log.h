@@ -34,17 +34,18 @@ extern uint32_t sfc_logtype_driver;
 /* Log PMD message, automatically add prefix and \n */
 #define SFC_LOG(sa, level, type, ...) \
 	do {								\
-		const struct sfc_adapter *__sa = (sa);			\
+		const struct sfc_adapter_shared *_sas;			\
 									\
+		_sas = (sa)->priv.shared;				\
 		rte_log(level, type,					\
 			RTE_FMT("PMD: sfc_efx "				\
 				PCI_PRI_FMT " #%" PRIu16		\
 				": " RTE_FMT_HEAD(__VA_ARGS__ ,) "\n",	\
-				__sa->pci_addr.domain,			\
-				__sa->pci_addr.bus,			\
-				__sa->pci_addr.devid,			\
-				__sa->pci_addr.function,		\
-				__sa->port_id,				\
+				_sas->pci_addr.domain,			\
+				_sas->pci_addr.bus,			\
+				_sas->pci_addr.devid,			\
+				_sas->pci_addr.function,		\
+				_sas->port_id,				\
 				RTE_FMT_TAIL(__VA_ARGS__,)));		\
 	} while (0)
 

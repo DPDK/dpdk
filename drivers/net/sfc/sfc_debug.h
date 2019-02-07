@@ -25,13 +25,14 @@
 /* Log PMD message, automatically add prefix and \n */
 #define sfc_panic(sa, fmt, args...) \
 	do {								\
-		const struct sfc_adapter *_sa = (sa);			\
+		const struct sfc_adapter_shared *_sas;			\
 									\
+		_sas = (sa)->priv.shared;				\
 		rte_panic("sfc " PCI_PRI_FMT				\
 			  " #%" PRIu16 ": " fmt "\n",			\
-			  _sa->pci_addr.domain, _sa->pci_addr.bus,	\
-			  _sa->pci_addr.devid, _sa->pci_addr.function,	\
-			  _sa->port_id, ##args);			\
+			  _sas->pci_addr.domain, _sas->pci_addr.bus,	\
+			  _sas->pci_addr.devid, _sas->pci_addr.function,\
+			  _sas->port_id, ##args);			\
 	} while (0)
 
 #endif /* _SFC_DEBUG_H_ */
