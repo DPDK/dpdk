@@ -47,8 +47,8 @@ enum sfc_txq_state_bit {
 };
 
 /**
- * Transmit queue control information. Not used on datapath.
- * Allocated on the socket specified on the queue setup.
+ * Transmit queue control primary process-only information.
+ * Not used on datapath.
  */
 struct sfc_txq {
 	unsigned int			hw_index;
@@ -95,7 +95,6 @@ sfc_efx_txq_by_dp_txq(struct sfc_dp_txq *dp_txq)
 struct sfc_txq_info {
 	unsigned int		state;
 	unsigned int		entries;
-	struct sfc_txq		*txq;
 	struct sfc_dp_txq	*dp;
 	boolean_t		deferred_start;
 	boolean_t		deferred_started;

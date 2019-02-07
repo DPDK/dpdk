@@ -280,7 +280,7 @@ sfc_set_fw_subvariant(struct sfc_adapter *sa)
 	for (txq_index = 0; txq_index < sa->txq_count; ++txq_index) {
 		struct sfc_txq_info *txq_info = &sa->txq_info[txq_index];
 
-		if (txq_info->txq != NULL)
+		if (txq_info->state & SFC_TXQ_INITIALIZED)
 			tx_offloads |= txq_info->offloads;
 	}
 

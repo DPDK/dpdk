@@ -159,13 +159,7 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	if (rc != 0)
 		goto fail_ev_qinit;
 
-	rc = ENOMEM;
-	txq = rte_zmalloc_socket("sfc-txq", sizeof(*txq), 0, socket_id);
-	if (txq == NULL)
-		goto fail_txq_alloc;
-
-	txq_info->txq = txq;
-
+	txq = &sa->txq_ctrl[sw_index];
 	txq->hw_index = sw_index;
 	txq->evq = evq;
 	txq_info->free_thresh =
@@ -211,10 +205,6 @@ fail_dp_tx_qinit:
 	sfc_dma_free(sa, &txq->mem);
 
 fail_dma_alloc:
-	txq_info->txq = NULL;
-	rte_free(txq);
-
-fail_txq_alloc:
 	sfc_ev_qfini(evq);
 
 fail_ev_qinit:
@@ -239,22 +229,20 @@ sfc_tx_qfini(struct sfc_adapter *sa, unsigned int sw_index)
 
 	txq_info = &sa->txq_info[sw_index];
 
-	txq = txq_info->txq;
-	SFC_ASSERT(txq != NULL);
 	SFC_ASSERT(txq_info->state == SFC_TXQ_INITIALIZED);
 
 	sa->priv.dp_tx->qdestroy(txq_info->dp);
 	txq_info->dp = NULL;
 
-	txq_info->txq = NULL;
+	txq_info->state &= ~SFC_TXQ_INITIALIZED;
 	txq_info->entries = 0;
+
+	txq = &sa->txq_ctrl[sw_index];
 
 	sfc_dma_free(sa, &txq->mem);
 
 	sfc_ev_qfini(txq->evq);
 	txq->evq = NULL;
-
-	rte_free(txq);
 }
 
 static int
@@ -314,7 +302,7 @@ sfc_tx_fini_queues(struct sfc_adapter *sa, unsigned int nb_tx_queues)
 
 	sw_index = sa->txq_count;
 	while (--sw_index >= (int)nb_tx_queues) {
-		if (sa->txq_info[sw_index].txq != NULL)
+		if (sa->txq_info[sw_index].state & SFC_TXQ_INITIALIZED)
 			sfc_tx_qfini(sa, sw_index);
 	}
 
@@ -355,8 +343,18 @@ sfc_tx_configure(struct sfc_adapter *sa)
 						 sa->socket_id);
 		if (sa->txq_info == NULL)
 			goto fail_txqs_alloc;
+
+		/*
+		 * Allocate primary process only TxQ control from heap
+		 * since it should not be shared.
+		 */
+		rc = ENOMEM;
+		sa->txq_ctrl = calloc(nb_tx_queues, sizeof(sa->txq_ctrl[0]));
+		if (sa->txq_ctrl == NULL)
+			goto fail_txqs_ctrl_alloc;
 	} else {
 		struct sfc_txq_info *new_txq_info;
+		struct sfc_txq *new_txq_ctrl;
 
 		if (nb_tx_queues < sa->txq_count)
 			sfc_tx_fini_queues(sa, nb_tx_queues);
@@ -367,11 +365,21 @@ sfc_tx_configure(struct sfc_adapter *sa)
 		if (new_txq_info == NULL && nb_tx_queues > 0)
 			goto fail_txqs_realloc;
 
+		new_txq_ctrl = realloc(sa->txq_ctrl,
+				       nb_tx_queues * sizeof(sa->txq_ctrl[0]));
+		if (new_txq_ctrl == NULL && nb_tx_queues > 0)
+			goto fail_txqs_ctrl_realloc;
+
 		sa->txq_info = new_txq_info;
-		if (nb_tx_queues > sa->txq_count)
+		sa->txq_ctrl = new_txq_ctrl;
+		if (nb_tx_queues > sa->txq_count) {
 			memset(&sa->txq_info[sa->txq_count], 0,
 			       (nb_tx_queues - sa->txq_count) *
 			       sizeof(sa->txq_info[0]));
+			memset(&sa->txq_ctrl[sa->txq_count], 0,
+			       (nb_tx_queues - sa->txq_count) *
+			       sizeof(sa->txq_ctrl[0]));
+		}
 	}
 
 	while (sa->txq_count < nb_tx_queues) {
@@ -386,7 +394,9 @@ done:
 	return 0;
 
 fail_tx_qinit_info:
+fail_txqs_ctrl_realloc:
 fail_txqs_realloc:
+fail_txqs_ctrl_alloc:
 fail_txqs_alloc:
 	sfc_tx_close(sa);
 
@@ -400,6 +410,9 @@ void
 sfc_tx_close(struct sfc_adapter *sa)
 {
 	sfc_tx_fini_queues(sa, 0);
+
+	free(sa->txq_ctrl);
+	sa->txq_ctrl = NULL;
 
 	rte_free(sa->txq_info);
 	sa->txq_info = NULL;
@@ -423,11 +436,9 @@ sfc_tx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 	SFC_ASSERT(sw_index < sa->txq_count);
 	txq_info = &sa->txq_info[sw_index];
 
-	txq = txq_info->txq;
-
-	SFC_ASSERT(txq != NULL);
 	SFC_ASSERT(txq_info->state == SFC_TXQ_INITIALIZED);
 
+	txq = &sa->txq_ctrl[sw_index];
 	evq = txq->evq;
 
 	rc = sfc_ev_qstart(evq, sfc_evq_index_by_txq_sw_index(sa, sw_index));
@@ -504,13 +515,12 @@ sfc_tx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 	SFC_ASSERT(sw_index < sa->txq_count);
 	txq_info = &sa->txq_info[sw_index];
 
-	txq = txq_info->txq;
-
-	if (txq == NULL || txq_info->state == SFC_TXQ_INITIALIZED)
+	if (txq_info->state == SFC_TXQ_INITIALIZED)
 		return;
 
 	SFC_ASSERT(txq_info->state & SFC_TXQ_STARTED);
 
+	txq = &sa->txq_ctrl[sw_index];
 	sa->priv.dp_tx->qstop(txq_info->dp, &txq->evq->read_ptr);
 
 	/*
@@ -583,7 +593,7 @@ sfc_tx_start(struct sfc_adapter *sa)
 		goto fail_efx_tx_init;
 
 	for (sw_index = 0; sw_index < sa->txq_count; ++sw_index) {
-		if (sa->txq_info[sw_index].txq != NULL &&
+		if (sa->txq_info[sw_index].state == SFC_TXQ_INITIALIZED &&
 		    (!(sa->txq_info[sw_index].deferred_start) ||
 		     sa->txq_info[sw_index].deferred_started)) {
 			rc = sfc_tx_qstart(sa, sw_index);
@@ -614,7 +624,7 @@ sfc_tx_stop(struct sfc_adapter *sa)
 
 	sw_index = sa->txq_count;
 	while (sw_index-- > 0) {
-		if (sa->txq_info[sw_index].txq != NULL)
+		if (sa->txq_info[sw_index].state & SFC_TXQ_STARTED)
 			sfc_tx_qstop(sa, sw_index);
 	}
 
@@ -888,12 +898,17 @@ sfc_txq_info_by_dp_txq(const struct sfc_dp_txq *dp_txq)
 struct sfc_txq *
 sfc_txq_by_dp_txq(const struct sfc_dp_txq *dp_txq)
 {
-	struct sfc_txq_info *txq_info;
+	const struct sfc_dp_queue *dpq = &dp_txq->dpq;
+	struct rte_eth_dev *eth_dev;
+	struct sfc_adapter *sa;
 
-	txq_info = sfc_txq_info_by_dp_txq(dp_txq);
+	SFC_ASSERT(rte_eth_dev_is_valid_port(dpq->port_id));
+	eth_dev = &rte_eth_devices[dpq->port_id];
 
-	SFC_ASSERT(txq_info->txq != NULL);
-	return txq_info->txq;
+	sa = eth_dev->data->dev_private;
+
+	SFC_ASSERT(dpq->queue_id < sa->txq_count);
+	return &sa->txq_ctrl[dpq->queue_id];
 }
 
 static sfc_dp_tx_qsize_up_rings_t sfc_efx_tx_qsize_up_rings;

@@ -111,6 +111,7 @@ struct sfc_intr {
 };
 
 struct sfc_rxq;
+struct sfc_txq;
 
 struct sfc_rxq_info;
 struct sfc_txq_info;
@@ -262,6 +263,7 @@ struct sfc_adapter {
 
 	unsigned int			txq_count;
 	struct sfc_txq_info		*txq_info;
+	struct sfc_txq			*txq_ctrl;
 
 	boolean_t			tso;
 
