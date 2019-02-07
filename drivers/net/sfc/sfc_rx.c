@@ -688,7 +688,7 @@ sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 			rxq_info->type_flags, evq->common, &rxq->common);
 		break;
 	case EFX_RXQ_TYPE_ES_SUPER_BUFFER: {
-		struct rte_mempool *mp = rxq->refill_mb_pool;
+		struct rte_mempool *mp = rxq_info->refill_mb_pool;
 		struct rte_mempool_info mp_info;
 
 		rc = rte_mempool_ops_get_info(mp, &mp_info);
@@ -1033,9 +1033,9 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 
 	rxq->evq = evq;
 	rxq->hw_index = sw_index;
-	rxq->refill_threshold =
+	rxq_info->refill_threshold =
 		RTE_MAX(rx_conf->rx_free_thresh, SFC_RX_REFILL_BULK);
-	rxq->refill_mb_pool = mb_pool;
+	rxq_info->refill_mb_pool = mb_pool;
 	rxq->buf_size = buf_size;
 
 	rc = sfc_dma_alloc(sa, "rxq", sw_index, EFX_RXQ_SIZE(rxq_info->entries),
@@ -1044,9 +1044,9 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 		goto fail_dma_alloc;
 
 	memset(&info, 0, sizeof(info));
-	info.refill_mb_pool = rxq->refill_mb_pool;
+	info.refill_mb_pool = rxq_info->refill_mb_pool;
 	info.max_fill_level = rxq_max_fill_level;
-	info.refill_threshold = rxq->refill_threshold;
+	info.refill_threshold = rxq_info->refill_threshold;
 	info.buf_size = buf_size;
 	info.batch_max = encp->enc_rx_batch_max;
 	info.prefix_size = encp->enc_rx_prefix_size;

@@ -58,8 +58,6 @@ struct sfc_rxq {
 	efx_rxq_t		*common;
 	efsys_mem_t		mem;
 	unsigned int		hw_index;
-	unsigned int		refill_threshold;
-	struct rte_mempool	*refill_mb_pool;
 	uint16_t		buf_size;
 	struct sfc_dp_rxq	*dp;
 	unsigned int		state;
@@ -128,6 +126,8 @@ struct sfc_rxq_info {
 	struct sfc_rxq		*rxq;
 	boolean_t		deferred_start;
 	boolean_t		deferred_started;
+	unsigned int		refill_threshold;
+	struct rte_mempool	*refill_mb_pool;
 };
 
 int sfc_rx_configure(struct sfc_adapter *sa);

@@ -1067,18 +1067,15 @@ sfc_rx_queue_info_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
 	struct sfc_rxq_info *rxq_info;
-	struct sfc_rxq *rxq;
 
 	sfc_adapter_lock(sa);
 
 	SFC_ASSERT(rx_queue_id < sa->rxq_count);
 
 	rxq_info = &sa->rxq_info[rx_queue_id];
-	rxq = rxq_info->rxq;
-	SFC_ASSERT(rxq != NULL);
 
-	qinfo->mp = rxq->refill_mb_pool;
-	qinfo->conf.rx_free_thresh = rxq->refill_threshold;
+	qinfo->mp = rxq_info->refill_mb_pool;
+	qinfo->conf.rx_free_thresh = rxq_info->refill_threshold;
 	qinfo->conf.rx_drop_en = 1;
 	qinfo->conf.rx_deferred_start = rxq_info->deferred_start;
 	qinfo->conf.offloads = dev->data->dev_conf.rxmode.offloads;
