@@ -1008,4 +1008,21 @@ struct tlv_l3xudp_ports {
 #define TLV_TAG_L3XUDP_PORTS_MAX_NUM_PORTS 16
 };
 
+/* Wake on LAN setting
+ *
+ * Enables the Wake On Lan (WoL) functionality on the given port. This will be
+ * a persistent setting for manageability firmware. Drivers have direct access
+ * to WoL using MCDI.
+ */
+#define TLV_TAG_WAKE_ON_LAN(port)       (0x102b0000 + (port))
+struct tlv_wake_on_lan {
+  uint32_t tag;
+  uint32_t length;
+  uint8_t  mode;
+  uint8_t  bytes[];
+#define TLV_WAKE_ON_LAN_MODE_DISABLED      0
+#define TLV_WAKE_ON_LAN_MODE_MAGIC_PACKET  1
+#define TLV_WAKE_ON_LAN_MAX_NUM_BYTES    255
+};
+
 #endif /* CI_MGMT_TLV_LAYOUT_H */
