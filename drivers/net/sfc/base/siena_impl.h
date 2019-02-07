@@ -9,7 +9,6 @@
 
 #include "efx.h"
 #include "efx_regs.h"
-#include "efx_mcdi.h"
 #include "siena_flash.h"
 
 #ifdef	__cplusplus

@@ -10,7 +10,6 @@
 #include "efx.h"
 #include "efx_regs.h"
 #include "efx_regs_ef10.h"
-#include "efx_mcdi.h"
 
 #ifdef	__cplusplus
 extern "C" {
