@@ -1768,6 +1768,7 @@ static int
 sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_adapter_shared *sas = sfc_adapter_shared_by_eth_dev(dev);
 	const struct sfc_dp_rx *dp_rx;
 	const struct sfc_dp_tx *dp_tx;
 	const efx_nic_cfg_t *encp;
@@ -1819,13 +1820,13 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 		}
 	}
 
-	sa->dp_rx_name = sfc_strdup(dp_rx->dp.name);
-	if (sa->dp_rx_name == NULL) {
+	sas->dp_rx_name = sfc_strdup(dp_rx->dp.name);
+	if (sas->dp_rx_name == NULL) {
 		rc = ENOMEM;
 		goto fail_dp_rx_name;
 	}
 
-	sfc_notice(sa, "use %s Rx datapath", sa->dp_rx_name);
+	sfc_notice(sa, "use %s Rx datapath", sas->dp_rx_name);
 
 	rc = sfc_kvargs_process(sa, SFC_KVARG_TX_DATAPATH,
 				sfc_kvarg_string_handler, &tx_name);
@@ -1856,13 +1857,13 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 		}
 	}
 
-	sa->dp_tx_name = sfc_strdup(dp_tx->dp.name);
-	if (sa->dp_tx_name == NULL) {
+	sas->dp_tx_name = sfc_strdup(dp_tx->dp.name);
+	if (sas->dp_tx_name == NULL) {
 		rc = ENOMEM;
 		goto fail_dp_tx_name;
 	}
 
-	sfc_notice(sa, "use %s Tx datapath", sa->dp_tx_name);
+	sfc_notice(sa, "use %s Tx datapath", sas->dp_tx_name);
 
 	sa->priv.dp_rx = dp_rx;
 	sa->priv.dp_tx = dp_tx;
@@ -1878,8 +1879,8 @@ fail_dp_tx_name:
 fail_dp_tx_caps:
 fail_dp_tx:
 fail_kvarg_tx_datapath:
-	rte_free(sa->dp_rx_name);
-	sa->dp_rx_name = NULL;
+	rte_free(sas->dp_rx_name);
+	sas->dp_rx_name = NULL;
 
 fail_dp_rx_name:
 fail_dp_rx_caps:
@@ -1892,17 +1893,18 @@ static void
 sfc_eth_dev_clear_ops(struct rte_eth_dev *dev)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_adapter_shared *sas = sfc_adapter_shared_by_eth_dev(dev);
 
 	dev->dev_ops = NULL;
 	dev->rx_pkt_burst = NULL;
 	dev->tx_pkt_burst = NULL;
 
-	rte_free(sa->dp_tx_name);
-	sa->dp_tx_name = NULL;
+	rte_free(sas->dp_tx_name);
+	sas->dp_tx_name = NULL;
 	sa->priv.dp_tx = NULL;
 
-	rte_free(sa->dp_rx_name);
-	sa->dp_rx_name = NULL;
+	rte_free(sas->dp_rx_name);
+	sas->dp_rx_name = NULL;
 	sa->priv.dp_rx = NULL;
 }
 
@@ -1926,6 +1928,7 @@ sfc_eth_dev_secondary_init(struct rte_eth_dev *dev, uint32_t logtype_main)
 	 * in shared memory only.
 	 */
 	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_adapter_shared *sas = sfc_adapter_shared_by_eth_dev(dev);
 	struct sfc_adapter_priv *sap;
 	const struct sfc_dp_rx *dp_rx;
 	const struct sfc_dp_tx *dp_tx;
@@ -1943,32 +1946,32 @@ sfc_eth_dev_secondary_init(struct rte_eth_dev *dev, uint32_t logtype_main)
 
 	sap->logtype_main = logtype_main;
 
-	dp_rx = sfc_dp_find_rx_by_name(&sfc_dp_head, sa->dp_rx_name);
+	dp_rx = sfc_dp_find_rx_by_name(&sfc_dp_head, sas->dp_rx_name);
 	if (dp_rx == NULL) {
 		SFC_LOG(sa, RTE_LOG_ERR, logtype_main,
-			"cannot find %s Rx datapath", sa->dp_rx_name);
+			"cannot find %s Rx datapath", sas->dp_rx_name);
 		rc = ENOENT;
 		goto fail_dp_rx;
 	}
 	if (~dp_rx->features & SFC_DP_RX_FEAT_MULTI_PROCESS) {
 		SFC_LOG(sa, RTE_LOG_ERR, logtype_main,
 			"%s Rx datapath does not support multi-process",
-			sa->dp_rx_name);
+			sas->dp_rx_name);
 		rc = EINVAL;
 		goto fail_dp_rx_multi_process;
 	}
 
-	dp_tx = sfc_dp_find_tx_by_name(&sfc_dp_head, sa->dp_tx_name);
+	dp_tx = sfc_dp_find_tx_by_name(&sfc_dp_head, sas->dp_tx_name);
 	if (dp_tx == NULL) {
 		SFC_LOG(sa, RTE_LOG_ERR, logtype_main,
-			"cannot find %s Tx datapath", sa->dp_tx_name);
+			"cannot find %s Tx datapath", sas->dp_tx_name);
 		rc = ENOENT;
 		goto fail_dp_tx;
 	}
 	if (~dp_tx->features & SFC_DP_TX_FEAT_MULTI_PROCESS) {
 		SFC_LOG(sa, RTE_LOG_ERR, logtype_main,
 			"%s Tx datapath does not support multi-process",
-			sa->dp_tx_name);
+			sas->dp_tx_name);
 		rc = EINVAL;
 		goto fail_dp_tx_multi_process;
 	}

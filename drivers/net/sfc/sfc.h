@@ -178,6 +178,9 @@ struct sfc_rss {
 struct sfc_adapter_shared {
 	struct rte_pci_addr		pci_addr;
 	uint16_t			port_id;
+
+	char				*dp_rx_name;
+	char				*dp_tx_name;
 };
 
 /* Adapter process private data */
@@ -281,19 +284,15 @@ struct sfc_adapter {
 	uint32_t			rxd_wait_timeout_ns;
 
 	struct sfc_rss			rss;
-
-	/*
-	 * Shared memory copy of the Rx datapath name to be used by
-	 * the secondary process to find Rx datapath to be used.
-	 */
-	char				*dp_rx_name;
-
-	/*
-	 * Shared memory copy of the Tx datapath name to be used by
-	 * the secondary process to find Tx datapath to be used.
-	 */
-	char				*dp_tx_name;
 };
+
+static inline struct sfc_adapter_shared *
+sfc_adapter_shared_by_eth_dev(struct rte_eth_dev *eth_dev)
+{
+	struct sfc_adapter *sa = eth_dev->data->dev_private;
+
+	return sa->priv.shared;
+}
 
 /*
  * Add wrapper functions to acquire/release lock to be able to remove or
