@@ -117,7 +117,7 @@ medford_board_cfg(
 	 * descriptors are not supported as the top bit is used for vfifo
 	 * stuffing.
 	 */
-	encp->enc_txq_max_ndescs = 2048;
+	encp->enc_txq_max_ndescs = MEDFORD_TXQ_MAXNDESCS;
 	encp->enc_txq_min_ndescs = EF10_TXQ_MINNDESCS;
 
 	EFX_STATIC_ASSERT(MEDFORD_PIOBUF_NBUFS <= EF10_MAX_PIOBUF_NBUFS);

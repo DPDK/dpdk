@@ -12,6 +12,8 @@ extern "C" {
 #endif
 
 
+#define	MEDFORD_TXQ_MAXNDESCS	2048
+
 #ifndef	ER_EZ_TX_PIOBUF_SIZE
 #define	ER_EZ_TX_PIOBUF_SIZE	4096
 #endif

@@ -16,6 +16,9 @@
 extern "C" {
 #endif
 
+#define	HUNT_TXQ_MAXNDESCS			4096
+#define	HUNT_TXQ_MAXNDESCS_BUG35388_WORKAROUND	2048
+
 /* Missing register definitions */
 #ifndef	ER_DZ_TX_PIOBUF_OFST
 #define	ER_DZ_TX_PIOBUF_OFST 0x00001000
