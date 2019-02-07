@@ -281,7 +281,7 @@ sfc_set_fw_subvariant(struct sfc_adapter *sa)
 		struct sfc_txq_info *txq_info = &sa->txq_info[txq_index];
 
 		if (txq_info->txq != NULL)
-			tx_offloads |= txq_info->txq->offloads;
+			tx_offloads |= txq_info->offloads;
 	}
 
 	if (tx_offloads & (DEV_TX_OFFLOAD_IPV4_CKSUM |

@@ -57,8 +57,6 @@ struct sfc_txq {
 	efsys_mem_t			mem;
 	struct sfc_dp_txq		*dp;
 	efx_txq_t			*common;
-	unsigned int			free_thresh;
-	uint64_t			offloads;
 };
 
 static inline unsigned int
@@ -113,6 +111,8 @@ struct sfc_txq_info {
 	struct sfc_txq		*txq;
 	boolean_t		deferred_start;
 	boolean_t		deferred_started;
+	unsigned int		free_thresh;
+	uint64_t		offloads;
 };
 
 int sfc_tx_configure(struct sfc_adapter *sa);

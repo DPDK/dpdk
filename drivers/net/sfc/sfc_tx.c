@@ -168,10 +168,10 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 
 	txq->hw_index = sw_index;
 	txq->evq = evq;
-	txq->free_thresh =
+	txq_info->free_thresh =
 		(tx_conf->tx_free_thresh) ? tx_conf->tx_free_thresh :
 		SFC_TX_DEFAULT_FREE_THRESH;
-	txq->offloads = offloads;
+	txq_info->offloads = offloads;
 
 	rc = sfc_dma_alloc(sa, "txq", sw_index, EFX_TXQ_SIZE(txq_info->entries),
 			   socket_id, &txq->mem);
@@ -180,7 +180,7 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 
 	memset(&info, 0, sizeof(info));
 	info.max_fill_level = txq_max_fill_level;
-	info.free_thresh = txq->free_thresh;
+	info.free_thresh = txq_info->free_thresh;
 	info.offloads = offloads;
 	info.txq_entries = txq_info->entries;
 	info.dma_desc_size_max = encp->enc_tx_dma_desc_size_max;
@@ -434,21 +434,21 @@ sfc_tx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 	if (rc != 0)
 		goto fail_ev_qstart;
 
-	if (txq->offloads & DEV_TX_OFFLOAD_IPV4_CKSUM)
+	if (txq_info->offloads & DEV_TX_OFFLOAD_IPV4_CKSUM)
 		flags |= EFX_TXQ_CKSUM_IPV4;
 
-	if (txq->offloads & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM)
+	if (txq_info->offloads & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM)
 		flags |= EFX_TXQ_CKSUM_INNER_IPV4;
 
-	if ((txq->offloads & DEV_TX_OFFLOAD_TCP_CKSUM) ||
-	    (txq->offloads & DEV_TX_OFFLOAD_UDP_CKSUM)) {
+	if ((txq_info->offloads & DEV_TX_OFFLOAD_TCP_CKSUM) ||
+	    (txq_info->offloads & DEV_TX_OFFLOAD_UDP_CKSUM)) {
 		flags |= EFX_TXQ_CKSUM_TCPUDP;
 
 		if (offloads_supported & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM)
 			flags |= EFX_TXQ_CKSUM_INNER_TCPUDP;
 	}
 
-	if (txq->offloads & DEV_TX_OFFLOAD_TCP_TSO)
+	if (txq_info->offloads & DEV_TX_OFFLOAD_TCP_TSO)
 		flags |= EFX_TXQ_FATSOV2;
 
 	rc = efx_tx_qcreate(sa->nic, txq->hw_index, 0, &txq->mem,

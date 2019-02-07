@@ -1104,12 +1104,11 @@ sfc_tx_queue_info_get(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 	SFC_ASSERT(tx_queue_id < sa->txq_count);
 
 	txq_info = &sa->txq_info[tx_queue_id];
-	SFC_ASSERT(txq_info->txq != NULL);
 
 	memset(qinfo, 0, sizeof(*qinfo));
 
-	qinfo->conf.offloads = txq_info->txq->offloads;
-	qinfo->conf.tx_free_thresh = txq_info->txq->free_thresh;
+	qinfo->conf.offloads = txq_info->offloads;
+	qinfo->conf.tx_free_thresh = txq_info->free_thresh;
 	qinfo->conf.tx_deferred_start = txq_info->deferred_start;
 	qinfo->nb_desc = txq_info->entries;
 
