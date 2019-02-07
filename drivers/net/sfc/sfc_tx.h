@@ -51,7 +51,6 @@ enum sfc_txq_state_bit {
  * Allocated on the socket specified on the queue setup.
  */
 struct sfc_txq {
-	unsigned int			state;
 	unsigned int			hw_index;
 	struct sfc_evq			*evq;
 	efsys_mem_t			mem;
@@ -107,6 +106,7 @@ sfc_efx_txq_by_dp_txq(struct sfc_dp_txq *dp_txq)
 }
 
 struct sfc_txq_info {
+	unsigned int		state;
 	unsigned int		entries;
 	struct sfc_txq		*txq;
 	boolean_t		deferred_start;
@@ -114,6 +114,8 @@ struct sfc_txq_info {
 	unsigned int		free_thresh;
 	uint64_t		offloads;
 };
+
+struct sfc_txq_info *sfc_txq_info_by_dp_txq(const struct sfc_dp_txq *dp_txq);
 
 int sfc_tx_configure(struct sfc_adapter *sa);
 void sfc_tx_close(struct sfc_adapter *sa);
@@ -123,7 +125,7 @@ int sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 		 const struct rte_eth_txconf *tx_conf);
 void sfc_tx_qfini(struct sfc_adapter *sa, unsigned int sw_index);
 
-void sfc_tx_qflush_done(struct sfc_txq *txq);
+void sfc_tx_qflush_done(struct sfc_txq_info *txq_info);
 int sfc_tx_qstart(struct sfc_adapter *sa, unsigned int sw_index);
 void sfc_tx_qstop(struct sfc_adapter *sa, unsigned int sw_index);
 int sfc_tx_start(struct sfc_adapter *sa);

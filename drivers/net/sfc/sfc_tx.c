@@ -110,10 +110,10 @@ sfc_tx_qcheck_conf(struct sfc_adapter *sa, unsigned int txq_max_fill_level,
 }
 
 void
-sfc_tx_qflush_done(struct sfc_txq *txq)
+sfc_tx_qflush_done(struct sfc_txq_info *txq_info)
 {
-	txq->state |= SFC_TXQ_FLUSHED;
-	txq->state &= ~SFC_TXQ_FLUSHING;
+	txq_info->state |= SFC_TXQ_FLUSHED;
+	txq_info->state &= ~SFC_TXQ_FLUSHING;
 }
 
 int
@@ -201,7 +201,7 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 
 	evq->dp_txq = txq->dp;
 
-	txq->state = SFC_TXQ_INITIALIZED;
+	txq_info->state = SFC_TXQ_INITIALIZED;
 
 	txq_info->deferred_start = (tx_conf->tx_deferred_start != 0);
 
@@ -241,7 +241,7 @@ sfc_tx_qfini(struct sfc_adapter *sa, unsigned int sw_index)
 
 	txq = txq_info->txq;
 	SFC_ASSERT(txq != NULL);
-	SFC_ASSERT(txq->state == SFC_TXQ_INITIALIZED);
+	SFC_ASSERT(txq_info->state == SFC_TXQ_INITIALIZED);
 
 	sa->priv.dp_tx->qdestroy(txq->dp);
 	txq->dp = NULL;
@@ -426,7 +426,7 @@ sfc_tx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 	txq = txq_info->txq;
 
 	SFC_ASSERT(txq != NULL);
-	SFC_ASSERT(txq->state == SFC_TXQ_INITIALIZED);
+	SFC_ASSERT(txq_info->state == SFC_TXQ_INITIALIZED);
 
 	evq = txq->evq;
 
@@ -464,7 +464,7 @@ sfc_tx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 
 	efx_tx_qenable(txq->common);
 
-	txq->state |= SFC_TXQ_STARTED;
+	txq_info->state |= SFC_TXQ_STARTED;
 
 	rc = sa->priv.dp_tx->qstart(txq->dp, evq->read_ptr, desc_index);
 	if (rc != 0)
@@ -479,7 +479,7 @@ sfc_tx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 	return 0;
 
 fail_dp_qstart:
-	txq->state = SFC_TXQ_INITIALIZED;
+	txq_info->state = SFC_TXQ_INITIALIZED;
 	efx_tx_qdestroy(txq->common);
 
 fail_tx_qcreate:
@@ -506,10 +506,10 @@ sfc_tx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 
 	txq = txq_info->txq;
 
-	if (txq == NULL || txq->state == SFC_TXQ_INITIALIZED)
+	if (txq == NULL || txq_info->state == SFC_TXQ_INITIALIZED)
 		return;
 
-	SFC_ASSERT(txq->state & SFC_TXQ_STARTED);
+	SFC_ASSERT(txq_info->state & SFC_TXQ_STARTED);
 
 	sa->priv.dp_tx->qstop(txq->dp, &txq->evq->read_ptr);
 
@@ -518,12 +518,12 @@ sfc_tx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 	 * timeout; in the worst case it can delay for 6 seconds
 	 */
 	for (retry_count = 0;
-	     ((txq->state & SFC_TXQ_FLUSHED) == 0) &&
+	     ((txq_info->state & SFC_TXQ_FLUSHED) == 0) &&
 	     (retry_count < SFC_TX_QFLUSH_ATTEMPTS);
 	     ++retry_count) {
 		rc = efx_tx_qflush(txq->common);
 		if (rc != 0) {
-			txq->state |= (rc == EALREADY) ?
+			txq_info->state |= (rc == EALREADY) ?
 				SFC_TXQ_FLUSHED : SFC_TXQ_FLUSH_FAILED;
 			break;
 		}
@@ -538,19 +538,19 @@ sfc_tx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 		do {
 			rte_delay_ms(SFC_TX_QFLUSH_POLL_WAIT_MS);
 			sfc_ev_qpoll(txq->evq);
-		} while ((txq->state & SFC_TXQ_FLUSHING) &&
+		} while ((txq_info->state & SFC_TXQ_FLUSHING) &&
 			 wait_count++ < SFC_TX_QFLUSH_POLL_ATTEMPTS);
 
-		if (txq->state & SFC_TXQ_FLUSHING)
+		if (txq_info->state & SFC_TXQ_FLUSHING)
 			sfc_err(sa, "TxQ %u flush timed out", sw_index);
 
-		if (txq->state & SFC_TXQ_FLUSHED)
+		if (txq_info->state & SFC_TXQ_FLUSHED)
 			sfc_notice(sa, "TxQ %u flushed", sw_index);
 	}
 
 	sa->priv.dp_tx->qreap(txq->dp);
 
-	txq->state = SFC_TXQ_INITIALIZED;
+	txq_info->state = SFC_TXQ_INITIALIZED;
 
 	efx_tx_qdestroy(txq->common);
 
@@ -854,13 +854,12 @@ done:
 	return pkts_sent;
 }
 
-struct sfc_txq *
-sfc_txq_by_dp_txq(const struct sfc_dp_txq *dp_txq)
+struct sfc_txq_info *
+sfc_txq_info_by_dp_txq(const struct sfc_dp_txq *dp_txq)
 {
 	const struct sfc_dp_queue *dpq = &dp_txq->dpq;
 	struct rte_eth_dev *eth_dev;
 	struct sfc_adapter *sa;
-	struct sfc_txq *txq;
 
 	SFC_ASSERT(rte_eth_dev_is_valid_port(dpq->port_id));
 	eth_dev = &rte_eth_devices[dpq->port_id];
@@ -868,10 +867,18 @@ sfc_txq_by_dp_txq(const struct sfc_dp_txq *dp_txq)
 	sa = eth_dev->data->dev_private;
 
 	SFC_ASSERT(dpq->queue_id < sa->txq_count);
-	txq = sa->txq_info[dpq->queue_id].txq;
+	return &sa->txq_info[dpq->queue_id];
+}
 
-	SFC_ASSERT(txq != NULL);
-	return txq;
+struct sfc_txq *
+sfc_txq_by_dp_txq(const struct sfc_dp_txq *dp_txq)
+{
+	struct sfc_txq_info *txq_info;
+
+	txq_info = sfc_txq_info_by_dp_txq(dp_txq);
+
+	SFC_ASSERT(txq_info->txq != NULL);
+	return txq_info->txq;
 }
 
 static sfc_dp_tx_qsize_up_rings_t sfc_efx_tx_qsize_up_rings;

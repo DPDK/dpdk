@@ -355,7 +355,9 @@ sfc_ev_txq_flush_done(void *arg, __rte_unused uint32_t txq_hw_index)
 	SFC_ASSERT(txq != NULL);
 	SFC_ASSERT(txq->hw_index == txq_hw_index);
 	SFC_ASSERT(txq->evq == evq);
-	sfc_tx_qflush_done(txq);
+	RTE_SET_USED(txq);
+
+	sfc_tx_qflush_done(sfc_txq_info_by_dp_txq(dp_txq));
 
 	return B_FALSE;
 }
