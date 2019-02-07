@@ -1284,6 +1284,7 @@ typedef struct efx_nic_cfg_s {
 	uint32_t		enc_evq_timer_quantum_ns;
 	uint32_t		enc_evq_timer_max_us;
 	uint32_t		enc_clk_mult;
+	uint32_t		enc_rx_desc_size;
 	uint32_t		enc_tx_desc_size;
 	uint32_t		enc_rx_prefix_size;
 	uint32_t		enc_rx_buf_align_start;
@@ -2478,8 +2479,28 @@ efx_pseudo_hdr_pkt_length_get(
 #define        EFX_RXQ_MAXNDESCS               4096
 #define        EFX_RXQ_MINNDESCS               512
 
+/*
+ * This macro is deprecated and will be removed.
+ * Use the function efx_rxq_size() instead.
+ */
 #define	EFX_RXQ_SIZE(_ndescs)		((_ndescs) * sizeof (efx_qword_t))
+
+/*
+ * This macro is deprecated and will be removed.
+ * Use the function efx_rxq_nbufs() instead.
+ */
 #define	EFX_RXQ_NBUFS(_ndescs)		(EFX_RXQ_SIZE(_ndescs) / EFX_BUF_SIZE)
+
+extern	__checkReturn	size_t
+efx_rxq_size(
+	__in	const efx_nic_t *enp,
+	__in	unsigned int ndescs);
+
+extern	__checkReturn	unsigned int
+efx_rxq_nbufs(
+	__in	const efx_nic_t *enp,
+	__in	unsigned int ndescs);
+
 #define	EFX_RXQ_LIMIT(_ndescs)		((_ndescs) - 16)
 
 typedef enum efx_rxq_type_e {

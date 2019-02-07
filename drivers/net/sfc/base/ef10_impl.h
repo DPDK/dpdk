@@ -19,6 +19,7 @@ extern "C" {
 
 #define	EF10_TXQ_MINNDESCS	512
 
+#define	EF10_RXQ_DESC_SIZE	(sizeof (efx_qword_t))
 #define	EF10_TXQ_DESC_SIZE	(sizeof (efx_qword_t))
 
 /* Maximum independent of EFX_BUG35388_WORKAROUND. */

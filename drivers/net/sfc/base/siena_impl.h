@@ -34,6 +34,7 @@ extern "C" {
 #define	SIENA_RXQ_MAXNDESCS	4096
 #define	SIENA_RXQ_MINNDESCS	512
 
+#define	SIENA_RXQ_DESC_SIZE	(sizeof (efx_qword_t))
 #define	SIENA_TXQ_DESC_SIZE	(sizeof (efx_qword_t))
 
 #define	SIENA_NVRAM_CHUNK 0x80

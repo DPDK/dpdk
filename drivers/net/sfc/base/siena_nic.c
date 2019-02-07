@@ -104,6 +104,7 @@ siena_board_cfg(
 	encp->enc_evq_timer_max_us = (encp->enc_evq_timer_quantum_ns <<
 		FRF_CZ_TC_TIMER_VAL_WIDTH) / 1000;
 
+	encp->enc_rx_desc_size = SIENA_RXQ_DESC_SIZE;
 	encp->enc_tx_desc_size = SIENA_TXQ_DESC_SIZE;
 
 	/* When hash header insertion is enabled, Siena inserts 16 bytes */

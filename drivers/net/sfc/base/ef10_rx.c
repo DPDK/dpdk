@@ -31,7 +31,7 @@ efx_mcdi_init_rxq(
 	efx_mcdi_req_t req;
 	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_INIT_RXQ_V3_IN_LEN,
 		MC_CMD_INIT_RXQ_V3_OUT_LEN);
-	int npages = EFX_RXQ_NBUFS(ndescs);
+	int npages = efx_rxq_nbufs(enp, ndescs);
 	int i;
 	efx_qword_t *dma_addr;
 	uint64_t addr;
@@ -41,7 +41,8 @@ efx_mcdi_init_rxq(
 
 	EFSYS_ASSERT3U(ndescs, <=, encp->enc_rxq_max_ndescs);
 
-	if ((esmp == NULL) || (EFSYS_MEM_SIZE(esmp) < EFX_RXQ_SIZE(ndescs))) {
+	if ((esmp == NULL) ||
+	    (EFSYS_MEM_SIZE(esmp) < efx_rxq_size(enp, ndescs))) {
 		rc = EINVAL;
 		goto fail1;
 	}
