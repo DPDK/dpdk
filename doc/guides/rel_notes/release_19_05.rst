@@ -61,6 +61,8 @@ New Features
   * Added support for Rx descriptor status and related API in a secondary
     process.
   * Added support for Tx descriptor status API in a secondary process.
+  * Added support for RSS RETA and hash configuration get API in a secondary
+    process.
 
 
 Removed Items
