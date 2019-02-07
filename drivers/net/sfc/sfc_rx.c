@@ -39,17 +39,17 @@
 #define SFC_RX_QFLUSH_POLL_ATTEMPTS	(2000)
 
 void
-sfc_rx_qflush_done(struct sfc_rxq *rxq)
+sfc_rx_qflush_done(struct sfc_rxq_info *rxq_info)
 {
-	rxq->state |= SFC_RXQ_FLUSHED;
-	rxq->state &= ~SFC_RXQ_FLUSHING;
+	rxq_info->state |= SFC_RXQ_FLUSHED;
+	rxq_info->state &= ~SFC_RXQ_FLUSHING;
 }
 
 void
-sfc_rx_qflush_failed(struct sfc_rxq *rxq)
+sfc_rx_qflush_failed(struct sfc_rxq_info *rxq_info)
 {
-	rxq->state |= SFC_RXQ_FLUSH_FAILED;
-	rxq->state &= ~SFC_RXQ_FLUSHING;
+	rxq_info->state |= SFC_RXQ_FLUSH_FAILED;
+	rxq_info->state &= ~SFC_RXQ_FLUSHING;
 }
 
 static void
@@ -360,13 +360,12 @@ sfc_efx_rx_qdesc_status(struct sfc_dp_rxq *dp_rxq, uint16_t offset)
 	return RTE_ETH_RX_DESC_UNAVAIL;
 }
 
-struct sfc_rxq *
-sfc_rxq_by_dp_rxq(const struct sfc_dp_rxq *dp_rxq)
+struct sfc_rxq_info *
+sfc_rxq_info_by_dp_rxq(const struct sfc_dp_rxq *dp_rxq)
 {
 	const struct sfc_dp_queue *dpq = &dp_rxq->dpq;
 	struct rte_eth_dev *eth_dev;
 	struct sfc_adapter *sa;
-	struct sfc_rxq *rxq;
 
 	SFC_ASSERT(rte_eth_dev_is_valid_port(dpq->port_id));
 	eth_dev = &rte_eth_devices[dpq->port_id];
@@ -374,10 +373,18 @@ sfc_rxq_by_dp_rxq(const struct sfc_dp_rxq *dp_rxq)
 	sa = eth_dev->data->dev_private;
 
 	SFC_ASSERT(dpq->queue_id < sa->rxq_count);
-	rxq = sa->rxq_info[dpq->queue_id].rxq;
+	return &sa->rxq_info[dpq->queue_id];
+}
 
-	SFC_ASSERT(rxq != NULL);
-	return rxq;
+struct sfc_rxq *
+sfc_rxq_by_dp_rxq(const struct sfc_dp_rxq *dp_rxq)
+{
+	struct sfc_rxq_info *rxq_info;
+
+	rxq_info = sfc_rxq_info_by_dp_rxq(dp_rxq);
+
+	SFC_ASSERT(rxq_info->rxq != NULL);
+	return rxq_info->rxq;
 }
 
 static sfc_dp_rx_qsize_up_rings_t sfc_efx_rx_qsize_up_rings;
@@ -533,30 +540,32 @@ struct sfc_dp_rx sfc_efx_rx = {
 static void
 sfc_rx_qflush(struct sfc_adapter *sa, unsigned int sw_index)
 {
+	struct sfc_rxq_info *rxq_info;
 	struct sfc_rxq *rxq;
 	unsigned int retry_count;
 	unsigned int wait_count;
 	int rc;
 
-	rxq = sa->rxq_info[sw_index].rxq;
-	SFC_ASSERT(rxq->state & SFC_RXQ_STARTED);
+	rxq_info = &sa->rxq_info[sw_index];
+	rxq = rxq_info->rxq;
+	SFC_ASSERT(rxq_info->state & SFC_RXQ_STARTED);
 
 	/*
 	 * Retry Rx queue flushing in the case of flush failed or
 	 * timeout. In the worst case it can delay for 6 seconds.
 	 */
 	for (retry_count = 0;
-	     ((rxq->state & SFC_RXQ_FLUSHED) == 0) &&
+	     ((rxq_info->state & SFC_RXQ_FLUSHED) == 0) &&
 	     (retry_count < SFC_RX_QFLUSH_ATTEMPTS);
 	     ++retry_count) {
 		rc = efx_rx_qflush(rxq->common);
 		if (rc != 0) {
-			rxq->state |= (rc == EALREADY) ?
+			rxq_info->state |= (rc == EALREADY) ?
 				SFC_RXQ_FLUSHED : SFC_RXQ_FLUSH_FAILED;
 			break;
 		}
-		rxq->state &= ~SFC_RXQ_FLUSH_FAILED;
-		rxq->state |= SFC_RXQ_FLUSHING;
+		rxq_info->state &= ~SFC_RXQ_FLUSH_FAILED;
+		rxq_info->state |= SFC_RXQ_FLUSHING;
 
 		/*
 		 * Wait for Rx queue flush done or failed event at least
@@ -568,16 +577,16 @@ sfc_rx_qflush(struct sfc_adapter *sa, unsigned int sw_index)
 		do {
 			rte_delay_ms(SFC_RX_QFLUSH_POLL_WAIT_MS);
 			sfc_ev_qpoll(rxq->evq);
-		} while ((rxq->state & SFC_RXQ_FLUSHING) &&
+		} while ((rxq_info->state & SFC_RXQ_FLUSHING) &&
 			 (wait_count++ < SFC_RX_QFLUSH_POLL_ATTEMPTS));
 
-		if (rxq->state & SFC_RXQ_FLUSHING)
+		if (rxq_info->state & SFC_RXQ_FLUSHING)
 			sfc_err(sa, "RxQ %u flush timed out", sw_index);
 
-		if (rxq->state & SFC_RXQ_FLUSH_FAILED)
+		if (rxq_info->state & SFC_RXQ_FLUSH_FAILED)
 			sfc_err(sa, "RxQ %u flush failed", sw_index);
 
-		if (rxq->state & SFC_RXQ_FLUSHED)
+		if (rxq_info->state & SFC_RXQ_FLUSHED)
 			sfc_notice(sa, "RxQ %u flushed", sw_index);
 	}
 
@@ -651,7 +660,7 @@ sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 	rxq_info = &sa->rxq_info[sw_index];
 	rxq = rxq_info->rxq;
 	SFC_ASSERT(rxq != NULL);
-	SFC_ASSERT(rxq->state == SFC_RXQ_INITIALIZED);
+	SFC_ASSERT(rxq_info->state == SFC_RXQ_INITIALIZED);
 
 	evq = rxq->evq;
 
@@ -699,7 +708,7 @@ sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 	if (rc != 0)
 		goto fail_dp_qstart;
 
-	rxq->state |= SFC_RXQ_STARTED;
+	rxq_info->state |= SFC_RXQ_STARTED;
 
 	if ((sw_index == 0) && !port->isolated) {
 		rc = sfc_rx_default_rxq_set_filter(sa, rxq);
@@ -741,9 +750,9 @@ sfc_rx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 	rxq_info = &sa->rxq_info[sw_index];
 	rxq = rxq_info->rxq;
 
-	if (rxq == NULL || rxq->state == SFC_RXQ_INITIALIZED)
+	if (rxq == NULL || rxq_info->state == SFC_RXQ_INITIALIZED)
 		return;
-	SFC_ASSERT(rxq->state & SFC_RXQ_STARTED);
+	SFC_ASSERT(rxq_info->state & SFC_RXQ_STARTED);
 
 	/* It seems to be used by DPDK for debug purposes only ('rte_ether') */
 	sa->eth_dev->data->rx_queue_state[sw_index] =
@@ -756,7 +765,7 @@ sfc_rx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 
 	sfc_rx_qflush(sa, sw_index);
 
-	rxq->state = SFC_RXQ_INITIALIZED;
+	rxq_info->state = SFC_RXQ_INITIALIZED;
 
 	efx_rx_qdestroy(rxq->common);
 
@@ -1048,7 +1057,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 
 	evq->dp_rxq = rxq->dp;
 
-	rxq->state = SFC_RXQ_INITIALIZED;
+	rxq_info->state = SFC_RXQ_INITIALIZED;
 
 	rxq_info->deferred_start = (rx_conf->rx_deferred_start != 0);
 
@@ -1085,7 +1094,7 @@ sfc_rx_qfini(struct sfc_adapter *sa, unsigned int sw_index)
 	rxq_info = &sa->rxq_info[sw_index];
 
 	rxq = rxq_info->rxq;
-	SFC_ASSERT(rxq->state == SFC_RXQ_INITIALIZED);
+	SFC_ASSERT(rxq_info->state == SFC_RXQ_INITIALIZED);
 
 	sa->priv.dp_rx->qdestroy(rxq->dp);
 	rxq->dp = NULL;

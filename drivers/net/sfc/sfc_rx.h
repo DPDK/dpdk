@@ -60,7 +60,6 @@ struct sfc_rxq {
 	unsigned int		hw_index;
 	uint16_t		buf_size;
 	struct sfc_dp_rxq	*dp;
-	unsigned int		state;
 };
 
 static inline unsigned int
@@ -119,6 +118,7 @@ sfc_efx_rxq_by_dp_rxq(struct sfc_dp_rxq *dp_rxq)
  * Allocated on the same socket as adapter data.
  */
 struct sfc_rxq_info {
+	unsigned int		state;
 	unsigned int		max_entries;
 	unsigned int		entries;
 	efx_rxq_type_t		type;
@@ -129,6 +129,8 @@ struct sfc_rxq_info {
 	unsigned int		refill_threshold;
 	struct rte_mempool	*refill_mb_pool;
 };
+
+struct sfc_rxq_info *sfc_rxq_info_by_dp_rxq(const struct sfc_dp_rxq *dp_rxq);
 
 int sfc_rx_configure(struct sfc_adapter *sa);
 void sfc_rx_close(struct sfc_adapter *sa);
@@ -146,8 +148,8 @@ void sfc_rx_qstop(struct sfc_adapter *sa, unsigned int sw_index);
 uint64_t sfc_rx_get_dev_offload_caps(struct sfc_adapter *sa);
 uint64_t sfc_rx_get_queue_offload_caps(struct sfc_adapter *sa);
 
-void sfc_rx_qflush_done(struct sfc_rxq *rxq);
-void sfc_rx_qflush_failed(struct sfc_rxq *rxq);
+void sfc_rx_qflush_done(struct sfc_rxq_info *rxq_info);
+void sfc_rx_qflush_failed(struct sfc_rxq_info *rxq_info);
 
 int sfc_rx_hash_init(struct sfc_adapter *sa);
 void sfc_rx_hash_fini(struct sfc_adapter *sa);
