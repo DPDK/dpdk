@@ -175,6 +175,7 @@ struct sfc_rss {
 struct sfc_adapter_priv {
 	const struct sfc_dp_rx		*dp_rx;
 	const struct sfc_dp_tx		*dp_tx;
+	uint32_t			logtype_main;
 };
 
 static inline struct sfc_adapter_priv *
@@ -207,7 +208,6 @@ struct sfc_adapter {
 	uint16_t			port_id;
 	struct rte_eth_dev		*eth_dev;
 	struct rte_kvargs		*kvargs;
-	uint32_t			logtype_main;
 	int				socket_id;
 	efsys_bar_t			mem_bar;
 	efx_family_t			family;

@@ -1905,6 +1905,8 @@ sfc_eth_dev_secondary_init(struct rte_eth_dev *dev, uint32_t logtype_main)
 		goto fail_alloc_priv;
 	}
 
+	sap->logtype_main = logtype_main;
+
 	dp_rx = sfc_dp_find_rx_by_name(&sfc_dp_head, sa->dp_rx_name);
 	if (dp_rx == NULL) {
 		SFC_LOG(sa, RTE_LOG_ERR, logtype_main,
@@ -2011,7 +2013,7 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 	/* Required for logging */
 	sa->pci_addr = pci_dev->addr;
 	sa->port_id = dev->data->port_id;
-	sa->logtype_main = logtype_main;
+	sa->priv.logtype_main = logtype_main;
 
 	sa->eth_dev = dev;
 
