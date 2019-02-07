@@ -692,6 +692,7 @@ sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 	switch (rxq_info->type) {
 	case EFX_RXQ_TYPE_DEFAULT:
 		rc = efx_rx_qcreate(sa->nic, rxq->hw_index, 0, rxq_info->type,
+			rxq->buf_size,
 			&rxq->mem, rxq_info->entries, 0 /* not used on EF10 */,
 			rxq_info->type_flags, evq->common, &rxq->common);
 		break;

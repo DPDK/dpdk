@@ -693,6 +693,7 @@ efx_rx_qpost(
 	const efx_rx_ops_t *erxop = enp->en_erxop;
 
 	EFSYS_ASSERT3U(erp->er_magic, ==, EFX_RXQ_MAGIC);
+	EFSYS_ASSERT(erp->er_buf_size == 0 || size == erp->er_buf_size);
 
 	erxop->erxo_qpost(erp, addrp, size, ndescs, completed, added);
 }
@@ -869,6 +870,7 @@ efx_rx_qcreate(
 	__in		unsigned int index,
 	__in		unsigned int label,
 	__in		efx_rxq_type_t type,
+	__in		size_t buf_size,
 	__in		efsys_mem_t *esmp,
 	__in		size_t ndescs,
 	__in		uint32_t id,
@@ -876,7 +878,13 @@ efx_rx_qcreate(
 	__in		efx_evq_t *eep,
 	__deref_out	efx_rxq_t **erpp)
 {
-	return efx_rx_qcreate_internal(enp, index, label, type, NULL,
+	efx_rxq_type_data_t type_data;
+
+	memset(&type_data, 0, sizeof (type_data));
+
+	type_data.ertd_default.ed_buf_size = buf_size;
+
+	return efx_rx_qcreate_internal(enp, index, label, type, &type_data,
 	    esmp, ndescs, id, flags, eep, erpp);
 }
 
@@ -1614,7 +1622,6 @@ siena_rx_qcreate(
 	efx_rc_t rc;
 
 	_NOTE(ARGUNUSED(esmp))
-	_NOTE(ARGUNUSED(type_data))
 
 	EFX_STATIC_ASSERT(EFX_EV_RX_NLABELS ==
 	    (1 << FRF_AZ_RX_DESCQ_LABEL_WIDTH));
@@ -1637,6 +1644,7 @@ siena_rx_qcreate(
 
 	switch (type) {
 	case EFX_RXQ_TYPE_DEFAULT:
+		erp->er_buf_size = type_data->ertd_default.ed_buf_size;
 		break;
 
 	default:

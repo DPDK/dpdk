@@ -131,8 +131,9 @@ typedef struct efx_tx_ops_s {
 } efx_tx_ops_t;
 
 typedef union efx_rxq_type_data_u {
-	/* Dummy member to have non-empty union if no options are enabled */
-	uint32_t	ertd_dummy;
+	struct {
+		size_t		ed_buf_size;
+	} ertd_default;
 #if EFSYS_OPT_RX_PACKED_STREAM
 	struct {
 		uint32_t	eps_buf_size;
@@ -792,6 +793,7 @@ struct efx_rxq_s {
 	unsigned int			er_index;
 	unsigned int			er_label;
 	unsigned int			er_mask;
+	size_t				er_buf_size;
 	efsys_mem_t			*er_esmp;
 	efx_evq_rxq_state_t		*er_ev_qstate;
 };
