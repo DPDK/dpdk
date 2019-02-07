@@ -12,16 +12,6 @@
 
 #if EFX_OPTS_EF10()
 
-#if EFSYS_OPT_QSTATS
-#define	EFX_EV_QSTAT_INCR(_eep, _stat)					\
-	do {								\
-		(_eep)->ee_stat[_stat]++;				\
-	_NOTE(CONSTANTCONDITION)					\
-	} while (B_FALSE)
-#else
-#define	EFX_EV_QSTAT_INCR(_eep, _stat)
-#endif
-
 /*
  * Non-interrupting event queue requires interrrupting event queue to
  * refer to for wake-up events even if wake ups are never used.

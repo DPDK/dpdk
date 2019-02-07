@@ -794,6 +794,16 @@ struct efx_evq_s {
 
 #define	EFX_EVQ_SIENA_TIMER_QUANTUM_NS	6144 /* 768 cycles */
 
+#if EFSYS_OPT_QSTATS
+#define	EFX_EV_QSTAT_INCR(_eep, _stat)					\
+	do {								\
+		(_eep)->ee_stat[_stat]++;				\
+	_NOTE(CONSTANTCONDITION)					\
+	} while (B_FALSE)
+#else
+#define	EFX_EV_QSTAT_INCR(_eep, _stat)
+#endif
+
 struct efx_rxq_s {
 	uint32_t			er_magic;
 	efx_nic_t			*er_enp;

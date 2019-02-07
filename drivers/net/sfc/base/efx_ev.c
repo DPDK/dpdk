@@ -10,16 +10,6 @@
 #include "mcdi_mon.h"
 #endif
 
-#if EFSYS_OPT_QSTATS
-#define	EFX_EV_QSTAT_INCR(_eep, _stat)					\
-	do {								\
-		(_eep)->ee_stat[_stat]++;				\
-	_NOTE(CONSTANTCONDITION)					\
-	} while (B_FALSE)
-#else
-#define	EFX_EV_QSTAT_INCR(_eep, _stat)
-#endif
-
 #define	EFX_EV_PRESENT(_qword)						\
 	(EFX_QWORD_FIELD((_qword), EFX_DWORD_0) != 0xffffffff &&	\
 	EFX_QWORD_FIELD((_qword), EFX_DWORD_1) != 0xffffffff)
