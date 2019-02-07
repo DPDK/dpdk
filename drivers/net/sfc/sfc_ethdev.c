@@ -468,7 +468,7 @@ sfc_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 	if (rc != 0)
 		goto fail_tx_qinit;
 
-	dev->data->tx_queues[tx_queue_id] = sa->txq_info[tx_queue_id].txq->dp;
+	dev->data->tx_queues[tx_queue_id] = sa->txq_info[tx_queue_id].dp;
 
 	sfc_adapter_unlock(sa);
 	return 0;

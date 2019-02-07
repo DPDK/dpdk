@@ -195,11 +195,11 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 
 	rc = sa->priv.dp_tx->qcreate(sa->eth_dev->data->port_id, sw_index,
 				     &RTE_ETH_DEV_TO_PCI(sa->eth_dev)->addr,
-				     socket_id, &info, &txq->dp);
+				     socket_id, &info, &txq_info->dp);
 	if (rc != 0)
 		goto fail_dp_tx_qinit;
 
-	evq->dp_txq = txq->dp;
+	evq->dp_txq = txq_info->dp;
 
 	txq_info->state = SFC_TXQ_INITIALIZED;
 
@@ -243,8 +243,8 @@ sfc_tx_qfini(struct sfc_adapter *sa, unsigned int sw_index)
 	SFC_ASSERT(txq != NULL);
 	SFC_ASSERT(txq_info->state == SFC_TXQ_INITIALIZED);
 
-	sa->priv.dp_tx->qdestroy(txq->dp);
-	txq->dp = NULL;
+	sa->priv.dp_tx->qdestroy(txq_info->dp);
+	txq_info->dp = NULL;
 
 	txq_info->txq = NULL;
 	txq_info->entries = 0;
@@ -466,7 +466,7 @@ sfc_tx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 
 	txq_info->state |= SFC_TXQ_STARTED;
 
-	rc = sa->priv.dp_tx->qstart(txq->dp, evq->read_ptr, desc_index);
+	rc = sa->priv.dp_tx->qstart(txq_info->dp, evq->read_ptr, desc_index);
 	if (rc != 0)
 		goto fail_dp_qstart;
 
@@ -511,7 +511,7 @@ sfc_tx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 
 	SFC_ASSERT(txq_info->state & SFC_TXQ_STARTED);
 
-	sa->priv.dp_tx->qstop(txq->dp, &txq->evq->read_ptr);
+	sa->priv.dp_tx->qstop(txq_info->dp, &txq->evq->read_ptr);
 
 	/*
 	 * Retry TX queue flushing in case of flush failed or
@@ -548,7 +548,7 @@ sfc_tx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 			sfc_notice(sa, "TxQ %u flushed", sw_index);
 	}
 
-	sa->priv.dp_tx->qreap(txq->dp);
+	sa->priv.dp_tx->qreap(txq_info->dp);
 
 	txq_info->state = SFC_TXQ_INITIALIZED;
 

@@ -54,7 +54,6 @@ struct sfc_txq {
 	unsigned int			hw_index;
 	struct sfc_evq			*evq;
 	efsys_mem_t			mem;
-	struct sfc_dp_txq		*dp;
 	efx_txq_t			*common;
 };
 
@@ -109,6 +108,7 @@ struct sfc_txq_info {
 	unsigned int		state;
 	unsigned int		entries;
 	struct sfc_txq		*txq;
+	struct sfc_dp_txq	*dp;
 	boolean_t		deferred_start;
 	boolean_t		deferred_started;
 	unsigned int		free_thresh;
