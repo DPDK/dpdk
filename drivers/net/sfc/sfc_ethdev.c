@@ -442,7 +442,7 @@ sfc_rx_queue_release(void *queue)
 	sa = rxq->evq->sa;
 	sfc_adapter_lock(sa);
 
-	sw_index = sfc_rxq_sw_index(rxq);
+	sw_index = dp_rxq->dpq.queue_id;
 
 	sfc_log_init(sa, "RxQ=%u", sw_index);
 

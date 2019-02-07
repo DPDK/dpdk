@@ -61,18 +61,6 @@ struct sfc_rxq {
 	uint16_t		buf_size;
 };
 
-static inline unsigned int
-sfc_rxq_sw_index_by_hw_index(unsigned int hw_index)
-{
-	return hw_index;
-}
-
-static inline unsigned int
-sfc_rxq_sw_index(const struct sfc_rxq *rxq)
-{
-	return sfc_rxq_sw_index_by_hw_index(rxq->hw_index);
-}
-
 struct sfc_rxq *sfc_rxq_by_dp_rxq(const struct sfc_dp_rxq *dp_rxq);
 
 /**
