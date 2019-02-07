@@ -566,6 +566,12 @@ efx_ev_usecs_to_ticks(
 {
 	efx_nic_cfg_t *encp = &(enp->en_nic_cfg);
 	unsigned int ticks;
+	efx_rc_t rc;
+
+	if (encp->enc_evq_timer_quantum_ns == 0) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
 
 	/* Convert microseconds to a timer tick count */
 	if (us == 0)
@@ -577,6 +583,10 @@ efx_ev_usecs_to_ticks(
 
 	*ticksp = ticks;
 	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
 }
 
 	__checkReturn	efx_rc_t
