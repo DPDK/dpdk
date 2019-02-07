@@ -1735,6 +1735,8 @@ static int
 sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
+	const struct sfc_dp_rx *dp_rx;
+	const struct sfc_dp_tx *dp_tx;
 	const efx_nic_cfg_t *encp;
 	unsigned int avail_caps = 0;
 	const char *rx_name = NULL;
@@ -1761,13 +1763,13 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 		goto fail_kvarg_rx_datapath;
 
 	if (rx_name != NULL) {
-		sa->dp_rx = sfc_dp_find_rx_by_name(&sfc_dp_head, rx_name);
-		if (sa->dp_rx == NULL) {
+		dp_rx = sfc_dp_find_rx_by_name(&sfc_dp_head, rx_name);
+		if (dp_rx == NULL) {
 			sfc_err(sa, "Rx datapath %s not found", rx_name);
 			rc = ENOENT;
 			goto fail_dp_rx;
 		}
-		if (!sfc_dp_match_hw_fw_caps(&sa->dp_rx->dp, avail_caps)) {
+		if (!sfc_dp_match_hw_fw_caps(&dp_rx->dp, avail_caps)) {
 			sfc_err(sa,
 				"Insufficient Hw/FW capabilities to use Rx datapath %s",
 				rx_name);
@@ -1775,8 +1777,8 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 			goto fail_dp_rx_caps;
 		}
 	} else {
-		sa->dp_rx = sfc_dp_find_rx_by_caps(&sfc_dp_head, avail_caps);
-		if (sa->dp_rx == NULL) {
+		dp_rx = sfc_dp_find_rx_by_caps(&sfc_dp_head, avail_caps);
+		if (dp_rx == NULL) {
 			sfc_err(sa, "Rx datapath by caps %#x not found",
 				avail_caps);
 			rc = ENOENT;
@@ -1784,7 +1786,7 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 		}
 	}
 
-	sa->dp_rx_name = sfc_strdup(sa->dp_rx->dp.name);
+	sa->dp_rx_name = sfc_strdup(dp_rx->dp.name);
 	if (sa->dp_rx_name == NULL) {
 		rc = ENOMEM;
 		goto fail_dp_rx_name;
@@ -1792,21 +1794,19 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 
 	sfc_notice(sa, "use %s Rx datapath", sa->dp_rx_name);
 
-	dev->rx_pkt_burst = sa->dp_rx->pkt_burst;
-
 	rc = sfc_kvargs_process(sa, SFC_KVARG_TX_DATAPATH,
 				sfc_kvarg_string_handler, &tx_name);
 	if (rc != 0)
 		goto fail_kvarg_tx_datapath;
 
 	if (tx_name != NULL) {
-		sa->dp_tx = sfc_dp_find_tx_by_name(&sfc_dp_head, tx_name);
-		if (sa->dp_tx == NULL) {
+		dp_tx = sfc_dp_find_tx_by_name(&sfc_dp_head, tx_name);
+		if (dp_tx == NULL) {
 			sfc_err(sa, "Tx datapath %s not found", tx_name);
 			rc = ENOENT;
 			goto fail_dp_tx;
 		}
-		if (!sfc_dp_match_hw_fw_caps(&sa->dp_tx->dp, avail_caps)) {
+		if (!sfc_dp_match_hw_fw_caps(&dp_tx->dp, avail_caps)) {
 			sfc_err(sa,
 				"Insufficient Hw/FW capabilities to use Tx datapath %s",
 				tx_name);
@@ -1814,8 +1814,8 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 			goto fail_dp_tx_caps;
 		}
 	} else {
-		sa->dp_tx = sfc_dp_find_tx_by_caps(&sfc_dp_head, avail_caps);
-		if (sa->dp_tx == NULL) {
+		dp_tx = sfc_dp_find_tx_by_caps(&sfc_dp_head, avail_caps);
+		if (dp_tx == NULL) {
 			sfc_err(sa, "Tx datapath by caps %#x not found",
 				avail_caps);
 			rc = ENOENT;
@@ -1823,7 +1823,7 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 		}
 	}
 
-	sa->dp_tx_name = sfc_strdup(sa->dp_tx->dp.name);
+	sa->dp_tx_name = sfc_strdup(dp_tx->dp.name);
 	if (sa->dp_tx_name == NULL) {
 		rc = ENOMEM;
 		goto fail_dp_tx_name;
@@ -1831,7 +1831,11 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 
 	sfc_notice(sa, "use %s Tx datapath", sa->dp_tx_name);
 
-	dev->tx_pkt_burst = sa->dp_tx->pkt_burst;
+	sa->dp_rx = dp_rx;
+	sa->dp_tx = dp_tx;
+
+	dev->rx_pkt_burst = dp_rx->pkt_burst;
+	dev->tx_pkt_burst = dp_tx->pkt_burst;
 
 	dev->dev_ops = &sfc_eth_dev_ops;
 
@@ -1839,8 +1843,6 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 
 fail_dp_tx_name:
 fail_dp_tx_caps:
-	sa->dp_tx = NULL;
-
 fail_dp_tx:
 fail_kvarg_tx_datapath:
 	rte_free(sa->dp_rx_name);
@@ -1848,8 +1850,6 @@ fail_kvarg_tx_datapath:
 
 fail_dp_rx_name:
 fail_dp_rx_caps:
-	sa->dp_rx = NULL;
-
 fail_dp_rx:
 fail_kvarg_rx_datapath:
 	return rc;
