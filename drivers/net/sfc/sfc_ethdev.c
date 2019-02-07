@@ -1119,16 +1119,24 @@ static uint32_t
 sfc_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_rxq *rxq;
 
-	return sfc_rx_qdesc_npending(sa, rx_queue_id);
+	SFC_ASSERT(rx_queue_id < sa->rxq_count);
+	rxq = sa->rxq_info[rx_queue_id].rxq;
+
+	if (rxq == NULL || (rxq->state & SFC_RXQ_STARTED) == 0)
+		return 0;
+
+	return sa->dp_rx->qdesc_npending(rxq->dp);
 }
 
 static int
 sfc_rx_descriptor_done(void *queue, uint16_t offset)
 {
 	struct sfc_dp_rxq *dp_rxq = queue;
+	struct sfc_rxq *rxq = sfc_rxq_by_dp_rxq(dp_rxq);
 
-	return sfc_rx_qdesc_done(dp_rxq, offset);
+	return offset < rxq->evq->sa->dp_rx->qdesc_npending(dp_rxq);
 }
 
 static int

@@ -530,28 +530,6 @@ struct sfc_dp_rx sfc_efx_rx = {
 	.pkt_burst		= sfc_efx_recv_pkts,
 };
 
-unsigned int
-sfc_rx_qdesc_npending(struct sfc_adapter *sa, unsigned int sw_index)
-{
-	struct sfc_rxq *rxq;
-
-	SFC_ASSERT(sw_index < sa->rxq_count);
-	rxq = sa->rxq_info[sw_index].rxq;
-
-	if (rxq == NULL || (rxq->state & SFC_RXQ_STARTED) == 0)
-		return 0;
-
-	return sa->dp_rx->qdesc_npending(rxq->dp);
-}
-
-int
-sfc_rx_qdesc_done(struct sfc_dp_rxq *dp_rxq, unsigned int offset)
-{
-	struct sfc_rxq *rxq = sfc_rxq_by_dp_rxq(dp_rxq);
-
-	return offset < rxq->evq->sa->dp_rx->qdesc_npending(dp_rxq);
-}
-
 static void
 sfc_rx_qflush(struct sfc_adapter *sa, unsigned int sw_index)
 {
