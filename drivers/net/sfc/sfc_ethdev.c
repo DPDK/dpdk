@@ -402,6 +402,7 @@ sfc_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 		   const struct rte_eth_rxconf *rx_conf,
 		   struct rte_mempool *mb_pool)
 {
+	struct sfc_adapter_shared *sas = sfc_adapter_shared_by_eth_dev(dev);
 	struct sfc_adapter *sa = dev->data->dev_private;
 	int rc;
 
@@ -415,7 +416,7 @@ sfc_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 	if (rc != 0)
 		goto fail_rx_qinit;
 
-	dev->data->rx_queues[rx_queue_id] = sa->rxq_info[rx_queue_id].dp;
+	dev->data->rx_queues[rx_queue_id] = sas->rxq_info[rx_queue_id].dp;
 
 	sfc_adapter_unlock(sa);
 
@@ -1067,14 +1068,15 @@ static void
 sfc_rx_queue_info_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 		      struct rte_eth_rxq_info *qinfo)
 {
+	struct sfc_adapter_shared *sas = sfc_adapter_shared_by_eth_dev(dev);
 	struct sfc_adapter *sa = dev->data->dev_private;
 	struct sfc_rxq_info *rxq_info;
 
 	sfc_adapter_lock(sa);
 
-	SFC_ASSERT(rx_queue_id < sa->rxq_count);
+	SFC_ASSERT(rx_queue_id < sas->rxq_count);
 
-	rxq_info = &sa->rxq_info[rx_queue_id];
+	rxq_info = &sas->rxq_info[rx_queue_id];
 
 	qinfo->mp = rxq_info->refill_mb_pool;
 	qinfo->conf.rx_free_thresh = rxq_info->refill_threshold;
@@ -1125,11 +1127,11 @@ static uint32_t
 sfc_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
 	const struct sfc_adapter_priv *sap = sfc_adapter_priv_by_eth_dev(dev);
-	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_adapter_shared *sas = sfc_adapter_shared_by_eth_dev(dev);
 	struct sfc_rxq_info *rxq_info;
 
-	SFC_ASSERT(rx_queue_id < sa->rxq_count);
-	rxq_info = &sa->rxq_info[rx_queue_id];
+	SFC_ASSERT(rx_queue_id < sas->rxq_count);
+	rxq_info = &sas->rxq_info[rx_queue_id];
 
 	if ((rxq_info->state & SFC_RXQ_STARTED) == 0)
 		return 0;
@@ -1185,6 +1187,7 @@ sfc_tx_descriptor_status(void *queue, uint16_t offset)
 static int
 sfc_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
+	struct sfc_adapter_shared *sas = sfc_adapter_shared_by_eth_dev(dev);
 	struct sfc_adapter *sa = dev->data->dev_private;
 	int rc;
 
@@ -1196,14 +1199,14 @@ sfc_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	if (sa->state != SFC_ADAPTER_STARTED)
 		goto fail_not_started;
 
-	if (sa->rxq_info[rx_queue_id].state != SFC_RXQ_INITIALIZED)
+	if (sas->rxq_info[rx_queue_id].state != SFC_RXQ_INITIALIZED)
 		goto fail_not_setup;
 
 	rc = sfc_rx_qstart(sa, rx_queue_id);
 	if (rc != 0)
 		goto fail_rx_qstart;
 
-	sa->rxq_info[rx_queue_id].deferred_started = B_TRUE;
+	sas->rxq_info[rx_queue_id].deferred_started = B_TRUE;
 
 	sfc_adapter_unlock(sa);
 
@@ -1220,6 +1223,7 @@ fail_not_started:
 static int
 sfc_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
+	struct sfc_adapter_shared *sas = sfc_adapter_shared_by_eth_dev(dev);
 	struct sfc_adapter *sa = dev->data->dev_private;
 
 	sfc_log_init(sa, "RxQ=%u", rx_queue_id);
@@ -1227,7 +1231,7 @@ sfc_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	sfc_adapter_lock(sa);
 	sfc_rx_qstop(sa, rx_queue_id);
 
-	sa->rxq_info[rx_queue_id].deferred_started = B_FALSE;
+	sas->rxq_info[rx_queue_id].deferred_started = B_FALSE;
 
 	sfc_adapter_unlock(sa);
 

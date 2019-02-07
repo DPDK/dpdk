@@ -1241,7 +1241,7 @@ sfc_flow_parse_queue(struct sfc_adapter *sa,
 {
 	struct sfc_rxq *rxq;
 
-	if (queue->index >= sa->rxq_count)
+	if (queue->index >= sfc_sa2shared(sa)->rxq_count)
 		return -EINVAL;
 
 	rxq = &sa->rxq_ctrl[queue->index];
@@ -1268,7 +1268,7 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 	if (action_rss->queue_num == 0)
 		return -EINVAL;
 
-	rxq_sw_index = sa->rxq_count - 1;
+	rxq_sw_index = sfc_sa2shared(sa)->rxq_count - 1;
 	rxq = &sa->rxq_ctrl[rxq_sw_index];
 	rxq_hw_index_min = rxq->hw_index;
 	rxq_hw_index_max = 0;
@@ -1276,7 +1276,7 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 	for (i = 0; i < action_rss->queue_num; ++i) {
 		rxq_sw_index = action_rss->queue[i];
 
-		if (rxq_sw_index >= sa->rxq_count)
+		if (rxq_sw_index >= sfc_sa2shared(sa)->rxq_count)
 			return -EINVAL;
 
 		rxq = &sa->rxq_ctrl[rxq_sw_index];

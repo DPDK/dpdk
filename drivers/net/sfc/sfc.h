@@ -176,6 +176,9 @@ struct sfc_rss {
 
 /* Adapter private data shared by primary and secondary processes */
 struct sfc_adapter_shared {
+	unsigned int			rxq_count;
+	struct sfc_rxq_info		*rxq_info;
+
 	struct rte_pci_addr		pci_addr;
 	uint16_t			port_id;
 
@@ -271,8 +274,6 @@ struct sfc_adapter {
 	bool				mgmt_evq_running;
 	struct sfc_evq			*mgmt_evq;
 
-	unsigned int			rxq_count;
-	struct sfc_rxq_info		*rxq_info;
 	struct sfc_rxq			*rxq_ctrl;
 
 	unsigned int			txq_count;
@@ -291,6 +292,12 @@ sfc_adapter_shared_by_eth_dev(struct rte_eth_dev *eth_dev)
 {
 	struct sfc_adapter *sa = eth_dev->data->dev_private;
 
+	return sa->priv.shared;
+}
+
+static inline struct sfc_adapter_shared *
+sfc_sa2shared(struct sfc_adapter *sa)
+{
 	return sa->priv.shared;
 }
 
