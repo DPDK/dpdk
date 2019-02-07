@@ -33,9 +33,9 @@
 #include "medford2_impl.h"
 #endif	/* EFSYS_OPT_MEDFORD2 */
 
-#if (EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2)
+#if EFX_OPTS_EF10()
 #include "ef10_impl.h"
-#endif	/* (EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2) */
+#endif	/* EFX_OPTS_EF10() */
 
 #ifdef	__cplusplus
 extern "C" {
@@ -431,9 +431,9 @@ typedef struct efx_filter_s {
 #if EFSYS_OPT_SIENA
 	siena_filter_t		*ef_siena_filter;
 #endif /* EFSYS_OPT_SIENA */
-#if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2
+#if EFX_OPTS_EF10()
 	ef10_filter_table_t	*ef_ef10_filter_table;
-#endif /* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 */
+#endif /* EFX_OPTS_EF10() */
 } efx_filter_t;
 
 #if EFSYS_OPT_SIENA
@@ -717,7 +717,7 @@ struct efx_nic_s {
 #endif	/* EFSYS_OPT_SIENA */
 		int	enu_unused;
 	} en_u;
-#if (EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2)
+#if EFX_OPTS_EF10()
 	union en_arch {
 		struct {
 			int			ena_vi_base;
@@ -738,7 +738,7 @@ struct efx_nic_s {
 			size_t			ena_wc_mem_map_size;
 		} ef10;
 	} en_arch;
-#endif	/* (EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2) */
+#endif	/* EFX_OPTS_EF10() */
 };
 
 

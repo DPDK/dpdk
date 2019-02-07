@@ -44,7 +44,7 @@ static const efx_vpd_ops_t	__efx_vpd_siena_ops = {
 
 #endif	/* EFSYS_OPT_SIENA */
 
-#if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2
+#if EFX_OPTS_EF10()
 
 static const efx_vpd_ops_t	__efx_vpd_ef10_ops = {
 	ef10_vpd_init,		/* evpdo_init */
@@ -59,7 +59,7 @@ static const efx_vpd_ops_t	__efx_vpd_ef10_ops = {
 	ef10_vpd_fini,		/* evpdo_fini */
 };
 
-#endif	/* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 */
+#endif	/* EFX_OPTS_EF10() */
 
 	__checkReturn		efx_rc_t
 efx_vpd_init(

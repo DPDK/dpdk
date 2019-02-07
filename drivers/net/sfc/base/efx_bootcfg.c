@@ -847,7 +847,7 @@ efx_bootcfg_read(
 		goto fail1;
 	}
 
-#if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2
+#if EFX_OPTS_EF10()
 	sector_number = enp->en_nic_cfg.enc_pf;
 #else
 	sector_number = 0;
@@ -1000,7 +1000,7 @@ efx_bootcfg_write(
 	efx_rc_t rc;
 	uint32_t sector_number;
 
-#if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2
+#if EFX_OPTS_EF10()
 	sector_number = enp->en_nic_cfg.enc_pf;
 #else
 	sector_number = 0;

@@ -10,7 +10,7 @@
 #include "mcdi_mon.h"
 #endif
 
-#if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2
+#if EFX_OPTS_EF10()
 
 #include "ef10_tlv_layout.h"
 
@@ -2571,4 +2571,4 @@ fail1:
 
 #endif	/* EFSYS_OPT_FW_SUBVARIANT_AWARE */
 
-#endif	/* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 */
+#endif	/* EFX_OPTS_EF10() */

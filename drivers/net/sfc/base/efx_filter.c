@@ -56,7 +56,7 @@ static const efx_filter_ops_t	__efx_filter_siena_ops = {
 };
 #endif /* EFSYS_OPT_SIENA */
 
-#if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2
+#if EFX_OPTS_EF10()
 static const efx_filter_ops_t	__efx_filter_ef10_ops = {
 	ef10_filter_init,		/* efo_init */
 	ef10_filter_fini,		/* efo_fini */
@@ -66,7 +66,7 @@ static const efx_filter_ops_t	__efx_filter_ef10_ops = {
 	ef10_filter_supported_filters,	/* efo_supported_filters */
 	ef10_filter_reconfigure,	/* efo_reconfigure */
 };
-#endif /* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 */
+#endif /* EFX_OPTS_EF10() */
 
 	__checkReturn	efx_rc_t
 efx_filter_insert(

@@ -10,7 +10,7 @@
 
 #if EFSYS_OPT_VPD
 
-#if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2
+#if EFX_OPTS_EF10()
 
 #include "ef10_tlv_layout.h"
 
@@ -445,6 +445,6 @@ ef10_vpd_fini(
 	}
 }
 
-#endif	/* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 */
+#endif	/* EFX_OPTS_EF10() */
 
 #endif	/* EFSYS_OPT_VPD */

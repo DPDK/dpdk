@@ -151,7 +151,7 @@ static const efx_rx_ops_t __efx_rx_siena_ops = {
 };
 #endif	/* EFSYS_OPT_SIENA */
 
-#if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2
+#if EFX_OPTS_EF10()
 static const efx_rx_ops_t __efx_rx_ef10_ops = {
 	ef10_rx_init,				/* erxo_init */
 	ef10_rx_fini,				/* erxo_fini */
@@ -178,7 +178,7 @@ static const efx_rx_ops_t __efx_rx_ef10_ops = {
 	ef10_rx_qcreate,			/* erxo_qcreate */
 	ef10_rx_qdestroy,			/* erxo_qdestroy */
 };
-#endif	/* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 */
+#endif	/* EFX_OPTS_EF10() */
 
 
 	__checkReturn	efx_rc_t

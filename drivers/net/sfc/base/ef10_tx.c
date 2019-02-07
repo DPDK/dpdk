@@ -8,7 +8,7 @@
 #include "efx_impl.h"
 
 
-#if EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2
+#if EFX_OPTS_EF10()
 
 #if EFSYS_OPT_QSTATS
 #define	EFX_TX_QSTAT_INCR(_etp, _stat)					\
@@ -769,4 +769,4 @@ ef10_tx_qstats_update(
 
 #endif /* EFSYS_OPT_QSTATS */
 
-#endif /* EFSYS_OPT_HUNTINGTON || EFSYS_OPT_MEDFORD || EFSYS_OPT_MEDFORD2 */
+#endif /* EFX_OPTS_EF10() */
