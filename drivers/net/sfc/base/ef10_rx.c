@@ -15,7 +15,7 @@ static	__checkReturn	efx_rc_t
 efx_mcdi_init_rxq(
 	__in		efx_nic_t *enp,
 	__in		uint32_t ndescs,
-	__in		uint32_t target_evq,
+	__in		efx_evq_t *eep,
 	__in		uint32_t label,
 	__in		uint32_t instance,
 	__in		efsys_mem_t *esmp,
@@ -38,6 +38,7 @@ efx_mcdi_init_rxq(
 	efx_rc_t rc;
 	uint32_t dma_mode;
 	boolean_t want_outer_classes;
+	boolean_t no_cont_ev;
 
 	EFSYS_ASSERT3U(ndescs, <=, encp->enc_rxq_max_ndescs);
 
@@ -45,6 +46,13 @@ efx_mcdi_init_rxq(
 	    (EFSYS_MEM_SIZE(esmp) < efx_rxq_size(enp, ndescs))) {
 		rc = EINVAL;
 		goto fail1;
+	}
+
+	no_cont_ev = (eep->ee_flags & EFX_EVQ_FLAGS_NO_CONT_EV);
+	if ((no_cont_ev == B_TRUE) && (disable_scatter == B_FALSE)) {
+		/* TODO: Support scatter in NO_CONT_EV mode */
+		rc = EINVAL;
+		goto fail2;
 	}
 
 	if (ps_bufsize > 0)
@@ -81,10 +89,10 @@ efx_mcdi_init_rxq(
 	req.emr_out_length = MC_CMD_INIT_RXQ_V3_OUT_LEN;
 
 	MCDI_IN_SET_DWORD(req, INIT_RXQ_EXT_IN_SIZE, ndescs);
-	MCDI_IN_SET_DWORD(req, INIT_RXQ_EXT_IN_TARGET_EVQ, target_evq);
+	MCDI_IN_SET_DWORD(req, INIT_RXQ_EXT_IN_TARGET_EVQ, eep->ee_index);
 	MCDI_IN_SET_DWORD(req, INIT_RXQ_EXT_IN_LABEL, label);
 	MCDI_IN_SET_DWORD(req, INIT_RXQ_EXT_IN_INSTANCE, instance);
-	MCDI_IN_POPULATE_DWORD_9(req, INIT_RXQ_EXT_IN_FLAGS,
+	MCDI_IN_POPULATE_DWORD_10(req, INIT_RXQ_EXT_IN_FLAGS,
 	    INIT_RXQ_EXT_IN_FLAG_BUFF_MODE, 0,
 	    INIT_RXQ_EXT_IN_FLAG_HDR_SPLIT, 0,
 	    INIT_RXQ_EXT_IN_FLAG_TIMESTAMP, 0,
@@ -94,7 +102,8 @@ efx_mcdi_init_rxq(
 	    INIT_RXQ_EXT_IN_DMA_MODE,
 	    dma_mode,
 	    INIT_RXQ_EXT_IN_PACKED_STREAM_BUFF_SIZE, ps_bufsize,
-	    INIT_RXQ_EXT_IN_FLAG_WANT_OUTER_CLASSES, want_outer_classes);
+	    INIT_RXQ_EXT_IN_FLAG_WANT_OUTER_CLASSES, want_outer_classes,
+	    INIT_RXQ_EXT_IN_FLAG_NO_CONT_EV, no_cont_ev);
 	MCDI_IN_SET_DWORD(req, INIT_RXQ_EXT_IN_OWNER_ID, 0);
 	MCDI_IN_SET_DWORD(req, INIT_RXQ_EXT_IN_PORT_ID, EVB_PORT_ID_ASSIGNED);
 
@@ -127,11 +136,13 @@ efx_mcdi_init_rxq(
 
 	if (req.emr_rc != 0) {
 		rc = req.emr_rc;
-		goto fail2;
+		goto fail3;
 	}
 
 	return (0);
 
+fail3:
+	EFSYS_PROBE(fail3);
 fail2:
 	EFSYS_PROBE(fail2);
 fail1:
@@ -1122,7 +1133,7 @@ ef10_rx_qcreate(
 	else
 		want_inner_classes = B_FALSE;
 
-	if ((rc = efx_mcdi_init_rxq(enp, ndescs, eep->ee_index, label, index,
+	if ((rc = efx_mcdi_init_rxq(enp, ndescs, eep, label, index,
 		    esmp, disable_scatter, want_inner_classes,
 		    ps_buf_size, es_bufs_per_desc, es_max_dma_len,
 		    es_buf_stride, hol_block_timeout)) != 0)

@@ -1198,6 +1198,14 @@ ef10_get_datapath_caps(
 		encp->enc_init_evq_v2_supported = B_FALSE;
 
 	/*
+	 * Check if the NO_CONT_EV mode for RX events is supported.
+	 */
+	if (CAP_FLAGS2(req, INIT_RXQ_NO_CONT_EV))
+		encp->enc_no_cont_ev_mode_supported = B_TRUE;
+	else
+		encp->enc_no_cont_ev_mode_supported = B_FALSE;
+
+	/*
 	 * Check if firmware-verified NVRAM updates must be used.
 	 *
 	 * The firmware trusted installer requires all NVRAM updates to use

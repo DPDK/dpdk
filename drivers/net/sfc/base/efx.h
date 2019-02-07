@@ -1370,6 +1370,7 @@ typedef struct efx_nic_cfg_s {
 	boolean_t		enc_allow_set_mac_with_installed_filters;
 	boolean_t		enc_enhanced_set_mac_supported;
 	boolean_t		enc_init_evq_v2_supported;
+	boolean_t		enc_no_cont_ev_mode_supported;
 	boolean_t		enc_rx_packed_stream_supported;
 	boolean_t		enc_rx_var_packed_stream_supported;
 	boolean_t		enc_rx_es_super_buffer_supported;
@@ -1999,6 +2000,16 @@ efx_evq_nbufs(
 #define	EFX_EVQ_FLAGS_NOTIFY_MASK	(0xC)
 #define	EFX_EVQ_FLAGS_NOTIFY_INTERRUPT	(0x0)	/* Interrupting (default) */
 #define	EFX_EVQ_FLAGS_NOTIFY_DISABLED	(0x4)	/* Non-interrupting */
+
+/*
+ * Use the NO_CONT_EV RX event format, which allows the firmware to operate more
+ * efficiently at high data rates. See SF-109306-TC 5.11 "Events for RXQs in
+ * NO_CONT_EV mode".
+ *
+ * NO_CONT_EV requires EVQ_RX_MERGE and RXQ_FORCED_EV_MERGING to both be set,
+ * which is the case when an event queue is set to THROUGHPUT mode.
+ */
+#define	EFX_EVQ_FLAGS_NO_CONT_EV	(0x10)
 
 extern	__checkReturn	efx_rc_t
 efx_ev_qcreate(

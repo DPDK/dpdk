@@ -457,6 +457,23 @@ ef10_ev_qcreate(
 		goto fail2;
 	}
 
+	/*
+	 * NO_CONT_EV mode is only requested from the firmware when creating
+	 * receive queues, but here it needs to be specified at event queue
+	 * creation, as the event handler needs to know which format is in use.
+	 *
+	 * If EFX_EVQ_FLAGS_NO_CONT_EV is specified, all receive queues for this
+	 * event queue will be created in NO_CONT_EV mode.
+	 *
+	 * See SF-109306-TC 5.11 "Events for RXQs in NO_CONT_EV mode".
+	 */
+	if (flags & EFX_EVQ_FLAGS_NO_CONT_EV) {
+		if (enp->en_nic_cfg.enc_no_cont_ev_mode_supported == B_FALSE) {
+			rc = EINVAL;
+			goto fail3;
+		}
+	}
+
 	/* Set up the handler table */
 	eep->ee_rx	= ef10_ev_rx;
 	eep->ee_tx	= ef10_ev_tx;
@@ -494,7 +511,7 @@ ef10_ev_qcreate(
 		rc = efx_mcdi_init_evq_v2(enp, index, esmp, ndescs, irq, us,
 		    flags);
 		if (rc != 0)
-			goto fail3;
+			goto fail4;
 	} else {
 		/*
 		 * On Huntington we need to specify the settings to use.
@@ -511,11 +528,13 @@ ef10_ev_qcreate(
 		rc = efx_mcdi_init_evq(enp, index, esmp, ndescs, irq, us, flags,
 		    low_latency);
 		if (rc != 0)
-			goto fail4;
+			goto fail5;
 	}
 
 	return (0);
 
+fail5:
+	EFSYS_PROBE(fail5);
 fail4:
 	EFSYS_PROBE(fail4);
 fail3:
@@ -912,22 +931,46 @@ ef10_ev_rx(
 	if (mac_class == ESE_DZ_MAC_CLASS_UCAST)
 		flags |= EFX_PKT_UNICAST;
 
-	/* Increment the count of descriptors read */
+	/*
+	 * Increment the count of descriptors read.
+	 *
+	 * In NO_CONT_EV mode, RX_DSC_PTR_LBITS is actually a packet count, but
+	 * when scatter is disabled, there is only one descriptor per packet and
+	 * so it can be treated the same.
+	 *
+	 * TODO: Support scatter in NO_CONT_EV mode.
+	 */
 	desc_count = (next_read_lbits - eersp->eers_rx_read_ptr) &
 	    EFX_MASK32(ESF_DZ_RX_DSC_PTR_LBITS);
 	eersp->eers_rx_read_ptr += desc_count;
 
-	/*
-	 * FIXME: add error checking to make sure this a batched event.
-	 * This could also be an aborted scatter, see Bug36629.
-	 */
-	if (desc_count > 1) {
+	/* Calculate the index of the last descriptor consumed */
+	last_used_id = (eersp->eers_rx_read_ptr - 1) & eersp->eers_rx_mask;
+
+	if (eep->ee_flags & EFX_EVQ_FLAGS_NO_CONT_EV) {
+		if (desc_count > 1)
+			EFX_EV_QSTAT_INCR(eep, EV_RX_BATCH);
+
+		/* Always read the length from the prefix in NO_CONT_EV mode. */
+		flags |= EFX_PKT_PREFIX_LEN;
+
+		/*
+		 * Check for an aborted scatter, signalled by the ABORT bit in
+		 * NO_CONT_EV mode. The ABORT bit was not used before NO_CONT_EV
+		 * mode was added as it was broken in Huntington silicon.
+		 */
+		if (EFX_QWORD_FIELD(*eqp, ESF_EZ_RX_ABORT) != 0) {
+			flags |= EFX_DISCARD;
+			goto deliver;
+		}
+	} else if (desc_count > 1) {
+		/*
+		 * FIXME: add error checking to make sure this a batched event.
+		 * This could also be an aborted scatter, see Bug36629.
+		 */
 		EFX_EV_QSTAT_INCR(eep, EV_RX_BATCH);
 		flags |= EFX_PKT_PREFIX_LEN;
 	}
-
-	/* Calculate the index of the last descriptor consumed */
-	last_used_id = (eersp->eers_rx_read_ptr - 1) & eersp->eers_rx_mask;
 
 	/* Check for errors that invalidate checksum and L3/L4 fields */
 	if (EFX_QWORD_FIELD(*eqp, ESF_DZ_RX_TRUNC_ERR) != 0) {
