@@ -1928,7 +1928,7 @@ typedef struct efx_evq_s	efx_evq_t;
 
 #if EFSYS_OPT_QSTATS
 
-/* START MKCONFIG GENERATED EfxHeaderEventQueueBlock 6f3843f5fe7cc843 */
+/* START MKCONFIG GENERATED EfxHeaderEventQueueBlock 0a147ace40844969 */
 typedef enum efx_ev_qstat_e {
 	EV_ALL,
 	EV_RX,
@@ -1967,6 +1967,7 @@ typedef enum efx_ev_qstat_e {
 	EV_DRIVER_TX_DSC_ERROR,
 	EV_DRV_GEN,
 	EV_MCDI_RESPONSE,
+	EV_RX_PARSE_INCOMPLETE,
 	EV_NQSTATS
 } efx_ev_qstat_t;
 

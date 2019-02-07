@@ -824,6 +824,7 @@ ef10_ev_rx_packed_stream(
 	}
 
 	if (EFX_QWORD_FIELD(*eqp, ESF_DZ_RX_PARSE_INCOMPLETE)) {
+		EFX_EV_QSTAT_INCR(eep, EV_RX_PARSE_INCOMPLETE);
 		flags |= EFX_PKT_PACKED_STREAM_PARSE_INCOMPLETE;
 		goto deliver;
 	}
@@ -991,7 +992,7 @@ ef10_ev_rx(
 		 * or headers that are too long for the parser.
 		 * Headers and checksums must be validated by the host.
 		 */
-		/* TODO: EFX_EV_QSTAT_INCR(eep, EV_RX_PARSE_INCOMPLETE); */
+		EFX_EV_QSTAT_INCR(eep, EV_RX_PARSE_INCOMPLETE);
 		goto deliver;
 	}
 

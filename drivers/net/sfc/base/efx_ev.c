@@ -1382,7 +1382,7 @@ fail1:
 
 #if EFSYS_OPT_QSTATS
 #if EFSYS_OPT_NAMES
-/* START MKCONFIG GENERATED EfxEventQueueStatNamesBlock c0f3bc5083b40532 */
+/* START MKCONFIG GENERATED EfxEventQueueStatNamesBlock ac223f7134058b4f */
 static const char * const __efx_ev_qstat_name[] = {
 	"all",
 	"rx",
@@ -1421,6 +1421,7 @@ static const char * const __efx_ev_qstat_name[] = {
 	"driver_tx_dsc_error",
 	"drv_gen",
 	"mcdi_response",
+	"rx_parse_incomplete",
 };
 /* END MKCONFIG GENERATED EfxEventQueueStatNamesBlock */
 
