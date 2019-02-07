@@ -1371,6 +1371,7 @@ typedef struct efx_nic_cfg_s {
 	boolean_t		enc_enhanced_set_mac_supported;
 	boolean_t		enc_init_evq_v2_supported;
 	boolean_t		enc_no_cont_ev_mode_supported;
+	boolean_t		enc_init_rxq_with_buffer_size;
 	boolean_t		enc_rx_packed_stream_supported;
 	boolean_t		enc_rx_var_packed_stream_supported;
 	boolean_t		enc_rx_es_super_buffer_supported;

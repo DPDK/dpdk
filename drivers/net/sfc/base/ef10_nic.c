@@ -1206,6 +1206,16 @@ ef10_get_datapath_caps(
 		encp->enc_no_cont_ev_mode_supported = B_FALSE;
 
 	/*
+	 * Check if buffer size may and must be specified on INIT_RXQ.
+	 * It may be always specified to efx_rx_qcreate(), but will be
+	 * just kept libefx internal if MCDI does not support it.
+	 */
+	if (CAP_FLAGS2(req, INIT_RXQ_WITH_BUFFER_SIZE))
+		encp->enc_init_rxq_with_buffer_size = B_TRUE;
+	else
+		encp->enc_init_rxq_with_buffer_size = B_FALSE;
+
+	/*
 	 * Check if firmware-verified NVRAM updates must be used.
 	 *
 	 * The firmware trusted installer requires all NVRAM updates to use
