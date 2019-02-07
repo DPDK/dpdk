@@ -1982,13 +1982,6 @@ efx_ev_fini(
 	__in		efx_nic_t *enp);
 
 /*
- * These symbols are deprecated and will be removed.
- * Use the fields from efx_nic_cfg_t instead.
- */
-#define	EFX_EVQ_MAXNEVS		32768
-#define	EFX_EVQ_MINNEVS		512
-
-/*
  * This macro is deprecated and will be removed.
  * Use the function efx_evq_size() instead.
  */
@@ -2493,13 +2486,6 @@ efx_pseudo_hdr_pkt_length_get(
 	__out		uint16_t *pkt_lengthp);
 
 /*
- * These symbols are deprecated and will be removed.
- * Use the fields from efx_nic_cfg_t instead.
- */
-#define        EFX_RXQ_MAXNDESCS               4096
-#define        EFX_RXQ_MINNDESCS               512
-
-/*
  * This macro is deprecated and will be removed.
  * Use the function efx_rxq_size() instead.
  */
@@ -2680,12 +2666,6 @@ efx_tx_init(
 extern		void
 efx_tx_fini(
 	__in	efx_nic_t *enp);
-
-/*
- * This symbol is deprecated and will be removed.
- * Use the field from efx_nic_cfg_t instead.
- */
-#define	EFX_TXQ_MINNDESCS		512
 
 /*
  * This macro is deprecated and will be removed.
