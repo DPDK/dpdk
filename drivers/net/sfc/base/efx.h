@@ -1981,18 +1981,6 @@ extern		void
 efx_ev_fini(
 	__in		efx_nic_t *enp);
 
-/*
- * This macro is deprecated and will be removed.
- * Use the function efx_evq_size() instead.
- */
-#define	EFX_EVQ_SIZE(_nevs)	((_nevs) * sizeof (efx_qword_t))
-
-/*
- * This macro is deprecated and will be removed.
- * Use the function efx_evq_nbufs() instead.
- */
-#define	EFX_EVQ_NBUFS(_nevs)	(EFX_EVQ_SIZE(_nevs) / EFX_BUF_SIZE)
-
 extern	__checkReturn	size_t
 efx_evq_size(
 	__in	const efx_nic_t *enp,
@@ -2485,18 +2473,6 @@ efx_pseudo_hdr_pkt_length_get(
 	__in		uint8_t *buffer,
 	__out		uint16_t *pkt_lengthp);
 
-/*
- * This macro is deprecated and will be removed.
- * Use the function efx_rxq_size() instead.
- */
-#define	EFX_RXQ_SIZE(_ndescs)		((_ndescs) * sizeof (efx_qword_t))
-
-/*
- * This macro is deprecated and will be removed.
- * Use the function efx_rxq_nbufs() instead.
- */
-#define	EFX_RXQ_NBUFS(_ndescs)		(EFX_RXQ_SIZE(_ndescs) / EFX_BUF_SIZE)
-
 extern	__checkReturn	size_t
 efx_rxq_size(
 	__in	const efx_nic_t *enp,
@@ -2666,18 +2642,6 @@ efx_tx_init(
 extern		void
 efx_tx_fini(
 	__in	efx_nic_t *enp);
-
-/*
- * This macro is deprecated and will be removed.
- * Use the function efx_txq_size() instead.
- */
-#define	EFX_TXQ_SIZE(_ndescs)		((_ndescs) * sizeof (efx_qword_t))
-
-/*
- * This macro is deprecated and will be removed.
- * Use the function efx_txq_nbufs() instead.
- */
-#define	EFX_TXQ_NBUFS(_ndescs)		(EFX_TXQ_SIZE(_ndescs) / EFX_BUF_SIZE)
 
 extern	__checkReturn	size_t
 efx_txq_size(
