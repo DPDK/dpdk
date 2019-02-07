@@ -57,18 +57,6 @@ struct sfc_txq {
 	efx_txq_t			*common;
 };
 
-static inline unsigned int
-sfc_txq_sw_index_by_hw_index(unsigned int hw_index)
-{
-	return hw_index;
-}
-
-static inline unsigned int
-sfc_txq_sw_index(const struct sfc_txq *txq)
-{
-	return sfc_txq_sw_index_by_hw_index(txq->hw_index);
-}
-
 struct sfc_txq *sfc_txq_by_dp_txq(const struct sfc_dp_txq *dp_txq);
 
 /**
