@@ -26,9 +26,7 @@ efx_sram_buf_tbl_set(
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_NIC);
 
 #if EFX_OPTS_EF10()
-	if (enp->en_family == EFX_FAMILY_HUNTINGTON ||
-	    enp->en_family == EFX_FAMILY_MEDFORD ||
-	    enp->en_family == EFX_FAMILY_MEDFORD2) {
+	if (EFX_FAMILY_IS_EF10(enp)) {
 		/*
 		 * FIXME: the efx_sram_buf_tbl_*() functionality needs to be
 		 * pulled inside the Falcon/Siena queue create/destroy code,
@@ -149,9 +147,7 @@ efx_sram_buf_tbl_clear(
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_NIC);
 
 #if EFX_OPTS_EF10()
-	if (enp->en_family == EFX_FAMILY_HUNTINGTON ||
-	    enp->en_family == EFX_FAMILY_MEDFORD ||
-	    enp->en_family == EFX_FAMILY_MEDFORD2) {
+	if (EFX_FAMILY_IS_EF10(enp)) {
 		/*
 		 * FIXME: the efx_sram_buf_tbl_*() functionality needs to be
 		 * pulled inside the Falcon/Siena queue create/destroy code,

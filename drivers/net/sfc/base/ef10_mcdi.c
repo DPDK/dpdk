@@ -27,9 +27,7 @@ ef10_mcdi_init(
 	efx_dword_t dword;
 	efx_rc_t rc;
 
-	EFSYS_ASSERT(enp->en_family == EFX_FAMILY_HUNTINGTON ||
-	    enp->en_family == EFX_FAMILY_MEDFORD ||
-	    enp->en_family == EFX_FAMILY_MEDFORD2);
+	EFSYS_ASSERT(EFX_FAMILY_IS_EF10(enp));
 	EFSYS_ASSERT(enp->en_features & EFX_FEATURE_MCDI_DMA);
 
 	/*
@@ -135,9 +133,7 @@ ef10_mcdi_send_request(
 	efx_dword_t dword;
 	unsigned int pos;
 
-	EFSYS_ASSERT(enp->en_family == EFX_FAMILY_HUNTINGTON ||
-	    enp->en_family == EFX_FAMILY_MEDFORD ||
-	    enp->en_family == EFX_FAMILY_MEDFORD2);
+	EFSYS_ASSERT(EFX_FAMILY_IS_EF10(enp));
 
 	/* Write the header */
 	for (pos = 0; pos < hdr_len; pos += sizeof (efx_dword_t)) {
@@ -259,9 +255,7 @@ ef10_mcdi_feature_supported(
 	uint32_t privilege_mask = encp->enc_privilege_mask;
 	efx_rc_t rc;
 
-	EFSYS_ASSERT(enp->en_family == EFX_FAMILY_HUNTINGTON ||
-	    enp->en_family == EFX_FAMILY_MEDFORD ||
-	    enp->en_family == EFX_FAMILY_MEDFORD2);
+	EFSYS_ASSERT(EFX_FAMILY_IS_EF10(enp));
 
 	/*
 	 * Use privilege mask state at MCDI attach.

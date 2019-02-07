@@ -351,9 +351,7 @@ ef10_mac_multicast_list_set(
 	const efx_mac_ops_t *emop = epp->ep_emop;
 	efx_rc_t rc;
 
-	EFSYS_ASSERT(enp->en_family == EFX_FAMILY_HUNTINGTON ||
-	    enp->en_family == EFX_FAMILY_MEDFORD ||
-	    enp->en_family == EFX_FAMILY_MEDFORD2);
+	EFSYS_ASSERT(EFX_FAMILY_IS_EF10(enp));
 
 	if ((rc = emop->emo_reconfigure(enp)) != 0)
 		goto fail1;

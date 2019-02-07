@@ -553,9 +553,7 @@ ef10_ev_qdestroy(
 {
 	efx_nic_t *enp = eep->ee_enp;
 
-	EFSYS_ASSERT(enp->en_family == EFX_FAMILY_HUNTINGTON ||
-	    enp->en_family == EFX_FAMILY_MEDFORD ||
-	    enp->en_family == EFX_FAMILY_MEDFORD2);
+	EFSYS_ASSERT(EFX_FAMILY_IS_EF10(enp));
 
 	(void) efx_mcdi_fini_evq(enp, eep->ee_index);
 }
