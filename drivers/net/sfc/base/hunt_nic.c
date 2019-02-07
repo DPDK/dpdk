@@ -195,6 +195,7 @@ hunt_board_cfg(
 	 * descriptor writes, preventing the use of 4096 descriptor TXQs.
 	 */
 	encp->enc_txq_max_ndescs = encp->enc_bug35388_workaround ? 2048 : 4096;
+	encp->enc_txq_min_ndescs = EF10_TXQ_MINNDESCS;
 
 	EFX_STATIC_ASSERT(HUNT_PIOBUF_NBUFS <= EF10_MAX_PIOBUF_NBUFS);
 	encp->enc_piobuf_limit = HUNT_PIOBUF_NBUFS;

@@ -24,6 +24,9 @@ extern "C" {
 #endif
 #define	EFX_TXQ_DC_NDESCS(_dcsize)	(8 << (_dcsize))
 
+#define	SIENA_TXQ_MAXNDESCS	4096
+#define	SIENA_TXQ_MINNDESCS	512
+
 #define	SIENA_NVRAM_CHUNK 0x80
 
 

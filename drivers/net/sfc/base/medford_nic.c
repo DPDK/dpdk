@@ -118,6 +118,7 @@ medford_board_cfg(
 	 * stuffing.
 	 */
 	encp->enc_txq_max_ndescs = 2048;
+	encp->enc_txq_min_ndescs = EF10_TXQ_MINNDESCS;
 
 	EFX_STATIC_ASSERT(MEDFORD_PIOBUF_NBUFS <= EF10_MAX_PIOBUF_NBUFS);
 	encp->enc_piobuf_limit = MEDFORD_PIOBUF_NBUFS;

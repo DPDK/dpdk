@@ -1272,6 +1272,7 @@ typedef struct efx_nic_cfg_s {
 	uint32_t		enc_txq_limit;
 	uint32_t		enc_rxq_limit;
 	uint32_t		enc_txq_max_ndescs;
+	uint32_t		enc_txq_min_ndescs;
 	uint32_t		enc_buftbl_limit;
 	uint32_t		enc_piobuf_limit;
 	uint32_t		enc_piobuf_size;
@@ -2627,6 +2628,10 @@ extern		void
 efx_tx_fini(
 	__in	efx_nic_t *enp);
 
+/*
+ * This symbol is deprecated and will be removed.
+ * Use the field from efx_nic_cfg_t instead.
+ */
 #define	EFX_TXQ_MINNDESCS		512
 
 #define	EFX_TXQ_SIZE(_ndescs)		((_ndescs) * sizeof (efx_qword_t))
