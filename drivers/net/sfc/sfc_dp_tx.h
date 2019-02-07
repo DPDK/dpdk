@@ -182,6 +182,9 @@ sfc_dp_find_tx_by_caps(struct sfc_dp_list *head, unsigned int avail_caps)
 	return (p == NULL) ? NULL : container_of(p, struct sfc_dp_tx, dp);
 }
 
+/** Get Tx datapath ops by the datapath TxQ handle */
+const struct sfc_dp_tx *sfc_dp_tx_by_dp_txq(const struct sfc_dp_txq *dp_txq);
+
 extern struct sfc_dp_tx sfc_efx_tx;
 extern struct sfc_dp_tx sfc_ef10_tx;
 extern struct sfc_dp_tx sfc_ef10_simple_tx;

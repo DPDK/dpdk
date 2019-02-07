@@ -1167,13 +1167,19 @@ sfc_rx_descriptor_status(void *queue, uint16_t offset)
 	return dp_rx->qdesc_status(dp_rxq, offset);
 }
 
+/*
+ * The function is used by the secondary process as well. It must not
+ * use any process-local pointers from the adapter data.
+ */
 static int
 sfc_tx_descriptor_status(void *queue, uint16_t offset)
 {
 	struct sfc_dp_txq *dp_txq = queue;
-	struct sfc_txq *txq = sfc_txq_by_dp_txq(dp_txq);
+	const struct sfc_dp_tx *dp_tx;
 
-	return txq->evq->sa->priv.dp_tx->qdesc_status(dp_txq, offset);
+	dp_tx = sfc_dp_tx_by_dp_txq(dp_txq);
+
+	return dp_tx->qdesc_status(dp_txq, offset);
 }
 
 static int
@@ -1896,6 +1902,7 @@ static const struct eth_dev_ops sfc_eth_dev_secondary_ops = {
 	.rx_queue_count			= sfc_rx_queue_count,
 	.rx_descriptor_done		= sfc_rx_descriptor_done,
 	.rx_descriptor_status		= sfc_rx_descriptor_status,
+	.tx_descriptor_status		= sfc_tx_descriptor_status,
 	.rxq_info_get			= sfc_rx_queue_info_get,
 	.txq_info_get			= sfc_tx_queue_info_get,
 };

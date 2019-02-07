@@ -854,6 +854,21 @@ done:
 	return pkts_sent;
 }
 
+const struct sfc_dp_tx *
+sfc_dp_tx_by_dp_txq(const struct sfc_dp_txq *dp_txq)
+{
+	const struct sfc_dp_queue *dpq = &dp_txq->dpq;
+	struct rte_eth_dev *eth_dev;
+	struct sfc_adapter_priv *sap;
+
+	SFC_ASSERT(rte_eth_dev_is_valid_port(dpq->port_id));
+	eth_dev = &rte_eth_devices[dpq->port_id];
+
+	sap = sfc_adapter_priv_by_eth_dev(eth_dev);
+
+	return sap->dp_tx;
+}
+
 struct sfc_txq_info *
 sfc_txq_info_by_dp_txq(const struct sfc_dp_txq *dp_txq)
 {
