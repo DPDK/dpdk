@@ -1284,6 +1284,7 @@ typedef struct efx_nic_cfg_s {
 	uint32_t		enc_evq_timer_quantum_ns;
 	uint32_t		enc_evq_timer_max_us;
 	uint32_t		enc_clk_mult;
+	uint32_t		enc_tx_desc_size;
 	uint32_t		enc_rx_prefix_size;
 	uint32_t		enc_rx_buf_align_start;
 	uint32_t		enc_rx_buf_align_end;
@@ -2645,8 +2646,28 @@ efx_tx_fini(
  */
 #define	EFX_TXQ_MINNDESCS		512
 
+/*
+ * This macro is deprecated and will be removed.
+ * Use the function efx_txq_size() instead.
+ */
 #define	EFX_TXQ_SIZE(_ndescs)		((_ndescs) * sizeof (efx_qword_t))
+
+/*
+ * This macro is deprecated and will be removed.
+ * Use the function efx_txq_nbufs() instead.
+ */
 #define	EFX_TXQ_NBUFS(_ndescs)		(EFX_TXQ_SIZE(_ndescs) / EFX_BUF_SIZE)
+
+extern	__checkReturn	size_t
+efx_txq_size(
+	__in	const efx_nic_t *enp,
+	__in	unsigned int ndescs);
+
+extern	__checkReturn	unsigned int
+efx_txq_nbufs(
+	__in	const efx_nic_t *enp,
+	__in	unsigned int ndescs);
+
 #define	EFX_TXQ_LIMIT(_ndescs)		((_ndescs) - 16)
 
 #define	EFX_TXQ_CKSUM_IPV4		0x0001

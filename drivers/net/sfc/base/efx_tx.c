@@ -297,6 +297,24 @@ efx_tx_fini(
 	enp->en_mod_flags &= ~EFX_MOD_TX;
 }
 
+	__checkReturn	size_t
+efx_txq_size(
+	__in	const efx_nic_t *enp,
+	__in	unsigned int ndescs)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+
+	return (ndescs * encp->enc_tx_desc_size);
+}
+
+	__checkReturn	unsigned int
+efx_txq_nbufs(
+	__in	const efx_nic_t *enp,
+	__in	unsigned int ndescs)
+{
+	return (efx_txq_size(enp, ndescs) / EFX_BUF_SIZE);
+}
+
 	__checkReturn	efx_rc_t
 efx_tx_qcreate(
 	__in		efx_nic_t *enp,

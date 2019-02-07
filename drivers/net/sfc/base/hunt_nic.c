@@ -186,6 +186,8 @@ hunt_board_cfg(
 	/* Checksums for TSO sends can be incorrect on Huntington. */
 	encp->enc_bug61297_workaround = B_TRUE;
 
+	encp->enc_tx_desc_size = EF10_TXQ_DESC_SIZE;
+
 	/* Alignment for receive packet DMA buffers */
 	encp->enc_rx_buf_align_start = 1;
 	encp->enc_rx_buf_align_end = 64; /* RX DMA end padding */

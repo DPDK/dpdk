@@ -99,6 +99,8 @@ medford_board_cfg(
 	encp->enc_evq_timer_max_us = (encp->enc_evq_timer_quantum_ns <<
 		    FRF_CZ_TC_TIMER_VAL_WIDTH) / 1000;
 
+	encp->enc_tx_desc_size = EF10_TXQ_DESC_SIZE;
+
 	/* Alignment for receive packet DMA buffers */
 	encp->enc_rx_buf_align_start = 1;
 

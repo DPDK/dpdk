@@ -41,14 +41,15 @@ efx_mcdi_init_txq(
 	efx_rc_t rc;
 
 	EFSYS_ASSERT(EF10_TXQ_MAXNBUFS >=
-	    EFX_TXQ_NBUFS(enp->en_nic_cfg.enc_txq_max_ndescs));
+	    efx_txq_nbufs(enp, enp->en_nic_cfg.enc_txq_max_ndescs));
 
-	if ((esmp == NULL) || (EFSYS_MEM_SIZE(esmp) < EFX_TXQ_SIZE(ndescs))) {
+	if ((esmp == NULL) ||
+	    (EFSYS_MEM_SIZE(esmp) < efx_txq_size(enp, ndescs))) {
 		rc = EINVAL;
 		goto fail1;
 	}
 
-	npages = EFX_TXQ_NBUFS(ndescs);
+	npages = efx_txq_nbufs(enp, ndescs);
 	if (MC_CMD_INIT_TXQ_IN_LEN(npages) > sizeof (payload)) {
 		rc = EINVAL;
 		goto fail2;
