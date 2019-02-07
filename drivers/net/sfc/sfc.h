@@ -219,12 +219,6 @@ struct sfc_adapter {
 	struct sfc_adapter_priv		priv;
 
 	/*
-	 * Temporary placeholder for multi-process shared data for
-	 * transition.
-	 */
-	struct sfc_adapter_shared	_shared;
-
-	/*
 	 * PMD setup and configuration is not thread safe. Since it is not
 	 * performance sensitive, it is better to guarantee thread-safety
 	 * and add device level lock. Adapter control operations which
@@ -291,9 +285,19 @@ struct sfc_adapter {
 static inline struct sfc_adapter_shared *
 sfc_adapter_shared_by_eth_dev(struct rte_eth_dev *eth_dev)
 {
-	struct sfc_adapter *sa = eth_dev->data->dev_private;
+	struct sfc_adapter_shared *sas = eth_dev->data->dev_private;
 
-	return sa->priv.shared;
+	return sas;
+}
+
+static inline struct sfc_adapter *
+sfc_adapter_by_eth_dev(struct rte_eth_dev *eth_dev)
+{
+	struct sfc_adapter_priv *sap = sfc_adapter_priv_by_eth_dev(eth_dev);
+
+	SFC_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
+
+	return container_of(sap, struct sfc_adapter, priv);
 }
 
 static inline struct sfc_adapter_shared *

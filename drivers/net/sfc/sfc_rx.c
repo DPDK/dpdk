@@ -402,7 +402,7 @@ sfc_rxq_by_dp_rxq(const struct sfc_dp_rxq *dp_rxq)
 	SFC_ASSERT(rte_eth_dev_is_valid_port(dpq->port_id));
 	eth_dev = &rte_eth_devices[dpq->port_id];
 
-	sa = eth_dev->data->dev_private;
+	sa = sfc_adapter_by_eth_dev(eth_dev);
 
 	SFC_ASSERT(dpq->queue_id < sfc_sa2shared(sa)->rxq_count);
 	return &sa->rxq_ctrl[dpq->queue_id];

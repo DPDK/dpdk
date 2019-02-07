@@ -911,7 +911,7 @@ sfc_txq_by_dp_txq(const struct sfc_dp_txq *dp_txq)
 	SFC_ASSERT(rte_eth_dev_is_valid_port(dpq->port_id));
 	eth_dev = &rte_eth_devices[dpq->port_id];
 
-	sa = eth_dev->data->dev_private;
+	sa = sfc_adapter_by_eth_dev(eth_dev);
 
 	SFC_ASSERT(dpq->queue_id < sfc_sa2shared(sa)->txq_count);
 	return &sa->txq_ctrl[dpq->queue_id];

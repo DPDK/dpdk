@@ -2254,7 +2254,7 @@ sfc_flow_parse(struct rte_eth_dev *dev,
 	       struct rte_flow *flow,
 	       struct rte_flow_error *error)
 {
-	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
 	int rc;
 
 	rc = sfc_flow_parse_attr(attr, flow, error);
@@ -2300,7 +2300,7 @@ sfc_flow_create(struct rte_eth_dev *dev,
 		const struct rte_flow_action actions[],
 		struct rte_flow_error *error)
 {
-	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
 	struct rte_flow *flow = NULL;
 	int rc;
 
@@ -2373,7 +2373,7 @@ sfc_flow_destroy(struct rte_eth_dev *dev,
 		 struct rte_flow *flow,
 		 struct rte_flow_error *error)
 {
-	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
 	struct rte_flow *flow_ptr;
 	int rc = EINVAL;
 
@@ -2402,7 +2402,7 @@ static int
 sfc_flow_flush(struct rte_eth_dev *dev,
 	       struct rte_flow_error *error)
 {
-	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
 	struct rte_flow *flow;
 	int rc = 0;
 	int ret = 0;
@@ -2424,7 +2424,7 @@ static int
 sfc_flow_isolate(struct rte_eth_dev *dev, int enable,
 		 struct rte_flow_error *error)
 {
-	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
 	int ret = 0;
 
 	sfc_adapter_lock(sa);
