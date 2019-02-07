@@ -1409,7 +1409,7 @@ typedef struct efx_nic_cfg_s {
 
 extern			const efx_nic_cfg_t *
 efx_nic_cfg_get(
-	__in		efx_nic_t *enp);
+	__in		const efx_nic_t *enp);
 
 /* RxDPCPU firmware id values by which FW variant can be identified */
 #define	EFX_RXDP_FULL_FEATURED_FW_ID	0x0

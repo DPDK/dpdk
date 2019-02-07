@@ -595,7 +595,7 @@ fail1:
 
 			const efx_nic_cfg_t *
 efx_nic_cfg_get(
-	__in		efx_nic_t *enp)
+	__in		const efx_nic_t *enp)
 {
 	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_PROBE);
