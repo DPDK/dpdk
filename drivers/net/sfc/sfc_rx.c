@@ -395,12 +395,17 @@ sfc_rxq_info_by_dp_rxq(const struct sfc_dp_rxq *dp_rxq)
 struct sfc_rxq *
 sfc_rxq_by_dp_rxq(const struct sfc_dp_rxq *dp_rxq)
 {
-	struct sfc_rxq_info *rxq_info;
+	const struct sfc_dp_queue *dpq = &dp_rxq->dpq;
+	struct rte_eth_dev *eth_dev;
+	struct sfc_adapter *sa;
 
-	rxq_info = sfc_rxq_info_by_dp_rxq(dp_rxq);
+	SFC_ASSERT(rte_eth_dev_is_valid_port(dpq->port_id));
+	eth_dev = &rte_eth_devices[dpq->port_id];
 
-	SFC_ASSERT(rxq_info->rxq != NULL);
-	return rxq_info->rxq;
+	sa = eth_dev->data->dev_private;
+
+	SFC_ASSERT(dpq->queue_id < sa->rxq_count);
+	return &sa->rxq_ctrl[dpq->queue_id];
 }
 
 static sfc_dp_rx_qsize_up_rings_t sfc_efx_rx_qsize_up_rings;
@@ -563,8 +568,9 @@ sfc_rx_qflush(struct sfc_adapter *sa, unsigned int sw_index)
 	int rc;
 
 	rxq_info = &sa->rxq_info[sw_index];
-	rxq = rxq_info->rxq;
 	SFC_ASSERT(rxq_info->state & SFC_RXQ_STARTED);
+
+	rxq = &sa->rxq_ctrl[sw_index];
 
 	/*
 	 * Retry Rx queue flushing in the case of flush failed or
@@ -674,10 +680,9 @@ sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 	SFC_ASSERT(sw_index < sa->rxq_count);
 
 	rxq_info = &sa->rxq_info[sw_index];
-	rxq = rxq_info->rxq;
-	SFC_ASSERT(rxq != NULL);
 	SFC_ASSERT(rxq_info->state == SFC_RXQ_INITIALIZED);
 
+	rxq = &sa->rxq_ctrl[sw_index];
 	evq = rxq->evq;
 
 	rc = sfc_ev_qstart(evq, sfc_evq_index_by_rxq_sw_index(sa, sw_index));
@@ -764,9 +769,8 @@ sfc_rx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 	SFC_ASSERT(sw_index < sa->rxq_count);
 
 	rxq_info = &sa->rxq_info[sw_index];
-	rxq = rxq_info->rxq;
 
-	if (rxq == NULL || rxq_info->state == SFC_RXQ_INITIALIZED)
+	if (rxq_info->state == SFC_RXQ_INITIALIZED)
 		return;
 	SFC_ASSERT(rxq_info->state & SFC_RXQ_STARTED);
 
@@ -774,6 +778,7 @@ sfc_rx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 	sa->eth_dev->data->rx_queue_state[sw_index] =
 		RTE_ETH_QUEUE_STATE_STOPPED;
 
+	rxq = &sa->rxq_ctrl[sw_index];
 	sa->priv.dp_rx->qstop(rxq_info->dp, &rxq->evq->read_ptr);
 
 	if (sw_index == 0)
@@ -1026,14 +1031,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	if (rc != 0)
 		goto fail_ev_qinit;
 
-	rc = ENOMEM;
-	rxq = rte_zmalloc_socket("sfc-rxq", sizeof(*rxq), RTE_CACHE_LINE_SIZE,
-				 socket_id);
-	if (rxq == NULL)
-		goto fail_rxq_alloc;
-
-	rxq_info->rxq = rxq;
-
+	rxq = &sa->rxq_ctrl[sw_index];
 	rxq->evq = evq;
 	rxq->hw_index = sw_index;
 	rxq_info->refill_threshold =
@@ -1083,10 +1081,6 @@ fail_dp_rx_qcreate:
 	sfc_dma_free(sa, &rxq->mem);
 
 fail_dma_alloc:
-	rxq_info->rxq = NULL;
-	rte_free(rxq);
-
-fail_rxq_alloc:
 	sfc_ev_qfini(evq);
 
 fail_ev_qinit:
@@ -1109,21 +1103,20 @@ sfc_rx_qfini(struct sfc_adapter *sa, unsigned int sw_index)
 
 	rxq_info = &sa->rxq_info[sw_index];
 
-	rxq = rxq_info->rxq;
 	SFC_ASSERT(rxq_info->state == SFC_RXQ_INITIALIZED);
 
 	sa->priv.dp_rx->qdestroy(rxq_info->dp);
 	rxq_info->dp = NULL;
 
-	rxq_info->rxq = NULL;
+	rxq_info->state &= ~SFC_RXQ_INITIALIZED;
 	rxq_info->entries = 0;
+
+	rxq = &sa->rxq_ctrl[sw_index];
 
 	sfc_dma_free(sa, &rxq->mem);
 
 	sfc_ev_qfini(rxq->evq);
 	rxq->evq = NULL;
-
-	rte_free(rxq);
 }
 
 /*
@@ -1366,7 +1359,7 @@ sfc_rx_start(struct sfc_adapter *sa)
 		goto fail_rss_config;
 
 	for (sw_index = 0; sw_index < sa->rxq_count; ++sw_index) {
-		if (sa->rxq_info[sw_index].rxq != NULL &&
+		if (sa->rxq_info[sw_index].state == SFC_RXQ_INITIALIZED &&
 		    (!sa->rxq_info[sw_index].deferred_start ||
 		     sa->rxq_info[sw_index].deferred_started)) {
 			rc = sfc_rx_qstart(sa, sw_index);
@@ -1398,7 +1391,7 @@ sfc_rx_stop(struct sfc_adapter *sa)
 
 	sw_index = sa->rxq_count;
 	while (sw_index-- > 0) {
-		if (sa->rxq_info[sw_index].rxq != NULL)
+		if (sa->rxq_info[sw_index].state & SFC_RXQ_STARTED)
 			sfc_rx_qstop(sa, sw_index);
 	}
 
@@ -1476,7 +1469,7 @@ sfc_rx_fini_queues(struct sfc_adapter *sa, unsigned int nb_rx_queues)
 
 	sw_index = sa->rxq_count;
 	while (--sw_index >= (int)nb_rx_queues) {
-		if (sa->rxq_info[sw_index].rxq != NULL)
+		if (sa->rxq_info[sw_index].state & SFC_RXQ_INITIALIZED)
 			sfc_rx_qfini(sa, sw_index);
 	}
 
@@ -1516,8 +1509,18 @@ sfc_rx_configure(struct sfc_adapter *sa)
 						 sa->socket_id);
 		if (sa->rxq_info == NULL)
 			goto fail_rxqs_alloc;
+
+		/*
+		 * Allocate primary process only RxQ control from heap
+		 * since it should not be shared.
+		 */
+		rc = ENOMEM;
+		sa->rxq_ctrl = calloc(nb_rx_queues, sizeof(sa->rxq_ctrl[0]));
+		if (sa->rxq_ctrl == NULL)
+			goto fail_rxqs_ctrl_alloc;
 	} else {
 		struct sfc_rxq_info *new_rxq_info;
+		struct sfc_rxq *new_rxq_ctrl;
 
 		if (nb_rx_queues < sa->rxq_count)
 			sfc_rx_fini_queues(sa, nb_rx_queues);
@@ -1529,11 +1532,22 @@ sfc_rx_configure(struct sfc_adapter *sa)
 		if (new_rxq_info == NULL && nb_rx_queues > 0)
 			goto fail_rxqs_realloc;
 
+		rc = ENOMEM;
+		new_rxq_ctrl = realloc(sa->rxq_ctrl,
+				       nb_rx_queues * sizeof(sa->rxq_ctrl[0]));
+		if (new_rxq_ctrl == NULL && nb_rx_queues > 0)
+			goto fail_rxqs_ctrl_realloc;
+
 		sa->rxq_info = new_rxq_info;
-		if (nb_rx_queues > sa->rxq_count)
+		sa->rxq_ctrl = new_rxq_ctrl;
+		if (nb_rx_queues > sa->rxq_count) {
 			memset(&sa->rxq_info[sa->rxq_count], 0,
 			       (nb_rx_queues - sa->rxq_count) *
 			       sizeof(sa->rxq_info[0]));
+			memset(&sa->rxq_ctrl[sa->rxq_count], 0,
+			       (nb_rx_queues - sa->rxq_count) *
+			       sizeof(sa->rxq_ctrl[0]));
+		}
 	}
 
 	while (sa->rxq_count < nb_rx_queues) {
@@ -1565,7 +1579,9 @@ configure_rss:
 
 fail_rx_process_adv_conf_rss:
 fail_rx_qinit_info:
+fail_rxqs_ctrl_realloc:
 fail_rxqs_realloc:
+fail_rxqs_ctrl_alloc:
 fail_rxqs_alloc:
 	sfc_rx_close(sa);
 
@@ -1587,6 +1603,9 @@ sfc_rx_close(struct sfc_adapter *sa)
 	sfc_rx_fini_queues(sa, 0);
 
 	rss->channels = 0;
+
+	free(sa->rxq_ctrl);
+	sa->rxq_ctrl = NULL;
 
 	rte_free(sa->rxq_info);
 	sa->rxq_info = NULL;

@@ -1196,7 +1196,7 @@ sfc_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	if (sa->state != SFC_ADAPTER_STARTED)
 		goto fail_not_started;
 
-	if (sa->rxq_info[rx_queue_id].rxq == NULL)
+	if (sa->rxq_info[rx_queue_id].state != SFC_RXQ_INITIALIZED)
 		goto fail_not_setup;
 
 	rc = sfc_rx_qstart(sa, rx_queue_id);

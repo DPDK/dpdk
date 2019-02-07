@@ -110,6 +110,8 @@ struct sfc_intr {
 	boolean_t			lsc_intr;
 };
 
+struct sfc_rxq;
+
 struct sfc_rxq_info;
 struct sfc_txq_info;
 struct sfc_dp_rx;
@@ -256,6 +258,7 @@ struct sfc_adapter {
 
 	unsigned int			rxq_count;
 	struct sfc_rxq_info		*rxq_info;
+	struct sfc_rxq			*rxq_ctrl;
 
 	unsigned int			txq_count;
 	struct sfc_txq_info		*txq_info;

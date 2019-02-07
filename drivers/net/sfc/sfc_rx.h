@@ -50,8 +50,7 @@ enum sfc_rxq_state_bit {
 };
 
 /**
- * Receive queue control information.
- * Allocated on the socket specified on the queue setup.
+ * Receive queue control primary process-only information.
  */
 struct sfc_rxq {
 	struct sfc_evq		*evq;
@@ -110,7 +109,6 @@ struct sfc_rxq_info {
 	unsigned int		entries;
 	efx_rxq_type_t		type;
 	unsigned int		type_flags;
-	struct sfc_rxq		*rxq;
 	struct sfc_dp_rxq	*dp;
 	boolean_t		deferred_start;
 	boolean_t		deferred_started;

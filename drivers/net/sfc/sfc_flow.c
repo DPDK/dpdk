@@ -1244,7 +1244,7 @@ sfc_flow_parse_queue(struct sfc_adapter *sa,
 	if (queue->index >= sa->rxq_count)
 		return -EINVAL;
 
-	rxq = sa->rxq_info[queue->index].rxq;
+	rxq = &sa->rxq_ctrl[queue->index];
 	flow->spec.template.efs_dmaq_id = (uint16_t)rxq->hw_index;
 
 	return 0;
@@ -1269,7 +1269,7 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 		return -EINVAL;
 
 	rxq_sw_index = sa->rxq_count - 1;
-	rxq = sa->rxq_info[rxq_sw_index].rxq;
+	rxq = &sa->rxq_ctrl[rxq_sw_index];
 	rxq_hw_index_min = rxq->hw_index;
 	rxq_hw_index_max = 0;
 
@@ -1279,7 +1279,7 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 		if (rxq_sw_index >= sa->rxq_count)
 			return -EINVAL;
 
-		rxq = sa->rxq_info[rxq_sw_index].rxq;
+		rxq = &sa->rxq_ctrl[rxq_sw_index];
 
 		if (rxq->hw_index < rxq_hw_index_min)
 			rxq_hw_index_min = rxq->hw_index;
@@ -1344,7 +1344,7 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 	for (i = 0; i < RTE_DIM(sfc_rss_conf->rss_tbl); ++i) {
 		unsigned int nb_queues = action_rss->queue_num;
 		unsigned int rxq_sw_index = action_rss->queue[i % nb_queues];
-		struct sfc_rxq *rxq = sa->rxq_info[rxq_sw_index].rxq;
+		struct sfc_rxq *rxq = &sa->rxq_ctrl[rxq_sw_index];
 
 		sfc_rss_conf->rss_tbl[i] = rxq->hw_index - rxq_hw_index_min;
 	}
