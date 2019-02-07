@@ -162,12 +162,12 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	/* Initialize to hardware limits */
 	dev_info->tx_desc_lim.nb_max = sa->txq_max_entries;
-	dev_info->tx_desc_lim.nb_min = EFX_TXQ_MINNDESCS;
+	dev_info->tx_desc_lim.nb_min = sa->txq_min_entries;
 	/*
 	 * The TXQ hardware requires that the descriptor count is a power
 	 * of 2, but tx_desc_lim cannot properly describe that constraint
 	 */
-	dev_info->tx_desc_lim.nb_align = EFX_TXQ_MINNDESCS;
+	dev_info->tx_desc_lim.nb_align = sa->txq_min_entries;
 
 	if (sap->dp_rx->get_dev_info != NULL)
 		sap->dp_rx->get_dev_info(dev_info);

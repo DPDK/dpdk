@@ -759,6 +759,9 @@ sfc_attach(struct sfc_adapter *sa)
 	sa->txq_max_entries = encp->enc_txq_max_ndescs;
 	SFC_ASSERT(rte_is_power_of_2(sa->txq_max_entries));
 
+	sa->txq_min_entries = encp->enc_txq_min_ndescs;
+	SFC_ASSERT(rte_is_power_of_2(sa->txq_min_entries));
+
 	rc = sfc_intr_attach(sa);
 	if (rc != 0)
 		goto fail_intr_attach;

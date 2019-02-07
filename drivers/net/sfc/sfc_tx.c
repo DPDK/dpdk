@@ -131,14 +131,20 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	int rc = 0;
 	struct sfc_dp_tx_qcreate_info info;
 	uint64_t offloads;
+	struct sfc_dp_tx_hw_limits hw_limits;
 
 	sfc_log_init(sa, "TxQ = %u", sw_index);
 
-	rc = sa->priv.dp_tx->qsize_up_rings(nb_tx_desc, &txq_entries,
-					    &evq_entries, &txq_max_fill_level);
+	memset(&hw_limits, 0, sizeof(hw_limits));
+	hw_limits.txq_max_entries = sa->txq_max_entries;
+	hw_limits.txq_min_entries = sa->txq_min_entries;
+
+	rc = sa->priv.dp_tx->qsize_up_rings(nb_tx_desc, &hw_limits,
+					    &txq_entries, &evq_entries,
+					    &txq_max_fill_level);
 	if (rc != 0)
 		goto fail_size_up_rings;
-	SFC_ASSERT(txq_entries >= EFX_TXQ_MINNDESCS);
+	SFC_ASSERT(txq_entries >= sa->txq_min_entries);
 	SFC_ASSERT(txq_entries <= sa->txq_max_entries);
 	SFC_ASSERT(txq_entries >= nb_tx_desc);
 	SFC_ASSERT(txq_max_fill_level <= nb_tx_desc);
@@ -920,6 +926,7 @@ sfc_txq_by_dp_txq(const struct sfc_dp_txq *dp_txq)
 static sfc_dp_tx_qsize_up_rings_t sfc_efx_tx_qsize_up_rings;
 static int
 sfc_efx_tx_qsize_up_rings(uint16_t nb_tx_desc,
+			  __rte_unused struct sfc_dp_tx_hw_limits *limits,
 			  unsigned int *txq_entries,
 			  unsigned int *evq_entries,
 			  unsigned int *txq_max_fill_level)

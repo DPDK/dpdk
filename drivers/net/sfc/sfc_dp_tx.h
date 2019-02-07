@@ -27,6 +27,12 @@ struct sfc_dp_txq {
 	struct sfc_dp_queue	dpq;
 };
 
+/** Datapath transmit queue descriptor number limitations */
+struct sfc_dp_tx_hw_limits {
+	unsigned int txq_max_entries;
+	unsigned int txq_min_entries;
+};
+
 /**
  * Datapath transmit queue creation information.
  *
@@ -83,6 +89,7 @@ typedef void (sfc_dp_tx_get_dev_info_t)(struct rte_eth_dev_info *dev_info);
  * @return 0 or positive errno.
  */
 typedef int (sfc_dp_tx_qsize_up_rings_t)(uint16_t nb_tx_desc,
+					 struct sfc_dp_tx_hw_limits *limits,
 					 unsigned int *txq_entries,
 					 unsigned int *evq_entries,
 					 unsigned int *txq_max_fill_level);

@@ -245,6 +245,7 @@ struct sfc_adapter {
 	unsigned int			txq_max;
 
 	unsigned int			txq_max_entries;
+	unsigned int			txq_min_entries;
 
 	uint32_t			evq_flags;
 	unsigned int			evq_count;
