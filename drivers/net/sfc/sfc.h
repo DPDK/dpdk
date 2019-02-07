@@ -184,6 +184,7 @@ struct sfc_adapter_shared {
 	struct sfc_rss			rss;
 
 	boolean_t			isolated;
+	uint32_t			tunnel_encaps;
 
 	struct rte_pci_addr		pci_addr;
 	uint16_t			port_id;

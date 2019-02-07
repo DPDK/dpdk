@@ -342,6 +342,15 @@ sfc_try_start(struct sfc_adapter *sa)
 		goto fail_nic_init;
 
 	encp = efx_nic_cfg_get(sa->nic);
+
+	/*
+	 * Refresh (since it may change on NIC reset/restart) a copy of
+	 * supported tunnel encapsulations in shared memory to be used
+	 * on supported Rx packet type classes get.
+	 */
+	sa->priv.shared->tunnel_encaps =
+		encp->enc_tunnel_encapsulations_supported;
+
 	if (encp->enc_tunnel_encapsulations_supported != 0) {
 		sfc_log_init(sa, "apply tunnel config");
 		rc = efx_tunnel_reconfigure(sa->nic);
@@ -727,6 +736,13 @@ sfc_attach(struct sfc_adapter *sa)
 		goto fail_tunnel_init;
 
 	encp = efx_nic_cfg_get(sa->nic);
+
+	/*
+	 * Make a copy of supported tunnel encapsulations in shared
+	 * memory to be used on supported Rx packet type classes get.
+	 */
+	sa->priv.shared->tunnel_encaps =
+		encp->enc_tunnel_encapsulations_supported;
 
 	if (sa->priv.dp_tx->features & SFC_DP_TX_FEAT_TSO) {
 		sa->tso = encp->enc_fw_assisted_tso_v2_enabled;

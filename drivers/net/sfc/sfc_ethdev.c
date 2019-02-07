@@ -182,11 +182,8 @@ static const uint32_t *
 sfc_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 {
 	const struct sfc_adapter_priv *sap = sfc_adapter_priv_by_eth_dev(dev);
-	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
-	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
-	uint32_t tunnel_encaps = encp->enc_tunnel_encapsulations_supported;
 
-	return sap->dp_rx->supported_ptypes_get(tunnel_encaps);
+	return sap->dp_rx->supported_ptypes_get(sap->shared->tunnel_encaps);
 }
 
 static int
@@ -1897,6 +1894,7 @@ sfc_eth_dev_clear_ops(struct rte_eth_dev *dev)
 }
 
 static const struct eth_dev_ops sfc_eth_dev_secondary_ops = {
+	.dev_supported_ptypes_get	= sfc_dev_supported_ptypes_get,
 	.rx_queue_count			= sfc_rx_queue_count,
 	.rx_descriptor_done		= sfc_rx_descriptor_done,
 	.rx_descriptor_status		= sfc_rx_descriptor_status,
