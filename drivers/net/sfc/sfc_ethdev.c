@@ -85,8 +85,9 @@ static void
 sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	const struct sfc_adapter_priv *sap = sfc_adapter_priv_by_eth_dev(dev);
+	struct sfc_adapter_shared *sas = sfc_adapter_shared_by_eth_dev(dev);
 	struct sfc_adapter *sa = dev->data->dev_private;
-	struct sfc_rss *rss = &sa->rss;
+	struct sfc_rss *rss = &sas->rss;
 	uint64_t txq_offloads_def = 0;
 
 	sfc_log_init(sa, "entry");
@@ -1419,8 +1420,9 @@ static int
 sfc_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 			  struct rte_eth_rss_conf *rss_conf)
 {
+	struct sfc_adapter_shared *sas = sfc_adapter_shared_by_eth_dev(dev);
 	struct sfc_adapter *sa = dev->data->dev_private;
-	struct sfc_rss *rss = &sa->rss;
+	struct sfc_rss *rss = &sas->rss;
 
 	if (rss->context_type != EFX_RX_SCALE_EXCLUSIVE)
 		return -ENOTSUP;
@@ -1433,7 +1435,7 @@ sfc_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	 * flags which corresponds to the active EFX configuration stored
 	 * locally in 'sfc_adapter' and kept up-to-date
 	 */
-	rss_conf->rss_hf = sfc_rx_hf_efx_to_rte(sa, rss->hash_types);
+	rss_conf->rss_hf = sfc_rx_hf_efx_to_rte(rss, rss->hash_types);
 	rss_conf->rss_key_len = EFX_RSS_KEY_SIZE;
 	if (rss_conf->rss_key != NULL)
 		rte_memcpy(rss_conf->rss_key, rss->key, EFX_RSS_KEY_SIZE);
@@ -1448,7 +1450,7 @@ sfc_dev_rss_hash_update(struct rte_eth_dev *dev,
 			struct rte_eth_rss_conf *rss_conf)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
-	struct sfc_rss *rss = &sa->rss;
+	struct sfc_rss *rss = &sfc_sa2shared(sa)->rss;
 	struct sfc_port *port = &sa->port;
 	unsigned int efx_hash_types;
 	int rc = 0;
@@ -1524,8 +1526,9 @@ sfc_dev_rss_reta_query(struct rte_eth_dev *dev,
 		       struct rte_eth_rss_reta_entry64 *reta_conf,
 		       uint16_t reta_size)
 {
+	struct sfc_adapter_shared *sas = sfc_adapter_shared_by_eth_dev(dev);
 	struct sfc_adapter *sa = dev->data->dev_private;
-	struct sfc_rss *rss = &sa->rss;
+	struct sfc_rss *rss = &sas->rss;
 	struct sfc_port *port = &sa->port;
 	int entry;
 
@@ -1559,7 +1562,7 @@ sfc_dev_rss_reta_update(struct rte_eth_dev *dev,
 			uint16_t reta_size)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
-	struct sfc_rss *rss = &sa->rss;
+	struct sfc_rss *rss = &sfc_sa2shared(sa)->rss;
 	struct sfc_port *port = &sa->port;
 	unsigned int *rss_tbl_new;
 	uint16_t entry;

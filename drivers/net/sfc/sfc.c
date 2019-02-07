@@ -642,7 +642,7 @@ static const uint8_t default_rss_key[EFX_RSS_KEY_SIZE] = {
 static int
 sfc_rss_attach(struct sfc_adapter *sa)
 {
-	struct sfc_rss *rss = &sa->rss;
+	struct sfc_rss *rss = &sfc_sa2shared(sa)->rss;
 	int rc;
 
 	rc = efx_intr_init(sa->nic, sa->intr.type, NULL);

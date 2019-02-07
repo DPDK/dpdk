@@ -182,6 +182,8 @@ struct sfc_adapter_shared {
 	unsigned int			txq_count;
 	struct sfc_txq_info		*txq_info;
 
+	struct sfc_rss			rss;
+
 	struct rte_pci_addr		pci_addr;
 	uint16_t			port_id;
 
@@ -283,8 +285,6 @@ struct sfc_adapter {
 	boolean_t			tso;
 
 	uint32_t			rxd_wait_timeout_ns;
-
-	struct sfc_rss			rss;
 };
 
 static inline struct sfc_adapter_shared *

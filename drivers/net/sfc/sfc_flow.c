@@ -1255,7 +1255,8 @@ sfc_flow_parse_rss(struct sfc_adapter *sa,
 		   const struct rte_flow_action_rss *action_rss,
 		   struct rte_flow *flow)
 {
-	struct sfc_rss *rss = &sa->rss;
+	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
+	struct sfc_rss *rss = &sas->rss;
 	unsigned int rxq_sw_index;
 	struct sfc_rxq *rxq;
 	unsigned int rxq_hw_index_min;
@@ -1400,7 +1401,8 @@ static int
 sfc_flow_filter_insert(struct sfc_adapter *sa,
 		       struct rte_flow *flow)
 {
-	struct sfc_rss *rss = &sa->rss;
+	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
+	struct sfc_rss *rss = &sas->rss;
 	struct sfc_flow_rss *flow_rss = &flow->rss_conf;
 	uint32_t efs_rss_context = EFX_RSS_CONTEXT_DEFAULT;
 	unsigned int i;

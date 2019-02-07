@@ -141,8 +141,7 @@ int sfc_rx_hash_init(struct sfc_adapter *sa);
 void sfc_rx_hash_fini(struct sfc_adapter *sa);
 int sfc_rx_hf_rte_to_efx(struct sfc_adapter *sa, uint64_t rte,
 			 efx_rx_hash_type_t *efx);
-uint64_t sfc_rx_hf_efx_to_rte(struct sfc_adapter *sa,
-			      efx_rx_hash_type_t efx);
+uint64_t sfc_rx_hf_efx_to_rte(struct sfc_rss *rss, efx_rx_hash_type_t efx);
 
 #ifdef __cplusplus
 }

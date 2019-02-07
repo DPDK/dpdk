@@ -618,7 +618,7 @@ sfc_rx_qflush(struct sfc_adapter *sa, unsigned int sw_index)
 static int
 sfc_rx_default_rxq_set_filter(struct sfc_adapter *sa, struct sfc_rxq *rxq)
 {
-	struct sfc_rss *rss = &sa->rss;
+	struct sfc_rss *rss = &sfc_sa2shared(sa)->rss;
 	boolean_t need_rss = (rss->channels > 0) ? B_TRUE : B_FALSE;
 	struct sfc_port *port = &sa->port;
 	int rc;
@@ -961,7 +961,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	     struct rte_mempool *mb_pool)
 {
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
-	struct sfc_rss *rss = &sa->rss;
+	struct sfc_rss *rss = &sfc_sa2shared(sa)->rss;
 	int rc;
 	unsigned int rxq_entries;
 	unsigned int evq_entries;
@@ -1176,7 +1176,7 @@ sfc_rx_hash_types_mask_supp(efx_rx_hash_type_t hash_type,
 int
 sfc_rx_hash_init(struct sfc_adapter *sa)
 {
-	struct sfc_rss *rss = &sa->rss;
+	struct sfc_rss *rss = &sfc_sa2shared(sa)->rss;
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 	uint32_t alg_mask = encp->enc_rx_scale_hash_alg_mask;
 	efx_rx_hash_alg_t alg;
@@ -1232,7 +1232,7 @@ sfc_rx_hash_init(struct sfc_adapter *sa)
 void
 sfc_rx_hash_fini(struct sfc_adapter *sa)
 {
-	struct sfc_rss *rss = &sa->rss;
+	struct sfc_rss *rss = &sfc_sa2shared(sa)->rss;
 
 	rte_free(rss->hf_map);
 }
@@ -1241,7 +1241,7 @@ int
 sfc_rx_hf_rte_to_efx(struct sfc_adapter *sa, uint64_t rte,
 		     efx_rx_hash_type_t *efx)
 {
-	struct sfc_rss *rss = &sa->rss;
+	struct sfc_rss *rss = &sfc_sa2shared(sa)->rss;
 	efx_rx_hash_type_t hash_types = 0;
 	unsigned int i;
 
@@ -1265,9 +1265,8 @@ sfc_rx_hf_rte_to_efx(struct sfc_adapter *sa, uint64_t rte,
 }
 
 uint64_t
-sfc_rx_hf_efx_to_rte(struct sfc_adapter *sa, efx_rx_hash_type_t efx)
+sfc_rx_hf_efx_to_rte(struct sfc_rss *rss, efx_rx_hash_type_t efx)
 {
-	struct sfc_rss *rss = &sa->rss;
 	uint64_t rte = 0;
 	unsigned int i;
 
@@ -1285,9 +1284,9 @@ static int
 sfc_rx_process_adv_conf_rss(struct sfc_adapter *sa,
 			    struct rte_eth_rss_conf *conf)
 {
-	struct sfc_rss *rss = &sa->rss;
+	struct sfc_rss *rss = &sfc_sa2shared(sa)->rss;
 	efx_rx_hash_type_t efx_hash_types = rss->hash_types;
-	uint64_t rss_hf = sfc_rx_hf_efx_to_rte(sa, efx_hash_types);
+	uint64_t rss_hf = sfc_rx_hf_efx_to_rte(rss, efx_hash_types);
 	int rc;
 
 	if (rss->context_type != EFX_RX_SCALE_EXCLUSIVE) {
@@ -1319,7 +1318,7 @@ sfc_rx_process_adv_conf_rss(struct sfc_adapter *sa,
 static int
 sfc_rx_rss_config(struct sfc_adapter *sa)
 {
-	struct sfc_rss *rss = &sa->rss;
+	struct sfc_rss *rss = &sfc_sa2shared(sa)->rss;
 	int rc = 0;
 
 	if (rss->channels > 0) {
@@ -1418,9 +1417,10 @@ sfc_rx_qinit_info(struct sfc_adapter *sa, unsigned int sw_index)
 static int
 sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
 {
+	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
 	uint64_t offloads_supported = sfc_rx_get_dev_offload_caps(sa) |
 				      sfc_rx_get_queue_offload_caps(sa);
-	struct sfc_rss *rss = &sa->rss;
+	struct sfc_rss *rss = &sas->rss;
 	int rc = 0;
 
 	switch (rxmode->mq_mode) {
@@ -1492,7 +1492,7 @@ int
 sfc_rx_configure(struct sfc_adapter *sa)
 {
 	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
-	struct sfc_rss *rss = &sa->rss;
+	struct sfc_rss *rss = &sas->rss;
 	struct rte_eth_conf *dev_conf = &sa->eth_dev->data->dev_conf;
 	const unsigned int nb_rx_queues = sa->eth_dev->data->nb_rx_queues;
 	int rc;
@@ -1603,7 +1603,7 @@ fail_check_mode:
 void
 sfc_rx_close(struct sfc_adapter *sa)
 {
-	struct sfc_rss *rss = &sa->rss;
+	struct sfc_rss *rss = &sfc_sa2shared(sa)->rss;
 
 	sfc_rx_fini_queues(sa, 0);
 
