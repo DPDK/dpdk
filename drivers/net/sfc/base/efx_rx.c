@@ -781,7 +781,7 @@ efx_rxq_nbufs(
 	__in	const efx_nic_t *enp,
 	__in	unsigned int ndescs)
 {
-	return (efx_rxq_size(enp, ndescs) / EFX_BUF_SIZE);
+	return (EFX_DIV_ROUND_UP(efx_rxq_size(enp, ndescs), EFX_BUF_SIZE));
 }
 
 			void
