@@ -566,6 +566,7 @@ sfc_ef10_rx_get_dev_info(struct rte_eth_dev_info *dev_info)
 static sfc_dp_rx_qsize_up_rings_t sfc_ef10_rx_qsize_up_rings;
 static int
 sfc_ef10_rx_qsize_up_rings(uint16_t nb_rx_desc,
+			   struct sfc_dp_rx_hw_limits *limits,
 			   __rte_unused struct rte_mempool *mb_pool,
 			   unsigned int *rxq_entries,
 			   unsigned int *evq_entries,
@@ -575,8 +576,8 @@ sfc_ef10_rx_qsize_up_rings(uint16_t nb_rx_desc,
 	 * rte_ethdev API guarantees that the number meets min, max and
 	 * alignment requirements.
 	 */
-	if (nb_rx_desc <= EFX_RXQ_MINNDESCS)
-		*rxq_entries = EFX_RXQ_MINNDESCS;
+	if (nb_rx_desc <= limits->rxq_min_entries)
+		*rxq_entries = limits->rxq_min_entries;
 	else
 		*rxq_entries = rte_align32pow2(nb_rx_desc);
 

@@ -244,6 +244,9 @@ struct sfc_adapter {
 	unsigned int			rxq_max;
 	unsigned int			txq_max;
 
+	unsigned int			rxq_max_entries;
+	unsigned int			rxq_min_entries;
+
 	unsigned int			txq_max_entries;
 	unsigned int			txq_min_entries;
 

@@ -487,6 +487,7 @@ sfc_ef10_essb_rx_pool_ops_supported(const char *pool)
 static sfc_dp_rx_qsize_up_rings_t sfc_ef10_essb_rx_qsize_up_rings;
 static int
 sfc_ef10_essb_rx_qsize_up_rings(uint16_t nb_rx_desc,
+				struct sfc_dp_rx_hw_limits *limits,
 				struct rte_mempool *mb_pool,
 				unsigned int *rxq_entries,
 				unsigned int *evq_entries,
@@ -513,11 +514,11 @@ sfc_ef10_essb_rx_qsize_up_rings(uint16_t nb_rx_desc,
 	nb_hw_rx_desc = RTE_MAX(SFC_DIV_ROUND_UP(nb_rx_desc,
 						 mp_info.contig_block_size),
 				SFC_EF10_RX_WPTR_ALIGN + 1);
-	if (nb_hw_rx_desc <= EFX_RXQ_MINNDESCS) {
-		*rxq_entries = EFX_RXQ_MINNDESCS;
+	if (nb_hw_rx_desc <= limits->rxq_min_entries) {
+		*rxq_entries = limits->rxq_min_entries;
 	} else {
 		*rxq_entries = rte_align32pow2(nb_hw_rx_desc);
-		if (*rxq_entries > EFX_RXQ_MAXNDESCS)
+		if (*rxq_entries > limits->rxq_max_entries)
 			return EINVAL;
 	}
 

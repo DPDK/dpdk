@@ -28,6 +28,12 @@ struct sfc_dp_rxq {
 	struct sfc_dp_queue	dpq;
 };
 
+/** Datapath receive queue descriptor number limitations */
+struct sfc_dp_rx_hw_limits {
+	unsigned int rxq_max_entries;
+	unsigned int rxq_min_entries;
+};
+
 /**
  * Datapath receive queue creation information.
  *
@@ -114,6 +120,7 @@ typedef int (sfc_dp_rx_pool_ops_supported_t)(const char *pool);
  * @return 0 or positive errno.
  */
 typedef int (sfc_dp_rx_qsize_up_rings_t)(uint16_t nb_rx_desc,
+					 struct sfc_dp_rx_hw_limits *limits,
 					 struct rte_mempool *mb_pool,
 					 unsigned int *rxq_entries,
 					 unsigned int *evq_entries,

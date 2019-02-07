@@ -411,6 +411,7 @@ sfc_rxq_by_dp_rxq(const struct sfc_dp_rxq *dp_rxq)
 static sfc_dp_rx_qsize_up_rings_t sfc_efx_rx_qsize_up_rings;
 static int
 sfc_efx_rx_qsize_up_rings(uint16_t nb_rx_desc,
+			  __rte_unused struct sfc_dp_rx_hw_limits *limits,
 			  __rte_unused struct rte_mempool *mb_pool,
 			  unsigned int *rxq_entries,
 			  unsigned int *evq_entries,
@@ -971,13 +972,19 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	struct sfc_evq *evq;
 	struct sfc_rxq *rxq;
 	struct sfc_dp_rx_qcreate_info info;
+	struct sfc_dp_rx_hw_limits hw_limits;
 
-	rc = sa->priv.dp_rx->qsize_up_rings(nb_rx_desc, mb_pool, &rxq_entries,
-					    &evq_entries, &rxq_max_fill_level);
+	memset(&hw_limits, 0, sizeof(hw_limits));
+	hw_limits.rxq_max_entries = sa->rxq_max_entries;
+	hw_limits.rxq_min_entries = sa->rxq_min_entries;
+
+	rc = sa->priv.dp_rx->qsize_up_rings(nb_rx_desc, &hw_limits, mb_pool,
+					    &rxq_entries, &evq_entries,
+					    &rxq_max_fill_level);
 	if (rc != 0)
 		goto fail_size_up_rings;
-	SFC_ASSERT(rxq_entries >= EFX_RXQ_MINNDESCS);
-	SFC_ASSERT(rxq_entries <= EFX_RXQ_MAXNDESCS);
+	SFC_ASSERT(rxq_entries >= sa->rxq_min_entries);
+	SFC_ASSERT(rxq_entries <= sa->rxq_max_entries);
 	SFC_ASSERT(rxq_max_fill_level <= nb_rx_desc);
 
 	offloads = rx_conf->offloads |
@@ -1403,9 +1410,10 @@ sfc_rx_qinit_info(struct sfc_adapter *sa, unsigned int sw_index)
 {
 	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
 	struct sfc_rxq_info *rxq_info = &sas->rxq_info[sw_index];
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 	unsigned int max_entries;
 
-	max_entries = EFX_RXQ_MAXNDESCS;
+	max_entries = encp->enc_rxq_max_ndescs;
 	SFC_ASSERT(rte_is_power_of_2(max_entries));
 
 	rxq_info->max_entries = max_entries;

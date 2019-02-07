@@ -153,12 +153,12 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	}
 
 	/* Initialize to hardware limits */
-	dev_info->rx_desc_lim.nb_max = EFX_RXQ_MAXNDESCS;
-	dev_info->rx_desc_lim.nb_min = EFX_RXQ_MINNDESCS;
+	dev_info->rx_desc_lim.nb_max = sa->rxq_max_entries;
+	dev_info->rx_desc_lim.nb_min = sa->rxq_min_entries;
 	/* The RXQ hardware requires that the descriptor count is a power
 	 * of 2, but rx_desc_lim cannot properly describe that constraint.
 	 */
-	dev_info->rx_desc_lim.nb_align = EFX_RXQ_MINNDESCS;
+	dev_info->rx_desc_lim.nb_align = sa->rxq_min_entries;
 
 	/* Initialize to hardware limits */
 	dev_info->tx_desc_lim.nb_max = sa->txq_max_entries;
