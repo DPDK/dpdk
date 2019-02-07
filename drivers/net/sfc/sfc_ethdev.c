@@ -1922,12 +1922,6 @@ static const struct eth_dev_ops sfc_eth_dev_secondary_ops = {
 static int
 sfc_eth_dev_secondary_init(struct rte_eth_dev *dev, uint32_t logtype_main)
 {
-	/*
-	 * Device private data has really many process-local pointers.
-	 * Below code should be extremely careful to use data located
-	 * in shared memory only.
-	 */
-	struct sfc_adapter *sa = dev->data->dev_private;
 	struct sfc_adapter_shared *sas = sfc_adapter_shared_by_eth_dev(dev);
 	struct sfc_adapter_priv *sap;
 	const struct sfc_dp_rx *dp_rx;
@@ -1948,13 +1942,13 @@ sfc_eth_dev_secondary_init(struct rte_eth_dev *dev, uint32_t logtype_main)
 
 	dp_rx = sfc_dp_find_rx_by_name(&sfc_dp_head, sas->dp_rx_name);
 	if (dp_rx == NULL) {
-		SFC_LOG(sa, RTE_LOG_ERR, logtype_main,
+		SFC_LOG(sas, RTE_LOG_ERR, logtype_main,
 			"cannot find %s Rx datapath", sas->dp_rx_name);
 		rc = ENOENT;
 		goto fail_dp_rx;
 	}
 	if (~dp_rx->features & SFC_DP_RX_FEAT_MULTI_PROCESS) {
-		SFC_LOG(sa, RTE_LOG_ERR, logtype_main,
+		SFC_LOG(sas, RTE_LOG_ERR, logtype_main,
 			"%s Rx datapath does not support multi-process",
 			sas->dp_rx_name);
 		rc = EINVAL;
@@ -1963,13 +1957,13 @@ sfc_eth_dev_secondary_init(struct rte_eth_dev *dev, uint32_t logtype_main)
 
 	dp_tx = sfc_dp_find_tx_by_name(&sfc_dp_head, sas->dp_tx_name);
 	if (dp_tx == NULL) {
-		SFC_LOG(sa, RTE_LOG_ERR, logtype_main,
+		SFC_LOG(sas, RTE_LOG_ERR, logtype_main,
 			"cannot find %s Tx datapath", sas->dp_tx_name);
 		rc = ENOENT;
 		goto fail_dp_tx;
 	}
 	if (~dp_tx->features & SFC_DP_TX_FEAT_MULTI_PROCESS) {
-		SFC_LOG(sa, RTE_LOG_ERR, logtype_main,
+		SFC_LOG(sas, RTE_LOG_ERR, logtype_main,
 			"%s Tx datapath does not support multi-process",
 			sas->dp_tx_name);
 		rc = EINVAL;
