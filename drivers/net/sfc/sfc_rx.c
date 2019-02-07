@@ -1047,7 +1047,8 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	rxq_info->refill_mb_pool = mb_pool;
 	rxq->buf_size = buf_size;
 
-	rc = sfc_dma_alloc(sa, "rxq", sw_index, EFX_RXQ_SIZE(rxq_info->entries),
+	rc = sfc_dma_alloc(sa, "rxq", sw_index,
+			   efx_rxq_size(sa->nic, rxq_info->entries),
 			   socket_id, &rxq->mem);
 	if (rc != 0)
 		goto fail_dma_alloc;
