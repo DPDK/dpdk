@@ -59,7 +59,6 @@ struct sfc_rxq {
 	efsys_mem_t		mem;
 	unsigned int		hw_index;
 	uint16_t		buf_size;
-	struct sfc_dp_rxq	*dp;
 };
 
 static inline unsigned int
@@ -124,6 +123,7 @@ struct sfc_rxq_info {
 	efx_rxq_type_t		type;
 	unsigned int		type_flags;
 	struct sfc_rxq		*rxq;
+	struct sfc_dp_rxq	*dp;
 	boolean_t		deferred_start;
 	boolean_t		deferred_started;
 	unsigned int		refill_threshold;

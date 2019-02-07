@@ -415,7 +415,7 @@ sfc_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 	if (rc != 0)
 		goto fail_rx_qinit;
 
-	dev->data->rx_queues[rx_queue_id] = sa->rxq_info[rx_queue_id].rxq->dp;
+	dev->data->rx_queues[rx_queue_id] = sa->rxq_info[rx_queue_id].dp;
 
 	sfc_adapter_unlock(sa);
 
@@ -1123,16 +1123,14 @@ sfc_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	const struct sfc_adapter_priv *sap = sfc_adapter_priv_by_eth_dev(dev);
 	struct sfc_adapter *sa = dev->data->dev_private;
 	struct sfc_rxq_info *rxq_info;
-	struct sfc_rxq *rxq;
 
 	SFC_ASSERT(rx_queue_id < sa->rxq_count);
 	rxq_info = &sa->rxq_info[rx_queue_id];
-	rxq = rxq_info->rxq;
 
-	if (rxq == NULL || (rxq_info->state & SFC_RXQ_STARTED) == 0)
+	if ((rxq_info->state & SFC_RXQ_STARTED) == 0)
 		return 0;
 
-	return sap->dp_rx->qdesc_npending(rxq->dp);
+	return sap->dp_rx->qdesc_npending(rxq_info->dp);
 }
 
 static int

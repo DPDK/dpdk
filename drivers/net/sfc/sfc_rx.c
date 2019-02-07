@@ -590,7 +590,7 @@ sfc_rx_qflush(struct sfc_adapter *sa, unsigned int sw_index)
 			sfc_notice(sa, "RxQ %u flushed", sw_index);
 	}
 
-	sa->priv.dp_rx->qpurge(rxq->dp);
+	sa->priv.dp_rx->qpurge(rxq_info->dp);
 }
 
 static int
@@ -704,7 +704,7 @@ sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 
 	efx_rx_qenable(rxq->common);
 
-	rc = sa->priv.dp_rx->qstart(rxq->dp, evq->read_ptr);
+	rc = sa->priv.dp_rx->qstart(rxq_info->dp, evq->read_ptr);
 	if (rc != 0)
 		goto fail_dp_qstart;
 
@@ -723,7 +723,7 @@ sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 	return 0;
 
 fail_mac_filter_default_rxq_set:
-	sa->priv.dp_rx->qstop(rxq->dp, &rxq->evq->read_ptr);
+	sa->priv.dp_rx->qstop(rxq_info->dp, &rxq->evq->read_ptr);
 
 fail_dp_qstart:
 	sfc_rx_qflush(sa, sw_index);
@@ -758,7 +758,7 @@ sfc_rx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 	sa->eth_dev->data->rx_queue_state[sw_index] =
 		RTE_ETH_QUEUE_STATE_STOPPED;
 
-	sa->priv.dp_rx->qstop(rxq->dp, &rxq->evq->read_ptr);
+	sa->priv.dp_rx->qstop(rxq_info->dp, &rxq->evq->read_ptr);
 
 	if (sw_index == 0)
 		efx_mac_filter_default_rxq_clear(sa->nic);
@@ -1051,11 +1051,11 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 
 	rc = sa->priv.dp_rx->qcreate(sa->eth_dev->data->port_id, sw_index,
 				     &RTE_ETH_DEV_TO_PCI(sa->eth_dev)->addr,
-				     socket_id, &info, &rxq->dp);
+				     socket_id, &info, &rxq_info->dp);
 	if (rc != 0)
 		goto fail_dp_rx_qcreate;
 
-	evq->dp_rxq = rxq->dp;
+	evq->dp_rxq = rxq_info->dp;
 
 	rxq_info->state = SFC_RXQ_INITIALIZED;
 
@@ -1096,8 +1096,8 @@ sfc_rx_qfini(struct sfc_adapter *sa, unsigned int sw_index)
 	rxq = rxq_info->rxq;
 	SFC_ASSERT(rxq_info->state == SFC_RXQ_INITIALIZED);
 
-	sa->priv.dp_rx->qdestroy(rxq->dp);
-	rxq->dp = NULL;
+	sa->priv.dp_rx->qdestroy(rxq_info->dp);
+	rxq_info->dp = NULL;
 
 	rxq_info->rxq = NULL;
 	rxq_info->entries = 0;
