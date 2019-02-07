@@ -446,24 +446,15 @@ ef10_ev_qcreate(
 	efx_rc_t rc;
 
 	_NOTE(ARGUNUSED(id))	/* buftbl id managed by MC */
-	EFSYS_ASSERT(ISP2(encp->enc_evq_max_nevs));
-	EFSYS_ASSERT(ISP2(encp->enc_evq_min_nevs));
 
-	if (!ISP2(ndescs) ||
-	    (ndescs < encp->enc_evq_min_nevs) ||
-	    (ndescs > encp->enc_evq_max_nevs)) {
+	if (index >= encp->enc_evq_limit) {
 		rc = EINVAL;
 		goto fail1;
 	}
 
-	if (index >= encp->enc_evq_limit) {
-		rc = EINVAL;
-		goto fail2;
-	}
-
 	if (us > encp->enc_evq_timer_max_us) {
 		rc = EINVAL;
-		goto fail3;
+		goto fail2;
 	}
 
 	/* Set up the handler table */
@@ -503,7 +494,7 @@ ef10_ev_qcreate(
 		rc = efx_mcdi_init_evq_v2(enp, index, esmp, ndescs, irq, us,
 		    flags);
 		if (rc != 0)
-			goto fail4;
+			goto fail3;
 	} else {
 		/*
 		 * On Huntington we need to specify the settings to use.
@@ -520,13 +511,11 @@ ef10_ev_qcreate(
 		rc = efx_mcdi_init_evq(enp, index, esmp, ndescs, irq, us, flags,
 		    low_latency);
 		if (rc != 0)
-			goto fail5;
+			goto fail4;
 	}
 
 	return (0);
 
-fail5:
-	EFSYS_PROBE(fail5);
 fail4:
 	EFSYS_PROBE(fail4);
 fail3:
