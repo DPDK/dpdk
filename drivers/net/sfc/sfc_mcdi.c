@@ -256,7 +256,8 @@ sfc_mcdi_init(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_dma_alloc;
 
-	mcdi->logtype = sfc_register_logtype(sa, SFC_LOGTYPE_MCDI_STR,
+	mcdi->logtype = sfc_register_logtype(&sa->pci_addr,
+					     SFC_LOGTYPE_MCDI_STR,
 					     RTE_LOG_NOTICE);
 
 	emtp = &mcdi->transport;

@@ -311,7 +311,7 @@ int sfc_dma_alloc(const struct sfc_adapter *sa, const char *name, uint16_t id,
 		  size_t len, int socket_id, efsys_mem_t *esmp);
 void sfc_dma_free(const struct sfc_adapter *sa, efsys_mem_t *esmp);
 
-uint32_t sfc_register_logtype(struct sfc_adapter *sa,
+uint32_t sfc_register_logtype(const struct rte_pci_addr *pci_addr,
 			      const char *lt_prefix_str,
 			      uint32_t ll_default);
 

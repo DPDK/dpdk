@@ -1071,8 +1071,8 @@ sfc_unprobe(struct sfc_adapter *sa)
 }
 
 uint32_t
-sfc_register_logtype(struct sfc_adapter *sa, const char *lt_prefix_str,
-		     uint32_t ll_default)
+sfc_register_logtype(const struct rte_pci_addr *pci_addr,
+		     const char *lt_prefix_str, uint32_t ll_default)
 {
 	size_t lt_prefix_str_size = strlen(lt_prefix_str);
 	size_t lt_str_size_max;
@@ -1092,7 +1092,7 @@ sfc_register_logtype(struct sfc_adapter *sa, const char *lt_prefix_str,
 
 	strncpy(lt_str, lt_prefix_str, lt_prefix_str_size);
 	lt_str[lt_prefix_str_size - 1] = '.';
-	rte_pci_device_name(&sa->pci_addr, lt_str + lt_prefix_str_size,
+	rte_pci_device_name(pci_addr, lt_str + lt_prefix_str_size,
 			    lt_str_size_max - lt_prefix_str_size);
 	lt_str[lt_str_size_max - 1] = '\0';
 

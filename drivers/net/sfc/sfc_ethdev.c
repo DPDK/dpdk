@@ -1875,7 +1875,7 @@ static const struct eth_dev_ops sfc_eth_dev_secondary_ops = {
 };
 
 static int
-sfc_eth_dev_secondary_set_ops(struct rte_eth_dev *dev)
+sfc_eth_dev_secondary_set_ops(struct rte_eth_dev *dev, uint32_t logtype_main)
 {
 	/*
 	 * Device private data has really many process-local pointers.
@@ -1889,12 +1889,14 @@ sfc_eth_dev_secondary_set_ops(struct rte_eth_dev *dev)
 
 	dp_rx = sfc_dp_find_rx_by_name(&sfc_dp_head, sa->dp_rx_name);
 	if (dp_rx == NULL) {
-		sfc_err(sa, "cannot find %s Rx datapath", sa->dp_rx_name);
+		SFC_LOG(sa, RTE_LOG_ERR, logtype_main,
+			"cannot find %s Rx datapath", sa->dp_rx_name);
 		rc = ENOENT;
 		goto fail_dp_rx;
 	}
 	if (~dp_rx->features & SFC_DP_RX_FEAT_MULTI_PROCESS) {
-		sfc_err(sa, "%s Rx datapath does not support multi-process",
+		SFC_LOG(sa, RTE_LOG_ERR, logtype_main,
+			"%s Rx datapath does not support multi-process",
 			sa->dp_rx_name);
 		rc = EINVAL;
 		goto fail_dp_rx_multi_process;
@@ -1902,12 +1904,14 @@ sfc_eth_dev_secondary_set_ops(struct rte_eth_dev *dev)
 
 	dp_tx = sfc_dp_find_tx_by_name(&sfc_dp_head, sa->dp_tx_name);
 	if (dp_tx == NULL) {
-		sfc_err(sa, "cannot find %s Tx datapath", sa->dp_tx_name);
+		SFC_LOG(sa, RTE_LOG_ERR, logtype_main,
+			"cannot find %s Tx datapath", sa->dp_tx_name);
 		rc = ENOENT;
 		goto fail_dp_tx;
 	}
 	if (~dp_tx->features & SFC_DP_TX_FEAT_MULTI_PROCESS) {
-		sfc_err(sa, "%s Tx datapath does not support multi-process",
+		SFC_LOG(sa, RTE_LOG_ERR, logtype_main,
+			"%s Tx datapath does not support multi-process",
 			sa->dp_tx_name);
 		rc = EINVAL;
 		goto fail_dp_tx_multi_process;
@@ -1955,26 +1959,29 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	uint32_t logtype_main;
 	int rc;
 	const efx_nic_cfg_t *encp;
 	const struct ether_addr *from;
 
 	sfc_register_dp();
 
+	logtype_main = sfc_register_logtype(&pci_dev->addr,
+					    SFC_LOGTYPE_MAIN_STR,
+					    RTE_LOG_NOTICE);
+
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return -sfc_eth_dev_secondary_set_ops(dev);
+		return -sfc_eth_dev_secondary_set_ops(dev, logtype_main);
 
 	/* Required for logging */
 	sa->pci_addr = pci_dev->addr;
 	sa->port_id = dev->data->port_id;
+	sa->logtype_main = logtype_main;
 
 	sa->eth_dev = dev;
 
 	/* Copy PCI device info to the dev->data */
 	rte_eth_copy_pci_info(dev, pci_dev);
-
-	sa->logtype_main = sfc_register_logtype(sa, SFC_LOGTYPE_MAIN_STR,
-						RTE_LOG_NOTICE);
 
 	rc = sfc_kvargs_parse(sa);
 	if (rc != 0)
