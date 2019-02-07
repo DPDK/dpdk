@@ -11,6 +11,9 @@
 extern "C" {
 #endif
 
+#define	EF10_RXQ_MAXNDESCS	4096
+#define	EF10_RXQ_MINNDESCS	512
+
 #define	EF10_TXQ_MINNDESCS	512
 
 /* Number of hardware PIO buffers (for compile-time resource dimensions) */

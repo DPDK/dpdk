@@ -1590,11 +1590,12 @@ siena_rx_qcreate(
 	EFSYS_ASSERT3U(label, <, EFX_EV_RX_NLABELS);
 	EFSYS_ASSERT3U(enp->en_rx_qcount + 1, <, encp->enc_rxq_limit);
 
-	EFX_STATIC_ASSERT(ISP2(EFX_RXQ_MAXNDESCS));
-	EFX_STATIC_ASSERT(ISP2(EFX_RXQ_MINNDESCS));
+	EFSYS_ASSERT(ISP2(encp->enc_rxq_max_ndescs));
+	EFSYS_ASSERT(ISP2(encp->enc_rxq_min_ndescs));
 
 	if (!ISP2(ndescs) ||
-	    (ndescs < EFX_RXQ_MINNDESCS) || (ndescs > EFX_RXQ_MAXNDESCS)) {
+	    (ndescs < encp->enc_rxq_min_ndescs) ||
+	    (ndescs > encp->enc_rxq_max_ndescs)) {
 		rc = EINVAL;
 		goto fail1;
 	}
@@ -1602,9 +1603,10 @@ siena_rx_qcreate(
 		rc = EINVAL;
 		goto fail2;
 	}
-	for (size = 0; (1 << size) <= (EFX_RXQ_MAXNDESCS / EFX_RXQ_MINNDESCS);
+	for (size = 0;
+	    (1U << size) <= encp->enc_rxq_max_ndescs / encp->enc_rxq_min_ndescs;
 	    size++)
-		if ((1 << size) == (int)(ndescs / EFX_RXQ_MINNDESCS))
+		if ((1U << size) == (uint32_t)ndescs / encp->enc_rxq_min_ndescs)
 			break;
 	if (id + (1 << size) >= encp->enc_buftbl_limit) {
 		rc = EINVAL;

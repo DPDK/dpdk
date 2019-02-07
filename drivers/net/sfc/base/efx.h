@@ -1271,6 +1271,8 @@ typedef struct efx_nic_cfg_s {
 	uint32_t		enc_evq_limit;
 	uint32_t		enc_txq_limit;
 	uint32_t		enc_rxq_limit;
+	uint32_t		enc_rxq_max_ndescs;
+	uint32_t		enc_rxq_min_ndescs;
 	uint32_t		enc_txq_max_ndescs;
 	uint32_t		enc_txq_min_ndescs;
 	uint32_t		enc_buftbl_limit;
@@ -2462,8 +2464,12 @@ efx_pseudo_hdr_pkt_length_get(
 	__in		uint8_t *buffer,
 	__out		uint16_t *pkt_lengthp);
 
-#define	EFX_RXQ_MAXNDESCS		4096
-#define	EFX_RXQ_MINNDESCS		512
+/*
+ * These symbols are deprecated and will be removed.
+ * Use the fields from efx_nic_cfg_t instead.
+ */
+#define        EFX_RXQ_MAXNDESCS               4096
+#define        EFX_RXQ_MINNDESCS               512
 
 #define	EFX_RXQ_SIZE(_ndescs)		((_ndescs) * sizeof (efx_qword_t))
 #define	EFX_RXQ_NBUFS(_ndescs)		(EFX_RXQ_SIZE(_ndescs) / EFX_BUF_SIZE)

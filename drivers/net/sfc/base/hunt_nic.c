@@ -190,6 +190,9 @@ hunt_board_cfg(
 	encp->enc_rx_buf_align_start = 1;
 	encp->enc_rx_buf_align_end = 64; /* RX DMA end padding */
 
+	encp->enc_rxq_max_ndescs = EF10_RXQ_MAXNDESCS;
+	encp->enc_rxq_min_ndescs = EF10_RXQ_MINNDESCS;
+
 	/*
 	 * The workaround for bug35388 uses the top bit of transmit queue
 	 * descriptor writes, preventing the use of 4096 descriptor TXQs.

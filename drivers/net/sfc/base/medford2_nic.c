@@ -114,6 +114,9 @@ medford2_board_cfg(
 	}
 	encp->enc_rx_buf_align_end = end_padding;
 
+	encp->enc_rxq_max_ndescs = EF10_RXQ_MAXNDESCS;
+	encp->enc_rxq_min_ndescs = EF10_RXQ_MINNDESCS;
+
 	/*
 	 * The maximum supported transmit queue size is 2048. TXQs with 4096
 	 * descriptors are not supported as the top bit is used for vfifo

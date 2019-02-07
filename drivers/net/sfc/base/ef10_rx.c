@@ -39,7 +39,7 @@ efx_mcdi_init_rxq(
 	uint32_t dma_mode;
 	boolean_t want_outer_classes;
 
-	EFSYS_ASSERT3U(ndescs, <=, EFX_RXQ_MAXNDESCS);
+	EFSYS_ASSERT3U(ndescs, <=, encp->enc_rxq_max_ndescs);
 
 	if ((esmp == NULL) || (EFSYS_MEM_SIZE(esmp) < EFX_RXQ_SIZE(ndescs))) {
 		rc = EINVAL;
@@ -1012,11 +1012,12 @@ ef10_rx_qcreate(
 	EFSYS_ASSERT3U(label, <, EFX_EV_RX_NLABELS);
 	EFSYS_ASSERT3U(enp->en_rx_qcount + 1, <, encp->enc_rxq_limit);
 
-	EFX_STATIC_ASSERT(ISP2(EFX_RXQ_MAXNDESCS));
-	EFX_STATIC_ASSERT(ISP2(EFX_RXQ_MINNDESCS));
+	EFSYS_ASSERT(ISP2(encp->enc_rxq_max_ndescs));
+	EFSYS_ASSERT(ISP2(encp->enc_rxq_min_ndescs));
 
 	if (!ISP2(ndescs) ||
-	    (ndescs < EFX_RXQ_MINNDESCS) || (ndescs > EFX_RXQ_MAXNDESCS)) {
+	    (ndescs < encp->enc_rxq_min_ndescs) ||
+	    (ndescs > encp->enc_rxq_max_ndescs)) {
 		rc = EINVAL;
 		goto fail1;
 	}
