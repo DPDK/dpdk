@@ -1124,8 +1124,6 @@ sfc_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
 
-	sfc_log_init(sa, "RxQ=%u", rx_queue_id);
-
 	return sfc_rx_qdesc_npending(sa, rx_queue_id);
 }
 
