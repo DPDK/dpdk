@@ -2480,7 +2480,6 @@ efx_pseudo_hdr_pkt_length_get(
 #define	EFX_RXQ_SIZE(_ndescs)		((_ndescs) * sizeof (efx_qword_t))
 #define	EFX_RXQ_NBUFS(_ndescs)		(EFX_RXQ_SIZE(_ndescs) / EFX_BUF_SIZE)
 #define	EFX_RXQ_LIMIT(_ndescs)		((_ndescs) - 16)
-#define	EFX_RXQ_DC_NDESCS(_dcsize)	(8 << _dcsize)
 
 typedef enum efx_rxq_type_e {
 	EFX_RXQ_TYPE_DEFAULT,

@@ -23,6 +23,7 @@ extern "C" {
 #define	EFX_RXQ_DC_SIZE 3 /* 64 descriptors */
 #endif
 #define	EFX_TXQ_DC_NDESCS(_dcsize)	(8 << (_dcsize))
+#define	EFX_RXQ_DC_NDESCS(_dcsize)	(8 << (_dcsize))
 
 #define	SIENA_EVQ_MAXNEVS	32768
 #define	SIENA_EVQ_MINNEVS	512
