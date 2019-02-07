@@ -528,8 +528,8 @@ sfc_ef10_essb_rx_qsize_up_rings(uint16_t nb_rx_desc,
 		1 /* Rx error */ + 1 /* flush */ + 1 /* head-tail space */;
 
 	*evq_entries = rte_align32pow2(max_events);
-	*evq_entries = RTE_MAX(*evq_entries, (unsigned int)EFX_EVQ_MINNEVS);
-	*evq_entries = RTE_MIN(*evq_entries, (unsigned int)EFX_EVQ_MAXNEVS);
+	*evq_entries = RTE_MAX(*evq_entries, limits->evq_min_entries);
+	*evq_entries = RTE_MIN(*evq_entries, limits->evq_max_entries);
 
 	/*
 	 * May be even maximum event queue size is insufficient to handle

@@ -32,6 +32,8 @@ struct sfc_dp_rxq {
 struct sfc_dp_rx_hw_limits {
 	unsigned int rxq_max_entries;
 	unsigned int rxq_min_entries;
+	unsigned int evq_max_entries;
+	unsigned int evq_min_entries;
 };
 
 /**

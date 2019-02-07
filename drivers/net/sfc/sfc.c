@@ -756,6 +756,12 @@ sfc_attach(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_estimate_rsrc_limits;
 
+	sa->evq_max_entries = encp->enc_evq_max_nevs;
+	SFC_ASSERT(rte_is_power_of_2(sa->evq_max_entries));
+
+	sa->evq_min_entries = encp->enc_evq_min_nevs;
+	SFC_ASSERT(rte_is_power_of_2(sa->evq_min_entries));
+
 	sa->rxq_max_entries = encp->enc_rxq_max_ndescs;
 	SFC_ASSERT(rte_is_power_of_2(sa->rxq_max_entries));
 

@@ -977,6 +977,8 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	memset(&hw_limits, 0, sizeof(hw_limits));
 	hw_limits.rxq_max_entries = sa->rxq_max_entries;
 	hw_limits.rxq_min_entries = sa->rxq_min_entries;
+	hw_limits.evq_max_entries = sa->evq_max_entries;
+	hw_limits.evq_min_entries = sa->evq_min_entries;
 
 	rc = sa->priv.dp_rx->qsize_up_rings(nb_rx_desc, &hw_limits, mb_pool,
 					    &rxq_entries, &evq_entries,

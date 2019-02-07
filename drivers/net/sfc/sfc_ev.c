@@ -897,7 +897,7 @@ sfc_ev_attach(struct sfc_adapter *sa)
 	sa->mgmt_evq_index = 0;
 	rte_spinlock_init(&sa->mgmt_evq_lock);
 
-	rc = sfc_ev_qinit(sa, SFC_EVQ_TYPE_MGMT, 0, SFC_MGMT_EVQ_ENTRIES,
+	rc = sfc_ev_qinit(sa, SFC_EVQ_TYPE_MGMT, 0, sa->evq_min_entries,
 			  sa->socket_id, &sa->mgmt_evq);
 	if (rc != 0)
 		goto fail_mgmt_evq_init;
