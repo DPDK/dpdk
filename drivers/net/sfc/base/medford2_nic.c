@@ -114,6 +114,9 @@ medford2_board_cfg(
 	}
 	encp->enc_rx_buf_align_end = end_padding;
 
+	encp->enc_evq_max_nevs = EF10_EVQ_MAXNEVS;
+	encp->enc_evq_min_nevs = EF10_EVQ_MINNEVS;
+
 	encp->enc_rxq_max_ndescs = EF10_RXQ_MAXNDESCS;
 	encp->enc_rxq_min_ndescs = EF10_RXQ_MINNDESCS;
 

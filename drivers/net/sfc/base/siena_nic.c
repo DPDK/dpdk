@@ -149,6 +149,9 @@ siena_board_cfg(
 	encp->enc_rxq_limit = MIN(EFX_RXQ_LIMIT_TARGET, nrxq);
 	encp->enc_txq_limit = MIN(EFX_TXQ_LIMIT_TARGET, ntxq);
 
+	encp->enc_evq_max_nevs = SIENA_EVQ_MAXNEVS;
+	encp->enc_evq_min_nevs = SIENA_EVQ_MINNEVS;
+
 	encp->enc_rxq_max_ndescs = EF10_RXQ_MAXNDESCS;
 	encp->enc_rxq_min_ndescs = EF10_RXQ_MINNDESCS;
 

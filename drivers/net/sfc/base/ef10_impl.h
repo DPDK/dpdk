@@ -11,6 +11,9 @@
 extern "C" {
 #endif
 
+#define	EF10_EVQ_MAXNEVS	32768
+#define	EF10_EVQ_MINNEVS	512
+
 #define	EF10_RXQ_MAXNDESCS	4096
 #define	EF10_RXQ_MINNDESCS	512
 

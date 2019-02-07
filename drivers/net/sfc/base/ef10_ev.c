@@ -123,7 +123,7 @@ efx_mcdi_init_evq(
 {
 	efx_mcdi_req_t req;
 	EFX_MCDI_DECLARE_BUF(payload,
-		MC_CMD_INIT_EVQ_IN_LEN(EFX_EVQ_NBUFS(EFX_EVQ_MAXNEVS)),
+		MC_CMD_INIT_EVQ_IN_LEN(EFX_EVQ_NBUFS(EF10_EVQ_MAXNEVS)),
 		MC_CMD_INIT_EVQ_OUT_LEN);
 	efx_qword_t *dma_addr;
 	uint64_t addr;
@@ -259,7 +259,7 @@ efx_mcdi_init_evq_v2(
 {
 	efx_mcdi_req_t req;
 	EFX_MCDI_DECLARE_BUF(payload,
-		MC_CMD_INIT_EVQ_V2_IN_LEN(EFX_EVQ_NBUFS(EFX_EVQ_MAXNEVS)),
+		MC_CMD_INIT_EVQ_V2_IN_LEN(EFX_EVQ_NBUFS(EF10_EVQ_MAXNEVS)),
 		MC_CMD_INIT_EVQ_V2_OUT_LEN);
 	boolean_t interrupting;
 	unsigned int evq_type;
@@ -446,11 +446,12 @@ ef10_ev_qcreate(
 	efx_rc_t rc;
 
 	_NOTE(ARGUNUSED(id))	/* buftbl id managed by MC */
-	EFX_STATIC_ASSERT(ISP2(EFX_EVQ_MAXNEVS));
-	EFX_STATIC_ASSERT(ISP2(EFX_EVQ_MINNEVS));
+	EFSYS_ASSERT(ISP2(encp->enc_evq_max_nevs));
+	EFSYS_ASSERT(ISP2(encp->enc_evq_min_nevs));
 
 	if (!ISP2(ndescs) ||
-	    (ndescs < EFX_EVQ_MINNEVS) || (ndescs > EFX_EVQ_MAXNEVS)) {
+	    (ndescs < encp->enc_evq_min_nevs) ||
+	    (ndescs > encp->enc_evq_max_nevs)) {
 		rc = EINVAL;
 		goto fail1;
 	}
@@ -563,9 +564,9 @@ ef10_ev_qprime(
 	rptr = count & eep->ee_mask;
 
 	if (enp->en_nic_cfg.enc_bug35388_workaround) {
-		EFX_STATIC_ASSERT(EFX_EVQ_MINNEVS >
+		EFX_STATIC_ASSERT(EF10_EVQ_MINNEVS >
 		    (1 << ERF_DD_EVQ_IND_RPTR_WIDTH));
-		EFX_STATIC_ASSERT(EFX_EVQ_MAXNEVS <
+		EFX_STATIC_ASSERT(EF10_EVQ_MAXNEVS <
 		    (1 << 2 * ERF_DD_EVQ_IND_RPTR_WIDTH));
 
 		EFX_POPULATE_DWORD_2(dword,

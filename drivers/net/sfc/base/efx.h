@@ -1271,6 +1271,8 @@ typedef struct efx_nic_cfg_s {
 	uint32_t		enc_evq_limit;
 	uint32_t		enc_txq_limit;
 	uint32_t		enc_rxq_limit;
+	uint32_t		enc_evq_max_nevs;
+	uint32_t		enc_evq_min_nevs;
 	uint32_t		enc_rxq_max_ndescs;
 	uint32_t		enc_rxq_min_ndescs;
 	uint32_t		enc_txq_max_ndescs;
@@ -1976,6 +1978,10 @@ extern		void
 efx_ev_fini(
 	__in		efx_nic_t *enp);
 
+/*
+ * These symbols are deprecated and will be removed.
+ * Use the fields from efx_nic_cfg_t instead.
+ */
 #define	EFX_EVQ_MAXNEVS		32768
 #define	EFX_EVQ_MINNEVS		512
 

@@ -1285,11 +1285,12 @@ siena_ev_qcreate(
 
 	_NOTE(ARGUNUSED(esmp))
 
-	EFX_STATIC_ASSERT(ISP2(EFX_EVQ_MAXNEVS));
-	EFX_STATIC_ASSERT(ISP2(EFX_EVQ_MINNEVS));
+	EFSYS_ASSERT(ISP2(encp->enc_evq_max_nevs));
+	EFSYS_ASSERT(ISP2(encp->enc_evq_min_nevs));
 
 	if (!ISP2(ndescs) ||
-	    (ndescs < EFX_EVQ_MINNEVS) || (ndescs > EFX_EVQ_MAXNEVS)) {
+	    (ndescs < encp->enc_evq_min_nevs) ||
+	    (ndescs > encp->enc_evq_max_nevs)) {
 		rc = EINVAL;
 		goto fail1;
 	}
@@ -1304,9 +1305,10 @@ siena_ev_qcreate(
 		goto fail3;
 	}
 #endif
-	for (size = 0; (1 << size) <= (EFX_EVQ_MAXNEVS / EFX_EVQ_MINNEVS);
+	for (size = 0;
+	    (1U << size) <= encp->enc_evq_max_nevs / encp->enc_evq_min_nevs;
 	    size++)
-		if ((1 << size) == (int)(ndescs / EFX_EVQ_MINNEVS))
+		if ((1U << size) == (uint32_t)ndescs / encp->enc_evq_min_nevs)
 			break;
 	if (id + (1 << size) >= encp->enc_buftbl_limit) {
 		rc = EINVAL;
