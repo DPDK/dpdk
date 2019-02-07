@@ -581,7 +581,7 @@ sfc_rx_qflush(struct sfc_adapter *sa, unsigned int sw_index)
 			sfc_notice(sa, "RxQ %u flushed", sw_index);
 	}
 
-	sa->dp_rx->qpurge(rxq->dp);
+	sa->priv.dp_rx->qpurge(rxq->dp);
 }
 
 static int
@@ -695,7 +695,7 @@ sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 
 	efx_rx_qenable(rxq->common);
 
-	rc = sa->dp_rx->qstart(rxq->dp, evq->read_ptr);
+	rc = sa->priv.dp_rx->qstart(rxq->dp, evq->read_ptr);
 	if (rc != 0)
 		goto fail_dp_qstart;
 
@@ -714,7 +714,7 @@ sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 	return 0;
 
 fail_mac_filter_default_rxq_set:
-	sa->dp_rx->qstop(rxq->dp, &rxq->evq->read_ptr);
+	sa->priv.dp_rx->qstop(rxq->dp, &rxq->evq->read_ptr);
 
 fail_dp_qstart:
 	sfc_rx_qflush(sa, sw_index);
@@ -749,7 +749,7 @@ sfc_rx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 	sa->eth_dev->data->rx_queue_state[sw_index] =
 		RTE_ETH_QUEUE_STATE_STOPPED;
 
-	sa->dp_rx->qstop(rxq->dp, &rxq->evq->read_ptr);
+	sa->priv.dp_rx->qstop(rxq->dp, &rxq->evq->read_ptr);
 
 	if (sw_index == 0)
 		efx_mac_filter_default_rxq_clear(sa->nic);
@@ -771,14 +771,14 @@ sfc_rx_get_dev_offload_caps(struct sfc_adapter *sa)
 
 	caps |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 
-	if (sa->dp_rx->features & SFC_DP_RX_FEAT_CHECKSUM) {
+	if (sa->priv.dp_rx->features & SFC_DP_RX_FEAT_CHECKSUM) {
 		caps |= DEV_RX_OFFLOAD_IPV4_CKSUM;
 		caps |= DEV_RX_OFFLOAD_UDP_CKSUM;
 		caps |= DEV_RX_OFFLOAD_TCP_CKSUM;
 	}
 
 	if (encp->enc_tunnel_encapsulations_supported &&
-	    (sa->dp_rx->features & SFC_DP_RX_FEAT_TUNNELS))
+	    (sa->priv.dp_rx->features & SFC_DP_RX_FEAT_TUNNELS))
 		caps |= DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM;
 
 	return caps;
@@ -789,7 +789,7 @@ sfc_rx_get_queue_offload_caps(struct sfc_adapter *sa)
 {
 	uint64_t caps = 0;
 
-	if (sa->dp_rx->features & SFC_DP_RX_FEAT_SCATTER)
+	if (sa->priv.dp_rx->features & SFC_DP_RX_FEAT_SCATTER)
 		caps |= DEV_RX_OFFLOAD_SCATTER;
 
 	return caps;
@@ -943,8 +943,8 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	struct sfc_rxq *rxq;
 	struct sfc_dp_rx_qcreate_info info;
 
-	rc = sa->dp_rx->qsize_up_rings(nb_rx_desc, mb_pool, &rxq_entries,
-				       &evq_entries, &rxq_max_fill_level);
+	rc = sa->priv.dp_rx->qsize_up_rings(nb_rx_desc, mb_pool, &rxq_entries,
+					    &evq_entries, &rxq_max_fill_level);
 	if (rc != 0)
 		goto fail_size_up_rings;
 	SFC_ASSERT(rxq_entries >= EFX_RXQ_MINNDESCS);
@@ -983,7 +983,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	SFC_ASSERT(rxq_entries <= rxq_info->max_entries);
 	rxq_info->entries = rxq_entries;
 
-	if (sa->dp_rx->dp.hw_fw_caps & SFC_DP_HW_FW_CAP_RX_ES_SUPER_BUFFER)
+	if (sa->priv.dp_rx->dp.hw_fw_caps & SFC_DP_HW_FW_CAP_RX_ES_SUPER_BUFFER)
 		rxq_info->type = EFX_RXQ_TYPE_ES_SUPER_BUFFER;
 	else
 		rxq_info->type = EFX_RXQ_TYPE_DEFAULT;
@@ -993,7 +993,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 		EFX_RXQ_FLAG_SCATTER : EFX_RXQ_FLAG_NONE;
 
 	if ((encp->enc_tunnel_encapsulations_supported != 0) &&
-	    (sa->dp_rx->features & SFC_DP_RX_FEAT_TUNNELS))
+	    (sa->priv.dp_rx->features & SFC_DP_RX_FEAT_TUNNELS))
 		rxq_info->type_flags |= EFX_RXQ_FLAG_INNER_CLASSES;
 
 	rc = sfc_ev_qinit(sa, SFC_EVQ_TYPE_RX, sw_index,
@@ -1040,9 +1040,9 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	info.mem_bar = sa->mem_bar.esb_base;
 	info.vi_window_shift = encp->enc_vi_window_shift;
 
-	rc = sa->dp_rx->qcreate(sa->eth_dev->data->port_id, sw_index,
-				&RTE_ETH_DEV_TO_PCI(sa->eth_dev)->addr,
-				socket_id, &info, &rxq->dp);
+	rc = sa->priv.dp_rx->qcreate(sa->eth_dev->data->port_id, sw_index,
+				     &RTE_ETH_DEV_TO_PCI(sa->eth_dev)->addr,
+				     socket_id, &info, &rxq->dp);
 	if (rc != 0)
 		goto fail_dp_rx_qcreate;
 
@@ -1087,7 +1087,7 @@ sfc_rx_qfini(struct sfc_adapter *sa, unsigned int sw_index)
 	rxq = rxq_info->rxq;
 	SFC_ASSERT(rxq->state == SFC_RXQ_INITIALIZED);
 
-	sa->dp_rx->qdestroy(rxq->dp);
+	sa->priv.dp_rx->qdestroy(rxq->dp);
 	rxq->dp = NULL;
 
 	rxq_info->rxq = NULL;

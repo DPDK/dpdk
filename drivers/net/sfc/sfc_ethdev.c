@@ -84,6 +84,7 @@ sfc_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
 static void
 sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
+	const struct sfc_adapter_priv *sap = sfc_adapter_priv_by_eth_dev(dev);
 	struct sfc_adapter *sa = dev->data->dev_private;
 	struct sfc_rss *rss = &sa->rss;
 	uint64_t txq_offloads_def = 0;
@@ -167,10 +168,10 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	 */
 	dev_info->tx_desc_lim.nb_align = EFX_TXQ_MINNDESCS;
 
-	if (sa->dp_rx->get_dev_info != NULL)
-		sa->dp_rx->get_dev_info(dev_info);
-	if (sa->dp_tx->get_dev_info != NULL)
-		sa->dp_tx->get_dev_info(dev_info);
+	if (sap->dp_rx->get_dev_info != NULL)
+		sap->dp_rx->get_dev_info(dev_info);
+	if (sap->dp_tx->get_dev_info != NULL)
+		sap->dp_tx->get_dev_info(dev_info);
 
 	dev_info->dev_capa = RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP |
 			     RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP;
@@ -179,11 +180,12 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 static const uint32_t *
 sfc_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 {
+	const struct sfc_adapter_priv *sap = sfc_adapter_priv_by_eth_dev(dev);
 	struct sfc_adapter *sa = dev->data->dev_private;
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 	uint32_t tunnel_encaps = encp->enc_tunnel_encapsulations_supported;
 
-	return sa->dp_rx->supported_ptypes_get(tunnel_encaps);
+	return sap->dp_rx->supported_ptypes_get(tunnel_encaps);
 }
 
 static int
@@ -1118,6 +1120,7 @@ sfc_tx_queue_info_get(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 static uint32_t
 sfc_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
+	const struct sfc_adapter_priv *sap = sfc_adapter_priv_by_eth_dev(dev);
 	struct sfc_adapter *sa = dev->data->dev_private;
 	struct sfc_rxq *rxq;
 
@@ -1127,7 +1130,7 @@ sfc_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	if (rxq == NULL || (rxq->state & SFC_RXQ_STARTED) == 0)
 		return 0;
 
-	return sa->dp_rx->qdesc_npending(rxq->dp);
+	return sap->dp_rx->qdesc_npending(rxq->dp);
 }
 
 static int
@@ -1136,7 +1139,7 @@ sfc_rx_descriptor_done(void *queue, uint16_t offset)
 	struct sfc_dp_rxq *dp_rxq = queue;
 	struct sfc_rxq *rxq = sfc_rxq_by_dp_rxq(dp_rxq);
 
-	return offset < rxq->evq->sa->dp_rx->qdesc_npending(dp_rxq);
+	return offset < rxq->evq->sa->priv.dp_rx->qdesc_npending(dp_rxq);
 }
 
 static int
@@ -1145,7 +1148,7 @@ sfc_rx_descriptor_status(void *queue, uint16_t offset)
 	struct sfc_dp_rxq *dp_rxq = queue;
 	struct sfc_rxq *rxq = sfc_rxq_by_dp_rxq(dp_rxq);
 
-	return rxq->evq->sa->dp_rx->qdesc_status(dp_rxq, offset);
+	return rxq->evq->sa->priv.dp_rx->qdesc_status(dp_rxq, offset);
 }
 
 static int
@@ -1154,7 +1157,7 @@ sfc_tx_descriptor_status(void *queue, uint16_t offset)
 	struct sfc_dp_txq *dp_txq = queue;
 	struct sfc_txq *txq = sfc_txq_by_dp_txq(dp_txq);
 
-	return txq->evq->sa->dp_tx->qdesc_status(dp_txq, offset);
+	return txq->evq->sa->priv.dp_tx->qdesc_status(dp_txq, offset);
 }
 
 static int
@@ -1645,16 +1648,16 @@ sfc_dev_filter_ctrl(struct rte_eth_dev *dev, enum rte_filter_type filter_type,
 static int
 sfc_pool_ops_supported(struct rte_eth_dev *dev, const char *pool)
 {
-	struct sfc_adapter *sa = dev->data->dev_private;
+	const struct sfc_adapter_priv *sap = sfc_adapter_priv_by_eth_dev(dev);
 
 	/*
 	 * If Rx datapath does not provide callback to check mempool,
 	 * all pools are supported.
 	 */
-	if (sa->dp_rx->pool_ops_supported == NULL)
+	if (sap->dp_rx->pool_ops_supported == NULL)
 		return 1;
 
-	return sa->dp_rx->pool_ops_supported(pool);
+	return sap->dp_rx->pool_ops_supported(pool);
 }
 
 static const struct eth_dev_ops sfc_eth_dev_ops = {
@@ -1831,8 +1834,8 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 
 	sfc_notice(sa, "use %s Tx datapath", sa->dp_tx_name);
 
-	sa->dp_rx = dp_rx;
-	sa->dp_tx = dp_tx;
+	sa->priv.dp_rx = dp_rx;
+	sa->priv.dp_tx = dp_tx;
 
 	dev->rx_pkt_burst = dp_rx->pkt_burst;
 	dev->tx_pkt_burst = dp_tx->pkt_burst;
@@ -1866,11 +1869,11 @@ sfc_eth_dev_clear_ops(struct rte_eth_dev *dev)
 
 	rte_free(sa->dp_tx_name);
 	sa->dp_tx_name = NULL;
-	sa->dp_tx = NULL;
+	sa->priv.dp_tx = NULL;
 
 	rte_free(sa->dp_rx_name);
 	sa->dp_rx_name = NULL;
-	sa->dp_rx = NULL;
+	sa->priv.dp_rx = NULL;
 }
 
 static const struct eth_dev_ops sfc_eth_dev_secondary_ops = {
@@ -1879,7 +1882,7 @@ static const struct eth_dev_ops sfc_eth_dev_secondary_ops = {
 };
 
 static int
-sfc_eth_dev_secondary_set_ops(struct rte_eth_dev *dev, uint32_t logtype_main)
+sfc_eth_dev_secondary_init(struct rte_eth_dev *dev, uint32_t logtype_main)
 {
 	/*
 	 * Device private data has really many process-local pointers.
@@ -1887,9 +1890,20 @@ sfc_eth_dev_secondary_set_ops(struct rte_eth_dev *dev, uint32_t logtype_main)
 	 * in shared memory only.
 	 */
 	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_adapter_priv *sap;
 	const struct sfc_dp_rx *dp_rx;
 	const struct sfc_dp_tx *dp_tx;
 	int rc;
+
+	/*
+	 * Allocate process private data from heap, since it should not
+	 * be located in shared memory allocated using rte_malloc() API.
+	 */
+	sap = calloc(1, sizeof(*sap));
+	if (sap == NULL) {
+		rc = ENOMEM;
+		goto fail_alloc_priv;
+	}
 
 	dp_rx = sfc_dp_find_rx_by_name(&sfc_dp_head, sa->dp_rx_name);
 	if (dp_rx == NULL) {
@@ -1921,6 +1935,10 @@ sfc_eth_dev_secondary_set_ops(struct rte_eth_dev *dev, uint32_t logtype_main)
 		goto fail_dp_tx_multi_process;
 	}
 
+	sap->dp_rx = dp_rx;
+	sap->dp_tx = dp_tx;
+
+	dev->process_private = sap;
 	dev->rx_pkt_burst = dp_rx->pkt_burst;
 	dev->tx_pkt_burst = dp_tx->pkt_burst;
 	dev->dev_ops = &sfc_eth_dev_secondary_ops;
@@ -1931,12 +1949,17 @@ fail_dp_tx_multi_process:
 fail_dp_tx:
 fail_dp_rx_multi_process:
 fail_dp_rx:
+	free(sap);
+
+fail_alloc_priv:
 	return rc;
 }
 
 static void
 sfc_eth_dev_secondary_clear_ops(struct rte_eth_dev *dev)
 {
+	free(dev->process_private);
+	dev->process_private = NULL;
 	dev->dev_ops = NULL;
 	dev->tx_pkt_burst = NULL;
 	dev->rx_pkt_burst = NULL;
@@ -1975,7 +1998,15 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 					    RTE_LOG_NOTICE);
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return -sfc_eth_dev_secondary_set_ops(dev, logtype_main);
+		return -sfc_eth_dev_secondary_init(dev, logtype_main);
+
+	/*
+	 * sfc_adapter is a mixture of shared and process private data.
+	 * During transition period use it in both kinds. When the
+	 * driver becomes ready to separate it, sfc_adapter will become
+	 * primary process private only.
+	 */
+	dev->process_private = sa;
 
 	/* Required for logging */
 	sa->pci_addr = pci_dev->addr;
@@ -2048,6 +2079,7 @@ fail_mac_addrs:
 
 fail_kvargs_parse:
 	sfc_log_init(sa, "failed %d", rc);
+	dev->process_private = NULL;
 	SFC_ASSERT(rc > 0);
 	return -rc;
 }

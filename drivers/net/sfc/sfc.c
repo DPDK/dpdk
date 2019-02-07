@@ -727,7 +727,7 @@ sfc_attach(struct sfc_adapter *sa)
 
 	encp = efx_nic_cfg_get(sa->nic);
 
-	if (sa->dp_tx->features & SFC_DP_TX_FEAT_TSO) {
+	if (sa->priv.dp_tx->features & SFC_DP_TX_FEAT_TSO) {
 		sa->tso = encp->enc_fw_assisted_tso_v2_enabled;
 		if (!sa->tso)
 			sfc_warn(sa,

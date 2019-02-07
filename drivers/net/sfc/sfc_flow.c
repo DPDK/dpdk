@@ -1527,7 +1527,7 @@ sfc_flow_parse_actions(struct sfc_adapter *sa,
 		       struct rte_flow_error *error)
 {
 	int rc;
-	const unsigned int dp_rx_features = sa->dp_rx->features;
+	const unsigned int dp_rx_features = sa->priv.dp_rx->features;
 	uint32_t actions_set = 0;
 	const uint32_t fate_actions_mask = (1UL << RTE_FLOW_ACTION_TYPE_QUEUE) |
 					   (1UL << RTE_FLOW_ACTION_TYPE_RSS) |

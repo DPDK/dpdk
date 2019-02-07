@@ -40,15 +40,15 @@ sfc_tx_get_dev_offload_caps(struct sfc_adapter *sa)
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 	uint64_t caps = 0;
 
-	if ((sa->dp_tx->features & SFC_DP_TX_FEAT_VLAN_INSERT) &&
+	if ((sa->priv.dp_tx->features & SFC_DP_TX_FEAT_VLAN_INSERT) &&
 	    encp->enc_hw_tx_insert_vlan_enabled)
 		caps |= DEV_TX_OFFLOAD_VLAN_INSERT;
 
-	if (sa->dp_tx->features & SFC_DP_TX_FEAT_MULTI_SEG)
+	if (sa->priv.dp_tx->features & SFC_DP_TX_FEAT_MULTI_SEG)
 		caps |= DEV_TX_OFFLOAD_MULTI_SEGS;
 
-	if ((~sa->dp_tx->features & SFC_DP_TX_FEAT_MULTI_POOL) &&
-	    (~sa->dp_tx->features & SFC_DP_TX_FEAT_REFCNT))
+	if ((~sa->priv.dp_tx->features & SFC_DP_TX_FEAT_MULTI_POOL) &&
+	    (~sa->priv.dp_tx->features & SFC_DP_TX_FEAT_REFCNT))
 		caps |= DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 
 	return caps;
@@ -134,8 +134,8 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 
 	sfc_log_init(sa, "TxQ = %u", sw_index);
 
-	rc = sa->dp_tx->qsize_up_rings(nb_tx_desc, &txq_entries, &evq_entries,
-				       &txq_max_fill_level);
+	rc = sa->priv.dp_tx->qsize_up_rings(nb_tx_desc, &txq_entries,
+					    &evq_entries, &txq_max_fill_level);
 	if (rc != 0)
 		goto fail_size_up_rings;
 	SFC_ASSERT(txq_entries >= EFX_TXQ_MINNDESCS);
@@ -193,9 +193,9 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	info.tso_tcp_header_offset_limit =
 		encp->enc_tx_tso_tcp_header_offset_limit;
 
-	rc = sa->dp_tx->qcreate(sa->eth_dev->data->port_id, sw_index,
-				&RTE_ETH_DEV_TO_PCI(sa->eth_dev)->addr,
-				socket_id, &info, &txq->dp);
+	rc = sa->priv.dp_tx->qcreate(sa->eth_dev->data->port_id, sw_index,
+				     &RTE_ETH_DEV_TO_PCI(sa->eth_dev)->addr,
+				     socket_id, &info, &txq->dp);
 	if (rc != 0)
 		goto fail_dp_tx_qinit;
 
@@ -243,7 +243,7 @@ sfc_tx_qfini(struct sfc_adapter *sa, unsigned int sw_index)
 	SFC_ASSERT(txq != NULL);
 	SFC_ASSERT(txq->state == SFC_TXQ_INITIALIZED);
 
-	sa->dp_tx->qdestroy(txq->dp);
+	sa->priv.dp_tx->qdestroy(txq->dp);
 	txq->dp = NULL;
 
 	txq_info->txq = NULL;
@@ -466,7 +466,7 @@ sfc_tx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 
 	txq->state |= SFC_TXQ_STARTED;
 
-	rc = sa->dp_tx->qstart(txq->dp, evq->read_ptr, desc_index);
+	rc = sa->priv.dp_tx->qstart(txq->dp, evq->read_ptr, desc_index);
 	if (rc != 0)
 		goto fail_dp_qstart;
 
@@ -511,7 +511,7 @@ sfc_tx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 
 	SFC_ASSERT(txq->state & SFC_TXQ_STARTED);
 
-	sa->dp_tx->qstop(txq->dp, &txq->evq->read_ptr);
+	sa->priv.dp_tx->qstop(txq->dp, &txq->evq->read_ptr);
 
 	/*
 	 * Retry TX queue flushing in case of flush failed or
@@ -548,7 +548,7 @@ sfc_tx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 			sfc_notice(sa, "TxQ %u flushed", sw_index);
 	}
 
-	sa->dp_tx->qreap(txq->dp);
+	sa->priv.dp_tx->qreap(txq->dp);
 
 	txq->state = SFC_TXQ_INITIALIZED;
 

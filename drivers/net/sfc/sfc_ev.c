@@ -158,8 +158,8 @@ sfc_ev_dp_rx(void *arg, __rte_unused uint32_t label, uint32_t id,
 	dp_rxq = evq->dp_rxq;
 	SFC_ASSERT(dp_rxq != NULL);
 
-	SFC_ASSERT(evq->sa->dp_rx->qrx_ev != NULL);
-	return evq->sa->dp_rx->qrx_ev(dp_rxq, id);
+	SFC_ASSERT(evq->sa->priv.dp_rx->qrx_ev != NULL);
+	return evq->sa->priv.dp_rx->qrx_ev(dp_rxq, id);
 }
 
 static boolean_t
@@ -185,8 +185,8 @@ sfc_ev_dp_rx_ps(void *arg, __rte_unused uint32_t label, uint32_t id,
 	dp_rxq = evq->dp_rxq;
 	SFC_ASSERT(dp_rxq != NULL);
 
-	if (evq->sa->dp_rx->qrx_ps_ev != NULL)
-		return evq->sa->dp_rx->qrx_ps_ev(dp_rxq, id);
+	if (evq->sa->priv.dp_rx->qrx_ps_ev != NULL)
+		return evq->sa->priv.dp_rx->qrx_ps_ev(dp_rxq, id);
 	else
 		return B_FALSE;
 }
@@ -239,8 +239,8 @@ sfc_ev_dp_tx(void *arg, __rte_unused uint32_t label, uint32_t id)
 	dp_txq = evq->dp_txq;
 	SFC_ASSERT(dp_txq != NULL);
 
-	SFC_ASSERT(evq->sa->dp_tx->qtx_ev != NULL);
-	return evq->sa->dp_tx->qtx_ev(dp_txq, id);
+	SFC_ASSERT(evq->sa->priv.dp_tx->qtx_ev != NULL);
+	return evq->sa->priv.dp_tx->qtx_ev(dp_txq, id);
 }
 
 static boolean_t
@@ -609,12 +609,14 @@ sfc_ev_qstart(struct sfc_evq *evq, unsigned int hw_index)
 
 	SFC_ASSERT(evq->dp_rxq == NULL || evq->dp_txq == NULL);
 	if (evq->dp_rxq != 0) {
-		if (strcmp(sa->dp_rx->dp.name, SFC_KVARG_DATAPATH_EFX) == 0)
+		if (strcmp(sa->priv.dp_rx->dp.name,
+			   SFC_KVARG_DATAPATH_EFX) == 0)
 			evq->callbacks = &sfc_ev_callbacks_efx_rx;
 		else
 			evq->callbacks = &sfc_ev_callbacks_dp_rx;
 	} else if (evq->dp_txq != 0) {
-		if (strcmp(sa->dp_tx->dp.name, SFC_KVARG_DATAPATH_EFX) == 0)
+		if (strcmp(sa->priv.dp_tx->dp.name,
+			   SFC_KVARG_DATAPATH_EFX) == 0)
 			evq->callbacks = &sfc_ev_callbacks_efx_tx;
 		else
 			evq->callbacks = &sfc_ev_callbacks_dp_tx;

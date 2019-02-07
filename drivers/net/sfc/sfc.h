@@ -171,8 +171,30 @@ struct sfc_rss {
 	uint8_t				key[EFX_RSS_KEY_SIZE];
 };
 
+/* Adapter process private data */
+struct sfc_adapter_priv {
+	const struct sfc_dp_rx		*dp_rx;
+	const struct sfc_dp_tx		*dp_tx;
+};
+
+static inline struct sfc_adapter_priv *
+sfc_adapter_priv_by_eth_dev(struct rte_eth_dev *eth_dev)
+{
+	struct sfc_adapter_priv *sap = eth_dev->process_private;
+
+	SFC_ASSERT(sap != NULL);
+	return sap;
+}
+
 /* Adapter private data */
 struct sfc_adapter {
+	/*
+	 * It must be the first field of the sfc_adapter structure since
+	 * sfc_adapter is the primary process private data (i.e.  process
+	 * private data plus additional primary process specific data).
+	 */
+	struct sfc_adapter_priv		priv;
+
 	/*
 	 * PMD setup and configuration is not thread safe. Since it is not
 	 * performance sensitive, it is better to guarantee thread-safety
@@ -249,14 +271,12 @@ struct sfc_adapter {
 	 * the secondary process to find Rx datapath to be used.
 	 */
 	char				*dp_rx_name;
-	const struct sfc_dp_rx		*dp_rx;
 
 	/*
 	 * Shared memory copy of the Tx datapath name to be used by
 	 * the secondary process to find Tx datapath to be used.
 	 */
 	char				*dp_tx_name;
-	const struct sfc_dp_tx		*dp_tx;
 };
 
 /*
