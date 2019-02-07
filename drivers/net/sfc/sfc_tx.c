@@ -149,8 +149,8 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	if (rc != 0)
 		goto fail_bad_conf;
 
-	SFC_ASSERT(sw_index < sa->txq_count);
-	txq_info = &sa->txq_info[sw_index];
+	SFC_ASSERT(sw_index < sfc_sa2shared(sa)->txq_count);
+	txq_info = &sfc_sa2shared(sa)->txq_info[sw_index];
 
 	txq_info->entries = txq_entries;
 
@@ -224,10 +224,10 @@ sfc_tx_qfini(struct sfc_adapter *sa, unsigned int sw_index)
 
 	sfc_log_init(sa, "TxQ = %u", sw_index);
 
-	SFC_ASSERT(sw_index < sa->txq_count);
+	SFC_ASSERT(sw_index < sfc_sa2shared(sa)->txq_count);
 	sa->eth_dev->data->tx_queues[sw_index] = NULL;
 
-	txq_info = &sa->txq_info[sw_index];
+	txq_info = &sfc_sa2shared(sa)->txq_info[sw_index];
 
 	SFC_ASSERT(txq_info->state == SFC_TXQ_INITIALIZED);
 
@@ -296,29 +296,31 @@ sfc_tx_check_mode(struct sfc_adapter *sa, const struct rte_eth_txmode *txmode)
 static void
 sfc_tx_fini_queues(struct sfc_adapter *sa, unsigned int nb_tx_queues)
 {
+	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
 	int sw_index;
 
-	SFC_ASSERT(nb_tx_queues <= sa->txq_count);
+	SFC_ASSERT(nb_tx_queues <= sas->txq_count);
 
-	sw_index = sa->txq_count;
+	sw_index = sas->txq_count;
 	while (--sw_index >= (int)nb_tx_queues) {
-		if (sa->txq_info[sw_index].state & SFC_TXQ_INITIALIZED)
+		if (sas->txq_info[sw_index].state & SFC_TXQ_INITIALIZED)
 			sfc_tx_qfini(sa, sw_index);
 	}
 
-	sa->txq_count = nb_tx_queues;
+	sas->txq_count = nb_tx_queues;
 }
 
 int
 sfc_tx_configure(struct sfc_adapter *sa)
 {
+	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 	const struct rte_eth_conf *dev_conf = &sa->eth_dev->data->dev_conf;
 	const unsigned int nb_tx_queues = sa->eth_dev->data->nb_tx_queues;
 	int rc = 0;
 
 	sfc_log_init(sa, "nb_tx_queues=%u (old %u)",
-		     nb_tx_queues, sa->txq_count);
+		     nb_tx_queues, sas->txq_count);
 
 	/*
 	 * The datapath implementation assumes absence of boundary
@@ -334,14 +336,14 @@ sfc_tx_configure(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_check_mode;
 
-	if (nb_tx_queues == sa->txq_count)
+	if (nb_tx_queues == sas->txq_count)
 		goto done;
 
-	if (sa->txq_info == NULL) {
-		sa->txq_info = rte_calloc_socket("sfc-txqs", nb_tx_queues,
-						 sizeof(sa->txq_info[0]), 0,
-						 sa->socket_id);
-		if (sa->txq_info == NULL)
+	if (sas->txq_info == NULL) {
+		sas->txq_info = rte_calloc_socket("sfc-txqs", nb_tx_queues,
+						  sizeof(sas->txq_info[0]), 0,
+						  sa->socket_id);
+		if (sas->txq_info == NULL)
 			goto fail_txqs_alloc;
 
 		/*
@@ -356,12 +358,12 @@ sfc_tx_configure(struct sfc_adapter *sa)
 		struct sfc_txq_info *new_txq_info;
 		struct sfc_txq *new_txq_ctrl;
 
-		if (nb_tx_queues < sa->txq_count)
+		if (nb_tx_queues < sas->txq_count)
 			sfc_tx_fini_queues(sa, nb_tx_queues);
 
 		new_txq_info =
-			rte_realloc(sa->txq_info,
-				    nb_tx_queues * sizeof(sa->txq_info[0]), 0);
+			rte_realloc(sas->txq_info,
+				    nb_tx_queues * sizeof(sas->txq_info[0]), 0);
 		if (new_txq_info == NULL && nb_tx_queues > 0)
 			goto fail_txqs_realloc;
 
@@ -370,24 +372,24 @@ sfc_tx_configure(struct sfc_adapter *sa)
 		if (new_txq_ctrl == NULL && nb_tx_queues > 0)
 			goto fail_txqs_ctrl_realloc;
 
-		sa->txq_info = new_txq_info;
+		sas->txq_info = new_txq_info;
 		sa->txq_ctrl = new_txq_ctrl;
-		if (nb_tx_queues > sa->txq_count) {
-			memset(&sa->txq_info[sa->txq_count], 0,
-			       (nb_tx_queues - sa->txq_count) *
-			       sizeof(sa->txq_info[0]));
-			memset(&sa->txq_ctrl[sa->txq_count], 0,
-			       (nb_tx_queues - sa->txq_count) *
+		if (nb_tx_queues > sas->txq_count) {
+			memset(&sas->txq_info[sas->txq_count], 0,
+			       (nb_tx_queues - sas->txq_count) *
+			       sizeof(sas->txq_info[0]));
+			memset(&sa->txq_ctrl[sas->txq_count], 0,
+			       (nb_tx_queues - sas->txq_count) *
 			       sizeof(sa->txq_ctrl[0]));
 		}
 	}
 
-	while (sa->txq_count < nb_tx_queues) {
-		rc = sfc_tx_qinit_info(sa, sa->txq_count);
+	while (sas->txq_count < nb_tx_queues) {
+		rc = sfc_tx_qinit_info(sa, sas->txq_count);
 		if (rc != 0)
 			goto fail_tx_qinit_info;
 
-		sa->txq_count++;
+		sas->txq_count++;
 	}
 
 done:
@@ -414,13 +416,14 @@ sfc_tx_close(struct sfc_adapter *sa)
 	free(sa->txq_ctrl);
 	sa->txq_ctrl = NULL;
 
-	rte_free(sa->txq_info);
-	sa->txq_info = NULL;
+	rte_free(sfc_sa2shared(sa)->txq_info);
+	sfc_sa2shared(sa)->txq_info = NULL;
 }
 
 int
 sfc_tx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 {
+	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
 	uint64_t offloads_supported = sfc_tx_get_dev_offload_caps(sa) |
 				      sfc_tx_get_queue_offload_caps(sa);
 	struct rte_eth_dev_data *dev_data;
@@ -433,8 +436,8 @@ sfc_tx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 
 	sfc_log_init(sa, "TxQ = %u", sw_index);
 
-	SFC_ASSERT(sw_index < sa->txq_count);
-	txq_info = &sa->txq_info[sw_index];
+	SFC_ASSERT(sw_index < sas->txq_count);
+	txq_info = &sas->txq_info[sw_index];
 
 	SFC_ASSERT(txq_info->state == SFC_TXQ_INITIALIZED);
 
@@ -503,6 +506,7 @@ fail_ev_qstart:
 void
 sfc_tx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 {
+	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
 	struct rte_eth_dev_data *dev_data;
 	struct sfc_txq_info *txq_info;
 	struct sfc_txq *txq;
@@ -512,8 +516,8 @@ sfc_tx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 
 	sfc_log_init(sa, "TxQ = %u", sw_index);
 
-	SFC_ASSERT(sw_index < sa->txq_count);
-	txq_info = &sa->txq_info[sw_index];
+	SFC_ASSERT(sw_index < sas->txq_count);
+	txq_info = &sas->txq_info[sw_index];
 
 	if (txq_info->state == SFC_TXQ_INITIALIZED)
 		return;
@@ -576,10 +580,11 @@ sfc_tx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 int
 sfc_tx_start(struct sfc_adapter *sa)
 {
+	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
 	unsigned int sw_index;
 	int rc = 0;
 
-	sfc_log_init(sa, "txq_count = %u", sa->txq_count);
+	sfc_log_init(sa, "txq_count = %u", sas->txq_count);
 
 	if (sa->tso) {
 		if (!efx_nic_cfg_get(sa->nic)->enc_fw_assisted_tso_v2_enabled) {
@@ -592,10 +597,10 @@ sfc_tx_start(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_efx_tx_init;
 
-	for (sw_index = 0; sw_index < sa->txq_count; ++sw_index) {
-		if (sa->txq_info[sw_index].state == SFC_TXQ_INITIALIZED &&
-		    (!(sa->txq_info[sw_index].deferred_start) ||
-		     sa->txq_info[sw_index].deferred_started)) {
+	for (sw_index = 0; sw_index < sas->txq_count; ++sw_index) {
+		if (sas->txq_info[sw_index].state == SFC_TXQ_INITIALIZED &&
+		    (!(sas->txq_info[sw_index].deferred_start) ||
+		     sas->txq_info[sw_index].deferred_started)) {
 			rc = sfc_tx_qstart(sa, sw_index);
 			if (rc != 0)
 				goto fail_tx_qstart;
@@ -618,13 +623,14 @@ fail_efx_tx_init:
 void
 sfc_tx_stop(struct sfc_adapter *sa)
 {
+	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
 	unsigned int sw_index;
 
-	sfc_log_init(sa, "txq_count = %u", sa->txq_count);
+	sfc_log_init(sa, "txq_count = %u", sas->txq_count);
 
-	sw_index = sa->txq_count;
+	sw_index = sas->txq_count;
 	while (sw_index-- > 0) {
-		if (sa->txq_info[sw_index].state & SFC_TXQ_STARTED)
+		if (sas->txq_info[sw_index].state & SFC_TXQ_STARTED)
 			sfc_tx_qstop(sa, sw_index);
 	}
 
@@ -884,15 +890,15 @@ sfc_txq_info_by_dp_txq(const struct sfc_dp_txq *dp_txq)
 {
 	const struct sfc_dp_queue *dpq = &dp_txq->dpq;
 	struct rte_eth_dev *eth_dev;
-	struct sfc_adapter *sa;
+	struct sfc_adapter_shared *sas;
 
 	SFC_ASSERT(rte_eth_dev_is_valid_port(dpq->port_id));
 	eth_dev = &rte_eth_devices[dpq->port_id];
 
-	sa = eth_dev->data->dev_private;
+	sas = sfc_adapter_shared_by_eth_dev(eth_dev);
 
-	SFC_ASSERT(dpq->queue_id < sa->txq_count);
-	return &sa->txq_info[dpq->queue_id];
+	SFC_ASSERT(dpq->queue_id < sas->txq_count);
+	return &sas->txq_info[dpq->queue_id];
 }
 
 struct sfc_txq *
@@ -907,7 +913,7 @@ sfc_txq_by_dp_txq(const struct sfc_dp_txq *dp_txq)
 
 	sa = eth_dev->data->dev_private;
 
-	SFC_ASSERT(dpq->queue_id < sa->txq_count);
+	SFC_ASSERT(dpq->queue_id < sfc_sa2shared(sa)->txq_count);
 	return &sa->txq_ctrl[dpq->queue_id];
 }
 

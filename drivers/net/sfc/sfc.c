@@ -265,6 +265,7 @@ sfc_set_drv_limits(struct sfc_adapter *sa)
 static int
 sfc_set_fw_subvariant(struct sfc_adapter *sa)
 {
+	struct sfc_adapter_shared *sas = sfc_sa2shared(sa);
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 	uint64_t tx_offloads = sa->eth_dev->data->dev_conf.txmode.offloads;
 	unsigned int txq_index;
@@ -277,8 +278,8 @@ sfc_set_fw_subvariant(struct sfc_adapter *sa)
 		return 0;
 	}
 
-	for (txq_index = 0; txq_index < sa->txq_count; ++txq_index) {
-		struct sfc_txq_info *txq_info = &sa->txq_info[txq_index];
+	for (txq_index = 0; txq_index < sas->txq_count; ++txq_index) {
+		struct sfc_txq_info *txq_info = &sas->txq_info[txq_index];
 
 		if (txq_info->state & SFC_TXQ_INITIALIZED)
 			tx_offloads |= txq_info->offloads;

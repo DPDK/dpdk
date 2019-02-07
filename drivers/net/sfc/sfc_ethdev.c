@@ -457,6 +457,7 @@ sfc_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 		   uint16_t nb_tx_desc, unsigned int socket_id,
 		   const struct rte_eth_txconf *tx_conf)
 {
+	struct sfc_adapter_shared *sas = sfc_adapter_shared_by_eth_dev(dev);
 	struct sfc_adapter *sa = dev->data->dev_private;
 	int rc;
 
@@ -469,7 +470,7 @@ sfc_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 	if (rc != 0)
 		goto fail_tx_qinit;
 
-	dev->data->tx_queues[tx_queue_id] = sa->txq_info[tx_queue_id].dp;
+	dev->data->tx_queues[tx_queue_id] = sas->txq_info[tx_queue_id].dp;
 
 	sfc_adapter_unlock(sa);
 	return 0;
@@ -1100,14 +1101,15 @@ static void
 sfc_tx_queue_info_get(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 		      struct rte_eth_txq_info *qinfo)
 {
+	struct sfc_adapter_shared *sas = sfc_adapter_shared_by_eth_dev(dev);
 	struct sfc_adapter *sa = dev->data->dev_private;
 	struct sfc_txq_info *txq_info;
 
 	sfc_adapter_lock(sa);
 
-	SFC_ASSERT(tx_queue_id < sa->txq_count);
+	SFC_ASSERT(tx_queue_id < sas->txq_count);
 
-	txq_info = &sa->txq_info[tx_queue_id];
+	txq_info = &sas->txq_info[tx_queue_id];
 
 	memset(qinfo, 0, sizeof(*qinfo));
 
@@ -1241,6 +1243,7 @@ sfc_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 static int
 sfc_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 {
+	struct sfc_adapter_shared *sas = sfc_adapter_shared_by_eth_dev(dev);
 	struct sfc_adapter *sa = dev->data->dev_private;
 	int rc;
 
@@ -1252,14 +1255,14 @@ sfc_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	if (sa->state != SFC_ADAPTER_STARTED)
 		goto fail_not_started;
 
-	if (sa->txq_info[tx_queue_id].state != SFC_TXQ_INITIALIZED)
+	if (sas->txq_info[tx_queue_id].state != SFC_TXQ_INITIALIZED)
 		goto fail_not_setup;
 
 	rc = sfc_tx_qstart(sa, tx_queue_id);
 	if (rc != 0)
 		goto fail_tx_qstart;
 
-	sa->txq_info[tx_queue_id].deferred_started = B_TRUE;
+	sas->txq_info[tx_queue_id].deferred_started = B_TRUE;
 
 	sfc_adapter_unlock(sa);
 	return 0;
@@ -1276,6 +1279,7 @@ fail_not_started:
 static int
 sfc_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 {
+	struct sfc_adapter_shared *sas = sfc_adapter_shared_by_eth_dev(dev);
 	struct sfc_adapter *sa = dev->data->dev_private;
 
 	sfc_log_init(sa, "TxQ = %u", tx_queue_id);
@@ -1284,7 +1288,7 @@ sfc_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 
 	sfc_tx_qstop(sa, tx_queue_id);
 
-	sa->txq_info[tx_queue_id].deferred_started = B_FALSE;
+	sas->txq_info[tx_queue_id].deferred_started = B_FALSE;
 
 	sfc_adapter_unlock(sa);
 	return 0;

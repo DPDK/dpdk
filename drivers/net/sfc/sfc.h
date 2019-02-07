@@ -179,6 +179,9 @@ struct sfc_adapter_shared {
 	unsigned int			rxq_count;
 	struct sfc_rxq_info		*rxq_info;
 
+	unsigned int			txq_count;
+	struct sfc_txq_info		*txq_info;
+
 	struct rte_pci_addr		pci_addr;
 	uint16_t			port_id;
 
@@ -275,9 +278,6 @@ struct sfc_adapter {
 	struct sfc_evq			*mgmt_evq;
 
 	struct sfc_rxq			*rxq_ctrl;
-
-	unsigned int			txq_count;
-	struct sfc_txq_info		*txq_info;
 	struct sfc_txq			*txq_ctrl;
 
 	boolean_t			tso;
