@@ -226,7 +226,7 @@ sfc_port_start(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_mac_pdu_set;
 
-	if (!port->isolated) {
+	if (!sfc_sa2shared(sa)->isolated) {
 		struct ether_addr *addr = &port->default_mac_addr;
 
 		sfc_log_init(sa, "set MAC address");

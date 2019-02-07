@@ -2425,7 +2425,6 @@ sfc_flow_isolate(struct rte_eth_dev *dev, int enable,
 		 struct rte_flow_error *error)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
-	struct sfc_port *port = &sa->port;
 	int ret = 0;
 
 	sfc_adapter_lock(sa);
@@ -2435,7 +2434,7 @@ sfc_flow_isolate(struct rte_eth_dev *dev, int enable,
 				   NULL, "please close the port first");
 		ret = -rte_errno;
 	} else {
-		port->isolated = (enable) ? B_TRUE : B_FALSE;
+		sfc_sa2shared(sa)->isolated = (enable) ? B_TRUE : B_FALSE;
 	}
 	sfc_adapter_unlock(sa);
 

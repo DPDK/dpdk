@@ -357,7 +357,7 @@ sfc_dev_filter_set(struct rte_eth_dev *dev, enum sfc_dev_filter_mode mode,
 	if (*toggle != enabled) {
 		*toggle = enabled;
 
-		if (port->isolated) {
+		if (sfc_sa2shared(sa)->isolated) {
 			sfc_warn(sa, "isolated mode is active on the port");
 			sfc_warn(sa, "the change is to be applied on the next "
 				     "start provided that isolated mode is "
@@ -957,7 +957,7 @@ sfc_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 	 * on the next port start if the user prevents
 	 * isolated mode from being enabled.
 	 */
-	if (port->isolated) {
+	if (sfc_sa2shared(sa)->isolated) {
 		sfc_warn(sa, "isolated mode is active on the port");
 		sfc_warn(sa, "will not set MAC address");
 		goto unlock;
@@ -1027,7 +1027,7 @@ sfc_set_mc_addr_list(struct rte_eth_dev *dev, struct ether_addr *mc_addr_set,
 	int rc;
 	unsigned int i;
 
-	if (port->isolated) {
+	if (sfc_sa2shared(sa)->isolated) {
 		sfc_err(sa, "isolated mode is active on the port");
 		sfc_err(sa, "will not set multicast address list");
 		return -ENOTSUP;
@@ -1451,11 +1451,10 @@ sfc_dev_rss_hash_update(struct rte_eth_dev *dev,
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
 	struct sfc_rss *rss = &sfc_sa2shared(sa)->rss;
-	struct sfc_port *port = &sa->port;
 	unsigned int efx_hash_types;
 	int rc = 0;
 
-	if (port->isolated)
+	if (sfc_sa2shared(sa)->isolated)
 		return -ENOTSUP;
 
 	if (rss->context_type != EFX_RX_SCALE_EXCLUSIVE) {
@@ -1529,10 +1528,9 @@ sfc_dev_rss_reta_query(struct rte_eth_dev *dev,
 	struct sfc_adapter_shared *sas = sfc_adapter_shared_by_eth_dev(dev);
 	struct sfc_adapter *sa = dev->data->dev_private;
 	struct sfc_rss *rss = &sas->rss;
-	struct sfc_port *port = &sa->port;
 	int entry;
 
-	if (rss->context_type != EFX_RX_SCALE_EXCLUSIVE || port->isolated)
+	if (rss->context_type != EFX_RX_SCALE_EXCLUSIVE || sas->isolated)
 		return -ENOTSUP;
 
 	if (rss->channels == 0)
@@ -1563,13 +1561,12 @@ sfc_dev_rss_reta_update(struct rte_eth_dev *dev,
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
 	struct sfc_rss *rss = &sfc_sa2shared(sa)->rss;
-	struct sfc_port *port = &sa->port;
 	unsigned int *rss_tbl_new;
 	uint16_t entry;
 	int rc = 0;
 
 
-	if (port->isolated)
+	if (sfc_sa2shared(sa)->isolated)
 		return -ENOTSUP;
 
 	if (rss->context_type != EFX_RX_SCALE_EXCLUSIVE) {
