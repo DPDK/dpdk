@@ -228,6 +228,9 @@ sfc_dp_find_rx_by_caps(struct sfc_dp_list *head, unsigned int avail_caps)
 	return (p == NULL) ? NULL : container_of(p, struct sfc_dp_rx, dp);
 }
 
+/** Get Rx datapath ops by the datapath RxQ handle */
+const struct sfc_dp_rx *sfc_dp_rx_by_dp_rxq(const struct sfc_dp_rxq *dp_rxq);
+
 extern struct sfc_dp_rx sfc_efx_rx;
 extern struct sfc_dp_rx sfc_ef10_rx;
 extern struct sfc_dp_rx sfc_ef10_essb_rx;

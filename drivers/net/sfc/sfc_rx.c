@@ -360,6 +360,22 @@ sfc_efx_rx_qdesc_status(struct sfc_dp_rxq *dp_rxq, uint16_t offset)
 	return RTE_ETH_RX_DESC_UNAVAIL;
 }
 
+/** Get Rx datapath ops by the datapath RxQ handle */
+const struct sfc_dp_rx *
+sfc_dp_rx_by_dp_rxq(const struct sfc_dp_rxq *dp_rxq)
+{
+	const struct sfc_dp_queue *dpq = &dp_rxq->dpq;
+	struct rte_eth_dev *eth_dev;
+	struct sfc_adapter_priv *sap;
+
+	SFC_ASSERT(rte_eth_dev_is_valid_port(dpq->port_id));
+	eth_dev = &rte_eth_devices[dpq->port_id];
+
+	sap = sfc_adapter_priv_by_eth_dev(eth_dev);
+
+	return sap->dp_rx;
+}
+
 struct sfc_rxq_info *
 sfc_rxq_info_by_dp_rxq(const struct sfc_dp_rxq *dp_rxq)
 {

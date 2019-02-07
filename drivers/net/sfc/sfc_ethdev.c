@@ -1117,6 +1117,10 @@ sfc_tx_queue_info_get(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 	sfc_adapter_unlock(sa);
 }
 
+/*
+ * The function is used by the secondary process as well. It must not
+ * use any process-local pointers from the adapter data.
+ */
 static uint32_t
 sfc_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
@@ -1133,22 +1137,34 @@ sfc_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	return sap->dp_rx->qdesc_npending(rxq_info->dp);
 }
 
+/*
+ * The function is used by the secondary process as well. It must not
+ * use any process-local pointers from the adapter data.
+ */
 static int
 sfc_rx_descriptor_done(void *queue, uint16_t offset)
 {
 	struct sfc_dp_rxq *dp_rxq = queue;
-	struct sfc_rxq *rxq = sfc_rxq_by_dp_rxq(dp_rxq);
+	const struct sfc_dp_rx *dp_rx;
 
-	return offset < rxq->evq->sa->priv.dp_rx->qdesc_npending(dp_rxq);
+	dp_rx = sfc_dp_rx_by_dp_rxq(dp_rxq);
+
+	return offset < dp_rx->qdesc_npending(dp_rxq);
 }
 
+/*
+ * The function is used by the secondary process as well. It must not
+ * use any process-local pointers from the adapter data.
+ */
 static int
 sfc_rx_descriptor_status(void *queue, uint16_t offset)
 {
 	struct sfc_dp_rxq *dp_rxq = queue;
-	struct sfc_rxq *rxq = sfc_rxq_by_dp_rxq(dp_rxq);
+	const struct sfc_dp_rx *dp_rx;
 
-	return rxq->evq->sa->priv.dp_rx->qdesc_status(dp_rxq, offset);
+	dp_rx = sfc_dp_rx_by_dp_rxq(dp_rxq);
+
+	return dp_rx->qdesc_status(dp_rxq, offset);
 }
 
 static int
@@ -1877,6 +1893,9 @@ sfc_eth_dev_clear_ops(struct rte_eth_dev *dev)
 }
 
 static const struct eth_dev_ops sfc_eth_dev_secondary_ops = {
+	.rx_queue_count			= sfc_rx_queue_count,
+	.rx_descriptor_done		= sfc_rx_descriptor_done,
+	.rx_descriptor_status		= sfc_rx_descriptor_status,
 	.rxq_info_get			= sfc_rx_queue_info_get,
 	.txq_info_get			= sfc_tx_queue_info_get,
 };

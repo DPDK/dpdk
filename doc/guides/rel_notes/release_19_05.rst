@@ -54,6 +54,13 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Updated Solarflare network PMD.**
+
+  Updated the sfc_efx driver including the following changes:
+
+  * Added support for Rx descriptor status and related API in a secondary
+    process.
+
 
 Removed Items
 -------------
