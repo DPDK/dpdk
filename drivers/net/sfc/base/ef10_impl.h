@@ -19,6 +19,9 @@ extern "C" {
 
 #define	EF10_TXQ_MINNDESCS	512
 
+/* Maximum independent of EFX_BUG35388_WORKAROUND. */
+#define	EF10_TXQ_MAXNBUFS	8
+
 /* Number of hardware PIO buffers (for compile-time resource dimensions) */
 #define	EF10_MAX_PIOBUF_NBUFS	(16)
 

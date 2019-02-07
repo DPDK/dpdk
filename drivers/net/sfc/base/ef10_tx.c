@@ -31,7 +31,8 @@ efx_mcdi_init_txq(
 	__in		efsys_mem_t *esmp)
 {
 	efx_mcdi_req_t req;
-	EFX_MCDI_DECLARE_BUF(payload, MC_CMD_INIT_TXQ_IN_LEN(EFX_TXQ_MAX_BUFS),
+	EFX_MCDI_DECLARE_BUF(payload,
+		MC_CMD_INIT_TXQ_IN_LEN(EF10_TXQ_MAXNBUFS),
 		MC_CMD_INIT_TXQ_OUT_LEN);
 	efx_qword_t *dma_addr;
 	uint64_t addr;
@@ -39,7 +40,7 @@ efx_mcdi_init_txq(
 	int i;
 	efx_rc_t rc;
 
-	EFSYS_ASSERT(EFX_TXQ_MAX_BUFS >=
+	EFSYS_ASSERT(EF10_TXQ_MAXNBUFS >=
 	    EFX_TXQ_NBUFS(enp->en_nic_cfg.enc_txq_max_ndescs));
 
 	if ((esmp == NULL) || (EFSYS_MEM_SIZE(esmp) < EFX_TXQ_SIZE(ndescs))) {

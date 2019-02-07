@@ -2649,8 +2649,6 @@ efx_tx_fini(
 #define	EFX_TXQ_NBUFS(_ndescs)		(EFX_TXQ_SIZE(_ndescs) / EFX_BUF_SIZE)
 #define	EFX_TXQ_LIMIT(_ndescs)		((_ndescs) - 16)
 
-#define	EFX_TXQ_MAX_BUFS 8 /* Maximum independent of EFX_BUG35388_WORKAROUND. */
-
 #define	EFX_TXQ_CKSUM_IPV4		0x0001
 #define	EFX_TXQ_CKSUM_TCPUDP		0x0002
 #define	EFX_TXQ_FATSOV2			0x0004
