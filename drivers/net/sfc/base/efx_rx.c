@@ -794,17 +794,28 @@ efx_rx_qcreate_internal(
 {
 	const efx_rx_ops_t *erxop = enp->en_erxop;
 	efx_rxq_t *erp;
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
 	efx_rc_t rc;
 
 	EFSYS_ASSERT3U(enp->en_magic, ==, EFX_NIC_MAGIC);
 	EFSYS_ASSERT3U(enp->en_mod_flags, &, EFX_MOD_RX);
+
+	EFSYS_ASSERT(ISP2(encp->enc_rxq_max_ndescs));
+	EFSYS_ASSERT(ISP2(encp->enc_rxq_min_ndescs));
+
+	if (!ISP2(ndescs) ||
+	    ndescs < encp->enc_rxq_min_ndescs ||
+	    ndescs > encp->enc_rxq_max_ndescs) {
+		rc = EINVAL;
+		goto fail1;
+	}
 
 	/* Allocate an RXQ object */
 	EFSYS_KMEM_ALLOC(enp->en_esip, sizeof (efx_rxq_t), erp);
 
 	if (erp == NULL) {
 		rc = ENOMEM;
-		goto fail1;
+		goto fail2;
 	}
 
 	erp->er_magic = EFX_RXQ_MAGIC;
@@ -815,17 +826,19 @@ efx_rx_qcreate_internal(
 
 	if ((rc = erxop->erxo_qcreate(enp, index, label, type, type_data, esmp,
 	    ndescs, id, flags, eep, erp)) != 0)
-		goto fail2;
+		goto fail3;
 
 	enp->en_rx_qcount++;
 	*erpp = erp;
 
 	return (0);
 
-fail2:
-	EFSYS_PROBE(fail2);
+fail3:
+	EFSYS_PROBE(fail3);
 
 	EFSYS_KMEM_FREE(enp->en_esip, sizeof (efx_rxq_t), erp);
+fail2:
+	EFSYS_PROBE(fail2);
 fail1:
 	EFSYS_PROBE1(fail1, efx_rc_t, rc);
 
@@ -1590,18 +1603,9 @@ siena_rx_qcreate(
 	EFSYS_ASSERT3U(label, <, EFX_EV_RX_NLABELS);
 	EFSYS_ASSERT3U(enp->en_rx_qcount + 1, <, encp->enc_rxq_limit);
 
-	EFSYS_ASSERT(ISP2(encp->enc_rxq_max_ndescs));
-	EFSYS_ASSERT(ISP2(encp->enc_rxq_min_ndescs));
-
-	if (!ISP2(ndescs) ||
-	    (ndescs < encp->enc_rxq_min_ndescs) ||
-	    (ndescs > encp->enc_rxq_max_ndescs)) {
-		rc = EINVAL;
-		goto fail1;
-	}
 	if (index >= encp->enc_rxq_limit) {
 		rc = EINVAL;
-		goto fail2;
+		goto fail1;
 	}
 	for (size = 0;
 	    (1U << size) <= encp->enc_rxq_max_ndescs / encp->enc_rxq_min_ndescs;
@@ -1610,7 +1614,7 @@ siena_rx_qcreate(
 			break;
 	if (id + (1 << size) >= encp->enc_buftbl_limit) {
 		rc = EINVAL;
-		goto fail3;
+		goto fail2;
 	}
 
 	switch (type) {
@@ -1619,7 +1623,7 @@ siena_rx_qcreate(
 
 	default:
 		rc = EINVAL;
-		goto fail4;
+		goto fail3;
 	}
 
 	if (flags & EFX_RXQ_FLAG_SCATTER) {
@@ -1627,7 +1631,7 @@ siena_rx_qcreate(
 		jumbo = B_TRUE;
 #else
 		rc = EINVAL;
-		goto fail5;
+		goto fail4;
 #endif	/* EFSYS_OPT_RX_SCATTER */
 	}
 
@@ -1647,11 +1651,9 @@ siena_rx_qcreate(
 	return (0);
 
 #if !EFSYS_OPT_RX_SCATTER
-fail5:
-	EFSYS_PROBE(fail5);
-#endif
 fail4:
 	EFSYS_PROBE(fail4);
+#endif
 fail3:
 	EFSYS_PROBE(fail3);
 fail2:
