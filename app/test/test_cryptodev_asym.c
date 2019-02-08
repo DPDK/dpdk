@@ -940,6 +940,7 @@ test_mod_inv(void)
 	const struct rte_cryptodev_asymmetric_xform_capability *capability;
 	uint8_t input[TEST_DATA_SIZE] = {0};
 	int ret = 0;
+	uint8_t result[sizeof(mod_p)] = { 0 };
 
 	if (rte_cryptodev_asym_get_xform_enum(
 		&modinv_xform.xform_type, "modinv") < 0) {
@@ -993,6 +994,8 @@ test_mod_inv(void)
 	memcpy(input, base, sizeof(base));
 	asym_op->modinv.base.data = input;
 	asym_op->modinv.base.length = sizeof(base);
+	asym_op->modinv.result.data = result;
+	asym_op->modinv.result.length = sizeof(result);
 
 	/* attach asymmetric crypto session to crypto operations */
 	rte_crypto_op_attach_asym_session(op, sess);
@@ -1055,6 +1058,7 @@ test_mod_exp(void)
 	const struct rte_cryptodev_asymmetric_xform_capability *capability;
 	uint8_t input[TEST_DATA_SIZE] = {0};
 	int ret = 0;
+	uint8_t result[sizeof(mod_p)] = { 0 };
 
 	if (rte_cryptodev_asym_get_xform_enum(&modex_xform.xform_type,
 		"modexp")
@@ -1109,6 +1113,8 @@ test_mod_exp(void)
 	memcpy(input, base, sizeof(base));
 	asym_op->modex.base.data = input;
 	asym_op->modex.base.length = sizeof(base);
+	asym_op->modex.result.data = result;
+	asym_op->modex.result.length = sizeof(result);
 	/* attach asymmetric crypto session to crypto operations */
 	rte_crypto_op_attach_asym_session(op, sess);
 

@@ -20,8 +20,8 @@ static inline int rsa_verify(struct rsa_test_data *rsa_param,
 static inline int verify_modinv(uint8_t *mod_inv,
 		struct rte_crypto_op *result_op)
 {
-	if (memcmp(mod_inv, result_op->asym->modinv.base.data,
-				result_op->asym->modinv.base.length))
+	if (memcmp(mod_inv, result_op->asym->modinv.result.data,
+				result_op->asym->modinv.result.length))
 		return -1;
 	return 0;
 }
@@ -29,8 +29,8 @@ static inline int verify_modinv(uint8_t *mod_inv,
 static inline int verify_modexp(uint8_t *mod_exp,
 		struct rte_crypto_op *result_op)
 {
-	if (memcmp(mod_exp, result_op->asym->modex.base.data,
-				result_op->asym->modex.base.length))
+	if (memcmp(mod_exp, result_op->asym->modex.result.data,
+				result_op->asym->modex.result.length))
 		return -1;
 	return 0;
 }
