@@ -202,6 +202,7 @@ static int vmbus_uio_map_subchan(const struct rte_vmbus_device *dev,
 	char ring_path[PATH_MAX];
 	size_t file_size;
 	struct stat sb;
+	void *mapaddr;
 	int fd;
 
 	snprintf(ring_path, sizeof(ring_path),
@@ -232,13 +233,15 @@ static int vmbus_uio_map_subchan(const struct rte_vmbus_device *dev,
 		return -EINVAL;
 	}
 
-	*ring_size = file_size / 2;
-	*ring_buf = vmbus_map_resource(vmbus_map_addr, fd,
-				       0, sb.st_size, 0);
+	mapaddr = vmbus_map_resource(vmbus_map_addr, fd,
+				     0, file_size, 0);
 	close(fd);
 
-	if (ring_buf == MAP_FAILED)
+	if (mapaddr == MAP_FAILED)
 		return -EIO;
+
+	*ring_size = file_size / 2;
+	*ring_buf = mapaddr;
 
 	vmbus_map_addr = RTE_PTR_ADD(ring_buf, file_size);
 	return 0;
