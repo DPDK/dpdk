@@ -33,10 +33,8 @@
 static int hn_vf_match(const struct rte_eth_dev *dev)
 {
 	const struct ether_addr *mac = dev->data->mac_addrs;
-	char buf[32];
 	int i;
 
-	ether_format_addr(buf, sizeof(buf), mac);
 	RTE_ETH_FOREACH_DEV(i) {
 		const struct rte_eth_dev *vf_dev = &rte_eth_devices[i];
 		const struct ether_addr *vf_mac = vf_dev->data->mac_addrs;
@@ -44,7 +42,6 @@ static int hn_vf_match(const struct rte_eth_dev *dev)
 		if (vf_dev == dev)
 			continue;
 
-		ether_format_addr(buf, sizeof(buf), vf_mac);
 		if (is_same_ether_addr(mac, vf_mac))
 			return i;
 	}
