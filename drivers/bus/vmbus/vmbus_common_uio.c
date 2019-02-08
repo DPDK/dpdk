@@ -27,6 +27,7 @@ static int
 vmbus_uio_map_secondary(struct rte_vmbus_device *dev)
 {
 	int fd, i;
+	struct vmbus_channel *chan;
 	struct mapped_vmbus_resource *uio_res;
 	struct mapped_vmbus_res_list *uio_res_list
 		= RTE_TAILQ_CAST(vmbus_tailq.head, mapped_vmbus_res_list);
@@ -76,6 +77,20 @@ vmbus_uio_map_secondary(struct rte_vmbus_device *dev)
 
 		/* fd is not needed in slave process, close it */
 		close(fd);
+
+		dev->primary = uio_res->primary;
+		if (!dev->primary) {
+			VMBUS_LOG(ERR, "missing primary channel");
+			return -1;
+		}
+
+		STAILQ_FOREACH(chan, &dev->primary->subchannel_list, next) {
+			if (vmbus_uio_map_secondary_subchan(dev, chan) != 0) {
+				VMBUS_LOG(ERR, "cannot map secondary subchan");
+				return -1;
+			}
+		}
+
 		return 0;
 	}
 

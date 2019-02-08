@@ -352,12 +352,21 @@ int vmbus_chan_create(const struct rte_vmbus_device *device,
 int rte_vmbus_chan_open(struct rte_vmbus_device *device,
 			struct vmbus_channel **new_chan)
 {
+	struct mapped_vmbus_resource *uio_res;
 	int err;
+
+	uio_res = vmbus_uio_find_resource(device);
+	if (!uio_res) {
+		VMBUS_LOG(ERR, "can't find uio resource");
+		return -EINVAL;
+	}
 
 	err = vmbus_chan_create(device, device->relid, 0,
 				device->monitor_id, new_chan);
-	if (!err)
+	if (!err) {
 		device->primary = *new_chan;
+		uio_res->primary = *new_chan;
+	}
 
 	return err;
 }
@@ -396,11 +405,16 @@ void rte_vmbus_chan_close(struct vmbus_channel *chan)
 	const struct rte_vmbus_device *device = chan->device;
 	struct vmbus_channel *primary = device->primary;
 
-	if (chan != primary)
+	/*
+	 * intentionally leak primary channel because
+	 * secondary may still reference it
+	 */
+	if (chan != primary) {
 		STAILQ_REMOVE(&primary->subchannel_list, chan,
 			      vmbus_channel, next);
+		rte_free(chan);
+	}
 
-	rte_free(chan);
 }
 
 static void vmbus_dump_ring(FILE *f, const char *id, const struct vmbus_br *br)

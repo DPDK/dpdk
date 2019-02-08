@@ -247,6 +247,49 @@ static int vmbus_uio_map_subchan(const struct rte_vmbus_device *dev,
 	return 0;
 }
 
+int
+vmbus_uio_map_secondary_subchan(const struct rte_vmbus_device *dev,
+				const struct vmbus_channel *chan)
+{
+	const struct vmbus_br *br = &chan->txbr;
+	char ring_path[PATH_MAX];
+	void *mapaddr, *ring_buf;
+	uint32_t ring_size;
+	int fd;
+
+	snprintf(ring_path, sizeof(ring_path),
+		 "%s/%s/channels/%u/ring",
+		 SYSFS_VMBUS_DEVICES, dev->device.name,
+		 chan->relid);
+
+	ring_buf = br->vbr;
+	ring_size = br->dsize + sizeof(struct vmbus_bufring);
+	VMBUS_LOG(INFO, "secondary ring_buf %p size %u",
+		  ring_buf, ring_size);
+
+	fd = open(ring_path, O_RDWR);
+	if (fd < 0) {
+		VMBUS_LOG(ERR, "Cannot open %s: %s",
+			  ring_path, strerror(errno));
+		return -errno;
+	}
+
+	mapaddr = vmbus_map_resource(ring_buf, fd, 0, 2 * ring_size, 0);
+	close(fd);
+
+	if (mapaddr == ring_buf)
+		return 0;
+
+	if (mapaddr == MAP_FAILED)
+		VMBUS_LOG(ERR,
+			  "mmap subchan %u in secondary failed", chan->relid);
+	else
+		VMBUS_LOG(ERR,
+			  "mmap subchan %u in secondary address mismatch",
+			  chan->relid);
+	return -1;
+}
+
 int vmbus_uio_map_rings(struct vmbus_channel *chan)
 {
 	const struct rte_vmbus_device *dev = chan->device;
