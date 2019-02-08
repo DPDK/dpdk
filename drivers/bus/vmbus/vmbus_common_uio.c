@@ -47,9 +47,10 @@ vmbus_uio_map_secondary(struct rte_vmbus_device *dev)
 
 		for (i = 0; i != uio_res->nb_maps; i++) {
 			void *mapaddr;
+			off_t offset = i * PAGE_SIZE;
 
 			mapaddr = vmbus_map_resource(uio_res->maps[i].addr,
-						     fd, 0,
+						     fd, offset,
 						     uio_res->maps[i].size, 0);
 
 			if (mapaddr == uio_res->maps[i].addr)
