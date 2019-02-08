@@ -98,9 +98,9 @@ vmbus_uio_map_primary(struct rte_vmbus_device *dev)
 
 	/* Map the resources */
 	for (i = 0; i < VMBUS_MAX_RESOURCE; i++) {
-		/* skip empty BAR */
+		/* stop at empty BAR */
 		if (dev->resource[i].len == 0)
-			continue;
+			break;
 
 		ret = vmbus_uio_map_resource_by_index(dev, i, uio_res, 0);
 		if (ret)
