@@ -91,15 +91,19 @@ struct hn_rx_bufinfo {
 	struct rte_mbuf_ext_shared_info shinfo;
 } __rte_cache_aligned;
 
+#define HN_INVALID_PORT	UINT16_MAX
+
 struct hn_data {
 	struct rte_vmbus_device *vmbus;
 	struct hn_rx_queue *primary;
-	struct rte_eth_dev *vf_dev;		/* Subordinate device */
 	rte_spinlock_t  vf_lock;
 	uint16_t	port_id;
-	uint8_t		closed;
+	uint16_t	vf_port;
+
 	uint8_t		vf_present;
+	uint8_t		closed;
 	uint8_t		vlan_strip;
+
 	uint32_t	link_status;
 	uint32_t	link_speed;
 
@@ -169,6 +173,28 @@ int	hn_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			      const struct rte_eth_rxconf *rx_conf,
 			      struct rte_mempool *mp);
 void	hn_dev_rx_queue_release(void *arg);
+
+/* Check if VF is attached */
+static inline bool
+hn_vf_attached(const struct hn_data *hv)
+{
+	return hv->vf_port != HN_INVALID_PORT;
+}
+
+/* Get VF device for existing netvsc device */
+static inline struct rte_eth_dev *
+hn_get_vf_dev(const struct hn_data *hv)
+{
+	uint16_t vf_port = hv->vf_port;
+
+	/* make sure vf_port is loaded */
+	rte_smp_rmb();
+
+	if (vf_port == HN_INVALID_PORT)
+		return NULL;
+	else
+		return &rte_eth_devices[vf_port];
+}
 
 void	hn_vf_info_get(struct hn_data *hv,
 		       struct rte_eth_dev_info *info);

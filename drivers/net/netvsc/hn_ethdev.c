@@ -735,6 +735,7 @@ eth_hn_dev_init(struct rte_eth_dev *eth_dev)
 	hv->port_id = eth_dev->data->port_id;
 	hv->latency = HN_CHAN_LATENCY_NS;
 	hv->max_queues = 1;
+	hv->vf_port = HN_INVALID_PORT;
 
 	err = hn_parse_args(eth_dev);
 	if (err)
@@ -788,7 +789,7 @@ eth_hn_dev_init(struct rte_eth_dev *eth_dev)
 	hv->max_queues = RTE_MIN(rxr_cnt, (unsigned int)max_chan);
 
 	/* If VF was reported but not added, do it now */
-	if (hv->vf_present && !hv->vf_dev) {
+	if (hv->vf_present && !hn_vf_attached(hv)) {
 		PMD_INIT_LOG(DEBUG, "Adding VF device");
 
 		err = hn_vf_add(eth_dev, hv);
