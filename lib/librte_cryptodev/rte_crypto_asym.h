@@ -339,6 +339,16 @@ struct rte_crypto_mod_op_param {
 	 * be relatively prime to modulus in corresponding Modular
 	 * Multiplicative Inverse rte_crypto_modinv_xform
 	 */
+
+	rte_crypto_param result;
+	/**<
+	 * Pointer to the result of modular exponentiation/multiplicative inverse
+	 * data in octet-string network byte order format.
+	 *
+	 * This field shall be big enough to hold the result of Modular
+	 * Exponentiation or Modular Multplicative Inverse
+	 * (bigger or equal to length of modulus)
+	 */
 };
 
 /**
