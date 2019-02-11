@@ -508,7 +508,7 @@ parallel_test_list = [
     },
     {
         "Name":    "Pdump autotest",
-        "Comamnd": "pdump_autotest",
+        "Command": "pdump_autotest",
         "Func":    default_autotest,
         "Report":  None,
     },
