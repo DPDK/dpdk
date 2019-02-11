@@ -1319,7 +1319,7 @@ bond_ethdev_tx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 					slave_port_ids[i];
 	}
 
-	if (likely(dist_slave_count > 1)) {
+	if (likely(dist_slave_count > 0)) {
 
 		/*
 		 * Populate slaves mbuf with the packets which are to be sent
