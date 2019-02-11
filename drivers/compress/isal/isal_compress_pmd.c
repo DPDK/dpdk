@@ -19,6 +19,12 @@
 #define CHKSUM_SZ_CRC 8
 #define CHKSUM_SZ_ADLER 4
 
+#define STRINGIFY(s) #s
+#define ISAL_TOSTRING(maj, min, patch) \
+	STRINGIFY(maj)"."STRINGIFY(min)"."STRINGIFY(patch)
+#define ISAL_VERSION_STRING \
+	ISAL_TOSTRING(ISAL_MAJOR_VERSION, ISAL_MINOR_VERSION, ISAL_PATCH_VERSION)
+
 int isal_logtype_driver;
 
 /* Verify and set private xform parameters */
@@ -683,6 +689,8 @@ compdev_isal_create(const char *name, struct rte_vdev_device *vdev,
 	/* register rx/tx burst functions for data path */
 	dev->dequeue_burst = isal_comp_pmd_dequeue_burst;
 	dev->enqueue_burst = isal_comp_pmd_enqueue_burst;
+
+	ISAL_PMD_LOG(INFO, "\nISA-L library version used: "ISAL_VERSION_STRING);
 
 	return 0;
 }
