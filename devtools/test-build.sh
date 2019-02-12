@@ -150,7 +150,7 @@ config () # <directory> <target> <options>
 		test "$DPDK_DEP_ARCHIVE" != y || \
 		sed -ri       's,(RESOURCE_TAR=)n,\1y,' $1/.config
 		test "$DPDK_DEP_ISAL" != y || \
-		sed -ri           's,(ISAL_PMD=)n,\1y,' $1/.config
+		sed -ri           's,(PMD_ISAL=)n,\1y,' $1/.config
 		test "$DPDK_DEP_MLX" != y || \
 		sed -ri           's,(MLX._PMD=)n,\1y,' $1/.config
 		test "$DPDK_DEP_SZE" != y || \
@@ -180,7 +180,7 @@ config () # <directory> <target> <options>
 		test "$DPDK_DEP_SSL" != y || \
 		sed -ri        's,(PMD_OPENSSL=)n,\1y,' $1/.config
 		test "$DPDK_DEP_SSL" != y || \
-		sed -ri            's,(PMD_QAT=)n,\1y,' $1/.config
+		sed -ri            's,(QAT_SYM=)n,\1y,' $1/.config
 		test -z "$FLEXRAN_SDK" || \
 		sed -ri     's,(BBDEV_TURBO_SW=)n,\1y,' $1/.config
 		sed -ri           's,(SCHED_.*=)n,\1y,' $1/.config
@@ -192,7 +192,7 @@ config () # <directory> <target> <options>
 		sed -ri         's,(MVNETA_PMD=)n,\1y,' $1/.config
 		test "$DPDK_DEP_ELF" != y || \
 		sed -ri            's,(BPF_ELF=)n,\1y,' $1/.config
-		test -z "$DPDK_DEP_JSON" || \
+		test "$DPDK_DEP_JSON" != y || \
 		sed -ri          's,(TELEMETRY=)n,\1y,' $1/.config
 		build_config_hook $1 $2 $3
 
