@@ -26,6 +26,7 @@
 #include <rte_spinlock.h>
 #include <rte_ring.h>
 #include <rte_compat.h>
+#include <rte_vect.h>
 
 #include "rte_hash.h"
 #include "rte_cuckoo_hash.h"
@@ -406,6 +407,10 @@ rte_hash_create(const struct rte_hash_parameters *params)
 #if defined(RTE_ARCH_X86)
 	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_SSE2))
 		h->sig_cmp_fn = RTE_HASH_COMPARE_SSE;
+	else
+#elif defined(RTE_ARCH_ARM64)
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_NEON))
+		h->sig_cmp_fn = RTE_HASH_COMPARE_NEON;
 	else
 #endif
 		h->sig_cmp_fn = RTE_HASH_COMPARE_SCALAR;
@@ -1581,7 +1586,7 @@ compare_signatures(uint32_t *prim_hash_matches, uint32_t *sec_hash_matches,
 
 	/* For match mask the first bit of every two bits indicates the match */
 	switch (sig_cmp_fn) {
-#ifdef RTE_MACHINE_CPUFLAG_SSE2
+#if defined(RTE_MACHINE_CPUFLAG_SSE2)
 	case RTE_HASH_COMPARE_SSE:
 		/* Compare all signatures in the bucket */
 		*prim_hash_matches = _mm_movemask_epi8(_mm_cmpeq_epi16(
@@ -1593,6 +1598,28 @@ compare_signatures(uint32_t *prim_hash_matches, uint32_t *sec_hash_matches,
 				_mm_load_si128(
 					(__m128i const *)sec_bkt->sig_current),
 				_mm_set1_epi16(sig)));
+		break;
+#elif defined(RTE_MACHINE_CPUFLAG_NEON)
+	case RTE_HASH_COMPARE_NEON: {
+		uint16x8_t vmat, vsig, x;
+		uint64x2_t x64;
+		int16x8_t shift = {-15, -13, -11, -9, -7, -5, -3, -1};
+
+		vsig = vld1q_dup_u16((uint16_t const *)&sig);
+		/* Compare all signatures in the primary bucket */
+		vmat = vceqq_u16(vsig,
+			vld1q_u16((uint16_t const *)prim_bkt->sig_current));
+		x = vshlq_u16(vandq_u16(vmat, vdupq_n_u16(0x8000)), shift);
+		x64 = vpaddlq_u32(vpaddlq_u16(x));
+		*prim_hash_matches = (uint32_t)(vgetq_lane_u64(x64, 0) +
+			vgetq_lane_u64(x64, 1));
+		/* Compare all signatures in the secondary bucket */
+		vmat = vceqq_u16(vsig,
+			vld1q_u16((uint16_t const *)sec_bkt->sig_current));
+		x = vshlq_u16(vandq_u16(vmat, vdupq_n_u16(0x8000)), shift);
+		x64 = vpaddlq_u32(vpaddlq_u16(x));
+		*sec_hash_matches = (uint32_t)(vgetq_lane_u64(x64, 0) +
+			vgetq_lane_u64(x64, 1)); }
 		break;
 #endif
 	default:

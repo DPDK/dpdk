@@ -141,6 +141,7 @@ struct rte_hash_key {
 enum rte_hash_sig_compare_function {
 	RTE_HASH_COMPARE_SCALAR = 0,
 	RTE_HASH_COMPARE_SSE,
+	RTE_HASH_COMPARE_NEON,
 	RTE_HASH_COMPARE_NUM
 };
 
