@@ -24,6 +24,8 @@ ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
 EXECENV_LDLIBS += -lgcc_s
 endif
 
+EXECENV_LDLIBS-$(CONFIG_RTE_USE_LIBBSD) += -lbsd
+
 # force applications to link with gcc/icc instead of using ld
 LINK_USING_CC := 1
 
@@ -31,5 +33,9 @@ LINK_USING_CC := 1
 EXECENV_LDFLAGS += -export-dynamic
 # Add library to the group to resolve symbols
 EXECENV_LDLIBS  += -ldl
+
+# EXECENV_LDLIBS-y applies to lib.so and app linking
+# while EXECENV_LDLIBS applies only to app linking.
+EXECENV_LDLIBS += $(EXECENV_LDLIBS-y)
 
 export EXECENV_CFLAGS EXECENV_LDFLAGS EXECENV_ASFLAGS EXECENV_LDLIBS
