@@ -9,6 +9,7 @@ default_path=$PATH
 # - DPDK_BUILD_TEST_CONFIGS (defconfig1+option1+option2 defconfig2)
 # - DPDK_DEP_ARCHIVE
 # - DPDK_DEP_CFLAGS
+# - DPDK_DEP_ELF (y/[n])
 # - DPDK_DEP_ISAL (y/[n])
 # - DPDK_DEP_JSON (y/[n])
 # - DPDK_DEP_LDFLAGS
@@ -96,6 +97,7 @@ reset_env ()
 	unset CROSS
 	unset DPDK_DEP_ARCHIVE
 	unset DPDK_DEP_CFLAGS
+	unset DPDK_DEP_ELF
 	unset DPDK_DEP_ISAL
 	unset DPDK_DEP_JSON
 	unset DPDK_DEP_LDFLAGS
@@ -186,6 +188,8 @@ config () # <directory> <target> <options>
 		sed -ri          's,(MVPP2_PMD=)n,\1y,' $1/.config
 		test -z "$LIBMUSDK_PATH" || \
 		sed -ri         's,(MVNETA_PMD=)n,\1y,' $1/.config
+		test "$DPDK_DEP_ELF" != y || \
+		sed -ri            's,(BPF_ELF=)n,\1y,' $1/.config
 		test -z "$DPDK_DEP_JSON" || \
 		sed -ri          's,(TELEMETRY=)n,\1y,' $1/.config
 		build_config_hook $1 $2 $3
