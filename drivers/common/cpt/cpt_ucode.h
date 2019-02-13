@@ -549,7 +549,7 @@ cpt_digest_gen_prep(uint32_t flags,
 		/* Minor op is passthrough */
 		opcode.s.minor = 0x03;
 		/* Send out completion code only */
-		vq_cmd_w0.s.param2 = 0x1;
+		vq_cmd_w0.s.param2 = rte_cpu_to_be_16(0x1);
 	}
 
 	vq_cmd_w0.s.opcode = rte_cpu_to_be_16(opcode.flags);
