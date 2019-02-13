@@ -1336,6 +1336,9 @@ eth_ixgbe_dev_uninit(struct rte_eth_dev *eth_dev)
 		rte_delay_ms(100);
 	} while (retries++ < (10 + IXGBE_LINK_UP_TIME));
 
+	/* cancel the delay handler before remove dev */
+	rte_eal_alarm_cancel(ixgbe_dev_interrupt_delayed_handler, eth_dev);
+
 	/* uninitialize PF if max_vfs not zero */
 	ixgbe_pf_host_uninit(eth_dev);
 
