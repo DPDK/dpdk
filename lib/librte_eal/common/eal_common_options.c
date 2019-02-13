@@ -567,10 +567,10 @@ static int
 eal_parse_corelist(const char *corelist)
 {
 	struct rte_config *cfg = rte_eal_get_configuration();
-	int i, idx = 0;
 	unsigned count = 0;
 	char *end = NULL;
 	int min, max;
+	int idx;
 
 	if (eal_service_cores_parsed())
 		RTE_LOG(WARNING, EAL,
@@ -580,12 +580,9 @@ eal_parse_corelist(const char *corelist)
 	if (corelist == NULL)
 		return -1;
 
-	/* Remove all blank characters ahead and after */
+	/* Remove all blank characters ahead */
 	while (isblank(*corelist))
 		corelist++;
-	i = strlen(corelist);
-	while ((i > 0) && isblank(corelist[i - 1]))
-		i--;
 
 	/* Reset config */
 	for (idx = 0; idx < RTE_MAX_LCORE; idx++) {
