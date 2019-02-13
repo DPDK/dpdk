@@ -431,6 +431,9 @@ Where the range is a ``git log`` option.
 Checking Compilation
 --------------------
 
+Makefile System
+~~~~~~~~~~~~~~~
+
 Compilation of patches and changes should be tested using the ``test-build.sh`` script in the ``devtools``
 directory of the DPDK repo::
 
@@ -472,6 +475,14 @@ The recommended configurations and options to test compilation prior to submitti
    export DPDK_DEP_ZLIB=y
    export DPDK_DEP_PCAP=y
    export DPDK_DEP_SSL=y
+
+Meson System
+~~~~~~~~~~~~
+
+Compilation of patches is to be tested with ``devtools/test-meson-builds.sh`` script.
+
+The script internally checks for dependencies, then builds for several
+combinations of compilation configuration.
 
 
 Sending Patches
