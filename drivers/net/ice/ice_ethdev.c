@@ -1714,7 +1714,7 @@ ice_dev_start(struct rte_eth_dev *dev)
 	struct ice_vsi *vsi = pf->main_vsi;
 	uint16_t nb_rxq = 0;
 	uint16_t nb_txq, i;
-	int ret;
+	int mask, ret;
 
 	/* program Tx queues' context in hardware */
 	for (nb_txq = 0; nb_txq < data->nb_tx_queues; nb_txq++) {
@@ -1741,6 +1741,14 @@ ice_dev_start(struct rte_eth_dev *dev)
 	}
 
 	ice_set_rx_function(dev);
+
+	mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK |
+			ETH_VLAN_EXTEND_MASK;
+	ret = ice_vlan_offload_set(dev, mask);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Unable to set VLAN offload");
+		goto rx_err;
+	}
 
 	/* enable Rx interrput and mapping Rx queue to interrupt vector */
 	if (ice_rxq_intr_setup(dev))
