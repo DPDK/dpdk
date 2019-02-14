@@ -114,7 +114,7 @@ rte_mem_virt2phy(const void *virtaddr)
 
 	fd = open("/proc/self/pagemap", O_RDONLY);
 	if (fd < 0) {
-		RTE_LOG(ERR, EAL, "%s(): cannot open /proc/self/pagemap: %s\n",
+		RTE_LOG(INFO, EAL, "%s(): cannot open /proc/self/pagemap: %s\n",
 			__func__, strerror(errno));
 		return RTE_BAD_IOVA;
 	}
@@ -122,7 +122,7 @@ rte_mem_virt2phy(const void *virtaddr)
 	virt_pfn = (unsigned long)virtaddr / page_size;
 	offset = sizeof(uint64_t) * virt_pfn;
 	if (lseek(fd, offset, SEEK_SET) == (off_t) -1) {
-		RTE_LOG(ERR, EAL, "%s(): seek error in /proc/self/pagemap: %s\n",
+		RTE_LOG(INFO, EAL, "%s(): seek error in /proc/self/pagemap: %s\n",
 				__func__, strerror(errno));
 		close(fd);
 		return RTE_BAD_IOVA;
@@ -131,11 +131,11 @@ rte_mem_virt2phy(const void *virtaddr)
 	retval = read(fd, &page, PFN_MASK_SIZE);
 	close(fd);
 	if (retval < 0) {
-		RTE_LOG(ERR, EAL, "%s(): cannot read /proc/self/pagemap: %s\n",
+		RTE_LOG(INFO, EAL, "%s(): cannot read /proc/self/pagemap: %s\n",
 				__func__, strerror(errno));
 		return RTE_BAD_IOVA;
 	} else if (retval != PFN_MASK_SIZE) {
-		RTE_LOG(ERR, EAL, "%s(): read %d bytes from /proc/self/pagemap "
+		RTE_LOG(INFO, EAL, "%s(): read %d bytes from /proc/self/pagemap "
 				"but expected %d:\n",
 				__func__, retval, PFN_MASK_SIZE);
 		return RTE_BAD_IOVA;
