@@ -1298,9 +1298,6 @@ bond_ethdev_tx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 
 	uint16_t i;
 
-	if (unlikely(nb_bufs == 0))
-		return 0;
-
 	/* Copy slave list to protect against slave up/down changes during tx
 	 * bursting */
 	slave_count = internals->active_slave_count;
@@ -1309,6 +1306,30 @@ bond_ethdev_tx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 
 	memcpy(slave_port_ids, internals->active_slaves,
 			sizeof(slave_port_ids[0]) * slave_count);
+
+	/* Check for LACP control packets and send if available */
+	for (i = 0; i < slave_count; i++) {
+		struct port *port = &bond_mode_8023ad_ports[slave_port_ids[i]];
+		struct rte_mbuf *ctrl_pkt = NULL;
+
+		if (likely(rte_ring_empty(port->tx_ring)))
+			continue;
+
+		if (rte_ring_dequeue(port->tx_ring,
+				     (void **)&ctrl_pkt) != -ENOENT) {
+			slave_tx_count = rte_eth_tx_burst(slave_port_ids[i],
+					bd_tx_q->queue_id, &ctrl_pkt, 1);
+			/*
+			 * re-enqueue LAG control plane packets to buffering
+			 * ring if transmission fails so the packet isn't lost.
+			 */
+			if (slave_tx_count != 1)
+				rte_ring_enqueue(port->tx_ring,	ctrl_pkt);
+		}
+	}
+
+	if (unlikely(nb_bufs == 0))
+		return 0;
 
 	dist_slave_count = 0;
 	for (i = 0; i < slave_count; i++) {
@@ -1362,27 +1383,6 @@ bond_ethdev_tx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 				       &slave_bufs[i][slave_tx_count],
 				       slave_tx_fail_count * sizeof(bufs[0]));
 			}
-		}
-	}
-
-	/* Check for LACP control packets and send if available */
-	for (i = 0; i < slave_count; i++) {
-		struct port *port = &bond_mode_8023ad_ports[slave_port_ids[i]];
-		struct rte_mbuf *ctrl_pkt = NULL;
-
-		if (likely(rte_ring_empty(port->tx_ring)))
-			continue;
-
-		if (rte_ring_dequeue(port->tx_ring,
-				     (void **)&ctrl_pkt) != -ENOENT) {
-			slave_tx_count = rte_eth_tx_burst(slave_port_ids[i],
-					bd_tx_q->queue_id, &ctrl_pkt, 1);
-			/*
-			 * re-enqueue LAG control plane packets to buffering
-			 * ring if transmission fails so the packet isn't lost.
-			 */
-			if (slave_tx_count != 1)
-				rte_ring_enqueue(port->tx_ring,	ctrl_pkt);
 		}
 	}
 
