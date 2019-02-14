@@ -222,13 +222,6 @@ deactivate_slave(struct rte_eth_dev *eth_dev, uint16_t port_id);
 void
 activate_slave(struct rte_eth_dev *eth_dev, uint16_t port_id);
 
-void
-link_properties_set(struct rte_eth_dev *bonded_eth_dev,
-		struct rte_eth_link *slave_dev_link);
-int
-link_properties_valid(struct rte_eth_dev *bonded_eth_dev,
-		struct rte_eth_link *slave_dev_link);
-
 int
 mac_address_set(struct rte_eth_dev *eth_dev, struct ether_addr *new_mac_addr);
 

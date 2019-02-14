@@ -484,10 +484,6 @@ __eth_bond_slave_add_lock_free(uint16_t bonded_port_id, uint16_t slave_port_id)
 			}
 		}
 
-		/* Inherit eth dev link properties from first slave */
-		link_properties_set(bonded_eth_dev,
-				&(slave_eth_dev->data->dev_link));
-
 		/* Make primary slave */
 		internals->primary_port = slave_port_id;
 		internals->current_primary_port = slave_port_id;

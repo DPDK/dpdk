@@ -1449,7 +1449,7 @@ bond_ethdev_tx_burst_broadcast(void *queue, struct rte_mbuf **bufs,
 	return max_nb_of_tx_pkts;
 }
 
-void
+static void
 link_properties_set(struct rte_eth_dev *ethdev, struct rte_eth_link *slave_link)
 {
 	struct bond_dev_private *bond_ctx = ethdev->data->dev_private;
@@ -1474,7 +1474,7 @@ link_properties_set(struct rte_eth_dev *ethdev, struct rte_eth_link *slave_link)
 	}
 }
 
-int
+static int
 link_properties_valid(struct rte_eth_dev *ethdev,
 		struct rte_eth_link *slave_link)
 {
@@ -2693,16 +2693,6 @@ bond_ethdev_lsc_event_callback(uint16_t port_id, enum rte_eth_event_type type,
 		if (active_pos < internals->active_slave_count)
 			goto link_update;
 
-		/* if no active slave ports then set this port to be primary port */
-		if (internals->active_slave_count < 1) {
-			/* If first active slave, then change link status */
-			bonded_eth_dev->data->dev_link.link_status = ETH_LINK_UP;
-			internals->current_primary_port = port_id;
-			lsc_flag = 1;
-
-			mac_address_slaves_update(bonded_eth_dev);
-		}
-
 		/* check link state properties if bonded link is up*/
 		if (bonded_eth_dev->data->dev_link.link_status == ETH_LINK_UP) {
 			if (link_properties_valid(bonded_eth_dev, &link) != 0)
@@ -2714,9 +2704,24 @@ bond_ethdev_lsc_event_callback(uint16_t port_id, enum rte_eth_event_type type,
 			link_properties_set(bonded_eth_dev, &link);
 		}
 
+		/* If no active slave ports then set this port to be
+		 * the primary port.
+		 */
+		if (internals->active_slave_count < 1) {
+			/* If first active slave, then change link status */
+			bonded_eth_dev->data->dev_link.link_status =
+								ETH_LINK_UP;
+			internals->current_primary_port = port_id;
+			lsc_flag = 1;
+
+			mac_address_slaves_update(bonded_eth_dev);
+		}
+
 		activate_slave(bonded_eth_dev, port_id);
 
-		/* If user has defined the primary port then default to using it */
+		/* If the user has defined the primary port then default to
+		 * using it.
+		 */
 		if (internals->user_defined_primary_port &&
 				internals->primary_port == port_id)
 			bond_ethdev_primary_set(internals, port_id);
