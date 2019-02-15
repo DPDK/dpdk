@@ -156,10 +156,7 @@ update_training_stats(struct priority_worker *poll_stats,
 {
 	RTE_SET_USED(specific_freq);
 
-	char pfi_str[32];
 	uint64_t p0_empty_deq;
-
-	sprintf(pfi_str, "%02d", freq);
 
 	if (poll_stats->cur_freq == freq &&
 			poll_stats->thresh[freq].trained == false) {
