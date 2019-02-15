@@ -1804,9 +1804,14 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	/* Set max MTU for this device */
 	adapter->max_mtu = get_feat_ctx.dev_attr.max_mtu;
 
-	/* set device support for TSO */
-	adapter->tso4_supported = get_feat_ctx.offload.tx &
-				  ENA_ADMIN_FEATURE_OFFLOAD_DESC_TSO_IPV4_MASK;
+	/* set device support for offloads */
+	adapter->offloads.tso4_supported = (get_feat_ctx.offload.tx &
+		ENA_ADMIN_FEATURE_OFFLOAD_DESC_TSO_IPV4_MASK) != 0;
+	adapter->offloads.tx_csum_supported = (get_feat_ctx.offload.tx &
+		ENA_ADMIN_FEATURE_OFFLOAD_DESC_TX_L4_IPV4_CSUM_PART_MASK) != 0;
+	adapter->offloads.tx_csum_supported =
+		(get_feat_ctx.offload.rx_supported &
+		ENA_ADMIN_FEATURE_OFFLOAD_DESC_RX_L4_IPV4_CSUM_MASK) != 0;
 
 	/* Copy MAC address and point DPDK to it */
 	eth_dev->data->mac_addrs = (struct ether_addr *)adapter->mac_addr;
@@ -1939,9 +1944,7 @@ static void ena_infos_get(struct rte_eth_dev *dev,
 {
 	struct ena_adapter *adapter;
 	struct ena_com_dev *ena_dev;
-	struct ena_com_dev_get_features_ctx feat;
 	uint64_t rx_feat = 0, tx_feat = 0;
-	int rc = 0;
 
 	ena_assert_msg(dev->data != NULL, "Uninitialized device\n");
 	ena_assert_msg(dev->data->dev_private != NULL, "Uninitialized device\n");
@@ -1960,26 +1963,16 @@ static void ena_infos_get(struct rte_eth_dev *dev,
 			ETH_LINK_SPEED_50G  |
 			ETH_LINK_SPEED_100G;
 
-	/* Get supported features from HW */
-	rc = ena_com_get_dev_attr_feat(ena_dev, &feat);
-	if (unlikely(rc)) {
-		RTE_LOG(ERR, PMD,
-			"Cannot get attribute for ena device rc= %d\n", rc);
-		return;
-	}
-
 	/* Set Tx & Rx features available for device */
-	if (feat.offload.tx & ENA_ADMIN_FEATURE_OFFLOAD_DESC_TSO_IPV4_MASK)
+	if (adapter->offloads.tso4_supported)
 		tx_feat	|= DEV_TX_OFFLOAD_TCP_TSO;
 
-	if (feat.offload.tx &
-	    ENA_ADMIN_FEATURE_OFFLOAD_DESC_TX_L4_IPV4_CSUM_PART_MASK)
+	if (adapter->offloads.tx_csum_supported)
 		tx_feat |= DEV_TX_OFFLOAD_IPV4_CKSUM |
 			DEV_TX_OFFLOAD_UDP_CKSUM |
 			DEV_TX_OFFLOAD_TCP_CKSUM;
 
-	if (feat.offload.rx_supported &
-	    ENA_ADMIN_FEATURE_OFFLOAD_DESC_RX_L4_IPV4_CSUM_MASK)
+	if (adapter->offloads.rx_csum_supported)
 		rx_feat |= DEV_RX_OFFLOAD_IPV4_CKSUM |
 			DEV_RX_OFFLOAD_UDP_CKSUM  |
 			DEV_RX_OFFLOAD_TCP_CKSUM;
@@ -2171,7 +2164,7 @@ eth_ena_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			/* If IPv4 header has DF flag enabled and TSO support is
 			 * disabled, partial chcecksum should not be calculated.
 			 */
-			if (!tx_ring->adapter->tso4_supported)
+			if (!tx_ring->adapter->offloads.tso4_supported)
 				continue;
 		}
 

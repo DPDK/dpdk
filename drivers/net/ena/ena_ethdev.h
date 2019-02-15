@@ -167,6 +167,12 @@ struct ena_stats_dev {
 	u64 dev_stop;
 };
 
+struct ena_offloads {
+	bool tso4_supported;
+	bool tx_csum_supported;
+	bool rx_csum_supported;
+};
+
 /* board specific private data structure */
 struct ena_adapter {
 	/* OS defined structs */
@@ -188,7 +194,7 @@ struct ena_adapter {
 
 	u16 num_queues;
 	u16 max_mtu;
-	u8 tso4_supported;
+	struct ena_offloads offloads;
 
 	int id_number;
 	char name[ENA_NAME_MAX_LEN];
