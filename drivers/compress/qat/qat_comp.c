@@ -43,6 +43,30 @@ qat_comp_build_request(void *in_op, uint8_t *out_msg,
 	rte_mov128(out_msg, tmpl);
 	comp_req->comn_mid.opaque_data = (uint64_t)(uintptr_t)op;
 
+	if (likely(qat_xform->qat_comp_request_type ==
+		    QAT_COMP_REQUEST_DYNAMIC_COMP_STATELESS)) {
+		if (unlikely(op->src.length > QAT_FALLBACK_THLD)) {
+
+			/* fallback to fixed compression */
+			comp_req->comn_hdr.service_cmd_id =
+					ICP_QAT_FW_COMP_CMD_STATIC;
+
+			ICP_QAT_FW_COMN_NEXT_ID_SET(&comp_req->comp_cd_ctrl,
+					ICP_QAT_FW_SLICE_DRAM_WR);
+
+			ICP_QAT_FW_COMN_NEXT_ID_SET(&comp_req->u2.xlt_cd_ctrl,
+					ICP_QAT_FW_SLICE_NULL);
+			ICP_QAT_FW_COMN_CURR_ID_SET(&comp_req->u2.xlt_cd_ctrl,
+					ICP_QAT_FW_SLICE_NULL);
+
+			QAT_DP_LOG(DEBUG, "QAT PMD: fallback to fixed "
+				   "compression! IM buffer size can be too low "
+				   "for produced data.\n Please use input "
+				   "buffer length lower than %d bytes",
+				   QAT_FALLBACK_THLD);
+		}
+	}
+
 	/* common for sgl and flat buffers */
 	comp_req->comp_pars.comp_len = op->src.length;
 	comp_req->comp_pars.out_buffer_sz = rte_pktmbuf_pkt_len(op->m_dst) -

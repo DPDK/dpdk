@@ -21,6 +21,9 @@
 
 #define ERR_CODE_QAT_COMP_WRONG_FW -99
 
+/* fallback to fixed compression threshold */
+#define QAT_FALLBACK_THLD ((uint32_t)(RTE_PMD_QAT_COMP_IM_BUFFER_SIZE / 1.1))
+
 enum qat_comp_request_type {
 	QAT_COMP_REQUEST_FIXED_COMP_STATELESS,
 	QAT_COMP_REQUEST_DYNAMIC_COMP_STATELESS,

@@ -188,11 +188,11 @@ allocated while for GEN1 devices, 12 buffers are allocated, plus 1472 bytes over
 
 	If the compressed output of a Deflate operation using Dynamic Huffman
         Encoding is too big to fit in an intermediate buffer, then the
-        operation will return RTE_COMP_OP_STATUS_ERROR and an error will be
-        displayed. Options for the application in this case
-        are to split the input data into smaller chunks and resubmit
-        in multiple operations or to configure QAT with
-        larger intermediate buffers.
+	operation will fall back to fixed compression rather than failing the operation.
+	To avoid this less performant case, applications should configure
+	the intermediate buffer size to be larger than the expected input data size
+	(compressed output size is usually unknown, so the only option is to make
+	larger than the input size).
 
 
 Device and driver naming
