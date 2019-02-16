@@ -932,7 +932,7 @@ where:
 
 * "on"is just an enable function which server for other configuration,
   it is for all configuration about queue region from up layer,
-  at first will only keep in DPDK softwarestored in driver,
+  at first will only keep in DPDK software stored in driver,
   only after "flush on", it commit all configuration to HW.
   "off" is just clean all configuration about queue region just now,
   and restore all to DPDK i40e driver default config when start up.
