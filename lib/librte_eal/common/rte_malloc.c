@@ -74,7 +74,18 @@ rte_malloc(const char *type, size_t size, unsigned align)
 void *
 rte_zmalloc_socket(const char *type, size_t size, unsigned align, int socket)
 {
-	return rte_malloc_socket(type, size, align, socket);
+	void *ptr = rte_malloc_socket(type, size, align, socket);
+
+#ifdef RTE_MALLOC_DEBUG
+	/*
+	 * If DEBUG is enabled, then freed memory is marked with poison
+	 * value and set to zero on allocation.
+	 * If DEBUG is not enabled then  memory is already zeroed.
+	 */
+	if (ptr != NULL)
+		memset(ptr, 0, size);
+#endif
+	return ptr;
 }
 
 /*
