@@ -84,7 +84,7 @@ bond_ethdev_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			active_slave = 0;
 	}
 
-	if (++internals->active_slave == slave_count)
+	if (++internals->active_slave >= slave_count)
 		internals->active_slave = 0;
 	return num_rx_total;
 }
@@ -288,7 +288,7 @@ bond_ethdev_rx_burst_8023ad_fast_queue(void *queue, struct rte_mbuf **bufs,
 			active_slave = 0;
 	}
 
-	if (++internals->active_slave == slave_count)
+	if (++internals->active_slave >= slave_count)
 		internals->active_slave = 0;
 
 	return num_rx_total;
@@ -474,7 +474,7 @@ bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 			idx = 0;
 	}
 
-	if (++internals->active_slave == slave_count)
+	if (++internals->active_slave >= slave_count)
 		internals->active_slave = 0;
 
 	return num_rx_total;
