@@ -68,6 +68,15 @@ Deprecation Notices
   - Member ``uint16_t min_mtu`` the minimum MTU allowed.
   - Member ``uint16_t max_mtu`` the maximum MTU allowed.
 
+* kni: remove KNI ethtool support. To clarify, this is not to remove the KNI,
+  but only to remove ethtool support of it that is disabled by default and
+  can be enabled via ``CONFIG_RTE_KNI_KMOD_ETHTOOL`` config option.
+  Existing KNI ethtool implementation is only supported by ``igb`` & ``ixgbe``
+  drivers, by using a copy of kernel drivers in DPDK. This model cannot be
+  extended to all drivers in DPDK and it is too much effort to maintain
+  kernel modules in DPDK. As a result users won't be able to use ``ethtool``
+  via ``igb`` & ``ixgbe`` anymore.
+
 * meter: New ``rte_color`` definition will be added in 19.02 and that will
   replace ``enum rte_meter_color`` in meter library in 19.05. This will help
   to consolidate color definition, which is currently replicated in many places,
