@@ -624,6 +624,62 @@ virtqueue_enqueue_xmit_inorder(struct virtnet_tx *txvq,
 }
 
 static inline void
+virtqueue_enqueue_xmit_packed_fast(struct virtnet_tx *txvq,
+				   struct rte_mbuf *cookie,
+				   int in_order)
+{
+	struct virtqueue *vq = txvq->vq;
+	struct vring_packed_desc *dp;
+	struct vq_desc_extra *dxp;
+	uint16_t idx, id, flags;
+	uint16_t head_size = vq->hw->vtnet_hdr_size;
+	struct virtio_net_hdr *hdr;
+
+	id = in_order ? vq->vq_avail_idx : vq->vq_desc_head_idx;
+	idx = vq->vq_avail_idx;
+	dp = &vq->ring_packed.desc_packed[idx];
+
+	dxp = &vq->vq_descx[id];
+	dxp->ndescs = 1;
+	dxp->cookie = cookie;
+
+	flags = vq->avail_used_flags;
+
+	/* prepend cannot fail, checked by caller */
+	hdr = (struct virtio_net_hdr *)
+		rte_pktmbuf_prepend(cookie, head_size);
+	cookie->pkt_len -= head_size;
+
+	/* if offload disabled, hdr is not zeroed yet, do it now */
+	if (!vq->hw->has_tx_offload)
+		virtqueue_clear_net_hdr(hdr);
+	else
+		virtqueue_xmit_offload(hdr, cookie, true);
+
+	dp->addr = VIRTIO_MBUF_DATA_DMA_ADDR(cookie, vq);
+	dp->len  = cookie->data_len;
+	dp->id   = id;
+
+	if (++vq->vq_avail_idx >= vq->vq_nentries) {
+		vq->vq_avail_idx -= vq->vq_nentries;
+		vq->avail_wrap_counter ^= 1;
+		vq->avail_used_flags ^=
+			VRING_DESC_F_AVAIL(1) | VRING_DESC_F_USED(1);
+	}
+
+	vq->vq_free_cnt--;
+
+	if (!in_order) {
+		vq->vq_desc_head_idx = dxp->next;
+		if (vq->vq_desc_head_idx == VQ_RING_DESC_CHAIN_END)
+			vq->vq_desc_tail_idx = VQ_RING_DESC_CHAIN_END;
+	}
+
+	virtio_wmb(vq->hw->weak_barriers);
+	dp->flags = flags;
+}
+
+static inline void
 virtqueue_enqueue_xmit_packed(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 			      uint16_t needed, int can_push, int in_order)
 {
@@ -1979,8 +2035,11 @@ virtio_xmit_pkts_packed(void *tx_queue, struct rte_mbuf **tx_pkts,
 		}
 
 		/* Enqueue Packet buffers */
-		virtqueue_enqueue_xmit_packed(txvq, txm, slots, can_push,
-					      in_order);
+		if (can_push)
+			virtqueue_enqueue_xmit_packed_fast(txvq, txm, in_order);
+		else
+			virtqueue_enqueue_xmit_packed(txvq, txm, slots, 0,
+						      in_order);
 
 		virtio_update_packet_stats(&txvq->stats, txm);
 	}
