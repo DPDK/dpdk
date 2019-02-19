@@ -1943,7 +1943,6 @@ virtio_xmit_pkts_packed(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		/* Positive value indicates it need free vring descriptors */
 		if (unlikely(need > 0)) {
-			need = RTE_MIN(need, (int)nb_pkts);
 			virtio_xmit_cleanup_packed(vq, need);
 			need = slots - vq->vq_free_cnt;
 			if (unlikely(need > 0)) {
