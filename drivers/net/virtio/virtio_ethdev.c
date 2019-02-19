@@ -1453,7 +1453,8 @@ set_rxtx_funcs(struct rte_eth_dev *eth_dev)
 
 	if (vtpci_packed_queue(hw)) {
 		PMD_INIT_LOG(INFO,
-			"virtio: using packed ring standard Tx path on port %u",
+			"virtio: using packed ring %s Tx path on port %u",
+			hw->use_inorder_tx ? "inorder" : "standard",
 			eth_dev->data->port_id);
 		eth_dev->tx_pkt_burst = virtio_xmit_pkts_packed;
 	} else {
@@ -2069,7 +2070,6 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 	if (vtpci_packed_queue(hw)) {
 		hw->use_simple_rx = 0;
 		hw->use_inorder_rx = 0;
-		hw->use_inorder_tx = 0;
 	}
 
 #if defined RTE_ARCH_ARM64 || defined RTE_ARCH_ARM
