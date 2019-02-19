@@ -279,7 +279,7 @@ virtio_xmit_cleanup(struct virtqueue *vq, uint16_t num)
 static void
 virtio_xmit_cleanup_inorder(struct virtqueue *vq, uint16_t num)
 {
-	uint16_t i, used_idx, desc_idx = 0, last_idx;
+	uint16_t i, idx = vq->vq_used_cons_idx;
 	int16_t free_cnt = 0;
 	struct vq_desc_extra *dxp = NULL;
 
@@ -287,27 +287,16 @@ virtio_xmit_cleanup_inorder(struct virtqueue *vq, uint16_t num)
 		return;
 
 	for (i = 0; i < num; i++) {
-		struct vring_used_elem *uep;
-
-		used_idx = vq->vq_used_cons_idx & (vq->vq_nentries - 1);
-		uep = &vq->vq_ring.used->ring[used_idx];
-		desc_idx = (uint16_t)uep->id;
-
-		dxp = &vq->vq_descx[desc_idx];
-		vq->vq_used_cons_idx++;
-
+		dxp = &vq->vq_descx[idx++ & (vq->vq_nentries - 1)];
+		free_cnt += dxp->ndescs;
 		if (dxp->cookie != NULL) {
 			rte_pktmbuf_free(dxp->cookie);
 			dxp->cookie = NULL;
 		}
 	}
 
-	last_idx = desc_idx + dxp->ndescs - 1;
-	free_cnt = last_idx - vq->vq_desc_tail_idx;
-	if (free_cnt <= 0)
-		free_cnt += vq->vq_nentries;
-
-	vq_ring_free_inorder(vq, last_idx, free_cnt);
+	vq->vq_free_cnt += free_cnt;
+	vq->vq_used_cons_idx = idx;
 }
 
 static inline int
@@ -556,7 +545,7 @@ virtqueue_enqueue_xmit_inorder(struct virtnet_tx *txvq,
 
 	while (i < num) {
 		idx = idx & (vq->vq_nentries - 1);
-		dxp = &vq->vq_descx[idx];
+		dxp = &vq->vq_descx[vq->vq_avail_idx & (vq->vq_nentries - 1)];
 		dxp->cookie = (void *)cookies[i];
 		dxp->ndescs = 1;
 
@@ -708,7 +697,10 @@ virtqueue_enqueue_xmit(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 
 	head_idx = vq->vq_desc_head_idx;
 	idx = head_idx;
-	dxp = &vq->vq_descx[idx];
+	if (in_order)
+		dxp = &vq->vq_descx[vq->vq_avail_idx & (vq->vq_nentries - 1)];
+	else
+		dxp = &vq->vq_descx[idx];
 	dxp->cookie = (void *)cookie;
 	dxp->ndescs = needed;
 
