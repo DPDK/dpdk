@@ -498,6 +498,28 @@ Those TLS include *_cpuset* and *_socket_id*:
 *	*_socket_id* stores the NUMA node of the CPU set. If the CPUs in CPU set belong to different NUMA node, the *_socket_id* will be set to SOCKET_ID_ANY.
 
 
+Control Thread API
+~~~~~~~~~~~~~~~~~~
+
+It is possible to create Control Threads using the public API
+``rte_ctrl_thread_create()``.
+Those threads can be used for management/infrastructure tasks and are used
+internally by DPDK for multi process support and interrupt handling.
+
+Those threads will be scheduled on CPUs part of the original process CPU
+affinity from which the dataplane and service lcores are excluded.
+
+For example, on a 8 CPUs system, starting a dpdk application with -l 2,3
+(dataplane cores), then depending on the affinity configuration which can be
+controlled with tools like taskset (Linux) or cpuset (FreeBSD),
+
+- with no affinity configuration, the Control Threads will end up on
+  0-1,4-7 CPUs.
+- with affinity restricted to 2-4, the Control Threads will end up on
+  CPU 4.
+- with affinity restricted to 2-3, the Control Threads will end up on
+  CPU 2 (master lcore, which is the default when no CPU is available).
+
 .. _known_issue_label:
 
 Known Issues

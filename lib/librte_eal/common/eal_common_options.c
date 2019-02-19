@@ -217,6 +217,7 @@ eal_reset_internal_config(struct internal_config *internal_cfg)
 	internal_cfg->create_uio_dev = 0;
 	internal_cfg->iova_mode = RTE_IOVA_DC;
 	internal_cfg->user_mbuf_pool_ops_name = NULL;
+	CPU_ZERO(&internal_cfg->ctrl_cpuset);
 	internal_cfg->init_complete = 0;
 }
 
@@ -1359,6 +1360,31 @@ eal_auto_detect_cores(struct rte_config *cfg)
 	cfg->lcore_count -= removed;
 }
 
+static void
+compute_ctrl_threads_cpuset(struct internal_config *internal_cfg)
+{
+	rte_cpuset_t *cpuset = &internal_cfg->ctrl_cpuset;
+	rte_cpuset_t default_set;
+	unsigned int lcore_id;
+
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+		if (eal_cpu_detected(lcore_id) &&
+				rte_lcore_has_role(lcore_id, ROLE_OFF)) {
+			CPU_SET(lcore_id, cpuset);
+		}
+	}
+
+	if (pthread_getaffinity_np(pthread_self(), sizeof(rte_cpuset_t),
+				&default_set))
+		CPU_ZERO(&default_set);
+
+	RTE_CPU_AND(cpuset, cpuset, &default_set);
+
+	/* if no detected CPU is off, use master core */
+	if (!CPU_COUNT(cpuset))
+		CPU_SET(rte_get_master_lcore(), cpuset);
+}
+
 int
 eal_cleanup_config(struct internal_config *internal_cfg)
 {
@@ -1391,6 +1417,8 @@ eal_adjust_config(struct internal_config *internal_cfg)
 			return -1;
 		lcore_config[cfg->master_lcore].core_role = ROLE_RTE;
 	}
+
+	compute_ctrl_threads_cpuset(internal_cfg);
 
 	/* if no memory amounts were requested, this will result in 0 and
 	 * will be overridden later, right after eal_hugepage_info_init() */

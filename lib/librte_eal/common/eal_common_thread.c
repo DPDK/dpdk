@@ -16,6 +16,7 @@
 #include <rte_memory.h>
 #include <rte_log.h>
 
+#include "eal_internal_cfg.h"
 #include "eal_private.h"
 #include "eal_thread.h"
 
@@ -168,10 +169,9 @@ rte_ctrl_thread_create(pthread_t *thread, const char *name,
 		const pthread_attr_t *attr,
 		void *(*start_routine)(void *), void *arg)
 {
+	rte_cpuset_t *cpuset = &internal_config.ctrl_cpuset;
 	struct rte_thread_ctrl_params *params;
-	unsigned int lcore_id;
-	rte_cpuset_t cpuset;
-	int cpu_found, ret;
+	int ret;
 
 	params = malloc(sizeof(*params));
 	if (!params)
@@ -195,20 +195,7 @@ rte_ctrl_thread_create(pthread_t *thread, const char *name,
 				"Cannot set name for ctrl thread\n");
 	}
 
-	cpu_found = 0;
-	CPU_ZERO(&cpuset);
-	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
-		if (eal_cpu_detected(lcore_id) &&
-				rte_lcore_has_role(lcore_id, ROLE_OFF)) {
-			CPU_SET(lcore_id, &cpuset);
-			cpu_found = 1;
-		}
-	}
-	/* if no detected cpu is off, use master core */
-	if (!cpu_found)
-		CPU_SET(rte_get_master_lcore(), &cpuset);
-
-	ret = pthread_setaffinity_np(*thread, sizeof(cpuset), &cpuset);
+	ret = pthread_setaffinity_np(*thread, sizeof(*cpuset), cpuset);
 	if (ret)
 		goto fail;
 

@@ -13,6 +13,8 @@
 #include <rte_eal.h>
 #include <rte_pci_dev_feature_defs.h>
 
+#include "eal_thread.h"
+
 #define MAX_HUGEPAGE_SIZES 3  /**< support up to 3 page sizes */
 
 /*
@@ -73,6 +75,7 @@ struct internal_config {
 	unsigned num_hugepage_sizes;      /**< how many sizes on this system */
 	struct hugepage_info hugepage_info[MAX_HUGEPAGE_SIZES];
 	enum rte_iova_mode iova_mode ;    /**< Set IOVA mode on this system  */
+	rte_cpuset_t ctrl_cpuset;         /**< cpuset for ctrl threads */
 	volatile unsigned int init_complete;
 	/**< indicates whether EAL has completed initialization */
 };
