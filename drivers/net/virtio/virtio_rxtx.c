@@ -519,6 +519,15 @@ virtio_tso_fix_cksum(struct rte_mbuf *m)
 		(var) = (val);			\
 } while (0)
 
+#define virtqueue_clear_net_hdr(_hdr) do {		\
+	ASSIGN_UNLESS_EQUAL((_hdr)->csum_start, 0);	\
+	ASSIGN_UNLESS_EQUAL((_hdr)->csum_offset, 0);	\
+	ASSIGN_UNLESS_EQUAL((_hdr)->flags, 0);		\
+	ASSIGN_UNLESS_EQUAL((_hdr)->gso_type, 0);	\
+	ASSIGN_UNLESS_EQUAL((_hdr)->gso_size, 0);	\
+	ASSIGN_UNLESS_EQUAL((_hdr)->hdr_len, 0);	\
+} while (0)
+
 static inline void
 virtqueue_xmit_offload(struct virtio_net_hdr *hdr,
 			struct rte_mbuf *cookie,
@@ -594,18 +603,11 @@ virtqueue_enqueue_xmit_inorder(struct virtnet_tx *txvq,
 			rte_pktmbuf_prepend(cookies[i], head_size);
 		cookies[i]->pkt_len -= head_size;
 
-		/* if offload disabled, it is not zeroed below, do it now */
-		if (!vq->hw->has_tx_offload) {
-			ASSIGN_UNLESS_EQUAL(hdr->csum_start, 0);
-			ASSIGN_UNLESS_EQUAL(hdr->csum_offset, 0);
-			ASSIGN_UNLESS_EQUAL(hdr->flags, 0);
-			ASSIGN_UNLESS_EQUAL(hdr->gso_type, 0);
-			ASSIGN_UNLESS_EQUAL(hdr->gso_size, 0);
-			ASSIGN_UNLESS_EQUAL(hdr->hdr_len, 0);
-		}
-
-		virtqueue_xmit_offload(hdr, cookies[i],
-				vq->hw->has_tx_offload);
+		/* if offload disabled, hdr is not zeroed yet, do it now */
+		if (!vq->hw->has_tx_offload)
+			virtqueue_clear_net_hdr(hdr);
+		else
+			virtqueue_xmit_offload(hdr, cookies[i], true);
 
 		start_dp[idx].addr  = VIRTIO_MBUF_DATA_DMA_ADDR(cookies[i], vq);
 		start_dp[idx].len   = cookies[i]->data_len;
@@ -659,14 +661,8 @@ virtqueue_enqueue_xmit_packed(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 		cookie->pkt_len -= head_size;
 
 		/* if offload disabled, it is not zeroed below, do it now */
-		if (!vq->hw->has_tx_offload) {
-			ASSIGN_UNLESS_EQUAL(hdr->csum_start, 0);
-			ASSIGN_UNLESS_EQUAL(hdr->csum_offset, 0);
-			ASSIGN_UNLESS_EQUAL(hdr->flags, 0);
-			ASSIGN_UNLESS_EQUAL(hdr->gso_type, 0);
-			ASSIGN_UNLESS_EQUAL(hdr->gso_size, 0);
-			ASSIGN_UNLESS_EQUAL(hdr->hdr_len, 0);
-		}
+		if (!vq->hw->has_tx_offload)
+			virtqueue_clear_net_hdr(hdr);
 	} else {
 		/* setup first tx ring slot to point to header
 		 * stored in reserved region.
@@ -758,14 +754,8 @@ virtqueue_enqueue_xmit(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 		cookie->pkt_len -= head_size;
 
 		/* if offload disabled, it is not zeroed below, do it now */
-		if (!vq->hw->has_tx_offload) {
-			ASSIGN_UNLESS_EQUAL(hdr->csum_start, 0);
-			ASSIGN_UNLESS_EQUAL(hdr->csum_offset, 0);
-			ASSIGN_UNLESS_EQUAL(hdr->flags, 0);
-			ASSIGN_UNLESS_EQUAL(hdr->gso_type, 0);
-			ASSIGN_UNLESS_EQUAL(hdr->gso_size, 0);
-			ASSIGN_UNLESS_EQUAL(hdr->hdr_len, 0);
-		}
+		if (!vq->hw->has_tx_offload)
+			virtqueue_clear_net_hdr(hdr);
 	} else if (use_indirect) {
 		/* setup tx ring slot to point to indirect
 		 * descriptor list stored in reserved region.
