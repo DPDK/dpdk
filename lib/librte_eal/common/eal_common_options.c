@@ -1343,10 +1343,9 @@ eal_auto_detect_cores(struct rte_config *cfg)
 	unsigned int lcore_id;
 	unsigned int removed = 0;
 	rte_cpuset_t affinity_set;
-	pthread_t tid = pthread_self();
 
-	if (pthread_getaffinity_np(tid, sizeof(rte_cpuset_t),
-				&affinity_set) < 0)
+	if (pthread_getaffinity_np(pthread_self(), sizeof(rte_cpuset_t),
+				&affinity_set))
 		CPU_ZERO(&affinity_set);
 
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
