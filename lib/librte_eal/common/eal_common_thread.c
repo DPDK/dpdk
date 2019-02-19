@@ -209,7 +209,7 @@ rte_ctrl_thread_create(pthread_t *thread, const char *name,
 		CPU_SET(rte_get_master_lcore(), &cpuset);
 
 	ret = pthread_setaffinity_np(*thread, sizeof(cpuset), &cpuset);
-	if (ret < 0)
+	if (ret)
 		goto fail;
 
 	ret = pthread_barrier_wait(&params->configured);
