@@ -51,7 +51,7 @@ struct igu_ctrl_reg {
 #define IGU_CTRL_REG_PXP_ADDR_SHIFT	16
 #define IGU_CTRL_REG_RESERVED_MASK	0x1
 #define IGU_CTRL_REG_RESERVED_SHIFT	28
-#define IGU_CTRL_REG_TYPE_MASK		0x1 /* use enum igu_ctrl_cmd */
+#define IGU_CTRL_REG_TYPE_MASK		0x1U /* use enum igu_ctrl_cmd */
 #define IGU_CTRL_REG_TYPE_SHIFT		31
 };
 

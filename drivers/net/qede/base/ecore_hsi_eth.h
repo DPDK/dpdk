@@ -2420,7 +2420,7 @@ struct gft_ram_line {
 #define GFT_RAM_LINE_TCP_FLAG_NS_SHIFT             29
 #define GFT_RAM_LINE_DST_PORT_MASK                 0x1
 #define GFT_RAM_LINE_DST_PORT_SHIFT                30
-#define GFT_RAM_LINE_SRC_PORT_MASK                 0x1
+#define GFT_RAM_LINE_SRC_PORT_MASK                 0x1U
 #define GFT_RAM_LINE_SRC_PORT_SHIFT                31
 	__le32 hi;
 #define GFT_RAM_LINE_DSCP_MASK                     0x1

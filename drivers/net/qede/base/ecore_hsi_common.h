@@ -2250,7 +2250,7 @@ struct igu_cleanup {
 #define IGU_CLEANUP_CLEANUP_TYPE_MASK  0x7
 #define IGU_CLEANUP_CLEANUP_TYPE_SHIFT 28
 /* must always be set (use enum command_type_bit) */
-#define IGU_CLEANUP_COMMAND_TYPE_MASK  0x1
+#define IGU_CLEANUP_COMMAND_TYPE_MASK  0x1U
 #define IGU_CLEANUP_COMMAND_TYPE_SHIFT 31
 	__le32 reserved1;
 };

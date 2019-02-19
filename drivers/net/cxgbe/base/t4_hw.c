@@ -4246,7 +4246,7 @@ int t4_free_raw_mac_filt(struct adapter *adap, unsigned int viid,
 				   V_FW_CMD_EXEC(0) |
 				   V_FW_VI_MAC_CMD_VIID(viid));
 	raw = V_FW_VI_MAC_CMD_ENTRY_TYPE(FW_VI_MAC_TYPE_RAW);
-	c.freemacs_to_len16 = cpu_to_be32(V_FW_VI_MAC_CMD_FREEMACS(0) |
+	c.freemacs_to_len16 = cpu_to_be32(V_FW_VI_MAC_CMD_FREEMACS(0U) |
 					  raw |
 					  V_FW_CMD_LEN16(1));
 

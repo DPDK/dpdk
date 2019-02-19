@@ -1351,9 +1351,9 @@ do {									\
 
 #define SET_BITS_LE(_var, _index, _width, _val)				\
 do {									\
-	(_var) &= rte_cpu_to_le_32(~(((0x1 << (_width)) - 1) << (_index)));\
+	(_var) &= rte_cpu_to_le_32(~(((0x1U << (_width)) - 1) << (_index)));\
 	(_var) |= rte_cpu_to_le_32((((_val) &				\
-			      ((0x1 << (_width)) - 1)) << (_index)));	\
+			      ((0x1U << (_width)) - 1)) << (_index)));	\
 } while (0)
 
 /* Bit setting and getting macros based on register fields

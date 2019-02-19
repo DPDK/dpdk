@@ -106,7 +106,7 @@ rte_softrss_be(const __u32 *input_tuple, const uint8_t *rss_key,
 	for (j = 0; j < input_len; j++) {
 #pragma unroll
 		for (i = 0; i < 32; i++) {
-			if (input_tuple[j] & (1 << (31 - i))) {
+			if (input_tuple[j] & (1U << (31 - i))) {
 				hash ^= ((const __u32 *)def_rss_key)[j] << i |
 				(__u32)((uint64_t)
 				(((const __u32 *)def_rss_key)[j + 1])

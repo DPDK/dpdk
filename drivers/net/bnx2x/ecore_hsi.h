@@ -3545,7 +3545,7 @@ struct igu_regular
 #define IGU_REGULAR_CLEANUP_TYPE_SHIFT 28
 #define IGU_REGULAR_CLEANUP_SET (0x1<<30) /* BitField sb_id_and_flags	 */
 #define IGU_REGULAR_CLEANUP_SET_SHIFT 30
-#define IGU_REGULAR_BCLEANUP (0x1<<31) /* BitField sb_id_and_flags	 */
+#define IGU_REGULAR_BCLEANUP (0x1U<<31) /* BitField sb_id_and_flags	 */
 #define IGU_REGULAR_BCLEANUP_SHIFT 31
 	uint32_t reserved_2;
 };
