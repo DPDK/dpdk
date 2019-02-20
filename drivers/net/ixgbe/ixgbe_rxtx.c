@@ -4879,13 +4879,18 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 		hlreg0 &= ~IXGBE_HLREG0_JUMBOEN;
 
 	/*
-	 * If loopback mode is configured for 82599, set LPBK bit.
+	 * If loopback mode is configured, set LPBK bit.
 	 */
-	if (hw->mac.type == ixgbe_mac_82599EB &&
-			dev->data->dev_conf.lpbk_mode == IXGBE_LPBK_82599_TX_RX)
+	if (dev->data->dev_conf.lpbk_mode != 0) {
+		rc = ixgbe_check_supported_loopback_mode(dev);
+		if (rc < 0) {
+			PMD_INIT_LOG(ERR, "Unsupported loopback mode");
+			return rc;
+		}
 		hlreg0 |= IXGBE_HLREG0_LPBK;
-	else
+	} else {
 		hlreg0 &= ~IXGBE_HLREG0_LPBK;
+	}
 
 	IXGBE_WRITE_REG(hw, IXGBE_HLREG0, hlreg0);
 
@@ -5062,6 +5067,21 @@ ixgbe_dev_tx_init(struct rte_eth_dev *dev)
 }
 
 /*
+ * Check if requested loopback mode is supported
+ */
+int
+ixgbe_check_supported_loopback_mode(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (dev->data->dev_conf.lpbk_mode == IXGBE_LPBK_82599_TX_RX)
+		if (hw->mac.type == ixgbe_mac_82599EB)
+			return 0;
+
+	return -ENOTSUP;
+}
+
+/*
  * Set up link for 82599 loopback mode Tx->Rx.
  */
 static inline void __attribute__((cold))
@@ -5148,10 +5168,11 @@ ixgbe_dev_rxtx_start(struct rte_eth_dev *dev)
 	rxctrl |= IXGBE_RXCTRL_RXEN;
 	hw->mac.ops.enable_rx_dma(hw, rxctrl);
 
-	/* If loopback mode is enabled for 82599, set up the link accordingly */
-	if (hw->mac.type == ixgbe_mac_82599EB &&
-			dev->data->dev_conf.lpbk_mode == IXGBE_LPBK_82599_TX_RX)
-		ixgbe_setup_loopback_link_82599(hw);
+	/* If loopback mode is enabled, set up the link accordingly */
+	if (dev->data->dev_conf.lpbk_mode != 0) {
+		if (hw->mac.type == ixgbe_mac_82599EB)
+			ixgbe_setup_loopback_link_82599(hw);
+	}
 
 #ifdef RTE_LIBRTE_SECURITY
 	if ((dev->data->dev_conf.rxmode.offloads &

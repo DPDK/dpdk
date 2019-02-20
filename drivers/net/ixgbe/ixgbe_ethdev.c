@@ -2652,10 +2652,16 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 		goto error;
 	}
 
-	/* Skip link setup if loopback mode is enabled for 82599. */
-	if (hw->mac.type == ixgbe_mac_82599EB &&
-			dev->data->dev_conf.lpbk_mode == IXGBE_LPBK_82599_TX_RX)
-		goto skip_link_setup;
+	/* Skip link setup if loopback mode is enabled. */
+	if (dev->data->dev_conf.lpbk_mode != 0) {
+		err = ixgbe_check_supported_loopback_mode(dev);
+		if (err < 0) {
+			PMD_INIT_LOG(ERR, "Unsupported loopback mode");
+			goto error;
+		} else {
+			goto skip_link_setup;
+		}
+	}
 
 	if (ixgbe_is_sfp(hw) && hw->phy.multispeed_fiber) {
 		err = hw->mac.ops.setup_sfp(hw);
