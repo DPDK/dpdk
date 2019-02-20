@@ -493,16 +493,21 @@ main_loop(__rte_unused void *args)
 
 	for (i = 0; i < conf->nb_ports; i++) {
 		portid = conf->portlist[i];
-		int nb_free = pkt_per_port;
+		int nb_free = 0;
+		uint64_t timeout = 10000;
 		do { /* dry out */
 			nb_rx = rte_eth_rx_burst(portid, 0,
 						 pkts_burst, MAX_PKT_BURST);
 			nb_tx = 0;
 			while (nb_tx < nb_rx)
 				rte_pktmbuf_free(pkts_burst[nb_tx++]);
-			nb_free -= nb_rx;
-		} while (nb_free != 0);
-		printf("free %d mbuf left in port %u\n", pkt_per_port, portid);
+			nb_free += nb_rx;
+
+			if (unlikely(nb_rx == 0))
+				timeout--;
+		} while (nb_free != pkt_per_port && timeout != 0);
+		printf("free %d (expected %d) mbuf left in port %u\n", nb_free,
+		       pkt_per_port, portid);
 	}
 
 	if (count == 0)
