@@ -3168,12 +3168,44 @@ ixgbe_dev_tx_descriptor_status(void *tx_queue, uint16_t offset)
 	return RTE_ETH_TX_DESC_FULL;
 }
 
+/*
+ * Set up link loopback for X540/X550 mode Tx->Rx.
+ */
+static inline void __attribute__((cold))
+ixgbe_setup_loopback_link_x540_x550(struct ixgbe_hw *hw, bool enable)
+{
+	uint32_t macc;
+	PMD_INIT_FUNC_TRACE();
+
+	u16 autoneg_reg = IXGBE_MII_AUTONEG_REG;
+
+	hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_CONTROL,
+			     IXGBE_MDIO_AUTO_NEG_DEV_TYPE, &autoneg_reg);
+	macc = IXGBE_READ_REG(hw, IXGBE_MACC);
+
+	if (enable) {
+		/* datasheet 15.2.1: disable AUTONEG (PHY Bit 7.0.C) */
+		autoneg_reg |= IXGBE_MII_AUTONEG_ENABLE;
+		/* datasheet 15.2.1: MACC.FLU = 1 (force link up) */
+		macc |= IXGBE_MACC_FLU;
+	} else {
+		autoneg_reg &= ~IXGBE_MII_AUTONEG_ENABLE;
+		macc &= ~IXGBE_MACC_FLU;
+	}
+
+	hw->phy.ops.write_reg(hw, IXGBE_MDIO_AUTO_NEG_CONTROL,
+			      IXGBE_MDIO_AUTO_NEG_DEV_TYPE, autoneg_reg);
+
+	IXGBE_WRITE_REG(hw, IXGBE_MACC, macc);
+}
+
 void __attribute__((cold))
 ixgbe_dev_clear_queues(struct rte_eth_dev *dev)
 {
 	unsigned i;
 	struct ixgbe_adapter *adapter =
 		(struct ixgbe_adapter *)dev->data->dev_private;
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -3193,6 +3225,14 @@ ixgbe_dev_clear_queues(struct rte_eth_dev *dev)
 			ixgbe_rx_queue_release_mbufs(rxq);
 			ixgbe_reset_rx_queue(adapter, rxq);
 		}
+	}
+	/* If loopback mode was enabled, reconfigure the link accordingly */
+	if (dev->data->dev_conf.lpbk_mode != 0) {
+		if (hw->mac.type == ixgbe_mac_X540 ||
+		     hw->mac.type == ixgbe_mac_X550 ||
+		     hw->mac.type == ixgbe_mac_X550EM_x ||
+		     hw->mac.type == ixgbe_mac_X550EM_a)
+			ixgbe_setup_loopback_link_x540_x550(hw, false);
 	}
 }
 
@@ -5074,8 +5114,12 @@ ixgbe_check_supported_loopback_mode(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	if (dev->data->dev_conf.lpbk_mode == IXGBE_LPBK_82599_TX_RX)
-		if (hw->mac.type == ixgbe_mac_82599EB)
+	if (dev->data->dev_conf.lpbk_mode == IXGBE_LPBK_TX_RX)
+		if (hw->mac.type == ixgbe_mac_82599EB ||
+		     hw->mac.type == ixgbe_mac_X540 ||
+		     hw->mac.type == ixgbe_mac_X550 ||
+		     hw->mac.type == ixgbe_mac_X550EM_x ||
+		     hw->mac.type == ixgbe_mac_X550EM_a)
 			return 0;
 
 	return -ENOTSUP;
@@ -5172,6 +5216,11 @@ ixgbe_dev_rxtx_start(struct rte_eth_dev *dev)
 	if (dev->data->dev_conf.lpbk_mode != 0) {
 		if (hw->mac.type == ixgbe_mac_82599EB)
 			ixgbe_setup_loopback_link_82599(hw);
+		else if (hw->mac.type == ixgbe_mac_X540 ||
+		     hw->mac.type == ixgbe_mac_X550 ||
+		     hw->mac.type == ixgbe_mac_X550EM_x ||
+		     hw->mac.type == ixgbe_mac_X550EM_a)
+			ixgbe_setup_loopback_link_x540_x550(hw, true);
 	}
 
 #ifdef RTE_LIBRTE_SECURITY
