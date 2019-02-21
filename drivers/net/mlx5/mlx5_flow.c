@@ -350,6 +350,7 @@ mlx5_flow_discover_priorities(struct rte_eth_dev *dev)
 		claim_zero(mlx5_glue->destroy_flow(flow));
 		priority = vprio[i];
 	}
+	mlx5_hrxq_drop_release(dev);
 	switch (priority) {
 	case 8:
 		priority = RTE_DIM(priority_map_3);
@@ -361,10 +362,9 @@ mlx5_flow_discover_priorities(struct rte_eth_dev *dev)
 		rte_errno = ENOTSUP;
 		DRV_LOG(ERR,
 			"port %u verbs maximum priority: %d expected 8/16",
-			dev->data->port_id, vprio[i]);
+			dev->data->port_id, priority);
 		return -rte_errno;
 	}
-	mlx5_hrxq_drop_release(dev);
 	DRV_LOG(INFO, "port %u flow maximum priority: %d",
 		dev->data->port_id, priority);
 	return priority;
