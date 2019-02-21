@@ -4201,6 +4201,9 @@ static uint16_t bnx2x_update_dsb_idx(struct bnx2x_softc *sc)
 	struct host_sp_status_block *def_sb = sc->def_sb;
 	uint16_t rc = 0;
 
+	if (!def_sb)
+		return 0;
+
 	mb();			/* status block is written to by the chip */
 
 	if (sc->def_att_idx != def_sb->atten_status_block.attn_bits_index) {
@@ -4524,6 +4527,10 @@ static void bnx2x_handle_fp_tq(struct bnx2x_fastpath *fp, int scan_fp)
 {
 	struct bnx2x_softc *sc = fp->sc;
 	uint8_t more_rx = FALSE;
+
+	/* Make sure FP is initialized */
+	if (!fp->sb_running_index)
+		return;
 
 	PMD_DEBUG_PERIODIC_LOG(DEBUG, sc,
 			       "---> FP TASK QUEUE (%d) <--", fp->index);
