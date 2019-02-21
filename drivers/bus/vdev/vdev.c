@@ -143,6 +143,9 @@ vdev_probe_all_drivers(struct rte_vdev_device *dev)
 	struct rte_vdev_driver *driver;
 	int ret;
 
+	if (rte_dev_is_probed(&dev->device))
+		return -EEXIST;
+
 	name = rte_vdev_device_name(dev);
 	VDEV_LOG(DEBUG, "Search driver to probe device %s", name);
 
@@ -480,7 +483,7 @@ static int
 vdev_probe(void)
 {
 	struct rte_vdev_device *dev;
-	int ret = 0;
+	int r, ret = 0;
 
 	/* call the init function for each virtual device */
 	TAILQ_FOREACH(dev, &vdev_device_list, next) {
@@ -489,10 +492,10 @@ vdev_probe(void)
 		 * we call each driver probe.
 		 */
 
-		if (rte_dev_is_probed(&dev->device))
-			continue;
-
-		if (vdev_probe_all_drivers(dev)) {
+		r = vdev_probe_all_drivers(dev);
+		if (r != 0) {
+			if (r == -EEXIST)
+				continue;
 			VDEV_LOG(ERR, "failed to initialize %s device",
 				rte_vdev_device_name(dev));
 			ret = -1;
