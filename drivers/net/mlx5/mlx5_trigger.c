@@ -23,7 +23,7 @@
 static void
 mlx5_txq_stop(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int i;
 
 	for (i = 0; i != priv->txqs_n; ++i)
@@ -42,7 +42,7 @@ mlx5_txq_stop(struct rte_eth_dev *dev)
 static int
 mlx5_txq_start(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int i;
 	int ret;
 
@@ -83,7 +83,7 @@ error:
 static void
 mlx5_rxq_stop(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int i;
 
 	for (i = 0; i != priv->rxqs_n; ++i)
@@ -102,7 +102,7 @@ mlx5_rxq_stop(struct rte_eth_dev *dev)
 static int
 mlx5_rxq_start(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int i;
 	int ret = 0;
 
@@ -157,7 +157,7 @@ error:
 int
 mlx5_dev_start(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	int ret;
 
 	DRV_LOG(DEBUG, "port %u starting device", dev->data->port_id);
@@ -221,7 +221,7 @@ error:
 void
 mlx5_dev_stop(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 
 	dev->data->dev_started = 0;
 	/* Prevent crashes when queues are still in use. */
@@ -252,7 +252,7 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 int
 mlx5_traffic_enable(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow_item_eth bcast = {
 		.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
 	};
@@ -379,7 +379,7 @@ error:
 void
 mlx5_traffic_disable(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 
 	mlx5_flow_list_flush(dev, &priv->ctrl_flows);
 }

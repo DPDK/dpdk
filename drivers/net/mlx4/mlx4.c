@@ -81,7 +81,7 @@ static void mlx4_dev_stop(struct rte_eth_dev *dev);
 static int
 mlx4_dev_configure(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx4_priv *priv = dev->data->dev_private;
 	struct rte_flow_error error;
 	int ret;
 
@@ -117,7 +117,7 @@ exit:
 static int
 mlx4_dev_start(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx4_priv *priv = dev->data->dev_private;
 	struct rte_flow_error error;
 	int ret;
 
@@ -169,7 +169,7 @@ err:
 static void
 mlx4_dev_stop(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx4_priv *priv = dev->data->dev_private;
 
 	if (!priv->started)
 		return;
@@ -194,7 +194,7 @@ mlx4_dev_stop(struct rte_eth_dev *dev)
 static void
 mlx4_dev_close(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx4_priv *priv = dev->data->dev_private;
 	unsigned int i;
 
 	DEBUG("%p: closing device \"%s\"",
@@ -600,7 +600,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		struct ibv_context *ctx = NULL;
 		struct ibv_port_attr port_attr;
 		struct ibv_pd *pd = NULL;
-		struct priv *priv = NULL;
+		struct mlx4_priv *priv = NULL;
 		struct rte_eth_dev *eth_dev = NULL;
 		struct ether_addr mac;
 

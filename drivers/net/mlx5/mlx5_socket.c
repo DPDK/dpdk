@@ -26,7 +26,7 @@
 int
 mlx5_socket_init(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct sockaddr_un sun = {
 		.sun_family = AF_UNIX,
 	};
@@ -98,7 +98,7 @@ error:
 void
 mlx5_socket_uninit(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 
 	MKSTR(path, "/var/tmp/%s_%d", MLX5_DRIVER_NAME, priv->primary_socket);
 	claim_zero(close(priv->primary_socket));
@@ -115,7 +115,7 @@ mlx5_socket_uninit(struct rte_eth_dev *dev)
 void
 mlx5_socket_handle(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	int conn_sock;
 	int ret = 0;
 	struct cmsghdr *cmsg = NULL;
@@ -208,7 +208,7 @@ error:
 int
 mlx5_socket_connect(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct sockaddr_un sun = {
 		.sun_family = AF_UNIX,
 	};

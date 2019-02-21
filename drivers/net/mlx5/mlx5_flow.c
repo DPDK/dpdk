@@ -387,7 +387,7 @@ uint32_t mlx5_flow_adjust_priority(struct rte_eth_dev *dev, int32_t priority,
 				   uint32_t subpriority)
 {
 	uint32_t res = 0;
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 
 	switch (priv->config.flow_prio) {
 	case RTE_DIM(priority_map_3):
@@ -536,7 +536,7 @@ flow_rxq_tunnel_ptype_update(struct mlx5_rxq_ctrl *rxq_ctrl)
 static void
 flow_drv_rxq_flags_set(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow *flow = dev_flow->flow;
 	const int mark = !!(flow->actions &
 			    (MLX5_FLOW_ACTION_FLAG | MLX5_FLOW_ACTION_MARK));
@@ -599,7 +599,7 @@ flow_rxq_flags_set(struct rte_eth_dev *dev, struct rte_flow *flow)
 static void
 flow_drv_rxq_flags_trim(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow *flow = dev_flow->flow;
 	const int mark = !!(flow->actions &
 			    (MLX5_FLOW_ACTION_FLAG | MLX5_FLOW_ACTION_MARK));
@@ -661,7 +661,7 @@ flow_rxq_flags_trim(struct rte_eth_dev *dev, struct rte_flow *flow)
 static void
 flow_rxq_flags_clear(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int i;
 
 	for (i = 0; i != priv->rxqs_n; ++i) {
@@ -838,7 +838,7 @@ mlx5_flow_validate_action_queue(const struct rte_flow_action *action,
 				const struct rte_flow_attr *attr,
 				struct rte_flow_error *error)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_action_queue *queue = action->conf;
 
 	if (action_flags & MLX5_FLOW_FATE_ACTIONS)
@@ -892,7 +892,7 @@ mlx5_flow_validate_action_rss(const struct rte_flow_action *action,
 			      const struct rte_flow_attr *attr,
 			      struct rte_flow_error *error)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_action_rss *rss = action->conf;
 	unsigned int i;
 
@@ -1010,7 +1010,7 @@ mlx5_flow_validate_attributes(struct rte_eth_dev *dev,
 			      const struct rte_flow_attr *attributes,
 			      struct rte_flow_error *error)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	uint32_t priority_max = priv->config.flow_prio - 1;
 
 	if (attributes->group)
@@ -1484,7 +1484,7 @@ mlx5_flow_validate_item_vxlan_gpe(const struct rte_flow_item *item,
 				  struct rte_eth_dev *dev,
 				  struct rte_flow_error *error)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_item_vxlan_gpe *spec = item->spec;
 	const struct rte_flow_item_vxlan_gpe *mask = item->mask;
 	int ret;
@@ -1638,7 +1638,7 @@ mlx5_flow_validate_item_mpls(struct rte_eth_dev *dev __rte_unused,
 {
 #ifdef HAVE_IBV_DEVICE_MPLS_SUPPORT
 	const struct rte_flow_item_mpls *mask = item->mask;
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	int ret;
 
 	if (!priv->config.mpls_en)
@@ -1769,7 +1769,7 @@ const struct mlx5_flow_driver_ops mlx5_flow_null_drv_ops = {
 static enum mlx5_flow_drv_type
 flow_get_drv_type(struct rte_eth_dev *dev, const struct rte_flow_attr *attr)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	enum mlx5_flow_drv_type type = MLX5_FLOW_TYPE_MAX;
 
 	if (attr->transfer)
@@ -2143,8 +2143,9 @@ mlx5_flow_create(struct rte_eth_dev *dev,
 		 const struct rte_flow_action actions[],
 		 struct rte_flow_error *error)
 {
-	return flow_list_create(dev,
-				&((struct priv *)dev->data->dev_private)->flows,
+	struct mlx5_priv *priv = (struct mlx5_priv *)dev->data->dev_private;
+
+	return flow_list_create(dev, &priv->flows,
 				attr, items, actions, error);
 }
 
@@ -2254,7 +2255,7 @@ error:
 int
 mlx5_flow_verify(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow *flow;
 	int ret = 0;
 
@@ -2290,7 +2291,7 @@ mlx5_ctrl_flow_vlan(struct rte_eth_dev *dev,
 		    struct rte_flow_item_vlan *vlan_spec,
 		    struct rte_flow_item_vlan *vlan_mask)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_attr attr = {
 		.ingress = 1,
 		.priority = MLX5_FLOW_PRIO_RSVD,
@@ -2380,7 +2381,7 @@ mlx5_flow_destroy(struct rte_eth_dev *dev,
 		  struct rte_flow *flow,
 		  struct rte_flow_error *error __rte_unused)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 
 	flow_list_destroy(dev, &priv->flows, flow);
 	return 0;
@@ -2396,7 +2397,7 @@ int
 mlx5_flow_flush(struct rte_eth_dev *dev,
 		struct rte_flow_error *error __rte_unused)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 
 	mlx5_flow_list_flush(dev, &priv->flows);
 	return 0;
@@ -2413,7 +2414,7 @@ mlx5_flow_isolate(struct rte_eth_dev *dev,
 		  int enable,
 		  struct rte_flow_error *error)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 
 	if (dev->data->dev_started) {
 		rte_flow_error_set(error, EBUSY,
@@ -2491,7 +2492,7 @@ flow_fdir_filter_convert(struct rte_eth_dev *dev,
 			 const struct rte_eth_fdir_filter *fdir_filter,
 			 struct mlx5_fdir *attributes)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_eth_fdir_input *input = &fdir_filter->input;
 	const struct rte_eth_fdir_masks *mask =
 		&dev->data->dev_conf.fdir_conf.mask;
@@ -2708,7 +2709,7 @@ flow_fdir_cmp(const struct mlx5_fdir *f1, const struct mlx5_fdir *f2)
 static struct rte_flow *
 flow_fdir_filter_lookup(struct rte_eth_dev *dev, struct mlx5_fdir *fdir_flow)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow *flow = NULL;
 
 	assert(fdir_flow);
@@ -2737,7 +2738,7 @@ static int
 flow_fdir_filter_add(struct rte_eth_dev *dev,
 		     const struct rte_eth_fdir_filter *fdir_filter)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_fdir *fdir_flow;
 	struct rte_flow *flow;
 	int ret;
@@ -2784,7 +2785,7 @@ static int
 flow_fdir_filter_delete(struct rte_eth_dev *dev,
 			const struct rte_eth_fdir_filter *fdir_filter)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow *flow;
 	struct mlx5_fdir fdir_flow = {
 		.attr.group = 0,
@@ -2837,7 +2838,7 @@ flow_fdir_filter_update(struct rte_eth_dev *dev,
 static void
 flow_fdir_filter_flush(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 
 	mlx5_flow_list_flush(dev, &priv->flows);
 }

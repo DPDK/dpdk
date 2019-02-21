@@ -273,7 +273,7 @@ mlx5_check_raw_vec_tx_support(struct rte_eth_dev *dev)
 int __attribute__((cold))
 mlx5_check_vec_tx_support(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	uint64_t offloads = dev->data->dev_conf.txmode.offloads;
 
 	if (!priv->config.tx_vec_en ||
@@ -318,7 +318,7 @@ mlx5_rxq_check_vec_support(struct mlx5_rxq_data *rxq)
 int __attribute__((cold))
 mlx5_check_vec_rx_support(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	uint16_t i;
 
 	if (!priv->config.rx_vec_en)

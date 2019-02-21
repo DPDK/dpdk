@@ -361,7 +361,7 @@ static int
 mlx5_nl_mac_addr_list(struct rte_eth_dev *dev, struct ether_addr (*mac)[],
 		      int *mac_n)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int iface_idx = mlx5_ifindex(dev);
 	struct {
 		struct nlmsghdr	hdr;
@@ -420,7 +420,7 @@ static int
 mlx5_nl_mac_addr_modify(struct rte_eth_dev *dev, struct ether_addr *mac,
 			int add)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int iface_idx = mlx5_ifindex(dev);
 	struct {
 		struct nlmsghdr hdr;
@@ -492,7 +492,7 @@ int
 mlx5_nl_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac,
 		     uint32_t index)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	int ret;
 
 	ret = mlx5_nl_mac_addr_modify(dev, mac, 1);
@@ -520,7 +520,7 @@ int
 mlx5_nl_mac_addr_remove(struct rte_eth_dev *dev, struct ether_addr *mac,
 			uint32_t index)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 
 	BITFIELD_RESET(priv->mac_own, index);
 	return mlx5_nl_mac_addr_modify(dev, mac, 0);
@@ -572,7 +572,7 @@ mlx5_nl_mac_addr_sync(struct rte_eth_dev *dev)
 void
 mlx5_nl_mac_addr_flush(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	int i;
 
 	for (i = MLX5_MAX_MAC_ADDRESSES - 1; i >= 0; --i) {
@@ -599,7 +599,7 @@ mlx5_nl_mac_addr_flush(struct rte_eth_dev *dev)
 static int
 mlx5_nl_device_flags(struct rte_eth_dev *dev, uint32_t flags, int enable)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int iface_idx = mlx5_ifindex(dev);
 	struct {
 		struct nlmsghdr hdr;

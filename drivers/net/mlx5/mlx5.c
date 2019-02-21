@@ -200,7 +200,7 @@ mlx5_getenv_int(const char *name)
 static void *
 mlx5_alloc_verbs_buf(size_t size, void *data)
 {
-	struct priv *priv = data;
+	struct mlx5_priv *priv = data;
 	void *ret;
 	size_t alignment = sysconf(_SC_PAGESIZE);
 	unsigned int socket = SOCKET_ID_ANY;
@@ -248,7 +248,7 @@ mlx5_free_verbs_buf(void *ptr, void *data __rte_unused)
 static void
 mlx5_dev_close(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int i;
 	int ret;
 
@@ -335,7 +335,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 
 		i = RTE_MIN(mlx5_dev_to_port_id(dev->device, port_id, i), i);
 		while (i--) {
-			struct priv *opriv =
+			struct mlx5_priv *opriv =
 				rte_eth_devices[port_id[i]].data->dev_private;
 
 			if (!opriv ||
@@ -634,7 +634,7 @@ find_lower_va_bound(const struct rte_memseg_list *msl,
 static int
 mlx5_uar_init_primary(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	void *addr = (void *)0;
 
 	if (uar_base) { /* UAR address space mapped. */
@@ -680,7 +680,7 @@ mlx5_uar_init_primary(struct rte_eth_dev *dev)
 static int
 mlx5_uar_init_secondary(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	void *addr;
 
 	assert(priv->uar_base);
@@ -743,7 +743,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	struct ibv_pd *pd = NULL;
 	struct mlx5dv_context dv_attr = { .comp_mask = 0 };
 	struct rte_eth_dev *eth_dev = NULL;
-	struct priv *priv = NULL;
+	struct mlx5_priv *priv = NULL;
 	int err = 0;
 	unsigned int hw_padding = 0;
 	unsigned int mps;
@@ -1011,7 +1011,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 
 		i = RTE_MIN(mlx5_dev_to_port_id(dpdk_dev, port_id, i), i);
 		while (i--) {
-			const struct priv *opriv =
+			const struct mlx5_priv *opriv =
 				rte_eth_devices[port_id[i]].data->dev_private;
 
 			if (!opriv ||

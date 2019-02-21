@@ -87,7 +87,7 @@ mlx4_rss_hash_key_default[MLX4_RSS_HASH_KEY_SIZE] = {
  *   Pointer to RSS context on success, NULL otherwise and rte_errno is set.
  */
 struct mlx4_rss *
-mlx4_rss_get(struct priv *priv, uint64_t fields,
+mlx4_rss_get(struct mlx4_priv *priv, uint64_t fields,
 	     const uint8_t key[MLX4_RSS_HASH_KEY_SIZE],
 	     uint16_t queues, const uint16_t queue_id[])
 {
@@ -175,7 +175,7 @@ mlx4_rss_attach(struct mlx4_rss *rss)
 	}
 
 	struct ibv_wq *ind_tbl[rss->queues];
-	struct priv *priv = rss->priv;
+	struct mlx4_priv *priv = rss->priv;
 	const char *msg;
 	unsigned int i = 0;
 	int ret;
@@ -290,7 +290,7 @@ error:
 void
 mlx4_rss_detach(struct mlx4_rss *rss)
 {
-	struct priv *priv = rss->priv;
+	struct mlx4_priv *priv = rss->priv;
 	unsigned int i;
 
 	assert(rss->refcnt);
@@ -327,7 +327,7 @@ mlx4_rss_detach(struct mlx4_rss *rss)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx4_rss_init(struct priv *priv)
+mlx4_rss_init(struct mlx4_priv *priv)
 {
 	struct rte_eth_dev *dev = priv->dev;
 	uint8_t log2_range = rte_log2_u32(dev->data->nb_rx_queues);
@@ -451,7 +451,7 @@ error:
  *   Pointer to private structure.
  */
 void
-mlx4_rss_deinit(struct priv *priv)
+mlx4_rss_deinit(struct mlx4_priv *priv)
 {
 	unsigned int i;
 
@@ -493,7 +493,7 @@ mlx4_rxq_attach(struct rxq *rxq)
 		return 0;
 	}
 
-	struct priv *priv = rxq->priv;
+	struct mlx4_priv *priv = rxq->priv;
 	struct rte_eth_dev *dev = priv->dev;
 	const uint32_t elts_n = 1 << rxq->elts_n;
 	const uint32_t sges_n = 1 << rxq->sges_n;
@@ -675,7 +675,7 @@ mlx4_rxq_detach(struct rxq *rxq)
  *   Supported Tx offloads.
  */
 uint64_t
-mlx4_get_rx_queue_offloads(struct priv *priv)
+mlx4_get_rx_queue_offloads(struct mlx4_priv *priv)
 {
 	uint64_t offloads = DEV_RX_OFFLOAD_SCATTER |
 			    DEV_RX_OFFLOAD_KEEP_CRC |
@@ -696,7 +696,7 @@ mlx4_get_rx_queue_offloads(struct priv *priv)
  *   Supported Rx offloads.
  */
 uint64_t
-mlx4_get_rx_port_offloads(struct priv *priv)
+mlx4_get_rx_port_offloads(struct mlx4_priv *priv)
 {
 	uint64_t offloads = DEV_RX_OFFLOAD_VLAN_FILTER;
 
@@ -728,7 +728,7 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		    unsigned int socket, const struct rte_eth_rxconf *conf,
 		    struct rte_mempool *mp)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx4_priv *priv = dev->data->dev_private;
 	uint32_t mb_len = rte_pktmbuf_data_room_size(mp);
 	struct rte_mbuf *(*elts)[rte_align32pow2(desc)];
 	struct rxq *rxq;
@@ -911,7 +911,7 @@ void
 mlx4_rx_queue_release(void *dpdk_rxq)
 {
 	struct rxq *rxq = (struct rxq *)dpdk_rxq;
-	struct priv *priv;
+	struct mlx4_priv *priv;
 	unsigned int i;
 
 	if (rxq == NULL)

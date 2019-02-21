@@ -64,7 +64,7 @@ struct mlx5_switch_info {
 	uint64_t switch_id; /**< Switch identifier. */
 };
 
-LIST_HEAD(mlx5_dev_list, priv);
+LIST_HEAD(mlx5_dev_list, mlx5_priv);
 
 /* Shared memory between primary and secondary processes. */
 struct mlx5_shared_data {
@@ -186,8 +186,9 @@ struct mlx5_drop {
 
 struct mlx5_flow_tcf_context;
 
-struct priv {
-	LIST_ENTRY(priv) mem_event_cb; /* Called by memory event callback. */
+struct mlx5_priv {
+	LIST_ENTRY(mlx5_priv) mem_event_cb;
+	/**< Called by memory event callback. */
 	struct rte_eth_dev_data *dev_data;  /* Pointer to device data. */
 	struct ibv_context *ctx; /* Verbs context. */
 	struct ibv_device_attr_ex device_attr; /* Device properties. */

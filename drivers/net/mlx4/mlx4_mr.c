@@ -348,7 +348,7 @@ mr_find_next_chunk(struct mlx4_mr *mr, struct mlx4_mr_cache *entry,
 static int
 mr_insert_dev_cache(struct rte_eth_dev *dev, struct mlx4_mr *mr)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx4_priv *priv = dev->data->dev_private;
 	unsigned int n;
 
 	DEBUG("port %u inserting MR(%p) to global cache",
@@ -389,7 +389,7 @@ static struct mlx4_mr *
 mr_lookup_dev_list(struct rte_eth_dev *dev, struct mlx4_mr_cache *entry,
 		   uintptr_t addr)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx4_priv *priv = dev->data->dev_private;
 	struct mlx4_mr *mr;
 
 	/* Iterate all the existing MRs. */
@@ -430,7 +430,7 @@ static uint32_t
 mr_lookup_dev(struct rte_eth_dev *dev, struct mlx4_mr_cache *entry,
 	      uintptr_t addr)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx4_priv *priv = dev->data->dev_private;
 	uint16_t idx;
 	uint32_t lkey = UINT32_MAX;
 	struct mlx4_mr *mr;
@@ -485,7 +485,7 @@ mr_free(struct mlx4_mr *mr)
 static void
 mlx4_mr_garbage_collect(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx4_priv *priv = dev->data->dev_private;
 	struct mlx4_mr *mr_next;
 	struct mlx4_mr_list free_list = LIST_HEAD_INITIALIZER(free_list);
 
@@ -543,7 +543,7 @@ static uint32_t
 mlx4_mr_create(struct rte_eth_dev *dev, struct mlx4_mr_cache *entry,
 	       uintptr_t addr)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx4_priv *priv = dev->data->dev_private;
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	const struct rte_memseg_list *msl;
 	const struct rte_memseg *ms;
@@ -769,7 +769,7 @@ err_nolock:
 static void
 mr_rebuild_dev_cache(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx4_priv *priv = dev->data->dev_private;
 	struct mlx4_mr *mr;
 
 	DEBUG("port %u rebuild dev cache[]", dev->data->port_id);
@@ -801,7 +801,7 @@ mr_rebuild_dev_cache(struct rte_eth_dev *dev)
 static void
 mlx4_mr_mem_event_free_cb(struct rte_eth_dev *dev, const void *addr, size_t len)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx4_priv *priv = dev->data->dev_private;
 	const struct rte_memseg_list *msl;
 	struct mlx4_mr *mr;
 	int ms_n;
@@ -889,7 +889,7 @@ void
 mlx4_mr_mem_event_cb(enum rte_mem_event event_type, const void *addr,
 		     size_t len, void *arg __rte_unused)
 {
-	struct priv *priv;
+	struct mlx4_priv *priv;
 
 	switch (event_type) {
 	case RTE_MEM_EVENT_FREE:
@@ -926,7 +926,7 @@ static uint32_t
 mlx4_mr_lookup_dev(struct rte_eth_dev *dev, struct mlx4_mr_ctrl *mr_ctrl,
 		   struct mlx4_mr_cache *entry, uintptr_t addr)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx4_priv *priv = dev->data->dev_private;
 	struct mlx4_mr_btree *bt = &mr_ctrl->cache_bh;
 	uint16_t idx;
 	uint32_t lkey;
@@ -1024,7 +1024,7 @@ uint32_t
 mlx4_rx_addr2mr_bh(struct rxq *rxq, uintptr_t addr)
 {
 	struct mlx4_mr_ctrl *mr_ctrl = &rxq->mr_ctrl;
-	struct priv *priv = rxq->priv;
+	struct mlx4_priv *priv = rxq->priv;
 
 	DEBUG("Rx queue %u: miss on top-half, mru=%u, head=%u, addr=%p",
 	      rxq->stats.idx, mr_ctrl->mru, mr_ctrl->head, (void *)addr);
@@ -1046,7 +1046,7 @@ static uint32_t
 mlx4_tx_addr2mr_bh(struct txq *txq, uintptr_t addr)
 {
 	struct mlx4_mr_ctrl *mr_ctrl = &txq->mr_ctrl;
-	struct priv *priv = txq->priv;
+	struct mlx4_priv *priv = txq->priv;
 
 	DEBUG("Tx queue %u: miss on top-half, mru=%u, head=%u, addr=%p",
 	      txq->stats.idx, mr_ctrl->mru, mr_ctrl->head, (void *)addr);
@@ -1122,7 +1122,7 @@ mlx4_mr_update_ext_mp_cb(struct rte_mempool *mp, void *opaque,
 {
 	struct mr_update_mp_data *data = opaque;
 	struct rte_eth_dev *dev = data->dev;
-	struct priv *priv = dev->data->dev_private;
+	struct mlx4_priv *priv = dev->data->dev_private;
 	struct mlx4_mr_ctrl *mr_ctrl = data->mr_ctrl;
 	struct mlx4_mr *mr = NULL;
 	uintptr_t addr = (uintptr_t)memhdr->addr;
@@ -1223,7 +1223,7 @@ uint32_t
 mlx4_tx_update_ext_mp(struct txq *txq, uintptr_t addr, struct rte_mempool *mp)
 {
 	struct mlx4_mr_ctrl *mr_ctrl = &txq->mr_ctrl;
-	struct priv *priv = txq->priv;
+	struct mlx4_priv *priv = txq->priv;
 
 	mlx4_mr_update_ext_mp(priv->dev, mr_ctrl, mp);
 	return mlx4_tx_addr2mr_bh(txq, addr);
@@ -1289,7 +1289,7 @@ mlx4_mr_update_mp(struct rte_eth_dev *dev, struct mlx4_mr_ctrl *mr_ctrl,
 void
 mlx4_mr_dump_dev(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx4_priv *priv = dev->data->dev_private;
 	struct mlx4_mr *mr;
 	int mr_n = 0;
 	int chunk_n = 0;
@@ -1332,7 +1332,7 @@ mlx4_mr_dump_dev(struct rte_eth_dev *dev)
 void
 mlx4_mr_release(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx4_priv *priv = dev->data->dev_private;
 	struct mlx4_mr *mr_next = LIST_FIRST(&priv->mr.mr_list);
 
 	/* Remove from memory callback device list. */

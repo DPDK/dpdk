@@ -33,7 +33,7 @@
 #include "mlx4_rxtx.h"
 #include "mlx4_utils.h"
 
-static int mlx4_link_status_check(struct priv *priv);
+static int mlx4_link_status_check(struct mlx4_priv *priv);
 
 /**
  * Clean up Rx interrupts handler.
@@ -42,7 +42,7 @@ static int mlx4_link_status_check(struct priv *priv);
  *   Pointer to private structure.
  */
 static void
-mlx4_rx_intr_vec_disable(struct priv *priv)
+mlx4_rx_intr_vec_disable(struct mlx4_priv *priv)
 {
 	struct rte_intr_handle *intr_handle = &priv->intr_handle;
 
@@ -62,7 +62,7 @@ mlx4_rx_intr_vec_disable(struct priv *priv)
  *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx4_rx_intr_vec_enable(struct priv *priv)
+mlx4_rx_intr_vec_enable(struct mlx4_priv *priv)
 {
 	unsigned int i;
 	unsigned int rxqs_n = priv->dev->data->nb_rx_queues;
@@ -117,7 +117,7 @@ mlx4_rx_intr_vec_enable(struct priv *priv)
  *   Pointer to private structure.
  */
 static void
-mlx4_link_status_alarm(struct priv *priv)
+mlx4_link_status_alarm(struct mlx4_priv *priv)
 {
 	const struct rte_intr_conf *const intr_conf =
 		&priv->dev->data->dev_conf.intr_conf;
@@ -143,7 +143,7 @@ mlx4_link_status_alarm(struct priv *priv)
  *   otherwise and rte_errno is set.
  */
 static int
-mlx4_link_status_check(struct priv *priv)
+mlx4_link_status_check(struct mlx4_priv *priv)
 {
 	struct rte_eth_link *link = &priv->dev->data->dev_link;
 	int ret = mlx4_link_update(priv->dev, 0);
@@ -175,7 +175,7 @@ mlx4_link_status_check(struct priv *priv)
  *   Pointer to private structure.
  */
 static void
-mlx4_interrupt_handler(struct priv *priv)
+mlx4_interrupt_handler(struct mlx4_priv *priv)
 {
 	enum { LSC, RMV, };
 	static const enum rte_eth_event_type type[] = {
@@ -251,7 +251,7 @@ mlx4_arm_cq(struct rxq *rxq, int solicited)
  *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 int
-mlx4_intr_uninstall(struct priv *priv)
+mlx4_intr_uninstall(struct mlx4_priv *priv)
 {
 	int err = rte_errno; /* Make sure rte_errno remains unchanged. */
 
@@ -279,7 +279,7 @@ mlx4_intr_uninstall(struct priv *priv)
  *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 int
-mlx4_intr_install(struct priv *priv)
+mlx4_intr_install(struct mlx4_priv *priv)
 {
 	const struct rte_intr_conf *const intr_conf =
 		&priv->dev->data->dev_conf.intr_conf;
@@ -378,7 +378,7 @@ mlx4_rx_intr_enable(struct rte_eth_dev *dev, uint16_t idx)
  *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 int
-mlx4_rxq_intr_enable(struct priv *priv)
+mlx4_rxq_intr_enable(struct mlx4_priv *priv)
 {
 	const struct rte_intr_conf *const intr_conf =
 		&priv->dev->data->dev_conf.intr_conf;
@@ -397,7 +397,7 @@ error:
  *   Pointer to private structure.
  */
 void
-mlx4_rxq_intr_disable(struct priv *priv)
+mlx4_rxq_intr_disable(struct mlx4_priv *priv)
 {
 	int err = rte_errno; /* Make sure rte_errno remains unchanged. */
 

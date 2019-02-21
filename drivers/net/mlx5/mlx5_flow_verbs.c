@@ -55,7 +55,7 @@ flow_verbs_counter_create(struct rte_eth_dev *dev,
 			  struct mlx5_flow_counter *counter)
 {
 #if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct ibv_counter_set_init_attr init = {
 			 .counter_set_id = counter->id};
 
@@ -66,7 +66,7 @@ flow_verbs_counter_create(struct rte_eth_dev *dev,
 	}
 	return 0;
 #elif defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct ibv_counters_init_attr init = {0};
 	struct ibv_counter_attach_attr attach;
 	int ret;
@@ -117,7 +117,7 @@ flow_verbs_counter_create(struct rte_eth_dev *dev,
 static struct mlx5_flow_counter *
 flow_verbs_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_counter *cnt;
 	int ret;
 
@@ -1398,7 +1398,7 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 	uint64_t action_flags = 0;
 	uint64_t priority = attr->priority;
 	uint32_t subpriority = 0;
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 
 	if (priority == MLX5_FLOW_PRIO_RSVD)
 		priority = priv->config.flow_prio - 1;

@@ -32,7 +32,7 @@
 void
 mlx5_promiscuous_enable(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	int ret;
 
 	dev->data->promiscuous = 1;
@@ -60,7 +60,7 @@ mlx5_promiscuous_enable(struct rte_eth_dev *dev)
 void
 mlx5_promiscuous_disable(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	int ret;
 
 	dev->data->promiscuous = 0;
@@ -81,7 +81,7 @@ mlx5_promiscuous_disable(struct rte_eth_dev *dev)
 void
 mlx5_allmulticast_enable(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	int ret;
 
 	dev->data->all_multicast = 1;
@@ -109,7 +109,7 @@ mlx5_allmulticast_enable(struct rte_eth_dev *dev)
 void
 mlx5_allmulticast_disable(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	int ret;
 
 	dev->data->all_multicast = 0;

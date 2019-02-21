@@ -2426,7 +2426,7 @@ flow_tcf_validate(struct rte_eth_dev *dev,
 	 */
 	if ((action_flags & MLX5_FLOW_ACTION_OF_PUSH_VLAN) &&
 	    (action_flags & MLX5_FLOW_ACTION_PORT_ID) &&
-	    ((struct priv *)port_id_dev->data->dev_private)->representor)
+	    ((struct mlx5_priv *)port_id_dev->data->dev_private)->representor)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION, actions,
 					  "vlan push can only be applied"
@@ -5566,7 +5566,7 @@ flow_tcf_check_inhw(struct mlx5_flow_tcf_context *tcf,
 static void
 flow_tcf_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_tcf_context *ctx = priv->tcf_context;
 	struct mlx5_flow *dev_flow;
 	struct nlmsghdr *nlh;
@@ -5655,7 +5655,7 @@ static int
 flow_tcf_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 	       struct rte_flow_error *error)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_tcf_context *ctx = priv->tcf_context;
 	struct mlx5_flow *dev_flow;
 	struct nlmsghdr *nlh;
@@ -6139,7 +6139,7 @@ flow_tcf_query_count(struct rte_eth_dev *dev,
 {
 	struct flow_tcf_stats_basic sb_data;
 	struct rte_flow_query_count *qc = data;
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_tcf_context *ctx = priv->tcf_context;
 	struct mnl_socket *nl = ctx->nl;
 	struct mlx5_flow *dev_flow;

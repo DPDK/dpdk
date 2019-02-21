@@ -58,7 +58,7 @@ struct mlx5_txq_stats {
 	uint64_t oerrors; /**< Total number of failed transmitted packets. */
 };
 
-struct priv;
+struct mlx5_priv;
 
 /* Compressed CQE context. */
 struct rxq_zip {
@@ -143,7 +143,7 @@ struct mlx5_rxq_ctrl {
 	LIST_ENTRY(mlx5_rxq_ctrl) next; /* Pointer to the next element. */
 	rte_atomic32_t refcnt; /* Reference counter. */
 	struct mlx5_rxq_ibv *ibv; /* Verbs elements. */
-	struct priv *priv; /* Back pointer to private data. */
+	struct mlx5_priv *priv; /* Back pointer to private data. */
 	struct mlx5_rxq_data rxq; /* Data path structure. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	unsigned int irq:1; /* Whether IRQ is enabled. */
@@ -228,7 +228,7 @@ struct mlx5_txq_ctrl {
 	unsigned int max_inline_data; /* Max inline data. */
 	unsigned int max_tso_header; /* Max TSO header size. */
 	struct mlx5_txq_ibv *ibv; /* Verbs queue object. */
-	struct priv *priv; /* Back pointer to private data. */
+	struct mlx5_priv *priv; /* Back pointer to private data. */
 	struct mlx5_txq_data txq; /* Data path structure. */
 	off_t uar_mmap_offset; /* UAR mmap offset for non-primary process. */
 	volatile void *bf_reg_orig; /* Blueflame register from verbs. */

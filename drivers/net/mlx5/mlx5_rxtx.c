@@ -509,7 +509,7 @@ mlx5_rx_descriptor_status(void *rx_queue, uint16_t offset)
 uint32_t
 mlx5_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_rxq_data *rxq;
 
 	if (dev->rx_pkt_burst != mlx5_rx_burst) {

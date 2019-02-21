@@ -67,7 +67,7 @@ mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[ETHER_ADDR_LEN])
 static void
 mlx5_internal_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	const int vf = priv->config.vf;
 
 	assert(index < MLX5_MAX_MAC_ADDRESSES);
@@ -96,7 +96,7 @@ static int
 mlx5_internal_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac,
 			   uint32_t index)
 {
-	struct priv *priv = dev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	const int vf = priv->config.vf;
 	unsigned int i;
 
