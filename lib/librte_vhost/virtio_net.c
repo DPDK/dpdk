@@ -1318,22 +1318,6 @@ mbuf_is_consumed(struct rte_mbuf *m)
 	return true;
 }
 
-static __rte_always_inline void
-restore_mbuf(struct rte_mbuf *m)
-{
-	uint32_t mbuf_size, priv_size;
-
-	while (m) {
-		priv_size = rte_pktmbuf_priv_size(m->pool);
-		mbuf_size = sizeof(struct rte_mbuf) + priv_size;
-		/* start of buffer is after mbuf structure and priv data */
-
-		m->buf_addr = (char *)m + mbuf_size;
-		m->buf_iova = rte_mempool_virt2iova(m) + mbuf_size;
-		m = m->next;
-	}
-}
-
 static __rte_always_inline uint16_t
 virtio_dev_tx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count)

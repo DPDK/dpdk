@@ -1218,6 +1218,7 @@ free_zmbufs(struct vhost_virtqueue *vq)
 	     zmbuf != NULL; zmbuf = next) {
 		next = TAILQ_NEXT(zmbuf, next);
 
+		restore_mbuf(zmbuf->mbuf);
 		rte_pktmbuf_free(zmbuf->mbuf);
 		TAILQ_REMOVE(&vq->zmbuf_list, zmbuf, next);
 	}
