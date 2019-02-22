@@ -769,4 +769,10 @@ mbuf_is_consumed(struct rte_mbuf *m)
 	return true;
 }
 
+static __rte_always_inline void
+put_zmbuf(struct zcopy_mbuf *zmbuf)
+{
+	zmbuf->in_use = 0;
+}
+
 #endif /* _VHOST_NET_CDEV_H_ */

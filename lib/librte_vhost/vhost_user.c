@@ -93,14 +93,46 @@ get_blk_size(int fd)
 	return ret == -1 ? (uint64_t)-1 : (uint64_t)stat.st_blksize;
 }
 
+/*
+ * Reclaim all the outstanding zmbufs for a virtqueue.
+ */
+static void
+drain_zmbuf_list(struct vhost_virtqueue *vq)
+{
+	struct zcopy_mbuf *zmbuf, *next;
+
+	for (zmbuf = TAILQ_FIRST(&vq->zmbuf_list);
+	     zmbuf != NULL; zmbuf = next) {
+		next = TAILQ_NEXT(zmbuf, next);
+
+		while (!mbuf_is_consumed(zmbuf->mbuf))
+			usleep(1000);
+
+		TAILQ_REMOVE(&vq->zmbuf_list, zmbuf, next);
+		restore_mbuf(zmbuf->mbuf);
+		rte_pktmbuf_free(zmbuf->mbuf);
+		put_zmbuf(zmbuf);
+		vq->nr_zmbuf -= 1;
+	}
+}
+
 static void
 free_mem_region(struct virtio_net *dev)
 {
 	uint32_t i;
 	struct rte_vhost_mem_region *reg;
+	struct vhost_virtqueue *vq;
 
 	if (!dev || !dev->mem)
 		return;
+
+	if (dev->dequeue_zero_copy) {
+		for (i = 0; i < dev->nr_vring; i++) {
+			vq = dev->virtqueue[i];
+			if (vq)
+				drain_zmbuf_list(vq);
+		}
+	}
 
 	for (i = 0; i < dev->mem->nregions; i++) {
 		reg = &dev->mem->regions[i];
@@ -1212,19 +1244,7 @@ vhost_user_set_vring_kick(struct virtio_net **pdev, struct VhostUserMsg *msg,
 static void
 free_zmbufs(struct vhost_virtqueue *vq)
 {
-	struct zcopy_mbuf *zmbuf, *next;
-
-	for (zmbuf = TAILQ_FIRST(&vq->zmbuf_list);
-	     zmbuf != NULL; zmbuf = next) {
-		next = TAILQ_NEXT(zmbuf, next);
-
-		while (!mbuf_is_consumed(zmbuf->mbuf))
-			usleep(1000);
-
-		restore_mbuf(zmbuf->mbuf);
-		rte_pktmbuf_free(zmbuf->mbuf);
-		TAILQ_REMOVE(&vq->zmbuf_list, zmbuf, next);
-	}
+	drain_zmbuf_list(vq);
 
 	rte_free(vq->zmbufs);
 }
