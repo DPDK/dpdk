@@ -27,6 +27,8 @@
 #include "dpaa2_ethdev.h"
 #include <fsl_qbman_debug.h>
 
+#define DRIVER_LOOPBACK_MODE "drv_looback"
+
 /* Supported Rx offloads */
 static uint64_t dev_rx_offloads_sup =
 		DEV_RX_OFFLOAD_VLAN_STRIP |
@@ -732,7 +734,8 @@ dpaa2_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_UNKNOWN
 	};
 
-	if (dev->rx_pkt_burst == dpaa2_dev_prefetch_rx)
+	if (dev->rx_pkt_burst == dpaa2_dev_prefetch_rx ||
+		dev->rx_pkt_burst == dpaa2_dev_loopback_rx)
 		return ptypes;
 	return NULL;
 }
@@ -1998,6 +2001,43 @@ cleanup:
 }
 
 static int
+check_devargs_handler(__rte_unused const char *key, const char *value,
+		      __rte_unused void *opaque)
+{
+	if (strcmp(value, "1"))
+		return -1;
+
+	return 0;
+}
+
+static int
+dpaa2_get_devargs(struct rte_devargs *devargs, const char *key)
+{
+	struct rte_kvargs *kvlist;
+
+	if (!devargs)
+		return 0;
+
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (!kvlist)
+		return 0;
+
+	if (!rte_kvargs_count(kvlist, key)) {
+		rte_kvargs_free(kvlist);
+		return 0;
+	}
+
+	if (rte_kvargs_process(kvlist, key,
+			       check_devargs_handler, NULL) < 0) {
+		rte_kvargs_free(kvlist);
+		return 0;
+	}
+	rte_kvargs_free(kvlist);
+
+	return 1;
+}
+
+static int
 dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct rte_device *dev = eth_dev->device;
@@ -2016,7 +2056,10 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 		 * plugged.
 		 */
 		eth_dev->dev_ops = &dpaa2_ethdev_ops;
-		eth_dev->rx_pkt_burst = dpaa2_dev_prefetch_rx;
+		if (dpaa2_get_devargs(dev->devargs, DRIVER_LOOPBACK_MODE))
+			eth_dev->rx_pkt_burst = dpaa2_dev_loopback_rx;
+		else
+			eth_dev->rx_pkt_burst = dpaa2_dev_prefetch_rx;
 		eth_dev->tx_pkt_burst = dpaa2_dev_tx;
 		return 0;
 	}
@@ -2133,7 +2176,12 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 
 	eth_dev->dev_ops = &dpaa2_ethdev_ops;
 
-	eth_dev->rx_pkt_burst = dpaa2_dev_prefetch_rx;
+	if (dpaa2_get_devargs(dev->devargs, DRIVER_LOOPBACK_MODE)) {
+		eth_dev->rx_pkt_burst = dpaa2_dev_loopback_rx;
+		DPAA2_PMD_INFO("Loopback mode");
+	} else {
+		eth_dev->rx_pkt_burst = dpaa2_dev_prefetch_rx;
+	}
 	eth_dev->tx_pkt_burst = dpaa2_dev_tx;
 
 	RTE_LOG(INFO, PMD, "%s: netdev created\n", eth_dev->data->name);
@@ -2251,7 +2299,8 @@ static struct rte_dpaa2_driver rte_dpaa2_pmd = {
 };
 
 RTE_PMD_REGISTER_DPAA2(net_dpaa2, rte_dpaa2_pmd);
-
+RTE_PMD_REGISTER_PARAM_STRING(net_dpaa2,
+		DRIVER_LOOPBACK_MODE "=<int>");
 RTE_INIT(dpaa2_pmd_init_log)
 {
 	dpaa2_logtype_pmd = rte_log_register("pmd.net.dpaa2");

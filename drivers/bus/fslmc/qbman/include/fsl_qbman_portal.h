@@ -1039,6 +1039,24 @@ int qbman_swp_enqueue_multiple(struct qbman_swp *s,
 			       const struct qbman_fd *fd,
 			       uint32_t *flags,
 			       int num_frames);
+
+/**
+ * qbman_swp_enqueue_multiple_fd() - Enqueue multiple frames with same
+				  eq descriptor
+ * @s: the software portal used for enqueue.
+ * @d: the enqueue descriptor.
+ * @fd: the frame descriptor to be enqueued.
+ * @flags: bit-mask of QBMAN_ENQUEUE_FLAG_*** options
+ * @num_frames: the number of the frames to be enqueued.
+ *
+ * Return the number of enqueued frames, -EBUSY if the EQCR is not ready.
+ */
+int qbman_swp_enqueue_multiple_fd(struct qbman_swp *s,
+				  const struct qbman_eq_desc *d,
+				  struct qbman_fd **fd,
+				  uint32_t *flags,
+				  int num_frames);
+
 /**
  * qbman_swp_enqueue_multiple_desc() - Enqueue multiple frames with
  *				       individual eq descriptor.

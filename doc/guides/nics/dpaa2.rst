@@ -499,6 +499,11 @@ for details.
       Done
       testpmd>
 
+
+* Use dev arg option ``drv_loopback=1`` to loopback packets at
+  driver level. Any packet received will be reflected back by the
+  driver on same port.
+
 Enabling logs
 -------------
 
