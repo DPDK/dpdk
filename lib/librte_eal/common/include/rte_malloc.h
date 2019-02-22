@@ -111,7 +111,7 @@ rte_calloc(const char *type, size_t num, size_t size, unsigned align);
 /**
  * Replacement function for realloc(), using huge-page memory. Reserved area
  * memory is resized, preserving contents. In NUMA systems, the new area
- * resides on the same NUMA socket as the old area.
+ * may not reside on the same NUMA node as the old one.
  *
  * @param ptr
  *   Pointer to already allocated memory
