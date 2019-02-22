@@ -874,10 +874,32 @@ alloc_seg_walk(const struct rte_memseg_list *msl, void *arg)
 	need = wa->n_segs;
 
 	/* try finding space in memseg list */
-	cur_idx = rte_fbarray_find_next_n_free(&cur_msl->memseg_arr, 0, need);
-	if (cur_idx < 0)
-		return 0;
-	start_idx = cur_idx;
+	if (wa->exact) {
+		/* if we require exact number of pages in a list, find them */
+		cur_idx = rte_fbarray_find_next_n_free(&cur_msl->memseg_arr, 0,
+				need);
+		if (cur_idx < 0)
+			return 0;
+		start_idx = cur_idx;
+	} else {
+		int cur_len;
+
+		/* we don't require exact number of pages, so we're going to go
+		 * for best-effort allocation. that means finding the biggest
+		 * unused block, and going with that.
+		 */
+		cur_idx = rte_fbarray_find_biggest_free(&cur_msl->memseg_arr,
+				0);
+		if (cur_idx < 0)
+			return 0;
+		start_idx = cur_idx;
+		/* adjust the size to possibly be smaller than original
+		 * request, but do not allow it to be bigger.
+		 */
+		cur_len = rte_fbarray_find_contig_free(&cur_msl->memseg_arr,
+				cur_idx);
+		need = RTE_MIN(need, (unsigned int)cur_len);
+	}
 
 	/* do not allow any page allocations during the time we're allocating,
 	 * because file creation and locking operations are not atomic,
@@ -954,7 +976,8 @@ out:
 		cur_msl->version++;
 	if (dir_fd >= 0)
 		close(dir_fd);
-	return 1;
+	/* if we didn't allocate any segments, move on to the next list */
+	return i > 0;
 }
 
 struct free_walk_param {
