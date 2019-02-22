@@ -665,6 +665,7 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			return -ret;
 		}
 	}
+	dpaa2_q->cb_eqresp_free = dpaa2_dev_free_eqresp_buf;
 	dev->data->tx_queues[tx_queue_id] = dpaa2_q;
 	return 0;
 }
@@ -893,6 +894,10 @@ dpaa2_dev_start(struct rte_eth_dev *dev)
 		/* enable dpni_irqs */
 		dpaa2_eth_setup_irqs(dev, 1);
 	}
+
+	/* Change the tx burst function if ordered queues are used */
+	if (priv->en_ordered)
+		dev->tx_pkt_burst = dpaa2_dev_tx_ordered;
 
 	return 0;
 }
@@ -1793,6 +1798,8 @@ int dpaa2_eth_eventq_attach(const struct rte_eth_dev *dev,
 		dpaa2_ethq->cb = dpaa2_dev_process_parallel_event;
 	else if (queue_conf->ev.sched_type == RTE_SCHED_TYPE_ATOMIC)
 		dpaa2_ethq->cb = dpaa2_dev_process_atomic_event;
+	else if (queue_conf->ev.sched_type == RTE_SCHED_TYPE_ORDERED)
+		dpaa2_ethq->cb = dpaa2_dev_process_ordered_event;
 	else
 		return -EINVAL;
 
@@ -1805,6 +1812,41 @@ int dpaa2_eth_eventq_attach(const struct rte_eth_dev *dev,
 	if (queue_conf->ev.sched_type == RTE_SCHED_TYPE_ATOMIC) {
 		options |= DPNI_QUEUE_OPT_HOLD_ACTIVE;
 		cfg.destination.hold_active = 1;
+	}
+
+	if (queue_conf->ev.sched_type == RTE_SCHED_TYPE_ORDERED &&
+			!eth_priv->en_ordered) {
+		struct opr_cfg ocfg;
+
+		/* Restoration window size = 256 frames */
+		ocfg.oprrws = 3;
+		/* Restoration window size = 512 frames for LX2 */
+		if (dpaa2_svr_family == SVR_LX2160A)
+			ocfg.oprrws = 4;
+		/* Auto advance NESN window enabled */
+		ocfg.oa = 1;
+		/* Late arrival window size disabled */
+		ocfg.olws = 0;
+		/* ORL resource exhaustaion advance NESN disabled */
+		ocfg.oeane = 0;
+		/* Loose ordering enabled */
+		ocfg.oloe = 1;
+		eth_priv->en_loose_ordered = 1;
+		/* Strict ordering enabled if explicitly set */
+		if (getenv("DPAA2_STRICT_ORDERING_ENABLE")) {
+			ocfg.oloe = 0;
+			eth_priv->en_loose_ordered = 0;
+		}
+
+		ret = dpni_set_opr(dpni, CMD_PRI_LOW, eth_priv->token,
+				   dpaa2_ethq->tc_index, flow_id,
+				   OPR_OPT_CREATE, &ocfg);
+		if (ret) {
+			DPAA2_PMD_ERR("Error setting opr: ret: %d\n", ret);
+			return ret;
+		}
+
+		eth_priv->en_ordered = 1;
 	}
 
 	options |= DPNI_QUEUE_OPT_USER_CTX;

@@ -699,6 +699,33 @@ dpaa2_dev_process_atomic_event(struct qbman_swp *swp __attribute__((unused)),
 	DPAA2_PER_LCORE_DQRR_MBUF(dqrr_index) = ev->mbuf;
 }
 
+void __attribute__((hot))
+dpaa2_dev_process_ordered_event(struct qbman_swp *swp,
+				const struct qbman_fd *fd,
+				const struct qbman_result *dq,
+				struct dpaa2_queue *rxq,
+				struct rte_event *ev)
+{
+	rte_prefetch0((void *)(size_t)(DPAA2_GET_FD_ADDR(fd) +
+		DPAA2_FD_PTA_SIZE + 16));
+
+	ev->flow_id = rxq->ev.flow_id;
+	ev->sub_event_type = rxq->ev.sub_event_type;
+	ev->event_type = RTE_EVENT_TYPE_ETHDEV;
+	ev->op = RTE_EVENT_OP_NEW;
+	ev->sched_type = rxq->ev.sched_type;
+	ev->queue_id = rxq->ev.queue_id;
+	ev->priority = rxq->ev.priority;
+
+	ev->mbuf = eth_fd_to_mbuf(fd);
+
+	ev->mbuf->seqn = DPAA2_ENQUEUE_FLAG_ORP;
+	ev->mbuf->seqn |= qbman_result_DQ_odpid(dq) << DPAA2_EQCR_OPRID_SHIFT;
+	ev->mbuf->seqn |= qbman_result_DQ_seqnum(dq) << DPAA2_EQCR_SEQNUM_SHIFT;
+
+	qbman_swp_dqrr_consume(swp, dq);
+}
+
 /*
  * Callback to handle sending packets through WRIOP based interface
  */
@@ -856,6 +883,234 @@ send_n_return:
 							&fd_arr[i],
 							&flags[loop],
 							loop - i);
+		}
+		num_tx += loop;
+	}
+skip_tx:
+	dpaa2_q->tx_pkts += num_tx;
+	return num_tx;
+}
+
+void
+dpaa2_dev_free_eqresp_buf(uint16_t eqresp_ci)
+{
+	struct dpaa2_dpio_dev *dpio_dev = DPAA2_PER_LCORE_DPIO;
+	struct qbman_fd *fd;
+	struct rte_mbuf *m;
+
+	fd = qbman_result_eqresp_fd(&dpio_dev->eqresp[eqresp_ci]);
+	m = eth_fd_to_mbuf(fd);
+	rte_pktmbuf_free(m);
+}
+
+static void
+dpaa2_set_enqueue_descriptor(struct dpaa2_queue *dpaa2_q,
+			     struct rte_mbuf *m,
+			     struct qbman_eq_desc *eqdesc)
+{
+	struct rte_eth_dev_data *eth_data = dpaa2_q->eth_data;
+	struct dpaa2_dev_priv *priv = eth_data->dev_private;
+	struct dpaa2_dpio_dev *dpio_dev = DPAA2_PER_LCORE_DPIO;
+	struct eqresp_metadata *eqresp_meta;
+	uint16_t orpid, seqnum;
+	uint8_t dq_idx;
+
+	qbman_eq_desc_set_qd(eqdesc, priv->qdid, dpaa2_q->flow_id,
+			     dpaa2_q->tc_index);
+
+	if (m->seqn & DPAA2_ENQUEUE_FLAG_ORP) {
+		orpid = (m->seqn & DPAA2_EQCR_OPRID_MASK) >>
+			DPAA2_EQCR_OPRID_SHIFT;
+		seqnum = (m->seqn & DPAA2_EQCR_SEQNUM_MASK) >>
+			DPAA2_EQCR_SEQNUM_SHIFT;
+
+		if (!priv->en_loose_ordered) {
+			qbman_eq_desc_set_orp(eqdesc, 1, orpid, seqnum, 0);
+			qbman_eq_desc_set_response(eqdesc, (uint64_t)
+				DPAA2_VADDR_TO_IOVA(&dpio_dev->eqresp[
+				dpio_dev->eqresp_pi]), 1);
+			qbman_eq_desc_set_token(eqdesc, 1);
+
+			eqresp_meta = &dpio_dev->eqresp_meta[
+				dpio_dev->eqresp_pi];
+			eqresp_meta->dpaa2_q = dpaa2_q;
+			eqresp_meta->mp = m->pool;
+
+			dpio_dev->eqresp_pi + 1 < MAX_EQ_RESP_ENTRIES ?
+				dpio_dev->eqresp_pi++ :
+				(dpio_dev->eqresp_pi = 0);
+		} else {
+			qbman_eq_desc_set_orp(eqdesc, 0, orpid, seqnum, 0);
+		}
+	} else {
+		dq_idx = m->seqn - 1;
+		qbman_eq_desc_set_dca(eqdesc, 1, dq_idx, 0);
+		DPAA2_PER_LCORE_DQRR_SIZE--;
+		DPAA2_PER_LCORE_DQRR_HELD &= ~(1 << dq_idx);
+	}
+	m->seqn = DPAA2_INVALID_MBUF_SEQN;
+}
+
+/* Callback to handle sending ordered packets through WRIOP based interface */
+uint16_t
+dpaa2_dev_tx_ordered(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
+{
+	/* Function to transmit the frames to given device and VQ*/
+	struct dpaa2_queue *dpaa2_q = (struct dpaa2_queue *)queue;
+	struct rte_eth_dev_data *eth_data = dpaa2_q->eth_data;
+	struct dpaa2_dev_priv *priv = eth_data->dev_private;
+	struct dpaa2_queue *order_sendq = (struct dpaa2_queue *)priv->tx_vq[0];
+	struct qbman_fd fd_arr[MAX_TX_RING_SLOTS];
+	struct rte_mbuf *mi;
+	struct rte_mempool *mp;
+	struct qbman_eq_desc eqdesc[MAX_TX_RING_SLOTS];
+	struct qbman_swp *swp;
+	uint32_t frames_to_send, num_free_eq_desc;
+	uint32_t loop, retry_count;
+	int32_t ret;
+	uint16_t num_tx = 0;
+	uint16_t bpid;
+
+	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
+		ret = dpaa2_affine_qbman_swp();
+		if (ret) {
+			DPAA2_PMD_ERR("Failure in affining portal");
+			return 0;
+		}
+	}
+	swp = DPAA2_PER_LCORE_PORTAL;
+
+	DPAA2_PMD_DP_DEBUG("===> eth_data =%p, fqid =%d\n",
+			   eth_data, dpaa2_q->fqid);
+
+	/* This would also handle normal and atomic queues as any type
+	 * of packet can be enqueued when ordered queues are being used.
+	 */
+	while (nb_pkts) {
+		/*Check if the queue is congested*/
+		retry_count = 0;
+		while (qbman_result_SCN_state(dpaa2_q->cscn)) {
+			retry_count++;
+			/* Retry for some time before giving up */
+			if (retry_count > CONG_RETRY_COUNT)
+				goto skip_tx;
+		}
+
+		frames_to_send = (nb_pkts > dpaa2_eqcr_size) ?
+			dpaa2_eqcr_size : nb_pkts;
+
+		if (!priv->en_loose_ordered) {
+			if ((*bufs)->seqn & DPAA2_ENQUEUE_FLAG_ORP) {
+				num_free_eq_desc = dpaa2_free_eq_descriptors();
+				if (num_free_eq_desc < frames_to_send)
+					frames_to_send = num_free_eq_desc;
+			}
+		}
+
+		for (loop = 0; loop < frames_to_send; loop++) {
+			/*Prepare enqueue descriptor*/
+			qbman_eq_desc_clear(&eqdesc[loop]);
+
+			if ((*bufs)->seqn) {
+				/* Use only queue 0 for Tx in case of atomic/
+				 * ordered packets as packets can get unordered
+				 * when being tranmitted out from the interface
+				 */
+				dpaa2_set_enqueue_descriptor(order_sendq,
+							     (*bufs),
+							     &eqdesc[loop]);
+			} else {
+				qbman_eq_desc_set_no_orp(&eqdesc[loop],
+							 DPAA2_EQ_RESP_ERR_FQ);
+				qbman_eq_desc_set_qd(&eqdesc[loop], priv->qdid,
+						     dpaa2_q->flow_id,
+						     dpaa2_q->tc_index);
+			}
+
+			if (likely(RTE_MBUF_DIRECT(*bufs))) {
+				mp = (*bufs)->pool;
+				/* Check the basic scenario and set
+				 * the FD appropriately here itself.
+				 */
+				if (likely(mp && mp->ops_index ==
+				    priv->bp_list->dpaa2_ops_index &&
+				    (*bufs)->nb_segs == 1 &&
+				    rte_mbuf_refcnt_read((*bufs)) == 1)) {
+					if (unlikely((*bufs)->ol_flags
+						& PKT_TX_VLAN_PKT)) {
+					  ret = rte_vlan_insert(bufs);
+					  if (ret)
+						goto send_n_return;
+					}
+					DPAA2_MBUF_TO_CONTIG_FD((*bufs),
+						&fd_arr[loop],
+						mempool_to_bpid(mp));
+					bufs++;
+					continue;
+				}
+			} else {
+				mi = rte_mbuf_from_indirect(*bufs);
+				mp = mi->pool;
+			}
+			/* Not a hw_pkt pool allocated frame */
+			if (unlikely(!mp || !priv->bp_list)) {
+				DPAA2_PMD_ERR("Err: No buffer pool attached");
+				goto send_n_return;
+			}
+
+			if (mp->ops_index != priv->bp_list->dpaa2_ops_index) {
+				DPAA2_PMD_WARN("Non DPAA2 buffer pool");
+				/* alloc should be from the default buffer pool
+				 * attached to this interface
+				 */
+				bpid = priv->bp_list->buf_pool.bpid;
+
+				if (unlikely((*bufs)->nb_segs > 1)) {
+					DPAA2_PMD_ERR(
+						"S/G not supp for non hw offload buffer");
+					goto send_n_return;
+				}
+				if (eth_copy_mbuf_to_fd(*bufs,
+							&fd_arr[loop], bpid)) {
+					goto send_n_return;
+				}
+				/* free the original packet */
+				rte_pktmbuf_free(*bufs);
+			} else {
+				bpid = mempool_to_bpid(mp);
+				if (unlikely((*bufs)->nb_segs > 1)) {
+					if (eth_mbuf_to_sg_fd(*bufs,
+							      &fd_arr[loop],
+							      bpid))
+						goto send_n_return;
+				} else {
+					eth_mbuf_to_fd(*bufs,
+						       &fd_arr[loop], bpid);
+				}
+			}
+			bufs++;
+		}
+		loop = 0;
+		while (loop < frames_to_send) {
+			loop += qbman_swp_enqueue_multiple_desc(swp,
+					&eqdesc[loop], &fd_arr[loop],
+					frames_to_send - loop);
+		}
+
+		num_tx += frames_to_send;
+		nb_pkts -= frames_to_send;
+	}
+	dpaa2_q->tx_pkts += num_tx;
+	return num_tx;
+
+send_n_return:
+	/* send any already prepared fd */
+	if (loop) {
+		unsigned int i = 0;
+
+		while (i < loop) {
+			i += qbman_swp_enqueue_multiple_desc(swp, &eqdesc[loop],
+							&fd_arr[i], loop - i);
 		}
 		num_tx += loop;
 	}

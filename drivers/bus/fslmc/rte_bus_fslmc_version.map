@@ -120,7 +120,6 @@ DPDK_18.05 {
 
 DPDK_18.11 {
 	global:
-
 	dpaa2_dqrr_size;
 	dpaa2_eqcr_size;
 	dpci_get_link_state;
@@ -129,3 +128,18 @@ DPDK_18.11 {
 	dpci_set_opr;
 
 } DPDK_18.05;
+
+DPDK_19.05 {
+	global:
+	dpaa2_free_eq_descriptors;
+
+	qbman_eq_desc_set_orp;
+	qbman_eq_desc_set_token;
+	qbman_result_DQ_odpid;
+	qbman_result_DQ_seqnum;
+	qbman_result_eqresp_fd;
+	qbman_result_eqresp_rc;
+	qbman_result_eqresp_rspid;
+	qbman_result_eqresp_set_rspid;
+} DPDK_18.11;
+

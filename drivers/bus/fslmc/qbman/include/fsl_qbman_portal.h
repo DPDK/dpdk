@@ -212,6 +212,23 @@ struct qbman_result {
 			__le32 rid_tok;
 			__le64 ctx;
 		} scn;
+		struct eq_resp {
+			uint8_t verb;
+			uint8_t dca;
+			__le16 seqnum;
+			__le16 oprid;
+			uint8_t reserved;
+			uint8_t rc;
+			__le32 tgtid;
+			__le32 tag;
+			uint16_t qdbin;
+			uint8_t qpri;
+			uint8_t reserved1;
+			__le32 fqid:24;
+			__le32 rspid:8;
+			__le64 rsp_addr;
+			uint8_t fd[32];
+		} eq_resp;
 	};
 };
 
@@ -788,7 +805,6 @@ uint64_t qbman_result_cgcu_icnt(const struct qbman_result *scn);
 	/************/
 	/* Enqueues */
 	/************/
-
 /* struct qbman_eq_desc - structure of enqueue descriptor */
 struct qbman_eq_desc {
 	union {
@@ -955,6 +971,44 @@ void qbman_eq_desc_set_eqdi(struct qbman_eq_desc *d, int enable);
  */
 void qbman_eq_desc_set_dca(struct qbman_eq_desc *d, int enable,
 			   uint8_t dqrr_idx, int park);
+
+/**
+ * qbman_result_eqresp_fd() - Get fd from enqueue response.
+ * @eqresp: enqueue response.
+ *
+ * Return the fd pointer.
+ */
+struct qbman_fd *qbman_result_eqresp_fd(struct qbman_result *eqresp);
+
+/**
+ * qbman_result_eqresp_set_rspid() - Set the response id in enqueue response.
+ * @eqresp: enqueue response.
+ * @val: values to set into the response id.
+ *
+ * This value is set into the response id before the enqueue command, which,
+ * get overwritten by qbman once the enqueue command is complete.
+ */
+void qbman_result_eqresp_set_rspid(struct qbman_result *eqresp, uint8_t val);
+
+/**
+ * qbman_result_eqresp_rspid() - Get the response id.
+ * @eqresp: enqueue response.
+ *
+ * Return the response id.
+ *
+ * At the time of enqueue user provides the response id. Response id gets
+ * copied into the enqueue response to determine if the command has been
+ * completed, and response has been updated.
+ */
+uint8_t qbman_result_eqresp_rspid(struct qbman_result *eqresp);
+
+/**
+ * qbman_result_eqresp_rc() - determines if enqueue command is sucessful.
+ * @eqresp: enqueue response.
+ *
+ * Return 0 when command is sucessful.
+ */
+uint8_t qbman_result_eqresp_rc(struct qbman_result *eqresp);
 
 /**
  * qbman_swp_enqueue() - Issue an enqueue command.

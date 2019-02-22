@@ -51,4 +51,8 @@ dpaa2_alloc_dq_storage(struct queue_storage_info_t *q_storage);
 void
 dpaa2_free_dq_storage(struct queue_storage_info_t *q_storage);
 
+/* free the enqueue response descriptors */
+uint32_t
+dpaa2_free_eq_descriptors(void);
+
 #endif /* _DPAA2_HW_DPIO_H_ */

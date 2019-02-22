@@ -96,15 +96,17 @@ struct dpaa2_dev_priv {
 	uint16_t token;
 	uint8_t nb_tx_queues;
 	uint8_t nb_rx_queues;
+	uint32_t options;
 	void *rx_vq[MAX_RX_QUEUES];
 	void *tx_vq[MAX_TX_QUEUES];
 
 	struct dpaa2_bp_list *bp_list; /**<Attached buffer pool list */
-	uint32_t options;
 	uint8_t max_mac_filters;
 	uint8_t max_vlan_filters;
 	uint8_t num_rx_tc;
 	uint8_t flags; /*dpaa2 config flags */
+	uint8_t en_ordered;
+	uint8_t en_loose_ordered;
 };
 
 int dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
@@ -135,6 +137,15 @@ void dpaa2_dev_process_atomic_event(struct qbman_swp *swp,
 				    const struct qbman_result *dq,
 				    struct dpaa2_queue *rxq,
 				    struct rte_event *ev);
+void dpaa2_dev_process_ordered_event(struct qbman_swp *swp,
+				     const struct qbman_fd *fd,
+				     const struct qbman_result *dq,
+				     struct dpaa2_queue *rxq,
+				     struct rte_event *ev);
 uint16_t dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts);
+uint16_t dpaa2_dev_tx_ordered(void *queue, struct rte_mbuf **bufs,
+			      uint16_t nb_pkts);
 uint16_t dummy_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts);
+void dpaa2_dev_free_eqresp_buf(uint16_t eqresp_ci);
+
 #endif /* _DPAA2_ETHDEV_H */

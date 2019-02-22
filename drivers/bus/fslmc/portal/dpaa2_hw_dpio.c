@@ -526,6 +526,18 @@ dpaa2_create_dpio_device(int vdev_fd,
 		goto err;
 	}
 
+	dpio_dev->eqresp = rte_zmalloc(NULL, MAX_EQ_RESP_ENTRIES *
+				     (sizeof(struct qbman_result) +
+				     sizeof(struct eqresp_metadata)),
+				     RTE_CACHE_LINE_SIZE);
+	if (!dpio_dev->eqresp) {
+		DPAA2_BUS_ERR("Memory allocation failed for eqresp");
+		goto err;
+	}
+	dpio_dev->eqresp_meta = (struct eqresp_metadata *)(dpio_dev->eqresp +
+				MAX_EQ_RESP_ENTRIES);
+
+
 	TAILQ_INSERT_TAIL(&dpio_dev_list, dpio_dev, next);
 
 	return 0;
@@ -586,6 +598,41 @@ fail:
 		rte_free(q_storage->dq_storage[i]);
 
 	return -1;
+}
+
+uint32_t
+dpaa2_free_eq_descriptors(void)
+{
+	struct dpaa2_dpio_dev *dpio_dev = DPAA2_PER_LCORE_DPIO;
+	struct qbman_result *eqresp;
+	struct eqresp_metadata *eqresp_meta;
+	struct dpaa2_queue *txq;
+
+	while (dpio_dev->eqresp_ci != dpio_dev->eqresp_pi) {
+		eqresp = &dpio_dev->eqresp[dpio_dev->eqresp_ci];
+		eqresp_meta = &dpio_dev->eqresp_meta[dpio_dev->eqresp_ci];
+
+		if (!qbman_result_eqresp_rspid(eqresp))
+			break;
+
+		if (qbman_result_eqresp_rc(eqresp)) {
+			txq = eqresp_meta->dpaa2_q;
+			txq->cb_eqresp_free(dpio_dev->eqresp_ci);
+		}
+		qbman_result_eqresp_set_rspid(eqresp, 0);
+
+		dpio_dev->eqresp_ci + 1 < MAX_EQ_RESP_ENTRIES ?
+			dpio_dev->eqresp_ci++ : (dpio_dev->eqresp_ci = 0);
+	}
+
+	/* Return 1 less entry so that PI and CI are never same in a
+	 * case there all the EQ responses are in use.
+	 */
+	if (dpio_dev->eqresp_ci > dpio_dev->eqresp_pi)
+		return dpio_dev->eqresp_ci - dpio_dev->eqresp_pi - 1;
+	else
+		return dpio_dev->eqresp_ci - dpio_dev->eqresp_pi +
+			MAX_EQ_RESP_ENTRIES - 1;
 }
 
 static struct rte_dpaa2_object rte_dpaa2_dpio_obj = {

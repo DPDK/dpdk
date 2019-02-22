@@ -34,6 +34,7 @@
 
 /* Maximum number of slots available in TX ring */
 #define MAX_TX_RING_SLOTS			32
+#define MAX_EQ_RESP_ENTRIES			(MAX_TX_RING_SLOTS + 1)
 
 /* Maximum number of slots available in RX ring */
 #define DPAA2_EQCR_RING_SIZE		8
@@ -49,6 +50,15 @@
 #define DPAA2_EQCR_SHIFT		3
 /* EQCR shift to get EQCR size for LX2 (2 >> 5) = 32 for LX2 */
 #define DPAA2_LX2_EQCR_SHIFT		5
+
+/* Flag to determine an ordered queue mbuf */
+#define DPAA2_ENQUEUE_FLAG_ORP		(1ULL << 30)
+/* ORP ID shift and mask */
+#define DPAA2_EQCR_OPRID_SHIFT		16
+#define DPAA2_EQCR_OPRID_MASK		0x3FFF0000
+/* Sequence number shift and mask */
+#define DPAA2_EQCR_SEQNUM_SHIFT		0
+#define DPAA2_EQCR_SEQNUM_MASK		0x0000FFFF
 
 #define DPAA2_SWP_CENA_REGION		0
 #define DPAA2_SWP_CINH_REGION		1
@@ -77,12 +87,23 @@
 
 #define DPAA2_DPCI_MAX_QUEUES 2
 
+struct dpaa2_queue;
+
+struct eqresp_metadata {
+	struct dpaa2_queue *dpaa2_q;
+	struct rte_mempool *mp;
+};
+
 struct dpaa2_dpio_dev {
 	TAILQ_ENTRY(dpaa2_dpio_dev) next;
 		/**< Pointer to Next device instance */
 	uint16_t index; /**< Index of a instance in the list */
 	rte_atomic16_t ref_count;
 		/**< How many thread contexts are sharing this.*/
+	uint16_t eqresp_ci;
+	uint16_t eqresp_pi;
+	struct qbman_result *eqresp;
+	struct eqresp_metadata *eqresp_meta;
 	struct fsl_mc_io *dpio; /** handle to DPIO portal object */
 	uint16_t token;
 	struct qbman_swp *sw_portal; /** SW portal object */
@@ -125,6 +146,8 @@ typedef void (dpaa2_queue_cb_dqrr_t)(struct qbman_swp *swp,
 		struct dpaa2_queue *rxq,
 		struct rte_event *ev);
 
+typedef void (dpaa2_queue_cb_eqresp_free_t)(uint16_t eqresp_ci);
+
 struct dpaa2_queue {
 	struct rte_mempool *mb_pool; /**< mbuf pool to populate RX ring. */
 	union {
@@ -144,6 +167,7 @@ struct dpaa2_queue {
 	};
 	struct rte_event ev;
 	dpaa2_queue_cb_dqrr_t *cb;
+	dpaa2_queue_cb_eqresp_free_t *cb_eqresp_free;
 	struct dpaa2_bp_info *bp_array;
 };
 

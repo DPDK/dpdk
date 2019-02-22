@@ -1569,6 +1569,32 @@ uint64_t qbman_result_cgcu_icnt(const struct qbman_result *scn)
 	return qbman_result_SCN_ctx(scn);
 }
 
+/********************/
+/* Parsing EQ RESP  */
+/********************/
+struct qbman_fd *qbman_result_eqresp_fd(struct qbman_result *eqresp)
+{
+	return (struct qbman_fd *)&eqresp->eq_resp.fd[0];
+}
+
+void qbman_result_eqresp_set_rspid(struct qbman_result *eqresp, uint8_t val)
+{
+	eqresp->eq_resp.rspid = val;
+}
+
+uint8_t qbman_result_eqresp_rspid(struct qbman_result *eqresp)
+{
+	return eqresp->eq_resp.rspid;
+}
+
+uint8_t qbman_result_eqresp_rc(struct qbman_result *eqresp)
+{
+	if (eqresp->eq_resp.rc == 0xE)
+		return 0;
+	else
+		return -1;
+}
+
 /******************/
 /* Buffer release */
 /******************/
