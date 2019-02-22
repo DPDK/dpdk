@@ -92,6 +92,9 @@ The following is an overview of some key Vhost API functions:
       to use vfio-pci driver, please insert vfio-pci kernel module in noiommu
       mode.
 
+    * The consumer of zero copy mbufs should consume these mbufs as soon as
+      possible, otherwise it may block the operations in vhost.
+
   - ``RTE_VHOST_USER_IOMMU_SUPPORT``
 
     IOMMU support will be enabled when this flag is set. It is disabled by
