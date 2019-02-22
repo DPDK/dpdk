@@ -1306,18 +1306,6 @@ again:
 	return NULL;
 }
 
-static __rte_always_inline bool
-mbuf_is_consumed(struct rte_mbuf *m)
-{
-	while (m) {
-		if (rte_mbuf_refcnt_read(m) > 1)
-			return false;
-		m = m->next;
-	}
-
-	return true;
-}
-
 static __rte_always_inline uint16_t
 virtio_dev_tx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count)

@@ -757,4 +757,16 @@ restore_mbuf(struct rte_mbuf *m)
 	}
 }
 
+static __rte_always_inline bool
+mbuf_is_consumed(struct rte_mbuf *m)
+{
+	while (m) {
+		if (rte_mbuf_refcnt_read(m) > 1)
+			return false;
+		m = m->next;
+	}
+
+	return true;
+}
+
 #endif /* _VHOST_NET_CDEV_H_ */
