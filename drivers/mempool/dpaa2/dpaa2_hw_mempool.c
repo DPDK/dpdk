@@ -326,8 +326,8 @@ rte_dpaa2_mbuf_alloc_bulk(struct rte_mempool *pool,
 		 * in pool, qbman_swp_acquire returns 0
 		 */
 		if (ret <= 0) {
-			DPAA2_MEMPOOL_ERR("Buffer acquire failed with"
-					  " err code: %d", ret);
+			DPAA2_MEMPOOL_DP_DEBUG(
+				"Buffer acquire failed with err code: %d", ret);
 			/* The API expect the exact number of requested bufs */
 			/* Releasing all buffers allocated */
 			rte_dpaa2_mbuf_release(pool, obj_table, bpid,
