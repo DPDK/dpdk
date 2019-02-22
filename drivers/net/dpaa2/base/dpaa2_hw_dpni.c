@@ -23,7 +23,7 @@
 
 #include "../dpaa2_ethdev.h"
 
-static int
+int
 dpaa2_distset_to_dpkg_profile_cfg(
 		uint64_t req_dist_set,
 		struct dpkg_profile_cfg *kg_cfg);
@@ -170,7 +170,7 @@ int dpaa2_remove_flow_dist(
 	return ret;
 }
 
-static int
+int
 dpaa2_distset_to_dpkg_profile_cfg(
 		uint64_t req_dist_set,
 		struct dpkg_profile_cfg *kg_cfg)

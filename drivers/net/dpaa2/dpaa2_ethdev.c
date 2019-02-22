@@ -17,6 +17,7 @@
 #include <rte_kvargs.h>
 #include <rte_dev.h>
 #include <rte_fslmc.h>
+#include <rte_flow_driver.h>
 
 #include "dpaa2_pmd_logs.h"
 #include <fslmc_vfio.h>
@@ -81,6 +82,14 @@ static const struct rte_dpaa2_xstats_name_off dpaa2_xstats_strings[] = {
 	{"ingress_nobuffer_discards", 2, 2},
 	{"egress_discarded_frames", 2, 3},
 	{"egress_confirmed_frames", 2, 4},
+};
+
+static const enum rte_filter_op dpaa2_supported_filter_ops[] = {
+	RTE_ETH_FILTER_ADD,
+	RTE_ETH_FILTER_DELETE,
+	RTE_ETH_FILTER_UPDATE,
+	RTE_ETH_FILTER_FLUSH,
+	RTE_ETH_FILTER_GET
 };
 
 static struct rte_dpaa2_driver rte_dpaa2_pmd;
@@ -1892,6 +1901,47 @@ int dpaa2_eth_eventq_detach(const struct rte_eth_dev *dev,
 	return ret;
 }
 
+static inline int
+dpaa2_dev_verify_filter_ops(enum rte_filter_op filter_op)
+{
+	unsigned int i;
+
+	for (i = 0; i < RTE_DIM(dpaa2_supported_filter_ops); i++) {
+		if (dpaa2_supported_filter_ops[i] == filter_op)
+			return 0;
+	}
+	return -ENOTSUP;
+}
+
+static int
+dpaa2_dev_flow_ctrl(struct rte_eth_dev *dev,
+		    enum rte_filter_type filter_type,
+				 enum rte_filter_op filter_op,
+				 void *arg)
+{
+	int ret = 0;
+
+	if (!dev)
+		return -ENODEV;
+
+	switch (filter_type) {
+	case RTE_ETH_FILTER_GENERIC:
+		if (dpaa2_dev_verify_filter_ops(filter_op) < 0) {
+			ret = -ENOTSUP;
+			break;
+		}
+		*(const void **)arg = &dpaa2_flow_ops;
+		dpaa2_filter_type |= filter_type;
+		break;
+	default:
+		RTE_LOG(ERR, PMD, "Filter type (%d) not supported",
+			filter_type);
+		ret = -ENOTSUP;
+		break;
+	}
+	return ret;
+}
+
 static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.dev_configure	  = dpaa2_eth_dev_configure,
 	.dev_start	      = dpaa2_dev_start,
@@ -1930,6 +1980,7 @@ static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.mac_addr_set         = dpaa2_dev_set_mac_addr,
 	.rss_hash_update      = dpaa2_dev_rss_hash_update,
 	.rss_hash_conf_get    = dpaa2_dev_rss_hash_conf_get,
+	.filter_ctrl          = dpaa2_dev_flow_ctrl,
 };
 
 /* Populate the mac address from physically available (u-boot/firmware) and/or
@@ -2046,7 +2097,7 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	struct dpni_attr attr;
 	struct dpaa2_dev_priv *priv = eth_dev->data->dev_private;
 	struct dpni_buffer_layout layout;
-	int ret, hw_id;
+	int ret, hw_id, i;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -2102,11 +2153,8 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 
 	priv->num_rx_tc = attr.num_rx_tcs;
 
-	/* Resetting the "num_rx_queues" to equal number of queues in first TC
-	 * as only one TC is supported on Rx Side. Once Multiple TCs will be
-	 * in use for Rx processing then this will be changed or removed.
-	 */
-	priv->nb_rx_queues = attr.num_queues;
+	for (i = 0; i < attr.num_rx_tcs; i++)
+		priv->nb_rx_queues += attr.num_queues;
 
 	/* Using number of TX queues as number of TX TCs */
 	priv->nb_tx_queues = attr.num_tx_tcs;
@@ -2184,6 +2232,26 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	}
 	eth_dev->tx_pkt_burst = dpaa2_dev_tx;
 
+	/*Init fields w.r.t. classficaition*/
+	memset(&priv->extract.qos_key_cfg, 0, sizeof(struct dpkg_profile_cfg));
+	priv->extract.qos_extract_param = (size_t)rte_malloc(NULL, 256, 64);
+	if (!priv->extract.qos_extract_param) {
+		DPAA2_PMD_ERR(" Error(%d) in allocation resources for flow "
+			    " classificaiton ", ret);
+		goto init_err;
+	}
+	for (i = 0; i < MAX_TCS; i++) {
+		memset(&priv->extract.fs_key_cfg[i], 0,
+			sizeof(struct dpkg_profile_cfg));
+		priv->extract.fs_extract_param[i] =
+			(size_t)rte_malloc(NULL, 256, 64);
+		if (!priv->extract.fs_extract_param[i]) {
+			DPAA2_PMD_ERR(" Error(%d) in allocation resources for flow classificaiton",
+				     ret);
+			goto init_err;
+		}
+	}
+
 	RTE_LOG(INFO, PMD, "%s: netdev created\n", eth_dev->data->name);
 	return 0;
 init_err:
@@ -2196,7 +2264,7 @@ dpaa2_dev_uninit(struct rte_eth_dev *eth_dev)
 {
 	struct dpaa2_dev_priv *priv = eth_dev->data->dev_private;
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
-	int ret;
+	int i, ret;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -2223,6 +2291,14 @@ dpaa2_dev_uninit(struct rte_eth_dev *eth_dev)
 	/* Free the allocated memory for ethernet private data and dpni*/
 	priv->hw = NULL;
 	rte_free(dpni);
+
+	for (i = 0; i < MAX_TCS; i++) {
+		if (priv->extract.fs_extract_param[i])
+			rte_free((void *)(size_t)priv->extract.fs_extract_param[i]);
+	}
+
+	if (priv->extract.qos_extract_param)
+		rte_free((void *)(size_t)priv->extract.qos_extract_param);
 
 	eth_dev->dev_ops = NULL;
 	eth_dev->rx_pkt_burst = NULL;

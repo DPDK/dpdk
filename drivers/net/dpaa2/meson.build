@@ -11,6 +11,7 @@ deps += ['mempool_dpaa2']
 sources = files('base/dpaa2_hw_dpni.c',
 		'dpaa2_mux.c',
 		'dpaa2_ethdev.c',
+		'dpaa2_flow.c',
 		'dpaa2_rxtx.c',
 		'mc/dpkg.c',
 		'mc/dpdmux.c',

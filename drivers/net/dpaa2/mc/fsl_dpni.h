@@ -1071,6 +1071,123 @@ int dpni_get_tx_confirmation_mode(struct fsl_mc_io *mc_io,
 				  uint16_t token,
 				  enum dpni_confirmation_mode *mode);
 
+/**
+ * struct dpni_qos_tbl_cfg - Structure representing QOS table configuration
+ * @key_cfg_iova: I/O virtual address of 256 bytes DMA-able memory filled with
+ *		key extractions to be used as the QoS criteria by calling
+ *		dpkg_prepare_key_cfg()
+ * @discard_on_miss: Set to '1' to discard frames in case of no match (miss);
+ *		'0' to use the 'default_tc' in such cases
+ * @keep_entries: if set to one will not delele existing table entries. This
+ *		option will work properly only for dpni objects created with
+ *		DPNI_OPT_HAS_KEY_MASKING option. All previous QoS entries must
+ *		be compatible with new key composition rule.
+ *		It is the caller's job to delete incompatible entries before
+ *		executing this function.
+ * @default_tc: Used in case of no-match and 'discard_on_miss'= 0
+ */
+struct dpni_qos_tbl_cfg {
+	uint64_t key_cfg_iova;
+	int discard_on_miss;
+	int keep_entries;
+	uint8_t default_tc;
+};
+
+int dpni_set_qos_table(struct fsl_mc_io *mc_io,
+		       uint32_t cmd_flags,
+		       uint16_t token,
+		       const struct dpni_qos_tbl_cfg *cfg);
+
+/**
+ * struct dpni_rule_cfg - Rule configuration for table lookup
+ * @key_iova: I/O virtual address of the key (must be in DMA-able memory)
+ * @mask_iova: I/O virtual address of the mask (must be in DMA-able memory)
+ * @key_size: key and mask size (in bytes)
+ */
+struct dpni_rule_cfg {
+	uint64_t key_iova;
+	uint64_t mask_iova;
+	uint8_t key_size;
+};
+
+int dpni_add_qos_entry(struct fsl_mc_io *mc_io,
+		       uint32_t cmd_flags,
+		       uint16_t token,
+		       const struct dpni_rule_cfg *cfg,
+		       uint8_t tc_id,
+		       uint16_t index);
+
+int dpni_remove_qos_entry(struct fsl_mc_io *mc_io,
+			  uint32_t cmd_flags,
+			  uint16_t token,
+			  const struct dpni_rule_cfg *cfg);
+
+int dpni_clear_qos_table(struct fsl_mc_io *mc_io,
+			 uint32_t cmd_flags,
+			 uint16_t token);
+
+/**
+ * Discard matching traffic.  If set, this takes precedence over any other
+ * configuration and matching traffic is always discarded.
+ */
+ #define DPNI_FS_OPT_DISCARD            0x1
+
+/**
+ * Set FLC value.  If set, flc member of truct dpni_fs_action_cfg is used to
+ * override the FLC value set per queue.
+ * For more details check the Frame Descriptor section in the hardware
+ * documentation.
+ */
+#define DPNI_FS_OPT_SET_FLC            0x2
+
+/*
+ * Indicates whether the 6 lowest significant bits of FLC are used for stash
+ * control.  If set, the 6 least significant bits in value are interpreted as
+ * follows:
+ *     - bits 0-1: indicates the number of 64 byte units of context that are
+ *     stashed.  FLC value is interpreted as a memory address in this case,
+ *     excluding the 6 LS bits.
+ *     - bits 2-3: indicates the number of 64 byte units of frame annotation
+ *     to be stashed.  Annotation is placed at FD[ADDR].
+ *     - bits 4-5: indicates the number of 64 byte units of frame data to be
+ *     stashed.  Frame data is placed at FD[ADDR] + FD[OFFSET].
+ * This flag is ignored if DPNI_FS_OPT_SET_FLC is not specified.
+ */
+#define DPNI_FS_OPT_SET_STASH_CONTROL  0x4
+
+/**
+ * struct dpni_fs_action_cfg - Action configuration for table look-up
+ * @flc: FLC value for traffic matching this rule.  Please check the Frame
+ * Descriptor section in the hardware documentation for more information.
+ * @flow_id: Identifies the Rx queue used for matching traffic.  Supported
+ *     values are in range 0 to num_queue-1.
+ * @options: Any combination of DPNI_FS_OPT_ values.
+ */
+struct dpni_fs_action_cfg {
+	uint64_t flc;
+	uint16_t flow_id;
+	uint16_t options;
+};
+
+int dpni_add_fs_entry(struct fsl_mc_io *mc_io,
+		      uint32_t cmd_flags,
+		      uint16_t token,
+		      uint8_t tc_id,
+		      uint16_t index,
+		      const struct dpni_rule_cfg *cfg,
+		      const struct dpni_fs_action_cfg *action);
+
+int dpni_remove_fs_entry(struct fsl_mc_io *mc_io,
+			 uint32_t cmd_flags,
+			 uint16_t token,
+			 uint8_t tc_id,
+			 const struct dpni_rule_cfg *cfg);
+
+int dpni_clear_fs_entries(struct fsl_mc_io *mc_io,
+			  uint32_t cmd_flags,
+			  uint16_t token,
+			  uint8_t tc_id);
+
 int dpni_get_api_version(struct fsl_mc_io *mc_io,
 			 uint32_t cmd_flags,
 			 uint16_t *major_ver,
@@ -1201,6 +1318,43 @@ int dpni_get_opr(struct fsl_mc_io *mc_io,
 		 uint8_t index,
 		 struct opr_cfg *cfg,
 		 struct opr_qry *qry);
+
+/**
+ * When used for queue_idx in function dpni_set_rx_dist_default_queue will
+ * signal to dpni to drop all unclassified frames
+ */
+#define DPNI_FS_MISS_DROP		((uint16_t)-1)
+
+/**
+ * struct dpni_rx_dist_cfg - distribution configuration
+ * @dist_size:	distribution size; supported values: 1,2,3,4,6,7,8,
+ *		12,14,16,24,28,32,48,56,64,96,112,128,192,224,256,384,448,
+ *		512,768,896,1024
+ * @key_cfg_iova: I/O virtual address of 256 bytes DMA-able memory filled with
+ *		the extractions to be used for the distribution key by calling
+ *		dpkg_prepare_key_cfg() relevant only when enable!=0 otherwise
+ *		it can be '0'
+ * @enable: enable/disable the distribution.
+ * @tc: TC id for which distribution is set
+ * @fs_miss_flow_id: when packet misses all rules from flow steering table and
+ *		hash is disabled it will be put into this queue id; use
+ *		DPNI_FS_MISS_DROP to drop frames. The value of this field is
+ *		used only when flow steering distribution is enabled and hash
+ *		distribution is disabled
+ */
+struct dpni_rx_dist_cfg {
+	uint16_t dist_size;
+	uint64_t key_cfg_iova;
+	uint8_t enable;
+	uint8_t tc;
+	uint16_t fs_miss_flow_id;
+};
+
+int dpni_set_rx_fs_dist(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
+		uint16_t token, const struct dpni_rx_dist_cfg *cfg);
+
+int dpni_set_rx_hash_dist(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
+		uint16_t token, const struct dpni_rx_dist_cfg *cfg);
 
 int dpni_add_custom_tpid(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
 		uint16_t token, uint16_t tpid);

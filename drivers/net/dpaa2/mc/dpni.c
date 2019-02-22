@@ -1529,6 +1529,248 @@ int dpni_set_tx_confirmation_mode(struct fsl_mc_io *mc_io,
 }
 
 /**
+ * dpni_set_qos_table() - Set QoS mapping table
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @cfg:	QoS table configuration
+ *
+ * This function and all QoS-related functions require that
+ *'max_tcs > 1' was set at DPNI creation.
+ *
+ * warning: Before calling this function, call dpkg_prepare_key_cfg() to
+ *			prepare the key_cfg_iova parameter
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpni_set_qos_table(struct fsl_mc_io *mc_io,
+		       uint32_t cmd_flags,
+		       uint16_t token,
+		       const struct dpni_qos_tbl_cfg *cfg)
+{
+	struct dpni_cmd_set_qos_table *cmd_params;
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_SET_QOS_TBL,
+					  cmd_flags,
+					  token);
+	cmd_params = (struct dpni_cmd_set_qos_table *)cmd.params;
+	cmd_params->default_tc = cfg->default_tc;
+	cmd_params->key_cfg_iova = cpu_to_le64(cfg->key_cfg_iova);
+	dpni_set_field(cmd_params->discard_on_miss,
+		       ENABLE,
+		       cfg->discard_on_miss);
+	dpni_set_field(cmd_params->discard_on_miss,
+					KEEP_QOS_ENTRIES,
+			       cfg->keep_entries);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+/**
+ * dpni_add_qos_entry() - Add QoS mapping entry (to select a traffic class)
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @cfg:	QoS rule to add
+ * @tc_id:	Traffic class selection (0-7)
+ * @index:	Location in the QoS table where to insert the entry.
+ *		Only relevant if MASKING is enabled for QoS classification on
+ *		this DPNI, it is ignored for exact match.
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpni_add_qos_entry(struct fsl_mc_io *mc_io,
+		       uint32_t cmd_flags,
+		       uint16_t token,
+		       const struct dpni_rule_cfg *cfg,
+		       uint8_t tc_id,
+		       uint16_t index)
+{
+	struct dpni_cmd_add_qos_entry *cmd_params;
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_ADD_QOS_ENT,
+					  cmd_flags,
+					  token);
+	cmd_params = (struct dpni_cmd_add_qos_entry *)cmd.params;
+	cmd_params->tc_id = tc_id;
+	cmd_params->key_size = cfg->key_size;
+	cmd_params->index = cpu_to_le16(index);
+	cmd_params->key_iova = cpu_to_le64(cfg->key_iova);
+	cmd_params->mask_iova = cpu_to_le64(cfg->mask_iova);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+/**
+ * dpni_remove_qos_entry() - Remove QoS mapping entry
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @cfg:	QoS rule to remove
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpni_remove_qos_entry(struct fsl_mc_io *mc_io,
+			  uint32_t cmd_flags,
+			  uint16_t token,
+			  const struct dpni_rule_cfg *cfg)
+{
+	struct dpni_cmd_remove_qos_entry *cmd_params;
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_REMOVE_QOS_ENT,
+					  cmd_flags,
+					  token);
+	cmd_params = (struct dpni_cmd_remove_qos_entry *)cmd.params;
+	cmd_params->key_size = cfg->key_size;
+	cmd_params->key_iova = cpu_to_le64(cfg->key_iova);
+	cmd_params->mask_iova = cpu_to_le64(cfg->mask_iova);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+/**
+ * dpni_clear_qos_table() - Clear all QoS mapping entries
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ *
+ * Following this function call, all frames are directed to
+ * the default traffic class (0)
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpni_clear_qos_table(struct fsl_mc_io *mc_io,
+			 uint32_t cmd_flags,
+			 uint16_t token)
+{
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_CLR_QOS_TBL,
+					  cmd_flags,
+					  token);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+/**
+ * dpni_add_fs_entry() - Add Flow Steering entry for a specific traffic class
+ *			(to select a flow ID)
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @tc_id:	Traffic class selection (0-7)
+ * @index:	Location in the QoS table where to insert the entry.
+ *		Only relevant if MASKING is enabled for QoS classification
+ *		on this DPNI, it is ignored for exact match.
+ * @cfg:	Flow steering rule to add
+ * @action:	Action to be taken as result of a classification hit
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpni_add_fs_entry(struct fsl_mc_io *mc_io,
+		      uint32_t cmd_flags,
+		      uint16_t token,
+		      uint8_t tc_id,
+		      uint16_t index,
+		      const struct dpni_rule_cfg *cfg,
+		      const struct dpni_fs_action_cfg *action)
+{
+	struct dpni_cmd_add_fs_entry *cmd_params;
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_ADD_FS_ENT,
+					  cmd_flags,
+					  token);
+	cmd_params = (struct dpni_cmd_add_fs_entry *)cmd.params;
+	cmd_params->tc_id = tc_id;
+	cmd_params->key_size = cfg->key_size;
+	cmd_params->index = cpu_to_le16(index);
+	cmd_params->key_iova = cpu_to_le64(cfg->key_iova);
+	cmd_params->mask_iova = cpu_to_le64(cfg->mask_iova);
+	cmd_params->options = cpu_to_le16(action->options);
+	cmd_params->flow_id = cpu_to_le16(action->flow_id);
+	cmd_params->flc = cpu_to_le64(action->flc);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+/**
+ * dpni_remove_fs_entry() - Remove Flow Steering entry from a specific
+ *			traffic class
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @tc_id:	Traffic class selection (0-7)
+ * @cfg:	Flow steering rule to remove
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpni_remove_fs_entry(struct fsl_mc_io *mc_io,
+			 uint32_t cmd_flags,
+			 uint16_t token,
+			 uint8_t tc_id,
+			 const struct dpni_rule_cfg *cfg)
+{
+	struct dpni_cmd_remove_fs_entry *cmd_params;
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_REMOVE_FS_ENT,
+					  cmd_flags,
+					  token);
+	cmd_params = (struct dpni_cmd_remove_fs_entry *)cmd.params;
+	cmd_params->tc_id = tc_id;
+	cmd_params->key_size = cfg->key_size;
+	cmd_params->key_iova = cpu_to_le64(cfg->key_iova);
+	cmd_params->mask_iova = cpu_to_le64(cfg->mask_iova);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+/**
+ * dpni_clear_fs_entries() - Clear all Flow Steering entries of a specific
+ *			traffic class
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @tc_id:	Traffic class selection (0-7)
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpni_clear_fs_entries(struct fsl_mc_io *mc_io,
+			  uint32_t cmd_flags,
+			  uint16_t token,
+			  uint8_t tc_id)
+{
+	struct dpni_cmd_clear_fs_entries *cmd_params;
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_CLR_FS_ENT,
+					  cmd_flags,
+					  token);
+	cmd_params = (struct dpni_cmd_clear_fs_entries *)cmd.params;
+	cmd_params->tc_id = tc_id;
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+/**
  * dpni_set_congestion_notification() - Set traffic class congestion
  *	notification configuration
  * @mc_io:	Pointer to MC portal's I/O object
@@ -2062,6 +2304,76 @@ int dpni_get_opr(struct fsl_mc_io *mc_io,
 	qry->opr_id = le16_to_cpu(rsp_params->opr_id);
 
 	return 0;
+}
+
+/**
+ * dpni_set_rx_fs_dist() - Set Rx traffic class FS distribution
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @cfg: Distribution configuration
+ * If the FS is already enabled with a previous call the classification
+ *		key will be changed but all the table rules are kept. If the
+ *		existing rules do not match the key the results will not be
+ *		predictable. It is the user responsibility to keep key integrity
+ * If cfg.enable is set to 1 the command will create a flow steering table
+ *		and will classify packets according to this table. The packets
+ *		that miss all the table rules will be classified according to
+ *		settings made in dpni_set_rx_hash_dist()
+ * If cfg.enable is set to 0 the command will clear flow steering table. The
+ *		packets will be classified according to settings made in
+ *		dpni_set_rx_hash_dist()
+ */
+int dpni_set_rx_fs_dist(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
+		uint16_t token, const struct dpni_rx_dist_cfg *cfg)
+{
+	struct dpni_cmd_set_rx_fs_dist *cmd_params;
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_SET_RX_FS_DIST,
+					  cmd_flags,
+					  token);
+	cmd_params = (struct dpni_cmd_set_rx_fs_dist *)cmd.params;
+	cmd_params->dist_size	= cpu_to_le16(cfg->dist_size);
+	dpni_set_field(cmd_params->enable, RX_FS_DIST_ENABLE, cfg->enable);
+	cmd_params->tc = cfg->tc;
+	cmd_params->miss_flow_id = cpu_to_le16(cfg->fs_miss_flow_id);
+	cmd_params->key_cfg_iova = cpu_to_le64(cfg->key_cfg_iova);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+/**
+ * dpni_set_rx_hash_dist() - Set Rx traffic class HASH distribution
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @cfg: Distribution configuration
+ * If cfg.enable is set to 1 the packets will be classified using a hash
+ *		function based on the key received in cfg.key_cfg_iova parameter
+ * If cfg.enable is set to 0 the packets will be sent to the queue configured in
+ *		dpni_set_rx_dist_default_queue() call
+ */
+int dpni_set_rx_hash_dist(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
+		uint16_t token, const struct dpni_rx_dist_cfg *cfg)
+{
+	struct dpni_cmd_set_rx_hash_dist *cmd_params;
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_SET_RX_HASH_DIST,
+					  cmd_flags,
+					  token);
+	cmd_params = (struct dpni_cmd_set_rx_hash_dist *)cmd.params;
+	cmd_params->dist_size	= cpu_to_le16(cfg->dist_size);
+	dpni_set_field(cmd_params->enable, RX_FS_DIST_ENABLE, cfg->enable);
+	cmd_params->tc_id		= cfg->tc;
+	cmd_params->key_cfg_iova = cpu_to_le64(cfg->key_cfg_iova);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
 }
 
 /**
