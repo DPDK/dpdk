@@ -452,6 +452,76 @@ rte_fbarray_find_rev_contig_used(struct rte_fbarray *arr, unsigned int start);
 
 
 /**
+ * Find index of biggest chunk of free elements, starting at specified index.
+ *
+ * @param arr
+ *   Valid pointer to allocated and correctly set up ``rte_fbarray`` structure.
+ *
+ * @param start
+ *   Element index to start search from.
+ *
+ * @return
+ *  - non-negative integer on success.
+ *  - -1 on failure, with ``rte_errno`` indicating reason for failure.
+ */
+int __rte_experimental
+rte_fbarray_find_biggest_free(struct rte_fbarray *arr, unsigned int start);
+
+
+/**
+ * Find index of biggest chunk of used elements, starting at specified index.
+ *
+ * @param arr
+ *   Valid pointer to allocated and correctly set up ``rte_fbarray`` structure.
+ *
+ * @param start
+ *   Element index to start search from.
+ *
+ * @return
+ *  - non-negative integer on success.
+ *  - -1 on failure, with ``rte_errno`` indicating reason for failure.
+ */
+int __rte_experimental
+rte_fbarray_find_biggest_used(struct rte_fbarray *arr, unsigned int start);
+
+
+/**
+ * Find index of biggest chunk of free elements before a specified index (like
+ * ``rte_fbarray_find_biggest_free``, but going in reverse).
+ *
+ * @param arr
+ *   Valid pointer to allocated and correctly set up ``rte_fbarray`` structure.
+ *
+ * @param start
+ *   Element index to start search from.
+ *
+ * @return
+ *  - non-negative integer on success.
+ *  - -1 on failure, with ``rte_errno`` indicating reason for failure.
+ */
+int __rte_experimental
+rte_fbarray_find_rev_biggest_free(struct rte_fbarray *arr, unsigned int start);
+
+
+/**
+ * Find index of biggest chunk of used elements before a specified index (like
+ * ``rte_fbarray_find_biggest_used``, but going in reverse).
+ *
+ * @param arr
+ *   Valid pointer to allocated and correctly set up ``rte_fbarray`` structure.
+ *
+ * @param start
+ *   Element index to start search from.
+ *
+ * @return
+ *  - non-negative integer on success.
+ *  - -1 on failure, with ``rte_errno`` indicating reason for failure.
+ */
+int __rte_experimental
+rte_fbarray_find_rev_biggest_used(struct rte_fbarray *arr, unsigned int start);
+
+
+/**
  * Dump ``rte_fbarray`` metadata.
  *
  * @param arr

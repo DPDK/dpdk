@@ -1308,6 +1308,115 @@ out:
 	return ret;
 }
 
+static int
+fbarray_find_biggest(struct rte_fbarray *arr, unsigned int start, bool used,
+		bool rev)
+{
+	int cur_idx, next_idx, cur_len, biggest_idx, biggest_len;
+	/* don't stack if conditions, use function pointers instead */
+	int (*find_func)(struct rte_fbarray *, unsigned int);
+	int (*find_contig_func)(struct rte_fbarray *, unsigned int);
+
+	if (arr == NULL || start >= arr->len) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+	/* the other API calls already do their fair share of cheap checks, so
+	 * no need to do them here.
+	 */
+
+	/* the API's called are thread-safe, but something may still happen
+	 * inbetween the API calls, so lock the fbarray. all other API's are
+	 * read-locking the fbarray, so read lock here is OK.
+	 */
+	rte_rwlock_read_lock(&arr->rwlock);
+
+	/* pick out appropriate functions */
+	if (used) {
+		if (rev) {
+			find_func = rte_fbarray_find_prev_used;
+			find_contig_func = rte_fbarray_find_rev_contig_used;
+		} else {
+			find_func = rte_fbarray_find_next_used;
+			find_contig_func = rte_fbarray_find_contig_used;
+		}
+	} else {
+		if (rev) {
+			find_func = rte_fbarray_find_prev_free;
+			find_contig_func = rte_fbarray_find_rev_contig_free;
+		} else {
+			find_func = rte_fbarray_find_next_free;
+			find_contig_func = rte_fbarray_find_contig_free;
+		}
+	}
+
+	cur_idx = start;
+	biggest_idx = -1; /* default is error */
+	biggest_len = 0;
+	for (;;) {
+		cur_idx = find_func(arr, cur_idx);
+
+		/* block found, check its length */
+		if (cur_idx >= 0) {
+			cur_len = find_contig_func(arr, cur_idx);
+			/* decide where we go next */
+			next_idx = rev ? cur_idx - cur_len : cur_idx + cur_len;
+			/* move current index to start of chunk */
+			cur_idx = rev ? next_idx + 1 : cur_idx;
+
+			if (cur_len > biggest_len) {
+				biggest_idx = cur_idx;
+				biggest_len = cur_len;
+			}
+			cur_idx = next_idx;
+			/* in reverse mode, next_idx may be -1 if chunk started
+			 * at array beginning. this means there's no more work
+			 * to do.
+			 */
+			if (cur_idx < 0)
+				break;
+		} else {
+			/* nothing more to find, stop. however, a failed API
+			 * call has set rte_errno, which we want to ignore, as
+			 * reaching the end of fbarray is not an error.
+			 */
+			rte_errno = 0;
+			break;
+		}
+	}
+	/* if we didn't find anything at all, set rte_errno */
+	if (biggest_idx < 0)
+		rte_errno = used ? ENOENT : ENOSPC;
+
+	rte_rwlock_read_unlock(&arr->rwlock);
+	return biggest_idx;
+}
+
+int __rte_experimental
+rte_fbarray_find_biggest_free(struct rte_fbarray *arr, unsigned int start)
+{
+	return fbarray_find_biggest(arr, start, false, false);
+}
+
+int __rte_experimental
+rte_fbarray_find_biggest_used(struct rte_fbarray *arr, unsigned int start)
+{
+	return fbarray_find_biggest(arr, start, true, false);
+}
+
+int __rte_experimental
+rte_fbarray_find_rev_biggest_free(struct rte_fbarray *arr, unsigned int start)
+{
+	return fbarray_find_biggest(arr, start, false, true);
+}
+
+int __rte_experimental
+rte_fbarray_find_rev_biggest_used(struct rte_fbarray *arr, unsigned int start)
+{
+	return fbarray_find_biggest(arr, start, true, true);
+}
+
+
 int __rte_experimental
 rte_fbarray_find_contig_free(struct rte_fbarray *arr, unsigned int start)
 {

@@ -97,6 +97,8 @@ static int empty_msk_test_setup(void)
 {
 	/* do not fill anything in */
 	reset_array();
+	param.start = -1;
+	param.end = -1;
 	return 0;
 }
 
@@ -456,6 +458,157 @@ static int test_basic(void)
 	return TEST_SUCCESS;
 }
 
+static int test_biggest(struct rte_fbarray *arr, int first, int last)
+{
+	int lo_free_space_first, lo_free_space_last, lo_free_space_len;
+	int hi_free_space_first, hi_free_space_last, hi_free_space_len;
+	int max_free_space_first, max_free_space_last, max_free_space_len;
+	int len = last - first + 1;
+
+	/* first and last must either be both -1, or both not -1 */
+	TEST_ASSERT((first == -1) == (last == -1),
+			"Invalid arguments provided\n");
+
+	/* figure out what we expect from the low chunk of free space */
+	if (first == -1) {
+		/* special case: if there are no occupied elements at all,
+		 * consider both free spaces to consume the entire array.
+		 */
+		lo_free_space_first = 0;
+		lo_free_space_last = arr->len - 1;
+		lo_free_space_len = arr->len;
+		/* if there's no used space, length should be invalid */
+		len = -1;
+	} else if (first == 0) {
+		/* if occupied items start at 0, there's no free space */
+		lo_free_space_first = -1;
+		lo_free_space_last = -1;
+		lo_free_space_len = 0;
+	} else {
+		lo_free_space_first = 0;
+		lo_free_space_last = first - 1;
+		lo_free_space_len = lo_free_space_last -
+				lo_free_space_first + 1;
+	}
+
+	/* figure out what we expect from the high chunk of free space */
+	if (last == -1) {
+		/* special case: if there are no occupied elements at all,
+		 * consider both free spaces to consume the entire array.
+		 */
+		hi_free_space_first = 0;
+		hi_free_space_last = arr->len - 1;
+		hi_free_space_len = arr->len;
+		/* if there's no used space, length should be invalid */
+		len = -1;
+	} else if (last == ((int)arr->len - 1)) {
+		/* if occupied items end at array len, there's no free space */
+		hi_free_space_first = -1;
+		hi_free_space_last = -1;
+		hi_free_space_len = 0;
+	} else {
+		hi_free_space_first = last + 1;
+		hi_free_space_last = arr->len - 1;
+		hi_free_space_len = hi_free_space_last -
+				hi_free_space_first + 1;
+	}
+
+	/* find which one will be biggest */
+	if (lo_free_space_len > hi_free_space_len) {
+		max_free_space_first = lo_free_space_first;
+		max_free_space_last = lo_free_space_last;
+		max_free_space_len = lo_free_space_len;
+	} else {
+		/* if they are equal, we'll just use the high chunk */
+		max_free_space_first = hi_free_space_first;
+		max_free_space_last = hi_free_space_last;
+		max_free_space_len = hi_free_space_len;
+	}
+
+	/* check used regions - these should produce identical results */
+	TEST_ASSERT_EQUAL(rte_fbarray_find_biggest_used(arr, 0), first,
+			"Used space index is wrong\n");
+	TEST_ASSERT_EQUAL(rte_fbarray_find_rev_biggest_used(arr, arr->len - 1),
+			first,
+			"Used space index is wrong\n");
+	/* len may be -1, but function will return error anyway */
+	TEST_ASSERT_EQUAL(rte_fbarray_find_contig_used(arr, first), len,
+			"Used space length is wrong\n");
+
+	/* check if biggest free region is the one we expect to find. It can be
+	 * -1 if there's no free space - we've made sure we use one or the
+	 * other, even if both are invalid.
+	 */
+	TEST_ASSERT_EQUAL(rte_fbarray_find_biggest_free(arr, 0),
+			max_free_space_first,
+			"Biggest free space index is wrong\n");
+	TEST_ASSERT_EQUAL(rte_fbarray_find_rev_biggest_free(arr, arr->len - 1),
+			max_free_space_first,
+			"Biggest free space index is wrong\n");
+
+	/* if biggest region exists, check its length */
+	if (max_free_space_first != -1) {
+		TEST_ASSERT_EQUAL(rte_fbarray_find_contig_free(arr,
+					max_free_space_first),
+				max_free_space_len,
+				"Biggest free space length is wrong\n");
+		TEST_ASSERT_EQUAL(rte_fbarray_find_rev_contig_free(arr,
+					max_free_space_last),
+				max_free_space_len,
+				"Biggest free space length is wrong\n");
+	}
+
+	/* find if we see what we expect to see in the low region. if there is
+	 * no free space, the function should still match expected value, as
+	 * we've set it to -1. we're scanning backwards to avoid accidentally
+	 * hitting the high free space region. if there is no occupied space,
+	 * there's nothing to do.
+	 */
+	if (last != -1) {
+		TEST_ASSERT_EQUAL(rte_fbarray_find_rev_biggest_free(arr, last),
+				lo_free_space_first,
+				"Low free space index is wrong\n");
+	}
+
+	if (lo_free_space_first != -1) {
+		/* if low free region exists, check its length */
+		TEST_ASSERT_EQUAL(rte_fbarray_find_contig_free(arr,
+					lo_free_space_first),
+				lo_free_space_len,
+				"Low free space length is wrong\n");
+		TEST_ASSERT_EQUAL(rte_fbarray_find_rev_contig_free(arr,
+					lo_free_space_last),
+				lo_free_space_len,
+				"Low free space length is wrong\n");
+	}
+
+	/* find if we see what we expect to see in the high region. if there is
+	 * no free space, the function should still match expected value, as
+	 * we've set it to -1. we're scanning forwards to avoid accidentally
+	 * hitting the low free space region. if there is no occupied space,
+	 * there's nothing to do.
+	 */
+	if (first != -1) {
+		TEST_ASSERT_EQUAL(rte_fbarray_find_biggest_free(arr, first),
+				hi_free_space_first,
+				"High free space index is wrong\n");
+	}
+
+	/* if high free region exists, check its length */
+	if (hi_free_space_first != -1) {
+		TEST_ASSERT_EQUAL(rte_fbarray_find_contig_free(arr,
+					hi_free_space_first),
+				hi_free_space_len,
+				"High free space length is wrong\n");
+		TEST_ASSERT_EQUAL(rte_fbarray_find_rev_contig_free(arr,
+					hi_free_space_last),
+				hi_free_space_len,
+				"High free space length is wrong\n");
+	}
+
+	return 0;
+}
+
 static int ensure_correct(struct rte_fbarray *arr, int first, int last,
 		bool used)
 {
@@ -537,6 +690,9 @@ static int test_find(void)
 	if (ensure_correct(&param.arr, param.end + 1, FBARRAY_TEST_LEN - 1,
 			false))
 		return TEST_FAILED;
+	/* test if find_biggest API's work correctly */
+	if (test_biggest(&param.arr, param.start, param.end))
+		return TEST_FAILED;
 	return TEST_SUCCESS;
 }
 
@@ -545,6 +701,9 @@ static int test_empty(void)
 	TEST_ASSERT_EQUAL((int)param.arr.count, 0, "Wrong element count\n");
 	/* ensure space is free */
 	if (ensure_correct(&param.arr, 0, FBARRAY_TEST_LEN - 1, false))
+		return TEST_FAILED;
+	/* test if find_biggest API's work correctly */
+	if (test_biggest(&param.arr, param.start, param.end))
 		return TEST_FAILED;
 	return TEST_SUCCESS;
 }
