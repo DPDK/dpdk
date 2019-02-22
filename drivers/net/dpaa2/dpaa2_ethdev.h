@@ -20,7 +20,7 @@
 #define DPAA2_MAX_RX_PKT_LEN  10240 /*WRIOP support*/
 
 #define MAX_TCS			DPNI_MAX_TC
-#define MAX_RX_QUEUES		16
+#define MAX_RX_QUEUES		128
 #define MAX_TX_QUEUES		16
 
 /*default tc to be used for ,congestion, distribution etc configuration. */
