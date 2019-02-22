@@ -2063,3 +2063,101 @@ int dpni_get_opr(struct fsl_mc_io *mc_io,
 
 	return 0;
 }
+
+/**
+ * dpni_add_custom_tpid() - Configures a distinct Ethertype value
+ *		(or TPID value) to indicate VLAN tag in addition to the common
+ *		TPID values 0x8100 and 0x88A8
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @tpid:	New value for TPID
+ *
+ * Only two custom values are accepted. If the function is called for the third
+ * time it will return error.
+ * To replace an existing value use dpni_remove_custom_tpid() to remove
+ * a previous TPID and after that use again the function.
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpni_add_custom_tpid(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
+		uint16_t token, uint16_t tpid)
+{
+	struct dpni_cmd_add_custom_tpid *cmd_params;
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_ADD_CUSTOM_TPID,
+					  cmd_flags,
+					  token);
+	cmd_params = (struct dpni_cmd_add_custom_tpid *)cmd.params;
+	cmd_params->tpid = cpu_to_le16(tpid);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+/**
+ * dpni_remove_custom_tpid() - Removes a distinct Ethertype value added
+ *		previously with dpni_add_custom_tpid()
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @tpid:	New value for TPID
+ *
+ * Use this function when a TPID value added with dpni_add_custom_tpid() needs
+ * to be replaced.
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpni_remove_custom_tpid(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
+		uint16_t token, uint16_t tpid)
+{
+	struct dpni_cmd_remove_custom_tpid *cmd_params;
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_REMOVE_CUSTOM_TPID,
+					  cmd_flags,
+					  token);
+	cmd_params = (struct dpni_cmd_remove_custom_tpid *)cmd.params;
+	cmd_params->tpid = cpu_to_le16(tpid);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+/**
+ * dpni_get_custom_tpid() - Returns custom TPID (vlan tags) values configured
+ *				to detect 802.1q frames
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @tpid:	TPID values. Only nonzero members of the structure are valid.
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpni_get_custom_tpid(struct fsl_mc_io *mc_io, uint32_t cmd_flags,
+		uint16_t token, struct dpni_custom_tpid_cfg *tpid)
+{
+	struct dpni_rsp_get_custom_tpid *rsp_params;
+	struct mc_command cmd = { 0 };
+	int err;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_GET_CUSTOM_TPID,
+					  cmd_flags,
+					  token);
+
+	/* send command to mc*/
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	/* read command response */
+	rsp_params = (struct dpni_rsp_get_custom_tpid *)cmd.params;
+	tpid->tpid1 = le16_to_cpu(rsp_params->tpid1);
+	tpid->tpid2 = le16_to_cpu(rsp_params->tpid2);
+
+	return err;
+}

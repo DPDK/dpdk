@@ -162,6 +162,44 @@ next_mask:
 }
 
 static int
+dpaa2_vlan_tpid_set(struct rte_eth_dev *dev,
+		      enum rte_vlan_type vlan_type __rte_unused,
+		      uint16_t tpid)
+{
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpni = priv->hw;
+	int ret = -ENOTSUP;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* nothing to be done for standard vlan tpids */
+	if (tpid == 0x8100 || tpid == 0x88A8)
+		return 0;
+
+	ret = dpni_add_custom_tpid(dpni, CMD_PRI_LOW,
+				   priv->token, tpid);
+	if (ret < 0)
+		DPAA2_PMD_INFO("Unable to set vlan tpid = %d", ret);
+	/* if already configured tpids, remove them first */
+	if (ret == -EBUSY) {
+		struct dpni_custom_tpid_cfg tpid_list = {0};
+
+		ret = dpni_get_custom_tpid(dpni, CMD_PRI_LOW,
+				   priv->token, &tpid_list);
+		if (ret < 0)
+			goto fail;
+		ret = dpni_remove_custom_tpid(dpni, CMD_PRI_LOW,
+				   priv->token, tpid_list.tpid1);
+		if (ret < 0)
+			goto fail;
+		ret = dpni_add_custom_tpid(dpni, CMD_PRI_LOW,
+					   priv->token, tpid);
+	}
+fail:
+	return ret;
+}
+
+static int
 dpaa2_fw_version_get(struct rte_eth_dev *dev,
 		     char *fw_version,
 		     size_t fw_size)
@@ -1832,6 +1870,7 @@ static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.mtu_set           = dpaa2_dev_mtu_set,
 	.vlan_filter_set      = dpaa2_vlan_filter_set,
 	.vlan_offload_set     = dpaa2_vlan_offload_set,
+	.vlan_tpid_set	      = dpaa2_vlan_tpid_set,
 	.rx_queue_setup    = dpaa2_dev_rx_queue_setup,
 	.rx_queue_release  = dpaa2_dev_rx_queue_release,
 	.tx_queue_setup    = dpaa2_dev_tx_queue_setup,
