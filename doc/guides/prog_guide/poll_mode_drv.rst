@@ -374,9 +374,9 @@ parameters to those ports.
   this argument allows user to specify which switch ports to enable port
   representors for.::
 
-   -w BDBF,representor=0
-   -w BDBF,representor=[0,4,6,9]
-   -w BDBF,representor=[0-31]
+   -w DBDF,representor=0
+   -w DBDF,representor=[0,4,6,9]
+   -w DBDF,representor=[0-31]
 
 Note: PMDs are not required to support the standard device arguments and users
 should consult the relevant PMD documentation to see support devargs.
