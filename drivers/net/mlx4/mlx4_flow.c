@@ -250,6 +250,7 @@ mlx4_flow_merge_eth(struct rte_flow *flow,
 	if (!mask) {
 		eth->val.dst_mac[0] = 0xff;
 		flow->ibv_attr->type = IBV_FLOW_ATTR_ALL_DEFAULT;
+		flow->promisc = 1;
 		return 0;
 	}
 	memcpy(eth->val.dst_mac, spec->dst.addr_bytes, ETHER_ADDR_LEN);
