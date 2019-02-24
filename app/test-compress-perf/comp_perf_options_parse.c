@@ -373,7 +373,7 @@ parse_driver_name(struct comp_test_data *test_data, const char *arg)
 	if (strlen(arg) > (sizeof(test_data->driver_name) - 1))
 		return -1;
 
-	rte_strlcpy(test_data->driver_name, arg,
+	strlcpy(test_data->driver_name, arg,
 			sizeof(test_data->driver_name));
 
 	return 0;
@@ -385,7 +385,7 @@ parse_test_file(struct comp_test_data *test_data, const char *arg)
 	if (strlen(arg) > (sizeof(test_data->input_file) - 1))
 		return -1;
 
-	rte_strlcpy(test_data->input_file, arg, sizeof(test_data->input_file));
+	strlcpy(test_data->input_file, arg, sizeof(test_data->input_file));
 
 	return 0;
 }
