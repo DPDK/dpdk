@@ -785,7 +785,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	}
 	/* Build device name. */
 	if (!switch_info->representor)
-		rte_strlcpy(name, dpdk_dev->name, sizeof(name));
+		strlcpy(name, dpdk_dev->name, sizeof(name));
 	else
 		snprintf(name, sizeof(name), "%s_representor_%u",
 			 dpdk_dev->name, switch_info->port_name);
