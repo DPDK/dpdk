@@ -22,11 +22,13 @@ HOST_GCC_VERSION = $(HOST_GCC_MAJOR)$(HOST_GCC_MINOR)
 
 LD_VERSION = $(shell $(LD) -v)
 # disable AVX512F support for GCC & binutils 2.30 as a workaround for Bug 97
+ifeq ($(CONFIG_RTE_ARCH_X86), y)
 ifneq ($(filter 2.30%,$(LD_VERSION)),)
 FORCE_DISABLE_AVX512 := y
 # print warning only once for librte_eal
 ifneq ($(filter %librte_eal,$(CURDIR)),)
 $(warning AVX512 support disabled because of ld 2.30. See Bug 97)
+endif
 endif
 endif
 
