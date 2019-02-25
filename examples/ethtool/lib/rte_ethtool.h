@@ -9,7 +9,7 @@
  * This new interface is designed to provide a user-space shim layer for
  * Ethtool and Netdevice op API.
  *
- * rte_ethtool_get_driver:          ethtool_ops::get_driverinfo
+ * rte_ethtool_get_driver:          ethtool_ops::get_drvinfo
  * rte_ethtool_get_link:            ethtool_ops::get_link
  * rte_ethtool_get_regs_len:        ethtool_ops::get_regs_len
  * rte_ethtool_get_regs:            ethtool_ops::get_regs
@@ -23,7 +23,7 @@
  * rte_ethtool_net_stop:            net_device_ops::ndo_stop
  * rte_ethtool_net_set_mac_addr:    net_device_ops::ndo_set_mac_address
  * rte_ethtool_net_validate_addr:   net_device_ops::ndo_validate_addr
- * rte_ethtool_net_change_mtu:      net_device_ops::rte_net_change_mtu
+ * rte_ethtool_net_change_mtu:      net_device_ops::ndo_change_mtu
  * rte_ethtool_net_get_stats64:     net_device_ops::ndo_get_stats64
  * rte_ethtool_net_vlan_rx_add_vid  net_device_ops::ndo_vlan_rx_add_vid
  * rte_ethtool_net_vlan_rx_kill_vid net_device_ops::ndo_vlan_rx_kill_vid
