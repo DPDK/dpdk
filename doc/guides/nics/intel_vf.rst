@@ -68,11 +68,11 @@ which is called a "Mailbox".
 
 Intel® Ethernet Adaptive Virtual Function
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Adaptive Virtual Function (AVF) is a SR-IOV Virtual Function with the same device id (8086:1889) on different Intel Ethernet Controller.
-AVF Driver is VF driver which supports for all future Intel devices without requiring a VM update. And since this happens to be an adaptive VF driver,
+Adaptive Virtual Function (IAVF) is a SR-IOV Virtual Function with the same device id (8086:1889) on different Intel Ethernet Controller.
+IAVF Driver is VF driver which supports for all future Intel devices without requiring a VM update. And since this happens to be an adaptive VF driver,
 every new drop of the VF driver would add more and more advanced features that can be turned on in the VM if the underlying HW device supports those
-advanced features based on a device agnostic way without ever compromising on the base functionality. AVF provides generic hardware interface and
-interface between AVF driver and a compliant PF driver is specified.
+advanced features based on a device agnostic way without ever compromising on the base functionality. IAVF provides generic hardware interface and
+interface between IAVF driver and a compliant PF driver is specified.
 
 Intel products starting Ethernet Controller 700 Series to support Adaptive Virtual Function.
 
@@ -80,12 +80,12 @@ The way to generate Virtual Function is like normal, and the resource of VF assi
 
 For more detail on SR-IOV, please refer to the following documents:
 
-*   `Intel® AVF HAS <https://www.intel.com/content/dam/www/public/us/en/documents/product-specifications/ethernet-adaptive-virtual-function-hardware-spec.pdf>`_
+*   `Intel® IAVF HAS <https://www.intel.com/content/dam/www/public/us/en/documents/product-specifications/ethernet-adaptive-virtual-function-hardware-spec.pdf>`_
 
 .. note::
 
-    To use DPDK AVF PMD on Intel® 700 Series Ethernet Controller, the device id (0x1889) need to specified during device
-    assignment in hypervisor. Take qemu for example, the device assignment should carry the AVF device id (0x1889) like
+    To use DPDK IAVF PMD on Intel® 700 Series Ethernet Controller, the device id (0x1889) need to specified during device
+    assignment in hypervisor. Take qemu for example, the device assignment should carry the IAVF device id (0x1889) like
     ``-device vfio-pci,x-pci-device-id=0x1889,host=03:0a.0``.
 
 The PCIE host-interface of Intel Ethernet Switch FM10000 Series VF infrastructure

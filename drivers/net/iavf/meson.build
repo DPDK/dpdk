@@ -15,6 +15,6 @@ sources = files(
 )
 
 if arch_subdir == 'x86'
-	dpdk_conf.set('RTE_LIBRTE_AVF_INC_VECTOR', 1)
+	dpdk_conf.set('RTE_LIBRTE_IAVF_INC_VECTOR', 1)
 	sources += files('iavf_rxtx_vec_sse.c')
 endif

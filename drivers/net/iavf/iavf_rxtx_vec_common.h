@@ -2,8 +2,8 @@
  * Copyright(c) 2017 Intel Corporation
  */
 
-#ifndef _AVF_RXTX_VEC_COMMON_H_
-#define _AVF_RXTX_VEC_COMMON_H_
+#ifndef _IAVF_RXTX_VEC_COMMON_H_
+#define _IAVF_RXTX_VEC_COMMON_H_
 #include <stdint.h>
 #include <rte_ethdev_driver.h>
 #include <rte_malloc.h>
@@ -12,10 +12,10 @@
 #include "iavf_rxtx.h"
 
 static inline uint16_t
-reassemble_packets(struct avf_rx_queue *rxq, struct rte_mbuf **rx_bufs,
+reassemble_packets(struct iavf_rx_queue *rxq, struct rte_mbuf **rx_bufs,
 		   uint16_t nb_bufs, uint8_t *split_flags)
 {
-	struct rte_mbuf *pkts[AVF_VPMD_RX_MAX_BURST];
+	struct rte_mbuf *pkts[IAVF_VPMD_RX_MAX_BURST];
 	struct rte_mbuf *start = rxq->pkt_first_seg;
 	struct rte_mbuf *end =  rxq->pkt_last_seg;
 	unsigned int pkt_idx, buf_idx;
@@ -75,18 +75,18 @@ reassemble_packets(struct avf_rx_queue *rxq, struct rte_mbuf **rx_bufs,
 }
 
 static __rte_always_inline int
-avf_tx_free_bufs(struct avf_tx_queue *txq)
+iavf_tx_free_bufs(struct iavf_tx_queue *txq)
 {
-	struct avf_tx_entry *txep;
+	struct iavf_tx_entry *txep;
 	uint32_t n;
 	uint32_t i;
 	int nb_free = 0;
-	struct rte_mbuf *m, *free[AVF_VPMD_TX_MAX_FREE_BUF];
+	struct rte_mbuf *m, *free[IAVF_VPMD_TX_MAX_FREE_BUF];
 
 	/* check DD bits on threshold descriptor */
 	if ((txq->tx_ring[txq->next_dd].cmd_type_offset_bsz &
-			rte_cpu_to_le_64(AVF_TXD_QW1_DTYPE_MASK)) !=
-			rte_cpu_to_le_64(AVF_TX_DESC_DTYPE_DESC_DONE))
+			rte_cpu_to_le_64(IAVF_TXD_QW1_DTYPE_MASK)) !=
+			rte_cpu_to_le_64(IAVF_TX_DESC_DTYPE_DESC_DONE))
 		return 0;
 
 	n = txq->rs_thresh;
@@ -132,7 +132,7 @@ avf_tx_free_bufs(struct avf_tx_queue *txq)
 }
 
 static __rte_always_inline void
-tx_backlog_entry(struct avf_tx_entry *txep,
+tx_backlog_entry(struct iavf_tx_entry *txep,
 		 struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	int i;
@@ -142,7 +142,7 @@ tx_backlog_entry(struct avf_tx_entry *txep,
 }
 
 static inline void
-_avf_rx_queue_release_mbufs_vec(struct avf_rx_queue *rxq)
+_iavf_rx_queue_release_mbufs_vec(struct iavf_rx_queue *rxq)
 {
 	const unsigned int mask = rxq->nb_rx_desc - 1;
 	unsigned int i;
@@ -172,7 +172,7 @@ _avf_rx_queue_release_mbufs_vec(struct avf_rx_queue *rxq)
 }
 
 static inline void
-_avf_tx_queue_release_mbufs_vec(struct avf_tx_queue *txq)
+_iavf_tx_queue_release_mbufs_vec(struct iavf_tx_queue *txq)
 {
 	unsigned i;
 	const uint16_t max_desc = (uint16_t)(txq->nb_tx_desc - 1);
@@ -191,7 +191,7 @@ _avf_tx_queue_release_mbufs_vec(struct avf_tx_queue *txq)
 }
 
 static inline int
-avf_rxq_vec_setup_default(struct avf_rx_queue *rxq)
+iavf_rxq_vec_setup_default(struct iavf_rx_queue *rxq)
 {
 	uintptr_t p;
 	struct rte_mbuf mb_def = { .buf_addr = 0 }; /* zeroed mbuf */

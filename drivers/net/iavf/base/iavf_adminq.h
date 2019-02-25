@@ -31,26 +31,26 @@ POSSIBILITY OF SUCH DAMAGE.
 
 ***************************************************************************/
 
-#ifndef _AVF_ADMINQ_H_
-#define _AVF_ADMINQ_H_
+#ifndef _IAVF_ADMINQ_H_
+#define _IAVF_ADMINQ_H_
 
 #include "iavf_osdep.h"
 #include "iavf_status.h"
 #include "iavf_adminq_cmd.h"
 
-#define AVF_ADMINQ_DESC(R, i)   \
-	(&(((struct avf_aq_desc *)((R).desc_buf.va))[i]))
+#define IAVF_ADMINQ_DESC(R, i)   \
+	(&(((struct iavf_aq_desc *)((R).desc_buf.va))[i]))
 
-#define AVF_ADMINQ_DESC_ALIGNMENT 4096
+#define IAVF_ADMINQ_DESC_ALIGNMENT 4096
 
-struct avf_adminq_ring {
-	struct avf_virt_mem dma_head;	/* space for dma structures */
-	struct avf_dma_mem desc_buf;	/* descriptor ring memory */
-	struct avf_virt_mem cmd_buf;	/* command buffer memory */
+struct iavf_adminq_ring {
+	struct iavf_virt_mem dma_head;	/* space for dma structures */
+	struct iavf_dma_mem desc_buf;	/* descriptor ring memory */
+	struct iavf_virt_mem cmd_buf;	/* command buffer memory */
 
 	union {
-		struct avf_dma_mem *asq_bi;
-		struct avf_dma_mem *arq_bi;
+		struct iavf_dma_mem *asq_bi;
+		struct iavf_dma_mem *arq_bi;
 	} r;
 
 	u16 count;		/* Number of descriptors */
@@ -69,31 +69,31 @@ struct avf_adminq_ring {
 };
 
 /* ASQ transaction details */
-struct avf_asq_cmd_details {
-	void *callback; /* cast from type AVF_ADMINQ_CALLBACK */
+struct iavf_asq_cmd_details {
+	void *callback; /* cast from type IAVF_ADMINQ_CALLBACK */
 	u64 cookie;
 	u16 flags_ena;
 	u16 flags_dis;
 	bool async;
 	bool postpone;
-	struct avf_aq_desc *wb_desc;
+	struct iavf_aq_desc *wb_desc;
 };
 
-#define AVF_ADMINQ_DETAILS(R, i)   \
-	(&(((struct avf_asq_cmd_details *)((R).cmd_buf.va))[i]))
+#define IAVF_ADMINQ_DETAILS(R, i)   \
+	(&(((struct iavf_asq_cmd_details *)((R).cmd_buf.va))[i]))
 
 /* ARQ event information */
-struct avf_arq_event_info {
-	struct avf_aq_desc desc;
+struct iavf_arq_event_info {
+	struct iavf_aq_desc desc;
 	u16 msg_len;
 	u16 buf_len;
 	u8 *msg_buf;
 };
 
 /* Admin Queue information */
-struct avf_adminq_info {
-	struct avf_adminq_ring arq;    /* receive queue */
-	struct avf_adminq_ring asq;    /* send queue */
+struct iavf_adminq_info {
+	struct iavf_adminq_ring arq;    /* receive queue */
+	struct iavf_adminq_ring asq;    /* send queue */
 	u32 asq_cmd_timeout;            /* send queue cmd write back timeout*/
 	u16 num_arq_entries;            /* receive queue depth */
 	u16 num_asq_entries;            /* send queue depth */
@@ -105,49 +105,49 @@ struct avf_adminq_info {
 	u16 api_maj_ver;                /* api major version */
 	u16 api_min_ver;                /* api minor version */
 
-	struct avf_spinlock asq_spinlock; /* Send queue spinlock */
-	struct avf_spinlock arq_spinlock; /* Receive queue spinlock */
+	struct iavf_spinlock asq_spinlock; /* Send queue spinlock */
+	struct iavf_spinlock arq_spinlock; /* Receive queue spinlock */
 
 	/* last status values on send and receive queues */
-	enum avf_admin_queue_err asq_last_status;
-	enum avf_admin_queue_err arq_last_status;
+	enum iavf_admin_queue_err asq_last_status;
+	enum iavf_admin_queue_err arq_last_status;
 };
 
 /**
- * avf_aq_rc_to_posix - convert errors to user-land codes
+ * iavf_aq_rc_to_posix - convert errors to user-land codes
  * aq_ret: AdminQ handler error code can override aq_rc
  * aq_rc: AdminQ firmware error code to convert
  **/
-STATIC INLINE int avf_aq_rc_to_posix(int aq_ret, int aq_rc)
+STATIC INLINE int iavf_aq_rc_to_posix(int aq_ret, int aq_rc)
 {
 	int aq_to_posix[] = {
-		0,           /* AVF_AQ_RC_OK */
-		-EPERM,      /* AVF_AQ_RC_EPERM */
-		-ENOENT,     /* AVF_AQ_RC_ENOENT */
-		-ESRCH,      /* AVF_AQ_RC_ESRCH */
-		-EINTR,      /* AVF_AQ_RC_EINTR */
-		-EIO,        /* AVF_AQ_RC_EIO */
-		-ENXIO,      /* AVF_AQ_RC_ENXIO */
-		-E2BIG,      /* AVF_AQ_RC_E2BIG */
-		-EAGAIN,     /* AVF_AQ_RC_EAGAIN */
-		-ENOMEM,     /* AVF_AQ_RC_ENOMEM */
-		-EACCES,     /* AVF_AQ_RC_EACCES */
-		-EFAULT,     /* AVF_AQ_RC_EFAULT */
-		-EBUSY,      /* AVF_AQ_RC_EBUSY */
-		-EEXIST,     /* AVF_AQ_RC_EEXIST */
-		-EINVAL,     /* AVF_AQ_RC_EINVAL */
-		-ENOTTY,     /* AVF_AQ_RC_ENOTTY */
-		-ENOSPC,     /* AVF_AQ_RC_ENOSPC */
-		-ENOSYS,     /* AVF_AQ_RC_ENOSYS */
-		-ERANGE,     /* AVF_AQ_RC_ERANGE */
-		-EPIPE,      /* AVF_AQ_RC_EFLUSHED */
-		-ESPIPE,     /* AVF_AQ_RC_BAD_ADDR */
-		-EROFS,      /* AVF_AQ_RC_EMODE */
-		-EFBIG,      /* AVF_AQ_RC_EFBIG */
+		0,           /* IAVF_AQ_RC_OK */
+		-EPERM,      /* IAVF_AQ_RC_EPERM */
+		-ENOENT,     /* IAVF_AQ_RC_ENOENT */
+		-ESRCH,      /* IAVF_AQ_RC_ESRCH */
+		-EINTR,      /* IAVF_AQ_RC_EINTR */
+		-EIO,        /* IAVF_AQ_RC_EIO */
+		-ENXIO,      /* IAVF_AQ_RC_ENXIO */
+		-E2BIG,      /* IAVF_AQ_RC_E2BIG */
+		-EAGAIN,     /* IAVF_AQ_RC_EAGAIN */
+		-ENOMEM,     /* IAVF_AQ_RC_ENOMEM */
+		-EACCES,     /* IAVF_AQ_RC_EACCES */
+		-EFAULT,     /* IAVF_AQ_RC_EFAULT */
+		-EBUSY,      /* IAVF_AQ_RC_EBUSY */
+		-EEXIST,     /* IAVF_AQ_RC_EEXIST */
+		-EINVAL,     /* IAVF_AQ_RC_EINVAL */
+		-ENOTTY,     /* IAVF_AQ_RC_ENOTTY */
+		-ENOSPC,     /* IAVF_AQ_RC_ENOSPC */
+		-ENOSYS,     /* IAVF_AQ_RC_ENOSYS */
+		-ERANGE,     /* IAVF_AQ_RC_ERANGE */
+		-EPIPE,      /* IAVF_AQ_RC_EFLUSHED */
+		-ESPIPE,     /* IAVF_AQ_RC_BAD_ADDR */
+		-EROFS,      /* IAVF_AQ_RC_EMODE */
+		-EFBIG,      /* IAVF_AQ_RC_EFBIG */
 	};
 
 	/* aq_rc is invalid if AQ timed out */
-	if (aq_ret == AVF_ERR_ADMIN_QUEUE_TIMEOUT)
+	if (aq_ret == IAVF_ERR_ADMIN_QUEUE_TIMEOUT)
 		return -EAGAIN;
 
 	if (!((u32)aq_rc < (sizeof(aq_to_posix) / sizeof((aq_to_posix)[0]))))
@@ -157,10 +157,10 @@ STATIC INLINE int avf_aq_rc_to_posix(int aq_ret, int aq_rc)
 }
 
 /* general information */
-#define AVF_AQ_LARGE_BUF	512
-#define AVF_ASQ_CMD_TIMEOUT	250000  /* usecs */
+#define IAVF_AQ_LARGE_BUF	512
+#define IAVF_ASQ_CMD_TIMEOUT	250000  /* usecs */
 
-void avf_fill_default_direct_cmd_desc(struct avf_aq_desc *desc,
+void iavf_fill_default_direct_cmd_desc(struct iavf_aq_desc *desc,
 				       u16 opcode);
 
-#endif /* _AVF_ADMINQ_H_ */
+#endif /* _IAVF_ADMINQ_H_ */

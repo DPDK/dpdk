@@ -71,6 +71,12 @@ New Features
 
    * Added firmware version reading.
 
+* **Renamed avf to iavf.**
+
+  Renamed Intel Ethernet Adaptive Virtual Function driver ``avf`` to ``iavf``,
+  which includes the directory name, lib name, filenames, makefile, docs,
+  macros, functions, structs and any other strings in the code.
+
 
 Removed Items
 -------------

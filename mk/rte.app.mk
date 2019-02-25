@@ -164,7 +164,7 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_ENIC_PMD)       += -lrte_pmd_enic
 _LDLIBS-$(CONFIG_RTE_LIBRTE_FM10K_PMD)      += -lrte_pmd_fm10k
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_FAILSAFE)   += -lrte_pmd_failsafe
 _LDLIBS-$(CONFIG_RTE_LIBRTE_I40E_PMD)       += -lrte_pmd_i40e
-_LDLIBS-$(CONFIG_RTE_LIBRTE_AVF_PMD)        += -lrte_pmd_iavf
+_LDLIBS-$(CONFIG_RTE_LIBRTE_IAVF_PMD)       += -lrte_pmd_iavf
 _LDLIBS-$(CONFIG_RTE_LIBRTE_ICE_PMD)        += -lrte_pmd_ice
 _LDLIBS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD)      += -lrte_pmd_ixgbe
 ifeq ($(CONFIG_RTE_LIBRTE_KNI),y)

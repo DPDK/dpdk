@@ -94,7 +94,7 @@ enum virtchnl_link_speed {
 };
 
 /* for hsplit_0 field of Rx HMC context */
-/* deprecated with AVF 1.0 */
+/* deprecated with IAVF 1.0 */
 enum virtchnl_rx_hsplit {
 	VIRTCHNL_RX_HSPLIT_NO_SPLIT      = 0,
 	VIRTCHNL_RX_HSPLIT_SPLIT_L2      = 1,
@@ -289,9 +289,9 @@ struct virtchnl_txq_info {
 	u16 vsi_id;
 	u16 queue_id;
 	u16 ring_len;		/* number of descriptors, multiple of 8 */
-	u16 headwb_enabled; /* deprecated with AVF 1.0 */
+	u16 headwb_enabled; /* deprecated with IAVF 1.0 */
 	u64 dma_ring_addr;
-	u64 dma_headwb_addr; /* deprecated with AVF 1.0 */
+	u64 dma_headwb_addr; /* deprecated with IAVF 1.0 */
 };
 
 VIRTCHNL_CHECK_STRUCT_LEN(24, virtchnl_txq_info);
@@ -308,12 +308,12 @@ struct virtchnl_rxq_info {
 	u16 queue_id;
 	u32 ring_len;		/* number of descriptors, multiple of 32 */
 	u16 hdr_size;
-	u16 splithdr_enabled; /* deprecated with AVF 1.0 */
+	u16 splithdr_enabled; /* deprecated with IAVF 1.0 */
 	u32 databuffer_size;
 	u32 max_pkt_size;
 	u32 pad1;
 	u64 dma_ring_addr;
-	enum virtchnl_rx_hsplit rx_split_pos; /* deprecated with AVF 1.0 */
+	enum virtchnl_rx_hsplit rx_split_pos; /* deprecated with IAVF 1.0 */
 	u32 pad2;
 };
 

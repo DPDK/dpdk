@@ -2,12 +2,12 @@
  * Copyright(c) 2017 Intel Corporation
  */
 
-Intel® AVF driver
+Intel® IAVF driver
 =================
 
-This directory contains source code of FreeBSD AVF driver of version
+This directory contains source code of FreeBSD IAVF driver of version
 cid-avf.2018.01.02.tar.gz released by the team which develops
-basic drivers for any AVF NIC. The directory of base/ contains the
+basic drivers for any IAVF NIC. The directory of base/ contains the
 original source package.
 
 Updating the driver
@@ -16,4 +16,4 @@ Updating the driver
 NOTE: The source code in this directory should not be modified apart from
 the following file(s):
 
-    avf_osdep.h
+    iavf_osdep.h

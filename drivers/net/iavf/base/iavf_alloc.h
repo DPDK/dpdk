@@ -31,35 +31,35 @@ POSSIBILITY OF SUCH DAMAGE.
 
 ***************************************************************************/
 
-#ifndef _AVF_ALLOC_H_
-#define _AVF_ALLOC_H_
+#ifndef _IAVF_ALLOC_H_
+#define _IAVF_ALLOC_H_
 
-struct avf_hw;
+struct iavf_hw;
 
 /* Memory allocation types */
-enum avf_memory_type {
-	avf_mem_arq_buf = 0,		/* ARQ indirect command buffer */
-	avf_mem_asq_buf = 1,
-	avf_mem_atq_buf = 2,		/* ATQ indirect command buffer */
-	avf_mem_arq_ring = 3,		/* ARQ descriptor ring */
-	avf_mem_atq_ring = 4,		/* ATQ descriptor ring */
-	avf_mem_pd = 5,		/* Page Descriptor */
-	avf_mem_bp = 6,		/* Backing Page - 4KB */
-	avf_mem_bp_jumbo = 7,		/* Backing Page - > 4KB */
-	avf_mem_reserved
+enum iavf_memory_type {
+	iavf_mem_arq_buf = 0,		/* ARQ indirect command buffer */
+	iavf_mem_asq_buf = 1,
+	iavf_mem_atq_buf = 2,		/* ATQ indirect command buffer */
+	iavf_mem_arq_ring = 3,		/* ARQ descriptor ring */
+	iavf_mem_atq_ring = 4,		/* ATQ descriptor ring */
+	iavf_mem_pd = 5,		/* Page Descriptor */
+	iavf_mem_bp = 6,		/* Backing Page - 4KB */
+	iavf_mem_bp_jumbo = 7,		/* Backing Page - > 4KB */
+	iavf_mem_reserved
 };
 
 /* prototype for functions used for dynamic memory allocation */
-enum avf_status_code avf_allocate_dma_mem(struct avf_hw *hw,
-					    struct avf_dma_mem *mem,
-					    enum avf_memory_type type,
+enum iavf_status_code iavf_allocate_dma_mem(struct iavf_hw *hw,
+					    struct iavf_dma_mem *mem,
+					    enum iavf_memory_type type,
 					    u64 size, u32 alignment);
-enum avf_status_code avf_free_dma_mem(struct avf_hw *hw,
-					struct avf_dma_mem *mem);
-enum avf_status_code avf_allocate_virt_mem(struct avf_hw *hw,
-					     struct avf_virt_mem *mem,
+enum iavf_status_code iavf_free_dma_mem(struct iavf_hw *hw,
+					struct iavf_dma_mem *mem);
+enum iavf_status_code iavf_allocate_virt_mem(struct iavf_hw *hw,
+					     struct iavf_virt_mem *mem,
 					     u32 size);
-enum avf_status_code avf_free_virt_mem(struct avf_hw *hw,
-					 struct avf_virt_mem *mem);
+enum iavf_status_code iavf_free_virt_mem(struct iavf_hw *hw,
+					 struct iavf_virt_mem *mem);
 
-#endif /* _AVF_ALLOC_H_ */
+#endif /* _IAVF_ALLOC_H_ */

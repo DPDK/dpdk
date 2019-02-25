@@ -41,14 +41,14 @@ VPATH += $(SRCDIR)/base
 #
 # all source are stored in SRCS-y
 #
-SRCS-$(CONFIG_RTE_LIBRTE_AVF_PMD) += iavf_adminq.c
-SRCS-$(CONFIG_RTE_LIBRTE_AVF_PMD) += iavf_common.c
+SRCS-$(CONFIG_RTE_LIBRTE_IAVF_PMD) += iavf_adminq.c
+SRCS-$(CONFIG_RTE_LIBRTE_IAVF_PMD) += iavf_common.c
 
-SRCS-$(CONFIG_RTE_LIBRTE_AVF_PMD) += iavf_ethdev.c
-SRCS-$(CONFIG_RTE_LIBRTE_AVF_PMD) += iavf_vchnl.c
-SRCS-$(CONFIG_RTE_LIBRTE_AVF_PMD) += iavf_rxtx.c
+SRCS-$(CONFIG_RTE_LIBRTE_IAVF_PMD) += iavf_ethdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_IAVF_PMD) += iavf_vchnl.c
+SRCS-$(CONFIG_RTE_LIBRTE_IAVF_PMD) += iavf_rxtx.c
 ifeq ($(CONFIG_RTE_ARCH_X86), y)
-SRCS-$(CONFIG_RTE_LIBRTE_AVF_INC_VECTOR) += iavf_rxtx_vec_sse.c
+SRCS-$(CONFIG_RTE_LIBRTE_IAVF_INC_VECTOR) += iavf_rxtx_vec_sse.c
 endif
 
 include $(RTE_SDK)/mk/rte.lib.mk

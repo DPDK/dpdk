@@ -31,13 +31,13 @@ POSSIBILITY OF SUCH DAMAGE.
 
 ***************************************************************************/
 
-#ifndef _AVF_DEVIDS_H_
-#define _AVF_DEVIDS_H_
+#ifndef _IAVF_DEVIDS_H_
+#define _IAVF_DEVIDS_H_
 
 /* Vendor ID */
-#define AVF_INTEL_VENDOR_ID		0x8086
+#define IAVF_INTEL_VENDOR_ID		0x8086
 
 /* Device IDs */
-#define AVF_DEV_ID_ADAPTIVE_VF		0x1889
+#define IAVF_DEV_ID_ADAPTIVE_VF		0x1889
 
-#endif /* _AVF_DEVIDS_H_ */
+#endif /* _IAVF_DEVIDS_H_ */

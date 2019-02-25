@@ -2,27 +2,27 @@
  * Copyright(c) 2017 Intel Corporation
  */
 
-#ifndef _AVF_RXTX_H_
-#define _AVF_RXTX_H_
+#ifndef _IAVF_RXTX_H_
+#define _IAVF_RXTX_H_
 
 /* In QLEN must be whole number of 32 descriptors. */
-#define AVF_ALIGN_RING_DESC      32
-#define AVF_MIN_RING_DESC        64
-#define AVF_MAX_RING_DESC        4096
-#define AVF_DMA_MEM_ALIGN        4096
+#define IAVF_ALIGN_RING_DESC      32
+#define IAVF_MIN_RING_DESC        64
+#define IAVF_MAX_RING_DESC        4096
+#define IAVF_DMA_MEM_ALIGN        4096
 /* Base address of the HW descriptor ring should be 128B aligned. */
-#define AVF_RING_BASE_ALIGN      128
+#define IAVF_RING_BASE_ALIGN      128
 
 /* used for Rx Bulk Allocate */
-#define AVF_RX_MAX_BURST         32
+#define IAVF_RX_MAX_BURST         32
 
 /* used for Vector PMD */
-#define AVF_VPMD_RX_MAX_BURST    32
-#define AVF_VPMD_TX_MAX_BURST    32
-#define AVF_VPMD_DESCS_PER_LOOP  4
-#define AVF_VPMD_TX_MAX_FREE_BUF 64
+#define IAVF_VPMD_RX_MAX_BURST    32
+#define IAVF_VPMD_TX_MAX_BURST    32
+#define IAVF_VPMD_DESCS_PER_LOOP  4
+#define IAVF_VPMD_TX_MAX_FREE_BUF 64
 
-#define AVF_NO_VECTOR_FLAGS (				 \
+#define IAVF_NO_VECTOR_FLAGS (				 \
 		DEV_TX_OFFLOAD_MULTI_SEGS |		 \
 		DEV_TX_OFFLOAD_VLAN_INSERT |		 \
 		DEV_TX_OFFLOAD_SCTP_CKSUM |		 \
@@ -32,17 +32,17 @@
 #define DEFAULT_TX_RS_THRESH     32
 #define DEFAULT_TX_FREE_THRESH   32
 
-#define AVF_MIN_TSO_MSS          256
-#define AVF_MAX_TSO_MSS          9668
-#define AVF_TSO_MAX_SEG          UINT8_MAX
-#define AVF_TX_MAX_MTU_SEG       8
+#define IAVF_MIN_TSO_MSS          256
+#define IAVF_MAX_TSO_MSS          9668
+#define IAVF_TSO_MAX_SEG          UINT8_MAX
+#define IAVF_TX_MAX_MTU_SEG       8
 
-#define AVF_TX_CKSUM_OFFLOAD_MASK (		 \
+#define IAVF_TX_CKSUM_OFFLOAD_MASK (		 \
 		PKT_TX_IP_CKSUM |		 \
 		PKT_TX_L4_MASK |		 \
 		PKT_TX_TCP_SEG)
 
-#define AVF_TX_OFFLOAD_MASK (  \
+#define IAVF_TX_OFFLOAD_MASK (  \
 		PKT_TX_OUTER_IPV6 |		 \
 		PKT_TX_OUTER_IPV4 |		 \
 		PKT_TX_IPV6 |			 \
@@ -52,29 +52,29 @@
 		PKT_TX_L4_MASK |		 \
 		PKT_TX_TCP_SEG)
 
-#define AVF_TX_OFFLOAD_NOTSUP_MASK \
-		(PKT_TX_OFFLOAD_MASK ^ AVF_TX_OFFLOAD_MASK)
+#define IAVF_TX_OFFLOAD_NOTSUP_MASK \
+		(PKT_TX_OFFLOAD_MASK ^ IAVF_TX_OFFLOAD_MASK)
 
 /* HW desc structure, both 16-byte and 32-byte types are supported */
-#ifdef RTE_LIBRTE_AVF_16BYTE_RX_DESC
-#define avf_rx_desc avf_16byte_rx_desc
+#ifdef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
+#define iavf_rx_desc iavf_16byte_rx_desc
 #else
-#define avf_rx_desc avf_32byte_rx_desc
+#define iavf_rx_desc iavf_32byte_rx_desc
 #endif
 
-struct avf_rxq_ops {
-	void (*release_mbufs)(struct avf_rx_queue *rxq);
+struct iavf_rxq_ops {
+	void (*release_mbufs)(struct iavf_rx_queue *rxq);
 };
 
-struct avf_txq_ops {
-	void (*release_mbufs)(struct avf_tx_queue *txq);
+struct iavf_txq_ops {
+	void (*release_mbufs)(struct iavf_tx_queue *txq);
 };
 
 /* Structure associated with each Rx queue. */
-struct avf_rx_queue {
+struct iavf_rx_queue {
 	struct rte_mempool *mp;       /* mbuf pool to populate Rx ring */
 	const struct rte_memzone *mz; /* memzone for Rx ring */
-	volatile union avf_rx_desc *rx_ring; /* Rx ring virtual address */
+	volatile union iavf_rx_desc *rx_ring; /* Rx ring virtual address */
 	uint64_t rx_ring_phys_addr;   /* Rx ring DMA address */
 	struct rte_mbuf **sw_ring;     /* address of SW ring */
 	uint16_t nb_rx_desc;          /* ring length */
@@ -95,7 +95,7 @@ struct avf_rx_queue {
 	uint16_t rx_nb_avail;      /* number of staged packets ready */
 	uint16_t rx_next_avail;    /* index of next staged packets */
 	uint16_t rx_free_trigger;  /* triggers rx buffer allocation */
-	struct rte_mbuf *rx_stage[AVF_RX_MAX_BURST * 2]; /* store mbuf */
+	struct rte_mbuf *rx_stage[IAVF_RX_MAX_BURST * 2]; /* store mbuf */
 
 	uint16_t port_id;        /* device port ID */
 	uint8_t crc_len;        /* 0 if CRC stripped, 4 otherwise */
@@ -106,21 +106,21 @@ struct avf_rx_queue {
 
 	bool q_set;             /* if rx queue has been configured */
 	bool rx_deferred_start; /* don't start this queue in dev start */
-	const struct avf_rxq_ops *ops;
+	const struct iavf_rxq_ops *ops;
 };
 
-struct avf_tx_entry {
+struct iavf_tx_entry {
 	struct rte_mbuf *mbuf;
 	uint16_t next_id;
 	uint16_t last_id;
 };
 
 /* Structure associated with each TX queue. */
-struct avf_tx_queue {
+struct iavf_tx_queue {
 	const struct rte_memzone *mz;  /* memzone for Tx ring */
-	volatile struct avf_tx_desc *tx_ring; /* Tx ring virtual address */
+	volatile struct iavf_tx_desc *tx_ring; /* Tx ring virtual address */
 	uint64_t tx_ring_phys_addr;    /* Tx ring DMA address */
-	struct avf_tx_entry *sw_ring;  /* address array of SW ring */
+	struct iavf_tx_entry *sw_ring;  /* address array of SW ring */
 	uint16_t nb_tx_desc;           /* ring length */
 	uint16_t tx_tail;              /* current value of tail */
 	volatile uint8_t *qtx_tail;    /* register address of tail */
@@ -139,11 +139,11 @@ struct avf_tx_queue {
 
 	bool q_set;                    /* if rx queue has been configured */
 	bool tx_deferred_start;        /* don't start this queue in dev start */
-	const struct avf_txq_ops *ops;
+	const struct iavf_txq_ops *ops;
 };
 
 /* Offload features */
-union avf_tx_offload {
+union iavf_tx_offload {
 	uint64_t data;
 	struct {
 		uint64_t l2_len:7; /* L2 (MAC) Header Length. */
@@ -154,68 +154,68 @@ union avf_tx_offload {
 	};
 };
 
-int avf_dev_rx_queue_setup(struct rte_eth_dev *dev,
+int iavf_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			   uint16_t queue_idx,
 			   uint16_t nb_desc,
 			   unsigned int socket_id,
 			   const struct rte_eth_rxconf *rx_conf,
 			   struct rte_mempool *mp);
 
-int avf_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id);
-int avf_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
-void avf_dev_rx_queue_release(void *rxq);
+int iavf_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+int iavf_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+void iavf_dev_rx_queue_release(void *rxq);
 
-int avf_dev_tx_queue_setup(struct rte_eth_dev *dev,
+int iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			   uint16_t queue_idx,
 			   uint16_t nb_desc,
 			   unsigned int socket_id,
 			   const struct rte_eth_txconf *tx_conf);
-int avf_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
-int avf_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
-void avf_dev_tx_queue_release(void *txq);
-void avf_stop_queues(struct rte_eth_dev *dev);
-uint16_t avf_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+int iavf_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
+int iavf_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
+void iavf_dev_tx_queue_release(void *txq);
+void iavf_stop_queues(struct rte_eth_dev *dev);
+uint16_t iavf_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		       uint16_t nb_pkts);
-uint16_t avf_recv_scattered_pkts(void *rx_queue,
+uint16_t iavf_recv_scattered_pkts(void *rx_queue,
 				 struct rte_mbuf **rx_pkts,
 				 uint16_t nb_pkts);
-uint16_t avf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+uint16_t iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		       uint16_t nb_pkts);
-uint16_t avf_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+uint16_t iavf_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		       uint16_t nb_pkts);
-void avf_set_rx_function(struct rte_eth_dev *dev);
-void avf_set_tx_function(struct rte_eth_dev *dev);
-void avf_dev_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+void iavf_set_rx_function(struct rte_eth_dev *dev);
+void iavf_set_tx_function(struct rte_eth_dev *dev);
+void iavf_dev_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 			  struct rte_eth_rxq_info *qinfo);
-void avf_dev_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+void iavf_dev_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 			  struct rte_eth_txq_info *qinfo);
-uint32_t avf_dev_rxq_count(struct rte_eth_dev *dev, uint16_t queue_id);
-int avf_dev_rx_desc_status(void *rx_queue, uint16_t offset);
-int avf_dev_tx_desc_status(void *tx_queue, uint16_t offset);
+uint32_t iavf_dev_rxq_count(struct rte_eth_dev *dev, uint16_t queue_id);
+int iavf_dev_rx_desc_status(void *rx_queue, uint16_t offset);
+int iavf_dev_tx_desc_status(void *tx_queue, uint16_t offset);
 
-uint16_t avf_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
+uint16_t iavf_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 			   uint16_t nb_pkts);
-uint16_t avf_recv_scattered_pkts_vec(void *rx_queue,
+uint16_t iavf_recv_scattered_pkts_vec(void *rx_queue,
 				     struct rte_mbuf **rx_pkts,
 				     uint16_t nb_pkts);
-uint16_t avf_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+uint16_t iavf_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 				  uint16_t nb_pkts);
-int avf_rxq_vec_setup(struct avf_rx_queue *rxq);
-int avf_txq_vec_setup(struct avf_tx_queue *txq);
+int iavf_rxq_vec_setup(struct iavf_rx_queue *rxq);
+int iavf_txq_vec_setup(struct iavf_tx_queue *txq);
 
 static inline
-void avf_dump_rx_descriptor(struct avf_rx_queue *rxq,
+void iavf_dump_rx_descriptor(struct iavf_rx_queue *rxq,
 			    const volatile void *desc,
 			    uint16_t rx_id)
 {
-#ifdef RTE_LIBRTE_AVF_16BYTE_RX_DESC
-	const volatile union avf_16byte_rx_desc *rx_desc = desc;
+#ifdef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
+	const volatile union iavf_16byte_rx_desc *rx_desc = desc;
 
 	printf("Queue %d Rx_desc %d: QW0: 0x%016"PRIx64" QW1: 0x%016"PRIx64"\n",
 	       rxq->queue_id, rx_id, rx_desc->read.pkt_addr,
 	       rx_desc->read.hdr_addr);
 #else
-	const volatile union avf_32byte_rx_desc *rx_desc = desc;
+	const volatile union iavf_32byte_rx_desc *rx_desc = desc;
 
 	printf("Queue %d Rx_desc %d: QW0: 0x%016"PRIx64" QW1: 0x%016"PRIx64
 	       " QW2: 0x%016"PRIx64" QW3: 0x%016"PRIx64"\n", rxq->queue_id,
@@ -228,21 +228,21 @@ void avf_dump_rx_descriptor(struct avf_rx_queue *rxq,
  * to print the qwords
  */
 static inline
-void avf_dump_tx_descriptor(const struct avf_tx_queue *txq,
+void iavf_dump_tx_descriptor(const struct iavf_tx_queue *txq,
 			    const volatile void *desc, uint16_t tx_id)
 {
 	const char *name;
-	const volatile struct avf_tx_desc *tx_desc = desc;
-	enum avf_tx_desc_dtype_value type;
+	const volatile struct iavf_tx_desc *tx_desc = desc;
+	enum iavf_tx_desc_dtype_value type;
 
-	type = (enum avf_tx_desc_dtype_value)rte_le_to_cpu_64(
+	type = (enum iavf_tx_desc_dtype_value)rte_le_to_cpu_64(
 		tx_desc->cmd_type_offset_bsz &
-		rte_cpu_to_le_64(AVF_TXD_QW1_DTYPE_MASK));
+		rte_cpu_to_le_64(IAVF_TXD_QW1_DTYPE_MASK));
 	switch (type) {
-	case AVF_TX_DESC_DTYPE_DATA:
+	case IAVF_TX_DESC_DTYPE_DATA:
 		name = "Tx_data_desc";
 		break;
-	case AVF_TX_DESC_DTYPE_CONTEXT:
+	case IAVF_TX_DESC_DTYPE_CONTEXT:
 		name = "Tx_context_desc";
 		break;
 	default:
@@ -256,13 +256,13 @@ void avf_dump_tx_descriptor(const struct avf_tx_queue *txq,
 }
 
 #ifdef DEBUG_DUMP_DESC
-#define AVF_DUMP_RX_DESC(rxq, desc, rx_id) \
-	avf_dump_rx_descriptor(rxq, desc, rx_id)
-#define AVF_DUMP_TX_DESC(txq, desc, tx_id) \
-	avf_dump_tx_descriptor(txq, desc, tx_id)
+#define IAVF_DUMP_RX_DESC(rxq, desc, rx_id) \
+	iavf_dump_rx_descriptor(rxq, desc, rx_id)
+#define IAVF_DUMP_TX_DESC(txq, desc, tx_id) \
+	iavf_dump_tx_descriptor(txq, desc, tx_id)
 #else
-#define AVF_DUMP_RX_DESC(rxq, desc, rx_id) do { } while (0)
-#define AVF_DUMP_TX_DESC(txq, desc, tx_id) do { } while (0)
+#define IAVF_DUMP_RX_DESC(rxq, desc, rx_id) do { } while (0)
+#define IAVF_DUMP_TX_DESC(txq, desc, tx_id) do { } while (0)
 #endif
 
-#endif /* _AVF_RXTX_H_ */
+#endif /* _IAVF_RXTX_H_ */
