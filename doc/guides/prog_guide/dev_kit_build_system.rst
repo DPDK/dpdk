@@ -173,8 +173,6 @@ Objects
 Misc
 ^^^^
 
-*   rte.doc.mk: Documentation in the development kit framework
-
 *   rte.gnuconfigure.mk: Build an application that is configure-based.
 
 *   rte.subdir.mk: Build several directories in the development kit framework.
