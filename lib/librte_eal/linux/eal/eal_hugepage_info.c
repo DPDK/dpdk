@@ -70,36 +70,57 @@ create_shared_memory(const char *filename, const size_t mem_size)
 	return map_shared_memory(filename, mem_size, O_RDWR | O_CREAT);
 }
 
+static int get_hp_sysfs_value(const char *subdir, const char *file, unsigned long *val)
+{
+	char path[PATH_MAX];
+
+	snprintf(path, sizeof(path), "%s/%s/%s",
+			sys_dir_path, subdir, file);
+	return eal_parse_sysfs_value(path, val);
+}
+
 /* this function is only called from eal_hugepage_info_init which itself
  * is only called from a primary process */
 static uint32_t
 get_num_hugepages(const char *subdir)
 {
-	char path[PATH_MAX];
-	long unsigned resv_pages, num_pages = 0;
+	unsigned long resv_pages, num_pages, over_pages, surplus_pages;
 	const char *nr_hp_file = "free_hugepages";
 	const char *nr_rsvd_file = "resv_hugepages";
+	const char *nr_over_file = "nr_overcommit_hugepages";
+	const char *nr_splus_file = "surplus_hugepages";
 
 	/* first, check how many reserved pages kernel reports */
-	snprintf(path, sizeof(path), "%s/%s/%s",
-			sys_dir_path, subdir, nr_rsvd_file);
-	if (eal_parse_sysfs_value(path, &resv_pages) < 0)
+	if (get_hp_sysfs_value(subdir, nr_rsvd_file, &resv_pages) < 0)
 		return 0;
 
-	snprintf(path, sizeof(path), "%s/%s/%s",
-			sys_dir_path, subdir, nr_hp_file);
-	if (eal_parse_sysfs_value(path, &num_pages) < 0)
+	if (get_hp_sysfs_value(subdir, nr_hp_file, &num_pages) < 0)
 		return 0;
 
-	if (num_pages == 0)
-		RTE_LOG(WARNING, EAL, "No free hugepages reported in %s\n",
-				subdir);
+	if (get_hp_sysfs_value(subdir, nr_over_file, &over_pages) < 0)
+		over_pages = 0;
+
+	if (get_hp_sysfs_value(subdir, nr_splus_file, &surplus_pages) < 0)
+		surplus_pages = 0;
 
 	/* adjust num_pages */
 	if (num_pages >= resv_pages)
 		num_pages -= resv_pages;
 	else if (resv_pages)
 		num_pages = 0;
+
+	if (over_pages >= surplus_pages)
+		over_pages -= surplus_pages;
+	else
+		over_pages = 0;
+
+	if (num_pages == 0 && over_pages == 0)
+		RTE_LOG(WARNING, EAL, "No available hugepages reported in %s\n",
+				subdir);
+
+	num_pages += over_pages;
+	if (num_pages < over_pages) /* overflow */
+		num_pages = UINT32_MAX;
 
 	/* we want to return a uint32_t and more than this looks suspicious
 	 * anyway ... */
