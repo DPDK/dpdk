@@ -8,8 +8,8 @@
 #include <rte_ethdev_driver.h>
 #include <rte_malloc.h>
 
-#include "avf.h"
-#include "avf_rxtx.h"
+#include "iavf.h"
+#include "iavf_rxtx.h"
 
 static inline uint16_t
 reassemble_packets(struct avf_rx_queue *rxq, struct rte_mbuf **rx_bufs,

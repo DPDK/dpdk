@@ -21,7 +21,7 @@
 #include <rte_log.h>
 #include <rte_io.h>
 
-#include "../avf_log.h"
+#include "../iavf_log.h"
 
 #define INLINE inline
 #define STATIC static

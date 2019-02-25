@@ -34,8 +34,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #ifndef _AVF_PROTOTYPE_H_
 #define _AVF_PROTOTYPE_H_
 
-#include "avf_type.h"
-#include "avf_alloc.h"
+#include "iavf_type.h"
+#include "iavf_alloc.h"
 #include "virtchnl.h"
 
 /* Prototypes for shared code functions that are not in

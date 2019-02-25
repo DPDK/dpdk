@@ -24,11 +24,11 @@
 #include <rte_ip.h>
 #include <rte_net.h>
 
-#include "avf_log.h"
-#include "base/avf_prototype.h"
-#include "base/avf_type.h"
-#include "avf.h"
-#include "avf_rxtx.h"
+#include "iavf_log.h"
+#include "base/iavf_prototype.h"
+#include "base/iavf_type.h"
+#include "iavf.h"
+#include "iavf_rxtx.h"
 
 static inline int
 check_rx_thresh(uint16_t nb_desc, uint16_t thresh)

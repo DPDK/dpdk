@@ -31,11 +31,11 @@ POSSIBILITY OF SUCH DAMAGE.
 
 ***************************************************************************/
 
-#include "avf_status.h"
-#include "avf_type.h"
-#include "avf_register.h"
-#include "avf_adminq.h"
-#include "avf_prototype.h"
+#include "iavf_status.h"
+#include "iavf_type.h"
+#include "iavf_register.h"
+#include "iavf_adminq.h"
+#include "iavf_prototype.h"
 
 /**
  *  avf_adminq_init_regs - Initialize AdminQ registers

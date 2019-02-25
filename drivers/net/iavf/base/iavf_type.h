@@ -34,13 +34,13 @@ POSSIBILITY OF SUCH DAMAGE.
 #ifndef _AVF_TYPE_H_
 #define _AVF_TYPE_H_
 
-#include "avf_status.h"
-#include "avf_osdep.h"
-#include "avf_register.h"
-#include "avf_adminq.h"
-#include "avf_hmc.h"
-#include "avf_lan_hmc.h"
-#include "avf_devids.h"
+#include "iavf_status.h"
+#include "iavf_osdep.h"
+#include "iavf_register.h"
+#include "iavf_adminq.h"
+#include "iavf_hmc.h"
+#include "iavf_lan_hmc.h"
+#include "iavf_devids.h"
 
 #define UNREFERENCED_XPARAMETER
 #define UNREFERENCED_1PARAMETER(_p) (_p);

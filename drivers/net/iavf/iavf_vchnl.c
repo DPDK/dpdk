@@ -19,13 +19,13 @@
 #include <rte_ethdev_driver.h>
 #include <rte_dev.h>
 
-#include "avf_log.h"
-#include "base/avf_prototype.h"
-#include "base/avf_adminq_cmd.h"
-#include "base/avf_type.h"
+#include "iavf_log.h"
+#include "base/iavf_prototype.h"
+#include "base/iavf_adminq_cmd.h"
+#include "base/iavf_type.h"
 
-#include "avf.h"
-#include "avf_rxtx.h"
+#include "iavf.h"
+#include "iavf_rxtx.h"
 
 #define MAX_TRY_TIMES 200
 #define ASQ_DELAY_MS  10

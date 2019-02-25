@@ -6,7 +6,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 #
 # library name
 #
-LIB = librte_pmd_avf.a
+LIB = librte_pmd_iavf.a
 
 CFLAGS += -O3 $(WERROR_FLAGS) -Wno-strict-aliasing -DALLOW_EXPERIMENTAL_API
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
@@ -16,7 +16,7 @@ LDLIBS += -lrte_bus_pci
 # used to dump HW descriptor for debugging
 # CFLAGS += -DDEBUG_DUMP_DESC
 
-EXPORT_MAP := rte_pmd_avf_version.map
+EXPORT_MAP := rte_pmd_iavf_version.map
 
 LIBABIVER := 1
 
@@ -41,14 +41,14 @@ VPATH += $(SRCDIR)/base
 #
 # all source are stored in SRCS-y
 #
-SRCS-$(CONFIG_RTE_LIBRTE_AVF_PMD) += avf_adminq.c
-SRCS-$(CONFIG_RTE_LIBRTE_AVF_PMD) += avf_common.c
+SRCS-$(CONFIG_RTE_LIBRTE_AVF_PMD) += iavf_adminq.c
+SRCS-$(CONFIG_RTE_LIBRTE_AVF_PMD) += iavf_common.c
 
-SRCS-$(CONFIG_RTE_LIBRTE_AVF_PMD) += avf_ethdev.c
-SRCS-$(CONFIG_RTE_LIBRTE_AVF_PMD) += avf_vchnl.c
-SRCS-$(CONFIG_RTE_LIBRTE_AVF_PMD) += avf_rxtx.c
+SRCS-$(CONFIG_RTE_LIBRTE_AVF_PMD) += iavf_ethdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_AVF_PMD) += iavf_vchnl.c
+SRCS-$(CONFIG_RTE_LIBRTE_AVF_PMD) += iavf_rxtx.c
 ifeq ($(CONFIG_RTE_ARCH_X86), y)
-SRCS-$(CONFIG_RTE_LIBRTE_AVF_INC_VECTOR) += avf_rxtx_vec_sse.c
+SRCS-$(CONFIG_RTE_LIBRTE_AVF_INC_VECTOR) += iavf_rxtx_vec_sse.c
 endif
 
 include $(RTE_SDK)/mk/rte.lib.mk

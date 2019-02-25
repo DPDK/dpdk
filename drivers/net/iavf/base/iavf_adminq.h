@@ -34,9 +34,9 @@ POSSIBILITY OF SUCH DAMAGE.
 #ifndef _AVF_ADMINQ_H_
 #define _AVF_ADMINQ_H_
 
-#include "avf_osdep.h"
-#include "avf_status.h"
-#include "avf_adminq_cmd.h"
+#include "iavf_osdep.h"
+#include "iavf_status.h"
+#include "iavf_adminq_cmd.h"
 
 #define AVF_ADMINQ_DESC(R, i)   \
 	(&(((struct avf_aq_desc *)((R).desc_buf.va))[i]))

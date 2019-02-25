@@ -2,8 +2,8 @@
 # Copyright(c) 2018 Luca Boccassi <bluca@debian.org>
 
 sources = [
-	'avf_adminq.c',
-	'avf_common.c',
+	'iavf_adminq.c',
+	'iavf_common.c',
 ]
 
 error_cflags = ['-Wno-pointer-to-int-cast']
@@ -17,7 +17,7 @@ foreach flag: error_cflags
 	endif
 endforeach
 
-base_lib = static_library('avf_base', sources,
+base_lib = static_library('iavf_base', sources,
 	dependencies: static_rte_eal,
 	c_args: c_args)
 base_objs = base_lib.extract_all_objects()

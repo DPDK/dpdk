@@ -31,9 +31,9 @@ POSSIBILITY OF SUCH DAMAGE.
 
 ***************************************************************************/
 
-#include "avf_type.h"
-#include "avf_adminq.h"
-#include "avf_prototype.h"
+#include "iavf_type.h"
+#include "iavf_adminq.h"
+#include "iavf_prototype.h"
 #include "virtchnl.h"
 
 
