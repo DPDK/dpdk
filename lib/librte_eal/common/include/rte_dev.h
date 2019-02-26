@@ -76,21 +76,6 @@ rte_pmd_debug_trace(const char *func_name, const char *fmt, ...)
 #define RTE_PMD_DEBUG_TRACE(...) (void)0
 #endif
 
-/* Macros for checking for restricting functions to primary instance only */
-#define RTE_PROC_PRIMARY_OR_ERR_RET(retval) do { \
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY) { \
-		RTE_PMD_DEBUG_TRACE("Cannot run in secondary processes\n"); \
-		return retval; \
-	} \
-} while (0)
-
-#define RTE_PROC_PRIMARY_OR_RET() do { \
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY) { \
-		RTE_PMD_DEBUG_TRACE("Cannot run in secondary processes\n"); \
-		return; \
-	} \
-} while (0)
-
 /* Macros to check for invalid function pointers */
 #define RTE_FUNC_PTR_OR_ERR_RET(func, retval) do { \
 	if ((func) == NULL) { \
