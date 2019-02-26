@@ -69,6 +69,8 @@ struct flow_key {
 	uint8_t proto;
 } __attribute__((packed));
 
+int hash_logtype_test;
+
 /*
  * Hash function that always returns the same value, to easily test what
  * happens when a bucket is full.
@@ -80,22 +82,24 @@ static uint32_t pseudo_hash(__attribute__((unused)) const void *keys,
 	return 3;
 }
 
-#define UNIT_TEST_HASH_VERBOSE	0
+RTE_INIT(test_hash_init_log)
+{
+	hash_logtype_test = rte_log_register("test.hash");
+}
+
 /*
  * Print out result of unit test hash operation.
  */
 static void print_key_info(const char *msg, const struct flow_key *key,
 								int32_t pos)
 {
-	if (UNIT_TEST_HASH_VERBOSE) {
-		const uint8_t *p = (const uint8_t *)key;
-		unsigned int i;
+	const uint8_t *p = (const uint8_t *)key;
+	unsigned int i;
 
-		printf("%s key:0x", msg);
-		for (i = 0; i < sizeof(struct flow_key); i++)
-			printf("%02X", p[i]);
-		printf(" @ pos %d\n", pos);
-	}
+	rte_log(RTE_LOG_DEBUG, hash_logtype_test, "%s key:0x", msg);
+	for (i = 0; i < sizeof(struct flow_key); i++)
+		rte_log(RTE_LOG_DEBUG, hash_logtype_test, "%02X", p[i]);
+	rte_log(RTE_LOG_DEBUG, hash_logtype_test, " @ pos %d\n", pos);
 }
 
 /* Keys used by unit test functions */
