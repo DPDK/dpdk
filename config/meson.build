@@ -76,11 +76,11 @@ if numa_dep.found() and cc.has_header('numaif.h')
 endif
 
 # check for strlcpy
-if host_machine.system() == 'linux' and cc.find_library('bsd',
-		required: false).found() and cc.has_header('bsd/string.h')
-	dpdk_conf.set('RTE_USE_LIBBSD', 1)
-	add_project_link_arguments('-lbsd', language: 'c')
-	dpdk_extra_ldflags += '-lbsd'
+if host_machine.system() == 'linux'
+	libbsd = dependency('libbsd', required: false)
+	if libbsd.found()
+		dpdk_conf.set('RTE_USE_LIBBSD', 1)
+	endif
 endif
 
 # add -include rte_config to cflags
