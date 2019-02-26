@@ -43,52 +43,15 @@ typedef void (*rte_dev_event_cb_fn)(const char *device_name,
 					enum rte_dev_event_type event,
 					void *cb_arg);
 
-__attribute__((format(printf, 2, 0)))
-static inline void
-rte_pmd_debug_trace(const char *func_name, const char *fmt, ...)
-{
-	va_list ap;
-
-	va_start(ap, fmt);
-
-	{
-		char buffer[vsnprintf(NULL, 0, fmt, ap) + 1];
-
-		va_end(ap);
-
-		va_start(ap, fmt);
-		vsnprintf(buffer, sizeof(buffer), fmt, ap);
-		va_end(ap);
-
-		rte_log(RTE_LOG_ERR, RTE_LOGTYPE_PMD, "%s: %s",
-			func_name, buffer);
-	}
-}
-
-/*
- * Enable RTE_PMD_DEBUG_TRACE() when at least one component relying on the
- * RTE_*_RET() macros defined below is compiled in debug mode.
- */
-#if defined(RTE_LIBRTE_EVENTDEV_DEBUG)
-#define RTE_PMD_DEBUG_TRACE(...) \
-	rte_pmd_debug_trace(__func__, __VA_ARGS__)
-#else
-#define RTE_PMD_DEBUG_TRACE(...) (void)0
-#endif
-
 /* Macros to check for invalid function pointers */
 #define RTE_FUNC_PTR_OR_ERR_RET(func, retval) do { \
-	if ((func) == NULL) { \
-		RTE_PMD_DEBUG_TRACE("Function not supported\n"); \
+	if ((func) == NULL) \
 		return retval; \
-	} \
 } while (0)
 
 #define RTE_FUNC_PTR_OR_RET(func) do { \
-	if ((func) == NULL) { \
-		RTE_PMD_DEBUG_TRACE("Function not supported\n"); \
+	if ((func) == NULL) \
 		return; \
-	} \
 } while (0)
 
 /**
