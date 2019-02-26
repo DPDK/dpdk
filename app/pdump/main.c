@@ -512,12 +512,19 @@ cleanup_pdump_resources(void)
 		if (pt->dir & RTE_PDUMP_FLAG_TX)
 			free_ring_data(pt->tx_ring, pt->tx_vdev_id, &pt->stats);
 
-		/* Remove the vdev created */
-		rte_eth_dev_get_name_by_port(pt->rx_vdev_id, name);
-		rte_eal_hotplug_remove("vdev", name);
+		/* Remove the vdev(s) created */
+		if (pt->dir & RTE_PDUMP_FLAG_RX) {
+			rte_eth_dev_get_name_by_port(pt->rx_vdev_id, name);
+			rte_eal_hotplug_remove("vdev", name);
+		}
 
-		rte_eth_dev_get_name_by_port(pt->tx_vdev_id, name);
-		rte_eal_hotplug_remove("vdev", name);
+		if (pt->single_pdump_dev)
+			continue;
+
+		if (pt->dir & RTE_PDUMP_FLAG_TX) {
+			rte_eth_dev_get_name_by_port(pt->tx_vdev_id, name);
+			rte_eal_hotplug_remove("vdev", name);
+		}
 
 	}
 	cleanup_rings();
