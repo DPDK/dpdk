@@ -1167,7 +1167,7 @@ F: test/test/test_cfgfiles/
 Interactive command line
 M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/librte_cmdline/
-F: test/cmdline_test/
+F: app/test-cmdline/
 F: test/test/test_cmdline*
 F: examples/cmdline/
 F: doc/guides/sample_app_ug/cmd_line.rst
