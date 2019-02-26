@@ -4,6 +4,7 @@
 apps = [
 	'pdump',
 	'proc-info',
+	'test-acl',
 	'test-bbdev',
 	'test-cmdline',
 	'test-compress-perf',
