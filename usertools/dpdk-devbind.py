@@ -29,10 +29,15 @@ cavium_zip = {'Class': '12', 'Vendor': '177d', 'Device': 'a037',
 avp_vnic = {'Class': '05', 'Vendor': '1af4', 'Device': '1110',
               'SVendor': None, 'SDevice': None}
 
+octeontx2_sso = {'Class': '08', 'Vendor': '177d', 'Device': 'a0f9,a0fa',
+              'SVendor': None, 'SDevice': None}
+octeontx2_npa = {'Class': '08', 'Vendor': '177d', 'Device': 'a0fb,a0fc',
+              'SVendor': None, 'SDevice': None}
+
 network_devices = [network_class, cavium_pkx, avp_vnic]
 crypto_devices = [encryption_class, intel_processor_class]
-eventdev_devices = [cavium_sso, cavium_tim]
-mempool_devices = [cavium_fpa]
+eventdev_devices = [cavium_sso, cavium_tim, octeontx2_sso]
+mempool_devices = [cavium_fpa, octeontx2_npa]
 compress_devices = [cavium_zip]
 
 # global dict ethernet devices present. Dictionary indexed by PCI address.
