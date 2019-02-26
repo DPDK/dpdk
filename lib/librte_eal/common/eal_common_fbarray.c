@@ -29,6 +29,22 @@
 #define MASK_GET_IDX(idx, mod) ((idx << MASK_SHIFT) + mod)
 
 /*
+ * We use this to keep track of created/attached memory areas to prevent user
+ * errors in API usage.
+ */
+struct mem_area {
+	TAILQ_ENTRY(mem_area) next;
+	void *addr;
+	size_t len;
+	int fd;
+};
+TAILQ_HEAD(mem_area_head, mem_area);
+/* local per-process tailq */
+static struct mem_area_head mem_area_tailq =
+	TAILQ_HEAD_INITIALIZER(mem_area_tailq);
+static rte_spinlock_t mem_area_lock = RTE_SPINLOCK_INITIALIZER;
+
+/*
  * This is a mask that is always stored at the end of array, to provide fast
  * way of finding free/used spots without looping through each element.
  */
@@ -84,6 +100,22 @@ resize_and_map(int fd, void *addr, size_t len)
 		rte_errno = errno;
 		return -1;
 	}
+	return 0;
+}
+
+static int
+overlap(const struct mem_area *ma, const void *start, size_t len)
+{
+	const void *end = RTE_PTR_ADD(start, len);
+	const void *ma_start = ma->addr;
+	const void *ma_end = RTE_PTR_ADD(ma->addr, ma->len);
+
+	/* start overlap? */
+	if (start >= ma_start && start < ma_end)
+		return 1;
+	/* end overlap? */
+	if (end >= ma_start && end < ma_end)
+		return 1;
 	return 0;
 }
 
@@ -684,6 +716,7 @@ rte_fbarray_init(struct rte_fbarray *arr, const char *name, unsigned int len,
 	size_t page_sz, mmap_len;
 	char path[PATH_MAX];
 	struct used_mask *msk;
+	struct mem_area *ma = NULL;
 	void *data = NULL;
 	int fd = -1;
 
@@ -694,6 +727,13 @@ rte_fbarray_init(struct rte_fbarray *arr, const char *name, unsigned int len,
 
 	if (fully_validate(name, elt_sz, len))
 		return -1;
+
+	/* allocate mem area before doing anything */
+	ma = malloc(sizeof(*ma));
+	if (ma == NULL) {
+		rte_errno = ENOMEM;
+		return -1;
+	}
 
 	page_sz = sysconf(_SC_PAGESIZE);
 	if (page_sz == (size_t)-1)
@@ -706,10 +746,14 @@ rte_fbarray_init(struct rte_fbarray *arr, const char *name, unsigned int len,
 	if (data == NULL)
 		goto fail;
 
+	rte_spinlock_lock(&mem_area_lock);
+
+	fd = -1;
+
 	if (internal_config.no_shconf) {
 		/* remap virtual area as writable */
 		void *new_data = mmap(data, mmap_len, PROT_READ | PROT_WRITE,
-				MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+				MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS, fd, 0);
 		if (new_data == MAP_FAILED) {
 			RTE_LOG(DEBUG, EAL, "%s(): couldn't remap anonymous memory: %s\n",
 					__func__, strerror(errno));
@@ -748,10 +792,13 @@ rte_fbarray_init(struct rte_fbarray *arr, const char *name, unsigned int len,
 
 		if (resize_and_map(fd, data, mmap_len))
 			goto fail;
-
-		/* we've mmap'ed the file, we can now close the fd */
-		close(fd);
 	}
+	ma->addr = data;
+	ma->len = mmap_len;
+	ma->fd = fd;
+
+	/* do not close fd - keep it until detach/destroy */
+	TAILQ_INSERT_TAIL(&mem_area_tailq, ma, next);
 
 	/* initialize the data */
 	memset(data, 0, mmap_len);
@@ -768,18 +815,24 @@ rte_fbarray_init(struct rte_fbarray *arr, const char *name, unsigned int len,
 
 	rte_rwlock_init(&arr->rwlock);
 
+	rte_spinlock_unlock(&mem_area_lock);
+
 	return 0;
 fail:
 	if (data)
 		munmap(data, mmap_len);
 	if (fd >= 0)
 		close(fd);
+	free(ma);
+
+	rte_spinlock_unlock(&mem_area_lock);
 	return -1;
 }
 
 int __rte_experimental
 rte_fbarray_attach(struct rte_fbarray *arr)
 {
+	struct mem_area *ma = NULL, *tmp = NULL;
 	size_t page_sz, mmap_len;
 	char path[PATH_MAX];
 	void *data = NULL;
@@ -799,11 +852,29 @@ rte_fbarray_attach(struct rte_fbarray *arr)
 	if (fully_validate(arr->name, arr->elt_sz, arr->len))
 		return -1;
 
+	ma = malloc(sizeof(*ma));
+	if (ma == NULL) {
+		rte_errno = ENOMEM;
+		return -1;
+	}
+
 	page_sz = sysconf(_SC_PAGESIZE);
 	if (page_sz == (size_t)-1)
 		goto fail;
 
 	mmap_len = calc_data_size(page_sz, arr->elt_sz, arr->len);
+
+	/* check the tailq - maybe user has already mapped this address space */
+	rte_spinlock_lock(&mem_area_lock);
+
+	TAILQ_FOREACH(tmp, &mem_area_tailq, next) {
+		if (overlap(tmp, arr->data, mmap_len)) {
+			rte_errno = EEXIST;
+			goto fail;
+		}
+	}
+
+	/* we know this memory area is unique, so proceed */
 
 	data = eal_get_virtual_area(arr->data, &mmap_len, page_sz, 0, 0);
 	if (data == NULL)
@@ -826,7 +897,12 @@ rte_fbarray_attach(struct rte_fbarray *arr)
 	if (resize_and_map(fd, data, mmap_len))
 		goto fail;
 
-	close(fd);
+	/* store our new memory area */
+	ma->addr = data;
+	ma->fd = fd; /* keep fd until detach/destroy */
+	ma->len = mmap_len;
+
+	TAILQ_INSERT_TAIL(&mem_area_tailq, ma, next);
 
 	/* we're done */
 
@@ -836,12 +912,17 @@ fail:
 		munmap(data, mmap_len);
 	if (fd >= 0)
 		close(fd);
+	free(ma);
 	return -1;
 }
 
 int __rte_experimental
 rte_fbarray_detach(struct rte_fbarray *arr)
 {
+	struct mem_area *tmp = NULL;
+	size_t mmap_len;
+	int ret = -1;
+
 	if (arr == NULL) {
 		rte_errno = EINVAL;
 		return -1;
@@ -860,49 +941,114 @@ rte_fbarray_detach(struct rte_fbarray *arr)
 	if (page_sz == (size_t)-1)
 		return -1;
 
-	/* this may already be unmapped (e.g. repeated call from previously
-	 * failed destroy(), but this is on user, we can't (easily) know if this
-	 * is still mapped.
-	 */
-	munmap(arr->data, calc_data_size(page_sz, arr->elt_sz, arr->len));
+	mmap_len = calc_data_size(page_sz, arr->elt_sz, arr->len);
 
-	return 0;
+	/* does this area exist? */
+	rte_spinlock_lock(&mem_area_lock);
+
+	TAILQ_FOREACH(tmp, &mem_area_tailq, next) {
+		if (tmp->addr == arr->data && tmp->len == mmap_len)
+			break;
+	}
+	if (tmp == NULL) {
+		rte_errno = ENOENT;
+		ret = -1;
+		goto out;
+	}
+
+	munmap(arr->data, mmap_len);
+
+	/* area is unmapped, close fd and remove the tailq entry */
+	if (tmp->fd >= 0)
+		close(tmp->fd);
+	TAILQ_REMOVE(&mem_area_tailq, tmp, next);
+	free(tmp);
+
+	ret = 0;
+out:
+	rte_spinlock_unlock(&mem_area_lock);
+	return ret;
 }
 
 int __rte_experimental
 rte_fbarray_destroy(struct rte_fbarray *arr)
 {
+	struct mem_area *tmp = NULL;
+	size_t mmap_len;
 	int fd, ret;
 	char path[PATH_MAX];
 
-	ret = rte_fbarray_detach(arr);
-	if (ret)
-		return ret;
-
-	/* with no shconf, there were never any files to begin with */
-	if (internal_config.no_shconf)
-		return 0;
-
-	/* try deleting the file */
-	eal_get_fbarray_path(path, sizeof(path), arr->name);
-
-	fd = open(path, O_RDONLY);
-	if (fd < 0) {
-		RTE_LOG(ERR, EAL, "Could not open fbarray file: %s\n",
-			strerror(errno));
+	if (arr == NULL) {
+		rte_errno = EINVAL;
 		return -1;
 	}
-	if (flock(fd, LOCK_EX | LOCK_NB)) {
-		RTE_LOG(DEBUG, EAL, "Cannot destroy fbarray - another process is using it\n");
-		rte_errno = EBUSY;
-		ret = -1;
-	} else {
-		ret = 0;
-		unlink(path);
-		memset(arr, 0, sizeof(*arr));
-	}
-	close(fd);
 
+	/*
+	 * we don't need to synchronize detach as two values we need (element
+	 * size and total capacity) are constant for the duration of life of
+	 * the array, so the parts we care about will not race. if the user is
+	 * detaching while doing something else in the same process, we can't
+	 * really do anything about it, things will blow up either way.
+	 */
+
+	size_t page_sz = sysconf(_SC_PAGESIZE);
+
+	if (page_sz == (size_t)-1)
+		return -1;
+
+	mmap_len = calc_data_size(page_sz, arr->elt_sz, arr->len);
+
+	/* does this area exist? */
+	rte_spinlock_lock(&mem_area_lock);
+
+	TAILQ_FOREACH(tmp, &mem_area_tailq, next) {
+		if (tmp->addr == arr->data && tmp->len == mmap_len)
+			break;
+	}
+	if (tmp == NULL) {
+		rte_errno = ENOENT;
+		ret = -1;
+		goto out;
+	}
+	/* with no shconf, there were never any files to begin with */
+	if (!internal_config.no_shconf) {
+		/*
+		 * attempt to get an exclusive lock on the file, to ensure it
+		 * has been detached by all other processes
+		 */
+		fd = tmp->fd;
+		if (flock(fd, LOCK_EX | LOCK_NB)) {
+			RTE_LOG(DEBUG, EAL, "Cannot destroy fbarray - another process is using it\n");
+			rte_errno = EBUSY;
+			ret = -1;
+			goto out;
+		}
+
+		/* we're OK to destroy the file */
+		eal_get_fbarray_path(path, sizeof(path), arr->name);
+		if (unlink(path)) {
+			RTE_LOG(DEBUG, EAL, "Cannot unlink fbarray: %s\n",
+				strerror(errno));
+			rte_errno = errno;
+			/*
+			 * we're still holding an exclusive lock, so drop it to
+			 * shared.
+			 */
+			flock(fd, LOCK_SH | LOCK_NB);
+
+			ret = -1;
+			goto out;
+		}
+		close(fd);
+	}
+	munmap(arr->data, mmap_len);
+
+	/* area is unmapped, remove the tailq entry */
+	TAILQ_REMOVE(&mem_area_tailq, tmp, next);
+	free(tmp);
+	ret = 0;
+out:
+	rte_spinlock_unlock(&mem_area_lock);
 	return ret;
 }
 
