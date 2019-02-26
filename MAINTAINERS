@@ -1229,7 +1229,7 @@ F: doc/guides/howto/telemetry.rst
 BPF - EXPERIMENTAL
 M: Konstantin Ananyev <konstantin.ananyev@intel.com>
 F: lib/librte_bpf/
-F: test/bpf/
+F: examples/bpf/
 F: test/test/test_bpf.c
 F: doc/guides/prog_guide/bpf_lib.rst
 

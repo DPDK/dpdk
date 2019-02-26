@@ -4503,20 +4503,20 @@ For example:
 
 .. code-block:: console
 
-   cd test/bpf
+   cd examples/bpf
    clang -O2 -target bpf -c t1.c
 
 Then to load (and JIT compile) t1.o at RX queue 0, port 1::
 
 .. code-block:: console
 
-   testpmd> bpf-load rx 1 0 J ./dpdk.org/test/bpf/t1.o
+   testpmd> bpf-load rx 1 0 J ./dpdk.org/examples/bpf/t1.o
 
 To load (not JITed) t1.o at TX queue 0, port 0::
 
 .. code-block:: console
 
-   testpmd> bpf-load tx 0 0 - ./dpdk.org/test/bpf/t1.o
+   testpmd> bpf-load tx 0 0 - ./dpdk.org/examples/bpf/t1.o
 
 bpf-unload
 ~~~~~~~~~~
@@ -4529,4 +4529,4 @@ For example to unload BPF filter from TX queue 0, port 0:
 
 .. code-block:: console
 
-   testpmd> bpf-load tx 0 0 - ./dpdk.org/test/bpf/t1.o
+   testpmd> bpf-unload tx 0 0

@@ -1,0 +1,8 @@
+This folder contains example BPF programs for use with the DPDK bpf
+library. To get details of each program and how to compile it, see
+the header on the '.c' file itself.
+
+Once compiled, these example programs can be loaded into `testpmd`
+for execution on a packet stream. See `bpf-load` and `bpf-unload`
+commands documented in the `Testpmd Application User Guide` for
+details on how to do so.
