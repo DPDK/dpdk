@@ -18,8 +18,8 @@ install_headers = files('bpf_def.h',
 
 deps += ['mbuf', 'net', 'ethdev']
 
-dep = cc.find_library('elf', required: false)
-if dep.found() == true and cc.has_header('libelf.h', dependencies: dep)
+dep = dependency('libelf', required: false)
+if dep.found()
 	sources += files('bpf_load_elf.c')
 	ext_deps += dep
 endif

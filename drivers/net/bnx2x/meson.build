@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Intel Corporation
 
-dep = cc.find_library('z', required: false)
+dep = dependency('zlib', required: false)
 build = dep.found()
 ext_deps += dep
 cflags += '-DZLIB_CONST'

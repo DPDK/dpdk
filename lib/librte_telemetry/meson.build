@@ -6,7 +6,7 @@ headers = files('rte_telemetry.h', 'rte_telemetry_internal.h', 'rte_telemetry_pa
 deps += ['metrics', 'ethdev']
 cflags += '-DALLOW_EXPERIMENTAL_API'
 
-jansson = cc.find_library('jansson', required: false)
+jansson = dependency('jansson', required: false)
 if jansson.found()
 	ext_deps += jansson
 	dpdk_app_link_libraries += ['telemetry']

@@ -13,6 +13,5 @@ if dep.found()
 			     'qat_sym.c',
 			     'qat_sym_session.c')
 	qat_ext_deps += dep
-	pkgconfig_extra_libs += '-lcrypto'
 	qat_cflags += '-DBUILD_QAT_SYM'
 endif

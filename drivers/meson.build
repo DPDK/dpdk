@@ -46,10 +46,11 @@ foreach class:driver_classes
 		# set up internal deps. Drivers can append/override as necessary
 		deps = std_deps
 		# ext_deps: Stores external library dependency got
-		# using dependency() or cc.find_library(). For most cases, we
-		# probably also need to specify the "-l" flags in
-		# pkgconfig_extra_libs variable too, so that it can be reflected
-		# in the pkgconfig output for static builds
+		# using dependency() (preferred) or find_library().
+		# For the find_library() case (but not with dependency()) we also
+		# need to specify the "-l" flags in pkgconfig_extra_libs variable
+		# too, so that it can be reflected in the pkgconfig output for
+		# static builds.
 		ext_deps = []
 		pkgconfig_extra_libs = []
 

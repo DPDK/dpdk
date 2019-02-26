@@ -14,9 +14,9 @@ if pmd_dlopen
 	]
 endif
 libs = [
-	cc.find_library('mnl', required:false),
-	cc.find_library('mlx4', required:false),
-	cc.find_library('ibverbs', required:false),
+	dependency('libmnl', required:false),
+	dependency('libmlx4', required:false),
+	dependency('libibverbs', required:false),
 ]
 build = true
 foreach lib:libs

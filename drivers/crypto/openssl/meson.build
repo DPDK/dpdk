@@ -9,4 +9,3 @@ allow_experimental_apis = true
 deps += 'bus_vdev'
 sources = files('rte_openssl_pmd.c', 'rte_openssl_pmd_ops.c')
 ext_deps += dep
-pkgconfig_extra_libs += '-lcrypto'

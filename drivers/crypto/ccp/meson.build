@@ -18,4 +18,3 @@ sources = files('rte_ccp_pmd.c',
 		'ccp_pmd_ops.c')
 
 ext_deps += dep
-pkgconfig_extra_libs += '-lcrypto'
