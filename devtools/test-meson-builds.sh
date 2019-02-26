@@ -30,9 +30,25 @@ build () # <directory> <meson options>
 		$MESON $options $srcdir $builddir
 		unset CC
 	fi
-	echo "$ninja_cmd -C $builddir"
-	$ninja_cmd -C $builddir
+	if [ -n "$TEST_MESON_BUILD_VERY_VERBOSE" ] ; then
+		# for full output from ninja use "-v"
+		echo "$ninja_cmd -v -C $builddir"
+		$ninja_cmd -v -C $builddir
+	elif [ -n "$TEST_MESON_BUILD_VERBOSE" ] ; then
+		# for keeping the history of short cmds, pipe through cat
+		echo "$ninja_cmd -C $builddir | cat"
+		$ninja_cmd -C $builddir | cat
+	else
+		echo "$ninja_cmd -C $builddir"
+		$ninja_cmd -C $builddir
+	fi
 }
+
+if [ "$1" == "-vv" ] ; then
+	TEST_MESON_BUILD_VERY_VERBOSE=1
+elif [ "$1" == "-v" ] ; then
+	TEST_MESON_BUILD_VERBOSE=1
+fi
 
 # shared and static linked builds with gcc and clang
 for c in gcc clang ; do
