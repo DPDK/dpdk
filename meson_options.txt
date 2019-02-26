@@ -22,9 +22,9 @@ option('machine', type: 'string', value: 'native',
 	description: 'set the target machine type')
 option('max_ethports', type: 'string', value: '32',
 	description: 'maximum number of Ethernet devices')
-option('max_lcores', type: 'string', value: '128',
+option('max_lcores', type: 'integer', value: 128,
 	description: 'maximum number of cores/threads supported by EAL')
-option('max_numa_nodes', type: 'string', value: '4',
+option('max_numa_nodes', type: 'integer', value: 4,
 	description: 'maximum number of NUMA nodes supported by EAL')
 option('per_library_versions', type: 'boolean', value: true,
 	description: 'true: each lib gets its own version number, false: DPDK version used for each lib')
