@@ -10,6 +10,7 @@ apps = [
 	'test-compress-perf',
 	'test-crypto-perf',
 	'test-eventdev',
+	'test-pipeline',
 	'test-pmd']
 
 # for BSD only

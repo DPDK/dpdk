@@ -4,6 +4,5 @@
 include $(RTE_SDK)/mk/rte.vars.mk
 
 DIRS-$(CONFIG_RTE_APP_TEST) += test
-DIRS-$(CONFIG_RTE_LIBRTE_PIPELINE) += test-pipeline
 
 include $(RTE_SDK)/mk/rte.subdir.mk

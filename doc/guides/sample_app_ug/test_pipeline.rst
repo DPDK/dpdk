@@ -32,7 +32,7 @@ Compiling the Application
 -------------------------
 To compile the sample application see :doc:`compiling`
 
-The application is located in the ``$RTE_SDK/test/test-pipline`` directory.
+The application is located in the ``$RTE_SDK/app/test-pipline`` directory.
 
 
 Running the Application
