@@ -44,8 +44,6 @@
 #include <rte_malloc.h>
 #include <rte_pause.h>
 
-#undef TEST_TIMER_RACECOND_VERBOSE
-
 #ifdef RTE_EXEC_ENV_LINUX
 #define usec_delay(us) usleep(us)
 #else
@@ -65,18 +63,23 @@ static volatile unsigned stop_slaves;
 
 static int reload_timer(struct rte_timer *tim);
 
+int timer_logtype_test;
+
+RTE_INIT(test_timer_init_log)
+{
+	timer_logtype_test = rte_log_register("test.timer");
+}
+
 static void
 timer_cb(struct rte_timer *tim, void *arg __rte_unused)
 {
 	/* Simulate slow callback function, 100 us. */
 	rte_delay_us(100);
-
-#ifdef TEST_TIMER_RACECOND_VERBOSE
 	if (tim == &timer[0])
-		printf("------------------------------------------------\n");
-	printf("timer_cb: core %u timer %lu\n",
-		rte_lcore_id(), tim - timer);
-#endif
+		rte_log(RTE_LOG_DEBUG, timer_logtype_test,
+			"------------------------------------------------\n");
+	rte_log(RTE_LOG_DEBUG, timer_logtype_test, "%s: core %u timer %"
+		PRIuPTR "\n", __func__, rte_lcore_id(), tim - timer);
 	(void)reload_timer(tim);
 }
 
@@ -96,10 +99,9 @@ reload_timer(struct rte_timer *tim)
 
 	ret = rte_timer_reset(tim, ticks, PERIODICAL, master, timer_cb, NULL);
 	if (ret != 0) {
-#ifdef TEST_TIMER_RACECOND_VERBOSE
-		printf("- core %u failed to reset timer %lu (OK)\n",
+		rte_log(RTE_LOG_DEBUG, timer_logtype_test,
+			"- core %u failed to reset timer %" PRIuPTR " (OK)\n",
 			rte_lcore_id(), tim - timer);
-#endif
 		RTE_PER_LCORE(n_reset_collisions) += 1;
 	}
 	return ret;
