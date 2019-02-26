@@ -5,7 +5,7 @@ project('DPDK', 'C',
 	version: '19.05.0-rc0',
 	license: 'BSD',
 	default_options: ['buildtype=release', 'default_library=static'],
-	meson_version: '>= 0.41'
+	meson_version: '>= 0.47.1'
 )
 
 # set up some global vars for compiler, platform, configuration, etc.
@@ -104,23 +104,18 @@ foreach lib:enabled_libs
 endforeach
 message(output_message + '\n')
 
-
-# prior to 0.47 set_variable didn't work with arrays, so we can't
-# track driver lists easily
-if meson.version().version_compare('>=0.47')
-	output_message = '\n===============\nDrivers Enabled\n===============\n'
-	foreach class:driver_classes
-		class_drivers = get_variable(class + '_drivers')
-		output_message += '\n' + class + ':\n\t'
-		output_count = 0
-		foreach drv:class_drivers
-			output_message += drv + ', '
-			output_count += 1
-			if output_count == 8
-				output_message += '\n\t'
-				output_count = 0
-			endif
-		endforeach
+output_message = '\n===============\nDrivers Enabled\n===============\n'
+foreach class:driver_classes
+	class_drivers = get_variable(class + '_drivers')
+	output_message += '\n' + class + ':\n\t'
+	output_count = 0
+	foreach drv:class_drivers
+		output_message += drv + ', '
+		output_count += 1
+		if output_count == 8
+			output_message += '\n\t'
+			output_count = 0
+		endif
 	endforeach
-	message(output_message + '\n')
-endif
+endforeach
+message(output_message + '\n')

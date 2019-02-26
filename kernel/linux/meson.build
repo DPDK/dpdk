@@ -27,11 +27,7 @@ else
 	make_returncode = run_command('make', '-sC', kernel_dir,
 			'kernelversion').returncode()
 	if make_returncode != 0
-		if meson.version().version_compare('>=0.44')
-			warning(WARN_NO_HEADERS)
-		else
-			message('WARNING: ' + WARN_NO_HEADERS)
-		endif
+		warning(WARN_NO_HEADERS)
 	else # returncode == 0
 
 # DO ACTUAL MODULE BUILDING
