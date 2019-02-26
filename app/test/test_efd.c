@@ -31,31 +31,29 @@ struct flow_key {
 	uint16_t port_dst;
 	uint8_t proto;
 } __attribute__((packed));
+
+int efd_logtype_test;
+
+RTE_INIT(test_efd_init_log)
+{
+	efd_logtype_test = rte_log_register("test.efd");
+}
+
 /*
  * Print out result of unit test efd operation.
  */
-#if defined(UNIT_TEST_EFD_VERBOSE)
-
 static void print_key_info(const char *msg, const struct flow_key *key,
 		efd_value_t val)
 {
 	const uint8_t *p = (const uint8_t *) key;
 	unsigned int i;
 
-	printf("%s key:0x", msg);
+	rte_log(RTE_LOG_DEBUG, efd_logtype_test, "%s key:0x", msg);
 	for (i = 0; i < sizeof(struct flow_key); i++)
-		printf("%02X", p[i]);
+		rte_log(RTE_LOG_DEBUG, efd_logtype_test, "%02X", p[i]);
 
-	printf(" @ val %d\n", val);
+	rte_log(RTE_LOG_DEBUG, efd_logtype_test, " @ val %d\n", val);
 }
-#else
-
-static void print_key_info(__attribute__((unused)) const char *msg,
-		__attribute__((unused)) const struct flow_key *key,
-		__attribute__((unused)) efd_value_t val)
-{
-}
-#endif
 
 /* Keys used by unit test functions */
 static struct flow_key keys[5] = {
