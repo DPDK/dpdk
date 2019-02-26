@@ -892,7 +892,7 @@ rte_event_port_link(uint8_t dev_id, uint8_t port_id,
 	dev = &rte_eventdevs[dev_id];
 
 	if (*dev->dev_ops->port_link == NULL) {
-		RTE_PMD_DEBUG_TRACE("Function not supported\n");
+		RTE_EDEV_LOG_ERR("Function not supported\n");
 		rte_errno = -ENOTSUP;
 		return 0;
 	}
@@ -951,7 +951,7 @@ rte_event_port_unlink(uint8_t dev_id, uint8_t port_id,
 	dev = &rte_eventdevs[dev_id];
 
 	if (*dev->dev_ops->port_unlink == NULL) {
-		RTE_PMD_DEBUG_TRACE("Function not supported\n");
+		RTE_EDEV_LOG_ERR("Function not supported");
 		rte_errno = -ENOTSUP;
 		return 0;
 	}
