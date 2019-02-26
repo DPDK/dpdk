@@ -93,7 +93,7 @@ The unit test cases can be tested as below:
     cd to the top-level DPDK directory
     export RTE_TARGET=x86_64-native-linuxapp-gcc
     export RTE_SDK=`pwd`
-    cd to test/test
+    cd to app/test
     type the command "make" to compile
     run the tests with "./test"
     type the command "cryptodev_virtio_autotest" to test

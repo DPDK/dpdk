@@ -229,9 +229,6 @@ for conf in $configs ; do
 	make -j$J EXTRA_CFLAGS="$maxerr $DPDK_DEP_CFLAGS" \
 		EXTRA_LDFLAGS="$DPDK_DEP_LDFLAGS" $verbose O=$dir
 	! $short || break
-	echo "================== Build tests for $dir"
-	make test-build -j$J EXTRA_CFLAGS="$maxerr $DPDK_DEP_CFLAGS" \
-		EXTRA_LDFLAGS="$DPDK_DEP_LDFLAGS" $verbose O=$dir
 	echo "================== Build examples for $dir"
 	export RTE_SDK=$(pwd)
 	export RTE_TARGET=$dir

@@ -65,3 +65,6 @@ foreach app:apps
 				install: true)
 	endif
 endforeach
+
+# special case the autotests
+subdir('test')

@@ -615,7 +615,7 @@ Sample code
 -----------
 
 There are unit test applications that show how to use the compressdev library inside
-test/test/test_compressdev.c
+app/test/test_compressdev.c
 
 Compression Device API
 ~~~~~~~~~~~~~~~~~~~~~~

@@ -49,12 +49,12 @@ test test-fast test-perf test-drivers test-dump:
 	@mkdir -p $(AUTOTEST_DIR) ; \
 	cd $(AUTOTEST_DIR) ; \
 	if [ -f $(RTE_OUTPUT)/app/test ]; then \
-		python $(RTE_SDK)/test/test/autotest.py \
+		python $(RTE_SDK)/app/test/autotest.py \
 			$(RTE_OUTPUT)/app/test \
 			$(RTE_TARGET) \
 			$(BLACKLIST) $(WHITELIST); \
 	else \
-		echo "No test found, please do a 'make test-build' first, or specify O=" ; \
+		echo "No test found, please do a 'make' first, or specify O=" ; \
 	fi
 
 # this is a special target to ease the pain of running coverage tests
@@ -66,11 +66,11 @@ coverage:
 		python $(RTE_SDK)/test/cmdline_test/cmdline_test.py \
 			$(RTE_OUTPUT)/app/cmdline_test; \
 		ulimit -S -n 100 ; \
-		python $(RTE_SDK)/test/test/autotest.py \
+		python $(RTE_SDK)/app/test/autotest.py \
 			$(RTE_OUTPUT)/app/test \
 			$(RTE_TARGET) \
 			$(BLACKLIST) $(WHITELIST) ; \
 		$(RTE_OUTPUT)/app/dpdk-procinfo --file-prefix=ring_perf -- -m; \
 	else \
-		echo "No test found, please do a 'make test-build' first, or specify O=" ;\
+		echo "No test found, please do a 'make' first, or specify O=" ;\
 	fi

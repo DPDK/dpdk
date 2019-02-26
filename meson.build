@@ -43,7 +43,6 @@ subdir('drivers')
 # build binaries and installable tools
 subdir('usertools')
 subdir('app')
-subdir('test')
 
 # build docs
 subdir('doc')
