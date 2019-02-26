@@ -7,8 +7,10 @@
 
 #include <rte_log.h>
 
+extern int virtio_crypto_logtype_init;
+
 #define PMD_INIT_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, RTE_LOGTYPE_PMD, \
+	rte_log(RTE_LOG_ ## level, virtio_crypto_logtype_init, \
 		"PMD: %s(): " fmt "\n", __func__, ##args)
 
 #define PMD_INIT_FUNC_TRACE() PMD_INIT_LOG(DEBUG, " >>")
