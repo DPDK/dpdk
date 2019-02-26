@@ -2086,6 +2086,7 @@ tap_mp_attach_queues(const char *port_name, struct rte_eth_dev *dev)
 	int queue, fd_iterator;
 
 	/* Prepare the request */
+	memset(&request, 0, sizeof(request));
 	strlcpy(request.name, TAP_MP_KEY, sizeof(request.name));
 	strlcpy(request_param->port_name, port_name,
 		sizeof(request_param->port_name));
