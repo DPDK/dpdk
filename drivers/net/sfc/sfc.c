@@ -1115,12 +1115,12 @@ sfc_register_logtype(const struct rte_pci_addr *pci_addr,
 		++lt_prefix_str_size; /* Reserve space for prefix separator */
 		lt_str_size_max = lt_prefix_str_size + PCI_PRI_STR_SIZE + 1;
 	} else {
-		return RTE_LOGTYPE_PMD;
+		return sfc_logtype_driver;
 	}
 
 	lt_str = rte_zmalloc("logtype_str", lt_str_size_max, 0);
 	if (lt_str == NULL)
-		return RTE_LOGTYPE_PMD;
+		return sfc_logtype_driver;
 
 	strncpy(lt_str, lt_prefix_str, lt_prefix_str_size);
 	lt_str[lt_prefix_str_size - 1] = '.';
@@ -1131,5 +1131,8 @@ sfc_register_logtype(const struct rte_pci_addr *pci_addr,
 	ret = rte_log_register_type_and_pick_level(lt_str, ll_default);
 	rte_free(lt_str);
 
-	return (ret < 0) ? RTE_LOGTYPE_PMD : ret;
+	if (ret < 0)
+		return sfc_logtype_driver;
+
+	return ret;
 }
