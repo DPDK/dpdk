@@ -291,6 +291,10 @@ rte_vfio_get_group_fd(int iommu_group_num);
  *       containers by default, user needs to manage DMA mappings for
  *       any container created by this API.
  *
+ * @note When creating containers using this API, the container will only be
+ *       available in the process that has created it. Sharing containers and
+ *       devices between multiple processes is not supported.
+ *
  * @return
  *   the container fd if successful
  *   <0 if failed
