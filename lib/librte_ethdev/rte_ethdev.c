@@ -585,7 +585,6 @@ _rte_eth_dev_owner_set(const uint16_t port_id, const uint64_t old_owner_id,
 {
 	struct rte_eth_dev *ethdev = &rte_eth_devices[port_id];
 	struct rte_eth_dev_owner *port_owner;
-	int sret;
 
 	if (port_id >= RTE_MAX_ETHPORTS || !is_allocated(ethdev)) {
 		RTE_ETHDEV_LOG(ERR, "Port id %"PRIu16" is not allocated\n",
@@ -609,11 +608,8 @@ _rte_eth_dev_owner_set(const uint16_t port_id, const uint64_t old_owner_id,
 		return -EPERM;
 	}
 
-	sret = snprintf(port_owner->name, RTE_ETH_MAX_OWNER_NAME_LEN, "%s",
-			new_owner->name);
-	if (sret < 0 || sret >= RTE_ETH_MAX_OWNER_NAME_LEN)
-		RTE_ETHDEV_LOG(ERR, "Port %u owner name was truncated\n",
-			port_id);
+	/* can not truncate (same structure) */
+	strlcpy(port_owner->name, new_owner->name, RTE_ETH_MAX_OWNER_NAME_LEN);
 
 	port_owner->id = new_owner->id;
 
