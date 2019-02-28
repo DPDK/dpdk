@@ -491,7 +491,7 @@ check_cqe(volatile struct mlx5_cqe *cqe,
 				op_code, op_code, syndrome);
 			rte_hexdump(stderr, "MLX5 Error CQE:",
 				    (const void *)((uintptr_t)err_cqe),
-				    sizeof(*err_cqe));
+				    sizeof(*cqe));
 		}
 		return 1;
 	} else if ((op_code != MLX5_CQE_RESP_SEND) &&
