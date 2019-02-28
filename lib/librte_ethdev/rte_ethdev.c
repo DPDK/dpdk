@@ -459,7 +459,7 @@ rte_eth_dev_allocate(const char *name)
 	}
 
 	eth_dev = eth_dev_get(port_id);
-	snprintf(eth_dev->data->name, sizeof(eth_dev->data->name), "%s", name);
+	strlcpy(eth_dev->data->name, name, sizeof(eth_dev->data->name));
 	eth_dev->data->port_id = port_id;
 	eth_dev->data->mtu = ETHER_MTU;
 
