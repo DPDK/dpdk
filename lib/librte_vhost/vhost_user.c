@@ -1345,6 +1345,10 @@ vhost_user_set_vring_enable(struct virtio_net **pdev,
 		dev->notify_ops->vring_state_changed(dev->vid,
 				index, enable);
 
+	/* On disable, rings have to be stopped being processed. */
+	if (!enable && dev->dequeue_zero_copy)
+		drain_zmbuf_list(dev->virtqueue[index]);
+
 	dev->virtqueue[index]->enabled = enable;
 
 	return RTE_VHOST_MSG_RESULT_OK;
