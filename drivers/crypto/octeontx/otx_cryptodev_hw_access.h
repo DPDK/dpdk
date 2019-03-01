@@ -39,6 +39,8 @@
 struct cpt_instance {
 	uint32_t queue_id;
 	uintptr_t rsvd;
+	struct rte_mempool *sess_mp;
+	struct rte_mempool *sess_mp_priv;
 };
 
 struct command_chunk {

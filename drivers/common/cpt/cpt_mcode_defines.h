@@ -383,4 +383,16 @@ typedef mc_hash_type_t auth_type_t;
 #define SESS_PRIV(__sess) \
 	(void *)((uint8_t *)__sess + sizeof(struct cpt_sess_misc))
 
+/*
+ * Get the session size
+ *
+ * @return
+ *   - session size
+ */
+static __rte_always_inline unsigned int
+cpt_get_session_size(void)
+{
+	unsigned int ctx_len = sizeof(struct cpt_ctx);
+	return (sizeof(struct cpt_sess_misc) + RTE_ALIGN_CEIL(ctx_len, 8));
+}
 #endif /* _CPT_MCODE_DEFINES_H_ */

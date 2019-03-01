@@ -9,12 +9,6 @@
  * This file defines common macros and structs
  */
 
-/*
- * Macros to determine CPT model. Driver makefile will define CPT_MODEL
- * accordingly
- */
-#define CRYPTO_OCTEONTX		0x1
-
 #define TIME_IN_RESET_COUNT	5
 
 /* Default command timeout in seconds */

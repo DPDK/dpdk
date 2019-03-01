@@ -11,7 +11,6 @@
 #include "cpt_pmd_logs.h"
 #include "cpt_pmd_ops_helper.h"
 #include "cpt_ucode.h"
-#include "cpt_request_mgr.h"
 
 #include "otx_cryptodev.h"
 #include "otx_cryptodev_capabilities.h"
@@ -222,6 +221,8 @@ otx_cpt_que_pair_setup(struct rte_cryptodev *dev,
 	}
 
 	instance->queue_id = que_pair_id;
+	instance->sess_mp = qp_conf->mp_session;
+	instance->sess_mp_priv = qp_conf->mp_session_private;
 	dev->data->queue_pairs[que_pair_id] = instance;
 
 	return 0;
@@ -340,11 +341,160 @@ otx_cpt_session_clear(struct rte_cryptodev *dev,
 	}
 }
 
+static __rte_always_inline int32_t __hot
+otx_cpt_request_enqueue(struct cpt_instance *instance,
+			struct pending_queue *pqueue,
+			void *req)
+{
+	struct cpt_request_info *user_req = (struct cpt_request_info *)req;
+
+	if (unlikely(pqueue->pending_count >= DEFAULT_CMD_QLEN))
+		return -EAGAIN;
+
+	fill_cpt_inst(instance, req);
+
+	CPT_LOG_DP_DEBUG("req: %p op: %p ", req, user_req->op);
+
+	/* Fill time_out cycles */
+	user_req->time_out = rte_get_timer_cycles() +
+			DEFAULT_COMMAND_TIMEOUT * rte_get_timer_hz();
+	user_req->extra_time = 0;
+
+	/* Default mode of software queue */
+	mark_cpt_inst(instance);
+
+	pqueue->rid_queue[pqueue->enq_tail].rid = (uintptr_t)user_req;
+
+	/* We will use soft queue length here to limit requests */
+	MOD_INC(pqueue->enq_tail, DEFAULT_CMD_QLEN);
+	pqueue->pending_count += 1;
+
+	CPT_LOG_DP_DEBUG("Submitted NB cmd with request: %p "
+			 "op: %p", user_req, user_req->op);
+	return 0;
+}
+
+static __rte_always_inline int __hot
+otx_cpt_enq_single_sym(struct cpt_instance *instance,
+		       struct rte_crypto_op *op,
+		       struct pending_queue *pqueue)
+{
+	struct cpt_sess_misc *sess;
+	struct rte_crypto_sym_op *sym_op = op->sym;
+	void *prep_req, *mdata = NULL;
+	int ret = 0;
+	uint64_t cpt_op;
+	struct cpt_vf *cptvf = (struct cpt_vf *)instance;
+
+	sess = (struct cpt_sess_misc *)
+			get_sym_session_private_data(sym_op->session,
+						     otx_cryptodev_driver_id);
+
+	cpt_op = sess->cpt_op;
+
+	if (likely(cpt_op & CPT_OP_CIPHER_MASK))
+		ret = fill_fc_params(op, sess, &cptvf->meta_info, &mdata,
+				     &prep_req);
+	else
+		ret = fill_digest_params(op, sess, &cptvf->meta_info,
+					 &mdata, &prep_req);
+
+	if (unlikely(ret)) {
+		CPT_LOG_DP_ERR("prep cryto req : op %p, cpt_op 0x%x "
+			       "ret 0x%x", op, (unsigned int)cpt_op, ret);
+		return ret;
+	}
+
+	/* Enqueue prepared instruction to h/w */
+	ret = otx_cpt_request_enqueue(instance, pqueue, prep_req);
+
+	if (unlikely(ret)) {
+		/* Buffer allocated for request preparation need to be freed */
+		free_op_meta(mdata, cptvf->meta_info.cptvf_meta_pool);
+		return ret;
+	}
+
+	return 0;
+}
+
+static __rte_always_inline int __hot
+otx_cpt_enq_single_sym_sessless(struct cpt_instance *instance,
+				struct rte_crypto_op *op,
+				struct pending_queue *pqueue)
+{
+	struct cpt_sess_misc *sess;
+	struct rte_crypto_sym_op *sym_op = op->sym;
+	int ret;
+	void *sess_t = NULL;
+	void *sess_private_data_t = NULL;
+
+	/* Create tmp session */
+
+	if (rte_mempool_get(instance->sess_mp, (void **)&sess_t)) {
+		ret = -ENOMEM;
+		goto exit;
+	}
+
+	if (rte_mempool_get(instance->sess_mp_priv,
+			(void **)&sess_private_data_t)) {
+		ret = -ENOMEM;
+		goto free_sess;
+	}
+
+	sess = (struct cpt_sess_misc *)sess_private_data_t;
+
+	sess->ctx_dma_addr = rte_mempool_virt2iova(sess) +
+			sizeof(struct cpt_sess_misc);
+
+	ret = instance_session_cfg(sym_op->xform, (void *)sess);
+	if (unlikely(ret)) {
+		ret = -EINVAL;
+		goto free_sess_priv;
+	}
+
+	/* Save tmp session in op */
+
+	sym_op->session = (struct rte_cryptodev_sym_session *)sess_t;
+	set_sym_session_private_data(sym_op->session, otx_cryptodev_driver_id,
+				     sess_private_data_t);
+
+	/* Enqueue op with the tmp session set */
+	ret = otx_cpt_enq_single_sym(instance, op, pqueue);
+
+	if (unlikely(ret))
+		goto free_sess_priv;
+
+	return 0;
+
+free_sess_priv:
+	rte_mempool_put(instance->sess_mp_priv, sess_private_data_t);
+free_sess:
+	rte_mempool_put(instance->sess_mp, sess_t);
+exit:
+	return ret;
+}
+
+static __rte_always_inline int __hot
+otx_cpt_enq_single(struct cpt_instance *inst,
+		   struct rte_crypto_op *op,
+		   struct pending_queue *pqueue)
+{
+	/* Check for the type */
+
+	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
+		return otx_cpt_enq_single_sym(inst, op, pqueue);
+	else if (unlikely(op->sess_type == RTE_CRYPTO_OP_SESSIONLESS))
+		return otx_cpt_enq_single_sym_sessless(inst, op, pqueue);
+
+	/* Should not reach here */
+	return -EINVAL;
+}
+
 static uint16_t
 otx_cpt_pkt_enqueue(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 {
 	struct cpt_instance *instance = (struct cpt_instance *)qptr;
-	uint16_t count = 0;
+	uint16_t count;
 	int ret;
 	struct cpt_vf *cptvf = (struct cpt_vf *)instance;
 	struct pending_queue *pqueue = &cptvf->pqueue;
@@ -355,8 +505,10 @@ otx_cpt_pkt_enqueue(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 
 	count = 0;
 	while (likely(count < nb_ops)) {
-		ret = cpt_pmd_crypto_operation(instance, ops[count], pqueue,
-						otx_cryptodev_driver_id);
+
+		/* Enqueue single op */
+		ret = otx_cpt_enq_single(instance, ops[count], pqueue);
+
 		if (unlikely(ret))
 			break;
 		count++;
@@ -365,48 +517,110 @@ otx_cpt_pkt_enqueue(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 	return count;
 }
 
+static __rte_always_inline void
+otx_cpt_dequeue_post_process(struct rte_crypto_op *cop, uintptr_t *rsp)
+{
+	/* H/w has returned success */
+	cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+
+	/* Perform further post processing */
+
+	if (cop->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
+		/* Check if auth verify need to be completed */
+		if (unlikely(rsp[2]))
+			compl_auth_verify(cop, (uint8_t *)rsp[2], rsp[3]);
+		return;
+	}
+}
+
 static uint16_t
 otx_cpt_pkt_dequeue(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 {
 	struct cpt_instance *instance = (struct cpt_instance *)qptr;
+	struct cpt_request_info *user_req;
 	struct cpt_vf *cptvf = (struct cpt_vf *)instance;
+	struct rid *rid_e;
+	uint8_t cc[nb_ops];
+	int i, count, pcount;
+	uint8_t ret;
+	int nb_completed;
 	struct pending_queue *pqueue = &cptvf->pqueue;
-	uint16_t nb_completed, i = 0;
-	uint8_t compcode[nb_ops];
+	struct rte_crypto_op *cop;
+	void *metabuf;
+	uintptr_t *rsp;
 
-	nb_completed = cpt_dequeue_burst(instance, nb_ops,
-					 (void **)ops, compcode, pqueue);
-	while (likely(i < nb_completed)) {
-		struct rte_crypto_op *cop;
-		void *metabuf;
-		uintptr_t *rsp;
-		uint8_t status;
+	pcount = pqueue->pending_count;
+	count = (nb_ops > pcount) ? pcount : nb_ops;
+
+	for (i = 0; i < count; i++) {
+		rid_e = &pqueue->rid_queue[pqueue->deq_head];
+		user_req = (struct cpt_request_info *)(rid_e->rid);
+
+		if (likely((i+1) < count))
+			rte_prefetch_non_temporal((void *)rid_e[1].rid);
+
+		ret = check_nb_command_id(user_req, instance);
+
+		if (unlikely(ret == ERR_REQ_PENDING)) {
+			/* Stop checking for completions */
+			break;
+		}
+
+		/* Return completion code and op handle */
+		cc[i] = ret;
+		ops[i] = user_req->op;
+
+		CPT_LOG_DP_DEBUG("Request %p Op %p completed with code %d",
+				 user_req, user_req->op, ret);
+
+		MOD_INC(pqueue->deq_head, DEFAULT_CMD_QLEN);
+		pqueue->pending_count -= 1;
+	}
+
+	nb_completed = i;
+
+	for (i = 0; i < nb_completed; i++) {
 
 		rsp = (void *)ops[i];
-		status = compcode[i];
+
 		if (likely((i + 1) < nb_completed))
 			rte_prefetch0(ops[i+1]);
+
 		metabuf = (void *)rsp[0];
 		cop = (void *)rsp[1];
 
 		ops[i] = cop;
 
-		if (likely(status == 0)) {
-			if (likely(!rsp[2]))
-				cop->status =
-					RTE_CRYPTO_OP_STATUS_SUCCESS;
-			else
-				compl_auth_verify(cop, (uint8_t *)rsp[2],
-						  rsp[3]);
-		} else if (status == ERR_GC_ICV_MISCOMPARE) {
-			/*auth data mismatch */
+		/* Check completion code */
+
+		if (likely(cc[i] == 0)) {
+			/* H/w success pkt. Post process */
+			otx_cpt_dequeue_post_process(cop, rsp);
+		} else if (cc[i] == ERR_GC_ICV_MISCOMPARE) {
+			/* auth data mismatch */
 			cop->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 		} else {
+			/* Error */
 			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
 		}
+
+		if (unlikely(cop->sess_type == RTE_CRYPTO_OP_SESSIONLESS)) {
+			void *sess_private_data_t =
+				get_sym_session_private_data(cop->sym->session,
+						otx_cryptodev_driver_id);
+			memset(sess_private_data_t, 0,
+					cpt_get_session_size());
+			memset(cop->sym->session, 0,
+			rte_cryptodev_sym_get_existing_header_session_size(
+					cop->sym->session));
+			rte_mempool_put(instance->sess_mp_priv,
+					sess_private_data_t);
+			rte_mempool_put(instance->sess_mp, cop->sym->session);
+			cop->sym->session = NULL;
+		}
 		free_op_meta(metabuf, cptvf->meta_info.cptvf_meta_pool);
-		i++;
 	}
+
 	return nb_completed;
 }
 
