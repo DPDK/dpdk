@@ -421,6 +421,7 @@ signal_handler(int signum)
 			rte_eth_dev_close(portid);
 		}
 
+		rte_event_dev_stop(0);
 		rte_event_dev_close(0);
 	}
 	if (signum == SIGTSTP)
