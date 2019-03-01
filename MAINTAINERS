@@ -184,7 +184,6 @@ F: app/test/test_memory.c
 F: app/test/test_memzone.c
 
 Keep alive
-M: Remy Horton <remy.horton@intel.com>
 F: lib/librte_eal/common/include/rte_keepalive.h
 F: lib/librte_eal/common/rte_keepalive.c
 F: examples/l2fwd-keepalive/
@@ -1206,12 +1205,10 @@ F: examples/l2fwd-jobstats/
 F: doc/guides/sample_app_ug/l2_forward_job_stats.rst
 
 Metrics
-M: Remy Horton <remy.horton@intel.com>
 F: lib/librte_metrics/
 F: app/test/test_metrics.c
 
 Bit-rate statistics
-M: Remy Horton <remy.horton@intel.com>
 F: lib/librte_bitratestats/
 F: app/test/test_bitratestats.c
 
@@ -1292,7 +1289,6 @@ F: doc/guides/tools/proc_info.rst
 Other Example Applications
 --------------------------
 
-M: Remy Horton <remy.horton@intel.com>
 F: examples/ethtool/
 F: doc/guides/sample_app_ug/ethtool.rst
 
