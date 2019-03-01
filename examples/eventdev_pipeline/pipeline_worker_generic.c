@@ -169,6 +169,8 @@ setup_eventdev_generic(struct worker_data *worker_data)
 
 	wkr_p_conf.disable_implicit_release = disable_implicit_release;
 
+	if (dev_info.max_num_events < config.nb_events_limit)
+		config.nb_events_limit = dev_info.max_num_events;
 	if (dev_info.max_event_port_dequeue_depth <
 			config.nb_event_port_dequeue_depth)
 		config.nb_event_port_dequeue_depth =
@@ -227,6 +229,8 @@ setup_eventdev_generic(struct worker_data *worker_data)
 	}
 	cdata.tx_queue_id = i;
 
+	if (wkr_p_conf.new_event_threshold > config.nb_events_limit)
+		wkr_p_conf.new_event_threshold = config.nb_events_limit;
 	if (wkr_p_conf.dequeue_depth > config.nb_event_port_dequeue_depth)
 		wkr_p_conf.dequeue_depth = config.nb_event_port_dequeue_depth;
 	if (wkr_p_conf.enqueue_depth > config.nb_event_port_enqueue_depth)
@@ -284,6 +288,8 @@ init_adapters(uint16_t nb_ports)
 		.new_event_threshold = 4096,
 	};
 
+	if (adptr_p_conf.new_event_threshold > dev_info.max_num_events)
+		adptr_p_conf.new_event_threshold = dev_info.max_num_events;
 	if (adptr_p_conf.dequeue_depth > dev_info.max_event_port_dequeue_depth)
 		adptr_p_conf.dequeue_depth =
 			dev_info.max_event_port_dequeue_depth;
