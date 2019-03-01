@@ -125,6 +125,15 @@ added to the Release Notes:
   these changes. Binaries using this library built prior to version 2.1 will
   require updating and recompilation.
 
+New API replacing previous one
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If a new API proposed functionally replaces an existing one, when the new API
+becomes non-experimental then the old one is marked with ``__rte_deprecated``.
+Deprecated APIs are removed completely just after the next LTS.
+
+Reminder that old API should follow deprecation process to be removed.
+
 
 Experimental APIs
 -----------------
