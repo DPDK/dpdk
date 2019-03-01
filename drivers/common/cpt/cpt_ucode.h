@@ -458,7 +458,7 @@ fill_sg_comp_from_iov(sg_comp_t *list,
 	return (uint32_t)i;
 }
 
-static __rte_always_inline int
+static __rte_always_inline void
 cpt_digest_gen_prep(uint32_t flags,
 		    uint64_t d_lens,
 		    digest_params_t *params,
@@ -483,17 +483,8 @@ cpt_digest_gen_prep(uint32_t flags,
 	uint64_t c_dma, m_dma;
 	opcode_info_t opcode;
 
-	if (!params || !params->ctx_buf.vaddr)
-		return ERR_BAD_INPUT_ARG;
-
 	ctx = params->ctx_buf.vaddr;
 	meta_p = &params->meta_buf;
-
-	if (!meta_p->vaddr || !meta_p->dma_addr)
-		return ERR_BAD_INPUT_ARG;
-
-	if (meta_p->size < sizeof(struct cpt_request_info))
-		return ERR_BAD_INPUT_ARG;
 
 	m_vaddr = meta_p->vaddr;
 	m_dma = meta_p->dma_addr;
@@ -582,10 +573,10 @@ cpt_digest_gen_prep(uint32_t flags,
 	if (size) {
 		i = fill_sg_comp_from_iov(gather_comp, i, params->src_iov,
 					  0, &size, NULL, 0);
-		if (size) {
+		if (unlikely(size)) {
 			CPT_LOG_DP_DEBUG("Insufficient dst IOV size, short"
 					 " by %dB", size);
-			return ERR_BAD_INPUT_ARG;
+			return;
 		}
 	} else {
 		/*
@@ -605,8 +596,10 @@ cpt_digest_gen_prep(uint32_t flags,
 	scatter_comp = (sg_comp_t *)((uint8_t *)gather_comp + g_size_bytes);
 
 	if (flags & VALID_MAC_BUF) {
-		if (params->mac_buf.size < mac_len)
-			return ERR_BAD_INPUT_ARG;
+		if (unlikely(params->mac_buf.size < mac_len)) {
+			CPT_LOG_DP_ERR("Insufficient MAC size");
+			return;
+		}
 
 		size = mac_len;
 		i = fill_sg_comp_from_buf_min(scatter_comp, i,
@@ -616,10 +609,10 @@ cpt_digest_gen_prep(uint32_t flags,
 		i = fill_sg_comp_from_iov(scatter_comp, i,
 					  params->src_iov, data_len,
 					  &size, NULL, 0);
-		if (size) {
-			CPT_LOG_DP_DEBUG("Insufficient dst IOV size, short by"
-					 " %dB", size);
-			return ERR_BAD_INPUT_ARG;
+		if (unlikely(size)) {
+			CPT_LOG_DP_ERR("Insufficient dst IOV size, short by"
+				       " %dB", size);
+			return;
 		}
 	}
 
@@ -663,10 +656,10 @@ cpt_digest_gen_prep(uint32_t flags,
 	req->op = op;
 
 	*prep_req = req;
-	return 0;
+	return;
 }
 
-static __rte_always_inline int
+static __rte_always_inline void
 cpt_enc_hmac_prep(uint32_t flags,
 		  uint64_t d_offs,
 		  uint64_t d_lens,
@@ -922,7 +915,7 @@ cpt_enc_hmac_prep(uint32_t flags,
 			if (unlikely(size)) {
 				CPT_LOG_DP_ERR("Insufficient buffer space,"
 					       " size %d needed", size);
-				return ERR_BAD_INPUT_ARG;
+				return;
 			}
 		}
 		((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
@@ -964,8 +957,12 @@ cpt_enc_hmac_prep(uint32_t flags,
 							aad_buf,
 							aad_offset);
 				}
-				if (size)
-					return ERR_BAD_INPUT_ARG;
+				if (unlikely(size)) {
+					CPT_LOG_DP_ERR("Insufficient buffer"
+						       " space, size %d needed",
+						       size);
+					return;
+				}
 			}
 			/* mac_data */
 			if (mac_len) {
@@ -998,7 +995,7 @@ cpt_enc_hmac_prep(uint32_t flags,
 					CPT_LOG_DP_ERR("Insufficient buffer"
 						       " space, size %d needed",
 						       size);
-					return ERR_BAD_INPUT_ARG;
+					return;
 				}
 			}
 		}
@@ -1048,10 +1045,10 @@ cpt_enc_hmac_prep(uint32_t flags,
 	req->op  = op;
 
 	*prep_req = req;
-	return 0;
+	return;
 }
 
-static __rte_always_inline int
+static __rte_always_inline void
 cpt_dec_hmac_prep(uint32_t flags,
 		  uint64_t d_offs,
 		  uint64_t d_lens,
@@ -1303,8 +1300,12 @@ cpt_dec_hmac_prep(uint32_t flags,
 							aad_buf,
 							aad_offset);
 				}
-				if (size)
-					return ERR_BAD_INPUT_ARG;
+				if (unlikely(size)) {
+					CPT_LOG_DP_ERR("Insufficient buffer"
+						       " space, size %d needed",
+						       size);
+					return;
+				}
 			}
 
 			/* mac data */
@@ -1325,8 +1326,10 @@ cpt_dec_hmac_prep(uint32_t flags,
 					uint32_t aad_offset = aad_len ?
 						passthrough_len : 0;
 
-					if (!fc_params->src_iov)
-						return ERR_BAD_INPUT_ARG;
+					if (unlikely(!fc_params->src_iov)) {
+						CPT_LOG_DP_ERR("Bad input args");
+						return;
+					}
 
 					i = fill_sg_comp_from_iov(
 							gather_comp, i,
@@ -1336,8 +1339,12 @@ cpt_dec_hmac_prep(uint32_t flags,
 							aad_offset);
 				}
 
-				if (size)
-					return ERR_BAD_INPUT_ARG;
+				if (unlikely(size)) {
+					CPT_LOG_DP_ERR("Insufficient buffer"
+						       " space, size %d needed",
+						       size);
+					return;
+				}
 			}
 		}
 		((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
@@ -1370,8 +1377,10 @@ cpt_dec_hmac_prep(uint32_t flags,
 				uint32_t aad_offset = aad_len ?
 					passthrough_len : 0;
 
-				if (!fc_params->dst_iov)
-					return ERR_BAD_INPUT_ARG;
+				if (unlikely(!fc_params->dst_iov)) {
+					CPT_LOG_DP_ERR("Bad input args");
+					return;
+				}
 
 				i = fill_sg_comp_from_iov(scatter_comp, i,
 							  fc_params->dst_iov, 0,
@@ -1379,8 +1388,11 @@ cpt_dec_hmac_prep(uint32_t flags,
 							  aad_offset);
 			}
 
-			if (unlikely(size))
-				return ERR_BAD_INPUT_ARG;
+			if (unlikely(size)) {
+				CPT_LOG_DP_ERR("Insufficient buffer space,"
+					       " size %d needed", size);
+				return;
+			}
 		}
 
 		((uint16_t *)in_buffer)[3] = rte_cpu_to_be_16(i);
@@ -1430,10 +1442,10 @@ cpt_dec_hmac_prep(uint32_t flags,
 	req->op = op;
 
 	*prep_req = req;
-	return 0;
+	return;
 }
 
-static __rte_always_inline int
+static __rte_always_inline void
 cpt_zuc_snow3g_enc_prep(uint32_t req_flags,
 			uint64_t d_offs,
 			uint64_t d_lens,
@@ -1654,8 +1666,11 @@ cpt_zuc_snow3g_enc_prep(uint32_t req_flags,
 			i = fill_sg_comp_from_iov(gather_comp, i,
 						  params->src_iov,
 						  0, &size, NULL, 0);
-			if (size)
-				return ERR_BAD_INPUT_ARG;
+			if (unlikely(size)) {
+				CPT_LOG_DP_ERR("Insufficient buffer space,"
+					       " size %d needed", size);
+				return;
+			}
 		}
 		((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
 		g_size_bytes = ((i + 3) / 4) * sizeof(sg_comp_t);
@@ -1686,8 +1701,11 @@ cpt_zuc_snow3g_enc_prep(uint32_t req_flags,
 							  params->dst_iov, 0,
 							  &size, NULL, 0);
 
-				if (size)
-					return ERR_BAD_INPUT_ARG;
+				if (unlikely(size)) {
+					CPT_LOG_DP_ERR("Insufficient buffer space,"
+						       " size %d needed", size);
+					return;
+				}
 			}
 
 			/* mac data */
@@ -1703,8 +1721,11 @@ cpt_zuc_snow3g_enc_prep(uint32_t req_flags,
 							  params->dst_iov, 0,
 							  &size, NULL, 0);
 
-				if (size)
-					return ERR_BAD_INPUT_ARG;
+				if (unlikely(size)) {
+					CPT_LOG_DP_ERR("Insufficient buffer space,"
+						       " size %d needed", size);
+					return;
+				}
 			}
 		}
 		((uint16_t *)in_buffer)[3] = rte_cpu_to_be_16(i);
@@ -1752,10 +1773,10 @@ cpt_zuc_snow3g_enc_prep(uint32_t req_flags,
 	req->op = op;
 
 	*prep_req = req;
-	return 0;
+	return;
 }
 
-static __rte_always_inline int
+static __rte_always_inline void
 cpt_zuc_snow3g_dec_prep(uint32_t req_flags,
 			uint64_t d_offs,
 			uint64_t d_lens,
@@ -1946,8 +1967,11 @@ cpt_zuc_snow3g_dec_prep(uint32_t req_flags,
 			i = fill_sg_comp_from_iov(gather_comp, i,
 						  params->src_iov,
 						  0, &size, NULL, 0);
-			if (size)
-				return ERR_BAD_INPUT_ARG;
+			if (unlikely(size)) {
+				CPT_LOG_DP_ERR("Insufficient buffer space,"
+					       " size %d needed", size);
+				return;
+			}
 		}
 		((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
 		g_size_bytes = ((i + 3) / 4) * sizeof(sg_comp_t);
@@ -1972,8 +1996,11 @@ cpt_zuc_snow3g_dec_prep(uint32_t req_flags,
 						  params->dst_iov, 0,
 						  &size, NULL, 0);
 
-			if (size)
-				return ERR_BAD_INPUT_ARG;
+			if (unlikely(size)) {
+				CPT_LOG_DP_ERR("Insufficient buffer space,"
+					       " size %d needed", size);
+				return;
+			}
 		}
 		((uint16_t *)in_buffer)[3] = rte_cpu_to_be_16(i);
 		s_size_bytes = ((i + 3) / 4) * sizeof(sg_comp_t);
@@ -2020,10 +2047,10 @@ cpt_zuc_snow3g_dec_prep(uint32_t req_flags,
 	req->op = op;
 
 	*prep_req = req;
-	return 0;
+	return;
 }
 
-static __rte_always_inline int
+static __rte_always_inline void
 cpt_kasumi_enc_prep(uint32_t req_flags,
 		    uint64_t d_offs,
 		    uint64_t d_lens,
@@ -2171,8 +2198,11 @@ cpt_kasumi_enc_prep(uint32_t req_flags,
 					  params->src_iov, 0,
 					  &size, NULL, 0);
 
-		if (size)
-			return ERR_BAD_INPUT_ARG;
+		if (unlikely(size)) {
+			CPT_LOG_DP_ERR("Insufficient buffer space,"
+				       " size %d needed", size);
+			return;
+		}
 	}
 	((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
 	g_size_bytes = ((i + 3) / 4) * sizeof(sg_comp_t);
@@ -2204,8 +2234,11 @@ cpt_kasumi_enc_prep(uint32_t req_flags,
 						  params->dst_iov, 0,
 						  &size, NULL, 0);
 
-			if (size)
-				return ERR_BAD_INPUT_ARG;
+			if (unlikely(size)) {
+				CPT_LOG_DP_ERR("Insufficient buffer space,"
+					       " size %d needed", size);
+				return;
+			}
 		}
 
 		/* mac data */
@@ -2221,8 +2254,11 @@ cpt_kasumi_enc_prep(uint32_t req_flags,
 						  params->dst_iov, 0,
 						  &size, NULL, 0);
 
-			if (size)
-				return ERR_BAD_INPUT_ARG;
+			if (unlikely(size)) {
+				CPT_LOG_DP_ERR("Insufficient buffer space,"
+					       " size %d needed", size);
+				return;
+			}
 		}
 	}
 	((uint16_t *)in_buffer)[3] = rte_cpu_to_be_16(i);
@@ -2269,10 +2305,10 @@ cpt_kasumi_enc_prep(uint32_t req_flags,
 	req->op = op;
 
 	*prep_req = req;
-	return 0;
+	return;
 }
 
-static __rte_always_inline int
+static __rte_always_inline void
 cpt_kasumi_dec_prep(uint64_t d_offs,
 		    uint64_t d_lens,
 		    fc_params_t *params,
@@ -2393,8 +2429,11 @@ cpt_kasumi_dec_prep(uint64_t d_offs,
 		i = fill_sg_comp_from_iov(gather_comp, i,
 					  params->src_iov,
 					  0, &size, NULL, 0);
-		if (size)
-			return ERR_BAD_INPUT_ARG;
+		if (unlikely(size)) {
+			CPT_LOG_DP_ERR("Insufficient buffer space,"
+				       " size %d needed", size);
+			return;
+		}
 	}
 	((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
 	g_size_bytes = ((i + 3) / 4) * sizeof(sg_comp_t);
@@ -2417,8 +2456,11 @@ cpt_kasumi_dec_prep(uint64_t d_offs,
 		i = fill_sg_comp_from_iov(scatter_comp, i,
 					  params->dst_iov, 0,
 					  &size, NULL, 0);
-		if (size)
-			return ERR_BAD_INPUT_ARG;
+		if (unlikely(size)) {
+			CPT_LOG_DP_ERR("Insufficient buffer space,"
+				       " size %d needed", size);
+			return;
+		}
 	}
 	((uint16_t *)in_buffer)[3] = rte_cpu_to_be_16(i);
 	s_size_bytes = ((i + 3) / 4) * sizeof(sg_comp_t);
@@ -2464,7 +2506,7 @@ cpt_kasumi_dec_prep(uint64_t d_offs,
 	req->op = op;
 
 	*prep_req = req;
-	return 0;
+	return;
 }
 
 static __rte_always_inline void *
@@ -2472,69 +2514,57 @@ cpt_fc_dec_hmac_prep(uint32_t flags,
 		     uint64_t d_offs,
 		     uint64_t d_lens,
 		     fc_params_t *fc_params,
-		     void *op, int *ret_val)
+		     void *op)
 {
 	struct cpt_ctx *ctx = fc_params->ctx_buf.vaddr;
 	uint8_t fc_type;
 	void *prep_req = NULL;
-	int ret;
 
 	fc_type = ctx->fc_type;
 
 	if (likely(fc_type == FC_GEN)) {
-		ret = cpt_dec_hmac_prep(flags, d_offs, d_lens,
-					fc_params, op, &prep_req);
+		cpt_dec_hmac_prep(flags, d_offs, d_lens, fc_params, op,
+				  &prep_req);
 	} else if (fc_type == ZUC_SNOW3G) {
-		ret = cpt_zuc_snow3g_dec_prep(flags, d_offs, d_lens,
-					      fc_params, op, &prep_req);
+		cpt_zuc_snow3g_dec_prep(flags, d_offs, d_lens, fc_params, op,
+					&prep_req);
 	} else if (fc_type == KASUMI) {
-		ret = cpt_kasumi_dec_prep(d_offs, d_lens, fc_params, op,
-					  &prep_req);
-	} else {
-		/*
-		 * For AUTH_ONLY case,
-		 * MC only supports digest generation and verification
-		 * should be done in software by memcmp()
-		 */
-
-		ret = ERR_EIO;
+		cpt_kasumi_dec_prep(d_offs, d_lens, fc_params, op, &prep_req);
 	}
 
-	if (unlikely(!prep_req))
-		*ret_val = ret;
+	/*
+	 * For AUTH_ONLY case,
+	 * MC only supports digest generation and verification
+	 * should be done in software by memcmp()
+	 */
+
 	return prep_req;
 }
 
 static __rte_always_inline void *__hot
 cpt_fc_enc_hmac_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens,
-		     fc_params_t *fc_params, void *op, int *ret_val)
+		     fc_params_t *fc_params, void *op)
 {
 	struct cpt_ctx *ctx = fc_params->ctx_buf.vaddr;
 	uint8_t fc_type;
 	void *prep_req = NULL;
-	int ret;
 
 	fc_type = ctx->fc_type;
 
 	/* Common api for rest of the ops */
 	if (likely(fc_type == FC_GEN)) {
-		ret = cpt_enc_hmac_prep(flags, d_offs, d_lens,
-					fc_params, op, &prep_req);
+		cpt_enc_hmac_prep(flags, d_offs, d_lens, fc_params, op,
+				  &prep_req);
 	} else if (fc_type == ZUC_SNOW3G) {
-		ret = cpt_zuc_snow3g_enc_prep(flags, d_offs, d_lens,
-					      fc_params, op, &prep_req);
+		cpt_zuc_snow3g_enc_prep(flags, d_offs, d_lens, fc_params, op,
+					&prep_req);
 	} else if (fc_type == KASUMI) {
-		ret = cpt_kasumi_enc_prep(flags, d_offs, d_lens,
-					  fc_params, op, &prep_req);
+		cpt_kasumi_enc_prep(flags, d_offs, d_lens, fc_params, op,
+				    &prep_req);
 	} else if (fc_type == HASH_HMAC) {
-		ret = cpt_digest_gen_prep(flags, d_lens, fc_params, op,
-					  &prep_req);
-	} else {
-		ret = ERR_EIO;
+		cpt_digest_gen_prep(flags, d_lens, fc_params, op, &prep_req);
 	}
 
-	if (unlikely(!prep_req))
-		*ret_val = ret;
 	return prep_req;
 }
 
@@ -3114,20 +3144,20 @@ prepare_iov_from_pkt_inplace(struct rte_mbuf *pkt,
 	return 0;
 }
 
-static __rte_always_inline void *
+static __rte_always_inline int
 fill_fc_params(struct rte_crypto_op *cop,
 	       struct cpt_sess_misc *sess_misc,
+	       struct cptvf_meta_info *cpt_m_info,
 	       void **mdata_ptr,
-	       int *op_ret)
+	       void **prep_req)
 {
 	uint32_t space = 0;
 	struct rte_crypto_sym_op *sym_op = cop->sym;
-	void *mdata;
+	void *mdata = NULL;
 	uintptr_t *op;
 	uint32_t mc_hash_off;
 	uint32_t flags = 0;
 	uint64_t d_offs, d_lens;
-	void *prep_req = NULL;
 	struct rte_mbuf *m_src, *m_dst;
 	uint8_t cpt_op = sess_misc->cpt_op;
 	uint8_t zsk_flag = sess_misc->zsk_flag;
@@ -3142,8 +3172,7 @@ fill_fc_params(struct rte_crypto_op *cop,
 	char src[SRC_IOV_SIZE];
 	char dst[SRC_IOV_SIZE];
 	uint32_t iv_buf[4];
-	struct cptvf_meta_info *cpt_m_info =
-				(struct cptvf_meta_info *)(*mdata_ptr);
+	int ret;
 
 	if (likely(sess_misc->iv_length)) {
 		flags |= VALID_IV_BUF;
@@ -3289,8 +3318,8 @@ fill_fc_params(struct rte_crypto_op *cop,
 							  &fc_params,
 							  &flags))) {
 			CPT_LOG_DP_ERR("Prepare inplace src iov failed");
-			*op_ret = -1;
-			return NULL;
+			ret = -EINVAL;
+			goto err_exit;
 		}
 
 	} else {
@@ -3301,8 +3330,8 @@ fill_fc_params(struct rte_crypto_op *cop,
 		/* Store SG I/O in the api for reuse */
 		if (prepare_iov_from_pkt(m_src, fc_params.src_iov, 0)) {
 			CPT_LOG_DP_ERR("Prepare src iov failed");
-			*op_ret = -1;
-			return NULL;
+			ret = -EINVAL;
+			goto err_exit;
 		}
 
 		if (unlikely(m_dst != NULL)) {
@@ -3319,14 +3348,16 @@ fill_fc_params(struct rte_crypto_op *cop,
 						       "m_dst %p, need %u"
 						       " more",
 						       m_dst, pkt_len);
-					return NULL;
+					ret = -EINVAL;
+					goto err_exit;
 				}
 			}
 
 			if (prepare_iov_from_pkt(m_dst, fc_params.dst_iov, 0)) {
 				CPT_LOG_DP_ERR("Prepare dst iov failed for "
 					       "m_dst %p", m_dst);
-				return NULL;
+				ret = -EINVAL;
+				goto err_exit;
 			}
 		} else {
 			fc_params.dst_iov = (void *)src;
@@ -3346,7 +3377,8 @@ fill_fc_params(struct rte_crypto_op *cop,
 
 	if (unlikely(mdata == NULL)) {
 		CPT_LOG_DP_ERR("Error allocating meta buffer for request");
-		return NULL;
+		ret = -ENOMEM;
+		goto err_exit;
 	}
 
 	op = (uintptr_t *)((uintptr_t)mdata & (uintptr_t)~1ull);
@@ -3361,16 +3393,26 @@ fill_fc_params(struct rte_crypto_op *cop,
 
 	/* Finally prepare the instruction */
 	if (cpt_op & CPT_OP_ENCODE)
-		prep_req = cpt_fc_enc_hmac_prep(flags, d_offs, d_lens,
-						&fc_params, op, op_ret);
+		*prep_req = cpt_fc_enc_hmac_prep(flags, d_offs, d_lens,
+						 &fc_params, op);
 	else
-		prep_req = cpt_fc_dec_hmac_prep(flags, d_offs, d_lens,
-						&fc_params, op, op_ret);
+		*prep_req = cpt_fc_dec_hmac_prep(flags, d_offs, d_lens,
+						 &fc_params, op);
 
-	if (unlikely(!prep_req))
-		free_op_meta(mdata, cpt_m_info->cptvf_meta_pool);
+	if (unlikely(*prep_req == NULL)) {
+		CPT_LOG_DP_ERR("Preparing request failed due to bad input arg");
+		ret = -EINVAL;
+		goto free_mdata_and_exit;
+	}
+
 	*mdata_ptr = mdata;
-	return prep_req;
+
+	return 0;
+
+free_mdata_and_exit:
+	free_op_meta(mdata, cpt_m_info->cptvf_meta_pool);
+err_exit:
+	return ret;
 }
 
 static __rte_always_inline void
@@ -3476,11 +3518,12 @@ find_kasumif9_direction_and_length(uint8_t *src,
 /*
  * This handles all auth only except AES_GMAC
  */
-static __rte_always_inline void *
+static __rte_always_inline int
 fill_digest_params(struct rte_crypto_op *cop,
 		   struct cpt_sess_misc *sess,
+		   struct cptvf_meta_info *cpt_m_info,
 		   void **mdata_ptr,
-		   int *op_ret)
+		   void **prep_req)
 {
 	uint32_t space = 0;
 	struct rte_crypto_sym_op *sym_op = cop->sym;
@@ -3490,7 +3533,6 @@ fill_digest_params(struct rte_crypto_op *cop,
 	uint32_t auth_range_off;
 	uint32_t flags = 0;
 	uint64_t d_offs = 0, d_lens;
-	void *prep_req = NULL;
 	struct rte_mbuf *m_src, *m_dst;
 	uint16_t auth_op = sess->cpt_op & CPT_OP_AUTH_MASK;
 	uint8_t zsk_flag = sess->zsk_flag;
@@ -3498,9 +3540,9 @@ fill_digest_params(struct rte_crypto_op *cop,
 	fc_params_t params;
 	char src[SRC_IOV_SIZE];
 	uint8_t iv_buf[16];
+	int ret;
+
 	memset(&params, 0, sizeof(fc_params_t));
-	struct cptvf_meta_info *cpt_m_info =
-				(struct cptvf_meta_info *)(*mdata_ptr);
 
 	m_src = sym_op->m_src;
 
@@ -3508,9 +3550,8 @@ fill_digest_params(struct rte_crypto_op *cop,
 	mdata = alloc_op_meta(NULL, &params.meta_buf, cpt_m_info->cptvf_op_mlen,
 			      cpt_m_info->cptvf_meta_pool);
 	if (mdata == NULL) {
-		CPT_LOG_DP_ERR("Error allocating meta buffer for request");
-		*op_ret = -ENOMEM;
-		return NULL;
+		ret = -ENOMEM;
+		goto err_exit;
 	}
 
 	mphys = params.meta_buf.dma_addr;
@@ -3597,7 +3638,8 @@ fill_digest_params(struct rte_crypto_op *cop,
 				if (!rte_pktmbuf_append(m_dst, space)) {
 					CPT_LOG_DP_ERR("Failed to extend "
 						       "mbuf by %uB", space);
-					goto err;
+					ret = -EINVAL;
+					goto free_mdata_and_exit;
 				}
 
 			params.mac_buf.vaddr =
@@ -3626,18 +3668,24 @@ fill_digest_params(struct rte_crypto_op *cop,
 	/*Store SG I/O in the api for reuse */
 	if (prepare_iov_from_pkt(m_src, params.src_iov, auth_range_off)) {
 		CPT_LOG_DP_ERR("Prepare src iov failed");
-		*op_ret = -1;
-		goto err;
+		ret = -EINVAL;
+		goto free_mdata_and_exit;
 	}
 
-	prep_req = cpt_fc_enc_hmac_prep(flags, d_offs, d_lens,
-					&params, op, op_ret);
+	*prep_req = cpt_fc_enc_hmac_prep(flags, d_offs, d_lens, &params, op);
+	if (unlikely(*prep_req == NULL)) {
+		ret = -EINVAL;
+		goto free_mdata_and_exit;
+	}
+
 	*mdata_ptr = mdata;
-	return prep_req;
-err:
-	if (unlikely(!prep_req))
-		free_op_meta(mdata, cpt_m_info->cptvf_meta_pool);
-	return NULL;
+
+	return 0;
+
+free_mdata_and_exit:
+	free_op_meta(mdata, cpt_m_info->cptvf_meta_pool);
+err_exit:
+	return ret;
 }
 
 #endif /*_CPT_UCODE_H_ */

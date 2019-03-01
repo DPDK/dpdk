@@ -111,17 +111,17 @@ cpt_pmd_crypto_operation(struct cpt_instance *instance,
 
 	cpt_op = sess->cpt_op;
 
-	mdata = &(cptvf->meta_info);
-
 	if (likely(cpt_op & CPT_OP_CIPHER_MASK))
-		prep_req = fill_fc_params(op, sess, &mdata, &ret);
+		ret = fill_fc_params(op, sess, &cptvf->meta_info, &mdata,
+				     &prep_req);
 	else
-		prep_req = fill_digest_params(op, sess, &mdata, &ret);
+		ret = fill_digest_params(op, sess, &cptvf->meta_info,
+					 &mdata, &prep_req);
 
-	if (unlikely(!prep_req)) {
+	if (unlikely(ret)) {
 		CPT_LOG_DP_ERR("prep cryto req : op %p, cpt_op 0x%x "
 			       "ret 0x%x", op, (unsigned int)cpt_op, ret);
-		goto req_fail;
+		return ret;
 	}
 
 	/* Enqueue prepared instruction to HW */
