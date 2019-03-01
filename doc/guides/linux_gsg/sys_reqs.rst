@@ -178,7 +178,7 @@ In the case of a dual-socket NUMA system,
 the number of hugepages reserved at boot time is generally divided equally between the two sockets
 (on the assumption that sufficient memory is present on both sockets).
 
-See the Documentation/kernel-parameters.txt file in your Linux source tree for further details of these and other kernel options.
+See the Documentation/admin-guide/kernel-parameters.txt file in your Linux source tree for further details of these and other kernel options.
 
 **Alternative:**
 
