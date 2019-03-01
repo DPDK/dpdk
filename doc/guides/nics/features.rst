@@ -285,7 +285,7 @@ Inner RSS
 
 Supports RX RSS hashing on Inner headers.
 
-* **[users]    rte_flow_action_rss**: ``level``.
+* **[uses]    rte_flow_action_rss**: ``level``.
 * **[provides] mbuf**: ``mbuf.ol_flags:PKT_RX_RSS_HASH``, ``mbuf.rss``.
 
 
