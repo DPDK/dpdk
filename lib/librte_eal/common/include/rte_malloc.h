@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2010-2014 Intel Corporation
+ * Copyright(c) 2010-2019 Intel Corporation
  */
 
 #ifndef _RTE_MALLOC_H_
@@ -129,7 +129,32 @@ rte_calloc(const char *type, size_t num, size_t size, unsigned align);
  *   - Otherwise, the pointer to the reallocated memory.
  */
 void *
-rte_realloc(void *ptr, size_t size, unsigned align);
+rte_realloc(void *ptr, size_t size, unsigned int align);
+
+/**
+ * Replacement function for realloc(), using huge-page memory. Reserved area
+ * memory is resized, preserving contents. In NUMA systems, the new area
+ * resides on requested NUMA socket.
+ *
+ * @param ptr
+ *   Pointer to already allocated memory
+ * @param size
+ *   Size (in bytes) of new area. If this is 0, memory is freed.
+ * @param align
+ *   If 0, the return is a pointer that is suitably aligned for any kind of
+ *   variable (in the same manner as malloc()).
+ *   Otherwise, the return is a pointer that is a multiple of *align*. In
+ *   this case, it must obviously be a power of two. (Minimum alignment is the
+ *   cacheline size, i.e. 64-bytes)
+ * @param socket
+ *   NUMA socket to allocate memory on.
+ * @return
+ *   - NULL on error. Not enough memory, or invalid arguments (size is 0,
+ *     align is not a power of two).
+ *   - Otherwise, the pointer to the reallocated memory.
+ */
+void * __rte_experimental
+rte_realloc_socket(void *ptr, size_t size, unsigned int align, int socket);
 
 /**
  * This function allocates memory from the huge-page area of memory. The memory

@@ -359,6 +359,7 @@ EXPERIMENTAL {
 	rte_mp_request_async;
 	rte_mp_sendmsg;
 	rte_option_register;
+	rte_realloc_socket;
 	rte_service_lcore_attr_get;
 	rte_service_lcore_attr_reset_all;
 	rte_service_may_be_active;

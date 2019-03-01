@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2010-2014 Intel Corporation
+ * Copyright(c) 2010-2019 Intel Corporation
  */
 
 #include <stdint.h>
@@ -105,13 +105,13 @@ rte_calloc(const char *type, size_t num, size_t size, unsigned align)
 }
 
 /*
- * Resize allocated memory.
+ * Resize allocated memory on specified heap.
  */
 void *
-rte_realloc(void *ptr, size_t size, unsigned align)
+rte_realloc_socket(void *ptr, size_t size, unsigned int align, int socket)
 {
 	if (ptr == NULL)
-		return rte_malloc(NULL, size, align);
+		return rte_malloc_socket(NULL, size, align, socket);
 
 	struct malloc_elem *elem = malloc_elem_from_data(ptr);
 	if (elem == NULL) {
@@ -120,14 +120,21 @@ rte_realloc(void *ptr, size_t size, unsigned align)
 	}
 
 	size = RTE_CACHE_LINE_ROUNDUP(size), align = RTE_CACHE_LINE_ROUNDUP(align);
-	/* check alignment matches first, and if ok, see if we can resize block */
-	if (RTE_PTR_ALIGN(ptr,align) == ptr &&
+
+	/* check requested socket id and alignment matches first, and if ok,
+	 * see if we can resize block
+	 */
+	if ((socket == SOCKET_ID_ANY ||
+	     (unsigned int)socket == elem->heap->socket_id) &&
+			RTE_PTR_ALIGN(ptr, align) == ptr &&
 			malloc_heap_resize(elem, size) == 0)
 		return ptr;
 
-	/* either alignment is off, or we have no room to expand,
-	 * so move data. */
-	void *new_ptr = rte_malloc(NULL, size, align);
+	/* either requested socket id doesn't match, alignment is off
+	 * or we have no room to expand,
+	 * so move the data.
+	 */
+	void *new_ptr = rte_malloc_socket(NULL, size, align, socket);
 	if (new_ptr == NULL)
 		return NULL;
 	const unsigned old_size = elem->size - MALLOC_ELEM_OVERHEAD;
@@ -135,6 +142,15 @@ rte_realloc(void *ptr, size_t size, unsigned align)
 	rte_free(ptr);
 
 	return new_ptr;
+}
+
+/*
+ * Resize allocated memory.
+ */
+void *
+rte_realloc(void *ptr, size_t size, unsigned int align)
+{
+	return rte_realloc_socket(ptr, size, align, SOCKET_ID_ANY);
 }
 
 int
