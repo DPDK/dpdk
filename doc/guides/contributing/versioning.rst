@@ -1,33 +1,31 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright 2018 The DPDK contributors
 
-Managing ABI updates
-====================
+DPDK ABI/API policy
+===================
 
 Description
 -----------
 
 This document details some methods for handling ABI management in the DPDK.
-Note this document is not exhaustive, in that C library versioning is flexible
-allowing multiple methods to achieve various goals, but it will provide the user
-with some introductory methods
 
 General Guidelines
 ------------------
 
 #. Whenever possible, ABI should be preserved
-#. Libraries or APIs marked in ``experimental`` state may change without constraint.
+#. ABI/API may be changed with a deprecation process
+#. The modification of symbols can generally be managed with versioning
+#. Libraries or APIs marked in ``experimental`` state may change without constraint
 #. New APIs will be marked as ``experimental`` for at least one release to allow
    any issues found by users of the new API to be fixed quickly
 #. The addition of symbols is generally not problematic
-#. The modification of symbols can generally be managed with versioning
 #. The removal of symbols generally is an ABI break and requires bumping of the
    LIBABIVER macro
 #. Updates to the minimum hardware requirements, which drop support for hardware which
    was previously supported, should be treated as an ABI change.
 
 What is an ABI
---------------
+~~~~~~~~~~~~~~
 
 An ABI (Application Binary Interface) is the set of runtime interfaces exposed
 by a library. It is similar to an API (Application Programming Interface) but
@@ -39,8 +37,12 @@ Therefore, in the case of dynamic linking, it is critical that an ABI is
 preserved, or (when modified), done in such a way that the application is unable
 to behave improperly or in an unexpected fashion.
 
-The DPDK ABI policy
+
+ABI/API Deprecation
 -------------------
+
+The DPDK ABI policy
+~~~~~~~~~~~~~~~~~~~
 
 ABI versions are set at the time of major release labeling, and the ABI may
 change multiple times, without warning, between the last release label and the
@@ -99,8 +101,36 @@ readability purposes should be avoided.
    follow the relevant deprecation policy procedures as above: 3 acks and
    announcement at least one release in advance.
 
+Examples of Deprecation Notices
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The following are some examples of ABI deprecation notices which would be
+added to the Release Notes:
+
+* The Macro ``#RTE_FOO`` is deprecated and will be removed with version 2.0,
+  to be replaced with the inline function ``rte_foo()``.
+
+* The function ``rte_mbuf_grok()`` has been updated to include a new parameter
+  in version 2.0. Backwards compatibility will be maintained for this function
+  until the release of version 2.1
+
+* The members of ``struct rte_foo`` have been reorganized in release 2.0 for
+  performance reasons. Existing binary applications will have backwards
+  compatibility in release 2.0, while newly built binaries will need to
+  reference the new structure variant ``struct rte_foo2``. Compatibility will
+  be removed in release 2.2, and all applications will require updating and
+  rebuilding to the new structure at that time, which will be renamed to the
+  original ``struct rte_foo``.
+
+* Significant ABI changes are planned for the ``librte_dostuff`` library. The
+  upcoming release 2.0 will not contain these changes, but release 2.1 will,
+  and no backwards compatibility is planned due to the extensive nature of
+  these changes. Binaries using this library built prior to version 2.1 will
+  require updating and recompilation.
+
+
 Experimental APIs
-~~~~~~~~~~~~~~~~~
+-----------------
 
 APIs marked as ``experimental`` are not considered part of the ABI and may
 change without warning at any time.  Since changes to APIs are most likely
@@ -130,35 +160,38 @@ is not required. Though, an API should remain in experimental state for at least
 one release. Thereafter, normal process of posting patch for review to mailing
 list can be followed.
 
-Examples of Deprecation Notices
--------------------------------
 
-The following are some examples of ABI deprecation notices which would be
-added to the Release Notes:
+Library versioning
+------------------
 
-* The Macro ``#RTE_FOO`` is deprecated and will be removed with version 2.0,
-  to be replaced with the inline function ``rte_foo()``.
+Downstreams might want to provide different DPDK releases at the same time to
+support multiple consumers of DPDK linked against older and newer sonames.
 
-* The function ``rte_mbuf_grok()`` has been updated to include a new parameter
-  in version 2.0. Backwards compatibility will be maintained for this function
-  until the release of version 2.1
+Also due to the interdependencies that DPDK libraries can have applications
+might end up with an executable space in which multiple versions of a library
+are mapped by ld.so.
 
-* The members of ``struct rte_foo`` have been reorganized in release 2.0 for
-  performance reasons. Existing binary applications will have backwards
-  compatibility in release 2.0, while newly built binaries will need to
-  reference the new structure variant ``struct rte_foo2``. Compatibility will
-  be removed in release 2.2, and all applications will require updating and
-  rebuilding to the new structure at that time, which will be renamed to the
-  original ``struct rte_foo``.
+Think of LibA that got an ABI bump and LibB that did not get an ABI bump but is
+depending on LibA.
 
-* Significant ABI changes are planned for the ``librte_dostuff`` library. The
-  upcoming release 2.0 will not contain these changes, but release 2.1 will,
-  and no backwards compatibility is planned due to the extensive nature of
-  these changes. Binaries using this library built prior to version 2.1 will
-  require updating and recompilation.
+.. note::
+
+    Application
+    \-> LibA.old
+    \-> LibB.new -> LibA.new
+
+That is a conflict which can be avoided by setting ``CONFIG_RTE_MAJOR_ABI``.
+If set, the value of ``CONFIG_RTE_MAJOR_ABI`` overwrites all - otherwise per
+library - versions defined in the libraries ``LIBABIVER``.
+An example might be ``CONFIG_RTE_MAJOR_ABI=16.11`` which will make all libraries
+``librte<?>.so.16.11`` instead of ``librte<?>.so.<LIBABIVER>``.
+
+
+ABI versioning
+--------------
 
 Versioning Macros
------------------
+~~~~~~~~~~~~~~~~~
 
 When a symbol is exported from a library to provide an API, it also provides a
 calling convention (ABI) that is embodied in its name, return type and
@@ -186,36 +219,11 @@ The macros exported are:
   fully qualified function ``p``, so that if a symbol becomes versioned, it
   can still be mapped back to the public symbol name.
 
-Setting a Major ABI version
----------------------------
-
-Downstreams might want to provide different DPDK releases at the same time to
-support multiple consumers of DPDK linked against older and newer sonames.
-
-Also due to the interdependencies that DPDK libraries can have applications
-might end up with an executable space in which multiple versions of a library
-are mapped by ld.so.
-
-Think of LibA that got an ABI bump and LibB that did not get an ABI bump but is
-depending on LibA.
-
-.. note::
-
-    Application
-    \-> LibA.old
-    \-> LibB.new -> LibA.new
-
-That is a conflict which can be avoided by setting ``CONFIG_RTE_MAJOR_ABI``.
-If set, the value of ``CONFIG_RTE_MAJOR_ABI`` overwrites all - otherwise per
-library - versions defined in the libraries ``LIBABIVER``.
-An example might be ``CONFIG_RTE_MAJOR_ABI=16.11`` which will make all libraries
-``librte<?>.so.16.11`` instead of ``librte<?>.so.<LIBABIVER>``.
-
 Examples of ABI Macro use
--------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Updating a public API
-~~~~~~~~~~~~~~~~~~~~~
+_____________________
 
 Assume we have a function as follows
 
@@ -425,7 +433,7 @@ and a new DPDK_2.1 version, used by future built applications.
 
 
 Deprecating part of a public API
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+________________________________
 
 Lets assume that you've done the above update, and after a few releases have
 passed you decide you would like to retire the old version of the function.
@@ -483,7 +491,7 @@ possibly incompatible library version:
    +LIBABIVER := 2
 
 Deprecating an entire ABI version
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+_________________________________
 
 While removing a symbol from and ABI may be useful, it is often more practical
 to remove an entire version node at once.  If a version node completely
@@ -531,6 +539,7 @@ symbols.
 Lastly, any VERSION_SYMBOL macros that point to the old version node should be
 removed, taking care to keep, where need old code in place to support newer
 versions of the symbol.
+
 
 Running the ABI Validator
 -------------------------
