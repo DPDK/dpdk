@@ -60,14 +60,14 @@ struct rid {
  *
  */
 struct pending_queue {
+	/** Pending requests count */
+	uint64_t pending_count;
+	/** Array of pending requests */
+	struct rid *rid_queue;
 	/** Tail of queue to be used for enqueue */
 	uint16_t enq_tail;
 	/** Head of queue to be used for dequeue */
 	uint16_t deq_head;
-	/** Array of pending requests */
-	struct rid *rid_queue;
-	/** Pending requests count */
-	uint64_t pending_count;
 };
 
 struct cpt_request_info {
@@ -86,6 +86,6 @@ struct cpt_request_info {
 	/** Control path fields */
 	uint64_t time_out;
 	uint8_t extra_time;
-};
+} __rte_cache_aligned;
 
 #endif /* _CPT_COMMON_H_ */
