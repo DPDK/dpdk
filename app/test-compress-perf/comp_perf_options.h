@@ -8,6 +8,10 @@
 #define MAX_DRIVER_NAME		64
 #define MAX_INPUT_FILE_NAME	64
 #define MAX_LIST		32
+#define MIN_COMPRESSED_BUF_SIZE 8
+#define EXPANSE_RATIO 1.05
+#define MAX_MBUF_DATA_SIZE (UINT16_MAX - RTE_PKTMBUF_HEADROOM)
+#define MAX_SEG_SIZE ((int)(MAX_MBUF_DATA_SIZE / EXPANSE_RATIO))
 
 enum comp_operation {
 	COMPRESS_ONLY,
@@ -38,6 +42,7 @@ struct comp_test_data {
 	struct rte_mempool *op_pool;
 	int8_t cdev_id;
 	uint16_t seg_sz;
+	uint16_t out_seg_sz;
 	uint16_t burst_sz;
 	uint32_t pool_sz;
 	uint32_t num_iter;

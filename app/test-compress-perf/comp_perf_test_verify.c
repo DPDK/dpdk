@@ -24,6 +24,7 @@ main_loop(struct comp_test_data *test_data, uint8_t level,
 	struct rte_mbuf **input_bufs, **output_bufs;
 	int res = 0;
 	int allocated = 0;
+	uint32_t out_seg_sz;
 
 	if (test_data == NULL || !test_data->burst_sz) {
 		RTE_LOG(ERR, USER1,
@@ -57,6 +58,7 @@ main_loop(struct comp_test_data *test_data, uint8_t level,
 		};
 		input_bufs = test_data->decomp_bufs;
 		output_bufs = test_data->comp_bufs;
+		out_seg_sz = test_data->out_seg_sz;
 	} else {
 		xform = (struct rte_comp_xform) {
 			.type = RTE_COMP_DECOMPRESS,
@@ -69,6 +71,7 @@ main_loop(struct comp_test_data *test_data, uint8_t level,
 		};
 		input_bufs = test_data->comp_bufs;
 		output_bufs = test_data->decomp_bufs;
+		out_seg_sz = test_data->seg_sz;
 	}
 
 	/* Create private xform */
@@ -130,7 +133,7 @@ main_loop(struct comp_test_data *test_data, uint8_t level,
 				/* Reset all data in output buffers */
 				struct rte_mbuf *m = output_bufs[buf_id];
 
-				m->pkt_len = test_data->seg_sz * m->nb_segs;
+				m->pkt_len = out_seg_sz * m->nb_segs;
 				while (m) {
 					m->data_len = m->buf_len - m->data_off;
 					m = m->next;
@@ -209,7 +212,7 @@ main_loop(struct comp_test_data *test_data, uint8_t level,
 					while (remaining_data > 0) {
 						data_to_append =
 							RTE_MIN(remaining_data,
-							     test_data->seg_sz);
+							out_seg_sz);
 						m->data_len = data_to_append;
 						remaining_data -=
 								data_to_append;
@@ -280,7 +283,7 @@ main_loop(struct comp_test_data *test_data, uint8_t level,
 					while (remaining_data > 0) {
 						data_to_append =
 						RTE_MIN(remaining_data,
-							test_data->seg_sz);
+							out_seg_sz);
 						m->data_len = data_to_append;
 						remaining_data -=
 								data_to_append;
