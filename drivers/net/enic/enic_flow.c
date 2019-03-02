@@ -70,7 +70,6 @@ static enic_copy_item_fn enic_copy_item_ipv6_v2;
 static enic_copy_item_fn enic_copy_item_udp_v2;
 static enic_copy_item_fn enic_copy_item_tcp_v2;
 static enic_copy_item_fn enic_copy_item_sctp_v2;
-static enic_copy_item_fn enic_copy_item_sctp_v2;
 static enic_copy_item_fn enic_copy_item_vxlan_v2;
 static copy_action_fn enic_copy_action_v1;
 static copy_action_fn enic_copy_action_v2;
@@ -237,7 +236,7 @@ static const struct enic_items enic_items_v3[] = {
 	},
 	[RTE_FLOW_ITEM_TYPE_SCTP] = {
 		.copy_item = enic_copy_item_sctp_v2,
-		.valid_start_item = 1,
+		.valid_start_item = 0,
 		.prev_items = (const enum rte_flow_item_type[]) {
 			       RTE_FLOW_ITEM_TYPE_IPV4,
 			       RTE_FLOW_ITEM_TYPE_IPV6,
@@ -819,11 +818,36 @@ enic_copy_item_sctp_v2(const struct rte_flow_item *item,
 	const struct rte_flow_item_sctp *spec = item->spec;
 	const struct rte_flow_item_sctp *mask = item->mask;
 	struct filter_generic_1 *gp = &enic_filter->u.generic_1;
+	uint8_t *ip_proto_mask = NULL;
+	uint8_t *ip_proto = NULL;
 
 	FLOW_TRACE();
 
 	if (*inner_ofst)
 		return ENOTSUP;
+
+	/*
+	 * The NIC filter API has no flags for "match sctp", so explicitly set
+	 * the protocol number in the IP pattern.
+	 */
+	if (gp->val_flags & FILTER_GENERIC_1_IPV4) {
+		struct ipv4_hdr *ip;
+		ip = (struct ipv4_hdr *)gp->layer[FILTER_GENERIC_1_L3].mask;
+		ip_proto_mask = &ip->next_proto_id;
+		ip = (struct ipv4_hdr *)gp->layer[FILTER_GENERIC_1_L3].val;
+		ip_proto = &ip->next_proto_id;
+	} else if (gp->val_flags & FILTER_GENERIC_1_IPV6) {
+		struct ipv6_hdr *ip;
+		ip = (struct ipv6_hdr *)gp->layer[FILTER_GENERIC_1_L3].mask;
+		ip_proto_mask = &ip->proto;
+		ip = (struct ipv6_hdr *)gp->layer[FILTER_GENERIC_1_L3].val;
+		ip_proto = &ip->proto;
+	} else {
+		/* Need IPv4/IPv6 pattern first */
+		return EINVAL;
+	}
+	*ip_proto = IPPROTO_SCTP;
+	*ip_proto_mask = 0xff;
 
 	/* Match all if no spec */
 	if (!spec)
