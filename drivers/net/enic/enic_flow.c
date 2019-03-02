@@ -830,12 +830,23 @@ enic_copy_item_vxlan_v2(struct copy_item_args *arg)
 	const struct rte_flow_item_vxlan *spec = item->spec;
 	const struct rte_flow_item_vxlan *mask = item->mask;
 	struct filter_generic_1 *gp = &enic_filter->u.generic_1;
+	struct udp_hdr *udp;
 
 	FLOW_TRACE();
 
 	if (*inner_ofst)
 		return EINVAL;
 
+	/*
+	 * The NIC filter API has no flags for "match vxlan". Set UDP port to
+	 * avoid false positives.
+	 */
+	gp->mask_flags |= FILTER_GENERIC_1_UDP;
+	gp->val_flags |= FILTER_GENERIC_1_UDP;
+	udp = (struct udp_hdr *)gp->layer[FILTER_GENERIC_1_L4].mask;
+	udp->dst_port = 0xffff;
+	udp = (struct udp_hdr *)gp->layer[FILTER_GENERIC_1_L4].val;
+	udp->dst_port = RTE_BE16(4789);
 	/* Match all if no spec */
 	if (!spec)
 		return 0;
@@ -931,6 +942,36 @@ item_stacking_valid(enum rte_flow_item_type prev_item,
 	return 0;
 }
 
+/*
+ * Fix up the L5 layer.. HW vxlan parsing removes vxlan header from L5.
+ * Instead it is in L4 following the UDP header. Append the vxlan
+ * pattern to L4 (udp) and shift any inner packet pattern in L5.
+ */
+static void
+fixup_l5_layer(struct enic *enic, struct filter_generic_1 *gp,
+	       uint8_t inner_ofst)
+{
+	uint8_t layer[FILTER_GENERIC_1_KEY_LEN];
+	uint8_t inner;
+	uint8_t vxlan;
+
+	if (!(inner_ofst > 0 && enic->vxlan))
+		return;
+	FLOW_TRACE();
+	vxlan = sizeof(struct vxlan_hdr);
+	memcpy(gp->layer[FILTER_GENERIC_1_L4].mask + sizeof(struct udp_hdr),
+	       gp->layer[FILTER_GENERIC_1_L5].mask, vxlan);
+	memcpy(gp->layer[FILTER_GENERIC_1_L4].val + sizeof(struct udp_hdr),
+	       gp->layer[FILTER_GENERIC_1_L5].val, vxlan);
+	inner = inner_ofst - vxlan;
+	memset(layer, 0, sizeof(layer));
+	memcpy(layer, gp->layer[FILTER_GENERIC_1_L5].mask + vxlan, inner);
+	memcpy(gp->layer[FILTER_GENERIC_1_L5].mask, layer, sizeof(layer));
+	memset(layer, 0, sizeof(layer));
+	memcpy(layer, gp->layer[FILTER_GENERIC_1_L5].val + vxlan, inner);
+	memcpy(gp->layer[FILTER_GENERIC_1_L5].val, layer, sizeof(layer));
+}
+
 /**
  * Build the intenal enic filter structure from the provided pattern. The
  * pattern is validated as the items are copied.
@@ -945,6 +986,7 @@ item_stacking_valid(enum rte_flow_item_type prev_item,
 static int
 enic_copy_filter(const struct rte_flow_item pattern[],
 		 const struct enic_filter_cap *cap,
+		 struct enic *enic,
 		 struct filter_v2 *enic_filter,
 		 struct rte_flow_error *error)
 {
@@ -989,6 +1031,8 @@ enic_copy_filter(const struct rte_flow_item pattern[],
 		prev_item = item->type;
 		is_first_item = 0;
 	}
+	fixup_l5_layer(enic, &enic_filter->u.generic_1, inner_ofst);
+
 	return 0;
 
 item_not_supported:
@@ -1481,7 +1525,7 @@ enic_flow_parse(struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 	enic_filter->type = enic->flow_filter_mode;
-	ret = enic_copy_filter(pattern, enic_filter_cap,
+	ret = enic_copy_filter(pattern, enic_filter_cap, enic,
 				       enic_filter, error);
 	return ret;
 }
