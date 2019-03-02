@@ -212,32 +212,6 @@ int enic_get_vnic_config(struct enic *enic)
 	return 0;
 }
 
-int enic_add_vlan(struct enic *enic, u16 vlanid)
-{
-	u64 a0 = vlanid, a1 = 0;
-	int wait = 1000;
-	int err;
-
-	err = vnic_dev_cmd(enic->vdev, CMD_VLAN_ADD, &a0, &a1, wait);
-	if (err)
-		dev_err(enic_get_dev(enic), "Can't add vlan id, %d\n", err);
-
-	return err;
-}
-
-int enic_del_vlan(struct enic *enic, u16 vlanid)
-{
-	u64 a0 = vlanid, a1 = 0;
-	int wait = 1000;
-	int err;
-
-	err = vnic_dev_cmd(enic->vdev, CMD_VLAN_DEL, &a0, &a1, wait);
-	if (err)
-		dev_err(enic_get_dev(enic), "Can't delete vlan id, %d\n", err);
-
-	return err;
-}
-
 int enic_set_nic_cfg(struct enic *enic, u8 rss_default_cpu, u8 rss_hash_type,
 	u8 rss_hash_bits, u8 rss_base_cpu, u8 rss_enable, u8 tso_ipid_split_en,
 	u8 ig_vlan_strip_en)

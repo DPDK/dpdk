@@ -37,7 +37,6 @@ SRCS-$(CONFIG_RTE_LIBRTE_ENIC_PMD) += base/vnic_wq.c
 SRCS-$(CONFIG_RTE_LIBRTE_ENIC_PMD) += base/vnic_dev.c
 SRCS-$(CONFIG_RTE_LIBRTE_ENIC_PMD) += base/vnic_intr.c
 SRCS-$(CONFIG_RTE_LIBRTE_ENIC_PMD) += base/vnic_rq.c
-SRCS-$(CONFIG_RTE_LIBRTE_ENIC_PMD) += base/vnic_rss.c
 
 # The current implementation assumes 64-bit pointers
 CC_AVX2_SUPPORT=0
