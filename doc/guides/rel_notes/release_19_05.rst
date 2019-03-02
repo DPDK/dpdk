@@ -77,6 +77,10 @@ New Features
   which includes the directory name, lib name, filenames, makefile, docs,
   macros, functions, structs and any other strings in the code.
 
+* **Updated the enic driver.**
+
+  * Added limited support for RSS.
+
 
 Removed Items
 -------------

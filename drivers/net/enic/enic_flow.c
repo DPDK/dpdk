@@ -45,7 +45,8 @@ struct enic_filter_cap {
 };
 
 /* functions for copying flow actions into enic actions */
-typedef int (copy_action_fn)(const struct rte_flow_action actions[],
+typedef int (copy_action_fn)(struct enic *enic,
+			     const struct rte_flow_action actions[],
 			     struct filter_action_v2 *enic_action);
 
 /* functions for copying items into enic filters */
@@ -57,8 +58,7 @@ struct enic_action_cap {
 	/** list of valid actions */
 	const enum rte_flow_action_type *actions;
 	/** copy function for a particular NIC */
-	int (*copy_fn)(const struct rte_flow_action actions[],
-		       struct filter_action_v2 *enic_action);
+	copy_action_fn *copy_fn;
 };
 
 /* Forward declarations */
@@ -282,6 +282,7 @@ static const enum rte_flow_action_type enic_supported_actions_v2_id[] = {
 	RTE_FLOW_ACTION_TYPE_QUEUE,
 	RTE_FLOW_ACTION_TYPE_MARK,
 	RTE_FLOW_ACTION_TYPE_FLAG,
+	RTE_FLOW_ACTION_TYPE_RSS,
 	RTE_FLOW_ACTION_TYPE_END,
 };
 
@@ -290,6 +291,7 @@ static const enum rte_flow_action_type enic_supported_actions_v2_drop[] = {
 	RTE_FLOW_ACTION_TYPE_MARK,
 	RTE_FLOW_ACTION_TYPE_FLAG,
 	RTE_FLOW_ACTION_TYPE_DROP,
+	RTE_FLOW_ACTION_TYPE_RSS,
 	RTE_FLOW_ACTION_TYPE_END,
 };
 
@@ -299,6 +301,7 @@ static const enum rte_flow_action_type enic_supported_actions_v2_count[] = {
 	RTE_FLOW_ACTION_TYPE_FLAG,
 	RTE_FLOW_ACTION_TYPE_DROP,
 	RTE_FLOW_ACTION_TYPE_COUNT,
+	RTE_FLOW_ACTION_TYPE_RSS,
 	RTE_FLOW_ACTION_TYPE_END,
 };
 
@@ -1016,7 +1019,8 @@ stacking_error:
  * @param error[out]
  */
 static int
-enic_copy_action_v1(const struct rte_flow_action actions[],
+enic_copy_action_v1(__rte_unused struct enic *enic,
+		    const struct rte_flow_action actions[],
 		    struct filter_action_v2 *enic_action)
 {
 	enum { FATE = 1, };
@@ -1062,7 +1066,8 @@ enic_copy_action_v1(const struct rte_flow_action actions[],
  * @param error[out]
  */
 static int
-enic_copy_action_v2(const struct rte_flow_action actions[],
+enic_copy_action_v2(struct enic *enic,
+		    const struct rte_flow_action actions[],
 		    struct filter_action_v2 *enic_action)
 {
 	enum { FATE = 1, MARK = 2, };
@@ -1126,6 +1131,37 @@ enic_copy_action_v2(const struct rte_flow_action actions[],
 		}
 		case RTE_FLOW_ACTION_TYPE_COUNT: {
 			enic_action->flags |= FILTER_ACTION_COUNTER_FLAG;
+			break;
+		}
+		case RTE_FLOW_ACTION_TYPE_RSS: {
+			const struct rte_flow_action_rss *rss =
+				(const struct rte_flow_action_rss *)
+				actions->conf;
+			bool allow;
+			uint16_t i;
+
+			/*
+			 * Hardware does not support general RSS actions, but
+			 * we can still support the dummy one that is used to
+			 * "receive normally".
+			 */
+			allow = rss->func == RTE_ETH_HASH_FUNCTION_DEFAULT &&
+				rss->level == 0 &&
+				(rss->types == 0 ||
+				 rss->types == enic->rss_hf) &&
+				rss->queue_num == enic->rq_count &&
+				rss->key_len == 0;
+			/* Identity queue map is ok */
+			for (i = 0; i < rss->queue_num; i++)
+				allow = allow && (i == rss->queue[i]);
+			if (!allow)
+				return ENOTSUP;
+			if (overlap & FATE)
+				return ENOTSUP;
+			/* Need MARK or FLAG */
+			if (!(overlap & MARK))
+				return ENOTSUP;
+			overlap |= FATE;
 			break;
 		}
 		case RTE_FLOW_ACTION_TYPE_VOID:
@@ -1418,7 +1454,7 @@ enic_flow_parse(struct rte_eth_dev *dev,
 				   action, "Invalid action.");
 		return -rte_errno;
 	}
-	ret = enic_action_cap->copy_fn(actions, enic_action);
+	ret = enic_action_cap->copy_fn(enic, actions, enic_action);
 	if (ret) {
 		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_HANDLE,
 			   NULL, "Unsupported action.");
