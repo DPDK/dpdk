@@ -79,6 +79,7 @@ New Features
 
 * **Updated the enic driver.**
 
+  * Added limited support for RAW.
   * Added limited support for RSS.
   * Added limited support for PASSTHRU.
 

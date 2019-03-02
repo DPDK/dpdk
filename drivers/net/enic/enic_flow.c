@@ -77,6 +77,7 @@ struct enic_action_cap {
 static enic_copy_item_fn enic_copy_item_ipv4_v1;
 static enic_copy_item_fn enic_copy_item_udp_v1;
 static enic_copy_item_fn enic_copy_item_tcp_v1;
+static enic_copy_item_fn enic_copy_item_raw_v2;
 static enic_copy_item_fn enic_copy_item_eth_v2;
 static enic_copy_item_fn enic_copy_item_vlan_v2;
 static enic_copy_item_fn enic_copy_item_ipv4_v2;
@@ -123,6 +124,14 @@ static const struct enic_items enic_items_v1[] = {
  * that layer 3 must be specified.
  */
 static const struct enic_items enic_items_v2[] = {
+	[RTE_FLOW_ITEM_TYPE_RAW] = {
+		.copy_item = enic_copy_item_raw_v2,
+		.valid_start_item = 0,
+		.prev_items = (const enum rte_flow_item_type[]) {
+			       RTE_FLOW_ITEM_TYPE_UDP,
+			       RTE_FLOW_ITEM_TYPE_END,
+		},
+	},
 	[RTE_FLOW_ITEM_TYPE_ETH] = {
 		.copy_item = enic_copy_item_eth_v2,
 		.valid_start_item = 1,
@@ -196,6 +205,14 @@ static const struct enic_items enic_items_v2[] = {
 
 /** NICs with Advanced filters enabled */
 static const struct enic_items enic_items_v3[] = {
+	[RTE_FLOW_ITEM_TYPE_RAW] = {
+		.copy_item = enic_copy_item_raw_v2,
+		.valid_start_item = 0,
+		.prev_items = (const enum rte_flow_item_type[]) {
+			       RTE_FLOW_ITEM_TYPE_UDP,
+			       RTE_FLOW_ITEM_TYPE_END,
+		},
+	},
 	[RTE_FLOW_ITEM_TYPE_ETH] = {
 		.copy_item = enic_copy_item_eth_v2,
 		.valid_start_item = 1,
@@ -832,6 +849,54 @@ enic_copy_item_vxlan_v2(struct copy_item_args *arg)
 	       sizeof(struct vxlan_hdr));
 
 	*inner_ofst = sizeof(struct vxlan_hdr);
+	return 0;
+}
+
+/*
+ * Copy raw item into version 2 NIC filter. Currently, raw pattern match is
+ * very limited. It is intended for matching UDP tunnel header (e.g. vxlan
+ * or geneve).
+ */
+static int
+enic_copy_item_raw_v2(struct copy_item_args *arg)
+{
+	const struct rte_flow_item *item = arg->item;
+	struct filter_v2 *enic_filter = arg->filter;
+	uint8_t *inner_ofst = arg->inner_ofst;
+	const struct rte_flow_item_raw *spec = item->spec;
+	const struct rte_flow_item_raw *mask = item->mask;
+	struct filter_generic_1 *gp = &enic_filter->u.generic_1;
+
+	FLOW_TRACE();
+
+	/* Cannot be used for inner packet */
+	if (*inner_ofst)
+		return EINVAL;
+	/* Need both spec and mask */
+	if (!spec || !mask)
+		return EINVAL;
+	/* Only supports relative with offset 0 */
+	if (!spec->relative || spec->offset != 0 || spec->search || spec->limit)
+		return EINVAL;
+	/* Need non-null pattern that fits within the NIC's filter pattern */
+	if (spec->length == 0 || spec->length > FILTER_GENERIC_1_KEY_LEN ||
+	    !spec->pattern || !mask->pattern)
+		return EINVAL;
+	/*
+	 * Mask fields, including length, are often set to zero. Assume that
+	 * means "same as spec" to avoid breaking existing apps. If length
+	 * is not zero, then it should be >= spec length.
+	 *
+	 * No more pattern follows this, so append to the L4 layer instead of
+	 * L5 to work with both recent and older VICs.
+	 */
+	if (mask->length != 0 && mask->length < spec->length)
+		return EINVAL;
+	memcpy(gp->layer[FILTER_GENERIC_1_L4].mask + sizeof(struct udp_hdr),
+	       mask->pattern, spec->length);
+	memcpy(gp->layer[FILTER_GENERIC_1_L4].val + sizeof(struct udp_hdr),
+	       spec->pattern, spec->length);
+
 	return 0;
 }
 
