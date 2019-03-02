@@ -79,6 +79,8 @@ New Features
 
 * **Updated the enic driver.**
 
+  * Fixed several flow (director) bugs related to MARK, SCTP, VLAN, VXLAN, and
+    inner packet matching.
   * Added limited support for RAW.
   * Added limited support for RSS.
   * Added limited support for PASSTHRU.
