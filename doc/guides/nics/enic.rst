@@ -450,6 +450,7 @@ PKT_RX_VLAN_STRIPPED mbuf flags would not be set. This mode is enabled with the
     1000 for 1300 series VICs). Filters are checked for matching in the order they
     were added. Since there currently is no grouping or priority support,
     'catch-all' filters should be added last.
+  - The supported range of IDs for the 'MARK' action is 0 - 0xFFFD.
 
 - **Statistics**
 

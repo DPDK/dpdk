@@ -226,7 +226,8 @@ enic_cq_rx_to_pkt_flags(struct cq_desc *cqd, struct rte_mbuf *mbuf)
 		if (filter_id) {
 			pkt_flags |= PKT_RX_FDIR;
 			if (filter_id != ENIC_MAGIC_FILTER_ID) {
-				mbuf->hash.fdir.hi = clsf_cqd->filter_id;
+				/* filter_id = mark id + 1, so subtract 1 */
+				mbuf->hash.fdir.hi = filter_id - 1;
 				pkt_flags |= PKT_RX_FDIR_ID;
 			}
 		}

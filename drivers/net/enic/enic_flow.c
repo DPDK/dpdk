@@ -1081,12 +1081,18 @@ enic_copy_action_v2(const struct rte_flow_action actions[],
 			if (overlap & MARK)
 				return ENOTSUP;
 			overlap |= MARK;
-			/* ENIC_MAGIC_FILTER_ID is reserved and is the highest
-			 * in the range of allows mark ids.
+			/*
+			 * Map mark ID (32-bit) to filter ID (16-bit):
+			 * - Reject values > 16 bits
+			 * - Filter ID 0 is reserved for filters that steer
+			 *   but not mark. So add 1 to the mark ID to avoid
+			 *   using 0.
+			 * - Filter ID (ENIC_MAGIC_FILTER_ID = 0xffff) is
+			 *   reserved for the "flag" action below.
 			 */
-			if (mark->id >= ENIC_MAGIC_FILTER_ID)
+			if (mark->id >= ENIC_MAGIC_FILTER_ID - 1)
 				return EINVAL;
-			enic_action->filter_id = mark->id;
+			enic_action->filter_id = mark->id + 1;
 			enic_action->flags |= FILTER_ACTION_FILTER_ID_FLAG;
 			break;
 		}
@@ -1094,6 +1100,7 @@ enic_copy_action_v2(const struct rte_flow_action actions[],
 			if (overlap & MARK)
 				return ENOTSUP;
 			overlap |= MARK;
+			/* ENIC_MAGIC_FILTER_ID is reserved for flagging */
 			enic_action->filter_id = ENIC_MAGIC_FILTER_ID;
 			enic_action->flags |= FILTER_ACTION_FILTER_ID_FLAG;
 			break;
