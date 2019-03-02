@@ -40,6 +40,8 @@ struct enic_items {
 struct enic_filter_cap {
 	/** list of valid items and their handlers and attributes. */
 	const struct enic_items *item_info;
+	/* Max type in the above list, used to detect unsupported types */
+	enum rte_flow_item_type max_item_type;
 };
 
 /* functions for copying flow actions into enic actions */
@@ -257,12 +259,15 @@ static const struct enic_items enic_items_v3[] = {
 static const struct enic_filter_cap enic_filter_cap[] = {
 	[FILTER_IPV4_5TUPLE] = {
 		.item_info = enic_items_v1,
+		.max_item_type = RTE_FLOW_ITEM_TYPE_TCP,
 	},
 	[FILTER_USNIC_IP] = {
 		.item_info = enic_items_v2,
+		.max_item_type = RTE_FLOW_ITEM_TYPE_VXLAN,
 	},
 	[FILTER_DPDK_1] = {
 		.item_info = enic_items_v3,
+		.max_item_type = RTE_FLOW_ITEM_TYPE_VXLAN,
 	},
 };
 
@@ -946,7 +951,7 @@ item_stacking_valid(enum rte_flow_item_type prev_item,
  */
 static int
 enic_copy_filter(const struct rte_flow_item pattern[],
-		 const struct enic_items *items_info,
+		 const struct enic_filter_cap *cap,
 		 struct filter_v2 *enic_filter,
 		 struct rte_flow_error *error)
 {
@@ -969,7 +974,14 @@ enic_copy_filter(const struct rte_flow_item pattern[],
 		if (item->type == RTE_FLOW_ITEM_TYPE_VOID)
 			continue;
 
-		item_info = &items_info[item->type];
+		item_info = &cap->item_info[item->type];
+		if (item->type > cap->max_item_type ||
+		    item_info->copy_item == NULL) {
+			rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				NULL, "Unsupported item.");
+			return -rte_errno;
+		}
 
 		/* check to see if item stacking is valid */
 		if (!item_stacking_valid(prev_item, item_info, is_first_item))
@@ -1423,7 +1435,7 @@ enic_flow_parse(struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 	enic_filter->type = enic->flow_filter_mode;
-	ret = enic_copy_filter(pattern, enic_filter_cap->item_info,
+	ret = enic_copy_filter(pattern, enic_filter_cap,
 				       enic_filter, error);
 	return ret;
 }
