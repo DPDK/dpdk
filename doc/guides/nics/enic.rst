@@ -256,7 +256,7 @@ Generic Flow API is supported. The baseline support is:
 
   - Attributes: ingress
   - Items: eth, ipv4, ipv6, udp, tcp, vxlan, inner eth, ipv4, ipv6, udp, tcp
-  - Actions: queue, mark, drop, flag, rss, and void
+  - Actions: queue, mark, drop, flag, rss, passthru, and void
   - Selectors: 'is', 'spec' and 'mask'. 'last' is not supported
   - In total, up to 64 bytes of mask is allowed across all headers
 
@@ -451,6 +451,10 @@ PKT_RX_VLAN_STRIPPED mbuf flags would not be set. This mode is enabled with the
     were added. Since there currently is no grouping or priority support,
     'catch-all' filters should be added last.
   - The supported range of IDs for the 'MARK' action is 0 - 0xFFFD.
+  - RSS and PASSTHRU actions only support "receive normally". They are limited
+    to supporting MARK + RSS and PASSTHRU + MARK to allow the application to mark
+    packets and then receive them normally. These require 1400 series VIC adapters
+    and latest firmware.
 
 - **Statistics**
 

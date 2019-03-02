@@ -283,6 +283,7 @@ static const enum rte_flow_action_type enic_supported_actions_v2_id[] = {
 	RTE_FLOW_ACTION_TYPE_MARK,
 	RTE_FLOW_ACTION_TYPE_FLAG,
 	RTE_FLOW_ACTION_TYPE_RSS,
+	RTE_FLOW_ACTION_TYPE_PASSTHRU,
 	RTE_FLOW_ACTION_TYPE_END,
 };
 
@@ -292,6 +293,7 @@ static const enum rte_flow_action_type enic_supported_actions_v2_drop[] = {
 	RTE_FLOW_ACTION_TYPE_FLAG,
 	RTE_FLOW_ACTION_TYPE_DROP,
 	RTE_FLOW_ACTION_TYPE_RSS,
+	RTE_FLOW_ACTION_TYPE_PASSTHRU,
 	RTE_FLOW_ACTION_TYPE_END,
 };
 
@@ -302,6 +304,7 @@ static const enum rte_flow_action_type enic_supported_actions_v2_count[] = {
 	RTE_FLOW_ACTION_TYPE_DROP,
 	RTE_FLOW_ACTION_TYPE_COUNT,
 	RTE_FLOW_ACTION_TYPE_RSS,
+	RTE_FLOW_ACTION_TYPE_PASSTHRU,
 	RTE_FLOW_ACTION_TYPE_END,
 };
 
@@ -1072,6 +1075,7 @@ enic_copy_action_v2(struct enic *enic,
 {
 	enum { FATE = 1, MARK = 2, };
 	uint32_t overlap = 0;
+	bool passthru = false;
 
 	FLOW_TRACE();
 
@@ -1164,6 +1168,19 @@ enic_copy_action_v2(struct enic *enic,
 			overlap |= FATE;
 			break;
 		}
+		case RTE_FLOW_ACTION_TYPE_PASSTHRU: {
+			/*
+			 * Like RSS above, PASSTHRU + MARK may be used to
+			 * "mark and then receive normally". MARK usually comes
+			 * after PASSTHRU, so remember we have seen passthru
+			 * and check for mark later.
+			 */
+			if (overlap & FATE)
+				return ENOTSUP;
+			overlap |= FATE;
+			passthru = true;
+			break;
+		}
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			continue;
 		default:
@@ -1171,6 +1188,9 @@ enic_copy_action_v2(struct enic *enic,
 			break;
 		}
 	}
+	/* Only PASSTHRU + MARK is allowed */
+	if (passthru && !(overlap & MARK))
+		return ENOTSUP;
 	if (!(overlap & FATE))
 		return ENOTSUP;
 	enic_action->type = FILTER_ACTION_V2;
