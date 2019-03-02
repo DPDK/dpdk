@@ -76,8 +76,8 @@ struct enic_fdir {
 	u32 modes;
 	u32 types_mask;
 	void (*copy_fltr_fn)(struct filter_v2 *filt,
-			     struct rte_eth_fdir_input *input,
-			     struct rte_eth_fdir_masks *masks);
+			     const struct rte_eth_fdir_input *input,
+			     const struct rte_eth_fdir_masks *masks);
 };
 
 struct enic_soft_stats {
@@ -342,9 +342,5 @@ int enic_link_update(struct enic *enic);
 bool enic_use_vector_rx_handler(struct enic *enic);
 void enic_fdir_info(struct enic *enic);
 void enic_fdir_info_get(struct enic *enic, struct rte_eth_fdir_info *stats);
-void copy_fltr_v1(struct filter_v2 *fltr, struct rte_eth_fdir_input *input,
-		  struct rte_eth_fdir_masks *masks);
-void copy_fltr_v2(struct filter_v2 *fltr, struct rte_eth_fdir_input *input,
-		  struct rte_eth_fdir_masks *masks);
 extern const struct rte_flow_ops enic_flow_ops;
 #endif /* _ENIC_H_ */
