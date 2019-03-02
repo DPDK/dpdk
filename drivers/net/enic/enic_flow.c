@@ -23,11 +23,27 @@
 	rte_log(RTE_LOG_ ## level, enicpmd_logtype_flow, \
 		fmt "\n", ##args)
 
+/*
+ * Common arguments passed to copy_item functions. Use this structure
+ * so we can easily add new arguments.
+ * item: Item specification.
+ * filter: Partially filled in NIC filter structure.
+ * inner_ofst: If zero, this is an outer header. If non-zero, this is
+ *   the offset into L5 where the header begins.
+ */
+struct copy_item_args {
+	const struct rte_flow_item *item;
+	struct filter_v2 *filter;
+	uint8_t *inner_ofst;
+};
+
+/* functions for copying items into enic filters */
+typedef int (enic_copy_item_fn)(struct copy_item_args *arg);
+
 /** Info about how to copy items into enic filters. */
 struct enic_items {
 	/** Function for copying and validating an item. */
-	int (*copy_item)(const struct rte_flow_item *item,
-			 struct filter_v2 *enic_filter, u8 *inner_ofst);
+	enic_copy_item_fn *copy_item;
 	/** List of valid previous items. */
 	const enum rte_flow_item_type * const prev_items;
 	/** True if it's OK for this item to be the first item. For some NIC
@@ -48,10 +64,6 @@ struct enic_filter_cap {
 typedef int (copy_action_fn)(struct enic *enic,
 			     const struct rte_flow_action actions[],
 			     struct filter_action_v2 *enic_action);
-
-/* functions for copying items into enic filters */
-typedef int(enic_copy_item_fn)(const struct rte_flow_item *item,
-			  struct filter_v2 *enic_filter, u8 *inner_ofst);
 
 /** Action capabilities for various NICs. */
 struct enic_action_cap {
@@ -340,20 +352,12 @@ mask_exact_match(const u8 *supported, const u8 *supplied,
 	return 1;
 }
 
-/**
- * Copy IPv4 item into version 1 NIC filter.
- *
- * @param item[in]
- *   Item specification.
- * @param enic_filter[out]
- *   Partially filled in NIC filter structure.
- * @param inner_ofst[in]
- *   Should always be 0 for version 1.
- */
 static int
-enic_copy_item_ipv4_v1(const struct rte_flow_item *item,
-		       struct filter_v2 *enic_filter, u8 *inner_ofst)
+enic_copy_item_ipv4_v1(struct copy_item_args *arg)
 {
+	const struct rte_flow_item *item = arg->item;
+	struct filter_v2 *enic_filter = arg->filter;
+	uint8_t *inner_ofst = arg->inner_ofst;
 	const struct rte_flow_item_ipv4 *spec = item->spec;
 	const struct rte_flow_item_ipv4 *mask = item->mask;
 	struct filter_ipv4_5tuple *enic_5tup = &enic_filter->u.ipv4;
@@ -390,20 +394,12 @@ enic_copy_item_ipv4_v1(const struct rte_flow_item *item,
 	return 0;
 }
 
-/**
- * Copy UDP item into version 1 NIC filter.
- *
- * @param item[in]
- *   Item specification.
- * @param enic_filter[out]
- *   Partially filled in NIC filter structure.
- * @param inner_ofst[in]
- *   Should always be 0 for version 1.
- */
 static int
-enic_copy_item_udp_v1(const struct rte_flow_item *item,
-		      struct filter_v2 *enic_filter, u8 *inner_ofst)
+enic_copy_item_udp_v1(struct copy_item_args *arg)
 {
+	const struct rte_flow_item *item = arg->item;
+	struct filter_v2 *enic_filter = arg->filter;
+	uint8_t *inner_ofst = arg->inner_ofst;
 	const struct rte_flow_item_udp *spec = item->spec;
 	const struct rte_flow_item_udp *mask = item->mask;
 	struct filter_ipv4_5tuple *enic_5tup = &enic_filter->u.ipv4;
@@ -441,20 +437,12 @@ enic_copy_item_udp_v1(const struct rte_flow_item *item,
 	return 0;
 }
 
-/**
- * Copy TCP item into version 1 NIC filter.
- *
- * @param item[in]
- *   Item specification.
- * @param enic_filter[out]
- *   Partially filled in NIC filter structure.
- * @param inner_ofst[in]
- *   Should always be 0 for version 1.
- */
 static int
-enic_copy_item_tcp_v1(const struct rte_flow_item *item,
-		      struct filter_v2 *enic_filter, u8 *inner_ofst)
+enic_copy_item_tcp_v1(struct copy_item_args *arg)
 {
+	const struct rte_flow_item *item = arg->item;
+	struct filter_v2 *enic_filter = arg->filter;
+	uint8_t *inner_ofst = arg->inner_ofst;
 	const struct rte_flow_item_tcp *spec = item->spec;
 	const struct rte_flow_item_tcp *mask = item->mask;
 	struct filter_ipv4_5tuple *enic_5tup = &enic_filter->u.ipv4;
@@ -492,21 +480,12 @@ enic_copy_item_tcp_v1(const struct rte_flow_item *item,
 	return 0;
 }
 
-/**
- * Copy ETH item into version 2 NIC filter.
- *
- * @param item[in]
- *   Item specification.
- * @param enic_filter[out]
- *   Partially filled in NIC filter structure.
- * @param inner_ofst[in]
- *   If zero, this is an outer header. If non-zero, this is the offset into L5
- *   where the header begins.
- */
 static int
-enic_copy_item_eth_v2(const struct rte_flow_item *item,
-		      struct filter_v2 *enic_filter, u8 *inner_ofst)
+enic_copy_item_eth_v2(struct copy_item_args *arg)
 {
+	const struct rte_flow_item *item = arg->item;
+	struct filter_v2 *enic_filter = arg->filter;
+	uint8_t *inner_ofst = arg->inner_ofst;
 	struct ether_hdr enic_spec;
 	struct ether_hdr enic_mask;
 	const struct rte_flow_item_eth *spec = item->spec;
@@ -555,21 +534,12 @@ enic_copy_item_eth_v2(const struct rte_flow_item *item,
 	return 0;
 }
 
-/**
- * Copy VLAN item into version 2 NIC filter.
- *
- * @param item[in]
- *   Item specification.
- * @param enic_filter[out]
- *   Partially filled in NIC filter structure.
- * @param inner_ofst[in]
- *   If zero, this is an outer header. If non-zero, this is the offset into L5
- *   where the header begins.
- */
 static int
-enic_copy_item_vlan_v2(const struct rte_flow_item *item,
-		       struct filter_v2 *enic_filter, u8 *inner_ofst)
+enic_copy_item_vlan_v2(struct copy_item_args *arg)
 {
+	const struct rte_flow_item *item = arg->item;
+	struct filter_v2 *enic_filter = arg->filter;
+	uint8_t *inner_ofst = arg->inner_ofst;
 	const struct rte_flow_item_vlan *spec = item->spec;
 	const struct rte_flow_item_vlan *mask = item->mask;
 	struct filter_generic_1 *gp = &enic_filter->u.generic_1;
@@ -612,20 +582,12 @@ enic_copy_item_vlan_v2(const struct rte_flow_item *item,
 	return 0;
 }
 
-/**
- * Copy IPv4 item into version 2 NIC filter.
- *
- * @param item[in]
- *   Item specification.
- * @param enic_filter[out]
- *   Partially filled in NIC filter structure.
- * @param inner_ofst[in]
- *   Must be 0. Don't support inner IPv4 filtering.
- */
 static int
-enic_copy_item_ipv4_v2(const struct rte_flow_item *item,
-		       struct filter_v2 *enic_filter, u8 *inner_ofst)
+enic_copy_item_ipv4_v2(struct copy_item_args *arg)
 {
+	const struct rte_flow_item *item = arg->item;
+	struct filter_v2 *enic_filter = arg->filter;
+	uint8_t *inner_ofst = arg->inner_ofst;
 	const struct rte_flow_item_ipv4 *spec = item->spec;
 	const struct rte_flow_item_ipv4 *mask = item->mask;
 	struct filter_generic_1 *gp = &enic_filter->u.generic_1;
@@ -662,20 +624,12 @@ enic_copy_item_ipv4_v2(const struct rte_flow_item *item,
 	return 0;
 }
 
-/**
- * Copy IPv6 item into version 2 NIC filter.
- *
- * @param item[in]
- *   Item specification.
- * @param enic_filter[out]
- *   Partially filled in NIC filter structure.
- * @param inner_ofst[in]
- *   Must be 0. Don't support inner IPv6 filtering.
- */
 static int
-enic_copy_item_ipv6_v2(const struct rte_flow_item *item,
-		       struct filter_v2 *enic_filter, u8 *inner_ofst)
+enic_copy_item_ipv6_v2(struct copy_item_args *arg)
 {
+	const struct rte_flow_item *item = arg->item;
+	struct filter_v2 *enic_filter = arg->filter;
+	uint8_t *inner_ofst = arg->inner_ofst;
 	const struct rte_flow_item_ipv6 *spec = item->spec;
 	const struct rte_flow_item_ipv6 *mask = item->mask;
 	struct filter_generic_1 *gp = &enic_filter->u.generic_1;
@@ -712,20 +666,12 @@ enic_copy_item_ipv6_v2(const struct rte_flow_item *item,
 	return 0;
 }
 
-/**
- * Copy UDP item into version 2 NIC filter.
- *
- * @param item[in]
- *   Item specification.
- * @param enic_filter[out]
- *   Partially filled in NIC filter structure.
- * @param inner_ofst[in]
- *   Must be 0. Don't support inner UDP filtering.
- */
 static int
-enic_copy_item_udp_v2(const struct rte_flow_item *item,
-		      struct filter_v2 *enic_filter, u8 *inner_ofst)
+enic_copy_item_udp_v2(struct copy_item_args *arg)
 {
+	const struct rte_flow_item *item = arg->item;
+	struct filter_v2 *enic_filter = arg->filter;
+	uint8_t *inner_ofst = arg->inner_ofst;
 	const struct rte_flow_item_udp *spec = item->spec;
 	const struct rte_flow_item_udp *mask = item->mask;
 	struct filter_generic_1 *gp = &enic_filter->u.generic_1;
@@ -762,20 +708,12 @@ enic_copy_item_udp_v2(const struct rte_flow_item *item,
 	return 0;
 }
 
-/**
- * Copy TCP item into version 2 NIC filter.
- *
- * @param item[in]
- *   Item specification.
- * @param enic_filter[out]
- *   Partially filled in NIC filter structure.
- * @param inner_ofst[in]
- *   Must be 0. Don't support inner TCP filtering.
- */
 static int
-enic_copy_item_tcp_v2(const struct rte_flow_item *item,
-		      struct filter_v2 *enic_filter, u8 *inner_ofst)
+enic_copy_item_tcp_v2(struct copy_item_args *arg)
 {
+	const struct rte_flow_item *item = arg->item;
+	struct filter_v2 *enic_filter = arg->filter;
+	uint8_t *inner_ofst = arg->inner_ofst;
 	const struct rte_flow_item_tcp *spec = item->spec;
 	const struct rte_flow_item_tcp *mask = item->mask;
 	struct filter_generic_1 *gp = &enic_filter->u.generic_1;
@@ -812,20 +750,12 @@ enic_copy_item_tcp_v2(const struct rte_flow_item *item,
 	return 0;
 }
 
-/**
- * Copy SCTP item into version 2 NIC filter.
- *
- * @param item[in]
- *   Item specification.
- * @param enic_filter[out]
- *   Partially filled in NIC filter structure.
- * @param inner_ofst[in]
- *   Must be 0. Don't support inner SCTP filtering.
- */
 static int
-enic_copy_item_sctp_v2(const struct rte_flow_item *item,
-		       struct filter_v2 *enic_filter, u8 *inner_ofst)
+enic_copy_item_sctp_v2(struct copy_item_args *arg)
 {
+	const struct rte_flow_item *item = arg->item;
+	struct filter_v2 *enic_filter = arg->filter;
+	uint8_t *inner_ofst = arg->inner_ofst;
 	const struct rte_flow_item_sctp *spec = item->spec;
 	const struct rte_flow_item_sctp *mask = item->mask;
 	struct filter_generic_1 *gp = &enic_filter->u.generic_1;
@@ -874,20 +804,12 @@ enic_copy_item_sctp_v2(const struct rte_flow_item *item,
 	return 0;
 }
 
-/**
- * Copy UDP item into version 2 NIC filter.
- *
- * @param item[in]
- *   Item specification.
- * @param enic_filter[out]
- *   Partially filled in NIC filter structure.
- * @param inner_ofst[in]
- *   Must be 0. VxLAN headers always start at the beginning of L5.
- */
 static int
-enic_copy_item_vxlan_v2(const struct rte_flow_item *item,
-			struct filter_v2 *enic_filter, u8 *inner_ofst)
+enic_copy_item_vxlan_v2(struct copy_item_args *arg)
 {
+	const struct rte_flow_item *item = arg->item;
+	struct filter_v2 *enic_filter = arg->filter;
+	uint8_t *inner_ofst = arg->inner_ofst;
 	const struct rte_flow_item_vxlan *spec = item->spec;
 	const struct rte_flow_item_vxlan *mask = item->mask;
 	struct filter_generic_1 *gp = &enic_filter->u.generic_1;
@@ -966,13 +888,15 @@ enic_copy_filter(const struct rte_flow_item pattern[],
 	u8 inner_ofst = 0; /* If encapsulated, ofst into L5 */
 	enum rte_flow_item_type prev_item;
 	const struct enic_items *item_info;
-
+	struct copy_item_args args;
 	u8 is_first_item = 1;
 
 	FLOW_TRACE();
 
 	prev_item = 0;
 
+	args.filter = enic_filter;
+	args.inner_ofst = &inner_ofst;
 	for (; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
 		/* Get info about how to validate and copy the item. If NULL
 		 * is returned the nic does not support the item.
@@ -993,7 +917,8 @@ enic_copy_filter(const struct rte_flow_item pattern[],
 		if (!item_stacking_valid(prev_item, item_info, is_first_item))
 			goto stacking_error;
 
-		ret = item_info->copy_item(item, enic_filter, &inner_ofst);
+		args.item = item;
+		ret = item_info->copy_item(&args);
 		if (ret)
 			goto item_not_supported;
 		prev_item = item->type;
