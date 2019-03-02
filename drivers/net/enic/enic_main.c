@@ -1714,8 +1714,15 @@ static int enic_dev_init(struct enic *enic)
 			PKT_TX_OUTER_IP_CKSUM |
 			PKT_TX_TUNNEL_MASK;
 		enic->overlay_offload = true;
-		enic->vxlan_port = ENIC_DEFAULT_VXLAN_PORT;
 		dev_info(enic, "Overlay offload is enabled\n");
+	}
+	/*
+	 * Reset the vxlan port if HW vxlan parsing is available. It
+	 * is always enabled regardless of overlay offload
+	 * enable/disable.
+	 */
+	if (enic->vxlan) {
+		enic->vxlan_port = ENIC_DEFAULT_VXLAN_PORT;
 		/*
 		 * Reset the vxlan port to the default, as the NIC firmware
 		 * does not reset it automatically and keeps the old setting.
