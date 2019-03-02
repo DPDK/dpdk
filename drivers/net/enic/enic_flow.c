@@ -579,12 +579,16 @@ enic_copy_item_vlan_v2(struct copy_item_args *arg)
 		/* Outer TPID cannot be matched */
 		if (eth_mask->ether_type)
 			return ENOTSUP;
+		/*
+		 * When packet matching, the VIC always compares vlan-stripped
+		 * L2, regardless of vlan stripping settings. So, the inner type
+		 * from vlan becomes the ether type of the eth header.
+		 */
 		eth_mask->ether_type = mask->inner_type;
 		eth_val->ether_type = spec->inner_type;
-
-		/* Outer header. Use the vlan mask/val fields */
-		gp->mask_vlan = mask->tci;
-		gp->val_vlan = spec->tci;
+		/* For TCI, use the vlan mask/val fields (little endian). */
+		gp->mask_vlan = rte_be_to_cpu_16(mask->tci);
+		gp->val_vlan = rte_be_to_cpu_16(spec->tci);
 	} else {
 		/* Inner header. Mask/Val start at *inner_ofst into L5 */
 		if ((*inner_ofst + sizeof(struct vlan_hdr)) >

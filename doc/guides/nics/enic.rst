@@ -247,7 +247,7 @@ Generic Flow API is supported. The baseline support is:
   in the pattern.
 
   - Attributes: ingress
-  - Items: eth, ipv4, ipv6, udp, tcp, vxlan, inner eth, ipv4, ipv6, udp, tcp
+  - Items: eth, vlan, ipv4, ipv6, udp, tcp, vxlan, inner eth, vlan, ipv4, ipv6, udp, tcp
   - Actions: queue and void
   - Selectors: 'is', 'spec' and 'mask'. 'last' is not supported
   - In total, up to 64 bytes of mask is allowed across all headers
@@ -255,7 +255,7 @@ Generic Flow API is supported. The baseline support is:
 - **1300 and later series VICS with advanced filters enabled**
 
   - Attributes: ingress
-  - Items: eth, ipv4, ipv6, udp, tcp, vxlan, raw, inner eth, ipv4, ipv6, udp, tcp
+  - Items: eth, vlan, ipv4, ipv6, udp, tcp, vxlan, raw, inner eth, vlan, ipv4, ipv6, udp, tcp
   - Actions: queue, mark, drop, flag, rss, passthru, and void
   - Selectors: 'is', 'spec' and 'mask'. 'last' is not supported
   - In total, up to 64 bytes of mask is allowed across all headers
@@ -265,6 +265,12 @@ Generic Flow API is supported. The baseline support is:
   All the above plus:
 
   - Action: count
+
+The VIC performs packet matching after applying VLAN strip. If VLAN
+stripping is enabled, EtherType in the ETH item corresponds to the
+stripped VLAN header's EtherType. Stripping does not affect the VLAN
+item. TCI and EtherType in the VLAN item are matched against those in
+the (stripped) VLAN header whether stripping is enabled or disabled.
 
 More features may be added in future firmware and new versions of the VIC.
 Please refer to the release notes.
