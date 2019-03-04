@@ -38,7 +38,7 @@ shift $(($OPTIND - 1))
 #ignore version control files
 ignore="( -name .svn -o -name CVS -o -name .hg -o -name .git ) -prune -o"
 
-source_dirs="test app buildtools drivers examples lib"
+source_dirs="app buildtools drivers examples lib"
 
 skip_bsd="( -name bsdapp ) -prune -o"
 skip_linux="( -name linuxapp ) -prune -o"
