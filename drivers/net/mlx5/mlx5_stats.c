@@ -413,7 +413,6 @@ mlx5_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			tmp.q_opackets[idx] += txq->stats.opackets;
 			tmp.q_obytes[idx] += txq->stats.obytes;
 #endif
-			tmp.q_errors[idx] += txq->stats.oerrors;
 		}
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		tmp.opackets += txq->stats.opackets;
