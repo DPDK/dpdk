@@ -184,9 +184,8 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS &&
 			i < dev->data->nb_tx_queues; i++) {
 		stats->q_opackets[i] = internal->tx_ring_queues[i].tx_pkts.cnt;
-		stats->q_errors[i] = internal->tx_ring_queues[i].err_pkts.cnt;
 		tx_total += stats->q_opackets[i];
-		tx_err_total += stats->q_errors[i];
+		tx_err_total += internal->tx_ring_queues[i].err_pkts.cnt;
 	}
 
 	stats->ipackets = rx_total;
