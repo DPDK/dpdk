@@ -3187,7 +3187,6 @@ int bnxt_hwrm_ctx_qstats(struct bnxt *bp, uint32_t cid, int idx,
 		stats->q_obytes[idx] = rte_le_to_cpu_64(resp->tx_ucast_bytes);
 		stats->q_obytes[idx] += rte_le_to_cpu_64(resp->tx_mcast_bytes);
 		stats->q_obytes[idx] += rte_le_to_cpu_64(resp->tx_bcast_bytes);
-		stats->q_errors[idx] += rte_le_to_cpu_64(resp->tx_err_pkts);
 	}
 
 
