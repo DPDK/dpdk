@@ -4,15 +4,26 @@
 
 # Load config options:
 # - DPDK_CHECKPATCH_PATH
+# - DPDK_CHECKPATCH_CODESPELL
 # - DPDK_CHECKPATCH_LINE_LENGTH
 . $(dirname $(readlink -e $0))/load-devel-config
 
 VALIDATE_NEW_API=$(dirname $(readlink -e $0))/check-symbol-change.sh
 
+# Enable codespell by default. This can be overwritten from a config file.
+# Codespell can also be enabled by setting DPDK_CHECKPATCH_CODESPELL to a valid path
+# to a dictionary.txt file if dictionary.txt is not in the default location.
+codespell=${DPDK_CHECKPATCH_CODESPELL:-enable}
 length=${DPDK_CHECKPATCH_LINE_LENGTH:-80}
 
 # override default Linux options
 options="--no-tree"
+if [ "$codespell" = "enable" ] ; then
+    options="$options --codespell"
+elif [ -f "$codespell" ] ; then
+    options="$options --codespell"
+    options="$options --codespellfile $codespell"
+fi
 options="$options --max-line-length=$length"
 options="$options --show-types"
 options="$options --ignore=LINUX_VERSION_CODE,\
