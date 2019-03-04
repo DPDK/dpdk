@@ -2229,7 +2229,6 @@ avp_dev_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *stats)
 
 			stats->q_opackets[i] += txq->packets;
 			stats->q_obytes[i] += txq->bytes;
-			stats->q_errors[i] += txq->errors;
 		}
 	}
 
