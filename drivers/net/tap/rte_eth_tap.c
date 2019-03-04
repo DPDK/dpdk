@@ -970,10 +970,9 @@ tap_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *tap_stats)
 
 	for (i = 0; i < imax; i++) {
 		tap_stats->q_opackets[i] = pmd->txq[i].stats.opackets;
-		tap_stats->q_errors[i] = pmd->txq[i].stats.errs;
 		tap_stats->q_obytes[i] = pmd->txq[i].stats.obytes;
 		tx_total += tap_stats->q_opackets[i];
-		tx_err_total += tap_stats->q_errors[i];
+		tx_err_total += pmd->txq[i].stats.errs;
 		tx_bytes_total += tap_stats->q_obytes[i];
 	}
 
