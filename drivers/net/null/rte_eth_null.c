@@ -333,10 +333,8 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
 	for (i = 0; i < num_stats; i++) {
 		igb_stats->q_opackets[i] =
 			internal->tx_null_queues[i].tx_pkts.cnt;
-		igb_stats->q_errors[i] =
-			internal->tx_null_queues[i].err_pkts.cnt;
 		tx_total += igb_stats->q_opackets[i];
-		tx_err_total += igb_stats->q_errors[i];
+		tx_err_total += internal->tx_null_queues[i].err_pkts.cnt;
 	}
 
 	igb_stats->ipackets = rx_total;
