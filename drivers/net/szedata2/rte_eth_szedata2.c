@@ -1093,7 +1093,6 @@ eth_stats_get(struct rte_eth_dev *dev,
 		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
 			stats->q_opackets[i] = txq->tx_pkts;
 			stats->q_obytes[i] = txq->tx_bytes;
-			stats->q_errors[i] = txq->err_pkts;
 		}
 		tx_total += txq->tx_pkts;
 		tx_total_bytes += txq->tx_bytes;
