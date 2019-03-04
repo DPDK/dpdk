@@ -718,7 +718,6 @@ mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		if (idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
 			tmp.q_opackets[idx] += txq->stats.opackets;
 			tmp.q_obytes[idx] += txq->stats.obytes;
-			tmp.q_errors[idx] += txq->stats.odropped;
 		}
 		tmp.opackets += txq->stats.opackets;
 		tmp.obytes += txq->stats.obytes;
