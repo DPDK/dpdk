@@ -706,7 +706,6 @@ static int cxgbe_dev_stats_get(struct rte_eth_dev *eth_dev,
 
 		eth_stats->q_opackets[i] = txq->stats.pkts;
 		eth_stats->q_obytes[i] = txq->stats.tx_bytes;
-		eth_stats->q_errors[i] = txq->stats.mapping_err;
 	}
 	return 0;
 }
