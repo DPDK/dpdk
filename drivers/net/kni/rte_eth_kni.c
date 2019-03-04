@@ -290,10 +290,9 @@ eth_kni_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		q = data->tx_queues[i];
 		stats->q_opackets[i] = q->tx.pkts;
 		stats->q_obytes[i] = q->tx.bytes;
-		stats->q_errors[i] = q->tx.err_pkts;
 		tx_packets_total += stats->q_opackets[i];
 		tx_bytes_total += stats->q_obytes[i];
-		tx_packets_err_total += stats->q_errors[i];
+		tx_packets_err_total += q->tx.err_pkts;
 	}
 
 	stats->ipackets = rx_packets_total;
