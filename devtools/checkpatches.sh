@@ -73,7 +73,7 @@ check_forbidden_additions() { # <patch>
 		-v RET_ON_FAIL=1 \
 		-v MESSAGE='Using explicit .svg extension instead of .*' \
 		-f $(dirname $(readlink -e $0))/check-forbidden-tokens.awk \
-		"$1" || res = 1
+		"$1" || res=1
 
 	return $res
 }
