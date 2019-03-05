@@ -1250,6 +1250,9 @@ i40e_pf_host_process_cmd_request_queues(struct i40e_pf_vf *vf, uint8_t *msg)
 
 	pf = vf->pf;
 
+	if (!rte_is_power_of_2(req_pairs))
+		req_pairs = i40e_align_floor(req_pairs) << 1;
+
 	if (req_pairs == 0) {
 		PMD_DRV_LOG(ERR, "VF %d tried to request 0 queues. Ignoring.\n",
 			    vf->vf_idx);
@@ -1260,19 +1263,18 @@ i40e_pf_host_process_cmd_request_queues(struct i40e_pf_vf *vf, uint8_t *msg)
 			    I40E_MAX_QP_NUM_PER_VF);
 		vfres->num_queue_pairs = I40E_MAX_QP_NUM_PER_VF;
 	} else if (req_pairs > cur_pairs + pf->qp_pool.num_free) {
-		PMD_DRV_LOG(ERR,
-			    "VF %d requested %d more queues, but only %d left\n",
-			    vf->vf_idx,
-			    req_pairs - cur_pairs,
-			    pf->qp_pool.num_free);
-		vfres->num_queue_pairs = pf->qp_pool.num_free + cur_pairs;
+		PMD_DRV_LOG(ERR, "VF %d requested %d queues (rounded to %d) "
+			"but only %d available\n",
+			vf->vf_idx,
+			vfres->num_queue_pairs,
+			req_pairs,
+			cur_pairs + pf->qp_pool.num_free);
+		vfres->num_queue_pairs = i40e_align_floor(pf->qp_pool.num_free +
+							  cur_pairs);
 	} else {
 		i40e_vc_notify_vf_reset(vf);
 		vf->vsi->nb_qps = req_pairs;
-		if (rte_is_power_of_2(req_pairs))
-			pf->vf_nb_qps = req_pairs;
-		else
-			pf->vf_nb_qps = i40e_align_floor(req_pairs) << 1;
+		pf->vf_nb_qps = req_pairs;
 		i40e_pf_host_process_cmd_reset_vf(vf);
 
 		return 0;
