@@ -1250,11 +1250,9 @@ i40e_pf_host_process_cmd_request_queues(struct i40e_pf_vf *vf, uint8_t *msg)
 
 	pf = vf->pf;
 
-	if (req_pairs <= 0) {
-		PMD_DRV_LOG(ERR,
-			    "VF %d tried to request %d queues. Ignoring.\n",
-			    vf->vf_idx,
-			    I40E_MAX_QP_NUM_PER_VF);
+	if (req_pairs == 0) {
+		PMD_DRV_LOG(ERR, "VF %d tried to request 0 queues. Ignoring.\n",
+			    vf->vf_idx);
 	} else if (req_pairs > I40E_MAX_QP_NUM_PER_VF) {
 		PMD_DRV_LOG(ERR,
 			    "VF %d tried to request more than %d queues.\n",
@@ -1263,7 +1261,7 @@ i40e_pf_host_process_cmd_request_queues(struct i40e_pf_vf *vf, uint8_t *msg)
 		vfres->num_queue_pairs = I40E_MAX_QP_NUM_PER_VF;
 	} else if (req_pairs > cur_pairs + pf->qp_pool.num_free) {
 		PMD_DRV_LOG(ERR,
-			    "VF %d requested %d more queues, but noly %d left\n",
+			    "VF %d requested %d more queues, but only %d left\n",
 			    vf->vf_idx,
 			    req_pairs - cur_pairs,
 			    pf->qp_pool.num_free);
