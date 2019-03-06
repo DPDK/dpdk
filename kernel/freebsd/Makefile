@@ -3,7 +3,7 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += contigmem
-DIRS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += nic_uio
+DIRS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += contigmem
+DIRS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += nic_uio
 
 include $(RTE_SDK)/mk/rte.subdir.mk

@@ -331,7 +331,7 @@ extern int failsafe_mac_from_arg;
 	 &((struct txq *)((s)->fs_dev->data->tx_queues[i]))->refcnt[(s)->sid] \
 	)
 
-#ifdef RTE_EXEC_ENV_BSDAPP
+#ifdef RTE_EXEC_ENV_FREEBSD
 #define FS_THREADID_TYPE void*
 #define FS_THREADID_FMT  "p"
 #else

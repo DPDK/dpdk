@@ -11,7 +11,7 @@
 #include <unistd.h> /* readlink */
 #include <sys/wait.h>
 
-#ifdef RTE_EXEC_ENV_BSDAPP
+#ifdef RTE_EXEC_ENV_FREEBSD
 #define self "curproc"
 #define exe "file"
 #else

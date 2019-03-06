@@ -2,7 +2,7 @@
  * Copyright(c) 2017 Intel Corporation
  */
 
-#ifdef RTE_EXEC_ENV_BSDAPP
+#ifdef RTE_EXEC_ENV_FREEBSD
 	#define _WITH_GETLINE
 #endif
 #include <stdio.h>

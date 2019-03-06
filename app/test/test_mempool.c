@@ -116,7 +116,7 @@ test_mempool_basic(struct rte_mempool *mp, int use_external_cache)
 			MEMPOOL_HEADER_SIZE(mp, mp->cache_size))
 		GOTO_ERR(ret, out);
 
-#ifndef RTE_EXEC_ENV_BSDAPP /* rte_mem_virt2iova() not supported on bsd */
+#ifndef RTE_EXEC_ENV_FREEBSD /* rte_mem_virt2iova() not supported on bsd */
 	printf("get physical address of an object\n");
 	if (rte_mempool_virt2iova(obj) != rte_mem_virt2iova(obj))
 		GOTO_ERR(ret, out);

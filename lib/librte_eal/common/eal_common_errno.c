@@ -21,7 +21,7 @@ const char *
 rte_strerror(int errnum)
 {
 	/* BSD puts a colon in the "unknown error" messages, Linux doesn't */
-#ifdef RTE_EXEC_ENV_BSDAPP
+#ifdef RTE_EXEC_ENV_FREEBSD
 	static const char *sep = ":";
 #else
 	static const char *sep = "";

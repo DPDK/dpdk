@@ -3,6 +3,6 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += eal
+DIRS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += eal
 
 include $(RTE_SDK)/mk/rte.subdir.mk

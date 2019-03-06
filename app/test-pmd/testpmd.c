@@ -3125,7 +3125,7 @@ main(int argc, char** argv)
 #endif
 
 	/* on FreeBSD, mlockall() is disabled by default */
-#ifdef RTE_EXEC_ENV_BSDAPP
+#ifdef RTE_EXEC_ENV_FREEBSD
 	do_mlockall = 0;
 #else
 	do_mlockall = 1;

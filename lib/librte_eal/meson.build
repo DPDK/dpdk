@@ -14,7 +14,7 @@ if host_machine.system() == 'linux'
 	subdir('linux/eal')
 
 elif host_machine.system() == 'freebsd'
-	dpdk_conf.set('RTE_EXEC_ENV_BSDAPP', 1)
+	dpdk_conf.set('RTE_EXEC_ENV_FREEBSD', 1)
 	subdir('freebsd/eal')
 
 else

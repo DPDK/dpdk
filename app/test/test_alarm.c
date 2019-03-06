@@ -178,7 +178,7 @@ static int
 test_alarm(void)
 {
 	int count = 0;
-#ifdef RTE_EXEC_ENV_BSDAPP
+#ifdef RTE_EXEC_ENV_FREEBSD
 	printf("The alarm API is not supported on FreeBSD\n");
 	return 0;
 #endif

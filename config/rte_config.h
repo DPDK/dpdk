@@ -22,6 +22,9 @@
 #ifdef RTE_EXEC_ENV_LINUX
 #define RTE_EXEC_ENV_LINUXAPP 1
 #endif
+#ifdef RTE_EXEC_ENV_FREEBSD
+#define RTE_EXEC_ENV_BSDAPP 1
+#endif
 
 /****** library defines ********/
 

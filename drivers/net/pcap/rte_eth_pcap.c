@@ -11,7 +11,7 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-#if defined(RTE_EXEC_ENV_BSDAPP)
+#if defined(RTE_EXEC_ENV_FREEBSD)
 #include <sys/sysctl.h>
 #include <net/if_dl.h>
 #endif
@@ -1008,7 +1008,7 @@ eth_pcap_update_mac(const char *if_name, struct rte_eth_dev *eth_dev,
 
 	return 0;
 
-#elif defined(RTE_EXEC_ENV_BSDAPP)
+#elif defined(RTE_EXEC_ENV_FREEBSD)
 	void *mac_addrs;
 	struct if_msghdr *ifm;
 	struct sockaddr_dl *sdl;

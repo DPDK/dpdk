@@ -231,7 +231,7 @@ static int
 test_whitelist_flag(void)
 {
 	unsigned i;
-#ifdef RTE_EXEC_ENV_BSDAPP
+#ifdef RTE_EXEC_ENV_FREEBSD
 	/* BSD target doesn't support prefixes at this point */
 	const char * prefix = "";
 #else
@@ -297,7 +297,7 @@ test_whitelist_flag(void)
 static int
 test_invalid_b_flag(void)
 {
-#ifdef RTE_EXEC_ENV_BSDAPP
+#ifdef RTE_EXEC_ENV_FREEBSD
 	/* BSD target doesn't support prefixes at this point */
 	const char * prefix = "";
 #else
@@ -344,7 +344,7 @@ test_invalid_b_flag(void)
 static int
 test_invalid_vdev_flag(void)
 {
-#ifdef RTE_EXEC_ENV_BSDAPP
+#ifdef RTE_EXEC_ENV_FREEBSD
 	/* BSD target doesn't support prefixes at this point, and we also need to
 	 * run another primary process here */
 	const char * prefix = no_shconf;
@@ -398,7 +398,7 @@ test_invalid_vdev_flag(void)
 static int
 test_invalid_r_flag(void)
 {
-#ifdef RTE_EXEC_ENV_BSDAPP
+#ifdef RTE_EXEC_ENV_FREEBSD
 	/* BSD target doesn't support prefixes at this point */
 	const char * prefix = "";
 #else
@@ -442,7 +442,7 @@ test_invalid_r_flag(void)
 static int
 test_missing_c_flag(void)
 {
-#ifdef RTE_EXEC_ENV_BSDAPP
+#ifdef RTE_EXEC_ENV_FREEBSD
 	/* BSD target doesn't support prefixes at this point */
 	const char * prefix = "";
 #else
@@ -592,7 +592,7 @@ test_missing_c_flag(void)
 static int
 test_master_lcore_flag(void)
 {
-#ifdef RTE_EXEC_ENV_BSDAPP
+#ifdef RTE_EXEC_ENV_FREEBSD
 	/* BSD target doesn't support prefixes at this point */
 	const char *prefix = "";
 #else
@@ -640,7 +640,7 @@ test_master_lcore_flag(void)
 static int
 test_invalid_n_flag(void)
 {
-#ifdef RTE_EXEC_ENV_BSDAPP
+#ifdef RTE_EXEC_ENV_FREEBSD
 	/* BSD target doesn't support prefixes at this point */
 	const char * prefix = "";
 #else
@@ -690,7 +690,7 @@ test_no_hpet_flag(void)
 {
 	char prefix[PATH_MAX] = "";
 
-#ifdef RTE_EXEC_ENV_BSDAPP
+#ifdef RTE_EXEC_ENV_FREEBSD
 	return 0;
 #else
 	char tmp[PATH_MAX];
@@ -724,7 +724,7 @@ test_no_hpet_flag(void)
 static int
 test_no_huge_flag(void)
 {
-#ifdef RTE_EXEC_ENV_BSDAPP
+#ifdef RTE_EXEC_ENV_FREEBSD
 	/* BSD target doesn't support prefixes at this point, and we also need to
 	 * run another primary process here */
 	const char * prefix = no_shconf;
@@ -752,7 +752,7 @@ test_no_huge_flag(void)
 		printf("Error - process did not run ok with --no-huge and -m flags\n");
 		return -1;
 	}
-#ifdef RTE_EXEC_ENV_BSDAPP
+#ifdef RTE_EXEC_ENV_FREEBSD
 	/* BSD target does not support NUMA, hence no --socket-mem tests */
 	return 0;
 #endif
@@ -774,7 +774,7 @@ static int
 test_misc_flags(void)
 {
 	char hugepath[PATH_MAX] = {0};
-#ifdef RTE_EXEC_ENV_BSDAPP
+#ifdef RTE_EXEC_ENV_FREEBSD
 	/* BSD target doesn't support prefixes at this point */
 	const char * prefix = "";
 	const char * nosh_prefix = "";
@@ -898,7 +898,7 @@ test_misc_flags(void)
 		return -1;
 	}
 
-#ifdef RTE_EXEC_ENV_BSDAPP
+#ifdef RTE_EXEC_ENV_FREEBSD
 	/* no more tests to be done on FreeBSD */
 	return 0;
 #endif
@@ -978,7 +978,7 @@ test_file_prefix(void)
 	 */
 	char prefix[PATH_MAX] = "";
 
-#ifdef RTE_EXEC_ENV_BSDAPP
+#ifdef RTE_EXEC_ENV_FREEBSD
 	return 0;
 #else
 	if (get_current_prefix(prefix, sizeof(prefix)) == NULL) {
@@ -1138,7 +1138,7 @@ test_file_prefix(void)
 static int
 test_memory_flags(void)
 {
-#ifdef RTE_EXEC_ENV_BSDAPP
+#ifdef RTE_EXEC_ENV_FREEBSD
 	/* BSD target doesn't support prefixes at this point */
 	const char * prefix = "";
 #else
@@ -1191,7 +1191,7 @@ test_memory_flags(void)
 	char invalid_socket_mem[SOCKET_MEM_STRLEN];
 	char buf[SOCKET_MEM_STRLEN];	/* to avoid copying string onto itself */
 
-#ifdef RTE_EXEC_ENV_BSDAPP
+#ifdef RTE_EXEC_ENV_FREEBSD
 	int i, num_sockets = 1;
 #else
 	int i, num_sockets = RTE_MIN(get_number_of_sockets(),
@@ -1247,7 +1247,7 @@ test_memory_flags(void)
 		return -1;
 	}
 
-#ifdef RTE_EXEC_ENV_BSDAPP
+#ifdef RTE_EXEC_ENV_FREEBSD
 	/* no other tests are applicable to BSD */
 	return 0;
 #endif

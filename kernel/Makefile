@@ -4,6 +4,6 @@
 include $(RTE_SDK)/mk/rte.vars.mk
 
 DIRS-$(CONFIG_RTE_EXEC_ENV_LINUX) += linux
-DIRS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += freebsd
+DIRS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += freebsd
 
 include $(RTE_SDK)/mk/rte.subdir.mk

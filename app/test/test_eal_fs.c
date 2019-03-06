@@ -22,7 +22,7 @@ test_parse_sysfs_value(void)
 	unsigned valid_number;
 	unsigned long retval = 0;
 
-#ifdef RTE_EXEC_ENV_BSDAPP
+#ifdef RTE_EXEC_ENV_FREEBSD
 	/* BSD doesn't have /proc/pid/fd */
 	return 0;
 #endif

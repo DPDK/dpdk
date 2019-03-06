@@ -5,6 +5,7 @@
 
 CONFIG_RTE_EXEC_ENV="bsdapp"
 CONFIG_RTE_EXEC_ENV_BSDAPP=y
+CONFIG_RTE_EXEC_ENV_FREEBSD=y
 
 #
 # FreeBSD contiguous memory driver settings
