@@ -157,9 +157,9 @@ command::
 
 For example if the target machine is arm64 we can use the following
 command::
-	meson arm-build --cross-file config/arm/arm64_armv8_linuxapp_gcc
+	meson arm-build --cross-file config/arm/arm64_armv8_linux_gcc
 
-where config/arm/arm64_armv8_linuxapp_gcc contains the following
+where config/arm/arm64_armv8_linux_gcc contains the following
 parameters::
 
 	[binaries]
