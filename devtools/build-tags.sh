@@ -67,7 +67,7 @@ common_sources()
 
 linux_sources()
 {
-	find_sources "lib/librte_eal/linuxapp" '*.[chS]'
+	find_sources "lib/librte_eal/linux" '*.[chS]'
 }
 
 bsd_sources()
