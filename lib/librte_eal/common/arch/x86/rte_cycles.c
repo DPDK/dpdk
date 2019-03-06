@@ -29,7 +29,7 @@ rte_cpu_get_model(uint32_t fam_mod_step)
 static int32_t
 rdmsr(int msr, uint64_t *val)
 {
-#ifdef RTE_EXEC_ENV_LINUXAPP
+#ifdef RTE_EXEC_ENV_LINUX
 	int fd;
 	int ret;
 

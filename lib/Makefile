@@ -110,7 +110,7 @@ DEPDIRS-librte_ipsec := librte_eal librte_mbuf librte_cryptodev librte_security
 DIRS-$(CONFIG_RTE_LIBRTE_TELEMETRY) += librte_telemetry
 DEPDIRS-librte_telemetry := librte_eal librte_metrics librte_ethdev
 
-ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
+ifeq ($(CONFIG_RTE_EXEC_ENV_LINUX),y)
 DIRS-$(CONFIG_RTE_LIBRTE_KNI) += librte_kni
 endif
 DEPDIRS-librte_kni := librte_eal librte_mempool librte_mbuf librte_ethdev

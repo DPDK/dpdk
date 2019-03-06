@@ -31,7 +31,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_ARK_PMD) += ark_udm.c
 
 # this lib depends upon:
 LDLIBS += -lpthread
-ifdef CONFIG_RTE_EXEC_ENV_LINUXAPP
+ifdef CONFIG_RTE_EXEC_ENV_LINUX
 LDLIBS += -ldl
 endif
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring

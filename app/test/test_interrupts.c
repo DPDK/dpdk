@@ -31,7 +31,7 @@ static struct rte_intr_handle intr_handles[TEST_INTERRUPT_HANDLE_MAX];
 static enum test_interrupt_handle_type test_intr_type =
 				TEST_INTERRUPT_HANDLE_MAX;
 
-#ifdef RTE_EXEC_ENV_LINUXAPP
+#ifdef RTE_EXEC_ENV_LINUX
 union intr_pipefds{
 	struct {
 		int pipefd[2];
@@ -169,7 +169,7 @@ test_interrupt_handle_compare(struct rte_intr_handle *intr_handle_l,
 
 	return 0;
 }
-#endif /* RTE_EXEC_ENV_LINUXAPP */
+#endif /* RTE_EXEC_ENV_LINUX */
 
 /**
  * Callback for the test interrupt.

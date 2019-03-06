@@ -172,7 +172,7 @@ run_pdump_server_tests(void)
 	int ret = 0;
 	char coremask[10];
 
-#ifdef RTE_EXEC_ENV_LINUXAPP
+#ifdef RTE_EXEC_ENV_LINUX
 	char tmp[PATH_MAX] = { 0 };
 	char prefix[PATH_MAX] = { 0 };
 

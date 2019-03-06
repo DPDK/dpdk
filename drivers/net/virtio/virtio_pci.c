@@ -3,7 +3,7 @@
  */
 #include <stdint.h>
 
-#ifdef RTE_EXEC_ENV_LINUXAPP
+#ifdef RTE_EXEC_ENV_LINUX
  #include <dirent.h>
  #include <fcntl.h>
 #endif

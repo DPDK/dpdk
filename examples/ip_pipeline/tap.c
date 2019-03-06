@@ -3,7 +3,7 @@
  */
 
 #include <netinet/in.h>
-#ifdef RTE_EXEC_ENV_LINUXAPP
+#ifdef RTE_EXEC_ENV_LINUX
 #include <linux/if.h>
 #include <linux/if_tun.h>
 #endif
@@ -46,7 +46,7 @@ tap_find(const char *name)
 	return NULL;
 }
 
-#ifndef RTE_EXEC_ENV_LINUXAPP
+#ifndef RTE_EXEC_ENV_LINUX
 
 struct tap *
 tap_create(const char *name __rte_unused)

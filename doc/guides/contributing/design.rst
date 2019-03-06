@@ -55,7 +55,7 @@ Per Execution Environment Sources
 The following config options can be used:
 
 * ``CONFIG_RTE_EXEC_ENV`` is a string that contains the name of the executive environment.
-* ``CONFIG_RTE_EXEC_ENV_BSDAPP`` or ``CONFIG_RTE_EXEC_ENV_LINUXAPP`` are defined only if we are building for this execution environment.
+* ``CONFIG_RTE_EXEC_ENV_BSDAPP`` or ``CONFIG_RTE_EXEC_ENV_LINUX`` are defined only if we are building for this execution environment.
 
 Library Statistics
 ------------------

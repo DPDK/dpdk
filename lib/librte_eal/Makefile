@@ -4,7 +4,7 @@
 include $(RTE_SDK)/mk/rte.vars.mk
 
 DIRS-y += common
-DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += linux
+DIRS-$(CONFIG_RTE_EXEC_ENV_LINUX) += linux
 DEPDIRS-linux := common
 DIRS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += freebsd
 DEPDIRS-freebsd := common

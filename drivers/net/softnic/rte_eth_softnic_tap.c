@@ -3,7 +3,7 @@
  */
 
 #include <netinet/in.h>
-#ifdef RTE_EXEC_ENV_LINUXAPP
+#ifdef RTE_EXEC_ENV_LINUX
 #include <linux/if.h>
 #include <linux/if_tun.h>
 #endif
@@ -60,7 +60,7 @@ softnic_tap_find(struct pmd_internals *p,
 	return NULL;
 }
 
-#ifndef RTE_EXEC_ENV_LINUXAPP
+#ifndef RTE_EXEC_ENV_LINUX
 
 struct softnic_tap *
 softnic_tap_create(struct pmd_internals *p __rte_unused,

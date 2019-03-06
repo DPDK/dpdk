@@ -10,7 +10,7 @@ subdir('common') # defines common_sources, common_objs, etc.
 # Now do OS/exec-env specific settings, including building kernel modules
 # The <exec-env>/eal/meson.build file should define env_sources, etc.
 if host_machine.system() == 'linux'
-	dpdk_conf.set('RTE_EXEC_ENV_LINUXAPP', 1)
+	dpdk_conf.set('RTE_EXEC_ENV_LINUX', 1)
 	subdir('linux/eal')
 
 elif host_machine.system() == 'freebsd'

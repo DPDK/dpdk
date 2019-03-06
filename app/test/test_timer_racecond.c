@@ -46,7 +46,7 @@
 
 #undef TEST_TIMER_RACECOND_VERBOSE
 
-#ifdef RTE_EXEC_ENV_LINUXAPP
+#ifdef RTE_EXEC_ENV_LINUX
 #define usec_delay(us) usleep(us)
 #else
 #define usec_delay(us) rte_delay_us(us)

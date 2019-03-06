@@ -979,7 +979,7 @@ static int
 eth_pcap_update_mac(const char *if_name, struct rte_eth_dev *eth_dev,
 		const unsigned int numa_node)
 {
-#if defined(RTE_EXEC_ENV_LINUXAPP)
+#if defined(RTE_EXEC_ENV_LINUX)
 	void *mac_addrs;
 	struct ifreq ifr;
 	int if_fd = socket(AF_INET, SOCK_DGRAM, 0);

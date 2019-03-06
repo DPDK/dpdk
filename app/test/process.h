@@ -82,7 +82,7 @@ process_dup(const char *const argv[], int numargs, const char *env_value)
 /* FreeBSD doesn't support file prefixes, so force compile failures for any
  * tests attempting to use this function on FreeBSD.
  */
-#ifdef RTE_EXEC_ENV_LINUXAPP
+#ifdef RTE_EXEC_ENV_LINUX
 static char *
 get_current_prefix(char *prefix, int size)
 {

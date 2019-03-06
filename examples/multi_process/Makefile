@@ -10,9 +10,9 @@ RTE_TARGET ?= x86_64-native-linuxapp-gcc
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += client_server_mp
-DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += simple_mp
-DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += symmetric_mp
-DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += hotplug_mp
+DIRS-$(CONFIG_RTE_EXEC_ENV_LINUX) += client_server_mp
+DIRS-$(CONFIG_RTE_EXEC_ENV_LINUX) += simple_mp
+DIRS-$(CONFIG_RTE_EXEC_ENV_LINUX) += symmetric_mp
+DIRS-$(CONFIG_RTE_EXEC_ENV_LINUX) += hotplug_mp
 
 include $(RTE_SDK)/mk/rte.extsubdir.mk

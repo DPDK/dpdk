@@ -10,7 +10,7 @@ RTE_TARGET ?= x86_64-native-linuxapp-gcc
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += qw
-DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += qwctl
+DIRS-$(CONFIG_RTE_EXEC_ENV_LINUX) += qw
+DIRS-$(CONFIG_RTE_EXEC_ENV_LINUX) += qwctl
 
 include $(RTE_SDK)/mk/rte.extsubdir.mk

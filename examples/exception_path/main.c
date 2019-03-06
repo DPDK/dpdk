@@ -14,7 +14,7 @@
 
 #include <netinet/in.h>
 #include <net/if.h>
-#ifdef RTE_EXEC_ENV_LINUXAPP
+#ifdef RTE_EXEC_ENV_LINUX
 #include <linux/if_tun.h>
 #endif
 #include <fcntl.h>
@@ -156,7 +156,7 @@ signal_handler(int signum)
 	}
 }
 
-#ifdef RTE_EXEC_ENV_LINUXAPP
+#ifdef RTE_EXEC_ENV_LINUX
 /*
  * Create a tap network interface, or use existing one with same name.
  * If name[0]='\0' then a name is automatically assigned and returned in name.

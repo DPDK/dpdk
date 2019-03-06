@@ -10,7 +10,7 @@ RTE_TARGET ?= x86_64-native-linuxapp-gcc
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += mp_client
-DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += mp_server
+DIRS-$(CONFIG_RTE_EXEC_ENV_LINUX) += mp_client
+DIRS-$(CONFIG_RTE_EXEC_ENV_LINUX) += mp_server
 
 include $(RTE_SDK)/mk/rte.extsubdir.mk

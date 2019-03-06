@@ -97,7 +97,7 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_CMDLINE)        += -lrte_cmdline
 _LDLIBS-$(CONFIG_RTE_LIBRTE_REORDER)        += -lrte_reorder
 _LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lrte_sched
 
-ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
+ifeq ($(CONFIG_RTE_EXEC_ENV_LINUX),y)
 _LDLIBS-$(CONFIG_RTE_LIBRTE_KNI)            += -lrte_kni
 endif
 
@@ -306,7 +306,7 @@ ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),n)
 # The static libraries do not know their dependencies.
 # So linking with static library requires explicit dependencies.
 _LDLIBS-$(CONFIG_RTE_LIBRTE_EAL)            += -lrt
-ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP)$(CONFIG_RTE_EAL_NUMA_AWARE_HUGEPAGES),yy)
+ifeq ($(CONFIG_RTE_EXEC_ENV_LINUX)$(CONFIG_RTE_EAL_NUMA_AWARE_HUGEPAGES),yy)
 _LDLIBS-$(CONFIG_RTE_LIBRTE_EAL)            += -lnuma
 endif
 _LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lm

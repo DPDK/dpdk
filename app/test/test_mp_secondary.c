@@ -60,7 +60,7 @@ run_secondary_instances(void)
 	int ret = 0;
 	char coremask[10];
 
-#ifdef RTE_EXEC_ENV_LINUXAPP
+#ifdef RTE_EXEC_ENV_LINUX
 	char tmp[PATH_MAX] = {0};
 	char prefix[PATH_MAX] = {0};
 
@@ -86,7 +86,7 @@ run_secondary_instances(void)
 			prgname, "-c", coremask, "--proc-type=ERROR",
 			prefix
 	};
-#ifdef RTE_EXEC_ENV_LINUXAPP
+#ifdef RTE_EXEC_ENV_LINUX
 	/* bad case, using invalid file prefix */
 	const char *argv4[]  = {
 			prgname, "-c", coremask, "--proc-type=secondary",
@@ -101,7 +101,7 @@ run_secondary_instances(void)
 	ret |= launch_proc(argv2);
 
 	ret |= !(launch_proc(argv3));
-#ifdef RTE_EXEC_ENV_LINUXAPP
+#ifdef RTE_EXEC_ENV_LINUX
 	ret |= !(launch_proc(argv4));
 #endif
 
