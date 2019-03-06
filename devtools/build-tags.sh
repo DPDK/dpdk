@@ -72,7 +72,7 @@ linux_sources()
 
 bsd_sources()
 {
-	find_sources "lib/librte_eal/bsdapp" '*.[chS]'
+	find_sources "lib/librte_eal/freebsd" '*.[chS]'
 }
 
 arm_common()

@@ -113,7 +113,7 @@ F: doc/guides/prog_guide/ext_app_lib_make_help.rst
 Meson build
 M: Bruce Richardson <bruce.richardson@intel.com>
 F: meson.build
-F: lib/librte_eal/bsdapp/BSDmakefile.meson
+F: lib/librte_eal/freebsd/BSDmakefile.meson
 F: meson_options.txt
 F: config/rte_config.h
 F: buildtools/gen-pmdinfo-cfile.sh
@@ -174,7 +174,7 @@ F: lib/librte_eal/common/eal_common_fbarray.c
 F: lib/librte_eal/common/eal_common_mem*
 F: lib/librte_eal/common/eal_hugepages.h
 F: lib/librte_eal/linuxapp/eal/eal_mem*
-F: lib/librte_eal/bsdapp/eal/eal_mem*
+F: lib/librte_eal/freebsd/eal/eal_mem*
 F: doc/guides/prog_guide/env_abstraction_layer.rst
 F: app/test/test_external_mem.c
 F: app/test/test_func_reentrancy.c
@@ -260,8 +260,8 @@ F: drivers/bus/pci/linux/*vfio*
 
 FreeBSD EAL (with overlaps)
 M: Bruce Richardson <bruce.richardson@intel.com>
-F: lib/librte_eal/bsdapp/Makefile
-F: lib/librte_eal/bsdapp/eal/
+F: lib/librte_eal/freebsd/Makefile
+F: lib/librte_eal/freebsd/eal/
 F: doc/guides/freebsd_gsg/
 
 FreeBSD contigmem

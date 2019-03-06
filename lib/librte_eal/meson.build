@@ -15,7 +15,7 @@ if host_machine.system() == 'linux'
 
 elif host_machine.system() == 'freebsd'
 	dpdk_conf.set('RTE_EXEC_ENV_BSDAPP', 1)
-	subdir('bsdapp/eal')
+	subdir('freebsd/eal')
 
 else
 	error('unsupported system type "@0@"'.format(host_machine.system()))

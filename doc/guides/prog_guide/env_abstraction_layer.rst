@@ -349,7 +349,7 @@ EAL provides the event APIs for this event-driven thread mode.
 Taking linuxapp as an example, the implementation relies on epoll. Each thread can monitor an epoll instance
 in which all the wake-up events' file descriptors are added. The event file descriptors are created and mapped to
 the interrupt vectors according to the UIO/VFIO spec.
-From bsdapp's perspective, kqueue is the alternative way, but not implemented yet.
+From FreeBSD's perspective, kqueue is the alternative way, but not implemented yet.
 
 EAL initializes the mapping between event file descriptors and interrupt vectors, while each device initializes the mapping
 between interrupt vectors and queues. In this way, EAL actually is unaware of the interrupt cause on the specific vector.
