@@ -7,7 +7,7 @@ Introduction
 This document contains instructions for installing and configuring the
 Data Plane Development Kit (DPDK) software. It is designed to get customers
 up and running quickly and describes how to compile and run a
-DPDK application in a FreeBSD application (bsdapp) environment, without going
+DPDK application in a FreeBSD application (freebsd) environment, without going
 deeply into detail.
 
 For a comprehensive guide to installing and using FreeBSD, the following
@@ -37,7 +37,7 @@ The following is a list of DPDK documents in the suggested reading order:
 *   **Programmer's Guide**: Describes:
 
     *   The software architecture and how to use it (through examples),
-        specifically in a Linux* application (linuxapp) environment
+        specifically in a Linux* application (linux) environment
 
     *   The content of the DPDK, the build system (including the commands
         that can be used in the root DPDK Makefile to build the development

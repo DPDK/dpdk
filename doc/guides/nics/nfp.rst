@@ -75,7 +75,7 @@ compile it along with other DPDK PMDs even if no BSP was installed previously.
 Of course, a DPDK app will require such a BSP installed for using the
 NFP PMD, along with a specific NFP firmware application.
 
-Default PMD configuration is at the **common_linuxapp configuration** file:
+Default PMD configuration is at the **common_linux configuration** file:
 
 - **CONFIG_RTE_LIBRTE_NFP_PMD=y**
 

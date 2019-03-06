@@ -1511,7 +1511,7 @@ To enable it, use the DPDK configuration parameter:
 
 This parameter must be set to y.
 The parameter is found in the build configuration files in the DPDK/config directory,
-for example, DPDK/config/common_linuxapp.
+for example, DPDK/config/common_linux.
 RED configuration parameters are specified in the rte_red_params structure within the rte_sched_port_params structure
 that is passed to the scheduler on initialization.
 RED parameters are specified separately for four traffic classes and three packet colors (green, yellow and red)

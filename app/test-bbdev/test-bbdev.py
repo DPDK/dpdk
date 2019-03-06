@@ -23,7 +23,7 @@ else:
 if "RTE_TARGET" in os.environ:
     dpdk_target = os.environ["RTE_TARGET"]
 else:
-    dpdk_target = "x86_64-native-linuxapp-gcc"
+    dpdk_target = "x86_64-native-linux-gcc"
 
 parser = argparse.ArgumentParser(
                     description='BBdev Unit Test Application',

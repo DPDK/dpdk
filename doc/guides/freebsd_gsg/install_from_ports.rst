@@ -57,7 +57,7 @@ environmental variables should be set as below:
 
 * ``RTE_SDK=/usr/local/share/dpdk``
 
-* ``RTE_TARGET=x86_64-native-bsdapp-clang``
+* ``RTE_TARGET=x86_64-native-freebsd-clang``
 
 .. note::
 
@@ -72,7 +72,7 @@ compiled and run as below:
 
     export RTE_SDK=/usr/local/share/dpdk
 
-    export RTE_TARGET=x86_64-native-bsdapp-clang
+    export RTE_TARGET=x86_64-native-freebsd-clang
 
     cp -r /usr/local/share/dpdk/examples/helloworld .
 

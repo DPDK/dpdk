@@ -24,6 +24,9 @@ export prefix ?=
 kerneldir   ?= $(prefix)/kmod
 else
 ifeq ($(RTE_EXEC_ENV),linuxapp)
+RTE_EXEC_ENV=linux
+endif
+ifeq ($(RTE_EXEC_ENV),linux)
 kerneldir   ?= /lib/modules/$(shell uname -r)/extra/dpdk
 else
 kerneldir   ?= /boot/modules

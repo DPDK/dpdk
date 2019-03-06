@@ -24,7 +24,7 @@ EXPORT_MAP := ../../rte_eal_version.map
 
 LIBABIVER := 9
 
-# specific to bsdapp exec-env
+# specific to freebsd exec-env
 SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) := eal.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += eal_cpuflags.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_FREEBSD) += eal_memory.c
@@ -86,7 +86,7 @@ CFLAGS_eal_thread.o += -Wno-return-type
 CFLAGS_eal_hpet.o += -Wno-return-type
 endif
 
-INC :=  # no bsdapp specific headers
+INC :=  # no bsd specific headers
 
 SYMLINK-$(CONFIG_RTE_EXEC_ENV_FREEBSD)-include/exec-env := \
 	$(addprefix include/exec-env/,$(INC))

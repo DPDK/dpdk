@@ -180,9 +180,9 @@ For additional instructions regarding DPDK cross compilation please refer to :do
    export LIBMUSDK_PATH=<musdk>/usr/local
    export CROSS=<toolchain>/bin/aarch64-linux-gnu-
    export RTE_KERNELDIR=<kernel-dir>
-   export RTE_TARGET=arm64-armv8a-linuxapp-gcc
+   export RTE_TARGET=arm64-armv8a-linux-gcc
 
-   make config T=arm64-armv8a-linuxapp-gcc
+   make config T=arm64-armv8a-linux-gcc
    sed -i "s/MVNETA_PMD=y/MVNETA_PMD=n/" build/.config
    sed -i "s/MVPP2_PMD=n/MVPP2_PMD=y/" build/.config
    make

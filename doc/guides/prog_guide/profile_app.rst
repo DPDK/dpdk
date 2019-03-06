@@ -84,7 +84,7 @@ an armv8 machine.
     make
     sudo insmod pmu_el0_cycle_counter.ko
     cd $DPDK_DIR
-    make config T=arm64-armv8a-linuxapp-gcc
+    make config T=arm64-armv8a-linux-gcc
     echo "CONFIG_RTE_ARM_EAL_RDTSC_USE_PMU=y" >> build/.config
     make
 

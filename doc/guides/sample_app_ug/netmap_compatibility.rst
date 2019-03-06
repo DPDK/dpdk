@@ -117,7 +117,7 @@ where,
     If two ``-i`` parameters are given, the two interfaces form a bridge,
     where traffic received on one interface is replicated and sent to the other interface.
 
-For example, to run the application in a linuxapp environment using port 0 and 2:
+For example, to run the application in a linux environment using port 0 and 2:
 
 .. code-block:: console
 

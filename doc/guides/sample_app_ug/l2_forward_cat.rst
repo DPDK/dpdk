@@ -66,7 +66,7 @@ The application is located in the ``l2fwd-cat`` sub-directory.
 Running the Application
 -----------------------
 
-To run the example in a ``linuxapp`` environment and enable CAT on cpus 0-2:
+To run the example in a ``linux`` environment and enable CAT on cpus 0-2:
 
 .. code-block:: console
 

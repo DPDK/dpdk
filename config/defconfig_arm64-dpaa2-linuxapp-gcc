@@ -3,7 +3,7 @@
 # Copyright 2016 NXP
 #
 
-#include "defconfig_arm64-armv8a-linuxapp-gcc"
+#include "defconfig_arm64-armv8a-linux-gcc"
 
 # NXP (Freescale) - Soc Architecture with WRIOP and QBMAN support
 CONFIG_RTE_MACHINE="dpaa2"

@@ -16,7 +16,7 @@ RTE_SDK and RTE_TARGET.
 
     ~/DPDK$ cd examples/helloworld/
     ~/DPDK/examples/helloworld$ export RTE_SDK=/home/user/DPDK
-    ~/DPDK/examples/helloworld$ export RTE_TARGET=x86_64-native-linuxapp-gcc
+    ~/DPDK/examples/helloworld$ export RTE_TARGET=x86_64-native-linux-gcc
     ~/DPDK/examples/helloworld$ make
         CC main.o
         LD helloworld
@@ -40,7 +40,7 @@ The sample application (Hello World) can be duplicated in a new directory as a s
     ~$ cp -r DPDK/examples/helloworld my_rte_app
     ~$ cd my_rte_app/
     ~/my_rte_app$ export RTE_SDK=/home/user/DPDK
-    ~/my_rte_app$ export RTE_TARGET=x86_64-native-linuxapp-gcc
+    ~/my_rte_app$ export RTE_TARGET=x86_64-native-linux-gcc
     ~/my_rte_app$ make
         CC main.o
         LD helloworld

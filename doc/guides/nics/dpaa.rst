@@ -271,7 +271,7 @@ for details.
 
    .. code-block:: console
 
-      ./arm64-dpaa-linuxapp-gcc/testpmd -c 0xff -n 1 \
+      ./arm64-dpaa-linux-gcc/testpmd -c 0xff -n 1 \
         -- -i --portmask=0x3 --nb-cores=1 --no-flush-rx
 
       .....

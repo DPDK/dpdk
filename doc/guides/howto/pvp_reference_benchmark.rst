@@ -132,7 +132,7 @@ Build DPDK:
       git clone git://dpdk.org/dpdk
       cd dpdk
       export RTE_SDK=$PWD
-      make install T=x86_64-native-linuxapp-gcc DESTDIR=install
+      make install T=x86_64-native-linux-gcc DESTDIR=install
 
 
 Testpmd launch
@@ -346,7 +346,7 @@ Build DPDK:
       git clone git://dpdk.org/dpdk
       cd dpdk
       export RTE_SDK=$PWD
-      make install T=x86_64-native-linuxapp-gcc DESTDIR=install
+      make install T=x86_64-native-linux-gcc DESTDIR=install
 
 
 Testpmd launch

@@ -54,7 +54,7 @@ Release Notes*.
 Build options
 -------------
 
-The default PMD configuration available in the common_linuxapp configuration file:
+The default PMD configuration available in the common_linux configuration file:
 
 CONFIG_RTE_LIBRTE_PMD_SOFTNIC=y
 
@@ -347,7 +347,7 @@ commands.
 
     .. code-block:: console
 
-        ./x86_64-native-linuxapp-gcc/app/testpmd -l 23-25  -n 4 \
+        ./x86_64-native-linux-gcc/app/testpmd -l 23-25  -n 4 \
                                     --vdev 'net_softnic0, \
                                     firmware=./drivers/net/softnic/ \
                                         firmware.cli, \

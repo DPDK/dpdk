@@ -9,7 +9,7 @@
 #   - define EXECENV_ASFLAGS variable (overridden by cmdline)
 #   - may override any previously defined variable
 #
-# examples for RTE_EXEC_ENV: linuxapp, bsdapp
+# examples for RTE_EXEC_ENV: linux, freebsd
 #
 ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
 EXECENV_CFLAGS  = -pthread -fPIC
@@ -17,25 +17,17 @@ else
 EXECENV_CFLAGS  = -pthread
 endif
 
-EXECENV_LDLIBS  =
+EXECENV_LDFLAGS =
+EXECENV_LDLIBS  = -lexecinfo
 EXECENV_ASFLAGS =
 
 ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
 EXECENV_LDLIBS += -lgcc_s
 endif
 
-EXECENV_LDLIBS-$(CONFIG_RTE_USE_LIBBSD) += -lbsd
-
 # force applications to link with gcc/icc instead of using ld
 LINK_USING_CC := 1
 
-# For shared libraries
-EXECENV_LDFLAGS += -export-dynamic
-# Add library to the group to resolve symbols
-EXECENV_LDLIBS  += -ldl
+BSDMAKE=/usr/bin/make
 
-# EXECENV_LDLIBS-y applies to lib.so and app linking
-# while EXECENV_LDLIBS applies only to app linking.
-EXECENV_LDLIBS += $(EXECENV_LDLIBS-y)
-
-export EXECENV_CFLAGS EXECENV_LDFLAGS EXECENV_ASFLAGS EXECENV_LDLIBS
+export EXECENV_CFLAGS EXECENV_LDFLAGS EXECENV_ASFLAGS

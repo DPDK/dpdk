@@ -79,8 +79,8 @@ Finally the front-end virtio crypto PMD driver can be installed:
 
     cd to the top-level DPDK directory
     sed -i 's,\(CONFIG_RTE_LIBRTE_PMD_VIRTIO_CRYPTO\)=n,\1=y,' config/common_base
-    make config T=x86_64-native-linuxapp-gcc
-    make install T=x86_64-native-linuxapp-gcc
+    make config T=x86_64-native-linux-gcc
+    make install T=x86_64-native-linux-gcc
 
 Tests
 -----
@@ -91,7 +91,7 @@ The unit test cases can be tested as below:
 
     reserve enough huge pages
     cd to the top-level DPDK directory
-    export RTE_TARGET=x86_64-native-linuxapp-gcc
+    export RTE_TARGET=x86_64-native-linux-gcc
     export RTE_SDK=`pwd`
     cd to app/test
     type the command "make" to compile
@@ -104,7 +104,7 @@ The performance can be tested as below:
 
     reserve enough huge pages
     cd to the top-level DPDK directory
-    export RTE_TARGET=x86_64-native-linuxapp-gcc
+    export RTE_TARGET=x86_64-native-linux-gcc
     export RTE_SDK=`pwd`
     cd to app/test-crypto-perf
     type the command "make" to compile

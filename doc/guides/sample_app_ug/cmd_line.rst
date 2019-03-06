@@ -48,7 +48,7 @@ The application is located in the ``cmd_line`` sub-directory.
 Running the Application
 -----------------------
 
-To run the application in linuxapp environment, issue the following command:
+To run the application in linux environment, issue the following command:
 
 .. code-block:: console
 

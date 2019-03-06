@@ -21,9 +21,10 @@ showversionum:
 			$(RTE_SRCDIR)/lib/librte_eal/common/include/rte_version.h); \
 		printf '%02d%02d\n' "$$1" "$$2"
 
-INSTALL_CONFIGS := $(sort $(filter-out %~,\
+INSTALL_CONFIGS := $(sort $(filter-out %app-icc,$(filter-out %app-clang,\
+	$(filter-out %app-gcc,$(filter-out %~,\
 	$(patsubst $(RTE_SRCDIR)/config/defconfig_%,%,\
-	$(wildcard $(RTE_SRCDIR)/config/defconfig_*))))
+	$(wildcard $(RTE_SRCDIR)/config/defconfig_*)))))))
 INSTALL_TARGETS := $(addsuffix _install,$(INSTALL_CONFIGS))
 
 .PHONY: showconfigs
@@ -53,9 +54,9 @@ defconfig:
 		)-$(shell \
                 uname | awk '{ \
                 if ($$0 == "Linux") { \
-                        print "linuxapp"} \
+                        print "linux"} \
                 else { \
-                        print "bsdapp"} }' \
+                        print "freebsd"} }' \
 		)-$(shell \
 		${CC} --version | grep -o 'cc\|gcc\|icc\|clang' | awk \
 		'{ \

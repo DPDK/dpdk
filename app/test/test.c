@@ -36,7 +36,7 @@ extern cmdline_parse_ctx_t main_ctx[];
 
 const char *prgname; /* to be set to argv[0] */
 
-static const char *recursive_call; /* used in linuxapp for MP and other tests */
+static const char *recursive_call; /* used in linux for MP and other tests */
 
 static int
 no_action(void){ return 0; }

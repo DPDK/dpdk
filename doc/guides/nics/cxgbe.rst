@@ -493,7 +493,7 @@ devices managed by librte_pmd_cxgbe in FreeBSD operating system.
 
    .. code-block:: console
 
-      cp x86_64-native-bsdapp-clang/kmod/contigmem.ko /boot/kernel/
+      cp x86_64-native-freebsd-clang/kmod/contigmem.ko /boot/kernel/
 
 #. Add the following lines to /boot/loader.conf:
 
@@ -574,13 +574,13 @@ devices managed by librte_pmd_cxgbe in FreeBSD operating system.
 
    .. code-block:: console
 
-      kldload ./x86_64-native-bsdapp-clang/kmod/nic_uio.ko
+      kldload ./x86_64-native-freebsd-clang/kmod/nic_uio.ko
 
 #. Start testpmd with basic parameters:
 
    .. code-block:: console
 
-      ./x86_64-native-bsdapp-clang/app/testpmd -l 0-3 -n 4 -w 0000:02:00.4 -- -i
+      ./x86_64-native-freebsd-clang/app/testpmd -l 0-3 -n 4 -w 0000:02:00.4 -- -i
 
    Example output:
 

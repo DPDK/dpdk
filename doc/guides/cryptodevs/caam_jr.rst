@@ -121,14 +121,14 @@ to enable caam_jr PMD.
 Please note that enabling debugging options may affect system performance.
 
 * ``CONFIG_RTE_LIBRTE_PMD_CAAM_JR`` (default ``n``)
-  By default it is only enabled in common_linuxapp config.
+  By default it is only enabled in common_linux config.
   Toggle compilation of the ``librte_pmd_caam_jr`` driver.
 
 * ``CONFIG_RTE_LIBRTE_PMD_CAAM_JR_BE`` (default ``n``)
   By default it is disabled.
   It can be used when the underlying hardware supports the CAAM in BE mode.
   e.g. LS1043A, LS1046A supports CAAM in BE mode.
-  BE mode is enabled by default in defconfig-arm64-dpaa-linuxapp-gcc.
+  BE mode is enabled by default in defconfig-arm64-dpaa-linux-gcc.
 
 Installations
 -------------
@@ -138,7 +138,7 @@ following ``make`` command:
 .. code-block:: console
 
    cd <DPDK-source-directory>
-   make config T=arm64-armv8a-linuxapp-gcc install
+   make config T=arm64-armv8a-linux-gcc install
 
 Enabling logs
 -------------

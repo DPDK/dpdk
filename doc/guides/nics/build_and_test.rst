@@ -33,26 +33,26 @@ Example output:
 
 .. code-block:: console
 
-   arm-armv7a-linuxapp-gcc
-   arm64-armv8a-linuxapp-gcc
-   arm64-dpaa2-linuxapp-gcc
-   arm64-thunderx-linuxapp-gcc
-   arm64-xgene1-linuxapp-gcc
-   i686-native-linuxapp-gcc
-   i686-native-linuxapp-icc
-   ppc_64-power8-linuxapp-gcc
-   x86_64-native-bsdapp-clang
-   x86_64-native-bsdapp-gcc
-   x86_64-native-linuxapp-clang
-   x86_64-native-linuxapp-gcc
-   x86_64-native-linuxapp-icc
-   x86_x32-native-linuxapp-gcc
+   arm-armv7a-linux-gcc
+   arm64-armv8a-linux-gcc
+   arm64-dpaa2-linux-gcc
+   arm64-thunderx-linux-gcc
+   arm64-xgene1-linux-gcc
+   i686-native-linux-gcc
+   i686-native-linux-icc
+   ppc_64-power8-linux-gcc
+   x86_64-native-freebsd-clang
+   x86_64-native-freebsd-gcc
+   x86_64-native-linux-clang
+   x86_64-native-linux-gcc
+   x86_64-native-linux-icc
+   x86_x32-native-linux-gcc
 
 To compile a PMD for Linux x86_64 gcc target, run the following "make" command:
 
 .. code-block:: console
 
-   make install T=x86_64-native-linuxapp-gcc
+   make install T=x86_64-native-linux-gcc
 
 Use ARM (ThunderX, DPAA, X-Gene) or PowerPC target for respective platform.
 
@@ -102,7 +102,7 @@ This section demonstrates how to setup and run ``testpmd`` in Linux.
    .. code-block:: console
 
       modprobe uio
-      insmod ./x86_64-native-linuxapp-gcc/kmod/igb_uio.ko
+      insmod ./x86_64-native-linux-gcc/kmod/igb_uio.ko
 
    or
 
@@ -139,7 +139,7 @@ This section demonstrates how to setup and run ``testpmd`` in Linux.
 
    .. code-block:: console
 
-      ./x86_64-native-linuxapp-gcc/app/testpmd -l 0-3 -n 4 -- -i
+      ./x86_64-native-linux-gcc/app/testpmd -l 0-3 -n 4 -- -i
 
    Successful execution will show initialization messages from EAL, PMD and
    testpmd application. A prompt will be displayed at the end for user commands

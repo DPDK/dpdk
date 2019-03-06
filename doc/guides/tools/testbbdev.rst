@@ -227,7 +227,7 @@ Running Tests
 -------------
 
 Shortened tree of isg_cid-wireless_dpdk_ae with dpdk compiled for
-x86_64-native-linuxapp-icc target:
+x86_64-native-linux-icc target:
 
 ::
 
@@ -256,7 +256,7 @@ x86_64-native-linuxapp-icc target:
              |-- turbo_enc_c1_k40_r0_e1194_rm.data
              |-- turbo_enc_c1_k6144_r0_e32256_crc24b_rm.data
 
- |-- x86_64-native-linuxapp-icc
+ |-- x86_64-native-linux-icc
      |-- app
          |-- testbbdev
 
@@ -265,7 +265,7 @@ All bbdev devices
 
 .. code-block:: console
 
-  ./test-bbdev.py -p ../../x86_64-native-linuxapp-icc/app/testbbdev
+  ./test-bbdev.py -p ../../x86_64-native-linux-icc/app/testbbdev
   -v turbo_dec_default.data
 
 It runs all available tests using the test vector filled based on
@@ -279,7 +279,7 @@ baseband turbo_sw device
 
 .. code-block:: console
 
-  ./test-bbdev.py -p ../../x86_64-native-linuxapp-icc/app/testbbdev
+  ./test-bbdev.py -p ../../x86_64-native-linux-icc/app/testbbdev
   -e="--vdev=baseband_turbo_sw" -t 120 -c validation
   -v ./test_vectors/turbo_* -n 64 -b 8 32
 

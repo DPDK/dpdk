@@ -101,7 +101,7 @@ where,
 
 *   --[no-]mac-updating: Enable or disable MAC addresses updating (enabled by default).
 
-To run the application in linuxapp environment with 4 lcores, 16 ports and 8 RX queues per lcore and MAC address
+To run the application in linux environment with 4 lcores, 16 ports and 8 RX queues per lcore and MAC address
 updating enabled, issue the command:
 
 .. code-block:: console

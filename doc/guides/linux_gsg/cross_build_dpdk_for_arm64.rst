@@ -76,11 +76,11 @@ Copy the NUMA header files and lib to the cross compiler's directories:
 
 Configure and cross compile DPDK Build
 --------------------------------------
-To configure a build, choose one of the target configurations, like arm64-dpaa2-linuxapp-gcc and arm64-thunderx-linuxapp-gcc.
+To configure a build, choose one of the target configurations, like arm64-dpaa2-linux-gcc and arm64-thunderx-linux-gcc.
 
 .. code-block:: console
 
-   make config T=arm64-armv8a-linuxapp-gcc
+   make config T=arm64-armv8a-linux-gcc
 
 To cross-compile, without compiling the kernel modules, use the following command:
 
@@ -128,5 +128,5 @@ command::
 For example if the target machine is arm64 we can use the following
 command::
 
-	meson arm64-build --cross-file config/arm/arm64_armv8_linuxapp_gcc
+	meson arm64-build --cross-file config/arm/arm64_armv8_linux_gcc
 	ninja -C arm64-build

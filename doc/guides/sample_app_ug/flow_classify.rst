@@ -24,7 +24,7 @@ The application is located in the ``flow_classify`` sub-directory.
 Running the Application
 -----------------------
 
-To run the example in a ``linuxapp`` environment:
+To run the example in a ``linux`` environment:
 
 .. code-block:: console
 

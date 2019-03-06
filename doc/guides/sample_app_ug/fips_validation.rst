@@ -112,7 +112,7 @@ where,
     are folder paths.
 
 
-To run the application in linuxapp environment to test one AES FIPS test data
+To run the application in linux environment to test one AES FIPS test data
 file for crypto_aesni_mb PMD, issue the command:
 
 .. code-block:: console
@@ -121,7 +121,7 @@ file for crypto_aesni_mb PMD, issue the command:
     --req-file /PATH/TO/REQUEST/FILE.req --rsp-file ./PATH/TO/RESPONSE/FILE.rsp
     --cryptodev crypto_aesni_mb
 
-To run the application in linuxapp environment to test all AES-GCM FIPS test
+To run the application in linux environment to test all AES-GCM FIPS test
 data files in one folder for crypto_aesni_gcm PMD, issue the command:
 
 .. code-block:: console

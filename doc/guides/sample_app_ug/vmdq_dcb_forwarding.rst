@@ -68,7 +68,7 @@ The application is located in the ``vmdq_dcb`` sub-directory.
 Running the Application
 -----------------------
 
-To run the example in a linuxapp environment:
+To run the example in a linux environment:
 
 .. code-block:: console
 
@@ -250,7 +250,7 @@ See :doc:`l2_forward_real_virtual` for more information.
 Statistics Display
 ~~~~~~~~~~~~~~~~~~
 
-When run in a linuxapp environment,
+When run in a linux environment,
 the VMDQ and DCB Forwarding sample application can display statistics showing the number of packets read from each RX queue.
 This is provided by way of a signal handler for the SIGHUP signal,
 which simply prints to standard output the packet counts in grid form.

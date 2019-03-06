@@ -41,7 +41,7 @@ enum rte_lcore_role_t {
 };
 
 /**
- * The type of process in a linuxapp, multi-process setup
+ * The type of process in a linux, multi-process setup
  */
 enum rte_proc_type_t {
 	RTE_PROC_AUTO = -1,   /* allow auto-detection of primary/secondary */

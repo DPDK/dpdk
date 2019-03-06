@@ -17,7 +17,7 @@ The application is located in the ``timer`` sub-directory.
 Running the Application
 -----------------------
 
-To run the example in linuxapp environment:
+To run the example in linux environment:
 
 .. code-block:: console
 

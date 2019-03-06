@@ -2,7 +2,7 @@
 # Copyright (C) Broadcom 2017-2018. All rights reserved.
 #
 
-#include "defconfig_arm64-armv8a-linuxapp-gcc"
+#include "defconfig_arm64-armv8a-linux-gcc"
 
 # Broadcom - Stingray
 CONFIG_RTE_MACHINE="armv8a"

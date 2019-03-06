@@ -54,7 +54,7 @@ A check is also performed at initialization time to ensure that the micro archit
 Then, the main() function is called. The core initialization and launch is done in rte_eal_init() (see the API documentation).
 It consist of calls to the pthread library (more specifically, pthread_self(), pthread_create(), and pthread_setaffinity_np()).
 
-.. _figure_linuxapp_launch:
+.. _figure_linux_launch:
 
 .. figure:: img/linuxapp_launch.*
 
@@ -79,7 +79,7 @@ API documentation for details.
 Multi-process Support
 ~~~~~~~~~~~~~~~~~~~~~
 
-The Linuxapp EAL allows a multi-process as well as a multi-threaded (pthread) deployment model.
+The Linux EAL allows a multi-process as well as a multi-threaded (pthread) deployment model.
 See chapter
 :ref:`Multi-process Support <Multi-process_Support>` for more details.
 

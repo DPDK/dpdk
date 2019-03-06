@@ -73,7 +73,7 @@ To add a new library to the DPDK, proceed as follows:
     .. code-block:: console
 
         cd ${RTE_SDK}
-        make config T=x86_64-native-linuxapp-gcc
+        make config T=x86_64-native-linux-gcc
         make
 
 
@@ -105,5 +105,5 @@ Once you have added a library, a new test case should be added in the test appli
     .. code-block:: console
 
         cd ${RTE_SDK}
-        make config T=x86_64-native-linuxapp-gcc
+        make config T=x86_64-native-linux-gcc
         make

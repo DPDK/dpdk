@@ -88,7 +88,7 @@ where,
 
 -p PORTMASK: A hexadecimal bitmask of the ports to configure
 
-To run the application in a linuxapp environment with four logical cores and ports 0 and 2,
+To run the application in a linux environment with four logical cores and ports 0 and 2,
 issue the following command:
 
 .. code-block:: console
@@ -110,7 +110,7 @@ The control application requires a number of command line options:
 The --proc-type=secondary option is necessary for the EAL to properly initialize the control application to
 use the same huge pages as the core application and  thus be able to access its rings.
 
-To run the application in a linuxapp environment on logical core 0, issue the following command:
+To run the application in a linux environment on logical core 0, issue the following command:
 
 .. code-block:: console
 

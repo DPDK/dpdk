@@ -46,7 +46,7 @@ Running the Application
 
    *   -p PORTMASK: Hexadecimal bitmask of ports to configure
 
-#. To run the application in linuxapp environment with 10 lcores, 4 ports,
+#. To run the application in linux environment with 10 lcores, 4 ports,
    issue the command:
 
    ..  code-block:: console

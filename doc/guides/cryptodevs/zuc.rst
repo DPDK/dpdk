@@ -62,7 +62,7 @@ In order to enable this virtual crypto PMD, user must:
 
 .. code-block:: console
 
-	make config T=x86_64-native-linuxapp-gcc
+	make config T=x86_64-native-linux-gcc
 	sed -i 's,\(CONFIG_RTE_LIBRTE_PMD_ZUC\)=n,\1=y,' build/.config
 	make
 

@@ -67,7 +67,7 @@ For Ubuntu 14.04 LTS these packages have to be installed in the build system:
 .. code-block:: console
 
     sudo apt-get install openssl
-    sudo apt-get install libc6-dev-i386 # for i686-native-linuxapp-gcc target
+    sudo apt-get install libc6-dev-i386 # for i686-native-linux-gcc target
 
 This code was also verified on Fedora 24.
 This code has NOT been verified on FreeBSD yet.

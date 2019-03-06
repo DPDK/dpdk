@@ -557,13 +557,13 @@ on the local repo and target is the usual DPDK compilation target.
 For example::
 
    # Check between the previous and latest commit:
-   ./devtools/validate-abi.sh HEAD~1 HEAD x86_64-native-linuxapp-gcc
+   ./devtools/validate-abi.sh HEAD~1 HEAD x86_64-native-linux-gcc
 
    # Check between two tags:
-   ./devtools/validate-abi.sh v2.0.0 v2.1.0 x86_64-native-linuxapp-gcc
+   ./devtools/validate-abi.sh v2.0.0 v2.1.0 x86_64-native-linux-gcc
 
    # Check between git master and local topic-branch "vhost-hacking":
-   ./devtools/validate-abi.sh master vhost-hacking x86_64-native-linuxapp-gcc
+   ./devtools/validate-abi.sh master vhost-hacking x86_64-native-linux-gcc
 
 After the validation script completes (it can take a while since it need to
 compile both tags) it will create compatibility reports in the

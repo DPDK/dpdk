@@ -46,7 +46,7 @@ Compiling the Application
 
     .. code-block:: console
 
-        export RTE_TARGET=x86_64-native-linuxapp-gcc
+        export RTE_TARGET=x86_64-native-linux-gcc
 
     See the *DPDK Getting Started Guide* for possible RTE_TARGET values.
 
@@ -78,7 +78,7 @@ the specified baseband operation are available on application initialization.
 This means that HW baseband device/s must be bound to a DPDK driver or
 a SW baseband device/s (virtual BBdev) must be created (using --vdev).
 
-To run the application in linuxapp environment with the turbo_sw baseband device
+To run the application in linux environment with the turbo_sw baseband device
 using the whitelisted port running on 1 encoding lcore and 1 decoding lcore
 issue the command:
 
@@ -116,7 +116,7 @@ ports.
 
 .. code-block:: console
 
-    $ ./pktgen-3.4.0/app/x86_64-native-linuxapp-gcc/pktgen -c 0x3 \
+    $ ./pktgen-3.4.0/app/x86_64-native-linux-gcc/pktgen -c 0x3 \
     --socket-mem=1,1 --file-prefix=pg -w <NIC1PCIADDR> -- -m 1.0 -P
 
 where:

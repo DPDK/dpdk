@@ -95,7 +95,7 @@ drivers can be compiled with the following steps,
 .. code-block:: console
 
         cd <dpdk directory>
-        make config T=arm64-thunderx-linuxapp-gcc
+        make config T=arm64-thunderx-linux-gcc
         make
 
 The example applications can be compiled using the following:
@@ -144,7 +144,7 @@ to build applications for **OCTEON TX** :sup:`®` platforms.
         cd <dpdk directory>
         export RTE_SDK=$PWD
         export RTE_KERNELDIR=$THUNDER_ROOT/linux/kernel/linux
-        make config T=arm64-thunderx-linuxapp-gcc
+        make config T=arm64-thunderx-linux-gcc
         make -j CROSS=aarch64-thunderx-linux-gnu- CONFIG_RTE_KNI_KMOD=n CONFIG_RTE_EAL_IGB_UIO=n EXTRA_CFLAGS="-isystem <numa_install_dir>/include" EXTRA_LDFLAGS="-L<numa_install_dir>/lib -lnuma"
 
 If NUMA support is not required, it can be disabled as explained in
@@ -154,7 +154,7 @@ Following steps could be used in that case.
 
 .. code-block:: console
 
-        make config T=arm64-thunderx-linuxapp-gcc
+        make config T=arm64-thunderx-linux-gcc
         make CROSS=aarch64-thunderx-linux-gnu-
 
 

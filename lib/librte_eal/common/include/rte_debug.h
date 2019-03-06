@@ -39,7 +39,7 @@ void rte_dump_registers(void);
  *
  * Display the format string and its expanded arguments (printf-like).
  *
- * In a linuxapp environment, this function dumps the stack and calls
+ * In a linux environment, this function dumps the stack and calls
  * abort() resulting in a core dump if enabled.
  *
  * The function never returns.

@@ -437,7 +437,7 @@ Makefile System
 Compilation of patches and changes should be tested using the ``test-build.sh`` script in the ``devtools``
 directory of the DPDK repo::
 
-  devtools/test-build.sh x86_64-native-linuxapp-gcc+next+shared
+  devtools/test-build.sh x86_64-native-linux-gcc+next+shared
 
 The script usage is::
 
@@ -452,9 +452,9 @@ Where:
 
 Examples of configs are::
 
-   x86_64-native-linuxapp-gcc
-   x86_64-native-linuxapp-gcc+next+shared
-   x86_64-native-linuxapp-clang+shared
+   x86_64-native-linux-gcc
+   x86_64-native-linux-gcc+next+shared
+   x86_64-native-linux-clang+shared
 
 The builds can be modified via the following environmental variables:
 
@@ -468,9 +468,9 @@ These can be set from the command line or in the config files shown above in the
 
 The recommended configurations and options to test compilation prior to submitting patches are::
 
-   x86_64-native-linuxapp-gcc+shared+next
-   x86_64-native-linuxapp-clang+shared
-   i686-native-linuxapp-gcc
+   x86_64-native-linux-gcc+shared+next
+   x86_64-native-linux-clang+shared
+   i686-native-linux-gcc
 
    export DPDK_DEP_ZLIB=y
    export DPDK_DEP_PCAP=y

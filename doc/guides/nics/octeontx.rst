@@ -71,7 +71,7 @@ following ``make`` command:
 .. code-block:: console
 
    cd <DPDK-source-directory>
-   make config T=arm64-thunderx-linuxapp-gcc install
+   make config T=arm64-thunderx-linux-gcc install
 
 #. Running testpmd:
 
@@ -83,7 +83,7 @@ following ``make`` command:
 
    .. code-block:: console
 
-      ./arm64-thunderx-linuxapp-gcc/app/testpmd -c 700 \
+      ./arm64-thunderx-linux-gcc/app/testpmd -c 700 \
                 --base-virtaddr=0x100000000000 \
                 --mbuf-pool-ops-name="octeontx_fpavf" \
                 --vdev='event_octeontx' \

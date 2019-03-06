@@ -17,7 +17,7 @@ The application is located in the ``helloworld`` sub-directory.
 Running the Application
 -----------------------
 
-To run the example in a linuxapp environment:
+To run the example in a linux environment:
 
 .. code-block:: console
 
@@ -48,7 +48,7 @@ This is done in the main() function using the following code:
         if (ret < 0)
             rte_panic("Cannot init EAL\n");
 
-This call finishes the initialization process that was started before main() is called (in case of a Linuxapp environment).
+This call finishes the initialization process that was started before main() is called (in case of a Linux environment).
 The argc and argv arguments are provided to the rte_eal_init() function.
 The value returned is the number of parsed arguments.
 

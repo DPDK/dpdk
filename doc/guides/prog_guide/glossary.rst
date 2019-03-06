@@ -205,7 +205,7 @@ SW
 Target
    In the DPDK, the target is a combination of architecture, machine,
    executive environment and toolchain.  For example:
-   i686-native-linuxapp-gcc.
+   i686-native-linux-gcc.
 
 TCP
    Transmission Control Protocol

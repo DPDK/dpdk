@@ -19,7 +19,7 @@ The basic compilation steps are:
 
     .. code-block:: console
 
-        export RTE_TARGET=x86_64-native-linuxapp-gcc
+        export RTE_TARGET=x86_64-native-linux-gcc
 
 #.  Build the application:
 

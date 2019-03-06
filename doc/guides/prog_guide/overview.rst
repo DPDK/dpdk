@@ -52,7 +52,7 @@ The following are examples of how the variables can be set:
 .. code-block:: console
 
     export RTE_SDK=/home/user/DPDK
-    export RTE_TARGET=x86_64-native-linuxapp-gcc
+    export RTE_TARGET=x86_64-native-linux-gcc
 
 See the *DPDK Getting Started Guide* for information on setting up the development environment.
 

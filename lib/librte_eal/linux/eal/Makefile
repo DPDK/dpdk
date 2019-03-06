@@ -29,7 +29,7 @@ ifeq ($(CONFIG_RTE_EAL_NUMA_AWARE_HUGEPAGES),y)
 LDLIBS += -lnuma
 endif
 
-# specific to linuxapp exec-env
+# specific to linux exec-env
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) := eal.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) += eal_cpuflags.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUX) += eal_hugepage_info.c

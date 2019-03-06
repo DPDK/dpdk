@@ -56,7 +56,7 @@ following ``make`` command:
 .. code-block:: console
 
    cd <DPDK-source-directory>
-   make config T=arm64-thunderx-linuxapp-gcc
+   make config T=arm64-thunderx-linux-gcc
 
 
 Initialization

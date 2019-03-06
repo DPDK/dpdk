@@ -60,7 +60,7 @@ some minor changes.
 
     .. code-block:: console
 
-        make install RTE_SDK=`pwd` T=x86_64-native-linuxapp-gcc
+        make install RTE_SDK=`pwd` T=x86_64-native-linux-gcc
 
 #. Write a Dockerfile like below.
 
@@ -70,7 +70,7 @@ some minor changes.
 	FROM ubuntu:latest
 	WORKDIR /usr/src/dpdk
 	COPY . /usr/src/dpdk
-	ENV PATH "$PATH:/usr/src/dpdk/x86_64-native-linuxapp-gcc/app/"
+	ENV PATH "$PATH:/usr/src/dpdk/x86_64-native-linux-gcc/app/"
 	EOT
 
 #. Build a Docker image.

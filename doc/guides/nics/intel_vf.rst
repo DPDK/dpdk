@@ -521,19 +521,19 @@ The setup procedure is as follows:
 
     .. code-block:: console
 
-        make install T=x86_64-native-linuxapp-gcc
-        ./x86_64-native-linuxapp-gcc/app/testpmd -l 0-3 -n 4 -- -i
+        make install T=x86_64-native-linux-gcc
+        ./x86_64-native-linux-gcc/app/testpmd -l 0-3 -n 4 -- -i
 
 #.  Finally, access the Guest OS using vncviewer with the localhost:5900 port and check the lspci command output in the Guest OS.
     The virtual functions will be listed as available for use.
 
-#.  Configure and install the DPDK with an x86_64-native-linuxapp-gcc configuration on the Guest OS as normal,
+#.  Configure and install the DPDK with an x86_64-native-linux-gcc configuration on the Guest OS as normal,
     that is, there is no change to the normal installation procedure.
 
     .. code-block:: console
 
-        make config T=x86_64-native-linuxapp-gcc O=x86_64-native-linuxapp-gcc
-        cd x86_64-native-linuxapp-gcc
+        make config T=x86_64-native-linux-gcc O=x86_64-native-linux-gcc
+        cd x86_64-native-linux-gcc
         make
 
 .. note::

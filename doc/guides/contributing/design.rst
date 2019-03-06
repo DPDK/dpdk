@@ -7,12 +7,12 @@ Design
 Environment or Architecture-specific Sources
 --------------------------------------------
 
-In DPDK and DPDK applications, some code is specific to an architecture (i686, x86_64) or to an executive environment (bsdapp or linuxapp) and so on.
+In DPDK and DPDK applications, some code is specific to an architecture (i686, x86_64) or to an executive environment (freebsd or linux) and so on.
 As far as is possible, all such instances of architecture or env-specific code should be provided via standard APIs in the EAL.
 
 By convention, a file is common if it is not located in a directory indicating that it is specific.
 For instance, a file located in a subdir of "x86_64" directory is specific to this architecture.
-A file located in a subdir of "linuxapp" is specific to this execution environment.
+A file located in a subdir of "linux" is specific to this execution environment.
 
 .. note::
 
@@ -81,7 +81,7 @@ are collected for any instance of any object type provided by the library:
 
 .. code-block:: console
 
-   # DPDK file config/common_linuxapp, config/common_bsdapp, etc.
+   # DPDK file config/common_linux, config/common_freebsd, etc.
    CONFIG_RTE_<LIBRARY_NAME>_STATS_COLLECT=y/n
 
 The default value for this DPDK configuration file variable (either "yes" or

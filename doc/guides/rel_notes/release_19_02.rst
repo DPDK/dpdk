@@ -110,7 +110,7 @@ New Features
   * Added static linkage of ``mlx`` dependency.
   * Improved stability of E-Switch flow driver.
   * Added new make build configuration to set the cacheline size for Bluefield
-    correctly - ``arm64-bluefield-linuxapp-gcc``.
+    correctly - ``arm64-bluefield-linux-gcc``.
 
 * **Updated the enic driver.**
 

@@ -31,13 +31,13 @@ Each build directory contains include files, libraries, and applications.
 A build directory is specific to a configuration that includes architecture + execution environment + toolchain.
 It is possible to have several build directories sharing the same sources with different configurations.
 
-For instance, to create a new build directory called my_sdk_build_dir using the default configuration template config/defconfig_x86_64-linuxapp,
+For instance, to create a new build directory called my_sdk_build_dir using the default configuration template config/defconfig_x86_64-linux,
 we use:
 
 .. code-block:: console
 
     cd ${RTE_SDK}
-    make config T=x86_64-native-linuxapp-gcc O=my_sdk_build_dir
+    make config T=x86_64-native-linux-gcc O=my_sdk_build_dir
 
 This creates a new my_sdk_build_dir directory. After that, we can compile by doing:
 
@@ -65,7 +65,7 @@ To compile an application, the user must set the RTE_SDK and RTE_TARGET environm
 .. code-block:: console
 
     export RTE_SDK=/opt/DPDK
-    export RTE_TARGET=x86_64-native-linuxapp-gcc
+    export RTE_TARGET=x86_64-native-linux-gcc
     cd /path/to/my_app
 
 For a new application, the user must create their own Makefile that includes some .mk files, such as
@@ -246,7 +246,7 @@ Useful Variables Provided by the Build System
 *   RTE_TOOLCHAIN: Defines the toolchain (gcc , icc).
     It is the same value as CONFIG_RTE_TOOLCHAIN but without the double-quotes around the string.
 
-*   RTE_EXEC_ENV: Defines the executive environment (linuxapp).
+*   RTE_EXEC_ENV: Defines the executive environment (linux).
     It is the same value as CONFIG_RTE_EXEC_ENV but without the double-quotes around the string.
 
 *   RTE_KERNELDIR: This variable contains the absolute path to the kernel sources that will be used to compile the kernel modules.

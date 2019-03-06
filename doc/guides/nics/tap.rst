@@ -181,7 +181,7 @@ used to build the dpdk you pulled down.
 Run pktgen from the pktgen directory in a terminal with a commandline like the
 following::
 
-    sudo ./app/app/x86_64-native-linuxapp-gcc/app/pktgen -l 1-5 -n 4        \
+    sudo ./app/app/x86_64-native-linux-gcc/app/pktgen -l 1-5 -n 4        \
      --proc-type auto --log-level debug --socket-mem 512,512 --file-prefix pg   \
      --vdev=net_tap0 --vdev=net_tap1 -b 05:00.0 -b 05:00.1                  \
      -b 04:00.0 -b 04:00.1 -b 04:00.2 -b 04:00.3                            \

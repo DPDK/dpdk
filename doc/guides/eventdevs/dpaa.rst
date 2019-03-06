@@ -62,7 +62,7 @@ following ``make`` command:
 .. code-block:: console
 
    cd <DPDK-source-directory>
-   make config T=arm64-dpaa-linuxapp-gcc install
+   make config T=arm64-dpaa-linux-gcc install
 
 Initialization
 --------------

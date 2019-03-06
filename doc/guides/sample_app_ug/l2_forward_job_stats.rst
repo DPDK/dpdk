@@ -91,7 +91,7 @@ where,
 
 *   l: Use locale thousands separator when formatting big numbers.
 
-To run the application in linuxapp environment with 4 lcores, 16 ports, 8 RX queues per lcore and
+To run the application in linux environment with 4 lcores, 16 ports, 8 RX queues per lcore and
 thousands  separator printing, issue the command:
 
 .. code-block:: console

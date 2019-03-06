@@ -26,7 +26,7 @@ Set the target, for example:
 
 .. code-block:: console
 
-    export RTE_TARGET=x86_64-native-linuxapp-gcc
+    export RTE_TARGET=x86_64-native-linux-gcc
 
 See the *DPDK Getting Started* Guide for possible ``RTE_TARGET`` values.
 
@@ -40,7 +40,7 @@ Build the application as follows:
 Running the Application
 -----------------------
 
-To run the example in a ``linuxapp`` environment:
+To run the example in a ``linux`` environment:
 
 .. code-block:: console
 

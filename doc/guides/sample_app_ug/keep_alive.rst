@@ -63,7 +63,7 @@ where,
 * ``T PERIOD``: statistics will be refreshed each PERIOD seconds (0 to
   disable, 10 default, 86400 maximum).
 
-To run the application in linuxapp environment with 4 lcores, 16 ports
+To run the application in linux environment with 4 lcores, 16 ports
 8 RX queues per lcore and a ping interval of 10ms, issue the command:
 
 .. code-block:: console

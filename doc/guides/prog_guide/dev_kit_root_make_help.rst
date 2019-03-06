@@ -27,7 +27,7 @@ This is an optional parameter, the default output directory is build.
 
     .. code-block:: console
 
-        make config O=mybuild T=x86_64-native-linuxapp-gcc
+        make config O=mybuild T=x86_64-native-linux-gcc
 
 Build Targets
 -------------
@@ -163,7 +163,7 @@ For instance, the following command:
 .. code-block:: console
 
     cd $(RTE_SDK)
-    make config O=mybuild T=x86_64-native-linuxapp-gcc
+    make config O=mybuild T=x86_64-native-linux-gcc
     make O=mybuild
 
 is equivalent to:
@@ -171,7 +171,7 @@ is equivalent to:
 .. code-block:: console
 
     cd $(RTE_SDK)
-    make config O=mybuild T=x86_64-native-linuxapp-gcc
+    make config O=mybuild T=x86_64-native-linux-gcc
     cd mybuild
 
     # no need to specify O= now

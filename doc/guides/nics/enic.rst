@@ -584,7 +584,7 @@ PMD.  Typically, the limit has to be raised to higher than 2GB.
 e.g., 2621440
 
 The compilation of any unused drivers can be disabled using the
-configuration file in config/ directory (e.g., config/common_linuxapp).
+configuration file in config/ directory (e.g., config/common_linux).
 This would help in bringing down the time taken for building the
 libraries and the initialization time of the application.
 

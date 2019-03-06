@@ -133,7 +133,7 @@ Configurations before running DPDK
 
       # Build DPDK target.
       cd dpdk_folder
-      make install T=x86_64-native-linuxapp-gcc -j
+      make install T=x86_64-native-linux-gcc -j
 
       # Get the hugepage size.
       awk '/Hugepagesize/ {print $2}' /proc/meminfo

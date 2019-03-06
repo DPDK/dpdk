@@ -70,7 +70,7 @@ New Features
   * In UIO, the RX interrupt shares the same vector with other
     interrupts. When the RX interrupt and LSC interrupt are both enabled, only
     the former is available.
-  * RX interrupt is only implemented for the linuxapp target.
+  * RX interrupt is only implemented for the linux target.
   * The feature is only currently enabled for tow PMDs: ixgbe and igb.
 
 

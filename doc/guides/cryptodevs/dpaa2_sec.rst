@@ -191,7 +191,7 @@ following ``make`` command:
 .. code-block:: console
 
    cd <DPDK-source-directory>
-   make config T=arm64-dpaa2-linuxapp-gcc install
+   make config T=arm64-dpaa2-linux-gcc install
 
 Enabling logs
 -------------

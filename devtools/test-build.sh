@@ -46,7 +46,7 @@ print_help () {
 	        -v    verbose build
 
 	config: defconfig[[~][+]option1[[~][+]option2...]]
-	        Example: x86_64-native-linuxapp-gcc+debug~RXTX_CALLBACKS
+	        Example: x86_64-native-linux-gcc+debug~RXTX_CALLBACKS
 	        The lowercase options are defined inside $(basename $0).
 	        The uppercase options can be the end of a defconfig option
 	        to enable if prefixed with '+' or to disable if prefixed with '~'.

@@ -133,7 +133,7 @@ the path to the MUSDK installation directory needs to be exported.
 
    export LIBMUSDK_PATH=<musdk>/usr/local
    export CROSS=aarch64-linux-gnu-
-   make config T=arm64-armv8a-linuxapp-gcc
+   make config T=arm64-armv8a-linux-gcc
    sed -ri 's,(MVNETA_PMD=)n,\1y,' build/.config
    make
 

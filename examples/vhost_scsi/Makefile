@@ -47,12 +47,12 @@ $(error "Please define RTE_SDK environment variable")
 endif
 
 # Default target, can be overridden by command line or environment
-RTE_TARGET ?= x86_64-native-linuxapp-gcc
+RTE_TARGET ?= x86_64-native-linux-gcc
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
 ifneq ($(CONFIG_RTE_EXEC_ENV_LINUX),y)
-$(info This application can only operate in a linuxapp environment, \
+$(info This application can only operate in a linux environment, \
 please change the definition of the RTE_TARGET environment variable)
 all:
 else

@@ -31,7 +31,7 @@ The following is a list of DPDK documents in the suggested reading order:
 *   **Programmer's Guide** (this document): Describes:
 
     *   The software architecture and how to use it (through examples),
-        specifically in a Linux* application (linuxapp) environment
+        specifically in a Linux* application (linux) environment
 
     *   The content of the DPDK, the build system
         (including the commands that can be used in the root DPDK Makefile to build the development kit and an application)

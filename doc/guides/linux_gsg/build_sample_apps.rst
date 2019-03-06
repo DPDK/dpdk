@@ -15,7 +15,7 @@ It also provides a pointer to where sample applications are stored.
 Compiling a Sample Application
 ------------------------------
 
-Once an DPDK target environment directory has been created (such as ``x86_64-native-linuxapp-gcc``),
+Once an DPDK target environment directory has been created (such as ``x86_64-native-linux-gcc``),
 it contains all libraries and header files required to build an application.
 
 When compiling an application in the Linux* environment on the DPDK, the following variables must be exported:
@@ -36,7 +36,7 @@ By default, the binary is generated in the build directory.
 
     cd examples/helloworld/
     export RTE_SDK=$HOME/DPDK
-    export RTE_TARGET=x86_64-native-linuxapp-gcc
+    export RTE_TARGET=x86_64-native-linux-gcc
 
     make
         CC main.o
@@ -58,7 +58,7 @@ By default, the binary is generated in the build directory.
        export RTE_SDK=/home/user/DPDK
        cp -r $(RTE_SDK)/examples/helloworld my_rte_app
        cd my_rte_app/
-       export RTE_TARGET=x86_64-native-linuxapp-gcc
+       export RTE_TARGET=x86_64-native-linux-gcc
 
        make
          CC main.o

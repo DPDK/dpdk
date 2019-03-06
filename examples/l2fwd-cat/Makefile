@@ -50,7 +50,7 @@ $(error "Please define PQOS_INSTALL_PATH environment variable")
 endif
 
 # Default target, can be overridden by command line or environment
-RTE_TARGET ?= x86_64-native-linuxapp-gcc
+RTE_TARGET ?= x86_64-native-linux-gcc
 
 include $(RTE_SDK)/mk/rte.vars.mk
 

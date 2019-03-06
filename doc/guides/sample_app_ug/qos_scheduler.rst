@@ -37,7 +37,7 @@ The application is located in the ``qos_sched`` sub-directory.
 
     .. note::
 
-        This application is intended as a linuxapp only.
+        This application is intended as a linux only.
 
 .. note::
 

@@ -22,7 +22,7 @@ The following variables must be defined:
 
 *   ${RTE_SDK}: Points to the root directory of the DPDK.
 
-*   ${RTE_TARGET}: Reference the target to be used for compilation (for example, x86_64-native-linuxapp-gcc).
+*   ${RTE_TARGET}: Reference the target to be used for compilation (for example, x86_64-native-linux-gcc).
 
 Build Targets
 -------------
@@ -94,5 +94,5 @@ It is possible to run the Makefile from another directory, by specifying the out
 .. code-block:: console
 
     export RTE_SDK=/path/to/DPDK
-    export RTE_TARGET=x86_64-native-linuxapp-icc
+    export RTE_TARGET=x86_64-native-linux-icc
     make -f /path/to/my_app/Makefile S=/path/to/my_app O=/path/to/build_dir

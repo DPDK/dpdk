@@ -2,7 +2,7 @@
 # Copyright 2019 Mellanox Technologies, Ltd
 #
 
-#include "defconfig_arm64-armv8a-linuxapp-gcc"
+#include "defconfig_arm64-armv8a-linux-gcc"
 
 # Mellanox BlueField
 CONFIG_RTE_ARCH_ARM_TUNE="cortex-a72"

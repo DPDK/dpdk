@@ -1,7 +1,7 @@
 Basic build
 	make defconfig && make
 	or
-	make config T=x86_64-native-linuxapp-gcc && make
+	make config T=x86_64-native-linux-gcc && make
 Build commands
 	config           get configuration from target template (T=)
 	defconfig        auto-select target template based on arch, OS, etc.

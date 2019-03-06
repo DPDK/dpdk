@@ -479,7 +479,7 @@ step1_func()
 #
 step2_func()
 {
-	TITLE="Setup linuxapp environment"
+	TITLE="Setup linux environment"
 
 	TEXT[1]="Insert IGB UIO module"
 	FUNC[1]="load_igb_uio_module"
@@ -514,7 +514,7 @@ step2_func()
 #
 step3_func()
 {
-	TITLE="Run test application for linuxapp environment"
+	TITLE="Run test application for linux environment"
 
 	TEXT[1]="Run test application (\$RTE_TARGET/app/test)"
 	FUNC[1]="run_test_app"

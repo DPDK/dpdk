@@ -107,7 +107,7 @@ Where:
 
 * ``MACHINE`` is: ``native``
 
-* ``EXECENV`` is: ``bsdapp``
+* ``EXECENV`` is: ``freebsd``
 
 * ``TOOLCHAIN`` is: ``gcc`` | ``clang``
 
@@ -130,7 +130,7 @@ For example to compile for FreeBSD use:
 
 .. code-block:: console
 
-    gmake install T=x86_64-native-bsdapp-clang
+    gmake install T=x86_64-native-freebsd-clang
 
 .. note::
 
@@ -208,7 +208,7 @@ An error such as:
 
 .. code-block:: console
 
-    kldload: can't load ./x86_64-native-bsdapp-gcc/kmod/contigmem.ko:
+    kldload: can't load ./x86_64-native-freebsd-gcc/kmod/contigmem.ko:
              Exec format error
 
 is generally attributed to not having enough contiguous memory

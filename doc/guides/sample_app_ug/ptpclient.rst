@@ -58,7 +58,7 @@ To compile the sample application see :doc:`compiling`.
 The application is located in the ``ptpclient`` sub-directory.
 
 .. note::
-   To compile the application edit the ``config/common_linuxapp`` configuration file to enable IEEE1588
+   To compile the application edit the ``config/common_linux`` configuration file to enable IEEE1588
    and then recompile DPDK:
 
    .. code-block:: console
@@ -68,7 +68,7 @@ The application is located in the ``ptpclient`` sub-directory.
 Running the Application
 -----------------------
 
-To run the example in a ``linuxapp`` environment:
+To run the example in a ``linux`` environment:
 
 .. code-block:: console
 

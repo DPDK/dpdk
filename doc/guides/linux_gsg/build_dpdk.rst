@@ -46,7 +46,7 @@ where:
 
 * ``MACHINE`` can be:  ``native``, ``power8``, ``armv8a``
 
-* ``EXECENV`` can be:  ``linuxapp``,  ``bsdapp``
+* ``EXECENV`` can be:  ``linux``,  ``freebsd``
 
 * ``TOOLCHAIN`` can be:  ``gcc``,  ``icc``
 
@@ -76,20 +76,20 @@ For example, to compile a 64-bit target using icc, run:
 
 .. code-block:: console
 
-    make install T=x86_64-native-linuxapp-icc
+    make install T=x86_64-native-linux-icc
 
 To compile a 32-bit build using gcc, the make command should be:
 
 .. code-block:: console
 
-    make install T=i686-native-linuxapp-gcc
+    make install T=i686-native-linux-gcc
 
 To prepare a target without building it, for example, if the configuration changes need to be made before compilation,
 use the ``make config T=<target>`` command:
 
 .. code-block:: console
 
-    make config T=x86_64-native-linuxapp-gcc
+    make config T=x86_64-native-linux-gcc
 
 .. warning::
 
@@ -104,7 +104,7 @@ The user may also make modifications to the compile-time DPDK configuration by e
 
 .. code-block:: console
 
-    cd x86_64-native-linuxapp-gcc
+    cd x86_64-native-linux-gcc
     vi .config
     make
 
