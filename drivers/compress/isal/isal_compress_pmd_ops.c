@@ -135,10 +135,18 @@ isal_comp_pmd_info_get(struct rte_compressdev *dev __rte_unused,
 {
 	if (dev_info != NULL) {
 		dev_info->capabilities = isal_pmd_capabilities;
-		dev_info->feature_flags = RTE_COMPDEV_FF_CPU_AVX512 |
-				RTE_COMPDEV_FF_CPU_AVX2 |
-				RTE_COMPDEV_FF_CPU_AVX |
-				RTE_COMPDEV_FF_CPU_SSE;
+
+		/* Check CPU for supported vector instruction and set
+		 * feature_flags
+		 */
+		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F))
+			dev_info->feature_flags |= RTE_COMPDEV_FF_CPU_AVX512;
+		else if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2))
+			dev_info->feature_flags |= RTE_COMPDEV_FF_CPU_AVX2;
+		else if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX))
+			dev_info->feature_flags |= RTE_COMPDEV_FF_CPU_AVX;
+		else
+			dev_info->feature_flags |= RTE_COMPDEV_FF_CPU_SSE;
 	}
 }
 
