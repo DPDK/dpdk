@@ -500,7 +500,7 @@ struct rte_crypto_asym_op {
 		struct rte_crypto_dh_op_param dh;
 		struct rte_crypto_dsa_op_param dsa;
 	};
-} __rte_cache_aligned;
+};
 
 #ifdef __cplusplus
 }

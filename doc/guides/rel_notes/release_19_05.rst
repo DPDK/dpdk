@@ -141,6 +141,13 @@ ABI Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* cryptodev: in 18.08 new structure ``rte_crypto_asym_op`` was introduced and
+  included into ``rte_crypto_op``. As ``rte_crypto_asym_op`` structure was
+  defined as cache-line aligned that caused unintended changes in
+  ``rte_crypto_op`` structure layout and alignment. Remove cache-line
+  alignment for ``rte_crypto_asym_op`` to restore expected ``rte_crypto_op``
+  layout and alignment.
+
 
 Shared Library Versions
 -----------------------
@@ -172,7 +179,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_cfgfile.so.2
      librte_cmdline.so.2
      librte_compressdev.so.1
-     librte_cryptodev.so.6
+   + librte_cryptodev.so.7
      librte_distributor.so.1
      librte_eal.so.9
      librte_efd.so.1
