@@ -162,7 +162,7 @@ esp_inbound_post(struct rte_mbuf *m, struct ipsec_sa *sa,
 	}
 
 	if (cop->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
-		RTE_LOG(ERR, IPSEC_ESP, "failed crypto op\n");
+		RTE_LOG(ERR, IPSEC_ESP, "%s() failed crypto op\n", __func__);
 		return -1;
 	}
 
@@ -455,7 +455,8 @@ esp_outbound_post(struct rte_mbuf *m,
 	} else {
 		RTE_ASSERT(cop != NULL);
 		if (cop->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
-			RTE_LOG(ERR, IPSEC_ESP, "Failed crypto op\n");
+			RTE_LOG(ERR, IPSEC_ESP, "%s() failed crypto op\n",
+				__func__);
 			return -1;
 		}
 	}
