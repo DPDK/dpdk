@@ -85,6 +85,12 @@ New Features
   * Added limited support for RSS.
   * Added limited support for PASSTHRU.
 
+* **Updated the ixgbe driver.**
+
+  New features for VF:
+
+  * Added promiscuous mode support.
+
 
 Removed Items
 -------------

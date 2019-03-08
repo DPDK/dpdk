@@ -260,6 +260,8 @@ static int ixgbevf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev,
 static void ixgbevf_set_ivar_map(struct ixgbe_hw *hw, int8_t direction,
 				 uint8_t queue, uint8_t msix_vector);
 static void ixgbevf_configure_msix(struct rte_eth_dev *dev);
+static void ixgbevf_dev_promiscuous_enable(struct rte_eth_dev *dev);
+static void ixgbevf_dev_promiscuous_disable(struct rte_eth_dev *dev);
 static void ixgbevf_dev_allmulticast_enable(struct rte_eth_dev *dev);
 static void ixgbevf_dev_allmulticast_disable(struct rte_eth_dev *dev);
 
@@ -596,6 +598,8 @@ static const struct eth_dev_ops ixgbevf_eth_dev_ops = {
 	.xstats_get_names     = ixgbevf_dev_xstats_get_names,
 	.dev_close            = ixgbevf_dev_close,
 	.dev_reset	      = ixgbevf_dev_reset,
+	.promiscuous_enable   = ixgbevf_dev_promiscuous_enable,
+	.promiscuous_disable  = ixgbevf_dev_promiscuous_disable,
 	.allmulticast_enable  = ixgbevf_dev_allmulticast_enable,
 	.allmulticast_disable = ixgbevf_dev_allmulticast_disable,
 	.dev_infos_get        = ixgbevf_dev_info_get,
@@ -8307,6 +8311,22 @@ ixgbe_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 	}
 
 	return ret;
+}
+
+static void
+ixgbevf_dev_promiscuous_enable(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	hw->mac.ops.update_xcast_mode(hw, IXGBEVF_XCAST_MODE_PROMISC);
+}
+
+static void
+ixgbevf_dev_promiscuous_disable(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	hw->mac.ops.update_xcast_mode(hw, IXGBEVF_XCAST_MODE_NONE);
 }
 
 static void
