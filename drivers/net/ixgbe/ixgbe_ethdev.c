@@ -1515,6 +1515,7 @@ ixgbevf_negotiate_api(struct ixgbe_hw *hw)
 
 	/* start with highest supported, proceed down */
 	static const enum ixgbe_pfvf_api_rev sup_ver[] = {
+		ixgbe_mbox_api_13,
 		ixgbe_mbox_api_12,
 		ixgbe_mbox_api_11,
 		ixgbe_mbox_api_10,

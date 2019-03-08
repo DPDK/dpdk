@@ -408,23 +408,6 @@ ixgbe_vf_reset_msg(struct rte_eth_dev *dev, uint16_t vf)
 }
 
 static int
-ixgbe_enable_vf_mc_promisc(struct rte_eth_dev *dev, uint32_t vf)
-{
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t vmolr;
-
-	vmolr = IXGBE_READ_REG(hw, IXGBE_VMOLR(vf));
-
-	RTE_LOG(INFO, PMD, "VF %u: enabling multicast promiscuous\n", vf);
-
-	vmolr |= IXGBE_VMOLR_MPE;
-
-	IXGBE_WRITE_REG(hw, IXGBE_VMOLR(vf), vmolr);
-
-	return 0;
-}
-
-static int
 ixgbe_disable_vf_mc_promisc(struct rte_eth_dev *dev, uint32_t vf)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -596,6 +579,7 @@ ixgbe_negotiate_vf_api(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 	case ixgbe_mbox_api_10:
 	case ixgbe_mbox_api_11:
 	case ixgbe_mbox_api_12:
+	case ixgbe_mbox_api_13:
 		vfinfo[vf].api_version = (uint8_t)api_version;
 		return 0;
 	default:
@@ -698,19 +682,70 @@ ixgbe_set_vf_mc_promisc(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 {
 	struct ixgbe_vf_info *vfinfo =
 		*(IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private));
-	bool enable = !!msgbuf[1];	/* msgbuf contains the flag to enable */
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int xcast_mode = msgbuf[1];	/* msgbuf contains the flag to enable */
+	u32 vmolr, fctrl, disable, enable;
 
 	switch (vfinfo[vf].api_version) {
 	case ixgbe_mbox_api_12:
+		/* promisc introduced in 1.3 version */
+		if (xcast_mode == IXGBEVF_XCAST_MODE_PROMISC)
+			return -EOPNOTSUPP;
+		break;
+		/* Fall threw */
+	case ixgbe_mbox_api_13:
 		break;
 	default:
 		return -1;
 	}
 
-	if (enable)
-		return ixgbe_enable_vf_mc_promisc(dev, vf);
-	else
-		return ixgbe_disable_vf_mc_promisc(dev, vf);
+	if (vfinfo[vf].xcast_mode == xcast_mode)
+		goto out;
+
+	switch (xcast_mode) {
+	case IXGBEVF_XCAST_MODE_NONE:
+		disable = IXGBE_VMOLR_BAM | IXGBE_VMOLR_ROMPE |
+			  IXGBE_VMOLR_MPE | IXGBE_VMOLR_UPE | IXGBE_VMOLR_VPE;
+		enable = 0;
+		break;
+	case IXGBEVF_XCAST_MODE_MULTI:
+		disable = IXGBE_VMOLR_MPE | IXGBE_VMOLR_UPE | IXGBE_VMOLR_VPE;
+		enable = IXGBE_VMOLR_BAM | IXGBE_VMOLR_ROMPE;
+		break;
+	case IXGBEVF_XCAST_MODE_ALLMULTI:
+		disable = IXGBE_VMOLR_UPE | IXGBE_VMOLR_VPE;
+		enable = IXGBE_VMOLR_BAM | IXGBE_VMOLR_ROMPE | IXGBE_VMOLR_MPE;
+		break;
+	case IXGBEVF_XCAST_MODE_PROMISC:
+		if (hw->mac.type <= ixgbe_mac_82599EB)
+			return -1;
+
+		fctrl = IXGBE_READ_REG(hw, IXGBE_FCTRL);
+		if (!(fctrl & IXGBE_FCTRL_UPE)) {
+			/* VF promisc requires PF in promisc */
+			RTE_LOG(ERR, PMD,
+			       "Enabling VF promisc requires PF in promisc\n");
+			return -1;
+		}
+
+		disable = 0;
+		enable = IXGBE_VMOLR_BAM | IXGBE_VMOLR_ROMPE |
+			 IXGBE_VMOLR_MPE | IXGBE_VMOLR_UPE | IXGBE_VMOLR_VPE;
+		break;
+	default:
+		return -1;
+	}
+
+	vmolr = IXGBE_READ_REG(hw, IXGBE_VMOLR(vf));
+	vmolr &= ~disable;
+	vmolr |= enable;
+	IXGBE_WRITE_REG(hw, IXGBE_VMOLR(vf), vmolr);
+	vfinfo[vf].xcast_mode = xcast_mode;
+
+out:
+	msgbuf[1] = xcast_mode;
+
+	return 0;
 }
 
 static int
