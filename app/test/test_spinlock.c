@@ -120,8 +120,6 @@ load_loop_fn(void *func_param)
 		lcount++;
 		if (use_lock)
 			rte_spinlock_unlock(&lk);
-		/* delay to make lock duty cycle slighlty realistic */
-		rte_delay_us(1);
 		time_diff = rte_get_timer_cycles() - begin;
 	}
 	lock_count[lcore] = lcount;
