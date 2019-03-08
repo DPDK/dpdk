@@ -3321,9 +3321,9 @@ nfp_pf_create_dev(struct rte_pci_device *dev, int port, int ports,
 		return -ENOMEM;
 
 	if (ports > 1)
-		sprintf(port_name, "%s_port%d", dev->device.name, port);
+		snprintf(port_name, 100, "%s_port%d", dev->device.name, port);
 	else
-		sprintf(port_name, "%s", dev->device.name);
+		strlcat(port_name, dev->device.name, 100);
 
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
@@ -3436,12 +3436,14 @@ nfp_fw_upload(struct rte_pci_device *dev, struct nfp_nsp *nsp, char *card)
 	/* Looking for firmware file in order of priority */
 
 	/* First try to find a firmware image specific for this device */
-	sprintf(serial, "serial-%02x-%02x-%02x-%02x-%02x-%02x-%02x-%02x",
+	snprintf(serial, sizeof(serial),
+			"serial-%02x-%02x-%02x-%02x-%02x-%02x-%02x-%02x",
 		cpp->serial[0], cpp->serial[1], cpp->serial[2], cpp->serial[3],
 		cpp->serial[4], cpp->serial[5], cpp->interface >> 8,
 		cpp->interface & 0xff);
 
-	sprintf(fw_name, "%s/%s.nffw", DEFAULT_FW_PATH, serial);
+	snprintf(fw_name, sizeof(fw_name), "%s/%s.nffw", DEFAULT_FW_PATH,
+			serial);
 
 	PMD_DRV_LOG(DEBUG, "Trying with fw file: %s", fw_name);
 	fw_f = open(fw_name, O_RDONLY);
@@ -3449,7 +3451,8 @@ nfp_fw_upload(struct rte_pci_device *dev, struct nfp_nsp *nsp, char *card)
 		goto read_fw;
 
 	/* Then try the PCI name */
-	sprintf(fw_name, "%s/pci-%s.nffw", DEFAULT_FW_PATH, dev->device.name);
+	snprintf(fw_name, sizeof(fw_name), "%s/pci-%s.nffw", DEFAULT_FW_PATH,
+			dev->device.name);
 
 	PMD_DRV_LOG(DEBUG, "Trying with fw file: %s", fw_name);
 	fw_f = open(fw_name, O_RDONLY);
@@ -3457,7 +3460,7 @@ nfp_fw_upload(struct rte_pci_device *dev, struct nfp_nsp *nsp, char *card)
 		goto read_fw;
 
 	/* Finally try the card type and media */
-	sprintf(fw_name, "%s/%s", DEFAULT_FW_PATH, card);
+	snprintf(fw_name, sizeof(fw_name), "%s/%s", DEFAULT_FW_PATH, card);
 	PMD_DRV_LOG(DEBUG, "Trying with fw file: %s", fw_name);
 	fw_f = open(fw_name, O_RDONLY);
 	if (fw_f < 0) {
@@ -3533,8 +3536,9 @@ nfp_fw_setup(struct rte_pci_device *dev, struct nfp_cpp *cpp,
 
 	PMD_DRV_LOG(INFO, "Port speed: %u", nfp_eth_table->ports[0].speed);
 
-	sprintf(card_desc, "nic_%s_%dx%d.nffw", nfp_fw_model,
-		nfp_eth_table->count, nfp_eth_table->ports[0].speed / 1000);
+	snprintf(card_desc, sizeof(card_desc), "nic_%s_%dx%d.nffw",
+			nfp_fw_model, nfp_eth_table->count,
+			nfp_eth_table->ports[0].speed / 1000);
 
 	nsp = nfp_nsp_open(cpp);
 	if (!nsp) {
