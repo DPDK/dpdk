@@ -2735,7 +2735,8 @@ static int qedevf_eth_dev_pci_remove(struct rte_pci_device *pci_dev)
 
 static struct rte_pci_driver rte_qedevf_pmd = {
 	.id_table = pci_id_qedevf_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
+		     RTE_PCI_DRV_IOVA_AS_VA,
 	.probe = qedevf_eth_dev_pci_probe,
 	.remove = qedevf_eth_dev_pci_remove,
 };
@@ -2754,7 +2755,8 @@ static int qede_eth_dev_pci_remove(struct rte_pci_device *pci_dev)
 
 static struct rte_pci_driver rte_qede_pmd = {
 	.id_table = pci_id_qede_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
+		     RTE_PCI_DRV_IOVA_AS_VA,
 	.probe = qede_eth_dev_pci_probe,
 	.remove = qede_eth_dev_pci_remove,
 };
