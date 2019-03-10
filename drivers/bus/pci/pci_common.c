@@ -528,6 +528,52 @@ pci_unplug(struct rte_device *dev)
 	return ret;
 }
 
+static int
+pci_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
+{
+	struct rte_pci_device *pdev = RTE_DEV_TO_PCI(dev);
+
+	if (!pdev || !pdev->driver) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+	if (pdev->driver->dma_map)
+		return pdev->driver->dma_map(pdev, addr, iova, len);
+	/**
+	 *  In case driver don't provides any specific mapping
+	 *  try fallback to VFIO.
+	 */
+	if (pdev->kdrv == RTE_KDRV_VFIO)
+		return rte_vfio_container_dma_map
+				(RTE_VFIO_DEFAULT_CONTAINER_FD, (uintptr_t)addr,
+				 iova, len);
+	rte_errno = ENOTSUP;
+	return -1;
+}
+
+static int
+pci_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
+{
+	struct rte_pci_device *pdev = RTE_DEV_TO_PCI(dev);
+
+	if (!pdev || !pdev->driver) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+	if (pdev->driver->dma_unmap)
+		return pdev->driver->dma_unmap(pdev, addr, iova, len);
+	/**
+	 *  In case driver don't provides any specific mapping
+	 *  try fallback to VFIO.
+	 */
+	if (pdev->kdrv == RTE_KDRV_VFIO)
+		return rte_vfio_container_dma_unmap
+				(RTE_VFIO_DEFAULT_CONTAINER_FD, (uintptr_t)addr,
+				 iova, len);
+	rte_errno = ENOTSUP;
+	return -1;
+}
+
 struct rte_pci_bus rte_pci_bus = {
 	.bus = {
 		.scan = rte_pci_scan,
@@ -536,6 +582,8 @@ struct rte_pci_bus rte_pci_bus = {
 		.plug = pci_plug,
 		.unplug = pci_unplug,
 		.parse = pci_parse,
+		.dma_map = pci_dma_map,
+		.dma_unmap = pci_dma_unmap,
 		.get_iommu_class = rte_pci_get_iommu_class,
 		.dev_iterate = rte_pci_dev_iterate,
 		.hot_unplug_handler = pci_hot_unplug_handler,

@@ -282,7 +282,7 @@ The expected workflow is as follows:
     - If IOVA table is not specified, IOVA addresses will be assumed to be
       unavailable
     - Other processes must attach to the memory area before they can use it
-* Perform DMA mapping with ``rte_vfio_dma_map`` if needed
+* Perform DMA mapping with ``rte_dev_dma_map`` if needed
 * Use the memory area in your application
 * If memory area is no longer needed, it can be unregistered
     - If the area was mapped for DMA, unmapping must be performed before

@@ -114,6 +114,44 @@ typedef int (pci_probe_t)(struct rte_pci_driver *, struct rte_pci_device *);
 typedef int (pci_remove_t)(struct rte_pci_device *);
 
 /**
+ * Driver-specific DMA mapping. After a successful call the device
+ * will be able to read/write from/to this segment.
+ *
+ * @param dev
+ *   Pointer to the PCI device.
+ * @param addr
+ *   Starting virtual address of memory to be mapped.
+ * @param iova
+ *   Starting IOVA address of memory to be mapped.
+ * @param len
+ *   Length of memory segment being mapped.
+ * @return
+ *   - 0 On success.
+ *   - Negative value and rte_errno is set otherwise.
+ */
+typedef int (pci_dma_map_t)(struct rte_pci_device *dev, void *addr,
+			    uint64_t iova, size_t len);
+
+/**
+ * Driver-specific DMA un-mapping. After a successful call the device
+ * will not be able to read/write from/to this segment.
+ *
+ * @param dev
+ *   Pointer to the PCI device.
+ * @param addr
+ *   Starting virtual address of memory to be unmapped.
+ * @param iova
+ *   Starting IOVA address of memory to be unmapped.
+ * @param len
+ *   Length of memory segment being unmapped.
+ * @return
+ *   - 0 On success.
+ *   - Negative value and rte_errno is set otherwise.
+ */
+typedef int (pci_dma_unmap_t)(struct rte_pci_device *dev, void *addr,
+			      uint64_t iova, size_t len);
+
+/**
  * A structure describing a PCI driver.
  */
 struct rte_pci_driver {
@@ -122,6 +160,8 @@ struct rte_pci_driver {
 	struct rte_pci_bus *bus;           /**< PCI bus reference. */
 	pci_probe_t *probe;                /**< Device Probe function. */
 	pci_remove_t *remove;              /**< Device Remove function. */
+	pci_dma_map_t *dma_map;		   /**< device dma map function. */
+	pci_dma_unmap_t *dma_unmap;	   /**< device dma unmap function. */
 	const struct rte_pci_id *id_table; /**< ID table, NULL terminated. */
 	uint32_t drv_flags;                /**< Flags RTE_PCI_DRV_*. */
 };

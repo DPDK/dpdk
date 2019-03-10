@@ -277,6 +277,8 @@ EXPERIMENTAL {
 	rte_class_unregister;
 	rte_ctrl_thread_create;
 	rte_delay_us_sleep;
+	rte_dev_dma_map;
+	rte_dev_dma_unmap;
 	rte_dev_event_callback_process;
 	rte_dev_event_callback_register;
 	rte_dev_event_callback_unregister;

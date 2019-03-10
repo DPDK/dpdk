@@ -463,4 +463,51 @@ rte_dev_hotplug_handle_enable(void);
 int __rte_experimental
 rte_dev_hotplug_handle_disable(void);
 
+/**
+ * Device level DMA map function.
+ * After a successful call, the memory segment will be mapped to the
+ * given device.
+ *
+ * @note: Memory must be registered in advance using rte_extmem_* APIs.
+ *
+ * @param dev
+ *	Device pointer.
+ * @param addr
+ *	Virtual address to map.
+ * @param iova
+ *	IOVA address to map.
+ * @param len
+ *	Length of the memory segment being mapped.
+ *
+ * @return
+ *	0 if mapping was successful.
+ *	Negative value and rte_errno is set otherwise.
+ */
+int __rte_experimental
+rte_dev_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len);
+
+/**
+ * Device level DMA unmap function.
+ * After a successful call, the memory segment will no longer be
+ * accessible by the given device.
+ *
+ * @note: Memory must be registered in advance using rte_extmem_* APIs.
+ *
+ * @param dev
+ *	Device pointer.
+ * @param addr
+ *	Virtual address to unmap.
+ * @param iova
+ *	IOVA address to unmap.
+ * @param len
+ *	Length of the memory segment being mapped.
+ *
+ * @return
+ *	0 if un-mapping was successful.
+ *	Negative value and rte_errno is set otherwise.
+ */
+int __rte_experimental
+rte_dev_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova,
+		  size_t len);
+
 #endif /* _RTE_DEV_H_ */

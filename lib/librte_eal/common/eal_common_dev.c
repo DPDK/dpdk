@@ -756,3 +756,37 @@ out:
 	free(cls_str);
 	return it->device;
 }
+
+int
+rte_dev_dma_map(struct rte_device *dev, void *addr, uint64_t iova,
+		size_t len)
+{
+	if (dev->bus->dma_map == NULL || len == 0) {
+		rte_errno = ENOTSUP;
+		return -1;
+	}
+	/* Memory must be registered through rte_extmem_* APIs */
+	if (rte_mem_virt2memseg_list(addr) == NULL) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+
+	return dev->bus->dma_map(dev, addr, iova, len);
+}
+
+int
+rte_dev_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova,
+		  size_t len)
+{
+	if (dev->bus->dma_unmap == NULL || len == 0) {
+		rte_errno = ENOTSUP;
+		return -1;
+	}
+	/* Memory must be registered through rte_extmem_* APIs */
+	if (rte_mem_virt2memseg_list(addr) == NULL) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+
+	return dev->bus->dma_unmap(dev, addr, iova, len);
+}
