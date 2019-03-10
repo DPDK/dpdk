@@ -693,7 +693,8 @@ pkt_inline:
 						   RTE_CACHE_LINE_SIZE);
 			copy_b = (addr_end > addr) ?
 				 RTE_MIN((addr_end - addr), length) : 0;
-			if (copy_b && ((end - (uintptr_t)raw) > copy_b)) {
+			if (copy_b && ((end - (uintptr_t)raw) >
+				       (copy_b + sizeof(inl)))) {
 				/*
 				 * One Dseg remains in the current WQE.  To
 				 * keep the computation positive, it is
