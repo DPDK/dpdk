@@ -147,6 +147,10 @@ API Changes
   ``rte_service_attr_get()`` has been changed
   from ``uint32_t *`` to ``uint64_t *``.
 
+* vfio: Functions ``rte_vfio_container_dma_map`` and
+  ``rte_vfio_container_dma_unmap`` have been extended with an option to
+  request mapping or un-mapping to the default vfio container fd.
+
 
 ABI Changes
 -----------
