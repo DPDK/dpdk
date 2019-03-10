@@ -1109,6 +1109,58 @@ mlx5_mr_flush_local_cache(struct mlx5_mr_ctrl *mr_ctrl)
 }
 
 /**
+ * Creates a memory region for external memory, that is memory which is not
+ * part of the DPDK memory segments.
+ *
+ * @param dev
+ *   Pointer to the ethernet device.
+ * @param addr
+ *   Starting virtual address of memory.
+ * @param len
+ *   Length of memory segment being mapped.
+ * @param socked_id
+ *   Socket to allocate heap memory for the control structures.
+ *
+ * @return
+ *   Pointer to MR structure on success, NULL otherwise.
+ */
+static struct mlx5_mr *
+mlx5_create_mr_ext(struct rte_eth_dev *dev, uintptr_t addr, size_t len,
+		   int socket_id)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_mr *mr = NULL;
+
+	mr = rte_zmalloc_socket(NULL,
+				RTE_ALIGN_CEIL(sizeof(*mr),
+					       RTE_CACHE_LINE_SIZE),
+				RTE_CACHE_LINE_SIZE, socket_id);
+	if (mr == NULL)
+		return NULL;
+	mr->ibv_mr = mlx5_glue->reg_mr(priv->pd, (void *)addr, len,
+				       IBV_ACCESS_LOCAL_WRITE);
+	if (mr->ibv_mr == NULL) {
+		DRV_LOG(WARNING,
+			"port %u fail to create a verbs MR for address (%p)",
+			dev->data->port_id, (void *)addr);
+		rte_free(mr);
+		return NULL;
+	}
+	mr->msl = NULL; /* Mark it is external memory. */
+	mr->ms_bmp = NULL;
+	mr->ms_n = 1;
+	mr->ms_bmp_n = 1;
+	DRV_LOG(DEBUG,
+		"port %u MR CREATED (%p) for external memory %p:\n"
+		"  [0x%" PRIxPTR ", 0x%" PRIxPTR "),"
+		" lkey=0x%x base_idx=%u ms_n=%u, ms_bmp_n=%u",
+		dev->data->port_id, (void *)mr, (void *)addr,
+		addr, addr + len, rte_cpu_to_be_32(mr->ibv_mr->lkey),
+		mr->ms_base_idx, mr->ms_n, mr->ms_bmp_n);
+	return mr;
+}
+
+/**
  * Called during rte_mempool_mem_iter() by mlx5_mr_update_ext_mp().
  *
  * Externally allocated chunk is registered and a MR is created for the chunk.
@@ -1142,43 +1194,19 @@ mlx5_mr_update_ext_mp_cb(struct rte_mempool *mp, void *opaque,
 	rte_rwlock_read_unlock(&priv->mr.rwlock);
 	if (lkey != UINT32_MAX)
 		return;
-	mr = rte_zmalloc_socket(NULL,
-				RTE_ALIGN_CEIL(sizeof(*mr),
-					       RTE_CACHE_LINE_SIZE),
-				RTE_CACHE_LINE_SIZE, mp->socket_id);
-	if (mr == NULL) {
+	DRV_LOG(DEBUG, "port %u register MR for chunk #%d of mempool (%s)",
+		dev->data->port_id, mem_idx, mp->name);
+	mr = mlx5_create_mr_ext(dev, addr, len, mp->socket_id);
+	if (!mr) {
 		DRV_LOG(WARNING,
-			"port %u unable to allocate memory for a new MR of"
+			"port %u unable to allocate a new MR of"
 			" mempool (%s).",
 			dev->data->port_id, mp->name);
 		data->ret = -1;
 		return;
 	}
-	DRV_LOG(DEBUG, "port %u register MR for chunk #%d of mempool (%s)",
-		dev->data->port_id, mem_idx, mp->name);
-	mr->ibv_mr = mlx5_glue->reg_mr(priv->pd, (void *)addr, len,
-				       IBV_ACCESS_LOCAL_WRITE);
-	if (mr->ibv_mr == NULL) {
-		DRV_LOG(WARNING,
-			"port %u fail to create a verbs MR for address (%p)",
-			dev->data->port_id, (void *)addr);
-		rte_free(mr);
-		data->ret = -1;
-		return;
-	}
-	mr->msl = NULL; /* Mark it is external memory. */
-	mr->ms_bmp = NULL;
-	mr->ms_n = 1;
-	mr->ms_bmp_n = 1;
 	rte_rwlock_write_lock(&priv->mr.rwlock);
 	LIST_INSERT_HEAD(&priv->mr.mr_list, mr, mr);
-	DRV_LOG(DEBUG,
-		"port %u MR CREATED (%p) for external memory %p:\n"
-		"  [0x%" PRIxPTR ", 0x%" PRIxPTR "),"
-		" lkey=0x%x base_idx=%u ms_n=%u, ms_bmp_n=%u",
-		dev->data->port_id, (void *)mr, (void *)addr,
-		addr, addr + len, rte_cpu_to_be_32(mr->ibv_mr->lkey),
-		mr->ms_base_idx, mr->ms_n, mr->ms_bmp_n);
 	/* Insert to the global cache table. */
 	mr_insert_dev_cache(dev, mr);
 	rte_rwlock_write_unlock(&priv->mr.rwlock);
