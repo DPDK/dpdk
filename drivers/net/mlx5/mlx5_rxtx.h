@@ -28,6 +28,7 @@
 #include <rte_atomic.h>
 #include <rte_spinlock.h>
 #include <rte_io.h>
+#include <rte_bus_pci.h>
 
 #include "mlx5_utils.h"
 #include "mlx5.h"
@@ -367,6 +368,10 @@ uint32_t mlx5_rx_addr2mr_bh(struct mlx5_rxq_data *rxq, uintptr_t addr);
 uint32_t mlx5_tx_mb2mr_bh(struct mlx5_txq_data *txq, struct rte_mbuf *mb);
 uint32_t mlx5_tx_update_ext_mp(struct mlx5_txq_data *txq, uintptr_t addr,
 			       struct rte_mempool *mp);
+int mlx5_dma_map(struct rte_pci_device *pdev, void *addr, uint64_t iova,
+		 size_t len);
+int mlx5_dma_unmap(struct rte_pci_device *pdev, void *addr, uint64_t iova,
+		   size_t len);
 
 /**
  * Provide safe 64bit store operation to mlx5 UAR region for both 32bit and

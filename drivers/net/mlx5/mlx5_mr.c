@@ -14,6 +14,7 @@
 #include <rte_mempool.h>
 #include <rte_malloc.h>
 #include <rte_rwlock.h>
+#include <rte_bus_pci.h>
 
 #include "mlx5.h"
 #include "mlx5_mr.h"
@@ -1212,6 +1213,144 @@ mlx5_mr_update_ext_mp_cb(struct rte_mempool *mp, void *opaque,
 	rte_rwlock_write_unlock(&priv->mr.rwlock);
 	/* Insert to the local cache table */
 	mlx5_mr_addr2mr_bh(dev, mr_ctrl, addr);
+}
+
+/**
+ * Finds the first ethdev that match the pci device.
+ * The existence of multiple ethdev per pci device is only with representors.
+ * On such case, it is enough to get only one of the ports as they all share
+ * the same ibv context.
+ *
+ * @param pdev
+ *   Pointer to the PCI device.
+ *
+ * @return
+ *   Pointer to the ethdev if found, NULL otherwise.
+ */
+static struct rte_eth_dev *
+pci_dev_to_eth_dev(struct rte_pci_device *pdev)
+{
+	struct rte_dev_iterator it;
+	struct rte_device *dev;
+
+	/**
+	 *  We really need to iterate all devices regardless of
+	 *  their owner.
+	 */
+	RTE_DEV_FOREACH(dev, "class=eth", &it)
+		if (dev == &pdev->device)
+			return it.class_device;
+	return NULL;
+}
+
+/**
+ * DPDK callback to DMA map external memory to a PCI device.
+ *
+ * @param pdev
+ *   Pointer to the PCI device.
+ * @param addr
+ *   Starting virtual address of memory to be mapped.
+ * @param iova
+ *   Starting IOVA address of memory to be mapped.
+ * @param len
+ *   Length of memory segment being mapped.
+ *
+ * @return
+ *   0 on success, negative value on error.
+ */
+int
+mlx5_dma_map(struct rte_pci_device *pdev, void *addr,
+	     uint64_t iova __rte_unused, size_t len)
+{
+	struct rte_eth_dev *dev;
+	struct mlx5_mr *mr;
+	struct mlx5_priv *priv;
+
+	dev = pci_dev_to_eth_dev(pdev);
+	if (!dev) {
+		DRV_LOG(WARNING, "unable to find matching ethdev "
+				 "to PCI device %p", (void *)pdev);
+		rte_errno = ENODEV;
+		return -1;
+	}
+	priv = dev->data->dev_private;
+	mr = mlx5_create_mr_ext(dev, (uintptr_t)addr, len, SOCKET_ID_ANY);
+	if (!mr) {
+		DRV_LOG(WARNING,
+			"port %u unable to dma map", dev->data->port_id);
+		rte_errno = EINVAL;
+		return -1;
+	}
+	rte_rwlock_write_lock(&priv->mr.rwlock);
+	LIST_INSERT_HEAD(&priv->mr.mr_list, mr, mr);
+	/* Insert to the global cache table. */
+	mr_insert_dev_cache(dev, mr);
+	rte_rwlock_write_unlock(&priv->mr.rwlock);
+	return 0;
+}
+
+/**
+ * DPDK callback to DMA unmap external memory to a PCI device.
+ *
+ * @param pdev
+ *   Pointer to the PCI device.
+ * @param addr
+ *   Starting virtual address of memory to be unmapped.
+ * @param iova
+ *   Starting IOVA address of memory to be unmapped.
+ * @param len
+ *   Length of memory segment being unmapped.
+ *
+ * @return
+ *   0 on success, negative value on error.
+ */
+int
+mlx5_dma_unmap(struct rte_pci_device *pdev, void *addr,
+	       uint64_t iova __rte_unused, size_t len __rte_unused)
+{
+	struct rte_eth_dev *dev;
+	struct mlx5_priv *priv;
+	struct mlx5_mr *mr;
+	struct mlx5_mr_cache entry;
+
+	dev = pci_dev_to_eth_dev(pdev);
+	if (!dev) {
+		DRV_LOG(WARNING, "unable to find matching ethdev "
+				 "to PCI device %p", (void *)pdev);
+		rte_errno = ENODEV;
+		return -1;
+	}
+	priv = dev->data->dev_private;
+	rte_rwlock_read_lock(&priv->mr.rwlock);
+	mr = mr_lookup_dev_list(dev, &entry, (uintptr_t)addr);
+	if (!mr) {
+		rte_rwlock_read_unlock(&priv->mr.rwlock);
+		DRV_LOG(WARNING, "address 0x%" PRIxPTR " wasn't registered "
+				 "to PCI device %p", (uintptr_t)addr,
+				 (void *)pdev);
+		rte_errno = EINVAL;
+		return -1;
+	}
+	LIST_REMOVE(mr, mr);
+	LIST_INSERT_HEAD(&priv->mr.mr_free_list, mr, mr);
+	DEBUG("port %u remove MR(%p) from list", dev->data->port_id,
+	      (void *)mr);
+	mr_rebuild_dev_cache(dev);
+	/*
+	 * Flush local caches by propagating invalidation across cores.
+	 * rte_smp_wmb() is enough to synchronize this event. If one of
+	 * freed memsegs is seen by other core, that means the memseg
+	 * has been allocated by allocator, which will come after this
+	 * free call. Therefore, this store instruction (incrementing
+	 * generation below) will be guaranteed to be seen by other core
+	 * before the core sees the newly allocated memory.
+	 */
+	++priv->mr.dev_gen;
+	DEBUG("broadcasting local cache flush, gen=%d",
+			priv->mr.dev_gen);
+	rte_smp_wmb();
+	rte_rwlock_read_unlock(&priv->mr.rwlock);
+	return 0;
 }
 
 /**
