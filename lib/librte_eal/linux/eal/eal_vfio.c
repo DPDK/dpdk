@@ -1264,9 +1264,21 @@ vfio_type1_dma_mem_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 
 		ret = ioctl(vfio_container_fd, VFIO_IOMMU_MAP_DMA, &dma_map);
 		if (ret) {
-			RTE_LOG(ERR, EAL, "  cannot set up DMA remapping, error %i (%s)\n",
-				errno, strerror(errno));
+			/**
+			 * In case the mapping was already done EEXIST will be
+			 * returned from kernel.
+			 */
+			if (errno == EEXIST) {
+				RTE_LOG(DEBUG, EAL,
+					" Memory segment is allready mapped,"
+					" skipping");
+			} else {
+				RTE_LOG(ERR, EAL,
+					"  cannot set up DMA remapping,"
+					" error %i (%s)\n",
+					errno, strerror(errno));
 				return -1;
+			}
 		}
 	} else {
 		memset(&dma_unmap, 0, sizeof(dma_unmap));
@@ -1325,9 +1337,21 @@ vfio_spapr_dma_do_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 
 		ret = ioctl(vfio_container_fd, VFIO_IOMMU_MAP_DMA, &dma_map);
 		if (ret) {
-			RTE_LOG(ERR, EAL, "  cannot set up DMA remapping, error %i (%s)\n",
-				errno, strerror(errno));
+			/**
+			 * In case the mapping was already done EBUSY will be
+			 * returned from kernel.
+			 */
+			if (errno == EBUSY) {
+				RTE_LOG(DEBUG, EAL,
+					" Memory segment is allready mapped,"
+					" skipping");
+			} else {
+				RTE_LOG(ERR, EAL,
+					"  cannot set up DMA remapping,"
+					" error %i (%s)\n", errno,
+					strerror(errno));
 				return -1;
+			}
 		}
 
 	} else {
