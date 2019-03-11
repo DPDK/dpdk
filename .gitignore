@@ -1,3 +1,6 @@
+# ignore hidden files
+.*
+
 # ignore generated documentation tables
 doc/guides/nics/overview_table.txt
 doc/guides/cryptodevs/overview_feature_table.txt
