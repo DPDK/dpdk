@@ -23,7 +23,7 @@ if arch_subdir == 'x86'
 		avx2_tmplib = static_library('avx2_tmp',
 				'acl_run_avx2.c',
 				dependencies: static_rte_eal,
-				c_args: '-mavx2')
+				c_args: cflags + ['-mavx2'])
 		objs += avx2_tmplib.extract_objects('acl_run_avx2.c')
 		cflags += '-DCC_AVX2_SUPPORT'
 	endif
