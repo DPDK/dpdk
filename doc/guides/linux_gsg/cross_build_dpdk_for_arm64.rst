@@ -14,25 +14,25 @@ This chapter describes how to cross compile DPDK for ARM64 from x86 build hosts.
 Obtain the cross tool chain
 ---------------------------
 The latest cross compile tool chain can be downloaded from:
-https://releases.linaro.org/components/toolchain/binaries/latest/aarch64-linux-gnu/.
+https://developer.arm.com/open-source/gnu-toolchain/gnu-a/downloads.
 
-Following is the step to get the version 7.2.1, latest one at the time of this writing.
+Following is the step to get the version 8.2, latest one at the time of this writing.
 
 .. code-block:: console
 
-   wget https://releases.linaro.org/components/toolchain/binaries/latest/aarch64-linux-gnu/gcc-linaro-7.2.1-2017.11-x86_64_aarch64-linux-gnu.tar.xz
+   wget https://developer.arm.com/-/media/Files/downloads/gnu-a/8.2-2019.01/gcc-arm-8.2-2019.01-x86_64-aarch64-linux-gnu.tar.xz
 
 Unzip and add into the PATH
 ---------------------------
 
 .. code-block:: console
 
-   tar -xvf gcc-linaro-7.2.1-2017.11-x86_64_aarch64-linux-gnu.tar.xz
-   export PATH=$PATH:<cross_install_dir>/gcc-linaro-7.2.1-2017.11-x86_64_aarch64-linux-gnu/bin
+   tar -xvf gcc-arm-8.2-2019.01-x86_64-aarch64-linux-gnu.tar.xz
+   export PATH=$PATH:<cross_install_dir>/gcc-arm-8.2-2019.01-x86_64-aarch64-linux-gnu/bin
 
 .. note::
 
-   For the host requirements and other info, refer to the release note section: https://releases.linaro.org/components/toolchain/binaries/latest/
+   For the host requirements and other info, refer to the release note section: https://releases.linaro.org/components/toolchain/binaries/
 
 Getting the prerequisite library
 --------------------------------
@@ -69,8 +69,8 @@ Copy the NUMA header files and lib to the cross compiler's directories:
 
 .. code-block:: console
 
-   cp <numa_install_dir>/include/numa*.h <cross_install_dir>/gcc-linaro-7.2.1-2017.11-x86_64_aarch64-linux-gnu/bin/../aarch64-linux-gnu/libc/usr/include/
-   cp <numa_install_dir>/lib/libnuma.a <cross_install_dir>/gcc-linaro-7.2.1-2017.11-x86_64_aarch64-linux-gnu/lib/gcc/aarch64-linux-gnu/7.2.1/
+   cp <numa_install_dir>/include/numa*.h <cross_install_dir>/gcc-arm-8.2-2019.01-x86_64-aarch64-linux-gnu/bin/../aarch64-linux-gnu/libc/usr/include/
+   cp <numa_install_dir>/lib/libnuma.a <cross_install_dir>/gcc-arm-8.2-2019.01-x86_64-aarch64-linux-gnu/lib/gcc/aarch64-linux-gnu/8.2/
 
 .. _configure_and_cross_compile_dpdk_build:
 
