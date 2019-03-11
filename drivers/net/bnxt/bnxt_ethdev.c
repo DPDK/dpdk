@@ -30,7 +30,7 @@
 
 #define DRV_MODULE_NAME		"bnxt"
 static const char bnxt_version[] =
-	"Broadcom NetXtreme driver " DRV_MODULE_NAME "\n";
+	"Broadcom NetXtreme driver " DRV_MODULE_NAME;
 int bnxt_logtype_driver;
 
 #define PCI_VENDOR_ID_BROADCOM 0x14E4
