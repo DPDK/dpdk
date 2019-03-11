@@ -586,7 +586,7 @@ rte_cryptodev_devices_get(const char *driver_name, uint8_t *devices,
 
 			cmp = strncmp(devs[i].device->driver->name,
 					driver_name,
-					strlen(driver_name));
+					strlen(driver_name) + 1);
 
 			if (cmp == 0)
 				devices[count++] = devs[i].data->dev_id;
@@ -1691,7 +1691,7 @@ rte_cryptodev_driver_id_get(const char *name)
 
 	TAILQ_FOREACH(driver, &cryptodev_driver_list, next) {
 		driver_name = driver->driver->name;
-		if (strncmp(driver_name, name, strlen(driver_name)) == 0)
+		if (strncmp(driver_name, name, strlen(driver_name) + 1) == 0)
 			return driver->id;
 	}
 	return -1;
