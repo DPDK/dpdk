@@ -432,7 +432,7 @@ perf_event_timer_adapter_setup(struct test_perf *t)
 			.timer_adapter_id = i,
 			.timer_tick_ns = t->opt->timer_tick_nsec,
 			.max_tmo_ns = t->opt->max_tmo_nsec,
-			.nb_timers = 2 * 1024 * 1024,
+			.nb_timers = t->opt->pool_sz,
 			.flags = flags,
 		};
 
