@@ -22,3 +22,7 @@ TAGS
 
 # ignore python bytecode files
 *.pyc
+
+# ignore default build directory, and directories from test-meson-builds.sh
+build
+build-*
