@@ -591,7 +591,7 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 		bp->pf.total_vnics = rte_le_to_cpu_16(resp->max_vnics);
 		if (flags & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_PTP_SUPPORTED) {
 			bp->flags |= BNXT_FLAG_PTP_SUPPORTED;
-			PMD_DRV_LOG(INFO, "PTP SUPPORTED\n");
+			PMD_DRV_LOG(DEBUG, "PTP SUPPORTED\n");
 			HWRM_UNLOCK();
 			bnxt_hwrm_ptp_qcfg(bp);
 		}
