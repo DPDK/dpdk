@@ -10830,6 +10830,7 @@ i40e_start_timecounters(struct rte_eth_dev *dev)
 
 	switch (link.link_speed) {
 	case ETH_SPEED_NUM_40G:
+	case ETH_SPEED_NUM_25G:
 		tsync_inc_l = I40E_PTP_40GB_INCVAL & 0xFFFFFFFF;
 		tsync_inc_h = I40E_PTP_40GB_INCVAL >> 32;
 		break;
