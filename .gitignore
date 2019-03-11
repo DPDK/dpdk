@@ -16,3 +16,6 @@ GPATH
 GRTAGS
 tags
 TAGS
+
+# ignore python bytecode files
+*.pyc
