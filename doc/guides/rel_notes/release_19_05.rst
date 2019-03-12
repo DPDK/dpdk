@@ -91,6 +91,11 @@ New Features
 
   * Added promiscuous mode support.
 
+* **Updated the testpmd application.**
+
+  Improved testpmd application performance on ARM platform. For ``macswap``
+  forwarding mode, NEON intrinsics were used to do swap to save CPU cycles.
+
 
 Removed Items
 -------------
