@@ -812,12 +812,12 @@ atl_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 		ol_flags = m->ol_flags;
 
 		if (m->nb_segs > AQ_HW_MAX_SEGS_SIZE) {
-			rte_errno = -EINVAL;
+			rte_errno = EINVAL;
 			return i;
 		}
 
 		if (ol_flags & ATL_TX_OFFLOAD_NOTSUP_MASK) {
-			rte_errno = -ENOTSUP;
+			rte_errno = ENOTSUP;
 			return i;
 		}
 
