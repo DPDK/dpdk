@@ -456,6 +456,13 @@ pipeline_queue_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 		}
 	}
 
+	ret = rte_event_dev_start(opt->dev_id);
+	if (ret) {
+		evt_err("failed to start eventdev %d", opt->dev_id);
+		return ret;
+	}
+
+
 	RTE_ETH_FOREACH_DEV(prod) {
 		ret = rte_eth_dev_start(prod);
 		if (ret) {
@@ -464,12 +471,6 @@ pipeline_queue_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 			return ret;
 		}
 
-	}
-
-	ret = rte_event_dev_start(opt->dev_id);
-	if (ret) {
-		evt_err("failed to start eventdev %d", opt->dev_id);
-		return ret;
 	}
 
 	RTE_ETH_FOREACH_DEV(prod) {

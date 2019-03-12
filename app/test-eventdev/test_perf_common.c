@@ -393,21 +393,6 @@ perf_event_rx_adapter_setup(struct evt_options *opt, uint8_t stride,
 				return ret;
 			}
 		}
-
-		ret = rte_eth_dev_start(prod);
-		if (ret) {
-			evt_err("Ethernet dev [%d] failed to start."
-					" Using synthetic producer", prod);
-			return ret;
-		}
-
-		ret = rte_event_eth_rx_adapter_start(prod);
-		if (ret) {
-			evt_err("Rx adapter[%d] start failed", prod);
-			return ret;
-		}
-		printf("%s: Port[%d] using Rx adapter[%d] started\n", __func__,
-				prod, prod);
 	}
 
 	return ret;
@@ -460,12 +445,6 @@ perf_event_timer_adapter_setup(struct test_perf *t)
 				return ret;
 			}
 			rte_service_runstate_set(service_id, 1);
-		}
-
-		ret = rte_event_timer_adapter_start(wl);
-		if (ret) {
-			evt_err("failed to Start event timer adapter %d", i);
-			return ret;
 		}
 		t->timer_adptr[i] = wl;
 	}
