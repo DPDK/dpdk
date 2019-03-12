@@ -465,8 +465,6 @@ atl_dev_start(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	uint32_t intr_vector = 0;
-	uint32_t *link_speeds;
-	uint32_t speed = 0;
 	int status;
 	int err;
 
@@ -543,6 +541,8 @@ atl_dev_start(struct rte_eth_dev *dev)
 		goto error;
 	}
 
+	err = atl_dev_set_link_up(dev);
+
 	err = hw->aq_fw_ops->update_link_status(hw);
 
 	if (err)
@@ -550,26 +550,6 @@ atl_dev_start(struct rte_eth_dev *dev)
 
 	dev->data->dev_link.link_status = hw->aq_link_status.mbps != 0;
 
-	link_speeds = &dev->data->dev_conf.link_speeds;
-
-	speed = 0x0;
-
-	if (*link_speeds == ETH_LINK_SPEED_AUTONEG) {
-		speed = hw->aq_nic_cfg->link_speed_msk;
-	} else {
-		if (*link_speeds & ETH_LINK_SPEED_10G)
-			speed |= AQ_NIC_RATE_10G;
-		if (*link_speeds & ETH_LINK_SPEED_5G)
-			speed |= AQ_NIC_RATE_5G;
-		if (*link_speeds & ETH_LINK_SPEED_1G)
-			speed |= AQ_NIC_RATE_1G;
-		if (*link_speeds & ETH_LINK_SPEED_2_5G)
-			speed |=  AQ_NIC_RATE_2G5;
-		if (*link_speeds & ETH_LINK_SPEED_100M)
-			speed |= AQ_NIC_RATE_100M;
-	}
-
-	err = hw->aq_fw_ops->set_link_speed(hw, speed);
 	if (err)
 		goto error;
 
@@ -657,9 +637,25 @@ static int
 atl_dev_set_link_up(struct rte_eth_dev *dev)
 {
 	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t link_speeds = dev->data->dev_conf.link_speeds;
+	uint32_t speed_mask = 0;
 
-	return hw->aq_fw_ops->set_link_speed(hw,
-			hw->aq_nic_cfg->link_speed_msk);
+	if (link_speeds == ETH_LINK_SPEED_AUTONEG) {
+		speed_mask = hw->aq_nic_cfg->link_speed_msk;
+	} else {
+		if (link_speeds & ETH_LINK_SPEED_10G)
+			speed_mask |= AQ_NIC_RATE_10G;
+		if (link_speeds & ETH_LINK_SPEED_5G)
+			speed_mask |= AQ_NIC_RATE_5G;
+		if (link_speeds & ETH_LINK_SPEED_1G)
+			speed_mask |= AQ_NIC_RATE_1G;
+		if (link_speeds & ETH_LINK_SPEED_2_5G)
+			speed_mask |=  AQ_NIC_RATE_2G5;
+		if (link_speeds & ETH_LINK_SPEED_100M)
+			speed_mask |= AQ_NIC_RATE_100M;
+	}
+
+	return hw->aq_fw_ops->set_link_speed(hw, speed_mask);
 }
 
 /*
