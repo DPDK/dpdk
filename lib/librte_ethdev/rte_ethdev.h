@@ -1551,14 +1551,14 @@ const char *rte_eth_dev_tx_offload_name(uint64_t offload);
  *        Applications should set the ignore_bitfield_offloads bit on *rxmode*
  *        structure and use offloads field to set per-port offloads instead.
  *     -  Any offloading set in eth_conf->[rt]xmode.offloads must be within
- *        the [rt]x_offload_capa returned from rte_eth_dev_infos_get().
+ *        the [rt]x_offload_capa returned from rte_eth_dev_info_get().
  *        Any type of device supported offloading set in the input argument
  *        eth_conf->[rt]xmode.offloads to rte_eth_dev_configure() is enabled
  *        on all queues and it can't be disabled in rte_eth_[rt]x_queue_setup()
  *     -  the Receive Side Scaling (RSS) configuration when using multiple RX
  *        queues per port. Any RSS hash function set in eth_conf->rss_conf.rss_hf
  *        must be within the flow_type_rss_offloads provided by drivers via
- *        rte_eth_dev_infos_get() API.
+ *        rte_eth_dev_info_get() API.
  *
  *   Embedding all configuration information in a single data structure
  *   is the more flexible method that allows the addition of new features
