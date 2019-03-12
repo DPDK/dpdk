@@ -534,13 +534,33 @@ static int aq_fw2x_get_eeprom(struct aq_hw_s *self, int dev_addr,
 		return err;
 
 	if (result == 0) {
-		err = hw_atl_utils_fw_downld_dwords(self,
+		u32 num_dwords = len / sizeof(u32);
+		u32 bytes_remains = len % sizeof(u32);
+
+		if (num_dwords) {
+			err = hw_atl_utils_fw_downld_dwords(self,
 				self->rpc_addr + sizeof(u32) * 2,
 				data,
-				RTE_ALIGN(len, sizeof(u32)));
+				num_dwords);
 
-		if (err < 0)
-			return err;
+			if (err < 0)
+				return err;
+		}
+
+		if (bytes_remains) {
+			u32 val = 0;
+
+			err = hw_atl_utils_fw_downld_dwords(self,
+				self->rpc_addr + sizeof(u32) * 2 + num_dwords,
+				&val,
+				sizeof(u32));
+
+			if (err < 0)
+				return err;
+
+			rte_memcpy((u8 *)data + len - bytes_remains,
+				   &val, bytes_remains);
+		}
 	}
 
 	return 0;
