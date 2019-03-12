@@ -62,6 +62,7 @@ vhost_kernel_open_tap(char **p_ifname, int hdr_size, int req_mq,
 			 const char *mac, uint64_t features)
 {
 	unsigned int tap_features;
+	char *tap_name = NULL;
 	int sndbuf = INT_MAX;
 	struct ifreq ifr;
 	int tapfd;
@@ -112,6 +113,12 @@ vhost_kernel_open_tap(char **p_ifname, int hdr_size, int req_mq,
 		goto error;
 	}
 
+	tap_name = strdup(ifr.ifr_name);
+	if (!tap_name) {
+		PMD_DRV_LOG(ERR, "strdup ifname failed: %s", strerror(errno));
+		goto error;
+	}
+
 	fcntl(tapfd, F_SETFL, O_NONBLOCK);
 
 	if (ioctl(tapfd, TUNSETVNETHDRSZ, &hdr_size) < 0) {
@@ -134,11 +141,12 @@ vhost_kernel_open_tap(char **p_ifname, int hdr_size, int req_mq,
 		goto error;
 	}
 
-	if (!(*p_ifname))
-		*p_ifname = strdup(ifr.ifr_name);
+	free(*p_ifname);
+	*p_ifname = tap_name;
 
 	return tapfd;
 error:
+	free(tap_name);
 	close(tapfd);
 	return -1;
 }
