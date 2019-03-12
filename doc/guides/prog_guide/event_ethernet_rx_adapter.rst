@@ -135,6 +135,11 @@ This function calls the start callbacks of the eventdev PMDs for hardware based
 eventdev-ethdev connections and ``rte_service_run_state_set()`` to enable the
 service function if one exists.
 
+.. Note::
+
+         The eventdev to which the event_eth_rx_adapter is connected needs to
+         be started before calling rte_event_eth_rx_adapter_start().
+
 Getting Adapter Statistics
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -296,6 +296,11 @@ eventdev.
 
         int err = rte_event_dev_start(dev_id);
 
+.. Note::
+
+         EventDev needs to be started before starting the event producers such
+         as event_eth_rx_adapter, event_timer_adapter and event_crypto_adapter.
+
 Ingress of New Events
 ~~~~~~~~~~~~~~~~~~~~~
 

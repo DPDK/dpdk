@@ -472,6 +472,10 @@ rte_event_crypto_adapter_queue_pair_del(uint8_t id, uint8_t cdev_id,
  * @return
  *  - 0: Success, adapter started successfully.
  *  - <0: Error code on failure.
+ *
+ * @note
+ *  The eventdev to which the event_crypto_adapter is connected needs to
+ *  be started before calling rte_event_crypto_adapter_start().
  */
 int __rte_experimental
 rte_event_crypto_adapter_start(uint8_t id);

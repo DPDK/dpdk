@@ -286,6 +286,11 @@ service function if one exists.
 
         rte_event_crypto_adapter_start(id, mode);
 
+.. Note::
+
+         The eventdev to which the event_crypto_adapter is connected needs to
+         be started before calling rte_event_crypto_adapter_start().
+
 Get adapter statistics
 ~~~~~~~~~~~~~~~~~~~~~~
 

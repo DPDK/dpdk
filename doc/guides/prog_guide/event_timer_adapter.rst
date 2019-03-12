@@ -179,6 +179,11 @@ running the event timer adapter. This function calls the start entry points
 defined by eventdev PMDs for hardware implementations or puts a service
 component into the running state in the software implementation.
 
+.. Note::
+
+         The eventdev to which the event_timer_adapter is connected needs to
+         be started before calling rte_event_timer_adapter_start().
+
 Arming Event Timers
 ~~~~~~~~~~~~~~~~~~~
 

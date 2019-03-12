@@ -339,6 +339,10 @@ rte_event_timer_adapter_get_info(
  *   - -EINVAL if adapter identifier invalid
  *   - -ENOENT if software adapter but no service core mapped
  *   - -ENOTSUP if software adapter and more than one service core mapped
+ *
+ * @note
+ *  The eventdev to which the event_timer_adapter is connected needs to
+ *  be started before calling rte_event_timer_adapter_start().
  */
 int __rte_experimental
 rte_event_timer_adapter_start(

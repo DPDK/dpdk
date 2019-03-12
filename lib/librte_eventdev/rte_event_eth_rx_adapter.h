@@ -405,6 +405,10 @@ int rte_event_eth_rx_adapter_queue_del(uint8_t id, uint16_t eth_dev_id,
  * @return
  *  - 0: Success, Adapter started correctly.
  *  - <0: Error code on failure.
+ *
+ * @note
+ *  The eventdev to which the event_eth_rx_adapter is connected needs to
+ *  be started before calling rte_event_eth_rx_adapter_start().
  */
 int rte_event_eth_rx_adapter_start(uint8_t id);
 
