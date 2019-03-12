@@ -12076,7 +12076,7 @@ cmd_set_hash_global_config_parsed(void *parsed_result,
 							res->port_id);
 	else
 		printf("Global hash configurations have been set "
-			"succcessfully by port %d\n", res->port_id);
+			"successfully by port %d\n", res->port_id);
 }
 
 cmdline_parse_token_string_t cmd_set_hash_global_config_all =
