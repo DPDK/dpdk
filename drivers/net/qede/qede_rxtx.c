@@ -1420,13 +1420,6 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	uint32_t rss_hash;
 	int rx_alloc_count = 0;
 
-	hw_comp_cons = rte_le_to_cpu_16(*rxq->hw_cons_ptr);
-	sw_comp_cons = ecore_chain_get_cons_idx(&rxq->rx_comp_ring);
-
-	rte_rmb();
-
-	if (hw_comp_cons == sw_comp_cons)
-		return 0;
 
 	/* Allocate buffers that we used in previous loop */
 	if (rxq->rx_alloc_count) {
@@ -1446,6 +1439,14 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		qede_update_rx_prod(qdev, rxq);
 		rxq->rx_alloc_count = 0;
 	}
+
+	hw_comp_cons = rte_le_to_cpu_16(*rxq->hw_cons_ptr);
+	sw_comp_cons = ecore_chain_get_cons_idx(&rxq->rx_comp_ring);
+
+	rte_rmb();
+
+	if (hw_comp_cons == sw_comp_cons)
+		return 0;
 
 	while (sw_comp_cons != hw_comp_cons) {
 		ol_flags = 0;
