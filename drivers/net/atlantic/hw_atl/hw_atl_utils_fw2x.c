@@ -501,7 +501,7 @@ static int aq_fw2x_get_eeprom(struct aq_hw_s *self, u32 *data, u32 len)
 	/* Write SMBUS request to cfg memory */
 	err = hw_atl_utils_fw_upload_dwords(self, self->rpc_addr,
 				(u32 *)(void *)&request,
-				RTE_ALIGN(sizeof(request), sizeof(u32)));
+				sizeof(request) / sizeof(u32));
 
 	if (err < 0)
 		return err;
@@ -523,7 +523,7 @@ static int aq_fw2x_get_eeprom(struct aq_hw_s *self, u32 *data, u32 len)
 
 	err = hw_atl_utils_fw_downld_dwords(self, self->rpc_addr + sizeof(u32),
 			&result,
-			RTE_ALIGN(sizeof(result), sizeof(u32)));
+			sizeof(result) / sizeof(u32));
 
 	if (err < 0)
 		return err;
@@ -558,7 +558,7 @@ static int aq_fw2x_set_eeprom(struct aq_hw_s *self, u32 *data, u32 len)
 	/* Write SMBUS request to cfg memory */
 	err = hw_atl_utils_fw_upload_dwords(self, self->rpc_addr,
 				(u32 *)(void *)&request,
-				RTE_ALIGN(sizeof(request), sizeof(u32)));
+				sizeof(request) / sizeof(u32));
 
 	if (err < 0)
 		return err;
@@ -589,7 +589,7 @@ static int aq_fw2x_set_eeprom(struct aq_hw_s *self, u32 *data, u32 len)
 	/* Read status of write operation */
 	err = hw_atl_utils_fw_downld_dwords(self, self->rpc_addr + sizeof(u32),
 				&result,
-				RTE_ALIGN(sizeof(result), sizeof(u32)));
+				sizeof(result) / sizeof(u32));
 
 	if (err < 0)
 		return err;
