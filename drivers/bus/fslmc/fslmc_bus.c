@@ -229,49 +229,35 @@ static int
 rte_fslmc_parse(const char *name, void *addr)
 {
 	uint16_t dev_id;
-	char *t_ptr = NULL, *dname = NULL;
+	char *t_ptr;
 
 	/* 'name' is expected to contain name of device, for example, dpio.1,
 	 * dpni.2, etc.
 	 */
-
-	dname = strdup(name);
-	if (!dname)
-		return -EINVAL;
-	t_ptr = dname;
-
-	if (strncmp("dpni", t_ptr, 4) &&
-	    strncmp("dpseci", t_ptr, 6) &&
-	    strncmp("dpcon", t_ptr, 5) &&
-	    strncmp("dpbp", t_ptr, 4) &&
-	    strncmp("dpio", t_ptr, 4) &&
-	    strncmp("dpci", t_ptr, 4) &&
-	    strncmp("dpmcp", t_ptr, 5) &&
-	    strncmp("dpdmai", t_ptr, 6) &&
-	    strncmp("dpdmux", t_ptr, 6)) {
+	if (strncmp("dpni", name, 4) &&
+	    strncmp("dpseci", name, 6) &&
+	    strncmp("dpcon", name, 5) &&
+	    strncmp("dpbp", name, 4) &&
+	    strncmp("dpio", name, 4) &&
+	    strncmp("dpci", name, 4) &&
+	    strncmp("dpmcp", name, 5) &&
+	    strncmp("dpdmai", name, 6) &&
+	    strncmp("dpdmux", name, 6)) {
 		DPAA2_BUS_DEBUG("Unknown or unsupported device (%s)", name);
 		goto err_out;
 	}
 
 	t_ptr = strchr(name, '.');
-	if (!t_ptr) {
-		DPAA2_BUS_ERR("Incorrect device string observed (%s)", t_ptr);
+	if (!t_ptr || sscanf(t_ptr + 1, "%hu", &dev_id) != 1) {
+		DPAA2_BUS_ERR("Missing device id in device name (%s)", name);
 		goto err_out;
 	}
-
-	t_ptr = (char *)(t_ptr + 1);
-	if (sscanf(t_ptr, "%hu", &dev_id) <= 0) {
-		DPAA2_BUS_ERR("Incorrect device string observed (%s)", t_ptr);
-		goto err_out;
-	}
-	free(dname);
 
 	if (addr)
 		strcpy(addr, name);
 
 	return 0;
 err_out:
-	free(dname);
 	return -EINVAL;
 }
 
