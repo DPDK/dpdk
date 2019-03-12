@@ -7,6 +7,8 @@
 # * if a build-directory already exists we assume it was properly configured
 # Run ninja after configuration is done.
 
+set -o pipefail
+
 srcdir=$(dirname $(readlink -f $0))/..
 MESON=${MESON:-meson}
 use_shared="--default-library=shared"
