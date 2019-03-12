@@ -158,11 +158,14 @@ __rte_ring_move_cons_head(struct rte_ring *r, unsigned int is_sc,
 			return 0;
 
 		*new_head = *old_head + n;
-		if (is_sc)
-			r->cons.head = *new_head, success = 1;
-		else
+		if (is_sc) {
+			r->cons.head = *new_head;
+			rte_smp_rmb();
+			success = 1;
+		} else {
 			success = rte_atomic32_cmpset(&r->cons.head, *old_head,
 					*new_head);
+		}
 	} while (unlikely(success == 0));
 	return n;
 }
