@@ -8,6 +8,7 @@
 #ifndef HW_ATL_UTILS_H
 #define HW_ATL_UTILS_H
 
+#define BIT(x)  (1UL << (x))
 #define HW_ATL_FLUSH() { (void)aq_hw_read_reg(self, 0x10); }
 
 /* Hardware tx descriptor */
@@ -389,17 +390,7 @@ enum hal_atl_utils_fw_state_e {
 #define HAL_ATLANTIC_UTILS_FW_MSG_OFFLOAD_DEL  10U
 #define HAL_ATLANTIC_UTILS_FW_MSG_CABLE_DIAG   13U // 0xd
 
-#define SMBUS_READ_REQUEST BIT(13)
-#define SMBUS_WRITE_REQUEST BIT(14)
 #define SMBUS_DEVICE_ID 0x50
-
-enum hw_atl_fw2x_rate {
-	FW2X_RATE_100M    = 0x20,
-	FW2X_RATE_1G      = 0x100,
-	FW2X_RATE_2G5     = 0x200,
-	FW2X_RATE_5G      = 0x400,
-	FW2X_RATE_10G     = 0x800,
-};
 
 enum hw_atl_fw2x_caps_lo {
 	CAPS_LO_10BASET_HD = 0x00,
@@ -414,6 +405,10 @@ enum hw_atl_fw2x_caps_lo {
 	CAPS_LO_2P5GBASET_FD,
 	CAPS_LO_5GBASET_FD,
 	CAPS_LO_10GBASET_FD,
+	CAPS_LO_AUTONEG,
+	CAPS_LO_SMBUS_READ,
+	CAPS_LO_SMBUS_WRITE,
+	CAPS_LO_MACSEC
 };
 
 enum hw_atl_fw2x_caps_hi {
@@ -449,6 +444,14 @@ enum hw_atl_fw2x_caps_hi {
 	CAPS_HI_WOL_TIMER,
 	CAPS_HI_STATISTICS,
 	CAPS_HI_TRANSACTION_ID,
+};
+
+enum hw_atl_fw2x_rate {
+	FW2X_RATE_100M    = BIT(CAPS_LO_100BASETX_FD),
+	FW2X_RATE_1G      = BIT(CAPS_LO_1000BASET_FD),
+	FW2X_RATE_2G5     = BIT(CAPS_LO_2P5GBASET_FD),
+	FW2X_RATE_5G      = BIT(CAPS_LO_5GBASET_FD),
+	FW2X_RATE_10G     = BIT(CAPS_LO_10GBASET_FD),
 };
 
 struct aq_hw_s;

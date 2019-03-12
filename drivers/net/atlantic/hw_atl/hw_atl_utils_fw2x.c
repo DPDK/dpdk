@@ -129,7 +129,11 @@ static u32 fw2x_to_eee_mask(u32 speed)
 
 static int aq_fw2x_set_link_speed(struct aq_hw_s *self, u32 speed)
 {
-	u32 val = link_speed_mask_2fw2x_ratemask(speed);
+	u32 rate_mask = link_speed_mask_2fw2x_ratemask(speed);
+	u32 reg_val = aq_hw_read_reg(self, HW_ATL_FW2X_MPI_CONTROL_ADDR);
+	u32 val = rate_mask | ((BIT(CAPS_LO_SMBUS_READ) |
+				BIT(CAPS_LO_SMBUS_WRITE) |
+				BIT(CAPS_LO_MACSEC)) & reg_val);
 
 	aq_hw_write_reg(self, HW_ATL_FW2X_MPI_CONTROL_ADDR, val);
 
@@ -484,7 +488,8 @@ static int aq_fw2x_led_control(struct aq_hw_s *self, u32 mode)
 	return 0;
 }
 
-static int aq_fw2x_get_eeprom(struct aq_hw_s *self, u32 *data, u32 len)
+static int aq_fw2x_get_eeprom(struct aq_hw_s *self, int dev_addr,
+			      u32 *data, u32 len, u32 offset)
 {
 	int err = 0;
 	struct smbus_read_request request;
@@ -494,8 +499,8 @@ static int aq_fw2x_get_eeprom(struct aq_hw_s *self, u32 *data, u32 len)
 	if (self->fw_ver_actual < HW_ATL_FW_FEATURE_EEPROM)
 		return -EOPNOTSUPP;
 
-	request.device_id = SMBUS_DEVICE_ID;
-	request.address = 0;
+	request.device_id = dev_addr;
+	request.address = offset;
 	request.length = len;
 
 	/* Write SMBUS request to cfg memory */
@@ -506,16 +511,16 @@ static int aq_fw2x_get_eeprom(struct aq_hw_s *self, u32 *data, u32 len)
 	if (err < 0)
 		return err;
 
-	/* Toggle 0x368.SMBUS_READ_REQUEST bit */
+	/* Toggle 0x368.CAPS_LO_SMBUS_READ bit */
 	mpi_opts = aq_hw_read_reg(self, HW_ATL_FW2X_MPI_CONTROL_ADDR);
-	mpi_opts ^= SMBUS_READ_REQUEST;
+	mpi_opts ^= BIT(CAPS_LO_SMBUS_READ);
 
 	aq_hw_write_reg(self, HW_ATL_FW2X_MPI_CONTROL_ADDR, mpi_opts);
 
 	/* Wait until REQUEST_BIT matched in 0x370 */
 
 	AQ_HW_WAIT_FOR((aq_hw_read_reg(self, HW_ATL_FW2X_MPI_STATE_ADDR) &
-		SMBUS_READ_REQUEST) == (mpi_opts & SMBUS_READ_REQUEST),
+		BIT(CAPS_LO_SMBUS_READ)) == (mpi_opts & BIT(CAPS_LO_SMBUS_READ)),
 		10U, 10000U);
 
 	if (err < 0)
@@ -542,7 +547,8 @@ static int aq_fw2x_get_eeprom(struct aq_hw_s *self, u32 *data, u32 len)
 }
 
 
-static int aq_fw2x_set_eeprom(struct aq_hw_s *self, u32 *data, u32 len)
+static int aq_fw2x_set_eeprom(struct aq_hw_s *self, int dev_addr,
+			      u32 *data, u32 len)
 {
 	struct smbus_write_request request;
 	u32 mpi_opts, result = 0;
@@ -551,7 +557,7 @@ static int aq_fw2x_set_eeprom(struct aq_hw_s *self, u32 *data, u32 len)
 	if (self->fw_ver_actual < HW_ATL_FW_FEATURE_EEPROM)
 		return -EOPNOTSUPP;
 
-	request.device_id = SMBUS_DEVICE_ID;
+	request.device_id = dev_addr;
 	request.address = 0;
 	request.length = len;
 
@@ -572,15 +578,15 @@ static int aq_fw2x_set_eeprom(struct aq_hw_s *self, u32 *data, u32 len)
 	if (err < 0)
 		return err;
 
-	/* Toggle 0x368.SMBUS_WRITE_REQUEST bit */
+	/* Toggle 0x368.CAPS_LO_SMBUS_WRITE bit */
 	mpi_opts = aq_hw_read_reg(self, HW_ATL_FW2X_MPI_CONTROL_ADDR);
-	mpi_opts ^= SMBUS_WRITE_REQUEST;
+	mpi_opts ^= BIT(CAPS_LO_SMBUS_WRITE);
 
 	aq_hw_write_reg(self, HW_ATL_FW2X_MPI_CONTROL_ADDR, mpi_opts);
 
 	/* Wait until REQUEST_BIT matched in 0x370 */
 	AQ_HW_WAIT_FOR((aq_hw_read_reg(self, HW_ATL_FW2X_MPI_STATE_ADDR) &
-		SMBUS_WRITE_REQUEST) == (mpi_opts & SMBUS_WRITE_REQUEST),
+		BIT(CAPS_LO_SMBUS_WRITE)) == (mpi_opts & BIT(CAPS_LO_SMBUS_WRITE)),
 		10U, 10000U);
 
 	if (err < 0)

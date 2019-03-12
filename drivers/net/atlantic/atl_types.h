@@ -137,9 +137,12 @@ struct aq_fw_ops {
 
 	int (*led_control)(struct aq_hw_s *self, u32 mode);
 
-	int (*get_eeprom)(struct aq_hw_s *self, u32 *data, u32 len);
+	int (*get_eeprom)(struct aq_hw_s *self, int dev_addr,
+			  u32 *data, u32 len, u32 offset);
 
-	int (*set_eeprom)(struct aq_hw_s *self, u32 *data, u32 len);
+	int (*set_eeprom)(struct aq_hw_s *self, int dev_addr,
+			  u32 *data, u32 len);
+
 };
 
 struct atl_sw_stats {

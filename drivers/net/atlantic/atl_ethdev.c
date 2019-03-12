@@ -1102,24 +1102,31 @@ atl_dev_get_eeprom_length(struct rte_eth_dev *dev __rte_unused)
 	return SFP_EEPROM_SIZE;
 }
 
-static int
-atl_dev_get_eeprom(struct rte_eth_dev *dev, struct rte_dev_eeprom_info *eeprom)
+int atl_dev_get_eeprom(struct rte_eth_dev *dev,
+		       struct rte_dev_eeprom_info *eeprom)
 {
 	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t dev_addr = SMBUS_DEVICE_ID;
 
 	if (hw->aq_fw_ops->get_eeprom == NULL)
 		return -ENOTSUP;
 
-	if (eeprom->length != SFP_EEPROM_SIZE || eeprom->data == NULL)
+	if (eeprom->length + eeprom->offset > SFP_EEPROM_SIZE ||
+	    eeprom->data == NULL)
 		return -EINVAL;
 
-	return hw->aq_fw_ops->get_eeprom(hw, eeprom->data, eeprom->length);
+	if (eeprom->magic)
+		dev_addr = eeprom->magic;
+
+	return hw->aq_fw_ops->get_eeprom(hw, dev_addr, eeprom->data,
+					 eeprom->length, eeprom->offset);
 }
 
-static int
-atl_dev_set_eeprom(struct rte_eth_dev *dev, struct rte_dev_eeprom_info *eeprom)
+int atl_dev_set_eeprom(struct rte_eth_dev *dev,
+		       struct rte_dev_eeprom_info *eeprom)
 {
 	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t dev_addr = SMBUS_DEVICE_ID;
 
 	if (hw->aq_fw_ops->set_eeprom == NULL)
 		return -ENOTSUP;
@@ -1127,7 +1134,11 @@ atl_dev_set_eeprom(struct rte_eth_dev *dev, struct rte_dev_eeprom_info *eeprom)
 	if (eeprom->length != SFP_EEPROM_SIZE || eeprom->data == NULL)
 		return -EINVAL;
 
-	return hw->aq_fw_ops->set_eeprom(hw, eeprom->data, eeprom->length);
+	if (eeprom->magic)
+		dev_addr = eeprom->magic;
+
+	return hw->aq_fw_ops->set_eeprom(hw, dev_addr,
+					 eeprom->data, eeprom->length);
 }
 
 static int
