@@ -758,7 +758,7 @@ atl_dev_xstats_get_names(struct rte_eth_dev *dev __rte_unused,
 		snprintf(xstats_names[i].name, RTE_ETH_XSTATS_NAME_SIZE, "%s",
 			atl_xstats_tbl[i].name);
 
-	return size;
+	return i;
 }
 
 static int
@@ -778,7 +778,7 @@ atl_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *stats,
 					atl_xstats_tbl[i].offset);
 	}
 
-	return n;
+	return i;
 }
 
 static int
