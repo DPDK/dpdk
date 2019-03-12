@@ -462,8 +462,6 @@ int hw_atl_utils_fw_rpc_wait(struct aq_hw_s *self,
 				goto err_exit;
 		}
 	} while (sw.tid != fw.tid || 0xFFFFU == fw.len);
-	if (err < 0)
-		goto err_exit;
 
 	if (rpc) {
 		if (fw.len) {
@@ -875,8 +873,7 @@ static int aq_fw1x_set_wol(struct aq_hw_s *self, bool wol_enabled, u8 *mac)
 	}
 
 	err = hw_atl_utils_fw_rpc_call(self, rpc_size);
-	if (err < 0)
-		goto err_exit;
+
 err_exit:
 	return err;
 }
