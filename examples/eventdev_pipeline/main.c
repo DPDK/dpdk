@@ -316,11 +316,6 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 			return retval;
 	}
 
-	/* Start the Ethernet port. */
-	retval = rte_eth_dev_start(port);
-	if (retval < 0)
-		return retval;
-
 	/* Display the port MAC address. */
 	struct ether_addr addr;
 	rte_eth_macaddr_get(port, &addr);
@@ -441,6 +436,7 @@ main(int argc, char **argv)
 {
 	struct worker_data *worker_data;
 	uint16_t num_ports;
+	uint16_t portid;
 	int lcore_id;
 	int err;
 
@@ -507,6 +503,14 @@ main(int argc, char **argv)
 
 	init_ports(num_ports);
 	fdata->cap.adptr_setup(num_ports);
+
+	/* Start the Ethernet port. */
+	RTE_ETH_FOREACH_DEV(portid) {
+		err = rte_eth_dev_start(portid);
+		if (err < 0)
+			rte_exit(EXIT_FAILURE, "Error starting ethdev %d\n",
+					portid);
+	}
 
 	int worker_idx = 0;
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
