@@ -16,7 +16,9 @@
 
 #include <assert.h>
 #include <stdio.h>
+#if defined(RTE_BACKTRACE)
 #include <execinfo.h>
+#endif
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdint.h>
