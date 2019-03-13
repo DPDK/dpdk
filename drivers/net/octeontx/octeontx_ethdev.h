@@ -21,6 +21,7 @@
 #include "base/octeontx_pkovf.h"
 #include "base/octeontx_io.h"
 
+#define OCTEONTX_PMD				net_octeontx
 #define OCTEONTX_VDEV_DEFAULT_MAX_NR_PORT	12
 #define OCTEONTX_VDEV_NR_PORT_ARG		("nr_port")
 #define OCTEONTX_MAX_NAME_LEN			32
