@@ -129,14 +129,7 @@ ppc_64_sources()
 
 check_valid_target()
 {
-	cfgfound=false
-	allconfigs=$(make showconfigs)
-	for cfg in $allconfigs ; do
-		if [ "$cfg" = "$1" ] ; then
-			cfgfound=true
-		fi
-	done
-	if ! $cfgfound ; then
+	if [ ! -f "config/defconfig_$1" ] ; then
 		echo "Invalid config: $1"
 		print_usage
 		exit 0
