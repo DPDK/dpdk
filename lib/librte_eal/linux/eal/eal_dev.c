@@ -66,8 +66,8 @@ static void sigbus_handler(int signum, siginfo_t *info,
 {
 	int ret;
 
-	RTE_LOG(DEBUG, EAL, "Thread[%d] catch SIGBUS, fault address:%p\n",
-		(int)pthread_self(), info->si_addr);
+	RTE_LOG(DEBUG, EAL, "Thread catch SIGBUS, fault address:%p\n",
+		info->si_addr);
 
 	rte_spinlock_lock(&failure_handle_lock);
 	ret = rte_bus_sigbus_handler(info->si_addr);
