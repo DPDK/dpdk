@@ -808,7 +808,7 @@ vdev_netvsc_cmp_rte_device(const struct rte_device *dev1,
 static void
 vdev_netvsc_scan_callback(__rte_unused void *arg)
 {
-	struct rte_vdev_device *dev;
+	struct rte_device *dev;
 	struct rte_devargs *devargs;
 	struct rte_bus *vbus = rte_bus_find_by_name("vdev");
 
@@ -816,8 +816,9 @@ vdev_netvsc_scan_callback(__rte_unused void *arg)
 		if (!strncmp(devargs->name, VDEV_NETVSC_DRIVER_NAME,
 			     VDEV_NETVSC_DRIVER_NAME_LEN))
 			return;
-	dev = (struct rte_vdev_device *)vbus->find_device(NULL,
-		vdev_netvsc_cmp_rte_device, VDEV_NETVSC_DRIVER_NAME);
+
+	dev = vbus->find_device(NULL, vdev_netvsc_cmp_rte_device,
+				VDEV_NETVSC_DRIVER_NAME);
 	if (dev)
 		return;
 	if (rte_devargs_add(RTE_DEVTYPE_VIRTUAL, VDEV_NETVSC_DRIVER_NAME))
