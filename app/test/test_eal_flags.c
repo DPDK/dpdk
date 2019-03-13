@@ -17,6 +17,7 @@
 #include <sys/wait.h>
 #include <sys/file.h>
 #include <limits.h>
+#include <fcntl.h>
 
 #include <rte_per_lcore.h>
 #include <rte_debug.h>
