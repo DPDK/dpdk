@@ -91,6 +91,10 @@ New Features
 
   * Added promiscuous mode support.
 
+* **Updated the QuickAssist Technology PMD.**
+
+  Added support for AES-XTS with 128 and 256 bit AES keys.
+
 * **Updated the testpmd application.**
 
   Improved testpmd application performance on ARM platform. For ``macswap``
@@ -237,6 +241,12 @@ Known Issues
    This section is a comment. Do not overwrite or remove it.
    Also, make sure to start the actual text at the margin.
    =========================================================
+
+* **No software AES-XTS implementation.**
+
+  There are currently no cryptodev software PMDs available which implement
+  support for the AES-XTS algorithm, so this feature can only be used
+  if compatible hardware and an associated PMD is available.
 
 
 Tested Platforms

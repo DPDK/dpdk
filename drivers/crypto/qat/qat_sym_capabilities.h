@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2017-2018 Intel Corporation
+ * Copyright(c) 2017-2019 Intel Corporation
  */
 
 #ifndef _QAT_SYM_CAPABILITIES_H_
@@ -295,6 +295,26 @@
 					.min = 16,			\
 					.max = 32,			\
 					.increment = 8			\
+				},					\
+				.iv_size = {				\
+					.min = 16,			\
+					.max = 16,			\
+					.increment = 0			\
+				}					\
+			}, }						\
+		}, }							\
+	},								\
+	{	/* AES XTS */					\
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,			\
+		{.sym = {						\
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,	\
+			{.cipher = {					\
+				.algo = RTE_CRYPTO_CIPHER_AES_XTS,	\
+				.block_size = 16,			\
+				.key_size = {				\
+					.min = 32,			\
+					.max = 64,			\
+					.increment = 0			\
 				},					\
 				.iv_size = {				\
 					.min = 16,			\

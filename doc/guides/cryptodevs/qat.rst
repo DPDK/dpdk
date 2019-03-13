@@ -1,5 +1,5 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
-    Copyright(c) 2015-2016 Intel Corporation.
+    Copyright(c) 2015-2019 Intel Corporation.
 
 Intel(R) QuickAssist (QAT) Crypto Poll Mode Driver
 ==================================================
@@ -41,6 +41,7 @@ Cipher algorithms:
 * ``RTE_CRYPTO_CIPHER_AES128_CTR``
 * ``RTE_CRYPTO_CIPHER_AES192_CTR``
 * ``RTE_CRYPTO_CIPHER_AES256_CTR``
+* ``RTE_CRYPTO_CIPHER_AES_XTS``
 * ``RTE_CRYPTO_CIPHER_SNOW3G_UEA2``
 * ``RTE_CRYPTO_CIPHER_NULL``
 * ``RTE_CRYPTO_CIPHER_KASUMI_F8``

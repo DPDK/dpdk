@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
- * Copyright(c) 2015-2018 Intel Corporation
+ * Copyright(c) 2015-2019 Intel Corporation
  */
 
 #include <openssl/sha.h>	/* Needed to calculate pre-compute values */
@@ -333,10 +333,23 @@ qat_sym_session_configure_cipher(struct rte_cryptodev *dev,
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_ECB_MODE;
 		break;
+	case RTE_CRYPTO_CIPHER_AES_XTS:
+		if ((cipher_xform->key.length/2) == ICP_QAT_HW_AES_192_KEY_SZ) {
+			QAT_LOG(ERR, "AES-XTS-192 not supported");
+			ret = -EINVAL;
+			goto error_out;
+		}
+		if (qat_sym_validate_aes_key((cipher_xform->key.length/2),
+				&session->qat_cipher_alg) != 0) {
+			QAT_LOG(ERR, "Invalid AES-XTS cipher key size");
+			ret = -EINVAL;
+			goto error_out;
+		}
+		session->qat_mode = ICP_QAT_HW_CIPHER_XTS_MODE;
+		break;
 	case RTE_CRYPTO_CIPHER_3DES_ECB:
 	case RTE_CRYPTO_CIPHER_AES_ECB:
 	case RTE_CRYPTO_CIPHER_AES_F8:
-	case RTE_CRYPTO_CIPHER_AES_XTS:
 	case RTE_CRYPTO_CIPHER_ARC4:
 		QAT_LOG(ERR, "Crypto QAT PMD: Unsupported Cipher alg %u",
 				cipher_xform->algo);
