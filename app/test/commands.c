@@ -44,6 +44,7 @@
 #include <cmdline_parse_num.h>
 #include <cmdline_parse_string.h>
 #include <cmdline.h>
+#include <rte_string_fns.h>
 
 #include "test.h"
 
@@ -365,23 +366,22 @@ cmdline_parse_ctx_t main_ctx[] = {
 int commands_init(void)
 {
 	struct test_command *t;
-	char *commands, *ptr;
+	char *commands;
 	int commands_len = 0;
 
 	TAILQ_FOREACH(t, &commands_list, next) {
 		commands_len += strlen(t->command) + 1;
 	}
 
-	commands = malloc(commands_len + 1);
+	commands = (char *)calloc(commands_len, sizeof(char));
 	if (!commands)
 		return -1;
 
-	ptr = commands;
 	TAILQ_FOREACH(t, &commands_list, next) {
-		ptr += sprintf(ptr, "%s#", t->command);
+		strlcat(commands, t->command, commands_len);
+		if (TAILQ_NEXT(t, next) != NULL)
+			strlcat(commands, "#", commands_len);
 	}
-	ptr--;
-	ptr[0] = '\0';
 
 	cmd_autotest_autotest.string_data.str = commands;
 	return 0;
