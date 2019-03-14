@@ -3242,10 +3242,8 @@ skip_init:
 		memset(mz->addr, 0, mz->len);
 		mz_phys_addr = mz->iova;
 		if ((unsigned long)mz->addr == mz_phys_addr) {
-			PMD_DRV_LOG(WARNING,
-				"Memzone physical address same as virtual.\n");
-			PMD_DRV_LOG(WARNING,
-				"Using rte_mem_virt2iova()\n");
+			PMD_DRV_LOG(INFO,
+				"Memzone physical address same as virtual using rte_mem_virt2iova()\n");
 			mz_phys_addr = rte_mem_virt2iova(mz->addr);
 			if (mz_phys_addr == 0) {
 				PMD_DRV_LOG(ERR,
