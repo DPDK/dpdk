@@ -438,6 +438,18 @@ rte_eth_dev_allocate(const char *name)
 {
 	uint16_t port_id;
 	struct rte_eth_dev *eth_dev = NULL;
+	size_t name_len;
+
+	name_len = strnlen(name, RTE_ETH_NAME_MAX_LEN);
+	if (name_len == 0) {
+		RTE_ETHDEV_LOG(ERR, "Zero length Ethernet device name\n");
+		return NULL;
+	}
+
+	if (name_len >= RTE_ETH_NAME_MAX_LEN) {
+		RTE_ETHDEV_LOG(ERR, "Ethernet device name is too long\n");
+		return NULL;
+	}
 
 	rte_eth_dev_shared_data_prepare();
 
