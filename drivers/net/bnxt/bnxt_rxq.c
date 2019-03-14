@@ -100,7 +100,8 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 		}
 	}
 	nb_q_per_grp = bp->rx_cp_nr_rings / pools;
-	PMD_DRV_LOG(ERR, "pools = %u nb_q_per_grp = %u\n", pools, nb_q_per_grp);
+	PMD_DRV_LOG(DEBUG, "pools = %u nb_q_per_grp = %u\n",
+		    pools, nb_q_per_grp);
 	start_grp_id = 0;
 	end_grp_id = nb_q_per_grp;
 
