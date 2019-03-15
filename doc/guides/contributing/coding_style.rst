@@ -825,10 +825,10 @@ format.
 .. code-block:: python
 
 	sources = files('file1.c', ...)
-	headers = files('file1.c', ...)
+	headers = files('file1.h', ...)
 
 
-The will build based on a number of conventions and assumptions within the DPDK
+This will build based on a number of conventions and assumptions within the DPDK
 itself, for example, that the library name is the same as the directory name in
 which the files are stored.
 
