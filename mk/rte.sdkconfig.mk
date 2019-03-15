@@ -74,9 +74,16 @@ else
 # To do so the temp config is checked for duplicate keys with cut/sort/uniq
 # Then for each of those identified duplicates as long as there are more than
 # just one left the last match is removed.
+# Part of the config includes the version information taken from "VERSION"
+# in the repo. This needs to be split into the various parts using sed and awk.
+# To ensure correct version comparison, we append ".99" to the version number
+# so that the version of a release is higher than that of its rc's.
 $(RTE_OUTPUT)/.config: $(RTE_CONFIG_TEMPLATE) FORCE | $(RTE_OUTPUT)
 	$(Q)if [ "$(RTE_CONFIG_TEMPLATE)" != "" -a -f "$(RTE_CONFIG_TEMPLATE)" ]; then \
 		$(CPP) -undef -P -x assembler-with-cpp \
+		`cat $(RTE_SRCDIR)/VERSION | \
+		sed -e 's/-rc/.-rc./' -e 's/$$/..99/' | \
+		awk -F '.' '{print "-D__YEAR="int($$1), "-D__MONTH="int($$2), "-D__MINOR="int($$3), "-D__SUFFIX=\""$$4"\"", "-D__RELEASE="int($$5)}'` \
 		-ffreestanding \
 		-o $(RTE_OUTPUT)/.config_tmp $(RTE_CONFIG_TEMPLATE) ; \
 		config=$$(cat $(RTE_OUTPUT)/.config_tmp) ; \

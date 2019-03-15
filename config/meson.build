@@ -6,6 +6,22 @@
 pver = meson.project_version().split('.')
 major_version = '@0@.@1@'.format(pver.get(0), pver.get(1))
 
+# extract all version information into the build configuration
+dpdk_conf.set('RTE_VER_YEAR', pver.get(0).to_int())
+dpdk_conf.set('RTE_VER_MONTH', pver.get(1).to_int())
+if pver.get(2).contains('-rc')
+	rc_ver = pver.get(2).split('-rc')
+	dpdk_conf.set('RTE_VER_MINOR', rc_ver.get(0).to_int())
+	dpdk_conf.set_quoted('RTE_VER_SUFFIX', '-rc')
+	dpdk_conf.set('RTE_VER_RELEASE', rc_ver.get(1).to_int())
+else
+	dpdk_conf.set('RTE_VER_MINOR', pver.get(2).to_int())
+	dpdk_conf.set_quoted('RTE_VER_SUFFIX', '')
+# for actual, non-rc releases, set the release value to 99 to ensure releases
+# have higher version numbers than their respective release candidates
+	dpdk_conf.set('RTE_VER_RELEASE', 99)
+endif
+
 pmd_subdir_opt = get_option('drivers_install_subdir')
 if pmd_subdir_opt.contains('<VERSION>')
 	pmd_subdir_opt = major_version.join(pmd_subdir_opt.split('<VERSION>'))

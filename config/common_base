@@ -2,6 +2,20 @@
 # Copyright(c) 2010-2017 Intel Corporation
 
 #
+# String that appears before the version number
+#
+CONFIG_RTE_VER_PREFIX="DPDK"
+
+#
+# Version information completed when this file is processed for a build
+#
+CONFIG_RTE_VER_YEAR=__YEAR
+CONFIG_RTE_VER_MONTH=__MONTH
+CONFIG_RTE_VER_MINOR=__MINOR
+CONFIG_RTE_VER_SUFFIX=__SUFFIX
+CONFIG_RTE_VER_RELEASE=__RELEASE
+
+#
 # define executive environment
 # RTE_EXEC_ENV values are the directories in mk/exec-env/
 #

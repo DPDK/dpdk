@@ -26,6 +26,9 @@
 #define RTE_EXEC_ENV_BSDAPP 1
 #endif
 
+/* String that appears before the version number */
+#define RTE_VER_PREFIX "DPDK"
+
 /****** library defines ********/
 
 /* compat defines */
