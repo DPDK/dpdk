@@ -2,7 +2,9 @@
 # Copyright(c) 2017 Intel Corporation
 
 project('DPDK', 'C',
-	version: '19.05.0-rc0',
+	# Get version number from file.
+	# Use "more" rather than "cat" for windows compatibility.
+	version: run_command('more', files('VERSION')).stdout().strip(),
 	license: 'BSD',
 	default_options: ['buildtype=release', 'default_library=static'],
 	meson_version: '>= 0.47.1'
