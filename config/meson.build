@@ -1,6 +1,18 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
+# set the major version, which might be used by drivers and libraries
+# depending on the configuration options
+pver = meson.project_version().split('.')
+major_version = '@0@.@1@'.format(pver.get(0), pver.get(1))
+
+pmd_subdir_opt = get_option('drivers_install_subdir')
+if pmd_subdir_opt.contains('<VERSION>')
+	pmd_subdir_opt = major_version.join(pmd_subdir_opt.split('<VERSION>'))
+endif
+driver_install_path = join_paths(get_option('libdir'), pmd_subdir_opt)
+eal_pmd_path = join_paths(get_option('prefix'), driver_install_path)
+
 # set the machine type and cflags for it
 if meson.is_cross_build()
 	machine = host_machine.cpu()
