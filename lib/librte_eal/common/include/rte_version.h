@@ -57,9 +57,7 @@ rte_version(void)
 			RTE_VER_MONTH,
 			RTE_VER_MINOR,
 			RTE_VER_SUFFIX,
-			RTE_VER_RELEASE < 16 ?
-				RTE_VER_RELEASE :
-				RTE_VER_RELEASE - 16);
+			RTE_VER_RELEASE);
 	return version;
 }
 
