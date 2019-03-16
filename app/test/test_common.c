@@ -199,6 +199,10 @@ test_align(void)
 			val = RTE_ALIGN_MUL_FLOOR(i, p);
 			if (val % p != 0 || val > i)
 				FAIL_ALIGN("RTE_ALIGN_MUL_FLOOR", i, p);
+			val = RTE_ALIGN_MUL_NEAR(i, p);
+			if (val % p != 0 || ((val != RTE_ALIGN_MUL_CEIL(i, p))
+				& (val != RTE_ALIGN_MUL_FLOOR(i, p))))
+				FAIL_ALIGN("RTE_ALIGN_MUL_NEAR", i, p);
 		}
 	}
 

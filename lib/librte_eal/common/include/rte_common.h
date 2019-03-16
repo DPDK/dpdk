@@ -249,6 +249,18 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
 	((v / ((typeof(v))(mul))) * (typeof(v))(mul))
 
 /**
+ * Macro to align value to the nearest multiple of the given value.
+ * The resultant value might be greater than or less than the first parameter
+ * whichever difference is the lowest.
+ */
+#define RTE_ALIGN_MUL_NEAR(v, mul)				\
+	({							\
+		typeof(v) ceil = RTE_ALIGN_MUL_CEIL(v, mul);	\
+		typeof(v) floor = RTE_ALIGN_MUL_FLOOR(v, mul);	\
+		(ceil - v) > (v - floor) ? floor : ceil;	\
+	})
+
+/**
  * Checks if a pointer is aligned to a given power-of-two value
  *
  * @param ptr
