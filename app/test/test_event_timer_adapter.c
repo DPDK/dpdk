@@ -42,7 +42,12 @@ static struct rte_event_timer_adapter *timdev;
 static struct rte_mempool *eventdev_test_mempool;
 static struct rte_ring *timer_producer_ring;
 static uint64_t global_bkt_tck_ns;
+static uint64_t global_info_bkt_tck_ns;
 static volatile uint8_t arm_done;
+
+#define CALC_TICKS(tks)					\
+	((tks * global_bkt_tck_ns) / global_info_bkt_tck_ns)
+
 
 static bool using_services;
 static uint32_t test_lcore1;
@@ -80,7 +85,8 @@ eventdev_setup(void)
 
 	ret = rte_event_dev_info_get(evdev, &info);
 	TEST_ASSERT_SUCCESS(ret, "Failed to get event dev info");
-	TEST_ASSERT(info.max_num_events >= (int32_t)MAX_TIMERS,
+	TEST_ASSERT(info.max_num_events < 0 ||
+			info.max_num_events >= (int32_t)MAX_TIMERS,
 			"ERROR max_num_events=%d < max_events=%d",
 			info.max_num_events, MAX_TIMERS);
 
@@ -276,12 +282,14 @@ test_port_conf_cb(uint16_t id, uint8_t event_dev_id, uint8_t *event_port_id,
 static int
 _timdev_setup(uint64_t max_tmo_ns, uint64_t bkt_tck_ns)
 {
+	struct rte_event_timer_adapter_info info;
 	struct rte_event_timer_adapter_conf config = {
 		.event_dev_id = evdev,
 		.timer_adapter_id = TEST_ADAPTER_ID,
 		.timer_tick_ns = bkt_tck_ns,
 		.max_tmo_ns = max_tmo_ns,
 		.nb_timers = MAX_TIMERS * 10,
+		.flags = RTE_EVENT_TIMER_ADAPTER_F_ADJUST_RES,
 	};
 	uint32_t caps = 0;
 	const char *pool_name = "timdev_test_pool";
@@ -316,6 +324,10 @@ _timdev_setup(uint64_t max_tmo_ns, uint64_t bkt_tck_ns)
 		printf("ERROR creating mempool\n");
 		return TEST_FAILED;
 	}
+
+	rte_event_timer_adapter_get_info(timdev, &info);
+
+	global_info_bkt_tck_ns = info.min_resolution_ns;
 
 	return TEST_SUCCESS;
 }
@@ -384,10 +396,11 @@ test_timer_state(void)
 		.state = RTE_EVENT_TIMER_NOT_ARMED,
 	};
 
+
 	rte_mempool_get(eventdev_test_mempool, (void **)&ev_tim);
 	*ev_tim = tim;
 	ev_tim->ev.event_ptr = ev_tim;
-	ev_tim->timeout_ticks = 120;
+	ev_tim->timeout_ticks = CALC_TICKS(120);
 
 	TEST_ASSERT_EQUAL(rte_event_timer_arm_burst(timdev, &ev_tim, 1), 0,
 			"Armed timer exceeding max_timeout.");
@@ -396,7 +409,7 @@ test_timer_state(void)
 			RTE_EVENT_TIMER_ERROR_TOOLATE, ev_tim->state);
 
 	ev_tim->state = RTE_EVENT_TIMER_NOT_ARMED;
-	ev_tim->timeout_ticks = 10;
+	ev_tim->timeout_ticks = CALC_TICKS(10);
 
 	TEST_ASSERT_EQUAL(rte_event_timer_arm_burst(timdev, &ev_tim, 1), 1,
 			"Failed to arm timer with proper timeout.");
@@ -412,7 +425,7 @@ test_timer_state(void)
 			"Armed timer failed to trigger.");
 
 	ev_tim->state = RTE_EVENT_TIMER_NOT_ARMED;
-	ev_tim->timeout_ticks = 90;
+	ev_tim->timeout_ticks = CALC_TICKS(90);
 	TEST_ASSERT_EQUAL(rte_event_timer_arm_burst(timdev, &ev_tim, 1), 1,
 			"Failed to arm timer with proper timeout.");
 	TEST_ASSERT_EQUAL(rte_event_timer_cancel_burst(timdev, &ev_tim, 1),
@@ -438,7 +451,7 @@ _arm_timers(uint64_t timeout_tcks, uint64_t timers)
 		.ev.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
 		.ev.event_type =  RTE_EVENT_TYPE_TIMER,
 		.state = RTE_EVENT_TIMER_NOT_ARMED,
-		.timeout_ticks = timeout_tcks,
+		.timeout_ticks = CALC_TICKS(timeout_tcks),
 	};
 
 	for (i = 0; i < timers; i++) {
@@ -539,7 +552,7 @@ _arm_timers_burst(uint64_t timeout_tcks, uint64_t timers)
 		.ev.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
 		.ev.event_type =  RTE_EVENT_TYPE_TIMER,
 		.state = RTE_EVENT_TIMER_NOT_ARMED,
-		.timeout_ticks = timeout_tcks,
+		.timeout_ticks = CALC_TICKS(timeout_tcks),
 	};
 
 	for (i = 0; i < timers / MAX_BURST; i++) {
@@ -608,7 +621,7 @@ test_timer_cancel(void)
 		.ev.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
 		.ev.event_type =  RTE_EVENT_TYPE_TIMER,
 		.state = RTE_EVENT_TIMER_NOT_ARMED,
-		.timeout_ticks = 20,
+		.timeout_ticks = CALC_TICKS(20),
 	};
 
 	for (i = 0; i < MAX_TIMERS; i++) {
@@ -650,7 +663,7 @@ _cancel_producer(uint64_t timeout_tcks, uint64_t timers)
 		.ev.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
 		.ev.event_type =  RTE_EVENT_TYPE_TIMER,
 		.state = RTE_EVENT_TIMER_NOT_ARMED,
-		.timeout_ticks = timeout_tcks,
+		.timeout_ticks = CALC_TICKS(timeout_tcks),
 	};
 
 	for (i = 0; i < timers; i++) {
@@ -689,7 +702,7 @@ _cancel_producer_burst(uint64_t timeout_tcks, uint64_t timers)
 		.ev.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
 		.ev.event_type =  RTE_EVENT_TYPE_TIMER,
 		.state = RTE_EVENT_TIMER_NOT_ARMED,
-		.timeout_ticks = timeout_tcks,
+		.timeout_ticks = CALC_TICKS(timeout_tcks),
 	};
 	int arm_count = 0;
 
@@ -870,7 +883,7 @@ test_timer_cancel_random(void)
 		.ev.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
 		.ev.event_type =  RTE_EVENT_TYPE_TIMER,
 		.state = RTE_EVENT_TIMER_NOT_ARMED,
-		.timeout_ticks = 20,
+		.timeout_ticks = CALC_TICKS(20),
 	};
 
 	for (i = 0; i < MAX_TIMERS; i++) {
@@ -917,7 +930,7 @@ adapter_create(void)
 		.timer_tick_ns = NSECPERSEC / 10,
 		.max_tmo_ns = 180 * NSECPERSEC,
 		.nb_timers = MAX_TIMERS,
-		.flags = 0,
+		.flags = RTE_EVENT_TIMER_ADAPTER_F_ADJUST_RES,
 	};
 	uint32_t caps = 0;
 
@@ -1058,7 +1071,7 @@ stat_inc_reset_ev_enq(void)
 		.ev.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
 		.ev.event_type =  RTE_EVENT_TYPE_TIMER,
 		.state = RTE_EVENT_TIMER_NOT_ARMED,
-		.timeout_ticks = 5,	// expire in .5 sec
+		.timeout_ticks = CALC_TICKS(5), // expire in .5 sec
 	};
 
 	ret = rte_mempool_get_bulk(eventdev_test_mempool, (void **)evtims,
@@ -1151,7 +1164,7 @@ event_timer_arm(void)
 		.ev.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
 		.ev.event_type =  RTE_EVENT_TYPE_TIMER,
 		.state = RTE_EVENT_TIMER_NOT_ARMED,
-		.timeout_ticks = 5,	// expire in .5 sec
+		.timeout_ticks = CALC_TICKS(5), // expire in .5 sec
 	};
 
 	rte_mempool_get(eventdev_test_mempool, (void **)&evtim);
@@ -1208,7 +1221,7 @@ event_timer_arm_double(void)
 		.ev.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
 		.ev.event_type =  RTE_EVENT_TYPE_TIMER,
 		.state = RTE_EVENT_TIMER_NOT_ARMED,
-		.timeout_ticks = 5,	// expire in .5 sec
+		.timeout_ticks = CALC_TICKS(5), // expire in .5 sec
 	};
 
 	rte_mempool_get(eventdev_test_mempool, (void **)&evtim);
@@ -1267,7 +1280,7 @@ event_timer_arm_expiry(void)
 
 	/* Set up an event timer */
 	*evtim = init_tim;
-	evtim->timeout_ticks = 30,	// expire in 3 secs
+	evtim->timeout_ticks = CALC_TICKS(30),	// expire in 3 secs
 	evtim->ev.event_ptr = evtim;
 
 	ret = rte_event_timer_arm_burst(adapter, &evtim, 1);
@@ -1327,7 +1340,7 @@ event_timer_arm_rearm(void)
 
 	/* Set up a timer */
 	*evtim = init_tim;
-	evtim->timeout_ticks = 1;  // expire in 0.1 sec
+	evtim->timeout_ticks = CALC_TICKS(1);  // expire in 0.1 sec
 	evtim->ev.event_ptr = evtim;
 
 	/* Arm it */
@@ -1388,7 +1401,7 @@ event_timer_arm_max(void)
 		.ev.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
 		.ev.event_type =  RTE_EVENT_TYPE_TIMER,
 		.state = RTE_EVENT_TIMER_NOT_ARMED,
-		.timeout_ticks = 5,	// expire in .5 sec
+		.timeout_ticks = CALC_TICKS(5), // expire in .5 sec
 	};
 
 	ret = rte_mempool_get_bulk(eventdev_test_mempool, (void **)evtims,
@@ -1456,7 +1469,7 @@ event_timer_arm_invalid_sched_type(void)
 		.ev.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
 		.ev.event_type =  RTE_EVENT_TYPE_TIMER,
 		.state = RTE_EVENT_TIMER_NOT_ARMED,
-		.timeout_ticks = 5,	// expire in .5 sec
+		.timeout_ticks = CALC_TICKS(5), // expire in .5 sec
 	};
 
 	if (!using_services)
@@ -1498,7 +1511,7 @@ event_timer_arm_invalid_timeout(void)
 		.ev.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
 		.ev.event_type =  RTE_EVENT_TYPE_TIMER,
 		.state = RTE_EVENT_TIMER_NOT_ARMED,
-		.timeout_ticks = 5,	// expire in .5 sec
+		.timeout_ticks = CALC_TICKS(5), // expire in .5 sec
 	};
 
 	rte_mempool_get(eventdev_test_mempool, (void **)&evtim);
@@ -1521,7 +1534,7 @@ event_timer_arm_invalid_timeout(void)
 
 	*evtim = init_tim;
 	evtim->ev.event_ptr = evtim;
-	evtim->timeout_ticks = 1801;  // timeout too big
+	evtim->timeout_ticks = CALC_TICKS(1801);  // timeout too big
 
 	ret = rte_event_timer_arm_burst(timdev, &evtim, 1);
 	TEST_ASSERT_EQUAL(ret, 0, "Expected to fail timer arm with invalid "
@@ -1569,7 +1582,7 @@ event_timer_cancel(void)
 	/* Set up a timer */
 	*evtim = init_tim;
 	evtim->ev.event_ptr = evtim;
-	evtim->timeout_ticks = 30;  // expire in 3 sec
+	evtim->timeout_ticks = CALC_TICKS(30);  // expire in 3 sec
 
 	/* Check that cancelling an inited but unarmed timer fails */
 	ret = rte_event_timer_cancel_burst(adapter, &evtim, 1);
@@ -1619,7 +1632,7 @@ event_timer_cancel_double(void)
 		.ev.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
 		.ev.event_type =  RTE_EVENT_TYPE_TIMER,
 		.state = RTE_EVENT_TIMER_NOT_ARMED,
-		.timeout_ticks = 5,	// expire in .5 sec
+		.timeout_ticks = CALC_TICKS(5), // expire in .5 sec
 	};
 
 	rte_mempool_get(eventdev_test_mempool, (void **)&evtim);
@@ -1631,7 +1644,7 @@ event_timer_cancel_double(void)
 	/* Set up a timer */
 	*evtim = init_tim;
 	evtim->ev.event_ptr = evtim;
-	evtim->timeout_ticks = 30;  // expire in 3 sec
+	evtim->timeout_ticks = CALC_TICKS(30);  // expire in 3 sec
 
 	ret = rte_event_timer_arm_burst(adapter, &evtim, 1);
 	TEST_ASSERT_EQUAL(ret, 1, "Failed to arm event timer: %s\n",
@@ -1716,7 +1729,7 @@ adapter_create_max(void)
 		.timer_tick_ns = NSECPERSEC / 10,
 		.max_tmo_ns = 180 * NSECPERSEC,
 		.nb_timers = MAX_TIMERS,
-		.flags = 0,
+		.flags = RTE_EVENT_TIMER_ADAPTER_F_ADJUST_RES,
 	};
 
 	if (!using_services)
