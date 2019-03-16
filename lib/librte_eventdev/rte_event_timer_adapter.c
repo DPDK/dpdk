@@ -261,6 +261,12 @@ rte_event_timer_adapter_start(const struct rte_event_timer_adapter *adapter)
 	ADAPTER_VALID_OR_ERR_RET(adapter, -EINVAL);
 	FUNC_PTR_OR_ERR_RET(adapter->ops->start, -EINVAL);
 
+	if (adapter->data->started) {
+		EVTIM_LOG_ERR("event timer adapter %"PRIu8" already started",
+			      adapter->data->id);
+		return -EALREADY;
+	}
+
 	ret = adapter->ops->start(adapter);
 	if (ret < 0)
 		return ret;

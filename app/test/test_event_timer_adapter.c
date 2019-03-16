@@ -1015,8 +1015,8 @@ adapter_start(void)
 	TEST_ASSERT_SUCCESS(_timdev_setup(180 * NSECPERSEC,
 			NSECPERSEC / 10),
 			"Failed to start adapter");
-	TEST_ASSERT_SUCCESS(rte_event_timer_adapter_start(timdev),
-			"Failed to repeatedly start adapter");
+	TEST_ASSERT_EQUAL(rte_event_timer_adapter_start(timdev), -EALREADY,
+			"Timer adapter started without call to stop.");
 
 	return TEST_SUCCESS;
 }
