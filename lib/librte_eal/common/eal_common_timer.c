@@ -64,12 +64,14 @@ rte_get_tsc_hz(void)
 static uint64_t
 estimate_tsc_freq(void)
 {
+#define CYC_PER_10MHZ 1E7
 	RTE_LOG(WARNING, EAL, "WARNING: TSC frequency estimated roughly"
 		" - clock timings may be less accurate.\n");
 	/* assume that the sleep(1) will sleep for 1 second */
 	uint64_t start = rte_rdtsc();
 	sleep(1);
-	return rte_rdtsc() - start;
+	/* Round up to 10Mhz. 1E7 ~ 10Mhz */
+	return RTE_ALIGN_MUL_NEAR(rte_rdtsc() - start, CYC_PER_10MHZ);
 }
 
 void
