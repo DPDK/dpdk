@@ -633,16 +633,20 @@ vhost_vring_call_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	if (dev->features & (1ULL << VIRTIO_RING_F_EVENT_IDX)) {
 		uint16_t old = vq->signalled_used;
 		uint16_t new = vq->last_used_idx;
+		bool signalled_used_valid = vq->signalled_used_valid;
+
+		vq->signalled_used = new;
+		vq->signalled_used_valid = true;
 
 		VHOST_LOG_DEBUG(VHOST_DATA, "%s: used_event_idx=%d, old=%d, new=%d\n",
 			__func__,
 			vhost_used_event(vq),
 			old, new);
-		if (vhost_need_event(vhost_used_event(vq), new, old)
-			&& (vq->callfd >= 0)) {
-			vq->signalled_used = vq->last_used_idx;
+
+		if ((vhost_need_event(vhost_used_event(vq), new, old) &&
+					(vq->callfd >= 0)) ||
+				unlikely(!signalled_used_valid))
 			eventfd_write(vq->callfd, (eventfd_t) 1);
-		}
 	} else {
 		/* Kick the guest if necessary. */
 		if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT)

@@ -1298,6 +1298,8 @@ vhost_user_get_vring_base(struct virtio_net **pdev,
 
 	vq->callfd = VIRTIO_UNINITIALIZED_EVENTFD;
 
+	vq->signalled_used_valid = false;
+
 	if (dev->dequeue_zero_copy)
 		free_zmbufs(vq);
 	if (vq_is_packed(dev)) {
