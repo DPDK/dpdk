@@ -830,6 +830,7 @@ mlx5_nl_switch_info_cb(struct nlmsghdr *nh, void *arg)
 	struct mlx5_switch_info info = {
 		.master = 0,
 		.representor = 0,
+		.port_name_new = 0,
 		.port_name = 0,
 		.switch_id = 0,
 	};
@@ -842,19 +843,15 @@ mlx5_nl_switch_info_cb(struct nlmsghdr *nh, void *arg)
 	while (off < nh->nlmsg_len) {
 		struct rtattr *ra = (void *)((uintptr_t)nh + off);
 		void *payload = RTA_DATA(ra);
-		char *end;
 		unsigned int i;
 
 		if (ra->rta_len > nh->nlmsg_len - off)
 			goto error;
 		switch (ra->rta_type) {
 		case IFLA_PHYS_PORT_NAME:
-			errno = 0;
-			info.port_name = strtol(payload, &end, 0);
-			if (errno ||
-			    (size_t)(end - (char *)payload) != strlen(payload))
-				goto error;
-			port_name_set = true;
+			port_name_set =
+				mlx5_translate_port_name((char *)payload,
+							 &info);
 			break;
 		case IFLA_PHYS_SWITCH_ID:
 			info.switch_id = 0;

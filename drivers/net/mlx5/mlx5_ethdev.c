@@ -1353,8 +1353,15 @@ int
 mlx5_sysfs_switch_info(unsigned int ifindex, struct mlx5_switch_info *info)
 {
 	char ifname[IF_NAMESIZE];
+	char port_name[IF_NAMESIZE];
 	FILE *file;
-	struct mlx5_switch_info data = { .master = 0, };
+	struct mlx5_switch_info data = {
+		.master = 0,
+		.representor = 0,
+		.port_name_new = 0,
+		.port_name = 0,
+		.switch_id = 0,
+	};
 	bool port_name_set = false;
 	bool port_switch_id_set = false;
 	char c;
@@ -1371,10 +1378,9 @@ mlx5_sysfs_switch_info(unsigned int ifindex, struct mlx5_switch_info *info)
 
 	file = fopen(phys_port_name, "rb");
 	if (file != NULL) {
-		port_name_set =
-			fscanf(file, "%d%c", &data.port_name, &c) == 2 &&
-			c == '\n';
+		fscanf(file, "%s", port_name);
 		fclose(file);
+		port_name_set = mlx5_translate_port_name(port_name, &data);
 	}
 	file = fopen(phys_switch_id, "rb");
 	if (file == NULL) {
@@ -1389,4 +1395,44 @@ mlx5_sysfs_switch_info(unsigned int ifindex, struct mlx5_switch_info *info)
 	data.representor = port_switch_id_set && port_name_set;
 	*info = data;
 	return 0;
+}
+
+/**
+ * Extract port name, as a number, from sysfs or netlink information.
+ *
+ * @param[in] port_name_in
+ *   String representing the port name.
+ * @param[out] port_info_out
+ *   Port information, including port name as a number.
+ *
+ * @return
+ *   true on success, false otherwise.
+ */
+bool
+mlx5_translate_port_name(const char *port_name_in,
+			 struct mlx5_switch_info *port_info_out)
+{
+	char pf_c1, pf_c2, vf_c1, vf_c2;
+	char *end;
+	int32_t pf_num;
+	bool port_name_set = false;
+
+	/*
+	 * Check for port-name as a string of the form pf0vf0
+	 * (support kernel ver >= 5.0)
+	 */
+	port_name_set =	(sscanf(port_name_in, "%c%c%d%c%c%d", &pf_c1, &pf_c2,
+				&pf_num, &vf_c1, &vf_c2,
+				&port_info_out->port_name) == 6);
+	if (port_name_set) {
+		port_info_out->port_name_new = 1;
+	} else {
+		/* Check for port-name as a number (support kernel ver < 5.0 */
+		errno = 0;
+		port_info_out->port_name = strtol(port_name_in, &end, 0);
+		if (!errno &&
+		    (size_t)(end - port_name_in) == strlen(port_name_in))
+			port_name_set = true;
+	}
+	return port_name_set;
 }
