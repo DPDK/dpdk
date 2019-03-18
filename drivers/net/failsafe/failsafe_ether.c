@@ -294,6 +294,7 @@ fs_dev_remove(struct sub_device *sdev)
 	case DEV_PARSED:
 	case DEV_UNDEFINED:
 		sdev->state = DEV_UNDEFINED;
+		sdev->sdev_port_id = RTE_MAX_ETHPORTS;
 		/* the end */
 		break;
 	}

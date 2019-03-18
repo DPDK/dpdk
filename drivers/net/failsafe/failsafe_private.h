@@ -100,13 +100,15 @@ struct fs_stats {
 	uint64_t timestamp;
 };
 
+/*
+ * Allocated in shared memory.
+ */
 struct sub_device {
 	/* Exhaustive DPDK device description */
 	struct sub_device *next;
 	struct rte_devargs devargs;
-	struct rte_bus *bus;
-	struct rte_device *dev;
-	struct rte_eth_dev *edev;
+	struct rte_bus *bus; /* for primary process only. */
+	struct rte_device *dev; /* for primary process only. */
 	uint8_t sid;
 	/* Device state machine */
 	enum dev_state state;
@@ -118,6 +120,8 @@ struct sub_device {
 	char *fd_str;
 	/* fail-safe device backreference */
 	uint16_t fs_port_id; /* shared between processes */
+	/* sub device port id*/
+	uint16_t sdev_port_id; /* shared between processes */
 	/* flag calling for recollection */
 	volatile unsigned int remove:1;
 	/* flow isolation state */
@@ -139,7 +143,7 @@ struct fs_priv {
 	 * subs[0] is the preferred device
 	 * any other is just another slave
 	 */
-	struct sub_device *subs;
+	struct sub_device *subs;  /* shared between processes */
 	uint8_t subs_head; /* if head == tail, no subs */
 	uint8_t subs_tail; /* first invalid */
 	uint8_t subs_tx; /* current emitting device */
@@ -254,11 +258,12 @@ extern int failsafe_mac_from_arg;
 
 /* sdev: (struct sub_device *) */
 #define ETH(sdev) \
-	((sdev)->edev)
+	((sdev)->sdev_port_id == RTE_MAX_ETHPORTS ? \
+	NULL : &rte_eth_devices[(sdev)->sdev_port_id])
 
 /* sdev: (struct sub_device *) */
 #define PORT_ID(sdev) \
-	(ETH(sdev)->data->port_id)
+	((sdev)->sdev_port_id)
 
 /* sdev: (struct sub_device *) */
 #define SUB_ID(sdev) \

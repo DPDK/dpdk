@@ -30,6 +30,8 @@ fs_sub_device_alloc(struct rte_eth_dev *dev,
 	uint8_t nb_subs;
 	int ret;
 	int i;
+	struct sub_device *sdev;
+	uint8_t sdev_iterator;
 
 	ret = failsafe_args_count_subdevice(dev, params);
 	if (ret)
@@ -51,6 +53,10 @@ fs_sub_device_alloc(struct rte_eth_dev *dev,
 	for (i = 1; i < nb_subs; i++)
 		PRIV(dev)->subs[i - 1].next = PRIV(dev)->subs + i;
 	PRIV(dev)->subs[i - 1].next = PRIV(dev)->subs;
+
+	FOREACH_SUBDEV(sdev, sdev_iterator, dev) {
+		sdev->sdev_port_id = RTE_MAX_ETHPORTS;
+	}
 	return 0;
 }
 
