@@ -452,7 +452,7 @@ fs_rx_queue_release(void *queue)
 	if (queue == NULL)
 		return;
 	rxq = queue;
-	dev = rxq->priv->dev;
+	dev = &rte_eth_devices[rxq->priv->data->port_id];
 	fs_lock(dev, 0);
 	if (rxq->event_fd > 0)
 		close(rxq->event_fd);
@@ -636,7 +636,7 @@ fs_tx_queue_release(void *queue)
 	if (queue == NULL)
 		return;
 	txq = queue;
-	dev = txq->priv->dev;
+	dev = &rte_eth_devices[txq->priv->data->port_id];
 	fs_lock(dev, 0);
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
 		if (ETH(sdev)->data->tx_queues != NULL &&

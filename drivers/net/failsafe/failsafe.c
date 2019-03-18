@@ -181,7 +181,7 @@ fs_eth_dev_create(struct rte_vdev_device *vdev)
 		return -1;
 	}
 	priv = PRIV(dev);
-	priv->dev = dev;
+	priv->data = dev->data;
 	dev->dev_ops = &failsafe_ops;
 	dev->data->mac_addrs = &PRIV(dev)->mac_addrs[0];
 	dev->data->dev_link = eth_link;

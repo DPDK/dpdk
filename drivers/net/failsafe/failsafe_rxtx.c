@@ -126,7 +126,7 @@ failsafe_tx_burst(void *queue,
 	uint16_t nb_tx;
 
 	txq = queue;
-	sdev = TX_SUBDEV(txq->priv->dev);
+	sdev = TX_SUBDEV(&rte_eth_devices[txq->priv->data->port_id]);
 	if (unlikely(fs_tx_unsafe(sdev)))
 		return 0;
 	sub_txq = ETH(sdev)->data->tx_queues[txq->qid];
@@ -147,7 +147,7 @@ failsafe_tx_burst_fast(void *queue,
 	uint16_t nb_tx;
 
 	txq = queue;
-	sdev = TX_SUBDEV(txq->priv->dev);
+	sdev = TX_SUBDEV(&rte_eth_devices[txq->priv->data->port_id]);
 	RTE_ASSERT(!fs_tx_unsafe(sdev));
 	sub_txq = ETH(sdev)->data->tx_queues[txq->qid];
 	FS_ATOMIC_P(txq->refcnt[sdev->sid]);

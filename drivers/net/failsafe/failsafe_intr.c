@@ -133,8 +133,8 @@ fs_rx_event_proxy_service_install(struct fs_priv *priv)
 	/* prepare service info */
 	memset(&service, 0, sizeof(struct rte_service_spec));
 	snprintf(service.name, sizeof(service.name), "%s_Rx_service",
-		 priv->dev->data->name);
-	service.socket_id = priv->dev->data->numa_node;
+		 priv->data->name);
+	service.socket_id = priv->data->numa_node;
 	service.callback = fs_rx_event_proxy_routine;
 	service.callback_userdata = priv;
 
@@ -437,7 +437,7 @@ fs_rx_intr_vec_install(struct fs_priv *priv)
 	unsigned int count;
 	struct rte_intr_handle *intr_handle;
 
-	rxqs_n = priv->dev->data->nb_rx_queues;
+	rxqs_n = priv->data->nb_rx_queues;
 	n = RTE_MIN(rxqs_n, (uint32_t)RTE_MAX_RXTX_INTR_VEC_ID);
 	count = 0;
 	intr_handle = &priv->intr_handle;
@@ -452,7 +452,7 @@ fs_rx_intr_vec_install(struct fs_priv *priv)
 		return -rte_errno;
 	}
 	for (i = 0; i < n; i++) {
-		struct rxq *rxq = priv->dev->data->rx_queues[i];
+		struct rxq *rxq = priv->data->rx_queues[i];
 
 		/* Skip queues that cannot request interrupts. */
 		if (rxq == NULL || rxq->event_fd < 0) {
@@ -521,7 +521,7 @@ failsafe_rx_intr_install(struct rte_eth_dev *dev)
 {
 	struct fs_priv *priv = PRIV(dev);
 	const struct rte_intr_conf *const intr_conf =
-			&priv->dev->data->dev_conf.intr_conf;
+			&priv->data->dev_conf.intr_conf;
 
 	if (intr_conf->rxq == 0 || dev->intr_handle != NULL)
 		return 0;
