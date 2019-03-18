@@ -832,10 +832,9 @@ int rte_mempool_register_ops(const struct rte_mempool_ops *ops);
  * Note that the rte_mempool_register_ops fails silently here when
  * more than RTE_MEMPOOL_MAX_OPS_IDX is registered.
  */
-#define MEMPOOL_REGISTER_OPS(ops)					\
-	void mp_hdlr_init_##ops(void);					\
-	void __attribute__((constructor, used)) mp_hdlr_init_##ops(void)\
-	{								\
+#define MEMPOOL_REGISTER_OPS(ops)				\
+	RTE_INIT(mp_hdlr_init_##ops)				\
+	{							\
 		rte_mempool_register_ops(&ops);			\
 	}
 

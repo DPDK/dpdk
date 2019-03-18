@@ -103,8 +103,7 @@ void add_test_command(struct test_command *t);
 		.command = RTE_STR(name), \
 		.callback = test_func_##name, \
 	}; \
-	static void __attribute__((constructor, used)) \
-	test_register_##name(void) \
+	RTE_INIT(test_register_##name) \
 	{ \
 		add_test_command(&test_struct_##name); \
 	}

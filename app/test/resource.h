@@ -98,7 +98,7 @@ static struct resource linkres_ ##n = {       \
 	.begin = b,             \
 	.end = e,               \
 };                              \
-static void __attribute__((constructor, used)) resinitfn_ ##n(void) \
+RTE_INIT(resinitfn_ ##n)	\
 {                               \
 	resource_register(&linkres_ ##n);  \
 }
