@@ -68,6 +68,8 @@
 /* IPC key for queue fds sync */
 #define TAP_MP_KEY "tap_mp_sync_queues"
 
+#define TAP_IOV_DEFAULT_MAX 1024
+
 static int tap_devices_count;
 static struct rte_vdev_driver pmd_tap_drv;
 static struct rte_vdev_driver pmd_tun_drv;
@@ -1326,6 +1328,13 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 	struct rx_queue *rxq = &internals->rxq[rx_queue_id];
 	struct rte_mbuf **tmp = &rxq->pool;
 	long iov_max = sysconf(_SC_IOV_MAX);
+
+	if (iov_max <= 0) {
+		TAP_LOG(WARNING,
+			"_SC_IOV_MAX is not defined. Using %d as default",
+			TAP_IOV_DEFAULT_MAX);
+		iov_max = TAP_IOV_DEFAULT_MAX;
+	}
 	uint16_t nb_desc = RTE_MIN(nb_rx_desc, iov_max - 1);
 	struct iovec (*iovecs)[nb_desc + 1];
 	int data_off = RTE_PKTMBUF_HEADROOM;
