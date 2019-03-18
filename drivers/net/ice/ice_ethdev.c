@@ -2814,26 +2814,26 @@ ice_get_eeprom(struct rte_eth_dev *dev,
 {
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint16_t *data = eeprom->data;
-	uint16_t offset, length, i;
-	enum ice_status ret_code = ICE_SUCCESS;
+	uint16_t first_word, last_word, nwords;
+	enum ice_status status = ICE_SUCCESS;
 
-	offset = eeprom->offset >> 1;
-	length = eeprom->length >> 1;
+	first_word = eeprom->offset >> 1;
+	last_word = (eeprom->offset + eeprom->length - 1) >> 1;
+	nwords = last_word - first_word + 1;
 
-	if (offset > hw->nvm.sr_words ||
-	    offset + length > hw->nvm.sr_words) {
+	if (first_word > hw->nvm.sr_words ||
+	    last_word > hw->nvm.sr_words) {
 		PMD_DRV_LOG(ERR, "Requested EEPROM bytes out of range.");
 		return -EINVAL;
 	}
 
 	eeprom->magic = hw->vendor_id | (hw->device_id << 16);
 
-	for (i = 0; i < length; i++) {
-		ret_code = ice_read_sr_word(hw, offset + i, &data[i]);
-		if (ret_code != ICE_SUCCESS) {
-			PMD_DRV_LOG(ERR, "EEPROM read failed.");
-			return -EIO;
-		}
+	status = ice_read_sr_buf(hw, first_word, &nwords, data);
+	if (status) {
+		PMD_DRV_LOG(ERR, "EEPROM read failed.");
+		eeprom->length = sizeof(uint16_t) * nwords;
+		return -EIO;
 	}
 
 	return 0;
