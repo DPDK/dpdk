@@ -15,6 +15,7 @@
 #include <rte_crypto.h>
 #include <rte_cryptodev.h>
 #include <rte_cryptodev_pmd.h>
+#include <rte_string_fns.h>
 
 #ifdef RTE_LIBRTE_PMD_CRYPTO_SCHEDULER
 #include <rte_cryptodev_scheduler.h>
@@ -375,7 +376,7 @@ testsuite_setup(void)
 			snprintf(vdev_args, sizeof(vdev_args),
 					"%s%d", temp_str, i);
 			strcpy(temp_str, vdev_args);
-			strcat(temp_str, ";");
+			strlcat(temp_str, ";", sizeof(temp_str));
 			slave_core_count++;
 			socket_id = lcore_config[i].socket_id;
 		}
