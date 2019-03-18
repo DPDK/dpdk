@@ -117,7 +117,7 @@ struct sub_device {
 	/* Others are retrieved through a file descriptor */
 	char *fd_str;
 	/* fail-safe device backreference */
-	struct rte_eth_dev *fs_dev;
+	uint16_t fs_port_id; /* shared between processes */
 	/* flag calling for recollection */
 	volatile unsigned int remove:1;
 	/* flow isolation state */
@@ -324,16 +324,16 @@ extern int failsafe_mac_from_arg;
  */
 #define FS_ATOMIC_RX(s, i) \
 	rte_atomic64_read( \
-	 &((struct rxq *)((s)->fs_dev->data->rx_queues[i]))->refcnt[(s)->sid] \
-	)
+	 &((struct rxq *) \
+	 (fs_dev(s)->data->rx_queues[i]))->refcnt[(s)->sid])
 /**
  * s: (struct sub_device *)
  * i: uint16_t qid
  */
 #define FS_ATOMIC_TX(s, i) \
 	rte_atomic64_read( \
-	 &((struct txq *)((s)->fs_dev->data->tx_queues[i]))->refcnt[(s)->sid] \
-	)
+	 &((struct txq *) \
+	 (fs_dev(s)->data->tx_queues[i]))->refcnt[(s)->sid])
 
 #ifdef RTE_EXEC_ENV_FREEBSD
 #define FS_THREADID_TYPE void*
@@ -377,6 +377,11 @@ fs_find_next(struct rte_eth_dev *dev,
 	if (sid >= tail)
 		return NULL;
 	return &subs[sid];
+}
+
+static inline struct rte_eth_dev *
+fs_dev(struct sub_device *sdev) {
+	return &rte_eth_devices[sdev->fs_port_id];
 }
 
 /*

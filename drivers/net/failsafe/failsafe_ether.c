@@ -298,7 +298,7 @@ fs_dev_remove(struct sub_device *sdev)
 		break;
 	}
 	sdev->remove = 0;
-	failsafe_hotplug_alarm_install(sdev->fs_dev);
+	failsafe_hotplug_alarm_install(fs_dev(sdev));
 }
 
 static void
@@ -318,8 +318,9 @@ fs_dev_stats_save(struct sub_device *sdev)
 			WARN("Using latest snapshot taken before %"PRIu64" seconds.\n",
 				 (rte_rdtsc() - timestamp) / rte_get_tsc_hz());
 	}
-	failsafe_stats_increment(&PRIV(sdev->fs_dev)->stats_accumulator,
-			err ? &sdev->stats_snapshot.stats : &stats);
+	failsafe_stats_increment
+		(&PRIV(fs_dev(sdev))->stats_accumulator,
+		err ? &sdev->stats_snapshot.stats : &stats);
 	memset(&sdev->stats_snapshot, 0, sizeof(sdev->stats_snapshot));
 }
 
@@ -566,17 +567,17 @@ failsafe_eth_rmv_event_callback(uint16_t port_id __rte_unused,
 {
 	struct sub_device *sdev = cb_arg;
 
-	fs_lock(sdev->fs_dev, 0);
+	fs_lock(fs_dev(sdev), 0);
 	/* Switch as soon as possible tx_dev. */
-	fs_switch_dev(sdev->fs_dev, sdev);
+	fs_switch_dev(fs_dev(sdev), sdev);
 	/* Use safe bursts in any case. */
-	failsafe_set_burst_fn(sdev->fs_dev, 1);
+	failsafe_set_burst_fn(fs_dev(sdev), 1);
 	/*
 	 * Async removal, the sub-PMD will try to unregister
 	 * the callback at the source of the current thread context.
 	 */
 	sdev->remove = 1;
-	fs_unlock(sdev->fs_dev, 0);
+	fs_unlock(fs_dev(sdev), 0);
 	return 0;
 }
 

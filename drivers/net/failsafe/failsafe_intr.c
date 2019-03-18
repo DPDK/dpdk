@@ -274,14 +274,14 @@ failsafe_eth_rx_intr_ctl_subdevice(struct sub_device *sdev, int op)
 	int rc;
 	int ret = 0;
 
+	fsdev = fs_dev(sdev);
 	if (sdev == NULL || (ETH(sdev) == NULL) ||
-	    sdev->fs_dev == NULL || (PRIV(sdev->fs_dev) == NULL)) {
+		fsdev == NULL || (PRIV(fsdev) == NULL)) {
 		ERROR("Called with invalid arguments");
 		return -EINVAL;
 	}
 	dev = ETH(sdev);
-	fsdev = sdev->fs_dev;
-	epfd = PRIV(sdev->fs_dev)->rxp.efd;
+	epfd = PRIV(fsdev)->rxp.efd;
 	pid = PORT_ID(sdev);
 
 	if (epfd <= 0) {
@@ -330,7 +330,7 @@ int failsafe_rx_intr_install_subdevice(struct sub_device *sdev)
 	const struct rte_intr_conf *const intr_conf =
 				&ETH(sdev)->data->dev_conf.intr_conf;
 
-	fsdev = sdev->fs_dev;
+	fsdev = fs_dev(sdev);
 	rxq = (struct rxq **)fsdev->data->rx_queues;
 	if (intr_conf->rxq == 0)
 		return 0;
@@ -368,7 +368,7 @@ void failsafe_rx_intr_uninstall_subdevice(struct sub_device *sdev)
 	struct rte_eth_dev *fsdev;
 	struct rxq *fsrxq;
 
-	fsdev = sdev->fs_dev;
+	fsdev = fs_dev(sdev);
 	for (qid = 0; qid < ETH(sdev)->data->nb_rx_queues; qid++) {
 		if (qid < fsdev->data->nb_rx_queues) {
 			fsrxq = fsdev->data->rx_queues[qid];
