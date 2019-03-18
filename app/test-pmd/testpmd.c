@@ -3046,6 +3046,8 @@ print_stats(void)
 	printf("\nPort statistics ====================================");
 	for (i = 0; i < cur_fwd_config.nb_fwd_ports; i++)
 		nic_stats_display(fwd_ports_ids[i]);
+
+	fflush(stdout);
 }
 
 static void
