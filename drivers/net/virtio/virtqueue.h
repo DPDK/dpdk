@@ -321,11 +321,12 @@ vring_desc_init_split(struct vring_desc *dp, uint16_t n)
 static inline void
 virtqueue_disable_intr_packed(struct virtqueue *vq)
 {
-	uint16_t *event_flags = &vq->ring_packed.driver_event->desc_event_flags;
-
-	*event_flags = RING_EVENT_FLAGS_DISABLE;
+	if (vq->event_flags_shadow != RING_EVENT_FLAGS_DISABLE) {
+		vq->event_flags_shadow = RING_EVENT_FLAGS_DISABLE;
+		vq->ring_packed.driver_event->desc_event_flags =
+			vq->event_flags_shadow;
+	}
 }
-
 
 /**
  * Tell the backend not to interrupt us.
@@ -348,7 +349,6 @@ virtqueue_enable_intr_packed(struct virtqueue *vq)
 	uint16_t *event_flags = &vq->ring_packed.driver_event->desc_event_flags;
 
 	if (vq->event_flags_shadow == RING_EVENT_FLAGS_DISABLE) {
-		virtio_wmb(vq->hw->weak_barriers);
 		vq->event_flags_shadow = RING_EVENT_FLAGS_ENABLE;
 		*event_flags = vq->event_flags_shadow;
 	}
