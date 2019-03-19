@@ -237,43 +237,17 @@ virtio_send_command_packed(struct virtnet_ctl *cvq,
 	return result;
 }
 
-static int
-virtio_send_command(struct virtnet_ctl *cvq, struct virtio_pmd_ctrl *ctrl,
-		int *dlen, int pkt_num)
+static struct virtio_pmd_ctrl *
+virtio_send_command_split(struct virtnet_ctl *cvq,
+			  struct virtio_pmd_ctrl *ctrl,
+			  int *dlen, int pkt_num)
 {
+	struct virtio_pmd_ctrl *result;
+	struct virtqueue *vq = cvq->vq;
 	uint32_t head, i;
 	int k, sum = 0;
-	virtio_net_ctrl_ack status = ~0;
-	struct virtio_pmd_ctrl *result;
-	struct virtqueue *vq;
 
-	ctrl->status = status;
-
-	if (!cvq || !cvq->vq) {
-		PMD_INIT_LOG(ERR, "Control queue is not supported.");
-		return -1;
-	}
-
-	rte_spinlock_lock(&cvq->lock);
-	vq = cvq->vq;
 	head = vq->vq_desc_head_idx;
-
-	PMD_INIT_LOG(DEBUG, "vq->vq_desc_head_idx = %d, status = %d, "
-		"vq->hw->cvq = %p vq = %p",
-		vq->vq_desc_head_idx, status, vq->hw->cvq, vq);
-
-	if (vq->vq_free_cnt < pkt_num + 2 || pkt_num < 1) {
-		rte_spinlock_unlock(&cvq->lock);
-		return -1;
-	}
-
-	memcpy(cvq->virtio_net_hdr_mz->addr, ctrl,
-		sizeof(struct virtio_pmd_ctrl));
-
-	if (vtpci_packed_queue(vq->hw)) {
-		result = virtio_send_command_packed(cvq, ctrl, dlen, pkt_num);
-		goto out_unlock;
-	}
 
 	/*
 	 * Format is enforced in qemu code:
@@ -346,8 +320,44 @@ virtio_send_command(struct virtnet_ctl *cvq, struct virtio_pmd_ctrl *ctrl,
 			vq->vq_free_cnt, vq->vq_desc_head_idx);
 
 	result = cvq->virtio_net_hdr_mz->addr;
+	return result;
+}
 
-out_unlock:
+static int
+virtio_send_command(struct virtnet_ctl *cvq, struct virtio_pmd_ctrl *ctrl,
+		    int *dlen, int pkt_num)
+{
+	virtio_net_ctrl_ack status = ~0;
+	struct virtio_pmd_ctrl *result;
+	struct virtqueue *vq;
+
+	ctrl->status = status;
+
+	if (!cvq || !cvq->vq) {
+		PMD_INIT_LOG(ERR, "Control queue is not supported.");
+		return -1;
+	}
+
+	rte_spinlock_lock(&cvq->lock);
+	vq = cvq->vq;
+
+	PMD_INIT_LOG(DEBUG, "vq->vq_desc_head_idx = %d, status = %d, "
+		"vq->hw->cvq = %p vq = %p",
+		vq->vq_desc_head_idx, status, vq->hw->cvq, vq);
+
+	if (vq->vq_free_cnt < pkt_num + 2 || pkt_num < 1) {
+		rte_spinlock_unlock(&cvq->lock);
+		return -1;
+	}
+
+	memcpy(cvq->virtio_net_hdr_mz->addr, ctrl,
+		sizeof(struct virtio_pmd_ctrl));
+
+	if (vtpci_packed_queue(vq->hw))
+		result = virtio_send_command_packed(cvq, ctrl, dlen, pkt_num);
+	else
+		result = virtio_send_command_split(cvq, ctrl, dlen, pkt_num);
+
 	rte_spinlock_unlock(&cvq->lock);
 	return result->status;
 }
