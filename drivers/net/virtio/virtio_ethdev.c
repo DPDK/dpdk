@@ -603,17 +603,9 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 		memset(txr, 0, vq_size * sizeof(*txr));
 		for (i = 0; i < vq_size; i++) {
 			struct vring_desc *start_dp = txr[i].tx_indir;
-			struct vring_packed_desc *start_dp_packed =
-				txr[i].tx_indir_pq;
 
 			/* first indirect descriptor is always the tx header */
-			if (vtpci_packed_queue(hw)) {
-				start_dp_packed->addr = txvq->virtio_net_hdr_mem
-					+ i * sizeof(*txr)
-					+ offsetof(struct virtio_tx_region,
-						   tx_hdr);
-				start_dp_packed->len = hw->vtnet_hdr_size;
-			} else {
+			if (!vtpci_packed_queue(hw)) {
 				vring_desc_init_split(start_dp,
 						      RTE_DIM(txr[i].tx_indir));
 				start_dp->addr = txvq->virtio_net_hdr_mem
