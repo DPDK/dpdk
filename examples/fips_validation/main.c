@@ -887,6 +887,41 @@ prepare_ccm_xform(struct rte_crypto_sym_xform *xform)
 	return 0;
 }
 
+static int
+prepare_sha_xform(struct rte_crypto_sym_xform *xform)
+{
+	const struct rte_cryptodev_symmetric_capability *cap;
+	struct rte_cryptodev_sym_capability_idx cap_idx;
+	struct rte_crypto_auth_xform *auth_xform = &xform->auth;
+
+	xform->type = RTE_CRYPTO_SYM_XFORM_AUTH;
+
+	auth_xform->algo = info.interim_info.sha_data.algo;
+	auth_xform->op = RTE_CRYPTO_AUTH_OP_GENERATE;
+	auth_xform->digest_length = vec.cipher_auth.digest.len;
+
+	cap_idx.algo.auth = auth_xform->algo;
+	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+
+	cap = rte_cryptodev_sym_capability_get(env.dev_id, &cap_idx);
+	if (!cap) {
+		RTE_LOG(ERR, USER1, "Failed to get capability for cdev %u\n",
+				env.dev_id);
+		return -EINVAL;
+	}
+
+	if (rte_cryptodev_sym_capability_check_auth(cap,
+			auth_xform->key.length,
+			auth_xform->digest_length, 0) != 0) {
+		RTE_LOG(ERR, USER1, "PMD %s key length %u digest length %u\n",
+				info.device_name, auth_xform->key.length,
+				auth_xform->digest_length);
+		return -EPERM;
+	}
+
+	return 0;
+}
+
 static void
 get_writeback_data(struct fips_val *val)
 {
@@ -1218,6 +1253,90 @@ fips_mct_aes_test(void)
 }
 
 static int
+fips_mct_sha_test(void)
+{
+#define SHA_EXTERN_ITER	100
+#define SHA_INTERN_ITER	1000
+#define SHA_MD_BLOCK	3
+	struct fips_val val, md[SHA_MD_BLOCK];
+	char temp[MAX_DIGEST_SIZE*2];
+	int ret;
+	uint32_t i, j;
+
+	val.val = rte_malloc(NULL, (MAX_DIGEST_SIZE*SHA_MD_BLOCK), 0);
+	for (i = 0; i < SHA_MD_BLOCK; i++)
+		md[i].val = rte_malloc(NULL, (MAX_DIGEST_SIZE*2), 0);
+
+	rte_free(vec.pt.val);
+	vec.pt.val = rte_malloc(NULL, (MAX_DIGEST_SIZE*SHA_MD_BLOCK), 0);
+
+	fips_test_write_one_case();
+	fprintf(info.fp_wr, "\n");
+
+	for (j = 0; j < SHA_EXTERN_ITER; j++) {
+
+		memcpy(md[0].val, vec.cipher_auth.digest.val,
+			vec.cipher_auth.digest.len);
+		md[0].len = vec.cipher_auth.digest.len;
+		memcpy(md[1].val, vec.cipher_auth.digest.val,
+			vec.cipher_auth.digest.len);
+		md[1].len = vec.cipher_auth.digest.len;
+		memcpy(md[2].val, vec.cipher_auth.digest.val,
+			vec.cipher_auth.digest.len);
+		md[2].len = vec.cipher_auth.digest.len;
+
+		for (i = 0; i < (SHA_INTERN_ITER); i++) {
+
+			memcpy(vec.pt.val, md[0].val,
+				(size_t)md[0].len);
+			memcpy((vec.pt.val + md[0].len), md[1].val,
+				(size_t)md[1].len);
+			memcpy((vec.pt.val + md[0].len + md[1].len),
+				md[2].val,
+				(size_t)md[2].len);
+			vec.pt.len = md[0].len + md[1].len + md[2].len;
+
+			ret = fips_run_test();
+			if (ret < 0) {
+				if (ret == -EPERM) {
+					fprintf(info.fp_wr, "Bypass\n\n");
+					return 0;
+				}
+				return ret;
+			}
+
+			get_writeback_data(&val);
+
+			memcpy(md[0].val, md[1].val, md[1].len);
+			md[0].len = md[1].len;
+			memcpy(md[1].val, md[2].val, md[2].len);
+			md[1].len = md[2].len;
+
+			memcpy(md[2].val, (val.val + vec.pt.len),
+				vec.cipher_auth.digest.len);
+			md[2].len = vec.cipher_auth.digest.len;
+		}
+
+		memcpy(vec.cipher_auth.digest.val, md[2].val, md[2].len);
+		vec.cipher_auth.digest.len = md[2].len;
+
+		fprintf(info.fp_wr, "COUNT = %u\n", j);
+
+		writeback_hex_str("", temp, &vec.cipher_auth.digest);
+
+		fprintf(info.fp_wr, "MD = %s\n\n", temp);
+	}
+
+	for (i = 0; i < (SHA_MD_BLOCK); i++)
+		rte_free(md[i].val);
+
+	rte_free(vec.pt.val);
+
+	return 0;
+}
+
+
+static int
 init_test_ops(void)
 {
 	switch (info.algo) {
@@ -1256,6 +1375,14 @@ init_test_ops(void)
 		test_ops.prepare_op = prepare_aead_op;
 		test_ops.prepare_xform = prepare_ccm_xform;
 		test_ops.test = fips_generic_test;
+		break;
+	case FIPS_TEST_ALGO_SHA:
+		test_ops.prepare_op = prepare_auth_op;
+		test_ops.prepare_xform = prepare_sha_xform;
+		if (info.interim_info.sha_data.test_type == SHA_MCT)
+			test_ops.test = fips_mct_sha_test;
+		else
+			test_ops.test = fips_generic_test;
 		break;
 	default:
 		return -1;

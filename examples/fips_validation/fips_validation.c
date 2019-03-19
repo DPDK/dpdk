@@ -136,6 +136,11 @@ fips_test_parse_header(void)
 			ret = parse_test_tdes_init();
 			if (ret < 0)
 				return 0;
+		} else if (strstr(info.vec[i], "SHA-")) {
+			info.algo = FIPS_TEST_ALGO_SHA;
+			ret = parse_test_sha_init();
+			if (ret < 0)
+				return ret;
 		}
 
 		tmp = strstr(info.vec[i], "# Config info for ");
@@ -182,6 +187,18 @@ fips_test_parse_header(void)
 
 			fprintf(info.fp_wr, "%s%s%s\n", tmp_output,
 					"test information for DPDK Cryptodev ",
+					info.device_name);
+			continue;
+		}
+
+		tmp = strstr(info.vec[i], "\" information for \"");
+		if (tmp != NULL) {
+			char tmp_output[128] = {0};
+
+			strlcpy(tmp_output, info.vec[i], tmp - info.vec[i] + 1);
+
+			fprintf(info.fp_wr, "%s%s%s\n", tmp_output,
+					"\" information for DPDK Cryptodev ",
 					info.device_name);
 			continue;
 		}
