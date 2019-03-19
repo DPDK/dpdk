@@ -121,47 +121,34 @@ enum rte_vhost_msg_result {
 	RTE_VHOST_MSG_RESULT_OK =  0,
 	/* Message handling successful and reply prepared */
 	RTE_VHOST_MSG_RESULT_REPLY =  1,
+	/* Message not handled */
+	RTE_VHOST_MSG_RESULT_NOT_HANDLED,
 };
 
 /**
- * Function prototype for the vhost backend to handler specific vhost user
- * messages prior to the master message handling
- *
- * @param vid
- *  vhost device id
- * @param msg
- *  Message pointer.
- * @param skip_master
- *  If the handler requires skipping the master message handling, this variable
- *  shall be written 1, otherwise 0.
- * @return
- *  VH_RESULT_OK on success, VH_RESULT_REPLY on success with reply,
- *  VH_RESULT_ERR on failure
- */
-typedef enum rte_vhost_msg_result (*rte_vhost_msg_pre_handle)(int vid,
-		void *msg, uint32_t *skip_master);
-
-/**
- * Function prototype for the vhost backend to handler specific vhost user
- * messages after the master message handling is done
+ * Function prototype for the vhost backend to handle specific vhost user
+ * messages.
  *
  * @param vid
  *  vhost device id
  * @param msg
  *  Message pointer.
  * @return
- *  VH_RESULT_OK on success, VH_RESULT_REPLY on success with reply,
- *  VH_RESULT_ERR on failure
+ *  RTE_VHOST_MSG_RESULT_OK on success,
+ *  RTE_VHOST_MSG_RESULT_REPLY on success with reply,
+ *  RTE_VHOST_MSG_RESULT_ERR on failure,
+ *  RTE_VHOST_MSG_RESULT_NOT_HANDLED if message was not handled.
  */
-typedef enum rte_vhost_msg_result (*rte_vhost_msg_post_handle)(int vid,
-		void *msg);
+typedef enum rte_vhost_msg_result (*rte_vhost_msg_handle)(int vid, void *msg);
 
 /**
  * Optional vhost user message handlers.
  */
 struct rte_vhost_user_extern_ops {
-	rte_vhost_msg_pre_handle pre_msg_handle;
-	rte_vhost_msg_post_handle post_msg_handle;
+	/* Called prior to the master message handling. */
+	rte_vhost_msg_handle pre_msg_handle;
+	/* Called after the master message handling. */
+	rte_vhost_msg_handle post_msg_handle;
 };
 
 /**

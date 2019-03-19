@@ -453,14 +453,20 @@ vhost_crypto_msg_post_handler(int vid, void *msg)
 		return RTE_VHOST_MSG_RESULT_ERR;
 	}
 
-	if (vmsg->request.master == VHOST_USER_CRYPTO_CREATE_SESS) {
+	switch (vmsg->request.master) {
+	case VHOST_USER_CRYPTO_CREATE_SESS:
 		vhost_crypto_create_sess(vcrypto,
 				&vmsg->payload.crypto_session);
 		vmsg->fd_num = 0;
 		ret = RTE_VHOST_MSG_RESULT_REPLY;
-	} else if (vmsg->request.master == VHOST_USER_CRYPTO_CLOSE_SESS) {
+		break;
+	case VHOST_USER_CRYPTO_CLOSE_SESS:
 		if (vhost_crypto_close_sess(vcrypto, vmsg->payload.u64))
 			ret = RTE_VHOST_MSG_RESULT_ERR;
+		break;
+	default:
+		ret = RTE_VHOST_MSG_RESULT_NOT_HANDLED;
+		break;
 	}
 
 	return ret;
