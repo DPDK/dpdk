@@ -165,7 +165,7 @@ vring_init_packed(struct vring_packed *vr, uint8_t *p, unsigned long align,
 	vr->driver_event = (struct vring_packed_desc_event *)(p +
 			vr->num * sizeof(struct vring_packed_desc));
 	vr->device_event = (struct vring_packed_desc_event *)
-		RTE_ALIGN_CEIL((uintptr_t)(vr->driver_event +
+		RTE_ALIGN_CEIL(((uintptr_t)vr->driver_event +
 				sizeof(struct vring_packed_desc_event)), align);
 }
 
