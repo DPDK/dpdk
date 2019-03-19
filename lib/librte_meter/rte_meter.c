@@ -19,7 +19,15 @@
 static void
 rte_meter_get_tb_params(uint64_t hz, uint64_t rate, uint64_t *tb_period, uint64_t *tb_bytes_per_period)
 {
-	double period = ((double) hz) / ((double) rate);
+	double period;
+
+	if (rate == 0) {
+		*tb_bytes_per_period = 0;
+		*tb_period = RTE_METER_TB_PERIOD_MIN;
+		return;
+	}
+
+	period = ((double) hz) / ((double) rate);
 
 	if (period >= RTE_METER_TB_PERIOD_MIN) {
 		*tb_bytes_per_period = 1;
