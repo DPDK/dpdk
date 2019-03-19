@@ -27,7 +27,7 @@ virtio_rxq_rearm_vec(struct virtnet_rx *rxvq)
 
 	desc_idx = vq->vq_avail_idx & (vq->vq_nentries - 1);
 	sw_ring = &vq->sw_ring[desc_idx];
-	start_dp = &vq->vq_ring.desc[desc_idx];
+	start_dp = &vq->vq_split.ring.desc[desc_idx];
 
 	ret = rte_mempool_get_bulk(rxvq->mpool, (void **)sw_ring,
 		RTE_VIRTIO_VPMD_RX_REARM_THRESH);

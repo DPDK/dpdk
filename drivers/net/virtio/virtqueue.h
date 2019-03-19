@@ -191,17 +191,22 @@ struct vq_desc_extra {
 
 struct virtqueue {
 	struct virtio_hw  *hw; /**< virtio_hw structure pointer. */
-	struct vring vq_ring;  /**< vring keeping desc, used and avail */
-	struct vring_packed ring_packed;  /**< vring keeping descs */
-	bool used_wrap_counter;
-	uint16_t cached_flags; /**< cached flags for descs */
-	uint16_t event_flags_shadow;
+	union {
+		struct {
+			/**< vring keeping desc, used and avail */
+			struct vring ring;
+		} vq_split;
 
-	/**
-	 * Last consumed descriptor in the used table,
-	 * trails vq_ring.used->idx.
-	 */
-	uint16_t vq_used_cons_idx;
+		struct {
+			/**< vring keeping descs and events */
+			struct vring_packed ring;
+			bool used_wrap_counter;
+			uint16_t cached_flags; /**< cached flags for descs */
+			uint16_t event_flags_shadow;
+		} vq_packed;
+	};
+
+	uint16_t vq_used_cons_idx; /**< last consumed descriptor */
 	uint16_t vq_nentries;  /**< vring desc numbers */
 	uint16_t vq_free_cnt;  /**< num of desc available */
 	uint16_t vq_avail_idx; /**< sync until needed */
@@ -289,7 +294,7 @@ desc_is_used(struct vring_packed_desc *desc, struct virtqueue *vq)
 	used = !!(flags & VRING_DESC_F_USED(1));
 	avail = !!(flags & VRING_DESC_F_AVAIL(1));
 
-	return avail == used && used == vq->used_wrap_counter;
+	return avail == used && used == vq->vq_packed.used_wrap_counter;
 }
 
 static inline void
@@ -297,10 +302,10 @@ vring_desc_init_packed(struct virtqueue *vq, int n)
 {
 	int i;
 	for (i = 0; i < n - 1; i++) {
-		vq->ring_packed.desc_packed[i].id = i;
+		vq->vq_packed.ring.desc_packed[i].id = i;
 		vq->vq_descx[i].next = i + 1;
 	}
-	vq->ring_packed.desc_packed[i].id = i;
+	vq->vq_packed.ring.desc_packed[i].id = i;
 	vq->vq_descx[i].next = VQ_RING_DESC_CHAIN_END;
 }
 
@@ -321,10 +326,10 @@ vring_desc_init_split(struct vring_desc *dp, uint16_t n)
 static inline void
 virtqueue_disable_intr_packed(struct virtqueue *vq)
 {
-	if (vq->event_flags_shadow != RING_EVENT_FLAGS_DISABLE) {
-		vq->event_flags_shadow = RING_EVENT_FLAGS_DISABLE;
-		vq->ring_packed.driver_event->desc_event_flags =
-			vq->event_flags_shadow;
+	if (vq->vq_packed.event_flags_shadow != RING_EVENT_FLAGS_DISABLE) {
+		vq->vq_packed.event_flags_shadow = RING_EVENT_FLAGS_DISABLE;
+		vq->vq_packed.ring.driver_event->desc_event_flags =
+			vq->vq_packed.event_flags_shadow;
 	}
 }
 
@@ -337,7 +342,7 @@ virtqueue_disable_intr(struct virtqueue *vq)
 	if (vtpci_packed_queue(vq->hw))
 		virtqueue_disable_intr_packed(vq);
 	else
-		vq->vq_ring.avail->flags |= VRING_AVAIL_F_NO_INTERRUPT;
+		vq->vq_split.ring.avail->flags |= VRING_AVAIL_F_NO_INTERRUPT;
 }
 
 /**
@@ -346,11 +351,10 @@ virtqueue_disable_intr(struct virtqueue *vq)
 static inline void
 virtqueue_enable_intr_packed(struct virtqueue *vq)
 {
-	uint16_t *event_flags = &vq->ring_packed.driver_event->desc_event_flags;
-
-	if (vq->event_flags_shadow == RING_EVENT_FLAGS_DISABLE) {
-		vq->event_flags_shadow = RING_EVENT_FLAGS_ENABLE;
-		*event_flags = vq->event_flags_shadow;
+	if (vq->vq_packed.event_flags_shadow == RING_EVENT_FLAGS_DISABLE) {
+		vq->vq_packed.event_flags_shadow = RING_EVENT_FLAGS_ENABLE;
+		vq->vq_packed.ring.driver_event->desc_event_flags =
+			vq->vq_packed.event_flags_shadow;
 	}
 }
 
@@ -360,7 +364,7 @@ virtqueue_enable_intr_packed(struct virtqueue *vq)
 static inline void
 virtqueue_enable_intr_split(struct virtqueue *vq)
 {
-	vq->vq_ring.avail->flags &= (~VRING_AVAIL_F_NO_INTERRUPT);
+	vq->vq_split.ring.avail->flags &= (~VRING_AVAIL_F_NO_INTERRUPT);
 }
 
 /**
@@ -404,7 +408,8 @@ virtio_get_queue_type(struct virtio_hw *hw, uint16_t vtpci_queue_idx)
 		return VTNET_TQ;
 }
 
-#define VIRTQUEUE_NUSED(vq) ((uint16_t)((vq)->vq_ring.used->idx - (vq)->vq_used_cons_idx))
+#define VIRTQUEUE_NUSED(vq) ((uint16_t)((vq)->vq_split.ring.used->idx - \
+					(vq)->vq_used_cons_idx))
 
 void vq_ring_free_chain(struct virtqueue *vq, uint16_t desc_idx);
 void vq_ring_free_chain_packed(struct virtqueue *vq, uint16_t used_idx);
@@ -415,7 +420,7 @@ static inline void
 vq_update_avail_idx(struct virtqueue *vq)
 {
 	virtio_wmb(vq->hw->weak_barriers);
-	vq->vq_ring.avail->idx = vq->vq_avail_idx;
+	vq->vq_split.ring.avail->idx = vq->vq_avail_idx;
 }
 
 static inline void
@@ -430,8 +435,8 @@ vq_update_avail_ring(struct virtqueue *vq, uint16_t desc_idx)
 	 * descriptor.
 	 */
 	avail_idx = (uint16_t)(vq->vq_avail_idx & (vq->vq_nentries - 1));
-	if (unlikely(vq->vq_ring.avail->ring[avail_idx] != desc_idx))
-		vq->vq_ring.avail->ring[avail_idx] = desc_idx;
+	if (unlikely(vq->vq_split.ring.avail->ring[avail_idx] != desc_idx))
+		vq->vq_split.ring.avail->ring[avail_idx] = desc_idx;
 	vq->vq_avail_idx++;
 }
 
@@ -443,7 +448,7 @@ virtqueue_kick_prepare(struct virtqueue *vq)
 	 * the used->flags.
 	 */
 	virtio_mb(vq->hw->weak_barriers);
-	return !(vq->vq_ring.used->flags & VRING_USED_F_NO_NOTIFY);
+	return !(vq->vq_split.ring.used->flags & VRING_USED_F_NO_NOTIFY);
 }
 
 static inline int
@@ -455,7 +460,7 @@ virtqueue_kick_prepare_packed(struct virtqueue *vq)
 	 * Ensure updated data is visible to vhost before reading the flags.
 	 */
 	virtio_mb(vq->hw->weak_barriers);
-	flags = vq->ring_packed.device_event->desc_event_flags;
+	flags = vq->vq_packed.ring.device_event->desc_event_flags;
 
 	return flags != RING_EVENT_FLAGS_DISABLE;
 }
@@ -473,15 +478,15 @@ virtqueue_notify(struct virtqueue *vq)
 #ifdef RTE_LIBRTE_VIRTIO_DEBUG_DUMP
 #define VIRTQUEUE_DUMP(vq) do { \
 	uint16_t used_idx, nused; \
-	used_idx = (vq)->vq_ring.used->idx; \
+	used_idx = (vq)->vq_split.ring.used->idx; \
 	nused = (uint16_t)(used_idx - (vq)->vq_used_cons_idx); \
 	if (vtpci_packed_queue((vq)->hw)) { \
 		PMD_INIT_LOG(DEBUG, \
 		"VQ: - size=%d; free=%d; used_cons_idx=%d; avail_idx=%d;" \
 		" cached_flags=0x%x; used_wrap_counter=%d", \
 		(vq)->vq_nentries, (vq)->vq_free_cnt, (vq)->vq_used_cons_idx, \
-		(vq)->vq_avail_idx, (vq)->cached_flags, \
-		(vq)->used_wrap_counter); \
+		(vq)->vq_avail_idx, (vq)->vq_packed.cached_flags, \
+		(vq)->vq_packed.used_wrap_counter); \
 		break; \
 	} \
 	PMD_INIT_LOG(DEBUG, \
@@ -489,9 +494,9 @@ virtqueue_notify(struct virtqueue *vq)
 	  " avail.idx=%d; used_cons_idx=%d; used.idx=%d;" \
 	  " avail.flags=0x%x; used.flags=0x%x", \
 	  (vq)->vq_nentries, (vq)->vq_free_cnt, nused, \
-	  (vq)->vq_desc_head_idx, (vq)->vq_ring.avail->idx, \
-	  (vq)->vq_used_cons_idx, (vq)->vq_ring.used->idx, \
-	  (vq)->vq_ring.avail->flags, (vq)->vq_ring.used->flags); \
+	  (vq)->vq_desc_head_idx, (vq)->vq_split.ring.avail->idx, \
+	  (vq)->vq_used_cons_idx, (vq)->vq_split.ring.used->idx, \
+	  (vq)->vq_split.ring.avail->flags, (vq)->vq_split.ring.used->flags); \
 } while (0)
 #else
 #define VIRTQUEUE_DUMP(vq) do { } while (0)

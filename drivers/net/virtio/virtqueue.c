@@ -61,7 +61,7 @@ virtqueue_rxvq_flush_packed(struct virtqueue *vq)
 	struct vq_desc_extra *dxp;
 	uint16_t i;
 
-	struct vring_packed_desc *descs = vq->ring_packed.desc_packed;
+	struct vring_packed_desc *descs = vq->vq_packed.ring.desc_packed;
 	int cnt = 0;
 
 	i = vq->vq_used_cons_idx;
@@ -75,7 +75,7 @@ virtqueue_rxvq_flush_packed(struct virtqueue *vq)
 		vq->vq_used_cons_idx++;
 		if (vq->vq_used_cons_idx >= vq->vq_nentries) {
 			vq->vq_used_cons_idx -= vq->vq_nentries;
-			vq->used_wrap_counter ^= 1;
+			vq->vq_packed.used_wrap_counter ^= 1;
 		}
 		i = vq->vq_used_cons_idx;
 	}
@@ -96,7 +96,7 @@ virtqueue_rxvq_flush_split(struct virtqueue *vq)
 
 	for (i = 0; i < nb_used; i++) {
 		used_idx = vq->vq_used_cons_idx & (vq->vq_nentries - 1);
-		uep = &vq->vq_ring.used->ring[used_idx];
+		uep = &vq->vq_split.ring.used->ring[used_idx];
 		if (hw->use_simple_rx) {
 			desc_idx = used_idx;
 			rte_pktmbuf_free(vq->sw_ring[desc_idx]);
