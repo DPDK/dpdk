@@ -61,7 +61,7 @@ virtqueue_rxvq_flush_packed(struct virtqueue *vq)
 	struct vq_desc_extra *dxp;
 	uint16_t i;
 
-	struct vring_packed_desc *descs = vq->vq_packed.ring.desc_packed;
+	struct vring_packed_desc *descs = vq->vq_packed.ring.desc;
 	int cnt = 0;
 
 	i = vq->vq_used_cons_idx;

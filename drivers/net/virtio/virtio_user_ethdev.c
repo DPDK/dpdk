@@ -290,17 +290,14 @@ virtio_user_setup_queue_packed(struct virtqueue *vq,
 			   sizeof(struct vring_packed_desc_event),
 			   VIRTIO_PCI_VRING_ALIGN);
 	vring->num = vq->vq_nentries;
-	vring->desc_packed =
-		(void *)(uintptr_t)desc_addr;
-	vring->driver_event =
-		(void *)(uintptr_t)avail_addr;
-	vring->device_event =
-		(void *)(uintptr_t)used_addr;
+	vring->desc = (void *)(uintptr_t)desc_addr;
+	vring->driver = (void *)(uintptr_t)avail_addr;
+	vring->device = (void *)(uintptr_t)used_addr;
 	dev->packed_queues[queue_idx].avail_wrap_counter = true;
 	dev->packed_queues[queue_idx].used_wrap_counter = true;
 
 	for (i = 0; i < vring->num; i++)
-		vring->desc_packed[i].flags = 0;
+		vring->desc[i].flags = 0;
 }
 
 static void

@@ -302,10 +302,10 @@ vring_desc_init_packed(struct virtqueue *vq, int n)
 {
 	int i;
 	for (i = 0; i < n - 1; i++) {
-		vq->vq_packed.ring.desc_packed[i].id = i;
+		vq->vq_packed.ring.desc[i].id = i;
 		vq->vq_descx[i].next = i + 1;
 	}
-	vq->vq_packed.ring.desc_packed[i].id = i;
+	vq->vq_packed.ring.desc[i].id = i;
 	vq->vq_descx[i].next = VQ_RING_DESC_CHAIN_END;
 }
 
@@ -328,7 +328,7 @@ virtqueue_disable_intr_packed(struct virtqueue *vq)
 {
 	if (vq->vq_packed.event_flags_shadow != RING_EVENT_FLAGS_DISABLE) {
 		vq->vq_packed.event_flags_shadow = RING_EVENT_FLAGS_DISABLE;
-		vq->vq_packed.ring.driver_event->desc_event_flags =
+		vq->vq_packed.ring.driver->desc_event_flags =
 			vq->vq_packed.event_flags_shadow;
 	}
 }
@@ -353,7 +353,7 @@ virtqueue_enable_intr_packed(struct virtqueue *vq)
 {
 	if (vq->vq_packed.event_flags_shadow == RING_EVENT_FLAGS_DISABLE) {
 		vq->vq_packed.event_flags_shadow = RING_EVENT_FLAGS_ENABLE;
-		vq->vq_packed.ring.driver_event->desc_event_flags =
+		vq->vq_packed.ring.driver->desc_event_flags =
 			vq->vq_packed.event_flags_shadow;
 	}
 }
@@ -460,7 +460,7 @@ virtqueue_kick_prepare_packed(struct virtqueue *vq)
 	 * Ensure updated data is visible to vhost before reading the flags.
 	 */
 	virtio_mb(vq->hw->weak_barriers);
-	flags = vq->vq_packed.ring.device_event->desc_event_flags;
+	flags = vq->vq_packed.ring.device->desc_event_flags;
 
 	return flags != RING_EVENT_FLAGS_DISABLE;
 }

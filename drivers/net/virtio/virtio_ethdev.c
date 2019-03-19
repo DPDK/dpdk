@@ -147,7 +147,7 @@ virtio_send_command_packed(struct virtnet_ctl *cvq,
 {
 	struct virtqueue *vq = cvq->vq;
 	int head;
-	struct vring_packed_desc *desc = vq->vq_packed.ring.desc_packed;
+	struct vring_packed_desc *desc = vq->vq_packed.ring.desc;
 	struct virtio_pmd_ctrl *result;
 	uint16_t flags;
 	int sum = 0;

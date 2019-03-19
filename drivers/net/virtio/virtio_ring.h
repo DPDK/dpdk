@@ -78,10 +78,9 @@ struct vring_packed_desc_event {
 
 struct vring_packed {
 	unsigned int num;
-	struct vring_packed_desc *desc_packed;
-	struct vring_packed_desc_event *driver_event;
-	struct vring_packed_desc_event *device_event;
-
+	struct vring_packed_desc *desc;
+	struct vring_packed_desc_event *driver;
+	struct vring_packed_desc_event *device;
 };
 
 struct vring {
@@ -161,11 +160,11 @@ vring_init_packed(struct vring_packed *vr, uint8_t *p, unsigned long align,
 		 unsigned int num)
 {
 	vr->num = num;
-	vr->desc_packed = (struct vring_packed_desc *)p;
-	vr->driver_event = (struct vring_packed_desc_event *)(p +
+	vr->desc = (struct vring_packed_desc *)p;
+	vr->driver = (struct vring_packed_desc_event *)(p +
 			vr->num * sizeof(struct vring_packed_desc));
-	vr->device_event = (struct vring_packed_desc_event *)
-		RTE_ALIGN_CEIL(((uintptr_t)vr->driver_event +
+	vr->device = (struct vring_packed_desc_event *)
+		RTE_ALIGN_CEIL(((uintptr_t)vr->driver +
 				sizeof(struct vring_packed_desc_event)), align);
 }
 

@@ -118,7 +118,7 @@ virtqueue_dequeue_burst_rx_packed(struct virtqueue *vq,
 	struct vring_packed_desc *desc;
 	uint16_t i;
 
-	desc = vq->vq_packed.ring.desc_packed;
+	desc = vq->vq_packed.ring.desc;
 
 	for (i = 0; i < num; i++) {
 		used_idx = vq->vq_used_cons_idx;
@@ -229,7 +229,7 @@ virtio_xmit_cleanup_inorder_packed(struct virtqueue *vq, int num)
 {
 	uint16_t used_idx, id, curr_id, free_cnt = 0;
 	uint16_t size = vq->vq_nentries;
-	struct vring_packed_desc *desc = vq->vq_packed.ring.desc_packed;
+	struct vring_packed_desc *desc = vq->vq_packed.ring.desc;
 	struct vq_desc_extra *dxp;
 
 	used_idx = vq->vq_used_cons_idx;
@@ -261,7 +261,7 @@ virtio_xmit_cleanup_normal_packed(struct virtqueue *vq, int num)
 {
 	uint16_t used_idx, id;
 	uint16_t size = vq->vq_nentries;
-	struct vring_packed_desc *desc = vq->vq_packed.ring.desc_packed;
+	struct vring_packed_desc *desc = vq->vq_packed.ring.desc;
 	struct vq_desc_extra *dxp;
 
 	used_idx = vq->vq_used_cons_idx;
@@ -430,7 +430,7 @@ static inline int
 virtqueue_enqueue_recv_refill_packed(struct virtqueue *vq,
 				     struct rte_mbuf **cookie, uint16_t num)
 {
-	struct vring_packed_desc *start_dp = vq->vq_packed.ring.desc_packed;
+	struct vring_packed_desc *start_dp = vq->vq_packed.ring.desc;
 	uint16_t flags = vq->vq_packed.cached_flags;
 	struct virtio_hw *hw = vq->hw;
 	struct vq_desc_extra *dxp;
@@ -635,7 +635,7 @@ virtqueue_enqueue_xmit_packed_fast(struct virtnet_tx *txvq,
 
 	id = in_order ? vq->vq_avail_idx : vq->vq_desc_head_idx;
 	idx = vq->vq_avail_idx;
-	dp = &vq->vq_packed.ring.desc_packed[idx];
+	dp = &vq->vq_packed.ring.desc[idx];
 
 	dxp = &vq->vq_descx[id];
 	dxp->ndescs = 1;
@@ -698,9 +698,9 @@ virtqueue_enqueue_xmit_packed(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 	head_idx = vq->vq_avail_idx;
 	idx = head_idx;
 	prev = head_idx;
-	start_dp = vq->vq_packed.ring.desc_packed;
+	start_dp = vq->vq_packed.ring.desc;
 
-	head_dp = &vq->vq_packed.ring.desc_packed[idx];
+	head_dp = &vq->vq_packed.ring.desc[idx];
 	head_flags = cookie->next ? VRING_DESC_F_NEXT : 0;
 	head_flags |= vq->vq_packed.cached_flags;
 

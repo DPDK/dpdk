@@ -52,11 +52,11 @@ virtio_user_kick_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 
 	if (dev->features & (1ULL << VIRTIO_F_RING_PACKED)) {
 		addr.desc_user_addr =
-			(uint64_t)(uintptr_t)pq_vring->desc_packed;
+			(uint64_t)(uintptr_t)pq_vring->desc;
 		addr.avail_user_addr =
-			(uint64_t)(uintptr_t)pq_vring->driver_event;
+			(uint64_t)(uintptr_t)pq_vring->driver;
 		addr.used_user_addr =
-			(uint64_t)(uintptr_t)pq_vring->device_event;
+			(uint64_t)(uintptr_t)pq_vring->device;
 	} else {
 		addr.desc_user_addr = (uint64_t)(uintptr_t)vring->desc;
 		addr.avail_user_addr = (uint64_t)(uintptr_t)vring->avail;
@@ -650,30 +650,30 @@ virtio_user_handle_ctrl_msg_packed(struct virtio_user_dev *dev,
 	n_descs++;
 
 	idx_status = idx_data;
-	while (vring->desc_packed[idx_status].flags & VRING_DESC_F_NEXT) {
+	while (vring->desc[idx_status].flags & VRING_DESC_F_NEXT) {
 		idx_status++;
 		if (idx_status >= dev->queue_size)
 			idx_status -= dev->queue_size;
 		n_descs++;
 	}
 
-	hdr = (void *)(uintptr_t)vring->desc_packed[idx_hdr].addr;
+	hdr = (void *)(uintptr_t)vring->desc[idx_hdr].addr;
 	if (hdr->class == VIRTIO_NET_CTRL_MQ &&
 	    hdr->cmd == VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET) {
 		uint16_t queues;
 
 		queues = *(uint16_t *)(uintptr_t)
-				vring->desc_packed[idx_data].addr;
+				vring->desc[idx_data].addr;
 		status = virtio_user_handle_mq(dev, queues);
 	}
 
 	/* Update status */
 	*(virtio_net_ctrl_ack *)(uintptr_t)
-		vring->desc_packed[idx_status].addr = status;
+		vring->desc[idx_status].addr = status;
 
 	/* Update used descriptor */
-	vring->desc_packed[idx_hdr].id = vring->desc_packed[idx_status].id;
-	vring->desc_packed[idx_hdr].len = sizeof(status);
+	vring->desc[idx_hdr].id = vring->desc[idx_status].id;
+	vring->desc[idx_hdr].len = sizeof(status);
 
 	return n_descs;
 }
@@ -685,14 +685,14 @@ virtio_user_handle_cq_packed(struct virtio_user_dev *dev, uint16_t queue_idx)
 	struct vring_packed *vring = &dev->packed_vrings[queue_idx];
 	uint16_t n_descs;
 
-	while (desc_is_avail(&vring->desc_packed[vq->used_idx],
+	while (desc_is_avail(&vring->desc[vq->used_idx],
 			     vq->used_wrap_counter)) {
 
 		n_descs = virtio_user_handle_ctrl_msg_packed(dev, vring,
 				vq->used_idx);
 
 		rte_smp_wmb();
-		vring->desc_packed[vq->used_idx].flags =
+		vring->desc[vq->used_idx].flags =
 			VRING_DESC_F_WRITE |
 			VRING_DESC_F_AVAIL(vq->used_wrap_counter) |
 			VRING_DESC_F_USED(vq->used_wrap_counter);
