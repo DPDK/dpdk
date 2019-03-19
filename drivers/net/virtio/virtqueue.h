@@ -193,10 +193,10 @@ struct virtqueue {
 	struct virtio_hw  *hw; /**< virtio_hw structure pointer. */
 	struct vring vq_ring;  /**< vring keeping desc, used and avail */
 	struct vring_packed ring_packed;  /**< vring keeping descs */
-	bool avail_wrap_counter;
 	bool used_wrap_counter;
+	uint16_t cached_flags; /**< cached flags for descs */
 	uint16_t event_flags_shadow;
-	uint16_t avail_used_flags;
+
 	/**
 	 * Last consumed descriptor in the used table,
 	 * trails vq_ring.used->idx.
@@ -478,9 +478,9 @@ virtqueue_notify(struct virtqueue *vq)
 	if (vtpci_packed_queue((vq)->hw)) { \
 		PMD_INIT_LOG(DEBUG, \
 		"VQ: - size=%d; free=%d; used_cons_idx=%d; avail_idx=%d;" \
-		"VQ: - avail_wrap_counter=%d; used_wrap_counter=%d", \
+		" cached_flags=0x%x; used_wrap_counter=%d", \
 		(vq)->vq_nentries, (vq)->vq_free_cnt, (vq)->vq_used_cons_idx, \
-		(vq)->vq_avail_idx, (vq)->avail_wrap_counter, \
+		(vq)->vq_avail_idx, (vq)->cached_flags, \
 		(vq)->used_wrap_counter); \
 		break; \
 	} \

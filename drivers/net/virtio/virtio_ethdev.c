@@ -149,7 +149,7 @@ virtio_send_command_packed(struct virtnet_ctl *cvq,
 	int head;
 	struct vring_packed_desc *desc = vq->ring_packed.desc_packed;
 	struct virtio_pmd_ctrl *result;
-	bool avail_wrap_counter;
+	uint16_t flags;
 	int sum = 0;
 	int nb_descs = 0;
 	int k;
@@ -161,14 +161,15 @@ virtio_send_command_packed(struct virtnet_ctl *cvq,
 	 * One RX packet for ACK.
 	 */
 	head = vq->vq_avail_idx;
-	avail_wrap_counter = vq->avail_wrap_counter;
+	flags = vq->cached_flags;
 	desc[head].addr = cvq->virtio_net_hdr_mem;
 	desc[head].len = sizeof(struct virtio_net_ctrl_hdr);
 	vq->vq_free_cnt--;
 	nb_descs++;
 	if (++vq->vq_avail_idx >= vq->vq_nentries) {
 		vq->vq_avail_idx -= vq->vq_nentries;
-		vq->avail_wrap_counter ^= 1;
+		vq->cached_flags ^=
+			VRING_DESC_F_AVAIL(1) | VRING_DESC_F_USED(1);
 	}
 
 	for (k = 0; k < pkt_num; k++) {
@@ -177,34 +178,31 @@ virtio_send_command_packed(struct virtnet_ctl *cvq,
 			+ sizeof(ctrl->status) + sizeof(uint8_t) * sum;
 		desc[vq->vq_avail_idx].len = dlen[k];
 		desc[vq->vq_avail_idx].flags = VRING_DESC_F_NEXT |
-			VRING_DESC_F_AVAIL(vq->avail_wrap_counter) |
-			VRING_DESC_F_USED(!vq->avail_wrap_counter);
+			vq->cached_flags;
 		sum += dlen[k];
 		vq->vq_free_cnt--;
 		nb_descs++;
 		if (++vq->vq_avail_idx >= vq->vq_nentries) {
 			vq->vq_avail_idx -= vq->vq_nentries;
-			vq->avail_wrap_counter ^= 1;
+			vq->cached_flags ^=
+				VRING_DESC_F_AVAIL(1) | VRING_DESC_F_USED(1);
 		}
 	}
 
 	desc[vq->vq_avail_idx].addr = cvq->virtio_net_hdr_mem
 		+ sizeof(struct virtio_net_ctrl_hdr);
 	desc[vq->vq_avail_idx].len = sizeof(ctrl->status);
-	desc[vq->vq_avail_idx].flags = VRING_DESC_F_WRITE |
-		VRING_DESC_F_AVAIL(vq->avail_wrap_counter) |
-		VRING_DESC_F_USED(!vq->avail_wrap_counter);
+	desc[vq->vq_avail_idx].flags = VRING_DESC_F_WRITE | vq->cached_flags;
 	vq->vq_free_cnt--;
 	nb_descs++;
 	if (++vq->vq_avail_idx >= vq->vq_nentries) {
 		vq->vq_avail_idx -= vq->vq_nentries;
-		vq->avail_wrap_counter ^= 1;
+		vq->cached_flags ^=
+			VRING_DESC_F_AVAIL(1) | VRING_DESC_F_USED(1);
 	}
 
 	virtio_wmb(vq->hw->weak_barriers);
-	desc[head].flags = VRING_DESC_F_NEXT |
-		VRING_DESC_F_AVAIL(avail_wrap_counter) |
-		VRING_DESC_F_USED(!avail_wrap_counter);
+	desc[head].flags = VRING_DESC_F_NEXT | flags;
 
 	virtio_wmb(vq->hw->weak_barriers);
 	virtqueue_notify(vq);
@@ -226,12 +224,12 @@ virtio_send_command_packed(struct virtnet_ctl *cvq,
 	PMD_INIT_LOG(DEBUG, "vq->vq_free_cnt=%d\n"
 			"vq->vq_avail_idx=%d\n"
 			"vq->vq_used_cons_idx=%d\n"
-			"vq->avail_wrap_counter=%d\n"
+			"vq->cached_flags=0x%x\n"
 			"vq->used_wrap_counter=%d\n",
 			vq->vq_free_cnt,
 			vq->vq_avail_idx,
 			vq->vq_used_cons_idx,
-			vq->avail_wrap_counter,
+			vq->cached_flags,
 			vq->used_wrap_counter);
 
 	result = cvq->virtio_net_hdr_mz->addr;
@@ -491,11 +489,10 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 	vq->vq_nentries = vq_size;
 	vq->event_flags_shadow = 0;
 	if (vtpci_packed_queue(hw)) {
-		vq->avail_wrap_counter = 1;
 		vq->used_wrap_counter = 1;
-		vq->avail_used_flags =
-			VRING_DESC_F_AVAIL(vq->avail_wrap_counter) |
-			VRING_DESC_F_USED(!vq->avail_wrap_counter);
+		vq->cached_flags = VRING_DESC_F_AVAIL(1);
+		if (queue_type == VTNET_RQ)
+			vq->cached_flags |= VRING_DESC_F_WRITE;
 	}
 
 	/*

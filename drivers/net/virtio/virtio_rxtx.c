@@ -431,7 +431,7 @@ virtqueue_enqueue_recv_refill_packed(struct virtqueue *vq,
 				     struct rte_mbuf **cookie, uint16_t num)
 {
 	struct vring_packed_desc *start_dp = vq->ring_packed.desc_packed;
-	uint16_t flags = VRING_DESC_F_WRITE | vq->avail_used_flags;
+	uint16_t flags = vq->cached_flags;
 	struct virtio_hw *hw = vq->hw;
 	struct vq_desc_extra *dxp;
 	uint16_t idx;
@@ -460,11 +460,9 @@ virtqueue_enqueue_recv_refill_packed(struct virtqueue *vq,
 		start_dp[idx].flags = flags;
 		if (++vq->vq_avail_idx >= vq->vq_nentries) {
 			vq->vq_avail_idx -= vq->vq_nentries;
-			vq->avail_wrap_counter ^= 1;
-			vq->avail_used_flags =
-				VRING_DESC_F_AVAIL(vq->avail_wrap_counter) |
-				VRING_DESC_F_USED(!vq->avail_wrap_counter);
-			flags = VRING_DESC_F_WRITE | vq->avail_used_flags;
+			vq->cached_flags ^=
+				VRING_DESC_F_AVAIL(1) | VRING_DESC_F_USED(1);
+			flags = vq->cached_flags;
 		}
 	}
 	vq->vq_free_cnt = (uint16_t)(vq->vq_free_cnt - num);
@@ -643,7 +641,7 @@ virtqueue_enqueue_xmit_packed_fast(struct virtnet_tx *txvq,
 	dxp->ndescs = 1;
 	dxp->cookie = cookie;
 
-	flags = vq->avail_used_flags;
+	flags = vq->cached_flags;
 
 	/* prepend cannot fail, checked by caller */
 	hdr = (struct virtio_net_hdr *)
@@ -662,8 +660,7 @@ virtqueue_enqueue_xmit_packed_fast(struct virtnet_tx *txvq,
 
 	if (++vq->vq_avail_idx >= vq->vq_nentries) {
 		vq->vq_avail_idx -= vq->vq_nentries;
-		vq->avail_wrap_counter ^= 1;
-		vq->avail_used_flags ^=
+		vq->cached_flags ^=
 			VRING_DESC_F_AVAIL(1) | VRING_DESC_F_USED(1);
 	}
 
@@ -705,7 +702,7 @@ virtqueue_enqueue_xmit_packed(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 
 	head_dp = &vq->ring_packed.desc_packed[idx];
 	head_flags = cookie->next ? VRING_DESC_F_NEXT : 0;
-	head_flags |= vq->avail_used_flags;
+	head_flags |= vq->cached_flags;
 
 	if (can_push) {
 		/* prepend cannot fail, checked by caller */
@@ -730,10 +727,8 @@ virtqueue_enqueue_xmit_packed(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 		idx++;
 		if (idx >= vq->vq_nentries) {
 			idx -= vq->vq_nentries;
-			vq->avail_wrap_counter ^= 1;
-			vq->avail_used_flags =
-				VRING_DESC_F_AVAIL(vq->avail_wrap_counter) |
-				VRING_DESC_F_USED(!vq->avail_wrap_counter);
+			vq->cached_flags ^=
+				VRING_DESC_F_AVAIL(1) | VRING_DESC_F_USED(1);
 		}
 	}
 
@@ -746,17 +741,15 @@ virtqueue_enqueue_xmit_packed(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 		start_dp[idx].len  = cookie->data_len;
 		if (likely(idx != head_idx)) {
 			flags = cookie->next ? VRING_DESC_F_NEXT : 0;
-			flags |= vq->avail_used_flags;
+			flags |= vq->cached_flags;
 			start_dp[idx].flags = flags;
 		}
 		prev = idx;
 		idx++;
 		if (idx >= vq->vq_nentries) {
 			idx -= vq->vq_nentries;
-			vq->avail_wrap_counter ^= 1;
-			vq->avail_used_flags =
-				VRING_DESC_F_AVAIL(vq->avail_wrap_counter) |
-				VRING_DESC_F_USED(!vq->avail_wrap_counter);
+			vq->cached_flags ^=
+				VRING_DESC_F_AVAIL(1) | VRING_DESC_F_USED(1);
 		}
 	} while ((cookie = cookie->next) != NULL);
 
