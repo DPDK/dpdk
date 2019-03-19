@@ -879,6 +879,7 @@ dpaa2_dev_start(struct rte_eth_dev *dev)
 
 	/*checksum errors, send them to normal path and set it in annotation */
 	err_cfg.errors = DPNI_ERROR_L3CE | DPNI_ERROR_L4CE;
+	err_cfg.errors |= DPNI_ERROR_PHE;
 
 	err_cfg.error_action = DPNI_ERROR_ACTION_CONTINUE;
 	err_cfg.set_frame_annotation = true;
