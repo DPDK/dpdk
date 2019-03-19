@@ -1211,7 +1211,7 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	struct virtnet_rx *rxvq = rx_queue;
 	struct virtqueue *vq = rxvq->vq;
 	struct virtio_hw *hw = vq->hw;
-	struct rte_mbuf *rxm, *new_mbuf;
+	struct rte_mbuf *rxm;
 	uint16_t nb_used, num, nb_rx;
 	uint32_t len[VIRTIO_MBUF_BURST_SZ];
 	struct rte_mbuf *rcv_pkts[VIRTIO_MBUF_BURST_SZ];
@@ -1281,20 +1281,24 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	rxvq->stats.packets += nb_rx;
 
 	/* Allocate new mbuf for the used descriptor */
-	while (likely(!virtqueue_full(vq))) {
-		new_mbuf = rte_mbuf_raw_alloc(rxvq->mpool);
-		if (unlikely(new_mbuf == NULL)) {
-			struct rte_eth_dev *dev
-				= &rte_eth_devices[rxvq->port_id];
-			dev->data->rx_mbuf_alloc_failed++;
-			break;
+	if (likely(!virtqueue_full(vq))) {
+		uint16_t free_cnt = vq->vq_free_cnt;
+		struct rte_mbuf *new_pkts[free_cnt];
+
+		if (likely(rte_pktmbuf_alloc_bulk(rxvq->mpool, new_pkts,
+						free_cnt) == 0)) {
+			error = virtqueue_enqueue_recv_refill(vq, new_pkts,
+					free_cnt);
+			if (unlikely(error)) {
+				for (i = 0; i < free_cnt; i++)
+					rte_pktmbuf_free(new_pkts[i]);
+			}
+			nb_enqueued += free_cnt;
+		} else {
+			struct rte_eth_dev *dev =
+				&rte_eth_devices[rxvq->port_id];
+			dev->data->rx_mbuf_alloc_failed += free_cnt;
 		}
-		error = virtqueue_enqueue_recv_refill(vq, &new_mbuf, 1);
-		if (unlikely(error)) {
-			rte_pktmbuf_free(new_mbuf);
-			break;
-		}
-		nb_enqueued++;
 	}
 
 	if (likely(nb_enqueued)) {
@@ -1316,7 +1320,7 @@ virtio_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
 	struct virtnet_rx *rxvq = rx_queue;
 	struct virtqueue *vq = rxvq->vq;
 	struct virtio_hw *hw = vq->hw;
-	struct rte_mbuf *rxm, *new_mbuf;
+	struct rte_mbuf *rxm;
 	uint16_t num, nb_rx;
 	uint32_t len[VIRTIO_MBUF_BURST_SZ];
 	struct rte_mbuf *rcv_pkts[VIRTIO_MBUF_BURST_SZ];
@@ -1380,20 +1384,24 @@ virtio_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
 	rxvq->stats.packets += nb_rx;
 
 	/* Allocate new mbuf for the used descriptor */
-	while (likely(!virtqueue_full(vq))) {
-		new_mbuf = rte_mbuf_raw_alloc(rxvq->mpool);
-		if (unlikely(new_mbuf == NULL)) {
+	if (likely(!virtqueue_full(vq))) {
+		uint16_t free_cnt = vq->vq_free_cnt;
+		struct rte_mbuf *new_pkts[free_cnt];
+
+		if (likely(rte_pktmbuf_alloc_bulk(rxvq->mpool, new_pkts,
+						free_cnt) == 0)) {
+			error = virtqueue_enqueue_recv_refill_packed(vq,
+					new_pkts, free_cnt);
+			if (unlikely(error)) {
+				for (i = 0; i < free_cnt; i++)
+					rte_pktmbuf_free(new_pkts[i]);
+			}
+			nb_enqueued += free_cnt;
+		} else {
 			struct rte_eth_dev *dev =
 				&rte_eth_devices[rxvq->port_id];
-			dev->data->rx_mbuf_alloc_failed++;
-			break;
+			dev->data->rx_mbuf_alloc_failed += free_cnt;
 		}
-		error = virtqueue_enqueue_recv_refill_packed(vq, &new_mbuf, 1);
-		if (unlikely(error)) {
-			rte_pktmbuf_free(new_mbuf);
-			break;
-		}
-		nb_enqueued++;
 	}
 
 	if (likely(nb_enqueued)) {
