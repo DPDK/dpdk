@@ -317,7 +317,7 @@ vring_desc_init_split(struct vring_desc *dp, uint16_t n)
 }
 
 /**
- * Tell the backend not to interrupt us.
+ * Tell the backend not to interrupt us. Implementation for packed virtqueues.
  */
 static inline void
 virtqueue_disable_intr_packed(struct virtqueue *vq)
@@ -330,6 +330,15 @@ virtqueue_disable_intr_packed(struct virtqueue *vq)
 }
 
 /**
+ * Tell the backend not to interrupt us. Implementation for split virtqueues.
+ */
+static inline void
+virtqueue_disable_intr_split(struct virtqueue *vq)
+{
+	vq->vq_split.ring.avail->flags |= VRING_AVAIL_F_NO_INTERRUPT;
+}
+
+/**
  * Tell the backend not to interrupt us.
  */
 static inline void
@@ -338,7 +347,7 @@ virtqueue_disable_intr(struct virtqueue *vq)
 	if (vtpci_packed_queue(vq->hw))
 		virtqueue_disable_intr_packed(vq);
 	else
-		vq->vq_split.ring.avail->flags |= VRING_AVAIL_F_NO_INTERRUPT;
+		virtqueue_disable_intr_split(vq);
 }
 
 /**
