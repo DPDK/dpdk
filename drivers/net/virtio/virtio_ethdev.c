@@ -850,10 +850,12 @@ virtio_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 static int
 virtio_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 {
+	struct virtio_hw *hw = dev->data->dev_private;
 	struct virtnet_rx *rxvq = dev->data->rx_queues[queue_id];
 	struct virtqueue *vq = rxvq->vq;
 
 	virtqueue_enable_intr(vq);
+	virtio_mb(hw->weak_barriers);
 	return 0;
 }
 
