@@ -116,8 +116,8 @@ else
 			cmd_output = cmd.stdout().to_lower().strip().split(' ')
 		endif
 		# Set to generic if variable is not found
-		machine = get_variable('impl_' + cmd_output[0], 'generic')
-		if machine == 'generic'
+		machine = get_variable('impl_' + cmd_output[0], ['generic'])
+		if machine[0] == 'generic'
 			machine = impl_generic
 			cmd_output = cmd_generic
 		endif
