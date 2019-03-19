@@ -708,6 +708,20 @@ unlock_exit:
 }
 
 int
+rte_vhost_driver_set_protocol_features(const char *path,
+		uint64_t protocol_features)
+{
+	struct vhost_user_socket *vsocket;
+
+	pthread_mutex_lock(&vhost_user.mutex);
+	vsocket = find_vhost_user_socket(path);
+	if (vsocket)
+		vsocket->protocol_features = protocol_features;
+	pthread_mutex_unlock(&vhost_user.mutex);
+	return vsocket ? 0 : -1;
+}
+
+int
 rte_vhost_driver_get_protocol_features(const char *path,
 		uint64_t *protocol_features)
 {
