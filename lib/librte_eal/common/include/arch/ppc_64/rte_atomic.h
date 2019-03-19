@@ -49,28 +49,10 @@ extern "C" {
 #include <stdint.h>
 #include "generic/rte_atomic.h"
 
-/**
- * General memory barrier.
- *
- * Guarantees that the LOAD and STORE operations generated before the
- * barrier occur before the LOAD and STORE operations generated after.
- */
 #define	rte_mb()  asm volatile("sync" : : : "memory")
 
-/**
- * Write memory barrier.
- *
- * Guarantees that the STORE operations generated before the barrier
- * occur before the STORE operations generated after.
- */
 #define	rte_wmb() asm volatile("sync" : : : "memory")
 
-/**
- * Read memory barrier.
- *
- * Guarantees that the LOAD operations generated before the barrier
- * occur before the LOAD operations generated after.
- */
 #define	rte_rmb() asm volatile("sync" : : : "memory")
 
 #define rte_smp_mb() rte_mb()

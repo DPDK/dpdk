@@ -25,7 +25,6 @@
  *
  * Guarantees that the LOAD and STORE operations generated before the
  * barrier occur before the LOAD and STORE operations generated after.
- * This function is architecture dependent.
  */
 static inline void rte_mb(void);
 
@@ -34,7 +33,6 @@ static inline void rte_mb(void);
  *
  * Guarantees that the STORE operations generated before the barrier
  * occur before the STORE operations generated after.
- * This function is architecture dependent.
  */
 static inline void rte_wmb(void);
 
@@ -43,7 +41,6 @@ static inline void rte_wmb(void);
  *
  * Guarantees that the LOAD operations generated before the barrier
  * occur before the LOAD operations generated after.
- * This function is architecture dependent.
  */
 static inline void rte_rmb(void);
 ///@}
