@@ -2128,7 +2128,7 @@ out_err:
 static void
 bond_ethdev_free_queues(struct rte_eth_dev *dev)
 {
-	uint8_t i;
+	uint16_t i;
 
 	if (dev->data->rx_queues != NULL) {
 		for (i = 0; i < dev->data->nb_rx_queues; i++) {
