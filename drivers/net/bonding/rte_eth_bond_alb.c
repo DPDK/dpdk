@@ -18,10 +18,10 @@ simple_hash(uint8_t *hash_start, int hash_size)
 	return hash;
 }
 
-static uint8_t
+static uint16_t
 calculate_slave(struct bond_dev_private *internals)
 {
-	uint8_t idx;
+	uint16_t idx;
 
 	idx = (internals->mode6.last_slave + 1) % internals->active_slave_count;
 	internals->mode6.last_slave = idx;

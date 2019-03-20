@@ -664,7 +664,7 @@ max_index(uint64_t *a, int n)
  * @param port_pos			Port to assign.
  */
 static void
-selection_logic(struct bond_dev_private *internals, uint8_t slave_id)
+selection_logic(struct bond_dev_private *internals, uint16_t slave_id)
 {
 	struct port *agg, *port;
 	uint16_t slaves_count, new_agg_id, i, j = 0;
@@ -781,7 +781,7 @@ link_speed_key(uint16_t speed) {
 }
 
 static void
-rx_machine_update(struct bond_dev_private *internals, uint8_t slave_id,
+rx_machine_update(struct bond_dev_private *internals, uint16_t slave_id,
 		struct rte_mbuf *lacp_pkt) {
 	struct lacpdu_header *lacp;
 	struct lacpdu_actor_partner_params *partner;
@@ -812,8 +812,8 @@ bond_mode_8023ad_periodic_cb(void *arg)
 	struct rte_eth_link link_info;
 	struct ether_addr slave_addr;
 	struct rte_mbuf *lacp_pkt = NULL;
-
-	uint8_t i, slave_id;
+	uint16_t slave_id;
+	uint16_t i;
 
 
 	/* Update link status on each port */
@@ -1156,7 +1156,7 @@ int
 bond_mode_8023ad_enable(struct rte_eth_dev *bond_dev)
 {
 	struct bond_dev_private *internals = bond_dev->data->dev_private;
-	uint8_t i;
+	uint16_t i;
 
 	for (i = 0; i < internals->active_slave_count; i++)
 		bond_mode_8023ad_activate_slave(bond_dev,

@@ -353,7 +353,7 @@ bond_ethdev_tx_burst_8023ad_fast_queue(void *queue, struct rte_mbuf **bufs,
 
 	for (i = 0; i < nb_bufs; i++) {
 		/* Populate slave mbuf arrays with mbufs for that slave. */
-		uint8_t slave_idx = bufs_slave_port_idxs[i];
+		uint16_t slave_idx = bufs_slave_port_idxs[i];
 
 		slave_bufs[slave_idx][slave_nb_bufs[slave_idx]++] = bufs[i];
 	}
@@ -404,8 +404,9 @@ bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 
 	uint8_t collecting;  /* current slave collecting status */
 	const uint8_t promisc = internals->promiscuous_en;
-	uint8_t i, j, k;
 	uint8_t subtype;
+	uint8_t j, k;
+	uint16_t i;
 
 	/* Copy slave list to protect against slave up/down changes during tx
 	 * bursting */
@@ -774,7 +775,7 @@ ipv6_hash(struct ipv6_hdr *ipv6_hdr)
 
 void
 burst_xmit_l2_hash(struct rte_mbuf **buf, uint16_t nb_pkts,
-		uint8_t slave_count, uint16_t *slaves)
+		uint16_t slave_count, uint16_t *slaves)
 {
 	struct ether_hdr *eth_hdr;
 	uint32_t hash;
@@ -791,7 +792,7 @@ burst_xmit_l2_hash(struct rte_mbuf **buf, uint16_t nb_pkts,
 
 void
 burst_xmit_l23_hash(struct rte_mbuf **buf, uint16_t nb_pkts,
-		uint8_t slave_count, uint16_t *slaves)
+		uint16_t slave_count, uint16_t *slaves)
 {
 	uint16_t i;
 	struct ether_hdr *eth_hdr;
@@ -829,7 +830,7 @@ burst_xmit_l23_hash(struct rte_mbuf **buf, uint16_t nb_pkts,
 
 void
 burst_xmit_l34_hash(struct rte_mbuf **buf, uint16_t nb_pkts,
-		uint8_t slave_count, uint16_t *slaves)
+		uint16_t slave_count, uint16_t *slaves)
 {
 	struct ether_hdr *eth_hdr;
 	uint16_t proto;
@@ -899,7 +900,7 @@ burst_xmit_l34_hash(struct rte_mbuf **buf, uint16_t nb_pkts,
 struct bwg_slave {
 	uint64_t bwg_left_int;
 	uint64_t bwg_left_remainder;
-	uint8_t slave;
+	uint16_t slave;
 };
 
 void
@@ -952,11 +953,12 @@ bond_ethdev_update_tlb_slave_cb(void *arg)
 	struct bond_dev_private *internals = arg;
 	struct rte_eth_stats slave_stats;
 	struct bwg_slave bwg_array[RTE_MAX_ETHPORTS];
-	uint8_t slave_count;
+	uint16_t slave_count;
 	uint64_t tx_bytes;
 
 	uint8_t update_stats = 0;
-	uint8_t i, slave_id;
+	uint16_t slave_id;
+	uint16_t i;
 
 	internals->slave_update_idx++;
 
@@ -1243,7 +1245,7 @@ bond_ethdev_tx_burst_balance(void *queue, struct rte_mbuf **bufs,
 
 	for (i = 0; i < nb_bufs; i++) {
 		/* Populate slave mbuf arrays with mbufs for that slave. */
-		uint8_t slave_idx = bufs_slave_port_idxs[i];
+		uint16_t slave_idx = bufs_slave_port_idxs[i];
 
 		slave_bufs[slave_idx][slave_nb_bufs[slave_idx]++] = bufs[i];
 	}
@@ -1354,7 +1356,7 @@ bond_ethdev_tx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 			 * Populate slave mbuf arrays with mbufs for that
 			 * slave
 			 */
-			uint8_t slave_idx = bufs_slave_port_idxs[i];
+			uint16_t slave_idx = bufs_slave_port_idxs[i];
 
 			slave_bufs[slave_idx][slave_nb_bufs[slave_idx]++] =
 					bufs[i];
@@ -1396,8 +1398,9 @@ bond_ethdev_tx_burst_broadcast(void *queue, struct rte_mbuf **bufs,
 	struct bond_dev_private *internals;
 	struct bond_tx_queue *bd_tx_q;
 
-	uint8_t tx_failed_flag = 0, num_of_slaves;
 	uint16_t slaves[RTE_MAX_ETHPORTS];
+	uint8_t tx_failed_flag = 0;
+	uint16_t num_of_slaves;
 
 	uint16_t max_nb_of_tx_pkts = 0;
 
@@ -1948,7 +1951,7 @@ void
 slave_remove(struct bond_dev_private *internals,
 		struct rte_eth_dev *slave_eth_dev)
 {
-	uint8_t i;
+	uint16_t i;
 
 	for (i = 0; i < internals->slave_count; i++)
 		if (internals->slaves[i].port_id ==
@@ -2147,7 +2150,7 @@ void
 bond_ethdev_stop(struct rte_eth_dev *eth_dev)
 {
 	struct bond_dev_private *internals = eth_dev->data->dev_private;
-	uint8_t i;
+	uint16_t i;
 
 	if (internals->mode == BONDING_MODE_8023AD) {
 		struct port *port;
@@ -2243,7 +2246,7 @@ bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	 */
 	if (internals->slave_count > 0) {
 		struct rte_eth_dev_info slave_info;
-		uint8_t idx;
+		uint16_t idx;
 
 		for (idx = 0; idx < internals->slave_count; idx++) {
 			rte_eth_dev_info_get(internals->slaves[idx].port_id,
@@ -2656,9 +2659,10 @@ bond_ethdev_lsc_event_callback(uint16_t port_id, enum rte_eth_event_type type,
 	struct rte_eth_link link;
 	int rc = -1;
 
-	int i, valid_slave = 0;
-	uint8_t active_pos;
 	uint8_t lsc_flag = 0;
+	int valid_slave = 0;
+	uint16_t active_pos;
+	uint16_t i;
 
 	if (type != RTE_ETH_EVENT_INTR_LSC || param == NULL)
 		return rc;
