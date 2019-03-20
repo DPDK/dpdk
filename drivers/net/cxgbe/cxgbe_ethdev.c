@@ -633,7 +633,7 @@ int cxgbe_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 			~DEV_RX_OFFLOAD_JUMBO_FRAME;
 
 	err = t4_sge_alloc_rxq(adapter, &rxq->rspq, false, eth_dev, msi_idx,
-			       &rxq->fl, t4_ethrx_handler,
+			       &rxq->fl, NULL,
 			       is_pf4(adapter) ?
 			       t4_get_tp_ch_map(adapter, pi->tx_chan) : 0, mp,
 			       queue_idx, socket_id);
