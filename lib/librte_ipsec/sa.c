@@ -219,18 +219,28 @@ esp_inb_tun_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm)
 static void
 esp_outb_init(struct rte_ipsec_sa *sa, uint32_t hlen)
 {
+	uint8_t algo_type;
+
 	sa->sqn.outb.raw = 1;
 
 	/* these params may differ with new algorithms support */
 	sa->ctp.auth.offset = hlen;
 	sa->ctp.auth.length = sizeof(struct esp_hdr) + sa->iv_len + sa->sqh_len;
-	if (sa->aad_len != 0) {
+
+	algo_type = sa->algo_type;
+
+	switch (algo_type) {
+	case ALGO_TYPE_AES_GCM:
+	case ALGO_TYPE_AES_CTR:
+	case ALGO_TYPE_NULL:
 		sa->ctp.cipher.offset = hlen + sizeof(struct esp_hdr) +
 			sa->iv_len;
 		sa->ctp.cipher.length = 0;
-	} else {
+		break;
+	case ALGO_TYPE_AES_CBC:
 		sa->ctp.cipher.offset = sa->hdr_len + sizeof(struct esp_hdr);
 		sa->ctp.cipher.length = sa->iv_len;
+		break;
 	}
 }
 
@@ -259,26 +269,47 @@ esp_sa_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm,
 				RTE_IPSEC_SATP_MODE_MASK;
 
 	if (cxf->aead != NULL) {
-		/* RFC 4106 */
-		if (cxf->aead->algo != RTE_CRYPTO_AEAD_AES_GCM)
+		switch (cxf->aead->algo) {
+		case RTE_CRYPTO_AEAD_AES_GCM:
+			/* RFC 4106 */
+			sa->aad_len = sizeof(struct aead_gcm_aad);
+			sa->icv_len = cxf->aead->digest_length;
+			sa->iv_ofs = cxf->aead->iv.offset;
+			sa->iv_len = sizeof(uint64_t);
+			sa->pad_align = IPSEC_PAD_AES_GCM;
+			sa->algo_type = ALGO_TYPE_AES_GCM;
+			break;
+		default:
 			return -EINVAL;
-		sa->aad_len = sizeof(struct aead_gcm_aad);
-		sa->icv_len = cxf->aead->digest_length;
-		sa->iv_ofs = cxf->aead->iv.offset;
-		sa->iv_len = sizeof(uint64_t);
-		sa->pad_align = IPSEC_PAD_AES_GCM;
+		}
 	} else {
 		sa->icv_len = cxf->auth->digest_length;
 		sa->iv_ofs = cxf->cipher->iv.offset;
 		sa->sqh_len = IS_ESN(sa) ? sizeof(uint32_t) : 0;
-		if (cxf->cipher->algo == RTE_CRYPTO_CIPHER_NULL) {
+
+		switch (cxf->cipher->algo) {
+		case RTE_CRYPTO_CIPHER_NULL:
 			sa->pad_align = IPSEC_PAD_NULL;
 			sa->iv_len = 0;
-		} else if (cxf->cipher->algo == RTE_CRYPTO_CIPHER_AES_CBC) {
+			sa->algo_type = ALGO_TYPE_NULL;
+			break;
+
+		case RTE_CRYPTO_CIPHER_AES_CBC:
 			sa->pad_align = IPSEC_PAD_AES_CBC;
 			sa->iv_len = IPSEC_MAX_IV_SIZE;
-		} else
+			sa->algo_type = ALGO_TYPE_AES_CBC;
+			break;
+
+		case RTE_CRYPTO_CIPHER_AES_CTR:
+			/* RFC 3686 */
+			sa->pad_align = IPSEC_PAD_AES_CTR;
+			sa->iv_len = IPSEC_AES_CTR_IV_SIZE;
+			sa->algo_type = ALGO_TYPE_AES_CTR;
+			break;
+
+		default:
 			return -EINVAL;
+		}
 	}
 
 	sa->udata = prm->userdata;
@@ -438,12 +469,15 @@ esp_outb_cop_prepare(struct rte_crypto_op *cop,
 {
 	struct rte_crypto_sym_op *sop;
 	struct aead_gcm_iv *gcm;
+	struct aesctr_cnt_blk *ctr;
+	uint8_t algo_type = sa->algo_type;
 
 	/* fill sym op fields */
 	sop = cop->sym;
 
-	/* AEAD (AES_GCM) case */
-	if (sa->aad_len != 0) {
+	switch (algo_type) {
+	case ALGO_TYPE_AES_GCM:
+		/* AEAD (AES_GCM) case */
 		sop->aead.data.offset = sa->ctp.cipher.offset + hlen;
 		sop->aead.data.length = sa->ctp.cipher.length + plen;
 		sop->aead.digest.data = icv->va;
@@ -455,14 +489,40 @@ esp_outb_cop_prepare(struct rte_crypto_op *cop,
 		gcm = rte_crypto_op_ctod_offset(cop, struct aead_gcm_iv *,
 			sa->iv_ofs);
 		aead_gcm_iv_fill(gcm, ivp[0], sa->salt);
-	/* CRYPT+AUTH case */
-	} else {
+		break;
+	case ALGO_TYPE_AES_CBC:
+		/* Cipher-Auth (AES-CBC *) case */
 		sop->cipher.data.offset = sa->ctp.cipher.offset + hlen;
 		sop->cipher.data.length = sa->ctp.cipher.length + plen;
 		sop->auth.data.offset = sa->ctp.auth.offset + hlen;
 		sop->auth.data.length = sa->ctp.auth.length + plen;
 		sop->auth.digest.data = icv->va;
 		sop->auth.digest.phys_addr = icv->pa;
+		break;
+	case ALGO_TYPE_AES_CTR:
+		/* Cipher-Auth (AES-CTR *) case */
+		sop->cipher.data.offset = sa->ctp.cipher.offset + hlen;
+		sop->cipher.data.length = sa->ctp.cipher.length + plen;
+		sop->auth.data.offset = sa->ctp.auth.offset + hlen;
+		sop->auth.data.length = sa->ctp.auth.length + plen;
+		sop->auth.digest.data = icv->va;
+		sop->auth.digest.phys_addr = icv->pa;
+
+		ctr = rte_crypto_op_ctod_offset(cop, struct aesctr_cnt_blk *,
+			sa->iv_ofs);
+		aes_ctr_cnt_blk_fill(ctr, ivp[0], sa->salt);
+		break;
+	case ALGO_TYPE_NULL:
+		/* NULL case */
+		sop->cipher.data.offset = sa->ctp.cipher.offset + hlen;
+		sop->cipher.data.length = sa->ctp.cipher.length + plen;
+		sop->auth.data.offset = sa->ctp.auth.offset + hlen;
+		sop->auth.data.length = sa->ctp.auth.length + plen;
+		sop->auth.digest.data = icv->va;
+		sop->auth.digest.phys_addr = icv->pa;
+		break;
+	default:
+		break;
 	}
 }
 
@@ -561,6 +621,7 @@ outb_pkt_xprepare(const struct rte_ipsec_sa *sa, rte_be64_t sqc,
 {
 	uint32_t *psqh;
 	struct aead_gcm_aad *aad;
+	uint8_t algo_type = sa->algo_type;
 
 	/* insert SQN.hi between ESP trailer and ICV */
 	if (sa->sqh_len != 0) {
@@ -572,7 +633,7 @@ outb_pkt_xprepare(const struct rte_ipsec_sa *sa, rte_be64_t sqc,
 	 * fill IV and AAD fields, if any (aad fields are placed after icv),
 	 * right now we support only one AEAD algorithm: AES-GCM .
 	 */
-	if (sa->aad_len != 0) {
+	if (algo_type == ALGO_TYPE_AES_GCM) {
 		aad = (struct aead_gcm_aad *)(icv->va + sa->icv_len);
 		aead_gcm_aad_fill(aad, sa->spi, sqc, IS_ESN(sa));
 	}
@@ -783,8 +844,10 @@ esp_inb_tun_cop_prepare(struct rte_crypto_op *cop,
 {
 	struct rte_crypto_sym_op *sop;
 	struct aead_gcm_iv *gcm;
+	struct aesctr_cnt_blk *ctr;
 	uint64_t *ivc, *ivp;
 	uint32_t clen;
+	uint8_t algo_type = sa->algo_type;
 
 	clen = plen - sa->ctp.cipher.length;
 	if ((int32_t)clen < 0 || (clen & (sa->pad_align - 1)) != 0)
@@ -793,8 +856,8 @@ esp_inb_tun_cop_prepare(struct rte_crypto_op *cop,
 	/* fill sym op fields */
 	sop = cop->sym;
 
-	/* AEAD (AES_GCM) case */
-	if (sa->aad_len != 0) {
+	switch (algo_type) {
+	case ALGO_TYPE_AES_GCM:
 		sop->aead.data.offset = pofs + sa->ctp.cipher.offset;
 		sop->aead.data.length = clen;
 		sop->aead.digest.data = icv->va;
@@ -808,8 +871,8 @@ esp_inb_tun_cop_prepare(struct rte_crypto_op *cop,
 		ivp = rte_pktmbuf_mtod_offset(mb, uint64_t *,
 			pofs + sizeof(struct esp_hdr));
 		aead_gcm_iv_fill(gcm, ivp[0], sa->salt);
-	/* CRYPT+AUTH case */
-	} else {
+		break;
+	case ALGO_TYPE_AES_CBC:
 		sop->cipher.data.offset = pofs + sa->ctp.cipher.offset;
 		sop->cipher.data.length = clen;
 		sop->auth.data.offset = pofs + sa->ctp.auth.offset;
@@ -822,7 +885,35 @@ esp_inb_tun_cop_prepare(struct rte_crypto_op *cop,
 		ivp = rte_pktmbuf_mtod_offset(mb, uint64_t *,
 			pofs + sizeof(struct esp_hdr));
 		copy_iv(ivc, ivp, sa->iv_len);
+		break;
+	case ALGO_TYPE_AES_CTR:
+		sop->cipher.data.offset = pofs + sa->ctp.cipher.offset;
+		sop->cipher.data.length = clen;
+		sop->auth.data.offset = pofs + sa->ctp.auth.offset;
+		sop->auth.data.length = plen - sa->ctp.auth.length;
+		sop->auth.digest.data = icv->va;
+		sop->auth.digest.phys_addr = icv->pa;
+
+		/* copy iv from the input packet to the cop */
+		ctr = rte_crypto_op_ctod_offset(cop, struct aesctr_cnt_blk *,
+			sa->iv_ofs);
+		ivp = rte_pktmbuf_mtod_offset(mb, uint64_t *,
+			pofs + sizeof(struct esp_hdr));
+		aes_ctr_cnt_blk_fill(ctr, ivp[0], sa->salt);
+		break;
+	case ALGO_TYPE_NULL:
+		sop->cipher.data.offset = pofs + sa->ctp.cipher.offset;
+		sop->cipher.data.length = clen;
+		sop->auth.data.offset = pofs + sa->ctp.auth.offset;
+		sop->auth.data.length = plen - sa->ctp.auth.length;
+		sop->auth.digest.data = icv->va;
+		sop->auth.digest.phys_addr = icv->pa;
+		break;
+
+	default:
+		return -EINVAL;
 	}
+
 	return 0;
 }
 

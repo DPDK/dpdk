@@ -95,6 +95,11 @@ New Features
 
   Added support for AES-XTS with 128 and 256 bit AES keys.
 
+* **Updated the IPsec library.**
+
+  The IPsec library has been updated with AES-CTR cipher algorithm
+  support.
+
 * **Updated the testpmd application.**
 
   Improved testpmd application performance on ARM platform. For ``macswap``

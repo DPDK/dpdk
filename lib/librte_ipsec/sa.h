@@ -15,8 +15,15 @@
 enum {
 	IPSEC_PAD_DEFAULT = 4,
 	IPSEC_PAD_AES_CBC = IPSEC_MAX_IV_SIZE,
+	IPSEC_PAD_AES_CTR = IPSEC_PAD_DEFAULT,
 	IPSEC_PAD_AES_GCM = IPSEC_PAD_DEFAULT,
 	IPSEC_PAD_NULL = IPSEC_PAD_DEFAULT,
+};
+
+/* iv sizes for different algorithms */
+enum {
+	IPSEC_IV_SIZE_DEFAULT = IPSEC_MAX_IV_SIZE,
+	IPSEC_AES_CTR_IV_SIZE = sizeof(uint64_t),
 };
 
 /* these definitions probably has to be in rte_crypto_sym.h */
@@ -47,7 +54,17 @@ struct replay_sqn {
 	__extension__ uint64_t window[0];
 };
 
+/*IPSEC SA supported algorithms */
+enum sa_algo_type	{
+	ALGO_TYPE_NULL = 0,
+	ALGO_TYPE_AES_CBC,
+	ALGO_TYPE_AES_CTR,
+	ALGO_TYPE_AES_GCM,
+	ALGO_TYPE_MAX
+};
+
 struct rte_ipsec_sa {
+
 	uint64_t type;     /* type of given SA */
 	uint64_t udata;    /* user defined */
 	uint32_t size;     /* size of given sa object */
@@ -65,6 +82,7 @@ struct rte_ipsec_sa {
 		union sym_op_ofslen auth;
 	} ctp;
 	uint32_t salt;
+	uint8_t algo_type;
 	uint8_t proto;    /* next proto */
 	uint8_t aad_len;
 	uint8_t hdr_len;

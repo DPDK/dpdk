@@ -11,6 +11,16 @@
  * by ipsec library.
  */
 
+/*
+ * AES-CTR counter block format.
+ */
+
+struct aesctr_cnt_blk {
+	uint32_t nonce;
+	uint64_t iv;
+	uint32_t cnt;
+} __attribute__((packed));
+
  /*
   * AES-GCM devices have some specific requirements for IV and AAD formats.
   * Ideally that to be done by the driver itself.
@@ -41,6 +51,13 @@ struct gcm_esph_iv {
 	uint64_t iv;
 } __attribute__((packed));
 
+static inline void
+aes_ctr_cnt_blk_fill(struct aesctr_cnt_blk *ctr, uint64_t iv, uint32_t nonce)
+{
+	ctr->nonce = nonce;
+	ctr->iv = iv;
+	ctr->cnt = rte_cpu_to_be_32(1);
+}
 
 static inline void
 aead_gcm_iv_fill(struct aead_gcm_iv *gcm, uint64_t iv, uint32_t salt)
