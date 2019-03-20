@@ -238,6 +238,7 @@ esp_outb_init(struct rte_ipsec_sa *sa, uint32_t hlen)
 		sa->ctp.cipher.length = 0;
 		break;
 	case ALGO_TYPE_AES_CBC:
+	case ALGO_TYPE_3DES_CBC:
 		sa->ctp.cipher.offset = sa->hdr_len + sizeof(struct esp_hdr);
 		sa->ctp.cipher.length = sa->iv_len;
 		break;
@@ -305,6 +306,13 @@ esp_sa_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm,
 			sa->pad_align = IPSEC_PAD_AES_CTR;
 			sa->iv_len = IPSEC_AES_CTR_IV_SIZE;
 			sa->algo_type = ALGO_TYPE_AES_CTR;
+			break;
+
+		case RTE_CRYPTO_CIPHER_3DES_CBC:
+			/* RFC 1851 */
+			sa->pad_align = IPSEC_PAD_3DES_CBC;
+			sa->iv_len = IPSEC_3DES_IV_SIZE;
+			sa->algo_type = ALGO_TYPE_3DES_CBC;
 			break;
 
 		default:
@@ -476,6 +484,19 @@ esp_outb_cop_prepare(struct rte_crypto_op *cop,
 	sop = cop->sym;
 
 	switch (algo_type) {
+	case ALGO_TYPE_AES_CBC:
+		/* Cipher-Auth (AES-CBC *) case */
+	case ALGO_TYPE_3DES_CBC:
+		/* Cipher-Auth (3DES-CBC *) case */
+	case ALGO_TYPE_NULL:
+		/* NULL case */
+		sop->cipher.data.offset = sa->ctp.cipher.offset + hlen;
+		sop->cipher.data.length = sa->ctp.cipher.length + plen;
+		sop->auth.data.offset = sa->ctp.auth.offset + hlen;
+		sop->auth.data.length = sa->ctp.auth.length + plen;
+		sop->auth.digest.data = icv->va;
+		sop->auth.digest.phys_addr = icv->pa;
+		break;
 	case ALGO_TYPE_AES_GCM:
 		/* AEAD (AES_GCM) case */
 		sop->aead.data.offset = sa->ctp.cipher.offset + hlen;
@@ -490,15 +511,6 @@ esp_outb_cop_prepare(struct rte_crypto_op *cop,
 			sa->iv_ofs);
 		aead_gcm_iv_fill(gcm, ivp[0], sa->salt);
 		break;
-	case ALGO_TYPE_AES_CBC:
-		/* Cipher-Auth (AES-CBC *) case */
-		sop->cipher.data.offset = sa->ctp.cipher.offset + hlen;
-		sop->cipher.data.length = sa->ctp.cipher.length + plen;
-		sop->auth.data.offset = sa->ctp.auth.offset + hlen;
-		sop->auth.data.length = sa->ctp.auth.length + plen;
-		sop->auth.digest.data = icv->va;
-		sop->auth.digest.phys_addr = icv->pa;
-		break;
 	case ALGO_TYPE_AES_CTR:
 		/* Cipher-Auth (AES-CTR *) case */
 		sop->cipher.data.offset = sa->ctp.cipher.offset + hlen;
@@ -511,15 +523,6 @@ esp_outb_cop_prepare(struct rte_crypto_op *cop,
 		ctr = rte_crypto_op_ctod_offset(cop, struct aesctr_cnt_blk *,
 			sa->iv_ofs);
 		aes_ctr_cnt_blk_fill(ctr, ivp[0], sa->salt);
-		break;
-	case ALGO_TYPE_NULL:
-		/* NULL case */
-		sop->cipher.data.offset = sa->ctp.cipher.offset + hlen;
-		sop->cipher.data.length = sa->ctp.cipher.length + plen;
-		sop->auth.data.offset = sa->ctp.auth.offset + hlen;
-		sop->auth.data.length = sa->ctp.auth.length + plen;
-		sop->auth.digest.data = icv->va;
-		sop->auth.digest.phys_addr = icv->pa;
 		break;
 	default:
 		break;
@@ -873,6 +876,7 @@ esp_inb_tun_cop_prepare(struct rte_crypto_op *cop,
 		aead_gcm_iv_fill(gcm, ivp[0], sa->salt);
 		break;
 	case ALGO_TYPE_AES_CBC:
+	case ALGO_TYPE_3DES_CBC:
 		sop->cipher.data.offset = pofs + sa->ctp.cipher.offset;
 		sop->cipher.data.length = clen;
 		sop->auth.data.offset = pofs + sa->ctp.auth.offset;

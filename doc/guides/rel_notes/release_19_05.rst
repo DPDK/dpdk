@@ -97,7 +97,7 @@ New Features
 
 * **Updated the IPsec library.**
 
-  The IPsec library has been updated with AES-CTR cipher algorithm
+  The IPsec library has been updated with AES-CTR and 3DES-CBC cipher algorithms
   support. The related ipsec-secgw test scripts have been added.
 
 * **Updated the testpmd application.**

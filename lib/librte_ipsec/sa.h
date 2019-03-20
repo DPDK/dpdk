@@ -14,6 +14,7 @@
 /* padding alignment for different algorithms */
 enum {
 	IPSEC_PAD_DEFAULT = 4,
+	IPSEC_PAD_3DES_CBC = 8,
 	IPSEC_PAD_AES_CBC = IPSEC_MAX_IV_SIZE,
 	IPSEC_PAD_AES_CTR = IPSEC_PAD_DEFAULT,
 	IPSEC_PAD_AES_GCM = IPSEC_PAD_DEFAULT,
@@ -24,6 +25,10 @@ enum {
 enum {
 	IPSEC_IV_SIZE_DEFAULT = IPSEC_MAX_IV_SIZE,
 	IPSEC_AES_CTR_IV_SIZE = sizeof(uint64_t),
+	/* TripleDES supports IV size of 32bits or 64bits but he library
+	 * only supports 64bits.
+	 */
+	IPSEC_3DES_IV_SIZE = sizeof(uint64_t),
 };
 
 /* these definitions probably has to be in rte_crypto_sym.h */
@@ -57,6 +62,7 @@ struct replay_sqn {
 /*IPSEC SA supported algorithms */
 enum sa_algo_type	{
 	ALGO_TYPE_NULL = 0,
+	ALGO_TYPE_3DES_CBC,
 	ALGO_TYPE_AES_CBC,
 	ALGO_TYPE_AES_CTR,
 	ALGO_TYPE_AES_GCM,
