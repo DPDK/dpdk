@@ -1513,6 +1513,52 @@ static inline void rspq_next(struct sge_rspq *q)
 	}
 }
 
+static inline void cxgbe_set_mbuf_info(struct rte_mbuf *pkt, uint32_t ptype,
+				       uint64_t ol_flags)
+{
+	pkt->packet_type |= ptype;
+	pkt->ol_flags |= ol_flags;
+}
+
+static inline void cxgbe_fill_mbuf_info(struct adapter *adap,
+					const struct cpl_rx_pkt *cpl,
+					struct rte_mbuf *pkt)
+{
+	bool csum_ok;
+	u16 err_vec;
+
+	if (adap->params.tp.rx_pkt_encap)
+		err_vec = G_T6_COMPR_RXERR_VEC(ntohs(cpl->err_vec));
+	else
+		err_vec = ntohs(cpl->err_vec);
+
+	csum_ok = cpl->csum_calc && !err_vec;
+
+	if (cpl->vlan_ex)
+		cxgbe_set_mbuf_info(pkt, RTE_PTYPE_L2_ETHER_VLAN,
+				    PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED);
+	else
+		cxgbe_set_mbuf_info(pkt, RTE_PTYPE_L2_ETHER, 0);
+
+	if (cpl->l2info & htonl(F_RXF_IP))
+		cxgbe_set_mbuf_info(pkt, RTE_PTYPE_L3_IPV4,
+				    csum_ok ? PKT_RX_IP_CKSUM_GOOD :
+					      PKT_RX_IP_CKSUM_BAD);
+	else if (cpl->l2info & htonl(F_RXF_IP6))
+		cxgbe_set_mbuf_info(pkt, RTE_PTYPE_L3_IPV6,
+				    csum_ok ? PKT_RX_IP_CKSUM_GOOD :
+					      PKT_RX_IP_CKSUM_BAD);
+
+	if (cpl->l2info & htonl(F_RXF_TCP))
+		cxgbe_set_mbuf_info(pkt, RTE_PTYPE_L4_TCP,
+				    csum_ok ? PKT_RX_L4_CKSUM_GOOD :
+					      PKT_RX_L4_CKSUM_BAD);
+	else if (cpl->l2info & htonl(F_RXF_UDP))
+		cxgbe_set_mbuf_info(pkt, RTE_PTYPE_L4_UDP,
+				    csum_ok ? PKT_RX_L4_CKSUM_GOOD :
+					      PKT_RX_L4_CKSUM_BAD);
+}
+
 /**
  * process_responses - process responses from an SGE response queue
  * @q: the ingress queue to process
@@ -1564,8 +1610,6 @@ static int process_responses(struct sge_rspq *q, int budget,
 					(const void *)&q->cur_desc[1];
 				struct rte_mbuf *pkt, *npkt;
 				u32 len, bufsz;
-				bool csum_ok;
-				u16 err_vec;
 
 				rc = (const struct rsp_ctrl *)
 				     ((const char *)q->cur_desc +
@@ -1581,16 +1625,6 @@ static int process_responses(struct sge_rspq *q, int budget,
 				npkt = pkt;
 				len = G_RSPD_LEN(len);
 				pkt->pkt_len = len;
-
-				/* Compressed error vector is enabled for
-				 * T6 only
-				 */
-				if (q->adapter->params.tp.rx_pkt_encap)
-					err_vec = G_T6_COMPR_RXERR_VEC(
-							ntohs(cpl->err_vec));
-				else
-					err_vec = ntohs(cpl->err_vec);
-				csum_ok = cpl->csum_calc && !err_vec;
 
 				/* Chain mbufs into len if necessary */
 				while (len) {
@@ -1609,20 +1643,7 @@ static int process_responses(struct sge_rspq *q, int budget,
 				npkt->next = NULL;
 				pkt->nb_segs--;
 
-				if (cpl->l2info & htonl(F_RXF_IP)) {
-					pkt->packet_type = RTE_PTYPE_L3_IPV4;
-					if (unlikely(!csum_ok))
-						pkt->ol_flags |=
-							PKT_RX_IP_CKSUM_BAD;
-
-					if ((cpl->l2info &
-					     htonl(F_RXF_UDP | F_RXF_TCP)) &&
-					    !csum_ok)
-						pkt->ol_flags |=
-							PKT_RX_L4_CKSUM_BAD;
-				} else if (cpl->l2info & htonl(F_RXF_IP6)) {
-					pkt->packet_type = RTE_PTYPE_L3_IPV6;
-				}
+				cxgbe_fill_mbuf_info(q->adapter, cpl, pkt);
 
 				if (!rss_hdr->filter_tid &&
 				    rss_hdr->hash_type) {
@@ -1631,11 +1652,8 @@ static int process_responses(struct sge_rspq *q, int budget,
 						ntohl(rss_hdr->hash_val);
 				}
 
-				if (cpl->vlan_ex) {
-					pkt->ol_flags |= PKT_RX_VLAN |
-							 PKT_RX_VLAN_STRIPPED;
+				if (cpl->vlan_ex)
 					pkt->vlan_tci = ntohs(cpl->vlan);
-				}
 
 				rte_pktmbuf_adj(pkt, s->pktshift);
 				rxq->stats.pkts++;
