@@ -30,7 +30,9 @@ extern cmdline_parse_ctx_t main_ctx[];
 #endif
 
 #include "test.h"
+#ifdef RTE_LIBRTE_PDUMP
 #include "test_pdump.h"
+#endif
 
 #define RTE_LOGTYPE_APP RTE_LOGTYPE_USER1
 
@@ -50,7 +52,9 @@ do_recursive_call(void)
 		int (*action_fn)(void);
 	} actions[] =  {
 			{ "run_secondary_instances", test_mp_secondary },
+#ifdef RTE_LIBRTE_PDUMP
 			{ "run_pdump_server_tests", test_pdump },
+#endif
 			{ "test_missing_c_flag", no_action },
 			{ "test_master_lcore_flag", no_action },
 			{ "test_invalid_n_flag", no_action },
