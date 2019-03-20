@@ -53,7 +53,7 @@ SGW_CMD_EAL_PRM="--lcores=${SGW_LCORE} -n 4 ${ETH_DEV}"
 SGW_CMD_CFG="(0,0,${SGW_LCORE}),(1,0,${SGW_LCORE})"
 SGW_CMD_PRM="-p 0x3 -u 1 -P --config=\"${SGW_CMD_CFG}\""
 
-SGW_CFG_FILE=$(tempfile)
+SGW_CFG_FILE=$(mktemp)
 
 # configure local host/ifaces
 config_local_iface()
@@ -129,7 +129,7 @@ config6_iface()
 #start ipsec-secgw
 secgw_start()
 {
-	SGW_EXEC_FILE=$(tempfile)
+	SGW_EXEC_FILE=$(mktemp)
 	cat <<EOF > ${SGW_EXEC_FILE}
 ${SGW_PATH} ${SGW_CMD_EAL_PRM} ${CRYPTO_DEV} \
 --vdev="net_tap0,mac=fixed" \

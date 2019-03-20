@@ -32,7 +32,15 @@ trs_aesgcm_esn_atom \
 tun_aescbc_sha1_old \
 tun_aesgcm_old \
 trs_aescbc_sha1_old \
-trs_aesgcm_old"
+trs_aesgcm_old \
+tun_aesctr_sha1 \
+tun_aesctr_sha1_old \
+tun_aesctr_sha1_esn \
+tun_aesctr_sha1_esn_atom \
+trs_aesctr_sha1 \
+trs_aesctr_sha1_old \
+trs_aesctr_sha1_esn \
+trs_aesctr_sha1_esn_atom"
 
 DIR=`dirname $0`
 
