@@ -405,8 +405,9 @@ bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 	uint8_t collecting;  /* current slave collecting status */
 	const uint8_t promisc = internals->promiscuous_en;
 	uint8_t subtype;
-	uint8_t j, k;
 	uint16_t i;
+	uint16_t j;
+	uint16_t k;
 
 	/* Copy slave list to protect against slave up/down changes during tx
 	 * bursting */
