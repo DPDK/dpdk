@@ -639,7 +639,7 @@ tx_machine(struct bond_dev_private *internals, uint16_t slave_id)
 	SM_FLAG_CLR(port, NTT);
 }
 
-static uint8_t
+static uint16_t
 max_index(uint64_t *a, int n)
 {
 	if (n <= 0)
@@ -673,7 +673,8 @@ selection_logic(struct bond_dev_private *internals, uint16_t slave_id)
 	uint64_t agg_bandwidth[8] = {0};
 	uint64_t agg_count[8] = {0};
 	uint16_t default_slave = 0;
-	uint8_t mode_count_id, mode_band_id;
+	uint16_t mode_count_id;
+	uint16_t mode_band_id;
 	struct rte_eth_link link_info;
 	int ret;
 
@@ -717,13 +718,11 @@ selection_logic(struct bond_dev_private *internals, uint16_t slave_id)
 
 	switch (internals->mode4.agg_selection) {
 	case AGG_COUNT:
-		mode_count_id = max_index(
-				(uint64_t *)agg_count, slaves_count);
+		mode_count_id = max_index(agg_count, slaves_count);
 		new_agg_id = mode_count_id;
 		break;
 	case AGG_BANDWIDTH:
-		mode_band_id = max_index(
-				(uint64_t *)agg_bandwidth, slaves_count);
+		mode_band_id = max_index(agg_bandwidth, slaves_count);
 		new_agg_id = mode_band_id;
 		break;
 	case AGG_STABLE:
