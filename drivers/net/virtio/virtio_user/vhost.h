@@ -2,8 +2,8 @@
  * Copyright(c) 2010-2016 Intel Corporation
  */
 
-#ifndef _VHOST_NET_USER_H
-#define _VHOST_NET_USER_H
+#ifndef _VIRTIO_USER_VHOST_H
+#define _VIRTIO_USER_VHOST_H
 
 #include <stdint.h>
 #include <linux/types.h>
