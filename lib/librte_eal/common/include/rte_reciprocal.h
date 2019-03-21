@@ -77,7 +77,7 @@ mullhi_u64(uint64_t x, uint64_t y)
 }
 
 static __rte_always_inline uint64_t
-rte_reciprocal_divide_u64(uint64_t a, struct rte_reciprocal_u64 *R)
+rte_reciprocal_divide_u64(uint64_t a, const struct rte_reciprocal_u64 *R)
 {
 	uint64_t t = mullhi_u64(a, R->m);
 
