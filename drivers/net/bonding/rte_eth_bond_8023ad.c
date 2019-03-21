@@ -670,8 +670,8 @@ selection_logic(struct bond_dev_private *internals, uint16_t slave_id)
 	struct port *agg, *port;
 	uint16_t slaves_count, new_agg_id, i, j = 0;
 	uint16_t *slaves;
-	uint64_t agg_bandwidth[8] = {0};
-	uint64_t agg_count[8] = {0};
+	uint64_t agg_bandwidth[RTE_MAX_ETHPORTS] = {0};
+	uint64_t agg_count[RTE_MAX_ETHPORTS] = {0};
 	uint16_t default_slave = 0;
 	uint16_t mode_count_id;
 	uint16_t mode_band_id;
