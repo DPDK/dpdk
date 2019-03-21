@@ -1365,6 +1365,7 @@ mlx5_sysfs_switch_info(unsigned int ifindex, struct mlx5_switch_info *info)
 	bool port_name_set = false;
 	bool port_switch_id_set = false;
 	char c;
+	int ret;
 
 	if (!if_indextoname(ifindex, ifname)) {
 		rte_errno = errno;
@@ -1378,9 +1379,11 @@ mlx5_sysfs_switch_info(unsigned int ifindex, struct mlx5_switch_info *info)
 
 	file = fopen(phys_port_name, "rb");
 	if (file != NULL) {
-		fscanf(file, "%s", port_name);
+		ret = fscanf(file, "%s", port_name);
 		fclose(file);
-		port_name_set = mlx5_translate_port_name(port_name, &data);
+		if (ret == 1)
+			port_name_set = mlx5_translate_port_name(port_name,
+								 &data);
 	}
 	file = fopen(phys_switch_id, "rb");
 	if (file == NULL) {
