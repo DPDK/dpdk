@@ -1137,7 +1137,7 @@ struct rte_eth_dev_info {
 
 /**
  * Ethernet device RX queue information structure.
- * Used to retieve information about configured queue.
+ * Used to retrieve information about configured queue.
  */
 struct rte_eth_rxq_info {
 	struct rte_mempool *mp;     /**< mempool used by that queue. */
