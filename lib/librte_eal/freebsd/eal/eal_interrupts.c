@@ -33,6 +33,8 @@ struct rte_intr_callback {
 	TAILQ_ENTRY(rte_intr_callback) next;
 	rte_intr_callback_fn cb_fn;  /**< callback address */
 	void *cb_arg;                /**< parameter for callback */
+	uint8_t pending_delete;      /**< delete after callback is called */
+	rte_intr_unregister_callback_fn ucb_fn; /**< fn to call before cb is deleted */
 };
 
 struct rte_intr_source {
@@ -104,6 +106,8 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 	}
 	callback->cb_fn = cb;
 	callback->cb_arg = cb_arg;
+	callback->pending_delete = 0;
+	callback->ucb_fn = NULL;
 
 	rte_spinlock_lock(&intr_lock);
 
@@ -186,6 +190,62 @@ fail:
 	}
 	free(callback);
 	rte_spinlock_unlock(&intr_lock);
+	return ret;
+}
+
+int __rte_experimental
+rte_intr_callback_unregister_pending(const struct rte_intr_handle *intr_handle,
+				rte_intr_callback_fn cb_fn, void *cb_arg,
+				rte_intr_unregister_callback_fn ucb_fn)
+{
+	int ret;
+	struct rte_intr_source *src;
+	struct rte_intr_callback *cb, *next;
+
+	/* do parameter checking first */
+	if (intr_handle == NULL || intr_handle->fd < 0) {
+		RTE_LOG(ERR, EAL,
+		"Unregistering with invalid input parameter\n");
+		return -EINVAL;
+	}
+
+	if (kq < 0) {
+		RTE_LOG(ERR, EAL, "Kqueue is not active\n");
+		return -ENODEV;
+	}
+
+	rte_spinlock_lock(&intr_lock);
+
+	/* check if the insterrupt source for the fd is existent */
+	TAILQ_FOREACH(src, &intr_sources, next)
+		if (src->intr_handle.fd == intr_handle->fd)
+			break;
+
+	/* No interrupt source registered for the fd */
+	if (src == NULL) {
+		ret = -ENOENT;
+
+	/* only usable if the source is active */
+	} else if (src->active == 0) {
+		ret = -EAGAIN;
+
+	} else {
+		ret = 0;
+
+		/* walk through the callbacks and mark all that match. */
+		for (cb = TAILQ_FIRST(&src->callbacks); cb != NULL; cb = next) {
+			next = TAILQ_NEXT(cb, next);
+			if (cb->cb_fn == cb_fn && (cb_arg == (void *)-1 ||
+					cb->cb_arg == cb_arg)) {
+				cb->pending_delete = 1;
+				cb->ucb_fn = ucb_fn;
+				ret++;
+			}
+		}
+	}
+
+	rte_spinlock_unlock(&intr_lock);
+
 	return ret;
 }
 
@@ -332,10 +392,11 @@ eal_intr_process_interrupts(struct kevent *events, int nfds)
 {
 	struct rte_intr_callback active_cb;
 	union rte_intr_read_buffer buf;
-	struct rte_intr_callback *cb;
+	struct rte_intr_callback *cb, *next;
 	struct rte_intr_source *src;
 	bool call = false;
 	int n, bytes_read;
+	struct kevent ke;
 
 	for (n = 0; n < nfds; n++) {
 		int event_fd = events[n].ident;
@@ -415,6 +476,48 @@ eal_intr_process_interrupts(struct kevent *events, int nfds)
 
 		/* we done with that interrupt source, release it. */
 		src->active = 0;
+
+		/* check if any callback are supposed to be removed */
+		for (cb = TAILQ_FIRST(&src->callbacks); cb != NULL; cb = next) {
+			next = TAILQ_NEXT(cb, next);
+			if (cb->pending_delete) {
+				/* remove it from the kqueue */
+				memset(&ke, 0, sizeof(ke));
+				/* mark for deletion from the queue */
+				ke.flags = EV_DELETE;
+
+				if (intr_source_to_kevent(&src->intr_handle, &ke) < 0) {
+					RTE_LOG(ERR, EAL, "Cannot convert to kevent\n");
+					rte_spinlock_unlock(&intr_lock);
+					return;
+				}
+
+				/**
+				 * remove intr file descriptor from wait list.
+				 */
+				if (kevent(kq, &ke, 1, NULL, 0, NULL) < 0) {
+					RTE_LOG(ERR, EAL, "Error removing fd %d kevent, "
+						"%s\n", src->intr_handle.fd,
+						strerror(errno));
+					/* removing non-existent even is an expected
+					 * condition in some circumstances
+					 * (e.g. oneshot events).
+					 */
+				}
+
+				TAILQ_REMOVE(&src->callbacks, cb, next);
+				if (cb->ucb_fn)
+					cb->ucb_fn(&src->intr_handle, cb->cb_arg);
+				free(cb);
+			}
+		}
+
+		/* all callbacks for that source are removed. */
+		if (TAILQ_EMPTY(&src->callbacks)) {
+			TAILQ_REMOVE(&intr_sources, src, next);
+			free(src);
+		}
+
 		rte_spinlock_unlock(&intr_lock);
 	}
 }

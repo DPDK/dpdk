@@ -6,6 +6,7 @@
 #define _RTE_INTERRUPTS_H_
 
 #include <rte_common.h>
+#include <rte_compat.h>
 
 /**
  * @file
@@ -23,6 +24,13 @@ struct rte_intr_handle;
 
 /** Function to be registered for the specific interrupt */
 typedef void (*rte_intr_callback_fn)(void *cb_arg);
+
+/**
+ * Function to call after a callback is unregistered.
+ * Can be used to close fd and free cb_arg.
+ */
+typedef void (*rte_intr_unregister_callback_fn)(struct rte_intr_handle *intr_handle,
+						void *cb_arg);
 
 #include "rte_eal_interrupts.h"
 
@@ -60,6 +68,30 @@ int rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
  */
 int rte_intr_callback_unregister(const struct rte_intr_handle *intr_handle,
 				rte_intr_callback_fn cb, void *cb_arg);
+
+/**
+ * Unregister the callback according to the specified interrupt handle,
+ * after it's no longer active. Fail if source is not active.
+ *
+ * @param intr_handle
+ *  pointer to the interrupt handle.
+ * @param cb_fn
+ *  callback address.
+ * @param cb_arg
+ *  address of parameter for callback, (void *)-1 means to remove all
+ *  registered which has the same callback address.
+ * @param ucb_fn
+ *  callback to call before cb is unregistered (optional).
+ *  can be used to close fd and free cb_arg.
+ *
+ * @return
+ *  - On success, return the number of callback entities marked for remove.
+ *  - On failure, a negative value.
+ */
+int __rte_experimental
+rte_intr_callback_unregister_pending(const struct rte_intr_handle *intr_handle,
+				rte_intr_callback_fn cb_fn, void *cb_arg,
+				rte_intr_unregister_callback_fn ucb_fn);
 
 /**
  * It enables the interrupt for the specified handle.

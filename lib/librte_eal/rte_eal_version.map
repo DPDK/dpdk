@@ -322,6 +322,7 @@ EXPERIMENTAL {
 	rte_fbarray_is_used;
 	rte_fbarray_set_free;
 	rte_fbarray_set_used;
+	rte_intr_callback_unregister_pending;
 	rte_log_register_type_and_pick_level;
 	rte_malloc_dump_heaps;
 	rte_malloc_heap_create;
