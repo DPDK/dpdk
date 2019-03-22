@@ -25,6 +25,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <zlib.h>
+#include <rte_string_fns.h>
 
 #define BNX2X_PMD_VER_PREFIX "BNX2X PMD"
 #define BNX2X_PMD_VERSION_MAJOR 1
@@ -11741,13 +11742,13 @@ static const char *get_bnx2x_flags(uint32_t flags)
 
 	for (i = 0; i < 5; i++)
 		if (flags & (1 << i)) {
-			strcat(flag_str, flag[i]);
+			strlcat(flag_str, flag[i], sizeof(flag_str));
 			flags ^= (1 << i);
 		}
 	if (flags) {
 		static char unknown[BNX2X_INFO_STR_MAX];
 		snprintf(unknown, 32, "Unknown flag mask %x", flags);
-		strcat(flag_str, unknown);
+		strlcat(flag_str, unknown, sizeof(flag_str));
 	}
 	return flag_str;
 }
