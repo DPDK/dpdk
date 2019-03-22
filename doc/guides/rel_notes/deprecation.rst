@@ -83,3 +83,7 @@ Deprecation Notices
   - Member ``uint64_t ff_disable`` in ``rte_cryptodev_config``
 
   The field would be added in v19.08.
+
+* cryptodev: the ``uint8_t *data`` member of ``key`` structure in the xforms
+  structure (``rte_crypto_cipher_xform``, ``rte_crypto_auth_xform``, and
+  ``rte_crypto_aead_xform``) will be changed to ``const uint8_t *data``.
