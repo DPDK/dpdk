@@ -1168,6 +1168,25 @@ struct ice_aqc_set_phy_cfg_data {
 };
 
 
+/* Set MAC Config command data structure (direct 0x0603) */
+struct ice_aqc_set_mac_cfg {
+	__le16 max_frame_size;
+	u8 params;
+#define ICE_AQ_SET_MAC_PACE_S		3
+#define ICE_AQ_SET_MAC_PACE_M		(0xF << ICE_AQ_SET_MAC_PACE_S)
+#define ICE_AQ_SET_MAC_PACE_TYPE_M	BIT(7)
+#define ICE_AQ_SET_MAC_PACE_TYPE_RATE	0
+#define ICE_AQ_SET_MAC_PACE_TYPE_FIXED	ICE_AQ_SET_MAC_PACE_TYPE_M
+	u8 tx_tmr_priority;
+	__le16 tx_tmr_value;
+	__le16 fc_refresh_threshold;
+	u8 drop_opts;
+#define ICE_AQ_SET_MAC_AUTO_DROP_MASK		BIT(0)
+#define ICE_AQ_SET_MAC_AUTO_DROP_NONE		0
+#define ICE_AQ_SET_MAC_AUTO_DROP_BLOCKING_PKTS	BIT(0)
+	u8 reserved[7];
+};
+
 
 /* Restart AN command data structure (direct 0x0605)
  * Also used for response, with only the lport_num field present.
@@ -1782,6 +1801,7 @@ struct ice_aq_desc {
 		struct ice_aqc_get_clear_fw_log get_clear_fw_log;
 		struct ice_aqc_set_mac_lb set_mac_lb;
 		struct ice_aqc_alloc_free_res_cmd sw_res_ctrl;
+		struct ice_aqc_set_mac_cfg set_mac_cfg;
 		struct ice_aqc_set_event_mask set_event_mask;
 		struct ice_aqc_get_link_status get_link_status;
 	} params;

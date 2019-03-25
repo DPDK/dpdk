@@ -133,6 +133,8 @@ enum ice_status
 ice_aq_set_link_restart_an(struct ice_port_info *pi, bool ena_link,
 			   struct ice_sq_cd *cd);
 enum ice_status
+ice_aq_set_mac_cfg(struct ice_hw *hw, u16 max_frame_size, struct ice_sq_cd *cd);
+enum ice_status
 ice_aq_get_link_info(struct ice_port_info *pi, bool ena_lse,
 		     struct ice_link_status *link, struct ice_sq_cd *cd);
 enum ice_status
@@ -148,6 +150,8 @@ ice_aq_set_port_id_led(struct ice_port_info *pi, bool is_orig_mode,
 
 
 
+enum ice_status
+ice_get_ctx(u8 *src_ctx, u8 *dest_ctx, struct ice_ctx_ele *ce_info);
 enum ice_status
 ice_dis_vsi_txq(struct ice_port_info *pi, u8 num_queues, u16 *q_ids,
 		u32 *q_teids, enum ice_disq_rst_src rst_src, u16 vmvf_num,

@@ -423,6 +423,74 @@ static void ice_init_flex_flds(struct ice_hw *hw, enum ice_rxdid prof_id)
 	}
 }
 
+/**
+ * ice_aq_set_mac_cfg
+ * @hw: pointer to the HW struct
+ * @max_frame_size: Maximum Frame Size to be supported
+ * @cd: pointer to command details structure or NULL
+ *
+ * Set MAC configuration (0x0603)
+ */
+enum ice_status
+ice_aq_set_mac_cfg(struct ice_hw *hw, u16 max_frame_size, struct ice_sq_cd *cd)
+{
+	u16 fc_threshold_val, tx_timer_val;
+	struct ice_aqc_set_mac_cfg *cmd;
+	struct ice_port_info *pi;
+	struct ice_aq_desc desc;
+	enum ice_status status;
+	u8 port_num = 0;
+	bool link_up;
+	u32 reg_val;
+
+	cmd = &desc.params.set_mac_cfg;
+
+	if (max_frame_size == 0)
+		return ICE_ERR_PARAM;
+
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_set_mac_cfg);
+
+	cmd->max_frame_size = CPU_TO_LE16(max_frame_size);
+
+	/* Retrieve the current data_pacing value in FW*/
+	pi = &hw->port_info[port_num];
+
+	/* We turn on the get_link_info so that ice_update_link_info(...)
+	 * can be called.
+	 */
+	pi->phy.get_link_info = 1;
+
+	status = ice_get_link_status(pi, &link_up);
+
+	if (status)
+		return status;
+
+	cmd->params = pi->phy.link_info.pacing;
+
+	/* We read back the transmit timer and fc threshold value of
+	 * LFC. Thus, we will use index =
+	 * PRTMAC_HSEC_CTL_TX_PAUSE_QUANTA_MAX_INDEX.
+	 *
+	 * Also, because we are opearating on transmit timer and fc
+	 * threshold of LFC, we don't turn on any bit in tx_tmr_priority
+	 */
+#define IDX_OF_LFC PRTMAC_HSEC_CTL_TX_PAUSE_QUANTA_MAX_INDEX
+
+	/* Retrieve the transmit timer */
+	reg_val = rd32(hw,
+		       PRTMAC_HSEC_CTL_TX_PAUSE_QUANTA(IDX_OF_LFC));
+	tx_timer_val = reg_val &
+		PRTMAC_HSEC_CTL_TX_PAUSE_QUANTA_HSEC_CTL_TX_PAUSE_QUANTA_M;
+	cmd->tx_tmr_value = CPU_TO_LE16(tx_timer_val);
+
+	/* Retrieve the fc threshold */
+	reg_val = rd32(hw,
+		       PRTMAC_HSEC_CTL_TX_PAUSE_REFRESH_TIMER(IDX_OF_LFC));
+	fc_threshold_val = reg_val & MAKEMASK(0xFFFF, 0);
+	cmd->fc_refresh_threshold = CPU_TO_LE16(fc_threshold_val);
+
+	return ice_aq_send_cmd(hw, &desc, NULL, 0, cd);
+}
 
 /**
  * ice_init_fltr_mgmt_struct - initializes filter management list and locks
@@ -3227,6 +3295,220 @@ ice_set_ctx(u8 *src_ctx, u8 *dest_ctx, const struct ice_ctx_ele *ce_info)
 
 
 
+/**
+ * ice_read_byte - read context byte into struct
+ * @src_ctx:  the context structure to read from
+ * @dest_ctx: the context to be written to
+ * @ce_info:  a description of the struct to be filled
+ */
+static void
+ice_read_byte(u8 *src_ctx, u8 *dest_ctx, struct ice_ctx_ele *ce_info)
+{
+	u8 dest_byte, mask;
+	u8 *src, *target;
+	u16 shift_width;
+
+	/* prepare the bits and mask */
+	shift_width = ce_info->lsb % 8;
+	mask = (u8)(BIT(ce_info->width) - 1);
+
+	/* shift to correct alignment */
+	mask <<= shift_width;
+
+	/* get the current bits from the src bit string */
+	src = src_ctx + (ce_info->lsb / 8);
+
+	ice_memcpy(&dest_byte, src, sizeof(dest_byte), ICE_DMA_TO_NONDMA);
+
+	dest_byte &= ~(mask);
+
+	dest_byte >>= shift_width;
+
+	/* get the address from the struct field */
+	target = dest_ctx + ce_info->offset;
+
+	/* put it back in the struct */
+	ice_memcpy(target, &dest_byte, sizeof(dest_byte), ICE_NONDMA_TO_DMA);
+}
+
+/**
+ * ice_read_word - read context word into struct
+ * @src_ctx:  the context structure to read from
+ * @dest_ctx: the context to be written to
+ * @ce_info:  a description of the struct to be filled
+ */
+static void
+ice_read_word(u8 *src_ctx, u8 *dest_ctx, struct ice_ctx_ele *ce_info)
+{
+	u16 dest_word, mask;
+	u8 *src, *target;
+	__le16 src_word;
+	u16 shift_width;
+
+	/* prepare the bits and mask */
+	shift_width = ce_info->lsb % 8;
+	mask = BIT(ce_info->width) - 1;
+
+	/* shift to correct alignment */
+	mask <<= shift_width;
+
+	/* get the current bits from the src bit string */
+	src = src_ctx + (ce_info->lsb / 8);
+
+	ice_memcpy(&src_word, src, sizeof(src_word), ICE_DMA_TO_NONDMA);
+
+	/* the data in the memory is stored as little endian so mask it
+	 * correctly
+	 */
+	src_word &= ~(CPU_TO_LE16(mask));
+
+	/* get the data back into host order before shifting */
+	dest_word = LE16_TO_CPU(src_word);
+
+	dest_word >>= shift_width;
+
+	/* get the address from the struct field */
+	target = dest_ctx + ce_info->offset;
+
+	/* put it back in the struct */
+	ice_memcpy(target, &dest_word, sizeof(dest_word), ICE_NONDMA_TO_DMA);
+}
+
+/**
+ * ice_read_dword - read context dword into struct
+ * @src_ctx:  the context structure to read from
+ * @dest_ctx: the context to be written to
+ * @ce_info:  a description of the struct to be filled
+ */
+static void
+ice_read_dword(u8 *src_ctx, u8 *dest_ctx, struct ice_ctx_ele *ce_info)
+{
+	u32 dest_dword, mask;
+	__le32 src_dword;
+	u8 *src, *target;
+	u16 shift_width;
+
+	/* prepare the bits and mask */
+	shift_width = ce_info->lsb % 8;
+
+	/* if the field width is exactly 32 on an x86 machine, then the shift
+	 * operation will not work because the SHL instructions count is masked
+	 * to 5 bits so the shift will do nothing
+	 */
+	if (ce_info->width < 32)
+		mask = BIT(ce_info->width) - 1;
+	else
+		mask = (u32)~0;
+
+	/* shift to correct alignment */
+	mask <<= shift_width;
+
+	/* get the current bits from the src bit string */
+	src = src_ctx + (ce_info->lsb / 8);
+
+	ice_memcpy(&src_dword, src, sizeof(src_dword), ICE_DMA_TO_NONDMA);
+
+	/* the data in the memory is stored as little endian so mask it
+	 * correctly
+	 */
+	src_dword &= ~(CPU_TO_LE32(mask));
+
+	/* get the data back into host order before shifting */
+	dest_dword = LE32_TO_CPU(src_dword);
+
+	dest_dword >>= shift_width;
+
+	/* get the address from the struct field */
+	target = dest_ctx + ce_info->offset;
+
+	/* put it back in the struct */
+	ice_memcpy(target, &dest_dword, sizeof(dest_dword), ICE_NONDMA_TO_DMA);
+}
+
+/**
+ * ice_read_qword - read context qword into struct
+ * @src_ctx:  the context structure to read from
+ * @dest_ctx: the context to be written to
+ * @ce_info:  a description of the struct to be filled
+ */
+static void
+ice_read_qword(u8 *src_ctx, u8 *dest_ctx, struct ice_ctx_ele *ce_info)
+{
+	u64 dest_qword, mask;
+	__le64 src_qword;
+	u8 *src, *target;
+	u16 shift_width;
+
+	/* prepare the bits and mask */
+	shift_width = ce_info->lsb % 8;
+
+	/* if the field width is exactly 64 on an x86 machine, then the shift
+	 * operation will not work because the SHL instructions count is masked
+	 * to 6 bits so the shift will do nothing
+	 */
+	if (ce_info->width < 64)
+		mask = BIT_ULL(ce_info->width) - 1;
+	else
+		mask = (u64)~0;
+
+	/* shift to correct alignment */
+	mask <<= shift_width;
+
+	/* get the current bits from the src bit string */
+	src = src_ctx + (ce_info->lsb / 8);
+
+	ice_memcpy(&src_qword, src, sizeof(src_qword), ICE_DMA_TO_NONDMA);
+
+	/* the data in the memory is stored as little endian so mask it
+	 * correctly
+	 */
+	src_qword &= ~(CPU_TO_LE64(mask));
+
+	/* get the data back into host order before shifting */
+	dest_qword = LE64_TO_CPU(src_qword);
+
+	dest_qword >>= shift_width;
+
+	/* get the address from the struct field */
+	target = dest_ctx + ce_info->offset;
+
+	/* put it back in the struct */
+	ice_memcpy(target, &dest_qword, sizeof(dest_qword), ICE_NONDMA_TO_DMA);
+}
+
+/**
+ * ice_get_ctx - extract context bits from a packed structure
+ * @src_ctx:  pointer to a generic packed context structure
+ * @dest_ctx: pointer to a generic non-packed context structure
+ * @ce_info:  a description of the structure to be read from
+ */
+enum ice_status
+ice_get_ctx(u8 *src_ctx, u8 *dest_ctx, struct ice_ctx_ele *ce_info)
+{
+	int f;
+
+	for (f = 0; ce_info[f].width; f++) {
+		switch (ce_info[f].size_of) {
+		case 1:
+			ice_read_byte(src_ctx, dest_ctx, &ce_info[f]);
+			break;
+		case 2:
+			ice_read_word(src_ctx, dest_ctx, &ce_info[f]);
+			break;
+		case 4:
+			ice_read_dword(src_ctx, dest_ctx, &ce_info[f]);
+			break;
+		case 8:
+			ice_read_qword(src_ctx, dest_ctx, &ce_info[f]);
+			break;
+		default:
+			/* nothing to do, just keep going */
+			break;
+		}
+	}
+
+	return ICE_SUCCESS;
+}
 
 /**
  * ice_ena_vsi_txq
