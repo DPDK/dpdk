@@ -98,6 +98,9 @@ struct blockcipher_test_data {
 		unsigned int len;		/* for qat */
 		unsigned int truncated_len;	/* for mb */
 	} digest;
+
+	unsigned int cipher_offset;
+	unsigned int auth_offset;
 };
 
 int

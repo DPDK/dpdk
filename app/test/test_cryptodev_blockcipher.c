@@ -79,6 +79,7 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 			RTE_STR(CRYPTODEV_NAME_OCTEONTX_SYM_PMD));
 
 	int nb_segs = 1;
+	uint32_t nb_iterates = 0;
 
 	rte_cryptodev_info_get(dev_id, &dev_info);
 
@@ -201,6 +202,48 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 
 	sym_op = op->sym;
 
+iterate:
+	if (nb_iterates) {
+		struct rte_mbuf *tmp_buf = ibuf;
+
+		ibuf = obuf;
+		obuf = tmp_buf;
+
+		rte_pktmbuf_reset(ibuf);
+		rte_pktmbuf_reset(obuf);
+
+		rte_pktmbuf_append(ibuf, tdata->ciphertext.len);
+
+		/* only encryption requires plaintext.data input,
+		 * decryption/(digest gen)/(digest verify) use ciphertext.data
+		 * to be computed
+		 */
+		if (t->op_mask & BLOCKCIPHER_TEST_OP_ENCRYPT)
+			pktmbuf_write(ibuf, 0, tdata->plaintext.len,
+					tdata->plaintext.data);
+		else
+			pktmbuf_write(ibuf, 0, tdata->ciphertext.len,
+					tdata->ciphertext.data);
+
+		buf_p = rte_pktmbuf_append(ibuf, digest_len);
+		if (t->op_mask & BLOCKCIPHER_TEST_OP_AUTH_VERIFY)
+			rte_memcpy(buf_p, tdata->digest.data, digest_len);
+		else
+			memset(buf_p, 0, digest_len);
+
+		memset(obuf->buf_addr, dst_pattern, obuf->buf_len);
+
+		buf_p = rte_pktmbuf_append(obuf, buf_len);
+		if (!buf_p) {
+			snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN, "line %u "
+				"FAILED: %s", __LINE__,
+				"No room to append mbuf");
+			status = TEST_FAILED;
+			goto error_exit;
+		}
+		memset(buf_p, 0, buf_len);
+	}
+
 	sym_op->m_src = ibuf;
 
 	if (t->feature_mask & BLOCKCIPHER_TEST_FEATURE_OOP) {
@@ -307,8 +350,9 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 		cipher_xform->cipher.iv.offset = IV_OFFSET;
 		cipher_xform->cipher.iv.length = tdata->iv.len;
 
-		sym_op->cipher.data.offset = 0;
-		sym_op->cipher.data.length = tdata->ciphertext.len;
+		sym_op->cipher.data.offset = tdata->cipher_offset;
+		sym_op->cipher.data.length = tdata->ciphertext.len -
+				tdata->cipher_offset;
 		rte_memcpy(rte_crypto_op_ctod_offset(op, uint8_t *, IV_OFFSET),
 				tdata->iv.data,
 				tdata->iv.len);
@@ -339,12 +383,17 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 					digest_offset);
 		}
 
-		sym_op->auth.data.offset = 0;
-		sym_op->auth.data.length = tdata->ciphertext.len;
+		sym_op->auth.data.offset = tdata->auth_offset;
+		sym_op->auth.data.length = tdata->ciphertext.len -
+				tdata->auth_offset;
 	}
 
-	/* create session for sessioned op */
-	if (!(t->feature_mask & BLOCKCIPHER_TEST_FEATURE_SESSIONLESS)) {
+	/**
+	 * Create session for sessioned op. For mbuf iteration test,
+	 * skip the session creation for the second iteration.
+	 */
+	if (!(t->feature_mask & BLOCKCIPHER_TEST_FEATURE_SESSIONLESS) &&
+			nb_iterates == 0) {
 		sess = rte_cryptodev_sym_session_create(sess_mpool);
 
 		rte_cryptodev_sym_session_init(dev_id, sess, init_xform,
@@ -421,15 +470,20 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 		uint32_t compare_len;
 
 		if (t->op_mask & BLOCKCIPHER_TEST_OP_ENCRYPT) {
-			compare_ref = tdata->ciphertext.data;
-			compare_len = tdata->ciphertext.len;
+			compare_ref = tdata->ciphertext.data +
+					tdata->cipher_offset;
+			compare_len = tdata->ciphertext.len -
+					tdata->cipher_offset;
 		} else {
-			compare_ref = tdata->plaintext.data;
-			compare_len = tdata->plaintext.len;
+			compare_ref = tdata->plaintext.data +
+					tdata->cipher_offset;
+			compare_len = tdata->plaintext.len -
+					tdata->cipher_offset;
 		}
 
-		if (memcmp(rte_pktmbuf_read(iobuf, 0, compare_len,
-				buffer), compare_ref, compare_len)) {
+		if (memcmp(rte_pktmbuf_read(iobuf, tdata->cipher_offset,
+				compare_len, buffer), compare_ref,
+				compare_len)) {
 			snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN, "line %u "
 				"FAILED: %s", __LINE__,
 				"Crypto data not as expected");
@@ -523,6 +577,11 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 				status = TEST_FAILED;
 				goto error_exit;
 			}
+		}
+
+		if (!nb_iterates) {
+			nb_iterates++;
+			goto iterate;
 		}
 	} else {
 		/* In-place operation */
