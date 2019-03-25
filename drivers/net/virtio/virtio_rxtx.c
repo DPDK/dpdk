@@ -461,7 +461,7 @@ virtqueue_enqueue_recv_refill_packed(struct virtqueue *vq,
 		if (++vq->vq_avail_idx >= vq->vq_nentries) {
 			vq->vq_avail_idx -= vq->vq_nentries;
 			vq->vq_packed.cached_flags ^=
-				VRING_DESC_F_AVAIL(1) | VRING_DESC_F_USED(1);
+				VRING_PACKED_DESC_F_AVAIL_USED;
 			flags = vq->vq_packed.cached_flags;
 		}
 	}
@@ -660,8 +660,7 @@ virtqueue_enqueue_xmit_packed_fast(struct virtnet_tx *txvq,
 
 	if (++vq->vq_avail_idx >= vq->vq_nentries) {
 		vq->vq_avail_idx -= vq->vq_nentries;
-		vq->vq_packed.cached_flags ^=
-			VRING_DESC_F_AVAIL(1) | VRING_DESC_F_USED(1);
+		vq->vq_packed.cached_flags ^= VRING_PACKED_DESC_F_AVAIL_USED;
 	}
 
 	vq->vq_free_cnt--;
@@ -728,7 +727,7 @@ virtqueue_enqueue_xmit_packed(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 		if (idx >= vq->vq_nentries) {
 			idx -= vq->vq_nentries;
 			vq->vq_packed.cached_flags ^=
-				VRING_DESC_F_AVAIL(1) | VRING_DESC_F_USED(1);
+				VRING_PACKED_DESC_F_AVAIL_USED;
 		}
 	}
 
@@ -749,7 +748,7 @@ virtqueue_enqueue_xmit_packed(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 		if (idx >= vq->vq_nentries) {
 			idx -= vq->vq_nentries;
 			vq->vq_packed.cached_flags ^=
-				VRING_DESC_F_AVAIL(1) | VRING_DESC_F_USED(1);
+				VRING_PACKED_DESC_F_AVAIL_USED;
 		}
 	} while ((cookie = cookie->next) != NULL);
 

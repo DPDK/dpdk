@@ -287,8 +287,8 @@ desc_is_used(struct vring_packed_desc *desc, struct virtqueue *vq)
 	uint16_t used, avail, flags;
 
 	flags = desc->flags;
-	used = !!(flags & VRING_DESC_F_USED(1));
-	avail = !!(flags & VRING_DESC_F_AVAIL(1));
+	used = !!(flags & VRING_PACKED_DESC_F_USED);
+	avail = !!(flags & VRING_PACKED_DESC_F_AVAIL);
 
 	return avail == used && used == vq->vq_packed.used_wrap_counter;
 }

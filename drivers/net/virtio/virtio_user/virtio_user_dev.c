@@ -628,8 +628,10 @@ virtio_user_handle_ctrl_msg(struct virtio_user_dev *dev, struct vring *vring,
 static inline int
 desc_is_avail(struct vring_packed_desc *desc, bool wrap_counter)
 {
-	return wrap_counter == !!(desc->flags & VRING_DESC_F_AVAIL(1)) &&
-		wrap_counter != !!(desc->flags & VRING_DESC_F_USED(1));
+	uint16_t flags = desc->flags;
+
+	return wrap_counter == !!(flags & VRING_PACKED_DESC_F_AVAIL) &&
+		wrap_counter != !!(flags & VRING_PACKED_DESC_F_USED);
 }
 
 static uint32_t
@@ -684,7 +686,7 @@ virtio_user_handle_cq_packed(struct virtio_user_dev *dev, uint16_t queue_idx)
 {
 	struct virtio_user_queue *vq = &dev->packed_queues[queue_idx];
 	struct vring_packed *vring = &dev->packed_vrings[queue_idx];
-	uint16_t n_descs;
+	uint16_t n_descs, flags;
 
 	while (desc_is_avail(&vring->desc[vq->used_idx],
 			     vq->used_wrap_counter)) {
@@ -692,11 +694,12 @@ virtio_user_handle_cq_packed(struct virtio_user_dev *dev, uint16_t queue_idx)
 		n_descs = virtio_user_handle_ctrl_msg_packed(dev, vring,
 				vq->used_idx);
 
+		flags = VRING_DESC_F_WRITE;
+		if (vq->used_wrap_counter)
+			flags |= VRING_PACKED_DESC_F_AVAIL_USED;
+
 		rte_smp_wmb();
-		vring->desc[vq->used_idx].flags =
-			VRING_DESC_F_WRITE |
-			VRING_DESC_F_AVAIL(vq->used_wrap_counter) |
-			VRING_DESC_F_USED(vq->used_wrap_counter);
+		vring->desc[vq->used_idx].flags = flags;
 
 		vq->used_idx += n_descs;
 		if (vq->used_idx >= dev->queue_size) {
