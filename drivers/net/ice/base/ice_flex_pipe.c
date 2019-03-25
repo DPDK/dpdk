@@ -2467,7 +2467,7 @@ ice_find_prof_id(struct ice_hw *hw, enum ice_block blk,
 	for (i = 0; i < es->count; i++) {
 		off = i * es->fvw;
 
-		if (memcmp(&es->t[off], fv, es->fvw * 2))
+		if (memcmp(&es->t[off], fv, es->fvw * sizeof(*fv)))
 			continue;
 
 		*prof_id = i;

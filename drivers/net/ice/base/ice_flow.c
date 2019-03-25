@@ -910,8 +910,11 @@ ice_flow_rem_entry_sync(struct ice_hw *hw, struct ice_flow_entry *entry)
 	if (entry->entry)
 		ice_free(hw, entry->entry);
 
-	if (entry->acts)
+	if (entry->acts) {
 		ice_free(hw, entry->acts);
+		entry->acts = NULL;
+		entry->acts_cnt = 0;
+	}
 
 	ice_free(hw, entry);
 
@@ -1306,6 +1309,7 @@ ice_flow_add_entry(struct ice_hw *hw, enum ice_block blk, u64 prof_id,
 	e->id = entry_id;
 	e->vsi_handle = vsi_handle;
 	e->prof = prof;
+	e->priority = prio;
 
 	switch (blk) {
 	case ICE_BLK_RSS:
@@ -1852,10 +1856,13 @@ ice_rem_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 	if (status)
 		goto out;
 
+	/* Remove RSS configuration from VSI context before deleting
+	 * the flow profile.
+	 */
+	ice_rem_rss_cfg_vsi_ctx(hw, vsi_handle, prof);
+
 	if (!ice_is_any_bit_set(prof->vsis, ICE_MAX_VSI))
 		status = ice_flow_rem_prof_sync(hw, blk, prof);
-
-	ice_rem_rss_cfg_vsi_ctx(hw, vsi_handle, prof);
 
 out:
 	ice_free(hw, segs);
