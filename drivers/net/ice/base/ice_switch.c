@@ -1338,6 +1338,95 @@ ice_add_marker_act(struct ice_hw *hw, struct ice_fltr_mgmt_list_entry *m_ent,
 	return status;
 }
 
+/**
+ * ice_add_counter_act - add/update filter rule with counter action
+ * @hw: pointer to the hardware structure
+ * @m_ent: the management entry for which counter needs to be added
+ * @counter_id: VLAN counter ID returned as part of allocate resource
+ * @l_id: large action resource ID
+ */
+static enum ice_status
+ice_add_counter_act(struct ice_hw *hw, struct ice_fltr_mgmt_list_entry *m_ent,
+		    u16 counter_id, u16 l_id)
+{
+	struct ice_aqc_sw_rules_elem *lg_act;
+	struct ice_aqc_sw_rules_elem *rx_tx;
+	enum ice_status status;
+	/* 2 actions will be added while adding a large action counter */
+	const int num_acts = 2;
+	u16 lg_act_size;
+	u16 rules_size;
+	u16 f_rule_id;
+	u32 act;
+	u16 id;
+
+	if (m_ent->fltr_info.lkup_type != ICE_SW_LKUP_MAC)
+		return ICE_ERR_PARAM;
+
+	/* Create two back-to-back switch rules and submit them to the HW using
+	 * one memory buffer:
+	 * 1. Large Action
+	 * 2. Look up Tx Rx
+	 */
+	lg_act_size = (u16)ICE_SW_RULE_LG_ACT_SIZE(num_acts);
+	rules_size = lg_act_size + ICE_SW_RULE_RX_TX_ETH_HDR_SIZE;
+	lg_act = (struct ice_aqc_sw_rules_elem *)ice_malloc(hw,
+								 rules_size);
+	if (!lg_act)
+		return ICE_ERR_NO_MEMORY;
+
+	rx_tx = (struct ice_aqc_sw_rules_elem *)
+		((u8 *)lg_act + lg_act_size);
+
+	/* Fill in the first switch rule i.e. large action */
+	lg_act->type = CPU_TO_LE16(ICE_AQC_SW_RULES_T_LG_ACT);
+	lg_act->pdata.lg_act.index = CPU_TO_LE16(l_id);
+	lg_act->pdata.lg_act.size = CPU_TO_LE16(num_acts);
+
+	/* First action VSI forwarding or VSI list forwarding depending on how
+	 * many VSIs
+	 */
+	id = (m_ent->vsi_count > 1) ?  m_ent->fltr_info.fwd_id.vsi_list_id :
+		m_ent->fltr_info.fwd_id.hw_vsi_id;
+
+	act = ICE_LG_ACT_VSI_FORWARDING | ICE_LG_ACT_VALID_BIT;
+	act |= (id << ICE_LG_ACT_VSI_LIST_ID_S) &
+		ICE_LG_ACT_VSI_LIST_ID_M;
+	if (m_ent->vsi_count > 1)
+		act |= ICE_LG_ACT_VSI_LIST;
+	lg_act->pdata.lg_act.act[0] = CPU_TO_LE32(act);
+
+	/* Second action counter ID */
+	act = ICE_LG_ACT_STAT_COUNT;
+	act |= (counter_id << ICE_LG_ACT_STAT_COUNT_S) &
+		ICE_LG_ACT_STAT_COUNT_M;
+	lg_act->pdata.lg_act.act[1] = CPU_TO_LE32(act);
+
+	/* call the fill switch rule to fill the lookup Tx Rx structure */
+	ice_fill_sw_rule(hw, &m_ent->fltr_info, rx_tx,
+			 ice_aqc_opc_update_sw_rules);
+
+	act = ICE_SINGLE_ACT_PTR;
+	act |= (l_id << ICE_SINGLE_ACT_PTR_VAL_S) & ICE_SINGLE_ACT_PTR_VAL_M;
+	rx_tx->pdata.lkup_tx_rx.act = CPU_TO_LE32(act);
+
+	/* Use the filter rule ID of the previously created rule with single
+	 * act. Once the update happens, hardware will treat this as large
+	 * action
+	 */
+	f_rule_id = m_ent->fltr_info.fltr_rule_id;
+	rx_tx->pdata.lkup_tx_rx.index = CPU_TO_LE16(f_rule_id);
+
+	status = ice_aq_sw_rules(hw, lg_act, rules_size, 2,
+				 ice_aqc_opc_update_sw_rules, NULL);
+	if (!status) {
+		m_ent->lg_act_idx = l_id;
+		m_ent->counter_index = counter_id;
+	}
+
+	ice_free(hw, lg_act);
+	return status;
+}
 
 /**
  * ice_create_vsi_list_map
@@ -3416,6 +3505,245 @@ enum ice_status ice_free_vlan_res_counter(struct ice_hw *hw, u16 counter_id)
 	return ice_free_res_cntr(hw, ICE_AQC_RES_TYPE_VLAN_COUNTER,
 				 ICE_AQC_RES_TYPE_FLAG_DEDICATED, 1,
 				 counter_id);
+}
+
+/**
+ * ice_alloc_res_lg_act - add large action resource
+ * @hw: pointer to the hardware structure
+ * @l_id: large action ID to fill it in
+ * @num_acts: number of actions to hold with a large action entry
+ */
+static enum ice_status
+ice_alloc_res_lg_act(struct ice_hw *hw, u16 *l_id, u16 num_acts)
+{
+	struct ice_aqc_alloc_free_res_elem *sw_buf;
+	enum ice_status status;
+	u16 buf_len;
+
+	if (num_acts > ICE_MAX_LG_ACT || num_acts == 0)
+		return ICE_ERR_PARAM;
+
+	/* Allocate resource for large action */
+	buf_len = sizeof(*sw_buf);
+	sw_buf = (struct ice_aqc_alloc_free_res_elem *)
+		ice_malloc(hw, buf_len);
+	if (!sw_buf)
+		return ICE_ERR_NO_MEMORY;
+
+	sw_buf->num_elems = CPU_TO_LE16(1);
+
+	/* If num_acts is 1, use ICE_AQC_RES_TYPE_WIDE_TABLE_1.
+	 * If num_acts is 2, use ICE_AQC_RES_TYPE_WIDE_TABLE_3.
+	 * If num_acts is greater than 2, then use
+	 * ICE_AQC_RES_TYPE_WIDE_TABLE_4.
+	 * The num_acts cannot exceed 4. This was ensured at the
+	 * beginning of the function.
+	 */
+	if (num_acts == 1)
+		sw_buf->res_type = CPU_TO_LE16(ICE_AQC_RES_TYPE_WIDE_TABLE_1);
+	else if (num_acts == 2)
+		sw_buf->res_type = CPU_TO_LE16(ICE_AQC_RES_TYPE_WIDE_TABLE_2);
+	else
+		sw_buf->res_type = CPU_TO_LE16(ICE_AQC_RES_TYPE_WIDE_TABLE_4);
+
+	status = ice_aq_alloc_free_res(hw, 1, sw_buf, buf_len,
+				       ice_aqc_opc_alloc_res, NULL);
+	if (!status)
+		*l_id = LE16_TO_CPU(sw_buf->elem[0].e.sw_resp);
+
+	ice_free(hw, sw_buf);
+	return status;
+}
+
+/**
+ * ice_add_mac_with_sw_marker - add filter with sw marker
+ * @hw: pointer to the hardware structure
+ * @f_info: filter info structure containing the MAC filter information
+ * @sw_marker: sw marker to tag the Rx descriptor with
+ */
+enum ice_status
+ice_add_mac_with_sw_marker(struct ice_hw *hw, struct ice_fltr_info *f_info,
+			   u16 sw_marker)
+{
+	struct ice_switch_info *sw = hw->switch_info;
+	struct ice_fltr_mgmt_list_entry *m_entry;
+	struct ice_fltr_list_entry fl_info;
+	struct LIST_HEAD_TYPE l_head;
+	struct ice_lock *rule_lock;	/* Lock to protect filter rule list */
+	enum ice_status ret;
+	bool entry_exists;
+	u16 lg_act_id;
+
+	if (f_info->fltr_act != ICE_FWD_TO_VSI)
+		return ICE_ERR_PARAM;
+
+	if (f_info->lkup_type != ICE_SW_LKUP_MAC)
+		return ICE_ERR_PARAM;
+
+	if (sw_marker == ICE_INVAL_SW_MARKER_ID)
+		return ICE_ERR_PARAM;
+
+	if (!ice_is_vsi_valid(hw, f_info->vsi_handle))
+		return ICE_ERR_PARAM;
+	f_info->fwd_id.hw_vsi_id = ice_get_hw_vsi_num(hw, f_info->vsi_handle);
+
+	/* Add filter if it doesn't exist so then the adding of large
+	 * action always results in update
+	 */
+
+	INIT_LIST_HEAD(&l_head);
+	fl_info.fltr_info = *f_info;
+	LIST_ADD(&fl_info.list_entry, &l_head);
+
+	entry_exists = false;
+	ret = ice_add_mac(hw, &l_head);
+	if (ret == ICE_ERR_ALREADY_EXISTS)
+		entry_exists = true;
+	else if (ret)
+		return ret;
+
+	rule_lock = &sw->recp_list[ICE_SW_LKUP_MAC].filt_rule_lock;
+	ice_acquire_lock(rule_lock);
+	/* Get the book keeping entry for the filter */
+	m_entry = ice_find_rule_entry(hw, ICE_SW_LKUP_MAC, f_info);
+	if (!m_entry)
+		goto exit_error;
+
+	/* If counter action was enabled for this rule then don't enable
+	 * sw marker large action
+	 */
+	if (m_entry->counter_index != ICE_INVAL_COUNTER_ID) {
+		ret = ICE_ERR_PARAM;
+		goto exit_error;
+	}
+
+	/* if same marker was added before */
+	if (m_entry->sw_marker_id == sw_marker) {
+		ret = ICE_ERR_ALREADY_EXISTS;
+		goto exit_error;
+	}
+
+	/* Allocate a hardware table entry to hold large act. Three actions
+	 * for marker based large action
+	 */
+	ret = ice_alloc_res_lg_act(hw, &lg_act_id, 3);
+	if (ret)
+		goto exit_error;
+
+	if (lg_act_id == ICE_INVAL_LG_ACT_INDEX)
+		goto exit_error;
+
+	/* Update the switch rule to add the marker action */
+	ret = ice_add_marker_act(hw, m_entry, sw_marker, lg_act_id);
+	if (!ret) {
+		ice_release_lock(rule_lock);
+		return ret;
+	}
+
+exit_error:
+	ice_release_lock(rule_lock);
+	/* only remove entry if it did not exist previously */
+	if (!entry_exists)
+		ret = ice_remove_mac(hw, &l_head);
+
+	return ret;
+}
+
+/**
+ * ice_add_mac_with_counter - add filter with counter enabled
+ * @hw: pointer to the hardware structure
+ * @f_info: pointer to filter info structure containing the MAC filter
+ *          information
+ */
+enum ice_status
+ice_add_mac_with_counter(struct ice_hw *hw, struct ice_fltr_info *f_info)
+{
+	struct ice_switch_info *sw = hw->switch_info;
+	struct ice_fltr_mgmt_list_entry *m_entry;
+	struct ice_fltr_list_entry fl_info;
+	struct LIST_HEAD_TYPE l_head;
+	struct ice_lock *rule_lock;	/* Lock to protect filter rule list */
+	enum ice_status ret;
+	bool entry_exist;
+	u16 counter_id;
+	u16 lg_act_id;
+
+	if (f_info->fltr_act != ICE_FWD_TO_VSI)
+		return ICE_ERR_PARAM;
+
+	if (f_info->lkup_type != ICE_SW_LKUP_MAC)
+		return ICE_ERR_PARAM;
+
+	if (!ice_is_vsi_valid(hw, f_info->vsi_handle))
+		return ICE_ERR_PARAM;
+	f_info->fwd_id.hw_vsi_id = ice_get_hw_vsi_num(hw, f_info->vsi_handle);
+
+	entry_exist = false;
+
+	rule_lock = &sw->recp_list[ICE_SW_LKUP_MAC].filt_rule_lock;
+
+	/* Add filter if it doesn't exist so then the adding of large
+	 * action always results in update
+	 */
+	INIT_LIST_HEAD(&l_head);
+
+	fl_info.fltr_info = *f_info;
+	LIST_ADD(&fl_info.list_entry, &l_head);
+
+	ret = ice_add_mac(hw, &l_head);
+	if (ret == ICE_ERR_ALREADY_EXISTS)
+		entry_exist = true;
+	else if (ret)
+		return ret;
+
+	ice_acquire_lock(rule_lock);
+	m_entry = ice_find_rule_entry(hw, ICE_SW_LKUP_MAC, f_info);
+	if (!m_entry) {
+		ret = ICE_ERR_BAD_PTR;
+		goto exit_error;
+	}
+
+	/* Don't enable counter for a filter for which sw marker was enabled */
+	if (m_entry->sw_marker_id != ICE_INVAL_SW_MARKER_ID) {
+		ret = ICE_ERR_PARAM;
+		goto exit_error;
+	}
+
+	/* If a counter was already enabled then don't need to add again */
+	if (m_entry->counter_index != ICE_INVAL_COUNTER_ID) {
+		ret = ICE_ERR_ALREADY_EXISTS;
+		goto exit_error;
+	}
+
+	/* Allocate a hardware table entry to VLAN counter */
+	ret = ice_alloc_vlan_res_counter(hw, &counter_id);
+	if (ret)
+		goto exit_error;
+
+	/* Allocate a hardware table entry to hold large act. Two actions for
+	 * counter based large action
+	 */
+	ret = ice_alloc_res_lg_act(hw, &lg_act_id, 2);
+	if (ret)
+		goto exit_error;
+
+	if (lg_act_id == ICE_INVAL_LG_ACT_INDEX)
+		goto exit_error;
+
+	/* Update the switch rule to add the counter action */
+	ret = ice_add_counter_act(hw, m_entry, counter_id, lg_act_id);
+	if (!ret) {
+		ice_release_lock(rule_lock);
+		return ret;
+	}
+
+exit_error:
+	ice_release_lock(rule_lock);
+	/* only remove entry if it did not exist previously */
+	if (!entry_exist)
+		ret = ice_remove_mac(hw, &l_head);
+
+	return ret;
 }
 
 /**
