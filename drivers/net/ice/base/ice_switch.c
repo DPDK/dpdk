@@ -129,6 +129,156 @@ ice_aq_get_sw_cfg(struct ice_hw *hw, struct ice_aqc_get_sw_cfg_resp *buf,
 }
 
 
+/**
+ * ice_alloc_sw - allocate resources specific to switch
+ * @hw: pointer to the HW struct
+ * @ena_stats: true to turn on VEB stats
+ * @shared_res: true for shared resource, false for dedicated resource
+ * @sw_id: switch ID returned
+ * @counter_id: VEB counter ID returned
+ *
+ * allocates switch resources (SWID and VEB counter) (0x0208)
+ */
+enum ice_status
+ice_alloc_sw(struct ice_hw *hw, bool ena_stats, bool shared_res, u16 *sw_id,
+	     u16 *counter_id)
+{
+	struct ice_aqc_alloc_free_res_elem *sw_buf;
+	struct ice_aqc_res_elem *sw_ele;
+	enum ice_status status;
+	u16 buf_len;
+
+	buf_len = sizeof(*sw_buf);
+	sw_buf = (struct ice_aqc_alloc_free_res_elem *)
+		   ice_malloc(hw, buf_len);
+	if (!sw_buf)
+		return ICE_ERR_NO_MEMORY;
+
+	/* Prepare buffer for switch ID.
+	 * The number of resource entries in buffer is passed as 1 since only a
+	 * single switch/VEB instance is allocated, and hence a single sw_id
+	 * is requested.
+	 */
+	sw_buf->num_elems = CPU_TO_LE16(1);
+	sw_buf->res_type =
+		CPU_TO_LE16(ICE_AQC_RES_TYPE_SWID |
+			    (shared_res ? ICE_AQC_RES_TYPE_FLAG_SHARED :
+			    ICE_AQC_RES_TYPE_FLAG_DEDICATED));
+
+	status = ice_aq_alloc_free_res(hw, 1, sw_buf, buf_len,
+				       ice_aqc_opc_alloc_res, NULL);
+
+	if (status)
+		goto ice_alloc_sw_exit;
+
+	sw_ele = &sw_buf->elem[0];
+	*sw_id = LE16_TO_CPU(sw_ele->e.sw_resp);
+
+	if (ena_stats) {
+		/* Prepare buffer for VEB Counter */
+		enum ice_adminq_opc opc = ice_aqc_opc_alloc_res;
+		struct ice_aqc_alloc_free_res_elem *counter_buf;
+		struct ice_aqc_res_elem *counter_ele;
+
+		counter_buf = (struct ice_aqc_alloc_free_res_elem *)
+				ice_malloc(hw, buf_len);
+		if (!counter_buf) {
+			status = ICE_ERR_NO_MEMORY;
+			goto ice_alloc_sw_exit;
+		}
+
+		/* The number of resource entries in buffer is passed as 1 since
+		 * only a single switch/VEB instance is allocated, and hence a
+		 * single VEB counter is requested.
+		 */
+		counter_buf->num_elems = CPU_TO_LE16(1);
+		counter_buf->res_type =
+			CPU_TO_LE16(ICE_AQC_RES_TYPE_VEB_COUNTER |
+				    ICE_AQC_RES_TYPE_FLAG_DEDICATED);
+		status = ice_aq_alloc_free_res(hw, 1, counter_buf, buf_len,
+					       opc, NULL);
+
+		if (status) {
+			ice_free(hw, counter_buf);
+			goto ice_alloc_sw_exit;
+		}
+		counter_ele = &counter_buf->elem[0];
+		*counter_id = LE16_TO_CPU(counter_ele->e.sw_resp);
+		ice_free(hw, counter_buf);
+	}
+
+ice_alloc_sw_exit:
+	ice_free(hw, sw_buf);
+	return status;
+}
+
+/**
+ * ice_free_sw - free resources specific to switch
+ * @hw: pointer to the HW struct
+ * @sw_id: switch ID returned
+ * @counter_id: VEB counter ID returned
+ *
+ * free switch resources (SWID and VEB counter) (0x0209)
+ *
+ * NOTE: This function frees multiple resources. It continues
+ * releasing other resources even after it encounters error.
+ * The error code returned is the last error it encountered.
+ */
+enum ice_status ice_free_sw(struct ice_hw *hw, u16 sw_id, u16 counter_id)
+{
+	struct ice_aqc_alloc_free_res_elem *sw_buf, *counter_buf;
+	enum ice_status status, ret_status;
+	u16 buf_len;
+
+	buf_len = sizeof(*sw_buf);
+	sw_buf = (struct ice_aqc_alloc_free_res_elem *)
+		   ice_malloc(hw, buf_len);
+	if (!sw_buf)
+		return ICE_ERR_NO_MEMORY;
+
+	/* Prepare buffer to free for switch ID res.
+	 * The number of resource entries in buffer is passed as 1 since only a
+	 * single switch/VEB instance is freed, and hence a single sw_id
+	 * is released.
+	 */
+	sw_buf->num_elems = CPU_TO_LE16(1);
+	sw_buf->res_type = CPU_TO_LE16(ICE_AQC_RES_TYPE_SWID);
+	sw_buf->elem[0].e.sw_resp = CPU_TO_LE16(sw_id);
+
+	ret_status = ice_aq_alloc_free_res(hw, 1, sw_buf, buf_len,
+					   ice_aqc_opc_free_res, NULL);
+
+	if (ret_status)
+		ice_debug(hw, ICE_DBG_SW, "CQ CMD Buffer:\n");
+
+	/* Prepare buffer to free for VEB Counter resource */
+	counter_buf = (struct ice_aqc_alloc_free_res_elem *)
+			ice_malloc(hw, buf_len);
+	if (!counter_buf) {
+		ice_free(hw, sw_buf);
+		return ICE_ERR_NO_MEMORY;
+	}
+
+	/* The number of resource entries in buffer is passed as 1 since only a
+	 * single switch/VEB instance is freed, and hence a single VEB counter
+	 * is released
+	 */
+	counter_buf->num_elems = CPU_TO_LE16(1);
+	counter_buf->res_type = CPU_TO_LE16(ICE_AQC_RES_TYPE_VEB_COUNTER);
+	counter_buf->elem[0].e.sw_resp = CPU_TO_LE16(counter_id);
+
+	status = ice_aq_alloc_free_res(hw, 1, counter_buf, buf_len,
+				       ice_aqc_opc_free_res, NULL);
+	if (status) {
+		ice_debug(hw, ICE_DBG_SW,
+			  "VEB counter resource could not be freed\n");
+		ret_status = status;
+	}
+
+	ice_free(hw, counter_buf);
+	ice_free(hw, sw_buf);
+	return ret_status;
+}
 
 /**
  * ice_aq_add_vsi

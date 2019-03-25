@@ -290,6 +290,11 @@ ice_free_vlan_res_counter(struct ice_hw *hw, u16 counter_id);
 /* Switch/bridge related commands */
 enum ice_status ice_update_sw_rule_bridge_mode(struct ice_hw *hw);
 enum ice_status
+ice_alloc_sw(struct ice_hw *hw, bool ena_stats, bool shared_res, u16 *sw_id,
+	     u16 *counter_id);
+enum ice_status
+ice_free_sw(struct ice_hw *hw, u16 sw_id, u16 counter_id);
+enum ice_status
 ice_add_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list);
 enum ice_status ice_add_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_lst);
 enum ice_status ice_remove_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_lst);
