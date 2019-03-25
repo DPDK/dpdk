@@ -1459,13 +1459,15 @@ fwd_stream_stats_display(streamid_t stream_id)
 	       "TX Port=%2d/Queue=%2d %s\n",
 	       fwd_top_stats_border, fs->rx_port, fs->rx_queue,
 	       fs->tx_port, fs->tx_queue, fwd_top_stats_border);
-	printf("  RX-packets: %-14u TX-packets: %-14u TX-dropped: %-14u",
+	printf("  RX-packets: %-14"PRIu64" TX-packets: %-14"PRIu64
+	       " TX-dropped: %-14"PRIu64,
 	       fs->rx_packets, fs->tx_packets, fs->fwd_dropped);
 
 	/* if checksum mode */
 	if (cur_fwd_eng == &csum_fwd_engine) {
-	       printf("  RX- bad IP checksum: %-14u  Rx- bad L4 checksum: "
-			"%-14u Rx- bad outer L4 checksum: %-14u\n",
+		printf("  RX- bad IP checksum: %-14"PRIu64
+		       "  Rx- bad L4 checksum: %-14"PRIu64
+		       " Rx- bad outer L4 checksum: %-14"PRIu64"\n",
 			fs->rx_bad_ip_csum, fs->rx_bad_l4_csum,
 			fs->rx_bad_outer_l4_csum);
 	} else {
@@ -1745,9 +1747,6 @@ stop_packet_forwarding(void)
 	uint64_t total_rx_dropped;
 	uint64_t total_tx_dropped;
 	uint64_t total_rx_nombuf;
-	uint64_t tx_dropped;
-	uint64_t rx_bad_ip_csum;
-	uint64_t rx_bad_l4_csum;
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 	uint64_t fwd_cycles;
 #endif
@@ -1774,38 +1773,22 @@ stop_packet_forwarding(void)
 	fwd_cycles = 0;
 #endif
 	for (sm_id = 0; sm_id < cur_fwd_config.nb_fwd_streams; sm_id++) {
+		struct fwd_stream *fs = fwd_streams[sm_id];
+
 		if (cur_fwd_config.nb_fwd_streams >
 		    cur_fwd_config.nb_fwd_ports) {
 			fwd_stream_stats_display(sm_id);
-			ports[fwd_streams[sm_id]->tx_port].tx_stream = NULL;
-			ports[fwd_streams[sm_id]->rx_port].rx_stream = NULL;
+			ports[fs->tx_port].tx_stream = NULL;
+			ports[fs->rx_port].rx_stream = NULL;
 		} else {
-			ports[fwd_streams[sm_id]->tx_port].tx_stream =
-				fwd_streams[sm_id];
-			ports[fwd_streams[sm_id]->rx_port].rx_stream =
-				fwd_streams[sm_id];
+			ports[fs->tx_port].tx_stream = fs;
+			ports[fs->rx_port].rx_stream = fs;
 		}
-		tx_dropped = ports[fwd_streams[sm_id]->tx_port].tx_dropped;
-		tx_dropped = (uint64_t) (tx_dropped +
-					 fwd_streams[sm_id]->fwd_dropped);
-		ports[fwd_streams[sm_id]->tx_port].tx_dropped = tx_dropped;
-
-		rx_bad_ip_csum =
-			ports[fwd_streams[sm_id]->rx_port].rx_bad_ip_csum;
-		rx_bad_ip_csum = (uint64_t) (rx_bad_ip_csum +
-					 fwd_streams[sm_id]->rx_bad_ip_csum);
-		ports[fwd_streams[sm_id]->rx_port].rx_bad_ip_csum =
-							rx_bad_ip_csum;
-
-		rx_bad_l4_csum =
-			ports[fwd_streams[sm_id]->rx_port].rx_bad_l4_csum;
-		rx_bad_l4_csum = (uint64_t) (rx_bad_l4_csum +
-					 fwd_streams[sm_id]->rx_bad_l4_csum);
-		ports[fwd_streams[sm_id]->rx_port].rx_bad_l4_csum =
-							rx_bad_l4_csum;
-
-		ports[fwd_streams[sm_id]->rx_port].rx_bad_outer_l4_csum +=
-				fwd_streams[sm_id]->rx_bad_outer_l4_csum;
+		ports[fs->tx_port].tx_dropped += fs->fwd_dropped;
+		ports[fs->rx_port].rx_bad_ip_csum += fs->rx_bad_ip_csum;
+		ports[fs->rx_port].rx_bad_l4_csum += fs->rx_bad_l4_csum;
+		ports[fs->rx_port].rx_bad_outer_l4_csum +=
+				fs->rx_bad_outer_l4_csum;
 
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 		fwd_cycles = (uint64_t) (fwd_cycles +
