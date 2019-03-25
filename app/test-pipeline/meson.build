@@ -11,4 +11,4 @@ sources = files(
 	'pipeline_lpm_ipv6.c',
 	'pipeline_stub.c',
 	'runtime.c')
-deps += 'pipeline'
+deps += ['pipeline', 'pci']
