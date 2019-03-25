@@ -281,6 +281,34 @@ struct ice_aqc_get_sw_cfg_resp {
 
 #define ICE_AQC_RES_TYPE_FLAG_DEDICATED			0x00
 
+#define ICE_AQC_RES_TYPE_S	0
+#define ICE_AQC_RES_TYPE_M	(0x07F << ICE_AQC_RES_TYPE_S)
+
+/* Get Resource Allocation command (indirect 0x0204) */
+struct ice_aqc_get_res_alloc {
+	__le16 resp_elem_num; /* Used in response, reserved in command */
+	u8 reserved[6];
+	__le32 addr_high;
+	__le32 addr_low;
+};
+
+/* Get Resource Allocation Response Buffer per response */
+struct ice_aqc_get_res_resp_elem {
+	__le16 res_type; /* Types defined above cmd 0x0204 */
+	__le16 total_capacity; /* Resources available to all PF's */
+	__le16 total_function; /* Resources allocated for a PF */
+	__le16 total_shared; /* Resources allocated as shared */
+	__le16 total_free; /* Resources un-allocated/not reserved by any PF */
+};
+
+/* Buffer for Get Resource command */
+struct ice_aqc_get_res_resp {
+	/* Number of resource entries to be calculated using
+	 * datalen/sizeof(struct ice_aqc_cmd_resp)).
+	 * Value of 'datalen' gets updated as part of response.
+	 */
+	struct ice_aqc_get_res_resp_elem elem[1];
+};
 
 
 /* Allocate Resources command (indirect 0x0208)
@@ -314,6 +342,28 @@ struct ice_aqc_alloc_free_res_elem {
 };
 
 
+/* Get Allocated Resource Descriptors Command (indirect 0x020A) */
+struct ice_aqc_get_allocd_res_desc {
+	union {
+		struct {
+			__le16 res; /* Types defined above cmd 0x0204 */
+			__le16 first_desc;
+			__le32 reserved;
+		} cmd;
+		struct {
+			__le16 res;
+			__le16 next_desc;
+			__le16 num_desc;
+			__le16 reserved;
+		} resp;
+	} ops;
+	__le32 addr_high;
+	__le32 addr_low;
+};
+
+struct ice_aqc_get_allocd_res_desc_resp {
+	struct ice_aqc_res_elem elem[1];
+};
 
 
 /* Add VSI (indirect 0x0210)
@@ -1912,7 +1962,6 @@ struct ice_aq_desc {
 		struct ice_aqc_query_node_to_root query_node_to_root;
 		struct ice_aqc_cfg_l2_node_cgd cfg_l2_node_cgd;
 		struct ice_aqc_rl_profile rl_profile;
-
 		struct ice_aqc_nvm nvm;
 		struct ice_aqc_nvm_cfg nvm_cfg;
 		struct ice_aqc_nvm_checksum nvm_checksum;
@@ -1930,6 +1979,8 @@ struct ice_aq_desc {
 		struct ice_aqc_get_clear_fw_log get_clear_fw_log;
 		struct ice_aqc_set_mac_lb set_mac_lb;
 		struct ice_aqc_alloc_free_res_cmd sw_res_ctrl;
+		struct ice_aqc_get_res_alloc get_res;
+		struct ice_aqc_get_allocd_res_desc get_res_desc;
 		struct ice_aqc_set_mac_cfg set_mac_cfg;
 		struct ice_aqc_set_event_mask set_event_mask;
 		struct ice_aqc_get_link_status get_link_status;

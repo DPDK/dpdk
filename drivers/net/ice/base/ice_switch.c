@@ -2042,6 +2042,89 @@ exit:
 	return status;
 }
 
+/**
+ * ice_aq_get_res_alloc - get allocated resources
+ * @hw: pointer to the HW struct
+ * @num_entries: pointer to u16 to store the number of resource entries returned
+ * @buf: pointer to user-supplied buffer
+ * @buf_size: size of buff
+ * @cd: pointer to command details structure or NULL
+ *
+ * The user-supplied buffer must be large enough to store the resource
+ * information for all resource types. Each resource type is an
+ * ice_aqc_get_res_resp_data_elem structure.
+ */
+enum ice_status
+ice_aq_get_res_alloc(struct ice_hw *hw, u16 *num_entries, void *buf,
+		     u16 buf_size, struct ice_sq_cd *cd)
+{
+	struct ice_aqc_get_res_alloc *resp;
+	enum ice_status status;
+	struct ice_aq_desc desc;
+
+	if (!buf)
+		return ICE_ERR_BAD_PTR;
+
+	if (buf_size < ICE_AQ_GET_RES_ALLOC_BUF_LEN)
+		return ICE_ERR_INVAL_SIZE;
+
+	resp = &desc.params.get_res;
+
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_get_res_alloc);
+	status = ice_aq_send_cmd(hw, &desc, buf, buf_size, cd);
+
+	if (!status && num_entries)
+		*num_entries = LE16_TO_CPU(resp->resp_elem_num);
+
+	return status;
+}
+
+/**
+ * ice_aq_get_res_descs - get allocated resource descriptors
+ * @hw: pointer to the hardware structure
+ * @num_entries: number of resource entries in buffer
+ * @buf: Indirect buffer to hold data parameters and response
+ * @buf_size: size of buffer for indirect commands
+ * @res_type: resource type
+ * @res_shared: is resource shared
+ * @desc_id: input - first desc ID to start; output - next desc ID
+ * @cd: pointer to command details structure or NULL
+ */
+enum ice_status
+ice_aq_get_res_descs(struct ice_hw *hw, u16 num_entries,
+		     struct ice_aqc_get_allocd_res_desc_resp *buf,
+		     u16 buf_size, u16 res_type, bool res_shared, u16 *desc_id,
+		     struct ice_sq_cd *cd)
+{
+	struct ice_aqc_get_allocd_res_desc *cmd;
+	struct ice_aq_desc desc;
+	enum ice_status status;
+
+	ice_debug(hw, ICE_DBG_TRACE, "ice_aq_get_res_descs");
+
+	cmd = &desc.params.get_res_desc;
+
+	if (!buf)
+		return ICE_ERR_PARAM;
+
+	if (buf_size != (num_entries * sizeof(*buf)))
+		return ICE_ERR_PARAM;
+
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_get_allocd_res_desc);
+
+	cmd->ops.cmd.res = CPU_TO_LE16(((res_type << ICE_AQC_RES_TYPE_S) &
+					 ICE_AQC_RES_TYPE_M) | (res_shared ?
+					ICE_AQC_RES_TYPE_FLAG_SHARED : 0));
+	cmd->ops.cmd.first_desc = CPU_TO_LE16(*desc_id);
+
+	desc.flags |= CPU_TO_LE16(ICE_AQ_FLAG_RD);
+
+	status = ice_aq_send_cmd(hw, &desc, buf, buf_size, cd);
+	if (!status)
+		*desc_id = LE16_TO_CPU(cmd->ops.resp.next_desc);
+
+	return status;
+}
 
 /**
  * ice_add_mac - Add a MAC address based filter rule
