@@ -177,6 +177,13 @@ struct ice_aqc_clear_pxe {
 };
 
 
+/* Configure No-Drop Policy Command (direct 0x0112) */
+struct ice_aqc_config_no_drop_policy {
+	u8 opts;
+#define ICE_AQC_FORCE_NO_DROP			BIT(0)
+	u8 rsvd[15];
+};
+
 /* Get switch configuration (0x0200) */
 struct ice_aqc_get_sw_cfg {
 	/* Reserved for command and copy of request flags for response */
@@ -350,6 +357,19 @@ struct ice_aqc_add_update_free_vsi_resp {
 };
 
 
+struct ice_aqc_get_vsi_resp {
+	__le16 vsi_num;
+	u8 vf_id;
+	/* The vsi_flags field uses the ICE_AQ_VSI_TYPE_* defines for values.
+	 * These are found above in struct ice_aqc_add_get_update_free_vsi.
+	 */
+	u8 vsi_flags;
+	__le16 vsi_used;
+	__le16 vsi_free;
+	__le32 addr_high;
+	__le32 addr_low;
+};
+
 
 struct ice_aqc_vsi_props {
 	__le16 valid_sections;
@@ -505,6 +525,110 @@ struct ice_aqc_vsi_props {
 	u8 reserved[24];
 };
 
+
+/* Add/update mirror rule - direct (0x0260) */
+#define ICE_AQC_RULE_ID_VALID_S		7
+#define ICE_AQC_RULE_ID_VALID_M		(0x1 << ICE_AQC_RULE_ID_VALID_S)
+#define ICE_AQC_RULE_ID_S		0
+#define ICE_AQC_RULE_ID_M		(0x3F << ICE_AQC_RULE_ID_S)
+
+/* Following defines to be used while processing caller specified mirror list
+ * of VSI indexes.
+ */
+/* Action: Byte.bit (1.7)
+ *	0 = Remove VSI from mirror rule
+ *	1 = Add VSI to mirror rule
+ */
+#define ICE_AQC_RULE_ACT_S	15
+#define ICE_AQC_RULE_ACT_M	(0x1 << ICE_AQC_RULE_ACT_S)
+/* Action: 1.2:0.0 = Mirrored VSI */
+#define ICE_AQC_RULE_MIRRORED_VSI_S	0
+#define ICE_AQC_RULE_MIRRORED_VSI_M	(0x7FF << ICE_AQC_RULE_MIRRORED_VSI_S)
+
+/* This is to be used by add/update mirror rule Admin Queue command.
+ * In case of add mirror rule - if rule ID is specified as
+ * INVAL_MIRROR_RULE_ID, new rule ID is allocated from shared pool.
+ * If specified rule_id is valid, then it is used. If specified rule_id
+ * is in use then new mirroring rule is added.
+ */
+#define ICE_INVAL_MIRROR_RULE_ID	0xFFFF
+
+struct ice_aqc_add_update_mir_rule {
+	__le16 rule_id;
+
+	__le16 rule_type;
+#define ICE_AQC_RULE_TYPE_S		0
+#define ICE_AQC_RULE_TYPE_M		(0x7 << ICE_AQC_RULE_TYPE_S)
+	/* VPORT ingress/egress */
+#define ICE_AQC_RULE_TYPE_VPORT_INGRESS	0x1
+#define ICE_AQC_RULE_TYPE_VPORT_EGRESS	0x2
+	/* Physical port ingress mirroring.
+	 * All traffic received by this port
+	 */
+#define ICE_AQC_RULE_TYPE_PPORT_INGRESS	0x6
+	/* Physical port egress mirroring. All traffic sent by this port */
+#define ICE_AQC_RULE_TYPE_PPORT_EGRESS	0x7
+
+	/* Number of mirrored entries.
+	 * The values are in the command buffer
+	 */
+	__le16 num_entries;
+
+	/* Destination VSI */
+	__le16 dest;
+	__le32 addr_high;
+	__le32 addr_low;
+};
+
+/* Delete mirror rule - direct(0x0261) */
+struct ice_aqc_delete_mir_rule {
+	__le16 rule_id;
+	__le16 rsvd;
+
+	/* Byte.bit: 20.0 = Keep allocation. If set VSI stays part of
+	 * the PF allocated resources, otherwise it is returned to the
+	 * shared pool
+	 */
+#define ICE_AQC_FLAG_KEEP_ALLOCD_S	0
+#define ICE_AQC_FLAG_KEEP_ALLOCD_M	(0x1 << ICE_AQC_FLAG_KEEP_ALLOCD_S)
+	__le16 flags;
+
+	u8 reserved[10];
+};
+
+/* Set/Get storm config - (direct 0x0280, 0x0281) */
+/* This structure holds get storm configuration response and same structure
+ * is used to perform set_storm_cfg
+ */
+struct ice_aqc_storm_cfg {
+	__le32 bcast_thresh_size;
+	__le32 mcast_thresh_size;
+	/* Bit 18:0 - Traffic upper threshold size
+	 * Bit 31:19 - Reserved
+	 */
+#define ICE_AQ_THRESHOLD_S	0
+#define ICE_AQ_THRESHOLD_M	(0x7FFFF << ICE_AQ_THRESHOLD_S)
+
+	__le32 storm_ctrl_ctrl;
+	/* Bit 0: MDIPW - Drop Multicast packets in previous window
+	 * Bit 1: MDICW - Drop multicast packets in current window
+	 * Bit 2: BDIPW - Drop broadcast packets in previous window
+	 * Bit 3: BDICW - Drop broadcast packets in current window
+	 */
+#define ICE_AQ_STORM_CTRL_MDIPW_DROP_MULTICAST	BIT(0)
+#define ICE_AQ_STORM_CTRL_MDICW_DROP_MULTICAST	BIT(1)
+#define ICE_AQ_STORM_CTRL_BDIPW_DROP_MULTICAST	BIT(2)
+#define ICE_AQ_STORM_CTRL_BDICW_DROP_MULTICAST	BIT(3)
+	/* Bit 7:5 : Reserved */
+	/* Bit 27:8 : Interval - BSC/MSC Time-interval specification: The
+	 * interval size for applying ingress broadcast or multicast storm
+	 * control.
+	 */
+#define ICE_AQ_STORM_BSC_MSC_TIME_INTERVAL_S	8
+#define ICE_AQ_STORM_BSC_MSC_TIME_INTERVAL_M	\
+			(0xFFFFF << ICE_AQ_STORM_BSC_MSC_TIME_INTERVAL_S)
+	__le32 reserved;
+};
 
 
 #define ICE_MAX_NUM_RECIPES 64
@@ -1771,6 +1895,9 @@ struct ice_aq_desc {
 		struct ice_aqc_manage_mac_read mac_read;
 		struct ice_aqc_manage_mac_write mac_write;
 		struct ice_aqc_clear_pxe clear_pxe;
+		struct ice_aqc_config_no_drop_policy no_drop;
+		struct ice_aqc_add_update_mir_rule add_update_rule;
+		struct ice_aqc_delete_mir_rule del_rule;
 		struct ice_aqc_list_caps get_cap;
 		struct ice_aqc_get_phy_caps get_phy;
 		struct ice_aqc_set_phy_cfg set_phy;
@@ -1778,6 +1905,7 @@ struct ice_aq_desc {
 		struct ice_aqc_set_port_id_led set_port_id_led;
 		struct ice_aqc_get_sw_cfg get_sw_conf;
 		struct ice_aqc_sw_rules sw_rules;
+		struct ice_aqc_storm_cfg storm_conf;
 		struct ice_aqc_get_topo get_topo;
 		struct ice_aqc_sched_elem_cmd sched_elem_cmd;
 		struct ice_aqc_query_txsched_res query_sched_res;
@@ -1795,6 +1923,7 @@ struct ice_aq_desc {
 		struct ice_aqc_txqs_cleanup txqs_cleanup;
 		struct ice_aqc_add_get_update_free_vsi vsi_cmd;
 		struct ice_aqc_add_update_free_vsi_resp add_update_free_vsi_res;
+		struct ice_aqc_get_vsi_resp get_vsi_resp;
 		struct ice_aqc_download_pkg download_pkg;
 		struct ice_aqc_get_pkg_info_list get_pkg_info_list;
 		struct ice_aqc_fw_logging fw_logging;
@@ -1912,6 +2041,13 @@ enum ice_adminq_opc {
 	ice_aqc_opc_get_vsi_params			= 0x0212,
 	ice_aqc_opc_free_vsi				= 0x0213,
 
+	/* Mirroring rules - add/update, delete */
+	ice_aqc_opc_add_update_mir_rule			= 0x0260,
+	ice_aqc_opc_del_mir_rule			= 0x0261,
+
+	/* storm configuration */
+	ice_aqc_opc_set_storm_cfg			= 0x0280,
+	ice_aqc_opc_get_storm_cfg			= 0x0281,
 
 
 	/* switch rules population commands */

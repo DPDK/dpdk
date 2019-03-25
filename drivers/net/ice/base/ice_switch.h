@@ -29,6 +29,19 @@ struct ice_vsi_ctx {
 	struct LIST_HEAD_TYPE rss_list_head;
 };
 
+/* This is to be used by add/update mirror rule Admin Queue command */
+struct ice_mir_rule_buf {
+	u16 vsi_idx; /* VSI index */
+
+	/* For each VSI, user can specify whether corresponding VSI
+	 * should be added/removed to/from mirror rule
+	 *
+	 * add mirror rule: this should always be TRUE.
+	 * update mirror rule:  add(true) or remove(false) VSI to/from
+	 * mirror rule
+	 */
+	u8 add;
+};
 
 /* Switch recipe ID enum values are specific to hardware */
 enum ice_sw_lkup_type {
@@ -290,6 +303,22 @@ ice_update_vsi(struct ice_hw *hw, u16 vsi_handle, struct ice_vsi_ctx *vsi_ctx,
 	       struct ice_sq_cd *cd);
 struct ice_vsi_ctx *ice_get_vsi_ctx(struct ice_hw *hw, u16 vsi_handle);
 void ice_clear_all_vsi_ctx(struct ice_hw *hw);
+enum ice_status
+ice_aq_get_vsi_params(struct ice_hw *hw, struct ice_vsi_ctx *vsi_ctx,
+		      struct ice_sq_cd *cd);
+enum ice_status
+ice_aq_add_update_mir_rule(struct ice_hw *hw, u16 rule_type, u16 dest_vsi,
+			   u16 count, struct ice_mir_rule_buf *mr_buf,
+			   struct ice_sq_cd *cd, u16 *rule_id);
+enum ice_status
+ice_aq_delete_mir_rule(struct ice_hw *hw, u16 rule_id, bool keep_allocd,
+		       struct ice_sq_cd *cd);
+enum ice_status
+ice_aq_get_storm_ctrl(struct ice_hw *hw, u32 *bcast_thresh, u32 *mcast_thresh,
+		      u32 *ctl_bitmask);
+enum ice_status
+ice_aq_set_storm_ctrl(struct ice_hw *hw, u32 bcast_thresh, u32 mcast_thresh,
+		      u32 ctl_bitmask);
 /* Switch config */
 enum ice_status ice_get_initial_sw_cfg(struct ice_hw *hw);
 

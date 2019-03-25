@@ -566,7 +566,174 @@ ice_update_vsi(struct ice_hw *hw, u16 vsi_handle, struct ice_vsi_ctx *vsi_ctx,
 	return ice_aq_update_vsi(hw, vsi_ctx, cd);
 }
 
+/**
+ * ice_aq_get_vsi_params
+ * @hw: pointer to the HW struct
+ * @vsi_ctx: pointer to a VSI context struct
+ * @cd: pointer to command details structure or NULL
+ *
+ * Get VSI context info from hardware (0x0212)
+ */
+enum ice_status
+ice_aq_get_vsi_params(struct ice_hw *hw, struct ice_vsi_ctx *vsi_ctx,
+		      struct ice_sq_cd *cd)
+{
+	struct ice_aqc_add_get_update_free_vsi *cmd;
+	struct ice_aqc_get_vsi_resp *resp;
+	struct ice_aq_desc desc;
+	enum ice_status status;
 
+	cmd = &desc.params.vsi_cmd;
+	resp = &desc.params.get_vsi_resp;
+
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_get_vsi_params);
+
+	cmd->vsi_num = CPU_TO_LE16(vsi_ctx->vsi_num | ICE_AQ_VSI_IS_VALID);
+
+	status = ice_aq_send_cmd(hw, &desc, &vsi_ctx->info,
+				 sizeof(vsi_ctx->info), cd);
+	if (!status) {
+		vsi_ctx->vsi_num = LE16_TO_CPU(resp->vsi_num) &
+					ICE_AQ_VSI_NUM_M;
+		vsi_ctx->vsis_allocd = LE16_TO_CPU(resp->vsi_used);
+		vsi_ctx->vsis_unallocated = LE16_TO_CPU(resp->vsi_free);
+	}
+
+	return status;
+}
+
+/**
+ * ice_aq_add_update_mir_rule - add/update a mirror rule
+ * @hw: pointer to the HW struct
+ * @rule_type: Rule Type
+ * @dest_vsi: VSI number to which packets will be mirrored
+ * @count: length of the list
+ * @mr_buf: buffer for list of mirrored VSI numbers
+ * @cd: pointer to command details structure or NULL
+ * @rule_id: Rule ID
+ *
+ * Add/Update Mirror Rule (0x260).
+ */
+enum ice_status
+ice_aq_add_update_mir_rule(struct ice_hw *hw, u16 rule_type, u16 dest_vsi,
+			   u16 count, struct ice_mir_rule_buf *mr_buf,
+			   struct ice_sq_cd *cd, u16 *rule_id)
+{
+	struct ice_aqc_add_update_mir_rule *cmd;
+	struct ice_aq_desc desc;
+	enum ice_status status;
+	__le16 *mr_list = NULL;
+	u16 buf_size = 0;
+
+	switch (rule_type) {
+	case ICE_AQC_RULE_TYPE_VPORT_INGRESS:
+	case ICE_AQC_RULE_TYPE_VPORT_EGRESS:
+		/* Make sure count and mr_buf are set for these rule_types */
+		if (!(count && mr_buf))
+			return ICE_ERR_PARAM;
+
+		buf_size = count * sizeof(__le16);
+		mr_list = (__le16 *)ice_malloc(hw, buf_size);
+		if (!mr_list)
+			return ICE_ERR_NO_MEMORY;
+		break;
+	case ICE_AQC_RULE_TYPE_PPORT_INGRESS:
+	case ICE_AQC_RULE_TYPE_PPORT_EGRESS:
+		/* Make sure count and mr_buf are not set for these
+		 * rule_types
+		 */
+		if (count || mr_buf)
+			return ICE_ERR_PARAM;
+		break;
+	default:
+		ice_debug(hw, ICE_DBG_SW,
+			  "Error due to unsupported rule_type %u\n", rule_type);
+		return ICE_ERR_OUT_OF_RANGE;
+	}
+
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_add_update_mir_rule);
+
+	/* Pre-process 'mr_buf' items for add/update of virtual port
+	 * ingress/egress mirroring (but not physical port ingress/egress
+	 * mirroring)
+	 */
+	if (mr_buf) {
+		int i;
+
+		for (i = 0; i < count; i++) {
+			u16 id;
+
+			id = mr_buf[i].vsi_idx & ICE_AQC_RULE_MIRRORED_VSI_M;
+
+			/* Validate specified VSI number, make sure it is less
+			 * than ICE_MAX_VSI, if not return with error.
+			 */
+			if (id >= ICE_MAX_VSI) {
+				ice_debug(hw, ICE_DBG_SW,
+					  "Error VSI index (%u) out-of-range\n",
+					  id);
+				ice_free(hw, mr_list);
+				return ICE_ERR_OUT_OF_RANGE;
+			}
+
+			/* add VSI to mirror rule */
+			if (mr_buf[i].add)
+				mr_list[i] =
+					CPU_TO_LE16(id | ICE_AQC_RULE_ACT_M);
+			else /* remove VSI from mirror rule */
+				mr_list[i] = CPU_TO_LE16(id);
+		}
+	}
+
+	cmd = &desc.params.add_update_rule;
+	if ((*rule_id) != ICE_INVAL_MIRROR_RULE_ID)
+		cmd->rule_id = CPU_TO_LE16(((*rule_id) & ICE_AQC_RULE_ID_M) |
+					   ICE_AQC_RULE_ID_VALID_M);
+	cmd->rule_type = CPU_TO_LE16(rule_type & ICE_AQC_RULE_TYPE_M);
+	cmd->num_entries = CPU_TO_LE16(count);
+	cmd->dest = CPU_TO_LE16(dest_vsi);
+
+	status = ice_aq_send_cmd(hw, &desc, mr_list, buf_size, cd);
+	if (!status)
+		*rule_id = LE16_TO_CPU(cmd->rule_id) & ICE_AQC_RULE_ID_M;
+
+	ice_free(hw, mr_list);
+
+	return status;
+}
+
+/**
+ * ice_aq_delete_mir_rule - delete a mirror rule
+ * @hw: pointer to the HW struct
+ * @rule_id: Mirror rule ID (to be deleted)
+ * @keep_allocd: if set, the VSI stays part of the PF allocated res,
+ *		 otherwise it is returned to the shared pool
+ * @cd: pointer to command details structure or NULL
+ *
+ * Delete Mirror Rule (0x261).
+ */
+enum ice_status
+ice_aq_delete_mir_rule(struct ice_hw *hw, u16 rule_id, bool keep_allocd,
+		       struct ice_sq_cd *cd)
+{
+	struct ice_aqc_delete_mir_rule *cmd;
+	struct ice_aq_desc desc;
+
+	/* rule_id should be in the range 0...63 */
+	if (rule_id >= ICE_MAX_NUM_MIRROR_RULES)
+		return ICE_ERR_OUT_OF_RANGE;
+
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_del_mir_rule);
+
+	cmd = &desc.params.del_rule;
+	rule_id |= ICE_AQC_RULE_ID_VALID_M;
+	cmd->rule_id = CPU_TO_LE16(rule_id);
+
+	if (keep_allocd)
+		cmd->flags = CPU_TO_LE16(ICE_AQC_FLAG_KEEP_ALLOCD_M);
+
+	return ice_aq_send_cmd(hw, &desc, NULL, 0, cd);
+}
 
 /**
  * ice_aq_alloc_free_vsi_list
@@ -626,6 +793,67 @@ ice_aq_alloc_free_vsi_list_exit:
 	return status;
 }
 
+/**
+ * ice_aq_set_storm_ctrl - Sets storm control configuration
+ * @hw: pointer to the HW struct
+ * @bcast_thresh: represents the upper threshold for broadcast storm control
+ * @mcast_thresh: represents the upper threshold for multicast storm control
+ * @ctl_bitmask: storm control control knobs
+ *
+ * Sets the storm control configuration (0x0280)
+ */
+enum ice_status
+ice_aq_set_storm_ctrl(struct ice_hw *hw, u32 bcast_thresh, u32 mcast_thresh,
+		      u32 ctl_bitmask)
+{
+	struct ice_aqc_storm_cfg *cmd;
+	struct ice_aq_desc desc;
+
+	cmd = &desc.params.storm_conf;
+
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_set_storm_cfg);
+
+	cmd->bcast_thresh_size = CPU_TO_LE32(bcast_thresh & ICE_AQ_THRESHOLD_M);
+	cmd->mcast_thresh_size = CPU_TO_LE32(mcast_thresh & ICE_AQ_THRESHOLD_M);
+	cmd->storm_ctrl_ctrl = CPU_TO_LE32(ctl_bitmask);
+
+	return ice_aq_send_cmd(hw, &desc, NULL, 0, NULL);
+}
+
+/**
+ * ice_aq_get_storm_ctrl - gets storm control configuration
+ * @hw: pointer to the HW struct
+ * @bcast_thresh: represents the upper threshold for broadcast storm control
+ * @mcast_thresh: represents the upper threshold for multicast storm control
+ * @ctl_bitmask: storm control control knobs
+ *
+ * Gets the storm control configuration (0x0281)
+ */
+enum ice_status
+ice_aq_get_storm_ctrl(struct ice_hw *hw, u32 *bcast_thresh, u32 *mcast_thresh,
+		      u32 *ctl_bitmask)
+{
+	enum ice_status status;
+	struct ice_aq_desc desc;
+
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_get_storm_cfg);
+
+	status = ice_aq_send_cmd(hw, &desc, NULL, 0, NULL);
+	if (!status) {
+		struct ice_aqc_storm_cfg *resp = &desc.params.storm_conf;
+
+		if (bcast_thresh)
+			*bcast_thresh = LE32_TO_CPU(resp->bcast_thresh_size) &
+				ICE_AQ_THRESHOLD_M;
+		if (mcast_thresh)
+			*mcast_thresh = LE32_TO_CPU(resp->mcast_thresh_size) &
+				ICE_AQ_THRESHOLD_M;
+		if (ctl_bitmask)
+			*ctl_bitmask = LE32_TO_CPU(resp->storm_ctrl_ctrl);
+	}
+
+	return status;
+}
 
 /**
  * ice_aq_sw_rules - add/update/remove switch rules
