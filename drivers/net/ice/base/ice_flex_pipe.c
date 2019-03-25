@@ -4288,17 +4288,12 @@ ice_add_prof_to_lst(struct ice_hw *hw, enum ice_block blk,
 	p->tcam_count = map->ptype_count;
 
 	for (i = 0; i < map->ptype_count; i++) {
-		enum ice_status status;
 		u8 ptg;
 
 		p->tcam[i].prof_id = map->prof_id;
 		p->tcam[i].tcam_idx = ICE_INVALID_TCAM;
 
-		status = ice_ptg_find_ptype(hw, blk, map->ptype[i], &ptg);
-		if (status) {
-			ice_free(hw, p);
-			return status;
-		}
+		ice_ptg_find_ptype(hw, blk, map->ptype[i], &ptg);
 
 		p->tcam[i].ptg = ptg;
 	}
