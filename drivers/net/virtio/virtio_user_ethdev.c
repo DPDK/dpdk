@@ -514,6 +514,26 @@ virtio_user_pmd_probe(struct rte_vdev_device *dev)
 	char *mac_addr = NULL;
 	int ret = -1;
 
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		const char *name = rte_vdev_device_name(dev);
+		eth_dev = rte_eth_dev_attach_secondary(name);
+		if (!eth_dev) {
+			RTE_LOG(ERR, PMD, "Failed to probe %s\n", name);
+			return -1;
+		}
+
+		if (eth_virtio_dev_init(eth_dev) < 0) {
+			PMD_INIT_LOG(ERR, "eth_virtio_dev_init fails");
+			rte_eth_dev_release_port(eth_dev);
+			return -1;
+		}
+
+		eth_dev->dev_ops = &virtio_user_secondary_eth_dev_ops;
+		eth_dev->device = &dev->device;
+		rte_eth_dev_probing_finish(eth_dev);
+		return 0;
+	}
+
 	kvlist = rte_kvargs_parse(rte_vdev_device_args(dev), valid_args);
 	if (!kvlist) {
 		PMD_INIT_LOG(ERR, "error when parsing param");
@@ -635,33 +655,19 @@ virtio_user_pmd_probe(struct rte_vdev_device *dev)
 		}
 	}
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		struct virtio_user_dev *vu_dev;
+	eth_dev = virtio_user_eth_dev_alloc(dev);
+	if (!eth_dev) {
+		PMD_INIT_LOG(ERR, "virtio_user fails to alloc device");
+		goto end;
+	}
 
-		eth_dev = virtio_user_eth_dev_alloc(dev);
-		if (!eth_dev) {
-			PMD_INIT_LOG(ERR, "virtio_user fails to alloc device");
-			goto end;
-		}
-
-		hw = eth_dev->data->dev_private;
-		vu_dev = virtio_user_get_dev(hw);
-		if (server_mode == 1)
-			vu_dev->is_server = true;
-		else
-			vu_dev->is_server = false;
-		if (virtio_user_dev_init(hw->virtio_user_dev, path, queues, cq,
-				 queue_size, mac_addr, &ifname, mrg_rxbuf,
-				 in_order, packed_vq) < 0) {
-			PMD_INIT_LOG(ERR, "virtio_user_dev_init fails");
-			virtio_user_eth_dev_free(eth_dev);
-			goto end;
-		}
-
-	} else {
-		eth_dev = rte_eth_dev_attach_secondary(rte_vdev_device_name(dev));
-		if (!eth_dev)
-			goto end;
+	hw = eth_dev->data->dev_private;
+	if (virtio_user_dev_init(hw->virtio_user_dev, path, queues, cq,
+			 queue_size, mac_addr, &ifname, server_mode,
+			 mrg_rxbuf, in_order, packed_vq) < 0) {
+		PMD_INIT_LOG(ERR, "virtio_user_dev_init fails");
+		virtio_user_eth_dev_free(eth_dev);
+		goto end;
 	}
 
 	/* previously called by rte_pci_probe() for physical dev */
@@ -702,6 +708,9 @@ virtio_user_pmd_remove(struct rte_vdev_device *vdev)
 	eth_dev = rte_eth_dev_allocated(name);
 	if (!eth_dev)
 		return -ENODEV;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return rte_eth_dev_release_port(eth_dev);
 
 	/* make sure the device is stopped, queues freed */
 	rte_eth_dev_close(eth_dev->data->port_id);

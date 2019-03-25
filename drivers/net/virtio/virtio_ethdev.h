@@ -47,6 +47,8 @@
 	 1u << VIRTIO_NET_F_HOST_TSO4      |	\
 	 1u << VIRTIO_NET_F_HOST_TSO6)
 
+extern const struct eth_dev_ops virtio_user_secondary_eth_dev_ops;
+
 /*
  * CQ function prototype
  */

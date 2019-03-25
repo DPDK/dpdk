@@ -426,7 +426,7 @@ virtio_user_dev_setup(struct virtio_user_dev *dev)
 int
 virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 		     int cq, int queue_size, const char *mac, char **ifname,
-		     int mrg_rxbuf, int in_order, int packed_vq)
+		     int server, int mrg_rxbuf, int in_order, int packed_vq)
 {
 	pthread_mutex_init(&dev->mutex, NULL);
 	snprintf(dev->path, PATH_MAX, "%s", path);
@@ -434,6 +434,7 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 	dev->max_queue_pairs = queues;
 	dev->queue_pairs = 1; /* mq disabled by default */
 	dev->queue_size = queue_size;
+	dev->is_server = server;
 	dev->mac_specified = 0;
 	dev->frontend_features = 0;
 	dev->unsupported_features = ~VIRTIO_USER_SUPPORTED_FEATURES;

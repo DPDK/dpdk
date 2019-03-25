@@ -907,6 +907,21 @@ static const struct eth_dev_ops virtio_eth_dev_ops = {
 	.mac_addr_set            = virtio_mac_addr_set,
 };
 
+/*
+ * dev_ops for virtio-user in secondary processes, as we just have
+ * some limited supports currently.
+ */
+const struct eth_dev_ops virtio_user_secondary_eth_dev_ops = {
+	.dev_infos_get           = virtio_dev_info_get,
+	.stats_get               = virtio_dev_stats_get,
+	.xstats_get              = virtio_dev_xstats_get,
+	.xstats_get_names        = virtio_dev_xstats_get_names,
+	.stats_reset             = virtio_dev_stats_reset,
+	.xstats_reset            = virtio_dev_stats_reset,
+	/* collect stats per queue */
+	.queue_stats_mapping_set = virtio_dev_queue_stats_mapping_set,
+};
+
 static void
 virtio_update_stats(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
