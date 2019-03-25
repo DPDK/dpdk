@@ -4523,8 +4523,10 @@ ice_add_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig, u64 hdl,
 
 		/* allocate the TCAM entry index */
 		status = ice_alloc_tcam_ent(hw, blk, &tcam_idx);
-		if (status)
+		if (status) {
+			ice_free(hw, p);
 			goto err_ice_add_prof_id_vsig;
+		}
 
 		t->tcam[i].ptg = ptg;
 		t->tcam[i].prof_id = map->prof_id;
@@ -4563,6 +4565,7 @@ ice_add_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig, u64 hdl,
 
 err_ice_add_prof_id_vsig:
 	/* let caller clean up the change list */
+	ice_free(hw, t);
 	return ICE_ERR_NO_MEMORY;
 }
 
@@ -4587,16 +4590,18 @@ ice_create_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsi, u64 hdl,
 		return ICE_ERR_NO_MEMORY;
 
 	new_vsig = ice_vsig_alloc(hw, blk);
-	if (!new_vsig)
-		return ICE_ERR_HW_TABLE;
+	if (!new_vsig) {
+		status = ICE_ERR_HW_TABLE;
+		goto err_ice_create_prof_id_vsig;
+	}
 
 	status = ice_move_vsi(hw, blk, vsi, new_vsig, chg);
 	if (status)
-		return status;
+		goto err_ice_create_prof_id_vsig;
 
 	status = ice_add_prof_id_vsig(hw, blk, new_vsig, hdl, chg);
 	if (status)
-		return status;
+		goto err_ice_create_prof_id_vsig;
 
 	p->type = ICE_VSIG_ADD;
 	p->vsi = vsi;
@@ -4606,6 +4611,11 @@ ice_create_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsi, u64 hdl,
 	LIST_ADD(&p->list_entry, chg);
 
 	return ICE_SUCCESS;
+
+err_ice_create_prof_id_vsig:
+	/* let caller clean up the change list */
+	ice_free(hw, p);
+	return status;
 }
 
 /**
