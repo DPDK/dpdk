@@ -1593,7 +1593,20 @@ struct ice_aqc_get_set_rss_key {
 
 #define ICE_AQC_GET_SET_RSS_KEY_DATA_RSS_KEY_SIZE	0x28
 #define ICE_AQC_GET_SET_RSS_KEY_DATA_HASH_KEY_SIZE	0xC
+#define ICE_GET_SET_RSS_KEY_EXTEND_KEY_SIZE \
+				(ICE_AQC_GET_SET_RSS_KEY_DATA_RSS_KEY_SIZE + \
+				 ICE_AQC_GET_SET_RSS_KEY_DATA_HASH_KEY_SIZE)
 
+/**
+ * struct ice_aqc_get_set_rss_keys - Get/Set RSS hash key command buffer
+ * @standard_rss_key: 40 most significant bytes of hash key
+ * @extended_hash_key: 12 least significant bytes of hash key
+ *
+ * Set/Get 40 byte hash key using standard_rss_key field, and set
+ * extended_hash_key field to zero. Set/Get 52 byte hash key using
+ * standard_rss_key field for 40 most significant bytes and the
+ * extended_hash_key field for the 12 least significant bytes of hash key.
+ */
 struct ice_aqc_get_set_rss_keys {
 	u8 standard_rss_key[ICE_AQC_GET_SET_RSS_KEY_DATA_RSS_KEY_SIZE];
 	u8 extended_hash_key[ICE_AQC_GET_SET_RSS_KEY_DATA_HASH_KEY_SIZE];
