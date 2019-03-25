@@ -1314,7 +1314,7 @@ static void ice_init_pkg_regs(struct ice_hw *hw)
  * ice_copy_and_init_pkg() instead of directly calling ice_init_pkg() in this
  * case.
  */
-static enum ice_status ice_init_pkg(struct ice_hw *hw, u8 *buf, u32 len)
+enum ice_status ice_init_pkg(struct ice_hw *hw, u8 *buf, u32 len)
 {
 	struct ice_pkg_hdr *pkg;
 	enum ice_status status;

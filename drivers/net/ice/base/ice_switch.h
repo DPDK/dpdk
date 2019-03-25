@@ -271,6 +271,15 @@ enum ice_promisc_flags {
 
 /* VSI related commands */
 enum ice_status
+ice_aq_add_vsi(struct ice_hw *hw, struct ice_vsi_ctx *vsi_ctx,
+	       struct ice_sq_cd *cd);
+enum ice_status
+ice_aq_free_vsi(struct ice_hw *hw, struct ice_vsi_ctx *vsi_ctx,
+		bool keep_vsi_alloc, struct ice_sq_cd *cd);
+enum ice_status
+ice_aq_update_vsi(struct ice_hw *hw, struct ice_vsi_ctx *vsi_ctx,
+		  struct ice_sq_cd *cd);
+enum ice_status
 ice_add_vsi(struct ice_hw *hw, u16 vsi_handle, struct ice_vsi_ctx *vsi_ctx,
 	    struct ice_sq_cd *cd);
 enum ice_status

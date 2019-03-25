@@ -288,7 +288,7 @@ enum ice_status ice_free_sw(struct ice_hw *hw, u16 sw_id, u16 counter_id)
  *
  * Add a VSI context to the hardware (0x0210)
  */
-static enum ice_status
+enum ice_status
 ice_aq_add_vsi(struct ice_hw *hw, struct ice_vsi_ctx *vsi_ctx,
 	       struct ice_sq_cd *cd)
 {
@@ -331,7 +331,7 @@ ice_aq_add_vsi(struct ice_hw *hw, struct ice_vsi_ctx *vsi_ctx,
  *
  * Free VSI context info from hardware (0x0213)
  */
-static enum ice_status
+enum ice_status
 ice_aq_free_vsi(struct ice_hw *hw, struct ice_vsi_ctx *vsi_ctx,
 		bool keep_vsi_alloc, struct ice_sq_cd *cd)
 {
@@ -366,7 +366,7 @@ ice_aq_free_vsi(struct ice_hw *hw, struct ice_vsi_ctx *vsi_ctx,
  *
  * Update VSI context in the hardware (0x0211)
  */
-static enum ice_status
+enum ice_status
 ice_aq_update_vsi(struct ice_hw *hw, struct ice_vsi_ctx *vsi_ctx,
 		  struct ice_sq_cd *cd)
 {

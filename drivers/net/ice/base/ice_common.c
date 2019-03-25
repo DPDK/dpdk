@@ -2935,7 +2935,7 @@ ice_aq_set_rss_key(struct ice_hw *hw, u16 vsi_handle,
  * Association of Tx queue to Doorbell queue is not part of Add LAN Tx queue
  * flow.
  */
-static enum ice_status
+enum ice_status
 ice_aq_add_lan_txq(struct ice_hw *hw, u8 num_qgrps,
 		   struct ice_aqc_add_tx_qgrp *qg_list, u16 buf_size,
 		   struct ice_sq_cd *cd)
