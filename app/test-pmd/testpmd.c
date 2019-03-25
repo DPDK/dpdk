@@ -1361,91 +1361,6 @@ pkt_burst_stats_display(const char *rx_tx, struct pkt_burst_stats *pbs)
 #endif /* RTE_TEST_PMD_RECORD_BURST_STATS */
 
 static void
-fwd_port_stats_display(portid_t port_id, struct rte_eth_stats *stats)
-{
-	struct rte_port *port;
-	uint8_t i;
-
-	static const char *fwd_stats_border = "----------------------";
-
-	port = &ports[port_id];
-	printf("\n  %s Forward statistics for port %-2d %s\n",
-	       fwd_stats_border, port_id, fwd_stats_border);
-
-	if ((!port->rx_queue_stats_mapping_enabled) && (!port->tx_queue_stats_mapping_enabled)) {
-		printf("  RX-packets: %-14"PRIu64" RX-dropped: %-14"PRIu64"RX-total: "
-		       "%-"PRIu64"\n",
-		       stats->ipackets, stats->imissed,
-		       stats->ipackets + stats->imissed);
-
-		if (cur_fwd_eng == &csum_fwd_engine)
-			printf("  Bad-ipcsum: %-14"PRIu64" Bad-l4csum: %-14"PRIu64"Bad-outer-l4csum: %-14"PRIu64"\n",
-			       port->rx_bad_ip_csum, port->rx_bad_l4_csum,
-			       port->rx_bad_outer_l4_csum);
-		if ((stats->ierrors + stats->rx_nombuf) > 0) {
-			printf("  RX-error: %-"PRIu64"\n",  stats->ierrors);
-			printf("  RX-nombufs: %-14"PRIu64"\n", stats->rx_nombuf);
-		}
-
-		printf("  TX-packets: %-14"PRIu64" TX-dropped: %-14"PRIu64"TX-total: "
-		       "%-"PRIu64"\n",
-		       stats->opackets, port->tx_dropped,
-		       stats->opackets + port->tx_dropped);
-	}
-	else {
-		printf("  RX-packets:             %14"PRIu64"    RX-dropped:%14"PRIu64"    RX-total:"
-		       "%14"PRIu64"\n",
-		       stats->ipackets, stats->imissed,
-		       stats->ipackets + stats->imissed);
-
-		if (cur_fwd_eng == &csum_fwd_engine)
-			printf("  Bad-ipcsum:%14"PRIu64"    Bad-l4csum:%14"PRIu64"    Bad-outer-l4csum: %-14"PRIu64"\n",
-			       port->rx_bad_ip_csum, port->rx_bad_l4_csum,
-			       port->rx_bad_outer_l4_csum);
-		if ((stats->ierrors + stats->rx_nombuf) > 0) {
-			printf("  RX-error:%"PRIu64"\n", stats->ierrors);
-			printf("  RX-nombufs:             %14"PRIu64"\n",
-			       stats->rx_nombuf);
-		}
-
-		printf("  TX-packets:             %14"PRIu64"    TX-dropped:%14"PRIu64"    TX-total:"
-		       "%14"PRIu64"\n",
-		       stats->opackets, port->tx_dropped,
-		       stats->opackets + port->tx_dropped);
-	}
-
-#ifdef RTE_TEST_PMD_RECORD_BURST_STATS
-	if (port->rx_stream)
-		pkt_burst_stats_display("RX",
-			&port->rx_stream->rx_burst_stats);
-	if (port->tx_stream)
-		pkt_burst_stats_display("TX",
-			&port->tx_stream->tx_burst_stats);
-#endif
-
-	if (port->rx_queue_stats_mapping_enabled) {
-		printf("\n");
-		for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS; i++) {
-			printf("  Stats reg %2d RX-packets:%14"PRIu64
-			       "     RX-errors:%14"PRIu64
-			       "    RX-bytes:%14"PRIu64"\n",
-			       i, stats->q_ipackets[i], stats->q_errors[i], stats->q_ibytes[i]);
-		}
-		printf("\n");
-	}
-	if (port->tx_queue_stats_mapping_enabled) {
-		for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS; i++) {
-			printf("  Stats reg %2d TX-packets:%14"PRIu64
-			       "                                 TX-bytes:%14"PRIu64"\n",
-			       i, stats->q_opackets[i], stats->q_obytes[i]);
-		}
-	}
-
-	printf("  %s--------------------------------%s\n",
-	       fwd_stats_border, fwd_stats_border);
-}
-
-static void
 fwd_stream_stats_display(streamid_t stream_id)
 {
 	struct fwd_stream *fs;
@@ -1478,6 +1393,224 @@ fwd_stream_stats_display(streamid_t stream_id)
 	pkt_burst_stats_display("RX", &fs->rx_burst_stats);
 	pkt_burst_stats_display("TX", &fs->tx_burst_stats);
 #endif
+}
+
+void
+fwd_stats_display(void)
+{
+	static const char *fwd_stats_border = "----------------------";
+	static const char *acc_stats_border = "+++++++++++++++";
+	struct {
+		struct fwd_stream *rx_stream;
+		struct fwd_stream *tx_stream;
+		uint64_t tx_dropped;
+		uint64_t rx_bad_ip_csum;
+		uint64_t rx_bad_l4_csum;
+		uint64_t rx_bad_outer_l4_csum;
+	} ports_stats[RTE_MAX_ETHPORTS];
+	uint64_t total_rx_dropped = 0;
+	uint64_t total_tx_dropped = 0;
+	uint64_t total_rx_nombuf = 0;
+	struct rte_eth_stats stats;
+#ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
+	uint64_t fwd_cycles = 0;
+#endif
+	uint64_t total_recv = 0;
+	uint64_t total_xmit = 0;
+	struct rte_port *port;
+	streamid_t sm_id;
+	portid_t pt_id;
+	int i;
+
+	memset(ports_stats, 0, sizeof(ports_stats));
+
+	for (sm_id = 0; sm_id < cur_fwd_config.nb_fwd_streams; sm_id++) {
+		struct fwd_stream *fs = fwd_streams[sm_id];
+
+		if (cur_fwd_config.nb_fwd_streams >
+		    cur_fwd_config.nb_fwd_ports) {
+			fwd_stream_stats_display(sm_id);
+		} else {
+			ports_stats[fs->tx_port].tx_stream = fs;
+			ports_stats[fs->rx_port].rx_stream = fs;
+		}
+
+		ports_stats[fs->tx_port].tx_dropped += fs->fwd_dropped;
+
+		ports_stats[fs->rx_port].rx_bad_ip_csum += fs->rx_bad_ip_csum;
+		ports_stats[fs->rx_port].rx_bad_l4_csum += fs->rx_bad_l4_csum;
+		ports_stats[fs->rx_port].rx_bad_outer_l4_csum +=
+				fs->rx_bad_outer_l4_csum;
+
+#ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
+		fwd_cycles += fs->core_cycles;
+#endif
+	}
+	for (i = 0; i < cur_fwd_config.nb_fwd_ports; i++) {
+		uint8_t j;
+
+		pt_id = fwd_ports_ids[i];
+		port = &ports[pt_id];
+
+		rte_eth_stats_get(pt_id, &stats);
+		stats.ipackets -= port->stats.ipackets;
+		stats.opackets -= port->stats.opackets;
+		stats.ibytes -= port->stats.ibytes;
+		stats.obytes -= port->stats.obytes;
+		stats.imissed -= port->stats.imissed;
+		stats.oerrors -= port->stats.oerrors;
+		stats.rx_nombuf -= port->stats.rx_nombuf;
+
+		total_recv += stats.ipackets;
+		total_xmit += stats.opackets;
+		total_rx_dropped += stats.imissed;
+		total_tx_dropped += ports_stats[pt_id].tx_dropped;
+		total_tx_dropped += stats.oerrors;
+		total_rx_nombuf  += stats.rx_nombuf;
+
+		printf("\n  %s Forward statistics for port %-2d %s\n",
+		       fwd_stats_border, pt_id, fwd_stats_border);
+
+		if (!port->rx_queue_stats_mapping_enabled &&
+		    !port->tx_queue_stats_mapping_enabled) {
+			printf("  RX-packets: %-14"PRIu64
+			       " RX-dropped: %-14"PRIu64
+			       "RX-total: %-"PRIu64"\n",
+			       stats.ipackets, stats.imissed,
+			       stats.ipackets + stats.imissed);
+
+			if (cur_fwd_eng == &csum_fwd_engine)
+				printf("  Bad-ipcsum: %-14"PRIu64
+				       " Bad-l4csum: %-14"PRIu64
+				       "Bad-outer-l4csum: %-14"PRIu64"\n",
+				       ports_stats[pt_id].rx_bad_ip_csum,
+				       ports_stats[pt_id].rx_bad_l4_csum,
+				       ports_stats[pt_id].rx_bad_outer_l4_csum);
+			if (stats.ierrors + stats.rx_nombuf > 0) {
+				printf("  RX-error: %-"PRIu64"\n",
+				       stats.ierrors);
+				printf("  RX-nombufs: %-14"PRIu64"\n",
+				       stats.rx_nombuf);
+			}
+
+			printf("  TX-packets: %-14"PRIu64
+			       " TX-dropped: %-14"PRIu64
+			       "TX-total: %-"PRIu64"\n",
+			       stats.opackets, ports_stats[pt_id].tx_dropped,
+			       stats.opackets + ports_stats[pt_id].tx_dropped);
+		} else {
+			printf("  RX-packets:             %14"PRIu64
+			       "    RX-dropped:%14"PRIu64
+			       "    RX-total:%14"PRIu64"\n",
+			       stats.ipackets, stats.imissed,
+			       stats.ipackets + stats.imissed);
+
+			if (cur_fwd_eng == &csum_fwd_engine)
+				printf("  Bad-ipcsum:%14"PRIu64
+				       "    Bad-l4csum:%14"PRIu64
+				       "    Bad-outer-l4csum: %-14"PRIu64"\n",
+				       ports_stats[pt_id].rx_bad_ip_csum,
+				       ports_stats[pt_id].rx_bad_l4_csum,
+				       ports_stats[pt_id].rx_bad_outer_l4_csum);
+			if ((stats.ierrors + stats.rx_nombuf) > 0) {
+				printf("  RX-error:%"PRIu64"\n", stats.ierrors);
+				printf("  RX-nombufs:             %14"PRIu64"\n",
+				       stats.rx_nombuf);
+			}
+
+			printf("  TX-packets:             %14"PRIu64
+			       "    TX-dropped:%14"PRIu64
+			       "    TX-total:%14"PRIu64"\n",
+			       stats.opackets, ports_stats[pt_id].tx_dropped,
+			       stats.opackets + ports_stats[pt_id].tx_dropped);
+		}
+
+#ifdef RTE_TEST_PMD_RECORD_BURST_STATS
+		if (ports_stats[pt_id].rx_stream)
+			pkt_burst_stats_display("RX",
+				&ports_stats[pt_id].rx_stream->rx_burst_stats);
+		if (ports_stats[pt_id].tx_stream)
+			pkt_burst_stats_display("TX",
+				&ports_stats[pt_id].tx_stream->tx_burst_stats);
+#endif
+
+		if (port->rx_queue_stats_mapping_enabled) {
+			printf("\n");
+			for (j = 0; j < RTE_ETHDEV_QUEUE_STAT_CNTRS; j++) {
+				printf("  Stats reg %2d RX-packets:%14"PRIu64
+				       "     RX-errors:%14"PRIu64
+				       "    RX-bytes:%14"PRIu64"\n",
+				       j, stats.q_ipackets[j],
+				       stats.q_errors[j], stats.q_ibytes[j]);
+			}
+			printf("\n");
+		}
+		if (port->tx_queue_stats_mapping_enabled) {
+			for (j = 0; j < RTE_ETHDEV_QUEUE_STAT_CNTRS; j++) {
+				printf("  Stats reg %2d TX-packets:%14"PRIu64
+				       "                                 TX-bytes:%14"
+				       PRIu64"\n",
+				       j, stats.q_opackets[j],
+				       stats.q_obytes[j]);
+			}
+		}
+
+		printf("  %s--------------------------------%s\n",
+		       fwd_stats_border, fwd_stats_border);
+	}
+
+	printf("\n  %s Accumulated forward statistics for all ports"
+	       "%s\n",
+	       acc_stats_border, acc_stats_border);
+	printf("  RX-packets: %-14"PRIu64" RX-dropped: %-14"PRIu64"RX-total: "
+	       "%-"PRIu64"\n"
+	       "  TX-packets: %-14"PRIu64" TX-dropped: %-14"PRIu64"TX-total: "
+	       "%-"PRIu64"\n",
+	       total_recv, total_rx_dropped, total_recv + total_rx_dropped,
+	       total_xmit, total_tx_dropped, total_xmit + total_tx_dropped);
+	if (total_rx_nombuf > 0)
+		printf("  RX-nombufs: %-14"PRIu64"\n", total_rx_nombuf);
+	printf("  %s++++++++++++++++++++++++++++++++++++++++++++++"
+	       "%s\n",
+	       acc_stats_border, acc_stats_border);
+#ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
+	if (total_recv > 0)
+		printf("\n  CPU cycles/packet=%u (total cycles="
+		       "%"PRIu64" / total RX packets=%"PRIu64")\n",
+		       (unsigned int)(fwd_cycles / total_recv),
+		       fwd_cycles, total_recv);
+#endif
+}
+
+void
+fwd_stats_reset(void)
+{
+	streamid_t sm_id;
+	portid_t pt_id;
+	int i;
+
+	for (i = 0; i < cur_fwd_config.nb_fwd_ports; i++) {
+		pt_id = fwd_ports_ids[i];
+		rte_eth_stats_get(pt_id, &ports[pt_id].stats);
+	}
+	for (sm_id = 0; sm_id < cur_fwd_config.nb_fwd_streams; sm_id++) {
+		struct fwd_stream *fs = fwd_streams[sm_id];
+
+		fs->rx_packets = 0;
+		fs->tx_packets = 0;
+		fs->fwd_dropped = 0;
+		fs->rx_bad_ip_csum = 0;
+		fs->rx_bad_l4_csum = 0;
+		fs->rx_bad_outer_l4_csum = 0;
+
+#ifdef RTE_TEST_PMD_RECORD_BURST_STATS
+		memset(&fs->rx_burst_stats, 0, sizeof(fs->rx_burst_stats));
+		memset(&fs->tx_burst_stats, 0, sizeof(fs->tx_burst_stats));
+#endif
+#ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
+		fs->core_cycles = 0;
+#endif
+	}
 }
 
 static void
@@ -1635,7 +1768,6 @@ start_packet_forwarding(int with_tx_first)
 	struct rte_port *port;
 	unsigned int i;
 	portid_t   pt_id;
-	streamid_t sm_id;
 
 	if (strcmp(cur_fwd_eng->fwd_mode_name, "rxonly") == 0 && !nb_rxq)
 		rte_exit(EXIT_FAILURE, "rxq are 0, cannot use rxonly fwd mode\n");
@@ -1686,31 +1818,11 @@ start_packet_forwarding(int with_tx_first)
 	pkt_fwd_config_display(&cur_fwd_config);
 	rxtx_config_display();
 
+	fwd_stats_reset();
 	for (i = 0; i < cur_fwd_config.nb_fwd_ports; i++) {
 		pt_id = fwd_ports_ids[i];
 		port = &ports[pt_id];
-		rte_eth_stats_get(pt_id, &port->stats);
-		port->tx_dropped = 0;
-
 		map_port_queue_stats_mapping_registers(pt_id, port);
-	}
-	for (sm_id = 0; sm_id < cur_fwd_config.nb_fwd_streams; sm_id++) {
-		fwd_streams[sm_id]->rx_packets = 0;
-		fwd_streams[sm_id]->tx_packets = 0;
-		fwd_streams[sm_id]->fwd_dropped = 0;
-		fwd_streams[sm_id]->rx_bad_ip_csum = 0;
-		fwd_streams[sm_id]->rx_bad_l4_csum = 0;
-		fwd_streams[sm_id]->rx_bad_outer_l4_csum = 0;
-
-#ifdef RTE_TEST_PMD_RECORD_BURST_STATS
-		memset(&fwd_streams[sm_id]->rx_burst_stats, 0,
-		       sizeof(fwd_streams[sm_id]->rx_burst_stats));
-		memset(&fwd_streams[sm_id]->tx_burst_stats, 0,
-		       sizeof(fwd_streams[sm_id]->tx_burst_stats));
-#endif
-#ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
-		fwd_streams[sm_id]->core_cycles = 0;
-#endif
 	}
 	if (with_tx_first) {
 		port_fwd_begin = tx_only_engine.port_fwd_begin;
@@ -1735,23 +1847,10 @@ start_packet_forwarding(int with_tx_first)
 void
 stop_packet_forwarding(void)
 {
-	struct rte_eth_stats stats;
-	struct rte_port *port;
-	port_fwd_end_t  port_fwd_end;
+	port_fwd_end_t port_fwd_end;
+	lcoreid_t lc_id;
+	portid_t pt_id;
 	int i;
-	portid_t   pt_id;
-	streamid_t sm_id;
-	lcoreid_t  lc_id;
-	uint64_t total_recv;
-	uint64_t total_xmit;
-	uint64_t total_rx_dropped;
-	uint64_t total_tx_dropped;
-	uint64_t total_rx_nombuf;
-#ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
-	uint64_t fwd_cycles;
-#endif
-
-	static const char *acc_stats_border = "+++++++++++++++";
 
 	if (test_done) {
 		printf("Packet forwarding not started\n");
@@ -1769,87 +1868,9 @@ stop_packet_forwarding(void)
 			(*port_fwd_end)(pt_id);
 		}
 	}
-#ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
-	fwd_cycles = 0;
-#endif
-	for (sm_id = 0; sm_id < cur_fwd_config.nb_fwd_streams; sm_id++) {
-		struct fwd_stream *fs = fwd_streams[sm_id];
 
-		if (cur_fwd_config.nb_fwd_streams >
-		    cur_fwd_config.nb_fwd_ports) {
-			fwd_stream_stats_display(sm_id);
-			ports[fs->tx_port].tx_stream = NULL;
-			ports[fs->rx_port].rx_stream = NULL;
-		} else {
-			ports[fs->tx_port].tx_stream = fs;
-			ports[fs->rx_port].rx_stream = fs;
-		}
-		ports[fs->tx_port].tx_dropped += fs->fwd_dropped;
-		ports[fs->rx_port].rx_bad_ip_csum += fs->rx_bad_ip_csum;
-		ports[fs->rx_port].rx_bad_l4_csum += fs->rx_bad_l4_csum;
-		ports[fs->rx_port].rx_bad_outer_l4_csum +=
-				fs->rx_bad_outer_l4_csum;
+	fwd_stats_display();
 
-#ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
-		fwd_cycles = (uint64_t) (fwd_cycles +
-					 fwd_streams[sm_id]->core_cycles);
-#endif
-	}
-	total_recv = 0;
-	total_xmit = 0;
-	total_rx_dropped = 0;
-	total_tx_dropped = 0;
-	total_rx_nombuf  = 0;
-	for (i = 0; i < cur_fwd_config.nb_fwd_ports; i++) {
-		pt_id = fwd_ports_ids[i];
-
-		port = &ports[pt_id];
-		rte_eth_stats_get(pt_id, &stats);
-		stats.ipackets -= port->stats.ipackets;
-		port->stats.ipackets = 0;
-		stats.opackets -= port->stats.opackets;
-		port->stats.opackets = 0;
-		stats.ibytes   -= port->stats.ibytes;
-		port->stats.ibytes = 0;
-		stats.obytes   -= port->stats.obytes;
-		port->stats.obytes = 0;
-		stats.imissed  -= port->stats.imissed;
-		port->stats.imissed = 0;
-		stats.oerrors  -= port->stats.oerrors;
-		port->stats.oerrors = 0;
-		stats.rx_nombuf -= port->stats.rx_nombuf;
-		port->stats.rx_nombuf = 0;
-
-		total_recv += stats.ipackets;
-		total_xmit += stats.opackets;
-		total_rx_dropped += stats.imissed;
-		total_tx_dropped += port->tx_dropped;
-		total_rx_nombuf  += stats.rx_nombuf;
-
-		fwd_port_stats_display(pt_id, &stats);
-	}
-
-	printf("\n  %s Accumulated forward statistics for all ports"
-	       "%s\n",
-	       acc_stats_border, acc_stats_border);
-	printf("  RX-packets: %-14"PRIu64" RX-dropped: %-14"PRIu64"RX-total: "
-	       "%-"PRIu64"\n"
-	       "  TX-packets: %-14"PRIu64" TX-dropped: %-14"PRIu64"TX-total: "
-	       "%-"PRIu64"\n",
-	       total_recv, total_rx_dropped, total_recv + total_rx_dropped,
-	       total_xmit, total_tx_dropped, total_xmit + total_tx_dropped);
-	if (total_rx_nombuf > 0)
-		printf("  RX-nombufs: %-14"PRIu64"\n", total_rx_nombuf);
-	printf("  %s++++++++++++++++++++++++++++++++++++++++++++++"
-	       "%s\n",
-	       acc_stats_border, acc_stats_border);
-#ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
-	if (total_recv > 0)
-		printf("\n  CPU cycles/packet=%u (total cycles="
-		       "%"PRIu64" / total RX packets=%"PRIu64")\n",
-		       (unsigned int)(fwd_cycles / total_recv),
-		       fwd_cycles, total_recv);
-#endif
 	printf("\nDone.\n");
 	test_done = 1;
 }

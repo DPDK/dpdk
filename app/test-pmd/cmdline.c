@@ -225,6 +225,11 @@ static void cmd_help_long_parsed(void *parsed_result,
                         "show port tm node stats (port_id) (node_id) (clear)\n"
                         "       Display the port TM node stats.\n\n"
 
+			"show fwd stats all\n"
+			"    Display statistics for all fwd engines.\n\n"
+
+			"clear fwd stats all\n"
+			"    Clear statistics for all fwd engines.\n\n"
 		);
 	}
 
@@ -7382,6 +7387,49 @@ cmdline_parse_inst_t cmd_showqueue = {
 		(void *)&cmd_showqueue_what,
 		(void *)&cmd_showqueue_portnum,
 		(void *)&cmd_showqueue_queuenum,
+		NULL,
+	},
+};
+
+/* show/clear fwd engine statistics */
+struct fwd_result {
+	cmdline_fixed_string_t action;
+	cmdline_fixed_string_t fwd;
+	cmdline_fixed_string_t stats;
+	cmdline_fixed_string_t all;
+};
+
+cmdline_parse_token_string_t cmd_fwd_action =
+	TOKEN_STRING_INITIALIZER(struct fwd_result, action, "show#clear");
+cmdline_parse_token_string_t cmd_fwd_fwd =
+	TOKEN_STRING_INITIALIZER(struct fwd_result, fwd, "fwd");
+cmdline_parse_token_string_t cmd_fwd_stats =
+	TOKEN_STRING_INITIALIZER(struct fwd_result, stats, "stats");
+cmdline_parse_token_string_t cmd_fwd_all =
+	TOKEN_STRING_INITIALIZER(struct fwd_result, all, "all");
+
+static void
+cmd_showfwdall_parsed(void *parsed_result,
+		      __rte_unused struct cmdline *cl,
+		      __rte_unused void *data)
+{
+	struct fwd_result *res = parsed_result;
+
+	if (!strcmp(res->action, "show"))
+		fwd_stats_display();
+	else
+		fwd_stats_reset();
+}
+
+static cmdline_parse_inst_t cmd_showfwdall = {
+	.f = cmd_showfwdall_parsed,
+	.data = NULL,
+	.help_str = "show|clear fwd stats all",
+	.tokens = {
+		(void *)&cmd_fwd_action,
+		(void *)&cmd_fwd_fwd,
+		(void *)&cmd_fwd_stats,
+		(void *)&cmd_fwd_all,
 		NULL,
 	},
 };
@@ -18559,6 +18607,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_showqueue,
 	(cmdline_parse_inst_t *)&cmd_showportall,
 	(cmdline_parse_inst_t *)&cmd_showcfg,
+	(cmdline_parse_inst_t *)&cmd_showfwdall,
 	(cmdline_parse_inst_t *)&cmd_start,
 	(cmdline_parse_inst_t *)&cmd_start_tx_first,
 	(cmdline_parse_inst_t *)&cmd_start_tx_first_n,

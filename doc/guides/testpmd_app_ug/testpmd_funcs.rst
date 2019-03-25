@@ -336,6 +336,42 @@ Example::
    Set rxonly packet forwarding mode
 
 
+show fwd
+~~~~~~~~
+
+When running, forwarding engines maintain statistics from the time they have been started.
+Example for the io forwarding engine, with some packet drops on the tx side::
+
+   testpmd> show fwd stats all
+
+     ------- Forward Stats for RX Port= 0/Queue= 0 -> TX Port= 1/Queue= 0 -------
+     RX-packets: 274293770      TX-packets: 274293642      TX-dropped: 128
+
+     ------- Forward Stats for RX Port= 1/Queue= 0 -> TX Port= 0/Queue= 0 -------
+     RX-packets: 274301850      TX-packets: 274301850      TX-dropped: 0
+
+     ---------------------- Forward statistics for port 0  ----------------------
+     RX-packets: 274293802      RX-dropped: 0             RX-total: 274293802
+     TX-packets: 274301862      TX-dropped: 0             TX-total: 274301862
+     ----------------------------------------------------------------------------
+
+     ---------------------- Forward statistics for port 1  ----------------------
+     RX-packets: 274301894      RX-dropped: 0             RX-total: 274301894
+     TX-packets: 274293706      TX-dropped: 128           TX-total: 274293834
+     ----------------------------------------------------------------------------
+
+     +++++++++++++++ Accumulated forward statistics for all ports+++++++++++++++
+     RX-packets: 548595696      RX-dropped: 0             RX-total: 548595696
+     TX-packets: 548595568      TX-dropped: 128           TX-total: 548595696
+     ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+clear fwd
+~~~~~~~~~
+
+Clear the forwarding engines statistics::
+
+   testpmd> clear fwd stats all
+
 read rxd
 ~~~~~~~~
 

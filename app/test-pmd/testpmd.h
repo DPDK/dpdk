@@ -164,19 +164,12 @@ struct rte_port {
 	struct rte_eth_conf     dev_conf;   /**< Port configuration. */
 	struct ether_addr       eth_addr;   /**< Port ethernet address */
 	struct rte_eth_stats    stats;      /**< Last port statistics */
-	uint64_t                tx_dropped; /**< If no descriptor in TX ring */
-	struct fwd_stream       *rx_stream; /**< Port RX stream, if unique */
-	struct fwd_stream       *tx_stream; /**< Port TX stream, if unique */
 	unsigned int            socket_id;  /**< For NUMA support */
 	uint16_t		parse_tunnel:1; /**< Parse internal headers */
 	uint16_t                tso_segsz;  /**< Segmentation offload MSS for non-tunneled packets. */
 	uint16_t                tunnel_tso_segsz; /**< Segmentation offload MSS for tunneled pkts. */
 	uint16_t                tx_vlan_id;/**< The tag ID */
 	uint16_t                tx_vlan_id_outer;/**< The outer tag ID */
-	uint64_t                rx_bad_ip_csum; /**< rx pkts with bad ip checksum  */
-	uint64_t                rx_bad_l4_csum; /**< rx pkts with bad l4 checksum */
-	uint64_t                rx_bad_outer_l4_csum;
-	/**< rx pkts with bad outer l4 checksum */
 	uint8_t                 tx_queue_stats_mapping_enabled;
 	uint8_t                 rx_queue_stats_mapping_enabled;
 	volatile uint16_t        port_status;    /**< port started or not */
@@ -767,6 +760,8 @@ char *list_pkt_forwarding_modes(void);
 char *list_pkt_forwarding_retry_modes(void);
 void set_pkt_forwarding_mode(const char *fwd_mode);
 void start_packet_forwarding(int with_tx_first);
+void fwd_stats_display(void);
+void fwd_stats_reset(void);
 void stop_packet_forwarding(void);
 void dev_set_link_up(portid_t pid);
 void dev_set_link_down(portid_t pid);
