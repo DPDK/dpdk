@@ -59,7 +59,7 @@ void ice_ptg_free(struct ice_hw *hw, enum ice_block blk, u8 ptg);
 enum ice_status
 ice_ptg_add_mv_ptype(struct ice_hw *hw, enum ice_block blk, u16 ptype, u8 ptg);
 
-/* XLT2/Vsi group functions */
+/* XLT2/VSI group functions */
 enum ice_status ice_vsig_update_xlt2(struct ice_hw *hw, enum ice_block blk);
 enum ice_status
 ice_vsig_find_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 *vsig);

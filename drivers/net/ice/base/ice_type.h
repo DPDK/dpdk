@@ -196,7 +196,7 @@ enum ice_q {
 };
 
 /* Different reset sources for which a disable queue AQ call has to be made in
- * order to clean the TX scheduler as a part of the reset
+ * order to clean the Tx scheduler as a part of the reset
  */
 enum ice_disq_rst_src {
 	ICE_NO_RESET = 0,
@@ -242,11 +242,11 @@ struct ice_hw_common_caps {
 	u32 rss_table_size;		/* 512 for PFs and 64 for VFs */
 	u32 rss_table_entry_width;	/* RSS Entry width in bits */
 
-	/* TX/RX queues */
-	u32 num_rxq;			/* Number/Total RX queues */
-	u32 rxq_first_id;		/* First queue ID for RX queues */
-	u32 num_txq;			/* Number/Total TX queues */
-	u32 txq_first_id;		/* First queue ID for TX queues */
+	/* Tx/Rx queues */
+	u32 num_rxq;			/* Number/Total Rx queues */
+	u32 rxq_first_id;		/* First queue ID for Rx queues */
+	u32 num_txq;			/* Number/Total Tx queues */
+	u32 txq_first_id;		/* First queue ID for Tx queues */
 
 	/* MSI-X vectors */
 	u32 num_msix_vectors;
@@ -390,7 +390,7 @@ struct ice_sched_node {
 	struct ice_sched_node *sibling; /* next sibling in the same layer */
 	struct ice_sched_node **children;
 	struct ice_aqc_txsched_elem_data info;
-	u32 agg_id;			/* aggregator group id */
+	u32 agg_id;			/* aggregator group ID */
 	u16 vsi_handle;
 	u8 in_use;			/* suspended or in use */
 	u8 tx_sched_layer;		/* Logical Layer (1-9) */
@@ -435,8 +435,8 @@ enum ice_agg_type {
 /* Rate limit types */
 enum ice_rl_type {
 	ICE_UNKNOWN_BW = 0,
-	ICE_MIN_BW,		/* for cir profile */
-	ICE_MAX_BW,		/* for eir profile */
+	ICE_MIN_BW,		/* for CIR profile */
+	ICE_MAX_BW,		/* for EIR profile */
 	ICE_SHARED_BW		/* for shared profile */
 };
 
@@ -475,7 +475,7 @@ enum ice_rl_type {
  *
  *  (a) is the last_node_teid(not of type Leaf). A leaf node is created under
  *  (a) as child node where queues get added, add Tx/Rx queue admin commands;
- *  need teid of (a) to add queues.
+ *  need TEID of (a) to add queues.
  *
  *  This tree
  *       -> has 8 branches (one for each TC)
@@ -487,7 +487,7 @@ enum ice_rl_type {
  *  Refer to the documentation for more info.
  */
 
- /* Data structure for saving bw information */
+ /* Data structure for saving BW information */
 enum ice_bw_type {
 	ICE_BW_TYPE_PRIO,
 	ICE_BW_TYPE_CIR,
@@ -511,12 +511,12 @@ struct ice_bw_type_info {
 	u32 shared_bw;
 };
 
-/* vsi type list entry to locate corresponding vsi/ag nodes */
+/* VSI type list entry to locate corresponding VSI/aggregator nodes */
 struct ice_sched_vsi_info {
 	struct ice_sched_node *vsi_node[ICE_MAX_TRAFFIC_CLASS];
 	struct ice_sched_node *ag_node[ICE_MAX_TRAFFIC_CLASS];
 	u16 max_lanq[ICE_MAX_TRAFFIC_CLASS];
-	/* bw_t_info saves VSI bw information */
+	/* bw_t_info saves VSI BW information */
 	struct ice_bw_type_info bw_t_info[ICE_MAX_TRAFFIC_CLASS];
 };
 
@@ -577,7 +577,7 @@ struct ice_dcbx_cfg {
 
 struct ice_port_info {
 	struct ice_sched_node *root;	/* Root Node per Port */
-	struct ice_hw *hw;		/* back pointer to hw instance */
+	struct ice_hw *hw;		/* back pointer to HW instance */
 	u32 last_node_teid;		/* scheduler last node info */
 	u16 sw_id;			/* Initial switch ID belongs to port */
 	u16 pf_vf_num;
@@ -592,7 +592,7 @@ struct ice_port_info {
 	struct ice_mac_info mac;
 	struct ice_phy_info phy;
 	struct ice_lock sched_lock;	/* protect access to TXSched tree */
-	/* List contain profile id(s) and other params per layer */
+	/* List contain profile ID(s) and other params per layer */
 	struct LIST_HEAD_TYPE rl_prof_list[ICE_AQC_TOPO_MAX_LEVEL_NUM];
 #if !defined(NO_DCB_SUPPORT) || defined(ADQ_SUPPORT)
 	struct ice_dcbx_cfg local_dcbx_cfg;	/* Oper/Local Cfg */
@@ -648,7 +648,7 @@ struct ice_hw {
 	u8 pf_id;		/* device profile info */
 
 	u16 max_burst_size;	/* driver sets this value */
-	/* TX Scheduler values */
+	/* Tx Scheduler values */
 	u16 num_tx_sched_layers;
 	u16 num_tx_sched_phys_layers;
 	u8 flattened_layers;
@@ -659,7 +659,7 @@ struct ice_hw {
 	struct ice_bw_type_info tc_node_bw_t_info[ICE_MAX_TRAFFIC_CLASS];
 	struct ice_vsi_ctx *vsi_ctx[ICE_MAX_VSI];
 	u8 evb_veb;		/* true for VEB, false for VEPA */
-	u8 reset_ongoing;	/* true if hw is in reset, false otherwise */
+	u8 reset_ongoing;	/* true if HW is in reset, false otherwise */
 	struct ice_bus_info bus;
 	struct ice_nvm_info nvm;
 	struct ice_hw_dev_caps dev_caps;	/* device capabilities */

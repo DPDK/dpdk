@@ -43,14 +43,14 @@ struct ice_aqc_rl_profile_info {
 	struct ice_aqc_rl_profile_elem profile;
 	struct LIST_ENTRY_TYPE list_entry;
 	u32 bw;			/* requested */
-	u16 prof_id_ref;	/* profile id to node association ref count */
+	u16 prof_id_ref;	/* profile ID to node association ref count */
 };
 
 struct ice_sched_agg_vsi_info {
 	struct LIST_ENTRY_TYPE list_entry;
 	ice_declare_bitmap(tc_bitmap, ICE_MAX_TRAFFIC_CLASS);
 	u16 vsi_handle;
-	/* save agg vsi TC bitmap */
+	/* save aggregator VSI TC bitmap */
 	ice_declare_bitmap(replay_tc_bitmap, ICE_MAX_TRAFFIC_CLASS);
 };
 
@@ -60,9 +60,9 @@ struct ice_sched_agg_info {
 	ice_declare_bitmap(tc_bitmap, ICE_MAX_TRAFFIC_CLASS);
 	u32 agg_id;
 	enum ice_agg_type agg_type;
-	/* bw_t_info saves agg bw information */
+	/* bw_t_info saves aggregator BW information */
 	struct ice_bw_type_info bw_t_info[ICE_MAX_TRAFFIC_CLASS];
-	/* save agg TC bitmap */
+	/* save aggregator TC bitmap */
 	ice_declare_bitmap(replay_tc_bitmap, ICE_MAX_TRAFFIC_CLASS);
 };
 

@@ -292,6 +292,9 @@ struct ice_flow_prof_params {
 
 	u16 entry_length; /* # of bytes formatted entry will require */
 	u8 es_cnt;
+	/* For ACL, the es[0] will have the data of ICE_RX_MDID_PKT_FLAGS_15_0
+	 * This will give us the direction flags.
+	 */
 	struct ice_fv_word es[ICE_MAX_FV_WORDS];
 
 	ice_declare_bitmap(ptypes, ICE_FLOW_PTYPE_MAX);
@@ -494,7 +497,7 @@ ice_flow_proc_seg_hdrs(struct ice_flow_prof_params *params)
 
 /**
  * ice_flow_xtract_fld - Create an extraction sequence entry for the given field
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @params: information about the flow to be processed
  * @seg: packet segment index of the field to be extracted
  * @fld: ID of field to be extracted
@@ -656,7 +659,7 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 
 /**
  * ice_flow_xtract_raws - Create extract sequence entries for raw bytes
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @params: information about the flow to be processed
  * @seg: index of packet segment whose raw fields are to be be extracted
  */
@@ -728,7 +731,7 @@ ice_flow_xtract_raws(struct ice_hw *hw, struct ice_flow_prof_params *params,
 
 /**
  * ice_flow_create_xtrct_seq - Create an extraction sequence for given segments
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @params: information about the flow to be processed
  *
  * This function iterates through all matched fields in the given segments, and
@@ -768,7 +771,7 @@ ice_flow_create_xtrct_seq(struct ice_hw *hw,
 
 /**
  * ice_flow_proc_segs - process all packet segments associated with a profile
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @params: information about the flow to be processed
  */
 static enum ice_status
@@ -807,7 +810,7 @@ ice_flow_proc_segs(struct ice_hw *hw, struct ice_flow_prof_params *params)
 
 /**
  * ice_flow_find_prof_conds - Find a profile matching headers and conditions
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: classification stage
  * @dir: flow direction
  * @segs: array of one or more packet segments that describe the flow
@@ -852,7 +855,7 @@ ice_flow_find_prof_conds(struct ice_hw *hw, enum ice_block blk,
 
 /**
  * ice_flow_find_prof - Look up a profile matching headers and matched fields
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: classification stage
  * @dir: flow direction
  * @segs: array of one or more packet segments that describe the flow
@@ -874,7 +877,7 @@ ice_flow_find_prof(struct ice_hw *hw, enum ice_block blk, enum ice_flow_dir dir,
 
 /**
  * ice_flow_find_prof_id - Look up a profile with given profile ID
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: classification stage
  * @prof_id: unique ID to identify this flow profile
  */
@@ -893,7 +896,7 @@ ice_flow_find_prof_id(struct ice_hw *hw, enum ice_block blk, u64 prof_id)
 
 /**
  * ice_flow_rem_entry_sync - Remove a flow entry
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @entry: flow entry to be removed
  */
 static enum ice_status
@@ -917,7 +920,7 @@ ice_flow_rem_entry_sync(struct ice_hw *hw, struct ice_flow_entry *entry)
 
 /**
  * ice_flow_add_prof_sync - Add a flow profile for packet segments and fields
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: classification stage
  * @dir: flow direction
  * @prof_id: unique ID to identify this flow profile
@@ -1057,7 +1060,7 @@ ice_flow_rem_prof_sync(struct ice_hw *hw, enum ice_block blk,
  * @vsi_handle: software VSI handle
  *
  * Assumption: the caller has acquired the lock to the profile list
- * and the software vsi handle has been validated
+ * and the software VSI handle has been validated
  */
 static enum ice_status
 ice_flow_assoc_prof(struct ice_hw *hw, enum ice_block blk,
@@ -1089,7 +1092,7 @@ ice_flow_assoc_prof(struct ice_hw *hw, enum ice_block blk,
  * @vsi_handle: software VSI handle
  *
  * Assumption: the caller has acquired the lock to the profile list
- * and the software vsi handle has been validated
+ * and the software VSI handle has been validated
  */
 static enum ice_status
 ice_flow_disassoc_prof(struct ice_hw *hw, enum ice_block blk,
@@ -1115,7 +1118,7 @@ ice_flow_disassoc_prof(struct ice_hw *hw, enum ice_block blk,
 
 /**
  * ice_flow_add_prof - Add a flow profile for packet segments and matched fields
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: classification stage
  * @dir: flow direction
  * @prof_id: unique ID to identify this flow profile
@@ -1160,7 +1163,7 @@ ice_flow_add_prof(struct ice_hw *hw, enum ice_block blk, enum ice_flow_dir dir,
 
 /**
  * ice_flow_rem_prof - Remove a flow profile and all entries associated with it
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: the block for which the flow profile is to be removed
  * @prof_id: unique ID of the flow profile to be removed
  */
@@ -1188,11 +1191,11 @@ out:
 }
 
 /**
- * ice_flow_get_hw_prof - return the hw profile for a specific profile id handle
- * @hw: pointer to the hw struct
+ * ice_flow_get_hw_prof - return the HW profile for a specific profile ID handle
+ * @hw: pointer to the HW struct
  * @blk: classification stage
- * @prof_id: the profile id handle
- * @hw_prof_id: pointer to variable to receive the hw profile id
+ * @prof_id: the profile ID handle
+ * @hw_prof_id: pointer to variable to receive the HW profile ID
  */
 enum ice_status
 ice_flow_get_hw_prof(struct ice_hw *hw, enum ice_block blk, u64 prof_id,
@@ -1211,7 +1214,7 @@ ice_flow_get_hw_prof(struct ice_hw *hw, enum ice_block blk, u64 prof_id,
 
 /**
  * ice_flow_find_entry - look for a flow entry using its unique ID
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: classification stage
  * @entry_id: unique ID to identify this flow entry
  *
@@ -1249,7 +1252,7 @@ u64 ice_flow_find_entry(struct ice_hw *hw, enum ice_block blk, u64 entry_id)
 
 /**
  * ice_flow_add_entry - Add a flow entry
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: classification stage
  * @prof_id: ID of the profile to add a new flow entry to
  * @entry_id: unique ID to identify this flow entry
@@ -1335,7 +1338,7 @@ out:
 
 /**
  * ice_flow_rem_entry - Remove a flow entry
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @entry_h: handle to the flow entry to be removed
  */
 enum ice_status ice_flow_rem_entry(struct ice_hw *hw, u64 entry_h)
@@ -1712,12 +1715,12 @@ void ice_rem_all_rss_vsi_ctx(struct ice_hw *hw, u16 vsi_handle)
 }
 
 /**
- * ice_rem_vsi_rss_cfg - remove RSS configurations associated with vsi
+ * ice_rem_vsi_rss_cfg - remove RSS configurations associated with VSI
  * @hw: pointer to the hardware structure
  * @vsi_handle: software VSI handle
  *
  * This function will iterate through all flow profiles and disassociate
- * the vsi from that profile. If the flow profile has no vsis it will
+ * the VSI from that profile. If the flow profile has no VSIs it will
  * be removed.
  */
 enum ice_status ice_rem_vsi_rss_cfg(struct ice_hw *hw, u16 vsi_handle)
@@ -1847,7 +1850,7 @@ ice_add_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 		goto exit;
 
 	/* Search for a flow profile that has matching headers, hash fields
-	 * and has the input vsi associated to it. If found, no further
+	 * and has the input VSI associated to it. If found, no further
 	 * operations required and exit.
 	 */
 	prof = ice_flow_find_prof_conds(hw, blk, ICE_FLOW_RX, segs, 1,
@@ -1858,8 +1861,8 @@ ice_add_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 		goto exit;
 
 	/* Check if a flow profile exists with the same protocol headers and
-	 * associated with the input vsi. If so disasscociate the vsi from
-	 * this profile. The vsi will be added to a new profile created with
+	 * associated with the input VSI. If so disasscociate the VSI from
+	 * this profile. The VSI will be added to a new profile created with
 	 * the protocol header and new hash field configuration.
 	 */
 	prof = ice_flow_find_prof_conds(hw, blk, ICE_FLOW_RX, segs, 1,
@@ -1871,7 +1874,7 @@ ice_add_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 		else
 			goto exit;
 
-		/* Remove profile if it has no vsis associated */
+		/* Remove profile if it has no VSIs associated */
 		if (!ice_is_any_bit_set(prof->vsis, ICE_MAX_VSI)) {
 			status = ice_flow_rem_prof_sync(hw, blk, prof);
 			if (status)
@@ -1880,7 +1883,7 @@ ice_add_rss_cfg_sync(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 	}
 
 	/* Search for a profile that has same match fields only. If this
-	 * exists then associate the vsi to this profile.
+	 * exists then associate the VSI to this profile.
 	 */
 	prof = ice_flow_find_prof_conds(hw, blk, ICE_FLOW_RX, segs, 1,
 					vsi_handle,
@@ -2003,7 +2006,7 @@ out:
  *
  * This function will lookup the flow profile based on the input
  * hash field bitmap, iterate through the profile entry list of
- * that profile and find entry associated with input vsi to be
+ * that profile and find entry associated with input VSI to be
  * removed. Calls are made to underlying flow apis which will in
  * turn build or update buffers for RSS XLT1 section.
  */
@@ -2025,7 +2028,7 @@ ice_rem_rss_cfg(struct ice_hw *hw, u16 vsi_handle, u64 hashed_flds,
 }
 
 /**
- * ice_replay_rss_cfg - remove RSS configurations associated with vsi
+ * ice_replay_rss_cfg - remove RSS configurations associated with VSI
  * @hw: pointer to the hardware structure
  * @vsi_handle: software VSI handle
  */
@@ -2057,13 +2060,13 @@ enum ice_status ice_replay_rss_cfg(struct ice_hw *hw, u16 vsi_handle)
  * @hdrs: protocol header type
  *
  * This function will return the match fields of the first instance of flow
- * profile having the given header types and containing input vsi
+ * profile having the given header types and containing input VSI
  */
 u64 ice_get_rss_cfg(struct ice_hw *hw, u16 vsi_handle, u32 hdrs)
 {
 	struct ice_rss_cfg *r, *rss_cfg = NULL;
 
-	/* verify if the protocol header is non zero and vsi is valid */
+	/* verify if the protocol header is non zero and VSI is valid */
 	if (hdrs == ICE_FLOW_SEG_HDR_NONE || !ice_is_vsi_valid(hw, vsi_handle))
 		return ICE_HASH_INVALID;
 

@@ -18,7 +18,7 @@
 /* Max recipes that can be chained */
 #define ICE_MAX_CHAIN_RECIPE 5
 
-/* 1 word reserved for switch id from allowed 5 words.
+/* 1 word reserved for switch ID from allowed 5 words.
  * So a recipe can have max 4 words. And you can chain 5 such recipes
  * together. So maximum words that can be programmed for look up is 5 * 4.
  */
@@ -128,7 +128,7 @@ enum ice_prot_id {
 
 #define ICE_PROTOCOL_MAX_ENTRIES 16
 
-/* Mapping of software defined protocol id to hardware defined protocol id */
+/* Mapping of software defined protocol ID to hardware defined protocol ID */
 struct ice_protocol_entry {
 	enum ice_protocol_type type;
 	u8 protocol_id;

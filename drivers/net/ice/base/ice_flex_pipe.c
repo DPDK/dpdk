@@ -325,11 +325,11 @@ ice_pkg_enum_entry(struct ice_seg *ice_seg, struct ice_pkg_enum *state,
  * ice_boost_tcam_handler
  * @sect_type: section type
  * @section: pointer to section
- * @index: index of the boost tcam entry to be returned
- * @offset: pointer to receive absolute offset, always 0 for boost tcam sections
+ * @index: index of the boost TCAM entry to be returned
+ * @offset: pointer to receive absolute offset, always 0 for boost TCAM sections
  *
  * This is a callback function that can be passed to ice_pkg_enum_entry.
- * Handles enumeration of individual boost tcam entries.
+ * Handles enumeration of individual boost TCAM entries.
  */
 static void *
 ice_boost_tcam_handler(u32 sect_type, void *section, u32 index, u32 *offset)
@@ -501,7 +501,7 @@ void ice_init_pkg_hints(struct ice_hw *hw, struct ice_seg *ice_seg)
 		label_name = ice_enum_labels(NULL, 0, &state, &val);
 	}
 
-	/* Cache the appropriate boost tcam entry pointers */
+	/* Cache the appropriate boost TCAM entry pointers */
 	for (i = 0; i < hw->tnl.count; i++) {
 		ice_find_boost_entry(ice_seg, hw->tnl.tbl[i].boost_addr,
 				     &hw->tnl.tbl[i].boost_entry);
@@ -1078,7 +1078,7 @@ enum ice_status ice_download_pkg(struct ice_hw *hw, struct ice_seg *ice_seg)
  * @hw: pointer to the hardware structure
  * @pkg_hdr: pointer to the driver's package hdr
  *
- * Saves off the package details into the hw structure.
+ * Saves off the package details into the HW structure.
  */
 enum ice_status
 ice_init_pkg_info(struct ice_hw *hw, struct ice_pkg_hdr *pkg_hdr)
@@ -1468,14 +1468,14 @@ ice_sw_fv_handler(u32 sect_type, void *section, u32 index, u32 *offset)
 /**
  * ice_get_sw_fv_list
  * @hw: pointer to the HW structure
- * @prot_ids: field vector to search for with a given protocol id
+ * @prot_ids: field vector to search for with a given protocol ID
  * @ids_cnt: lookup/protocol count
  * @fv_list: Head of a list
  *
  * Finds all the field vector entries from switch block that contain
- * a given protocol id and returns a list of structures of type
+ * a given protocol ID and returns a list of structures of type
  * "ice_sw_fv_list_entry". Every structure in the list has a field vector
- * definition and profile id information
+ * definition and profile ID information
  * NOTE: The caller of the function is responsible for freeing the memory
  * allocated for every list entry.
  */
@@ -1782,11 +1782,11 @@ void ice_pkg_buf_free(struct ice_hw *hw, struct ice_buf_build *bld)
 /* PTG Management */
 
 /**
- * ice_ptg_update_xlt1 - Updates packet type groups in hw via xlt1 table
+ * ice_ptg_update_xlt1 - Updates packet type groups in HW via XLT1 table
  * @hw: pointer to the hardware structure
- * @blk: hw block
+ * @blk: HW block
  *
- * This function will update the xlt1 hardware table to reflect the new
+ * This function will update the XLT1 hardware table to reflect the new
  * packet type group configuration.
  */
 enum ice_status ice_ptg_update_xlt1(struct ice_hw *hw, enum ice_block blk)
@@ -1817,7 +1817,7 @@ enum ice_status ice_ptg_update_xlt1(struct ice_hw *hw, enum ice_block blk)
 /**
  * ice_ptg_find_ptype - Search for packet type group using packet type (ptype)
  * @hw: pointer to the hardware structure
- * @blk: hw block
+ * @blk: HW block
  * @ptype: the ptype to search for
  * @ptg: pointer to variable that receives the PTG
  *
@@ -1838,7 +1838,7 @@ ice_ptg_find_ptype(struct ice_hw *hw, enum ice_block blk, u16 ptype, u8 *ptg)
 /**
  * ice_ptg_alloc_val - Allocates a new packet type group ID by value
  * @hw: pointer to the hardware structure
- * @blk: hw block
+ * @blk: HW block
  * @ptg: the ptg to allocate
  *
  * This function allocates a given packet type group ID specified by the ptg
@@ -1853,7 +1853,7 @@ void ice_ptg_alloc_val(struct ice_hw *hw, enum ice_block blk, u8 ptg)
 /**
  * ice_ptg_alloc - Find a free entry and allocates a new packet type group ID
  * @hw: pointer to the hardware structure
- * @blk: hw block
+ * @blk: HW block
  *
  * This function allocates and returns a new packet type group ID. Note
  * that 0 is the default packet type group, so successfully created PTGs will
@@ -1877,7 +1877,7 @@ u8 ice_ptg_alloc(struct ice_hw *hw, enum ice_block blk)
 /**
  * ice_ptg_free - Frees a packet type group
  * @hw: pointer to the hardware structure
- * @blk: hw block
+ * @blk: HW block
  * @ptg: the ptg ID to free
  *
  * This function frees a packet type group, and returns all the current ptypes
@@ -1902,7 +1902,7 @@ void ice_ptg_free(struct ice_hw *hw, enum ice_block blk, u8 ptg)
 /**
  * ice_ptg_remove_ptype - Removes ptype from a particular packet type group
  * @hw: pointer to the hardware structure
- * @blk: hw block
+ * @blk: HW block
  * @ptype: the ptype to remove
  * @ptg: the ptg to remove the ptype from
  *
@@ -1947,7 +1947,7 @@ ice_ptg_remove_ptype(struct ice_hw *hw, enum ice_block blk, u16 ptype, u8 ptg)
 /**
  * ice_ptg_add_mv_ptype - Adds/moves ptype to a particular packet type group
  * @hw: pointer to the hardware structure
- * @blk: hw block
+ * @blk: HW block
  * @ptype: the ptype to add or move
  * @ptg: the ptg to add or move the ptype to
  *
@@ -1998,10 +1998,10 @@ ice_ptg_add_mv_ptype(struct ice_hw *hw, enum ice_block blk, u16 ptype, u8 ptg)
 
 /* Block / table size info */
 struct ice_blk_size_details {
-	u16 xlt1;			/* # xlt1 entries */
-	u16 xlt2;			/* # xlt2 entries */
-	u16 prof_tcam;			/* # profile id tcam entries */
-	u16 prof_id;			/* # profile ids */
+	u16 xlt1;			/* # XLT1 entries */
+	u16 xlt2;			/* # XLT2 entries */
+	u16 prof_tcam;			/* # profile ID TCAM entries */
+	u16 prof_id;			/* # profile IDs */
 	u8 prof_cdid_bits;		/* # cdid one-hot bits used in key */
 	u16 prof_redir;			/* # profile redirection entries */
 	u16 es;				/* # extraction sequence entries */
@@ -2079,7 +2079,7 @@ ice_match_prop_lst(struct LIST_HEAD_TYPE *list1, struct LIST_HEAD_TYPE *list2)
 	/* profile cookies must compare, and in the exact same order to take
 	 * into account priority
 	 */
-	while (--count) {
+	while (count--) {
 		if (tmp2->profile_cookie != tmp1->profile_cookie)
 			return false;
 
@@ -2093,13 +2093,13 @@ ice_match_prop_lst(struct LIST_HEAD_TYPE *list1, struct LIST_HEAD_TYPE *list2)
 /* VSIG Management */
 
 /**
- * ice_vsig_update_xlt2_sect - update one section of xlt2 table
+ * ice_vsig_update_xlt2_sect - update one section of XLT2 table
  * @hw: pointer to the hardware structure
- * @blk: hw block
- * @vsi: hw vsi number to program
- * @vsig: vsig for the vsi
+ * @blk: HW block
+ * @vsi: HW VSI number to program
+ * @vsig: vsig for the VSI
  *
- * This function will update the xlt2 hardware table with the input vsi
+ * This function will update the XLT2 hardware table with the input VSI
  * group configuration.
  */
 static enum ice_status
@@ -2128,11 +2128,11 @@ ice_vsig_update_xlt2_sect(struct ice_hw *hw, enum ice_block blk, u16 vsi,
 }
 
 /**
- * ice_vsig_update_xlt2 - update xlt2 table with VSIG configuration
+ * ice_vsig_update_xlt2 - update XLT2 table with VSIG configuration
  * @hw: pointer to the hardware structure
- * @blk: hw block
+ * @blk: HW block
  *
- * This function will update the xlt2 hardware table with the input vsi
+ * This function will update the XLT2 hardware table with the input VSI
  * group configuration of used vsis.
  */
 enum ice_status ice_vsig_update_xlt2(struct ice_hw *hw, enum ice_block blk)
@@ -2158,14 +2158,14 @@ enum ice_status ice_vsig_update_xlt2(struct ice_hw *hw, enum ice_block blk)
 }
 
 /**
- * ice_vsig_find_vsi - find a VSIG that contains a specified vsi
+ * ice_vsig_find_vsi - find a VSIG that contains a specified VSI
  * @hw: pointer to the hardware structure
- * @blk: hw block
- * @vsi: vsi of interest
- * @vsig: pointer to receive the vsi group
+ * @blk: HW block
+ * @vsi: VSI of interest
+ * @vsig: pointer to receive the VSI group
  *
- * This function will lookup the vsi entry in the XLT2 list and return
- * the vsi group its associated with.
+ * This function will lookup the VSI entry in the XLT2 list and return
+ * the VSI group its associated with.
  */
 enum ice_status
 ice_vsig_find_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 *vsig)
@@ -2174,7 +2174,7 @@ ice_vsig_find_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 *vsig)
 		return ICE_ERR_PARAM;
 
 	/* As long as there's a default or valid VSIG associated with the input
-	 * vsi, the functions returns a success. Any handling of VSIG will be
+	 * VSI, the functions returns a success. Any handling of VSIG will be
 	 * done by the following add, update or remove functions.
 	 */
 	*vsig = hw->blk[blk].xlt2.vsis[vsi].vsig;
@@ -2185,7 +2185,7 @@ ice_vsig_find_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 *vsig)
 /**
  * ice_vsig_alloc_val - allocate a new VSIG by value
  * @hw: pointer to the hardware structure
- * @blk: hw block
+ * @blk: HW block
  * @vsig: the vsig to allocate
  *
  * This function will allocate a given VSIG specified by the vsig parameter.
@@ -2205,7 +2205,7 @@ static u16 ice_vsig_alloc_val(struct ice_hw *hw, enum ice_block blk, u16 vsig)
 /**
  * ice_vsig_alloc - Finds a free entry and allocates a new VSIG
  * @hw: pointer to the hardware structure
- * @blk: hw block
+ * @blk: HW block
  *
  * This function will iterate through the VSIG list and mark the first
  * unused entry for the new VSIG entry as used and return that value.
@@ -2222,16 +2222,16 @@ static u16 ice_vsig_alloc(struct ice_hw *hw, enum ice_block blk)
 }
 
 /**
- * ice_find_dup_props_vsig - find vsi group with a specified set of properties
+ * ice_find_dup_props_vsig - find VSI group with a specified set of properties
  * @hw: pointer to the hardware structure
- * @blk: hw block
+ * @blk: HW block
  * @chs: characteristic list
  * @vsig: returns the VSIG with the matching profiles, if found
  *
- * Each VSIG is associated with a characteristic set; i.e. all vsis under
+ * Each VSIG is associated with a characteristic set; i.e. all VSIs under
  * a group have the same characteristic set. To check if there exists a VSIG
  * which has the same characteristics as the input characteristics; this
- * function will iterate through the xlt2 list and return the VSIG that has a
+ * function will iterate through the XLT2 list and return the VSIG that has a
  * matching configuration. In order to make sure that priorities are accounted
  * for, the list must match exactly, including the order in which the
  * characteristics are listed.
@@ -2257,12 +2257,12 @@ ice_find_dup_props_vsig(struct ice_hw *hw, enum ice_block blk,
 }
 
 /**
- * ice_vsig_free - free vsi group
+ * ice_vsig_free - free VSI group
  * @hw: pointer to the hardware structure
- * @blk: hw block
+ * @blk: HW block
  * @vsig: VSIG to remove
  *
- * The function will remove all vsis associated with the input VSIG and move
+ * The function will remove all VSIs associated with the input VSIG and move
  * them to the DEFAULT_VSIG and mark the VSIG available.
  */
 enum ice_status
@@ -2310,14 +2310,14 @@ ice_vsig_free(struct ice_hw *hw, enum ice_block blk, u16 vsig)
 }
 
 /**
- * ice_vsig_add_mv_vsi - add or move a vsi to a vsi group
+ * ice_vsig_add_mv_vsi - add or move a VSI to a VSI group
  * @hw: pointer to the hardware structure
- * @blk: hw block
- * @vsi: vsi to move
- * @vsig: destination vsi group
+ * @blk: HW block
+ * @vsi: VSI to move
+ * @vsig: destination VSI group
  *
- * This function will move or add the input vsi to the target VSIG.
- * The function will find the original VSIG the vsi belongs to and
+ * This function will move or add the input VSI to the target VSIG.
+ * The function will find the original VSIG the VSI belongs to and
  * move the entry to the DEFAULT_VSIG, update the original VSIG and
  * then move entry to the new VSIG.
  */
@@ -2358,7 +2358,7 @@ ice_vsig_add_mv_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig)
 	if (idx == ICE_DEFAULT_VSIG)
 		return ICE_SUCCESS;
 
-	/* Create vsi entry and add VSIG and prop_mask values */
+	/* Create VSI entry and add VSIG and prop_mask values */
 	hw->blk[blk].xlt2.vsis[vsi].vsig = vsig;
 	hw->blk[blk].xlt2.vsis[vsi].changed = 1;
 
@@ -2373,13 +2373,13 @@ ice_vsig_add_mv_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig)
 }
 
 /**
- * ice_vsig_remove_vsi - remove vsi from VSIG
+ * ice_vsig_remove_vsi - remove VSI from VSIG
  * @hw: pointer to the hardware structure
- * @blk: hw block
- * @vsi: vsi to remove
- * @vsig: vsi group to remove from
+ * @blk: HW block
+ * @vsi: VSI to remove
+ * @vsig: VSI group to remove from
  *
- * The function will remove the input vsi from its vsi group and move it
+ * The function will remove the input VSI from its VSI group and move it
  * to the DEFAULT_VSIG.
  */
 enum ice_status
@@ -2396,7 +2396,7 @@ ice_vsig_remove_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig)
 	if (!hw->blk[blk].xlt2.vsig_tbl[idx].in_use)
 		return ICE_ERR_DOES_NOT_EXIST;
 
-	/* entry already in default VSIG, dont have to remove */
+	/* entry already in default VSIG, don't have to remove */
 	if (idx == ICE_DEFAULT_VSIG)
 		return ICE_SUCCESS;
 
@@ -2407,7 +2407,7 @@ ice_vsig_remove_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig)
 	vsi_tgt = &hw->blk[blk].xlt2.vsis[vsi];
 	vsi_cur = (*vsi_head);
 
-	/* iterate the vsi list, skip over the entry to be removed */
+	/* iterate the VSI list, skip over the entry to be removed */
 	while (vsi_cur) {
 		if (vsi_tgt == vsi_cur) {
 			(*vsi_head) = vsi_cur->next_vsi;
@@ -2417,7 +2417,7 @@ ice_vsig_remove_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig)
 		vsi_cur = vsi_cur->next_vsi;
 	}
 
-	/* verify if vsi was removed from group list */
+	/* verify if VSI was removed from group list */
 	if (!vsi_cur)
 		return ICE_ERR_DOES_NOT_EXIST;
 
@@ -2429,11 +2429,11 @@ ice_vsig_remove_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig)
 }
 
 /**
- * ice_find_prof_id - find profile id for a given field vector
+ * ice_find_prof_id - find profile ID for a given field vector
  * @hw: pointer to the hardware structure
- * @blk: hw block
+ * @blk: HW block
  * @fv: field vector to search for
- * @prof_id: receives the profile id
+ * @prof_id: receives the profile ID
  */
 static enum ice_status
 ice_find_prof_id(struct ice_hw *hw, enum ice_block blk,
@@ -2456,7 +2456,7 @@ ice_find_prof_id(struct ice_hw *hw, enum ice_block blk,
 }
 
 /**
- * ice_prof_id_rsrc_type - get profile id resource type for a block type
+ * ice_prof_id_rsrc_type - get profile ID resource type for a block type
  * @blk: the block type
  * @rsrc_type: pointer to variable to receive the resource type
  */
@@ -2485,7 +2485,7 @@ static bool ice_prof_id_rsrc_type(enum ice_block blk, u16 *rsrc_type)
 }
 
 /**
- * ice_tcam_ent_rsrc_type - get tcam entry resource type for a block type
+ * ice_tcam_ent_rsrc_type - get TCAM entry resource type for a block type
  * @blk: the block type
  * @rsrc_type: pointer to variable to receive the resource type
  */
@@ -2707,10 +2707,10 @@ ice_free_res_workaround(struct ice_hw *hw, u16 type, u16 num, u16 *res)
 }
 
 /**
- * ice_alloc_tcam_ent - allocate hardware tcam entry
- * @hw: pointer to the hw struct
- * @blk: the block to allocate the tcam for
- * @tcam_idx: pointer to variable to receive the tcam entry
+ * ice_alloc_tcam_ent - allocate hardware TCAM entry
+ * @hw: pointer to the HW struct
+ * @blk: the block to allocate the TCAM for
+ * @tcam_idx: pointer to variable to receive the TCAM entry
  *
  * This function allocates a new entry in a Profile ID TCAM for a specific
  * block.
@@ -2727,10 +2727,10 @@ ice_alloc_tcam_ent(struct ice_hw *hw, enum ice_block blk, u16 *tcam_idx)
 }
 
 /**
- * ice_free_tcam_ent - free hardware tcam entry
- * @hw: pointer to the hw struct
- * @blk: the block from which to free the tcam entry
- * @tcam_idx: the tcam entry to free
+ * ice_free_tcam_ent - free hardware TCAM entry
+ * @hw: pointer to the HW struct
+ * @blk: the block from which to free the TCAM entry
+ * @tcam_idx: the TCAM entry to free
  *
  * This function frees an entry in a Profile ID TCAM for a specific block.
  */
@@ -2746,12 +2746,12 @@ ice_free_tcam_ent(struct ice_hw *hw, enum ice_block blk, u16 tcam_idx)
 }
 
 /**
- * ice_alloc_prof_id - allocate profile id
- * @hw: pointer to the hw struct
- * @blk: the block to allocate the profile id for
- * @prof_id: pointer to variable to receive the profile id
+ * ice_alloc_prof_id - allocate profile ID
+ * @hw: pointer to the HW struct
+ * @blk: the block to allocate the profile ID for
+ * @prof_id: pointer to variable to receive the profile ID
  *
- * This function allocates a new profile id, which also corresponds to a Field
+ * This function allocates a new profile ID, which also corresponds to a Field
  * Vector (Extraction Sequence) entry.
  */
 static enum ice_status
@@ -2772,12 +2772,12 @@ ice_alloc_prof_id(struct ice_hw *hw, enum ice_block blk, u8 *prof_id)
 }
 
 /**
- * ice_free_prof_id - free profile id
- * @hw: pointer to the hw struct
- * @blk: the block from which to free the profile id
- * @prof_id: the profile id to free
+ * ice_free_prof_id - free profile ID
+ * @hw: pointer to the HW struct
+ * @blk: the block from which to free the profile ID
+ * @prof_id: the profile ID to free
  *
- * This function frees a profile id, which also corresponds to a Field Vector.
+ * This function frees a profile ID, which also corresponds to a Field Vector.
  */
 static enum ice_status
 ice_free_prof_id(struct ice_hw *hw, enum ice_block blk, u8 prof_id)
@@ -2801,9 +2801,9 @@ ice_free_prof_id(struct ice_hw *hw, enum ice_block blk, u8 prof_id)
 
 /**
  * ice_prof_inc_ref - increment reference count for profile
- * @hw: pointer to the hw struct
- * @blk: the block from which to free the profile id
- * @prof_id: the profile id for which to increment the reference count
+ * @hw: pointer to the HW struct
+ * @blk: the block from which to free the profile ID
+ * @prof_id: the profile ID for which to increment the reference count
  */
 static enum ice_status
 ice_prof_inc_ref(struct ice_hw *hw, enum ice_block blk, u8 prof_id)
@@ -2818,9 +2818,9 @@ ice_prof_inc_ref(struct ice_hw *hw, enum ice_block blk, u8 prof_id)
 
 /**
  * ice_prof_dec_ref - decrement reference count for profile
- * @hw: pointer to the hw struct
- * @blk: the block from which to free the profile id
- * @prof_id: the profile id for which to decrement the reference count
+ * @hw: pointer to the HW struct
+ * @blk: the block from which to free the profile ID
+ * @prof_id: the profile ID for which to decrement the reference count
  */
 static enum ice_status
 ice_prof_dec_ref(struct ice_hw *hw, enum ice_block blk, u8 prof_id)
@@ -2838,9 +2838,9 @@ ice_prof_dec_ref(struct ice_hw *hw, enum ice_block blk, u8 prof_id)
 
 /**
  * ice_write_es - write an extraction sequence to hardware
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: the block in which to write the extraction sequence
- * @prof_id: the profile id to write
+ * @prof_id: the profile ID to write
  * @fv: pointer to the extraction sequence to write
  */
 static void
@@ -2921,7 +2921,7 @@ static void ice_fill_tbl(struct ice_hw *hw, enum ice_block block_id, u32 sid)
 	u8 *src, *dst;
 	void *sect;
 
-	/* if the hw segment pointer is null then the first iteration of
+	/* if the HW segment pointer is null then the first iteration of
 	 * ice_pkg_enum_section() will fail. In this case the Hw tables will
 	 * not be filled and return success.
 	 */
@@ -3072,7 +3072,7 @@ static void ice_free_flow_profs(struct ice_hw *hw)
 /**
  * ice_free_prof_map - frees the profile map
  * @hw: pointer to the hardware structure
- * @blk: the hw block which contains the profile map to be freed
+ * @blk: the HW block which contains the profile map to be freed
  */
 static void ice_free_prof_map(struct ice_hw *hw, enum ice_block blk)
 {
@@ -3091,7 +3091,7 @@ static void ice_free_prof_map(struct ice_hw *hw, enum ice_block blk)
 /**
  * ice_free_vsig_tbl - free complete VSIG table entries
  * @hw: pointer to the hardware structure
- * @blk: the hw block on which to free the VSIG table entries
+ * @blk: the HW block on which to free the VSIG table entries
  */
 static void ice_free_vsig_tbl(struct ice_hw *hw, enum ice_block blk)
 {
@@ -3151,9 +3151,9 @@ static void ice_init_flow_profs(struct ice_hw *hw)
 }
 
 /**
- * ice_init_sw_xlt1_db - init software xlt1 database from hw tables
+ * ice_init_sw_xlt1_db - init software XLT1 database from HW tables
  * @hw: pointer to the hardware structure
- * @blk: the hw block to initialize
+ * @blk: the HW block to initialize
  */
 static
 void ice_init_sw_xlt1_db(struct ice_hw *hw, enum ice_block blk)
@@ -3172,9 +3172,9 @@ void ice_init_sw_xlt1_db(struct ice_hw *hw, enum ice_block blk)
 }
 
 /**
- * ice_init_sw_xlt2_db - init software xlt2 database from hw tables
+ * ice_init_sw_xlt2_db - init software XLT2 database from HW tables
  * @hw: pointer to the hardware structure
- * @blk: the hw block to initialize
+ * @blk: the HW block to initialize
  */
 static
 void ice_init_sw_xlt2_db(struct ice_hw *hw, enum ice_block blk)
@@ -3197,7 +3197,7 @@ void ice_init_sw_xlt2_db(struct ice_hw *hw, enum ice_block blk)
 }
 
 /**
- * ice_init_sw_db - init software database from hw tables
+ * ice_init_sw_db - init software database from HW tables
  * @hw: pointer to the hardware structure
  */
 static
@@ -3329,9 +3329,9 @@ err:
 }
 
 /**
- * ice_prof_gen_key - generate profile id key
- * @hw: pointer to the hw struct
- * @blk: the block in which to write profile id to
+ * ice_prof_gen_key - generate profile ID key
+ * @hw: pointer to the HW struct
+ * @blk: the block in which to write profile ID to
  * @ptg: packet type group (PTG) portion of key
  * @vsig: VSIG portion of key
  * @cdid: cdid portion of key
@@ -3339,7 +3339,7 @@ err:
  * @vl_msk: valid mask
  * @dc_msk: don't care mask
  * @nm_msk: never match mask
- * @key: output of profile id key
+ * @key: output of profile ID key
  */
 static enum ice_status
 ice_prof_gen_key(struct ice_hw *hw, enum ice_block blk, u8 ptg, u16 vsig,
@@ -3384,11 +3384,11 @@ ice_prof_gen_key(struct ice_hw *hw, enum ice_block blk, u8 ptg, u16 vsig,
 }
 
 /**
- * ice_tcam_write_entry - write tcam entry
- * @hw: pointer to the hw struct
- * @blk: the block in which to write profile id to
+ * ice_tcam_write_entry - write TCAM entry
+ * @hw: pointer to the HW struct
+ * @blk: the block in which to write profile ID to
  * @idx: the entry index to write to
- * @prof_id: profile id
+ * @prof_id: profile ID
  * @ptg: packet type group (PTG) portion of key
  * @vsig: VSIG portion of key
  * @cdid: cdid portion of key
@@ -3418,9 +3418,9 @@ ice_tcam_write_entry(struct ice_hw *hw, enum ice_block blk, u16 idx,
 }
 
 /**
- * ice_vsig_get_ref - returns number of vsis belong to a VSIG
+ * ice_vsig_get_ref - returns number of VSIs belong to a VSIG
  * @hw: pointer to the hardware structure
- * @blk: hw block
+ * @blk: HW block
  * @vsig: VSIG to query
  * @refs: pointer to variable to receive the reference count
  */
@@ -3446,7 +3446,7 @@ ice_vsig_get_ref(struct ice_hw *hw, enum ice_block blk, u16 vsig, u16 *refs)
 /**
  * ice_get_ptg - get or allocate a ptg for a ptype
  * @hw: pointer to the hardware structure
- * @blk: hw block
+ * @blk: HW block
  * @ptype: the ptype to retrieve the PTG for
  * @ptg: receives the PTG of the ptype
  * @add: receive boolean indicating whether PTG was added or not
@@ -3483,7 +3483,7 @@ ice_get_ptg(struct ice_hw *hw, enum ice_block blk, u16 ptype, u8 *ptg,
 /**
  * ice_has_prof_vsig - check to see if VSIG has a specific profile
  * @hw: pointer to the hardware structure
- * @blk: hw block
+ * @blk: HW block
  * @vsig: VSIG to check against
  * @hdl: profile handle
  */
@@ -3500,14 +3500,14 @@ ice_has_prof_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig, u64 hdl)
 	}
 
 	ice_debug(hw, ICE_DBG_INIT,
-		  "Characteristic list for vsi group %d not found.\n",
+		  "Characteristic list for VSI group %d not found.\n",
 		  vsig);
 	return false;
 }
 
 /**
- * ice_prof_bld_es - build profile id extraction sequence changes
- * @hw: pointer to the hw struct
+ * ice_prof_bld_es - build profile ID extraction sequence changes
+ * @hw: pointer to the HW struct
  * @blk: hardware block
  * @bld: the update package buffer build to add to
  * @chgs: the list of changes to make in hardware
@@ -3546,8 +3546,8 @@ ice_prof_bld_es(struct ice_hw *hw, enum ice_block blk,
 }
 
 /**
- * ice_prof_bld_tcam - build profile id tcam changes
- * @hw: pointer to the hw struct
+ * ice_prof_bld_tcam - build profile ID TCAM changes
+ * @hw: pointer to the HW struct
  * @blk: hardware block
  * @bld: the update package buffer build to add to
  * @chgs: the list of changes to make in hardware
@@ -3586,7 +3586,7 @@ ice_prof_bld_tcam(struct ice_hw *hw, enum ice_block blk,
 }
 
 /**
- * ice_prof_bld_xlt1 - build xlt1 changes
+ * ice_prof_bld_xlt1 - build XLT1 changes
  * @blk: hardware block
  * @bld: the update package buffer build to add to
  * @chgs: the list of changes to make in hardware
@@ -3619,7 +3619,7 @@ ice_prof_bld_xlt1(enum ice_block blk, struct ice_buf_build *bld,
 }
 
 /**
- * ice_prof_bld_xlt2 - build xlt2 changes
+ * ice_prof_bld_xlt2 - build XLT2 changes
  * @blk: hardware block
  * @bld: the update package buffer build to add to
  * @chgs: the list of changes to make in hardware
@@ -3662,7 +3662,7 @@ ice_prof_bld_xlt2(enum ice_block blk, struct ice_buf_build *bld,
 
 /**
  * ice_upd_prof_hw - update hardware using the change list
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: hardware block
  * @chgs: the list of changes to make in hardware
  */
@@ -3763,16 +3763,16 @@ error_tmp:
 
 /**
  * ice_add_prof - add profile
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: hardware block
- * @id: profile tracking id
+ * @id: profile tracking ID
  * @ptypes: array of bitmaps indicating ptypes (ICE_FLOW_PTYPE_MAX bits)
  * @es: extraction sequence (length of array is determined by the block)
  *
  * This function registers a profile, which matches a set of PTYPES with a
  * particular extraction sequence. While the hardware profile is allocated
  * it will not be written until the first call to ice_add_flow that specifies
- * the id value used here.
+ * the ID value used here.
  */
 enum ice_status
 ice_add_prof(struct ice_hw *hw, enum ice_block blk, u64 id, u8 ptypes[],
@@ -3787,7 +3787,7 @@ ice_add_prof(struct ice_hw *hw, enum ice_block blk, u64 id, u8 ptypes[],
 	/* search for existing profile */
 	status = ice_find_prof_id(hw, blk, es, &prof_id);
 	if (status) {
-		/* allocate profile id */
+		/* allocate profile ID */
 		status = ice_alloc_prof_id(hw, blk, &prof_id);
 		if (status)
 			goto err_ice_add_prof;
@@ -3851,7 +3851,7 @@ err_ice_add_prof:
 
 /**
  * ice_search_prof_id - Search for a profile tracking ID
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: hardware block
  * @id: profile tracking ID
  *
@@ -3876,7 +3876,7 @@ ice_search_prof_id(struct ice_hw *hw, enum ice_block blk, u64 id)
 
 /**
  * ice_set_prof_context - Set context for a given profile
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: hardware block
  * @id: profile tracking ID
  * @cntxt: context
@@ -3895,7 +3895,7 @@ ice_set_prof_context(struct ice_hw *hw, enum ice_block blk, u64 id, u64 cntxt)
 
 /**
  * ice_get_prof_context - Get context for a given profile
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: hardware block
  * @id: profile tracking ID
  * @cntxt: pointer to variable to receive the context
@@ -3914,7 +3914,7 @@ ice_get_prof_context(struct ice_hw *hw, enum ice_block blk, u64 id, u64 *cntxt)
 
 /**
  * ice_vsig_prof_id_count - count profiles in a VSIG
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: hardware block
  * @vsig: VSIG to remove the profile from
  */
@@ -3933,8 +3933,8 @@ ice_vsig_prof_id_count(struct ice_hw *hw, enum ice_block blk, u16 vsig)
 }
 
 /**
- * ice_rel_tcam_idx - release a tcam index
- * @hw: pointer to the hw struct
+ * ice_rel_tcam_idx - release a TCAM index
+ * @hw: pointer to the HW struct
  * @blk: hardware block
  * @idx: the index to release
  */
@@ -3947,13 +3947,13 @@ ice_rel_tcam_idx(struct ice_hw *hw, enum ice_block blk, u16 idx)
 	u8 nm_msk[ICE_TCAM_KEY_VAL_SZ] = { 0x01, 0x00, 0x00, 0x00, 0x00 };
 	enum ice_status status;
 
-	/* write the tcam entry */
+	/* write the TCAM entry */
 	status = ice_tcam_write_entry(hw, blk, idx, 0, 0, 0, 0, 0, vl_msk,
 				      dc_msk, nm_msk);
 	if (status)
 		return status;
 
-	/* release the tcam entry */
+	/* release the TCAM entry */
 	status = ice_free_tcam_ent(hw, blk, idx);
 
 	return status;
@@ -3961,7 +3961,7 @@ ice_rel_tcam_idx(struct ice_hw *hw, enum ice_block blk, u16 idx)
 
 /**
  * ice_rem_prof_id - remove one profile from a VSIG
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: hardware block
  * @vsig: VSIG to remove the profile from
  * @prof: pointer to profile structure to remove
@@ -4007,7 +4007,7 @@ err_ice_rem_prof_id:
 
 /**
  * ice_rem_vsig - remove VSIG
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: hardware block
  * @vsig: the VSIG to remove
  * @chg: the change list
@@ -4069,7 +4069,7 @@ err_ice_rem_vsig:
 
 /**
  * ice_rem_prof_id_vsig - remove a specific profile from a VSIG
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: hardware block
  * @vsig: VSIG to remove the profile from
  * @hdl: profile handle indicating which profile to remove
@@ -4105,7 +4105,7 @@ ice_rem_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig, u64 hdl,
 
 /**
  * ice_rem_flow_all - remove all flows with a particular profile
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: hardware block
  * @id: profile tracking ID
  */
@@ -4143,11 +4143,11 @@ err_ice_rem_flow_all:
 
 /**
  * ice_rem_prof - remove profile
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: hardware block
  * @id: profile tracking ID
  *
- * This will remove the profile specified by the id parameter, which was
+ * This will remove the profile specified by the ID parameter, which was
  * previously created through ice_add_prof. If any existing entries
  * are associated with this profile, they will be removed as well.
  */
@@ -4177,7 +4177,7 @@ enum ice_status ice_rem_prof(struct ice_hw *hw, enum ice_block blk, u64 id)
 
 /**
  * ice_get_prof_ptgs - get ptgs for profile
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: hardware block
  * @hdl: profile handle
  * @chg: change list
@@ -4190,7 +4190,7 @@ ice_get_prof_ptgs(struct ice_hw *hw, enum ice_block blk, u64 hdl,
 	struct ice_chs_chg *p;
 	u16 i;
 
-	/* Get the details on the profile specified by the handle id */
+	/* Get the details on the profile specified by the handle ID */
 	map = ice_search_prof_id(hw, blk, hdl);
 	if (!map)
 		return ICE_ERR_DOES_NOT_EXIST;
@@ -4231,7 +4231,7 @@ err_ice_get_prof_ptgs:
 
 /**
  * ice_get_profs_vsig - get a copy of the list of profiles from a VSIG
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: hardware block
  * @vsig: VSIG from which to copy the list
  * @lst: output list
@@ -4272,7 +4272,7 @@ err_ice_get_profs_vsig:
 
 /**
  * ice_add_prof_to_lst - add profile entry to a list
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: hardware block
  * @lst: the list to be added to
  * @hdl: profile handle of entry to add
@@ -4320,7 +4320,7 @@ ice_add_prof_to_lst(struct ice_hw *hw, enum ice_block blk,
 
 /**
  * ice_move_vsi - move VSI to another VSIG
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: hardware block
  * @vsi: the VSI to move
  * @vsig: the VSIG to move the VSI to
@@ -4357,15 +4357,15 @@ ice_move_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig,
 }
 
 /**
- * ice_prof_tcam_ena_dis - add enable or disable tcam change
- * @hw: pointer to the hw struct
+ * ice_prof_tcam_ena_dis - add enable or disable TCAM change
+ * @hw: pointer to the HW struct
  * @blk: hardware block
  * @enable: true to enable, false to disable
- * @vsig: the vsig of the tcam entry
- * @tcam: pointer the tcam info structure of the tcam to disable
+ * @vsig: the vsig of the TCAM entry
+ * @tcam: pointer the TCAM info structure of the TCAM to disable
  * @chg: the change list
  *
- * This function appends an enable or disable tcam entry in the change log
+ * This function appends an enable or disable TCAM entry in the change log
  */
 static enum ice_status
 ice_prof_tcam_ena_dis(struct ice_hw *hw, enum ice_block blk, bool enable,
@@ -4418,7 +4418,7 @@ err_ice_prof_tcam_ena_dis:
 
 /**
  * ice_adj_prof_priorities - adjust profile based on priorities
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: hardware block
  * @vsig: the VSIG for which to adjust profile priorities
  * @chg: the change list
@@ -4487,7 +4487,7 @@ ice_adj_prof_priorities(struct ice_hw *hw, enum ice_block blk, u16 vsig,
 
 /**
  * ice_add_prof_id_vsig - add profile to VSIG
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: hardware block
  * @vsig: the VSIG to which this profile is to be added
  * @hdl: the profile handle indicating the profile to add
@@ -4506,7 +4506,7 @@ ice_add_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig, u64 hdl,
 	struct ice_chs_chg *p;
 	u16 i;
 
-	/* Get the details on the profile specified by the handle id */
+	/* Get the details on the profile specified by the handle ID */
 	map = ice_search_prof_id(hw, blk, hdl);
 	if (!map)
 		return ICE_ERR_DOES_NOT_EXIST;
@@ -4524,7 +4524,7 @@ ice_add_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig, u64 hdl,
 	t->prof_id = map->prof_id;
 	t->tcam_count = map->ptype_count;
 
-	/* create tcam entries */
+	/* create TCAM entries */
 	for (i = 0; i < map->ptype_count; i++) {
 		enum ice_status status;
 		u16 tcam_idx;
@@ -4543,7 +4543,7 @@ ice_add_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig, u64 hdl,
 		if (!p)
 			goto err_ice_add_prof_id_vsig;
 
-		/* allocate the tcam entry index */
+		/* allocate the TCAM entry index */
 		status = ice_alloc_tcam_ent(hw, blk, &tcam_idx);
 		if (status)
 			goto err_ice_add_prof_id_vsig;
@@ -4560,7 +4560,7 @@ ice_add_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig, u64 hdl,
 		p->vsig = vsig;
 		p->tcam_idx = t->tcam[i].tcam_idx;
 
-		/* write the tcam entry */
+		/* write the TCAM entry */
 		status = ice_tcam_write_entry(hw, blk, t->tcam[i].tcam_idx,
 					      t->tcam[i].prof_id,
 					      t->tcam[i].ptg, vsig, 0, 0,
@@ -4568,8 +4568,8 @@ ice_add_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig, u64 hdl,
 		if (status)
 			goto err_ice_add_prof_id_vsig;
 
-		/* this increments the reference count of how many tcam entries
-		 * are using this hw profile id
+		/* this increments the reference count of how many TCAM entries
+		 * are using this HW profile ID
 		 */
 		status = ice_prof_inc_ref(hw, blk, t->tcam[i].prof_id);
 
@@ -4590,7 +4590,7 @@ err_ice_add_prof_id_vsig:
 
 /**
  * ice_create_prof_id_vsig - add a new VSIG with a single profile
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: hardware block
  * @vsi: the initial VSI that will be in VSIG
  * @hdl: the profile handle of the profile that will be added to the VSIG
@@ -4632,7 +4632,7 @@ ice_create_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsi, u64 hdl,
 
 /**
  * ice_create_vsig_from_list - create a new VSIG with a list of profiles
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: hardware block
  * @vsi: the initial VSI that will be in VSIG
  * @lst: the list of profile that will be added to the VSIG
@@ -4666,7 +4666,7 @@ ice_create_vsig_from_lst(struct ice_hw *hw, enum ice_block blk, u16 vsi,
 
 /**
  * ice_find_prof_vsig - find a VSIG with a specific profile handle
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: hardware block
  * @hdl: the profile handle of the profile to search for
  * @vsig: returns the VSIG with the matching profile
@@ -4697,13 +4697,13 @@ ice_find_prof_vsig(struct ice_hw *hw, enum ice_block blk, u64 hdl, u16 *vsig)
 
 /**
  * ice_add_prof_id_flow - add profile flow
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: hardware block
- * @vsi: the vsi to enable with the profile specified by id
+ * @vsi: the VSI to enable with the profile specified by ID
  * @hdl: profile handle
  *
  * Calling this function will update the hardware tables to enable the
- * profile indicated by the id parameter for the VSIs specified in the vsi
+ * profile indicated by the ID parameter for the VSIs specified in the VSI
  * array. Once successfully called, the flow will be enabled.
  */
 enum ice_status
@@ -4725,7 +4725,7 @@ ice_add_prof_id_flow(struct ice_hw *hw, enum ice_block blk, u16 vsi, u64 hdl)
 	if (status)
 		return status;
 
-	/* determine if vsi is already part of a VSIG */
+	/* determine if VSI is already part of a VSIG */
 	status = ice_vsig_find_vsi(hw, blk, vsi, &vsig);
 	if (!status && vsig) {
 		bool only_vsi;
@@ -4805,10 +4805,10 @@ ice_add_prof_id_flow(struct ice_hw *hw, enum ice_block blk, u16 vsi, u64 hdl)
 		}
 	} else {
 		/* need to find or add a VSIG */
-		/* search for an exising VSIG with an exact charc match */
+		/* search for an existing VSIG with an exact charc match */
 		if (ice_find_prof_vsig(hw, blk, hdl, &vsig)) {
 			/* found an exact match */
-			/* add or move vsi to the VSIG that matches */
+			/* add or move VSI to the VSIG that matches */
 			status = ice_move_vsi(hw, blk, vsi, vsig, &chg);
 			if (status)
 				goto err_ice_add_prof_id_flow;
@@ -4847,14 +4847,14 @@ err_ice_add_prof_id_flow:
 
 /**
  * ice_add_flow - add flow
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: hardware block
- * @vsi: array of VSIs to enable with the profile specified by id
- * @count: number of elements in the vsi array
- * @id: profile tracking id
+ * @vsi: array of VSIs to enable with the profile specified by ID
+ * @count: number of elements in the VSI array
+ * @id: profile tracking ID
  *
  * Calling this function will update the hardware tables to enable the
- * profile indicated by the id parameter for the VSIs specified in the vsi
+ * profile indicated by the ID parameter for the VSIs specified in the VSI
  * array. Once successfully called, the flow will be enabled.
  */
 enum ice_status
@@ -4875,7 +4875,7 @@ ice_add_flow(struct ice_hw *hw, enum ice_block blk, u16 vsi[], u8 count,
 
 /**
  * ice_rem_prof_from_list - remove a profile from list
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @lst: list to remove the profile from
  * @hdl: the profile handle indicating the profile to remove
  */
@@ -4897,13 +4897,13 @@ ice_rem_prof_from_list(struct ice_hw *hw, struct LIST_HEAD_TYPE *lst, u64 hdl)
 
 /**
  * ice_rem_prof_id_flow - remove flow
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: hardware block
- * @vsi: the vsi from which to remove the profile specified by id
+ * @vsi: the VSI from which to remove the profile specified by ID
  * @hdl: profile tracking handle
  *
  * Calling this function will update the hardware tables to remove the
- * profile indicated by the id parameter for the VSIs specified in the vsi
+ * profile indicated by the ID parameter for the VSIs specified in the VSI
  * array. Once successfully called, the flow will be disabled.
  */
 enum ice_status
@@ -4918,7 +4918,7 @@ ice_rem_prof_id_flow(struct ice_hw *hw, enum ice_block blk, u16 vsi, u64 hdl)
 	INIT_LIST_HEAD(&copy);
 	INIT_LIST_HEAD(&chg);
 
-	/* determine if vsi is already part of a VSIG */
+	/* determine if VSI is already part of a VSIG */
 	status = ice_vsig_find_vsi(hw, blk, vsi, &vsig);
 	if (!status && vsig) {
 		bool last_profile;
@@ -4979,7 +4979,7 @@ ice_rem_prof_id_flow(struct ice_hw *hw, enum ice_block blk, u16 vsi, u64 hdl)
 			} else if (ice_find_dup_props_vsig(hw, blk, &copy,
 							   &vsig)) {
 				/* found an exact match */
-				/* add or move vsi to the VSIG that matches */
+				/* add or move VSI to the VSIG that matches */
 				/* Search for a VSIG with a matching profile
 				 * list
 				 */
@@ -4991,7 +4991,7 @@ ice_rem_prof_id_flow(struct ice_hw *hw, enum ice_block blk, u16 vsi, u64 hdl)
 			} else {
 				/* since no existing VSIG supports this
 				 * characteristic pattern, we need to create a
-				 * new VSIG and tcam entries
+				 * new VSIG and TCAM entries
 				 */
 				status = ice_create_vsig_from_lst(hw, blk, vsi,
 								  &copy, &chg);
@@ -5029,14 +5029,14 @@ err_ice_rem_prof_id_flow:
 
 /**
  * ice_rem_flow - remove flow
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @blk: hardware block
- * @vsi: array of VSIs from which to remove the profile specified by id
- * @count: number of elements in the vsi array
- * @id: profile tracking id
+ * @vsi: array of VSIs from which to remove the profile specified by ID
+ * @count: number of elements in the VSI array
+ * @id: profile tracking ID
  *
  * The function will remove flows from the specified VSIs that were enabled
- * using ice_add_flow. The id value will indicated which profile will be
+ * using ice_add_flow. The ID value will indicated which profile will be
  * removed. Once successfully called, the flow will be disabled.
  */
 enum ice_status

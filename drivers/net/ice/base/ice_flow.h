@@ -227,7 +227,6 @@ struct ice_flow_entry {
 	u64 id;
 	u16 vsi_handle;
 	enum ice_flow_priority priority;
-
 	struct ice_flow_prof *prof;
 
 	/* Flow entry's content */

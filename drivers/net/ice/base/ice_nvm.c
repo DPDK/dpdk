@@ -7,7 +7,7 @@
 
 /**
  * ice_aq_read_nvm
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @module_typeid: module pointer location in words from the NVM beginning
  * @offset: byte offset from the module beginning
  * @length: length of the section to be read (in bytes from the offset)
@@ -248,7 +248,7 @@ enum ice_status ice_read_sr_word(struct ice_hw *hw, u16 offset, u16 *data)
 
 /**
  * ice_init_nvm - initializes NVM setting
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  *
  * This function reads and populates NVM settings such as Shadow RAM size,
  * max_timeout, and blank_nvm_mode
@@ -264,7 +264,7 @@ enum ice_status ice_init_nvm(struct ice_hw *hw)
 
 	ice_debug(hw, ICE_DBG_TRACE, "ice_init_nvm");
 
-	/* The SR size is stored regardless of the nvm programming mode
+	/* The SR size is stored regardless of the NVM programming mode
 	 * as the blank mode may be used in the factory line.
 	 */
 	gens_stat = rd32(hw, GLNVM_GENS);
@@ -357,7 +357,7 @@ ice_read_sr_buf(struct ice_hw *hw, u16 offset, u16 *words, u16 *data)
 
 /**
  * ice_nvm_validate_checksum
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  *
  * Verify NVM PFA checksum validity (0x0706)
  */

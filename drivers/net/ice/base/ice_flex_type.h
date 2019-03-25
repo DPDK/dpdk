@@ -350,7 +350,7 @@ struct ice_sw_fv_list_entry {
 };
 
 #pragma pack(1)
-/* The BOOST tcam stores the match packet header in reverse order, meaning
+/* The BOOST TCAM stores the match packet header in reverse order, meaning
  * the fields are reversed; in addition, this means that the normally big endian
  * fields of the packet are now little endian.
  */
@@ -602,7 +602,7 @@ struct ice_xlt2 {
 };
 
 /* Extraction sequence - list of match fields:
- * protocol id, offset, profile length
+ * protocol ID, offset, profile length
  */
 union ice_match_fld {
 	struct {

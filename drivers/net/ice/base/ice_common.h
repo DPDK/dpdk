@@ -61,8 +61,7 @@ enum ice_status ice_get_caps(struct ice_hw *hw);
  * ... the value of pointer would equal 0x1008, since 0x1008 is the next
  * address after 0x1006 which is divisible by 4.
  */
-#define ICE_ALIGN(ptr, align)   (((ptr) + ((align) - 1)) & ~((align) - 1))
-
+#define ICE_ALIGN(ptr, align)	(((ptr) + ((align) - 1)) & ~((align) - 1))
 
 enum ice_status
 ice_write_rxq_ctx(struct ice_hw *hw, struct ice_rlan_ctx *rlan_ctx,
@@ -146,7 +145,6 @@ ice_aq_set_mac_loopback(struct ice_hw *hw, bool ena_lpbk, struct ice_sq_cd *cd);
 enum ice_status
 ice_aq_set_port_id_led(struct ice_port_info *pi, bool is_orig_mode,
 		       struct ice_sq_cd *cd);
-
 
 
 

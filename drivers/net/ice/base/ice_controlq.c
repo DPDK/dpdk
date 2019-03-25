@@ -54,7 +54,7 @@ static void ice_mailbox_init_regs(struct ice_hw *hw)
 
 /**
  * ice_check_sq_alive
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @cq: pointer to the specific Control queue
  *
  * Returns true if Queue is enabled else false.
@@ -729,7 +729,7 @@ static u16 ice_clean_sq(struct ice_hw *hw, struct ice_ctl_q_info *cq)
 
 /**
  * ice_sq_done - check if FW has processed the Admin Send Queue (ATQ)
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @cq: pointer to the specific Control queue
  *
  * Returns true if the firmware has processed all descriptors on the
@@ -745,7 +745,7 @@ static bool ice_sq_done(struct ice_hw *hw, struct ice_ctl_q_info *cq)
 
 /**
  * ice_sq_send_cmd - send command to Control Queue (ATQ)
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @cq: pointer to the specific Control queue
  * @desc: prefilled descriptor describing the command (non DMA mem)
  * @buf: buffer to use for indirect commands (or NULL for direct commands)
@@ -990,7 +990,7 @@ void ice_fill_dflt_direct_cmd_desc(struct ice_aq_desc *desc, u16 opcode)
 
 /**
  * ice_clean_rq_elem
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @cq: pointer to the specific Control queue
  * @e: event info from the receive descriptor, includes any buffers
  * @pending: number of events that could be left to process

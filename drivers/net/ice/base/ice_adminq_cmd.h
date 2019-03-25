@@ -71,7 +71,7 @@ struct ice_aqc_req_res {
 #define ICE_AQ_RES_NVM_WRITE_DFLT_TIMEOUT_MS	180000
 #define ICE_AQ_RES_CHNG_LOCK_DFLT_TIMEOUT_MS	1000
 #define ICE_AQ_RES_GLBL_LOCK_DFLT_TIMEOUT_MS	3000
-	/* For SDP: pin id of the SDP */
+	/* For SDP: pin ID of the SDP */
 	__le32 res_number;
 	/* Status is only used for ICE_AQC_RES_ID_GLBL_LOCK */
 	__le16 status;
@@ -854,7 +854,6 @@ struct ice_aqc_delete_elem {
 
 
 
-
 /* Rate limiting profile for
  * Add RL profile (indirect 0x0410)
  * Query RL profile (indirect 0x0411)
@@ -1154,8 +1153,8 @@ struct ice_aqc_set_phy_cfg_data {
 	__le64 phy_type_low; /* Use values from ICE_PHY_TYPE_LOW_* */
 	__le64 phy_type_high; /* Use values from ICE_PHY_TYPE_HIGH_* */
 	u8 caps;
-#define ICE_AQ_PHY_ENA_TX_PAUSE_ABILITY		BIT(0)
-#define ICE_AQ_PHY_ENA_RX_PAUSE_ABILITY		BIT(1)
+#define ICE_AQ_PHY_ENA_TX_PAUSE_ABILITY	BIT(0)
+#define ICE_AQ_PHY_ENA_RX_PAUSE_ABILITY	BIT(1)
 #define ICE_AQ_PHY_ENA_LOW_POWER	BIT(2)
 #define ICE_AQ_PHY_ENA_LINK		BIT(3)
 #define ICE_AQ_PHY_ENA_AUTO_LINK_UPDT	BIT(5)
@@ -1228,7 +1227,7 @@ struct ice_aqc_get_link_status_data {
 	u8 ext_info;
 #define ICE_AQ_LINK_PHY_TEMP_ALARM	BIT(0)
 #define ICE_AQ_LINK_EXCESSIVE_ERRORS	BIT(1)	/* Excessive Link Errors */
-	/* Port TX Suspended */
+	/* Port Tx Suspended */
 #define ICE_AQ_LINK_TX_S		2
 #define ICE_AQ_LINK_TX_M		(0x03 << ICE_AQ_LINK_TX_S)
 #define ICE_AQ_LINK_TX_ACTIVE		0
@@ -1441,7 +1440,7 @@ struct ice_aqc_get_set_rss_lut {
 
 
 
-/* Add TX LAN Queues (indirect 0x0C30) */
+/* Add Tx LAN Queues (indirect 0x0C30) */
 struct ice_aqc_add_txqs {
 	u8 num_qgrps;
 	u8 reserved[3];
@@ -1451,7 +1450,7 @@ struct ice_aqc_add_txqs {
 };
 
 
-/* This is the descriptor of each queue entry for the Add TX LAN Queues
+/* This is the descriptor of each queue entry for the Add Tx LAN Queues
  * command (0x0C30). Only used within struct ice_aqc_add_tx_qgrp.
  */
 struct ice_aqc_add_txqs_perq {
@@ -1464,7 +1463,7 @@ struct ice_aqc_add_txqs_perq {
 };
 
 
-/* The format of the command buffer for Add TX LAN Queues (0x0C30)
+/* The format of the command buffer for Add Tx LAN Queues (0x0C30)
  * is an array of the following structs. Please note that the length of
  * each struct ice_aqc_add_tx_qgrp is variable due
  * to the variable number of queues in each group!
@@ -1477,7 +1476,7 @@ struct ice_aqc_add_tx_qgrp {
 };
 
 
-/* Disable TX LAN Queues (indirect 0x0C31) */
+/* Disable Tx LAN Queues (indirect 0x0C31) */
 struct ice_aqc_dis_txqs {
 	u8 cmd_type;
 #define ICE_AQC_Q_DIS_CMD_S		0
@@ -1500,7 +1499,7 @@ struct ice_aqc_dis_txqs {
 };
 
 
-/* The buffer for Disable TX LAN Queues (indirect 0x0C31)
+/* The buffer for Disable Tx LAN Queues (indirect 0x0C31)
  * contains the following structures, arrayed one after the
  * other.
  * Note: Since the q_id is 16 bits wide, if the
@@ -1528,7 +1527,7 @@ struct ice_aqc_dis_txq {
 };
 
 
-/* TX LAN Queues Cleanup Event (0x0C31) */
+/* Tx LAN Queues Cleanup Event (0x0C31) */
 struct ice_aqc_txqs_cleanup {
 	__le16 caller_opc;
 	__le16 cmd_tag;
@@ -1536,7 +1535,7 @@ struct ice_aqc_txqs_cleanup {
 };
 
 
-/* Move / Reconfigure TX Queues (indirect 0x0C32) */
+/* Move / Reconfigure Tx Queues (indirect 0x0C32) */
 struct ice_aqc_move_txqs {
 	u8 cmd_type;
 #define ICE_AQC_Q_CMD_TYPE_S		0
@@ -1557,7 +1556,7 @@ struct ice_aqc_move_txqs {
 };
 
 
-/* This is the descriptor of each queue entry for the move TX LAN Queues
+/* This is the descriptor of each queue entry for the move Tx LAN Queues
  * command (0x0C32).
  */
 struct ice_aqc_move_txqs_elem {
@@ -1950,7 +1949,7 @@ enum ice_adminq_opc {
 	ice_aqc_opc_get_rss_key				= 0x0B04,
 	ice_aqc_opc_get_rss_lut				= 0x0B05,
 
-	/* TX queue handling commands/events */
+	/* Tx queue handling commands/events */
 	ice_aqc_opc_add_txqs				= 0x0C30,
 	ice_aqc_opc_dis_txqs				= 0x0C31,
 	ice_aqc_opc_txqs_cleanup			= 0x0C31,

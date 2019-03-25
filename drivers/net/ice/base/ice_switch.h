@@ -40,10 +40,10 @@ enum ice_sw_lkup_type {
 	ICE_SW_LKUP_DFLT = 5,
 	ICE_SW_LKUP_ETHERTYPE_MAC = 8,
 	ICE_SW_LKUP_PROMISC_VLAN = 9,
-	ICE_SW_LKUP_LAST,
+	ICE_SW_LKUP_LAST
 };
 
-/* type of filter src id */
+/* type of filter src ID */
 enum ice_src_id {
 	ICE_SRC_ID_UNKNOWN = 0,
 	ICE_SRC_ID_VSI,
@@ -94,8 +94,8 @@ struct ice_fltr_info {
 
 	/* Depending on filter action */
 	union {
-		/* queue id in case of ICE_FWD_TO_Q and starting
-		 * queue id in case of ICE_FWD_TO_QGRP.
+		/* queue ID in case of ICE_FWD_TO_Q and starting
+		 * queue ID in case of ICE_FWD_TO_QGRP.
 		 */
 		u16 q_id:11;
 		u16 hw_vsi_id:10;
@@ -134,8 +134,8 @@ struct ice_sw_act_ctrl {
 	enum ice_sw_fwd_act_type fltr_act;
 	/* Depending on filter action */
 	union {
-		/* This is a queue id in case of ICE_FWD_TO_Q and starting
-		 * queue id in case of ICE_FWD_TO_QGRP.
+		/* This is a queue ID in case of ICE_FWD_TO_Q and starting
+		 * queue ID in case of ICE_FWD_TO_QGRP.
 		 */
 		u16 q_id:11;
 		u16 vsi_id:10;
@@ -178,7 +178,7 @@ struct ice_sw_recipe {
 	u8 chain_idx;
 
 	/* if this recipe is a collection of other recipe then count of other
-	 * recipes and recipe ids of those recipes
+	 * recipes and recipe IDs of those recipes
 	 */
 	u8 n_grp_count;
 
@@ -211,9 +211,11 @@ struct ice_sw_recipe {
 
 	/* AQ buffer associated with this recipe */
 	struct ice_aqc_recipe_data_elem *root_buf;
+	/* This struct saves the fv_words for a given lookup */
+	struct ice_prot_lkup_ext lkup_exts;
 };
 
-/* Bookkeeping structure to hold bitmap of VSIs corresponding to VSI list id */
+/* Bookkeeping structure to hold bitmap of VSIs corresponding to VSI list ID */
 struct ice_vsi_list_map_info {
 	struct LIST_ENTRY_TYPE list_entry;
 	ice_declare_bitmap(vsi_map, ICE_MAX_VSI);
@@ -235,7 +237,7 @@ struct ice_fltr_list_entry {
  * used for VLAN membership.
  */
 struct ice_fltr_mgmt_list_entry {
-	/* back pointer to VSI list id to VSI list mapping */
+	/* back pointer to VSI list ID to VSI list mapping */
 	struct ice_vsi_list_map_info *vsi_list_info;
 	u16 vsi_count;
 #define ICE_INVAL_LG_ACT_INDEX 0xffff
