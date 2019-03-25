@@ -119,6 +119,12 @@ F: config/rte_config.h
 F: buildtools/gen-pmdinfo-cfile.sh
 F: buildtools/symlink-drivers-solibs.sh
 
+Public CI
+M: Aaron Conole <aconole@redhat.com>
+M: Michael Santana <msantana@redhat.com>
+F: .travis.yml
+F: .ci/
+
 ABI versioning
 M: Neil Horman <nhorman@tuxdriver.com>
 F: doc/guides/rel_notes/deprecation.rst

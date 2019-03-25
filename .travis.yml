@@ -1,0 +1,99 @@
+language: c
+compiler:
+  - gcc
+  - clang
+
+dist: xenial
+
+os:
+  - linux
+
+addons:
+  apt:
+    update: true
+    packages: &required_packages
+      - [libnuma-dev, linux-headers-$(uname -r), python3-setuptools, python3-wheel, python3-pip, ninja-build]
+
+aarch64_packages: &aarch64_packages
+  - *required_packages
+  - [gcc-aarch64-linux-gnu, libc6-dev-arm64-cross]
+
+extra_packages: &extra_packages
+  - *required_packages
+  - [libbsd-dev, libpcap-dev, libcrypto++-dev, libjansson4]
+
+before_install: ./.ci/${TRAVIS_OS_NAME}-setup.sh
+
+sudo: false
+
+env:
+  - DEF_LIB="static"
+  - DEF_LIB="shared"
+  - DEF_LIB="static" OPTS="-Denable_kmods=false"
+  - DEF_LIB="shared" OPTS="-Denable_kmods=false"
+
+matrix:
+  include:
+  - env: DEF_LIB="static" OPTS="-Denable_kmods=false" AARCH64=1
+    compiler: gcc
+    addons:
+      apt:
+        packages:
+          - *aarch64_packages
+  - env: DEF_LIB="shared" OPTS="-Denable_kmods=false" AARCH64=1
+    compiler: gcc
+    addons:
+      apt:
+        packages:
+          - *aarch64_packages
+  - env: DEF_LIB="static"
+    compiler: gcc
+    addons:
+      apt:
+        packages:
+          - *extra_packages
+  - env: DEF_LIB="shared"
+    compiler: gcc
+    addons:
+      apt:
+        packages:
+          - *extra_packages
+  - env: DEF_LIB="static" OPTS="-Denable_kmods=false"
+    compiler: gcc
+    addons:
+      apt:
+        packages:
+          - *extra_packages
+  - env: DEF_LIB="shared" OPTS="-Denable_kmods=false"
+    compiler: gcc
+    addons:
+      apt:
+        packages:
+          - *extra_packages
+  - env: DEF_LIB="static"
+    compiler: clang
+    addons:
+      apt:
+        packages:
+          - *extra_packages
+  - env: DEF_LIB="shared"
+    compiler: clang
+    addons:
+      apt:
+        packages:
+          - *extra_packages
+  - env: DEF_LIB="static" OPTS="-Denable_kmods=false"
+    compiler: clang
+    addons:
+      apt:
+        packages:
+          - *extra_packages
+  - env: DEF_LIB="shared" OPTS="-Denable_kmods=false"
+    compiler: clang
+    addons:
+      apt:
+        packages:
+          - *extra_packages
+
+
+script: ./.ci/${TRAVIS_OS_NAME}-build.sh
