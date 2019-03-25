@@ -1109,7 +1109,7 @@ prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 
 		if (unlikely(copy_data(digest_addr, vc_req, &digest_desc,
 				chain->para.hash_result_len,
-				nb_descs, vq_size)) < 0) {
+				nb_descs, vq_size) < 0)) {
 			ret = VIRTIO_CRYPTO_BADMSG;
 			goto error_exit;
 		}
@@ -1627,7 +1627,7 @@ rte_vhost_crypto_fetch_requests(int vid, uint32_t qid,
 			op->sym->m_src->data_off = 0;
 
 			if (unlikely(vhost_crypto_process_one_req(vcrypto, vq,
-					op, head, desc_idx)) < 0)
+					op, head, desc_idx) < 0))
 				break;
 		}
 
