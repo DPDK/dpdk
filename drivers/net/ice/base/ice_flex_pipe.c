@@ -1275,6 +1275,25 @@ void ice_free_seg(struct ice_hw *hw)
 }
 
 /**
+ * ice_init_fd_mask_regs - initialize Flow Director mask registers
+ * @hw: pointer to the HW struct
+ *
+ * This function sets up the Flow Director mask registers to allow for complete
+ * masking off of any of the 24 Field Vector words. After this call, mask 0 will
+ * mask off all of FV index 0, mask 1 will mask off all of FV index 1, etc.
+ */
+static void ice_init_fd_mask_regs(struct ice_hw *hw)
+{
+	u16 i;
+
+	for (i = 0; i < hw->blk[ICE_BLK_FD].es.fvw; i++) {
+		wr32(hw, GLQF_FDMASK(i), i);
+		ice_debug(hw, ICE_DBG_INIT, "init fd mask(%d): %x = %x\n", i,
+			  GLQF_FDMASK(i), i);
+	}
+}
+
+/**
  * ice_init_pkg_regs - initialize additional package registers
  * @hw: pointer to the hardware structure
  */
@@ -1287,6 +1306,8 @@ static void ice_init_pkg_regs(struct ice_hw *hw)
 	/* setup Switch block input mask, which is 48-bits in two parts */
 	wr32(hw, GL_PREEXT_L2_PMASK0(ICE_SW_BLK_IDX), ICE_SW_BLK_INP_MASK_L);
 	wr32(hw, GL_PREEXT_L2_PMASK1(ICE_SW_BLK_IDX), ICE_SW_BLK_INP_MASK_H);
+	/* setup default flow director masks */
+	ice_init_fd_mask_regs(hw);
 }
 
 /**
@@ -3783,6 +3804,205 @@ error_tmp:
 }
 
 /**
+ * ice_update_fd_mask - set Flow Director Field Vector mask for a profile
+ * @hw: pointer to the HW struct
+ * @prof_id: profile ID
+ * @mask_sel: mask select
+ *
+ * This function enable any of the masks selected by the mask select parameter
+ * for the profile specified.
+ */
+static void ice_update_fd_mask(struct ice_hw *hw, u16 prof_id, u32 mask_sel)
+{
+	wr32(hw, GLQF_FDMASK_SEL(prof_id), mask_sel);
+
+	ice_debug(hw, ICE_DBG_INIT, "fd mask(%d): %x = %x\n", prof_id,
+		  GLQF_FDMASK_SEL(prof_id), mask_sel);
+}
+
+#define ICE_SRC_DST_MAX_COUNT	8
+
+struct ice_fd_src_dst_pair {
+	u8 prot_id;
+	u8 count;
+	u16 off;
+};
+
+static const struct ice_fd_src_dst_pair ice_fd_pairs[] = {
+	/* These are defined in pairs */
+	{ ICE_PROT_IPV4_OF_OR_S, 2, 12 },
+	{ ICE_PROT_IPV4_OF_OR_S, 2, 16 },
+
+	{ ICE_PROT_IPV4_IL, 2, 12 },
+	{ ICE_PROT_IPV4_IL, 2, 16 },
+
+	{ ICE_PROT_IPV6_OF_OR_S, 8, 8 },
+	{ ICE_PROT_IPV6_OF_OR_S, 8, 24 },
+
+	{ ICE_PROT_IPV6_IL, 8, 8 },
+	{ ICE_PROT_IPV6_IL, 8, 24 },
+
+	{ ICE_PROT_TCP_IL, 1, 0 },
+	{ ICE_PROT_TCP_IL, 1, 2 },
+
+	{ ICE_PROT_UDP_OF, 1, 0 },
+	{ ICE_PROT_UDP_OF, 1, 2 },
+
+	{ ICE_PROT_UDP_IL_OR_S, 1, 0 },
+	{ ICE_PROT_UDP_IL_OR_S, 1, 2 },
+
+	{ ICE_PROT_SCTP_IL, 1, 0 },
+	{ ICE_PROT_SCTP_IL, 1, 2 }
+};
+
+#define ICE_FD_SRC_DST_PAIR_COUNT	ARRAY_SIZE(ice_fd_pairs)
+
+/**
+ * ice_update_fd_swap - set register appropriately for a FD FV extraction
+ * @hw: pointer to the HW struct
+ * @prof_id: profile ID
+ * @es: extraction sequence (length of array is determined by the block)
+ */
+static enum ice_status
+ice_update_fd_swap(struct ice_hw *hw, u16 prof_id, struct ice_fv_word *es)
+{
+	ice_declare_bitmap(pair_list, ICE_FD_SRC_DST_PAIR_COUNT);
+	u8 pair_start[ICE_FD_SRC_DST_PAIR_COUNT] = { 0 };
+#define ICE_FD_FV_NOT_FOUND (-2)
+	s8 first_free = ICE_FD_FV_NOT_FOUND;
+	u8 used[ICE_MAX_FV_WORDS] = { 0 };
+	s8 orig_free, si;
+	u32 mask_sel = 0;
+	u8 i, j, k;
+
+	ice_memset(pair_list, 0, sizeof(pair_list), ICE_NONDMA_MEM);
+
+	ice_init_fd_mask_regs(hw);
+
+	/* This code assumes that the Flow Director field vectors are assigned
+	 * from the end of the FV indexes working towards the zero index, that
+	 * only complete fields will be included and will be consecutive, and
+	 * that there are no gaps between valid indexes.
+	 */
+
+	/* Determine swap fields present */
+	for (i = 0; i < hw->blk[ICE_BLK_FD].es.fvw; i++) {
+		/* Find the first free entry, assuming right to left population.
+		 * This is where we can start adding additional pairs if needed.
+		 */
+		if (first_free == ICE_FD_FV_NOT_FOUND && es[i].prot_id !=
+		    ICE_PROT_INVALID)
+			first_free = i - 1;
+
+		for (j = 0; j < ICE_FD_SRC_DST_PAIR_COUNT; j++) {
+			if (es[i].prot_id == ice_fd_pairs[j].prot_id &&
+			    es[i].off == ice_fd_pairs[j].off) {
+				ice_set_bit(j, pair_list);
+				pair_start[j] = i;
+			}
+		}
+	}
+
+	orig_free = first_free;
+
+	/* determine missing swap fields that need to be added */
+	for (i = 0; i < ICE_FD_SRC_DST_PAIR_COUNT; i += 2) {
+		u8 bit1 = ice_is_bit_set(pair_list, i + 1);
+		u8 bit0 = ice_is_bit_set(pair_list, i);
+
+		if (bit0 ^ bit1) {
+			u8 index;
+
+			/* add the appropriate 'paired' entry */
+			if (!bit0)
+				index = i;
+			else
+				index = i + 1;
+
+			/* check for room */
+			if (first_free + 1 < ice_fd_pairs[index].count)
+				return ICE_ERR_MAX_LIMIT;
+
+			/* place in extraction sequence */
+			for (k = 0; k < ice_fd_pairs[index].count; k++) {
+				es[first_free - k].prot_id =
+					ice_fd_pairs[index].prot_id;
+				es[first_free - k].off =
+					ice_fd_pairs[index].off + (k * 2);
+
+				/* keep track of non-relevant fields */
+				mask_sel |= 1 << (first_free - k);
+			}
+
+			pair_start[index] = first_free;
+			first_free -= ice_fd_pairs[index].count;
+		}
+	}
+
+	/* fill in the swap array */
+	si = hw->blk[ICE_BLK_FD].es.fvw - 1;
+	do {
+		u8 indexes_used = 1;
+
+		/* assume flat at this index */
+#define ICE_SWAP_VALID	0x80
+		used[si] = si | ICE_SWAP_VALID;
+
+		if (orig_free == ICE_FD_FV_NOT_FOUND || si <= orig_free) {
+			si -= indexes_used;
+			continue;
+		}
+
+		/* check for a swap location */
+		for (j = 0; j < ICE_FD_SRC_DST_PAIR_COUNT; j++) {
+			if (es[si].prot_id == ice_fd_pairs[j].prot_id &&
+			    es[si].off == ice_fd_pairs[j].off) {
+				u8 idx;
+
+				/* determine the appropriate matching field */
+				idx = j + ((j % 2) ? -1 : 1);
+
+				indexes_used = ice_fd_pairs[idx].count;
+				for (k = 0; k < indexes_used; k++) {
+					used[si - k] = (pair_start[idx] - k) |
+						ICE_SWAP_VALID;
+				}
+
+				break;
+			}
+		}
+
+		si -= indexes_used;
+	} while (si >= 0);
+
+	/* for each set of 4 swap indexes, write the appropriate register */
+	for (j = 0; j < hw->blk[ICE_BLK_FD].es.fvw / 4; j++) {
+		u32 raw_entry = 0;
+
+		for (k = 0; k < 4; k++) {
+			u8 idx;
+
+			idx = (j * 4) + k;
+			if (used[idx])
+				raw_entry |= used[idx] << (k * 8);
+		}
+
+		/* write the appropriate register set, based on HW block */
+		wr32(hw, GLQF_FDSWAP(prof_id, j), raw_entry);
+
+		ice_debug(hw, ICE_DBG_INIT, "swap wr(%d, %d): %x = %x\n",
+			  prof_id, j, GLQF_FDSWAP(prof_id, j), raw_entry);
+	}
+
+	/* update the masks for this profile to be sure we ignore fields that
+	 * are not relevant to our match criteria
+	 */
+	ice_update_fd_mask(hw, prof_id, mask_sel);
+
+	return ICE_SUCCESS;
+}
+
+/**
  * ice_add_prof - add profile
  * @hw: pointer to the HW struct
  * @blk: hardware block
@@ -3812,6 +4032,18 @@ ice_add_prof(struct ice_hw *hw, enum ice_block blk, u64 id, u8 ptypes[],
 		status = ice_alloc_prof_id(hw, blk, &prof_id);
 		if (status)
 			goto err_ice_add_prof;
+		if (blk == ICE_BLK_FD) {
+			/* For Flow Director block, the extraction sequence may
+			 * need to be altered in the case where there are paired
+			 * fields that have no match. This is necessary because
+			 * for Flow Director, src and dest fields need to paired
+			 * for filter programming and these values are swapped
+			 * during Tx.
+			 */
+			status = ice_update_fd_swap(hw, prof_id, es);
+			if (status)
+				goto err_ice_add_prof;
+		}
 
 		/* and write new es */
 		ice_write_es(hw, blk, prof_id, es);

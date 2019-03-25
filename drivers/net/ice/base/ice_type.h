@@ -164,6 +164,7 @@ enum ice_media_type {
 /* Software VSI types. */
 enum ice_vsi_type {
 	ICE_VSI_PF = 0,
+	ICE_VSI_CTRL = 3,	/* equates to ICE_VSI_PF with 1 queue pair */
 #ifdef ADQ_SUPPORT
 	ICE_VSI_CHNL = 4,
 #endif /* ADQ_SUPPORT */
@@ -217,6 +218,32 @@ struct ice_phy_info {
 };
 
 #define ICE_MAX_NUM_MIRROR_RULES	64
+
+/* protocol enumeration for filters */
+enum ice_fltr_ptype {
+	/* NONE - used for undef/error */
+	ICE_FLTR_PTYPE_NONF_NONE = 0,
+	ICE_FLTR_PTYPE_NONF_IPV4_UDP,
+	ICE_FLTR_PTYPE_NONF_IPV4_TCP,
+	ICE_FLTR_PTYPE_NONF_IPV4_SCTP,
+	ICE_FLTR_PTYPE_NONF_IPV4_OTHER,
+	ICE_FLTR_PTYPE_FRAG_IPV4,
+	ICE_FLTR_PTYPE_NONF_IPV6_UDP,
+	ICE_FLTR_PTYPE_NONF_IPV6_TCP,
+	ICE_FLTR_PTYPE_NONF_IPV6_SCTP,
+	ICE_FLTR_PTYPE_NONF_IPV6_OTHER,
+	ICE_FLTR_PTYPE_MAX,
+};
+
+/* 6 VSI = 1 ICE_VSI_PF + 1 ICE_VSI_CTRL + 4 ICE_VSI_CHNL */
+#define ICE_MAX_FDIR_VSI_PER_FILTER	6
+
+struct ice_fd_hw_prof {
+	struct ice_flow_seg_info *fdir_seg;
+	int cnt;
+	u64 entry_h[ICE_MAX_FDIR_VSI_PER_FILTER];
+	u16 vsi_h[ICE_MAX_FDIR_VSI_PER_FILTER];
+};
 
 /* Common HW capabilities for SW use */
 struct ice_hw_common_caps {
@@ -297,12 +324,15 @@ struct ice_hw_common_caps {
 struct ice_hw_func_caps {
 	struct ice_hw_common_caps common_cap;
 	u32 guar_num_vsi;
+	u32 fd_fltr_guar;		/* Number of filters guaranteed */
+	u32 fd_fltr_best_effort;	/* Number of best effort filters */
 };
 
 /* Device wide capabilities */
 struct ice_hw_dev_caps {
 	struct ice_hw_common_caps common_cap;
 	u32 num_vsi_allocd_to_host;	/* Excluding EMP VSI */
+	u32 num_flow_director_fltr;	/* Number of FD filters available */
 };
 
 
@@ -651,6 +681,7 @@ struct ice_hw {
 	u64 debug_mask;		/* BITMAP for debug mask */
 	enum ice_mac_type mac_type;
 
+	u16 fd_ctr_base;	/* FD counter base index */
 	/* pci info */
 	u16 device_id;
 	u16 vendor_id;
@@ -748,6 +779,19 @@ struct ice_hw {
 	struct ice_blk_info blk[ICE_BLK_COUNT];
 	struct ice_lock fl_profs_locks[ICE_BLK_COUNT];	/* lock fltr profiles */
 	struct LIST_HEAD_TYPE fl_profs[ICE_BLK_COUNT];
+	/* Flow Director filter info */
+	int fdir_active_fltr;
+
+	struct ice_lock fdir_fltr_lock;	/* protect Flow Director */
+	struct LIST_HEAD_TYPE fdir_list_head;
+
+	/* Book-keeping of side-band filter count per flow-type.
+	 * This is used to detect and handle input set changes for
+	 * respective flow-type.
+	 */
+	u16 fdir_fltr_cnt[ICE_FLTR_PTYPE_MAX];
+
+	struct ice_fd_hw_prof **fdir_prof;
 };
 
 /* Statistics collected by each port, VSI, VEB, and S-channel */
@@ -792,6 +836,11 @@ struct ice_hw_port_stats {
 	u64 link_xoff_rx;		/* lxoffrxc */
 	u64 link_xon_tx;		/* lxontxc */
 	u64 link_xoff_tx;		/* lxofftxc */
+	u64 priority_xon_rx[8];		/* pxonrxc[8] */
+	u64 priority_xoff_rx[8];	/* pxoffrxc[8] */
+	u64 priority_xon_tx[8];		/* pxontxc[8] */
+	u64 priority_xoff_tx[8];	/* pxofftxc[8] */
+	u64 priority_xon_2_xoff[8];	/* pxon2offc[8] */
 	u64 rx_size_64;			/* prc64 */
 	u64 rx_size_127;		/* prc127 */
 	u64 rx_size_255;		/* prc255 */
@@ -811,6 +860,12 @@ struct ice_hw_port_stats {
 	u64 tx_size_1522;		/* ptc1522 */
 	u64 tx_size_big;		/* ptc9522 */
 	u64 mac_short_pkt_dropped;	/* mspdc */
+	/* flow director stats */
+	u32 fd_sb_status;
+	u64 fd_sb_match;
+#ifdef ADQ_SUPPORT
+	u64 ch_atr_match;
+#endif /* ADQ_SUPPORT */
 };
 
 enum ice_sw_fwd_act_type {

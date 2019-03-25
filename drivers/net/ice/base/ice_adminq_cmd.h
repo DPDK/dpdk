@@ -105,6 +105,7 @@ struct ice_aqc_list_caps_elem {
 #define ICE_AQC_CAPS_RXQS				0x0041
 #define ICE_AQC_CAPS_TXQS				0x0042
 #define ICE_AQC_CAPS_MSIX				0x0043
+#define ICE_AQC_CAPS_FD					0x0045
 #define ICE_AQC_CAPS_MAX_MTU				0x0047
 
 	u8 major_ver;
@@ -1861,6 +1862,16 @@ struct ice_aqc_get_set_rss_lut {
 };
 
 
+/* Clear FD Table Command (direct, 0x0B06) */
+struct ice_aqc_clear_fd_table {
+	u8 clear_type;
+#define CL_FD_VM_VF_TYPE_VSI_IDX	1
+#define CL_FD_VM_VF_TYPE_PF_IDX		2
+	u8 rsvd;
+	__le16 vsi_index;
+	u8 reserved[12];
+};
+
 
 
 
@@ -2210,6 +2221,7 @@ struct ice_aq_desc {
 		struct ice_aqc_lldp_stop_start_specific_agent lldp_agent_ctrl;
 		struct ice_aqc_get_set_rss_lut get_set_rss_lut;
 		struct ice_aqc_get_set_rss_key get_set_rss_key;
+		struct ice_aqc_clear_fd_table clear_fd_table;
 		struct ice_aqc_add_txqs add_txqs;
 		struct ice_aqc_dis_txqs dis_txqs;
 		struct ice_aqc_txqs_cleanup txqs_cleanup;
@@ -2415,6 +2427,7 @@ enum ice_adminq_opc {
 	ice_aqc_opc_set_rss_lut				= 0x0B03,
 	ice_aqc_opc_get_rss_key				= 0x0B04,
 	ice_aqc_opc_get_rss_lut				= 0x0B05,
+	ice_aqc_opc_clear_fd_table			= 0x0B06,
 
 	/* Tx queue handling commands/events */
 	ice_aqc_opc_add_txqs				= 0x0C30,

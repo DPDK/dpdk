@@ -9,6 +9,7 @@
 
 #include "ice_flex_pipe.h"
 #include "ice_switch.h"
+#include "ice_fdir.h"
 
 enum ice_fw_modes {
 	ICE_FW_MODE_NORMAL,

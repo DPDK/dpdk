@@ -52,6 +52,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_ICE_PMD) += ice_nvm.c
 SRCS-$(CONFIG_RTE_LIBRTE_ICE_PMD) += ice_flex_pipe.c
 SRCS-$(CONFIG_RTE_LIBRTE_ICE_PMD) += ice_flow.c
 SRCS-$(CONFIG_RTE_LIBRTE_ICE_PMD) += ice_dcb.c
+SRCS-$(CONFIG_RTE_LIBRTE_ICE_PMD) += ice_fdir.c
 
 SRCS-$(CONFIG_RTE_LIBRTE_ICE_PMD) += ice_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_ICE_PMD) += ice_rxtx.c
