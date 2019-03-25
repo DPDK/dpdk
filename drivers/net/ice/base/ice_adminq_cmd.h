@@ -1327,6 +1327,7 @@ struct ice_aqc_set_phy_cfg_data {
 	__le64 phy_type_low; /* Use values from ICE_PHY_TYPE_LOW_* */
 	__le64 phy_type_high; /* Use values from ICE_PHY_TYPE_HIGH_* */
 	u8 caps;
+#define ICE_AQ_PHY_ENA_VALID_MASK	MAKEMASK(0xef, 0)
 #define ICE_AQ_PHY_ENA_TX_PAUSE_ABILITY	BIT(0)
 #define ICE_AQ_PHY_ENA_RX_PAUSE_ABILITY	BIT(1)
 #define ICE_AQ_PHY_ENA_LOW_POWER	BIT(2)

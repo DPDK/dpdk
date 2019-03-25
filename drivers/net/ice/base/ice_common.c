@@ -2351,6 +2351,15 @@ ice_aq_set_phy_cfg(struct ice_hw *hw, u8 lport,
 	if (!cfg)
 		return ICE_ERR_PARAM;
 
+	/* Ensure that only valid bits of cfg->caps can be turned on. */
+	if (cfg->caps & ~ICE_AQ_PHY_ENA_VALID_MASK) {
+		ice_debug(hw, ICE_DBG_PHY,
+			  "Invalid bit is set in ice_aqc_set_phy_cfg_data->caps : 0x%x\n",
+			  cfg->caps);
+
+		cfg->caps &= ICE_AQ_PHY_ENA_VALID_MASK;
+	}
+
 	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_set_phy_cfg);
 	desc.params.set_phy.lport_num = lport;
 	desc.flags |= CPU_TO_LE16(ICE_AQ_FLAG_RD);
