@@ -347,6 +347,10 @@ ice_add_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list);
 enum ice_status ice_add_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_lst);
 enum ice_status ice_remove_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_lst);
 enum ice_status
+ice_add_eth_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *em_list);
+enum ice_status
+ice_remove_eth_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *em_list);
+enum ice_status
 ice_remove_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list);
 #ifndef NO_MACVLAN_SUPPORT
 enum ice_status
