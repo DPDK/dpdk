@@ -2816,6 +2816,30 @@ ice_prof_inc_ref(struct ice_hw *hw, enum ice_block blk, u8 prof_id)
 }
 
 /**
+ * ice_write_es - write an extraction sequence to hardware
+ * @hw: pointer to the HW struct
+ * @blk: the block in which to write the extraction sequence
+ * @prof_id: the profile ID to write
+ * @fv: pointer to the extraction sequence to write - NULL to clear extraction
+ */
+static void
+ice_write_es(struct ice_hw *hw, enum ice_block blk, u8 prof_id,
+	     struct ice_fv_word *fv)
+{
+	u16 off;
+
+	off = prof_id * hw->blk[blk].es.fvw;
+	if (!fv) {
+		ice_memset(&hw->blk[blk].es.t[off], 0, hw->blk[blk].es.fvw *
+			   sizeof(*fv), ICE_NONDMA_MEM);
+		hw->blk[blk].es.written[prof_id] = false;
+	} else {
+		ice_memcpy(&hw->blk[blk].es.t[off], fv, hw->blk[blk].es.fvw *
+			   sizeof(*fv), ICE_NONDMA_TO_NONDMA);
+	}
+}
+
+/**
  * ice_prof_dec_ref - decrement reference count for profile
  * @hw: pointer to the HW struct
  * @blk: the block from which to free the profile ID
@@ -2828,29 +2852,13 @@ ice_prof_dec_ref(struct ice_hw *hw, enum ice_block blk, u8 prof_id)
 		return ICE_ERR_PARAM;
 
 	if (hw->blk[blk].es.ref_count[prof_id] > 0) {
-		if (!--hw->blk[blk].es.ref_count[prof_id])
+		if (!--hw->blk[blk].es.ref_count[prof_id]) {
+			ice_write_es(hw, blk, prof_id, NULL);
 			return ice_free_prof_id(hw, blk, prof_id);
+		}
 	}
 
 	return ICE_SUCCESS;
-}
-
-/**
- * ice_write_es - write an extraction sequence to hardware
- * @hw: pointer to the HW struct
- * @blk: the block in which to write the extraction sequence
- * @prof_id: the profile ID to write
- * @fv: pointer to the extraction sequence to write
- */
-static void
-ice_write_es(struct ice_hw *hw, enum ice_block blk, u8 prof_id,
-	     struct ice_fv_word *fv)
-{
-	u16 off;
-
-	off = prof_id * hw->blk[blk].es.fvw;
-	ice_memcpy(&hw->blk[blk].es.t[off], fv, hw->blk[blk].es.fvw * 2,
-		   ICE_NONDMA_TO_NONDMA);
 }
 
 /* Block / table section IDs */
@@ -3140,6 +3148,7 @@ void ice_free_hw_tbls(struct ice_hw *hw)
 
 		ice_free(hw, hw->blk[i].es.resource_used_hack);
 		ice_free(hw, hw->blk[i].prof.resource_used_hack);
+		ice_free(hw, hw->blk[i].es.written);
 	}
 
 	ice_memset(hw->blk, 0, sizeof(hw->blk), ICE_NONDMA_MEM);
@@ -3308,6 +3317,9 @@ enum ice_status ice_init_hw_tbls(struct ice_hw *hw)
 
 		es->ref_count = (u16 *)
 			ice_calloc(hw, es->count, sizeof(*es->ref_count));
+
+		es->written = (u8 *)
+			ice_calloc(hw, es->count, sizeof(*es->written));
 
 		if (!es->ref_count)
 			goto err;
@@ -3805,6 +3817,8 @@ ice_add_prof(struct ice_hw *hw, enum ice_block blk, u64 id, u8 ptypes[],
 		ice_write_es(hw, blk, prof_id, es);
 	}
 
+	ice_prof_inc_ref(hw, blk, prof_id);
+
 	/* add profile info */
 
 	prof = (struct ice_prof_map *)ice_malloc(hw, sizeof(*prof));
@@ -3984,10 +3998,6 @@ ice_rem_prof_id(struct ice_hw *hw, enum ice_block blk,
 	for (i = 0; i < prof->tcam_count; i++) {
 		prof->tcam[i].in_use = false;
 		status = ice_rel_tcam_idx(hw, blk, prof->tcam[i].tcam_idx);
-		if (!status)
-			status = ice_prof_dec_ref(hw, blk,
-						  prof->tcam[i].prof_id);
-
 		if (status)
 			return ICE_ERR_HW_TABLE;
 	}
@@ -4159,6 +4169,9 @@ enum ice_status ice_rem_prof(struct ice_hw *hw, enum ice_block blk, u64 id)
 	status = ice_rem_flow_all(hw, blk, pmap->profile_cookie);
 	if (status)
 		return status;
+	/* dereference profile, and possibly remove */
+	ice_prof_dec_ref(hw, blk, pmap->prof_id);
+
 	LIST_DEL(&pmap->list);
 	ice_free(hw, pmap);
 
@@ -4194,7 +4207,7 @@ ice_get_prof_ptgs(struct ice_hw *hw, enum ice_block blk, u64 hdl,
 		if (status)
 			goto err_ice_get_prof_ptgs;
 
-		if (add || !hw->blk[blk].es.ref_count[map->prof_id]) {
+		if (add || !hw->blk[blk].es.written[map->prof_id]) {
 			/* add PTG to change list */
 			p = (struct ice_chs_chg *)ice_malloc(hw, sizeof(*p));
 			if (!p)
@@ -4205,8 +4218,10 @@ ice_get_prof_ptgs(struct ice_hw *hw, enum ice_block blk, u64 hdl,
 			p->ptg = ptg;
 			p->add_ptg = add;
 
-			p->add_prof = !hw->blk[blk].es.ref_count[map->prof_id];
+			p->add_prof = !hw->blk[blk].es.written[map->prof_id];
 			p->prof_id = map->prof_id;
+
+			hw->blk[blk].es.written[map->prof_id] = true;
 
 			LIST_ADD(&p->list_entry, chg);
 		}
@@ -4554,11 +4569,6 @@ ice_add_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig, u64 hdl,
 					      vl_msk, dc_msk, nm_msk);
 		if (status)
 			goto err_ice_add_prof_id_vsig;
-
-		/* this increments the reference count of how many TCAM entries
-		 * are using this HW profile ID
-		 */
-		status = ice_prof_inc_ref(hw, blk, t->tcam[i].prof_id);
 
 		/* log change */
 		LIST_ADD(&p->list_entry, chg);
