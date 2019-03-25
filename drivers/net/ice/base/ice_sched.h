@@ -76,10 +76,6 @@ ice_aq_cfg_l2_node_cgd(struct ice_hw *hw, u16 num_nodes,
 		       struct ice_aqc_cfg_l2_node_cgd_data *buf, u16 buf_size,
 		       struct ice_sq_cd *cd);
 enum ice_status
-ice_aq_move_sched_elems(struct ice_hw *hw, u16 grps_req,
-			struct ice_aqc_move_elem *buf, u16 buf_size,
-			u16 *grps_movd, struct ice_sq_cd *cd);
-enum ice_status
 ice_aq_query_sched_elems(struct ice_hw *hw, u16 elems_req,
 			 struct ice_aqc_get_elem *buf, u16 buf_size,
 			 u16 *elems_ret, struct ice_sq_cd *cd);
@@ -108,9 +104,6 @@ enum ice_status
 ice_sched_cfg_vsi(struct ice_port_info *pi, u16 vsi_handle, u8 tc, u16 maxqs,
 		  u8 owner, bool enable);
 enum ice_status ice_rm_vsi_lan_cfg(struct ice_port_info *pi, u16 vsi_handle);
-struct ice_sched_node *
-ice_sched_get_agg_node(struct ice_hw *hw, struct ice_sched_node *tc_node,
-		       u32 agg_id);
 struct ice_sched_node *
 ice_sched_get_vsi_node(struct ice_hw *hw, struct ice_sched_node *tc_node,
 		       u16 vsi_handle);
@@ -177,9 +170,6 @@ bool
 ice_sched_find_node_in_subtree(struct ice_hw *hw, struct ice_sched_node *base,
 			       struct ice_sched_node *node);
 enum ice_status
-ice_sched_set_node_bw_lmt(struct ice_port_info *pi, struct ice_sched_node *node,
-			  enum ice_rl_type rl_type, u32 bw);
-enum ice_status
 ice_sched_set_agg_bw_dflt_lmt(struct ice_port_info *pi, u16 vsi_handle);
 enum ice_status
 ice_sched_set_node_bw_lmt_per_tc(struct ice_port_info *pi, u32 id,
@@ -193,18 +183,4 @@ ice_sched_set_agg_bw_shared_lmt(struct ice_port_info *pi, u32 agg_id, u32 bw);
 enum ice_status
 ice_sched_cfg_sibl_node_prio(struct ice_hw *hw, struct ice_sched_node *node,
 			     u8 priority);
-enum ice_status
-ice_sched_cfg_node_bw_alloc(struct ice_hw *hw, struct ice_sched_node *node,
-			    enum ice_rl_type rl_type, u8 bw_alloc);
-enum ice_status
-ice_sched_add_agg_cfg(struct ice_port_info *pi, u32 agg_id, u8 tc);
-enum ice_status
-ice_sched_rm_agg_cfg(struct ice_port_info *pi, u32 agg_id, u8 tc);
-enum ice_status
-ice_sched_move_vsi_to_agg(struct ice_port_info *pi, u16 vsi_handle, u32 agg_id,
-			  u8 tc);
-enum ice_status
-ice_sched_del_rl_profile(struct ice_hw *hw,
-			 struct ice_aqc_rl_profile_info *rl_info);
-void ice_sched_rm_unused_rl_prof(struct ice_port_info *pi);
 #endif /* _ICE_SCHED_H_ */

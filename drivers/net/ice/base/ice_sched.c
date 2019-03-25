@@ -462,7 +462,7 @@ ice_aq_cfg_sched_elems(struct ice_hw *hw, u16 elems_req,
  *
  * Move scheduling elements (0x0408)
  */
-enum ice_status
+static enum ice_status
 ice_aq_move_sched_elems(struct ice_hw *hw, u16 grps_req,
 			struct ice_aqc_move_elem *buf, u16 buf_size,
 			u16 *grps_movd, struct ice_sq_cd *cd)
@@ -710,6 +710,41 @@ ice_aq_remove_rl_profile(struct ice_hw *hw, u16 num_profiles,
 	return ice_aq_rl_profile(hw, ice_aqc_opc_remove_rl_profiles,
 				 num_profiles, buf,
 				 buf_size, num_profiles_removed, cd);
+}
+
+/**
+ * ice_sched_del_rl_profile - remove RL profile
+ * @hw: pointer to the HW struct
+ * @rl_info: rate limit profile information
+ *
+ * If the profile ID is not referenced anymore, it removes profile ID with
+ * its associated parameters from HW DB,and locally. The caller needs to
+ * hold scheduler lock.
+ */
+static enum ice_status
+ice_sched_del_rl_profile(struct ice_hw *hw,
+			 struct ice_aqc_rl_profile_info *rl_info)
+{
+	struct ice_aqc_rl_profile_generic_elem *buf;
+	u16 num_profiles_removed;
+	enum ice_status status;
+	u16 num_profiles = 1;
+
+	if (rl_info->prof_id_ref != 0)
+		return ICE_ERR_IN_USE;
+
+	/* Safe to remove profile ID */
+	buf = (struct ice_aqc_rl_profile_generic_elem *)
+		&rl_info->profile;
+	status = ice_aq_remove_rl_profile(hw, num_profiles, buf, sizeof(*buf),
+					  &num_profiles_removed, NULL);
+	if (status || num_profiles_removed != num_profiles)
+		return ICE_ERR_CFG;
+
+	/* Delete stale entry now */
+	LIST_DEL(&rl_info->list_entry);
+	ice_free(hw, rl_info);
+	return status;
 }
 
 /**
@@ -1468,7 +1503,7 @@ ice_sched_get_vsi_node(struct ice_hw *hw, struct ice_sched_node *tc_node,
  * This function retrieves an aggregator node for a given aggregator ID from
  * a given TC branch
  */
-struct ice_sched_node *
+static struct ice_sched_node *
 ice_sched_get_agg_node(struct ice_hw *hw, struct ice_sched_node *tc_node,
 		       u32 agg_id)
 {
@@ -2071,6 +2106,220 @@ ice_get_agg_info(struct ice_hw *hw, u32 agg_id)
 }
 
 /**
+ * ice_sched_get_free_vsi_parent - Find a free parent node in aggregator subtree
+ * @hw: pointer to the HW struct
+ * @node: pointer to a child node
+ * @num_nodes: num nodes count array
+ *
+ * This function walks through the aggregator subtree to find a free parent
+ * node
+ */
+static struct ice_sched_node *
+ice_sched_get_free_vsi_parent(struct ice_hw *hw, struct ice_sched_node *node,
+			      u16 *num_nodes)
+{
+	u8 l = node->tx_sched_layer;
+	u8 vsil, i;
+
+	vsil = ice_sched_get_vsi_layer(hw);
+
+	/* Is it VSI parent layer ? */
+	if (l == vsil - 1)
+		return (node->num_children < hw->max_children[l]) ? node : NULL;
+
+	/* We have intermediate nodes. Let's walk through the subtree. If the
+	 * intermediate node has space to add a new node then clear the count
+	 */
+	if (node->num_children < hw->max_children[l])
+		num_nodes[l] = 0;
+	/* The below recursive call is intentional and wouldn't go more than
+	 * 2 or 3 iterations.
+	 */
+
+	for (i = 0; i < node->num_children; i++) {
+		struct ice_sched_node *parent;
+
+		parent = ice_sched_get_free_vsi_parent(hw, node->children[i],
+						       num_nodes);
+		if (parent)
+			return parent;
+	}
+
+	return NULL;
+}
+
+/**
+ * ice_sched_update_parent - update the new parent in SW DB
+ * @new_parent: pointer to a new parent node
+ * @node: pointer to a child node
+ *
+ * This function removes the child from the old parent and adds it to a new
+ * parent
+ */
+static void
+ice_sched_update_parent(struct ice_sched_node *new_parent,
+			struct ice_sched_node *node)
+{
+	struct ice_sched_node *old_parent;
+	u8 i, j;
+
+	old_parent = node->parent;
+
+	/* update the old parent children */
+	for (i = 0; i < old_parent->num_children; i++)
+		if (old_parent->children[i] == node) {
+			for (j = i + 1; j < old_parent->num_children; j++)
+				old_parent->children[j - 1] =
+					old_parent->children[j];
+			old_parent->num_children--;
+			break;
+		}
+
+	/* now move the node to a new parent */
+	new_parent->children[new_parent->num_children++] = node;
+	node->parent = new_parent;
+	node->info.parent_teid = new_parent->info.node_teid;
+}
+
+/**
+ * ice_sched_move_nodes - move child nodes to a given parent
+ * @pi: port information structure
+ * @parent: pointer to parent node
+ * @num_items: number of child nodes to be moved
+ * @list: pointer to child node teids
+ *
+ * This function move the child nodes to a given parent.
+ */
+static enum ice_status
+ice_sched_move_nodes(struct ice_port_info *pi, struct ice_sched_node *parent,
+		     u16 num_items, u32 *list)
+{
+	struct ice_aqc_move_elem *buf;
+	struct ice_sched_node *node;
+	enum ice_status status = ICE_SUCCESS;
+	struct ice_hw *hw;
+	u16 grps_movd = 0;
+	u8 i;
+
+	hw = pi->hw;
+
+	if (!parent || !num_items)
+		return ICE_ERR_PARAM;
+
+	/* Does parent have enough space */
+	if (parent->num_children + num_items >=
+	    hw->max_children[parent->tx_sched_layer])
+		return ICE_ERR_AQ_FULL;
+
+	buf = (struct ice_aqc_move_elem *)ice_malloc(hw, sizeof(*buf));
+	if (!buf)
+		return ICE_ERR_NO_MEMORY;
+
+	for (i = 0; i < num_items; i++) {
+		node = ice_sched_find_node_by_teid(pi->root, list[i]);
+		if (!node) {
+			status = ICE_ERR_PARAM;
+			goto move_err_exit;
+		}
+
+		buf->hdr.src_parent_teid = node->info.parent_teid;
+		buf->hdr.dest_parent_teid = parent->info.node_teid;
+		buf->teid[0] = node->info.node_teid;
+		buf->hdr.num_elems = CPU_TO_LE16(1);
+		status = ice_aq_move_sched_elems(hw, 1, buf, sizeof(*buf),
+						 &grps_movd, NULL);
+		if (status && grps_movd != 1) {
+			status = ICE_ERR_CFG;
+			goto move_err_exit;
+		}
+
+		/* update the SW DB */
+		ice_sched_update_parent(parent, node);
+	}
+
+move_err_exit:
+	ice_free(hw, buf);
+	return status;
+}
+
+/**
+ * ice_sched_move_vsi_to_agg - move VSI to aggregator node
+ * @pi: port information structure
+ * @vsi_handle: software VSI handle
+ * @agg_id: aggregator ID
+ * @tc: TC number
+ *
+ * This function moves a VSI to an aggregator node or its subtree.
+ * Intermediate nodes may be created if required.
+ */
+static enum ice_status
+ice_sched_move_vsi_to_agg(struct ice_port_info *pi, u16 vsi_handle, u32 agg_id,
+			  u8 tc)
+{
+	struct ice_sched_node *vsi_node, *agg_node, *tc_node, *parent;
+	u16 num_nodes[ICE_AQC_TOPO_MAX_LEVEL_NUM] = { 0 };
+	u32 first_node_teid, vsi_teid;
+	enum ice_status status;
+	u16 num_nodes_added;
+	u8 aggl, vsil, i;
+
+	tc_node = ice_sched_get_tc_node(pi, tc);
+	if (!tc_node)
+		return ICE_ERR_CFG;
+
+	agg_node = ice_sched_get_agg_node(pi->hw, tc_node, agg_id);
+	if (!agg_node)
+		return ICE_ERR_DOES_NOT_EXIST;
+
+	vsi_node = ice_sched_get_vsi_node(pi->hw, tc_node, vsi_handle);
+	if (!vsi_node)
+		return ICE_ERR_DOES_NOT_EXIST;
+
+	aggl = ice_sched_get_agg_layer(pi->hw);
+	vsil = ice_sched_get_vsi_layer(pi->hw);
+
+	/* set intermediate node count to 1 between aggregator and VSI layers */
+	for (i = aggl + 1; i < vsil; i++)
+		num_nodes[i] = 1;
+
+	/* Check if the aggregator subtree has any free node to add the VSI */
+	for (i = 0; i < agg_node->num_children; i++) {
+		parent = ice_sched_get_free_vsi_parent(pi->hw,
+						       agg_node->children[i],
+						       num_nodes);
+		if (parent)
+			goto move_nodes;
+	}
+
+	/* add new nodes */
+	parent = agg_node;
+	for (i = aggl + 1; i < vsil; i++) {
+		status = ice_sched_add_nodes_to_layer(pi, tc_node, parent, i,
+						      num_nodes[i],
+						      &first_node_teid,
+						      &num_nodes_added);
+		if (status != ICE_SUCCESS || num_nodes[i] != num_nodes_added)
+			return ICE_ERR_CFG;
+
+		/* The newly added node can be a new parent for the next
+		 * layer nodes
+		 */
+		if (num_nodes_added)
+			parent = ice_sched_find_node_by_teid(tc_node,
+							     first_node_teid);
+		else
+			parent = parent->children[0];
+
+		if (!parent)
+			return ICE_ERR_CFG;
+	}
+
+move_nodes:
+	vsi_teid = LE32_TO_CPU(vsi_node->info.node_teid);
+	return ice_sched_move_nodes(pi, parent, 1, &vsi_teid);
+}
+
+/**
  * ice_move_all_vsi_to_dflt_agg - move all VSI(s) to default aggregator
  * @pi: port information structure
  * @agg_info: aggregator info
@@ -2111,6 +2360,75 @@ ice_move_all_vsi_to_dflt_agg(struct ice_port_info *pi,
 	}
 
 	return status;
+}
+
+/**
+ * ice_sched_is_agg_inuse - check whether the aggregator is in use or not
+ * @pi: port information structure
+ * @node: node pointer
+ *
+ * This function checks whether the aggregator is attached with any VSI or not.
+ */
+static bool
+ice_sched_is_agg_inuse(struct ice_port_info *pi, struct ice_sched_node *node)
+{
+	u8 vsil, i;
+
+	vsil = ice_sched_get_vsi_layer(pi->hw);
+	if (node->tx_sched_layer < vsil - 1) {
+		for (i = 0; i < node->num_children; i++)
+			if (ice_sched_is_agg_inuse(pi, node->children[i]))
+				return true;
+		return false;
+	} else {
+		return node->num_children ? true : false;
+	}
+}
+
+/**
+ * ice_sched_rm_agg_cfg - remove the aggregator node
+ * @pi: port information structure
+ * @agg_id: aggregator ID
+ * @tc: TC number
+ *
+ * This function removes the aggregator node and intermediate nodes if any
+ * from the given TC
+ */
+static enum ice_status
+ice_sched_rm_agg_cfg(struct ice_port_info *pi, u32 agg_id, u8 tc)
+{
+	struct ice_sched_node *tc_node, *agg_node;
+	struct ice_hw *hw = pi->hw;
+
+	tc_node = ice_sched_get_tc_node(pi, tc);
+	if (!tc_node)
+		return ICE_ERR_CFG;
+
+	agg_node = ice_sched_get_agg_node(hw, tc_node, agg_id);
+	if (!agg_node)
+		return ICE_ERR_DOES_NOT_EXIST;
+
+	/* Can't remove the aggregator node if it has children */
+	if (ice_sched_is_agg_inuse(pi, agg_node))
+		return ICE_ERR_IN_USE;
+
+	/* need to remove the whole subtree if aggregator node is the
+	 * only child.
+	 */
+	while (agg_node->tx_sched_layer > hw->sw_entry_point_layer) {
+		struct ice_sched_node *parent = agg_node->parent;
+
+		if (!parent)
+			return ICE_ERR_CFG;
+
+		if (parent->num_children > 1)
+			break;
+
+		agg_node = parent;
+	}
+
+	ice_free_sched_node(pi, agg_node);
+	return ICE_SUCCESS;
 }
 
 /**
@@ -2168,6 +2486,89 @@ ice_save_agg_tc_bitmap(struct ice_port_info *pi, u32 agg_id,
 		return ICE_ERR_PARAM;
 	ice_cp_bitmap(agg_info->replay_tc_bitmap, tc_bitmap,
 		      ICE_MAX_TRAFFIC_CLASS);
+	return ICE_SUCCESS;
+}
+
+/**
+ * ice_sched_add_agg_cfg - create an aggregator node
+ * @pi: port information structure
+ * @agg_id: aggregator ID
+ * @tc: TC number
+ *
+ * This function creates an aggregator node and intermediate nodes if required
+ * for the given TC
+ */
+static enum ice_status
+ice_sched_add_agg_cfg(struct ice_port_info *pi, u32 agg_id, u8 tc)
+{
+	struct ice_sched_node *parent, *agg_node, *tc_node;
+	u16 num_nodes[ICE_AQC_TOPO_MAX_LEVEL_NUM] = { 0 };
+	enum ice_status status = ICE_SUCCESS;
+	struct ice_hw *hw = pi->hw;
+	u32 first_node_teid;
+	u16 num_nodes_added;
+	u8 i, aggl;
+
+	tc_node = ice_sched_get_tc_node(pi, tc);
+	if (!tc_node)
+		return ICE_ERR_CFG;
+
+	agg_node = ice_sched_get_agg_node(hw, tc_node, agg_id);
+	/* Does Agg node already exist ? */
+	if (agg_node)
+		return status;
+
+	aggl = ice_sched_get_agg_layer(hw);
+
+	/* need one node in Agg layer */
+	num_nodes[aggl] = 1;
+
+	/* Check whether the intermediate nodes have space to add the
+	 * new aggregator. If they are full, then SW needs to allocate a new
+	 * intermediate node on those layers
+	 */
+	for (i = hw->sw_entry_point_layer; i < aggl; i++) {
+		parent = ice_sched_get_first_node(hw, tc_node, i);
+
+		/* scan all the siblings */
+		while (parent) {
+			if (parent->num_children < hw->max_children[i])
+				break;
+			parent = parent->sibling;
+		}
+
+		/* all the nodes are full, reserve one for this layer */
+		if (!parent)
+			num_nodes[i]++;
+	}
+
+	/* add the aggregator node */
+	parent = tc_node;
+	for (i = hw->sw_entry_point_layer; i <= aggl; i++) {
+		if (!parent)
+			return ICE_ERR_CFG;
+
+		status = ice_sched_add_nodes_to_layer(pi, tc_node, parent, i,
+						      num_nodes[i],
+						      &first_node_teid,
+						      &num_nodes_added);
+		if (status != ICE_SUCCESS || num_nodes[i] != num_nodes_added)
+			return ICE_ERR_CFG;
+
+		/* The newly added node can be a new parent for the next
+		 * layer nodes
+		 */
+		if (num_nodes_added) {
+			parent = ice_sched_find_node_by_teid(tc_node,
+							     first_node_teid);
+			/* register aggregator ID with the aggregator node */
+			if (parent && i == aggl)
+				parent->agg_id = agg_id;
+		} else {
+			parent = parent->children[0];
+		}
+	}
+
 	return ICE_SUCCESS;
 }
 
@@ -2402,6 +2803,109 @@ ice_sched_assoc_vsi_to_agg(struct ice_port_info *pi, u32 agg_id,
 		LIST_DEL(&agg_vsi_info->list_entry);
 		ice_free(hw, agg_vsi_info);
 	}
+	return status;
+}
+
+/**
+ * ice_sched_rm_unused_rl_prof - remove unused RL profile
+ * @pi: port information structure
+ *
+ * This function removes unused rate limit profiles from the HW and
+ * SW DB. The caller needs to hold scheduler lock.
+ */
+static void ice_sched_rm_unused_rl_prof(struct ice_port_info *pi)
+{
+	u8 ln;
+
+	for (ln = 0; ln < pi->hw->num_tx_sched_layers; ln++) {
+		struct ice_aqc_rl_profile_info *rl_prof_elem;
+		struct ice_aqc_rl_profile_info *rl_prof_tmp;
+
+		LIST_FOR_EACH_ENTRY_SAFE(rl_prof_elem, rl_prof_tmp,
+					 &pi->rl_prof_list[ln],
+					 ice_aqc_rl_profile_info, list_entry) {
+			if (!ice_sched_del_rl_profile(pi->hw, rl_prof_elem))
+				ice_debug(pi->hw, ICE_DBG_SCHED,
+					  "Removed rl profile\n");
+		}
+	}
+}
+
+/**
+ * ice_sched_update_elem - update element
+ * @hw: pointer to the HW struct
+ * @node: pointer to node
+ * @info: node info to update
+ *
+ * It updates the HW DB, and local SW DB of node. It updates the scheduling
+ * parameters of node from argument info data buffer (Info->data buf) and
+ * returns success or error on config sched element failure. The caller
+ * needs to hold scheduler lock.
+ */
+static enum ice_status
+ice_sched_update_elem(struct ice_hw *hw, struct ice_sched_node *node,
+		      struct ice_aqc_txsched_elem_data *info)
+{
+	struct ice_aqc_conf_elem buf;
+	enum ice_status status;
+	u16 elem_cfgd = 0;
+	u16 num_elems = 1;
+
+	buf.generic[0] = *info;
+	/* Parent TEID is reserved field in this aq call */
+	buf.generic[0].parent_teid = 0;
+	/* Element type is reserved field in this aq call */
+	buf.generic[0].data.elem_type = 0;
+	/* Flags is reserved field in this aq call */
+	buf.generic[0].data.flags = 0;
+
+	/* Update HW DB */
+	/* Configure element node */
+	status = ice_aq_cfg_sched_elems(hw, num_elems, &buf, sizeof(buf),
+					&elem_cfgd, NULL);
+	if (status || elem_cfgd != num_elems) {
+		ice_debug(hw, ICE_DBG_SCHED, "Config sched elem error\n");
+		return ICE_ERR_CFG;
+	}
+
+	/* Config success case */
+	/* Now update local SW DB */
+	/* Only copy the data portion of info buffer */
+	node->info.data = info->data;
+	return status;
+}
+
+/**
+ * ice_sched_cfg_node_bw_alloc - configure node BW weight/alloc params
+ * @hw: pointer to the HW struct
+ * @node: sched node to configure
+ * @rl_type: rate limit type CIR, EIR, or shared
+ * @bw_alloc: BW weight/allocation
+ *
+ * This function configures node element's BW allocation.
+ */
+static enum ice_status
+ice_sched_cfg_node_bw_alloc(struct ice_hw *hw, struct ice_sched_node *node,
+			    enum ice_rl_type rl_type, u8 bw_alloc)
+{
+	struct ice_aqc_txsched_elem_data buf;
+	struct ice_aqc_txsched_elem *data;
+	enum ice_status status;
+
+	buf = node->info;
+	data = &buf.data;
+	if (rl_type == ICE_MIN_BW) {
+		data->valid_sections |= ICE_AQC_ELEM_VALID_CIR;
+		data->cir_bw.bw_alloc = CPU_TO_LE16(bw_alloc);
+	} else if (rl_type == ICE_MAX_BW) {
+		data->valid_sections |= ICE_AQC_ELEM_VALID_EIR;
+		data->eir_bw.bw_alloc = CPU_TO_LE16(bw_alloc);
+	} else {
+		return ICE_ERR_PARAM;
+	}
+
+	/* Configure element */
+	status = ice_sched_update_elem(hw, node, &buf);
 	return status;
 }
 
@@ -3372,110 +3876,6 @@ exit_add_rl_prof:
 }
 
 /**
- * ice_sched_del_rl_profile - remove rl profile
- * @hw: pointer to the hw struct
- * @rl_info: rate limit profile information
- *
- * If the profile id is not referenced anymore, it removes profile id with
- * its associated parameters from hw db,and locally. The caller needs to
- * hold scheduler lock.
- */
-enum ice_status
-ice_sched_del_rl_profile(struct ice_hw *hw,
-			 struct ice_aqc_rl_profile_info *rl_info)
-{
-	struct ice_aqc_rl_profile_generic_elem *buf;
-	u16 num_profiles_removed;
-	enum ice_status status;
-	u16 num_profiles = 1;
-
-	if (rl_info->prof_id_ref != 0)
-		return ICE_ERR_IN_USE;
-
-	/* Safe to remove profile id */
-	buf = (struct ice_aqc_rl_profile_generic_elem *)
-		&rl_info->profile;
-	status = ice_aq_remove_rl_profile(hw, num_profiles, buf, sizeof(*buf),
-					  &num_profiles_removed, NULL);
-	if (status || num_profiles_removed != num_profiles)
-		return ICE_ERR_CFG;
-
-	/* Delete stale entry now */
-	LIST_DEL(&rl_info->list_entry);
-	ice_free(hw, rl_info);
-	return status;
-}
-
-/**
- * ice_sched_rm_unused_rl_prof - remove unused rl profile
- * @pi: port information structure
- *
- * This function removes unused rate limit profiles from the hw and
- * SW DB. The caller needs to hold scheduler lock.
- */
-void ice_sched_rm_unused_rl_prof(struct ice_port_info *pi)
-{
-	u8 ln;
-
-	for (ln = 0; ln < pi->hw->num_tx_sched_layers; ln++) {
-		struct ice_aqc_rl_profile_info *rl_prof_elem;
-		struct ice_aqc_rl_profile_info *rl_prof_tmp;
-
-		LIST_FOR_EACH_ENTRY_SAFE(rl_prof_elem, rl_prof_tmp,
-					 &pi->rl_prof_list[ln],
-					 ice_aqc_rl_profile_info, list_entry) {
-			if (!ice_sched_del_rl_profile(pi->hw, rl_prof_elem))
-				ice_debug(pi->hw, ICE_DBG_SCHED,
-					  "Removed rl profile\n");
-		}
-	}
-}
-
-/**
- * ice_sched_update_elem - update element
- * @hw: pointer to the hw struct
- * @node: pointer to node
- * @info: node info to update
- *
- * It updates the HW DB, and local SW DB of node. It updates the scheduling
- * parameters of node from argument info data buffer (Info->data buf) and
- * returns success or error on config sched element failure. The caller
- * needs to hold scheduler lock.
- */
-static enum ice_status
-ice_sched_update_elem(struct ice_hw *hw, struct ice_sched_node *node,
-		      struct ice_aqc_txsched_elem_data *info)
-{
-	struct ice_aqc_conf_elem buf;
-	enum ice_status status;
-	u16 elem_cfgd = 0;
-	u16 num_elems = 1;
-
-	buf.generic[0] = *info;
-	/* Parent teid is reserved field in this aq call */
-	buf.generic[0].parent_teid = 0;
-	/* Element type is reserved field in this aq call */
-	buf.generic[0].data.elem_type = 0;
-	/* Flags is reserved field in this aq call */
-	buf.generic[0].data.flags = 0;
-
-	/* Update HW DB */
-	/* Configure element node */
-	status = ice_aq_cfg_sched_elems(hw, num_elems, &buf, sizeof(buf),
-					&elem_cfgd, NULL);
-	if (status || elem_cfgd != num_elems) {
-		ice_debug(hw, ICE_DBG_SCHED, "Config sched elem error\n");
-		return ICE_ERR_CFG;
-	}
-
-	/* Config success case */
-	/* Now update local SW DB */
-	/* Only copy the data portion of info buffer */
-	node->info.data = info->data;
-	return status;
-}
-
-/**
  * ice_sched_cfg_node_bw_lmt - configure node sched params
  * @hw: pointer to the HW struct
  * @node: sched node to configure
@@ -3841,7 +4241,7 @@ ice_sched_set_node_bw(struct ice_port_info *pi, struct ice_sched_node *node,
  * It updates node's BW limit parameters like BW RL profile ID of type CIR,
  * EIR, or SRL. The caller needs to hold scheduler lock.
  */
-enum ice_status
+static enum ice_status
 ice_sched_set_node_bw_lmt(struct ice_port_info *pi, struct ice_sched_node *node,
 			  enum ice_rl_type rl_type, u32 bw)
 {
@@ -4588,7 +4988,7 @@ exit_agg_bw_shared_lmt:
 
 /**
  * ice_sched_cfg_sibl_node_prio - configure node sibling priority
- * @hw: pointer to the hw struct
+ * @hw: pointer to the HW struct
  * @node: sched node to configure
  * @priority: sibling priority
  *
@@ -4614,406 +5014,6 @@ ice_sched_cfg_sibl_node_prio(struct ice_hw *hw, struct ice_sched_node *node,
 	/* Configure element */
 	status = ice_sched_update_elem(hw, node, &buf);
 	return status;
-}
-
-/**
- * ice_sched_cfg_node_bw_alloc - configure node bw weight/alloc params
- * @hw: pointer to the hw struct
- * @node: sched node to configure
- * @rl_type: rate limit type cir, eir, or shared
- * @bw_alloc: bw weight/allocation
- *
- * This function configures node element's bw allocation.
- */
-enum ice_status
-ice_sched_cfg_node_bw_alloc(struct ice_hw *hw, struct ice_sched_node *node,
-			    enum ice_rl_type rl_type, u8 bw_alloc)
-{
-	struct ice_aqc_txsched_elem_data buf;
-	struct ice_aqc_txsched_elem *data;
-	enum ice_status status;
-
-	buf = node->info;
-	data = &buf.data;
-	if (rl_type == ICE_MIN_BW) {
-		data->valid_sections |= ICE_AQC_ELEM_VALID_CIR;
-		data->cir_bw.bw_alloc = CPU_TO_LE16(bw_alloc);
-	} else if (rl_type == ICE_MAX_BW) {
-		data->valid_sections |= ICE_AQC_ELEM_VALID_EIR;
-		data->eir_bw.bw_alloc = CPU_TO_LE16(bw_alloc);
-	} else {
-		return ICE_ERR_PARAM;
-	}
-
-	/* Configure element */
-	status = ice_sched_update_elem(hw, node, &buf);
-	return status;
-}
-
-/**
- * ice_sched_add_agg_cfg - create an aggregator node
- * @pi: port information structure
- * @agg_id: aggregator id
- * @tc: TC number
- *
- * This function creates an aggregator node and intermediate nodes if required
- * for the given TC
- */
-enum ice_status
-ice_sched_add_agg_cfg(struct ice_port_info *pi, u32 agg_id, u8 tc)
-{
-	struct ice_sched_node *parent, *agg_node, *tc_node;
-	u16 num_nodes[ICE_AQC_TOPO_MAX_LEVEL_NUM] = { 0 };
-	enum ice_status status = ICE_SUCCESS;
-	struct ice_hw *hw = pi->hw;
-	u32 first_node_teid;
-	u16 num_nodes_added;
-	u8 i, aggl;
-
-	tc_node = ice_sched_get_tc_node(pi, tc);
-	if (!tc_node)
-		return ICE_ERR_CFG;
-
-	agg_node = ice_sched_get_agg_node(hw, tc_node, agg_id);
-	/* Does Agg node already exist ? */
-	if (agg_node)
-		return status;
-
-	aggl = ice_sched_get_agg_layer(hw);
-
-	/* need one node in Agg layer */
-	num_nodes[aggl] = 1;
-
-	/* Check whether the intermediate nodes have space to add the
-	 * new agg. If they are full, then SW needs to allocate a new
-	 * intermediate node on those layers
-	 */
-	for (i = hw->sw_entry_point_layer; i < aggl; i++) {
-		parent = ice_sched_get_first_node(hw, tc_node, i);
-
-		/* scan all the siblings */
-		while (parent) {
-			if (parent->num_children < hw->max_children[i])
-				break;
-			parent = parent->sibling;
-		}
-
-		/* all the nodes are full, reserve one for this layer */
-		if (!parent)
-			num_nodes[i]++;
-	}
-
-	/* add the agg node */
-	parent = tc_node;
-	for (i = hw->sw_entry_point_layer; i <= aggl; i++) {
-		if (!parent)
-			return ICE_ERR_CFG;
-
-		status = ice_sched_add_nodes_to_layer(pi, tc_node, parent, i,
-						      num_nodes[i],
-						      &first_node_teid,
-						      &num_nodes_added);
-		if (status != ICE_SUCCESS || num_nodes[i] != num_nodes_added)
-			return ICE_ERR_CFG;
-
-		/* The newly added node can be a new parent for the next
-		 * layer nodes
-		 */
-		if (num_nodes_added) {
-			parent = ice_sched_find_node_by_teid(tc_node,
-							     first_node_teid);
-			/* register the aggregator id with the agg node */
-			if (parent && i == aggl)
-				parent->agg_id = agg_id;
-		} else {
-			parent = parent->children[0];
-		}
-	}
-
-	return ICE_SUCCESS;
-}
-
-/**
- * ice_sched_is_agg_inuse - check whether the agg is in use or not
- * @pi: port information structure
- * @node: node pointer
- *
- * This function checks whether the agg is attached with any vsi or not.
- */
-static bool
-ice_sched_is_agg_inuse(struct ice_port_info *pi, struct ice_sched_node *node)
-{
-	u8 vsil, i;
-
-	vsil = ice_sched_get_vsi_layer(pi->hw);
-	if (node->tx_sched_layer < vsil - 1) {
-		for (i = 0; i < node->num_children; i++)
-			if (ice_sched_is_agg_inuse(pi, node->children[i]))
-				return true;
-		return false;
-	} else {
-		return node->num_children ? true : false;
-	}
-}
-
-/**
- * ice_sched_rm_agg_cfg - remove the aggregator node
- * @pi: port information structure
- * @agg_id: aggregator id
- * @tc: TC number
- *
- * This function removes the aggregator node and intermediate nodes if any
- * from the given TC
- */
-enum ice_status
-ice_sched_rm_agg_cfg(struct ice_port_info *pi, u32 agg_id, u8 tc)
-{
-	struct ice_sched_node *tc_node, *agg_node;
-	struct ice_hw *hw = pi->hw;
-
-	tc_node = ice_sched_get_tc_node(pi, tc);
-	if (!tc_node)
-		return ICE_ERR_CFG;
-
-	agg_node = ice_sched_get_agg_node(hw, tc_node, agg_id);
-	if (!agg_node)
-		return ICE_ERR_DOES_NOT_EXIST;
-
-	/* Can't remove the agg node if it has children */
-	if (ice_sched_is_agg_inuse(pi, agg_node))
-		return ICE_ERR_IN_USE;
-
-	/* need to remove the whole subtree if agg node is the
-	 * only child.
-	 */
-	while (agg_node->tx_sched_layer > hw->sw_entry_point_layer) {
-		struct ice_sched_node *parent = agg_node->parent;
-
-		if (!parent)
-			return ICE_ERR_CFG;
-
-		if (parent->num_children > 1)
-			break;
-
-		agg_node = parent;
-	}
-
-	ice_free_sched_node(pi, agg_node);
-	return ICE_SUCCESS;
-}
-
-/**
- * ice_sched_get_free_vsi_parent - Find a free parent node in agg subtree
- * @hw: pointer to the hw struct
- * @node: pointer to a child node
- * @num_nodes: num nodes count array
- *
- * This function walks through the aggregator subtree to find a free parent
- * node
- */
-static struct ice_sched_node *
-ice_sched_get_free_vsi_parent(struct ice_hw *hw, struct ice_sched_node *node,
-			      u16 *num_nodes)
-{
-	u8 l = node->tx_sched_layer;
-	u8 vsil, i;
-
-	vsil = ice_sched_get_vsi_layer(hw);
-
-	/* Is it VSI parent layer ? */
-	if (l == vsil - 1)
-		return (node->num_children < hw->max_children[l]) ? node : NULL;
-
-	/* We have intermediate nodes. Let's walk through the subtree. If the
-	 * intermediate node has space to add a new node then clear the count
-	 */
-	if (node->num_children < hw->max_children[l])
-		num_nodes[l] = 0;
-	/* The below recursive call is intentional and wouldn't go more than
-	 * 2 or 3 iterations.
-	 */
-
-	for (i = 0; i < node->num_children; i++) {
-		struct ice_sched_node *parent;
-
-		parent = ice_sched_get_free_vsi_parent(hw, node->children[i],
-						       num_nodes);
-		if (parent)
-			return parent;
-	}
-
-	return NULL;
-}
-
-/**
- * ice_sched_update_new_parent - update the new parent in SW DB
- * @new_parent: pointer to a new parent node
- * @node: pointer to a child node
- *
- * This function removes the child from the old parent and adds it to a new
- * parent
- */
-static void
-ice_sched_update_parent(struct ice_sched_node *new_parent,
-			struct ice_sched_node *node)
-{
-	struct ice_sched_node *old_parent;
-	u8 i, j;
-
-	old_parent = node->parent;
-
-	/* update the old parent children */
-	for (i = 0; i < old_parent->num_children; i++)
-		if (old_parent->children[i] == node) {
-			for (j = i + 1; j < old_parent->num_children; j++)
-				old_parent->children[j - 1] =
-					old_parent->children[j];
-			old_parent->num_children--;
-			break;
-		}
-
-	/* now move the node to a new parent */
-	new_parent->children[new_parent->num_children++] = node;
-	node->parent = new_parent;
-	node->info.parent_teid = new_parent->info.node_teid;
-}
-
-/**
- * ice_sched_move_nodes - move child nodes to a given parent
- * @pi: port information structure
- * @parent: pointer to parent node
- * @num_items: number of child nodes to be moved
- * @list: pointer to child node teids
- *
- * This function move the child nodes to a given parent.
- */
-static enum ice_status
-ice_sched_move_nodes(struct ice_port_info *pi, struct ice_sched_node *parent,
-		     u16 num_items, u32 *list)
-{
-	struct ice_aqc_move_elem *buf;
-	struct ice_sched_node *node;
-	enum ice_status status = ICE_SUCCESS;
-	struct ice_hw *hw;
-	u16 grps_movd = 0;
-	u8 i;
-
-	hw = pi->hw;
-
-	if (!parent || !num_items)
-		return ICE_ERR_PARAM;
-
-	/* Does parent have enough space */
-	if (parent->num_children + num_items >=
-	    hw->max_children[parent->tx_sched_layer])
-		return ICE_ERR_AQ_FULL;
-
-	buf = (struct ice_aqc_move_elem *) ice_malloc(hw, sizeof(*buf));
-	if (!buf)
-		return ICE_ERR_NO_MEMORY;
-
-	for (i = 0; i < num_items; i++) {
-		node = ice_sched_find_node_by_teid(pi->root, list[i]);
-		if (!node) {
-			status = ICE_ERR_PARAM;
-			goto move_err_exit;
-		}
-
-		buf->hdr.src_parent_teid = node->info.parent_teid;
-		buf->hdr.dest_parent_teid = parent->info.node_teid;
-		buf->teid[0] = node->info.node_teid;
-		buf->hdr.num_elems = CPU_TO_LE16(1);
-		status = ice_aq_move_sched_elems(hw, 1, buf, sizeof(*buf),
-						 &grps_movd, NULL);
-		if (status && grps_movd != 1) {
-			status = ICE_ERR_CFG;
-			goto move_err_exit;
-		}
-
-		/* update the SW DB */
-		ice_sched_update_parent(parent, node);
-	}
-
-move_err_exit:
-	ice_free(hw, buf);
-	return status;
-}
-
-/**
- * ice_sched_move_vsi_to_agg - move VSI to aggregator node
- * @pi: port information structure
- * @vsi_handle: software VSI handle
- * @agg_id: aggregator id
- * @tc: TC number
- *
- * This function moves a VSI to an aggregator node or its subtree.
- * Intermediate nodes may be created if required.
- */
-enum ice_status
-ice_sched_move_vsi_to_agg(struct ice_port_info *pi, u16 vsi_handle, u32 agg_id,
-			  u8 tc)
-{
-	struct ice_sched_node *vsi_node, *agg_node, *tc_node, *parent;
-	u16 num_nodes[ICE_AQC_TOPO_MAX_LEVEL_NUM] = { 0 };
-	u32 first_node_teid, vsi_teid;
-	enum ice_status status;
-	u16 num_nodes_added;
-	u8 aggl, vsil, i;
-
-	tc_node = ice_sched_get_tc_node(pi, tc);
-	if (!tc_node)
-		return ICE_ERR_CFG;
-
-	agg_node = ice_sched_get_agg_node(pi->hw, tc_node, agg_id);
-	if (!agg_node)
-		return ICE_ERR_DOES_NOT_EXIST;
-
-	vsi_node = ice_sched_get_vsi_node(pi->hw, tc_node, vsi_handle);
-	if (!vsi_node)
-		return ICE_ERR_DOES_NOT_EXIST;
-
-	aggl = ice_sched_get_agg_layer(pi->hw);
-	vsil = ice_sched_get_vsi_layer(pi->hw);
-
-	/* initialize intermediate node count to 1 between agg and VSI layers */
-	for (i = aggl + 1; i < vsil; i++)
-		num_nodes[i] = 1;
-
-	/* Check whether the agg subtree has any free node to add the VSI */
-	for (i = 0; i < agg_node->num_children; i++) {
-		parent = ice_sched_get_free_vsi_parent(pi->hw,
-						       agg_node->children[i],
-						       num_nodes);
-		if (parent)
-			goto move_nodes;
-	}
-
-	/* add new nodes */
-	parent = agg_node;
-	for (i = aggl + 1; i < vsil; i++) {
-		status = ice_sched_add_nodes_to_layer(pi, tc_node, parent, i,
-						      num_nodes[i],
-						      &first_node_teid,
-						      &num_nodes_added);
-		if (status != ICE_SUCCESS || num_nodes[i] != num_nodes_added)
-			return ICE_ERR_CFG;
-
-		/* The newly added node can be a new parent for the next
-		 * layer nodes
-		 */
-		if (num_nodes_added)
-			parent = ice_sched_find_node_by_teid(tc_node,
-							     first_node_teid);
-		else
-			parent = parent->children[0];
-
-		if (!parent)
-			return ICE_ERR_CFG;
-	}
-
-move_nodes:
-	vsi_teid = LE32_TO_CPU(vsi_node->info.node_teid);
-	return ice_sched_move_nodes(pi, parent, 1, &vsi_teid);
 }
 
 /**
