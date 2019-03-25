@@ -507,7 +507,6 @@ struct ice_es {
 	u8 reverse; /* set to true to reverse FV order */
 	struct LIST_HEAD_TYPE prof_map;
 	struct ice_fv_word *t;
-	u8 *resource_used_hack; /* hack for testing */
 };
 
 /* PTYPE Group management */
@@ -660,7 +659,6 @@ struct ice_prof_tcam {
 	u16 max_prof_id;
 	u8 cdid_bits; /* # cdid bits to use in key, 0, 2, 4, or 8 */
 	struct ice_prof_tcam_entry *t;
-	u8 *resource_used_hack;
 };
 
 struct ice_prof_redir {

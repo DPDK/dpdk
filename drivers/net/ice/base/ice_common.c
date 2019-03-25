@@ -1786,11 +1786,11 @@ ice_aq_alloc_free_res(struct ice_hw *hw, u16 num_entries,
  * @hw: pointer to the HW struct
  * @type: type of resource
  * @num: number of resources to allocate
- * @sh: shared if true, dedicated if false
+ * @btm: allocate from bottom
  * @res: pointer to array that will receive the resources
  */
 enum ice_status
-ice_alloc_hw_res(struct ice_hw *hw, u16 type, u16 num, bool sh, u16 *res)
+ice_alloc_hw_res(struct ice_hw *hw, u16 type, u16 num, bool btm, u16 *res)
 {
 	struct ice_aqc_alloc_free_res_elem *buf;
 	enum ice_status status;
@@ -1804,8 +1804,11 @@ ice_alloc_hw_res(struct ice_hw *hw, u16 type, u16 num, bool sh, u16 *res)
 
 	/* Prepare buffer to allocate resource. */
 	buf->num_elems = CPU_TO_LE16(num);
-	buf->res_type = CPU_TO_LE16(type | (sh ? ICE_AQC_RES_TYPE_FLAG_SHARED :
-		ICE_AQC_RES_TYPE_FLAG_DEDICATED));
+	buf->res_type = CPU_TO_LE16(type | ICE_AQC_RES_TYPE_FLAG_DEDICATED |
+				    ICE_AQC_RES_TYPE_FLAG_IGNORE_INDEX);
+	if (btm)
+		buf->res_type |= CPU_TO_LE16(ICE_AQC_RES_TYPE_FLAG_SCAN_BOTTOM);
+
 	status = ice_aq_alloc_free_res(hw, 1, buf, buf_len,
 				       ice_aqc_opc_alloc_res, NULL);
 	if (status)

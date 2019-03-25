@@ -2536,199 +2536,6 @@ static bool ice_tcam_ent_rsrc_type(enum ice_block blk, u16 *rsrc_type)
 }
 
 /**
- * ice_workaround_get_res_blk - determine the block from a resource type
- * @type: type of resource
- * @blk: pointer to a enum that will receive the block type
- * @tcam: pointer to variable that will be set to true for a TCAM resource type
- */
-static enum
-ice_status ice_workaround_get_res_blk(u16 type, enum ice_block *blk, bool *tcam)
-{
-	/* just need to support TCAM entries and Profile IDs for now */
-	*tcam = false;
-
-	switch (type) {
-	case ICE_AQC_RES_TYPE_SWITCH_PROF_BLDR_TCAM:
-		*blk = ICE_BLK_SW;
-		*tcam = true;
-		break;
-	case ICE_AQC_RES_TYPE_ACL_PROF_BLDR_TCAM:
-		*blk = ICE_BLK_ACL;
-		*tcam = true;
-		break;
-	case ICE_AQC_RES_TYPE_FD_PROF_BLDR_TCAM:
-		*blk = ICE_BLK_FD;
-		*tcam = true;
-		break;
-	case ICE_AQC_RES_TYPE_HASH_PROF_BLDR_TCAM:
-		*blk = ICE_BLK_RSS;
-		*tcam = true;
-		break;
-	case ICE_AQC_RES_TYPE_QHASH_PROF_BLDR_TCAM:
-		*blk = ICE_BLK_PE;
-		*tcam = true;
-		break;
-	case ICE_AQC_RES_TYPE_SWITCH_PROF_BLDR_PROFID:
-		*blk = ICE_BLK_SW;
-		break;
-	case ICE_AQC_RES_TYPE_ACL_PROF_BLDR_PROFID:
-		*blk = ICE_BLK_ACL;
-		break;
-	case ICE_AQC_RES_TYPE_FD_PROF_BLDR_PROFID:
-		*blk = ICE_BLK_FD;
-		break;
-	case ICE_AQC_RES_TYPE_HASH_PROF_BLDR_PROFID:
-		*blk = ICE_BLK_RSS;
-		break;
-	case ICE_AQC_RES_TYPE_QHASH_PROF_BLDR_PROFID:
-		*blk = ICE_BLK_PE;
-		break;
-	default:
-		return ICE_ERR_PARAM;
-	}
-
-	return ICE_SUCCESS;
-}
-
-/**
- * ice_alloc_res_workaround
- * @hw: pointer to the hw struct
- * @type: type of resource
- * @num: number of resources to allocate
- * @res: pointer to array that will receive the resources
- */
-static enum ice_status
-ice_alloc_res_workaround(struct ice_hw *hw, u16 type, u16 num, u16 *res)
-{
-	enum ice_block blk;
-	u16 count = 0;
-	bool tcam;
-	u16 first;
-	u16 last;
-	u16 max;
-	u16 i;
-
-/* Number of PFs we support with this workaround */
-#define ICE_WA_PF_COUNT	4
-#define ICE_WA_1ST_TCAM	4
-#define ICE_WA_1ST_FV	4
-
-	/* Only allow our supported PFs */
-	if (hw->pf_id >= ICE_WA_PF_COUNT)
-		return ICE_ERR_AQ_ERROR;
-
-	if (ice_workaround_get_res_blk(type, &blk, &tcam))
-		return ICE_ERR_AQ_ERROR;
-
-	if (tcam) {
-		/* range of entries based on PF */
-		max = hw->blk[blk].prof.count / ICE_WA_PF_COUNT;
-		first = max * hw->pf_id;
-		last = first + max;
-
-		/* Profile IDs - start at non-zero index for PROF ID TCAM table
-		 * The first few entries are for bypass, default and errors
-		 * (only relevant for PF 0)
-		 */
-		first += hw->pf_id ? 0 : ICE_WA_1ST_TCAM;
-
-		for (i = first; i < last && count < num; i++) {
-			if (!hw->blk[blk].prof.resource_used_hack[i]) {
-				res[count++] = i;
-				hw->blk[blk].prof.resource_used_hack[i] = true;
-			}
-		}
-
-		/* handle failure case */
-		if (count < num) {
-			for (i = 0; i < count; i++) {
-				hw->blk[blk].prof.resource_used_hack[res[i]] =
-					false;
-				res[i] = 0;
-			}
-
-			return ICE_ERR_AQ_ERROR;
-		}
-	} else {
-		/* range of entries based on PF */
-		max = hw->blk[blk].es.count / ICE_WA_PF_COUNT;
-		first = max * hw->pf_id;
-		last = first + max;
-
-		/* FV index - start at non-zero index for Field vector table
-		 * The first few entries are for bypass, default and errors
-		 * (only relevant for PF 0)
-		 */
-		first += hw->pf_id ? 0 : ICE_WA_1ST_FV;
-
-		for (i = first; i < last && count < num; i++) {
-			if (!hw->blk[blk].es.resource_used_hack[i]) {
-				res[count++] = i;
-				hw->blk[blk].es.resource_used_hack[i] = true;
-			}
-		}
-
-		/* handle failure case */
-		if (count < num) {
-			for (i = 0; i < count; i++) {
-				hw->blk[blk].es.resource_used_hack[res[i]] =
-					false;
-				res[i] = 0;
-			}
-
-			return ICE_ERR_AQ_ERROR;
-		}
-	}
-
-	return ICE_SUCCESS;
-}
-
-/**
- * ice_free_res_workaround
- * @hw: pointer to the hw struct
- * @type: type of resource to free
- * @num: number of resources
- * @res: array of resource ids to free
- */
-static enum ice_status
-ice_free_res_workaround(struct ice_hw *hw, u16 type, u16 num, u16 *res)
-{
-	enum ice_block blk;
-	bool tcam = false;
-	u16 i;
-
-	if (ice_workaround_get_res_blk(type, &blk, &tcam))
-		return ICE_ERR_AQ_ERROR;
-
-	if (tcam) {
-		/* TCAM entries */
-		for (i = 0; i < num; i++) {
-			if (res[i] < hw->blk[blk].prof.count) {
-				u16 idx = res[i];
-
-				ice_free_hw_res(hw, type, 1, &idx);
-				hw->blk[blk].prof.resource_used_hack[res[i]] =
-					false;
-			}
-		}
-
-	} else {
-		/* Profile IDs */
-		for (i = 0; i < num; i++) {
-			if (res[i] < hw->blk[blk].es.count) {
-				u16 idx = res[i];
-
-				ice_free_hw_res(hw, type, 1, &idx);
-				hw->blk[blk].es.resource_used_hack[res[i]] =
-					false;
-			}
-		}
-	}
-
-	return ICE_SUCCESS;
-}
-
-/**
  * ice_alloc_tcam_ent - allocate hardware TCAM entry
  * @hw: pointer to the HW struct
  * @blk: the block to allocate the TCAM for
@@ -2745,7 +2552,7 @@ ice_alloc_tcam_ent(struct ice_hw *hw, enum ice_block blk, u16 *tcam_idx)
 	if (!ice_tcam_ent_rsrc_type(blk, &res_type))
 		return ICE_ERR_PARAM;
 
-	return ice_alloc_res_workaround(hw, res_type, 1, tcam_idx);
+	return ice_alloc_hw_res(hw, res_type, 1, true, tcam_idx);
 }
 
 /**
@@ -2764,7 +2571,7 @@ ice_free_tcam_ent(struct ice_hw *hw, enum ice_block blk, u16 tcam_idx)
 	if (!ice_tcam_ent_rsrc_type(blk, &res_type))
 		return ICE_ERR_PARAM;
 
-	return ice_free_res_workaround(hw, res_type, 1, &tcam_idx);
+	return ice_free_hw_res(hw, res_type, 1, &tcam_idx);
 }
 
 /**
@@ -2786,7 +2593,7 @@ ice_alloc_prof_id(struct ice_hw *hw, enum ice_block blk, u8 *prof_id)
 	if (!ice_prof_id_rsrc_type(blk, &res_type))
 		return ICE_ERR_PARAM;
 
-	status = ice_alloc_res_workaround(hw, res_type, 1, &get_prof);
+	status = ice_alloc_hw_res(hw, res_type, 1, false, &get_prof);
 	if (!status)
 		*prof_id = (u8)get_prof;
 
@@ -2810,15 +2617,7 @@ ice_free_prof_id(struct ice_hw *hw, enum ice_block blk, u8 prof_id)
 	if (!ice_prof_id_rsrc_type(blk, &res_type))
 		return ICE_ERR_PARAM;
 
-	return ice_free_res_workaround(hw, res_type, 1, &tmp_prof_id);
-	/* The following code is a WORKAROUND until DCR 076 is available.
-	 * DCR 076 - Update to Profile ID TCAM Resource Allocation
-	 *
-	 * Once the DCR 076 changes are available in FW, this code can be
-	 * restored. Original code:
-	 *
-	 * return ice_free_res(hw, res_type, 1, &tmp_prof_id);
-	 */
+	return ice_free_hw_res(hw, res_type, 1, &tmp_prof_id);
 }
 
 /**
@@ -3125,8 +2924,7 @@ static void ice_free_prof_map(struct ice_hw *hw, enum ice_block blk)
 
 	LIST_FOR_EACH_ENTRY_SAFE(del, tmp, &hw->blk[blk].es.prof_map,
 				 ice_prof_map, list) {
-		LIST_DEL(&del->list);
-		ice_free(hw, del);
+		ice_rem_prof(hw, blk, del->profile_cookie);
 	}
 }
 
@@ -3168,9 +2966,6 @@ void ice_free_hw_tbls(struct ice_hw *hw)
 		ice_free(hw, hw->blk[i].prof_redir.t);
 		ice_free(hw, hw->blk[i].es.t);
 		ice_free(hw, hw->blk[i].es.ref_count);
-
-		ice_free(hw, hw->blk[i].es.resource_used_hack);
-		ice_free(hw, hw->blk[i].prof.resource_used_hack);
 		ice_free(hw, hw->blk[i].es.written);
 	}
 
@@ -3345,18 +3140,6 @@ enum ice_status ice_init_hw_tbls(struct ice_hw *hw)
 			ice_calloc(hw, es->count, sizeof(*es->written));
 
 		if (!es->ref_count)
-			goto err;
-
-		es->resource_used_hack = (u8 *)
-			ice_calloc(hw, hw->blk[i].es.count, sizeof(u8));
-
-		if (!es->resource_used_hack)
-			goto err;
-
-		prof->resource_used_hack = (u8 *)ice_calloc(hw, prof->count,
-							    sizeof(u8));
-
-		if (!prof->resource_used_hack)
 			goto err;
 
 		INIT_LIST_HEAD(&es->prof_map);
@@ -4390,13 +4173,13 @@ enum ice_status ice_rem_prof(struct ice_hw *hw, enum ice_block blk, u64 id)
 	if (!pmap)
 		return ICE_ERR_DOES_NOT_EXIST;
 
-	status = ice_free_prof_id(hw, blk, pmap->prof_id);
-
+	/* remove all flows with this profile */
+	status = ice_rem_flow_all(hw, blk, pmap->profile_cookie);
 	if (status)
 		return status;
 
-	/* remove all flows with this profile */
-	status = ice_rem_flow_all(hw, blk, pmap->profile_cookie);
+	/* remove profile */
+	status = ice_free_prof_id(hw, blk, pmap->prof_id);
 	if (status)
 		return status;
 	/* dereference profile, and possibly remove */
