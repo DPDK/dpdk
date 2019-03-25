@@ -3915,3 +3915,18 @@ ice_sched_query_elem(struct ice_hw *hw, u32 node_teid,
 		ice_debug(hw, ICE_DBG_SCHED, "query element failed\n");
 	return status;
 }
+
+/**
+ * ice_is_fw_in_rec_mode
+ * @hw: pointer to the HW struct
+ *
+ * This function returns true if fw is in recovery mode
+ */
+bool ice_is_fw_in_rec_mode(struct ice_hw *hw)
+{
+	u32 reg;
+
+	/* check the current FW mode */
+	reg = rd32(hw, GL_MNG_FWSM);
+	return (reg & GL_MNG_FWSM_FW_MODES_M) > ICE_FW_MODE_DBG;
+}

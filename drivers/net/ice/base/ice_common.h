@@ -10,6 +10,13 @@
 #include "ice_flex_pipe.h"
 #include "ice_switch.h"
 
+enum ice_fw_modes {
+	ICE_FW_MODE_NORMAL,
+	ICE_FW_MODE_DBG,
+	ICE_FW_MODE_REC,
+	ICE_FW_MODE_DBG_REC
+};
+
 enum ice_status ice_nvm_validate_checksum(struct ice_hw *hw);
 
 void
@@ -188,4 +195,5 @@ ice_stat_update32(struct ice_hw *hw, u32 reg, bool prev_stat_loaded,
 enum ice_status
 ice_sched_query_elem(struct ice_hw *hw, u32 node_teid,
 		     struct ice_aqc_get_elem *buf);
+bool ice_is_fw_in_rec_mode(struct ice_hw *hw);
 #endif /* _ICE_COMMON_H_ */
