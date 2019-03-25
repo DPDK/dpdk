@@ -1468,6 +1468,8 @@ fwd_stream_stats_display(streamid_t stream_id)
 			"%-14u Rx- bad outer L4 checksum: %-14u\n",
 			fs->rx_bad_ip_csum, fs->rx_bad_l4_csum,
 			fs->rx_bad_outer_l4_csum);
+	} else {
+		printf("\n");
 	}
 
 #ifdef RTE_TEST_PMD_RECORD_BURST_STATS
