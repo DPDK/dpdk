@@ -1930,6 +1930,18 @@ ice_parse_caps(struct ice_hw *hw, void *buf, u32 cap_count,
 					  number);
 			}
 			break;
+		case ICE_AQC_CAPS_DCB:
+			caps->dcb = (number == 1);
+			caps->active_tc_bitmap = logical_id;
+			caps->maxtc = phys_id;
+			ice_debug(hw, ICE_DBG_INIT,
+				  "HW caps: DCB = %d\n", caps->dcb);
+			ice_debug(hw, ICE_DBG_INIT,
+				  "HW caps: Active TC bitmap = %d\n",
+				  caps->active_tc_bitmap);
+			ice_debug(hw, ICE_DBG_INIT,
+				  "HW caps: TC Max = %d\n", caps->maxtc);
+			break;
 		case ICE_AQC_CAPS_RSS:
 			caps->rss_table_size = number;
 			caps->rss_table_entry_width = logical_id;

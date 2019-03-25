@@ -240,6 +240,9 @@ struct ice_hw_common_caps {
 
 	u32 os2bmc;
 	u32 valid_functions;
+	/* DCB capabilities */
+	u32 active_tc_bitmap;
+	u32 maxtc;
 
 	/* RSS related capabilities */
 	u32 rss_table_size;		/* 512 for PFs and 64 for VFs */
@@ -276,6 +279,7 @@ struct ice_hw_common_caps {
 	u8 evb_802_1_qbg;		/* Edge Virtual Bridging */
 	u8 evb_802_1_qbh;		/* Bridge Port Extension */
 
+	u8 dcb;
 	u8 iscsi;
 	u8 mgmt_cem;
 
@@ -527,7 +531,6 @@ struct ice_sched_vsi_info {
 	struct ice_bw_type_info bw_t_info[ICE_MAX_TRAFFIC_CLASS];
 };
 
-#if !defined(NO_DCB_SUPPORT) || defined(ADQ_SUPPORT)
 /* CEE or IEEE 802.1Qaz ETS Configuration data */
 struct ice_dcb_ets_cfg {
 	u8 willing;
@@ -580,7 +583,6 @@ struct ice_dcbx_cfg {
 	u8 app_mode;
 #define ICE_DCBX_APPS_NON_WILLING	0x1
 };
-#endif /* !NO_DCB_SUPPORT || ADQ_SUPPORT */
 
 struct ice_port_info {
 	struct ice_sched_node *root;	/* Root Node per Port */
@@ -601,9 +603,13 @@ struct ice_port_info {
 	struct ice_lock sched_lock;	/* protect access to TXSched tree */
 	/* List contain profile ID(s) and other params per layer */
 	struct LIST_HEAD_TYPE rl_prof_list[ICE_AQC_TOPO_MAX_LEVEL_NUM];
-#if !defined(NO_DCB_SUPPORT) || defined(ADQ_SUPPORT)
 	struct ice_dcbx_cfg local_dcbx_cfg;	/* Oper/Local Cfg */
-#endif /* !NO_DCB_SUPPORT || ADQ_SUPPORT */
+	/* DCBX info */
+	struct ice_dcbx_cfg remote_dcbx_cfg;	/* Peer Cfg */
+	struct ice_dcbx_cfg desired_dcbx_cfg;	/* CEE Desired Cfg */
+	/* LLDP/DCBX Status */
+	u8 dcbx_status;
+	u8 is_sw_lldp;
 	u8 lport;
 #define ICE_LPORT_MASK		0xff
 	u8 is_vf;

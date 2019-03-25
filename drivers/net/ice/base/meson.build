@@ -9,6 +9,7 @@ sources = [
 	'ice_nvm.c',
 	'ice_flex_pipe.c',
 	'ice_flow.c',
+	'ice_dcb.c',
 ]
 
 error_cflags = ['-Wno-unused-value',

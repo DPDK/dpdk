@@ -100,6 +100,7 @@ struct ice_aqc_list_caps_elem {
 	__le16 cap;
 #define ICE_AQC_CAPS_VALID_FUNCTIONS			0x0005
 #define ICE_AQC_CAPS_VSI				0x0017
+#define ICE_AQC_CAPS_DCB				0x0018
 #define ICE_AQC_CAPS_RSS				0x0040
 #define ICE_AQC_CAPS_RXQS				0x0041
 #define ICE_AQC_CAPS_TXQS				0x0042
@@ -894,6 +895,40 @@ struct ice_aqc_sw_rules_elem {
 #pragma pack()
 
 
+/* PFC Ignore (direct 0x0301)
+ * The command and response use the same descriptor structure
+ */
+struct ice_aqc_pfc_ignore {
+	u8	tc_bitmap;
+	u8	cmd_flags; /* unused in response */
+#define ICE_AQC_PFC_IGNORE_SET		BIT(7)
+#define ICE_AQC_PFC_IGNORE_CLEAR	0
+	u8	reserved[14];
+};
+
+/* Set PFC Mode (direct 0x0303)
+ * Query PFC Mode (direct 0x0302)
+ */
+struct ice_aqc_set_query_pfc_mode {
+	u8	pfc_mode;
+/* For Set Command response, reserved in all other cases */
+#define ICE_AQC_PFC_NOT_CONFIGURED	0
+/* For Query Command response, reserved in all other cases */
+#define ICE_AQC_DCB_DIS		0
+#define ICE_AQC_PFC_VLAN_BASED_PFC	1
+#define ICE_AQC_PFC_DSCP_BASED_PFC	2
+	u8	rsvd[15];
+};
+
+/* Set DCB Parameters (direct 0x0306) */
+struct ice_aqc_set_dcb_params {
+	u8 cmd_flags; /* unused in response */
+#define ICE_AQC_LINK_UP_DCB_CFG    BIT(0)
+	u8 valid_flags; /* unused in response */
+#define ICE_AQC_LINK_UP_DCB_CFG_VALID    BIT(0)
+	u8 rsvd[14];
+};
+
 
 /* Get Default Topology (indirect 0x0400) */
 struct ice_aqc_get_topo {
@@ -1026,6 +1061,32 @@ struct ice_aqc_delete_elem {
 	__le32 teid[1];
 };
 
+
+/* Query Port ETS (indirect 0x040E)
+ *
+ * This indirect command is used to query port TC node configuration.
+ */
+struct ice_aqc_query_port_ets {
+	__le32 port_teid;
+	__le32 reserved;
+	__le32 addr_high;
+	__le32 addr_low;
+};
+
+struct ice_aqc_port_ets_elem {
+	u8 tc_valid_bits;
+	u8 reserved[3];
+	/* 3 bits for UP per TC 0-7, 4th byte reserved */
+	__le32 up2tc;
+	u8 tc_bw_share[8];
+	__le32 port_eir_prof_id;
+	__le32 port_cir_prof_id;
+	/* 3 bits per Node priority to TC 0-7, 4th byte reserved */
+	__le32 tc_node_prio;
+#define ICE_TC_NODE_PRIO_S	0x4
+	u8 reserved1[4];
+	__le32 tc_node_teid[8]; /* Used for response, reserved in command */
+};
 
 
 /* Rate limiting profile for
@@ -1578,6 +1639,157 @@ struct ice_aqc_nvm_checksum {
 
 
 
+/* Get LLDP MIB (indirect 0x0A00)
+ * Note: This is also used by the LLDP MIB Change Event (0x0A01)
+ * as the format is the same.
+ */
+struct ice_aqc_lldp_get_mib {
+	u8 type;
+#define ICE_AQ_LLDP_MIB_TYPE_S			0
+#define ICE_AQ_LLDP_MIB_TYPE_M			(0x3 << ICE_AQ_LLDP_MIB_TYPE_S)
+#define ICE_AQ_LLDP_MIB_LOCAL			0
+#define ICE_AQ_LLDP_MIB_REMOTE			1
+#define ICE_AQ_LLDP_MIB_LOCAL_AND_REMOTE	2
+#define ICE_AQ_LLDP_BRID_TYPE_S			2
+#define ICE_AQ_LLDP_BRID_TYPE_M			(0x3 << ICE_AQ_LLDP_BRID_TYPE_S)
+#define ICE_AQ_LLDP_BRID_TYPE_NEAREST_BRID	0
+#define ICE_AQ_LLDP_BRID_TYPE_NON_TPMR		1
+/* Tx pause flags in the 0xA01 event use ICE_AQ_LLDP_TX_* */
+#define ICE_AQ_LLDP_TX_S			0x4
+#define ICE_AQ_LLDP_TX_M			(0x03 << ICE_AQ_LLDP_TX_S)
+#define ICE_AQ_LLDP_TX_ACTIVE			0
+#define ICE_AQ_LLDP_TX_SUSPENDED		1
+#define ICE_AQ_LLDP_TX_FLUSHED			3
+/* The following bytes are reserved for the Get LLDP MIB command (0x0A00)
+ * and in the LLDP MIB Change Event (0x0A01). They are valid for the
+ * Get LLDP MIB (0x0A00) response only.
+ */
+	u8 reserved1;
+	__le16 local_len;
+	__le16 remote_len;
+	u8 reserved2[2];
+	__le32 addr_high;
+	__le32 addr_low;
+};
+
+/* Configure LLDP MIB Change Event (direct 0x0A01) */
+/* For MIB Change Event use ice_aqc_lldp_get_mib structure above */
+struct ice_aqc_lldp_set_mib_change {
+	u8 command;
+#define ICE_AQ_LLDP_MIB_UPDATE_ENABLE		0x0
+#define ICE_AQ_LLDP_MIB_UPDATE_DIS		0x1
+	u8 reserved[15];
+};
+
+/* Add LLDP TLV (indirect 0x0A02)
+ * Delete LLDP TLV (indirect 0x0A04)
+ */
+struct ice_aqc_lldp_add_delete_tlv {
+	u8 type; /* only nearest bridge and non-TPMR from 0x0A00 */
+	u8 reserved1[1];
+	__le16 len;
+	u8 reserved2[4];
+	__le32 addr_high;
+	__le32 addr_low;
+};
+
+/* Update LLDP TLV (indirect 0x0A03) */
+struct ice_aqc_lldp_update_tlv {
+	u8 type; /* only nearest bridge and non-TPMR from 0x0A00 */
+	u8 reserved;
+	__le16 old_len;
+	__le16 new_offset;
+	__le16 new_len;
+	__le32 addr_high;
+	__le32 addr_low;
+};
+
+/* Stop LLDP (direct 0x0A05) */
+struct ice_aqc_lldp_stop {
+	u8 command;
+#define ICE_AQ_LLDP_AGENT_STATE_MASK	BIT(0)
+#define ICE_AQ_LLDP_AGENT_STOP		0x0
+#define ICE_AQ_LLDP_AGENT_SHUTDOWN	ICE_AQ_LLDP_AGENT_STATE_MASK
+#define ICE_AQ_LLDP_AGENT_PERSIST_DIS	BIT(1)
+	u8 reserved[15];
+};
+
+/* Start LLDP (direct 0x0A06) */
+struct ice_aqc_lldp_start {
+	u8 command;
+#define ICE_AQ_LLDP_AGENT_START		BIT(0)
+#define ICE_AQ_LLDP_AGENT_PERSIST_ENA	BIT(1)
+	u8 reserved[15];
+};
+
+/* Get CEE DCBX Oper Config (0x0A07)
+ * The command uses the generic descriptor struct and
+ * returns the struct below as an indirect response.
+ */
+struct ice_aqc_get_cee_dcb_cfg_resp {
+	u8 oper_num_tc;
+	u8 oper_prio_tc[4];
+	u8 oper_tc_bw[8];
+	u8 oper_pfc_en;
+	__le16 oper_app_prio;
+#define ICE_AQC_CEE_APP_FCOE_S		0
+#define ICE_AQC_CEE_APP_FCOE_M		(0x7 << ICE_AQC_CEE_APP_FCOE_S)
+#define ICE_AQC_CEE_APP_ISCSI_S		3
+#define ICE_AQC_CEE_APP_ISCSI_M		(0x7 << ICE_AQC_CEE_APP_ISCSI_S)
+#define ICE_AQC_CEE_APP_FIP_S		8
+#define ICE_AQC_CEE_APP_FIP_M		(0x7 << ICE_AQC_CEE_APP_FIP_S)
+	__le32 tlv_status;
+#define ICE_AQC_CEE_PG_STATUS_S		0
+#define ICE_AQC_CEE_PG_STATUS_M		(0x7 << ICE_AQC_CEE_PG_STATUS_S)
+#define ICE_AQC_CEE_PFC_STATUS_S	3
+#define ICE_AQC_CEE_PFC_STATUS_M	(0x7 << ICE_AQC_CEE_PFC_STATUS_S)
+#define ICE_AQC_CEE_FCOE_STATUS_S	8
+#define ICE_AQC_CEE_FCOE_STATUS_M	(0x7 << ICE_AQC_CEE_FCOE_STATUS_S)
+#define ICE_AQC_CEE_ISCSI_STATUS_S	11
+#define ICE_AQC_CEE_ISCSI_STATUS_M	(0x7 << ICE_AQC_CEE_ISCSI_STATUS_S)
+#define ICE_AQC_CEE_FIP_STATUS_S	16
+#define ICE_AQC_CEE_FIP_STATUS_M	(0x7 << ICE_AQC_CEE_FIP_STATUS_S)
+	u8 reserved[12];
+};
+
+/* Set Local LLDP MIB (indirect 0x0A08)
+ * Used to replace the local MIB of a given LLDP agent. e.g. DCBx
+ */
+struct ice_aqc_lldp_set_local_mib {
+	u8 type;
+#define SET_LOCAL_MIB_TYPE_DCBX_M		BIT(0)
+#define SET_LOCAL_MIB_TYPE_LOCAL_MIB		0
+#define SET_LOCAL_MIB_TYPE_CEE_M		BIT(1)
+#define SET_LOCAL_MIB_TYPE_CEE_WILLING		0
+#define SET_LOCAL_MIB_TYPE_CEE_NON_WILLING	SET_LOCAL_MIB_TYPE_CEE_M
+	u8 reserved0;
+	__le16 length;
+	u8 reserved1[4];
+	__le32 addr_high;
+	__le32 addr_low;
+};
+
+struct ice_aqc_lldp_set_local_mib_resp {
+	u8 status;
+#define SET_LOCAL_MIB_RESP_EVENT_M		BIT(0)
+#define SET_LOCAL_MIB_RESP_MIB_CHANGE_SILENT	0
+#define SET_LOCAL_MIB_RESP_MIB_CHANGE_EVENT	SET_LOCAL_MIB_RESP_EVENT_M
+	u8 reserved[15];
+};
+
+/* Stop/Start LLDP Agent (direct 0x0A09)
+ * Used for stopping/starting specific LLDP agent. e.g. DCBx.
+ * The same structure is used for the response, with the command field
+ * being used as the status field.
+ */
+struct ice_aqc_lldp_stop_start_specific_agent {
+	u8 command;
+#define ICE_AQC_START_STOP_AGENT_M		BIT(0)
+#define ICE_AQC_START_STOP_AGENT_STOP_DCBX	0
+#define ICE_AQC_START_STOP_AGENT_START_DCBX	ICE_AQC_START_STOP_AGENT_M
+	u8 reserved[15];
+};
+
 
 /* Get/Set RSS key (indirect 0x0B04/0x0B02) */
 struct ice_aqc_get_set_rss_key {
@@ -1980,10 +2192,22 @@ struct ice_aq_desc {
 		struct ice_aqc_query_txsched_res query_sched_res;
 		struct ice_aqc_query_node_to_root query_node_to_root;
 		struct ice_aqc_cfg_l2_node_cgd cfg_l2_node_cgd;
+		struct ice_aqc_query_port_ets port_ets;
 		struct ice_aqc_rl_profile rl_profile;
 		struct ice_aqc_nvm nvm;
 		struct ice_aqc_nvm_cfg nvm_cfg;
 		struct ice_aqc_nvm_checksum nvm_checksum;
+		struct ice_aqc_pfc_ignore pfc_ignore;
+		struct ice_aqc_set_query_pfc_mode set_query_pfc_mode;
+		struct ice_aqc_set_dcb_params set_dcb_params;
+		struct ice_aqc_lldp_get_mib lldp_get_mib;
+		struct ice_aqc_lldp_set_mib_change lldp_set_event;
+		struct ice_aqc_lldp_add_delete_tlv lldp_add_delete_tlv;
+		struct ice_aqc_lldp_update_tlv lldp_update_tlv;
+		struct ice_aqc_lldp_stop lldp_stop;
+		struct ice_aqc_lldp_start lldp_start;
+		struct ice_aqc_lldp_set_local_mib lldp_set_mib;
+		struct ice_aqc_lldp_stop_start_specific_agent lldp_agent_ctrl;
 		struct ice_aqc_get_set_rss_lut get_set_rss_lut;
 		struct ice_aqc_get_set_rss_key get_set_rss_key;
 		struct ice_aqc_add_txqs add_txqs;
@@ -2096,6 +2320,8 @@ enum ice_adminq_opc {
 	/* PXE */
 	ice_aqc_opc_clear_pxe_mode			= 0x0110,
 
+	ice_aqc_opc_config_no_drop_policy		= 0x0112,
+
 	/* internal switch commands */
 	ice_aqc_opc_get_sw_cfg				= 0x0200,
 
@@ -2127,6 +2353,11 @@ enum ice_adminq_opc {
 	ice_aqc_opc_get_sw_rules			= 0x02A3,
 	ice_aqc_opc_clear_pf_cfg			= 0x02A4,
 
+	/* DCB commands */
+	ice_aqc_opc_pfc_ignore				= 0x0301,
+	ice_aqc_opc_query_pfc_mode			= 0x0302,
+	ice_aqc_opc_set_pfc_mode			= 0x0303,
+	ice_aqc_opc_set_dcb_params			= 0x0306,
 
 	/* transmit scheduler commands */
 	ice_aqc_opc_get_dflt_topo			= 0x0400,
@@ -2136,6 +2367,7 @@ enum ice_adminq_opc {
 	ice_aqc_opc_move_sched_elems			= 0x0408,
 	ice_aqc_opc_suspend_sched_elems			= 0x0409,
 	ice_aqc_opc_resume_sched_elems			= 0x040A,
+	ice_aqc_opc_query_port_ets			= 0x040E,
 	ice_aqc_opc_delete_sched_elems			= 0x040F,
 	ice_aqc_opc_add_rl_profiles			= 0x0410,
 	ice_aqc_opc_query_rl_profiles			= 0x0411,
@@ -2166,6 +2398,17 @@ enum ice_adminq_opc {
 	ice_aqc_opc_nvm_cfg_write			= 0x0705,
 	ice_aqc_opc_nvm_checksum			= 0x0706,
 
+	/* LLDP commands */
+	ice_aqc_opc_lldp_get_mib			= 0x0A00,
+	ice_aqc_opc_lldp_set_mib_change			= 0x0A01,
+	ice_aqc_opc_lldp_add_tlv			= 0x0A02,
+	ice_aqc_opc_lldp_update_tlv			= 0x0A03,
+	ice_aqc_opc_lldp_delete_tlv			= 0x0A04,
+	ice_aqc_opc_lldp_stop				= 0x0A05,
+	ice_aqc_opc_lldp_start				= 0x0A06,
+	ice_aqc_opc_get_cee_dcb_cfg			= 0x0A07,
+	ice_aqc_opc_lldp_set_local_mib			= 0x0A08,
+	ice_aqc_opc_lldp_stop_start_specific_agent	= 0x0A09,
 
 	/* RSS commands */
 	ice_aqc_opc_set_rss_key				= 0x0B02,
