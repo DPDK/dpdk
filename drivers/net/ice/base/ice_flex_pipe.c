@@ -2935,9 +2935,11 @@ static void ice_fill_tbl(struct ice_hw *hw, enum ice_block block_id, u32 sid)
 
 	while (sect) {
 		switch (sid) {
+		case ICE_SID_XLT1_SW:
 		case ICE_SID_XLT1_FD:
 		case ICE_SID_XLT1_RSS:
 		case ICE_SID_XLT1_ACL:
+		case ICE_SID_XLT1_PE:
 			xlt1 = (struct ice_xlt1_section *)sect;
 			src = xlt1->value;
 			sect_len = LE16_TO_CPU(xlt1->count) *
@@ -2946,9 +2948,11 @@ static void ice_fill_tbl(struct ice_hw *hw, enum ice_block block_id, u32 sid)
 			dst_len = hw->blk[block_id].xlt1.count *
 				sizeof(*hw->blk[block_id].xlt1.t);
 			break;
+		case ICE_SID_XLT2_SW:
 		case ICE_SID_XLT2_FD:
 		case ICE_SID_XLT2_RSS:
 		case ICE_SID_XLT2_ACL:
+		case ICE_SID_XLT2_PE:
 			xlt2 = (struct ice_xlt2_section *)sect;
 			src = (u8 *)xlt2->value;
 			sect_len = LE16_TO_CPU(xlt2->count) *
@@ -2957,9 +2961,11 @@ static void ice_fill_tbl(struct ice_hw *hw, enum ice_block block_id, u32 sid)
 			dst_len = hw->blk[block_id].xlt2.count *
 				sizeof(*hw->blk[block_id].xlt2.t);
 			break;
+		case ICE_SID_PROFID_TCAM_SW:
 		case ICE_SID_PROFID_TCAM_FD:
 		case ICE_SID_PROFID_TCAM_RSS:
 		case ICE_SID_PROFID_TCAM_ACL:
+		case ICE_SID_PROFID_TCAM_PE:
 			pid = (struct ice_prof_id_section *)sect;
 			src = (u8 *)pid->entry;
 			sect_len = LE16_TO_CPU(pid->count) *
@@ -2968,9 +2974,11 @@ static void ice_fill_tbl(struct ice_hw *hw, enum ice_block block_id, u32 sid)
 			dst_len = hw->blk[block_id].prof.count *
 				sizeof(*hw->blk[block_id].prof.t);
 			break;
+		case ICE_SID_PROFID_REDIR_SW:
 		case ICE_SID_PROFID_REDIR_FD:
 		case ICE_SID_PROFID_REDIR_RSS:
 		case ICE_SID_PROFID_REDIR_ACL:
+		case ICE_SID_PROFID_REDIR_PE:
 			pr = (struct ice_prof_redir_section *)sect;
 			src = pr->redir_value;
 			sect_len = LE16_TO_CPU(pr->count) *
@@ -2979,15 +2987,19 @@ static void ice_fill_tbl(struct ice_hw *hw, enum ice_block block_id, u32 sid)
 			dst_len = hw->blk[block_id].prof_redir.count *
 				sizeof(*hw->blk[block_id].prof_redir.t);
 			break;
+		case ICE_SID_FLD_VEC_SW:
 		case ICE_SID_FLD_VEC_FD:
 		case ICE_SID_FLD_VEC_RSS:
 		case ICE_SID_FLD_VEC_ACL:
+		case ICE_SID_FLD_VEC_PE:
 			es = (struct ice_sw_fv_section *)sect;
 			src = (u8 *)es->fv;
 			sect_len = LE16_TO_CPU(es->count) *
-				sizeof(*hw->blk[block_id].prof_redir.t);
+				hw->blk[block_id].es.fvw *
+				sizeof(*hw->blk[block_id].es.t);
 			dst = (u8 *)hw->blk[block_id].es.t;
 			dst_len = hw->blk[block_id].es.count *
+				hw->blk[block_id].es.fvw *
 				sizeof(*hw->blk[block_id].es.t);
 			break;
 		default:
@@ -4964,8 +4976,8 @@ ice_rem_prof_id_flow(struct ice_hw *hw, enum ice_block blk, u16 vsi, u64 hdl)
 				if (status)
 					goto err_ice_rem_prof_id_flow;
 
-			} else if (ice_find_dup_props_vsig(hw, blk, &copy,
-							   &vsig)) {
+			} else if (!ice_find_dup_props_vsig(hw, blk, &copy,
+							    &vsig)) {
 				/* found an exact match */
 				/* add or move VSI to the VSIG that matches */
 				/* Search for a VSIG with a matching profile
