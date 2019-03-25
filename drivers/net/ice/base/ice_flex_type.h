@@ -676,7 +676,6 @@ enum ice_chg_type {
 	ICE_TCAM_NONE = 0,
 	ICE_PTG_ES_ADD,
 	ICE_TCAM_ADD,
-	ICE_TCAM_REM,
 	ICE_VSIG_ADD,
 	ICE_VSIG_REM,
 	ICE_VSI_MOVE,
@@ -697,7 +696,6 @@ struct ice_chs_chg {
 	u16 vsig;
 	u16 orig_vsig;
 	u16 tcam_idx;
-	struct ice_prof_tcam_entry orig_ent;
 };
 
 #define ICE_FLOW_PTYPE_MAX		ICE_XLT1_CNT

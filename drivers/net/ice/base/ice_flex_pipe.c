@@ -3558,8 +3558,7 @@ ice_prof_bld_tcam(struct ice_hw *hw, enum ice_block blk,
 	struct ice_chs_chg *tmp;
 
 	LIST_FOR_EACH_ENTRY(tmp, chgs, ice_chs_chg, list_entry) {
-		if ((tmp->type == ICE_TCAM_ADD && tmp->add_tcam_idx) ||
-		    tmp->type == ICE_TCAM_REM) {
+		if (tmp->type == ICE_TCAM_ADD && tmp->add_tcam_idx) {
 			struct ice_prof_id_section *p;
 			u32 id;
 
@@ -3689,7 +3688,6 @@ ice_upd_prof_hw(struct ice_hw *hw, enum ice_block blk,
 				es++;
 			break;
 		case ICE_TCAM_ADD:
-		case ICE_TCAM_REM:
 			tcam++;
 			break;
 		case ICE_VSIG_ADD:
@@ -3962,46 +3960,27 @@ ice_rel_tcam_idx(struct ice_hw *hw, enum ice_block blk, u16 idx)
  * ice_rem_prof_id - remove one profile from a VSIG
  * @hw: pointer to the HW struct
  * @blk: hardware block
- * @vsig: VSIG to remove the profile from
  * @prof: pointer to profile structure to remove
- * @chg: pointer to list to record changes
  */
 static enum ice_status
-ice_rem_prof_id(struct ice_hw *hw, enum ice_block blk, u16 vsig,
-		struct ice_vsig_prof *prof, struct LIST_HEAD_TYPE *chg)
+ice_rem_prof_id(struct ice_hw *hw, enum ice_block blk,
+		struct ice_vsig_prof *prof)
 {
 	enum ice_status status;
-	struct ice_chs_chg *p;
 	u16 i;
 
 	for (i = 0; i < prof->tcam_count; i++) {
-		p = (struct ice_chs_chg *)ice_malloc(hw, sizeof(*p));
-		if (!p)
-			goto err_ice_rem_prof_id;
-
-		p->type = ICE_TCAM_REM;
-		p->vsig = vsig;
-		p->prof_id = prof->tcam[i].prof_id;
-		p->tcam_idx = prof->tcam[i].tcam_idx;
-
-		p->ptg = prof->tcam[i].ptg;
 		prof->tcam[i].in_use = false;
-		p->orig_ent = hw->blk[blk].prof.t[p->tcam_idx];
-		status = ice_rel_tcam_idx(hw, blk, p->tcam_idx);
+		status = ice_rel_tcam_idx(hw, blk, prof->tcam[i].tcam_idx);
 		if (!status)
-			status = ice_prof_dec_ref(hw, blk, p->prof_id);
-
-		LIST_ADD(&p->list_entry, chg);
+			status = ice_prof_dec_ref(hw, blk,
+						  prof->tcam[i].prof_id);
 
 		if (status)
-			goto err_ice_rem_prof_id;
+			return ICE_ERR_HW_TABLE;
 	}
 
 	return ICE_SUCCESS;
-
-err_ice_rem_prof_id:
-	/* caller will clean up the change list */
-	return ICE_ERR_NO_MEMORY;
 }
 
 /**
@@ -4024,9 +4003,9 @@ ice_rem_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig,
 	LIST_FOR_EACH_ENTRY_SAFE(d, t,
 				 &hw->blk[blk].xlt2.vsig_tbl[idx].prop_lst,
 				 ice_vsig_prof, list) {
-		status = ice_rem_prof_id(hw, blk, vsig, d, chg);
+		status = ice_rem_prof_id(hw, blk, d);
 		if (status)
-			goto err_ice_rem_vsig;
+			return status;
 
 		LIST_DEL(&d->list);
 		ice_free(hw, d);
@@ -4090,7 +4069,7 @@ ice_rem_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig, u64 hdl,
 				/* this is the last profile, remove the VSIG */
 				return ice_rem_vsig(hw, blk, vsig, chg);
 
-			status = ice_rem_prof_id(hw, blk, vsig, p, chg);
+			status = ice_rem_prof_id(hw, blk, p);
 			if (!status) {
 				LIST_DEL(&p->list);
 				ice_free(hw, p);
