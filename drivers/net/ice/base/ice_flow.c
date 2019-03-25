@@ -516,7 +516,7 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 	struct ice_flow_fld_info *flds;
 	u16 cnt, ese_bits, i;
 	s16 adj = 0;
-	u8 off;
+	u16 off;
 
 	flds = params->prof->segs[seg].fields;
 
@@ -956,7 +956,10 @@ ice_flow_add_prof_sync(struct ice_hw *hw, enum ice_block blk,
 		return ICE_ERR_NO_MEMORY;
 
 	/* initialize extraction sequence to all invalid (0xff) */
-	ice_memset(params.es, 0xff, sizeof(params.es), ICE_NONDMA_MEM);
+	for (i = 0; i < ICE_MAX_FV_WORDS; i++) {
+		params.es[i].prot_id = ICE_PROT_INVALID;
+		params.es[i].off = ICE_FV_OFFSET_INVAL;
+	}
 
 	params.blk = blk;
 	params.prof->id = prof_id;

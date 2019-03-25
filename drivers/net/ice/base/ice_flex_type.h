@@ -5,11 +5,17 @@
 #ifndef _ICE_FLEX_TYPE_H_
 #define _ICE_FLEX_TYPE_H_
 
+#define ICE_FV_OFFSET_INVAL    0x1FF
+
+#pragma pack(1)
 /* Extraction Sequence (Field Vector) Table */
 struct ice_fv_word {
 	u8 prot_id;
-	u8 off;		/* Offset within the protocol header */
+	u16 off;		/* Offset within the protocol header */
+	u8 resvrd;
 };
+
+#pragma pack()
 
 #define ICE_MAX_FV_WORDS 48
 struct ice_fv {

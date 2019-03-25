@@ -174,7 +174,7 @@ enum ice_flow_priority {
 
 struct ice_flow_seg_xtrct {
 	u8 prot_id;	/* Protocol ID of extracted header field */
-	u8 off;		/* Starting offset of the field in header in bytes */
+	u16 off;	/* Starting offset of the field in header in bytes */
 	u8 idx;		/* Index of FV entry used */
 	u8 disp;	/* Displacement of field in bits fr. FV entry's start */
 };
