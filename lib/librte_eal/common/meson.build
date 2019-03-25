@@ -99,6 +99,7 @@ generic_headers = files(
 	'include/generic/rte_prefetch.h',
 	'include/generic/rte_rwlock.h',
 	'include/generic/rte_spinlock.h',
+	'include/generic/rte_ticketlock.h',
 	'include/generic/rte_vect.h')
 install_headers(generic_headers, subdir: 'generic')
 

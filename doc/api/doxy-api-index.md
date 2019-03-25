@@ -65,6 +65,7 @@ The public API headers are grouped by topics:
   [atomic]             (@ref rte_atomic.h),
   [rwlock]             (@ref rte_rwlock.h),
   [spinlock]           (@ref rte_spinlock.h)
+  [ticketlock]         (@ref rte_ticketlock.h)
 
 - **CPU arch**:
   [branch prediction]  (@ref rte_branch_prediction.h),

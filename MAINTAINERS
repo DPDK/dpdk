@@ -216,6 +216,10 @@ M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
 F: lib/librte_eal/common/include/rte_bitmap.h
 F: app/test/test_bitmap.c
 
+Ticketlock
+M: Joyce Kong <joyce.kong@arm.com>
+F: lib/librte_eal/common/include/generic/rte_ticketlock.h
+
 ARM v7
 M: Jan Viktorin <viktorin@rehivetech.com>
 M: Gavin Hu <gavin.hu@arm.com>
