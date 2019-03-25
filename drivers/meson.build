@@ -2,7 +2,7 @@
 # Copyright(c) 2017 Intel Corporation
 
 # Defines the order in which the drivers are buit.
-driver_classes = ['common',
+dpdk_driver_classes = ['common',
 	       'bus',
 	       'mempool', # depends on common and bus.
 	       'net',     # depends on common, bus and mempool.
@@ -20,7 +20,7 @@ endif
 # specify -D_GNU_SOURCE unconditionally
 default_cflags += '-D_GNU_SOURCE'
 
-foreach class:driver_classes
+foreach class:dpdk_driver_classes
 	drivers = []
 	std_deps = []
 	config_flag_fmt = '' # format string used to set the value in dpdk_conf

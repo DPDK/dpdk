@@ -13,6 +13,7 @@ cc = meson.get_compiler('c')
 dpdk_conf = configuration_data()
 dpdk_libraries = []
 dpdk_static_libraries = []
+dpdk_driver_classes = []
 dpdk_drivers = []
 dpdk_extra_ldflags = []
 dpdk_app_link_libraries = []
@@ -105,7 +106,7 @@ endforeach
 message(output_message + '\n')
 
 output_message = '\n===============\nDrivers Enabled\n===============\n'
-foreach class:driver_classes
+foreach class:dpdk_driver_classes
 	class_drivers = get_variable(class + '_drivers')
 	output_message += '\n' + class + ':\n\t'
 	output_count = 0
