@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include "base/ice_sched.h"
+#include "base/ice_flow.h"
 #include "ice_ethdev.h"
 #include "ice_rxtx.h"
 
@@ -1633,6 +1634,44 @@ static int ice_init_rss(struct ice_pf *pf)
 				 vsi->rss_lut, vsi->rss_lut_size);
 	if (ret)
 		return -EINVAL;
+
+	/* configure RSS for tcp6 with input set IPv6 src/dst, TCP src/dst */
+	ret = ice_add_rss_cfg(hw, vsi->idx, ICE_HASH_TCP_IPV6,
+			      ICE_FLOW_SEG_HDR_TCP | ICE_FLOW_SEG_HDR_IPV6);
+	if (ret)
+		PMD_DRV_LOG(ERR, "%s TCP_IPV6 rss flow fail %d", __func__, ret);
+
+	/* configure RSS for udp6 with input set IPv6 src/dst, UDP src/dst */
+	ret = ice_add_rss_cfg(hw, vsi->idx, ICE_HASH_UDP_IPV6,
+			      ICE_FLOW_SEG_HDR_UDP | ICE_FLOW_SEG_HDR_IPV6);
+	if (ret)
+		PMD_DRV_LOG(ERR, "%s UDP_IPV6 rss flow fail %d", __func__, ret);
+
+	/* configure RSS for sctp6 with input set IPv6 src/dst */
+	ret = ice_add_rss_cfg(hw, vsi->idx, ICE_FLOW_HASH_IPV6,
+			      ICE_FLOW_SEG_HDR_SCTP | ICE_FLOW_SEG_HDR_IPV6);
+	if (ret)
+		PMD_DRV_LOG(ERR, "%s SCTP_IPV6 rss flow fail %d",
+				__func__, ret);
+
+	/* configure RSS for tcp4 with input set IP src/dst, TCP src/dst */
+	ret = ice_add_rss_cfg(hw, vsi->idx, ICE_HASH_TCP_IPV4,
+			      ICE_FLOW_SEG_HDR_TCP | ICE_FLOW_SEG_HDR_IPV4);
+	if (ret)
+		PMD_DRV_LOG(ERR, "%s TCP_IPV4 rss flow fail %d", __func__, ret);
+
+	/* configure RSS for udp4 with input set IP src/dst, UDP src/dst */
+	ret = ice_add_rss_cfg(hw, vsi->idx, ICE_HASH_UDP_IPV4,
+			      ICE_FLOW_SEG_HDR_UDP | ICE_FLOW_SEG_HDR_IPV4);
+	if (ret)
+		PMD_DRV_LOG(ERR, "%s UDP_IPV4 rss flow fail %d", __func__, ret);
+
+	/* configure RSS for sctp4 with input set IP src/dst */
+	ret = ice_add_rss_cfg(hw, vsi->idx, ICE_FLOW_HASH_IPV4,
+			      ICE_FLOW_SEG_HDR_SCTP | ICE_FLOW_SEG_HDR_IPV4);
+	if (ret)
+		PMD_DRV_LOG(ERR, "%s SCTP_IPV4 rss flow fail %d",
+				__func__, ret);
 
 	return 0;
 }

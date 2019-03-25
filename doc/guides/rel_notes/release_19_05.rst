@@ -105,6 +105,7 @@ New Features
   * Added support of SSE and AVX2 instructions in Rx and Tx paths.
   * Added package download support.
   * Added Safe Mode support.
+  * Supported RSS for UPD/TCP/SCTP+IPV4/IPV6 packets.
 
 * **Updated the QuickAssist Technology PMD.**
 
