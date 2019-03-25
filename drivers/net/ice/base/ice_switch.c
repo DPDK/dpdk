@@ -3,6 +3,8 @@
  */
 
 #include "ice_switch.h"
+#include "ice_flex_type.h"
+#include "ice_flow.h"
 
 
 #define ICE_ETH_DA_OFFSET		0
@@ -447,6 +449,27 @@ ice_save_vsi_ctx(struct ice_hw *hw, u16 vsi_handle, struct ice_vsi_ctx *vsi)
 }
 
 /**
+ * ice_clear_vsi_q_ctx - clear VSI queue contexts for all TCs
+ * @hw: pointer to the HW struct
+ * @vsi_handle: VSI handle
+ */
+static void ice_clear_vsi_q_ctx(struct ice_hw *hw, u16 vsi_handle)
+{
+	struct ice_vsi_ctx *vsi;
+	u8 i;
+
+	vsi = ice_get_vsi_ctx(hw, vsi_handle);
+	if (!vsi)
+		return;
+	ice_for_each_traffic_class(i) {
+		if (vsi->lan_q_ctx[i]) {
+			ice_free(hw, vsi->lan_q_ctx[i]);
+			vsi->lan_q_ctx[i] = NULL;
+		}
+	}
+}
+
+/**
  * ice_clear_vsi_ctx - clear the VSI context entry
  * @hw: pointer to the HW struct
  * @vsi_handle: VSI handle
@@ -459,6 +482,9 @@ static void ice_clear_vsi_ctx(struct ice_hw *hw, u16 vsi_handle)
 
 	vsi = ice_get_vsi_ctx(hw, vsi_handle);
 	if (vsi) {
+		if (!LIST_EMPTY(&vsi->rss_list_head))
+			ice_rem_all_rss_vsi_ctx(hw, vsi_handle);
+		ice_clear_vsi_q_ctx(hw, vsi_handle);
 		ice_destroy_lock(&vsi->rss_locks);
 		ice_free(hw, vsi);
 		hw->vsi_ctx[vsi_handle] = NULL;

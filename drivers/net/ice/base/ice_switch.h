@@ -15,6 +15,12 @@
 
 
 #define ICE_VSI_INVAL_ID 0xFFFF
+#define ICE_INVAL_Q_HANDLE 0xFFFF
+
+/* VSI queue context structure */
+struct ice_q_ctx {
+	u16  q_handle;
+};
 
 /* VSI context structure for add/get/update/free operations */
 struct ice_vsi_ctx {
@@ -25,6 +31,8 @@ struct ice_vsi_ctx {
 	struct ice_aqc_vsi_props info;
 	struct ice_sched_vsi_info sched;
 	u8 alloc_from_pool;
+	u16 num_lan_q_entries[ICE_MAX_TRAFFIC_CLASS];
+	struct ice_q_ctx *lan_q_ctx[ICE_MAX_TRAFFIC_CLASS];
 	struct ice_lock rss_locks;	/* protect rss config in VSI ctx */
 	struct LIST_HEAD_TYPE rss_list_head;
 };
