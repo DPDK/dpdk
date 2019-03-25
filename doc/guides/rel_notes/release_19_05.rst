@@ -111,6 +111,10 @@ New Features
 
   Added support for AES-XTS with 128 and 256 bit AES keys.
 
+* **Updated AESNI-MB PMD.**
+
+  Added support for out-of-place operations.
+
 * **Updated the IPsec library.**
 
   The IPsec library has been updated with AES-CTR and 3DES-CBC cipher algorithms
