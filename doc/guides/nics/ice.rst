@@ -102,6 +102,15 @@ To start ``testpmd``, and add vlan 10 to port 0:
 Limitations or Known issues
 ---------------------------
 
+The Intel E810 requires a programmable pipeline package be downloaded
+by the driver to support normal operations. The E810 has a limited
+functionality built in to allow PXE boot and other use cases, but the
+driver must download a package file during the driver initialization
+stage. The file must be in the /lib/firmware/intel/ice/ddp directory
+and it must be named ice.pkg. A symbolic link to this file is also ok.
+The same package file is used by both the kernel driver and the DPDK PMD.
+
+
 19.02 limitation
 ~~~~~~~~~~~~~~~~
 

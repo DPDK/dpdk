@@ -4,12 +4,18 @@
 
 #include <rte_ethdev_pci.h>
 
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include "base/ice_sched.h"
 #include "ice_ethdev.h"
 #include "ice_rxtx.h"
 
 #define ICE_MAX_QP_NUM "max_queue_pair_num"
 #define ICE_DFLT_OUTER_TAG_TYPE ICE_AQ_VSI_OUTER_TAG_VLAN_9100
+#define ICE_DFLT_PKG_FILE "/lib/firmware/intel/ice/ddp/ice.pkg"
 
 int ice_logtype_init;
 int ice_logtype_driver;
@@ -1259,6 +1265,69 @@ ice_pf_setup(struct ice_pf *pf)
 	return 0;
 }
 
+static int ice_load_pkg(struct rte_eth_dev *dev)
+{
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	const char *pkg_file = ICE_DFLT_PKG_FILE;
+	int err;
+	uint8_t *buf;
+	int buf_len;
+	FILE *file;
+	struct stat fstat;
+
+	file = fopen(pkg_file, "rb");
+	if (!file)  {
+		PMD_INIT_LOG(ERR, "failed to open file: %s\n", pkg_file);
+		return -1;
+	}
+
+	err = stat(pkg_file, &fstat);
+	if (err) {
+		PMD_INIT_LOG(ERR, "failed to get file stats\n");
+		fclose(file);
+		return err;
+	}
+
+	buf_len = fstat.st_size;
+	buf = rte_malloc(NULL, buf_len, 0);
+
+	if (!buf) {
+		PMD_INIT_LOG(ERR, "failed to allocate buf of size %d for package\n",
+				buf_len);
+		fclose(file);
+		return -1;
+	}
+
+	err = fread(buf, buf_len, 1, file);
+	if (err != 1) {
+		PMD_INIT_LOG(ERR, "failed to read package data\n");
+		fclose(file);
+		err = -1;
+		goto fail_exit;
+	}
+
+	fclose(file);
+
+	err = ice_copy_and_init_pkg(hw, buf, buf_len);
+	if (err) {
+		PMD_INIT_LOG(ERR, "ice_copy_and_init_hw failed: %d\n", err);
+		goto fail_exit;
+	}
+	err = ice_init_hw_tbls(hw);
+	if (err) {
+		PMD_INIT_LOG(ERR, "ice_init_hw_tbls failed: %d\n", err);
+		goto fail_init_tbls;
+	}
+
+	return 0;
+
+fail_init_tbls:
+	rte_free(hw->pkg_copy);
+fail_exit:
+	rte_free(buf);
+	return err;
+}
+
 static int
 ice_dev_init(struct rte_eth_dev *dev)
 {
@@ -1296,6 +1365,12 @@ ice_dev_init(struct rte_eth_dev *dev)
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to initialize HW");
 		return -EINVAL;
+	}
+
+	ret = ice_load_pkg(dev);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to load the DDP package");
+		goto err_load_pkg;
 	}
 
 	PMD_INIT_LOG(INFO, "FW %d.%d.%05d API %d.%d",
@@ -1343,6 +1418,7 @@ err_pf_setup:
 err_msix_pool_init:
 	rte_free(dev->data->mac_addrs);
 err_init_mac:
+err_load_pkg:
 	ice_sched_cleanup_all(hw);
 	rte_free(hw->port_info);
 	ice_shutdown_all_ctrlq(hw);
