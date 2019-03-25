@@ -2302,21 +2302,23 @@ ice_vsig_free(struct ice_hw *hw, enum ice_block blk, u16 vsig)
 	hw->blk[blk].xlt2.vsig_tbl[idx].in_use = false;
 
 	vsi_cur = hw->blk[blk].xlt2.vsig_tbl[idx].first_vsi;
-	if (!vsi_cur)
-		return ICE_ERR_CFG;
+	/* If the VSIG has at least 1 VSI then iterate through the
+	 * list and remove the VSIs before deleting the group.
+	 */
+	if (vsi_cur) {
+		/* remove all vsis associated with this VSIG XLT2 entry */
+		do {
+			struct ice_vsig_vsi *tmp = vsi_cur->next_vsi;
 
-	/* remove all vsis associated with this VSIG XLT2 entry */
-	do {
-		struct ice_vsig_vsi *tmp = vsi_cur->next_vsi;
+			vsi_cur->vsig = ICE_DEFAULT_VSIG;
+			vsi_cur->changed = 1;
+			vsi_cur->next_vsi = NULL;
+			vsi_cur = tmp;
+		} while (vsi_cur);
 
-		vsi_cur->vsig = ICE_DEFAULT_VSIG;
-		vsi_cur->changed = 1;
-		vsi_cur->next_vsi = NULL;
-		vsi_cur = tmp;
-	} while (vsi_cur);
-
-	/* NULL terminate head of vsi list */
-	hw->blk[blk].xlt2.vsig_tbl[idx].first_vsi = NULL;
+		/* NULL terminate head of VSI list */
+		hw->blk[blk].xlt2.vsig_tbl[idx].first_vsi = NULL;
+	}
 
 	/* free characteristic list */
 	LIST_FOR_EACH_ENTRY_SAFE(del, dtmp,
@@ -4267,36 +4269,32 @@ ice_rem_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig,
 
 	/* Move all VSIS associated with this VSIG to the default VSIG */
 	vsi_cur = hw->blk[blk].xlt2.vsig_tbl[idx].first_vsi;
-	if (!vsi_cur)
-		return ICE_ERR_CFG;
+	/* If the VSIG has at least 1 VSI then iterate through the list
+	 * and remove the VSIs before deleting the group.
+	 */
+	if (vsi_cur) {
+		do {
+			struct ice_vsig_vsi *tmp = vsi_cur->next_vsi;
+			struct ice_chs_chg *p;
 
-	do {
-		struct ice_vsig_vsi *tmp = vsi_cur->next_vsi;
-		struct ice_chs_chg *p;
+			p = (struct ice_chs_chg *)ice_malloc(hw, sizeof(*p));
+			if (!p)
+				return ICE_ERR_NO_MEMORY;
 
-		p = (struct ice_chs_chg *)ice_malloc(hw, sizeof(*p));
-		if (!p)
-			goto err_ice_rem_vsig;
+			p->type = ICE_VSIG_REM;
+			p->orig_vsig = vsig;
+			p->vsig = ICE_DEFAULT_VSIG;
+			p->vsi = vsi_cur - hw->blk[blk].xlt2.vsis;
 
-		p->type = ICE_VSIG_REM;
-		p->orig_vsig = vsig;
-		p->vsig = ICE_DEFAULT_VSIG;
-		p->vsi = vsi_cur - hw->blk[blk].xlt2.vsis;
+			LIST_ADD(&p->list_entry, chg);
 
-		LIST_ADD(&p->list_entry, chg);
+			vsi_cur = tmp;
+		} while (vsi_cur);
+	}
 
-		status = ice_vsig_free(hw, blk, vsig);
-		if (status)
-			return status;
+	status = ice_vsig_free(hw, blk, vsig);
 
-		vsi_cur = tmp;
-	} while (vsi_cur);
-
-	return ICE_SUCCESS;
-
-err_ice_rem_vsig:
-	/* the caller will free up the change list */
-	return ICE_ERR_NO_MEMORY;
+	return status;
 }
 
 /**
@@ -4493,7 +4491,7 @@ ice_get_profs_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig,
 
 		ice_memcpy(p, ent1, sizeof(*p), ICE_NONDMA_TO_NONDMA);
 
-		LIST_ADD(&p->list, lst);
+		LIST_ADD_TAIL(&p->list, lst);
 	}
 
 	return ICE_SUCCESS;
@@ -5000,14 +4998,13 @@ ice_add_prof_id_flow(struct ice_hw *hw, enum ice_block blk, u16 vsi, u64 hdl)
 		/* search for an existing VSIG with an exact charc match */
 		status = ice_find_dup_props_vsig(hw, blk, &union_lst, &vsig);
 		if (!status) {
-			/* found an exact match */
-			/* move vsi to the VSIG that matches */
+			/* move VSI to the VSIG that matches */
 			status = ice_move_vsi(hw, blk, vsi, vsig, &chg);
 			if (status)
 				goto err_ice_add_prof_id_flow;
 
-			/* remove original VSIG if we just moved the only VSI
-			 * from it
+			/* VSI has been moved out of or_vsig. If the or_vsig had
+			 * only that VSI it is now empty and can be removed.
 			 */
 			if (only_vsi) {
 				status = ice_rem_vsig(hw, blk, or_vsig, &chg);
