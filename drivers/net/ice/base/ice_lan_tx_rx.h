@@ -627,39 +627,60 @@ enum ice_flex_opcode {
 	ICE_RX_OPC_PROTID
 };
 
-/* Receive Descriptor MDID values */
-enum ice_flex_rx_mdid {
-	ICE_RX_MDID_FLOW_ID_LOWER	= 5,
-	ICE_RX_MDID_FLOW_ID_HIGH,
-	ICE_RX_MDID_DST_VSI		= 13,
-	ICE_RX_MDID_SRC_VSI		= 19,
-	ICE_RX_MDID_HASH_LOW		= 56,
-	ICE_RX_MDID_HASH_HIGH,
-	ICE_RX_MDID_ACL_CTR0		= ICE_RX_MDID_HASH_LOW,
-	ICE_RX_MDID_ACL_CTR1		= ICE_RX_MDID_HASH_HIGH,
-	ICE_RX_MDID_ACL_CTR2		= 59
+/* Receive Descriptor MDID values that access packet flags */
+enum ice_flex_mdid_pkt_flags {
+	ICE_RX_MDID_PKT_FLAGS_15_0	= 20,
+	ICE_RX_MDID_PKT_FLAGS_31_16,
+	ICE_RX_MDID_PKT_FLAGS_47_32,
+	ICE_RX_MDID_PKT_FLAGS_63_48,
+};
+
+/* Generic descriptor MDID values */
+enum ice_flex_mdid {
+	ICE_MDID_GENERIC_WORD_0,
+	ICE_MDID_GENERIC_WORD_1,
+	ICE_MDID_GENERIC_WORD_2,
+	ICE_MDID_GENERIC_WORD_3,
+	ICE_MDID_GENERIC_WORD_4,
+	ICE_MDID_FLOW_ID_LOWER,
+	ICE_MDID_FLOW_ID_HIGH,
+	ICE_MDID_RX_DESCR_PROF_IDX,
+	ICE_MDID_RX_PKT_DROP,
+	ICE_MDID_RX_DST_Q		= 12,
+	ICE_MDID_RX_DST_VSI,
+	ICE_MDID_SRC_VSI		= 19,
+	ICE_MDID_ACL_NOP		= 55,
+	/* Entry 56 */
+	ICE_MDID_RX_HASH_LOW,
+	ICE_MDID_ACL_CNTR_PKT		= ICE_MDID_RX_HASH_LOW,
+	/* Entry 57 */
+	ICE_MDID_RX_HASH_HIGH,
+	ICE_MDID_ACL_CNTR_BYTES		= ICE_MDID_RX_HASH_HIGH,
+	ICE_MDID_ACL_CNTR_PKT_BYTES
 };
 
 /* for ice_32byte_rx_flex_desc.mir_id_umb_cast member */
 #define ICE_RX_FLEX_DESC_MIRROR_M	(0x3F) /* 6-bits */
 
-/* Rx Flag64 packet flag bits */
-enum ice_rx_flg64_bits {
-	ICE_RXFLG_PKT_DSI	= 0,
-	ICE_RXFLG_EVLAN_x8100	= 15,
-	ICE_RXFLG_EVLAN_x9100,
-	ICE_RXFLG_VLAN_x8100,
-	ICE_RXFLG_TNL_MAC	= 22,
-	ICE_RXFLG_TNL_VLAN,
-	ICE_RXFLG_PKT_FRG,
-	ICE_RXFLG_FIN		= 32,
-	ICE_RXFLG_SYN,
-	ICE_RXFLG_RST,
-	ICE_RXFLG_TNL0		= 38,
-	ICE_RXFLG_TNL1,
-	ICE_RXFLG_TNL2,
-	ICE_RXFLG_UDP_GRE,
-	ICE_RXFLG_RSVD		= 63
+/* Rx/Tx Flag64 packet flag bits */
+enum ice_flg64_bits {
+	ICE_FLG_PKT_DSI		= 0,
+	/* If there is a 1 in this bit position then that means Rx packet */
+	ICE_FLG_PKT_DIR		= 4,
+	ICE_FLG_EVLAN_x8100	= 15,
+	ICE_FLG_EVLAN_x9100,
+	ICE_FLG_VLAN_x8100,
+	ICE_FLG_TNL_MAC		= 22,
+	ICE_FLG_TNL_VLAN,
+	ICE_FLG_PKT_FRG,
+	ICE_FLG_FIN		= 32,
+	ICE_FLG_SYN,
+	ICE_FLG_RST,
+	ICE_FLG_TNL0		= 38,
+	ICE_FLG_TNL1,
+	ICE_FLG_TNL2,
+	ICE_FLG_UDP_GRE,
+	ICE_FLG_RSVD		= 63
 };
 
 enum ice_rx_flex_desc_umb_cast_bits { /* field is 2 bits long */
