@@ -266,6 +266,7 @@ struct ice_adapter {
 	bool tx_simple_allowed;
 	/* ptype mapping table */
 	uint32_t ptype_tbl[ICE_MAX_PKT_TYPE] __rte_cache_min_aligned;
+	bool is_safe_mode;
 };
 
 struct ice_vsi_vlan_pvid_info {

@@ -1335,6 +1335,8 @@ ice_dev_init(struct rte_eth_dev *dev)
 	struct rte_intr_handle *intr_handle;
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct ice_adapter *ad =
+		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct ice_vsi *vsi;
 	int ret;
 
@@ -1369,8 +1371,9 @@ ice_dev_init(struct rte_eth_dev *dev)
 
 	ret = ice_load_pkg(dev);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Failed to load the DDP package");
-		goto err_load_pkg;
+		PMD_INIT_LOG(WARNING, "Failed to load the DDP package,"
+				"Entering Safe Mode");
+		ad->is_safe_mode = 1;
 	}
 
 	PMD_INIT_LOG(INFO, "FW %d.%d.%05d API %d.%d",
@@ -1418,7 +1421,6 @@ err_pf_setup:
 err_msix_pool_init:
 	rte_free(dev->data->mac_addrs);
 err_init_mac:
-err_load_pkg:
 	ice_sched_cleanup_all(hw);
 	rte_free(hw->port_info);
 	ice_shutdown_all_ctrlq(hw);
@@ -1588,11 +1590,17 @@ static int ice_init_rss(struct ice_pf *pf)
 	struct ice_aqc_get_set_rss_keys key;
 	uint16_t i, nb_q;
 	int ret = 0;
+	bool is_safe_mode = pf->adapter->is_safe_mode;
 
 	rss_conf = &dev->data->dev_conf.rx_adv_conf.rss_conf;
 	nb_q = dev->data->nb_rx_queues;
 	vsi->rss_key_size = ICE_AQC_GET_SET_RSS_KEY_DATA_RSS_KEY_SIZE;
 	vsi->rss_lut_size = hw->func_caps.common_cap.rss_table_size;
+
+	if (is_safe_mode) {
+		PMD_DRV_LOG(WARNING, "RSS is not supported in safe mode\n");
+		return 0;
+	}
 
 	if (!vsi->rss_key)
 		vsi->rss_key = rte_zmalloc(NULL,
@@ -1898,6 +1906,7 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_vsi *vsi = pf->main_vsi;
 	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
+	bool is_safe_mode = pf->adapter->is_safe_mode;
 
 	dev_info->min_rx_bufsize = ICE_BUF_SIZE_MIN;
 	dev_info->max_rx_pktlen = ICE_FRAME_SIZE_MAX;
@@ -1908,33 +1917,40 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->rx_offload_capa =
 		DEV_RX_OFFLOAD_VLAN_STRIP |
-		DEV_RX_OFFLOAD_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_UDP_CKSUM |
-		DEV_RX_OFFLOAD_TCP_CKSUM |
-		DEV_RX_OFFLOAD_QINQ_STRIP |
-		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
-		DEV_RX_OFFLOAD_VLAN_EXTEND |
 		DEV_RX_OFFLOAD_JUMBO_FRAME |
 		DEV_RX_OFFLOAD_KEEP_CRC |
 		DEV_RX_OFFLOAD_SCATTER |
 		DEV_RX_OFFLOAD_VLAN_FILTER;
 	dev_info->tx_offload_capa =
 		DEV_TX_OFFLOAD_VLAN_INSERT |
-		DEV_TX_OFFLOAD_QINQ_INSERT |
-		DEV_TX_OFFLOAD_IPV4_CKSUM |
-		DEV_TX_OFFLOAD_UDP_CKSUM |
-		DEV_TX_OFFLOAD_TCP_CKSUM |
-		DEV_TX_OFFLOAD_SCTP_CKSUM |
-		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
 		DEV_TX_OFFLOAD_TCP_TSO |
 		DEV_TX_OFFLOAD_MULTI_SEGS |
 		DEV_TX_OFFLOAD_MBUF_FAST_FREE;
+	dev_info->flow_type_rss_offloads = 0;
+
+	if (!is_safe_mode) {
+		dev_info->rx_offload_capa |=
+			DEV_RX_OFFLOAD_IPV4_CKSUM |
+			DEV_RX_OFFLOAD_UDP_CKSUM |
+			DEV_RX_OFFLOAD_TCP_CKSUM |
+			DEV_RX_OFFLOAD_QINQ_STRIP |
+			DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+			DEV_RX_OFFLOAD_VLAN_EXTEND;
+		dev_info->tx_offload_capa |=
+			DEV_TX_OFFLOAD_QINQ_INSERT |
+			DEV_TX_OFFLOAD_IPV4_CKSUM |
+			DEV_TX_OFFLOAD_UDP_CKSUM |
+			DEV_TX_OFFLOAD_TCP_CKSUM |
+			DEV_TX_OFFLOAD_SCTP_CKSUM |
+			DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+		dev_info->flow_type_rss_offloads |= ICE_RSS_OFFLOAD_ALL;
+	}
+
 	dev_info->rx_queue_offload_capa = 0;
 	dev_info->tx_queue_offload_capa = 0;
 
 	dev_info->reta_size = hw->func_caps.common_cap.rss_table_size;
 	dev_info->hash_key_size = (VSIQF_HKEY_MAX_INDEX + 1) * sizeof(uint32_t);
-	dev_info->flow_type_rss_offloads = ICE_RSS_OFFLOAD_ALL;
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_thresh = {

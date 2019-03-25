@@ -104,6 +104,7 @@ New Features
 
   * Added support of SSE and AVX2 instructions in Rx and Tx paths.
   * Added package download support.
+  * Added Safe Mode support.
 
 * **Updated the QuickAssist Technology PMD.**
 
