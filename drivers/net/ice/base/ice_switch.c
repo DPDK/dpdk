@@ -2667,6 +2667,23 @@ ice_rem_sw_rule_info(struct ice_hw *hw, struct LIST_HEAD_TYPE *rule_head)
 }
 
 
+/**
+ * ice_rem_all_sw_rules_info
+ * @hw: pointer to the hardware structure
+ */
+void ice_rem_all_sw_rules_info(struct ice_hw *hw)
+{
+	struct ice_switch_info *sw = hw->switch_info;
+	u8 i;
+
+	for (i = 0; i < ICE_MAX_NUM_RECIPES; i++) {
+		struct LIST_HEAD_TYPE *rule_head;
+
+		rule_head = &sw->recp_list[i].filt_rules;
+		if (!sw->recp_list[i].adv_rule)
+			ice_rem_sw_rule_info(hw, rule_head);
+	}
+}
 
 /**
  * ice_cfg_dflt_vsi - change state of VSI to set/clear default
@@ -3744,6 +3761,96 @@ exit_error:
 		ret = ice_remove_mac(hw, &l_head);
 
 	return ret;
+}
+
+/**
+ * ice_replay_fltr - Replay all the filters stored by a specific list head
+ * @hw: pointer to the hardware structure
+ * @list_head: list for which filters needs to be replayed
+ * @recp_id: Recipe ID for which rules need to be replayed
+ */
+static enum ice_status
+ice_replay_fltr(struct ice_hw *hw, u8 recp_id, struct LIST_HEAD_TYPE *list_head)
+{
+	struct ice_fltr_mgmt_list_entry *itr;
+	struct LIST_HEAD_TYPE l_head;
+	enum ice_status status = ICE_SUCCESS;
+
+	if (LIST_EMPTY(list_head))
+		return status;
+
+	/* Move entries from the given list_head to a temporary l_head so that
+	 * they can be replayed. Otherwise when trying to re-add the same
+	 * filter, the function will return already exists
+	 */
+	LIST_REPLACE_INIT(list_head, &l_head);
+
+	/* Mark the given list_head empty by reinitializing it so filters
+	 * could be added again by *handler
+	 */
+	LIST_FOR_EACH_ENTRY(itr, &l_head, ice_fltr_mgmt_list_entry,
+			    list_entry) {
+		struct ice_fltr_list_entry f_entry;
+
+		f_entry.fltr_info = itr->fltr_info;
+		if (itr->vsi_count < 2 && recp_id != ICE_SW_LKUP_VLAN) {
+			status = ice_add_rule_internal(hw, recp_id, &f_entry);
+			if (status != ICE_SUCCESS)
+				goto end;
+			continue;
+		}
+
+		/* Add a filter per VSI separately */
+		while (1) {
+			u16 vsi_handle;
+
+			vsi_handle =
+				ice_find_first_bit(itr->vsi_list_info->vsi_map,
+						   ICE_MAX_VSI);
+			if (!ice_is_vsi_valid(hw, vsi_handle))
+				break;
+
+			ice_clear_bit(vsi_handle, itr->vsi_list_info->vsi_map);
+			f_entry.fltr_info.vsi_handle = vsi_handle;
+			f_entry.fltr_info.fwd_id.hw_vsi_id =
+				ice_get_hw_vsi_num(hw, vsi_handle);
+			f_entry.fltr_info.fltr_act = ICE_FWD_TO_VSI;
+			if (recp_id == ICE_SW_LKUP_VLAN)
+				status = ice_add_vlan_internal(hw, &f_entry);
+			else
+				status = ice_add_rule_internal(hw, recp_id,
+							       &f_entry);
+			if (status != ICE_SUCCESS)
+				goto end;
+		}
+	}
+end:
+	/* Clear the filter management list */
+	ice_rem_sw_rule_info(hw, &l_head);
+	return status;
+}
+
+/**
+ * ice_replay_all_fltr - replay all filters stored in bookkeeping lists
+ * @hw: pointer to the hardware structure
+ *
+ * NOTE: This function does not clean up partially added filters on error.
+ * It is up to caller of the function to issue a reset or fail early.
+ */
+enum ice_status ice_replay_all_fltr(struct ice_hw *hw)
+{
+	struct ice_switch_info *sw = hw->switch_info;
+	enum ice_status status = ICE_SUCCESS;
+	u8 i;
+
+	for (i = 0; i < ICE_MAX_NUM_RECIPES; i++) {
+		struct LIST_HEAD_TYPE *head = &sw->recp_list[i].filt_rules;
+
+		status = ice_replay_fltr(hw, i, head);
+		if (status != ICE_SUCCESS)
+			return status;
+	}
+	return status;
 }
 
 /**

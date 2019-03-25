@@ -362,6 +362,7 @@ ice_aq_get_res_descs(struct ice_hw *hw, u16 num_entries,
 		     struct ice_sq_cd *cd);
 enum ice_status
 ice_add_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list);
+void ice_rem_all_sw_rules_info(struct ice_hw *hw);
 enum ice_status ice_add_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_lst);
 enum ice_status ice_remove_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_lst);
 enum ice_status
@@ -409,6 +410,7 @@ ice_get_vsi_vlan_promisc(struct ice_hw *hw, u16 vsi_handle, u8 *promisc_mask,
 
 
 
+enum ice_status ice_replay_all_fltr(struct ice_hw *hw);
 
 enum ice_status ice_init_def_sw_recp(struct ice_hw *hw);
 u16 ice_get_hw_vsi_num(struct ice_hw *hw, u16 vsi_handle);
