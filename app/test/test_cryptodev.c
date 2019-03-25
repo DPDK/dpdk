@@ -2834,8 +2834,8 @@ create_wireless_algo_auth_cipher_operation(unsigned int auth_tag_len,
 	sym_op->m_src = ut_params->ibuf;
 
 	/* digest */
-	sym_op->auth.digest.data = (uint8_t *)rte_pktmbuf_append(
-			ut_params->ibuf, auth_tag_len);
+	sym_op->auth.digest.data = (uint8_t *) rte_pktmbuf_mtod_offset(
+			ut_params->ibuf, uint8_t *, data_pad_len);
 
 	TEST_ASSERT_NOT_NULL(sym_op->auth.digest.data,
 			"no room to append auth tag");
@@ -2844,10 +2844,6 @@ create_wireless_algo_auth_cipher_operation(unsigned int auth_tag_len,
 			ut_params->ibuf, data_pad_len);
 
 	memset(sym_op->auth.digest.data, 0, auth_tag_len);
-
-	debug_hexdump(stdout, "digest:",
-			sym_op->auth.digest.data,
-			auth_tag_len);
 
 	/* Copy cipher and auth IVs at the end of the crypto operation */
 	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ut_params->op, uint8_t *,
@@ -4053,7 +4049,7 @@ static int test_snow3g_decryption(const struct snow3g_test_data *tdata)
 	retval = create_wireless_algo_cipher_operation(tdata->cipher_iv.data,
 					tdata->cipher_iv.len,
 					tdata->validCipherLenInBits.len,
-					0);
+					tdata->cipher.offset_bits);
 	if (retval < 0)
 		return retval;
 
@@ -4361,11 +4357,12 @@ test_snow3g_auth_cipher(const struct snow3g_test_data *tdata)
 		tdata->digest.len,
 		tdata->cipher_iv.data, tdata->cipher_iv.len,
 		tdata->auth_iv.data, tdata->auth_iv.len,
-		plaintext_pad_len,
+		tdata->digest.offset_bytes == 0 ?
+		plaintext_pad_len : tdata->digest.offset_bytes,
 		tdata->validCipherLenInBits.len,
-		0,
+		tdata->cipher.offset_bits,
 		tdata->validAuthLenInBits.len,
-		0);
+		tdata->auth.offset_bits);
 
 	if (retval < 0)
 		return retval;
@@ -4380,7 +4377,10 @@ test_snow3g_auth_cipher(const struct snow3g_test_data *tdata)
 		ciphertext = plaintext;
 
 	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-			+ plaintext_pad_len;
+			+ (tdata->digest.offset_bytes == 0 ?
+			plaintext_pad_len : tdata->digest.offset_bytes);
+
+	debug_hexdump(stdout, "digest:", ut_params->digest, tdata->digest.len);
 	debug_hexdump(stdout, "ciphertext:", ciphertext, plaintext_len);
 
 	/* Validate obuf */
@@ -4974,6 +4974,61 @@ test_snow3g_decryption_test_case_5(void)
 {
 	return test_snow3g_decryption(&snow3g_test_case_5);
 }
+
+/*
+ * Function prepares snow3g_hash_test_data from snow3g_test_data.
+ * Pattern digest from snow3g_test_data must be allocated as
+ * 4 last bytes in plaintext.
+ */
+static void
+snow3g_hash_test_vector_setup(const struct snow3g_test_data *pattern,
+		struct snow3g_hash_test_data *output)
+{
+	if ((pattern != NULL) && (output != NULL)) {
+		output->key.len = pattern->key.len;
+
+		memcpy(output->key.data,
+		pattern->key.data, pattern->key.len);
+
+		output->auth_iv.len = pattern->auth_iv.len;
+
+		memcpy(output->auth_iv.data,
+		pattern->auth_iv.data, pattern->auth_iv.len);
+
+		output->plaintext.len = pattern->plaintext.len;
+
+		memcpy(output->plaintext.data,
+		pattern->plaintext.data, pattern->plaintext.len >> 3);
+
+		output->digest.len = pattern->digest.len;
+
+		memcpy(output->digest.data,
+		&pattern->plaintext.data[pattern->digest.offset_bytes],
+		pattern->digest.len);
+
+		output->validAuthLenInBits.len =
+		pattern->validAuthLenInBits.len;
+	}
+}
+
+/*
+ * Test case verify computed cipher and digest from snow3g_test_case_7 data.
+ */
+static int
+test_snow3g_decryption_with_digest_test_case_1(void)
+{
+	struct snow3g_hash_test_data snow3g_hash_data;
+
+	/*
+	 * Function prepare data for hash veryfication test case.
+	 * Digest is allocated in 4 last bytes in plaintext, pattern.
+	 */
+	snow3g_hash_test_vector_setup(&snow3g_test_case_7, &snow3g_hash_data);
+
+	return test_snow3g_decryption(&snow3g_test_case_7) &
+			test_snow3g_authentication_verify(&snow3g_hash_data);
+}
+
 static int
 test_snow3g_cipher_auth_test_case_1(void)
 {
@@ -4984,6 +5039,12 @@ static int
 test_snow3g_auth_cipher_test_case_1(void)
 {
 	return test_snow3g_auth_cipher(&snow3g_test_case_6);
+}
+
+static int
+test_snow3g_auth_cipher_with_digest_test_case_1(void)
+{
+	return test_snow3g_auth_cipher(&snow3g_test_case_7);
 }
 
 static int
@@ -9140,6 +9201,8 @@ static struct unit_test_suite cryptodev_qat_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_decryption_test_case_5),
 		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_decryption_with_digest_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_hash_generate_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_hash_generate_test_case_2),
@@ -9155,6 +9218,8 @@ static struct unit_test_suite cryptodev_qat_testsuite  = {
 			test_snow3g_cipher_auth_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_auth_cipher_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_auth_cipher_with_digest_test_case_1),
 
 		/** ZUC encrypt only (EEA3) */
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -9873,6 +9938,8 @@ static struct unit_test_suite cryptodev_sw_snow3g_testsuite  = {
 			test_snow3g_encryption_test_case_4),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_encryption_test_case_5),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_auth_cipher_with_digest_test_case_1),
 
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_encryption_test_case_1_oop),
@@ -9895,6 +9962,8 @@ static struct unit_test_suite cryptodev_sw_snow3g_testsuite  = {
 			test_snow3g_decryption_test_case_4),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_decryption_test_case_5),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_snow3g_decryption_with_digest_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_hash_generate_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
