@@ -171,6 +171,12 @@ parallel_test_list = [
         "Report":  None,
     },
     {
+        "Name":    "Ticketlock autotest",
+        "Command": "ticketlock_autotest",
+        "Func":    ticketlock_autotest,
+        "Report":  None,
+    }
+    {
         "Name":    "Byte order autotest",
         "Command": "byteorder_autotest",
         "Func":    default_autotest,

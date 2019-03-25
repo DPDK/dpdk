@@ -65,6 +65,7 @@ SRCS-y += test_barrier.c
 SRCS-y += test_malloc.c
 SRCS-y += test_cycles.c
 SRCS-y += test_spinlock.c
+SRCS-y += test_ticketlock.c
 SRCS-y += test_memory.c
 SRCS-y += test_memzone.c
 SRCS-y += test_bitmap.c
