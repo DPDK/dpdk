@@ -938,6 +938,7 @@ void ice_deinit_hw(struct ice_hw *hw)
 
 	ice_sched_cleanup_all(hw);
 	ice_sched_clear_agg(hw);
+	ice_free_seg(hw);
 
 	if (hw->port_info) {
 		ice_free(hw, hw->port_info);
