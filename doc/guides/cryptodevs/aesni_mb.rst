@@ -56,10 +56,6 @@ Limitations
 -----------
 
 * Chained mbufs are not supported.
-* RTE_CRYPTO_AEAD_AES_GCM only works properly when the multi-buffer library is
-  0.51.0 or newer.
-* RTE_CRYPTO_HASH_AES_GMAC is supported by library version v0.51 or later.
-* RTE_CRYPTO_HASH_SHA* is supported by library version v0.52 or later.
 
 
 Installation
@@ -91,7 +87,8 @@ and the Multi-Buffer library version supported by them:
    17.05 - 17.08   0.45 - 0.48
    17.11           0.47 - 0.48
    18.02           0.48
-   18.05+          0.49+
+   18.05 - 19.02   0.49 - 0.52
+   19.05+          0.52+
    ==============  ============================
 
 

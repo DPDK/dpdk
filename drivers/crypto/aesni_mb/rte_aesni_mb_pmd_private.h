@@ -7,21 +7,6 @@
 
 #include <intel-ipsec-mb.h>
 
-
-/*
- * IMB_VERSION_NUM macro was introduced in version Multi-buffer 0.50,
- * so if macro is not defined, it means that the version is 0.49.
- */
-#if !defined(IMB_VERSION_NUM)
-#define IMB_VERSION(a, b, c) (((a) << 16) + ((b) << 8) + (c))
-#define IMB_VERSION_NUM IMB_VERSION(0, 49, 0)
-#endif
-
-#if IMB_VERSION_NUM < IMB_VERSION(0, 52, 0)
-#include "aesni_mb_ops.h"
-#endif
-
-#if IMB_VERSION_NUM >= IMB_VERSION(0, 52, 0)
 enum aesni_mb_vector_mode {
 	RTE_AESNI_MB_NOT_SUPPORTED = 0,
 	RTE_AESNI_MB_SSE,
@@ -29,8 +14,6 @@ enum aesni_mb_vector_mode {
 	RTE_AESNI_MB_AVX2,
 	RTE_AESNI_MB_AVX512
 };
-#endif
-
 
 #define CRYPTODEV_NAME_AESNI_MB_PMD	crypto_aesni_mb
 /**< AES-NI Multi buffer PMD device name */
@@ -109,13 +92,11 @@ static const unsigned auth_digest_byte_lengths[] = {
 		[AES_CMAC]	= 16,
 		[AES_GMAC]	= 12,
 		[NULL_HASH]	= 0,
-#if IMB_VERSION_NUM >= IMB_VERSION(0, 52, 0)
 		[PLAIN_SHA1]	= 20,
 		[PLAIN_SHA_224]	= 28,
 		[PLAIN_SHA_256]	= 32,
 		[PLAIN_SHA_384]	= 48,
 		[PLAIN_SHA_512]	= 64
-#endif
 	/**< Vector mode dependent pointer table of the multi-buffer APIs */
 
 };
@@ -149,10 +130,8 @@ struct aesni_mb_private {
 	/**< CPU vector instruction set mode */
 	unsigned max_nb_queue_pairs;
 	/**< Max number of queue pairs supported by device */
-#if IMB_VERSION_NUM >= IMB_VERSION(0, 52, 0)
 	MB_MGR *mb_mgr;
 	/**< Multi-buffer instance */
-#endif
 };
 
 /** AESNI Multi buffer queue pair */
@@ -160,10 +139,6 @@ struct aesni_mb_qp {
 	uint16_t id;
 	/**< Queue Pair Identifier */
 	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
-#if IMB_VERSION_NUM < IMB_VERSION(0, 52, 0)
-	/**< Unique Queue Pair Name */
-	const struct aesni_mb_op_fns *op_fns;
-#endif
 	/**< Unique Queue Pair Name */
 	MB_MGR *mb_mgr;
 	/**< Multi-buffer instance */
@@ -277,22 +252,10 @@ struct aesni_mb_session {
 	} aead;
 } __rte_cache_aligned;
 
-
-
-#if IMB_VERSION_NUM >= IMB_VERSION(0, 52, 0)
-/**
- *
- */
 extern int
 aesni_mb_set_session_parameters(const MB_MGR *mb_mgr,
 		struct aesni_mb_session *sess,
 		const struct rte_crypto_sym_xform *xform);
-#else
-extern int
-aesni_mb_set_session_parameters(const struct aesni_mb_op_fns *mb_ops,
-		struct aesni_mb_session *sess,
-		const struct rte_crypto_sym_xform *xform);
-#endif
 
 /** device specific operations function pointer structure */
 extern struct rte_cryptodev_ops *rte_aesni_mb_pmd_ops;

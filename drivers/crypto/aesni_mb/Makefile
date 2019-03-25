@@ -32,19 +32,14 @@ IMB_VERSION = $(shell grep -e "IMB_VERSION_STR" $(IMB_HDR) | cut -d'"' -f2)
 IMB_VERSION_NUM = $(shell grep -e "IMB_VERSION_NUM" $(IMB_HDR) | cut -d' ' -f3)
 
 ifeq ($(IMB_VERSION),)
-	# files for older version of IMB
-	SRCS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += rte_aesni_mb_pmd_compat.c
-	SRCS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += rte_aesni_mb_pmd_ops_compat.c
-else
-	ifeq ($(shell expr $(IMB_VERSION_NUM) \>= 0x3400), 1)
-		# files for a new version of IMB
-		SRCS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += rte_aesni_mb_pmd.c
-		SRCS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += rte_aesni_mb_pmd_ops.c
-	else
-		# files for older version of IMB
-		SRCS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += rte_aesni_mb_pmd_compat.c
-		SRCS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += rte_aesni_mb_pmd_ops_compat.c
-	endif
+$(error "IPSec_MB version >= 0.52 is required")
 endif
+
+ifeq ($(shell expr $(IMB_VERSION_NUM) \< 0x3400), 1)
+$(error "IPSec_MB version >= 0.52 is required")
+endif
+
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += rte_aesni_mb_pmd.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += rte_aesni_mb_pmd_ops.c
 
 include $(RTE_SDK)/mk/rte.lib.mk

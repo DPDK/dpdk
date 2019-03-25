@@ -70,9 +70,6 @@ Deprecation Notices
   to consolidate color definition, which is currently replicated in many places,
   such as: rte_meter.h, rte_mtr.h, rte_tm.h.
 
-* crypto/aesni_mb: the minimum supported intel-ipsec-mb library version will be
-  changed from 0.49.0 to 0.52.0.
-
 * cryptodev: New member in ``rte_cryptodev_config`` to allow applications to
   disable features supported by the crypto device. Only the following features
   would be allowed to be disabled this way,

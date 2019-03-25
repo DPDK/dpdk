@@ -10,16 +10,13 @@ else
 	imb_arr = cc.get_define('IMB_VERSION_STR',
 		prefix : '#include<intel-ipsec-mb.h>').split('"')
 
-	imb_ver =''.join(imb_arr)
+	imb_ver = ''.join(imb_arr)
 
-	if imb_ver.version_compare('>=' + IPSec_MB_ver_0_52)
-		message('Build for a new version of library IPSec_MB[' + imb_ver + ']')
-		sources = files('rte_aesni_mb_pmd.c',
-			'rte_aesni_mb_pmd_ops.c')
+	if (imb_ver == '') or (imb_ver.version_compare('<' + IPSec_MB_ver_0_52))
+		message('IPSec_MB version >= 0.52 is required')
+		build = false
 	else
-		sources = files('rte_aesni_mb_pmd_compat.c',
-			'rte_aesni_mb_pmd_ops_compat.c')
-		message('Build for older version of library IPSec_MB[' + imb_ver + ']')
+		sources = files('rte_aesni_mb_pmd.c', 'rte_aesni_mb_pmd_ops.c')
 	endif
 
 endif
