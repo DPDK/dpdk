@@ -1672,7 +1672,8 @@ ice_add_rss_vsi_ctx(struct ice_hw *hw, u16 vsi_handle,
 
 	rss_cfg->hashed_flds = prof->segs[prof->segs_cnt - 1].match;
 	rss_cfg->packet_hdr = prof->segs[prof->segs_cnt - 1].hdrs;
-	LIST_ADD(&rss_cfg->l_entry, &hw->vsi_ctx[vsi_handle]->rss_list_head);
+	LIST_ADD_TAIL(&rss_cfg->l_entry,
+		      &hw->vsi_ctx[vsi_handle]->rss_list_head);
 
 	return ICE_SUCCESS;
 }

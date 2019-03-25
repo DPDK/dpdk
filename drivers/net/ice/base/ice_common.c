@@ -3854,7 +3854,10 @@ enum ice_status ice_replay_vsi(struct ice_hw *hw, u16 vsi_handle)
 		if (status)
 			return status;
 	}
-
+	/* Replay per VSI all RSS configurations */
+	status = ice_replay_rss_cfg(hw, vsi_handle);
+	if (status)
+		return status;
 	/* Replay per VSI all filters */
 	status = ice_replay_vsi_all_fltr(hw, vsi_handle);
 	if (!status)

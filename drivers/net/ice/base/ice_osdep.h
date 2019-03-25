@@ -462,6 +462,22 @@ LIST_HEAD(ice_list_head, ice_list_entry);
 #define LIST_ADD(entry, list_head)    LIST_INSERT_HEAD(list_head, entry, next)
 #define LIST_ADD_AFTER(entry, list_entry) \
 	LIST_INSERT_AFTER(list_entry, entry, next)
+
+static inline void list_add_tail(struct ice_list_entry *entry,
+				 struct ice_list_head *head)
+{
+	struct ice_list_entry *tail = head->lh_first;
+
+	if (tail == NULL) {
+		LIST_INSERT_HEAD(head, entry, next);
+		return;
+	}
+	while (tail->next.le_next != NULL)
+		tail = tail->next.le_next;
+	LIST_INSERT_AFTER(tail, entry, next);
+}
+
+#define LIST_ADD_TAIL(entry, head) list_add_tail(entry, head)
 #define LIST_FOR_EACH_ENTRY(pos, head, type, member)			       \
 	for ((pos) = (head)->lh_first ?					       \
 		     container_of((head)->lh_first, struct type, member) :     \
