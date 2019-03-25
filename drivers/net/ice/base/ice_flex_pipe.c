@@ -2247,8 +2247,6 @@ ice_find_dup_props_vsig(struct ice_hw *hw, enum ice_block blk,
 	for (i = 0; i < xlt2->count; i++) {
 		if (xlt2->vsig_tbl[i].in_use &&
 		    ice_match_prop_lst(chs, &xlt2->vsig_tbl[i].prop_lst)) {
-			*vsig = (i | ((hw->pf_id << ICE_PF_NUM_S) &
-				      ICE_PF_NUM_M));
 			*vsig = ICE_VSIG_VALUE(i, hw->pf_id);
 			return ICE_SUCCESS;
 		}

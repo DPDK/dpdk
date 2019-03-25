@@ -1930,8 +1930,6 @@ enum ice_adminq_opc {
 	ice_aqc_opc_move_sched_elems			= 0x0408,
 	ice_aqc_opc_suspend_sched_elems			= 0x0409,
 	ice_aqc_opc_resume_sched_elems			= 0x040A,
-	ice_aqc_opc_suspend_sched_traffic		= 0x040B,
-	ice_aqc_opc_resume_sched_traffic		= 0x040C,
 	ice_aqc_opc_delete_sched_elems			= 0x040F,
 	ice_aqc_opc_add_rl_profiles			= 0x0410,
 	ice_aqc_opc_query_rl_profiles			= 0x0411,

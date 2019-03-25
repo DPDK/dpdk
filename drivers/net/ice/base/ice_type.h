@@ -733,12 +733,6 @@ struct ice_hw {
 	/* tunneling info */
 	struct ice_tunnel_table tnl;
 
-	/* PTYPE group and XLT1 management */
-#define ICE_MAX_PTGS	256
-	struct ice_ptg_entry ptg_tbl[ICE_BLK_COUNT][ICE_MAX_PTGS];
-
-#define ICE_XLT1_CNT	1024
-	struct ice_ptg_ptype xlt1_tbl[ICE_BLK_COUNT][ICE_XLT1_CNT];
 #define ICE_PKG_FILENAME	"package_file"
 #define ICE_PKG_FILENAME_EXT	"pkg"
 #define ICE_PKG_FILE_MAJ_VER	1
