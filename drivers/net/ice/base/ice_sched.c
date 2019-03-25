@@ -1896,7 +1896,7 @@ ice_sched_rm_vsi_cfg(struct ice_port_info *pi, u16 vsi_handle, u8 owner)
 	if (!vsi_ctx)
 		goto exit_sched_rm_vsi_cfg;
 
-	for (i = 0; i < ICE_MAX_TRAFFIC_CLASS; i++) {
+	ice_for_each_traffic_class(i) {
 		struct ice_sched_node *vsi_node, *tc_node;
 		u8 j = 0;
 
@@ -2174,7 +2174,7 @@ ice_sched_cfg_agg(struct ice_port_info *pi, u32 agg_id,
 		LIST_ADD(&agg_info->list_entry, &hw->agg_list);
 	}
 	/* Create aggregator node(s) for requested TC(s) */
-	for (tc = 0; tc < ICE_MAX_TRAFFIC_CLASS; tc++) {
+	ice_for_each_traffic_class(tc) {
 		if (!ice_is_tc_ena(*tc_bitmap, tc)) {
 			/* Delete aggregator cfg TC if it exists previously */
 			status = ice_rm_agg_cfg_tc(pi, agg_info, tc, false);
@@ -2340,7 +2340,7 @@ ice_sched_assoc_vsi_to_agg(struct ice_port_info *pi, u32 agg_id,
 		LIST_ADD(&agg_vsi_info->list_entry, &agg_info->agg_vsi_list);
 	}
 	/* Move VSI node to new aggregator node for requested TC(s) */
-	for (tc = 0; tc < ICE_MAX_TRAFFIC_CLASS; tc++) {
+	ice_for_each_traffic_class(tc) {
 		if (!ice_is_tc_ena(*tc_bitmap, tc))
 			continue;
 
@@ -2410,7 +2410,7 @@ enum ice_status ice_rm_agg_cfg(struct ice_port_info *pi, u32 agg_id)
 		goto exit_ice_rm_agg_cfg;
 	}
 
-	for (tc = 0; tc < ICE_MAX_TRAFFIC_CLASS; tc++) {
+	ice_for_each_traffic_class(tc) {
 		status = ice_rm_agg_cfg_tc(pi, agg_info, tc, true);
 		if (status)
 			goto exit_ice_rm_agg_cfg;
@@ -3050,7 +3050,7 @@ ice_cfg_vsi_bw_alloc(struct ice_port_info *pi, u16 vsi_handle, u8 ena_tcmap,
 	ice_acquire_lock(&pi->sched_lock);
 
 	/* Return success if no nodes are present across TC */
-	for (tc = 0; tc < ICE_MAX_TRAFFIC_CLASS; tc++) {
+	ice_for_each_traffic_class(tc) {
 		struct ice_sched_node *tc_node, *vsi_node;
 
 		if (!ice_is_tc_ena(ena_tcmap, tc))
@@ -3112,7 +3112,7 @@ ice_cfg_agg_bw_alloc(struct ice_port_info *pi, u32 agg_id, u8 ena_tcmap,
 	}
 
 	/* Return success if no nodes are present across TC */
-	for (tc = 0; tc < ICE_MAX_TRAFFIC_CLASS; tc++) {
+	ice_for_each_traffic_class(tc) {
 		struct ice_sched_node *tc_node, *agg_node;
 
 		if (!ice_is_tc_ena(ena_tcmap, tc))
@@ -4174,7 +4174,7 @@ ice_sched_set_agg_bw_dflt_lmt(struct ice_port_info *pi, u16 vsi_handle)
 	if (!vsi_ctx)
 		return ICE_ERR_PARAM;
 
-	for (tc = 0; tc < ICE_MAX_TRAFFIC_CLASS; tc++) {
+	ice_for_each_traffic_class(tc) {
 		struct ice_sched_node *node;
 
 		node = vsi_ctx->sched.ag_node[tc];
@@ -4324,7 +4324,7 @@ ice_sched_validate_vsi_srl_node(struct ice_port_info *pi, u16 vsi_handle)
 		return ICE_ERR_PARAM;
 
 	/* Return success if no nodes are present across TC */
-	for (tc = 0; tc < ICE_MAX_TRAFFIC_CLASS; tc++) {
+	ice_for_each_traffic_class(tc) {
 		struct ice_sched_node *tc_node, *vsi_node;
 		enum ice_rl_type rl_type = ICE_SHARED_BW;
 		enum ice_status status;
@@ -4384,7 +4384,7 @@ ice_sched_set_vsi_bw_shared_lmt(struct ice_port_info *pi, u16 vsi_handle,
 	if (status)
 		goto exit_set_vsi_bw_shared_lmt;
 	/* Return success if no nodes are present across TC */
-	for (tc = 0; tc < ICE_MAX_TRAFFIC_CLASS; tc++) {
+	ice_for_each_traffic_class(tc) {
 		struct ice_sched_node *tc_node, *vsi_node;
 		enum ice_rl_type rl_type = ICE_SHARED_BW;
 
@@ -4442,7 +4442,7 @@ ice_sched_validate_agg_srl_node(struct ice_port_info *pi, u32 agg_id)
 	if (!agg_id_present)
 		return ICE_ERR_PARAM;
 	/* Return success if no nodes are present across TC */
-	for (tc = 0; tc < ICE_MAX_TRAFFIC_CLASS; tc++) {
+	ice_for_each_traffic_class(tc) {
 		struct ice_sched_node *tc_node, *agg_node;
 		enum ice_rl_type rl_type = ICE_SHARED_BW;
 
@@ -4513,7 +4513,7 @@ ice_sched_set_agg_bw_shared_lmt(struct ice_port_info *pi, u32 agg_id, u32 bw)
 	}
 
 	/* Return success if no nodes are present across TC */
-	for (tc = 0; tc < ICE_MAX_TRAFFIC_CLASS; tc++) {
+	ice_for_each_traffic_class(tc) {
 		enum ice_rl_type rl_type = ICE_SHARED_BW;
 		struct ice_sched_node *tc_node, *agg_node;
 
@@ -5119,7 +5119,7 @@ ice_sched_replay_agg_bw(struct ice_hw *hw, struct ice_sched_agg_info *agg_info)
 
 	if (!agg_info)
 		return ICE_ERR_PARAM;
-	for (tc = 0; tc < ICE_MAX_TRAFFIC_CLASS; tc++) {
+	ice_for_each_traffic_class(tc) {
 		if (!ice_is_any_bit_set(agg_info->bw_t_info[tc].bw_t_bitmap,
 					ICE_BW_TYPE_CNT))
 			continue;
@@ -5159,7 +5159,7 @@ ice_sched_get_ena_tc_bitmap(struct ice_port_info *pi, ice_bitmap_t *tc_bitmap,
 	u8 tc;
 
 	/* Some TC(s) may be missing after reset, adjust for replay */
-	for (tc = 0; tc < ICE_MAX_TRAFFIC_CLASS; tc++)
+	ice_for_each_traffic_class(tc)
 		if (ice_is_tc_ena(*tc_bitmap, tc) &&
 		    (ice_sched_get_tc_node(pi, tc)))
 			ice_set_bit(tc, ena_tc_bitmap);
@@ -5253,7 +5253,7 @@ ice_sched_replay_tc_node_bw(struct ice_hw *hw)
 	u8 tc;
 
 	ice_acquire_lock(&pi->sched_lock);
-	for (tc = 0; tc < ICE_MAX_TRAFFIC_CLASS; tc++) {
+	ice_for_each_traffic_class(tc) {
 		struct ice_sched_node *tc_node;
 
 		tc_node = ice_sched_get_tc_node(hw->port_info, tc);
@@ -5291,7 +5291,7 @@ ice_sched_replay_vsi_bw(struct ice_hw *hw, u16 vsi_handle,
 	vsi_ctx = ice_get_vsi_ctx(pi->hw, vsi_handle);
 	if (!vsi_ctx)
 		return ICE_ERR_PARAM;
-	for (tc = 0; tc < ICE_MAX_TRAFFIC_CLASS; tc++) {
+	ice_for_each_traffic_class(tc) {
 		if (!ice_is_tc_ena(*tc_bitmap, tc))
 			continue;
 		tc_node = ice_sched_get_tc_node(pi, tc);

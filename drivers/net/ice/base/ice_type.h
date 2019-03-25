@@ -18,6 +18,9 @@
 #define ICE_BYTES_PER_DWORD	4
 #define ICE_MAX_TRAFFIC_CLASS	8
 
+#ifndef MIN_T
+#define MIN_T(_t, _a, _b)	min((_t)(_a), (_t)(_b))
+#endif
 
 #include "ice_status.h"
 #include "ice_hw_autogen.h"
@@ -379,6 +382,10 @@ struct ice_nvm_info {
 
 /* Max number of port to queue branches w.r.t topology */
 #define ICE_TXSCHED_MAX_BRANCHES ICE_MAX_TRAFFIC_CLASS
+
+#define ice_for_each_traffic_class(_i)	\
+	for ((_i) = 0; (_i) < ICE_MAX_TRAFFIC_CLASS; (_i)++)
+
 /* ICE_DFLT_AGG_ID means that all new VM(s)/VSI node connects
  * to driver defined policy for default aggregator
  */
