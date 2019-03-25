@@ -460,8 +460,9 @@ ice_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	/* Init the Tx tail register*/
 	ICE_PCI_REG_WRITE(txq->qtx_tail, 0);
 
-	err = ice_ena_vsi_txq(hw->port_info, vsi->idx, 0, 1, &txq_elem,
-			      sizeof(txq_elem), NULL);
+	/* Fix me, we assume TC always 0 here */
+	err = ice_ena_vsi_txq(hw->port_info, vsi->idx, 0, tx_queue_id, 1,
+			&txq_elem, sizeof(txq_elem), NULL);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Failed to add lan txq");
 		return -EIO;
@@ -540,9 +541,12 @@ ice_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 {
 	struct ice_tx_queue *txq;
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct ice_vsi *vsi = pf->main_vsi;
 	enum ice_status status;
 	uint16_t q_ids[1];
 	uint32_t q_teids[1];
+	uint16_t q_handle = tx_queue_id;
 
 	if (tx_queue_id >= dev->data->nb_tx_queues) {
 		PMD_DRV_LOG(ERR, "TX queue %u is out of range %u",
@@ -560,8 +564,9 @@ ice_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	q_ids[0] = txq->reg_idx;
 	q_teids[0] = txq->q_teid;
 
-	status = ice_dis_vsi_txq(hw->port_info, 1, q_ids, q_teids,
-				 ICE_NO_RESET, 0, NULL);
+	/* Fix me, we assume TC always 0 here */
+	status = ice_dis_vsi_txq(hw->port_info, vsi->idx, 0, 1, &q_handle,
+				q_ids, q_teids, ICE_NO_RESET, 0, NULL);
 	if (status != ICE_SUCCESS) {
 		PMD_DRV_LOG(DEBUG, "Failed to disable Lan Tx queue");
 		return -EINVAL;
