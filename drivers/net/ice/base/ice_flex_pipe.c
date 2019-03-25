@@ -1269,6 +1269,7 @@ void ice_free_seg(struct ice_hw *hw)
 	if (hw->pkg_copy) {
 		ice_free(hw, hw->pkg_copy);
 		hw->pkg_copy = NULL;
+		hw->pkg_size = 0;
 	}
 	hw->seg = NULL;
 }
@@ -1351,8 +1352,6 @@ static enum ice_status ice_init_pkg(struct ice_hw *hw, u8 *buf, u32 len)
 		status = ICE_SUCCESS;
 	}
 
-	/* Free a previous segment, if necessary */
-	ice_free_seg(hw);
 	if (!status) {
 		hw->seg = seg;
 		/* on successful package download, update other required
@@ -1401,12 +1400,14 @@ enum ice_status ice_copy_and_init_pkg(struct ice_hw *hw, const u8 *buf, u32 len)
 	buf_copy = (u8 *)ice_memdup(hw, buf, len, ICE_NONDMA_TO_NONDMA);
 
 	status = ice_init_pkg(hw, buf_copy, len);
-	if (status)
+	if (status) {
 		/* Free the copy, since we failed to initialize the package */
 		ice_free(hw, buf_copy);
-	else
+	} else {
 		/* Track the copied pkg so we can free it later */
 		hw->pkg_copy = buf_copy;
+		hw->pkg_size = len;
+	}
 
 	return status;
 }

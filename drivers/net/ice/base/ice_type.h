@@ -728,6 +728,7 @@ struct ice_hw {
 
 	/* Pointer to allocated copy of pkg memory */
 	u8 *pkg_copy;
+	u32 pkg_size;
 
 	/* tunneling info */
 	struct ice_tunnel_table tnl;
