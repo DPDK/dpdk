@@ -7,8 +7,6 @@
 
 #include "ice_rxtx.h"
 
-#define ICE_TD_CMD ICE_TX_DESC_CMD_EOP
-
 #define ICE_TX_CKSUM_OFFLOAD_MASK (		 \
 		PKT_TX_IP_CKSUM |		 \
 		PKT_TX_L4_MASK |		 \
@@ -325,6 +323,9 @@ ice_reset_rx_queue(struct ice_rx_queue *rxq)
 	rxq->nb_rx_hold = 0;
 	rxq->pkt_first_seg = NULL;
 	rxq->pkt_last_seg = NULL;
+
+	rxq->rxrearm_start = 0;
+	rxq->rxrearm_nb = 0;
 }
 
 int
@@ -1501,6 +1502,12 @@ ice_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 #endif
 	    dev->rx_pkt_burst == ice_recv_scattered_pkts)
 		return ptypes;
+
+#ifdef RTE_ARCH_X86
+	if (dev->rx_pkt_burst == ice_recv_pkts_vec)
+		return ptypes;
+#endif
+
 	return NULL;
 }
 
@@ -2232,6 +2239,22 @@ ice_set_rx_function(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 	struct ice_adapter *ad =
 		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+#ifdef RTE_ARCH_X86
+	struct ice_rx_queue *rxq;
+	int i;
+
+	if (!ice_rx_vec_dev_check(dev)) {
+		for (i = 0; i < dev->data->nb_rx_queues; i++) {
+			rxq = dev->data->rx_queues[i];
+			(void)ice_rxq_vec_setup(rxq);
+		}
+		PMD_DRV_LOG(DEBUG, "Using Vector Rx (port %d).",
+			    dev->data->port_id);
+		dev->rx_pkt_burst = ice_recv_pkts_vec;
+
+		return;
+	}
+#endif
 
 	if (dev->data->scattered_rx) {
 		/* Set the non-LRO scattered function */

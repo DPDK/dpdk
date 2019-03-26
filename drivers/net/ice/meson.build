@@ -11,3 +11,7 @@ sources = files(
 
 deps += ['hash']
 includes += include_directories('base')
+
+if arch_subdir == 'x86'
+	sources += files('ice_rxtx_vec_sse.c')
+endif

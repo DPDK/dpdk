@@ -54,5 +54,8 @@ SRCS-$(CONFIG_RTE_LIBRTE_ICE_PMD) += ice_flow.c
 
 SRCS-$(CONFIG_RTE_LIBRTE_ICE_PMD) += ice_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_ICE_PMD) += ice_rxtx.c
+ifeq ($(CONFIG_RTE_ARCH_X86), y)
+SRCS-$(CONFIG_RTE_LIBRTE_ICE_PMD) += ice_rxtx_vec_sse.c
+endif
 
 include $(RTE_SDK)/mk/rte.lib.mk

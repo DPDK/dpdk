@@ -7,6 +7,8 @@
 
 #include <rte_kvargs.h>
 
+#include <rte_ethdev_driver.h>
+
 #include "base/ice_common.h"
 #include "base/ice_adminq_cmd.h"
 
