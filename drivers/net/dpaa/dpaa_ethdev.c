@@ -673,6 +673,7 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 
 		rxq->is_static = true;
 	}
+	rxq->bp_array = rte_dpaa_bpid_info;
 	dev->data->rx_queues[queue_idx] = rxq;
 
 	/* configure the CGR size as per the desc size */

@@ -1225,6 +1225,7 @@ struct qman_fq {
 	struct rte_event ev;
 	/* affined portal in case of static queue */
 	struct qman_portal *qp;
+	struct dpaa_bp_info *bp_array;
 
 	volatile unsigned long flags;
 

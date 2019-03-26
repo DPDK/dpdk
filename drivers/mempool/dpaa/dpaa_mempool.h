@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- *   Copyright 2017 NXP
+ *   Copyright 2017,2019 NXP
  *
  */
 #ifndef __DPAA_MEMPOOL_H__
@@ -54,7 +54,7 @@ DPAA_MEMPOOL_PTOV(struct dpaa_bp_info *bp_info __rte_unused, uint64_t addr)
 #define DPAA_MEMPOOL_TO_BPID(__mp) \
 	(((struct dpaa_bp_info *)__mp->pool_data)->bpid)
 
-extern struct dpaa_bp_info rte_dpaa_bpid_info[DPAA_MAX_BPOOLS];
+extern struct dpaa_bp_info *rte_dpaa_bpid_info;
 
 #define DPAA_BPID_TO_POOL_INFO(__bpid) (&rte_dpaa_bpid_info[__bpid])
 
