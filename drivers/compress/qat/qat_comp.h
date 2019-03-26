@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2015-2018 Intel Corporation
+ * Copyright(c) 2015-2019 Intel Corporation
  */
 
 #ifndef _QAT_COMP_H_
@@ -40,16 +40,16 @@ struct qat_inter_sgl {
 	struct qat_flat_buf buffers[QAT_NUM_BUFS_IN_IM_SGL];
 } __rte_packed __rte_cache_aligned;
 
-struct qat_comp_sgl {
-	qat_sgl_hdr;
-	struct qat_flat_buf buffers[RTE_PMD_QAT_COMP_SGL_MAX_SEGMENTS];
-} __rte_packed __rte_cache_aligned;
 
 struct qat_comp_op_cookie {
-	struct qat_comp_sgl qat_sgl_src;
-	struct qat_comp_sgl qat_sgl_dst;
 	phys_addr_t qat_sgl_src_phys_addr;
 	phys_addr_t qat_sgl_dst_phys_addr;
+	/* dynamically created SGLs */
+	uint8_t socket_id;
+	uint16_t src_nb_elems;
+	uint16_t dst_nb_elems;
+	struct qat_sgl *qat_sgl_src_d;
+	struct qat_sgl *qat_sgl_dst_d;
 };
 
 struct qat_comp_xform {

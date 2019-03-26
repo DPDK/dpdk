@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2018 Intel Corporation
+ * Copyright(c) 2018-2019 Intel Corporation
  */
 
 #include <rte_mempool.h>
@@ -79,22 +79,70 @@ qat_comp_build_request(void *in_op, uint8_t *out_msg,
 		ICP_QAT_FW_COMN_PTR_TYPE_SET(comp_req->comn_hdr.comn_req_flags,
 				QAT_COMN_PTR_TYPE_SGL);
 
+		if (unlikely(op->m_src->nb_segs > cookie->src_nb_elems)) {
+			/* we need to allocate more elements in SGL*/
+			void *tmp;
+
+			tmp = rte_realloc_socket(cookie->qat_sgl_src_d,
+					  sizeof(struct qat_sgl) +
+					  sizeof(struct qat_flat_buf) *
+					  op->m_src->nb_segs, 64,
+					  cookie->socket_id);
+
+			if (unlikely(tmp == NULL)) {
+				QAT_DP_LOG(ERR, "QAT PMD can't allocate memory"
+					   " for %d elements of SGL",
+					   op->m_src->nb_segs);
+				op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
+				return -ENOMEM;
+			}
+			/* new SGL is valid now */
+			cookie->qat_sgl_src_d = (struct qat_sgl *)tmp;
+			cookie->src_nb_elems = op->m_src->nb_segs;
+			cookie->qat_sgl_src_phys_addr =
+				rte_malloc_virt2iova(cookie->qat_sgl_src_d);
+		}
+
 		ret = qat_sgl_fill_array(op->m_src,
 				op->src.offset,
-				&cookie->qat_sgl_src,
+				cookie->qat_sgl_src_d,
 				op->src.length,
-				RTE_PMD_QAT_COMP_SGL_MAX_SEGMENTS);
+				cookie->src_nb_elems);
 		if (ret) {
 			QAT_DP_LOG(ERR, "QAT PMD Cannot fill source sgl array");
 			op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
 			return ret;
 		}
 
+		if (unlikely(op->m_dst->nb_segs > cookie->dst_nb_elems)) {
+			/* we need to allocate more elements in SGL*/
+			struct qat_sgl *tmp;
+
+			tmp = rte_realloc_socket(cookie->qat_sgl_dst_d,
+					  sizeof(struct qat_sgl) +
+					  sizeof(struct qat_flat_buf) *
+					  op->m_dst->nb_segs, 64,
+					  cookie->socket_id);
+
+			if (unlikely(tmp == NULL)) {
+				QAT_DP_LOG(ERR, "QAT PMD can't allocate memory"
+					   " for %d elements of SGL",
+					   op->m_dst->nb_segs);
+				op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
+				return -EINVAL;
+			}
+			/* new SGL is valid now */
+			cookie->qat_sgl_dst_d = (struct qat_sgl *)tmp;
+			cookie->dst_nb_elems = op->m_dst->nb_segs;
+			cookie->qat_sgl_dst_phys_addr =
+				rte_malloc_virt2iova(cookie->qat_sgl_dst_d);
+		}
+
 		ret = qat_sgl_fill_array(op->m_dst,
 				op->dst.offset,
-				&cookie->qat_sgl_dst,
+				cookie->qat_sgl_dst_d,
 				comp_req->comp_pars.out_buffer_sz,
-				RTE_PMD_QAT_COMP_SGL_MAX_SEGMENTS);
+				cookie->dst_nb_elems);
 		if (ret) {
 			QAT_DP_LOG(ERR, "QAT PMD Cannot fill dest. sgl array");
 			op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;

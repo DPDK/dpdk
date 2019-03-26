@@ -1,9 +1,13 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2015-2018 Intel Corporation
+ * Copyright(c) 2015-2019 Intel Corporation
  */
+
+#include <rte_malloc.h>
 
 #include "qat_comp.h"
 #include "qat_comp_pmd.h"
+
+#define QAT_PMD_COMP_SGL_DEF_SEGMENTS 16
 
 static const struct rte_compressdev_capabilities qat_comp_gen_capabilities[] = {
 	{/* COMPRESSION - deflate */
@@ -60,12 +64,24 @@ static int
 qat_comp_qp_release(struct rte_compressdev *dev, uint16_t queue_pair_id)
 {
 	struct qat_comp_dev_private *qat_private = dev->data->dev_private;
+	struct qat_qp **qp_addr =
+		(struct qat_qp **)&(dev->data->queue_pairs[queue_pair_id]);
+	struct qat_qp *qp = (struct qat_qp *)*qp_addr;
+	uint32_t i;
 
 	QAT_LOG(DEBUG, "Release comp qp %u on device %d",
 				queue_pair_id, dev->data->dev_id);
 
 	qat_private->qat_dev->qps_in_use[QAT_SERVICE_COMPRESSION][queue_pair_id]
 						= NULL;
+
+	for (i = 0; i < qp->nb_descriptors; i++) {
+
+		struct qat_comp_op_cookie *cookie = qp->op_cookies[i];
+
+		rte_free(cookie->qat_sgl_src_d);
+		rte_free(cookie->qat_sgl_dst_d);
+	}
 
 	return qat_qp_release((struct qat_qp **)
 			&(dev->data->queue_pairs[queue_pair_id]));
@@ -122,15 +138,36 @@ qat_comp_qp_setup(struct rte_compressdev *dev, uint16_t qp_id,
 		struct qat_comp_op_cookie *cookie =
 				qp->op_cookies[i];
 
+		cookie->qat_sgl_src_d = rte_zmalloc_socket(NULL,
+					sizeof(struct qat_sgl) +
+					sizeof(struct qat_flat_buf) *
+					QAT_PMD_COMP_SGL_DEF_SEGMENTS,
+					64, dev->data->socket_id);
+
+		cookie->qat_sgl_dst_d = rte_zmalloc_socket(NULL,
+					sizeof(struct qat_sgl) +
+					sizeof(struct qat_flat_buf) *
+					QAT_PMD_COMP_SGL_DEF_SEGMENTS,
+					64, dev->data->socket_id);
+
+		if (cookie->qat_sgl_src_d == NULL ||
+				cookie->qat_sgl_dst_d == NULL) {
+			QAT_LOG(ERR, "Can't allocate SGL"
+				     " for device %s",
+				     qat_private->qat_dev->name);
+			return -ENOMEM;
+		}
+
 		cookie->qat_sgl_src_phys_addr =
-				rte_mempool_virt2iova(cookie) +
-				offsetof(struct qat_comp_op_cookie,
-				qat_sgl_src);
+				rte_malloc_virt2iova(cookie->qat_sgl_src_d);
 
 		cookie->qat_sgl_dst_phys_addr =
-				rte_mempool_virt2iova(cookie) +
-				offsetof(struct qat_comp_op_cookie,
-				qat_sgl_dst);
+				rte_malloc_virt2iova(cookie->qat_sgl_dst_d);
+
+		cookie->dst_nb_elems = cookie->src_nb_elems =
+				QAT_PMD_COMP_SGL_DEF_SEGMENTS;
+
+		cookie->socket_id = dev->data->socket_id;
 	}
 
 	return ret;

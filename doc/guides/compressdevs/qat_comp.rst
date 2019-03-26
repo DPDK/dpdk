@@ -35,7 +35,6 @@ Limitations
 * Compressdev level 0, no compression, is not supported.
 * Queue pairs are not thread-safe (that is, within a single queue pair, RX and TX from different lcores is not supported).
 * No BSD support as BSD QAT kernel driver not available.
-* Number of segments in mbuf chains in the op must be <= RTE_PMD_QAT_COMP_SGL_MAX_SEGMENTS from the config file.
 * When using Deflate dynamic huffman encoding for compression, the input size (op.src.length)
   must be < CONFIG_RTE_PMD_QAT_COMP_IM_BUFFER_SIZE from the config file,
   see :ref:`building_qat_config` for more details.
