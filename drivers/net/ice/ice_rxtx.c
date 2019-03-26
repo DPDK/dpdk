@@ -1505,7 +1505,8 @@ ice_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 
 #ifdef RTE_ARCH_X86
 	if (dev->rx_pkt_burst == ice_recv_pkts_vec ||
-	    dev->rx_pkt_burst == ice_recv_scattered_pkts_vec)
+	    dev->rx_pkt_burst == ice_recv_scattered_pkts_vec ||
+	    dev->rx_pkt_burst == ice_recv_pkts_vec_avx2)
 		return ptypes;
 #endif
 
@@ -2243,21 +2244,30 @@ ice_set_rx_function(struct rte_eth_dev *dev)
 #ifdef RTE_ARCH_X86
 	struct ice_rx_queue *rxq;
 	int i;
+	bool use_avx2 = false;
 
 	if (!ice_rx_vec_dev_check(dev)) {
 		for (i = 0; i < dev->data->nb_rx_queues; i++) {
 			rxq = dev->data->rx_queues[i];
 			(void)ice_rxq_vec_setup(rxq);
 		}
+
+		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1 ||
+		    rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1)
+			use_avx2 = true;
+
 		if (dev->data->scattered_rx) {
 			PMD_DRV_LOG(DEBUG,
 				    "Using Vector Scattered Rx (port %d).",
 				    dev->data->port_id);
 			dev->rx_pkt_burst = ice_recv_scattered_pkts_vec;
 		} else {
-			PMD_DRV_LOG(DEBUG, "Using Vector Rx (port %d).",
+			PMD_DRV_LOG(DEBUG, "Using %sVector Rx (port %d).",
+				    use_avx2 ? "avx2 " : "",
 				    dev->data->port_id);
-			dev->rx_pkt_burst = ice_recv_pkts_vec;
+			dev->rx_pkt_burst = use_avx2 ?
+					    ice_recv_pkts_vec_avx2 :
+					    ice_recv_pkts_vec;
 		}
 
 		return;
