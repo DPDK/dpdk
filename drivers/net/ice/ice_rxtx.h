@@ -173,4 +173,6 @@ int ice_rx_vec_dev_check(struct rte_eth_dev *dev);
 int ice_rxq_vec_setup(struct ice_rx_queue *rxq);
 uint16_t ice_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 			   uint16_t nb_pkts);
+uint16_t ice_recv_scattered_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
+				     uint16_t nb_pkts);
 #endif /* _ICE_RXTX_H_ */
