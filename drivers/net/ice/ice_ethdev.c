@@ -1741,6 +1741,7 @@ ice_dev_start(struct rte_eth_dev *dev)
 	}
 
 	ice_set_rx_function(dev);
+	ice_set_tx_function(dev);
 
 	mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK |
 			ETH_VLAN_EXTEND_MASK;
