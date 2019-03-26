@@ -100,6 +100,10 @@ New Features
 
   * Added promiscuous mode support.
 
+* **Updated the ice driver.**
+
+  * Added support of SSE and AVX2 instructions in Rx and Tx paths.
+
 * **Updated the QuickAssist Technology PMD.**
 
   Added support for AES-XTS with 128 and 256 bit AES keys.

@@ -64,6 +64,24 @@ Driver compilation and testing
 Refer to the document :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
 for details.
 
+Features
+--------
+
+Vector PMD
+~~~~~~~~~~
+
+Vector PMD for RX and TX path are selected automatically. The paths
+are chosen based on 2 conditions.
+
+- ``CPU``
+  On the X86 platform, the driver checks if the CPU supports AVX2.
+  If it's supported, AVX2 paths will be chosen. If not, SSE is chosen.
+
+- ``Offload features``
+  The supported HW offload features are described in the document ice_vec.ini.
+  If any not supported features are used, ICE vector PMD is disabled and the
+  normal paths are chosen.
+
 Sample Application Notes
 ------------------------
 

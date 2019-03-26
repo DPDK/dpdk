@@ -2356,15 +2356,24 @@ ice_set_tx_function(struct rte_eth_dev *dev)
 #ifdef RTE_ARCH_X86
 	struct ice_tx_queue *txq;
 	int i;
+	bool use_avx2 = false;
 
 	if (!ice_tx_vec_dev_check(dev)) {
 		for (i = 0; i < dev->data->nb_tx_queues; i++) {
 			txq = dev->data->tx_queues[i];
 			(void)ice_txq_vec_setup(txq);
 		}
-		PMD_DRV_LOG(DEBUG, "Using Vector Tx (port %d).",
+
+		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1 ||
+		    rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1)
+			use_avx2 = true;
+
+		PMD_DRV_LOG(DEBUG, "Using %sVector Tx (port %d).",
+			    use_avx2 ? "avx2 " : "",
 			    dev->data->port_id);
-		dev->tx_pkt_burst = ice_xmit_pkts_vec;
+		dev->tx_pkt_burst = use_avx2 ?
+				    ice_xmit_pkts_vec_avx2 :
+				    ice_xmit_pkts_vec;
 		dev->tx_pkt_prepare = NULL;
 
 		return;
