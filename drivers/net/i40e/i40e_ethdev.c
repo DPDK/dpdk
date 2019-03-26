@@ -12745,6 +12745,8 @@ i40e_config_rss_filter(struct i40e_pf *pf,
 		rss_conf.rss_key = (uint8_t *)rss_key_default;
 		rss_conf.rss_key_len = (I40E_PFQF_HKEY_MAX_INDEX + 1) *
 							sizeof(uint32_t);
+		PMD_DRV_LOG(INFO,
+			"No valid RSS key config for i40e, using default\n");
 	}
 
 	i40e_hw_rss_hash_set(pf, &rss_conf);
