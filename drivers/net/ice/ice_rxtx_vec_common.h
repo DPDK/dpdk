@@ -71,6 +71,73 @@ ice_rx_reassemble_packets(struct ice_rx_queue *rxq, struct rte_mbuf **rx_bufs,
 	return pkt_idx;
 }
 
+static __rte_always_inline int
+ice_tx_free_bufs(struct ice_tx_queue *txq)
+{
+	struct ice_tx_entry *txep;
+	uint32_t n;
+	uint32_t i;
+	int nb_free = 0;
+	struct rte_mbuf *m, *free[ICE_TX_MAX_FREE_BUF_SZ];
+
+	/* check DD bits on threshold descriptor */
+	if ((txq->tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
+			rte_cpu_to_le_64(ICE_TXD_QW1_DTYPE_M)) !=
+			rte_cpu_to_le_64(ICE_TX_DESC_DTYPE_DESC_DONE))
+		return 0;
+
+	n = txq->tx_rs_thresh;
+
+	 /* first buffer to free from S/W ring is at index
+	  * tx_next_dd - (tx_rs_thresh-1)
+	  */
+	txep = &txq->sw_ring[txq->tx_next_dd - (n - 1)];
+	m = rte_pktmbuf_prefree_seg(txep[0].mbuf);
+	if (likely(m)) {
+		free[0] = m;
+		nb_free = 1;
+		for (i = 1; i < n; i++) {
+			m = rte_pktmbuf_prefree_seg(txep[i].mbuf);
+			if (likely(m)) {
+				if (likely(m->pool == free[0]->pool)) {
+					free[nb_free++] = m;
+				} else {
+					rte_mempool_put_bulk(free[0]->pool,
+							     (void *)free,
+							     nb_free);
+					free[0] = m;
+					nb_free = 1;
+				}
+			}
+		}
+		rte_mempool_put_bulk(free[0]->pool, (void **)free, nb_free);
+	} else {
+		for (i = 1; i < n; i++) {
+			m = rte_pktmbuf_prefree_seg(txep[i].mbuf);
+			if (m)
+				rte_mempool_put(m->pool, m);
+		}
+	}
+
+	/* buffers were freed, update counters */
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + txq->tx_rs_thresh);
+	txq->tx_next_dd = (uint16_t)(txq->tx_next_dd + txq->tx_rs_thresh);
+	if (txq->tx_next_dd >= txq->nb_tx_desc)
+		txq->tx_next_dd = (uint16_t)(txq->tx_rs_thresh - 1);
+
+	return txq->tx_rs_thresh;
+}
+
+static __rte_always_inline void
+ice_tx_backlog_entry(struct ice_tx_entry *txep,
+		     struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	int i;
+
+	for (i = 0; i < (int)nb_pkts; ++i)
+		txep[i].mbuf = tx_pkts[i];
+}
+
 static inline void
 _ice_rx_queue_release_mbufs_vec(struct ice_rx_queue *rxq)
 {
@@ -104,6 +171,34 @@ _ice_rx_queue_release_mbufs_vec(struct ice_rx_queue *rxq)
 
 	/* set all entries to NULL */
 	memset(rxq->sw_ring, 0, sizeof(rxq->sw_ring[0]) * rxq->nb_rx_desc);
+}
+
+static inline void
+_ice_tx_queue_release_mbufs_vec(struct ice_tx_queue *txq)
+{
+	uint16_t i;
+
+	if (unlikely(!txq || !txq->sw_ring)) {
+		PMD_DRV_LOG(DEBUG, "Pointer to rxq or sw_ring is NULL");
+		return;
+	}
+
+	/**
+	 *  vPMD tx will not set sw_ring's mbuf to NULL after free,
+	 *  so need to free remains more carefully.
+	 */
+	i = txq->tx_next_dd - txq->tx_rs_thresh + 1;
+	if (txq->tx_tail < i) {
+		for (; i < txq->nb_tx_desc; i++) {
+			rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
+			txq->sw_ring[i].mbuf = NULL;
+		}
+		i = 0;
+	}
+	for (; i < txq->tx_tail; i++) {
+		rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
+		txq->sw_ring[i].mbuf = NULL;
+	}
 }
 
 static inline int
@@ -142,6 +237,29 @@ ice_rx_vec_queue_default(struct ice_rx_queue *rxq)
 	return 0;
 }
 
+#define ICE_NO_VECTOR_FLAGS (				 \
+		DEV_TX_OFFLOAD_MULTI_SEGS |		 \
+		DEV_TX_OFFLOAD_VLAN_INSERT |		 \
+		DEV_TX_OFFLOAD_SCTP_CKSUM |		 \
+		DEV_TX_OFFLOAD_UDP_CKSUM |		 \
+		DEV_TX_OFFLOAD_TCP_CKSUM)
+
+static inline int
+ice_tx_vec_queue_default(struct ice_tx_queue *txq)
+{
+	if (!txq)
+		return -1;
+
+	if (txq->offloads & ICE_NO_VECTOR_FLAGS)
+		return -1;
+
+	if (txq->tx_rs_thresh < ICE_VPMD_TX_BURST ||
+	    txq->tx_rs_thresh > ICE_TX_MAX_FREE_BUF_SZ)
+		return -1;
+
+	return 0;
+}
+
 static inline int
 ice_rx_vec_dev_check_default(struct rte_eth_dev *dev)
 {
@@ -151,6 +269,21 @@ ice_rx_vec_dev_check_default(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		rxq = dev->data->rx_queues[i];
 		if (ice_rx_vec_queue_default(rxq))
+			return -1;
+	}
+
+	return 0;
+}
+
+static inline int
+ice_tx_vec_dev_check_default(struct rte_eth_dev *dev)
+{
+	int i;
+	struct ice_tx_queue *txq;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		if (ice_tx_vec_queue_default(txq))
 			return -1;
 	}
 

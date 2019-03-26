@@ -2339,6 +2339,23 @@ ice_set_tx_function(struct rte_eth_dev *dev)
 {
 	struct ice_adapter *ad =
 		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+#ifdef RTE_ARCH_X86
+	struct ice_tx_queue *txq;
+	int i;
+
+	if (!ice_tx_vec_dev_check(dev)) {
+		for (i = 0; i < dev->data->nb_tx_queues; i++) {
+			txq = dev->data->tx_queues[i];
+			(void)ice_txq_vec_setup(txq);
+		}
+		PMD_DRV_LOG(DEBUG, "Using Vector Tx (port %d).",
+			    dev->data->port_id);
+		dev->tx_pkt_burst = ice_xmit_pkts_vec;
+		dev->tx_pkt_prepare = NULL;
+
+		return;
+	}
+#endif
 
 	if (ad->tx_simple_allowed) {
 		PMD_INIT_LOG(DEBUG, "Simple tx finally be used.");
