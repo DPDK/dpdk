@@ -16,8 +16,10 @@
 /* Only single queue supported */
 #define KNI_MAX_QUEUE_PER_PORT 1
 
-#define MAX_PACKET_SZ 2048
 #define MAX_KNI_PORTS 8
+
+#define KNI_ETHER_MTU(mbuf_size)       \
+	((mbuf_size) - ETHER_HDR_LEN) /**< Ethernet MTU. */
 
 #define ETH_KNI_NO_REQUEST_THREAD_ARG	"no_request_thread"
 static const char * const valid_arguments[] = {
@@ -123,11 +125,13 @@ eth_kni_start(struct rte_eth_dev *dev)
 	struct rte_kni_conf conf;
 	const char *name = dev->device->name + 4; /* remove net_ */
 
+	mb_pool = internals->rx_queues[0].mb_pool;
 	snprintf(conf.name, RTE_KNI_NAMESIZE, "%s", name);
 	conf.force_bind = 0;
 	conf.group_id = port_id;
-	conf.mbuf_size = MAX_PACKET_SZ;
-	mb_pool = internals->rx_queues[0].mb_pool;
+	conf.mbuf_size =
+		rte_pktmbuf_data_room_size(mb_pool) - RTE_PKTMBUF_HEADROOM;
+	conf.mtu = KNI_ETHER_MTU(conf.mbuf_size);
 
 	internals->kni = rte_kni_alloc(mb_pool, &conf, NULL);
 	if (internals->kni == NULL) {

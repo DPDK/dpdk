@@ -114,6 +114,10 @@
 #define ndo_change_mtu ndo_change_mtu_rh74
 #endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+#define HAVE_MAX_MTU_PARAM
+#endif
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
 #define HAVE_SIGNAL_FUNCTIONS_OWN_HEADER
 #endif

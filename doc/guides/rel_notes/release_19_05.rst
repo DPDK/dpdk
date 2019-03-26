@@ -54,6 +54,15 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Updated KNI module and PMD.**
+
+  Updated the KNI kernel module to set the max_mtu according to the given
+  initial MTU size. Without it, the maximum MTU was 1500.
+
+  Updated the KNI PMD driver to set the mbuf_size and MTU based on
+  the given mb-pool. This provide the ability to pass jumbo frames
+  if the mb-pool contains suitable buffers' size.
+
 * **Updated Solarflare network PMD.**
 
   Updated the sfc_efx driver including the following changes:

@@ -459,6 +459,9 @@ kni_ioctl_create(struct net *net, uint32_t ioctl_num,
 
 	if (dev_info.mtu)
 		net_dev->mtu = dev_info.mtu;
+#ifdef HAVE_MAX_MTU_PARAM
+	net_dev->max_mtu = net_dev->mtu;
+#endif
 
 	ret = register_netdev(net_dev);
 	if (ret) {
