@@ -116,3 +116,10 @@ DPDK_18.11 {
 
 	local: *;
 } DPDK_18.08;
+
+DPDK_19.05 {
+	global:
+	qman_set_fq_lookup_table;
+
+	local: *;
+} DPDK_18.11;

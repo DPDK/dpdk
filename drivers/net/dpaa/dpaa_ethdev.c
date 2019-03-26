@@ -1225,11 +1225,17 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_FUNC_TRACE();
 
+	dpaa_intf = eth_dev->data->dev_private;
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		eth_dev->dev_ops = &dpaa_devops;
 		/* Plugging of UCODE burst API not supported in Secondary */
 		eth_dev->rx_pkt_burst = dpaa_eth_queue_rx;
+		eth_dev->tx_pkt_burst = dpaa_eth_queue_tx;
+#ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
+		qman_set_fq_lookup_table(
+				dpaa_intf->rx_queues->qman_fq_lookup_table);
+#endif
 		return 0;
 	}
 
