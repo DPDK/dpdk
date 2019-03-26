@@ -1506,7 +1506,8 @@ ice_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 #ifdef RTE_ARCH_X86
 	if (dev->rx_pkt_burst == ice_recv_pkts_vec ||
 	    dev->rx_pkt_burst == ice_recv_scattered_pkts_vec ||
-	    dev->rx_pkt_burst == ice_recv_pkts_vec_avx2)
+	    dev->rx_pkt_burst == ice_recv_pkts_vec_avx2 ||
+	    dev->rx_pkt_burst == ice_recv_scattered_pkts_vec_avx2)
 		return ptypes;
 #endif
 
@@ -2258,9 +2259,12 @@ ice_set_rx_function(struct rte_eth_dev *dev)
 
 		if (dev->data->scattered_rx) {
 			PMD_DRV_LOG(DEBUG,
-				    "Using Vector Scattered Rx (port %d).",
+				    "Using %sVector Scattered Rx (port %d).",
+				    use_avx2 ? "avx2 " : "",
 				    dev->data->port_id);
-			dev->rx_pkt_burst = ice_recv_scattered_pkts_vec;
+			dev->rx_pkt_burst = use_avx2 ?
+					    ice_recv_scattered_pkts_vec_avx2 :
+					    ice_recv_scattered_pkts_vec;
 		} else {
 			PMD_DRV_LOG(DEBUG, "Using %sVector Rx (port %d).",
 				    use_avx2 ? "avx2 " : "",

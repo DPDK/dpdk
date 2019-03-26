@@ -620,3 +620,67 @@ ice_recv_pkts_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts,
 {
 	return _ice_recv_raw_pkts_vec_avx2(rx_queue, rx_pkts, nb_pkts, NULL);
 }
+
+/**
+ * vPMD receive routine that reassembles single burst of 32 scattered packets
+ * Notice:
+ * - nb_pkts < ICE_DESCS_PER_LOOP, just return no packet
+ */
+static uint16_t
+ice_recv_scattered_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts,
+				  uint16_t nb_pkts)
+{
+	struct ice_rx_queue *rxq = rx_queue;
+	uint8_t split_flags[ICE_VPMD_RX_BURST] = {0};
+
+	/* get some new buffers */
+	uint16_t nb_bufs = _ice_recv_raw_pkts_vec_avx2(rxq, rx_pkts, nb_pkts,
+						       split_flags);
+	if (nb_bufs == 0)
+		return 0;
+
+	/* happy day case, full burst + no packets to be joined */
+	const uint64_t *split_fl64 = (uint64_t *)split_flags;
+
+	if (!rxq->pkt_first_seg &&
+	    split_fl64[0] == 0 && split_fl64[1] == 0 &&
+	    split_fl64[2] == 0 && split_fl64[3] == 0)
+		return nb_bufs;
+
+	/* reassemble any packets that need reassembly*/
+	unsigned int i = 0;
+
+	if (!rxq->pkt_first_seg) {
+		/* find the first split flag, and only reassemble then*/
+		while (i < nb_bufs && !split_flags[i])
+			i++;
+		if (i == nb_bufs)
+			return nb_bufs;
+	}
+	return i + ice_rx_reassemble_packets(rxq, &rx_pkts[i], nb_bufs - i,
+					     &split_flags[i]);
+}
+
+/**
+ * vPMD receive routine that reassembles scattered packets.
+ * Main receive routine that can handle arbitrary burst sizes
+ * Notice:
+ * - nb_pkts < ICE_DESCS_PER_LOOP, just return no packet
+ */
+uint16_t
+ice_recv_scattered_pkts_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts,
+				 uint16_t nb_pkts)
+{
+	uint16_t retval = 0;
+
+	while (nb_pkts > ICE_VPMD_RX_BURST) {
+		uint16_t burst = ice_recv_scattered_burst_vec_avx2(rx_queue,
+				rx_pkts + retval, ICE_VPMD_RX_BURST);
+		retval += burst;
+		nb_pkts -= burst;
+		if (burst < ICE_VPMD_RX_BURST)
+			return retval;
+	}
+	return retval + ice_recv_scattered_burst_vec_avx2(rx_queue,
+				rx_pkts + retval, nb_pkts);
+}
