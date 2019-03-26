@@ -27,6 +27,9 @@
 
 #define ICE_SUPPORT_CHAIN_NUM 5
 
+typedef void (*ice_rx_release_mbufs_t)(struct ice_rx_queue *rxq);
+typedef void (*ice_tx_release_mbufs_t)(struct ice_tx_queue *txq);
+
 struct ice_rx_entry {
 	struct rte_mbuf *mbuf;
 };
@@ -61,6 +64,7 @@ struct ice_rx_queue {
 	uint16_t max_pkt_len; /* Maximum packet length */
 	bool q_set; /* indicate if rx queue has been configured */
 	bool rx_deferred_start; /* don't start this queue in dev start */
+	ice_rx_release_mbufs_t rx_rel_mbufs;
 };
 
 struct ice_tx_entry {
@@ -100,6 +104,7 @@ struct ice_tx_queue {
 	uint16_t tx_next_rs;
 	bool tx_deferred_start; /* don't start this queue in dev start */
 	bool q_set; /* indicate if tx queue has been configured */
+	ice_tx_release_mbufs_t tx_rel_mbufs;
 };
 
 /* Offload features */

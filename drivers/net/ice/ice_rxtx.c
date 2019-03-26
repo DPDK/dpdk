@@ -165,7 +165,7 @@ ice_alloc_rx_queue_mbufs(struct ice_rx_queue *rxq)
 
 /* Free all mbufs for descriptors in rx queue */
 static void
-ice_rx_queue_release_mbufs(struct ice_rx_queue *rxq)
+_ice_rx_queue_release_mbufs(struct ice_rx_queue *rxq)
 {
 	uint16_t i;
 
@@ -191,6 +191,12 @@ ice_rx_queue_release_mbufs(struct ice_rx_queue *rxq)
 		}
 		rxq->rx_nb_avail = 0;
 #endif /* RTE_LIBRTE_ICE_RX_ALLOW_BULK_ALLOC */
+}
+
+static void
+ice_rx_queue_release_mbufs(struct ice_rx_queue *rxq)
+{
+	rxq->rx_rel_mbufs(rxq);
 }
 
 /* turn on or off rx queue
@@ -468,7 +474,7 @@ ice_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 
 /* Free all mbufs for descriptors in tx queue */
 static void
-ice_tx_queue_release_mbufs(struct ice_tx_queue *txq)
+_ice_tx_queue_release_mbufs(struct ice_tx_queue *txq)
 {
 	uint16_t i;
 
@@ -483,6 +489,11 @@ ice_tx_queue_release_mbufs(struct ice_tx_queue *txq)
 			txq->sw_ring[i].mbuf = NULL;
 		}
 	}
+}
+static void
+ice_tx_queue_release_mbufs(struct ice_tx_queue *txq)
+{
+	txq->tx_rel_mbufs(txq);
 }
 
 static void
@@ -669,6 +680,7 @@ ice_rx_queue_setup(struct rte_eth_dev *dev,
 	ice_reset_rx_queue(rxq);
 	rxq->q_set = TRUE;
 	dev->data->rx_queues[queue_idx] = rxq;
+	rxq->rx_rel_mbufs = _ice_rx_queue_release_mbufs;
 
 	use_def_burst_func = ice_check_rx_burst_bulk_alloc_preconditions(rxq);
 
@@ -866,6 +878,7 @@ ice_tx_queue_setup(struct rte_eth_dev *dev,
 	ice_reset_tx_queue(txq);
 	txq->q_set = TRUE;
 	dev->data->tx_queues[queue_idx] = txq;
+	txq->tx_rel_mbufs = _ice_tx_queue_release_mbufs;
 
 	return 0;
 }
