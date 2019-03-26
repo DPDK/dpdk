@@ -126,6 +126,7 @@ struct dpaa2_dev_priv {
 		uint64_t qos_extract_param;
 		uint64_t fs_extract_param[MAX_TCS];
 	} extract;
+	LIST_HEAD(, rte_flow) flows; /**< Configured flow rule handles. */
 };
 
 int dpaa2_distset_to_dpkg_profile_cfg(uint64_t req_dist_set,
@@ -172,5 +173,6 @@ uint16_t dpaa2_dev_tx_ordered(void *queue, struct rte_mbuf **bufs,
 			      uint16_t nb_pkts);
 uint16_t dummy_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts);
 void dpaa2_dev_free_eqresp_buf(uint16_t eqresp_ci);
+void dpaa2_flow_clean(struct rte_eth_dev *dev);
 
 #endif /* _DPAA2_ETHDEV_H */

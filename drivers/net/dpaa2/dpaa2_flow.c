@@ -24,6 +24,7 @@
 #include <dpaa2_pmd_logs.h>
 
 struct rte_flow {
+	LIST_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
 	struct dpni_rule_cfg rule;
 	uint8_t key_size;
 	uint8_t tc_id;
@@ -1347,6 +1348,7 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
 	size_t param;
+	struct rte_flow *curr = LIST_FIRST(&priv->flows);
 
 	/* Parse pattern list to get the matching parameters */
 	while (!end_of_list) {
@@ -1625,6 +1627,16 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 		j++;
 	}
 
+	if (!ret) {
+		/* New rules are inserted. */
+		if (!curr) {
+			LIST_INSERT_HEAD(&priv->flows, flow, next);
+		} else {
+			while (LIST_NEXT(curr, next))
+				curr = LIST_NEXT(curr, next);
+			LIST_INSERT_AFTER(curr, flow, next);
+		}
+	}
 	return ret;
 }
 
@@ -1764,7 +1776,7 @@ int dpaa2_flow_validate(struct rte_eth_dev *dev,
 			const struct rte_flow_attr *flow_attr,
 			const struct rte_flow_item pattern[],
 			const struct rte_flow_action actions[],
-			struct rte_flow_error *error __rte_unused)
+			struct rte_flow_error *error)
 {
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	struct dpni_attr dpni_attr;
@@ -1778,6 +1790,9 @@ int dpaa2_flow_validate(struct rte_eth_dev *dev,
 		DPAA2_PMD_ERR(
 			"Failure to get dpni@%p attribute, err code  %d\n",
 			dpni, ret);
+		rte_flow_error_set(error, EPERM,
+			   RTE_FLOW_ERROR_TYPE_ATTR,
+			   flow_attr, "invalid");
 		return ret;
 	}
 
@@ -1786,6 +1801,9 @@ int dpaa2_flow_validate(struct rte_eth_dev *dev,
 	if (ret < 0) {
 		DPAA2_PMD_ERR(
 			"Invalid attributes are given\n");
+		rte_flow_error_set(error, EPERM,
+			   RTE_FLOW_ERROR_TYPE_ATTR,
+			   flow_attr, "invalid");
 		goto not_valid_params;
 	}
 	/* Verify input pattern list */
@@ -1793,6 +1811,9 @@ int dpaa2_flow_validate(struct rte_eth_dev *dev,
 	if (ret < 0) {
 		DPAA2_PMD_ERR(
 			"Invalid pattern list is given\n");
+		rte_flow_error_set(error, EPERM,
+			   RTE_FLOW_ERROR_TYPE_ITEM,
+			   pattern, "invalid");
 		goto not_valid_params;
 	}
 	/* Verify input action list */
@@ -1800,6 +1821,9 @@ int dpaa2_flow_validate(struct rte_eth_dev *dev,
 	if (ret < 0) {
 		DPAA2_PMD_ERR(
 			"Invalid action list is given\n");
+		rte_flow_error_set(error, EPERM,
+			   RTE_FLOW_ERROR_TYPE_ACTION,
+			   actions, "invalid");
 		goto not_valid_params;
 	}
 not_valid_params:
@@ -1820,20 +1844,20 @@ struct rte_flow *dpaa2_flow_create(struct rte_eth_dev *dev,
 	flow = rte_malloc(NULL, sizeof(struct rte_flow), RTE_CACHE_LINE_SIZE);
 	if (!flow) {
 		DPAA2_PMD_ERR("Failure to allocate memory for flow");
-		return NULL;
+		goto mem_failure;
 	}
 	/* Allocate DMA'ble memory to write the rules */
 	key_iova = (size_t)rte_malloc(NULL, 256, 64);
 	if (!key_iova) {
 		DPAA2_PMD_ERR(
 			"Memory allocation failure for rule configration\n");
-		goto creation_error;
+		goto mem_failure;
 	}
 	mask_iova = (size_t)rte_malloc(NULL, 256, 64);
 	if (!mask_iova) {
 		DPAA2_PMD_ERR(
 			"Memory allocation failure for rule configration\n");
-		goto creation_error;
+		goto mem_failure;
 	}
 
 	flow->rule.key_iova = key_iova;
@@ -1845,6 +1869,10 @@ struct rte_flow *dpaa2_flow_create(struct rte_eth_dev *dev,
 		ret = dpaa2_generic_flow_set(flow, dev, attr, pattern,
 					     actions, error);
 		if (ret < 0) {
+			if (error->type > RTE_FLOW_ERROR_TYPE_ACTION)
+				rte_flow_error_set(error, EPERM,
+						RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+						attr, "unknown");
 			DPAA2_PMD_ERR(
 			"Failure to create flow, return code (%d)", ret);
 			goto creation_error;
@@ -1857,21 +1885,22 @@ struct rte_flow *dpaa2_flow_create(struct rte_eth_dev *dev,
 	}
 
 	return flow;
-
+mem_failure:
+	rte_flow_error_set(error, EPERM,
+			   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			   NULL, "memory alloc");
 creation_error:
-	if (flow)
-		rte_free((void *)flow);
-	if (key_iova)
-		rte_free((void *)key_iova);
-	if (mask_iova)
-		rte_free((void *)mask_iova);
+	rte_free((void *)flow);
+	rte_free((void *)key_iova);
+	rte_free((void *)mask_iova);
+
 	return NULL;
 }
 
 static
 int dpaa2_flow_destroy(struct rte_eth_dev *dev,
 		       struct rte_flow *flow,
-		       struct rte_flow_error *error __rte_unused)
+		       struct rte_flow_error *error)
 {
 	int ret = 0;
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
@@ -1913,44 +1942,40 @@ int dpaa2_flow_destroy(struct rte_eth_dev *dev,
 		break;
 	}
 
+	LIST_REMOVE(flow, next);
 	/* Now free the flow */
 	rte_free(flow);
 
 error:
+	if (ret)
+		rte_flow_error_set(error, EPERM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, "unknown");
 	return ret;
 }
 
+/**
+ * Destroy user-configured flow rules.
+ *
+ * This function skips internal flows rules.
+ *
+ * @see rte_flow_flush()
+ * @see rte_flow_ops
+ */
 static int
 dpaa2_flow_flush(struct rte_eth_dev *dev,
-		 struct rte_flow_error *error __rte_unused)
+		struct rte_flow_error *error)
 {
-	int ret = 0, tc_id;
-	struct dpni_rx_tc_dist_cfg tc_cfg;
-	struct dpni_qos_tbl_cfg qos_cfg;
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
-	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
+	struct rte_flow *flow = LIST_FIRST(&priv->flows);
 
-	/* Reset QoS table */
-	qos_cfg.default_tc = 0;
-	qos_cfg.discard_on_miss = false;
-	qos_cfg.keep_entries = false;
-	qos_cfg.key_cfg_iova = priv->extract.qos_extract_param;
-	ret = dpni_set_qos_table(dpni, CMD_PRI_LOW, priv->token, &qos_cfg);
-	if (ret < 0)
-		DPAA2_PMD_ERR(
-			"QoS table is not reset to default: %d\n", ret);
+	while (flow) {
+		struct rte_flow *next = LIST_NEXT(flow, next);
 
-	for (tc_id = 0; tc_id < priv->num_rx_tc; tc_id++) {
-		/* Reset FS table */
-		memset(&tc_cfg, 0, sizeof(struct dpni_rx_tc_dist_cfg));
-		ret = dpni_set_rx_tc_dist(dpni, CMD_PRI_LOW, priv->token,
-					 tc_id, &tc_cfg);
-		if (ret < 0)
-			DPAA2_PMD_ERR(
-			"Error (%d) in flushing entries for TC (%d)",
-			ret, tc_id);
+		dpaa2_flow_destroy(dev, flow, error);
+		flow = next;
 	}
-	return ret;
+	return 0;
 }
 
 static int
@@ -1961,6 +1986,25 @@ dpaa2_flow_query(struct rte_eth_dev *dev __rte_unused,
 		struct rte_flow_error *error __rte_unused)
 {
 	return 0;
+}
+
+/**
+ * Clean up all flow rules.
+ *
+ * Unlike dpaa2_flow_flush(), this function takes care of all remaining flow
+ * rules regardless of whether they are internal or user-configured.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ */
+void
+dpaa2_flow_clean(struct rte_eth_dev *dev)
+{
+	struct rte_flow *flow;
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+
+	while ((flow = LIST_FIRST(&priv->flows)))
+		dpaa2_flow_destroy(dev, flow, NULL);
 }
 
 const struct rte_flow_ops dpaa2_flow_ops = {
