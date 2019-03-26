@@ -54,6 +54,7 @@ struct rte_dpaa_bus {
 	struct rte_dpaa_device_list device_list;
 	struct rte_dpaa_driver_list driver_list;
 	int device_count;
+	int detected;
 };
 
 struct dpaa_device_id {

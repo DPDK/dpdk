@@ -442,40 +442,8 @@ rte_dpaa_bus_scan(void)
 		RTE_LOG(DEBUG, EAL, "DPAA Bus not present. Skipping.\n");
 		return 0;
 	}
-
-	/* Load the device-tree driver */
-	ret = of_init();
-	if (ret) {
-		DPAA_BUS_LOG(ERR, "of_init failed with ret: %d", ret);
-		return -1;
-	}
-
-	/* Get the interface configurations from device-tree */
-	dpaa_netcfg = netcfg_acquire();
-	if (!dpaa_netcfg) {
-		DPAA_BUS_LOG(ERR, "netcfg_acquire failed");
-		return -EINVAL;
-	}
-
-	RTE_LOG(NOTICE, EAL, "DPAA Bus Detected\n");
-
-	if (!dpaa_netcfg->num_ethports) {
-		DPAA_BUS_LOG(INFO, "no network interfaces available");
-		/* This is not an error */
-		return 0;
-	}
-
-#ifdef RTE_LIBRTE_DPAA_DEBUG_DRIVER
-	dump_netcfg(dpaa_netcfg);
-#endif
-
-	DPAA_BUS_LOG(DEBUG, "Number of ethernet devices = %d",
-		     dpaa_netcfg->num_ethports);
-	ret = dpaa_create_device_list();
-	if (ret) {
-		DPAA_BUS_LOG(ERR, "Unable to create device list. (%d)", ret);
-		return ret;
-	}
+	/* detected DPAA devices */
+	rte_dpaa_bus.detected = 1;
 
 	/* create the key, supplying a function that'll be invoked
 	 * when a portal affined thread will be deleted.
@@ -534,6 +502,47 @@ rte_dpaa_device_match(struct rte_dpaa_driver *drv,
 }
 
 static int
+rte_dpaa_bus_dev_build(void)
+{
+	int ret;
+
+	/* Load the device-tree driver */
+	ret = of_init();
+	if (ret) {
+		DPAA_BUS_LOG(ERR, "of_init failed with ret: %d", ret);
+		return -1;
+	}
+
+	/* Get the interface configurations from device-tree */
+	dpaa_netcfg = netcfg_acquire();
+	if (!dpaa_netcfg) {
+		DPAA_BUS_LOG(ERR, "netcfg_acquire failed");
+		return -EINVAL;
+	}
+
+	RTE_LOG(NOTICE, EAL, "DPAA Bus Detected\n");
+
+	if (!dpaa_netcfg->num_ethports) {
+		DPAA_BUS_LOG(INFO, "no network interfaces available");
+		/* This is not an error */
+		return 0;
+	}
+
+#ifdef RTE_LIBRTE_DPAA_DEBUG_DRIVER
+	dump_netcfg(dpaa_netcfg);
+#endif
+
+	DPAA_BUS_LOG(DEBUG, "Number of ethernet devices = %d",
+		     dpaa_netcfg->num_ethports);
+	ret = dpaa_create_device_list();
+	if (ret) {
+		DPAA_BUS_LOG(ERR, "Unable to create device list. (%d)", ret);
+		return ret;
+	}
+	return 0;
+}
+
+static int
 rte_dpaa_bus_probe(void)
 {
 	int ret = -1;
@@ -544,6 +553,12 @@ rte_dpaa_bus_probe(void)
 	int probe_all = rte_dpaa_bus.bus.conf.scan_mode != RTE_BUS_SCAN_WHITELIST;
 
 	/* If DPAA bus is not present nothing needs to be done */
+	if (!rte_dpaa_bus.detected)
+		return 0;
+
+	rte_dpaa_bus_dev_build();
+
+	/* If no device present on DPAA bus nothing needs to be done */
 	if (TAILQ_EMPTY(&rte_dpaa_bus.device_list))
 		return 0;
 
