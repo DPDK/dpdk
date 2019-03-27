@@ -844,6 +844,48 @@ nfp_net_stop(struct rte_eth_dev *dev)
 	}
 }
 
+/* Set the link up. */
+static int
+nfp_net_set_link_up(struct rte_eth_dev *dev)
+{
+	struct nfp_net_hw *hw;
+
+	PMD_DRV_LOG(DEBUG, "Set link up");
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (!hw->is_pf)
+		return -ENOTSUP;
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		/* Configure the physical port down */
+		return nfp_eth_set_configured(hw->cpp, hw->pf_port_idx, 1);
+	else
+		return nfp_eth_set_configured(dev->process_private,
+					      hw->pf_port_idx, 1);
+}
+
+/* Set the link down. */
+static int
+nfp_net_set_link_down(struct rte_eth_dev *dev)
+{
+	struct nfp_net_hw *hw;
+
+	PMD_DRV_LOG(DEBUG, "Set link down");
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (!hw->is_pf)
+		return -ENOTSUP;
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		/* Configure the physical port down */
+		return nfp_eth_set_configured(hw->cpp, hw->pf_port_idx, 0);
+	else
+		return nfp_eth_set_configured(dev->process_private,
+					      hw->pf_port_idx, 0);
+}
+
 /* Reset and stop device. The device can not be restarted. */
 static void
 nfp_net_close(struct rte_eth_dev *dev)
@@ -2652,6 +2694,8 @@ static const struct eth_dev_ops nfp_net_eth_dev_ops = {
 	.dev_configure		= nfp_net_configure,
 	.dev_start		= nfp_net_start,
 	.dev_stop		= nfp_net_stop,
+	.dev_set_link_up	= nfp_net_set_link_up,
+	.dev_set_link_down	= nfp_net_set_link_down,
 	.dev_close		= nfp_net_close,
 	.promiscuous_enable	= nfp_net_promisc_enable,
 	.promiscuous_disable	= nfp_net_promisc_disable,
