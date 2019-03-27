@@ -134,7 +134,7 @@ fm10k_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 * So, always PKT_RX_VLAN flag is set and vlan_tci
 		 * is valid for each RX packet's mbuf.
 		 */
-		mbuf->ol_flags |= PKT_RX_VLAN;
+		mbuf->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
 		mbuf->vlan_tci = desc.w.vlan;
 		/**
 		 * mbuf->vlan_tci_outer is an idle field in fm10k driver,
@@ -295,7 +295,7 @@ fm10k_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 * So, always PKT_RX_VLAN flag is set and vlan_tci
 		 * is valid for each RX packet's mbuf.
 		 */
-		first_seg->ol_flags |= PKT_RX_VLAN;
+		first_seg->ol_flags |= PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED;
 		first_seg->vlan_tci = desc.w.vlan;
 		/**
 		 * mbuf->vlan_tci_outer is an idle field in fm10k driver,
