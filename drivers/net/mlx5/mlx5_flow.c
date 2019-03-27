@@ -315,6 +315,7 @@ static struct mlx5_flow_tunnel_info tunnels_info[] = {
 int
 mlx5_flow_discover_priorities(struct rte_eth_dev *dev)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct {
 		struct ibv_flow_attr attr;
 		struct ibv_flow_spec_eth eth;
@@ -322,6 +323,7 @@ mlx5_flow_discover_priorities(struct rte_eth_dev *dev)
 	} flow_attr = {
 		.attr = {
 			.num_of_specs = 2,
+			.port = (uint8_t)priv->ibv_port,
 		},
 		.eth = {
 			.type = IBV_FLOW_SPEC_ETH,

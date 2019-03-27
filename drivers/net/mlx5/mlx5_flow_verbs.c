@@ -1550,6 +1550,7 @@ flow_verbs_translate(struct rte_eth_dev *dev,
 	dev_flow->layers = item_flags;
 	dev_flow->verbs.attr->priority =
 		mlx5_flow_adjust_priority(dev, priority, subpriority);
+	dev_flow->verbs.attr->port = (uint8_t)priv->ibv_port;
 	return 0;
 }
 
