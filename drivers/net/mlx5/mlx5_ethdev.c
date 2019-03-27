@@ -222,7 +222,7 @@ mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[IF_NAMESIZE])
 	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int ifindex =
 		priv->nl_socket_rdma >= 0 ?
-		mlx5_nl_ifindex(priv->nl_socket_rdma, priv->ibdev_name) : 0;
+		mlx5_nl_ifindex(priv->nl_socket_rdma, priv->ibdev_name, 1) : 0;
 
 	if (!ifindex) {
 		if (!priv->representor)

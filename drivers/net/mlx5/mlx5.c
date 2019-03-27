@@ -1434,7 +1434,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			list[i].ifindex = 0;
 		else
 			list[i].ifindex = mlx5_nl_ifindex
-				(nl_rdma, list[i].ibv_dev->name);
+				(nl_rdma, list[i].ibv_dev->name, 1);
 		if (nl_route < 0 ||
 		    !list[i].ifindex ||
 		    mlx5_nl_switch_info(nl_route, list[i].ifindex,

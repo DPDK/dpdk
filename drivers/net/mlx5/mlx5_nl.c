@@ -85,11 +85,12 @@ struct mlx5_nl_mac_addr {
 	int mac_n; /**< Number of addresses in the array. */
 };
 
-/** Data structure used by mlx5_nl_ifindex_cb(). */
+/** Data structure used by mlx5_nl_cmdget_cb(). */
 struct mlx5_nl_ifindex_data {
 	const char *name; /**< IB device name (in). */
 	uint32_t ibindex; /**< IB device index (out). */
 	uint32_t ifindex; /**< Network interface index (out). */
+	uint32_t portnum; /**< IB device max port number. */
 };
 
 /**
@@ -695,12 +696,13 @@ mlx5_nl_allmulti(struct rte_eth_dev *dev, int enable)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_nl_ifindex_cb(struct nlmsghdr *nh, void *arg)
+mlx5_nl_cmdget_cb(struct nlmsghdr *nh, void *arg)
 {
 	struct mlx5_nl_ifindex_data *data = arg;
 	size_t off = NLMSG_HDRLEN;
 	uint32_t ibindex = 0;
 	uint32_t ifindex = 0;
+	uint32_t portnum = 0;
 	int found = 0;
 
 	if (nh->nlmsg_type !=
@@ -725,6 +727,9 @@ mlx5_nl_ifindex_cb(struct nlmsghdr *nh, void *arg)
 		case RDMA_NLDEV_ATTR_NDEV_INDEX:
 			ifindex = *(uint32_t *)payload;
 			break;
+		case RDMA_NLDEV_ATTR_PORT_INDEX:
+			portnum = *(uint32_t *)payload;
+			break;
 		default:
 			break;
 		}
@@ -733,6 +738,7 @@ mlx5_nl_ifindex_cb(struct nlmsghdr *nh, void *arg)
 	if (found) {
 		data->ibindex = ibindex;
 		data->ifindex = ifindex;
+		data->portnum = portnum;
 	}
 	return 0;
 error:
@@ -751,15 +757,15 @@ error:
  *   Netlink socket of the RDMA kind (NETLINK_RDMA).
  * @param[in] name
  *   IB device name.
- *
+ * @param[in] pindex
+ *   IB device port index, starting from 1
  * @return
  *   A valid (nonzero) interface index on success, 0 otherwise and rte_errno
  *   is set.
  */
 unsigned int
-mlx5_nl_ifindex(int nl, const char *name)
+mlx5_nl_ifindex(int nl, const char *name, uint32_t pindex)
 {
-	static const uint32_t pindex = 1;
 	uint32_t seq = random();
 	struct mlx5_nl_ifindex_data data = {
 		.name = name,
@@ -785,7 +791,7 @@ mlx5_nl_ifindex(int nl, const char *name)
 	ret = mlx5_nl_send(nl, &req.nh, seq);
 	if (ret < 0)
 		return 0;
-	ret = mlx5_nl_recv(nl, seq, mlx5_nl_ifindex_cb, &data);
+	ret = mlx5_nl_recv(nl, seq, mlx5_nl_cmdget_cb, &data);
 	if (ret < 0)
 		return 0;
 	if (!data.ibindex)
@@ -808,7 +814,7 @@ mlx5_nl_ifindex(int nl, const char *name)
 	ret = mlx5_nl_send(nl, &req.nh, seq);
 	if (ret < 0)
 		return 0;
-	ret = mlx5_nl_recv(nl, seq, mlx5_nl_ifindex_cb, &data);
+	ret = mlx5_nl_recv(nl, seq, mlx5_nl_cmdget_cb, &data);
 	if (ret < 0)
 		return 0;
 	if (!data.ifindex)
