@@ -867,7 +867,7 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 		.max_wr = wqe_n >> rxq_data->sges_n,
 		/* Max number of scatter/gather elements in a WR. */
 		.max_sge = 1 << rxq_data->sges_n,
-		.pd = priv->pd,
+		.pd = priv->sh->pd,
 		.cq = tmpl->cq,
 		.comp_mask =
 			IBV_WQ_FLAGS_CVLAN_STRIPPING |
@@ -1831,7 +1831,7 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 				.rx_hash_fields_mask = hash_fields,
 			},
 			.rwq_ind_tbl = ind_tbl->ind_table,
-			.pd = priv->pd,
+			.pd = priv->sh->pd,
 		 },
 		 &qp_init_attr);
 #else
@@ -1850,7 +1850,7 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 				.rx_hash_fields_mask = hash_fields,
 			},
 			.rwq_ind_tbl = ind_tbl->ind_table,
-			.pd = priv->pd,
+			.pd = priv->sh->pd,
 		 });
 #endif
 	if (!qp) {
@@ -2006,7 +2006,7 @@ mlx5_rxq_ibv_drop_new(struct rte_eth_dev *dev)
 			.wq_type = IBV_WQT_RQ,
 			.max_wr = 1,
 			.max_sge = 1,
-			.pd = priv->pd,
+			.pd = priv->sh->pd,
 			.cq = cq,
 		 });
 	if (!wq) {
@@ -2160,7 +2160,7 @@ mlx5_hrxq_drop_new(struct rte_eth_dev *dev)
 				.rx_hash_fields_mask = 0,
 				},
 			.rwq_ind_tbl = ind_tbl->ind_table,
-			.pd = priv->pd
+			.pd = priv->sh->pd
 		 });
 	if (!qp) {
 		DEBUG("port %u cannot allocate QP for drop queue",

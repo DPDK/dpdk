@@ -720,7 +720,7 @@ alloc_resources:
 	 * mlx5_alloc_buf_extern() which eventually calls rte_malloc_socket()
 	 * through mlx5_alloc_verbs_buf().
 	 */
-	mr->ibv_mr = mlx5_glue->reg_mr(priv->pd, (void *)data.start, len,
+	mr->ibv_mr = mlx5_glue->reg_mr(priv->sh->pd, (void *)data.start, len,
 				       IBV_ACCESS_LOCAL_WRITE);
 	if (mr->ibv_mr == NULL) {
 		DEBUG("port %u fail to create a verbs MR for address (%p)",
@@ -1138,7 +1138,7 @@ mlx5_create_mr_ext(struct rte_eth_dev *dev, uintptr_t addr, size_t len,
 				RTE_CACHE_LINE_SIZE, socket_id);
 	if (mr == NULL)
 		return NULL;
-	mr->ibv_mr = mlx5_glue->reg_mr(priv->pd, (void *)addr, len,
+	mr->ibv_mr = mlx5_glue->reg_mr(priv->sh->pd, (void *)addr, len,
 				       IBV_ACCESS_LOCAL_WRITE);
 	if (mr->ibv_mr == NULL) {
 		DRV_LOG(WARNING,

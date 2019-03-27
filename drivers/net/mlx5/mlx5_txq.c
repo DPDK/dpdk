@@ -426,7 +426,7 @@ mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 		 * Tx burst.
 		 */
 		.sq_sig_all = 0,
-		.pd = priv->pd,
+		.pd = priv->sh->pd,
 		.comp_mask = IBV_QP_INIT_ATTR_PD,
 	};
 	if (txq_data->max_inline)

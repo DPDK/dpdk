@@ -1098,7 +1098,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	priv->ctx = sh->ctx;
 	priv->ibv_port = spawn->ibv_port;
 	priv->device_attr = sh->device_attr;
-	priv->pd = sh->pd;
 	priv->mtu = ETHER_MTU;
 #ifndef RTE_ARCH_64
 	/* Initialize UAR access locks for 32bit implementations. */
