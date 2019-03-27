@@ -1032,66 +1032,67 @@ mlx5_ibv_device_to_pci_addr(const struct ibv_device *device,
 }
 
 /**
- * Device status handler.
+ * Handle shared asynchronous events the NIC (removal event
+ * and link status change). Supports multiport IB device.
  *
- * @param dev
- *   Pointer to Ethernet device.
- * @param events
- *   Pointer to event flags holder.
- *
- * @return
- *   Events bitmap of callback process which can be called immediately.
- */
-static uint32_t
-mlx5_dev_status_handler(struct rte_eth_dev *dev)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct ibv_async_event event;
-	uint32_t ret = 0;
-
-	if (mlx5_link_update(dev, 0) == -EAGAIN) {
-		usleep(0);
-		return 0;
-	}
-	/* Read all message and acknowledge them. */
-	for (;;) {
-		if (mlx5_glue->get_async_event(priv->sh->ctx, &event))
-			break;
-		if ((event.event_type == IBV_EVENT_PORT_ACTIVE ||
-			event.event_type == IBV_EVENT_PORT_ERR) &&
-			(dev->data->dev_conf.intr_conf.lsc == 1))
-			ret |= (1 << RTE_ETH_EVENT_INTR_LSC);
-		else if (event.event_type == IBV_EVENT_DEVICE_FATAL &&
-			dev->data->dev_conf.intr_conf.rmv == 1)
-			ret |= (1 << RTE_ETH_EVENT_INTR_RMV);
-		else
-			DRV_LOG(DEBUG,
-				"port %u event type %d on not handled",
-				dev->data->port_id, event.event_type);
-		mlx5_glue->ack_async_event(&event);
-	}
-	return ret;
-}
-
-/**
- * Handle interrupts from the NIC.
- *
- * @param[in] intr_handle
- *   Interrupt handler.
  * @param cb_arg
  *   Callback argument.
  */
 void
 mlx5_dev_interrupt_handler(void *cb_arg)
 {
-	struct rte_eth_dev *dev = cb_arg;
-	uint32_t events;
+	struct mlx5_ibv_shared *sh = cb_arg;
+	struct ibv_async_event event;
 
-	events = mlx5_dev_status_handler(dev);
-	if (events & (1 << RTE_ETH_EVENT_INTR_LSC))
-		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
-	if (events & (1 << RTE_ETH_EVENT_INTR_RMV))
-		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RMV, NULL);
+	/* Read all message from the IB device and acknowledge them. */
+	for (;;) {
+		struct rte_eth_dev *dev;
+		uint32_t tmp;
+
+		if (mlx5_glue->get_async_event(sh->ctx, &event))
+			break;
+		/* Retrieve and check IB port index. */
+		tmp = (uint32_t)event.element.port_num;
+		assert(tmp && (tmp <= sh->max_port));
+		if (!tmp ||
+		    tmp > sh->max_port ||
+		    sh->port[tmp - 1].ih_port_id >= RTE_MAX_ETHPORTS) {
+			/*
+			 * Invalid IB port index or no handler
+			 * installed for this port.
+			 */
+			mlx5_glue->ack_async_event(&event);
+			continue;
+		}
+		/* Retrieve ethernet device descriptor. */
+		tmp = sh->port[tmp - 1].ih_port_id;
+		dev = &rte_eth_devices[tmp];
+		tmp = 0;
+		assert(dev);
+		if ((event.event_type == IBV_EVENT_PORT_ACTIVE ||
+		     event.event_type == IBV_EVENT_PORT_ERR) &&
+			dev->data->dev_conf.intr_conf.lsc) {
+			mlx5_glue->ack_async_event(&event);
+			if (mlx5_link_update(dev, 0) == -EAGAIN) {
+				usleep(0);
+				continue;
+			}
+			_rte_eth_dev_callback_process
+				(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
+			continue;
+		}
+		if (event.event_type == IBV_EVENT_DEVICE_FATAL &&
+		    dev->data->dev_conf.intr_conf.rmv) {
+			mlx5_glue->ack_async_event(&event);
+			_rte_eth_dev_callback_process
+				(dev, RTE_ETH_EVENT_INTR_RMV, NULL);
+			continue;
+		}
+		DRV_LOG(DEBUG,
+			"port %u event type %d on not handled",
+			dev->data->port_id, event.event_type);
+		mlx5_glue->ack_async_event(&event);
+	}
 }
 
 /**
