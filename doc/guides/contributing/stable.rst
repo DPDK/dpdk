@@ -26,7 +26,9 @@ Stable Releases
 ---------------
 
 Any major release of DPDK can be designated as a Stable Release if a
-maintainer volunteers to maintain it.
+maintainer volunteers to maintain it and there is a commitment from major
+contributors to validate it before releases. If a release is to be designated
+as a Stable Release, it should be done by 1 month after the master release.
 
 A Stable Release is used to backport fixes from an ``N`` release back to an
 ``N-1`` release, for example, from 16.11 to 16.07.
