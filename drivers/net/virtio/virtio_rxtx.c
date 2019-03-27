@@ -1109,7 +1109,7 @@ virtio_update_packet_stats(struct virtnet_stats *stats, struct rte_mbuf *mbuf)
 			stats->size_bins[0]++;
 		else if (s < 1519)
 			stats->size_bins[6]++;
-		else if (s >= 1519)
+		else
 			stats->size_bins[7]++;
 	}
 
