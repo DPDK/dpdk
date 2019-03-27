@@ -8,8 +8,8 @@
 extern int ifpga_rawdev_logtype;
 
 #define IFPGA_RAWDEV_PMD_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, ifpga_rawdev_logtype, "ifgpa: " fmt, \
-		##args)
+	rte_log(RTE_LOG_ ## level, ifpga_rawdev_logtype, "%s(): " fmt "\n", \
+				__func__, ##args)
 
 #define IFPGA_RAWDEV_PMD_FUNC_TRACE() IFPGA_RAWDEV_PMD_LOG(DEBUG, ">>")
 
