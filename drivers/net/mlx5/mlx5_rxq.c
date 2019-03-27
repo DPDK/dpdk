@@ -856,10 +856,10 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 		rte_errno = ENOMEM;
 		goto error;
 	}
-	DRV_LOG(DEBUG, "port %u priv->device_attr.max_qp_wr is %d",
-		dev->data->port_id, priv->device_attr.orig_attr.max_qp_wr);
-	DRV_LOG(DEBUG, "port %u priv->device_attr.max_sge is %d",
-		dev->data->port_id, priv->device_attr.orig_attr.max_sge);
+	DRV_LOG(DEBUG, "port %u device_attr.max_qp_wr is %d",
+		dev->data->port_id, priv->sh->device_attr.orig_attr.max_qp_wr);
+	DRV_LOG(DEBUG, "port %u device_attr.max_sge is %d",
+		dev->data->port_id, priv->sh->device_attr.orig_attr.max_sge);
 	attr.wq.ibv = (struct ibv_wq_init_attr){
 		.wq_context = NULL, /* Could be useful in the future. */
 		.wq_type = IBV_WQT_RQ,

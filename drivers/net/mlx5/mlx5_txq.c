@@ -407,15 +407,15 @@ mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 		.cap = {
 			/* Max number of outstanding WRs. */
 			.max_send_wr =
-				((priv->device_attr.orig_attr.max_qp_wr <
+				((priv->sh->device_attr.orig_attr.max_qp_wr <
 				  desc) ?
-				 priv->device_attr.orig_attr.max_qp_wr :
+				 priv->sh->device_attr.orig_attr.max_qp_wr :
 				 desc),
 			/*
 			 * Max number of scatter/gather elements in a WR,
 			 * must be 1 to prevent libmlx5 from trying to affect
 			 * too much memory. TX gather is not impacted by the
-			 * priv->device_attr.max_sge limit and will still work
+			 * device_attr.max_sge limit and will still work
 			 * properly.
 			 */
 			.max_send_sge = 1,
@@ -780,10 +780,10 @@ mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	tmpl->txq.elts_n = log2above(desc);
 	tmpl->idx = idx;
 	txq_set_params(tmpl);
-	DRV_LOG(DEBUG, "port %u priv->device_attr.max_qp_wr is %d",
-		dev->data->port_id, priv->device_attr.orig_attr.max_qp_wr);
-	DRV_LOG(DEBUG, "port %u priv->device_attr.max_sge is %d",
-		dev->data->port_id, priv->device_attr.orig_attr.max_sge);
+	DRV_LOG(DEBUG, "port %u device_attr.max_qp_wr is %d",
+		dev->data->port_id, priv->sh->device_attr.orig_attr.max_qp_wr);
+	DRV_LOG(DEBUG, "port %u device_attr.max_sge is %d",
+		dev->data->port_id, priv->sh->device_attr.orig_attr.max_sge);
 	tmpl->txq.elts =
 		(struct rte_mbuf *(*)[1 << tmpl->txq.elts_n])(tmpl + 1);
 	tmpl->txq.stats.idx = idx;
