@@ -1439,7 +1439,7 @@ print_ethaddr(const char *name, const struct ether_addr *eth_addr)
 int
 add_dst_ethaddr(uint16_t port, const struct ether_addr *addr)
 {
-	if (port > RTE_DIM(ethaddr_tbl))
+	if (port >= RTE_DIM(ethaddr_tbl))
 		return -EINVAL;
 
 	ethaddr_tbl[port].dst = ETHADDR_TO_UINT64(addr);
