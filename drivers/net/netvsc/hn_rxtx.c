@@ -123,7 +123,7 @@ hn_update_packet_stats(struct hn_stats *stats, const struct rte_mbuf *m)
 			stats->size_bins[0]++;
 		else if (s < 1519)
 			stats->size_bins[6]++;
-		else if (s >= 1519)
+		else
 			stats->size_bins[7]++;
 	}
 
