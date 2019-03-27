@@ -2805,6 +2805,29 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 }
 
 /**
+ * Add source vport match to the specified matcher.
+ *
+ * @param[in, out] matcher
+ *   Flow matcher.
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] port
+ *   Source vport value to match
+ * @param[in] mask
+ *   Mask
+ */
+static void
+flow_dv_translate_source_vport(void *matcher, void *key,
+			      int16_t port, uint16_t mask)
+{
+	void *misc_m = MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters);
+	void *misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
+
+	MLX5_SET(fte_match_set_misc, misc_m, source_port, mask);
+	MLX5_SET(fte_match_set_misc, misc_v, source_port, port);
+}
+
+/**
  * Fill the flow with DV spec.
  *
  * @param[in] dev
@@ -3088,6 +3111,19 @@ cnt_err:
 	}
 	dev_flow->dv.actions_n = actions_n;
 	flow->actions = action_flags;
+	if (attr->ingress && !attr->transfer &&
+	    (priv->representor || priv->master)) {
+		/* It was validated - we support unidirection flows only. */
+		assert(!attr->egress);
+		/*
+		 * Add matching on source vport index only
+		 * for ingress rules in E-Switch configurations.
+		 */
+		flow_dv_translate_source_vport(matcher.mask.buf,
+					       dev_flow->dv.value.buf,
+					       priv->vport_id,
+					       0xffff);
+	}
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
 		int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
 		void *match_mask = matcher.mask.buf;
