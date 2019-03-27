@@ -1679,17 +1679,8 @@ dpaa2_sec_cipher_init(struct rte_cryptodev *dev,
 		DPAA2_SEC_ERR("Crypto: Descriptor build failed");
 		goto error_out;
 	}
-	flc->dhr = 0;
-	flc->bpv0 = 0x1;
-	flc->mode_bits = 0x8000;
 
 	flc->word1_sdl = (uint8_t)bufsize;
-	flc->word2_rflc_31_0 = lower_32_bits(
-			(size_t)&(((struct dpaa2_sec_qp *)
-			dev->data->queue_pairs[0])->rx_vq));
-	flc->word3_rflc_63_32 = upper_32_bits(
-			(size_t)&(((struct dpaa2_sec_qp *)
-			dev->data->queue_pairs[0])->rx_vq));
 	session->ctxt = priv;
 
 	for (i = 0; i < bufsize; i++)
@@ -1812,12 +1803,6 @@ dpaa2_sec_auth_init(struct rte_cryptodev *dev,
 	}
 
 	flc->word1_sdl = (uint8_t)bufsize;
-	flc->word2_rflc_31_0 = lower_32_bits(
-			(size_t)&(((struct dpaa2_sec_qp *)
-			dev->data->queue_pairs[0])->rx_vq));
-	flc->word3_rflc_63_32 = upper_32_bits(
-			(size_t)&(((struct dpaa2_sec_qp *)
-			dev->data->queue_pairs[0])->rx_vq));
 	session->ctxt = priv;
 	for (i = 0; i < bufsize; i++)
 		DPAA2_SEC_DEBUG("DESC[%d]:0x%x",
@@ -1937,12 +1922,6 @@ dpaa2_sec_aead_init(struct rte_cryptodev *dev,
 	}
 
 	flc->word1_sdl = (uint8_t)bufsize;
-	flc->word2_rflc_31_0 = lower_32_bits(
-			(size_t)&(((struct dpaa2_sec_qp *)
-			dev->data->queue_pairs[0])->rx_vq));
-	flc->word3_rflc_63_32 = upper_32_bits(
-			(size_t)&(((struct dpaa2_sec_qp *)
-			dev->data->queue_pairs[0])->rx_vq));
 	session->ctxt = priv;
 	for (i = 0; i < bufsize; i++)
 		DPAA2_SEC_DEBUG("DESC[%d]:0x%x\n",
@@ -2168,12 +2147,6 @@ dpaa2_sec_aead_chain_init(struct rte_cryptodev *dev,
 	}
 
 	flc->word1_sdl = (uint8_t)bufsize;
-	flc->word2_rflc_31_0 = lower_32_bits(
-			(size_t)&(((struct dpaa2_sec_qp *)
-			dev->data->queue_pairs[0])->rx_vq));
-	flc->word3_rflc_63_32 = upper_32_bits(
-			(size_t)&(((struct dpaa2_sec_qp *)
-			dev->data->queue_pairs[0])->rx_vq));
 	session->ctxt = priv;
 	for (i = 0; i < bufsize; i++)
 		DPAA2_SEC_DEBUG("DESC[%d]:0x%x",
