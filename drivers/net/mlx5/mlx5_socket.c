@@ -185,9 +185,9 @@ mlx5_socket_handle(struct rte_eth_dev *dev)
 	assert(cmsg != NULL);
 	cmsg->cmsg_level = SOL_SOCKET;
 	cmsg->cmsg_type = SCM_RIGHTS;
-	cmsg->cmsg_len = CMSG_LEN(sizeof(priv->ctx->cmd_fd));
+	cmsg->cmsg_len = CMSG_LEN(sizeof(priv->sh->ctx->cmd_fd));
 	fd = (int *)CMSG_DATA(cmsg);
-	*fd = priv->ctx->cmd_fd;
+	*fd = priv->sh->ctx->cmd_fd;
 	ret = sendmsg(conn_sock, &msg, 0);
 	if (ret < 0)
 		DRV_LOG(WARNING, "port %u cannot send response",

@@ -402,7 +402,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 
 	DRV_LOG(DEBUG, "port %u closing device \"%s\"",
 		dev->data->port_id,
-		((priv->ctx != NULL) ? priv->ctx->device->name : ""));
+		((priv->sh->ctx != NULL) ? priv->sh->ctx->device->name : ""));
 	/* In case mlx5_dev_stop() has not been called. */
 	mlx5_dev_interrupt_handler_uninstall(dev);
 	mlx5_traffic_disable(dev);
@@ -1095,7 +1095,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		goto error;
 	}
 	priv->sh = sh;
-	priv->ctx = sh->ctx;
 	priv->ibv_port = spawn->ibv_port;
 	priv->mtu = ETHER_MTU;
 #ifndef RTE_ARCH_64

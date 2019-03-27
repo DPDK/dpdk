@@ -836,7 +836,7 @@ flow_dv_encap_decap_resource_register
 	*cache_resource = *resource;
 	cache_resource->verbs_action =
 		mlx5_glue->dv_create_flow_action_packet_reformat
-			(priv->ctx, cache_resource->size,
+			(priv->sh->ctx, cache_resource->size,
 			 (cache_resource->size ? cache_resource->buf : NULL),
 			 cache_resource->reformat_type,
 			 cache_resource->ft_type);
@@ -1468,7 +1468,7 @@ flow_dv_modify_hdr_resource_register
 	*cache_resource = *resource;
 	cache_resource->verbs_action =
 		mlx5_glue->dv_create_flow_action_modify_header
-					(priv->ctx,
+					(priv->sh->ctx,
 					 cache_resource->actions_num *
 					 sizeof(cache_resource->actions[0]),
 					 (uint64_t *)cache_resource->actions,
@@ -1528,7 +1528,7 @@ flow_dv_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 		ret = -ENOMEM;
 		goto error_exit;
 	}
-	ret = mlx5_devx_cmd_flow_counter_alloc(priv->ctx, dcs);
+	ret = mlx5_devx_cmd_flow_counter_alloc(priv->sh->ctx, dcs);
 	if (ret)
 		goto error_exit;
 	struct mlx5_flow_counter tmpl = {
@@ -2787,7 +2787,7 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 	if (matcher->egress)
 		dv_attr.flags |= IBV_FLOW_ATTR_FLAGS_EGRESS;
 	cache_matcher->matcher_object =
-		mlx5_glue->dv_create_flow_matcher(priv->ctx, &dv_attr);
+		mlx5_glue->dv_create_flow_matcher(priv->sh->ctx, &dv_attr);
 	if (!cache_matcher->matcher_object) {
 		rte_free(cache_matcher);
 		return rte_flow_error_set(error, ENOMEM,

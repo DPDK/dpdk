@@ -799,7 +799,7 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 	}
 	tmpl->rxq_ctrl = rxq_ctrl;
 	if (rxq_ctrl->irq) {
-		tmpl->channel = mlx5_glue->create_comp_channel(priv->ctx);
+		tmpl->channel = mlx5_glue->create_comp_channel(priv->sh->ctx);
 		if (!tmpl->channel) {
 			DRV_LOG(ERR, "port %u: comp channel creation failure",
 				dev->data->port_id);
@@ -848,7 +848,7 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 	}
 #endif
 	tmpl->cq = mlx5_glue->cq_ex_to_cq
-		(mlx5_glue->dv_create_cq(priv->ctx, &attr.cq.ibv,
+		(mlx5_glue->dv_create_cq(priv->sh->ctx, &attr.cq.ibv,
 					 &attr.cq.mlx5));
 	if (tmpl->cq == NULL) {
 		DRV_LOG(ERR, "port %u Rx queue %u CQ creation failure",
@@ -905,10 +905,10 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 			.two_byte_shift_en = MLX5_MPRQ_TWO_BYTE_SHIFT,
 		};
 	}
-	tmpl->wq = mlx5_glue->dv_create_wq(priv->ctx, &attr.wq.ibv,
+	tmpl->wq = mlx5_glue->dv_create_wq(priv->sh->ctx, &attr.wq.ibv,
 					   &attr.wq.mlx5);
 #else
-	tmpl->wq = mlx5_glue->create_wq(priv->ctx, &attr.wq.ibv);
+	tmpl->wq = mlx5_glue->create_wq(priv->sh->ctx, &attr.wq.ibv);
 #endif
 	if (tmpl->wq == NULL) {
 		DRV_LOG(ERR, "port %u Rx queue %u WQ creation failure",
@@ -1643,7 +1643,7 @@ mlx5_ind_table_ibv_new(struct rte_eth_dev *dev, const uint16_t *queues,
 	for (j = 0; i != (unsigned int)(1 << wq_n); ++i, ++j)
 		wq[i] = wq[j];
 	ind_tbl->ind_table = mlx5_glue->create_rwq_ind_table
-		(priv->ctx,
+		(priv->sh->ctx,
 		 &(struct ibv_rwq_ind_table_init_attr){
 			.log_ind_tbl_size = wq_n,
 			.ind_tbl = wq,
@@ -1817,7 +1817,7 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 	}
 #endif
 	qp = mlx5_glue->dv_create_qp
-		(priv->ctx,
+		(priv->sh->ctx,
 		 &(struct ibv_qp_init_attr_ex){
 			.qp_type = IBV_QPT_RAW_PACKET,
 			.comp_mask =
@@ -1836,7 +1836,7 @@ mlx5_hrxq_new(struct rte_eth_dev *dev,
 		 &qp_init_attr);
 #else
 	qp = mlx5_glue->create_qp_ex
-		(priv->ctx,
+		(priv->sh->ctx,
 		 &(struct ibv_qp_init_attr_ex){
 			.qp_type = IBV_QPT_RAW_PACKET,
 			.comp_mask =
@@ -1988,20 +1988,21 @@ struct mlx5_rxq_ibv *
 mlx5_rxq_ibv_drop_new(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct ibv_context *ctx = priv->sh->ctx;
 	struct ibv_cq *cq;
 	struct ibv_wq *wq = NULL;
 	struct mlx5_rxq_ibv *rxq;
 
 	if (priv->drop_queue.rxq)
 		return priv->drop_queue.rxq;
-	cq = mlx5_glue->create_cq(priv->ctx, 1, NULL, NULL, 0);
+	cq = mlx5_glue->create_cq(ctx, 1, NULL, NULL, 0);
 	if (!cq) {
 		DEBUG("port %u cannot allocate CQ for drop queue",
 		      dev->data->port_id);
 		rte_errno = errno;
 		goto error;
 	}
-	wq = mlx5_glue->create_wq(priv->ctx,
+	wq = mlx5_glue->create_wq(ctx,
 		 &(struct ibv_wq_init_attr){
 			.wq_type = IBV_WQT_RQ,
 			.max_wr = 1,
@@ -2078,7 +2079,7 @@ mlx5_ind_table_ibv_drop_new(struct rte_eth_dev *dev)
 	if (!rxq)
 		return NULL;
 	tmpl.ind_table = mlx5_glue->create_rwq_ind_table
-		(priv->ctx,
+		(priv->sh->ctx,
 		 &(struct ibv_rwq_ind_table_init_attr){
 			.log_ind_tbl_size = 0,
 			.ind_tbl = &rxq->wq,
@@ -2145,7 +2146,7 @@ mlx5_hrxq_drop_new(struct rte_eth_dev *dev)
 	ind_tbl = mlx5_ind_table_ibv_drop_new(dev);
 	if (!ind_tbl)
 		return NULL;
-	qp = mlx5_glue->create_qp_ex(priv->ctx,
+	qp = mlx5_glue->create_qp_ex(priv->sh->ctx,
 		 &(struct ibv_qp_init_attr_ex){
 			.qp_type = IBV_QPT_RAW_PACKET,
 			.comp_mask =

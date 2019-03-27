@@ -392,7 +392,7 @@ mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 		((desc / MLX5_TX_COMP_THRESH) - 1) : 1;
 	if (is_empw_burst_func(tx_pkt_burst))
 		cqe_n += MLX5_TX_COMP_THRESH_INLINE_DIV;
-	tmpl.cq = mlx5_glue->create_cq(priv->ctx, cqe_n, NULL, NULL, 0);
+	tmpl.cq = mlx5_glue->create_cq(priv->sh->ctx, cqe_n, NULL, NULL, 0);
 	if (tmpl.cq == NULL) {
 		DRV_LOG(ERR, "port %u Tx queue %u CQ creation failure",
 			dev->data->port_id, idx);
@@ -435,7 +435,7 @@ mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 		attr.init.max_tso_header = txq_ctrl->max_tso_header;
 		attr.init.comp_mask |= IBV_QP_INIT_ATTR_MAX_TSO_HEADER;
 	}
-	tmpl.qp = mlx5_glue->create_qp_ex(priv->ctx, &attr.init);
+	tmpl.qp = mlx5_glue->create_qp_ex(priv->sh->ctx, &attr.init);
 	if (tmpl.qp == NULL) {
 		DRV_LOG(ERR, "port %u Tx queue %u QP creation failure",
 			dev->data->port_id, idx);

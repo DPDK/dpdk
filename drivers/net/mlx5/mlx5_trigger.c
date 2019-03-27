@@ -58,7 +58,7 @@ mlx5_txq_start(struct rte_eth_dev *dev)
 			goto error;
 		}
 	}
-	ret = mlx5_tx_uar_remap(dev, priv->ctx->cmd_fd);
+	ret = mlx5_tx_uar_remap(dev, priv->sh->ctx->cmd_fd);
 	if (ret) {
 		/* Adjust index for rollback. */
 		i = priv->txqs_n - 1;

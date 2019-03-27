@@ -56,10 +56,11 @@ flow_verbs_counter_create(struct rte_eth_dev *dev,
 {
 #if defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42)
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct ibv_context *ctx = priv->sh->ctx;
 	struct ibv_counter_set_init_attr init = {
 			 .counter_set_id = counter->id};
 
-	counter->cs = mlx5_glue->create_counter_set(priv->ctx, &init);
+	counter->cs = mlx5_glue->create_counter_set(ctx, &init);
 	if (!counter->cs) {
 		rte_errno = ENOTSUP;
 		return -ENOTSUP;
@@ -67,12 +68,13 @@ flow_verbs_counter_create(struct rte_eth_dev *dev,
 	return 0;
 #elif defined(HAVE_IBV_DEVICE_COUNTERS_SET_V45)
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct ibv_context *ctx = priv->sh->ctx;
 	struct ibv_counters_init_attr init = {0};
 	struct ibv_counter_attach_attr attach;
 	int ret;
 
 	memset(&attach, 0, sizeof(attach));
-	counter->cs = mlx5_glue->create_counters(priv->ctx, &init);
+	counter->cs = mlx5_glue->create_counters(ctx, &init);
 	if (!counter->cs) {
 		rte_errno = ENOTSUP;
 		return -ENOTSUP;

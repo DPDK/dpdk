@@ -1055,7 +1055,7 @@ mlx5_dev_status_handler(struct rte_eth_dev *dev)
 	}
 	/* Read all message and acknowledge them. */
 	for (;;) {
-		if (mlx5_glue->get_async_event(priv->ctx, &event))
+		if (mlx5_glue->get_async_event(priv->sh->ctx, &event))
 			break;
 		if ((event.event_type == IBV_EVENT_PORT_ACTIVE ||
 			event.event_type == IBV_EVENT_PORT_ERR) &&
@@ -1142,12 +1142,13 @@ void
 mlx5_dev_interrupt_handler_install(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct ibv_context *ctx = priv->sh->ctx;
 	int ret;
 	int flags;
 
-	assert(priv->ctx->async_fd > 0);
-	flags = fcntl(priv->ctx->async_fd, F_GETFL);
-	ret = fcntl(priv->ctx->async_fd, F_SETFL, flags | O_NONBLOCK);
+	assert(ctx->async_fd > 0);
+	flags = fcntl(ctx->async_fd, F_GETFL);
+	ret = fcntl(ctx->async_fd, F_SETFL, flags | O_NONBLOCK);
 	if (ret) {
 		DRV_LOG(INFO,
 			"port %u failed to change file descriptor async event"
@@ -1158,7 +1159,7 @@ mlx5_dev_interrupt_handler_install(struct rte_eth_dev *dev)
 	}
 	if (dev->data->dev_conf.intr_conf.lsc ||
 	    dev->data->dev_conf.intr_conf.rmv) {
-		priv->intr_handle.fd = priv->ctx->async_fd;
+		priv->intr_handle.fd = ctx->async_fd;
 		priv->intr_handle.type = RTE_INTR_HANDLE_EXT;
 		rte_intr_callback_register(&priv->intr_handle,
 					   mlx5_dev_interrupt_handler, dev);
@@ -1303,7 +1304,7 @@ mlx5_is_removed(struct rte_eth_dev *dev)
 	struct ibv_device_attr device_attr;
 	struct mlx5_priv *priv = dev->data->dev_private;
 
-	if (mlx5_glue->query_device(priv->ctx, &device_attr) == EIO)
+	if (mlx5_glue->query_device(priv->sh->ctx, &device_attr) == EIO)
 		return 1;
 	return 0;
 }

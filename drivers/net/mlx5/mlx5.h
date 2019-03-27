@@ -223,7 +223,6 @@ struct mlx5_priv {
 	struct rte_eth_dev_data *dev_data;  /* Pointer to device data. */
 	struct mlx5_ibv_shared *sh; /* Shared IB device context. */
 	uint32_t ibv_port; /* IB device port number. */
-	struct ibv_context *ctx; /* Verbs context. */
 	struct ether_addr mac[MLX5_MAX_MAC_ADDRESSES]; /* MAC addresses. */
 	BITFIELD_DECLARE(mac_own, uint64_t, MLX5_MAX_MAC_ADDRESSES);
 	/* Bit-field of MAC addresses owned by the PMD. */
