@@ -117,6 +117,13 @@
 	ETH_RSS_NONFRAG_IPV6_OTHER | \
 	ETH_RSS_L2_PAYLOAD)
 
+/**
+ * The overhead from MTU to max frame size.
+ * Considering QinQ packet, the VLAN tag needs to be counted twice.
+ */
+#define ICE_ETH_OVERHEAD \
+	(ETHER_HDR_LEN + ETHER_CRC_LEN + ICE_VLAN_TAG_SIZE * 2)
+
 struct ice_adapter;
 
 /**

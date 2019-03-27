@@ -111,7 +111,7 @@ ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
 			      RTE_PKTMBUF_HEADROOM);
 
 	/* Check if scattered RX needs to be used. */
-	if ((rxq->max_pkt_len + 2 * ICE_VLAN_TAG_SIZE) > buf_size)
+	if (rxq->max_pkt_len > buf_size)
 		dev->data->scattered_rx = 1;
 
 	rxq->qrx_tail = hw->hw_addr + QRX_TAIL(rxq->reg_idx);

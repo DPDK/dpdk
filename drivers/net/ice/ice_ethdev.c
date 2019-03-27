@@ -2206,8 +2206,7 @@ ice_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct rte_eth_dev_data *dev_data = pf->dev_data;
-	uint32_t frame_size = mtu + ETHER_HDR_LEN
-			      + ETHER_CRC_LEN + ICE_VLAN_TAG_SIZE;
+	uint32_t frame_size = mtu + ICE_ETH_OVERHEAD;
 
 	/* check if mtu is within the allowed range */
 	if (mtu < ETHER_MIN_MTU || frame_size > ICE_FRAME_SIZE_MAX)
