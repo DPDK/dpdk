@@ -187,10 +187,42 @@ struct mlx5_drop {
 
 struct mlx5_flow_tcf_context;
 
+/* Per port data of shared IB device. */
+struct mlx5_ibv_shared_port {
+	uint32_t ih_port_id;
+	/*
+	 * Interrupt handler port_id. Used by shared interrupt
+	 * handler to find the corresponding rte_eth device
+	 * by IB port index. If value is equal or greater
+	 * RTE_MAX_ETHPORTS it means there is no subhandler
+	 * installed for specified IB port index.
+	 */
+};
+
+/*
+ * Shared Infiniband device context for Master/Representors
+ * which belong to same IB device with multiple IB ports.
+ **/
+struct mlx5_ibv_shared {
+	LIST_ENTRY(mlx5_ibv_shared) next;
+	uint32_t refcnt;
+	uint32_t devx:1; /* Opened with DV. */
+	uint32_t max_port; /* Maximal IB device port index. */
+	struct ibv_context *ctx; /* Verbs/DV context. */
+	struct ibv_pd *pd; /* Protection Domain. */
+	char ibdev_name[IBV_SYSFS_NAME_MAX]; /* IB device name. */
+	char ibdev_path[IBV_SYSFS_PATH_MAX]; /* IB device path for secondary */
+	struct ibv_device_attr_ex device_attr; /* Device properties. */
+	struct rte_intr_handle intr_handle; /* Interrupt handler for device. */
+	struct mlx5_ibv_shared_port port[]; /* per device port data array. */
+};
+
 struct mlx5_priv {
 	LIST_ENTRY(mlx5_priv) mem_event_cb;
 	/**< Called by memory event callback. */
 	struct rte_eth_dev_data *dev_data;  /* Pointer to device data. */
+	struct mlx5_ibv_shared *sh; /* Shared IB device context. */
+	uint32_t ibv_port; /* IB device port number. */
 	struct ibv_context *ctx; /* Verbs context. */
 	struct ibv_device_attr_ex device_attr; /* Device properties. */
 	struct ibv_pd *pd; /* Protection Domain. */

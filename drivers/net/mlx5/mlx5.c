@@ -140,6 +140,145 @@ struct mlx5_dev_spawn_data {
 	struct rte_eth_dev *eth_dev; /**< Associated Ethernet device. */
 };
 
+static LIST_HEAD(, mlx5_ibv_shared) mlx5_ibv_list = LIST_HEAD_INITIALIZER();
+static pthread_mutex_t mlx5_ibv_list_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/**
+ * Allocate shared IB device context. If there is multiport device the
+ * master and representors will share this context, if there is single
+ * port dedicated IB device, the context will be used by only given
+ * port due to unification.
+ *
+ * Routine first searches the context for the spesified IB device name,
+ * if found the shared context assumed and reference counter is incremented.
+ * If no context found the new one is created and initialized with specified
+ * IB device context and parameters.
+ *
+ * @param[in] spawn
+ *   Pointer to the IB device attributes (name, port, etc).
+ *
+ * @return
+ *   Pointer to mlx5_ibv_shared object on success,
+ *   otherwise NULL and rte_errno is set.
+ */
+static struct mlx5_ibv_shared *
+mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn)
+{
+	struct mlx5_ibv_shared *sh;
+	int err = 0;
+
+	assert(spawn);
+	/* Secondary process should not create the shared context. */
+	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	pthread_mutex_lock(&mlx5_ibv_list_mutex);
+	/* Search for IB context by device name. */
+	LIST_FOREACH(sh, &mlx5_ibv_list, next) {
+		if (!strcmp(sh->ibdev_name, spawn->ibv_dev->name)) {
+			sh->refcnt++;
+			goto exit;
+		}
+	}
+	/* No device found, we have to create new sharted context. */
+	assert(spawn->max_port);
+	sh = rte_zmalloc("ethdev shared ib context",
+			 sizeof(struct mlx5_ibv_shared) +
+			 spawn->max_port *
+			 sizeof(struct mlx5_ibv_shared_port),
+			 RTE_CACHE_LINE_SIZE);
+	if (!sh) {
+		DRV_LOG(ERR, "shared context allocation failure");
+		rte_errno  = ENOMEM;
+		goto exit;
+	}
+	/* Try to open IB device with DV first, then usual Verbs. */
+	errno = 0;
+	sh->ctx = mlx5_glue->dv_open_device(spawn->ibv_dev);
+	if (sh->ctx) {
+		sh->devx = 1;
+		DRV_LOG(DEBUG, "DevX is supported");
+	} else {
+		sh->ctx = mlx5_glue->open_device(spawn->ibv_dev);
+		if (!sh->ctx) {
+			err = errno ? errno : ENODEV;
+			goto error;
+		}
+		DRV_LOG(DEBUG, "DevX is NOT supported");
+	}
+	err = mlx5_glue->query_device_ex(sh->ctx, NULL, &sh->device_attr);
+	if (err) {
+		DRV_LOG(DEBUG, "ibv_query_device_ex() failed");
+		goto error;
+	}
+	sh->refcnt = 1;
+	sh->max_port = spawn->max_port;
+	strncpy(sh->ibdev_name, sh->ctx->device->name,
+		sizeof(sh->ibdev_name));
+	strncpy(sh->ibdev_path, sh->ctx->device->ibdev_path,
+		sizeof(sh->ibdev_path));
+	sh->pd = mlx5_glue->alloc_pd(sh->ctx);
+	if (sh->pd == NULL) {
+		DRV_LOG(ERR, "PD allocation failure");
+		err = ENOMEM;
+		goto error;
+	}
+	LIST_INSERT_HEAD(&mlx5_ibv_list, sh, next);
+exit:
+	pthread_mutex_unlock(&mlx5_ibv_list_mutex);
+	return sh;
+error:
+	pthread_mutex_unlock(&mlx5_ibv_list_mutex);
+	assert(sh);
+	if (sh->pd)
+		claim_zero(mlx5_glue->dealloc_pd(sh->pd));
+	if (sh->ctx)
+		claim_zero(mlx5_glue->close_device(sh->ctx));
+	rte_free(sh);
+	assert(err > 0);
+	rte_errno = err;
+	return NULL;
+}
+
+/**
+ * Free shared IB device context. Decrement counter and if zero free
+ * all allocated resources and close handles.
+ *
+ * @param[in] sh
+ *   Pointer to mlx5_ibv_shared object to free
+ */
+static void
+mlx5_free_shared_ibctx(struct mlx5_ibv_shared *sh)
+{
+	pthread_mutex_lock(&mlx5_ibv_list_mutex);
+#ifndef NDEBUG
+	/* Check the object presence in the list. */
+	struct mlx5_ibv_shared *lctx;
+
+	LIST_FOREACH(lctx, &mlx5_ibv_list, next)
+		if (lctx == sh)
+			break;
+	assert(lctx);
+	if (lctx != sh) {
+		DRV_LOG(ERR, "Freeing non-existing shared IB context");
+		goto exit;
+	}
+#endif
+	assert(sh);
+	assert(sh->refcnt);
+	/* Secondary process should not free the shared context. */
+	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	if (--sh->refcnt)
+		goto exit;
+	LIST_REMOVE(sh, next);
+	if (sh->pd)
+		claim_zero(mlx5_glue->dealloc_pd(sh->pd));
+	if (sh->ctx)
+		claim_zero(mlx5_glue->close_device(sh->ctx));
+	rte_free(sh);
+exit:
+	pthread_mutex_unlock(&mlx5_ibv_list_mutex);
+}
+
+
 /**
  * Prepare shared data between primary and secondary process.
  */
@@ -289,12 +428,10 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	}
 	mlx5_mprq_free_mp(dev);
 	mlx5_mr_release(dev);
-	if (priv->pd != NULL) {
-		assert(priv->ctx != NULL);
-		claim_zero(mlx5_glue->dealloc_pd(priv->pd));
-		claim_zero(mlx5_glue->close_device(priv->ctx));
-	} else
-		assert(priv->ctx == NULL);
+	assert(priv->sh);
+	if (priv->sh)
+		mlx5_free_shared_ibctx(priv->sh);
+	priv->sh = NULL;
 	if (priv->rss_conf.rss_key != NULL)
 		rte_free(priv->rss_conf.rss_key);
 	if (priv->reta_idx != NULL)
@@ -744,11 +881,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	       struct mlx5_dev_config config)
 {
 	const struct mlx5_switch_info *switch_info = &spawn->info;
-	struct ibv_device *ibv_dev = spawn->ibv_dev;
-	struct ibv_context *ctx = NULL;
-	struct ibv_device_attr_ex attr;
+	struct mlx5_ibv_shared *sh = NULL;
 	struct ibv_port_attr port_attr;
-	struct ibv_pd *pd = NULL;
 	struct mlx5dv_context dv_attr = { .comp_mask = 0 };
 	struct rte_eth_dev *eth_dev = NULL;
 	struct mlx5_priv *priv = NULL;
@@ -804,18 +938,40 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	}
 	/* Prepare shared data between primary and secondary process. */
 	mlx5_prepare_shared_data();
-	errno = 0;
-	ctx = mlx5_glue->dv_open_device(ibv_dev);
-	if (ctx) {
-		config.devx = 1;
-		DRV_LOG(DEBUG, "DEVX is supported");
-	} else {
-		ctx = mlx5_glue->open_device(ibv_dev);
-		if (!ctx) {
-			rte_errno = errno ? errno : ENODEV;
+	DRV_LOG(DEBUG, "naming Ethernet device \"%s\"", name);
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		eth_dev = rte_eth_dev_attach_secondary(name);
+		if (eth_dev == NULL) {
+			DRV_LOG(ERR, "can not attach rte ethdev");
+			rte_errno = ENOMEM;
 			return NULL;
 		}
+		eth_dev->device = dpdk_dev;
+		eth_dev->dev_ops = &mlx5_dev_sec_ops;
+		err = mlx5_uar_init_secondary(eth_dev);
+		if (err)
+			return NULL;
+		/* Receive command fd from primary process */
+		err = mlx5_socket_connect(eth_dev);
+		if (err < 0)
+			return NULL;
+		/* Remap UAR for Tx queues. */
+		err = mlx5_tx_uar_remap(eth_dev, err);
+		if (err)
+			return NULL;
+		/*
+		 * Ethdev pointer is still required as input since
+		 * the primary device is not accessible from the
+		 * secondary process.
+		 */
+		eth_dev->rx_pkt_burst = mlx5_select_rx_function(eth_dev);
+		eth_dev->tx_pkt_burst = mlx5_select_tx_function(eth_dev);
+		return eth_dev;
 	}
+	sh = mlx5_alloc_shared_ibctx(spawn);
+	if (!sh)
+		return NULL;
+	config.devx = sh->devx;
 #ifdef HAVE_IBV_MLX5_MOD_SWP
 	dv_attr.comp_mask |= MLX5DV_CONTEXT_MASK_SWP;
 #endif
@@ -829,7 +985,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 #ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
 	dv_attr.comp_mask |= MLX5DV_CONTEXT_MASK_STRIDING_RQ;
 #endif
-	mlx5_glue->dv_query_device(ctx, &dv_attr);
+	mlx5_glue->dv_query_device(sh->ctx, &dv_attr);
 	if (dv_attr.flags & MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED) {
 		if (dv_attr.flags & MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW) {
 			DRV_LOG(DEBUG, "enhanced MPW is supported");
@@ -914,51 +1070,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		" old OFED/rdma-core version or firmware configuration");
 #endif
 	config.mpls_en = mpls_en;
-	err = mlx5_glue->query_device_ex(ctx, NULL, &attr);
-	if (err) {
-		DEBUG("ibv_query_device_ex() failed");
-		goto error;
-	}
-	DRV_LOG(DEBUG, "naming Ethernet device \"%s\"", name);
-	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
-		eth_dev = rte_eth_dev_attach_secondary(name);
-		if (eth_dev == NULL) {
-			DRV_LOG(ERR, "can not attach rte ethdev");
-			rte_errno = ENOMEM;
-			err = rte_errno;
-			goto error;
-		}
-		eth_dev->device = dpdk_dev;
-		eth_dev->dev_ops = &mlx5_dev_sec_ops;
-		err = mlx5_uar_init_secondary(eth_dev);
-		if (err) {
-			err = rte_errno;
-			goto error;
-		}
-		/* Receive command fd from primary process */
-		err = mlx5_socket_connect(eth_dev);
-		if (err < 0) {
-			err = rte_errno;
-			goto error;
-		}
-		/* Remap UAR for Tx queues. */
-		err = mlx5_tx_uar_remap(eth_dev, err);
-		if (err) {
-			err = rte_errno;
-			goto error;
-		}
-		/*
-		 * Ethdev pointer is still required as input since
-		 * the primary device is not accessible from the
-		 * secondary process.
-		 */
-		eth_dev->rx_pkt_burst = mlx5_select_rx_function(eth_dev);
-		eth_dev->tx_pkt_burst = mlx5_select_tx_function(eth_dev);
-		claim_zero(mlx5_glue->close_device(ctx));
-		return eth_dev;
-	}
 	/* Check port status. */
-	err = mlx5_glue->query_port(ctx, spawn->ibv_port, &port_attr);
+	err = mlx5_glue->query_port(sh->ctx, spawn->ibv_port, &port_attr);
 	if (err) {
 		DRV_LOG(ERR, "port query failed: %s", strerror(err));
 		goto error;
@@ -972,13 +1085,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		DRV_LOG(DEBUG, "port is not active: \"%s\" (%d)",
 			mlx5_glue->port_state_str(port_attr.state),
 			port_attr.state);
-	/* Allocate protection domain. */
-	pd = mlx5_glue->alloc_pd(ctx);
-	if (pd == NULL) {
-		DRV_LOG(ERR, "PD allocation failure");
-		err = ENOMEM;
-		goto error;
-	}
+	/* Allocate private eth device data. */
 	priv = rte_zmalloc("ethdev private structure",
 			   sizeof(*priv),
 			   RTE_CACHE_LINE_SIZE);
@@ -987,13 +1094,11 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		err = ENOMEM;
 		goto error;
 	}
-	priv->ctx = ctx;
-	strncpy(priv->ibdev_name, priv->ctx->device->name,
-		sizeof(priv->ibdev_name));
-	strncpy(priv->ibdev_path, priv->ctx->device->ibdev_path,
-		sizeof(priv->ibdev_path));
-	priv->device_attr = attr;
-	priv->pd = pd;
+	priv->sh = sh;
+	priv->ctx = sh->ctx;
+	priv->ibv_port = spawn->ibv_port;
+	priv->device_attr = sh->device_attr;
+	priv->pd = sh->pd;
 	priv->mtu = ETHER_MTU;
 #ifndef RTE_ARCH_64
 	/* Initialize UAR access locks for 32bit implementations. */
@@ -1062,7 +1167,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 			strerror(rte_errno));
 		goto error;
 	}
-	config.hw_csum = !!(attr.device_cap_flags_ex & IBV_DEVICE_RAW_IP_CSUM);
+	config.hw_csum = !!(sh->device_attr.device_cap_flags_ex &
+			    IBV_DEVICE_RAW_IP_CSUM);
 	DRV_LOG(DEBUG, "checksum offloading is %ssupported",
 		(config.hw_csum ? "" : "not "));
 #if !defined(HAVE_IBV_DEVICE_COUNTERS_SET_V42) && \
@@ -1076,7 +1182,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	}
 #endif
 	config.ind_table_max_size =
-		attr.rss_caps.max_rwq_indirection_table_size;
+		sh->device_attr.rss_caps.max_rwq_indirection_table_size;
 	/*
 	 * Remove this check once DPDK supports larger/variable
 	 * indirection tables.
@@ -1085,18 +1191,18 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		config.ind_table_max_size = ETH_RSS_RETA_SIZE_512;
 	DRV_LOG(DEBUG, "maximum Rx indirection table size is %u",
 		config.ind_table_max_size);
-	config.hw_vlan_strip = !!(attr.raw_packet_caps &
+	config.hw_vlan_strip = !!(sh->device_attr.raw_packet_caps &
 				  IBV_RAW_PACKET_CAP_CVLAN_STRIPPING);
 	DRV_LOG(DEBUG, "VLAN stripping is %ssupported",
 		(config.hw_vlan_strip ? "" : "not "));
-	config.hw_fcs_strip = !!(attr.raw_packet_caps &
+	config.hw_fcs_strip = !!(sh->device_attr.raw_packet_caps &
 				 IBV_RAW_PACKET_CAP_SCATTER_FCS);
 	DRV_LOG(DEBUG, "FCS stripping configuration is %ssupported",
 		(config.hw_fcs_strip ? "" : "not "));
 #if defined(HAVE_IBV_WQ_FLAG_RX_END_PADDING)
-	hw_padding = !!attr.rx_pad_end_addr_align;
+	hw_padding = !!sh->device_attr.rx_pad_end_addr_align;
 #elif defined(HAVE_IBV_WQ_FLAGS_PCI_WRITE_END_PADDING)
-	hw_padding = !!(attr.device_cap_flags_ex &
+	hw_padding = !!(sh->device_attr.device_cap_flags_ex &
 			IBV_DEVICE_PCI_WRITE_END_PADDING);
 #endif
 	if (config.hw_padding && !hw_padding) {
@@ -1105,11 +1211,11 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	} else if (config.hw_padding) {
 		DRV_LOG(DEBUG, "Rx end alignment padding is enabled");
 	}
-	config.tso = (attr.tso_caps.max_tso > 0 &&
-		      (attr.tso_caps.supported_qpts &
+	config.tso = (sh->device_attr.tso_caps.max_tso > 0 &&
+		      (sh->device_attr.tso_caps.supported_qpts &
 		       (1 << IBV_QPT_RAW_PACKET)));
 	if (config.tso)
-		config.tso_max_payload_sz = attr.tso_caps.max_tso;
+		config.tso_max_payload_sz = sh->device_attr.tso_caps.max_tso;
 	/*
 	 * MPW is disabled by default, while the Enhanced MPW is enabled
 	 * by default.
@@ -1250,7 +1356,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		.free = &mlx5_free_verbs_buf,
 		.data = priv,
 	};
-	mlx5_glue->dv_set_context_attr(ctx, MLX5DV_CTX_ATTR_BUF_ALLOCATORS,
+	mlx5_glue->dv_set_context_attr(sh->ctx,
+				       MLX5DV_CTX_ATTR_BUF_ALLOCATORS,
 				       (void *)((uintptr_t)&alctr));
 	/* Bring Ethernet device up. */
 	DRV_LOG(DEBUG, "port %u forcing Ethernet interface up",
@@ -1304,15 +1411,13 @@ error:
 		if (eth_dev != NULL)
 			eth_dev->data->dev_private = NULL;
 	}
-	if (pd)
-		claim_zero(mlx5_glue->dealloc_pd(pd));
 	if (eth_dev != NULL) {
 		/* mac_addrs must not be freed alone because part of dev_private */
 		eth_dev->data->mac_addrs = NULL;
 		rte_eth_dev_release_port(eth_dev);
 	}
-	if (ctx)
-		claim_zero(mlx5_glue->close_device(ctx));
+	if (sh)
+		mlx5_free_shared_ibctx(sh);
 	assert(err > 0);
 	rte_errno = err;
 	return NULL;
