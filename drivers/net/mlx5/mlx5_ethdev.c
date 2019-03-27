@@ -1109,6 +1109,96 @@ mlx5_dev_handler_socket(void *cb_arg)
 }
 
 /**
+ * Uninstall shared asynchronous device events handler.
+ * This function is implemeted to support event sharing
+ * between multiple ports of single IB device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ */
+static void
+mlx5_dev_shared_handler_uninstall(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_ibv_shared *sh = priv->sh;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return;
+	pthread_mutex_lock(&sh->intr_mutex);
+	assert(priv->ibv_port);
+	assert(priv->ibv_port <= sh->max_port);
+	assert(dev->data->port_id < RTE_MAX_ETHPORTS);
+	if (sh->port[priv->ibv_port - 1].ih_port_id >= RTE_MAX_ETHPORTS)
+		goto exit;
+	assert(sh->port[priv->ibv_port - 1].ih_port_id ==
+					(uint32_t)dev->data->port_id);
+	assert(sh->intr_cnt);
+	sh->port[priv->ibv_port - 1].ih_port_id = RTE_MAX_ETHPORTS;
+	if (!sh->intr_cnt || --sh->intr_cnt)
+		goto exit;
+	rte_intr_callback_unregister(&sh->intr_handle,
+				     mlx5_dev_interrupt_handler, sh);
+	sh->intr_handle.fd = 0;
+	sh->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
+exit:
+	pthread_mutex_unlock(&sh->intr_mutex);
+}
+
+/**
+ * Install shared asyncronous device events handler.
+ * This function is implemeted to support event sharing
+ * between multiple ports of single IB device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ */
+static void
+mlx5_dev_shared_handler_install(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_ibv_shared *sh = priv->sh;
+	int ret;
+	int flags;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return;
+	pthread_mutex_lock(&sh->intr_mutex);
+	assert(priv->ibv_port);
+	assert(priv->ibv_port <= sh->max_port);
+	assert(dev->data->port_id < RTE_MAX_ETHPORTS);
+	if (sh->port[priv->ibv_port - 1].ih_port_id < RTE_MAX_ETHPORTS) {
+		/* The handler is already installed for this port. */
+		assert(sh->intr_cnt);
+		goto exit;
+	}
+	sh->port[priv->ibv_port - 1].ih_port_id = (uint32_t)dev->data->port_id;
+	if (sh->intr_cnt) {
+		sh->intr_cnt++;
+		goto exit;
+	}
+	/* No shared handler installed. */
+	assert(sh->ctx->async_fd > 0);
+	flags = fcntl(sh->ctx->async_fd, F_GETFL);
+	ret = fcntl(sh->ctx->async_fd, F_SETFL, flags | O_NONBLOCK);
+	if (ret) {
+		DRV_LOG(INFO, "failed to change file descriptor"
+			      " async event queue");
+		/* Indicate there will be no interrupts. */
+		dev->data->dev_conf.intr_conf.lsc = 0;
+		dev->data->dev_conf.intr_conf.rmv = 0;
+		sh->port[priv->ibv_port - 1].ih_port_id = RTE_MAX_ETHPORTS;
+		goto exit;
+	}
+	sh->intr_handle.fd = sh->ctx->async_fd;
+	sh->intr_handle.type = RTE_INTR_HANDLE_EXT;
+	rte_intr_callback_register(&sh->intr_handle,
+				   mlx5_dev_interrupt_handler, sh);
+	sh->intr_cnt++;
+exit:
+	pthread_mutex_unlock(&sh->intr_mutex);
+}
+
+/**
  * Uninstall interrupt handler.
  *
  * @param dev
@@ -1119,15 +1209,10 @@ mlx5_dev_interrupt_handler_uninstall(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 
-	if (dev->data->dev_conf.intr_conf.lsc ||
-	    dev->data->dev_conf.intr_conf.rmv)
-		rte_intr_callback_unregister(&priv->intr_handle,
-					     mlx5_dev_interrupt_handler, dev);
+	mlx5_dev_shared_handler_uninstall(dev);
 	if (priv->primary_socket)
 		rte_intr_callback_unregister(&priv->intr_handle_socket,
 					     mlx5_dev_handler_socket, dev);
-	priv->intr_handle.fd = 0;
-	priv->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
 	priv->intr_handle_socket.fd = 0;
 	priv->intr_handle_socket.type = RTE_INTR_HANDLE_UNKNOWN;
 }
@@ -1142,28 +1227,9 @@ void
 mlx5_dev_interrupt_handler_install(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct ibv_context *ctx = priv->sh->ctx;
 	int ret;
-	int flags;
 
-	assert(ctx->async_fd > 0);
-	flags = fcntl(ctx->async_fd, F_GETFL);
-	ret = fcntl(ctx->async_fd, F_SETFL, flags | O_NONBLOCK);
-	if (ret) {
-		DRV_LOG(INFO,
-			"port %u failed to change file descriptor async event"
-			" queue",
-			dev->data->port_id);
-		dev->data->dev_conf.intr_conf.lsc = 0;
-		dev->data->dev_conf.intr_conf.rmv = 0;
-	}
-	if (dev->data->dev_conf.intr_conf.lsc ||
-	    dev->data->dev_conf.intr_conf.rmv) {
-		priv->intr_handle.fd = ctx->async_fd;
-		priv->intr_handle.type = RTE_INTR_HANDLE_EXT;
-		rte_intr_callback_register(&priv->intr_handle,
-					   mlx5_dev_interrupt_handler, dev);
-	}
+	mlx5_dev_shared_handler_install(dev);
 	ret = mlx5_socket_init(dev);
 	if (ret)
 		DRV_LOG(ERR, "port %u cannot initialise socket: %s",

@@ -213,6 +213,8 @@ struct mlx5_ibv_shared {
 	char ibdev_name[IBV_SYSFS_NAME_MAX]; /* IB device name. */
 	char ibdev_path[IBV_SYSFS_PATH_MAX]; /* IB device path for secondary */
 	struct ibv_device_attr_ex device_attr; /* Device properties. */
+	pthread_mutex_t intr_mutex; /* Interrupt config mutex. */
+	uint32_t intr_cnt; /* Interrupt handler reference counter. */
 	struct rte_intr_handle intr_handle; /* Interrupt handler for device. */
 	struct mlx5_ibv_shared_port port[]; /* per device port data array. */
 };
@@ -243,7 +245,6 @@ struct mlx5_priv {
 	struct mlx5_txq_data *(*txqs)[]; /* TX queues. */
 	struct rte_mempool *mprq_mp; /* Mempool for Multi-Packet RQ. */
 	struct rte_eth_rss_conf rss_conf; /* RSS configuration. */
-	struct rte_intr_handle intr_handle; /* Interrupt handler. */
 	unsigned int (*reta_idx)[]; /* RETA index table. */
 	unsigned int reta_idx_n; /* RETA index size. */
 	struct mlx5_drop drop_queue; /* Flow drop queues. */

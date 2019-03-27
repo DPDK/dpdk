@@ -166,6 +166,7 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn)
 {
 	struct mlx5_ibv_shared *sh;
 	int err = 0;
+	uint32_t i;
 
 	assert(spawn);
 	/* Secondary process should not create the shared context. */
@@ -215,6 +216,14 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn)
 		sizeof(sh->ibdev_name));
 	strncpy(sh->ibdev_path, sh->ctx->device->ibdev_path,
 		sizeof(sh->ibdev_path));
+	pthread_mutex_init(&sh->intr_mutex, NULL);
+	/*
+	 * Setting port_id to max unallowed value means
+	 * there is no interrupt subhandler installed for
+	 * the given port index i.
+	 */
+	for (i = 0; i < sh->max_port; i++)
+		sh->port[i].ih_port_id = RTE_MAX_ETHPORTS;
 	sh->pd = mlx5_glue->alloc_pd(sh->ctx);
 	if (sh->pd == NULL) {
 		DRV_LOG(ERR, "PD allocation failure");
@@ -269,6 +278,15 @@ mlx5_free_shared_ibctx(struct mlx5_ibv_shared *sh)
 	if (--sh->refcnt)
 		goto exit;
 	LIST_REMOVE(sh, next);
+	/*
+	 *  Ensure there is no async event handler installed.
+	 *  Only primary process handles async device events.
+	 **/
+	assert(!sh->intr_cnt);
+	if (sh->intr_cnt)
+		rte_intr_callback_unregister
+			(&sh->intr_handle, mlx5_dev_interrupt_handler, sh);
+	pthread_mutex_destroy(&sh->intr_mutex);
 	if (sh->pd)
 		claim_zero(mlx5_glue->dealloc_pd(sh->pd));
 	if (sh->ctx)
@@ -277,7 +295,6 @@ mlx5_free_shared_ibctx(struct mlx5_ibv_shared *sh)
 exit:
 	pthread_mutex_unlock(&mlx5_ibv_list_mutex);
 }
-
 
 /**
  * Prepare shared data between primary and secondary process.
