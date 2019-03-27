@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2016 NXP
+ * Copyright 2016,2019 NXP
  *
  */
 
@@ -125,6 +125,7 @@ cnstr_shdsc_snow_f9(uint32_t *descbuf, bool ps, bool swap,
  * @descbuf: pointer to descriptor-under-construction buffer
  * @ps: if 36/40bit addressing is desired, this parameter must be true
  * @swap: must be true when core endianness doesn't match SEC endianness
+ * @share: sharing type of shared descriptor
  * @cipherdata: pointer to block cipher transform definitions
  *              Valid algorithm values one of OP_ALG_ALGSEL_* {DES, 3DES, AES}
  *              Valid modes for:
@@ -138,6 +139,7 @@ cnstr_shdsc_snow_f9(uint32_t *descbuf, bool ps, bool swap,
  */
 static inline int
 cnstr_shdsc_blkcipher(uint32_t *descbuf, bool ps, bool swap,
+		      enum rta_share_type share,
 		      struct alginfo *cipherdata, uint8_t *iv,
 		      uint32_t ivlen, uint8_t dir)
 {
@@ -157,7 +159,7 @@ cnstr_shdsc_blkcipher(uint32_t *descbuf, bool ps, bool swap,
 		PROGRAM_SET_BSWAP(p);
 	if (ps)
 		PROGRAM_SET_36BIT_ADDR(p);
-	SHR_HDR(p, SHR_SERIAL, 1, SC);
+	SHR_HDR(p, share, 1, SC);
 
 	pkeyjmp = JUMP(p, keyjmp, LOCAL_JUMP, ALL_TRUE, SHRD);
 	/* Insert Key */
@@ -211,6 +213,7 @@ cnstr_shdsc_blkcipher(uint32_t *descbuf, bool ps, bool swap,
  * @descbuf: pointer to descriptor-under-construction buffer
  * @ps: if 36/40bit addressing is desired, this parameter must be true
  * @swap: must be true when core endianness doesn't match SEC endianness
+ * @share: sharing type of shared descriptor
  * @authdata: pointer to authentication transform definitions;
  *            message digest algorithm: OP_ALG_ALGSEL_MD5/ SHA1-512.
  * @do_icv: 0 if ICV checking is not desired, any other value if ICV checking
@@ -225,6 +228,7 @@ cnstr_shdsc_blkcipher(uint32_t *descbuf, bool ps, bool swap,
  */
 static inline int
 cnstr_shdsc_hmac(uint32_t *descbuf, bool ps, bool swap,
+		 enum rta_share_type share,
 		 struct alginfo *authdata, uint8_t do_icv,
 		 uint8_t trunc_len)
 {
@@ -270,7 +274,7 @@ cnstr_shdsc_hmac(uint32_t *descbuf, bool ps, bool swap,
 		PROGRAM_SET_BSWAP(p);
 	if (ps)
 		PROGRAM_SET_36BIT_ADDR(p);
-	SHR_HDR(p, SHR_SERIAL, 1, SC);
+	SHR_HDR(p, share, 1, SC);
 
 	pkeyjmp = JUMP(p, keyjmp, LOCAL_JUMP, ALL_TRUE, SHRD);
 	KEY(p, KEY2, authdata->key_enc_flags, authdata->key, authdata->keylen,
@@ -443,6 +447,7 @@ cnstr_shdsc_crc(uint32_t *descbuf, bool swap)
  * @descbuf: pointer to descriptor-under-construction buffer
  * @ps: if 36/40bit addressing is desired, this parameter must be true
  * @swap: must be true when core endianness doesn't match SEC endianness
+ * @share: sharing type of shared descriptor
  * @cipherdata: pointer to block cipher transform definitions
  *		Valid algorithm values - OP_ALG_ALGSEL_AES ANDed with
  *		OP_ALG_AAI_GCM.
@@ -453,6 +458,7 @@ cnstr_shdsc_crc(uint32_t *descbuf, bool swap)
  */
 static inline int
 cnstr_shdsc_gcm_encap(uint32_t *descbuf, bool ps, bool swap,
+		      enum rta_share_type share,
 		      struct alginfo *cipherdata,
 		      uint32_t ivlen, uint32_t icvsize)
 {
@@ -475,7 +481,7 @@ cnstr_shdsc_gcm_encap(uint32_t *descbuf, bool ps, bool swap,
 	if (ps)
 		PROGRAM_SET_36BIT_ADDR(p);
 
-	SHR_HDR(p, SHR_SERIAL, 1, SC);
+	SHR_HDR(p, share, 1, SC);
 
 	pkeyjmp = JUMP(p, keyjmp, LOCAL_JUMP, ALL_TRUE, SELF | SHRD);
 	/* Insert Key */
@@ -556,6 +562,7 @@ cnstr_shdsc_gcm_encap(uint32_t *descbuf, bool ps, bool swap,
  * @descbuf: pointer to descriptor-under-construction buffer
  * @ps: if 36/40bit addressing is desired, this parameter must be true
  * @swap: must be true when core endianness doesn't match SEC endianness
+ * @share: sharing type of shared descriptor
  * @cipherdata: pointer to block cipher transform definitions
  *		Valid algorithm values - OP_ALG_ALGSEL_AES ANDed with
  *		OP_ALG_AAI_GCM.
@@ -565,6 +572,7 @@ cnstr_shdsc_gcm_encap(uint32_t *descbuf, bool ps, bool swap,
  */
 static inline int
 cnstr_shdsc_gcm_decap(uint32_t *descbuf, bool ps, bool swap,
+		      enum rta_share_type share,
 		      struct alginfo *cipherdata,
 		      uint32_t ivlen, uint32_t icvsize)
 {
@@ -585,7 +593,7 @@ cnstr_shdsc_gcm_decap(uint32_t *descbuf, bool ps, bool swap,
 	if (ps)
 		PROGRAM_SET_36BIT_ADDR(p);
 
-	SHR_HDR(p, SHR_SERIAL, 1, SC);
+	SHR_HDR(p, share, 1, SC);
 
 	pkeyjmp = JUMP(p, keyjmp, LOCAL_JUMP, ALL_TRUE, SELF | SHRD);
 	/* Insert Key */

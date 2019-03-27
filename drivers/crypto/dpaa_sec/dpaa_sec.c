@@ -643,7 +643,7 @@ dpaa_sec_prep_cdb(dpaa_sec_session *ses)
 
 		shared_desc_len = cnstr_shdsc_blkcipher(
 						cdb->sh_desc, true,
-						swap, &alginfo_c,
+						swap, SHR_NEVER, &alginfo_c,
 						NULL,
 						ses->iv.length,
 						ses->dir);
@@ -660,7 +660,7 @@ dpaa_sec_prep_cdb(dpaa_sec_session *ses)
 		alginfo_a.key_type = RTA_DATA_IMM;
 
 		shared_desc_len = cnstr_shdsc_hmac(cdb->sh_desc, true,
-						   swap, &alginfo_a,
+						   swap, SHR_NEVER, &alginfo_a,
 						   !ses->dir,
 						   ses->digest_length);
 	} else if (is_aead(ses)) {
@@ -676,13 +676,13 @@ dpaa_sec_prep_cdb(dpaa_sec_session *ses)
 
 		if (ses->dir == DIR_ENC)
 			shared_desc_len = cnstr_shdsc_gcm_encap(
-					cdb->sh_desc, true, swap,
+					cdb->sh_desc, true, swap, SHR_NEVER,
 					&alginfo,
 					ses->iv.length,
 					ses->digest_length);
 		else
 			shared_desc_len = cnstr_shdsc_gcm_decap(
-					cdb->sh_desc, true, swap,
+					cdb->sh_desc, true, swap, SHR_NEVER,
 					&alginfo,
 					ses->iv.length,
 					ses->digest_length);
@@ -741,7 +741,7 @@ dpaa_sec_prep_cdb(dpaa_sec_session *ses)
 		 * overwritten in fd for each packet.
 		 */
 		shared_desc_len = cnstr_shdsc_authenc(cdb->sh_desc,
-				true, swap, &alginfo_c, &alginfo_a,
+				true, swap, SHR_SERIAL, &alginfo_c, &alginfo_a,
 				ses->iv.length, 0,
 				ses->digest_length, ses->dir);
 	}

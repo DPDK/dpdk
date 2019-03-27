@@ -1672,7 +1672,7 @@ dpaa2_sec_cipher_init(struct rte_cryptodev *dev,
 	session->dir = (xform->cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT) ?
 				DIR_ENC : DIR_DEC;
 
-	bufsize = cnstr_shdsc_blkcipher(priv->flc_desc[0].desc, 1, 0,
+	bufsize = cnstr_shdsc_blkcipher(priv->flc_desc[0].desc, 1, 0, SHR_NEVER,
 					&cipherdata, NULL, session->iv.length,
 					session->dir);
 	if (bufsize < 0) {
@@ -1804,7 +1804,7 @@ dpaa2_sec_auth_init(struct rte_cryptodev *dev,
 				DIR_ENC : DIR_DEC;
 
 	bufsize = cnstr_shdsc_hmac(priv->flc_desc[DESC_INITFINAL].desc,
-				   1, 0, &authdata, !session->dir,
+				   1, 0, SHR_NEVER, &authdata, !session->dir,
 				   session->digest_length);
 	if (bufsize < 0) {
 		DPAA2_SEC_ERR("Crypto: Invalid buffer length");
@@ -1923,12 +1923,12 @@ dpaa2_sec_aead_init(struct rte_cryptodev *dev,
 
 	if (session->dir == DIR_ENC)
 		bufsize = cnstr_shdsc_gcm_encap(
-				priv->flc_desc[0].desc, 1, 0,
+				priv->flc_desc[0].desc, 1, 0, SHR_NEVER,
 				&aeaddata, session->iv.length,
 				session->digest_length);
 	else
 		bufsize = cnstr_shdsc_gcm_decap(
-				priv->flc_desc[0].desc, 1, 0,
+				priv->flc_desc[0].desc, 1, 0, SHR_NEVER,
 				&aeaddata, session->iv.length,
 				session->digest_length);
 	if (bufsize < 0) {
@@ -2152,7 +2152,8 @@ dpaa2_sec_aead_chain_init(struct rte_cryptodev *dev,
 
 	if (session->ctxt_type == DPAA2_SEC_CIPHER_HASH) {
 		bufsize = cnstr_shdsc_authenc(priv->flc_desc[0].desc, 1,
-					      0, &cipherdata, &authdata,
+					      0, SHR_SERIAL,
+					      &cipherdata, &authdata,
 					      session->iv.length,
 					      ctxt->auth_only_len,
 					      session->digest_length,
