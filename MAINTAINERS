@@ -242,7 +242,7 @@ F: drivers/net/i40e/i40e_rxtx_vec_neon.c
 F: drivers/net/virtio/virtio_rxtx_simple_neon.c
 
 IBM POWER (alpha)
-M: Chao Zhu <chaozhu@linux.vnet.ibm.com>
+M: David Christensen <drc@linux.vnet.ibm.com>
 F: lib/librte_eal/common/arch/ppc_64/
 F: lib/librte_eal/common/include/arch/ppc_64/
 F: drivers/net/i40e/i40e_rxtx_vec_altivec.c
