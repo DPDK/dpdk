@@ -217,22 +217,19 @@ ipsec_process(struct ipsec_ctx *ctx, struct ipsec_traffic *trf)
 		pg = grp + i;
 		sa = pg->id.ptr;
 
-		/* no valid SA found */
-		if (sa == NULL)
-			k = 0;
-
 		ips = &sa->ips;
-		satp = rte_ipsec_sa_type(ips->sa);
 
 		/* no valid HW session for that SA, try to create one */
-		if (ips->crypto.ses == NULL &&
-				fill_ipsec_session(ips, ctx, sa) != 0)
+		if (sa == NULL || (ips->crypto.ses == NULL &&
+				fill_ipsec_session(ips, ctx, sa) != 0))
 			k = 0;
 
 		/* process packets inline */
 		else if (sa->type == RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO ||
 				sa->type ==
 				RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL) {
+
+			satp = rte_ipsec_sa_type(ips->sa);
 
 			/*
 			 * This is just to satisfy inbound_sa_check()
