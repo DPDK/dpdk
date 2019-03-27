@@ -138,8 +138,10 @@ mlx5_get_master_ifname(const struct rte_eth_dev *dev,
 	unsigned int dev_port_prev = ~0u;
 	char match[IF_NAMESIZE] = "";
 
+	assert(priv);
+	assert(priv->sh);
 	{
-		MKSTR(path, "%s/device/net", priv->ibdev_path);
+		MKSTR(path, "%s/device/net", priv->sh->ibdev_path);
 
 		dir = opendir(path);
 		if (dir == NULL) {
@@ -159,7 +161,7 @@ mlx5_get_master_ifname(const struct rte_eth_dev *dev,
 			continue;
 
 		MKSTR(path, "%s/device/net/%s/%s",
-		      priv->ibdev_path, name,
+		      priv->sh->ibdev_path, name,
 		      (dev_type ? "dev_id" : "dev_port"));
 
 		file = fopen(path, "rb");
@@ -222,7 +224,9 @@ mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[IF_NAMESIZE])
 	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int ifindex =
 		priv->nl_socket_rdma >= 0 ?
-		mlx5_nl_ifindex(priv->nl_socket_rdma, priv->ibdev_name, 1) : 0;
+		mlx5_nl_ifindex(priv->nl_socket_rdma,
+				priv->sh->ibdev_name,
+				priv->ibv_port) : 0;
 
 	if (!ifindex) {
 		if (!priv->representor)

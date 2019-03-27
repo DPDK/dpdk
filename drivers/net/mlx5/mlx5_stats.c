@@ -140,18 +140,22 @@ static inline void
 mlx5_read_ib_stat(struct mlx5_priv *priv, const char *ctr_name, uint64_t *stat)
 {
 	FILE *file;
-	MKSTR(path, "%s/ports/1/hw_counters/%s",
-		  priv->ibdev_path,
-		  ctr_name);
+	if (priv->sh) {
+		MKSTR(path, "%s/ports/%d/hw_counters/%s",
+			  priv->sh->ibdev_path,
+			  priv->ibv_port,
+			  ctr_name);
 
-	file = fopen(path, "rb");
-	if (file) {
-		int n = fscanf(file, "%" SCNu64, stat);
+		file = fopen(path, "rb");
+		if (file) {
+			int n = fscanf(file, "%" SCNu64, stat);
 
-		fclose(file);
-		if (n != 1)
-			stat = 0;
+			fclose(file);
+			if (n == 1)
+				return;
+		}
 	}
+	*stat = 0;
 }
 
 /**
