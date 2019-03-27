@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2018 Cavium Networks
+ * Copyright (c) 2019 Intel Corporation
  */
 
 #include <rte_bus_vdev.h>
@@ -25,6 +26,16 @@
 #define TEST_NUM_BUFS 10
 #define TEST_NUM_SESSIONS 4
 
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+#endif
+
+#ifndef TEST_DATA_SIZE
+	#define TEST_DATA_SIZE 4096
+#endif
+#define ASYM_TEST_MSG_LEN 256
+#define TEST_VECTOR_SIZE 256
+
 static int gbl_driver_id;
 struct crypto_testsuite_params {
 	struct rte_mempool *op_mpool;
@@ -40,7 +51,282 @@ struct crypto_unittest_params {
 	struct rte_crypto_op *op;
 };
 
+union test_case_structure {
+	struct modex_test_data modex;
+	struct modinv_test_data modinv;
+};
+
+struct test_cases_array {
+	uint32_t size;
+	const void *address[TEST_VECTOR_SIZE];
+};
+static struct test_cases_array test_vector = {0, { NULL } };
+
+static uint32_t test_index;
+
 static struct crypto_testsuite_params testsuite_params = { NULL };
+
+static int
+test_cryptodev_asym_ver(union test_case_structure *data_tc,
+						struct rte_crypto_op *result_op)
+{
+	int status = TEST_SUCCESS;
+	int ret = 0;
+	uint8_t *data_expected = NULL, *data_received = NULL;
+	size_t data_size = 0;
+
+	switch (data_tc->modex.xform_type) {
+	case RTE_CRYPTO_ASYM_XFORM_MODEX:
+		data_expected = data_tc->modex.reminder.data;
+		data_received = result_op->asym->modex.result.data;
+		data_size = result_op->asym->modex.result.length;
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_MODINV:
+		data_expected = data_tc->modinv.inverse.data;
+		data_received = result_op->asym->modinv.result.data;
+		data_size = result_op->asym->modinv.result.length;
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_DH:
+	case RTE_CRYPTO_ASYM_XFORM_DSA:
+	case RTE_CRYPTO_ASYM_XFORM_RSA:
+	case RTE_CRYPTO_ASYM_XFORM_NONE:
+	case RTE_CRYPTO_ASYM_XFORM_UNSPECIFIED:
+	default:
+		break;
+	}
+	ret = memcmp(data_expected, data_received, data_size);
+	if (ret)
+		status = TEST_FAILED;
+
+	return status;
+}
+
+static int
+test_cryptodev_asym_op(struct crypto_testsuite_params *ts_params,
+	union test_case_structure *data_tc,
+	char *test_msg)
+{
+	struct rte_crypto_asym_op *asym_op = NULL;
+	struct rte_crypto_op *op = NULL;
+	struct rte_crypto_op *result_op = NULL;
+	struct rte_crypto_asym_xform xform_tc;
+	struct rte_cryptodev_asym_session *sess = NULL;
+	struct rte_cryptodev_asym_capability_idx cap_idx;
+	const struct rte_cryptodev_asymmetric_xform_capability *capability;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	uint8_t input[TEST_DATA_SIZE] = {0};
+	uint8_t *result = NULL;
+
+	int status = TEST_SUCCESS;
+
+	/* Generate crypto op data structure */
+	op = rte_crypto_op_alloc(ts_params->op_mpool,
+		RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+
+	if (!op) {
+		snprintf(test_msg, ASYM_TEST_MSG_LEN,
+			"line %u FAILED: %s",
+			__LINE__, "Failed to allocate asymmetric crypto "
+			"operation struct");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	asym_op = op->asym;
+	xform_tc.next = NULL;
+	xform_tc.xform_type = data_tc->modex.xform_type;
+
+	cap_idx.type = xform_tc.xform_type;
+	capability = rte_cryptodev_asym_capability_get(dev_id, &cap_idx);
+
+	switch (xform_tc.xform_type) {
+	case RTE_CRYPTO_ASYM_XFORM_MODEX:
+		result = rte_zmalloc(NULL, data_tc->modex.result_len, 0);
+		xform_tc.modex.modulus.data = data_tc->modex.modulus.data;
+		xform_tc.modex.modulus.length = data_tc->modex.modulus.len;
+		xform_tc.modex.exponent.data = data_tc->modex.exponent.data;
+		xform_tc.modex.exponent.length = data_tc->modex.exponent.len;
+		memcpy(input, data_tc->modex.base.data,
+			data_tc->modex.base.len);
+		asym_op->modex.base.data = input;
+		asym_op->modex.base.length = data_tc->modex.base.len;
+		asym_op->modex.result.data = result;
+		asym_op->modex.result.length = data_tc->modex.result_len;
+		if (rte_cryptodev_asym_xform_capability_check_modlen(capability,
+				xform_tc.modex.modulus.length)) {
+			snprintf(test_msg, ASYM_TEST_MSG_LEN,
+				"line %u "
+				"FAILED: %s", __LINE__,
+				"Invalid MODULUS length specified");
+			status = TEST_FAILED;
+			goto error_exit;
+		}
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_MODINV:
+		result = rte_zmalloc(NULL, data_tc->modinv.result_len, 0);
+		xform_tc.modinv.modulus.data = data_tc->modinv.modulus.data;
+		xform_tc.modinv.modulus.length = data_tc->modinv.modulus.len;
+		memcpy(input, data_tc->modinv.base.data,
+			data_tc->modinv.base.len);
+		asym_op->modinv.base.data = input;
+		asym_op->modinv.base.length = data_tc->modinv.base.len;
+		asym_op->modinv.result.data = result;
+		asym_op->modinv.result.length = data_tc->modinv.result_len;
+		if (rte_cryptodev_asym_xform_capability_check_modlen(capability,
+				xform_tc.modinv.modulus.length)) {
+			snprintf(test_msg, ASYM_TEST_MSG_LEN,
+				"line %u "
+				"FAILED: %s", __LINE__,
+				"Invalid MODULUS length specified");
+			status = TEST_FAILED;
+			goto error_exit;
+		}
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_DH:
+	case RTE_CRYPTO_ASYM_XFORM_DSA:
+	case RTE_CRYPTO_ASYM_XFORM_RSA:
+	case RTE_CRYPTO_ASYM_XFORM_NONE:
+	case RTE_CRYPTO_ASYM_XFORM_UNSPECIFIED:
+	default:
+		snprintf(test_msg, ASYM_TEST_MSG_LEN,
+				"line %u "
+				"FAILED: %s", __LINE__,
+				"Invalid ASYM algorithm specified");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	sess = rte_cryptodev_asym_session_create(ts_params->session_mpool);
+	if (!sess) {
+		snprintf(test_msg, ASYM_TEST_MSG_LEN,
+				"line %u "
+				"FAILED: %s", __LINE__,
+				"Session creation failed");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	if (rte_cryptodev_asym_session_init(dev_id, sess, &xform_tc,
+			ts_params->session_mpool) < 0) {
+		snprintf(test_msg, ASYM_TEST_MSG_LEN,
+				"line %u FAILED: %s",
+				__LINE__, "unabled to config sym session");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	rte_crypto_op_attach_asym_session(op, sess);
+
+	RTE_LOG(DEBUG, USER1, "Process ASYM operation");
+
+	/* Process crypto operation */
+	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
+		snprintf(test_msg, ASYM_TEST_MSG_LEN,
+				"line %u FAILED: %s",
+				__LINE__, "Error sending packet for operation");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
+		rte_pause();
+
+	if (result_op == NULL) {
+		snprintf(test_msg, ASYM_TEST_MSG_LEN,
+				"line %u FAILED: %s",
+				__LINE__, "Failed to process asym crypto op");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	if (test_cryptodev_asym_ver(data_tc, result_op) != TEST_SUCCESS) {
+		snprintf(test_msg, ASYM_TEST_MSG_LEN,
+			"line %u FAILED: %s",
+			__LINE__, "Verification failed ");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	snprintf(test_msg, ASYM_TEST_MSG_LEN, "PASS");
+
+error_exit:
+		if (sess != NULL) {
+			rte_cryptodev_asym_session_clear(dev_id, sess);
+			rte_cryptodev_asym_session_free(sess);
+		}
+
+		if (op != NULL)
+			rte_crypto_op_free(op);
+
+		if (result != NULL)
+			rte_free(result);
+
+	return status;
+}
+
+static int
+test_one_case(const void *test_case)
+{
+	int status = TEST_SUCCESS;
+	char test_msg[ASYM_TEST_MSG_LEN + 1];
+
+	/* Map the case to union */
+	union test_case_structure tc;
+	memcpy(&tc, test_case, sizeof(tc));
+
+	status = test_cryptodev_asym_op(&testsuite_params, &tc, test_msg);
+
+	printf("  %u) TestCase %s %s\n", test_index++,
+		tc.modex.description, test_msg);
+
+	return status;
+}
+
+static int
+load_test_vectors(void)
+{
+	uint32_t i = 0, v_size = 0;
+	/* Load MODEX vector*/
+	v_size = ARRAY_SIZE(modex_test_case);
+	for (i = 0; i < v_size; i++) {
+		if (test_vector.size >= (TEST_VECTOR_SIZE)) {
+			RTE_LOG(DEBUG, USER1,
+				"TEST_VECTOR_SIZE too small\n");
+			return -1;
+		}
+		test_vector.address[test_vector.size] = &modex_test_case[i];
+		test_vector.size++;
+	}
+	/* Load MODINV vector*/
+	v_size = ARRAY_SIZE(modinv_test_case);
+	for (i = 0; i < v_size; i++) {
+		if (test_vector.size >= (TEST_VECTOR_SIZE)) {
+			RTE_LOG(DEBUG, USER1,
+				"TEST_VECTOR_SIZE too small\n");
+			return -1;
+		}
+		test_vector.address[test_vector.size] = &modinv_test_case[i];
+		test_vector.size++;
+	}
+	return 0;
+}
+
+static int
+test_one_by_one(void)
+{
+	int status = TEST_SUCCESS;
+	uint32_t i = 0;
+
+	/* Go through all test cases */
+	test_index = 0;
+	for (i = 0; i < test_vector.size; i++) {
+		if (test_one_case(test_vector.address[i]) != TEST_SUCCESS)
+			status = TEST_FAILED;
+	}
+
+	TEST_ASSERT_EQUAL(status, 0, "Test failed");
+	return status;
+}
 
 static int
 test_rsa_sign_verify(void)
@@ -314,6 +600,9 @@ testsuite_setup(void)
 	uint16_t qp_id;
 
 	memset(ts_params, 0, sizeof(*ts_params));
+
+	test_vector.size = 0;
+	load_test_vectors();
 
 	ts_params->op_mpool = rte_crypto_op_pool_create(
 			"CRYPTO_ASYM_OP_POOL",
@@ -1354,6 +1643,17 @@ static struct unit_test_suite cryptodev_openssl_asym_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown, test_rsa_sign_verify),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_mod_inv),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_mod_exp),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_one_by_one),
+		TEST_CASES_END() /**< NULL terminate unit test array */
+	}
+};
+
+static struct unit_test_suite cryptodev_qat_asym_testsuite  = {
+	.suite_name = "Crypto Device QAT ASYM Unit Test Suite",
+	.setup = testsuite_setup,
+	.teardown = testsuite_teardown,
+	.unit_test_cases = {
+		TEST_CASE_ST(ut_setup, ut_teardown, test_one_by_one),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
@@ -1374,5 +1674,23 @@ test_cryptodev_openssl_asym(void)
 	return unit_test_suite_runner(&cryptodev_openssl_asym_testsuite);
 }
 
+static int
+test_cryptodev_qat_asym(void)
+{
+	gbl_driver_id = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_QAT_ASYM_PMD));
+
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "QAT PMD must be loaded. Check if "
+				    "CONFIG_RTE_LIBRTE_PMD_QAT_ASYM is enabled "
+				    "in config file to run this testsuite.\n");
+		return TEST_FAILED;
+	}
+
+	return unit_test_suite_runner(&cryptodev_qat_asym_testsuite);
+}
+
 REGISTER_TEST_COMMAND(cryptodev_openssl_asym_autotest,
 					  test_cryptodev_openssl_asym);
+
+REGISTER_TEST_COMMAND(cryptodev_qat_asym_autotest, test_cryptodev_qat_asym);

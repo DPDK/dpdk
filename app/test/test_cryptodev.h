@@ -54,6 +54,7 @@
 #define CRYPTODEV_NAME_AESNI_GCM_PMD	crypto_aesni_gcm
 #define CRYPTODEV_NAME_OPENSSL_PMD	crypto_openssl
 #define CRYPTODEV_NAME_QAT_SYM_PMD	crypto_qat
+#define CRYPTODEV_NAME_QAT_ASYM_PMD	crypto_qat_asym
 #define CRYPTODEV_NAME_SNOW3G_PMD	crypto_snow3g
 #define CRYPTODEV_NAME_KASUMI_PMD	crypto_kasumi
 #define CRYPTODEV_NAME_ZUC_PMD		crypto_zuc
