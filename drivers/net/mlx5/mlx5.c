@@ -13,7 +13,6 @@
 #include <errno.h>
 #include <net/if.h>
 #include <sys/mman.h>
-#include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 
 /* Verbs header. */
@@ -998,9 +997,24 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	priv->nl_socket_route =	mlx5_nl_init(NETLINK_ROUTE);
 	priv->nl_sn = 0;
 	priv->representor = !!switch_info->representor;
+	priv->master = !!switch_info->master;
 	priv->domain_id = RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID;
-	priv->representor_id =
-		switch_info->representor ? switch_info->port_name : -1;
+	/*
+	 * Currently we support single E-Switch per PF configurations
+	 * only and vport_id field contains the vport index for
+	 * associated VF, which is deduced from representor port name.
+	 * For exapmple, let's have the IB device port 10, it has
+	 * attached network device eth0, which has port name attribute
+	 * pf0vf2, we can deduce the VF number as 2, and set vport index
+	 * as 3 (2+1). This assigning schema should be changed if the
+	 * multiple E-Switch instances per PF configurations or/and PCI
+	 * subfunctions are added.
+	 */
+	priv->vport_id = switch_info->representor ?
+			 switch_info->port_name + 1 : -1;
+	/* representor_id field keeps the unmodified port/VF index. */
+	priv->representor_id = switch_info->representor ?
+			       switch_info->port_name : -1;
 	/*
 	 * Look for sibling devices in order to reuse their switch domain
 	 * if any, otherwise allocate one.

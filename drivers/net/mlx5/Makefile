@@ -226,6 +226,16 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		enum RDMA_NLDEV_ATTR_NDEV_INDEX \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
+		HAVE_IFLA_NUM_VF \
+		linux/if_link.h \
+		enum IFLA_NUM_VF \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_IFLA_EXT_MASK \
+		linux/if_link.h \
+		enum IFLA_EXT_MASK \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
 		HAVE_IFLA_PHYS_SWITCH_ID \
 		linux/if_link.h \
 		enum IFLA_PHYS_SWITCH_ID \

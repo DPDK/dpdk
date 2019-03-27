@@ -205,7 +205,9 @@ struct mlx5_priv {
 	uint16_t mtu; /* Configured MTU. */
 	unsigned int isolated:1; /* Whether isolated mode is enabled. */
 	unsigned int representor:1; /* Device is a port representor. */
+	unsigned int master:1; /* Device is a E-Switch master. */
 	uint16_t domain_id; /* Switch domain identifier. */
+	uint16_t vport_id; /* Associated VF vport index (if any). */
 	int32_t representor_id; /* Port representor identifier. */
 	/* RX/TX queues. */
 	unsigned int rxqs_n; /* RX queues array size. */

@@ -1362,8 +1362,10 @@ mlx5_sysfs_switch_info(unsigned int ifindex, struct mlx5_switch_info *info)
 		.port_name = 0,
 		.switch_id = 0,
 	};
+	DIR *dir;
 	bool port_name_set = false;
 	bool port_switch_id_set = false;
+	bool device_dir = false;
 	char c;
 	int ret;
 
@@ -1375,6 +1377,8 @@ mlx5_sysfs_switch_info(unsigned int ifindex, struct mlx5_switch_info *info)
 	MKSTR(phys_port_name, "/sys/class/net/%s/phys_port_name",
 	      ifname);
 	MKSTR(phys_switch_id, "/sys/class/net/%s/phys_switch_id",
+	      ifname);
+	MKSTR(pci_device, "/sys/class/net/%s/device",
 	      ifname);
 
 	file = fopen(phys_port_name, "rb");
@@ -1394,9 +1398,21 @@ mlx5_sysfs_switch_info(unsigned int ifindex, struct mlx5_switch_info *info)
 		fscanf(file, "%" SCNx64 "%c", &data.switch_id, &c) == 2 &&
 		c == '\n';
 	fclose(file);
-	data.master = port_switch_id_set && !port_name_set;
-	data.representor = port_switch_id_set && port_name_set;
+	dir = opendir(pci_device);
+	if (dir != NULL) {
+		closedir(dir);
+		device_dir = true;
+	}
+	data.master = port_switch_id_set && (!port_name_set || device_dir);
+	data.representor = port_switch_id_set && port_name_set && !device_dir;
 	*info = data;
+	assert(!(data.master && data.representor));
+	if (data.master && data.representor) {
+		DRV_LOG(ERR, "ifindex %u device is recognized as master"
+			     " and as representor", ifindex);
+		rte_errno = ENODEV;
+		return -rte_errno;
+	}
 	return 0;
 }
 
