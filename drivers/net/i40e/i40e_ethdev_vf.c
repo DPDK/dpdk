@@ -1785,9 +1785,8 @@ i40evf_rxq_init(struct rte_eth_dev *dev, struct i40e_rx_queue *rxq)
 	}
 
 	if ((dev_data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_SCATTER) ||
-	    (rxq->max_pkt_len + 2 * I40E_VLAN_TAG_SIZE) > buf_size) {
+	    rxq->max_pkt_len > buf_size)
 		dev_data->scattered_rx = 1;
-	}
 
 	return 0;
 }
