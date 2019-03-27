@@ -66,7 +66,7 @@ while [[ ${st} -eq 0 ]]; do
 	fi
 done
 
-if [[ ${run4} -eq 0 && {run6} -eq 0 ]]; then
+if [[ ${run4} -eq 0 && ${run6} -eq 0 ]]; then
 	exit 127
 fi
 
