@@ -826,6 +826,51 @@ error:
 }
 
 /**
+ * Get the number of physical ports of given IB device.
+ *
+ * @param nl
+ *   Netlink socket of the RDMA kind (NETLINK_RDMA).
+ * @param[in] name
+ *   IB device name.
+ *
+ * @return
+ *   A valid (nonzero) number of ports on success, 0 otherwise
+ *   and rte_errno is set.
+ */
+unsigned int
+mlx5_nl_portnum(int nl, const char *name)
+{
+	uint32_t seq = random();
+	struct mlx5_nl_ifindex_data data = {
+		.name = name,
+		.ibindex = 0,
+		.ifindex = 0,
+		.portnum = 0,
+	};
+	struct nlmsghdr req = {
+		.nlmsg_len = NLMSG_LENGTH(0),
+		.nlmsg_type = RDMA_NL_GET_TYPE(RDMA_NL_NLDEV,
+					       RDMA_NLDEV_CMD_GET),
+		.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK | NLM_F_DUMP,
+	};
+	int ret;
+
+	ret = mlx5_nl_send(nl, &req, seq);
+	if (ret < 0)
+		return 0;
+	ret = mlx5_nl_recv(nl, seq, mlx5_nl_cmdget_cb, &data);
+	if (ret < 0)
+		return 0;
+	if (!data.ibindex) {
+		rte_errno = ENODEV;
+		return 0;
+	}
+	if (!data.portnum)
+		rte_errno = EINVAL;
+	return data.portnum;
+}
+
+/**
  * Process switch information from Netlink message.
  *
  * @param nh
