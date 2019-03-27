@@ -130,6 +130,16 @@ static rte_spinlock_t mlx5_shared_data_lock = RTE_SPINLOCK_INITIALIZER;
 /** Driver-specific log messages type. */
 int mlx5_logtype;
 
+/** Data associated with devices to spawn. */
+struct mlx5_dev_spawn_data {
+	uint32_t ifindex; /**< Network interface index. */
+	uint32_t max_port; /**< IB device maximal port index. */
+	uint32_t ibv_port; /**< IB device physical port index. */
+	struct mlx5_switch_info info; /**< Switch information. */
+	struct ibv_device *ibv_dev; /**< Associated IB device. */
+	struct rte_eth_dev *eth_dev; /**< Associated Ethernet device. */
+};
+
 /**
  * Prepare shared data between primary and secondary process.
  */
@@ -716,12 +726,10 @@ mlx5_uar_init_secondary(struct rte_eth_dev *dev)
  *
  * @param dpdk_dev
  *   Backing DPDK device.
- * @param ibv_dev
- *   Verbs device.
+ * @param spawn
+ *   Verbs device parameters (name, port, switch_info) to spawn.
  * @param config
  *   Device configuration parameters.
- * @param[in] switch_info
- *   Switch properties of Ethernet device.
  *
  * @return
  *   A valid Ethernet device object on success, NULL otherwise and rte_errno
@@ -732,10 +740,11 @@ mlx5_uar_init_secondary(struct rte_eth_dev *dev)
  */
 static struct rte_eth_dev *
 mlx5_dev_spawn(struct rte_device *dpdk_dev,
-	       struct ibv_device *ibv_dev,
-	       struct mlx5_dev_config config,
-	       const struct mlx5_switch_info *switch_info)
+	       struct mlx5_dev_spawn_data *spawn,
+	       struct mlx5_dev_config config)
 {
+	const struct mlx5_switch_info *switch_info = &spawn->info;
+	struct ibv_device *ibv_dev = spawn->ibv_dev;
 	struct ibv_context *ctx = NULL;
 	struct ibv_device_attr_ex attr;
 	struct ibv_port_attr port_attr;
@@ -949,7 +958,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		return eth_dev;
 	}
 	/* Check port status. */
-	err = mlx5_glue->query_port(ctx, 1, &port_attr);
+	err = mlx5_glue->query_port(ctx, spawn->ibv_port, &port_attr);
 	if (err) {
 		DRV_LOG(ERR, "port query failed: %s", strerror(err));
 		goto error;
@@ -1309,14 +1318,6 @@ error:
 	return NULL;
 }
 
-/** Data associated with devices to spawn. */
-struct mlx5_dev_spawn_data {
-	unsigned int ifindex; /**< Network interface index. */
-	struct mlx5_switch_info info; /**< Switch information. */
-	struct ibv_device *ibv_dev; /**< Associated IB device. */
-	struct rte_eth_dev *eth_dev; /**< Associated Ethernet device. */
-};
-
 /**
  * Comparison callback to sort device data.
  *
@@ -1373,7 +1374,24 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	       struct rte_pci_device *pci_dev)
 {
 	struct ibv_device **ibv_list;
-	unsigned int n = 0;
+	/*
+	 * Number of found IB Devices matching with requested PCI BDF.
+	 * nd != 1 means there are multiple IB devices over the same
+	 * PCI device and we have representors and master.
+	 */
+	unsigned int nd = 0;
+	/*
+	 * Number of found IB device Ports. nd = 1 and np = 1..n means
+	 * we have the single multiport IB device, and there may be
+	 * representors attached to some of found ports.
+	 */
+	unsigned int np = 0;
+	/*
+	 * Number of DPDK ethernet devices to Spawn - either over
+	 * multiple IB devices or multiple ports of single IB device.
+	 * Actually this is the number of iterations to spawn.
+	 */
+	unsigned int ns = 0;
 	struct mlx5_dev_config dev_config;
 	int ret;
 
@@ -1385,8 +1403,14 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		DRV_LOG(ERR, "cannot list devices, is ib_uverbs loaded?");
 		return -rte_errno;
 	}
-
+	/*
+	 * First scan the list of all Infiniband devices to find
+	 * matching ones, gathering into the list.
+	 */
 	struct ibv_device *ibv_match[ret + 1];
+	int nl_route = -1;
+	int nl_rdma = -1;
+	unsigned int i;
 
 	while (ret-- > 0) {
 		struct rte_pci_addr pci_addr;
@@ -1401,77 +1425,183 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			continue;
 		DRV_LOG(INFO, "PCI information matches for device \"%s\"",
 			ibv_list[ret]->name);
-		ibv_match[n++] = ibv_list[ret];
+		ibv_match[nd++] = ibv_list[ret];
 	}
-	ibv_match[n] = NULL;
-
-	struct mlx5_dev_spawn_data list[n];
-	int nl_route = n ? mlx5_nl_init(NETLINK_ROUTE) : -1;
-	int nl_rdma = n ? mlx5_nl_init(NETLINK_RDMA) : -1;
-	unsigned int i;
-	unsigned int u;
-
+	ibv_match[nd] = NULL;
+	if (!nd) {
+		/* No device macthes, just complain and bail out. */
+		mlx5_glue->free_device_list(ibv_list);
+		DRV_LOG(WARNING,
+			"no Verbs device matches PCI device " PCI_PRI_FMT ","
+			" are kernel drivers loaded?",
+			pci_dev->addr.domain, pci_dev->addr.bus,
+			pci_dev->addr.devid, pci_dev->addr.function);
+		rte_errno = ENOENT;
+		ret = -rte_errno;
+		return ret;
+	}
+	nl_route = mlx5_nl_init(NETLINK_ROUTE);
+	nl_rdma = mlx5_nl_init(NETLINK_RDMA);
+	if (nd == 1) {
+		/*
+		 * Found single matching device may have multiple ports.
+		 * Each port may be representor, we have to check the port
+		 * number and check the representors existence.
+		 */
+		if (nl_rdma >= 0)
+			np = mlx5_nl_portnum(nl_rdma, ibv_match[0]->name);
+		if (!np)
+			DRV_LOG(WARNING, "can not get IB device \"%s\""
+					 " ports number", ibv_match[0]->name);
+	}
 	/*
-	 * The existence of several matching entries (n > 1) means port
-	 * representors have been instantiated. No existing Verbs call nor
-	 * /sys entries can tell them apart, this can only be done through
-	 * Netlink calls assuming kernel drivers are recent enough to
-	 * support them.
-	 *
-	 * In the event of identification failure through Netlink, try again
-	 * through sysfs, then either:
-	 *
-	 * 1. No device matches (n == 0), complain and bail out.
-	 * 2. A single IB device matches (n == 1) and is not a representor,
-	 *    assume no switch support.
-	 * 3. Otherwise no safe assumptions can be made; complain louder and
-	 *    bail out.
+	 * Now we can determine the maximal
+	 * amount of devices to be spawned.
 	 */
-	for (i = 0; i != n; ++i) {
-		list[i].ibv_dev = ibv_match[i];
-		list[i].eth_dev = NULL;
-		if (nl_rdma < 0)
-			list[i].ifindex = 0;
-		else
-			list[i].ifindex = mlx5_nl_ifindex
-				(nl_rdma, list[i].ibv_dev->name, 1);
-		if (nl_route < 0 ||
-		    !list[i].ifindex ||
-		    mlx5_nl_switch_info(nl_route, list[i].ifindex,
-					&list[i].info) ||
-		    ((!list[i].info.representor && !list[i].info.master) &&
-		     mlx5_sysfs_switch_info(list[i].ifindex, &list[i].info))) {
-			list[i].ifindex = 0;
-			memset(&list[i].info, 0, sizeof(list[i].info));
-			continue;
+	struct mlx5_dev_spawn_data list[np ? np : nd];
+
+	if (np > 1) {
+		/*
+		 * Signle IB device with multiple ports found,
+		 * it may be E-Switch master device and representors.
+		 * We have to perform identification trough the ports.
+		 */
+		assert(nl_rdma >= 0);
+		assert(ns == 0);
+		assert(nd == 1);
+		for (i = 1; i <= np; ++i) {
+			list[ns].max_port = np;
+			list[ns].ibv_port = i;
+			list[ns].ibv_dev = ibv_match[0];
+			list[ns].eth_dev = NULL;
+			list[ns].ifindex = mlx5_nl_ifindex
+					(nl_rdma, list[ns].ibv_dev->name, i);
+			if (!list[ns].ifindex) {
+				/*
+				 * No network interface index found for the
+				 * specified port, it means there is no
+				 * representor on this port. It's OK,
+				 * there can be disabled ports, for example
+				 * if sriov_numvfs < sriov_totalvfs.
+				 */
+				continue;
+			}
+			ret = -1;
+			if (nl_route >= 0)
+				ret = mlx5_nl_switch_info
+					       (nl_route,
+						list[ns].ifindex,
+						&list[ns].info);
+			if (ret || (!list[ns].info.representor &&
+				    !list[ns].info.master)) {
+				/*
+				 * We failed to recognize representors with
+				 * Netlink, let's try to perform the task
+				 * with sysfs.
+				 */
+				ret =  mlx5_sysfs_switch_info
+						(list[ns].ifindex,
+						 &list[ns].info);
+			}
+			if (!ret && (list[ns].info.representor ^
+				     list[ns].info.master))
+				ns++;
 		}
-	}
-	if (nl_rdma >= 0)
-		close(nl_rdma);
-	if (nl_route >= 0)
-		close(nl_route);
-	/* Count unidentified devices. */
-	for (u = 0, i = 0; i != n; ++i)
-		if (!list[i].info.master && !list[i].info.representor)
-			++u;
-	if (u) {
-		if (n == 1 && u == 1) {
-			/* Case #2. */
-			DRV_LOG(INFO, "no switch support detected");
-		} else {
-			/* Case #3. */
+		if (!ns) {
 			DRV_LOG(ERR,
-				"unable to tell which of the matching devices"
-				" is the master (lack of kernel support?)");
-			n = 0;
+				"unable to recognize master/representors"
+				" on the IB device with multiple ports");
+			rte_errno = ENOENT;
+			ret = -rte_errno;
+			goto exit;
+		}
+	} else {
+		/*
+		 * The existence of several matching entries (nd > 1) means
+		 * port representors have been instantiated. No existing Verbs
+		 * call nor sysfs entries can tell them apart, this can only
+		 * be done through Netlink calls assuming kernel drivers are
+		 * recent enough to support them.
+		 *
+		 * In the event of identification failure through Netlink,
+		 * try again through sysfs, then:
+		 *
+		 * 1. A single IB device matches (nd == 1) with single
+		 *    port (np=0/1) and is not a representor, assume
+		 *    no switch support.
+		 *
+		 * 2. Otherwise no safe assumptions can be made;
+		 *    complain louder and bail out.
+		 */
+		np = 1;
+		for (i = 0; i != nd; ++i) {
+			memset(&list[ns].info, 0, sizeof(list[ns].info));
+			list[ns].max_port = 1;
+			list[ns].ibv_port = 1;
+			list[ns].ibv_dev = ibv_match[i];
+			list[ns].eth_dev = NULL;
+			list[ns].ifindex = 0;
+			if (nl_rdma >= 0)
+				list[ns].ifindex = mlx5_nl_ifindex
+					(nl_rdma, list[ns].ibv_dev->name, 1);
+			if (!list[ns].ifindex) {
+				/*
+				 * No network interface index found for the
+				 * specified device, it means there it is not
+				 * a representor/master.
+				 */
+				continue;
+			}
+			ret = -1;
+			if (nl_route >= 0)
+				ret = mlx5_nl_switch_info
+					       (nl_route,
+						list[ns].ifindex,
+						&list[ns].info);
+			if (ret || (!list[ns].info.representor &&
+				    !list[ns].info.master)) {
+				/*
+				 * We failed to recognize representors with
+				 * Netlink, let's try to perform the task
+				 * with sysfs.
+				 */
+				ret =  mlx5_sysfs_switch_info
+						(list[ns].ifindex,
+						 &list[ns].info);
+			}
+			if (!ret && (list[ns].info.representor ^
+				     list[ns].info.master)) {
+				ns++;
+			} else if ((nd == 1) &&
+				   !list[ns].info.representor &&
+				   !list[ns].info.master) {
+				/*
+				 * Single IB device with
+				 * one physical port and
+				 * attached network device.
+				 * May be SRIOV is not enabled
+				 * or there is no representors.
+				 */
+				DRV_LOG(INFO, "no E-Switch support detected");
+				ns++;
+				break;
+			}
+		}
+		if (!ns) {
+			DRV_LOG(ERR,
+				"unable to recognize master/representors"
+				" on the multiple IB devices");
+			rte_errno = ENOENT;
+			ret = -rte_errno;
+			goto exit;
 		}
 	}
+	assert(ns);
 	/*
 	 * Sort list to probe devices in natural order for users convenience
 	 * (i.e. master first, then representors from lowest to highest ID).
 	 */
-	if (n)
-		qsort(list, n, sizeof(*list), mlx5_dev_spawn_data_cmp);
+	qsort(list, ns, sizeof(*list), mlx5_dev_spawn_data_cmp);
 	/* Default configuration. */
 	dev_config = (struct mlx5_dev_config){
 		.hw_padding = 0,
@@ -1490,7 +1620,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			.min_rxqs_num = MLX5_MPRQ_MIN_RXQS,
 		},
 	};
-	/* Device speicific configuration. */
+	/* Device specific configuration. */
 	switch (pci_dev->id.device_id) {
 	case PCI_DEVICE_ID_MELLANOX_CONNECTX5BF:
 		dev_config.txqs_vec = MLX5_VPMD_MAX_TXQS_BLUEFIELD;
@@ -1507,12 +1637,12 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	/* Set architecture-dependent default value if unset. */
 	if (dev_config.txqs_vec == MLX5_ARG_UNSET)
 		dev_config.txqs_vec = MLX5_VPMD_MAX_TXQS;
-	for (i = 0; i != n; ++i) {
+	for (i = 0; i != ns; ++i) {
 		uint32_t restore;
 
 		list[i].eth_dev = mlx5_dev_spawn(&pci_dev->device,
-						 list[i].ibv_dev, dev_config,
-						 &list[i].info);
+						 &list[i],
+						 dev_config);
 		if (!list[i].eth_dev) {
 			if (rte_errno != EBUSY && rte_errno != EEXIST)
 				break;
@@ -1525,16 +1655,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		list[i].eth_dev->data->dev_flags |= restore;
 		rte_eth_dev_probing_finish(list[i].eth_dev);
 	}
-	mlx5_glue->free_device_list(ibv_list);
-	if (!n) {
-		DRV_LOG(WARNING,
-			"no Verbs device matches PCI device " PCI_PRI_FMT ","
-			" are kernel drivers loaded?",
-			pci_dev->addr.domain, pci_dev->addr.bus,
-			pci_dev->addr.devid, pci_dev->addr.function);
-		rte_errno = ENOENT;
-		ret = -rte_errno;
-	} else if (i != n) {
+	if (i != ns) {
 		DRV_LOG(ERR,
 			"probe of PCI device " PCI_PRI_FMT " aborted after"
 			" encountering an error: %s",
@@ -1556,6 +1677,18 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	} else {
 		ret = 0;
 	}
+exit:
+	/*
+	 * Do the routine cleanup:
+	 * - close opened Netlink sockets
+	 * - free the Infiniband device list
+	 */
+	if (nl_rdma >= 0)
+		close(nl_rdma);
+	if (nl_route >= 0)
+		close(nl_route);
+	assert(ibv_list);
+	mlx5_glue->free_device_list(ibv_list);
 	return ret;
 }
 
