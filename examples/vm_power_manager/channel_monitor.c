@@ -630,6 +630,8 @@ apply_policy(struct policy *pol)
 static int
 process_request(struct channel_packet *pkt, struct channel_info *chan_info)
 {
+	int ret;
+
 	if (chan_info == NULL)
 		return -1;
 
@@ -644,6 +646,9 @@ process_request(struct channel_packet *pkt, struct channel_info *chan_info)
 			core_num = get_pcpu(chan_info, pkt->resource_id);
 		else
 			core_num = pkt->resource_id;
+
+		RTE_LOG(DEBUG, CHANNEL_MONITOR, "Processing requested cmd for cpu:%d\n",
+			core_num);
 
 		switch (pkt->unit) {
 		case(CPU_POWER_SCALE_MIN):
@@ -677,9 +682,13 @@ process_request(struct channel_packet *pkt, struct channel_info *chan_info)
 	}
 
 	if (pkt->command == PKT_POLICY_REMOVE) {
-		RTE_LOG(INFO, CHANNEL_MONITOR,
-				 "Removing policy %s\n", pkt->vm_name);
-		remove_policy(pkt);
+		ret = remove_policy(pkt);
+		if (ret == 0)
+			RTE_LOG(INFO, CHANNEL_MONITOR,
+				 "Removed policy %s\n", pkt->vm_name);
+		else
+			RTE_LOG(INFO, CHANNEL_MONITOR,
+				 "Policy %s does not exist\n", pkt->vm_name);
 	}
 
 	/*
