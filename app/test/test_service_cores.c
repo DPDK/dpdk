@@ -259,7 +259,7 @@ service_attr_get(void)
 	rte_service_set_stats_enable(id, 1);
 
 	uint32_t attr_id = UINT32_MAX;
-	uint32_t attr_value = 0xdead;
+	uint64_t attr_value = 0xdead;
 	/* check error return values */
 	TEST_ASSERT_EQUAL(-EINVAL, rte_service_attr_get(id, attr_id,
 							&attr_value),
