@@ -435,7 +435,7 @@ update_policy(struct channel_packet *pkt)
 			/* Copy the contents of *pkt into the policy.pkt */
 			policies[i].pkt = *pkt;
 			get_pcpu_to_control(&policies[i]);
-			if (get_pfid(&policies[i]) == -1) {
+			if (get_pfid(&policies[i]) < 0) {
 				updated = 1;
 				break;
 			}
@@ -449,7 +449,7 @@ update_policy(struct channel_packet *pkt)
 			if (policies[i].enabled == 0) {
 				policies[i].pkt = *pkt;
 				get_pcpu_to_control(&policies[i]);
-				if (get_pfid(&policies[i]) == -1)
+				if (get_pfid(&policies[i]) < 0)
 					break;
 				core_share_status(i);
 				policies[i].enabled = 1;
@@ -756,7 +756,7 @@ read_binary_packet(struct channel_info *chan_info)
 				buffer, buffer_len);
 		if (n_bytes == buffer_len)
 			break;
-		if (n_bytes == -1) {
+		if (n_bytes < 0) {
 			err = errno;
 			RTE_LOG(DEBUG, CHANNEL_MONITOR,
 				"Received error on "

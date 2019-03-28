@@ -224,7 +224,7 @@ open_non_blocking_channel(struct channel_info *info)
 	struct timeval tv;
 
 	info->fd = socket(AF_UNIX, SOCK_STREAM, 0);
-	if (info->fd == -1) {
+	if (info->fd < 0) {
 		RTE_LOG(ERR, CHANNEL_MANAGER, "Error(%s) creating socket for '%s'\n",
 				strerror(errno),
 				info->channel_path);
@@ -285,7 +285,7 @@ open_host_channel(struct channel_info *info)
 	int flags;
 
 	info->fd = open(info->channel_path, O_RDWR | O_RSYNC);
-	if (info->fd == -1) {
+	if (info->fd < 0) {
 		RTE_LOG(ERR, CHANNEL_MANAGER, "Error(%s) opening fifo for '%s'\n",
 				strerror(errno),
 				info->channel_path);
