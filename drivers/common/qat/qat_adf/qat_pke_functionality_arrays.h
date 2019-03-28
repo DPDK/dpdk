@@ -10,7 +10,7 @@
 /*
  * Modular exponentiation functionality IDs
  */
-static const uint32_t __rte_unused MOD_EXP_SIZE[][2] = {
+static const uint32_t MOD_EXP_SIZE[][2] = {
 		{ 512,	MATHS_MODEXP_L512 },
 		{ 1024, MATHS_MODEXP_L1024 },
 		{ 1536,	MATHS_MODEXP_L1536 },

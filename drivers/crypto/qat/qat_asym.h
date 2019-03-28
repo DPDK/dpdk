@@ -45,6 +45,12 @@ struct qat_asym_session {
 	enum qat_asym_alg alg;
 	struct icp_qat_fw_pke_request req_tmpl;
 	uint64_t flags;
+	union {
+		struct {
+			rte_crypto_param n;
+			rte_crypto_param e;
+		} mod_exp;
+	} sess_alg_params;
 };
 
 int

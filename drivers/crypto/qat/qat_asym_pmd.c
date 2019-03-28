@@ -14,6 +14,7 @@
 uint8_t cryptodev_qat_asym_driver_id;
 
 static const struct rte_cryptodev_capabilities qat_gen1_asym_capabilities[] = {
+	QAT_BASE_GEN1_ASYM_CAPABILITIES,
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 

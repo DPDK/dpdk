@@ -106,6 +106,8 @@ Asymmetric Crypto Service on QAT
 
 The QAT Asym PMD has support for:
 
+* ``Modular exponentiation``
+
 Limitations
 ~~~~~~~~~~~
 
