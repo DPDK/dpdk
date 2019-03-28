@@ -52,6 +52,7 @@
 #define IP_VHL_DEF (IP_VERSION | IP_HDRLEN)
 
 static struct ipv4_hdr  pkt_ip_hdr;  /**< IP header of transmitted packets. */
+RTE_DEFINE_PER_LCORE(uint8_t, _ip_var); /**< IP address variation */
 static struct udp_hdr pkt_udp_hdr; /**< UDP header of transmitted packets. */
 
 static void
@@ -164,6 +165,7 @@ pkt_burst_transmit(struct fwd_stream *fs)
 	uint16_t vlan_tci, vlan_tci_outer;
 	uint32_t retry;
 	uint64_t ol_flags = 0;
+	uint8_t  ip_var = RTE_PER_LCORE(_ip_var);
 	uint8_t  i;
 	uint64_t tx_offloads;
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
@@ -237,6 +239,23 @@ pkt_burst_transmit(struct fwd_stream *fs)
 		copy_buf_to_pkt(&eth_hdr, sizeof(eth_hdr), pkt, 0);
 		copy_buf_to_pkt(&pkt_ip_hdr, sizeof(pkt_ip_hdr), pkt,
 				sizeof(struct ether_hdr));
+		if (txonly_multi_flow) {
+			struct ipv4_hdr *ip_hdr;
+			uint32_t addr;
+
+			ip_hdr = rte_pktmbuf_mtod_offset(pkt,
+					struct ipv4_hdr *,
+					sizeof(struct ether_hdr));
+			/*
+			 * Generate multiple flows by varying IP src addr. This
+			 * enables packets are well distributed by RSS in
+			 * receiver side if any and txonly mode can be a decent
+			 * packet generator for developer's quick performance
+			 * regression test.
+			 */
+			addr = (IP_DST_ADDR | (ip_var++ << 8)) + rte_lcore_id();
+			ip_hdr->src_addr = rte_cpu_to_be_32(addr);
+		}
 		copy_buf_to_pkt(&pkt_udp_hdr, sizeof(pkt_udp_hdr), pkt,
 				sizeof(struct ether_hdr) +
 				sizeof(struct ipv4_hdr));
@@ -267,6 +286,9 @@ pkt_burst_transmit(struct fwd_stream *fs)
 		}
 	}
 	fs->tx_packets += nb_tx;
+
+	if (txonly_multi_flow)
+		RTE_PER_LCORE(_ip_var) += nb_tx;
 
 #ifdef RTE_TEST_PMD_RECORD_BURST_STATS
 	fs->tx_burst_stats.pkt_burst_spread[nb_tx]++;

@@ -324,6 +324,10 @@ The commandline options are:
     Set TX segment sizes or total packet length. Valid for ``tx-only``
     and ``flowgen`` forwarding modes.
 
+*   ``--txonly-multi-flow``
+
+    Generate multiple flows in txonly mode.
+
 *   ``--disable-link-check``
 
     Disable check on link status when starting/stopping ports.
