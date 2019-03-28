@@ -438,6 +438,10 @@ rte_cryptodev_asym_get_xform_enum(enum rte_crypto_asym_xform_type *xform_enum,
 /**< Utilises ARM CPU Cryptographic Extensions */
 #define	RTE_CRYPTODEV_FF_SECURITY			(1ULL << 16)
 /**< Support Security Protocol Processing */
+#define RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_EXP		(1ULL << 17)
+/**< Support RSA Private Key OP with exponent */
+#define RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_QT		(1ULL << 18)
+/**< Support RSA Private Key OP with CRT (quintuple) Keys */
 
 
 /**

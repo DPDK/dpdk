@@ -486,6 +486,10 @@ rte_cryptodev_get_feature_name(uint64_t flag)
 		return "CPU_ARM_CE";
 	case RTE_CRYPTODEV_FF_SECURITY:
 		return "SECURITY_PROTOCOL";
+	case RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_EXP:
+		return "RSA_PRIV_OP_KEY_EXP";
+	case RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_QT:
+		return "RSA_PRIV_OP_KEY_QT";
 	default:
 		return NULL;
 	}
