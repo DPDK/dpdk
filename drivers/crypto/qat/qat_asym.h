@@ -50,6 +50,9 @@ struct qat_asym_session {
 			rte_crypto_param n;
 			rte_crypto_param e;
 		} mod_exp;
+		struct {
+			rte_crypto_param n;
+		} mod_inv;
 	} sess_alg_params;
 };
 

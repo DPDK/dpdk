@@ -21,7 +21,7 @@ static const uint32_t MOD_EXP_SIZE[][2] = {
 		{ 4096, MATHS_MODEXP_L4096 }
 };
 
-static const uint32_t __rte_unused MOD_INV_IDS_ODD[][2] = {
+static const uint32_t MOD_INV_IDS_ODD[][2] = {
 		{ 128,	MATHS_MODINV_ODD_L128 },
 		{ 192,	MATHS_MODINV_ODD_L192 },
 		{ 256,  MATHS_MODINV_ODD_L256 },
@@ -35,7 +35,7 @@ static const uint32_t __rte_unused MOD_INV_IDS_ODD[][2] = {
 		{ 4096, MATHS_MODINV_ODD_L4096 },
 };
 
-static const uint32_t __rte_unused MOD_INV_IDS_EVEN[][2] = {
+static const uint32_t MOD_INV_IDS_EVEN[][2] = {
 		{ 128,	MATHS_MODINV_EVEN_L128 },
 		{ 192,	MATHS_MODINV_EVEN_L192 },
 		{ 256,	MATHS_MODINV_EVEN_L256 },

@@ -54,6 +54,9 @@ static void qat_asym_build_req_tmpl(void *sess_private_data,
 	if (xform->xform_type == RTE_CRYPTO_ASYM_XFORM_MODEX) {
 		qat_req->output_param_count = 1;
 		qat_req->input_param_count = 3;
+	} else if (xform->xform_type == RTE_CRYPTO_ASYM_XFORM_MODINV) {
+		qat_req->output_param_count = 1;
+		qat_req->input_param_count = 2;
 	}
 }
 
@@ -147,7 +150,8 @@ qat_asym_build_request(void *in_op,
 	if (ctx->alg == QAT_PKE_MODEXP) {
 		err = qat_asym_check_nonzero(ctx->sess_alg_params.mod_exp.n);
 		if (err) {
-			QAT_LOG(ERR, "Empty modulus, aborting this operation");
+			QAT_LOG(ERR, "Empty modulus in modular exponentiation,"
+					" aborting this operation");
 			goto error;
 		}
 
@@ -187,6 +191,56 @@ qat_asym_build_request(void *in_op,
 				alg_size_in_bytes);
 		QAT_DP_HEXDUMP_LOG(DEBUG, "modulus",
 				cookie->input_array[2],
+				alg_size_in_bytes);
+#endif
+	} else if (ctx->alg == QAT_PKE_MODINV) {
+		err = qat_asym_check_nonzero(ctx->sess_alg_params.mod_inv.n);
+		if (err) {
+			QAT_LOG(ERR, "Empty modulus in modular multiplicative"
+					" inverse, aborting this operation");
+			goto error;
+		}
+
+		alg_size_in_bytes = max_of(2, asym_op->modinv.base.length,
+				ctx->sess_alg_params.mod_inv.n.length);
+		alg_size = alg_size_in_bytes << 3;
+
+		if (ctx->sess_alg_params.mod_inv.n.data[
+				ctx->sess_alg_params.mod_inv.n.length - 1] & 0x01) {
+			if (qat_asym_get_sz_and_func_id(MOD_INV_IDS_ODD,
+					sizeof(MOD_INV_IDS_ODD)/
+					sizeof(*MOD_INV_IDS_ODD),
+					&alg_size, &func_id)) {
+				err = QAT_ASYM_ERROR_INVALID_PARAM;
+				goto error;
+			}
+		} else {
+			if (qat_asym_get_sz_and_func_id(MOD_INV_IDS_EVEN,
+					sizeof(MOD_INV_IDS_EVEN)/
+					sizeof(*MOD_INV_IDS_EVEN),
+					&alg_size, &func_id)) {
+				err = QAT_ASYM_ERROR_INVALID_PARAM;
+				goto error;
+			}
+		}
+
+		alg_size_in_bytes = alg_size >> 3;
+		rte_memcpy(cookie->input_array[0] + alg_size_in_bytes -
+			asym_op->modinv.base.length
+				, asym_op->modinv.base.data,
+				asym_op->modinv.base.length);
+		rte_memcpy(cookie->input_array[1] + alg_size_in_bytes -
+				ctx->sess_alg_params.mod_inv.n.length
+				, ctx->sess_alg_params.mod_inv.n.data,
+				ctx->sess_alg_params.mod_inv.n.length);
+		cookie->alg_size = alg_size;
+		qat_req->pke_hdr.cd_pars.func_id = func_id;
+#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
+		QAT_DP_HEXDUMP_LOG(DEBUG, "base",
+				cookie->input_array[0],
+				alg_size_in_bytes);
+		QAT_DP_HEXDUMP_LOG(DEBUG, "modulus",
+				cookie->input_array[1],
 				alg_size_in_bytes);
 #endif
 	}
@@ -262,6 +316,26 @@ qat_asym_process_response(void **op, uint8_t *resp,
 		}
 		qat_clear_arrays(cookie, 3, 1, alg_size_in_bytes,
 				alg_size_in_bytes);
+	} else if (ctx->alg == QAT_PKE_MODINV) {
+		alg_size = cookie->alg_size;
+		alg_size_in_bytes = alg_size >> 3;
+		uint8_t *modinv_result = asym_op->modinv.result.data;
+
+		if (rx_op->status == RTE_CRYPTO_OP_STATUS_NOT_PROCESSED) {
+			rte_memcpy(modinv_result + (asym_op->modinv.result.length
+				- ctx->sess_alg_params.mod_inv.n.length),
+				cookie->output_array[0] + alg_size_in_bytes
+				- ctx->sess_alg_params.mod_inv.n.length,
+				ctx->sess_alg_params.mod_inv.n.length);
+			rx_op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
+			QAT_DP_HEXDUMP_LOG(DEBUG, "modinv_result",
+					cookie->output_array[0],
+					alg_size_in_bytes);
+#endif
+		}
+		qat_clear_arrays(cookie, 2, 1, alg_size_in_bytes,
+			alg_size_in_bytes);
 	}
 
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
@@ -295,6 +369,15 @@ qat_asym_session_configure(struct rte_cryptodev *dev,
 		if (xform->modex.exponent.length == 0 ||
 				xform->modex.modulus.length == 0) {
 			QAT_LOG(ERR, "Invalid mod exp input parameter");
+			err = -EINVAL;
+			goto error;
+		}
+	} else if (xform->xform_type == RTE_CRYPTO_ASYM_XFORM_MODINV) {
+		session->sess_alg_params.mod_inv.n = xform->modinv.modulus;
+		session->alg = QAT_PKE_MODINV;
+
+		if (xform->modinv.modulus.length == 0) {
+			QAT_LOG(ERR, "Invalid mod inv input parameter");
 			err = -EINVAL;
 			goto error;
 		}
