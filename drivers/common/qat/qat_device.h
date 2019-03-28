@@ -31,6 +31,7 @@ enum qat_comp_num_im_buffers {
  *  - runtime data
  */
 struct qat_sym_dev_private;
+struct qat_asym_dev_private;
 struct qat_comp_dev_private;
 
 struct qat_pci_device {
@@ -57,7 +58,16 @@ struct qat_pci_device {
 	struct qat_sym_dev_private *sym_dev;
 	/**< link back to cryptodev private data */
 	struct rte_device sym_rte_dev;
-	/**< This represents the crypto subset of this pci device.
+	/**< This represents the crypto sym subset of this pci device.
+	 * Register with this rather than with the one in
+	 * pci_dev so that its driver can have a crypto-specific name
+	 */
+
+	/* Data relating to asymmetric crypto service */
+	struct qat_asym_dev_private *asym_dev;
+	/**< link back to cryptodev private data */
+	struct rte_device asym_rte_dev;
+	/**< This represents the crypto asym subset of this pci device.
 	 * Register with this rather than with the one in
 	 * pci_dev so that its driver can have a crypto-specific name
 	 */

@@ -25,6 +25,14 @@ endif
 
 # library symmetric crypto source files
 ifeq ($(CONFIG_RTE_LIBRTE_CRYPTODEV),y)
+ifeq ($(CONFIG_RTE_LIBRTE_PMD_QAT_ASYM),y)
+	LDLIBS += -lrte_cryptodev
+	LDLIBS += -lcrypto
+	CFLAGS += -DBUILD_QAT_ASYM
+	SRCS-y += qat_asym.c
+	SRCS-y += qat_asym_pmd.c
+	build_qat = yes
+endif
 ifeq ($(CONFIG_RTE_LIBRTE_PMD_QAT_SYM),y)
 	LDLIBS += -lrte_cryptodev
 	LDLIBS += -lcrypto

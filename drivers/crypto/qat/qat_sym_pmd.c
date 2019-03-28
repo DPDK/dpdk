@@ -325,7 +325,6 @@ qat_sym_dev_destroy(struct qat_pci_device *qat_pci_dev)
 	return 0;
 }
 
-
 static struct cryptodev_driver qat_crypto_drv;
 RTE_PMD_REGISTER_CRYPTO_DRIVER(qat_crypto_drv,
 		cryptodev_qat_sym_driver,

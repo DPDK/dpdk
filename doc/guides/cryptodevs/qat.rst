@@ -101,7 +101,13 @@ of all the items described above, including the padding at the end.
 Also, offset of data to authenticate "op.sym.auth.data.offset"
 must be such that points at the start of the COUNT bytes.
 
+Asymmetric Crypto Service on QAT
+--------------------------------
 
+The QAT Asym PMD has support for:
+
+Limitations
+~~~~~~~~~~~
 
 .. _building_qat:
 
@@ -112,6 +118,7 @@ A QAT device can host multiple acceleration services:
 
 * symmetric cryptography
 * data compression
+* asymmetric cryptography
 
 These services are provided to DPDK applications via PMDs which register to
 implement the corresponding cryptodev and compressdev APIs. The PMDs use

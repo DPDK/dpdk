@@ -19,8 +19,7 @@ extern uint8_t cryptodev_qat_driver_id;
 
 /** private data structure for a QAT device.
  * This QAT device is a device offering only symmetric crypto service,
- * there can be one of these on each qat_pci_device (VF),
- * in future there may also be private data structures for other services.
+ * there can be one of these on each qat_pci_device (VF).
  */
 struct qat_sym_dev_private {
 	struct qat_pci_device *qat_dev;
