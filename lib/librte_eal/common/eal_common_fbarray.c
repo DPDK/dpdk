@@ -736,15 +736,19 @@ rte_fbarray_init(struct rte_fbarray *arr, const char *name, unsigned int len,
 	}
 
 	page_sz = sysconf(_SC_PAGESIZE);
-	if (page_sz == (size_t)-1)
-		goto fail;
+	if (page_sz == (size_t)-1) {
+		free(ma);
+		return -1;
+	}
 
 	/* calculate our memory limits */
 	mmap_len = calc_data_size(page_sz, elt_sz, len);
 
 	data = eal_get_virtual_area(NULL, &mmap_len, page_sz, 0, 0);
-	if (data == NULL)
-		goto fail;
+	if (data == NULL) {
+		free(ma);
+		return -1;
+	}
 
 	rte_spinlock_lock(&mem_area_lock);
 
