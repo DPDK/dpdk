@@ -1063,9 +1063,16 @@ void
 port_mtu_set(portid_t port_id, uint16_t mtu)
 {
 	int diag;
+	struct rte_eth_dev_info dev_info;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
+	rte_eth_dev_info_get(port_id, &dev_info);
+	if (mtu > dev_info.max_mtu || mtu < dev_info.min_mtu) {
+		printf("Set MTU failed. MTU:%u is not in valid range, min:%u - max:%u\n",
+			mtu, dev_info.min_mtu, dev_info.max_mtu);
+		return;
+	}
 	diag = rte_eth_dev_set_mtu(port_id, mtu);
 	if (diag == 0)
 		return;
