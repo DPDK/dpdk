@@ -147,6 +147,8 @@ power_set_governor_userspace(struct rte_power_info *pi)
 
 	s = fgets(buf, sizeof(buf), f);
 	FOPS_OR_NULL_GOTO(s, out);
+	/* Strip off terminating '\n' */
+	strtok(buf, "\n");
 
 	/* Check if current governor is userspace */
 	if (strncmp(buf, POWER_GOVERNOR_USERSPACE,
