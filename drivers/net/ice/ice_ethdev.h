@@ -318,4 +318,44 @@ ice_align_floor(int n)
 		return 0;
 	return 1 << (sizeof(n) * CHAR_BIT - 1 - __builtin_clz(n));
 }
+
+#define ICE_PHY_TYPE_SUPPORT_50G(phy_type) \
+	(((phy_type) & ICE_PHY_TYPE_LOW_50GBASE_CR2) || \
+	((phy_type) & ICE_PHY_TYPE_LOW_50GBASE_SR2) || \
+	((phy_type) & ICE_PHY_TYPE_LOW_50GBASE_LR2) || \
+	((phy_type) & ICE_PHY_TYPE_LOW_50GBASE_KR2) || \
+	((phy_type) & ICE_PHY_TYPE_LOW_50G_LAUI2_AOC_ACC) || \
+	((phy_type) & ICE_PHY_TYPE_LOW_50G_LAUI2) || \
+	((phy_type) & ICE_PHY_TYPE_LOW_50G_AUI2_AOC_ACC) || \
+	((phy_type) & ICE_PHY_TYPE_LOW_50G_AUI2) || \
+	((phy_type) & ICE_PHY_TYPE_LOW_50GBASE_CP) || \
+	((phy_type) & ICE_PHY_TYPE_LOW_50GBASE_SR) || \
+	((phy_type) & ICE_PHY_TYPE_LOW_50GBASE_FR) || \
+	((phy_type) & ICE_PHY_TYPE_LOW_50GBASE_LR) || \
+	((phy_type) & ICE_PHY_TYPE_LOW_50GBASE_KR_PAM4) || \
+	((phy_type) & ICE_PHY_TYPE_LOW_50G_AUI1_AOC_ACC) || \
+	((phy_type) & ICE_PHY_TYPE_LOW_50G_AUI1))
+
+#define ICE_PHY_TYPE_SUPPORT_100G_LOW(phy_type) \
+	(((phy_type) & ICE_PHY_TYPE_LOW_100GBASE_CR4) || \
+	((phy_type) & ICE_PHY_TYPE_LOW_100GBASE_SR4) || \
+	((phy_type) & ICE_PHY_TYPE_LOW_100GBASE_LR4) || \
+	((phy_type) & ICE_PHY_TYPE_LOW_100GBASE_KR4) || \
+	((phy_type) & ICE_PHY_TYPE_LOW_100G_CAUI4_AOC_ACC) || \
+	((phy_type) & ICE_PHY_TYPE_LOW_100G_CAUI4) || \
+	((phy_type) & ICE_PHY_TYPE_LOW_100G_AUI4_AOC_ACC) || \
+	((phy_type) & ICE_PHY_TYPE_LOW_100G_AUI4) || \
+	((phy_type) & ICE_PHY_TYPE_LOW_100GBASE_CR_PAM4) || \
+	((phy_type) & ICE_PHY_TYPE_LOW_100GBASE_KR_PAM4) || \
+	((phy_type) & ICE_PHY_TYPE_LOW_100GBASE_CP2) || \
+	((phy_type) & ICE_PHY_TYPE_LOW_100GBASE_SR2) || \
+	((phy_type) & ICE_PHY_TYPE_LOW_100GBASE_DR))
+
+#define ICE_PHY_TYPE_SUPPORT_100G_HIGH(phy_type) \
+	(((phy_type) & ICE_PHY_TYPE_HIGH_100GBASE_KR2_PAM4) || \
+	((phy_type) & ICE_PHY_TYPE_HIGH_100G_CAUI2_AOC_ACC) || \
+	((phy_type) & ICE_PHY_TYPE_HIGH_100G_CAUI2) || \
+	((phy_type) & ICE_PHY_TYPE_HIGH_100G_AUI2_AOC_ACC) || \
+	((phy_type) & ICE_PHY_TYPE_HIGH_100G_AUI2))
+
 #endif /* _ICE_ETHDEV_H_ */

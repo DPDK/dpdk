@@ -1946,6 +1946,8 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	struct ice_vsi *vsi = pf->main_vsi;
 	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
 	bool is_safe_mode = pf->adapter->is_safe_mode;
+	u64 phy_type_low;
+	u64 phy_type_high;
 
 	dev_info->min_rx_bufsize = ICE_BUF_SIZE_MIN;
 	dev_info->max_rx_pktlen = ICE_FRAME_SIZE_MAX;
@@ -2032,10 +2034,17 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 			       ETH_LINK_SPEED_5G |
 			       ETH_LINK_SPEED_10G |
 			       ETH_LINK_SPEED_20G |
-			       ETH_LINK_SPEED_25G |
-			       ETH_LINK_SPEED_40G |
-			       ETH_LINK_SPEED_50G |
-			       ETH_LINK_SPEED_100G;
+			       ETH_LINK_SPEED_25G;
+
+	phy_type_low = hw->port_info->phy.phy_type_low;
+	phy_type_high = hw->port_info->phy.phy_type_high;
+
+	if (ICE_PHY_TYPE_SUPPORT_50G(phy_type_low))
+		dev_info->speed_capa |= ETH_LINK_SPEED_50G;
+
+	if (ICE_PHY_TYPE_SUPPORT_100G_LOW(phy_type_low) ||
+			ICE_PHY_TYPE_SUPPORT_100G_HIGH(phy_type_high))
+		dev_info->speed_capa |= ETH_LINK_SPEED_100G;
 
 	dev_info->nb_rx_queues = dev->data->nb_rx_queues;
 	dev_info->nb_tx_queues = dev->data->nb_tx_queues;
