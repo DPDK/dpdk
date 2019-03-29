@@ -425,36 +425,36 @@ get_seg_fd(char *path, int buflen, struct hugepage_info *hi,
 }
 
 static int
-resize_hugefile(int fd, char *path, int list_idx, int seg_idx,
+resize_hugefile_in_memory(int fd, int list_idx, uint64_t fa_offset,
+		uint64_t page_sz, bool grow)
+{
+	int flags = grow ? 0 : FALLOC_FL_PUNCH_HOLE |
+			FALLOC_FL_KEEP_SIZE;
+	int ret;
+
+	/* grow or shrink the file */
+	ret = fallocate(fd, flags, fa_offset, page_sz);
+
+	if (ret < 0) {
+		RTE_LOG(DEBUG, EAL, "%s(): fallocate() failed: %s\n",
+				__func__,
+				strerror(errno));
+		return -1;
+	}
+	/* increase/decrease total segment count */
+	fd_list[list_idx].count += (grow ? 1 : -1);
+	if (!grow && fd_list[list_idx].count == 0) {
+		close(fd_list[list_idx].memseg_list_fd);
+		fd_list[list_idx].memseg_list_fd = -1;
+	}
+	return 0;
+}
+
+static int
+resize_hugefile_in_filesystem(int fd, char *path, int list_idx, int seg_idx,
 		uint64_t fa_offset, uint64_t page_sz, bool grow)
 {
 	bool again = false;
-
-	/* in-memory mode is a special case, because we don't need to perform
-	 * any locking, and we can be sure that fallocate() is supported.
-	 */
-	if (internal_config.in_memory) {
-		int flags = grow ? 0 : FALLOC_FL_PUNCH_HOLE |
-				FALLOC_FL_KEEP_SIZE;
-		int ret;
-
-		/* grow or shrink the file */
-		ret = fallocate(fd, flags, fa_offset, page_sz);
-
-		if (ret < 0) {
-			RTE_LOG(DEBUG, EAL, "%s(): fallocate() failed: %s\n",
-					__func__,
-					strerror(errno));
-			return -1;
-		}
-		/* increase/decrease total segment count */
-		fd_list[list_idx].count += (grow ? 1 : -1);
-		if (!grow && fd_list[list_idx].count == 0) {
-			close(fd_list[list_idx].memseg_list_fd);
-			fd_list[list_idx].memseg_list_fd = -1;
-		}
-		return 0;
-	}
 
 	do {
 		if (fallocate_supported == 0) {
@@ -583,7 +583,25 @@ resize_hugefile(int fd, char *path, int list_idx, int seg_idx,
 			}
 		}
 	} while (again);
+
 	return 0;
+}
+
+
+static int
+resize_hugefile(int fd, char *path, int list_idx, int seg_idx,
+		uint64_t fa_offset, uint64_t page_sz, bool grow)
+{
+
+	/* in-memory mode is a special case, because we don't need to perform
+	 * any locking, and we can be sure that fallocate() is supported.
+	 */
+	if (internal_config.in_memory)
+		return resize_hugefile_in_memory(fd, list_idx, fa_offset,
+				page_sz, grow);
+
+	return resize_hugefile_in_filesystem(fd, path, list_idx, seg_idx,
+			fa_offset, page_sz, grow);
 }
 
 static int
