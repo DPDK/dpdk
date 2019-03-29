@@ -2283,6 +2283,10 @@ eth_igb_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->speed_capa = ETH_LINK_SPEED_10M_HD | ETH_LINK_SPEED_10M |
 			ETH_LINK_SPEED_100M_HD | ETH_LINK_SPEED_100M |
 			ETH_LINK_SPEED_1G;
+
+	dev_info->max_mtu = dev_info->max_rx_pktlen - E1000_ETH_OVERHEAD;
+	dev_info->min_mtu = ETHER_MIN_MTU;
+
 }
 
 static const uint32_t *
@@ -4466,8 +4470,7 @@ eth_igb_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	uint32_t rctl;
 	struct e1000_hw *hw;
 	struct rte_eth_dev_info dev_info;
-	uint32_t frame_size = mtu + (ETHER_HDR_LEN + ETHER_CRC_LEN +
-				     VLAN_TAG_SIZE);
+	uint32_t frame_size = mtu + E1000_ETH_OVERHEAD;
 
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 

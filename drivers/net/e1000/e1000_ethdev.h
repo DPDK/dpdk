@@ -89,6 +89,12 @@
 	ETH_RSS_IPV6_UDP_EX)
 
 /*
+ * The overhead from MTU to max frame size.
+ * Considering VLAN so a tag needs to be counted.
+ */
+#define E1000_ETH_OVERHEAD (ETHER_HDR_LEN + ETHER_CRC_LEN + VLAN_TAG_SIZE)
+
+/*
  * Maximum number of Ring Descriptors.
  *
  * Since RDLEN/TDLEN should be multiple of 128 bytes, the number of ring
