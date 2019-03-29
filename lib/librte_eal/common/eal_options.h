@@ -5,6 +5,8 @@
 #ifndef EAL_OPTIONS_H
 #define EAL_OPTIONS_H
 
+#include "getopt.h"
+
 enum {
 	/* long options mapped to a short option */
 #define OPT_HELP              "help"

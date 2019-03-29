@@ -725,6 +725,10 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 			__func__, socket_id, cur_socket_id);
 		goto mapped;
 	}
+#else
+	if (rte_socket_count() > 1)
+		RTE_LOG(DEBUG, EAL, "%s(): not checking hugepage NUMA node.\n",
+				__func__);
 #endif
 
 	ms->addr = addr;
