@@ -3499,6 +3499,8 @@ i40e_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_rx_pktlen = I40E_FRAME_SIZE_MAX;
 	dev_info->max_mac_addrs = vsi->max_macaddrs;
 	dev_info->max_vfs = pci_dev->max_vfs;
+	dev_info->max_mtu = dev_info->max_rx_pktlen - I40E_ETH_OVERHEAD;
+	dev_info->min_mtu = ETHER_MIN_MTU;
 	dev_info->rx_queue_offload_capa = 0;
 	dev_info->rx_offload_capa =
 		DEV_RX_OFFLOAD_VLAN_STRIP |
