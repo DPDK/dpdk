@@ -2257,22 +2257,10 @@ static inline int
 rte_validate_tx_offload(const struct rte_mbuf *m)
 {
 	uint64_t ol_flags = m->ol_flags;
-	uint64_t inner_l3_offset = m->l2_len;
 
 	/* Does packet set any of available offloads? */
 	if (!(ol_flags & PKT_TX_OFFLOAD_MASK))
 		return 0;
-
-	if (ol_flags & PKT_TX_OUTER_IP_CKSUM)
-		/* NB: elaborating the addition like this instead of using
-		 *     += gives the result uint64_t type instead of int,
-		 *     avoiding compiler warnings on gcc 8.1 at least */
-		inner_l3_offset = inner_l3_offset + m->outer_l2_len +
-				  m->outer_l3_len;
-
-	/* Headers are fragmented */
-	if (rte_pktmbuf_data_len(m) < inner_l3_offset + m->l3_len + m->l4_len)
-		return -ENOTSUP;
 
 	/* IP checksum can be counted only for IPv4 packet */
 	if ((ol_flags & PKT_TX_IP_CKSUM) && (ol_flags & PKT_TX_IPV6))
