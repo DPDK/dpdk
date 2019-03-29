@@ -501,7 +501,7 @@ handle_rollback_response(const struct rte_mp_msg *request,
 	/* lock the request */
 	pthread_mutex_lock(&mp_request_list.lock);
 
-	memset(&msg, 0, sizeof(0));
+	memset(&msg, 0, sizeof(msg));
 
 	entry = find_request_by_id(mpreq->id);
 	if (entry == NULL) {
