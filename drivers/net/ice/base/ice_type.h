@@ -22,6 +22,10 @@
 #define MIN_T(_t, _a, _b)	min((_t)(_a), (_t)(_b))
 #endif
 
+#ifndef IS_ASCII
+#define IS_ASCII(_ch)  ((_ch) < 0x80)
+#endif
+
 #include "ice_status.h"
 #include "ice_hw_autogen.h"
 #include "ice_devids.h"

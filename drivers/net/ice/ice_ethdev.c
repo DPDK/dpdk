@@ -1245,6 +1245,21 @@ fail_mem:
 }
 
 static int
+ice_send_driver_ver(struct ice_hw *hw)
+{
+	struct ice_driver_ver dv;
+
+	/* we don't have driver version use 0 for dummy */
+	dv.major_ver = 0;
+	dv.minor_ver = 0;
+	dv.build_ver = 0;
+	dv.subbuild_ver = 0;
+	strncpy((char *)dv.driver_string, "dpdk", sizeof(dv.driver_string));
+
+	return ice_aq_send_driver_ver(hw, &dv, NULL);
+}
+
+static int
 ice_pf_setup(struct ice_pf *pf)
 {
 	struct ice_vsi *vsi;
@@ -1399,6 +1414,12 @@ ice_dev_init(struct rte_eth_dev *dev)
 	ret = ice_pf_setup(pf);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to setup PF");
+		goto err_pf_setup;
+	}
+
+	ret = ice_send_driver_ver(hw);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to send driver version");
 		goto err_pf_setup;
 	}
 
