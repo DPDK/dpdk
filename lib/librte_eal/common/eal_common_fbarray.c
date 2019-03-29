@@ -859,8 +859,10 @@ rte_fbarray_attach(struct rte_fbarray *arr)
 	}
 
 	page_sz = sysconf(_SC_PAGESIZE);
-	if (page_sz == (size_t)-1)
-		goto fail;
+	if (page_sz == (size_t)-1) {
+		free(ma);
+		return -1;
+	}
 
 	mmap_len = calc_data_size(page_sz, arr->elt_sz, arr->len);
 
@@ -906,6 +908,7 @@ rte_fbarray_attach(struct rte_fbarray *arr)
 
 	/* we're done */
 
+	rte_spinlock_unlock(&mem_area_lock);
 	return 0;
 fail:
 	if (data)
@@ -913,6 +916,7 @@ fail:
 	if (fd >= 0)
 		close(fd);
 	free(ma);
+	rte_spinlock_unlock(&mem_area_lock);
 	return -1;
 }
 
