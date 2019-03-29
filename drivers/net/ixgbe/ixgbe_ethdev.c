@@ -3857,6 +3857,7 @@ ixgbevf_dev_info_get(struct rte_eth_dev *dev,
 	dev_info->max_tx_queues = (uint16_t)hw->mac.max_tx_queues;
 	dev_info->min_rx_bufsize = 1024; /* cf BSIZEPACKET in SRRCTL reg */
 	dev_info->max_rx_pktlen = 9728; /* includes CRC, cf MAXFRS reg */
+	dev_info->max_mtu = dev_info->max_rx_pktlen - IXGBE_ETH_OVERHEAD;
 	dev_info->max_mac_addrs = hw->mac.num_rar_entries;
 	dev_info->max_hash_mac_addrs = IXGBE_VMDQ_NUM_UC_MAC;
 	dev_info->max_vfs = pci_dev->max_vfs;
@@ -6344,7 +6345,7 @@ static int
 ixgbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct ixgbe_hw *hw;
-	uint32_t max_frame = mtu + ETHER_HDR_LEN + ETHER_CRC_LEN;
+	uint32_t max_frame = mtu + IXGBE_ETH_OVERHEAD;
 	struct rte_eth_rxmode *rx_conf = &dev->data->dev_conf.rxmode;
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
