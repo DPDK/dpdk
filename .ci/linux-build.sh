@@ -16,7 +16,7 @@ trap on_error EXIT
 
 if [ "$AARCH64" = "1" ]; then
     # convert the arch specifier
-    OPTS="$OPTS --cross-file config/arm/arm64_armv8_linuxapp_gcc"
+    OPTS="$OPTS --cross-file config/arm/arm64_armv8_linux_gcc"
 fi
 
 OPTS="$OPTS --default-library=$DEF_LIB"
