@@ -101,6 +101,9 @@
 #define IXGBE_5TUPLE_MAX_PRI            7
 #define IXGBE_5TUPLE_MIN_PRI            1
 
+/* The overhead from MTU to max frame size. */
+#define IXGBE_ETH_OVERHEAD (ETHER_HDR_LEN + ETHER_CRC_LEN)
+
 /* bit of VXLAN tunnel type | 7 bits of zeros  | 8 bits of zeros*/
 #define IXGBE_FDIR_VXLAN_TUNNEL_TYPE    0x8000
 /* bit of NVGRE tunnel type | 7 bits of zeros  | 8 bits of zeros*/

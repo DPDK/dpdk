@@ -3748,6 +3748,8 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		dev_info->max_vmdq_pools = ETH_16_POOLS;
 	else
 		dev_info->max_vmdq_pools = ETH_64_POOLS;
+	dev_info->max_mtu =  dev_info->max_rx_pktlen - IXGBE_ETH_OVERHEAD;
+	dev_info->min_mtu = ETHER_MIN_MTU;
 	dev_info->vmdq_queue_num = dev_info->max_rx_queues;
 	dev_info->rx_queue_offload_capa = ixgbe_get_rx_queue_offloads(dev);
 	dev_info->rx_offload_capa = (ixgbe_get_rx_port_offloads(dev) |
@@ -4939,7 +4941,7 @@ ixgbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	uint32_t maxfrs;
 	struct ixgbe_hw *hw;
 	struct rte_eth_dev_info dev_info;
-	uint32_t frame_size = mtu + ETHER_HDR_LEN + ETHER_CRC_LEN;
+	uint32_t frame_size = mtu + IXGBE_ETH_OVERHEAD;
 	struct rte_eth_dev_data *dev_data = dev->data;
 
 	ixgbe_dev_info_get(dev, &dev_info);
