@@ -1088,6 +1088,8 @@ struct rte_eth_dev_info {
 	const char *driver_name; /**< Device Driver name. */
 	unsigned int if_index; /**< Index to bound host interface, or 0 if none.
 		Use if_indextoname() to translate into an interface name. */
+	uint16_t min_mtu;	/**< Minimum MTU allowed */
+	uint16_t max_mtu;	/**< Maximum MTU allowed */
 	const uint32_t *dev_flags; /**< Device flags */
 	uint32_t min_rx_bufsize; /**< Minimum size of RX buffer. */
 	uint32_t max_rx_pktlen; /**< Maximum configurable length of RX pkt. */
@@ -2204,6 +2206,33 @@ void rte_eth_macaddr_get(uint16_t port_id, struct ether_addr *mac_addr);
 /**
  * Retrieve the contextual information of an Ethernet device.
  *
+ * As part of this function, a number of of fields in dev_info will be
+ * initialized as follows:
+ *
+ * rx_desc_lim = lim
+ * tx_desc_lim = lim
+ *
+ * Where lim is defined within the rte_eth_dev_info_get as
+ *
+ *  const struct rte_eth_desc_lim lim = {
+ *      .nb_max = UINT16_MAX,
+ *      .nb_min = 0,
+ *      .nb_align = 1,
+ *  };
+ *
+ * device = dev->device
+ * min_mtu = ETHER_MIN_MTU
+ * max_mtu = UINT16_MAX
+ *
+ * The following fields will be populated if support for dev_infos_get()
+ * exists for the device and the rte_eth_dev 'dev' has been populated
+ * successfully with a call to it:
+ *
+ * driver_name = dev->device->driver->name
+ * nb_rx_queues = dev->data->nb_rx_queues
+ * nb_tx_queues = dev->data->nb_tx_queues
+ * dev_flags = &dev->data->dev_flags
+ *
  * @param port_id
  *   The port identifier of the Ethernet device.
  * @param dev_info
@@ -2300,7 +2329,9 @@ int rte_eth_dev_get_mtu(uint16_t port_id, uint16_t *mtu);
  *   - (-ENOTSUP) if operation is not supported.
  *   - (-ENODEV) if *port_id* invalid.
  *   - (-EIO) if device is removed.
- *   - (-EINVAL) if *mtu* invalid.
+ *   - (-EINVAL) if *mtu* invalid, validation of mtu can occur within
+ *     rte_eth_dev_set_mtu if dev_infos_get is supported by the device or
+ *     when the mtu is set using dev->dev_ops->mtu_set.
  *   - (-EBUSY) if operation is not allowed when the port is running
  */
 int rte_eth_dev_set_mtu(uint16_t port_id, uint16_t mtu);

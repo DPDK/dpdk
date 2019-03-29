@@ -2532,6 +2532,8 @@ rte_eth_dev_info_get(uint16_t port_id, struct rte_eth_dev_info *dev_info)
 	dev_info->rx_desc_lim = lim;
 	dev_info->tx_desc_lim = lim;
 	dev_info->device = dev->device;
+	dev_info->min_mtu = ETHER_MIN_MTU;
+	dev_info->max_mtu = UINT16_MAX;
 
 	RTE_FUNC_PTR_OR_RET(*dev->dev_ops->dev_infos_get);
 	(*dev->dev_ops->dev_infos_get)(dev, dev_info);
@@ -2595,11 +2597,24 @@ int
 rte_eth_dev_set_mtu(uint16_t port_id, uint16_t mtu)
 {
 	int ret;
+	struct rte_eth_dev_info dev_info;
 	struct rte_eth_dev *dev;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->mtu_set, -ENOTSUP);
+
+	/*
+	 * Check if the device supports dev_infos_get, if it does not
+	 * skip min_mtu/max_mtu validation here as this requires values
+	 * that are populated within the call to rte_eth_dev_info_get()
+	 * which relies on dev->dev_ops->dev_infos_get.
+	 */
+	if (*dev->dev_ops->dev_infos_get != NULL) {
+		rte_eth_dev_info_get(port_id, &dev_info);
+		if (mtu < dev_info.min_mtu || mtu > dev_info.max_mtu)
+			return -EINVAL;
+	}
 
 	ret = (*dev->dev_ops->mtu_set)(dev, mtu);
 	if (!ret)

@@ -174,6 +174,13 @@ ABI Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* ethdev: Additional fields in rte_eth_dev_info.
+
+  The ``rte_eth_dev_info`` structure has had two extra fields
+  added: ``min_mtu`` and ``max_mtu``. Each of these are of type ``uint16_t``.
+  The values of these fields can be set specifically by the PMD drivers as
+  supported values can vary from device to device.
+
 * cryptodev: in 18.08 new structure ``rte_crypto_asym_op`` was introduced and
   included into ``rte_crypto_op``. As ``rte_crypto_asym_op`` structure was
   defined as cache-line aligned that caused unintended changes in
@@ -216,7 +223,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_distributor.so.1
    + librte_eal.so.10
      librte_efd.so.1
-     librte_ethdev.so.11
+   + librte_ethdev.so.12
      librte_eventdev.so.6
      librte_flow_classify.so.1
      librte_gro.so.1
