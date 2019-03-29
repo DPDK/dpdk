@@ -31,6 +31,7 @@
 #define EVT_SCHED_TYPE_LIST      ("stlist")
 #define EVT_FWD_LATENCY          ("fwd_latency")
 #define EVT_QUEUE_PRIORITY       ("queue_priority")
+#define EVT_DEQ_TMO_NSEC         ("deq_tmo_nsec")
 #define EVT_PROD_ETHDEV          ("prod_type_ethdev")
 #define EVT_PROD_TIMERDEV        ("prod_type_timerdev")
 #define EVT_PROD_TIMERDEV_BURST  ("prod_type_timerdev_burst")
@@ -40,41 +41,6 @@
 #define EVT_MAX_TMO_NSEC         ("max_tmo_nsec")
 #define EVT_EXPIRY_NSEC          ("expiry_nsec")
 #define EVT_HELP                 ("help")
-
-enum evt_prod_type {
-	EVT_PROD_TYPE_NONE,
-	EVT_PROD_TYPE_SYNT,          /* Producer type Synthetic i.e. CPU. */
-	EVT_PROD_TYPE_ETH_RX_ADPTR,  /* Producer type Eth Rx Adapter. */
-	EVT_PROD_TYPE_EVENT_TIMER_ADPTR,  /* Producer type Timer Adapter. */
-	EVT_PROD_TYPE_MAX,
-};
-
-struct evt_options {
-#define EVT_TEST_NAME_MAX_LEN     32
-	char test_name[EVT_TEST_NAME_MAX_LEN];
-	bool plcores[RTE_MAX_LCORE];
-	bool wlcores[RTE_MAX_LCORE];
-	uint8_t sched_type_list[EVT_MAX_STAGES];
-	uint32_t nb_flows;
-	int socket_id;
-	int pool_sz;
-	int nb_stages;
-	int verbose_level;
-	uint64_t nb_pkts;
-	uint8_t nb_timer_adptrs;
-	uint64_t nb_timers;
-	uint64_t timer_tick_nsec;
-	uint64_t optm_timer_tick_nsec;
-	uint64_t max_tmo_nsec;
-	uint64_t expiry_nsec;
-	uint16_t wkr_deq_dep;
-	uint8_t dev_id;
-	uint32_t fwd_latency:1;
-	uint32_t q_priority:1;
-	enum evt_prod_type prod_type;
-	uint8_t timdev_use_burst;
-	uint8_t timdev_cnt;
-};
 
 void evt_options_default(struct evt_options *opt);
 int evt_options_parse(struct evt_options *opt, int argc, char **argv);

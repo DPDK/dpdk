@@ -334,17 +334,7 @@ pipeline_queue_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 	memset(queue_arr, 0, sizeof(uint8_t) * RTE_EVENT_MAX_QUEUES_PER_DEV);
 
 	rte_event_dev_info_get(opt->dev_id, &info);
-	const struct rte_event_dev_config config = {
-			.nb_event_queues = nb_queues,
-			.nb_event_ports = nb_ports,
-			.nb_events_limit  = info.max_num_events,
-			.nb_event_queue_flows = opt->nb_flows,
-			.nb_event_port_dequeue_depth =
-				info.max_event_port_dequeue_depth,
-			.nb_event_port_enqueue_depth =
-				info.max_event_port_enqueue_depth,
-	};
-	ret = rte_event_dev_configure(opt->dev_id, &config);
+	ret = evt_configure_eventdev(opt, nb_queues, nb_ports);
 	if (ret) {
 		evt_err("failed to configure eventdev %d", opt->dev_id);
 		return ret;

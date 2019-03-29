@@ -164,7 +164,7 @@ perf_queue_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 
 	nb_ports = evt_nr_active_lcores(opt->wlcores);
 	nb_ports += opt->prod_type == EVT_PROD_TYPE_ETH_RX_ADPTR ||
-		 opt->prod_type == EVT_PROD_TYPE_EVENT_TIMER_ADPTR ? 0 :
+		opt->prod_type == EVT_PROD_TYPE_EVENT_TIMER_ADPTR ? 0 :
 		evt_nr_active_lcores(opt->plcores);
 
 	nb_queues = perf_queue_nb_event_queues(opt);
@@ -176,18 +176,7 @@ perf_queue_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 		return ret;
 	}
 
-	const struct rte_event_dev_config config = {
-			.nb_event_queues = nb_queues,
-			.nb_event_ports = nb_ports,
-			.nb_events_limit  = dev_info.max_num_events,
-			.nb_event_queue_flows = opt->nb_flows,
-			.nb_event_port_dequeue_depth =
-				dev_info.max_event_port_dequeue_depth,
-			.nb_event_port_enqueue_depth =
-				dev_info.max_event_port_enqueue_depth,
-	};
-
-	ret = rte_event_dev_configure(opt->dev_id, &config);
+	ret = evt_configure_eventdev(opt, nb_queues, nb_ports);
 	if (ret) {
 		evt_err("failed to configure eventdev %d", opt->dev_id);
 		return ret;

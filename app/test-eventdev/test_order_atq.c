@@ -118,16 +118,7 @@ order_atq_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 	/* number of active worker cores + 1 producer */
 	const uint8_t nb_ports = nb_workers + 1;
 
-	const struct rte_event_dev_config config = {
-			.nb_event_queues = NB_QUEUES,/* one all types queue */
-			.nb_event_ports = nb_ports,
-			.nb_events_limit  = 4096,
-			.nb_event_queue_flows = opt->nb_flows,
-			.nb_event_port_dequeue_depth = 128,
-			.nb_event_port_enqueue_depth = 128,
-	};
-
-	ret = rte_event_dev_configure(opt->dev_id, &config);
+	ret = evt_configure_eventdev(opt, NB_QUEUES, nb_ports);
 	if (ret) {
 		evt_err("failed to configure eventdev %d", opt->dev_id);
 		return ret;

@@ -129,31 +129,38 @@ The following are the application command-line options:
 
         Use event timer adapter as producer.
 
- * ``--prod_type_timerdev_burst``
+* ``--prod_type_timerdev_burst``
 
-        Use burst mode event timer adapter as producer.
+       Use burst mode event timer adapter as producer.
 
- * ``--timer_tick_nsec``
+* ``--timer_tick_nsec``
 
-        Used to dictate number of nano seconds between bucket traversal of the
-        event timer adapter. Refer `rte_event_timer_adapter_conf`.
+       Used to dictate number of nano seconds between bucket traversal of the
+       event timer adapter. Refer `rte_event_timer_adapter_conf`.
 
- * ``--max_tmo_nsec``
+* ``--max_tmo_nsec``
 
-        Used to configure event timer adapter max arm timeout in nano seconds.
+       Used to configure event timer adapter max arm timeout in nano seconds.
 
- * ``--expiry_nsec``
+* ``--expiry_nsec``
 
-        Dictate the number of nano seconds after which the event timer expires.
+       Dictate the number of nano seconds after which the event timer expires.
 
- * ``--nb_timers``
+* ``--nb_timers``
 
-        Number of event timers each producer core will generate.
+       Number of event timers each producer core will generate.
 
- * ``--nb_timer_adptrs``
+* ``--nb_timer_adptrs``
 
-        Number of event timer adapters to be used. Each adapter is used in
-        round robin manner by the producer cores.
+       Number of event timer adapters to be used. Each adapter is used in
+       round robin manner by the producer cores.
+
+* ``--deq_tmo_nsec``
+
+       Global dequeue timeout for all the event ports if the provided dequeue
+       timeout is out of the supported range of event device it will be
+       adjusted to the highest/lowest supported dequeue timeout supported.
+
 
 Eventdev Tests
 --------------
@@ -225,6 +232,7 @@ Supported application command line options are following::
    --nb_flows
    --nb_pkts
    --worker_deq_depth
+   --deq_tmo_nsec
 
 Example
 ^^^^^^^
@@ -287,6 +295,7 @@ Supported application command line options are following::
    --nb_flows
    --nb_pkts
    --worker_deq_depth
+   --deq_tmo_nsec
 
 Example
 ^^^^^^^
@@ -386,6 +395,7 @@ Supported application command line options are following::
         --expiry_nsec
         --nb_timers
         --nb_timer_adptrs
+        --deq_tmo_nsec
 
 Example
 ^^^^^^^
@@ -485,6 +495,7 @@ Supported application command line options are following::
         --expiry_nsec
         --nb_timers
         --nb_timer_adptrs
+        --deq_tmo_nsec
 
 Example
 ^^^^^^^
@@ -598,6 +609,7 @@ Supported application command line options are following::
         --stlist
         --worker_deq_depth
         --prod_type_ethdev
+        --deq_tmo_nsec
 
 
 .. Note::
@@ -689,6 +701,7 @@ Supported application command line options are following::
         --stlist
         --worker_deq_depth
         --prod_type_ethdev
+        --deq_tmo_nsec
 
 
 .. Note::

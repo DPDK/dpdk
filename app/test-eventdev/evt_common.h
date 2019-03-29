@@ -34,6 +34,43 @@
 #define EVT_MAX_PORTS            256
 #define EVT_MAX_QUEUES           256
 
+enum evt_prod_type {
+	EVT_PROD_TYPE_NONE,
+	EVT_PROD_TYPE_SYNT,          /* Producer type Synthetic i.e. CPU. */
+	EVT_PROD_TYPE_ETH_RX_ADPTR,  /* Producer type Eth Rx Adapter. */
+	EVT_PROD_TYPE_EVENT_TIMER_ADPTR,  /* Producer type Timer Adapter. */
+	EVT_PROD_TYPE_MAX,
+};
+
+struct evt_options {
+#define EVT_TEST_NAME_MAX_LEN     32
+	char test_name[EVT_TEST_NAME_MAX_LEN];
+	bool plcores[RTE_MAX_LCORE];
+	bool wlcores[RTE_MAX_LCORE];
+	uint8_t sched_type_list[EVT_MAX_STAGES];
+	uint32_t nb_flows;
+	int socket_id;
+	int pool_sz;
+	int nb_stages;
+	int verbose_level;
+	uint64_t nb_pkts;
+	uint8_t nb_timer_adptrs;
+	uint64_t nb_timers;
+	uint64_t timer_tick_nsec;
+	uint64_t optm_timer_tick_nsec;
+	uint64_t max_tmo_nsec;
+	uint64_t expiry_nsec;
+	uint16_t wkr_deq_dep;
+	uint8_t dev_id;
+	uint32_t tx_first;
+	uint32_t fwd_latency:1;
+	uint32_t q_priority:1;
+	uint32_t deq_tmo_nsec;
+	enum evt_prod_type prod_type;
+	uint8_t timdev_use_burst;
+	uint8_t timdev_cnt;
+};
+
 static inline bool
 evt_has_distributed_sched(uint8_t dev_id)
 {
@@ -97,6 +134,48 @@ evt_service_setup(uint32_t service_id)
 		return -ENOENT;
 
 	return 0;
+}
+
+static inline int
+evt_configure_eventdev(struct evt_options *opt, uint8_t nb_queues,
+		uint8_t nb_ports)
+{
+	struct rte_event_dev_info info;
+	int ret;
+
+	memset(&info, 0, sizeof(struct rte_event_dev_info));
+	ret = rte_event_dev_info_get(opt->dev_id, &info);
+	if (ret) {
+		evt_err("failed to get eventdev info %d", opt->dev_id);
+		return ret;
+	}
+
+	if (opt->deq_tmo_nsec) {
+		if (opt->deq_tmo_nsec < info.min_dequeue_timeout_ns) {
+			opt->deq_tmo_nsec = info.min_dequeue_timeout_ns;
+			evt_info("dequeue_timeout_ns too low, using %d",
+					opt->deq_tmo_nsec);
+		}
+		if (opt->deq_tmo_nsec > info.max_dequeue_timeout_ns) {
+			opt->deq_tmo_nsec = info.max_dequeue_timeout_ns;
+			evt_info("dequeue_timeout_ns too high, using %d",
+					opt->deq_tmo_nsec);
+		}
+	}
+
+	const struct rte_event_dev_config config = {
+			.dequeue_timeout_ns = opt->deq_tmo_nsec,
+			.nb_event_queues = nb_queues,
+			.nb_event_ports = nb_ports,
+			.nb_events_limit  = info.max_num_events,
+			.nb_event_queue_flows = opt->nb_flows,
+			.nb_event_port_dequeue_depth =
+				info.max_event_port_dequeue_depth,
+			.nb_event_port_enqueue_depth =
+				info.max_event_port_enqueue_depth,
+	};
+
+	return rte_event_dev_configure(opt->dev_id, &config);
 }
 
 #endif /*  _EVT_COMMON_*/
