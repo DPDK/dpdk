@@ -214,6 +214,24 @@ Normally, these options do not need to be changed.
     can later be mapped into that preallocated VA space (if dynamic memory mode
     is enabled), and can optionally be mapped into it at startup.
 
++ Segment file descriptors
+
+On Linux, in most cases, EAL will store segment file descriptors in EAL. This
+can become a problem when using smaller page sizes due to underlying limitations
+of ``glibc`` library. For example, Linux API calls such as ``select()`` may not
+work correctly because ``glibc`` does not support more than certain number of
+file descriptors.
+
+There are two possible solutions for this problem. The recommended solution is
+to use ``--single-file-segments`` mode, as that mode will not use a file
+descriptor per each page, and it will keep compatibility with Virtio with
+vhost-user backend. This option is not available when using ``--legacy-mem``
+mode.
+
+Another option is to use bigger page sizes. Since fewer pages are required to
+cover the same memory area, fewer file descriptors will be stored internally
+by EAL.
+
 Support for Externally Allocated Memory
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

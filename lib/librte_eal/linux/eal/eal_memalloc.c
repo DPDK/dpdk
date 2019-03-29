@@ -83,13 +83,8 @@ static int fallocate_supported = -1; /* unknown */
 /*
  * we have two modes - single file segments, and file-per-page mode.
  *
- * for single-file segments, we need some kind of mechanism to keep track of
- * which hugepages can be freed back to the system, and which cannot. we cannot
- * use flock() because they don't allow locking parts of a file, and we cannot
- * use fcntl() due to issues with their semantics, so we will have to rely on a
- * bunch of lockfiles for each page. so, we will use 'fds' array to keep track
- * of per-page lockfiles. we will store the actual segment list fd in the
- * 'memseg_list_fd' field.
+ * for single-file segments, we use memseg_list_fd to store the segment fd,
+ * while the fds[] will not be allocated, and len will be set to 0.
  *
  * for file-per-page mode, each page will have its own fd, so 'memseg_list_fd'
  * will be invalid (set to -1), and we'll use 'fds' to keep track of page fd's.
@@ -245,80 +240,6 @@ static int lock(int fd, int type)
 	return 1;
 }
 
-static int get_segment_lock_fd(int list_idx, int seg_idx)
-{
-	char path[PATH_MAX] = {0};
-	int fd;
-
-	if (list_idx < 0 || list_idx >= (int)RTE_DIM(fd_list))
-		return -1;
-	if (seg_idx < 0 || seg_idx >= fd_list[list_idx].len)
-		return -1;
-
-	fd = fd_list[list_idx].fds[seg_idx];
-	/* does this lock already exist? */
-	if (fd >= 0)
-		return fd;
-
-	eal_get_hugefile_lock_path(path, sizeof(path),
-			list_idx * RTE_MAX_MEMSEG_PER_LIST + seg_idx);
-
-	fd = open(path, O_CREAT | O_RDWR, 0660);
-	if (fd < 0) {
-		RTE_LOG(ERR, EAL, "%s(): error creating lockfile '%s': %s\n",
-			__func__, path, strerror(errno));
-		return -1;
-	}
-	/* take out a read lock */
-	if (lock(fd, LOCK_SH) != 1) {
-		RTE_LOG(ERR, EAL, "%s(): failed to take out a readlock on '%s': %s\n",
-			__func__, path, strerror(errno));
-		close(fd);
-		return -1;
-	}
-	/* store it for future reference */
-	fd_list[list_idx].fds[seg_idx] = fd;
-	fd_list[list_idx].count++;
-	return fd;
-}
-
-static int unlock_segment(int list_idx, int seg_idx)
-{
-	int fd, ret;
-
-	if (list_idx < 0 || list_idx >= (int)RTE_DIM(fd_list))
-		return -1;
-	if (seg_idx < 0 || seg_idx >= fd_list[list_idx].len)
-		return -1;
-
-	fd = fd_list[list_idx].fds[seg_idx];
-
-	/* upgrade lock to exclusive to see if we can remove the lockfile */
-	ret = lock(fd, LOCK_EX);
-	if (ret == 1) {
-		/* we've succeeded in taking exclusive lock, this lockfile may
-		 * be removed.
-		 */
-		char path[PATH_MAX] = {0};
-		eal_get_hugefile_lock_path(path, sizeof(path),
-				list_idx * RTE_MAX_MEMSEG_PER_LIST + seg_idx);
-		if (unlink(path)) {
-			RTE_LOG(ERR, EAL, "%s(): error removing lockfile '%s': %s\n",
-					__func__, path, strerror(errno));
-		}
-	}
-	/* we don't want to leak the fd, so even if we fail to lock, close fd
-	 * and remove it from list anyway.
-	 */
-	close(fd);
-	fd_list[list_idx].fds[seg_idx] = -1;
-	fd_list[list_idx].count--;
-
-	if (ret < 0)
-		return -1;
-	return 0;
-}
-
 static int
 get_seg_memfd(struct hugepage_info *hi __rte_unused,
 		unsigned int list_idx __rte_unused,
@@ -425,7 +346,7 @@ get_seg_fd(char *path, int buflen, struct hugepage_info *hi,
 }
 
 static int
-resize_hugefile_in_memory(int fd, int list_idx, uint64_t fa_offset,
+resize_hugefile_in_memory(int fd, uint64_t fa_offset,
 		uint64_t page_sz, bool grow)
 {
 	int flags = grow ? 0 : FALLOC_FL_PUNCH_HOLE |
@@ -441,18 +362,12 @@ resize_hugefile_in_memory(int fd, int list_idx, uint64_t fa_offset,
 				strerror(errno));
 		return -1;
 	}
-	/* increase/decrease total segment count */
-	fd_list[list_idx].count += (grow ? 1 : -1);
-	if (!grow && fd_list[list_idx].count == 0) {
-		close(fd_list[list_idx].memseg_list_fd);
-		fd_list[list_idx].memseg_list_fd = -1;
-	}
 	return 0;
 }
 
 static int
-resize_hugefile_in_filesystem(int fd, char *path, int list_idx, int seg_idx,
-		uint64_t fa_offset, uint64_t page_sz, bool grow)
+resize_hugefile_in_filesystem(int fd, uint64_t fa_offset, uint64_t page_sz,
+		bool grow)
 {
 	bool again = false;
 
@@ -481,72 +396,22 @@ resize_hugefile_in_filesystem(int fd, char *path, int list_idx, int seg_idx,
 		} else {
 			int flags = grow ? 0 : FALLOC_FL_PUNCH_HOLE |
 					FALLOC_FL_KEEP_SIZE;
-			int ret, lock_fd;
+			int ret;
 
-			/* if fallocate() is supported, we need to take out a
-			 * read lock on allocate (to prevent other processes
-			 * from deallocating this page), and take out a write
-			 * lock on deallocate (to ensure nobody else is using
-			 * this page).
+			/*
+			 * technically, it is perfectly safe for both primary
+			 * and secondary to grow and shrink the page files:
+			 * growing the file repeatedly has no effect because
+			 * a page can only be allocated once, while mmap ensures
+			 * that secondaries hold on to the page even after the
+			 * page itself is removed from the filesystem.
 			 *
-			 * read locks on page itself are already taken out at
-			 * file creation, in get_seg_fd().
-			 *
-			 * we cannot rely on simple use of flock() call, because
-			 * we need to be able to lock a section of the file,
-			 * and we cannot use fcntl() locks, because of numerous
-			 * problems with their semantics, so we will use
-			 * deterministically named lock files for each section
-			 * of the file.
-			 *
-			 * if we're shrinking the file, we want to upgrade our
-			 * lock from shared to exclusive.
-			 *
-			 * lock_fd is an fd for a lockfile, not for the segment
-			 * list.
+			 * however, leaving growing/shrinking to the primary
+			 * tends to expose bugs in fdlist page count handling,
+			 * so leave this here just in case.
 			 */
-			lock_fd = get_segment_lock_fd(list_idx, seg_idx);
-
-			if (!grow) {
-				/* we are using this lockfile to determine
-				 * whether this particular page is locked, as we
-				 * are in single file segments mode and thus
-				 * cannot use regular flock() to get this info.
-				 *
-				 * we want to try and take out an exclusive lock
-				 * on the lock file to determine if we're the
-				 * last ones using this page, and if not, we
-				 * won't be shrinking it, and will instead exit
-				 * prematurely.
-				 */
-				ret = lock(lock_fd, LOCK_EX);
-
-				/* drop the lock on the lockfile, so that even
-				 * if we couldn't shrink the file ourselves, we
-				 * are signalling to other processes that we're
-				 * no longer using this page.
-				 */
-				if (unlock_segment(list_idx, seg_idx))
-					RTE_LOG(ERR, EAL, "Could not unlock segment\n");
-
-				/* additionally, if this was the last lock on
-				 * this segment list, we can safely close the
-				 * page file fd, so that one of the processes
-				 * could then delete the file after shrinking.
-				 */
-				if (ret < 1 && fd_list[list_idx].count == 0) {
-					close(fd);
-					fd_list[list_idx].memseg_list_fd = -1;
-				}
-
-				if (ret < 0) {
-					RTE_LOG(ERR, EAL, "Could not lock segment\n");
-					return -1;
-				}
-				if (ret == 0)
-					/* failed to lock, not an error. */
-					return 0;
-			}
+			if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+				return 0;
 
 			/* grow or shrink the file */
 			ret = fallocate(fd, flags, fa_offset, page_sz);
@@ -564,44 +429,43 @@ resize_hugefile_in_filesystem(int fd, char *path, int list_idx, int seg_idx,
 						strerror(errno));
 					return -1;
 				}
-			} else {
+			} else
 				fallocate_supported = 1;
-
-				/* we've grew/shrunk the file, and we hold an
-				 * exclusive lock now. check if there are no
-				 * more segments active in this segment list,
-				 * and remove the file if there aren't.
-				 */
-				if (fd_list[list_idx].count == 0) {
-					if (unlink(path))
-						RTE_LOG(ERR, EAL, "%s(): unlinking '%s' failed: %s\n",
-							__func__, path,
-							strerror(errno));
-					close(fd);
-					fd_list[list_idx].memseg_list_fd = -1;
-				}
-			}
 		}
 	} while (again);
 
 	return 0;
 }
 
+static void
+close_hugefile(int fd, char *path, int list_idx)
+{
+	/*
+	 * primary process must unlink the file, but only when not in in-memory
+	 * mode (as in that case there is no file to unlink).
+	 */
+	if (!internal_config.in_memory &&
+			rte_eal_process_type() == RTE_PROC_PRIMARY &&
+			unlink(path))
+		RTE_LOG(ERR, EAL, "%s(): unlinking '%s' failed: %s\n",
+			__func__, path, strerror(errno));
+
+	close(fd);
+	fd_list[list_idx].memseg_list_fd = -1;
+}
 
 static int
-resize_hugefile(int fd, char *path, int list_idx, int seg_idx,
-		uint64_t fa_offset, uint64_t page_sz, bool grow)
+resize_hugefile(int fd, uint64_t fa_offset, uint64_t page_sz, bool grow)
 {
-
-	/* in-memory mode is a special case, because we don't need to perform
-	 * any locking, and we can be sure that fallocate() is supported.
+	/* in-memory mode is a special case, because we can be sure that
+	 * fallocate() is supported.
 	 */
 	if (internal_config.in_memory)
-		return resize_hugefile_in_memory(fd, list_idx, fa_offset,
+		return resize_hugefile_in_memory(fd, fa_offset,
 				page_sz, grow);
 
-	return resize_hugefile_in_filesystem(fd, path, list_idx, seg_idx,
-			fa_offset, page_sz, grow);
+	return resize_hugefile_in_filesystem(fd, fa_offset, page_sz,
+				grow);
 }
 
 static int
@@ -663,10 +527,11 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 
 		if (internal_config.single_file_segments) {
 			map_offset = seg_idx * alloc_sz;
-			ret = resize_hugefile(fd, path, list_idx, seg_idx,
-					map_offset, alloc_sz, true);
+			ret = resize_hugefile(fd, map_offset, alloc_sz, true);
 			if (ret < 0)
 				goto resized;
+
+			fd_list[list_idx].count++;
 		} else {
 			map_offset = 0;
 			if (ftruncate(fd, alloc_sz) < 0) {
@@ -773,15 +638,21 @@ unmapped:
 		 */
 		RTE_LOG(CRIT, EAL, "Can't mmap holes in our virtual address space\n");
 	}
+	/* roll back the ref count */
+	if (internal_config.single_file_segments)
+		fd_list[list_idx].count--;
 resized:
 	/* some codepaths will return negative fd, so exit early */
 	if (fd < 0)
 		return -1;
 
 	if (internal_config.single_file_segments) {
-		resize_hugefile(fd, path, list_idx, seg_idx, map_offset,
-				alloc_sz, false);
+		resize_hugefile(fd, map_offset, alloc_sz, false);
 		/* ignore failure, can't make it any worse */
+
+		/* if refcount is at zero, close the file */
+		if (fd_list[list_idx].count == 0)
+			close_hugefile(fd, path, list_idx);
 	} else {
 		/* only remove file if we can take out a write lock */
 		if (internal_config.hugepage_unlink == 0 &&
@@ -838,9 +709,12 @@ free_seg(struct rte_memseg *ms, struct hugepage_info *hi,
 
 	if (internal_config.single_file_segments) {
 		map_offset = seg_idx * ms->len;
-		if (resize_hugefile(fd, path, list_idx, seg_idx, map_offset,
-				ms->len, false))
+		if (resize_hugefile(fd, map_offset, ms->len, false))
 			return -1;
+
+		if (--(fd_list[list_idx].count) == 0)
+			close_hugefile(fd, path, list_idx);
+
 		ret = 0;
 	} else {
 		/* if we're able to take out a write lock, we're the last one
@@ -1519,18 +1393,24 @@ alloc_list(int list_idx, int len)
 	int *data;
 	int i;
 
-	/* ensure we have space to store fd per each possible segment */
-	data = malloc(sizeof(int) * len);
-	if (data == NULL) {
-		RTE_LOG(ERR, EAL, "Unable to allocate space for file descriptors\n");
-		return -1;
+	/* single-file segments mode does not need fd list */
+	if (!internal_config.single_file_segments) {
+		/* ensure we have space to store fd per each possible segment */
+		data = malloc(sizeof(int) * len);
+		if (data == NULL) {
+			RTE_LOG(ERR, EAL, "Unable to allocate space for file descriptors\n");
+			return -1;
+		}
+		/* set all fd's as invalid */
+		for (i = 0; i < len; i++)
+			data[i] = -1;
+		fd_list[list_idx].fds = data;
+		fd_list[list_idx].len = len;
+	} else {
+		fd_list[list_idx].fds = NULL;
+		fd_list[list_idx].len = 0;
 	}
-	/* set all fd's as invalid */
-	for (i = 0; i < len; i++)
-		data[i] = -1;
 
-	fd_list[list_idx].fds = data;
-	fd_list[list_idx].len = len;
 	fd_list[list_idx].count = 0;
 	fd_list[list_idx].memseg_list_fd = -1;
 
@@ -1578,19 +1458,9 @@ eal_memalloc_set_seg_fd(int list_idx, int seg_idx, int fd)
 int
 eal_memalloc_set_seg_list_fd(int list_idx, int fd)
 {
-	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-
 	/* non-single file segment mode doesn't support segment list fd's */
 	if (!internal_config.single_file_segments)
 		return -ENOTSUP;
-
-	/* if list is not allocated, allocate it */
-	if (fd_list[list_idx].len == 0) {
-		int len = mcfg->memsegs[list_idx].memseg_arr.len;
-
-		if (alloc_list(list_idx, len) < 0)
-			return -ENOMEM;
-	}
 
 	fd_list[list_idx].memseg_list_fd = fd;
 
@@ -1669,9 +1539,6 @@ eal_memalloc_get_seg_fd_offset(int list_idx, int seg_idx, size_t *offset)
 			return -ENOTSUP;
 	}
 
-	/* fd_list not initialized? */
-	if (fd_list[list_idx].len == 0)
-		return -ENODEV;
 	if (internal_config.single_file_segments) {
 		size_t pgsz = mcfg->memsegs[list_idx].page_sz;
 
@@ -1680,6 +1547,10 @@ eal_memalloc_get_seg_fd_offset(int list_idx, int seg_idx, size_t *offset)
 			return -ENOENT;
 		*offset = pgsz * seg_idx;
 	} else {
+		/* fd_list not initialized? */
+		if (fd_list[list_idx].len == 0)
+			return -ENODEV;
+
 		/* segment not active? */
 		if (fd_list[list_idx].fds[seg_idx] < 0)
 			return -ENOENT;

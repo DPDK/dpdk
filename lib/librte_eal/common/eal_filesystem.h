@@ -98,17 +98,6 @@ eal_get_hugefile_path(char *buffer, size_t buflen, const char *hugedir, int f_id
 	return buffer;
 }
 
-/** String format for hugepage map lock files. */
-#define HUGEFILE_LOCK_FMT "%s/map_%d.lock"
-static inline const char *
-eal_get_hugefile_lock_path(char *buffer, size_t buflen, int f_id)
-{
-	snprintf(buffer, buflen, HUGEFILE_LOCK_FMT, rte_eal_get_runtime_dir(),
-			f_id);
-	buffer[buflen - 1] = '\0';
-	return buffer;
-}
-
 /** define the default filename prefix for the %s values above */
 #define HUGEFILE_PREFIX_DEFAULT "rte"
 
