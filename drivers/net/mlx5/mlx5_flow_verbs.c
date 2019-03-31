@@ -1385,7 +1385,7 @@ flow_verbs_prepare(const struct rte_flow_attr *attr __rte_unused,
  *   Pointer to the error structure.
  *
  * @return
- *   0 on success, else a negative errno value otherwise and rte_ernno is set.
+ *   0 on success, else a negative errno value otherwise and rte_errno is set.
  */
 static int
 flow_verbs_translate(struct rte_eth_dev *dev,
