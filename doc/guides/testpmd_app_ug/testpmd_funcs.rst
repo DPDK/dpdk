@@ -1623,7 +1623,7 @@ Configure the outer layer to encapsulate a packet inside a VXLAN tunnel::
  udp-dst (udp-dst) ip-tos (ip-tos) ip-ttl (ip-ttl) ip-src (ip-src) \
  ip-dst (ip-dst) eth-src (eth-src) eth-dst (eth-dst)
 
-Those command will set an internal configuration inside testpmd, any following
+These commands will set an internal configuration inside testpmd, any following
 flow rule using the action vxlan_encap will use the last configuration set.
 To have a different encapsulation header, one of those commands must be called
 before the flow rule creation.
@@ -1638,7 +1638,7 @@ Configure the outer layer to encapsulate a packet inside a NVGRE tunnel::
  set nvgre-with-vlan ip-version (ipv4|ipv6) tni (tni) ip-src (ip-src) \
         ip-dst (ip-dst) vlan-tci (vlan-tci) eth-src (eth-src) eth-dst (eth-dst)
 
-Those command will set an internal configuration inside testpmd, any following
+These commands will set an internal configuration inside testpmd, any following
 flow rule using the action nvgre_encap will use the last configuration set.
 To have a different encapsulation header, one of those commands must be called
 before the flow rule creation.
@@ -1681,7 +1681,7 @@ Configure the outer layer to encapsulate a packet inside a MPLSoGRE tunnel::
         ip-src (ip-src) ip-dst (ip-dst) vlan-tci (vlan-tci) \
         eth-src (eth-src) eth-dst (eth-dst)
 
-Those command will set an internal configuration inside testpmd, any following
+These commands will set an internal configuration inside testpmd, any following
 flow rule using the action mplsogre_encap will use the last configuration set.
 To have a different encapsulation header, one of those commands must be called
 before the flow rule creation.
@@ -1694,7 +1694,7 @@ Configure the outer layer to decapsulate MPLSoGRE packet::
  set mplsogre_decap ip-version (ipv4|ipv6)
  set mplsogre_decap-with-vlan ip-version (ipv4|ipv6)
 
-Those command will set an internal configuration inside testpmd, any following
+These commands will set an internal configuration inside testpmd, any following
 flow rule using the action mplsogre_decap will use the last configuration set.
 To have a different decapsulation header, one of those commands must be called
 before the flow rule creation.
@@ -1711,7 +1711,7 @@ Configure the outer layer to encapsulate a packet inside a MPLSoUDP tunnel::
         udp-src (udp-src) udp-dst (udp-dst) ip-src (ip-src) ip-dst (ip-dst) \
         vlan-tci (vlan-tci) eth-src (eth-src) eth-dst (eth-dst)
 
-Those command will set an internal configuration inside testpmd, any following
+These commands will set an internal configuration inside testpmd, any following
 flow rule using the action mplsoudp_encap will use the last configuration set.
 To have a different encapsulation header, one of those commands must be called
 before the flow rule creation.
@@ -1724,7 +1724,7 @@ Configure the outer layer to decapsulate MPLSoUDP packet::
  set mplsoudp_decap ip-version (ipv4|ipv6)
  set mplsoudp_decap-with-vlan ip-version (ipv4|ipv6)
 
-Those command will set an internal configuration inside testpmd, any following
+These commands will set an internal configuration inside testpmd, any following
 flow rule using the action mplsoudp_decap will use the last configuration set.
 To have a different decapsulation header, one of those commands must be called
 before the flow rule creation.
@@ -3745,7 +3745,7 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``sla {MAC-48}``: source Ethernet LLA.
 
-- ``icmp6_nd_opt_sla_eth``: match ICMPv6 neighbor discovery target Ethernet
+- ``icmp6_nd_opt_tla_eth``: match ICMPv6 neighbor discovery target Ethernet
   link-layer address option.
 
   - ``tla {MAC-48}``: target Ethernet LLA.
