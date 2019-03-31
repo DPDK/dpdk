@@ -149,7 +149,7 @@ Limitations
 
 - E-Switch VXLAN decapsulation Flow:
 
-  - can be appiled to PF port only.
+  - can be applied to PF port only.
   - must specify VF port action (packet redirection from PF to VF).
   - must specify tunnel outer UDP local (destination) port, wildcards not allowed.
   - must specify tunnel outer VNI, wildcards not allowed.
@@ -319,7 +319,7 @@ Run-time configuration
   buffers per a packet, one large buffer is posted in order to receive multiple
   packets on the buffer. A MPRQ buffer consists of multiple fixed-size strides
   and each stride receives one packet. MPRQ can improve throughput for
-  small-packet tarffic.
+  small-packet traffic.
 
   When MPRQ is enabled, max_rx_pkt_len can be larger than the size of
   user-provided mbuf even if DEV_RX_OFFLOAD_SCATTER isn't enabled. PMD will
@@ -330,7 +330,7 @@ Run-time configuration
 - ``mprq_log_stride_num`` parameter [int]
 
   Log 2 of the number of strides for Multi-Packet Rx queue. Configuring more
-  strides can reduce PCIe tarffic further. If configured value is not in the
+  strides can reduce PCIe traffic further. If configured value is not in the
   range of device capability, the default value will be set with a warning
   message. The default value is 4 which is 16 strides per a buffer, valid only
   if ``mprq_en`` is set.
