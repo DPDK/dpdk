@@ -575,7 +575,7 @@ mbuf_copy_split(const struct rte_mbuf *ms, struct rte_mbuf *md[],
 
 /*
  * Allocate a new mbuf with up to tx_pkt_nb_segs segments.
- * Copy packet contents and offload information into then new segmented mbuf.
+ * Copy packet contents and offload information into the new segmented mbuf.
  */
 static struct rte_mbuf *
 pkt_copy_split(const struct rte_mbuf *pkt)
