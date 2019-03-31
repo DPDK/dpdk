@@ -1651,7 +1651,7 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 	     local_conf.offloads) {
 		RTE_ETHDEV_LOG(ERR,
 			"Ethdev port_id=%d rx_queue_id=%d, new added offloads 0x%"PRIx64" must be "
-			"within pre-queue offload capabilities 0x%"PRIx64" in %s()\n",
+			"within per-queue offload capabilities 0x%"PRIx64" in %s()\n",
 			port_id, rx_queue_id, local_conf.offloads,
 			dev_info.rx_queue_offload_capa,
 			__func__);
@@ -1755,7 +1755,7 @@ rte_eth_tx_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
 	     local_conf.offloads) {
 		RTE_ETHDEV_LOG(ERR,
 			"Ethdev port_id=%d tx_queue_id=%d, new added offloads 0x%"PRIx64" must be "
-			"within pre-queue offload capabilities 0x%"PRIx64" in %s()\n",
+			"within per-queue offload capabilities 0x%"PRIx64" in %s()\n",
 			port_id, tx_queue_id, local_conf.offloads,
 			dev_info.tx_queue_offload_capa,
 			__func__);
