@@ -17,7 +17,7 @@
 #ifndef _RTE_EAL_INTERRUPTS_H_
 #define _RTE_EAL_INTERRUPTS_H_
 
-#define RTE_MAX_RXTX_INTR_VEC_ID     32
+#define RTE_MAX_RXTX_INTR_VEC_ID      512
 #define RTE_INTR_VEC_ZERO_OFFSET      0
 #define RTE_INTR_VEC_RXTX_OFFSET      1
 
