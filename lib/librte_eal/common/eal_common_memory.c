@@ -56,6 +56,7 @@ static uint64_t system_page_sz;
 static uint64_t baseaddr = 0x100000000;
 #endif
 
+#define MAX_MMAP_WITH_DEFINED_ADDR_TRIES 5
 void *
 eal_get_virtual_area(void *requested_addr, size_t *size,
 		size_t page_sz, int flags, int mmap_flags)
@@ -63,6 +64,7 @@ eal_get_virtual_area(void *requested_addr, size_t *size,
 	bool addr_is_hint, allow_shrink, unmap, no_align;
 	uint64_t map_sz;
 	void *mapped_addr, *aligned_addr;
+	uint8_t try = 0;
 
 	if (system_page_sz == 0)
 		system_page_sz = sysconf(_SC_PAGESIZE);
@@ -118,11 +120,14 @@ eal_get_virtual_area(void *requested_addr, size_t *size,
 
 		if (mapped_addr != MAP_FAILED && addr_is_hint &&
 		    mapped_addr != requested_addr) {
-			/* hint was not used. Try with another offset */
-			munmap(mapped_addr, map_sz);
-			mapped_addr = MAP_FAILED;
+			try++;
 			next_baseaddr = RTE_PTR_ADD(next_baseaddr, page_sz);
-			requested_addr = next_baseaddr;
+			if (try <= MAX_MMAP_WITH_DEFINED_ADDR_TRIES) {
+				/* hint was not used. Try with another offset */
+				munmap(mapped_addr, map_sz);
+				mapped_addr = MAP_FAILED;
+				requested_addr = next_baseaddr;
+			}
 		}
 	} while ((allow_shrink || addr_is_hint) &&
 		 mapped_addr == MAP_FAILED && *size > 0);
