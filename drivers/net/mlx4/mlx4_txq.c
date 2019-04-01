@@ -357,11 +357,11 @@ mlx4_tx_queue_release(void *dpdk_txq)
 	if (txq == NULL)
 		return;
 	priv = txq->priv;
-	for (i = 0; i != priv->dev->data->nb_tx_queues; ++i)
-		if (priv->dev->data->tx_queues[i] == txq) {
+	for (i = 0; i != ETH_DEV(priv)->data->nb_tx_queues; ++i)
+		if (ETH_DEV(priv)->data->tx_queues[i] == txq) {
 			DEBUG("%p: removing Tx queue %p from list",
-			      (void *)priv->dev, (void *)txq);
-			priv->dev->data->tx_queues[i] = NULL;
+			      (void *)ETH_DEV(priv), (void *)txq);
+			ETH_DEV(priv)->data->tx_queues[i] = NULL;
 			break;
 		}
 	mlx4_txq_free_elts(txq);

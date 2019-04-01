@@ -176,6 +176,7 @@ mlx4_rss_attach(struct mlx4_rss *rss)
 
 	struct ibv_wq *ind_tbl[rss->queues];
 	struct mlx4_priv *priv = rss->priv;
+	struct rte_eth_dev *dev = ETH_DEV(priv);
 	const char *msg;
 	unsigned int i = 0;
 	int ret;
@@ -189,8 +190,8 @@ mlx4_rss_attach(struct mlx4_rss *rss)
 		uint16_t id = rss->queue_id[i];
 		struct rxq *rxq = NULL;
 
-		if (id < priv->dev->data->nb_rx_queues)
-			rxq = priv->dev->data->rx_queues[id];
+		if (id < dev->data->nb_rx_queues)
+			rxq = dev->data->rx_queues[id];
 		if (!rxq) {
 			ret = EINVAL;
 			msg = "RSS target queue is not configured";
@@ -269,7 +270,7 @@ error:
 		rss->ind = NULL;
 	}
 	while (i--)
-		mlx4_rxq_detach(priv->dev->data->rx_queues[rss->queue_id[i]]);
+		mlx4_rxq_detach(dev->data->rx_queues[rss->queue_id[i]]);
 	ERROR("mlx4: %s", msg);
 	--rss->usecnt;
 	rte_errno = ret;
@@ -291,6 +292,7 @@ void
 mlx4_rss_detach(struct mlx4_rss *rss)
 {
 	struct mlx4_priv *priv = rss->priv;
+	struct rte_eth_dev *dev = ETH_DEV(priv);
 	unsigned int i;
 
 	assert(rss->refcnt);
@@ -303,7 +305,7 @@ mlx4_rss_detach(struct mlx4_rss *rss)
 	claim_zero(mlx4_glue->destroy_rwq_ind_table(rss->ind));
 	rss->ind = NULL;
 	for (i = 0; i != rss->queues; ++i)
-		mlx4_rxq_detach(priv->dev->data->rx_queues[rss->queue_id[i]]);
+		mlx4_rxq_detach(dev->data->rx_queues[rss->queue_id[i]]);
 }
 
 /**
@@ -329,7 +331,7 @@ mlx4_rss_detach(struct mlx4_rss *rss)
 int
 mlx4_rss_init(struct mlx4_priv *priv)
 {
-	struct rte_eth_dev *dev = priv->dev;
+	struct rte_eth_dev *dev = ETH_DEV(priv);
 	uint8_t log2_range = rte_log2_u32(dev->data->nb_rx_queues);
 	uint32_t wq_num_prev = 0;
 	const char *msg;
@@ -338,7 +340,7 @@ mlx4_rss_init(struct mlx4_priv *priv)
 
 	if (priv->rss_init)
 		return 0;
-	if (priv->dev->data->nb_rx_queues > priv->hw_rss_max_qps) {
+	if (ETH_DEV(priv)->data->nb_rx_queues > priv->hw_rss_max_qps) {
 		ERROR("RSS does not support more than %d queues",
 		      priv->hw_rss_max_qps);
 		rte_errno = EINVAL;
@@ -356,8 +358,8 @@ mlx4_rss_init(struct mlx4_priv *priv)
 		rte_errno = ret;
 		return -ret;
 	}
-	for (i = 0; i != priv->dev->data->nb_rx_queues; ++i) {
-		struct rxq *rxq = priv->dev->data->rx_queues[i];
+	for (i = 0; i != ETH_DEV(priv)->data->nb_rx_queues; ++i) {
+		struct rxq *rxq = ETH_DEV(priv)->data->rx_queues[i];
 		struct ibv_cq *cq;
 		struct ibv_wq *wq;
 		uint32_t wq_num;
@@ -432,7 +434,7 @@ error:
 	ERROR("cannot initialize common RSS resources (queue %u): %s: %s",
 	      i, msg, strerror(ret));
 	while (i--) {
-		struct rxq *rxq = priv->dev->data->rx_queues[i];
+		struct rxq *rxq = ETH_DEV(priv)->data->rx_queues[i];
 
 		if (rxq)
 			mlx4_rxq_detach(rxq);
@@ -457,8 +459,8 @@ mlx4_rss_deinit(struct mlx4_priv *priv)
 
 	if (!priv->rss_init)
 		return;
-	for (i = 0; i != priv->dev->data->nb_rx_queues; ++i) {
-		struct rxq *rxq = priv->dev->data->rx_queues[i];
+	for (i = 0; i != ETH_DEV(priv)->data->nb_rx_queues; ++i) {
+		struct rxq *rxq = ETH_DEV(priv)->data->rx_queues[i];
 
 		if (rxq) {
 			assert(rxq->usecnt == 1);
@@ -494,7 +496,7 @@ mlx4_rxq_attach(struct rxq *rxq)
 	}
 
 	struct mlx4_priv *priv = rxq->priv;
-	struct rte_eth_dev *dev = priv->dev;
+	struct rte_eth_dev *dev = ETH_DEV(priv);
 	const uint32_t elts_n = 1 << rxq->elts_n;
 	const uint32_t sges_n = 1 << rxq->sges_n;
 	struct rte_mbuf *(*elts)[elts_n] = rxq->elts;
@@ -561,7 +563,7 @@ mlx4_rxq_attach(struct rxq *rxq)
 	}
 	/* Pre-register Rx mempool. */
 	DEBUG("port %u Rx queue %u registering mp %s having %u chunks",
-	      priv->dev->data->port_id, rxq->stats.idx,
+	      ETH_DEV(priv)->data->port_id, rxq->stats.idx,
 	      rxq->mp->name, rxq->mp->nb_mem_chunks);
 	mlx4_mr_update_mp(dev, &rxq->mr_ctrl, rxq->mp);
 	wqes = (volatile struct mlx4_wqe_data_seg (*)[])
@@ -917,11 +919,11 @@ mlx4_rx_queue_release(void *dpdk_rxq)
 	if (rxq == NULL)
 		return;
 	priv = rxq->priv;
-	for (i = 0; i != priv->dev->data->nb_rx_queues; ++i)
-		if (priv->dev->data->rx_queues[i] == rxq) {
+	for (i = 0; i != ETH_DEV(priv)->data->nb_rx_queues; ++i)
+		if (ETH_DEV(priv)->data->rx_queues[i] == rxq) {
 			DEBUG("%p: removing Rx queue %p from list",
-			      (void *)priv->dev, (void *)rxq);
-			priv->dev->data->rx_queues[i] = NULL;
+			      (void *)ETH_DEV(priv), (void *)rxq);
+			ETH_DEV(priv)->data->rx_queues[i] = NULL;
 			break;
 		}
 	assert(!rxq->cq);

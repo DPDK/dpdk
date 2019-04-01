@@ -79,7 +79,7 @@ LIST_HEAD(mlx4_mr_list, mlx4_mr);
 struct mlx4_priv {
 	LIST_ENTRY(mlx4_priv) mem_event_cb;
 	/**< Called by memory event callback. */
-	struct rte_eth_dev *dev; /**< Ethernet device. */
+	struct rte_eth_dev_data *dev_data;  /* Pointer to device data. */
 	struct ibv_context *ctx; /**< Verbs context. */
 	struct ibv_device_attr device_attr; /**< Device properties. */
 	struct ibv_pd *pd; /**< Protection Domain. */
@@ -112,6 +112,9 @@ struct mlx4_priv {
 	struct ether_addr mac[MLX4_MAX_MAC_ADDRESSES];
 	/**< Configured MAC addresses. Unused entries are zeroed. */
 };
+
+#define PORT_ID(priv) ((priv)->dev_data->port_id)
+#define ETH_DEV(priv) (&rte_eth_devices[PORT_ID(priv)])
 
 /* mlx4_ethdev.c */
 

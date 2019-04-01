@@ -65,7 +65,7 @@ static int
 mlx4_rx_intr_vec_enable(struct mlx4_priv *priv)
 {
 	unsigned int i;
-	unsigned int rxqs_n = priv->dev->data->nb_rx_queues;
+	unsigned int rxqs_n = ETH_DEV(priv)->data->nb_rx_queues;
 	unsigned int n = RTE_MIN(rxqs_n, (uint32_t)RTE_MAX_RXTX_INTR_VEC_ID);
 	unsigned int count = 0;
 	struct rte_intr_handle *intr_handle = &priv->intr_handle;
@@ -79,7 +79,7 @@ mlx4_rx_intr_vec_enable(struct mlx4_priv *priv)
 		return -rte_errno;
 	}
 	for (i = 0; i != n; ++i) {
-		struct rxq *rxq = priv->dev->data->rx_queues[i];
+		struct rxq *rxq = ETH_DEV(priv)->data->rx_queues[i];
 
 		/* Skip queues that cannot request interrupts. */
 		if (!rxq || !rxq->channel) {
@@ -120,12 +120,12 @@ static void
 mlx4_link_status_alarm(struct mlx4_priv *priv)
 {
 	const struct rte_intr_conf *const intr_conf =
-		&priv->dev->data->dev_conf.intr_conf;
+		&ETH_DEV(priv)->data->dev_conf.intr_conf;
 
 	assert(priv->intr_alarm == 1);
 	priv->intr_alarm = 0;
 	if (intr_conf->lsc && !mlx4_link_status_check(priv))
-		_rte_eth_dev_callback_process(priv->dev,
+		_rte_eth_dev_callback_process(ETH_DEV(priv),
 					      RTE_ETH_EVENT_INTR_LSC,
 					      NULL);
 }
@@ -145,8 +145,8 @@ mlx4_link_status_alarm(struct mlx4_priv *priv)
 static int
 mlx4_link_status_check(struct mlx4_priv *priv)
 {
-	struct rte_eth_link *link = &priv->dev->data->dev_link;
-	int ret = mlx4_link_update(priv->dev, 0);
+	struct rte_eth_link *link = &ETH_DEV(priv)->data->dev_link;
+	int ret = mlx4_link_update(ETH_DEV(priv), 0);
 
 	if (ret)
 		return ret;
@@ -185,7 +185,7 @@ mlx4_interrupt_handler(struct mlx4_priv *priv)
 	uint32_t caught[RTE_DIM(type)] = { 0 };
 	struct ibv_async_event event;
 	const struct rte_intr_conf *const intr_conf =
-		&priv->dev->data->dev_conf.intr_conf;
+		&ETH_DEV(priv)->data->dev_conf.intr_conf;
 	unsigned int i;
 
 	/* Read all message and acknowledge them. */
@@ -208,7 +208,7 @@ mlx4_interrupt_handler(struct mlx4_priv *priv)
 	}
 	for (i = 0; i != RTE_DIM(caught); ++i)
 		if (caught[i])
-			_rte_eth_dev_callback_process(priv->dev, type[i],
+			_rte_eth_dev_callback_process(ETH_DEV(priv), type[i],
 						      NULL);
 }
 
@@ -282,7 +282,7 @@ int
 mlx4_intr_install(struct mlx4_priv *priv)
 {
 	const struct rte_intr_conf *const intr_conf =
-		&priv->dev->data->dev_conf.intr_conf;
+		&ETH_DEV(priv)->data->dev_conf.intr_conf;
 	int rc;
 
 	mlx4_intr_uninstall(priv);
@@ -381,7 +381,7 @@ int
 mlx4_rxq_intr_enable(struct mlx4_priv *priv)
 {
 	const struct rte_intr_conf *const intr_conf =
-		&priv->dev->data->dev_conf.intr_conf;
+		&ETH_DEV(priv)->data->dev_conf.intr_conf;
 
 	if (intr_conf->rxq && mlx4_rx_intr_vec_enable(priv) < 0)
 		goto error;

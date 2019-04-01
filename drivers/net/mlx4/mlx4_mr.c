@@ -896,7 +896,7 @@ mlx4_mr_mem_event_cb(enum rte_mem_event event_type, const void *addr,
 		rte_rwlock_read_lock(&mlx4_mem_event_rwlock);
 		/* Iterate all the existing mlx4 devices. */
 		LIST_FOREACH(priv, &mlx4_mem_event_cb_list, mem_event_cb)
-			mlx4_mr_mem_event_free_cb(priv->dev, addr, len);
+			mlx4_mr_mem_event_free_cb(ETH_DEV(priv), addr, len);
 		rte_rwlock_read_unlock(&mlx4_mem_event_rwlock);
 		break;
 	case RTE_MEM_EVENT_ALLOC:
@@ -1028,7 +1028,7 @@ mlx4_rx_addr2mr_bh(struct rxq *rxq, uintptr_t addr)
 
 	DEBUG("Rx queue %u: miss on top-half, mru=%u, head=%u, addr=%p",
 	      rxq->stats.idx, mr_ctrl->mru, mr_ctrl->head, (void *)addr);
-	return mlx4_mr_addr2mr_bh(priv->dev, mr_ctrl, addr);
+	return mlx4_mr_addr2mr_bh(ETH_DEV(priv), mr_ctrl, addr);
 }
 
 /**
@@ -1050,7 +1050,7 @@ mlx4_tx_addr2mr_bh(struct txq *txq, uintptr_t addr)
 
 	DEBUG("Tx queue %u: miss on top-half, mru=%u, head=%u, addr=%p",
 	      txq->stats.idx, mr_ctrl->mru, mr_ctrl->head, (void *)addr);
-	return mlx4_mr_addr2mr_bh(priv->dev, mr_ctrl, addr);
+	return mlx4_mr_addr2mr_bh(ETH_DEV(priv), mr_ctrl, addr);
 }
 
 /**
@@ -1225,7 +1225,7 @@ mlx4_tx_update_ext_mp(struct txq *txq, uintptr_t addr, struct rte_mempool *mp)
 	struct mlx4_mr_ctrl *mr_ctrl = &txq->mr_ctrl;
 	struct mlx4_priv *priv = txq->priv;
 
-	mlx4_mr_update_ext_mp(priv->dev, mr_ctrl, mp);
+	mlx4_mr_update_ext_mp(ETH_DEV(priv), mr_ctrl, mp);
 	return mlx4_tx_addr2mr_bh(txq, addr);
 }
 

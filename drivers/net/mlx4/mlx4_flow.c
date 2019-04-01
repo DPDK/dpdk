@@ -773,7 +773,7 @@ fill:
 			if (flow->rss)
 				break;
 			queue = action->conf;
-			if (queue->index >= priv->dev->data->nb_rx_queues) {
+			if (queue->index >= ETH_DEV(priv)->data->nb_rx_queues) {
 				msg = "queue target index beyond number of"
 					" configured Rx queues";
 				goto exit_action_not_supported;
@@ -802,7 +802,7 @@ fill:
 			/* Sanity checks. */
 			for (i = 0; i < rss->queue_num; ++i)
 				if (rss->queue[i] >=
-				    priv->dev->data->nb_rx_queues)
+				    ETH_DEV(priv)->data->nb_rx_queues)
 					break;
 			if (i != rss->queue_num) {
 				msg = "queue index target beyond number of"
@@ -1072,8 +1072,8 @@ mlx4_flow_toggle(struct mlx4_priv *priv,
 		/* Stop at the first nonexistent target queue. */
 		for (i = 0; i != rss->queues; ++i)
 			if (rss->queue_id[i] >=
-			    priv->dev->data->nb_rx_queues ||
-			    !priv->dev->data->rx_queues[rss->queue_id[i]]) {
+			    ETH_DEV(priv)->data->nb_rx_queues ||
+			    !ETH_DEV(priv)->data->rx_queues[rss->queue_id[i]]) {
 				missing = 1;
 				break;
 			}
@@ -1258,7 +1258,7 @@ static uint16_t
 mlx4_flow_internal_next_vlan(struct mlx4_priv *priv, uint16_t vlan)
 {
 	while (vlan < 4096) {
-		if (priv->dev->data->vlan_filter_conf.ids[vlan / 64] &
+		if (ETH_DEV(priv)->data->vlan_filter_conf.ids[vlan / 64] &
 		    (UINT64_C(1) << (vlan % 64)))
 			return vlan;
 		++vlan;
@@ -1335,7 +1335,7 @@ mlx4_flow_internal(struct mlx4_priv *priv, struct rte_flow_error *error)
 	 * get RSS by default.
 	 */
 	uint32_t queues =
-		rte_align32pow2(priv->dev->data->nb_rx_queues + 1) >> 1;
+		rte_align32pow2(ETH_DEV(priv)->data->nb_rx_queues + 1) >> 1;
 	uint16_t queue[queues];
 	struct rte_flow_action_rss action_rss = {
 		.func = RTE_ETH_HASH_FUNCTION_DEFAULT,
@@ -1357,9 +1357,9 @@ mlx4_flow_internal(struct mlx4_priv *priv, struct rte_flow_error *error)
 	};
 	struct ether_addr *rule_mac = &eth_spec.dst;
 	rte_be16_t *rule_vlan =
-		(priv->dev->data->dev_conf.rxmode.offloads &
+		(ETH_DEV(priv)->data->dev_conf.rxmode.offloads &
 		 DEV_RX_OFFLOAD_VLAN_FILTER) &&
-		!priv->dev->data->promiscuous ?
+		!ETH_DEV(priv)->data->promiscuous ?
 		&vlan_spec.tci :
 		NULL;
 	uint16_t vlan = 0;
@@ -1439,7 +1439,7 @@ next_vlan:
 		if (!flow || !flow->internal) {
 			/* Not found, create a new flow rule. */
 			memcpy(rule_mac, mac, sizeof(*mac));
-			flow = mlx4_flow_create(priv->dev, &attr, pattern,
+			flow = mlx4_flow_create(ETH_DEV(priv), &attr, pattern,
 						actions, error);
 			if (!flow) {
 				err = -rte_errno;
@@ -1455,15 +1455,16 @@ next_vlan:
 			goto next_vlan;
 	}
 	/* Take care of promiscuous and all multicast flow rules. */
-	if (priv->dev->data->promiscuous || priv->dev->data->all_multicast) {
+	if (ETH_DEV(priv)->data->promiscuous ||
+	    ETH_DEV(priv)->data->all_multicast) {
 		for (flow = LIST_FIRST(&priv->flows);
 		     flow && flow->internal;
 		     flow = LIST_NEXT(flow, next)) {
-			if (priv->dev->data->promiscuous) {
+			if (ETH_DEV(priv)->data->promiscuous) {
 				if (flow->promisc)
 					break;
 			} else {
-				assert(priv->dev->data->all_multicast);
+				assert(ETH_DEV(priv)->data->all_multicast);
 				if (flow->allmulti)
 					break;
 			}
@@ -1477,16 +1478,16 @@ next_vlan:
 		}
 		if (!flow || !flow->internal) {
 			/* Not found, create a new flow rule. */
-			if (priv->dev->data->promiscuous) {
+			if (ETH_DEV(priv)->data->promiscuous) {
 				pattern[1].spec = NULL;
 				pattern[1].mask = NULL;
 			} else {
-				assert(priv->dev->data->all_multicast);
+				assert(ETH_DEV(priv)->data->all_multicast);
 				pattern[1].spec = &eth_allmulti;
 				pattern[1].mask = &eth_allmulti;
 			}
 			pattern[2] = pattern[3];
-			flow = mlx4_flow_create(priv->dev, &attr, pattern,
+			flow = mlx4_flow_create(ETH_DEV(priv), &attr, pattern,
 						actions, error);
 			if (!flow) {
 				err = -rte_errno;
@@ -1503,7 +1504,8 @@ error:
 		struct rte_flow *next = LIST_NEXT(flow, next);
 
 		if (!flow->select)
-			claim_zero(mlx4_flow_destroy(priv->dev, flow, error));
+			claim_zero(mlx4_flow_destroy(ETH_DEV(priv), flow,
+						     error));
 		else
 			flow->select = 0;
 		flow = next;
@@ -1541,7 +1543,8 @@ mlx4_flow_sync(struct mlx4_priv *priv, struct rte_flow_error *error)
 		for (flow = LIST_FIRST(&priv->flows);
 		     flow && flow->internal;
 		     flow = LIST_FIRST(&priv->flows))
-			claim_zero(mlx4_flow_destroy(priv->dev, flow, error));
+			claim_zero(mlx4_flow_destroy(ETH_DEV(priv), flow,
+						     error));
 	} else {
 		/* Refresh internal rules. */
 		ret = mlx4_flow_internal(priv, error);
@@ -1574,7 +1577,7 @@ mlx4_flow_clean(struct mlx4_priv *priv)
 	struct rte_flow *flow;
 
 	while ((flow = LIST_FIRST(&priv->flows)))
-		mlx4_flow_destroy(priv->dev, flow, NULL);
+		mlx4_flow_destroy(ETH_DEV(priv), flow, NULL);
 	assert(LIST_EMPTY(&priv->rss));
 }
 

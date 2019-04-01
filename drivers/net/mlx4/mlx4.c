@@ -753,11 +753,11 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		 * handled by rte_intr_rx_ctl().
 		 */
 		eth_dev->intr_handle = &priv->intr_handle;
-		priv->dev = eth_dev;
+		priv->dev_data = eth_dev->data;
 		eth_dev->dev_ops = &mlx4_dev_ops;
 		/* Bring Ethernet device up. */
 		DEBUG("forcing Ethernet interface up");
-		mlx4_dev_set_link_up(priv->dev);
+		mlx4_dev_set_link_up(eth_dev);
 		/* Update link status once if waiting for LSC. */
 		if (eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
 			mlx4_link_update(eth_dev, 0);
