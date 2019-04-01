@@ -56,6 +56,24 @@ enum {
 	PCI_DEVICE_ID_MELLANOX_CONNECTX6VF = 0x101c,
 };
 
+/* Request types for IPC. */
+enum mlx5_mp_req_type {
+	MLX5_MP_REQ_VERBS_CMD_FD = 1,
+};
+
+/* Pameters for IPC. */
+struct mlx5_mp_param {
+	enum mlx5_mp_req_type type;
+	int port_id;
+	int result;
+};
+
+/** Request timeout for IPC. */
+#define MLX5_MP_REQ_TIMEOUT_SEC 5
+
+/** Key string for IPC. */
+#define MLX5_MP_NAME "net_mlx5_mp"
+
 /** Switch information returned by mlx5_nl_switch_info(). */
 struct mlx5_switch_info {
 	uint32_t master:1; /**< Master device. */
@@ -272,9 +290,7 @@ struct mlx5_priv {
 	uint32_t link_speed_capa; /* Link speed capabilities. */
 	struct mlx5_xstats_ctrl xstats_ctrl; /* Extended stats control. */
 	struct mlx5_stats_ctrl stats_ctrl; /* Stats control. */
-	int primary_socket; /* Unix socket for primary process. */
 	void *uar_base; /* Reserved address space for UAR mapping */
-	struct rte_intr_handle intr_handle_socket; /* Interrupt handler. */
 	struct mlx5_dev_config config; /* Device configuration. */
 	struct mlx5_verbs_alloc_ctx verbs_alloc_ctx;
 	/* Context for Verbs allocator. */
@@ -432,12 +448,9 @@ int mlx5_ctrl_flow(struct rte_eth_dev *dev,
 int mlx5_flow_create_drop_queue(struct rte_eth_dev *dev);
 void mlx5_flow_delete_drop_queue(struct rte_eth_dev *dev);
 
-/* mlx5_socket.c */
-
-int mlx5_socket_init(struct rte_eth_dev *priv);
-void mlx5_socket_uninit(struct rte_eth_dev *priv);
-void mlx5_socket_handle(struct rte_eth_dev *priv);
-int mlx5_socket_connect(struct rte_eth_dev *priv);
+/* mlx5_mp.c */
+int mlx5_mp_req_verbs_cmd_fd(struct rte_eth_dev *dev);
+void mlx5_mp_init(void);
 
 /* mlx5_nl.c */
 

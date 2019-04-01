@@ -325,6 +325,7 @@ mlx5_prepare_shared_data(void)
 			rte_mem_event_callback_register("MLX5_MEM_EVENT_CB",
 							mlx5_mr_mem_event_cb,
 							NULL);
+			mlx5_mp_init();
 		}
 	}
 	rte_spinlock_unlock(&mlx5_shared_data_lock);
@@ -454,8 +455,6 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		rte_free(priv->rss_conf.rss_key);
 	if (priv->reta_idx != NULL)
 		rte_free(priv->reta_idx);
-	if (priv->primary_socket)
-		mlx5_socket_uninit(dev);
 	if (priv->config.vf)
 		mlx5_nl_mac_addr_flush(dev);
 	if (priv->nl_socket_route >= 0)
@@ -970,7 +969,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		if (err)
 			return NULL;
 		/* Receive command fd from primary process */
-		err = mlx5_socket_connect(eth_dev);
+		err = mlx5_mp_req_verbs_cmd_fd(eth_dev);
 		if (err < 0)
 			return NULL;
 		/* Remap UAR for Tx queues. */

@@ -1096,20 +1096,6 @@ mlx5_dev_interrupt_handler(void *cb_arg)
 }
 
 /**
- * Handle interrupts from the socket.
- *
- * @param cb_arg
- *   Callback argument.
- */
-static void
-mlx5_dev_handler_socket(void *cb_arg)
-{
-	struct rte_eth_dev *dev = cb_arg;
-
-	mlx5_socket_handle(dev);
-}
-
-/**
  * Uninstall shared asynchronous device events handler.
  * This function is implemeted to support event sharing
  * between multiple ports of single IB device.
@@ -1208,14 +1194,7 @@ exit:
 void
 mlx5_dev_interrupt_handler_uninstall(struct rte_eth_dev *dev)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-
 	mlx5_dev_shared_handler_uninstall(dev);
-	if (priv->primary_socket)
-		rte_intr_callback_unregister(&priv->intr_handle_socket,
-					     mlx5_dev_handler_socket, dev);
-	priv->intr_handle_socket.fd = 0;
-	priv->intr_handle_socket.type = RTE_INTR_HANDLE_UNKNOWN;
 }
 
 /**
@@ -1227,20 +1206,7 @@ mlx5_dev_interrupt_handler_uninstall(struct rte_eth_dev *dev)
 void
 mlx5_dev_interrupt_handler_install(struct rte_eth_dev *dev)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-	int ret;
-
 	mlx5_dev_shared_handler_install(dev);
-	ret = mlx5_socket_init(dev);
-	if (ret)
-		DRV_LOG(ERR, "port %u cannot initialise socket: %s",
-			dev->data->port_id, strerror(rte_errno));
-	else if (priv->primary_socket) {
-		priv->intr_handle_socket.fd = priv->primary_socket;
-		priv->intr_handle_socket.type = RTE_INTR_HANDLE_EXT;
-		rte_intr_callback_register(&priv->intr_handle_socket,
-					   mlx5_dev_handler_socket, dev);
-	}
 }
 
 /**
