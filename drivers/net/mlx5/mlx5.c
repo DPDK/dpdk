@@ -127,6 +127,9 @@ struct mlx5_shared_data *mlx5_shared_data;
 /* Spinlock for mlx5_shared_data allocation. */
 static rte_spinlock_t mlx5_shared_data_lock = RTE_SPINLOCK_INITIALIZER;
 
+/* Process local data for secondary processes. */
+static struct mlx5_local_data mlx5_local_data;
+
 /** Driver-specific log messages type. */
 int mlx5_logtype;
 
@@ -297,12 +300,19 @@ exit:
 }
 
 /**
- * Prepare shared data between primary and secondary process.
+ * Initialize shared data between primary and secondary process.
+ *
+ * A memzone is reserved by primary process and secondary processes attach to
+ * the memzone.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static void
-mlx5_prepare_shared_data(void)
+static int
+mlx5_init_shared_data(void)
 {
 	const struct rte_memzone *mz;
+	int ret = 0;
 
 	rte_spinlock_lock(&mlx5_shared_data_lock);
 	if (mlx5_shared_data == NULL) {
@@ -311,22 +321,53 @@ mlx5_prepare_shared_data(void)
 			mz = rte_memzone_reserve(MZ_MLX5_PMD_SHARED_DATA,
 						 sizeof(*mlx5_shared_data),
 						 SOCKET_ID_ANY, 0);
+			if (mz == NULL) {
+				DRV_LOG(ERR,
+					"Cannot allocate mlx5 shared data\n");
+				ret = -rte_errno;
+				goto error;
+			}
+			mlx5_shared_data = mz->addr;
+			memset(mlx5_shared_data, 0, sizeof(*mlx5_shared_data));
+			rte_spinlock_init(&mlx5_shared_data->lock);
 		} else {
 			/* Lookup allocated shared memory. */
 			mz = rte_memzone_lookup(MZ_MLX5_PMD_SHARED_DATA);
+			if (mz == NULL) {
+				DRV_LOG(ERR,
+					"Cannot attach mlx5 shared data\n");
+				ret = -rte_errno;
+				goto error;
+			}
+			mlx5_shared_data = mz->addr;
+			memset(&mlx5_local_data, 0, sizeof(mlx5_local_data));
 		}
-		if (mz == NULL)
-			rte_panic("Cannot allocate mlx5 shared data\n");
-		mlx5_shared_data = mz->addr;
-		/* Initialize shared data. */
+	}
+error:
+	rte_spinlock_unlock(&mlx5_shared_data_lock);
+	return ret;
+}
+
+/**
+ * Uninitialize shared data between primary and secondary process.
+ *
+ * The pointer of secondary process is dereferenced and primary process frees
+ * the memzone.
+ */
+static void
+mlx5_uninit_shared_data(void)
+{
+	const struct rte_memzone *mz;
+
+	rte_spinlock_lock(&mlx5_shared_data_lock);
+	if (mlx5_shared_data) {
 		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-			LIST_INIT(&mlx5_shared_data->mem_event_cb_list);
-			rte_rwlock_init(&mlx5_shared_data->mem_event_rwlock);
-			rte_mem_event_callback_register("MLX5_MEM_EVENT_CB",
-							mlx5_mr_mem_event_cb,
-							NULL);
-			mlx5_mp_init();
+			mz = rte_memzone_lookup(MZ_MLX5_PMD_SHARED_DATA);
+			rte_memzone_free(mz);
+		} else {
+			memset(&mlx5_local_data, 0, sizeof(mlx5_local_data));
 		}
+		mlx5_shared_data = NULL;
 	}
 	rte_spinlock_unlock(&mlx5_shared_data_lock);
 }
@@ -760,15 +801,6 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 
 static struct rte_pci_driver mlx5_driver;
 
-/*
- * Reserved UAR address space for TXQ UAR(hw doorbell) mapping, process
- * local resource used by both primary and secondary to avoid duplicate
- * reservation.
- * The space has to be available on both primary and secondary process,
- * TXQ UAR maps to this area using fixed mmap w/o double check.
- */
-static void *uar_base;
-
 static int
 find_lower_va_bound(const struct rte_memseg_list *msl,
 		const struct rte_memseg *ms, void *arg)
@@ -788,25 +820,24 @@ find_lower_va_bound(const struct rte_memseg_list *msl,
 /**
  * Reserve UAR address space for primary process.
  *
- * @param[in] dev
- *   Pointer to Ethernet device.
+ * Process local resource is used by both primary and secondary to avoid
+ * duplicate reservation. The space has to be available on both primary and
+ * secondary process, TXQ UAR maps to this area using fixed mmap w/o double
+ * check.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_uar_init_primary(struct rte_eth_dev *dev)
+mlx5_uar_init_primary(void)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_shared_data *sd = mlx5_shared_data;
 	void *addr = (void *)0;
 
-	if (uar_base) { /* UAR address space mapped. */
-		priv->uar_base = uar_base;
+	if (sd->uar_base)
 		return 0;
-	}
 	/* find out lower bound of hugepage segments */
 	rte_memseg_walk(find_lower_va_bound, &addr);
-
 	/* keep distance to hugepages to minimize potential conflicts. */
 	addr = RTE_PTR_SUB(addr, (uintptr_t)(MLX5_UAR_OFFSET + MLX5_UAR_SIZE));
 	/* anonymous mmap, no real memory consumption. */
@@ -814,65 +845,154 @@ mlx5_uar_init_primary(struct rte_eth_dev *dev)
 		    PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	if (addr == MAP_FAILED) {
 		DRV_LOG(ERR,
-			"port %u failed to reserve UAR address space, please"
-			" adjust MLX5_UAR_SIZE or try --base-virtaddr",
-			dev->data->port_id);
+			"Failed to reserve UAR address space, please"
+			" adjust MLX5_UAR_SIZE or try --base-virtaddr");
 		rte_errno = ENOMEM;
 		return -rte_errno;
 	}
 	/* Accept either same addr or a new addr returned from mmap if target
 	 * range occupied.
 	 */
-	DRV_LOG(INFO, "port %u reserved UAR address space: %p",
-		dev->data->port_id, addr);
-	priv->uar_base = addr; /* for primary and secondary UAR re-mmap. */
-	uar_base = addr; /* process local, don't reserve again. */
+	DRV_LOG(INFO, "Reserved UAR address space: %p", addr);
+	sd->uar_base = addr; /* for primary and secondary UAR re-mmap. */
 	return 0;
 }
 
 /**
- * Reserve UAR address space for secondary process, align with
- * primary process.
- *
- * @param[in] dev
- *   Pointer to Ethernet device.
+ * Unmap UAR address space reserved for primary process.
+ */
+static void
+mlx5_uar_uninit_primary(void)
+{
+	struct mlx5_shared_data *sd = mlx5_shared_data;
+
+	if (!sd->uar_base)
+		return;
+	munmap(sd->uar_base, MLX5_UAR_SIZE);
+	sd->uar_base = NULL;
+}
+
+/**
+ * Reserve UAR address space for secondary process, align with primary process.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_uar_init_secondary(struct rte_eth_dev *dev)
+mlx5_uar_init_secondary(void)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_shared_data *sd = mlx5_shared_data;
+	struct mlx5_local_data *ld = &mlx5_local_data;
 	void *addr;
 
-	assert(priv->uar_base);
-	if (uar_base) { /* already reserved. */
-		assert(uar_base == priv->uar_base);
+	if (ld->uar_base) { /* Already reserved. */
+		assert(sd->uar_base == ld->uar_base);
 		return 0;
 	}
+	assert(sd->uar_base);
 	/* anonymous mmap, no real memory consumption. */
-	addr = mmap(priv->uar_base, MLX5_UAR_SIZE,
+	addr = mmap(sd->uar_base, MLX5_UAR_SIZE,
 		    PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	if (addr == MAP_FAILED) {
-		DRV_LOG(ERR, "port %u UAR mmap failed: %p size: %llu",
-			dev->data->port_id, priv->uar_base, MLX5_UAR_SIZE);
+		DRV_LOG(ERR, "UAR mmap failed: %p size: %llu",
+			sd->uar_base, MLX5_UAR_SIZE);
 		rte_errno = ENXIO;
 		return -rte_errno;
 	}
-	if (priv->uar_base != addr) {
+	if (sd->uar_base != addr) {
 		DRV_LOG(ERR,
-			"port %u UAR address %p size %llu occupied, please"
+			"UAR address %p size %llu occupied, please"
 			" adjust MLX5_UAR_OFFSET or try EAL parameter"
 			" --base-virtaddr",
-			dev->data->port_id, priv->uar_base, MLX5_UAR_SIZE);
+			sd->uar_base, MLX5_UAR_SIZE);
 		rte_errno = ENXIO;
 		return -rte_errno;
 	}
-	uar_base = addr; /* process local, don't reserve again */
-	DRV_LOG(INFO, "port %u reserved UAR address space: %p",
-		dev->data->port_id, addr);
+	ld->uar_base = addr;
+	DRV_LOG(INFO, "Reserved UAR address space: %p", addr);
 	return 0;
+}
+
+/**
+ * Unmap UAR address space reserved for secondary process.
+ */
+static void
+mlx5_uar_uninit_secondary(void)
+{
+	struct mlx5_local_data *ld = &mlx5_local_data;
+
+	if (!ld->uar_base)
+		return;
+	munmap(ld->uar_base, MLX5_UAR_SIZE);
+	ld->uar_base = NULL;
+}
+
+/**
+ * PMD global initialization.
+ *
+ * Independent from individual device, this function initializes global
+ * per-PMD data structures distinguishing primary and secondary processes.
+ * Hence, each initialization is called once per a process.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_init_once(void)
+{
+	struct mlx5_shared_data *sd;
+	struct mlx5_local_data *ld = &mlx5_local_data;
+	int ret;
+
+	if (mlx5_init_shared_data())
+		return -rte_errno;
+	sd = mlx5_shared_data;
+	assert(sd);
+	rte_spinlock_lock(&sd->lock);
+	switch (rte_eal_process_type()) {
+	case RTE_PROC_PRIMARY:
+		if (sd->init_done)
+			break;
+		LIST_INIT(&sd->mem_event_cb_list);
+		rte_rwlock_init(&sd->mem_event_rwlock);
+		rte_mem_event_callback_register("MLX5_MEM_EVENT_CB",
+						mlx5_mr_mem_event_cb, NULL);
+		mlx5_mp_init_primary();
+		ret = mlx5_uar_init_primary();
+		if (ret)
+			goto error;
+		sd->init_done = true;
+		break;
+	case RTE_PROC_SECONDARY:
+		if (ld->init_done)
+			break;
+		ret = mlx5_uar_init_secondary();
+		if (ret)
+			goto error;
+		++sd->secondary_cnt;
+		ld->init_done = true;
+		break;
+	default:
+		break;
+	}
+	rte_spinlock_unlock(&sd->lock);
+	return 0;
+error:
+	switch (rte_eal_process_type()) {
+	case RTE_PROC_PRIMARY:
+		mlx5_uar_uninit_primary();
+		mlx5_mp_uninit_primary();
+		rte_mem_event_callback_unregister("MLX5_MEM_EVENT_CB", NULL);
+		break;
+	case RTE_PROC_SECONDARY:
+		mlx5_uar_uninit_secondary();
+		break;
+	default:
+		break;
+	}
+	rte_spinlock_unlock(&sd->lock);
+	mlx5_uninit_shared_data();
+	return -rte_errno;
 }
 
 /**
@@ -953,8 +1073,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		rte_errno = EEXIST;
 		return NULL;
 	}
-	/* Prepare shared data between primary and secondary process. */
-	mlx5_prepare_shared_data();
 	DRV_LOG(DEBUG, "naming Ethernet device \"%s\"", name);
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 		eth_dev = rte_eth_dev_attach_secondary(name);
@@ -965,9 +1083,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		}
 		eth_dev->device = dpdk_dev;
 		eth_dev->dev_ops = &mlx5_dev_sec_ops;
-		err = mlx5_uar_init_secondary(eth_dev);
-		if (err)
-			return NULL;
 		/* Receive command fd from primary process */
 		err = mlx5_mp_req_verbs_cmd_fd(eth_dev);
 		if (err < 0)
@@ -1286,11 +1401,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	priv->dev_data = eth_dev->data;
 	eth_dev->data->mac_addrs = priv->mac;
 	eth_dev->device = dpdk_dev;
-	err = mlx5_uar_init_primary(eth_dev);
-	if (err) {
-		err = rte_errno;
-		goto error;
-	}
 	/* Configure the first MAC address by default. */
 	if (mlx5_get_mac(eth_dev, &mac.addr_bytes)) {
 		DRV_LOG(ERR,
@@ -1514,6 +1624,12 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct mlx5_dev_config dev_config;
 	int ret;
 
+	ret = mlx5_init_once();
+	if (ret) {
+		DRV_LOG(ERR, "unable to init PMD global data: %s",
+			strerror(rte_errno));
+		return -rte_errno;
+	}
 	assert(pci_drv == &mlx5_driver);
 	errno = 0;
 	ibv_list = mlx5_glue->get_device_list(&ret);

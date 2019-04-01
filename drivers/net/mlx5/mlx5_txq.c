@@ -286,7 +286,7 @@ mlx5_tx_uar_remap(struct rte_eth_dev *dev, int fd)
 			}
 		}
 		/* new address in reserved UAR address space. */
-		addr = RTE_PTR_ADD(priv->uar_base,
+		addr = RTE_PTR_ADD(mlx5_shared_data->uar_base,
 				   uar_va & (uintptr_t)(MLX5_UAR_SIZE - 1));
 		if (!already_mapped) {
 			pages[pages_n++] = uar_va;
@@ -844,9 +844,8 @@ mlx5_txq_release(struct rte_eth_dev *dev, uint16_t idx)
 	txq = container_of((*priv->txqs)[idx], struct mlx5_txq_ctrl, txq);
 	if (txq->ibv && !mlx5_txq_ibv_release(txq->ibv))
 		txq->ibv = NULL;
-	if (priv->uar_base)
-		munmap((void *)RTE_ALIGN_FLOOR((uintptr_t)txq->txq.bf_reg,
-		       page_size), page_size);
+	munmap((void *)RTE_ALIGN_FLOOR((uintptr_t)txq->txq.bf_reg, page_size),
+	       page_size);
 	if (rte_atomic32_dec_and_test(&txq->refcnt)) {
 		txq_free_elts(txq);
 		mlx5_mr_btree_free(&txq->txq.mr_ctrl.cache_bh);

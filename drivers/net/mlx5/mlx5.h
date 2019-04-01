@@ -85,10 +85,23 @@ struct mlx5_switch_info {
 
 LIST_HEAD(mlx5_dev_list, mlx5_priv);
 
-/* Shared memory between primary and secondary processes. */
+/* Shared data between primary and secondary processes. */
 struct mlx5_shared_data {
+	rte_spinlock_t lock;
+	/* Global spinlock for primary and secondary processes. */
+	int init_done; /* Whether primary has done initialization. */
+	unsigned int secondary_cnt; /* Number of secondary processes init'd. */
+	void *uar_base;
+	/* Reserved UAR address space for TXQ UAR(hw doorbell) mapping. */
 	struct mlx5_dev_list mem_event_cb_list;
 	rte_rwlock_t mem_event_rwlock;
+};
+
+/* Per-process data structure, not visible to other processes. */
+struct mlx5_local_data {
+	int init_done; /* Whether a secondary has done initialization. */
+	void *uar_base;
+	/* Reserved UAR address space for TXQ UAR(hw doorbell) mapping. */
 };
 
 extern struct mlx5_shared_data *mlx5_shared_data;
@@ -290,7 +303,6 @@ struct mlx5_priv {
 	uint32_t link_speed_capa; /* Link speed capabilities. */
 	struct mlx5_xstats_ctrl xstats_ctrl; /* Extended stats control. */
 	struct mlx5_stats_ctrl stats_ctrl; /* Stats control. */
-	void *uar_base; /* Reserved address space for UAR mapping */
 	struct mlx5_dev_config config; /* Device configuration. */
 	struct mlx5_verbs_alloc_ctx verbs_alloc_ctx;
 	/* Context for Verbs allocator. */
@@ -450,7 +462,8 @@ void mlx5_flow_delete_drop_queue(struct rte_eth_dev *dev);
 
 /* mlx5_mp.c */
 int mlx5_mp_req_verbs_cmd_fd(struct rte_eth_dev *dev);
-void mlx5_mp_init(void);
+void mlx5_mp_init_primary(void);
+void mlx5_mp_uninit_primary(void);
 
 /* mlx5_nl.c */
 

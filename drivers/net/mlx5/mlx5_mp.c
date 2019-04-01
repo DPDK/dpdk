@@ -131,9 +131,22 @@ exit:
 	return ret;
 }
 
+/**
+ * Initialize by primary process.
+ */
 void
-mlx5_mp_init(void)
+mlx5_mp_init_primary(void)
 {
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		rte_mp_action_register(MLX5_MP_NAME, mp_primary_handle);
+	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	rte_mp_action_register(MLX5_MP_NAME, mp_primary_handle);
+}
+
+/**
+ * Un-initialize by primary process.
+ */
+void
+mlx5_mp_uninit_primary(void)
+{
+	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	rte_mp_action_unregister(MLX5_MP_NAME);
 }
