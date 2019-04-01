@@ -16,7 +16,7 @@
 #include <net/net_namespace.h>
 #include <net/netns/generic.h>
 
-#include <exec-env/rte_kni_common.h>
+#include <rte_kni_common.h>
 
 #include "compat.h"
 #include "kni_dev.h"

@@ -80,7 +80,6 @@ include_dir=${1:-build/include}
 	'rte_byteorder_32.h' \
 	'rte_byteorder_64.h' \
 	'generic/*' \
-	'exec-env/*' \
 	'rte_vhost.h' \
 	'rte_eth_vhost.h' \
 	'rte_eal_interrupts.h' \

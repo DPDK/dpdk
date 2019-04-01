@@ -6,7 +6,7 @@
 #ifndef _KNI_FIFO_H_
 #define _KNI_FIFO_H_
 
-#include <exec-env/rte_kni_common.h>
+#include <rte_kni_common.h>
 
 /* Skip some memory barriers on Linux < 3.14 */
 #ifndef smp_load_acquire

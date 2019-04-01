@@ -17,7 +17,7 @@
 #include <linux/kthread.h>
 #include <linux/delay.h>
 
-#include <exec-env/rte_kni_common.h>
+#include <rte_kni_common.h>
 #include <kni_fifo.h>
 
 #include "compat.h"

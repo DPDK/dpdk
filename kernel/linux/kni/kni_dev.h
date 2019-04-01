@@ -24,7 +24,7 @@
 #include <linux/spinlock.h>
 #include <linux/list.h>
 
-#include <exec-env/rte_kni_common.h>
+#include <rte_kni_common.h>
 #define KNI_KTHREAD_RESCHEDULE_INTERVAL 5 /* us */
 
 #define MBUF_BURST_SZ 32

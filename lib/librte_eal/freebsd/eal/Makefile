@@ -88,7 +88,6 @@ endif
 
 INC :=  # no bsd specific headers
 
-SYMLINK-$(CONFIG_RTE_EXEC_ENV_FREEBSD)-include/exec-env := \
-	$(addprefix include/exec-env/,$(INC))
+SYMLINK-$(CONFIG_RTE_EXEC_ENV_FREEBSD)-include := $(addprefix include/,$(INC))
 
 include $(RTE_SDK)/mk/rte.lib.mk

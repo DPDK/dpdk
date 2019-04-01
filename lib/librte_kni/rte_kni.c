@@ -21,7 +21,7 @@
 #include <rte_tailq.h>
 #include <rte_rwlock.h>
 #include <rte_eal_memconfig.h>
-#include <exec-env/rte_kni_common.h>
+#include <rte_kni_common.h>
 #include "rte_kni_fifo.h"
 
 #define MAX_MBUF_BURST_NUM            32

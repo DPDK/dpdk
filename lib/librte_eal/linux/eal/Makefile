@@ -95,7 +95,6 @@ endif
 
 INC := rte_kni_common.h
 
-SYMLINK-$(CONFIG_RTE_EXEC_ENV_LINUX)-include/exec-env := \
-	$(addprefix include/exec-env/,$(INC))
+SYMLINK-$(CONFIG_RTE_EXEC_ENV_LINUX)-include := $(addprefix include/,$(INC))
 
 include $(RTE_SDK)/mk/rte.lib.mk

@@ -2,10 +2,9 @@
 # Copyright(c) 2017 Intel Corporation
 
 eal_inc += include_directories('include')
-install_subdir('include/exec-env', install_dir: get_option('includedir'))
 
 env_objs = []
-env_headers = []
+env_headers = files('include/rte_kni_common.h')
 env_sources = files('eal_alarm.c',
 		'eal_cpuflags.c',
 		'eal_debug.c',
