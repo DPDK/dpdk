@@ -2370,9 +2370,7 @@ detach_port_device(portid_t port_id)
 		return;
 	}
 
-	for (sibling = 0; sibling < RTE_MAX_ETHPORTS; sibling++) {
-		if (rte_eth_devices[sibling].device != dev)
-			continue;
+	RTE_ETH_FOREACH_DEV_SIBLING(sibling, port_id) {
 		/* reset mapping between old ports and removed device */
 		rte_eth_devices[sibling].device = NULL;
 		if (ports[sibling].port_status != RTE_PORT_CLOSED) {
