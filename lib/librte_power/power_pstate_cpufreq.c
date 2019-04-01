@@ -67,6 +67,8 @@
 		"/sys/devices/system/cpu/cpu%u/cpufreq/cpuinfo_max_freq"
 #define POWER_SYSFILE_BASE_MIN_FREQ  \
 		"/sys/devices/system/cpu/cpu%u/cpufreq/cpuinfo_min_freq"
+#define POWER_SYSFILE_BASE_FREQ  \
+		"/sys/devices/system/cpu/cpu%u/cpufreq/base_frequency"
 #define POWER_MSR_PATH  "/dev/cpu/%u/msr"
 
 /*
@@ -94,9 +96,11 @@ struct pstate_power_info {
 	uint32_t curr_idx;                   /**< Freq index in freqs array */
 	uint32_t non_turbo_max_ratio;        /**< Non Turbo Max ratio  */
 	uint32_t sys_max_freq;               /**< system wide max freq  */
+	uint32_t core_base_freq;             /**< core base freq  */
 	volatile uint32_t state;             /**< Power in use state */
 	uint16_t turbo_available;            /**< Turbo Boost available */
 	uint16_t turbo_enable;               /**< Turbo Boost enable/disable */
+	uint16_t priority_core;              /**< High Performance core */
 } __rte_cache_aligned;
 
 
@@ -145,9 +149,13 @@ out:	close(fd);
 static int
 power_init_for_setting_freq(struct pstate_power_info *pi)
 {
-	FILE *f_min, *f_max;
+	FILE *f_min, *f_max, *f_base;
 	char fullpath_min[PATH_MAX];
 	char fullpath_max[PATH_MAX];
+	char fullpath_base[PATH_MAX];
+	char buf_base[BUFSIZ];
+	char *s_base;
+	uint32_t base_ratio = 0;
 	uint64_t max_non_turbo = 0;
 
 	snprintf(fullpath_min, sizeof(fullpath_min), POWER_SYSFILE_MIN_FREQ,
@@ -168,6 +176,26 @@ power_init_for_setting_freq(struct pstate_power_info *pi)
 	pi->f_cur_min = f_min;
 	pi->f_cur_max = f_max;
 
+	snprintf(fullpath_base, sizeof(fullpath_base), POWER_SYSFILE_BASE_FREQ,
+			pi->lcore_id);
+
+	f_base = fopen(fullpath_base, "r");
+	if (f_base == NULL) {
+		/* No sysfs base_frequency, that's OK, continue without */
+		base_ratio = 0;
+	} else {
+		s_base = fgets(buf_base, sizeof(buf_base), f_base);
+		FOPS_OR_NULL_GOTO(s_base, out);
+
+		buf_base[BUFSIZ-1] = '\0';
+		if (strlen(buf_base))
+			/* Strip off terminating '\n' */
+			strtok(buf_base, "\n");
+
+		base_ratio = strtoul(buf_base, NULL, POWER_CONVERT_TO_DECIMAL)
+				/ BUS_FREQ;
+	}
+
 	/* Add MSR read to detect turbo status */
 
 	if (power_rdmsr(PLATFORM_INFO, &max_non_turbo, pi->lcore_id) < 0)
@@ -179,6 +207,17 @@ power_init_for_setting_freq(struct pstate_power_info *pi)
 
 	pi->non_turbo_max_ratio = max_non_turbo;
 
+	/*
+	 * If base_frequency is reported as greater than the maximum
+	 * non-turbo frequency, then mark it as a high priority core.
+	 */
+	if (base_ratio > max_non_turbo)
+		pi->priority_core = 1;
+	else
+		pi->priority_core = 0;
+	pi->core_base_freq = base_ratio * BUS_FREQ;
+
+out:
 	return 0;
 }
 
@@ -215,9 +254,15 @@ set_freq_internal(struct pstate_power_info *pi, uint32_t idx)
 	}
 
 	/* Turbo is available and enabled, first freq bucket is sys max freq */
-	if (pi->turbo_available && pi->turbo_enable && (idx == 0))
-		target_freq = pi->sys_max_freq;
-	else
+	if (pi->turbo_available && idx == 0) {
+		if (pi->turbo_enable)
+			target_freq = pi->sys_max_freq;
+		else {
+			RTE_LOG(ERR, POWER, "Turbo is off, frequency can't be scaled up more %u\n",
+					pi->lcore_id);
+			return -1;
+		}
+	} else
 		target_freq = pi->freqs[idx];
 
 	/* Decrease freq, the min freq should be updated first */
@@ -432,7 +477,10 @@ power_get_available_freqs(struct pstate_power_info *pi)
 
 	pi->sys_max_freq = sys_max_freq;
 
-	base_max_freq = pi->non_turbo_max_ratio * BUS_FREQ;
+	if (pi->priority_core == 1)
+		base_max_freq = pi->core_base_freq;
+	else
+		base_max_freq = pi->non_turbo_max_ratio * BUS_FREQ;
 
 	POWER_DEBUG_TRACE("sys min %u, sys max %u, base_max %u\n",
 			sys_min_freq,
@@ -783,6 +831,7 @@ int power_pstate_get_capabilities(unsigned int lcore_id,
 	pi = &lcore_power_info[lcore_id];
 	caps->capabilities = 0;
 	caps->turbo = !!(pi->turbo_available);
+	caps->priority = pi->priority_core;
 
 	return 0;
 }
