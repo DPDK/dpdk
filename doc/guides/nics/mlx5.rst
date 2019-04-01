@@ -86,6 +86,11 @@ Limitations
 
   - Forked secondary process not supported.
   - All mempools must be initialized before rte_eth_dev_start().
+  - External memory unregistered in EAL memseg list cannot be used for DMA
+    unless such memory has been registered by ``mlx5_mr_update_ext_mp()`` in
+    primary process and remapped to the same virtual address in secondary
+    process. If the external memory is registered by primary process but has
+    different virtual address in secondary process, unexpected error may happen.
 
 - Flow pattern without any specific vlan will match for vlan packets as well:
 

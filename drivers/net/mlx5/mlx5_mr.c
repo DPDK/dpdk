@@ -1185,6 +1185,7 @@ mlx5_mr_update_ext_mp_cb(struct rte_mempool *mp, void *opaque,
 	struct mlx5_mr_cache entry;
 	uint32_t lkey;
 
+	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
 	/* If already registered, it should return. */
 	rte_rwlock_read_lock(&priv->mr.rwlock);
 	lkey = mr_lookup_dev(dev, &entry, addr);
@@ -1400,6 +1401,15 @@ mlx5_tx_update_ext_mp(struct mlx5_txq_data *txq, uintptr_t addr,
 	struct mlx5_mr_ctrl *mr_ctrl = &txq->mr_ctrl;
 	struct mlx5_priv *priv = txq_ctrl->priv;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		DRV_LOG(WARNING,
+			"port %u using address (%p) from unregistered mempool"
+			" having externally allocated memory"
+			" in secondary process, please create mempool"
+			" prior to rte_eth_dev_start()",
+			PORT_ID(priv), (void *)addr);
+		return UINT32_MAX;
+	}
 	mlx5_mr_update_ext_mp(ETH_DEV(priv), mr_ctrl, mp);
 	return mlx5_tx_addr2mr_bh(txq, addr);
 }
