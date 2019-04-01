@@ -662,6 +662,12 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
+	if (rte_eal_alarm_init() < 0) {
+		rte_eal_init_alert("Cannot init interrupt-handling thread");
+		/* rte_eal_alarm_init sets rte_errno on failure. */
+		return -1;
+	}
+
 	/* Put mp channel init before bus scan so that we can init the vdev
 	 * bus through mp channel in the secondary process before the bus scan.
 	 */
@@ -748,12 +754,6 @@ rte_eal_init(int argc, char **argv)
 	if (rte_eal_tailqs_init() < 0) {
 		rte_eal_init_alert("Cannot init tail queues for objects");
 		rte_errno = EFAULT;
-		return -1;
-	}
-
-	if (rte_eal_alarm_init() < 0) {
-		rte_eal_init_alert("Cannot init interrupt-handling thread");
-		/* rte_eal_alarm_init sets rte_errno on failure. */
 		return -1;
 	}
 
