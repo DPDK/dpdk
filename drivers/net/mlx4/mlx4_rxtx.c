@@ -1365,6 +1365,7 @@ mlx4_tx_burst_removed(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	(void)dpdk_txq;
 	(void)pkts;
 	(void)pkts_n;
+	rte_mb();
 	return 0;
 }
 
@@ -1390,5 +1391,6 @@ mlx4_rx_burst_removed(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	(void)dpdk_rxq;
 	(void)pkts;
 	(void)pkts_n;
+	rte_mb();
 	return 0;
 }

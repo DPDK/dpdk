@@ -13,7 +13,9 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <inttypes.h>
+#include <unistd.h>
 
 /* Verbs headers do not support -pedantic. */
 #ifdef PEDANTIC
@@ -36,6 +38,100 @@
 #include "mlx4_prm.h"
 #include "mlx4_rxtx.h"
 #include "mlx4_utils.h"
+
+/**
+ * Mmap TX UAR(HW doorbell) pages into reserved UAR address space.
+ * Both primary and secondary process do mmap to make UAR address
+ * aligned.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param fd
+ *   Verbs file descriptor to map UAR pages.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+#ifdef HAVE_IBV_MLX4_UAR_MMAP_OFFSET
+int
+mlx4_tx_uar_remap(struct rte_eth_dev *dev, int fd)
+{
+	unsigned int i, j;
+	const unsigned int txqs_n = dev->data->nb_tx_queues;
+	uintptr_t pages[txqs_n];
+	unsigned int pages_n = 0;
+	uintptr_t uar_va;
+	uintptr_t off;
+	void *addr;
+	void *ret;
+	struct txq *txq;
+	int already_mapped;
+	size_t page_size = sysconf(_SC_PAGESIZE);
+
+	memset(pages, 0, txqs_n * sizeof(uintptr_t));
+	/*
+	 * As rdma-core, UARs are mapped in size of OS page size.
+	 * Use aligned address to avoid duplicate mmap.
+	 * Ref to libmlx4 function: mlx4_init_context()
+	 */
+	for (i = 0; i != txqs_n; ++i) {
+		txq = dev->data->tx_queues[i];
+		if (!txq)
+			continue;
+		/* UAR addr form verbs used to find dup and offset in page. */
+		uar_va = (uintptr_t)txq->msq.qp_sdb;
+		off = uar_va & (page_size - 1); /* offset in page. */
+		uar_va = RTE_ALIGN_FLOOR(uar_va, page_size); /* page addr. */
+		already_mapped = 0;
+		for (j = 0; j != pages_n; ++j) {
+			if (pages[j] == uar_va) {
+				already_mapped = 1;
+				break;
+			}
+		}
+		/* new address in reserved UAR address space. */
+		addr = RTE_PTR_ADD(mlx4_shared_data->uar_base,
+				   uar_va & (uintptr_t)(MLX4_UAR_SIZE - 1));
+		if (!already_mapped) {
+			pages[pages_n++] = uar_va;
+			/* fixed mmap to specified address in reserved
+			 * address space.
+			 */
+			ret = mmap(addr, page_size,
+				   PROT_WRITE, MAP_FIXED | MAP_SHARED, fd,
+				   txq->msq.uar_mmap_offset);
+			if (ret != addr) {
+				/* fixed mmap has to return same address. */
+				ERROR("port %u call to mmap failed on UAR"
+				      " for txq %u",
+				      dev->data->port_id, i);
+				rte_errno = ENXIO;
+				return -rte_errno;
+			}
+		}
+		if (rte_eal_process_type() == RTE_PROC_PRIMARY) /* save once. */
+			txq->msq.db = RTE_PTR_ADD((void *)addr, off);
+		else
+			assert(txq->msq.db ==
+			       RTE_PTR_ADD((void *)addr, off));
+	}
+	return 0;
+}
+#else
+int
+mlx4_tx_uar_remap(struct rte_eth_dev *dev __rte_unused, int fd __rte_unused)
+{
+	/*
+	 * Even if rdma-core doesn't support UAR remap, primary process
+	 * shouldn't be interrupted.
+	 */
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		return 0;
+	ERROR("UAR remap is not supported");
+	rte_errno = ENOTSUP;
+	return -rte_errno;
+}
+#endif
 
 /**
  * Free Tx queue elements.
@@ -89,7 +185,13 @@ mlx4_txq_fill_dv_obj_info(struct txq *txq, struct mlx4dv_obj *mlxdv)
 	sq->owner_opcode = MLX4_OPCODE_SEND | (0u << MLX4_SQ_OWNER_BIT);
 	sq->stamp = rte_cpu_to_be_32(MLX4_SQ_STAMP_VAL |
 				     (0u << MLX4_SQ_OWNER_BIT));
+#ifdef HAVE_IBV_MLX4_UAR_MMAP_OFFSET
+	sq->uar_mmap_offset = dqp->uar_mmap_offset;
+	sq->qp_sdb = dqp->sdb;
+#else
+	sq->uar_mmap_offset = -1; /* Make mmap() fail. */
 	sq->db = dqp->sdb;
+#endif
 	sq->doorbell_qpn = dqp->doorbell_qpn;
 	cq->buf = dcq->buf.buf;
 	cq->cqe_cnt = dcq->cqe_cnt;
@@ -307,6 +409,11 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		goto error;
 	}
 	/* Retrieve device queue information. */
+#ifdef HAVE_IBV_MLX4_UAR_MMAP_OFFSET
+	dv_qp = (struct mlx4dv_qp){
+		.comp_mask = MLX4DV_QP_MASK_UAR_MMAP_OFFSET,
+	};
+#endif
 	mlxdv.cq.in = txq->cq;
 	mlxdv.cq.out = &dv_cq;
 	mlxdv.qp.in = txq->qp;
@@ -318,6 +425,12 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		      " accessing the device queues", (void *)dev);
 		goto error;
 	}
+#ifdef HAVE_IBV_MLX4_UAR_MMAP_OFFSET
+	if (!(dv_qp.comp_mask & MLX4DV_QP_MASK_UAR_MMAP_OFFSET)) {
+		WARN("%p: failed to obtain UAR mmap offset", (void *)dev);
+		dv_qp.uar_mmap_offset = -1; /* Make mmap() fail. */
+	}
+#endif
 	mlx4_txq_fill_dv_obj_info(txq, &mlxdv);
 	/* Save first wqe pointer in the first element. */
 	(&(*txq->elts)[0])->wqe =

@@ -145,6 +145,16 @@ below.
 Limitations
 -----------
 
+- For secondary process:
+
+  - Forked secondary process not supported.
+  - All mempools must be initialized before rte_eth_dev_start().
+  - External memory unregistered in EAL memseg list cannot be used for DMA
+    unless such memory has been registered by ``mlx4_mr_update_ext_mp()`` in
+    primary process and remapped to the same virtual address in secondary
+    process. If the external memory is registered by primary process but has
+    different virtual address in secondary process, unexpected error may happen.
+
 - CRC stripping is supported by default and always reported as "true".
   The ability to enable/disable CRC stripping requires OFED version
   4.3-1.5.0.0 and above  or rdma-core version v18 and above.

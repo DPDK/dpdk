@@ -33,6 +33,7 @@ if build
 		'mlx4_ethdev.c',
 		'mlx4_flow.c',
 		'mlx4_intr.c',
+		'mlx4_mp.c',
 		'mlx4_mr.c',
 		'mlx4_rxq.c',
 		'mlx4_rxtx.c',
@@ -76,6 +77,8 @@ if build
 	has_sym_args = [
 		[ 'HAVE_IBV_MLX4_BUF_ALLOCATORS', 'infiniband/mlx4dv.h',
 		'MLX4DV_SET_CTX_ATTR_BUF_ALLOCATORS' ],
+		[ 'HAVE_IBV_MLX4_UAR_MMAP_OFFSET', 'infiniband/mlx4dv.h',
+		'MLX4DV_QP_MASK_UAR_MMAP_OFFSET' ],
 	]
 	config = configuration_data()
 	foreach arg:has_sym_args

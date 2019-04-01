@@ -53,6 +53,16 @@
 /** Port parameter. */
 #define MLX4_PMD_PORT_KVARG "port"
 
+/* Reserved address space for UAR mapping. */
+#define MLX4_UAR_SIZE (1ULL << (sizeof(uintptr_t) * 4))
+
+/* Offset of reserved UAR address space to hugepage memory. Offset is used here
+ * to minimize possibility of address next to hugepage being used by other code
+ * in either primary or secondary process, failing to map TX UAR would make TX
+ * packets invisible to HW.
+ */
+#define MLX4_UAR_OFFSET (2ULL << (sizeof(uintptr_t) * 4))
+
 enum {
 	PCI_VENDOR_ID_MELLANOX = 0x15b3,
 };
@@ -62,6 +72,26 @@ enum {
 	PCI_DEVICE_ID_MELLANOX_CONNECTX3VF = 0x1004,
 	PCI_DEVICE_ID_MELLANOX_CONNECTX3PRO = 0x1007,
 };
+
+/* Request types for IPC. */
+enum mlx4_mp_req_type {
+	MLX4_MP_REQ_VERBS_CMD_FD = 1,
+	MLX4_MP_REQ_START_RXTX,
+	MLX4_MP_REQ_STOP_RXTX,
+};
+
+/* Pameters for IPC. */
+struct mlx4_mp_param {
+	enum mlx4_mp_req_type type;
+	int port_id;
+	int result;
+};
+
+/** Request timeout for IPC. */
+#define MLX4_MP_REQ_TIMEOUT_SEC 5
+
+/** Key string for IPC. */
+#define MLX4_MP_NAME "net_mlx4_mp"
 
 /** Driver name reported to lower layers and used in log output. */
 #define MLX4_DRIVER_NAME "net_mlx4"
@@ -86,12 +116,34 @@ enum mlx4_verbs_alloc_type {
  * resources it is allocating.
  */
 struct mlx4_verbs_alloc_ctx {
+	int enabled;
 	enum mlx4_verbs_alloc_type type; /* Kind of object being allocated. */
 	const void *obj; /* Pointer to the DPDK object. */
 };
 
 LIST_HEAD(mlx4_dev_list, mlx4_priv);
 LIST_HEAD(mlx4_mr_list, mlx4_mr);
+
+/* Shared data between primary and secondary processes. */
+struct mlx4_shared_data {
+	rte_spinlock_t lock;
+	/* Global spinlock for primary and secondary processes. */
+	int init_done; /* Whether primary has done initialization. */
+	unsigned int secondary_cnt; /* Number of secondary processes init'd. */
+	void *uar_base;
+	/* Reserved UAR address space for TXQ UAR(hw doorbell) mapping. */
+	struct mlx4_dev_list mem_event_cb_list;
+	rte_rwlock_t mem_event_rwlock;
+};
+
+/* Per-process data structure, not visible to other processes. */
+struct mlx4_local_data {
+	int init_done; /* Whether a secondary has done initialization. */
+	void *uar_base;
+	/* Reserved UAR address space for TXQ UAR(hw doorbell) mapping. */
+};
+
+extern struct mlx4_shared_data *mlx4_shared_data;
 
 /** Private data structure. */
 struct mlx4_priv {
@@ -174,5 +226,14 @@ int mlx4_rxq_intr_enable(struct mlx4_priv *priv);
 void mlx4_rxq_intr_disable(struct mlx4_priv *priv);
 int mlx4_rx_intr_disable(struct rte_eth_dev *dev, uint16_t idx);
 int mlx4_rx_intr_enable(struct rte_eth_dev *dev, uint16_t idx);
+
+/* mlx4_mp.c */
+void mlx4_mp_req_start_rxtx(struct rte_eth_dev *dev);
+void mlx4_mp_req_stop_rxtx(struct rte_eth_dev *dev);
+int mlx4_mp_req_verbs_cmd_fd(struct rte_eth_dev *dev);
+void mlx4_mp_init_primary(void);
+void mlx4_mp_uninit_primary(void);
+void mlx4_mp_init_secondary(void);
+void mlx4_mp_uninit_secondary(void);
 
 #endif /* RTE_PMD_MLX4_H_ */

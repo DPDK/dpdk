@@ -77,7 +77,9 @@ struct mlx4_sq {
 	uint32_t owner_opcode;
 	/**< Default owner opcode with HW valid owner bit. */
 	uint32_t stamp; /**< Stamp value with an invalid HW owner bit. */
-	volatile uint32_t *db; /**< Pointer to the doorbell. */
+	volatile uint32_t *qp_sdb; /**< Pointer to the doorbell. */
+	volatile uint32_t *db; /**< Pointer to the doorbell remapped. */
+	off_t uar_mmap_offset; /* UAR mmap offset for non-primary process. */
 	uint32_t doorbell_qpn; /**< qp number to write to the doorbell. */
 };
 

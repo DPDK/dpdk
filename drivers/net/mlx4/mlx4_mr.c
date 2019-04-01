@@ -489,6 +489,8 @@ mlx4_mr_garbage_collect(struct rte_eth_dev *dev)
 	struct mlx4_mr *mr_next;
 	struct mlx4_mr_list free_list = LIST_HEAD_INITIALIZER(free_list);
 
+	/* Must be called from the primary process. */
+	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
 	/*
 	 * MR can't be freed with holding the lock because rte_free() could call
 	 * memory free callback function. This will be a deadlock situation.
@@ -561,6 +563,14 @@ mlx4_mr_create(struct rte_eth_dev *dev, struct mlx4_mr_cache *entry,
 
 	DEBUG("port %u creating a MR using address (%p)",
 	      dev->data->port_id, (void *)addr);
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		WARN("port %u using address (%p) of unregistered mempool"
+		     " in secondary process, please create mempool"
+		     " before rte_eth_dev_start()",
+		     dev->data->port_id, (void *)addr);
+		rte_errno = EPERM;
+		goto err_nolock;
+	}
 	/*
 	 * Release detached MRs if any. This can't be called with holding either
 	 * memory_hotplug_lock or priv->mr.rwlock. MRs on the free list have
@@ -890,14 +900,17 @@ mlx4_mr_mem_event_cb(enum rte_mem_event event_type, const void *addr,
 		     size_t len, void *arg __rte_unused)
 {
 	struct mlx4_priv *priv;
+	struct mlx4_dev_list *dev_list = &mlx4_shared_data->mem_event_cb_list;
 
+	/* Must be called from the primary process. */
+	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
 	switch (event_type) {
 	case RTE_MEM_EVENT_FREE:
-		rte_rwlock_read_lock(&mlx4_mem_event_rwlock);
+		rte_rwlock_read_lock(&mlx4_shared_data->mem_event_rwlock);
 		/* Iterate all the existing mlx4 devices. */
-		LIST_FOREACH(priv, &mlx4_mem_event_cb_list, mem_event_cb)
+		LIST_FOREACH(priv, dev_list, mem_event_cb)
 			mlx4_mr_mem_event_free_cb(ETH_DEV(priv), addr, len);
-		rte_rwlock_read_unlock(&mlx4_mem_event_rwlock);
+		rte_rwlock_read_unlock(&mlx4_shared_data->mem_event_rwlock);
 		break;
 	case RTE_MEM_EVENT_ALLOC:
 	default:
@@ -1130,6 +1143,7 @@ mlx4_mr_update_ext_mp_cb(struct rte_mempool *mp, void *opaque,
 	struct mlx4_mr_cache entry;
 	uint32_t lkey;
 
+	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
 	/* If already registered, it should return. */
 	rte_rwlock_read_lock(&priv->mr.rwlock);
 	lkey = mr_lookup_dev(dev, &entry, addr);
@@ -1225,6 +1239,14 @@ mlx4_tx_update_ext_mp(struct txq *txq, uintptr_t addr, struct rte_mempool *mp)
 	struct mlx4_mr_ctrl *mr_ctrl = &txq->mr_ctrl;
 	struct mlx4_priv *priv = txq->priv;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		WARN("port %u using address (%p) from unregistered mempool"
+		     " having externally allocated memory"
+		     " in secondary process, please create mempool"
+		     " prior to rte_eth_dev_start()",
+		     PORT_ID(priv), (void *)addr);
+		return UINT32_MAX;
+	}
 	mlx4_mr_update_ext_mp(ETH_DEV(priv), mr_ctrl, mp);
 	return mlx4_tx_addr2mr_bh(txq, addr);
 }
@@ -1336,9 +1358,9 @@ mlx4_mr_release(struct rte_eth_dev *dev)
 	struct mlx4_mr *mr_next = LIST_FIRST(&priv->mr.mr_list);
 
 	/* Remove from memory callback device list. */
-	rte_rwlock_write_lock(&mlx4_mem_event_rwlock);
+	rte_rwlock_write_lock(&mlx4_shared_data->mem_event_rwlock);
 	LIST_REMOVE(priv, mem_event_cb);
-	rte_rwlock_write_unlock(&mlx4_mem_event_rwlock);
+	rte_rwlock_write_unlock(&mlx4_shared_data->mem_event_rwlock);
 #ifndef NDEBUG
 	mlx4_mr_dump_dev(dev);
 #endif

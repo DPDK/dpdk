@@ -18,6 +18,7 @@ ifneq ($(CONFIG_RTE_IBVERBS_LINK_DLOPEN),y)
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4_glue.c
 endif
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4_intr.c
+SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4_mp.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4_mr.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4_rxq.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4_rxtx.c
@@ -91,6 +92,11 @@ mlx4_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		HAVE_IBV_MLX4_BUF_ALLOCATORS \
 		infiniband/mlx4dv.h \
 		enum MLX4DV_SET_CTX_ATTR_BUF_ALLOCATORS \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_IBV_MLX4_UAR_MMAP_OFFSET \
+		infiniband/mlx4dv.h \
+		enum MLX4DV_QP_MASK_UAR_MMAP_OFFSET \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
 		HAVE_IBV_MLX4_WQE_LSO_SEG \
