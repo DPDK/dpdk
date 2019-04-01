@@ -540,17 +540,15 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 			dev->data->port_id);
 	if (priv->domain_id != RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID) {
 		unsigned int c = 0;
-		unsigned int i = mlx5_dev_to_port_id(dev->device, NULL, 0);
-		uint16_t port_id[i];
+		uint16_t port_id;
 
-		i = RTE_MIN(mlx5_dev_to_port_id(dev->device, port_id, i), i);
-		while (i--) {
+		RTE_ETH_FOREACH_DEV_OF(port_id, dev->device) {
 			struct mlx5_priv *opriv =
-				rte_eth_devices[port_id[i]].data->dev_private;
+				rte_eth_devices[port_id].data->dev_private;
 
 			if (!opriv ||
 			    opriv->domain_id != priv->domain_id ||
-			    &rte_eth_devices[port_id[i]] == dev)
+			    &rte_eth_devices[port_id] == dev)
 				continue;
 			++c;
 		}
@@ -1273,22 +1271,16 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	 * Look for sibling devices in order to reuse their switch domain
 	 * if any, otherwise allocate one.
 	 */
-	i = mlx5_dev_to_port_id(dpdk_dev, NULL, 0);
-	if (i > 0) {
-		uint16_t port_id[i];
+	RTE_ETH_FOREACH_DEV_OF(port_id, dpdk_dev) {
+		const struct mlx5_priv *opriv =
+			rte_eth_devices[port_id].data->dev_private;
 
-		i = RTE_MIN(mlx5_dev_to_port_id(dpdk_dev, port_id, i), i);
-		while (i--) {
-			const struct mlx5_priv *opriv =
-				rte_eth_devices[port_id[i]].data->dev_private;
-
-			if (!opriv ||
-			    opriv->domain_id ==
-			    RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID)
-				continue;
-			priv->domain_id = opriv->domain_id;
-			break;
-		}
+		if (!opriv ||
+			opriv->domain_id ==
+			RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID)
+			continue;
+		priv->domain_id = opriv->domain_id;
+		break;
 	}
 	if (priv->domain_id == RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID) {
 		err = rte_eth_switch_domain_alloc(&priv->domain_id);

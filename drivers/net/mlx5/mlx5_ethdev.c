@@ -1364,11 +1364,7 @@ mlx5_dev_to_port_id(const struct rte_device *dev, uint16_t *port_list,
 	uint16_t id;
 	unsigned int n = 0;
 
-	RTE_ETH_FOREACH_DEV(id) {
-		struct rte_eth_dev *ldev = &rte_eth_devices[id];
-
-		if (ldev->device != dev)
-			continue;
+	RTE_ETH_FOREACH_DEV_OF(id, dev) {
 		if (n < port_list_n)
 			port_list[n] = id;
 		n++;
