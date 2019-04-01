@@ -53,6 +53,9 @@
 /** Port parameter. */
 #define MLX4_PMD_PORT_KVARG "port"
 
+/** Enable extending memsegs when creating a MR. */
+#define MLX4_MR_EXT_MEMSEG_EN_KVARG "mr_ext_memseg_en"
+
 /* Reserved address space for UAR mapping. */
 #define MLX4_UAR_SIZE (1ULL << (sizeof(uintptr_t) * 4))
 
@@ -165,6 +168,8 @@ struct mlx4_priv {
 	uint32_t hw_csum_l2tun:1; /**< Checksum support for L2 tunnels. */
 	uint32_t hw_fcs_strip:1; /**< FCS stripping toggling is supported. */
 	uint32_t tso:1; /**< Transmit segmentation offload is supported. */
+	uint32_t mr_ext_memseg_en:1;
+	/** Whether memseg should be extended for MR creation. */
 	uint32_t tso_max_payload_sz; /**< Max supported TSO payload size. */
 	uint32_t hw_rss_max_qps; /**< Max Rx Queues supported by RSS. */
 	uint64_t hw_rss_sup; /**< Supported RSS hash fields (Verbs format). */

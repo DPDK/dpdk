@@ -66,11 +66,14 @@ struct mlx4_conf {
 		uint32_t present; /**< Bit-field for existing ports. */
 		uint32_t enabled; /**< Bit-field for user-enabled ports. */
 	} ports;
+	int mr_ext_memseg_en;
+	/** Whether memseg should be extended for MR creation. */
 };
 
 /* Available parameters list. */
 const char *pmd_mlx4_init_params[] = {
 	MLX4_PMD_PORT_KVARG,
+	MLX4_MR_EXT_MEMSEG_EN_KVARG,
 	NULL,
 };
 
@@ -509,6 +512,8 @@ mlx4_arg_parse(const char *key, const char *val, struct mlx4_conf *conf)
 			return -rte_errno;
 		}
 		conf->ports.enabled |= 1 << tmp;
+	} else if (strcmp(MLX4_MR_EXT_MEMSEG_EN_KVARG, key) == 0) {
+		conf->mr_ext_memseg_en = !!tmp;
 	} else {
 		rte_errno = EINVAL;
 		WARN("%s: unknown parameter", key);
@@ -544,10 +549,10 @@ mlx4_args(struct rte_devargs *devargs, struct mlx4_conf *conf)
 	}
 	/* Process parameters. */
 	for (i = 0; pmd_mlx4_init_params[i]; ++i) {
-		arg_count = rte_kvargs_count(kvlist, MLX4_PMD_PORT_KVARG);
+		arg_count = rte_kvargs_count(kvlist, pmd_mlx4_init_params[i]);
 		while (arg_count-- > 0) {
 			ret = rte_kvargs_process(kvlist,
-						 MLX4_PMD_PORT_KVARG,
+						 pmd_mlx4_init_params[i],
 						 (int (*)(const char *,
 							  const char *,
 							  void *))
@@ -876,6 +881,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	struct ibv_device_attr_ex device_attr_ex;
 	struct mlx4_conf conf = {
 		.ports.present = 0,
+		.mr_ext_memseg_en = 1,
 	};
 	unsigned int vf;
 	int i;
@@ -1100,6 +1106,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 					device_attr_ex.tso_caps.max_tso;
 		DEBUG("TSO is %ssupported",
 		      priv->tso ? "" : "not ");
+		priv->mr_ext_memseg_en = conf.mr_ext_memseg_en;
 		/* Configure the first MAC address by default. */
 		err = mlx4_get_mac(priv, &mac.addr_bytes);
 		if (err) {

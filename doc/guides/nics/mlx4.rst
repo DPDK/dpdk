@@ -119,6 +119,17 @@ Run-time configuration
   times for additional ports. All ports are probed by default if left
   unspecified.
 
+- ``mr_ext_memseg_en`` parameter [int]
+
+  A nonzero value enables extending memseg when registering DMA memory. If
+  enabled, the number of entries in MR (Memory Region) lookup table on datapath
+  is minimized and it benefits performance. On the other hand, it worsens memory
+  utilization because registered memory is pinned by kernel driver. Even if a
+  page in the extended chunk is freed, that doesn't become reusable until the
+  entire memory is freed.
+
+  Enabled by default.
+
 Kernel module parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
