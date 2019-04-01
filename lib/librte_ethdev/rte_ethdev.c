@@ -339,6 +339,25 @@ rte_eth_find_next(uint16_t port_id)
 	return port_id;
 }
 
+uint16_t
+rte_eth_find_next_of(uint16_t port_id, const struct rte_device *parent)
+{
+	port_id = rte_eth_find_next(port_id);
+	while (port_id < RTE_MAX_ETHPORTS &&
+			rte_eth_devices[port_id].device != parent)
+		port_id = rte_eth_find_next(port_id + 1);
+
+	return port_id;
+}
+
+uint16_t
+rte_eth_find_next_sibling(uint16_t port_id, uint16_t ref_port_id)
+{
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(ref_port_id, RTE_MAX_ETHPORTS);
+	return rte_eth_find_next_of(port_id,
+			rte_eth_devices[ref_port_id].device);
+}
+
 static void
 rte_eth_dev_shared_data_prepare(void)
 {

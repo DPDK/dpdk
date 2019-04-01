@@ -245,6 +245,8 @@ EXPERIMENTAL {
 	rte_eth_dev_owner_set;
 	rte_eth_dev_owner_unset;
 	rte_eth_dev_rx_intr_ctl_q_get_fd;
+	rte_eth_find_next_of;
+	rte_eth_find_next_sibling;
 	rte_eth_switch_domain_alloc;
 	rte_eth_switch_domain_free;
 	rte_flow_conv;

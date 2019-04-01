@@ -1387,6 +1387,69 @@ uint16_t rte_eth_find_next(uint16_t port_id);
 #define RTE_ETH_FOREACH_DEV(p) \
 	RTE_ETH_FOREACH_DEV_OWNED_BY(p, RTE_ETH_DEV_NO_OWNER)
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Iterates over ethdev ports of a specified device.
+ *
+ * @param port_id_start
+ *   The id of the next possible valid port.
+ * @param parent
+ *   The generic device behind the ports to iterate.
+ * @return
+ *   Next port id of the device, possibly port_id_start,
+ *   RTE_MAX_ETHPORTS if there is none.
+ */
+uint16_t __rte_experimental
+rte_eth_find_next_of(uint16_t port_id_start,
+		const struct rte_device *parent);
+
+/**
+ * Macro to iterate over all ethdev ports of a specified device.
+ *
+ * @param port_id
+ *   The id of the matching port being iterated.
+ * @param parent
+ *   The rte_device pointer matching the iterated ports.
+ */
+#define RTE_ETH_FOREACH_DEV_OF(port_id, parent) \
+	for (port_id = rte_eth_find_next_of(0, parent); \
+		port_id < RTE_MAX_ETHPORTS; \
+		port_id = rte_eth_find_next_of(port_id + 1, parent))
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Iterates over sibling ethdev ports (i.e. sharing the same rte_device).
+ *
+ * @param port_id_start
+ *   The id of the next possible valid sibling port.
+ * @param ref_port_id
+ *   The id of a reference port to compare rte_device with.
+ * @return
+ *   Next sibling port id, possibly port_id_start or ref_port_id itself,
+ *   RTE_MAX_ETHPORTS if there is none.
+ */
+uint16_t __rte_experimental
+rte_eth_find_next_sibling(uint16_t port_id_start,
+		uint16_t ref_port_id);
+
+/**
+ * Macro to iterate over all ethdev ports sharing the same rte_device
+ * as the specified port.
+ * Note: the specified reference port is part of the loop iterations.
+ *
+ * @param port_id
+ *   The id of the matching port being iterated.
+ * @param ref_port_id
+ *   The id of the port being compared.
+ */
+#define RTE_ETH_FOREACH_DEV_SIBLING(port_id, ref_port_id) \
+	for (port_id = rte_eth_find_next_sibling(0, ref_port_id); \
+		port_id < RTE_MAX_ETHPORTS; \
+		port_id = rte_eth_find_next_sibling(port_id + 1, ref_port_id))
 
 /**
  * @warning
