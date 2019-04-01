@@ -85,7 +85,6 @@ Limitations
 - For secondary process:
 
   - Forked secondary process not supported.
-  - All mempools must be initialized before rte_eth_dev_start().
   - External memory unregistered in EAL memseg list cannot be used for DMA
     unless such memory has been registered by ``mlx5_mr_update_ext_mp()`` in
     primary process and remapped to the same virtual address in secondary

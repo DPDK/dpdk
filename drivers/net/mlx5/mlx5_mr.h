@@ -70,6 +70,8 @@ extern rte_rwlock_t mlx5_mem_event_rwlock;
 
 int mlx5_mr_btree_init(struct mlx5_mr_btree *bt, int n, int socket);
 void mlx5_mr_btree_free(struct mlx5_mr_btree *bt);
+uint32_t mlx5_mr_create_primary(struct rte_eth_dev *dev,
+				struct mlx5_mr_cache *entry, uintptr_t addr);
 void mlx5_mr_mem_event_cb(enum rte_mem_event event_type, const void *addr,
 			  size_t len, void *arg);
 int mlx5_mr_update_mp(struct rte_eth_dev *dev, struct mlx5_mr_ctrl *mr_ctrl,

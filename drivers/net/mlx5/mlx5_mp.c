@@ -58,6 +58,8 @@ mp_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 		(const struct mlx5_mp_param *)mp_msg->param;
 	struct rte_eth_dev *dev;
 	struct mlx5_priv *priv;
+	struct mlx5_mr_cache entry;
+	uint32_t lkey;
 	int ret;
 
 	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
@@ -69,6 +71,13 @@ mp_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 	dev = &rte_eth_devices[param->port_id];
 	priv = dev->data->dev_private;
 	switch (param->type) {
+	case MLX5_MP_REQ_CREATE_MR:
+		mp_init_msg(dev, &mp_res, param->type);
+		lkey = mlx5_mr_create_primary(dev, &entry, param->args.addr);
+		if (lkey == UINT32_MAX)
+			res->result = -rte_errno;
+		ret = rte_mp_reply(&mp_res, peer);
+		break;
 	case MLX5_MP_REQ_VERBS_CMD_FD:
 		mp_init_msg(dev, &mp_res, param->type);
 		mp_res.num_fds = 1;
@@ -218,6 +227,47 @@ void
 mlx5_mp_req_stop_rxtx(struct rte_eth_dev *dev)
 {
 	mp_req_on_rxtx(dev, MLX5_MP_REQ_STOP_RXTX);
+}
+
+/**
+ * Request Memory Region creation to the primary process.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet structure.
+ * @param addr
+ *   Target virtual address to register.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_mp_req_mr_create(struct rte_eth_dev *dev, uintptr_t addr)
+{
+	struct rte_mp_msg mp_req;
+	struct rte_mp_msg *mp_res;
+	struct rte_mp_reply mp_rep;
+	struct mlx5_mp_param *req = (struct mlx5_mp_param *)mp_req.param;
+	struct mlx5_mp_param *res;
+	struct timespec ts = {.tv_sec = MLX5_MP_REQ_TIMEOUT_SEC, .tv_nsec = 0};
+	int ret;
+
+	assert(rte_eal_process_type() == RTE_PROC_SECONDARY);
+	mp_init_msg(dev, &mp_req, MLX5_MP_REQ_CREATE_MR);
+	req->args.addr = addr;
+	ret = rte_mp_request_sync(&mp_req, &mp_rep, &ts);
+	if (ret) {
+		DRV_LOG(ERR, "port %u request to primary process failed",
+			dev->data->port_id);
+		return -rte_errno;
+	}
+	assert(mp_rep.nb_received == 1);
+	mp_res = &mp_rep.msgs[0];
+	res = (struct mlx5_mp_param *)mp_res->param;
+	ret = res->result;
+	if (ret)
+		rte_errno = -ret;
+	free(mp_rep.msgs);
+	return ret;
 }
 
 /**
