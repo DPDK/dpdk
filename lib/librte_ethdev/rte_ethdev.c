@@ -330,8 +330,7 @@ uint16_t
 rte_eth_find_next(uint16_t port_id)
 {
 	while (port_id < RTE_MAX_ETHPORTS &&
-	       rte_eth_devices[port_id].state != RTE_ETH_DEV_ATTACHED &&
-	       rte_eth_devices[port_id].state != RTE_ETH_DEV_REMOVED)
+			rte_eth_devices[port_id].state == RTE_ETH_DEV_UNUSED)
 		port_id++;
 
 	if (port_id >= RTE_MAX_ETHPORTS)
@@ -567,8 +566,7 @@ uint64_t
 rte_eth_find_next_owned_by(uint16_t port_id, const uint64_t owner_id)
 {
 	while (port_id < RTE_MAX_ETHPORTS &&
-	       ((rte_eth_devices[port_id].state != RTE_ETH_DEV_ATTACHED &&
-	       rte_eth_devices[port_id].state != RTE_ETH_DEV_REMOVED) ||
+	       (rte_eth_devices[port_id].state == RTE_ETH_DEV_UNUSED ||
 	       rte_eth_devices[port_id].data->owner.id != owner_id))
 		port_id++;
 
