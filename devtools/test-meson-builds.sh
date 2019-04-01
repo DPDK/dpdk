@@ -69,9 +69,9 @@ if command -v $c >/dev/null 2>&1 ; then
 	# compile the general v8a also for clang to increase coverage
 	export CC="ccache clang"
 	build build-arm64-host-clang $use_shared \
-		--cross-file config/arm/arm64_armv8_linux_gcc
+		--cross-file $srcdir/config/arm/arm64_armv8_linux_gcc
 
-	for f in config/arm/arm*gcc ; do
+	for f in $srcdir/config/arm/arm*gcc ; do
 		export CC="ccache gcc"
 		build build-$(basename $f | tr '_' '-' | cut -d'-' -f-2) \
 			$use_shared --cross-file $f
