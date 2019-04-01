@@ -55,7 +55,7 @@ typedef uint16_t rte_v128u16_t __attribute__((vector_size(16), aligned(16)));
 /**
  * 128 bits vector size to use with unsigned 32 bits elements.
  *
- * a = (rte_v128u32_t){ a0, a1, a2, a3, a4 }
+ * a = (rte_v128u32_t){ a0, a1, a2, a3 }
  */
 typedef uint32_t rte_v128u32_t __attribute__((vector_size(16), aligned(16)));
 
