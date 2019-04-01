@@ -69,6 +69,62 @@ const char *pmd_mlx4_init_params[] = {
 
 static void mlx4_dev_stop(struct rte_eth_dev *dev);
 
+#ifdef HAVE_IBV_MLX4_BUF_ALLOCATORS
+/**
+ * Verbs callback to allocate a memory. This function should allocate the space
+ * according to the size provided residing inside a huge page.
+ * Please note that all allocation must respect the alignment from libmlx4
+ * (i.e. currently sysconf(_SC_PAGESIZE)).
+ *
+ * @param[in] size
+ *   The size in bytes of the memory to allocate.
+ * @param[in] data
+ *   A pointer to the callback data.
+ *
+ * @return
+ *   Allocated buffer, NULL otherwise and rte_errno is set.
+ */
+static void *
+mlx4_alloc_verbs_buf(size_t size, void *data)
+{
+	struct mlx4_priv *priv = data;
+	void *ret;
+	size_t alignment = sysconf(_SC_PAGESIZE);
+	unsigned int socket = SOCKET_ID_ANY;
+
+	if (priv->verbs_alloc_ctx.type == MLX4_VERBS_ALLOC_TYPE_TX_QUEUE) {
+		const struct txq *txq = priv->verbs_alloc_ctx.obj;
+
+		socket = txq->socket;
+	} else if (priv->verbs_alloc_ctx.type ==
+		   MLX4_VERBS_ALLOC_TYPE_RX_QUEUE) {
+		const struct rxq *rxq = priv->verbs_alloc_ctx.obj;
+
+		socket = rxq->socket;
+	}
+	assert(data != NULL);
+	ret = rte_malloc_socket(__func__, size, alignment, socket);
+	if (!ret && size)
+		rte_errno = ENOMEM;
+	return ret;
+}
+
+/**
+ * Verbs callback to free a memory.
+ *
+ * @param[in] ptr
+ *   A pointer to the memory to free.
+ * @param[in] data
+ *   A pointer to the callback data.
+ */
+static void
+mlx4_free_verbs_buf(void *ptr, void *data __rte_unused)
+{
+	assert(data != NULL);
+	rte_free(ptr);
+}
+#endif
+
 /**
  * DPDK callback for Ethernet device configuration.
  *
@@ -755,6 +811,17 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		eth_dev->intr_handle = &priv->intr_handle;
 		priv->dev_data = eth_dev->data;
 		eth_dev->dev_ops = &mlx4_dev_ops;
+#ifdef HAVE_IBV_MLX4_BUF_ALLOCATORS
+		/* Hint libmlx4 to use PMD allocator for data plane resources */
+		struct mlx4dv_ctx_allocators alctr = {
+			.alloc = &mlx4_alloc_verbs_buf,
+			.free = &mlx4_free_verbs_buf,
+			.data = priv,
+		};
+		mlx4_glue->dv_set_context_attr
+			(ctx, MLX4DV_SET_CTX_ATTR_BUF_ALLOCATORS,
+			 (void *)((uintptr_t)&alctr));
+#endif
 		/* Bring Ethernet device up. */
 		DEBUG("forcing Ethernet interface up");
 		mlx4_dev_set_link_up(eth_dev);

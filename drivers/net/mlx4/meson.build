@@ -70,7 +70,17 @@ if build
 		[ 'HAVE_IBV_MLX4_WQE_LSO_SEG', 'infiniband/mlx4dv.h',
 		'struct mlx4_wqe_lso_seg', 'mss_hdr_size' ],
 	]
+	# input array for meson symbol search:
+	# [ "MACRO to define if found", "header for the search",
+	#   "symbol to search" ]
+	has_sym_args = [
+		[ 'HAVE_IBV_MLX4_BUF_ALLOCATORS', 'infiniband/mlx4dv.h',
+		'MLX4DV_SET_CTX_ATTR_BUF_ALLOCATORS' ],
+	]
 	config = configuration_data()
+	foreach arg:has_sym_args
+		config.set(arg[0], cc.has_header_symbol(arg[1], arg[2]))
+	endforeach
 	foreach arg:has_member_args
 		file_prefix = '#include<' + arg[1] + '>'
 		config.set(arg[0], cc.has_member(arg[2], arg[3],

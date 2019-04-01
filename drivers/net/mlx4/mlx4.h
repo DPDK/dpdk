@@ -72,6 +72,24 @@ struct rxq;
 struct txq;
 struct rte_flow;
 
+/**
+ * Type of objet being allocated.
+ */
+enum mlx4_verbs_alloc_type {
+	MLX4_VERBS_ALLOC_TYPE_NONE,
+	MLX4_VERBS_ALLOC_TYPE_TX_QUEUE,
+	MLX4_VERBS_ALLOC_TYPE_RX_QUEUE,
+};
+
+/**
+ * Verbs allocator needs a context to know in the callback which kind of
+ * resources it is allocating.
+ */
+struct mlx4_verbs_alloc_ctx {
+	enum mlx4_verbs_alloc_type type; /* Kind of object being allocated. */
+	const void *obj; /* Pointer to the DPDK object. */
+};
+
 LIST_HEAD(mlx4_dev_list, mlx4_priv);
 LIST_HEAD(mlx4_mr_list, mlx4_mr);
 
@@ -111,6 +129,8 @@ struct mlx4_priv {
 	LIST_HEAD(, rte_flow) flows; /**< Configured flow rule handles. */
 	struct ether_addr mac[MLX4_MAX_MAC_ADDRESSES];
 	/**< Configured MAC addresses. Unused entries are zeroed. */
+	struct mlx4_verbs_alloc_ctx verbs_alloc_ctx;
+	/**< Context for Verbs allocator. */
 };
 
 #define PORT_ID(priv) ((priv)->dev_data->port_id)

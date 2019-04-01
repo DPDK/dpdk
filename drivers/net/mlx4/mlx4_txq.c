@@ -177,10 +177,8 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	uint64_t offloads;
 
 	offloads = conf->offloads | dev->data->dev_conf.txmode.offloads;
-
 	DEBUG("%p: configuring queue %u for %u descriptors",
 	      (void *)dev, idx, desc);
-
 	if (idx >= dev->data->nb_tx_queues) {
 		rte_errno = EOVERFLOW;
 		ERROR("%p: queue index out of range (%u >= %u)",
@@ -241,6 +239,8 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		.lb = !!priv->vf,
 		.bounce_buf = bounce_buf,
 	};
+	priv->verbs_alloc_ctx.type = MLX4_VERBS_ALLOC_TYPE_TX_QUEUE;
+	priv->verbs_alloc_ctx.obj = txq;
 	txq->cq = mlx4_glue->create_cq(priv->ctx, desc, NULL, NULL, 0);
 	if (!txq->cq) {
 		rte_errno = ENOMEM;
@@ -331,6 +331,7 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	txq->mr_ctrl.dev_gen_ptr = &priv->mr.dev_gen;
 	DEBUG("%p: adding Tx queue %p to list", (void *)dev, (void *)txq);
 	dev->data->tx_queues[idx] = txq;
+	priv->verbs_alloc_ctx.type = MLX4_VERBS_ALLOC_TYPE_NONE;
 	return 0;
 error:
 	dev->data->tx_queues[idx] = NULL;
@@ -338,6 +339,7 @@ error:
 	mlx4_tx_queue_release(txq);
 	rte_errno = ret;
 	assert(rte_errno > 0);
+	priv->verbs_alloc_ctx.type = MLX4_VERBS_ALLOC_TYPE_NONE;
 	return -rte_errno;
 }
 

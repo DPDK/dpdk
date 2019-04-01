@@ -88,6 +88,11 @@ mlx4_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 	$Q $(RM) -f -- '$@'
 	$Q : > '$@'
 	$Q sh -- '$<' '$@' \
+		HAVE_IBV_MLX4_BUF_ALLOCATORS \
+		infiniband/mlx4dv.h \
+		enum MLX4DV_SET_CTX_ATTR_BUF_ALLOCATORS \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
 		HAVE_IBV_MLX4_WQE_LSO_SEG \
 		infiniband/mlx4dv.h \
 		type 'struct mlx4_wqe_lso_seg' \

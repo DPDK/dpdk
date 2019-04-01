@@ -513,6 +513,8 @@ mlx4_rxq_attach(struct rxq *rxq)
 	int ret;
 
 	assert(rte_is_power_of_2(elts_n));
+	priv->verbs_alloc_ctx.type = MLX4_VERBS_ALLOC_TYPE_RX_QUEUE;
+	priv->verbs_alloc_ctx.obj = rxq;
 	cq = mlx4_glue->create_cq(priv->ctx, elts_n / sges_n, NULL,
 				  rxq->channel, 0);
 	if (!cq) {
@@ -620,6 +622,7 @@ mlx4_rxq_attach(struct rxq *rxq)
 	rxq->rq_ci = elts_n / sges_n;
 	rte_wmb();
 	*rxq->rq_db = rte_cpu_to_be_32(rxq->rq_ci);
+	priv->verbs_alloc_ctx.type = MLX4_VERBS_ALLOC_TYPE_NONE;
 	return 0;
 error:
 	if (wq)
@@ -630,6 +633,7 @@ error:
 	rte_errno = ret;
 	ERROR("error while attaching Rx queue %p: %s: %s",
 	      (void *)rxq, msg, strerror(ret));
+	priv->verbs_alloc_ctx.type = MLX4_VERBS_ALLOC_TYPE_NONE;
 	return -ret;
 }
 
