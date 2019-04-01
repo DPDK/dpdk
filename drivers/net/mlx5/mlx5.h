@@ -167,6 +167,8 @@ struct mlx5_dev_config {
 	unsigned int tx_vec_en:1; /* Tx vector is enabled. */
 	unsigned int rx_vec_en:1; /* Rx vector is enabled. */
 	unsigned int mpw_hdr_dseg:1; /* Enable DSEGs in the title WQEBB. */
+	unsigned int mr_ext_memseg_en:1;
+	/* Whether memseg should be extended for MR creation. */
 	unsigned int l3_vxlan_en:1; /* Enable L3 VXLAN flow creation. */
 	unsigned int vf_nl_en:1; /* Enable Netlink requests in VF mode. */
 	unsigned int dv_flow_en:1; /* Enable DV flow. */

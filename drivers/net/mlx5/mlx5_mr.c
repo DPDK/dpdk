@@ -535,6 +535,7 @@ mlx5_mr_create(struct rte_eth_dev *dev, struct mlx5_mr_cache *entry,
 	       uintptr_t addr)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_config *config = &priv->config;
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
 	const struct rte_memseg_list *msl;
 	const struct rte_memseg *ms;
@@ -570,14 +571,24 @@ mlx5_mr_create(struct rte_eth_dev *dev, struct mlx5_mr_cache *entry,
 	 */
 	mlx5_mr_garbage_collect(dev);
 	/*
-	 * Find out a contiguous virtual address chunk in use, to which the
-	 * given address belongs, in order to register maximum range. In the
-	 * best case where mempools are not dynamically recreated and
+	 * If enabled, find out a contiguous virtual address chunk in use, to
+	 * which the given address belongs, in order to register maximum range.
+	 * In the best case where mempools are not dynamically recreated and
 	 * '--socket-mem' is specified as an EAL option, it is very likely to
 	 * have only one MR(LKey) per a socket and per a hugepage-size even
-	 * though the system memory is highly fragmented.
+	 * though the system memory is highly fragmented. As the whole memory
+	 * chunk will be pinned by kernel, it can't be reused unless entire
+	 * chunk is freed from EAL.
+	 *
+	 * If disabled, just register one memseg (page). Then, memory
+	 * consumption will be minimized but it may drop performance if there
+	 * are many MRs to lookup on the datapath.
 	 */
-	if (!rte_memseg_contig_walk(mr_find_contig_memsegs_cb, &data)) {
+	if (!config->mr_ext_memseg_en) {
+		data.msl = rte_mem_virt2memseg_list((void *)addr);
+		data.start = RTE_ALIGN_FLOOR(addr, data.msl->page_sz);
+		data.end = data.start + data.msl->page_sz;
+	} else if (!rte_memseg_contig_walk(mr_find_contig_memsegs_cb, &data)) {
 		DRV_LOG(WARNING,
 			"port %u unable to find virtually contiguous"
 			" chunk for address (%p)."

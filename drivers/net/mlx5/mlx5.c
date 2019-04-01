@@ -107,6 +107,9 @@
 /* Activate Netlink support in VF mode. */
 #define MLX5_VF_NL_EN "vf_nl_en"
 
+/* Enable extending memsegs when creating a MR. */
+#define MLX5_MR_EXT_MEMSEG_EN "mr_ext_memseg_en"
+
 /* Select port representors to instantiate. */
 #define MLX5_REPRESENTOR "representor"
 
@@ -732,6 +735,8 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		config->vf_nl_en = !!tmp;
 	} else if (strcmp(MLX5_DV_FLOW_EN, key) == 0) {
 		config->dv_flow_en = !!tmp;
+	} else if (strcmp(MLX5_MR_EXT_MEMSEG_EN, key) == 0) {
+		config->mr_ext_memseg_en = !!tmp;
 	} else {
 		DRV_LOG(WARNING, "%s: unknown parameter", key);
 		rte_errno = EINVAL;
@@ -773,6 +778,7 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 		MLX5_L3_VXLAN_EN,
 		MLX5_VF_NL_EN,
 		MLX5_DV_FLOW_EN,
+		MLX5_MR_EXT_MEMSEG_EN,
 		MLX5_REPRESENTOR,
 		NULL,
 	};
@@ -1853,6 +1859,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		.txqs_vec = MLX5_ARG_UNSET,
 		.inline_max_packet_sz = MLX5_ARG_UNSET,
 		.vf_nl_en = 1,
+		.mr_ext_memseg_en = 1,
 		.mprq = {
 			.enabled = 0, /* Disabled by default. */
 			.stride_num_n = MLX5_MPRQ_STRIDE_NUM_N,
