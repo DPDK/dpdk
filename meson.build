@@ -3,8 +3,9 @@
 
 project('DPDK', 'C',
 	# Get version number from file.
-	# Use "more" rather than "cat" for windows compatibility.
-	version: run_command('more', files('VERSION')).stdout().strip(),
+	# Fallback to "more" for Windows compatibility.
+	version: run_command(find_program('cat', 'more'),
+		files('VERSION')).stdout().strip(),
 	license: 'BSD',
 	default_options: ['buildtype=release', 'default_library=static'],
 	meson_version: '>= 0.47.1'
