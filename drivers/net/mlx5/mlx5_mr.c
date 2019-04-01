@@ -892,6 +892,8 @@ mlx5_mr_mem_event_cb(enum rte_mem_event event_type, const void *addr,
 	struct mlx5_priv *priv;
 	struct mlx5_dev_list *dev_list = &mlx5_shared_data->mem_event_cb_list;
 
+	/* Must be called from the primary process. */
+	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
 	switch (event_type) {
 	case RTE_MEM_EVENT_FREE:
 		rte_rwlock_write_lock(&mlx5_shared_data->mem_event_rwlock);

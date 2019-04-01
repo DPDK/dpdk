@@ -322,9 +322,10 @@ mlx5_prepare_shared_data(void)
 		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 			LIST_INIT(&mlx5_shared_data->mem_event_cb_list);
 			rte_rwlock_init(&mlx5_shared_data->mem_event_rwlock);
+			rte_mem_event_callback_register("MLX5_MEM_EVENT_CB",
+							mlx5_mr_mem_event_cb,
+							NULL);
 		}
-		rte_mem_event_callback_register("MLX5_MEM_EVENT_CB",
-						mlx5_mr_mem_event_cb, NULL);
 	}
 	rte_spinlock_unlock(&mlx5_shared_data_lock);
 }
