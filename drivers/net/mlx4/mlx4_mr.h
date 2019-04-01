@@ -75,6 +75,8 @@ extern rte_rwlock_t mlx4_mem_event_rwlock;
 int mlx4_mr_btree_init(struct mlx4_mr_btree *bt, int n, int socket);
 void mlx4_mr_btree_free(struct mlx4_mr_btree *bt);
 void mlx4_mr_btree_dump(struct mlx4_mr_btree *bt);
+uint32_t mlx4_mr_create_primary(struct rte_eth_dev *dev,
+				struct mlx4_mr_cache *entry, uintptr_t addr);
 void mlx4_mr_mem_event_cb(enum rte_mem_event event_type, const void *addr,
 			  size_t len, void *arg);
 int mlx4_mr_update_mp(struct rte_eth_dev *dev, struct mlx4_mr_ctrl *mr_ctrl,

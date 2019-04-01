@@ -79,6 +79,7 @@ enum {
 /* Request types for IPC. */
 enum mlx4_mp_req_type {
 	MLX4_MP_REQ_VERBS_CMD_FD = 1,
+	MLX4_MP_REQ_CREATE_MR,
 	MLX4_MP_REQ_START_RXTX,
 	MLX4_MP_REQ_STOP_RXTX,
 };
@@ -88,6 +89,10 @@ struct mlx4_mp_param {
 	enum mlx4_mp_req_type type;
 	int port_id;
 	int result;
+	RTE_STD_C11
+	union {
+		uintptr_t addr; /* MLX4_MP_REQ_CREATE_MR */
+	} args;
 };
 
 /** Request timeout for IPC. */
@@ -235,6 +240,7 @@ int mlx4_rx_intr_enable(struct rte_eth_dev *dev, uint16_t idx);
 /* mlx4_mp.c */
 void mlx4_mp_req_start_rxtx(struct rte_eth_dev *dev);
 void mlx4_mp_req_stop_rxtx(struct rte_eth_dev *dev);
+int mlx4_mp_req_mr_create(struct rte_eth_dev *dev, uintptr_t addr);
 int mlx4_mp_req_verbs_cmd_fd(struct rte_eth_dev *dev);
 void mlx4_mp_init_primary(void);
 void mlx4_mp_uninit_primary(void);

@@ -528,7 +528,10 @@ mr_find_contig_memsegs_cb(const struct rte_memseg_list *msl,
 
 /**
  * Create a new global Memroy Region (MR) for a missing virtual address.
- * Register entire virtually contiguous memory chunk around the address.
+ * This API should be called on a secondary process, then a request is sent to
+ * the primary process in order to create a MR for the address. As the global MR
+ * list is on the shared memory, following LKey lookup should succeed unless the
+ * request fails.
  *
  * @param dev
  *   Pointer to Ethernet device.
@@ -542,8 +545,52 @@ mr_find_contig_memsegs_cb(const struct rte_memseg_list *msl,
  *   Searched LKey on success, UINT32_MAX on failure and rte_errno is set.
  */
 static uint32_t
-mlx4_mr_create(struct rte_eth_dev *dev, struct mlx4_mr_cache *entry,
-	       uintptr_t addr)
+mlx4_mr_create_secondary(struct rte_eth_dev *dev, struct mlx4_mr_cache *entry,
+			 uintptr_t addr)
+{
+	struct mlx4_priv *priv = dev->data->dev_private;
+	int ret;
+
+	DEBUG("port %u requesting MR creation for address (%p)",
+	      dev->data->port_id, (void *)addr);
+	ret = mlx4_mp_req_mr_create(dev, addr);
+	if (ret) {
+		DEBUG("port %u fail to request MR creation for address (%p)",
+		      dev->data->port_id, (void *)addr);
+		return UINT32_MAX;
+	}
+	rte_rwlock_read_lock(&priv->mr.rwlock);
+	/* Fill in output data. */
+	mr_lookup_dev(dev, entry, addr);
+	/* Lookup can't fail. */
+	assert(entry->lkey != UINT32_MAX);
+	rte_rwlock_read_unlock(&priv->mr.rwlock);
+	DEBUG("port %u MR CREATED by primary process for %p:\n"
+	      "  [0x%" PRIxPTR ", 0x%" PRIxPTR "), lkey=0x%x",
+	      dev->data->port_id, (void *)addr,
+	      entry->start, entry->end, entry->lkey);
+	return entry->lkey;
+}
+
+/**
+ * Create a new global Memroy Region (MR) for a missing virtual address.
+ * Register entire virtually contiguous memory chunk around the address.
+ * This must be called from the primary process.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[out] entry
+ *   Pointer to returning MR cache entry, found in the global cache or newly
+ *   created. If failed to create one, this will not be updated.
+ * @param addr
+ *   Target virtual address to register.
+ *
+ * @return
+ *   Searched LKey on success, UINT32_MAX on failure and rte_errno is set.
+ */
+uint32_t
+mlx4_mr_create_primary(struct rte_eth_dev *dev, struct mlx4_mr_cache *entry,
+		       uintptr_t addr)
 {
 	struct mlx4_priv *priv = dev->data->dev_private;
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
@@ -563,14 +610,6 @@ mlx4_mr_create(struct rte_eth_dev *dev, struct mlx4_mr_cache *entry,
 
 	DEBUG("port %u creating a MR using address (%p)",
 	      dev->data->port_id, (void *)addr);
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
-		WARN("port %u using address (%p) of unregistered mempool"
-		     " in secondary process, please create mempool"
-		     " before rte_eth_dev_start()",
-		     dev->data->port_id, (void *)addr);
-		rte_errno = EPERM;
-		goto err_nolock;
-	}
 	/*
 	 * Release detached MRs if any. This can't be called with holding either
 	 * memory_hotplug_lock or priv->mr.rwlock. MRs on the free list have
@@ -778,6 +817,40 @@ err_nolock:
 	 */
 	mr_free(mr);
 	return UINT32_MAX;
+}
+
+/**
+ * Create a new global Memroy Region (MR) for a missing virtual address.
+ * This can be called from primary and secondary process.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param[out] entry
+ *   Pointer to returning MR cache entry, found in the global cache or newly
+ *   created. If failed to create one, this will not be updated.
+ * @param addr
+ *   Target virtual address to register.
+ *
+ * @return
+ *   Searched LKey on success, UINT32_MAX on failure and rte_errno is set.
+ */
+static uint32_t
+mlx4_mr_create(struct rte_eth_dev *dev, struct mlx4_mr_cache *entry,
+	       uintptr_t addr)
+{
+	uint32_t ret = 0;
+
+	switch (rte_eal_process_type()) {
+	case RTE_PROC_PRIMARY:
+		ret = mlx4_mr_create_primary(dev, entry, addr);
+		break;
+	case RTE_PROC_SECONDARY:
+		ret = mlx4_mr_create_secondary(dev, entry, addr);
+		break;
+	default:
+		break;
+	}
+	return ret;
 }
 
 /**
