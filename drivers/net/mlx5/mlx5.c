@@ -470,6 +470,9 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	/* Prevent crashes when queues are still in use. */
 	dev->rx_pkt_burst = removed_rx_burst;
 	dev->tx_pkt_burst = removed_tx_burst;
+	rte_wmb();
+	/* Disable datapath on secondary process. */
+	mlx5_mp_req_stop_rxtx(dev);
 	if (priv->rxqs != NULL) {
 		/* XXX race condition if mlx5_rx_burst() is still running. */
 		usleep(1000);
@@ -966,6 +969,7 @@ mlx5_init_once(void)
 	case RTE_PROC_SECONDARY:
 		if (ld->init_done)
 			break;
+		mlx5_mp_init_secondary();
 		ret = mlx5_uar_init_secondary();
 		if (ret)
 			goto error;
@@ -986,6 +990,7 @@ error:
 		break;
 	case RTE_PROC_SECONDARY:
 		mlx5_uar_uninit_secondary();
+		mlx5_mp_uninit_secondary();
 		break;
 	default:
 		break;

@@ -59,6 +59,8 @@ enum {
 /* Request types for IPC. */
 enum mlx5_mp_req_type {
 	MLX5_MP_REQ_VERBS_CMD_FD = 1,
+	MLX5_MP_REQ_START_RXTX,
+	MLX5_MP_REQ_STOP_RXTX,
 };
 
 /* Pameters for IPC. */
@@ -461,9 +463,13 @@ int mlx5_flow_create_drop_queue(struct rte_eth_dev *dev);
 void mlx5_flow_delete_drop_queue(struct rte_eth_dev *dev);
 
 /* mlx5_mp.c */
+void mlx5_mp_req_start_rxtx(struct rte_eth_dev *dev);
+void mlx5_mp_req_stop_rxtx(struct rte_eth_dev *dev);
 int mlx5_mp_req_verbs_cmd_fd(struct rte_eth_dev *dev);
 void mlx5_mp_init_primary(void);
 void mlx5_mp_uninit_primary(void);
+void mlx5_mp_init_secondary(void);
+void mlx5_mp_uninit_secondary(void);
 
 /* mlx5_nl.c */
 

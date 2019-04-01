@@ -194,8 +194,11 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 			dev->data->port_id);
 		goto error;
 	}
+	rte_wmb();
 	dev->tx_pkt_burst = mlx5_select_tx_function(dev);
 	dev->rx_pkt_burst = mlx5_select_rx_function(dev);
+	/* Enable datapath on secondary process. */
+	mlx5_mp_req_start_rxtx(dev);
 	mlx5_dev_interrupt_handler_install(dev);
 	return 0;
 error:
@@ -228,6 +231,8 @@ mlx5_dev_stop(struct rte_eth_dev *dev)
 	dev->rx_pkt_burst = removed_rx_burst;
 	dev->tx_pkt_burst = removed_tx_burst;
 	rte_wmb();
+	/* Disable datapath on secondary process. */
+	mlx5_mp_req_stop_rxtx(dev);
 	usleep(1000 * priv->rxqs_n);
 	DRV_LOG(DEBUG, "port %u stopping device", dev->data->port_id);
 	mlx5_flow_stop(dev, &priv->flows);

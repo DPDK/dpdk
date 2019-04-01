@@ -2373,6 +2373,7 @@ removed_tx_burst(void *dpdk_txq __rte_unused,
 		 struct rte_mbuf **pkts __rte_unused,
 		 uint16_t pkts_n __rte_unused)
 {
+	rte_mb();
 	return 0;
 }
 
@@ -2397,6 +2398,7 @@ removed_rx_burst(void *dpdk_txq __rte_unused,
 		 struct rte_mbuf **pkts __rte_unused,
 		 uint16_t pkts_n __rte_unused)
 {
+	rte_mb();
 	return 0;
 }
 
