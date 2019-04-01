@@ -13,7 +13,9 @@ include $(RTE_SDK)/mk/rte.vars.mk
 DIRS-$(CONFIG_RTE_LIBRTE_BBDEV) += bbdev_app
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += bond
 DIRS-y += cmdline
+ifeq ($(CONFIG_RTE_LIBRTE_POWER),y)
 DIRS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR) += distributor
+endif
 DIRS-y += ethtool
 DIRS-y += exception_path
 DIRS-$(CONFIG_RTE_LIBRTE_EFD) += server_node_efd

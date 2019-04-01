@@ -16,6 +16,7 @@
 #include <rte_prefetch.h>
 #include <rte_distributor.h>
 #include <rte_pause.h>
+#include <rte_power.h>
 
 #define RX_RING_SIZE 1024
 #define TX_RING_SIZE 1024
@@ -37,6 +38,7 @@ volatile uint8_t quit_signal;
 volatile uint8_t quit_signal_rx;
 volatile uint8_t quit_signal_dist;
 volatile uint8_t quit_signal_work;
+unsigned int power_lib_initialised;
 
 static volatile struct app_stats {
 	struct {
@@ -281,6 +283,8 @@ lcore_rx(struct lcore_params *p)
 		if (++port == nb_ports)
 			port = 0;
 	}
+	if (power_lib_initialised)
+		rte_power_exit(rte_lcore_id());
 	/* set worker & tx threads quit flag */
 	printf("\nCore %u exiting rx task.\n", rte_lcore_id());
 	quit_signal = 1;
@@ -363,7 +367,8 @@ lcore_distributor(struct lcore_params *p)
 	}
 	printf("\nCore %u exiting distributor task.\n", rte_lcore_id());
 	quit_signal_work = 1;
-
+	if (power_lib_initialised)
+		rte_power_exit(rte_lcore_id());
 	rte_distributor_flush(d);
 	/* Unblock any returns so workers can exit */
 	rte_distributor_clear_returns(d);
@@ -435,6 +440,8 @@ lcore_tx(struct rte_ring *in_r)
 			}
 		}
 	}
+	if (power_lib_initialised)
+		rte_power_exit(rte_lcore_id());
 	printf("\nCore %u exiting tx task.\n", rte_lcore_id());
 	return 0;
 }
@@ -575,7 +582,31 @@ lcore_worker(struct lcore_params *p)
 		if (num > 0)
 			app_stats.worker_bursts[p->worker_id][num-1]++;
 	}
+	if (power_lib_initialised)
+		rte_power_exit(rte_lcore_id());
+	rte_free(p);
 	return 0;
+}
+
+static int
+init_power_library(void)
+{
+	int ret = 0, lcore_id;
+	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+		/* init power management library */
+		ret = rte_power_init(lcore_id);
+		if (ret) {
+			RTE_LOG(ERR, POWER,
+				"Library initialization failed on core %u\n",
+				lcore_id);
+			/*
+			 * Return on first failure, we'll fall back
+			 * to non-power operation
+			 */
+			return ret;
+		}
+	}
+	return ret;
 }
 
 /* display usage */
@@ -657,7 +688,9 @@ main(int argc, char *argv[])
 	struct rte_distributor *d;
 	struct rte_ring *dist_tx_ring;
 	struct rte_ring *rx_dist_ring;
-	unsigned lcore_id, worker_id = 0;
+	struct rte_power_core_capabilities lcore_cap;
+	unsigned int lcore_id, worker_id = 0;
+	int distr_core_id = -1, rx_core_id = -1, tx_core_id = -1;
 	unsigned nb_ports;
 	uint16_t portid;
 	uint16_t nb_ports_available;
@@ -686,6 +719,9 @@ main(int argc, char *argv[])
 				"1 lcore for distribution\n"
 				"1 lcore for packet TX\n"
 				"and at least 1 lcore for worker threads\n");
+
+	if (init_power_library() == 0)
+		power_lib_initialised = 1;
 
 	nb_ports = rte_eth_dev_count_avail();
 	if (nb_ports == 0)
@@ -742,53 +778,122 @@ main(int argc, char *argv[])
 	if (rx_dist_ring == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create output ring\n");
 
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
-		if (worker_id == rte_lcore_count() - 3) {
-			printf("Starting distributor on lcore_id %d\n",
-					lcore_id);
-			/* distributor core */
-			struct lcore_params *p =
-					rte_malloc(NULL, sizeof(*p), 0);
-			if (!p)
-				rte_panic("malloc failure\n");
-			*p = (struct lcore_params){worker_id, d,
-				rx_dist_ring, dist_tx_ring, mbuf_pool};
-			rte_eal_remote_launch(
-				(lcore_function_t *)lcore_distributor,
-				p, lcore_id);
-		} else if (worker_id == rte_lcore_count() - 4) {
-			printf("Starting tx  on worker_id %d, lcore_id %d\n",
-					worker_id, lcore_id);
-			/* tx core */
-			rte_eal_remote_launch((lcore_function_t *)lcore_tx,
-					dist_tx_ring, lcore_id);
-		} else if (worker_id == rte_lcore_count() - 2) {
-			printf("Starting rx on worker_id %d, lcore_id %d\n",
-					worker_id, lcore_id);
-			/* rx core */
-			struct lcore_params *p =
-					rte_malloc(NULL, sizeof(*p), 0);
-			if (!p)
-				rte_panic("malloc failure\n");
-			*p = (struct lcore_params){worker_id, d, rx_dist_ring,
-					dist_tx_ring, mbuf_pool};
-			rte_eal_remote_launch((lcore_function_t *)lcore_rx,
-					p, lcore_id);
-		} else {
-			printf("Starting worker on worker_id %d, lcore_id %d\n",
-					worker_id, lcore_id);
-			struct lcore_params *p =
-					rte_malloc(NULL, sizeof(*p), 0);
-			if (!p)
-				rte_panic("malloc failure\n");
-			*p = (struct lcore_params){worker_id, d, rx_dist_ring,
-					dist_tx_ring, mbuf_pool};
+	if (power_lib_initialised) {
+		/*
+		 * Here we'll pre-assign lcore ids to the rx, tx and
+		 * distributor workloads if there's higher frequency
+		 * on those cores e.g. if Turbo Boost is enabled.
+		 * It's also worth mentioning that it will assign cores in a
+		 * specific order, so that if there's less than three
+		 * available, the higher frequency cores will go to the
+		 * distributor first, then rx, then tx.
+		 */
+		RTE_LCORE_FOREACH_SLAVE(lcore_id) {
 
-			rte_eal_remote_launch((lcore_function_t *)lcore_worker,
-					p, lcore_id);
+			rte_power_get_capabilities(lcore_id, &lcore_cap);
+
+			if (lcore_cap.priority != 1)
+				continue;
+
+			if (distr_core_id < 0) {
+				distr_core_id = lcore_id;
+				printf("Distributor on priority core %d\n",
+					lcore_id);
+				continue;
+			}
+			if (rx_core_id < 0) {
+				rx_core_id = lcore_id;
+				printf("Rx on priority core %d\n",
+					lcore_id);
+				continue;
+			}
+			if (tx_core_id < 0) {
+				tx_core_id = lcore_id;
+				printf("Tx on priority core %d\n",
+					lcore_id);
+				continue;
+			}
 		}
-		worker_id++;
 	}
+
+	/*
+	 * If there's any of the key workloads left without an lcore_id
+	 * after the high performing core assignment above, pre-assign
+	 * them here.
+	 */
+	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+		if (lcore_id == (unsigned int)distr_core_id ||
+				lcore_id == (unsigned int)rx_core_id ||
+				lcore_id == (unsigned int)tx_core_id)
+			continue;
+		if (distr_core_id < 0) {
+			distr_core_id = lcore_id;
+			printf("Distributor on core %d\n", lcore_id);
+			continue;
+		}
+		if (rx_core_id < 0) {
+			rx_core_id = lcore_id;
+			printf("Rx on core %d\n", lcore_id);
+			continue;
+		}
+		if (tx_core_id < 0) {
+			tx_core_id = lcore_id;
+			printf("Tx on core %d\n", lcore_id);
+			continue;
+		}
+	}
+
+	printf(" tx id %d, dist id %d, rx id %d\n",
+			tx_core_id,
+			distr_core_id,
+			rx_core_id);
+
+	/*
+	 * Kick off all the worker threads first, avoiding the pre-assigned
+	 * lcore_ids for tx, rx and distributor workloads.
+	 */
+	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+		if (lcore_id == (unsigned int)distr_core_id ||
+				lcore_id == (unsigned int)rx_core_id ||
+				lcore_id == (unsigned int)tx_core_id)
+			continue;
+		printf("Starting thread %d as worker, lcore_id %d\n",
+				worker_id, lcore_id);
+		struct lcore_params *p =
+			rte_malloc(NULL, sizeof(*p), 0);
+		if (!p)
+			rte_panic("malloc failure\n");
+		*p = (struct lcore_params){worker_id++, d, rx_dist_ring,
+			dist_tx_ring, mbuf_pool};
+
+		rte_eal_remote_launch((lcore_function_t *)lcore_worker,
+				p, lcore_id);
+	}
+
+	/* Start tx core */
+	rte_eal_remote_launch((lcore_function_t *)lcore_tx,
+			dist_tx_ring, tx_core_id);
+
+	/* Start distributor core */
+	struct lcore_params *pd =
+		rte_malloc(NULL, sizeof(*pd), 0);
+	if (!pd)
+		rte_panic("malloc failure\n");
+	*pd = (struct lcore_params){worker_id++, d,
+		rx_dist_ring, dist_tx_ring, mbuf_pool};
+	rte_eal_remote_launch(
+			(lcore_function_t *)lcore_distributor,
+			pd, distr_core_id);
+
+	/* Start rx core */
+	struct lcore_params *pr =
+		rte_malloc(NULL, sizeof(*pr), 0);
+	if (!pr)
+		rte_panic("malloc failure\n");
+	*pr = (struct lcore_params){worker_id++, d, rx_dist_ring,
+		dist_tx_ring, mbuf_pool};
+	rte_eal_remote_launch((lcore_function_t *)lcore_rx,
+			pr, rx_core_id);
 
 	freq = rte_get_timer_hz();
 	t = rte_rdtsc() + freq;
@@ -806,5 +911,9 @@ main(int argc, char *argv[])
 	}
 
 	print_stats();
+
+	rte_free(pd);
+	rte_free(pr);
+
 	return 0;
 }
