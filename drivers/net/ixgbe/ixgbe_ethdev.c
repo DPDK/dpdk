@@ -2702,6 +2702,10 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 		allowed_speeds = ETH_LINK_SPEED_100M | ETH_LINK_SPEED_1G |
 			ETH_LINK_SPEED_2_5G |  ETH_LINK_SPEED_5G |
 			ETH_LINK_SPEED_10G;
+		if (hw->device_id == IXGBE_DEV_ID_X550EM_A_1G_T ||
+				hw->device_id == IXGBE_DEV_ID_X550EM_A_1G_T_L)
+			allowed_speeds = ETH_LINK_SPEED_10M |
+				ETH_LINK_SPEED_100M | ETH_LINK_SPEED_1G;
 		break;
 	default:
 		allowed_speeds = ETH_LINK_SPEED_100M | ETH_LINK_SPEED_1G |
@@ -2743,6 +2747,8 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 			speed |= IXGBE_LINK_SPEED_1GB_FULL;
 		if (*link_speeds & ETH_LINK_SPEED_100M)
 			speed |= IXGBE_LINK_SPEED_100_FULL;
+		if (*link_speeds & ETH_LINK_SPEED_10M)
+			speed |= IXGBE_LINK_SPEED_10_FULL;
 	}
 
 	err = ixgbe_setup_link(hw, speed, link_up);
@@ -4061,8 +4067,12 @@ ixgbe_dev_link_update_share(struct rte_eth_dev *dev,
 	switch (link_speed) {
 	default:
 	case IXGBE_LINK_SPEED_UNKNOWN:
+		if (hw->device_id == IXGBE_DEV_ID_X550EM_A_1G_T ||
+			hw->device_id == IXGBE_DEV_ID_X550EM_A_1G_T_L)
+			link.link_speed = ETH_SPEED_NUM_10M;
+		else
+			link.link_speed = ETH_SPEED_NUM_100M;
 		link.link_duplex = ETH_LINK_FULL_DUPLEX;
-		link.link_speed = ETH_SPEED_NUM_100M;
 		break;
 
 	case IXGBE_LINK_SPEED_100_FULL:
