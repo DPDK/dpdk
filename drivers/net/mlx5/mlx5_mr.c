@@ -1031,9 +1031,6 @@ mlx5_rx_addr2mr_bh(struct mlx5_rxq_data *rxq, uintptr_t addr)
 	struct mlx5_mr_ctrl *mr_ctrl = &rxq->mr_ctrl;
 	struct mlx5_priv *priv = rxq_ctrl->priv;
 
-	DRV_LOG(DEBUG,
-		"Rx queue %u: miss on top-half, mru=%u, head=%u, addr=%p",
-		rxq_ctrl->idx, mr_ctrl->mru, mr_ctrl->head, (void *)addr);
 	return mlx5_mr_addr2mr_bh(ETH_DEV(priv), mr_ctrl, addr);
 }
 
@@ -1056,9 +1053,6 @@ mlx5_tx_addr2mr_bh(struct mlx5_txq_data *txq, uintptr_t addr)
 	struct mlx5_mr_ctrl *mr_ctrl = &txq->mr_ctrl;
 	struct mlx5_priv *priv = txq_ctrl->priv;
 
-	DRV_LOG(DEBUG,
-		"Tx queue %u: miss on top-half, mru=%u, head=%u, addr=%p",
-		txq_ctrl->idx, mr_ctrl->mru, mr_ctrl->head, (void *)addr);
 	return mlx5_mr_addr2mr_bh(ETH_DEV(priv), mr_ctrl, addr);
 }
 

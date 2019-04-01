@@ -1039,8 +1039,6 @@ mlx4_rx_addr2mr_bh(struct rxq *rxq, uintptr_t addr)
 	struct mlx4_mr_ctrl *mr_ctrl = &rxq->mr_ctrl;
 	struct mlx4_priv *priv = rxq->priv;
 
-	DEBUG("Rx queue %u: miss on top-half, mru=%u, head=%u, addr=%p",
-	      rxq->stats.idx, mr_ctrl->mru, mr_ctrl->head, (void *)addr);
 	return mlx4_mr_addr2mr_bh(ETH_DEV(priv), mr_ctrl, addr);
 }
 
@@ -1061,8 +1059,6 @@ mlx4_tx_addr2mr_bh(struct txq *txq, uintptr_t addr)
 	struct mlx4_mr_ctrl *mr_ctrl = &txq->mr_ctrl;
 	struct mlx4_priv *priv = txq->priv;
 
-	DEBUG("Tx queue %u: miss on top-half, mru=%u, head=%u, addr=%p",
-	      txq->stats.idx, mr_ctrl->mru, mr_ctrl->head, (void *)addr);
 	return mlx4_mr_addr2mr_bh(ETH_DEV(priv), mr_ctrl, addr);
 }
 
