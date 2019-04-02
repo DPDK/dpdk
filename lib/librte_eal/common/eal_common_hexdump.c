@@ -23,9 +23,16 @@ rte_hexdump(FILE *f, const char *title, const void *buf, unsigned int len)
 	while (ofs < len) {
 		/* format the line in the buffer */
 		out = snprintf(line, LINE_LEN, "%08X:", ofs);
-		for (i = 0; i < 16 && ofs + i < len; i++)
-			out += snprintf(line + out, LINE_LEN - out,
+		for (i = 0; i < 16; i++) {
+			if (ofs + i < len)
+				snprintf(line + out, LINE_LEN - out,
 					 " %02X", (data[ofs + i] & 0xff));
+			else
+				strcpy(line + out, "   ");
+			out += 3;
+		}
+
+
 		for (; i <= 16; i++)
 			out += snprintf(line + out, LINE_LEN - out, " | ");
 
