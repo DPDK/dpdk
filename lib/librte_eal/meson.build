@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright(c) 2017 Intel Corporation
+# Copyright(c) 2017-2019 Intel Corporation
 
 # Custom EAL processing. EAL is complicated enough that it can't just
 # have a straight list of headers and source files.
@@ -16,6 +16,10 @@ if host_machine.system() == 'linux'
 elif host_machine.system() == 'freebsd'
 	dpdk_conf.set('RTE_EXEC_ENV_FREEBSD', 1)
 	subdir('freebsd/eal')
+
+elif host_machine.system() == 'windows'
+	dpdk_conf.set('RTE_EXEC_ENV_WINDOWS', 1)
+	subdir('windows/eal')
 
 else
 	error('unsupported system type "@0@"'.format(host_machine.system()))

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright(c) 2017 Intel Corporation
+# Copyright(c) 2017-2019 Intel Corporation
 
 # set the major version, which might be used by drivers and libraries
 # depending on the configuration options
@@ -80,18 +80,27 @@ dpdk_extra_ldflags += '-Wl,--no-as-needed'
 add_project_link_arguments('-pthread', language: 'c')
 dpdk_extra_ldflags += '-pthread'
 
-# some libs depend on maths lib
-add_project_link_arguments('-lm', language: 'c')
-dpdk_extra_ldflags += '-lm'
+# on some OS, maths functions are in a separate library
+if cc.find_library('libm', required : false).found()
+	# some libs depend on maths lib
+	add_project_link_arguments('-lm', language: 'c')
+	dpdk_extra_ldflags += '-lm'
+endif
 
 # for linux link against dl, for bsd execinfo
 if host_machine.system() == 'linux'
 	link_lib = 'dl'
-else
+elif host_machine.system() == 'freebsd'
 	link_lib = 'execinfo'
+else
+	link_lib = ''
 endif
-add_project_link_arguments('-l' + link_lib, language: 'c')
-dpdk_extra_ldflags += '-l' + link_lib
+
+# if link_lib is empty, do not add it to project properties
+if link_lib != ''
+	add_project_link_arguments('-l' + link_lib, language: 'c')
+	dpdk_extra_ldflags += '-l' + link_lib
+endif
 
 # check for libraries used in multiple places in DPDK
 has_libnuma = 0
