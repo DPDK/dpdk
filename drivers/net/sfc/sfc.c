@@ -747,8 +747,7 @@ sfc_attach(struct sfc_adapter *sa)
 	if (sa->priv.dp_tx->features & SFC_DP_TX_FEAT_TSO) {
 		sa->tso = encp->enc_fw_assisted_tso_v2_enabled;
 		if (!sa->tso)
-			sfc_warn(sa,
-				 "TSO support isn't available on this adapter");
+			sfc_info(sa, "TSO support isn't available on this adapter");
 	}
 
 	sfc_log_init(sa, "estimate resource limits");
