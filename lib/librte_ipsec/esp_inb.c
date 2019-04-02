@@ -18,7 +18,7 @@
 /*
  * setup crypto op and crypto sym op for ESP inbound tunnel packet.
  */
-static inline int32_t
+static inline void
 inb_cop_prepare(struct rte_crypto_op *cop,
 	const struct rte_ipsec_sa *sa, struct rte_mbuf *mb,
 	const union sym_op_data *icv, uint32_t pofs, uint32_t plen)
@@ -27,11 +27,7 @@ inb_cop_prepare(struct rte_crypto_op *cop,
 	struct aead_gcm_iv *gcm;
 	struct aesctr_cnt_blk *ctr;
 	uint64_t *ivc, *ivp;
-	uint32_t algo, clen;
-
-	clen = plen - sa->ctp.cipher.length;
-	if ((int32_t)clen < 0 || (clen & (sa->pad_align - 1)) != 0)
-		return -EINVAL;
+	uint32_t algo;
 
 	algo = sa->algo_type;
 
@@ -41,7 +37,7 @@ inb_cop_prepare(struct rte_crypto_op *cop,
 	switch (algo) {
 	case ALGO_TYPE_AES_GCM:
 		sop->aead.data.offset = pofs + sa->ctp.cipher.offset;
-		sop->aead.data.length = clen;
+		sop->aead.data.length = plen - sa->ctp.cipher.length;
 		sop->aead.digest.data = icv->va;
 		sop->aead.digest.phys_addr = icv->pa;
 		sop->aead.aad.data = icv->va + sa->icv_len;
@@ -57,7 +53,7 @@ inb_cop_prepare(struct rte_crypto_op *cop,
 	case ALGO_TYPE_AES_CBC:
 	case ALGO_TYPE_3DES_CBC:
 		sop->cipher.data.offset = pofs + sa->ctp.cipher.offset;
-		sop->cipher.data.length = clen;
+		sop->cipher.data.length = plen - sa->ctp.cipher.length;
 		sop->auth.data.offset = pofs + sa->ctp.auth.offset;
 		sop->auth.data.length = plen - sa->ctp.auth.length;
 		sop->auth.digest.data = icv->va;
@@ -71,7 +67,7 @@ inb_cop_prepare(struct rte_crypto_op *cop,
 		break;
 	case ALGO_TYPE_AES_CTR:
 		sop->cipher.data.offset = pofs + sa->ctp.cipher.offset;
-		sop->cipher.data.length = clen;
+		sop->cipher.data.length = plen - sa->ctp.cipher.length;
 		sop->auth.data.offset = pofs + sa->ctp.auth.offset;
 		sop->auth.data.length = plen - sa->ctp.auth.length;
 		sop->auth.digest.data = icv->va;
@@ -86,17 +82,13 @@ inb_cop_prepare(struct rte_crypto_op *cop,
 		break;
 	case ALGO_TYPE_NULL:
 		sop->cipher.data.offset = pofs + sa->ctp.cipher.offset;
-		sop->cipher.data.length = clen;
+		sop->cipher.data.length = plen - sa->ctp.cipher.length;
 		sop->auth.data.offset = pofs + sa->ctp.auth.offset;
 		sop->auth.data.length = plen - sa->ctp.auth.length;
 		sop->auth.digest.data = icv->va;
 		sop->auth.digest.phys_addr = icv->pa;
 		break;
-	default:
-		return -EINVAL;
 	}
-
-	return 0;
 }
 
 /*
@@ -132,7 +124,7 @@ inb_pkt_prepare(const struct rte_ipsec_sa *sa, const struct replay_sqn *rsn,
 {
 	int32_t rc;
 	uint64_t sqn;
-	uint32_t icv_ofs, plen;
+	uint32_t clen, icv_ofs, plen;
 	struct rte_mbuf *ml;
 	struct esp_hdr *esph;
 
@@ -158,6 +150,11 @@ inb_pkt_prepare(const struct rte_ipsec_sa *sa, const struct replay_sqn *rsn,
 
 	ml = rte_pktmbuf_lastseg(mb);
 	icv_ofs = ml->data_len - sa->icv_len + sa->sqh_len;
+
+	/* check that packet has a valid length */
+	clen = plen - sa->ctp.cipher.length;
+	if ((int32_t)clen < 0 || (clen & (sa->pad_align - 1)) != 0)
+		return -EBADMSG;
 
 	/* we have to allocate space for AAD somewhere,
 	 * right now - just use free trailing space at the last segment.
@@ -201,21 +198,19 @@ esp_inb_pkt_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 		rc = inb_pkt_prepare(sa, rsn, mb[i], hl, &icv);
 		if (rc >= 0) {
 			lksd_none_cop_prepare(cop[k], cs, mb[i]);
-			rc = inb_cop_prepare(cop[k], sa, mb[i], &icv, hl, rc);
-		}
-
-		k += (rc == 0);
-		if (rc != 0) {
+			inb_cop_prepare(cop[k], sa, mb[i], &icv, hl, rc);
+			k++;
+		} else
 			dr[i - k] = i;
-			rte_errno = -rc;
-		}
 	}
 
 	rsn_release(sa, rsn);
 
 	/* copy not prepared mbufs beyond good ones */
-	if (k != num && k != 0)
+	if (k != num && k != 0) {
 		move_bad_mbufs(mb, dr, num, num - k);
+		rte_errno = EBADMSG;
+	}
 
 	return k;
 }
