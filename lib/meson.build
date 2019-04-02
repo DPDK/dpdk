@@ -30,6 +30,10 @@ libraries = [
 	# flow_classify lib depends on pkt framework table lib
 	'flow_classify', 'bpf', 'telemetry']
 
+if host_machine.system() == 'windows'
+	libraries = ['kvargs','eal'] # only supported libraries for windows
+endif
+
 default_cflags = machine_args
 if cc.has_argument('-Wno-format-truncation')
 	default_cflags += '-Wno-format-truncation'

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright(c) 2017 Intel Corporation
+# Copyright(c) 2017-2019 Intel Corporation
 
 driver_libs = []
 if get_option('default_library') == 'static'
@@ -36,6 +36,9 @@ foreach example: examples
 	ext_deps = [execinfo]
 	includes = [include_directories(example)]
 	deps = ['eal', 'mempool', 'net', 'mbuf', 'ethdev', 'cmdline']
+	if host_machine.system() == 'windows'
+		deps = ['eal'] # only supported lib on Windows currently
+	endif
 	subdir(example)
 
 	if build
