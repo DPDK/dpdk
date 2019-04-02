@@ -190,6 +190,14 @@ pkt_burst_transmit(struct fwd_stream *fs)
 		ol_flags |= PKT_TX_QINQ_PKT;
 	if (tx_offloads & DEV_TX_OFFLOAD_MACSEC_INSERT)
 		ol_flags |= PKT_TX_MACSEC;
+
+	/*
+	 * Initialize Ethernet header.
+	 */
+	ether_addr_copy(&peer_eth_addrs[fs->peer_addr], &eth_hdr.d_addr);
+	ether_addr_copy(&ports[fs->tx_port].eth_addr, &eth_hdr.s_addr);
+	eth_hdr.ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
+
 	for (nb_pkt = 0; nb_pkt < nb_pkt_per_burst; nb_pkt++) {
 		pkt = rte_mbuf_raw_alloc(mbp);
 		if (pkt == NULL) {
@@ -225,13 +233,6 @@ pkt_burst_transmit(struct fwd_stream *fs)
 			pkt_len += pkt_seg->data_len;
 		}
 		pkt_seg->next = NULL; /* Last segment of packet. */
-
-		/*
-		 * Initialize Ethernet header.
-		 */
-		ether_addr_copy(&peer_eth_addrs[fs->peer_addr],&eth_hdr.d_addr);
-		ether_addr_copy(&ports[fs->tx_port].eth_addr, &eth_hdr.s_addr);
-		eth_hdr.ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
 
 		/*
 		 * Copy headers in first packet segment(s).
