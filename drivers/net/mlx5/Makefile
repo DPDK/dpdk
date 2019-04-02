@@ -163,7 +163,7 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 	$Q sh -- '$<' '$@' \
 		HAVE_IBV_FLOW_DEVX_COUNTERS \
 		infiniband/mlx5dv.h \
-		enum MLX5DV_FLOW_ACTION_COUNTER_DEVX \
+		enum MLX5DV_FLOW_ACTION_COUNTERS_DEVX \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
 		HAVE_ETHTOOL_LINK_MODE_25G \

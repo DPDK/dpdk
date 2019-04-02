@@ -36,7 +36,7 @@
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 
 #ifndef HAVE_IBV_FLOW_DEVX_COUNTERS
-#define MLX5DV_FLOW_ACTION_COUNTER_DEVX 0
+#define MLX5DV_FLOW_ACTION_COUNTERS_DEVX 0
 #endif
 
 union flow_dv_attr {
@@ -2939,7 +2939,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			if (flow->counter == NULL)
 				goto cnt_err;
 			dev_flow->dv.actions[actions_n].type =
-					MLX5DV_FLOW_ACTION_COUNTER_DEVX;
+					MLX5DV_FLOW_ACTION_COUNTERS_DEVX;
 			dev_flow->dv.actions[actions_n].obj =
 						flow->counter->dcs->obj;
 			action_flags |= MLX5_FLOW_ACTION_COUNT;

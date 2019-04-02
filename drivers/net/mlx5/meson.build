@@ -110,7 +110,7 @@ if build
 		[ 'HAVE_IBV_DEVX_OBJ', 'infiniband/mlx5dv.h',
 		'mlx5dv_devx_obj_create' ],
 		[ 'HAVE_IBV_FLOW_DEVX_COUNTERS', 'infiniband/mlx5dv.h',
-		'MLX5DV_FLOW_ACTION_COUNTER_DEVX' ],
+		'MLX5DV_FLOW_ACTION_COUNTERS_DEVX' ],
 		[ 'HAVE_SUPPORTED_40000baseKR4_Full', 'linux/ethtool.h',
 		'SUPPORTED_40000baseKR4_Full' ],
 		[ 'HAVE_SUPPORTED_40000baseCR4_Full', 'linux/ethtool.h',
