@@ -41,6 +41,12 @@
 #define READ_PASS_SHIFT_PATH 4
 #define READ_PASS_NON_SHIFT_PATH 8
 #define BULK_LOOKUP 16
+#define READ_PASS_KEY_SHIFTS_EXTBKT 32
+
+#define WRITE_NO_KEY_SHIFT 0
+#define WRITE_KEY_SHIFT 1
+#define WRITE_EXT_BKT 2
+
 #define NUM_TEST 3
 unsigned int rwc_core_cnt[NUM_TEST] = {1, 2, 4};
 
@@ -51,6 +57,7 @@ struct rwc_perf {
 	uint32_t w_ks_r_hit_sp[2][NUM_TEST];
 	uint32_t w_ks_r_miss[2][NUM_TEST];
 	uint32_t multi_rw[NUM_TEST - 1][2][NUM_TEST];
+	uint32_t w_ks_r_hit_extbkt[2][NUM_TEST];
 };
 
 static struct rwc_perf rwc_lf_results, rwc_non_lf_results;
@@ -62,11 +69,15 @@ struct {
 	uint32_t *keys_absent;
 	uint32_t *keys_shift_path;
 	uint32_t *keys_non_shift_path;
+	uint32_t *keys_ext_bkt;
+	uint32_t *keys_ks_extbkt;
 	uint32_t count_keys_no_ks;
 	uint32_t count_keys_ks;
 	uint32_t count_keys_absent;
 	uint32_t count_keys_shift_path;
 	uint32_t count_keys_non_shift_path;
+	uint32_t count_keys_extbkt;
+	uint32_t count_keys_ks_extbkt;
 	uint32_t single_insert;
 	struct rte_hash *h;
 } tbl_rwc_test_param;
@@ -80,6 +91,35 @@ static volatile uint8_t multi_writer_done[4];
 uint16_t enabled_core_ids[RTE_MAX_LCORE];
 
 uint8_t *scanned_bkts;
+
+static inline uint16_t
+get_short_sig(const hash_sig_t hash)
+{
+	return hash >> 16;
+}
+
+static inline uint32_t
+get_prim_bucket_index(__attribute__((unused)) const struct rte_hash *h,
+		      const hash_sig_t hash)
+{
+	uint32_t num_buckets;
+	uint32_t bucket_bitmask;
+	num_buckets  = rte_align32pow2(TOTAL_ENTRY) / 8;
+	bucket_bitmask = num_buckets - 1;
+	return hash & bucket_bitmask;
+}
+
+static inline uint32_t
+get_alt_bucket_index(__attribute__((unused)) const struct rte_hash *h,
+			uint32_t cur_bkt_idx, uint16_t sig)
+{
+	uint32_t num_buckets;
+	uint32_t bucket_bitmask;
+	num_buckets  = rte_align32pow2(TOTAL_ENTRY) / 8;
+	bucket_bitmask = num_buckets - 1;
+	return (cur_bkt_idx ^ sig) & bucket_bitmask;
+}
+
 
 static inline int
 get_enabled_cores_list(void)
@@ -168,9 +208,12 @@ generate_keys(void)
 	uint32_t *keys_ks = NULL;
 	uint32_t *keys_absent = NULL;
 	uint32_t *keys_non_shift_path = NULL;
+	uint32_t *keys_ext_bkt = NULL;
+	uint32_t *keys_ks_extbkt = NULL;
 	uint32_t *found = NULL;
 	uint32_t count_keys_no_ks = 0;
 	uint32_t count_keys_ks = 0;
+	uint32_t count_keys_extbkt = 0;
 	uint32_t i;
 
 	/*
@@ -251,14 +294,32 @@ generate_keys(void)
 		goto err;
 	}
 
+	/*
+	 * This consist of keys which will be stored in extended buckets
+	 */
+	keys_ext_bkt = rte_malloc(NULL, sizeof(uint32_t) * TOTAL_INSERT, 0);
+	if (keys_ext_bkt == NULL) {
+		printf("RTE_MALLOC failed\n");
+		goto err;
+	}
+
+	/*
+	 * This consist of keys which when deleted causes shifting of keys
+	 * in extended buckets to respective secondary buckets
+	 */
+	keys_ks_extbkt = rte_malloc(NULL, sizeof(uint32_t) * TOTAL_INSERT, 0);
+	if (keys_ks_extbkt == NULL) {
+		printf("RTE_MALLOC failed\n");
+		goto err;
+	}
 
 	hash_sig_t sig;
 	uint32_t prim_bucket_idx;
-	int ret;
+	uint32_t sec_bucket_idx;
+	uint16_t short_sig;
 	uint32_t num_buckets;
-	uint32_t bucket_bitmask;
 	num_buckets  = rte_align32pow2(TOTAL_ENTRY) / 8;
-	bucket_bitmask = num_buckets - 1;
+	int ret;
 
 	/*
 	 * Used to mark bkts in which at least one key was shifted to its
@@ -275,6 +336,8 @@ generate_keys(void)
 	tbl_rwc_test_param.keys_ks = keys_ks;
 	tbl_rwc_test_param.keys_absent = keys_absent;
 	tbl_rwc_test_param.keys_non_shift_path = keys_non_shift_path;
+	tbl_rwc_test_param.keys_ext_bkt = keys_ext_bkt;
+	tbl_rwc_test_param.keys_ks_extbkt = keys_ks_extbkt;
 	/* Generate keys by adding previous two keys, neglect overflow */
 	printf("Generating keys...\n");
 	keys[0] = 0;
@@ -287,7 +350,8 @@ generate_keys(void)
 		/* Check if primary bucket has space.*/
 		sig = rte_hash_hash(tbl_rwc_test_param.h,
 					tbl_rwc_test_param.keys+i);
-		prim_bucket_idx = sig & bucket_bitmask;
+		prim_bucket_idx = get_prim_bucket_index(tbl_rwc_test_param.h,
+							sig);
 		ret = check_bucket(prim_bucket_idx, keys[i]);
 		if (ret < 0) {
 			/*
@@ -368,6 +432,47 @@ generate_keys(void)
 	tbl_rwc_test_param.count_keys_absent = count_keys_absent;
 	tbl_rwc_test_param.count_keys_non_shift_path = count;
 
+	memset(scanned_bkts, 0, num_buckets);
+	count = 0;
+	/* Find keys that will be in extended buckets */
+	for (i = 0; i < count_keys_ks; i++) {
+		ret = rte_hash_add_key(tbl_rwc_test_param.h, keys_ks + i);
+		if (ret < 0) {
+			/* Key will be added to ext bkt */
+			keys_ext_bkt[count_keys_extbkt++] = keys_ks[i];
+			/* Sec bkt to be added to keys_ks_extbkt */
+			sig = rte_hash_hash(tbl_rwc_test_param.h,
+					tbl_rwc_test_param.keys_ks + i);
+			prim_bucket_idx = get_prim_bucket_index(
+						tbl_rwc_test_param.h, sig);
+			short_sig = get_short_sig(sig);
+			sec_bucket_idx = get_alt_bucket_index(
+						tbl_rwc_test_param.h,
+						prim_bucket_idx, short_sig);
+			if (scanned_bkts[sec_bucket_idx] == 0)
+				scanned_bkts[sec_bucket_idx] = 1;
+		}
+	}
+
+	/* Find keys that will shift keys in ext bucket*/
+	for (i = 0; i < num_buckets; i++) {
+		if (scanned_bkts[i] == 1) {
+			iter = i * 8;
+			while (rte_hash_iterate(tbl_rwc_test_param.h,
+				&next_key, &next_data, &iter) >= 0) {
+				/* Check if key belongs to the current bucket */
+				if (i >= (iter-1)/8)
+					keys_ks_extbkt[count++]
+						= *(const uint32_t *)next_key;
+				else
+					break;
+			}
+		}
+	}
+
+	tbl_rwc_test_param.count_keys_ks_extbkt = count;
+	tbl_rwc_test_param.count_keys_extbkt = count_keys_extbkt;
+
 	printf("\nCount of keys NOT causing shifting of existing keys to "
 	"alternate location: %d\n", tbl_rwc_test_param.count_keys_no_ks);
 	printf("\nCount of keys causing shifting of existing keys to alternate "
@@ -378,6 +483,10 @@ generate_keys(void)
 	       tbl_rwc_test_param.count_keys_shift_path);
 	printf("Count of keys not likely to be on the shift path: %d\n\n",
 	       tbl_rwc_test_param.count_keys_non_shift_path);
+	printf("Count of keys in extended buckets: %d\n\n",
+	       tbl_rwc_test_param.count_keys_extbkt);
+	printf("Count of keys shifting keys in ext buckets: %d\n\n",
+	       tbl_rwc_test_param.count_keys_ks_extbkt);
 
 	rte_free(found);
 	rte_hash_free(tbl_rwc_test_param.h);
@@ -390,12 +499,14 @@ err:
 	rte_free(keys_absent);
 	rte_free(found);
 	rte_free(tbl_rwc_test_param.keys_shift_path);
+	rte_free(keys_ext_bkt);
+	rte_free(keys_ks_extbkt);
 	rte_free(scanned_bkts);
 	return -1;
 }
 
 static int
-init_params(int rwc_lf, int use_jhash, int htm)
+init_params(int rwc_lf, int use_jhash, int htm, int ext_bkt)
 {
 	struct rte_hash *handle;
 
@@ -425,6 +536,9 @@ init_params(int rwc_lf, int use_jhash, int htm)
 			RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY |
 			RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD;
 
+	if (ext_bkt)
+		hash_params.extra_flag |= RTE_HASH_EXTRA_FLAGS_EXT_TABLE;
+
 	hash_params.name = "tests";
 
 	handle = rte_hash_create(&hash_params);
@@ -452,7 +566,7 @@ test_rwc_reader(__attribute__((unused)) void *arg)
 	void *temp_a[BULK_LOOKUP_SIZE];
 
 	/* Used to identify keys not inserted in the hash table */
-	pos = rte_zmalloc(NULL, sizeof(uint32_t) * BULK_LOOKUP_SIZE, 0);
+	pos = rte_malloc(NULL, sizeof(uint32_t) * BULK_LOOKUP_SIZE, 0);
 	if (pos == NULL) {
 		printf("RTE_MALLOC failed\n");
 		return -1;
@@ -467,6 +581,9 @@ test_rwc_reader(__attribute__((unused)) void *arg)
 	} else if (read_type & READ_PASS_SHIFT_PATH) {
 		keys = tbl_rwc_test_param.keys_shift_path;
 		read_cnt = tbl_rwc_test_param.count_keys_shift_path;
+	} else if (read_type & READ_PASS_KEY_SHIFTS_EXTBKT) {
+		keys = tbl_rwc_test_param.keys_ext_bkt;
+		read_cnt = tbl_rwc_test_param.count_keys_extbkt;
 	} else {
 		keys = tbl_rwc_test_param.keys_non_shift_path;
 		read_cnt = tbl_rwc_test_param.count_keys_non_shift_path;
@@ -482,7 +599,6 @@ test_rwc_reader(__attribute__((unused)) void *arg)
 				/* Array of  pointer to the list of keys */
 				for (j = 0; j < BULK_LOOKUP_SIZE; j++)
 					temp_a[j] = keys + i + j;
-
 				rte_hash_lookup_bulk(tbl_rwc_test_param.h,
 						   (const void **)
 						   ((uintptr_t)temp_a),
@@ -539,22 +655,25 @@ test_rwc_reader(__attribute__((unused)) void *arg)
 }
 
 static int
-write_keys(uint8_t key_shift)
+write_keys(uint8_t write_type)
 {
 	uint32_t i;
 	int ret;
-	uint32_t key_cnt;
+	uint32_t key_cnt = 0;
 	uint32_t *keys;
-	if (key_shift) {
+	if (write_type == WRITE_KEY_SHIFT) {
 		key_cnt = tbl_rwc_test_param.count_keys_ks;
 		keys = tbl_rwc_test_param.keys_ks;
-	} else {
+	} else if (write_type == WRITE_NO_KEY_SHIFT) {
 		key_cnt = tbl_rwc_test_param.count_keys_no_ks;
 		keys = tbl_rwc_test_param.keys_no_ks;
+	} else if (write_type == WRITE_EXT_BKT) {
+		key_cnt = tbl_rwc_test_param.count_keys_extbkt;
+		keys = tbl_rwc_test_param.keys_ext_bkt;
 	}
 	for (i = 0; i < key_cnt; i++) {
 		ret = rte_hash_add_key(tbl_rwc_test_param.h, keys + i);
-		if (!key_shift && ret < 0) {
+		if ((write_type == WRITE_NO_KEY_SHIFT) && ret < 0) {
 			printf("writer failed %"PRIu32"\n", i);
 			return -1;
 		}
@@ -581,18 +700,18 @@ test_rwc_multi_writer(__attribute__((unused)) void *arg)
  */
 static int
 test_hash_add_no_ks_lookup_hit(struct rwc_perf *rwc_perf_results, int rwc_lf,
-				int htm)
+				int htm, int ext_bkt)
 {
 	unsigned int n, m;
 	uint64_t i;
 	int use_jhash = 0;
-	uint8_t key_shift = 0;
+	uint8_t write_type = WRITE_NO_KEY_SHIFT;
 	uint8_t read_type = READ_PASS_NO_KEY_SHIFTS;
 
 	rte_atomic64_init(&greads);
 	rte_atomic64_init(&gread_cycles);
 
-	if (init_params(rwc_lf, use_jhash, htm) != 0)
+	if (init_params(rwc_lf, use_jhash, htm, ext_bkt) != 0)
 		goto err;
 	printf("\nTest: Hash add - no key-shifts, read - hit\n");
 	for (m = 0; m < 2; m++) {
@@ -612,7 +731,7 @@ test_hash_add_no_ks_lookup_hit(struct rwc_perf *rwc_perf_results, int rwc_lf,
 
 			rte_hash_reset(tbl_rwc_test_param.h);
 			writer_done = 0;
-			if (write_keys(key_shift) < 0)
+			if (write_keys(write_type) < 0)
 				goto err;
 			writer_done = 1;
 			for (i = 1; i <= rwc_core_cnt[n]; i++)
@@ -650,19 +769,19 @@ err:
  */
 static int
 test_hash_add_no_ks_lookup_miss(struct rwc_perf *rwc_perf_results, int rwc_lf,
-				int htm)
+				int htm, int ext_bkt)
 {
 	unsigned int n, m;
 	uint64_t i;
 	int use_jhash = 0;
-	uint8_t key_shift = 0;
+	uint8_t write_type = WRITE_NO_KEY_SHIFT;
 	uint8_t read_type = READ_FAIL;
 	int ret;
 
 	rte_atomic64_init(&greads);
 	rte_atomic64_init(&gread_cycles);
 
-	if (init_params(rwc_lf, use_jhash, htm) != 0)
+	if (init_params(rwc_lf, use_jhash, htm, ext_bkt) != 0)
 		goto err;
 	printf("\nTest: Hash add - no key-shifts, Hash lookup - miss\n");
 	for (m = 0; m < 2; m++) {
@@ -687,7 +806,7 @@ test_hash_add_no_ks_lookup_miss(struct rwc_perf *rwc_perf_results, int rwc_lf,
 				rte_eal_remote_launch(test_rwc_reader,
 						(void *)(uintptr_t)read_type,
 							enabled_core_ids[i]);
-			ret = write_keys(key_shift);
+			ret = write_keys(write_type);
 			writer_done = 1;
 			rte_eal_mp_wait_lcore();
 
@@ -722,19 +841,19 @@ err:
  */
 static int
 test_hash_add_ks_lookup_hit_non_sp(struct rwc_perf *rwc_perf_results,
-				    int rwc_lf, int htm)
+				    int rwc_lf, int htm, int ext_bkt)
 {
 	unsigned int n, m;
 	uint64_t i;
 	int use_jhash = 0;
 	int ret;
-	uint8_t key_shift;
+	uint8_t write_type;
 	uint8_t read_type = READ_PASS_NON_SHIFT_PATH;
 
 	rte_atomic64_init(&greads);
 	rte_atomic64_init(&gread_cycles);
 
-	if (init_params(rwc_lf, use_jhash, htm) != 0)
+	if (init_params(rwc_lf, use_jhash, htm, ext_bkt) != 0)
 		goto err;
 	printf("\nTest: Hash add - key shift, Hash lookup - hit"
 	       " (non-shift-path)\n");
@@ -755,15 +874,15 @@ test_hash_add_ks_lookup_hit_non_sp(struct rwc_perf *rwc_perf_results,
 
 			rte_hash_reset(tbl_rwc_test_param.h);
 			writer_done = 0;
-			key_shift = 0;
-			if (write_keys(key_shift) < 0)
+			write_type = WRITE_NO_KEY_SHIFT;
+			if (write_keys(write_type) < 0)
 				goto err;
 			for (i = 1; i <= rwc_core_cnt[n]; i++)
 				rte_eal_remote_launch(test_rwc_reader,
 						(void *)(uintptr_t)read_type,
 							enabled_core_ids[i]);
-			key_shift = 1;
-			ret = write_keys(key_shift);
+			write_type = WRITE_KEY_SHIFT;
+			ret = write_keys(write_type);
 			writer_done = 1;
 			rte_eal_mp_wait_lcore();
 
@@ -798,19 +917,19 @@ err:
  */
 static int
 test_hash_add_ks_lookup_hit_sp(struct rwc_perf *rwc_perf_results, int rwc_lf,
-				int htm)
+				int htm, int ext_bkt)
 {
 	unsigned int n, m;
 	uint64_t i;
 	int use_jhash = 0;
 	int ret;
-	uint8_t key_shift;
+	uint8_t write_type;
 	uint8_t read_type = READ_PASS_SHIFT_PATH;
 
 	rte_atomic64_init(&greads);
 	rte_atomic64_init(&gread_cycles);
 
-	if (init_params(rwc_lf, use_jhash, htm) != 0)
+	if (init_params(rwc_lf, use_jhash, htm, ext_bkt) != 0)
 		goto err;
 	printf("\nTest: Hash add - key shift, Hash lookup - hit (shift-path)"
 	       "\n");
@@ -831,15 +950,15 @@ test_hash_add_ks_lookup_hit_sp(struct rwc_perf *rwc_perf_results, int rwc_lf,
 
 			rte_hash_reset(tbl_rwc_test_param.h);
 			writer_done = 0;
-			key_shift = 0;
-			if (write_keys(key_shift) < 0)
+			write_type = WRITE_NO_KEY_SHIFT;
+			if (write_keys(write_type) < 0)
 				goto err;
 			for (i = 1; i <= rwc_core_cnt[n]; i++)
 				rte_eal_remote_launch(test_rwc_reader,
 						(void *)(uintptr_t)read_type,
 						enabled_core_ids[i]);
-			key_shift = 1;
-			ret = write_keys(key_shift);
+			write_type = WRITE_KEY_SHIFT;
+			ret = write_keys(write_type);
 			writer_done = 1;
 			rte_eal_mp_wait_lcore();
 
@@ -874,19 +993,19 @@ err:
  */
 static int
 test_hash_add_ks_lookup_miss(struct rwc_perf *rwc_perf_results, int rwc_lf, int
-			     htm)
+			     htm, int ext_bkt)
 {
 	unsigned int n, m;
 	uint64_t i;
 	int use_jhash = 0;
 	int ret;
-	uint8_t key_shift;
+	uint8_t write_type;
 	uint8_t read_type = READ_FAIL;
 
 	rte_atomic64_init(&greads);
 	rte_atomic64_init(&gread_cycles);
 
-	if (init_params(rwc_lf, use_jhash, htm) != 0)
+	if (init_params(rwc_lf, use_jhash, htm, ext_bkt) != 0)
 		goto err;
 	printf("\nTest: Hash add - key shift, Hash lookup - miss\n");
 	for (m = 0; m < 2; m++) {
@@ -906,15 +1025,15 @@ test_hash_add_ks_lookup_miss(struct rwc_perf *rwc_perf_results, int rwc_lf, int
 
 			rte_hash_reset(tbl_rwc_test_param.h);
 			writer_done = 0;
-			key_shift = 0;
-			if (write_keys(key_shift) < 0)
+			write_type = WRITE_NO_KEY_SHIFT;
+			if (write_keys(write_type) < 0)
 				goto err;
 			for (i = 1; i <= rwc_core_cnt[n]; i++)
 				rte_eal_remote_launch(test_rwc_reader,
 						(void *)(uintptr_t)read_type,
 							enabled_core_ids[i]);
-			key_shift = 1;
-			ret = write_keys(key_shift);
+			write_type = WRITE_KEY_SHIFT;
+			ret = write_keys(write_type);
 			writer_done = 1;
 			rte_eal_mp_wait_lcore();
 
@@ -949,18 +1068,18 @@ err:
  */
 static int
 test_hash_multi_add_lookup(struct rwc_perf *rwc_perf_results, int rwc_lf,
-			   int htm)
+			   int htm, int ext_bkt)
 {
 	unsigned int n, m, k;
 	uint64_t i;
 	int use_jhash = 0;
-	uint8_t key_shift;
+	uint8_t write_type;
 	uint8_t read_type = READ_PASS_SHIFT_PATH;
 
 	rte_atomic64_init(&greads);
 	rte_atomic64_init(&gread_cycles);
 
-	if (init_params(rwc_lf, use_jhash, htm) != 0)
+	if (init_params(rwc_lf, use_jhash, htm, ext_bkt) != 0)
 		goto err;
 	printf("\nTest: Multi-add-lookup\n");
 	uint8_t pos_core;
@@ -991,8 +1110,8 @@ test_hash_multi_add_lookup(struct rwc_perf *rwc_perf_results, int rwc_lf,
 				writer_done = 0;
 				for (i = 0; i < 4; i++)
 					multi_writer_done[i] = 0;
-				key_shift = 0;
-				if (write_keys(key_shift) < 0)
+				write_type = WRITE_NO_KEY_SHIFT;
+				if (write_keys(write_type) < 0)
 					goto err;
 
 				/* Launch reader(s) */
@@ -1000,7 +1119,7 @@ test_hash_multi_add_lookup(struct rwc_perf *rwc_perf_results, int rwc_lf,
 					rte_eal_remote_launch(test_rwc_reader,
 						(void *)(uintptr_t)read_type,
 						enabled_core_ids[i]);
-				key_shift = 1;
+				write_type = WRITE_KEY_SHIFT;
 				pos_core = 0;
 
 				/* Launch writers */
@@ -1045,6 +1164,88 @@ err:
 	return -1;
 }
 
+/*
+ * Test lookup perf:
+ * Reader(s) lookup keys present in the extendable bkt.
+ */
+static int
+test_hash_add_ks_lookup_hit_extbkt(struct rwc_perf *rwc_perf_results,
+				int rwc_lf, int htm, int ext_bkt)
+{
+	unsigned int n, m;
+	uint64_t i;
+	int use_jhash = 0;
+	uint8_t write_type;
+	uint8_t read_type = READ_PASS_KEY_SHIFTS_EXTBKT;
+
+	rte_atomic64_init(&greads);
+	rte_atomic64_init(&gread_cycles);
+
+	if (init_params(rwc_lf, use_jhash, htm, ext_bkt) != 0)
+		goto err;
+	printf("\nTest: Hash add - key-shifts, read - hit (ext_bkt)\n");
+	for (m = 0; m < 2; m++) {
+		if (m == 1) {
+			printf("\n** With bulk-lookup **\n");
+			read_type |= BULK_LOOKUP;
+		}
+		for (n = 0; n < NUM_TEST; n++) {
+			unsigned int tot_lcore = rte_lcore_count();
+			if (tot_lcore < rwc_core_cnt[n] + 1)
+				goto finish;
+
+			printf("\nNumber of readers: %u\n", rwc_core_cnt[n]);
+
+			rte_atomic64_clear(&greads);
+			rte_atomic64_clear(&gread_cycles);
+
+			rte_hash_reset(tbl_rwc_test_param.h);
+			write_type = WRITE_NO_KEY_SHIFT;
+			if (write_keys(write_type) < 0)
+				goto err;
+			write_type = WRITE_KEY_SHIFT;
+			if (write_keys(write_type) < 0)
+				goto err;
+			writer_done = 0;
+			for (i = 1; i <= rwc_core_cnt[n]; i++)
+				rte_eal_remote_launch(test_rwc_reader,
+						(void *)(uintptr_t)read_type,
+							enabled_core_ids[i]);
+			for (i = 0; i < tbl_rwc_test_param.count_keys_ks_extbkt;
+			     i++) {
+				if (rte_hash_del_key(tbl_rwc_test_param.h,
+					tbl_rwc_test_param.keys_ks_extbkt + i)
+							< 0) {
+					printf("Delete Failed: %u\n",
+					tbl_rwc_test_param.keys_ks_extbkt[i]);
+					goto err;
+				}
+			}
+			writer_done = 1;
+			rte_eal_mp_wait_lcore();
+
+			for (i = 1; i <= rwc_core_cnt[n]; i++)
+				if (lcore_config[i].ret < 0)
+					goto err;
+
+			unsigned long long cycles_per_lookup =
+				rte_atomic64_read(&gread_cycles) /
+				rte_atomic64_read(&greads);
+			rwc_perf_results->w_ks_r_hit_extbkt[m][n]
+						= cycles_per_lookup;
+			printf("Cycles per lookup: %llu\n", cycles_per_lookup);
+		}
+	}
+
+finish:
+	rte_hash_free(tbl_rwc_test_param.h);
+	return 0;
+
+err:
+	rte_hash_free(tbl_rwc_test_param.h);
+	return -1;
+}
+
 static int
 test_hash_readwrite_lf_main(void)
 {
@@ -1057,6 +1258,7 @@ test_hash_readwrite_lf_main(void)
 	int rwc_lf = 0;
 	int htm;
 	int use_jhash = 0;
+	int ext_bkt = 0;
 	if (rte_lcore_count() == 1) {
 		printf("More than one lcore is required "
 			"to do read write lock-free concurrency test\n");
@@ -1070,7 +1272,7 @@ test_hash_readwrite_lf_main(void)
 	else
 		htm = 0;
 
-	if (init_params(rwc_lf, use_jhash, htm) != 0)
+	if (init_params(rwc_lf, use_jhash, htm, ext_bkt) != 0)
 		return -1;
 	if (generate_keys() != 0)
 		return -1;
@@ -1079,25 +1281,29 @@ test_hash_readwrite_lf_main(void)
 
 	if (RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF) {
 		rwc_lf = 1;
+		ext_bkt = 1;
 		printf("Test lookup with read-write concurrency lock free support"
 		       " enabled\n");
 		if (test_hash_add_no_ks_lookup_hit(&rwc_lf_results, rwc_lf,
-							htm) < 0)
+							htm, ext_bkt) < 0)
 			return -1;
 		if (test_hash_add_no_ks_lookup_miss(&rwc_lf_results, rwc_lf,
-							htm) < 0)
+							htm, ext_bkt) < 0)
 			return -1;
 		if (test_hash_add_ks_lookup_hit_non_sp(&rwc_lf_results, rwc_lf,
-							htm) < 0)
+							htm, ext_bkt) < 0)
 			return -1;
 		if (test_hash_add_ks_lookup_hit_sp(&rwc_lf_results, rwc_lf,
-							htm) < 0)
+							htm, ext_bkt) < 0)
 			return -1;
-		if (test_hash_add_ks_lookup_miss(&rwc_lf_results, rwc_lf, htm)
-							< 0)
+		if (test_hash_add_ks_lookup_miss(&rwc_lf_results, rwc_lf, htm,
+						 ext_bkt) < 0)
 			return -1;
-		if (test_hash_multi_add_lookup(&rwc_lf_results, rwc_lf, htm)
-							< 0)
+		if (test_hash_multi_add_lookup(&rwc_lf_results, rwc_lf, htm,
+					       ext_bkt) < 0)
+			return -1;
+		if (test_hash_add_ks_lookup_hit_extbkt(&rwc_lf_results, rwc_lf,
+							htm, ext_bkt) < 0)
 			return -1;
 	}
 	printf("\nTest lookup with read-write concurrency lock free support"
@@ -1112,21 +1318,26 @@ test_hash_readwrite_lf_main(void)
 		}
 	} else
 		printf("With HTM Enabled\n");
-	if (test_hash_add_no_ks_lookup_hit(&rwc_non_lf_results, rwc_lf, htm)
-						< 0)
+	if (test_hash_add_no_ks_lookup_hit(&rwc_non_lf_results, rwc_lf, htm,
+					   ext_bkt) < 0)
 		return -1;
-	if (test_hash_add_no_ks_lookup_miss(&rwc_non_lf_results, rwc_lf, htm)
-						< 0)
+	if (test_hash_add_no_ks_lookup_miss(&rwc_non_lf_results, rwc_lf, htm,
+						ext_bkt) < 0)
 		return -1;
 	if (test_hash_add_ks_lookup_hit_non_sp(&rwc_non_lf_results, rwc_lf,
-						htm) < 0)
+						htm, ext_bkt) < 0)
 		return -1;
-	if (test_hash_add_ks_lookup_hit_sp(&rwc_non_lf_results, rwc_lf, htm)
-						< 0)
+	if (test_hash_add_ks_lookup_hit_sp(&rwc_non_lf_results, rwc_lf, htm,
+						ext_bkt) < 0)
 		return -1;
-	if (test_hash_add_ks_lookup_miss(&rwc_non_lf_results, rwc_lf, htm) < 0)
+	if (test_hash_add_ks_lookup_miss(&rwc_non_lf_results, rwc_lf, htm,
+					 ext_bkt) < 0)
 		return -1;
-	if (test_hash_multi_add_lookup(&rwc_non_lf_results, rwc_lf, htm) < 0)
+	if (test_hash_multi_add_lookup(&rwc_non_lf_results, rwc_lf, htm,
+							ext_bkt) < 0)
+		return -1;
+	if (test_hash_add_ks_lookup_hit_extbkt(&rwc_non_lf_results, rwc_lf,
+						htm, ext_bkt) < 0)
 		return -1;
 results:
 	printf("\n\t\t\t\t\t\t********** Results summary **********\n\n");
@@ -1158,8 +1369,11 @@ results:
 			       "(shift-path)\t\t%u\n\t\t\t\t\t\t\t\t",
 			       rwc_lf_results.w_ks_r_hit_sp[j][i]);
 			printf("Hash add - key-shifts, Hash lookup miss\t\t\t\t"
-				"%u\n\n\t\t\t\t",
+				"%u\n\t\t\t\t\t\t\t\t",
 				rwc_lf_results.w_ks_r_miss[j][i]);
+			printf("Hash add - key-shifts, Hash lookup hit (ext_bkt)\t\t"
+				"%u\n\n\t\t\t\t",
+				rwc_lf_results.w_ks_r_hit_extbkt[j][i]);
 
 			printf("Disabled\t");
 			if (htm)
@@ -1179,7 +1393,11 @@ results:
 			       "(shift-path)\t\t%u\n\t\t\t\t\t\t\t\t",
 			       rwc_non_lf_results.w_ks_r_hit_sp[j][i]);
 			printf("Hash add - key-shifts, Hash lookup miss\t\t\t\t"
-			       "%u\n", rwc_non_lf_results.w_ks_r_miss[j][i]);
+			       "%u\n\t\t\t\t\t\t\t\t",
+			       rwc_non_lf_results.w_ks_r_miss[j][i]);
+			printf("Hash add - key-shifts, Hash lookup hit (ext_bkt)\t\t"
+				"%u\n",
+				rwc_non_lf_results.w_ks_r_hit_extbkt[j][i]);
 
 			printf("_______\t\t_______\t\t_________\t___\t\t"
 			       "_________\t\t\t\t\t\t_________________\n");
