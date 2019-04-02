@@ -750,6 +750,62 @@ sfc_ef10_simple_tx_reap(struct sfc_ef10_txq *txq)
 			   txq->evq_read_ptr);
 }
 
+#ifdef RTE_LIBRTE_SFC_EFX_DEBUG
+static uint16_t
+sfc_ef10_simple_prepare_pkts(__rte_unused void *tx_queue,
+			     struct rte_mbuf **tx_pkts,
+			     uint16_t nb_pkts)
+{
+	uint16_t i;
+
+	for (i = 0; i < nb_pkts; i++) {
+		struct rte_mbuf *m = tx_pkts[i];
+		int ret;
+
+		ret = rte_validate_tx_offload(m);
+		if (unlikely(ret != 0)) {
+			/*
+			 * Negative error code is returned by
+			 * rte_validate_tx_offload(), but positive are used
+			 * inside net/sfc PMD.
+			 */
+			SFC_ASSERT(ret < 0);
+			rte_errno = -ret;
+			break;
+		}
+
+		/* ef10_simple does not support TSO and VLAN insertion */
+		if (unlikely(m->ol_flags &
+			     (PKT_TX_TCP_SEG | PKT_TX_VLAN_PKT))) {
+			rte_errno = ENOTSUP;
+			break;
+		}
+
+		/* ef10_simple does not support scattered packets */
+		if (unlikely(m->nb_segs != 1)) {
+			rte_errno = ENOTSUP;
+			break;
+		}
+
+		/*
+		 * ef10_simple requires fast-free which ignores reference
+		 * counters
+		 */
+		if (unlikely(rte_mbuf_refcnt_read(m) != 1)) {
+			rte_errno = ENOTSUP;
+			break;
+		}
+
+		/* ef10_simple requires single pool for all packets */
+		if (unlikely(m->pool != tx_pkts[0]->pool)) {
+			rte_errno = ENOTSUP;
+			break;
+		}
+	}
+
+	return i;
+}
+#endif
 
 static uint16_t
 sfc_ef10_simple_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
@@ -1068,5 +1124,8 @@ struct sfc_dp_tx sfc_ef10_simple_tx = {
 	.qstop			= sfc_ef10_tx_qstop,
 	.qreap			= sfc_ef10_tx_qreap,
 	.qdesc_status		= sfc_ef10_tx_qdesc_status,
+#ifdef RTE_LIBRTE_SFC_EFX_DEBUG
+	.pkt_prepare		= sfc_ef10_simple_prepare_pkts,
+#endif
 	.pkt_burst		= sfc_ef10_simple_xmit_pkts,
 };
