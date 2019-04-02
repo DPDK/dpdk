@@ -1,5 +1,5 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
-    Copyright(c) 2010-2014 Intel Corporation.
+    Copyright(c) 2010-2019 Intel Corporation.
 
 DPDK documentation
 ==================
@@ -9,6 +9,7 @@ DPDK documentation
 
    linux_gsg/index
    freebsd_gsg/index
+   windows_gsg/index
    sample_app_ug/index
    prog_guide/index
    howto/index
