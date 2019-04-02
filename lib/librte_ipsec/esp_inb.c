@@ -15,8 +15,11 @@
 #include "misc.h"
 #include "pad.h"
 
+typedef uint16_t (*esp_inb_process_t)(const struct rte_ipsec_sa *sa,
+	struct rte_mbuf *mb[], uint32_t sqn[], uint32_t dr[], uint16_t num);
+
 /*
- * setup crypto op and crypto sym op for ESP inbound tunnel packet.
+ * setup crypto op and crypto sym op for ESP inbound packet.
  */
 static inline void
 inb_cop_prepare(struct rte_crypto_op *cop,
@@ -216,111 +219,239 @@ esp_inb_pkt_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 }
 
 /*
- * process ESP inbound tunnel packet.
+ * Start with processing inbound packet.
+ * This is common part for both tunnel and transport mode.
+ * Extract information that will be needed later from mbuf metadata and
+ * actual packet data:
+ * - mbuf for packet's last segment
+ * - length of the L2/L3 headers
+ * - esp tail structure
  */
-static inline int
-inb_tun_single_pkt_process(struct rte_ipsec_sa *sa, struct rte_mbuf *mb,
-	uint32_t *sqn)
+static inline void
+process_step1(struct rte_mbuf *mb, uint32_t tlen, struct rte_mbuf **ml,
+	struct esp_tail *espt, uint32_t *hlen)
 {
-	uint32_t hlen, icv_len, tlen;
-	struct esp_hdr *esph;
-	struct esp_tail *espt;
-	struct rte_mbuf *ml;
-	char *pd;
+	const struct esp_tail *pt;
 
-	if (mb->ol_flags & PKT_RX_SEC_OFFLOAD_FAILED)
-		return -EBADMSG;
+	ml[0] = rte_pktmbuf_lastseg(mb);
+	hlen[0] = mb->l2_len + mb->l3_len;
+	pt = rte_pktmbuf_mtod_offset(ml[0], const struct esp_tail *,
+		ml[0]->data_len - tlen);
+	espt[0] = pt[0];
+}
 
-	icv_len = sa->icv_len;
+/*
+ * packet checks for transport mode:
+ * - no reported IPsec related failures in ol_flags
+ * - tail length is valid
+ * - padding bytes are valid
+ */
+static inline int32_t
+trs_process_check(const struct rte_mbuf *mb, const struct rte_mbuf *ml,
+	struct esp_tail espt, uint32_t hlen, uint32_t tlen)
+{
+	const uint8_t *pd;
+	int32_t ofs;
 
-	ml = rte_pktmbuf_lastseg(mb);
-	espt = rte_pktmbuf_mtod_offset(ml, struct esp_tail *,
-		ml->data_len - icv_len - sizeof(*espt));
+	ofs = ml->data_len - tlen;
+	pd = rte_pktmbuf_mtod_offset(ml, const uint8_t *, ofs);
 
-	/*
-	 * check padding and next proto.
-	 * return an error if something is wrong.
-	 */
-	pd = (char *)espt - espt->pad_len;
-	if (espt->next_proto != sa->proto ||
-			memcmp(pd, esp_pad_bytes, espt->pad_len))
-		return -EINVAL;
+	return ((mb->ol_flags & PKT_RX_SEC_OFFLOAD_FAILED) != 0 ||
+		ofs < 0 || tlen + hlen > mb->pkt_len ||
+		(espt.pad_len != 0 && memcmp(pd, esp_pad_bytes, espt.pad_len)));
+}
+
+/*
+ * packet checks for tunnel mode:
+ * - same as for trasnport mode
+ * - esp tail next proto contains expected for that SA value
+ */
+static inline int32_t
+tun_process_check(const struct rte_mbuf *mb, struct rte_mbuf *ml,
+	struct esp_tail espt, uint32_t hlen, const uint32_t tlen, uint8_t proto)
+{
+	return (trs_process_check(mb, ml, espt, hlen, tlen) ||
+		espt.next_proto != proto);
+}
+
+/*
+ * step two for tunnel mode:
+ * - read SQN value (for future use)
+ * - cut of ICV, ESP tail and padding bytes
+ * - cut of ESP header and IV, also if needed - L2/L3 headers
+ *   (controlled by *adj* value)
+ */
+static inline void *
+tun_process_step2(struct rte_mbuf *mb, struct rte_mbuf *ml, uint32_t hlen,
+	uint32_t adj, uint32_t tlen, uint32_t *sqn)
+{
+	const struct esp_hdr *ph;
+
+	/* read SQN value */
+	ph = rte_pktmbuf_mtod_offset(mb, const struct esp_hdr *, hlen);
+	sqn[0] = ph->seq;
 
 	/* cut of ICV, ESP tail and padding bytes */
-	tlen = icv_len + sizeof(*espt) + espt->pad_len;
 	ml->data_len -= tlen;
 	mb->pkt_len -= tlen;
 
 	/* cut of L2/L3 headers, ESP header and IV */
-	hlen = mb->l2_len + mb->l3_len;
-	esph = rte_pktmbuf_mtod_offset(mb, struct esp_hdr *, hlen);
-	rte_pktmbuf_adj(mb, hlen + sa->ctp.cipher.offset);
-
-	/* retrieve SQN for later check */
-	*sqn = rte_be_to_cpu_32(esph->seq);
-
-	/* reset mbuf metatdata: L2/L3 len, packet type */
-	mb->packet_type = RTE_PTYPE_UNKNOWN;
-	mb->tx_offload = (mb->tx_offload & sa->tx_offload.msk) |
-		sa->tx_offload.val;
-
-	/* clear the PKT_RX_SEC_OFFLOAD flag if set */
-	mb->ol_flags &= ~(mb->ol_flags & PKT_RX_SEC_OFFLOAD);
-	return 0;
+	return rte_pktmbuf_adj(mb, adj);
 }
 
 /*
- * process ESP inbound transport packet.
+ * step two for transport mode:
+ * - read SQN value (for future use)
+ * - cut of ICV, ESP tail and padding bytes
+ * - cut of ESP header and IV
+ * - move L2/L3 header to fill the gap after ESP header removal
  */
-static inline int
-inb_trs_single_pkt_process(struct rte_ipsec_sa *sa, struct rte_mbuf *mb,
-	uint32_t *sqn)
+static inline void *
+trs_process_step2(struct rte_mbuf *mb, struct rte_mbuf *ml, uint32_t hlen,
+	uint32_t adj, uint32_t tlen, uint32_t *sqn)
 {
-	uint32_t hlen, icv_len, l2len, l3len, tlen;
-	struct esp_hdr *esph;
-	struct esp_tail *espt;
-	struct rte_mbuf *ml;
-	char *np, *op, *pd;
+	char *np, *op;
 
-	if (mb->ol_flags & PKT_RX_SEC_OFFLOAD_FAILED)
-		return -EBADMSG;
-
-	icv_len = sa->icv_len;
-
-	ml = rte_pktmbuf_lastseg(mb);
-	espt = rte_pktmbuf_mtod_offset(ml, struct esp_tail *,
-		ml->data_len - icv_len - sizeof(*espt));
-
-	/* check padding, return an error if something is wrong. */
-	pd = (char *)espt - espt->pad_len;
-	if (memcmp(pd, esp_pad_bytes, espt->pad_len))
-		return -EINVAL;
-
-	/* cut of ICV, ESP tail and padding bytes */
-	tlen = icv_len + sizeof(*espt) + espt->pad_len;
-	ml->data_len -= tlen;
-	mb->pkt_len -= tlen;
-
-	/* retrieve SQN for later check */
-	l2len = mb->l2_len;
-	l3len = mb->l3_len;
-	hlen = l2len + l3len;
+	/* get start of the packet before modifications */
 	op = rte_pktmbuf_mtod(mb, char *);
-	esph = (struct esp_hdr *)(op + hlen);
-	*sqn = rte_be_to_cpu_32(esph->seq);
 
-	/* cut off ESP header and IV, update L3 header */
-	np = rte_pktmbuf_adj(mb, sa->ctp.cipher.offset);
+	/* cut off ESP header and IV */
+	np = tun_process_step2(mb, ml, hlen, adj, tlen, sqn);
+
+	/* move header bytes to fill the gap after ESP header removal */
 	remove_esph(np, op, hlen);
-	update_trs_l3hdr(sa, np + l2len, mb->pkt_len, l2len, l3len,
-			espt->next_proto);
+	return np;
+}
 
+/*
+ * step three for transport mode:
+ * update mbuf metadata:
+ * - packet_type
+ * - ol_flags
+ */
+static inline void
+trs_process_step3(struct rte_mbuf *mb)
+{
 	/* reset mbuf packet type */
 	mb->packet_type &= (RTE_PTYPE_L2_MASK | RTE_PTYPE_L3_MASK);
 
 	/* clear the PKT_RX_SEC_OFFLOAD flag if set */
-	mb->ol_flags &= ~(mb->ol_flags & PKT_RX_SEC_OFFLOAD);
-	return 0;
+	mb->ol_flags &= ~PKT_RX_SEC_OFFLOAD;
+}
+
+/*
+ * step three for tunnel mode:
+ * update mbuf metadata:
+ * - packet_type
+ * - ol_flags
+ * - tx_offload
+ */
+static inline void
+tun_process_step3(struct rte_mbuf *mb, uint64_t txof_msk, uint64_t txof_val)
+{
+	/* reset mbuf metatdata: L2/L3 len, packet type */
+	mb->packet_type = RTE_PTYPE_UNKNOWN;
+	mb->tx_offload = (mb->tx_offload & txof_msk) | txof_val;
+
+	/* clear the PKT_RX_SEC_OFFLOAD flag if set */
+	mb->ol_flags &= ~PKT_RX_SEC_OFFLOAD;
+}
+
+
+/*
+ * *process* function for tunnel packets
+ */
+static inline uint16_t
+tun_process(const struct rte_ipsec_sa *sa, struct rte_mbuf *mb[],
+	uint32_t sqn[], uint32_t dr[], uint16_t num)
+{
+	uint32_t adj, i, k, tl;
+	uint32_t hl[num];
+	struct esp_tail espt[num];
+	struct rte_mbuf *ml[num];
+
+	const uint32_t tlen = sa->icv_len + sizeof(espt[0]);
+	const uint32_t cofs = sa->ctp.cipher.offset;
+
+	/*
+	 * to minimize stalls due to load latency,
+	 * read mbufs metadata and esp tail first.
+	 */
+	for (i = 0; i != num; i++)
+		process_step1(mb[i], tlen, &ml[i], &espt[i], &hl[i]);
+
+	k = 0;
+	for (i = 0; i != num; i++) {
+
+		adj = hl[i] + cofs;
+		tl = tlen + espt[i].pad_len;
+
+		/* check that packet is valid */
+		if (tun_process_check(mb[i], ml[i], espt[i], adj, tl,
+					sa->proto) == 0) {
+
+			/* modify packet's layout */
+			tun_process_step2(mb[i], ml[i], hl[i], adj,
+				tl, sqn + k);
+			/* update mbuf's metadata */
+			tun_process_step3(mb[i], sa->tx_offload.msk,
+				sa->tx_offload.val);
+			k++;
+		} else
+			dr[i - k] = i;
+	}
+
+	return k;
+}
+
+
+/*
+ * *process* function for tunnel packets
+ */
+static inline uint16_t
+trs_process(const struct rte_ipsec_sa *sa, struct rte_mbuf *mb[],
+	uint32_t sqn[], uint32_t dr[], uint16_t num)
+{
+	char *np;
+	uint32_t i, k, l2, tl;
+	uint32_t hl[num];
+	struct esp_tail espt[num];
+	struct rte_mbuf *ml[num];
+
+	const uint32_t tlen = sa->icv_len + sizeof(espt[0]);
+	const uint32_t cofs = sa->ctp.cipher.offset;
+
+	/*
+	 * to minimize stalls due to load latency,
+	 * read mbufs metadata and esp tail first.
+	 */
+	for (i = 0; i != num; i++)
+		process_step1(mb[i], tlen, &ml[i], &espt[i], &hl[i]);
+
+	k = 0;
+	for (i = 0; i != num; i++) {
+
+		tl = tlen + espt[i].pad_len;
+		l2 = mb[i]->l2_len;
+
+		/* check that packet is valid */
+		if (trs_process_check(mb[i], ml[i], espt[i], hl[i] + cofs,
+				tl) == 0) {
+
+			/* modify packet's layout */
+			np = trs_process_step2(mb[i], ml[i], hl[i], cofs, tl,
+				sqn + k);
+			update_trs_l3hdr(sa, np + l2, mb[i]->pkt_len,
+				l2, hl[i] - l2, espt[i].next_proto);
+
+			/* update mbuf's metadata */
+			trs_process_step3(mb[i]);
+			k++;
+		} else
+			dr[i - k] = i;
+	}
+
+	return k;
 }
 
 /*
@@ -333,11 +464,15 @@ esp_inb_rsn_update(struct rte_ipsec_sa *sa, const uint32_t sqn[],
 	uint32_t i, k;
 	struct replay_sqn *rsn;
 
+	/* replay not enabled */
+	if (sa->replay.win_sz == 0)
+		return num;
+
 	rsn = rsn_update_start(sa);
 
 	k = 0;
 	for (i = 0; i != num; i++) {
-		if (esn_inb_update_sqn(rsn, sa, sqn[i]) == 0)
+		if (esn_inb_update_sqn(rsn, sa, rte_be_to_cpu_32(sqn[i])) == 0)
 			k++;
 		else
 			dr[i - k] = i;
@@ -348,13 +483,13 @@ esp_inb_rsn_update(struct rte_ipsec_sa *sa, const uint32_t sqn[],
 }
 
 /*
- * process group of ESP inbound tunnel packets.
+ * process group of ESP inbound packets.
  */
-uint16_t
-esp_inb_tun_pkt_process(const struct rte_ipsec_session *ss,
-	struct rte_mbuf *mb[], uint16_t num)
+static inline uint16_t
+esp_inb_pkt_process(const struct rte_ipsec_session *ss,
+	struct rte_mbuf *mb[], uint16_t num, esp_inb_process_t process)
 {
-	uint32_t i, k, n;
+	uint32_t k, n;
 	struct rte_ipsec_sa *sa;
 	uint32_t sqn[num];
 	uint32_t dr[num];
@@ -362,16 +497,7 @@ esp_inb_tun_pkt_process(const struct rte_ipsec_session *ss,
 	sa = ss->sa;
 
 	/* process packets, extract seq numbers */
-
-	k = 0;
-	for (i = 0; i != num; i++) {
-		/* good packet */
-		if (inb_tun_single_pkt_process(sa, mb[i], sqn + k) == 0)
-			k++;
-		/* bad packet, will drop from furhter processing */
-		else
-			dr[i - k] = i;
-	}
+	k = process(sa, mb, sqn, dr, num);
 
 	/* handle unprocessed mbufs */
 	if (k != num && k != 0)
@@ -391,44 +517,21 @@ esp_inb_tun_pkt_process(const struct rte_ipsec_session *ss,
 }
 
 /*
+ * process group of ESP inbound tunnel packets.
+ */
+uint16_t
+esp_inb_tun_pkt_process(const struct rte_ipsec_session *ss,
+	struct rte_mbuf *mb[], uint16_t num)
+{
+	return esp_inb_pkt_process(ss, mb, num, tun_process);
+}
+
+/*
  * process group of ESP inbound transport packets.
  */
 uint16_t
 esp_inb_trs_pkt_process(const struct rte_ipsec_session *ss,
 	struct rte_mbuf *mb[], uint16_t num)
 {
-	uint32_t i, k, n;
-	uint32_t sqn[num];
-	struct rte_ipsec_sa *sa;
-	uint32_t dr[num];
-
-	sa = ss->sa;
-
-	/* process packets, extract seq numbers */
-
-	k = 0;
-	for (i = 0; i != num; i++) {
-		/* good packet */
-		if (inb_trs_single_pkt_process(sa, mb[i], sqn + k) == 0)
-			k++;
-		/* bad packet, will drop from furhter processing */
-		else
-			dr[i - k] = i;
-	}
-
-	/* handle unprocessed mbufs */
-	if (k != num && k != 0)
-		move_bad_mbufs(mb, dr, num, num - k);
-
-	/* update SQN and replay winow */
-	n = esp_inb_rsn_update(sa, sqn, dr, k);
-
-	/* handle mbufs with wrong SQN */
-	if (n != k && n != 0)
-		move_bad_mbufs(mb, dr, k, k - n);
-
-	if (n != num)
-		rte_errno = EBADMSG;
-
-	return n;
+	return esp_inb_pkt_process(ss, mb, num, trs_process);
 }

@@ -152,10 +152,6 @@ esn_inb_update_sqn(struct replay_sqn *rsn, const struct rte_ipsec_sa *sa,
 {
 	uint32_t bit, bucket, last_bucket, new_bucket, diff, i;
 
-	/* replay not enabled */
-	if (sa->replay.win_sz == 0)
-		return 0;
-
 	/* handle ESN */
 	if (IS_ESN(sa))
 		sqn = reconstruct_esn(rsn->sqn, sqn, sa->replay.win_sz);
