@@ -351,8 +351,8 @@ sfc_ef10_xmit_tso_pkt(struct sfc_ef10_txq * const txq, struct rte_mbuf *m_seg,
 	 * several descriptors.
 	 */
 	needed_desc = m_seg->nb_segs +
-			(unsigned int)SFC_TSO_OPT_DESCS_NUM +
-			(unsigned int)SFC_TSO_HDR_DESCS_NUM;
+			(unsigned int)SFC_EF10_TSO_OPT_DESCS_NUM +
+			(unsigned int)SFC_EF10_TSO_HDR_DESCS_NUM;
 
 	if (needed_desc > *dma_desc_space &&
 	    !sfc_ef10_try_reap(txq, pkt_start, needed_desc,
@@ -369,8 +369,8 @@ sfc_ef10_xmit_tso_pkt(struct sfc_ef10_txq * const txq, struct rte_mbuf *m_seg,
 		 * descriptors, header descriptor and at least 1
 		 * segment descriptor.
 		 */
-		if (*dma_desc_space < SFC_TSO_OPT_DESCS_NUM +
-				SFC_TSO_HDR_DESCS_NUM + 1)
+		if (*dma_desc_space < SFC_EF10_TSO_OPT_DESCS_NUM +
+				SFC_EF10_TSO_HDR_DESCS_NUM + 1)
 			return EMSGSIZE;
 	}
 
@@ -386,7 +386,7 @@ sfc_ef10_xmit_tso_pkt(struct sfc_ef10_txq * const txq, struct rte_mbuf *m_seg,
 			 * Associate header mbuf with header descriptor
 			 * which is located after TSO descriptors.
 			 */
-			txq->sw_ring[(pkt_start + SFC_TSO_OPT_DESCS_NUM) &
+			txq->sw_ring[(pkt_start + SFC_EF10_TSO_OPT_DESCS_NUM) &
 				     txq->ptr_mask].mbuf = m_seg;
 			m_seg = m_seg->next;
 			in_off = 0;
@@ -455,7 +455,7 @@ sfc_ef10_xmit_tso_pkt(struct sfc_ef10_txq * const txq, struct rte_mbuf *m_seg,
 
 	sfc_ef10_tx_qdesc_tso2_create(txq, *added, packet_id, 0, sent_seq,
 			first_m_seg->tso_segsz);
-	(*added) += SFC_TSO_OPT_DESCS_NUM;
+	(*added) += SFC_EF10_TSO_OPT_DESCS_NUM;
 
 	sfc_ef10_tx_qdesc_dma_create(hdr_iova, header_len, false,
 			&txq->txq_hw_ring[(*added) & txq->ptr_mask]);

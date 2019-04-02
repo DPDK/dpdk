@@ -105,7 +105,7 @@ sfc_efx_tso_do(struct sfc_efx_txq *txq, unsigned int idx,
 	size_t header_len = m->l2_len + m->l3_len + m->l4_len;
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(txq->evq->sa->nic);
 
-	idx += SFC_TSO_OPT_DESCS_NUM;
+	idx += SFC_EF10_TSO_OPT_DESCS_NUM;
 
 	/*
 	 * The TCP header must start at most 208 bytes into the frame.
