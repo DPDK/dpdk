@@ -14,6 +14,9 @@
 #include "iph.h"
 #include "pad.h"
 
+#define MBUF_MAX_L2_LEN		RTE_LEN2MASK(RTE_MBUF_L2_LEN_BITS, uint64_t)
+#define MBUF_MAX_L3_LEN		RTE_LEN2MASK(RTE_MBUF_L3_LEN_BITS, uint64_t)
+
 /* some helper structures */
 struct crypto_xform {
 	struct rte_crypto_auth_xform *auth;
@@ -254,6 +257,11 @@ esp_outb_tun_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm)
 	sa->proto = prm->tun.next_proto;
 	sa->hdr_len = prm->tun.hdr_len;
 	sa->hdr_l3_off = prm->tun.hdr_l3_off;
+
+	/* update l2_len and l3_len fields for outbound mbuf */
+	sa->tx_offload.val = rte_mbuf_tx_offload(sa->hdr_l3_off,
+		sa->hdr_len - sa->hdr_l3_off, 0, 0, 0, 0, 0);
+
 	memcpy(sa->hdr, prm->tun.hdr, sa->hdr_len);
 
 	esp_outb_init(sa, sa->hdr_len);
@@ -323,6 +331,11 @@ esp_sa_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm,
 	sa->udata = prm->userdata;
 	sa->spi = rte_cpu_to_be_32(prm->ipsec_xform.spi);
 	sa->salt = prm->ipsec_xform.salt;
+
+	/* preserve all values except l2_len and l3_len */
+	sa->tx_offload.msk =
+		~rte_mbuf_tx_offload(MBUF_MAX_L2_LEN, MBUF_MAX_L3_LEN,
+				0, 0, 0, 0, 0);
 
 	switch (sa->type & msk) {
 	case (RTE_IPSEC_SATP_DIR_IB | RTE_IPSEC_SATP_MODE_TUNLV4):
@@ -549,7 +562,7 @@ esp_outb_tun_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 
 	/* size of ipsec protected data */
 	l2len = mb->l2_len;
-	plen = mb->pkt_len - mb->l2_len;
+	plen = mb->pkt_len - l2len;
 
 	/* number of bytes to encrypt */
 	clen = plen + sizeof(*espt);
@@ -576,8 +589,8 @@ esp_outb_tun_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 	pt = rte_pktmbuf_mtod_offset(ml, typeof(pt), pdofs);
 
 	/* update pkt l2/l3 len */
-	mb->l2_len = sa->hdr_l3_off;
-	mb->l3_len = sa->hdr_len - sa->hdr_l3_off;
+	mb->tx_offload = (mb->tx_offload & sa->tx_offload.msk) |
+		sa->tx_offload.val;
 
 	/* copy tunnel pkt header */
 	rte_memcpy(ph, sa->hdr, sa->hdr_len);
@@ -1124,8 +1137,8 @@ esp_inb_tun_single_pkt_process(struct rte_ipsec_sa *sa, struct rte_mbuf *mb,
 
 	/* reset mbuf metatdata: L2/L3 len, packet type */
 	mb->packet_type = RTE_PTYPE_UNKNOWN;
-	mb->l2_len = 0;
-	mb->l3_len = 0;
+	mb->tx_offload = (mb->tx_offload & sa->tx_offload.msk) |
+		sa->tx_offload.val;
 
 	/* clear the PKT_RX_SEC_OFFLOAD flag if set */
 	mb->ol_flags &= ~(mb->ol_flags & PKT_RX_SEC_OFFLOAD);
