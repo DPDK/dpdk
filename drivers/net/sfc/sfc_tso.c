@@ -119,6 +119,8 @@ sfc_efx_tso_do(struct sfc_efx_txq *txq, unsigned int idx,
 		/*
 		 * Discard a packet if header linearization is needed but
 		 * the header is too big.
+		 * Duplicate Tx prepare check here to avoid spoil of
+		 * memory if Tx prepare is skipped.
 		 */
 		if (unlikely(header_len > SFC_TSOH_STD_LEN))
 			return EMSGSIZE;

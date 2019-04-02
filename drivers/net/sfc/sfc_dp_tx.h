@@ -14,6 +14,7 @@
 
 #include "sfc_dp.h"
 #include "sfc_debug.h"
+#include "sfc_tso.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -230,8 +231,16 @@ sfc_dp_tx_prepare_pkt(struct rte_mbuf *m,
 		 * Extra descriptor that is required when a packet header
 		 * is separated from remaining content of the first segment.
 		 */
-		if (rte_pktmbuf_data_len(m) > header_len)
+		if (rte_pktmbuf_data_len(m) > header_len) {
 			descs_required++;
+		} else if (rte_pktmbuf_data_len(m) < header_len &&
+			 unlikely(header_len > SFC_TSOH_STD_LEN)) {
+			/*
+			 * Header linearization is required and
+			 * the header is too big to be linearized
+			 */
+			return EINVAL;
+		}
 	}
 
 	/*
