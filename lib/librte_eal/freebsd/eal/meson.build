@@ -2,7 +2,9 @@
 # Copyright(c) 2017 Intel Corporation
 
 env_objs = []
-env_headers = []
+env_headers = files(
+		'include/rte_os.h',
+)
 env_sources = files('eal_alarm.c',
 		'eal_cpuflags.c',
 		'eal_debug.c',

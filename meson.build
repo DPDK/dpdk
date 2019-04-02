@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright(c) 2017 Intel Corporation
+# Copyright(c) 2017-2019 Intel Corporation
 
 project('DPDK', 'C',
 	# Get version number from file.
@@ -24,7 +24,10 @@ dpdk_app_link_libraries = []
 # configure the build, and make sure configs here and in config folder are
 # able to be included in any file. We also store a global array of include dirs
 # for passing to pmdinfogen scripts
-global_inc = include_directories('.', 'config', 'lib/librte_eal/common/include')
+global_inc = include_directories('.', 'config',
+	'lib/librte_eal/common/include',
+	'lib/librte_eal/@0@/eal/include'.format(host_machine.system()),
+)
 subdir('config')
 
 # build libs and drivers

@@ -4,7 +4,10 @@
 eal_inc += include_directories('include')
 
 env_objs = []
-env_headers = files('include/rte_kni_common.h')
+env_headers = files(
+		'include/rte_kni_common.h',
+		'include/rte_os.h',
+)
 env_sources = files('eal_alarm.c',
 		'eal_cpuflags.c',
 		'eal_debug.c',

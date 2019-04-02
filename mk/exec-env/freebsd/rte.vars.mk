@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright(c) 2010-2014 Intel Corporation
+# Copyright(c) 2010-2019 Intel Corporation
 
 #
 # exec-env:
@@ -16,6 +16,9 @@ EXECENV_CFLAGS  = -pthread -fPIC
 else
 EXECENV_CFLAGS  = -pthread
 endif
+
+# include in every library to build
+EXECENV_CFLAGS += -I$(RTE_SDK)/lib/librte_eal/freebsd/eal/include
 
 EXECENV_LDFLAGS =
 EXECENV_LDLIBS  = -lexecinfo

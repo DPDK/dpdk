@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright(c) 2010-2015 Intel Corporation
+# Copyright(c) 2010-2019 Intel Corporation
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
@@ -86,7 +86,7 @@ CFLAGS_eal_thread.o += -Wno-return-type
 CFLAGS_eal_hpet.o += -Wno-return-type
 endif
 
-INC :=  # no bsd specific headers
+INC := rte_os.h
 
 SYMLINK-$(CONFIG_RTE_EXEC_ENV_FREEBSD)-include := $(addprefix include/,$(INC))
 
