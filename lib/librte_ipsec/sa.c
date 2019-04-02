@@ -464,20 +464,17 @@ mbuf_bulk_copy(struct rte_mbuf *dst[], struct rte_mbuf * const src[],
  * setup crypto ops for LOOKASIDE_NONE (pure crypto) type of devices.
  */
 static inline void
-lksd_none_cop_prepare(const struct rte_ipsec_session *ss,
-	struct rte_mbuf *mb[], struct rte_crypto_op *cop[], uint16_t num)
+lksd_none_cop_prepare(struct rte_crypto_op *cop,
+	struct rte_cryptodev_sym_session *cs, struct rte_mbuf *mb)
 {
-	uint32_t i;
 	struct rte_crypto_sym_op *sop;
 
-	for (i = 0; i != num; i++) {
-		sop = cop[i]->sym;
-		cop[i]->type = RTE_CRYPTO_OP_TYPE_SYMMETRIC;
-		cop[i]->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
-		cop[i]->sess_type = RTE_CRYPTO_OP_WITH_SESSION;
-		sop->m_src = mb[i];
-		__rte_crypto_sym_op_attach_sym_session(sop, ss->crypto.ses);
-	}
+	sop = cop->sym;
+	cop->type = RTE_CRYPTO_OP_TYPE_SYMMETRIC;
+	cop->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+	cop->sess_type = RTE_CRYPTO_OP_WITH_SESSION;
+	sop->m_src = mb;
+	__rte_crypto_sym_op_attach_sym_session(sop, cs);
 }
 
 /*
@@ -667,11 +664,13 @@ outb_tun_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 	uint64_t sqn;
 	rte_be64_t sqc;
 	struct rte_ipsec_sa *sa;
+	struct rte_cryptodev_sym_session *cs;
 	union sym_op_data icv;
 	uint64_t iv[IPSEC_MAX_IV_QWORD];
 	struct rte_mbuf *dr[num];
 
 	sa = ss->sa;
+	cs = ss->crypto.ses;
 
 	n = num;
 	sqn = esn_outb_update_sqn(sa, &n);
@@ -689,19 +688,16 @@ outb_tun_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 
 		/* success, setup crypto op */
 		if (rc >= 0) {
-			mb[k] = mb[i];
 			outb_pkt_xprepare(sa, sqc, &icv);
+			lksd_none_cop_prepare(cop[k], cs, mb[i]);
 			esp_outb_cop_prepare(cop[k], sa, iv, &icv, 0, rc);
-			k++;
+			mb[k++] = mb[i];
 		/* failure, put packet into the death-row */
 		} else {
 			dr[i - k] = mb[i];
 			rte_errno = -rc;
 		}
 	}
-
-	/* update cops */
-	lksd_none_cop_prepare(ss, mb, cop, k);
 
 	 /* copy not prepared mbufs beyond good ones */
 	if (k != n && k != 0)
@@ -803,11 +799,13 @@ outb_trs_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 	uint64_t sqn;
 	rte_be64_t sqc;
 	struct rte_ipsec_sa *sa;
+	struct rte_cryptodev_sym_session *cs;
 	union sym_op_data icv;
 	uint64_t iv[IPSEC_MAX_IV_QWORD];
 	struct rte_mbuf *dr[num];
 
 	sa = ss->sa;
+	cs = ss->crypto.ses;
 
 	n = num;
 	sqn = esn_outb_update_sqn(sa, &n);
@@ -829,19 +827,16 @@ outb_trs_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 
 		/* success, setup crypto op */
 		if (rc >= 0) {
-			mb[k] = mb[i];
 			outb_pkt_xprepare(sa, sqc, &icv);
+			lksd_none_cop_prepare(cop[k], cs, mb[i]);
 			esp_outb_cop_prepare(cop[k], sa, iv, &icv, l2 + l3, rc);
-			k++;
+			mb[k++] = mb[i];
 		/* failure, put packet into the death-row */
 		} else {
 			dr[i - k] = mb[i];
 			rte_errno = -rc;
 		}
 	}
-
-	/* update cops */
-	lksd_none_cop_prepare(ss, mb, cop, k);
 
 	/* copy not prepared mbufs beyond good ones */
 	if (k != n && k != 0)
@@ -1021,11 +1016,13 @@ inb_pkt_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 	int32_t rc;
 	uint32_t i, k, hl;
 	struct rte_ipsec_sa *sa;
+	struct rte_cryptodev_sym_session *cs;
 	struct replay_sqn *rsn;
 	union sym_op_data icv;
 	struct rte_mbuf *dr[num];
 
 	sa = ss->sa;
+	cs = ss->crypto.ses;
 	rsn = rsn_acquire(sa);
 
 	k = 0;
@@ -1033,9 +1030,11 @@ inb_pkt_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 
 		hl = mb[i]->l2_len + mb[i]->l3_len;
 		rc = esp_inb_tun_pkt_prepare(sa, rsn, mb[i], hl, &icv);
-		if (rc >= 0)
+		if (rc >= 0) {
+			lksd_none_cop_prepare(cop[k], cs, mb[i]);
 			rc = esp_inb_tun_cop_prepare(cop[k], sa, mb[i], &icv,
 				hl, rc);
+		}
 
 		if (rc == 0)
 			mb[k++] = mb[i];
@@ -1046,9 +1045,6 @@ inb_pkt_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 	}
 
 	rsn_release(sa, rsn);
-
-	/* update cops */
-	lksd_none_cop_prepare(ss, mb, cop, k);
 
 	/* copy not prepared mbufs beyond good ones */
 	if (k != num && k != 0)
