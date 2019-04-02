@@ -1,0 +1,9 @@
+EXPORTS
+	__rte_panic
+	rte_eal_get_configuration
+	rte_eal_init
+	rte_eal_mp_remote_launch
+	rte_eal_mp_wait_lcore
+	rte_eal_remote_launch
+	rte_log
+	rte_vlog

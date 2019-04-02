@@ -290,6 +290,7 @@ M: Anand Rawat <anand.rawat@intel.com>
 M: Ranjit Menon <ranjit.menon@intel.com>
 F: kernel/windows/
 F: lib/librte_eal/windows/
+F: lib/librte_eal/rte_eal_exports.def
 
 
 Core Libraries
