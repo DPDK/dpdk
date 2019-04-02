@@ -132,4 +132,44 @@ int
 ipsec_sa_pkt_func_select(const struct rte_ipsec_session *ss,
 	const struct rte_ipsec_sa *sa, struct rte_ipsec_sa_pkt_func *pf);
 
+/* inbound processing */
+
+uint16_t
+esp_inb_pkt_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
+	struct rte_crypto_op *cop[], uint16_t num);
+
+uint16_t
+esp_inb_tun_pkt_process(const struct rte_ipsec_session *ss,
+	struct rte_mbuf *mb[], uint16_t num);
+
+uint16_t
+esp_inb_trs_pkt_process(const struct rte_ipsec_session *ss,
+	struct rte_mbuf *mb[], uint16_t num);
+
+/* outbound processing */
+
+uint16_t
+esp_outb_tun_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
+	struct rte_crypto_op *cop[], uint16_t num);
+
+uint16_t
+esp_outb_trs_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
+	struct rte_crypto_op *cop[], uint16_t num);
+
+uint16_t
+esp_outb_sqh_process(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
+	uint16_t num);
+
+uint16_t
+inline_outb_tun_pkt_process(const struct rte_ipsec_session *ss,
+	struct rte_mbuf *mb[], uint16_t num);
+
+uint16_t
+inline_outb_trs_pkt_process(const struct rte_ipsec_session *ss,
+	struct rte_mbuf *mb[], uint16_t num);
+
+uint16_t
+inline_proto_outb_pkt_process(const struct rte_ipsec_session *ss,
+	struct rte_mbuf *mb[], uint16_t num);
+
 #endif /* _SA_H_ */

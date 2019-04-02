@@ -57,21 +57,6 @@ sqn_low16(rte_be64_t sqn)
 }
 
 /*
- * for given size, calculate required number of buckets.
- */
-static uint32_t
-replay_num_bucket(uint32_t wsz)
-{
-	uint32_t nb;
-
-	nb = rte_align32pow2(RTE_ALIGN_MUL_CEIL(wsz, WINDOW_BUCKET_SIZE) /
-		WINDOW_BUCKET_SIZE);
-	nb = RTE_MAX(nb, (uint32_t)WINDOW_BUCKET_MIN);
-
-	return nb;
-}
-
-/*
  * According to RFC4303 A2.1, determine the high-order bit of sequence number.
  * use 32bit arithmetic inside, return uint64_t.
  */
@@ -221,21 +206,6 @@ esn_inb_update_sqn(struct replay_sqn *rsn, const struct rte_ipsec_sa *sa,
  * That approach is intended to minimize contention and cache sharing
  * between writer and readers.
  */
-
-/**
- * Based on number of buckets calculated required size for the
- * structure that holds replay window and sequence number (RSN) information.
- */
-static size_t
-rsn_size(uint32_t nb_bucket)
-{
-	size_t sz;
-	struct replay_sqn *rsn;
-
-	sz = sizeof(*rsn) + nb_bucket * sizeof(rsn->window[0]);
-	sz = RTE_ALIGN_CEIL(sz, RTE_CACHE_LINE_SIZE);
-	return sz;
-}
 
 /**
  * Copy replay window and SQN.

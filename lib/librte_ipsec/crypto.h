@@ -162,4 +162,21 @@ remove_sqh(void *picv, uint32_t icv_len)
 		icv[i] = icv[i + 1];
 }
 
+/*
+ * setup crypto ops for LOOKASIDE_NONE (pure crypto) type of devices.
+ */
+static inline void
+lksd_none_cop_prepare(struct rte_crypto_op *cop,
+	struct rte_cryptodev_sym_session *cs, struct rte_mbuf *mb)
+{
+	struct rte_crypto_sym_op *sop;
+
+	sop = cop->sym;
+	cop->type = RTE_CRYPTO_OP_TYPE_SYMMETRIC;
+	cop->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+	cop->sess_type = RTE_CRYPTO_OP_WITH_SESSION;
+	sop->m_src = mb;
+	__rte_crypto_sym_op_attach_sym_session(sop, cs);
+}
+
 #endif /* _CRYPTO_H_ */
