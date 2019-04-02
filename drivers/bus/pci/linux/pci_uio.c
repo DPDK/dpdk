@@ -315,12 +315,11 @@ pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
 			loc->domain, loc->bus, loc->devid,
 			loc->function, res_idx);
 
-		if (access(devname, R_OK|W_OK) != -1) {
-			fd = open(devname, O_RDWR);
-			if (fd < 0)
-				RTE_LOG(INFO, EAL, "%s cannot be mapped. "
-					"Fall-back to non prefetchable mode.\n",
-					devname);
+		fd = open(devname, O_RDWR);
+		if (fd < 0 && errno != ENOENT) {
+			RTE_LOG(INFO, EAL, "%s cannot be mapped. "
+				"Fall-back to non prefetchable mode.\n",
+				devname);
 		}
 	}
 
