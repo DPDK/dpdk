@@ -196,8 +196,13 @@ const struct sfc_dp_tx *sfc_dp_tx_by_dp_txq(const struct sfc_dp_txq *dp_txq);
 
 static inline int
 sfc_dp_tx_prepare_pkt(struct rte_mbuf *m,
-			   uint32_t tso_tcp_header_offset_limit)
+			   uint32_t tso_tcp_header_offset_limit,
+			   unsigned int max_fill_level,
+			   unsigned int nb_tso_descs,
+			   unsigned int nb_vlan_descs)
 {
+	unsigned int descs_required = m->nb_segs;
+
 #ifdef RTE_LIBRTE_SFC_EFX_DEBUG
 	int ret;
 
@@ -214,10 +219,34 @@ sfc_dp_tx_prepare_pkt(struct rte_mbuf *m,
 
 	if (m->ol_flags & PKT_TX_TCP_SEG) {
 		unsigned int tcph_off = m->l2_len + m->l3_len;
+		unsigned int header_len = tcph_off + m->l4_len;
 
 		if (unlikely(tcph_off > tso_tcp_header_offset_limit))
 			return EINVAL;
+
+		descs_required += nb_tso_descs;
+
+		/*
+		 * Extra descriptor that is required when a packet header
+		 * is separated from remaining content of the first segment.
+		 */
+		if (rte_pktmbuf_data_len(m) > header_len)
+			descs_required++;
 	}
+
+	/*
+	 * The number of VLAN descriptors is added regardless of requested
+	 * VLAN offload since VLAN is sticky and sending packet without VLAN
+	 * insertion may require VLAN descriptor to reset the sticky to 0.
+	 */
+	descs_required += nb_vlan_descs;
+
+	/*
+	 * Max fill level must be sufficient to hold all required descriptors
+	 * to send the packet entirely.
+	 */
+	if (descs_required > max_fill_level)
+		return ENOBUFS;
 
 	return 0;
 }

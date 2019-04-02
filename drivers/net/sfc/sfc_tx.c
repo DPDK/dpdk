@@ -709,8 +709,15 @@ sfc_efx_prepare_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	for (i = 0; i < nb_pkts; i++) {
 		int ret;
 
+		/*
+		 * EFX Tx datapath may require extra VLAN descriptor if VLAN
+		 * insertion offload is requested regardless the offload
+		 * requested/supported.
+		 */
 		ret = sfc_dp_tx_prepare_pkt(tx_pkts[i],
-				encp->enc_tx_tso_tcp_header_offset_limit);
+				encp->enc_tx_tso_tcp_header_offset_limit,
+				txq->max_fill_level, EFX_TX_FATSOV2_OPT_NDESCS,
+				1);
 		if (unlikely(ret != 0)) {
 			rte_errno = ret;
 			break;
