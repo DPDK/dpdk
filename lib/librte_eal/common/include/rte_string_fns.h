@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2010-2014 Intel Corporation
+ * Copyright(c) 2010-2019 Intel Corporation
  */
 
 /**
@@ -17,6 +17,8 @@ extern "C" {
 
 #include <stdio.h>
 #include <string.h>
+
+#include <rte_common.h>
 
 /**
  * Takes string "string" parameter and splits it at character "delim"

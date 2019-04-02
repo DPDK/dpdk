@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2010-2014 Intel Corporation
+ * Copyright(c) 2010-2019 Intel Corporation
  */
 
 #ifndef _RTE_COMMON_H_
@@ -23,6 +23,9 @@ extern "C" {
 #include <limits.h>
 
 #include <rte_config.h>
+
+/* OS specific include */
+#include <rte_os.h>
 
 #ifndef typeof
 #define typeof __typeof__

@@ -11,4 +11,23 @@
  * Windows OS. Functions will be added in future releases.
  */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <BaseTsd.h>
+
+#define strerror_r(a, b, c) strerror_s(b, c, a)
+
+/* strdup is deprecated in Microsoft libc and _strdup is preferred */
+#define strdup(str) _strdup(str)
+
+typedef SSIZE_T ssize_t;
+
+#define strtok_r(str, delim, saveptr) strtok_s(str, delim, saveptr)
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* _RTE_OS_H_ */
