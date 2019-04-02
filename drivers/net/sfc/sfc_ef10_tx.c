@@ -340,9 +340,7 @@ sfc_ef10_xmit_tso_pkt(struct sfc_ef10_txq * const txq, struct rte_mbuf *m_seg,
 	struct rte_mbuf *m_seg_to_free_up_to = first_m_seg;
 	bool eop;
 
-	/* Both checks may be done, so use bit OR to have only one branching */
-	if (unlikely((header_len > SFC_TSOH_STD_LEN) |
-		     (tcph_off > txq->tso_tcp_header_offset_limit)))
+	if (unlikely(tcph_off > txq->tso_tcp_header_offset_limit))
 		return EMSGSIZE;
 
 	/*
@@ -406,6 +404,13 @@ sfc_ef10_xmit_tso_pkt(struct sfc_ef10_txq * const txq, struct rte_mbuf *m_seg,
 		unsigned int copied_segs;
 		unsigned int hdr_addr_off = (*added & txq->ptr_mask) *
 				SFC_TSOH_STD_LEN;
+
+		/*
+		 * Discard a packet if header linearization is needed but
+		 * the header is too big.
+		 */
+		if (unlikely(header_len > SFC_TSOH_STD_LEN))
+			return EMSGSIZE;
 
 		hdr_addr = txq->tsoh + hdr_addr_off;
 		hdr_iova = txq->tsoh_iova + hdr_addr_off;
