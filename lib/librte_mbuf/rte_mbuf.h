@@ -280,9 +280,11 @@ extern "C" {
 #define PKT_TX_TUNNEL_MASK    (0xFULL << 45)
 
 /**
- * Second VLAN insertion (QinQ) flag.
+ * Double VLAN insertion (QinQ) request to driver, driver may offload the
+ * insertion based on device capability.
+ * mbuf 'vlan_tci' & 'vlan_tci_outer' must be valid when this flag is set.
  */
-#define PKT_TX_QINQ        (1ULL << 49)   /**< TX packet with double VLAN inserted. */
+#define PKT_TX_QINQ        (1ULL << 49)
 /* this old name is deprecated */
 #define PKT_TX_QINQ_PKT    PKT_TX_QINQ
 
@@ -338,7 +340,9 @@ extern "C" {
 #define PKT_TX_IPV6          (1ULL << 56)
 
 /**
- * TX packet is a 802.1q VLAN packet.
+ * VLAN tag insertion request to driver, driver may offload the insertion
+ * based on the device capability.
+ * mbuf 'vlan_tci' field must be valid when this flag is set.
  */
 #define PKT_TX_VLAN          (1ULL << 57)
 /* this old name is deprecated */
