@@ -1854,6 +1854,7 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 	sa->priv.dp_tx = dp_tx;
 
 	dev->rx_pkt_burst = dp_rx->pkt_burst;
+	dev->tx_pkt_prepare = dp_tx->pkt_prepare;
 	dev->tx_pkt_burst = dp_tx->pkt_burst;
 
 	dev->dev_ops = &sfc_eth_dev_ops;
@@ -1881,6 +1882,7 @@ sfc_eth_dev_clear_ops(struct rte_eth_dev *dev)
 	struct sfc_adapter_shared *sas = sfc_adapter_shared_by_eth_dev(dev);
 
 	dev->dev_ops = NULL;
+	dev->tx_pkt_prepare = NULL;
 	dev->rx_pkt_burst = NULL;
 	dev->tx_pkt_burst = NULL;
 
@@ -1961,6 +1963,7 @@ sfc_eth_dev_secondary_init(struct rte_eth_dev *dev, uint32_t logtype_main)
 
 	dev->process_private = sap;
 	dev->rx_pkt_burst = dp_rx->pkt_burst;
+	dev->tx_pkt_prepare = dp_tx->pkt_prepare;
 	dev->tx_pkt_burst = dp_tx->pkt_burst;
 	dev->dev_ops = &sfc_eth_dev_secondary_ops;
 
@@ -1982,6 +1985,7 @@ sfc_eth_dev_secondary_clear_ops(struct rte_eth_dev *dev)
 	free(dev->process_private);
 	dev->process_private = NULL;
 	dev->dev_ops = NULL;
+	dev->tx_pkt_prepare = NULL;
 	dev->tx_pkt_burst = NULL;
 	dev->rx_pkt_burst = NULL;
 }

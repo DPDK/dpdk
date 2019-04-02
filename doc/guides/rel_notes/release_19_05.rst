@@ -87,6 +87,7 @@ New Features
   * Added support for RSS RETA and hash configuration get API in a secondary
     process.
   * Added support for Rx packet types list in a secondary process.
+  * Added Tx prepare to do Tx offloads checks.
 
 * **Updated Mellanox drivers.**
 

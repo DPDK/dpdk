@@ -13,6 +13,7 @@
 #include <rte_ethdev_driver.h>
 
 #include "sfc_dp.h"
+#include "sfc_debug.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -170,6 +171,7 @@ struct sfc_dp_tx {
 	sfc_dp_tx_qtx_ev_t		*qtx_ev;
 	sfc_dp_tx_qreap_t		*qreap;
 	sfc_dp_tx_qdesc_status_t	*qdesc_status;
+	eth_tx_prep_t			pkt_prepare;
 	eth_tx_burst_t			pkt_burst;
 };
 
@@ -191,6 +193,28 @@ sfc_dp_find_tx_by_caps(struct sfc_dp_list *head, unsigned int avail_caps)
 
 /** Get Tx datapath ops by the datapath TxQ handle */
 const struct sfc_dp_tx *sfc_dp_tx_by_dp_txq(const struct sfc_dp_txq *dp_txq);
+
+static inline int
+sfc_dp_tx_prepare_pkt(struct rte_mbuf *m)
+{
+#ifdef RTE_LIBRTE_SFC_EFX_DEBUG
+	int ret;
+
+	ret = rte_validate_tx_offload(m);
+	if (ret != 0) {
+		/*
+		 * Negative error code is returned by rte_validate_tx_offload(),
+		 * but positive are used inside net/sfc PMD.
+		 */
+		SFC_ASSERT(ret < 0);
+		return -ret;
+	}
+#else
+	RTE_SET_USED(m);
+#endif
+
+	return 0;
+}
 
 extern struct sfc_dp_tx sfc_efx_tx;
 extern struct sfc_dp_tx sfc_ef10_tx;

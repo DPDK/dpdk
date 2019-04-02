@@ -97,7 +97,7 @@ sfc_efx_tso_do(struct sfc_efx_txq *txq, unsigned int idx,
 	uint8_t *tsoh;
 	const struct tcp_hdr *th;
 	efsys_dma_addr_t header_paddr;
-	uint16_t packet_id;
+	uint16_t packet_id = 0;
 	uint32_t sent_seq;
 	struct rte_mbuf *m = *in_seg;
 	size_t nh_off = m->l2_len; /* IP header offset */
@@ -147,17 +147,18 @@ sfc_efx_tso_do(struct sfc_efx_txq *txq, unsigned int idx,
 		tsoh = rte_pktmbuf_mtod(m, uint8_t *);
 	}
 
-	/* Handle IP header */
+	/*
+	 * Handle IP header. Tx prepare has debug-only checks that offload flags
+	 * are correctly filled in in TSO mbuf. Use zero IPID if there is no
+	 * IPv4 flag. If the packet is still IPv4, HW will simply start from
+	 * zero IPID.
+	 */
 	if (m->ol_flags & PKT_TX_IPV4) {
 		const struct ipv4_hdr *iphe4;
 
 		iphe4 = (const struct ipv4_hdr *)(tsoh + nh_off);
 		rte_memcpy(&packet_id, &iphe4->packet_id, sizeof(uint16_t));
 		packet_id = rte_be_to_cpu_16(packet_id);
-	} else if (m->ol_flags & PKT_TX_IPV6) {
-		packet_id = 0;
-	} else {
-		return EINVAL;
 	}
 
 	/* Handle TCP header */

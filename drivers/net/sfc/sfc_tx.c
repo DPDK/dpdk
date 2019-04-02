@@ -698,6 +698,25 @@ sfc_efx_tx_maybe_insert_tag(struct sfc_efx_txq *txq, struct rte_mbuf *m,
 }
 
 static uint16_t
+sfc_efx_prepare_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
+		     uint16_t nb_pkts)
+{
+	uint16_t i;
+
+	for (i = 0; i < nb_pkts; i++) {
+		int ret;
+
+		ret = sfc_dp_tx_prepare_pkt(tx_pkts[i]);
+		if (unlikely(ret != 0)) {
+			rte_errno = ret;
+			break;
+		}
+	}
+
+	return i;
+}
+
+static uint16_t
 sfc_efx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	struct sfc_dp_txq *dp_txq = (struct sfc_dp_txq *)tx_queue;
@@ -1122,5 +1141,6 @@ struct sfc_dp_tx sfc_efx_tx = {
 	.qstop			= sfc_efx_tx_qstop,
 	.qreap			= sfc_efx_tx_qreap,
 	.qdesc_status		= sfc_efx_tx_qdesc_status,
+	.pkt_prepare		= sfc_efx_prepare_pkts,
 	.pkt_burst		= sfc_efx_xmit_pkts,
 };
