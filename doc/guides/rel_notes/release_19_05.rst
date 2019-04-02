@@ -234,6 +234,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_gso.so.1
      librte_hash.so.2
      librte_ip_frag.so.1
+     librte_ipsec.so.1
      librte_jobstats.so.1
      librte_kni.so.2
      librte_kvargs.so.1
