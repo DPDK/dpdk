@@ -268,16 +268,33 @@ pkt_burst_transmit(struct fwd_stream *fs)
 	ether_addr_copy(&ports[fs->tx_port].eth_addr, &eth_hdr.s_addr);
 	eth_hdr.ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
 
-	for (nb_pkt = 0; nb_pkt < nb_pkt_per_burst; nb_pkt++) {
-		pkt = rte_mbuf_raw_alloc(mbp);
-		if (pkt == NULL)
-			break;
-		if (unlikely(!pkt_burst_prepare(pkt, mbp, &eth_hdr, vlan_tci,
-						vlan_tci_outer, ol_flags))) {
-			rte_pktmbuf_free(pkt);
-			break;
+	if (rte_mempool_get_bulk(mbp, (void **)pkts_burst,
+				nb_pkt_per_burst) == 0) {
+		for (nb_pkt = 0; nb_pkt < nb_pkt_per_burst; nb_pkt++) {
+			if (unlikely(!pkt_burst_prepare(pkts_burst[nb_pkt], mbp,
+							&eth_hdr, vlan_tci,
+							vlan_tci_outer,
+							ol_flags))) {
+				rte_mempool_put_bulk(mbp,
+						(void **)&pkts_burst[nb_pkt],
+						nb_pkt_per_burst - nb_pkt);
+				break;
+			}
 		}
-		pkts_burst[nb_pkt] = pkt;
+	} else {
+		for (nb_pkt = 0; nb_pkt < nb_pkt_per_burst; nb_pkt++) {
+			pkt = rte_mbuf_raw_alloc(mbp);
+			if (pkt == NULL)
+				break;
+			if (unlikely(!pkt_burst_prepare(pkt, mbp, &eth_hdr,
+							vlan_tci,
+							vlan_tci_outer,
+							ol_flags))) {
+				rte_pktmbuf_free(pkt);
+				break;
+			}
+			pkts_burst[nb_pkt] = pkt;
+		}
 	}
 
 	if (nb_pkt == 0)
