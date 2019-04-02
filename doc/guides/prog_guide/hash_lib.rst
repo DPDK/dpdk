@@ -108,9 +108,9 @@ Extendable Bucket Functionality support
 An extra flag is used to enable this functionality (flag is not set by default). When the (RTE_HASH_EXTRA_FLAGS_EXT_TABLE) is set and
 in the very unlikely case due to excessive hash collisions that a key has failed to be inserted, the hash table bucket is extended with a linked
 list to insert these failed keys. This feature is important for the workloads (e.g. telco workloads) that need to insert up to 100% of the
-hash table size and can't tolerate any key insertion failure (even if very few). Currently the extendable bucket is not supported
-with the lock-free concurrency implementation (RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF).
-
+hash table size and can't tolerate any key insertion failure (even if very few).
+Please note that with the 'lock free read/write concurrency' flag enabled, users need to call 'rte_hash_free_key_with_position' API in order to free the empty buckets and
+deleted keys, to maintain the 100% capacity guarantee.
 
 Implementation Details (non Extendable Bucket Case)
 ---------------------------------------------------
