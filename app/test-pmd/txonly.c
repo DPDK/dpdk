@@ -148,6 +148,80 @@ setup_pkt_udp_ip_headers(struct ipv4_hdr *ip_hdr,
 	ip_hdr->hdr_checksum = (uint16_t) ip_cksum;
 }
 
+static inline bool
+pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
+		struct ether_hdr *eth_hdr, const uint16_t vlan_tci,
+		const uint16_t vlan_tci_outer, const uint64_t ol_flags)
+{
+	struct rte_mbuf *pkt_segs[RTE_MAX_SEGS_PER_PKT];
+	uint8_t  ip_var = RTE_PER_LCORE(_ip_var);
+	struct rte_mbuf *pkt_seg;
+	uint32_t nb_segs, pkt_len;
+	uint8_t i;
+
+	if (unlikely(tx_pkt_split == TX_PKT_SPLIT_RND))
+		nb_segs = random() % tx_pkt_nb_segs + 1;
+	else
+		nb_segs = tx_pkt_nb_segs;
+
+	if (nb_segs > 1) {
+		if (rte_mempool_get_bulk(mbp, (void **)pkt_segs, nb_segs))
+			return false;
+	}
+
+	rte_pktmbuf_reset_headroom(pkt);
+	pkt->data_len = tx_pkt_seg_lengths[0];
+	pkt->ol_flags = ol_flags;
+	pkt->vlan_tci = vlan_tci;
+	pkt->vlan_tci_outer = vlan_tci_outer;
+	pkt->l2_len = sizeof(struct ether_hdr);
+	pkt->l3_len = sizeof(struct ipv4_hdr);
+
+	pkt_len = pkt->data_len;
+	pkt_seg = pkt;
+	for (i = 1; i < nb_segs; i++) {
+		pkt_seg->next = pkt_segs[i - 1];
+		pkt_seg = pkt_seg->next;
+		pkt_seg->data_len = tx_pkt_seg_lengths[i];
+		pkt_len += pkt_seg->data_len;
+	}
+	pkt_seg->next = NULL; /* Last segment of packet. */
+	/*
+	 * Copy headers in first packet segment(s).
+	 */
+	copy_buf_to_pkt(eth_hdr, sizeof(eth_hdr), pkt, 0);
+	copy_buf_to_pkt(&pkt_ip_hdr, sizeof(pkt_ip_hdr), pkt,
+			sizeof(struct ether_hdr));
+	if (txonly_multi_flow) {
+		struct ipv4_hdr *ip_hdr;
+		uint32_t addr;
+
+		ip_hdr = rte_pktmbuf_mtod_offset(pkt,
+				struct ipv4_hdr *,
+				sizeof(struct ether_hdr));
+		/*
+		 * Generate multiple flows by varying IP src addr. This
+		 * enables packets are well distributed by RSS in
+		 * receiver side if any and txonly mode can be a decent
+		 * packet generator for developer's quick performance
+		 * regression test.
+		 */
+		addr = (IP_DST_ADDR | (ip_var++ << 8)) + rte_lcore_id();
+		ip_hdr->src_addr = rte_cpu_to_be_32(addr);
+	}
+	copy_buf_to_pkt(&pkt_udp_hdr, sizeof(pkt_udp_hdr), pkt,
+			sizeof(struct ether_hdr) +
+			sizeof(struct ipv4_hdr));
+	/*
+	 * Complete first mbuf of packet and append it to the
+	 * burst of packets to be transmitted.
+	 */
+	pkt->nb_segs = nb_segs;
+	pkt->pkt_len = pkt_len;
+
+	return true;
+}
+
 /*
  * Transmit a burst of multi-segments packets.
  */
@@ -155,10 +229,8 @@ static void
 pkt_burst_transmit(struct fwd_stream *fs)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
-	struct rte_mbuf *pkt_segs[RTE_MAX_SEGS_PER_PKT];
 	struct rte_port *txp;
 	struct rte_mbuf *pkt;
-	struct rte_mbuf *pkt_seg;
 	struct rte_mempool *mbp;
 	struct ether_hdr eth_hdr;
 	uint16_t nb_tx;
@@ -166,15 +238,12 @@ pkt_burst_transmit(struct fwd_stream *fs)
 	uint16_t vlan_tci, vlan_tci_outer;
 	uint32_t retry;
 	uint64_t ol_flags = 0;
-	uint8_t  ip_var = RTE_PER_LCORE(_ip_var);
-	uint8_t  i;
 	uint64_t tx_offloads;
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 	uint64_t start_tsc;
 	uint64_t end_tsc;
 	uint64_t core_cycles;
 #endif
-	uint32_t nb_segs, pkt_len;
 
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 	start_tsc = rte_rdtsc();
@@ -201,85 +270,19 @@ pkt_burst_transmit(struct fwd_stream *fs)
 
 	for (nb_pkt = 0; nb_pkt < nb_pkt_per_burst; nb_pkt++) {
 		pkt = rte_mbuf_raw_alloc(mbp);
-		if (pkt == NULL) {
-		nomore_mbuf:
-			if (nb_pkt == 0)
-				return;
+		if (pkt == NULL)
+			break;
+		if (unlikely(!pkt_burst_prepare(pkt, mbp, &eth_hdr, vlan_tci,
+						vlan_tci_outer, ol_flags))) {
+			rte_pktmbuf_free(pkt);
 			break;
 		}
-
-		/*
-		 * Using raw alloc is good to improve performance,
-		 * but some consumers may use the headroom and so
-		 * decrement data_off. We need to make sure it is
-		 * reset to default value.
-		 */
-		rte_pktmbuf_reset_headroom(pkt);
-		pkt->data_len = tx_pkt_seg_lengths[0];
-		pkt_seg = pkt;
-
-		if (tx_pkt_split == TX_PKT_SPLIT_RND)
-			nb_segs = random() % tx_pkt_nb_segs + 1;
-		else
-			nb_segs = tx_pkt_nb_segs;
-
-		if (nb_segs > 1) {
-			if (rte_mempool_get_bulk(mbp, (void **)pkt_segs,
-							nb_segs)) {
-				rte_pktmbuf_free(pkt);
-				goto nomore_mbuf;
-			}
-		}
-
-		pkt_len = pkt->data_len;
-		for (i = 1; i < nb_segs; i++) {
-			pkt_seg->next = pkt_segs[i - 1];
-			pkt_seg = pkt_seg->next;
-			pkt_seg->data_len = tx_pkt_seg_lengths[i];
-			pkt_len += pkt_seg->data_len;
-		}
-		pkt_seg->next = NULL; /* Last segment of packet. */
-
-		/*
-		 * Copy headers in first packet segment(s).
-		 */
-		copy_buf_to_pkt(&eth_hdr, sizeof(eth_hdr), pkt, 0);
-		copy_buf_to_pkt(&pkt_ip_hdr, sizeof(pkt_ip_hdr), pkt,
-				sizeof(struct ether_hdr));
-		if (txonly_multi_flow) {
-			struct ipv4_hdr *ip_hdr;
-			uint32_t addr;
-
-			ip_hdr = rte_pktmbuf_mtod_offset(pkt,
-					struct ipv4_hdr *,
-					sizeof(struct ether_hdr));
-			/*
-			 * Generate multiple flows by varying IP src addr. This
-			 * enables packets are well distributed by RSS in
-			 * receiver side if any and txonly mode can be a decent
-			 * packet generator for developer's quick performance
-			 * regression test.
-			 */
-			addr = (IP_DST_ADDR | (ip_var++ << 8)) + rte_lcore_id();
-			ip_hdr->src_addr = rte_cpu_to_be_32(addr);
-		}
-		copy_buf_to_pkt(&pkt_udp_hdr, sizeof(pkt_udp_hdr), pkt,
-				sizeof(struct ether_hdr) +
-				sizeof(struct ipv4_hdr));
-
-		/*
-		 * Complete first mbuf of packet and append it to the
-		 * burst of packets to be transmitted.
-		 */
-		pkt->nb_segs = nb_segs;
-		pkt->pkt_len = pkt_len;
-		pkt->ol_flags = ol_flags;
-		pkt->vlan_tci = vlan_tci;
-		pkt->vlan_tci_outer = vlan_tci_outer;
-		pkt->l2_len = sizeof(struct ether_hdr);
-		pkt->l3_len = sizeof(struct ipv4_hdr);
 		pkts_burst[nb_pkt] = pkt;
 	}
+
+	if (nb_pkt == 0)
+		return;
+
 	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, pkts_burst, nb_pkt);
 	/*
 	 * Retry if necessary
