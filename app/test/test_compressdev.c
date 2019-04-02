@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2018 Intel Corporation
+ * Copyright(c) 2018 - 2019 Intel Corporation
  */
 #include <string.h>
 #include <zlib.h>
 #include <math.h>
-#include <unistd.h>
+#include <stdlib.h>
 
 #include <rte_cycles.h>
 #include <rte_malloc.h>
@@ -45,6 +45,11 @@
 
 #define OUT_OF_SPACE_BUF 1
 
+#define MAX_MBUF_SEGMENT_SIZE 65535
+#define MAX_DATA_MBUF_SIZE (MAX_MBUF_SEGMENT_SIZE - RTE_PKTMBUF_HEADROOM)
+#define NUM_BIG_MBUFS 4
+#define BIG_DATA_TEST_SIZE (MAX_DATA_MBUF_SIZE * NUM_BIG_MBUFS / 2)
+
 const char *
 huffman_type_strings[] = {
 	[RTE_COMP_HUFFMAN_DEFAULT]	= "PMD default",
@@ -73,6 +78,7 @@ struct priv_op_data {
 struct comp_testsuite_params {
 	struct rte_mempool *large_mbuf_pool;
 	struct rte_mempool *small_mbuf_pool;
+	struct rte_mempool *big_mbuf_pool;
 	struct rte_mempool *op_pool;
 	struct rte_comp_xform *def_comp_xform;
 	struct rte_comp_xform *def_decomp_xform;
@@ -92,6 +98,7 @@ struct test_data_params {
 	enum varied_buff buff_type;
 	enum zlib_direction zlib_dir;
 	unsigned int out_of_space;
+	unsigned int big_data;
 };
 
 static struct comp_testsuite_params testsuite_params = { 0 };
@@ -105,11 +112,14 @@ testsuite_teardown(void)
 		RTE_LOG(ERR, USER1, "Large mbuf pool still has unfreed bufs\n");
 	if (rte_mempool_in_use_count(ts_params->small_mbuf_pool))
 		RTE_LOG(ERR, USER1, "Small mbuf pool still has unfreed bufs\n");
+	if (rte_mempool_in_use_count(ts_params->big_mbuf_pool))
+		RTE_LOG(ERR, USER1, "Big mbuf pool still has unfreed bufs\n");
 	if (rte_mempool_in_use_count(ts_params->op_pool))
 		RTE_LOG(ERR, USER1, "op pool still has unfreed ops\n");
 
 	rte_mempool_free(ts_params->large_mbuf_pool);
 	rte_mempool_free(ts_params->small_mbuf_pool);
+	rte_mempool_free(ts_params->big_mbuf_pool);
 	rte_mempool_free(ts_params->op_pool);
 	rte_free(ts_params->def_comp_xform);
 	rte_free(ts_params->def_decomp_xform);
@@ -159,6 +169,17 @@ testsuite_setup(void)
 			rte_socket_id());
 	if (ts_params->small_mbuf_pool == NULL) {
 		RTE_LOG(ERR, USER1, "Small mbuf pool could not be created\n");
+		goto exit;
+	}
+
+	/* Create mempool with big buffers for SGL testing */
+	ts_params->big_mbuf_pool = rte_pktmbuf_pool_create("big_mbuf_pool",
+			NUM_BIG_MBUFS + 1,
+			CACHE_SIZE, 0,
+			MAX_MBUF_SEGMENT_SIZE,
+			rte_socket_id());
+	if (ts_params->big_mbuf_pool == NULL) {
+		RTE_LOG(ERR, USER1, "Big mbuf pool could not be created\n");
 		goto exit;
 	}
 
@@ -598,10 +619,11 @@ prepare_sgl_bufs(const char *test_buf, struct rte_mbuf *head_buf,
 		uint32_t total_data_size,
 		struct rte_mempool *small_mbuf_pool,
 		struct rte_mempool *large_mbuf_pool,
-		uint8_t limit_segs_in_sgl)
+		uint8_t limit_segs_in_sgl,
+		uint16_t seg_size)
 {
 	uint32_t remaining_data = total_data_size;
-	uint16_t num_remaining_segs = DIV_CEIL(remaining_data, SMALL_SEG_SIZE);
+	uint16_t num_remaining_segs = DIV_CEIL(remaining_data, seg_size);
 	struct rte_mempool *pool;
 	struct rte_mbuf *next_seg;
 	uint32_t data_size;
@@ -617,10 +639,10 @@ prepare_sgl_bufs(const char *test_buf, struct rte_mbuf *head_buf,
 	 * Allocate data in the first segment (header) and
 	 * copy data if test buffer is provided
 	 */
-	if (remaining_data < SMALL_SEG_SIZE)
+	if (remaining_data < seg_size)
 		data_size = remaining_data;
 	else
-		data_size = SMALL_SEG_SIZE;
+		data_size = seg_size;
 	buf_ptr = rte_pktmbuf_append(head_buf, data_size);
 	if (buf_ptr == NULL) {
 		RTE_LOG(ERR, USER1,
@@ -644,13 +666,13 @@ prepare_sgl_bufs(const char *test_buf, struct rte_mbuf *head_buf,
 
 		if (i == (num_remaining_segs - 1)) {
 			/* last segment */
-			if (remaining_data > SMALL_SEG_SIZE)
+			if (remaining_data > seg_size)
 				pool = large_mbuf_pool;
 			else
 				pool = small_mbuf_pool;
 			data_size = remaining_data;
 		} else {
-			data_size = SMALL_SEG_SIZE;
+			data_size = seg_size;
 			pool = small_mbuf_pool;
 		}
 
@@ -704,6 +726,7 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 	enum rte_comp_op_type state = test_data->state;
 	unsigned int buff_type = test_data->buff_type;
 	unsigned int out_of_space = test_data->out_of_space;
+	unsigned int big_data = test_data->big_data;
 	enum zlib_direction zlib_dir = test_data->zlib_dir;
 	int ret_status = -1;
 	int ret;
@@ -738,7 +761,9 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 	memset(ops_processed, 0, sizeof(struct rte_comp_op *) * num_bufs);
 	memset(priv_xforms, 0, sizeof(void *) * num_bufs);
 
-	if (buff_type == SGL_BOTH)
+	if (big_data)
+		buf_pool = ts_params->big_mbuf_pool;
+	else if (buff_type == SGL_BOTH)
 		buf_pool = ts_params->small_mbuf_pool;
 	else
 		buf_pool = ts_params->large_mbuf_pool;
@@ -757,10 +782,11 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 		for (i = 0; i < num_bufs; i++) {
 			data_size = strlen(test_bufs[i]) + 1;
 			if (prepare_sgl_bufs(test_bufs[i], uncomp_bufs[i],
-					data_size,
-					ts_params->small_mbuf_pool,
-					ts_params->large_mbuf_pool,
-					MAX_SEGS) < 0)
+			    data_size,
+			    big_data ? buf_pool : ts_params->small_mbuf_pool,
+			    big_data ? buf_pool : ts_params->large_mbuf_pool,
+			    big_data ? 0 : MAX_SEGS,
+			    big_data ? MAX_DATA_MBUF_SIZE : SMALL_SEG_SIZE) < 0)
 				goto exit;
 		}
 	} else {
@@ -789,10 +815,12 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 					COMPRESS_BUF_SIZE_RATIO);
 
 			if (prepare_sgl_bufs(NULL, comp_bufs[i],
-					data_size,
-					ts_params->small_mbuf_pool,
-					ts_params->large_mbuf_pool,
-					MAX_SEGS) < 0)
+			      data_size,
+			      big_data ? buf_pool : ts_params->small_mbuf_pool,
+			      big_data ? buf_pool : ts_params->large_mbuf_pool,
+			      big_data ? 0 : MAX_SEGS,
+			      big_data ? MAX_DATA_MBUF_SIZE : SMALL_SEG_SIZE)
+					< 0)
 				goto exit;
 		}
 
@@ -1017,10 +1045,12 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 				strlen(test_bufs[priv_data->orig_idx]) + 1;
 
 			if (prepare_sgl_bufs(NULL, uncomp_bufs[i],
-					data_size,
-					ts_params->small_mbuf_pool,
-					ts_params->large_mbuf_pool,
-					MAX_SEGS) < 0)
+			       data_size,
+			       big_data ? buf_pool : ts_params->small_mbuf_pool,
+			       big_data ? buf_pool : ts_params->large_mbuf_pool,
+			       big_data ? 0 : MAX_SEGS,
+			       big_data ? MAX_DATA_MBUF_SIZE : SMALL_SEG_SIZE)
+					< 0)
 				goto exit;
 		}
 
@@ -1320,6 +1350,7 @@ test_compressdev_deflate_stateless_fixed(void)
 		RTE_COMP_OP_STATELESS,
 		LB_BOTH,
 		ZLIB_DECOMPRESS,
+		0,
 		0
 	};
 
@@ -1390,6 +1421,7 @@ test_compressdev_deflate_stateless_dynamic(void)
 		RTE_COMP_OP_STATELESS,
 		LB_BOTH,
 		ZLIB_DECOMPRESS,
+		0,
 		0
 	};
 
@@ -1443,6 +1475,7 @@ test_compressdev_deflate_stateless_multi_op(void)
 		RTE_COMP_OP_STATELESS,
 		LB_BOTH,
 		ZLIB_DECOMPRESS,
+		0,
 		0
 	};
 
@@ -1492,6 +1525,7 @@ test_compressdev_deflate_stateless_multi_level(void)
 		RTE_COMP_OP_STATELESS,
 		LB_BOTH,
 		ZLIB_DECOMPRESS,
+		0,
 		0
 	};
 
@@ -1581,6 +1615,7 @@ test_compressdev_deflate_stateless_multi_xform(void)
 		RTE_COMP_OP_STATELESS,
 		LB_BOTH,
 		ZLIB_DECOMPRESS,
+		0,
 		0
 	};
 
@@ -1626,6 +1661,7 @@ test_compressdev_deflate_stateless_sgl(void)
 		RTE_COMP_OP_STATELESS,
 		SGL_BOTH,
 		ZLIB_DECOMPRESS,
+		0,
 		0
 	};
 
@@ -1733,6 +1769,7 @@ test_compressdev_deflate_stateless_checksum(void)
 		RTE_COMP_OP_STATELESS,
 		LB_BOTH,
 		ZLIB_DECOMPRESS,
+		0,
 		0
 	};
 
@@ -1863,7 +1900,8 @@ test_compressdev_out_of_space_buffer(void)
 		RTE_COMP_OP_STATELESS,
 		LB_BOTH,
 		ZLIB_DECOMPRESS,
-		1
+		1,
+		0
 	};
 	/* Compress with compressdev, decompress with Zlib */
 	test_data.zlib_dir = ZLIB_DECOMPRESS;
@@ -1904,6 +1942,80 @@ exit:
 	return ret;
 }
 
+static int
+test_compressdev_deflate_stateless_dynamic_big(void)
+{
+	struct comp_testsuite_params *ts_params = &testsuite_params;
+	uint16_t i = 0;
+	int ret = TEST_SUCCESS;
+	const struct rte_compressdev_capabilities *capab;
+	char *test_buffer = NULL;
+
+	capab = rte_compressdev_capability_get(0, RTE_COMP_ALGO_DEFLATE);
+	TEST_ASSERT(capab != NULL, "Failed to retrieve device capabilities");
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_HUFFMAN_DYNAMIC) == 0)
+		return -ENOTSUP;
+
+	if ((capab->comp_feature_flags & RTE_COMP_FF_OOP_SGL_IN_SGL_OUT) == 0)
+		return -ENOTSUP;
+
+	test_buffer = rte_malloc(NULL, BIG_DATA_TEST_SIZE, 0);
+	if (test_buffer == NULL) {
+		RTE_LOG(ERR, USER1,
+			"Can't allocate buffer for big-data\n");
+		return TEST_FAILED;
+	}
+
+	struct interim_data_params int_data = {
+		(const char * const *)&test_buffer,
+		1,
+		NULL,
+		&ts_params->def_comp_xform,
+		&ts_params->def_decomp_xform,
+		1
+	};
+
+	struct test_data_params test_data = {
+		RTE_COMP_OP_STATELESS,
+		SGL_BOTH,
+		ZLIB_DECOMPRESS,
+		0,
+		1
+	};
+
+	ts_params->def_comp_xform->compress.deflate.huffman =
+						RTE_COMP_HUFFMAN_DYNAMIC;
+
+	/* fill the buffer with data based on rand. data */
+	srand(BIG_DATA_TEST_SIZE);
+	for (uint32_t i = 0; i < BIG_DATA_TEST_SIZE - 1; ++i)
+		test_buffer[i] = (uint8_t)(rand() % ((uint8_t)-1)) | 1;
+
+	test_buffer[BIG_DATA_TEST_SIZE-1] = 0;
+	int_data.buf_idx = &i;
+
+	/* Compress with compressdev, decompress with Zlib */
+	test_data.zlib_dir = ZLIB_DECOMPRESS;
+	if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
+		ret = TEST_FAILED;
+		goto end;
+	}
+
+	/* Compress with Zlib, decompress with compressdev */
+	test_data.zlib_dir = ZLIB_COMPRESS;
+	if (test_deflate_comp_decomp(&int_data, &test_data) < 0) {
+		ret = TEST_FAILED;
+		goto end;
+	}
+
+end:
+	ts_params->def_comp_xform->compress.deflate.huffman =
+						RTE_COMP_HUFFMAN_DEFAULT;
+	rte_free(test_buffer);
+	return ret;
+}
+
 
 static struct unit_test_suite compressdev_testsuite  = {
 	.suite_name = "compressdev unit test suite",
@@ -1916,6 +2028,8 @@ static struct unit_test_suite compressdev_testsuite  = {
 			test_compressdev_deflate_stateless_fixed),
 		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
 			test_compressdev_deflate_stateless_dynamic),
+		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
+			test_compressdev_deflate_stateless_dynamic_big),
 		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
 			test_compressdev_deflate_stateless_multi_op),
 		TEST_CASE_ST(generic_ut_setup, generic_ut_teardown,
