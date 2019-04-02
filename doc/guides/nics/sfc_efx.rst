@@ -66,7 +66,7 @@ SFC EFX PMD has support for:
 
 - Allmulticast mode
 
-- TCP segmentation offload (TSO)
+- TCP segmentation offload (TSO) including VXLAN and GENEVE encapsulated
 
 - Multicast MAC filter
 

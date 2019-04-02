@@ -366,13 +366,16 @@ sfc_ef10_xmit_tso_pkt(struct sfc_ef10_txq * const txq, struct rte_mbuf *m_seg,
 		      unsigned int *added, unsigned int *dma_desc_space,
 		      bool *reap_done)
 {
-	size_t iph_off = m_seg->l2_len;
-	size_t tcph_off = m_seg->l2_len + m_seg->l3_len;
-	size_t header_len = m_seg->l2_len + m_seg->l3_len + m_seg->l4_len;
+	size_t iph_off = ((m_seg->ol_flags & PKT_TX_TUNNEL_MASK) ?
+			  m_seg->outer_l2_len + m_seg->outer_l3_len : 0) +
+			 m_seg->l2_len;
+	size_t tcph_off = iph_off + m_seg->l3_len;
+	size_t header_len = tcph_off + m_seg->l4_len;
 	/* Offset of the payload in the last segment that contains the header */
 	size_t in_off = 0;
 	const struct tcp_hdr *th;
 	uint16_t packet_id = 0;
+	uint16_t outer_packet_id = 0;
 	uint32_t sent_seq;
 	uint8_t *hdr_addr;
 	rte_iova_t hdr_iova;
@@ -482,12 +485,16 @@ sfc_ef10_xmit_tso_pkt(struct sfc_ef10_txq * const txq, struct rte_mbuf *m_seg,
 	if (first_m_seg->ol_flags & PKT_TX_IPV4)
 		packet_id = sfc_tso_ip4_get_ipid(hdr_addr, iph_off);
 
+	if (first_m_seg->ol_flags & PKT_TX_OUTER_IPV4)
+		outer_packet_id = sfc_tso_ip4_get_ipid(hdr_addr,
+						first_m_seg->outer_l2_len);
+
 	th = (const struct tcp_hdr *)(hdr_addr + tcph_off);
 	rte_memcpy(&sent_seq, &th->sent_seq, sizeof(uint32_t));
 	sent_seq = rte_be_to_cpu_32(sent_seq);
 
-	sfc_ef10_tx_qdesc_tso2_create(txq, *added, packet_id, 0, sent_seq,
-			first_m_seg->tso_segsz);
+	sfc_ef10_tx_qdesc_tso2_create(txq, *added, packet_id, outer_packet_id,
+			sent_seq, first_m_seg->tso_segsz);
 	(*added) += SFC_EF10_TSO_OPT_DESCS_NUM;
 
 	sfc_ef10_tx_qdesc_dma_create(hdr_iova, header_len, false,
@@ -927,7 +934,9 @@ sfc_ef10_tx_qcreate(uint16_t port_id, uint16_t queue_id,
 	if (txq->sw_ring == NULL)
 		goto fail_sw_ring_alloc;
 
-	if (info->offloads & DEV_TX_OFFLOAD_TCP_TSO) {
+	if (info->offloads & (DEV_TX_OFFLOAD_TCP_TSO |
+			      DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
+			      DEV_TX_OFFLOAD_GENEVE_TNL_TSO)) {
 		txq->tsoh = rte_calloc_socket("sfc-ef10-txq-tsoh",
 					      info->txq_entries,
 					      SFC_TSOH_STD_LEN,
@@ -1090,6 +1099,7 @@ struct sfc_dp_tx sfc_ef10_tx = {
 		.hw_fw_caps	= SFC_DP_HW_FW_CAP_EF10,
 	},
 	.features		= SFC_DP_TX_FEAT_TSO |
+				  SFC_DP_TX_FEAT_TSO_ENCAP |
 				  SFC_DP_TX_FEAT_MULTI_SEG |
 				  SFC_DP_TX_FEAT_MULTI_POOL |
 				  SFC_DP_TX_FEAT_REFCNT |

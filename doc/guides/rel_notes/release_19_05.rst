@@ -88,6 +88,7 @@ New Features
     process.
   * Added support for Rx packet types list in a secondary process.
   * Added Tx prepare to do Tx offloads checks.
+  * Added support for VXLAN and GENEVE encapsulated TSO.
 
 * **Updated Mellanox drivers.**
 

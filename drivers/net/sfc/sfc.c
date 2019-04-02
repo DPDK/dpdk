@@ -750,6 +750,12 @@ sfc_attach(struct sfc_adapter *sa)
 			sfc_info(sa, "TSO support isn't available on this adapter");
 	}
 
+	if (sa->tso && sa->priv.dp_tx->features & SFC_DP_TX_FEAT_TSO_ENCAP) {
+		sa->tso_encap = encp->enc_fw_assisted_tso_v2_encap_enabled;
+		if (!sa->tso_encap)
+			sfc_info(sa, "Encapsulated TSO support isn't available on this adapter");
+	}
+
 	sfc_log_init(sa, "estimate resource limits");
 	rc = sfc_estimate_resource_limits(sa);
 	if (rc != 0)

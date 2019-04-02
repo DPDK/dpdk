@@ -286,6 +286,7 @@ struct sfc_adapter {
 	struct sfc_txq			*txq_ctrl;
 
 	boolean_t			tso;
+	boolean_t			tso_encap;
 
 	uint32_t			rxd_wait_timeout_ns;
 };

@@ -70,6 +70,10 @@ sfc_tx_get_queue_offload_caps(struct sfc_adapter *sa)
 	if (sa->tso)
 		caps |= DEV_TX_OFFLOAD_TCP_TSO;
 
+	if (sa->tso_encap)
+		caps |= (DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
+			 DEV_TX_OFFLOAD_GENEVE_TNL_TSO);
+
 	return caps;
 }
 
@@ -469,7 +473,9 @@ sfc_tx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 			flags |= EFX_TXQ_CKSUM_INNER_TCPUDP;
 	}
 
-	if (txq_info->offloads & DEV_TX_OFFLOAD_TCP_TSO)
+	if (txq_info->offloads & (DEV_TX_OFFLOAD_TCP_TSO |
+				  DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
+				  DEV_TX_OFFLOAD_GENEVE_TNL_TSO))
 		flags |= EFX_TXQ_FATSOV2;
 
 	rc = efx_tx_qcreate(sa->nic, txq->hw_index, 0, &txq->mem,
@@ -588,16 +594,23 @@ int
 sfc_tx_start(struct sfc_adapter *sa)
 {
 	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 	unsigned int sw_index;
 	int rc = 0;
 
 	sfc_log_init(sa, "txq_count = %u", sas->txq_count);
 
 	if (sa->tso) {
-		if (!efx_nic_cfg_get(sa->nic)->enc_fw_assisted_tso_v2_enabled) {
+		if (!encp->enc_fw_assisted_tso_v2_enabled) {
 			sfc_warn(sa, "TSO support was unable to be restored");
 			sa->tso = B_FALSE;
+			sa->tso_encap = B_FALSE;
 		}
+	}
+
+	if (sa->tso_encap && !encp->enc_fw_assisted_tso_v2_encap_enabled) {
+		sfc_warn(sa, "Encapsulated TSO support was unable to be restored");
+		sa->tso_encap = B_FALSE;
 	}
 
 	rc = efx_tx_init(sa->nic);

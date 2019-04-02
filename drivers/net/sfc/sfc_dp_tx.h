@@ -163,6 +163,7 @@ struct sfc_dp_tx {
 #define SFC_DP_TX_FEAT_MULTI_PROCESS	0x8
 #define SFC_DP_TX_FEAT_MULTI_POOL	0x10
 #define SFC_DP_TX_FEAT_REFCNT		0x20
+#define SFC_DP_TX_FEAT_TSO_ENCAP	0x40
 	sfc_dp_tx_get_dev_info_t	*get_dev_info;
 	sfc_dp_tx_qsize_up_rings_t	*qsize_up_rings;
 	sfc_dp_tx_qcreate_t		*qcreate;
@@ -220,7 +221,22 @@ sfc_dp_tx_prepare_pkt(struct rte_mbuf *m,
 
 	if (m->ol_flags & PKT_TX_TCP_SEG) {
 		unsigned int tcph_off = m->l2_len + m->l3_len;
-		unsigned int header_len = tcph_off + m->l4_len;
+		unsigned int header_len;
+
+		switch (m->ol_flags & PKT_TX_TUNNEL_MASK) {
+		case 0:
+			break;
+		case PKT_TX_TUNNEL_VXLAN:
+			/* FALLTHROUGH */
+		case PKT_TX_TUNNEL_GENEVE:
+			if (!(m->ol_flags &
+			      (PKT_TX_OUTER_IPV4 | PKT_TX_OUTER_IPV6)))
+				return EINVAL;
+
+			tcph_off += m->outer_l2_len + m->outer_l3_len;
+		}
+
+		header_len = tcph_off + m->l4_len;
 
 		if (unlikely(tcph_off > tso_tcp_header_offset_limit))
 			return EINVAL;
