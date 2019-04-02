@@ -319,6 +319,44 @@ sfc_ef10_try_reap(struct sfc_ef10_txq * const txq, unsigned int added,
 	return (needed_desc <= *dma_desc_space);
 }
 
+static uint16_t
+sfc_ef10_prepare_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
+		      uint16_t nb_pkts)
+{
+	uint16_t i;
+
+	for (i = 0; i < nb_pkts; i++) {
+		struct rte_mbuf *m = tx_pkts[i];
+		int ret;
+
+#ifdef RTE_LIBRTE_SFC_EFX_DEBUG
+		/*
+		 * In non-TSO case, check that a packet segments do not exceed
+		 * the size limit. Perform the check in debug mode since MTU
+		 * more than 9k is not supported, but the limit here is 16k-1.
+		 */
+		if (!(m->ol_flags & PKT_TX_TCP_SEG)) {
+			struct rte_mbuf *m_seg;
+
+			for (m_seg = m; m_seg != NULL; m_seg = m_seg->next) {
+				if (m_seg->data_len >
+				    SFC_EF10_TX_DMA_DESC_LEN_MAX) {
+					rte_errno = EINVAL;
+					break;
+				}
+			}
+		}
+#endif
+		ret = sfc_dp_tx_prepare_pkt(m);
+		if (unlikely(ret != 0)) {
+			rte_errno = ret;
+			break;
+		}
+	}
+
+	return i;
+}
+
 static int
 sfc_ef10_xmit_tso_pkt(struct sfc_ef10_txq * const txq, struct rte_mbuf *m_seg,
 		      unsigned int *added, unsigned int *dma_desc_space,
@@ -330,7 +368,7 @@ sfc_ef10_xmit_tso_pkt(struct sfc_ef10_txq * const txq, struct rte_mbuf *m_seg,
 	/* Offset of the payload in the last segment that contains the header */
 	size_t in_off = 0;
 	const struct tcp_hdr *th;
-	uint16_t packet_id;
+	uint16_t packet_id = 0;
 	uint32_t sent_seq;
 	uint8_t *hdr_addr;
 	rte_iova_t hdr_iova;
@@ -433,20 +471,17 @@ sfc_ef10_xmit_tso_pkt(struct sfc_ef10_txq * const txq, struct rte_mbuf *m_seg,
 			needed_desc--;
 	}
 
-	switch (first_m_seg->ol_flags & (PKT_TX_IPV4 | PKT_TX_IPV6)) {
-	case PKT_TX_IPV4: {
+	/*
+	 * Tx prepare has debug-only checks that offload flags are correctly
+	 * filled in in TSO mbuf. Use zero IPID if there is no IPv4 flag.
+	 * If the packet is still IPv4, HW will simply start from zero IPID.
+	 */
+	if (first_m_seg->ol_flags & PKT_TX_IPV4) {
 		const struct ipv4_hdr *iphe4;
 
 		iphe4 = (const struct ipv4_hdr *)(hdr_addr + iph_off);
 		rte_memcpy(&packet_id, &iphe4->packet_id, sizeof(uint16_t));
 		packet_id = rte_be_to_cpu_16(packet_id);
-		break;
-	}
-	case PKT_TX_IPV6:
-		packet_id = 0;
-		break;
-	default:
-		return EINVAL;
 	}
 
 	th = (const struct tcp_hdr *)(hdr_addr + tcph_off);
@@ -1014,6 +1049,7 @@ struct sfc_dp_tx sfc_ef10_tx = {
 	.qstop			= sfc_ef10_tx_qstop,
 	.qreap			= sfc_ef10_tx_qreap,
 	.qdesc_status		= sfc_ef10_tx_qdesc_status,
+	.pkt_prepare		= sfc_ef10_prepare_pkts,
 	.pkt_burst		= sfc_ef10_xmit_pkts,
 };
 
