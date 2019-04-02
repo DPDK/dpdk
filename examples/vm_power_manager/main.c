@@ -31,9 +31,15 @@
 #include "vm_power_cli.h"
 #include "oob_monitor.h"
 #include "parse.h"
+#ifdef RTE_LIBRTE_IXGBE_PMD
 #include <rte_pmd_ixgbe.h>
+#endif
+#ifdef RTE_LIBRTE_I40E_PMD
 #include <rte_pmd_i40e.h>
+#endif
+#ifdef RTE_LIBRTE_BNXT_PMD
 #include <rte_pmd_bnxt.h>
+#endif
 
 #define RX_RING_SIZE 1024
 #define TX_RING_SIZE 1024
@@ -370,14 +376,21 @@ main(int argc, char **argv)
 			for (w = 0; w < MAX_VFS; w++) {
 				eth.addr_bytes[5] = w + 0xf0;
 
+				ret = -ENOTSUP;
+#ifdef RTE_LIBRTE_IXGBE_PMD
 				ret = rte_pmd_ixgbe_set_vf_mac_addr(portid,
 							w, &eth);
+#endif
+#ifdef RTE_LIBRTE_I40E_PMD
 				if (ret == -ENOTSUP)
 					ret = rte_pmd_i40e_set_vf_mac_addr(
 							portid, w, &eth);
+#endif
+#ifdef RTE_LIBRTE_BNXT_PMD
 				if (ret == -ENOTSUP)
 					ret = rte_pmd_bnxt_set_vf_mac_addr(
 							portid, w, &eth);
+#endif
 
 				switch (ret) {
 				case 0:
