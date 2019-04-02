@@ -450,14 +450,31 @@ rte_ipsec_sa_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm,
 	return sz;
 }
 
+/*
+ * Move bad (unprocessed) mbufs beyond the good (processed) ones.
+ * bad_idx[] contains the indexes of bad mbufs inside the mb[].
+ */
 static inline void
-mbuf_bulk_copy(struct rte_mbuf *dst[], struct rte_mbuf * const src[],
-	uint32_t num)
+move_bad_mbufs(struct rte_mbuf *mb[], const uint32_t bad_idx[], uint32_t nb_mb,
+	uint32_t nb_bad)
 {
-	uint32_t i;
+	uint32_t i, j, k;
+	struct rte_mbuf *drb[nb_bad];
 
-	for (i = 0; i != num; i++)
-		dst[i] = src[i];
+	j = 0;
+	k = 0;
+
+	/* copy bad ones into a temp place */
+	for (i = 0; i != nb_mb; i++) {
+		if (j != nb_bad && i == bad_idx[j])
+			drb[j++] = mb[i];
+		else
+			mb[k++] = mb[i];
+	}
+
+	/* copy bad ones after the good ones */
+	for (i = 0; i != nb_bad; i++)
+		mb[k + i] = drb[i];
 }
 
 /*
@@ -667,7 +684,7 @@ outb_tun_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 	struct rte_cryptodev_sym_session *cs;
 	union sym_op_data icv;
 	uint64_t iv[IPSEC_MAX_IV_QWORD];
-	struct rte_mbuf *dr[num];
+	uint32_t dr[num];
 
 	sa = ss->sa;
 	cs = ss->crypto.ses;
@@ -691,17 +708,17 @@ outb_tun_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 			outb_pkt_xprepare(sa, sqc, &icv);
 			lksd_none_cop_prepare(cop[k], cs, mb[i]);
 			esp_outb_cop_prepare(cop[k], sa, iv, &icv, 0, rc);
-			mb[k++] = mb[i];
+			k++;
 		/* failure, put packet into the death-row */
 		} else {
-			dr[i - k] = mb[i];
+			dr[i - k] = i;
 			rte_errno = -rc;
 		}
 	}
 
 	 /* copy not prepared mbufs beyond good ones */
 	if (k != n && k != 0)
-		mbuf_bulk_copy(mb + k, dr, n - k);
+		move_bad_mbufs(mb, dr, n, n - k);
 
 	return k;
 }
@@ -802,7 +819,7 @@ outb_trs_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 	struct rte_cryptodev_sym_session *cs;
 	union sym_op_data icv;
 	uint64_t iv[IPSEC_MAX_IV_QWORD];
-	struct rte_mbuf *dr[num];
+	uint32_t dr[num];
 
 	sa = ss->sa;
 	cs = ss->crypto.ses;
@@ -830,17 +847,17 @@ outb_trs_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 			outb_pkt_xprepare(sa, sqc, &icv);
 			lksd_none_cop_prepare(cop[k], cs, mb[i]);
 			esp_outb_cop_prepare(cop[k], sa, iv, &icv, l2 + l3, rc);
-			mb[k++] = mb[i];
+			k++;
 		/* failure, put packet into the death-row */
 		} else {
-			dr[i - k] = mb[i];
+			dr[i - k] = i;
 			rte_errno = -rc;
 		}
 	}
 
 	/* copy not prepared mbufs beyond good ones */
 	if (k != n && k != 0)
-		mbuf_bulk_copy(mb + k, dr, n - k);
+		move_bad_mbufs(mb, dr, n, n - k);
 
 	return k;
 }
@@ -1019,7 +1036,7 @@ inb_pkt_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 	struct rte_cryptodev_sym_session *cs;
 	struct replay_sqn *rsn;
 	union sym_op_data icv;
-	struct rte_mbuf *dr[num];
+	uint32_t dr[num];
 
 	sa = ss->sa;
 	cs = ss->crypto.ses;
@@ -1036,10 +1053,9 @@ inb_pkt_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 				hl, rc);
 		}
 
-		if (rc == 0)
-			mb[k++] = mb[i];
-		else {
-			dr[i - k] = mb[i];
+		k += (rc == 0);
+		if (rc != 0) {
+			dr[i - k] = i;
 			rte_errno = -rc;
 		}
 	}
@@ -1048,7 +1064,7 @@ inb_pkt_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 
 	/* copy not prepared mbufs beyond good ones */
 	if (k != num && k != 0)
-		mbuf_bulk_copy(mb + k, dr, num - k);
+		move_bad_mbufs(mb, dr, num, num - k);
 
 	return k;
 }
@@ -1200,7 +1216,7 @@ esp_inb_trs_single_pkt_process(struct rte_ipsec_sa *sa, struct rte_mbuf *mb,
  */
 static inline uint16_t
 esp_inb_rsn_update(struct rte_ipsec_sa *sa, const uint32_t sqn[],
-	struct rte_mbuf *mb[], struct rte_mbuf *dr[], uint16_t num)
+	uint32_t dr[], uint16_t num)
 {
 	uint32_t i, k;
 	struct replay_sqn *rsn;
@@ -1210,9 +1226,9 @@ esp_inb_rsn_update(struct rte_ipsec_sa *sa, const uint32_t sqn[],
 	k = 0;
 	for (i = 0; i != num; i++) {
 		if (esn_inb_update_sqn(rsn, sa, sqn[i]) == 0)
-			mb[k++] = mb[i];
+			k++;
 		else
-			dr[i - k] = mb[i];
+			dr[i - k] = i;
 	}
 
 	rsn_update_finish(sa, rsn);
@@ -1226,10 +1242,10 @@ static uint16_t
 inb_tun_pkt_process(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 	uint16_t num)
 {
-	uint32_t i, k;
+	uint32_t i, k, n;
 	struct rte_ipsec_sa *sa;
 	uint32_t sqn[num];
-	struct rte_mbuf *dr[num];
+	uint32_t dr[num];
 
 	sa = ss->sa;
 
@@ -1239,23 +1255,27 @@ inb_tun_pkt_process(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 	for (i = 0; i != num; i++) {
 		/* good packet */
 		if (esp_inb_tun_single_pkt_process(sa, mb[i], sqn + k) == 0)
-			mb[k++] = mb[i];
+			k++;
 		/* bad packet, will drop from furhter processing */
 		else
-			dr[i - k] = mb[i];
+			dr[i - k] = i;
 	}
-
-	/* update seq # and replay winow */
-	k = esp_inb_rsn_update(sa, sqn, mb, dr + i - k, k);
 
 	/* handle unprocessed mbufs */
-	if (k != num) {
-		rte_errno = EBADMSG;
-		if (k != 0)
-			mbuf_bulk_copy(mb + k, dr, num - k);
-	}
+	if (k != num && k != 0)
+		move_bad_mbufs(mb, dr, num, num - k);
 
-	return k;
+	/* update SQN and replay winow */
+	n = esp_inb_rsn_update(sa, sqn, dr, k);
+
+	/* handle mbufs with wrong SQN */
+	if (n != k && n != 0)
+		move_bad_mbufs(mb, dr, k, k - n);
+
+	if (n != num)
+		rte_errno = EBADMSG;
+
+	return n;
 }
 
 /*
@@ -1265,10 +1285,10 @@ static uint16_t
 inb_trs_pkt_process(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 	uint16_t num)
 {
-	uint32_t i, k;
+	uint32_t i, k, n;
 	uint32_t sqn[num];
 	struct rte_ipsec_sa *sa;
-	struct rte_mbuf *dr[num];
+	uint32_t dr[num];
 
 	sa = ss->sa;
 
@@ -1278,23 +1298,27 @@ inb_trs_pkt_process(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 	for (i = 0; i != num; i++) {
 		/* good packet */
 		if (esp_inb_trs_single_pkt_process(sa, mb[i], sqn + k) == 0)
-			mb[k++] = mb[i];
+			k++;
 		/* bad packet, will drop from furhter processing */
 		else
-			dr[i - k] = mb[i];
+			dr[i - k] = i;
 	}
-
-	/* update seq # and replay winow */
-	k = esp_inb_rsn_update(sa, sqn, mb, dr + i - k, k);
 
 	/* handle unprocessed mbufs */
-	if (k != num) {
-		rte_errno = EBADMSG;
-		if (k != 0)
-			mbuf_bulk_copy(mb + k, dr, num - k);
-	}
+	if (k != num && k != 0)
+		move_bad_mbufs(mb, dr, num, num - k);
 
-	return k;
+	/* update SQN and replay winow */
+	n = esp_inb_rsn_update(sa, sqn, dr, k);
+
+	/* handle mbufs with wrong SQN */
+	if (n != k && n != 0)
+		move_bad_mbufs(mb, dr, k, k - n);
+
+	if (n != num)
+		rte_errno = EBADMSG;
+
+	return n;
 }
 
 /*
@@ -1310,7 +1334,7 @@ outb_sqh_process(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 	uint32_t i, k, icv_len, *icv;
 	struct rte_mbuf *ml;
 	struct rte_ipsec_sa *sa;
-	struct rte_mbuf *dr[num];
+	uint32_t dr[num];
 
 	sa = ss->sa;
 
@@ -1323,16 +1347,16 @@ outb_sqh_process(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 			icv = rte_pktmbuf_mtod_offset(ml, void *,
 				ml->data_len - icv_len);
 			remove_sqh(icv, icv_len);
-			mb[k++] = mb[i];
+			k++;
 		} else
-			dr[i - k] = mb[i];
+			dr[i - k] = i;
 	}
 
 	/* handle unprocessed mbufs */
 	if (k != num) {
 		rte_errno = EBADMSG;
 		if (k != 0)
-			mbuf_bulk_copy(mb + k, dr, num - k);
+			move_bad_mbufs(mb, dr, num, num - k);
 	}
 
 	return k;
@@ -1352,23 +1376,23 @@ pkt_flag_process(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 	uint16_t num)
 {
 	uint32_t i, k;
-	struct rte_mbuf *dr[num];
+	uint32_t dr[num];
 
 	RTE_SET_USED(ss);
 
 	k = 0;
 	for (i = 0; i != num; i++) {
 		if ((mb[i]->ol_flags & PKT_RX_SEC_OFFLOAD_FAILED) == 0)
-			mb[k++] = mb[i];
+			k++;
 		else
-			dr[i - k] = mb[i];
+			dr[i - k] = i;
 	}
 
 	/* handle unprocessed mbufs */
 	if (k != num) {
 		rte_errno = EBADMSG;
 		if (k != 0)
-			mbuf_bulk_copy(mb + k, dr, num - k);
+			move_bad_mbufs(mb, dr, num, num - k);
 	}
 
 	return k;
@@ -1409,7 +1433,7 @@ inline_outb_tun_pkt_process(const struct rte_ipsec_session *ss,
 	struct rte_ipsec_sa *sa;
 	union sym_op_data icv;
 	uint64_t iv[IPSEC_MAX_IV_QWORD];
-	struct rte_mbuf *dr[num];
+	uint32_t dr[num];
 
 	sa = ss->sa;
 
@@ -1427,22 +1451,20 @@ inline_outb_tun_pkt_process(const struct rte_ipsec_session *ss,
 		/* try to update the packet itself */
 		rc = esp_outb_tun_pkt_prepare(sa, sqc, iv, mb[i], &icv);
 
-		/* success, update mbuf fields */
-		if (rc >= 0)
-			mb[k++] = mb[i];
+		k += (rc >= 0);
+
 		/* failure, put packet into the death-row */
-		else {
-			dr[i - k] = mb[i];
+		if (rc < 0) {
+			dr[i - k] = i;
 			rte_errno = -rc;
 		}
 	}
 
-	inline_outb_mbuf_prepare(ss, mb, k);
-
 	/* copy not processed mbufs beyond good ones */
 	if (k != n && k != 0)
-		mbuf_bulk_copy(mb + k, dr, n - k);
+		move_bad_mbufs(mb, dr, n, n - k);
 
+	inline_outb_mbuf_prepare(ss, mb, k);
 	return k;
 }
 
@@ -1461,7 +1483,7 @@ inline_outb_trs_pkt_process(const struct rte_ipsec_session *ss,
 	struct rte_ipsec_sa *sa;
 	union sym_op_data icv;
 	uint64_t iv[IPSEC_MAX_IV_QWORD];
-	struct rte_mbuf *dr[num];
+	uint32_t dr[num];
 
 	sa = ss->sa;
 
@@ -1483,22 +1505,20 @@ inline_outb_trs_pkt_process(const struct rte_ipsec_session *ss,
 		rc = esp_outb_trs_pkt_prepare(sa, sqc, iv, mb[i],
 				l2, l3, &icv);
 
-		/* success, update mbuf fields */
-		if (rc >= 0)
-			mb[k++] = mb[i];
+		k += (rc >= 0);
+
 		/* failure, put packet into the death-row */
-		else {
-			dr[i - k] = mb[i];
+		if (rc < 0) {
+			dr[i - k] = i;
 			rte_errno = -rc;
 		}
 	}
 
-	inline_outb_mbuf_prepare(ss, mb, k);
-
 	/* copy not processed mbufs beyond good ones */
 	if (k != n && k != 0)
-		mbuf_bulk_copy(mb + k, dr, n - k);
+		move_bad_mbufs(mb, dr, n, n - k);
 
+	inline_outb_mbuf_prepare(ss, mb, k);
 	return k;
 }
 
