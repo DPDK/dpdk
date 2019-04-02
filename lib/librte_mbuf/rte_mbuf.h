@@ -40,6 +40,7 @@
 #include <rte_atomic.h>
 #include <rte_prefetch.h>
 #include <rte_branch_prediction.h>
+#include <rte_byteorder.h>
 #include <rte_mbuf_ptype.h>
 
 #ifdef __cplusplus
@@ -480,6 +481,50 @@ struct rte_mbuf_sched {
 }; /**< Hierarchical scheduler */
 
 /**
+ * enum for the tx_offload bit-fields lenghts and offsets.
+ * defines the layout of rte_mbuf tx_offload field.
+ */
+enum {
+	RTE_MBUF_L2_LEN_BITS = 7,
+	RTE_MBUF_L3_LEN_BITS = 9,
+	RTE_MBUF_L4_LEN_BITS = 8,
+	RTE_MBUF_TSO_SEGSZ_BITS = 16,
+	RTE_MBUF_OUTL3_LEN_BITS = 9,
+	RTE_MBUF_OUTL2_LEN_BITS = 7,
+	RTE_MBUF_TXOFLD_UNUSED_BITS = sizeof(uint64_t) * CHAR_BIT -
+		RTE_MBUF_L2_LEN_BITS -
+		RTE_MBUF_L3_LEN_BITS -
+		RTE_MBUF_L4_LEN_BITS -
+		RTE_MBUF_TSO_SEGSZ_BITS -
+		RTE_MBUF_OUTL3_LEN_BITS -
+		RTE_MBUF_OUTL2_LEN_BITS,
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+	RTE_MBUF_L2_LEN_OFS =
+		sizeof(uint64_t) * CHAR_BIT - RTE_MBUF_L2_LEN_BITS
+	RTE_MBUF_L3_LEN_OFS = RTE_MBUF_L2_LEN_OFS - RTE_MBUF_L3_LEN_BITS,
+	RTE_MBUF_L4_LEN_OFS = RTE_MBUF_L3_LEN_OFS - RTE_MBUF_L4_LEN_BITS,
+	RTE_MBUF_TSO_SEGSZ_OFS = RTE_MBUF_L4_LEN_OFS - RTE_MBUF_TSO_SEGSZ_BITS,
+	RTE_MBUF_OUTL3_LEN_OFS =
+		RTE_MBUF_TSO_SEGSZ_OFS - RTE_MBUF_OUTL3_LEN_BITS,
+	RTE_MBUF_OUTL2_LEN_OFS =
+		RTE_MBUF_OUTL3_LEN_OFS - RTE_MBUF_OUTL2_LEN_BITS,
+	RTE_MBUF_TXOFLD_UNUSED_OFS =
+		RTE_MBUF_OUTL2_LEN_OFS - RTE_MBUF_TXOFLD_UNUSED_BITS,
+#else
+	RTE_MBUF_L2_LEN_OFS = 0,
+	RTE_MBUF_L3_LEN_OFS = RTE_MBUF_L2_LEN_OFS + RTE_MBUF_L2_LEN_BITS,
+	RTE_MBUF_L4_LEN_OFS = RTE_MBUF_L3_LEN_OFS + RTE_MBUF_L3_LEN_BITS,
+	RTE_MBUF_TSO_SEGSZ_OFS = RTE_MBUF_L4_LEN_OFS + RTE_MBUF_L4_LEN_BITS,
+	RTE_MBUF_OUTL3_LEN_OFS =
+		RTE_MBUF_TSO_SEGSZ_OFS + RTE_MBUF_TSO_SEGSZ_BITS,
+	RTE_MBUF_OUTL2_LEN_OFS =
+		RTE_MBUF_OUTL3_LEN_OFS + RTE_MBUF_OUTL3_LEN_BITS,
+	RTE_MBUF_TXOFLD_UNUSED_OFS =
+		RTE_MBUF_OUTL2_LEN_OFS + RTE_MBUF_OUTL2_LEN_BITS,
+#endif
+};
+
+/**
  * The generic rte_mbuf, containing a packet mbuf.
  */
 struct rte_mbuf {
@@ -640,19 +685,24 @@ struct rte_mbuf {
 		uint64_t tx_offload;       /**< combined for easy fetch */
 		__extension__
 		struct {
-			uint64_t l2_len:7;
+			uint64_t l2_len:RTE_MBUF_L2_LEN_BITS;
 			/**< L2 (MAC) Header Length for non-tunneling pkt.
 			 * Outer_L4_len + ... + Inner_L2_len for tunneling pkt.
 			 */
-			uint64_t l3_len:9; /**< L3 (IP) Header Length. */
-			uint64_t l4_len:8; /**< L4 (TCP/UDP) Header Length. */
-			uint64_t tso_segsz:16; /**< TCP TSO segment size */
+			uint64_t l3_len:RTE_MBUF_L3_LEN_BITS;
+			/**< L3 (IP) Header Length. */
+			uint64_t l4_len:RTE_MBUF_L4_LEN_BITS;
+			/**< L4 (TCP/UDP) Header Length. */
+			uint64_t tso_segsz:RTE_MBUF_TSO_SEGSZ_BITS;
+			/**< TCP TSO segment size */
 
 			/* fields for TX offloading of tunnels */
-			uint64_t outer_l3_len:9; /**< Outer L3 (IP) Hdr Length. */
-			uint64_t outer_l2_len:7; /**< Outer L2 (MAC) Hdr Length. */
+			uint64_t outer_l3_len:RTE_MBUF_OUTL3_LEN_BITS;
+			/**< Outer L3 (IP) Hdr Length. */
+			uint64_t outer_l2_len:RTE_MBUF_OUTL2_LEN_BITS;
+			/**< Outer L2 (MAC) Hdr Length. */
 
-			/* uint64_t unused:8; */
+			/* uint64_t unused:RTE_MBUF_TXOFLD_UNUSED_BITS; */
 		};
 	};
 
@@ -2241,6 +2291,43 @@ static inline int rte_pktmbuf_chain(struct rte_mbuf *head, struct rte_mbuf *tail
 	tail->pkt_len = tail->data_len;
 
 	return 0;
+}
+
+/*
+ * @warning
+ * @b EXPERIMENTAL: This API may change without prior notice.
+ *
+ * For given input values generate raw tx_offload value.
+ * Note that it is caller responsibility to make sure that input parameters
+ * don't exceed maximum bit-field values.
+ * @param il2
+ *   l2_len value.
+ * @param il3
+ *   l3_len value.
+ * @param il4
+ *   l4_len value.
+ * @param tso
+ *   tso_segsz value.
+ * @param ol3
+ *   outer_l3_len value.
+ * @param ol2
+ *   outer_l2_len value.
+ * @param unused
+ *   unused value.
+ * @return
+ *   raw tx_offload value.
+ */
+static __rte_always_inline uint64_t
+rte_mbuf_tx_offload(uint64_t il2, uint64_t il3, uint64_t il4, uint64_t tso,
+	uint64_t ol3, uint64_t ol2, uint64_t unused)
+{
+	return il2 << RTE_MBUF_L2_LEN_OFS |
+		il3 << RTE_MBUF_L3_LEN_OFS |
+		il4 << RTE_MBUF_L4_LEN_OFS |
+		tso << RTE_MBUF_TSO_SEGSZ_OFS |
+		ol3 << RTE_MBUF_OUTL3_LEN_OFS |
+		ol2 << RTE_MBUF_OUTL2_LEN_OFS |
+		unused << RTE_MBUF_TXOFLD_UNUSED_OFS;
 }
 
 /**

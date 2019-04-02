@@ -27,6 +27,7 @@
 #include <rte_mbuf.h>
 #include <rte_random.h>
 #include <rte_cycles.h>
+#include <rte_malloc.h>
 
 #include "test.h"
 
@@ -1028,6 +1029,99 @@ test_mbuf_linearize_check(struct rte_mempool *pktmbuf_pool)
 	return 0;
 }
 
+/*
+ * Helper function for test_tx_ofload
+ */
+static inline void
+set_tx_offload(struct rte_mbuf *mb, uint64_t il2, uint64_t il3, uint64_t il4,
+	uint64_t tso, uint64_t ol3, uint64_t ol2)
+{
+	mb->l2_len = il2;
+	mb->l3_len = il3;
+	mb->l4_len = il4;
+	mb->tso_segsz = tso;
+	mb->outer_l3_len = ol3;
+	mb->outer_l2_len = ol2;
+}
+
+static int
+test_tx_offload(void)
+{
+	struct rte_mbuf *mb;
+	uint64_t tm, v1, v2;
+	size_t sz;
+	uint32_t i;
+
+	static volatile struct {
+		uint16_t l2;
+		uint16_t l3;
+		uint16_t l4;
+		uint16_t tso;
+	} txof;
+
+	const uint32_t num = 0x10000;
+
+	txof.l2 = rte_rand() % (1 <<  RTE_MBUF_L2_LEN_BITS);
+	txof.l3 = rte_rand() % (1 <<  RTE_MBUF_L3_LEN_BITS);
+	txof.l4 = rte_rand() % (1 <<  RTE_MBUF_L4_LEN_BITS);
+	txof.tso = rte_rand() % (1 <<   RTE_MBUF_TSO_SEGSZ_BITS);
+
+	printf("%s started, tx_offload = {\n"
+		"\tl2_len=%#hx,\n"
+		"\tl3_len=%#hx,\n"
+		"\tl4_len=%#hx,\n"
+		"\ttso_segsz=%#hx,\n"
+		"\touter_l3_len=%#x,\n"
+		"\touter_l2_len=%#x,\n"
+		"};\n",
+		__func__,
+		txof.l2, txof.l3, txof.l4, txof.tso, txof.l3, txof.l2);
+
+	sz = sizeof(*mb) * num;
+	mb = rte_zmalloc(NULL, sz, RTE_CACHE_LINE_SIZE);
+	if (mb == NULL) {
+		printf("%s failed, out of memory\n", __func__);
+		return -ENOMEM;
+	}
+
+	memset(mb, 0, sz);
+	tm = rte_rdtsc_precise();
+
+	for (i = 0; i != num; i++)
+		set_tx_offload(mb + i, txof.l2, txof.l3, txof.l4,
+			txof.tso, txof.l3, txof.l2);
+
+	tm = rte_rdtsc_precise() - tm;
+	printf("%s set tx_offload by bit-fields: %u iterations, %"
+		PRIu64 " cycles, %#Lf cycles/iter\n",
+		__func__, num, tm, (long double)tm / num);
+
+	v1 = mb[rte_rand() % num].tx_offload;
+
+	memset(mb, 0, sz);
+	tm = rte_rdtsc_precise();
+
+	for (i = 0; i != num; i++)
+		mb[i].tx_offload = rte_mbuf_tx_offload(txof.l2, txof.l3,
+			txof.l4, txof.tso, txof.l3, txof.l2, 0);
+
+	tm = rte_rdtsc_precise() - tm;
+	printf("%s set raw tx_offload: %u iterations, %"
+		PRIu64 " cycles, %#Lf cycles/iter\n",
+		__func__, num, tm, (long double)tm / num);
+
+	v2 = mb[rte_rand() % num].tx_offload;
+
+	rte_free(mb);
+
+	printf("%s finished\n"
+		"expected tx_offload value: 0x%" PRIx64 ";\n"
+		"rte_mbuf_tx_offload value: 0x%" PRIx64 ";\n",
+		__func__, v1, v2);
+
+	return (v1 == v2) ? 0 : -EINVAL;
+}
+
 static int
 test_mbuf(void)
 {
@@ -1126,8 +1220,13 @@ test_mbuf(void)
 		printf("test_mbuf_linearize_check() failed\n");
 		goto err;
 	}
-	ret = 0;
 
+	if (test_tx_offload() < 0) {
+		printf("test_tx_offload() failed\n");
+		goto err;
+	}
+
+	ret = 0;
 err:
 	rte_mempool_free(pktmbuf_pool);
 	rte_mempool_free(pktmbuf_pool2);
