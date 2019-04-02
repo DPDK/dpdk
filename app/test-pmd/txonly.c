@@ -155,6 +155,7 @@ static void
 pkt_burst_transmit(struct fwd_stream *fs)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
+	struct rte_mbuf *pkt_segs[RTE_MAX_SEGS_PER_PKT];
 	struct rte_port *txp;
 	struct rte_mbuf *pkt;
 	struct rte_mbuf *pkt_seg;
@@ -216,18 +217,23 @@ pkt_burst_transmit(struct fwd_stream *fs)
 		rte_pktmbuf_reset_headroom(pkt);
 		pkt->data_len = tx_pkt_seg_lengths[0];
 		pkt_seg = pkt;
+
 		if (tx_pkt_split == TX_PKT_SPLIT_RND)
 			nb_segs = random() % tx_pkt_nb_segs + 1;
 		else
 			nb_segs = tx_pkt_nb_segs;
-		pkt_len = pkt->data_len;
-		for (i = 1; i < nb_segs; i++) {
-			pkt_seg->next = rte_mbuf_raw_alloc(mbp);
-			if (pkt_seg->next == NULL) {
-				pkt->nb_segs = i;
+
+		if (nb_segs > 1) {
+			if (rte_mempool_get_bulk(mbp, (void **)pkt_segs,
+							nb_segs)) {
 				rte_pktmbuf_free(pkt);
 				goto nomore_mbuf;
 			}
+		}
+
+		pkt_len = pkt->data_len;
+		for (i = 1; i < nb_segs; i++) {
+			pkt_seg->next = pkt_segs[i - 1];
 			pkt_seg = pkt_seg->next;
 			pkt_seg->data_len = tx_pkt_seg_lengths[i];
 			pkt_len += pkt_seg->data_len;
