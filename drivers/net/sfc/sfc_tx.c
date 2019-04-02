@@ -760,7 +760,8 @@ sfc_efx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				/* We may have reached this place for
 				 * one of the following reasons:
 				 *
-				 * 1) Packet header length is greater
+				 * 1) Packet header linearization is needed
+				 *    and the header length is greater
 				 *    than SFC_TSOH_STD_LEN
 				 * 2) TCP header starts at more then
 				 *    208 bytes into the frame

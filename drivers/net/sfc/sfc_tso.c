@@ -107,10 +107,6 @@ sfc_efx_tso_do(struct sfc_efx_txq *txq, unsigned int idx,
 
 	idx += SFC_TSO_OPT_DESCS_NUM;
 
-	/* Packets which have too big headers should be discarded */
-	if (unlikely(header_len > SFC_TSOH_STD_LEN))
-		return EMSGSIZE;
-
 	/*
 	 * The TCP header must start at most 208 bytes into the frame.
 	 * If it starts later than this then the NIC won't realise
@@ -129,6 +125,13 @@ sfc_efx_tso_do(struct sfc_efx_txq *txq, unsigned int idx,
 	 * limitations on address boundaries crossing by DMA descriptor data.
 	 */
 	if (m->data_len < header_len) {
+		/*
+		 * Discard a packet if header linearization is needed but
+		 * the header is too big.
+		 */
+		if (unlikely(header_len > SFC_TSOH_STD_LEN))
+			return EMSGSIZE;
+
 		tsoh = txq->sw_ring[idx & txq->ptr_mask].tsoh;
 		sfc_tso_prepare_header(tsoh, header_len, in_seg, in_off);
 
