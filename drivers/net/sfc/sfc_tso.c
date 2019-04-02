@@ -103,17 +103,8 @@ sfc_efx_tso_do(struct sfc_efx_txq *txq, unsigned int idx,
 	size_t nh_off = m->l2_len; /* IP header offset */
 	size_t tcph_off = m->l2_len + m->l3_len; /* TCP header offset */
 	size_t header_len = m->l2_len + m->l3_len + m->l4_len;
-	const efx_nic_cfg_t *encp = efx_nic_cfg_get(txq->evq->sa->nic);
 
 	idx += SFC_EF10_TSO_OPT_DESCS_NUM;
-
-	/*
-	 * The TCP header must start at most 208 bytes into the frame.
-	 * If it starts later than this then the NIC won't realise
-	 * it's a TCP packet and TSO edits won't be applied
-	 */
-	if (unlikely(tcph_off > encp->enc_tx_tso_tcp_header_offset_limit))
-		return EMSGSIZE;
 
 	header_paddr = rte_pktmbuf_iova(m);
 

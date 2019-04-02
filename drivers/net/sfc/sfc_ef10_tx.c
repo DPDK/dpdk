@@ -320,9 +320,10 @@ sfc_ef10_try_reap(struct sfc_ef10_txq * const txq, unsigned int added,
 }
 
 static uint16_t
-sfc_ef10_prepare_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
+sfc_ef10_prepare_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		      uint16_t nb_pkts)
 {
+	struct sfc_ef10_txq * const txq = sfc_ef10_txq_by_dp_txq(tx_queue);
 	uint16_t i;
 
 	for (i = 0; i < nb_pkts; i++) {
@@ -347,7 +348,8 @@ sfc_ef10_prepare_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 			}
 		}
 #endif
-		ret = sfc_dp_tx_prepare_pkt(m);
+		ret = sfc_dp_tx_prepare_pkt(m,
+				txq->tso_tcp_header_offset_limit);
 		if (unlikely(ret != 0)) {
 			rte_errno = ret;
 			break;
@@ -377,9 +379,6 @@ sfc_ef10_xmit_tso_pkt(struct sfc_ef10_txq * const txq, struct rte_mbuf *m_seg,
 	unsigned int needed_desc;
 	struct rte_mbuf *m_seg_to_free_up_to = first_m_seg;
 	bool eop;
-
-	if (unlikely(tcph_off > txq->tso_tcp_header_offset_limit))
-		return EMSGSIZE;
 
 	/*
 	 * Preliminary estimation of required DMA descriptors, including extra

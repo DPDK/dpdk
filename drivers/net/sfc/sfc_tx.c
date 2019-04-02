@@ -698,15 +698,19 @@ sfc_efx_tx_maybe_insert_tag(struct sfc_efx_txq *txq, struct rte_mbuf *m,
 }
 
 static uint16_t
-sfc_efx_prepare_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
+sfc_efx_prepare_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		     uint16_t nb_pkts)
 {
+	struct sfc_dp_txq *dp_txq = tx_queue;
+	struct sfc_efx_txq *txq = sfc_efx_txq_by_dp_txq(dp_txq);
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(txq->evq->sa->nic);
 	uint16_t i;
 
 	for (i = 0; i < nb_pkts; i++) {
 		int ret;
 
-		ret = sfc_dp_tx_prepare_pkt(tx_pkts[i]);
+		ret = sfc_dp_tx_prepare_pkt(tx_pkts[i],
+				encp->enc_tx_tso_tcp_header_offset_limit);
 		if (unlikely(ret != 0)) {
 			rte_errno = ret;
 			break;
@@ -776,14 +780,10 @@ sfc_efx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			 */
 			if (sfc_efx_tso_do(txq, added, &m_seg, &in_off, &pend,
 					   &pkt_descs, &pkt_len) != 0) {
-				/* We may have reached this place for
-				 * one of the following reasons:
-				 *
-				 * 1) Packet header linearization is needed
-				 *    and the header length is greater
-				 *    than SFC_TSOH_STD_LEN
-				 * 2) TCP header starts at more then
-				 *    208 bytes into the frame
+				/* We may have reached this place if packet
+				 * header linearization is needed but the
+				 * header length is greater than
+				 * SFC_TSOH_STD_LEN
 				 *
 				 * We will deceive RTE saying that we have sent
 				 * the packet, but we will actually drop it.

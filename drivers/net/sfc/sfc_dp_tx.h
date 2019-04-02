@@ -195,7 +195,8 @@ sfc_dp_find_tx_by_caps(struct sfc_dp_list *head, unsigned int avail_caps)
 const struct sfc_dp_tx *sfc_dp_tx_by_dp_txq(const struct sfc_dp_txq *dp_txq);
 
 static inline int
-sfc_dp_tx_prepare_pkt(struct rte_mbuf *m)
+sfc_dp_tx_prepare_pkt(struct rte_mbuf *m,
+			   uint32_t tso_tcp_header_offset_limit)
 {
 #ifdef RTE_LIBRTE_SFC_EFX_DEBUG
 	int ret;
@@ -209,9 +210,14 @@ sfc_dp_tx_prepare_pkt(struct rte_mbuf *m)
 		SFC_ASSERT(ret < 0);
 		return -ret;
 	}
-#else
-	RTE_SET_USED(m);
 #endif
+
+	if (m->ol_flags & PKT_TX_TCP_SEG) {
+		unsigned int tcph_off = m->l2_len + m->l3_len;
+
+		if (unlikely(tcph_off > tso_tcp_header_offset_limit))
+			return EINVAL;
+	}
 
 	return 0;
 }
