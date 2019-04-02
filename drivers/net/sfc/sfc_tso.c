@@ -146,13 +146,8 @@ sfc_efx_tso_do(struct sfc_efx_txq *txq, unsigned int idx,
 	 * IPv4 flag. If the packet is still IPv4, HW will simply start from
 	 * zero IPID.
 	 */
-	if (m->ol_flags & PKT_TX_IPV4) {
-		const struct ipv4_hdr *iphe4;
-
-		iphe4 = (const struct ipv4_hdr *)(tsoh + nh_off);
-		rte_memcpy(&packet_id, &iphe4->packet_id, sizeof(uint16_t));
-		packet_id = rte_be_to_cpu_16(packet_id);
-	}
+	if (m->ol_flags & PKT_TX_IPV4)
+		packet_id = sfc_tso_ip4_get_ipid(tsoh, nh_off);
 
 	/* Handle TCP header */
 	th = (const struct tcp_hdr *)(tsoh + tcph_off);

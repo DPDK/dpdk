@@ -479,13 +479,8 @@ sfc_ef10_xmit_tso_pkt(struct sfc_ef10_txq * const txq, struct rte_mbuf *m_seg,
 	 * filled in in TSO mbuf. Use zero IPID if there is no IPv4 flag.
 	 * If the packet is still IPv4, HW will simply start from zero IPID.
 	 */
-	if (first_m_seg->ol_flags & PKT_TX_IPV4) {
-		const struct ipv4_hdr *iphe4;
-
-		iphe4 = (const struct ipv4_hdr *)(hdr_addr + iph_off);
-		rte_memcpy(&packet_id, &iphe4->packet_id, sizeof(uint16_t));
-		packet_id = rte_be_to_cpu_16(packet_id);
-	}
+	if (first_m_seg->ol_flags & PKT_TX_IPV4)
+		packet_id = sfc_tso_ip4_get_ipid(hdr_addr, iph_off);
 
 	th = (const struct tcp_hdr *)(hdr_addr + tcph_off);
 	rte_memcpy(&sent_seq, &th->sent_seq, sizeof(uint32_t));
