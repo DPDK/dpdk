@@ -15,6 +15,41 @@
 #include "misc.h"
 #include "pad.h"
 
+
+/*
+ * helper function to fill crypto_sym op for cipher+auth algorithms.
+ * used by outb_cop_prepare(), see below.
+ */
+static inline void
+sop_ciph_auth_prepare(struct rte_crypto_sym_op *sop,
+	const struct rte_ipsec_sa *sa, const union sym_op_data *icv,
+	uint32_t pofs, uint32_t plen)
+{
+	sop->cipher.data.offset = sa->ctp.cipher.offset + pofs;
+	sop->cipher.data.length = sa->ctp.cipher.length + plen;
+	sop->auth.data.offset = sa->ctp.auth.offset + pofs;
+	sop->auth.data.length = sa->ctp.auth.length + plen;
+	sop->auth.digest.data = icv->va;
+	sop->auth.digest.phys_addr = icv->pa;
+}
+
+/*
+ * helper function to fill crypto_sym op for cipher+auth algorithms.
+ * used by outb_cop_prepare(), see below.
+ */
+static inline void
+sop_aead_prepare(struct rte_crypto_sym_op *sop,
+	const struct rte_ipsec_sa *sa, const union sym_op_data *icv,
+	uint32_t pofs, uint32_t plen)
+{
+	sop->aead.data.offset = sa->ctp.cipher.offset + pofs;
+	sop->aead.data.length = sa->ctp.cipher.length + plen;
+	sop->aead.digest.data = icv->va;
+	sop->aead.digest.phys_addr = icv->pa;
+	sop->aead.aad.data = icv->va + sa->icv_len;
+	sop->aead.aad.phys_addr = icv->pa + sa->icv_len;
+}
+
 /*
  * setup crypto op and crypto sym op for ESP outbound packet.
  */
@@ -40,21 +75,11 @@ outb_cop_prepare(struct rte_crypto_op *cop,
 		/* Cipher-Auth (3DES-CBC *) case */
 	case ALGO_TYPE_NULL:
 		/* NULL case */
-		sop->cipher.data.offset = sa->ctp.cipher.offset + hlen;
-		sop->cipher.data.length = sa->ctp.cipher.length + plen;
-		sop->auth.data.offset = sa->ctp.auth.offset + hlen;
-		sop->auth.data.length = sa->ctp.auth.length + plen;
-		sop->auth.digest.data = icv->va;
-		sop->auth.digest.phys_addr = icv->pa;
+		sop_ciph_auth_prepare(sop, sa, icv, hlen, plen);
 		break;
 	case ALGO_TYPE_AES_GCM:
 		/* AEAD (AES_GCM) case */
-		sop->aead.data.offset = sa->ctp.cipher.offset + hlen;
-		sop->aead.data.length = sa->ctp.cipher.length + plen;
-		sop->aead.digest.data = icv->va;
-		sop->aead.digest.phys_addr = icv->pa;
-		sop->aead.aad.data = icv->va + sa->icv_len;
-		sop->aead.aad.phys_addr = icv->pa + sa->icv_len;
+		sop_aead_prepare(sop, sa, icv, hlen, plen);
 
 		/* fill AAD IV (located inside crypto op) */
 		gcm = rte_crypto_op_ctod_offset(cop, struct aead_gcm_iv *,
@@ -63,13 +88,9 @@ outb_cop_prepare(struct rte_crypto_op *cop,
 		break;
 	case ALGO_TYPE_AES_CTR:
 		/* Cipher-Auth (AES-CTR *) case */
-		sop->cipher.data.offset = sa->ctp.cipher.offset + hlen;
-		sop->cipher.data.length = sa->ctp.cipher.length + plen;
-		sop->auth.data.offset = sa->ctp.auth.offset + hlen;
-		sop->auth.data.length = sa->ctp.auth.length + plen;
-		sop->auth.digest.data = icv->va;
-		sop->auth.digest.phys_addr = icv->pa;
+		sop_ciph_auth_prepare(sop, sa, icv, hlen, plen);
 
+		/* fill CTR block (located inside crypto op) */
 		ctr = rte_crypto_op_ctod_offset(cop, struct aesctr_cnt_blk *,
 			sa->iv_ofs);
 		aes_ctr_cnt_blk_fill(ctr, ivp[0], sa->salt);
