@@ -17,6 +17,8 @@ extern "C" {
 #define REG_NOMATCH 1
 #define REG_ESPACE 12
 
+#include <rte_common.h>
+
 /* defining regex_t for Windows */
 typedef void *regex_t;
 /* defining regmatch_t for Windows */
