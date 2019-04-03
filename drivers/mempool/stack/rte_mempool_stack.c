@@ -1,39 +1,29 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2016 Intel Corporation
+ * Copyright(c) 2016-2019 Intel Corporation
  */
 
 #include <stdio.h>
 #include <rte_mempool.h>
-#include <rte_malloc.h>
-
-struct rte_mempool_stack {
-	rte_spinlock_t sl;
-
-	uint32_t size;
-	uint32_t len;
-	void *objs[];
-};
+#include <rte_stack.h>
 
 static int
 stack_alloc(struct rte_mempool *mp)
 {
-	struct rte_mempool_stack *s;
-	unsigned n = mp->size;
-	int size = sizeof(*s) + (n+16)*sizeof(void *);
+	char name[RTE_STACK_NAMESIZE];
+	struct rte_stack *s;
+	int ret;
 
-	/* Allocate our local memory structure */
-	s = rte_zmalloc_socket("mempool-stack",
-			size,
-			RTE_CACHE_LINE_SIZE,
-			mp->socket_id);
-	if (s == NULL) {
-		RTE_LOG(ERR, MEMPOOL, "Cannot allocate stack!\n");
-		return -ENOMEM;
+	ret = snprintf(name, sizeof(name),
+		       RTE_MEMPOOL_MZ_FORMAT, mp->name);
+	if (ret < 0 || ret >= (int)sizeof(name)) {
+		rte_errno = ENAMETOOLONG;
+		return -rte_errno;
 	}
 
-	rte_spinlock_init(&s->sl);
+	s = rte_stack_create(name, mp->size, mp->socket_id, 0);
+	if (s == NULL)
+		return -rte_errno;
 
-	s->size = n;
 	mp->pool_data = s;
 
 	return 0;
@@ -41,69 +31,36 @@ stack_alloc(struct rte_mempool *mp)
 
 static int
 stack_enqueue(struct rte_mempool *mp, void * const *obj_table,
-		unsigned n)
+	      unsigned int n)
 {
-	struct rte_mempool_stack *s = mp->pool_data;
-	void **cache_objs;
-	unsigned index;
+	struct rte_stack *s = mp->pool_data;
 
-	rte_spinlock_lock(&s->sl);
-	cache_objs = &s->objs[s->len];
-
-	/* Is there sufficient space in the stack ? */
-	if ((s->len + n) > s->size) {
-		rte_spinlock_unlock(&s->sl);
-		return -ENOBUFS;
-	}
-
-	/* Add elements back into the cache */
-	for (index = 0; index < n; ++index, obj_table++)
-		cache_objs[index] = *obj_table;
-
-	s->len += n;
-
-	rte_spinlock_unlock(&s->sl);
-	return 0;
+	return rte_stack_push(s, obj_table, n) == 0 ? -ENOBUFS : 0;
 }
 
 static int
 stack_dequeue(struct rte_mempool *mp, void **obj_table,
-		unsigned n)
+	      unsigned int n)
 {
-	struct rte_mempool_stack *s = mp->pool_data;
-	void **cache_objs;
-	unsigned index, len;
+	struct rte_stack *s = mp->pool_data;
 
-	rte_spinlock_lock(&s->sl);
-
-	if (unlikely(n > s->len)) {
-		rte_spinlock_unlock(&s->sl);
-		return -ENOENT;
-	}
-
-	cache_objs = s->objs;
-
-	for (index = 0, len = s->len - 1; index < n;
-			++index, len--, obj_table++)
-		*obj_table = cache_objs[len];
-
-	s->len -= n;
-	rte_spinlock_unlock(&s->sl);
-	return 0;
+	return rte_stack_pop(s, obj_table, n) == 0 ? -ENOBUFS : 0;
 }
 
 static unsigned
 stack_get_count(const struct rte_mempool *mp)
 {
-	struct rte_mempool_stack *s = mp->pool_data;
+	struct rte_stack *s = mp->pool_data;
 
-	return s->len;
+	return rte_stack_count(s);
 }
 
 static void
 stack_free(struct rte_mempool *mp)
 {
-	rte_free((void *)(mp->pool_data));
+	struct rte_stack *s = mp->pool_data;
+
+	rte_stack_free(s);
 }
 
 static struct rte_mempool_ops ops_stack = {

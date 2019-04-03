@@ -303,7 +303,6 @@ M: Andrew Rybchenko <arybchenko@solarflare.com>
 F: lib/librte_mempool/
 F: drivers/mempool/Makefile
 F: drivers/mempool/ring/
-F: drivers/mempool/stack/
 F: doc/guides/prog_guide/mempool_lib.rst
 F: app/test/test_mempool*
 F: app/test/test_func_reentrancy.c
@@ -319,6 +318,7 @@ Stack - EXPERIMENTAL
 M: Gage Eads <gage.eads@intel.com>
 M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/librte_stack/
+F: drivers/mempool/stack/
 F: doc/guides/prog_guide/stack_lib.rst
 
 Packet buffer

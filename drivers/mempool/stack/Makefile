@@ -10,10 +10,11 @@ LIB = librte_mempool_stack.a
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
+CFLAGS += -DALLOW_EXPERIMENTAL_API
 
 # Headers
 CFLAGS += -I$(RTE_SDK)/lib/librte_mempool
-LDLIBS += -lrte_eal -lrte_mempool -lrte_ring
+LDLIBS += -lrte_eal -lrte_mempool -lrte_stack
 
 EXPORT_MAP := rte_mempool_stack_version.map
 
