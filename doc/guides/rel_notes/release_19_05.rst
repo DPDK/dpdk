@@ -54,6 +54,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Added Stack API.**
+
+  Added a new stack API for configuration and use of a bounded stack of
+  pointers. The API provides MT-safe push and pop operations that can operate
+  on one or more pointers per operation.
+
 * **Updated KNI module and PMD.**
 
   Updated the KNI kernel module to set the max_mtu according to the given
@@ -264,6 +270,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_ring.so.2
      librte_sched.so.2
      librte_security.so.2
+   + librte_stack.so.1
      librte_table.so.3
      librte_timer.so.1
      librte_vhost.so.4

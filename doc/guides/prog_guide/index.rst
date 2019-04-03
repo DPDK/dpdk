@@ -13,6 +13,7 @@ Programmer's Guide
     env_abstraction_layer
     service_cores
     ring_lib
+    stack_lib
     mempool_lib
     mbuf_lib
     poll_mode_drv

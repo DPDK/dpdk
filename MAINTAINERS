@@ -315,6 +315,12 @@ F: doc/guides/prog_guide/ring_lib.rst
 F: app/test/test_ring*
 F: app/test/test_func_reentrancy.c
 
+Stack - EXPERIMENTAL
+M: Gage Eads <gage.eads@intel.com>
+M: Olivier Matz <olivier.matz@6wind.com>
+F: lib/librte_stack/
+F: doc/guides/prog_guide/stack_lib.rst
+
 Packet buffer
 M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/librte_mbuf/

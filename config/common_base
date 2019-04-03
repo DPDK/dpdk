@@ -733,6 +733,11 @@ CONFIG_RTE_LIBRTE_PMD_IFPGA_RAWDEV=y
 CONFIG_RTE_LIBRTE_RING=y
 
 #
+# Compile librte_stack
+#
+CONFIG_RTE_LIBRTE_STACK=y
+
+#
 # Compile librte_mempool
 #
 CONFIG_RTE_LIBRTE_MEMPOOL=y

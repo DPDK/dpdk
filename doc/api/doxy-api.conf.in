@@ -55,6 +55,7 @@ INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/lib/librte_ring \
                           @TOPDIR@/lib/librte_sched \
                           @TOPDIR@/lib/librte_security \
+                          @TOPDIR@/lib/librte_stack \
                           @TOPDIR@/lib/librte_table \
                           @TOPDIR@/lib/librte_telemetry \
                           @TOPDIR@/lib/librte_timer \

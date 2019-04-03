@@ -22,7 +22,7 @@ libraries = [
 	'gro', 'gso', 'ip_frag', 'jobstats',
 	'kni', 'latencystats', 'lpm', 'member',
 	'power', 'pdump', 'rawdev',
-	'reorder', 'sched', 'security', 'vhost',
+	'reorder', 'sched', 'security', 'stack', 'vhost',
 	#ipsec lib depends on crypto and security
 	'ipsec',
 	# add pkt framework libs which use other libs from above
