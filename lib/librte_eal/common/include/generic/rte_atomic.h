@@ -1079,4 +1079,56 @@ static inline void rte_atomic64_clear(rte_atomic64_t *v)
 }
 #endif
 
+/*------------------------ 128 bit atomic operations -------------------------*/
+
+#ifdef __DOXYGEN__
+
+/**
+ * An atomic compare and set function used by the mutex functions.
+ * (Atomically) Equivalent to:
+ * @code
+ *   if (*dst == *exp)
+ *     *dst = *src
+ *   else
+ *     *exp = *dst
+ * @endcode
+ *
+ * @note This function is currently only available for the x86-64 platform.
+ *
+ * @note The success and failure arguments must be one of the __ATOMIC_* values
+ * defined in the C++11 standard. For details on their behavior, refer to the
+ * standard.
+ *
+ * @param dst
+ *   The destination into which the value will be written.
+ * @param exp
+ *   Pointer to the expected value. If the operation fails, this memory is
+ *   updated with the actual value.
+ * @param src
+ *   Pointer to the new value.
+ * @param weak
+ *   A value of true allows the comparison to spuriously fail and allows the
+ *   'exp' update to occur non-atomically (i.e. a torn read may occur).
+ *   Implementations may ignore this argument and only implement the strong
+ *   variant.
+ * @param success
+ *   If successful, the operation's memory behavior conforms to this (or a
+ *   stronger) model.
+ * @param failure
+ *   If unsuccessful, the operation's memory behavior conforms to this (or a
+ *   stronger) model. This argument cannot be __ATOMIC_RELEASE,
+ *   __ATOMIC_ACQ_REL, or a stronger model than success.
+ * @return
+ *   Non-zero on success; 0 on failure.
+ */
+static inline int __rte_experimental
+rte_atomic128_cmp_exchange(rte_int128_t *dst,
+			   rte_int128_t *exp,
+			   const rte_int128_t *src,
+			   unsigned int weak,
+			   int success,
+			   int failure);
+
+#endif /* __DOXYGEN__ */
+
 #endif /* _RTE_ATOMIC_H_ */

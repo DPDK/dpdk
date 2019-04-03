@@ -34,6 +34,7 @@
 /*
  * Inspired from FreeBSD src/sys/amd64/include/atomic.h
  * Copyright (c) 1998 Doug Rabson
+ * Copyright (c) 2019 Intel Corporation
  * All rights reserved.
  */
 
@@ -46,6 +47,7 @@
 
 #include <stdint.h>
 #include <rte_common.h>
+#include <rte_compat.h>
 #include <rte_atomic.h>
 
 /*------------------------- 64 bit atomic operations -------------------------*/
@@ -207,5 +209,50 @@ static inline void rte_atomic64_clear(rte_atomic64_t *v)
 	v->cnt = 0;
 }
 #endif
+
+/*------------------------ 128 bit atomic operations -------------------------*/
+
+/**
+ * 128-bit integer structure.
+ */
+RTE_STD_C11
+typedef struct {
+	RTE_STD_C11
+	union {
+		uint64_t val[2];
+		__int128 int128;
+	};
+} __rte_aligned(16) rte_int128_t;
+
+static inline int __rte_experimental
+rte_atomic128_cmp_exchange(rte_int128_t *dst,
+			   rte_int128_t *exp,
+			   const rte_int128_t *src,
+			   unsigned int weak,
+			   int success,
+			   int failure)
+{
+	RTE_SET_USED(weak);
+	RTE_SET_USED(success);
+	RTE_SET_USED(failure);
+	uint8_t res;
+
+	asm volatile (
+		      MPLOCKED
+		      "cmpxchg16b %[dst];"
+		      " sete %[res]"
+		      : [dst] "=m" (dst->val[0]),
+			"=a" (exp->val[0]),
+			"=d" (exp->val[1]),
+			[res] "=r" (res)
+		      : "b" (src->val[0]),
+			"c" (src->val[1]),
+			"a" (exp->val[0]),
+			"d" (exp->val[1]),
+			"m" (dst->val[0])
+		      : "memory");
+
+	return res;
+}
 
 #endif /* _RTE_ATOMIC_X86_64_H_ */
