@@ -2,6 +2,7 @@
  *   Copyright(c) 2018 Advanced Micro Devices, Inc. All rights reserved.
  */
 
+#include <rte_string_fns.h>
 #include <rte_bus_pci.h>
 #include <rte_bus_vdev.h>
 #include <rte_common.h>
@@ -298,9 +299,8 @@ cryptodev_ccp_create(const char *name,
 	uint8_t cryptodev_cnt = 0;
 
 	if (init_params->def_p.name[0] == '\0')
-		snprintf(init_params->def_p.name,
-			 sizeof(init_params->def_p.name),
-			 "%s", name);
+		strlcpy(init_params->def_p.name, name,
+			sizeof(init_params->def_p.name));
 
 	dev = rte_cryptodev_pmd_create(init_params->def_p.name,
 				       &vdev->device,

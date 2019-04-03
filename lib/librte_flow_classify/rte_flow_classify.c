@@ -2,6 +2,7 @@
  * Copyright(c) 2017 Intel Corporation
  */
 
+#include <rte_string_fns.h>
 #include <rte_compat.h>
 #include <rte_flow_classify.h>
 #include "rte_flow_classify_parse.h"
@@ -285,8 +286,7 @@ rte_flow_classifier_create(struct rte_flow_classifier_params *params)
 	}
 
 	/* Save input parameters */
-	snprintf(cls->name, RTE_FLOW_CLASSIFIER_MAX_NAME_SZ, "%s",
-			params->name);
+	strlcpy(cls->name, params->name, RTE_FLOW_CLASSIFIER_MAX_NAME_SZ);
 
 	cls->socket_id = params->socket_id;
 

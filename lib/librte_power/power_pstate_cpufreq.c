@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <inttypes.h>
 
+#include <rte_string_fns.h>
 #include <rte_memcpy.h>
 #include <rte_atomic.h>
 
@@ -349,7 +350,7 @@ power_set_governor_performance(struct pstate_power_info *pi)
 		goto out;
 	}
 	/* Save the original governor */
-	snprintf(pi->governor_ori, sizeof(pi->governor_ori), "%s", buf);
+	strlcpy(pi->governor_ori, buf, sizeof(pi->governor_ori));
 
 	/* Write 'performance' to the governor */
 	val = fseek(f, 0, SEEK_SET);

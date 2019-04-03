@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <stdarg.h>
 
+#include <rte_string_fns.h>
 #include <rte_common.h>
 #include <rte_interrupts.h>
 #include <rte_byteorder.h>
@@ -1904,8 +1905,8 @@ static int eth_igb_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 	/* Note: limit checked in rte_eth_xstats_names() */
 
 	for (i = 0; i < IGB_NB_XSTATS; i++) {
-		snprintf(xstats_names[i].name, sizeof(xstats_names[i].name),
-			 "%s", rte_igb_stats_strings[i].name);
+		strlcpy(xstats_names[i].name, rte_igb_stats_strings[i].name,
+			sizeof(xstats_names[i].name));
 	}
 
 	return IGB_NB_XSTATS;
@@ -1922,9 +1923,9 @@ static int eth_igb_xstats_get_names_by_id(struct rte_eth_dev *dev,
 			return IGB_NB_XSTATS;
 
 		for (i = 0; i < IGB_NB_XSTATS; i++)
-			snprintf(xstats_names[i].name,
-					sizeof(xstats_names[i].name),
-					"%s", rte_igb_stats_strings[i].name);
+			strlcpy(xstats_names[i].name,
+				rte_igb_stats_strings[i].name,
+				sizeof(xstats_names[i].name));
 
 		return IGB_NB_XSTATS;
 
@@ -2071,9 +2072,9 @@ static int eth_igbvf_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 
 	if (xstats_names != NULL)
 		for (i = 0; i < IGBVF_NB_XSTATS; i++) {
-			snprintf(xstats_names[i].name,
-				sizeof(xstats_names[i].name), "%s",
-				rte_igbvf_stats_strings[i].name);
+			strlcpy(xstats_names[i].name,
+				rte_igbvf_stats_strings[i].name,
+				sizeof(xstats_names[i].name));
 		}
 	return IGBVF_NB_XSTATS;
 }

@@ -9,6 +9,7 @@
 #include <stdarg.h>
 #include <sys/queue.h>
 
+#include <rte_string_fns.h>
 #include <rte_log.h>
 #include <rte_eal_memconfig.h>
 #include <rte_errno.h>
@@ -591,7 +592,7 @@ rte_efd_create(const char *name, uint32_t max_num_rules, uint32_t key_len,
 		goto error_unlock_exit;
 	}
 	table->keys = key_array;
-	snprintf(table->name, sizeof(table->name), "%s", name);
+	strlcpy(table->name, name, sizeof(table->name));
 
 	RTE_LOG(DEBUG, EFD, "Creating an EFD table with %u chunks,"
 			" which potentially supports %u entries\n",

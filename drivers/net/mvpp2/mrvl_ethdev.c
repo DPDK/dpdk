@@ -4,6 +4,7 @@
  * All rights reserved.
  */
 
+#include <rte_string_fns.h>
 #include <rte_ethdev_driver.h>
 #include <rte_kvargs.h>
 #include <rte_log.h>
@@ -1388,8 +1389,8 @@ mrvl_xstats_get_names(struct rte_eth_dev *dev __rte_unused,
 		return RTE_DIM(mrvl_xstats_tbl);
 
 	for (i = 0; i < size && i < RTE_DIM(mrvl_xstats_tbl); i++)
-		snprintf(xstats_names[i].name, RTE_ETH_XSTATS_NAME_SIZE, "%s",
-			 mrvl_xstats_tbl[i].name);
+		strlcpy(xstats_names[i].name, mrvl_xstats_tbl[i].name,
+			RTE_ETH_XSTATS_NAME_SIZE);
 
 	return size;
 }

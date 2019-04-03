@@ -5,6 +5,7 @@
  */
 
 #include "qede_ethdev.h"
+#include <rte_string_fns.h>
 #include <rte_alarm.h>
 #include <rte_version.h>
 #include <rte_kvargs.h>
@@ -1591,27 +1592,24 @@ qede_get_xstats_names(struct rte_eth_dev *dev,
 
 	if (xstats_names != NULL) {
 		for (i = 0; i < RTE_DIM(qede_xstats_strings); i++) {
-			snprintf(xstats_names[stat_idx].name,
-				sizeof(xstats_names[stat_idx].name),
-				"%s",
-				qede_xstats_strings[i].name);
+			strlcpy(xstats_names[stat_idx].name,
+				qede_xstats_strings[i].name,
+				sizeof(xstats_names[stat_idx].name));
 			stat_idx++;
 		}
 
 		if (ECORE_IS_BB(edev)) {
 			for (i = 0; i < RTE_DIM(qede_bb_xstats_strings); i++) {
-				snprintf(xstats_names[stat_idx].name,
-					sizeof(xstats_names[stat_idx].name),
-					"%s",
-					qede_bb_xstats_strings[i].name);
+				strlcpy(xstats_names[stat_idx].name,
+					qede_bb_xstats_strings[i].name,
+					sizeof(xstats_names[stat_idx].name));
 				stat_idx++;
 			}
 		} else {
 			for (i = 0; i < RTE_DIM(qede_ah_xstats_strings); i++) {
-				snprintf(xstats_names[stat_idx].name,
-					sizeof(xstats_names[stat_idx].name),
-					"%s",
-					qede_ah_xstats_strings[i].name);
+				strlcpy(xstats_names[stat_idx].name,
+					qede_ah_xstats_strings[i].name,
+					sizeof(xstats_names[stat_idx].name));
 				stat_idx++;
 			}
 		}

@@ -4,6 +4,7 @@
 
 #include <string.h>
 
+#include <rte_string_fns.h>
 #include <rte_atomic.h>
 #include <rte_eal.h>
 #include <rte_eal_memconfig.h>
@@ -99,7 +100,7 @@ rte_stack_create(const char *name, unsigned int count, int socket_id,
 	rte_stack_init(s, count, flags);
 
 	/* Store the name for later lookups */
-	ret = snprintf(s->name, sizeof(s->name), "%s", name);
+	ret = strlcpy(s->name, name, sizeof(s->name));
 	if (ret < 0 || ret >= (int)sizeof(s->name)) {
 		rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
 

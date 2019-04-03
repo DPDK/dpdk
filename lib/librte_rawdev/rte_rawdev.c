@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <sys/queue.h>
 
+#include <rte_string_fns.h>
 #include <rte_byteorder.h>
 #include <rte_log.h>
 #include <rte_debug.h>
@@ -508,7 +509,7 @@ rte_rawdev_pmd_allocate(const char *name, size_t dev_priv_size, int socket_id)
 	rawdev->dev_id = dev_id;
 	rawdev->socket_id = socket_id;
 	rawdev->started = 0;
-	snprintf(rawdev->name, RTE_RAWDEV_NAME_MAX_LEN, "%s", name);
+	strlcpy(rawdev->name, name, RTE_RAWDEV_NAME_MAX_LEN);
 
 	rawdev->attached = RTE_RAWDEV_ATTACHED;
 	rawdev_globals.nb_devs++;

@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <inttypes.h>
 
+#include <rte_string_fns.h>
 #include <rte_malloc.h>
 #include <rte_eal.h>
 #include <rte_memzone.h>
@@ -252,8 +253,8 @@ rte_compressdev_pmd_allocate(const char *name, int socket_id)
 
 		compressdev->data = compressdev_data;
 
-		snprintf(compressdev->data->name, RTE_COMPRESSDEV_NAME_MAX_LEN,
-				"%s", name);
+		strlcpy(compressdev->data->name, name,
+			RTE_COMPRESSDEV_NAME_MAX_LEN);
 
 		compressdev->data->dev_id = dev_id;
 		compressdev->data->socket_id = socket_id;

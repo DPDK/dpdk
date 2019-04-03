@@ -2,6 +2,7 @@
  * Copyright(c) 2017 Cavium, Inc
  */
 
+#include <rte_string_fns.h>
 #include <rte_ethdev_driver.h>
 #include <rte_ethdev_pci.h>
 #include <rte_cycles.h>
@@ -1781,8 +1782,8 @@ lio_dev_configure(struct rte_eth_dev *eth_dev)
 		goto nic_config_fail;
 	}
 
-	snprintf(lio_dev->firmware_version, LIO_FW_VERSION_LENGTH, "%s",
-		 resp->cfg_info.lio_firmware_version);
+	strlcpy(lio_dev->firmware_version,
+		resp->cfg_info.lio_firmware_version, LIO_FW_VERSION_LENGTH);
 
 	lio_swap_8B_data((uint64_t *)(&resp->cfg_info),
 			 sizeof(struct octeon_if_cfg_info) >> 3);

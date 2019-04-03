@@ -2,6 +2,7 @@
  * Copyright(c) 2018 Intel Corporation
  */
 
+#include <rte_string_fns.h>
 #include <rte_ethdev_pci.h>
 
 #include <stdio.h>
@@ -3437,17 +3438,15 @@ static int ice_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 
 	/* Get stats from ice_eth_stats struct */
 	for (i = 0; i < ICE_NB_ETH_XSTATS; i++) {
-		snprintf(xstats_names[count].name,
-			 sizeof(xstats_names[count].name),
-			 "%s", ice_stats_strings[i].name);
+		strlcpy(xstats_names[count].name, ice_stats_strings[i].name,
+			sizeof(xstats_names[count].name));
 		count++;
 	}
 
 	/* Get individiual stats from ice_hw_port struct */
 	for (i = 0; i < ICE_NB_HW_PORT_XSTATS; i++) {
-		snprintf(xstats_names[count].name,
-			 sizeof(xstats_names[count].name),
-			 "%s", ice_hw_port_strings[i].name);
+		strlcpy(xstats_names[count].name, ice_hw_port_strings[i].name,
+			sizeof(xstats_names[count].name));
 		count++;
 	}
 

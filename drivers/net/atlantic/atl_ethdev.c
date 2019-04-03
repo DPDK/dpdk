@@ -2,6 +2,7 @@
  * Copyright(c) 2018 Aquantia Corporation
  */
 
+#include <rte_string_fns.h>
 #include <rte_ethdev_pci.h>
 
 #include "atl_ethdev.h"
@@ -755,8 +756,8 @@ atl_dev_xstats_get_names(struct rte_eth_dev *dev __rte_unused,
 		return RTE_DIM(atl_xstats_tbl);
 
 	for (i = 0; i < size && i < RTE_DIM(atl_xstats_tbl); i++)
-		snprintf(xstats_names[i].name, RTE_ETH_XSTATS_NAME_SIZE, "%s",
-			atl_xstats_tbl[i].name);
+		strlcpy(xstats_names[i].name, atl_xstats_tbl[i].name,
+			RTE_ETH_XSTATS_NAME_SIZE);
 
 	return i;
 }

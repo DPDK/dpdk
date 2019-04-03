@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include <unistd.h>
 
+#include <rte_string_fns.h>
 #include <rte_ethdev_driver.h>
 #include <rte_ethdev_vdev.h>
 #include <rte_kni.h>
@@ -126,7 +127,7 @@ eth_kni_start(struct rte_eth_dev *dev)
 	const char *name = dev->device->name + 4; /* remove net_ */
 
 	mb_pool = internals->rx_queues[0].mb_pool;
-	snprintf(conf.name, RTE_KNI_NAMESIZE, "%s", name);
+	strlcpy(conf.name, name, RTE_KNI_NAMESIZE);
 	conf.force_bind = 0;
 	conf.group_id = port_id;
 	conf.mbuf_size =

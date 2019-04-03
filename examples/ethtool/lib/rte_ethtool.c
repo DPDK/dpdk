@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <rte_string_fns.h>
 #include <rte_version.h>
 #include <rte_ethdev.h>
 #include <rte_ether.h>
@@ -43,10 +44,9 @@ rte_ethtool_get_drvinfo(uint16_t port_id, struct ethtool_drvinfo *drvinfo)
 	memset(&dev_info, 0, sizeof(dev_info));
 	rte_eth_dev_info_get(port_id, &dev_info);
 
-	snprintf(drvinfo->driver, sizeof(drvinfo->driver), "%s",
-		dev_info.driver_name);
-	snprintf(drvinfo->version, sizeof(drvinfo->version), "%s",
-		rte_version());
+	strlcpy(drvinfo->driver, dev_info.driver_name,
+		sizeof(drvinfo->driver));
+	strlcpy(drvinfo->version, rte_version(), sizeof(drvinfo->version));
 	/* TODO: replace bus_info by rte_devargs.name */
 	if (dev_info.device)
 		bus = rte_bus_find_by_device(dev_info.device);

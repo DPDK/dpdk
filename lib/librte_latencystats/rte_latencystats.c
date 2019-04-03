@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <math.h>
 
+#include <rte_string_fns.h>
 #include <rte_mbuf.h>
 #include <rte_log.h>
 #include <rte_cycles.h>
@@ -309,8 +310,8 @@ rte_latencystats_get_names(struct rte_metric_name *names, uint16_t size)
 		return NUM_LATENCY_STATS;
 
 	for (i = 0; i < NUM_LATENCY_STATS; i++)
-		snprintf(names[i].name, sizeof(names[i].name),
-				"%s", lat_stats_strings[i].name);
+		strlcpy(names[i].name, lat_stats_strings[i].name,
+			sizeof(names[i].name));
 
 	return NUM_LATENCY_STATS;
 }

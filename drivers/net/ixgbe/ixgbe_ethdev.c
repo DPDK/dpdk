@@ -11,6 +11,7 @@
 #include <stdarg.h>
 #include <inttypes.h>
 #include <netinet/in.h>
+#include <rte_string_fns.h>
 #include <rte_byteorder.h>
 #include <rte_common.h>
 #include <rte_cycles.h>
@@ -3293,19 +3294,17 @@ static int ixgbe_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 
 		/* Extended stats from ixgbe_hw_stats */
 		for (i = 0; i < IXGBE_NB_HW_STATS; i++) {
-			snprintf(xstats_names[count].name,
-				sizeof(xstats_names[count].name),
-				"%s",
-				rte_ixgbe_stats_strings[i].name);
+			strlcpy(xstats_names[count].name,
+				rte_ixgbe_stats_strings[i].name,
+				sizeof(xstats_names[count].name));
 			count++;
 		}
 
 		/* MACsec Stats */
 		for (i = 0; i < IXGBE_NB_MACSEC_STATS; i++) {
-			snprintf(xstats_names[count].name,
-				sizeof(xstats_names[count].name),
-				"%s",
-				rte_ixgbe_macsec_strings[i].name);
+			strlcpy(xstats_names[count].name,
+				rte_ixgbe_macsec_strings[i].name,
+				sizeof(xstats_names[count].name));
 			count++;
 		}
 
@@ -3353,19 +3352,17 @@ static int ixgbe_dev_xstats_get_names_by_id(
 
 			/* Extended stats from ixgbe_hw_stats */
 			for (i = 0; i < IXGBE_NB_HW_STATS; i++) {
-				snprintf(xstats_names[count].name,
-					sizeof(xstats_names[count].name),
-					"%s",
-					rte_ixgbe_stats_strings[i].name);
+				strlcpy(xstats_names[count].name,
+					rte_ixgbe_stats_strings[i].name,
+					sizeof(xstats_names[count].name));
 				count++;
 			}
 
 			/* MACsec Stats */
 			for (i = 0; i < IXGBE_NB_MACSEC_STATS; i++) {
-				snprintf(xstats_names[count].name,
-					sizeof(xstats_names[count].name),
-					"%s",
-					rte_ixgbe_macsec_strings[i].name);
+				strlcpy(xstats_names[count].name,
+					rte_ixgbe_macsec_strings[i].name,
+					sizeof(xstats_names[count].name));
 				count++;
 			}
 
@@ -3422,9 +3419,9 @@ static int ixgbevf_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 
 	if (xstats_names != NULL)
 		for (i = 0; i < IXGBEVF_NB_XSTATS; i++)
-			snprintf(xstats_names[i].name,
-				sizeof(xstats_names[i].name),
-				"%s", rte_ixgbevf_stats_strings[i].name);
+			strlcpy(xstats_names[i].name,
+				rte_ixgbevf_stats_strings[i].name,
+				sizeof(xstats_names[i].name));
 	return IXGBEVF_NB_XSTATS;
 }
 

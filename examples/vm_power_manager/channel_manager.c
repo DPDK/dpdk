@@ -17,6 +17,7 @@
 #include <sys/socket.h>
 #include <sys/select.h>
 
+#include <rte_string_fns.h>
 #include <rte_malloc.h>
 #include <rte_memory.h>
 #include <rte_mempool.h>
@@ -415,7 +416,7 @@ add_all_channels(const char *vm_name)
 				!strncmp(dir->d_name, "..", 2))
 			continue;
 
-		snprintf(socket_name, sizeof(socket_name), "%s", dir->d_name);
+		strlcpy(socket_name, dir->d_name, sizeof(socket_name));
 		remaining = socket_name;
 		/* Extract vm_name from "<vm_name>.<channel_num>" */
 		token = strsep(&remaining, ".");
@@ -562,8 +563,8 @@ add_host_channel(void)
 				"channel '%s'\n", socket_path);
 		return 0;
 	}
-	snprintf(chan_info->channel_path,
-			sizeof(chan_info->channel_path), "%s", socket_path);
+	strlcpy(chan_info->channel_path, socket_path,
+		sizeof(chan_info->channel_path));
 	if (setup_host_channel_info(&chan_info, 0) < 0) {
 		rte_free(chan_info);
 		return 0;

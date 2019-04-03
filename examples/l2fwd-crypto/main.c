@@ -19,6 +19,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include <rte_string_fns.h>
 #include <rte_atomic.h>
 #include <rte_branch_prediction.h>
 #include <rte_common.h>
@@ -1199,8 +1200,7 @@ l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
 	if (strcmp(lgopts[option_index].name, "cdev_type") == 0) {
 		retval = parse_cryptodev_type(&options->type, optarg);
 		if (retval == 0)
-			snprintf(options->string_type, MAX_STR_LEN,
-				"%s", optarg);
+			strlcpy(options->string_type, optarg, MAX_STR_LEN);
 		return retval;
 	}
 

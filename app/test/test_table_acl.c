@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <rte_string_fns.h>
 #include <rte_hexdump.h>
 #include "test_table.h"
 #include "test_table_acl.h"
@@ -467,7 +468,7 @@ setup_acl_pipeline(void)
 			memset(&keys[n], 0, sizeof(struct rte_table_acl_rule_add_params));
 			key_array[n] = &keys[n];
 
-			snprintf(line, sizeof(line), "%s", lines[n]);
+			strlcpy(line, lines[n], sizeof(line));
 			printf("PARSING [%s]\n", line);
 
 			ret = parser(line, &keys[n]);
@@ -509,7 +510,7 @@ setup_acl_pipeline(void)
 			memset(&keys[n], 0, sizeof(struct rte_table_acl_rule_delete_params));
 			key_array[n] = &keys[n];
 
-			snprintf(line, sizeof(line), "%s", lines[n]);
+			strlcpy(line, lines[n], sizeof(line));
 			printf("PARSING [%s]\n", line);
 
 			ret = parse_cb_ipv4_rule_del(line, &keys[n]);
@@ -545,7 +546,7 @@ setup_acl_pipeline(void)
 		parser = parse_cb_ipv4_rule;
 
 		for (n = 1; n <= 5; n++) {
-			snprintf(line, sizeof(line), "%s", lines[n-1]);
+			strlcpy(line, lines[n - 1], sizeof(line));
 			printf("PARSING [%s]\n", line);
 
 			ret = parser(line, &rule_params);
@@ -571,7 +572,7 @@ setup_acl_pipeline(void)
 
 		/* delete a few rules */
 		for (n = 2; n <= 3; n++) {
-			snprintf(line, sizeof(line), "%s", lines[n-1]);
+			strlcpy(line, lines[n - 1], sizeof(line));
 			printf("PARSING [%s]\n", line);
 
 			ret = parser(line, &rule_params);
@@ -598,7 +599,7 @@ setup_acl_pipeline(void)
 
 		/* Try to add duplicates */
 		for (n = 1; n <= 5; n++) {
-			snprintf(line, sizeof(line), "%s", lines[n-1]);
+			strlcpy(line, lines[n - 1], sizeof(line));
 			printf("PARSING [%s]\n", line);
 
 			ret = parser(line, &rule_params);

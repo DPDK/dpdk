@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2017 Intel Corporation
  */
 
+#include <rte_string_fns.h>
 #include <rte_malloc.h>
 #include <rte_tailq.h>
 
@@ -1983,8 +1984,8 @@ int rte_pmd_i40e_get_ddp_info(uint8_t *pkg_buff, uint32_t pkg_size,
 		tlv = (struct i40e_profile_tlv_section_record *)&proto[1];
 		for (i = j = 0; i < nb_rec; j++) {
 			pinfo[j].proto_id = tlv->data[0];
-			snprintf(pinfo[j].name, I40E_DDP_NAME_SIZE, "%s",
-				 (const char *)&tlv->data[1]);
+			strlcpy(pinfo[j].name, (const char *)&tlv->data[1],
+				I40E_DDP_NAME_SIZE);
 			i += tlv->len;
 			tlv = &tlv[tlv->len];
 		}

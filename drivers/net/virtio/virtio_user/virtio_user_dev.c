@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <rte_string_fns.h>
 #include <rte_eal_memconfig.h>
 
 #include "vhost.h"
@@ -429,7 +430,7 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 		     int server, int mrg_rxbuf, int in_order, int packed_vq)
 {
 	pthread_mutex_init(&dev->mutex, NULL);
-	snprintf(dev->path, PATH_MAX, "%s", path);
+	strlcpy(dev->path, path, PATH_MAX);
 	dev->started = 0;
 	dev->max_queue_pairs = queues;
 	dev->queue_pairs = 1; /* mq disabled by default */

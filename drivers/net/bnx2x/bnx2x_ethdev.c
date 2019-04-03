@@ -8,6 +8,7 @@
 #include "bnx2x.h"
 #include "bnx2x_rxtx.h"
 
+#include <rte_string_fns.h>
 #include <rte_dev.h>
 #include <rte_ethdev_pci.h>
 #include <rte_alarm.h>
@@ -445,10 +446,9 @@ bnx2x_get_xstats_names(__rte_unused struct rte_eth_dev *dev,
 
 	if (xstats_names != NULL)
 		for (i = 0; i < stat_cnt; i++)
-			snprintf(xstats_names[i].name,
-				sizeof(xstats_names[i].name),
-				"%s",
-				bnx2x_xstats_strings[i].name);
+			strlcpy(xstats_names[i].name,
+				bnx2x_xstats_strings[i].name,
+				sizeof(xstats_names[i].name));
 
 	return stat_cnt;
 }

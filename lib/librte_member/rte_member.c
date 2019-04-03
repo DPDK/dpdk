@@ -4,6 +4,7 @@
 
 #include <string.h>
 
+#include <rte_string_fns.h>
 #include <rte_eal.h>
 #include <rte_eal_memconfig.h>
 #include <rte_memory.h>
@@ -132,7 +133,7 @@ rte_member_create(const struct rte_member_parameters *params)
 		RTE_MEMBER_LOG(ERR, "Create setsummary failed\n");
 		goto error_unlock_exit;
 	}
-	snprintf(setsum->name, sizeof(setsum->name), "%s", params->name);
+	strlcpy(setsum->name, params->name, sizeof(setsum->name));
 	setsum->type = params->type;
 	setsum->socket_id = params->socket_id;
 	setsum->key_len = params->key_len;

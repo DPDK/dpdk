@@ -11,6 +11,7 @@
 #include <string.h>
 #include <errno.h>
 
+#include <rte_string_fns.h>
 #include <rte_fbarray.h>
 #include <rte_eal_memconfig.h>
 
@@ -424,7 +425,7 @@ vhost_user_setup(struct virtio_user_dev *dev)
 
 	memset(&un, 0, sizeof(un));
 	un.sun_family = AF_UNIX;
-	snprintf(un.sun_path, sizeof(un.sun_path), "%s", dev->path);
+	strlcpy(un.sun_path, dev->path, sizeof(un.sun_path));
 
 	if (dev->is_server) {
 		dev->listenfd = fd;

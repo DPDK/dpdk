@@ -7,6 +7,7 @@
 #include <inttypes.h>
 #include <getopt.h>
 
+#include <rte_string_fns.h>
 #include <rte_common.h>
 #include <rte_eventdev.h>
 #include <rte_lcore.h>
@@ -120,7 +121,7 @@ evt_parse_timer_prod_type_burst(struct evt_options *opt,
 static int
 evt_parse_test_name(struct evt_options *opt, const char *arg)
 {
-	snprintf(opt->test_name, EVT_TEST_NAME_MAX_LEN, "%s", arg);
+	strlcpy(opt->test_name, arg, EVT_TEST_NAME_MAX_LEN);
 	return 0;
 }
 

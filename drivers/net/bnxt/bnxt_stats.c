@@ -5,6 +5,7 @@
 
 #include <inttypes.h>
 
+#include <rte_string_fns.h>
 #include <rte_byteorder.h>
 
 #include "bnxt.h"
@@ -491,41 +492,36 @@ int bnxt_dev_xstats_get_names_op(__rte_unused struct rte_eth_dev *eth_dev,
 		count = 0;
 
 		for (i = 0; i < RTE_DIM(bnxt_rx_stats_strings); i++) {
-			snprintf(xstats_names[count].name,
-				sizeof(xstats_names[count].name),
-				"%s",
-				bnxt_rx_stats_strings[i].name);
+			strlcpy(xstats_names[count].name,
+				bnxt_rx_stats_strings[i].name,
+				sizeof(xstats_names[count].name));
 			count++;
 		}
 
 		for (i = 0; i < RTE_DIM(bnxt_tx_stats_strings); i++) {
-			snprintf(xstats_names[count].name,
-				sizeof(xstats_names[count].name),
-				"%s",
-				bnxt_tx_stats_strings[i].name);
+			strlcpy(xstats_names[count].name,
+				bnxt_tx_stats_strings[i].name,
+				sizeof(xstats_names[count].name));
 			count++;
 		}
 
-		snprintf(xstats_names[count].name,
-				sizeof(xstats_names[count].name),
-				"%s",
-				bnxt_func_stats_strings[4].name);
+		strlcpy(xstats_names[count].name,
+			bnxt_func_stats_strings[4].name,
+			sizeof(xstats_names[count].name));
 		count++;
 
 		for (i = 0; i < RTE_DIM(bnxt_rx_ext_stats_strings); i++) {
-			snprintf(xstats_names[count].name,
-				 sizeof(xstats_names[count].name),
-				 "%s",
-				 bnxt_rx_ext_stats_strings[i].name);
+			strlcpy(xstats_names[count].name,
+				bnxt_rx_ext_stats_strings[i].name,
+				sizeof(xstats_names[count].name));
 
 			count++;
 		}
 
 		for (i = 0; i < RTE_DIM(bnxt_tx_ext_stats_strings); i++) {
-			snprintf(xstats_names[count].name,
-				 sizeof(xstats_names[count].name),
-				 "%s",
-				 bnxt_tx_ext_stats_strings[i].name);
+			strlcpy(xstats_names[count].name,
+				bnxt_tx_ext_stats_strings[i].name,
+				sizeof(xstats_names[count].name));
 
 			count++;
 		}

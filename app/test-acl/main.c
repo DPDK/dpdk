@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <rte_string_fns.h>
 #include <rte_acl.h>
 #include <getopt.h>
 #include <string.h>
@@ -928,7 +929,7 @@ print_usage(const char *prgname)
 		n += rc;
 	}
 
-	snprintf(buf + n, sizeof(buf) - n, "%s", acl_alg[i].name);
+	strlcpy(buf + n, acl_alg[i].name, sizeof(buf) - n);
 
 	fprintf(stdout,
 		PRINT_USAGE_START

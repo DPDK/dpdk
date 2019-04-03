@@ -6,6 +6,7 @@
  */
 
 #include <of.h>
+#include <rte_string_fns.h>
 #include <rte_dpaa_logs.h>
 
 static int alive;
@@ -60,7 +61,7 @@ process_file(struct dirent *dent, struct dt_dir *parent)
 		return;
 	}
 	f->node.is_file = 1;
-	snprintf(f->node.node.name, NAME_MAX, "%s", dent->d_name);
+	strlcpy(f->node.node.name, dent->d_name, NAME_MAX);
 	snprintf(f->node.node.full_name, PATH_MAX, "%s/%s",
 		 parent->node.node.full_name, dent->d_name);
 	f->parent = parent;
@@ -117,8 +118,8 @@ iterate_dir(struct dirent **d, int num, struct dt_dir *dt)
 				perror("malloc");
 				return -ENOMEM;
 			}
-			snprintf(subdir->node.node.name, NAME_MAX, "%s",
-				 d[loop]->d_name);
+			strlcpy(subdir->node.node.name, d[loop]->d_name,
+				NAME_MAX);
 			snprintf(subdir->node.node.full_name, PATH_MAX,
 				 "%s/%s", dt->node.node.full_name,
 				 d[loop]->d_name);

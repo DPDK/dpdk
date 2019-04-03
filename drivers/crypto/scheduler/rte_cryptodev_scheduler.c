@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2017 Intel Corporation
  */
+#include <rte_string_fns.h>
 #include <rte_reorder.h>
 #include <rte_cryptodev.h>
 #include <rte_cryptodev_pmd.h>
@@ -443,8 +444,7 @@ rte_cryptodev_scheduler_load_user_scheduler(uint8_t scheduler_id,
 				RTE_CRYPTODEV_NAME_MAX_LEN);
 		return -EINVAL;
 	}
-	snprintf(sched_ctx->name, sizeof(sched_ctx->name), "%s",
-			scheduler->name);
+	strlcpy(sched_ctx->name, scheduler->name, sizeof(sched_ctx->name));
 
 	if (strlen(scheduler->description) >
 			RTE_CRYPTODEV_SCHEDULER_DESC_MAX_LEN - 1) {
@@ -453,8 +453,8 @@ rte_cryptodev_scheduler_load_user_scheduler(uint8_t scheduler_id,
 				RTE_CRYPTODEV_SCHEDULER_DESC_MAX_LEN - 1);
 		return -EINVAL;
 	}
-	snprintf(sched_ctx->description, sizeof(sched_ctx->description), "%s",
-			scheduler->description);
+	strlcpy(sched_ctx->description, scheduler->description,
+		sizeof(sched_ctx->description));
 
 	/* load scheduler instance operations functions */
 	sched_ctx->ops.config_queue_pair = scheduler->ops->config_queue_pair;

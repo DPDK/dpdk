@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <rte_string_fns.h>
 #include <rte_acl.h>
 #include "acl.h"
 
@@ -249,7 +250,7 @@ rte_acl_create(const struct rte_acl_param *param)
 		ctx->rule_sz = param->rule_size;
 		ctx->socket_id = param->socket_id;
 		ctx->alg = rte_acl_default_classify;
-		snprintf(ctx->name, sizeof(ctx->name), "%s", param->name);
+		strlcpy(ctx->name, param->name, sizeof(ctx->name));
 
 		te->data = (void *) ctx;
 

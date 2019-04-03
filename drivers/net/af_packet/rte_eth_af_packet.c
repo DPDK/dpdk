@@ -6,6 +6,7 @@
  * All rights reserved.
  */
 
+#include <rte_string_fns.h>
 #include <rte_mbuf.h>
 #include <rte_ethdev_driver.h>
 #include <rte_ethdev_vdev.h>
@@ -442,7 +443,7 @@ eth_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	if (s < 0)
 		return -EINVAL;
 
-	snprintf(ifr.ifr_name, IFNAMSIZ, "%s", internals->if_name);
+	strlcpy(ifr.ifr_name, internals->if_name, IFNAMSIZ);
 	ret = ioctl(s, SIOCSIFMTU, &ifr);
 	close(s);
 
@@ -462,7 +463,7 @@ eth_dev_change_flags(char *if_name, uint32_t flags, uint32_t mask)
 	if (s < 0)
 		return;
 
-	snprintf(ifr.ifr_name, IFNAMSIZ, "%s", if_name);
+	strlcpy(ifr.ifr_name, if_name, IFNAMSIZ);
 	if (ioctl(s, SIOCGIFFLAGS, &ifr) < 0)
 		goto out;
 	ifr.ifr_flags &= mask;

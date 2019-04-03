@@ -4,6 +4,7 @@
  * All rights reserved.
  */
 
+#include <rte_string_fns.h>
 #include <rte_ethdev_driver.h>
 #include <rte_kvargs.h>
 #include <rte_bus_vdev.h>
@@ -347,7 +348,7 @@ mvneta_dev_start(struct rte_eth_dev *dev)
 	if (priv->ppio)
 		return mvneta_dev_set_link_up(dev);
 
-	snprintf(match, sizeof(match), "%s", dev->data->name);
+	strlcpy(match, dev->data->name, sizeof(match));
 	priv->ppio_params.match = match;
 	priv->ppio_params.inqs_params.mtu = dev->data->mtu;
 

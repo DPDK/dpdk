@@ -21,6 +21,7 @@
 #else
 #pragma message "Jansson dev libs unavailable, not including JSON parsing"
 #endif
+#include <rte_string_fns.h>
 #include <rte_log.h>
 #include <rte_memory.h>
 #include <rte_malloc.h>
@@ -161,7 +162,7 @@ parse_json_to_pkt(json_t *element, struct channel_packet *pkt)
 			strcpy(pkt->vm_name, json_string_value(value));
 		} else if (!strcmp(key, "command")) {
 			char command[32];
-			snprintf(command, 32, "%s", json_string_value(value));
+			strlcpy(command, json_string_value(value), 32);
 			if (!strcmp(command, "power")) {
 				pkt->command = CPU_POWER;
 			} else if (!strcmp(command, "create")) {
@@ -175,7 +176,7 @@ parse_json_to_pkt(json_t *element, struct channel_packet *pkt)
 			}
 		} else if (!strcmp(key, "policy_type")) {
 			char command[32];
-			snprintf(command, 32, "%s", json_string_value(value));
+			strlcpy(command, json_string_value(value), 32);
 			if (!strcmp(command, "TIME")) {
 				pkt->policy_to_use = TIME;
 			} else if (!strcmp(command, "TRAFFIC")) {
@@ -191,7 +192,7 @@ parse_json_to_pkt(json_t *element, struct channel_packet *pkt)
 			}
 		} else if (!strcmp(key, "workload")) {
 			char command[32];
-			snprintf(command, 32, "%s", json_string_value(value));
+			strlcpy(command, json_string_value(value), 32);
 			if (!strcmp(command, "HIGH")) {
 				pkt->workload = HIGH;
 			} else if (!strcmp(command, "MEDIUM")) {
@@ -237,8 +238,9 @@ parse_json_to_pkt(json_t *element, struct channel_packet *pkt)
 
 			for (i = 0; i < size; i++) {
 				char mac[32];
-				snprintf(mac, 32, "%s", json_string_value(
-						json_array_get(value, i)));
+				strlcpy(mac,
+					json_string_value(json_array_get(value, i)),
+					32);
 				set_policy_mac(pkt, i, mac);
 			}
 			pkt->nb_mac_to_monitor = size;
@@ -250,7 +252,7 @@ parse_json_to_pkt(json_t *element, struct channel_packet *pkt)
 					(uint32_t)json_integer_value(value);
 		} else if (!strcmp(key, "unit")) {
 			char unit[32];
-			snprintf(unit, 32, "%s", json_string_value(value));
+			strlcpy(unit, json_string_value(value), 32);
 			if (!strcmp(unit, "SCALE_UP")) {
 				pkt->unit = CPU_POWER_SCALE_UP;
 			} else if (!strcmp(unit, "SCALE_DOWN")) {

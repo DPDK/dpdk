@@ -13,6 +13,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
+#include <rte_string_fns.h>
 #include <rte_common.h>
 #include <rte_eth_ctrl.h>
 #include <rte_ethdev.h>
@@ -4694,7 +4695,7 @@ comp_boolean(struct context *ctx, const struct token *token,
 	(void)token;
 	for (i = 0; boolean_name[i]; ++i)
 		if (buf && i == ent)
-			return snprintf(buf, size, "%s", boolean_name[i]);
+			return strlcpy(buf, boolean_name[i], size);
 	if (buf)
 		return -1;
 	return i;
@@ -4711,8 +4712,8 @@ comp_action(struct context *ctx, const struct token *token,
 	(void)token;
 	for (i = 0; next_action[i]; ++i)
 		if (buf && i == ent)
-			return snprintf(buf, size, "%s",
-					token_list[next_action[i]].name);
+			return strlcpy(buf, token_list[next_action[i]].name,
+				       size);
 	if (buf)
 		return -1;
 	return i;
@@ -4776,7 +4777,7 @@ comp_vc_action_rss_type(struct context *ctx, const struct token *token,
 	if (!buf)
 		return i + 1;
 	if (ent < i)
-		return snprintf(buf, size, "%s", rss_type_table[ent].str);
+		return strlcpy(buf, rss_type_table[ent].str, size);
 	if (ent == i)
 		return snprintf(buf, size, "end");
 	return -1;
@@ -4961,7 +4962,7 @@ cmd_flow_complete_get_elt(cmdline_parse_token_hdr_t *hdr, int index,
 	if (index >= i)
 		return -1;
 	token = &token_list[list[index]];
-	snprintf(dst, size, "%s", token->name);
+	strlcpy(dst, token->name, size);
 	/* Save index for cmd_flow_get_help(). */
 	ctx->prev = list[index];
 	return 0;
@@ -4978,7 +4979,7 @@ cmd_flow_get_help(cmdline_parse_token_hdr_t *hdr, char *dst, unsigned int size)
 	if (!size)
 		return -1;
 	/* Set token type and update global help with details. */
-	snprintf(dst, size, "%s", (token->type ? token->type : "TOKEN"));
+	strlcpy(dst, (token->type ? token->type : "TOKEN"), size);
 	if (token->help)
 		cmd_flow.help_str = token->help;
 	else

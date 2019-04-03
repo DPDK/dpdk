@@ -31,6 +31,7 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <rte_string_fns.h>
 #include <rte_ether.h>
 #include <rte_ethdev_driver.h>
 #include <rte_ethdev_pci.h>
@@ -421,13 +422,11 @@ static void ena_config_host_info(struct ena_com_dev *ena_dev)
 
 	host_info->os_type = ENA_ADMIN_OS_DPDK;
 	host_info->kernel_ver = RTE_VERSION;
-	snprintf((char *)host_info->kernel_ver_str,
-		 sizeof(host_info->kernel_ver_str),
-		 "%s", rte_version());
+	strlcpy((char *)host_info->kernel_ver_str, rte_version(),
+		sizeof(host_info->kernel_ver_str));
 	host_info->os_dist = RTE_VERSION;
-	snprintf((char *)host_info->os_dist_str,
-		 sizeof(host_info->os_dist_str),
-		 "%s", rte_version());
+	strlcpy((char *)host_info->os_dist_str, rte_version(),
+		sizeof(host_info->os_dist_str));
 	host_info->driver_version =
 		(DRV_MODULE_VER_MAJOR) |
 		(DRV_MODULE_VER_MINOR << ENA_ADMIN_HOST_INFO_MINOR_SHIFT) |
