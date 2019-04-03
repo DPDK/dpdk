@@ -299,14 +299,14 @@ test_bulk_push_pop(struct rte_stack *s)
 }
 
 static int
-test_stack_perf(void)
+__test_stack_perf(uint32_t flags)
 {
 	struct lcore_pair cores;
 	struct rte_stack *s;
 
 	rte_atomic32_init(&lcore_barrier);
 
-	s = rte_stack_create(STACK_NAME, STACK_SIZE, rte_socket_id(), 0);
+	s = rte_stack_create(STACK_NAME, STACK_SIZE, rte_socket_id(), flags);
 	if (s == NULL) {
 		printf("[%s():%u] failed to create a stack\n",
 		       __func__, __LINE__);
@@ -342,4 +342,17 @@ test_stack_perf(void)
 	return 0;
 }
 
+static int
+test_stack_perf(void)
+{
+	return __test_stack_perf(0);
+}
+
+static int
+test_lf_stack_perf(void)
+{
+	return __test_stack_perf(RTE_STACK_F_LF);
+}
+
 REGISTER_TEST_COMMAND(stack_perf_autotest, test_stack_perf);
+REGISTER_TEST_COMMAND(stack_lf_perf_autotest, test_lf_stack_perf);

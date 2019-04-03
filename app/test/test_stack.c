@@ -98,7 +98,7 @@ test_stack_push_pop(struct rte_stack *s, void **obj_table, unsigned int bulk_sz)
 }
 
 static int
-test_stack_basic(void)
+test_stack_basic(uint32_t flags)
 {
 	struct rte_stack *s = NULL;
 	void **obj_table = NULL;
@@ -114,7 +114,7 @@ test_stack_basic(void)
 	for (i = 0; i < STACK_SIZE; i++)
 		obj_table[i] = (void *)(uintptr_t)i;
 
-	s = rte_stack_create(__func__, STACK_SIZE, rte_socket_id(), 0);
+	s = rte_stack_create(__func__, STACK_SIZE, rte_socket_id(), flags);
 	if (s == NULL) {
 		printf("[%s():%u] failed to create a stack\n",
 		       __func__, __LINE__);
@@ -178,18 +178,18 @@ fail_test:
 }
 
 static int
-test_stack_name_reuse(void)
+test_stack_name_reuse(uint32_t flags)
 {
 	struct rte_stack *s[2];
 
-	s[0] = rte_stack_create("test", STACK_SIZE, rte_socket_id(), 0);
+	s[0] = rte_stack_create("test", STACK_SIZE, rte_socket_id(), flags);
 	if (s[0] == NULL) {
 		printf("[%s():%u] Failed to create a stack\n",
 		       __func__, __LINE__);
 		return -1;
 	}
 
-	s[1] = rte_stack_create("test", STACK_SIZE, rte_socket_id(), 0);
+	s[1] = rte_stack_create("test", STACK_SIZE, rte_socket_id(), flags);
 	if (s[1] != NULL) {
 		printf("[%s():%u] Failed to detect re-used name\n",
 		       __func__, __LINE__);
@@ -202,7 +202,7 @@ test_stack_name_reuse(void)
 }
 
 static int
-test_stack_name_length(void)
+test_stack_name_length(uint32_t flags)
 {
 	char name[RTE_STACK_NAMESIZE + 1];
 	struct rte_stack *s;
@@ -210,7 +210,7 @@ test_stack_name_length(void)
 	memset(name, 's', sizeof(name));
 	name[RTE_STACK_NAMESIZE] = '\0';
 
-	s = rte_stack_create(name, STACK_SIZE, rte_socket_id(), 0);
+	s = rte_stack_create(name, STACK_SIZE, rte_socket_id(), flags);
 	if (s != NULL) {
 		printf("[%s():%u] Failed to prevent long name\n",
 		       __func__, __LINE__);
@@ -329,7 +329,7 @@ stack_thread_push_pop(void *args)
 }
 
 static int
-test_stack_multithreaded(void)
+test_stack_multithreaded(uint32_t flags)
 {
 	struct test_args *args;
 	unsigned int lcore_id;
@@ -350,7 +350,7 @@ test_stack_multithreaded(void)
 		return -1;
 	}
 
-	s = rte_stack_create("test", STACK_SIZE, rte_socket_id(), 0);
+	s = rte_stack_create("test", STACK_SIZE, rte_socket_id(), flags);
 	if (s == NULL) {
 		printf("[%s():%u] Failed to create a stack\n",
 		       __func__, __LINE__);
@@ -385,9 +385,9 @@ test_stack_multithreaded(void)
 }
 
 static int
-test_stack(void)
+__test_stack(uint32_t flags)
 {
-	if (test_stack_basic() < 0)
+	if (test_stack_basic(flags) < 0)
 		return -1;
 
 	if (test_lookup_null() < 0)
@@ -396,16 +396,29 @@ test_stack(void)
 	if (test_free_null() < 0)
 		return -1;
 
-	if (test_stack_name_reuse() < 0)
+	if (test_stack_name_reuse(flags) < 0)
 		return -1;
 
-	if (test_stack_name_length() < 0)
+	if (test_stack_name_length(flags) < 0)
 		return -1;
 
-	if (test_stack_multithreaded() < 0)
+	if (test_stack_multithreaded(flags) < 0)
 		return -1;
 
 	return 0;
 }
 
+static int
+test_stack(void)
+{
+	return __test_stack(0);
+}
+
+static int
+test_lf_stack(void)
+{
+	return __test_stack(RTE_STACK_F_LF);
+}
+
 REGISTER_TEST_COMMAND(stack_autotest, test_stack);
+REGISTER_TEST_COMMAND(stack_lf_autotest, test_lf_stack);
