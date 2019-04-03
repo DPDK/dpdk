@@ -95,6 +95,7 @@ test_sources = files('commands.c',
 	'test_sched.c',
 	'test_service_cores.c',
 	'test_spinlock.c',
+	'test_stack.c',
 	'test_string_fns.c',
 	'test_table.c',
 	'test_table_acl.c',
@@ -133,6 +134,7 @@ test_deps = ['acl',
 	'port',
 	'reorder',
 	'ring',
+	'stack',
 	'timer'
 ]
 
@@ -174,6 +176,7 @@ fast_parallel_test_names = [
         'rwlock_autotest',
         'sched_autotest',
         'spinlock_autotest',
+        'stack_autotest',
         'string_autotest',
         'table_autotest',
         'tailq_autotest',

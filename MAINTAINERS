@@ -319,6 +319,7 @@ M: Gage Eads <gage.eads@intel.com>
 M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/librte_stack/
 F: drivers/mempool/stack/
+F: app/test/test_stack*
 F: doc/guides/prog_guide/stack_lib.rst
 
 Packet buffer
