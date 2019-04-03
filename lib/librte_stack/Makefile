@@ -16,10 +16,13 @@ LIBABIVER := 1
 
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_STACK) := rte_stack.c \
-				   rte_stack_std.c
+				   rte_stack_std.c \
+				   rte_stack_lf.c
 
 # install includes
 SYMLINK-$(CONFIG_RTE_LIBRTE_STACK)-include := rte_stack.h \
-					      rte_stack_std.h
+					      rte_stack_std.h \
+					      rte_stack_lf.h \
+					      rte_stack_lf_generic.h
 
 include $(RTE_SDK)/mk/rte.lib.mk

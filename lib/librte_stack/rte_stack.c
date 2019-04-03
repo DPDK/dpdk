@@ -25,18 +25,25 @@ static struct rte_tailq_elem rte_stack_tailq = {
 };
 EAL_REGISTER_TAILQ(rte_stack_tailq)
 
+
 static void
-rte_stack_init(struct rte_stack *s)
+rte_stack_init(struct rte_stack *s, unsigned int count, uint32_t flags)
 {
 	memset(s, 0, sizeof(*s));
 
-	rte_stack_std_init(s);
+	if (flags & RTE_STACK_F_LF)
+		rte_stack_lf_init(s, count);
+	else
+		rte_stack_std_init(s);
 }
 
 static ssize_t
-rte_stack_get_memsize(unsigned int count)
+rte_stack_get_memsize(unsigned int count, uint32_t flags)
 {
-	return rte_stack_std_get_memsize(count);
+	if (flags & RTE_STACK_F_LF)
+		return rte_stack_lf_get_memsize(count);
+	else
+		return rte_stack_std_get_memsize(count);
 }
 
 struct rte_stack *
@@ -51,9 +58,16 @@ rte_stack_create(const char *name, unsigned int count, int socket_id,
 	unsigned int sz;
 	int ret;
 
-	RTE_SET_USED(flags);
+#ifdef RTE_ARCH_64
+	RTE_BUILD_BUG_ON(sizeof(struct rte_stack_lf_head) != 16);
+#else
+	if (flags & RTE_STACK_F_LF) {
+		STACK_LOG_ERR("Lock-free stack is not supported on your platform\n");
+		return NULL;
+	}
+#endif
 
-	sz = rte_stack_get_memsize(count);
+	sz = rte_stack_get_memsize(count, flags);
 
 	ret = snprintf(mz_name, sizeof(mz_name), "%s%s",
 		       RTE_STACK_MZ_PREFIX, name);
@@ -82,7 +96,7 @@ rte_stack_create(const char *name, unsigned int count, int socket_id,
 
 	s = mz->addr;
 
-	rte_stack_init(s);
+	rte_stack_init(s, count, flags);
 
 	/* Store the name for later lookups */
 	ret = snprintf(s->name, sizeof(s->name), "%s", name);
