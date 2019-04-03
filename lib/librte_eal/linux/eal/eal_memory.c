@@ -541,7 +541,7 @@ create_shared_memory(const char *filename, const size_t mem_size)
 		return retval;
 	}
 
-	fd = open(filename, O_CREAT | O_RDWR, 0666);
+	fd = open(filename, O_CREAT | O_RDWR, 0600);
 	if (fd < 0)
 		return NULL;
 	if (ftruncate(fd, mem_size) < 0) {

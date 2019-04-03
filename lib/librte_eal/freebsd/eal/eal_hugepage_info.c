@@ -22,7 +22,7 @@ static void *
 map_shared_memory(const char *filename, const size_t mem_size, int flags)
 {
 	void *retval;
-	int fd = open(filename, flags, 0666);
+	int fd = open(filename, flags, 0600);
 	if (fd < 0)
 		return NULL;
 	if (ftruncate(fd, mem_size) < 0) {
