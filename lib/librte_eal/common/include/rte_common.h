@@ -106,8 +106,10 @@ typedef uint16_t unaligned_uint16_t;
  *   Priority number must be above 100.
  *   Lowest number is the first to run.
  */
+#ifndef RTE_INIT_PRIO /* Allow to override from EAL */
 #define RTE_INIT_PRIO(func, prio) \
 static void __attribute__((constructor(RTE_PRIO(prio)), used)) func(void)
+#endif
 
 /**
  * Run function before main() with low priority.
@@ -129,8 +131,10 @@ static void __attribute__((constructor(RTE_PRIO(prio)), used)) func(void)
  *   Priority number must be above 100.
  *   Lowest number is the last to run.
  */
+#ifndef RTE_FINI_PRIO /* Allow to override from EAL */
 #define RTE_FINI_PRIO(func, prio) \
 static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
+#endif
 
 /**
  * Run after main() with high priority.
