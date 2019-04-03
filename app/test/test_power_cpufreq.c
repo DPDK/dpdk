@@ -366,6 +366,59 @@ check_power_freq_min(void)
 	return 0;
 }
 
+/* Check rte_power_turbo() */
+static int
+check_power_turbo(void)
+{
+	int ret;
+
+	if (rte_power_turbo_status(TEST_POWER_LCORE_ID) == 0) {
+		printf("Turbo not available on lcore %u, skipping test\n",
+				TEST_POWER_LCORE_ID);
+		return 0;
+	}
+
+	/* test with an invalid lcore id */
+	ret = rte_power_freq_enable_turbo(TEST_POWER_LCORE_INVALID);
+	if (ret >= 0) {
+		printf("Unexpectedly enable turbo successfully on lcore %u\n",
+				TEST_POWER_LCORE_INVALID);
+		return -1;
+	}
+	ret = rte_power_freq_enable_turbo(TEST_POWER_LCORE_ID);
+	if (ret < 0) {
+		printf("Fail to enable turbo on lcore %u\n",
+				TEST_POWER_LCORE_ID);
+		return -1;
+	}
+
+	/* Check the current frequency */
+	ret = check_cur_freq(TEST_POWER_LCORE_ID, 0);
+	if (ret < 0)
+		return -1;
+
+	/* test with an invalid lcore id */
+	ret = rte_power_freq_disable_turbo(TEST_POWER_LCORE_INVALID);
+	if (ret >= 0) {
+		printf("Unexpectedly disable turbo successfully on lcore %u\n",
+				TEST_POWER_LCORE_INVALID);
+		return -1;
+	}
+	ret = rte_power_freq_disable_turbo(TEST_POWER_LCORE_ID);
+	if (ret < 0) {
+		printf("Fail to disable turbo on lcore %u\n",
+				TEST_POWER_LCORE_ID);
+		return -1;
+	}
+
+	/* Check the current frequency */
+	ret = check_cur_freq(TEST_POWER_LCORE_ID, 1);
+	if (ret < 0)
+		return -1;
+
+	return 0;
+}
+
 static int
 test_power_cpufreq(void)
 {
@@ -424,6 +477,21 @@ test_power_cpufreq(void)
 	}
 	if (rte_power_freq_min == NULL) {
 		printf("rte_power_freq_min should not be NULL, environment has not "
+				"been initialised\n");
+		goto fail_all;
+	}
+	if (rte_power_turbo_status == NULL) {
+		printf("rte_power_turbo_status should not be NULL, environment has not "
+				"been initialised\n");
+		goto fail_all;
+	}
+	if (rte_power_freq_enable_turbo == NULL) {
+		printf("rte_power_freq_enable_turbo should not be NULL, environment has not "
+				"been initialised\n");
+		goto fail_all;
+	}
+	if (rte_power_freq_disable_turbo == NULL) {
+		printf("rte_power_freq_disable_turbo should not be NULL, environment has not "
 				"been initialised\n");
 		goto fail_all;
 	}
@@ -499,6 +567,10 @@ test_power_cpufreq(void)
 		goto fail_all;
 
 	ret = check_power_freq_min();
+	if (ret < 0)
+		goto fail_all;
+
+	ret = check_power_turbo();
 	if (ret < 0)
 		goto fail_all;
 
