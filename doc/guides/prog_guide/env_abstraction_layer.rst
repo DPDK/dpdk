@@ -581,6 +581,16 @@ Known Issues
 
   5. It MUST not be used by multi-producer/consumer pthreads, whose scheduling policies are SCHED_FIFO or SCHED_RR.
 
+  Alternatively, applications can use the lock-free stack mempool handler. When
+  considering this handler, note that:
+
+  - It is currently limited to the x86_64 platform, because it uses an
+    instruction (16-byte compare-and-swap) that is not yet available on other
+    platforms.
+  - It has worse average-case performance than the non-preemptive rte_ring, but
+    software caching (e.g. the mempool cache) can mitigate this by reducing the
+    number of stack accesses.
+
 + rte_timer
 
   Running  ``rte_timer_manage()`` on a non-EAL pthread is not allowed. However, resetting/stopping the timer from a non-EAL pthread is allowed.

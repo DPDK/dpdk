@@ -7,7 +7,7 @@
 #include <rte_stack.h>
 
 static int
-stack_alloc(struct rte_mempool *mp)
+__stack_alloc(struct rte_mempool *mp, uint32_t flags)
 {
 	char name[RTE_STACK_NAMESIZE];
 	struct rte_stack *s;
@@ -20,13 +20,25 @@ stack_alloc(struct rte_mempool *mp)
 		return -rte_errno;
 	}
 
-	s = rte_stack_create(name, mp->size, mp->socket_id, 0);
+	s = rte_stack_create(name, mp->size, mp->socket_id, flags);
 	if (s == NULL)
 		return -rte_errno;
 
 	mp->pool_data = s;
 
 	return 0;
+}
+
+static int
+stack_alloc(struct rte_mempool *mp)
+{
+	return __stack_alloc(mp, 0);
+}
+
+static int
+lf_stack_alloc(struct rte_mempool *mp)
+{
+	return __stack_alloc(mp, RTE_STACK_F_LF);
 }
 
 static int
@@ -72,4 +84,14 @@ static struct rte_mempool_ops ops_stack = {
 	.get_count = stack_get_count
 };
 
+static struct rte_mempool_ops ops_lf_stack = {
+	.name = "lf_stack",
+	.alloc = lf_stack_alloc,
+	.free = stack_free,
+	.enqueue = stack_enqueue,
+	.dequeue = stack_dequeue,
+	.get_count = stack_get_count
+};
+
 MEMPOOL_REGISTER_OPS(ops_stack);
+MEMPOOL_REGISTER_OPS(ops_lf_stack);

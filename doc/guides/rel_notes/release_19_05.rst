@@ -63,6 +63,11 @@ New Features
   The library supports two stack implementations: standard (lock-based) and lock-free.
   The lock-free implementation is currently limited to x86-64 platforms.
 
+* **Added Lock-Free Stack Mempool Handler.**
+
+  Added a new lock-free stack handler, which uses the newly added stack
+  library.
+
 * **Updated KNI module and PMD.**
 
   Updated the KNI kernel module to set the max_mtu according to the given
