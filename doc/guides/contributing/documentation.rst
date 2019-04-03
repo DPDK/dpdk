@@ -39,14 +39,14 @@ The main directories that contain files related to documentation are shown below
        |-- ...
 
 
-The API documentation is built from `Doxygen <http://www.stack.nl/~dimitri/doxygen/>`_ comments in the header files.
+The API documentation is built from `Doxygen <http://www.doxygen.nl>`_ comments in the header files.
 These files are mainly in the ``lib/librte_*`` directories although some of the Poll Mode Drivers in ``drivers/net``
 are also documented with Doxygen.
 
 The configuration files that are used to control the Doxygen output are in the ``doc/api`` directory.
 
 The user guides such as *The Programmers Guide* and the *FreeBSD* and *Linux Getting Started* Guides are generated
-from RST markup text files using the `Sphinx <http://sphinx-doc.org/index.html>`_ Documentation Generator.
+from RST markup text files using the `Sphinx <http://sphinx-doc.org>`_ Documentation Generator.
 
 These files are included in the ``doc/guides/`` directory.
 The output is controlled by the ``doc/guides/conf.py`` file.
@@ -173,7 +173,8 @@ For full support with figure and table captioning the latest version of Sphinx c
    sudo pip install --upgrade sphinx
    sudo pip install --upgrade sphinx_rtd_theme
 
-For further information on getting started with Sphinx see the `Sphinx Tutorial <http://sphinx-doc.org/tutorial.html>`_.
+For further information on getting started with Sphinx see the
+`Sphinx Getting Started <http://www.sphinx-doc.org/en/master/usage/quickstart.html>`_.
 
 .. Note::
 
@@ -595,7 +596,7 @@ Doxygen Guidelines
 
 The DPDK API is documented using Doxygen comment annotations in the header files.
 Doxygen is a very powerful tool, it is extremely configurable and with a little effort can be used to create expressive documents.
-See the `Doxygen website <http://www.stack.nl/~dimitri/doxygen/>`_ for full details on how to use it.
+See the `Doxygen website <http://www.doxygen.nl>`_ for full details on how to use it.
 
 The following are some guidelines for use of Doxygen in the DPDK API documentation:
 
