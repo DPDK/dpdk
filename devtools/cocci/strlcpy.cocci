@@ -1,6 +1,5 @@
 @use_strlcpy@
-identifier src, dst;
-expression size;
+expression src, dst, size;
 @@
 (
 - snprintf(dst, size, "%s", src)
