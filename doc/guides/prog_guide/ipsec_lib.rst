@@ -153,7 +153,7 @@ Supported features
 
 *  ESN and replay window.
 
-*  algorithms: AES-CBC, AES-GCM, HMAC-SHA1, NULL.
+*  algorithms: 3DES-CBC, AES-CBC, AES-CTR, AES-GCM, HMAC-SHA1, NULL.
 
 
 Limitations
