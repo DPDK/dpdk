@@ -13,7 +13,6 @@ CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc
 CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc/qbman/include
-CFLAGS += -I$(RTE_SDK)/lib/librte_eal/linux/eal
 
 # versioning export map
 EXPORT_MAP := rte_mempool_dpaa2_version.map

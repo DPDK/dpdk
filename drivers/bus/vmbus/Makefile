@@ -19,7 +19,6 @@ endif
 
 CFLAGS += -I$(RTE_SDK)/drivers/bus/vmbus/$(SYSTEM)
 CFLAGS += -I$(RTE_SDK)/lib/librte_eal/common
-CFLAGS += -I$(RTE_SDK)/lib/librte_eal/$(SYSTEM)app/eal
 
 LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
 LDLIBS += -lrte_ethdev

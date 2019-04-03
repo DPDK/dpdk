@@ -21,7 +21,6 @@ CFLAGS += -I$(RTE_SDK)/drivers/crypto/caam_jr
 #sharing the hw flib headers from dpaa2_sec pmd
 CFLAGS += -I$(RTE_SDK)/drivers/crypto/dpaa2_sec/
 CFLAGS += -I$(RTE_SDK)/lib/librte_eal/common/include
-CFLAGS += -I$(RTE_SDK)/lib/librte_eal/linux/eal
 
 # versioning export map
 EXPORT_MAP := rte_pmd_caam_jr_version.map

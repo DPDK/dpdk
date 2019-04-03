@@ -17,7 +17,6 @@ CFLAGS += -Wno-cast-qual
 CFLAGS += -I$(RTE_BUS_DPAA)/
 CFLAGS += -I$(RTE_BUS_DPAA)/include
 CFLAGS += -I$(RTE_BUS_DPAA)/base/qbman
-CFLAGS += -I$(RTE_SDK)/lib/librte_eal/linux/eal
 CFLAGS += -I$(RTE_SDK)/lib/librte_eal/common/include
 
 # versioning export map
