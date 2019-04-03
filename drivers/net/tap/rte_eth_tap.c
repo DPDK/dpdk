@@ -760,9 +760,9 @@ tap_ioctl(struct pmd_internals *pmd, unsigned long request,
 	 */
 apply:
 	if (remote)
-		snprintf(ifr->ifr_name, IFNAMSIZ, "%s", pmd->remote_iface);
+		strlcpy(ifr->ifr_name, pmd->remote_iface, IFNAMSIZ);
 	else if (mode == LOCAL_ONLY || mode == LOCAL_AND_REMOTE)
-		snprintf(ifr->ifr_name, IFNAMSIZ, "%s", pmd->name);
+		strlcpy(ifr->ifr_name, pmd->name, IFNAMSIZ);
 	switch (request) {
 	case SIOCSIFFLAGS:
 		/* fetch current flags to leave other flags untouched */
@@ -1714,7 +1714,7 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 	pmd = dev->data->dev_private;
 	dev->process_private = process_private;
 	pmd->dev = dev;
-	snprintf(pmd->name, sizeof(pmd->name), "%s", tap_name);
+	strlcpy(pmd->name, tap_name, sizeof(pmd->name));
 	pmd->type = type;
 
 	pmd->ioctl_sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -1823,8 +1823,7 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 				pmd->name, remote_iface);
 			goto error_remote;
 		}
-		snprintf(pmd->remote_iface, RTE_ETH_NAME_MAX_LEN,
-			 "%s", remote_iface);
+		strlcpy(pmd->remote_iface, remote_iface, RTE_ETH_NAME_MAX_LEN);
 
 		/* Save state of remote device */
 		tap_ioctl(pmd, SIOCGIFFLAGS, &pmd->remote_initial_flags, 0, REMOTE_ONLY);

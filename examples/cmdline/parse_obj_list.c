@@ -98,7 +98,7 @@ int complete_get_elt_obj_list(cmdline_parse_token_hdr_t *tk,
 		return -1;
 
 	if (dstbuf)
-		snprintf(dstbuf, size, "%s", o->name);
+		strlcpy(dstbuf, o->name, size);
 
 	return 0;
 }

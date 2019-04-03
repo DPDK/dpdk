@@ -91,7 +91,7 @@ softnic_tap_create(struct pmd_internals *p,
 
 	memset(&ifr, 0, sizeof(ifr));
 	ifr.ifr_flags = IFF_TAP | IFF_NO_PI; /* No packet information */
-	snprintf(ifr.ifr_name, IFNAMSIZ, "%s", name);
+	strlcpy(ifr.ifr_name, name, IFNAMSIZ);
 
 	status = ioctl(fd, TUNSETIFF, (void *)&ifr);
 	if (status < 0) {

@@ -625,7 +625,7 @@ rte_distributor_create_v1705(const char *name,
 	}
 
 	d = mz->addr;
-	snprintf(d->name, sizeof(d->name), "%s", name);
+	strlcpy(d->name, name, sizeof(d->name));
 	d->num_workers = num_workers;
 	d->alg_type = alg_type;
 

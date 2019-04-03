@@ -1084,8 +1084,8 @@ eth_from_pcaps_common(struct rte_vdev_device *vdev,
 		struct devargs_queue *queue = &rx_queues->queue[i];
 
 		pp->rx_pcap[i] = queue->pcap;
-		snprintf(rx->name, sizeof(rx->name), "%s", queue->name);
-		snprintf(rx->type, sizeof(rx->type), "%s", queue->type);
+		strlcpy(rx->name, queue->name, sizeof(rx->name));
+		strlcpy(rx->type, queue->type, sizeof(rx->type));
 	}
 
 	for (i = 0; i < nb_tx_queues; i++) {
@@ -1094,8 +1094,8 @@ eth_from_pcaps_common(struct rte_vdev_device *vdev,
 
 		pp->tx_dumper[i] = queue->dumper;
 		pp->tx_pcap[i] = queue->pcap;
-		snprintf(tx->name, sizeof(tx->name), "%s", queue->name);
-		snprintf(tx->type, sizeof(tx->type), "%s", queue->type);
+		strlcpy(tx->name, queue->name, sizeof(tx->name));
+		strlcpy(tx->type, queue->type, sizeof(tx->type));
 	}
 
 	return 0;

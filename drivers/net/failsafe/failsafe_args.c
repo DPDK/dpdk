@@ -102,7 +102,7 @@ fs_execute_cmd(struct sub_device *sdev, char *cmdline)
 			ERROR("Command line allocation failed");
 			return -ENOMEM;
 		}
-		snprintf(sdev->cmdline, len, "%s", cmdline);
+		strlcpy(sdev->cmdline, cmdline, len);
 		/* Replace all commas in the command line by spaces */
 		for (i = 0; i < len; i++)
 			if (sdev->cmdline[i] == ',')

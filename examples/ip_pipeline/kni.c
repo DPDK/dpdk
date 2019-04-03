@@ -126,7 +126,7 @@ kni_create(const char *name, struct kni_params *params)
 	rte_eth_dev_info_get(link->port_id, &dev_info);
 
 	memset(&kni_conf, 0, sizeof(kni_conf));
-	snprintf(kni_conf.name, RTE_KNI_NAMESIZE, "%s", name);
+	strlcpy(kni_conf.name, name, RTE_KNI_NAMESIZE);
 	kni_conf.force_bind = params->force_bind;
 	kni_conf.core_id = params->thread_id;
 	kni_conf.group_id = link->port_id;

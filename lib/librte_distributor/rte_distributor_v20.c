@@ -386,7 +386,7 @@ rte_distributor_create_v20(const char *name,
 	}
 
 	d = mz->addr;
-	snprintf(d->name, sizeof(d->name), "%s", name);
+	strlcpy(d->name, name, sizeof(d->name));
 	d->num_workers = num_workers;
 
 	distributor_list = RTE_TAILQ_CAST(rte_distributor_tailq.head,

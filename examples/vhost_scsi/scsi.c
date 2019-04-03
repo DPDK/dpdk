@@ -234,8 +234,8 @@ vhost_bdev_scsi_inquiry_command(struct vhost_block_dev *bdev,
 			desig->reserved0 = 0;
 			desig->piv = 1;
 			desig->reserved1 = 0;
-			desig->len = snprintf((char *)desig->desig,
-					      255, "%s", bdev->name);
+			desig->len = strlcpy((char *)desig->desig, bdev->name,
+					     255);
 			len += sizeof(struct scsi_desig_desc) + desig->len;
 
 			buf += sizeof(struct scsi_desig_desc) + desig->len;
@@ -281,9 +281,8 @@ vhost_bdev_scsi_inquiry_command(struct vhost_block_dev *bdev,
 			sizeof(inqdata->t10_vendor_id));
 
 		/* PRODUCT IDENTIFICATION */
-		snprintf((char *)inqdata->product_id,
-				RTE_DIM(inqdata->product_id), "%s",
-				bdev->product_name);
+		strlcpy((char *)inqdata->product_id, bdev->product_name,
+			RTE_DIM(inqdata->product_id));
 
 		/* PRODUCT REVISION LEVEL */
 		strlcpy((char *)inqdata->product_rev, "0001",

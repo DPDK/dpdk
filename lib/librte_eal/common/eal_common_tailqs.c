@@ -80,7 +80,7 @@ rte_eal_tailq_create(const char *name)
 
 		mcfg = rte_eal_get_configuration()->mem_config;
 		head = &mcfg->tailq_head[rte_tailqs_count];
-		snprintf(head->name, sizeof(head->name) - 1, "%s", name);
+		strlcpy(head->name, name, sizeof(head->name) - 1);
 		TAILQ_INIT(&head->tailq_head);
 		rte_tailqs_count++;
 	}

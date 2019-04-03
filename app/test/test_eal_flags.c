@@ -58,7 +58,7 @@ get_hugepage_path(char * src, int src_len, char * dst, int dst_len)
 		return 0;
 
 	if (strncmp(tokens[2], "hugetlbfs", sizeof("hugetlbfs")) == 0) {
-		snprintf(dst, dst_len, "%s", tokens[1]);
+		strlcpy(dst, tokens[1], dst_len);
 		return 1;
 	}
 	return 0;

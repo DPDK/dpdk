@@ -205,7 +205,7 @@ rte_lpm_create_v20(const char *name, int socket_id, int max_rules,
 
 	/* Save user arguments. */
 	lpm->max_rules = max_rules;
-	snprintf(lpm->name, sizeof(lpm->name), "%s", name);
+	strlcpy(lpm->name, name, sizeof(lpm->name));
 
 	te->data = lpm;
 
@@ -308,7 +308,7 @@ rte_lpm_create_v1604(const char *name, int socket_id,
 	/* Save user arguments. */
 	lpm->max_rules = config->max_rules;
 	lpm->number_tbl8s = config->number_tbl8s;
-	snprintf(lpm->name, sizeof(lpm->name), "%s", name);
+	strlcpy(lpm->name, name, sizeof(lpm->name));
 
 	te->data = lpm;
 

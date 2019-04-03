@@ -318,8 +318,7 @@ test_parse_num_invalid_param(void)
 	token.num_data.type = UINT32;
 
 	/* copy string to buffer */
-	snprintf(buf, sizeof(buf), "%s",
-			num_valid_positive_strs[0].str);
+	strlcpy(buf, num_valid_positive_strs[0].str, sizeof(buf));
 
 	/* try all null */
 	ret = cmdline_parse_num(NULL, NULL, NULL, 0);

@@ -767,7 +767,7 @@ test_deflate_comp_decomp(const struct interim_data_params *int_data,
 		for (i = 0; i < num_bufs; i++) {
 			data_size = strlen(test_bufs[i]) + 1;
 			buf_ptr = rte_pktmbuf_append(uncomp_bufs[i], data_size);
-			snprintf(buf_ptr, data_size, "%s", test_bufs[i]);
+			strlcpy(buf_ptr, test_bufs[i], data_size);
 		}
 	}
 

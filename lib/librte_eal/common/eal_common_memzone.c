@@ -171,7 +171,7 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 		return NULL;
 	}
 
-	snprintf(mz->name, sizeof(mz->name), "%s", name);
+	strlcpy(mz->name, name, sizeof(mz->name));
 	mz->iova = rte_malloc_virt2iova(mz_addr);
 	mz->addr = mz_addr;
 	mz->len = requested_len == 0 ?

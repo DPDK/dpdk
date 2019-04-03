@@ -2068,9 +2068,9 @@ rte_eth_basic_stats_get_names(struct rte_eth_dev *dev,
 	uint16_t num_q;
 
 	for (idx = 0; idx < RTE_NB_STATS; idx++) {
-		snprintf(xstats_names[cnt_used_entries].name,
-			sizeof(xstats_names[0].name),
-			"%s", rte_stats_strings[idx].name);
+		strlcpy(xstats_names[cnt_used_entries].name,
+			rte_stats_strings[idx].name,
+			sizeof(xstats_names[0].name));
 		cnt_used_entries++;
 	}
 	num_q = RTE_MIN(dev->data->nb_rx_queues, RTE_ETHDEV_QUEUE_STAT_CNTRS);

@@ -234,7 +234,7 @@ rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 		goto kni_fail;
 	}
 
-	snprintf(kni->name, RTE_KNI_NAMESIZE, "%s", conf->name);
+	strlcpy(kni->name, conf->name, RTE_KNI_NAMESIZE);
 
 	if (ops)
 		memcpy(&kni->ops, ops, sizeof(struct rte_kni_ops));
@@ -255,7 +255,7 @@ rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 
 	memcpy(dev_info.mac_addr, conf->mac_addr, ETHER_ADDR_LEN);
 
-	snprintf(dev_info.name, RTE_KNI_NAMESIZE, "%s", conf->name);
+	strlcpy(dev_info.name, conf->name, RTE_KNI_NAMESIZE);
 
 	RTE_LOG(INFO, KNI, "pci: %02x:%02x:%02x \t %02x:%02x\n",
 		dev_info.bus, dev_info.devid, dev_info.function,
@@ -400,7 +400,7 @@ rte_kni_release(struct rte_kni *kni)
 	if (te == NULL)
 		goto unlock;
 
-	snprintf(dev_info.name, sizeof(dev_info.name), "%s", kni->name);
+	strlcpy(dev_info.name, kni->name, sizeof(dev_info.name));
 	if (ioctl(kni_fd, RTE_KNI_IOCTL_RELEASE, &dev_info) < 0) {
 		RTE_LOG(ERR, KNI, "Fail to release kni device\n");
 		goto unlock;

@@ -366,7 +366,7 @@ us_vhost_parse_socket_path(const char *q_arg)
 		return -1;
 	}
 
-	snprintf(socket_files + nb_sockets * PATH_MAX, PATH_MAX, "%s", q_arg);
+	strlcpy(socket_files + nb_sockets * PATH_MAX, q_arg, PATH_MAX);
 	nb_sockets++;
 
 	return 0;

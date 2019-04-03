@@ -141,7 +141,7 @@ rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 #endif
 
 	/* Set up hash table context. */
-	snprintf(ht->name, sizeof(ht->name), "%s", params->name);
+	strlcpy(ht->name, params->name, sizeof(ht->name));
 	ht->entries = params->entries;
 	ht->entries_per_bucket = params->entries_per_bucket;
 	ht->used_entries = 0;

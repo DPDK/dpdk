@@ -493,27 +493,27 @@ arp_op_name(uint16_t arp_op, char *buf, size_t buf_len)
 {
 	switch (arp_op) {
 	case ARP_OP_REQUEST:
-		snprintf(buf, buf_len, "%s", "ARP Request");
+		strlcpy(buf, "ARP Request", buf_len);
 		return;
 	case ARP_OP_REPLY:
-		snprintf(buf, buf_len, "%s", "ARP Reply");
+		strlcpy(buf, "ARP Reply", buf_len);
 		return;
 	case ARP_OP_REVREQUEST:
-		snprintf(buf, buf_len, "%s", "Reverse ARP Request");
+		strlcpy(buf, "Reverse ARP Request", buf_len);
 		return;
 	case ARP_OP_REVREPLY:
-		snprintf(buf, buf_len, "%s", "Reverse ARP Reply");
+		strlcpy(buf, "Reverse ARP Reply", buf_len);
 		return;
 	case ARP_OP_INVREQUEST:
-		snprintf(buf, buf_len, "%s", "Peer Identify Request");
+		strlcpy(buf, "Peer Identify Request", buf_len);
 		return;
 	case ARP_OP_INVREPLY:
-		snprintf(buf, buf_len, "%s", "Peer Identify Reply");
+		strlcpy(buf, "Peer Identify Reply", buf_len);
 		return;
 	default:
 		break;
 	}
-	snprintf(buf, buf_len, "%s", "Unknown");
+	strlcpy(buf, "Unknown", buf_len);
 	return;
 }
 #endif

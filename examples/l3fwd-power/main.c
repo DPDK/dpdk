@@ -1384,7 +1384,7 @@ parse_ep_config(const char *q_arg)
 	ep_med_edpi = EMPTY_POLL_MED_THRESHOLD;
 	ep_hgh_edpi = EMPTY_POLL_MED_THRESHOLD;
 
-	snprintf(s, sizeof(s), "%s", p);
+	strlcpy(s, p, sizeof(s));
 
 	num_arg = rte_strsplit(s, sizeof(s), str_fld, 3, ',');
 

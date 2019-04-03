@@ -118,8 +118,7 @@ test_parse_etheraddr_invalid_param(void)
 	/* try null result */
 
 	/* copy string to buffer */
-	snprintf(buf, sizeof(buf), "%s",
-			ether_addr_valid_strs[0].str);
+	strlcpy(buf, ether_addr_valid_strs[0].str, sizeof(buf));
 
 	ret = cmdline_parse_etheraddr(NULL, buf, NULL, 0);
 	if (ret == -1) {

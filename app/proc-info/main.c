@@ -193,7 +193,7 @@ proc_info_preparse_args(int argc, char **argv)
 				proc_info_usage(prgname);
 				return -1;
 			}
-			snprintf(host_id, sizeof(host_id), "%s", argv[i+1]);
+			strlcpy(host_id, argv[i + 1], sizeof(host_id));
 		}
 	}
 

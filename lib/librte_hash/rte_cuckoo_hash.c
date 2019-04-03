@@ -381,7 +381,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 		default_hash_func = (rte_hash_function)rte_hash_crc;
 #endif
 	/* Setup hash context */
-	snprintf(h->name, sizeof(h->name), "%s", params->name);
+	strlcpy(h->name, params->name, sizeof(h->name));
 	h->entries = params->entries;
 	h->key_len = params->key_len;
 	h->key_entry_size = key_entry_size;

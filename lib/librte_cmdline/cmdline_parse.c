@@ -394,8 +394,9 @@ cmdline_complete(struct cmdline *cl, const char *buf, int *state,
 				if (!strncmp(partial_tok, tmpbuf,
 					     partial_tok_len)) {
 					if (comp_len == -1) {
-						snprintf(comp_buf, sizeof(comp_buf),
-							 "%s", tmpbuf + partial_tok_len);
+						strlcpy(comp_buf,
+							tmpbuf + partial_tok_len,
+							sizeof(comp_buf));
 						comp_len =
 							strnlen(tmpbuf + partial_tok_len,
 									sizeof(tmpbuf) - partial_tok_len);

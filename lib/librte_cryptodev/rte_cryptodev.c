@@ -698,8 +698,8 @@ rte_cryptodev_pmd_allocate(const char *name, int socket_id)
 
 		cryptodev->data = cryptodev_data;
 
-		snprintf(cryptodev->data->name, RTE_CRYPTODEV_NAME_MAX_LEN,
-				"%s", name);
+		strlcpy(cryptodev->data->name, name,
+			RTE_CRYPTODEV_NAME_MAX_LEN);
 
 		cryptodev->data->dev_id = dev_id;
 		cryptodev->data->socket_id = socket_id;

@@ -145,7 +145,7 @@ static void cmd_obj_add_parsed(void *parsed_result,
 		cmdline_printf(cl, "mem error\n");
 		return;
 	}
-	snprintf(o->name, sizeof(o->name), "%s", res->name);
+	strlcpy(o->name, res->name, sizeof(o->name));
 	o->ip = res->ip;
 	SLIST_INSERT_HEAD(&global_obj_list, o, next);
 

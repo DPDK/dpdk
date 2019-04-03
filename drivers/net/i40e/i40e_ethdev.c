@@ -3324,17 +3324,17 @@ static int i40e_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 
 	/* Get stats from i40e_eth_stats struct */
 	for (i = 0; i < I40E_NB_ETH_XSTATS; i++) {
-		snprintf(xstats_names[count].name,
-			 sizeof(xstats_names[count].name),
-			 "%s", rte_i40e_stats_strings[i].name);
+		strlcpy(xstats_names[count].name,
+			rte_i40e_stats_strings[i].name,
+			sizeof(xstats_names[count].name));
 		count++;
 	}
 
 	/* Get individiual stats from i40e_hw_port struct */
 	for (i = 0; i < I40E_NB_HW_PORT_XSTATS; i++) {
-		snprintf(xstats_names[count].name,
-			sizeof(xstats_names[count].name),
-			 "%s", rte_i40e_hw_port_strings[i].name);
+		strlcpy(xstats_names[count].name,
+			rte_i40e_hw_port_strings[i].name,
+			sizeof(xstats_names[count].name));
 		count++;
 	}
 

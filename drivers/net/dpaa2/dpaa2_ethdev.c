@@ -1334,10 +1334,9 @@ dpaa2_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 
 	if (xstats_names != NULL)
 		for (i = 0; i < stat_cnt; i++)
-			snprintf(xstats_names[i].name,
-				 sizeof(xstats_names[i].name),
-				 "%s",
-				 dpaa2_xstats_strings[i].name);
+			strlcpy(xstats_names[i].name,
+				dpaa2_xstats_strings[i].name,
+				sizeof(xstats_names[i].name));
 
 	return stat_cnt;
 }

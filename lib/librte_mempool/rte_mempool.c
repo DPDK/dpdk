@@ -864,7 +864,7 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 	/* init the mempool structure */
 	mp = mz->addr;
 	memset(mp, 0, MEMPOOL_HEADER_SIZE(mp, cache_size));
-	ret = snprintf(mp->name, sizeof(mp->name), "%s", name);
+	ret = strlcpy(mp->name, name, sizeof(mp->name));
 	if (ret < 0 || ret >= (int)sizeof(mp->name)) {
 		rte_errno = ENAMETOOLONG;
 		goto exit_unlock;

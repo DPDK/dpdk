@@ -497,7 +497,8 @@ static int parse_kvlist (const char *key __rte_unused, const char *value, void *
 		goto out;
 	}
 
-	snprintf(info->list[info->count].name, sizeof(info->list[info->count].name), "%s", name);
+	strlcpy(info->list[info->count].name, name,
+		sizeof(info->list[info->count].name));
 
 	info->count++;
 

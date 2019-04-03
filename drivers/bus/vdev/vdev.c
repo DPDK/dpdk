@@ -192,7 +192,7 @@ alloc_devargs(const char *name, const char *args)
 	else
 		devargs->args = strdup("");
 
-	ret = snprintf(devargs->name, sizeof(devargs->name), "%s", name);
+	ret = strlcpy(devargs->name, name, sizeof(devargs->name));
 	if (ret < 0 || ret >= (int)sizeof(devargs->name)) {
 		free(devargs->args);
 		free(devargs);

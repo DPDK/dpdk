@@ -352,7 +352,7 @@ rte_lpm6_create(const char *name, int socket_id,
 	/* Save user arguments. */
 	lpm->max_rules = config->max_rules;
 	lpm->number_tbl8s = config->number_tbl8s;
-	snprintf(lpm->name, sizeof(lpm->name), "%s", name);
+	strlcpy(lpm->name, name, sizeof(lpm->name));
 	lpm->rules_tbl = rules_tbl;
 	lpm->tbl8_pool = tbl8_pool;
 	lpm->tbl8_hdrs = tbl8_hdrs;

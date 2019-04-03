@@ -191,7 +191,7 @@ us_vhost_parse_basename(const char *q_arg)
 	if (strlen(q_arg) >= MAX_BASENAME_SZ)
 		return -1;
 	else
-		snprintf((char *)&dev_basename, MAX_BASENAME_SZ, "%s", q_arg);
+		strlcpy((char *)&dev_basename, q_arg, MAX_BASENAME_SZ);
 
 	return 0;
 }
