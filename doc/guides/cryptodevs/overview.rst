@@ -64,3 +64,10 @@ Supported AEAD Algorithms
 .. _table_crypto_pmd_aead_algos:
 
 .. include:: overview_aead_table.txt
+
+Supported Asymmetric Algorithms
+-------------------------------
+
+.. _table_crypto_pmd_asym_algos:
+
+.. include:: overview_asym_table.txt

@@ -46,6 +46,14 @@ Supported AEAD algorithms:
 * ``RTE_CRYPTO_AEAD_AES_GCM``
 * ``RTE_CRYPTO_AEAD_AES_CCM``
 
+Supported Asymmetric Crypto algorithms:
+
+* ``RTE_CRYPTO_ASYM_XFORM_RSA``
+* ``RTE_CRYPTO_ASYM_XFORM_DSA``
+* ``RTE_CRYPTO_ASYM_XFORM_DH``
+* ``RTE_CRYPTO_ASYM_XFORM_MODINV``
+* ``RTE_CRYPTO_ASYM_XFORM_MODEX``
+
 
 Installation
 ------------

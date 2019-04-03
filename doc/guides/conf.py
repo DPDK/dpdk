@@ -391,6 +391,11 @@ def setup(app):
                             'AEAD',
                             'AEAD algorithms in crypto drivers',
                             'AEAD algorithm')
+    table_file = dirname(__file__) + '/cryptodevs/overview_asym_table.txt'
+    generate_overview_table(table_file, 5,
+                            'Asymmetric',
+                            'Asymmetric algorithms in crypto drivers',
+                            'Asymmetric algorithm')
     table_file = dirname(__file__) + '/compressdevs/overview_feature_table.txt'
     generate_overview_table(table_file, 1,
                             'Features',
