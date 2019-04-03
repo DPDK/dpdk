@@ -489,35 +489,31 @@ uint32_t burstnumberTX;
 #ifdef RTE_LIBRTE_BOND_DEBUG_ALB
 
 static void
-arp_op_name(uint16_t arp_op, char *buf)
+arp_op_name(uint16_t arp_op, char *buf, size_t buf_len)
 {
 	switch (arp_op) {
 	case ARP_OP_REQUEST:
-		snprintf(buf, sizeof("ARP Request"), "%s", "ARP Request");
+		snprintf(buf, buf_len, "%s", "ARP Request");
 		return;
 	case ARP_OP_REPLY:
-		snprintf(buf, sizeof("ARP Reply"), "%s", "ARP Reply");
+		snprintf(buf, buf_len, "%s", "ARP Reply");
 		return;
 	case ARP_OP_REVREQUEST:
-		snprintf(buf, sizeof("Reverse ARP Request"), "%s",
-				"Reverse ARP Request");
+		snprintf(buf, buf_len, "%s", "Reverse ARP Request");
 		return;
 	case ARP_OP_REVREPLY:
-		snprintf(buf, sizeof("Reverse ARP Reply"), "%s",
-				"Reverse ARP Reply");
+		snprintf(buf, buf_len, "%s", "Reverse ARP Reply");
 		return;
 	case ARP_OP_INVREQUEST:
-		snprintf(buf, sizeof("Peer Identify Request"), "%s",
-				"Peer Identify Request");
+		snprintf(buf, buf_len, "%s", "Peer Identify Request");
 		return;
 	case ARP_OP_INVREPLY:
-		snprintf(buf, sizeof("Peer Identify Reply"), "%s",
-				"Peer Identify Reply");
+		snprintf(buf, buf_len, "%s", "Peer Identify Reply");
 		return;
 	default:
 		break;
 	}
-	snprintf(buf, sizeof("Unknown"), "%s", "Unknown");
+	snprintf(buf, buf_len, "%s", "Unknown");
 	return;
 }
 #endif
@@ -621,7 +617,8 @@ mode6_debug(const char __attribute__((unused)) *info, struct ether_hdr *eth_h,
 		arp_h = (struct arp_hdr *)((char *)(eth_h + 1) + offset);
 		ipv4_addr_to_dot(arp_h->arp_data.arp_sip, src_ip, MaxIPv4String);
 		ipv4_addr_to_dot(arp_h->arp_data.arp_tip, dst_ip, MaxIPv4String);
-		arp_op_name(rte_be_to_cpu_16(arp_h->arp_op), ArpOp);
+		arp_op_name(rte_be_to_cpu_16(arp_h->arp_op),
+				ArpOp, sizeof(ArpOp));
 		MODE6_DEBUG(buf, src_ip, dst_ip, eth_h, ArpOp, port, *burstnumber);
 	}
 #endif
