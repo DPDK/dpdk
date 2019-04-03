@@ -96,6 +96,7 @@ test_sources = files('commands.c',
 	'test_service_cores.c',
 	'test_spinlock.c',
 	'test_stack.c',
+	'test_stack_perf.c',
 	'test_string_fns.c',
 	'test_table.c',
 	'test_table_acl.c',
@@ -241,6 +242,7 @@ perf_test_names = [
         'distributor_perf_autotest',
         'ring_pmd_perf_autotest',
         'pmd_perf_autotest',
+        'stack_perf_autotest',
 ]
 
 # All test cases in driver_test_names list are non-parallel
