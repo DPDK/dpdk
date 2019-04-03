@@ -622,8 +622,8 @@ non_parallel_test_list = [
         "Report":      None,
     },
     {
-        "Name":       "Power ACPI cpufreq autotest",
-        "Command":    "power_acpi_cpufreq_autotest",
+        "Name":       "Power cpufreq autotest",
+        "Command":    "power_cpufreq_autotest",
         "Func":       default_autotest,
         "Report":     None,
     },

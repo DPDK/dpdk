@@ -164,7 +164,7 @@ endif
 
 SRCS-$(CONFIG_RTE_LIBRTE_METER) += test_meter.c
 SRCS-$(CONFIG_RTE_LIBRTE_KNI) += test_kni.c
-SRCS-$(CONFIG_RTE_LIBRTE_POWER) += test_power.c test_power_acpi_cpufreq.c
+SRCS-$(CONFIG_RTE_LIBRTE_POWER) += test_power.c test_power_cpufreq.c
 SRCS-$(CONFIG_RTE_LIBRTE_POWER) += test_power_kvm_vm.c
 SRCS-y += test_common.c
 

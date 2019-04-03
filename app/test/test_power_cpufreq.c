@@ -14,14 +14,14 @@
 #ifndef RTE_LIBRTE_POWER
 
 static int
-test_power_acpi_cpufreq(void)
+test_power_cpufreq(void)
 {
 	printf("Power management library not supported, skipping test\n");
 	return TEST_SKIPPED;
 }
 
 static int
-test_power_acpi_caps(void)
+test_power_caps(void)
 {
 	printf("Power management library not supported, skipping test\n");
 	return TEST_SKIPPED;
@@ -367,7 +367,7 @@ check_power_freq_min(void)
 }
 
 static int
-test_power_acpi_cpufreq(void)
+test_power_cpufreq(void)
 {
 	int ret = -1;
 	enum power_management_env env;
@@ -539,7 +539,7 @@ fail_all:
 }
 
 static int
-test_power_acpi_caps(void)
+test_power_caps(void)
 {
 	struct rte_power_core_capabilities caps;
 	int ret;
@@ -568,5 +568,5 @@ test_power_acpi_caps(void)
 
 #endif
 
-REGISTER_TEST_COMMAND(power_acpi_cpufreq_autotest, test_power_acpi_cpufreq);
-REGISTER_TEST_COMMAND(power_acpi_caps_autotest, test_power_acpi_caps);
+REGISTER_TEST_COMMAND(power_cpufreq_autotest, test_power_cpufreq);
+REGISTER_TEST_COMMAND(power_caps_autotest, test_power_caps);
