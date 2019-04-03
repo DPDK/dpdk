@@ -5,7 +5,11 @@
 #ifndef _RTE_STACK_LF_H_
 #define _RTE_STACK_LF_H_
 
+#ifdef RTE_USE_C11_MEM_MODEL
+#include "rte_stack_lf_c11.h"
+#else
 #include "rte_stack_lf_generic.h"
+#endif
 
 /**
  * @internal Push several objects on the lock-free stack (MT-safe).

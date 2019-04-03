@@ -23,6 +23,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_STACK) := rte_stack.c \
 SYMLINK-$(CONFIG_RTE_LIBRTE_STACK)-include := rte_stack.h \
 					      rte_stack_std.h \
 					      rte_stack_lf.h \
-					      rte_stack_lf_generic.h
+					      rte_stack_lf_generic.h \
+					      rte_stack_lf_c11.h
 
 include $(RTE_SDK)/mk/rte.lib.mk
