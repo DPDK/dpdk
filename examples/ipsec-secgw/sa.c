@@ -126,11 +126,11 @@ const struct supported_aead_algo aead_algos[] = {
 	}
 };
 
-struct ipsec_sa sa_out[IPSEC_SA_MAX_ENTRIES];
-uint32_t nb_sa_out;
+static struct ipsec_sa sa_out[IPSEC_SA_MAX_ENTRIES];
+static uint32_t nb_sa_out;
 
-struct ipsec_sa sa_in[IPSEC_SA_MAX_ENTRIES];
-uint32_t nb_sa_in;
+static struct ipsec_sa sa_in[IPSEC_SA_MAX_ENTRIES];
+static uint32_t nb_sa_in;
 
 static const struct supported_cipher_algo *
 find_match_cipher_algo(const char *cipher_keyword)
@@ -631,7 +631,7 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 	*ri = *ri + 1;
 }
 
-static inline void
+static void
 print_one_sa_rule(const struct ipsec_sa *sa, int inbound)
 {
 	uint32_t i;
@@ -1114,6 +1114,31 @@ ipsec_satbl_init(struct sa_ctx *ctx, const struct ipsec_sa *ent,
 	}
 
 	return rc;
+}
+
+/*
+ * Walk through all SA rules to find an SA with given SPI
+ */
+int
+sa_spi_present(uint32_t spi, int inbound)
+{
+	uint32_t i, num;
+	const struct ipsec_sa *sar;
+
+	if (inbound != 0) {
+		sar = sa_in;
+		num = nb_sa_in;
+	} else {
+		sar = sa_out;
+		num = nb_sa_out;
+	}
+
+	for (i = 0; i != num; i++) {
+		if (sar[i].spi == spi)
+			return i;
+	}
+
+	return -ENOENT;
 }
 
 void

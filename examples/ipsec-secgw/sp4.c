@@ -99,6 +99,7 @@ parse_sp4_tokens(char **tokens, uint32_t n_tokens,
 
 	uint32_t *ri = NULL; /* rule index */
 	uint32_t ti = 0; /* token index */
+	uint32_t tv;
 
 	uint32_t esp_p = 0;
 	uint32_t protect_p = 0;
@@ -169,8 +170,12 @@ parse_sp4_tokens(char **tokens, uint32_t n_tokens,
 			if (status->status < 0)
 				return;
 
-			rule_ipv4->data.userdata =
-				PROTECT(atoi(tokens[ti]));
+			tv = atoi(tokens[ti]);
+			APP_CHECK(tv != DISCARD && tv != BYPASS, status,
+				"invalid SPI: %s", tokens[ti]);
+			if (status->status < 0)
+				return;
+			rule_ipv4->data.userdata = tv;
 
 			protect_p = 1;
 			continue;
@@ -472,6 +477,36 @@ acl4_init(const char *name, int32_t socketid, const struct acl4_rules *rules,
 	return ctx;
 }
 
+/*
+ * check that for each rule it's SPI has a correspondent entry in SAD
+ */
+static int
+check_spi_value(int inbound)
+{
+	uint32_t i, num, spi;
+	const struct acl4_rules *acr;
+
+	if (inbound != 0) {
+		acr = acl4_rules_in;
+		num = nb_acl4_rules_in;
+	} else {
+		acr = acl4_rules_out;
+		num = nb_acl4_rules_out;
+	}
+
+	for (i = 0; i != num; i++) {
+		spi = acr[i].data.userdata;
+		if (spi != DISCARD && spi != BYPASS &&
+				sa_spi_present(spi, inbound) < 0) {
+			RTE_LOG(ERR, IPSEC, "SPI %u is not present in SAD\n",
+				spi);
+			return -ENOENT;
+		}
+	}
+
+	return 0;
+}
+
 void
 sp4_init(struct socket_ctx *ctx, int32_t socket_id)
 {
@@ -487,6 +522,14 @@ sp4_init(struct socket_ctx *ctx, int32_t socket_id)
 	if (ctx->sp_ip4_out != NULL)
 		rte_exit(EXIT_FAILURE, "Outbound SP DB for socket %u already "
 				"initialized\n", socket_id);
+
+	if (check_spi_value(1) < 0)
+		rte_exit(EXIT_FAILURE,
+			"Inbound IPv4 SP DB has unmatched in SAD SPIs\n");
+
+	if (check_spi_value(0) < 0)
+		rte_exit(EXIT_FAILURE,
+			"Outbound IPv4 SP DB has unmatched in SAD SPIs\n");
 
 	if (nb_acl4_rules_in > 0) {
 		name = "sp_ip4_in";
@@ -523,7 +566,7 @@ sp4_spi_present(uint32_t spi, int inbound)
 	}
 
 	for (i = 0; i != num; i++) {
-		if (acr[i].data.userdata == PROTECT(spi))
+		if (acr[i].data.userdata == spi)
 			return i;
 	}
 
