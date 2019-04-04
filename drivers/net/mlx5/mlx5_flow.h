@@ -214,12 +214,22 @@ struct mlx5_flow_dv_encap_decap_resource {
 	LIST_ENTRY(mlx5_flow_dv_encap_decap_resource) next;
 	/* Pointer to next element. */
 	rte_atomic32_t refcnt; /**< Reference counter. */
-	struct ibv_flow_action *verbs_action;
+	void *verbs_action;
 	/**< Verbs encap/decap action object. */
 	uint8_t buf[MLX5_ENCAP_MAX_LEN];
 	size_t size;
 	uint8_t reformat_type;
 	uint8_t ft_type;
+};
+
+/* Tag resource structure. */
+struct mlx5_flow_dv_tag_resource {
+	LIST_ENTRY(mlx5_flow_dv_tag_resource) next;
+	/* Pointer to next element. */
+	rte_atomic32_t refcnt; /**< Reference counter. */
+	void *action;
+	/**< Verbs tag action object. */
+	uint32_t tag; /**< the tag value. */
 };
 
 /* Number of modification commands. */
@@ -259,7 +269,7 @@ struct mlx5_flow_dv {
 	/**< Pointer to modify header resource in cache. */
 	struct ibv_flow *flow; /**< Installed flow. */
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
-	struct mlx5dv_flow_action_attr actions[MLX5_DV_MAX_NUMBER_OF_ACTIONS];
+	void *actions[MLX5_DV_MAX_NUMBER_OF_ACTIONS];
 	/**< Action list. */
 #endif
 	int actions_n; /**< number of actions. */
@@ -332,6 +342,7 @@ struct mlx5_flow_counter {
 	};
 	uint64_t hits; /**< Number of packets matched by the rule. */
 	uint64_t bytes; /**< Number of bytes matched by the rule. */
+	void *action; /**< Pointer to the dv action. */
 };
 
 /* Flow structure. */
@@ -339,6 +350,8 @@ struct rte_flow {
 	TAILQ_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
 	enum mlx5_flow_drv_type drv_type; /**< Drvier type. */
 	struct mlx5_flow_counter *counter; /**< Holds flow counter. */
+	struct mlx5_flow_dv_tag_resource *tag_resource;
+	/**< pointer to the tag action. */
 	struct rte_flow_action_rss rss;/**< RSS context. */
 	uint8_t key[MLX5_RSS_HASH_KEY_LEN]; /**< RSS hash key. */
 	uint16_t (*queue)[]; /**< Destination queues to redirect traffic to. */

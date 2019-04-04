@@ -32,7 +32,6 @@
 #include "mlx5_prm.h"
 #include "mlx5_glue.h"
 #include "mlx5_flow.h"
-
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 
 #ifndef HAVE_IBV_FLOW_DEVX_COUNTERS
@@ -1537,6 +1536,11 @@ flow_dv_counter_new(struct rte_eth_dev *dev, uint32_t shared, uint32_t id)
 		.id = id,
 		.dcs = dcs,
 	};
+	tmpl.action = mlx5_glue->dv_create_flow_action_counter(dcs->obj, 0);
+	if (!tmpl.action) {
+		ret = errno;
+		goto error_exit;
+	}
 	*cnt = tmpl;
 	LIST_INSERT_HEAD(&priv->flow_counters, cnt, next);
 	return cnt;
@@ -2828,6 +2832,97 @@ flow_dv_translate_source_vport(void *matcher, void *key,
 }
 
 /**
+ * Find existing tag resource or create and register a new one.
+ *
+ * @param dev[in, out]
+ *   Pointer to rte_eth_dev structure.
+ * @param[in, out] resource
+ *   Pointer to tag resource.
+ * @parm[in, out] dev_flow
+ *   Pointer to the dev_flow.
+ * @param[out] error
+ *   pointer to error structure.
+ *
+ * @return
+ *   0 on success otherwise -errno and errno is set.
+ */
+static int
+flow_dv_tag_resource_register
+			(struct rte_eth_dev *dev,
+			 struct mlx5_flow_dv_tag_resource *resource,
+			 struct mlx5_flow *dev_flow,
+			 struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_dv_tag_resource *cache_resource;
+
+	/* Lookup a matching resource from cache. */
+	LIST_FOREACH(cache_resource, &priv->tags, next) {
+		if (resource->tag == cache_resource->tag) {
+			DRV_LOG(DEBUG, "tag resource %p: refcnt %d++",
+				(void *)cache_resource,
+				rte_atomic32_read(&cache_resource->refcnt));
+			rte_atomic32_inc(&cache_resource->refcnt);
+			dev_flow->flow->tag_resource = cache_resource;
+			return 0;
+		}
+	}
+	/* Register new  resource. */
+	cache_resource = rte_calloc(__func__, 1, sizeof(*cache_resource), 0);
+	if (!cache_resource)
+		return rte_flow_error_set(error, ENOMEM,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "cannot allocate resource memory");
+	*cache_resource = *resource;
+	cache_resource->action = mlx5_glue->dv_create_flow_action_tag
+		(resource->tag);
+	if (!cache_resource->action) {
+		rte_free(cache_resource);
+		return rte_flow_error_set(error, ENOMEM,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "cannot create action");
+	}
+	rte_atomic32_init(&cache_resource->refcnt);
+	rte_atomic32_inc(&cache_resource->refcnt);
+	LIST_INSERT_HEAD(&priv->tags, cache_resource, next);
+	dev_flow->flow->tag_resource = cache_resource;
+	DRV_LOG(DEBUG, "new tag resource %p: refcnt %d++",
+		(void *)cache_resource,
+		rte_atomic32_read(&cache_resource->refcnt));
+	return 0;
+}
+
+/**
+ * Release the tag.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param flow
+ *   Pointer to mlx5_flow.
+ *
+ * @return
+ *   1 while a reference on it exists, 0 when freed.
+ */
+static int
+flow_dv_tag_release(struct rte_eth_dev *dev,
+		    struct mlx5_flow_dv_tag_resource *tag)
+{
+	assert(tag);
+	DRV_LOG(DEBUG, "port %u tag %p: refcnt %d--",
+		dev->data->port_id, (void *)tag,
+		rte_atomic32_read(&tag->refcnt));
+	if (rte_atomic32_dec_and_test(&tag->refcnt)) {
+		claim_zero(mlx5_glue->destroy_flow_action(tag->action));
+		LIST_REMOVE(tag, next);
+		DRV_LOG(DEBUG, "port %u tag %p: removed",
+			dev->data->port_id, (void *)tag);
+		rte_free(tag);
+		return 0;
+	}
+	return 1;
+}
+
+/**
  * Fill the flow with DV spec.
  *
  * @param[in] dev
@@ -2872,6 +2967,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 					  MLX5DV_FLOW_TABLE_TYPE_NIC_RX
 	};
 	union flow_dv_attr flow_attr = { .attr = 0 };
+	struct mlx5_flow_dv_tag_resource tag_resource;
 
 	if (priority == MLX5_FLOW_PRIO_RSVD)
 		priority = priv->config.flow_prio - 1;
@@ -2886,26 +2982,29 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			break;
 		case RTE_FLOW_ACTION_TYPE_FLAG:
-			dev_flow->dv.actions[actions_n].type =
-				MLX5DV_FLOW_ACTION_TAG;
-			dev_flow->dv.actions[actions_n].tag_value =
+			tag_resource.tag =
 				mlx5_flow_mark_set(MLX5_FLOW_MARK_DEFAULT);
-			actions_n++;
+			if (!flow->tag_resource)
+				if (flow_dv_tag_resource_register
+				    (dev, &tag_resource, dev_flow, error))
+					return errno;
+			dev_flow->dv.actions[actions_n++] =
+				flow->tag_resource->action;
 			action_flags |= MLX5_FLOW_ACTION_FLAG;
 			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
-			dev_flow->dv.actions[actions_n].type =
-				MLX5DV_FLOW_ACTION_TAG;
-			dev_flow->dv.actions[actions_n].tag_value =
-				mlx5_flow_mark_set
-				(((const struct rte_flow_action_mark *)
-				  (actions->conf))->id);
-			actions_n++;
+			tag_resource.tag = mlx5_flow_mark_set
+			      (((const struct rte_flow_action_mark *)
+			       (actions->conf))->id);
+			if (!flow->tag_resource)
+				if (flow_dv_tag_resource_register
+				    (dev, &tag_resource, dev_flow, error))
+					return errno;
+			dev_flow->dv.actions[actions_n++] =
+				flow->tag_resource->action;
 			action_flags |= MLX5_FLOW_ACTION_MARK;
 			break;
 		case RTE_FLOW_ACTION_TYPE_DROP:
-			dev_flow->dv.actions[actions_n].type =
-				MLX5DV_FLOW_ACTION_DROP;
 			action_flags |= MLX5_FLOW_ACTION_DROP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
@@ -2933,17 +3032,13 @@ flow_dv_translate(struct rte_eth_dev *dev,
 				rte_errno = ENOTSUP;
 				goto cnt_err;
 			}
-			flow->counter =
-				flow_dv_counter_new(dev,
-						    count->shared, count->id);
+			flow->counter = flow_dv_counter_new(dev, count->shared,
+							    count->id);
 			if (flow->counter == NULL)
 				goto cnt_err;
-			dev_flow->dv.actions[actions_n].type =
-					MLX5DV_FLOW_ACTION_COUNTERS_DEVX;
-			dev_flow->dv.actions[actions_n].obj =
-						flow->counter->dcs->obj;
+			dev_flow->dv.actions[actions_n++] =
+				flow->counter->action;
 			action_flags |= MLX5_FLOW_ACTION_COUNT;
-			++actions_n;
 			break;
 cnt_err:
 			if (rte_errno == ENOTSUP)
@@ -2964,11 +3059,8 @@ cnt_err:
 			if (flow_dv_create_action_l2_encap(dev, actions,
 							   dev_flow, error))
 				return -rte_errno;
-			dev_flow->dv.actions[actions_n].type =
-				MLX5DV_FLOW_ACTION_IBV_FLOW_ACTION;
-			dev_flow->dv.actions[actions_n].action =
+			dev_flow->dv.actions[actions_n++] =
 				dev_flow->dv.encap_decap->verbs_action;
-			actions_n++;
 			action_flags |= actions->type ==
 					RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP ?
 					MLX5_FLOW_ACTION_VXLAN_ENCAP :
@@ -2979,11 +3071,8 @@ cnt_err:
 			if (flow_dv_create_action_l2_decap(dev, dev_flow,
 							   error))
 				return -rte_errno;
-			dev_flow->dv.actions[actions_n].type =
-				MLX5DV_FLOW_ACTION_IBV_FLOW_ACTION;
-			dev_flow->dv.actions[actions_n].action =
+			dev_flow->dv.actions[actions_n++] =
 				dev_flow->dv.encap_decap->verbs_action;
-			actions_n++;
 			action_flags |= actions->type ==
 					RTE_FLOW_ACTION_TYPE_VXLAN_DECAP ?
 					MLX5_FLOW_ACTION_VXLAN_DECAP :
@@ -2995,9 +3084,7 @@ cnt_err:
 				if (flow_dv_create_action_raw_encap
 					(dev, actions, dev_flow, attr, error))
 					return -rte_errno;
-				dev_flow->dv.actions[actions_n].type =
-					MLX5DV_FLOW_ACTION_IBV_FLOW_ACTION;
-				dev_flow->dv.actions[actions_n].action =
+				dev_flow->dv.actions[actions_n++] =
 					dev_flow->dv.encap_decap->verbs_action;
 			} else {
 				/* Handle encap without preceding decap. */
@@ -3005,12 +3092,9 @@ cnt_err:
 								   dev_flow,
 								   error))
 					return -rte_errno;
-				dev_flow->dv.actions[actions_n].type =
-					MLX5DV_FLOW_ACTION_IBV_FLOW_ACTION;
-				dev_flow->dv.actions[actions_n].action =
+				dev_flow->dv.actions[actions_n++] =
 					dev_flow->dv.encap_decap->verbs_action;
 			}
-			actions_n++;
 			action_flags |= MLX5_FLOW_ACTION_RAW_ENCAP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
@@ -3025,11 +3109,8 @@ cnt_err:
 								   dev_flow,
 								   error))
 					return -rte_errno;
-				dev_flow->dv.actions[actions_n].type =
-					MLX5DV_FLOW_ACTION_IBV_FLOW_ACTION;
-				dev_flow->dv.actions[actions_n].action =
+				dev_flow->dv.actions[actions_n++] =
 					dev_flow->dv.encap_decap->verbs_action;
-				actions_n++;
 			}
 			/* If decap is followed by encap, handle it at encap. */
 			action_flags |= MLX5_FLOW_ACTION_RAW_DECAP;
@@ -3098,11 +3179,8 @@ cnt_err:
 								 dev_flow,
 								 error))
 					return -rte_errno;
-				dev_flow->dv.actions[actions_n].type =
-					MLX5DV_FLOW_ACTION_IBV_FLOW_ACTION;
-				dev_flow->dv.actions[actions_n].action =
+				dev_flow->dv.actions[actions_n++] =
 					dev_flow->dv.modify_hdr->verbs_action;
-				actions_n++;
 			}
 			break;
 		default:
@@ -3277,9 +3355,9 @@ flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 					 "cannot get drop hash queue");
 				goto error;
 			}
-			dv->actions[n].type = MLX5DV_FLOW_ACTION_DEST_IBV_QP;
-			dv->actions[n].qp = dv->hrxq->qp;
-			n++;
+			dv->actions[n++] =
+				mlx5_glue->dv_create_flow_action_dest_ibv_qp
+				(dv->hrxq->qp);
 		} else if (flow->actions &
 			   (MLX5_FLOW_ACTION_QUEUE | MLX5_FLOW_ACTION_RSS)) {
 			struct mlx5_hrxq *hrxq;
@@ -3304,9 +3382,9 @@ flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 				goto error;
 			}
 			dv->hrxq = hrxq;
-			dv->actions[n].type = MLX5DV_FLOW_ACTION_DEST_IBV_QP;
-			dv->actions[n].qp = hrxq->qp;
-			n++;
+			dv->actions[n++] =
+				mlx5_glue->dv_create_flow_action_dest_ibv_qp
+				(dv->hrxq->qp);
 		}
 		dv->flow =
 			mlx5_glue->dv_create_flow(dv->matcher->matcher_object,
@@ -3483,6 +3561,10 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 	if (flow->counter) {
 		flow_dv_counter_release(flow->counter);
 		flow->counter = NULL;
+	}
+	if (flow->tag_resource) {
+		flow_dv_tag_release(dev, flow->tag_resource);
+		flow->tag_resource = NULL;
 	}
 	while (!LIST_EMPTY(&flow->dev_flows)) {
 		dev_flow = LIST_FIRST(&flow->dev_flows);

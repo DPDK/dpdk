@@ -309,6 +309,8 @@ struct mlx5_priv {
 	LIST_HEAD(matchers, mlx5_flow_dv_matcher) matchers;
 	LIST_HEAD(encap_decap, mlx5_flow_dv_encap_decap_resource) encaps_decaps;
 	LIST_HEAD(modify_cmd, mlx5_flow_dv_modify_hdr_resource) modify_cmds;
+	LIST_HEAD(tag, mlx5_flow_dv_tag_resource) tags;
+	/* Tags resources cache. */
 	uint32_t link_speed_capa; /* Link speed capabilities. */
 	struct mlx5_xstats_ctrl xstats_ctrl; /* Extended stats control. */
 	struct mlx5_stats_ctrl stats_ctrl; /* Stats control. */

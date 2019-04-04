@@ -55,6 +55,10 @@ enum mlx5dv_flow_action_packet_reformat_type { packet_reformat_type = 0, };
 enum mlx5dv_flow_table_type { flow_table_type = 0, };
 #endif
 
+#ifndef HAVE_IBV_FLOW_DEVX_COUNTERS
+#define MLX5DV_FLOW_ACTION_COUNTERS_DEVX 0
+#endif
+
 #ifndef HAVE_IBV_DEVX_OBJ
 struct mlx5dv_devx_obj;
 #endif
@@ -98,7 +102,7 @@ struct mlx5_glue {
 	struct ibv_flow *(*create_flow)(struct ibv_qp *qp,
 					struct ibv_flow_attr *flow);
 	int (*destroy_flow)(struct ibv_flow *flow_id);
-	int (*destroy_flow_action)(struct ibv_flow_action *action);
+	int (*destroy_flow_action)(void *action);
 	struct ibv_qp *(*create_qp)(struct ibv_pd *pd,
 				    struct ibv_qp_init_attr *qp_init_attr);
 	struct ibv_qp *(*create_qp_ex)
@@ -160,19 +164,17 @@ struct mlx5_glue {
 	int (*dv_destroy_flow_matcher)(struct mlx5dv_flow_matcher *matcher);
 	struct ibv_flow *(*dv_create_flow)(struct mlx5dv_flow_matcher *matcher,
 			  struct mlx5dv_flow_match_parameters *match_value,
-			  size_t num_actions,
-			  struct mlx5dv_flow_action_attr *actions_attr);
-	struct ibv_flow_action *(*dv_create_flow_action_packet_reformat)
-		(struct ibv_context *ctx,
-		 size_t data_sz,
-		 void *data,
+			  size_t num_actions, void *actions[]);
+	void *(*dv_create_flow_action_counter)(void *obj, uint32_t  offset);
+	void *(*dv_create_flow_action_dest_ibv_qp)(void *qp);
+	void *(*dv_create_flow_action_modify_header)
+		(struct ibv_context *ctx, size_t actions_sz, uint64_t actions[],
+		 enum mlx5dv_flow_table_type ft_type);
+	void *(*dv_create_flow_action_packet_reformat)
+		(struct ibv_context *ctx, size_t data_sz, void *data,
 		 enum mlx5dv_flow_action_packet_reformat_type reformat_type,
 		 enum mlx5dv_flow_table_type ft_type);
-	struct ibv_flow_action *(*dv_create_flow_action_modify_header)
-					(struct ibv_context *ctx,
-					 size_t actions_sz,
-					 uint64_t actions[],
-					 enum mlx5dv_flow_table_type ft_type);
+	void *(*dv_create_flow_action_tag)(uint32_t tag);
 	struct ibv_context *(*dv_open_device)(struct ibv_device *device);
 	struct mlx5dv_devx_obj *(*devx_obj_create)
 					(struct ibv_context *ctx,
