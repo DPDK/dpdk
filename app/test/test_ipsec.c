@@ -79,7 +79,6 @@ struct ipsec_unitest_params {
 	struct rte_mbuf *obuf[BURST_SIZE], *ibuf[BURST_SIZE],
 		*testbuf[BURST_SIZE];
 
-	uint8_t *digest;
 	uint16_t pkt_index;
 };
 
@@ -110,8 +109,6 @@ static const int num_cfg = RTE_DIM(test_cfg);
 static struct ipsec_testsuite_params testsuite_params = { NULL };
 static struct ipsec_unitest_params unittest_params;
 static struct user_params uparams;
-
-static uint8_t global_key[128] = { 0 };
 
 struct supported_cipher_algo {
 	const char *keyword;
@@ -215,30 +212,26 @@ fill_crypto_xform(struct ipsec_unitest_params *ut_params,
 	const struct supported_auth_algo *auth_algo,
 	const struct supported_cipher_algo *cipher_algo)
 {
-	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
-	ut_params->auth_xform.auth.algo = auth_algo->algo;
-	ut_params->auth_xform.auth.key.data = global_key;
-	ut_params->auth_xform.auth.key.length = auth_algo->key_len;
-	ut_params->auth_xform.auth.digest_length = auth_algo->digest_len;
-	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_VERIFY;
-
 	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	ut_params->cipher_xform.cipher.algo = cipher_algo->algo;
-	ut_params->cipher_xform.cipher.key.data = global_key;
-	ut_params->cipher_xform.cipher.key.length = cipher_algo->key_len;
-	ut_params->cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_DECRYPT;
-	ut_params->cipher_xform.cipher.iv.offset = IV_OFFSET;
-	ut_params->cipher_xform.cipher.iv.length = cipher_algo->iv_len;
+	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+	ut_params->auth_xform.auth.algo = auth_algo->algo;
 
 	if (ut_params->ipsec_xform.direction ==
 			RTE_SECURITY_IPSEC_SA_DIR_INGRESS) {
-		ut_params->crypto_xforms = &ut_params->auth_xform;
-		ut_params->auth_xform.next = &ut_params->cipher_xform;
+		ut_params->cipher_xform.cipher.op =
+			RTE_CRYPTO_CIPHER_OP_DECRYPT;
+		ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_VERIFY;
 		ut_params->cipher_xform.next = NULL;
+		ut_params->auth_xform.next = &ut_params->cipher_xform;
+		ut_params->crypto_xforms = &ut_params->auth_xform;
 	} else {
-		ut_params->crypto_xforms = &ut_params->cipher_xform;
-		ut_params->cipher_xform.next = &ut_params->auth_xform;
+		ut_params->cipher_xform.cipher.op =
+			RTE_CRYPTO_CIPHER_OP_ENCRYPT;
+		ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
 		ut_params->auth_xform.next = NULL;
+		ut_params->cipher_xform.next = &ut_params->auth_xform;
+		ut_params->crypto_xforms = &ut_params->cipher_xform;
 	}
 }
 
@@ -287,9 +280,12 @@ testsuite_setup(void)
 	int rc;
 
 	memset(ts_params, 0, sizeof(*ts_params));
+	memset(ut_params, 0, sizeof(*ut_params));
+	memset(&uparams, 0, sizeof(struct user_params));
 
 	uparams.auth = RTE_CRYPTO_SYM_XFORM_AUTH;
 	uparams.cipher = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	uparams.aead = RTE_CRYPTO_SYM_XFORM_NOT_SPECIFIED;
 	strcpy(uparams.auth_algo, "null");
 	strcpy(uparams.cipher_algo, "null");
 
