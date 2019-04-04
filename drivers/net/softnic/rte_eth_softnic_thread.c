@@ -137,7 +137,10 @@ thread_sc_service_up(struct pmd_internals *softnic, uint32_t thread_id)
 	uint16_t port_id;
 
 	/* service params */
-	rte_eth_dev_get_port_by_name(softnic->params.name, &port_id);
+	status = rte_eth_dev_get_port_by_name(softnic->params.name, &port_id);
+	if (status)
+		return status;
+
 	dev = &rte_eth_devices[port_id];
 	snprintf(service_params.name, sizeof(service_params.name), "%s_%u",
 		softnic->params.name,
