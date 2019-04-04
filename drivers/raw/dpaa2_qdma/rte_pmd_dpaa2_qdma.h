@@ -13,7 +13,7 @@
  */
 
 /** Maximum qdma burst size */
-#define RTE_QDMA_BURST_NB_MAX 32
+#define RTE_QDMA_BURST_NB_MAX 256
 
 /** Determines the mode of operation */
 enum {
@@ -73,6 +73,40 @@ struct rte_qdma_config {
 	int fle_pool_count;
 };
 
+struct rte_qdma_rbp {
+	uint32_t use_ultrashort:1;
+	uint32_t enable:1;
+	/**
+	 * dportid:
+	 * 0000 PCI-Express 1
+	 * 0001 PCI-Express 2
+	 * 0010 PCI-Express 3
+	 * 0011 PCI-Express 4
+	 * 0100 PCI-Express 5
+	 * 0101 PCI-Express 6
+	 */
+	uint32_t dportid:4;
+	uint32_t dpfid:2;
+	uint32_t dvfid:6;
+	/*using route by port for destination */
+	uint32_t drbp:1;
+	/**
+	 * sportid:
+	 * 0000 PCI-Express 1
+	 * 0001 PCI-Express 2
+	 * 0010 PCI-Express 3
+	 * 0011 PCI-Express 4
+	 * 0100 PCI-Express 5
+	 * 0101 PCI-Express 6
+	 */
+	uint32_t sportid:4;
+	uint32_t spfid:2;
+	uint32_t svfid:6;
+	/* using route by port for source */
+	uint32_t srbp:1;
+	uint32_t rsv:4;
+};
+
 /** Provides QDMA device statistics */
 struct rte_qdma_vq_stats {
 	/** States if this vq has exclusively associated hw queue */
@@ -105,8 +139,10 @@ struct rte_qdma_job {
 	/**
 	 * Status of the transaction.
 	 * This is filled in the dequeue operation by the driver.
+	 * upper 8bits acc_err for route by port.
+	 * lower 8bits fd error
 	 */
-	uint8_t status;
+	uint16_t status;
 };
 
 /**
@@ -176,6 +212,11 @@ rte_qdma_start(void);
  */
 int
 rte_qdma_vq_create(uint32_t lcore_id, uint32_t flags);
+
+/*create vq for route-by-port*/
+int
+rte_qdma_vq_create_rbp(uint32_t lcore_id, uint32_t flags,
+			struct rte_qdma_rbp *rbp);
 
 /**
  * Enqueue multiple jobs to a Virtual Queue.
@@ -275,6 +316,21 @@ rte_qdma_vq_stats(uint16_t vq_id,
 int
 rte_qdma_vq_destroy(uint16_t vq_id);
 
+/**
+ * Destroy the RBP specific Virtual Queue specified by vq_id.
+ * This API can be called from any thread/core. User can create/destroy
+ * VQ's at runtime.
+ *
+ * @param vq_id
+ *   RBP based Virtual Queue ID which needs to be deinialized.
+ *
+ * @returns
+ *   - 0: Success.
+ *   - <0: Error code.
+ */
+
+int __rte_experimental
+rte_qdma_vq_destroy_rbp(uint16_t vq_id);
 /**
  * Stop QDMA device.
  */

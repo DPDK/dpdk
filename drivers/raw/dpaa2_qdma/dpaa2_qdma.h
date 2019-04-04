@@ -22,28 +22,24 @@ struct qdma_io_meta;
 
 /** Notification by FQD_CTX[fqid] */
 #define QDMA_SER_CTX (1 << 8)
-
+#define DPAA2_RBP_MEM_RW            0x0
 /**
  * Source descriptor command read transaction type for RBP=0:
  * coherent copy of cacheable memory
  */
-#define DPAA2_SET_SDD_RD_COHERENT(sdd) ((sdd)->cmd = (0xb << 28))
+#define DPAA2_COHERENT_NO_ALLOCATE_CACHE	0xb
+#define DPAA2_LX2_COHERENT_NO_ALLOCATE_CACHE	0x7
 /**
  * Destination descriptor command write transaction type for RBP=0:
  * coherent copy of cacheable memory
  */
-#define DPAA2_SET_SDD_WR_COHERENT(sdd) ((sdd)->cmd = (0x6 << 28))
+#define DPAA2_COHERENT_ALLOCATE_CACHE		0x6
+#define DPAA2_LX2_COHERENT_ALLOCATE_CACHE	0xb
 
 /** Maximum possible H/W Queues on each core */
 #define MAX_HW_QUEUE_PER_CORE		64
 
-/**
- * In case of Virtual Queue mode, this specifies the number of
- * dequeue the 'qdma_vq_dequeue/multi' API does from the H/W Queue
- * in case there is no job present on the Virtual Queue ring.
- */
-#define QDMA_DEQUEUE_BUDGET		64
-
+#define QDMA_RBP_UPPER_ADDRESS_MASK (0xfff0000000000)
 /**
  * Represents a QDMA device.
  * A single QDMA device exists which is combination of multiple DPDMAI rawdev's.
@@ -90,6 +86,8 @@ struct qdma_virt_queue {
 	struct rte_ring *status_ring;
 	/** Associated hw queue */
 	struct qdma_hw_queue *hw_queue;
+	/** Route by port */
+	struct rte_qdma_rbp rbp;
 	/** Associated lcore id */
 	uint32_t lcore_id;
 	/** States if this vq is in use or not */
@@ -118,7 +116,7 @@ struct qdma_io_meta {
 	 */
 	uint64_t cnxt;
 	/** VQ ID is stored as a part of metadata of the enqueue command */
-	 uint64_t id;
+	uint64_t id;
 };
 
 /** Source/Destination Descriptor */
@@ -127,9 +125,48 @@ struct qdma_sdd {
 	/** Stride configuration */
 	uint32_t stride;
 	/** Route-by-port command */
-	uint32_t rbpcmd;
-	uint32_t cmd;
-} __attribute__((__packed__));
+	union {
+		uint32_t rbpcmd;
+		struct rbpcmd_st {
+			uint32_t vfid:6;
+			uint32_t rsv4:2;
+			uint32_t pfid:1;
+			uint32_t rsv3:7;
+			uint32_t attr:3;
+			uint32_t rsv2:1;
+			uint32_t at:2;
+			uint32_t vfa:1;
+			uint32_t ca:1;
+			uint32_t tc:3;
+			uint32_t rsv1:5;
+		} rbpcmd_simple;
+	};
+	union {
+		uint32_t cmd;
+		struct rcmd_simple {
+			uint32_t portid:4;
+			uint32_t rsv1:14;
+			uint32_t rbp:1;
+			uint32_t ssen:1;
+			uint32_t rthrotl:4;
+			uint32_t sqos:3;
+			uint32_t ns:1;
+			uint32_t rdtype:4;
+		} read_cmd;
+		struct wcmd_simple {
+			uint32_t portid:4;
+			uint32_t rsv3:10;
+			uint32_t rsv2:2;
+			uint32_t lwc:2;
+			uint32_t rbp:1;
+			uint32_t dsen:1;
+			uint32_t rsv1:4;
+			uint32_t dqos:3;
+			uint32_t ns:1;
+			uint32_t wrttype:4;
+		} write_cmd;
+	};
+} __attribute__ ((__packed__));
 
 /** Represents a DPDMAI raw device */
 struct dpaa2_dpdmai_dev {
