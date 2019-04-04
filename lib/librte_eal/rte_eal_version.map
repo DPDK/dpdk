@@ -268,6 +268,20 @@ DPDK_18.11 {
 
 } DPDK_18.08;
 
+DPDK_19.05 {
+	global:
+
+	rte_devargs_add;
+	rte_devargs_dump;
+	rte_devargs_insert;
+	rte_devargs_next;
+	rte_devargs_parse;
+	rte_devargs_parsef;
+	rte_devargs_remove;
+	rte_devargs_type_count;
+
+} DPDK_18.11;
+
 EXPERIMENTAL {
 	global:
 
@@ -289,14 +303,6 @@ EXPERIMENTAL {
 	rte_dev_is_probed;
 	rte_dev_iterator_init;
 	rte_dev_iterator_next;
-	rte_devargs_add;
-	rte_devargs_dump;
-	rte_devargs_insert;
-	rte_devargs_next;
-	rte_devargs_parse;
-	rte_devargs_parsef;
-	rte_devargs_remove;
-	rte_devargs_type_count;
 	rte_eal_cleanup;
 	rte_extmem_attach;
 	rte_extmem_detach;
