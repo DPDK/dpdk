@@ -57,7 +57,7 @@ enum rte_ring_queue_behavior {
 };
 
 #define RTE_RING_MZ_PREFIX "RG_"
-/**< The maximum length of a ring name. */
+/** The maximum length of a ring name. */
 #define RTE_RING_NAMESIZE (RTE_MEMZONE_NAMESIZE - \
 			   sizeof(RTE_RING_MZ_PREFIX) + 1)
 
