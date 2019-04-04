@@ -13,6 +13,7 @@
 #include <rte_malloc.h>
 #include <rte_ring.h>
 #include <rte_mempool.h>
+#include <rte_prefetch.h>
 
 #include <mc/fsl_dpdmai.h>
 #include <portal/dpaa2_hw_pvt.h>
@@ -395,21 +396,31 @@ dpaa2_qdma_populate_fle(struct qbman_fle *fle,
 	DPAA2_SET_FLE_FIN(fle);
 }
 
-static int
-dpdmai_dev_enqueue(struct dpaa2_dpdmai_dev *dpdmai_dev,
-		   uint16_t txq_id,
-		   uint16_t vq_id,
-		   struct rte_qdma_job *job)
+int
+rte_qdma_vq_enqueue_multi(uint16_t vq_id,
+			  struct rte_qdma_job **job,
+			  uint16_t nb_jobs)
 {
+	struct qdma_virt_queue *qdma_vq = &qdma_vqs[vq_id];
+	struct qdma_hw_queue *qdma_pq = qdma_vq->hw_queue;
+	struct dpaa2_dpdmai_dev *dpdmai_dev = qdma_pq->dpdmai_dev;
 	struct qdma_io_meta *io_meta;
-	struct qbman_fd fd;
+	struct qbman_fd fd_arr[MAX_TX_RING_SLOTS];
 	struct dpaa2_queue *txq;
 	struct qbman_fle *fle;
 	struct qbman_eq_desc eqdesc;
 	struct qbman_swp *swp;
 	int ret;
+	uint32_t num_to_send = 0;
+	uint16_t num_tx = 0;
+	uint16_t num_txed = 0;
 
-	DPAA2_QDMA_FUNC_TRACE();
+	/* Return error in case of wrong lcore_id */
+	if (rte_lcore_id() != qdma_vq->lcore_id) {
+		DPAA2_QDMA_ERR("QDMA enqueue for vqid %d on wrong core",
+				vq_id);
+		return -1;
+	}
 
 	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
 		ret = dpaa2_affine_qbman_swp();
@@ -420,7 +431,7 @@ dpdmai_dev_enqueue(struct dpaa2_dpdmai_dev *dpdmai_dev,
 	}
 	swp = DPAA2_PER_LCORE_PORTAL;
 
-	txq = &(dpdmai_dev->tx_queue[txq_id]);
+	txq = &(dpdmai_dev->tx_queue[qdma_pq->queue_id]);
 
 	/* Prepare enqueue descriptor */
 	qbman_eq_desc_clear(&eqdesc);
@@ -428,97 +439,86 @@ dpdmai_dev_enqueue(struct dpaa2_dpdmai_dev *dpdmai_dev,
 	qbman_eq_desc_set_no_orp(&eqdesc, 0);
 	qbman_eq_desc_set_response(&eqdesc, 0, 0);
 
-	/*
-	 * Get an FLE/SDD from FLE pool.
-	 * Note: IO metadata is before the FLE and SDD memory.
-	 */
-	ret = rte_mempool_get(qdma_dev.fle_pool, (void **)(&io_meta));
-	if (ret) {
-		DPAA2_QDMA_DP_WARN("Memory alloc failed for FLE");
-		return ret;
+	while (nb_jobs > 0) {
+		uint32_t loop;
+
+		num_to_send = (nb_jobs > dpaa2_eqcr_size) ?
+			dpaa2_eqcr_size : nb_jobs;
+
+		for (loop = 0; loop < num_to_send; loop++) {
+			/*
+			 * Get an FLE/SDD from FLE pool.
+			 * Note: IO metadata is before the FLE and SDD memory.
+			 */
+			ret = rte_mempool_get(qdma_dev.fle_pool,
+					(void **)(&io_meta));
+			if (ret) {
+				DPAA2_QDMA_DP_WARN("Me alloc failed for FLE");
+				return ret;
+			}
+
+			/* Set the metadata */
+			io_meta->cnxt = (size_t)job[num_tx];
+			io_meta->id = vq_id;
+
+			fle = (struct qbman_fle *)(io_meta + 1);
+
+			/* populate Frame descriptor */
+			memset(&fd_arr[loop], 0, sizeof(struct qbman_fd));
+			DPAA2_SET_FD_ADDR(&fd_arr[loop],
+					DPAA2_VADDR_TO_IOVA(fle));
+			DPAA2_SET_FD_COMPOUND_FMT(&fd_arr[loop]);
+			DPAA2_SET_FD_FRC(&fd_arr[loop], QDMA_SER_CTX);
+
+			/* Populate FLE */
+			memset(fle, 0, QDMA_FLE_POOL_SIZE);
+			dpaa2_qdma_populate_fle(fle, job[num_tx]->src,
+						job[num_tx]->dest,
+						job[num_tx]->len,
+						job[num_tx]->flags);
+
+			num_tx++;
+		}
+
+		/* Enqueue the packet to the QBMAN */
+		uint32_t enqueue_loop = 0;
+		while (enqueue_loop < num_to_send) {
+			enqueue_loop += qbman_swp_enqueue_multiple(swp,
+						&eqdesc,
+						&fd_arr[enqueue_loop],
+						NULL,
+						num_to_send - enqueue_loop);
+		}
+
+		num_txed += num_to_send;
+		nb_jobs -= num_to_send;
 	}
-
-	/* Set the metadata */
-	io_meta->cnxt = (size_t)job;
-	io_meta->id = vq_id;
-
-	fle = (struct qbman_fle *)(io_meta + 1);
-
-	/* populate Frame descriptor */
-	memset(&fd, 0, sizeof(struct qbman_fd));
-	DPAA2_SET_FD_ADDR(&fd, DPAA2_VADDR_TO_IOVA(fle));
-	DPAA2_SET_FD_COMPOUND_FMT(&fd);
-	DPAA2_SET_FD_FRC(&fd, QDMA_SER_CTX);
-
-	/* Populate FLE */
-	memset(fle, 0, QDMA_FLE_POOL_SIZE);
-	dpaa2_qdma_populate_fle(fle, job->src, job->dest, job->len, job->flags);
-
-	/* Enqueue the packet to the QBMAN */
-	do {
-		ret = qbman_swp_enqueue_multiple(swp, &eqdesc, &fd, NULL, 1);
-		if (ret < 0 && ret != -EBUSY)
-			DPAA2_QDMA_ERR("Transmit failure with err: %d", ret);
-	} while (ret == -EBUSY);
-
-	DPAA2_QDMA_DP_DEBUG("Successfully transmitted a packet");
-
-	return ret;
+	qdma_vq->num_enqueues += num_txed;
+	return num_txed;
 }
 
-int __rte_experimental
-rte_qdma_vq_enqueue_multi(uint16_t vq_id,
-			  struct rte_qdma_job **job,
-			  uint16_t nb_jobs)
-{
-	int i, ret;
-
-	DPAA2_QDMA_FUNC_TRACE();
-
-	for (i = 0; i < nb_jobs; i++) {
-		ret = rte_qdma_vq_enqueue(vq_id, job[i]);
-		if (ret < 0)
-			break;
-	}
-
-	return i;
-}
-
-int __rte_experimental
+int
 rte_qdma_vq_enqueue(uint16_t vq_id,
 		    struct rte_qdma_job *job)
 {
-	struct qdma_virt_queue *qdma_vq = &qdma_vqs[vq_id];
-	struct qdma_hw_queue *qdma_pq = qdma_vq->hw_queue;
-	struct dpaa2_dpdmai_dev *dpdmai_dev = qdma_pq->dpdmai_dev;
 	int ret;
 
-	DPAA2_QDMA_FUNC_TRACE();
-
-	/* Return error in case of wrong lcore_id */
-	if (rte_lcore_id() != qdma_vq->lcore_id) {
-		DPAA2_QDMA_ERR("QDMA enqueue for vqid %d on wrong core",
-				vq_id);
-		return -EINVAL;
-	}
-
-	ret = dpdmai_dev_enqueue(dpdmai_dev, qdma_pq->queue_id, vq_id, job);
+	ret = rte_qdma_vq_enqueue_multi(vq_id, &job, 1);
 	if (ret < 0) {
 		DPAA2_QDMA_ERR("DPDMAI device enqueue failed: %d", ret);
 		return ret;
 	}
-
-	qdma_vq->num_enqueues++;
 
 	return 1;
 }
 
 /* Function to receive a QDMA job for a given device and queue*/
 static int
-dpdmai_dev_dequeue(struct dpaa2_dpdmai_dev *dpdmai_dev,
+dpdmai_dev_dequeue_multijob(struct dpaa2_dpdmai_dev *dpdmai_dev,
 		   uint16_t rxq_id,
 		   uint16_t *vq_id,
-		   struct rte_qdma_job **job)
+		   struct rte_qdma_job **job,
+		   uint16_t nb_jobs)
 {
 	struct qdma_io_meta *io_meta;
 	struct dpaa2_queue *rxq;
@@ -531,8 +531,6 @@ dpdmai_dev_dequeue(struct dpaa2_dpdmai_dev *dpdmai_dev,
 	uint8_t status;
 	int ret;
 
-	DPAA2_QDMA_FUNC_TRACE();
-
 	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
 		ret = dpaa2_affine_qbman_swp();
 		if (ret) {
@@ -541,7 +539,6 @@ dpdmai_dev_dequeue(struct dpaa2_dpdmai_dev *dpdmai_dev,
 		}
 	}
 	swp = DPAA2_PER_LCORE_PORTAL;
-
 	rxq = &(dpdmai_dev->rx_queue[rxq_id]);
 	dq_storage = rxq->q_storage->dq_storage[0];
 	fqid = rxq->fqid;
@@ -551,7 +548,10 @@ dpdmai_dev_dequeue(struct dpaa2_dpdmai_dev *dpdmai_dev,
 	qbman_pull_desc_set_fq(&pulldesc, fqid);
 	qbman_pull_desc_set_storage(&pulldesc, dq_storage,
 		(uint64_t)(DPAA2_VADDR_TO_IOVA(dq_storage)), 1);
-	qbman_pull_desc_set_numframes(&pulldesc, 1);
+	if (nb_jobs > dpaa2_dqrr_size)
+		qbman_pull_desc_set_numframes(&pulldesc, dpaa2_dqrr_size);
+	else
+		qbman_pull_desc_set_numframes(&pulldesc, nb_jobs);
 
 	while (1) {
 		if (qbman_swp_pull(swp, &pulldesc)) {
@@ -561,124 +561,137 @@ dpdmai_dev_dequeue(struct dpaa2_dpdmai_dev *dpdmai_dev,
 		break;
 	}
 
-	/* Check if previous issued command is completed. */
+	rte_prefetch0((void *)((size_t)(dq_storage + 1)));
+	/* Check if the previous issued command is completed. */
 	while (!qbman_check_command_complete(dq_storage))
 		;
-	/* Loop until dq_storage is updated with new token by QBMAN */
-	while (!qbman_check_new_result(dq_storage))
-		;
 
-	/* Check for valid frame. */
-	status = qbman_result_DQ_flags(dq_storage);
-	if (unlikely((status & QBMAN_DQ_STAT_VALIDFRAME) == 0)) {
-		DPAA2_QDMA_DP_DEBUG("No frame is delivered");
-		return 0;
-	}
+	int num_pulled = 0;
+	int pending = 1;
+	do {
+		/* Loop until the dq_storage is updated with
+		 * new token by QBMAN
+		 */
+		while (!qbman_check_new_result(dq_storage))
+			;
 
-	/* Get the FD */
-	fd = qbman_result_DQ_fd(dq_storage);
+		rte_prefetch0((void *)((size_t)(dq_storage + 2)));
+		/* Check whether Last Pull command is Expired and
+		 * setting Condition for Loop termination
+		 */
+		if (qbman_result_DQ_is_pull_complete(dq_storage)) {
+			pending = 0;
+			/* Check for valid frame. */
+			status = qbman_result_DQ_flags(dq_storage);
+			if (unlikely((status &
+				QBMAN_DQ_STAT_VALIDFRAME) == 0))
+				continue;
+		}
+		fd = qbman_result_DQ_fd(dq_storage);
 
-	/*
-	 * Fetch metadata from FLE. job and vq_id were set
-	 * in metadata in the enqueue operation.
-	 */
-	fle = (struct qbman_fle *)DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd));
-	io_meta = (struct qdma_io_meta *)(fle) - 1;
-	if (vq_id)
-		*vq_id = io_meta->id;
+		/*
+		 * Fetch metadata from FLE. job and vq_id were set
+		 * in metadata in the enqueue operation.
+		 */
+		fle = (struct qbman_fle *)
+				DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd));
+		io_meta = (struct qdma_io_meta *)(fle) - 1;
+		if (vq_id)
+			vq_id[num_pulled] = io_meta->id;
 
-	*job = (struct rte_qdma_job *)(size_t)io_meta->cnxt;
-	(*job)->status = DPAA2_GET_FD_ERR(fd);
+		job[num_pulled] = (struct rte_qdma_job *)(size_t)io_meta->cnxt;
+		job[num_pulled]->status = DPAA2_GET_FD_ERR(fd);
 
-	/* Free FLE to the pool */
-	rte_mempool_put(qdma_dev.fle_pool, io_meta);
+		/* Free FLE to the pool */
+		rte_mempool_put(qdma_dev.fle_pool, io_meta);
 
-	DPAA2_QDMA_DP_DEBUG("packet received");
+		dq_storage++;
+		num_pulled++;
+	} while (pending && (num_pulled <= dpaa2_dqrr_size));
 
-	return 1;
+	return num_pulled;
 }
 
-int __rte_experimental
+int
 rte_qdma_vq_dequeue_multi(uint16_t vq_id,
 			  struct rte_qdma_job **job,
 			  uint16_t nb_jobs)
 {
-	int i;
-
-	DPAA2_QDMA_FUNC_TRACE();
-
-	for (i = 0; i < nb_jobs; i++) {
-		job[i] = rte_qdma_vq_dequeue(vq_id);
-		if (!job[i])
-			break;
-	}
-
-	return i;
-}
-
-struct rte_qdma_job * __rte_experimental
-rte_qdma_vq_dequeue(uint16_t vq_id)
-{
 	struct qdma_virt_queue *qdma_vq = &qdma_vqs[vq_id];
 	struct qdma_hw_queue *qdma_pq = qdma_vq->hw_queue;
-	struct dpaa2_dpdmai_dev *dpdmai_dev = qdma_pq->dpdmai_dev;
-	struct rte_qdma_job *job = NULL;
 	struct qdma_virt_queue *temp_qdma_vq;
-	int dequeue_budget = QDMA_DEQUEUE_BUDGET;
-	int ring_count, ret, i;
-	uint16_t temp_vq_id;
-
-	DPAA2_QDMA_FUNC_TRACE();
+	struct dpaa2_dpdmai_dev *dpdmai_dev = qdma_pq->dpdmai_dev;
+	int ring_count, ret = 0, i;
 
 	/* Return error in case of wrong lcore_id */
 	if (rte_lcore_id() != (unsigned int)(qdma_vq->lcore_id)) {
-		DPAA2_QDMA_ERR("QDMA dequeue for vqid %d on wrong core",
+		DPAA2_QDMA_WARN("QDMA dequeue for vqid %d on wrong core",
 				vq_id);
-		return NULL;
+		return -1;
 	}
 
 	/* Only dequeue when there are pending jobs on VQ */
 	if (qdma_vq->num_enqueues == qdma_vq->num_dequeues)
-		return NULL;
+		return 0;
+
+	if (qdma_vq->num_enqueues < (qdma_vq->num_dequeues + nb_jobs))
+		nb_jobs = (qdma_vq->num_enqueues -  qdma_vq->num_dequeues);
 
 	if (qdma_vq->exclusive_hw_queue) {
 		/* In case of exclusive queue directly fetch from HW queue */
-		ret = dpdmai_dev_dequeue(dpdmai_dev, qdma_pq->queue_id,
-					 NULL, &job);
+		ret = dpdmai_dev_dequeue_multijob(dpdmai_dev, qdma_pq->queue_id,
+					 NULL, job, nb_jobs);
 		if (ret < 0) {
 			DPAA2_QDMA_ERR(
 				"Dequeue from DPDMAI device failed: %d", ret);
-			return NULL;
+			return ret;
 		}
+		qdma_vq->num_dequeues += ret;
 	} else {
+		uint16_t temp_vq_id[RTE_QDMA_BURST_NB_MAX];
 		/*
 		 * Get the QDMA completed jobs from the software ring.
 		 * In case they are not available on the ring poke the HW
 		 * to fetch completed jobs from corresponding HW queues
 		 */
 		ring_count = rte_ring_count(qdma_vq->status_ring);
-		if (ring_count == 0) {
+		if (ring_count < nb_jobs) {
 			/* TODO - How to have right budget */
-			for (i = 0; i < dequeue_budget; i++) {
-				ret = dpdmai_dev_dequeue(dpdmai_dev,
-					qdma_pq->queue_id, &temp_vq_id, &job);
-				if (ret == 0)
-					break;
-				temp_qdma_vq = &qdma_vqs[temp_vq_id];
+			ret = dpdmai_dev_dequeue_multijob(dpdmai_dev,
+					qdma_pq->queue_id,
+					temp_vq_id, job, nb_jobs);
+			for (i = 0; i < ret; i++) {
+				temp_qdma_vq = &qdma_vqs[temp_vq_id[i]];
 				rte_ring_enqueue(temp_qdma_vq->status_ring,
-					(void *)(job));
+					(void *)(job[i]));
 				ring_count = rte_ring_count(
 					qdma_vq->status_ring);
-				if (ring_count)
-					break;
 			}
 		}
 
-		/* Dequeue job from the software ring to provide to the user */
-		rte_ring_dequeue(qdma_vq->status_ring, (void **)&job);
-		if (job)
-			qdma_vq->num_dequeues++;
+		if (ring_count) {
+			/* Dequeue job from the software ring
+			 * to provide to the user
+			 */
+			ret = rte_ring_dequeue_bulk(qdma_vq->status_ring,
+					(void **)job, ring_count, NULL);
+			if (ret)
+				qdma_vq->num_dequeues += ret;
+		}
 	}
+
+	return ret;
+}
+
+struct rte_qdma_job *
+rte_qdma_vq_dequeue(uint16_t vq_id)
+{
+	int ret;
+	struct rte_qdma_job *job = NULL;
+
+	ret = rte_qdma_vq_dequeue_multi(vq_id, &job, 1);
+	if (ret < 0)
+		DPAA2_QDMA_DP_WARN("DPDMAI device dequeue failed: %d", ret);
 
 	return job;
 }

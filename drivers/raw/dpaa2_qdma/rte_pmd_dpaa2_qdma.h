@@ -12,6 +12,9 @@
  *
  */
 
+/** Maximum qdma burst size */
+#define RTE_QDMA_BURST_NB_MAX 32
+
 /** Determines the mode of operation */
 enum {
 	/**
@@ -225,7 +228,8 @@ rte_qdma_vq_enqueue(uint16_t vq_id,
  *   Number of QDMA jobs requested for dequeue by the user.
  *
  * @returns
- *   Number of jobs actually dequeued.
+ *   - >=0: Number of jobs successfully received
+ *   - <0: Error code.
  */
 int
 rte_qdma_vq_dequeue_multi(uint16_t vq_id,
