@@ -1,4 +1,4 @@
-EXPERIMENTAL {
+DPDK_19.05 {
 	global:
 
 	rte_qdma_attr_get;

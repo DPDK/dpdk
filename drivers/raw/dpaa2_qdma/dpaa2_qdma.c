@@ -143,7 +143,7 @@ put_hw_queue(struct qdma_hw_queue *queue)
 	}
 }
 
-int __rte_experimental
+int
 rte_qdma_init(void)
 {
 	DPAA2_QDMA_FUNC_TRACE();
@@ -153,7 +153,7 @@ rte_qdma_init(void)
 	return 0;
 }
 
-void __rte_experimental
+void
 rte_qdma_attr_get(struct rte_qdma_attr *qdma_attr)
 {
 	DPAA2_QDMA_FUNC_TRACE();
@@ -161,7 +161,7 @@ rte_qdma_attr_get(struct rte_qdma_attr *qdma_attr)
 	qdma_attr->num_hw_queues = qdma_dev.num_hw_queues;
 }
 
-int __rte_experimental
+int
 rte_qdma_reset(void)
 {
 	struct qdma_hw_queue *queue;
@@ -215,7 +215,7 @@ rte_qdma_reset(void)
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_qdma_configure(struct rte_qdma_config *qdma_config)
 {
 	int ret;
@@ -274,7 +274,7 @@ rte_qdma_configure(struct rte_qdma_config *qdma_config)
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_qdma_start(void)
 {
 	DPAA2_QDMA_FUNC_TRACE();
@@ -284,7 +284,7 @@ rte_qdma_start(void)
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_qdma_vq_create(uint32_t lcore_id, uint32_t flags)
 {
 	char ring_name[32];
@@ -677,7 +677,7 @@ rte_qdma_vq_dequeue(uint16_t vq_id)
 	return job;
 }
 
-void __rte_experimental
+void
 rte_qdma_vq_stats(uint16_t vq_id,
 		  struct rte_qdma_vq_stats *vq_status)
 {
@@ -695,7 +695,7 @@ rte_qdma_vq_stats(uint16_t vq_id,
 	}
 }
 
-int __rte_experimental
+int
 rte_qdma_vq_destroy(uint16_t vq_id)
 {
 	struct qdma_virt_queue *qdma_vq = &qdma_vqs[vq_id];
@@ -724,7 +724,7 @@ rte_qdma_vq_destroy(uint16_t vq_id)
 	return 0;
 }
 
-void __rte_experimental
+void
 rte_qdma_stop(void)
 {
 	DPAA2_QDMA_FUNC_TRACE();
@@ -732,7 +732,7 @@ rte_qdma_stop(void)
 	qdma_dev.state = 0;
 }
 
-void __rte_experimental
+void
 rte_qdma_destroy(void)
 {
 	DPAA2_QDMA_FUNC_TRACE();
