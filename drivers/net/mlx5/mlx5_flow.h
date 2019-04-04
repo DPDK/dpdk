@@ -115,7 +115,8 @@
 #define MLX5_FLOW_ACTION_RAW_DECAP (1u << 27)
 
 #define MLX5_FLOW_FATE_ACTIONS \
-	(MLX5_FLOW_ACTION_DROP | MLX5_FLOW_ACTION_QUEUE | MLX5_FLOW_ACTION_RSS)
+	(MLX5_FLOW_ACTION_DROP | MLX5_FLOW_ACTION_QUEUE | \
+	 MLX5_FLOW_ACTION_RSS | MLX5_FLOW_ACTION_JUMP)
 
 #define MLX5_FLOW_ENCAP_ACTIONS	(MLX5_FLOW_ACTION_VXLAN_ENCAP | \
 				 MLX5_FLOW_ACTION_NVGRE_ENCAP | \
@@ -250,6 +251,16 @@ struct mlx5_flow_dv_modify_hdr_resource {
 	/**< Modification actions. */
 };
 
+/* Jump action resource structure. */
+struct mlx5_flow_dv_jump_tbl_resource {
+	LIST_ENTRY(mlx5_flow_dv_jump_tbl_resource) next;
+	/* Pointer to next element. */
+	rte_atomic32_t refcnt; /**< Reference counter. */
+	void *action; /**< Pointer to the rdma core action. */
+	uint8_t ft_type; /**< Flow table type, Rx or Tx. */
+	struct mlx5_flow_tbl_resource *tbl; /**< The target table. */
+};
+
 /*
  * Max number of actions per DV flow.
  * See CREATE_FLOW_MAX_FLOW_ACTIONS_SUPPORTED
@@ -270,6 +281,8 @@ struct mlx5_flow_dv {
 	struct mlx5_flow_dv_modify_hdr_resource *modify_hdr;
 	/**< Pointer to modify header resource in cache. */
 	struct ibv_flow *flow; /**< Installed flow. */
+	struct mlx5_flow_dv_jump_tbl_resource *jump;
+	/**< Pointer to the jump action resource. */
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	void *actions[MLX5_DV_MAX_NUMBER_OF_ACTIONS];
 	/**< Action list. */

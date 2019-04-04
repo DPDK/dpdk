@@ -319,6 +319,12 @@ struct mlx5_priv {
 	LIST_HEAD(encap_decap, mlx5_flow_dv_encap_decap_resource) encaps_decaps;
 	LIST_HEAD(modify_cmd, mlx5_flow_dv_modify_hdr_resource) modify_cmds;
 	LIST_HEAD(tag, mlx5_flow_dv_tag_resource) tags;
+	LIST_HEAD(jump, mlx5_flow_dv_jump_tbl_resource) jump_tbl;
+	/* Pointer to next element. */
+	rte_atomic32_t refcnt; /**< Reference counter. */
+	struct ibv_flow_action *verbs_action;
+	/**< Verbs modify header action object. */
+	uint8_t ft_type; /**< Flow table type, Rx or Tx. */
 	/* Tags resources cache. */
 	uint32_t link_speed_capa; /* Link speed capabilities. */
 	struct mlx5_xstats_ctrl xstats_ctrl; /* Extended stats control. */

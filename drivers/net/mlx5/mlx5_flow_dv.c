@@ -865,6 +865,68 @@ flow_dv_encap_decap_resource_register
 }
 
 /**
+ * Find existing table jump resource or create and register a new one.
+ *
+ * @param dev[in, out]
+ *   Pointer to rte_eth_dev structure.
+ * @param[in, out] resource
+ *   Pointer to jump table resource.
+ * @parm[in, out] dev_flow
+ *   Pointer to the dev_flow.
+ * @param[out] error
+ *   pointer to error structure.
+ *
+ * @return
+ *   0 on success otherwise -errno and errno is set.
+ */
+static int
+flow_dv_jump_tbl_resource_register
+			(struct rte_eth_dev *dev,
+			 struct mlx5_flow_dv_jump_tbl_resource *resource,
+			 struct mlx5_flow *dev_flow,
+			 struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_dv_jump_tbl_resource *cache_resource;
+
+	/* Lookup a matching resource from cache. */
+	LIST_FOREACH(cache_resource, &priv->jump_tbl, next) {
+		if (resource->tbl == cache_resource->tbl) {
+			DRV_LOG(DEBUG, "jump table resource resource %p: refcnt %d++",
+				(void *)cache_resource,
+				rte_atomic32_read(&cache_resource->refcnt));
+			rte_atomic32_inc(&cache_resource->refcnt);
+			dev_flow->dv.jump = cache_resource;
+			return 0;
+		}
+	}
+	/* Register new jump table resource. */
+	cache_resource = rte_calloc(__func__, 1, sizeof(*cache_resource), 0);
+	if (!cache_resource)
+		return rte_flow_error_set(error, ENOMEM,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "cannot allocate resource memory");
+	*cache_resource = *resource;
+	cache_resource->action =
+		mlx5_glue->dr_create_flow_action_dest_flow_tbl
+		(resource->tbl->obj);
+	if (!cache_resource->action) {
+		rte_free(cache_resource);
+		return rte_flow_error_set(error, ENOMEM,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "cannot create action");
+	}
+	rte_atomic32_init(&cache_resource->refcnt);
+	rte_atomic32_inc(&cache_resource->refcnt);
+	LIST_INSERT_HEAD(&priv->jump_tbl, cache_resource, next);
+	dev_flow->dv.jump = cache_resource;
+	DRV_LOG(DEBUG, "new jump table  resource %p: refcnt %d++",
+		(void *)cache_resource,
+		rte_atomic32_read(&cache_resource->refcnt));
+	return 0;
+}
+
+/**
  * Get the size of specific rte_flow_item_type
  *
  * @param[in] item_type
@@ -1427,6 +1489,37 @@ flow_dv_validate_action_modify_ttl(const uint64_t action_flags,
 }
 
 /**
+ * Validate jump action.
+ *
+ * @param[in] action
+ *   Pointer to the modify action.
+ * @param[in] group
+ *   The group of the current flow.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_action_jump(const struct rte_flow_action *action,
+			     uint32_t group,
+			     struct rte_flow_error *error)
+{
+	if (action->type != RTE_FLOW_ACTION_TYPE_JUMP && !action->conf)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					  NULL, "action configuration not set");
+	if (group >= ((const struct rte_flow_action_jump *)action->conf)->group)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "target group must be higher then"
+					  " the current flow group");
+	return 0;
+}
+
+
+/**
  * Find existing modify-header resource or create and register a new one.
  *
  * @param dev[in, out]
@@ -1609,7 +1702,7 @@ flow_dv_validate_attributes(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	uint32_t priority_max = priv->config.flow_prio - 1;
 
-#ifdef HAVE_MLX5DV_DR
+#ifndef HAVE_MLX5DV_DR
 	if (attributes->group)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
@@ -1980,6 +2073,14 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 					RTE_FLOW_ACTION_TYPE_SET_TTL ?
 						MLX5_FLOW_ACTION_SET_TTL :
 						MLX5_FLOW_ACTION_DEC_TTL;
+			break;
+		case RTE_FLOW_ACTION_TYPE_JUMP:
+			ret = flow_dv_validate_action_jump(actions,
+							   attr->group, error);
+			if (ret)
+				return ret;
+			++actions_n;
+			action_flags |= MLX5_FLOW_ACTION_JUMP;
 			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
@@ -2760,6 +2861,82 @@ flow_dv_matcher_enable(uint32_t *match_criteria)
 	return match_criteria_enable;
 }
 
+
+/**
+ * Get a flow table.
+ *
+ * @param dev[in, out]
+ *   Pointer to rte_eth_dev structure.
+ * @param[in] table_id
+ *   Table id to use.
+ * @param[in] egress
+ *   Direction of the table.
+ * @param[out] error
+ *   pointer to error structure.
+ *
+ * @return
+ *   Returns tables resource based on the index, NULL in case of failed.
+ */
+static struct mlx5_flow_tbl_resource *
+flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
+			 uint32_t table_id, uint8_t egress,
+			 struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_tbl_resource *tbl;
+
+#ifdef HAVE_MLX5DV_DR
+	if (egress) {
+		tbl = &priv->tx_tbl[table_id];
+		if (!tbl->obj)
+			tbl->obj = mlx5_glue->dr_create_flow_tbl
+				(priv->tx_ns, table_id);
+	} else {
+		tbl = &priv->rx_tbl[table_id];
+		if (!tbl->obj)
+			tbl->obj = mlx5_glue->dr_create_flow_tbl
+				(priv->rx_ns, table_id);
+	}
+	if (!tbl->obj) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, "cannot create table");
+		return NULL;
+	}
+	rte_atomic32_inc(&tbl->refcnt);
+	return tbl;
+#else
+	(void)error;
+	(void)tbl;
+	if (egress)
+		return &priv->tx_tbl[table_id];
+	else
+		return &priv->rx_tbl[table_id];
+#endif
+}
+
+/**
+ * Release a flow table.
+ *
+ * @param[in] tbl
+ *   Table resource to be released.
+ *
+ * @return
+ *   Returns 0 if table was released, else return 1;
+ */
+static int
+flow_dv_tbl_resource_release(struct mlx5_flow_tbl_resource *tbl)
+{
+	if (!tbl)
+		return 0;
+	if (rte_atomic32_dec_and_test(&tbl->refcnt)) {
+		mlx5_glue->dr_destroy_flow_tbl(tbl->obj);
+		tbl->obj = NULL;
+		return 0;
+	}
+	return 1;
+}
+
 /**
  * Register the flow matcher.
  *
@@ -2809,33 +2986,20 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 			return 0;
 		}
 	}
-#ifdef HAVE_MLX5DV_DR
-	if (matcher->egress) {
-		tbl = &priv->tx_tbl[matcher->group];
-		if (!tbl->obj)
-			tbl->obj = mlx5_glue->dr_create_flow_tbl
-				(priv->tx_ns,
-				 matcher->group * MLX5_GROUP_FACTOR);
-	} else {
-		tbl = &priv->rx_tbl[matcher->group];
-		if (!tbl->obj)
-			tbl->obj = mlx5_glue->dr_create_flow_tbl
-				(priv->rx_ns,
-				 matcher->group * MLX5_GROUP_FACTOR);
-	}
-	if (!tbl->obj)
-		return rte_flow_error_set(error, ENOMEM,
-					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					  NULL, "cannot create table");
-
-	rte_atomic32_inc(&tbl->refcnt);
-#endif
 	/* Register new matcher. */
 	cache_matcher = rte_calloc(__func__, 1, sizeof(*cache_matcher), 0);
 	if (!cache_matcher)
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "cannot allocate matcher memory");
+	tbl = flow_dv_tbl_resource_get(dev, matcher->group * MLX5_GROUP_FACTOR,
+				       matcher->egress, error);
+	if (!tbl) {
+		rte_free(cache_matcher);
+		return rte_flow_error_set(error, ENOMEM,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "cannot create table");
+	}
 	*cache_matcher = *matcher;
 	dv_attr.match_criteria_enable =
 		flow_dv_matcher_enable(cache_matcher->mask.buf);
@@ -2848,10 +3012,7 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 	if (!cache_matcher->matcher_object) {
 		rte_free(cache_matcher);
 #ifdef HAVE_MLX5DV_DR
-		if (rte_atomic32_dec_and_test(&tbl->refcnt)) {
-			mlx5_glue->dr_destroy_flow_tbl(tbl->obj);
-			tbl->obj = NULL;
-		}
+		flow_dv_tbl_resource_release(tbl);
 #endif
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -3037,6 +3198,9 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		const struct rte_flow_action *action = actions;
 		const struct rte_flow_action_count *count = action->conf;
 		const uint8_t *rss_key;
+		const struct rte_flow_action_jump *jump_data;
+		struct mlx5_flow_dv_jump_tbl_resource jump_tbl_resource;
+		struct mlx5_flow_tbl_resource *tbl;
 
 		switch (actions->type) {
 		case RTE_FLOW_ACTION_TYPE_VOID:
@@ -3174,6 +3338,31 @@ cnt_err:
 			}
 			/* If decap is followed by encap, handle it at encap. */
 			action_flags |= MLX5_FLOW_ACTION_RAW_DECAP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_JUMP:
+			jump_data = action->conf;
+			tbl = flow_dv_tbl_resource_get(dev, jump_data->group *
+						       MLX5_GROUP_FACTOR,
+						       attr->egress, error);
+			if (!tbl)
+				return rte_flow_error_set
+						(error, errno,
+						 RTE_FLOW_ERROR_TYPE_ACTION,
+						 NULL,
+						 "cannot create jump action.");
+			jump_tbl_resource.tbl = tbl;
+			if (flow_dv_jump_tbl_resource_register
+			    (dev, &jump_tbl_resource, dev_flow, error)) {
+				flow_dv_tbl_resource_release(tbl);
+				return rte_flow_error_set
+						(error, errno,
+						 RTE_FLOW_ERROR_TYPE_ACTION,
+						 NULL,
+						 "cannot create jump action.");
+			}
+			dev_flow->dv.actions[actions_n++] =
+				dev_flow->dv.jump->action;
+			action_flags |= MLX5_FLOW_ACTION_JUMP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_MAC_SRC:
 		case RTE_FLOW_ACTION_TYPE_SET_MAC_DST:
@@ -3507,10 +3696,7 @@ flow_dv_matcher_release(struct rte_eth_dev *dev,
 			tbl = &priv->tx_tbl[matcher->group];
 		else
 			tbl = &priv->rx_tbl[matcher->group];
-		if (rte_atomic32_dec_and_test(&tbl->refcnt)) {
-			mlx5_glue->dr_destroy_flow_tbl(tbl->obj);
-			tbl->obj = NULL;
-		}
+		flow_dv_tbl_resource_release(tbl);
 		rte_free(matcher);
 		DRV_LOG(DEBUG, "port %u matcher %p: removed",
 			dev->data->port_id, (void *)matcher);
@@ -3544,6 +3730,38 @@ flow_dv_encap_decap_resource_release(struct mlx5_flow *flow)
 		LIST_REMOVE(cache_resource, next);
 		rte_free(cache_resource);
 		DRV_LOG(DEBUG, "encap/decap resource %p: removed",
+			(void *)cache_resource);
+		return 0;
+	}
+	return 1;
+}
+
+/**
+ * Release an jump to table action resource.
+ *
+ * @param flow
+ *   Pointer to mlx5_flow.
+ *
+ * @return
+ *   1 while a reference on it exists, 0 when freed.
+ */
+static int
+flow_dv_jump_tbl_resource_release(struct mlx5_flow *flow)
+{
+	struct mlx5_flow_dv_jump_tbl_resource *cache_resource =
+						flow->dv.jump;
+
+	assert(cache_resource->action);
+	DRV_LOG(DEBUG, "jump table resource %p: refcnt %d--",
+		(void *)cache_resource,
+		rte_atomic32_read(&cache_resource->refcnt));
+	if (rte_atomic32_dec_and_test(&cache_resource->refcnt)) {
+		claim_zero(mlx5_glue->destroy_flow_action
+				(cache_resource->action));
+		LIST_REMOVE(cache_resource, next);
+		flow_dv_tbl_resource_release(cache_resource->tbl);
+		rte_free(cache_resource);
+		DRV_LOG(DEBUG, "jump table resource %p: removed",
 			(void *)cache_resource);
 		return 0;
 	}
@@ -3646,6 +3864,8 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 			flow_dv_encap_decap_resource_release(dev_flow);
 		if (dev_flow->dv.modify_hdr)
 			flow_dv_modify_hdr_resource_release(dev_flow);
+		if (dev_flow->dv.jump)
+			flow_dv_jump_tbl_resource_release(dev_flow);
 		rte_free(dev_flow);
 	}
 }
