@@ -259,6 +259,15 @@ struct mlx5_ibv_shared {
 	struct mlx5_ibv_shared_port port[]; /* per device port data array. */
 };
 
+/* Table structure. */
+struct mlx5_flow_tbl_resource {
+	void *obj; /**< Pointer to DR table object. */
+	rte_atomic32_t refcnt; /**< Reference counter. */
+};
+
+#define MLX5_MAX_TABLES 1024
+#define MLX5_GROUP_FACTOR 1
+
 struct mlx5_priv {
 	LIST_ENTRY(mlx5_priv) mem_event_cb;
 	/**< Called by memory event callback. */
@@ -326,6 +335,12 @@ struct mlx5_priv {
 	/* UAR same-page access control required in 32bit implementations. */
 #endif
 	struct mlx5_flow_tcf_context *tcf_context; /* TC flower context. */
+	void *rx_ns; /* RX Direct Rules name space handle. */
+	struct mlx5_flow_tbl_resource rx_tbl[MLX5_MAX_TABLES];
+	/* RX Direct Rules tables. */
+	void *tx_ns; /* TX Direct Rules name space handle. */
+	struct mlx5_flow_tbl_resource tx_tbl[MLX5_MAX_TABLES];
+	/* TX Direct Rules tables/ */
 };
 
 #define PORT_ID(priv) ((priv)->dev_data->port_id)

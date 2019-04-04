@@ -63,6 +63,11 @@ enum mlx5dv_flow_table_type { flow_table_type = 0, };
 struct mlx5dv_devx_obj;
 #endif
 
+#ifndef HAVE_MLX5DV_DR
+struct mlx5dv_dr_ns;
+enum  mlx5dv_dr_ns_domain { unused, };
+#endif
+
 /* LIB_GLUE_VERSION must be updated every time this structure is modified. */
 struct mlx5_glue {
 	const char *version;
@@ -140,6 +145,11 @@ struct mlx5_glue {
 			       struct ibv_async_event *event);
 	const char *(*port_state_str)(enum ibv_port_state port_state);
 	struct ibv_cq *(*cq_ex_to_cq)(struct ibv_cq_ex *cq);
+	void *(*dr_create_flow_tbl)(void *ns, uint32_t level);
+	int (*dr_destroy_flow_tbl)(void *tbl);
+	void *(*dr_create_ns)(struct ibv_context *ctx,
+			      enum mlx5dv_dr_ns_domain domain);
+	int (*dr_destroy_ns)(void *ns);
 	struct ibv_cq_ex *(*dv_create_cq)
 		(struct ibv_context *context,
 		 struct ibv_cq_init_attr_ex *cq_attr,
@@ -158,23 +168,26 @@ struct mlx5_glue {
 		(struct ibv_context *context,
 		 struct ibv_qp_init_attr_ex *qp_init_attr_ex,
 		 struct mlx5dv_qp_init_attr *dv_qp_init_attr);
-	struct mlx5dv_flow_matcher *(*dv_create_flow_matcher)
+	void *(*dv_create_flow_matcher)
 		(struct ibv_context *context,
-		 struct mlx5dv_flow_matcher_attr *matcher_attr);
-	int (*dv_destroy_flow_matcher)(struct mlx5dv_flow_matcher *matcher);
-	struct ibv_flow *(*dv_create_flow)(struct mlx5dv_flow_matcher *matcher,
-			  struct mlx5dv_flow_match_parameters *match_value,
+		 struct mlx5dv_flow_matcher_attr *matcher_attr,
+		 void *tbl);
+	void *(*dv_create_flow)(void *matcher, void *match_value,
 			  size_t num_actions, void *actions[]);
 	void *(*dv_create_flow_action_counter)(void *obj, uint32_t  offset);
 	void *(*dv_create_flow_action_dest_ibv_qp)(void *qp);
 	void *(*dv_create_flow_action_modify_header)
-		(struct ibv_context *ctx, size_t actions_sz, uint64_t actions[],
-		 enum mlx5dv_flow_table_type ft_type);
+		(struct ibv_context *ctx, enum mlx5dv_flow_table_type ft_type,
+		 void *ns, uint64_t flags, size_t actions_sz,
+		 uint64_t actions[]);
 	void *(*dv_create_flow_action_packet_reformat)
-		(struct ibv_context *ctx, size_t data_sz, void *data,
+		(struct ibv_context *ctx,
 		 enum mlx5dv_flow_action_packet_reformat_type reformat_type,
-		 enum mlx5dv_flow_table_type ft_type);
+		 enum mlx5dv_flow_table_type ft_type, struct mlx5dv_dr_ns *ns,
+		 uint32_t flags, size_t data_sz, void *data);
 	void *(*dv_create_flow_action_tag)(uint32_t tag);
+	int (*dv_destroy_flow)(void *flow);
+	int (*dv_destroy_flow_matcher)(void *matcher);
 	struct ibv_context *(*dv_open_device)(struct ibv_device *device);
 	struct mlx5dv_devx_obj *(*devx_obj_create)
 					(struct ibv_context *ctx,

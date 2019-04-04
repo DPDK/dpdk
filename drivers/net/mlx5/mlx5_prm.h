@@ -492,20 +492,40 @@ struct mlx5_ifc_fte_match_set_misc2_bits {
 	u8 reserved_at_1a0[0x60];
 };
 
+struct mlx5_ifc_fte_match_set_misc3_bits {
+	u8 inner_tcp_seq_num[0x20];
+	u8 outer_tcp_seq_num[0x20];
+	u8 inner_tcp_ack_num[0x20];
+	u8 outer_tcp_ack_num[0x20];
+	u8 reserved_at_auto1[0x8];
+	u8 outer_vxlan_gpe_vni[0x18];
+	u8 outer_vxlan_gpe_next_protocol[0x8];
+	u8 outer_vxlan_gpe_flags[0x8];
+	u8 reserved_at_a8[0x10];
+	u8 icmp_header_data[0x20];
+	u8 icmpv6_header_data[0x20];
+	u8 icmp_type[0x8];
+	u8 icmp_code[0x8];
+	u8 icmpv6_type[0x8];
+	u8 icmpv6_code[0x8];
+	u8 reserved_at_1a0[0xe0];
+};
+
 /* Flow matcher. */
 struct mlx5_ifc_fte_match_param_bits {
 	struct mlx5_ifc_fte_match_set_lyr_2_4_bits outer_headers;
 	struct mlx5_ifc_fte_match_set_misc_bits misc_parameters;
 	struct mlx5_ifc_fte_match_set_lyr_2_4_bits inner_headers;
 	struct mlx5_ifc_fte_match_set_misc2_bits misc_parameters_2;
-	u8 reserved_at_800[0x800];
+	struct mlx5_ifc_fte_match_set_misc3_bits misc_parameters_3;
 };
 
 enum {
 	MLX5_MATCH_CRITERIA_ENABLE_OUTER_BIT,
 	MLX5_MATCH_CRITERIA_ENABLE_MISC_BIT,
 	MLX5_MATCH_CRITERIA_ENABLE_INNER_BIT,
-	MLX5_MATCH_CRITERIA_ENABLE_MISC2_BIT
+	MLX5_MATCH_CRITERIA_ENABLE_MISC2_BIT,
+	MLX5_MATCH_CRITERIA_ENABLE_MISC3_BIT
 };
 
 enum {

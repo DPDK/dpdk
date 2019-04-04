@@ -1475,6 +1475,22 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 			priv->tcf_context = NULL;
 		}
 	}
+#ifdef HAVE_MLX5DV_DR
+		priv->rx_ns = mlx5dv_dr_create_ns
+			(sh->ctx, MLX5DV_DR_NS_DOMAIN_INGRESS_BYPASS);
+		if (priv->rx_ns == NULL) {
+			DRV_LOG(ERR, "mlx5dv_dr_create_ns failed");
+			err = errno;
+			goto error;
+		}
+		priv->tx_ns = mlx5dv_dr_create_ns(sh->ctx,
+					 MLX5DV_DR_NS_DOMAIN_EGRESS_BYPASS);
+		if (priv->tx_ns == NULL) {
+			DRV_LOG(ERR, "mlx5dv_dr_create_ns failed");
+			err = errno;
+			goto error;
+		}
+#endif
 	TAILQ_INIT(&priv->flows);
 	TAILQ_INIT(&priv->ctrl_flows);
 	/* Hint libmlx5 to use PMD allocator for data plane resources */

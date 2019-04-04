@@ -204,6 +204,7 @@ struct mlx5_flow_dv_matcher {
 	uint16_t crc; /**< CRC of key. */
 	uint16_t priority; /**< Priority of matcher. */
 	uint8_t egress; /**< Egress matcher. */
+	uint32_t group; /**< The matcher group. */
 	struct mlx5_flow_dv_match_params mask; /**< Matcher mask. */
 };
 
@@ -220,6 +221,7 @@ struct mlx5_flow_dv_encap_decap_resource {
 	size_t size;
 	uint8_t reformat_type;
 	uint8_t ft_type;
+	uint64_t flags; /**< Flags for RDMA API. */
 };
 
 /* Tag resource structure. */
@@ -348,7 +350,7 @@ struct mlx5_flow_counter {
 /* Flow structure. */
 struct rte_flow {
 	TAILQ_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
-	enum mlx5_flow_drv_type drv_type; /**< Drvier type. */
+	enum mlx5_flow_drv_type drv_type; /**< Driver type. */
 	struct mlx5_flow_counter *counter; /**< Holds flow counter. */
 	struct mlx5_flow_dv_tag_resource *tag_resource;
 	/**< pointer to the tag action. */
@@ -360,6 +362,8 @@ struct rte_flow {
 	uint64_t actions;
 	/**< Bit-fields of detected actions, see MLX5_FLOW_ACTION_*. */
 	struct mlx5_fdir *fdir; /**< Pointer to associated FDIR if any. */
+	uint8_t ingress; /**< 1 if the flow is ingress. */
+	uint32_t group; /**< The group index. */
 };
 
 typedef int (*mlx5_flow_validate_t)(struct rte_eth_dev *dev,

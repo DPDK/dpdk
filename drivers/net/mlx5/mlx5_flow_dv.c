@@ -809,11 +809,20 @@ flow_dv_encap_decap_resource_register
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_dv_encap_decap_resource *cache_resource;
+	struct rte_flow *flow = dev_flow->flow;
+	struct mlx5dv_dr_ns *ns;
+
+	resource->flags = flow->group ? 0 : 1;
+	if (flow->ingress)
+		ns = priv->rx_ns;
+	else
+		ns = priv->tx_ns;
 
 	/* Lookup a matching resource from cache. */
 	LIST_FOREACH(cache_resource, &priv->encaps_decaps, next) {
 		if (resource->reformat_type == cache_resource->reformat_type &&
 		    resource->ft_type == cache_resource->ft_type &&
+		    resource->flags == cache_resource->flags &&
 		    resource->size == cache_resource->size &&
 		    !memcmp((const void *)resource->buf,
 			    (const void *)cache_resource->buf,
@@ -835,10 +844,10 @@ flow_dv_encap_decap_resource_register
 	*cache_resource = *resource;
 	cache_resource->verbs_action =
 		mlx5_glue->dv_create_flow_action_packet_reformat
-			(priv->sh->ctx, cache_resource->size,
-			 (cache_resource->size ? cache_resource->buf : NULL),
-			 cache_resource->reformat_type,
-			 cache_resource->ft_type);
+			(priv->sh->ctx, cache_resource->reformat_type,
+			 cache_resource->ft_type, ns, cache_resource->flags,
+			 cache_resource->size,
+			 (cache_resource->size ? cache_resource->buf : NULL));
 	if (!cache_resource->verbs_action) {
 		rte_free(cache_resource);
 		return rte_flow_error_set(error, ENOMEM,
@@ -1442,6 +1451,10 @@ flow_dv_modify_hdr_resource_register
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_dv_modify_hdr_resource *cache_resource;
 
+	struct mlx5dv_dr_ns *ns =
+		resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_NIC_TX  ?
+		priv->tx_ns : priv->rx_ns;
+
 	/* Lookup a matching resource from cache. */
 	LIST_FOREACH(cache_resource, &priv->modify_cmds, next) {
 		if (resource->ft_type == cache_resource->ft_type &&
@@ -1467,11 +1480,11 @@ flow_dv_modify_hdr_resource_register
 	*cache_resource = *resource;
 	cache_resource->verbs_action =
 		mlx5_glue->dv_create_flow_action_modify_header
-					(priv->sh->ctx,
+					(priv->sh->ctx, cache_resource->ft_type,
+					 ns, 0,
 					 cache_resource->actions_num *
 					 sizeof(cache_resource->actions[0]),
-					 (uint64_t *)cache_resource->actions,
-					 cache_resource->ft_type);
+					 (uint64_t *)cache_resource->actions);
 	if (!cache_resource->verbs_action) {
 		rte_free(cache_resource);
 		return rte_flow_error_set(error, ENOMEM,
@@ -1596,11 +1609,13 @@ flow_dv_validate_attributes(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	uint32_t priority_max = priv->config.flow_prio - 1;
 
+#ifdef HAVE_MLX5DV_DR
 	if (attributes->group)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
 					  NULL,
 					  "groups is not supported");
+#endif
 	if (attributes->priority != MLX5_FLOW_PRIO_RSVD &&
 	    attributes->priority >= priority_max)
 		return rte_flow_error_set(error, ENOTSUP,
@@ -2173,11 +2188,13 @@ flow_dv_translate_item_vlan(void *matcher, void *key,
  *   Flow pattern to translate.
  * @param[in] inner
  *   Item is inner pattern.
+ * @param[in] group
+ *   The group to insert the rule.
  */
 static void
 flow_dv_translate_item_ipv4(void *matcher, void *key,
 			    const struct rte_flow_item *item,
-			    int inner)
+			    int inner, uint32_t group)
 {
 	const struct rte_flow_item_ipv4 *ipv4_m = item->mask;
 	const struct rte_flow_item_ipv4 *ipv4_v = item->spec;
@@ -2204,7 +2221,10 @@ flow_dv_translate_item_ipv4(void *matcher, void *key,
 					 outer_headers);
 		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
 	}
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_version, 0xf);
+	if (group == 0)
+		MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_version, 0xf);
+	else
+		MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_version, 0x4);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_version, 4);
 	if (!ipv4_v)
 		return;
@@ -2246,11 +2266,13 @@ flow_dv_translate_item_ipv4(void *matcher, void *key,
  *   Flow pattern to translate.
  * @param[in] inner
  *   Item is inner pattern.
+ * @param[in] group
+ *   The group to insert the rule.
  */
 static void
 flow_dv_translate_item_ipv6(void *matcher, void *key,
 			    const struct rte_flow_item *item,
-			    int inner)
+			    int inner, uint32_t group)
 {
 	const struct rte_flow_item_ipv6 *ipv6_m = item->mask;
 	const struct rte_flow_item_ipv6 *ipv6_v = item->spec;
@@ -2287,7 +2309,10 @@ flow_dv_translate_item_ipv6(void *matcher, void *key,
 					 outer_headers);
 		headers_v = MLX5_ADDR_OF(fte_match_param, key, outer_headers);
 	}
-	MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_version, 0xf);
+	if (group == 0)
+		MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_version, 0xf);
+	else
+		MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_version, 0x6);
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_version, 6);
 	if (!ipv6_v)
 		return;
@@ -2727,7 +2752,11 @@ flow_dv_matcher_enable(uint32_t *match_criteria)
 	match_criteria_enable |=
 		(!HEADER_IS_ZERO(match_criteria, misc_parameters_2)) <<
 		MLX5_MATCH_CRITERIA_ENABLE_MISC2_BIT;
-
+#ifdef HAVE_MLX5DV_DR
+	match_criteria_enable |=
+		(!HEADER_IS_ZERO(match_criteria, misc_parameters_3)) <<
+		MLX5_MATCH_CRITERIA_ENABLE_MISC3_BIT;
+#endif
 	return match_criteria_enable;
 }
 
@@ -2758,12 +2787,14 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 		.type = IBV_FLOW_ATTR_NORMAL,
 		.match_mask = (void *)&matcher->mask,
 	};
+	struct mlx5_flow_tbl_resource *tbl = NULL;
 
 	/* Lookup from cache. */
 	LIST_FOREACH(cache_matcher, &priv->matchers, next) {
 		if (matcher->crc == cache_matcher->crc &&
 		    matcher->priority == cache_matcher->priority &&
 		    matcher->egress == cache_matcher->egress &&
+		    matcher->group == cache_matcher->group &&
 		    !memcmp((const void *)matcher->mask.buf,
 			    (const void *)cache_matcher->mask.buf,
 			    cache_matcher->mask.size)) {
@@ -2778,6 +2809,27 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 			return 0;
 		}
 	}
+#ifdef HAVE_MLX5DV_DR
+	if (matcher->egress) {
+		tbl = &priv->tx_tbl[matcher->group];
+		if (!tbl->obj)
+			tbl->obj = mlx5_glue->dr_create_flow_tbl
+				(priv->tx_ns,
+				 matcher->group * MLX5_GROUP_FACTOR);
+	} else {
+		tbl = &priv->rx_tbl[matcher->group];
+		if (!tbl->obj)
+			tbl->obj = mlx5_glue->dr_create_flow_tbl
+				(priv->rx_ns,
+				 matcher->group * MLX5_GROUP_FACTOR);
+	}
+	if (!tbl->obj)
+		return rte_flow_error_set(error, ENOMEM,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "cannot create table");
+
+	rte_atomic32_inc(&tbl->refcnt);
+#endif
 	/* Register new matcher. */
 	cache_matcher = rte_calloc(__func__, 1, sizeof(*cache_matcher), 0);
 	if (!cache_matcher)
@@ -2791,9 +2843,16 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 	if (matcher->egress)
 		dv_attr.flags |= IBV_FLOW_ATTR_FLAGS_EGRESS;
 	cache_matcher->matcher_object =
-		mlx5_glue->dv_create_flow_matcher(priv->sh->ctx, &dv_attr);
+		mlx5_glue->dv_create_flow_matcher(priv->sh->ctx, &dv_attr,
+						  tbl->obj);
 	if (!cache_matcher->matcher_object) {
 		rte_free(cache_matcher);
+#ifdef HAVE_MLX5DV_DR
+		if (rte_atomic32_dec_and_test(&tbl->refcnt)) {
+			mlx5_glue->dr_destroy_flow_tbl(tbl->obj);
+			tbl->obj = NULL;
+		}
+#endif
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL, "cannot create matcher");
@@ -2805,6 +2864,7 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 		cache_matcher->priority,
 		cache_matcher->egress ? "tx" : "rx", (void *)cache_matcher,
 		rte_atomic32_read(&cache_matcher->refcnt));
+	rte_atomic32_inc(&tbl->refcnt);
 	return 0;
 }
 
@@ -3226,7 +3286,7 @@ cnt_err:
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			flow_dv_translate_item_ipv4(match_mask, match_value,
-						    items, tunnel);
+						    items, tunnel, attr->group);
 			matcher.priority = MLX5_PRIORITY_MAP_L3;
 			dev_flow->dv.hash_fields |=
 				mlx5_flow_hashfields_adjust
@@ -3238,7 +3298,7 @@ cnt_err:
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
 			flow_dv_translate_item_ipv6(match_mask, match_value,
-						    items, tunnel);
+						    items, tunnel, attr->group);
 			matcher.priority = MLX5_PRIORITY_MAP_L3;
 			dev_flow->dv.hash_fields |=
 				mlx5_flow_hashfields_adjust
@@ -3316,6 +3376,7 @@ cnt_err:
 	matcher.priority = mlx5_flow_adjust_priority(dev, priority,
 						     matcher.priority);
 	matcher.egress = attr->egress;
+	matcher.group = attr->group;
 	if (flow_dv_matcher_register(dev, &matcher, dev_flow, error))
 		return -rte_errno;
 	return 0;
@@ -3431,6 +3492,8 @@ flow_dv_matcher_release(struct rte_eth_dev *dev,
 			struct mlx5_flow *flow)
 {
 	struct mlx5_flow_dv_matcher *matcher = flow->dv.matcher;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_tbl_resource *tbl;
 
 	assert(matcher->matcher_object);
 	DRV_LOG(DEBUG, "port %u matcher %p: refcnt %d--",
@@ -3440,6 +3503,14 @@ flow_dv_matcher_release(struct rte_eth_dev *dev,
 		claim_zero(mlx5_glue->dv_destroy_flow_matcher
 			   (matcher->matcher_object));
 		LIST_REMOVE(matcher, next);
+		if (matcher->egress)
+			tbl = &priv->tx_tbl[matcher->group];
+		else
+			tbl = &priv->rx_tbl[matcher->group];
+		if (rte_atomic32_dec_and_test(&tbl->refcnt)) {
+			mlx5_glue->dr_destroy_flow_tbl(tbl->obj);
+			tbl->obj = NULL;
+		}
 		rte_free(matcher);
 		DRV_LOG(DEBUG, "port %u matcher %p: removed",
 			dev->data->port_id, (void *)matcher);
@@ -3529,7 +3600,7 @@ flow_dv_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 	LIST_FOREACH(dev_flow, &flow->dev_flows, next) {
 		dv = &dev_flow->dv;
 		if (dv->flow) {
-			claim_zero(mlx5_glue->destroy_flow(dv->flow));
+			claim_zero(mlx5_glue->dv_destroy_flow(dv->flow));
 			dv->flow = NULL;
 		}
 		if (dv->hrxq) {

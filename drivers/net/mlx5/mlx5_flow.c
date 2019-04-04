@@ -2084,6 +2084,7 @@ flow_list_create(struct rte_eth_dev *dev, struct mlx5_flows *list,
 		flow_size += RTE_ALIGN_CEIL(sizeof(uint16_t), sizeof(void *));
 	flow = rte_calloc(__func__, 1, flow_size, 0);
 	flow->drv_type = flow_get_drv_type(dev, attr);
+	flow->ingress = attr->ingress;
 	assert(flow->drv_type > MLX5_FLOW_TYPE_MIN &&
 	       flow->drv_type < MLX5_FLOW_TYPE_MAX);
 	flow->queue = (void *)(flow + 1);
