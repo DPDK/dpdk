@@ -125,6 +125,7 @@ int dpni_create(struct fsl_mc_io *mc_io,
 	cmd_params->vlan_filter_entries =  cfg->vlan_filter_entries;
 	cmd_params->qos_entries = cfg->qos_entries;
 	cmd_params->fs_entries = cpu_to_le16(cfg->fs_entries);
+	cmd_params->num_cgs = cfg->num_cgs;
 
 	/* send command to mc*/
 	err = mc_send_command(mc_io, &cmd);
@@ -593,6 +594,7 @@ int dpni_get_attributes(struct fsl_mc_io *mc_io,
 	attr->qos_key_size = rsp_params->qos_key_size;
 	attr->fs_key_size = rsp_params->fs_key_size;
 	attr->wriop_version = le16_to_cpu(rsp_params->wriop_version);
+	attr->num_cgs = rsp_params->num_cgs;
 
 	return 0;
 }
@@ -1800,6 +1802,8 @@ int dpni_set_congestion_notification(struct fsl_mc_io *mc_io,
 	cmd_params = (struct dpni_cmd_set_congestion_notification *)cmd.params;
 	cmd_params->qtype = qtype;
 	cmd_params->tc = tc_id;
+	cmd_params->congestion_point = cfg->cg_point;
+	cmd_params->cgid = (uint8_t)cfg->cgid;
 	cmd_params->dest_id = cpu_to_le32(cfg->dest_cfg.dest_id);
 	cmd_params->notification_mode = cpu_to_le16(cfg->notification_mode);
 	cmd_params->dest_priority = cfg->dest_cfg.priority;
@@ -1850,6 +1854,8 @@ int dpni_get_congestion_notification(struct fsl_mc_io *mc_io,
 	cmd_params = (struct dpni_cmd_get_congestion_notification *)cmd.params;
 	cmd_params->qtype = qtype;
 	cmd_params->tc = tc_id;
+	cmd_params->congestion_point = cfg->cg_point;
+	cmd_params->cgid = cfg->cgid;
 
 	/* send command to mc*/
 	err = mc_send_command(mc_io, &cmd);
@@ -1949,6 +1955,7 @@ int dpni_set_queue(struct fsl_mc_io *mc_io,
 		       queue->destination.hold_active);
 	cmd_params->flc = cpu_to_le64(queue->flc.value);
 	cmd_params->user_context = cpu_to_le64(queue->user_context);
+	cmd_params->cgid = queue->cgid;
 
 	/* send command to mc */
 	return mc_send_command(mc_io, &cmd);
@@ -2010,6 +2017,10 @@ int dpni_get_queue(struct fsl_mc_io *mc_io,
 	queue->user_context = le64_to_cpu(rsp_params->user_context);
 	qid->fqid = le32_to_cpu(rsp_params->fqid);
 	qid->qdbin = le16_to_cpu(rsp_params->qdbin);
+	if (dpni_get_field(rsp_params->flags, CGID_VALID))
+		queue->cgid = rsp_params->cgid;
+	else
+		queue->cgid = -1;
 
 	return 0;
 }
@@ -2031,7 +2042,7 @@ int dpni_get_statistics(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,
 			uint8_t page,
-			uint8_t param,
+			uint16_t param,
 			union dpni_statistics *stat)
 {
 	struct mc_command cmd = { 0 };

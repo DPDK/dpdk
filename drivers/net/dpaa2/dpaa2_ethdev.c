@@ -665,6 +665,7 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 					 DPNI_CONG_OPT_WRITE_MEM_ON_ENTER |
 					 DPNI_CONG_OPT_WRITE_MEM_ON_EXIT |
 					 DPNI_CONG_OPT_COHERENT_WRITE;
+		cong_notif_cfg.cg_point = DPNI_CP_QUEUE;
 
 		ret = dpni_set_congestion_notification(dpni, CMD_PRI_LOW,
 						       priv->token,
