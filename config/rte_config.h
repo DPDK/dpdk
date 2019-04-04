@@ -82,7 +82,7 @@
 #define RTE_EVENT_ETH_TX_ADAPTER_MAX_INSTANCE 32
 
 /* rawdev defines */
-#define RTE_RAWDEV_MAX_DEVS 10
+#define RTE_RAWDEV_MAX_DEVS 64
 
 /* ip_fragmentation defines */
 #define RTE_LIBRTE_IP_FRAG_MAX_FRAG 4
