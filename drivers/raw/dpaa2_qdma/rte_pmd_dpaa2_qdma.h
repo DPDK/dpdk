@@ -329,7 +329,7 @@ rte_qdma_vq_destroy(uint16_t vq_id);
  *   - <0: Error code.
  */
 
-int __rte_experimental
+int
 rte_qdma_vq_destroy_rbp(uint16_t vq_id);
 /**
  * Stop QDMA device.

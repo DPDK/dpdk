@@ -67,8 +67,6 @@ dpaa2_cmdif_enqueue_bufs(struct rte_rawdev *dev,
 	struct qbman_swp *swp;
 	int ret;
 
-	DPAA2_CMDIF_FUNC_TRACE();
-
 	RTE_SET_USED(count);
 
 	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
@@ -127,8 +125,6 @@ dpaa2_cmdif_dequeue_bufs(struct rte_rawdev *dev,
 	struct qbman_pull_desc pulldesc;
 	uint8_t status;
 	int ret;
-
-	DPAA2_CMDIF_FUNC_TRACE();
 
 	RTE_SET_USED(count);
 
