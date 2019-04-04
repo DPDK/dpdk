@@ -335,27 +335,28 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 		err = errno;
 		goto error;
 	}
-	priv->rx_ns = ns;
+	sh->rx_ns = ns;
 	ns = mlx5dv_dr_create_ns(sh->ctx, MLX5DV_DR_NS_DOMAIN_EGRESS_BYPASS);
 	if (!ns) {
 		DRV_LOG(ERR, "egress mlx5dv_dr_create_ns failed");
 		err = errno;
 		goto error;
 	}
-	priv->tx_ns = ns;
+	pthread_mutex_init(&sh->dv_mutex, NULL);
+	sh->tx_ns = ns;
 	sh->dv_refcnt++;
 	priv->dr_shared = 1;
 	return 0;
 
 error:
        /* Rollback the created objects. */
-	if (priv->rx_ns) {
-		mlx5dv_dr_destroy_ns(priv->rx_ns);
-		priv->rx_ns = NULL;
+	if (sh->rx_ns) {
+		mlx5dv_dr_destroy_ns(sh->rx_ns);
+		sh->rx_ns = NULL;
 	}
-	if (priv->tx_ns) {
-		mlx5dv_dr_destroy_ns(priv->tx_ns);
-		priv->tx_ns = NULL;
+	if (sh->tx_ns) {
+		mlx5dv_dr_destroy_ns(sh->tx_ns);
+		sh->tx_ns = NULL;
 	}
 	return err;
 #else
@@ -384,14 +385,15 @@ mlx5_free_shared_dr(struct mlx5_priv *priv)
 	assert(sh->dv_refcnt);
 	if (sh->dv_refcnt && --sh->dv_refcnt)
 		return;
-	if (priv->rx_ns) {
-		mlx5dv_dr_destroy_ns(priv->rx_ns);
-		priv->rx_ns = NULL;
+	if (sh->rx_ns) {
+		mlx5dv_dr_destroy_ns(sh->rx_ns);
+		sh->rx_ns = NULL;
 	}
-	if (priv->tx_ns) {
-		mlx5dv_dr_destroy_ns(priv->tx_ns);
-		priv->tx_ns = NULL;
+	if (sh->tx_ns) {
+		mlx5dv_dr_destroy_ns(sh->tx_ns);
+		sh->tx_ns = NULL;
 	}
+	pthread_mutex_destroy(&sh->dv_mutex);
 #else
 	(void)priv;
 #endif

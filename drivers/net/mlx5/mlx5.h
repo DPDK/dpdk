@@ -239,6 +239,15 @@ struct mlx5_ibv_shared_port {
 	 */
 };
 
+/* Table structure. */
+struct mlx5_flow_tbl_resource {
+	void *obj; /**< Pointer to DR table object. */
+	rte_atomic32_t refcnt; /**< Reference counter. */
+};
+
+#define MLX5_MAX_TABLES 1024
+#define MLX5_GROUP_FACTOR 1
+
 /*
  * Shared Infiniband device context for Master/Representors
  * which belong to same IB device with multiple IB ports.
@@ -254,22 +263,25 @@ struct mlx5_ibv_shared {
 	char ibdev_path[IBV_SYSFS_PATH_MAX]; /* IB device path for secondary */
 	struct ibv_device_attr_ex device_attr; /* Device properties. */
 	/* Shared DV/DR flow data section. */
+	pthread_mutex_t dv_mutex; /* DV context mutex. */
 	uint32_t dv_refcnt; /* DV/DR data reference counter. */
+	void *rx_ns; /* RX Direct Rules name space handle. */
+	struct mlx5_flow_tbl_resource rx_tbl[MLX5_MAX_TABLES];
+	/* RX Direct Rules tables. */
+	void *tx_ns; /* TX Direct Rules name space handle. */
+	struct mlx5_flow_tbl_resource tx_tbl[MLX5_MAX_TABLES];
+	/* TX Direct Rules tables/ */
+	LIST_HEAD(matchers, mlx5_flow_dv_matcher) matchers;
+	LIST_HEAD(encap_decap, mlx5_flow_dv_encap_decap_resource) encaps_decaps;
+	LIST_HEAD(modify_cmd, mlx5_flow_dv_modify_hdr_resource) modify_cmds;
+	LIST_HEAD(tag, mlx5_flow_dv_tag_resource) tags;
+	LIST_HEAD(jump, mlx5_flow_dv_jump_tbl_resource) jump_tbl;
 	/* Shared interrupt handler section. */
 	pthread_mutex_t intr_mutex; /* Interrupt config mutex. */
 	uint32_t intr_cnt; /* Interrupt handler reference counter. */
 	struct rte_intr_handle intr_handle; /* Interrupt handler for device. */
 	struct mlx5_ibv_shared_port port[]; /* per device port data array. */
 };
-
-/* Table structure. */
-struct mlx5_flow_tbl_resource {
-	void *obj; /**< Pointer to DR table object. */
-	rte_atomic32_t refcnt; /**< Reference counter. */
-};
-
-#define MLX5_MAX_TABLES 1024
-#define MLX5_GROUP_FACTOR 1
 
 struct mlx5_priv {
 	LIST_ENTRY(mlx5_priv) mem_event_cb;
@@ -319,11 +331,6 @@ struct mlx5_priv {
 	LIST_HEAD(txqibv, mlx5_txq_ibv) txqsibv; /* Verbs Tx queues. */
 	/* Verbs Indirection tables. */
 	LIST_HEAD(ind_tables, mlx5_ind_table_ibv) ind_tbls;
-	LIST_HEAD(matchers, mlx5_flow_dv_matcher) matchers;
-	LIST_HEAD(encap_decap, mlx5_flow_dv_encap_decap_resource) encaps_decaps;
-	LIST_HEAD(modify_cmd, mlx5_flow_dv_modify_hdr_resource) modify_cmds;
-	LIST_HEAD(tag, mlx5_flow_dv_tag_resource) tags;
-	LIST_HEAD(jump, mlx5_flow_dv_jump_tbl_resource) jump_tbl;
 	/* Pointer to next element. */
 	rte_atomic32_t refcnt; /**< Reference counter. */
 	struct ibv_flow_action *verbs_action;
@@ -345,12 +352,6 @@ struct mlx5_priv {
 	/* UAR same-page access control required in 32bit implementations. */
 #endif
 	struct mlx5_flow_tcf_context *tcf_context; /* TC flower context. */
-	void *rx_ns; /* RX Direct Rules name space handle. */
-	struct mlx5_flow_tbl_resource rx_tbl[MLX5_MAX_TABLES];
-	/* RX Direct Rules tables. */
-	void *tx_ns; /* TX Direct Rules name space handle. */
-	struct mlx5_flow_tbl_resource tx_tbl[MLX5_MAX_TABLES];
-	/* TX Direct Rules tables/ */
 };
 
 #define PORT_ID(priv) ((priv)->dev_data->port_id)

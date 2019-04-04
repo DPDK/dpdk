@@ -129,6 +129,45 @@ struct field_modify_info modify_tcp[] = {
 };
 
 /**
+ * Acquire the synchronizing object to protect multithreaded access
+ * to shared dv context. Lock occurs only if context is actually
+ * shared, i.e. we have multiport IB device and representors are
+ * created.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ */
+static void
+flow_d_shared_lock(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_ibv_shared *sh = priv->sh;
+
+	if (sh->dv_refcnt > 1) {
+		int ret;
+
+		ret = pthread_mutex_lock(&sh->dv_mutex);
+		assert(!ret);
+		(void)ret;
+	}
+}
+
+static void
+flow_d_shared_unlock(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_ibv_shared *sh = priv->sh;
+
+	if (sh->dv_refcnt > 1) {
+		int ret;
+
+		ret = pthread_mutex_unlock(&sh->dv_mutex);
+		assert(!ret);
+		(void)ret;
+	}
+}
+
+/**
  * Convert modify-header action to DV specification.
  *
  * @param[in] item
@@ -808,18 +847,19 @@ flow_dv_encap_decap_resource_register
 			 struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_ibv_shared *sh = priv->sh;
 	struct mlx5_flow_dv_encap_decap_resource *cache_resource;
 	struct rte_flow *flow = dev_flow->flow;
 	struct mlx5dv_dr_ns *ns;
 
 	resource->flags = flow->group ? 0 : 1;
 	if (flow->ingress)
-		ns = priv->rx_ns;
+		ns = sh->rx_ns;
 	else
-		ns = priv->tx_ns;
+		ns = sh->tx_ns;
 
 	/* Lookup a matching resource from cache. */
-	LIST_FOREACH(cache_resource, &priv->encaps_decaps, next) {
+	LIST_FOREACH(cache_resource, &sh->encaps_decaps, next) {
 		if (resource->reformat_type == cache_resource->reformat_type &&
 		    resource->ft_type == cache_resource->ft_type &&
 		    resource->flags == cache_resource->flags &&
@@ -844,7 +884,7 @@ flow_dv_encap_decap_resource_register
 	*cache_resource = *resource;
 	cache_resource->verbs_action =
 		mlx5_glue->dv_create_flow_action_packet_reformat
-			(priv->sh->ctx, cache_resource->reformat_type,
+			(sh->ctx, cache_resource->reformat_type,
 			 cache_resource->ft_type, ns, cache_resource->flags,
 			 cache_resource->size,
 			 (cache_resource->size ? cache_resource->buf : NULL));
@@ -856,7 +896,7 @@ flow_dv_encap_decap_resource_register
 	}
 	rte_atomic32_init(&cache_resource->refcnt);
 	rte_atomic32_inc(&cache_resource->refcnt);
-	LIST_INSERT_HEAD(&priv->encaps_decaps, cache_resource, next);
+	LIST_INSERT_HEAD(&sh->encaps_decaps, cache_resource, next);
 	dev_flow->dv.encap_decap = cache_resource;
 	DRV_LOG(DEBUG, "new encap/decap resource %p: refcnt %d++",
 		(void *)cache_resource,
@@ -887,10 +927,11 @@ flow_dv_jump_tbl_resource_register
 			 struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_ibv_shared *sh = priv->sh;
 	struct mlx5_flow_dv_jump_tbl_resource *cache_resource;
 
 	/* Lookup a matching resource from cache. */
-	LIST_FOREACH(cache_resource, &priv->jump_tbl, next) {
+	LIST_FOREACH(cache_resource, &sh->jump_tbl, next) {
 		if (resource->tbl == cache_resource->tbl) {
 			DRV_LOG(DEBUG, "jump table resource resource %p: refcnt %d++",
 				(void *)cache_resource,
@@ -918,7 +959,7 @@ flow_dv_jump_tbl_resource_register
 	}
 	rte_atomic32_init(&cache_resource->refcnt);
 	rte_atomic32_inc(&cache_resource->refcnt);
-	LIST_INSERT_HEAD(&priv->jump_tbl, cache_resource, next);
+	LIST_INSERT_HEAD(&sh->jump_tbl, cache_resource, next);
 	dev_flow->dv.jump = cache_resource;
 	DRV_LOG(DEBUG, "new jump table  resource %p: refcnt %d++",
 		(void *)cache_resource,
@@ -1542,14 +1583,15 @@ flow_dv_modify_hdr_resource_register
 			 struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_ibv_shared *sh = priv->sh;
 	struct mlx5_flow_dv_modify_hdr_resource *cache_resource;
 
 	struct mlx5dv_dr_ns *ns =
 		resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_NIC_TX  ?
-		priv->tx_ns : priv->rx_ns;
+		sh->tx_ns : sh->rx_ns;
 
 	/* Lookup a matching resource from cache. */
-	LIST_FOREACH(cache_resource, &priv->modify_cmds, next) {
+	LIST_FOREACH(cache_resource, &sh->modify_cmds, next) {
 		if (resource->ft_type == cache_resource->ft_type &&
 		    resource->actions_num == cache_resource->actions_num &&
 		    !memcmp((const void *)resource->actions,
@@ -1573,7 +1615,7 @@ flow_dv_modify_hdr_resource_register
 	*cache_resource = *resource;
 	cache_resource->verbs_action =
 		mlx5_glue->dv_create_flow_action_modify_header
-					(priv->sh->ctx, cache_resource->ft_type,
+					(sh->ctx, cache_resource->ft_type,
 					 ns, 0,
 					 cache_resource->actions_num *
 					 sizeof(cache_resource->actions[0]),
@@ -1586,7 +1628,7 @@ flow_dv_modify_hdr_resource_register
 	}
 	rte_atomic32_init(&cache_resource->refcnt);
 	rte_atomic32_inc(&cache_resource->refcnt);
-	LIST_INSERT_HEAD(&priv->modify_cmds, cache_resource, next);
+	LIST_INSERT_HEAD(&sh->modify_cmds, cache_resource, next);
 	dev_flow->dv.modify_hdr = cache_resource;
 	DRV_LOG(DEBUG, "new modify-header resource %p: refcnt %d++",
 		(void *)cache_resource,
@@ -2883,19 +2925,20 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 			 struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_ibv_shared *sh = priv->sh;
 	struct mlx5_flow_tbl_resource *tbl;
 
 #ifdef HAVE_MLX5DV_DR
 	if (egress) {
-		tbl = &priv->tx_tbl[table_id];
+		tbl = &sh->tx_tbl[table_id];
 		if (!tbl->obj)
 			tbl->obj = mlx5_glue->dr_create_flow_tbl
-				(priv->tx_ns, table_id);
+				(sh->tx_ns, table_id);
 	} else {
-		tbl = &priv->rx_tbl[table_id];
+		tbl = &sh->rx_tbl[table_id];
 		if (!tbl->obj)
 			tbl->obj = mlx5_glue->dr_create_flow_tbl
-				(priv->rx_ns, table_id);
+				(sh->rx_ns, table_id);
 	}
 	if (!tbl->obj) {
 		rte_flow_error_set(error, ENOMEM,
@@ -2909,9 +2952,9 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 	(void)error;
 	(void)tbl;
 	if (egress)
-		return &priv->tx_tbl[table_id];
+		return &sh->tx_tbl[table_id];
 	else
-		return &priv->rx_tbl[table_id];
+		return &sh->rx_tbl[table_id];
 #endif
 }
 
@@ -2959,6 +3002,7 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 			 struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_ibv_shared *sh = priv->sh;
 	struct mlx5_flow_dv_matcher *cache_matcher;
 	struct mlx5dv_flow_matcher_attr dv_attr = {
 		.type = IBV_FLOW_ATTR_NORMAL,
@@ -2967,7 +3011,7 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 	struct mlx5_flow_tbl_resource *tbl = NULL;
 
 	/* Lookup from cache. */
-	LIST_FOREACH(cache_matcher, &priv->matchers, next) {
+	LIST_FOREACH(cache_matcher, &sh->matchers, next) {
 		if (matcher->crc == cache_matcher->crc &&
 		    matcher->priority == cache_matcher->priority &&
 		    matcher->egress == cache_matcher->egress &&
@@ -3007,8 +3051,7 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 	if (matcher->egress)
 		dv_attr.flags |= IBV_FLOW_ATTR_FLAGS_EGRESS;
 	cache_matcher->matcher_object =
-		mlx5_glue->dv_create_flow_matcher(priv->sh->ctx, &dv_attr,
-						  tbl->obj);
+		mlx5_glue->dv_create_flow_matcher(sh->ctx, &dv_attr, tbl->obj);
 	if (!cache_matcher->matcher_object) {
 		rte_free(cache_matcher);
 #ifdef HAVE_MLX5DV_DR
@@ -3019,7 +3062,7 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 					  NULL, "cannot create matcher");
 	}
 	rte_atomic32_inc(&cache_matcher->refcnt);
-	LIST_INSERT_HEAD(&priv->matchers, cache_matcher, next);
+	LIST_INSERT_HEAD(&sh->matchers, cache_matcher, next);
 	dev_flow->dv.matcher = cache_matcher;
 	DRV_LOG(DEBUG, "priority %hd new %s matcher %p: refcnt %d",
 		cache_matcher->priority,
@@ -3075,10 +3118,11 @@ flow_dv_tag_resource_register
 			 struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_ibv_shared *sh = priv->sh;
 	struct mlx5_flow_dv_tag_resource *cache_resource;
 
 	/* Lookup a matching resource from cache. */
-	LIST_FOREACH(cache_resource, &priv->tags, next) {
+	LIST_FOREACH(cache_resource, &sh->tags, next) {
 		if (resource->tag == cache_resource->tag) {
 			DRV_LOG(DEBUG, "tag resource %p: refcnt %d++",
 				(void *)cache_resource,
@@ -3105,7 +3149,7 @@ flow_dv_tag_resource_register
 	}
 	rte_atomic32_init(&cache_resource->refcnt);
 	rte_atomic32_inc(&cache_resource->refcnt);
-	LIST_INSERT_HEAD(&priv->tags, cache_resource, next);
+	LIST_INSERT_HEAD(&sh->tags, cache_resource, next);
 	dev_flow->flow->tag_resource = cache_resource;
 	DRV_LOG(DEBUG, "new tag resource %p: refcnt %d++",
 		(void *)cache_resource,
@@ -3682,6 +3726,7 @@ flow_dv_matcher_release(struct rte_eth_dev *dev,
 {
 	struct mlx5_flow_dv_matcher *matcher = flow->dv.matcher;
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_ibv_shared *sh = priv->sh;
 	struct mlx5_flow_tbl_resource *tbl;
 
 	assert(matcher->matcher_object);
@@ -3693,9 +3738,9 @@ flow_dv_matcher_release(struct rte_eth_dev *dev,
 			   (matcher->matcher_object));
 		LIST_REMOVE(matcher, next);
 		if (matcher->egress)
-			tbl = &priv->tx_tbl[matcher->group];
+			tbl = &sh->tx_tbl[matcher->group];
 		else
-			tbl = &priv->rx_tbl[matcher->group];
+			tbl = &sh->rx_tbl[matcher->group];
 		flow_dv_tbl_resource_release(tbl);
 		rte_free(matcher);
 		DRV_LOG(DEBUG, "port %u matcher %p: removed",
@@ -3958,14 +4003,70 @@ flow_dv_query(struct rte_eth_dev *dev,
 	return ret;
 }
 
+/*
+ * Mutex-protected thunk to flow_dv_translate().
+ */
+static int
+flow_d_translate(struct rte_eth_dev *dev,
+		 struct mlx5_flow *dev_flow,
+		 const struct rte_flow_attr *attr,
+		 const struct rte_flow_item items[],
+		 const struct rte_flow_action actions[],
+		 struct rte_flow_error *error)
+{
+	int ret;
+
+	flow_d_shared_lock(dev);
+	ret = flow_dv_translate(dev, dev_flow, attr, items, actions, error);
+	flow_d_shared_unlock(dev);
+	return ret;
+}
+
+/*
+ * Mutex-protected thunk to flow_dv_apply().
+ */
+static int
+flow_d_apply(struct rte_eth_dev *dev,
+	     struct rte_flow *flow,
+	     struct rte_flow_error *error)
+{
+	int ret;
+
+	flow_d_shared_lock(dev);
+	ret = flow_dv_apply(dev, flow, error);
+	flow_d_shared_unlock(dev);
+	return ret;
+}
+
+/*
+ * Mutex-protected thunk to flow_dv_remove().
+ */
+static void
+flow_d_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
+{
+	flow_d_shared_lock(dev);
+	flow_dv_remove(dev, flow);
+	flow_d_shared_unlock(dev);
+}
+
+/*
+ * Mutex-protected thunk to flow_dv_destroy().
+ */
+static void
+flow_d_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
+{
+	flow_d_shared_lock(dev);
+	flow_dv_destroy(dev, flow);
+	flow_d_shared_unlock(dev);
+}
 
 const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
 	.validate = flow_dv_validate,
 	.prepare = flow_dv_prepare,
-	.translate = flow_dv_translate,
-	.apply = flow_dv_apply,
-	.remove = flow_dv_remove,
-	.destroy = flow_dv_destroy,
+	.translate = flow_d_translate,
+	.apply = flow_d_apply,
+	.remove = flow_d_remove,
+	.destroy = flow_d_destroy,
 	.query = flow_dv_query,
 };
 
