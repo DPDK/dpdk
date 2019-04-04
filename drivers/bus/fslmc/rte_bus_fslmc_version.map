@@ -122,9 +122,7 @@ DPDK_18.11 {
 	global:
 	dpaa2_dqrr_size;
 	dpaa2_eqcr_size;
-	dpci_get_link_state;
 	dpci_get_opr;
-	dpci_get_peer_attributes;
 	dpci_set_opr;
 
 } DPDK_18.05;

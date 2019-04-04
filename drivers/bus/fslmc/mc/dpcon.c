@@ -296,36 +296,6 @@ int dpcon_get_attributes(struct fsl_mc_io *mc_io,
 }
 
 /**
- * dpcon_set_notification() - Set DPCON notification destination
- * @mc_io:	Pointer to MC portal's I/O object
- * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
- * @token:	Token of DPCON object
- * @cfg:	Notification parameters
- *
- * Return:	'0' on Success; Error code otherwise
- */
-int dpcon_set_notification(struct fsl_mc_io *mc_io,
-			   uint32_t cmd_flags,
-			   uint16_t token,
-			   struct dpcon_notification_cfg *cfg)
-{
-	struct dpcon_cmd_set_notification *dpcon_cmd;
-	struct mc_command cmd = { 0 };
-
-	/* prepare command */
-	cmd.header = mc_encode_cmd_header(DPCON_CMDID_SET_NOTIFICATION,
-					  cmd_flags,
-					  token);
-	dpcon_cmd = (struct dpcon_cmd_set_notification *)cmd.params;
-	dpcon_cmd->dpio_id = cpu_to_le32(cfg->dpio_id);
-	dpcon_cmd->priority = cfg->priority;
-	dpcon_cmd->user_ctx = cpu_to_le64(cfg->user_ctx);
-
-	/* send command to mc*/
-	return mc_send_command(mc_io, &cmd);
-}
-
-/**
  * dpcon_get_api_version - Get Data Path Concentrator API version
  * @mc_io:	Pointer to MC portal's DPCON object
  * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'

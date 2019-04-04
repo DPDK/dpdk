@@ -81,25 +81,6 @@ int dpcon_get_attributes(struct fsl_mc_io *mc_io,
 			 uint16_t token,
 			 struct dpcon_attr *attr);
 
-/**
- * struct dpcon_notification_cfg - Structure representing notification params
- * @dpio_id:	DPIO object ID; must be configured with a notification channel;
- *		to disable notifications set it to 'DPCON_INVALID_DPIO_ID';
- * @priority:	Priority selection within the DPIO channel; valid values
- *		are 0-7, depending on the number of priorities in that channel
- * @user_ctx:	User context value provided with each CDAN message
- */
-struct dpcon_notification_cfg {
-	int dpio_id;
-	uint8_t priority;
-	uint64_t user_ctx;
-};
-
-int dpcon_set_notification(struct fsl_mc_io *mc_io,
-			   uint32_t cmd_flags,
-			   uint16_t token,
-			   struct dpcon_notification_cfg *cfg);
-
 int dpcon_get_api_version(struct fsl_mc_io *mc_io,
 			  uint32_t cmd_flags,
 			  uint16_t *major_ver,
