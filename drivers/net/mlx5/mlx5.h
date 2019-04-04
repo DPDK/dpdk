@@ -253,6 +253,9 @@ struct mlx5_ibv_shared {
 	char ibdev_name[IBV_SYSFS_NAME_MAX]; /* IB device name. */
 	char ibdev_path[IBV_SYSFS_PATH_MAX]; /* IB device path for secondary */
 	struct ibv_device_attr_ex device_attr; /* Device properties. */
+	/* Shared DV/DR flow data section. */
+	uint32_t dv_refcnt; /* DV/DR data reference counter. */
+	/* Shared interrupt handler section. */
 	pthread_mutex_t intr_mutex; /* Interrupt config mutex. */
 	uint32_t intr_cnt; /* Interrupt handler reference counter. */
 	struct rte_intr_handle intr_handle; /* Interrupt handler for device. */
@@ -284,6 +287,7 @@ struct mlx5_priv {
 	unsigned int isolated:1; /* Whether isolated mode is enabled. */
 	unsigned int representor:1; /* Device is a port representor. */
 	unsigned int master:1; /* Device is a E-Switch master. */
+	unsigned int dr_shared:1; /* DV/DR data is shared. */
 	uint16_t domain_id; /* Switch domain identifier. */
 	uint16_t vport_id; /* Associated VF vport index (if any). */
 	int32_t representor_id; /* Port representor identifier. */

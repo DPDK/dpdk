@@ -303,6 +303,101 @@ exit:
 }
 
 /**
+ * Initialize DR related data within private structure.
+ * Routine checks the reference counter and does actual
+ * resources creation/iniialization only if counter is zero.
+ *
+ * @param[in] priv
+ *   Pointer to the private device data structure.
+ *
+ * @return
+ *   Zero on success, positive error code otherwise.
+ */
+static int
+mlx5_alloc_shared_dr(struct mlx5_priv *priv)
+{
+#ifdef HAVE_MLX5DV_DR
+	struct mlx5_ibv_shared *sh = priv->sh;
+	int err = 0;
+	void *ns;
+
+	assert(sh);
+	if (sh->dv_refcnt) {
+		/* Shared DV/DR structures is already initialized. */
+		sh->dv_refcnt++;
+		priv->dr_shared = 1;
+		return 0;
+	}
+	/* Reference counter is zero, we should initialize structures. */
+	ns = mlx5dv_dr_create_ns(sh->ctx, MLX5DV_DR_NS_DOMAIN_INGRESS_BYPASS);
+	if (!ns) {
+		DRV_LOG(ERR, "ingress mlx5dv_dr_create_ns failed");
+		err = errno;
+		goto error;
+	}
+	priv->rx_ns = ns;
+	ns = mlx5dv_dr_create_ns(sh->ctx, MLX5DV_DR_NS_DOMAIN_EGRESS_BYPASS);
+	if (!ns) {
+		DRV_LOG(ERR, "egress mlx5dv_dr_create_ns failed");
+		err = errno;
+		goto error;
+	}
+	priv->tx_ns = ns;
+	sh->dv_refcnt++;
+	priv->dr_shared = 1;
+	return 0;
+
+error:
+       /* Rollback the created objects. */
+	if (priv->rx_ns) {
+		mlx5dv_dr_destroy_ns(priv->rx_ns);
+		priv->rx_ns = NULL;
+	}
+	if (priv->tx_ns) {
+		mlx5dv_dr_destroy_ns(priv->tx_ns);
+		priv->tx_ns = NULL;
+	}
+	return err;
+#else
+	(void)priv;
+	return 0;
+#endif
+}
+
+/**
+ * Destroy DR related data within private structure.
+ *
+ * @param[in] priv
+ *   Pointer to the private device data structure.
+ */
+static void
+mlx5_free_shared_dr(struct mlx5_priv *priv)
+{
+#ifdef HAVE_MLX5DV_DR
+	struct mlx5_ibv_shared *sh;
+
+	if (!priv->dr_shared)
+		return;
+	priv->dr_shared = 0;
+	sh = priv->sh;
+	assert(sh);
+	assert(sh->dv_refcnt);
+	if (sh->dv_refcnt && --sh->dv_refcnt)
+		return;
+	if (priv->rx_ns) {
+		mlx5dv_dr_destroy_ns(priv->rx_ns);
+		priv->rx_ns = NULL;
+	}
+	if (priv->tx_ns) {
+		mlx5dv_dr_destroy_ns(priv->tx_ns);
+		priv->tx_ns = NULL;
+	}
+#else
+	(void)priv;
+#endif
+}
+
+/**
  * Initialize shared data between primary and secondary process.
  *
  * A memzone is reserved by primary process and secondary processes attach to
@@ -495,6 +590,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	mlx5_mprq_free_mp(dev);
 	mlx5_mr_release(dev);
 	assert(priv->sh);
+	mlx5_free_shared_dr(priv);
 	if (priv->sh)
 		mlx5_free_shared_ibctx(priv->sh);
 	priv->sh = NULL;
@@ -1475,22 +1571,11 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 			priv->tcf_context = NULL;
 		}
 	}
-#ifdef HAVE_MLX5DV_DR
-		priv->rx_ns = mlx5dv_dr_create_ns
-			(sh->ctx, MLX5DV_DR_NS_DOMAIN_INGRESS_BYPASS);
-		if (priv->rx_ns == NULL) {
-			DRV_LOG(ERR, "mlx5dv_dr_create_ns failed");
-			err = errno;
+	if (config.dv_flow_en) {
+		err = mlx5_alloc_shared_dr(priv);
+		if (err)
 			goto error;
-		}
-		priv->tx_ns = mlx5dv_dr_create_ns(sh->ctx,
-					 MLX5DV_DR_NS_DOMAIN_EGRESS_BYPASS);
-		if (priv->tx_ns == NULL) {
-			DRV_LOG(ERR, "mlx5dv_dr_create_ns failed");
-			err = errno;
-			goto error;
-		}
-#endif
+	}
 	TAILQ_INIT(&priv->flows);
 	TAILQ_INIT(&priv->ctrl_flows);
 	/* Hint libmlx5 to use PMD allocator for data plane resources */
@@ -1542,6 +1627,8 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	return eth_dev;
 error:
 	if (priv) {
+		if (priv->sh)
+			mlx5_free_shared_dr(priv);
 		if (priv->nl_socket_route >= 0)
 			close(priv->nl_socket_route);
 		if (priv->nl_socket_rdma >= 0)
