@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018 NXP
+ * Copyright 2018-2019 NXP
  */
 
 #include <string.h>
@@ -219,6 +219,7 @@ int
 rte_qdma_configure(struct rte_qdma_config *qdma_config)
 {
 	int ret;
+	char fle_pool_name[32]; /* RTE_MEMZONE_NAMESIZE = 32 */
 
 	DPAA2_QDMA_FUNC_TRACE();
 
@@ -258,8 +259,12 @@ rte_qdma_configure(struct rte_qdma_config *qdma_config)
 	}
 	qdma_dev.max_vqs = qdma_config->max_vqs;
 
-	/* Allocate FLE pool */
-	qdma_dev.fle_pool = rte_mempool_create("qdma_fle_pool",
+	/* Allocate FLE pool; just append PID so that in case of
+	 * multiprocess, the pool's don't collide.
+	 */
+	snprintf(fle_pool_name, sizeof(fle_pool_name), "qdma_fle_pool%u",
+		 getpid());
+	qdma_dev.fle_pool = rte_mempool_create(fle_pool_name,
 			qdma_config->fle_pool_count, QDMA_FLE_POOL_SIZE,
 			QDMA_FLE_CACHE_SIZE(qdma_config->fle_pool_count), 0,
 			NULL, NULL, NULL, NULL, SOCKET_ID_ANY, 0);
@@ -303,6 +308,7 @@ rte_qdma_vq_create(uint32_t lcore_id, uint32_t flags)
 	/* Return in case no VQ is free */
 	if (i == qdma_dev.max_vqs) {
 		rte_spinlock_unlock(&qdma_dev.lock);
+		DPAA2_QDMA_ERR("Unable to get lock on QDMA device");
 		return -ENODEV;
 	}
 
@@ -793,9 +799,6 @@ dpaa2_dpdmai_dev_uninit(struct rte_rawdev *rawdev)
 
 	DPAA2_QDMA_FUNC_TRACE();
 
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return 0;
-
 	/* Remove HW queues from global list */
 	remove_hw_queues_from_list(dpdmai_dev);
 
@@ -833,10 +836,6 @@ dpaa2_dpdmai_dev_init(struct rte_rawdev *rawdev, int dpdmai_id)
 	int ret, i;
 
 	DPAA2_QDMA_FUNC_TRACE();
-
-	/* For secondary processes, the primary has done all the work */
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return 0;
 
 	/* Open DPDMAI device */
 	dpdmai_dev->dpdmai_id = dpdmai_id;
