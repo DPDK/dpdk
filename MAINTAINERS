@@ -497,6 +497,13 @@ M: John W. Linville <linville@tuxdriver.com>
 F: drivers/net/af_packet/
 F: doc/guides/nics/features/afpacket.ini
 
+Linux AF_XDP
+M: Xiaolong Ye <xiaolong.ye@intel.com>
+M: Qi Zhang <qi.z.zhang@intel.com>
+F: drivers/net/af_xdp/
+F: doc/guides/nics/af_xdp.rst
+F: doc/guides/nics/features/af_xdp.ini
+
 Amazon ENA
 M: Marcin Wojtas <mw@semihalf.com>
 M: Michal Krawczyk <mk@semihalf.com>

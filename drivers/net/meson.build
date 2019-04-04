@@ -2,6 +2,7 @@
 # Copyright(c) 2017 Intel Corporation
 
 drivers = ['af_packet',
+	'af_xdp',
 	'ark',
 	'atlantic',
 	'avp',
