@@ -220,7 +220,7 @@ typedef struct {
 	RTE_STD_C11
 	union {
 		uint64_t val[2];
-		__int128 int128;
+		__extension__ __int128 int128;
 	};
 } __rte_aligned(16) rte_int128_t;
 
