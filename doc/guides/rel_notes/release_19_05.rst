@@ -135,6 +135,7 @@ New Features
   New features for PF:
 
   * Added support for VXLAN-GPE packet.
+  * Added support for VXLAN-GPE classification.
 
 * **Updated the QuickAssist Technology PMD.**
 

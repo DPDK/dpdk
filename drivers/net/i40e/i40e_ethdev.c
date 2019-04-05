@@ -7722,6 +7722,9 @@ i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 	case RTE_TUNNEL_TYPE_IP_IN_GRE:
 		tun_type = I40E_AQC_ADD_CLOUD_TNL_TYPE_IP;
 		break;
+	case RTE_TUNNEL_TYPE_VXLAN_GPE:
+		tun_type = I40E_AQC_ADD_CLOUD_TNL_TYPE_VXLAN_GPE;
+		break;
 	default:
 		/* Other tunnel types is not supported. */
 		PMD_DRV_LOG(ERR, "tunnel type is not supported.");
