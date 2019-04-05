@@ -127,21 +127,18 @@ struct ethtool_link_settings {
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static int
-mlx5_get_master_ifname(const struct rte_eth_dev *dev,
-		       char (*ifname)[IF_NAMESIZE])
+int
+mlx5_get_master_ifname(const char *ibdev_path, char (*ifname)[IF_NAMESIZE])
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
 	DIR *dir;
 	struct dirent *dent;
 	unsigned int dev_type = 0;
 	unsigned int dev_port_prev = ~0u;
 	char match[IF_NAMESIZE] = "";
 
-	assert(priv);
-	assert(priv->sh);
+	assert(ibdev_path);
 	{
-		MKSTR(path, "%s/device/net", priv->sh->ibdev_path);
+		MKSTR(path, "%s/device/net", ibdev_path);
 
 		dir = opendir(path);
 		if (dir == NULL) {
@@ -161,7 +158,7 @@ mlx5_get_master_ifname(const struct rte_eth_dev *dev,
 			continue;
 
 		MKSTR(path, "%s/device/net/%s/%s",
-		      priv->sh->ibdev_path, name,
+		      ibdev_path, name,
 		      (dev_type ? "dev_id" : "dev_port"));
 
 		file = fopen(path, "rb");
@@ -222,15 +219,18 @@ int
 mlx5_get_ifname(const struct rte_eth_dev *dev, char (*ifname)[IF_NAMESIZE])
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	unsigned int ifindex =
-		priv->nl_socket_rdma >= 0 ?
-		mlx5_nl_ifindex(priv->nl_socket_rdma,
-				priv->sh->ibdev_name,
-				priv->ibv_port) : 0;
+	unsigned int ifindex;
 
+	assert(priv);
+	assert(priv->sh);
+	ifindex = priv->nl_socket_rdma >= 0 ?
+		  mlx5_nl_ifindex(priv->nl_socket_rdma,
+				  priv->sh->ibdev_name,
+				  priv->ibv_port) : 0;
 	if (!ifindex) {
 		if (!priv->representor)
-			return mlx5_get_master_ifname(dev, ifname);
+			return mlx5_get_master_ifname(priv->sh->ibdev_path,
+						      ifname);
 		rte_errno = ENXIO;
 		return -rte_errno;
 	}

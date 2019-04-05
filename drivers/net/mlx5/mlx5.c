@@ -1888,12 +1888,40 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 				list[ns].ifindex = mlx5_nl_ifindex
 					(nl_rdma, list[ns].ibv_dev->name, 1);
 			if (!list[ns].ifindex) {
+				char ifname[IF_NAMESIZE];
+
 				/*
-				 * No network interface index found for the
-				 * specified device, it means there it is not
-				 * a representor/master.
+				 * Netlink failed, it may happen with old
+				 * ib_core kernel driver (before 4.16).
+				 * We can assume there is old driver because
+				 * here we are processing single ports IB
+				 * devices. Let's try sysfs to retrieve
+				 * the ifindex. The method works for
+				 * master device only.
 				 */
-				continue;
+				if (nd > 1) {
+					/*
+					 * Multiple devices found, assume
+					 * representors, can not distinguish
+					 * master/representor and retrieve
+					 * ifindex via sysfs.
+					 */
+					continue;
+				}
+				ret = mlx5_get_master_ifname
+					(ibv_match[i]->ibdev_path, &ifname);
+				if (!ret)
+					list[ns].ifindex =
+						if_nametoindex(ifname);
+				if (!list[ns].ifindex) {
+					/*
+					 * No network interface index found
+					 * for the specified device, it means
+					 * there it is neither representor
+					 * nor master.
+					 */
+					continue;
+				}
 			}
 			ret = -1;
 			if (nl_route >= 0)
