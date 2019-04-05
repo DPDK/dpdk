@@ -105,27 +105,37 @@ check_for_rule_violations()
 				continue
 			fi
 
-			if [ "$secname" != "EXPERIMENTAL" ]
+			oldsecname=$(sed -n \
+			"s#$mname $symname \(.*\) del#\1#p" "$mapdb")
+
+			# A symbol can not enter a non experimental
+			# section directly
+			if [ $? -ne 0 ] && [ "$secname" != 'EXPERIMENTAL' ]
 			then
-				# Symbols that are getting added in a section
-				# other than the experimental section
-				# to be moving from an already supported
-				# section or its a violation
-				grep -q \
-				"$mname $symname [^EXPERIMENTAL] del" "$mapdb"
-				if [ $? -ne 0 ]
-				then
-					echo -n "ERROR: symbol $symname "
-					echo -n "is added in the $secname "
-					echo -n "section, but is expected to "
-					echo -n "be added in the EXPERIMENTAL "
-					echo "section of the version map"
-					ret=1
-				fi
+				echo -n "ERROR: symbol $symname "
+				echo -n "is added in the $secname "
+				echo -n "section, but is expected to "
+				echo -n "be added in the EXPERIMENTAL "
+				echo "section of the version map"
+				ret=1
+				continue
+			fi
+
+			# This symbol is moving between two sections (the
+			# original section is not experimental).
+			# This can be legit, just warn.
+			if [ "$oldsecname" != 'EXPERIMENTAL' ]
+			then
+				echo -n "INFO: symbol $symname is being "
+				echo -n "moved from $oldsecname to $secname. "
+				echo -n "Ensure that it has gone through the "
+				echo "deprecation process"
+				continue
 			fi
 		else
 
-			if [ "$secname" != "EXPERIMENTAL" ]
+			if ! grep -q "$mname $symname .* add" "$mapdb" && \
+			   [ "$secname" != "EXPERIMENTAL" ]
 			then
 				# Just inform users that non-experimenal
 				# symbols need to go through a deprecation
