@@ -27,6 +27,22 @@ rte_power_freq_change_t rte_power_freq_enable_turbo;
 rte_power_freq_change_t rte_power_freq_disable_turbo;
 rte_power_get_capabilities_t rte_power_get_capabilities;
 
+static void
+reset_power_function_ptrs(void)
+{
+	rte_power_freqs  = NULL;
+	rte_power_get_freq = NULL;
+	rte_power_set_freq = NULL;
+	rte_power_freq_up = NULL;
+	rte_power_freq_down = NULL;
+	rte_power_freq_max = NULL;
+	rte_power_freq_min = NULL;
+	rte_power_turbo_status = NULL;
+	rte_power_freq_enable_turbo = NULL;
+	rte_power_freq_disable_turbo = NULL;
+	rte_power_get_capabilities = NULL;
+}
+
 int
 rte_power_set_env(enum power_management_env env)
 {
@@ -85,8 +101,10 @@ rte_power_set_env(enum power_management_env env)
 
 	if (ret == 0)
 		global_default_env = env;
-	else
+	else {
 		global_default_env = PM_ENV_NOT_SET;
+		reset_power_function_ptrs();
+	}
 
 	rte_spinlock_unlock(&global_env_cfg_lock);
 	return ret;
@@ -97,6 +115,7 @@ rte_power_unset_env(void)
 {
 	rte_spinlock_lock(&global_env_cfg_lock);
 	global_default_env = PM_ENV_NOT_SET;
+	reset_power_function_ptrs();
 	rte_spinlock_unlock(&global_env_cfg_lock);
 }
 
