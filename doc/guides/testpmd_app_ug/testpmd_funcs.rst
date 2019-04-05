@@ -218,6 +218,7 @@ For example:
      vxlan
      geneve
      nvgre
+     vxlan-gpe
 
 show port rss reta
 ~~~~~~~~~~~~~~~~~~
@@ -830,7 +831,7 @@ tunnel_filter add
 Add a tunnel filter on a port::
 
    testpmd> tunnel_filter add (port_id) (outer_mac) (inner_mac) (ip_addr) \
-            (inner_vlan) (vxlan|nvgre|ipingre) (imac-ivlan|imac-ivlan-tenid|\
+            (inner_vlan) (vxlan|nvgre|ipingre|vxlan-gpe) (imac-ivlan|imac-ivlan-tenid|\
             imac-tenid|imac|omac-imac-tenid|oip|iip) (tenant_id) (queue_id)
 
 The available information categories are:
@@ -840,6 +841,8 @@ The available information categories are:
 * ``nvgre``: Set tunnel type as NVGRE.
 
 * ``ipingre``: Set tunnel type as IP-in-GRE.
+
+* ``vxlan-gpe``: Set tunnel type as VXLAN-GPE
 
 * ``imac-ivlan``: Set filter type as Inner MAC and VLAN.
 
@@ -868,7 +871,7 @@ tunnel_filter remove
 Remove a tunnel filter on a port::
 
    testpmd> tunnel_filter rm (port_id) (outer_mac) (inner_mac) (ip_addr) \
-            (inner_vlan) (vxlan|nvgre|ipingre) (imac-ivlan|imac-ivlan-tenid|\
+            (inner_vlan) (vxlan|nvgre|ipingre|vxlan-gpe) (imac-ivlan|imac-ivlan-tenid|\
             imac-tenid|imac|omac-imac-tenid|oip|iip) (tenant_id) (queue_id)
 
 rx_vxlan_port add
@@ -2059,7 +2062,7 @@ port config - RSS
 
 Set the RSS (Receive Side Scaling) mode on or off::
 
-   testpmd> port config all rss (all|default|ip|tcp|udp|sctp|ether|port|vxlan|geneve|nvgre|none)
+   testpmd> port config all rss (all|default|ip|tcp|udp|sctp|ether|port|vxlan|geneve|nvgre|vxlan-gpe|none)
 
 RSS is on by default.
 
@@ -2170,7 +2173,7 @@ port config udp_tunnel_port
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Add/remove UDP tunnel port for VXLAN/GENEVE tunneling protocols::
-    testpmd> port config (port_id) udp_tunnel_port add|rm vxlan|geneve (udp_port)
+    testpmd> port config (port_id) udp_tunnel_port add|rm vxlan|geneve|vxlan-gpe (udp_port)
 
 port config tx_metadata
 ~~~~~~~~~~~~~~~~~~~~~~~

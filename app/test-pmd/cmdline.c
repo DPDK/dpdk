@@ -376,12 +376,12 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"filtered for VF(s) from port_id.\n\n"
 
 			"tunnel_filter add (port_id) (outer_mac) (inner_mac) (ip_addr) "
-			"(inner_vlan) (vxlan|nvgre|ipingre) (imac-ivlan|imac-ivlan-tenid|"
+			"(inner_vlan) (vxlan|nvgre|ipingre|vxlan-gpe) (imac-ivlan|imac-ivlan-tenid|"
 			"imac-tenid|imac|omac-imac-tenid|oip|iip) (tenant_id) (queue_id)\n"
 			"   add a tunnel filter of a port.\n\n"
 
 			"tunnel_filter rm (port_id) (outer_mac) (inner_mac) (ip_addr) "
-			"(inner_vlan) (vxlan|nvgre|ipingre) (imac-ivlan|imac-ivlan-tenid|"
+			"(inner_vlan) (vxlan|nvgre|ipingre|vxlan-gpe) (imac-ivlan|imac-ivlan-tenid|"
 			"imac-tenid|imac|omac-imac-tenid|oip|iip) (tenant_id) (queue_id)\n"
 			"   remove a tunnel filter of a port.\n\n"
 
@@ -863,7 +863,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" for ports.\n\n"
 
 			"port config all rss (all|default|ip|tcp|udp|sctp|"
-			"ether|port|vxlan|geneve|nvgre|none|<flowtype_id>)\n"
+			"ether|port|vxlan|geneve|nvgre|vxlan-gpe|none|<flowtype_id>)\n"
 			"    Set the RSS mode.\n\n"
 
 			"port config port-id rss reta (hash,queue)[,(hash,queue)]\n"
@@ -2190,7 +2190,7 @@ cmdline_parse_inst_t cmd_config_rss = {
 	.f = cmd_config_rss_parsed,
 	.data = NULL,
 	.help_str = "port config all rss "
-		"all|default|ip|tcp|udp|sctp|ether|port|vxlan|geneve|nvgre|none|<flowtype_id>",
+		"all|default|ip|tcp|udp|sctp|ether|port|vxlan|geneve|nvgre|vxlan-gpe|none|<flowtype_id>",
 	.tokens = {
 		(void *)&cmd_config_rss_port,
 		(void *)&cmd_config_rss_keyword,
@@ -8758,6 +8758,8 @@ cmd_tunnel_filter_parsed(void *parsed_result,
 
 	if (!strcmp(res->tunnel_type, "vxlan"))
 		tunnel_filter_conf.tunnel_type = RTE_TUNNEL_TYPE_VXLAN;
+	else if (!strcmp(res->tunnel_type, "vxlan-gpe"))
+		tunnel_filter_conf.tunnel_type = RTE_TUNNEL_TYPE_VXLAN_GPE;
 	else if (!strcmp(res->tunnel_type, "nvgre"))
 		tunnel_filter_conf.tunnel_type = RTE_TUNNEL_TYPE_NVGRE;
 	else if (!strcmp(res->tunnel_type, "ipingre"))
@@ -8807,7 +8809,7 @@ cmdline_parse_token_ipaddr_t cmd_tunnel_filter_ip_value =
 	ip_value);
 cmdline_parse_token_string_t cmd_tunnel_filter_tunnel_type =
 	TOKEN_STRING_INITIALIZER(struct cmd_tunnel_filter_result,
-	tunnel_type, "vxlan#nvgre#ipingre");
+	tunnel_type, "vxlan#nvgre#ipingre#vxlan-gpe");
 
 cmdline_parse_token_string_t cmd_tunnel_filter_filter_type =
 	TOKEN_STRING_INITIALIZER(struct cmd_tunnel_filter_result,
@@ -8931,6 +8933,8 @@ cmd_cfg_tunnel_udp_port_parsed(void *parsed_result,
 		tunnel_udp.prot_type = RTE_TUNNEL_TYPE_VXLAN;
 	} else if (!strcmp(res->tunnel_type, "geneve")) {
 		tunnel_udp.prot_type = RTE_TUNNEL_TYPE_GENEVE;
+	} else if (!strcmp(res->tunnel_type, "vxlan-gpe")) {
+		tunnel_udp.prot_type = RTE_TUNNEL_TYPE_VXLAN_GPE;
 	} else {
 		printf("Invalid tunnel type\n");
 		return;
@@ -8965,7 +8969,7 @@ cmdline_parse_token_string_t cmd_config_tunnel_udp_port_action =
 				 "add#rm");
 cmdline_parse_token_string_t cmd_config_tunnel_udp_port_tunnel_type =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_tunnel_udp_port, tunnel_type,
-				 "vxlan#geneve");
+				 "vxlan#geneve#vxlan-gpe");
 cmdline_parse_token_num_t cmd_config_tunnel_udp_port_value =
 	TOKEN_NUM_INITIALIZER(struct cmd_config_tunnel_udp_port, udp_port,
 			      UINT16);
@@ -8973,7 +8977,7 @@ cmdline_parse_token_num_t cmd_config_tunnel_udp_port_value =
 cmdline_parse_inst_t cmd_cfg_tunnel_udp_port = {
 	.f = cmd_cfg_tunnel_udp_port_parsed,
 	.data = NULL,
-	.help_str = "port config <port_id> udp_tunnel_port add|rm vxlan|geneve <udp_port>",
+	.help_str = "port config <port_id> udp_tunnel_port add|rm vxlan|geneve|vxlan-gpe <udp_port>",
 	.tokens = {
 		(void *)&cmd_config_tunnel_udp_port_port,
 		(void *)&cmd_config_tunnel_udp_port_config,
@@ -11987,6 +11991,7 @@ flowtype_to_str(uint16_t ftype)
 		{"vxlan", RTE_ETH_FLOW_VXLAN},
 		{"geneve", RTE_ETH_FLOW_GENEVE},
 		{"nvgre", RTE_ETH_FLOW_NVGRE},
+		{"vxlan-gpe", RTE_ETH_FLOW_VXLAN_GPE},
 	};
 
 	for (i = 0; i < RTE_DIM(ftype_table); i++) {
