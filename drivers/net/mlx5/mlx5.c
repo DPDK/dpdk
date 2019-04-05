@@ -593,9 +593,6 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	mlx5_mr_release(dev);
 	assert(priv->sh);
 	mlx5_free_shared_dr(priv);
-	if (priv->sh)
-		mlx5_free_shared_ibctx(priv->sh);
-	priv->sh = NULL;
 	if (priv->rss_conf.rss_key != NULL)
 		rte_free(priv->rss_conf.rss_key);
 	if (priv->reta_idx != NULL)
@@ -608,6 +605,16 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		close(priv->nl_socket_rdma);
 	if (priv->tcf_context)
 		mlx5_flow_tcf_context_destroy(priv->tcf_context);
+	if (priv->sh) {
+		/*
+		 * Free the shared context in last turn, because the cleanup
+		 * routines above may use some shared fields, like
+		 * mlx5_nl_mac_addr_flush() uses ibdev_path for retrieveing
+		 * ifindex if Netlink fails.
+		 */
+		mlx5_free_shared_ibctx(priv->sh);
+		priv->sh = NULL;
+	}
 	ret = mlx5_hrxq_ibv_verify(dev);
 	if (ret)
 		DRV_LOG(WARNING, "port %u some hash Rx queue still remain",
