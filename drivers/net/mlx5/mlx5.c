@@ -155,7 +155,7 @@ static pthread_mutex_t mlx5_ibv_list_mutex = PTHREAD_MUTEX_INITIALIZER;
  * port dedicated IB device, the context will be used by only given
  * port due to unification.
  *
- * Routine first searches the context for the spesified IB device name,
+ * Routine first searches the context for the specified IB device name,
  * if found the shared context assumed and reference counter is incremented.
  * If no context found the new one is created and initialized with specified
  * IB device context and parameters.
@@ -185,7 +185,7 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn)
 			goto exit;
 		}
 	}
-	/* No device found, we have to create new sharted context. */
+	/* No device found, we have to create new shared context. */
 	assert(spawn->max_port);
 	sh = rte_zmalloc("ethdev shared ib context",
 			 sizeof(struct mlx5_ibv_shared) +
@@ -305,7 +305,7 @@ exit:
 /**
  * Initialize DR related data within private structure.
  * Routine checks the reference counter and does actual
- * resources creation/iniialization only if counter is zero.
+ * resources creation/initialization only if counter is zero.
  *
  * @param[in] priv
  *   Pointer to the private device data structure.
@@ -1353,7 +1353,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	 * Currently we support single E-Switch per PF configurations
 	 * only and vport_id field contains the vport index for
 	 * associated VF, which is deduced from representor port name.
-	 * For exapmple, let's have the IB device port 10, it has
+	 * For example, let's have the IB device port 10, it has
 	 * attached network device eth0, which has port name attribute
 	 * pf0vf2, we can deduce the VF number as 2, and set vport index
 	 * as 3 (2+1). This assigning schema should be changed if the
@@ -1595,7 +1595,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	mlx5_set_link_up(eth_dev);
 	/*
 	 * Even though the interrupt handler is not installed yet,
-	 * interrupts will still trigger on the asyn_fd from
+	 * interrupts will still trigger on the async_fd from
 	 * Verbs context returned by ibv_open_device().
 	 */
 	mlx5_link_update(eth_dev, 0);
@@ -1772,7 +1772,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	}
 	ibv_match[nd] = NULL;
 	if (!nd) {
-		/* No device macthes, just complain and bail out. */
+		/* No device matches, just complain and bail out. */
 		mlx5_glue->free_device_list(ibv_list);
 		DRV_LOG(WARNING,
 			"no Verbs device matches PCI device " PCI_PRI_FMT ","
@@ -1805,7 +1805,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	if (np > 1) {
 		/*
-		 * Signle IB device with multiple ports found,
+		 * Single IB device with multiple ports found,
 		 * it may be E-Switch master device and representors.
 		 * We have to perform identification trough the ports.
 		 */

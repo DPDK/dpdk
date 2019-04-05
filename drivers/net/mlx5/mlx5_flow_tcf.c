@@ -2916,7 +2916,7 @@ flow_tcf_translate_action_count(struct rte_eth_dev *dev __rte_unused,
  *   VXLAN VNI in 24-bit wire format.
  *
  * @return
- *   VXLAN VNI as a 32-bit integer value in network endian.
+ *   VXLAN VNI as a 32-bit integer value in network endianness.
  */
 static inline rte_be32_t
 vxlan_vni_as_be32(const uint8_t vni[3])
@@ -4051,7 +4051,7 @@ flow_tcf_nl_ack(struct mlx5_flow_tcf_context *tcf,
 	nlh->nlmsg_flags |= NLM_F_ACK;
 	ret = mnl_socket_sendto(tcf->nl, nlh, nlh->nlmsg_len);
 	if (ret <= 0) {
-		/* Message send error occurres. */
+		/* Message send error occurred. */
 		rte_errno = errno;
 		return -rte_errno;
 	}
@@ -4307,7 +4307,7 @@ flow_tcf_collect_local_cb(const struct nlmsghdr *nlh, void *arg)
  * @param[in] tcf
  *   Context object initialized by mlx5_flow_tcf_context_create().
  * @param[in] ifindex
- *   Network inferface index to perform cleanup.
+ *   Network interface index to perform cleanup.
  */
 static void
 flow_tcf_encap_local_cleanup(struct mlx5_flow_tcf_context *tcf,
@@ -4343,7 +4343,7 @@ flow_tcf_encap_local_cleanup(struct mlx5_flow_tcf_context *tcf,
 }
 
 /**
- * Collect neigh permament rules on specified network device.
+ * Collect neigh permanent rules on specified network device.
  * This is callback routine called by libmnl mnl_cb_run() in loop for
  * every message in received packet.
  *
@@ -4392,7 +4392,7 @@ flow_tcf_collect_neigh_cb(const struct nlmsghdr *nlh, void *arg)
 	}
 	if (!na_mac || !na_ip)
 		return 1;
-	/* Neigh rule with permenent attribute found. */
+	/* Neigh rule with permanent attribute found. */
 	size = MNL_ALIGN(sizeof(struct nlmsghdr)) +
 	       MNL_ALIGN(sizeof(struct ndmsg)) +
 	       SZ_NLATTR_DATA_OF(ETHER_ADDR_LEN) +
@@ -4431,7 +4431,7 @@ flow_tcf_collect_neigh_cb(const struct nlmsghdr *nlh, void *arg)
  * @param[in] tcf
  *   Context object initialized by mlx5_flow_tcf_context_create().
  * @param[in] ifindex
- *   Network inferface index to perform cleanup.
+ *   Network interface index to perform cleanup.
  */
 static void
 flow_tcf_encap_neigh_cleanup(struct mlx5_flow_tcf_context *tcf,
@@ -4599,7 +4599,7 @@ flow_tcf_encap_iface_cleanup(struct mlx5_flow_tcf_context *tcf,
  * Note that an implicit route is maintained by the kernel due to the
  * presence of a peer address (IFA_ADDRESS).
  *
- * These rules are used for encapsultion only and allow to assign
+ * These rules are used for encapsulation only and allow to assign
  * the outer tunnel source IP address.
  *
  * @param[in] tcf
@@ -5018,7 +5018,7 @@ flow_tcf_encap_irule_acquire(struct mlx5_flow_tcf_context *tcf,
 
 /**
  * Releases VXLAN encap rules container by pointer. Decrements the
- * reference cointer and deletes the container if counter is zero.
+ * reference counter and deletes the container if counter is zero.
  *
  * @param[in] irule
  *   VXLAN rule container pointer to release.
@@ -5042,7 +5042,7 @@ flow_tcf_encap_irule_release(struct tcf_irule *iface)
  * @param[in] tcf
  *   Context object initialized by mlx5_flow_tcf_context_create().
  * @param[in] vtep
- *   Object represinting the network device to delete. Memory
+ *   Object representing the network device to delete. Memory
  *   allocated for this object is freed by routine.
  */
 static void
@@ -5268,7 +5268,7 @@ flow_tcf_decap_vtep_acquire(struct mlx5_flow_tcf_context *tcf,
 }
 
 /**
- * Aqcuire target interface index for VXLAN tunneling encapsulation.
+ * Acquire target interface index for VXLAN tunneling encapsulation.
  *
  * @param[in] tcf
  *   Context object initialized by mlx5_flow_tcf_context_create().
@@ -5601,7 +5601,7 @@ flow_tcf_remove(struct rte_eth_dev *dev, struct rte_flow *flow)
 /**
  * Fetch the applied rule handle. This is callback routine called by
  * libmnl mnl_cb_run() in loop for every message in received packet.
- * When the NLM_F_ECHO flag i sspecified the kernel sends the created
+ * When the NLM_F_ECHO flag is specified the kernel sends the created
  * rule descriptor back to the application and we can retrieve the
  * actual rule handle from updated descriptor.
  *
