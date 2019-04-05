@@ -33,8 +33,9 @@ rte_power_set_env(enum power_management_env env)
 	rte_spinlock_lock(&global_env_cfg_lock);
 
 	if (global_default_env != PM_ENV_NOT_SET) {
+		RTE_LOG(ERR, POWER, "Power Management Environment already set.\n");
 		rte_spinlock_unlock(&global_env_cfg_lock);
-		return 0;
+		return -1;
 	}
 
 	int ret = 0;

@@ -26,7 +26,8 @@ enum power_management_env {PM_ENV_NOT_SET, PM_ENV_ACPI_CPUFREQ, PM_ENV_KVM_VM,
 /**
  * Set the default power management implementation. If this is not called prior
  * to rte_power_init(), then auto-detect of the environment will take place.
- * It is thread safe.
+ * It is thread safe. New env can be set only in unitialized state
+ * (thus rte_power_unset_env must be called if different env was already set).
  *
  * @param env
  *  env. The environment in which to initialise Power Management for.
