@@ -130,6 +130,12 @@ New Features
   * Added Safe Mode support.
   * Supported RSS for UPD/TCP/SCTP+IPV4/IPV6 packets.
 
+* **Updated the i40e driver.**
+
+  New features for PF:
+
+  * Added support for VXLAN-GPE packet.
+
 * **Updated the QuickAssist Technology PMD.**
 
   Added support for AES-XTS with 128 and 256 bit AES keys.

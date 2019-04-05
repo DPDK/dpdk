@@ -8370,7 +8370,7 @@ i40e_get_vxlan_port_idx(struct i40e_pf *pf, uint16_t port)
 }
 
 static int
-i40e_add_vxlan_port(struct i40e_pf *pf, uint16_t port)
+i40e_add_vxlan_port(struct i40e_pf *pf, uint16_t port, int udp_type)
 {
 	int  idx, ret;
 	uint8_t filter_idx;
@@ -8393,7 +8393,7 @@ i40e_add_vxlan_port(struct i40e_pf *pf, uint16_t port)
 		return -ENOSPC;
 	}
 
-	ret =  i40e_aq_add_udp_tunnel(hw, port, I40E_AQC_TUNNEL_TYPE_VXLAN,
+	ret =  i40e_aq_add_udp_tunnel(hw, port, udp_type,
 					&filter_idx, NULL);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "Failed to add VXLAN UDP port %d", port);
@@ -8461,9 +8461,13 @@ i40e_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
 
 	switch (udp_tunnel->prot_type) {
 	case RTE_TUNNEL_TYPE_VXLAN:
-		ret = i40e_add_vxlan_port(pf, udp_tunnel->udp_port);
+		ret = i40e_add_vxlan_port(pf, udp_tunnel->udp_port,
+					  I40E_AQC_TUNNEL_TYPE_VXLAN);
 		break;
-
+	case RTE_TUNNEL_TYPE_VXLAN_GPE:
+		ret = i40e_add_vxlan_port(pf, udp_tunnel->udp_port,
+					  I40E_AQC_TUNNEL_TYPE_VXLAN_GPE);
+		break;
 	case RTE_TUNNEL_TYPE_GENEVE:
 	case RTE_TUNNEL_TYPE_TEREDO:
 		PMD_DRV_LOG(ERR, "Tunnel type is not supported now.");
@@ -8492,6 +8496,7 @@ i40e_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 
 	switch (udp_tunnel->prot_type) {
 	case RTE_TUNNEL_TYPE_VXLAN:
+	case RTE_TUNNEL_TYPE_VXLAN_GPE:
 		ret = i40e_del_vxlan_port(pf, udp_tunnel->udp_port);
 		break;
 	case RTE_TUNNEL_TYPE_GENEVE:
