@@ -974,6 +974,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	struct sfc_rxq *rxq;
 	struct sfc_dp_rx_qcreate_info info;
 	struct sfc_dp_rx_hw_limits hw_limits;
+	uint16_t rx_free_thresh;
 
 	memset(&hw_limits, 0, sizeof(hw_limits));
 	hw_limits.rxq_max_entries = sa->rxq_max_entries;
@@ -1043,8 +1044,22 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	rxq = &sa->rxq_ctrl[sw_index];
 	rxq->evq = evq;
 	rxq->hw_index = sw_index;
+	/*
+	 * If Rx refill threshold is specified (its value is non zero) in
+	 * Rx configuration, use specified value. Otherwise use 1/8 of
+	 * the Rx descriptors number as the default. It allows to keep
+	 * Rx ring full-enough and does not refill too aggressive if
+	 * packet rate is high.
+	 *
+	 * Since PMD refills in bulks waiting for full bulk may be
+	 * refilled (basically round down), it is better to round up
+	 * here to mitigate it a bit.
+	 */
+	rx_free_thresh = (rx_conf->rx_free_thresh != 0) ?
+		rx_conf->rx_free_thresh : EFX_DIV_ROUND_UP(nb_rx_desc, 8);
+	/* Rx refill threshold cannot be smaller than refill bulk */
 	rxq_info->refill_threshold =
-		RTE_MAX(rx_conf->rx_free_thresh, SFC_RX_REFILL_BULK);
+		RTE_MAX(rx_free_thresh, SFC_RX_REFILL_BULK);
 	rxq_info->refill_mb_pool = mb_pool;
 	rxq->buf_size = buf_size;
 
