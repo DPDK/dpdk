@@ -229,6 +229,9 @@ API Changes
   ``rte_vfio_container_dma_unmap`` have been extended with an option to
   request mapping or un-mapping to the default vfio container fd.
 
+* power: ``rte_power_set_env`` and ``rte_power_unset_env`` functions
+  have been modified to be thread safe.
+
 
 ABI Changes
 -----------

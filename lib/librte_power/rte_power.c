@@ -2,7 +2,7 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
-#include <rte_atomic.h>
+#include <rte_spinlock.h>
 
 #include "rte_power.h"
 #include "power_acpi_cpufreq.h"
@@ -12,7 +12,7 @@
 
 enum power_management_env global_default_env = PM_ENV_NOT_SET;
 
-volatile uint32_t global_env_cfg_status = 0;
+static rte_spinlock_t global_env_cfg_lock = RTE_SPINLOCK_INITIALIZER;
 
 /* function pointers */
 rte_power_freqs_t rte_power_freqs  = NULL;
@@ -30,9 +30,15 @@ rte_power_get_capabilities_t rte_power_get_capabilities;
 int
 rte_power_set_env(enum power_management_env env)
 {
-	if (rte_atomic32_cmpset(&global_env_cfg_status, 0, 1) == 0) {
+	rte_spinlock_lock(&global_env_cfg_lock);
+
+	if (global_default_env != PM_ENV_NOT_SET) {
+		rte_spinlock_unlock(&global_env_cfg_lock);
 		return 0;
 	}
+
+	int ret = 0;
+
 	if (env == PM_ENV_ACPI_CPUFREQ) {
 		rte_power_freqs = power_acpi_cpufreq_freqs;
 		rte_power_get_freq = power_acpi_cpufreq_get_freq;
@@ -73,18 +79,24 @@ rte_power_set_env(enum power_management_env env)
 	} else {
 		RTE_LOG(ERR, POWER, "Invalid Power Management Environment(%d) set\n",
 				env);
-		rte_power_unset_env();
-		return -1;
+		ret = -1;
 	}
-	global_default_env = env;
-	return 0;
+
+	if (ret == 0)
+		global_default_env = env;
+	else
+		global_default_env = PM_ENV_NOT_SET;
+
+	rte_spinlock_unlock(&global_env_cfg_lock);
+	return ret;
 }
 
 void
 rte_power_unset_env(void)
 {
-	if (rte_atomic32_cmpset(&global_env_cfg_status, 1, 0) != 0)
-		global_default_env = PM_ENV_NOT_SET;
+	rte_spinlock_lock(&global_env_cfg_lock);
+	global_default_env = PM_ENV_NOT_SET;
+	rte_spinlock_unlock(&global_env_cfg_lock);
 }
 
 enum power_management_env
