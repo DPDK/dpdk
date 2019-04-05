@@ -3037,7 +3037,8 @@ int rte_eth_dev_rss_reta_update(uint16_t port_id,
  * @param port_id
  *   The port identifier of the Ethernet device.
  * @param reta_conf
- *   RETA to query.
+ *   RETA to query. For each requested reta entry, corresponding bit
+ *   in mask must be set.
  * @param reta_size
  *   Redirection table size. The table size can be queried by
  *   rte_eth_dev_info_get().
