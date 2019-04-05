@@ -203,8 +203,8 @@ virtqueue_crypto_sym_enqueue_xmit(
 	uint16_t req_data_len = sizeof(struct virtio_crypto_op_data_req);
 	uint32_t indirect_vring_addr_offset = req_data_len +
 		sizeof(struct virtio_crypto_inhdr);
-	uint32_t indirect_iv_addr_offset = indirect_vring_addr_offset +
-			sizeof(struct vring_desc) * NUM_ENTRY_VIRTIO_CRYPTO_OP;
+	uint32_t indirect_iv_addr_offset =
+			offsetof(struct virtio_crypto_op_cookie, iv);
 	struct rte_crypto_sym_op *sym_op = cop->sym;
 	struct virtio_crypto_session *session =
 		(struct virtio_crypto_session *)get_sym_session_private_data(
