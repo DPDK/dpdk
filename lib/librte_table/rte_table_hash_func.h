@@ -40,7 +40,7 @@ rte_crc32_u64(uint64_t crc, uint64_t v)
 	return _mm_crc32_u64(crc, v);
 }
 
-#elif defined(RTE_ARCH_ARM64)
+#elif defined(RTE_ARCH_ARM64) && defined(RTE_MACHINE_CPUFLAG_CRC32)
 #include "rte_table_hash_func_arm64.h"
 #else
 
