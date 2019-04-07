@@ -188,6 +188,8 @@ struct fwd_engine * fwd_engines[] = {
 	NULL,
 };
 
+struct rte_mempool *mempools[RTE_MAX_NUMA_NODES];
+
 struct fwd_config cur_fwd_config;
 struct fwd_engine *cur_fwd_eng = &io_fwd_engine; /**< IO mode by default. */
 uint32_t retry_enabled;
@@ -835,7 +837,7 @@ setup_extmem(uint32_t nb_mbufs, uint32_t mbuf_sz, bool huge)
 /*
  * Configuration initialisation done once at init time.
  */
-static void
+static struct rte_mempool *
 mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 		 unsigned int socket_id)
 {
@@ -913,6 +915,7 @@ err:
 	} else if (verbose_level > 0) {
 		rte_mempool_dump(stdout, rte_mp);
 	}
+	return rte_mp;
 }
 
 /*
@@ -1130,14 +1133,18 @@ init_config(void)
 		uint8_t i;
 
 		for (i = 0; i < num_sockets; i++)
-			mbuf_pool_create(mbuf_data_size, nb_mbuf_per_pool,
-					 socket_ids[i]);
+			mempools[i] = mbuf_pool_create(mbuf_data_size,
+						       nb_mbuf_per_pool,
+						       socket_ids[i]);
 	} else {
 		if (socket_num == UMA_NO_CONFIG)
-			mbuf_pool_create(mbuf_data_size, nb_mbuf_per_pool, 0);
+			mempools[0] = mbuf_pool_create(mbuf_data_size,
+						       nb_mbuf_per_pool, 0);
 		else
-			mbuf_pool_create(mbuf_data_size, nb_mbuf_per_pool,
-						 socket_num);
+			mempools[socket_num] = mbuf_pool_create
+							(mbuf_data_size,
+							 nb_mbuf_per_pool,
+							 socket_num);
 	}
 
 	init_port_config();
@@ -2394,6 +2401,7 @@ pmd_test_exit(void)
 	struct rte_device *device;
 	portid_t pt_id;
 	int ret;
+	int i;
 
 	if (test_done == 0)
 		stop_packet_forwarding();
@@ -2446,6 +2454,10 @@ pmd_test_exit(void)
 				"fail to disable hotplug handling.\n");
 			return;
 		}
+	}
+	for (i = 0 ; i < RTE_MAX_NUMA_NODES ; i++) {
+		if (mempools[i])
+			rte_mempool_free(mempools[i]);
 	}
 
 	printf("\nBye...\n");
