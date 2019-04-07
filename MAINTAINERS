@@ -687,6 +687,13 @@ F: drivers/net/szedata2/
 F: doc/guides/nics/szedata2.rst
 F: doc/guides/nics/features/szedata2.ini
 
+Netcope nfb
+M: Rastislav Cernay <cernay@netcope.com>
+M: Jan Remes <remes@netcope.com>
+F: drivers/net/nfb/
+F: doc/guides/nics/nfb.rst
+F: doc/guides/nics/features/nfb.ini
+
 Netronome nfp
 M: Alejandro Lucero <alejandro.lucero@netronome.com>
 F: drivers/net/nfp/

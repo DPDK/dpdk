@@ -84,6 +84,11 @@ New Features
   and receive raw packets through the socket which would bypass the kernel
   network stack to achieve high performance packet processing.
 
+* **Added a net PMD NFB.**
+
+  Added the new ``nfb`` net driver for Netcope NFB cards. See
+  the :doc:`../nics/nfb` NIC guide for more details on this new driver.
+
 * **Updated Solarflare network PMD.**
 
   Updated the sfc_efx driver including the following changes:

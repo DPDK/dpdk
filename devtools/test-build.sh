@@ -19,6 +19,7 @@ default_path=$PATH
 # - DPDK_DEP_SSL (y/[n])
 # - DPDK_DEP_IPSEC_MB (y/[n])
 # - DPDK_DEP_SZE (y/[n])
+# - DPDK_DEP_NFB (y/[n])
 # - DPDK_DEP_ZLIB (y/[n])
 # - DPDK_MAKE_JOBS (int)
 # - DPDK_NOTIFY (notify-send)

@@ -40,6 +40,7 @@ Network Interface Controller Drivers
     mvneta
     mvpp2
     netvsc
+    nfb
     nfp
     octeontx
     qede
