@@ -427,3 +427,8 @@ The commandline options are:
 
     Set the number of r/w accesses to be done in noisy neighbour simulation memory buffer to N.
     Only available with the noisy forwarding mode. The default value is 0.
+
+*   ``--no-iova-contig``
+
+    Enable to create mempool which is not IOVA contiguous. Valid only with --mp-alloc=anon.
+    The default value is 0.

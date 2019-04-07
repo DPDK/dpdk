@@ -202,6 +202,8 @@ usage(char* progname)
 	printf("  --noisy-lkup-num-writes=N: do N random writes per packet\n");
 	printf("  --noisy-lkup-num-reads=N: do N random reads per packet\n");
 	printf("  --noisy-lkup-num-writes=N: do N random reads and writes per packet\n");
+	printf("  --no-iova-contig: mempool memory can be IOVA non contiguous. "
+	       "valid only with --mp-alloc=anon\n");
 }
 
 #ifdef RTE_LIBRTE_CMDLINE
@@ -651,6 +653,7 @@ launch_args_parse(int argc, char** argv)
 		{ "noisy-lkup-num-writes",	1, 0, 0 },
 		{ "noisy-lkup-num-reads",	1, 0, 0 },
 		{ "noisy-lkup-num-reads-writes", 1, 0, 0 },
+		{ "no-iova-contig",             0, 0, 0 },
 		{ 0, 0, 0, 0 },
 	};
 
@@ -1242,6 +1245,8 @@ launch_args_parse(int argc, char** argv)
 					rte_exit(EXIT_FAILURE,
 						 "noisy-lkup-num-reads-writes must be >= 0\n");
 			}
+			if (!strcmp(lgopts[opt_idx].name, "no-iova-contig"))
+				mempool_flags = MEMPOOL_F_NO_IOVA_CONTIG;
 			break;
 		case 'h':
 			usage(argv[0]);
@@ -1258,4 +1263,12 @@ launch_args_parse(int argc, char** argv)
 	/* Set offload configuration from command line parameters. */
 	rx_mode.offloads = rx_offloads;
 	tx_mode.offloads = tx_offloads;
+
+	if (mempool_flags & MEMPOOL_F_NO_IOVA_CONTIG &&
+	    mp_alloc_type != MP_ALLOC_ANON) {
+		TESTPMD_LOG(WARNING, "cannot use no-iova-contig without "
+				  "mp-alloc=anon. mempool no-iova-contig is "
+				  "ignored\n");
+		mempool_flags = 0;
+	}
 }

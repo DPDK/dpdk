@@ -264,6 +264,8 @@ extern struct fwd_engine ieee1588_fwd_engine;
 
 extern struct fwd_engine * fwd_engines[]; /**< NULL terminated array. */
 
+extern uint16_t mempool_flags;
+
 /**
  * Forwarding Configuration
  *

@@ -189,6 +189,7 @@ struct fwd_engine * fwd_engines[] = {
 };
 
 struct rte_mempool *mempools[RTE_MAX_NUMA_NODES];
+uint16_t mempool_flags;
 
 struct fwd_config cur_fwd_config;
 struct fwd_engine *cur_fwd_eng = &io_fwd_engine; /**< IO mode by default. */
@@ -867,7 +868,7 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 			rte_mp = rte_mempool_create_empty(pool_name, nb_mbuf,
 				mb_size, (unsigned int) mb_mempool_cache,
 				sizeof(struct rte_pktmbuf_pool_private),
-				socket_id, 0);
+				socket_id, mempool_flags);
 			if (rte_mp == NULL)
 				goto err;
 
