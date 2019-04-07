@@ -834,6 +834,62 @@ setup_extmem(uint32_t nb_mbufs, uint32_t mbuf_sz, bool huge)
 
 	return 0;
 }
+static void
+dma_unmap_cb(struct rte_mempool *mp __rte_unused, void *opaque __rte_unused,
+	     struct rte_mempool_memhdr *memhdr, unsigned mem_idx __rte_unused)
+{
+	uint16_t pid = 0;
+	int ret;
+
+	RTE_ETH_FOREACH_DEV(pid) {
+		struct rte_eth_dev *dev =
+			&rte_eth_devices[pid];
+
+		ret = rte_dev_dma_unmap(dev->device, memhdr->addr, 0,
+					memhdr->len);
+		if (ret) {
+			TESTPMD_LOG(DEBUG,
+				    "unable to DMA unmap addr 0x%p "
+				    "for device %s\n",
+				    memhdr->addr, dev->data->name);
+		}
+	}
+	ret = rte_extmem_unregister(memhdr->addr, memhdr->len);
+	if (ret) {
+		TESTPMD_LOG(DEBUG,
+			    "unable to un-register addr 0x%p\n", memhdr->addr);
+	}
+}
+
+static void
+dma_map_cb(struct rte_mempool *mp __rte_unused, void *opaque __rte_unused,
+	   struct rte_mempool_memhdr *memhdr, unsigned mem_idx __rte_unused)
+{
+	uint16_t pid = 0;
+	size_t page_size = sysconf(_SC_PAGESIZE);
+	int ret;
+
+	ret = rte_extmem_register(memhdr->addr, memhdr->len, NULL, 0,
+				  page_size);
+	if (ret) {
+		TESTPMD_LOG(DEBUG,
+			    "unable to register addr 0x%p\n", memhdr->addr);
+		return;
+	}
+	RTE_ETH_FOREACH_DEV(pid) {
+		struct rte_eth_dev *dev =
+			&rte_eth_devices[pid];
+
+		ret = rte_dev_dma_map(dev->device, memhdr->addr, 0,
+				      memhdr->len);
+		if (ret) {
+			TESTPMD_LOG(DEBUG,
+				    "unable to DMA map addr 0x%p "
+				    "for device %s\n",
+				    memhdr->addr, dev->data->name);
+		}
+	}
+}
 
 /*
  * Configuration initialisation done once at init time.
@@ -879,6 +935,7 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 			}
 			rte_pktmbuf_pool_init(rte_mp, NULL);
 			rte_mempool_obj_iter(rte_mp, rte_pktmbuf_init, NULL);
+			rte_mempool_mem_iter(rte_mp, dma_map_cb, NULL);
 			break;
 		}
 	case MP_ALLOC_XMEM:
@@ -2407,6 +2464,13 @@ pmd_test_exit(void)
 	if (test_done == 0)
 		stop_packet_forwarding();
 
+	for (i = 0 ; i < RTE_MAX_NUMA_NODES ; i++) {
+		if (mempools[i]) {
+			if (mp_alloc_type == MP_ALLOC_ANON)
+				rte_mempool_mem_iter(mempools[i], dma_unmap_cb,
+						     NULL);
+		}
+	}
 	if (ports != NULL) {
 		no_link_check = 1;
 		RTE_ETH_FOREACH_DEV(pt_id) {
