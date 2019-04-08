@@ -3301,6 +3301,7 @@ nfp_cpp_bridge_service_func(void *args)
 	if (ret < 0) {
 		RTE_LOG(ERR, PMD, "%s: bind error (%d). Service failed\n",
 				  __func__, errno);
+		close(sockfd);
 		return ret;
 	}
 
@@ -3308,6 +3309,7 @@ nfp_cpp_bridge_service_func(void *args)
 	if (ret < 0) {
 		RTE_LOG(ERR, PMD, "%s: listen error(%d). Service failed\n",
 				  __func__, errno);
+		close(sockfd);
 		return ret;
 	}
 
@@ -3317,6 +3319,7 @@ nfp_cpp_bridge_service_func(void *args)
 			RTE_LOG(ERR, PMD, "%s: accept call error (%d)\n",
 					  __func__, errno);
 			RTE_LOG(ERR, PMD, "%s: service failed\n", __func__);
+			close(sockfd);
 			return -EIO;
 		}
 
