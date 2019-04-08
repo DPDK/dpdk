@@ -311,7 +311,7 @@ caam_jr_prep_cdb(struct caam_jr_session *ses)
 	int32_t shared_desc_len = 0;
 	struct sec_cdb *cdb;
 	int err;
-#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+#if CAAM_BYTE_ORDER == CORE_BYTE_ORDER
 	int swap = false;
 #else
 	int swap = true;
