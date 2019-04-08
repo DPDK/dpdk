@@ -2855,9 +2855,9 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	case PCI_DEVICE_ID_NFP6000_PF_NIC:
 	case PCI_DEVICE_ID_NFP6000_VF_NIC:
 		start_q = nn_cfg_readl(hw, NFP_NET_CFG_START_TXQ);
-		tx_bar_off = start_q * NFP_QCP_QUEUE_ADDR_SZ;
+		tx_bar_off = (uint64_t)start_q * NFP_QCP_QUEUE_ADDR_SZ;
 		start_q = nn_cfg_readl(hw, NFP_NET_CFG_START_RXQ);
-		rx_bar_off = start_q * NFP_QCP_QUEUE_ADDR_SZ;
+		rx_bar_off = (uint64_t)start_q * NFP_QCP_QUEUE_ADDR_SZ;
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "nfp_net: no device ID matching");
