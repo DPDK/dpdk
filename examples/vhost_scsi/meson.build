@@ -10,7 +10,7 @@ if not is_linux
 	build = false
 endif
 
-if not cc.has_header('virtio_scsi.h')
+if not cc.has_header('linux/virtio_scsi.h')
 	build = false
 endif
 
