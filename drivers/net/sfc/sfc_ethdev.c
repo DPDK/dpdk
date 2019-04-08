@@ -14,6 +14,7 @@
 #include <rte_bus_pci.h>
 #include <rte_errno.h>
 #include <rte_string_fns.h>
+#include <rte_ether.h>
 
 #include "efx.h"
 
@@ -91,6 +92,9 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	uint64_t txq_offloads_def = 0;
 
 	sfc_log_init(sa, "entry");
+
+	dev_info->min_mtu = ETHER_MIN_MTU;
+	dev_info->max_mtu = EFX_MAC_SDU_MAX;
 
 	dev_info->max_rx_pktlen = EFX_MAC_PDU_MAX;
 
