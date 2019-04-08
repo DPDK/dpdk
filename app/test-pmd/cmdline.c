@@ -18310,12 +18310,12 @@ search_tx_offload(const char *name)
 	single_offload = 1;
 	for (bit = 0; bit < sizeof(single_offload) * CHAR_BIT; bit++) {
 		single_name = rte_eth_dev_tx_offload_name(single_offload);
+		if (single_name == NULL)
+			break;
 		if (!strcasecmp(single_name, name)) {
 			found = 1;
 			break;
 		} else if (!strcasecmp(single_name, "UNKNOWN"))
-			break;
-		else if (single_name == NULL)
 			break;
 		single_offload <<= 1;
 	}
