@@ -368,6 +368,9 @@ _nfp6000_encode_mu(uint64_t *addr, int dest_island, int mode, int addr40,
 	isld[1] = isld1;
 	locality_lsb = _nfp6000_cppat_mu_locality_lsb(mode, addr40);
 
+	if (locality_lsb < 0)
+		return NFP_ERRNO(EINVAL);
+
 	if (((*addr >> locality_lsb) & 3) == _NIC_NFP6000_MU_LOCALITY_DIRECT)
 		da = 1;
 	else
