@@ -31,6 +31,7 @@
 
 unsigned int portmask;
 unsigned int disable_reorder;
+unsigned int insight_worker;
 volatile uint8_t quit_signal;
 
 static struct rte_mempool *mbuf_pool;
@@ -71,6 +72,14 @@ volatile struct app_stats {
 	} tx __rte_cache_aligned;
 } app_stats;
 
+/* per worker lcore stats */
+struct wkr_stats_per {
+		uint64_t deq_pkts;
+		uint64_t enq_pkts;
+		uint64_t enq_failed_pkts;
+} __rte_cache_aligned;
+
+static struct wkr_stats_per wkr_stats[RTE_MAX_LCORE] = { {0} };
 /**
  * Get the last enabled lcore ID
  *
@@ -152,6 +161,7 @@ parse_args(int argc, char **argv)
 	char *prgname = argv[0];
 	static struct option lgopts[] = {
 		{"disable-reorder", 0, 0, 0},
+		{"insight-worker", 0, 0, 0},
 		{NULL, 0, 0, 0}
 	};
 
@@ -174,6 +184,11 @@ parse_args(int argc, char **argv)
 			if (!strcmp(lgopts[option_index].name, "disable-reorder")) {
 				printf("reorder disabled\n");
 				disable_reorder = 1;
+			}
+			if (!strcmp(lgopts[option_index].name,
+						"insight-worker")) {
+				printf("print all worker statistics\n");
+				insight_worker = 1;
 			}
 			break;
 		default:
@@ -319,12 +334,37 @@ print_stats(void)
 {
 	uint16_t i;
 	struct rte_eth_stats eth_stats;
+	unsigned int lcore_id, last_lcore_id, master_lcore_id, end_w_lcore_id;
+
+	last_lcore_id   = get_last_lcore_id();
+	master_lcore_id = rte_get_master_lcore();
+	end_w_lcore_id  = get_previous_lcore_id(last_lcore_id);
 
 	printf("\nRX thread stats:\n");
 	printf(" - Pkts rxd:				%"PRIu64"\n",
 						app_stats.rx.rx_pkts);
 	printf(" - Pkts enqd to workers ring:		%"PRIu64"\n",
 						app_stats.rx.enqueue_pkts);
+
+	for (lcore_id = 0; lcore_id <= end_w_lcore_id; lcore_id++) {
+		if (insight_worker
+			&& rte_lcore_is_enabled(lcore_id)
+			&& lcore_id != master_lcore_id) {
+			printf("\nWorker thread stats on core [%u]:\n",
+					lcore_id);
+			printf(" - Pkts deqd from workers ring:		%"PRIu64"\n",
+					wkr_stats[lcore_id].deq_pkts);
+			printf(" - Pkts enqd to tx ring:		%"PRIu64"\n",
+					wkr_stats[lcore_id].enq_pkts);
+			printf(" - Pkts enq to tx failed:		%"PRIu64"\n",
+					wkr_stats[lcore_id].enq_failed_pkts);
+		}
+
+		app_stats.wkr.dequeue_pkts += wkr_stats[lcore_id].deq_pkts;
+		app_stats.wkr.enqueue_pkts += wkr_stats[lcore_id].enq_pkts;
+		app_stats.wkr.enqueue_failed_pkts +=
+			wkr_stats[lcore_id].enq_failed_pkts;
+	}
 
 	printf("\nWorker thread stats:\n");
 	printf(" - Pkts deqd from workers ring:		%"PRIu64"\n",
@@ -432,13 +472,14 @@ worker_thread(void *args_ptr)
 	struct rte_mbuf *burst_buffer[MAX_PKTS_BURST] = { NULL };
 	struct rte_ring *ring_in, *ring_out;
 	const unsigned xor_val = (nb_ports > 1);
+	unsigned int core_id = rte_lcore_id();
 
 	args = (struct worker_thread_args *) args_ptr;
 	ring_in  = args->ring_in;
 	ring_out = args->ring_out;
 
 	RTE_LOG(INFO, REORDERAPP, "%s() started on lcore %u\n", __func__,
-							rte_lcore_id());
+							core_id);
 
 	while (!quit_signal) {
 
@@ -448,7 +489,7 @@ worker_thread(void *args_ptr)
 		if (unlikely(burst_size == 0))
 			continue;
 
-		__sync_fetch_and_add(&app_stats.wkr.dequeue_pkts, burst_size);
+		wkr_stats[core_id].deq_pkts += burst_size;
 
 		/* just do some operation on mbuf */
 		for (i = 0; i < burst_size;)
@@ -457,11 +498,10 @@ worker_thread(void *args_ptr)
 		/* enqueue the modified mbufs to workers_to_tx ring */
 		ret = rte_ring_enqueue_burst(ring_out, (void *)burst_buffer,
 				burst_size, NULL);
-		__sync_fetch_and_add(&app_stats.wkr.enqueue_pkts, ret);
+		wkr_stats[core_id].enq_pkts += ret;
 		if (unlikely(ret < burst_size)) {
 			/* Return the mbufs to their respective pool, dropping packets */
-			__sync_fetch_and_add(&app_stats.wkr.enqueue_failed_pkts,
-					(int)burst_size - ret);
+			wkr_stats[core_id].enq_failed_pkts += burst_size - ret;
 			pktmbuf_free_bulk(&burst_buffer[ret], burst_size - ret);
 		}
 	}

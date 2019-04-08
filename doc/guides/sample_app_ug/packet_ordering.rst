@@ -43,7 +43,7 @@ The application execution command line is:
 
 .. code-block:: console
 
-    ./test-pipeline [EAL options] -- -p PORTMASK [--disable-reorder]
+    ./packet_ordering [EAL options] -- -p PORTMASK [--disable-reorder] [--insight-worker]
 
 The -c EAL CPU_COREMASK option has to contain at least 3 CPU cores.
 The first CPU core in the core mask is the master core and would be assigned to
@@ -56,3 +56,5 @@ then the other pair from 2 to 3 and from 3 to 2, having [0,1] and [2,3] pairs.
 
 The disable-reorder long option does, as its name implies, disable the reordering
 of traffic, which should help evaluate reordering performance impact.
+
+The insight-worker long option enables output the packet statistics of each worker thread.
