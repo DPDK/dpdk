@@ -865,24 +865,24 @@ nfp6000_init(struct nfp_cpp *cpp, struct rte_pci_device *dev)
 	    cpp->driver_lock_needed) {
 		ret = nfp_acquire_process_lock(desc);
 		if (ret)
-			return -1;
+			goto error;
 	}
 
 	/* Just support for one secondary process */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		ret = nfp_acquire_secondary_process_lock(desc);
 		if (ret)
-			return -1;
+			goto error;
 	}
 
 	if (nfp6000_set_model(dev, cpp) < 0)
-		return -1;
+		goto error;
 	if (nfp6000_set_interface(dev, cpp) < 0)
-		return -1;
+		goto error;
 	if (nfp6000_set_serial(dev, cpp) < 0)
-		return -1;
+		goto error;
 	if (nfp6000_set_barsz(dev, desc) < 0)
-		return -1;
+		goto error;
 
 	desc->cfg = (char *)dev->mem_resource[0].addr;
 
@@ -890,7 +890,11 @@ nfp6000_init(struct nfp_cpp *cpp, struct rte_pci_device *dev)
 
 	nfp_cpp_priv_set(cpp, desc);
 
-	return ret;
+	return 0;
+
+error:
+	free(desc);
+	return -1;
 }
 
 static void
