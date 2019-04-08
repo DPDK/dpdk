@@ -7,6 +7,7 @@
 #include <stdalign.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 /*
  * Not needed by this file; included to work around the lack of off_t
