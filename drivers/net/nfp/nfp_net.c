@@ -3491,7 +3491,7 @@ nfp_fw_upload(struct rte_pci_device *dev, struct nfp_nsp *nsp, char *card)
 
 	PMD_DRV_LOG(DEBUG, "Trying with fw file: %s", fw_name);
 	fw_f = open(fw_name, O_RDONLY);
-	if (fw_f > 0)
+	if (fw_f >= 0)
 		goto read_fw;
 
 	/* Then try the PCI name */
@@ -3500,7 +3500,7 @@ nfp_fw_upload(struct rte_pci_device *dev, struct nfp_nsp *nsp, char *card)
 
 	PMD_DRV_LOG(DEBUG, "Trying with fw file: %s", fw_name);
 	fw_f = open(fw_name, O_RDONLY);
-	if (fw_f > 0)
+	if (fw_f >= 0)
 		goto read_fw;
 
 	/* Finally try the card type and media */
