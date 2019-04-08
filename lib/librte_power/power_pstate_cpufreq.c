@@ -158,6 +158,7 @@ power_init_for_setting_freq(struct pstate_power_info *pi)
 	char *s_base;
 	uint32_t base_ratio = 0;
 	uint64_t max_non_turbo = 0;
+	int  ret_val = 0;
 
 	snprintf(fullpath_min, sizeof(fullpath_min), POWER_SYSFILE_MIN_FREQ,
 			pi->lcore_id);
@@ -199,8 +200,10 @@ power_init_for_setting_freq(struct pstate_power_info *pi)
 
 	/* Add MSR read to detect turbo status */
 
-	if (power_rdmsr(PLATFORM_INFO, &max_non_turbo, pi->lcore_id) < 0)
-		return -1;
+	if (power_rdmsr(PLATFORM_INFO, &max_non_turbo, pi->lcore_id) < 0) {
+		ret_val = -1;
+		goto out;
+	}
 
 	max_non_turbo = (max_non_turbo&NON_TURBO_MASK)>>NON_TURBO_OFFSET;
 
@@ -219,7 +222,9 @@ power_init_for_setting_freq(struct pstate_power_info *pi)
 	pi->core_base_freq = base_ratio * BUS_FREQ;
 
 out:
-	return 0;
+	if (f_base != NULL)
+		fclose(f_base);
+	return ret_val;
 }
 
 static int
