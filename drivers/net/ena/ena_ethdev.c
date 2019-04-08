@@ -1808,7 +1808,7 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 		ENA_ADMIN_FEATURE_OFFLOAD_DESC_TSO_IPV4_MASK) != 0;
 	adapter->offloads.tx_csum_supported = (get_feat_ctx.offload.tx &
 		ENA_ADMIN_FEATURE_OFFLOAD_DESC_TX_L4_IPV4_CSUM_PART_MASK) != 0;
-	adapter->offloads.tx_csum_supported =
+	adapter->offloads.rx_csum_supported =
 		(get_feat_ctx.offload.rx_supported &
 		ENA_ADMIN_FEATURE_OFFLOAD_DESC_RX_L4_IPV4_CSUM_MASK) != 0;
 
