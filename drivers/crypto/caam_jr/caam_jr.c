@@ -799,7 +799,7 @@ build_auth_only_sg(struct rte_crypto_op *op, struct caam_jr_session *ses)
 		sg->len = cpu_to_caam32(ses->digest_length);
 		length += ses->digest_length;
 	} else {
-		length -= ses->digest_length;
+		sg->len -= ses->digest_length;
 	}
 
 	/* last element*/
