@@ -285,6 +285,12 @@ ctrlr_worker(void *arg)
 	cpu_set_t cpuset;
 	pthread_t thread;
 
+	if (ctrlr == NULL || ctrlr->bdev == NULL) {
+		fprintf(stderr, "%s: Error, invalid argument passed to worker thread\n",
+				__func__);
+		exit(0);
+	}
+
 	thread = pthread_self();
 	CPU_ZERO(&cpuset);
 	CPU_SET(0, &cpuset);
