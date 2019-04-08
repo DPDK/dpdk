@@ -2423,12 +2423,12 @@ i40e_tx_queue_release_mbufs(struct i40e_tx_queue *txq)
 	struct rte_eth_dev *dev;
 	uint16_t i;
 
-	dev = &rte_eth_devices[txq->port_id];
-
 	if (!txq || !txq->sw_ring) {
-		PMD_DRV_LOG(DEBUG, "Pointer to rxq or sw_ring is NULL");
+		PMD_DRV_LOG(DEBUG, "Pointer to txq or sw_ring is NULL");
 		return;
 	}
+
+	dev = &rte_eth_devices[txq->port_id];
 
 	/**
 	 *  vPMD tx will not set sw_ring's mbuf to NULL after free,
