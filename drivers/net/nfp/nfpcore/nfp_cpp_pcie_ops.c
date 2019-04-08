@@ -690,12 +690,16 @@ nfp_acquire_secondary_process_lock(struct nfp_pcie_user *desc)
 	lockfile = calloc(strlen(home_path) + strlen(lockname) + 1,
 			  sizeof(char));
 
+	if (!lockfile)
+		return -ENOMEM;
+
 	strcat(lockfile, home_path);
 	strcat(lockfile, "/.lock_nfp_secondary");
 	desc->secondary_lock = open(lockfile, O_RDWR | O_CREAT | O_NONBLOCK,
 				    0666);
 	if (desc->secondary_lock < 0) {
 		RTE_LOG(ERR, PMD, "NFP lock for secondary process failed\n");
+		free(lockfile);
 		return desc->secondary_lock;
 	}
 
@@ -707,6 +711,7 @@ nfp_acquire_secondary_process_lock(struct nfp_pcie_user *desc)
 		close(desc->secondary_lock);
 	}
 
+	free(lockfile);
 	return rc;
 }
 
