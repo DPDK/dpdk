@@ -314,8 +314,10 @@ static void
 mlx4_dev_stop(struct rte_eth_dev *dev)
 {
 	struct mlx4_priv *priv = dev->data->dev_private;
+#ifdef HAVE_IBV_MLX4_UAR_MMAP_OFFSET
 	const size_t page_size = sysconf(_SC_PAGESIZE);
 	int i;
+#endif
 
 	if (!priv->started)
 		return;
@@ -329,6 +331,7 @@ mlx4_dev_stop(struct rte_eth_dev *dev)
 	mlx4_flow_sync(priv, NULL);
 	mlx4_rxq_intr_disable(priv);
 	mlx4_rss_deinit(priv);
+#ifdef HAVE_IBV_MLX4_UAR_MMAP_OFFSET
 	for (i = 0; i != dev->data->nb_tx_queues; ++i) {
 		struct txq *txq;
 
@@ -338,6 +341,7 @@ mlx4_dev_stop(struct rte_eth_dev *dev)
 		munmap((void *)RTE_ALIGN_FLOOR((uintptr_t)txq->msq.db,
 					       page_size), page_size);
 	}
+#endif
 }
 
 /**
