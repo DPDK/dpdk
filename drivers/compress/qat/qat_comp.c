@@ -93,7 +93,7 @@ qat_comp_build_request(void *in_op, uint8_t *out_msg,
 				QAT_DP_LOG(ERR, "QAT PMD can't allocate memory"
 					   " for %d elements of SGL",
 					   op->m_src->nb_segs);
-				op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
+				op->status = RTE_COMP_OP_STATUS_ERROR;
 				return -ENOMEM;
 			}
 			/* new SGL is valid now */
@@ -128,8 +128,8 @@ qat_comp_build_request(void *in_op, uint8_t *out_msg,
 				QAT_DP_LOG(ERR, "QAT PMD can't allocate memory"
 					   " for %d elements of SGL",
 					   op->m_dst->nb_segs);
-				op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
-				return -EINVAL;
+				op->status = RTE_COMP_OP_STATUS_ERROR;
+				return -ENOMEM;
 			}
 			/* new SGL is valid now */
 			cookie->qat_sgl_dst_d = (struct qat_sgl *)tmp;
