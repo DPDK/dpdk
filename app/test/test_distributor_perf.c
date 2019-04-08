@@ -111,7 +111,7 @@ handle_work(void *arg)
 	unsigned int count = 0;
 	unsigned int num = 0;
 	int i;
-	unsigned int id = __sync_fetch_and_add(&worker_idx, 1);
+	unsigned int id = __atomic_fetch_add(&worker_idx, 1, __ATOMIC_RELAXED);
 	struct rte_mbuf *buf[8] __rte_cache_aligned;
 
 	for (i = 0; i < 8; i++)

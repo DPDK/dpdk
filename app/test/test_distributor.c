@@ -63,7 +63,7 @@ handle_work(void *arg)
 	struct worker_params *wp = arg;
 	struct rte_distributor *db = wp->dist;
 	unsigned int count = 0, num = 0;
-	unsigned int id = __sync_fetch_and_add(&worker_idx, 1);
+	unsigned int id = __atomic_fetch_add(&worker_idx, 1, __ATOMIC_RELAXED);
 	int i;
 
 	for (i = 0; i < 8; i++)
@@ -271,7 +271,7 @@ handle_work_with_free_mbufs(void *arg)
 	unsigned int count = 0;
 	unsigned int i;
 	unsigned int num = 0;
-	unsigned int id = __sync_fetch_and_add(&worker_idx, 1);
+	unsigned int id = __atomic_fetch_add(&worker_idx, 1, __ATOMIC_RELAXED);
 
 	for (i = 0; i < 8; i++)
 		buf[i] = NULL;
@@ -344,7 +344,8 @@ handle_work_for_shutdown_test(void *arg)
 	unsigned int total = 0;
 	unsigned int i;
 	unsigned int returned = 0;
-	const unsigned int id = __sync_fetch_and_add(&worker_idx, 1);
+	const unsigned int id = __atomic_fetch_add(&worker_idx, 1,
+			__ATOMIC_RELAXED);
 
 	num = rte_distributor_get_pkt(d, id, buf, buf, num);
 
