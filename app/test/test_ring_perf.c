@@ -162,7 +162,11 @@ enqueue_bulk(void *p)
 	unsigned i;
 	void *burst[MAX_BURST] = {0};
 
-	if ( __sync_add_and_fetch(&lcore_count, 1) != 2 )
+#ifdef RTE_USE_C11_MEM_MODEL
+	if (__atomic_add_fetch(&lcore_count, 1, __ATOMIC_RELAXED) != 2)
+#else
+	if (__sync_add_and_fetch(&lcore_count, 1) != 2)
+#endif
 		while(lcore_count != 2)
 			rte_pause();
 
@@ -198,7 +202,11 @@ dequeue_bulk(void *p)
 	unsigned i;
 	void *burst[MAX_BURST] = {0};
 
-	if ( __sync_add_and_fetch(&lcore_count, 1) != 2 )
+#ifdef RTE_USE_C11_MEM_MODEL
+	if (__atomic_add_fetch(&lcore_count, 1, __ATOMIC_RELAXED) != 2)
+#else
+	if (__sync_add_and_fetch(&lcore_count, 1) != 2)
+#endif
 		while(lcore_count != 2)
 			rte_pause();
 
