@@ -225,7 +225,7 @@ cmd_channels_op_parsed(void *parsed_result, struct cmdline *cl,
 {
 	unsigned num_channels = 0, channel_num, i;
 	int channels_added;
-	unsigned channel_list[CHANNEL_CMDS_MAX_VM_CHANNELS];
+	unsigned int channel_list[RTE_MAX_LCORE];
 	char *token, *remaining, *tail_ptr;
 	struct cmd_channels_op_result *res = parsed_result;
 
@@ -249,10 +249,10 @@ cmd_channels_op_parsed(void *parsed_result, struct cmdline *cl,
 		if ((errno != 0) || tail_ptr == NULL || (*tail_ptr != '\0'))
 			break;
 
-		if (channel_num == CHANNEL_CMDS_MAX_VM_CHANNELS) {
+		if (channel_num == RTE_MAX_LCORE) {
 			cmdline_printf(cl, "Channel number '%u' exceeds the maximum number "
 					"of allowable channels(%u) for VM '%s'\n", channel_num,
-					CHANNEL_CMDS_MAX_VM_CHANNELS, res->vm_name);
+					RTE_MAX_LCORE, res->vm_name);
 			return;
 		}
 		channel_list[num_channels++] = channel_num;
@@ -306,7 +306,7 @@ cmd_channels_status_op_parsed(void *parsed_result, struct cmdline *cl,
 {
 	unsigned num_channels = 0, channel_num;
 	int changed;
-	unsigned channel_list[CHANNEL_CMDS_MAX_VM_CHANNELS];
+	unsigned int channel_list[RTE_MAX_LCORE];
 	char *token, *remaining, *tail_ptr;
 	struct cmd_channels_status_op_result *res = parsed_result;
 	enum channel_status status;
@@ -334,10 +334,10 @@ cmd_channels_status_op_parsed(void *parsed_result, struct cmdline *cl,
 		if ((errno != 0) || tail_ptr == NULL || (*tail_ptr != '\0'))
 			break;
 
-		if (channel_num == CHANNEL_CMDS_MAX_VM_CHANNELS) {
+		if (channel_num == RTE_MAX_LCORE) {
 			cmdline_printf(cl, "%u exceeds the maximum number of allowable "
 					"channels(%u) for VM '%s'\n", channel_num,
-					CHANNEL_CMDS_MAX_VM_CHANNELS, res->vm_name);
+					RTE_MAX_LCORE, res->vm_name);
 			return;
 		}
 		channel_list[num_channels++] = channel_num;

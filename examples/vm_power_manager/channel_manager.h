@@ -13,14 +13,8 @@ extern "C" {
 #include <sys/un.h>
 #include <rte_atomic.h>
 
-/* Maximum number of CPUs */
-#define CHANNEL_CMDS_MAX_CPUS        256
-
 /* Maximum name length including '\0' terminator */
 #define CHANNEL_MGR_MAX_NAME_LEN    64
-
-/* Maximum number of channels to each Virtual Machine */
-#define CHANNEL_MGR_MAX_CHANNELS    256
 
 /* Hypervisor Path for libvirt(qemu/KVM) */
 #define CHANNEL_MGR_DEFAULT_HV_PATH "qemu:///system"
@@ -78,9 +72,9 @@ struct channel_info {
 struct vm_info {
 	char name[CHANNEL_MGR_MAX_NAME_LEN];          /**< VM name */
 	enum vm_status status;                        /**< libvirt status */
-	uint16_t pcpu_map[CHANNEL_CMDS_MAX_CPUS];     /**< pCPU map to vCPU */
+	uint16_t pcpu_map[RTE_MAX_LCORE];             /**< pCPU map to vCPU */
 	unsigned num_vcpus;                           /**< number of vCPUS */
-	struct channel_info channels[CHANNEL_MGR_MAX_CHANNELS]; /**< Array of channel_info */
+	struct channel_info channels[RTE_MAX_LCORE];  /**< channel_info array */
 	unsigned num_channels;                        /**< Number of channels */
 };
 

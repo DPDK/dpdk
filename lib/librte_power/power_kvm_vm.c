@@ -13,15 +13,15 @@
 
 #define FD_PATH "/dev/virtio-ports/virtio.serial.port.poweragent"
 
-static struct channel_packet pkt[CHANNEL_CMDS_MAX_VM_CHANNELS];
+static struct channel_packet pkt[RTE_MAX_LCORE];
 
 
 int
 power_kvm_vm_init(unsigned int lcore_id)
 {
-	if (lcore_id >= CHANNEL_CMDS_MAX_VM_CHANNELS) {
+	if (lcore_id >= RTE_MAX_LCORE) {
 		RTE_LOG(ERR, POWER, "Core(%u) is out of range 0...%d\n",
-				lcore_id, CHANNEL_CMDS_MAX_VM_CHANNELS-1);
+				lcore_id, RTE_MAX_LCORE-1);
 		return -1;
 	}
 	pkt[lcore_id].command = CPU_POWER;
@@ -68,9 +68,9 @@ send_msg(unsigned int lcore_id, uint32_t scale_direction)
 {
 	int ret;
 
-	if (lcore_id >= CHANNEL_CMDS_MAX_VM_CHANNELS) {
+	if (lcore_id >= RTE_MAX_LCORE) {
 		RTE_LOG(ERR, POWER, "Core(%u) is out of range 0...%d\n",
-				lcore_id, CHANNEL_CMDS_MAX_VM_CHANNELS-1);
+				lcore_id, RTE_MAX_LCORE-1);
 		return -1;
 	}
 	pkt[lcore_id].unit = scale_direction;

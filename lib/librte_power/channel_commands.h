@@ -12,9 +12,6 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 
-/* Maximum number of channels per VM */
-#define CHANNEL_CMDS_MAX_VM_CHANNELS 64
-
 /* Valid Commands */
 #define CPU_POWER               1
 #define CPU_POWER_CONNECT       2
