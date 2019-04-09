@@ -5,7 +5,7 @@ cflags += '-std=gnu99'
 cflags += '-D_DEFAULT_SOURCE'
 cflags += '-D_XOPEN_SOURCE=700'
 cflags += '-pedantic'
-if host_machine.system() == 'linux'
+if is_linux
 	cflags += '-DLINUX'
 else
 	cflags += '-DBSD'

@@ -3,7 +3,7 @@
 
 allow_experimental_apis = true
 
-if host_machine.system() != 'linux'
+if not is_linux
         build = false
 endif
 

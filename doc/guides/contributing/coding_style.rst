@@ -856,7 +856,7 @@ build
 
 .. code-block:: python
 
-	if host_machine.system() != 'linux'
+	if not is_linux
 	        build = false
 	endif
 

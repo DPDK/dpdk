@@ -4,7 +4,7 @@
 version = 6
 allow_experimental_apis = true
 
-if host_machine.system() == 'linux'
+if is_linux
 	cflags += '-DLINUX'
 else
 	cflags += '-DBSD'

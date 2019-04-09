@@ -30,7 +30,7 @@ libraries = [
 	# flow_classify lib depends on pkt framework table lib
 	'flow_classify', 'bpf', 'telemetry']
 
-if host_machine.system() == 'windows'
+if is_windows
 	libraries = ['kvargs','eal'] # only supported libraries for windows
 endif
 
@@ -123,7 +123,7 @@ foreach l:libraries
 					meson.current_source_dir(), dir_name, name)
 			exports = []
 			implib = dir_name + '.dll.a'
-			if host_machine.system() == 'windows'
+			if is_windows
 				exports = '@0@/@1@/rte_@2@_exports.def'.format(
 					meson.current_source_dir(), dir_name, name)
 				lk_args = ['-Wl,/def:' + exports, '-Wl,/implib:lib\\' + implib]

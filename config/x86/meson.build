@@ -5,7 +5,7 @@
 march_opt = ['-march=@0@'.format(machine)]
 
 # get binutils version for the workaround of Bug 97
-if host_machine.system() != 'windows'
+if not is_windows
 	ldver = run_command('ld', '-v').stdout().strip()
 	if ldver.contains('2.30')
 		if cc.has_argument('-mno-avx512f')

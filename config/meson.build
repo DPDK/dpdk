@@ -8,6 +8,12 @@ if not supported_exec_envs.contains(exec_env)
 	error('unsupported system type "@0@"'.format(exec_env))
 endif
 
+# define a handy variable for checking which OS we have.
+# gives us "is_windows", "is_freebsd" and "is_linux"
+foreach env:supported_exec_envs
+	set_variable('is_' + env, exec_env == env)
+endforeach
+
 # set the major version, which might be used by drivers and libraries
 # depending on the configuration options
 pver = meson.project_version().split('.')
@@ -95,9 +101,9 @@ if cc.find_library('libm', required : false).found()
 endif
 
 # for linux link against dl, for bsd execinfo
-if host_machine.system() == 'linux'
+if is_linux
 	link_lib = 'dl'
-elif host_machine.system() == 'freebsd'
+elif is_freebsd
 	link_lib = 'execinfo'
 else
 	link_lib = ''
@@ -120,7 +126,7 @@ if numa_dep.found() and cc.has_header('numaif.h')
 endif
 
 # check for strlcpy
-if host_machine.system() == 'linux'
+if is_linux
 	libbsd = dependency('libbsd', required: false)
 	if libbsd.found()
 		dpdk_conf.set('RTE_USE_LIBBSD', 1)
@@ -175,4 +181,4 @@ dpdk_conf.set_quoted('RTE_EAL_PMD_PATH', eal_pmd_path)
 install_headers('rte_config.h', subdir: get_option('include_subdir_arch'))
 
 # enable VFIO only if it is linux OS
-dpdk_conf.set('RTE_EAL_VFIO', host_machine.system() == 'linux')
+dpdk_conf.set('RTE_EAL_VFIO', is_linux)

@@ -3,7 +3,7 @@
 
 version = 2
 
-if host_machine.system() != 'linux'
+if not is_linux
 	build = false
 endif
 deps += ['bus_vdev', 'pmd_dpaa2', 'pmd_dpaa2_sec']

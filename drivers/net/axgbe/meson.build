@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright (c) 2018 Advanced Micro Devices, Inc. All rights reserved.
 
-if host_machine.system() != 'linux'
+if not is_linux
 	build = false
 endif
 

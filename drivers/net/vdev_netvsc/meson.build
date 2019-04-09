@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Luca Boccassi <bluca@debian.org>
 
-if host_machine.system() != 'linux'
+if not is_linux
         build = false
 endif
 sources = files('vdev_netvsc.c')

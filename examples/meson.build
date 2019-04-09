@@ -36,7 +36,7 @@ foreach example: examples
 	ext_deps = [execinfo]
 	includes = [include_directories(example)]
 	deps = ['eal', 'mempool', 'net', 'mbuf', 'ethdev', 'cmdline']
-	if host_machine.system() == 'windows'
+	if is_windows
 		deps = ['eal'] # only supported lib on Windows currently
 	endif
 	subdir(example)
