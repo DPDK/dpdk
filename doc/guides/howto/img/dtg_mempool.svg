@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Method Draw (https://editor.method.ac/) -->
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+<!-- Copyright(c) 2018-2019 Intel Corporation -->
+
+<svg width="955" height="185" xmlns="http://www.w3.org/2000/svg">
+ <g>
+  <title>mempool</title>
+  <rect fill="#fff" id="canvas_background" height="187" width="957" y="-1" x="-1"/>
+ </g>
+ <g>
+  <title>Layer 1</title>
+  <rect id="svg_21" height="1" width="0" y="370.4375" x="839.5" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#A0D58A"/>
+  <rect stroke="#000" id="svg_31" height="181.000002" width="951.000029" y="2.4375" x="3.5" fill-opacity="null" stroke-opacity="null" stroke-width="0" fill="#7AD6CA"/>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_32" y="167.4375" x="14.5" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">MBUF pool</text>
+  <rect id="svg_38" height="71" width="859" y="15.4375" x="18.5" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#8B4D4B"/>
+  <rect id="svg_39" height="71" width="859" y="32.4375" x="33.5" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#8B4D4B"/>
+  <rect id="svg_40" height="71" width="859" y="47.4375" x="52.5" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#8B4D4B"/>
+  <rect id="svg_41" height="71" width="859" y="62.4375" x="71.5" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#8B4D4B"/>
+  <rect stroke="#000" id="svg_42" height="55.999999" width="403.000005" y="69.4375" x="486.499995" stroke-opacity="null" stroke-width="0" fill="#FFAC8D"/>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_43" y="103.4375" x="631.5" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">Payload</text>
+  <rect stroke="#000" id="svg_44" height="56" width="140.999999" y="68.4375" x="292.500001" stroke-opacity="null" stroke-width="0" fill="#9ACEE6"/>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_45" y="105.4375" x="303.5" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">Metadata</text>
+  <rect stroke="#000" id="svg_46" height="53" width="185.999997" y="70.4375" x="90.5" stroke-opacity="null" stroke-width="0" fill="#EDFFFF"/>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_47" y="104.4375" x="105.5" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">struct mbuf</text>
+ </g>
+</svg>

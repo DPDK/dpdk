@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Method Draw (https://editor.method.ac/) -->
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+<!-- Copyright(c) 2018-2019 Intel Corporation -->
+
+<svg width="860" height="140" xmlns="http://www.w3.org/2000/svg">
+ <g>
+  <title>pdump</title>
+  <rect fill="#fff" id="canvas_background" height="142" width="862" y="-1" x="-1"/>
+ </g>
+ <g>
+  <title>Layer 1</title>
+  <rect stroke="#000" id="svg_15" height="127.999992" width="568" y="7" x="8.5" fill-opacity="null" stroke-opacity="null" stroke-width="0" fill="#B1FFFF"/>
+  <rect id="svg_2" height="51" width="100" y="23" x="22.5" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#CC7C65"/>
+  <rect id="svg_3" height="51" width="100" y="26" x="455.5" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#CC7C65"/>
+  <path id="svg_7" d="m208.364769,78.968848l12.704559,-5.623238l12.697917,-5.625551l-12.704644,-5.629525l-12.697836,-5.625202l0,6.255891c-3.112384,0 -6.729051,0 -7.940704,0c-5.776899,0.124913 -12.907107,-3.365352 -20.492742,-7.864703c-2.827801,-1.577599 -5.680695,-3.313223 -8.704363,-4.88042c3.023667,-1.569118 5.872475,-3.302747 8.704363,-4.880295c7.585635,-4.493132 14.715839,-7.98967 20.485292,-7.862546l7.94815,-0.002103l0,6.264275l12.697836,-5.627447l12.704644,-5.631775l-12.704644,-5.637807l-12.697836,-5.629547l0,6.260273l-7.944067,0c-11.799214,0.12679 -20.61742,5.506774 -28.333828,9.879239c-7.660201,4.613909 -14.545738,8.087381 -18.539115,7.862617l-22.780531,0l0,9.993806l22.788007,0c3.989952,-0.226969 10.878944,3.248761 18.53841,7.86254c7.71303,4.374678 16.52785,9.750196 28.330427,9.879312l7.940704,0l0,6.262203l0,0l0,0.000003z" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#559E84"/>
+  <path id="svg_8" d="m439.457308,43.77545l-10.478696,-7.306254l0,8.12971l-18.805519,0c-3.29272,0.296972 -8.977707,-4.212008 -15.298608,-10.195089c-6.365074,-5.675375 -13.639418,-12.638687 -23.37938,-12.824984l-6.552957,0l0,12.959904l6.552957,0c4.770151,-0.167389 10.652051,4.360514 16.914219,10.203329c2.334186,2.041106 4.688512,4.292919 7.183208,6.326016c-2.494696,2.035766 -4.846223,4.290275 -7.183208,6.331424c-6.262164,5.826551 -12.144067,10.365242 -16.908056,10.200515l-6.559117,0l0,12.978808l6.555749,0c9.719269,-0.1646 16.996426,-7.14678 23.382185,-12.814082c6.32147,-5.983193 12.003677,-10.494803 15.299177,-10.203221l18.799357,0l0,8.129634l10.478696,-7.298036l10.484823,-7.303408l-10.484823,-7.314263l-0.000006,-0.000004z" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#559E84"/>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_9" y="54" x="53.5" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#ffffff">RX</text>
+  <text style="cursor: move;" xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_10" y="57" x="486.5" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#ffffff">TX</text>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_11" y="40" x="243.5" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">Q1</text>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_12" y="77" x="243.5" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">Q2</text>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_13" y="82" x="326.5" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">Q4</text>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_14" y="40" x="327.5" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">Q3</text>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_16" y="114.86203" x="234.5" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">Primary</text>
+  <rect stroke="#000" id="svg_18" height="90.000001" width="201.999994" y="29.437499" x="654.5" stroke-opacity="null" stroke-width="0" fill="#7AD6CA"/>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_19" y="102.4375" x="684.5" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">Secondary</text>
+  <rect stroke="#000" id="svg_20" height="42.000001" width="184.000001" y="34.437499" x="664.499994" stroke-opacity="null" stroke-width="0" fill="#A0D58A"/>
+  <rect id="svg_21" height="1" width="0" y="366.4375" x="835.5" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#A0D58A"/>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_22" y="59.4375" x="668.5" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">Ring BufferQ</text>
+  <path stroke="#000" transform="rotate(89.78996276855469 615.4766845703124,74.49395751953122) " id="svg_24" d="m599.023803,74.414257l17.255478,-33.667333l15.650356,33.667333l-8.226459,0l0,33.826726l-16.452915,0l0,-33.826726l-8.226459,0z" fill-opacity="null" stroke-opacity="null" stroke-width="0" fill="#7AD6CA"/>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_25" y="22.4375" x="714.5" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">Core 0</text>
+ </g>
+</svg>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Method Draw (https://editor.method.ac/) -->
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+<!-- Copyright(c) 2018-2019 Intel Corporation -->
+
+<svg width="180" height="230" xmlns="http://www.w3.org/2000/svg">
+ <g>
+  <title>crypto</title>
+  <rect fill="#fff" id="canvas_background" height="232" width="182" y="-1" x="-1"/>
+ </g>
+ <g>
+  <title>Layer 1</title>
+  <rect id="svg_21" height="1" width="0" y="369.4375" x="838.5" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#A0D58A"/>
+  <text style="cursor: move;" xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_25" y="222.4375" x="39.5" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">Core 7</text>
+  <rect stroke="#000" id="svg_26" height="44.000003" width="155.000001" y="151.437497" x="6.499997" fill-opacity="null" stroke-opacity="null" stroke-width="0" fill="#7AD6CA"/>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_27" y="179.4375" x="13.5" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">CRYPTO PMD</text>
+  <ellipse stroke="#000" ry="41.5" rx="66.500001" id="svg_28" cy="48.9375" cx="87.999997" fill-opacity="null" stroke-opacity="null" stroke-width="0" fill="#7AD6CA"/>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_29" y="57.4375" x="45.5" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">Device</text>
+  <path stroke="#000" transform="rotate(-90.19718170166016 85.76751708984375,119.45785522460936) " id="svg_30" d="m40.743289,119.457895l26.106598,-13.915756l0,6.95786l37.835289,0l0,-6.95786l26.106586,13.915756l-26.106586,13.915682l0,-6.957842l-37.835289,0l0,6.957842l-26.106598,-13.915682z" stroke-opacity="null" stroke-width="0" fill="#845335"/>
+ </g>
+</svg>

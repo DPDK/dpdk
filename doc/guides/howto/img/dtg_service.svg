@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Method Draw (https://editor.method.ac/) -->
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+<!-- Copyright(c) 2018-2019 Intel Corporation -->
+
+<svg width="254" height="145" xmlns="http://www.w3.org/2000/svg">
+ <g>
+  <title>service</title>
+  <rect fill="#fff" id="canvas_background" height="147" width="256" y="-1" x="-1"/>
+ </g>
+ <g>
+  <title>Layer 1</title>
+  <rect stroke="#000" id="svg_1" height="109.999987" width="254.000014" y="0" x="0" stroke-opacity="null" stroke-width="0" fill="#9ACEE6"/>
+  <rect stroke="#000" id="svg_14" height="37.000001" width="225" y="7.437494" x="4.5" stroke-opacity="null" stroke-width="0" fill="#FFB27C"/>
+  <rect stroke="#000" id="svg_16" height="45.000002" width="186.000003" y="58.437493" x="33.5" stroke-opacity="null" stroke-width="0" fill="#FFE7A2"/>
+  <text stroke="#000" transform="matrix(1.0013854504218995,0,0,1.0926463039877063,73.76856116958965,-122.08861649089796) " xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_18" y="193.234194" x="-35.792216" stroke-opacity="null" stroke-width="0" fill="#000000">Health Check</text>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_23" y="138.437495" x="45.5" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">core 6</text>
+  <text stroke="#000" transform="matrix(1.0013854504218995,0,0,1.0926463039877063,73.76856116958965,-122.08861649089796) " xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_25" y="141.982476" x="-63.753477" stroke-opacity="null" stroke-width="0" fill="#000000">Stats Collector</text>
+ </g>
+</svg>

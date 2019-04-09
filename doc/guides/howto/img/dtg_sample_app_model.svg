@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Method Draw (https://editor.method.ac/) -->
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+<!-- Copyright(c) 2018-2019 Intel Corporation -->
+
+<svg width="1418" height="379" xmlns="http://www.w3.org/2000/svg">
+ <g>
+  <title>sample application model</title>
+  <rect fill="#fff" id="canvas_background" height="381" width="1420" y="-1" x="-1"/>
+ </g>
+ <g>
+  <title>Layer 1</title>
+  <rect stroke="#000" id="svg_84" height="378.999996" width="1417.999937" y="0" x="0" stroke-opacity="null" stroke-width="0" fill="#B1FFFF"/>
+  <rect stroke="#000" id="svg_1" height="79.999993" width="187.000011" y="267" x="635.499996" stroke-opacity="null" stroke-width="0" fill="#9ACEE6"/>
+  <rect stroke="#000" id="svg_14" height="28.000001" width="175.000003" y="271.437495" x="641" stroke-opacity="null" stroke-width="0" fill="#FFB27C"/>
+  <rect stroke="#000" id="svg_16" height="36.000002" width="142" y="304.437495" x="659" stroke-opacity="null" stroke-width="0" fill="#FFE7A2"/>
+  <text stroke="#000" transform="matrix(0.7497134942573729,0,0,0.7607963681117937,149.70768863149087,72.0554119542491) " xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_18" y="335.740664" x="684.214296"
+   stroke-opacity="null" stroke-width="0" fill="#000000">Health Check</text>
+  <text style="cursor: move;" xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_23" y="368.437495" x="685"
+   stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">core 7</text>
+  <text stroke="#000" transform="matrix(0.7446371555386645,0,0,0.7004599746900311,157.05848471617847,107.2548065316271) " xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_25" y="261.052167" x="658.840014"
+   stroke-opacity="null" stroke-width="0" fill="#000000">Stats Collector</text>
+  <rect id="svg_26" height="91" width="88" y="89.4375" x="2"
+   stroke-opacity="null" stroke-width="0" stroke="#000" fill="#FFA9A2"/>
+  <rect id="svg_27" height="91" width="88" y="107.4375" x="24"
+   stroke-opacity="null" stroke-width="0" stroke="#000" fill="#CE7975"/>
+  <text style="cursor: move;" xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_28" y="166.4375" x="52"
+   stroke-opacity="null" stroke-width="0" stroke="#000" fill="#ffffff">RX</text>
+  <text stroke="#000" transform="matrix(0.6111111044883728,0,0,0.6666666865348816,14.972222477197647,39.14583100005984) " xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_30" y="96.937501" x="-11.409091"
+   stroke-opacity="null" stroke-width="0" fill="#000000">NIC 1</text>
+  <text stroke="#000" transform="matrix(0.6111111044883728,0,0,0.6666666865348816,14.972222477197647,39.14583100005984) " xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_33" y="128.4375" x="27.863636"
+   stroke-opacity="null" stroke-width="0" fill="#000000">NIC 2</text>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_34" y="216.4375" x="26"
+   stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">core0</text>
+  <rect id="svg_35" height="91" width="88" y="55.4375" x="1303"
+   stroke-opacity="null" stroke-width="0" stroke="#000" fill="#FFA9A2"/>
+  <rect id="svg_36" height="91" width="88" y="73.4375" x="1325"
+   stroke-opacity="null" stroke-width="0" stroke="#000" fill="#CE7975"/>
+  <text style="cursor: move;" xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_37" y="132.4375" x="1352"
+   stroke-opacity="null" stroke-width="0" stroke="#000" fill="#ffffff">TX</text>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_40" y="184.4375" x="1327"
+   stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">core1</text>
+  <text stroke="#000" transform="matrix(0.6111111044883728,0,0,0.6296296119689941,200.86111453175545,24.236112266778946) " xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_43" y="74.319853" x="1811.681832"
+   stroke-opacity="null" stroke-width="0" fill="#000000">NIC 1</text>
+  <text stroke="#000" transform="matrix(0.6958672408102909,0,0,0.6184720487972513,537.7539486343405,-28.040291137315034) " xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_44" y="191.620936" x="1140.58332"
+   stroke-opacity="null" stroke-width="0" fill="#000000">NIC 2</text>
+  <rect stroke="#000" id="svg_45" height="62" width="83.000003" y="101.4375" x="1096"
+   stroke-opacity="null" stroke-width="0" fill="#9ACEE6"/>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_46" y="135.4375" x="1115"
+   stroke-opacity="null" stroke-width="0" stroke="#000" fill="#ffffff">QoS</text>
+  <rect stroke="#000" id="svg_48" height="61" width="107" y="110.4375" x="649"
+   stroke-opacity="null" stroke-width="0" fill="#9ACEE6"/>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_49" y="145.4375" x="661"
+   stroke-opacity="null" stroke-width="0" stroke="#000" fill="#ffffff">Crypto</text>
+  <rect stroke="#000" id="svg_50" height="70.999998" width="84.000002" y="65.4375" x="422"
+   stroke-opacity="null" stroke-width="0" fill="#FFE7A2"/>
+  <rect stroke="#000" id="svg_51" height="74.000003" width="90.000002" y="92.4375" x="444"
+   stroke-opacity="null" stroke-width="0" fill="#FFB27C"/>
+  <rect stroke="#000" id="svg_52" height="71.999998" width="92" y="120.4375" x="468"
+   stroke-opacity="null" stroke-width="0" fill="#C48157"/>
+  <text stroke="#000" transform="matrix(0.6528342962265015,0,0,0.5925925970077515,63.70490664243698,168.43749817460775) " xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_53" y="-145.374996" x="553.425418"
+   stroke-opacity="null" stroke-width="0" fill="#000000">Worker 1</text>
+  <text stroke="#000" transform="matrix(0.678871691226959,0,0,0.6666666865348816,166.69894686341286,-165.52084343507886) " xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_54" y="417.437503" x="420.257696" stroke-opacity="null" stroke-width="0" fill="#000000">Worker 2</text>
+  <text stroke="#000" transform="matrix(0.7483048439025879,0,0,0.7407407164573669,76.38947987556458,153.33566251024604) " xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_55" y="-19.012521" x="530.011964"
+   stroke-opacity="null" stroke-width="0" fill="#000000">Worker 3</text>
+  <rect stroke="#000" id="svg_62" height="70.999998" width="84.000002" y="67.4375" x="865"
+   stroke-opacity="null" stroke-width="0" fill="#FFE7A2"/>
+  <rect stroke="#000" id="svg_63" height="74.000003" width="90.000002" y="94.4375" x="887"
+   stroke-opacity="null" stroke-width="0" fill="#FFB27C"/>
+  <rect stroke="#000" id="svg_64" height="71.999998" width="92" y="122.4375" x="911"
+   stroke-opacity="null" stroke-width="0" fill="#C48157"/>
+  <text stroke="#000" transform="matrix(0.6528342962265015,0,0,0.5925925970077515,63.70490664243698,168.43749817460775) " xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_65" y="-143.687496" x="1238.132093"
+   stroke-opacity="null" stroke-width="0" fill="#000000">Worker 1</text>
+  <text stroke="#000" transform="matrix(0.678871691226959,0,0,0.6666666865348816,166.69894686341286,-165.52084343507886) " xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_66" y="420.437503" x="1072.811052"
+   stroke-opacity="null" stroke-width="0" fill="#000000">Worker 2</text>
+  <text stroke="#000" transform="matrix(0.7483048439025879,0,0,0.7407407164573669,76.38947987556458,153.33566251024604) " xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_67" y="-16.312521" x="1122.016685"
+   stroke-opacity="null" stroke-width="0" fill="#000000">Worker 3</text>
+  <path stroke="#000" id="svg_68" d="m653.747516,12.862181l19.36745,-10.781877l77.632553,0l0,53.999988l-97.000004,0l0,-43.218111z"
+   stroke-opacity="null" stroke-width="0" fill="#805064"/>
+  <text stroke="#000" transform="matrix(0.733815550804138,0,0,0.9629629850387573,306.63544338941574,-1.3912058547139168) " xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_69" y="33.322117" x="496.534253"
+   stroke-opacity="null" stroke-width="0" fill="#ffffff">Device</text>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_70" y="217.4375" x="457"
+   stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">core 2,3,4</text>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_71" y="197.4375" x="653"
+   stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">core 5</text>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_72" y="186.4375" x="1097"
+   stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">core 6</text>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_73" y="220.4375" x="885"
+   stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">core 2,3,4</text>
+  <rect stroke="#000" id="svg_74" height="88.000002" width="110.999999" y="104" x="206.000001"
+   stroke-opacity="null" stroke-width="0" fill="#9ACEE6"/>
+  <text stroke="#000" transform="matrix(0.5661651903991256,0,0,1,107.56695064249905,0) " xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_75" y="133" x="182.901935"
+   stroke-opacity="null" stroke-width="0" fill="#000000">PKT classify</text>
+  <text stroke="#000" transform="matrix(0.5444634556770325,0,0,1,115.93405053019524,0) " xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_76" y="170" x="196.644877"
+   stroke-opacity="null" stroke-width="0" fill="#000000">Distribute</text>
+  <path id="svg_77" d="m189.755816,142.38346l-9.615746,-5.572568l0,6.200627l-17.256831,0c-3.021555,0.226504 -8.238368,-3.212549 -14.038725,-7.775916c-5.840892,-4.328677 -12.516173,-9.639678 -21.454022,-9.781769l-6.013302,0l0,9.884674l6.013302,0c4.377316,-0.12767 9.774825,3.325816 15.521285,7.782201c2.14196,1.556776 4.3024,3.274261 6.59165,4.824928c-2.28925,1.552703 -4.447123,3.272244 -6.59165,4.829053c-5.746457,4.44398 -11.143969,7.905694 -15.51563,7.780055l-6.018955,0l0,9.899092l6.015865,0c8.91886,-0.125542 15.596722,-5.450935 21.456596,-9.773453c5.800879,-4.563453 11.01514,-8.004512 14.039247,-7.782119l17.251176,0l0,6.200569l9.615746,-5.566299l9.621368,-5.570396l-9.621368,-5.578676l-0.000005,-0.000003z"
+   stroke-opacity="null" stroke-width="0" stroke="#000" fill="#619E73"/>
+  <path id="svg_78" d="m417.79301,181.072084l13.604178,-5.205736l-13.604178,-5.203742l-13.60709,-5.201786l0,5.786911c-3.569394,-0.003899 -9.48466,-0.003899 -11.161519,-0.003899c-4.954616,-0.078306 -8.206513,-1.105708 -11.590595,-2.945338c-5.043959,-2.745716 -9.348773,-7.687237 -14.54043,-12.448672c-2.640478,-2.367977 -5.58224,-4.716439 -9.50016,-6.604946c-3.878767,-1.896386 -8.946375,-3.211512 -14.579566,-3.186066l-24.41645,0l0,9.245023l24.41645,0c3.395131,0.041097 5.543836,0.774963 8.474533,2.595032c4.335842,2.706583 8.563147,7.88095 14.393505,12.783335c5.71366,4.855376 14.505736,9.757754 27.25778,9.804723l11.246452,0l0,5.786895l13.60709,-5.201732zm-57.554046,-35.013272c0.15434,0.072423 0.317546,0.135019 0.468152,0.209421c4.65338,2.242732 8.013781,4.994346 10.673477,7.387791c0.611391,0.559679 1.153382,1.097877 1.733756,1.647811l31.071571,0l0,5.788888l13.60709,-5.201813l13.604178,-5.203713l-13.604178,-5.205701l-13.60709,-5.207671l0,5.784986l-43.946955,0z"
+   stroke-opacity="null" stroke-width="0" stroke="#000" fill="#619E73"/>
+  <path stroke="#000" transform="rotate(89.46277618408203 605.7476806640625,144.42587280273435) " id="svg_79" d="m590.864808,144.339395l14.882874,-35.951591l14.882874,35.951591l-7.441438,0l0,36.124583l-14.882873,0l0,-36.124583l-7.441438,0z" stroke-opacity="null" stroke-width="0" fill="#619E73"/>
+  <path stroke="#000" transform="rotate(89.74066925048828 697.6382446289062,81.67762756347659) " id="svg_80" d="m661.638136,81.677665l20.874103,-13.000079l0,6.500022l30.252035,0l0,-6.500022l20.874093,13.000079l-20.874093,13.000009l0,-6.500005l-30.252035,0l0,6.500005l-20.874103,-13.000009z" fill-opacity="null"
+   stroke-opacity="null" stroke-width="0" fill="#619E73"/>
+  <path id="svg_81" d="m858.79301,172.072084l13.604178,-5.205736l-13.604178,-5.203742l-13.60709,-5.201786l0,5.786911c-3.569394,-0.0039 -9.48466,-0.0039 -11.161519,-0.0039c-4.954616,-0.078305 -8.206513,-1.105708 -11.590595,-2.945338c-5.043959,-2.745715 -9.348773,-7.687236 -14.54043,-12.448672c-2.640477,-2.367977 -5.58224,-4.716438 -9.50016,-6.604945c-3.878767,-1.896387 -8.946375,-3.211513 -14.579566,-3.186067l-24.416451,0l0,9.245023l24.416451,0c3.395131,0.041097 5.543836,0.774963 8.474533,2.595032c4.335842,2.706583 8.563147,7.88095 14.393505,12.783335c5.713661,4.855376 14.505736,9.757754 27.257781,9.804723l11.246451,0l0,5.786894l13.60709,-5.201732zm-57.554045,-35.013272c0.15434,0.072424 0.317546,0.135019 0.468152,0.209421c4.65338,2.242731 8.013781,4.994346 10.673477,7.38779c0.61139,0.559679 1.153381,1.097878 1.733756,1.647812l31.07157,0l0,5.788888l13.60709,-5.201812l13.604178,-5.203713l-13.604178,-5.205701l-13.60709,-5.207671l0,5.784986l-43.946955,0z"
+   stroke-opacity="null" stroke-width="0" stroke="#000" fill="#619E73"/>
+  <path id="svg_82" d="m1080.755816,127.38346l-9.615746,-5.572567l0,6.200627l-17.256831,0c-3.021555,0.226504 -8.238368,-3.212549 -14.038725,-7.775916c-5.840892,-4.328677 -12.516173,-9.639678 -21.454022,-9.78177l-6.013302,0l0,9.884674l6.013302,0c4.377316,-0.12767 9.774825,3.325816 15.521285,7.782201c2.141959,1.556776 4.3024,3.274261 6.59165,4.824928c-2.28925,1.552704 -4.447123,3.272244 -6.59165,4.829053c-5.746457,4.443981 -11.143969,7.905694 -15.51563,7.780055l-6.018955,0l0,9.899093l6.015865,0c8.91886,-0.125543 15.596723,-5.450935 21.456596,-9.773454c5.800879,-4.563453 11.01514,-8.004512 14.039246,-7.782119l17.251177,0l0,6.20057l9.615746,-5.566299l9.621368,-5.570397l-9.621368,-5.578676l-0.000006,-0.000003z"
+   stroke-opacity="null" stroke-width="0" stroke="#000" fill="#619E73"/>
+  <path stroke="#000" id="svg_83" d="m1269.963506,163.318859l13.567973,-4.653717l13.56088,-4.655631l-13.568064,-4.658919l-13.560793,-4.655342l0,5.177292c-3.323905,0 -7.186364,0 -8.480362,0c-6.169502,0.103377 -13.784287,-2.785121 -21.885448,-6.508723c-3.019981,-1.3056 -6.066761,-2.741979 -9.295919,-4.03897c3.229159,-1.298581 6.271574,-2.733309 9.295919,-4.038867c8.101162,-3.718456 15.715942,-6.612144 21.877492,-6.506938l8.488314,-0.001741l0,5.18423l13.560793,-4.6572l13.568064,-4.660782l-13.568064,-4.665774l-13.560793,-4.658938l0,5.180918l-8.483954,0c-12.6011,0.104929 -22.018599,4.557333 -30.259422,8.175926c-8.180795,3.81841 -15.53428,6.693008 -19.799052,6.506997l-24.328718,0l0,8.27074l24.336702,0c4.261113,-0.187837 11.618288,2.688631 19.798299,6.506933c8.237215,3.620425 17.651098,8.069132 30.25579,8.175987l8.480362,0l0,5.182516l0,0l0,0.000002z" fill-opacity="null"
+  stroke-opacity="null" stroke-width="0" fill="#619E73"/>
+ </g>
+</svg>

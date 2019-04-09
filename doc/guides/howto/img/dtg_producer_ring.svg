@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Method Draw (https://editor.method.ac/) -->
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+<!-- Copyright(c) 2018-2019 Intel Corporation -->
+
+<svg width="634" height="97" xmlns="http://www.w3.org/2000/svg">
+ <g>
+  <title>producer ring</title>
+  <rect fill="#fff" id="canvas_background" height="99" width="636" y="-1" x="-1"/>
+ </g>
+ <g>
+  <title>Layer 1</title>
+  <rect id="svg_1" height="95" width="135" y="0" x="0" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#9ACEE6"/>
+  <rect id="svg_2" height="95" width="135" y="2" x="252" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#9ACEE6"/>
+  <rect id="svg_3" height="95" width="135" y="2" x="499" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#9ACEE6"/>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_4" y="45" x="10" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">Stage 1</text>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_5" y="52" x="268" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">Stage 2</text>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_6" y="53" x="517" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">Stage 3</text>
+  <path transform="rotate(90.19324493408203 197.864990234375,42.89100646972657) " id="svg_7" d="m175.364991,42.766198l22.499998,-51.875196l22.499998,51.875196l-11.25,0l0,52.12481l-22.499996,0l0,-52.12481l-11.25,0z" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#4D2425"/>
+  <path transform="rotate(90.19324493408203 445.864990234375,47.89100646972657) " id="svg_8" d="m423.364991,47.766198l22.499998,-51.875196l22.499998,51.875196l-11.25,0l0,52.12481l-22.499996,0l0,-52.12481l-11.25,0z" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#4D2425"/>
+  <path id="svg_10" d="m120.937481,42.95781l0,0c0,-10.493411 8.282734,-19 18.500005,-19l0,0c4.906504,0 9.612052,2.00178 13.081477,5.564971c3.469424,3.563191 5.418523,8.395917 5.418523,13.435029l0,0c0,10.493408 -8.282732,18.999998 -18.5,18.999998l0,0c-10.217271,0 -18.500005,-8.506591 -18.500005,-18.999998zm18.500005,-19l0,37.999998m-18.500005,-18.999998l37.000005,0" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#8CD79F"/>
+  <path id="svg_11" d="m373.937481,45.95781l0,0c0,-10.493411 8.282734,-19.000001 18.500005,-19.000001l0,0c4.906504,0 9.612052,2.00178 13.081477,5.564972c3.469424,3.563191 5.418523,8.395916 5.418523,13.435029l0,0c0,10.493408 -8.282732,18.999997 -18.5,18.999997l0,0c-10.217271,0 -18.500005,-8.50659 -18.500005,-18.999997zm18.500005,-19.000001l0,37.999998m-18.500005,-18.999997l37.000005,0" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#8CD79F"/>
+ </g>
+</svg>

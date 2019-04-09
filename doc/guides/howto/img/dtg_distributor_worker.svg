@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Method Draw (https://editor.method.ac/) -->
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+<!-- Copyright(c) 2018-2019 Intel Corporation -->
+
+<svg width="600" height="235" xmlns="http://www.w3.org/2000/svg">
+ <g>
+  <title>distributor and worker</title>
+  <rect fill="#fff" id="canvas_background" height="237" width="602" y="-1" x="-1"/>
+ </g>
+ <g>
+  <title>Layer 1</title>
+  <rect stroke="#000" id="svg_1" height="89.999991" width="202.000004" y="21.000003" x="4" stroke-opacity="null" stroke-width="0" fill="#9ACEE6"/>
+  <text style="cursor: move;" xml:space="preserve" text-anchor="start"
+   font-family="'Courier New', Courier, monospace" font-size="24" id="svg_4" y="47" x="7"
+   stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">PKT classify</text>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_12" y="96.5" x="25.992188" fill-opacity="null" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">Distribute</text>
+  <path id="svg_13" d="m334.224445,98.046256l16.252783,-5.432074l-16.252783,-5.429993l-16.256262,-5.427952l0,6.038517c-4.264321,-0.004069 -11.331234,-0.004069 -13.334561,-0.004069c-5.919233,-0.081711 -9.804243,-1.153783 -13.847174,-3.073397c-6.02597,-2.865095 -11.16889,-8.021466 -17.371313,-12.989922c-3.154554,-2.470933 -6.669049,-4.921502 -11.349751,-6.892119c-4.633926,-1.978838 -10.68815,-3.351144 -17.41807,-3.324591l-29.170102,0l0,9.646983l29.170102,0c4.056131,0.042884 6.623169,0.808657 10.124445,2.70786c5.179989,2.824261 10.230311,8.223602 17.195784,13.339136c6.826056,5.066481 17.329865,10.182006 32.564612,10.231017l13.436029,0l0,6.0385l16.256262,-5.427896zm-68.759273,-36.535597c0.184389,0.075572 0.379369,0.14089 0.559297,0.218526c5.559349,2.340242 9.573988,5.211493 12.751502,7.709001c0.730423,0.584013 1.377934,1.145611 2.071302,1.719456l37.120911,0l0,6.040581l16.256262,-5.42798l16.252783,-5.429962l-16.252783,-5.432037l-16.256262,-5.434093l0,6.036509l-52.503011,0z"
+   stroke-opacity="null" stroke-width="0" stroke="#000" fill="#FFAC8D"/>
+  <rect stroke="#000" id="svg_17" height="110.999999" width="180" y="3.4375" x="353.5"
+   stroke-opacity="null" stroke-width="0" fill="#FABA6F"/>
+  <rect stroke="#000" id="svg_14" height="110.999999" width="180" y="31.4375" x="369.5"
+   stroke-opacity="null" stroke-width="0" fill="#FFB27C"/>
+  <rect stroke="#000" id="svg_15" height="110.999999" width="180" y="58.4375" x="392.5"
+   stroke-opacity="null" stroke-width="0" fill="#FFF093"/>
+  <rect stroke="#000" id="svg_16" height="110.999999" width="180" y="90.4375" x="413.5"
+   stroke-opacity="null" stroke-width="0" fill="#FFE7A2"/>
+  <text stroke="#000" transform="matrix(0.678871691226959,0,0,0.7037037014961243,142.60348030924797,64.2037038393319) " xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_18" y="71.490132" x="413.769676" stroke-opacity="null" stroke-width="0" fill="#000000">worker 1</text>
+  <text stroke="#000" transform="matrix(0.678871691226959,0,0,0.7037037014961243,121.60348030924797,9.203703839331922) " xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_19" y="101.332237" x="406.404514" stroke-opacity="null" stroke-width="0" fill="#000000">worker 2</text>
+  <text stroke="#000" transform="matrix(0.678871691226959,0,0,0.7037037014961243,121.60348030924797,9.203703839331922) " xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_20" y="58.700658" x="376.943866" stroke-opacity="null" stroke-width="0" fill="#000000">worker 3</text>
+  <text style="cursor: move;" stroke="#000" transform="matrix(0.678871691226959,0,0,0.7037037014961243,121.60348030924797,9.203703839331922) " xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_22" y="18.911184" x="350.429283" stroke-opacity="null" stroke-width="0" fill="#000000">worker 4</text>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_23" y="139.4375" x="49.5"
+   stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">core 1</text>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_24" y="226.4375" x="404.5" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">core 2,3,4,5</text>
+ </g>
+</svg>

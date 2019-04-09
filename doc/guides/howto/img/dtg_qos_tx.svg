@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Method Draw (https://editor.method.ac/) -->
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+<!-- Copyright(c) 2018-2019 Intel Corporation -->
+
+<svg width="287" height="180" xmlns="http://www.w3.org/2000/svg">
+ <g>
+  <title>qos</title>
+  <rect fill="#fff" id="canvas_background" height="182" width="289" y="-1" x="-1"/>
+  <g display="none" overflow="visible" y="0" x="0" height="100%" width="100%" id="canvasGrid">
+   <rect fill="url(#gridpattern)" stroke-width="0" y="0" x="0" height="100%" width="100%"/>
+  </g>
+ </g>
+ <g>
+  <title>Layer 1</title>
+  <rect id="svg_21" height="180" width="287" y="0" x="0" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#CBFFFF"/>
+  <rect id="svg_10" height="82" width="78" y="17.808165" x="152.25" stroke-width="1.5" stroke="#000" fill="#CC7C65"/>
+  <rect id="svg_11" height="82" width="78" y="36.808165" x="171.25" stroke-width="1.5" stroke="#000" fill="#CE7975"/>
+  <rect id="svg_12" height="82" width="78" y="59.808165" x="188.25" stroke-width="1.5" stroke="#000" fill="#8B4D4B"/>
+  <text style="cursor: move;" xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_13" y="113.808165" x="211.25" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#ffffff">TX</text>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_14" y="161.808165" x="161.25" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">Core1</text>
+  <text stroke="#000" transform="matrix(0.47219348024375296,0,0,0.8034176367619965,-95.87709913037096,-156.57412588945806) " font-style="italic" xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_15" y="235.775764" x="531.631651" stroke-opacity="null" stroke-width="0" fill="#000000">NIC1</text>
+  <text stroke="#000" transform="matrix(0.3615568424500273,0,0,0.9358925757041695,106.13283890389599,-107.01445723901463) " font-style="italic" xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_16" y="173.881425" x="192.8023" stroke-opacity="null" stroke-width="0" fill="#000000">NIC2</text>
+  <text stroke="#000" transform="matrix(0.4371257876803068,0,0,0.6973431388181265,223.6990186363727,31.828115819425847) " font-style="italic" xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_17" y="66.670315" x="-70.838675" stroke-opacity="null" stroke-width="0" fill="#000000">NIC3</text>
+  <rect id="svg_18" height="103" width="104" y="26" x="26" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#FABA6F"/>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_19" y="79" x="50" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#ffffff">QoS</text>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_20" y="153" x="27" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">core 10</text>
+ </g>
+</svg>

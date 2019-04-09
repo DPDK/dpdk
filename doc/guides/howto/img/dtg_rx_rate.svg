@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Method Draw (https://editor.method.ac/) -->
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+<!-- Copyright(c) 2018-2019 Intel Corporation -->
+
+<svg width="116" height="152" xmlns="http://www.w3.org/2000/svg">
+ <g>
+  <title>rx rate</title>
+  <rect fill="#fff" id="canvas_background" height="154" width="118" y="-1" x="-1"/>
+  <g display="none" overflow="visible" y="0" x="0" height="100%" width="100%" id="canvasGrid">
+   <rect fill="url(#gridpattern)" stroke-width="0" y="0" x="0" height="100%" width="100%"/>
+  </g>
+ </g>
+ <g>
+  <title>Layer 1</title>
+  <rect id="svg_1" height="82" width="78" y="0.812613" x="0.75" stroke-width="1.5" stroke="#000" fill="#CC7C65"/>
+  <rect id="svg_2" height="82" width="78" y="19.812613" x="19.75" stroke-width="1.5" stroke="#000" fill="#CE7975"/>
+  <rect id="svg_3" height="82" width="78" y="42.812613" x="36.75" stroke-width="1.5" stroke="#000" fill="#8B4D4B"/>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_4" y="96.812613" x="59.75" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#ffffff">RX</text>
+  <text xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_5" y="144.812613" x="9.75" stroke-opacity="null" stroke-width="0" stroke="#000" fill="#000000">Core0</text>
+  <text stroke="#000" transform="matrix(0.47219348024375296,0,0,0.8034176367619965,-95.87709913037096,-156.57412588945806) " font-style="italic" xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_7" y="214.621694" x="210.788594" stroke-opacity="null" stroke-width="0" fill="#000000">NIC1</text>
+  <text stroke="#000" transform="matrix(0.36155684245002745,0,0,0.9358925757041695,-60.867161096103985,-178.0100101290174) " font-style="italic" xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_8" y="231.580355" x="235.672461" stroke-opacity="null" stroke-width="0" fill="#000000">NIC2</text>
+  <text stroke="#000" transform="matrix(0.4371257876803068,0,0,0.6973431388181265,223.6990186363727,31.828115819425847) " font-style="italic" xml:space="preserve" text-anchor="start" font-family="'Courier New', Courier, monospace" font-size="24" id="svg_9" y="42.29845" x="-417.420836" stroke-opacity="null" stroke-width="0" fill="#000000">NIC3</text>
+ </g>
+</svg>
