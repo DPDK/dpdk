@@ -815,7 +815,7 @@ read_json_packet(struct channel_info *chan_info)
 				indent--;
 			if ((indent > 0) || (idx > 0))
 				idx++;
-			if (indent == 0)
+			if (indent <= 0)
 				json_data[idx] = 0;
 			if (idx >= MAX_JSON_STRING_LEN-1)
 				break;
