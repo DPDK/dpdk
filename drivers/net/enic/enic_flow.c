@@ -967,7 +967,8 @@ enic_copy_item_raw_v2(struct copy_item_args *arg)
 	if (!spec->relative || spec->offset != 0 || spec->search || spec->limit)
 		return EINVAL;
 	/* Need non-null pattern that fits within the NIC's filter pattern */
-	if (spec->length == 0 || spec->length > FILTER_GENERIC_1_KEY_LEN ||
+	if (spec->length == 0 ||
+	    spec->length + sizeof(struct udp_hdr) > FILTER_GENERIC_1_KEY_LEN ||
 	    !spec->pattern || !mask->pattern)
 		return EINVAL;
 	/*
