@@ -78,8 +78,10 @@ dpaa_mbuf_create_pool(struct rte_mempool *mp)
 		rte_dpaa_bpid_info = (struct dpaa_bp_info *)rte_zmalloc(NULL,
 				sizeof(struct dpaa_bp_info) * DPAA_MAX_BPOOLS,
 				RTE_CACHE_LINE_SIZE);
-		if (rte_dpaa_bpid_info == NULL)
+		if (rte_dpaa_bpid_info == NULL) {
+			bman_free_pool(bp);
 			return -ENOMEM;
+		}
 	}
 
 	rte_dpaa_bpid_info[bpid].mp = mp;
