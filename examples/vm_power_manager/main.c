@@ -175,6 +175,7 @@ parse_args(int argc, char **argv)
 			if (cnt < 0) {
 				printf("Invalid core-list - [%s]\n",
 						optarg);
+				free(oob_enable);
 				break;
 			}
 			for (i = 0; i < ci->core_count; i++) {
