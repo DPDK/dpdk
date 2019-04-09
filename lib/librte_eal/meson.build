@@ -9,21 +9,8 @@ subdir('common') # defines common_sources, common_objs, etc.
 
 # Now do OS/exec-env specific settings, including building kernel modules
 # The <exec-env>/eal/meson.build file should define env_sources, etc.
-if host_machine.system() == 'linux'
-	dpdk_conf.set('RTE_EXEC_ENV_LINUX', 1)
-	subdir('linux/eal')
-
-elif host_machine.system() == 'freebsd'
-	dpdk_conf.set('RTE_EXEC_ENV_FREEBSD', 1)
-	subdir('freebsd/eal')
-
-elif host_machine.system() == 'windows'
-	dpdk_conf.set('RTE_EXEC_ENV_WINDOWS', 1)
-	subdir('windows/eal')
-
-else
-	error('unsupported system type "@0@"'.format(host_machine.system()))
-endif
+dpdk_conf.set('RTE_EXEC_ENV_' + exec_env.to_upper(), 1)
+subdir(exec_env + '/eal')
 
 version = 10  # the version of the EAL API
 allow_experimental_apis = true

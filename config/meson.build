@@ -1,6 +1,13 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017-2019 Intel Corporation
 
+# check the OS is supported, rather than going any further
+supported_exec_envs = ['freebsd', 'linux', 'windows']
+exec_env = host_machine.system()
+if not supported_exec_envs.contains(exec_env)
+	error('unsupported system type "@0@"'.format(exec_env))
+endif
+
 # set the major version, which might be used by drivers and libraries
 # depending on the configuration options
 pver = meson.project_version().split('.')
