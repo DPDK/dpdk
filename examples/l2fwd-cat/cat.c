@@ -345,7 +345,7 @@ check_cpus_overlapping(void)
 
 	for (i = 0; i < m_config_count; i++) {
 		for (j = i + 1; j < m_config_count; j++) {
-			CPU_AND(&mask,
+			RTE_CPU_AND(&mask,
 				&m_config[i].cpumask,
 				&m_config[j].cpumask);
 
