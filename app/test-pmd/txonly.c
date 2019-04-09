@@ -189,7 +189,7 @@ pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
 	/*
 	 * Copy headers in first packet segment(s).
 	 */
-	copy_buf_to_pkt(eth_hdr, sizeof(eth_hdr), pkt, 0);
+	copy_buf_to_pkt(eth_hdr, sizeof(*eth_hdr), pkt, 0);
 	copy_buf_to_pkt(&pkt_ip_hdr, sizeof(pkt_ip_hdr), pkt,
 			sizeof(struct ether_hdr));
 	if (txonly_multi_flow) {
