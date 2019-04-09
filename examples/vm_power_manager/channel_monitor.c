@@ -437,9 +437,12 @@ update_policy(struct channel_packet *pkt)
 			/* Copy the contents of *pkt into the policy.pkt */
 			policies[i].pkt = *pkt;
 			get_pcpu_to_control(&policies[i]);
-			if (get_pfid(&policies[i]) < 0) {
-				updated = 1;
-				break;
+			/* Check Eth dev only for Traffic policy */
+			if (policies[i].pkt.policy_to_use == TRAFFIC) {
+				if (get_pfid(&policies[i]) < 0) {
+					updated = 1;
+					break;
+				}
 			}
 			core_share_status(i);
 			policies[i].enabled = 1;
@@ -451,8 +454,13 @@ update_policy(struct channel_packet *pkt)
 			if (policies[i].enabled == 0) {
 				policies[i].pkt = *pkt;
 				get_pcpu_to_control(&policies[i]);
-				if (get_pfid(&policies[i]) < 0)
-					break;
+				/* Check Eth dev only for Traffic policy */
+				if (policies[i].pkt.policy_to_use == TRAFFIC) {
+					if (get_pfid(&policies[i]) < 0) {
+						updated = 1;
+						break;
+					}
+				}
 				core_share_status(i);
 				policies[i].enabled = 1;
 				break;
