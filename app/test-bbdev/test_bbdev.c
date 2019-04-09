@@ -14,6 +14,8 @@
 #include <rte_bbdev.h>
 #include <rte_bbdev_op.h>
 #include <rte_bbdev_pmd.h>
+#include<string.h>
+#include <rte_string_fns.h>
 
 #include "main.h"
 
@@ -788,14 +790,14 @@ test_bbdev_driver_init(void)
 
 	/* Initialize the maximum amount of devices */
 	do {
-		sprintf(name_tmp, "%s%i", "name_", num_devs);
+		snprintf(name_tmp, sizeof(name_tmp), "%s%i", "name_", num_devs);
 		dev2 = rte_bbdev_allocate(name_tmp);
 		TEST_ASSERT(dev2 != NULL,
 				"Failed to initialize bbdev driver");
 		++num_devs;
 	} while (num_devs < (RTE_BBDEV_MAX_DEVS - 1));
 
-	sprintf(name_tmp, "%s%i", "name_", num_devs);
+	snprintf(name_tmp, sizeof(name_tmp), "%s%i", "name_", num_devs);
 	dev2 = rte_bbdev_allocate(name_tmp);
 	TEST_ASSERT(dev2 == NULL, "Failed to initialize bbdev driver number %d "
 			"more drivers than RTE_BBDEV_MAX_DEVS: %d ", num_devs,
@@ -804,7 +806,7 @@ test_bbdev_driver_init(void)
 	num_devs--;
 
 	while (num_devs >= num_devs_tmp) {
-		sprintf(name_tmp, "%s%i", "name_", num_devs);
+		snprintf(name_tmp, sizeof(name_tmp), "%s%i", "name_", num_devs);
 		dev2 = rte_bbdev_get_named_dev(name_tmp);
 		TEST_ASSERT_SUCCESS(rte_bbdev_release(dev2),
 				"Failed to uninitialize bbdev driver %s ",
@@ -825,7 +827,7 @@ test_bbdev_driver_init(void)
 	TEST_ASSERT_FAIL(rte_bbdev_release(NULL),
 			"Failed to uninitialize bbdev driver with NULL bbdev");
 
-	sprintf(name_tmp, "%s", "invalid_name");
+	strlcpy(name_tmp, "invalid_name", sizeof(name_tmp));
 	dev2 = rte_bbdev_get_named_dev(name_tmp);
 	TEST_ASSERT_FAIL(rte_bbdev_release(dev2),
 			"Failed to uninitialize bbdev driver with invalid name");
