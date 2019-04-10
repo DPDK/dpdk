@@ -109,6 +109,13 @@ struct port {
 	uint16_t sm_flags;
 	enum rte_bond_8023ad_selection selected;
 
+	/** Indicates if either allmulti or promisc has been enforced on the
+	 * slave so that we can receive lacp packets
+	 */
+#define BOND_8023AD_FORCED_ALLMULTI (1 << 0)
+#define BOND_8023AD_FORCED_PROMISC (1 << 1)
+	uint8_t forced_rx_flags;
+
 	uint64_t current_while_timer;
 	uint64_t periodic_timer;
 	uint64_t wait_while_timer;

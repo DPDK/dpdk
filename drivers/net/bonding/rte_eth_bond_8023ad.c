@@ -910,6 +910,49 @@ bond_mode_8023ad_periodic_cb(void *arg)
 			bond_mode_8023ad_periodic_cb, arg);
 }
 
+static int
+bond_mode_8023ad_register_lacp_mac(uint16_t slave_id)
+{
+	rte_eth_allmulticast_enable(slave_id);
+	if (rte_eth_allmulticast_get(slave_id)) {
+		RTE_BOND_LOG(DEBUG, "forced allmulti for port %u",
+			     slave_id);
+		bond_mode_8023ad_ports[slave_id].forced_rx_flags =
+				BOND_8023AD_FORCED_ALLMULTI;
+		return 0;
+	}
+
+	rte_eth_promiscuous_enable(slave_id);
+	if (rte_eth_promiscuous_get(slave_id)) {
+		RTE_BOND_LOG(DEBUG, "forced promiscuous for port %u",
+			     slave_id);
+		bond_mode_8023ad_ports[slave_id].forced_rx_flags =
+				BOND_8023AD_FORCED_PROMISC;
+		return 0;
+	}
+
+	return -1;
+}
+
+static void
+bond_mode_8023ad_unregister_lacp_mac(uint16_t slave_id)
+{
+	switch (bond_mode_8023ad_ports[slave_id].forced_rx_flags) {
+	case BOND_8023AD_FORCED_ALLMULTI:
+		RTE_BOND_LOG(DEBUG, "unset allmulti for port %u", slave_id);
+		rte_eth_allmulticast_disable(slave_id);
+		break;
+
+	case BOND_8023AD_FORCED_PROMISC:
+		RTE_BOND_LOG(DEBUG, "unset promisc for port %u", slave_id);
+		rte_eth_promiscuous_disable(slave_id);
+		break;
+
+	default:
+		break;
+	}
+}
+
 void
 bond_mode_8023ad_activate_slave(struct rte_eth_dev *bond_dev,
 				uint16_t slave_id)
@@ -951,7 +994,11 @@ bond_mode_8023ad_activate_slave(struct rte_eth_dev *bond_dev,
 
 	/* use this port as agregator */
 	port->aggregator_port_id = slave_id;
-	rte_eth_promiscuous_enable(slave_id);
+
+	if (bond_mode_8023ad_register_lacp_mac(slave_id) < 0) {
+		RTE_BOND_LOG(WARNING, "slave %u is most likely broken and won't receive LACP packets",
+			     slave_id);
+	}
 
 	timer_cancel(&port->warning_timer);
 
@@ -1024,6 +1071,8 @@ bond_mode_8023ad_deactivate_slave(struct rte_eth_dev *bond_dev __rte_unused,
 
 	old_partner_state = port->partner_state;
 	record_default(port);
+
+	bond_mode_8023ad_unregister_lacp_mac(slave_id);
 
 	/* If partner timeout state changes then disable timer */
 	if (!((old_partner_state ^ port->partner_state) &

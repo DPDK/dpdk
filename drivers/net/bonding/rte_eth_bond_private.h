@@ -122,9 +122,6 @@ struct bond_dev_private {
 
 	uint8_t user_defined_mac;
 	/**< Flag for whether MAC address is user defined or not */
-	uint8_t promiscuous_en;
-	/**< Enabled/disable promiscuous mode on bonding device */
-
 
 	uint8_t link_status_polling_enabled;
 	uint32_t link_status_polling_interval_ms;

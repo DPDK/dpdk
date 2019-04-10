@@ -273,7 +273,8 @@ rx_burst_8023ad(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts,
 	uint16_t slave_count, idx;
 
 	uint8_t collecting;  /* current slave collecting status */
-	const uint8_t promisc = internals->promiscuous_en;
+	const uint8_t promisc = rte_eth_promiscuous_get(internals->port_id);
+	const uint8_t allmulti = rte_eth_allmulticast_get(internals->port_id);
 	uint8_t subtype;
 	uint16_t i;
 	uint16_t j;
@@ -313,8 +314,10 @@ rx_burst_8023ad(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts,
 			/* Remove packet from array if:
 			 * - it is slow packet but no dedicated rxq is present,
 			 * - slave is not in collecting state,
-			 * - bonding interface is not in promiscuous mode and
-			 *   packet is not multicast and address does not match,
+			 * - bonding interface is not in promiscuous mode:
+			 *   - packet is unicast and address does not match,
+			 *   - packet is multicast and bonding interface
+			 *     is not in allmulti,
 			 */
 			if (unlikely(
 				(!dedicated_rxq &&
@@ -322,9 +325,11 @@ rx_burst_8023ad(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts,
 						 bufs[j])) ||
 				!collecting ||
 				(!promisc &&
-				 !rte_is_multicast_ether_addr(&hdr->d_addr) &&
-				 !rte_is_same_ether_addr(bond_mac,
-						     &hdr->d_addr)))) {
+				 ((rte_is_unicast_ether_addr(&hdr->d_addr) &&
+				   !rte_is_same_ether_addr(bond_mac,
+						       &hdr->d_addr)) ||
+				  (!allmulti &&
+				   rte_is_multicast_ether_addr(&hdr->d_addr)))))) {
 
 				if (hdr->ether_type == ether_type_slow_be) {
 					bond_mode_8023ad_handle_slow_pkt(
@@ -1936,10 +1941,6 @@ bond_ethdev_start(struct rte_eth_dev *eth_dev)
 		}
 	}
 
-	/* If bonded device is configure in promiscuous mode then re-apply config */
-	if (internals->promiscuous_en)
-		bond_ethdev_promiscuous_enable(eth_dev);
-
 	if (internals->mode == BONDING_MODE_8023AD) {
 		if (internals->mode4.dedicated_queues.enabled == 1) {
 			internals->mode4.dedicated_queues.rx_qid =
@@ -2457,18 +2458,17 @@ bond_ethdev_promiscuous_enable(struct rte_eth_dev *eth_dev)
 	struct bond_dev_private *internals = eth_dev->data->dev_private;
 	int i;
 
-	internals->promiscuous_en = 1;
-
 	switch (internals->mode) {
 	/* Promiscuous mode is propagated to all slaves */
 	case BONDING_MODE_ROUND_ROBIN:
 	case BONDING_MODE_BALANCE:
 	case BONDING_MODE_BROADCAST:
-		for (i = 0; i < internals->slave_count; i++)
-			rte_eth_promiscuous_enable(internals->slaves[i].port_id);
-		break;
-	/* In mode4 promiscus mode is managed when slave is added/removed */
 	case BONDING_MODE_8023AD:
+		for (i = 0; i < internals->slave_count; i++) {
+			uint16_t port_id = internals->slaves[i].port_id;
+
+			rte_eth_promiscuous_enable(port_id);
+		}
 		break;
 	/* Promiscuous mode is propagated only to primary slave */
 	case BONDING_MODE_ACTIVE_BACKUP:
@@ -2488,18 +2488,21 @@ bond_ethdev_promiscuous_disable(struct rte_eth_dev *dev)
 	struct bond_dev_private *internals = dev->data->dev_private;
 	int i;
 
-	internals->promiscuous_en = 0;
-
 	switch (internals->mode) {
 	/* Promiscuous mode is propagated to all slaves */
 	case BONDING_MODE_ROUND_ROBIN:
 	case BONDING_MODE_BALANCE:
 	case BONDING_MODE_BROADCAST:
-		for (i = 0; i < internals->slave_count; i++)
-			rte_eth_promiscuous_disable(internals->slaves[i].port_id);
-		break;
-	/* In mode4 promiscus mode is set managed when slave is added/removed */
 	case BONDING_MODE_8023AD:
+		for (i = 0; i < internals->slave_count; i++) {
+			uint16_t port_id = internals->slaves[i].port_id;
+
+			if (internals->mode == BONDING_MODE_8023AD &&
+			    bond_mode_8023ad_ports[port_id].forced_rx_flags ==
+					BOND_8023AD_FORCED_PROMISC)
+				continue;
+			rte_eth_promiscuous_disable(port_id);
+		}
 		break;
 	/* Promiscuous mode is propagated only to primary slave */
 	case BONDING_MODE_ACTIVE_BACKUP:
@@ -2510,6 +2513,70 @@ bond_ethdev_promiscuous_disable(struct rte_eth_dev *dev)
 		if (internals->slave_count == 0)
 			break;
 		rte_eth_promiscuous_disable(internals->current_primary_port);
+	}
+}
+
+static void
+bond_ethdev_allmulticast_enable(struct rte_eth_dev *eth_dev)
+{
+	struct bond_dev_private *internals = eth_dev->data->dev_private;
+	int i;
+
+	switch (internals->mode) {
+	/* allmulti mode is propagated to all slaves */
+	case BONDING_MODE_ROUND_ROBIN:
+	case BONDING_MODE_BALANCE:
+	case BONDING_MODE_BROADCAST:
+	case BONDING_MODE_8023AD:
+		for (i = 0; i < internals->slave_count; i++) {
+			uint16_t port_id = internals->slaves[i].port_id;
+
+			rte_eth_allmulticast_enable(port_id);
+		}
+		break;
+	/* allmulti mode is propagated only to primary slave */
+	case BONDING_MODE_ACTIVE_BACKUP:
+	case BONDING_MODE_TLB:
+	case BONDING_MODE_ALB:
+	default:
+		/* Do not touch allmulti when there cannot be primary ports */
+		if (internals->slave_count == 0)
+			break;
+		rte_eth_allmulticast_enable(internals->current_primary_port);
+	}
+}
+
+static void
+bond_ethdev_allmulticast_disable(struct rte_eth_dev *eth_dev)
+{
+	struct bond_dev_private *internals = eth_dev->data->dev_private;
+	int i;
+
+	switch (internals->mode) {
+	/* allmulti mode is propagated to all slaves */
+	case BONDING_MODE_ROUND_ROBIN:
+	case BONDING_MODE_BALANCE:
+	case BONDING_MODE_BROADCAST:
+	case BONDING_MODE_8023AD:
+		for (i = 0; i < internals->slave_count; i++) {
+			uint16_t port_id = internals->slaves[i].port_id;
+
+			if (internals->mode == BONDING_MODE_8023AD &&
+			    bond_mode_8023ad_ports[port_id].forced_rx_flags ==
+					BOND_8023AD_FORCED_ALLMULTI)
+				continue;
+			rte_eth_allmulticast_disable(port_id);
+		}
+		break;
+	/* allmulti mode is propagated only to primary slave */
+	case BONDING_MODE_ACTIVE_BACKUP:
+	case BONDING_MODE_TLB:
+	case BONDING_MODE_ALB:
+	default:
+		/* Do not touch allmulti when there cannot be primary ports */
+		if (internals->slave_count == 0)
+			break;
+		rte_eth_allmulticast_disable(internals->current_primary_port);
 	}
 }
 
@@ -2907,6 +2974,8 @@ const struct eth_dev_ops default_dev_ops = {
 	.stats_reset          = bond_ethdev_stats_reset,
 	.promiscuous_enable   = bond_ethdev_promiscuous_enable,
 	.promiscuous_disable  = bond_ethdev_promiscuous_disable,
+	.allmulticast_enable  = bond_ethdev_allmulticast_enable,
+	.allmulticast_disable = bond_ethdev_allmulticast_disable,
 	.reta_update          = bond_ethdev_rss_reta_update,
 	.reta_query           = bond_ethdev_rss_reta_query,
 	.rss_hash_update      = bond_ethdev_rss_hash_update,
