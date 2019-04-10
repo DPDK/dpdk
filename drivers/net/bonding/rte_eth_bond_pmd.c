@@ -254,48 +254,9 @@ bond_ethdev_8023ad_flow_set(struct rte_eth_dev *bond_dev, uint16_t slave_port) {
 	return 0;
 }
 
-static uint16_t
-bond_ethdev_rx_burst_8023ad_fast_queue(void *queue, struct rte_mbuf **bufs,
-		uint16_t nb_pkts)
-{
-	struct bond_rx_queue *bd_rx_q = (struct bond_rx_queue *)queue;
-	struct bond_dev_private *internals = bd_rx_q->dev_private;
-	uint16_t num_rx_total = 0;	/* Total number of received packets */
-	uint16_t slaves[RTE_MAX_ETHPORTS];
-	uint16_t slave_count;
-	uint16_t active_slave;
-	uint16_t i;
-
-	/* Copy slave list to protect against slave up/down changes during tx
-	 * bursting */
-	slave_count = internals->active_slave_count;
-	active_slave = internals->active_slave;
-	memcpy(slaves, internals->active_slaves,
-			sizeof(internals->active_slaves[0]) * slave_count);
-
-	for (i = 0; i < slave_count && nb_pkts; i++) {
-		uint16_t num_rx_slave;
-
-		/* Read packets from this slave */
-		num_rx_slave = rte_eth_rx_burst(slaves[active_slave],
-						bd_rx_q->queue_id,
-						bufs + num_rx_total, nb_pkts);
-		num_rx_total += num_rx_slave;
-		nb_pkts -= num_rx_slave;
-
-		if (++active_slave == slave_count)
-			active_slave = 0;
-	}
-
-	if (++internals->active_slave >= slave_count)
-		internals->active_slave = 0;
-
-	return num_rx_total;
-}
-
-static uint16_t
-bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
-		uint16_t nb_pkts)
+static inline uint16_t
+rx_burst_8023ad(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts,
+		bool dedicated_rxq)
 {
 	/* Cast to structure, containing bonded device's port id and queue id */
 	struct bond_rx_queue *bd_rx_q = (struct bond_rx_queue *)queue;
@@ -356,10 +317,16 @@ bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 			hdr = rte_pktmbuf_mtod(bufs[j], struct rte_ether_hdr *);
 			subtype = ((struct slow_protocol_frame *)hdr)->slow_protocol.subtype;
 
-			/* Remove packet from array if it is slow packet or slave is not
-			 * in collecting state or bonding interface is not in promiscuous
-			 * mode and packet address does not match. */
-			if (unlikely(is_lacp_packets(hdr->ether_type, subtype, bufs[j]) ||
+			/* Remove packet from array if:
+			 * - it is slow packet but no dedicated rxq is present,
+			 * - slave is not in collecting state,
+			 * - bonding interface is not in promiscuous mode and
+			 *   packet is not multicast and address does not match,
+			 */
+			if (unlikely(
+				(!dedicated_rxq &&
+				 is_lacp_packets(hdr->ether_type, subtype,
+						 bufs[j])) ||
 				!collecting ||
 				(!promisc &&
 				 !rte_is_multicast_ether_addr(&hdr->d_addr) &&
@@ -389,6 +356,20 @@ bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 		internals->active_slave = 0;
 
 	return num_rx_total;
+}
+
+static uint16_t
+bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
+		uint16_t nb_pkts)
+{
+	return rx_burst_8023ad(queue, bufs, nb_pkts, false);
+}
+
+static uint16_t
+bond_ethdev_rx_burst_8023ad_fast_queue(void *queue, struct rte_mbuf **bufs,
+		uint16_t nb_pkts)
+{
+	return rx_burst_8023ad(queue, bufs, nb_pkts, true);
 }
 
 #if defined(RTE_LIBRTE_BOND_DEBUG_ALB) || defined(RTE_LIBRTE_BOND_DEBUG_ALB_L1)
