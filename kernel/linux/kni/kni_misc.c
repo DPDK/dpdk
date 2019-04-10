@@ -447,7 +447,7 @@ kni_ioctl_create(struct net *net, uint32_t ioctl_num,
 		ether_addr_copy(net_dev->dev_addr, kni->lad_dev->dev_addr);
 	else {
 		/* if user has provided a valid mac address */
-		if (is_valid_ether_addr((unsigned char *)(dev_info.mac_addr)))
+		if (is_valid_ether_addr(dev_info.mac_addr))
 			memcpy(net_dev->dev_addr, dev_info.mac_addr, ETH_ALEN);
 		else
 			/*
