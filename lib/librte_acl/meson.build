@@ -6,7 +6,7 @@ sources = files('acl_bld.c', 'acl_gen.c', 'acl_run_scalar.c',
 		'rte_acl.c', 'tb_mem.c')
 headers = files('rte_acl.h', 'rte_acl_osdep.h')
 
-if arch_subdir == 'x86'
+if dpdk_conf.has('RTE_ARCH_X86')
 	sources += files('acl_run_sse.c')
 
 	# compile AVX2 version if either:
@@ -28,4 +28,9 @@ if arch_subdir == 'x86'
 		cflags += '-DCC_AVX2_SUPPORT'
 	endif
 
+elif dpdk_conf.has('RTE_ARCH_ARM') or dpdk_conf.has('RTE_ARCH_ARM64')
+	cflags += '-flax-vector-conversions'
+	sources += files('acl_run_neon.c')
+elif dpdk_conf.has('RTE_ARCH_PPC_64')
+	sources += files('acl_run_altivec.c')
 endif

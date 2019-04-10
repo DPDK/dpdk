@@ -13,11 +13,13 @@ static struct rte_tailq_elem rte_acl_tailq = {
 };
 EAL_REGISTER_TAILQ(rte_acl_tailq)
 
+#ifndef RTE_ARCH_X86
+#ifndef CC_AVX2_SUPPORT
 /*
  * If the compiler doesn't support AVX2 instructions,
  * then the dummy one would be used instead for AVX2 classify method.
  */
-__rte_weak int
+int
 rte_acl_classify_avx2(__rte_unused const struct rte_acl_ctx *ctx,
 	__rte_unused const uint8_t **data,
 	__rte_unused uint32_t *results,
@@ -26,8 +28,9 @@ rte_acl_classify_avx2(__rte_unused const struct rte_acl_ctx *ctx,
 {
 	return -ENOTSUP;
 }
+#endif
 
-__rte_weak int
+int
 rte_acl_classify_sse(__rte_unused const struct rte_acl_ctx *ctx,
 	__rte_unused const uint8_t **data,
 	__rte_unused uint32_t *results,
@@ -36,8 +39,11 @@ rte_acl_classify_sse(__rte_unused const struct rte_acl_ctx *ctx,
 {
 	return -ENOTSUP;
 }
+#endif
 
-__rte_weak int
+#ifndef RTE_ARCH_ARM
+#ifndef RTE_ARCH_ARM64
+int
 rte_acl_classify_neon(__rte_unused const struct rte_acl_ctx *ctx,
 	__rte_unused const uint8_t **data,
 	__rte_unused uint32_t *results,
@@ -46,8 +52,11 @@ rte_acl_classify_neon(__rte_unused const struct rte_acl_ctx *ctx,
 {
 	return -ENOTSUP;
 }
+#endif
+#endif
 
-__rte_weak int
+#ifndef RTE_ARCH_PPC_64
+int
 rte_acl_classify_altivec(__rte_unused const struct rte_acl_ctx *ctx,
 	__rte_unused const uint8_t **data,
 	__rte_unused uint32_t *results,
@@ -56,6 +65,7 @@ rte_acl_classify_altivec(__rte_unused const struct rte_acl_ctx *ctx,
 {
 	return -ENOTSUP;
 }
+#endif
 
 static const rte_acl_classify_t classify_fns[] = {
 	[RTE_ACL_CLASSIFY_DEFAULT] = rte_acl_classify_scalar,
