@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <getopt.h>
 #include <stdbool.h>
+#include <arpa/inet.h>
 
 #include <rte_debug.h>
 #include <rte_ether.h>
@@ -260,6 +261,7 @@ setup_lpm(const int socketid)
 	unsigned i;
 	int ret;
 	char s[64];
+	char abuf[INET6_ADDRSTRLEN];
 
 	/* create the LPM table */
 	config_ipv4.max_rules = IPV4_L3FWD_LPM_MAX_RULES;
@@ -275,6 +277,7 @@ setup_lpm(const int socketid)
 
 	/* populate the LPM table */
 	for (i = 0; i < IPV4_L3FWD_LPM_NUM_ROUTES; i++) {
+		struct in_addr in;
 
 		/* skip unused ports */
 		if ((1 << ipv4_l3fwd_lpm_route_array[i].if_out &
@@ -292,8 +295,9 @@ setup_lpm(const int socketid)
 				i, socketid);
 		}
 
-		printf("LPM: Adding route 0x%08x / %d (%d)\n",
-			(unsigned)ipv4_l3fwd_lpm_route_array[i].ip,
+		in.s_addr = htonl(ipv4_l3fwd_lpm_route_array[i].ip);
+		printf("LPM: Adding route %s / %d (%d)\n",
+		       inet_ntop(AF_INET, &in, abuf, sizeof(abuf)),
 			ipv4_l3fwd_lpm_route_array[i].depth,
 			ipv4_l3fwd_lpm_route_array[i].if_out);
 	}
@@ -331,9 +335,10 @@ setup_lpm(const int socketid)
 		}
 
 		printf("LPM: Adding route %s / %d (%d)\n",
-			"IPV6",
-			ipv6_l3fwd_lpm_route_array[i].depth,
-			ipv6_l3fwd_lpm_route_array[i].if_out);
+		       inet_ntop(AF_INET6, ipv6_l3fwd_lpm_route_array[i].ip,
+				 abuf, sizeof(abuf)),
+		       ipv6_l3fwd_lpm_route_array[i].depth,
+		       ipv6_l3fwd_lpm_route_array[i].if_out);
 	}
 }
 
