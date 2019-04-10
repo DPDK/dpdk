@@ -222,6 +222,11 @@ rte_reorder_find_existing(const char *name)
 	struct rte_tailq_entry *te;
 	struct rte_reorder_list *reorder_list;
 
+	if (name == NULL) {
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
 	reorder_list = RTE_TAILQ_CAST(rte_reorder_tailq.head, rte_reorder_list);
 
 	rte_rwlock_read_lock(RTE_EAL_TAILQ_RWLOCK);
@@ -295,8 +300,14 @@ int
 rte_reorder_insert(struct rte_reorder_buffer *b, struct rte_mbuf *mbuf)
 {
 	uint32_t offset, position;
-	struct cir_buffer *order_buf = &b->order_buf;
+	struct cir_buffer *order_buf;
 
+	if (b == NULL || mbuf == NULL) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+
+	order_buf = &b->order_buf;
 	if (!b->is_initialized) {
 		b->min_seqn = mbuf->seqn;
 		b->is_initialized = 1;
