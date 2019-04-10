@@ -2649,7 +2649,7 @@ static int bnxt_map_regs(struct bnxt *bp, uint32_t *reg_arr, int count,
 			return -ERANGE;
 	}
 	win_off = BNXT_GRCPF_REG_WINDOW_BASE_OUT + (reg_win - 1) * 4;
-	rte_cpu_to_le_32(rte_write32(reg_base, (uint8_t *)bp->bar0 + win_off));
+	rte_write32(reg_base, (uint8_t *)bp->bar0 + win_off);
 	return 0;
 }
 
@@ -2680,10 +2680,10 @@ static int bnxt_map_ptp_regs(struct bnxt *bp)
 
 static void bnxt_unmap_ptp_regs(struct bnxt *bp)
 {
-	rte_cpu_to_le_32(rte_write32(0, (uint8_t *)bp->bar0 +
-			 BNXT_GRCPF_REG_WINDOW_BASE_OUT + 16));
-	rte_cpu_to_le_32(rte_write32(0, (uint8_t *)bp->bar0 +
-			 BNXT_GRCPF_REG_WINDOW_BASE_OUT + 20));
+	rte_write32(0, (uint8_t *)bp->bar0 +
+			 BNXT_GRCPF_REG_WINDOW_BASE_OUT + 16);
+	rte_write32(0, (uint8_t *)bp->bar0 +
+			 BNXT_GRCPF_REG_WINDOW_BASE_OUT + 20);
 }
 
 static uint64_t bnxt_cc_read(struct bnxt *bp)
@@ -2733,8 +2733,8 @@ static int bnxt_get_rx_ts(struct bnxt *bp, uint64_t *ts)
 		return -EAGAIN;
 
 	port_id = pf->port_id;
-	rte_cpu_to_le_32(rte_write32(1 << port_id, (uint8_t *)bp->bar0 +
-	       ptp->rx_mapped_regs[BNXT_PTP_RX_FIFO_ADV]));
+	rte_write32(1 << port_id, (uint8_t *)bp->bar0 +
+	       ptp->rx_mapped_regs[BNXT_PTP_RX_FIFO_ADV]);
 
 	fifo = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
 				   ptp->rx_mapped_regs[BNXT_PTP_RX_FIFO]));
