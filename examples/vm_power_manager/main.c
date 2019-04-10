@@ -391,7 +391,6 @@ main(int argc, char **argv)
 					break;
 				}
 				printf("\n");
-				break;
 			}
 		}
 	}
