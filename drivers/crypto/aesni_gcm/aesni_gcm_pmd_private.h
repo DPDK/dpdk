@@ -35,11 +35,15 @@ struct aesni_gcm_private {
 	/**< Vector mode */
 	unsigned max_nb_queue_pairs;
 	/**< Max number of queue pairs supported by device */
+	MB_MGR *mb_mgr;
+	/**< Multi-buffer instance */
+	struct aesni_gcm_ops ops[GCM_KEY_NUM];
+	/**< Function pointer table of the gcm APIs */
 };
 
 struct aesni_gcm_qp {
 	const struct aesni_gcm_ops *ops;
-	/**< Architecture dependent function pointer table of the gcm APIs */
+	/**< Function pointer table of the gcm APIs */
 	struct rte_ring *processed_pkts;
 	/**< Ring for placing process packets */
 	struct gcm_context_data gdata_ctx; /* (16 * 5) + 8 = 88 B */
