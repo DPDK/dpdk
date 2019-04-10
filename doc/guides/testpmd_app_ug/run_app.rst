@@ -121,11 +121,23 @@ The command line options are:
        XX:XX:XX:XX:XX:02
        ...
 
-
 *   ``--eth-peer=N,XX:XX:XX:XX:XX:XX``
 
     Set the MAC address ``XX:XX:XX:XX:XX:XX`` of the peer port N,
     where 0 <= N < ``CONFIG_RTE_MAX_ETHPORTS`` from the configuration file.
+
+*   ``--tx-ip=SRC,DST``
+
+    Set the source and destination IP address used when doing transmit only test.
+    The defaults address values are source 192.18.0.1 and
+    destination 192.18.0.2. These are special purpose addresses
+    reserved for benchmarking (RFC 2544).
+
+*   ``--tx-udp=SRC[,DST]``
+
+    Set the source and destination UDP port number for transmit test only test.
+    The default port is the port 9 which is defined for the discard protocol
+    (RFC 863).
 
 *   ``--pkt-filter-mode=mode``
 
