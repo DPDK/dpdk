@@ -22,7 +22,7 @@ They must be separated from the EAL options, shown in the previous section, with
 
     sudo ./testpmd -l 0-3 -n 4 -- -i --portmask=0x1 --nb-cores=2
 
-The commandline options are:
+The command line options are:
 
 *   ``-i, --interactive``
 
@@ -369,7 +369,7 @@ The commandline options are:
 
 *   ``--hot-plug``
 
-    Enable device event monitor machenism for hotplug.
+    Enable device event monitor mechanism for hot plug.
 
 *   ``--vxlan-gpe-port=N``
 
