@@ -849,4 +849,3 @@ RTE_PMD_REGISTER_PARAM_STRING(ifpga_rawdev_cfg,
 	"ifpga=<string> "
 	"port=<int> "
 	"afu_bts=<path>");
-

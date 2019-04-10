@@ -1543,4 +1543,3 @@ int qede_dev_filter_ctrl(struct rte_eth_dev *eth_dev,
 
 	return 0;
 }
-

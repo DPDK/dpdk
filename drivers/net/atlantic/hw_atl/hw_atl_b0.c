@@ -503,4 +503,3 @@ int hw_atl_b0_hw_ring_rx_stop(struct aq_hw_s *self, int index)
 	hw_atl_rdm_rx_desc_en_set(self, 0U, index);
 	return aq_hw_err_from_flags(self);
 }
-

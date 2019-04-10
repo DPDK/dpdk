@@ -1879,4 +1879,3 @@ RTE_INIT(atl_init_log)
 	if (atl_logtype_driver >= 0)
 		rte_log_set_level(atl_logtype_driver, RTE_LOG_NOTICE);
 }
-

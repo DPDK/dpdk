@@ -1348,4 +1348,3 @@ atl_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 	return nb_tx;
 }
-
