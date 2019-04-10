@@ -29,9 +29,11 @@
 
 #include "mlx5.h"
 #include "mlx5_defs.h"
-#include "mlx5_prm.h"
 #include "mlx5_glue.h"
 #include "mlx5_flow.h"
+#include "mlx5_prm.h"
+#include "mlx5_rxtx.h"
+
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 
 #ifndef HAVE_IBV_FLOW_DEVX_COUNTERS

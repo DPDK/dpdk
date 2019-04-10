@@ -30,9 +30,10 @@
 
 #include "mlx5.h"
 #include "mlx5_defs.h"
-#include "mlx5_prm.h"
-#include "mlx5_glue.h"
 #include "mlx5_flow.h"
+#include "mlx5_glue.h"
+#include "mlx5_prm.h"
+#include "mlx5_rxtx.h"
 
 /* Dev ops structure defined in mlx5.c */
 extern const struct eth_dev_ops mlx5_dev_ops;

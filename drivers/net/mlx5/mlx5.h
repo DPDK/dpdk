@@ -33,7 +33,6 @@
 
 #include "mlx5_utils.h"
 #include "mlx5_mr.h"
-#include "mlx5_rxtx.h"
 #include "mlx5_autoconf.h"
 #include "mlx5_defs.h"
 
