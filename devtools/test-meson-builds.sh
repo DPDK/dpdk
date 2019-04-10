@@ -62,7 +62,12 @@ for c in gcc clang ; do
 done
 
 # test compilation with minimal x86 instruction set
-build build-x86-default -Dmachine=nehalem $use_shared
+default_machine='nehalem'
+ok=$(cc -march=$default_machine -E - < /dev/null > /dev/null 2>&1 || echo false)
+if [ "$ok" = "false" ] ; then
+	default_machine='corei7'
+fi
+build build-x86-default -Dmachine=$default_machine $use_shared
 
 # enable cross compilation if gcc cross-compiler is found
 c=aarch64-linux-gnu-gcc
