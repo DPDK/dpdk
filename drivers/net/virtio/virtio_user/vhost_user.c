@@ -394,7 +394,10 @@ virtio_user_start_server(struct virtio_user_dev *dev, struct sockaddr_un *un)
 		return -1;
 
 	flag = fcntl(fd, F_GETFL);
-	fcntl(fd, F_SETFL, flag | O_NONBLOCK);
+	if (fcntl(fd, F_SETFL, flag | O_NONBLOCK) < 0) {
+		PMD_DRV_LOG(ERR, "fcntl failed, %s", strerror(errno));
+		return -1;
+	}
 
 	return 0;
 }
