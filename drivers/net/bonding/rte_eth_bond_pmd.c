@@ -304,13 +304,6 @@ rx_burst_8023ad(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts,
 
 		/* Handle slow protocol packets. */
 		while (j < num_rx_total) {
-
-			/* If packet is not pure L2 and is known, skip it */
-			if ((bufs[j]->packet_type & ~RTE_PTYPE_L2_ETHER) != 0) {
-				j++;
-				continue;
-			}
-
 			if (j + 3 < num_rx_total)
 				rte_prefetch0(rte_pktmbuf_mtod(bufs[j + 3], void *));
 
