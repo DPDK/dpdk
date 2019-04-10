@@ -56,16 +56,6 @@
 /** Enable extending memsegs when creating a MR. */
 #define MLX4_MR_EXT_MEMSEG_EN_KVARG "mr_ext_memseg_en"
 
-/* Reserved address space for UAR mapping. */
-#define MLX4_UAR_SIZE (1ULL << (sizeof(uintptr_t) * 4))
-
-/* Offset of reserved UAR address space to hugepage memory. Offset is used here
- * to minimize possibility of address next to hugepage being used by other code
- * in either primary or secondary process, failing to map TX UAR would make TX
- * packets invisible to HW.
- */
-#define MLX4_UAR_OFFSET (2ULL << (sizeof(uintptr_t) * 4))
-
 enum {
 	PCI_VENDOR_ID_MELLANOX = 0x15b3,
 };
@@ -138,8 +128,6 @@ struct mlx4_shared_data {
 	/* Global spinlock for primary and secondary processes. */
 	int init_done; /* Whether primary has done initialization. */
 	unsigned int secondary_cnt; /* Number of secondary processes init'd. */
-	void *uar_base;
-	/* Reserved UAR address space for TXQ UAR(hw doorbell) mapping. */
 	struct mlx4_dev_list mem_event_cb_list;
 	rte_rwlock_t mem_event_rwlock;
 };
@@ -147,11 +135,20 @@ struct mlx4_shared_data {
 /* Per-process data structure, not visible to other processes. */
 struct mlx4_local_data {
 	int init_done; /* Whether a secondary has done initialization. */
-	void *uar_base;
-	/* Reserved UAR address space for TXQ UAR(hw doorbell) mapping. */
 };
 
 extern struct mlx4_shared_data *mlx4_shared_data;
+
+/* Per-process private structure. */
+struct mlx4_proc_priv {
+	size_t uar_table_sz;
+	/* Size of UAR register table. */
+	void *uar_table[];
+	/* Table of UAR registers for each process. */
+};
+
+#define MLX4_PROC_PRIV(port_id) \
+	((struct mlx4_proc_priv *)rte_eth_devices[port_id].process_private)
 
 /** Private data structure. */
 struct mlx4_priv {

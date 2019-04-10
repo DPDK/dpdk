@@ -97,6 +97,7 @@ struct mlx4_txq_stats {
 struct txq {
 	struct mlx4_sq msq; /**< Info for directly manipulating the SQ. */
 	struct mlx4_cq mcq; /**< Info for directly manipulating the CQ. */
+	uint16_t port_id; /**< Port ID of device. */
 	unsigned int elts_head; /**< Current index in (*elts)[]. */
 	unsigned int elts_tail; /**< First element awaiting completion. */
 	int elts_comp_cd; /**< Countdown for next completion. */
@@ -117,6 +118,9 @@ struct txq {
 	struct ibv_qp *qp; /**< Queue pair. */
 	uint8_t data[]; /**< Remaining queue resources. */
 };
+
+#define MLX4_TX_BFREG(txq) \
+		(MLX4_PROC_PRIV((txq)->port_id)->uar_table[(txq)->stats.idx])
 
 /* mlx4_rxq.c */
 
@@ -152,7 +156,7 @@ uint16_t mlx4_rx_burst_removed(void *dpdk_rxq, struct rte_mbuf **pkts,
 
 /* mlx4_txq.c */
 
-int mlx4_tx_uar_remap(struct rte_eth_dev *dev, int fd);
+int mlx4_tx_uar_init_secondary(struct rte_eth_dev *dev, int fd);
 uint64_t mlx4_get_tx_port_offloads(struct mlx4_priv *priv);
 int mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx,
 			uint16_t desc, unsigned int socket,

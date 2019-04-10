@@ -1048,7 +1048,7 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	/* Make sure that descriptors are written before doorbell record. */
 	rte_wmb();
 	/* Ring QP doorbell. */
-	rte_write32(txq->msq.doorbell_qpn, txq->msq.db);
+	rte_write32(txq->msq.doorbell_qpn, MLX4_TX_BFREG(txq));
 	txq->elts_head += i;
 	return i;
 }

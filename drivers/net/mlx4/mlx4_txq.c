@@ -40,11 +40,88 @@
 #include "mlx4_utils.h"
 
 /**
- * Mmap TX UAR(HW doorbell) pages into reserved UAR address space.
- * Both primary and secondary process do mmap to make UAR address
- * aligned.
+ * Initialize Tx UAR registers for primary process.
  *
- * @param[in] dev
+ * @param txq
+ *   Pointer to Tx queue structure.
+ */
+static void
+txq_uar_init(struct txq *txq)
+{
+	struct mlx4_priv *priv = txq->priv;
+	struct mlx4_proc_priv *ppriv = MLX4_PROC_PRIV(PORT_ID(priv));
+
+	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	assert(ppriv);
+	ppriv->uar_table[txq->stats.idx] = txq->msq.db;
+}
+
+#ifdef HAVE_IBV_MLX4_UAR_MMAP_OFFSET
+/**
+ * Remap UAR register of a Tx queue for secondary process.
+ *
+ * Remapped address is stored at the table in the process private structure of
+ * the device, indexed by queue index.
+ *
+ * @param txq
+ *   Pointer to Tx queue structure.
+ * @param fd
+ *   Verbs file descriptor to map UAR pages.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+txq_uar_init_secondary(struct txq *txq, int fd)
+{
+	struct mlx4_priv *priv = txq->priv;
+	struct mlx4_proc_priv *ppriv = MLX4_PROC_PRIV(PORT_ID(priv));
+	void *addr;
+	uintptr_t uar_va;
+	uintptr_t offset;
+	const size_t page_size = sysconf(_SC_PAGESIZE);
+
+	assert(ppriv);
+	/*
+	 * As rdma-core, UARs are mapped in size of OS page
+	 * size. Ref to libmlx4 function: mlx4_init_context()
+	 */
+	uar_va = (uintptr_t)txq->msq.db;
+	offset = uar_va & (page_size - 1); /* Offset in page. */
+	addr = mmap(NULL, page_size, PROT_WRITE, MAP_SHARED, fd,
+			txq->msq.uar_mmap_offset);
+	if (addr == MAP_FAILED) {
+		ERROR("port %u mmap failed for BF reg of txq %u",
+		      txq->port_id, txq->stats.idx);
+		rte_errno = ENXIO;
+		return -rte_errno;
+	}
+	addr = RTE_PTR_ADD(addr, offset);
+	ppriv->uar_table[txq->stats.idx] = addr;
+	return 0;
+}
+
+/**
+ * Unmap UAR register of a Tx queue for secondary process.
+ *
+ * @param txq
+ *   Pointer to Tx queue structure.
+ */
+static void
+txq_uar_uninit_secondary(struct txq *txq)
+{
+	struct mlx4_proc_priv *ppriv = MLX4_PROC_PRIV(PORT_ID(txq->priv));
+	const size_t page_size = sysconf(_SC_PAGESIZE);
+	void *addr;
+
+	addr = ppriv->uar_table[txq->stats.idx];
+	munmap(RTE_PTR_ALIGN_FLOOR(addr, page_size), page_size);
+}
+
+/**
+ * Initialize Tx UAR registers for secondary process.
+ *
+ * @param dev
  *   Pointer to Ethernet device.
  * @param fd
  *   Verbs file descriptor to map UAR pages.
@@ -52,81 +129,41 @@
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-#ifdef HAVE_IBV_MLX4_UAR_MMAP_OFFSET
 int
-mlx4_tx_uar_remap(struct rte_eth_dev *dev, int fd)
+mlx4_tx_uar_init_secondary(struct rte_eth_dev *dev, int fd)
 {
-	unsigned int i, j;
 	const unsigned int txqs_n = dev->data->nb_tx_queues;
-	uintptr_t pages[txqs_n];
-	unsigned int pages_n = 0;
-	uintptr_t uar_va;
-	uintptr_t off;
-	void *addr;
-	void *ret;
 	struct txq *txq;
-	int already_mapped;
-	size_t page_size = sysconf(_SC_PAGESIZE);
+	unsigned int i;
+	int ret;
 
-	memset(pages, 0, txqs_n * sizeof(uintptr_t));
-	/*
-	 * As rdma-core, UARs are mapped in size of OS page size.
-	 * Use aligned address to avoid duplicate mmap.
-	 * Ref to libmlx4 function: mlx4_init_context()
-	 */
+	assert(rte_eal_process_type() == RTE_PROC_SECONDARY);
 	for (i = 0; i != txqs_n; ++i) {
 		txq = dev->data->tx_queues[i];
 		if (!txq)
 			continue;
-		/* UAR addr form verbs used to find dup and offset in page. */
-		uar_va = (uintptr_t)txq->msq.qp_sdb;
-		off = uar_va & (page_size - 1); /* offset in page. */
-		uar_va = RTE_ALIGN_FLOOR(uar_va, page_size); /* page addr. */
-		already_mapped = 0;
-		for (j = 0; j != pages_n; ++j) {
-			if (pages[j] == uar_va) {
-				already_mapped = 1;
-				break;
-			}
-		}
-		/* new address in reserved UAR address space. */
-		addr = RTE_PTR_ADD(mlx4_shared_data->uar_base,
-				   uar_va & (uintptr_t)(MLX4_UAR_SIZE - 1));
-		if (!already_mapped) {
-			pages[pages_n++] = uar_va;
-			/* fixed mmap to specified address in reserved
-			 * address space.
-			 */
-			ret = mmap(addr, page_size,
-				   PROT_WRITE, MAP_FIXED | MAP_SHARED, fd,
-				   txq->msq.uar_mmap_offset);
-			if (ret != addr) {
-				/* fixed mmap has to return same address. */
-				ERROR("port %u call to mmap failed on UAR"
-				      " for txq %u",
-				      dev->data->port_id, i);
-				rte_errno = ENXIO;
-				return -rte_errno;
-			}
-		}
-		if (rte_eal_process_type() == RTE_PROC_PRIMARY) /* save once. */
-			txq->msq.db = RTE_PTR_ADD((void *)addr, off);
-		else
-			assert(txq->msq.db ==
-			       RTE_PTR_ADD((void *)addr, off));
+		assert(txq->stats.idx == (uint16_t)i);
+		ret = txq_uar_init_secondary(txq, fd);
+		if (ret)
+			goto error;
 	}
 	return 0;
+error:
+	/* Rollback. */
+	do {
+		txq = dev->data->tx_queues[i];
+		if (!txq)
+			continue;
+		txq_uar_uninit_secondary(txq);
+	} while (i--);
+	return -rte_errno;
 }
 #else
 int
-mlx4_tx_uar_remap(struct rte_eth_dev *dev __rte_unused, int fd __rte_unused)
+mlx4_tx_uar_init_secondary(struct rte_eth_dev *dev __rte_unused,
+			   int fd __rte_unused)
 {
-	/*
-	 * Even if rdma-core doesn't support UAR remap, primary process
-	 * shouldn't be interrupted.
-	 */
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		return 0;
+	assert(rte_eal_process_type() == RTE_PROC_SECONDARY);
 	ERROR("UAR remap is not supported");
 	rte_errno = ENOTSUP;
 	return -rte_errno;
@@ -187,11 +224,10 @@ mlx4_txq_fill_dv_obj_info(struct txq *txq, struct mlx4dv_obj *mlxdv)
 				     (0u << MLX4_SQ_OWNER_BIT));
 #ifdef HAVE_IBV_MLX4_UAR_MMAP_OFFSET
 	sq->uar_mmap_offset = dqp->uar_mmap_offset;
-	sq->qp_sdb = dqp->sdb;
 #else
 	sq->uar_mmap_offset = -1; /* Make mmap() fail. */
-	sq->db = dqp->sdb;
 #endif
+	sq->db = dqp->sdb;
 	sq->doorbell_qpn = dqp->doorbell_qpn;
 	cq->buf = dcq->buf.buf;
 	cq->cqe_cnt = dcq->cqe_cnt;
@@ -314,6 +350,7 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	}
 	*txq = (struct txq){
 		.priv = priv,
+		.port_id = dev->data->port_id,
 		.stats = {
 			.idx = idx,
 		},
@@ -432,6 +469,7 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	}
 #endif
 	mlx4_txq_fill_dv_obj_info(txq, &mlxdv);
+	txq_uar_init(txq);
 	/* Save first wqe pointer in the first element. */
 	(&(*txq->elts)[0])->wqe =
 		(volatile struct mlx4_wqe_ctrl_seg *)txq->msq.buf;
