@@ -201,8 +201,8 @@ struct mlx5_txq_data {
 	volatile void *wqes; /* Work queue (use volatile to write into). */
 	volatile uint32_t *qp_db; /* Work queue doorbell. */
 	volatile uint32_t *cq_db; /* Completion queue doorbell. */
-	volatile void *bf_reg; /* Blueflame register remapped. */
 	struct rte_mbuf *(*elts)[]; /* TX elements. */
+	uint16_t port_id; /* Port ID of device. */
 	uint16_t idx; /* Queue index. */
 	struct mlx5_txq_stats stats; /* TX queue counters. */
 #ifndef RTE_ARCH_64
@@ -231,8 +231,11 @@ struct mlx5_txq_ctrl {
 	struct mlx5_txq_ibv *ibv; /* Verbs queue object. */
 	struct mlx5_priv *priv; /* Back pointer to private data. */
 	off_t uar_mmap_offset; /* UAR mmap offset for non-primary process. */
-	volatile void *bf_reg_orig; /* Blueflame register from verbs. */
+	void *bf_reg; /* BlueFlame register from Verbs. */
 };
+
+#define MLX5_TX_BFREG(txq) \
+		(MLX5_PROC_PRIV((txq)->port_id)->uar_table[(txq)->idx])
 
 /* mlx5_rxq.c */
 
@@ -301,7 +304,7 @@ uint64_t mlx5_get_rx_queue_offloads(struct rte_eth_dev *dev);
 int mlx5_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			unsigned int socket, const struct rte_eth_txconf *conf);
 void mlx5_tx_queue_release(void *dpdk_txq);
-int mlx5_tx_uar_remap(struct rte_eth_dev *dev, int fd);
+int mlx5_tx_uar_init_secondary(struct rte_eth_dev *dev, int fd);
 struct mlx5_txq_ibv *mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx);
 struct mlx5_txq_ibv *mlx5_txq_ibv_get(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_txq_ibv_release(struct mlx5_txq_ibv *txq_ibv);
@@ -704,7 +707,7 @@ static __rte_always_inline void
 mlx5_tx_dbrec_cond_wmb(struct mlx5_txq_data *txq, volatile struct mlx5_wqe *wqe,
 		       int cond)
 {
-	uint64_t *dst = (uint64_t *)((uintptr_t)txq->bf_reg);
+	uint64_t *dst = MLX5_TX_BFREG(txq);
 	volatile uint64_t *src = ((volatile uint64_t *)wqe);
 
 	rte_cio_wmb();

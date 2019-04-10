@@ -97,8 +97,6 @@ struct mlx5_shared_data {
 	/* Global spinlock for primary and secondary processes. */
 	int init_done; /* Whether primary has done initialization. */
 	unsigned int secondary_cnt; /* Number of secondary processes init'd. */
-	void *uar_base;
-	/* Reserved UAR address space for TXQ UAR(hw doorbell) mapping. */
 	struct mlx5_dev_list mem_event_cb_list;
 	rte_rwlock_t mem_event_rwlock;
 };
@@ -106,8 +104,6 @@ struct mlx5_shared_data {
 /* Per-process data structure, not visible to other processes. */
 struct mlx5_local_data {
 	int init_done; /* Whether a secondary has done initialization. */
-	void *uar_base;
-	/* Reserved UAR address space for TXQ UAR(hw doorbell) mapping. */
 };
 
 extern struct mlx5_shared_data *mlx5_shared_data;
@@ -282,6 +278,17 @@ struct mlx5_ibv_shared {
 	struct mlx5_ibv_shared_port port[]; /* per device port data array. */
 };
 
+/* Per-process private structure. */
+struct mlx5_proc_priv {
+	size_t uar_table_sz;
+	/* Size of UAR register table. */
+	void *uar_table[];
+	/* Table of UAR registers for each process. */
+};
+
+#define MLX5_PROC_PRIV(port_id) \
+	((struct mlx5_proc_priv *)rte_eth_devices[port_id].process_private)
+
 struct mlx5_priv {
 	LIST_ENTRY(mlx5_priv) mem_event_cb;
 	/**< Called by memory event callback. */
@@ -359,6 +366,7 @@ struct mlx5_priv {
 /* mlx5.c */
 
 int mlx5_getenv_int(const char *);
+int mlx5_proc_priv_init(struct rte_eth_dev *dev);
 
 /* mlx5_ethdev.c */
 

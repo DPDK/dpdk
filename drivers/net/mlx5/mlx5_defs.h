@@ -91,16 +91,6 @@
 /* Timeout in seconds to get a valid link status. */
 #define MLX5_LINK_STATUS_TIMEOUT 10
 
-/* Reserved address space for UAR mapping. */
-#define MLX5_UAR_SIZE (1ULL << (sizeof(uintptr_t) * 4))
-
-/* Offset of reserved UAR address space to hugepage memory. Offset is used here
- * to minimize possibility of address next to hugepage being used by other code
- * in either primary or secondary process, failing to map TX UAR would make TX
- * packets invisible to HW.
- */
-#define MLX5_UAR_OFFSET (1ULL << (sizeof(uintptr_t) * 4))
-
 /* Maximum number of UAR pages used by a port,
  * These are the size and mask for an array of mutexes used to synchronize
  * the access to port's UARs on platforms that do not support 64 bit writes.

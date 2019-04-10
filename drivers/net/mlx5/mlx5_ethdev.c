@@ -450,6 +450,9 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 		if (++j == rxqs_n)
 			j = 0;
 	}
+	ret = mlx5_proc_priv_init(dev);
+	if (ret)
+		return ret;
 	return 0;
 }
 
