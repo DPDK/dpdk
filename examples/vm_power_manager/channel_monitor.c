@@ -159,7 +159,8 @@ parse_json_to_pkt(json_t *element, struct channel_packet *pkt)
 			if (ret)
 				return ret;
 		} else if (!strcmp(key, "name")) {
-			strcpy(pkt->vm_name, json_string_value(value));
+			strlcpy(pkt->vm_name, json_string_value(value),
+					sizeof(pkt->vm_name));
 		} else if (!strcmp(key, "command")) {
 			char command[32];
 			strlcpy(command, json_string_value(value), 32);
