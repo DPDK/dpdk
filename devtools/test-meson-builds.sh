@@ -46,9 +46,9 @@ build () # <directory> <meson options>
 	fi
 }
 
-if [ "$1" == "-vv" ] ; then
+if [ "$1" = "-vv" ] ; then
 	TEST_MESON_BUILD_VERY_VERBOSE=1
-elif [ "$1" == "-v" ] ; then
+elif [ "$1" = "-v" ] ; then
 	TEST_MESON_BUILD_VERBOSE=1
 fi
 
