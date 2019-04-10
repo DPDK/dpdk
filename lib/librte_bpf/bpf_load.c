@@ -131,7 +131,8 @@ rte_bpf_load(const struct rte_bpf_prm *prm)
 	return bpf;
 }
 
-__rte_experimental __rte_weak struct rte_bpf *
+#ifndef RTE_LIBRTE_BPF_ELF
+__rte_experimental struct rte_bpf *
 rte_bpf_elf_load(const struct rte_bpf_prm *prm, const char *fname,
 	const char *sname)
 {
@@ -146,3 +147,4 @@ rte_bpf_elf_load(const struct rte_bpf_prm *prm, const char *fname,
 	rte_errno = ENOTSUP;
 	return NULL;
 }
+#endif
