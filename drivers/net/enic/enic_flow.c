@@ -39,6 +39,7 @@ struct copy_item_args {
 	uint8_t *inner_ofst;
 	uint8_t l2_proto_off;
 	uint8_t l3_proto_off;
+	struct enic *enic;
 };
 
 /* functions for copying items into enic filters */
@@ -723,12 +724,26 @@ enic_copy_item_vlan_v2(struct copy_item_args *arg)
 	if (eth_mask->ether_type)
 		return ENOTSUP;
 	/*
+	 * For recent models:
 	 * When packet matching, the VIC always compares vlan-stripped
 	 * L2, regardless of vlan stripping settings. So, the inner type
 	 * from vlan becomes the ether type of the eth header.
+	 *
+	 * Older models w/o hardware vxlan parser have a different
+	 * behavior when vlan stripping is disabled. In this case,
+	 * vlan tag remains in the L2 buffer.
 	 */
-	eth_mask->ether_type = mask->inner_type;
-	eth_val->ether_type = spec->inner_type;
+	if (!arg->enic->vxlan && !arg->enic->ig_vlan_strip_en) {
+		struct vlan_hdr *vlan;
+
+		vlan = (struct vlan_hdr *)(eth_mask + 1);
+		vlan->eth_proto = mask->inner_type;
+		vlan = (struct vlan_hdr *)(eth_val + 1);
+		vlan->eth_proto = spec->inner_type;
+	} else {
+		eth_mask->ether_type = mask->inner_type;
+		eth_val->ether_type = spec->inner_type;
+	}
 	/* For TCI, use the vlan mask/val fields (little endian). */
 	gp->mask_vlan = rte_be_to_cpu_16(mask->tci);
 	gp->val_vlan = rte_be_to_cpu_16(spec->tci);
@@ -1083,6 +1098,7 @@ enic_copy_filter(const struct rte_flow_item pattern[],
 
 	args.filter = enic_filter;
 	args.inner_ofst = &inner_ofst;
+	args.enic = enic;
 	for (; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
 		/* Get info about how to validate and copy the item. If NULL
 		 * is returned the nic does not support the item.
