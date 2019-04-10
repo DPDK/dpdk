@@ -3037,8 +3037,9 @@ init_port_dcb_config(portid_t pid,
 	port_conf.rxmode.offloads |= DEV_RX_OFFLOAD_VLAN_FILTER;
 
 	/* re-configure the device . */
-	rte_eth_dev_configure(pid, nb_rxq, nb_rxq, &port_conf);
-
+	retval = rte_eth_dev_configure(pid, nb_rxq, nb_rxq, &port_conf);
+	if (retval < 0)
+		return retval;
 	rte_eth_dev_info_get(pid, &rte_port->dev_info);
 
 	/* If dev_info.vmdq_pool_base is greater than 0,
