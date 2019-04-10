@@ -41,7 +41,6 @@
 #define MLX5_FLOW_TUNNEL 5
 
 struct mlx5_rxq_stats {
-	unsigned int idx; /**< Mapping index. */
 #ifdef MLX5_PMD_SOFT_COUNTERS
 	uint64_t ipackets; /**< Total of successfully received packets. */
 	uint64_t ibytes; /**< Total of successfully received bytes. */
@@ -51,7 +50,6 @@ struct mlx5_rxq_stats {
 };
 
 struct mlx5_txq_stats {
-	unsigned int idx; /**< Mapping index. */
 #ifdef MLX5_PMD_SOFT_COUNTERS
 	uint64_t opackets; /**< Total of successfully sent packets. */
 	uint64_t obytes; /**< Total of successfully sent bytes. */
@@ -116,6 +114,7 @@ struct mlx5_rxq_data {
 	struct rte_mempool *mp;
 	struct rte_mempool *mprq_mp; /* Mempool for Multi-Packet RQ. */
 	struct mlx5_mprq_buf *mprq_repl; /* Stashed mbuf for replenish. */
+	uint16_t idx; /* Queue index. */
 	struct mlx5_rxq_stats stats;
 	uint64_t mbuf_initializer; /* Default rearm_data for vectorized Rx. */
 	struct rte_mbuf fake_mbuf; /* elts padding for vectorized Rx. */
@@ -141,14 +140,13 @@ struct mlx5_rxq_ibv {
 
 /* RX queue control descriptor. */
 struct mlx5_rxq_ctrl {
+	struct mlx5_rxq_data rxq; /* Data path structure. */
 	LIST_ENTRY(mlx5_rxq_ctrl) next; /* Pointer to the next element. */
 	rte_atomic32_t refcnt; /* Reference counter. */
 	struct mlx5_rxq_ibv *ibv; /* Verbs elements. */
 	struct mlx5_priv *priv; /* Back pointer to private data. */
-	struct mlx5_rxq_data rxq; /* Data path structure. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	unsigned int irq:1; /* Whether IRQ is enabled. */
-	uint16_t idx; /* Queue index. */
 	uint32_t flow_mark_n; /* Number of Mark/Flag flows using this Queue. */
 	uint32_t flow_tunnels_n[MLX5_FLOW_TUNNEL]; /* Tunnels counters. */
 };
@@ -205,6 +203,7 @@ struct mlx5_txq_data {
 	volatile uint32_t *cq_db; /* Completion queue doorbell. */
 	volatile void *bf_reg; /* Blueflame register remapped. */
 	struct rte_mbuf *(*elts)[]; /* TX elements. */
+	uint16_t idx; /* Queue index. */
 	struct mlx5_txq_stats stats; /* TX queue counters. */
 #ifndef RTE_ARCH_64
 	rte_spinlock_t *uar_lock;
@@ -223,6 +222,7 @@ struct mlx5_txq_ibv {
 
 /* TX queue control descriptor. */
 struct mlx5_txq_ctrl {
+	struct mlx5_txq_data txq; /* Data path structure. */
 	LIST_ENTRY(mlx5_txq_ctrl) next; /* Pointer to the next element. */
 	rte_atomic32_t refcnt; /* Reference counter. */
 	unsigned int socket; /* CPU socket ID for allocations. */
@@ -230,10 +230,8 @@ struct mlx5_txq_ctrl {
 	unsigned int max_tso_header; /* Max TSO header size. */
 	struct mlx5_txq_ibv *ibv; /* Verbs queue object. */
 	struct mlx5_priv *priv; /* Back pointer to private data. */
-	struct mlx5_txq_data txq; /* Data path structure. */
 	off_t uar_mmap_offset; /* UAR mmap offset for non-primary process. */
 	volatile void *bf_reg_orig; /* Blueflame register from verbs. */
-	uint16_t idx; /* Queue index. */
 };
 
 /* mlx5_rxq.c */

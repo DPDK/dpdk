@@ -156,7 +156,7 @@ rxq_alloc_elts_mprq(struct mlx5_rxq_ctrl *rxq_ctrl)
 	}
 	DRV_LOG(DEBUG,
 		"port %u Rx queue %u allocated and configured %u segments",
-		rxq->port_id, rxq_ctrl->idx, wqe_n);
+		rxq->port_id, rxq->idx, wqe_n);
 	return 0;
 error:
 	err = rte_errno; /* Save rte_errno before cleanup. */
@@ -168,7 +168,7 @@ error:
 		(*rxq->mprq_bufs)[i] = NULL;
 	}
 	DRV_LOG(DEBUG, "port %u Rx queue %u failed, freed everything",
-		rxq->port_id, rxq_ctrl->idx);
+		rxq->port_id, rxq->idx);
 	rte_errno = err; /* Restore rte_errno. */
 	return -rte_errno;
 }
@@ -241,7 +241,7 @@ rxq_alloc_elts_sprq(struct mlx5_rxq_ctrl *rxq_ctrl)
 	DRV_LOG(DEBUG,
 		"port %u Rx queue %u allocated and configured %u segments"
 		" (max %u packets)",
-		PORT_ID(rxq_ctrl->priv), rxq_ctrl->idx, elts_n,
+		PORT_ID(rxq_ctrl->priv), rxq_ctrl->rxq.idx, elts_n,
 		elts_n / (1 << rxq_ctrl->rxq.sges_n));
 	return 0;
 error:
@@ -253,7 +253,7 @@ error:
 		(*rxq_ctrl->rxq.elts)[i] = NULL;
 	}
 	DRV_LOG(DEBUG, "port %u Rx queue %u failed, freed everything",
-		PORT_ID(rxq_ctrl->priv), rxq_ctrl->idx);
+		PORT_ID(rxq_ctrl->priv), rxq_ctrl->rxq.idx);
 	rte_errno = err; /* Restore rte_errno. */
 	return -rte_errno;
 }
@@ -287,7 +287,7 @@ rxq_free_elts_mprq(struct mlx5_rxq_ctrl *rxq_ctrl)
 	uint16_t i;
 
 	DRV_LOG(DEBUG, "port %u Multi-Packet Rx queue %u freeing WRs",
-		rxq->port_id, rxq_ctrl->idx);
+		rxq->port_id, rxq->idx);
 	if (rxq->mprq_bufs == NULL)
 		return;
 	assert(mlx5_rxq_check_vec_support(rxq) < 0);
@@ -318,7 +318,7 @@ rxq_free_elts_sprq(struct mlx5_rxq_ctrl *rxq_ctrl)
 	uint16_t i;
 
 	DRV_LOG(DEBUG, "port %u Rx queue %u freeing WRs",
-		PORT_ID(rxq_ctrl->priv), rxq_ctrl->idx);
+		PORT_ID(rxq_ctrl->priv), rxq->idx);
 	if (rxq->elts == NULL)
 		return;
 	/**
@@ -364,7 +364,7 @@ void
 mlx5_rxq_cleanup(struct mlx5_rxq_ctrl *rxq_ctrl)
 {
 	DRV_LOG(DEBUG, "port %u cleaning up Rx queue %u",
-		PORT_ID(rxq_ctrl->priv), rxq_ctrl->idx);
+		PORT_ID(rxq_ctrl->priv), rxq_ctrl->rxq.idx);
 	if (rxq_ctrl->ibv)
 		mlx5_rxq_ibv_release(rxq_ctrl->ibv);
 	memset(rxq_ctrl, 0, sizeof(*rxq_ctrl));
@@ -495,11 +495,11 @@ mlx5_rx_queue_release(void *dpdk_rxq)
 		return;
 	rxq_ctrl = container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 	priv = rxq_ctrl->priv;
-	if (!mlx5_rxq_releasable(ETH_DEV(priv), rxq_ctrl->rxq.stats.idx))
+	if (!mlx5_rxq_releasable(ETH_DEV(priv), rxq_ctrl->rxq.idx))
 		rte_panic("port %u Rx queue %u is still used by a flow and"
 			  " cannot be removed\n",
-			  PORT_ID(priv), rxq_ctrl->idx);
-	mlx5_rxq_release(ETH_DEV(priv), rxq_ctrl->rxq.stats.idx);
+			  PORT_ID(priv), rxq->idx);
+	mlx5_rxq_release(ETH_DEV(priv), rxq_ctrl->rxq.idx);
 }
 
 /**
@@ -793,7 +793,7 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 	if (!tmpl) {
 		DRV_LOG(ERR,
 			"port %u Rx queue %u cannot allocate verbs resources",
-			dev->data->port_id, rxq_ctrl->idx);
+			dev->data->port_id, rxq_data->idx);
 		rte_errno = ENOMEM;
 		goto error;
 	}
@@ -1104,7 +1104,7 @@ mlx5_rxq_ibv_verify(struct rte_eth_dev *dev)
 
 	LIST_FOREACH(rxq_ibv, &priv->rxqsibv, next) {
 		DRV_LOG(DEBUG, "port %u Verbs Rx queue %u still referenced",
-			dev->data->port_id, rxq_ibv->rxq_ctrl->idx);
+			dev->data->port_id, rxq_ibv->rxq_ctrl->rxq.idx);
 		++ret;
 	}
 	return ret;
@@ -1470,7 +1470,6 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	tmpl->rxq.port_id = dev->data->port_id;
 	tmpl->priv = priv;
 	tmpl->rxq.mp = mp;
-	tmpl->rxq.stats.idx = idx;
 	tmpl->rxq.elts_n = log2above(desc);
 	tmpl->rxq.rq_repl_thresh =
 		MLX5_VPMD_RXQ_RPLNSH_THRESH(1 << tmpl->rxq.elts_n);
@@ -1479,7 +1478,7 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 #ifndef RTE_ARCH_64
 	tmpl->rxq.uar_lock_cq = &priv->uar_lock_cq;
 #endif
-	tmpl->idx = idx;
+	tmpl->rxq.idx = idx;
 	rte_atomic32_inc(&tmpl->refcnt);
 	LIST_INSERT_HEAD(&priv->rxqsctrl, tmpl, next);
 	return tmpl;
@@ -1592,7 +1591,7 @@ mlx5_rxq_verify(struct rte_eth_dev *dev)
 
 	LIST_FOREACH(rxq_ctrl, &priv->rxqsctrl, next) {
 		DRV_LOG(DEBUG, "port %u Rx Queue %u still referenced",
-			dev->data->port_id, rxq_ctrl->idx);
+			dev->data->port_id, rxq_ctrl->rxq.idx);
 		++ret;
 	}
 	return ret;

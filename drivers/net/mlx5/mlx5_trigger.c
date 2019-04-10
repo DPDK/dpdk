@@ -123,7 +123,7 @@ mlx5_rxq_start(struct rte_eth_dev *dev)
 		DRV_LOG(DEBUG,
 			"port %u Rx queue %u registering"
 			" mp %s having %u chunks",
-			dev->data->port_id, rxq_ctrl->idx,
+			dev->data->port_id, rxq_ctrl->rxq.idx,
 			mp->name, mp->nb_mem_chunks);
 		mlx5_mr_update_mp(dev, &rxq_ctrl->rxq.mr_ctrl, mp);
 		ret = rxq_alloc_elts(rxq_ctrl);

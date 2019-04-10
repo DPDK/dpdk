@@ -48,7 +48,7 @@ txq_alloc_elts(struct mlx5_txq_ctrl *txq_ctrl)
 	for (i = 0; (i != elts_n); ++i)
 		(*txq_ctrl->txq.elts)[i] = NULL;
 	DRV_LOG(DEBUG, "port %u Tx queue %u allocated and configured %u WRs",
-		PORT_ID(txq_ctrl->priv), txq_ctrl->idx, elts_n);
+		PORT_ID(txq_ctrl->priv), txq_ctrl->txq.idx, elts_n);
 	txq_ctrl->txq.elts_head = 0;
 	txq_ctrl->txq.elts_tail = 0;
 	txq_ctrl->txq.elts_comp = 0;
@@ -70,7 +70,7 @@ txq_free_elts(struct mlx5_txq_ctrl *txq_ctrl)
 	struct rte_mbuf *(*elts)[elts_n] = txq_ctrl->txq.elts;
 
 	DRV_LOG(DEBUG, "port %u Tx queue %u freeing WRs",
-		PORT_ID(txq_ctrl->priv), txq_ctrl->idx);
+		PORT_ID(txq_ctrl->priv), txq_ctrl->txq.idx);
 	txq_ctrl->txq.elts_head = 0;
 	txq_ctrl->txq.elts_tail = 0;
 	txq_ctrl->txq.elts_comp = 0;
@@ -224,7 +224,7 @@ mlx5_tx_queue_release(void *dpdk_txq)
 		if ((*priv->txqs)[i] == txq) {
 			mlx5_txq_release(ETH_DEV(priv), i);
 			DRV_LOG(DEBUG, "port %u removing Tx queue %u from list",
-				PORT_ID(priv), txq_ctrl->idx);
+				PORT_ID(priv), txq->idx);
 			break;
 		}
 }
@@ -273,7 +273,7 @@ mlx5_tx_uar_remap(struct rte_eth_dev *dev, int fd)
 			continue;
 		txq = (*priv->txqs)[i];
 		txq_ctrl = container_of(txq, struct mlx5_txq_ctrl, txq);
-		assert(txq_ctrl->idx == (uint16_t)i);
+		assert(txq->idx == (uint16_t)i);
 		/* UAR addr form verbs used to find dup and offset in page. */
 		uar_va = (uintptr_t)txq_ctrl->bf_reg_orig;
 		off = uar_va & (page_size - 1); /* offset in page. */
@@ -301,7 +301,7 @@ mlx5_tx_uar_remap(struct rte_eth_dev *dev, int fd)
 				DRV_LOG(ERR,
 					"port %u call to mmap failed on UAR"
 					" for txq %u",
-					dev->data->port_id, txq_ctrl->idx);
+					dev->data->port_id, txq->idx);
 				rte_errno = ENXIO;
 				return -rte_errno;
 			}
@@ -629,7 +629,7 @@ mlx5_txq_ibv_verify(struct rte_eth_dev *dev)
 
 	LIST_FOREACH(txq_ibv, &priv->txqsibv, next) {
 		DRV_LOG(DEBUG, "port %u Verbs Tx queue %u still referenced",
-			dev->data->port_id, txq_ibv->txq_ctrl->idx);
+			dev->data->port_id, txq_ibv->txq_ctrl->txq.idx);
 		++ret;
 	}
 	return ret;
@@ -778,7 +778,7 @@ mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	tmpl->priv = priv;
 	tmpl->socket = socket;
 	tmpl->txq.elts_n = log2above(desc);
-	tmpl->idx = idx;
+	tmpl->txq.idx = idx;
 	txq_set_params(tmpl);
 	DRV_LOG(DEBUG, "port %u device_attr.max_qp_wr is %d",
 		dev->data->port_id, priv->sh->device_attr.orig_attr.max_qp_wr);
@@ -786,7 +786,6 @@ mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		dev->data->port_id, priv->sh->device_attr.orig_attr.max_sge);
 	tmpl->txq.elts =
 		(struct rte_mbuf *(*)[1 << tmpl->txq.elts_n])(tmpl + 1);
-	tmpl->txq.stats.idx = idx;
 	rte_atomic32_inc(&tmpl->refcnt);
 	LIST_INSERT_HEAD(&priv->txqsctrl, tmpl, next);
 	return tmpl;
@@ -893,12 +892,12 @@ int
 mlx5_txq_verify(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_txq_ctrl *txq;
+	struct mlx5_txq_ctrl *txq_ctrl;
 	int ret = 0;
 
-	LIST_FOREACH(txq, &priv->txqsctrl, next) {
+	LIST_FOREACH(txq_ctrl, &priv->txqsctrl, next) {
 		DRV_LOG(DEBUG, "port %u Tx queue %u still referenced",
-			dev->data->port_id, txq->idx);
+			dev->data->port_id, txq_ctrl->txq.idx);
 		++ret;
 	}
 	return ret;
