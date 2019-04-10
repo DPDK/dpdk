@@ -54,6 +54,7 @@ fi
 
 # shared and static linked builds with gcc and clang
 for c in gcc clang ; do
+	command -v $c >/dev/null 2>&1 || continue
 	for s in static shared ; do
 		export CC="ccache $c"
 		build build-$c-$s --default-library=$s
