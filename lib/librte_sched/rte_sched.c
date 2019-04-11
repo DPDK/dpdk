@@ -177,7 +177,7 @@ struct rte_sched_port {
 	uint32_t n_pipe_profiles;
 	uint32_t pipe_tc3_rate_max;
 #ifdef RTE_SCHED_RED
-	struct rte_red_config red_config[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE][e_RTE_METER_COLORS];
+	struct rte_red_config red_config[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE][RTE_COLORS];
 #endif
 
 	/* Timing */
@@ -642,7 +642,7 @@ rte_sched_port_config(struct rte_sched_port_params *params)
 	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++) {
 		uint32_t j;
 
-		for (j = 0; j < e_RTE_METER_COLORS; j++) {
+		for (j = 0; j < RTE_COLORS; j++) {
 			/* if min/max are both zero, then RED is disabled */
 			if ((params->red_params[i][j].min_th |
 			     params->red_params[i][j].max_th) == 0) {
@@ -1015,7 +1015,7 @@ rte_sched_port_pkt_write(struct rte_sched_port *port,
 			 struct rte_mbuf *pkt,
 			 uint32_t subport, uint32_t pipe,
 			 uint32_t traffic_class,
-			 uint32_t queue, enum rte_meter_color color)
+			 uint32_t queue, enum rte_color color)
 {
 	uint32_t queue_id = rte_sched_port_qindex(port, subport, pipe,
 			traffic_class, queue);
@@ -1037,10 +1037,10 @@ rte_sched_port_pkt_read_tree_path(struct rte_sched_port *port,
 	*queue = queue_id & (RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS - 1);
 }
 
-enum rte_meter_color
+enum rte_color
 rte_sched_port_pkt_read_color(const struct rte_mbuf *pkt)
 {
-	return (enum rte_meter_color)rte_mbuf_sched_color_get(pkt);
+	return (enum rte_color)rte_mbuf_sched_color_get(pkt);
 }
 
 int
@@ -1188,7 +1188,7 @@ rte_sched_port_red_drop(struct rte_sched_port *port, struct rte_mbuf *pkt, uint3
 	struct rte_red_config *red_cfg;
 	struct rte_red *red;
 	uint32_t tc_index;
-	enum rte_meter_color color;
+	enum rte_color color;
 
 	tc_index = (qindex >> 2) & 0x3;
 	color = rte_sched_port_pkt_read_color(pkt);

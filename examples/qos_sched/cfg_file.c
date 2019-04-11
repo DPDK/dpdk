@@ -64,7 +64,7 @@ cfg_load_port(struct rte_cfgfile *cfg, struct rte_sched_port_params *port_params
 			char *next;
 			int k;
 			/* for each packet colour (green, yellow, red) */
-			for (k = 0; k < e_RTE_METER_COLORS; k++) {
+			for (k = 0; k < RTE_COLORS; k++) {
 				port_params->red_params[j][k].min_th
 					= (uint16_t)strtol(entry, &next, 10);
 				if (next == NULL)
@@ -80,7 +80,7 @@ cfg_load_port(struct rte_cfgfile *cfg, struct rte_sched_port_params *port_params
 			char *next;
 			int k;
 			/* for each packet colour (green, yellow, red) */
-			for (k = 0; k < e_RTE_METER_COLORS; k++) {
+			for (k = 0; k < RTE_COLORS; k++) {
 				port_params->red_params[j][k].max_th
 					= (uint16_t)strtol(entry, &next, 10);
 				if (next == NULL)
@@ -96,7 +96,7 @@ cfg_load_port(struct rte_cfgfile *cfg, struct rte_sched_port_params *port_params
 			char *next;
 			int k;
 			/* for each packet colour (green, yellow, red) */
-			for (k = 0; k < e_RTE_METER_COLORS; k++) {
+			for (k = 0; k < RTE_COLORS; k++) {
 				port_params->red_params[j][k].maxp_inv
 					= (uint8_t)strtol(entry, &next, 10);
 
@@ -113,7 +113,7 @@ cfg_load_port(struct rte_cfgfile *cfg, struct rte_sched_port_params *port_params
 			char *next;
 			int k;
 			/* for each packet colour (green, yellow, red) */
-			for (k = 0; k < e_RTE_METER_COLORS; k++) {
+			for (k = 0; k < RTE_COLORS; k++) {
 				port_params->red_params[j][k].wq_log2
 					= (uint8_t)strtol(entry, &next, 10);
 				if (next == NULL)

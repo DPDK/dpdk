@@ -458,7 +458,7 @@ pmd_mtr_meter_profile_update(struct rte_eth_dev *dev,
 static int
 pmd_mtr_meter_dscp_table_update(struct rte_eth_dev *dev,
 	uint32_t mtr_id,
-	enum rte_mtr_color *dscp_table,
+	enum rte_color *dscp_table,
 	struct rte_mtr_error *error)
 {
 	struct pmd_internals *p = dev->data->dev_private;
@@ -488,7 +488,7 @@ pmd_mtr_meter_dscp_table_update(struct rte_eth_dev *dev,
 
 	memcpy(&dt, &table->dscp_table, sizeof(dt));
 	for (i = 0; i < RTE_DIM(dt.entry); i++)
-		dt.entry[i].color = (enum rte_meter_color)dscp_table[i];
+		dt.entry[i].color = (enum rte_color)dscp_table[i];
 
 	/* Update table */
 	status = softnic_pipeline_table_dscp_table_update(p,
@@ -536,7 +536,7 @@ pmd_mtr_policer_actions_update(struct rte_eth_dev *dev,
 			NULL,
 			"Invalid actions");
 
-	for (i = 0; i < RTE_MTR_COLORS; i++) {
+	for (i = 0; i < RTE_COLORS; i++) {
 		if (action_mask & (1 << i)) {
 			if (actions[i] != MTR_POLICER_ACTION_COLOR_GREEN  &&
 				actions[i] != MTR_POLICER_ACTION_COLOR_YELLOW &&
@@ -560,7 +560,7 @@ pmd_mtr_policer_actions_update(struct rte_eth_dev *dev,
 		memcpy(&action, &m->flow->action, sizeof(action));
 
 		/* Set action */
-		for (i = 0; i < RTE_MTR_COLORS; i++)
+		for (i = 0; i < RTE_COLORS; i++)
 			if (action_mask & (1 << i))
 				action.mtr.mtr[0].policer[i] =
 					softnic_table_action_policer(actions[i]);
@@ -588,7 +588,7 @@ pmd_mtr_policer_actions_update(struct rte_eth_dev *dev,
 	}
 
 	/* Meter: Update policer actions */
-	for (i = 0; i < RTE_MTR_COLORS; i++)
+	for (i = 0; i < RTE_COLORS; i++)
 		if (action_mask & (1 << i))
 			m->params.action[i] = actions[i];
 
@@ -618,15 +618,15 @@ mtr_stats_convert(struct softnic_mtr *m,
 	if (in->n_packets_valid) {
 		uint32_t i;
 
-		for (i = 0; i < RTE_MTR_COLORS; i++) {
+		for (i = 0; i < RTE_COLORS; i++) {
 			if (m->params.action[i] == MTR_POLICER_ACTION_COLOR_GREEN)
-				out->n_pkts[RTE_MTR_GREEN] += in->n_packets[i];
+				out->n_pkts[RTE_COLOR_GREEN] += in->n_packets[i];
 
 			if (m->params.action[i] == MTR_POLICER_ACTION_COLOR_YELLOW)
-				out->n_pkts[RTE_MTR_YELLOW] += in->n_packets[i];
+				out->n_pkts[RTE_COLOR_YELLOW] += in->n_packets[i];
 
 			if (m->params.action[i] == MTR_POLICER_ACTION_COLOR_RED)
-				out->n_pkts[RTE_MTR_RED] += in->n_packets[i];
+				out->n_pkts[RTE_COLOR_RED] += in->n_packets[i];
 
 			if (m->params.action[i] == MTR_POLICER_ACTION_DROP)
 				out->n_pkts_dropped += in->n_packets[i];
@@ -638,15 +638,15 @@ mtr_stats_convert(struct softnic_mtr *m,
 	if (in->n_bytes_valid) {
 		uint32_t i;
 
-		for (i = 0; i < RTE_MTR_COLORS; i++) {
+		for (i = 0; i < RTE_COLORS; i++) {
 			if (m->params.action[i] == MTR_POLICER_ACTION_COLOR_GREEN)
-				out->n_bytes[RTE_MTR_GREEN] += in->n_bytes[i];
+				out->n_bytes[RTE_COLOR_GREEN] += in->n_bytes[i];
 
 			if (m->params.action[i] == MTR_POLICER_ACTION_COLOR_YELLOW)
-				out->n_bytes[RTE_MTR_YELLOW] += in->n_bytes[i];
+				out->n_bytes[RTE_COLOR_YELLOW] += in->n_bytes[i];
 
 			if (m->params.action[i] == MTR_POLICER_ACTION_COLOR_RED)
-				out->n_bytes[RTE_MTR_RED] += in->n_bytes[i];
+				out->n_bytes[RTE_COLOR_RED] += in->n_bytes[i];
 
 			if (m->params.action[i] == MTR_POLICER_ACTION_DROP)
 				out->n_bytes_dropped += in->n_bytes[i];

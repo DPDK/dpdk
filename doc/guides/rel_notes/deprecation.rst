@@ -65,11 +65,6 @@ Deprecation Notices
   kernel modules in DPDK. As a result users won't be able to use ``ethtool``
   via ``igb`` & ``ixgbe`` anymore.
 
-* meter: New ``rte_color`` definition will be added in 19.02 and that will
-  replace ``enum rte_meter_color`` in meter library in 19.05. This will help
-  to consolidate color definition, which is currently replicated in many places,
-  such as: rte_meter.h, rte_mtr.h, rte_tm.h.
-
 * cryptodev: New member in ``rte_cryptodev_config`` to allow applications to
   disable features supported by the crypto device. Only the following features
   would be allowed to be disabled this way,

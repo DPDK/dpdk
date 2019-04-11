@@ -82,13 +82,6 @@
 extern "C" {
 #endif
 
-/* New rte_color is defined and used to deprecate rte_mtr_color soon. */
-#define rte_mtr_color rte_color
-#define RTE_MTR_GREEN RTE_COLOR_GREEN
-#define RTE_MTR_YELLOW RTE_COLOR_YELLOW
-#define RTE_MTR_RED RTE_COLOR_RED
-#define RTE_MTR_COLORS RTE_COLORS
-
 /**
  * Statistics counter type
  */
@@ -123,10 +116,10 @@ enum rte_mtr_stats_type {
  */
 struct rte_mtr_stats {
 	/** Number of packets passed by the policer (per color). */
-	uint64_t n_pkts[RTE_MTR_COLORS];
+	uint64_t n_pkts[RTE_COLORS];
 
 	/** Number of bytes passed by the policer (per color). */
-	uint64_t n_bytes[RTE_MTR_COLORS];
+	uint64_t n_bytes[RTE_COLORS];
 
 	/** Number of packets dropped by the policer. */
 	uint64_t n_pkts_dropped;
@@ -258,7 +251,7 @@ struct rte_mtr_params {
 	 * at least one yellow or red color element, then the color aware mode
 	 * is configured.
 	 */
-	enum rte_mtr_color *dscp_table;
+	enum rte_color *dscp_table;
 
 	/** Non-zero to enable the meter, zero to disable the meter at the time
 	 * of MTR object creation. Ignored when the meter profile indicated by
@@ -268,7 +261,7 @@ struct rte_mtr_params {
 	int meter_enable;
 
 	/** Policer actions (per meter output color). */
-	enum rte_mtr_policer_action action[RTE_MTR_COLORS];
+	enum rte_mtr_policer_action action[RTE_COLORS];
 
 	/** Set of stats counters to be enabled.
 	 * @see enum rte_mtr_stats_type
@@ -634,7 +627,7 @@ rte_mtr_meter_profile_update(uint16_t port_id,
 int __rte_experimental
 rte_mtr_meter_dscp_table_update(uint16_t port_id,
 	uint32_t mtr_id,
-	enum rte_mtr_color *dscp_table,
+	enum rte_color *dscp_table,
 	struct rte_mtr_error *error);
 
 /**

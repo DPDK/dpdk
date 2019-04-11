@@ -153,7 +153,7 @@ rte_mtr_meter_profile_update(uint16_t port_id,
 int __rte_experimental
 rte_mtr_meter_dscp_table_update(uint16_t port_id,
 	uint32_t mtr_id,
-	enum rte_mtr_color *dscp_table,
+	enum rte_color *dscp_table,
 	struct rte_mtr_error *error)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];

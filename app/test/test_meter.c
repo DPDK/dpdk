@@ -215,7 +215,7 @@ tm_test_srtcm_color_blind_check(void)
 	time = rte_get_tsc_cycles() + hz;
 	if (rte_meter_srtcm_color_blind_check(
 		&sm, &sp, time, TM_TEST_SRTCM_CBS_DF - 1)
-		!= e_RTE_METER_GREEN)
+		!= RTE_COLOR_GREEN)
 		melog(SRTCM_BLIND_CHECK_MSG" GREEN");
 
 	/* Test yellow */
@@ -226,7 +226,7 @@ tm_test_srtcm_color_blind_check(void)
 	time = rte_get_tsc_cycles() + hz;
 	if (rte_meter_srtcm_color_blind_check(
 		&sm, &sp, time, TM_TEST_SRTCM_CBS_DF + 1)
-		!= e_RTE_METER_YELLOW)
+		!= RTE_COLOR_YELLOW)
 		melog(SRTCM_BLIND_CHECK_MSG" YELLOW");
 
 	if (rte_meter_srtcm_profile_config(&sp, &sparams) != 0)
@@ -235,7 +235,7 @@ tm_test_srtcm_color_blind_check(void)
 		melog(SRTCM_BLIND_CHECK_MSG);
 	time = rte_get_tsc_cycles() + hz;
 	if (rte_meter_srtcm_color_blind_check(
-		&sm, &sp, time, (uint32_t)sp.ebs - 1) != e_RTE_METER_YELLOW)
+		&sm, &sp, time, (uint32_t)sp.ebs - 1) != RTE_COLOR_YELLOW)
 		melog(SRTCM_BLIND_CHECK_MSG" YELLOW");
 
 	/* Test red */
@@ -246,7 +246,7 @@ tm_test_srtcm_color_blind_check(void)
 	time = rte_get_tsc_cycles() + hz;
 	if (rte_meter_srtcm_color_blind_check(
 		&sm, &sp, time, TM_TEST_SRTCM_EBS_DF + 1)
-		!= e_RTE_METER_RED)
+		!= RTE_COLOR_RED)
 		melog(SRTCM_BLIND_CHECK_MSG" RED");
 
 	return 0;
@@ -274,7 +274,7 @@ tm_test_trtcm_color_blind_check(void)
 	time = rte_get_tsc_cycles() + hz;
 	if (rte_meter_trtcm_color_blind_check(
 		&tm, &tp, time, TM_TEST_TRTCM_CBS_DF - 1)
-		!= e_RTE_METER_GREEN)
+		!= RTE_COLOR_GREEN)
 		melog(TRTCM_BLIND_CHECK_MSG" GREEN");
 
 	/* Test yellow */
@@ -285,7 +285,7 @@ tm_test_trtcm_color_blind_check(void)
 	time = rte_get_tsc_cycles() + hz;
 	if (rte_meter_trtcm_color_blind_check(
 		&tm, &tp, time, TM_TEST_TRTCM_CBS_DF + 1)
-		!= e_RTE_METER_YELLOW)
+		!= RTE_COLOR_YELLOW)
 		melog(TRTCM_BLIND_CHECK_MSG" YELLOW");
 
 	if (rte_meter_trtcm_profile_config(&tp, &tparams) != 0)
@@ -295,7 +295,7 @@ tm_test_trtcm_color_blind_check(void)
 	time = rte_get_tsc_cycles() + hz;
 	if (rte_meter_trtcm_color_blind_check(
 		&tm, &tp, time, TM_TEST_TRTCM_PBS_DF - 1)
-		!= e_RTE_METER_YELLOW)
+		!= RTE_COLOR_YELLOW)
 		melog(TRTCM_BLIND_CHECK_MSG" YELLOW");
 
 	/* Test red */
@@ -306,7 +306,7 @@ tm_test_trtcm_color_blind_check(void)
 	time = rte_get_tsc_cycles() + hz;
 	if (rte_meter_trtcm_color_blind_check(
 		&tm, &tp, time, TM_TEST_TRTCM_PBS_DF + 1)
-		!= e_RTE_METER_RED)
+		!= RTE_COLOR_RED)
 		melog(TRTCM_BLIND_CHECK_MSG" RED");
 
 	return 0;
@@ -333,7 +333,7 @@ tm_test_trtcm_rfc4115_color_blind_check(void)
 	time = rte_get_tsc_cycles() + hz;
 	if (rte_meter_trtcm_rfc4115_color_blind_check(
 		&tm, &tp, time, TM_TEST_TRTCM_CBS_DF - 1)
-		!= e_RTE_METER_GREEN)
+		!= RTE_COLOR_GREEN)
 		melog(TRTCM_RFC4115_BLIND_CHECK_MSG" GREEN");
 
 	/* Test yellow */
@@ -344,7 +344,7 @@ tm_test_trtcm_rfc4115_color_blind_check(void)
 	time = rte_get_tsc_cycles() + hz;
 	if (rte_meter_trtcm_rfc4115_color_blind_check(
 		&tm, &tp, time, TM_TEST_TRTCM_CBS_DF + 1)
-		!= e_RTE_METER_YELLOW)
+		!= RTE_COLOR_YELLOW)
 		melog(TRTCM_RFC4115_BLIND_CHECK_MSG" YELLOW");
 
 	if (rte_meter_trtcm_rfc4115_profile_config(&tp, &rfc4115params) != 0)
@@ -354,7 +354,7 @@ tm_test_trtcm_rfc4115_color_blind_check(void)
 	time = rte_get_tsc_cycles() + hz;
 	if (rte_meter_trtcm_rfc4115_color_blind_check(
 		&tm, &tp, time, TM_TEST_TRTCM_EBS_DF - 1)
-		!= e_RTE_METER_YELLOW)
+		!= RTE_COLOR_YELLOW)
 		melog(TRTCM_RFC4115_BLIND_CHECK_MSG" YELLOW");
 
 	/* Test red */
@@ -365,7 +365,7 @@ tm_test_trtcm_rfc4115_color_blind_check(void)
 	time = rte_get_tsc_cycles() + hz;
 	if (rte_meter_trtcm_rfc4115_color_blind_check(
 		&tm, &tp, time, TM_TEST_TRTCM_EBS_DF + 1)
-		!= e_RTE_METER_RED)
+		!= RTE_COLOR_RED)
 		melog(TRTCM_RFC4115_BLIND_CHECK_MSG" RED");
 
 	return 0;
@@ -383,7 +383,7 @@ tm_test_trtcm_rfc4115_color_blind_check(void)
 
 static inline int
 tm_test_srtcm_aware_check
-(enum rte_meter_color in[4], enum rte_meter_color out[4])
+(enum rte_color in[4], enum rte_color out[4])
 {
 #define SRTCM_AWARE_CHECK_MSG "srtcm_aware_check"
 	struct rte_meter_srtcm_profile sp;
@@ -437,7 +437,7 @@ tm_test_srtcm_aware_check
 static inline int
 tm_test_srtcm_color_aware_check(void)
 {
-	enum rte_meter_color in[4], out[4];
+	enum rte_color in[4], out[4];
 
 	/**
 	  * test 4 points that will produce green, yellow, yellow, red flag
@@ -445,11 +445,11 @@ tm_test_srtcm_color_aware_check(void)
 	  */
 
 	/* previouly have a green, test points should keep unchanged */
-	in[0] = in[1] = in[2] = in[3] = e_RTE_METER_GREEN;
-	out[0] = e_RTE_METER_GREEN;
-	out[1] = e_RTE_METER_YELLOW;
-	out[2] = e_RTE_METER_YELLOW;
-	out[3] = e_RTE_METER_RED;
+	in[0] = in[1] = in[2] = in[3] = RTE_COLOR_GREEN;
+	out[0] = RTE_COLOR_GREEN;
+	out[1] = RTE_COLOR_YELLOW;
+	out[2] = RTE_COLOR_YELLOW;
+	out[3] = RTE_COLOR_RED;
 	if (tm_test_srtcm_aware_check(in, out) != 0)
 		return -1;
 
@@ -457,11 +457,11 @@ tm_test_srtcm_color_aware_check(void)
 	  * previously have a yellow, green & yellow = yellow
 	  * yellow & red = red
 	  */
-	in[0] = in[1] = in[2] = in[3] = e_RTE_METER_YELLOW;
-	out[0] = e_RTE_METER_YELLOW;
-	out[1] = e_RTE_METER_YELLOW;
-	out[2] = e_RTE_METER_YELLOW;
-	out[3] = e_RTE_METER_RED;
+	in[0] = in[1] = in[2] = in[3] = RTE_COLOR_YELLOW;
+	out[0] = RTE_COLOR_YELLOW;
+	out[1] = RTE_COLOR_YELLOW;
+	out[2] = RTE_COLOR_YELLOW;
+	out[3] = RTE_COLOR_RED;
 	if (tm_test_srtcm_aware_check(in, out) != 0)
 		return -1;
 
@@ -469,11 +469,11 @@ tm_test_srtcm_color_aware_check(void)
 	  * previously have a red, red & green = red
 	  * red & yellow = red
 	  */
-	in[0] = in[1] = in[2] = in[3] = e_RTE_METER_RED;
-	out[0] = e_RTE_METER_RED;
-	out[1] = e_RTE_METER_RED;
-	out[2] = e_RTE_METER_RED;
-	out[3] = e_RTE_METER_RED;
+	in[0] = in[1] = in[2] = in[3] = RTE_COLOR_RED;
+	out[0] = RTE_COLOR_RED;
+	out[1] = RTE_COLOR_RED;
+	out[2] = RTE_COLOR_RED;
+	out[3] = RTE_COLOR_RED;
 	if (tm_test_srtcm_aware_check(in, out) != 0)
 		return -1;
 
@@ -490,7 +490,7 @@ tm_test_srtcm_color_aware_check(void)
  */
 static inline int
 tm_test_trtcm_aware_check
-(enum rte_meter_color in[4], enum rte_meter_color out[4])
+(enum rte_color in[4], enum rte_color out[4])
 {
 #define TRTCM_AWARE_CHECK_MSG "trtcm_aware_check"
 	struct rte_meter_trtcm_profile tp;
@@ -545,34 +545,34 @@ tm_test_trtcm_aware_check
 static inline int
 tm_test_trtcm_color_aware_check(void)
 {
-	enum rte_meter_color in[4], out[4];
+	enum rte_color in[4], out[4];
 	/**
 	  * test 4 points that will produce green, yellow, yellow, red flag
 	  * if using blind check
 	  */
 
 	/* previouly have a green, test points should keep unchanged */
-	in[0] = in[1] = in[2] = in[3] = e_RTE_METER_GREEN;
-	out[0] = e_RTE_METER_GREEN;
-	out[1] = e_RTE_METER_YELLOW;
-	out[2] = e_RTE_METER_YELLOW;
-	out[3] = e_RTE_METER_RED;
+	in[0] = in[1] = in[2] = in[3] = RTE_COLOR_GREEN;
+	out[0] = RTE_COLOR_GREEN;
+	out[1] = RTE_COLOR_YELLOW;
+	out[2] = RTE_COLOR_YELLOW;
+	out[3] = RTE_COLOR_RED;
 	if (tm_test_trtcm_aware_check(in, out) != 0)
 		return -1;
 
-	in[0] = in[1] = in[2] = in[3] = e_RTE_METER_YELLOW;
-	out[0] = e_RTE_METER_YELLOW;
-	out[1] = e_RTE_METER_YELLOW;
-	out[2] = e_RTE_METER_YELLOW;
-	out[3] = e_RTE_METER_RED;
+	in[0] = in[1] = in[2] = in[3] = RTE_COLOR_YELLOW;
+	out[0] = RTE_COLOR_YELLOW;
+	out[1] = RTE_COLOR_YELLOW;
+	out[2] = RTE_COLOR_YELLOW;
+	out[3] = RTE_COLOR_RED;
 	if (tm_test_trtcm_aware_check(in, out) != 0)
 		return -1;
 
-	in[0] = in[1] = in[2] = in[3] = e_RTE_METER_RED;
-	out[0] = e_RTE_METER_RED;
-	out[1] = e_RTE_METER_RED;
-	out[2] = e_RTE_METER_RED;
-	out[3] = e_RTE_METER_RED;
+	in[0] = in[1] = in[2] = in[3] = RTE_COLOR_RED;
+	out[0] = RTE_COLOR_RED;
+	out[1] = RTE_COLOR_RED;
+	out[2] = RTE_COLOR_RED;
+	out[3] = RTE_COLOR_RED;
 	if (tm_test_trtcm_aware_check(in, out) != 0)
 		return -1;
 
@@ -589,7 +589,7 @@ tm_test_trtcm_color_aware_check(void)
  */
 static inline int
 tm_test_trtcm_rfc4115_aware_check
-(enum rte_meter_color in[4], enum rte_meter_color out[4])
+(enum rte_color in[4], enum rte_color out[4])
 {
 #define TRTCM_RFC4115_AWARE_CHECK_MSG "trtcm_rfc4115_aware_check"
 	struct rte_meter_trtcm_rfc4115_profile tp;
@@ -642,34 +642,34 @@ tm_test_trtcm_rfc4115_aware_check
 static inline int
 tm_test_trtcm_rfc4115_color_aware_check(void)
 {
-	enum rte_meter_color in[4], out[4];
+	enum rte_color in[4], out[4];
 	/**
 	  * test 4 points that will produce green, yellow, yellow, red flag
 	  * if using blind check
 	  */
 
 	/* previouly have a green, test points should keep unchanged */
-	in[0] = in[1] = in[2] = in[3] = e_RTE_METER_GREEN;
-	out[0] = e_RTE_METER_GREEN;
-	out[1] = e_RTE_METER_YELLOW;
-	out[2] = e_RTE_METER_YELLOW;
-	out[3] = e_RTE_METER_RED;
+	in[0] = in[1] = in[2] = in[3] = RTE_COLOR_GREEN;
+	out[0] = RTE_COLOR_GREEN;
+	out[1] = RTE_COLOR_YELLOW;
+	out[2] = RTE_COLOR_YELLOW;
+	out[3] = RTE_COLOR_RED;
 	if (tm_test_trtcm_rfc4115_aware_check(in, out) != 0)
 		return -1;
 
-	in[0] = in[1] = in[2] = in[3] = e_RTE_METER_YELLOW;
-	out[0] = e_RTE_METER_YELLOW;
-	out[1] = e_RTE_METER_YELLOW;
-	out[2] = e_RTE_METER_YELLOW;
-	out[3] = e_RTE_METER_RED;
+	in[0] = in[1] = in[2] = in[3] = RTE_COLOR_YELLOW;
+	out[0] = RTE_COLOR_YELLOW;
+	out[1] = RTE_COLOR_YELLOW;
+	out[2] = RTE_COLOR_YELLOW;
+	out[3] = RTE_COLOR_RED;
 	if (tm_test_trtcm_rfc4115_aware_check(in, out) != 0)
 		return -1;
 
-	in[0] = in[1] = in[2] = in[3] = e_RTE_METER_RED;
-	out[0] = e_RTE_METER_RED;
-	out[1] = e_RTE_METER_RED;
-	out[2] = e_RTE_METER_RED;
-	out[3] = e_RTE_METER_RED;
+	in[0] = in[1] = in[2] = in[3] = RTE_COLOR_RED;
+	out[0] = RTE_COLOR_RED;
+	out[1] = RTE_COLOR_RED;
+	out[2] = RTE_COLOR_RED;
+	out[3] = RTE_COLOR_RED;
 	if (tm_test_trtcm_rfc4115_aware_check(in, out) != 0)
 		return -1;
 

@@ -296,7 +296,7 @@ static void cmd_show_port_tm_cap_parsed(void *parsed_result,
 	printf("cap.cman_wred_context_shared_n_contexts_per_node_max %" PRIu32
 		"\n", cap.cman_wred_context_shared_n_contexts_per_node_max);
 
-	for (i = 0; i < RTE_TM_COLORS; i++) {
+	for (i = 0; i < RTE_COLORS; i++) {
 		printf("cap.mark_vlan_dei_supported %" PRId32 "\n",
 			cap.mark_vlan_dei_supported[i]);
 		printf("cap.mark_ip_ecn_tcp_supported %" PRId32 "\n",
@@ -642,22 +642,22 @@ static void cmd_show_port_tm_node_stats_parsed(void *parsed_result,
 			stats.n_bytes);
 	if (stats_mask & RTE_TM_STATS_N_PKTS_GREEN_DROPPED)
 		printf("\tPkts dropped (green): %" PRIu64 "\n",
-			stats.leaf.n_pkts_dropped[RTE_TM_GREEN]);
+			stats.leaf.n_pkts_dropped[RTE_COLOR_GREEN]);
 	if (stats_mask & RTE_TM_STATS_N_PKTS_YELLOW_DROPPED)
 		printf("\tPkts dropped (yellow): %" PRIu64 "\n",
-			stats.leaf.n_pkts_dropped[RTE_TM_YELLOW]);
+			stats.leaf.n_pkts_dropped[RTE_COLOR_YELLOW]);
 	if (stats_mask & RTE_TM_STATS_N_PKTS_RED_DROPPED)
 		printf("\tPkts dropped (red): %" PRIu64 "\n",
-			stats.leaf.n_pkts_dropped[RTE_TM_RED]);
+			stats.leaf.n_pkts_dropped[RTE_COLOR_RED]);
 	if (stats_mask & RTE_TM_STATS_N_BYTES_GREEN_DROPPED)
 		printf("\tBytes dropped (green): %" PRIu64 "\n",
-			stats.leaf.n_bytes_dropped[RTE_TM_GREEN]);
+			stats.leaf.n_bytes_dropped[RTE_COLOR_GREEN]);
 	if (stats_mask & RTE_TM_STATS_N_BYTES_YELLOW_DROPPED)
 		printf("\tBytes dropped (yellow): %" PRIu64 "\n",
-			stats.leaf.n_bytes_dropped[RTE_TM_YELLOW]);
+			stats.leaf.n_bytes_dropped[RTE_COLOR_YELLOW]);
 	if (stats_mask & RTE_TM_STATS_N_BYTES_RED_DROPPED)
 		printf("\tBytes dropped (red): %" PRIu64 "\n",
-			stats.leaf.n_bytes_dropped[RTE_TM_RED]);
+			stats.leaf.n_bytes_dropped[RTE_COLOR_RED]);
 	if (stats_mask & RTE_TM_STATS_N_PKTS_QUEUED)
 		printf("\tPkts queued: %" PRIu64 "\n",
 			stats.leaf.n_pkts_queued);
@@ -1267,7 +1267,7 @@ static void cmd_add_port_tm_node_wred_profile_parsed(void *parsed_result,
 {
 	struct cmd_add_port_tm_node_wred_profile_result *res = parsed_result;
 	struct rte_tm_wred_params wp;
-	enum rte_tm_color color;
+	enum rte_color color;
 	struct rte_tm_error error;
 	uint32_t wred_profile_id = res->wred_profile_id;
 	portid_t port_id = res->port_id;
@@ -1280,7 +1280,7 @@ static void cmd_add_port_tm_node_wred_profile_parsed(void *parsed_result,
 	memset(&error, 0, sizeof(struct rte_tm_error));
 
 	/* WRED Params  (Green Color)*/
-	color = RTE_TM_GREEN;
+	color = RTE_COLOR_GREEN;
 	wp.red_params[color].min_th = res->min_th_g;
 	wp.red_params[color].max_th = res->max_th_g;
 	wp.red_params[color].maxp_inv = res->maxp_inv_g;
@@ -1288,14 +1288,14 @@ static void cmd_add_port_tm_node_wred_profile_parsed(void *parsed_result,
 
 
 	/* WRED Params  (Yellow Color)*/
-	color = RTE_TM_YELLOW;
+	color = RTE_COLOR_YELLOW;
 	wp.red_params[color].min_th = res->min_th_y;
 	wp.red_params[color].max_th = res->max_th_y;
 	wp.red_params[color].maxp_inv = res->maxp_inv_y;
 	wp.red_params[color].wq_log2 = res->wq_log2_y;
 
 	/* WRED Params  (Red Color)*/
-	color = RTE_TM_RED;
+	color = RTE_COLOR_RED;
 	wp.red_params[color].min_th = res->min_th_r;
 	wp.red_params[color].max_th = res->max_th_r;
 	wp.red_params[color].maxp_inv = res->maxp_inv_r;

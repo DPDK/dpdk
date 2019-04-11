@@ -188,6 +188,11 @@ API Changes
   ``rte_service_attr_get()`` has been changed
   from ``uint32_t *`` to ``uint64_t *``.
 
+* meter: replace ``enum rte_meter_color`` in meter library with new
+  ``rte_color`` definition added in 19.02. To consolidate mulitple color
+  definitions replicated at many places such as: rte_mtr.h, rte_tm.h,
+  replacements with rte_color values are done.
+
 * vfio: Functions ``rte_vfio_container_dma_map`` and
   ``rte_vfio_container_dma_unmap`` have been extended with an option to
   request mapping or un-mapping to the default vfio container fd.
@@ -273,7 +278,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_mbuf.so.5
      librte_member.so.1
      librte_mempool.so.5
-     librte_meter.so.2
+     librte_meter.so.3
      librte_metrics.so.1
      librte_net.so.1
      librte_pci.so.1

@@ -3237,11 +3237,11 @@ parse_table_action_meter_tc(char **tokens,
 		parser_read_uint32(&mtr->meter_profile_id, tokens[1]) ||
 		strcmp(tokens[2], "policer") ||
 		strcmp(tokens[3], "g") ||
-		parse_policer_action(tokens[4], &mtr->policer[e_RTE_METER_GREEN]) ||
+		parse_policer_action(tokens[4], &mtr->policer[RTE_COLOR_GREEN]) ||
 		strcmp(tokens[5], "y") ||
-		parse_policer_action(tokens[6], &mtr->policer[e_RTE_METER_YELLOW]) ||
+		parse_policer_action(tokens[6], &mtr->policer[RTE_COLOR_YELLOW]) ||
 		strcmp(tokens[7], "r") ||
-		parse_policer_action(tokens[8], &mtr->policer[e_RTE_METER_RED]))
+		parse_policer_action(tokens[8], &mtr->policer[RTE_COLOR_RED]))
 		return 0;
 
 	return 9;
@@ -4949,11 +4949,11 @@ table_rule_show(const char *pipeline_name,
 					struct rte_table_action_mtr_tc_params *p =
 						&a->mtr.mtr[i];
 					enum rte_table_action_policer ga =
-						p->policer[e_RTE_METER_GREEN];
+						p->policer[RTE_COLOR_GREEN];
 					enum rte_table_action_policer ya =
-						p->policer[e_RTE_METER_YELLOW];
+						p->policer[RTE_COLOR_YELLOW];
 					enum rte_table_action_policer ra =
-						p->policer[e_RTE_METER_RED];
+						p->policer[RTE_COLOR_RED];
 
 					fprintf(f, "tc%u meter %u policer g %s y %s r %s ",
 						i,
@@ -5646,7 +5646,7 @@ load_dscp_table(struct rte_table_action_dscp_table *dscp_table,
 	for (dscp = 0, l = 1; ; l++) {
 		char line[64];
 		char *tokens[3];
-		enum rte_meter_color color;
+		enum rte_color color;
 		uint32_t tc_id, tc_queue_id, n_tokens = RTE_DIM(tokens);
 
 		if (fgets(line, sizeof(line), f) == NULL)
@@ -5679,17 +5679,17 @@ load_dscp_table(struct rte_table_action_dscp_table *dscp_table,
 		switch (tokens[2][0]) {
 		case 'g':
 		case 'G':
-			color = e_RTE_METER_GREEN;
+			color = RTE_COLOR_GREEN;
 			break;
 
 		case 'y':
 		case 'Y':
-			color = e_RTE_METER_YELLOW;
+			color = RTE_COLOR_YELLOW;
 			break;
 
 		case 'r':
 		case 'R':
-			color = e_RTE_METER_RED;
+			color = RTE_COLOR_RED;
 			break;
 
 		default:

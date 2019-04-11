@@ -7,7 +7,7 @@
 
 int
 rte_phb_config(struct rte_phb *phb_table, uint32_t phb_table_index,
-	enum rte_meter_color pre_meter, enum rte_meter_color post_meter, enum rte_phb_action action)
+	enum rte_color pre_meter, enum rte_color post_meter, enum rte_phb_action action)
 {
 	struct rte_phb *phb = NULL;
 
@@ -16,7 +16,7 @@ rte_phb_config(struct rte_phb *phb_table, uint32_t phb_table_index,
 		return -1;
 	}
 
-	if ((pre_meter > e_RTE_METER_RED) || (post_meter > e_RTE_METER_RED) || (pre_meter > post_meter)) {
+	if ((pre_meter > RTE_COLOR_RED) || (post_meter > RTE_COLOR_RED) || (pre_meter > post_meter)) {
 		return -2;
 	}
 

@@ -70,7 +70,7 @@ typedef int (*rte_mtr_meter_profile_update_t)(struct rte_eth_dev *dev,
 
 typedef int (*rte_mtr_meter_dscp_table_update_t)(struct rte_eth_dev *dev,
 	uint32_t mtr_id,
-	enum rte_mtr_color *dscp_table,
+	enum rte_color *dscp_table,
 	struct rte_mtr_error *error);
 /**< @internal MTR object meter DSCP table update */
 

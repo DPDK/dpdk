@@ -873,21 +873,21 @@ show_tm(void)
 
 		printf("  - mark support:\n");
 		printf("\t  -- vlan dei: GREEN (%d) YELLOW (%d) RED (%d)\n",
-			cap.mark_vlan_dei_supported[RTE_TM_GREEN],
-			cap.mark_vlan_dei_supported[RTE_TM_YELLOW],
-			cap.mark_vlan_dei_supported[RTE_TM_RED]);
+			cap.mark_vlan_dei_supported[RTE_COLOR_GREEN],
+			cap.mark_vlan_dei_supported[RTE_COLOR_YELLOW],
+			cap.mark_vlan_dei_supported[RTE_COLOR_RED]);
 		printf("\t  -- ip ecn tcp: GREEN (%d) YELLOW (%d) RED (%d)\n",
-			cap.mark_ip_ecn_tcp_supported[RTE_TM_GREEN],
-			cap.mark_ip_ecn_tcp_supported[RTE_TM_YELLOW],
-			cap.mark_ip_ecn_tcp_supported[RTE_TM_RED]);
+			cap.mark_ip_ecn_tcp_supported[RTE_COLOR_GREEN],
+			cap.mark_ip_ecn_tcp_supported[RTE_COLOR_YELLOW],
+			cap.mark_ip_ecn_tcp_supported[RTE_COLOR_RED]);
 		printf("\t  -- ip ecn sctp: GREEN (%d) YELLOW (%d) RED (%d)\n",
-			cap.mark_ip_ecn_sctp_supported[RTE_TM_GREEN],
-			cap.mark_ip_ecn_sctp_supported[RTE_TM_YELLOW],
-			cap.mark_ip_ecn_sctp_supported[RTE_TM_RED]);
+			cap.mark_ip_ecn_sctp_supported[RTE_COLOR_GREEN],
+			cap.mark_ip_ecn_sctp_supported[RTE_COLOR_YELLOW],
+			cap.mark_ip_ecn_sctp_supported[RTE_COLOR_RED]);
 		printf("\t  -- ip dscp: GREEN (%d) YELLOW (%d) RED (%d)\n",
-			cap.mark_ip_dscp_supported[RTE_TM_GREEN],
-			cap.mark_ip_dscp_supported[RTE_TM_YELLOW],
-			cap.mark_ip_dscp_supported[RTE_TM_RED]);
+			cap.mark_ip_dscp_supported[RTE_COLOR_GREEN],
+			cap.mark_ip_dscp_supported[RTE_COLOR_YELLOW],
+			cap.mark_ip_dscp_supported[RTE_COLOR_RED]);
 
 		printf("  - mask stats (0x%"PRIx64")"
 			" dynamic update (0x%"PRIx64")\n",
@@ -1004,12 +1004,12 @@ show_tm(void)
 				" pkts (%"PRIu64") bytes (%"PRIu64")\n"
 				"\t  -- RED:"
 				" pkts (%"PRIu64") bytes (%"PRIu64")\n",
-				stats.leaf.n_pkts_dropped[RTE_TM_GREEN],
-				stats.leaf.n_bytes_dropped[RTE_TM_GREEN],
-				stats.leaf.n_pkts_dropped[RTE_TM_YELLOW],
-				stats.leaf.n_bytes_dropped[RTE_TM_YELLOW],
-				stats.leaf.n_pkts_dropped[RTE_TM_RED],
-				stats.leaf.n_bytes_dropped[RTE_TM_RED]);
+				stats.leaf.n_pkts_dropped[RTE_COLOR_GREEN],
+				stats.leaf.n_bytes_dropped[RTE_COLOR_GREEN],
+				stats.leaf.n_pkts_dropped[RTE_COLOR_YELLOW],
+				stats.leaf.n_bytes_dropped[RTE_COLOR_YELLOW],
+				stats.leaf.n_pkts_dropped[RTE_COLOR_RED],
+				stats.leaf.n_bytes_dropped[RTE_COLOR_RED]);
 		}
 	}
 

@@ -205,7 +205,7 @@ struct rte_sched_port_params {
 	 * Every pipe is configured using one of the profiles from this table. */
 	uint32_t n_pipe_profiles;        /**< Profiles in the pipe profile table */
 #ifdef RTE_SCHED_RED
-	struct rte_red_params red_params[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE][e_RTE_METER_COLORS]; /**< RED parameters */
+	struct rte_red_params red_params[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE][RTE_COLORS]; /**< RED parameters */
 #endif
 };
 
@@ -374,7 +374,7 @@ void
 rte_sched_port_pkt_write(struct rte_sched_port *port,
 			 struct rte_mbuf *pkt,
 			 uint32_t subport, uint32_t pipe, uint32_t traffic_class,
-			 uint32_t queue, enum rte_meter_color color);
+			 uint32_t queue, enum rte_color color);
 
 /**
  * Scheduler hierarchy path read from packet descriptor (struct
@@ -402,7 +402,7 @@ rte_sched_port_pkt_read_tree_path(struct rte_sched_port *port,
 				  uint32_t *subport, uint32_t *pipe,
 				  uint32_t *traffic_class, uint32_t *queue);
 
-enum rte_meter_color
+enum rte_color
 rte_sched_port_pkt_read_color(const struct rte_mbuf *pkt);
 
 /**

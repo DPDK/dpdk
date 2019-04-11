@@ -1204,7 +1204,7 @@ wred_profile_check(struct rte_eth_dev *dev,
 	struct rte_tm_error *error)
 {
 	struct tm_wred_profile *wp;
-	enum rte_tm_color color;
+	enum rte_color color;
 
 	/* WRED profile ID must not be NONE. */
 	if (wred_profile_id == RTE_TM_WRED_PROFILE_ID_NONE)
@@ -1240,7 +1240,7 @@ wred_profile_check(struct rte_eth_dev *dev,
                         rte_strerror(ENOTSUP));
 
 	/* min_th <= max_th, max_th > 0  */
-	for (color = RTE_TM_GREEN; color < RTE_TM_COLORS; color++) {
+	for (color = RTE_COLOR_GREEN; color < RTE_COLORS; color++) {
 		uint32_t min_th = profile->red_params[color].min_th;
 		uint32_t max_th = profile->red_params[color].max_th;
 
@@ -2218,10 +2218,10 @@ wred_profiles_set(struct rte_eth_dev *dev)
 	struct pmd_internals *p = dev->data->dev_private;
 	struct rte_sched_port_params *pp = &p->soft.tm.params.port_params;
 	uint32_t tc_id;
-	enum rte_tm_color color;
+	enum rte_color color;
 
 	for (tc_id = 0; tc_id < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; tc_id++)
-		for (color = RTE_TM_GREEN; color < RTE_TM_COLORS; color++) {
+		for (color = RTE_COLOR_GREEN; color < RTE_COLORS; color++) {
 			struct rte_red_params *dst =
 				&pp->red_params[tc_id][color];
 			struct tm_wred_profile *src_wp =
@@ -3058,9 +3058,9 @@ read_port_stats(struct rte_eth_dev *dev,
 				s.n_pkts_tc[id] - s.n_pkts_tc_dropped[id];
 			nr->stats.n_bytes +=
 				s.n_bytes_tc[id] - s.n_bytes_tc_dropped[id];
-			nr->stats.leaf.n_pkts_dropped[RTE_TM_GREEN] +=
+			nr->stats.leaf.n_pkts_dropped[RTE_COLOR_GREEN] +=
 				s.n_pkts_tc_dropped[id];
-			nr->stats.leaf.n_bytes_dropped[RTE_TM_GREEN] +=
+			nr->stats.leaf.n_bytes_dropped[RTE_COLOR_GREEN] +=
 				s.n_bytes_tc_dropped[id];
 		}
 	}
@@ -3105,9 +3105,9 @@ read_subport_stats(struct rte_eth_dev *dev,
 			s.n_pkts_tc[tc_id] - s.n_pkts_tc_dropped[tc_id];
 		ns->stats.n_bytes +=
 			s.n_bytes_tc[tc_id] - s.n_bytes_tc_dropped[tc_id];
-		ns->stats.leaf.n_pkts_dropped[RTE_TM_GREEN] +=
+		ns->stats.leaf.n_pkts_dropped[RTE_COLOR_GREEN] +=
 			s.n_pkts_tc_dropped[tc_id];
-		ns->stats.leaf.n_bytes_dropped[RTE_TM_GREEN] +=
+		ns->stats.leaf.n_bytes_dropped[RTE_COLOR_GREEN] +=
 			s.n_bytes_tc_dropped[tc_id];
 	}
 
@@ -3162,8 +3162,8 @@ read_pipe_stats(struct rte_eth_dev *dev,
 		/* Stats accumulate */
 		np->stats.n_pkts += s.n_pkts - s.n_pkts_dropped;
 		np->stats.n_bytes += s.n_bytes - s.n_bytes_dropped;
-		np->stats.leaf.n_pkts_dropped[RTE_TM_GREEN] += s.n_pkts_dropped;
-		np->stats.leaf.n_bytes_dropped[RTE_TM_GREEN] +=
+		np->stats.leaf.n_pkts_dropped[RTE_COLOR_GREEN] += s.n_pkts_dropped;
+		np->stats.leaf.n_bytes_dropped[RTE_COLOR_GREEN] +=
 			s.n_bytes_dropped;
 		np->stats.leaf.n_pkts_queued = qlen;
 	}
@@ -3222,8 +3222,8 @@ read_tc_stats(struct rte_eth_dev *dev,
 		/* Stats accumulate */
 		nt->stats.n_pkts += s.n_pkts - s.n_pkts_dropped;
 		nt->stats.n_bytes += s.n_bytes - s.n_bytes_dropped;
-		nt->stats.leaf.n_pkts_dropped[RTE_TM_GREEN] += s.n_pkts_dropped;
-		nt->stats.leaf.n_bytes_dropped[RTE_TM_GREEN] +=
+		nt->stats.leaf.n_pkts_dropped[RTE_COLOR_GREEN] += s.n_pkts_dropped;
+		nt->stats.leaf.n_bytes_dropped[RTE_COLOR_GREEN] +=
 			s.n_bytes_dropped;
 		nt->stats.leaf.n_pkts_queued = qlen;
 	}
@@ -3281,8 +3281,8 @@ read_queue_stats(struct rte_eth_dev *dev,
 	/* Stats accumulate */
 	nq->stats.n_pkts += s.n_pkts - s.n_pkts_dropped;
 	nq->stats.n_bytes += s.n_bytes - s.n_bytes_dropped;
-	nq->stats.leaf.n_pkts_dropped[RTE_TM_GREEN] += s.n_pkts_dropped;
-	nq->stats.leaf.n_bytes_dropped[RTE_TM_GREEN] +=
+	nq->stats.leaf.n_pkts_dropped[RTE_COLOR_GREEN] += s.n_pkts_dropped;
+	nq->stats.leaf.n_bytes_dropped[RTE_COLOR_GREEN] +=
 		s.n_bytes_dropped;
 	nq->stats.leaf.n_pkts_queued = qlen;
 

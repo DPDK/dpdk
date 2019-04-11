@@ -202,7 +202,7 @@ struct rte_table_action_dscp_table_entry {
 	/** Packet color. Used by the meter action as the packet input color
 	 * for the color aware mode of the traffic metering algorithm.
 	 */
-	enum rte_meter_color color;
+	enum rte_color color;
 };
 
 /** DSCP translation table. */
@@ -259,7 +259,7 @@ struct rte_table_action_mtr_tc_params {
 	uint32_t meter_profile_id;
 
 	/** Policer actions. */
-	enum rte_table_action_policer policer[e_RTE_METER_COLORS];
+	enum rte_table_action_policer policer[RTE_COLORS];
 };
 
 /** Meter action statistics counters per traffic class. */
@@ -268,13 +268,13 @@ struct rte_table_action_mtr_counters_tc {
 	 * and before the policer actions are executed. Only valid when
 	 * *n_packets_valid* is non-zero.
 	 */
-	uint64_t n_packets[e_RTE_METER_COLORS];
+	uint64_t n_packets[RTE_COLORS];
 
 	/** Number of packet bytes per color at the output of the traffic
 	 * metering and before the policer actions are executed. Only valid when
 	 * *n_bytes_valid* is non-zero.
 	 */
-	uint64_t n_bytes[e_RTE_METER_COLORS];
+	uint64_t n_bytes[RTE_COLORS];
 
 	/** When non-zero, the *n_packets* field is valid. */
 	int n_packets_valid;

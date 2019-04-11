@@ -96,7 +96,7 @@ prepare_pkt(struct rte_sched_port *port, struct rte_mbuf *mbuf)
 
 
 	rte_sched_port_pkt_write(port, mbuf, SUBPORT, PIPE, TC, QUEUE,
-					e_RTE_METER_YELLOW);
+					RTE_COLOR_YELLOW);
 
 	/* 64 byte packet */
 	mbuf->pkt_len  = 60;
@@ -150,11 +150,11 @@ test_sched(void)
 	TEST_ASSERT_EQUAL(err, 10, "Wrong dequeue, err=%d\n", err);
 
 	for (i = 0; i < 10; i++) {
-		enum rte_meter_color color;
+		enum rte_color color;
 		uint32_t subport, traffic_class, queue;
 
 		color = rte_sched_port_pkt_read_color(out_mbufs[i]);
-		TEST_ASSERT_EQUAL(color, e_RTE_METER_YELLOW, "Wrong color\n");
+		TEST_ASSERT_EQUAL(color, RTE_COLOR_YELLOW, "Wrong color\n");
 
 		rte_sched_port_pkt_read_tree_path(port, out_mbufs[i],
 				&subport, &pipe, &traffic_class, &queue);

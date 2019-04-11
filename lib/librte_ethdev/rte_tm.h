@@ -116,13 +116,6 @@ extern "C" {
  */
 #define RTE_TM_NODE_LEVEL_ID_ANY                     UINT32_MAX
 
-/* New rte_color is defined and used to deprecate rte_tm_color soon. */
-#define rte_tm_color rte_color
-#define RTE_TM_GREEN RTE_COLOR_GREEN
-#define RTE_TM_YELLOW RTE_COLOR_YELLOW
-#define RTE_TM_RED RTE_COLOR_RED
-#define RTE_TM_COLORS RTE_COLORS
-
 /**
  * Node statistics counter type
  */
@@ -177,12 +170,12 @@ struct rte_tm_node_stats {
 		/** Number of packets dropped by current leaf node per each
 		 * color.
 		 */
-		uint64_t n_pkts_dropped[RTE_TM_COLORS];
+		uint64_t n_pkts_dropped[RTE_COLORS];
 
 		/** Number of bytes dropped by current leaf node per each
 		 * color.
 		 */
-		uint64_t n_bytes_dropped[RTE_TM_COLORS];
+		uint64_t n_bytes_dropped[RTE_COLORS];
 
 		/** Number of packets currently waiting in the packet queue of
 		 * current leaf node.
@@ -433,16 +426,16 @@ struct rte_tm_capabilities {
 	uint32_t cman_wred_context_shared_n_contexts_per_node_max;
 
 	/** Support for VLAN DEI packet marking (per color). */
-	int mark_vlan_dei_supported[RTE_TM_COLORS];
+	int mark_vlan_dei_supported[RTE_COLORS];
 
 	/** Support for IPv4/IPv6 ECN marking of TCP packets (per color). */
-	int mark_ip_ecn_tcp_supported[RTE_TM_COLORS];
+	int mark_ip_ecn_tcp_supported[RTE_COLORS];
 
 	/** Support for IPv4/IPv6 ECN marking of SCTP packets (per color). */
-	int mark_ip_ecn_sctp_supported[RTE_TM_COLORS];
+	int mark_ip_ecn_sctp_supported[RTE_COLORS];
 
 	/** Support for IPv4/IPv6 DSCP packet marking (per color). */
-	int mark_ip_dscp_supported[RTE_TM_COLORS];
+	int mark_ip_dscp_supported[RTE_COLORS];
 
 	/** Set of supported dynamic update operations.
 	 * @see enum rte_tm_dynamic_update_type
@@ -859,7 +852,7 @@ struct rte_tm_red_params {
  */
 struct rte_tm_wred_params {
 	/** One set of RED parameters per packet color */
-	struct rte_tm_red_params red_params[RTE_TM_COLORS];
+	struct rte_tm_red_params red_params[RTE_COLORS];
 
 	/** When non-zero, the *min_th* and *max_th* thresholds are specified
 	 * in packets (WRED packet mode). When zero, the *min_th* and *max_th*

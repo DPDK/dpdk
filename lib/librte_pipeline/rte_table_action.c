@@ -109,29 +109,29 @@ mtr_cfg_check(struct rte_table_action_mtr_config *mtr)
 
 struct mtr_trtcm_data {
 	struct rte_meter_trtcm trtcm;
-	uint64_t stats[e_RTE_METER_COLORS];
+	uint64_t stats[RTE_COLORS];
 } __attribute__((__packed__));
 
 #define MTR_TRTCM_DATA_METER_PROFILE_ID_GET(data)          \
-	(((data)->stats[e_RTE_METER_GREEN] & 0xF8LLU) >> 3)
+	(((data)->stats[RTE_COLOR_GREEN] & 0xF8LLU) >> 3)
 
 static void
 mtr_trtcm_data_meter_profile_id_set(struct mtr_trtcm_data *data,
 	uint32_t profile_id)
 {
-	data->stats[e_RTE_METER_GREEN] &= ~0xF8LLU;
-	data->stats[e_RTE_METER_GREEN] |= (profile_id % 32) << 3;
+	data->stats[RTE_COLOR_GREEN] &= ~0xF8LLU;
+	data->stats[RTE_COLOR_GREEN] |= (profile_id % 32) << 3;
 }
 
 #define MTR_TRTCM_DATA_POLICER_ACTION_DROP_GET(data, color)\
 	(((data)->stats[(color)] & 4LLU) >> 2)
 
 #define MTR_TRTCM_DATA_POLICER_ACTION_COLOR_GET(data, color)\
-	((enum rte_meter_color)((data)->stats[(color)] & 3LLU))
+	((enum rte_color)((data)->stats[(color)] & 3LLU))
 
 static void
 mtr_trtcm_data_policer_action_set(struct mtr_trtcm_data *data,
-	enum rte_meter_color color,
+	enum rte_color color,
 	enum rte_table_action_policer action)
 {
 	if (action == RTE_TABLE_ACTION_POLICER_DROP) {
@@ -144,14 +144,14 @@ mtr_trtcm_data_policer_action_set(struct mtr_trtcm_data *data,
 
 static uint64_t
 mtr_trtcm_data_stats_get(struct mtr_trtcm_data *data,
-	enum rte_meter_color color)
+	enum rte_color color)
 {
 	return data->stats[color] >> 8;
 }
 
 static void
 mtr_trtcm_data_stats_reset(struct mtr_trtcm_data *data,
-	enum rte_meter_color color)
+	enum rte_color color)
 {
 	data->stats[color] &= 0xFFLU;
 }
@@ -166,7 +166,7 @@ mtr_data_size(struct rte_table_action_mtr_config *mtr)
 }
 
 struct dscp_table_entry_data {
-	enum rte_meter_color color;
+	enum rte_color color;
 	uint16_t tc;
 	uint16_t tc_queue;
 };
@@ -287,16 +287,16 @@ mtr_apply(struct mtr_trtcm_data *data,
 
 		/* Policer actions */
 		mtr_trtcm_data_policer_action_set(data_tc,
-			e_RTE_METER_GREEN,
-			p_tc->policer[e_RTE_METER_GREEN]);
+			RTE_COLOR_GREEN,
+			p_tc->policer[RTE_COLOR_GREEN]);
 
 		mtr_trtcm_data_policer_action_set(data_tc,
-			e_RTE_METER_YELLOW,
-			p_tc->policer[e_RTE_METER_YELLOW]);
+			RTE_COLOR_YELLOW,
+			p_tc->policer[RTE_COLOR_YELLOW]);
 
 		mtr_trtcm_data_policer_action_set(data_tc,
-			e_RTE_METER_RED,
-			p_tc->policer[e_RTE_METER_RED]);
+			RTE_COLOR_RED,
+			p_tc->policer[RTE_COLOR_RED]);
 	}
 
 	return 0;
@@ -313,7 +313,7 @@ pkt_work_mtr(struct rte_mbuf *mbuf,
 {
 	uint64_t drop_mask;
 	struct dscp_table_entry_data *dscp_entry = &dscp_table->entry[dscp];
-	enum rte_meter_color color_in, color_meter, color_policer;
+	enum rte_color color_in, color_meter, color_policer;
 	uint32_t tc, mp_id;
 
 	tc = dscp_entry->tc;
@@ -2731,14 +2731,14 @@ rte_table_action_meter_read(struct rte_table_action *action,
 			if ((tc_mask & (1 << i)) == 0)
 				continue;
 
-			dst->n_packets[e_RTE_METER_GREEN] =
-				mtr_trtcm_data_stats_get(src, e_RTE_METER_GREEN);
+			dst->n_packets[RTE_COLOR_GREEN] =
+				mtr_trtcm_data_stats_get(src, RTE_COLOR_GREEN);
 
-			dst->n_packets[e_RTE_METER_YELLOW] =
-				mtr_trtcm_data_stats_get(src, e_RTE_METER_YELLOW);
+			dst->n_packets[RTE_COLOR_YELLOW] =
+				mtr_trtcm_data_stats_get(src, RTE_COLOR_YELLOW);
 
-			dst->n_packets[e_RTE_METER_RED] =
-				mtr_trtcm_data_stats_get(src, e_RTE_METER_RED);
+			dst->n_packets[RTE_COLOR_RED] =
+				mtr_trtcm_data_stats_get(src, RTE_COLOR_RED);
 
 			dst->n_packets_valid = 1;
 			dst->n_bytes_valid = 0;
@@ -2755,9 +2755,9 @@ rte_table_action_meter_read(struct rte_table_action *action,
 			if ((tc_mask & (1 << i)) == 0)
 				continue;
 
-			mtr_trtcm_data_stats_reset(src, e_RTE_METER_GREEN);
-			mtr_trtcm_data_stats_reset(src, e_RTE_METER_YELLOW);
-			mtr_trtcm_data_stats_reset(src, e_RTE_METER_RED);
+			mtr_trtcm_data_stats_reset(src, RTE_COLOR_GREEN);
+			mtr_trtcm_data_stats_reset(src, RTE_COLOR_YELLOW);
+			mtr_trtcm_data_stats_reset(src, RTE_COLOR_RED);
 		}
 
 

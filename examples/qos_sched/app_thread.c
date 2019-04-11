@@ -77,7 +77,7 @@ app_rx_thread(struct thread_conf **confs)
 						rx_mbufs[i],
 						subport, pipe,
 						traffic_class, queue,
-						(enum rte_meter_color) color);
+						(enum rte_color) color);
 			}
 
 			if (unlikely(rte_ring_sp_enqueue_bulk(conf->rx_ring,

@@ -74,7 +74,7 @@ parse_uint(uint64_t *value, const char *str)
 }
 
 static int
-parse_dscp_table_entries(char *str, enum rte_mtr_color **dscp_table)
+parse_dscp_table_entries(char *str, enum rte_color **dscp_table)
 {
 	char *token;
 	int i = 0;
@@ -84,21 +84,21 @@ parse_dscp_table_entries(char *str, enum rte_mtr_color **dscp_table)
 		return 0;
 
 	/* Allocate memory for dscp table */
-	*dscp_table = (enum rte_mtr_color *)malloc(MAX_DSCP_TABLE_ENTRIES *
-		sizeof(enum rte_mtr_color));
+	*dscp_table = (enum rte_color *)malloc(MAX_DSCP_TABLE_ENTRIES *
+		sizeof(enum rte_color));
 	if (*dscp_table == NULL)
 		return -1;
 
 	while (1) {
 		if (strcmp(token, "G") == 0 ||
 			strcmp(token, "g") == 0)
-			*dscp_table[i++] = RTE_MTR_GREEN;
+			*dscp_table[i++] = RTE_COLOR_GREEN;
 		else if (strcmp(token, "Y") == 0 ||
 			strcmp(token, "y") == 0)
-			*dscp_table[i++] = RTE_MTR_YELLOW;
+			*dscp_table[i++] = RTE_COLOR_YELLOW;
 		else if (strcmp(token, "R") == 0 ||
 			strcmp(token, "r") == 0)
-			*dscp_table[i++] = RTE_MTR_RED;
+			*dscp_table[i++] = RTE_COLOR_RED;
 		else {
 			free(*dscp_table);
 			return -1;
@@ -117,7 +117,7 @@ parse_dscp_table_entries(char *str, enum rte_mtr_color **dscp_table)
 
 static int
 parse_meter_color_str(char *c_str, uint32_t *use_prev_meter_color,
-	enum rte_mtr_color **dscp_table)
+	enum rte_color **dscp_table)
 {
 	char *token;
 	uint64_t previous_mtr_color = 0;
@@ -182,20 +182,20 @@ parse_policer_action_string(char *p_str, uint32_t action_mask,
 			return -1;
 
 		if (g_color == 0 && (action_mask & 0x1)) {
-			actions[RTE_MTR_GREEN] = action;
+			actions[RTE_COLOR_GREEN] = action;
 			g_color = 1;
 		} else if (y_color == 0 && (action_mask & 0x2)) {
-			actions[RTE_MTR_YELLOW] = action;
+			actions[RTE_COLOR_YELLOW] = action;
 			y_color = 1;
 		} else
-			actions[RTE_MTR_RED] = action;
+			actions[RTE_COLOR_RED] = action;
 	}
 	return 0;
 }
 
 static int
 parse_multi_token_string(char *t_str, uint16_t *port_id,
-	uint32_t *mtr_id, enum rte_mtr_color **dscp_table)
+	uint32_t *mtr_id, enum rte_color **dscp_table)
 {
 	char *token;
 	uint64_t val;
@@ -782,7 +782,7 @@ static void cmd_create_port_meter_parsed(void *parsed_result,
 	uint32_t shared = res->shared;
 	uint32_t use_prev_meter_color = 0;
 	uint16_t port_id = res->port_id;
-	enum rte_mtr_color *dscp_table = NULL;
+	enum rte_color *dscp_table = NULL;
 	char *c_str = res->meter_input_color;
 	int ret;
 
@@ -808,11 +808,11 @@ static void cmd_create_port_meter_parsed(void *parsed_result,
 	else
 		params.meter_enable = 0;
 
-	params.action[RTE_MTR_GREEN] =
+	params.action[RTE_COLOR_GREEN] =
 		string_to_policer_action(res->g_action);
-	params.action[RTE_MTR_YELLOW] =
+	params.action[RTE_COLOR_YELLOW] =
 		string_to_policer_action(res->y_action);
-	params.action[RTE_MTR_RED] =
+	params.action[RTE_COLOR_RED] =
 		string_to_policer_action(res->r_action);
 	params.stats_mask = res->statistics_mask;
 
@@ -1134,7 +1134,7 @@ static void cmd_set_port_meter_dscp_table_parsed(void *parsed_result,
 {
 	struct cmd_set_port_meter_dscp_table_result *res = parsed_result;
 	struct rte_mtr_error error;
-	enum rte_mtr_color *dscp_table = NULL;
+	enum rte_color *dscp_table = NULL;
 	char *t_str = res->token_string;
 	uint32_t mtr_id = 0;
 	uint16_t port_id;
@@ -1245,7 +1245,7 @@ static void cmd_set_port_meter_policer_action_parsed(void *parsed_result,
 	}
 
 	/* Allocate memory for policer actions */
-	actions = (enum rte_mtr_policer_action *)malloc(RTE_MTR_COLORS *
+	actions = (enum rte_mtr_policer_action *)malloc(RTE_COLORS *
 		sizeof(enum rte_mtr_policer_action));
 	if (actions == NULL) {
 		printf("Memory for policer actions not allocated (error)\n");
@@ -1426,22 +1426,22 @@ static void cmd_show_port_meter_stats_parsed(void *parsed_result,
 	/* Display stats */
 	if (stats_mask & RTE_MTR_STATS_N_PKTS_GREEN)
 		printf("\tPkts G: %" PRIu64 "\n",
-			stats.n_pkts[RTE_MTR_GREEN]);
+			stats.n_pkts[RTE_COLOR_GREEN]);
 	if (stats_mask & RTE_MTR_STATS_N_BYTES_GREEN)
 		printf("\tBytes G: %" PRIu64 "\n",
-			stats.n_bytes[RTE_MTR_GREEN]);
+			stats.n_bytes[RTE_COLOR_GREEN]);
 	if (stats_mask & RTE_MTR_STATS_N_PKTS_YELLOW)
 		printf("\tPkts Y: %" PRIu64 "\n",
-			stats.n_pkts[RTE_MTR_YELLOW]);
+			stats.n_pkts[RTE_COLOR_YELLOW]);
 	if (stats_mask & RTE_MTR_STATS_N_BYTES_YELLOW)
 		printf("\tBytes Y: %" PRIu64 "\n",
-			stats.n_bytes[RTE_MTR_YELLOW]);
+			stats.n_bytes[RTE_COLOR_YELLOW]);
 	if (stats_mask & RTE_MTR_STATS_N_PKTS_RED)
 		printf("\tPkts R: %" PRIu64 "\n",
-			stats.n_pkts[RTE_MTR_RED]);
+			stats.n_pkts[RTE_COLOR_RED]);
 	if (stats_mask & RTE_MTR_STATS_N_BYTES_RED)
 		printf("\tBytes R: %" PRIu64 "\n",
-			stats.n_bytes[RTE_MTR_RED]);
+			stats.n_bytes[RTE_COLOR_RED]);
 	if (stats_mask & RTE_MTR_STATS_N_PKTS_DROPPED)
 		printf("\tPkts DROPPED: %" PRIu64 "\n",
 			stats.n_pkts_dropped);
