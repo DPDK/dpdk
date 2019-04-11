@@ -549,6 +549,9 @@ find_vhost_user_socket(const char *path)
 {
 	int i;
 
+	if (path == NULL)
+		return NULL;
+
 	for (i = 0; i < vhost_user.vsocket_cnt; i++) {
 		struct vhost_user_socket *vsocket = vhost_user.vsockets[i];
 
@@ -564,7 +567,7 @@ rte_vhost_driver_attach_vdpa_device(const char *path, int did)
 {
 	struct vhost_user_socket *vsocket;
 
-	if (rte_vdpa_get_device(did) == NULL)
+	if (rte_vdpa_get_device(did) == NULL || path == NULL)
 		return -1;
 
 	pthread_mutex_lock(&vhost_user.mutex);
@@ -976,6 +979,9 @@ rte_vhost_driver_unregister(const char *path)
 	int i;
 	int count;
 	struct vhost_user_connection *conn, *next;
+
+	if (path == NULL)
+		return -1;
 
 again:
 	pthread_mutex_lock(&vhost_user.mutex);
