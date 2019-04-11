@@ -33,10 +33,10 @@ static float
 apply_policy(int core)
 {
 	struct core_info *ci;
-	uint64_t counter;
+	uint64_t counter = 0;
 	uint64_t branches, branch_misses;
-	uint32_t last_branches, last_branch_misses;
-	int hits_diff, miss_diff;
+	uint64_t last_branches, last_branch_misses;
+	int64_t hits_diff, miss_diff;
 	float ratio;
 	int ret;
 
@@ -54,6 +54,7 @@ apply_policy(int core)
 				core);
 	branches = counter;
 
+	counter = 0;
 	ret = pread(ci->cd[core].msr_fd, &counter,
 			sizeof(counter), IA32_PERFCTR1);
 	if (ret < 0)
@@ -66,13 +67,25 @@ apply_policy(int core)
 	ci->cd[core].last_branches = branches;
 	ci->cd[core].last_branch_misses = branch_misses;
 
-	hits_diff = (int)branches - (int)last_branches;
+	/*
+	 * Intentional right shift to make MSB 0 to avoid
+	 * possible signed overflow or truncation.
+	 */
+	branches >>= 1;
+	last_branches >>= 1;
+	hits_diff = (int64_t)branches - (int64_t)last_branches;
 	if (hits_diff <= 0) {
 		/* Likely a counter overflow condition, skip this round */
 		return -1.0;
 	}
 
-	miss_diff = (int)branch_misses - (int)last_branch_misses;
+	/*
+	 * Intentional right shift to make MSB 0 to avoid
+	 * possible signed overflow or truncation.
+	 */
+	branch_misses >>= 1;
+	last_branch_misses >>= 1;
+	miss_diff = (int64_t)branch_misses - (int64_t)last_branch_misses;
 	if (miss_diff <= 0) {
 		/* Likely a counter overflow condition, skip this round */
 		return -1.0;
