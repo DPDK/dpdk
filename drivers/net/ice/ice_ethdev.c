@@ -12,6 +12,7 @@
 
 #include "base/ice_sched.h"
 #include "base/ice_flow.h"
+#include "base/ice_dcb.h"
 #include "ice_ethdev.h"
 #include "ice_rxtx.h"
 
@@ -1427,6 +1428,10 @@ ice_dev_init(struct rte_eth_dev *dev)
 
 	/* Disable double vlan by default */
 	ice_vsi_config_double_vlan(vsi, FALSE);
+
+	ret = ice_aq_stop_lldp(hw, TRUE, NULL);
+	if (ret != ICE_SUCCESS)
+		PMD_INIT_LOG(DEBUG, "lldp has already stopped\n");
 
 	/* register callback func to eal lib */
 	rte_intr_callback_register(intr_handle,
