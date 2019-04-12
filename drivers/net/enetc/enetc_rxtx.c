@@ -88,8 +88,9 @@ enetc_refill_rx_ring(struct enetc_bdr *rx_ring, const int buff_cnt)
 	rx_swbd = &rx_ring->q_swbd[i];
 	rxbd = ENETC_RXBD(*rx_ring, i);
 	for (j = 0; j < buff_cnt; j++) {
-		rx_swbd->buffer_addr =
-			rte_cpu_to_le_64(rte_mbuf_raw_alloc(rx_ring->mb_pool));
+		rx_swbd->buffer_addr = (void *)(uintptr_t)
+			rte_cpu_to_le_64((uint64_t)(uintptr_t)
+					rte_pktmbuf_alloc(rx_ring->mb_pool));
 		rxbd->w.addr = (uint64_t)(uintptr_t)
 			       rx_swbd->buffer_addr->buf_iova +
 			       rx_swbd->buffer_addr->data_off;
