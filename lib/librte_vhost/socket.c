@@ -297,12 +297,18 @@ vhost_user_read_cb(int connfd, void *dat, int *remove)
 
 	ret = vhost_user_msg_handler(conn->vid, connfd);
 	if (ret < 0) {
+		struct virtio_net *dev = get_device(conn->vid);
+
 		close(connfd);
 		*remove = 1;
-		vhost_destroy_device(conn->vid);
+
+		if (dev)
+			vhost_destroy_device_notify(dev);
 
 		if (vsocket->notify_ops->destroy_connection)
 			vsocket->notify_ops->destroy_connection(conn->vid);
+
+		vhost_destroy_device(conn->vid);
 
 		pthread_mutex_lock(&vsocket->conn_mutex);
 		TAILQ_REMOVE(&vsocket->conn_list, conn, next);
