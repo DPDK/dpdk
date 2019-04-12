@@ -1,4 +1,5 @@
 language: c
+cache: ccache
 compiler:
   - gcc
   - clang
@@ -23,8 +24,6 @@ extra_packages: &extra_packages
   - [libbsd-dev, libpcap-dev, libcrypto++-dev, libjansson4]
 
 before_install: ./.ci/${TRAVIS_OS_NAME}-setup.sh
-
-sudo: false
 
 env:
   - DEF_LIB="static"
