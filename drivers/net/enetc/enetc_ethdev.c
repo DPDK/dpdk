@@ -29,6 +29,9 @@ static int enetc_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 		const struct rte_eth_txconf *tx_conf);
 static void enetc_tx_queue_release(void *txq);
 static const uint32_t *enetc_supported_ptypes_get(struct rte_eth_dev *dev);
+static int enetc_stats_get(struct rte_eth_dev *dev,
+		struct rte_eth_stats *stats);
+static void enetc_stats_reset(struct rte_eth_dev *dev);
 
 /*
  * The set of PCI devices this driver supports
@@ -46,6 +49,8 @@ static const struct eth_dev_ops enetc_ops = {
 	.dev_stop             = enetc_dev_stop,
 	.dev_close            = enetc_dev_close,
 	.link_update          = enetc_link_update,
+	.stats_get            = enetc_stats_get,
+	.stats_reset          = enetc_stats_reset,
 	.dev_infos_get        = enetc_dev_infos_get,
 	.rx_queue_setup       = enetc_rx_queue_setup,
 	.rx_queue_release     = enetc_rx_queue_release,
@@ -606,6 +611,42 @@ enetc_rx_queue_release(void *rxq)
 
 	enetc_free_bdr(rx_ring);
 	rte_free(rx_ring);
+}
+
+static
+int enetc_stats_get(struct rte_eth_dev *dev,
+		    struct rte_eth_stats *stats)
+{
+	struct enetc_eth_hw *hw =
+		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+
+	/* Total received packets, bad + good, if we want to get counters of
+	 * only good received packets then use ENETC_PM0_RFRM,
+	 * ENETC_PM0_TFRM registers.
+	 */
+	stats->ipackets = enetc_port_rd(enetc_hw, ENETC_PM0_RPKT);
+	stats->opackets = enetc_port_rd(enetc_hw, ENETC_PM0_TPKT);
+	stats->ibytes =  enetc_port_rd(enetc_hw, ENETC_PM0_REOCT);
+	stats->obytes = enetc_port_rd(enetc_hw, ENETC_PM0_TEOCT);
+	/* Dropped + Truncated packets, use ENETC_PM0_RDRNTP for without
+	 * truncated packets
+	 */
+	stats->imissed = enetc_port_rd(enetc_hw, ENETC_PM0_RDRP);
+	stats->ierrors = enetc_port_rd(enetc_hw, ENETC_PM0_RERR);
+	stats->oerrors = enetc_port_rd(enetc_hw, ENETC_PM0_TERR);
+
+	return 0;
+}
+
+static void
+enetc_stats_reset(struct rte_eth_dev *dev)
+{
+	struct enetc_eth_hw *hw =
+		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+
+	enetc_port_wr(enetc_hw, ENETC_PM0_STAT_CONFIG, ENETC_CLEAR_STATS);
 }
 
 static int

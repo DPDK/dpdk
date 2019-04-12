@@ -115,8 +115,33 @@ enum enetc_bdr_type {TX, RX};
 #define ENETC_G_EIPBRR0			0x00bf8
 #define ENETC_G_EIPBRR1			0x00bfc
 
-
 /* MAC Counters */
+/* Config register to reset counters*/
+#define ENETC_PM0_STAT_CONFIG		0x080E0
+/* Receive frames counter without error */
+#define ENETC_PM0_RFRM			0x08120
+/* Receive packets counter, good + bad */
+#define ENETC_PM0_RPKT			0x08160
+/* Received octets, good + bad */
+#define ENETC_PM0_REOCT			0x08120
+/* Transmit octets, good + bad */
+#define ENETC_PM0_TEOCT			0x08200
+/* Transmit frames counter without error */
+#define ENETC_PM0_TFRM			0x08220
+/* Transmit packets counter, good + bad */
+#define ENETC_PM0_TPKT			0x08260
+/* Dropped not Truncated packets counter */
+#define ENETC_PM0_RDRNTP		0x081C8
+/* Dropped + trucated packets counter */
+#define ENETC_PM0_RDRP			0x08158
+/* Receive packets error counter */
+#define ENETC_PM0_RERR			0x08138
+/* Transmit packets error counter */
+#define ENETC_PM0_TERR			0x08238
+
+/* Stats Reset Bit*/
+#define ENETC_CLEAR_STATS		BIT(2)
+
 #define ENETC_G_EPFBLPR(n)		(0xd00 + 4 * (n))
 #define ENETC_G_EPFBLPR1_XGMII		0x80000000
 
