@@ -2434,8 +2434,7 @@ detach_port_device(portid_t port_id)
 		TESTPMD_LOG(ERR, "Failed to detach device %s\n", dev->name);
 		return;
 	}
-
-	RTE_ETH_FOREACH_DEV_SIBLING(sibling, port_id) {
+	RTE_ETH_FOREACH_DEV_OF(sibling, dev) {
 		/* reset mapping between old ports and removed device */
 		rte_eth_devices[sibling].device = NULL;
 		if (ports[sibling].port_status != RTE_PORT_CLOSED) {
