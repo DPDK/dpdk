@@ -8103,6 +8103,27 @@ static int bnx2x_get_shmem_info(struct bnx2x_softc *sc)
 		    ~ELINK_FEATURE_CONFIG_OVERRIDE_PREEMPHASIS_ENABLED;
 	}
 
+	val = sc->devinfo.bc_ver >> 8;
+	if (val < BNX2X_BC_VER) {
+		/* for now only warn later we might need to enforce this */
+		PMD_DRV_LOG(NOTICE, sc, "This driver needs bc_ver %X but found %X, please upgrade BC\n",
+			    BNX2X_BC_VER, val);
+	}
+	sc->link_params.feature_config_flags |=
+				(val >= REQ_BC_VER_4_VRFY_FIRST_PHY_OPT_MDL) ?
+				ELINK_FEATURE_CONFIG_BC_SUPPORTS_OPT_MDL_VRFY :
+				0;
+
+	sc->link_params.feature_config_flags |=
+		(val >= REQ_BC_VER_4_VRFY_SPECIFIC_PHY_OPT_MDL) ?
+		ELINK_FEATURE_CONFIG_BC_SUPPORTS_DUAL_PHY_OPT_MDL_VRFY : 0;
+	sc->link_params.feature_config_flags |=
+		(val >= REQ_BC_VER_4_VRFY_AFEX_SUPPORTED) ?
+		ELINK_FEATURE_CONFIG_BC_SUPPORTS_AFEX : 0;
+	sc->link_params.feature_config_flags |=
+		(val >= REQ_BC_VER_4_SFP_TX_DISABLE_SUPPORTED) ?
+		ELINK_FEATURE_CONFIG_BC_SUPPORTS_SFP_TX_DISABLED : 0;
+
 	/* get the initial value of the link params */
 	sc->link_params.multi_phy_config =
 	    SHMEM_RD(sc, dev_info.port_hw_config[port].multi_phy_config);

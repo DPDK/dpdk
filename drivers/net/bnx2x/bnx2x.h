@@ -119,6 +119,8 @@ int bnx2x_ilog2(int x)
 #define ilog2(x) bnx2x_ilog2(x)
 #endif
 
+#define BNX2X_BC_VER		0x040200
+
 #include "ecore_sp.h"
 
 struct bnx2x_device_type {
