@@ -1,10 +1,14 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017-2019 Intel Corporation
 
-if is_windows
-	subdir_done()
-endif
-
 subdir('pmdinfogen')
 
 pmdinfo = find_program('gen-pmdinfo-cfile.sh')
+
+# set up map-to-def script using python, either built-in or external
+python3 = import('python').find_installation(required: false)
+if python3.found()
+	map_to_def_cmd = [python3, files('map_to_def.py')]
+else
+	map_to_def_cmd = ['meson', 'runpython', files('map_to_def.py')]
+endif

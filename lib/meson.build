@@ -121,15 +121,19 @@ foreach l:libraries
 			objs += static_lib.extract_all_objects(recursive: false)
 			version_map = '@0@/@1@/rte_@2@_version.map'.format(
 					meson.current_source_dir(), dir_name, name)
-			exports = []
 			implib = dir_name + '.dll.a'
+
+			def_file = custom_target(name + '_def',
+				command: [map_to_def_cmd, '@INPUT@', '@OUTPUT@'],
+				input: version_map,
+				output: 'rte_@0@_exports.def'.format(name))
 			if is_windows
-				exports = '@0@/@1@/rte_@2@_exports.def'.format(
-					meson.current_source_dir(), dir_name, name)
-				lk_args = ['-Wl,/def:' + exports, '-Wl,/implib:lib\\' + implib]
+				lk_args = ['-Wl,/def:' + def_file.full_path(),
+					'-Wl,/implib:lib\\' + implib]
 			else
 				lk_args = ['-Wl,--version-script=' + version_map]
 			endif
+
 			shared_lib = shared_library(libname,
 					sources,
 					objects: objs,
@@ -137,7 +141,7 @@ foreach l:libraries
 					dependencies: shared_deps,
 					include_directories: includes,
 					link_args: lk_args,
-					link_depends: [version_map, exports],
+					link_depends: [version_map, def_file],
 					version: lib_version,
 					soversion: so_version,
 					install: true)

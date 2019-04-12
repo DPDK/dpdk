@@ -1,7 +1,0 @@
-EXPORTS
-	rte_kvargs_count
-	rte_kvargs_free
-	rte_kvargs_parse
-	rte_kvargs_process
-	rte_kvargs_parse_delim
-	rte_kvargs_strcmp

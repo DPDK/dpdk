@@ -31,8 +31,8 @@ global_inc = include_directories('.', 'config',
 subdir('config')
 
 # build libs and drivers
-subdir('lib')
 subdir('buildtools')
+subdir('lib')
 subdir('drivers')
 
 # build binaries and installable tools
