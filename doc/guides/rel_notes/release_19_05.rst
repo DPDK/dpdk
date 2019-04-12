@@ -153,6 +153,7 @@ New Features
   * Added MTU update support
   * Added jumbo frame support
   * Added queue start/stop
+  * Added CRC offload support
 
 * **Updated the QuickAssist Technology PMD.**
 

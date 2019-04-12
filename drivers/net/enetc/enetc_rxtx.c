@@ -208,8 +208,10 @@ enetc_clean_rx_ring(struct enetc_bdr *rx_ring,
 		if (!bd_status)
 			break;
 
-		rx_swbd->buffer_addr->pkt_len = rxbd->r.buf_len;
-		rx_swbd->buffer_addr->data_len = rxbd->r.buf_len;
+		rx_swbd->buffer_addr->pkt_len = rxbd->r.buf_len -
+						rx_ring->crc_len;
+		rx_swbd->buffer_addr->data_len = rxbd->r.buf_len -
+						 rx_ring->crc_len;
 		rx_swbd->buffer_addr->hash.rss = rxbd->r.rss_hash;
 		rx_swbd->buffer_addr->ol_flags = 0;
 		enetc_dev_rx_parse(rx_swbd->buffer_addr,

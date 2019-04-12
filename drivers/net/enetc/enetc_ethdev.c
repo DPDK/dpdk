@@ -162,7 +162,9 @@ enetc_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
 	dev_info->max_rx_queues = MAX_RX_RINGS;
 	dev_info->max_tx_queues = MAX_TX_RINGS;
 	dev_info->max_rx_pktlen = ENETC_MAC_MAXFRM_SIZE;
-	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_JUMBO_FRAME;
+	dev_info->rx_offload_capa =
+		(DEV_RX_OFFLOAD_KEEP_CRC |
+		 DEV_RX_OFFLOAD_JUMBO_FRAME);
 }
 
 static int
@@ -378,6 +380,7 @@ enetc_rx_queue_setup(struct rte_eth_dev *dev,
 	struct rte_eth_dev_data *data =  dev->data;
 	struct enetc_eth_adapter *adapter =
 			ENETC_DEV_PRIVATE(data->dev_private);
+	uint64_t rx_offloads = data->dev_conf.rxmode.offloads;
 
 	PMD_INIT_FUNC_TRACE();
 	if (nb_rx_desc > MAX_BD_COUNT)
@@ -409,6 +412,9 @@ enetc_rx_queue_setup(struct rte_eth_dev *dev,
 		dev->data->rx_queue_state[rx_ring->index] =
 			       RTE_ETH_QUEUE_STATE_STOPPED;
 	}
+
+	rx_ring->crc_len = (uint8_t)((rx_offloads & DEV_RX_OFFLOAD_KEEP_CRC) ?
+				     ETHER_CRC_LEN : 0);
 
 	return 0;
 fail:
@@ -625,11 +631,11 @@ enetc_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 static int
 enetc_dev_configure(struct rte_eth_dev *dev)
 {
-	struct rte_eth_conf *eth_conf = &dev->data->dev_conf;
-	uint64_t rx_offloads = eth_conf->rxmode.offloads;
 	struct enetc_eth_hw *hw =
 		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct enetc_hw *enetc_hw = &hw->hw;
+	struct rte_eth_conf *eth_conf = &dev->data->dev_conf;
+	uint64_t rx_offloads = eth_conf->rxmode.offloads;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -645,6 +651,14 @@ enetc_dev_configure(struct rte_eth_dev *dev)
 		enetc_port_wr(enetc_hw, ENETC_PTXMBAR,
 			      2 * ENETC_MAC_MAXFRM_SIZE);
 		dev->data->mtu = ETHER_MAX_LEN - ETHER_HDR_LEN - ETHER_CRC_LEN;
+	}
+
+	if (rx_offloads & DEV_RX_OFFLOAD_KEEP_CRC) {
+		int config;
+
+		config = enetc_port_rd(enetc_hw, ENETC_PM0_CMD_CFG);
+		config |= ENETC_PM0_CRC;
+		enetc_port_wr(enetc_hw, ENETC_PM0_CMD_CFG, config);
 	}
 
 	return 0;

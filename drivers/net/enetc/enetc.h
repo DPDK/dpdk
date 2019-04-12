@@ -69,6 +69,7 @@ struct enetc_bdr {
 		void *tcisr; /* Tx */
 		int next_to_alloc; /* Rx */
 	};
+	uint8_t	crc_len; /* 0 if CRC stripped, 4 otherwise */
 };
 
 /*

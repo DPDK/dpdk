@@ -52,6 +52,7 @@ ENETC Features
 - Jumbo packets
 - Queue Start/Stop
 - Deferred Queue Start
+- CRC offload
 
 NIC Driver (PMD)
 ~~~~~~~~~~~~~~~~
