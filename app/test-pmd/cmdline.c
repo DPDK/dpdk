@@ -1440,17 +1440,17 @@ parse_and_check_speed_duplex(char *speedstr, char *duplexstr, uint32_t *speed)
 			return -1;
 		}
 		if (!strcmp(speedstr, "1000")) {
-			*speed = ETH_LINK_SPEED_1G;
+			*speed = ETH_LINK_SPEED_1G | ETH_LINK_SPEED_FIXED;
 		} else if (!strcmp(speedstr, "10000")) {
-			*speed = ETH_LINK_SPEED_10G;
+			*speed = ETH_LINK_SPEED_10G | ETH_LINK_SPEED_FIXED;
 		} else if (!strcmp(speedstr, "25000")) {
-			*speed = ETH_LINK_SPEED_25G;
+			*speed = ETH_LINK_SPEED_25G | ETH_LINK_SPEED_FIXED;
 		} else if (!strcmp(speedstr, "40000")) {
-			*speed = ETH_LINK_SPEED_40G;
+			*speed = ETH_LINK_SPEED_40G | ETH_LINK_SPEED_FIXED;
 		} else if (!strcmp(speedstr, "50000")) {
-			*speed = ETH_LINK_SPEED_50G;
+			*speed = ETH_LINK_SPEED_50G | ETH_LINK_SPEED_FIXED;
 		} else if (!strcmp(speedstr, "100000")) {
-			*speed = ETH_LINK_SPEED_100G;
+			*speed = ETH_LINK_SPEED_100G | ETH_LINK_SPEED_FIXED;
 		} else if (!strcmp(speedstr, "auto")) {
 			*speed = ETH_LINK_SPEED_AUTONEG;
 		} else {
