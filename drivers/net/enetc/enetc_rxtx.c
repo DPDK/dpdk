@@ -49,11 +49,16 @@ enetc_xmit_pkts(void *tx_queue,
 		uint16_t nb_pkts)
 {
 	struct enetc_swbd *tx_swbd;
-	int i, start;
+	int i, start, bds_to_use;
 	struct enetc_tx_bd *txbd;
 	struct enetc_bdr *tx_ring = (struct enetc_bdr *)tx_queue;
 
 	i = tx_ring->next_to_use;
+
+	bds_to_use = enetc_bd_unused(tx_ring);
+	if (bds_to_use < nb_pkts)
+		nb_pkts = bds_to_use;
+
 	start = 0;
 	while (nb_pkts--) {
 		enetc_clean_tx_ring(tx_ring);
