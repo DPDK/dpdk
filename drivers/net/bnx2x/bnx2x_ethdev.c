@@ -108,14 +108,15 @@ bnx2x_link_update(struct rte_eth_dev *dev)
 }
 
 static void
-bnx2x_interrupt_action(struct rte_eth_dev *dev)
+bnx2x_interrupt_action(struct rte_eth_dev *dev, int intr_cxt)
 {
 	struct bnx2x_softc *sc = dev->data->dev_private;
 	uint32_t link_status;
 
 	bnx2x_intr_legacy(sc);
 
-	if (sc->periodic_flags & PERIODIC_GO)
+	if ((atomic_load_acq_long(&sc->periodic_flags) == PERIODIC_GO) &&
+	    !intr_cxt)
 		bnx2x_periodic_callout(sc);
 	link_status = REG_RD(sc, sc->link_params.shmem_base +
 			offsetof(struct shmem_region,
@@ -132,9 +133,7 @@ bnx2x_interrupt_handler(void *param)
 
 	PMD_DEBUG_PERIODIC_LOG(INFO, sc, "Interrupt handled");
 
-	atomic_store_rel_long(&sc->periodic_flags, PERIODIC_STOP);
-	bnx2x_interrupt_action(dev);
-	atomic_store_rel_long(&sc->periodic_flags, PERIODIC_GO);
+	bnx2x_interrupt_action(dev, 1);
 	rte_intr_enable(&sc->pci_dev->intr_handle);
 }
 
@@ -145,7 +144,7 @@ static void bnx2x_periodic_start(void *param)
 	int ret = 0;
 
 	atomic_store_rel_long(&sc->periodic_flags, PERIODIC_GO);
-	bnx2x_interrupt_action(dev);
+	bnx2x_interrupt_action(dev, 0);
 	if (IS_PF(sc)) {
 		ret = rte_eal_alarm_set(BNX2X_SP_TIMER_PERIOD,
 					bnx2x_periodic_start, (void *)dev);
@@ -165,6 +164,8 @@ void bnx2x_periodic_stop(void *param)
 	atomic_store_rel_long(&sc->periodic_flags, PERIODIC_STOP);
 
 	rte_eal_alarm_cancel(bnx2x_periodic_start, (void *)dev);
+
+	PMD_DRV_LOG(DEBUG, sc, "Periodic poll stopped");
 }
 
 /*
@@ -226,8 +227,10 @@ bnx2x_dev_start(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE(sc);
 
 	/* start the periodic callout */
-	if (sc->periodic_flags & PERIODIC_STOP)
+	if (atomic_load_acq_long(&sc->periodic_flags) == PERIODIC_STOP) {
 		bnx2x_periodic_start(dev);
+		PMD_DRV_LOG(DEBUG, sc, "Periodic poll re-started");
+	}
 
 	ret = bnx2x_init(sc);
 	if (ret) {
