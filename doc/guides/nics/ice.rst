@@ -82,6 +82,15 @@ are chosen based on 2 conditions.
   If any not supported features are used, ICE vector PMD is disabled and the
   normal paths are chosen.
 
+Malicious driver detection (MDD)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It's not appropriate to send a packet, if this packet's destination MAC address
+is just this port's MAC address. If SW tries to send such packets, HW will
+report a MDD event and drop the packets.
+
+The APPs based on DPDK should avoid providing such packets.
+
 Sample Application Notes
 ------------------------
 
