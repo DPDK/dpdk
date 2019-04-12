@@ -9,7 +9,7 @@
 #include <rte_mbuf.h>
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
-#include <rte_pause.h>
+#include <rte_cycles.h>
 #include <rte_bus_vdev.h>
 #include <rte_ip.h>
 
@@ -42,6 +42,7 @@
 #define OUTBOUND_SPI	17
 #define BURST_SIZE		32
 #define REORDER_PKTS	1
+#define DEQUEUE_COUNT	1000
 
 struct user_params {
 	enum rte_crypto_sym_xform_type auth;
@@ -749,6 +750,29 @@ create_sa(enum rte_security_session_action_type action_type,
 }
 
 static int
+crypto_dequeue_burst(uint16_t num_pkts)
+{
+	struct ipsec_testsuite_params *ts_params = &testsuite_params;
+	struct ipsec_unitest_params *ut_params = &unittest_params;
+	uint32_t pkt_cnt, k;
+	int i;
+
+	for (i = 0, pkt_cnt = 0;
+		i < DEQUEUE_COUNT && pkt_cnt != num_pkts; i++) {
+		k = rte_cryptodev_dequeue_burst(ts_params->valid_dev, 0,
+			&ut_params->cop[pkt_cnt], num_pkts - pkt_cnt);
+		pkt_cnt += k;
+		rte_delay_us(1);
+	}
+
+	if (pkt_cnt != num_pkts) {
+		RTE_LOG(ERR, USER1, "rte_cryptodev_dequeue_burst fail\n");
+		return TEST_FAILED;
+	}
+	return TEST_SUCCESS;
+}
+
+static int
 crypto_ipsec(uint16_t num_pkts)
 {
 	struct ipsec_testsuite_params *ts_params = &testsuite_params;
@@ -763,6 +787,7 @@ crypto_ipsec(uint16_t num_pkts)
 		RTE_LOG(ERR, USER1, "rte_ipsec_pkt_crypto_prepare fail\n");
 		return TEST_FAILED;
 	}
+
 	k = rte_cryptodev_enqueue_burst(ts_params->valid_dev, 0,
 		ut_params->cop, num_pkts);
 	if (k != num_pkts) {
@@ -770,12 +795,8 @@ crypto_ipsec(uint16_t num_pkts)
 		return TEST_FAILED;
 	}
 
-	k = rte_cryptodev_dequeue_burst(ts_params->valid_dev, 0,
-		ut_params->cop, num_pkts);
-	if (k != num_pkts) {
-		RTE_LOG(ERR, USER1, "rte_cryptodev_dequeue_burst fail\n");
+	if (crypto_dequeue_burst(num_pkts) == TEST_FAILED)
 		return TEST_FAILED;
-	}
 
 	ng = rte_ipsec_pkt_crypto_group(
 		(const struct rte_crypto_op **)(uintptr_t)ut_params->cop,
@@ -864,7 +885,6 @@ crypto_ipsec_2sa(void)
 	struct ipsec_testsuite_params *ts_params = &testsuite_params;
 	struct ipsec_unitest_params *ut_params = &unittest_params;
 	struct rte_ipsec_group grp[BURST_SIZE];
-
 	uint32_t k, ng, i, r;
 
 	for (i = 0; i < BURST_SIZE; i++) {
@@ -886,12 +906,8 @@ crypto_ipsec_2sa(void)
 		}
 	}
 
-	k = rte_cryptodev_dequeue_burst(ts_params->valid_dev, 0,
-		ut_params->cop, BURST_SIZE);
-	if (k != BURST_SIZE) {
-		RTE_LOG(ERR, USER1, "rte_cryptodev_dequeue_burst fail\n");
+	if (crypto_dequeue_burst(BURST_SIZE) == TEST_FAILED)
 		return TEST_FAILED;
-	}
 
 	ng = rte_ipsec_pkt_crypto_group(
 		(const struct rte_crypto_op **)(uintptr_t)ut_params->cop,
@@ -1025,12 +1041,8 @@ crypto_ipsec_2sa_4grp(void)
 		}
 	}
 
-	k = rte_cryptodev_dequeue_burst(ts_params->valid_dev, 0,
-		ut_params->cop, BURST_SIZE);
-	if (k != BURST_SIZE) {
-		RTE_LOG(ERR, USER1, "rte_cryptodev_dequeue_burst fail\n");
+	if (crypto_dequeue_burst(BURST_SIZE) == TEST_FAILED)
 		return TEST_FAILED;
-	}
 
 	ng = rte_ipsec_pkt_crypto_group(
 		(const struct rte_crypto_op **)(uintptr_t)ut_params->cop,
