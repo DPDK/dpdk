@@ -810,6 +810,15 @@ power_pstate_disable_turbo(unsigned int lcore_id)
 
 	pi->turbo_enable = 0;
 
+	if (pi->turbo_available && pi->curr_idx <= 1) {
+		/* Try to set freq to max by default coming out of turbo */
+		if (power_pstate_cpufreq_freq_max(lcore_id) < 0) {
+			RTE_LOG(ERR, POWER,
+				"Failed to set frequency of lcore %u to max\n",
+				lcore_id);
+			return -1;
+		}
+	}
 
 	return 0;
 }
