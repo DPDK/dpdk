@@ -1090,7 +1090,7 @@ struct bnx2x_softc {
 #define PERIODIC_STOP 0
 #define PERIODIC_GO   1
 	volatile unsigned long periodic_flags;
-
+	rte_atomic32_t	scan_fp;
 	struct bnx2x_fastpath fp[MAX_RSS_CHAINS];
 	struct bnx2x_sp_objs  sp_objs[MAX_RSS_CHAINS];
 
@@ -1939,7 +1939,7 @@ int bnx2x_tx_encap(struct bnx2x_tx_queue *txq, struct rte_mbuf *m0);
 uint8_t bnx2x_txeof(struct bnx2x_softc *sc, struct bnx2x_fastpath *fp);
 void bnx2x_print_adapter_info(struct bnx2x_softc *sc);
 void bnx2x_print_device_info(struct bnx2x_softc *sc);
-int bnx2x_intr_legacy(struct bnx2x_softc *sc, int scan_fp);
+int bnx2x_intr_legacy(struct bnx2x_softc *sc);
 void bnx2x_link_status_update(struct bnx2x_softc *sc);
 int bnx2x_complete_sp(struct bnx2x_softc *sc);
 int bnx2x_set_storm_rx_mode(struct bnx2x_softc *sc);

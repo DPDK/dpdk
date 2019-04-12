@@ -113,7 +113,7 @@ bnx2x_interrupt_action(struct rte_eth_dev *dev)
 	struct bnx2x_softc *sc = dev->data->dev_private;
 	uint32_t link_status;
 
-	bnx2x_intr_legacy(sc, 0);
+	bnx2x_intr_legacy(sc);
 
 	if (sc->periodic_flags & PERIODIC_GO)
 		bnx2x_periodic_callout(sc);

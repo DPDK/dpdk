@@ -124,7 +124,7 @@ static __rte_noinline
 int bnx2x_nic_load(struct bnx2x_softc *sc);
 
 static int bnx2x_handle_sp_tq(struct bnx2x_softc *sc);
-static void bnx2x_handle_fp_tq(struct bnx2x_fastpath *fp, int scan_fp);
+static void bnx2x_handle_fp_tq(struct bnx2x_fastpath *fp);
 static void bnx2x_ack_sb(struct bnx2x_softc *sc, uint8_t igu_sb_id,
 			 uint8_t storm, uint16_t index, uint8_t op,
 			 uint8_t update);
@@ -1114,6 +1114,12 @@ bnx2x_sp_post(struct bnx2x_softc *sc, int command, int cid, uint32_t data_hi,
 		    atomic_load_acq_long(&sc->cq_spq_left),
 		    atomic_load_acq_long(&sc->eq_spq_left));
 
+	/* RAMROD completion is processed in bnx2x_intr_legacy()
+	 * which can run from different contexts.
+	 * Ask bnx2x_intr_intr() to process RAMROD
+	 * completion whenever it gets scheduled.
+	 */
+	rte_atomic32_set(&sc->scan_fp, 1);
 	bnx2x_sp_prod_update(sc);
 
 	return 0;
@@ -4539,7 +4545,7 @@ static int bnx2x_handle_sp_tq(struct bnx2x_softc *sc)
 	return rc;
 }
 
-static void bnx2x_handle_fp_tq(struct bnx2x_fastpath *fp, int scan_fp)
+static void bnx2x_handle_fp_tq(struct bnx2x_fastpath *fp)
 {
 	struct bnx2x_softc *sc = fp->sc;
 	uint8_t more_rx = FALSE;
@@ -4554,14 +4560,14 @@ static void bnx2x_handle_fp_tq(struct bnx2x_fastpath *fp, int scan_fp)
 	/* update the fastpath index */
 	bnx2x_update_fp_sb_idx(fp);
 
-	if (scan_fp) {
+	if (rte_atomic32_read(&sc->scan_fp) == 1) {
 		if (bnx2x_has_rx_work(fp)) {
 			more_rx = bnx2x_rxeof(sc, fp);
 		}
 
 		if (more_rx) {
 			/* still more work to do */
-			bnx2x_handle_fp_tq(fp, scan_fp);
+			bnx2x_handle_fp_tq(fp);
 			return;
 		}
 	}
@@ -4577,7 +4583,7 @@ static void bnx2x_handle_fp_tq(struct bnx2x_fastpath *fp, int scan_fp)
  * then calls a separate routine to handle the various
  * interrupt causes: link, RX, and TX.
  */
-int bnx2x_intr_legacy(struct bnx2x_softc *sc, int scan_fp)
+int bnx2x_intr_legacy(struct bnx2x_softc *sc)
 {
 	struct bnx2x_fastpath *fp;
 	uint32_t status, mask;
@@ -4609,7 +4615,7 @@ int bnx2x_intr_legacy(struct bnx2x_softc *sc, int scan_fp)
 		/* acknowledge and disable further fastpath interrupts */
 			bnx2x_ack_sb(sc, fp->igu_sb_id, USTORM_ID,
 				     0, IGU_INT_DISABLE, 0);
-			bnx2x_handle_fp_tq(fp, scan_fp);
+			bnx2x_handle_fp_tq(fp);
 			status &= ~mask;
 		}
 	}

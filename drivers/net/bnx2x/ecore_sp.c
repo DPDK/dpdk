@@ -291,25 +291,33 @@ static int ecore_state_wait(struct bnx2x_softc *sc, int state,
 		cnt *= 20;
 
 	ECORE_MSG(sc, "waiting for state to become %d", state);
+	/* being over protective to remind bnx2x_intr_legacy() to
+	 * process RAMROD
+	 */
+	rte_atomic32_set(&sc->scan_fp, 1);
 
 	ECORE_MIGHT_SLEEP();
 	while (cnt--) {
-		bnx2x_intr_legacy(sc, 1);
+		bnx2x_intr_legacy(sc);
 		if (!ECORE_TEST_BIT(state, pstate)) {
 #ifdef ECORE_STOP_ON_ERROR
 			ECORE_MSG(sc, "exit  (cnt %d)", 5000 - cnt);
 #endif
+			rte_atomic32_set(&sc->scan_fp, 0);
 			return ECORE_SUCCESS;
 		}
 
 		ECORE_WAIT(sc, delay_us);
 
-		if (sc->panic)
+		if (sc->panic) {
+			rte_atomic32_set(&sc->scan_fp, 0);
 			return ECORE_IO;
+		}
 	}
 
 	/* timeout! */
 	PMD_DRV_LOG(ERR, sc, "timeout waiting for state %d", state);
+	rte_atomic32_set(&sc->scan_fp, 0);
 #ifdef ECORE_STOP_ON_ERROR
 	ecore_panic();
 #endif
