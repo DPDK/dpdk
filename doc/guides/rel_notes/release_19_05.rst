@@ -152,6 +152,7 @@ New Features
   * Added promiscuous and allmulticast mode support
   * Added MTU update support
   * Added jumbo frame support
+  * Added queue start/stop
 
 * **Updated the QuickAssist Technology PMD.**
 

@@ -203,7 +203,6 @@ static void
 enetc_setup_txbdr(struct enetc_hw *hw, struct enetc_bdr *tx_ring)
 {
 	int idx = tx_ring->index;
-	uint32_t tbmr;
 	phys_addr_t bd_address;
 
 	bd_address = (phys_addr_t)
@@ -215,9 +214,6 @@ enetc_setup_txbdr(struct enetc_hw *hw, struct enetc_bdr *tx_ring)
 	enetc_txbdr_wr(hw, idx, ENETC_TBLENR,
 		       ENETC_RTBLENR_LEN(tx_ring->bd_count));
 
-	tbmr = ENETC_TBMR_EN;
-	/* enable ring */
-	enetc_txbdr_wr(hw, idx, ENETC_TBMR, tbmr);
 	enetc_txbdr_wr(hw, idx, ENETC_TBCIR, 0);
 	enetc_txbdr_wr(hw, idx, ENETC_TBCISR, 0);
 	tx_ring->tcir = (void *)((size_t)hw->reg +
@@ -227,15 +223,21 @@ enetc_setup_txbdr(struct enetc_hw *hw, struct enetc_bdr *tx_ring)
 }
 
 static int
-enetc_alloc_tx_resources(struct rte_eth_dev *dev,
-			 uint16_t queue_idx,
-			 uint16_t nb_desc)
+enetc_tx_queue_setup(struct rte_eth_dev *dev,
+		     uint16_t queue_idx,
+		     uint16_t nb_desc,
+		     unsigned int socket_id __rte_unused,
+		     const struct rte_eth_txconf *tx_conf)
 {
-	int err;
+	int err = 0;
 	struct enetc_bdr *tx_ring;
 	struct rte_eth_dev_data *data = dev->data;
 	struct enetc_eth_adapter *priv =
 			ENETC_DEV_PRIVATE(data->dev_private);
+
+	PMD_INIT_FUNC_TRACE();
+	if (nb_desc > MAX_BD_COUNT)
+		return -1;
 
 	tx_ring = rte_zmalloc(NULL, sizeof(struct enetc_bdr), 0);
 	if (tx_ring == NULL) {
@@ -253,27 +255,20 @@ enetc_alloc_tx_resources(struct rte_eth_dev *dev,
 	enetc_setup_txbdr(&priv->hw.hw, tx_ring);
 	data->tx_queues[queue_idx] = tx_ring;
 
+	if (!tx_conf->tx_deferred_start) {
+		/* enable ring */
+		enetc_txbdr_wr(&priv->hw.hw, tx_ring->index,
+			       ENETC_TBMR, ENETC_TBMR_EN);
+		dev->data->tx_queue_state[tx_ring->index] =
+			       RTE_ETH_QUEUE_STATE_STARTED;
+	} else {
+		dev->data->tx_queue_state[tx_ring->index] =
+			       RTE_ETH_QUEUE_STATE_STOPPED;
+	}
+
 	return 0;
 fail:
 	rte_free(tx_ring);
-
-	return err;
-}
-
-static int
-enetc_tx_queue_setup(struct rte_eth_dev *dev,
-		     uint16_t queue_idx,
-		     uint16_t nb_desc,
-		     unsigned int socket_id __rte_unused,
-		     const struct rte_eth_txconf *tx_conf __rte_unused)
-{
-	int err = 0;
-
-	PMD_INIT_FUNC_TRACE();
-	if (nb_desc > MAX_BD_COUNT)
-		return -1;
-
-	err = enetc_alloc_tx_resources(dev, queue_idx, nb_desc);
 
 	return err;
 }
@@ -367,22 +362,26 @@ enetc_setup_rxbdr(struct enetc_hw *hw, struct enetc_bdr *rx_ring,
 	buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rx_ring->mb_pool) -
 		   RTE_PKTMBUF_HEADROOM);
 	enetc_rxbdr_wr(hw, idx, ENETC_RBBSR, buf_size);
-	/* enable ring */
-	enetc_rxbdr_wr(hw, idx, ENETC_RBMR, ENETC_RBMR_EN);
 	enetc_rxbdr_wr(hw, idx, ENETC_RBPIR, 0);
 }
 
 static int
-enetc_alloc_rx_resources(struct rte_eth_dev *dev,
-			 uint16_t rx_queue_id,
-			 uint16_t nb_rx_desc,
-			 struct rte_mempool *mb_pool)
+enetc_rx_queue_setup(struct rte_eth_dev *dev,
+		     uint16_t rx_queue_id,
+		     uint16_t nb_rx_desc,
+		     unsigned int socket_id __rte_unused,
+		     const struct rte_eth_rxconf *rx_conf,
+		     struct rte_mempool *mb_pool)
 {
-	int err;
+	int err = 0;
 	struct enetc_bdr *rx_ring;
 	struct rte_eth_dev_data *data =  dev->data;
 	struct enetc_eth_adapter *adapter =
 			ENETC_DEV_PRIVATE(data->dev_private);
+
+	PMD_INIT_FUNC_TRACE();
+	if (nb_rx_desc > MAX_BD_COUNT)
+		return -1;
 
 	rx_ring = rte_zmalloc(NULL, sizeof(struct enetc_bdr), 0);
 	if (rx_ring == NULL) {
@@ -400,30 +399,20 @@ enetc_alloc_rx_resources(struct rte_eth_dev *dev,
 	enetc_setup_rxbdr(&adapter->hw.hw, rx_ring, mb_pool);
 	data->rx_queues[rx_queue_id] = rx_ring;
 
+	if (!rx_conf->rx_deferred_start) {
+		/* enable ring */
+		enetc_rxbdr_wr(&adapter->hw.hw, rx_ring->index, ENETC_RBMR,
+			       ENETC_RBMR_EN);
+		dev->data->rx_queue_state[rx_ring->index] =
+			       RTE_ETH_QUEUE_STATE_STARTED;
+	} else {
+		dev->data->rx_queue_state[rx_ring->index] =
+			       RTE_ETH_QUEUE_STATE_STOPPED;
+	}
+
 	return 0;
 fail:
 	rte_free(rx_ring);
-
-	return err;
-}
-
-static int
-enetc_rx_queue_setup(struct rte_eth_dev *dev,
-		     uint16_t rx_queue_id,
-		     uint16_t nb_rx_desc,
-		     unsigned int socket_id __rte_unused,
-		     const struct rte_eth_rxconf *rx_conf __rte_unused,
-		     struct rte_mempool *mb_pool)
-{
-	int err = 0;
-
-	PMD_INIT_FUNC_TRACE();
-	if (nb_rx_desc > MAX_BD_COUNT)
-		return -1;
-
-	err = enetc_alloc_rx_resources(dev, rx_queue_id,
-				       nb_rx_desc,
-				       mb_pool);
 
 	return err;
 }
@@ -661,6 +650,90 @@ enetc_dev_configure(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static int
+enetc_rx_queue_start(struct rte_eth_dev *dev, uint16_t qidx)
+{
+	struct enetc_eth_adapter *priv =
+			ENETC_DEV_PRIVATE(dev->data->dev_private);
+	struct enetc_bdr *rx_ring;
+	uint32_t rx_data;
+
+	rx_ring = dev->data->rx_queues[qidx];
+	if (dev->data->rx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STOPPED) {
+		rx_data = enetc_rxbdr_rd(&priv->hw.hw, rx_ring->index,
+					 ENETC_RBMR);
+		rx_data = rx_data | ENETC_RBMR_EN;
+		enetc_rxbdr_wr(&priv->hw.hw, rx_ring->index, ENETC_RBMR,
+			       rx_data);
+		dev->data->rx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STARTED;
+	}
+
+	return 0;
+}
+
+static int
+enetc_rx_queue_stop(struct rte_eth_dev *dev, uint16_t qidx)
+{
+	struct enetc_eth_adapter *priv =
+			ENETC_DEV_PRIVATE(dev->data->dev_private);
+	struct enetc_bdr *rx_ring;
+	uint32_t rx_data;
+
+	rx_ring = dev->data->rx_queues[qidx];
+	if (dev->data->rx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STARTED) {
+		rx_data = enetc_rxbdr_rd(&priv->hw.hw, rx_ring->index,
+					 ENETC_RBMR);
+		rx_data = rx_data & (~ENETC_RBMR_EN);
+		enetc_rxbdr_wr(&priv->hw.hw, rx_ring->index, ENETC_RBMR,
+			       rx_data);
+		dev->data->rx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STOPPED;
+	}
+
+	return 0;
+}
+
+static int
+enetc_tx_queue_start(struct rte_eth_dev *dev, uint16_t qidx)
+{
+	struct enetc_eth_adapter *priv =
+			ENETC_DEV_PRIVATE(dev->data->dev_private);
+	struct enetc_bdr *tx_ring;
+	uint32_t tx_data;
+
+	tx_ring = dev->data->tx_queues[qidx];
+	if (dev->data->tx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STOPPED) {
+		tx_data = enetc_txbdr_rd(&priv->hw.hw, tx_ring->index,
+					 ENETC_TBMR);
+		tx_data = tx_data | ENETC_TBMR_EN;
+		enetc_txbdr_wr(&priv->hw.hw, tx_ring->index, ENETC_TBMR,
+			       tx_data);
+		dev->data->tx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STARTED;
+	}
+
+	return 0;
+}
+
+static int
+enetc_tx_queue_stop(struct rte_eth_dev *dev, uint16_t qidx)
+{
+	struct enetc_eth_adapter *priv =
+			ENETC_DEV_PRIVATE(dev->data->dev_private);
+	struct enetc_bdr *tx_ring;
+	uint32_t tx_data;
+
+	tx_ring = dev->data->tx_queues[qidx];
+	if (dev->data->tx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STARTED) {
+		tx_data = enetc_txbdr_rd(&priv->hw.hw, tx_ring->index,
+					 ENETC_TBMR);
+		tx_data = tx_data & (~ENETC_TBMR_EN);
+		enetc_txbdr_wr(&priv->hw.hw, tx_ring->index, ENETC_TBMR,
+			       tx_data);
+		dev->data->tx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STOPPED;
+	}
+
+	return 0;
+}
+
 /*
  * The set of PCI devices this driver supports
  */
@@ -686,8 +759,12 @@ static const struct eth_dev_ops enetc_ops = {
 	.dev_infos_get        = enetc_dev_infos_get,
 	.mtu_set              = enetc_mtu_set,
 	.rx_queue_setup       = enetc_rx_queue_setup,
+	.rx_queue_start       = enetc_rx_queue_start,
+	.rx_queue_stop        = enetc_rx_queue_stop,
 	.rx_queue_release     = enetc_rx_queue_release,
 	.tx_queue_setup       = enetc_tx_queue_setup,
+	.tx_queue_start       = enetc_tx_queue_start,
+	.tx_queue_stop        = enetc_tx_queue_stop,
 	.tx_queue_release     = enetc_tx_queue_release,
 	.dev_supported_ptypes_get = enetc_supported_ptypes_get,
 };

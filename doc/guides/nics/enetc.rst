@@ -50,6 +50,8 @@ ENETC Features
 - Promiscuous
 - Multicast
 - Jumbo packets
+- Queue Start/Stop
+- Deferred Queue Start
 
 NIC Driver (PMD)
 ~~~~~~~~~~~~~~~~
