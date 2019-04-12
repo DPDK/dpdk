@@ -344,17 +344,43 @@ if get_option('tests')
 	timeout_seconds = 600
 	timeout_seconds_fast = 10
 
+	# Retrieve the number of CPU cores, defaulting to 4.
+	num_cores = '0-3'
+	if host_machine.system() == 'linux'
+		num_cores = run_command('cat',
+					'/sys/devices/system/cpu/present'
+				       ).stdout().strip()
+	elif host_machine.system() == 'freebsd'
+		snum_cores = run_command('/sbin/sysctl', '-n',
+					 'hw.ncpu').stdout().strip()
+		inum_cores = snum_cores.to_int() - 1
+                num_cores = '0-@0@'.format(inum_cores)
+	endif
+
+	num_cores_arg = '-l ' + num_cores
+
+	test_args = [num_cores_arg, '-n 4']
 	foreach arg : fast_parallel_test_names
-		test(arg, dpdk_test,
-			env : ['DPDK_TEST=' + arg],
-			args : ['-c f','-n 4', '--file-prefix=@0@'.format(arg)],
+		if host_machine.system() == 'linux'
+			test(arg, dpdk_test,
+				  env : ['DPDK_TEST=' + arg],
+				  args : test_args +
+					 ['--file-prefix=@0@'.format(arg)],
 			timeout : timeout_seconds_fast,
 			suite : 'fast-tests')
+		else
+			test(arg, dpdk_test,
+				env : ['DPDK_TEST=' + arg],
+				args : test_args,
+			timeout : timeout_seconds_fast,
+			suite : 'fast-tests')
+		endif
 	endforeach
 
 	foreach arg : fast_non_parallel_test_names
 		test(arg, dpdk_test,
 			env : ['DPDK_TEST=' + arg],
+			args : test_args,
 			timeout : timeout_seconds_fast,
 			is_parallel : false,
 			suite : 'fast-tests')
@@ -363,6 +389,7 @@ if get_option('tests')
 	foreach arg : perf_test_names
 		test(arg, dpdk_test,
 		env : ['DPDK_TEST=' + arg],
+		args : test_args,
 		timeout : timeout_seconds,
 		is_parallel : false,
 		suite : 'perf-tests')
@@ -371,6 +398,7 @@ if get_option('tests')
 	foreach arg : driver_test_names
 		test(arg, dpdk_test,
 			env : ['DPDK_TEST=' + arg],
+			args : test_args,
 			timeout : timeout_seconds,
 			is_parallel : false,
 			suite : 'driver-tests')
@@ -379,6 +407,7 @@ if get_option('tests')
 	foreach arg : dump_test_names
 		test(arg, dpdk_test,
 			env : ['DPDK_TEST=' + arg],
+			args : test_args,
 			timeout : timeout_seconds,
 			is_parallel : false,
 			suite : 'debug-tests')
