@@ -47,6 +47,8 @@ ENETC Features
 - Link Status
 - Packet type information
 - Basic stats
+- Promiscuous
+- Multicast
 
 NIC Driver (PMD)
 ~~~~~~~~~~~~~~~~

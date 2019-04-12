@@ -133,8 +133,8 @@ enetc_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 static int
 enetc_hardware_init(struct enetc_eth_hw *hw)
 {
-	uint32_t psipmr = 0;
 	struct enetc_hw *enetc_hw = &hw->hw;
+	uint32_t *mac = (uint32_t *)hw->mac.addr;
 
 	PMD_INIT_FUNC_TRACE();
 	/* Calculating and storing the base HW addresses */
@@ -144,19 +144,9 @@ enetc_hardware_init(struct enetc_eth_hw *hw)
 	/* Enabling Station Interface */
 	enetc_wr(enetc_hw, ENETC_SIMR, ENETC_SIMR_EN);
 
-	/* Setting to accept broadcast packets for each inetrface */
-	psipmr |= ENETC_PSIPMR_SET_UP(0) | ENETC_PSIPMR_SET_MP(0) |
-		  ENETC_PSIPMR_SET_VLAN_MP(0);
-	psipmr |= ENETC_PSIPMR_SET_UP(1) | ENETC_PSIPMR_SET_MP(1) |
-		  ENETC_PSIPMR_SET_VLAN_MP(1);
-	psipmr |= ENETC_PSIPMR_SET_UP(2) | ENETC_PSIPMR_SET_MP(2) |
-		  ENETC_PSIPMR_SET_VLAN_MP(2);
-
-	enetc_port_wr(enetc_hw, ENETC_PSIPMR, psipmr);
-
-	/* Enabling broadcast address */
-	enetc_port_wr(enetc_hw, ENETC_PSIPMAR0(0), 0xFFFFFFFF);
-	enetc_port_wr(enetc_hw, ENETC_PSIPMAR1(0), 0xFFFF << 16);
+	*mac = (uint32_t)enetc_port_rd(enetc_hw, ENETC_PSIPMAR0(0));
+	mac++;
+	*mac = (uint16_t)enetc_port_rd(enetc_hw, ENETC_PSIPMAR1(0));
 
 	return 0;
 }
@@ -539,6 +529,74 @@ enetc_dev_close(struct rte_eth_dev *dev)
 	dev->data->nb_tx_queues = 0;
 }
 
+static void
+enetc_promiscuous_enable(struct rte_eth_dev *dev)
+{
+	struct enetc_eth_hw *hw =
+		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+	uint32_t psipmr = 0;
+
+	psipmr = enetc_port_rd(enetc_hw, ENETC_PSIPMR);
+
+	/* Setting to enable promiscuous mode*/
+	psipmr |= ENETC_PSIPMR_SET_UP(0) | ENETC_PSIPMR_SET_MP(0);
+
+	enetc_port_wr(enetc_hw, ENETC_PSIPMR, psipmr);
+}
+
+static void
+enetc_promiscuous_disable(struct rte_eth_dev *dev)
+{
+	struct enetc_eth_hw *hw =
+		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+	uint32_t psipmr = 0;
+
+	/* Setting to disable promiscuous mode for SI0*/
+	psipmr = enetc_port_rd(enetc_hw, ENETC_PSIPMR);
+	psipmr &= (~ENETC_PSIPMR_SET_UP(0));
+
+	if (dev->data->all_multicast == 0)
+		psipmr &= (~ENETC_PSIPMR_SET_MP(0));
+
+	enetc_port_wr(enetc_hw, ENETC_PSIPMR, psipmr);
+}
+
+static void
+enetc_allmulticast_enable(struct rte_eth_dev *dev)
+{
+	struct enetc_eth_hw *hw =
+		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+	uint32_t psipmr = 0;
+
+	psipmr = enetc_port_rd(enetc_hw, ENETC_PSIPMR);
+
+	/* Setting to enable allmulticast mode for SI0*/
+	psipmr |= ENETC_PSIPMR_SET_MP(0);
+
+	enetc_port_wr(enetc_hw, ENETC_PSIPMR, psipmr);
+}
+
+static void
+enetc_allmulticast_disable(struct rte_eth_dev *dev)
+{
+	struct enetc_eth_hw *hw =
+		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+	uint32_t psipmr = 0;
+
+	if (dev->data->promiscuous == 1)
+		return; /* must remain in all_multicast mode */
+
+	/* Setting to disable all multicast mode for SI0*/
+	psipmr = enetc_port_rd(enetc_hw, ENETC_PSIPMR) &
+			       ~(ENETC_PSIPMR_SET_MP(0));
+
+	enetc_port_wr(enetc_hw, ENETC_PSIPMR, psipmr);
+}
+
 /*
  * The set of PCI devices this driver supports
  */
@@ -557,6 +615,10 @@ static const struct eth_dev_ops enetc_ops = {
 	.link_update          = enetc_link_update,
 	.stats_get            = enetc_stats_get,
 	.stats_reset          = enetc_stats_reset,
+	.promiscuous_enable   = enetc_promiscuous_enable,
+	.promiscuous_disable  = enetc_promiscuous_disable,
+	.allmulticast_enable  = enetc_allmulticast_enable,
+	.allmulticast_disable = enetc_allmulticast_disable,
 	.dev_infos_get        = enetc_dev_infos_get,
 	.rx_queue_setup       = enetc_rx_queue_setup,
 	.rx_queue_release     = enetc_rx_queue_release,

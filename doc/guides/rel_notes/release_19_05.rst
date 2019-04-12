@@ -149,6 +149,7 @@ New Features
   * Added physical addressing mode support
   * Added SXGMII interface support
   * Added basic statistics support
+  * Added promiscuous and allmulticast mode support
 
 * **Updated the QuickAssist Technology PMD.**
 
