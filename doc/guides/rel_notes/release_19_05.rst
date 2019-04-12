@@ -150,6 +150,8 @@ New Features
   * Added SXGMII interface support
   * Added basic statistics support
   * Added promiscuous and allmulticast mode support
+  * Added MTU update support
+  * Added jumbo frame support
 
 * **Updated the QuickAssist Technology PMD.**
 

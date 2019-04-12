@@ -49,6 +49,7 @@ ENETC Features
 - Basic stats
 - Promiscuous
 - Multicast
+- Jumbo packets
 
 NIC Driver (PMD)
 ~~~~~~~~~~~~~~~~

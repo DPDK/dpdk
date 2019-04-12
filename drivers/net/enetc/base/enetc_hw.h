@@ -99,7 +99,11 @@ enum enetc_bdr_type {TX, RX};
 #define ENETC_PM0_RX_EN			BIT(1)
 
 #define ENETC_PM0_MAXFRM		0x08014
-#define ENETC_SET_MAXFRM(val)		((val) << 16)
+#define ENETC_SET_TX_MTU(val)		((val) << 16)
+#define ENETC_SET_MAXFRM(val)		((val) & 0xffff)
+#define ENETC_PTXMBAR			0x0608
+/* n = TC index [0..7] */
+#define ENETC_PTCMSDUR(n)		(0x2020 + (n) * 4)
 
 #define ENETC_PM0_STATUS		0x08304
 #define ENETC_LINK_MODE			0x0000000000080000ULL

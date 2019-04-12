@@ -11,13 +11,6 @@
 int enetc_logtype_pmd;
 
 static int
-enetc_dev_configure(struct rte_eth_dev *dev __rte_unused)
-{
-	PMD_INIT_FUNC_TRACE();
-	return 0;
-}
-
-static int
 enetc_dev_start(struct rte_eth_dev *dev)
 {
 	struct enetc_eth_hw *hw =
@@ -168,7 +161,8 @@ enetc_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
 	};
 	dev_info->max_rx_queues = MAX_RX_RINGS;
 	dev_info->max_tx_queues = MAX_TX_RINGS;
-	dev_info->max_rx_pktlen = 1500;
+	dev_info->max_rx_pktlen = ENETC_MAC_MAXFRM_SIZE;
+	dev_info->rx_offload_capa = DEV_RX_OFFLOAD_JUMBO_FRAME;
 }
 
 static int
@@ -597,6 +591,76 @@ enetc_allmulticast_disable(struct rte_eth_dev *dev)
 	enetc_port_wr(enetc_hw, ENETC_PSIPMR, psipmr);
 }
 
+static int
+enetc_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct enetc_eth_hw *hw =
+		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+	uint32_t frame_size = mtu + ETHER_HDR_LEN + ETHER_CRC_LEN;
+
+	/* check that mtu is within the allowed range */
+	if (mtu < ENETC_MAC_MINFRM_SIZE || frame_size > ENETC_MAC_MAXFRM_SIZE)
+		return -EINVAL;
+
+	/*
+	 * Refuse mtu that requires the support of scattered packets
+	 * when this feature has not been enabled before.
+	 */
+	if (dev->data->min_rx_buf_size &&
+		!dev->data->scattered_rx && frame_size >
+		dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM) {
+		ENETC_PMD_ERR("SG not enabled, will not fit in one buffer");
+		return -EINVAL;
+	}
+
+	if (frame_size > ETHER_MAX_LEN)
+		dev->data->dev_conf.rxmode.offloads &=
+						DEV_RX_OFFLOAD_JUMBO_FRAME;
+	else
+		dev->data->dev_conf.rxmode.offloads &=
+						~DEV_RX_OFFLOAD_JUMBO_FRAME;
+
+	enetc_port_wr(enetc_hw, ENETC_PTCMSDUR(0), ENETC_MAC_MAXFRM_SIZE);
+	enetc_port_wr(enetc_hw, ENETC_PTXMBAR, 2 * ENETC_MAC_MAXFRM_SIZE);
+
+	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
+
+	/*setting the MTU*/
+	enetc_port_wr(enetc_hw, ENETC_PM0_MAXFRM, ENETC_SET_MAXFRM(frame_size) |
+		      ENETC_SET_TX_MTU(ENETC_MAC_MAXFRM_SIZE));
+
+	return 0;
+}
+
+static int
+enetc_dev_configure(struct rte_eth_dev *dev)
+{
+	struct rte_eth_conf *eth_conf = &dev->data->dev_conf;
+	uint64_t rx_offloads = eth_conf->rxmode.offloads;
+	struct enetc_eth_hw *hw =
+		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (rx_offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
+		uint32_t max_len;
+
+		max_len = dev->data->dev_conf.rxmode.max_rx_pkt_len;
+
+		enetc_port_wr(enetc_hw, ENETC_PM0_MAXFRM,
+			      ENETC_SET_MAXFRM(max_len));
+		enetc_port_wr(enetc_hw, ENETC_PTCMSDUR(0),
+			      ENETC_MAC_MAXFRM_SIZE);
+		enetc_port_wr(enetc_hw, ENETC_PTXMBAR,
+			      2 * ENETC_MAC_MAXFRM_SIZE);
+		dev->data->mtu = ETHER_MAX_LEN - ETHER_HDR_LEN - ETHER_CRC_LEN;
+	}
+
+	return 0;
+}
+
 /*
  * The set of PCI devices this driver supports
  */
@@ -620,6 +684,7 @@ static const struct eth_dev_ops enetc_ops = {
 	.allmulticast_enable  = enetc_allmulticast_enable,
 	.allmulticast_disable = enetc_allmulticast_disable,
 	.dev_infos_get        = enetc_dev_infos_get,
+	.mtu_set              = enetc_mtu_set,
 	.rx_queue_setup       = enetc_rx_queue_setup,
 	.rx_queue_release     = enetc_rx_queue_release,
 	.tx_queue_setup       = enetc_tx_queue_setup,
@@ -673,6 +738,11 @@ enetc_dev_init(struct rte_eth_dev *eth_dev)
 	/* Copy the permanent MAC address */
 	ether_addr_copy((struct ether_addr *)hw->mac.addr,
 			&eth_dev->data->mac_addrs[0]);
+
+	/* Set MTU */
+	enetc_port_wr(&hw->hw, ENETC_PM0_MAXFRM,
+		      ENETC_SET_MAXFRM(ETHER_MAX_LEN));
+	eth_dev->data->mtu = ETHER_MAX_LEN - ETHER_HDR_LEN - ETHER_CRC_LEN;
 
 	ENETC_PMD_DEBUG("port_id %d vendorID=0x%x deviceID=0x%x",
 			eth_dev->data->port_id, pci_dev->id.vendor_id,

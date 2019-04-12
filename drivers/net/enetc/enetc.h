@@ -24,6 +24,11 @@
 /* BD ALIGN */
 #define BD_ALIGN       8
 
+/* minimum frame size supported */
+#define ENETC_MAC_MINFRM_SIZE	68
+/* maximum frame size supported */
+#define ENETC_MAC_MAXFRM_SIZE	9600
+
 /*
  * upper_32_bits - return bits 32-63 of a number
  * @n: the number we're accessing
