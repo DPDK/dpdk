@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018 NXP
+ * Copyright 2018-2019 NXP
  */
 
 #ifndef _ENETC_H_
@@ -85,11 +85,6 @@ struct enetc_eth_adapter {
 
 #define ENETC_DEV_PRIVATE_TO_INTR(adapter) \
 	(&((struct enetc_eth_adapter *)adapter)->intr)
-
-#define ENETC_GET_HW_ADDR(reg, addr) ((void *)(((size_t)reg) + (addr)))
-#define ENETC_REG_READ(addr) (*(uint32_t *)addr)
-#define ENETC_REG_WRITE(addr, val) (*(uint32_t *)addr = val)
-#define ENETC_REG_WRITE_RELAXED(addr, val) (*(uint32_t *)addr = val)
 
 /*
  * RX/TX ENETC function prototypes

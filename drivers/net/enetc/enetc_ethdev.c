@@ -131,28 +131,31 @@ enetc_dev_start(struct rte_eth_dev *dev)
 {
 	struct enetc_eth_hw *hw =
 		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
 	uint32_t val;
 
 	PMD_INIT_FUNC_TRACE();
-	val = ENETC_REG_READ(ENETC_GET_HW_ADDR(hw->hw.port,
-			     ENETC_PM0_CMD_CFG));
-	ENETC_REG_WRITE(ENETC_GET_HW_ADDR(hw->hw.port, ENETC_PM0_CMD_CFG),
-			val | ENETC_PM0_TX_EN | ENETC_PM0_RX_EN);
+	val = enetc_port_rd(enetc_hw, ENETC_PM0_CMD_CFG);
+	enetc_port_wr(enetc_hw, ENETC_PM0_CMD_CFG,
+		      val | ENETC_PM0_TX_EN | ENETC_PM0_RX_EN);
 
 	/* Enable port */
-	val = ENETC_REG_READ(ENETC_GET_HW_ADDR(hw->hw.port, ENETC_PMR));
-	ENETC_REG_WRITE(ENETC_GET_HW_ADDR(hw->hw.port, ENETC_PMR),
-			val | ENETC_PMR_EN);
+	val = enetc_port_rd(enetc_hw, ENETC_PMR);
+	enetc_port_wr(enetc_hw, ENETC_PMR, val | ENETC_PMR_EN);
 
 	/* set auto-speed for RGMII */
-	if (enetc_port_rd(&hw->hw, ENETC_PM0_IF_MODE) & ENETC_PMO_IFM_RG) {
-		enetc_port_wr(&hw->hw, ENETC_PM0_IF_MODE, ENETC_PM0_IFM_RGAUTO);
-		enetc_port_wr(&hw->hw, ENETC_PM1_IF_MODE, ENETC_PM0_IFM_RGAUTO);
+	if (enetc_port_rd(enetc_hw, ENETC_PM0_IF_MODE) & ENETC_PMO_IFM_RG) {
+		enetc_port_wr(enetc_hw, ENETC_PM0_IF_MODE,
+			      ENETC_PM0_IFM_RGAUTO);
+		enetc_port_wr(enetc_hw, ENETC_PM1_IF_MODE,
+			      ENETC_PM0_IFM_RGAUTO);
 	}
-	if (enetc_global_rd(&hw->hw,
+	if (enetc_global_rd(enetc_hw,
 			    ENETC_G_EPFBLPR(1)) == ENETC_G_EPFBLPR1_XGMII) {
-		enetc_port_wr(&hw->hw, ENETC_PM0_IF_MODE, ENETC_PM0_IFM_XGMII);
-		enetc_port_wr(&hw->hw, ENETC_PM1_IF_MODE, ENETC_PM0_IFM_XGMII);
+		enetc_port_wr(enetc_hw, ENETC_PM0_IF_MODE,
+			      ENETC_PM0_IFM_XGMII);
+		enetc_port_wr(enetc_hw, ENETC_PM1_IF_MODE,
+			      ENETC_PM0_IFM_XGMII);
 	}
 
 	return 0;
@@ -163,18 +166,17 @@ enetc_dev_stop(struct rte_eth_dev *dev)
 {
 	struct enetc_eth_hw *hw =
 		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
 	uint32_t val;
 
 	PMD_INIT_FUNC_TRACE();
 	/* Disable port */
-	val = ENETC_REG_READ(ENETC_GET_HW_ADDR(hw->hw.port, ENETC_PMR));
-	ENETC_REG_WRITE(ENETC_GET_HW_ADDR(hw->hw.port, ENETC_PMR),
-			val & (~ENETC_PMR_EN));
+	val = enetc_port_rd(enetc_hw, ENETC_PMR);
+	enetc_port_wr(enetc_hw, ENETC_PMR, val & (~ENETC_PMR_EN));
 
-	val = ENETC_REG_READ(ENETC_GET_HW_ADDR(hw->hw.port,
-			     ENETC_PM0_CMD_CFG));
-	ENETC_REG_WRITE(ENETC_GET_HW_ADDR(hw->hw.port, ENETC_PM0_CMD_CFG),
-			val & (~(ENETC_PM0_TX_EN | ENETC_PM0_RX_EN)));
+	val = enetc_port_rd(enetc_hw, ENETC_PM0_CMD_CFG);
+	enetc_port_wr(enetc_hw, ENETC_PM0_CMD_CFG,
+		      val & (~(ENETC_PM0_TX_EN | ENETC_PM0_RX_EN)));
 }
 
 static void
@@ -221,6 +223,7 @@ enetc_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 {
 	struct enetc_eth_hw *hw =
 		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct enetc_hw *enetc_hw = &hw->hw;
 	struct rte_eth_link link;
 	uint32_t status;
 
@@ -228,8 +231,7 @@ enetc_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 
 	memset(&link, 0, sizeof(link));
 
-	status = ENETC_REG_READ(ENETC_GET_HW_ADDR(hw->hw.port,
-				ENETC_PM0_STATUS));
+	status = enetc_port_rd(enetc_hw, ENETC_PM0_STATUS);
 
 	if (status & ENETC_LINK_MODE)
 		link.link_duplex = ETH_LINK_FULL_DUPLEX;
@@ -262,6 +264,7 @@ static int
 enetc_hardware_init(struct enetc_eth_hw *hw)
 {
 	uint32_t psipmr = 0;
+	struct enetc_hw *enetc_hw = &hw->hw;
 
 	PMD_INIT_FUNC_TRACE();
 	/* Calculating and storing the base HW addresses */
@@ -269,8 +272,7 @@ enetc_hardware_init(struct enetc_eth_hw *hw)
 	hw->hw.global = (void *)((size_t)hw->hw.reg + ENETC_GLOBAL_BASE);
 
 	/* Enabling Station Interface */
-	ENETC_REG_WRITE(ENETC_GET_HW_ADDR(hw->hw.reg, ENETC_SIMR),
-					  ENETC_SIMR_EN);
+	enetc_wr(enetc_hw, ENETC_SIMR, ENETC_SIMR_EN);
 
 	/* Setting to accept broadcast packets for each inetrface */
 	psipmr |= ENETC_PSIPMR_SET_UP(0) | ENETC_PSIPMR_SET_MP(0) |
@@ -280,14 +282,11 @@ enetc_hardware_init(struct enetc_eth_hw *hw)
 	psipmr |= ENETC_PSIPMR_SET_UP(2) | ENETC_PSIPMR_SET_MP(2) |
 		  ENETC_PSIPMR_SET_VLAN_MP(2);
 
-	ENETC_REG_WRITE(ENETC_GET_HW_ADDR(hw->hw.port, ENETC_PSIPMR),
-			psipmr);
+	enetc_port_wr(enetc_hw, ENETC_PSIPMR, psipmr);
 
 	/* Enabling broadcast address */
-	ENETC_REG_WRITE(ENETC_GET_HW_ADDR(hw->hw.port, ENETC_PSIPMAR0(0)),
-			0xFFFFFFFF);
-	ENETC_REG_WRITE(ENETC_GET_HW_ADDR(hw->hw.port, ENETC_PSIPMAR1(0)),
-			0xFFFF << 16);
+	enetc_port_wr(enetc_hw, ENETC_PSIPMAR0(0), 0xFFFFFFFF);
+	enetc_port_wr(enetc_hw, ENETC_PSIPMAR1(0), 0xFFFF << 16);
 
 	return 0;
 }
