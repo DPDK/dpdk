@@ -1231,8 +1231,12 @@ vhost_user_set_vring_kick(struct virtio_net **pdev, struct VhostUserMsg *msg,
 	 * the ring starts already enabled. Otherwise, it is enabled via
 	 * the SET_VRING_ENABLE message.
 	 */
-	if (!(dev->features & (1ULL << VHOST_USER_F_PROTOCOL_FEATURES)))
+	if (!(dev->features & (1ULL << VHOST_USER_F_PROTOCOL_FEATURES))) {
 		vq->enabled = 1;
+		if (dev->notify_ops->vring_state_changed)
+			dev->notify_ops->vring_state_changed(
+				dev->vid, file.index, 1);
+	}
 
 	if (vq->kickfd >= 0)
 		close(vq->kickfd);
