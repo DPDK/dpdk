@@ -163,7 +163,10 @@ enetc_dev_infos_get(struct rte_eth_dev *dev __rte_unused,
 	dev_info->max_tx_queues = MAX_TX_RINGS;
 	dev_info->max_rx_pktlen = ENETC_MAC_MAXFRM_SIZE;
 	dev_info->rx_offload_capa =
-		(DEV_RX_OFFLOAD_KEEP_CRC |
+		(DEV_RX_OFFLOAD_IPV4_CKSUM |
+		 DEV_RX_OFFLOAD_UDP_CKSUM |
+		 DEV_RX_OFFLOAD_TCP_CKSUM |
+		 DEV_RX_OFFLOAD_KEEP_CRC |
 		 DEV_RX_OFFLOAD_JUMBO_FRAME);
 }
 
@@ -636,6 +639,7 @@ enetc_dev_configure(struct rte_eth_dev *dev)
 	struct enetc_hw *enetc_hw = &hw->hw;
 	struct rte_eth_conf *eth_conf = &dev->data->dev_conf;
 	uint64_t rx_offloads = eth_conf->rxmode.offloads;
+	uint32_t checksum = L3_CKSUM | L4_CKSUM;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -660,6 +664,15 @@ enetc_dev_configure(struct rte_eth_dev *dev)
 		config |= ENETC_PM0_CRC;
 		enetc_port_wr(enetc_hw, ENETC_PM0_CMD_CFG, config);
 	}
+
+	if (rx_offloads & DEV_RX_OFFLOAD_IPV4_CKSUM)
+		checksum &= ~L3_CKSUM;
+
+	if (rx_offloads & (DEV_RX_OFFLOAD_UDP_CKSUM | DEV_RX_OFFLOAD_TCP_CKSUM))
+		checksum &= ~L4_CKSUM;
+
+	enetc_port_wr(enetc_hw, ENETC_PAR_PORT_CFG, checksum);
+
 
 	return 0;
 }

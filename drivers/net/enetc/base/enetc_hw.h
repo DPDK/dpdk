@@ -99,6 +99,10 @@ enum enetc_bdr_type {TX, RX};
 #define ENETC_PM0_RX_EN			BIT(1)
 #define ENETC_PM0_CRC			BIT(6)
 
+#define ENETC_PAR_PORT_CFG		0x03050
+#define L3_CKSUM			BIT(0)
+#define L4_CKSUM			BIT(1)
+
 #define ENETC_PM0_MAXFRM		0x08014
 #define ENETC_SET_TX_MTU(val)		((val) << 16)
 #define ENETC_SET_MAXFRM(val)		((val) & 0xffff)
@@ -182,6 +186,7 @@ enum enetc_bdr_type {TX, RX};
 #define ENETC_TXBD_FLAGS_F		BIT(15)
 
 /* ENETC Parsed values (Little Endian) */
+#define ENETC_PARSE_ERROR		0x8000
 #define ENETC_PKT_TYPE_ETHER            0x0060
 #define ENETC_PKT_TYPE_IPV4             0x0000
 #define ENETC_PKT_TYPE_IPV6             0x0020

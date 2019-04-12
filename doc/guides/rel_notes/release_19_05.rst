@@ -154,6 +154,7 @@ New Features
   * Added jumbo frame support
   * Added queue start/stop
   * Added CRC offload support
+  * Added Rx checksum offload validation support
 
 * **Updated the QuickAssist Technology PMD.**
 
