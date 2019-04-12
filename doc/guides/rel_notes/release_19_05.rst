@@ -142,6 +142,12 @@ New Features
   * Added support for VXLAN-GPE packet.
   * Added support for VXLAN-GPE classification.
 
+* **Updated the ENETC driver.**
+
+  New features:
+
+  * Added physical addressing mode support
+
 * **Updated the QuickAssist Technology PMD.**
 
   Added support for AES-XTS with 128 and 256 bit AES keys.

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018 NXP
+ * Copyright 2018-2019 NXP
  */
 
 #include <stdbool.h>
@@ -64,7 +64,7 @@ enetc_xmit_pkts(void *tx_queue,
 		txbd->buf_len = txbd->frm_len;
 		txbd->flags = rte_cpu_to_le_16(ENETC_TXBD_FLAGS_F);
 		txbd->addr = (uint64_t)(uintptr_t)
-		rte_cpu_to_le_64((size_t)tx_swbd->buffer_addr->buf_addr +
+		rte_cpu_to_le_64((size_t)tx_swbd->buffer_addr->buf_iova +
 				 tx_swbd->buffer_addr->data_off);
 		i++;
 		start++;
@@ -91,7 +91,7 @@ enetc_refill_rx_ring(struct enetc_bdr *rx_ring, const int buff_cnt)
 		rx_swbd->buffer_addr =
 			rte_cpu_to_le_64(rte_mbuf_raw_alloc(rx_ring->mb_pool));
 		rxbd->w.addr = (uint64_t)(uintptr_t)
-			       rx_swbd->buffer_addr->buf_addr +
+			       rx_swbd->buffer_addr->buf_iova +
 			       rx_swbd->buffer_addr->data_off;
 		/* clear 'R" as well */
 		rxbd->r.lstatus = 0;

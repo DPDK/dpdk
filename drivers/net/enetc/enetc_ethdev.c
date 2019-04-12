@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018 NXP
+ * Copyright 2018-2019 NXP
  */
 
 #include <stdbool.h>
@@ -334,14 +334,15 @@ static void
 enetc_setup_txbdr(struct enetc_hw *hw, struct enetc_bdr *tx_ring)
 {
 	int idx = tx_ring->index;
-	uintptr_t base_addr;
 	uint32_t tbmr;
+	phys_addr_t bd_address;
 
-	base_addr = (uintptr_t)tx_ring->bd_base;
+	bd_address = (phys_addr_t)
+		     rte_mem_virt2iova((const void *)tx_ring->bd_base);
 	enetc_txbdr_wr(hw, idx, ENETC_TBBAR0,
-		       lower_32_bits((uint64_t)base_addr));
+		       lower_32_bits((uint64_t)bd_address));
 	enetc_txbdr_wr(hw, idx, ENETC_TBBAR1,
-		       upper_32_bits((uint64_t)base_addr));
+		       upper_32_bits((uint64_t)bd_address));
 	enetc_txbdr_wr(hw, idx, ENETC_TBLENR,
 		       ENETC_RTBLENR_LEN(tx_ring->bd_count));
 
@@ -478,14 +479,15 @@ enetc_setup_rxbdr(struct enetc_hw *hw, struct enetc_bdr *rx_ring,
 		  struct rte_mempool *mb_pool)
 {
 	int idx = rx_ring->index;
-	uintptr_t base_addr;
 	uint16_t buf_size;
+	phys_addr_t bd_address;
 
-	base_addr = (uintptr_t)rx_ring->bd_base;
+	bd_address = (phys_addr_t)
+		     rte_mem_virt2iova((const void *)rx_ring->bd_base);
 	enetc_rxbdr_wr(hw, idx, ENETC_RBBAR0,
-		       lower_32_bits((uint64_t)base_addr));
+		       lower_32_bits((uint64_t)bd_address));
 	enetc_rxbdr_wr(hw, idx, ENETC_RBBAR1,
-		       upper_32_bits((uint64_t)base_addr));
+		       upper_32_bits((uint64_t)bd_address));
 	enetc_rxbdr_wr(hw, idx, ENETC_RBLENR,
 		       ENETC_RTBLENR_LEN(rx_ring->bd_count));
 
@@ -612,7 +614,7 @@ enetc_pci_remove(struct rte_pci_device *pci_dev)
 
 static struct rte_pci_driver rte_enetc_pmd = {
 	.id_table = pci_id_enetc_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_IOVA_AS_VA,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
 	.probe = enetc_pci_probe,
 	.remove = enetc_pci_remove,
 };
