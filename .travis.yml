@@ -45,49 +45,49 @@ matrix:
       apt:
         packages:
           - *aarch64_packages
-  - env: DEF_LIB="static"
+  - env: DEF_LIB="static" EXTRA_PACKAGES=1
     compiler: gcc
     addons:
       apt:
         packages:
           - *extra_packages
-  - env: DEF_LIB="shared"
+  - env: DEF_LIB="shared" EXTRA_PACKAGES=1
     compiler: gcc
     addons:
       apt:
         packages:
           - *extra_packages
-  - env: DEF_LIB="static" OPTS="-Denable_kmods=false"
+  - env: DEF_LIB="static" OPTS="-Denable_kmods=false" EXTRA_PACKAGES=1
     compiler: gcc
     addons:
       apt:
         packages:
           - *extra_packages
-  - env: DEF_LIB="shared" OPTS="-Denable_kmods=false"
+  - env: DEF_LIB="shared" OPTS="-Denable_kmods=false" EXTRA_PACKAGES=1
     compiler: gcc
     addons:
       apt:
         packages:
           - *extra_packages
-  - env: DEF_LIB="static"
+  - env: DEF_LIB="static" EXTRA_PACKAGES=1
     compiler: clang
     addons:
       apt:
         packages:
           - *extra_packages
-  - env: DEF_LIB="shared"
+  - env: DEF_LIB="shared" EXTRA_PACKAGES=1
     compiler: clang
     addons:
       apt:
         packages:
           - *extra_packages
-  - env: DEF_LIB="static" OPTS="-Denable_kmods=false"
+  - env: DEF_LIB="static" OPTS="-Denable_kmods=false" EXTRA_PACKAGES=1
     compiler: clang
     addons:
       apt:
         packages:
           - *extra_packages
-  - env: DEF_LIB="shared" OPTS="-Denable_kmods=false"
+  - env: DEF_LIB="shared" OPTS="-Denable_kmods=false" EXTRA_PACKAGES=1
     compiler: clang
     addons:
       apt:
