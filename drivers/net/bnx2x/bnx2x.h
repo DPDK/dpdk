@@ -319,6 +319,7 @@ struct bnx2x_dma {
 	rte_iova_t              paddr;
 	void                    *vaddr;
 	int                     nseg;
+	const void		*mzone;
 	char                    msg[RTE_MEMZONE_NAMESIZE - 6];
 };
 
@@ -1753,7 +1754,7 @@ int  bnx2x_cmpxchg(volatile int *addr, int old, int new);
 
 int bnx2x_dma_alloc(struct bnx2x_softc *sc, size_t size,
 		struct bnx2x_dma *dma, const char *msg, uint32_t align);
-
+void bnx2x_dma_free(struct bnx2x_dma *dma);
 uint32_t bnx2x_dmae_opcode_add_comp(uint32_t opcode, uint8_t comp_type);
 uint32_t bnx2x_dmae_opcode_clr_src_reset(uint32_t opcode);
 uint32_t bnx2x_dmae_opcode(struct bnx2x_softc *sc, uint8_t src_type,

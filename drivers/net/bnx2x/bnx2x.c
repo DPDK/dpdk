@@ -185,11 +185,25 @@ bnx2x_dma_alloc(struct bnx2x_softc *sc, size_t size, struct bnx2x_dma *dma,
 	}
 	dma->paddr = (uint64_t) z->iova;
 	dma->vaddr = z->addr;
+	dma->mzone = (const void *)z;
 
 	PMD_DRV_LOG(DEBUG, sc,
 		    "%s: virt=%p phys=%" PRIx64, msg, dma->vaddr, dma->paddr);
 
 	return 0;
+}
+
+void bnx2x_dma_free(struct bnx2x_dma *dma)
+{
+	if (dma->mzone == NULL)
+		return;
+
+	rte_memzone_free((const struct rte_memzone *)dma->mzone);
+	dma->sc = NULL;
+	dma->paddr = 0;
+	dma->vaddr = NULL;
+	dma->nseg = 0;
+	dma->mzone = NULL;
 }
 
 static int bnx2x_acquire_hw_lock(struct bnx2x_softc *sc, uint32_t resource)
@@ -2436,6 +2450,7 @@ static int bnx2x_alloc_mem(struct bnx2x_softc *sc)
 
 static void bnx2x_free_fw_stats_mem(struct bnx2x_softc *sc)
 {
+	bnx2x_dma_free(&sc->fw_stats_dma);
 	sc->fw_stats_num = 0;
 
 	sc->fw_stats_req_size = 0;
