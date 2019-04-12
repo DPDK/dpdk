@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018 NXP
+ * Copyright 2018-2019 NXP
  */
 
 #ifndef _ENETC_HW_H_
@@ -84,6 +84,12 @@ enum enetc_bdr_type {TX, RX};
 #define ENETC_PSIPMAR1(n)		(0x00104 + (n) * 0x20)
 #define ENETC_PCAPR0			0x00900
 #define ENETC_PCAPR1			0x00904
+#define ENETC_PM0_IF_MODE		0x8300
+#define ENETC_PM1_IF_MODE		0x9300
+#define ENETC_PMO_IFM_RG		BIT(2)
+#define ENETC_PM0_IFM_RLP		(BIT(5) | BIT(11))
+#define ENETC_PM0_IFM_RGAUTO		(BIT(15) | ENETC_PMO_IFM_RG | BIT(1))
+#define ENETC_PM0_IFM_XGMII		BIT(12)
 
 #define ENETC_PV0CFGR(n)		(0x00920 + (n) * 0x10)
 #define ENETC_PVCFGR_SET_TXBDR(val)	((val) & 0xff)
@@ -108,6 +114,11 @@ enum enetc_bdr_type {TX, RX};
 #define ENETC_GLOBAL_BASE		0x20000
 #define ENETC_G_EIPBRR0			0x00bf8
 #define ENETC_G_EIPBRR1			0x00bfc
+
+
+/* MAC Counters */
+#define ENETC_G_EPFBLPR(n)		(0xd00 + 4 * (n))
+#define ENETC_G_EPFBLPR1_XGMII		0x80000000
 
 /* general register accessors */
 #define enetc_rd_reg(reg)	rte_read32((void *)(reg))

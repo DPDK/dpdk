@@ -147,6 +147,7 @@ New Features
   New features:
 
   * Added physical addressing mode support
+  * Added SXGMII interface support
 
 * **Updated the QuickAssist Technology PMD.**
 

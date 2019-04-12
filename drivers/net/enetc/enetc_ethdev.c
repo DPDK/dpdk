@@ -139,6 +139,17 @@ enetc_dev_start(struct rte_eth_dev *dev)
 	ENETC_REG_WRITE(ENETC_GET_HW_ADDR(hw->hw.port, ENETC_PMR),
 			val | ENETC_PMR_EN);
 
+	/* set auto-speed for RGMII */
+	if (enetc_port_rd(&hw->hw, ENETC_PM0_IF_MODE) & ENETC_PMO_IFM_RG) {
+		enetc_port_wr(&hw->hw, ENETC_PM0_IF_MODE, ENETC_PM0_IFM_RGAUTO);
+		enetc_port_wr(&hw->hw, ENETC_PM1_IF_MODE, ENETC_PM0_IFM_RGAUTO);
+	}
+	if (enetc_global_rd(&hw->hw,
+			    ENETC_G_EPFBLPR(1)) == ENETC_G_EPFBLPR1_XGMII) {
+		enetc_port_wr(&hw->hw, ENETC_PM0_IF_MODE, ENETC_PM0_IFM_XGMII);
+		enetc_port_wr(&hw->hw, ENETC_PM1_IF_MODE, ENETC_PM0_IFM_XGMII);
+	}
+
 	return 0;
 }
 
