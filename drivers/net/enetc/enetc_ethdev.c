@@ -10,115 +10,6 @@
 
 int enetc_logtype_pmd;
 
-/* Functions Prototypes */
-static int enetc_dev_configure(struct rte_eth_dev *dev);
-static int enetc_dev_start(struct rte_eth_dev *dev);
-static void enetc_dev_stop(struct rte_eth_dev *dev);
-static void enetc_dev_close(struct rte_eth_dev *dev);
-static void enetc_dev_infos_get(struct rte_eth_dev *dev,
-				struct rte_eth_dev_info *dev_info);
-static int enetc_link_update(struct rte_eth_dev *dev, int wait_to_complete);
-static int enetc_hardware_init(struct enetc_eth_hw *hw);
-static int enetc_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
-		uint16_t nb_rx_desc, unsigned int socket_id,
-		const struct rte_eth_rxconf *rx_conf,
-		struct rte_mempool *mb_pool);
-static void enetc_rx_queue_release(void *rxq);
-static int enetc_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
-		uint16_t nb_tx_desc, unsigned int socket_id,
-		const struct rte_eth_txconf *tx_conf);
-static void enetc_tx_queue_release(void *txq);
-static const uint32_t *enetc_supported_ptypes_get(struct rte_eth_dev *dev);
-static int enetc_stats_get(struct rte_eth_dev *dev,
-		struct rte_eth_stats *stats);
-static void enetc_stats_reset(struct rte_eth_dev *dev);
-
-/*
- * The set of PCI devices this driver supports
- */
-static const struct rte_pci_id pci_id_enetc_map[] = {
-	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_FREESCALE, ENETC_DEV_ID) },
-	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_FREESCALE, ENETC_DEV_ID_VF) },
-	{ .vendor_id = 0, /* sentinel */ },
-};
-
-/* Features supported by this driver */
-static const struct eth_dev_ops enetc_ops = {
-	.dev_configure        = enetc_dev_configure,
-	.dev_start            = enetc_dev_start,
-	.dev_stop             = enetc_dev_stop,
-	.dev_close            = enetc_dev_close,
-	.link_update          = enetc_link_update,
-	.stats_get            = enetc_stats_get,
-	.stats_reset          = enetc_stats_reset,
-	.dev_infos_get        = enetc_dev_infos_get,
-	.rx_queue_setup       = enetc_rx_queue_setup,
-	.rx_queue_release     = enetc_rx_queue_release,
-	.tx_queue_setup       = enetc_tx_queue_setup,
-	.tx_queue_release     = enetc_tx_queue_release,
-	.dev_supported_ptypes_get = enetc_supported_ptypes_get,
-};
-
-/**
- * Initialisation of the enetc device
- *
- * @param eth_dev
- *   - Pointer to the structure rte_eth_dev
- *
- * @return
- *   - On success, zero.
- *   - On failure, negative value.
- */
-static int
-enetc_dev_init(struct rte_eth_dev *eth_dev)
-{
-	int error = 0;
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	struct enetc_eth_hw *hw =
-		ENETC_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
-
-	PMD_INIT_FUNC_TRACE();
-	eth_dev->dev_ops = &enetc_ops;
-	eth_dev->rx_pkt_burst = &enetc_recv_pkts;
-	eth_dev->tx_pkt_burst = &enetc_xmit_pkts;
-
-	/* Retrieving and storing the HW base address of device */
-	hw->hw.reg = (void *)pci_dev->mem_resource[0].addr;
-	hw->device_id = pci_dev->id.device_id;
-
-	error = enetc_hardware_init(hw);
-	if (error != 0) {
-		ENETC_PMD_ERR("Hardware initialization failed");
-		return -1;
-	}
-
-	/* Allocate memory for storing MAC addresses */
-	eth_dev->data->mac_addrs = rte_zmalloc("enetc_eth", ETHER_ADDR_LEN, 0);
-	if (!eth_dev->data->mac_addrs) {
-		ENETC_PMD_ERR("Failed to allocate %d bytes needed to "
-			      "store MAC addresses",
-			      ETHER_ADDR_LEN * 1);
-		error = -ENOMEM;
-		return -1;
-	}
-
-	/* Copy the permanent MAC address */
-	ether_addr_copy((struct ether_addr *)hw->mac.addr,
-			&eth_dev->data->mac_addrs[0]);
-
-	ENETC_PMD_DEBUG("port_id %d vendorID=0x%x deviceID=0x%x",
-			eth_dev->data->port_id, pci_dev->id.vendor_id,
-			pci_dev->id.device_id);
-	return 0;
-}
-
-static int
-enetc_dev_uninit(struct rte_eth_dev *eth_dev __rte_unused)
-{
-	PMD_INIT_FUNC_TRACE();
-	return 0;
-}
-
 static int
 enetc_dev_configure(struct rte_eth_dev *dev __rte_unused)
 {
@@ -177,27 +68,6 @@ enetc_dev_stop(struct rte_eth_dev *dev)
 	val = enetc_port_rd(enetc_hw, ENETC_PM0_CMD_CFG);
 	enetc_port_wr(enetc_hw, ENETC_PM0_CMD_CFG,
 		      val & (~(ENETC_PM0_TX_EN | ENETC_PM0_RX_EN)));
-}
-
-static void
-enetc_dev_close(struct rte_eth_dev *dev)
-{
-	uint16_t i;
-
-	PMD_INIT_FUNC_TRACE();
-	enetc_dev_stop(dev);
-
-	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		enetc_rx_queue_release(dev->data->rx_queues[i]);
-		dev->data->rx_queues[i] = NULL;
-	}
-	dev->data->nb_rx_queues = 0;
-
-	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		enetc_tx_queue_release(dev->data->tx_queues[i]);
-		dev->data->tx_queues[i] = NULL;
-	}
-	dev->data->nb_tx_queues = 0;
 }
 
 static const uint32_t *
@@ -646,6 +516,113 @@ enetc_stats_reset(struct rte_eth_dev *dev)
 	struct enetc_hw *enetc_hw = &hw->hw;
 
 	enetc_port_wr(enetc_hw, ENETC_PM0_STAT_CONFIG, ENETC_CLEAR_STATS);
+}
+
+static void
+enetc_dev_close(struct rte_eth_dev *dev)
+{
+	uint16_t i;
+
+	PMD_INIT_FUNC_TRACE();
+	enetc_dev_stop(dev);
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		enetc_rx_queue_release(dev->data->rx_queues[i]);
+		dev->data->rx_queues[i] = NULL;
+	}
+	dev->data->nb_rx_queues = 0;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		enetc_tx_queue_release(dev->data->tx_queues[i]);
+		dev->data->tx_queues[i] = NULL;
+	}
+	dev->data->nb_tx_queues = 0;
+}
+
+/*
+ * The set of PCI devices this driver supports
+ */
+static const struct rte_pci_id pci_id_enetc_map[] = {
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_FREESCALE, ENETC_DEV_ID) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_FREESCALE, ENETC_DEV_ID_VF) },
+	{ .vendor_id = 0, /* sentinel */ },
+};
+
+/* Features supported by this driver */
+static const struct eth_dev_ops enetc_ops = {
+	.dev_configure        = enetc_dev_configure,
+	.dev_start            = enetc_dev_start,
+	.dev_stop             = enetc_dev_stop,
+	.dev_close            = enetc_dev_close,
+	.link_update          = enetc_link_update,
+	.stats_get            = enetc_stats_get,
+	.stats_reset          = enetc_stats_reset,
+	.dev_infos_get        = enetc_dev_infos_get,
+	.rx_queue_setup       = enetc_rx_queue_setup,
+	.rx_queue_release     = enetc_rx_queue_release,
+	.tx_queue_setup       = enetc_tx_queue_setup,
+	.tx_queue_release     = enetc_tx_queue_release,
+	.dev_supported_ptypes_get = enetc_supported_ptypes_get,
+};
+
+/**
+ * Initialisation of the enetc device
+ *
+ * @param eth_dev
+ *   - Pointer to the structure rte_eth_dev
+ *
+ * @return
+ *   - On success, zero.
+ *   - On failure, negative value.
+ */
+static int
+enetc_dev_init(struct rte_eth_dev *eth_dev)
+{
+	int error = 0;
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct enetc_eth_hw *hw =
+		ENETC_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+
+	PMD_INIT_FUNC_TRACE();
+	eth_dev->dev_ops = &enetc_ops;
+	eth_dev->rx_pkt_burst = &enetc_recv_pkts;
+	eth_dev->tx_pkt_burst = &enetc_xmit_pkts;
+
+	/* Retrieving and storing the HW base address of device */
+	hw->hw.reg = (void *)pci_dev->mem_resource[0].addr;
+	hw->device_id = pci_dev->id.device_id;
+
+	error = enetc_hardware_init(hw);
+	if (error != 0) {
+		ENETC_PMD_ERR("Hardware initialization failed");
+		return -1;
+	}
+
+	/* Allocate memory for storing MAC addresses */
+	eth_dev->data->mac_addrs = rte_zmalloc("enetc_eth", ETHER_ADDR_LEN, 0);
+	if (!eth_dev->data->mac_addrs) {
+		ENETC_PMD_ERR("Failed to allocate %d bytes needed to "
+			      "store MAC addresses",
+			      ETHER_ADDR_LEN * 1);
+		error = -ENOMEM;
+		return -1;
+	}
+
+	/* Copy the permanent MAC address */
+	ether_addr_copy((struct ether_addr *)hw->mac.addr,
+			&eth_dev->data->mac_addrs[0]);
+
+	ENETC_PMD_DEBUG("port_id %d vendorID=0x%x deviceID=0x%x",
+			eth_dev->data->port_id, pci_dev->id.vendor_id,
+			pci_dev->id.device_id);
+	return 0;
+}
+
+static int
+enetc_dev_uninit(struct rte_eth_dev *eth_dev __rte_unused)
+{
+	PMD_INIT_FUNC_TRACE();
+	return 0;
 }
 
 static int
