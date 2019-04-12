@@ -213,6 +213,7 @@ bnx2x_dev_configure(struct rte_eth_dev *dev)
 		return -ENXIO;
 	}
 
+	bnx2x_dev_rxtx_init_dummy(dev);
 	return 0;
 }
 
@@ -242,11 +243,7 @@ bnx2x_dev_start(struct rte_eth_dev *dev)
 			PMD_DRV_LOG(ERR, sc, "rte_intr_enable failed");
 	}
 
-	ret = bnx2x_dev_rx_init(dev);
-	if (ret != 0) {
-		PMD_DRV_LOG(DEBUG, sc, "bnx2x_dev_rx_init returned error code");
-		return -3;
-	}
+	bnx2x_dev_rxtx_init(dev);
 
 	bnx2x_print_device_info(sc);
 
@@ -260,6 +257,8 @@ bnx2x_dev_stop(struct rte_eth_dev *dev)
 	int ret = 0;
 
 	PMD_INIT_FUNC_TRACE(sc);
+
+	bnx2x_dev_rxtx_init_dummy(dev);
 
 	if (IS_PF(sc)) {
 		rte_intr_disable(&sc->pci_dev->intr_handle);

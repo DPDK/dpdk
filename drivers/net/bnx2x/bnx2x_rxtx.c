@@ -311,7 +311,6 @@ bnx2x_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->tx_bd_tail = 0;
 	txq->tx_bd_head = 0;
 	txq->nb_tx_avail = txq->nb_tx_desc;
-	dev->tx_pkt_burst = bnx2x_xmit_pkts;
 	dev->data->tx_queues[queue_idx] = txq;
 	if (!sc->tx_queues) sc->tx_queues = dev->data->tx_queues;
 
@@ -441,12 +440,24 @@ next_rx:
 	return nb_rx;
 }
 
-int
-bnx2x_dev_rx_init(struct rte_eth_dev *dev)
+static uint16_t
+bnx2x_rxtx_pkts_dummy(__rte_unused void *p_rxq,
+		      __rte_unused struct rte_mbuf **rx_pkts,
+		      __rte_unused uint16_t nb_pkts)
+{
+	return 0;
+}
+
+void bnx2x_dev_rxtx_init_dummy(struct rte_eth_dev *dev)
+{
+	dev->rx_pkt_burst = bnx2x_rxtx_pkts_dummy;
+	dev->tx_pkt_burst = bnx2x_rxtx_pkts_dummy;
+}
+
+void bnx2x_dev_rxtx_init(struct rte_eth_dev *dev)
 {
 	dev->rx_pkt_burst = bnx2x_recv_pkts;
-
-	return 0;
+	dev->tx_pkt_burst = bnx2x_xmit_pkts;
 }
 
 void
