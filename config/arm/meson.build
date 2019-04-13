@@ -54,6 +54,12 @@ flags_default_extra = []
 flags_thunderx_extra = [
 	['RTE_MACHINE', '"thunderx"'],
 	['RTE_USE_C11_MEM_MODEL', false]]
+flags_thunderx2_extra = [
+	['RTE_MACHINE', '"thunderx2"'],
+	['RTE_CACHE_LINE_SIZE', 64],
+	['RTE_MAX_NUMA_NODES', 2],
+	['RTE_MAX_LCORE', 256],
+	['RTE_USE_C11_MEM_MODEL', true]]
 
 machine_args_generic = [
 	['default', ['-march=armv8-a+crc+crypto']],
@@ -70,7 +76,8 @@ machine_args_cavium = [
 	['native', ['-march=native']],
 	['0xa1', ['-mcpu=thunderxt88'], flags_thunderx_extra],
 	['0xa2', ['-mcpu=thunderxt81'], flags_thunderx_extra],
-	['0xa3', ['-mcpu=thunderxt83'], flags_thunderx_extra]]
+	['0xa3', ['-mcpu=thunderxt83'], flags_thunderx_extra],
+	['0xaf', ['-mcpu=thunderx2t99'], flags_thunderx2_extra]]
 
 ## Arm implementer ID (ARM DDI 0487C.a, Section G7.2.106, Page G7-5321)
 impl_generic = ['Generic armv8', flags_generic, machine_args_generic]

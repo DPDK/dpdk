@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2018 Marvell International Ltd
+#
+
+#include "defconfig_arm64-armv8a-linux-gcc"
+
+CONFIG_RTE_MACHINE="thunderx2"
+
+CONFIG_RTE_CACHE_LINE_SIZE=64
+CONFIG_RTE_MAX_NUMA_NODES=2
+CONFIG_RTE_MAX_LCORE=256
