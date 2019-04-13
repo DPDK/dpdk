@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2018 Marvell International Ltd
+#
+
+#include "defconfig_arm64-armv8a-linux-gcc"
+
+CONFIG_RTE_MACHINE="octeontx2"
+
+CONFIG_RTE_CACHE_LINE_SIZE=128
+CONFIG_RTE_MAX_NUMA_NODES=1
+CONFIG_RTE_MAX_LCORE=24
+
+# Doesn't support NUMA
+CONFIG_RTE_EAL_NUMA_AWARE_HUGEPAGES=n
+CONFIG_RTE_LIBRTE_VHOST_NUMA=n
+
+# Recommend to use VFIO as co-processors needs SMMU/IOMMU
+CONFIG_RTE_EAL_IGB_UIO=n
