@@ -7,25 +7,6 @@ march_opt = '-march=@0@'.format(machine)
 
 arm_force_native_march = false
 
-machine_args_generic = [
-	['default', ['-march=armv8-a+crc+crypto']],
-	['native', ['-march=native']],
-	['0xd03', ['-mcpu=cortex-a53']],
-	['0xd04', ['-mcpu=cortex-a35']],
-	['0xd05', ['-mcpu=cortex-a55']],
-	['0xd07', ['-mcpu=cortex-a57']],
-	['0xd08', ['-mcpu=cortex-a72']],
-	['0xd09', ['-mcpu=cortex-a73']],
-	['0xd0a', ['-mcpu=cortex-a75']],
-	['0xd0b', ['-mcpu=cortex-a76']],
-]
-machine_args_cavium = [
-	['default', ['-march=armv8-a+crc+crypto','-mcpu=thunderx']],
-	['native', ['-march=native']],
-	['0xa1', ['-mcpu=thunderxt88']],
-	['0xa2', ['-mcpu=thunderxt81']],
-	['0xa3', ['-mcpu=thunderxt83']]]
-
 flags_common_default = [
 	# Accelarate rte_memcpy. Be sure to run unit test (memcpy_perf_autotest)
 	# to determine the best threshold in code. Refer to notes in source file
@@ -52,12 +33,10 @@ flags_generic = [
 	['RTE_USE_C11_MEM_MODEL', true],
 	['RTE_CACHE_LINE_SIZE', 128]]
 flags_cavium = [
-	['RTE_MACHINE', '"thunderx"'],
 	['RTE_CACHE_LINE_SIZE', 128],
 	['RTE_MAX_NUMA_NODES', 2],
 	['RTE_MAX_LCORE', 96],
-	['RTE_MAX_VFIO_GROUPS', 128],
-	['RTE_USE_C11_MEM_MODEL', false]]
+	['RTE_MAX_VFIO_GROUPS', 128]]
 flags_dpaa = [
 	['RTE_MACHINE', '"dpaa"'],
 	['RTE_USE_C11_MEM_MODEL', true],
@@ -71,6 +50,27 @@ flags_dpaa2 = [
 	['RTE_MAX_NUMA_NODES', 1],
 	['RTE_MAX_LCORE', 16],
 	['RTE_LIBRTE_DPAA2_USE_PHYS_IOVA', false]]
+flags_default_extra = []
+flags_thunderx_extra = [
+	['RTE_MACHINE', '"thunderx"'],
+	['RTE_USE_C11_MEM_MODEL', false]]
+
+machine_args_generic = [
+	['default', ['-march=armv8-a+crc+crypto']],
+	['native', ['-march=native']],
+	['0xd03', ['-mcpu=cortex-a53']],
+	['0xd04', ['-mcpu=cortex-a35']],
+	['0xd07', ['-mcpu=cortex-a57']],
+	['0xd08', ['-mcpu=cortex-a72']],
+	['0xd09', ['-mcpu=cortex-a73']],
+	['0xd0a', ['-mcpu=cortex-a75']]]
+
+machine_args_cavium = [
+	['default', ['-march=armv8-a+crc+crypto','-mcpu=thunderx']],
+	['native', ['-march=native']],
+	['0xa1', ['-mcpu=thunderxt88'], flags_thunderx_extra],
+	['0xa2', ['-mcpu=thunderxt81'], flags_thunderx_extra],
+	['0xa3', ['-mcpu=thunderxt83'], flags_thunderx_extra]]
 
 ## Arm implementer ID (ARM DDI 0487C.a, Section G7.2.106, Page G7-5321)
 impl_generic = ['Generic armv8', flags_generic, machine_args_generic]
@@ -145,20 +145,19 @@ else
 			dpdk_conf.set(flag[0], flag[1])
 		endif
 	endforeach
-	# Primary part number based mcpu flags are supported
-	# for gcc versions > 7
-	if cc.version().version_compare(
-			'<7.0') or cmd_output.length() == 0
-		if not meson.is_cross_build() and arm_force_native_march == true
-			impl_pn = 'native'
-		else
-			impl_pn = 'default'
-		endif
-	endif
+
 	foreach marg: machine[2]
 		if marg[0] == impl_pn
-			foreach f: marg[1]
-				machine_args += f
+			foreach flag: marg[1]
+				if cc.has_argument(flag)
+					machine_args += flag
+				endif
+			endforeach
+			# Apply any extra machine specific flags.
+			foreach flag: marg.get(2, flags_default_extra)
+				if flag.length() > 0
+					dpdk_conf.set(flag[0], flag[1])
+				endif
 			endforeach
 		endif
 	endforeach
