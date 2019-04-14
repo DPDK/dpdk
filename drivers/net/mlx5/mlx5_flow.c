@@ -882,6 +882,8 @@ mlx5_flow_validate_action_queue(const struct rte_flow_action *action,
  *   Pointer to the Ethernet device structure.
  * @param[in] attr
  *   Attributes of flow that includes this action.
+ * @param[in] item_flags
+ *   Items that were detected.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -893,10 +895,12 @@ mlx5_flow_validate_action_rss(const struct rte_flow_action *action,
 			      uint64_t action_flags,
 			      struct rte_eth_dev *dev,
 			      const struct rte_flow_attr *attr,
+			      uint64_t item_flags,
 			      struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_action_rss *rss = action->conf;
+	int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
 	unsigned int i;
 
 	if (action_flags & MLX5_FLOW_FATE_ACTIONS)
@@ -965,6 +969,11 @@ mlx5_flow_validate_action_rss(const struct rte_flow_action *action,
 					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, NULL,
 					  "rss action not supported for "
 					  "egress");
+	if (rss->level > 1 &&  !tunnel)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF, NULL,
+					  "inner RSS is not supported for "
+					  "non-tunnel flows");
 	return 0;
 }
 

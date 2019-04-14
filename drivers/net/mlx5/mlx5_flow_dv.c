@@ -1799,7 +1799,6 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	uint64_t action_flags = 0;
 	uint64_t item_flags = 0;
 	uint64_t last_item = 0;
-	int tunnel = 0;
 	uint8_t next_protocol = 0xff;
 	int actions_n = 0;
 
@@ -1809,7 +1808,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	if (ret < 0)
 		return ret;
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
-		tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
+		int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
 		switch (items->type) {
 		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;
@@ -1981,7 +1980,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		case RTE_FLOW_ACTION_TYPE_RSS:
 			ret = mlx5_flow_validate_action_rss(actions,
 							    action_flags, dev,
-							    attr, error);
+							    attr, item_flags,
+							    error);
 			if (ret < 0)
 				return ret;
 			action_flags |= MLX5_FLOW_ACTION_RSS;

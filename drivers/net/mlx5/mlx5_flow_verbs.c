@@ -1194,7 +1194,7 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_RSS:
 			ret = mlx5_flow_validate_action_rss(actions,
 							    action_flags, dev,
-							    attr,
+							    attr, item_flags,
 							    error);
 			if (ret < 0)
 				return ret;

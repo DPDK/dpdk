@@ -443,6 +443,7 @@ int mlx5_flow_validate_action_rss(const struct rte_flow_action *action,
 				  uint64_t action_flags,
 				  struct rte_eth_dev *dev,
 				  const struct rte_flow_attr *attr,
+				  uint64_t item_flags,
 				  struct rte_flow_error *error);
 int mlx5_flow_validate_attributes(struct rte_eth_dev *dev,
 				  const struct rte_flow_attr *attributes,
