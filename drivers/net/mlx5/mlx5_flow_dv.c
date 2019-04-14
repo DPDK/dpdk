@@ -3650,9 +3650,7 @@ flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 					 "cannot get drop hash queue");
 				goto error;
 			}
-			dv->actions[n++] =
-				mlx5_glue->dv_create_flow_action_dest_ibv_qp
-				(dv->hrxq->qp);
+			dv->actions[n++] = dv->hrxq->action;
 		} else if (flow->actions &
 			   (MLX5_FLOW_ACTION_QUEUE | MLX5_FLOW_ACTION_RSS)) {
 			struct mlx5_hrxq *hrxq;
@@ -3677,9 +3675,7 @@ flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 				goto error;
 			}
 			dv->hrxq = hrxq;
-			dv->actions[n++] =
-				mlx5_glue->dv_create_flow_action_dest_ibv_qp
-				(dv->hrxq->qp);
+			dv->actions[n++] = dv->hrxq->action;
 		}
 		dv->flow =
 			mlx5_glue->dv_create_flow(dv->matcher->matcher_object,

@@ -166,6 +166,9 @@ struct mlx5_hrxq {
 	rte_atomic32_t refcnt; /* Reference counter. */
 	struct mlx5_ind_table_ibv *ind_table; /* Indirection table. */
 	struct ibv_qp *qp; /* Verbs queue pair. */
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	void *action; /* DV QP action pointer. */
+#endif
 	uint64_t hash_fields; /* Verbs Hash fields. */
 	uint32_t rss_key_len; /* Hash key length in bytes. */
 	uint8_t rss_key[]; /* Hash key. */
