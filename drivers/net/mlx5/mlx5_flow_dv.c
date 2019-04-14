@@ -3624,6 +3624,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	struct mlx5_flow_dv_tag_resource tag_resource;
 	uint32_t modify_action_position = UINT32_MAX;
 
+	flow->group = attr->group;
 	if (attr->transfer)
 		res.ft_type = MLX5DV_FLOW_TABLE_TYPE_FDB;
 	if (priority == MLX5_FLOW_PRIO_RSVD)
