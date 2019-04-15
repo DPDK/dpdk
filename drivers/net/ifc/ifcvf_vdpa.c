@@ -631,6 +631,10 @@ m_ifcvf_start(struct ifcvf_internal *internal)
 
 		hw->vring[i].size = vq.size;
 
+		rte_vhost_get_vring_base(vid, i,
+				&internal->m_vring[i].avail->idx,
+				&internal->m_vring[i].used->idx);
+
 		rte_vhost_get_vring_base(vid, i, &hw->vring[i].last_avail_idx,
 				&hw->vring[i].last_used_idx);
 
@@ -702,11 +706,6 @@ vring_relay(void *arg)
 
 	vid = internal->vid;
 	q_num = rte_vhost_get_vring_num(vid);
-	/* prepare the mediated vring */
-	for (qid = 0; qid < q_num; qid++)
-		rte_vhost_get_vring_base(vid, qid,
-				&internal->m_vring[qid].avail->idx,
-				&internal->m_vring[qid].used->idx);
 
 	/* add notify fd and interrupt fd to epoll */
 	epfd = epoll_create(IFCVF_MAX_QUEUES * 2);
