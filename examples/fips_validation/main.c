@@ -949,19 +949,20 @@ fips_run_test(void)
 	if (ret < 0) {
 		RTE_LOG(ERR, USER1, "Error %i: Init session\n",
 				ret);
-		return ret;
+		goto exit;
 	}
 
 	ret = test_ops.prepare_op();
 	if (ret < 0) {
 		RTE_LOG(ERR, USER1, "Error %i: Prepare op\n",
 				ret);
-		return ret;
+		goto exit;
 	}
 
 	if (rte_cryptodev_enqueue_burst(env.dev_id, 0, &env.op, 1) < 1) {
 		RTE_LOG(ERR, USER1, "Error: Failed enqueue\n");
-		return ret;
+		ret = -1;
+		goto exit;
 	}
 
 	do {
@@ -973,6 +974,7 @@ fips_run_test(void)
 
 	vec.status = env.op->status;
 
+exit:
 	rte_cryptodev_sym_session_clear(env.dev_id, env.sess);
 	rte_cryptodev_sym_session_free(env.sess);
 	env.sess = NULL;
