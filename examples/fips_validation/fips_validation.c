@@ -98,6 +98,7 @@ fips_test_parse_header(void)
 	uint32_t i;
 	char *tmp;
 	int ret;
+	int algo_parsed = 0;
 	time_t t = time(NULL);
 	struct tm *tm_now = localtime(&t);
 
@@ -106,41 +107,50 @@ fips_test_parse_header(void)
 		return ret;
 
 	for (i = 0; i < info.nb_vec_lines; i++) {
-		if (strstr(info.vec[i], "AESVS")) {
-			info.algo = FIPS_TEST_ALGO_AES;
-			ret = parse_test_aes_init();
-			if (ret < 0)
-				return ret;
-		} else if (strstr(info.vec[i], "GCM")) {
-			info.algo = FIPS_TEST_ALGO_AES_GCM;
-			ret = parse_test_gcm_init();
-			if (ret < 0)
-				return ret;
-		} else if (strstr(info.vec[i], "CMAC")) {
-			info.algo = FIPS_TEST_ALGO_AES_CMAC;
-			ret = parse_test_cmac_init();
-			if (ret < 0)
-				return 0;
-		} else if (strstr(info.vec[i], "CCM")) {
-			info.algo = FIPS_TEST_ALGO_AES_CCM;
-			ret = parse_test_ccm_init();
-			if (ret < 0)
-				return 0;
-		} else if (strstr(info.vec[i], "HMAC")) {
-			info.algo = FIPS_TEST_ALGO_HMAC;
-			ret = parse_test_hmac_init();
-			if (ret < 0)
-				return ret;
-		} else if (strstr(info.vec[i], "TDES")) {
-			info.algo = FIPS_TEST_ALGO_TDES;
-			ret = parse_test_tdes_init();
-			if (ret < 0)
-				return 0;
-		} else if (strstr(info.vec[i], "SHA-")) {
-			info.algo = FIPS_TEST_ALGO_SHA;
-			ret = parse_test_sha_init();
-			if (ret < 0)
-				return ret;
+		if (!algo_parsed) {
+			if (strstr(info.vec[i], "AESVS")) {
+				algo_parsed = 1;
+				info.algo = FIPS_TEST_ALGO_AES;
+				ret = parse_test_aes_init();
+				if (ret < 0)
+					return ret;
+			} else if (strstr(info.vec[i], "GCM")) {
+				algo_parsed = 1;
+				info.algo = FIPS_TEST_ALGO_AES_GCM;
+				ret = parse_test_gcm_init();
+				if (ret < 0)
+					return ret;
+			} else if (strstr(info.vec[i], "CMAC")) {
+				algo_parsed = 1;
+				info.algo = FIPS_TEST_ALGO_AES_CMAC;
+				ret = parse_test_cmac_init();
+				if (ret < 0)
+					return 0;
+			} else if (strstr(info.vec[i], "CCM")) {
+				algo_parsed = 1;
+				info.algo = FIPS_TEST_ALGO_AES_CCM;
+				ret = parse_test_ccm_init();
+				if (ret < 0)
+					return 0;
+			} else if (strstr(info.vec[i], "HMAC")) {
+				algo_parsed = 1;
+				info.algo = FIPS_TEST_ALGO_HMAC;
+				ret = parse_test_hmac_init();
+				if (ret < 0)
+					return ret;
+			} else if (strstr(info.vec[i], "TDES")) {
+				algo_parsed = 1;
+				info.algo = FIPS_TEST_ALGO_TDES;
+				ret = parse_test_tdes_init();
+				if (ret < 0)
+					return 0;
+			} else if (strstr(info.vec[i], "SHA-")) {
+				algo_parsed = 1;
+				info.algo = FIPS_TEST_ALGO_SHA;
+				ret = parse_test_sha_init();
+				if (ret < 0)
+					return ret;
+			}
 		}
 
 		tmp = strstr(info.vec[i], "# Config info for ");
