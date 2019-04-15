@@ -33,5 +33,6 @@ EXPERIMENTAL {
 	rte_timer_alt_stop;
 	rte_timer_data_alloc;
 	rte_timer_data_dealloc;
+	rte_timer_stop_all;
 	rte_timer_subsystem_finalize;
 };

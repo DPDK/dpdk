@@ -500,6 +500,38 @@ rte_timer_alt_manage(uint32_t timer_data_id, unsigned int *poll_lcores,
 		     int n_poll_lcores, rte_timer_alt_manage_cb_t f);
 
 /**
+ * Callback function type for rte_timer_stop_all().
+ */
+typedef void (*rte_timer_stop_all_cb_t)(struct rte_timer *tim, void *arg);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Walk the pending timer lists for the specified lcore IDs, and for each timer
+ * that is encountered, stop it and call the specified callback function to
+ * process it further.
+ *
+ * @param timer_data_id
+ *   An identifier indicating which instance of timer data should be used for
+ *   this operation.
+ * @param walk_lcores
+ *   An array of lcore ids identifying the timer lists that should be processed.
+ * @param nb_walk_lcores
+ *   The size of the walk_lcores array.
+ * @param f
+ *   The callback function which should be called for each timers. Can be NULL.
+ * @param f_arg
+ *   An arbitrary argument that will be passed to f, if it is called.
+ * @return
+ *   - 0: success
+ *   - EINVAL: invalid timer_data_id
+ */
+int __rte_experimental
+rte_timer_stop_all(uint32_t timer_data_id, unsigned int *walk_lcores,
+		   int nb_walk_lcores, rte_timer_stop_all_cb_t f, void *f_arg);
+
+/**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *

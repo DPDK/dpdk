@@ -999,6 +999,44 @@ rte_timer_alt_manage(uint32_t timer_data_id,
 	return 0;
 }
 
+/* Walk pending lists, stopping timers and calling user-specified function */
+int __rte_experimental
+rte_timer_stop_all(uint32_t timer_data_id, unsigned int *walk_lcores,
+		   int nb_walk_lcores,
+		   rte_timer_stop_all_cb_t f, void *f_arg)
+{
+	int i;
+	struct priv_timer *priv_timer;
+	uint32_t walk_lcore;
+	struct rte_timer *tim, *next_tim;
+	struct rte_timer_data *timer_data;
+
+	TIMER_DATA_VALID_GET_OR_ERR_RET(timer_data_id, timer_data, -EINVAL);
+
+	for (i = 0; i < nb_walk_lcores; i++) {
+		walk_lcore = walk_lcores[i];
+		priv_timer = &timer_data->priv_timer[walk_lcore];
+
+		rte_spinlock_lock(&priv_timer->list_lock);
+
+		for (tim = priv_timer->pending_head.sl_next[0];
+		     tim != NULL;
+		     tim = next_tim) {
+			next_tim = tim->sl_next[0];
+
+			/* Call timer_stop with lock held */
+			__rte_timer_stop(tim, 1, timer_data);
+
+			if (f)
+				f(tim, f_arg);
+		}
+
+		rte_spinlock_unlock(&priv_timer->list_lock);
+	}
+
+	return 0;
+}
+
 /* dump statistics about timers */
 static void
 __rte_timer_dump_stats(struct rte_timer_data *timer_data __rte_unused, FILE *f)
