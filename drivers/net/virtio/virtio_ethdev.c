@@ -1862,6 +1862,7 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 
 out:
 	rte_free(eth_dev->data->mac_addrs);
+	eth_dev->data->mac_addrs = NULL;
 	return ret;
 }
 
