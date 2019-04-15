@@ -1386,6 +1386,8 @@ rte_cryptodev_sym_session_clear(uint8_t dev_id,
 		return -EINVAL;
 
 	driver_id = dev->driver_id;
+	if (sess->sess_data[driver_id].refcnt == 0)
+		return 0;
 	if (--sess->sess_data[driver_id].refcnt != 0)
 		return -EBUSY;
 
