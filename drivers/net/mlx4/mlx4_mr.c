@@ -477,7 +477,7 @@ mr_free(struct mlx4_mr *mr)
 }
 
 /**
- * Releass resources of detached MR having no online entry.
+ * Release resources of detached MR having no online entry.
  *
  * @param dev
  *   Pointer to Ethernet device.
@@ -527,7 +527,7 @@ mr_find_contig_memsegs_cb(const struct rte_memseg_list *msl,
 }
 
 /**
- * Create a new global Memroy Region (MR) for a missing virtual address.
+ * Create a new global Memory Region (MR) for a missing virtual address.
  * This API should be called on a secondary process, then a request is sent to
  * the primary process in order to create a MR for the address. As the global MR
  * list is on the shared memory, following LKey lookup should succeed unless the
@@ -573,7 +573,7 @@ mlx4_mr_create_secondary(struct rte_eth_dev *dev, struct mlx4_mr_cache *entry,
 }
 
 /**
- * Create a new global Memroy Region (MR) for a missing virtual address.
+ * Create a new global Memory Region (MR) for a missing virtual address.
  * Register entire virtually contiguous memory chunk around the address.
  * This must be called from the primary process.
  *
@@ -682,7 +682,7 @@ alloc_resources:
 	bmp_mem = RTE_PTR_ALIGN_CEIL(mr + 1, RTE_CACHE_LINE_SIZE);
 	mr->ms_bmp = rte_bitmap_init(ms_n, bmp_mem, bmp_size);
 	if (mr->ms_bmp == NULL) {
-		WARN("port %u unable to initialize bitamp for a new MR of"
+		WARN("port %u unable to initialize bitmap for a new MR of"
 		     " address (%p).",
 		     dev->data->port_id, (void *)addr);
 		rte_errno = EINVAL;
@@ -820,7 +820,7 @@ err_nolock:
 }
 
 /**
- * Create a new global Memroy Region (MR) for a missing virtual address.
+ * Create a new global Memory Region (MR) for a missing virtual address.
  * This can be called from primary and secondary process.
  *
  * @param dev
@@ -1434,7 +1434,7 @@ void
 mlx4_mr_release(struct rte_eth_dev *dev)
 {
 	struct mlx4_priv *priv = dev->data->dev_private;
-	struct mlx4_mr *mr_next = LIST_FIRST(&priv->mr.mr_list);
+	struct mlx4_mr *mr_next;
 
 	/* Remove from memory callback device list. */
 	rte_rwlock_write_lock(&mlx4_shared_data->mem_event_rwlock);
@@ -1445,6 +1445,7 @@ mlx4_mr_release(struct rte_eth_dev *dev)
 #endif
 	rte_rwlock_write_lock(&priv->mr.rwlock);
 	/* Detach from MR list and move to free list. */
+	mr_next = LIST_FIRST(&priv->mr.mr_list);
 	while (mr_next != NULL) {
 		struct mlx4_mr *mr = mr_next;
 
