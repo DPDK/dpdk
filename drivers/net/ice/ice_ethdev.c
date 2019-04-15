@@ -1662,6 +1662,18 @@ static int ice_init_rss(struct ice_pf *pf)
 	if (ret)
 		return -EINVAL;
 
+	/* configure RSS for IPv4 with input set IPv4 src/dst */
+	ret = ice_add_rss_cfg(hw, vsi->idx, ICE_FLOW_HASH_IPV4,
+			      ICE_FLOW_SEG_HDR_IPV4);
+	if (ret)
+		PMD_DRV_LOG(ERR, "%s IPV4 rss flow fail %d", __func__, ret);
+
+	/* configure RSS for IPv6 with input set IPv6 src/dst */
+	ret = ice_add_rss_cfg(hw, vsi->idx, ICE_FLOW_HASH_IPV6,
+			      ICE_FLOW_SEG_HDR_IPV6);
+	if (ret)
+		PMD_DRV_LOG(ERR, "%s IPV6 rss flow fail %d", __func__, ret);
+
 	/* configure RSS for tcp6 with input set IPv6 src/dst, TCP src/dst */
 	ret = ice_add_rss_cfg(hw, vsi->idx, ICE_HASH_TCP_IPV6,
 			      ICE_FLOW_SEG_HDR_TCP | ICE_FLOW_SEG_HDR_IPV6);
