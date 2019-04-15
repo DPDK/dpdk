@@ -66,6 +66,8 @@ struct ifcvf_internal {
 	bool sw_fallback_running;
 	/* mediated vring for sw fallback */
 	struct vring m_vring[IFCVF_MAX_QUEUES * 2];
+	/* eventfd for used ring interrupt */
+	int intr_fd[IFCVF_MAX_QUEUES * 2];
 };
 
 struct internal_list {
@@ -334,7 +336,7 @@ vdpa_ifcvf_stop(struct ifcvf_internal *internal)
 #define MSIX_IRQ_SET_BUF_LEN (sizeof(struct vfio_irq_set) + \
 		sizeof(int) * (IFCVF_MAX_QUEUES * 2 + 1))
 static int
-vdpa_enable_vfio_intr(struct ifcvf_internal *internal)
+vdpa_enable_vfio_intr(struct ifcvf_internal *internal, bool m_rx)
 {
 	int ret;
 	uint32_t i, nr_vring;
@@ -342,6 +344,7 @@ vdpa_enable_vfio_intr(struct ifcvf_internal *internal)
 	struct vfio_irq_set *irq_set;
 	int *fd_ptr;
 	struct rte_vhost_vring vring;
+	int fd;
 
 	nr_vring = rte_vhost_get_vring_num(internal->vid);
 
@@ -355,9 +358,22 @@ vdpa_enable_vfio_intr(struct ifcvf_internal *internal)
 	fd_ptr = (int *)&irq_set->data;
 	fd_ptr[RTE_INTR_VEC_ZERO_OFFSET] = internal->pdev->intr_handle.fd;
 
+	for (i = 0; i < nr_vring; i++)
+		internal->intr_fd[i] = -1;
+
 	for (i = 0; i < nr_vring; i++) {
 		rte_vhost_get_vhost_vring(internal->vid, i, &vring);
 		fd_ptr[RTE_INTR_VEC_RXTX_OFFSET + i] = vring.callfd;
+		if ((i & 1) == 0 && m_rx == true) {
+			fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+			if (fd < 0) {
+				DRV_LOG(ERR, "can't setup eventfd: %s",
+					strerror(errno));
+				return -1;
+			}
+			internal->intr_fd[i] = fd;
+			fd_ptr[RTE_INTR_VEC_RXTX_OFFSET + i] = fd;
+		}
 	}
 
 	ret = ioctl(internal->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
@@ -374,6 +390,7 @@ static int
 vdpa_disable_vfio_intr(struct ifcvf_internal *internal)
 {
 	int ret;
+	uint32_t i, nr_vring;
 	char irq_set_buf[MSIX_IRQ_SET_BUF_LEN];
 	struct vfio_irq_set *irq_set;
 
@@ -383,6 +400,13 @@ vdpa_disable_vfio_intr(struct ifcvf_internal *internal)
 	irq_set->flags = VFIO_IRQ_SET_DATA_NONE | VFIO_IRQ_SET_ACTION_TRIGGER;
 	irq_set->index = VFIO_PCI_MSIX_IRQ_INDEX;
 	irq_set->start = 0;
+
+	nr_vring = rte_vhost_get_vring_num(internal->vid);
+	for (i = 0; i < nr_vring; i++) {
+		if (internal->intr_fd[i] >= 0)
+			close(internal->intr_fd[i]);
+		internal->intr_fd[i] = -1;
+	}
 
 	ret = ioctl(internal->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
 	if (ret) {
@@ -505,7 +529,7 @@ update_datapath(struct ifcvf_internal *internal)
 		if (ret)
 			goto err;
 
-		ret = vdpa_enable_vfio_intr(internal);
+		ret = vdpa_enable_vfio_intr(internal, 0);
 		if (ret)
 			goto err;
 
@@ -591,9 +615,19 @@ m_ifcvf_start(struct ifcvf_internal *internal)
 		}
 		hw->vring[i].avail = gpa;
 
-		hw->vring[i].used = m_vring_iova +
-			(char *)internal->m_vring[i].used -
-			(char *)internal->m_vring[i].desc;
+		/* Direct I/O for Tx queue, relay for Rx queue */
+		if (i & 1) {
+			gpa = hva_to_gpa(vid, (uint64_t)(uintptr_t)vq.used);
+			if (gpa == 0) {
+				DRV_LOG(ERR, "Fail to get GPA for used ring.");
+				return -1;
+			}
+			hw->vring[i].used = gpa;
+		} else {
+			hw->vring[i].used = m_vring_iova +
+				(char *)internal->m_vring[i].used -
+				(char *)internal->m_vring[i].desc;
+		}
 
 		hw->vring[i].size = vq.size;
 
@@ -647,35 +681,6 @@ m_ifcvf_stop(struct ifcvf_internal *internal)
 	return 0;
 }
 
-static int
-m_enable_vfio_intr(struct ifcvf_internal *internal)
-{
-	uint32_t nr_vring;
-	struct rte_intr_handle *intr_handle = &internal->pdev->intr_handle;
-	int ret;
-
-	nr_vring = rte_vhost_get_vring_num(internal->vid);
-
-	ret = rte_intr_efd_enable(intr_handle, nr_vring);
-	if (ret)
-		return -1;
-
-	ret = rte_intr_enable(intr_handle);
-	if (ret)
-		return -1;
-
-	return 0;
-}
-
-static void
-m_disable_vfio_intr(struct ifcvf_internal *internal)
-{
-	struct rte_intr_handle *intr_handle = &internal->pdev->intr_handle;
-
-	rte_intr_efd_disable(intr_handle);
-	rte_intr_disable(intr_handle);
-}
-
 static void
 update_used_ring(struct ifcvf_internal *internal, uint16_t qid)
 {
@@ -689,7 +694,6 @@ vring_relay(void *arg)
 	int i, vid, epfd, fd, nfds;
 	struct ifcvf_internal *internal = (struct ifcvf_internal *)arg;
 	struct rte_vhost_vring vring;
-	struct rte_intr_handle *intr_handle;
 	uint16_t qid, q_num;
 	struct epoll_event events[IFCVF_MAX_QUEUES * 4];
 	struct epoll_event ev;
@@ -722,12 +726,12 @@ vring_relay(void *arg)
 		}
 	}
 
-	intr_handle = &internal->pdev->intr_handle;
-	for (qid = 0; qid < q_num; qid++) {
+	for (qid = 0; qid < q_num; qid += 2) {
 		ev.events = EPOLLIN | EPOLLPRI;
+		/* leave a flag to mark it's for interrupt */
 		ev.data.u64 = 1 | qid << 1 |
-			(uint64_t)intr_handle->efds[qid] << 32;
-		if (epoll_ctl(epfd, EPOLL_CTL_ADD, intr_handle->efds[qid], &ev)
+			(uint64_t)internal->intr_fd[qid] << 32;
+		if (epoll_ctl(epfd, EPOLL_CTL_ADD, internal->intr_fd[qid], &ev)
 				< 0) {
 			DRV_LOG(ERR, "epoll add error: %s", strerror(errno));
 			return NULL;
@@ -824,7 +828,7 @@ ifcvf_sw_fallback_switchover(struct ifcvf_internal *internal)
 		goto error;
 
 	/* set up interrupt for interrupt relay */
-	ret = m_enable_vfio_intr(internal);
+	ret = vdpa_enable_vfio_intr(internal, 1);
 	if (ret)
 		goto unmap;
 
@@ -847,7 +851,7 @@ ifcvf_sw_fallback_switchover(struct ifcvf_internal *internal)
 stop_vf:
 	m_ifcvf_stop(internal);
 unset_intr:
-	m_disable_vfio_intr(internal);
+	vdpa_disable_vfio_intr(internal);
 unmap:
 	ifcvf_dma_map(internal, 0);
 error:
@@ -903,7 +907,7 @@ ifcvf_dev_close(int vid)
 		m_ifcvf_stop(internal);
 
 		/* remove interrupt setting */
-		m_disable_vfio_intr(internal);
+		vdpa_disable_vfio_intr(internal);
 
 		/* unset DMA map for guest memory */
 		ifcvf_dma_map(internal, 0);
