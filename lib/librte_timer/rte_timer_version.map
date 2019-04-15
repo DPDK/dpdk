@@ -13,3 +13,25 @@ DPDK_2.0 {
 
 	local: *;
 };
+
+DPDK_19.05 {
+	global:
+
+	rte_timer_dump_stats;
+	rte_timer_manage;
+	rte_timer_reset;
+	rte_timer_stop;
+	rte_timer_subsystem_init;
+} DPDK_2.0;
+
+EXPERIMENTAL {
+	global:
+
+	rte_timer_alt_dump_stats;
+	rte_timer_alt_manage;
+	rte_timer_alt_reset;
+	rte_timer_alt_stop;
+	rte_timer_data_alloc;
+	rte_timer_data_dealloc;
+	rte_timer_subsystem_finalize;
+};

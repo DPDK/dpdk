@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <inttypes.h>
 #include <assert.h>
 #include <sys/queue.h>
@@ -21,11 +22,15 @@
 #include <rte_spinlock.h>
 #include <rte_random.h>
 #include <rte_pause.h>
+#include <rte_memzone.h>
+#include <rte_malloc.h>
+#include <rte_compat.h>
 
 #include "rte_timer.h"
 
-LIST_HEAD(rte_timer_list, rte_timer);
-
+/**
+ * Per-lcore info for timers.
+ */
 struct priv_timer {
 	struct rte_timer pending_head;  /**< dummy timer instance to head up list */
 	rte_spinlock_t list_lock;       /**< lock to protect list access */
@@ -48,25 +53,84 @@ struct priv_timer {
 #endif
 } __rte_cache_aligned;
 
-/** per-lcore private info for timers */
-static struct priv_timer priv_timer[RTE_MAX_LCORE];
+#define FL_ALLOCATED	(1 << 0)
+struct rte_timer_data {
+	struct priv_timer priv_timer[RTE_MAX_LCORE];
+	uint8_t internal_flags;
+};
+
+#define RTE_MAX_DATA_ELS 64
+static struct rte_timer_data *rte_timer_data_arr;
+static const uint32_t default_data_id;
+static uint32_t rte_timer_subsystem_initialized;
+
+/* For maintaining older interfaces for a period */
+static struct rte_timer_data default_timer_data;
 
 /* when debug is enabled, store some statistics */
 #ifdef RTE_LIBRTE_TIMER_DEBUG
-#define __TIMER_STAT_ADD(name, n) do {					\
+#define __TIMER_STAT_ADD(priv_timer, name, n) do {			\
 		unsigned __lcore_id = rte_lcore_id();			\
 		if (__lcore_id < RTE_MAX_LCORE)				\
 			priv_timer[__lcore_id].stats.name += (n);	\
 	} while(0)
 #else
-#define __TIMER_STAT_ADD(name, n) do {} while(0)
+#define __TIMER_STAT_ADD(priv_timer, name, n) do {} while (0)
 #endif
 
-/* Init the timer library. */
+static inline int
+timer_data_valid(uint32_t id)
+{
+	return !!(rte_timer_data_arr[id].internal_flags & FL_ALLOCATED);
+}
+
+/* validate ID and retrieve timer data pointer, or return error value */
+#define TIMER_DATA_VALID_GET_OR_ERR_RET(id, timer_data, retval) do {	\
+	if (id >= RTE_MAX_DATA_ELS || !timer_data_valid(id))		\
+		return retval;						\
+	timer_data = &rte_timer_data_arr[id];				\
+} while (0)
+
+int __rte_experimental
+rte_timer_data_alloc(uint32_t *id_ptr)
+{
+	int i;
+	struct rte_timer_data *data;
+
+	if (!rte_timer_subsystem_initialized)
+		return -ENOMEM;
+
+	for (i = 0; i < RTE_MAX_DATA_ELS; i++) {
+		data = &rte_timer_data_arr[i];
+		if (!(data->internal_flags & FL_ALLOCATED)) {
+			data->internal_flags |= FL_ALLOCATED;
+
+			if (id_ptr)
+				*id_ptr = i;
+
+			return 0;
+		}
+	}
+
+	return -ENOSPC;
+}
+
+int __rte_experimental
+rte_timer_data_dealloc(uint32_t id)
+{
+	struct rte_timer_data *timer_data;
+	TIMER_DATA_VALID_GET_OR_ERR_RET(id, timer_data, -EINVAL);
+
+	timer_data->internal_flags &= ~(FL_ALLOCATED);
+
+	return 0;
+}
+
 void
-rte_timer_subsystem_init(void)
+rte_timer_subsystem_init_v20(void)
 {
 	unsigned lcore_id;
+	struct priv_timer *priv_timer = default_timer_data.priv_timer;
 
 	/* since priv_timer is static, it's zeroed by default, so only init some
 	 * fields.
@@ -75,6 +139,76 @@ rte_timer_subsystem_init(void)
 		rte_spinlock_init(&priv_timer[lcore_id].list_lock);
 		priv_timer[lcore_id].prev_lcore = lcore_id;
 	}
+}
+VERSION_SYMBOL(rte_timer_subsystem_init, _v20, 2.0);
+
+/* Init the timer library. Allocate an array of timer data structs in shared
+ * memory, and allocate the zeroth entry for use with original timer
+ * APIs. Since the intersection of the sets of lcore ids in primary and
+ * secondary processes should be empty, the zeroth entry can be shared by
+ * multiple processes.
+ */
+int
+rte_timer_subsystem_init_v1905(void)
+{
+	const struct rte_memzone *mz;
+	struct rte_timer_data *data;
+	int i, lcore_id;
+	static const char *mz_name = "rte_timer_mz";
+
+	if (rte_timer_subsystem_initialized)
+		return -EALREADY;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		mz = rte_memzone_lookup(mz_name);
+		if (mz == NULL)
+			return -EEXIST;
+
+		rte_timer_data_arr = mz->addr;
+
+		rte_timer_data_arr[default_data_id].internal_flags |=
+			FL_ALLOCATED;
+
+		rte_timer_subsystem_initialized = 1;
+
+		return 0;
+	}
+
+	mz = rte_memzone_reserve_aligned(mz_name,
+			RTE_MAX_DATA_ELS * sizeof(*rte_timer_data_arr),
+			SOCKET_ID_ANY, 0, RTE_CACHE_LINE_SIZE);
+	if (mz == NULL)
+		return -ENOMEM;
+
+	rte_timer_data_arr = mz->addr;
+
+	for (i = 0; i < RTE_MAX_DATA_ELS; i++) {
+		data = &rte_timer_data_arr[i];
+
+		for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+			rte_spinlock_init(
+				&data->priv_timer[lcore_id].list_lock);
+			data->priv_timer[lcore_id].prev_lcore = lcore_id;
+		}
+	}
+
+	rte_timer_data_arr[default_data_id].internal_flags |= FL_ALLOCATED;
+
+	rte_timer_subsystem_initialized = 1;
+
+	return 0;
+}
+MAP_STATIC_SYMBOL(int rte_timer_subsystem_init(void),
+		  rte_timer_subsystem_init_v1905);
+BIND_DEFAULT_SYMBOL(rte_timer_subsystem_init, _v1905, 19.05);
+
+void __rte_experimental
+rte_timer_subsystem_finalize(void)
+{
+	if (rte_timer_data_arr)
+		rte_free(rte_timer_data_arr);
+
+	rte_timer_subsystem_initialized = 0;
 }
 
 /* Initialize the timer handle tim for use */
@@ -95,7 +229,8 @@ rte_timer_init(struct rte_timer *tim)
  */
 static int
 timer_set_config_state(struct rte_timer *tim,
-		       union rte_timer_status *ret_prev_status)
+		       union rte_timer_status *ret_prev_status,
+		       struct priv_timer *priv_timer)
 {
 	union rte_timer_status prev_status, status;
 	int success = 0;
@@ -207,7 +342,7 @@ timer_get_skiplist_level(unsigned curr_depth)
  */
 static void
 timer_get_prev_entries(uint64_t time_val, unsigned tim_lcore,
-		struct rte_timer **prev)
+		       struct rte_timer **prev, struct priv_timer *priv_timer)
 {
 	unsigned lvl = priv_timer[tim_lcore].curr_skiplist_depth;
 	prev[lvl] = &priv_timer[tim_lcore].pending_head;
@@ -226,13 +361,15 @@ timer_get_prev_entries(uint64_t time_val, unsigned tim_lcore,
  */
 static void
 timer_get_prev_entries_for_node(struct rte_timer *tim, unsigned tim_lcore,
-		struct rte_timer **prev)
+				struct rte_timer **prev,
+				struct priv_timer *priv_timer)
 {
 	int i;
+
 	/* to get a specific entry in the list, look for just lower than the time
 	 * values, and then increment on each level individually if necessary
 	 */
-	timer_get_prev_entries(tim->expire - 1, tim_lcore, prev);
+	timer_get_prev_entries(tim->expire - 1, tim_lcore, prev, priv_timer);
 	for (i = priv_timer[tim_lcore].curr_skiplist_depth - 1; i >= 0; i--) {
 		while (prev[i]->sl_next[i] != NULL &&
 				prev[i]->sl_next[i] != tim &&
@@ -247,14 +384,15 @@ timer_get_prev_entries_for_node(struct rte_timer *tim, unsigned tim_lcore,
  * timer must not be in a list
  */
 static void
-timer_add(struct rte_timer *tim, unsigned int tim_lcore)
+timer_add(struct rte_timer *tim, unsigned int tim_lcore,
+	  struct priv_timer *priv_timer)
 {
 	unsigned lvl;
 	struct rte_timer *prev[MAX_SKIPLIST_DEPTH+1];
 
 	/* find where exactly this element goes in the list of elements
 	 * for each depth. */
-	timer_get_prev_entries(tim->expire, tim_lcore, prev);
+	timer_get_prev_entries(tim->expire, tim_lcore, prev, priv_timer);
 
 	/* now assign it a new level and add at that level */
 	const unsigned tim_level = timer_get_skiplist_level(
@@ -284,7 +422,7 @@ timer_add(struct rte_timer *tim, unsigned int tim_lcore)
  */
 static void
 timer_del(struct rte_timer *tim, union rte_timer_status prev_status,
-		int local_is_locked)
+	  int local_is_locked, struct priv_timer *priv_timer)
 {
 	unsigned lcore_id = rte_lcore_id();
 	unsigned prev_owner = prev_status.owner;
@@ -304,7 +442,7 @@ timer_del(struct rte_timer *tim, union rte_timer_status prev_status,
 				((tim->sl_next[0] == NULL) ? 0 : tim->sl_next[0]->expire);
 
 	/* adjust pointers from previous entries to point past this */
-	timer_get_prev_entries_for_node(tim, prev_owner, prev);
+	timer_get_prev_entries_for_node(tim, prev_owner, prev, priv_timer);
 	for (i = priv_timer[prev_owner].curr_skiplist_depth - 1; i >= 0; i--) {
 		if (prev[i]->sl_next[i] == tim)
 			prev[i]->sl_next[i] = tim->sl_next[i];
@@ -326,11 +464,13 @@ static int
 __rte_timer_reset(struct rte_timer *tim, uint64_t expire,
 		  uint64_t period, unsigned tim_lcore,
 		  rte_timer_cb_t fct, void *arg,
-		  int local_is_locked)
+		  int local_is_locked,
+		  struct rte_timer_data *timer_data)
 {
 	union rte_timer_status prev_status, status;
 	int ret;
 	unsigned lcore_id = rte_lcore_id();
+	struct priv_timer *priv_timer = timer_data->priv_timer;
 
 	/* round robin for tim_lcore */
 	if (tim_lcore == (unsigned)LCORE_ID_ANY) {
@@ -348,11 +488,11 @@ __rte_timer_reset(struct rte_timer *tim, uint64_t expire,
 
 	/* wait that the timer is in correct status before update,
 	 * and mark it as being configured */
-	ret = timer_set_config_state(tim, &prev_status);
+	ret = timer_set_config_state(tim, &prev_status, priv_timer);
 	if (ret < 0)
 		return -1;
 
-	__TIMER_STAT_ADD(reset, 1);
+	__TIMER_STAT_ADD(priv_timer, reset, 1);
 	if (prev_status.state == RTE_TIMER_RUNNING &&
 	    lcore_id < RTE_MAX_LCORE) {
 		priv_timer[lcore_id].updated = 1;
@@ -360,8 +500,8 @@ __rte_timer_reset(struct rte_timer *tim, uint64_t expire,
 
 	/* remove it from list */
 	if (prev_status.state == RTE_TIMER_PENDING) {
-		timer_del(tim, prev_status, local_is_locked);
-		__TIMER_STAT_ADD(pending, -1);
+		timer_del(tim, prev_status, local_is_locked, priv_timer);
+		__TIMER_STAT_ADD(priv_timer, pending, -1);
 	}
 
 	tim->period = period;
@@ -376,8 +516,8 @@ __rte_timer_reset(struct rte_timer *tim, uint64_t expire,
 	if (tim_lcore != lcore_id || !local_is_locked)
 		rte_spinlock_lock(&priv_timer[tim_lcore].list_lock);
 
-	__TIMER_STAT_ADD(pending, 1);
-	timer_add(tim, tim_lcore);
+	__TIMER_STAT_ADD(priv_timer, pending, 1);
+	timer_add(tim, tim_lcore, priv_timer);
 
 	/* update state: as we are in CONFIG state, only us can modify
 	 * the state so we don't need to use cmpset() here */
@@ -394,9 +534,9 @@ __rte_timer_reset(struct rte_timer *tim, uint64_t expire,
 
 /* Reset and start the timer associated with the timer handle tim */
 int
-rte_timer_reset(struct rte_timer *tim, uint64_t ticks,
-		enum rte_timer_type type, unsigned tim_lcore,
-		rte_timer_cb_t fct, void *arg)
+rte_timer_reset_v20(struct rte_timer *tim, uint64_t ticks,
+		    enum rte_timer_type type, unsigned int tim_lcore,
+		    rte_timer_cb_t fct, void *arg)
 {
 	uint64_t cur_time = rte_get_timer_cycles();
 	uint64_t period;
@@ -412,7 +552,48 @@ rte_timer_reset(struct rte_timer *tim, uint64_t ticks,
 		period = 0;
 
 	return __rte_timer_reset(tim,  cur_time + ticks, period, tim_lcore,
-			  fct, arg, 0);
+			  fct, arg, 0, &default_timer_data);
+}
+VERSION_SYMBOL(rte_timer_reset, _v20, 2.0);
+
+int
+rte_timer_reset_v1905(struct rte_timer *tim, uint64_t ticks,
+		      enum rte_timer_type type, unsigned int tim_lcore,
+		      rte_timer_cb_t fct, void *arg)
+{
+	return rte_timer_alt_reset(default_data_id, tim, ticks, type,
+				   tim_lcore, fct, arg);
+}
+MAP_STATIC_SYMBOL(int rte_timer_reset(struct rte_timer *tim, uint64_t ticks,
+				      enum rte_timer_type type,
+				      unsigned int tim_lcore,
+				      rte_timer_cb_t fct, void *arg),
+		  rte_timer_reset_v1905);
+BIND_DEFAULT_SYMBOL(rte_timer_reset, _v1905, 19.05);
+
+int __rte_experimental
+rte_timer_alt_reset(uint32_t timer_data_id, struct rte_timer *tim,
+		    uint64_t ticks, enum rte_timer_type type,
+		    unsigned int tim_lcore, rte_timer_cb_t fct, void *arg)
+{
+	uint64_t cur_time = rte_get_timer_cycles();
+	uint64_t period;
+	struct rte_timer_data *timer_data;
+
+	TIMER_DATA_VALID_GET_OR_ERR_RET(timer_data_id, timer_data, -EINVAL);
+
+	if (unlikely((tim_lcore != (unsigned int)LCORE_ID_ANY) &&
+			!(rte_lcore_is_enabled(tim_lcore) ||
+			  rte_lcore_has_role(tim_lcore, ROLE_SERVICE))))
+		return -1;
+
+	if (type == PERIODICAL)
+		period = ticks;
+	else
+		period = 0;
+
+	return __rte_timer_reset(tim,  cur_time + ticks, period, tim_lcore,
+				 fct, arg, 0, timer_data);
 }
 
 /* loop until rte_timer_reset() succeed */
@@ -426,21 +607,22 @@ rte_timer_reset_sync(struct rte_timer *tim, uint64_t ticks,
 		rte_pause();
 }
 
-/* Stop the timer associated with the timer handle tim */
-int
-rte_timer_stop(struct rte_timer *tim)
+static int
+__rte_timer_stop(struct rte_timer *tim, int local_is_locked,
+		 struct rte_timer_data *timer_data)
 {
 	union rte_timer_status prev_status, status;
 	unsigned lcore_id = rte_lcore_id();
 	int ret;
+	struct priv_timer *priv_timer = timer_data->priv_timer;
 
 	/* wait that the timer is in correct status before update,
 	 * and mark it as being configured */
-	ret = timer_set_config_state(tim, &prev_status);
+	ret = timer_set_config_state(tim, &prev_status, priv_timer);
 	if (ret < 0)
 		return -1;
 
-	__TIMER_STAT_ADD(stop, 1);
+	__TIMER_STAT_ADD(priv_timer, stop, 1);
 	if (prev_status.state == RTE_TIMER_RUNNING &&
 	    lcore_id < RTE_MAX_LCORE) {
 		priv_timer[lcore_id].updated = 1;
@@ -448,8 +630,8 @@ rte_timer_stop(struct rte_timer *tim)
 
 	/* remove it from list */
 	if (prev_status.state == RTE_TIMER_PENDING) {
-		timer_del(tim, prev_status, 0);
-		__TIMER_STAT_ADD(pending, -1);
+		timer_del(tim, prev_status, local_is_locked, priv_timer);
+		__TIMER_STAT_ADD(priv_timer, pending, -1);
 	}
 
 	/* mark timer as stopped */
@@ -459,6 +641,33 @@ rte_timer_stop(struct rte_timer *tim)
 	tim->status.u32 = status.u32;
 
 	return 0;
+}
+
+/* Stop the timer associated with the timer handle tim */
+int
+rte_timer_stop_v20(struct rte_timer *tim)
+{
+	return __rte_timer_stop(tim, 0, &default_timer_data);
+}
+VERSION_SYMBOL(rte_timer_stop, _v20, 2.0);
+
+int
+rte_timer_stop_v1905(struct rte_timer *tim)
+{
+	return rte_timer_alt_stop(default_data_id, tim);
+}
+MAP_STATIC_SYMBOL(int rte_timer_stop(struct rte_timer *tim),
+		  rte_timer_stop_v1905);
+BIND_DEFAULT_SYMBOL(rte_timer_stop, _v1905, 19.05);
+
+int __rte_experimental
+rte_timer_alt_stop(uint32_t timer_data_id, struct rte_timer *tim)
+{
+	struct rte_timer_data *timer_data;
+
+	TIMER_DATA_VALID_GET_OR_ERR_RET(timer_data_id, timer_data, -EINVAL);
+
+	return __rte_timer_stop(tim, 0, timer_data);
 }
 
 /* loop until rte_timer_stop() succeed */
@@ -477,7 +686,8 @@ rte_timer_pending(struct rte_timer *tim)
 }
 
 /* must be called periodically, run all timer that expired */
-void rte_timer_manage(void)
+static void
+__rte_timer_manage(struct rte_timer_data *timer_data)
 {
 	union rte_timer_status status;
 	struct rte_timer *tim, *next_tim;
@@ -486,11 +696,12 @@ void rte_timer_manage(void)
 	struct rte_timer *prev[MAX_SKIPLIST_DEPTH + 1];
 	uint64_t cur_time;
 	int i, ret;
+	struct priv_timer *priv_timer = timer_data->priv_timer;
 
 	/* timer manager only runs on EAL thread with valid lcore_id */
 	assert(lcore_id < RTE_MAX_LCORE);
 
-	__TIMER_STAT_ADD(manage, 1);
+	__TIMER_STAT_ADD(priv_timer, manage, 1);
 	/* optimize for the case where per-cpu list is empty */
 	if (priv_timer[lcore_id].pending_head.sl_next[0] == NULL)
 		return;
@@ -518,7 +729,7 @@ void rte_timer_manage(void)
 	tim = priv_timer[lcore_id].pending_head.sl_next[0];
 
 	/* break the existing list at current time point */
-	timer_get_prev_entries(cur_time, lcore_id, prev);
+	timer_get_prev_entries(cur_time, lcore_id, prev, priv_timer);
 	for (i = priv_timer[lcore_id].curr_skiplist_depth -1; i >= 0; i--) {
 		if (prev[i] == &priv_timer[lcore_id].pending_head)
 			continue;
@@ -563,7 +774,7 @@ void rte_timer_manage(void)
 		/* execute callback function with list unlocked */
 		tim->f(tim, tim->arg);
 
-		__TIMER_STAT_ADD(pending, -1);
+		__TIMER_STAT_ADD(priv_timer, pending, -1);
 		/* the timer was stopped or reloaded by the callback
 		 * function, we have nothing to do here */
 		if (priv_timer[lcore_id].updated == 1)
@@ -580,24 +791,222 @@ void rte_timer_manage(void)
 			/* keep it in list and mark timer as pending */
 			rte_spinlock_lock(&priv_timer[lcore_id].list_lock);
 			status.state = RTE_TIMER_PENDING;
-			__TIMER_STAT_ADD(pending, 1);
+			__TIMER_STAT_ADD(priv_timer, pending, 1);
 			status.owner = (int16_t)lcore_id;
 			rte_wmb();
 			tim->status.u32 = status.u32;
 			__rte_timer_reset(tim, tim->expire + tim->period,
-				tim->period, lcore_id, tim->f, tim->arg, 1);
+				tim->period, lcore_id, tim->f, tim->arg, 1,
+				timer_data);
 			rte_spinlock_unlock(&priv_timer[lcore_id].list_lock);
 		}
 	}
 	priv_timer[lcore_id].running_tim = NULL;
 }
 
+void
+rte_timer_manage_v20(void)
+{
+	__rte_timer_manage(&default_timer_data);
+}
+VERSION_SYMBOL(rte_timer_manage, _v20, 2.0);
+
+int
+rte_timer_manage_v1905(void)
+{
+	struct rte_timer_data *timer_data;
+
+	TIMER_DATA_VALID_GET_OR_ERR_RET(default_data_id, timer_data, -EINVAL);
+
+	__rte_timer_manage(timer_data);
+
+	return 0;
+}
+MAP_STATIC_SYMBOL(int rte_timer_manage(void), rte_timer_manage_v1905);
+BIND_DEFAULT_SYMBOL(rte_timer_manage, _v1905, 19.05);
+
+int __rte_experimental
+rte_timer_alt_manage(uint32_t timer_data_id,
+		     unsigned int *poll_lcores,
+		     int nb_poll_lcores,
+		     rte_timer_alt_manage_cb_t f)
+{
+	union rte_timer_status status;
+	struct rte_timer *tim, *next_tim, **pprev;
+	struct rte_timer *run_first_tims[RTE_MAX_LCORE];
+	unsigned int runlist_lcore_ids[RTE_MAX_LCORE];
+	unsigned int this_lcore = rte_lcore_id();
+	struct rte_timer *prev[MAX_SKIPLIST_DEPTH + 1];
+	uint64_t cur_time;
+	int i, j, ret;
+	int nb_runlists = 0;
+	struct rte_timer_data *data;
+	struct priv_timer *privp;
+	uint32_t poll_lcore;
+
+	TIMER_DATA_VALID_GET_OR_ERR_RET(timer_data_id, data, -EINVAL);
+
+	/* timer manager only runs on EAL thread with valid lcore_id */
+	assert(this_lcore < RTE_MAX_LCORE);
+
+	__TIMER_STAT_ADD(data->priv_timer, manage, 1);
+
+	if (poll_lcores == NULL) {
+		poll_lcores = (unsigned int []){rte_lcore_id()};
+		nb_poll_lcores = 1;
+	}
+
+	for (i = 0; i < nb_poll_lcores; i++) {
+		poll_lcore = poll_lcores[i];
+		privp = &data->priv_timer[poll_lcore];
+
+		/* optimize for the case where per-cpu list is empty */
+		if (privp->pending_head.sl_next[0] == NULL)
+			continue;
+		cur_time = rte_get_timer_cycles();
+
+#ifdef RTE_ARCH_64
+		/* on 64-bit the value cached in the pending_head.expired will
+		 * be updated atomically, so we can consult that for a quick
+		 * check here outside the lock
+		 */
+		if (likely(privp->pending_head.expire > cur_time))
+			continue;
+#endif
+
+		/* browse ordered list, add expired timers in 'expired' list */
+		rte_spinlock_lock(&privp->list_lock);
+
+		/* if nothing to do just unlock and return */
+		if (privp->pending_head.sl_next[0] == NULL ||
+		    privp->pending_head.sl_next[0]->expire > cur_time) {
+			rte_spinlock_unlock(&privp->list_lock);
+			continue;
+		}
+
+		/* save start of list of expired timers */
+		tim = privp->pending_head.sl_next[0];
+
+		/* break the existing list at current time point */
+		timer_get_prev_entries(cur_time, poll_lcore, prev,
+				       data->priv_timer);
+		for (j = privp->curr_skiplist_depth - 1; j >= 0; j--) {
+			if (prev[j] == &privp->pending_head)
+				continue;
+			privp->pending_head.sl_next[j] =
+				prev[j]->sl_next[j];
+			if (prev[j]->sl_next[j] == NULL)
+				privp->curr_skiplist_depth--;
+
+			prev[j]->sl_next[j] = NULL;
+		}
+
+		/* transition run-list from PENDING to RUNNING */
+		run_first_tims[nb_runlists] = tim;
+		runlist_lcore_ids[nb_runlists] = poll_lcore;
+		pprev = &run_first_tims[nb_runlists];
+		nb_runlists++;
+
+		for ( ; tim != NULL; tim = next_tim) {
+			next_tim = tim->sl_next[0];
+
+			ret = timer_set_running_state(tim);
+			if (likely(ret == 0)) {
+				pprev = &tim->sl_next[0];
+			} else {
+				/* another core is trying to re-config this one,
+				 * remove it from local expired list
+				 */
+				*pprev = next_tim;
+			}
+		}
+
+		/* update the next to expire timer value */
+		privp->pending_head.expire =
+		    (privp->pending_head.sl_next[0] == NULL) ? 0 :
+			privp->pending_head.sl_next[0]->expire;
+
+		rte_spinlock_unlock(&privp->list_lock);
+	}
+
+	/* Now process the run lists */
+	while (1) {
+		bool done = true;
+		uint64_t min_expire = UINT64_MAX;
+		int min_idx = 0;
+
+		/* Find the next oldest timer to process */
+		for (i = 0; i < nb_runlists; i++) {
+			tim = run_first_tims[i];
+
+			if (tim != NULL && tim->expire < min_expire) {
+				min_expire = tim->expire;
+				min_idx = i;
+				done = false;
+			}
+		}
+
+		if (done)
+			break;
+
+		tim = run_first_tims[min_idx];
+		privp = &data->priv_timer[runlist_lcore_ids[min_idx]];
+
+		/* Move down the runlist from which we picked a timer to
+		 * execute
+		 */
+		run_first_tims[min_idx] = run_first_tims[min_idx]->sl_next[0];
+
+		privp->updated = 0;
+		privp->running_tim = tim;
+
+		/* Call the provided callback function */
+		f(tim);
+
+		__TIMER_STAT_ADD(privp, pending, -1);
+
+		/* the timer was stopped or reloaded by the callback
+		 * function, we have nothing to do here
+		 */
+		if (privp->updated == 1)
+			continue;
+
+		if (tim->period == 0) {
+			/* remove from done list and mark timer as stopped */
+			status.state = RTE_TIMER_STOP;
+			status.owner = RTE_TIMER_NO_OWNER;
+			rte_wmb();
+			tim->status.u32 = status.u32;
+		} else {
+			/* keep it in list and mark timer as pending */
+			rte_spinlock_lock(
+				&data->priv_timer[this_lcore].list_lock);
+			status.state = RTE_TIMER_PENDING;
+			__TIMER_STAT_ADD(data->priv_timer, pending, 1);
+			status.owner = (int16_t)this_lcore;
+			rte_wmb();
+			tim->status.u32 = status.u32;
+			__rte_timer_reset(tim, tim->expire + tim->period,
+				tim->period, this_lcore, tim->f, tim->arg, 1,
+				data);
+			rte_spinlock_unlock(
+				&data->priv_timer[this_lcore].list_lock);
+		}
+
+		privp->running_tim = NULL;
+	}
+
+	return 0;
+}
+
 /* dump statistics about timers */
-void rte_timer_dump_stats(FILE *f)
+static void
+__rte_timer_dump_stats(struct rte_timer_data *timer_data __rte_unused, FILE *f)
 {
 #ifdef RTE_LIBRTE_TIMER_DEBUG
 	struct rte_timer_debug_stats sum;
 	unsigned lcore_id;
+	struct priv_timer *priv_timer = timer_data->priv_timer;
 
 	memset(&sum, 0, sizeof(sum));
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
@@ -614,4 +1023,32 @@ void rte_timer_dump_stats(FILE *f)
 #else
 	fprintf(f, "No timer statistics, RTE_LIBRTE_TIMER_DEBUG is disabled\n");
 #endif
+}
+
+void
+rte_timer_dump_stats_v20(FILE *f)
+{
+	__rte_timer_dump_stats(&default_timer_data, f);
+}
+VERSION_SYMBOL(rte_timer_dump_stats, _v20, 2.0);
+
+int
+rte_timer_dump_stats_v1905(FILE *f)
+{
+	return rte_timer_alt_dump_stats(default_data_id, f);
+}
+MAP_STATIC_SYMBOL(int rte_timer_dump_stats(FILE *f),
+		  rte_timer_dump_stats_v1905);
+BIND_DEFAULT_SYMBOL(rte_timer_dump_stats, _v1905, 19.05);
+
+int __rte_experimental
+rte_timer_alt_dump_stats(uint32_t timer_data_id __rte_unused, FILE *f)
+{
+	struct rte_timer_data *timer_data;
+
+	TIMER_DATA_VALID_GET_OR_ERR_RET(timer_data_id, timer_data, -EINVAL);
+
+	__rte_timer_dump_stats(timer_data, f);
+
+	return 0;
 }
