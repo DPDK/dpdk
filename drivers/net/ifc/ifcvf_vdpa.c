@@ -81,6 +81,8 @@ static struct internal_list_head internal_list =
 
 static pthread_mutex_t internal_list_lock = PTHREAD_MUTEX_INITIALIZER;
 
+static void update_used_ring(struct ifcvf_internal *internal, uint16_t qid);
+
 static struct internal_list *
 find_internal_resource_by_did(int did)
 {
@@ -666,6 +668,10 @@ m_ifcvf_stop(struct ifcvf_internal *internal)
 	ifcvf_stop_hw(hw);
 
 	for (i = 0; i < hw->nr_vring; i++) {
+		/* synchronize remaining new used entries if any */
+		if ((i & 1) == 0)
+			update_used_ring(internal, i);
+
 		rte_vhost_get_vhost_vring(vid, i, &vq);
 		len = IFCVF_USED_RING_LEN(vq.size);
 		rte_vhost_log_used_vring(vid, i, 0, len);
@@ -735,6 +741,7 @@ vring_relay(void *arg)
 			DRV_LOG(ERR, "epoll add error: %s", strerror(errno));
 			return NULL;
 		}
+		update_used_ring(internal, qid);
 	}
 
 	/* start relay with a first kick */
