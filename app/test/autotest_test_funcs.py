@@ -131,6 +131,40 @@ def rwlock_autotest(child, test_name):
     return 0, "Success"
 
 
+def ticketlock_autotest(child, test_name):
+    i = 0
+    ir = 0
+    child.sendline(test_name)
+    while True:
+        index = child.expect(["Test OK",
+                              "Test Failed",
+                              "Hello from core ([0-9]*) !",
+                              "Hello from within recursive locks "
+                              "from ([0-9]*) !",
+                              pexpect.TIMEOUT], timeout=5)
+        # ok
+        if index == 0:
+            break
+
+        # message, check ordering
+        elif index == 2:
+            if int(child.match.groups()[0]) < i:
+                return -1, "Fail [Bad order]"
+            i = int(child.match.groups()[0])
+        elif index == 3:
+            if int(child.match.groups()[0]) < ir:
+                return -1, "Fail [Bad order]"
+            ir = int(child.match.groups()[0])
+
+        # fail
+        elif index == 4:
+            return -1, "Fail [Timeout]"
+        elif index == 1:
+            return -1, "Fail"
+
+    return 0, "Success"
+
+
 def logs_autotest(child, test_name):
     child.sendline(test_name)
 
