@@ -197,6 +197,10 @@ static struct feature_driver fme_feature_drvs[] = {
 	&fme_hssi_eth_ops),},
 	{FEATURE_DRV(FME_FEATURE_ID_EMIF_MGMT, FME_FEATURE_EMIF_MGMT,
 	&fme_emif_ops),},
+	{FEATURE_DRV(FME_FEATURE_ID_MAX10_SPI, FME_FEATURE_MAX10_SPI,
+	&fme_spi_master_ops),},
+	{FEATURE_DRV(FME_FEATURE_ID_NIOS_SPI, FME_FEATURE_NIOS_SPI,
+	&fme_nios_spi_master_ops),},
 	{0, NULL, NULL}, /* end of arrary */
 };
 

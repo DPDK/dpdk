@@ -3,6 +3,8 @@
  */
 
 #include "ifpga_feature_dev.h"
+#include "opae_spi.h"
+#include "opae_intel_max10.h"
 
 #define PWR_THRESHOLD_MAX       0x7F
 
@@ -763,4 +765,198 @@ static void fme_emif_uinit(struct feature *feature)
 struct feature_ops fme_emif_ops = {
 	.init = fme_emif_init,
 	.uinit = fme_emif_uinit,
+};
+
+static int spi_self_checking(void)
+{
+	u32 val;
+	int ret;
+
+	ret = max10_reg_read(0x30043c, &val);
+	if (ret)
+		return -EIO;
+
+	if (val != 0x87654321) {
+		dev_err(NULL, "Read MAX10 test register fail: 0x%x\n", val);
+		return -EIO;
+	}
+
+	dev_info(NULL, "Read MAX10 test register success, SPI self-test done\n");
+
+	return 0;
+}
+
+static int fme_spi_init(struct feature *feature)
+{
+	struct ifpga_fme_hw *fme = (struct ifpga_fme_hw *)feature->parent;
+	struct altera_spi_device *spi_master;
+	struct intel_max10_device *max10;
+	int ret = 0;
+
+	dev_info(fme, "FME SPI Master (Max10) Init.\n");
+	dev_debug(fme, "FME SPI base addr %p.\n",
+			feature->addr);
+	dev_debug(fme, "spi param=0x%llx\n",
+			(unsigned long long)opae_readq(feature->addr + 0x8));
+
+	spi_master = altera_spi_alloc(feature->addr, TYPE_SPI);
+	if (!spi_master)
+		return -ENODEV;
+
+	altera_spi_init(spi_master);
+
+	max10 = intel_max10_device_probe(spi_master, 0);
+	if (!max10) {
+		ret = -ENODEV;
+		dev_err(fme, "max10 init fail\n");
+		goto spi_fail;
+	}
+
+	fme->max10_dev = max10;
+
+	/* SPI self test */
+	if (spi_self_checking()) {
+		ret = -EIO;
+		goto max10_fail;
+	}
+
+	return ret;
+
+max10_fail:
+	intel_max10_device_remove(fme->max10_dev);
+spi_fail:
+	altera_spi_release(spi_master);
+	return ret;
+}
+
+static void fme_spi_uinit(struct feature *feature)
+{
+	struct ifpga_fme_hw *fme = (struct ifpga_fme_hw *)feature->parent;
+
+	if (fme->max10_dev)
+		intel_max10_device_remove(fme->max10_dev);
+}
+
+struct feature_ops fme_spi_master_ops = {
+	.init = fme_spi_init,
+	.uinit = fme_spi_uinit,
+};
+
+static int nios_spi_wait_init_done(struct altera_spi_device *dev)
+{
+	u32 val = 0;
+	unsigned long timeout = msecs_to_timer_cycles(10000);
+	unsigned long ticks;
+
+	do {
+		if (spi_reg_read(dev, NIOS_SPI_INIT_DONE, &val))
+			return -EIO;
+		if (val)
+			break;
+
+		ticks = rte_get_timer_cycles();
+		if (time_after(ticks, timeout))
+			return -ETIMEDOUT;
+		msleep(100);
+	} while (!val);
+
+	return 0;
+}
+
+static int nios_spi_check_error(struct altera_spi_device *dev)
+{
+	u32 value = 0;
+
+	if (spi_reg_read(dev, NIOS_SPI_INIT_STS0, &value))
+		return -EIO;
+
+	dev_debug(dev, "SPI init status0 0x%x\n", value);
+
+	/* Error code: 0xFFF0 to 0xFFFC */
+	if (value >= 0xFFF0 && value <= 0xFFFC)
+		return -EINVAL;
+
+	value = 0;
+	if (spi_reg_read(dev, NIOS_SPI_INIT_STS1, &value))
+		return -EIO;
+
+	dev_debug(dev, "SPI init status1 0x%x\n", value);
+
+	/* Error code: 0xFFF0 to 0xFFFC */
+	if (value >= 0xFFF0 && value <= 0xFFFC)
+		return -EINVAL;
+
+	return 0;
+}
+
+static int fme_nios_spi_init(struct feature *feature)
+{
+	struct ifpga_fme_hw *fme = (struct ifpga_fme_hw *)feature->parent;
+	struct altera_spi_device *spi_master;
+	struct intel_max10_device *max10;
+	int ret = 0;
+
+	dev_info(fme, "FME SPI Master (NIOS) Init.\n");
+	dev_debug(fme, "FME SPI base addr %p.\n",
+			feature->addr);
+	dev_debug(fme, "spi param=0x%llx\n",
+			(unsigned long long)opae_readq(feature->addr + 0x8));
+
+	spi_master = altera_spi_alloc(feature->addr, TYPE_NIOS_SPI);
+	if (!spi_master)
+		return -ENODEV;
+
+	/**
+	 * 1. wait A10 NIOS initial finished and
+	 * release the SPI master to Host
+	 */
+	ret = nios_spi_wait_init_done(spi_master);
+	if (ret != 0) {
+		dev_err(fme, "FME NIOS_SPI init fail\n");
+		goto release_dev;
+	}
+
+	dev_info(fme, "FME NIOS_SPI initial done\n");
+
+	/* 2. check if error occur? */
+	if (nios_spi_check_error(spi_master))
+		dev_info(fme, "NIOS_SPI INIT done, but found some error\n");
+
+	/* 3. init the spi master*/
+	altera_spi_init(spi_master);
+
+	/* init the max10 device */
+	max10 = intel_max10_device_probe(spi_master, 0);
+	if (!max10) {
+		ret = -ENODEV;
+		dev_err(fme, "max10 init fail\n");
+		goto release_dev;
+	}
+
+	fme->max10_dev = max10;
+
+	/* SPI self test */
+	if (spi_self_checking())
+		goto spi_fail;
+
+	return ret;
+
+spi_fail:
+	intel_max10_device_remove(fme->max10_dev);
+release_dev:
+	altera_spi_release(spi_master);
+	return -ENODEV;
+}
+
+static void fme_nios_spi_uinit(struct feature *feature)
+{
+	struct ifpga_fme_hw *fme = (struct ifpga_fme_hw *)feature->parent;
+
+	if (fme->max10_dev)
+		intel_max10_device_remove(fme->max10_dev);
+}
+
+struct feature_ops fme_nios_spi_master_ops = {
+	.init = fme_nios_spi_init,
+	.uinit = fme_nios_spi_uinit,
 };

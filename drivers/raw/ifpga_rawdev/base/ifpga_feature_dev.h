@@ -171,6 +171,8 @@ extern struct feature_ops fme_global_iperf_ops;
 extern struct feature_ops fme_global_dperf_ops;
 extern struct feature_ops fme_hssi_eth_ops;
 extern struct feature_ops fme_emif_ops;
+extern struct feature_ops fme_spi_master_ops;
+extern struct feature_ops fme_nios_spi_master_ops;
 
 int port_get_prop(struct ifpga_port_hw *port, struct feature_prop *prop);
 int port_set_prop(struct ifpga_port_hw *port, struct feature_prop *prop);

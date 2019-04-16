@@ -79,6 +79,8 @@ struct ifpga_fme_hw {
 	u32 cache_size;
 
 	u32 capability;
+
+	void *max10_dev; /* MAX10 device */
 };
 
 enum ifpga_port_state {

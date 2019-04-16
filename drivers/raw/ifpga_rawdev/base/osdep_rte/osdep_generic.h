@@ -11,6 +11,7 @@
 #include <rte_log.h>
 #include <rte_io.h>
 #include <rte_malloc.h>
+#include <rte_byteorder.h>
 #include <rte_memcpy.h>
 
 #define dev_printf(level, fmt, args...) \
@@ -43,5 +44,18 @@
 #define spinlock_lock(x) rte_spinlock_lock(x)
 #define spinlock_unlock(x) rte_spinlock_unlock(x)
 
+#define cpu_to_be16(o) rte_cpu_to_be_16(o)
+#define cpu_to_be32(o) rte_cpu_to_be_32(o)
+#define cpu_to_be64(o) rte_cpu_to_be_64(o)
+#define cpu_to_le16(o) rte_cpu_to_le_16(o)
+#define cpu_to_le32(o) rte_cpu_to_le_32(o)
+#define cpu_to_le64(o) rte_cpu_to_le_64(o)
+
 #define opae_memcpy(a, b, c) rte_memcpy((a), (b), (c))
+
+static inline unsigned long msecs_to_timer_cycles(unsigned int m)
+{
+	return rte_get_timer_hz() * (m / 1000);
+}
+
 #endif

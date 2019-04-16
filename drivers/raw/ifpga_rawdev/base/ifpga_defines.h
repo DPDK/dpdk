@@ -19,6 +19,8 @@
 #define FME_FEATURE_HSSI_ETH        "fme_hssi"
 #define FME_FEATURE_GLOBAL_DPERF    "fme_dperf"
 #define FME_FEATURE_QSPI_FLASH	    "fme_qspi_flash"
+#define FME_FEATURE_MAX10_SPI       "fme_max10_spi"
+#define FME_FEATURE_NIOS_SPI        "fme_nios_spi"
 
 #define PORT_FEATURE_HEADER         "port_hdr"
 #define PORT_FEATURE_UAFU           "port_uafu"
@@ -43,6 +45,7 @@
 #define FME_HSSI_ETH_REVISION		0
 #define FME_GLOBAL_DPERF_REVISION	0
 #define FME_QSPI_REVISION		0
+#define FME_MAX10_SPI                   0
 
 #define PORT_HEADER_REVISION		0
 /* UAFU's header info depends on the downloaded GBS */
@@ -80,6 +83,8 @@ enum fpga_id_type {
 #define FME_FEATURE_ID_GLOBAL_DPERF 0x7
 #define FME_FEATURE_ID_QSPI_FLASH 0x8
 #define FME_FEATURE_ID_EMIF_MGMT  0x9
+#define FME_FEATURE_ID_MAX10_SPI  0xe
+#define FME_FEATURE_ID_NIOS_SPI 0xd
 
 #define PORT_FEATURE_ID_HEADER FEATURE_ID_FIU_HEADER
 #define PORT_FEATURE_ID_ERROR 0x10

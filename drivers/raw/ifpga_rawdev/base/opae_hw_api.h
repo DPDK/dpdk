@@ -11,6 +11,7 @@
 #include <sys/queue.h>
 
 #include "opae_osdep.h"
+#include "opae_intel_max10.h"
 
 #ifndef PCI_MAX_RESOURCE
 #define PCI_MAX_RESOURCE 6

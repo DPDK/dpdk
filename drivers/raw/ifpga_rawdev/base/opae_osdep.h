@@ -35,6 +35,7 @@ struct uuid {
 #ifndef BIT
 #define BIT(a) (1UL << (a))
 #endif /* BIT */
+#define U64_C(x) x ## ULL
 #ifndef BIT_ULL
 #define BIT_ULL(a) (1ULL << (a))
 #endif /* BIT_ULL */
@@ -76,5 +77,8 @@ struct uuid {
 #define msleep(x) opae_udelay(1000 * (x))
 #define usleep_range(min, max) msleep(DIV_ROUND_UP(min, 1000))
 
+#define time_after(a, b)	((long)((b) - (a)) < 0)
+#define time_before(a, b)	time_after(b, a)
 #define opae_memset(a, b, c)    memset((a), (b), (c))
+
 #endif

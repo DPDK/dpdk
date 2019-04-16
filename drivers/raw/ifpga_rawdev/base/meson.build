@@ -14,7 +14,10 @@ sources = [
 	'ifpga_fme_pr.c',
 	'opae_hw_api.c',
 	'opae_ifpga_hw_api.c',
-	'opae_debug.c'
+	'opae_debug.c',
+	'opae_spi.c',
+	'opae_spi_transaction.c',
+	'opae_intel_max10.c',
 ]
 
 error_cflags = ['-Wno-sign-compare', '-Wno-unused-value',

@@ -22,5 +22,8 @@ SRCS-y += opae_hw_api.c
 SRCS-y += opae_ifpga_hw_api.c
 SRCS-y += opae_debug.c
 SRCS-y += ifpga_fme_pr.c
+SRCS-y += opae_spi.c
+SRCS-y += opae_spi_transaction.c
+SRCS-y += opae_intel_max10.c
 
 SRCS-y += $(wildcard $(SRCDIR)/base/$(OSDEP)/*.c)
