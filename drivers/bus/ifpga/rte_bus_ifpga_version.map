@@ -8,3 +8,10 @@ DPDK_18.05 {
 
 	local: *;
 };
+
+DPDK_19.05 {
+	global:
+
+	rte_ifpga_find_afu_by_name;
+
+} DPDK_18.05;

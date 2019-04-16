@@ -120,6 +120,15 @@ rte_ifpga_device_name(const struct rte_afu_device *afu)
 }
 
 /**
+ * Find AFU by AFU name.
+ *
+ * @param name
+ *   A pointer to AFU name string.
+ */
+struct rte_afu_device *
+rte_ifpga_find_afu_by_name(const char *name);
+
+/**
  * Register a ifpga afu device driver.
  *
  * @param driver
