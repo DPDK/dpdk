@@ -89,6 +89,15 @@ New Features
   Added the new ``nfb`` net driver for Netcope NFB cards. See
   the :doc:`../nics/nfb` NIC guide for more details on this new driver.
 
+* **Added IPN3KE net PMD.**
+
+  Added the new ``ipn3ke`` net driver for Intel® FPGA PAC(Programmable
+  Acceleration Card) N3000. See the :doc:`../nics/ipn3ke` NIC guide for more
+  details on this new driver.
+
+  Aside from this, ifpga_rawdev is also updated to support Intel® FPGA PAC
+  N3000 with SPI interface access, I2C Read/Write and Ethernet PHY configuration.
+
 * **Updated Solarflare network PMD.**
 
   Updated the sfc_efx driver including the following changes:

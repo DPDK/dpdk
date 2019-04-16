@@ -633,6 +633,13 @@ F: drivers/net/ice/
 F: doc/guides/nics/ice.rst
 F: doc/guides/nics/features/ice.ini
 
+Intel ipn3ke
+M: Rosen Xu <rosen.xu@intel.com>
+T: git://dpdk.org/next/dpdk-next-net-intel
+F: drivers/net/ipn3ke/
+F: doc/guides/nics/ipn3ke.rst
+F: doc/guides/nics/features/ipn3ke.ini
+
 Marvell mvpp2
 M: Tomasz Duszynski <tdu@semihalf.com>
 M: Liron Himi <lironh@marvell.com>

@@ -31,6 +31,7 @@ Network Interface Controller Drivers
     ice
     ifc
     igb
+    ipn3ke
     ixgbe
     intel_vf
     kni

@@ -12,6 +12,8 @@ from os.path import exists, abspath, dirname, basename
 # The PCI base class for all devices
 network_class = {'Class': '02', 'Vendor': None, 'Device': None,
                     'SVendor': None, 'SDevice': None}
+ifpga_class = {'Class': '12', 'Vendor': '8086', 'Device': '0b30',
+                    'SVendor': None, 'SDevice': None}
 encryption_class = {'Class': '10', 'Vendor': None, 'Device': None,
                    'SVendor': None, 'SDevice': None}
 intel_processor_class = {'Class': '0b', 'Vendor': '8086', 'Device': None,
@@ -34,7 +36,7 @@ octeontx2_sso = {'Class': '08', 'Vendor': '177d', 'Device': 'a0f9,a0fa',
 octeontx2_npa = {'Class': '08', 'Vendor': '177d', 'Device': 'a0fb,a0fc',
               'SVendor': None, 'SDevice': None}
 
-network_devices = [network_class, cavium_pkx, avp_vnic]
+network_devices = [network_class, cavium_pkx, avp_vnic, ifpga_class]
 crypto_devices = [encryption_class, intel_processor_class]
 eventdev_devices = [cavium_sso, cavium_tim, octeontx2_sso]
 mempool_devices = [cavium_fpa, octeontx2_npa]
