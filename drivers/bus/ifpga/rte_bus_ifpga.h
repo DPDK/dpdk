@@ -17,6 +17,7 @@ extern "C" {
 
 #include <rte_bus.h>
 #include <rte_pci.h>
+#include <rte_spinlock.h>
 
 /** Name of Intel FPGA Bus */
 #define IFPGA_BUS_NAME ifpga
@@ -60,6 +61,11 @@ struct rte_afu_pr_conf {
 
 #define AFU_PRI_STR_SIZE (PCI_PRI_STR_SIZE + 8)
 
+struct rte_afu_shared {
+	rte_spinlock_t lock;
+	void *data;
+};
+
 /**
  * A structure describing a AFU device.
  */
@@ -71,6 +77,7 @@ struct rte_afu_device {
 	uint32_t num_region;   /**< number of regions found */
 	struct rte_mem_resource mem_resource[PCI_MAX_RESOURCE];
 						/**< AFU Memory Resource */
+	struct rte_afu_shared shared;
 	struct rte_intr_handle intr_handle;     /**< Interrupt handle */
 	struct rte_afu_driver *driver;          /**< Associated driver */
 	char path[IFPGA_BUS_BITSTREAM_PATH_MAX_LEN];
