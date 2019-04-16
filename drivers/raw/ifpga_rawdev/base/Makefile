@@ -25,5 +25,7 @@ SRCS-y += ifpga_fme_pr.c
 SRCS-y += opae_spi.c
 SRCS-y += opae_spi_transaction.c
 SRCS-y += opae_intel_max10.c
+SRCS-y += opae_i2c.c
+SRCS-y += opae_at24_eeprom.c
 
 SRCS-y += $(wildcard $(SRCDIR)/base/$(OSDEP)/*.c)

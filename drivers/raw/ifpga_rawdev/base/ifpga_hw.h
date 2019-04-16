@@ -81,6 +81,7 @@ struct ifpga_fme_hw {
 	u32 capability;
 
 	void *max10_dev; /* MAX10 device */
+	void *i2c_master; /* I2C Master device */
 };
 
 enum ifpga_port_state {

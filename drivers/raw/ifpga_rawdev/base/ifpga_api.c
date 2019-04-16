@@ -196,6 +196,28 @@ struct opae_manager_ops ifpga_mgr_ops = {
 	.flash = ifpga_mgr_flash,
 };
 
+static int ifpga_mgr_read_mac_rom(struct opae_manager *mgr, int offset,
+		void *buf, int size)
+{
+	struct ifpga_fme_hw *fme = mgr->data;
+
+	return fme_mgr_read_mac_rom(fme, offset, buf, size);
+}
+
+static int ifpga_mgr_write_mac_rom(struct opae_manager *mgr, int offset,
+		void *buf, int size)
+{
+	struct ifpga_fme_hw *fme = mgr->data;
+
+	return fme_mgr_write_mac_rom(fme, offset, buf, size);
+}
+
+/* Network APIs in FME */
+struct opae_manager_networking_ops ifpga_mgr_network_ops = {
+	.read_mac_rom = ifpga_mgr_read_mac_rom,
+	.write_mac_rom = ifpga_mgr_write_mac_rom,
+};
+
 /* Adapter APIs */
 static int ifpga_adapter_enumerate(struct opae_adapter *adapter)
 {

@@ -201,6 +201,8 @@ static struct feature_driver fme_feature_drvs[] = {
 	&fme_spi_master_ops),},
 	{FEATURE_DRV(FME_FEATURE_ID_NIOS_SPI, FME_FEATURE_NIOS_SPI,
 	&fme_nios_spi_master_ops),},
+	{FEATURE_DRV(FME_FEATURE_ID_I2C_MASTER, FME_FEATURE_I2C_MASTER,
+	&fme_i2c_master_ops),},
 	{0, NULL, NULL}, /* end of arrary */
 };
 

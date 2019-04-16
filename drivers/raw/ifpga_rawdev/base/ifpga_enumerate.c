@@ -270,7 +270,7 @@ static int build_info_commit_dev(struct build_feature_devs_info *binfo)
 
 	} else if (binfo->current_type == FME_ID) {
 		mgr = opae_manager_alloc(hw->adapter->name, &ifpga_mgr_ops,
-				binfo->fiu);
+				&ifpga_mgr_network_ops, binfo->fiu);
 		if (!mgr)
 			return -ENOMEM;
 

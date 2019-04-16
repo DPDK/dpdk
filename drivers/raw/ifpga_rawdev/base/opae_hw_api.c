@@ -210,12 +210,14 @@ int opae_acc_get_uuid(struct opae_accelerator *acc,
  * opae_manager_alloc - alloc opae_manager data structure
  * @name: manager name.
  * @ops: ops of this manager.
+ * @network_ops: ops of network management.
  * @data: private data of this manager.
  *
  * Return: opae_manager on success, otherwise NULL.
  */
 struct opae_manager *
-opae_manager_alloc(const char *name, struct opae_manager_ops *ops, void *data)
+opae_manager_alloc(const char *name, struct opae_manager_ops *ops,
+		struct opae_manager_networking_ops *network_ops, void *data)
 {
 	struct opae_manager *mgr = opae_zmalloc(sizeof(*mgr));
 
@@ -224,6 +226,7 @@ opae_manager_alloc(const char *name, struct opae_manager_ops *ops, void *data)
 
 	mgr->name = name;
 	mgr->ops = ops;
+	mgr->network_ops = network_ops;
 	mgr->data = data;
 
 	opae_log("%s %p\n", __func__, mgr);
@@ -378,4 +381,48 @@ opae_adapter_get_acc(struct opae_adapter *adapter, int acc_id)
 			return acc;
 
 	return NULL;
+}
+
+/**
+ * opae_manager_read_mac_rom - read the content of the MAC ROM
+ * @mgr: opae_manager for MAC ROM
+ * @port: the port number of retimer
+ * @addr: buffer of the MAC address
+ *
+ * Return: return the bytes of read successfully
+ */
+int opae_manager_read_mac_rom(struct opae_manager *mgr, int port,
+		struct opae_ether_addr *addr)
+{
+	if (!mgr || !mgr->network_ops)
+		return -EINVAL;
+
+	if (mgr->network_ops->read_mac_rom)
+		return mgr->network_ops->read_mac_rom(mgr,
+				port * sizeof(struct opae_ether_addr),
+				addr, sizeof(struct opae_ether_addr));
+
+	return -ENOENT;
+}
+
+/**
+ * opae_manager_write_mac_rom - write data into MAC ROM
+ * @mgr: opae_manager for MAC ROM
+ * @port: the port number of the retimer
+ * @addr: data of the MAC address
+ *
+ * Return: return written bytes
+ */
+int opae_manager_write_mac_rom(struct opae_manager *mgr, int port,
+		struct opae_ether_addr *addr)
+{
+	if (!mgr || !mgr->network_ops)
+		return -EINVAL;
+
+	if (mgr->network_ops && mgr->network_ops->write_mac_rom)
+		return mgr->network_ops->write_mac_rom(mgr,
+				port * sizeof(struct opae_ether_addr),
+				addr, sizeof(struct opae_ether_addr));
+
+	return -ENOENT;
 }

@@ -18,6 +18,8 @@ sources = [
 	'opae_spi.c',
 	'opae_spi_transaction.c',
 	'opae_intel_max10.c',
+	'opae_i2c.c',
+	'opae_at24_eeprom.c',
 ]
 
 error_cflags = ['-Wno-sign-compare', '-Wno-unused-value',

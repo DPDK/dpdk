@@ -172,6 +172,7 @@ extern struct feature_ops fme_global_dperf_ops;
 extern struct feature_ops fme_hssi_eth_ops;
 extern struct feature_ops fme_emif_ops;
 extern struct feature_ops fme_spi_master_ops;
+extern struct feature_ops fme_i2c_master_ops;
 extern struct feature_ops fme_nios_spi_master_ops;
 
 int port_get_prop(struct ifpga_port_hw *port, struct feature_prop *prop);
@@ -197,4 +198,10 @@ extern struct feature_ops ifpga_rawdev_port_afu_ops;
 /* help functions for feature ops */
 int fpga_msix_set_block(struct feature *feature, unsigned int start,
 			unsigned int count, s32 *fds);
+
+/* FME network function ops*/
+int fme_mgr_read_mac_rom(struct ifpga_fme_hw *fme, int offset,
+		void *buf, int size);
+int fme_mgr_write_mac_rom(struct ifpga_fme_hw *fme, int offset,
+		void *buf, int size);
 #endif /* _IFPGA_FEATURE_DEV_H_ */

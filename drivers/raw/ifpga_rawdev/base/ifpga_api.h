@@ -12,6 +12,7 @@ extern struct opae_adapter_ops ifpga_adapter_ops;
 extern struct opae_manager_ops ifpga_mgr_ops;
 extern struct opae_bridge_ops ifpga_br_ops;
 extern struct opae_accelerator_ops ifpga_acc_ops;
+extern struct opae_manager_networking_ops ifpga_mgr_network_ops;
 
 /* common APIs */
 int ifpga_get_prop(struct ifpga_hw *hw, u32 fiu_id, u32 port_id,

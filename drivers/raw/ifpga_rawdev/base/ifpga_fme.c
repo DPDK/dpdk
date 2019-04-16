@@ -5,6 +5,8 @@
 #include "ifpga_feature_dev.h"
 #include "opae_spi.h"
 #include "opae_intel_max10.h"
+#include "opae_i2c.h"
+#include "opae_at24_eeprom.h"
 
 #define PWR_THRESHOLD_MAX       0x7F
 
@@ -960,3 +962,91 @@ struct feature_ops fme_nios_spi_master_ops = {
 	.init = fme_nios_spi_init,
 	.uinit = fme_nios_spi_uinit,
 };
+
+static int i2c_mac_rom_test(struct altera_i2c_dev *dev)
+{
+	char buf[20];
+	int ret;
+	char read_buf[20] = {0,};
+	const char *string = "1a2b3c4d5e";
+
+	opae_memcpy(buf, string, strlen(string));
+
+	ret = at24_eeprom_write(dev, AT24512_SLAVE_ADDR, 0,
+			(u8 *)buf, strlen(string));
+	if (ret < 0) {
+		dev_err(NULL, "write i2c error:%d\n", ret);
+		return ret;
+	}
+
+	ret = at24_eeprom_read(dev, AT24512_SLAVE_ADDR, 0,
+			(u8 *)read_buf, strlen(string));
+	if (ret < 0) {
+		dev_err(NULL, "read i2c error:%d\n", ret);
+		return ret;
+	}
+
+	if (memcmp(buf, read_buf, strlen(string))) {
+		dev_err(NULL, "%s test fail!\n", __func__);
+		return -EFAULT;
+	}
+
+	dev_info(NULL, "%s test successful\n", __func__);
+
+	return 0;
+}
+
+static int fme_i2c_init(struct feature *feature)
+{
+	struct feature_fme_i2c *i2c;
+	struct ifpga_fme_hw *fme = (struct ifpga_fme_hw *)feature->parent;
+
+	i2c = (struct feature_fme_i2c *)feature->addr;
+
+	dev_info(NULL, "FME I2C Master Init.\n");
+
+	fme->i2c_master = altera_i2c_probe(i2c);
+	if (!fme->i2c_master)
+		return -ENODEV;
+
+	/* MAC ROM self test */
+	i2c_mac_rom_test(fme->i2c_master);
+
+	return 0;
+}
+
+static void fme_i2c_uninit(struct feature *feature)
+{
+	struct ifpga_fme_hw *fme = (struct ifpga_fme_hw *)feature->parent;
+
+	altera_i2c_remove(fme->i2c_master);
+}
+
+struct feature_ops fme_i2c_master_ops = {
+	.init = fme_i2c_init,
+	.uinit = fme_i2c_uninit,
+};
+
+int fme_mgr_read_mac_rom(struct ifpga_fme_hw *fme, int offset,
+		void *buf, int size)
+{
+	struct altera_i2c_dev *dev;
+
+	dev = fme->i2c_master;
+	if (!dev)
+		return -ENODEV;
+
+	return at24_eeprom_read(dev, AT24512_SLAVE_ADDR, offset, buf, size);
+}
+
+int fme_mgr_write_mac_rom(struct ifpga_fme_hw *fme, int offset,
+		void *buf, int size)
+{
+	struct altera_i2c_dev *dev;
+
+	dev = fme->i2c_master;
+	if (!dev)
+		return -ENODEV;
+
+	return at24_eeprom_write(dev, AT24512_SLAVE_ADDR, offset, buf, size);
+}
