@@ -35,5 +35,6 @@ LIBABIVER := 1
 SRCS-$(CONFIG_RTE_LIBRTE_IPN3KE_PMD) += ipn3ke_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_IPN3KE_PMD) += ipn3ke_representor.c
 SRCS-$(CONFIG_RTE_LIBRTE_IPN3KE_PMD) += ipn3ke_tm.c
+SRCS-$(CONFIG_RTE_LIBRTE_IPN3KE_PMD) += ipn3ke_flow.c
 
 include $(RTE_SDK)/mk/rte.lib.mk

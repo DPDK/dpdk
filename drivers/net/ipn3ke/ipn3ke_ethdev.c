@@ -21,6 +21,7 @@
 #include <ifpga_logs.h>
 
 #include "ipn3ke_rawdev_api.h"
+#include "ipn3ke_flow.h"
 #include "ipn3ke_logs.h"
 #include "ipn3ke_ethdev.h"
 
@@ -266,6 +267,10 @@ ipn3ke_hw_init(struct rte_afu_device *afu_dev,
 		if (ret)
 			return ret;
 		hw->tm_hw_enable = 1;
+
+		ret = ipn3ke_flow_init(hw);
+		if (ret)
+			return ret;
 		hw->flow_hw_enable = 1;
 	}
 

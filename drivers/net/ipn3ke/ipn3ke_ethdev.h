@@ -291,6 +291,7 @@ struct ipn3ke_hw {
 	uint32_t acc_tm;
 	uint32_t acc_flow;
 
+	struct ipn3ke_flow_list flow_list;
 	uint32_t flow_max_entries;
 	uint32_t flow_num_entries;
 

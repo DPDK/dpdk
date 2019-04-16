@@ -23,6 +23,7 @@
 #include <ifpga_logs.h>
 
 #include "ipn3ke_rawdev_api.h"
+#include "ipn3ke_flow.h"
 #include "ipn3ke_logs.h"
 #include "ipn3ke_ethdev.h"
 

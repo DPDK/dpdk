@@ -21,6 +21,7 @@
 #include <ifpga_logs.h>
 
 #include "ipn3ke_rawdev_api.h"
+#include "ipn3ke_flow.h"
 #include "ipn3ke_logs.h"
 #include "ipn3ke_ethdev.h"
 
@@ -746,7 +747,7 @@ ipn3ke_afu_filter_ctrl(struct rte_eth_dev *ethdev,
 		case RTE_ETH_FILTER_GENERIC:
 			if (filter_op != RTE_ETH_FILTER_GET)
 				return -EINVAL;
-			*(const void **)arg = NULL;
+			*(const void **)arg = &ipn3ke_flow_ops;
 			break;
 		default:
 			IPN3KE_AFU_PMD_WARN("Filter type (%d) not supported",

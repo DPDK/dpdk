@@ -12,5 +12,6 @@ allow_experimental_apis = true
 
 sources += files('ipn3ke_ethdev.c',
 	'ipn3ke_representor.c',
-	'ipn3ke_tm.c')
+	'ipn3ke_tm.c',
+	'ipn3ke_flow.c')
 deps += ['bus_ifpga', 'sched']
