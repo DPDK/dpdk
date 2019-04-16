@@ -262,6 +262,9 @@ ipn3ke_hw_init(struct rte_afu_device *afu_dev,
 	hw->flow_hw_enable = 0;
 	if (afu_dev->id.uuid.uuid_low == IPN3KE_UUID_VBNG_LOW &&
 		afu_dev->id.uuid.uuid_high == IPN3KE_UUID_VBNG_HIGH) {
+		ret = ipn3ke_hw_tm_init(hw);
+		if (ret)
+			return ret;
 		hw->tm_hw_enable = 1;
 		hw->flow_hw_enable = 1;
 	}

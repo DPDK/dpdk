@@ -552,6 +552,13 @@ int
 ipn3ke_rpst_init(struct rte_eth_dev *ethdev, void *init_params);
 int
 ipn3ke_rpst_uninit(struct rte_eth_dev *ethdev);
+int
+ipn3ke_hw_tm_init(struct ipn3ke_hw *hw);
+void
+ipn3ke_tm_init(struct ipn3ke_rpst *rpst);
+int
+ipn3ke_tm_ops_get(struct rte_eth_dev *ethdev,
+		void *arg);
 
 
 /* IPN3KE_MASK is a macro used on 32 bit registers */
