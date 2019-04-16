@@ -29,3 +29,18 @@ the following file(s):
 
 	osdep_raw/osdep_generic.h
 	osdep_rte/osdep_generic.h
+
+
+New Features
+==================
+
+2019-03:
+Support Intel FPGA PAC N3000 card.
+Some features added in this version:
+1. Store private features in FME and Port list.
+2. Add eth group devices driver.
+3. Add altera SPI master driver and Intel MAX10 device driver.
+4. Add Altera I2C master driver and AT24 eeprom driver.
+5. Add Device Tree support to get the configuration from card.
+6. Instruding and exposing APIs to DPDK PMD driver to access networking
+functionality.
