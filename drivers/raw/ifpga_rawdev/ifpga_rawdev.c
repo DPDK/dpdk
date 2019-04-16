@@ -292,7 +292,8 @@ rte_fpga_do_pr(struct rte_rawdev *rawdev, int port_id,
 	if (ret) {
 		IFPGA_RAWDEV_PMD_ERR("stat on bitstream file failed: %s\n",
 				file_name);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto close_fd;
 	}
 	buffer_size = file_stat.st_size;
 	IFPGA_RAWDEV_PMD_INFO("bitstream file size: %zu\n", buffer_size);
