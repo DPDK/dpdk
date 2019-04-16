@@ -887,12 +887,11 @@ mlx5_nl_switch_info_cb(struct nlmsghdr *nh, void *arg)
 	struct mlx5_switch_info info = {
 		.master = 0,
 		.representor = 0,
-		.port_name_new = 0,
+		.name_type = MLX5_PHYS_PORT_NAME_TYPE_NOTSET,
 		.port_name = 0,
 		.switch_id = 0,
 	};
 	size_t off = NLMSG_LENGTH(sizeof(struct ifinfomsg));
-	bool port_name_set = false;
 	bool switch_id_set = false;
 	bool num_vf_set = false;
 
@@ -910,9 +909,7 @@ mlx5_nl_switch_info_cb(struct nlmsghdr *nh, void *arg)
 			num_vf_set = true;
 			break;
 		case IFLA_PHYS_PORT_NAME:
-			port_name_set =
-				mlx5_translate_port_name((char *)payload,
-							 &info);
+			mlx5_translate_port_name((char *)payload, &info);
 			break;
 		case IFLA_PHYS_SWITCH_ID:
 			info.switch_id = 0;
@@ -926,17 +923,8 @@ mlx5_nl_switch_info_cb(struct nlmsghdr *nh, void *arg)
 		off += RTA_ALIGN(ra->rta_len);
 	}
 	if (switch_id_set) {
-		if (info.port_name_new) {
-			/* New representors naming schema. */
-			if (port_name_set) {
-				info.master = (info.port_name == -1);
-				info.representor = (info.port_name != -1);
-			}
-		} else {
-			/* Legacy representors naming schema. */
-			info.master = (!port_name_set || num_vf_set);
-			info.representor = port_name_set && !num_vf_set;
-		}
+		/* We have some E-Switch configuration. */
+		mlx5_nl_check_switch_info(num_vf_set, &info);
 	}
 	assert(!(info.master && info.representor));
 	memcpy(arg, &info, sizeof(info));

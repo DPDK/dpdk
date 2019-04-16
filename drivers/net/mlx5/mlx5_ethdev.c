@@ -1395,12 +1395,11 @@ mlx5_sysfs_switch_info(unsigned int ifindex, struct mlx5_switch_info *info)
 	struct mlx5_switch_info data = {
 		.master = 0,
 		.representor = 0,
-		.port_name_new = 0,
+		.name_type = MLX5_PHYS_PORT_NAME_TYPE_NOTSET,
 		.port_name = 0,
 		.switch_id = 0,
 	};
 	DIR *dir;
-	bool port_name_set = false;
 	bool port_switch_id_set = false;
 	bool device_dir = false;
 	char c;
@@ -1423,8 +1422,7 @@ mlx5_sysfs_switch_info(unsigned int ifindex, struct mlx5_switch_info *info)
 		ret = fscanf(file, "%s", port_name);
 		fclose(file);
 		if (ret == 1)
-			port_name_set = mlx5_translate_port_name(port_name,
-								 &data);
+			mlx5_translate_port_name(port_name, &data);
 	}
 	file = fopen(phys_switch_id, "rb");
 	if (file == NULL) {
@@ -1440,8 +1438,10 @@ mlx5_sysfs_switch_info(unsigned int ifindex, struct mlx5_switch_info *info)
 		closedir(dir);
 		device_dir = true;
 	}
-	data.master = port_switch_id_set && (!port_name_set || device_dir);
-	data.representor = port_switch_id_set && port_name_set && !device_dir;
+	if (port_switch_id_set) {
+		/* We have some E-Switch configuration. */
+		mlx5_sysfs_check_switch_info(device_dir, &data);
+	}
 	*info = data;
 	assert(!(data.master && data.representor));
 	if (data.master && data.representor) {
@@ -1454,41 +1454,154 @@ mlx5_sysfs_switch_info(unsigned int ifindex, struct mlx5_switch_info *info)
 }
 
 /**
+ * Analyze gathered port parameters via Netlink to recognize master
+ * and representor devices for E-Switch configuration.
+ *
+ * @param[in] num_vf_set
+ *   flag of presence of number of VFs port attribute.
+ * @param[inout] switch_info
+ *   Port information, including port name as a number and port name
+ *   type if recognized
+ *
+ * @return
+ *   master and representor flags are set in switch_info according to
+ *   recognized parameters (if any).
+ */
+void
+mlx5_nl_check_switch_info(bool num_vf_set,
+			  struct mlx5_switch_info *switch_info)
+{
+	switch (switch_info->name_type) {
+	case MLX5_PHYS_PORT_NAME_TYPE_UNKNOWN:
+		/*
+		 * Name is not recognized, assume the master,
+		 * check the number of VFs key presence.
+		 */
+		switch_info->master = num_vf_set;
+		break;
+	case MLX5_PHYS_PORT_NAME_TYPE_NOTSET:
+		/*
+		 * Name is not set, this assumes the legacy naming
+		 * schema for master, just check if there is a
+		 * number of VFs key.
+		 */
+		switch_info->master = num_vf_set;
+		break;
+	case MLX5_PHYS_PORT_NAME_TYPE_UPLINK:
+		/* New uplink naming schema recognized. */
+		switch_info->master = 1;
+		break;
+	case MLX5_PHYS_PORT_NAME_TYPE_LEGACY:
+		/* Legacy representors naming schema. */
+		switch_info->representor = !num_vf_set;
+		break;
+	case MLX5_PHYS_PORT_NAME_TYPE_PFVF:
+		/* New representors naming schema. */
+		switch_info->representor = 1;
+		break;
+	}
+}
+
+/**
+ * Analyze gathered port parameters via sysfs to recognize master
+ * and representor devices for E-Switch configuration.
+ *
+ * @param[in] device_dir
+ *   flag of presence of "device" directory under port device key.
+ * @param[inout] switch_info
+ *   Port information, including port name as a number and port name
+ *   type if recognized
+ *
+ * @return
+ *   master and representor flags are set in switch_info according to
+ *   recognized parameters (if any).
+ */
+void
+mlx5_sysfs_check_switch_info(bool device_dir,
+			     struct mlx5_switch_info *switch_info)
+{
+	switch (switch_info->name_type) {
+	case MLX5_PHYS_PORT_NAME_TYPE_UNKNOWN:
+		/*
+		 * Name is not recognized, assume the master,
+		 * check the device directory presence.
+		 */
+		switch_info->master = device_dir;
+		break;
+	case MLX5_PHYS_PORT_NAME_TYPE_NOTSET:
+		/*
+		 * Name is not set, this assumes the legacy naming
+		 * schema for master, just check if there is
+		 * a device directory.
+		 */
+		switch_info->master = device_dir;
+		break;
+	case MLX5_PHYS_PORT_NAME_TYPE_UPLINK:
+		/* New uplink naming schema recognized. */
+		switch_info->master = 1;
+		break;
+	case MLX5_PHYS_PORT_NAME_TYPE_LEGACY:
+		/* Legacy representors naming schema. */
+		switch_info->representor = !device_dir;
+		break;
+	case MLX5_PHYS_PORT_NAME_TYPE_PFVF:
+		/* New representors naming schema. */
+		switch_info->representor = 1;
+		break;
+	}
+}
+
+/**
  * Extract port name, as a number, from sysfs or netlink information.
  *
  * @param[in] port_name_in
  *   String representing the port name.
  * @param[out] port_info_out
- *   Port information, including port name as a number.
+ *   Port information, including port name as a number and port name
+ *   type if recognized
  *
  * @return
- *   true on success, false otherwise.
+ *   port_name field set according to recognized name format.
  */
-bool
+void
 mlx5_translate_port_name(const char *port_name_in,
 			 struct mlx5_switch_info *port_info_out)
 {
 	char pf_c1, pf_c2, vf_c1, vf_c2;
 	char *end;
-	int32_t pf_num;
-	bool port_name_set = false;
+	int sc_items;
 
 	/*
 	 * Check for port-name as a string of the form pf0vf0
-	 * (support kernel ver >= 5.0)
+	 * (support kernel ver >= 5.0 or OFED ver >= 4.6).
 	 */
-	port_name_set =	(sscanf(port_name_in, "%c%c%d%c%c%d", &pf_c1, &pf_c2,
-				&pf_num, &vf_c1, &vf_c2,
-				&port_info_out->port_name) == 6);
-	if (port_name_set) {
-		port_info_out->port_name_new = 1;
-	} else {
-		/* Check for port-name as a number (support kernel ver < 5.0 */
-		errno = 0;
-		port_info_out->port_name = strtol(port_name_in, &end, 0);
-		if (!errno &&
-		    (size_t)(end - port_name_in) == strlen(port_name_in))
-			port_name_set = true;
+	sc_items = sscanf(port_name_in, "%c%c%d%c%c%d",
+			  &pf_c1, &pf_c2, &port_info_out->pf_num,
+			  &vf_c1, &vf_c2, &port_info_out->port_name);
+	if (sc_items == 6 &&
+	    pf_c1 == 'p' && pf_c2 == 'f' &&
+	    vf_c1 == 'v' && vf_c2 == 'f') {
+		port_info_out->name_type = MLX5_PHYS_PORT_NAME_TYPE_PFVF;
+		return;
 	}
-	return port_name_set;
+	/*
+	 * Check for port-name as a string of the form p0
+	 * (support kernel ver >= 5.0, or OFED ver >= 4.6).
+	 */
+	sc_items = sscanf(port_name_in, "%c%d",
+			  &pf_c1, &port_info_out->port_name);
+	if (sc_items == 2 && pf_c1 == 'p') {
+		port_info_out->name_type = MLX5_PHYS_PORT_NAME_TYPE_UPLINK;
+		return;
+	}
+	/* Check for port-name as a number (support kernel ver < 5.0 */
+	errno = 0;
+	port_info_out->port_name = strtol(port_name_in, &end, 0);
+	if (!errno &&
+	    (size_t)(end - port_name_in) == strlen(port_name_in)) {
+		port_info_out->name_type = MLX5_PHYS_PORT_NAME_TYPE_LEGACY;
+		return;
+	}
+	port_info_out->name_type = MLX5_PHYS_PORT_NAME_TYPE_UNKNOWN;
+	return;
 }
