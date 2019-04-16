@@ -362,8 +362,6 @@ setup_host_channel_info(struct channel_info **chan_info_dptr,
 	chan_info->status = CHANNEL_MGR_CHANNEL_DISCONNECTED;
 	chan_info->type = CHANNEL_TYPE_JSON;
 
-	fifo_path(chan_info->channel_path, sizeof(chan_info->channel_path));
-
 	if (open_host_channel(chan_info) < 0) {
 		RTE_LOG(ERR, CHANNEL_MANAGER, "Could not open host channel: "
 				"'%s'\n",
@@ -563,8 +561,8 @@ add_host_channel(void)
 				"channel '%s'\n", socket_path);
 		return 0;
 	}
-	strlcpy(chan_info->channel_path, socket_path,
-		sizeof(chan_info->channel_path));
+	rte_strlcpy(chan_info->channel_path, socket_path, UNIX_PATH_MAX);
+
 	if (setup_host_channel_info(&chan_info, 0) < 0) {
 		rte_free(chan_info);
 		return 0;
