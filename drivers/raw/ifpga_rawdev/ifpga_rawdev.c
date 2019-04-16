@@ -34,6 +34,7 @@
 #include "ifpga_common.h"
 #include "ifpga_logs.h"
 #include "ifpga_rawdev.h"
+#include "ipn3ke_rawdev_api.h"
 
 int ifpga_rawdev_logtype;
 
@@ -42,10 +43,12 @@ int ifpga_rawdev_logtype;
 #define PCIE_DEVICE_ID_PF_INT_5_X    0xBCBD
 #define PCIE_DEVICE_ID_PF_INT_6_X    0xBCC0
 #define PCIE_DEVICE_ID_PF_DSC_1_X    0x09C4
+#define PCIE_DEVICE_ID_PAC_N3000     0x0B30
 /* VF Device */
 #define PCIE_DEVICE_ID_VF_INT_5_X    0xBCBF
 #define PCIE_DEVICE_ID_VF_INT_6_X    0xBCC1
 #define PCIE_DEVICE_ID_VF_DSC_1_X    0x09C5
+#define PCIE_DEVICE_ID_VF_PAC_N3000  0x0B31
 #define RTE_MAX_RAW_DEVICE           10
 
 static const struct rte_pci_id pci_ifpga_map[] = {
@@ -55,6 +58,8 @@ static const struct rte_pci_id pci_ifpga_map[] = {
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCIE_DEVICE_ID_VF_INT_6_X) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCIE_DEVICE_ID_PF_DSC_1_X) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCIE_DEVICE_ID_VF_DSC_1_X) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCIE_DEVICE_ID_PAC_N3000),},
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCIE_DEVICE_ID_VF_PAC_N3000),},
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
@@ -103,6 +108,10 @@ ifpga_rawdev_info_get(struct rte_rawdev *dev,
 	struct opae_adapter *adapter;
 	struct opae_accelerator *acc;
 	struct rte_afu_device *afu_dev;
+	struct opae_manager *mgr = NULL;
+	struct opae_eth_group_region_info opae_lside_eth_info;
+	struct opae_eth_group_region_info opae_nside_eth_info;
+	int lside_bar_idx, nside_bar_idx;
 
 	IFPGA_RAWDEV_PMD_FUNC_TRACE();
 
@@ -127,6 +136,45 @@ ifpga_rawdev_info_get(struct rte_rawdev *dev,
 			IFPGA_RAWDEV_PMD_ERR("cannot get info\n");
 			return;
 		}
+	}
+
+	/* get opae_manager to rawdev */
+	mgr = opae_adapter_get_mgr(adapter);
+	if (mgr) {
+		/* get LineSide BAR Index */
+		if (opae_manager_get_eth_group_region_info(mgr, 0,
+			&opae_lside_eth_info)) {
+			return;
+		}
+		lside_bar_idx = opae_lside_eth_info.mem_idx;
+
+		/* get NICSide BAR Index */
+		if (opae_manager_get_eth_group_region_info(mgr, 1,
+			&opae_nside_eth_info)) {
+			return;
+		}
+		nside_bar_idx = opae_nside_eth_info.mem_idx;
+
+		if (lside_bar_idx >= PCI_MAX_RESOURCE ||
+			nside_bar_idx >= PCI_MAX_RESOURCE ||
+			lside_bar_idx == nside_bar_idx)
+			return;
+
+		/* fill LineSide BAR Index */
+		afu_dev->mem_resource[lside_bar_idx].phys_addr =
+			opae_lside_eth_info.phys_addr;
+		afu_dev->mem_resource[lside_bar_idx].len =
+			opae_lside_eth_info.len;
+		afu_dev->mem_resource[lside_bar_idx].addr =
+			opae_lside_eth_info.addr;
+
+		/* fill NICSide BAR Index */
+		afu_dev->mem_resource[nside_bar_idx].phys_addr =
+			opae_nside_eth_info.phys_addr;
+		afu_dev->mem_resource[nside_bar_idx].len =
+			opae_nside_eth_info.len;
+		afu_dev->mem_resource[nside_bar_idx].addr =
+			opae_nside_eth_info.addr;
 	}
 }
 
@@ -327,6 +375,197 @@ ifpga_rawdev_pr(struct rte_rawdev *dev,
 	return 0;
 }
 
+static int
+ifpga_rawdev_get_attr(struct rte_rawdev *dev,
+	const char *attr_name, uint64_t *attr_value)
+{
+	struct opae_adapter *adapter;
+	struct opae_manager *mgr;
+	struct opae_retimer_info opae_rtm_info;
+	struct opae_retimer_status opae_rtm_status;
+	struct opae_eth_group_info opae_eth_grp_info;
+	struct opae_eth_group_region_info opae_eth_grp_reg_info;
+	int eth_group_num = 0;
+	uint64_t port_link_bitmap = 0, port_link_bit;
+	uint32_t i, j, p, q;
+
+#define MAX_PORT_PER_RETIMER    4
+
+	IFPGA_RAWDEV_PMD_FUNC_TRACE();
+
+	if (!dev || !attr_name || !attr_value) {
+		IFPGA_RAWDEV_PMD_ERR("Invalid arguments for getting attributes");
+		return -1;
+	}
+
+	adapter = ifpga_rawdev_get_priv(dev);
+	if (!adapter) {
+		IFPGA_RAWDEV_PMD_ERR("Adapter of dev %s is NULL", dev->name);
+		return -1;
+	}
+
+	mgr = opae_adapter_get_mgr(adapter);
+	if (!mgr) {
+		IFPGA_RAWDEV_PMD_ERR("opae_manager of opae_adapter is NULL");
+		return -1;
+	}
+
+	/* currently, eth_group_num is always 2 */
+	eth_group_num = opae_manager_get_eth_group_nums(mgr);
+	if (eth_group_num < 0)
+		return -1;
+
+	if (!strcmp(attr_name, "LineSideBaseMAC")) {
+		/* Currently FPGA not implement, so just set all zeros*/
+		*attr_value = (uint64_t)0;
+		return 0;
+	}
+	if (!strcmp(attr_name, "LineSideMACType")) {
+		/* eth_group 0 on FPGA connect to LineSide */
+		if (opae_manager_get_eth_group_info(mgr, 0,
+			&opae_eth_grp_info))
+			return -1;
+		switch (opae_eth_grp_info.speed) {
+		case ETH_SPEED_10G:
+			*attr_value =
+			(uint64_t)(IFPGA_RAWDEV_RETIMER_MAC_TYPE_10GE_XFI);
+			break;
+		case ETH_SPEED_25G:
+			*attr_value =
+			(uint64_t)(IFPGA_RAWDEV_RETIMER_MAC_TYPE_25GE_25GAUI);
+			break;
+		default:
+			*attr_value =
+			(uint64_t)(IFPGA_RAWDEV_RETIMER_MAC_TYPE_UNKNOWN);
+			break;
+		}
+		return 0;
+	}
+	if (!strcmp(attr_name, "LineSideLinkSpeed")) {
+		if (opae_manager_get_retimer_status(mgr, &opae_rtm_status))
+			return -1;
+		switch (opae_rtm_status.speed) {
+		case MXD_1GB:
+			*attr_value =
+				(uint64_t)(IFPGA_RAWDEV_LINK_SPEED_UNKNOWN);
+			break;
+		case MXD_2_5GB:
+			*attr_value =
+				(uint64_t)(IFPGA_RAWDEV_LINK_SPEED_UNKNOWN);
+			break;
+		case MXD_5GB:
+			*attr_value =
+				(uint64_t)(IFPGA_RAWDEV_LINK_SPEED_UNKNOWN);
+			break;
+		case MXD_10GB:
+			*attr_value =
+				(uint64_t)(IFPGA_RAWDEV_LINK_SPEED_10GB);
+			break;
+		case MXD_25GB:
+			*attr_value =
+				(uint64_t)(IFPGA_RAWDEV_LINK_SPEED_25GB);
+			break;
+		case MXD_40GB:
+			*attr_value =
+				(uint64_t)(IFPGA_RAWDEV_LINK_SPEED_40GB);
+			break;
+		case MXD_100GB:
+			*attr_value =
+				(uint64_t)(IFPGA_RAWDEV_LINK_SPEED_UNKNOWN);
+			break;
+		case MXD_SPEED_UNKNOWN:
+			*attr_value =
+				(uint64_t)(IFPGA_RAWDEV_LINK_SPEED_UNKNOWN);
+			break;
+		default:
+			*attr_value =
+				(uint64_t)(IFPGA_RAWDEV_LINK_SPEED_UNKNOWN);
+			break;
+		}
+		return 0;
+	}
+	if (!strcmp(attr_name, "LineSideLinkRetimerNum")) {
+		if (opae_manager_get_retimer_info(mgr, &opae_rtm_info))
+			return -1;
+		*attr_value = (uint64_t)(opae_rtm_info.nums_retimer);
+		return 0;
+	}
+	if (!strcmp(attr_name, "LineSideLinkPortNum")) {
+		if (opae_manager_get_retimer_info(mgr, &opae_rtm_info))
+			return -1;
+		uint64_t tmp = opae_rtm_info.ports_per_retimer *
+			opae_rtm_info.nums_retimer;
+		*attr_value = tmp;
+		return 0;
+	}
+	if (!strcmp(attr_name, "LineSideLinkStatus")) {
+		if (opae_manager_get_retimer_info(mgr, &opae_rtm_info))
+			return -1;
+		if (opae_manager_get_retimer_status(mgr, &opae_rtm_status))
+			return -1;
+		(*attr_value) = 0;
+		q = 0;
+		port_link_bitmap = (uint64_t)(opae_rtm_status.line_link_bitmap);
+		for (i = 0; i < opae_rtm_info.nums_retimer; i++) {
+			p = i * MAX_PORT_PER_RETIMER;
+			for (j = 0; j < opae_rtm_info.ports_per_retimer; j++) {
+				port_link_bit = 0;
+				IFPGA_BIT_SET(port_link_bit, (p+j));
+				port_link_bit &= port_link_bitmap;
+				if (port_link_bit)
+					IFPGA_BIT_SET((*attr_value), q);
+				q++;
+			}
+		}
+		return 0;
+	}
+	if (!strcmp(attr_name, "LineSideBARIndex")) {
+		/* eth_group 0 on FPGA connect to LineSide */
+		if (opae_manager_get_eth_group_region_info(mgr, 0,
+			&opae_eth_grp_reg_info))
+			return -1;
+		*attr_value = (uint64_t)opae_eth_grp_reg_info.mem_idx;
+		return 0;
+	}
+	if (!strcmp(attr_name, "NICSideMACType")) {
+		/* eth_group 1 on FPGA connect to NicSide */
+		if (opae_manager_get_eth_group_info(mgr, 1,
+			&opae_eth_grp_info))
+			return -1;
+		*attr_value = (uint64_t)(opae_eth_grp_info.speed);
+		return 0;
+	}
+	if (!strcmp(attr_name, "NICSideLinkSpeed")) {
+		/* eth_group 1 on FPGA connect to NicSide */
+		if (opae_manager_get_eth_group_info(mgr, 1,
+			&opae_eth_grp_info))
+			return -1;
+		*attr_value = (uint64_t)(opae_eth_grp_info.speed);
+		return 0;
+	}
+	if (!strcmp(attr_name, "NICSideLinkPortNum")) {
+		if (opae_manager_get_retimer_info(mgr, &opae_rtm_info))
+			return -1;
+		uint64_t tmp = opae_rtm_info.nums_fvl *
+					opae_rtm_info.ports_per_fvl;
+		*attr_value = tmp;
+		return 0;
+	}
+	if (!strcmp(attr_name, "NICSideLinkStatus"))
+		return 0;
+	if (!strcmp(attr_name, "NICSideBARIndex")) {
+		/* eth_group 1 on FPGA connect to NicSide */
+		if (opae_manager_get_eth_group_region_info(mgr, 1,
+			&opae_eth_grp_reg_info))
+			return -1;
+		*attr_value = (uint64_t)opae_eth_grp_reg_info.mem_idx;
+		return 0;
+	}
+
+	IFPGA_RAWDEV_PMD_ERR("%s not support", attr_name);
+	return -1;
+}
+
 static const struct rte_rawdev_ops ifpga_rawdev_ops = {
 	.dev_info_get = ifpga_rawdev_info_get,
 	.dev_configure = ifpga_rawdev_configure,
@@ -339,7 +578,7 @@ static const struct rte_rawdev_ops ifpga_rawdev_ops = {
 	.queue_setup = NULL,
 	.queue_release = NULL,
 
-	.attr_get = NULL,
+	.attr_get = ifpga_rawdev_get_attr,
 	.attr_set = NULL,
 
 	.enqueue_bufs = NULL,
@@ -419,7 +658,7 @@ ifpga_rawdev_create(struct rte_pci_device *pci_dev,
 
 	rawdev->dev_ops = &ifpga_rawdev_ops;
 	rawdev->device = &pci_dev->device;
-	rawdev->driver_name = pci_dev->device.driver->name;
+	rawdev->driver_name = pci_dev->driver->driver.name;
 
 	/* must enumerate the adapter before use it */
 	ret = opae_adapter_enumerate(adapter);
@@ -491,7 +730,6 @@ static int
 ifpga_rawdev_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct rte_pci_device *pci_dev)
 {
-
 	IFPGA_RAWDEV_PMD_FUNC_TRACE();
 	return ifpga_rawdev_create(pci_dev, rte_socket_id());
 }
