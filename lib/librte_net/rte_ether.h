@@ -393,15 +393,8 @@ static inline int rte_vlan_insert(struct rte_mbuf **m)
 	struct rte_vlan_hdr *vh;
 
 	/* Can't insert header if mbuf is shared */
-	if (rte_mbuf_refcnt_read(*m) > 1) {
-		struct rte_mbuf *copy;
-
-		copy = rte_pktmbuf_clone(*m, (*m)->pool);
-		if (unlikely(copy == NULL))
-			return -ENOMEM;
-		rte_pktmbuf_free(*m);
-		*m = copy;
-	}
+	if (!RTE_MBUF_DIRECT(*m) || rte_mbuf_refcnt_read(*m) > 1)
+		return -EINVAL;
 
 	oh = rte_pktmbuf_mtod(*m, struct rte_ether_hdr *);
 	nh = (struct rte_ether_hdr *)
