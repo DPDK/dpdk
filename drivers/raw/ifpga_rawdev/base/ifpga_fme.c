@@ -732,3 +732,35 @@ struct feature_ops fme_power_mgmt_ops = {
 	.get_prop = fme_power_mgmt_get_prop,
 	.set_prop = fme_power_mgmt_set_prop,
 };
+
+static int fme_hssi_eth_init(struct feature *feature)
+{
+	UNUSED(feature);
+	return 0;
+}
+
+static void fme_hssi_eth_uinit(struct feature *feature)
+{
+	UNUSED(feature);
+}
+
+struct feature_ops fme_hssi_eth_ops = {
+	.init = fme_hssi_eth_init,
+	.uinit = fme_hssi_eth_uinit,
+};
+
+static int fme_emif_init(struct feature *feature)
+{
+	UNUSED(feature);
+	return 0;
+}
+
+static void fme_emif_uinit(struct feature *feature)
+{
+	UNUSED(feature);
+}
+
+struct feature_ops fme_emif_ops = {
+	.init = fme_emif_init,
+	.uinit = fme_emif_uinit,
+};

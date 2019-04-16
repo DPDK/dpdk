@@ -70,6 +70,9 @@ int fpga_get_afu_uuid(struct ifpga_port_hw *port, struct uuid *uuid)
 	struct feature_port_header *port_hdr;
 	u64 guidl, guidh;
 
+	if (!uuid)
+		return -EINVAL;
+
 	port_hdr = get_port_feature_ioaddr_by_index(port, PORT_FEATURE_ID_UAFU);
 
 	spinlock_lock(&port->lock);
@@ -177,77 +180,146 @@ int port_clear_error(struct ifpga_port_hw *port)
 	return port_err_clear(port, error.csr);
 }
 
-void fme_hw_uinit(struct ifpga_fme_hw *fme)
+static struct feature_driver fme_feature_drvs[] = {
+	{FEATURE_DRV(FME_FEATURE_ID_HEADER, FME_FEATURE_HEADER,
+			&fme_hdr_ops),},
+	{FEATURE_DRV(FME_FEATURE_ID_THERMAL_MGMT, FME_FEATURE_THERMAL_MGMT,
+			&fme_thermal_mgmt_ops),},
+	{FEATURE_DRV(FME_FEATURE_ID_POWER_MGMT, FME_FEATURE_POWER_MGMT,
+			&fme_power_mgmt_ops),},
+	{FEATURE_DRV(FME_FEATURE_ID_GLOBAL_ERR, FME_FEATURE_GLOBAL_ERR,
+			&fme_global_err_ops),},
+	{FEATURE_DRV(FME_FEATURE_ID_PR_MGMT, FME_FEATURE_PR_MGMT,
+			&fme_pr_mgmt_ops),},
+	{FEATURE_DRV(FME_FEATURE_ID_GLOBAL_DPERF, FME_FEATURE_GLOBAL_DPERF,
+			&fme_global_dperf_ops),},
+	{FEATURE_DRV(FME_FEATURE_ID_HSSI_ETH, FME_FEATURE_HSSI_ETH,
+	&fme_hssi_eth_ops),},
+	{FEATURE_DRV(FME_FEATURE_ID_EMIF_MGMT, FME_FEATURE_EMIF_MGMT,
+	&fme_emif_ops),},
+	{0, NULL, NULL}, /* end of arrary */
+};
+
+static struct feature_driver port_feature_drvs[] = {
+	{FEATURE_DRV(PORT_FEATURE_ID_HEADER, PORT_FEATURE_HEADER,
+			&ifpga_rawdev_port_hdr_ops)},
+	{FEATURE_DRV(PORT_FEATURE_ID_ERROR, PORT_FEATURE_ERR,
+			&ifpga_rawdev_port_error_ops)},
+	{FEATURE_DRV(PORT_FEATURE_ID_UINT, PORT_FEATURE_UINT,
+			&ifpga_rawdev_port_uint_ops)},
+	{FEATURE_DRV(PORT_FEATURE_ID_STP, PORT_FEATURE_STP,
+			&ifpga_rawdev_port_stp_ops)},
+	{FEATURE_DRV(PORT_FEATURE_ID_UAFU, PORT_FEATURE_UAFU,
+			&ifpga_rawdev_port_afu_ops)},
+	{0, NULL, NULL}, /* end of array */
+};
+
+const char *get_fme_feature_name(unsigned int id)
+{
+	struct feature_driver *drv = fme_feature_drvs;
+
+	while (drv->name) {
+		if (drv->id == id)
+			return drv->name;
+
+		drv++;
+	}
+
+	return NULL;
+}
+
+const char *get_port_feature_name(unsigned int id)
+{
+	struct feature_driver *drv = port_feature_drvs;
+
+	while (drv->name) {
+		if (drv->id == id)
+			return drv->name;
+
+		drv++;
+	}
+
+	return NULL;
+}
+
+static void feature_uinit(struct ifpga_feature_list *list)
 {
 	struct feature *feature;
-	int i;
 
-	if (fme->state != IFPGA_FME_IMPLEMENTED)
-		return;
-
-	for (i = 0; i < FME_FEATURE_ID_MAX; i++) {
-		feature = &fme->sub_feature[i];
-		if (feature->state == IFPGA_FEATURE_ATTACHED &&
-		    feature->ops && feature->ops->uinit)
+	TAILQ_FOREACH(feature, list, next) {
+		if (feature->state != IFPGA_FEATURE_ATTACHED)
+			continue;
+		if (feature->ops && feature->ops->uinit)
 			feature->ops->uinit(feature);
 	}
+}
+
+static int feature_init(struct feature_driver *drv,
+		struct ifpga_feature_list *list)
+{
+	struct feature *feature;
+	int ret;
+
+	while (drv->ops) {
+		TAILQ_FOREACH(feature, list, next) {
+			if (feature->state != IFPGA_FEATURE_ATTACHED)
+				continue;
+			if (feature->id == drv->id) {
+				feature->ops = drv->ops;
+				feature->name = drv->name;
+				if (feature->ops->init) {
+					ret = feature->ops->init(feature);
+					if (ret)
+						goto error;
+				}
+			}
+		}
+		drv++;
+	}
+
+	return 0;
+error:
+	feature_uinit(list);
+	return ret;
 }
 
 int fme_hw_init(struct ifpga_fme_hw *fme)
 {
-	struct feature *feature;
-	int i, ret;
+	int ret;
 
 	if (fme->state != IFPGA_FME_IMPLEMENTED)
-		return -EINVAL;
+		return -ENODEV;
 
-	for (i = 0; i < FME_FEATURE_ID_MAX; i++) {
-		feature = &fme->sub_feature[i];
-		if (feature->state == IFPGA_FEATURE_ATTACHED &&
-		    feature->ops && feature->ops->init) {
-			ret = feature->ops->init(feature);
-			if (ret) {
-				fme_hw_uinit(fme);
-				return ret;
-			}
-		}
-	}
+	ret = feature_init(fme_feature_drvs, &fme->feature_list);
+	if (ret)
+		return ret;
 
 	return 0;
+}
+
+void fme_hw_uinit(struct ifpga_fme_hw *fme)
+{
+	feature_uinit(&fme->feature_list);
 }
 
 void port_hw_uinit(struct ifpga_port_hw *port)
 {
-	struct feature *feature;
-	int i;
-
-	for (i = 0; i < PORT_FEATURE_ID_MAX; i++) {
-		feature = &port->sub_feature[i];
-		if (feature->state == IFPGA_FEATURE_ATTACHED &&
-		    feature->ops && feature->ops->uinit)
-			feature->ops->uinit(feature);
-	}
+	feature_uinit(&port->feature_list);
 }
 
 int port_hw_init(struct ifpga_port_hw *port)
 {
-	struct feature *feature;
-	int i, ret;
+	int ret;
 
 	if (port->state == IFPGA_PORT_UNUSED)
 		return 0;
 
-	for (i = 0; i < PORT_FEATURE_ID_MAX; i++) {
-		feature = &port->sub_feature[i];
-		if (feature->ops && feature->ops->init) {
-			ret = feature->ops->init(feature);
-			if (ret) {
-				port_hw_uinit(port);
-				return ret;
-			}
-		}
-	}
+	ret = feature_init(port_feature_drvs, &port->feature_list);
+	if (ret)
+		goto error;
 
 	return 0;
+error:
+	port_hw_uinit(port);
+	return ret;
 }
-

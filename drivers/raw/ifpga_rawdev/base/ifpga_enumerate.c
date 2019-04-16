@@ -28,121 +28,24 @@ struct build_feature_devs_info {
 	struct ifpga_hw *hw;
 };
 
-struct feature_info {
-	const char *name;
-	u32 resource_size;
-	int feature_index;
-	int revision_id;
-	unsigned int vec_start;
-	unsigned int vec_cnt;
+static int feature_revision(void __iomem *start)
+{
+	struct feature_header header;
 
-	struct feature_ops *ops;
-};
+	header.csr = readq(start);
 
-/* indexed by fme feature IDs which are defined in 'enum fme_feature_id'. */
-static struct feature_info fme_features[] = {
-	{
-		.name = FME_FEATURE_HEADER,
-		.resource_size = sizeof(struct feature_fme_header),
-		.feature_index = FME_FEATURE_ID_HEADER,
-		.revision_id = FME_HEADER_REVISION,
-		.ops = &fme_hdr_ops,
-	},
-	{
-		.name = FME_FEATURE_THERMAL_MGMT,
-		.resource_size = sizeof(struct feature_fme_thermal),
-		.feature_index = FME_FEATURE_ID_THERMAL_MGMT,
-		.revision_id = FME_THERMAL_MGMT_REVISION,
-		.ops = &fme_thermal_mgmt_ops,
-	},
-	{
-		.name = FME_FEATURE_POWER_MGMT,
-		.resource_size = sizeof(struct feature_fme_power),
-		.feature_index = FME_FEATURE_ID_POWER_MGMT,
-		.revision_id = FME_POWER_MGMT_REVISION,
-		.ops = &fme_power_mgmt_ops,
-	},
-	{
-		.name = FME_FEATURE_GLOBAL_IPERF,
-		.resource_size = sizeof(struct feature_fme_iperf),
-		.feature_index = FME_FEATURE_ID_GLOBAL_IPERF,
-		.revision_id = FME_GLOBAL_IPERF_REVISION,
-		.ops = &fme_global_iperf_ops,
-	},
-	{
-		.name = FME_FEATURE_GLOBAL_ERR,
-		.resource_size = sizeof(struct feature_fme_err),
-		.feature_index = FME_FEATURE_ID_GLOBAL_ERR,
-		.revision_id = FME_GLOBAL_ERR_REVISION,
-		.ops = &fme_global_err_ops,
-	},
-	{
-		.name = FME_FEATURE_PR_MGMT,
-		.resource_size = sizeof(struct feature_fme_pr),
-		.feature_index = FME_FEATURE_ID_PR_MGMT,
-		.revision_id = FME_PR_MGMT_REVISION,
-		.ops = &fme_pr_mgmt_ops,
-	},
-	{
-		.name = FME_FEATURE_HSSI_ETH,
-		.resource_size = sizeof(struct feature_fme_hssi),
-		.feature_index = FME_FEATURE_ID_HSSI_ETH,
-		.revision_id = FME_HSSI_ETH_REVISION
-	},
-	{
-		.name = FME_FEATURE_GLOBAL_DPERF,
-		.resource_size = sizeof(struct feature_fme_dperf),
-		.feature_index = FME_FEATURE_ID_GLOBAL_DPERF,
-		.revision_id = FME_GLOBAL_DPERF_REVISION,
-		.ops = &fme_global_dperf_ops,
-	}
-};
+	return header.revision;
+}
 
-static struct feature_info port_features[] = {
-	{
-		.name = PORT_FEATURE_HEADER,
-		.resource_size = sizeof(struct feature_port_header),
-		.feature_index = PORT_FEATURE_ID_HEADER,
-		.revision_id = PORT_HEADER_REVISION,
-		.ops = &ifpga_rawdev_port_hdr_ops,
-	},
-	{
-		.name = PORT_FEATURE_ERR,
-		.resource_size = sizeof(struct feature_port_error),
-		.feature_index = PORT_FEATURE_ID_ERROR,
-		.revision_id = PORT_ERR_REVISION,
-		.ops = &ifpga_rawdev_port_error_ops,
-	},
-	{
-		.name = PORT_FEATURE_UMSG,
-		.resource_size = sizeof(struct feature_port_umsg),
-		.feature_index = PORT_FEATURE_ID_UMSG,
-		.revision_id = PORT_UMSG_REVISION,
-	},
-	{
-		.name = PORT_FEATURE_UINT,
-		.resource_size = sizeof(struct feature_port_uint),
-		.feature_index = PORT_FEATURE_ID_UINT,
-		.revision_id = PORT_UINT_REVISION,
-		.ops = &ifpga_rawdev_port_uint_ops,
-	},
-	{
-		.name = PORT_FEATURE_STP,
-		.resource_size = PORT_FEATURE_STP_REGION_SIZE,
-		.feature_index = PORT_FEATURE_ID_STP,
-		.revision_id = PORT_STP_REVISION,
-		.ops = &ifpga_rawdev_port_stp_ops,
-	},
-	{
-		.name = PORT_FEATURE_UAFU,
-		/* UAFU feature size should be read from PORT_CAP.MMIOSIZE.
-		 * Will set uafu feature size while parse port device.
-		 */
-		.resource_size = 0,
-		.feature_index = PORT_FEATURE_ID_UAFU,
-		.revision_id = PORT_UAFU_REVISION
-	},
-};
+static u32 feature_size(void __iomem *start)
+{
+	struct feature_header header;
+
+	header.csr = readq(start);
+
+	/*the size of private feature is 4KB aligned*/
+	return header.next_header_offset ? header.next_header_offset:4096;
+}
 
 static u64 feature_id(void __iomem *start)
 {
@@ -152,7 +55,7 @@ static u64 feature_id(void __iomem *start)
 
 	switch (header.type) {
 	case FEATURE_TYPE_FIU:
-		return FEATURE_ID_HEADER;
+		return FEATURE_ID_FIU_HEADER;
 	case FEATURE_TYPE_PRIVATE:
 		return header.id;
 	case FEATURE_TYPE_AFU:
@@ -165,37 +68,36 @@ static u64 feature_id(void __iomem *start)
 
 static int
 build_info_add_sub_feature(struct build_feature_devs_info *binfo,
-			   struct feature_info *finfo, void __iomem *start)
+		void __iomem *start, u64 fid, unsigned int size,
+		unsigned int vec_start,
+		unsigned int vec_cnt)
 {
 	struct ifpga_hw *hw = binfo->hw;
 	struct feature *feature = NULL;
-	int feature_idx = finfo->feature_index;
-	unsigned int vec_start = finfo->vec_start;
-	unsigned int vec_cnt = finfo->vec_cnt;
 	struct feature_irq_ctx *ctx = NULL;
 	int port_id, ret = 0;
 	unsigned int i;
 
-	if (binfo->current_type == FME_ID) {
-		feature = &hw->fme.sub_feature[feature_idx];
-		feature->parent = &hw->fme;
-	} else if (binfo->current_type == PORT_ID) {
-		port_id = binfo->current_port_id;
-		feature = &hw->port[port_id].sub_feature[feature_idx];
-		feature->parent = &hw->port[port_id];
-	} else {
-		return -EFAULT;
-	}
+	fid = fid?fid:feature_id(start);
+	size = size?size:feature_size(start);
+
+	feature = opae_malloc(sizeof(struct feature));
+	if (!feature)
+		return -ENOMEM;
 
 	feature->state = IFPGA_FEATURE_ATTACHED;
 	feature->addr = start;
-	feature->id = feature_id(start);
-	feature->size = finfo->resource_size;
-	feature->name = finfo->name;
-	feature->revision = finfo->revision_id;
-	feature->ops = finfo->ops;
+	feature->id = fid;
+	feature->size = size;
+	feature->revision = feature_revision(start);
 	feature->phys_addr = binfo->phys_addr +
 				((u8 *)start - (u8 *)binfo->ioaddr);
+	feature->vec_start = vec_start;
+	feature->vec_cnt = vec_cnt;
+
+	dev_debug(binfo, "%s: id=0x%llx, phys_addr=0x%llx, size=%u\n",
+			__func__, (unsigned long long)feature->id,
+			(unsigned long long)feature->phys_addr, size);
 
 	if (vec_cnt) {
 		if (vec_start + vec_cnt <= vec_start)
@@ -215,22 +117,32 @@ build_info_add_sub_feature(struct build_feature_devs_info *binfo,
 	feature->ctx_num = vec_cnt;
 	feature->vfio_dev_fd = binfo->pci_data->vfio_dev_fd;
 
+	if (binfo->current_type == FME_ID) {
+		feature->parent = &hw->fme;
+		feature->type = FEATURE_FME_TYPE;
+		feature->name = get_fme_feature_name(fid);
+		TAILQ_INSERT_TAIL(&hw->fme.feature_list, feature, next);
+	} else if (binfo->current_type == PORT_ID) {
+		port_id = binfo->current_port_id;
+		feature->parent = &hw->port[port_id];
+		feature->type = FEATURE_PORT_TYPE;
+		feature->name = get_port_feature_name(fid);
+		TAILQ_INSERT_TAIL(&hw->port[port_id].feature_list,
+				feature, next);
+	} else {
+		return -EFAULT;
+	}
 	return ret;
 }
 
 static int
 create_feature_instance(struct build_feature_devs_info *binfo,
-			void __iomem *start, struct feature_info *finfo)
+			void __iomem *start, u64 fid,
+			unsigned int size, unsigned int vec_start,
+			unsigned int vec_cnt)
 {
-	struct feature_header *hdr = start;
-
-	if (finfo->revision_id != SKIP_REVISION_CHECK &&
-	    hdr->revision > finfo->revision_id) {
-		dev_err(binfo, "feature %s revision :default:%x, now at:%x, mis-match.\n",
-			finfo->name, finfo->revision_id, hdr->revision);
-	}
-
-	return build_info_add_sub_feature(binfo, finfo, start);
+	return build_info_add_sub_feature(binfo, start, fid, size, vec_start,
+			vec_cnt);
 }
 
 /*
@@ -249,31 +161,30 @@ static bool feature_is_UAFU(struct build_feature_devs_info *binfo)
 static int parse_feature_port_uafu(struct build_feature_devs_info *binfo,
 				   struct feature_header *hdr)
 {
-	enum port_feature_id id = PORT_FEATURE_ID_UAFU;
+	u64 id = PORT_FEATURE_ID_UAFU;
 	struct ifpga_afu_info *info;
 	void *start = (void *)hdr;
+	struct feature_port_header *port_hdr = binfo->ioaddr;
+	struct feature_port_capability capability;
 	int ret;
+	int size;
 
-	if (port_features[id].resource_size) {
-		ret = create_feature_instance(binfo, hdr, &port_features[id]);
-	} else {
-		dev_err(binfo, "the uafu feature header is mis-configured.\n");
-		ret = -EINVAL;
-	}
+	capability.csr = readq(&port_hdr->capability);
 
+	size = capability.mmio_size << 10;
+
+	ret = create_feature_instance(binfo, hdr, id, size, 0, 0);
 	if (ret)
 		return ret;
 
-	/* FIXME: need to figure out a better name */
-	info = malloc(sizeof(*info));
+	info = opae_malloc(sizeof(*info));
 	if (!info)
 		return -ENOMEM;
 
 	info->region[0].addr = start;
 	info->region[0].phys_addr = binfo->phys_addr +
 			(uint8_t *)start - (uint8_t *)binfo->ioaddr;
-	info->region[0].len = port_features[id].resource_size;
-	port_features[id].resource_size = 0;
+	info->region[0].len = size;
 	info->num_regions = 1;
 
 	binfo->acc_info = info;
@@ -320,6 +231,8 @@ static int build_info_commit_dev(struct build_feature_devs_info *binfo)
 	struct opae_manager *mgr;
 	struct opae_bridge *br;
 	struct opae_accelerator *acc;
+	struct ifpga_port_hw *port;
+	struct feature *feature;
 
 	if (!binfo->fiu)
 		return 0;
@@ -337,7 +250,11 @@ static int build_info_commit_dev(struct build_feature_devs_info *binfo)
 		br->id = binfo->current_port_id;
 
 		/* update irq info */
-		info->num_irqs = port_features[PORT_FEATURE_ID_UINT].vec_cnt;
+		port = &hw->port[binfo->current_port_id];
+		feature = get_feature_by_id(&port->feature_list,
+				PORT_FEATURE_ID_UINT);
+		if (feature)
+			info->num_irqs = feature->vec_cnt;
 
 		acc = opae_accelerator_alloc(hw->adapter->name,
 					     &ifpga_acc_ops, info);
@@ -353,7 +270,7 @@ static int build_info_commit_dev(struct build_feature_devs_info *binfo)
 
 	} else if (binfo->current_type == FME_ID) {
 		mgr = opae_manager_alloc(hw->adapter->name, &ifpga_mgr_ops,
-					 binfo->fiu);
+				binfo->fiu);
 		if (!mgr)
 			return -ENOMEM;
 
@@ -402,10 +319,10 @@ static int parse_feature_fme(struct build_feature_devs_info *binfo,
 	/* Update FME states */
 	fme->state = IFPGA_FME_IMPLEMENTED;
 	fme->parent = hw;
+	TAILQ_INIT(&fme->feature_list);
 	spinlock_init(&fme->lock);
 
-	return create_feature_instance(binfo, start,
-				       &fme_features[FME_FEATURE_ID_HEADER]);
+	return create_feature_instance(binfo, start, 0, 0, 0, 0);
 }
 
 static int parse_feature_port(struct build_feature_devs_info *binfo,
@@ -433,29 +350,19 @@ static int parse_feature_port(struct build_feature_devs_info *binfo,
 	port->parent = hw;
 	port->state = IFPGA_PORT_ATTACHED;
 	spinlock_init(&port->lock);
+	TAILQ_INIT(&port->feature_list);
 
-	return create_feature_instance(binfo, start,
-				      &port_features[PORT_FEATURE_ID_HEADER]);
+	return create_feature_instance(binfo, start, 0, 0, 0, 0);
 }
 
 static void enable_port_uafu(struct build_feature_devs_info *binfo,
 			     void __iomem *start)
 {
-	enum port_feature_id id = PORT_FEATURE_ID_UAFU;
-	struct feature_port_header *port_hdr;
-	struct feature_port_capability capability;
 	struct ifpga_port_hw *port = &binfo->hw->port[binfo->current_port_id];
 
-	port_hdr = (struct feature_port_header *)start;
-	capability.csr = readq(&port_hdr->capability);
-	port_features[id].resource_size = (capability.mmio_size << 10);
+	UNUSED(start);
 
-	/*
-	 * From spec, to Enable UAFU, we should reset related port,
-	 * or the whole mmio space in this UAFU will be invalid
-	 */
-	if (port_features[id].resource_size)
-		fpga_port_reset(port);
+	fpga_port_reset(port);
 }
 
 static int parse_feature_fiu(struct build_feature_devs_info *binfo,
@@ -505,44 +412,45 @@ static int parse_feature_fiu(struct build_feature_devs_info *binfo,
 }
 
 static void parse_feature_irqs(struct build_feature_devs_info *binfo,
-			       void __iomem *start, struct feature_info *finfo)
+		void __iomem *start, unsigned int *vec_start,
+		unsigned int *vec_cnt)
 {
-	finfo->vec_start = 0;
-	finfo->vec_cnt = 0;
-
 	UNUSED(binfo);
+	u64 id;
 
-	if (!strcmp(finfo->name, PORT_FEATURE_UINT)) {
+	id = feature_id(start);
+
+	if (id == PORT_FEATURE_ID_UINT) {
 		struct feature_port_uint *port_uint = start;
 		struct feature_port_uint_cap uint_cap;
 
 		uint_cap.csr = readq(&port_uint->capability);
 		if (uint_cap.intr_num) {
-			finfo->vec_start = uint_cap.first_vec_num;
-			finfo->vec_cnt = uint_cap.intr_num;
+			*vec_start = uint_cap.first_vec_num;
+			*vec_cnt = uint_cap.intr_num;
 		} else {
 			dev_debug(binfo, "UAFU doesn't support interrupt\n");
 		}
-	} else if (!strcmp(finfo->name, PORT_FEATURE_ERR)) {
+	} else if (id == PORT_FEATURE_ID_ERROR) {
 		struct feature_port_error *port_err = start;
 		struct feature_port_err_capability port_err_cap;
 
 		port_err_cap.csr = readq(&port_err->error_capability);
 		if (port_err_cap.support_intr) {
-			finfo->vec_start = port_err_cap.intr_vector_num;
-			finfo->vec_cnt = 1;
+			*vec_start = port_err_cap.intr_vector_num;
+			*vec_cnt = 1;
 		} else {
 			dev_debug(&binfo, "Port error doesn't support interrupt\n");
 		}
 
-	} else if (!strcmp(finfo->name, FME_FEATURE_GLOBAL_ERR)) {
+	} else if (id == FME_FEATURE_ID_GLOBAL_ERR) {
 		struct feature_fme_err *fme_err = start;
 		struct feature_fme_error_capability fme_err_cap;
 
 		fme_err_cap.csr = readq(&fme_err->fme_err_capability);
 		if (fme_err_cap.support_intr) {
-			finfo->vec_start = fme_err_cap.intr_vector_num;
-			finfo->vec_cnt = 1;
+			*vec_start = fme_err_cap.intr_vector_num;
+			*vec_cnt = 1;
 		} else {
 			dev_debug(&binfo, "FME error doesn't support interrupt\n");
 		}
@@ -552,43 +460,23 @@ static void parse_feature_irqs(struct build_feature_devs_info *binfo,
 static int parse_feature_fme_private(struct build_feature_devs_info *binfo,
 				     struct feature_header *hdr)
 {
-	struct feature_header header;
+	unsigned int vec_start = 0;
+	unsigned int vec_cnt = 0;
 
-	header.csr = readq(hdr);
+	parse_feature_irqs(binfo, hdr, &vec_start, &vec_cnt);
 
-	if (header.id >= ARRAY_SIZE(fme_features)) {
-		dev_err(binfo, "FME feature id %x is not supported yet.\n",
-			header.id);
-		return 0;
-	}
-
-	parse_feature_irqs(binfo, hdr, &fme_features[header.id]);
-
-	return create_feature_instance(binfo, hdr, &fme_features[header.id]);
+	return create_feature_instance(binfo, hdr, 0, 0, vec_start, vec_cnt);
 }
 
 static int parse_feature_port_private(struct build_feature_devs_info *binfo,
 				      struct feature_header *hdr)
 {
-	struct feature_header header;
-	enum port_feature_id id;
+	unsigned int vec_start = 0;
+	unsigned int vec_cnt = 0;
 
-	header.csr = readq(hdr);
-	/*
-	 * the region of port feature id is [0x10, 0x13], + 1 to reserve 0
-	 * which is dedicated for port-hdr.
-	 */
-	id = (header.id & 0x000f) + 1;
+	parse_feature_irqs(binfo, hdr, &vec_start, &vec_cnt);
 
-	if (id >= ARRAY_SIZE(port_features)) {
-		dev_err(binfo, "Port feature id %x is not supported yet.\n",
-			header.id);
-		return 0;
-	}
-
-	parse_feature_irqs(binfo, hdr, &port_features[id]);
-
-	return create_feature_instance(binfo, hdr, &port_features[id]);
+	return create_feature_instance(binfo, hdr, 0, 0, vec_start, vec_cnt);
 }
 
 static int parse_feature_private(struct build_feature_devs_info *binfo,
@@ -651,12 +539,18 @@ parse_feature_list(struct build_feature_devs_info *binfo, u8 __iomem *start)
 		}
 
 		hdr = (struct feature_header *)start;
+		header.csr = readq(hdr);
+
+		dev_debug(binfo, "%s: address=0x%p, val=0x%llx, header.id=0x%x, header.next_offset=0x%x, header.eol=0x%x, header.type=0x%x\n",
+			__func__, hdr, (unsigned long long)header.csr,
+			header.id, header.next_header_offset,
+			header.end_of_list, header.type);
+
 		ret = parse_feature(binfo, hdr);
 		if (ret)
 			return ret;
 
-		header.csr = readq(hdr);
-		if (!header.next_header_offset)
+		if (header.end_of_list || !header.next_header_offset)
 			break;
 	}
 
@@ -746,20 +640,20 @@ static void ifpga_print_device_feature_list(struct ifpga_hw *hw)
 	struct ifpga_fme_hw *fme = &hw->fme;
 	struct ifpga_port_hw *port;
 	struct feature *feature;
-	int i, j;
+	int i;
 
 	dev_info(hw, "found fme_device, is in PF: %s\n",
 		 is_ifpga_hw_pf(hw) ? "yes" : "no");
 
-	for (i = 0; i < FME_FEATURE_ID_MAX; i++) {
-		feature = &fme->sub_feature[i];
+	ifpga_for_each_fme_feature(fme, feature) {
 		if (feature->state != IFPGA_FEATURE_ATTACHED)
 			continue;
 
-		dev_info(hw, "%12s:	0x%p - 0x%p  - paddr: 0x%lx\n",
+		dev_info(hw, "%12s:	%p - %p  - paddr: 0x%lx\n",
 			 feature->name, feature->addr,
 			 feature->addr + feature->size - 1,
 			 (unsigned long)feature->phys_addr);
+
 	}
 
 	for (i = 0; i < MAX_FPGA_PORT_NUM; i++) {
@@ -770,18 +664,18 @@ static void ifpga_print_device_feature_list(struct ifpga_hw *hw)
 
 		dev_info(hw, "port device: %d\n", port->port_id);
 
-		for (j = 0; j < PORT_FEATURE_ID_MAX; j++) {
-			feature = &port->sub_feature[j];
+		ifpga_for_each_port_feature(port, feature) {
 			if (feature->state != IFPGA_FEATURE_ATTACHED)
 				continue;
 
-			dev_info(hw, "%12s:	0x%p - 0x%p  - paddr:0x%lx\n",
+			dev_info(hw, "%12s:	%p - %p  - paddr:0x%lx\n",
 				 feature->name,
 				 feature->addr,
 				 feature->addr +
 				 feature->size - 1,
 				 (unsigned long)feature->phys_addr);
 		}
+
 	}
 }
 
@@ -812,10 +706,13 @@ exit:
 int ifpga_bus_init(struct ifpga_hw *hw)
 {
 	int i;
+	struct ifpga_port_hw *port;
 
 	fme_hw_init(&hw->fme);
-	for (i = 0; i < MAX_FPGA_PORT_NUM; i++)
-		port_hw_init(&hw->port[i]);
+	for (i = 0; i < MAX_FPGA_PORT_NUM; i++) {
+		port = &hw->port[i];
+		port_hw_init(port);
+	}
 
 	return 0;
 }

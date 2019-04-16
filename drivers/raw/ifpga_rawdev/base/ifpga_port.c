@@ -386,3 +386,24 @@ struct feature_ops ifpga_rawdev_port_uint_ops = {
 	.init = port_uint_init,
 	.uinit = port_uint_uinit,
 };
+
+static int port_afu_init(struct feature *feature)
+{
+	UNUSED(feature);
+
+	dev_info(NULL, "PORT AFU Init.\n");
+
+	return 0;
+}
+
+static void port_afu_uinit(struct feature *feature)
+{
+	UNUSED(feature);
+
+	dev_info(NULL, "PORT AFU UInit.\n");
+}
+
+struct feature_ops ifpga_rawdev_port_afu_ops = {
+	.init = port_afu_init,
+	.uinit = port_afu_uinit,
+};
