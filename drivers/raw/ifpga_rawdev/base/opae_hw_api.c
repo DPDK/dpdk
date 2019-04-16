@@ -426,3 +426,152 @@ int opae_manager_write_mac_rom(struct opae_manager *mgr, int port,
 
 	return -ENOENT;
 }
+
+/**
+ * opae_manager_get_eth_group_nums - get eth group numbers
+ * @mgr: opae_manager for eth group
+ *
+ * Return: the numbers of eth group
+ */
+int opae_manager_get_eth_group_nums(struct opae_manager *mgr)
+{
+	if (!mgr || !mgr->network_ops)
+		return -EINVAL;
+
+	if (mgr->network_ops->get_retimer_info)
+		return mgr->network_ops->get_eth_group_nums(mgr);
+
+	return -ENOENT;
+}
+
+/**
+ * opae_manager_get_eth_group_info - get eth group info
+ * @mgr: opae_manager for eth group
+ * @group_id: id for eth group
+ * @info: info return to caller
+ *
+ * Return: 0 on success, otherwise error code
+ */
+int opae_manager_get_eth_group_info(struct opae_manager *mgr,
+	       u8 group_id, struct opae_eth_group_info *info)
+{
+	if (!mgr || !mgr->network_ops)
+		return -EINVAL;
+
+	if (mgr->network_ops->get_retimer_info)
+		return mgr->network_ops->get_eth_group_info(mgr,
+			group_id, info);
+
+	return -ENOENT;
+}
+
+/**
+ * opae_manager_get_eth_group_region_info
+ * @mgr: opae_manager for flash.
+ * @info: the memory region info for eth group
+ *
+ * Return: 0 on success, otherwise error code.
+ */
+int opae_manager_get_eth_group_region_info(struct opae_manager *mgr,
+		u8 group_id, struct opae_eth_group_region_info *info)
+{
+	if (!mgr)
+		return -EINVAL;
+
+	if (group_id >= MAX_ETH_GROUP_DEVICES)
+		return -EINVAL;
+
+	info->group_id = group_id;
+
+	if (mgr && mgr->ops && mgr->ops->get_eth_group_region_info)
+		return mgr->ops->get_eth_group_region_info(mgr, info);
+
+	return -ENOENT;
+}
+
+/**
+ * opae_manager_eth_group_read_reg - read ETH group register
+ * @mgr: opae_manager for ETH Group
+ * @group_id: ETH group id
+ * @type: eth type
+ * @index: port index in eth group device
+ * @addr: register address of ETH Group
+ * @data: read buffer
+ *
+ * Return: 0 on success, otherwise error code
+ */
+int opae_manager_eth_group_read_reg(struct opae_manager *mgr, u8 group_id,
+		u8 type, u8 index, u16 addr, u32 *data)
+{
+	if (!mgr || !mgr->network_ops)
+		return -EINVAL;
+
+	if (mgr->network_ops->eth_group_reg_read)
+		return mgr->network_ops->eth_group_reg_read(mgr, group_id,
+				type, index, addr, data);
+
+	return -ENOENT;
+}
+
+/**
+ * opae_manager_eth_group_write_reg - write ETH group register
+ * @mgr: opae_manager for ETH Group
+ * @group_id: ETH group id
+ * @type: eth type
+ * @index: port index in eth group device
+ * @addr: register address of ETH Group
+ * @data: data will write to register
+ *
+ * Return: 0 on success, otherwise error code
+ */
+int opae_manager_eth_group_write_reg(struct opae_manager *mgr, u8 group_id,
+		u8 type, u8 index, u16 addr, u32 data)
+{
+	if (!mgr || !mgr->network_ops)
+		return -EINVAL;
+
+	if (mgr->network_ops->eth_group_reg_write)
+		return mgr->network_ops->eth_group_reg_write(mgr, group_id,
+				type, index, addr, data);
+
+	return -ENOENT;
+}
+
+/**
+ * opae_manager_get_retimer_info - get retimer info like PKVL chip
+ * @mgr: opae_manager for retimer
+ * @info: info return to caller
+ *
+ * Return: 0 on success, otherwise error code
+ */
+int opae_manager_get_retimer_info(struct opae_manager *mgr,
+	       struct opae_retimer_info *info)
+{
+	if (!mgr || !mgr->network_ops)
+		return -EINVAL;
+
+	if (mgr->network_ops->get_retimer_info)
+		return mgr->network_ops->get_retimer_info(mgr, info);
+
+	return -ENOENT;
+}
+
+/**
+ * opae_manager_get_retimer_status - get retimer status
+ * @mgr: opae_manager of retimer
+ * @status: status of retimer
+ *
+ * Return: 0 on success, otherwise error code
+ */
+int opae_manager_get_retimer_status(struct opae_manager *mgr,
+		struct opae_retimer_status *status)
+{
+	if (!mgr || !mgr->network_ops)
+		return -EINVAL;
+
+	if (mgr->network_ops->get_retimer_status)
+		return mgr->network_ops->get_retimer_status(mgr,
+				status);
+
+	return -ENOENT;
+}

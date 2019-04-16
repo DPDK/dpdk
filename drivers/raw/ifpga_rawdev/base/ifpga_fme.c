@@ -769,6 +769,90 @@ struct feature_ops fme_emif_ops = {
 	.uinit = fme_emif_uinit,
 };
 
+static const char *board_type_to_string(u32 type)
+{
+	switch (type) {
+	case VC_8_10G:
+		return "VC_8x10G";
+	case VC_4_25G:
+		return "VC_4x25G";
+	case VC_2_1_25:
+		return "VC_2x1x25G";
+	case VC_4_25G_2_25G:
+		return "VC_4x25G+2x25G";
+	case VC_2_2_25G:
+		return "VC_2x2x25G";
+	}
+
+	return "unknown";
+}
+
+static int board_type_to_info(u32 type,
+		struct ifpga_fme_board_info *info)
+{
+	switch (type) {
+	case VC_8_10G:
+		info->nums_of_retimer = 2;
+		info->ports_per_retimer = 4;
+		info->nums_of_fvl = 2;
+		info->ports_per_fvl = 4;
+		break;
+	case VC_4_25G:
+		info->nums_of_retimer = 1;
+		info->ports_per_retimer = 4;
+		info->nums_of_fvl = 2;
+		info->ports_per_fvl = 2;
+		break;
+	case VC_2_1_25:
+		info->nums_of_retimer = 2;
+		info->ports_per_retimer = 1;
+		info->nums_of_fvl = 1;
+		info->ports_per_fvl = 2;
+		break;
+	case VC_2_2_25G:
+		info->nums_of_retimer = 2;
+		info->ports_per_retimer = 2;
+		info->nums_of_fvl = 2;
+		info->ports_per_fvl = 2;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int fme_get_board_interface(struct ifpga_fme_hw *fme)
+{
+	struct fme_bitstream_id id;
+
+	if (fme_hdr_get_bitstream_id(fme, &id.id))
+		return -EINVAL;
+
+	fme->board_info.type = id.interface;
+	fme->board_info.build_hash = id.hash;
+	fme->board_info.debug_version = id.debug;
+	fme->board_info.major_version = id.major;
+	fme->board_info.minor_version = id.minor;
+
+	dev_info(fme, "board type: %s major_version:%u minor_version:%u build_hash:%u\n",
+			board_type_to_string(fme->board_info.type),
+			fme->board_info.major_version,
+			fme->board_info.minor_version,
+			fme->board_info.build_hash);
+
+	if (board_type_to_info(fme->board_info.type, &fme->board_info))
+		return -EINVAL;
+
+	dev_info(fme, "get board info: nums_retimers %d ports_per_retimer %d nums_fvl %d ports_per_fvl %d\n",
+			fme->board_info.nums_of_retimer,
+			fme->board_info.ports_per_retimer,
+			fme->board_info.nums_of_fvl,
+			fme->board_info.ports_per_fvl);
+
+	return 0;
+}
+
 static int spi_self_checking(void)
 {
 	u32 val;
@@ -935,6 +1019,8 @@ static int fme_nios_spi_init(struct feature *feature)
 		goto release_dev;
 	}
 
+	fme_get_board_interface(fme);
+
 	fme->max10_dev = max10;
 
 	/* SPI self test */
@@ -1027,6 +1113,45 @@ struct feature_ops fme_i2c_master_ops = {
 	.uinit = fme_i2c_uninit,
 };
 
+static int fme_eth_group_init(struct feature *feature)
+{
+	struct ifpga_fme_hw *fme = (struct ifpga_fme_hw *)feature->parent;
+	struct eth_group_device *dev;
+
+	dev = (struct eth_group_device *)eth_group_probe(feature->addr);
+	if (!dev)
+		return -ENODEV;
+
+	fme->eth_dev[dev->group_id] = dev;
+
+	fme->eth_group_region[dev->group_id].addr =
+		feature->addr;
+	fme->eth_group_region[dev->group_id].phys_addr =
+		feature->phys_addr;
+	fme->eth_group_region[dev->group_id].len =
+		feature->size;
+
+	fme->nums_eth_dev++;
+
+	dev_info(NULL, "FME PHY Group %d Init.\n", dev->group_id);
+	dev_info(NULL, "found %d eth group, addr %p phys_addr 0x%llx len %u\n",
+			dev->group_id, feature->addr,
+			(unsigned long long)feature->phys_addr,
+			feature->size);
+
+	return 0;
+}
+
+static void fme_eth_group_uinit(struct feature *feature)
+{
+	UNUSED(feature);
+}
+
+struct feature_ops fme_eth_group_ops = {
+	.init = fme_eth_group_init,
+	.uinit = fme_eth_group_uinit,
+};
+
 int fme_mgr_read_mac_rom(struct ifpga_fme_hw *fme, int offset,
 		void *buf, int size)
 {
@@ -1049,4 +1174,129 @@ int fme_mgr_write_mac_rom(struct ifpga_fme_hw *fme, int offset,
 		return -ENODEV;
 
 	return at24_eeprom_write(dev, AT24512_SLAVE_ADDR, offset, buf, size);
+}
+
+static struct eth_group_device *get_eth_group_dev(struct ifpga_fme_hw *fme,
+		u8 group_id)
+{
+	struct eth_group_device *dev;
+
+	if (group_id > (MAX_ETH_GROUP_DEVICES - 1))
+		return NULL;
+
+	dev = (struct eth_group_device *)fme->eth_dev[group_id];
+	if (!dev)
+		return NULL;
+
+	if (dev->status != ETH_GROUP_DEV_ATTACHED)
+		return NULL;
+
+	return dev;
+}
+
+int fme_mgr_get_eth_group_nums(struct ifpga_fme_hw *fme)
+{
+	return fme->nums_eth_dev;
+}
+
+int fme_mgr_get_eth_group_info(struct ifpga_fme_hw *fme,
+		u8 group_id, struct opae_eth_group_info *info)
+{
+	struct eth_group_device *dev;
+
+	dev = get_eth_group_dev(fme, group_id);
+	if (!dev)
+		return -ENODEV;
+
+	info->group_id = group_id;
+	info->speed = dev->speed;
+	info->nums_of_mac = dev->mac_num;
+	info->nums_of_phy = dev->phy_num;
+
+	return 0;
+}
+
+int fme_mgr_eth_group_read_reg(struct ifpga_fme_hw *fme, u8 group_id,
+		u8 type, u8 index, u16 addr, u32 *data)
+{
+	struct eth_group_device *dev;
+
+	dev = get_eth_group_dev(fme, group_id);
+	if (!dev)
+		return -ENODEV;
+
+	return eth_group_read_reg(dev, type, index, addr, data);
+}
+
+int fme_mgr_eth_group_write_reg(struct ifpga_fme_hw *fme, u8 group_id,
+		u8 type, u8 index, u16 addr, u32 data)
+{
+	struct eth_group_device *dev;
+
+	dev = get_eth_group_dev(fme, group_id);
+	if (!dev)
+		return -ENODEV;
+
+	return eth_group_write_reg(dev, type, index, addr, data);
+}
+
+static int fme_get_eth_group_speed(struct ifpga_fme_hw *fme,
+		u8 group_id)
+{
+	struct eth_group_device *dev;
+
+	dev = get_eth_group_dev(fme, group_id);
+	if (!dev)
+		return -ENODEV;
+
+	return dev->speed;
+}
+
+int fme_mgr_get_retimer_info(struct ifpga_fme_hw *fme,
+		struct opae_retimer_info *info)
+{
+	struct intel_max10_device *dev;
+
+	dev = (struct intel_max10_device *)fme->max10_dev;
+	if (!dev)
+		return -ENODEV;
+
+	info->nums_retimer = fme->board_info.nums_of_retimer;
+	info->ports_per_retimer = fme->board_info.ports_per_retimer;
+	info->nums_fvl = fme->board_info.nums_of_fvl;
+	info->ports_per_fvl = fme->board_info.ports_per_fvl;
+
+	/* The speed of PKVL is identical the eth group's speed */
+	info->support_speed = fme_get_eth_group_speed(fme,
+			LINE_SIDE_GROUP_ID);
+
+	return 0;
+}
+
+int fme_mgr_get_retimer_status(struct ifpga_fme_hw *fme,
+		struct opae_retimer_status *status)
+{
+	struct intel_max10_device *dev;
+	unsigned int val;
+
+	dev = (struct intel_max10_device *)fme->max10_dev;
+	if (!dev)
+		return -ENODEV;
+
+	if (max10_reg_read(PKVL_LINK_STATUS, &val)) {
+		dev_err(dev, "%s: read pkvl status fail\n", __func__);
+		return -EINVAL;
+	}
+
+	/* The speed of PKVL is identical the eth group's speed */
+	status->speed = fme_get_eth_group_speed(fme,
+			LINE_SIDE_GROUP_ID);
+
+	status->line_link_bitmap = val;
+
+	dev_debug(dev, "get retimer status: speed:%d. line_link_bitmap:0x%x\n",
+			status->speed,
+			status->line_link_bitmap);
+
+	return 0;
 }

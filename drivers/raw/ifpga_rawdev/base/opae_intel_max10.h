@@ -8,9 +8,6 @@
 #include "opae_osdep.h"
 #include "opae_spi.h"
 
-#define INTEL_MAX10_MAX_MDIO_DEVS 2
-#define PKVL_NUMBER_PORTS  4
-
 /* max10 capability flags */
 #define MAX10_FLAGS_NO_I2C2		BIT(0)
 #define MAX10_FLAGS_NO_BMCIMG_FLASH	BIT(1)
@@ -23,6 +20,45 @@ struct intel_max10_device {
 	unsigned int flags; /*max10 hardware capability*/
 	struct altera_spi_device *spi_master;
 	struct spi_transaction_dev *spi_tran_dev;
+};
+
+/* retimer speed */
+enum retimer_speed {
+	MXD_1GB = 1,
+	MXD_2_5GB = 2,
+	MXD_5GB = 5,
+	MXD_10GB = 10,
+	MXD_25GB = 25,
+	MXD_40GB = 40,
+	MXD_100GB = 100,
+	MXD_SPEED_UNKNOWN,
+};
+
+/* retimer info */
+struct opae_retimer_info {
+	unsigned int nums_retimer;
+	unsigned int ports_per_retimer;
+	unsigned int nums_fvl;
+	unsigned int ports_per_fvl;
+	enum retimer_speed support_speed;
+};
+
+/* retimer status*/
+struct opae_retimer_status {
+	enum retimer_speed speed;
+	/*
+	 * retimer line link status bitmap:
+	 * bit 0: Retimer0 Port0 link status
+	 * bit 1: Retimer0 Port1 link status
+	 * bit 2: Retimer0 Port2 link status
+	 * bit 3: Retimer0 Port3 link status
+	 *
+	 * bit 4: Retimer1 Port0 link status
+	 * bit 5: Retimer1 Port1 link status
+	 * bit 6: Retimer1 Port2 link status
+	 * bit 7: Retimer1 Port3 link status
+	 */
+	unsigned int line_link_bitmap;
 };
 
 #define FLASH_BASE 0x10000000

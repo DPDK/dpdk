@@ -27,5 +27,6 @@ SRCS-y += opae_spi_transaction.c
 SRCS-y += opae_intel_max10.c
 SRCS-y += opae_i2c.c
 SRCS-y += opae_at24_eeprom.c
+SRCS-y += opae_eth_group.c
 
 SRCS-y += $(wildcard $(SRCDIR)/base/$(OSDEP)/*.c)

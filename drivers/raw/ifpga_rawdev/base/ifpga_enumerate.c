@@ -232,6 +232,7 @@ static int build_info_commit_dev(struct build_feature_devs_info *binfo)
 	struct opae_bridge *br;
 	struct opae_accelerator *acc;
 	struct ifpga_port_hw *port;
+	struct ifpga_fme_hw *fme;
 	struct feature *feature;
 
 	if (!binfo->fiu)
@@ -264,7 +265,12 @@ static int build_info_commit_dev(struct build_feature_devs_info *binfo)
 		}
 
 		acc->br = br;
+		if (hw->adapter->mgr)
+			acc->mgr = hw->adapter->mgr;
 		acc->index = br->id;
+
+		fme = &hw->fme;
+		fme->nums_acc_region = info->num_regions;
 
 		opae_adapter_add_acc(hw->adapter, acc);
 

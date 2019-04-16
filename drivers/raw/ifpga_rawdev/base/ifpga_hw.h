@@ -7,6 +7,7 @@
 
 #include "ifpga_defines.h"
 #include "opae_ifpga_hw_api.h"
+#include "opae_eth_group.h"
 
 /** List of private feateues */
 TAILQ_HEAD(ifpga_feature_list, feature);
@@ -82,6 +83,12 @@ struct ifpga_fme_hw {
 
 	void *max10_dev; /* MAX10 device */
 	void *i2c_master; /* I2C Master device */
+	void *eth_dev[MAX_ETH_GROUP_DEVICES];
+	struct opae_reg_region
+		eth_group_region[MAX_ETH_GROUP_DEVICES];
+	struct ifpga_fme_board_info board_info;
+	int nums_eth_dev;
+	unsigned int nums_acc_region;
 };
 
 enum ifpga_port_state {

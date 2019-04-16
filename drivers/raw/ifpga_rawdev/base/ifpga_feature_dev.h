@@ -173,6 +173,7 @@ extern struct feature_ops fme_hssi_eth_ops;
 extern struct feature_ops fme_emif_ops;
 extern struct feature_ops fme_spi_master_ops;
 extern struct feature_ops fme_i2c_master_ops;
+extern struct feature_ops fme_eth_group_ops;
 extern struct feature_ops fme_nios_spi_master_ops;
 
 int port_get_prop(struct ifpga_port_hw *port, struct feature_prop *prop);
@@ -204,4 +205,15 @@ int fme_mgr_read_mac_rom(struct ifpga_fme_hw *fme, int offset,
 		void *buf, int size);
 int fme_mgr_write_mac_rom(struct ifpga_fme_hw *fme, int offset,
 		void *buf, int size);
+int fme_mgr_get_eth_group_nums(struct ifpga_fme_hw *fme);
+int fme_mgr_get_eth_group_info(struct ifpga_fme_hw *fme,
+		u8 group_id, struct opae_eth_group_info *info);
+int fme_mgr_eth_group_read_reg(struct ifpga_fme_hw *fme, u8 group_id,
+		u8 type, u8 index, u16 addr, u32 *data);
+int fme_mgr_eth_group_write_reg(struct ifpga_fme_hw *fme, u8 group_id,
+		u8 type, u8 index, u16 addr, u32 data);
+int fme_mgr_get_retimer_info(struct ifpga_fme_hw *fme,
+		struct opae_retimer_info *info);
+int fme_mgr_get_retimer_status(struct ifpga_fme_hw *fme,
+		struct opae_retimer_status *status);
 #endif /* _IFPGA_FEATURE_DEV_H_ */

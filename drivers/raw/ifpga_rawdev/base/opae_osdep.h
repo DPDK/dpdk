@@ -53,12 +53,7 @@ struct uuid {
 #define dev_err(x, args...) dev_printf(ERR, args)
 #define dev_info(x, args...) dev_printf(INFO, args)
 #define dev_warn(x, args...) dev_printf(WARNING, args)
-
-#ifdef OPAE_DEBUG
 #define dev_debug(x, args...) dev_printf(DEBUG, args)
-#else
-#define dev_debug(x, args...) do { } while (0)
-#endif
 
 #define pr_err(y, args...) dev_err(0, y, ##args)
 #define pr_warn(y, args...) dev_warn(0, y, ##args)
@@ -81,4 +76,15 @@ struct uuid {
 #define time_before(a, b)	time_after(b, a)
 #define opae_memset(a, b, c)    memset((a), (b), (c))
 
+#define opae_readq_poll_timeout(addr, val, cond, invl, timeout)\
+({									     \
+	int wait = 0;							     \
+	for (; wait <= timeout; wait += invl) {			     \
+		(val) = opae_readq(addr);				     \
+		if (cond)                  \
+			break;						     \
+		udelay(invl);						     \
+	}								     \
+	(cond) ? 0 : -ETIMEDOUT;	  \
+})
 #endif

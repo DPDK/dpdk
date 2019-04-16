@@ -20,6 +20,7 @@ sources = [
 	'opae_intel_max10.c',
 	'opae_i2c.c',
 	'opae_at24_eeprom.c',
+	'opae_eth_group.c',
 ]
 
 error_cflags = ['-Wno-sign-compare', '-Wno-unused-value',

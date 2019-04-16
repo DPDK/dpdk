@@ -22,6 +22,7 @@
 #define FME_FEATURE_MAX10_SPI       "fme_max10_spi"
 #define FME_FEATURE_NIOS_SPI        "fme_nios_spi"
 #define FME_FEATURE_I2C_MASTER      "fme_i2c_master"
+#define FME_FEATURE_ETH_GROUP       "fme_eth_group"
 
 #define PORT_FEATURE_HEADER         "port_hdr"
 #define PORT_FEATURE_UAFU           "port_uafu"
@@ -88,6 +89,7 @@ enum fpga_id_type {
 #define FME_FEATURE_ID_MAX10_SPI  0xe
 #define FME_FEATURE_ID_NIOS_SPI 0xd
 #define FME_FEATURE_ID_I2C_MASTER  0xf
+#define FME_FEATURE_ID_ETH_GROUP 0x10
 
 #define PORT_FEATURE_ID_HEADER FEATURE_ID_FIU_HEADER
 #define PORT_FEATURE_ID_ERROR 0x10
@@ -1660,6 +1662,43 @@ struct bts_header {
 #define is_valid_bts(bts_hdr)				\
 	(((bts_hdr)->guid_h == GBS_GUID_H) &&		\
 	((bts_hdr)->guid_l == GBS_GUID_L))
+
+/* bitstream id definition */
+struct fme_bitstream_id {
+	union {
+		u64 id;
+		struct {
+			u64 hash:32;
+			u64 interface:4;
+			u64 reserved:12;
+			u64 debug:4;
+			u64 patch:4;
+			u64 minor:4;
+			u64 major:4;
+		};
+	};
+};
+
+enum board_interface {
+	VC_8_10G = 0,
+	VC_4_25G = 1,
+	VC_2_1_25 = 2,
+	VC_4_25G_2_25G = 3,
+	VC_2_2_25G = 4,
+};
+
+struct ifpga_fme_board_info {
+	enum board_interface type;
+	u32 build_hash;
+	u32 debug_version;
+	u32 patch_version;
+	u32 minor_version;
+	u32 major_version;
+	u32 nums_of_retimer;
+	u32 ports_per_retimer;
+	u32 nums_of_fvl;
+	u32 ports_per_fvl;
+};
 
 #pragma pack(pop)
 #endif /* _BASE_IFPGA_DEFINES_H_ */
