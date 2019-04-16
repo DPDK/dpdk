@@ -339,7 +339,7 @@ static int ipn3ke_vswitch_probe(struct rte_afu_device *afu_dev)
 
 		retval = rte_eth_dev_create(&afu_dev->device, name,
 			sizeof(struct ipn3ke_rpst), NULL, NULL,
-			NULL, &rpst);
+			ipn3ke_rpst_init, &rpst);
 
 		if (retval)
 			IPN3KE_AFU_PMD_ERR("failed to create ipn3ke representor %s.",
@@ -368,7 +368,7 @@ static int ipn3ke_vswitch_remove(struct rte_afu_device *afu_dev)
 		if (!ethdev)
 			return -ENODEV;
 
-		rte_eth_dev_destroy(ethdev, NULL);
+		rte_eth_dev_destroy(ethdev, ipn3ke_rpst_uninit);
 	}
 
 	ret = rte_eth_switch_domain_free(hw->switch_domain_id);

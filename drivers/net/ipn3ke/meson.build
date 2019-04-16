@@ -10,5 +10,6 @@
 #
 allow_experimental_apis = true
 
-sources += files('ipn3ke_ethdev.c')
+sources += files('ipn3ke_ethdev.c',
+	'ipn3ke_representor.c')
 deps += ['bus_ifpga', 'sched']

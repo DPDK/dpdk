@@ -527,6 +527,31 @@ static inline void _ipn3ke_indrct_write(struct ipn3ke_hw *hw,
 #define IPN3KE_CLF_MHL_RES_MASK    0xFFFFFFFF
 #define IPN3KE_CLF_MHL_RES         (IPN3KE_CLASSIFY_OFFSET + 0x50000 + 0x2000)
 
+int
+ipn3ke_rpst_dev_set_link_up(struct rte_eth_dev *dev);
+int
+ipn3ke_rpst_dev_set_link_down(struct rte_eth_dev *dev);
+int
+ipn3ke_rpst_link_update(struct rte_eth_dev *ethdev,
+	__rte_unused int wait_to_complete);
+void
+ipn3ke_rpst_promiscuous_enable(struct rte_eth_dev *ethdev);
+void
+ipn3ke_rpst_promiscuous_disable(struct rte_eth_dev *ethdev);
+void
+ipn3ke_rpst_allmulticast_enable(struct rte_eth_dev *ethdev);
+void
+ipn3ke_rpst_allmulticast_disable(struct rte_eth_dev *ethdev);
+int
+ipn3ke_rpst_mac_addr_set(struct rte_eth_dev *ethdev,
+		struct ether_addr *mac_addr);
+int
+ipn3ke_rpst_mtu_set(struct rte_eth_dev *ethdev, uint16_t mtu);
+
+int
+ipn3ke_rpst_init(struct rte_eth_dev *ethdev, void *init_params);
+int
+ipn3ke_rpst_uninit(struct rte_eth_dev *ethdev);
 
 
 /* IPN3KE_MASK is a macro used on 32 bit registers */
