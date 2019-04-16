@@ -240,7 +240,7 @@ static void fme_error_enable(struct ifpga_fme_hw *fme)
 	writeq(0UL, &fme_err->ras_catfat_mask);
 }
 
-static int fme_global_error_init(struct feature *feature)
+static int fme_global_error_init(struct ifpga_feature *feature)
 {
 	struct ifpga_fme_hw *fme = feature->parent;
 
@@ -252,12 +252,12 @@ static int fme_global_error_init(struct feature *feature)
 	return 0;
 }
 
-static void fme_global_error_uinit(struct feature *feature)
+static void fme_global_error_uinit(struct ifpga_feature *feature)
 {
 	UNUSED(feature);
 }
 
-static int fme_err_fme_err_get_prop(struct feature *feature,
+static int fme_err_fme_err_get_prop(struct ifpga_feature *feature,
 				    struct feature_prop *prop)
 {
 	struct ifpga_fme_hw *fme = feature->parent;
@@ -275,7 +275,7 @@ static int fme_err_fme_err_get_prop(struct feature *feature,
 	return -ENOENT;
 }
 
-static int fme_err_root_get_prop(struct feature *feature,
+static int fme_err_root_get_prop(struct ifpga_feature *feature,
 				 struct feature_prop *prop)
 {
 	struct ifpga_fme_hw *fme = feature->parent;
@@ -301,7 +301,7 @@ static int fme_err_root_get_prop(struct feature *feature,
 	return -ENOENT;
 }
 
-static int fme_global_error_get_prop(struct feature *feature,
+static int fme_global_error_get_prop(struct ifpga_feature *feature,
 				     struct feature_prop *prop)
 {
 	u8 top = GET_FIELD(PROP_TOP, prop->prop_id);
@@ -321,7 +321,7 @@ static int fme_global_error_get_prop(struct feature *feature,
 	return -ENOENT;
 }
 
-static int fme_err_fme_err_set_prop(struct feature *feature,
+static int fme_err_fme_err_set_prop(struct ifpga_feature *feature,
 				    struct feature_prop *prop)
 {
 	struct ifpga_fme_hw *fme = feature->parent;
@@ -335,7 +335,7 @@ static int fme_err_fme_err_set_prop(struct feature *feature,
 	return -ENOENT;
 }
 
-static int fme_err_root_set_prop(struct feature *feature,
+static int fme_err_root_set_prop(struct ifpga_feature *feature,
 				 struct feature_prop *prop)
 {
 	struct ifpga_fme_hw *fme = feature->parent;
@@ -353,7 +353,7 @@ static int fme_err_root_set_prop(struct feature *feature,
 	return -ENOENT;
 }
 
-static int fme_global_error_set_prop(struct feature *feature,
+static int fme_global_error_set_prop(struct ifpga_feature *feature,
 				     struct feature_prop *prop)
 {
 	u8 top = GET_FIELD(PROP_TOP, prop->prop_id);
@@ -373,7 +373,7 @@ static int fme_global_error_set_prop(struct feature *feature,
 	return -ENOENT;
 }
 
-struct feature_ops fme_global_err_ops = {
+struct ifpga_feature_ops fme_global_err_ops = {
 	.init = fme_global_error_init,
 	.uinit = fme_global_error_uinit,
 	.get_prop = fme_global_error_get_prop,

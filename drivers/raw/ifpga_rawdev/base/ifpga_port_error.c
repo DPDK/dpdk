@@ -84,7 +84,7 @@ static int port_err_set_clear(struct ifpga_port_hw *port, u64 val)
 	return ret;
 }
 
-static int port_error_init(struct feature *feature)
+static int port_error_init(struct ifpga_feature *feature)
 {
 	struct ifpga_port_hw *port = feature->parent;
 
@@ -99,12 +99,12 @@ static int port_error_init(struct feature *feature)
 	return 0;
 }
 
-static void port_error_uinit(struct feature *feature)
+static void port_error_uinit(struct ifpga_feature *feature)
 {
 	UNUSED(feature);
 }
 
-static int port_error_get_prop(struct feature *feature,
+static int port_error_get_prop(struct ifpga_feature *feature,
 			       struct feature_prop *prop)
 {
 	struct ifpga_port_hw *port = feature->parent;
@@ -125,7 +125,7 @@ static int port_error_get_prop(struct feature *feature,
 	return -ENOENT;
 }
 
-static int port_error_set_prop(struct feature *feature,
+static int port_error_set_prop(struct ifpga_feature *feature,
 			       struct feature_prop *prop)
 {
 	struct ifpga_port_hw *port = feature->parent;
@@ -136,7 +136,7 @@ static int port_error_set_prop(struct feature *feature,
 	return -ENOENT;
 }
 
-struct feature_ops ifpga_rawdev_port_error_ops = {
+struct ifpga_feature_ops ifpga_rawdev_port_error_ops = {
 	.init = port_error_init,
 	.uinit = port_error_uinit,
 	.get_prop = port_error_get_prop,

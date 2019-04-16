@@ -315,7 +315,7 @@ int do_pr(struct ifpga_hw *hw, u32 port_id, void *buffer, u32 size, u64 *status)
 	return fme_pr(hw, port_id, buf, size, status);
 }
 
-static int fme_pr_mgmt_init(struct feature *feature)
+static int fme_pr_mgmt_init(struct ifpga_feature *feature)
 {
 	struct feature_fme_pr *fme_pr;
 	struct feature_header fme_pr_header;
@@ -339,14 +339,14 @@ static int fme_pr_mgmt_init(struct feature *feature)
 	return 0;
 }
 
-static void fme_pr_mgmt_uinit(struct feature *feature)
+static void fme_pr_mgmt_uinit(struct ifpga_feature *feature)
 {
 	UNUSED(feature);
 
 	dev_info(NULL, "FME PR MGMT UInit.\n");
 }
 
-struct feature_ops fme_pr_mgmt_ops = {
+struct ifpga_feature_ops fme_pr_mgmt_ops = {
 	.init = fme_pr_mgmt_init,
 	.uinit = fme_pr_mgmt_uinit,
 };

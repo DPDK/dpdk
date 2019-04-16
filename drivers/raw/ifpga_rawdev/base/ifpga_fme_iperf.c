@@ -407,7 +407,7 @@ static int fme_iperf_set_fab_freeze(struct ifpga_fme_hw *fme, u64 freeze)
 #define PERF_MAX_PORT_NUM	1
 #define FME_IPERF_CAP_IOMMU	0x1
 
-static int fme_global_iperf_init(struct feature *feature)
+static int fme_global_iperf_init(struct ifpga_feature *feature)
 {
 	struct ifpga_fme_hw *fme;
 	struct feature_fme_header *fme_hdr;
@@ -429,14 +429,14 @@ static int fme_global_iperf_init(struct feature *feature)
 	return 0;
 }
 
-static void fme_global_iperf_uinit(struct feature *feature)
+static void fme_global_iperf_uinit(struct ifpga_feature *feature)
 {
 	UNUSED(feature);
 
 	dev_info(NULL, "FME global_iperf UInit.\n");
 }
 
-static int fme_iperf_root_get_prop(struct feature *feature,
+static int fme_iperf_root_get_prop(struct ifpga_feature *feature,
 				   struct feature_prop *prop)
 {
 	struct ifpga_fme_hw *fme = feature->parent;
@@ -456,7 +456,7 @@ static int fme_iperf_root_get_prop(struct feature *feature,
 	return -ENOENT;
 }
 
-static int fme_iperf_cache_get_prop(struct feature *feature,
+static int fme_iperf_cache_get_prop(struct ifpga_feature *feature,
 				    struct feature_prop *prop)
 {
 	struct ifpga_fme_hw *fme = feature->parent;
@@ -496,7 +496,7 @@ static int fme_iperf_cache_get_prop(struct feature *feature,
 	return -ENOENT;
 }
 
-static int fme_iperf_vtd_root_get_prop(struct feature *feature,
+static int fme_iperf_vtd_root_get_prop(struct ifpga_feature *feature,
 				       struct feature_prop *prop)
 {
 	struct ifpga_fme_hw *fme = feature->parent;
@@ -534,7 +534,7 @@ static int fme_iperf_vtd_root_get_prop(struct feature *feature,
 	return -ENOENT;
 }
 
-static int fme_iperf_vtd_sub_get_prop(struct feature *feature,
+static int fme_iperf_vtd_sub_get_prop(struct ifpga_feature *feature,
 				      struct feature_prop *prop)
 {
 	struct ifpga_fme_hw *fme = feature->parent;
@@ -571,7 +571,7 @@ static int fme_iperf_vtd_sub_get_prop(struct feature *feature,
 	return -ENOENT;
 }
 
-static int fme_iperf_vtd_get_prop(struct feature *feature,
+static int fme_iperf_vtd_get_prop(struct ifpga_feature *feature,
 				  struct feature_prop *prop)
 {
 	u8 sub = GET_FIELD(PROP_SUB, prop->prop_id);
@@ -582,7 +582,7 @@ static int fme_iperf_vtd_get_prop(struct feature *feature,
 	return fme_iperf_vtd_sub_get_prop(feature, prop);
 }
 
-static int fme_iperf_fab_get_prop(struct feature *feature,
+static int fme_iperf_fab_get_prop(struct ifpga_feature *feature,
 				  struct feature_prop *prop)
 {
 	struct ifpga_fme_hw *fme = feature->parent;
@@ -626,7 +626,7 @@ static int fme_iperf_fab_get_prop(struct feature *feature,
 	return -ENOENT;
 }
 
-static int fme_global_iperf_get_prop(struct feature *feature,
+static int fme_global_iperf_get_prop(struct ifpga_feature *feature,
 				     struct feature_prop *prop)
 {
 	u8 top = GET_FIELD(PROP_TOP, prop->prop_id);
@@ -645,7 +645,7 @@ static int fme_global_iperf_get_prop(struct feature *feature,
 	return -ENOENT;
 }
 
-static int fme_iperf_cache_set_prop(struct feature *feature,
+static int fme_iperf_cache_set_prop(struct ifpga_feature *feature,
 				    struct feature_prop *prop)
 {
 	struct ifpga_fme_hw *fme = feature->parent;
@@ -658,7 +658,7 @@ static int fme_iperf_cache_set_prop(struct feature *feature,
 	return -ENOENT;
 }
 
-static int fme_iperf_vtd_set_prop(struct feature *feature,
+static int fme_iperf_vtd_set_prop(struct ifpga_feature *feature,
 				  struct feature_prop *prop)
 {
 	struct ifpga_fme_hw *fme = feature->parent;
@@ -671,7 +671,7 @@ static int fme_iperf_vtd_set_prop(struct feature *feature,
 	return -ENOENT;
 }
 
-static int fme_iperf_fab_set_prop(struct feature *feature,
+static int fme_iperf_fab_set_prop(struct ifpga_feature *feature,
 				  struct feature_prop *prop)
 {
 	struct ifpga_fme_hw *fme = feature->parent;
@@ -690,7 +690,7 @@ static int fme_iperf_fab_set_prop(struct feature *feature,
 	return -ENOENT;
 }
 
-static int fme_global_iperf_set_prop(struct feature *feature,
+static int fme_global_iperf_set_prop(struct ifpga_feature *feature,
 				     struct feature_prop *prop)
 {
 	u8 top = GET_FIELD(PROP_TOP, prop->prop_id);
@@ -707,7 +707,7 @@ static int fme_global_iperf_set_prop(struct feature *feature,
 	return -ENOENT;
 }
 
-struct feature_ops fme_global_iperf_ops = {
+struct ifpga_feature_ops fme_global_iperf_ops = {
 	.init = fme_global_iperf_init,
 	.uinit = fme_global_iperf_uinit,
 	.get_prop = fme_global_iperf_get_prop,

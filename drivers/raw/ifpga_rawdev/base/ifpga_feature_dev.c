@@ -252,7 +252,7 @@ const char *get_port_feature_name(unsigned int id)
 
 static void feature_uinit(struct ifpga_feature_list *list)
 {
-	struct feature *feature;
+	struct ifpga_feature *feature;
 
 	TAILQ_FOREACH(feature, list, next) {
 		if (feature->state != IFPGA_FEATURE_ATTACHED)
@@ -265,7 +265,7 @@ static void feature_uinit(struct ifpga_feature_list *list)
 static int feature_init(struct feature_driver *drv,
 		struct ifpga_feature_list *list)
 {
-	struct feature *feature;
+	struct ifpga_feature *feature;
 	int ret;
 
 	while (drv->ops) {

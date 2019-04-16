@@ -73,7 +73,7 @@ build_info_add_sub_feature(struct build_feature_devs_info *binfo,
 		unsigned int vec_cnt)
 {
 	struct ifpga_hw *hw = binfo->hw;
-	struct feature *feature = NULL;
+	struct ifpga_feature *feature = NULL;
 	struct feature_irq_ctx *ctx = NULL;
 	int port_id, ret = 0;
 	unsigned int i;
@@ -81,7 +81,7 @@ build_info_add_sub_feature(struct build_feature_devs_info *binfo,
 	fid = fid?fid:feature_id(start);
 	size = size?size:feature_size(start);
 
-	feature = opae_malloc(sizeof(struct feature));
+	feature = opae_malloc(sizeof(struct ifpga_feature));
 	if (!feature)
 		return -ENOMEM;
 
@@ -233,7 +233,7 @@ static int build_info_commit_dev(struct build_feature_devs_info *binfo)
 	struct opae_accelerator *acc;
 	struct ifpga_port_hw *port;
 	struct ifpga_fme_hw *fme;
-	struct feature *feature;
+	struct ifpga_feature *feature;
 
 	if (!binfo->fiu)
 		return 0;
@@ -645,7 +645,7 @@ static void ifpga_print_device_feature_list(struct ifpga_hw *hw)
 {
 	struct ifpga_fme_hw *fme = &hw->fme;
 	struct ifpga_port_hw *port;
-	struct feature *feature;
+	struct ifpga_feature *feature;
 	int i;
 
 	dev_info(hw, "found fme_device, is in PF: %s\n",

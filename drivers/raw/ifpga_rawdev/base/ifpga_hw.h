@@ -10,7 +10,7 @@
 #include "opae_eth_group.h"
 
 /** List of private feateues */
-TAILQ_HEAD(ifpga_feature_list, feature);
+TAILQ_HEAD(ifpga_feature_list, ifpga_feature);
 
 enum ifpga_feature_state {
 	IFPGA_FEATURE_UNUSED = 0,
@@ -27,8 +27,8 @@ struct feature_irq_ctx {
 	int idx;
 };
 
-struct feature {
-	TAILQ_ENTRY(feature)next;
+struct ifpga_feature {
+	TAILQ_ENTRY(ifpga_feature)next;
 	enum ifpga_feature_state state;
 	enum feature_type type;
 	const char *name;
@@ -44,17 +44,19 @@ struct feature {
 
 	void *parent;		/* to parent hw data structure */
 
-	struct feature_ops *ops;/* callback to this private feature */
+	struct ifpga_feature_ops *ops;/* callback to this private feature */
 	unsigned int vec_start;
 	unsigned int vec_cnt;
 };
 
-struct feature_ops {
-	int (*init)(struct feature *feature);
-	void (*uinit)(struct feature *feature);
-	int (*get_prop)(struct feature *feature, struct feature_prop *prop);
-	int (*set_prop)(struct feature *feature, struct feature_prop *prop);
-	int (*set_irq)(struct feature *feature, void *irq_set);
+struct ifpga_feature_ops {
+	int (*init)(struct ifpga_feature *feature);
+	void (*uinit)(struct ifpga_feature *feature);
+	int (*get_prop)(struct ifpga_feature *feature,
+			struct feature_prop *prop);
+	int (*set_prop)(struct ifpga_feature *feature,
+			struct feature_prop *prop);
+	int (*set_irq)(struct ifpga_feature *feature, void *irq_set);
 };
 
 enum ifpga_fme_state {

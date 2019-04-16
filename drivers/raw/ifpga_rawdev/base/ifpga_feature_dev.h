@@ -10,7 +10,7 @@
 struct feature_driver {
 	u64 id;
 	const char *name;
-	struct feature_ops *ops;
+	struct ifpga_feature_ops *ops;
 };
 
 /**
@@ -34,10 +34,10 @@ get_port(struct ifpga_hw *hw, u32 port_id)
 #define ifpga_for_each_port_feature(port, feature)		\
 	TAILQ_FOREACH(feature, &port->feature_list, next)
 
-static inline struct feature *
+static inline struct ifpga_feature *
 get_fme_feature_by_id(struct ifpga_fme_hw *fme, u64 id)
 {
-	struct feature *feature;
+	struct ifpga_feature *feature;
 
 	ifpga_for_each_fme_feature(fme, feature) {
 		if (feature->id == id)
@@ -47,10 +47,10 @@ get_fme_feature_by_id(struct ifpga_fme_hw *fme, u64 id)
 	return NULL;
 }
 
-static inline struct feature *
+static inline struct ifpga_feature *
 get_port_feature_by_id(struct ifpga_port_hw *port, u64 id)
 {
-	struct feature *feature;
+	struct ifpga_feature *feature;
 
 	ifpga_for_each_port_feature(port, feature) {
 		if (feature->id == id)
@@ -60,10 +60,10 @@ get_port_feature_by_id(struct ifpga_port_hw *port, u64 id)
 	return NULL;
 }
 
-static inline struct feature *
+static inline struct ifpga_feature *
 get_feature_by_id(struct ifpga_feature_list *list, u64 id)
 {
-	struct feature *feature;
+	struct ifpga_feature *feature;
 
 	TAILQ_FOREACH(feature, list, next)
 		if (feature->id == id)
@@ -75,7 +75,8 @@ get_feature_by_id(struct ifpga_feature_list *list, u64 id)
 static inline void  *
 get_fme_feature_ioaddr_by_index(struct ifpga_fme_hw *fme, int index)
 {
-	struct feature *feature = get_feature_by_id(&fme->feature_list, index);
+	struct ifpga_feature *feature =
+		get_feature_by_id(&fme->feature_list, index);
 
 	return feature ? feature->addr : NULL;
 }
@@ -83,7 +84,8 @@ get_fme_feature_ioaddr_by_index(struct ifpga_fme_hw *fme, int index)
 static inline void  *
 get_port_feature_ioaddr_by_index(struct ifpga_port_hw *port, int index)
 {
-	struct feature *feature = get_feature_by_id(&port->feature_list, index);
+	struct ifpga_feature *feature =
+		get_feature_by_id(&port->feature_list, index);
 
 	return feature ? feature->addr : NULL;
 }
@@ -162,19 +164,19 @@ int port_clear_error(struct ifpga_port_hw *port);
 void port_err_mask(struct ifpga_port_hw *port, bool mask);
 int port_err_clear(struct ifpga_port_hw *port, u64 err);
 
-extern struct feature_ops fme_hdr_ops;
-extern struct feature_ops fme_thermal_mgmt_ops;
-extern struct feature_ops fme_power_mgmt_ops;
-extern struct feature_ops fme_global_err_ops;
-extern struct feature_ops fme_pr_mgmt_ops;
-extern struct feature_ops fme_global_iperf_ops;
-extern struct feature_ops fme_global_dperf_ops;
-extern struct feature_ops fme_hssi_eth_ops;
-extern struct feature_ops fme_emif_ops;
-extern struct feature_ops fme_spi_master_ops;
-extern struct feature_ops fme_i2c_master_ops;
-extern struct feature_ops fme_eth_group_ops;
-extern struct feature_ops fme_nios_spi_master_ops;
+extern struct ifpga_feature_ops fme_hdr_ops;
+extern struct ifpga_feature_ops fme_thermal_mgmt_ops;
+extern struct ifpga_feature_ops fme_power_mgmt_ops;
+extern struct ifpga_feature_ops fme_global_err_ops;
+extern struct ifpga_feature_ops fme_pr_mgmt_ops;
+extern struct ifpga_feature_ops fme_global_iperf_ops;
+extern struct ifpga_feature_ops fme_global_dperf_ops;
+extern struct ifpga_feature_ops fme_hssi_eth_ops;
+extern struct ifpga_feature_ops fme_emif_ops;
+extern struct ifpga_feature_ops fme_spi_master_ops;
+extern struct ifpga_feature_ops fme_i2c_master_ops;
+extern struct ifpga_feature_ops fme_eth_group_ops;
+extern struct ifpga_feature_ops fme_nios_spi_master_ops;
 
 int port_get_prop(struct ifpga_port_hw *port, struct feature_prop *prop);
 int port_set_prop(struct ifpga_port_hw *port, struct feature_prop *prop);
@@ -190,14 +192,14 @@ int port_set_irq(struct ifpga_port_hw *port, u32 feature_id, void *irq_set);
 const char *get_fme_feature_name(unsigned int id);
 const char *get_port_feature_name(unsigned int id);
 
-extern struct feature_ops ifpga_rawdev_port_hdr_ops;
-extern struct feature_ops ifpga_rawdev_port_error_ops;
-extern struct feature_ops ifpga_rawdev_port_stp_ops;
-extern struct feature_ops ifpga_rawdev_port_uint_ops;
-extern struct feature_ops ifpga_rawdev_port_afu_ops;
+extern struct ifpga_feature_ops ifpga_rawdev_port_hdr_ops;
+extern struct ifpga_feature_ops ifpga_rawdev_port_error_ops;
+extern struct ifpga_feature_ops ifpga_rawdev_port_stp_ops;
+extern struct ifpga_feature_ops ifpga_rawdev_port_uint_ops;
+extern struct ifpga_feature_ops ifpga_rawdev_port_afu_ops;
 
 /* help functions for feature ops */
-int fpga_msix_set_block(struct feature *feature, unsigned int start,
+int fpga_msix_set_block(struct ifpga_feature *feature, unsigned int start,
 			unsigned int count, s32 *fds);
 
 /* FME network function ops*/

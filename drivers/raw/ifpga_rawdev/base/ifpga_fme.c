@@ -12,7 +12,7 @@
 
 int fme_get_prop(struct ifpga_fme_hw *fme, struct feature_prop *prop)
 {
-	struct feature *feature;
+	struct ifpga_feature *feature;
 
 	if (!fme)
 		return -ENOENT;
@@ -27,7 +27,7 @@ int fme_get_prop(struct ifpga_fme_hw *fme, struct feature_prop *prop)
 
 int fme_set_prop(struct ifpga_fme_hw *fme, struct feature_prop *prop)
 {
-	struct feature *feature;
+	struct ifpga_feature *feature;
 
 	if (!fme)
 		return -ENOENT;
@@ -42,7 +42,7 @@ int fme_set_prop(struct ifpga_fme_hw *fme, struct feature_prop *prop)
 
 int fme_set_irq(struct ifpga_fme_hw *fme, u32 feature_id, void *irq_set)
 {
-	struct feature *feature;
+	struct ifpga_feature *feature;
 
 	if (!fme)
 		return -ENOENT;
@@ -56,7 +56,7 @@ int fme_set_irq(struct ifpga_fme_hw *fme, u32 feature_id, void *irq_set)
 }
 
 /* fme private feature head */
-static int fme_hdr_init(struct feature *feature)
+static int fme_hdr_init(struct ifpga_feature *feature)
 {
 	struct feature_fme_header *fme_hdr;
 
@@ -69,7 +69,7 @@ static int fme_hdr_init(struct feature *feature)
 	return 0;
 }
 
-static void fme_hdr_uinit(struct feature *feature)
+static void fme_hdr_uinit(struct ifpga_feature *feature)
 {
 	UNUSED(feature);
 
@@ -159,7 +159,7 @@ static int fme_hdr_get_bitstream_metadata(struct ifpga_fme_hw *fme,
 }
 
 static int
-fme_hdr_get_prop(struct feature *feature, struct feature_prop *prop)
+fme_hdr_get_prop(struct ifpga_feature *feature, struct feature_prop *prop)
 {
 	struct ifpga_fme_hw *fme = feature->parent;
 
@@ -183,7 +183,7 @@ fme_hdr_get_prop(struct feature *feature, struct feature_prop *prop)
 	return -ENOENT;
 }
 
-struct feature_ops fme_hdr_ops = {
+struct ifpga_feature_ops fme_hdr_ops = {
 	.init = fme_hdr_init,
 	.uinit = fme_hdr_uinit,
 	.get_prop = fme_hdr_get_prop,
@@ -404,7 +404,7 @@ static int fme_thermal_get_revision(struct ifpga_fme_hw *fme, u64 *revision)
 
 #define FME_THERMAL_CAP_NO_TMP_THRESHOLD	0x1
 
-static int fme_thermal_mgmt_init(struct feature *feature)
+static int fme_thermal_mgmt_init(struct ifpga_feature *feature)
 {
 	struct feature_fme_thermal *fme_thermal;
 	struct feature_fme_tmp_threshold_cap thermal_cap;
@@ -425,7 +425,7 @@ static int fme_thermal_mgmt_init(struct feature *feature)
 	return 0;
 }
 
-static void fme_thermal_mgmt_uinit(struct feature *feature)
+static void fme_thermal_mgmt_uinit(struct ifpga_feature *feature)
 {
 	UNUSED(feature);
 
@@ -433,7 +433,7 @@ static void fme_thermal_mgmt_uinit(struct feature *feature)
 }
 
 static int
-fme_thermal_set_prop(struct feature *feature, struct feature_prop *prop)
+fme_thermal_set_prop(struct ifpga_feature *feature, struct feature_prop *prop)
 {
 	struct ifpga_fme_hw *fme = feature->parent;
 
@@ -453,7 +453,7 @@ fme_thermal_set_prop(struct feature *feature, struct feature_prop *prop)
 }
 
 static int
-fme_thermal_get_prop(struct feature *feature, struct feature_prop *prop)
+fme_thermal_get_prop(struct ifpga_feature *feature, struct feature_prop *prop)
 {
 	struct ifpga_fme_hw *fme = feature->parent;
 
@@ -484,7 +484,7 @@ fme_thermal_get_prop(struct feature *feature, struct feature_prop *prop)
 	return -ENOENT;
 }
 
-struct feature_ops fme_thermal_mgmt_ops = {
+struct ifpga_feature_ops fme_thermal_mgmt_ops = {
 	.init = fme_thermal_mgmt_init,
 	.uinit = fme_thermal_mgmt_uinit,
 	.get_prop = fme_thermal_get_prop,
@@ -670,7 +670,7 @@ static int fme_pwr_get_revision(struct ifpga_fme_hw *fme, u64 *revision)
 	return 0;
 }
 
-static int fme_power_mgmt_init(struct feature *feature)
+static int fme_power_mgmt_init(struct ifpga_feature *feature)
 {
 	UNUSED(feature);
 
@@ -679,14 +679,14 @@ static int fme_power_mgmt_init(struct feature *feature)
 	return 0;
 }
 
-static void fme_power_mgmt_uinit(struct feature *feature)
+static void fme_power_mgmt_uinit(struct ifpga_feature *feature)
 {
 	UNUSED(feature);
 
 	dev_info(NULL, "FME power mgmt UInit.\n");
 }
 
-static int fme_power_mgmt_get_prop(struct feature *feature,
+static int fme_power_mgmt_get_prop(struct ifpga_feature *feature,
 				   struct feature_prop *prop)
 {
 	struct ifpga_fme_hw *fme = feature->parent;
@@ -715,7 +715,7 @@ static int fme_power_mgmt_get_prop(struct feature *feature,
 	return -ENOENT;
 }
 
-static int fme_power_mgmt_set_prop(struct feature *feature,
+static int fme_power_mgmt_set_prop(struct ifpga_feature *feature,
 				   struct feature_prop *prop)
 {
 	struct ifpga_fme_hw *fme = feature->parent;
@@ -730,41 +730,41 @@ static int fme_power_mgmt_set_prop(struct feature *feature,
 	return -ENOENT;
 }
 
-struct feature_ops fme_power_mgmt_ops = {
+struct ifpga_feature_ops fme_power_mgmt_ops = {
 	.init = fme_power_mgmt_init,
 	.uinit = fme_power_mgmt_uinit,
 	.get_prop = fme_power_mgmt_get_prop,
 	.set_prop = fme_power_mgmt_set_prop,
 };
 
-static int fme_hssi_eth_init(struct feature *feature)
+static int fme_hssi_eth_init(struct ifpga_feature *feature)
 {
 	UNUSED(feature);
 	return 0;
 }
 
-static void fme_hssi_eth_uinit(struct feature *feature)
+static void fme_hssi_eth_uinit(struct ifpga_feature *feature)
 {
 	UNUSED(feature);
 }
 
-struct feature_ops fme_hssi_eth_ops = {
+struct ifpga_feature_ops fme_hssi_eth_ops = {
 	.init = fme_hssi_eth_init,
 	.uinit = fme_hssi_eth_uinit,
 };
 
-static int fme_emif_init(struct feature *feature)
+static int fme_emif_init(struct ifpga_feature *feature)
 {
 	UNUSED(feature);
 	return 0;
 }
 
-static void fme_emif_uinit(struct feature *feature)
+static void fme_emif_uinit(struct ifpga_feature *feature)
 {
 	UNUSED(feature);
 }
 
-struct feature_ops fme_emif_ops = {
+struct ifpga_feature_ops fme_emif_ops = {
 	.init = fme_emif_init,
 	.uinit = fme_emif_uinit,
 };
@@ -872,7 +872,7 @@ static int spi_self_checking(void)
 	return 0;
 }
 
-static int fme_spi_init(struct feature *feature)
+static int fme_spi_init(struct ifpga_feature *feature)
 {
 	struct ifpga_fme_hw *fme = (struct ifpga_fme_hw *)feature->parent;
 	struct altera_spi_device *spi_master;
@@ -915,7 +915,7 @@ spi_fail:
 	return ret;
 }
 
-static void fme_spi_uinit(struct feature *feature)
+static void fme_spi_uinit(struct ifpga_feature *feature)
 {
 	struct ifpga_fme_hw *fme = (struct ifpga_fme_hw *)feature->parent;
 
@@ -923,7 +923,7 @@ static void fme_spi_uinit(struct feature *feature)
 		intel_max10_device_remove(fme->max10_dev);
 }
 
-struct feature_ops fme_spi_master_ops = {
+struct ifpga_feature_ops fme_spi_master_ops = {
 	.init = fme_spi_init,
 	.uinit = fme_spi_uinit,
 };
@@ -975,7 +975,7 @@ static int nios_spi_check_error(struct altera_spi_device *dev)
 	return 0;
 }
 
-static int fme_nios_spi_init(struct feature *feature)
+static int fme_nios_spi_init(struct ifpga_feature *feature)
 {
 	struct ifpga_fme_hw *fme = (struct ifpga_fme_hw *)feature->parent;
 	struct altera_spi_device *spi_master;
@@ -1036,7 +1036,7 @@ release_dev:
 	return -ENODEV;
 }
 
-static void fme_nios_spi_uinit(struct feature *feature)
+static void fme_nios_spi_uinit(struct ifpga_feature *feature)
 {
 	struct ifpga_fme_hw *fme = (struct ifpga_fme_hw *)feature->parent;
 
@@ -1044,7 +1044,7 @@ static void fme_nios_spi_uinit(struct feature *feature)
 		intel_max10_device_remove(fme->max10_dev);
 }
 
-struct feature_ops fme_nios_spi_master_ops = {
+struct ifpga_feature_ops fme_nios_spi_master_ops = {
 	.init = fme_nios_spi_init,
 	.uinit = fme_nios_spi_uinit,
 };
@@ -1082,7 +1082,7 @@ static int i2c_mac_rom_test(struct altera_i2c_dev *dev)
 	return 0;
 }
 
-static int fme_i2c_init(struct feature *feature)
+static int fme_i2c_init(struct ifpga_feature *feature)
 {
 	struct feature_fme_i2c *i2c;
 	struct ifpga_fme_hw *fme = (struct ifpga_fme_hw *)feature->parent;
@@ -1101,19 +1101,19 @@ static int fme_i2c_init(struct feature *feature)
 	return 0;
 }
 
-static void fme_i2c_uninit(struct feature *feature)
+static void fme_i2c_uninit(struct ifpga_feature *feature)
 {
 	struct ifpga_fme_hw *fme = (struct ifpga_fme_hw *)feature->parent;
 
 	altera_i2c_remove(fme->i2c_master);
 }
 
-struct feature_ops fme_i2c_master_ops = {
+struct ifpga_feature_ops fme_i2c_master_ops = {
 	.init = fme_i2c_init,
 	.uinit = fme_i2c_uninit,
 };
 
-static int fme_eth_group_init(struct feature *feature)
+static int fme_eth_group_init(struct ifpga_feature *feature)
 {
 	struct ifpga_fme_hw *fme = (struct ifpga_fme_hw *)feature->parent;
 	struct eth_group_device *dev;
@@ -1142,12 +1142,12 @@ static int fme_eth_group_init(struct feature *feature)
 	return 0;
 }
 
-static void fme_eth_group_uinit(struct feature *feature)
+static void fme_eth_group_uinit(struct ifpga_feature *feature)
 {
 	UNUSED(feature);
 }
 
-struct feature_ops fme_eth_group_ops = {
+struct ifpga_feature_ops fme_eth_group_ops = {
 	.init = fme_eth_group_init,
 	.uinit = fme_eth_group_uinit,
 };

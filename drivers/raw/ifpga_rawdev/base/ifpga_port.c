@@ -6,7 +6,7 @@
 
 int port_get_prop(struct ifpga_port_hw *port, struct feature_prop *prop)
 {
-	struct feature *feature;
+	struct ifpga_feature *feature;
 
 	if (!port)
 		return -ENOENT;
@@ -21,7 +21,7 @@ int port_get_prop(struct ifpga_port_hw *port, struct feature_prop *prop)
 
 int port_set_prop(struct ifpga_port_hw *port, struct feature_prop *prop)
 {
-	struct feature *feature;
+	struct ifpga_feature *feature;
 
 	if (!port)
 		return -ENOENT;
@@ -36,7 +36,7 @@ int port_set_prop(struct ifpga_port_hw *port, struct feature_prop *prop)
 
 int port_set_irq(struct ifpga_port_hw *port, u32 feature_id, void *irq_set)
 {
-	struct feature *feature;
+	struct ifpga_feature *feature;
 
 	if (!port)
 		return -ENOENT;
@@ -260,7 +260,7 @@ static int port_get_userclk_freqcntrsts(struct ifpga_port_hw *port, u64 *val)
 	return 0;
 }
 
-static int port_hdr_init(struct feature *feature)
+static int port_hdr_init(struct ifpga_feature *feature)
 {
 	struct ifpga_port_hw *port = feature->parent;
 
@@ -271,14 +271,15 @@ static int port_hdr_init(struct feature *feature)
 	return 0;
 }
 
-static void port_hdr_uinit(struct feature *feature)
+static void port_hdr_uinit(struct ifpga_feature *feature)
 {
 	UNUSED(feature);
 
 	dev_info(NULL, "port hdr uinit.\n");
 }
 
-static int port_hdr_get_prop(struct feature *feature, struct feature_prop *prop)
+static int port_hdr_get_prop(struct ifpga_feature *feature,
+		struct feature_prop *prop)
 {
 	struct ifpga_port_hw *port = feature->parent;
 
@@ -308,7 +309,8 @@ static int port_hdr_get_prop(struct feature *feature, struct feature_prop *prop)
 	return -ENOENT;
 }
 
-static int port_hdr_set_prop(struct feature *feature, struct feature_prop *prop)
+static int port_hdr_set_prop(struct ifpga_feature *feature,
+		struct feature_prop *prop)
 {
 	struct ifpga_port_hw *port = feature->parent;
 
@@ -326,14 +328,14 @@ static int port_hdr_set_prop(struct feature *feature, struct feature_prop *prop)
 	return -ENOENT;
 }
 
-struct feature_ops ifpga_rawdev_port_hdr_ops = {
+struct ifpga_feature_ops ifpga_rawdev_port_hdr_ops = {
 	.init = port_hdr_init,
 	.uinit = port_hdr_uinit,
 	.get_prop = port_hdr_get_prop,
 	.set_prop = port_hdr_set_prop,
 };
 
-static int port_stp_init(struct feature *feature)
+static int port_stp_init(struct ifpga_feature *feature)
 {
 	struct ifpga_port_hw *port = feature->parent;
 
@@ -347,19 +349,19 @@ static int port_stp_init(struct feature *feature)
 	return 0;
 }
 
-static void port_stp_uinit(struct feature *feature)
+static void port_stp_uinit(struct ifpga_feature *feature)
 {
 	UNUSED(feature);
 
 	dev_info(NULL, "port stp uinit.\n");
 }
 
-struct feature_ops ifpga_rawdev_port_stp_ops = {
+struct ifpga_feature_ops ifpga_rawdev_port_stp_ops = {
 	.init = port_stp_init,
 	.uinit = port_stp_uinit,
 };
 
-static int port_uint_init(struct feature *feature)
+static int port_uint_init(struct ifpga_feature *feature)
 {
 	struct ifpga_port_hw *port = feature->parent;
 
@@ -375,19 +377,19 @@ static int port_uint_init(struct feature *feature)
 	return 0;
 }
 
-static void port_uint_uinit(struct feature *feature)
+static void port_uint_uinit(struct ifpga_feature *feature)
 {
 	UNUSED(feature);
 
 	dev_info(NULL, "PORT UINT UInit.\n");
 }
 
-struct feature_ops ifpga_rawdev_port_uint_ops = {
+struct ifpga_feature_ops ifpga_rawdev_port_uint_ops = {
 	.init = port_uint_init,
 	.uinit = port_uint_uinit,
 };
 
-static int port_afu_init(struct feature *feature)
+static int port_afu_init(struct ifpga_feature *feature)
 {
 	UNUSED(feature);
 
@@ -396,14 +398,14 @@ static int port_afu_init(struct feature *feature)
 	return 0;
 }
 
-static void port_afu_uinit(struct feature *feature)
+static void port_afu_uinit(struct ifpga_feature *feature)
 {
 	UNUSED(feature);
 
 	dev_info(NULL, "PORT AFU UInit.\n");
 }
 
-struct feature_ops ifpga_rawdev_port_afu_ops = {
+struct ifpga_feature_ops ifpga_rawdev_port_afu_ops = {
 	.init = port_afu_init,
 	.uinit = port_afu_uinit,
 };
