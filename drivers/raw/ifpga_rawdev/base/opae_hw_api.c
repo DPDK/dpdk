@@ -341,7 +341,7 @@ int opae_adapter_enumerate(struct opae_adapter *adapter)
 		ret = adapter->ops->enumerate(adapter);
 
 	if (!ret)
-		opae_adapter_dump(adapter, 1);
+		opae_adapter_dump(adapter, 0);
 
 	return ret;
 }

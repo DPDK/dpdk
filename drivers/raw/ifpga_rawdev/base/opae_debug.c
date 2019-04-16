@@ -78,13 +78,13 @@ void opae_adapter_dump(struct opae_adapter *adapter, int verbose)
 {
 	struct opae_accelerator *acc;
 
-	opae_log("=====%s=====\n", __func__);
-	opae_log("OPAE Adapter %s\n", adapter->name);
-	opae_log("OPAE Adapter OPs = %p\n", adapter->ops);
-	opae_log("OPAE Adapter Private Data = %p\n", adapter->data);
-	opae_log("OPAE Manager (downstream) = %p\n", adapter->mgr);
-
 	if (verbose) {
+		opae_log("=====%s=====\n", __func__);
+		opae_log("OPAE Adapter %s\n", adapter->name);
+		opae_log("OPAE Adapter OPs = %p\n", adapter->ops);
+		opae_log("OPAE Adapter Private Data = %p\n", adapter->data);
+		opae_log("OPAE Manager (downstream) = %p\n", adapter->mgr);
+
 		if (adapter->mgr)
 			opae_manager_dump(adapter->mgr);
 
@@ -93,7 +93,7 @@ void opae_adapter_dump(struct opae_adapter *adapter, int verbose)
 
 		if (adapter->data)
 			opae_adapter_data_dump(adapter->data);
-	}
 
-	opae_log("==========================\n");
+		opae_log("==========================\n");
+	}
 }

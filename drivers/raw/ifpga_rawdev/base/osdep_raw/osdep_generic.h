@@ -71,5 +71,6 @@ static inline void opae_writeq(uint64_t value, volatile void *addr)
 }
 
 #define opae_free(addr) free(addr)
+#define opae_memcpy(a, b, c) memcpy((a), (b), (c))
 
 #endif

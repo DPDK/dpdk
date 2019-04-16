@@ -11,6 +11,7 @@
 #include <rte_log.h>
 #include <rte_io.h>
 #include <rte_malloc.h>
+#include <rte_memcpy.h>
 
 #define dev_printf(level, fmt, args...) \
 	RTE_LOG(level, PMD, "osdep_rte: " fmt, ## args)
@@ -42,4 +43,5 @@
 #define spinlock_lock(x) rte_spinlock_lock(x)
 #define spinlock_unlock(x) rte_spinlock_unlock(x)
 
+#define opae_memcpy(a, b, c) rte_memcpy((a), (b), (c))
 #endif

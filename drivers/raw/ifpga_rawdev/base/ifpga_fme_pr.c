@@ -257,7 +257,7 @@ static int fme_pr(struct ifpga_hw *hw, u32 port_id, void *buffer, u32 size,
 		return -EINVAL;
 	}
 
-	memset(&info, 0, sizeof(struct fpga_pr_info));
+	opae_memset(&info, 0, sizeof(struct fpga_pr_info));
 	info.flags = FPGA_MGR_PARTIAL_RECONFIG;
 	info.port_id = port_id;
 

@@ -76,4 +76,5 @@ struct uuid {
 #define msleep(x) opae_udelay(1000 * (x))
 #define usleep_range(min, max) msleep(DIV_ROUND_UP(min, 1000))
 
+#define opae_memset(a, b, c)    memset((a), (b), (c))
 #endif

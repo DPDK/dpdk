@@ -77,8 +77,8 @@ int fpga_get_afu_uuid(struct ifpga_port_hw *port, struct uuid *uuid)
 	guidh = readq(&port_hdr->afu_header.guid.b[8]);
 	spinlock_unlock(&port->lock);
 
-	memcpy(uuid->b, &guidl, sizeof(u64));
-	memcpy(uuid->b + 8, &guidh, sizeof(u64));
+	opae_memcpy(uuid->b, &guidl, sizeof(u64));
+	opae_memcpy(uuid->b + 8, &guidh, sizeof(u64));
 
 	return 0;
 }

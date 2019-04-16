@@ -202,7 +202,7 @@ static int ifpga_adapter_enumerate(struct opae_adapter *adapter)
 	struct ifpga_hw *hw = malloc(sizeof(*hw));
 
 	if (hw) {
-		memset(hw, 0, sizeof(*hw));
+		opae_memset(hw, 0, sizeof(*hw));
 		hw->pci_data = adapter->data;
 		hw->adapter = adapter;
 		if (ifpga_bus_enumerate(hw))
