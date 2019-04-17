@@ -93,5 +93,11 @@ Deprecation Notices
   structure (``rte_crypto_cipher_xform``, ``rte_crypto_auth_xform``, and
   ``rte_crypto_aead_xform``) will be changed to ``const uint8_t *data``.
 
+* cryptodev: support for using IV with all sizes is added, J0 still can
+  be used but only when IV length in following structs ``rte_crypto_auth_xform``,
+  ``rte_crypto_aead_xform`` is set to zero. When IV length is greater or equal
+  to one it means it represents IV, when is set to zero it means J0 is used
+  directly, in this case 16 bytes of J0 need to be passed.
+
 * metrics: The function ``rte_metrics_init`` will have a non-void return
   in order to notify errors instead of calling ``rte_exit``.
