@@ -12,7 +12,6 @@
 
 #include <rte_ethdev.h>
 #include <rte_log.h>
-#include <rte_eth_ctrl.h>
 #include <rte_malloc.h>
 #include <rte_flow_driver.h>
 #include <rte_tailq.h>

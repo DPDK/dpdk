@@ -7,7 +7,6 @@
 
 #include <stdint.h>
 
-#include <rte_eth_ctrl.h>
 #include <rte_time.h>
 #include <rte_kvargs.h>
 #include <rte_hash.h>

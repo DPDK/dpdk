@@ -20,7 +20,6 @@
 #include <rte_arp.h>
 #include <rte_common.h>
 #include <rte_ether.h>
-#include <rte_eth_ctrl.h>
 #include <rte_icmp.h>
 #include <rte_ip.h>
 #include <rte_sctp.h>
@@ -1736,6 +1735,16 @@ struct rte_flow_query_count {
 	uint32_t reserved:29; /**< Reserved, must be zero [in, out]. */
 	uint64_t hits; /**< Number of hits for this rule [out]. */
 	uint64_t bytes; /**< Number of bytes through this rule [out]. */
+};
+
+/**
+ * Hash function types.
+ */
+enum rte_eth_hash_function {
+	RTE_ETH_HASH_FUNCTION_DEFAULT = 0,
+	RTE_ETH_HASH_FUNCTION_TOEPLITZ, /**< Toeplitz */
+	RTE_ETH_HASH_FUNCTION_SIMPLE_XOR, /**< Simple XOR */
+	RTE_ETH_HASH_FUNCTION_MAX,
 };
 
 /**

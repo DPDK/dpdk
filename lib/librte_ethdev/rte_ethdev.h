@@ -158,7 +158,6 @@ extern "C" {
 #include <rte_config.h>
 
 #include "rte_ether.h"
-#include "rte_eth_ctrl.h"
 #include "rte_dev_info.h"
 
 extern int rte_eth_dev_logtype;
@@ -448,8 +447,43 @@ struct rte_eth_rss_conf {
 };
 
 /*
- * The RSS offload types are defined based on flow types which are defined
- * in rte_eth_ctrl.h. Different NIC hardwares may support different RSS offload
+ * A packet can be identified by hardware as different flow types. Different
+ * NIC hardwares may support different flow types.
+ * Basically, the NIC hardware identifies the flow type as deep protocol as
+ * possible, and exclusively. For example, if a packet is identified as
+ * 'RTE_ETH_FLOW_NONFRAG_IPV4_TCP', it will not be any of other flow types,
+ * though it is an actual IPV4 packet.
+ * Note that the flow types are used to define RSS offload types.
+ */
+#define RTE_ETH_FLOW_UNKNOWN             0
+#define RTE_ETH_FLOW_RAW                 1
+#define RTE_ETH_FLOW_IPV4                2
+#define RTE_ETH_FLOW_FRAG_IPV4           3
+#define RTE_ETH_FLOW_NONFRAG_IPV4_TCP    4
+#define RTE_ETH_FLOW_NONFRAG_IPV4_UDP    5
+#define RTE_ETH_FLOW_NONFRAG_IPV4_SCTP   6
+#define RTE_ETH_FLOW_NONFRAG_IPV4_OTHER  7
+#define RTE_ETH_FLOW_IPV6                8
+#define RTE_ETH_FLOW_FRAG_IPV6           9
+#define RTE_ETH_FLOW_NONFRAG_IPV6_TCP   10
+#define RTE_ETH_FLOW_NONFRAG_IPV6_UDP   11
+#define RTE_ETH_FLOW_NONFRAG_IPV6_SCTP  12
+#define RTE_ETH_FLOW_NONFRAG_IPV6_OTHER 13
+#define RTE_ETH_FLOW_L2_PAYLOAD         14
+#define RTE_ETH_FLOW_IPV6_EX            15
+#define RTE_ETH_FLOW_IPV6_TCP_EX        16
+#define RTE_ETH_FLOW_IPV6_UDP_EX        17
+#define RTE_ETH_FLOW_PORT               18
+	/**< Consider device port number as a flow differentiator */
+#define RTE_ETH_FLOW_VXLAN              19 /**< VXLAN protocol based flow */
+#define RTE_ETH_FLOW_GENEVE             20 /**< GENEVE protocol based flow */
+#define RTE_ETH_FLOW_NVGRE              21 /**< NVGRE protocol based flow */
+#define RTE_ETH_FLOW_VXLAN_GPE          22 /**< VXLAN-GPE protocol based flow */
+#define RTE_ETH_FLOW_MAX                23
+
+/*
+ * The RSS offload types are defined based on flow types.
+ * Different NIC hardwares may support different RSS offload
  * types. The supported flow types or RSS offload types can be queried by
  * rte_eth_dev_info_get().
  */
@@ -835,6 +869,24 @@ struct rte_eth_pfc_conf {
 };
 
 /**
+ * Tunneled type.
+ */
+enum rte_eth_tunnel_type {
+	RTE_TUNNEL_TYPE_NONE = 0,
+	RTE_TUNNEL_TYPE_VXLAN,
+	RTE_TUNNEL_TYPE_GENEVE,
+	RTE_TUNNEL_TYPE_TEREDO,
+	RTE_TUNNEL_TYPE_NVGRE,
+	RTE_TUNNEL_TYPE_IP_IN_GRE,
+	RTE_L2_TUNNEL_TYPE_E_TAG,
+	RTE_TUNNEL_TYPE_VXLAN_GPE,
+	RTE_TUNNEL_TYPE_MAX,
+};
+
+/* Deprecated API file for rte_eth_dev_filter_* functions */
+#include "rte_eth_ctrl.h"
+
+/**
  *  Memory space that can be configured to store Flow Director filters
  *  in the board memory.
  */
@@ -934,7 +986,7 @@ struct rte_eth_conf {
 	/** Currently,Priority Flow Control(PFC) are supported,if DCB with PFC
 	    is needed,and the variable must be set ETH_DCB_PFC_SUPPORT. */
 	uint32_t dcb_capability_en;
-	struct rte_fdir_conf fdir_conf; /**< FDIR configuration. */
+	struct rte_fdir_conf fdir_conf; /**< FDIR configuration. DEPRECATED */
 	struct rte_intr_conf intr_conf; /**< Interrupt mode configuration. */
 };
 
@@ -3251,6 +3303,7 @@ rte_eth_dev_udp_tunnel_port_delete(uint16_t port_id,
  *   - (-ENODEV) if *port_id* invalid.
  *   - (-EIO) if device is removed.
  */
+__rte_deprecated
 int rte_eth_dev_filter_supported(uint16_t port_id,
 		enum rte_filter_type filter_type);
 
@@ -3273,6 +3326,7 @@ int rte_eth_dev_filter_supported(uint16_t port_id,
  *   - (-EIO) if device is removed.
  *   - others depends on the specific operations implementation.
  */
+__rte_deprecated
 int rte_eth_dev_filter_ctrl(uint16_t port_id, enum rte_filter_type filter_type,
 			enum rte_filter_op filter_op, void *arg);
 

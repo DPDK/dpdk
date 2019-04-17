@@ -44,7 +44,6 @@
 #include <rte_ethdev.h>
 #include <rte_string_fns.h>
 #include <rte_devargs.h>
-#include <rte_eth_ctrl.h>
 #include <rte_flow.h>
 #include <rte_gro.h>
 

@@ -11,7 +11,6 @@
 #include <rte_tcp.h>
 #include <rte_udp.h>
 #include <rte_sctp.h>
-#include <rte_eth_ctrl.h>
 
 #include "enic_compat.h"
 #include "enic.h"

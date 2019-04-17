@@ -24,7 +24,6 @@
 #include <rte_memcpy.h>
 #include <rte_alarm.h>
 #include <rte_dev.h>
-#include <rte_eth_ctrl.h>
 #include <rte_tailq.h>
 #include <rte_hash_crc.h>
 

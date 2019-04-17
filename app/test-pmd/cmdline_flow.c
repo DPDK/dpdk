@@ -15,7 +15,6 @@
 
 #include <rte_string_fns.h>
 #include <rte_common.h>
-#include <rte_eth_ctrl.h>
 #include <rte_ethdev.h>
 #include <rte_byteorder.h>
 #include <cmdline_parse.h>

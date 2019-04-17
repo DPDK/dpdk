@@ -28,7 +28,6 @@
 
 #include <rte_byteorder.h>
 #include <rte_errno.h>
-#include <rte_eth_ctrl.h>
 #include <rte_ethdev_driver.h>
 #include <rte_ether.h>
 #include <rte_flow.h>

@@ -1208,33 +1208,17 @@ fs_rss_hash_update(struct rte_eth_dev *dev,
 }
 
 static int
-fs_filter_ctrl(struct rte_eth_dev *dev,
+fs_filter_ctrl(struct rte_eth_dev *dev __rte_unused,
 		enum rte_filter_type type,
 		enum rte_filter_op op,
 		void *arg)
 {
-	struct sub_device *sdev;
-	uint8_t i;
-	int ret;
-
 	if (type == RTE_ETH_FILTER_GENERIC &&
 	    op == RTE_ETH_FILTER_GET) {
 		*(const void **)arg = &fs_flow_ops;
 		return 0;
 	}
-	fs_lock(dev, 0);
-	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
-		DEBUG("Calling rte_eth_dev_filter_ctrl on sub_device %d", i);
-		ret = rte_eth_dev_filter_ctrl(PORT_ID(sdev), type, op, arg);
-		if ((ret = fs_err(sdev, ret))) {
-			ERROR("Operation rte_eth_dev_filter_ctrl failed for sub_device %d"
-			      " with error %d", i, ret);
-			fs_unlock(dev, 0);
-			return ret;
-		}
-	}
-	fs_unlock(dev, 0);
-	return 0;
+	return -ENOTSUP;
 }
 
 const struct eth_dev_ops failsafe_ops = {
