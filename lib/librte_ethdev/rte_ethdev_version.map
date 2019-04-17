@@ -229,11 +229,17 @@ DPDK_18.11 {
 
 } DPDK_18.08;
 
+DPDK_19.05 {
+	global:
+
+	rte_eth_dev_count_total;
+
+} DPDK_18.11;
+
 EXPERIMENTAL {
 	global:
 
 	rte_eth_devargs_parse;
-	rte_eth_dev_count_total;
 	rte_eth_dev_create;
 	rte_eth_dev_destroy;
 	rte_eth_dev_get_module_eeprom;

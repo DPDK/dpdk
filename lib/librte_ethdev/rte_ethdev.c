@@ -769,7 +769,7 @@ rte_eth_dev_count_avail(void)
 	return count;
 }
 
-uint16_t __rte_experimental
+uint16_t
 rte_eth_dev_count_total(void)
 {
 	uint16_t port, count = 0;

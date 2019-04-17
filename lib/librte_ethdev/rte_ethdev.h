@@ -1612,7 +1612,7 @@ uint16_t rte_eth_dev_count_avail(void);
  * @return
  *   The total count of Ethernet devices.
  */
-uint16_t __rte_experimental rte_eth_dev_count_total(void);
+uint16_t rte_eth_dev_count_total(void);
 
 /**
  * Convert a numerical speed in Mbps to a bitmap flag that can be used in
