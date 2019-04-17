@@ -841,6 +841,7 @@ burst_xmit_l34_hash(struct rte_mbuf **buf, uint16_t nb_pkts,
 
 	for (i = 0; i < nb_pkts; i++) {
 		eth_hdr = rte_pktmbuf_mtod(buf[i], struct ether_hdr *);
+		size_t pkt_end = (size_t)eth_hdr + rte_pktmbuf_data_len(buf[i]);
 		proto = eth_hdr->ether_type;
 		vlan_offset = get_vlan_offset(eth_hdr, &proto);
 		l3hash = 0;
@@ -864,13 +865,17 @@ burst_xmit_l34_hash(struct rte_mbuf **buf, uint16_t nb_pkts,
 					tcp_hdr = (struct tcp_hdr *)
 						((char *)ipv4_hdr +
 							ip_hdr_offset);
-					l4hash = HASH_L4_PORTS(tcp_hdr);
+					if ((size_t)tcp_hdr + sizeof(*tcp_hdr)
+							< pkt_end)
+						l4hash = HASH_L4_PORTS(tcp_hdr);
 				} else if (ipv4_hdr->next_proto_id ==
 								IPPROTO_UDP) {
 					udp_hdr = (struct udp_hdr *)
 						((char *)ipv4_hdr +
 							ip_hdr_offset);
-					l4hash = HASH_L4_PORTS(udp_hdr);
+					if ((size_t)udp_hdr + sizeof(*udp_hdr)
+							< pkt_end)
+						l4hash = HASH_L4_PORTS(udp_hdr);
 				}
 			}
 		} else if  (rte_cpu_to_be_16(ETHER_TYPE_IPv6) == proto) {
