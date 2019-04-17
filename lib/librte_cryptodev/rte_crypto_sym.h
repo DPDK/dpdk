@@ -152,11 +152,6 @@ struct rte_crypto_cipher_xform {
 		 *
 		 * - For block ciphers in CTR mode, this is the counter.
 		 *
-		 * - For GCM mode, this is either the IV (if the length
-		 * is 96 bits) or J0 (for other sizes), where J0 is as
-		 * defined by NIST SP800-38D. Regardless of the IV
-		 * length, a full 16 bytes needs to be allocated.
-		 *
 		 * - For CCM mode, the first byte is reserved, and the
 		 * nonce should be written starting at &iv[1] (to allow
 		 * space for the implementation to write in the flags
@@ -183,9 +178,6 @@ struct rte_crypto_cipher_xform {
 		 * - For block ciphers in CTR mode, this is the length
 		 * of the counter (which must be the same as the block
 		 * length of the cipher).
-		 *
-		 * - For GCM mode, this is either 12 (for 96-bit IVs)
-		 * or 16, in which case data points to J0.
 		 *
 		 * - For CCM mode, this is the length of the nonce,
 		 * which can be in the range 7 to 13 inclusive.
@@ -306,9 +298,10 @@ struct rte_crypto_auth_xform {
 		 * specified as number of bytes from start of crypto
 		 * operation (rte_crypto_op).
 		 *
-		 * - For SNOW 3G in UIA2 mode, for ZUC in EIA3 mode and
-		 *   for AES-GMAC, this is the authentication
-		 *   Initialisation Vector (IV) value.
+		 * - For SNOW 3G in UIA2 mode, for ZUC in EIA3 mode
+		 *   this is the authentication Initialisation Vector
+		 *   (IV) value. For AES-GMAC IV description please refer
+		 *   to the field `length` in iv struct.
 		 *
 		 * - For KASUMI in F9 mode and other authentication
 		 *   algorithms, this field is not used.
@@ -324,6 +317,14 @@ struct rte_crypto_auth_xform {
 		 *
 		 * - For KASUMI in F9 mode and other authentication
 		 *   algorithms, this field is not used.
+		 *
+		 * - For GMAC mode, this is either:
+		 * 1) Number greater or equal to one, which means that IV
+		 *    is used and J0 will be computed internally, a minimum
+		 *    of 16 bytes must be allocated.
+		 * 2) Zero, in which case data points to J0. In this case
+		 *    16 bytes of J0 should be passed where J0 is defined
+		 *    by NIST SP800-38D.
 		 *
 		 */
 	} iv;	/**< Initialisation vector parameters */
@@ -383,11 +384,6 @@ struct rte_crypto_aead_xform {
 		 * specified as number of bytes from start of crypto
 		 * operation (rte_crypto_op).
 		 *
-		 * - For GCM mode, this is either the IV (if the length
-		 * is 96 bits) or J0 (for other sizes), where J0 is as
-		 * defined by NIST SP800-38D. Regardless of the IV
-		 * length, a full 16 bytes needs to be allocated.
-		 *
 		 * - For CCM mode, the first byte is reserved, and the
 		 * nonce should be written starting at &iv[1] (to allow
 		 * space for the implementation to write in the flags
@@ -401,8 +397,13 @@ struct rte_crypto_aead_xform {
 		uint16_t length;
 		/**< Length of valid IV data.
 		 *
-		 * - For GCM mode, this is either 12 (for 96-bit IVs)
-		 * or 16, in which case data points to J0.
+		 * - For GCM mode, this is either:
+		 * 1) Number greater or equal to one, which means that IV
+		 *    is used and J0 will be computed internally, a minimum
+		 *    of 16 bytes must be allocated.
+		 * 2) Zero, in which case data points to J0. In this case
+		 *    16 bytes of J0 should be passed where J0 is defined
+		 *    by NIST SP800-38D.
 		 *
 		 * - For CCM mode, this is the length of the nonce,
 		 * which can be in the range 7 to 13 inclusive.
