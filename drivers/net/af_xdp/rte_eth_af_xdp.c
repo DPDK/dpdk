@@ -276,6 +276,7 @@ eth_af_xdp_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 	if (xsk_ring_prod__reserve(&txq->tx, nb_pkts, &idx_tx) != nb_pkts) {
 		kick_tx(txq);
+		rte_ring_enqueue_bulk(umem->buf_ring, addrs, nb_pkts, NULL);
 		return 0;
 	}
 
