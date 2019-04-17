@@ -2453,7 +2453,7 @@ dpaa_sec_security_session_destroy(void *dev __rte_unused,
 
 		rte_free(s->cipher_key.data);
 		rte_free(s->auth_key.data);
-		memset(sess, 0, sizeof(dpaa_sec_session));
+		memset(s, 0, sizeof(dpaa_sec_session));
 		set_sec_session_private_data(sess, NULL);
 		rte_mempool_put(sess_mp, sess_priv);
 	}
