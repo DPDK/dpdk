@@ -1964,14 +1964,9 @@ static int
 mlx5_pci_remove(struct rte_pci_device *pci_dev)
 {
 	uint16_t port_id;
-	struct rte_eth_dev *port;
 
-	for (port_id = 0; port_id < RTE_MAX_ETHPORTS; port_id++) {
-		port = &rte_eth_devices[port_id];
-		if (port->state != RTE_ETH_DEV_UNUSED &&
-				port->device == &pci_dev->device)
-			rte_eth_dev_close(port_id);
-	}
+	RTE_ETH_FOREACH_DEV_OF(port_id, &pci_dev->device)
+		rte_eth_dev_close(port_id);
 	return 0;
 }
 

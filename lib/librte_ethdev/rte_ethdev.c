@@ -339,6 +339,15 @@ rte_eth_find_next(uint16_t port_id)
 	return port_id;
 }
 
+/*
+ * Macro to iterate over all valid ports for internal usage.
+ * Note: RTE_ETH_FOREACH_DEV is different because filtering owned ports.
+ */
+#define RTE_ETH_FOREACH_VALID_DEV(port_id) \
+	for (port_id = rte_eth_find_next(0); \
+	     port_id < RTE_MAX_ETHPORTS; \
+	     port_id = rte_eth_find_next(port_id + 1))
+
 uint16_t
 rte_eth_find_next_of(uint16_t port_id, const struct rte_device *parent)
 {
@@ -584,13 +593,10 @@ rte_eth_is_valid_owner_id(uint64_t owner_id)
 uint64_t
 rte_eth_find_next_owned_by(uint16_t port_id, const uint64_t owner_id)
 {
+	port_id = rte_eth_find_next(port_id);
 	while (port_id < RTE_MAX_ETHPORTS &&
-	       (rte_eth_devices[port_id].state == RTE_ETH_DEV_UNUSED ||
-	       rte_eth_devices[port_id].data->owner.id != owner_id))
-		port_id++;
-
-	if (port_id >= RTE_MAX_ETHPORTS)
-		return RTE_MAX_ETHPORTS;
+			rte_eth_devices[port_id].data->owner.id != owner_id)
+		port_id = rte_eth_find_next(port_id + 1);
 
 	return port_id;
 }
@@ -768,9 +774,8 @@ rte_eth_dev_count_total(void)
 {
 	uint16_t port, count = 0;
 
-	for (port = 0; port < RTE_MAX_ETHPORTS; port++)
-		if (rte_eth_devices[port].state != RTE_ETH_DEV_UNUSED)
-			count++;
+	RTE_ETH_FOREACH_VALID_DEV(port)
+		count++;
 
 	return count;
 }
@@ -804,13 +809,11 @@ rte_eth_dev_get_port_by_name(const char *name, uint16_t *port_id)
 		return -EINVAL;
 	}
 
-	for (pid = 0; pid < RTE_MAX_ETHPORTS; pid++) {
-		if (rte_eth_devices[pid].state != RTE_ETH_DEV_UNUSED &&
-		    !strcmp(name, rte_eth_dev_shared_data->data[pid].name)) {
+	RTE_ETH_FOREACH_VALID_DEV(pid)
+		if (!strcmp(name, rte_eth_dev_shared_data->data[pid].name)) {
 			*port_id = pid;
 			return 0;
 		}
-	}
 
 	return -ENODEV;
 }
