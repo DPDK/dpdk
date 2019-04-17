@@ -2775,7 +2775,9 @@ ice_promisc_enable(struct rte_eth_dev *dev)
 		ICE_PROMISC_MCAST_RX | ICE_PROMISC_MCAST_TX;
 
 	status = ice_set_vsi_promisc(hw, vsi->idx, pmask, 0);
-	if (status != ICE_SUCCESS)
+	if (status == ICE_ERR_ALREADY_EXISTS)
+		PMD_DRV_LOG(DEBUG, "Promisc mode has already been enabled");
+	else if (status != ICE_SUCCESS)
 		PMD_DRV_LOG(ERR, "Failed to enable promisc, err=%d", status);
 }
 
