@@ -2768,8 +2768,8 @@ ice_promisc_enable(struct rte_eth_dev *dev)
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_vsi *vsi = pf->main_vsi;
+	enum ice_status status;
 	uint8_t pmask;
-	uint16_t status;
 
 	pmask = ICE_PROMISC_UCAST_RX | ICE_PROMISC_UCAST_TX |
 		ICE_PROMISC_MCAST_RX | ICE_PROMISC_MCAST_TX;
@@ -2785,7 +2785,7 @@ ice_promisc_disable(struct rte_eth_dev *dev)
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_vsi *vsi = pf->main_vsi;
-	uint16_t status;
+	enum ice_status status;
 	uint8_t pmask;
 
 	pmask = ICE_PROMISC_UCAST_RX | ICE_PROMISC_UCAST_TX |
@@ -2802,8 +2802,8 @@ ice_allmulti_enable(struct rte_eth_dev *dev)
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_vsi *vsi = pf->main_vsi;
+	enum ice_status status;
 	uint8_t pmask;
-	uint16_t status;
 
 	pmask = ICE_PROMISC_MCAST_RX | ICE_PROMISC_MCAST_TX;
 
@@ -2818,7 +2818,7 @@ ice_allmulti_disable(struct rte_eth_dev *dev)
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_vsi *vsi = pf->main_vsi;
-	uint16_t status;
+	enum ice_status status;
 	uint8_t pmask;
 
 	if (dev->data->promiscuous == 1)
