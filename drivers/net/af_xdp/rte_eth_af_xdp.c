@@ -175,12 +175,12 @@ eth_af_xdp_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	struct xsk_ring_prod *fq = &umem->fq;
 	uint32_t idx_rx = 0;
 	uint32_t free_thresh = fq->size >> 1;
-	struct rte_mbuf *mbufs[ETH_AF_XDP_TX_BATCH_SIZE];
+	struct rte_mbuf *mbufs[ETH_AF_XDP_RX_BATCH_SIZE];
 	unsigned long dropped = 0;
 	unsigned long rx_bytes = 0;
 	int rcvd, i;
 
-	nb_pkts = RTE_MIN(nb_pkts, ETH_AF_XDP_TX_BATCH_SIZE);
+	nb_pkts = RTE_MIN(nb_pkts, ETH_AF_XDP_RX_BATCH_SIZE);
 
 	if (unlikely(rte_pktmbuf_alloc_bulk(rxq->mb_pool, mbufs, nb_pkts) != 0))
 		return 0;
