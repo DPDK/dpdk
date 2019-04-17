@@ -283,10 +283,12 @@ vmbus_uio_map_secondary_subchan(const struct rte_vmbus_device *dev,
 	if (mapaddr == MAP_FAILED)
 		VMBUS_LOG(ERR,
 			  "mmap subchan %u in secondary failed", chan->relid);
-	else
+	else {
 		VMBUS_LOG(ERR,
 			  "mmap subchan %u in secondary address mismatch",
 			  chan->relid);
+		vmbus_unmap_resource(mapaddr, 2 * ring_size);
+	}
 	return -1;
 }
 

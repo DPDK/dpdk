@@ -75,9 +75,11 @@ vmbus_uio_map_secondary(struct rte_vmbus_device *dev)
 		if (mapaddr == MAP_FAILED)
 			VMBUS_LOG(ERR,
 				  "mmap resource %d in secondary failed", i);
-		else
+		else {
 			VMBUS_LOG(ERR,
 				  "mmap resource %d address mismatch", i);
+			vmbus_unmap_resource(mapaddr, uio_res->maps[i].size);
+		}
 
 		close(fd);
 		return -1;
