@@ -3234,6 +3234,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	};
 	union flow_dv_attr flow_attr = { .attr = 0 };
 	struct mlx5_flow_dv_tag_resource tag_resource;
+	uint32_t modify_action_position = UINT32_MAX;
 
 	if (priority == MLX5_FLOW_PRIO_RSVD)
 		priority = priv->config.flow_prio - 1;
@@ -3473,13 +3474,16 @@ cnt_err:
 								 dev_flow,
 								 error))
 					return -rte_errno;
-				dev_flow->dv.actions[actions_n++] =
+				dev_flow->dv.actions[modify_action_position] =
 					dev_flow->dv.modify_hdr->verbs_action;
 			}
 			break;
 		default:
 			break;
 		}
+		if ((action_flags & MLX5_FLOW_MODIFY_HDR_ACTIONS) &&
+		    modify_action_position == UINT32_MAX)
+			modify_action_position = actions_n++;
 	}
 	dev_flow->dv.actions_n = actions_n;
 	flow->actions = action_flags;
