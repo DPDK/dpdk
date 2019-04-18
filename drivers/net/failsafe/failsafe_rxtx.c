@@ -61,6 +61,21 @@ failsafe_set_burst_fn(struct rte_eth_dev *dev, int force_safe)
 	rte_wmb();
 }
 
+/*
+ * Override source port in Rx packets.
+ *
+ * Make Rx packets originate from this PMD instance instead of one of its
+ * sub-devices. This is mandatory to avoid breaking applications.
+ */
+static void
+failsafe_rx_set_port(struct rte_mbuf **rx_pkts, uint16_t nb_pkts, uint16_t port)
+{
+	unsigned int i;
+
+	for (i = 0; i != nb_pkts; ++i)
+		rx_pkts[i]->port = port;
+}
+
 uint16_t
 failsafe_rx_burst(void *queue,
 		  struct rte_mbuf **rx_pkts,
@@ -87,6 +102,9 @@ failsafe_rx_burst(void *queue,
 		sdev = sdev->next;
 	} while (nb_rx == 0 && sdev != rxq->sdev);
 	rxq->sdev = sdev;
+	if (nb_rx)
+		failsafe_rx_set_port(rx_pkts, nb_rx,
+				     rxq->priv->data->port_id);
 	return nb_rx;
 }
 
@@ -112,6 +130,9 @@ failsafe_rx_burst_fast(void *queue,
 		sdev = sdev->next;
 	} while (nb_rx == 0 && sdev != rxq->sdev);
 	rxq->sdev = sdev;
+	if (nb_rx)
+		failsafe_rx_set_port(rx_pkts, nb_rx,
+				     rxq->priv->data->port_id);
 	return nb_rx;
 }
 
