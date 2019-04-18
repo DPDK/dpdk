@@ -59,6 +59,39 @@ struct aq_rss_parameters {
 	u8 indirection_table[HW_ATL_B0_RSS_REDIRECTION_MAX];
 };
 
+/* Macsec stuff */
+struct aq_macsec_config {
+	struct {
+		u32 macsec_enabled;
+		u32 encryption_enabled;
+		u32 replay_protection_enabled;
+	} common;
+
+	struct {
+		u32 idx;
+		u32 mac[2]; /* 6 bytes */
+	} txsc;
+
+	struct {
+		u32 idx;
+		u32 an; /* association number on the local side */
+		u32 pn; /* packet number on the local side */
+		u32 key[4]; /* 128 bit key */
+	} txsa;
+
+	struct {
+		u32 mac[2]; /* 6 bytes */
+		u32 pi;
+	} rxsc;
+
+	struct {
+		u32 idx;
+		u32 an; /* association number on the remote side */
+		u32 pn; /* packet number on the remote side */
+		u32 key[4]; /* 128 bit key */
+	} rxsa;
+};
+
 struct aq_hw_cfg_s {
 	bool is_lro;
 	bool is_rss;
@@ -75,6 +108,7 @@ struct aq_hw_cfg_s {
 	uint32_t flow_control;
 
 	struct aq_rss_parameters aq_rss;
+	struct aq_macsec_config aq_macsec;
 };
 
 struct aq_hw_s {
@@ -143,6 +177,9 @@ struct aq_fw_ops {
 	int (*set_eeprom)(struct aq_hw_s *self, int dev_addr,
 			  u32 *data, u32 len);
 
+	int (*send_macsec_req)(struct aq_hw_s *self,
+			       struct macsec_msg_fw_request *req,
+			       struct macsec_msg_fw_response *response);
 };
 
 struct atl_sw_stats {
