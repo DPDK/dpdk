@@ -1783,7 +1783,7 @@ flow_get_drv_type(struct rte_eth_dev *dev, const struct rte_flow_attr *attr)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	enum mlx5_flow_drv_type type = MLX5_FLOW_TYPE_MAX;
 
-	if (attr->transfer)
+	if (attr->transfer && !priv->config.dv_esw_en)
 		type = MLX5_FLOW_TYPE_TCF;
 	else
 		type = priv->config.dv_flow_en ? MLX5_FLOW_TYPE_DV :

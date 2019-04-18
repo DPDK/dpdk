@@ -101,6 +101,9 @@
 /* Allow L3 VXLAN flow creation. */
 #define MLX5_L3_VXLAN_EN "l3_vxlan_en"
 
+/* Activate DV E-Switch flow steering. */
+#define MLX5_DV_ESW_EN "dv_esw_en"
+
 /* Activate DV flow steering. */
 #define MLX5_DV_FLOW_EN "dv_flow_en"
 
@@ -344,6 +347,18 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 	}
 	pthread_mutex_init(&sh->dv_mutex, NULL);
 	sh->tx_ns = ns;
+#ifdef HAVE_MLX5DV_DR_ESWITCH
+	if (priv->config.dv_esw_en) {
+		ns  = mlx5_glue->dr_create_ns(sh->ctx,
+					      MLX5DV_DR_NS_DOMAIN_FDB_BYPASS);
+		if (!ns) {
+			DRV_LOG(ERR, "FDB mlx5dv_dr_create_ns failed");
+			err = errno;
+			goto error;
+		}
+		sh->fdb_ns = ns;
+	}
+#endif
 	sh->dv_refcnt++;
 	priv->dr_shared = 1;
 	return 0;
@@ -357,6 +372,10 @@ error:
 	if (sh->tx_ns) {
 		mlx5dv_dr_destroy_ns(sh->tx_ns);
 		sh->tx_ns = NULL;
+	}
+	if (sh->fdb_ns) {
+		mlx5_glue->dr_destroy_ns(sh->fdb_ns);
+		sh->fdb_ns = NULL;
 	}
 	return err;
 #else
@@ -393,6 +412,12 @@ mlx5_free_shared_dr(struct mlx5_priv *priv)
 		mlx5dv_dr_destroy_ns(sh->tx_ns);
 		sh->tx_ns = NULL;
 	}
+#ifdef HAVE_MLX5DV_DR_ESWITCH
+	if (sh->fdb_ns) {
+		mlx5_glue->dr_destroy_ns(sh->fdb_ns);
+		sh->fdb_ns = NULL;
+	}
+#endif
 	pthread_mutex_destroy(&sh->dv_mutex);
 #else
 	(void)priv;
@@ -861,6 +886,8 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		config->l3_vxlan_en = !!tmp;
 	} else if (strcmp(MLX5_VF_NL_EN, key) == 0) {
 		config->vf_nl_en = !!tmp;
+	} else if (strcmp(MLX5_DV_ESW_EN, key) == 0) {
+		config->dv_esw_en = !!tmp;
 	} else if (strcmp(MLX5_DV_FLOW_EN, key) == 0) {
 		config->dv_flow_en = !!tmp;
 	} else if (strcmp(MLX5_MR_EXT_MEMSEG_EN, key) == 0) {
@@ -905,6 +932,7 @@ mlx5_args(struct mlx5_dev_config *config, struct rte_devargs *devargs)
 		MLX5_RX_VEC_EN,
 		MLX5_L3_VXLAN_EN,
 		MLX5_VF_NL_EN,
+		MLX5_DV_ESW_EN,
 		MLX5_DV_FLOW_EN,
 		MLX5_MR_EXT_MEMSEG_EN,
 		MLX5_REPRESENTOR,
@@ -1458,11 +1486,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 			priv->tcf_context = NULL;
 		}
 	}
-	if (config.dv_flow_en) {
-		err = mlx5_alloc_shared_dr(priv);
-		if (err)
-			goto error;
-	}
 	TAILQ_INIT(&priv->flows);
 	TAILQ_INIT(&priv->ctrl_flows);
 	/* Hint libmlx5 to use PMD allocator for data plane resources */
@@ -1484,8 +1507,27 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	 * Verbs context returned by ibv_open_device().
 	 */
 	mlx5_link_update(eth_dev, 0);
+#ifdef HAVE_IBV_DEVX_OBJ
+	err = mlx5_devx_cmd_query_hca_attr(sh->ctx, &config.hca_attr);
+	if (err) {
+		err = -err;
+		goto error;
+	}
+#endif
+#ifdef HAVE_MLX5DV_DR_ESWITCH
+	if (!(config.hca_attr.eswitch_manager && config.dv_flow_en &&
+	      (switch_info->representor || switch_info->master)))
+		config.dv_esw_en = 0;
+#else
+	config.dv_esw_en = 0;
+#endif
 	/* Store device configuration on private structure. */
 	priv->config = config;
+	if (config.dv_flow_en) {
+		err = mlx5_alloc_shared_dr(priv);
+		if (err)
+			goto error;
+	}
 	/* Supported Verbs flow priority number detection. */
 	err = mlx5_flow_discover_priorities(eth_dev);
 	if (err < 0) {
@@ -1876,6 +1918,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			.max_memcpy_len = MLX5_MPRQ_MEMCPY_DEFAULT_LEN,
 			.min_rxqs_num = MLX5_MPRQ_MIN_RXQS,
 		},
+		.dv_esw_en = 1,
 	};
 	/* Device specific configuration. */
 	switch (pci_dev->id.device_id) {

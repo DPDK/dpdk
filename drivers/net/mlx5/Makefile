@@ -161,6 +161,11 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		enum MLX5DV_DR_NS_TYPE_TERMINATING \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
+		HAVE_MLX5DV_DR_ESWITCH \
+		infiniband/mlx5dv.h \
+		enum MLX5DV_DR_NS_DOMAIN_FDB_BYPASS \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
 		HAVE_IBV_DEVX_OBJ \
 		infiniband/mlx5dv.h \
 		func mlx5dv_devx_obj_create \

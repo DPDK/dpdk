@@ -148,6 +148,11 @@ struct mlx5_devx_counter_set {
 	int id; /* Flow counter ID */
 };
 
+/* HCA attributes. */
+struct mlx5_hca_attr {
+	uint32_t eswitch_manager:1;
+};
+
 /* Flow list . */
 TAILQ_HEAD(mlx5_flows, rte_flow);
 
@@ -181,6 +186,7 @@ struct mlx5_dev_config {
 	/* Whether memseg should be extended for MR creation. */
 	unsigned int l3_vxlan_en:1; /* Enable L3 VXLAN flow creation. */
 	unsigned int vf_nl_en:1; /* Enable Netlink requests in VF mode. */
+	unsigned int dv_esw_en:1; /* Enable E-Switch DV flow. */
 	unsigned int dv_flow_en:1; /* Enable DV flow. */
 	unsigned int swp:1; /* Tx generic tunnel checksum and TSO offload. */
 	unsigned int devx:1; /* Whether devx interface is available or not. */
@@ -202,6 +208,7 @@ struct mlx5_dev_config {
 	int txqs_inline; /* Queue number threshold for inlining. */
 	int txqs_vec; /* Queue number threshold for vectorized Tx. */
 	int inline_max_packet_sz; /* Max packet size for inlining. */
+	struct mlx5_hca_attr hca_attr; /* HCA attributes. */
 };
 
 /**
@@ -251,6 +258,7 @@ struct mlx5_flow_tbl_resource {
 };
 
 #define MLX5_MAX_TABLES 1024
+#define MLX5_MAX_TABLES_FDB 32
 #define MLX5_GROUP_FACTOR 1
 
 /*
@@ -270,6 +278,9 @@ struct mlx5_ibv_shared {
 	/* Shared DV/DR flow data section. */
 	pthread_mutex_t dv_mutex; /* DV context mutex. */
 	uint32_t dv_refcnt; /* DV/DR data reference counter. */
+	void *fdb_ns; /* FDB Direct Rules name space handle. */
+	struct mlx5_flow_tbl_resource fdb_tbl[MLX5_MAX_TABLES_FDB];
+	/* FDB Direct Rules tables. */
 	void *rx_ns; /* RX Direct Rules name space handle. */
 	struct mlx5_flow_tbl_resource rx_tbl[MLX5_MAX_TABLES];
 	/* RX Direct Rules tables. */
@@ -553,4 +564,6 @@ int mlx5_devx_cmd_flow_counter_free(struct mlx5dv_devx_obj *obj);
 int mlx5_devx_cmd_flow_counter_query(struct mlx5_devx_counter_set *dcx,
 				     int clear,
 				     uint64_t *pkts, uint64_t *bytes);
+int mlx5_devx_cmd_query_hca_attr(struct ibv_context *ctx,
+				 struct mlx5_hca_attr *attr);
 #endif /* RTE_PMD_MLX5_H_ */

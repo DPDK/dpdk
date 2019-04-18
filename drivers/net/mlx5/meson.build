@@ -116,6 +116,8 @@ if build
 		'MLX5DV_FLOW_ACTION_COUNTERS_DEVX' ],
 		[ 'HAVE_MLX5DV_DR', 'infiniband/mlx5dv.h',
 		'MLX5DV_DR_NS_TYPE_TERMINATING' ],
+		[ 'HAVE_MLX5DV_DR_ESWITCH', 'infiniband/mlx5dv.h',
+		'MLX5DV_DR_NS_DOMAIN_FDB_BYPASS' ],
 		[ 'HAVE_SUPPORTED_40000baseKR4_Full', 'linux/ethtool.h',
 		'SUPPORTED_40000baseKR4_Full' ],
 		[ 'HAVE_SUPPORTED_40000baseCR4_Full', 'linux/ethtool.h',
