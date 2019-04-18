@@ -3085,6 +3085,62 @@ flow_dv_translate_item_meta(void *matcher, void *key,
 	}
 }
 
+/**
+ * Add source vport match to the specified matcher.
+ *
+ * @param[in, out] matcher
+ *   Flow matcher.
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] port
+ *   Source vport value to match
+ * @param[in] mask
+ *   Mask
+ */
+static void
+flow_dv_translate_item_source_vport(void *matcher, void *key,
+				    int16_t port, uint16_t mask)
+{
+	void *misc_m = MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters);
+	void *misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
+
+	MLX5_SET(fte_match_set_misc, misc_m, source_port, mask);
+	MLX5_SET(fte_match_set_misc, misc_v, source_port, port);
+}
+
+/**
+ * Translate port-id item to eswitch match on  port-id.
+ *
+ * @param[in] dev
+ *   The devich to configure through.
+ * @param[in, out] matcher
+ *   Flow matcher.
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] item
+ *   Flow pattern to translate.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise.
+ */
+static int
+flow_dv_translate_item_port_id(struct rte_eth_dev *dev, void *matcher,
+			       void *key, const struct rte_flow_item *item)
+{
+	const struct rte_flow_item_port_id *pid_m = item ? item->mask : NULL;
+	const struct rte_flow_item_port_id *pid_v = item ? item->spec : NULL;
+	uint16_t mask, val, id;
+	int ret;
+
+	mask = pid_m ? pid_m->id : 0xffff;
+	id = pid_v ? pid_v->id : dev->data->port_id;
+	ret = mlx5_port_to_eswitch_info(id, NULL, &val);
+	if (ret)
+		return ret;
+	flow_dv_translate_item_source_vport(matcher, key, val, mask);
+	return 0;
+}
+
 static uint32_t matcher_zero[MLX5_ST_SZ_DW(fte_match_param)] = { 0 };
 
 #define HEADER_IS_ZERO(match_criteria, headers)				     \
@@ -3292,29 +3348,6 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 		rte_atomic32_read(&cache_matcher->refcnt));
 	rte_atomic32_inc(&tbl->refcnt);
 	return 0;
-}
-
-/**
- * Add source vport match to the specified matcher.
- *
- * @param[in, out] matcher
- *   Flow matcher.
- * @param[in, out] key
- *   Flow matcher value.
- * @param[in] port
- *   Source vport value to match
- * @param[in] mask
- *   Mask
- */
-static void
-flow_dv_translate_item_source_vport(void *matcher, void *key,
-				    int16_t port, uint16_t mask)
-{
-	void *misc_m = MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters);
-	void *misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
-
-	MLX5_SET(fte_match_set_misc, misc_m, source_port, mask);
-	MLX5_SET(fte_match_set_misc, misc_v, source_port, port);
 }
 
 /**
@@ -3727,6 +3760,11 @@ cnt_err:
 		void *match_value = dev_flow->dv.value.buf;
 
 		switch (items->type) {
+		case RTE_FLOW_ITEM_TYPE_PORT_ID:
+			flow_dv_translate_item_port_id(dev, match_mask,
+						       match_value, items);
+			last_item = MLX5_FLOW_ITEM_PORT_ID;
+			break;
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			flow_dv_translate_item_eth(match_mask, match_value,
 						   items, tunnel);
