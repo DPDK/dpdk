@@ -10,7 +10,6 @@ if not is_linux
 	build = false
 endif
 deps += ['hash', 'vhost']
-allow_experimental_apis = true
 cflags += '-Wno-deprecated-declarations'
 sources = files(
 	'main.c', 'vxlan.c', 'vxlan_setup.c'

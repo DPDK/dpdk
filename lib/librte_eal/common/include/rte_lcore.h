@@ -149,7 +149,7 @@ unsigned rte_socket_id(void);
  * @return
  *   the number of physical sockets as recognized by EAL
  */
-unsigned int __rte_experimental
+unsigned int
 rte_socket_count(void);
 
 /**
@@ -166,7 +166,7 @@ rte_socket_count(void);
  *   - physical socket id as recognized by EAL
  *   - -1 on error, with errno set to EINVAL
  */
-int __rte_experimental
+int
 rte_socket_id_by_idx(unsigned int idx);
 
 /**
@@ -306,7 +306,7 @@ int rte_thread_setname(pthread_t id, const char *name);
  *   On success, returns 0; on error, it returns a negative value
  *   corresponding to the error number.
  */
-__rte_experimental int
+int
 rte_ctrl_thread_create(pthread_t *thread, const char *name,
 		const pthread_attr_t *attr,
 		void *(*start_routine)(void *), void *arg);

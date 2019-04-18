@@ -271,6 +271,8 @@ DPDK_18.11 {
 DPDK_19.05 {
 	global:
 
+	rte_ctrl_thread_create;
+	rte_dev_is_probed;
 	rte_devargs_add;
 	rte_devargs_dump;
 	rte_devargs_insert;
@@ -279,6 +281,9 @@ DPDK_19.05 {
 	rte_devargs_parsef;
 	rte_devargs_remove;
 	rte_devargs_type_count;
+	rte_eal_cleanup;
+	rte_socket_count;
+	rte_socket_id_by_idx;
 
 } DPDK_18.11;
 
@@ -289,7 +294,6 @@ EXPERIMENTAL {
 	rte_class_find_by_name;
 	rte_class_register;
 	rte_class_unregister;
-	rte_ctrl_thread_create;
 	rte_delay_us_sleep;
 	rte_dev_dma_map;
 	rte_dev_dma_unmap;
@@ -300,10 +304,8 @@ EXPERIMENTAL {
 	rte_dev_event_monitor_stop;
 	rte_dev_hotplug_handle_disable;
 	rte_dev_hotplug_handle_enable;
-	rte_dev_is_probed;
 	rte_dev_iterator_init;
 	rte_dev_iterator_next;
-	rte_eal_cleanup;
 	rte_extmem_attach;
 	rte_extmem_detach;
 	rte_extmem_register;
@@ -376,6 +378,4 @@ EXPERIMENTAL {
 	rte_service_lcore_attr_get;
 	rte_service_lcore_attr_reset_all;
 	rte_service_may_be_active;
-	rte_socket_count;
-	rte_socket_id_by_idx;
 };

@@ -7,7 +7,6 @@ ifeq ($(CONFIG_RTE_LIBRTE_PDUMP),y)
 
 APP = dpdk-pdump
 
-CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += $(WERROR_FLAGS)
 
 # all source are stored in SRCS-y

@@ -164,7 +164,7 @@ static void *rte_thread_init(void *arg)
 	return start_routine(routine_arg);
 }
 
-__rte_experimental int
+int
 rte_ctrl_thread_create(pthread_t *thread, const char *name,
 		const pthread_attr_t *attr,
 		void *(*start_routine)(void *), void *arg)

@@ -76,7 +76,7 @@ static int cmp_dev_name(const struct rte_device *dev, const void *_name)
 	return strcmp(dev->name, name);
 }
 
-int __rte_experimental
+int
 rte_dev_is_probed(const struct rte_device *dev)
 {
 	/* The field driver should be set only when the probe is successful. */

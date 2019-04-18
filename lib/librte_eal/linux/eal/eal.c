@@ -1253,7 +1253,7 @@ mark_freeable(const struct rte_memseg_list *msl, const struct rte_memseg *ms,
 	return 0;
 }
 
-int __rte_experimental
+int
 rte_eal_cleanup(void)
 {
 	/* if we're in a primary process, we need to mark hugepages as freeable
