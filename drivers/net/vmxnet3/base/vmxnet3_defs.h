@@ -89,6 +89,7 @@ typedef enum {
    VMXNET3_CMD_RESERVED3,
    VMXNET3_CMD_RESERVED4,
    VMXNET3_CMD_REGISTER_MEMREGS,
+   VMXNET3_CMD_SET_RSS_FIELDS,
 
    VMXNET3_CMD_FIRST_GET = 0xF00D0000,
    VMXNET3_CMD_GET_QUEUE_STATUS = VMXNET3_CMD_FIRST_GET,
@@ -749,6 +750,15 @@ struct Vmxnet3_MemRegs {
 #include "vmware_pack_end.h"
 Vmxnet3_MemRegs;
 
+typedef enum Vmxnet3_RSSField {
+   VMXNET3_RSS_FIELDS_TCPIP4 = 0x0001,
+   VMXNET3_RSS_FIELDS_TCPIP6 = 0x0002,
+   VMXNET3_RSS_FIELDS_UDPIP4 = 0x0004,
+   VMXNET3_RSS_FIELDS_UDPIP6 = 0x0008,
+   VMXNET3_RSS_FIELDS_ESPIP4 = 0x0010,
+   VMXNET3_RSS_FIELDS_ESPIP6 = 0x0020,
+} Vmxnet3_RSSField;
+
 /*
  * If the command data <= 16 bytes, use the shared memory direcly.
  * Otherwise, use the variable length configuration descriptor.
@@ -758,6 +768,8 @@ typedef
 union Vmxnet3_CmdInfo {
    Vmxnet3_VariableLenConfDesc varConf;
    Vmxnet3_SetPolling          setPolling;
+   Vmxnet3_RSSField            setRSSFields;
+   __le16                      reserved[2];
    __le64                      data[2];
 }
 #include "vmware_pack_end.h"

@@ -266,7 +266,11 @@ eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 	ver = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_VRRS);
 	PMD_INIT_LOG(DEBUG, "Hardware version : %d", ver);
 
-	if (ver & (1 << VMXNET3_REV_3)) {
+	if (ver & (1 << VMXNET3_REV_4)) {
+		VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_VRRS,
+				       1 << VMXNET3_REV_4);
+		hw->version = VMXNET3_REV_4 + 1;
+	} else if (ver & (1 << VMXNET3_REV_3)) {
 		VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_VRRS,
 				       1 << VMXNET3_REV_3);
 		hw->version = VMXNET3_REV_3 + 1;
@@ -764,6 +768,15 @@ vmxnet3_dev_start(struct rte_eth_dev *dev)
 		PMD_INIT_LOG(DEBUG, "Failed to setup memory region\n");
 	}
 
+	if (VMXNET3_VERSION_GE_4(hw)) {
+		/* Check for additional RSS  */
+		ret = vmxnet3_v4_rss_configure(dev);
+		if (ret != VMXNET3_SUCCESS) {
+			PMD_INIT_LOG(ERR, "Failed to configure v4 RSS");
+			return ret;
+		}
+	}
+
 	/* Disable interrupts */
 	vmxnet3_disable_intr(hw);
 
@@ -1141,6 +1154,8 @@ static void
 vmxnet3_dev_info_get(struct rte_eth_dev *dev __rte_unused,
 		     struct rte_eth_dev_info *dev_info)
 {
+	struct vmxnet3_hw *hw = dev->data->dev_private;
+
 	dev_info->max_rx_queues = VMXNET3_MAX_RX_QUEUES;
 	dev_info->max_tx_queues = VMXNET3_MAX_TX_QUEUES;
 	dev_info->min_rx_bufsize = 1518 + RTE_PKTMBUF_HEADROOM;
@@ -1149,6 +1164,10 @@ vmxnet3_dev_info_get(struct rte_eth_dev *dev __rte_unused,
 	dev_info->max_mac_addrs = VMXNET3_MAX_MAC_ADDRS;
 
 	dev_info->flow_type_rss_offloads = VMXNET3_RSS_OFFLOAD_ALL;
+
+	if (VMXNET3_VERSION_GE_4(hw)) {
+		dev_info->flow_type_rss_offloads |= VMXNET3_V4_RSS_MASK;
+	}
 
 	dev_info->rx_desc_lim = (struct rte_eth_desc_lim) {
 		.nb_max = VMXNET3_RX_RING_MAX_SIZE,

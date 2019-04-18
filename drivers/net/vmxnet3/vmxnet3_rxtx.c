@@ -1292,6 +1292,46 @@ static uint8_t rss_intel_key[40] = {
 };
 
 /*
+ * Additional RSS configurations based on vmxnet v4+ APIs
+ */
+int
+vmxnet3_v4_rss_configure(struct rte_eth_dev *dev)
+{
+	struct vmxnet3_hw *hw = dev->data->dev_private;
+	Vmxnet3_DriverShared *shared = hw->shared;
+	Vmxnet3_CmdInfo *cmdInfo = &shared->cu.cmdInfo;
+	struct rte_eth_rss_conf *port_rss_conf;
+	uint64_t rss_hf;
+	uint32_t ret;
+
+	PMD_INIT_FUNC_TRACE();
+
+	cmdInfo->setRSSFields = 0;
+	port_rss_conf = &dev->data->dev_conf.rx_adv_conf.rss_conf;
+	rss_hf = port_rss_conf->rss_hf &
+		(VMXNET3_V4_RSS_MASK | VMXNET3_RSS_OFFLOAD_ALL);
+
+	if (rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
+		cmdInfo->setRSSFields |= VMXNET3_RSS_FIELDS_TCPIP4;
+	if (rss_hf & ETH_RSS_NONFRAG_IPV6_TCP)
+		cmdInfo->setRSSFields |= VMXNET3_RSS_FIELDS_TCPIP6;
+	if (rss_hf & ETH_RSS_NONFRAG_IPV4_UDP)
+		cmdInfo->setRSSFields |= VMXNET3_RSS_FIELDS_UDPIP4;
+	if (rss_hf & ETH_RSS_NONFRAG_IPV6_UDP)
+		cmdInfo->setRSSFields |= VMXNET3_RSS_FIELDS_UDPIP6;
+
+	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD,
+			       VMXNET3_CMD_SET_RSS_FIELDS);
+	ret = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_CMD);
+
+	if (ret != VMXNET3_SUCCESS) {
+		PMD_DRV_LOG(ERR, "Set RSS fields (v4) failed: %d", ret);
+	}
+
+	return ret;
+}
+
+/*
  * Configure RSS feature
  */
 int

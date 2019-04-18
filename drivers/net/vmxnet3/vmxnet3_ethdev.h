@@ -34,6 +34,10 @@
 	ETH_RSS_IPV6 | \
 	ETH_RSS_NONFRAG_IPV6_TCP)
 
+#define VMXNET3_V4_RSS_MASK ( \
+	ETH_RSS_NONFRAG_IPV4_UDP | \
+	ETH_RSS_NONFRAG_IPV6_UDP)
+
 /* RSS configuration structure - shared with device through GPA */
 typedef struct VMXNET3_RSSConf {
 	uint16_t   hashType;
@@ -103,10 +107,12 @@ struct vmxnet3_hw {
 	UPT1_RxStats          snapshot_rx_stats[VMXNET3_MAX_RX_QUEUES];
 };
 
+#define VMXNET3_REV_4		3		/* Vmxnet3 Rev. 4 */
 #define VMXNET3_REV_3		2		/* Vmxnet3 Rev. 3 */
 #define VMXNET3_REV_2		1		/* Vmxnet3 Rev. 2 */
 #define VMXNET3_REV_1		0		/* Vmxnet3 Rev. 1 */
 
+#define VMXNET3_VERSION_GE_4(hw) ((hw)->version >= VMXNET3_REV_4 + 1)
 #define VMXNET3_VERSION_GE_3(hw) ((hw)->version >= VMXNET3_REV_3 + 1)
 #define VMXNET3_VERSION_GE_2(hw) ((hw)->version >= VMXNET3_REV_2 + 1)
 
@@ -161,6 +167,8 @@ void vmxnet3_dev_clear_queues(struct rte_eth_dev *dev);
 
 void vmxnet3_dev_rx_queue_release(void *rxq);
 void vmxnet3_dev_tx_queue_release(void *txq);
+
+int vmxnet3_v4_rss_configure(struct rte_eth_dev *dev);
 
 int  vmxnet3_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 				uint16_t nb_rx_desc, unsigned int socket_id,
