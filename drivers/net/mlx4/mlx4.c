@@ -410,6 +410,7 @@ static const struct eth_dev_ops mlx4_dev_ops = {
 	.mac_addr_remove = mlx4_mac_addr_remove,
 	.mac_addr_add = mlx4_mac_addr_add,
 	.mac_addr_set = mlx4_mac_addr_set,
+	.set_mc_addr_list = mlx4_set_mc_addr_list,
 	.stats_get = mlx4_stats_get,
 	.stats_reset = mlx4_stats_reset,
 	.fw_version_get = mlx4_fw_version_get,

@@ -433,7 +433,7 @@ mlx4_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 	struct mlx4_priv *priv = dev->data->dev_private;
 	struct rte_flow_error error;
 
-	if (index >= RTE_DIM(priv->mac)) {
+	if (index >= RTE_DIM(priv->mac) - priv->mac_mc) {
 		rte_errno = EINVAL;
 		return;
 	}
@@ -471,7 +471,7 @@ mlx4_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 	int ret;
 
 	(void)vmdq;
-	if (index >= RTE_DIM(priv->mac)) {
+	if (index >= RTE_DIM(priv->mac) - priv->mac_mc) {
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
@@ -483,6 +483,63 @@ mlx4_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 	      " at index %d (code %d, \"%s\"),"
 	      " flow error type %d, cause %p, message: %s",
 	      index, rte_errno, strerror(rte_errno), error.type, error.cause,
+	      error.message ? error.message : "(unspecified)");
+	return ret;
+}
+
+/**
+ * DPDK callback to configure multicast addresses.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param list
+ *   List of MAC addresses to register.
+ * @param num
+ *   Number of entries in list.
+ *
+ * @return
+ *   0 on success, negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx4_set_mc_addr_list(struct rte_eth_dev *dev, struct ether_addr *list,
+		      uint32_t num)
+{
+	struct mlx4_priv *priv = dev->data->dev_private;
+	struct rte_flow_error error;
+	int ret;
+
+	if (num > RTE_DIM(priv->mac)) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	/*
+	 * Make sure there is enough room to increase the number of
+	 * multicast entries without overwriting standard entries.
+	 */
+	if (num > priv->mac_mc) {
+		unsigned int i;
+
+		for (i = RTE_DIM(priv->mac) - num;
+		     i != RTE_DIM(priv->mac) - priv->mac_mc;
+		     ++i)
+			if (!is_zero_ether_addr(&priv->mac[i])) {
+				rte_errno = EBUSY;
+				return -rte_errno;
+			}
+	} else if (num < priv->mac_mc) {
+		/* Clear unused entries. */
+		memset(priv->mac + RTE_DIM(priv->mac) - priv->mac_mc,
+		       0,
+		       sizeof(priv->mac[0]) * (priv->mac_mc - num));
+	}
+	memcpy(priv->mac + RTE_DIM(priv->mac) - num, list, sizeof(*list) * num);
+	priv->mac_mc = num;
+	ret = mlx4_flow_sync(priv, &error);
+	if (!ret)
+		return 0;
+	ERROR("failed to synchronize flow rules after modifying MC list,"
+	      " (code %d, \"%s\"), flow error type %d, cause %p, message: %s",
+	      rte_errno, strerror(rte_errno), error.type, error.cause,
 	      error.message ? error.message : "(unspecified)");
 	return ret;
 }
