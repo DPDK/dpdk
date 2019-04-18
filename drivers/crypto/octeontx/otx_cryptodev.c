@@ -104,9 +104,6 @@ otx_cpt_pci_remove(struct rte_pci_device *pci_dev)
 	cryptodev->device = NULL;
 	cryptodev->data = NULL;
 
-	/* free metapool memory */
-	cleanup_global_resources();
-
 	return 0;
 }
 

@@ -5,6 +5,8 @@
 #ifndef _CPT_COMMON_H_
 #define _CPT_COMMON_H_
 
+#include <rte_mempool.h>
+
 /*
  * This file defines common macros and structs
  */
@@ -38,10 +40,10 @@
 
 #define MOD_INC(i, l)   ((i) == (l - 1) ? (i) = 0 : (i)++)
 
-struct cptvf_meta_info {
-	void *cptvf_meta_pool;
-	int cptvf_op_mlen;
-	int cptvf_op_sb_mlen;
+struct cpt_qp_meta_info {
+	struct rte_mempool *pool;
+	int sg_mlen;
+	int lb_mlen;
 };
 
 struct rid {

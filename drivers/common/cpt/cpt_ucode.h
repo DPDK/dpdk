@@ -3147,7 +3147,7 @@ prepare_iov_from_pkt_inplace(struct rte_mbuf *pkt,
 static __rte_always_inline int
 fill_fc_params(struct rte_crypto_op *cop,
 	       struct cpt_sess_misc *sess_misc,
-	       struct cptvf_meta_info *cpt_m_info,
+	       struct cpt_qp_meta_info *m_info,
 	       void **mdata_ptr,
 	       void **prep_req)
 {
@@ -3365,15 +3365,11 @@ fill_fc_params(struct rte_crypto_op *cop,
 	}
 
 	if (likely(flags & SINGLE_BUF_HEADTAILROOM))
-		mdata = alloc_op_meta(m_src,
-				      &fc_params.meta_buf,
-				      cpt_m_info->cptvf_op_sb_mlen,
-				      cpt_m_info->cptvf_meta_pool);
+		mdata = alloc_op_meta(m_src, &fc_params.meta_buf,
+				      m_info->lb_mlen, m_info->pool);
 	else
-		mdata = alloc_op_meta(NULL,
-				      &fc_params.meta_buf,
-				      cpt_m_info->cptvf_op_mlen,
-				      cpt_m_info->cptvf_meta_pool);
+		mdata = alloc_op_meta(NULL, &fc_params.meta_buf,
+				      m_info->sg_mlen, m_info->pool);
 
 	if (unlikely(mdata == NULL)) {
 		CPT_LOG_DP_ERR("Error allocating meta buffer for request");
@@ -3410,7 +3406,7 @@ fill_fc_params(struct rte_crypto_op *cop,
 	return 0;
 
 free_mdata_and_exit:
-	free_op_meta(mdata, cpt_m_info->cptvf_meta_pool);
+	free_op_meta(mdata, m_info->pool);
 err_exit:
 	return ret;
 }
@@ -3521,7 +3517,7 @@ find_kasumif9_direction_and_length(uint8_t *src,
 static __rte_always_inline int
 fill_digest_params(struct rte_crypto_op *cop,
 		   struct cpt_sess_misc *sess,
-		   struct cptvf_meta_info *cpt_m_info,
+		   struct cpt_qp_meta_info *m_info,
 		   void **mdata_ptr,
 		   void **prep_req)
 {
@@ -3547,8 +3543,8 @@ fill_digest_params(struct rte_crypto_op *cop,
 	m_src = sym_op->m_src;
 
 	/* For just digest lets force mempool alloc */
-	mdata = alloc_op_meta(NULL, &params.meta_buf, cpt_m_info->cptvf_op_mlen,
-			      cpt_m_info->cptvf_meta_pool);
+	mdata = alloc_op_meta(NULL, &params.meta_buf, m_info->sg_mlen,
+			      m_info->pool);
 	if (mdata == NULL) {
 		ret = -ENOMEM;
 		goto err_exit;
@@ -3683,7 +3679,7 @@ fill_digest_params(struct rte_crypto_op *cop,
 	return 0;
 
 free_mdata_and_exit:
-	free_op_meta(mdata, cpt_m_info->cptvf_meta_pool);
+	free_op_meta(mdata, m_info->pool);
 err_exit:
 	return ret;
 }

@@ -7,7 +7,9 @@
 
 #include <rte_branch_prediction.h>
 #include <rte_common.h>
+#include <rte_cryptodev.h>
 #include <rte_errno.h>
+#include <rte_mempool.h>
 #include <rte_memzone.h>
 #include <rte_string_fns.h>
 
@@ -15,7 +17,10 @@
 #include "otx_cryptodev_mbox.h"
 
 #include "cpt_pmd_logs.h"
+#include "cpt_pmd_ops_helper.h"
 #include "cpt_hw_types.h"
+
+#define METABUF_POOL_CACHE_SIZE	512
 
 /*
  * VF HAL functions
@@ -395,12 +400,90 @@ otx_cpt_deinit_device(void *dev)
 	return 0;
 }
 
+static int
+otx_cpt_metabuf_mempool_create(const struct rte_cryptodev *dev,
+			       struct cpt_instance *instance, uint8_t qp_id,
+			       int nb_elements)
+{
+	char mempool_name[RTE_MEMPOOL_NAMESIZE];
+	int sg_mlen, lb_mlen, max_mlen, ret;
+	struct cpt_qp_meta_info *meta_info;
+	struct rte_mempool *pool;
+
+	/* Get meta len for scatter gather mode */
+	sg_mlen = cpt_pmd_ops_helper_get_mlen_sg_mode();
+
+	/* Extra 32B saved for future considerations */
+	sg_mlen += 4 * sizeof(uint64_t);
+
+	/* Get meta len for linear buffer (direct) mode */
+	lb_mlen = cpt_pmd_ops_helper_get_mlen_direct_mode();
+
+	/* Extra 32B saved for future considerations */
+	lb_mlen += 4 * sizeof(uint64_t);
+
+	/* Check max requirement for meta buffer */
+	max_mlen = RTE_MAX(lb_mlen, sg_mlen);
+
+	/* Allocate mempool */
+
+	snprintf(mempool_name, RTE_MEMPOOL_NAMESIZE, "otx_cpt_mb_%u:%u",
+		 dev->data->dev_id, qp_id);
+
+	pool = rte_mempool_create_empty(mempool_name, nb_elements, max_mlen,
+					METABUF_POOL_CACHE_SIZE, 0,
+					rte_socket_id(), 0);
+
+	if (pool == NULL) {
+		CPT_LOG_ERR("Could not create mempool for metabuf");
+		return rte_errno;
+	}
+
+	ret = rte_mempool_set_ops_byname(pool, RTE_MBUF_DEFAULT_MEMPOOL_OPS,
+					 NULL);
+	if (ret) {
+		CPT_LOG_ERR("Could not set mempool ops");
+		goto mempool_free;
+	}
+
+	ret = rte_mempool_populate_default(pool);
+	if (ret <= 0) {
+		CPT_LOG_ERR("Could not populate metabuf pool");
+		goto mempool_free;
+	}
+
+	meta_info = &instance->meta_info;
+
+	meta_info->pool = pool;
+	meta_info->lb_mlen = lb_mlen;
+	meta_info->sg_mlen = sg_mlen;
+
+	return 0;
+
+mempool_free:
+	rte_mempool_free(pool);
+	return ret;
+}
+
+static void
+otx_cpt_metabuf_mempool_destroy(struct cpt_instance *instance)
+{
+	struct cpt_qp_meta_info *meta_info = &instance->meta_info;
+
+	rte_mempool_free(meta_info->pool);
+
+	meta_info->pool = NULL;
+	meta_info->lb_mlen = 0;
+	meta_info->sg_mlen = 0;
+}
+
 int
-otx_cpt_get_resource(void *dev, uint8_t group, struct cpt_instance **instance)
+otx_cpt_get_resource(const struct rte_cryptodev *dev, uint8_t group,
+		     struct cpt_instance **instance, uint16_t qp_id)
 {
 	int ret = -ENOENT, len, qlen, i;
 	int chunk_len, chunks, chunk_size;
-	struct cpt_vf *cptvf = (struct cpt_vf *)dev;
+	struct cpt_vf *cptvf = dev->data->dev_private;
 	struct cpt_instance *cpt_instance;
 	struct command_chunk *chunk_head = NULL, *chunk_prev = NULL;
 	struct command_chunk *chunk = NULL;
@@ -446,7 +529,7 @@ otx_cpt_get_resource(void *dev, uint8_t group, struct cpt_instance **instance)
 					 RTE_CACHE_LINE_SIZE);
 	if (!rz) {
 		ret = rte_errno;
-		goto cleanup;
+		goto exit;
 	}
 
 	mem = rz->addr;
@@ -456,6 +539,12 @@ otx_cpt_get_resource(void *dev, uint8_t group, struct cpt_instance **instance)
 	memset(mem, 0, len);
 
 	cpt_instance->rsvd = (uintptr_t)rz;
+
+	ret = otx_cpt_metabuf_mempool_create(dev, cpt_instance, qp_id, qlen);
+	if (ret) {
+		CPT_LOG_ERR("Could not create mempool for metabuf");
+		goto memzone_free;
+	}
 
 	/* Pending queue setup */
 	cptvf->pqueue.rid_queue = (struct rid *)mem;
@@ -513,7 +602,7 @@ otx_cpt_get_resource(void *dev, uint8_t group, struct cpt_instance **instance)
 		CPT_LOG_ERR("Failed to initialize CPT VQ of device %s",
 			    cptvf->dev_name);
 		ret = -EBUSY;
-		goto cleanup;
+		goto mempool_destroy;
 	}
 
 	*instance = cpt_instance;
@@ -521,8 +610,12 @@ otx_cpt_get_resource(void *dev, uint8_t group, struct cpt_instance **instance)
 	CPT_LOG_DP_DEBUG("Crypto device (%s) initialized", cptvf->dev_name);
 
 	return 0;
-cleanup:
+
+mempool_destroy:
+	otx_cpt_metabuf_mempool_destroy(cpt_instance);
+memzone_free:
 	rte_memzone_free(rz);
+exit:
 	*instance = NULL;
 	return ret;
 }
@@ -539,6 +632,8 @@ otx_cpt_put_resource(struct cpt_instance *instance)
 	}
 
 	CPT_LOG_DP_DEBUG("Releasing cpt device %s", cptvf->dev_name);
+
+	otx_cpt_metabuf_mempool_destroy(instance);
 
 	rz = (struct rte_memzone *)instance->rsvd;
 	rte_memzone_free(rz);

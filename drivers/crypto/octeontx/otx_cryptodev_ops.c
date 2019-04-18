@@ -6,10 +6,11 @@
 #include <rte_bus_pci.h>
 #include <rte_cryptodev.h>
 #include <rte_cryptodev_pmd.h>
+#include <rte_errno.h>
 #include <rte_malloc.h>
+#include <rte_mempool.h>
 
 #include "cpt_pmd_logs.h"
-#include "cpt_pmd_ops_helper.h"
 #include "cpt_ucode.h"
 
 #include "otx_cryptodev.h"
@@ -17,67 +18,10 @@
 #include "otx_cryptodev_hw_access.h"
 #include "otx_cryptodev_ops.h"
 
-static int otx_cryptodev_probe_count;
-static rte_spinlock_t otx_probe_count_lock = RTE_SPINLOCK_INITIALIZER;
-
-static struct rte_mempool *otx_cpt_meta_pool;
-static int otx_cpt_op_mlen;
-static int otx_cpt_op_sb_mlen;
-
 /* Forward declarations */
 
 static int
 otx_cpt_que_pair_release(struct rte_cryptodev *dev, uint16_t que_pair_id);
-
-/*
- * Initializes global variables used by fast-path code
- *
- * @return
- *   - 0 on success, errcode on error
- */
-static int
-init_global_resources(void)
-{
-	/* Get meta len for scatter gather mode */
-	otx_cpt_op_mlen = cpt_pmd_ops_helper_get_mlen_sg_mode();
-
-	/* Extra 4B saved for future considerations */
-	otx_cpt_op_mlen += 4 * sizeof(uint64_t);
-
-	otx_cpt_meta_pool = rte_mempool_create("cpt_metabuf-pool", 4096 * 16,
-					       otx_cpt_op_mlen, 512, 0,
-					       NULL, NULL, NULL, NULL,
-					       SOCKET_ID_ANY, 0);
-	if (!otx_cpt_meta_pool) {
-		CPT_LOG_ERR("cpt metabuf pool not created");
-		return -ENOMEM;
-	}
-
-	/* Get meta len for direct mode */
-	otx_cpt_op_sb_mlen = cpt_pmd_ops_helper_get_mlen_direct_mode();
-
-	/* Extra 4B saved for future considerations */
-	otx_cpt_op_sb_mlen += 4 * sizeof(uint64_t);
-
-	return 0;
-}
-
-void
-cleanup_global_resources(void)
-{
-	/* Take lock */
-	rte_spinlock_lock(&otx_probe_count_lock);
-
-	/* Decrement the cryptodev count */
-	otx_cryptodev_probe_count--;
-
-	/* Free buffers */
-	if (otx_cpt_meta_pool && otx_cryptodev_probe_count == 0)
-		rte_mempool_free(otx_cpt_meta_pool);
-
-	/* Free lock */
-	rte_spinlock_unlock(&otx_probe_count_lock);
-}
 
 /* Alarm routines */
 
@@ -187,7 +131,6 @@ otx_cpt_que_pair_setup(struct rte_cryptodev *dev,
 		       const struct rte_cryptodev_qp_conf *qp_conf,
 		       int socket_id __rte_unused)
 {
-	void *cptvf = dev->data->dev_private;
 	struct cpt_instance *instance = NULL;
 	struct rte_pci_device *pci_dev;
 	int ret = -1;
@@ -213,7 +156,7 @@ otx_cpt_que_pair_setup(struct rte_cryptodev *dev,
 		return -EIO;
 	}
 
-	ret = otx_cpt_get_resource(cptvf, 0, &instance);
+	ret = otx_cpt_get_resource(dev, 0, &instance, que_pair_id);
 	if (ret != 0 || instance == NULL) {
 		CPT_LOG_ERR("Error getting instance handle from device %s : "
 			    "ret = %d", dev->data->name, ret);
@@ -384,7 +327,6 @@ otx_cpt_enq_single_sym(struct cpt_instance *instance,
 	void *prep_req, *mdata = NULL;
 	int ret = 0;
 	uint64_t cpt_op;
-	struct cpt_vf *cptvf = (struct cpt_vf *)instance;
 
 	sess = (struct cpt_sess_misc *)
 			get_sym_session_private_data(sym_op->session,
@@ -393,10 +335,10 @@ otx_cpt_enq_single_sym(struct cpt_instance *instance,
 	cpt_op = sess->cpt_op;
 
 	if (likely(cpt_op & CPT_OP_CIPHER_MASK))
-		ret = fill_fc_params(op, sess, &cptvf->meta_info, &mdata,
+		ret = fill_fc_params(op, sess, &instance->meta_info, &mdata,
 				     &prep_req);
 	else
-		ret = fill_digest_params(op, sess, &cptvf->meta_info,
+		ret = fill_digest_params(op, sess, &instance->meta_info,
 					 &mdata, &prep_req);
 
 	if (unlikely(ret)) {
@@ -410,7 +352,7 @@ otx_cpt_enq_single_sym(struct cpt_instance *instance,
 
 	if (unlikely(ret)) {
 		/* Buffer allocated for request preparation need to be freed */
-		free_op_meta(mdata, cptvf->meta_info.cptvf_meta_pool);
+		free_op_meta(mdata, instance->meta_info.pool);
 		return ret;
 	}
 
@@ -618,7 +560,7 @@ otx_cpt_pkt_dequeue(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 			rte_mempool_put(instance->sess_mp, cop->sym->session);
 			cop->sym->session = NULL;
 		}
-		free_op_meta(metabuf, cptvf->meta_info.cptvf_meta_pool);
+		free_op_meta(metabuf, instance->meta_info.pool);
 	}
 
 	return nb_completed;
@@ -643,14 +585,6 @@ static struct rte_cryptodev_ops cptvf_ops = {
 	.sym_session_configure = otx_cpt_session_cfg,
 	.sym_session_clear = otx_cpt_session_clear
 };
-
-static void
-otx_cpt_common_vars_init(struct cpt_vf *cptvf)
-{
-	cptvf->meta_info.cptvf_meta_pool = otx_cpt_meta_pool;
-	cptvf->meta_info.cptvf_op_mlen = otx_cpt_op_mlen;
-	cptvf->meta_info.cptvf_op_sb_mlen = otx_cpt_op_sb_mlen;
-}
 
 int
 otx_cpt_dev_create(struct rte_cryptodev *c_dev)
@@ -699,20 +633,6 @@ otx_cpt_dev_create(struct rte_cryptodev *c_dev)
 	/* Start off timer for mailbox interrupts */
 	otx_cpt_periodic_alarm_start(cptvf);
 
-	rte_spinlock_lock(&otx_probe_count_lock);
-	if (!otx_cryptodev_probe_count) {
-		ret = init_global_resources();
-		if (ret) {
-			rte_spinlock_unlock(&otx_probe_count_lock);
-			goto init_fail;
-		}
-	}
-	otx_cryptodev_probe_count++;
-	rte_spinlock_unlock(&otx_probe_count_lock);
-
-	/* Initialize data path variables used by common code */
-	otx_cpt_common_vars_init(cptvf);
-
 	c_dev->dev_ops = &cptvf_ops;
 
 	c_dev->enqueue_burst = otx_cpt_pkt_enqueue;
@@ -729,10 +649,6 @@ otx_cpt_dev_create(struct rte_cryptodev *c_dev)
 	c_dev->data->dev_private = cptvf;
 
 	return 0;
-
-init_fail:
-	otx_cpt_periodic_alarm_stop(cptvf);
-	otx_cpt_deinit_device(cptvf);
 
 fail:
 	if (cptvf) {

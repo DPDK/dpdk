@@ -9,9 +9,6 @@
 #define OTX_CPT_MIN_TAILROOM_REQ	(8)
 #define CPT_NUM_QS_PER_VF		(1)
 
-void
-cleanup_global_resources(void);
-
 int
 otx_cpt_dev_create(struct rte_cryptodev *c_dev);
 
