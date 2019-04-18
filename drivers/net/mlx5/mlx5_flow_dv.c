@@ -3191,6 +3191,8 @@ flow_dv_matcher_enable(uint32_t *match_criteria)
  *   Table id to use.
  * @param[in] egress
  *   Direction of the table.
+ * @param[in] transfer
+ *   E-Switch or NIC flow.
  * @param[out] error
  *   pointer to error structure.
  *
@@ -3200,6 +3202,7 @@ flow_dv_matcher_enable(uint32_t *match_criteria)
 static struct mlx5_flow_tbl_resource *
 flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 			 uint32_t table_id, uint8_t egress,
+			 uint8_t transfer,
 			 struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -3207,7 +3210,12 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 	struct mlx5_flow_tbl_resource *tbl;
 
 #ifdef HAVE_MLX5DV_DR
-	if (egress) {
+	if (transfer) {
+		tbl = &sh->fdb_tbl[table_id];
+		if (!tbl->obj)
+			tbl->obj = mlx5_glue->dr_create_flow_tbl
+				(sh->fdb_ns, table_id);
+	} else if (egress) {
 		tbl = &sh->tx_tbl[table_id];
 		if (!tbl->obj)
 			tbl->obj = mlx5_glue->dr_create_flow_tbl
@@ -3229,7 +3237,9 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 #else
 	(void)error;
 	(void)tbl;
-	if (egress)
+	if (transfer)
+		return &sh->fdb_tbl[table_id];
+	else if (egress)
 		return &sh->tx_tbl[table_id];
 	else
 		return &sh->rx_tbl[table_id];
@@ -3294,6 +3304,7 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 		    matcher->priority == cache_matcher->priority &&
 		    matcher->egress == cache_matcher->egress &&
 		    matcher->group == cache_matcher->group &&
+		    matcher->transfer == cache_matcher->transfer &&
 		    !memcmp((const void *)matcher->mask.buf,
 			    (const void *)cache_matcher->mask.buf,
 			    cache_matcher->mask.size)) {
@@ -3315,7 +3326,8 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "cannot allocate matcher memory");
 	tbl = flow_dv_tbl_resource_get(dev, matcher->group * MLX5_GROUP_FACTOR,
-				       matcher->egress, error);
+				       matcher->egress, matcher->transfer,
+				       error);
 	if (!tbl) {
 		rte_free(cache_matcher);
 		return rte_flow_error_set(error, ENOMEM,
@@ -3643,7 +3655,8 @@ cnt_err:
 			jump_data = action->conf;
 			tbl = flow_dv_tbl_resource_get(dev, jump_data->group *
 						       MLX5_GROUP_FACTOR,
-						       attr->egress, error);
+						       attr->egress,
+						       attr->transfer, error);
 			if (!tbl)
 				return rte_flow_error_set
 						(error, errno,
@@ -3874,6 +3887,7 @@ cnt_err:
 						     matcher.priority);
 	matcher.egress = attr->egress;
 	matcher.group = attr->group;
+	matcher.transfer = attr->transfer;
 	if (flow_dv_matcher_register(dev, &matcher, dev_flow, error))
 		return -rte_errno;
 	return 0;

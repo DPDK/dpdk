@@ -210,6 +210,7 @@ struct mlx5_flow_dv_matcher {
 	uint16_t crc; /**< CRC of key. */
 	uint16_t priority; /**< Priority of matcher. */
 	uint8_t egress; /**< Egress matcher. */
+	uint8_t transfer; /**< 1 if the flow is E-Switch flow. */
 	uint32_t group; /**< The matcher group. */
 	struct mlx5_flow_dv_match_params mask; /**< Matcher mask. */
 };
@@ -382,6 +383,7 @@ struct rte_flow {
 	struct mlx5_fdir *fdir; /**< Pointer to associated FDIR if any. */
 	uint8_t ingress; /**< 1 if the flow is ingress. */
 	uint32_t group; /**< The group index. */
+	uint8_t transfer; /**< 1 if the flow is E-Switch flow. */
 };
 
 typedef int (*mlx5_flow_validate_t)(struct rte_eth_dev *dev,
