@@ -612,6 +612,89 @@ flow_dv_validate_item_meta(struct rte_eth_dev *dev,
 }
 
 /**
+ * Validate vport item.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] item
+ *   Item specification.
+ * @param[in] attr
+ *   Attributes of flow that includes this item.
+ * @param[in] item_flags
+ *   Bit-fields that holds the items detected until now.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_item_port_id(struct rte_eth_dev *dev,
+			      const struct rte_flow_item *item,
+			      const struct rte_flow_attr *attr,
+			      uint64_t item_flags,
+			      struct rte_flow_error *error)
+{
+	const struct rte_flow_item_port_id *spec = item->spec;
+	const struct rte_flow_item_port_id *mask = item->mask;
+	const struct rte_flow_item_port_id switch_mask = {
+			.id = 0xffffffff,
+	};
+	uint16_t esw_domain_id;
+	uint16_t item_port_esw_domain_id;
+	int ret;
+
+	if (!attr->transfer)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  NULL,
+					  "match on port id is valid only"
+					  " when transfer flag is enabled");
+	if (item_flags & MLX5_FLOW_ITEM_PORT_ID)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "multiple source ports are not"
+					  " supported");
+	if (!mask)
+		mask = &switch_mask;
+	if (mask->id != 0xffffffff)
+		return rte_flow_error_set(error, ENOTSUP,
+					   RTE_FLOW_ERROR_TYPE_ITEM_MASK,
+					   mask,
+					   "no support for partial mask on"
+					   " \"id\" field");
+	ret = mlx5_flow_item_acceptable
+				(item, (const uint8_t *)mask,
+				 (const uint8_t *)&rte_flow_item_port_id_mask,
+				 sizeof(struct rte_flow_item_port_id),
+				 error);
+	if (ret)
+		return ret;
+	if (!spec)
+		return 0;
+	ret = mlx5_port_to_eswitch_info(spec->id, &item_port_esw_domain_id,
+					NULL);
+	if (ret)
+		return rte_flow_error_set(error, -ret,
+					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC, spec,
+					  "failed to obtain E-Switch info for"
+					  " port");
+	ret = mlx5_port_to_eswitch_info(dev->data->port_id,
+					&esw_domain_id, NULL);
+	if (ret < 0)
+		return rte_flow_error_set(error, -ret,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "failed to obtain E-Switch info");
+	if (item_port_esw_domain_id != esw_domain_id)
+		return rte_flow_error_set(error, -ret,
+					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC, spec,
+					  "cannot match on a port from a"
+					  " different E-Switch");
+	return 0;
+}
+
+/**
  * Validate count action.
  *
  * @param[in] dev
@@ -675,7 +758,7 @@ flow_dv_validate_action_l2_encap(uint64_t action_flags,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "can only have a single encap or"
 					  " decap action in a flow");
-	if (attr->ingress)
+	if (!attr->transfer && attr->ingress)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
 					  NULL,
@@ -760,7 +843,8 @@ flow_dv_validate_action_raw_encap(uint64_t action_flags,
 					  "can only have a single encap"
 					  " action in a flow");
 	/* encap without preceding decap is not supported for ingress */
-	if (attr->ingress && !(action_flags & MLX5_FLOW_ACTION_RAW_DECAP))
+	if (!attr->transfer &&  attr->ingress &&
+	    !(action_flags & MLX5_FLOW_ACTION_RAW_DECAP))
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
 					  NULL,
@@ -1560,6 +1644,77 @@ flow_dv_validate_action_jump(const struct rte_flow_action *action,
 	return 0;
 }
 
+/*
+ * Validate the port_id action.
+ *
+ * @param[in] dev
+ *   Pointer to rte_eth_dev structure.
+ * @param[in] action_flags
+ *   Bit-fields that holds the actions detected until now.
+ * @param[in] action
+ *   Port_id RTE action structure.
+ * @param[in] attr
+ *   Attributes of flow that includes this action.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_validate_action_port_id(struct rte_eth_dev *dev,
+				uint64_t action_flags,
+				const struct rte_flow_action *action,
+				const struct rte_flow_attr *attr,
+				struct rte_flow_error *error)
+{
+	const struct rte_flow_action_port_id *port_id;
+	uint16_t port;
+	uint16_t esw_domain_id;
+	uint16_t act_port_domain_id;
+	int ret;
+
+	if (!attr->transfer)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "port id action is valid in transfer"
+					  " mode only");
+	if (!action || !action->conf)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					  NULL,
+					  "port id action parameters must be"
+					  " specified");
+	if (action_flags & (MLX5_FLOW_FATE_ACTIONS |
+			    MLX5_FLOW_FATE_ESWITCH_ACTIONS))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "can have only one fate actions in"
+					  " a flow");
+	ret = mlx5_port_to_eswitch_info(dev->data->port_id,
+					&esw_domain_id, NULL);
+	if (ret < 0)
+		return rte_flow_error_set(error, -ret,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "failed to obtain E-Switch info");
+	port_id = action->conf;
+	port = port_id->original ? dev->data->port_id : port_id->id;
+	ret = mlx5_port_to_eswitch_info(port, &act_port_domain_id, NULL);
+	if (ret)
+		return rte_flow_error_set
+				(error, -ret,
+				 RTE_FLOW_ERROR_TYPE_ACTION_CONF, port_id,
+				 "failed to obtain E-Switch port id for port");
+	if (act_port_domain_id != esw_domain_id)
+		return rte_flow_error_set
+				(error, -ret,
+				 RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+				 "port does not belong to"
+				 " E-Switch being configured");
+	return 0;
+}
 
 /**
  * Find existing modify-header resource or create and register a new one.
@@ -1758,11 +1913,29 @@ flow_dv_validate_attributes(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
 					  NULL,
 					  "priority out of range");
-	if (attributes->transfer)
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
-					  NULL,
-					  "transfer is not supported");
+	if (attributes->transfer) {
+		if (!priv->config.dv_esw_en)
+			return rte_flow_error_set
+				(error, ENOTSUP,
+				 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				 "E-Switch dr is not supported");
+		if (!(priv->representor || priv->master))
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				 NULL, "E-Switch configurationd can only be"
+				 " done by a master or a representor device");
+		if (attributes->egress)
+			return rte_flow_error_set
+				(error, ENOTSUP,
+				 RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, attributes,
+				 "egress is not supported");
+		if (attributes->group >= MLX5_MAX_TABLES_FDB)
+			return rte_flow_error_set
+				(error, EINVAL,
+				 RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
+				 NULL, "group must be smaller than "
+				 RTE_STR(MLX5_MAX_FDB_TABLES));
+	}
 	if (!(attributes->egress ^ attributes->ingress))
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ATTR, NULL,
@@ -1810,6 +1983,13 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
 		switch (items->type) {
 		case RTE_FLOW_ITEM_TYPE_VOID:
+			break;
+		case RTE_FLOW_ITEM_TYPE_PORT_ID:
+			ret = flow_dv_validate_item_port_id
+					(dev, items, attr, item_flags, error);
+			if (ret < 0)
+				return ret;
+			last_item |= MLX5_FLOW_ITEM_PORT_ID;
 			break;
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			ret = mlx5_flow_validate_item_eth(items, item_flags,
@@ -1941,6 +2121,17 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 						  actions, "too many actions");
 		switch (actions->type) {
 		case RTE_FLOW_ACTION_TYPE_VOID:
+			break;
+		case RTE_FLOW_ACTION_TYPE_PORT_ID:
+			ret = flow_dv_validate_action_port_id(dev,
+							      action_flags,
+							      actions,
+							      attr,
+							      error);
+			if (ret)
+				return ret;
+			action_flags |= MLX5_FLOW_ACTION_PORT_ID;
+			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_FLAG:
 			ret = mlx5_flow_validate_action_flag(action_flags,
@@ -2132,10 +2323,40 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 						  "action not supported");
 		}
 	}
-	if (!(action_flags & MLX5_FLOW_FATE_ACTIONS) && attr->ingress)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION, actions,
-					  "no fate action is found");
+	/* Eswitch has few restrictions on using items and actions */
+	if (attr->transfer) {
+		if (action_flags & MLX5_FLOW_ACTION_FLAG)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL,
+						  "unsupported action FLAG");
+		if (action_flags & MLX5_FLOW_ACTION_MARK)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL,
+						  "unsupported action MARK");
+		if (action_flags & MLX5_FLOW_ACTION_QUEUE)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL,
+						  "unsupported action QUEUE");
+		if (action_flags & MLX5_FLOW_ACTION_RSS)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL,
+						  "unsupported action RSS");
+		if (!(action_flags & MLX5_FLOW_FATE_ESWITCH_ACTIONS))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  actions,
+						  "no fate action is found");
+	} else {
+		if (!(action_flags & MLX5_FLOW_FATE_ACTIONS) && attr->ingress)
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  actions,
+						  "no fate action is found");
+	}
 	return 0;
 }
 
