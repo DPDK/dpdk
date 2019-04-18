@@ -1053,6 +1053,70 @@ flow_dv_jump_tbl_resource_register
 }
 
 /**
+ * Find existing table port ID resource or create and register a new one.
+ *
+ * @param dev[in, out]
+ *   Pointer to rte_eth_dev structure.
+ * @param[in, out] resource
+ *   Pointer to port ID action resource.
+ * @parm[in, out] dev_flow
+ *   Pointer to the dev_flow.
+ * @param[out] error
+ *   pointer to error structure.
+ *
+ * @return
+ *   0 on success otherwise -errno and errno is set.
+ */
+static int
+flow_dv_port_id_action_resource_register
+			(struct rte_eth_dev *dev,
+			 struct mlx5_flow_dv_port_id_action_resource *resource,
+			 struct mlx5_flow *dev_flow,
+			 struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_ibv_shared *sh = priv->sh;
+	struct mlx5_flow_dv_port_id_action_resource *cache_resource;
+
+	/* Lookup a matching resource from cache. */
+	LIST_FOREACH(cache_resource, &sh->port_id_action_list, next) {
+		if (resource->port_id == cache_resource->port_id) {
+			DRV_LOG(DEBUG, "port id action resource resource %p: "
+				"refcnt %d++",
+				(void *)cache_resource,
+				rte_atomic32_read(&cache_resource->refcnt));
+			rte_atomic32_inc(&cache_resource->refcnt);
+			dev_flow->dv.port_id_action = cache_resource;
+			return 0;
+		}
+	}
+	/* Register new port id action resource. */
+	cache_resource = rte_calloc(__func__, 1, sizeof(*cache_resource), 0);
+	if (!cache_resource)
+		return rte_flow_error_set(error, ENOMEM,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "cannot allocate resource memory");
+	*cache_resource = *resource;
+	cache_resource->action =
+		mlx5_glue->dr_create_flow_action_dest_vport(priv->sh->fdb_ns,
+							    resource->port_id);
+	if (!cache_resource->action) {
+		rte_free(cache_resource);
+		return rte_flow_error_set(error, ENOMEM,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "cannot create action");
+	}
+	rte_atomic32_init(&cache_resource->refcnt);
+	rte_atomic32_inc(&cache_resource->refcnt);
+	LIST_INSERT_HEAD(&sh->port_id_action_list, cache_resource, next);
+	dev_flow->dv.port_id_action = cache_resource;
+	DRV_LOG(DEBUG, "new port id action resource %p: refcnt %d++",
+		(void *)cache_resource,
+		rte_atomic32_read(&cache_resource->refcnt));
+	return 0;
+}
+
+/**
  * Get the size of specific rte_flow_item_type
  *
  * @param[in] item_type
@@ -3455,6 +3519,44 @@ flow_dv_tag_release(struct rte_eth_dev *dev,
 }
 
 /**
+ * Translate port ID action to vport.
+ *
+ * @param[in] dev
+ *   Pointer to rte_eth_dev structure.
+ * @param[in] action
+ *   Pointer to the port ID action.
+ * @param[out] dst_port_id
+ *   The target port ID.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_translate_action_port_id(struct rte_eth_dev *dev,
+				 const struct rte_flow_action *action,
+				 uint32_t *dst_port_id,
+				 struct rte_flow_error *error)
+{
+	uint32_t port;
+	uint16_t port_id;
+	int ret;
+	const struct rte_flow_action_port_id *conf =
+			(const struct rte_flow_action_port_id *)action->conf;
+
+	port = conf->original ? dev->data->port_id : conf->id;
+	ret = mlx5_port_to_eswitch_info(port, NULL, &port_id);
+	if (ret)
+		return rte_flow_error_set(error, -ret,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL,
+					  "No eswitch info was found for port");
+	*dst_port_id = port_id;
+	return 0;
+}
+
+/**
  * Fill the flow with DV spec.
  *
  * @param[in] dev
@@ -3513,9 +3615,23 @@ flow_dv_translate(struct rte_eth_dev *dev,
 		const struct rte_flow_action_jump *jump_data;
 		struct mlx5_flow_dv_jump_tbl_resource jump_tbl_resource;
 		struct mlx5_flow_tbl_resource *tbl;
+		uint32_t port_id = 0;
+		struct mlx5_flow_dv_port_id_action_resource port_id_resource;
 
 		switch (actions->type) {
 		case RTE_FLOW_ACTION_TYPE_VOID:
+			break;
+		case RTE_FLOW_ACTION_TYPE_PORT_ID:
+			if (flow_dv_translate_action_port_id(dev, action,
+							     &port_id, error))
+				return -rte_errno;
+			port_id_resource.port_id = port_id;
+			if (flow_dv_port_id_action_resource_register
+			    (dev, &port_id_resource, dev_flow, error))
+				return -rte_errno;
+			dev_flow->dv.actions[actions_n++] =
+				dev_flow->dv.port_id_action->action;
+			action_flags |= MLX5_FLOW_ACTION_PORT_ID;
 			break;
 		case RTE_FLOW_ACTION_TYPE_FLAG:
 			tag_resource.tag =
@@ -4119,6 +4235,37 @@ flow_dv_modify_hdr_resource_release(struct mlx5_flow *flow)
 }
 
 /**
+ * Release port ID action resource.
+ *
+ * @param flow
+ *   Pointer to mlx5_flow.
+ *
+ * @return
+ *   1 while a reference on it exists, 0 when freed.
+ */
+static int
+flow_dv_port_id_action_resource_release(struct mlx5_flow *flow)
+{
+	struct mlx5_flow_dv_port_id_action_resource *cache_resource =
+		flow->dv.port_id_action;
+
+	assert(cache_resource->action);
+	DRV_LOG(DEBUG, "port ID action resource %p: refcnt %d--",
+		(void *)cache_resource,
+		rte_atomic32_read(&cache_resource->refcnt));
+	if (rte_atomic32_dec_and_test(&cache_resource->refcnt)) {
+		claim_zero(mlx5_glue->destroy_flow_action
+				(cache_resource->action));
+		LIST_REMOVE(cache_resource, next);
+		rte_free(cache_resource);
+		DRV_LOG(DEBUG, "port id action resource %p: removed",
+			(void *)cache_resource);
+		return 0;
+	}
+	return 1;
+}
+
+/**
  * Remove the flow from the NIC but keeps it in memory.
  *
  * @param[in] dev
@@ -4185,6 +4332,8 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 			flow_dv_modify_hdr_resource_release(dev_flow);
 		if (dev_flow->dv.jump)
 			flow_dv_jump_tbl_resource_release(dev_flow);
+		if (dev_flow->dv.port_id_action)
+			flow_dv_port_id_action_resource_release(dev_flow);
 		rte_free(dev_flow);
 	}
 }

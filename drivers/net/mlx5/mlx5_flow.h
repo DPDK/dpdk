@@ -267,6 +267,16 @@ struct mlx5_flow_dv_jump_tbl_resource {
 	struct mlx5_flow_tbl_resource *tbl; /**< The target table. */
 };
 
+/* Port ID resource structure. */
+struct mlx5_flow_dv_port_id_action_resource {
+	LIST_ENTRY(mlx5_flow_dv_port_id_action_resource) next;
+	/* Pointer to next element. */
+	rte_atomic32_t refcnt; /**< Reference counter. */
+	void *action;
+	/**< Verbs tag action object. */
+	uint32_t port_id; /**< Port ID value. */
+};
+
 /*
  * Max number of actions per DV flow.
  * See CREATE_FLOW_MAX_FLOW_ACTIONS_SUPPORTED
@@ -289,6 +299,8 @@ struct mlx5_flow_dv {
 	struct ibv_flow *flow; /**< Installed flow. */
 	struct mlx5_flow_dv_jump_tbl_resource *jump;
 	/**< Pointer to the jump action resource. */
+	struct mlx5_flow_dv_port_id_action_resource *port_id_action;
+	/**< Pointer to port ID action resource. */
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	void *actions[MLX5_DV_MAX_NUMBER_OF_ACTIONS];
 	/**< Action list. */

@@ -292,6 +292,8 @@ struct mlx5_ibv_shared {
 	LIST_HEAD(modify_cmd, mlx5_flow_dv_modify_hdr_resource) modify_cmds;
 	LIST_HEAD(tag, mlx5_flow_dv_tag_resource) tags;
 	LIST_HEAD(jump, mlx5_flow_dv_jump_tbl_resource) jump_tbl;
+	LIST_HEAD(port_id_action_list, mlx5_flow_dv_port_id_action_resource)
+		port_id_action_list; /* List of port ID actions. */
 	/* Shared interrupt handler section. */
 	pthread_mutex_t intr_mutex; /* Interrupt config mutex. */
 	uint32_t intr_cnt; /* Interrupt handler reference counter. */
