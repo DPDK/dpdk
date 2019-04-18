@@ -4,6 +4,7 @@
 
 #include <rte_string_fns.h>
 #include <rte_ethdev_pci.h>
+#include <rte_alarm.h>
 
 #include "atl_ethdev.h"
 #include "atl_common.h"
@@ -700,6 +701,129 @@ atl_dev_reset(struct rte_eth_dev *dev)
 	return ret;
 }
 
+static int
+atl_dev_configure_macsec(struct rte_eth_dev *dev)
+{
+	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct aq_hw_cfg_s *cf = ATL_DEV_PRIVATE_TO_CFG(dev->data->dev_private);
+	struct aq_macsec_config *aqcfg = &cf->aq_macsec;
+	struct macsec_msg_fw_request msg_macsec;
+	struct macsec_msg_fw_response response;
+
+	if (!aqcfg->common.macsec_enabled ||
+	    hw->aq_fw_ops->send_macsec_req == NULL)
+		return 0;
+
+	memset(&msg_macsec, 0, sizeof(msg_macsec));
+
+	/* Creating set of sc/sa structures from parameters provided by DPDK */
+
+	/* Configure macsec */
+	msg_macsec.msg_type = macsec_cfg_msg;
+	msg_macsec.cfg.enabled = aqcfg->common.macsec_enabled;
+	msg_macsec.cfg.interrupts_enabled = 1;
+
+	hw->aq_fw_ops->send_macsec_req(hw, &msg_macsec, &response);
+
+	if (response.result)
+		return -1;
+
+	memset(&msg_macsec, 0, sizeof(msg_macsec));
+
+	/* Configure TX SC */
+
+	msg_macsec.msg_type = macsec_add_tx_sc_msg;
+	msg_macsec.txsc.index = 0; /* TXSC always one (??) */
+	msg_macsec.txsc.protect = aqcfg->common.encryption_enabled;
+
+	/* MAC addr for TX */
+	msg_macsec.txsc.mac_sa[0] = rte_bswap32(aqcfg->txsc.mac[1]);
+	msg_macsec.txsc.mac_sa[1] = rte_bswap32(aqcfg->txsc.mac[0]);
+	msg_macsec.txsc.sa_mask = 0x3f;
+
+	msg_macsec.txsc.da_mask = 0;
+	msg_macsec.txsc.tci = 0x0B;
+	msg_macsec.txsc.curr_an = 0; /* SA index which currently used */
+
+	/*
+	 * Creating SCI (Secure Channel Identifier).
+	 * SCI constructed from Source MAC and Port identifier
+	 */
+	uint32_t sci_hi_part = (msg_macsec.txsc.mac_sa[1] << 16) |
+			       (msg_macsec.txsc.mac_sa[0] >> 16);
+	uint32_t sci_low_part = (msg_macsec.txsc.mac_sa[0] << 16);
+
+	uint32_t port_identifier = 1;
+
+	msg_macsec.txsc.sci[1] = sci_hi_part;
+	msg_macsec.txsc.sci[0] = sci_low_part | port_identifier;
+
+	hw->aq_fw_ops->send_macsec_req(hw, &msg_macsec, &response);
+
+	if (response.result)
+		return -1;
+
+	memset(&msg_macsec, 0, sizeof(msg_macsec));
+
+	/* Configure RX SC */
+
+	msg_macsec.msg_type = macsec_add_rx_sc_msg;
+	msg_macsec.rxsc.index = aqcfg->rxsc.pi;
+	msg_macsec.rxsc.replay_protect =
+		aqcfg->common.replay_protection_enabled;
+	msg_macsec.rxsc.anti_replay_window = 0;
+
+	/* MAC addr for RX */
+	msg_macsec.rxsc.mac_da[0] = rte_bswap32(aqcfg->rxsc.mac[1]);
+	msg_macsec.rxsc.mac_da[1] = rte_bswap32(aqcfg->rxsc.mac[0]);
+	msg_macsec.rxsc.da_mask = 0;//0x3f;
+
+	msg_macsec.rxsc.sa_mask = 0;
+
+	hw->aq_fw_ops->send_macsec_req(hw, &msg_macsec, &response);
+
+	if (response.result)
+		return -1;
+
+	memset(&msg_macsec, 0, sizeof(msg_macsec));
+
+	/* Configure RX SC */
+
+	msg_macsec.msg_type = macsec_add_tx_sa_msg;
+	msg_macsec.txsa.index = aqcfg->txsa.idx;
+	msg_macsec.txsa.next_pn = aqcfg->txsa.pn;
+
+	msg_macsec.txsa.key[0] = rte_bswap32(aqcfg->txsa.key[3]);
+	msg_macsec.txsa.key[1] = rte_bswap32(aqcfg->txsa.key[2]);
+	msg_macsec.txsa.key[2] = rte_bswap32(aqcfg->txsa.key[1]);
+	msg_macsec.txsa.key[3] = rte_bswap32(aqcfg->txsa.key[0]);
+
+	hw->aq_fw_ops->send_macsec_req(hw, &msg_macsec, &response);
+
+	if (response.result)
+		return -1;
+
+	memset(&msg_macsec, 0, sizeof(msg_macsec));
+
+	/* Configure RX SA */
+
+	msg_macsec.msg_type = macsec_add_rx_sa_msg;
+	msg_macsec.rxsa.index = aqcfg->rxsa.idx;
+	msg_macsec.rxsa.next_pn = aqcfg->rxsa.pn;
+
+	msg_macsec.rxsa.key[0] = rte_bswap32(aqcfg->rxsa.key[3]);
+	msg_macsec.rxsa.key[1] = rte_bswap32(aqcfg->rxsa.key[2]);
+	msg_macsec.rxsa.key[2] = rte_bswap32(aqcfg->rxsa.key[1]);
+	msg_macsec.rxsa.key[3] = rte_bswap32(aqcfg->rxsa.key[0]);
+
+	hw->aq_fw_ops->send_macsec_req(hw, &msg_macsec, &response);
+
+	if (response.result)
+		return -1;
+
+	return 0;
+}
+
 int atl_macsec_enable(struct rte_eth_dev *dev,
 		      uint8_t encr, uint8_t repl_prot)
 {
@@ -947,13 +1071,20 @@ atl_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 	return NULL;
 }
 
+static void
+atl_dev_delayed_handler(void *param)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+
+	atl_dev_configure_macsec(dev);
+}
+
+
 /* return 0 means link status changed, -1 means not changed */
 static int
 atl_dev_link_update(struct rte_eth_dev *dev, int wait __rte_unused)
 {
 	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct atl_interrupt *intr =
-		ATL_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
 	struct rte_eth_link link, old;
 	int err = 0;
 
@@ -980,8 +1111,6 @@ atl_dev_link_update(struct rte_eth_dev *dev, int wait __rte_unused)
 		return 0;
 	}
 
-	intr->flags &= ~ATL_FLAG_NEED_LINK_CONFIG;
-
 	link.link_status = ETH_LINK_UP;
 	link.link_duplex = ETH_LINK_FULL_DUPLEX;
 	link.link_speed = hw->aq_link_status.mbps;
@@ -990,6 +1119,10 @@ atl_dev_link_update(struct rte_eth_dev *dev, int wait __rte_unused)
 
 	if (link.link_status == old.link_status)
 		return -1;
+
+	if (rte_eal_alarm_set(1000 * 1000,
+			      atl_dev_delayed_handler, (void *)dev) < 0)
+		PMD_DRV_LOG(ERR, "rte_eal_alarm_set fail");
 
 	return 0;
 }
@@ -1068,8 +1201,9 @@ atl_dev_interrupt_get_status(struct rte_eth_dev *dev)
 	hw_atl_b0_hw_irq_read(hw, &cause);
 
 	atl_disable_intr(hw);
-	intr->flags = cause & BIT(ATL_IRQ_CAUSE_LINK) ?
-			ATL_FLAG_NEED_LINK_UPDATE : 0;
+
+	if (cause & BIT(ATL_IRQ_CAUSE_LINK))
+		intr->flags |= ATL_FLAG_NEED_LINK_UPDATE;
 
 	return 0;
 }
@@ -1134,15 +1268,50 @@ atl_dev_interrupt_action(struct rte_eth_dev *dev,
 {
 	struct atl_interrupt *intr =
 		ATL_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
+	struct atl_adapter *adapter =
+		(struct atl_adapter *)dev->data->dev_private;
+	struct aq_hw_s *hw = &adapter->hw;
 
-	if (intr->flags & ATL_FLAG_NEED_LINK_UPDATE) {
-		atl_dev_link_update(dev, 0);
-		intr->flags &= ~ATL_FLAG_NEED_LINK_UPDATE;
+	if (!(intr->flags & ATL_FLAG_NEED_LINK_UPDATE))
+		goto done;
+
+	intr->flags &= ~ATL_FLAG_NEED_LINK_UPDATE;
+
+	/* Notify userapp if link status changed */
+	if (!atl_dev_link_update(dev, 0)) {
 		atl_dev_link_status_print(dev);
 		_rte_eth_dev_callback_process(dev,
 			RTE_ETH_EVENT_INTR_LSC, NULL);
-	}
+	} else {
+		if (hw->aq_fw_ops->send_macsec_req == NULL)
+			goto done;
 
+		/* Check macsec Keys expired */
+		struct get_stats req = { 0 };
+		struct macsec_msg_fw_request msg = { 0 };
+		struct macsec_msg_fw_response resp = { 0 };
+
+		req.ingress_sa_index = 0x0;
+		req.egress_sc_index = 0x0;
+		req.egress_sa_index = 0x0;
+		msg.msg_type = macsec_get_stats_msg;
+		msg.stats = req;
+
+		int err = hw->aq_fw_ops->send_macsec_req(hw, &msg, &resp);
+		if (err) {
+			PMD_DRV_LOG(ERR, "send_macsec_req fail");
+			goto done;
+		}
+		if (resp.stats.egress_threshold_expired ||
+		    resp.stats.ingress_threshold_expired ||
+		    resp.stats.egress_expired ||
+		    resp.stats.ingress_expired) {
+			PMD_DRV_LOG(INFO, "RTE_ETH_EVENT_MACSEC");
+			_rte_eth_dev_callback_process(dev,
+				RTE_ETH_EVENT_MACSEC, NULL);
+		}
+	}
+done:
 	atl_enable_intr(dev);
 	rte_intr_enable(intr_handle);
 

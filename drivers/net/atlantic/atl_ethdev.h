@@ -34,7 +34,7 @@
 	(&((struct atl_adapter *)adapter)->hw_cfg)
 
 #define ATL_FLAG_NEED_LINK_UPDATE (uint32_t)(1 << 0)
-#define ATL_FLAG_NEED_LINK_CONFIG (uint32_t)(4 << 0)
+#define ATL_FLAG_MACSEC (uint32_t)(4 << 0)
 
 struct atl_interrupt {
 	uint32_t flags;
