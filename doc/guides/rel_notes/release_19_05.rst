@@ -173,6 +173,12 @@ New Features
 
   Added support for AES-XTS with 128 and 256 bit AES keys.
 
+* **Added Intel QuickAssist Technology PMD for asymmetric crypto.**
+
+  A new QAT Crypto PMD has been added, which provides asymmetric cryptography
+  algorithms, in this release modular exponentiation and modular multiplicative
+  inverse algorithms were added.
+
 * **Updated AESNI-MB PMD.**
 
   Added support for out-of-place operations.
