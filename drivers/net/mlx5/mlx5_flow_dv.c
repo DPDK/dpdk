@@ -3086,8 +3086,8 @@ flow_dv_matcher_register(struct rte_eth_dev *dev,
  *   Mask
  */
 static void
-flow_dv_translate_source_vport(void *matcher, void *key,
-			      int16_t port, uint16_t mask)
+flow_dv_translate_item_source_vport(void *matcher, void *key,
+				    int16_t port, uint16_t mask)
 {
 	void *misc_m = MLX5_ADDR_OF(fte_match_param, matcher, misc_parameters);
 	void *misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
@@ -3495,10 +3495,10 @@ cnt_err:
 		 * Add matching on source vport index only
 		 * for ingress rules in E-Switch configurations.
 		 */
-		flow_dv_translate_source_vport(matcher.mask.buf,
-					       dev_flow->dv.value.buf,
-					       priv->vport_id,
-					       0xffff);
+		flow_dv_translate_item_source_vport(matcher.mask.buf,
+						    dev_flow->dv.value.buf,
+						    priv->vport_id,
+						    0xffff);
 	}
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
 		int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
