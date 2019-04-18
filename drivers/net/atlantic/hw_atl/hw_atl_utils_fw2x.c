@@ -62,6 +62,7 @@ static int aq_fw2x_set_state(struct aq_hw_s *self,
 static int aq_fw2x_init(struct aq_hw_s *self)
 {
 	int err = 0;
+	struct hw_aq_atl_utils_mbox mbox;
 
 	/* check 10 times by 1ms */
 	AQ_HW_WAIT_FOR(0U != (self->mbox_addr =
@@ -70,6 +71,12 @@ static int aq_fw2x_init(struct aq_hw_s *self)
 	AQ_HW_WAIT_FOR(0U != (self->rpc_addr =
 		       aq_hw_read_reg(self, HW_ATL_FW2X_MPI_RPC_ADDR)),
 		       1000U, 100U);
+
+	/* Read caps */
+	hw_atl_utils_mpi_read_stats(self, &mbox);
+
+	self->caps_lo = mbox.info.caps_lo;
+
 	return err;
 }
 
@@ -623,6 +630,49 @@ static int aq_fw2x_set_eeprom(struct aq_hw_s *self, int dev_addr,
 	return 0;
 }
 
+static int aq_fw2x_send_macsec_request(struct aq_hw_s *self,
+				struct macsec_msg_fw_request *req,
+				struct macsec_msg_fw_response *response)
+{
+	int err = 0;
+	u32 mpi_opts = 0;
+
+	if (!response || !response)
+		return 0;
+
+	if ((self->caps_lo & BIT(CAPS_LO_MACSEC)) == 0)
+		return -EOPNOTSUPP;
+
+	/* Write macsec request to cfg memory */
+	err = hw_atl_utils_fw_upload_dwords(self, self->rpc_addr,
+		(u32 *)(void *)req,
+		RTE_ALIGN(sizeof(*req) / sizeof(u32), sizeof(u32)));
+
+	if (err < 0)
+		return err;
+
+	/* Toggle 0x368.CAPS_LO_MACSEC bit */
+	mpi_opts = aq_hw_read_reg(self, HW_ATL_FW2X_MPI_CONTROL_ADDR);
+	mpi_opts ^= BIT(CAPS_LO_MACSEC);
+
+	aq_hw_write_reg(self, HW_ATL_FW2X_MPI_CONTROL_ADDR, mpi_opts);
+
+	/* Wait until REQUEST_BIT matched in 0x370 */
+	AQ_HW_WAIT_FOR((aq_hw_read_reg(self, HW_ATL_FW2X_MPI_STATE_ADDR) &
+		BIT(CAPS_LO_MACSEC)) == (mpi_opts & BIT(CAPS_LO_MACSEC)),
+		1000U, 10000U);
+
+	if (err < 0)
+		return err;
+
+	/* Read status of write operation */
+	err = hw_atl_utils_fw_downld_dwords(self, self->rpc_addr + sizeof(u32),
+		(u32 *)(void *)response,
+		RTE_ALIGN(sizeof(*response) / sizeof(u32), sizeof(u32)));
+
+	return err;
+}
+
 const struct aq_fw_ops aq_fw_2x_ops = {
 	.init = aq_fw2x_init,
 	.deinit = aq_fw2x_deinit,
@@ -641,4 +691,5 @@ const struct aq_fw_ops aq_fw_2x_ops = {
 	.led_control = aq_fw2x_led_control,
 	.get_eeprom = aq_fw2x_get_eeprom,
 	.set_eeprom = aq_fw2x_set_eeprom,
+	.send_macsec_req = aq_fw2x_send_macsec_request,
 };

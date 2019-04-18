@@ -128,6 +128,8 @@ struct aq_hw_s {
 	struct hw_atl_stats_s last_stats;
 	struct aq_stats_s curr_stats;
 
+	u32 caps_lo;
+
 	u64 speed;
 	unsigned int chip_features;
 	u32 fw_ver_actual;
