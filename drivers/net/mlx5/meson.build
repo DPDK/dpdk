@@ -13,14 +13,17 @@ if pmd_dlopen
 		'-DMLX5_GLUE_VERSION="@0@"'.format(LIB_GLUE_VERSION),
 	]
 endif
-libs = [
-	dependency('libmnl', required:false),
-	dependency('libmlx5', required:false),
-	dependency('libibverbs', required:false),
-]
+libnames = [ 'mnl', 'mlx5', 'ibverbs' ]
+libs = []
 build = true
-foreach lib:libs
+foreach libname:libnames
+	lib = dependency('lib' + libname, required:false)
 	if not lib.found()
+		lib = cc.find_library(libname, required:false)
+	endif
+	if lib.found()
+		libs += [ lib ]
+	else
 		build = false
 	endif
 endforeach
