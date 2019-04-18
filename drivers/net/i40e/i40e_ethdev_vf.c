@@ -2324,11 +2324,11 @@ i40evf_dev_close(struct rte_eth_dev *dev)
 	 */
 	i40evf_dev_promiscuous_disable(dev);
 	i40evf_dev_allmulticast_disable(dev);
+	rte_eal_alarm_cancel(i40evf_dev_alarm_handler, dev);
 
 	i40evf_reset_vf(dev);
 	i40e_shutdown_adminq(hw);
 	i40evf_disable_irq0(hw);
-	rte_eal_alarm_cancel(i40evf_dev_alarm_handler, dev);
 	hw->adapter_closed = 1;
 }
 
