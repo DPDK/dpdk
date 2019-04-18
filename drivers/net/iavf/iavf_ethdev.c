@@ -1014,11 +1014,13 @@ iavf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 		PMD_DRV_LOG(INFO, "MISC is also enabled for control");
 		IAVF_WRITE_REG(hw, IAVFINT_DYN_CTL01,
 			      IAVFINT_DYN_CTL01_INTENA_MASK |
+			      IAVFINT_DYN_CTL01_CLEARPBA_MASK |
 			      IAVFINT_DYN_CTL01_ITR_INDX_MASK);
 	} else {
 		IAVF_WRITE_REG(hw,
 			      IAVFINT_DYN_CTLN1(msix_intr - IAVF_RX_VEC_START),
 			      IAVFINT_DYN_CTLN1_INTENA_MASK |
+			      IAVFINT_DYN_CTL01_CLEARPBA_MASK |
 			      IAVFINT_DYN_CTLN1_ITR_INDX_MASK);
 	}
 
