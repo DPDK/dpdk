@@ -33,6 +33,11 @@ flags_generic = [
 	['RTE_MAX_LCORE', 256],
 	['RTE_USE_C11_MEM_MODEL', true],
 	['RTE_CACHE_LINE_SIZE', 128]]
+flags_arm = [
+	['RTE_MACHINE', '"armv8a"'],
+	['RTE_MAX_LCORE', 16],
+	['RTE_USE_C11_MEM_MODEL', true],
+	['RTE_CACHE_LINE_SIZE', 64]]
 flags_cavium = [
 	['RTE_CACHE_LINE_SIZE', 128],
 	['RTE_MAX_NUMA_NODES', 2],
@@ -89,7 +94,7 @@ machine_args_cavium = [
 
 ## Arm implementer ID (ARM DDI 0487C.a, Section G7.2.106, Page G7-5321)
 impl_generic = ['Generic armv8', flags_generic, machine_args_generic]
-impl_0x41 = ['Arm', flags_generic, machine_args_generic]
+impl_0x41 = ['Arm', flags_arm, machine_args_generic]
 impl_0x42 = ['Broadcom', flags_generic, machine_args_generic]
 impl_0x43 = ['Cavium', flags_cavium, machine_args_cavium]
 impl_0x44 = ['DEC', flags_generic, machine_args_generic]
