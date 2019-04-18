@@ -39,6 +39,10 @@
 #define MLX5DV_FLOW_ACTION_COUNTERS_DEVX 0
 #endif
 
+#ifndef HAVE_MLX5DV_DR_ESWITCH
+#define MLX5DV_FLOW_TABLE_TYPE_FDB 0
+#endif
+
 union flow_dv_attr {
 	struct {
 		uint32_t valid:1;
@@ -938,7 +942,9 @@ flow_dv_encap_decap_resource_register
 	struct mlx5dv_dr_ns *ns;
 
 	resource->flags = flow->group ? 0 : 1;
-	if (flow->ingress)
+	if (resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB)
+		ns = sh->fdb_ns;
+	else if (resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_NIC_RX)
 		ns = sh->rx_ns;
 	else
 		ns = sh->tx_ns;
@@ -1359,6 +1365,8 @@ flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
  *   Pointer to action structure.
  * @param[in, out] dev_flow
  *   Pointer to the mlx5_flow.
+ * @param[in] transfer
+ *   Mark if the flow is E-Switch flow.
  * @param[out] error
  *   Pointer to the error structure.
  *
@@ -1369,6 +1377,7 @@ static int
 flow_dv_create_action_l2_encap(struct rte_eth_dev *dev,
 			       const struct rte_flow_action *action,
 			       struct mlx5_flow *dev_flow,
+			       uint8_t transfer,
 			       struct rte_flow_error *error)
 {
 	const struct rte_flow_item *encap_data;
@@ -1376,7 +1385,8 @@ flow_dv_create_action_l2_encap(struct rte_eth_dev *dev,
 	struct mlx5_flow_dv_encap_decap_resource res = {
 		.reformat_type =
 			MLX5DV_FLOW_ACTION_PACKET_REFORMAT_TYPE_L2_TO_L2_TUNNEL,
-		.ft_type = MLX5DV_FLOW_TABLE_TYPE_NIC_TX,
+		.ft_type = transfer ? MLX5DV_FLOW_TABLE_TYPE_FDB :
+				      MLX5DV_FLOW_TABLE_TYPE_NIC_TX,
 	};
 
 	if (action->type == RTE_FLOW_ACTION_TYPE_RAW_ENCAP) {
@@ -1411,6 +1421,8 @@ flow_dv_create_action_l2_encap(struct rte_eth_dev *dev,
  *   Pointer to rte_eth_dev structure.
  * @param[in, out] dev_flow
  *   Pointer to the mlx5_flow.
+ * @param[in] transfer
+ *   Mark if the flow is E-Switch flow.
  * @param[out] error
  *   Pointer to the error structure.
  *
@@ -1420,13 +1432,15 @@ flow_dv_create_action_l2_encap(struct rte_eth_dev *dev,
 static int
 flow_dv_create_action_l2_decap(struct rte_eth_dev *dev,
 			       struct mlx5_flow *dev_flow,
+			       uint8_t transfer,
 			       struct rte_flow_error *error)
 {
 	struct mlx5_flow_dv_encap_decap_resource res = {
 		.size = 0,
 		.reformat_type =
 			MLX5DV_FLOW_ACTION_PACKET_REFORMAT_TYPE_L2_TUNNEL_TO_L2,
-		.ft_type = MLX5DV_FLOW_TABLE_TYPE_NIC_RX,
+		.ft_type = transfer ? MLX5DV_FLOW_TABLE_TYPE_FDB :
+				      MLX5DV_FLOW_TABLE_TYPE_NIC_RX,
 	};
 
 	if (flow_dv_encap_decap_resource_register(dev, &res, dev_flow, error))
@@ -1469,8 +1483,11 @@ flow_dv_create_action_raw_encap(struct rte_eth_dev *dev,
 	res.reformat_type = attr->egress ?
 		MLX5DV_FLOW_ACTION_PACKET_REFORMAT_TYPE_L2_TO_L3_TUNNEL :
 		MLX5DV_FLOW_ACTION_PACKET_REFORMAT_TYPE_L3_TUNNEL_TO_L2;
-	res.ft_type = attr->egress ? MLX5DV_FLOW_TABLE_TYPE_NIC_TX :
-				     MLX5DV_FLOW_TABLE_TYPE_NIC_RX;
+	if (attr->transfer)
+		res.ft_type = MLX5DV_FLOW_TABLE_TYPE_FDB;
+	else
+		res.ft_type = attr->egress ? MLX5DV_FLOW_TABLE_TYPE_NIC_TX :
+					     MLX5DV_FLOW_TABLE_TYPE_NIC_RX;
 	if (flow_dv_encap_decap_resource_register(dev, &res, dev_flow, error))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION,
@@ -1805,11 +1822,14 @@ flow_dv_modify_hdr_resource_register
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_ibv_shared *sh = priv->sh;
 	struct mlx5_flow_dv_modify_hdr_resource *cache_resource;
+	struct mlx5dv_dr_ns *ns;
 
-	struct mlx5dv_dr_ns *ns =
-		resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_NIC_TX  ?
-		sh->tx_ns : sh->rx_ns;
-
+	if (resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB)
+		ns = sh->fdb_ns;
+	else if (resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_NIC_TX)
+		ns = sh->tx_ns;
+	else
+		ns = sh->rx_ns;
 	/* Lookup a matching resource from cache. */
 	LIST_FOREACH(cache_resource, &sh->modify_cmds, next) {
 		if (resource->ft_type == cache_resource->ft_type &&
@@ -3604,6 +3624,8 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	struct mlx5_flow_dv_tag_resource tag_resource;
 	uint32_t modify_action_position = UINT32_MAX;
 
+	if (attr->transfer)
+		res.ft_type = MLX5DV_FLOW_TABLE_TYPE_FDB;
 	if (priority == MLX5_FLOW_PRIO_RSVD)
 		priority = priv->config.flow_prio - 1;
 	for (; !actions_end ; actions++) {
@@ -3709,7 +3731,9 @@ cnt_err:
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
 			if (flow_dv_create_action_l2_encap(dev, actions,
-							   dev_flow, error))
+							   dev_flow,
+							   attr->transfer,
+							   error))
 				return -rte_errno;
 			dev_flow->dv.actions[actions_n++] =
 				dev_flow->dv.encap_decap->verbs_action;
@@ -3721,6 +3745,7 @@ cnt_err:
 		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
 		case RTE_FLOW_ACTION_TYPE_NVGRE_DECAP:
 			if (flow_dv_create_action_l2_decap(dev, dev_flow,
+							   attr->transfer,
 							   error))
 				return -rte_errno;
 			dev_flow->dv.actions[actions_n++] =
@@ -3740,9 +3765,9 @@ cnt_err:
 					dev_flow->dv.encap_decap->verbs_action;
 			} else {
 				/* Handle encap without preceding decap. */
-				if (flow_dv_create_action_l2_encap(dev, actions,
-								   dev_flow,
-								   error))
+				if (flow_dv_create_action_l2_encap
+				    (dev, actions, dev_flow, attr->transfer,
+				     error))
 					return -rte_errno;
 				dev_flow->dv.actions[actions_n++] =
 					dev_flow->dv.encap_decap->verbs_action;
@@ -3757,9 +3782,8 @@ cnt_err:
 			}
 			/* Handle decap only if it isn't followed by encap. */
 			if (action->type != RTE_FLOW_ACTION_TYPE_RAW_ENCAP) {
-				if (flow_dv_create_action_l2_decap(dev,
-								   dev_flow,
-								   error))
+				if (flow_dv_create_action_l2_decap
+				    (dev, dev_flow, attr->transfer, error))
 					return -rte_errno;
 				dev_flow->dv.actions[actions_n++] =
 					dev_flow->dv.encap_decap->verbs_action;
