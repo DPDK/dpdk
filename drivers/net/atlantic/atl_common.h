@@ -5,7 +5,7 @@
 #ifndef AQ_COMMON_H
 #define AQ_COMMON_H
 
-#define ATL_PMD_DRIVER_VERSION "0.4.1"
+#define ATL_PMD_DRIVER_VERSION "0.6.7"
 
 #define PCI_VENDOR_ID_AQUANTIA  0x1D6A
 
