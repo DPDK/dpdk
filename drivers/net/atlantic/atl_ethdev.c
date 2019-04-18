@@ -167,6 +167,7 @@ static struct rte_pci_driver rte_atl_pmd = {
 			| DEV_RX_OFFLOAD_UDP_CKSUM \
 			| DEV_RX_OFFLOAD_TCP_CKSUM \
 			| DEV_RX_OFFLOAD_JUMBO_FRAME \
+			| DEV_RX_OFFLOAD_MACSEC_STRIP \
 			| DEV_RX_OFFLOAD_VLAN_FILTER)
 
 #define ATL_TX_OFFLOADS (DEV_TX_OFFLOAD_VLAN_INSERT \
@@ -174,6 +175,7 @@ static struct rte_pci_driver rte_atl_pmd = {
 			| DEV_TX_OFFLOAD_UDP_CKSUM \
 			| DEV_TX_OFFLOAD_TCP_CKSUM \
 			| DEV_TX_OFFLOAD_TCP_TSO \
+			| DEV_TX_OFFLOAD_MACSEC_INSERT \
 			| DEV_TX_OFFLOAD_MULTI_SEGS)
 
 static const struct rte_eth_desc_lim rx_desc_lim = {
@@ -698,6 +700,82 @@ atl_dev_reset(struct rte_eth_dev *dev)
 	return ret;
 }
 
+int atl_macsec_enable(struct rte_eth_dev *dev,
+		      uint8_t encr, uint8_t repl_prot)
+{
+	struct aq_hw_cfg_s *cfg =
+		ATL_DEV_PRIVATE_TO_CFG(dev->data->dev_private);
+
+	cfg->aq_macsec.common.macsec_enabled = 1;
+	cfg->aq_macsec.common.encryption_enabled = encr;
+	cfg->aq_macsec.common.replay_protection_enabled = repl_prot;
+
+	return 0;
+}
+
+int atl_macsec_disable(struct rte_eth_dev *dev)
+{
+	struct aq_hw_cfg_s *cfg =
+		ATL_DEV_PRIVATE_TO_CFG(dev->data->dev_private);
+
+	cfg->aq_macsec.common.macsec_enabled = 0;
+
+	return 0;
+}
+
+int atl_macsec_config_txsc(struct rte_eth_dev *dev, uint8_t *mac)
+{
+	struct aq_hw_cfg_s *cfg =
+		ATL_DEV_PRIVATE_TO_CFG(dev->data->dev_private);
+
+	memset(&cfg->aq_macsec.txsc.mac, 0, sizeof(cfg->aq_macsec.txsc.mac));
+	memcpy((uint8_t *)&cfg->aq_macsec.txsc.mac + 2, mac, ETHER_ADDR_LEN);
+
+	return 0;
+}
+
+int atl_macsec_config_rxsc(struct rte_eth_dev *dev,
+			   uint8_t *mac, uint16_t pi)
+{
+	struct aq_hw_cfg_s *cfg =
+		ATL_DEV_PRIVATE_TO_CFG(dev->data->dev_private);
+
+	memset(&cfg->aq_macsec.rxsc.mac, 0, sizeof(cfg->aq_macsec.rxsc.mac));
+	memcpy((uint8_t *)&cfg->aq_macsec.rxsc.mac + 2, mac, ETHER_ADDR_LEN);
+	cfg->aq_macsec.rxsc.pi = pi;
+
+	return 0;
+}
+
+int atl_macsec_select_txsa(struct rte_eth_dev *dev,
+			   uint8_t idx, uint8_t an,
+			   uint32_t pn, uint8_t *key)
+{
+	struct aq_hw_cfg_s *cfg =
+		ATL_DEV_PRIVATE_TO_CFG(dev->data->dev_private);
+
+	cfg->aq_macsec.txsa.idx = idx;
+	cfg->aq_macsec.txsa.pn = pn;
+	cfg->aq_macsec.txsa.an = an;
+
+	memcpy(&cfg->aq_macsec.txsa.key, key, 16);
+	return 0;
+}
+
+int atl_macsec_select_rxsa(struct rte_eth_dev *dev,
+			   uint8_t idx, uint8_t an,
+			   uint32_t pn, uint8_t *key)
+{
+	struct aq_hw_cfg_s *cfg =
+		ATL_DEV_PRIVATE_TO_CFG(dev->data->dev_private);
+
+	cfg->aq_macsec.rxsa.idx = idx;
+	cfg->aq_macsec.rxsa.pn = pn;
+	cfg->aq_macsec.rxsa.an = an;
+
+	memcpy(&cfg->aq_macsec.rxsa.key, key, 16);
+	return 0;
+}
 
 static int
 atl_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
@@ -1530,6 +1608,21 @@ atl_rss_hash_conf_get(struct rte_eth_dev *dev,
 	}
 
 	return 0;
+}
+
+static bool
+is_device_supported(struct rte_eth_dev *dev, struct rte_pci_driver *drv)
+{
+	if (strcmp(dev->device->driver->name, drv->driver.name))
+		return false;
+
+	return true;
+}
+
+bool
+is_atlantic_supported(struct rte_eth_dev *dev)
+{
+	return is_device_supported(dev, &rte_atl_pmd);
 }
 
 RTE_PMD_REGISTER_PCI(net_atlantic, rte_atl_pmd);

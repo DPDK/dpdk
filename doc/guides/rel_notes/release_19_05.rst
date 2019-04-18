@@ -165,6 +165,10 @@ New Features
   * Added CRC offload support
   * Added Rx checksum offload validation support
 
+* **Updated the atlantic PMD.**
+
+  Added MACSEC hardware offload experimental API.
+
 * **Updated the QuickAssist Technology PMD.**
 
   Added support for AES-XTS with 128 and 256 bit AES keys.

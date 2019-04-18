@@ -104,4 +104,16 @@ uint16_t atl_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 uint16_t atl_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts);
 
+int atl_macsec_enable(struct rte_eth_dev *dev, uint8_t encr, uint8_t repl_prot);
+int atl_macsec_disable(struct rte_eth_dev *dev);
+int atl_macsec_config_txsc(struct rte_eth_dev *dev, uint8_t *mac);
+int atl_macsec_config_rxsc(struct rte_eth_dev *dev,
+			   uint8_t *mac, uint16_t pi);
+int atl_macsec_select_txsa(struct rte_eth_dev *dev, uint8_t idx,
+			   uint8_t an, uint32_t pn, uint8_t *key);
+int atl_macsec_select_rxsa(struct rte_eth_dev *dev, uint8_t idx,
+			   uint8_t an, uint32_t pn, uint8_t *key);
+
+bool is_atlantic_supported(struct rte_eth_dev *dev);
+
 #endif /* _ATLANTIC_ETHDEV_H_ */
