@@ -1310,16 +1310,10 @@ mlx5_mr_update_ext_mp_cb(struct rte_mempool *mp, void *opaque,
 static struct rte_eth_dev *
 pci_dev_to_eth_dev(struct rte_pci_device *pdev)
 {
-	struct rte_dev_iterator it;
-	struct rte_device *dev;
+	uint16_t port_id;
 
-	/**
-	 *  We really need to iterate all devices regardless of
-	 *  their owner.
-	 */
-	RTE_DEV_FOREACH(dev, "class=eth", &it)
-		if (dev == &pdev->device)
-			return it.class_device;
+	RTE_ETH_FOREACH_DEV_OF(port_id, &pdev->device)
+		return &rte_eth_devices[port_id];
 	return NULL;
 }
 
