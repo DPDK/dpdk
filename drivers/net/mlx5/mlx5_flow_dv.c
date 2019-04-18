@@ -4052,6 +4052,7 @@ flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 {
 	struct mlx5_flow_dv *dv;
 	struct mlx5_flow *dev_flow;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	int n;
 	int err;
 
@@ -4059,15 +4060,20 @@ flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 		dv = &dev_flow->dv;
 		n = dv->actions_n;
 		if (flow->actions & MLX5_FLOW_ACTION_DROP) {
-			dv->hrxq = mlx5_hrxq_drop_new(dev);
-			if (!dv->hrxq) {
-				rte_flow_error_set
-					(error, errno,
-					 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-					 "cannot get drop hash queue");
-				goto error;
+			if (flow->transfer) {
+				dv->actions[n++] = priv->sh->esw_drop_action;
+			} else {
+				dv->hrxq = mlx5_hrxq_drop_new(dev);
+				if (!dv->hrxq) {
+					rte_flow_error_set
+						(error, errno,
+						 RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+						 NULL,
+						 "cannot get drop hash queue");
+					goto error;
+				}
+				dv->actions[n++] = dv->hrxq->action;
 			}
-			dv->actions[n++] = dv->hrxq->action;
 		} else if (flow->actions &
 			   (MLX5_FLOW_ACTION_QUEUE | MLX5_FLOW_ACTION_RSS)) {
 			struct mlx5_hrxq *hrxq;

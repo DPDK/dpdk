@@ -357,6 +357,7 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 			goto error;
 		}
 		sh->fdb_ns = ns;
+		sh->esw_drop_action = mlx5_glue->dr_create_flow_action_drop();
 	}
 #endif
 	sh->dv_refcnt++;
@@ -376,6 +377,10 @@ error:
 	if (sh->fdb_ns) {
 		mlx5_glue->dr_destroy_ns(sh->fdb_ns);
 		sh->fdb_ns = NULL;
+	}
+	if (sh->esw_drop_action) {
+		mlx5_glue->destroy_flow_action(sh->esw_drop_action);
+		sh->esw_drop_action = NULL;
 	}
 	return err;
 #else
@@ -416,6 +421,10 @@ mlx5_free_shared_dr(struct mlx5_priv *priv)
 	if (sh->fdb_ns) {
 		mlx5_glue->dr_destroy_ns(sh->fdb_ns);
 		sh->fdb_ns = NULL;
+	}
+	if (sh->esw_drop_action) {
+		mlx5_glue->destroy_flow_action(sh->esw_drop_action);
+		sh->esw_drop_action = NULL;
 	}
 #endif
 	pthread_mutex_destroy(&sh->dv_mutex);

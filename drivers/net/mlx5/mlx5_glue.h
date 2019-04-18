@@ -147,6 +147,7 @@ struct mlx5_glue {
 	struct ibv_cq *(*cq_ex_to_cq)(struct ibv_cq_ex *cq);
 	void *(*dr_create_flow_action_dest_flow_tbl)(void *tbl);
 	void *(*dr_create_flow_action_dest_vport)(void *ns, uint32_t vport);
+	void *(*dr_create_flow_action_drop)();
 	void *(*dr_create_flow_tbl)(void *ns, uint32_t level);
 	int (*dr_destroy_flow_tbl)(void *tbl);
 	void *(*dr_create_ns)(struct ibv_context *ctx,

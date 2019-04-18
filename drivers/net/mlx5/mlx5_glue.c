@@ -394,6 +394,16 @@ mlx5_glue_dr_create_flow_action_dest_vport(void *ns, uint32_t vport)
 }
 
 static void *
+mlx5_glue_dr_create_flow_action_drop(void)
+{
+#ifdef HAVE_MLX5DV_DR_ESWITCH
+	return mlx5dv_dr_create_action_drop();
+#else
+	return NULL;
+#endif
+}
+
+static void *
 mlx5_glue_dr_create_flow_tbl(void *ns, uint32_t level)
 {
 #ifdef HAVE_MLX5DV_DR
@@ -861,6 +871,8 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 		mlx5_glue_dr_create_flow_action_dest_flow_tbl,
 	.dr_create_flow_action_dest_vport =
 		mlx5_glue_dr_create_flow_action_dest_vport,
+	.dr_create_flow_action_drop =
+		mlx5_glue_dr_create_flow_action_drop,
 	.dr_create_flow_tbl = mlx5_glue_dr_create_flow_tbl,
 	.dr_destroy_flow_tbl = mlx5_glue_dr_destroy_flow_tbl,
 	.dr_create_ns = mlx5_glue_dr_create_ns,

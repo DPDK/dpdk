@@ -286,6 +286,7 @@ struct mlx5_ibv_shared {
 	/* RX Direct Rules tables. */
 	void *tx_ns; /* TX Direct Rules name space handle. */
 	struct mlx5_flow_tbl_resource tx_tbl[MLX5_MAX_TABLES];
+	void *esw_drop_action; /* Pointer to DR E-Switch drop action. */
 	/* TX Direct Rules tables/ */
 	LIST_HEAD(matchers, mlx5_flow_dv_matcher) matchers;
 	LIST_HEAD(encap_decap, mlx5_flow_dv_encap_decap_resource) encaps_decaps;
