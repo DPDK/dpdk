@@ -82,6 +82,8 @@ Project-specific options are passed used -Doption=value::
 
 	meson -Denable_docs=true fullbuild  # build and install docs
 
+	meson -Dmachine=default  # use builder-independent baseline -march
+
 Examples of setting the same options using meson configure::
 
 	meson configure -Dwerror=true
@@ -97,6 +99,9 @@ cannot be run again on the same directory. Instead ``meson configure``
 should be used to change the build settings within the directory, and when
 ``ninja`` is called to do the build itself, it will trigger the necessary
 re-scan from meson.
+
+NOTE: machine=default uses a config that works on all supported architectures
+regardless of the capabilities of the machine where the build is happening.
 
 As well as those settings taken from ``meson configure``, other options
 such as the compiler to use can be passed via environment variables. For
