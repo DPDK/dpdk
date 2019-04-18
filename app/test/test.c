@@ -67,6 +67,7 @@ do_recursive_call(void)
 			{ "test_memory_flags", no_action },
 			{ "test_file_prefix", no_action },
 			{ "test_no_huge_flag", no_action },
+			{ "timer_secondary_spawn_wait", test_timer_secondary },
 	};
 
 	if (recursive_call == NULL)
@@ -130,7 +131,10 @@ main(int argc, char **argv)
 	}
 
 #ifdef RTE_LIBRTE_TIMER
-	rte_timer_subsystem_init();
+	if (rte_timer_subsystem_init() < 0) {
+		ret = -1;
+		goto out;
+	}
 #endif
 
 	if (commands_init() < 0) {

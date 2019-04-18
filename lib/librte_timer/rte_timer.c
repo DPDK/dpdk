@@ -582,11 +582,6 @@ rte_timer_alt_reset(uint32_t timer_data_id, struct rte_timer *tim,
 
 	TIMER_DATA_VALID_GET_OR_ERR_RET(timer_data_id, timer_data, -EINVAL);
 
-	if (unlikely((tim_lcore != (unsigned int)LCORE_ID_ANY) &&
-			!(rte_lcore_is_enabled(tim_lcore) ||
-			  rte_lcore_has_role(tim_lcore, ROLE_SERVICE))))
-		return -1;
-
 	if (type == PERIODICAL)
 		period = ticks;
 	else

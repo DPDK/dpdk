@@ -109,6 +109,7 @@ test_sources = files('commands.c',
 	'test_timer.c',
 	'test_timer_perf.c',
 	'test_timer_racecond.c',
+	'test_timer_secondary.c',
 	'test_ticketlock.c',
 	'test_version.c',
 	'virtual_pmd.c'
