@@ -193,14 +193,27 @@ static const struct rte_eth_desc_lim tx_desc_lim = {
 	.nb_mtu_seg_max = ATL_TX_MAX_SEG,
 };
 
+enum atl_xstats_type {
+	XSTATS_TYPE_MSM = 0,
+	XSTATS_TYPE_MACSEC,
+};
+
 #define ATL_XSTATS_FIELD(name) { \
 	#name, \
-	offsetof(struct aq_stats_s, name) \
+	offsetof(struct aq_stats_s, name), \
+	XSTATS_TYPE_MSM \
+}
+
+#define ATL_MACSEC_XSTATS_FIELD(name) { \
+	#name, \
+	offsetof(struct macsec_stats, name), \
+	XSTATS_TYPE_MACSEC \
 }
 
 struct atl_xstats_tbl_s {
 	const char *name;
 	unsigned int offset;
+	enum atl_xstats_type type;
 };
 
 static struct atl_xstats_tbl_s atl_xstats_tbl[] = {
@@ -218,6 +231,38 @@ static struct atl_xstats_tbl_s atl_xstats_tbl[] = {
 	ATL_XSTATS_FIELD(mbtc),
 	ATL_XSTATS_FIELD(bbrc),
 	ATL_XSTATS_FIELD(bbtc),
+	/* Ingress Common Counters */
+	ATL_MACSEC_XSTATS_FIELD(in_ctl_pkts),
+	ATL_MACSEC_XSTATS_FIELD(in_tagged_miss_pkts),
+	ATL_MACSEC_XSTATS_FIELD(in_untagged_miss_pkts),
+	ATL_MACSEC_XSTATS_FIELD(in_notag_pkts),
+	ATL_MACSEC_XSTATS_FIELD(in_untagged_pkts),
+	ATL_MACSEC_XSTATS_FIELD(in_bad_tag_pkts),
+	ATL_MACSEC_XSTATS_FIELD(in_no_sci_pkts),
+	ATL_MACSEC_XSTATS_FIELD(in_unknown_sci_pkts),
+	/* Ingress SA Counters */
+	ATL_MACSEC_XSTATS_FIELD(in_untagged_hit_pkts),
+	ATL_MACSEC_XSTATS_FIELD(in_not_using_sa),
+	ATL_MACSEC_XSTATS_FIELD(in_unused_sa),
+	ATL_MACSEC_XSTATS_FIELD(in_not_valid_pkts),
+	ATL_MACSEC_XSTATS_FIELD(in_invalid_pkts),
+	ATL_MACSEC_XSTATS_FIELD(in_ok_pkts),
+	ATL_MACSEC_XSTATS_FIELD(in_unchecked_pkts),
+	ATL_MACSEC_XSTATS_FIELD(in_validated_octets),
+	ATL_MACSEC_XSTATS_FIELD(in_decrypted_octets),
+	/* Egress Common Counters */
+	ATL_MACSEC_XSTATS_FIELD(out_ctl_pkts),
+	ATL_MACSEC_XSTATS_FIELD(out_unknown_sa_pkts),
+	ATL_MACSEC_XSTATS_FIELD(out_untagged_pkts),
+	ATL_MACSEC_XSTATS_FIELD(out_too_long),
+	/* Egress SC Counters */
+	ATL_MACSEC_XSTATS_FIELD(out_sc_protected_pkts),
+	ATL_MACSEC_XSTATS_FIELD(out_sc_encrypted_pkts),
+	/* Egress SA Counters */
+	ATL_MACSEC_XSTATS_FIELD(out_sa_hit_drop_redirect),
+	ATL_MACSEC_XSTATS_FIELD(out_sa_protected2_pkts),
+	ATL_MACSEC_XSTATS_FIELD(out_sa_protected_pkts),
+	ATL_MACSEC_XSTATS_FIELD(out_sa_encrypted_pkts),
 };
 
 static const struct eth_dev_ops atl_eth_dev_ops = {
@@ -968,19 +1013,46 @@ static int
 atl_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *stats,
 		   unsigned int n)
 {
-	struct atl_adapter *adapter = ATL_DEV_TO_ADAPTER(dev);
+	struct atl_adapter *adapter =
+	(struct atl_adapter *)dev->data->dev_private;
 	struct aq_hw_s *hw = &adapter->hw;
+	struct get_stats req = { 0 };
+	struct macsec_msg_fw_request msg = { 0 };
+	struct macsec_msg_fw_response resp = { 0 };
+	int err = -1;
 	unsigned int i;
 
 	if (!stats)
 		return 0;
 
-	for (i = 0; i < n && i < RTE_DIM(atl_xstats_tbl); i++) {
-		stats[i].id = i;
-		stats[i].value = *(u64 *)((uint8_t *)&hw->curr_stats +
-					atl_xstats_tbl[i].offset);
+	if (hw->aq_fw_ops->send_macsec_req != NULL) {
+		req.ingress_sa_index = 0xff;
+		req.egress_sc_index = 0xff;
+		req.egress_sa_index = 0xff;
+
+		msg.msg_type = macsec_get_stats_msg;
+		msg.stats = req;
+
+		err = hw->aq_fw_ops->send_macsec_req(hw, &msg, &resp);
 	}
 
+	for (i = 0; i < n && i < RTE_DIM(atl_xstats_tbl); i++) {
+		stats[i].id = i;
+
+		switch (atl_xstats_tbl[i].type) {
+		case XSTATS_TYPE_MSM:
+			stats[i].value = *(u64 *)((uint8_t *)&hw->curr_stats +
+					 atl_xstats_tbl[i].offset);
+			break;
+		case XSTATS_TYPE_MACSEC:
+			if (err)
+				goto done;
+			stats[i].value = *(u64 *)((uint8_t *)&resp.stats +
+					 atl_xstats_tbl[i].offset);
+			break;
+		}
+	}
+done:
 	return i;
 }
 
