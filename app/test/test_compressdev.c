@@ -1948,6 +1948,7 @@ test_compressdev_deflate_stateless_dynamic_big(void)
 	struct comp_testsuite_params *ts_params = &testsuite_params;
 	uint16_t i = 0;
 	int ret = TEST_SUCCESS;
+	int j;
 	const struct rte_compressdev_capabilities *capab;
 	char *test_buffer = NULL;
 
@@ -1970,7 +1971,7 @@ test_compressdev_deflate_stateless_dynamic_big(void)
 	struct interim_data_params int_data = {
 		(const char * const *)&test_buffer,
 		1,
-		NULL,
+		&i,
 		&ts_params->def_comp_xform,
 		&ts_params->def_decomp_xform,
 		1
@@ -1989,11 +1990,9 @@ test_compressdev_deflate_stateless_dynamic_big(void)
 
 	/* fill the buffer with data based on rand. data */
 	srand(BIG_DATA_TEST_SIZE);
-	for (uint32_t i = 0; i < BIG_DATA_TEST_SIZE - 1; ++i)
-		test_buffer[i] = (uint8_t)(rand() % ((uint8_t)-1)) | 1;
-
+	for (j = 0; j < BIG_DATA_TEST_SIZE - 1; ++j)
+		test_buffer[j] = (uint8_t)(rand() % ((uint8_t)-1)) | 1;
 	test_buffer[BIG_DATA_TEST_SIZE-1] = 0;
-	int_data.buf_idx = &i;
 
 	/* Compress with compressdev, decompress with Zlib */
 	test_data.zlib_dir = ZLIB_DECOMPRESS;
