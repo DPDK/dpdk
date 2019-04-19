@@ -2101,7 +2101,7 @@ tap_mp_attach_queues(const char *port_name, struct rte_eth_dev *dev)
 	request.len_param = sizeof(*request_param);
 	/* Send request and receive reply */
 	ret = rte_mp_request_sync(&request, &replies, &timeout);
-	if (ret < 0) {
+	if (ret < 0 || replies.nb_received != 1) {
 		TAP_LOG(ERR, "Failed to request queues from primary: %d",
 			rte_errno);
 		return -1;
