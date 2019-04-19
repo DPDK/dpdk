@@ -200,7 +200,8 @@ int cxgbe_dev_link_update(struct rte_eth_dev *eth_dev,
 		cxgbe_poll(&s->fw_evtq, NULL, budget, &work_done);
 
 		/* Exit if link status changed or always forced up */
-		if (pi->link_cfg.link_ok != old_link || force_linkup(adapter))
+		if (pi->link_cfg.link_ok != old_link ||
+		    cxgbe_force_linkup(adapter))
 			break;
 
 		if (!wait_to_complete)
@@ -209,7 +210,7 @@ int cxgbe_dev_link_update(struct rte_eth_dev *eth_dev,
 		rte_delay_ms(CXGBE_LINK_STATUS_POLL_MS);
 	}
 
-	new_link.link_status = force_linkup(adapter) ?
+	new_link.link_status = cxgbe_force_linkup(adapter) ?
 			       ETH_LINK_UP : pi->link_cfg.link_ok;
 	new_link.link_autoneg = pi->link_cfg.autoneg;
 	new_link.link_duplex = ETH_LINK_FULL_DUPLEX;
@@ -356,7 +357,7 @@ int cxgbe_dev_start(struct rte_eth_dev *eth_dev)
 
 	cxgbe_enable_rx_queues(pi);
 
-	err = setup_rss(pi);
+	err = cxgbe_setup_rss(pi);
 	if (err)
 		goto out;
 
@@ -372,7 +373,7 @@ int cxgbe_dev_start(struct rte_eth_dev *eth_dev)
 			goto out;
 	}
 
-	err = link_start(pi);
+	err = cxgbe_link_start(pi);
 	if (err)
 		goto out;
 
@@ -412,18 +413,18 @@ int cxgbe_dev_configure(struct rte_eth_dev *eth_dev)
 	CXGBE_FUNC_TRACE();
 
 	if (!(adapter->flags & FW_QUEUE_BOUND)) {
-		err = setup_sge_fwevtq(adapter);
+		err = cxgbe_setup_sge_fwevtq(adapter);
 		if (err)
 			return err;
 		adapter->flags |= FW_QUEUE_BOUND;
 		if (is_pf4(adapter)) {
-			err = setup_sge_ctrl_txq(adapter);
+			err = cxgbe_setup_sge_ctrl_txq(adapter);
 			if (err)
 				return err;
 		}
 	}
 
-	err = cfg_queue_count(eth_dev);
+	err = cxgbe_cfg_queue_count(eth_dev);
 	if (err)
 		return err;
 

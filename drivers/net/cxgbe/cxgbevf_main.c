@@ -50,7 +50,7 @@ static void size_nports_qsets(struct adapter *adapter)
 		adapter->params.nports = pmask_nports;
 	}
 
-	configure_max_ethqsets(adapter);
+	cxgbe_configure_max_ethqsets(adapter);
 	if (adapter->sge.max_ethqsets < adapter->params.nports) {
 		dev_warn(adapter->pdev_dev, "only using %d of %d available"
 			 " virtual interfaces (too few Queue Sets)\n",
@@ -268,16 +268,16 @@ allocate_mac:
 		}
 	}
 
-	cfg_queues(adapter->eth_dev);
-	print_adapter_info(adapter);
-	print_port_info(adapter);
+	cxgbe_cfg_queues(adapter->eth_dev);
+	cxgbe_print_adapter_info(adapter);
+	cxgbe_print_port_info(adapter);
 
 	adapter->mpstcam = t4_init_mpstcam(adapter);
 	if (!adapter->mpstcam)
 		dev_warn(adapter,
 			 "VF could not allocate mps tcam table. Continuing\n");
 
-	err = init_rss(adapter);
+	err = cxgbe_init_rss(adapter);
 	if (err)
 		goto out_free;
 	return 0;

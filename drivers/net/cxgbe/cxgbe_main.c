@@ -116,7 +116,7 @@ out:
 /**
  * Setup sge control queues to pass control information.
  */
-int setup_sge_ctrl_txq(struct adapter *adapter)
+int cxgbe_setup_sge_ctrl_txq(struct adapter *adapter)
 {
 	struct sge *s = &adapter->sge;
 	int err = 0, i = 0;
@@ -190,7 +190,7 @@ int cxgbe_poll_for_completion(struct sge_rspq *q, unsigned int ms,
 	return -ETIMEDOUT;
 }
 
-int setup_sge_fwevtq(struct adapter *adapter)
+int cxgbe_setup_sge_fwevtq(struct adapter *adapter)
 {
 	struct sge *s = &adapter->sge;
 	int err = 0;
@@ -465,7 +465,7 @@ static inline bool is_x_10g_port(const struct link_config *lc)
 	return high_speeds != 0;
 }
 
-inline void init_rspq(struct adapter *adap, struct sge_rspq *q,
+static inline void init_rspq(struct adapter *adap, struct sge_rspq *q,
 		      unsigned int us, unsigned int cnt,
 		      unsigned int size, unsigned int iqe_size)
 {
@@ -475,7 +475,7 @@ inline void init_rspq(struct adapter *adap, struct sge_rspq *q,
 	q->size = size;
 }
 
-int cfg_queue_count(struct rte_eth_dev *eth_dev)
+int cxgbe_cfg_queue_count(struct rte_eth_dev *eth_dev)
 {
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
 	struct adapter *adap = pi->adapter;
@@ -502,7 +502,7 @@ int cfg_queue_count(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
-void cfg_queues(struct rte_eth_dev *eth_dev)
+void cxgbe_cfg_queues(struct rte_eth_dev *eth_dev)
 {
 	struct rte_config *config = rte_eal_get_configuration();
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
@@ -596,7 +596,7 @@ static void setup_memwin(struct adapter *adap)
 					MEMWIN_NIC));
 }
 
-int init_rss(struct adapter *adap)
+int cxgbe_init_rss(struct adapter *adap)
 {
 	unsigned int i;
 
@@ -623,7 +623,7 @@ int init_rss(struct adapter *adap)
 /**
  * Dump basic information about the adapter.
  */
-void print_adapter_info(struct adapter *adap)
+void cxgbe_print_adapter_info(struct adapter *adap)
 {
 	/**
 	 * Hardware/Firmware/etc. Version/Revision IDs.
@@ -631,7 +631,7 @@ void print_adapter_info(struct adapter *adap)
 	t4_dump_version_info(adap);
 }
 
-void print_port_info(struct adapter *adap)
+void cxgbe_print_port_info(struct adapter *adap)
 {
 	int i;
 	char buf[80];
@@ -779,7 +779,7 @@ static void configure_pcie_ext_tag(struct adapter *adapter)
 }
 
 /* Figure out how many Queue Sets we can support */
-void configure_max_ethqsets(struct adapter *adapter)
+void cxgbe_configure_max_ethqsets(struct adapter *adapter)
 {
 	unsigned int ethqsets;
 
@@ -1268,7 +1268,7 @@ static int adap_init0(struct adapter *adap)
 	t4_init_tp_params(adap);
 	configure_pcie_ext_tag(adap);
 	configure_vlan_types(adap);
-	configure_max_ethqsets(adap);
+	cxgbe_configure_max_ethqsets(adap);
 
 	adap->params.drv_memwin = MEMWIN_NIC;
 	adap->flags |= FW_OK;
@@ -1322,7 +1322,7 @@ void t4_os_portmod_changed(const struct adapter *adap, int port_id)
 			 pi->port_id, pi->mod_type);
 }
 
-inline bool force_linkup(struct adapter *adap)
+bool cxgbe_force_linkup(struct adapter *adap)
 {
 	struct rte_pci_device *pdev = adap->pdev;
 
@@ -1340,7 +1340,7 @@ inline bool force_linkup(struct adapter *adap)
  *
  * Performs the MAC and PHY actions needed to enable a port.
  */
-int link_start(struct port_info *pi)
+int cxgbe_link_start(struct port_info *pi)
 {
 	struct adapter *adapter = pi->adapter;
 	u64 conf_offloads;
@@ -1382,7 +1382,7 @@ int link_start(struct port_info *pi)
 					  true, true, false);
 	}
 
-	if (ret == 0 && force_linkup(adapter))
+	if (ret == 0 && cxgbe_force_linkup(adapter))
 		pi->eth_dev->data->dev_link.link_status = ETH_LINK_UP;
 	return ret;
 }
@@ -1490,7 +1490,7 @@ int cxgbe_write_rss(const struct port_info *pi, const u16 *queues)
  * We always configure the RSS mapping for all ports since the mapping
  * table has plenty of entries.
  */
-int setup_rss(struct port_info *pi)
+int cxgbe_setup_rss(struct port_info *pi)
 {
 	int j, err;
 	struct adapter *adapter = pi->adapter;
@@ -1864,10 +1864,10 @@ allocate_mac:
 		}
 	}
 
-	cfg_queues(adapter->eth_dev);
+	cxgbe_cfg_queues(adapter->eth_dev);
 
-	print_adapter_info(adapter);
-	print_port_info(adapter);
+	cxgbe_print_adapter_info(adapter);
+	cxgbe_print_port_info(adapter);
 
 	adapter->clipt = t4_init_clip_tbl(adapter->clipt_start,
 					  adapter->clipt_end);
@@ -1909,7 +1909,7 @@ allocate_mac:
 			 "Maskless filter support disabled. Continuing\n");
 	}
 
-	err = init_rss(adapter);
+	err = cxgbe_init_rss(adapter);
 	if (err)
 		goto out_free;
 
