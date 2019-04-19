@@ -7,7 +7,9 @@
 # * if a build-directory already exists we assume it was properly configured
 # Run ninja after configuration is done.
 
-set -o pipefail
+# set pipefail option if possible
+PIPEFAIL=""
+set -o | grep -q pipefail && set -o pipefail && PIPEFAIL=1
 
 srcdir=$(dirname $(readlink -f $0))/..
 MESON=${MESON:-meson}
@@ -50,6 +52,11 @@ if [ "$1" = "-vv" ] ; then
 	TEST_MESON_BUILD_VERY_VERBOSE=1
 elif [ "$1" = "-v" ] ; then
 	TEST_MESON_BUILD_VERBOSE=1
+fi
+# we can't use plain verbose when we don't have pipefail option so up-level
+if [ -z "$PIPEFAIL" -a -n "$TEST_MESON_BUILD_VERBOSE" ] ; then
+	echo "# Missing pipefail shell option, changing VERBOSE to VERY_VERBOSE"
+	TEST_MESON_BUILD_VERY_VERBOSE=1
 fi
 
 # shared and static linked builds with gcc and clang
