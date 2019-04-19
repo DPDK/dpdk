@@ -80,7 +80,7 @@ DPDK_18.05 {
 	rte_event_dev_stop_flush_callback_register;
 } DPDK_18.02;
 
-EXPERIMENTAL {
+DPDK_19.05 {
 	global:
 
 	rte_event_crypto_adapter_caps_get;
@@ -123,4 +123,4 @@ EXPERIMENTAL {
 	rte_event_timer_arm_burst;
 	rte_event_timer_arm_tmo_tick_burst;
 	rte_event_timer_cancel_burst;
-};
+} DPDK_18.05;

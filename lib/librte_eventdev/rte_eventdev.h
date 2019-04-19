@@ -1131,7 +1131,7 @@ rte_event_eth_rx_adapter_caps_get(uint8_t dev_id, uint16_t eth_port_id,
  *   - 0: Success, driver provided event timer adapter capabilities.
  *   - <0: Error code returned by the driver function.
  */
-int __rte_experimental
+int
 rte_event_timer_adapter_caps_get(uint8_t dev_id, uint32_t *caps);
 
 /* Crypto adapter capability bitmap flag */
@@ -1160,9 +1160,6 @@ rte_event_timer_adapter_caps_get(uint8_t dev_id, uint32_t *caps);
  */
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Retrieve the event device's crypto adapter capabilities for the
  * specified cryptodev device
  *
@@ -1182,7 +1179,7 @@ rte_event_timer_adapter_caps_get(uint8_t dev_id, uint32_t *caps);
  *   - <0: Error code returned by the driver function.
  *
  */
-int __rte_experimental
+int
 rte_event_crypto_adapter_caps_get(uint8_t dev_id, uint8_t cdev_id,
 				  uint32_t *caps);
 
@@ -1208,7 +1205,7 @@ rte_event_crypto_adapter_caps_get(uint8_t dev_id, uint8_t cdev_id,
  *   - <0: Error code returned by the driver function.
  *
  */
-int __rte_experimental
+int
 rte_event_eth_tx_adapter_caps_get(uint8_t dev_id, uint16_t eth_port_id,
 				uint32_t *caps);
 
@@ -1726,9 +1723,6 @@ rte_event_port_unlink(uint8_t dev_id, uint8_t port_id,
 		      uint8_t queues[], uint16_t nb_unlinks);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Returns the number of unlinks in progress.
  *
  * This function provides the application with a method to detect when an
@@ -1749,7 +1743,7 @@ rte_event_port_unlink(uint8_t dev_id, uint8_t port_id,
  * A negative return value indicates an error, -EINVAL indicates an invalid
  * parameter passed for *dev_id* or *port_id*.
  */
-int __rte_experimental
+int
 rte_event_port_unlinks_in_progress(uint8_t dev_id, uint8_t port_id);
 
 /**

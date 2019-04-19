@@ -10,5 +10,4 @@ sources = files('ssovf_worker.c',
 		'timvf_probe.c'
 )
 
-allow_experimental_apis = true
 deps += ['common_octeontx', 'mempool_octeontx', 'bus_vdev', 'pmd_octeontx']

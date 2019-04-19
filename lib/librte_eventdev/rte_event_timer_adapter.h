@@ -117,9 +117,6 @@ extern "C" {
 #include "rte_eventdev.h"
 
 /**
- * @warning
- * @b EXPERIMENTAL: this enum may change without prior notice
- *
  * Timer adapter clock source
  */
 enum rte_event_timer_adapter_clk_src {
@@ -154,9 +151,6 @@ enum rte_event_timer_adapter_clk_src {
  */
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * Timer adapter configuration structure
  */
 struct rte_event_timer_adapter_conf {
@@ -179,9 +173,6 @@ struct rte_event_timer_adapter_conf {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * Event timer adapter stats structure
  */
 struct rte_event_timer_adapter_stats {
@@ -200,9 +191,6 @@ struct rte_event_timer_adapter_stats {
 struct rte_event_timer_adapter;
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Callback function type for producer port creation.
  */
 typedef int (*rte_event_timer_adapter_port_conf_cb_t)(uint16_t id,
@@ -211,9 +199,6 @@ typedef int (*rte_event_timer_adapter_port_conf_cb_t)(uint16_t id,
 						      void *conf_arg);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Create an event timer adapter.
  *
  * This function must be invoked first before any other function in the API.
@@ -235,13 +220,10 @@ typedef int (*rte_event_timer_adapter_port_conf_cb_t)(uint16_t id,
  *   before this call, this error code indicates an error in restart following
  *   an error in reconfiguration, i.e., a combination of the two error codes.
  */
-struct rte_event_timer_adapter * __rte_experimental
+struct rte_event_timer_adapter *
 rte_event_timer_adapter_create(const struct rte_event_timer_adapter_conf *conf);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Create a timer adapter with the supplied callback.
  *
  * This function can be used to have a more granular control over the timer
@@ -265,16 +247,13 @@ rte_event_timer_adapter_create(const struct rte_event_timer_adapter_conf *conf);
  *   - EINVAL: invalid event device identifier specified in config
  *   - ENOSPC: maximum number of adapters already created
  */
-struct rte_event_timer_adapter * __rte_experimental
+struct rte_event_timer_adapter *
 rte_event_timer_adapter_create_ext(
 		const struct rte_event_timer_adapter_conf *conf,
 		rte_event_timer_adapter_port_conf_cb_t conf_cb,
 		void *conf_arg);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * Timer adapter info structure.
  */
 struct rte_event_timer_adapter_info {
@@ -291,9 +270,6 @@ struct rte_event_timer_adapter_info {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Retrieve the contextual information of an event timer adapter.
  *
  * @param adapter
@@ -313,15 +289,12 @@ struct rte_event_timer_adapter_info {
  *   struct rte_event_timer_adapter_info
  *
  */
-int __rte_experimental
+int
 rte_event_timer_adapter_get_info(
 		const struct rte_event_timer_adapter *adapter,
 		struct rte_event_timer_adapter_info *adapter_info);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Start a timer adapter.
  *
  * The adapter start step is the last one and consists of setting the timer
@@ -345,14 +318,11 @@ rte_event_timer_adapter_get_info(
  *  The eventdev to which the event_timer_adapter is connected needs to
  *  be started before calling rte_event_timer_adapter_start().
  */
-int __rte_experimental
+int
 rte_event_timer_adapter_start(
 		const struct rte_event_timer_adapter *adapter);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Stop an event timer adapter.
  *
  * The adapter can be restarted with a call to
@@ -366,13 +336,10 @@ rte_event_timer_adapter_start(
  *   - <0: Error code returned by the driver stop function.
  *   - -EINVAL if adapter identifier invalid
  */
-int __rte_experimental
+int
 rte_event_timer_adapter_stop(const struct rte_event_timer_adapter *adapter);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Lookup an event timer adapter using its identifier.
  *
  * If an event timer adapter was created in another process with the same
@@ -388,13 +355,10 @@ rte_event_timer_adapter_stop(const struct rte_event_timer_adapter *adapter);
  *  Possible rte_errno values include:
  *   - ENOENT - requested entry not available to return.
  */
-struct rte_event_timer_adapter * __rte_experimental
+struct rte_event_timer_adapter *
 rte_event_timer_adapter_lookup(uint16_t adapter_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Free an event timer adapter.
  *
  * Destroy an event timer adapter, freeing all resources.
@@ -412,7 +376,7 @@ rte_event_timer_adapter_lookup(uint16_t adapter_id);
  *   - -EBUSY: stop hasn't been called for this adapter yet
  *   - -EINVAL: adapter id invalid, or adapter invalid
  */
-int __rte_experimental
+int
 rte_event_timer_adapter_free(struct rte_event_timer_adapter *adapter);
 
 /**
@@ -430,14 +394,11 @@ rte_event_timer_adapter_free(struct rte_event_timer_adapter *adapter);
  *   - <0: Error code on failure
  *   - -ESRCH: the adapter does not require a service to operate
  */
-int __rte_experimental
+int
 rte_event_timer_adapter_service_id_get(struct rte_event_timer_adapter *adapter,
 				       uint32_t *service_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Retrieve statistics for an event timer adapter instance.
  *
  * @param adapter
@@ -449,14 +410,11 @@ rte_event_timer_adapter_service_id_get(struct rte_event_timer_adapter *adapter,
  *   - 0: Successfully retrieved.
  *   - <0: Failure; error code returned.
  */
-int __rte_experimental
+int
 rte_event_timer_adapter_stats_get(struct rte_event_timer_adapter *adapter,
 		struct rte_event_timer_adapter_stats *stats);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Reset statistics for an event timer adapter instance.
  *
  * @param adapter
@@ -466,13 +424,10 @@ rte_event_timer_adapter_stats_get(struct rte_event_timer_adapter *adapter,
  *   - 0: Successfully reset;
  *   - <0: Failure; error code returned.
  */
-int __rte_experimental
+int
 rte_event_timer_adapter_stats_reset(struct rte_event_timer_adapter *adapter);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * Event timer state.
  */
 enum rte_event_timer_state {
@@ -493,9 +448,6 @@ enum rte_event_timer_state {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * The generic *rte_event_timer* structure to hold the event timer attributes
  * for arm and cancel operations.
  */
@@ -588,9 +540,6 @@ struct rte_event_timer_adapter {
 } while (0)
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Arm a burst of event timers with separate expiration timeout tick for each
  * event timer.
  *
@@ -621,7 +570,7 @@ struct rte_event_timer_adapter {
  *   - EAGAIN Specified timer adapter is not running
  *   - EALREADY A timer was encountered that was already armed
  */
-static inline uint16_t __rte_experimental
+static inline uint16_t
 rte_event_timer_arm_burst(const struct rte_event_timer_adapter *adapter,
 			  struct rte_event_timer **evtims,
 			  uint16_t nb_evtims)
@@ -634,9 +583,6 @@ rte_event_timer_arm_burst(const struct rte_event_timer_adapter *adapter,
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Arm a burst of event timers with same expiration timeout tick.
  *
  * Provides the same functionality as ``rte_event_timer_arm_burst()``, except
@@ -665,7 +611,7 @@ rte_event_timer_arm_burst(const struct rte_event_timer_adapter *adapter,
  *   - EAGAIN Specified event timer adapter is not running
  *   - EALREADY A timer was encountered that was already armed
  */
-static inline uint16_t __rte_experimental
+static inline uint16_t
 rte_event_timer_arm_tmo_tick_burst(
 			const struct rte_event_timer_adapter *adapter,
 			struct rte_event_timer **evtims,
@@ -681,9 +627,6 @@ rte_event_timer_arm_tmo_tick_burst(
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Cancel a burst of event timers from being scheduled to the event device.
  *
  * @param adapter
@@ -703,7 +646,7 @@ rte_event_timer_arm_tmo_tick_burst(
  *   - EAGAIN Specified timer adapter is not running
  *   - EALREADY  A timer was encountered that was already canceled
  */
-static inline uint16_t __rte_experimental
+static inline uint16_t
 rte_event_timer_cancel_burst(const struct rte_event_timer_adapter *adapter,
 			     struct rte_event_timer **evtims,
 			     uint16_t nb_evtims)

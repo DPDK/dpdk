@@ -398,28 +398,28 @@ F: lib/librte_eventdev/
 F: drivers/event/skeleton/
 F: app/test/test_eventdev.c
 
-Eventdev Ethdev Rx Adapter API - EXPERIMENTAL
+Eventdev Ethdev Rx Adapter API
 M: Nikhil Rao <nikhil.rao@intel.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: lib/librte_eventdev/*eth_rx_adapter*
 F: app/test/test_event_eth_rx_adapter.c
 F: doc/guides/prog_guide/event_ethernet_rx_adapter.rst
 
-Eventdev Ethdev Tx Adapter API - EXPERIMENTAL
+Eventdev Ethdev Tx Adapter API
 M: Nikhil Rao <nikhil.rao@intel.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: lib/librte_eventdev/*eth_tx_adapter*
 F: app/test/test_event_eth_tx_adapter.c
 F: doc/guides/prog_guide/event_ethernet_tx_adapter.rst
 
-Eventdev Timer Adapter API - EXPERIMENTAL
+Eventdev Timer Adapter API
 M: Erik Gabriel Carrillo <erik.g.carrillo@intel.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: lib/librte_eventdev/*timer_adapter*
 F: app/test/test_event_timer_adapter.c
 F: doc/guides/prog_guide/event_timer_adapter.rst
 
-Eventdev Crypto Adapter API - EXPERIMENTAL
+Eventdev Crypto Adapter API
 M: Abhinandan Gujjar <abhinandan.gujjar@intel.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: lib/librte_eventdev/*crypto_adapter*

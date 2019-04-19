@@ -173,9 +173,6 @@ extern "C" {
 #include "rte_eventdev.h"
 
 /**
- * @warning
- * @b EXPERIMENTAL: this enum may change without prior notice
- *
  * Crypto event adapter mode
  */
 enum rte_event_crypto_adapter_mode {
@@ -198,9 +195,6 @@ enum rte_event_crypto_adapter_mode {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * Crypto event request structure will be filled by application to
  * provide event request information to the adapter.
  */
@@ -219,9 +213,6 @@ struct rte_event_crypto_request {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * Crypto event metadata structure will be filled by application
  * to provide crypto request and event response information.
  *
@@ -244,9 +235,6 @@ union rte_event_crypto_metadata {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * Adapter configuration structure that the adapter configuration callback
  * function is expected to fill out
  * @see rte_event_crypto_adapter_conf_cb
@@ -265,9 +253,6 @@ struct rte_event_crypto_adapter_conf {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Function type used for adapter configuration callback. The callback is
  * used to fill in members of the struct rte_event_crypto_adapter_conf, this
  * callback is invoked when creating a SW service for packet transfer from
@@ -293,9 +278,6 @@ typedef int (*rte_event_crypto_adapter_conf_cb) (uint8_t id, uint8_t dev_id,
 			void *arg);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
  * A structure used to retrieve statistics for an event crypto adapter
  * instance.
  */
@@ -320,9 +302,6 @@ struct rte_event_crypto_adapter_stats {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Create a new event crypto adapter with the specified identifier.
  *
  * @param id
@@ -347,16 +326,13 @@ struct rte_event_crypto_adapter_stats {
  *   - 0: Success
  *   - <0: Error code on failure
  */
-int __rte_experimental
+int
 rte_event_crypto_adapter_create_ext(uint8_t id, uint8_t dev_id,
 				    rte_event_crypto_adapter_conf_cb conf_cb,
 				    enum rte_event_crypto_adapter_mode mode,
 				    void *conf_arg);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Create a new event crypto adapter with the specified identifier.
  * This function uses an internal configuration function that creates an event
  * port. This default function reconfigures the event device with an
@@ -383,15 +359,12 @@ rte_event_crypto_adapter_create_ext(uint8_t id, uint8_t dev_id,
  *   - 0: Success
  *   - <0: Error code on failure
  */
-int __rte_experimental
+int
 rte_event_crypto_adapter_create(uint8_t id, uint8_t dev_id,
 				struct rte_event_port_conf *port_config,
 				enum rte_event_crypto_adapter_mode mode);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Free an event crypto adapter
  *
  * @param id
@@ -402,13 +375,10 @@ rte_event_crypto_adapter_create(uint8_t id, uint8_t dev_id,
  *   - <0: Error code on failure, If the adapter still has queue pairs
  *      added to it, the function returns -EBUSY.
  */
-int __rte_experimental
+int
 rte_event_crypto_adapter_free(uint8_t id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Add a queue pair to an event crypto adapter.
  *
  * @param id
@@ -430,16 +400,13 @@ rte_event_crypto_adapter_free(uint8_t id);
  *  - 0: Success, queue pair added correctly.
  *  - <0: Error code on failure.
  */
-int __rte_experimental
+int
 rte_event_crypto_adapter_queue_pair_add(uint8_t id,
 			uint8_t cdev_id,
 			int32_t queue_pair_id,
 			const struct rte_event *event);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Delete a queue pair from an event crypto adapter.
  *
  * @param id
@@ -455,14 +422,11 @@ rte_event_crypto_adapter_queue_pair_add(uint8_t id,
  *  - 0: Success, queue pair deleted successfully.
  *  - <0: Error code on failure.
  */
-int __rte_experimental
+int
 rte_event_crypto_adapter_queue_pair_del(uint8_t id, uint8_t cdev_id,
 					int32_t queue_pair_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Start event crypto adapter
  *
  * @param id
@@ -477,13 +441,10 @@ rte_event_crypto_adapter_queue_pair_del(uint8_t id, uint8_t cdev_id,
  *  The eventdev to which the event_crypto_adapter is connected needs to
  *  be started before calling rte_event_crypto_adapter_start().
  */
-int __rte_experimental
+int
 rte_event_crypto_adapter_start(uint8_t id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Stop event crypto adapter
  *
  * @param id
@@ -493,13 +454,10 @@ rte_event_crypto_adapter_start(uint8_t id);
  *  - 0: Success, adapter stopped successfully.
  *  - <0: Error code on failure.
  */
-int __rte_experimental
+int
 rte_event_crypto_adapter_stop(uint8_t id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Retrieve statistics for an adapter
  *
  * @param id
@@ -512,14 +470,11 @@ rte_event_crypto_adapter_stop(uint8_t id);
  *  - 0: Success, retrieved successfully.
  *  - <0: Error code on failure.
  */
-int __rte_experimental
+int
 rte_event_crypto_adapter_stats_get(uint8_t id,
 				struct rte_event_crypto_adapter_stats *stats);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Reset statistics for an adapter.
  *
  * @param id
@@ -529,13 +484,10 @@ rte_event_crypto_adapter_stats_get(uint8_t id,
  *  - 0: Success, statistics reset successfully.
  *  - <0: Error code on failure.
  */
-int __rte_experimental
+int
 rte_event_crypto_adapter_stats_reset(uint8_t id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Retrieve the service ID of an adapter. If the adapter doesn't use
  * a rte_service function, this function returns -ESRCH.
  *
@@ -550,13 +502,10 @@ rte_event_crypto_adapter_stats_reset(uint8_t id);
  *  - <0: Error code on failure, if the adapter doesn't use a rte_service
  * function, this function returns -ESRCH.
  */
-int __rte_experimental
+int
 rte_event_crypto_adapter_service_id_get(uint8_t id, uint32_t *service_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Retrieve the event port of an adapter.
  *
  * @param id
@@ -570,7 +519,7 @@ rte_event_crypto_adapter_service_id_get(uint8_t id, uint32_t *service_id);
  *  - 0: Success
  *  - <0: Error code on failure.
  */
-int __rte_experimental
+int
 rte_event_crypto_adapter_event_port_get(uint8_t id, uint8_t *event_port_id);
 
 #ifdef __cplusplus
