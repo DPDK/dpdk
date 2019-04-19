@@ -397,9 +397,13 @@ virtio_read_caps(struct rte_pci_device *dev, struct virtio_crypto_hw *hw)
 			hw->common_cfg = get_cfg_addr(dev, &cap);
 			break;
 		case VIRTIO_PCI_CAP_NOTIFY_CFG:
-			rte_pci_read_config(dev, &hw->notify_off_multiplier,
+			ret = rte_pci_read_config(dev, &hw->notify_off_multiplier,
 					4, pos + sizeof(cap));
-			hw->notify_base = get_cfg_addr(dev, &cap);
+			if (ret != 4)
+				VIRTIO_CRYPTO_INIT_LOG_ERR(
+					"failed to read notify_off_multiplier: ret %d", ret);
+			else
+				hw->notify_base = get_cfg_addr(dev, &cap);
 			break;
 		case VIRTIO_PCI_CAP_DEVICE_CFG:
 			hw->dev_cfg = get_cfg_addr(dev, &cap);
