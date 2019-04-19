@@ -158,6 +158,8 @@ uint16_t ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 void ice_set_rx_function(struct rte_eth_dev *dev);
 uint16_t ice_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 		       uint16_t nb_pkts);
+void ice_set_tx_function_flag(struct rte_eth_dev *dev,
+			      struct ice_tx_queue *txq);
 void ice_set_tx_function(struct rte_eth_dev *dev);
 uint32_t ice_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 void ice_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,

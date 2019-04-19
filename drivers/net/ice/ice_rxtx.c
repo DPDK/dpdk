@@ -885,6 +885,7 @@ ice_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->q_set = TRUE;
 	dev->data->tx_queues[queue_idx] = txq;
 	txq->tx_rel_mbufs = _ice_tx_queue_release_mbufs;
+	ice_set_tx_function_flag(dev, txq);
 
 	return 0;
 }
@@ -2303,6 +2304,27 @@ ice_set_rx_function(struct rte_eth_dev *dev)
 			     dev->data->port_id);
 		dev->rx_pkt_burst = ice_recv_pkts;
 	}
+}
+
+void __attribute__((cold))
+ice_set_tx_function_flag(struct rte_eth_dev *dev, struct ice_tx_queue *txq)
+{
+	struct ice_adapter *ad =
+		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+
+	/* Use a simple Tx queue if possible (only fast free is allowed) */
+	ad->tx_simple_allowed =
+		(txq->offloads ==
+		(txq->offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE) &&
+		txq->tx_rs_thresh >= ICE_TX_MAX_BURST);
+
+	if (ad->tx_simple_allowed)
+		PMD_INIT_LOG(DEBUG, "Simple Tx can be enabled on Tx queue %u.",
+			     txq->queue_id);
+	else
+		PMD_INIT_LOG(DEBUG,
+			     "Simple Tx can NOT be enabled on Tx queue %u.",
+			     txq->queue_id);
 }
 
 /*********************************************************************
