@@ -473,7 +473,7 @@ xdp_umem_destroy(struct xsk_umem_info *umem)
 }
 
 static struct
-xsk_umem_info *xdp_umem_configure(void)
+xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals)
 {
 	struct xsk_umem_info *umem;
 	const struct rte_memzone *mz;
@@ -482,6 +482,8 @@ xsk_umem_info *xdp_umem_configure(void)
 		.comp_size = ETH_AF_XDP_DFLT_NUM_DESCS,
 		.frame_size = ETH_AF_XDP_FRAME_SIZE,
 		.frame_headroom = ETH_AF_XDP_DATA_HEADROOM };
+	char ring_name[RTE_RING_NAMESIZE];
+	char mz_name[RTE_MEMZONE_NAMESIZE];
 	int ret;
 	uint64_t i;
 
@@ -491,7 +493,9 @@ xsk_umem_info *xdp_umem_configure(void)
 		return NULL;
 	}
 
-	umem->buf_ring = rte_ring_create("af_xdp_ring",
+	snprintf(ring_name, sizeof(ring_name), "af_xdp_ring_%s_%u",
+		       internals->if_name, internals->queue_idx);
+	umem->buf_ring = rte_ring_create(ring_name,
 					 ETH_AF_XDP_NUM_BUFFERS,
 					 rte_socket_id(),
 					 0x0);
@@ -505,7 +509,9 @@ xsk_umem_info *xdp_umem_configure(void)
 				 (void *)(i * ETH_AF_XDP_FRAME_SIZE +
 					  ETH_AF_XDP_DATA_HEADROOM));
 
-	mz = rte_memzone_reserve_aligned("af_xdp uemem",
+	snprintf(mz_name, sizeof(mz_name), "af_xdp_umem_%s_%u",
+		       internals->if_name, internals->queue_idx);
+	mz = rte_memzone_reserve_aligned(mz_name,
 			ETH_AF_XDP_NUM_BUFFERS * ETH_AF_XDP_FRAME_SIZE,
 			rte_socket_id(), RTE_MEMZONE_IOVA_CONTIG,
 			getpagesize());
@@ -541,7 +547,7 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 	int ret = 0;
 	int reserve_size;
 
-	rxq->umem = xdp_umem_configure();
+	rxq->umem = xdp_umem_configure(internals);
 	if (rxq->umem == NULL)
 		return -ENOMEM;
 
