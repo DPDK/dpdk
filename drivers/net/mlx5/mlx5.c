@@ -332,14 +332,16 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 		return 0;
 	}
 	/* Reference counter is zero, we should initialize structures. */
-	ns = mlx5dv_dr_create_ns(sh->ctx, MLX5DV_DR_NS_DOMAIN_INGRESS_BYPASS);
+	ns = mlx5_glue->dr_create_ns(sh->ctx,
+				     MLX5DV_DR_NS_DOMAIN_INGRESS_BYPASS);
 	if (!ns) {
 		DRV_LOG(ERR, "ingress mlx5dv_dr_create_ns failed");
 		err = errno;
 		goto error;
 	}
 	sh->rx_ns = ns;
-	ns = mlx5dv_dr_create_ns(sh->ctx, MLX5DV_DR_NS_DOMAIN_EGRESS_BYPASS);
+	ns = mlx5_glue->dr_create_ns(sh->ctx,
+				     MLX5DV_DR_NS_DOMAIN_EGRESS_BYPASS);
 	if (!ns) {
 		DRV_LOG(ERR, "egress mlx5dv_dr_create_ns failed");
 		err = errno;
@@ -367,11 +369,11 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 error:
        /* Rollback the created objects. */
 	if (sh->rx_ns) {
-		mlx5dv_dr_destroy_ns(sh->rx_ns);
+		mlx5_glue->dr_destroy_ns(sh->rx_ns);
 		sh->rx_ns = NULL;
 	}
 	if (sh->tx_ns) {
-		mlx5dv_dr_destroy_ns(sh->tx_ns);
+		mlx5_glue->dr_destroy_ns(sh->tx_ns);
 		sh->tx_ns = NULL;
 	}
 	if (sh->fdb_ns) {
@@ -410,11 +412,11 @@ mlx5_free_shared_dr(struct mlx5_priv *priv)
 	if (sh->dv_refcnt && --sh->dv_refcnt)
 		return;
 	if (sh->rx_ns) {
-		mlx5dv_dr_destroy_ns(sh->rx_ns);
+		mlx5_glue->dr_destroy_ns(sh->rx_ns);
 		sh->rx_ns = NULL;
 	}
 	if (sh->tx_ns) {
-		mlx5dv_dr_destroy_ns(sh->tx_ns);
+		mlx5_glue->dr_destroy_ns(sh->tx_ns);
 		sh->tx_ns = NULL;
 	}
 #ifdef HAVE_MLX5DV_DR_ESWITCH
