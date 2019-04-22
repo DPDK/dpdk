@@ -43,6 +43,10 @@
 #define MLX5DV_FLOW_TABLE_TYPE_FDB 0
 #endif
 
+#ifndef HAVE_MLX5DV_DR
+#define MLX5DV_DR_ACTION_FLAGS_ROOT_LEVEL 1
+#endif
+
 union flow_dv_attr {
 	struct {
 		uint32_t valid:1;
@@ -1830,10 +1834,13 @@ flow_dv_modify_hdr_resource_register
 		ns = sh->tx_ns;
 	else
 		ns = sh->rx_ns;
+	resource->flags =
+		dev_flow->flow->group ? 0 : MLX5DV_DR_ACTION_FLAGS_ROOT_LEVEL;
 	/* Lookup a matching resource from cache. */
 	LIST_FOREACH(cache_resource, &sh->modify_cmds, next) {
 		if (resource->ft_type == cache_resource->ft_type &&
 		    resource->actions_num == cache_resource->actions_num &&
+		    resource->flags == cache_resource->flags &&
 		    !memcmp((const void *)resource->actions,
 			    (const void *)cache_resource->actions,
 			    (resource->actions_num *
@@ -1856,7 +1863,7 @@ flow_dv_modify_hdr_resource_register
 	cache_resource->verbs_action =
 		mlx5_glue->dv_create_flow_action_modify_header
 					(sh->ctx, cache_resource->ft_type,
-					 ns, 0,
+					 ns, cache_resource->flags,
 					 cache_resource->actions_num *
 					 sizeof(cache_resource->actions[0]),
 					 (uint64_t *)cache_resource->actions);

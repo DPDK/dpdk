@@ -255,6 +255,7 @@ struct mlx5_flow_dv_modify_hdr_resource {
 	uint32_t actions_num; /**< Number of modification actions. */
 	struct mlx5_modification_cmd actions[MLX5_MODIFY_NUM];
 	/**< Modification actions. */
+	uint64_t flags; /**< Flags for RDMA API. */
 };
 
 /* Jump action resource structure. */
