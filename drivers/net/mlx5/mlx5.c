@@ -1519,10 +1519,12 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	 */
 	mlx5_link_update(eth_dev, 0);
 #ifdef HAVE_IBV_DEVX_OBJ
-	err = mlx5_devx_cmd_query_hca_attr(sh->ctx, &config.hca_attr);
-	if (err) {
-		err = -err;
-		goto error;
+	if (config.devx) {
+		err = mlx5_devx_cmd_query_hca_attr(sh->ctx, &config.hca_attr);
+		if (err) {
+			err = -err;
+			goto error;
+		}
 	}
 #endif
 #ifdef HAVE_MLX5DV_DR_ESWITCH
