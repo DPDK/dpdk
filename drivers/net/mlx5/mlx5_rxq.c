@@ -1493,7 +1493,7 @@ error:
  * @param dev
  *   Pointer to Ethernet device.
  * @param idx
- *   TX queue index.
+ *   RX queue index.
  *
  * @return
  *   A pointer to the queue if it exists, NULL otherwise.
@@ -1520,7 +1520,7 @@ mlx5_rxq_get(struct rte_eth_dev *dev, uint16_t idx)
  * @param dev
  *   Pointer to Ethernet device.
  * @param idx
- *   TX queue index.
+ *   RX queue index.
  *
  * @return
  *   1 while a reference on it exists, 0 when freed.
@@ -1553,7 +1553,7 @@ mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
  * @param dev
  *   Pointer to Ethernet device.
  * @param idx
- *   TX queue index.
+ *   RX queue index.
  *
  * @return
  *   1 if the queue can be released, negative errno otherwise and rte_errno is

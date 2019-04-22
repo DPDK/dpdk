@@ -388,7 +388,7 @@ is_empw_burst_func(eth_tx_burst_t tx_pkt_burst)
  * @param dev
  *   Pointer to Ethernet device.
  * @param idx
- *   Queue index in DPDK Rx queue array
+ *   Queue index in DPDK Tx queue array.
  *
  * @return
  *   The Verbs object initialised, NULL otherwise and rte_errno is set.
@@ -597,7 +597,7 @@ error:
  * @param dev
  *   Pointer to Ethernet device.
  * @param idx
- *   Queue index in DPDK Rx queue array
+ *   Queue index in DPDK Tx queue array.
  *
  * @return
  *   The Verbs object if it exists.
