@@ -102,7 +102,7 @@ create_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa)
 			set_ipsec_conf(sa, &(sess_conf.ipsec));
 
 			sa->sec_session = rte_security_session_create(ctx,
-					&sess_conf, ipsec_ctx->session_pool);
+					&sess_conf, ipsec_ctx->session_priv_pool);
 			if (sa->sec_session == NULL) {
 				RTE_LOG(ERR, IPSEC,
 				"SEC Session init failed: err: %d\n", ret);
@@ -117,7 +117,7 @@ create_session(struct ipsec_ctx *ipsec_ctx, struct ipsec_sa *sa)
 			int ret = 0;
 
 			sa->sec_session = rte_security_session_create(ctx,
-					&sess_conf, ipsec_ctx->session_pool);
+					&sess_conf, ipsec_ctx->session_priv_pool);
 			if (sa->sec_session == NULL) {
 				RTE_LOG(ERR, IPSEC,
 				"SEC Session init failed: err: %d\n", ret);

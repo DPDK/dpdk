@@ -1791,7 +1791,7 @@ cryptodevs_init(void)
 				rte_eth_dev_get_sec_ctx(port_id)) {
 			int socket_id = rte_eth_dev_socket_id(port_id);
 
-			if (!socket_ctx[socket_id].session_pool) {
+			if (!socket_ctx[socket_id].session_priv_pool) {
 				char mp_name[RTE_MEMPOOL_NAMESIZE];
 				struct rte_mempool *sess_mp;
 
@@ -1811,7 +1811,8 @@ cryptodevs_init(void)
 				else
 					printf("Allocated session pool "
 						"on socket %d\n", socket_id);
-				socket_ctx[socket_id].session_pool = sess_mp;
+				socket_ctx[socket_id].session_priv_pool =
+						sess_mp;
 			}
 		}
 	}
