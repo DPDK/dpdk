@@ -6,6 +6,7 @@
 #define _IAVF_ETHDEV_H_
 
 #include <rte_kvargs.h>
+#include "base/iavf_type.h"
 
 #define IAVF_AQ_LEN               32
 #define IAVF_AQ_BUF_SZ            4096
@@ -58,6 +59,10 @@
 #define IAVF_ETH_OVERHEAD \
 	(ETHER_HDR_LEN + ETHER_CRC_LEN + IAVF_VLAN_TAG_SIZE * 2)
 
+#define IAVF_32_BIT_WIDTH (CHAR_BIT * 4)
+#define IAVF_48_BIT_WIDTH (CHAR_BIT * 6)
+#define IAVF_48_BIT_MASK  RTE_LEN2MASK(IAVF_48_BIT_WIDTH, uint64_t)
+
 struct iavf_adapter;
 struct iavf_rx_queue;
 struct iavf_tx_queue;
@@ -71,6 +76,7 @@ struct iavf_vsi {
 	uint16_t max_macaddrs;   /* Maximum number of MAC addresses */
 	uint16_t base_vector;
 	uint16_t msix_intr;      /* The MSIX interrupt binds to VSI */
+	struct virtchnl_eth_stats eth_stats_offset;
 };
 
 /* TODO: is that correct to assume the max number to be 16 ?*/

@@ -42,6 +42,7 @@ static void iavf_dev_info_get(struct rte_eth_dev *dev,
 static const uint32_t *iavf_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 static int iavf_dev_stats_get(struct rte_eth_dev *dev,
 			     struct rte_eth_stats *stats);
+static void iavf_dev_stats_reset(struct rte_eth_dev *dev);
 static void iavf_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static void iavf_dev_promiscuous_disable(struct rte_eth_dev *dev);
 static void iavf_dev_allmulticast_enable(struct rte_eth_dev *dev);
@@ -89,6 +90,7 @@ static const struct eth_dev_ops iavf_eth_dev_ops = {
 	.dev_supported_ptypes_get   = iavf_dev_supported_ptypes_get,
 	.link_update                = iavf_dev_link_update,
 	.stats_get                  = iavf_dev_stats_get,
+	.stats_reset                = iavf_dev_stats_reset,
 	.promiscuous_enable         = iavf_dev_promiscuous_enable,
 	.promiscuous_disable        = iavf_dev_promiscuous_disable,
 	.allmulticast_enable        = iavf_dev_allmulticast_enable,
@@ -976,16 +978,59 @@ iavf_dev_set_default_mac_addr(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static void
+iavf_stat_update_48(uint64_t *offset, uint64_t *stat)
+{
+	if (*stat >= *offset)
+		*stat = *stat - *offset;
+	else
+		*stat = (uint64_t)((*stat +
+			((uint64_t)1 << IAVF_48_BIT_WIDTH)) - *offset);
+
+	*stat &= IAVF_48_BIT_MASK;
+}
+
+static void
+iavf_stat_update_32(uint64_t *offset, uint64_t *stat)
+{
+	if (*stat >= *offset)
+		*stat = (uint64_t)(*stat - *offset);
+	else
+		*stat = (uint64_t)((*stat +
+			((uint64_t)1 << IAVF_32_BIT_WIDTH)) - *offset);
+}
+
+static void
+iavf_update_stats(struct iavf_vsi *vsi, struct virtchnl_eth_stats *nes)
+{
+	struct virtchnl_eth_stats *oes = &vsi->eth_stats_offset;
+
+	iavf_stat_update_48(&oes->rx_bytes, &nes->rx_bytes);
+	iavf_stat_update_48(&oes->rx_unicast, &nes->rx_unicast);
+	iavf_stat_update_48(&oes->rx_multicast, &nes->rx_multicast);
+	iavf_stat_update_48(&oes->rx_broadcast, &nes->rx_broadcast);
+	iavf_stat_update_32(&oes->rx_discards, &nes->rx_discards);
+	iavf_stat_update_48(&oes->tx_bytes, &nes->tx_bytes);
+	iavf_stat_update_48(&oes->tx_unicast, &nes->tx_unicast);
+	iavf_stat_update_48(&oes->tx_multicast, &nes->tx_multicast);
+	iavf_stat_update_48(&oes->tx_broadcast, &nes->tx_broadcast);
+	iavf_stat_update_32(&oes->tx_errors, &nes->tx_errors);
+	iavf_stat_update_32(&oes->tx_discards, &nes->tx_discards);
+}
+
 static int
 iavf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct iavf_vsi *vsi = &vf->vsi;
 	struct virtchnl_eth_stats *pstats = NULL;
 	int ret;
 
 	ret = iavf_query_stats(adapter, &pstats);
 	if (ret == 0) {
+		iavf_update_stats(vsi, pstats);
 		stats->ipackets = pstats->rx_unicast + pstats->rx_multicast +
 						pstats->rx_broadcast;
 		stats->opackets = pstats->tx_broadcast + pstats->tx_multicast +
@@ -998,6 +1043,24 @@ iavf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		PMD_DRV_LOG(ERR, "Get statistics failed");
 	}
 	return -EIO;
+}
+
+static void
+iavf_dev_stats_reset(struct rte_eth_dev *dev)
+{
+	int ret;
+	struct iavf_adapter *adapter =
+		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct iavf_vsi *vsi = &vf->vsi;
+	struct virtchnl_eth_stats *pstats = NULL;
+
+	/* read stat values to clear hardware registers */
+	ret = iavf_query_stats(adapter, &pstats);
+
+	/* set stats offset base on current values */
+	if (ret == 0)
+		vsi->eth_stats_offset = *pstats;
 }
 
 static int
