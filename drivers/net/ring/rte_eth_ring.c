@@ -396,7 +396,11 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 		return -1;
 	}
 
-	rte_eth_dev_get_port_by_name(ring_name, &port_id);
+	ret = rte_eth_dev_get_port_by_name(ring_name, &port_id);
+	if (ret) {
+		rte_errno = ENODEV;
+		return -1;
+	}
 
 	return port_id;
 }
