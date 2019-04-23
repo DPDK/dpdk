@@ -866,6 +866,34 @@ fail_inval:
 }
 
 static int
+sfc_check_scatter_on_all_rx_queues(struct sfc_adapter *sa, size_t pdu)
+{
+	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	boolean_t scatter_enabled;
+	const char *error;
+	unsigned int i;
+
+	for (i = 0; i < sas->rxq_count; i++) {
+		if ((sas->rxq_info[i].state & SFC_RXQ_INITIALIZED) == 0)
+			continue;
+
+		scatter_enabled = (sas->rxq_info[i].type_flags &
+				   EFX_RXQ_FLAG_SCATTER);
+
+		if (!sfc_rx_check_scatter(pdu, sa->rxq_ctrl[i].buf_size,
+					  encp->enc_rx_prefix_size,
+					  scatter_enabled, &error)) {
+			sfc_err(sa, "MTU check for RxQ %u failed: %s", i,
+				error);
+			return EINVAL;
+		}
+	}
+
+	return 0;
+}
+
+static int
 sfc_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
@@ -890,6 +918,10 @@ sfc_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	}
 
 	sfc_adapter_lock(sa);
+
+	rc = sfc_check_scatter_on_all_rx_queues(sa, pdu);
+	if (rc != 0)
+		goto fail_check_scatter;
 
 	if (pdu != sa->port.pdu) {
 		if (sa->state == SFC_ADAPTER_STARTED) {
@@ -927,6 +959,8 @@ fail_start:
 		sfc_err(sa, "cannot start with neither new (%u) nor old (%u) "
 			"PDU max size - port is stopped",
 			(unsigned int)pdu, (unsigned int)old_pdu);
+
+fail_check_scatter:
 	sfc_adapter_unlock(sa);
 
 fail_inval:

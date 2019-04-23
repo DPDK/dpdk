@@ -360,6 +360,18 @@ sfc_efx_rx_qdesc_status(struct sfc_dp_rxq *dp_rxq, uint16_t offset)
 	return RTE_ETH_RX_DESC_UNAVAIL;
 }
 
+boolean_t
+sfc_rx_check_scatter(size_t pdu, size_t rx_buf_size, uint32_t rx_prefix_size,
+		     boolean_t rx_scatter_enabled, const char **error)
+{
+	if ((rx_buf_size < pdu + rx_prefix_size) && !rx_scatter_enabled) {
+		*error = "Rx scatter is disabled and RxQ mbuf pool object size is too small";
+		return B_FALSE;
+	}
+
+	return B_TRUE;
+}
+
 /** Get Rx datapath ops by the datapath RxQ handle */
 const struct sfc_dp_rx *
 sfc_dp_rx_by_dp_rxq(const struct sfc_dp_rxq *dp_rxq)
@@ -975,6 +987,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	struct sfc_dp_rx_qcreate_info info;
 	struct sfc_dp_rx_hw_limits hw_limits;
 	uint16_t rx_free_thresh;
+	const char *error;
 
 	memset(&hw_limits, 0, sizeof(hw_limits));
 	hw_limits.rxq_max_entries = sa->rxq_max_entries;
@@ -1005,10 +1018,11 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 		goto fail_bad_conf;
 	}
 
-	if ((buf_size < sa->port.pdu + encp->enc_rx_prefix_size) &&
-	    (~offloads & DEV_RX_OFFLOAD_SCATTER)) {
-		sfc_err(sa, "Rx scatter is disabled and RxQ %u mbuf pool "
-			"object size is too small", sw_index);
+	if (!sfc_rx_check_scatter(sa->port.pdu, buf_size,
+				  encp->enc_rx_prefix_size,
+				  (offloads & DEV_RX_OFFLOAD_SCATTER),
+				  &error)) {
+		sfc_err(sa, "RxQ %u MTU check failed: %s", sw_index, error);
 		sfc_err(sa, "RxQ %u calculated Rx buffer size is %u vs "
 			"PDU size %u plus Rx prefix %u bytes",
 			sw_index, buf_size, (unsigned int)sa->port.pdu,
