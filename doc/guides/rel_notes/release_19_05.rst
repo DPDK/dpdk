@@ -60,6 +60,10 @@ New Features
   * OcteonTX2 (Marvell)
   * ThunderX2 (Marvell)
 
+* **Introduced Windows Support.**
+
+  Added Windows support to build Hello World sample application.
+
 * **Added Stack API.**
 
   Added a new stack API for configuration and use of a bounded stack of
