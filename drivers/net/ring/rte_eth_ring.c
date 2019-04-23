@@ -383,7 +383,12 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 
 	snprintf(args_str, sizeof(args_str), "%s=%p",
 		 ETH_RING_INTERNAL_ARG, &args);
-	snprintf(ring_name, sizeof(ring_name), "net_ring_%s", name);
+
+	ret = snprintf(ring_name, sizeof(ring_name), "net_ring_%s", name);
+	if (ret >= (int)sizeof(ring_name)) {
+		rte_errno = ENAMETOOLONG;
+		return -1;
+	}
 
 	ret = rte_vdev_init(ring_name, args_str);
 	if (ret) {
@@ -417,7 +422,15 @@ eth_dev_ring_create(const char *name, const unsigned int numa_node,
 			RTE_PMD_RING_MAX_TX_RINGS);
 
 	for (i = 0; i < num_rings; i++) {
-		snprintf(rng_name, sizeof(rng_name), "ETH_RXTX%u_%s", i, name);
+		int cc;
+
+		cc = snprintf(rng_name, sizeof(rng_name),
+			      "ETH_RXTX%u_%s", i, name);
+		if (cc >= (int)sizeof(rng_name)) {
+			rte_errno = ENAMETOOLONG;
+			return -1;
+		}
+
 		rxtx[i] = (action == DEV_CREATE) ?
 				rte_ring_create(rng_name, 1024, numa_node,
 						RING_F_SP_ENQ|RING_F_SC_DEQ) :
