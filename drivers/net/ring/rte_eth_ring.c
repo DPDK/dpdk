@@ -362,8 +362,8 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 		.numa_node = numa_node,
 		.addr = &args,
 	};
-	char args_str[32] = { 0 };
-	char ring_name[32] = { 0 };
+	char args_str[32];
+	char ring_name[RTE_RING_NAMESIZE];
 	uint16_t port_id = RTE_MAX_ETHPORTS;
 	int ret;
 
@@ -381,8 +381,9 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 		return -1;
 	}
 
-	snprintf(args_str, 32, "%s=%p", ETH_RING_INTERNAL_ARG, &args);
-	snprintf(ring_name, 32, "net_ring_%s", name);
+	snprintf(args_str, sizeof(args_str), "%s=%p",
+		 ETH_RING_INTERNAL_ARG, &args);
+	snprintf(ring_name, sizeof(ring_name), "net_ring_%s", name);
 
 	ret = rte_vdev_init(ring_name, args_str);
 	if (ret) {
