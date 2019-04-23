@@ -93,14 +93,15 @@ static void cmd_help_brief_parsed(__attribute__((unused)) void *parsed_result,
 		cl,
 		"\n"
 		"Help is available for the following sections:\n\n"
-		"    help control    : Start and stop forwarding.\n"
-		"    help display    : Displaying port, stats and config "
+		"    help control                    : Start and stop forwarding.\n"
+		"    help display                    : Displaying port, stats and config "
 		"information.\n"
-		"    help config     : Configuration information.\n"
-		"    help ports      : Configuring ports.\n"
-		"    help registers  : Reading and setting port registers.\n"
-		"    help filters    : Filters configuration help.\n"
-		"    help all        : All of the above sections.\n\n"
+		"    help config                     : Configuration information.\n"
+		"    help ports                      : Configuring ports.\n"
+		"    help registers                  : Reading and setting port registers.\n"
+		"    help filters                    : Filters configuration help.\n"
+		"    help traffic_management         : Traffic Management commmands.\n"
+		"    help all                        : All of the above sections.\n\n"
 	);
 
 }
@@ -209,26 +210,32 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"show port meter stats (port_id) (meter_id) (clear)\n"
 			"    Get meter stats on a port\n\n"
-                        "show port tm cap (port_id)\n"
-                        "       Display the port TM capability.\n\n"
-
-                        "show port tm level cap (port_id) (level_id)\n"
-                        "       Display the port TM hierarchical level capability.\n\n"
-
-                        "show port tm node cap (port_id) (node_id)\n"
-                        "       Display the port TM node capability.\n\n"
-
-                        "show port tm node type (port_id) (node_id)\n"
-                        "       Display the port TM node type.\n\n"
-
-                        "show port tm node stats (port_id) (node_id) (clear)\n"
-                        "       Display the port TM node stats.\n\n"
 
 			"show fwd stats all\n"
 			"    Display statistics for all fwd engines.\n\n"
 
 			"clear fwd stats all\n"
 			"    Clear statistics for all fwd engines.\n\n"
+
+			"show port (port_id) rx_offload capabilities\n"
+			"    List all per queue and per port Rx offloading"
+			" capabilities of a port\n\n"
+
+			"show port (port_id) rx_offload configuration\n"
+			"    List port level and all queue level"
+			" Rx offloading configuration\n\n"
+
+			"show port (port_id) tx_offload capabilities\n"
+			"    List all per queue and per port"
+			" Tx offloading capabilities of a port\n\n"
+
+			"show port (port_id) tx_offload configuration\n"
+			"    List port level and all queue level"
+			" Tx offloading configuration\n\n"
+
+			"show port (port_id) tx_metadata\n"
+			"    Show Tx metadata value set"
+			" for a specific port\n\n"
 		);
 	}
 
@@ -646,11 +653,6 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"E-tag set filter del e-tag-id (value) port (port_id)\n"
 			"    Delete an E-tag forwarding filter on a port\n\n"
 
-#if defined RTE_LIBRTE_PMD_SOFTNIC && defined RTE_LIBRTE_SCHED
-			"set port tm hierarchy default (port_id)\n"
-			"	Set default traffic Management hierarchy on a port\n\n"
-
-#endif
 			"ddp add (port_id) (profile_path[,backup_profile_path])\n"
 			"    Load a profile package on a port\n\n"
 
@@ -730,62 +732,6 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"show port (port_id) queue-region\n"
 			"    show all queue region related configuration info\n\n"
-
-			"add port tm node shaper profile (port_id) (shaper_profile_id)"
-			" (cmit_tb_rate) (cmit_tb_size) (peak_tb_rate) (peak_tb_size)"
-			" (packet_length_adjust)\n"
-			"	Add port tm node private shaper profile.\n\n"
-
-			"del port tm node shaper profile (port_id) (shaper_profile_id)\n"
-			"	Delete port tm node private shaper profile.\n\n"
-
-			"add port tm node shared shaper (port_id) (shared_shaper_id)"
-			" (shaper_profile_id)\n"
-			"	Add/update port tm node shared shaper.\n\n"
-
-			"del port tm node shared shaper (port_id) (shared_shaper_id)\n"
-			"	Delete port tm node shared shaper.\n\n"
-
-			"set port tm node shaper profile (port_id) (node_id)"
-			" (shaper_profile_id)\n"
-			"	Set port tm node shaper profile.\n\n"
-
-			"add port tm node wred profile (port_id) (wred_profile_id)"
-			" (color_g) (min_th_g) (max_th_g) (maxp_inv_g) (wq_log2_g)"
-			" (color_y) (min_th_y) (max_th_y) (maxp_inv_y) (wq_log2_y)"
-			" (color_r) (min_th_r) (max_th_r) (maxp_inv_r) (wq_log2_r)\n"
-			"	Add port tm node wred profile.\n\n"
-
-			"del port tm node wred profile (port_id) (wred_profile_id)\n"
-			"	Delete port tm node wred profile.\n\n"
-
-			"add port tm nonleaf node (port_id) (node_id) (parent_node_id)"
-			" (priority) (weight) (level_id) (shaper_profile_id)"
-			" (n_sp_priorities) (stats_mask) (n_shared_shapers)"
-			" [(shared_shaper_id_0) (shared_shaper_id_1)...]\n"
-			"	Add port tm nonleaf node.\n\n"
-
-			"add port tm leaf node (port_id) (node_id) (parent_node_id)"
-			" (priority) (weight) (level_id) (shaper_profile_id)"
-			" (cman_mode) (wred_profile_id) (stats_mask) (n_shared_shapers)"
-			" [(shared_shaper_id_0) (shared_shaper_id_1)...]\n"
-			"	Add port tm leaf node.\n\n"
-
-			"del port tm node (port_id) (node_id)\n"
-			"	Delete port tm node.\n\n"
-
-			"set port tm node parent (port_id) (node_id) (parent_node_id)"
-			" (priority) (weight)\n"
-			"	Set port tm node parent.\n\n"
-
-			"suspend port tm node (port_id) (node_id)"
-			"       Suspend tm node.\n\n"
-
-			"resume port tm node (port_id) (node_id)"
-			"       Resume tm node.\n\n"
-
-			"port tm hierarchy commit (port_id) (clean_on_fail)\n"
-			"	Commit tm hierarchy.\n\n"
 
 			"vxlan ip-version (ipv4|ipv6) vni (vni) udp-src"
 			" (udp-src) udp-dst (udp-dst) ip-src (ip-src) ip-dst"
@@ -928,6 +874,52 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"port config (port_id) udp_tunnel_port add|rm vxlan|geneve (udp_port)\n\n"
 			"    Add/remove UDP tunnel port for tunneling offload\n\n"
+
+			"port config <port_id> rx_offload vlan_strip|"
+			"ipv4_cksum|udp_cksum|tcp_cksum|tcp_lro|qinq_strip|"
+			"outer_ipv4_cksum|macsec_strip|header_split|"
+			"vlan_filter|vlan_extend|jumbo_frame|crc_strip|"
+			"scatter|timestamp|security|keep_crc on|off\n"
+			"     Enable or disable a per port Rx offloading"
+			" on all Rx queues of a port\n\n"
+
+			"port (port_id) rxq (queue_id) rx_offload vlan_strip|"
+			"ipv4_cksum|udp_cksum|tcp_cksum|tcp_lro|qinq_strip|"
+			"outer_ipv4_cksum|macsec_strip|header_split|"
+			"vlan_filter|vlan_extend|jumbo_frame|crc_strip|"
+			"scatter|timestamp|security|keep_crc on|off\n"
+			"    Enable or disable a per queue Rx offloading"
+			" only on a specific Rx queue\n\n"
+
+			"port config (port_id) tx_offload vlan_insert|"
+			"ipv4_cksum|udp_cksum|tcp_cksum|sctp_cksum|tcp_tso|"
+			"udp_tso|outer_ipv4_cksum|qinq_insert|vxlan_tnl_tso|"
+			"gre_tnl_tso|ipip_tnl_tso|geneve_tnl_tso|"
+			"macsec_insert|mt_lockfree|multi_segs|mbuf_fast_free|"
+			"security|match_metadata on|off\n"
+			"    Enable or disable a per port Tx offloading"
+			" on all Tx queues of a port\n\n"
+
+			"port (port_id) txq (queue_id) tx_offload vlan_insert|"
+			"ipv4_cksum|udp_cksum|tcp_cksum|sctp_cksum|tcp_tso|"
+			"udp_tso|outer_ipv4_cksum|qinq_insert|vxlan_tnl_tso|"
+			"gre_tnl_tso|ipip_tnl_tso|geneve_tnl_tso|macsec_insert"
+			"|mt_lockfree|multi_segs|mbuf_fast_free|security"
+			" on|off\n"
+			"    Enable or disable a per queue Tx offloading"
+			" only on a specific Tx queue\n\n"
+
+			"bpf-load rx|tx (port) (queue) (J|M|B) (file_name)\n"
+			"    Load an eBPF program as a callback"
+			" for particular RX/TX queue\n\n"
+
+			"bpf-unload rx|tx (port) (queue)\n"
+			"    Unload previously loaded eBPF program"
+			" for particular RX/TX queue\n\n"
+
+			"port config (port_id) tx_metadata (value)\n"
+			"    Set Tx metadata value per port. Testpmd will add this value"
+			" to any Tx packet sent from this port\n\n"
 		);
 	}
 
@@ -1147,6 +1139,107 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" flow rules\n\n"
 		);
 	}
+
+	if (show_all || !strcmp(res->section, "traffic_management")) {
+		cmdline_printf(
+			cl,
+			"\n"
+			"Traffic Management:\n"
+			"--------------\n"
+			"show port tm cap (port_id)\n"
+			"       Display the port TM capability.\n\n"
+
+			"show port tm level cap (port_id) (level_id)\n"
+			"       Display the port TM hierarchical level capability.\n\n"
+
+			"show port tm node cap (port_id) (node_id)\n"
+			"       Display the port TM node capability.\n\n"
+
+			"show port tm node type (port_id) (node_id)\n"
+			"       Display the port TM node type.\n\n"
+
+			"show port tm node stats (port_id) (node_id) (clear)\n"
+			"       Display the port TM node stats.\n\n"
+
+#if defined RTE_LIBRTE_PMD_SOFTNIC && defined RTE_LIBRTE_SCHED
+			"set port tm hierarchy default (port_id)\n"
+			"       Set default traffic Management hierarchy on a port\n\n"
+#endif
+
+			"add port tm node shaper profile (port_id) (shaper_profile_id)"
+			" (cmit_tb_rate) (cmit_tb_size) (peak_tb_rate) (peak_tb_size)"
+			" (packet_length_adjust)\n"
+			"       Add port tm node private shaper profile.\n\n"
+
+			"del port tm node shaper profile (port_id) (shaper_profile_id)\n"
+			"       Delete port tm node private shaper profile.\n\n"
+
+			"add port tm node shared shaper (port_id) (shared_shaper_id)"
+			" (shaper_profile_id)\n"
+			"       Add/update port tm node shared shaper.\n\n"
+
+			"del port tm node shared shaper (port_id) (shared_shaper_id)\n"
+			"       Delete port tm node shared shaper.\n\n"
+
+			"set port tm node shaper profile (port_id) (node_id)"
+			" (shaper_profile_id)\n"
+			"       Set port tm node shaper profile.\n\n"
+
+			"add port tm node wred profile (port_id) (wred_profile_id)"
+			" (color_g) (min_th_g) (max_th_g) (maxp_inv_g) (wq_log2_g)"
+			" (color_y) (min_th_y) (max_th_y) (maxp_inv_y) (wq_log2_y)"
+			" (color_r) (min_th_r) (max_th_r) (maxp_inv_r) (wq_log2_r)\n"
+			"       Add port tm node wred profile.\n\n"
+
+			"del port tm node wred profile (port_id) (wred_profile_id)\n"
+			"       Delete port tm node wred profile.\n\n"
+
+			"add port tm nonleaf node (port_id) (node_id) (parent_node_id)"
+			" (priority) (weight) (level_id) (shaper_profile_id)"
+			" (n_sp_priorities) (stats_mask) (n_shared_shapers)"
+			" [(shared_shaper_id_0) (shared_shaper_id_1)...]\n"
+			"       Add port tm nonleaf node.\n\n"
+
+			"add port tm leaf node (port_id) (node_id) (parent_node_id)"
+			" (priority) (weight) (level_id) (shaper_profile_id)"
+			" (cman_mode) (wred_profile_id) (stats_mask) (n_shared_shapers)"
+			" [(shared_shaper_id_0) (shared_shaper_id_1)...]\n"
+			"       Add port tm leaf node.\n\n"
+
+			"del port tm node (port_id) (node_id)\n"
+			"       Delete port tm node.\n\n"
+
+			"set port tm node parent (port_id) (node_id) (parent_node_id)"
+			" (priority) (weight)\n"
+			"       Set port tm node parent.\n\n"
+
+			"suspend port tm node (port_id) (node_id)"
+			"       Suspend tm node.\n\n"
+
+			"resume port tm node (port_id) (node_id)"
+			"       Resume tm node.\n\n"
+
+			"port tm hierarchy commit (port_id) (clean_on_fail)\n"
+			"       Commit tm hierarchy.\n\n"
+
+			"set port tm mark ip_ecn (port) (green) (yellow)"
+			" (red)\n"
+			"    Enables/Disables the traffic management marking"
+			" for IP ECN (Explicit Congestion Notification)"
+			" packets on a given port\n\n"
+
+			"set port tm mark ip_dscp (port) (green) (yellow)"
+			" (red)\n"
+			"    Enables/Disables the traffic management marking"
+			" on the port for IP dscp packets\n\n"
+
+			"set port tm mark vlan_dei (port) (green) (yellow)"
+			" (red)\n"
+			"    Enables/Disables the traffic management marking"
+			" on the port for VLAN packets with DEI enabled\n\n"
+		);
+	}
+
 }
 
 cmdline_parse_token_string_t cmd_help_long_help =
@@ -1155,12 +1248,13 @@ cmdline_parse_token_string_t cmd_help_long_help =
 cmdline_parse_token_string_t cmd_help_long_section =
 	TOKEN_STRING_INITIALIZER(struct cmd_help_long_result, section,
 			"all#control#display#config#"
-			"ports#registers#filters");
+			"ports#registers#filters#traffic_management");
 
 cmdline_parse_inst_t cmd_help_long = {
 	.f = cmd_help_long_parsed,
 	.data = NULL,
-	.help_str = "help all|control|display|config|ports|register|filters: "
+	.help_str = "help all|control|display|config|ports|register|"
+		"filters|traffic_management: "
 		"Show help",
 	.tokens = {
 		(void *)&cmd_help_long_help,
