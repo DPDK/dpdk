@@ -270,15 +270,15 @@ do_eth_dev_ring_create(const char *name,
 	PMD_LOG(INFO, "Creating rings-backed ethdev on numa socket %u",
 			numa_node);
 
-	rx_queues_local = rte_zmalloc_socket(name,
-			sizeof(void *) * nb_rx_queues, 0, numa_node);
+	rx_queues_local = rte_calloc_socket(name, nb_rx_queues,
+					    sizeof(void *), 0, numa_node);
 	if (rx_queues_local == NULL) {
 		rte_errno = ENOMEM;
 		goto error;
 	}
 
-	tx_queues_local = rte_zmalloc_socket(name,
-			sizeof(void *) * nb_tx_queues, 0, numa_node);
+	tx_queues_local = rte_calloc_socket(name, nb_tx_queues,
+					    sizeof(void *), 0, numa_node);
 	if (tx_queues_local == NULL) {
 		rte_errno = ENOMEM;
 		goto error;
