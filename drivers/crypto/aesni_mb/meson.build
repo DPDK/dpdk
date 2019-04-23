@@ -1,25 +1,25 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Intel Corporation
-IPSec_MB_ver_0_52 = '0.52.0'
+
+IMB_required_ver = '0.52.0'
 lib = cc.find_library('IPSec_MB', required: false)
 if not lib.found()
 	build = false
 else
 	ext_deps += lib
 
-	imb_arr = cc.get_define('IMB_VERSION_STR',
-		prefix : '#include<intel-ipsec-mb.h>').split('"')
+	# version comes with quotes, so we split based on " and take the middle
+	imb_ver = cc.get_define('IMB_VERSION_STR',
+		prefix : '#include<intel-ipsec-mb.h>').split('"')[1]
 
-	imb_ver = ''.join(imb_arr)
-
-	if (imb_ver == '') or (imb_ver.version_compare('<' + IPSec_MB_ver_0_52))
-		message('IPSec_MB version >= 0.52 is required')
+	if (imb_ver == '') or (imb_ver.version_compare('<' + IMB_required_ver))
+		message('IPSec_MB version >= @0@ is required, found version @1@'.format(
+				IMB_required_ver, imb_ver))
 		build = false
-	else
-		sources = files('rte_aesni_mb_pmd.c', 'rte_aesni_mb_pmd_ops.c')
 	endif
 
 endif
 
+sources = files('rte_aesni_mb_pmd.c', 'rte_aesni_mb_pmd_ops.c')
 allow_experimental_apis = true
 deps += ['bus_vdev']
