@@ -467,6 +467,56 @@ Show Tx metadata value set for a specific port::
 
    testpmd> show port (port_id) tx_metadata
 
+dump physmem
+~~~~~~~~~~~~
+
+Dumps all physical memory segment layouts::
+
+   testpmd> dump_physmem
+
+dump memzone
+~~~~~~~~~~~~
+
+Dumps the layout of all memory zones::
+
+   testpmd> dump_memzone
+
+
+dump struct size
+~~~~~~~~~~~~~~~~
+
+Dumps the size of all memory structures::
+
+   testpmd> dump_struct_sizes
+
+dump ring
+~~~~~~~~~
+
+Dumps the status of all or specific element in DPDK rings::
+
+   testpmd> dump_ring [ring_name]
+
+dump mempool
+~~~~~~~~~~~~
+
+Dumps the statistics of all or specific memory pool::
+
+   testpmd> dump_mempool [mempool_name]
+
+dump devargs
+~~~~~~~~~~~~
+
+Dumps the user device list::
+
+   testpmd> dump_devargs
+
+dump log types
+~~~~~~~~~~~~~~
+
+Dumps the log level for all the dpdk modules::
+
+   testpmd> dump_log_types
+
 Configuration Functions
 -----------------------
 
@@ -1041,6 +1091,20 @@ Display the status of TCP Segmentation Offload::
 
    testpmd> tso show (port_id)
 
+tunnel tso set
+~~~~~~~~~~~~~~
+
+Set tso segment size of tunneled packets for a port in csum engine::
+
+   testpmd> tunnel_tso set (tso_segsz) (port_id)
+
+tunnel tso show
+~~~~~~~~~~~~~~~
+
+Display the status of tunneled TCP Segmentation Offload for a port::
+
+   testpmd> tunnel_tso show (port_id)
+
 set port - gro
 ~~~~~~~~~~~~~~
 
@@ -1161,6 +1225,22 @@ mac_addr remove
 Remove a MAC address from a port::
 
    testpmd> mac_addr remove (port_id) (XX:XX:XX:XX:XX:XX)
+
+mcast_addr add
+~~~~~~~~~~~~~~
+
+To add the multicast MAC address to/from the set of multicast addresses
+filtered by port::
+
+   testpmd> mcast_addr add (port_id) (mcast_addr)
+
+mcast_addr remove
+~~~~~~~~~~~~~~~~~
+
+To remove the multicast MAC address to/from the set of multicast addresses
+filtered by port::
+
+   testpmd> mcast_addr remove (port_id) (mcast_addr)
 
 mac_addr add (for VF)
 ~~~~~~~~~~~~~~~~~~~~~
@@ -2182,6 +2262,26 @@ Set Tx metadata value per port.
 testpmd will add this value to any Tx packet sent from this port::
 
    testpmd> port config (port_id) tx_metadata (value)
+
+port config mtu
+~~~~~~~~~~~~~~~
+
+To configure MTU(Maximum Transmission Unit) on devices using testpmd::
+
+   testpmd> port config mtu (port_id) (value)
+
+port config rss hash key
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+To configure the RSS hash key used to compute the RSS
+hash of input [IP] packets received on port::
+
+   testpmd> port config <port_id> rss-hash-key (ipv4|ipv4-frag|\
+                     ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|\
+                     ipv6|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|\
+                     ipv6-other|l2-payload|ipv6-ex|ipv6-tcp-ex|\
+                     ipv6-udp-ex <string of hex digits \
+                     (variable length, NIC dependent)>)
 
 Link Bonding Functions
 ----------------------
