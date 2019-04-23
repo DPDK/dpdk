@@ -25,6 +25,8 @@ extern "C" {
 #include <rte_mempool.h>
 #include <rte_common.h>
 
+#include "rte_crypto_sym.h"
+
 typedef struct rte_crypto_param_t {
 	uint8_t *data;
 	/**< pointer to buffer holding data */
