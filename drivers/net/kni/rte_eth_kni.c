@@ -459,6 +459,7 @@ eth_kni_remove(struct rte_vdev_device *vdev)
 	struct rte_eth_dev *eth_dev;
 	struct pmd_internals *internals;
 	const char *name;
+	int ret;
 
 	name = rte_vdev_device_name(vdev);
 	PMD_LOG(INFO, "Un-Initializing eth_kni for %s", name);
@@ -477,7 +478,9 @@ eth_kni_remove(struct rte_vdev_device *vdev)
 	eth_kni_dev_stop(eth_dev);
 
 	internals = eth_dev->data->dev_private;
-	rte_kni_release(internals->kni);
+	ret = rte_kni_release(internals->kni);
+	if (ret)
+		PMD_LOG(WARNING, "Not able to release kni for %s", name);
 
 	rte_eth_dev_release_port(eth_dev);
 
