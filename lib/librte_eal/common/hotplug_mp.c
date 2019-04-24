@@ -376,7 +376,7 @@ int eal_dev_hotplug_request_to_primary(struct eal_dev_mp_req *req)
 
 	ret = rte_mp_request_sync(&mp_req, &mp_reply, &ts);
 	if (ret || mp_reply.nb_received != 1) {
-		RTE_LOG(ERR, EAL, "cannot send request to primary");
+		RTE_LOG(ERR, EAL, "Cannot send request to primary\n");
 		if (!ret)
 			return -1;
 		return ret;
