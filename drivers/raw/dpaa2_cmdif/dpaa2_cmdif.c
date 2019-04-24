@@ -207,7 +207,6 @@ dpaa2_cmdif_create(const char *name,
 
 	rawdev->dev_ops = &dpaa2_cmdif_ops;
 	rawdev->device = &vdev->device;
-	rawdev->driver_name = vdev->device.driver->name;
 
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)

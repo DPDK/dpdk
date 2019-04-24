@@ -585,7 +585,6 @@ skeleton_rawdev_create(const char *name,
 
 	rawdev->dev_ops = &skeleton_rawdev_ops;
 	rawdev->device = &vdev->device;
-	rawdev->driver_name = vdev->device.driver->name;
 
 	skeldev = skeleton_rawdev_get_priv(rawdev);
 
