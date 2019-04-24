@@ -101,8 +101,8 @@ separately:
 
 Currently supported by DPDK:
 
-- NXP SDK **2.0+** (preferred: LSDK 18.09).
-- MC Firmware version **10.10.0** and higher.
+- NXP SDK **2.0+** (preferred: LSDK 19.03).
+- MC Firmware version **10.14.0** and higher.
 - Supported architectures:  **arm64 LE**.
 
 - Follow the DPDK :ref:`Getting Started Guide for Linux <linux_gsg>`
