@@ -159,6 +159,9 @@ eca_default_config_cb(uint8_t id, uint8_t dev_id,
 	struct rte_event_port_conf *port_conf = arg;
 	struct rte_event_crypto_adapter *adapter = eca_id_to_adapter(id);
 
+	if (adapter == NULL)
+		return -EINVAL;
+
 	dev = &rte_eventdevs[adapter->eventdev_id];
 	dev_conf = dev->data->dev_conf;
 
@@ -353,7 +356,7 @@ eca_enq_to_cryptodev(struct rte_event_crypto_adapter *adapter,
 			cdev_id = m_data->request_info.cdev_id;
 			qp_id = m_data->request_info.queue_pair_id;
 			qp_info = &adapter->cdevs[cdev_id].qpairs[qp_id];
-			if (qp_info == NULL) {
+			if (!qp_info->qp_enabled) {
 				rte_pktmbuf_free(crypto_op->sym->m_src);
 				rte_crypto_op_free(crypto_op);
 				continue;
@@ -369,7 +372,7 @@ eca_enq_to_cryptodev(struct rte_event_crypto_adapter *adapter,
 			cdev_id = m_data->request_info.cdev_id;
 			qp_id = m_data->request_info.queue_pair_id;
 			qp_info = &adapter->cdevs[cdev_id].qpairs[qp_id];
-			if (qp_info == NULL) {
+			if (!qp_info->qp_enabled) {
 				rte_pktmbuf_free(crypto_op->sym->m_src);
 				rte_crypto_op_free(crypto_op);
 				continue;
@@ -427,10 +430,9 @@ eca_crypto_enq_flush(struct rte_event_crypto_adapter *adapter)
 	ret = 0;
 	for (cdev_id = 0; cdev_id < num_cdev; cdev_id++) {
 		curr_dev = &adapter->cdevs[cdev_id];
-		if (curr_dev == NULL)
-			continue;
 		dev = curr_dev->dev;
-
+		if (dev == NULL)
+			continue;
 		for (qp = 0; qp < dev->data->nb_queue_pairs; qp++) {
 
 			curr_queue = &curr_dev->qpairs[qp];
@@ -579,9 +581,9 @@ eca_crypto_adapter_deq_run(struct rte_event_crypto_adapter *adapter,
 		for (cdev_id = adapter->next_cdev_id;
 			cdev_id < num_cdev; cdev_id++) {
 			curr_dev = &adapter->cdevs[cdev_id];
-			if (curr_dev == NULL)
-				continue;
 			dev = curr_dev->dev;
+			if (dev == NULL)
+				continue;
 			dev_qps = dev->data->nb_queue_pairs;
 
 			for (qp = curr_dev->next_queue_pair_id;
