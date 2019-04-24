@@ -195,4 +195,4 @@ References
     `http://www.ietf.org/rfc/rfc1519 <http://www.ietf.org/rfc/rfc1519>`_
 
 *   Pankaj Gupta, Algorithms for Routing Lookups and Packet Classification, PhD Thesis, Stanford University,
-    2000  (`http://klamath.stanford.edu/~pankaj/thesis/ thesis_1sided.pdf <http://klamath.stanford.edu/~pankaj/thesis/%20thesis_1sided.pdf>`_ )
+    2000  (`http://klamath.stanford.edu/~pankaj/thesis/thesis_1sided.pdf <http://klamath.stanford.edu/~pankaj/thesis/thesis_1sided.pdf>`_ )
