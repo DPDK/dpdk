@@ -366,6 +366,33 @@ fm10k_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	return nb_rcv;
 }
 
+uint32_t
+fm10k_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+#define FM10K_RXQ_SCAN_INTERVAL 4
+	volatile union fm10k_rx_desc *rxdp;
+	struct fm10k_rx_queue *rxq;
+	uint16_t desc = 0;
+
+	rxq = dev->data->rx_queues[rx_queue_id];
+	rxdp = &rxq->hw_ring[rxq->next_dd];
+	while ((desc < rxq->nb_desc) &&
+		rxdp->w.status & rte_cpu_to_le_16(FM10K_RXD_STATUS_DD)) {
+		/**
+		 * Check the DD bit of a rx descriptor of each group of 4 desc,
+		 * to avoid checking too frequently and downgrading performance
+		 * too much.
+		 */
+		desc += FM10K_RXQ_SCAN_INTERVAL;
+		rxdp += FM10K_RXQ_SCAN_INTERVAL;
+		if (rxq->next_dd + desc >= rxq->nb_desc)
+			rxdp = &rxq->hw_ring[rxq->next_dd + desc -
+				rxq->nb_desc];
+	}
+
+	return desc;
+}
+
 int
 fm10k_dev_rx_descriptor_done(void *rx_queue, uint16_t offset)
 {
