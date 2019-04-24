@@ -826,6 +826,7 @@ rte_timer_alt_manage(uint32_t timer_data_id,
 		     int nb_poll_lcores,
 		     rte_timer_alt_manage_cb_t f)
 {
+	unsigned int default_poll_lcores[] = {rte_lcore_id()};
 	union rte_timer_status status;
 	struct rte_timer *tim, *next_tim, **pprev;
 	struct rte_timer *run_first_tims[RTE_MAX_LCORE];
@@ -847,8 +848,8 @@ rte_timer_alt_manage(uint32_t timer_data_id,
 	__TIMER_STAT_ADD(data->priv_timer, manage, 1);
 
 	if (poll_lcores == NULL) {
-		poll_lcores = (unsigned int []){rte_lcore_id()};
-		nb_poll_lcores = 1;
+		poll_lcores = default_poll_lcores;
+		nb_poll_lcores = RTE_DIM(default_poll_lcores);
 	}
 
 	for (i = 0; i < nb_poll_lcores; i++) {
