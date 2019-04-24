@@ -28,7 +28,7 @@
 #include "dpaa2_ethdev.h"
 #include <fsl_qbman_debug.h>
 
-#define DRIVER_LOOPBACK_MODE "drv_looback"
+#define DRIVER_LOOPBACK_MODE "drv_loopback"
 
 /* Supported Rx offloads */
 static uint64_t dev_rx_offloads_sup =
