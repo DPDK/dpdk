@@ -645,11 +645,13 @@ ice_add_vlan_filter(struct ice_vsi *vsi, uint16_t vlan_id)
 	struct ice_fltr_list_entry *v_list_itr = NULL;
 	struct ice_vlan_filter *f;
 	struct LIST_HEAD_TYPE list_head;
-	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
+	struct ice_hw *hw;
 	int ret = 0;
 
 	if (!vsi || vlan_id > ETHER_MAX_VLAN_ID)
 		return -EINVAL;
+
+	hw = ICE_VSI_TO_HW(vsi);
 
 	/* If it's added and configured, return. */
 	f = ice_find_vlan_filter(vsi, vlan_id);
@@ -710,7 +712,7 @@ ice_remove_vlan_filter(struct ice_vsi *vsi, uint16_t vlan_id)
 	struct ice_fltr_list_entry *v_list_itr = NULL;
 	struct ice_vlan_filter *f;
 	struct LIST_HEAD_TYPE list_head;
-	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
+	struct ice_hw *hw;
 	int ret = 0;
 
 	/**
@@ -719,6 +721,8 @@ ice_remove_vlan_filter(struct ice_vsi *vsi, uint16_t vlan_id)
 	 */
 	if (!vsi || vlan_id == 0 || vlan_id > ETHER_MAX_VLAN_ID)
 		return -EINVAL;
+
+	hw = ICE_VSI_TO_HW(vsi);
 
 	/* Can't find it, return an error */
 	f = ice_find_vlan_filter(vsi, vlan_id);
@@ -2565,12 +2569,15 @@ ice_get_rss_lut(struct ice_vsi *vsi, uint8_t *lut, uint16_t lut_size)
 static int
 ice_set_rss_lut(struct ice_vsi *vsi, uint8_t *lut, uint16_t lut_size)
 {
-	struct ice_pf *pf = ICE_VSI_TO_PF(vsi);
-	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
+	struct ice_pf *pf;
+	struct ice_hw *hw;
 	int ret;
 
 	if (!vsi || !lut)
 		return -EINVAL;
+
+	pf = ICE_VSI_TO_PF(vsi);
+	hw = ICE_VSI_TO_HW(vsi);
 
 	if (pf->flags & ICE_FLAG_RSS_AQ_CAPABLE) {
 		ret = ice_aq_set_rss_lut(hw, vsi->idx, TRUE,
