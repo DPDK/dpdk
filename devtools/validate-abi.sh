@@ -9,7 +9,7 @@ set -e
 abicheck=abi-compliance-checker
 abidump=abi-dumper
 default_dst=abi-check
-default_target=x86_64-native-linux-gcc
+default_target=x86_64-native-linuxapp-gcc
 
 # trap on error
 err_report() {
