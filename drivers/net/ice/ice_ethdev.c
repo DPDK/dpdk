@@ -3326,15 +3326,14 @@ ice_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	/* call read registers - updates values, now write them to struct */
 	ice_read_stats_registers(pf, hw);
 
-	stats->ipackets = ns->eth.rx_unicast +
-			  ns->eth.rx_multicast +
-			  ns->eth.rx_broadcast -
-			  ns->eth.rx_discards -
+	stats->ipackets = pf->main_vsi->eth_stats.rx_unicast +
+			  pf->main_vsi->eth_stats.rx_multicast +
+			  pf->main_vsi->eth_stats.rx_broadcast -
 			  pf->main_vsi->eth_stats.rx_discards;
 	stats->opackets = ns->eth.tx_unicast +
 			  ns->eth.tx_multicast +
 			  ns->eth.tx_broadcast;
-	stats->ibytes   = ns->eth.rx_bytes;
+	stats->ibytes   = pf->main_vsi->eth_stats.rx_bytes;
 	stats->obytes   = ns->eth.tx_bytes;
 	stats->oerrors  = ns->eth.tx_errors +
 			  pf->main_vsi->eth_stats.tx_errors;
