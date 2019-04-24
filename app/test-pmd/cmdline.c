@@ -17833,7 +17833,7 @@ print_rx_offloads(uint64_t offloads)
 	begin = __builtin_ctzll(offloads);
 	end = sizeof(offloads) * CHAR_BIT - __builtin_clzll(offloads);
 
-	single_offload = 1 << begin;
+	single_offload = 1ULL << begin;
 	for (bit = begin; bit < end; bit++) {
 		if (offloads & single_offload)
 			printf(" %s",
@@ -18227,7 +18227,7 @@ print_tx_offloads(uint64_t offloads)
 	begin = __builtin_ctzll(offloads);
 	end = sizeof(offloads) * CHAR_BIT - __builtin_clzll(offloads);
 
-	single_offload = 1 << begin;
+	single_offload = 1ULL << begin;
 	for (bit = begin; bit < end; bit++) {
 		if (offloads & single_offload)
 			printf(" %s",
