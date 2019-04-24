@@ -1946,11 +1946,11 @@ int
 mlx5_hrxq_release(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq)
 {
 	if (rte_atomic32_dec_and_test(&hrxq->refcnt)) {
-		claim_zero(mlx5_glue->destroy_qp(hrxq->qp));
-		mlx5_ind_table_ibv_release(dev, hrxq->ind_table);
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 		mlx5_glue->destroy_flow_action(hrxq->action);
 #endif
+		claim_zero(mlx5_glue->destroy_qp(hrxq->qp));
+		mlx5_ind_table_ibv_release(dev, hrxq->ind_table);
 		LIST_REMOVE(hrxq, next);
 		rte_free(hrxq);
 		return 0;
@@ -2217,11 +2217,11 @@ mlx5_hrxq_drop_release(struct rte_eth_dev *dev)
 	struct mlx5_hrxq *hrxq = priv->drop_queue.hrxq;
 
 	if (rte_atomic32_dec_and_test(&hrxq->refcnt)) {
-		claim_zero(mlx5_glue->destroy_qp(hrxq->qp));
-		mlx5_ind_table_ibv_drop_release(dev);
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 		mlx5_glue->destroy_flow_action(hrxq->action);
 #endif
+		claim_zero(mlx5_glue->destroy_qp(hrxq->qp));
+		mlx5_ind_table_ibv_drop_release(dev);
 		rte_free(hrxq);
 		priv->drop_queue.hrxq = NULL;
 	}
