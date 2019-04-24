@@ -1013,7 +1013,7 @@ rte_qdma_vq_destroy_rbp(uint16_t vq_id)
 
 	memset(qdma_vq, 0, sizeof(struct qdma_virt_queue));
 
-	rte_spinlock_lock(&qdma_dev.lock);
+	rte_spinlock_unlock(&qdma_dev.lock);
 
 	return 0;
 }
