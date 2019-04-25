@@ -55,6 +55,7 @@ The application has a number of command line options::
                              [--hash-entry-num]
                              [--ipv6]
                              [--parse-ptype]
+                             [--per-port-pool]
 
 Where,
 
@@ -82,6 +83,8 @@ Where,
 * ``--ipv6:`` Optional, set if running ipv6 packets.
 
 * ``--parse-ptype:`` Optional, set to use software to analyze packet type. Without this option, hardware will check the packet type.
+
+* ``--per-port-pool:`` Optional, set to use independent buffer pools per port. Without this option, single buffer pool is used for all ports.
 
 For example, consider a dual processor socket platform with 8 physical cores, where cores 0-7 and 16-23 appear on socket 0,
 while cores 8-15 and 24-31 appear on socket 1.

@@ -69,11 +69,13 @@ static int promiscuous_on;
 static int l3fwd_lpm_on;
 static int l3fwd_em_on;
 
+/* Global variables. */
+
 static int numa_on = 1; /**< NUMA is enabled by default. */
 static int parse_ptype; /**< Parse packet type using rx callback, and */
 			/**< disabled by default */
-
-/* Global variables. */
+static int per_port_pool; /**< Use separate buffer pools per port; disabled */
+			  /**< by default */
 
 volatile bool force_quit;
 
@@ -133,7 +135,8 @@ static struct rte_eth_conf port_conf = {
 	},
 };
 
-static struct rte_mempool * pktmbuf_pool[NB_SOCKETS];
+static struct rte_mempool *pktmbuf_pool[RTE_MAX_ETHPORTS][NB_SOCKETS];
+static uint8_t lkp_per_socket[NB_SOCKETS];
 
 struct l3fwd_lkp_mode {
 	void  (*setup)(int);
@@ -285,7 +288,8 @@ print_usage(const char *prgname)
 		" [--no-numa]"
 		" [--hash-entry-num]"
 		" [--ipv6]"
-		" [--parse-ptype]\n\n"
+		" [--parse-ptype]"
+		" [--per-port-pool]\n\n"
 
 		"  -p PORTMASK: Hexadecimal bitmask of ports to configure\n"
 		"  -P : Enable promiscuous mode\n"
@@ -299,7 +303,8 @@ print_usage(const char *prgname)
 		"  --no-numa: Disable numa awareness\n"
 		"  --hash-entry-num: Specify the hash entry number in hexadecimal to be setup\n"
 		"  --ipv6: Set if running ipv6 packets\n"
-		"  --parse-ptype: Set to use software to analyze packet type\n\n",
+		"  --parse-ptype: Set to use software to analyze packet type\n"
+		"  --per-port-pool: Use separate buffer pool per port\n\n",
 		prgname);
 }
 
@@ -452,6 +457,7 @@ static const char short_options[] =
 #define CMD_LINE_OPT_ENABLE_JUMBO "enable-jumbo"
 #define CMD_LINE_OPT_HASH_ENTRY_NUM "hash-entry-num"
 #define CMD_LINE_OPT_PARSE_PTYPE "parse-ptype"
+#define CMD_LINE_OPT_PER_PORT_POOL "per-port-pool"
 enum {
 	/* long options mapped to a short option */
 
@@ -465,6 +471,7 @@ enum {
 	CMD_LINE_OPT_ENABLE_JUMBO_NUM,
 	CMD_LINE_OPT_HASH_ENTRY_NUM_NUM,
 	CMD_LINE_OPT_PARSE_PTYPE_NUM,
+	CMD_LINE_OPT_PARSE_PER_PORT_POOL,
 };
 
 static const struct option lgopts[] = {
@@ -475,6 +482,7 @@ static const struct option lgopts[] = {
 	{CMD_LINE_OPT_ENABLE_JUMBO, 0, 0, CMD_LINE_OPT_ENABLE_JUMBO_NUM},
 	{CMD_LINE_OPT_HASH_ENTRY_NUM, 1, 0, CMD_LINE_OPT_HASH_ENTRY_NUM_NUM},
 	{CMD_LINE_OPT_PARSE_PTYPE, 0, 0, CMD_LINE_OPT_PARSE_PTYPE_NUM},
+	{CMD_LINE_OPT_PER_PORT_POOL, 0, 0, CMD_LINE_OPT_PARSE_PER_PORT_POOL},
 	{NULL, 0, 0, 0}
 };
 
@@ -485,10 +493,10 @@ static const struct option lgopts[] = {
  * RTE_MAX is used to ensure that NB_MBUF never goes below a minimum
  * value of 8192
  */
-#define NB_MBUF RTE_MAX(	\
-	(nb_ports*nb_rx_queue*nb_rxd +		\
-	nb_ports*nb_lcores*MAX_PKT_BURST +	\
-	nb_ports*n_tx_queue*nb_txd +		\
+#define NB_MBUF(nports) RTE_MAX(	\
+	(nports*nb_rx_queue*nb_rxd +		\
+	nports*nb_lcores*MAX_PKT_BURST +	\
+	nports*n_tx_queue*nb_txd +		\
 	nb_lcores*MEMPOOL_CACHE_SIZE),		\
 	(unsigned)8192)
 
@@ -594,6 +602,11 @@ parse_args(int argc, char **argv)
 			parse_ptype = 1;
 			break;
 
+		case CMD_LINE_OPT_PARSE_PER_PORT_POOL:
+			printf("per port buffer pool is enabled\n");
+			per_port_pool = 1;
+			break;
+
 		default:
 			print_usage(prgname);
 			return -1;
@@ -642,7 +655,7 @@ print_ethaddr(const char *name, const struct ether_addr *eth_addr)
 }
 
 static int
-init_mem(unsigned nb_mbuf)
+init_mem(uint16_t portid, unsigned int nb_mbuf)
 {
 	struct lcore_conf *qconf;
 	int socketid;
@@ -664,13 +677,14 @@ init_mem(unsigned nb_mbuf)
 				socketid, lcore_id, NB_SOCKETS);
 		}
 
-		if (pktmbuf_pool[socketid] == NULL) {
-			snprintf(s, sizeof(s), "mbuf_pool_%d", socketid);
-			pktmbuf_pool[socketid] =
+		if (pktmbuf_pool[portid][socketid] == NULL) {
+			snprintf(s, sizeof(s), "mbuf_pool_%d:%d",
+				 portid, socketid);
+			pktmbuf_pool[portid][socketid] =
 				rte_pktmbuf_pool_create(s, nb_mbuf,
 					MEMPOOL_CACHE_SIZE, 0,
 					RTE_MBUF_DEFAULT_BUF_SIZE, socketid);
-			if (pktmbuf_pool[socketid] == NULL)
+			if (pktmbuf_pool[portid][socketid] == NULL)
 				rte_exit(EXIT_FAILURE,
 					"Cannot init mbuf pool on socket %d\n",
 					socketid);
@@ -678,8 +692,13 @@ init_mem(unsigned nb_mbuf)
 				printf("Allocated mbuf pool on socket %d\n",
 					socketid);
 
-			/* Setup either LPM or EM(f.e Hash).  */
-			l3fwd_lkp.setup(socketid);
+			/* Setup either LPM or EM(f.e Hash). But, only once per
+			 * available socket.
+			 */
+			if (!lkp_per_socket[socketid]) {
+				l3fwd_lkp.setup(socketid);
+				lkp_per_socket[socketid] = 1;
+			}
 		}
 		qconf = &lcore_conf[lcore_id];
 		qconf->ipv4_lookup_struct =
@@ -899,7 +918,14 @@ main(int argc, char **argv)
 			(struct ether_addr *)(val_eth + portid) + 1);
 
 		/* init memory */
-		ret = init_mem(NB_MBUF);
+		if (!per_port_pool) {
+			/* portid = 0; this is *not* signifying the first port,
+			 * rather, it signifies that portid is ignored.
+			 */
+			ret = init_mem(0, NB_MBUF(nb_ports));
+		} else {
+			ret = init_mem(portid, NB_MBUF(1));
+		}
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "init_mem failed\n");
 
@@ -966,10 +992,16 @@ main(int argc, char **argv)
 			rte_eth_dev_info_get(portid, &dev_info);
 			rxq_conf = dev_info.default_rxconf;
 			rxq_conf.offloads = conf->rxmode.offloads;
-			ret = rte_eth_rx_queue_setup(portid, queueid, nb_rxd,
-					socketid,
-					&rxq_conf,
-					pktmbuf_pool[socketid]);
+			if (!per_port_pool)
+				ret = rte_eth_rx_queue_setup(portid, queueid,
+						nb_rxd, socketid,
+						&rxq_conf,
+						pktmbuf_pool[0][socketid]);
+			else
+				ret = rte_eth_rx_queue_setup(portid, queueid,
+						nb_rxd, socketid,
+						&rxq_conf,
+						pktmbuf_pool[portid][socketid]);
 			if (ret < 0)
 				rte_exit(EXIT_FAILURE,
 				"rte_eth_rx_queue_setup: err=%d, port=%d\n",
