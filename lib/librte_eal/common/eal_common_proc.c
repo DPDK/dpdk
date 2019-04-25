@@ -807,6 +807,12 @@ rte_mp_sendmsg(struct rte_mp_msg *msg)
 	if (check_input(msg) != 0)
 		return -1;
 
+	if (internal_config.no_shconf) {
+		RTE_LOG(DEBUG, EAL, "No shared files mode enabled, IPC is disabled\n");
+		rte_errno = ENOTSUP;
+		return -1;
+	}
+
 	RTE_LOG(DEBUG, EAL, "sendmsg: %s\n", msg->name);
 	return mp_send(msg, NULL, MP_MSG);
 }
