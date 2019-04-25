@@ -1734,7 +1734,7 @@ dpaa2_dev_verify_patterns(struct dpaa2_dev_priv *dev_priv,
 	/* more	than DPKG_MAX_NUM_OF_EXTRACTS. Verify this limitation too. */
 	for (i = 0; pattern[i].type != RTE_FLOW_ITEM_TYPE_END; i++) {
 		for (j = 0; j < MAX_TCS + 1; j++) {
-				for (k = 0; k < DPKG_MAX_NUM_OF_EXTRACTS; j++) {
+				for (k = 0; k < DPKG_MAX_NUM_OF_EXTRACTS; k++) {
 					if (dev_priv->pattern[j].pattern_type[k] == pattern[i].type)
 						break;
 				}
