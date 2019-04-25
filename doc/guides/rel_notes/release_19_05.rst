@@ -54,6 +54,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Added new armv8 machine targets:**
+
+  * BlueField (Mellanox)
+  * OcteonTX2 (Marvell)
+  * ThunderX2 (Marvell)
+
 * **Added Stack API.**
 
   Added a new stack API for configuration and use of a bounded stack of
