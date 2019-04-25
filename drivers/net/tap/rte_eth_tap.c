@@ -2118,7 +2118,7 @@ tap_mp_attach_queues(const char *port_name, struct rte_eth_dev *dev)
 		process_private->rxq_fds[queue] = reply->fds[fd_iterator++];
 	for (queue = 0; queue < reply_param->txq_count; queue++)
 		process_private->txq_fds[queue] = reply->fds[fd_iterator++];
-
+	free(reply);
 	return 0;
 }
 
