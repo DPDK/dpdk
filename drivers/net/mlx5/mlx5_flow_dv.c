@@ -3630,6 +3630,8 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	union flow_dv_attr flow_attr = { .attr = 0 };
 	struct mlx5_flow_dv_tag_resource tag_resource;
 	uint32_t modify_action_position = UINT32_MAX;
+	void *match_mask = matcher.mask.buf;
+	void *match_value = dev_flow->dv.value.buf;
 
 	flow->group = attr->group;
 	if (attr->transfer)
@@ -3902,23 +3904,8 @@ cnt_err:
 	}
 	dev_flow->dv.actions_n = actions_n;
 	flow->actions = action_flags;
-	if (attr->ingress && !attr->transfer &&
-	    (priv->representor || priv->master)) {
-		/* It was validated - we support unidirection flows only. */
-		assert(!attr->egress);
-		/*
-		 * Add matching on source vport index only
-		 * for ingress rules in E-Switch configurations.
-		 */
-		flow_dv_translate_item_source_vport(matcher.mask.buf,
-						    dev_flow->dv.value.buf,
-						    priv->vport_id,
-						    0xffff);
-	}
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
 		int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
-		void *match_mask = matcher.mask.buf;
-		void *match_value = dev_flow->dv.value.buf;
 
 		switch (items->type) {
 		case RTE_FLOW_ITEM_TYPE_PORT_ID:
@@ -4024,6 +4011,19 @@ cnt_err:
 			break;
 		}
 		item_flags |= last_item;
+	}
+	/*
+	 * In case of ingress traffic when E-Switch mode is enabled,
+	 * we have two cases where we need to set the source port manually.
+	 * The first one, is in case of Nic steering rule, and the second is
+	 * E-Switch rule where no port_id item was found. In both cases
+	 * the source port is set according the current port in use.
+	 */
+	if ((attr->ingress && !(item_flags & MLX5_FLOW_ITEM_PORT_ID)) &&
+	    (priv->representor || priv->master)) {
+		if (flow_dv_translate_item_port_id(dev, match_mask,
+						   match_value, NULL))
+			return -rte_errno;
 	}
 	assert(!flow_dv_check_valid_spec(matcher.mask.buf,
 					 dev_flow->dv.value.buf));
