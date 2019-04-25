@@ -331,6 +331,9 @@ rte_mp_sendmsg(struct rte_mp_msg *msg);
  * @note This API must not be used inside memory-related or IPC callbacks, and
  *   no memory allocations should take place inside such callback.
  *
+ * @note IPC may be unsupported in certain circumstances, so caller should check
+ *    for ENOTSUP error.
+ *
  * @param req
  *   The req argument contains the customized request message.
  *

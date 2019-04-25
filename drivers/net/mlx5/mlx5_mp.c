@@ -180,8 +180,9 @@ mp_req_on_rxtx(struct rte_eth_dev *dev, enum mlx5_mp_req_type type)
 	mp_init_msg(dev, &mp_req, type);
 	ret = rte_mp_request_sync(&mp_req, &mp_rep, &ts);
 	if (ret) {
-		DRV_LOG(ERR, "port %u failed to request stop/start Rx/Tx (%d)",
-			dev->data->port_id, type);
+		if (rte_errno != ENOTSUP)
+			DRV_LOG(ERR, "port %u failed to request stop/start Rx/Tx (%d)",
+				dev->data->port_id, type);
 		goto exit;
 	}
 	if (mp_rep.nb_sent != mp_rep.nb_received) {

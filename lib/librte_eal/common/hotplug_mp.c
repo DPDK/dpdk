@@ -405,7 +405,11 @@ int eal_dev_hotplug_request_to_secondary(struct eal_dev_mp_req *req)
 
 	ret = rte_mp_request_sync(&mp_req, &mp_reply, &ts);
 	if (ret != 0) {
-		RTE_LOG(ERR, EAL, "rte_mp_request_sync failed\n");
+		/* if IPC is not supported, behave as if the call succeeded */
+		if (rte_errno != ENOTSUP)
+			RTE_LOG(ERR, EAL, "rte_mp_request_sync failed\n");
+		else
+			ret = 0;
 		return ret;
 	}
 
