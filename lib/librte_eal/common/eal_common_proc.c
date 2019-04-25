@@ -239,6 +239,11 @@ rte_mp_action_unregister(const char *name)
 	if (validate_action_name(name) != 0)
 		return;
 
+	if (internal_config.no_shconf) {
+		RTE_LOG(DEBUG, EAL, "No shared files mode enabled, IPC is disabled\n");
+		return;
+	}
+
 	pthread_mutex_lock(&mp_mutex_action);
 	entry = find_action_entry_by_name(name);
 	if (entry == NULL) {
