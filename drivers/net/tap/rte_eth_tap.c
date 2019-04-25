@@ -2287,7 +2287,7 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 	/* Register IPC feed callback */
 	if (!tap_devices_count) {
 		ret = rte_mp_action_register(TAP_MP_KEY, tap_mp_sync_queues);
-		if (ret < 0) {
+		if (ret < 0 && rte_errno != ENOTSUP) {
 			TAP_LOG(ERR, "tap: Failed to register IPC callback: %s",
 				strerror(rte_errno));
 			goto leave;

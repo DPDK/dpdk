@@ -409,6 +409,10 @@ vdev_scan(void)
 
 	if (rte_mp_action_register(VDEV_MP_KEY, vdev_action) < 0 &&
 	    rte_errno != EEXIST) {
+		/* for primary, unsupported IPC is not an error */
+		if (rte_eal_process_type() == RTE_PROC_PRIMARY &&
+				rte_errno == ENOTSUP)
+			goto scan;
 		VDEV_LOG(ERR, "Failed to add vdev mp action");
 		return -1;
 	}
@@ -436,6 +440,7 @@ vdev_scan(void)
 		/* Fall through to allow private vdevs in secondary process */
 	}
 
+scan:
 	/* call custom scan callbacks if any */
 	rte_spinlock_lock(&vdev_custom_scan_lock);
 	TAILQ_FOREACH(custom_scan, &vdev_custom_scans, next) {

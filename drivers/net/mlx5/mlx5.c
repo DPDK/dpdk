@@ -1015,6 +1015,7 @@ mlx5_init_once(void)
 {
 	struct mlx5_shared_data *sd;
 	struct mlx5_local_data *ld = &mlx5_local_data;
+	int ret = 0;
 
 	if (mlx5_init_shared_data())
 		return -rte_errno;
@@ -1029,21 +1030,26 @@ mlx5_init_once(void)
 		rte_rwlock_init(&sd->mem_event_rwlock);
 		rte_mem_event_callback_register("MLX5_MEM_EVENT_CB",
 						mlx5_mr_mem_event_cb, NULL);
-		mlx5_mp_init_primary();
+		ret = mlx5_mp_init_primary();
+		if (ret)
+			goto out;
 		sd->init_done = true;
 		break;
 	case RTE_PROC_SECONDARY:
 		if (ld->init_done)
 			break;
-		mlx5_mp_init_secondary();
+		ret = mlx5_mp_init_secondary();
+		if (ret)
+			goto out;
 		++sd->secondary_cnt;
 		ld->init_done = true;
 		break;
 	default:
 		break;
 	}
+out:
 	rte_spinlock_unlock(&sd->lock);
-	return 0;
+	return ret;
 }
 
 /**

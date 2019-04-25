@@ -722,7 +722,9 @@ int
 register_mp_requests(void)
 {
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		if (rte_mp_action_register(MP_ACTION_REQUEST, handle_request)) {
+		/* it's OK for primary to not support IPC */
+		if (rte_mp_action_register(MP_ACTION_REQUEST, handle_request) &&
+				rte_errno != ENOTSUP) {
 			RTE_LOG(ERR, EAL, "Couldn't register '%s' action\n",
 				MP_ACTION_REQUEST);
 			return -1;

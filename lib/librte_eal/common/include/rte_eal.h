@@ -262,6 +262,9 @@ typedef int (*rte_mp_async_reply_t)(const struct rte_mp_msg *request,
  * to response the messages from the corresponding component in its primary
  * process or secondary processes.
  *
+ * @note IPC may be unsupported in certain circumstances, so caller should check
+ *    for ENOTSUP error.
+ *
  * @param name
  *   The name argument plays as the nonredundant key to find the action.
  *

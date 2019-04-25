@@ -205,6 +205,12 @@ rte_mp_action_register(const char *name, rte_mp_t action)
 	if (validate_action_name(name) != 0)
 		return -1;
 
+	if (internal_config.no_shconf) {
+		RTE_LOG(DEBUG, EAL, "No shared files mode enabled, IPC is disabled\n");
+		rte_errno = ENOTSUP;
+		return -1;
+	}
+
 	entry = malloc(sizeof(struct action_entry));
 	if (entry == NULL) {
 		rte_errno = ENOMEM;

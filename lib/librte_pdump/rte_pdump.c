@@ -408,7 +408,10 @@ pdump_server(const struct rte_mp_msg *mp_msg, const void *peer)
 int
 rte_pdump_init(void)
 {
-	return rte_mp_action_register(PDUMP_MP, pdump_server);
+	int ret = rte_mp_action_register(PDUMP_MP, pdump_server);
+	if (ret && rte_errno != ENOTSUP)
+		return -1;
+	return 0;
 }
 
 int

@@ -320,11 +320,18 @@ exit:
 /**
  * Initialize by primary process.
  */
-void
+int
 mlx5_mp_init_primary(void)
 {
+	int ret;
+
 	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
-	rte_mp_action_register(MLX5_MP_NAME, mp_primary_handle);
+
+	/* primary is allowed to not support IPC */
+	ret = rte_mp_action_register(MLX5_MP_NAME, mp_primary_handle);
+	if (ret && rte_errno != ENOTSUP)
+		return -1;
+	return 0;
 }
 
 /**
@@ -340,11 +347,11 @@ mlx5_mp_uninit_primary(void)
 /**
  * Initialize by secondary process.
  */
-void
+int
 mlx5_mp_init_secondary(void)
 {
 	assert(rte_eal_process_type() == RTE_PROC_SECONDARY);
-	rte_mp_action_register(MLX5_MP_NAME, mp_secondary_handle);
+	return rte_mp_action_register(MLX5_MP_NAME, mp_secondary_handle);
 }
 
 /**

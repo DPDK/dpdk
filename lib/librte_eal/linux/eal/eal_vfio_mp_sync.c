@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include <rte_compat.h>
+#include <rte_errno.h>
 #include <rte_log.h>
 #include <rte_vfio.h>
 #include <rte_eal.h>
@@ -110,8 +111,11 @@ vfio_mp_primary(const struct rte_mp_msg *msg, const void *peer)
 int
 vfio_mp_sync_setup(void)
 {
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		return rte_mp_action_register(EAL_VFIO_MP, vfio_mp_primary);
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		int ret = rte_mp_action_register(EAL_VFIO_MP, vfio_mp_primary);
+		if (ret && rte_errno != ENOTSUP)
+			return -1;
+	}
 
 	return 0;
 }

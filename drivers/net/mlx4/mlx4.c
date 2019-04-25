@@ -697,6 +697,7 @@ mlx4_init_once(void)
 {
 	struct mlx4_shared_data *sd;
 	struct mlx4_local_data *ld = &mlx4_local_data;
+	int ret = 0;
 
 	if (mlx4_init_shared_data())
 		return -rte_errno;
@@ -711,21 +712,26 @@ mlx4_init_once(void)
 		rte_rwlock_init(&sd->mem_event_rwlock);
 		rte_mem_event_callback_register("MLX4_MEM_EVENT_CB",
 						mlx4_mr_mem_event_cb, NULL);
-		mlx4_mp_init_primary();
+		ret = mlx4_mp_init_primary();
+		if (ret)
+			goto out;
 		sd->init_done = true;
 		break;
 	case RTE_PROC_SECONDARY:
 		if (ld->init_done)
 			break;
-		mlx4_mp_init_secondary();
+		ret = mlx4_mp_init_secondary();
+		if (ret)
+			goto out;
 		++sd->secondary_cnt;
 		ld->init_done = true;
 		break;
 	default:
 		break;
 	}
+out:
 	rte_spinlock_unlock(&sd->lock);
-	return 0;
+	return ret;
 }
 
 /**

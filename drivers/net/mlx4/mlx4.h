@@ -242,9 +242,9 @@ void mlx4_mp_req_start_rxtx(struct rte_eth_dev *dev);
 void mlx4_mp_req_stop_rxtx(struct rte_eth_dev *dev);
 int mlx4_mp_req_mr_create(struct rte_eth_dev *dev, uintptr_t addr);
 int mlx4_mp_req_verbs_cmd_fd(struct rte_eth_dev *dev);
-void mlx4_mp_init_primary(void);
+int mlx4_mp_init_primary(void);
 void mlx4_mp_uninit_primary(void);
-void mlx4_mp_init_secondary(void);
+int mlx4_mp_init_secondary(void);
 void mlx4_mp_uninit_secondary(void);
 
 #endif /* RTE_PMD_MLX4_H_ */
