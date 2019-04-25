@@ -1014,7 +1014,7 @@ rte_eal_init(int argc, char **argv)
 	/* Put mp channel init before bus scan so that we can init the vdev
 	 * bus through mp channel in the secondary process before the bus scan.
 	 */
-	if (rte_mp_channel_init() < 0) {
+	if (rte_mp_channel_init() < 0 && rte_errno != ENOTSUP) {
 		rte_eal_init_alert("failed to init mp channel");
 		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 			rte_errno = EFAULT;

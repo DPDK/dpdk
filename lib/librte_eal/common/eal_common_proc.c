@@ -576,7 +576,8 @@ rte_mp_channel_init(void)
 	 */
 	if (internal_config.no_shconf) {
 		RTE_LOG(DEBUG, EAL, "No shared files mode enabled, IPC will be disabled\n");
-		return 0;
+		rte_errno = ENOTSUP;
+		return -1;
 	}
 
 	/* create filter path */
