@@ -361,6 +361,9 @@ rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
  * This function sends a request message to the peer process, and will not
  * block. Instead, reply will be received in a separate callback.
  *
+ * @note IPC may be unsupported in certain circumstances, so caller should check
+ *    for ENOTSUP error.
+ *
  * @param req
  *   The req argument contains the customized request message.
  *

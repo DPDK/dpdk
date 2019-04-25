@@ -1066,7 +1066,8 @@ rte_mp_request_async(struct rte_mp_msg *req, const struct timespec *ts,
 
 	if (internal_config.no_shconf) {
 		RTE_LOG(DEBUG, EAL, "No shared files mode enabled, IPC is disabled\n");
-		return 0;
+		rte_errno = ENOTSUP;
+		return -1;
 	}
 
 	if (gettimeofday(&now, NULL) < 0) {
