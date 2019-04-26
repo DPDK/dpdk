@@ -206,12 +206,12 @@ void lthread_run(void);
   *  Creates an lthread and places it in the ready queue on a particular
   *  lcore.
   *
-  *  If no scheduler exists yet on the curret lcore then one is created.
+  *  If no scheduler exists yet on the current lcore then one is created.
   *
   * @param new_lt
   *  Pointer to an lthread pointer that will be initialized
   * @param lcore
-  *  the lcore the thread should be started on or the current clore
+  *  the lcore the thread should be started on or the current lcore
   *    -1 the current lcore
   *    0 - LTHREAD_MAX_LCORES any other lcore
   * @param lthread_func
@@ -469,7 +469,7 @@ void
 /**
   * Set lthread TLS
   *
-  *  This function is modelled on pthread_set_sepcific()
+  *  This function is modelled on pthread_set_specific()
   *  It associates a thread-specific value with a key obtained via a previous
   *  call to lthread_key_create().
   *  Different threads may bind different values to the same key. These values
@@ -749,7 +749,7 @@ int lthread_cond_wait(struct lthread_cond *c, uint64_t reserved);
   * Signal a condition variable
   *
   *  The function unblocks one thread waiting for the condition variable cond.
-  *  If no threads are waiting on cond, the rte_lthead_cond_signal() function
+  *  If no threads are waiting on cond, the rte_lthread_cond_signal() function
   *  has no effect.
   *
   * @param cond
@@ -765,7 +765,7 @@ int lthread_cond_signal(struct lthread_cond *c);
   * Broadcast a condition variable
   *
   *  The function unblocks all threads waiting for the condition variable cond.
-  *  If no threads are waiting on cond, the rte_lthead_cond_broadcast()
+  *  If no threads are waiting on cond, the rte_lathed_cond_broadcast()
   *  function has no effect.
   *
   * @param cond

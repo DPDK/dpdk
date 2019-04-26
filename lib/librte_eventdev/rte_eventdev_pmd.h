@@ -873,7 +873,7 @@ typedef int (*eventdev_eth_tx_adapter_free_t)(uint8_t id,
  *   Ethernet device pointer
  *
  * @param tx_queue_id
- *   Transmt queue index
+ *   Transmit queue index
  *
  * @return
  *   - 0: Success.

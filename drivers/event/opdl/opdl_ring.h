@@ -24,7 +24,7 @@
  * packets.
  *
  * A opdl_ring can be used as the basis for pipeline based applications. Instead
- * of each stage in a pipeline dequeueing from a ring, processing and enqueueing
+ * of each stage in a pipeline dequeuing from a ring, processing and enqueuing
  * to another ring, it can process entries in-place on the ring. If stages do
  * not depend on each other, they can run in parallel.
  *
@@ -152,7 +152,7 @@ opdl_ring_get_name(const struct opdl_ring *t);
  *   Enabling this may have a negative impact on performance if only one thread
  *   will be processing this stage.
  * @param is_input
- *   Indication to nitialise the stage with all slots available or none
+ *   Indication to initialise the stage with all slots available or none
  *
  * @return
  *   A pointer to the new stage, or NULL on error.
@@ -589,7 +589,7 @@ opdl_ring_set_stage_threadsafe(struct opdl_stage *s, bool threadsafe);
  * Compare the event descriptor with original version in the ring.
  * if key field event descriptor is changed by application, then
  * update the slot in the ring otherwise do nothing with it.
- * the key field is flow_id, prioirty, mbuf, impl_opaque
+ * the key field is flow_id, priority, mbuf, impl_opaque
  *
  * @param s
  *   The opdl_stage.
@@ -600,7 +600,7 @@ opdl_ring_set_stage_threadsafe(struct opdl_stage *s, bool threadsafe);
  * @param atomic
  *   queue type associate with the stage.
  * @return
- *   if the evevnt key field is changed compare with previous record.
+ *   if the event key field is changed compare with previous record.
  */
 
 bool

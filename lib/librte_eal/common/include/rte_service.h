@@ -337,7 +337,7 @@ int32_t rte_service_set_stats_enable(uint32_t id, int32_t enable);
 int32_t rte_service_lcore_list(uint32_t array[], uint32_t n);
 
 /**
- * Get the numer of services running on the supplied lcore.
+ * Get the number of services running on the supplied lcore.
  *
  * @param lcore Id of the service core.
  * @retval >=0 Number of services registered to this core.

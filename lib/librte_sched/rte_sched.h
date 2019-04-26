@@ -33,7 +33,7 @@ extern "C" {
  *	    classes of the same subport;
  *           - When any subport traffic class is oversubscribed
  *	    (configuration time event), the usage of subport member
- *	    pipes with high demand for thattraffic class pipes is
+ *	    pipes with high demand for that traffic class pipes is
  *	    truncated to a dynamically adjusted value with no
  *             impact to low demand pipes;
  *     3. Pipe:

@@ -1155,7 +1155,7 @@ rte_event_timer_adapter_caps_get(uint8_t dev_id, uint32_t *caps);
  */
 
 #define RTE_EVENT_CRYPTO_ADAPTER_CAP_SESSION_PRIVATE_DATA   0x8
-/**< Flag indicates HW/SW suports a mechanism to store and retrieve
+/**< Flag indicates HW/SW supports a mechanism to store and retrieve
  * the private data information along with the crypto session.
  */
 
@@ -1731,7 +1731,7 @@ rte_event_port_unlink(uint8_t dev_id, uint8_t port_id,
  * @see rte_event_port_unlink() to issue unlink requests.
  *
  * @param dev_id
- *   The indentifier of the device.
+ *   The identifier of the device.
  *
  * @param port_id
  *   Event port identifier to select port to check for unlinks in progress.

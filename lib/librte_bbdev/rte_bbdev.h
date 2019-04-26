@@ -43,7 +43,7 @@ extern "C" {
 #define RTE_BBDEV_MAX_DEVS 128  /**< Max number of devices */
 #endif
 
-/** Flags indiciate current state of BBDEV device */
+/** Flags indicate current state of BBDEV device */
 enum rte_bbdev_state {
 	RTE_BBDEV_UNUSED,
 	RTE_BBDEV_INITIALIZED
@@ -161,7 +161,7 @@ rte_bbdev_queue_configure(uint16_t dev_id, uint16_t queue_id,
 
 /**
  * Start a device.
- * This is the last step needed before enqueueing operations is possible.
+ * This is the last step needed before enqueuing operations is possible.
  *
  * @param dev_id
  *   The identifier of the device.

@@ -29,7 +29,7 @@ extern "C" {
  *        be picked and dropped, the most likely candidate for drop, i.e. the
  *        current LRU key, is always picked. The LRU logic requires maintaining
  *        specific data structures per each bucket. Use-cases: flow cache, etc.
- *     b. Extendible bucket (ext): The bucket is extended with space for 4 more
+ *     b. Extendable bucket (ext): The bucket is extended with space for 4 more
  *        keys. This is done by allocating additional memory at table init time,
  *        which is used to create a pool of free keys (the size of this pool is
  *        configurable and always a multiple of 4). On key add operation, the
@@ -41,7 +41,7 @@ extern "C" {
  *        current bucket is in extended state and a match is not found in the
  *        first group of 4 keys, the search continues beyond the first group of
  *        4 keys, potentially until all keys in this bucket are examined. The
- *        extendible bucket logic requires maintaining specific data structures
+ *        extendable bucket logic requires maintaining specific data structures
  *        per table and per each bucket. Use-cases: flow table, etc.
  * 2. Key size:
  *     a. Configurable key size
@@ -86,7 +86,7 @@ struct rte_table_hash_params {
 	uint64_t seed;
 };
 
-/** Extendible bucket hash table operations */
+/** Extendable bucket hash table operations */
 extern struct rte_table_ops rte_table_hash_ext_ops;
 extern struct rte_table_ops rte_table_hash_key8_ext_ops;
 extern struct rte_table_ops rte_table_hash_key16_ext_ops;

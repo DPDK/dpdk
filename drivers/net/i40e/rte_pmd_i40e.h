@@ -270,7 +270,7 @@ struct rte_pmd_i40e_pkt_template_action {
 struct rte_pmd_i40e_pkt_template_input {
 	/** the pctype used for raw packet template */
 	uint16_t pctype;
-	/** the buffer conatining raw packet template */
+	/** the buffer containing raw packet template */
 	void *packet;
 	/** the length of buffer with raw packet template */
 	uint32_t length;
@@ -314,7 +314,7 @@ struct rte_pmd_i40e_inset {
  * @param conf
  *   Specifies configuration parameters of raw packet template filter.
  * @param add
- *   Speicifes an action to be taken - add or remove raw packet template filter.
+ *   Specifies an action to be taken - add or remove raw packet template filter.
  * @return
  *   - (0) if successful.
  *   - (-ENODEV) if *port* invalid.

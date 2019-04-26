@@ -532,7 +532,7 @@ struct rte_table_action_encap_config {
 	};
 };
 
-/** QinQ_PPPoE encap paramaeters. */
+/** QinQ_PPPoE encap parameters. */
 struct rte_table_encap_ether_qinq_pppoe {
 
 	/** Only valid when *type* is set to QinQ. */

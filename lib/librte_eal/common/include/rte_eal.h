@@ -284,7 +284,7 @@ rte_mp_action_unregister(const char *name);
  *
  * Send a message to the peer process.
  *
- * This function will send a message which will be responsed by the action
+ * This function will send a message which will be responded by the action
  * identified by name in the peer process.
  *
  * @param msg
@@ -421,7 +421,7 @@ rte_set_application_usage_hook(rte_usage_hook_t usage_func);
 #define RTE_EAL_TAILQ_RWLOCK         (&rte_eal_get_configuration()->mem_config->qlock)
 
 /**
- * macro to get the multiple lock of mempool shared by mutiple-instance
+ * macro to get the multiple lock of mempool shared by multiple-instance
  */
 #define RTE_EAL_MEMPOOL_RWLOCK            (&rte_eal_get_configuration()->mem_config->mplock)
 

@@ -1443,7 +1443,7 @@ eal_legacy_hugepage_init(void)
 		if (mcfg->dma_maskbits &&
 		    rte_mem_check_dma_mask_thread_unsafe(mcfg->dma_maskbits)) {
 			RTE_LOG(ERR, EAL,
-				"%s(): couldnt allocate memory due to IOVA exceeding limits of current DMA mask.\n",
+				"%s(): couldn't allocate memory due to IOVA exceeding limits of current DMA mask.\n",
 				__func__);
 			if (rte_eal_iova_mode() == RTE_IOVA_VA &&
 			    rte_eal_using_phys_addrs())

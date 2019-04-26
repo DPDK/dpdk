@@ -34,7 +34,7 @@ enum {
 };
 
 /**
- * If user has configued a Virtual Queue mode, but for some particular VQ
+ * If user has configured a Virtual Queue mode, but for some particular VQ
  * user needs an exclusive H/W queue associated (for better performance
  * on that particular VQ), then user can pass this flag while creating the
  * Virtual Queue. A H/W queue will be allocated corresponding to
@@ -307,7 +307,7 @@ rte_qdma_vq_stats(uint16_t vq_id,
  * VQ's at runtime.
  *
  * @param vq_id
- *   Virtual Queue ID which needs to be deinialized.
+ *   Virtual Queue ID which needs to be uninitialized.
  *
  * @returns
  *   - 0: Success.
@@ -322,7 +322,7 @@ rte_qdma_vq_destroy(uint16_t vq_id);
  * VQ's at runtime.
  *
  * @param vq_id
- *   RBP based Virtual Queue ID which needs to be deinialized.
+ *   RBP based Virtual Queue ID which needs to be uninitialized.
  *
  * @returns
  *   - 0: Success.

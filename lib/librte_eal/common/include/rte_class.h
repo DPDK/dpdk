@@ -15,7 +15,7 @@
  *
  * A device class defines the type of function a device
  * will be used for e.g.: Ethernet adapter (eth),
- * cryptographic coprocessor (crypto), etc.
+ * cryptographic co-processor (crypto), etc.
  */
 
 #ifdef __cplusplus

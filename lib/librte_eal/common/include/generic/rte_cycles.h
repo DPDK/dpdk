@@ -173,7 +173,7 @@ rte_delay_us_sleep(unsigned int us);
  *
  * @param userfunc
  *   User function which replaces rte_delay_us. rte_delay_us_block restores
- *   buildin block delay function.
+ *   builtin block delay function.
  */
 void rte_delay_us_callback_register(void(*userfunc)(unsigned int));
 

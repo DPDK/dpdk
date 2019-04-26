@@ -24,7 +24,7 @@ extern "C" {
  *  Note: This function pointer is for future flow based latency stats
  *  implementation.
  *
- * Function type used for identifting flow types of a Rx packet.
+ * Function type used for identifying flow types of a Rx packet.
  *
  * The callback function is called on Rx for each packet.
  * This function is used for flow based latency calculations.

@@ -25,7 +25,7 @@ extern "C" {
 #include <rte_memory.h>
 #include <rte_errno.h>
 
-/* Rawdevice object - essentially a void to be typecasted by implementation */
+/* Rawdevice object - essentially a void to be typecast by implementation */
 typedef void *rte_rawdev_obj_t;
 
 /**
@@ -244,7 +244,7 @@ rte_rawdev_close(uint16_t dev_id);
  * @param dev_id
  *   Raw device identifiers
  * @return
- *   0 for sucessful reset,
+ *   0 for successful reset,
  *  !0 for failure in resetting
  */
 int
@@ -373,7 +373,7 @@ rte_rawdev_set_attr(uint16_t dev_id,
  * @param dev_id
  *   The identifier of the device to configure.
  * @param buffers
- *   Collection of buffers for enqueueing
+ *   Collection of buffers for enqueuing
  * @param count
  *   Count of buffers to enqueue
  * @param context

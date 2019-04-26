@@ -43,7 +43,7 @@ extern "C" {
 #include <stdbool.h>
 
 /**
- * Struct describing a Universal Unique Identifer
+ * Struct describing a Universal Unique Identifier
  */
 typedef unsigned char rte_uuid_t[16];
 
@@ -105,7 +105,7 @@ int	rte_uuid_compare(const rte_uuid_t a, const rte_uuid_t b);
  * @param uu
  *    Destination UUID
  * @return
- *    Returns 0 on succes, and -1 if string is not a valid UUID.
+ *    Returns 0 on success, and -1 if string is not a valid UUID.
  */
 int	rte_uuid_parse(const char *in, rte_uuid_t uu);
 

@@ -17,7 +17,7 @@ extern "C" {
 
 
 /*
- * Takes 2 SIMD registers containing N transitions eachi (tr0, tr1).
+ * Takes 2 SIMD registers containing N transitions each (tr0, tr1).
  * Shuffles it into different representation:
  * lo - contains low 32 bits of given N transitions.
  * hi - contains high 32 bits of given N transitions.
@@ -66,7 +66,7 @@ extern "C" {
 								\
 	dfa_ofs = _##P##_sub_epi32(t, r);			\
 								\
-	/* QUAD/SINGLE caluclations. */				\
+	/* QUAD/SINGLE calculations. */				\
 	t = _##P##_cmpgt_epi8(in, tr_hi);			\
 	t = _##P##_sign_epi8(t, t);				\
 	t = _##P##_maddubs_epi16(t, t);				\

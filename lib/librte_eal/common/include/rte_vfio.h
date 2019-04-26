@@ -180,7 +180,7 @@ int rte_vfio_noiommu_is_enabled(void);
  * an error on BSD.
  *
  * @param vfio_group_fd
- *   VFIO Grouup FD.
+ *   VFIO Group FD.
  *
  * @return
  *   0 on success.

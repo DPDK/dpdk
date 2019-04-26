@@ -73,7 +73,7 @@ rte_bpf_eth_tx_unload(uint16_t port, uint16_t queue);
  * @param sname
  *  Name of the executable section within the file to load.
  * @param prm
- *  Parameters used to create and initialise the BPF exeution context.
+ *  Parameters used to create and initialise the BPF execution context.
  * @param flags
  *  Flags that define expected behavior of the loaded filter
  *  (i.e. jited/non-jited version to use).
@@ -98,7 +98,7 @@ rte_bpf_eth_rx_elf_load(uint16_t port, uint16_t queue,
  * @param sname
  *  Name of the executable section within the file to load.
  * @param prm
- *  Parameters used to create and initialise the BPF exeution context.
+ *  Parameters used to create and initialise the BPF execution context.
  * @param flags
  *  Flags that define expected expected behavior of the loaded filter
  *  (i.e. jited/non-jited version to use).

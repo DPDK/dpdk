@@ -66,9 +66,9 @@
  * For SW based packet transfers, i.e., when the
  * RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT is not set in the adapter's
  * capabilities flags for a particular ethernet device, the service function
- * temporarily enqueues mbufs to an event buffer before batch enqueueing these
+ * temporarily enqueues mbufs to an event buffer before batch enqueuing these
  * to the event device. If the buffer fills up, the service function stops
- * dequeueing packets from the ethernet device. The application may want to
+ * dequeuing packets from the ethernet device. The application may want to
  * monitor the buffer fill level and instruct the service function to
  * selectively buffer packets. The application may also use some other
  * criteria to decide which packets should enter the event device even when

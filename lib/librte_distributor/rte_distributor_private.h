@@ -41,7 +41,7 @@ extern "C" {
 
 /**
  * Maximum number of workers allowed.
- * Be aware of increasing the limit, becaus it is limited by how we track
+ * Be aware of increasing the limit, because it is limited by how we track
  * in-flight tags. See in_flight_bitmask and rte_distributor_process
  */
 #define RTE_DISTRIB_MAX_WORKERS 64

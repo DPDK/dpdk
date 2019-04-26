@@ -274,7 +274,7 @@ int32_t rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
 
 /**
  * This function implements reassembly of fragmented IPv4 packets.
- * Incoming mbufs should have its l2_len/l3_len fields setup correclty.
+ * Incoming mbufs should have its l2_len/l3_len fields setup correctly.
  *
  * @param tbl
  *   Table where to lookup/add the fragmented packet.

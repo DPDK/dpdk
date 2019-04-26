@@ -208,7 +208,7 @@ rte_flow_classify_validate(struct rte_flow_classifier *cls,
 		struct rte_flow_error *error);
 
 /**
- * Add a flow classify rule to the flow_classifer table.
+ * Add a flow classify rule to the flow_classifier table.
  *
  * @param[in] cls
  *   Flow classifier handle
@@ -235,7 +235,7 @@ rte_flow_classify_table_entry_add(struct rte_flow_classifier *cls,
 		struct rte_flow_error *error);
 
 /**
- * Delete a flow classify rule from the flow_classifer table.
+ * Delete a flow classify rule from the flow_classifier table.
  *
  * @param[in] cls
  *   Flow classifier handle

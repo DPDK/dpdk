@@ -317,7 +317,7 @@ typedef int (*ethdev_uninit_t)(struct rte_eth_dev *ethdev);
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
  *
- * PMD helper function for cleaing up the resources of a ethdev port on it's
+ * PMD helper function for cleaning up the resources of a ethdev port on it's
  * destruction.
  *
  * @param ethdev

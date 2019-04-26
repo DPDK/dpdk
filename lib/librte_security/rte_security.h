@@ -536,7 +536,7 @@ struct rte_security_capability {
 			enum rte_security_pdcp_domain domain;
 			/**< PDCP mode of operation: Control or data */
 			uint32_t capa_flags;
-			/**< Capabilitity flags, see RTE_SECURITY_PDCP_* */
+			/**< Capability flags, see RTE_SECURITY_PDCP_* */
 		} pdcp;
 		/**< PDCP capability */
 	};
@@ -568,7 +568,7 @@ struct rte_security_capability {
 #define RTE_SECURITY_TX_HW_TRAILER_OFFLOAD	0x00000002
 /**< HW constructs trailer of packets
  * Transmitted packets will have the trailer added to them
- * by hardawre. The next protocol field will be based on
+ * by hardware. The next protocol field will be based on
  * the mbuf->inner_esp_next_proto field.
  */
 #define RTE_SECURITY_RX_HW_TRAILER_OFFLOAD	0x00010000

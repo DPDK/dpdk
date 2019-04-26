@@ -442,7 +442,7 @@ rte_lpm_lookup_bulk_func(const struct rte_lpm *lpm, const uint32_t *ips,
  * @param hop
  *   Next hop of the most specific rule found for IP (valid on lookup hit only).
  *   This is an 4 elements array of two byte values.
- *   If the lookup was succesfull for the given IP, then least significant byte
+ *   If the lookup was successful for the given IP, then least significant byte
  *   of the corresponding element is the  actual next hop and the most
  *   significant byte is zero.
  *   If the lookup for the given IP failed, then corresponding element would

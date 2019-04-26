@@ -426,7 +426,7 @@ extern "C" {
  */
 #define RTE_PTYPE_TUNNEL_ESP                0x00009000
 /**
- * L2TP (Layer 2 Tunneling Protocol) tunnleing packet type.
+ * L2TP (Layer 2 Tunneling Protocol) tunneling packet type.
  *
  * Packet format:
  * <'ether type'=0x0800

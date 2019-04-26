@@ -95,7 +95,7 @@ gen_iv(uint64_t iv[IPSEC_MAX_IV_QWORD], rte_be64_t sqn)
 
 /*
  * Helper routine to copy IV
- * Righ now we support only algorithms with IV length equals 0/8/16 bytes.
+ * Right now we support only algorithms with IV length equals 0/8/16 bytes.
  */
 static inline void
 copy_iv(uint64_t dst[IPSEC_MAX_IV_QWORD],

@@ -10,7 +10,7 @@
  * @b EXPERIMENTAL: this API may change without prior notice
  *
  * RTE IPsec support.
- * It is not recommended to include this file direclty,
+ * It is not recommended to include this file directly,
  * include <rte_ipsec.h> instead.
  * Contains helper functions to process completed crypto-ops
  * and group related packets by sessions they belong to.

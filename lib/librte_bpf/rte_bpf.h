@@ -120,7 +120,7 @@ rte_bpf_destroy(struct rte_bpf *bpf);
  * Create a new eBPF execution context and load given BPF code into it.
  *
  * @param prm
- *  Parameters used to create and initialise the BPF exeution context.
+ *  Parameters used to create and initialise the BPF execution context.
  * @return
  *   BPF handle that is used in future BPF operations,
  *   or NULL on error, with error code set in rte_errno.
@@ -136,7 +136,7 @@ rte_bpf_load(const struct rte_bpf_prm *prm);
  * file into it.
  *
  * @param prm
- *  Parameters used to create and initialise the BPF exeution context.
+ *  Parameters used to create and initialise the BPF execution context.
  * @param fname
  *  Pathname for a ELF file.
  * @param sname
@@ -183,7 +183,7 @@ rte_bpf_exec_burst(const struct rte_bpf *bpf, void *ctx[], uint64_t rc[],
 		uint32_t num);
 
 /**
- * Provide information about natively compield code for given BPF handle.
+ * Provide information about natively compiled code for given BPF handle.
  *
  * @param bpf
  *   handle for the BPF code.

@@ -139,7 +139,7 @@
  *  - rte_event_crypto_adapter_stats_get()
  *  - rte_event_crypto_adapter_stats_reset()
 
- * The applicaton creates an instance using rte_event_crypto_adapter_create()
+ * The application creates an instance using rte_event_crypto_adapter_create()
  * or rte_event_crypto_adapter_create_ext().
  *
  * Cryptodev queue pair addition/deletion is done using the

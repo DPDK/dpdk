@@ -105,7 +105,7 @@ typedef int (*eth_queue_stats_mapping_set_t)(struct rte_eth_dev *dev,
 
 typedef void (*eth_dev_infos_get_t)(struct rte_eth_dev *dev,
 				    struct rte_eth_dev_info *dev_info);
-/**< @internal Get specific informations of an Ethernet device. */
+/**< @internal Get specific information of an Ethernet device. */
 
 typedef const uint32_t *(*eth_dev_supported_ptypes_get_t)(struct rte_eth_dev *dev);
 /**< @internal Get supported ptypes of an Ethernet device. */
@@ -367,7 +367,7 @@ typedef int (*eth_tm_ops_get_t)(struct rte_eth_dev *dev, void *ops);
 /**< @internal Get Traffic Management (TM) operations on an Ethernet device */
 
 typedef int (*eth_mtr_ops_get_t)(struct rte_eth_dev *dev, void *ops);
-/**< @internal Get Trafffic Metering and Policing (MTR) operations */
+/**< @internal Get Traffic Metering and Policing (MTR) operations */
 
 typedef int (*eth_get_dcb_info)(struct rte_eth_dev *dev,
 				 struct rte_eth_dcb_info *dcb_info);

@@ -369,7 +369,7 @@ struct rte_tm_capabilities {
 	uint32_t sched_wfq_weight_max;
 
 	/** WRED packet mode support. When non-zero, this parameter indicates
-	 * that there is atleast one leaf node that supports the WRED packet
+	 * that there is at least one leaf node that supports the WRED packet
 	 * mode, which might not be true for all the leaf nodes. In packet
 	 * mode, the WRED thresholds specify the queue length in packets, as
 	 * opposed to bytes.
@@ -377,7 +377,7 @@ struct rte_tm_capabilities {
 	int cman_wred_packet_mode_supported;
 
 	/** WRED byte mode support. When non-zero, this parameter indicates that
-	 * there is atleast one leaf node that supports the WRED byte mode,
+	 * there is at least one leaf node that supports the WRED byte mode,
 	 * which might not be true for all the leaf nodes. In byte mode, the
 	 * WRED thresholds specify the queue length in bytes, as opposed to
 	 * packets.
@@ -636,7 +636,7 @@ struct rte_tm_level_capabilities {
 			uint32_t shaper_shared_n_max;
 
 			/** WRED packet mode support. When non-zero, this
-			 * parameter indicates that there is atleast one leaf
+			 * parameter indicates that there is at least one leaf
 			 * node on this level that supports the WRED packet
 			 * mode, which might not be true for all the leaf
 			 * nodes. In packet mode, the WRED thresholds specify
@@ -645,7 +645,7 @@ struct rte_tm_level_capabilities {
 			int cman_wred_packet_mode_supported;
 
 			/** WRED byte mode support. When non-zero, this
-			 * parameter indicates that there is atleast one leaf
+			 * parameter indicates that there is at least one leaf
 			 * node on this level that supports the WRED byte mode,
 			 * which might not be true for all the leaf nodes. In
 			 * byte mode, the WRED thresholds specify the queue

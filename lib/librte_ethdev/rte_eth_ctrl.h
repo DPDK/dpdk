@@ -540,7 +540,7 @@ struct rte_eth_fdir_masks {
 	uint16_t vlan_tci_mask;   /**< Bit mask for vlan_tci in big endian */
 	/** Bit mask for ipv4 flow in big endian. */
 	struct rte_eth_ipv4_flow   ipv4_mask;
-	/** Bit maks for ipv6 flow in big endian. */
+	/** Bit mask for ipv6 flow in big endian. */
 	struct rte_eth_ipv6_flow   ipv6_mask;
 	/** Bit mask for L4 source port in big endian. */
 	uint16_t src_port_mask;

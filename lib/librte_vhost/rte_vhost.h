@@ -542,7 +542,7 @@ int rte_vhost_get_ifname(int vid, char *buf, size_t len);
  *  virtio queue index
  *
  * @return
- *  num of avail entires left
+ *  num of avail entries left
  */
 uint16_t rte_vhost_avail_entries(int vid, uint16_t queue_id);
 
@@ -590,7 +590,7 @@ uint16_t rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 /**
  * Get guest mem table: a list of memory regions.
  *
- * An rte_vhost_vhost_memory object will be allocated internaly, to hold the
+ * An rte_vhost_vhost_memory object will be allocated internally, to hold the
  * guest memory regions. Application should free it at destroy_device()
  * callback.
  *

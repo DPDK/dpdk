@@ -134,7 +134,7 @@ rte_ipsec_sa_type(const struct rte_ipsec_sa *sa);
 /**
  * Calculate required SA size based on provided input parameters.
  * @param prm
- *   Parameters that wil be used to initialise SA object.
+ *   Parameters that will be used to initialise SA object.
  * @return
  *   - Actual size required for SA with given parameters.
  *   - -EINVAL if the parameters are invalid.

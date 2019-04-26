@@ -1141,7 +1141,7 @@ rte_cryptodev_asym_session_clear(uint8_t dev_id,
  * the user data size.
  *
  * @return
- *   Size of the symmetric eader session.
+ *   Size of the symmetric header session.
  */
 unsigned int
 rte_cryptodev_sym_get_header_session_size(void);

@@ -39,7 +39,7 @@ extern "C" {
 /** Flag to support reader writer concurrency */
 #define RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY 0x04
 
-/** Flag to indicate the extendabe bucket table feature should be used */
+/** Flag to indicate the extendable bucket table feature should be used */
 #define RTE_HASH_EXTRA_FLAGS_EXT_TABLE 0x08
 
 /** Flag to disable freeing of key index on hash delete.

@@ -7,7 +7,7 @@
 
 /**
  * @file misc.h
- * Contains miscelaneous functions/structures/macros used internally
+ * Contains miscellaneous functions/structures/macros used internally
  * by ipsec library.
  */
 

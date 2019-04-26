@@ -282,7 +282,7 @@ typedef uint16_t (*rawdev_queue_count_t)(struct rte_rawdev *dev);
  *   an opaque object representing context of the call; for example, an
  *   application can pass information about the queues on which enqueue needs
  *   to be done. Or, the enqueue operation might be passed reference to an
- *   object containing a callback (agreed upon between applicatio and driver).
+ *   object containing a callback (agreed upon between application and driver).
  *
  * @return
  *   >=0 Count of buffers successfully enqueued (0: no buffers enqueued)
@@ -463,7 +463,7 @@ typedef int (*rawdev_firmware_version_get_t)(struct rte_rawdev *dev,
 					     rte_rawdev_obj_t version_info);
 
 /**
- * Load firwmare from a buffer (DMA'able)
+ * Load firmware from a buffer (DMA'able)
  *
  * @param dev
  *   Raw device pointer
@@ -480,7 +480,7 @@ typedef int (*rawdev_firmware_load_t)(struct rte_rawdev *dev,
 				      rte_rawdev_obj_t firmware_buf);
 
 /**
- * Unload firwmare
+ * Unload firmware
  *
  * @param dev
  *   Raw device pointer
@@ -548,7 +548,7 @@ struct rte_rawdev_ops {
 	/**< Reset the statistics values in xstats. */
 	rawdev_xstats_reset_t xstats_reset;
 
-	/**< Obtainer firmware status */
+	/**< Obtain firmware status */
 	rawdev_firmware_status_get_t firmware_status_get;
 	/**< Obtain firmware version information */
 	rawdev_firmware_version_get_t firmware_version_get;

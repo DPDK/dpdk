@@ -70,7 +70,7 @@ rte_reorder_init(struct rte_reorder_buffer *b, unsigned int bufsize,
  * and return a pointer to it.
  *
  * @param name
- *   Name of the reorder buffer instacne as passed to rte_reorder_create()
+ *   Name of the reorder buffer instance as passed to rte_reorder_create()
  * @return
  *   Pointer to reorder buffer instance or NULL if object not found with rte_errno
  *   set appropriately. Possible rte_errno values include:
