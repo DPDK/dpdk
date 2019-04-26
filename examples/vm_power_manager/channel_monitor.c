@@ -822,12 +822,7 @@ read_json_packet(struct channel_info *chan_info)
 				break;
 		} while (indent > 0);
 
-		if (indent > 0)
-			/*
-			 * We've broken out of the read loop without getting
-			 * a closing brace, so throw away the data
-			 */
-			json_data[idx] = 0;
+		json_data[idx] = '\0';
 
 		if (strlen(json_data) == 0)
 			continue;
