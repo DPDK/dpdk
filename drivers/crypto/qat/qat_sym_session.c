@@ -242,7 +242,8 @@ qat_sym_session_configure_cipher(struct rte_cryptodev *dev,
 		session->qat_mode = ICP_QAT_HW_CIPHER_ECB_MODE;
 		break;
 	case RTE_CRYPTO_CIPHER_NULL:
-		session->qat_mode = ICP_QAT_HW_CIPHER_ECB_MODE;
+		session->qat_cipher_alg = ICP_QAT_HW_CIPHER_ALGO_NULL;
+		session->qat_mode = ICP_QAT_HW_CIPHER_CTR_MODE;
 		break;
 	case RTE_CRYPTO_CIPHER_KASUMI_F8:
 		if (qat_sym_validate_kasumi_key(cipher_xform->key.length,
