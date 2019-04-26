@@ -13,13 +13,13 @@ PACKET_MMAP, which provides a mmap'ed ring buffer, shared between user space
 and kernel, that's used to send and receive packets. This helps reducing system
 calls and the copies needed between user space and Kernel.
 
-The PACKET_FANOUT_HASH behaviour of AF_PACKET is used for frame reception.
+The PACKET_FANOUT_HASH behavior of AF_PACKET is used for frame reception.
 
 Options and inherent limitations
 --------------------------------
 
 The following options can be provided to set up an af_packet port in DPDK.
-Some of these, in turn, will be used to configure the PAKET_MMAP settings.
+Some of these, in turn, will be used to configure the PACKET_MMAP settings.
 
 *   ``iface`` - name of the Kernel interface to attach to (required);
 *   ``qpairs`` - number of Rx and Tx queues (optional, default 1);

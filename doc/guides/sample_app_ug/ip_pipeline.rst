@@ -113,7 +113,7 @@ Application stages
 Initialization
 ~~~~~~~~~~~~~~
 
-During this stage, EAL layer is initialised and application specific arguments are parsed. Furthermore, the data strcutures
+During this stage, EAL layer is initialised and application specific arguments are parsed. Furthermore, the data structures
 (i.e. linked lists) for application objects are initialized. In case of any initialization error, an error message
 is displayed and the application is terminated.
 
@@ -185,7 +185,7 @@ Examples
    +-----------------------+----------------------+----------------+------------------------------------+
    | IP routing            | LPM (IPv4)           | Forward        | 1. Mempool Create                  |
    |                       |                      |                | 2. Link create                     |
-   |                       | * Key = IP dest addr |                | 3. Pipeline creat                  |
+   |                       | * Key = IP dest addr |                | 3. Pipeline create                 |
    |                       | * Offset = 286       |                | 4. Pipeline port in/out            |
    |                       | * Table size = 4K    |                | 5. Pipeline table                  |
    |                       |                      |                | 6. Pipeline port in table          |

@@ -76,7 +76,7 @@ Supported ENETC SoCs
 Prerequisites
 ~~~~~~~~~~~~~
 
-There are three main pre-requisities for executing ENETC PMD on a ENETC
+There are three main pre-requisites for executing ENETC PMD on a ENETC
 compatible board:
 
 1. **ARM 64 Tool Chain**

@@ -423,6 +423,6 @@ References
 
 1- EFD is based on collaborative research work between Intel and
 Carnegie Mellon University (CMU), interested readers can refer to the paper
-“Scaling Up Clustered Network Appliances with ScaleBricks;” Dong Zhou et al.
+"Scaling Up Clustered Network Appliances with ScaleBricks" Dong Zhou et al.
 at SIGCOMM 2015 (`http://conferences.sigcomm.org/sigcomm/2015/pdf/papers/p241.pdf`)
 for more information.

@@ -2129,7 +2129,7 @@ as defined in the ``rte_flow_action_raw_decap``
 
 This action modifies the payload of matched flows. The data supplied must
 be a valid header, either holding layer 2 data in case of removing layer 2
-before eincapsulation of layer 3 tunnel (for example MPLSoGRE) or complete
+before encapsulation of layer 3 tunnel (for example MPLSoGRE) or complete
 tunnel definition starting from layer 2 and moving to the tunnel item itself.
 When applied to the original packet the resulting packet must be a
 valid packet.
@@ -2279,7 +2279,7 @@ Action: ``DEC_TTL``
 Decrease TTL value.
 
 If there is no valid RTE_FLOW_ITEM_TYPE_IPV4 or RTE_FLOW_ITEM_TYPE_IPV6
-in pattern, Some PMDs will reject rule because behaviour will be undefined.
+in pattern, Some PMDs will reject rule because behavior will be undefined.
 
 .. _table_rte_flow_action_dec_ttl:
 
@@ -2297,7 +2297,7 @@ Action: ``SET_TTL``
 Assigns a new TTL value.
 
 If there is no valid RTE_FLOW_ITEM_TYPE_IPV4 or RTE_FLOW_ITEM_TYPE_IPV6
-in pattern, Some PMDs will reject rule because behaviour will be undefined.
+in pattern, Some PMDs will reject rule because behavior will be undefined.
 
 .. _table_rte_flow_action_set_ttl:
 
@@ -2725,7 +2725,7 @@ Caveats
 - API operations are synchronous and blocking (``EAGAIN`` cannot be
   returned).
 
-- There is no provision for reentrancy/multi-thread safety, although nothing
+- There is no provision for re-entrancy/multi-thread safety, although nothing
   should prevent different devices from being configured at the same
   time. PMDs may protect their control path functions accordingly.
 

@@ -70,7 +70,7 @@ Credit Quanta
 The credit quanta is the number of credits that a port will fetch at a time from
 the instance's credit pool. Higher numbers will cause less overhead in the
 atomic credit fetch code, however it also reduces the overall number of credits
-in the system faster. A balanced number (eg 32) ensures that only small numbers
+in the system faster. A balanced number (e.g. 32) ensures that only small numbers
 of credits are pre-allocated at a time, while also mitigating performance impact
 of the atomics.
 
@@ -100,7 +100,7 @@ feature would be significant.
 ~~~~~~~~~~~~~~~~~~
 
 The software eventdev does not support creating queues that handle all types of
-traffic. An eventdev with this capability allows enqueueing Atomic, Ordered and
+traffic. An eventdev with this capability allows enqueuing Atomic, Ordered and
 Parallel traffic to the same queue, but scheduling each of them appropriately.
 
 The reason to not allow Atomic, Ordered and Parallel event types in the

@@ -273,7 +273,7 @@ will be populated by IPC are as follows:
   those peer processes that were active at the time of request, how many have
   replied)
 * ``msgs`` - pointer to where all of the responses are stored. The order in
-  which responses appear is undefined. Whendoing sycnrhonous requests, this
+  which responses appear is undefined. When doing synchronous requests, this
   memory must be freed by the requestor after request completes!
 
 For asynchronous requests, a function pointer to the callback function must be

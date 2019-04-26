@@ -733,7 +733,7 @@ The most important fields in the structure and how they are used are described b
 
 Malloc heap is a doubly-linked list, where each element keeps track of its
 previous and next elements. Due to the fact that hugepage memory can come and
-go, neighbouring malloc elements may not necessarily be adjacent in memory.
+go, neighboring malloc elements may not necessarily be adjacent in memory.
 Also, since a malloc element may span multiple pages, its contents may not
 necessarily be IOVA-contiguous either - each malloc element is only guaranteed
 to be virtually contiguous.

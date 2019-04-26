@@ -328,7 +328,7 @@ On host_server_2: Terminal 1
 
 .. code-block:: console
 
-   testomd> show port info all
+   testpmd> show port info all
    testpmd> show port stats all
    testpmd> show bonding config 2
    testpmd> port attach 0000:00:04.0

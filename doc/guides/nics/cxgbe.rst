@@ -126,7 +126,7 @@ enabling debugging options may affect system performance.
 
 - ``CONFIG_RTE_LIBRTE_CXGBE_TPUT`` (default **y**)
 
-  Toggle behaviour to prefer Throughput or Latency.
+  Toggle behavior to prefer Throughput or Latency.
 
 Runtime Options
 ~~~~~~~~~~~~~~~
@@ -140,7 +140,7 @@ be passed as part of EAL arguments. For example,
 
 - ``keep_ovlan`` (default **0**)
 
-  Toggle behaviour to keep/strip outer VLAN in Q-in-Q packets. If
+  Toggle behavior to keep/strip outer VLAN in Q-in-Q packets. If
   enabled, the outer VLAN tag is preserved in Q-in-Q packets. Otherwise,
   the outer VLAN tag is stripped in Q-in-Q packets.
 

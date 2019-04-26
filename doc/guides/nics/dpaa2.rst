@@ -379,7 +379,7 @@ active  --  Ethernet, crypto, compression, etc.
 DPBP based Mempool driver
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The DPBP driver is bound to a DPBP objects and provides sevices to
+The DPBP driver is bound to a DPBP objects and provides services to
 create a hardware offloaded packet buffer mempool.
 
 DPAA2 NIC Driver

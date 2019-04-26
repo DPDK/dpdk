@@ -189,7 +189,7 @@ Prerequisites
    reduces the latency of the packets by pushing the header directly through
    the PCI to the device, before the DMA is even triggered. For proper work
    kernel PCI driver must support write combining (WC). In mainline version of
-   ``igb_uio`` (in DPDK repo) it must be enabled by loding module with
+   ``igb_uio`` (in DPDK repo) it must be enabled by loading module with
    ``wc_activate=1`` flag (example below). However, mainline's vfio-pci
    driver in kernel doesn't have WC support yet (planed to be added).
    If vfio-pci used user should be either turn off ENAv2 (to avoid performance

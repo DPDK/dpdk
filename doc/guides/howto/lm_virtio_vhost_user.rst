@@ -243,7 +243,7 @@ On host_server_2: Terminal 1
 
 .. code-block:: console
 
-   testomd> show port info all
+   testpmd> show port info all
    testpmd> show port stats all
 
 Virtio traffic is seen at P0 and P1.
@@ -338,7 +338,7 @@ reset_vf_on_212_131.sh
    #!/bin/sh
    # This script is run on the host 10.237.212.131 to reset SRIOV
 
-   # BDF for Ninatic NIC is 0000:06:00.0
+   # BDF for Niantic NIC is 0000:06:00.0
    cat /sys/bus/pci/devices/0000\:06\:00.0/max_vfs
    echo 0 > /sys/bus/pci/devices/0000\:06\:00.0/max_vfs
    cat /sys/bus/pci/devices/0000\:06\:00.0/max_vfs

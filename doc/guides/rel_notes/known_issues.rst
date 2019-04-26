@@ -676,7 +676,7 @@ igb uio legacy mode can not be used in X710/XL710/XXV710
 
 **Description**:
    X710/XL710/XXV710 NICs lack support for indicating INTx is asserted via the interrupt
-   bit in the PCI status register. Linux delected them from INTx support table. The related
+   bit in the PCI status register. Linux deleted them from INTx support table. The related
    `commit <https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/commit/drivers/pci/quirks.c?id=8bcf4525c5d43306c5fd07e132bc8650e3491aec>`_.
 
 **Implication**:
@@ -722,9 +722,9 @@ Linux kernel 4.10.0 iommu attribute read error
 **Description**:
    When VT-d is enabled (``iommu=pt intel_iommu=on``), reading IOMMU attributes from
    /sys/devices/virtual/iommu/dmarXXX/intel-iommu/cap on Linux kernel 4.10.0 error.
-   This bug is fixed in `Linux commmit a7fdb6e648fb
+   This bug is fixed in `Linux commit a7fdb6e648fb
    <https://patchwork.kernel.org/patch/9595727/>`_,
-   This bug is introduced in `Linux commmit 39ab9555c241
+   This bug is introduced in `Linux commit 39ab9555c241
    <https://patchwork.kernel.org/patch/9554403/>`_,
 
 **Implication**:
@@ -842,7 +842,7 @@ AVX-512 support disabled
    drop.
 
    On DPDK v19.02 ``AVX-512`` disable scope is reduced to ``GCC`` and ``binutils version 2.30`` based
-   on information accured from the GCC community defect.
+   on information accrued from the GCC community defect.
 
 **Reason**:
    Generated ``AVX-512`` code cause crash:

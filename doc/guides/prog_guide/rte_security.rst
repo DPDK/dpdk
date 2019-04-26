@@ -40,7 +40,7 @@ Inline Crypto
 ~~~~~~~~~~~~~
 
 RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO:
-The crypto processing for security protocol (e.g. IPSec) is processed
+The crypto processing for security protocol (e.g. IPsec) is processed
 inline during receive and transmission on NIC port. The flow based
 security action should be configured on the port.
 
@@ -48,7 +48,7 @@ Ingress Data path - The packet is decrypted in RX path and relevant
 crypto status is set in Rx descriptors. After the successful inline
 crypto processing the packet is presented to host as a regular Rx packet
 however all security protocol related headers are still attached to the
-packet. e.g. In case of IPSec, the IPSec tunnel headers (if any),
+packet. e.g. In case of IPsec, the IPsec tunnel headers (if any),
 ESP/AH headers will remain in the packet but the received packet
 contains the decrypted data where the encrypted data was when the packet
 arrived. The driver Rx path check the descriptors and and based on the
@@ -111,7 +111,7 @@ Inline protocol offload
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL:
-The crypto and protocol processing for security protocol (e.g. IPSec)
+The crypto and protocol processing for security protocol (e.g. IPsec)
 is processed inline during receive and transmission.  The flow based
 security action should be configured on the port.
 
@@ -119,7 +119,7 @@ Ingress Data path - The packet is decrypted in the RX path and relevant
 crypto status is set in the Rx descriptors. After the successful inline
 crypto processing the packet is presented to the host as a regular Rx packet
 but all security protocol related headers are optionally removed from the
-packet. e.g. in the case of IPSec, the IPSec tunnel headers (if any),
+packet. e.g. in the case of IPsec, the IPsec tunnel headers (if any),
 ESP/AH headers will be removed from the packet and the received packet
 will contains the decrypted packet only. The driver Rx path checks the
 descriptors and based on the crypto status sets additional flags in
@@ -132,7 +132,7 @@ to identify the security processing done on the packet.
     The underlying device in this case is stateful. It is expected that
     the device shall support crypto processing for all kind of packets matching
     to a given flow, this includes fragmented packets (post reassembly).
-    E.g. in case of IPSec the device may internally manage anti-replay etc.
+    E.g. in case of IPsec the device may internally manage anti-replay etc.
     It will provide a configuration option for anti-replay behavior i.e. to drop
     the packets or pass them to driver with error flags set in the descriptor.
 
@@ -150,7 +150,7 @@ to cross the MTU size.
 .. note::
 
     The underlying device will manage state information required for egress
-    processing. E.g. in case of IPSec, the seq number will be added to the
+    processing. E.g. in case of IPsec, the seq number will be added to the
     packet, however the device shall provide indication when the sequence number
     is about to overflow. The underlying device may support post encryption TSO.
 
@@ -199,13 +199,13 @@ crypto device.
 Decryption: The packet is sent to the crypto device for security
 protocol processing. The device will decrypt the packet and it will also
 optionally remove additional security headers from the packet.
-E.g. in case of IPSec, IPSec tunnel headers (if any), ESP/AH headers
+E.g. in case of IPsec, IPsec tunnel headers (if any), ESP/AH headers
 will be removed from the packet and the decrypted packet may contain
 plain data only.
 
 .. note::
 
-    In case of IPSec the device may internally manage anti-replay etc.
+    In case of IPsec the device may internally manage anti-replay etc.
     It will provide a configuration option for anti-replay behavior i.e. to drop
     the packets or pass them to driver with error flags set in descriptor.
 
@@ -217,7 +217,7 @@ for any protocol header addition.
 
 .. note::
 
-    In the case of IPSec, the seq number will be added to the packet,
+    In the case of IPsec, the seq number will be added to the packet,
     It shall provide an indication when the sequence number is about to
     overflow.
 
@@ -549,7 +549,7 @@ IPsec related configuration parameters are defined in ``rte_security_ipsec_xform
         struct rte_security_ipsec_sa_options options;
         /**< various SA options */
         enum rte_security_ipsec_sa_direction direction;
-        /**< IPSec SA Direction - Egress/Ingress */
+        /**< IPsec SA Direction - Egress/Ingress */
         enum rte_security_ipsec_sa_protocol proto;
         /**< IPsec SA Protocol - AH/ESP */
         enum rte_security_ipsec_sa_mode mode;

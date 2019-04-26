@@ -227,7 +227,7 @@ application functions:
 
 ``config_promiscusity``:
 
-    Called when the user changes the promiscusity state of the KNI
+    Called when the user changes the promiscuity state of the KNI
     interface.  For example, when the user runs ``ip link set promisc
     [on|off] dev <ifaceX>``. If the user sets this callback function to
     NULL, but sets the ``port_id`` field to a value other than -1, a default

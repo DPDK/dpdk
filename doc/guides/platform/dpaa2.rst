@@ -4,7 +4,7 @@
 NXP QorIQ DPAA2 Board Support Package
 =====================================
 
-This doc has information about steps to setup NXP QoriQ DPAA2 platform
+This doc has information about steps to setup NXP QorIQ DPAA2 platform
 and information about common offload hw block drivers of
 **NXP QorIQ DPAA2** SoC family.
 
@@ -48,7 +48,7 @@ Common Offload HW Block Drivers
 Steps To Setup Platform
 -----------------------
 
-There are four main pre-requisities for executing DPAA2 PMD on a DPAA2
+There are four main pre-requisites for executing DPAA2 PMD on a DPAA2
 compatible board:
 
 1. **ARM 64 Tool Chain**

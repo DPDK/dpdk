@@ -49,7 +49,7 @@ these settings is shown below:
     ./build/eventdev_pipeline --vdev event_sw0 -- -r1 -t1 -e4 -w FF00 -s4 -n0 -c32 -W1000 -D
 
 The application has some sanity checking built-in, so if there is a function
-(eg; the RX core) which doesn't have a cpu core mask assigned, the application
+(e.g.; the RX core) which doesn't have a cpu core mask assigned, the application
 will print an error message:
 
 .. code-block:: console

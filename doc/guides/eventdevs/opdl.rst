@@ -8,7 +8,7 @@ The OPDL (Ordered Packet Distribution Library) eventdev is a specific\
 implementation of the eventdev API. It is particularly suited to packet\
 processing workloads that have high throughput and low latency requirements.\
 All packets follow the same path through the device. The order in which\
-packets  follow is determinted by the order in which queues are set up.\
+packets  follow is determined by the order in which queues are set up.\
 Events are left on the ring until they are transmitted. As a result packets\
 do not go out of order
 

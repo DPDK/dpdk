@@ -139,7 +139,7 @@ There are 6 main test cases that can be executed using testbbdev tool:
 * Latency measurement [-c latency]
     - Measures the time consumed from the first enqueue until the first
       appearance of a dequeued result
-    - This measurment represents the full latency of a bbdev operation
+    - This measurement represents the full latency of a bbdev operation
       (encode or decode) to execute
 
 * Poll-mode Throughput measurement [-c throughput]

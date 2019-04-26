@@ -344,7 +344,7 @@ monitoring of branch ratio on cores doing busy polling via PMDs.
 
   When this parameter is used, the list of cores specified will monitor the ratio
   between branch hits and branch misses. A tightly polling PMD thread will have a
-  very low branch ratio, so the core frequency will be scaled down to the minimim
+  very low branch ratio, so the core frequency will be scaled down to the minimum
   allowed value. When packets are received, the code path will alter, causing the
   branch ratio to increase. When the ratio goes above the ratio threshold, the
   core frequency will be scaled up to the maximum allowed value.
@@ -384,7 +384,7 @@ the file.
 
 The fifo is at /tmp/powermonitor/fifo
 
-The jason string can be a policy or instruction, and takes the following
+The JSON string can be a policy or instruction, and takes the following
 format:
 
   .. code-block:: javascript
@@ -734,7 +734,7 @@ policy down to the host application. These parameters are as follows:
   A comma-separated list of cores in the VM that the user wants the host application to
   monitor. The list of cores in any vm starts at zero, and these are mapped to the
   physical cores by the host application once the policy is passed down.
-  Valid syntax includes individial cores '2,3,4', or a range of cores '2-4', or a
+  Valid syntax includes individual cores '2,3,4', or a range of cores '2-4', or a
   combination of both '1,3,5-7'
 
   .. code-block:: console
@@ -742,7 +742,7 @@ policy down to the host application. These parameters are as follows:
     --busy-hours {list of busy hours}
 
   A comma-separated list of hours within which to set the core frequency to maximum.
-  Valid syntax includes individial hours '2,3,4', or a range of hours '2-4', or a
+  Valid syntax includes individual hours '2,3,4', or a range of hours '2-4', or a
   combination of both '1,3,5-7'. Valid hours are 0 to 23.
 
   .. code-block:: console
@@ -750,7 +750,7 @@ policy down to the host application. These parameters are as follows:
     --quiet-hours {list of quiet hours}
 
   A comma-separated list of hours within which to set the core frequency to minimum.
-  Valid syntax includes individial hours '2,3,4', or a range of hours '2-4', or a
+  Valid syntax includes individual hours '2,3,4', or a range of hours '2-4', or a
   combination of both '1,3,5-7'. Valid hours are 0 to 23.
 
   .. code-block:: console

@@ -162,7 +162,7 @@ The servicing_weight member of struct rte_event_eth_rx_adapter_queue_conf
 is applicable when the adapter uses a service core function. The application
 has to enable Rx queue interrupts when configuring the ethernet device
 using the ``rte_eth_dev_configure()`` function and then use a servicing_weight
-of zero when addding the Rx queue to the adapter.
+of zero when adding the Rx queue to the adapter.
 
 The adapter creates a thread blocked on the interrupt, on an interrupt this
 thread enqueues the port id and the queue id to a ring buffer. The adapter
@@ -180,9 +180,9 @@ Rx Callback for SW Rx Adapter
 For SW based packet transfers, i.e., when the
 ``RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT`` is not set in the adapter's
 capabilities flags for a particular ethernet device, the service function
-temporarily enqueues mbufs to an event buffer before batch enqueueing these
+temporarily enqueues mbufs to an event buffer before batch enqueuing these
 to the event device. If the buffer fills up, the service function stops
-dequeueing packets from the ethernet device. The application may want to
+dequeuing packets from the ethernet device. The application may want to
 monitor the buffer fill level and instruct the service function to selectively
 enqueue packets to the event device. The application may also use some other
 criteria to decide which packets should enter the event device even when

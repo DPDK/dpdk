@@ -83,7 +83,7 @@ These options can be modified in the ``.config`` file.
 
 - ``CONFIG_RTE_IBVERBS_LINK_STATIC`` (default **n**)
 
-  Embed static flavour of the dependencies **libibverbs** and **libmlx4**
+  Embed static flavor of the dependencies **libibverbs** and **libmlx4**
   in the PMD shared library or the executable static binary.
 
 - ``CONFIG_RTE_LIBRTE_MLX4_DEBUG`` (default **n**)

@@ -151,5 +151,5 @@ In this particular case:
 *   For the rest of the cases, the color is changed to red.
 
 .. note::
-    * In color blind mode, first row GREEN colour is only valid.
+    * In color blind mode, first row GREEN color is only valid.
     * To drop the packet, policer_table action has to be set to DROP.

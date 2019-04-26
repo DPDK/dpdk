@@ -96,7 +96,7 @@ Non-supported Features
 
 The features not yet supported include:
 
-- Receive queue interupts
+- Receive queue interrupts
 
 - Priority-based flow control
 
@@ -209,12 +209,12 @@ Validating flow rules depends on the firmware variant.
 
 The :ref:`flow_isolated_mode` is supported.
 
-Ethernet destinaton individual/group match
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Ethernet destination individual/group match
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Ethernet item supports I/G matching, if only the corresponding bit is set
-in the mask of destination address. If destinaton address in the spec is
-multicast, it matches all multicast (and broadcast) packets, oherwise it
+in the mask of destination address. If destination address in the spec is
+multicast, it matches all multicast (and broadcast) packets, otherwise it
 matches unicast packets that are not filtered by other flow rules.
 
 Exceptions to flow rules
@@ -348,10 +348,10 @@ boolean parameters value.
 
 - ``perf_profile`` [auto|throughput|low-latency] (default **throughput**)
 
-  Choose hardware tunning to be optimized for either throughput or
+  Choose hardware tuning to be optimized for either throughput or
   low-latency.
   **auto** allows NIC firmware to make a choice based on
-  installed licences and firmware variant configured using **sfboot**.
+  installed licenses and firmware variant configured using **sfboot**.
 
 - ``stats_update_period_ms`` [long] (default **1000**)
 

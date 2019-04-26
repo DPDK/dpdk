@@ -204,7 +204,7 @@ Creates the following symbol:
 Which ``dpdk-pmdinfogen`` scans for.  Using this information other relevant
 bits of data can be exported from the object file and used to produce a
 hardware support description, that ``dpdk-pmdinfogen`` then encodes into a
-json formatted string in the following format:
+JSON formatted string in the following format:
 
 .. code-block:: c
 

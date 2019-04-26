@@ -42,7 +42,7 @@ The rte_event structure contains the following metadata fields, which the
 application fills in to have the event scheduled as required:
 
 * ``flow_id`` - The targeted flow identifier for the enq/deq operation.
-* ``event_type`` - The source of this event, eg RTE_EVENT_TYPE_ETHDEV or CPU.
+* ``event_type`` - The source of this event, e.g. RTE_EVENT_TYPE_ETHDEV or CPU.
 * ``sub_event_type`` - Distinguishes events inside the application, that have
   the same event_type (see above)
 * ``op`` - This field takes one of the RTE_EVENT_OP_* values, and tells the
@@ -265,7 +265,7 @@ Linking Queues and Ports
 The final step is to "wire up" the ports to the queues. After this, the
 eventdev is capable of scheduling events, and when cores request work to do,
 the correct events are provided to that core. Note that the RX core takes input
-from eg: a NIC so it is not linked to any eventdev queues.
+from e.g.: a NIC so it is not linked to any eventdev queues.
 
 Linking all workers to atomic queues, and the TX core to the single-link queue
 can be achieved like this:
@@ -276,7 +276,7 @@ can be achieved like this:
         uint8_t tx_port_id = 5;
         uint8_t atomic_qs[] = {0, 1};
         uint8_t single_link_q = 2;
-        uin8t_t priority = RTE_EVENT_DEV_PRIORITY_NORMAL;
+        uint8_t priority = RTE_EVENT_DEV_PRIORITY_NORMAL;
 
         for(int worker_port_id = 1; worker_port_id <= 4; worker_port_id++) {
                 int links_made = rte_event_port_link(dev_id, worker_port_id, atomic_qs, NULL, 2);

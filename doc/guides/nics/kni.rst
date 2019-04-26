@@ -65,7 +65,7 @@ backend device by default.
 PMD arguments
 -------------
 
-``no_request_thread``, by default PMD creates a phtread for each KNI interface
+``no_request_thread``, by default PMD creates a pthread for each KNI interface
 to handle Linux network interface control commands, like ``ifconfig kni0 up``
 
 With ``no_request_thread`` option, pthread is not created and control commands

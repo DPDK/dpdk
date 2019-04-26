@@ -224,7 +224,7 @@ the use of SR-IOV.
     passthrough devices do not require libvirt, port profiles, and VM-FEX.
 
 
-.. _enic-genic-flow-api:
+.. _enic-generic-flow-api:
 
 Generic Flow API support
 ------------------------

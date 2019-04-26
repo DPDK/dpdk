@@ -1,7 +1,7 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2016 Intel Corporation.
 
-.. _virtio_user_as_excpetional_path:
+.. _virtio_user_as_exceptional_path:
 
 Virtio_user as Exceptional Path
 ===============================
@@ -22,7 +22,7 @@ solution is very promising in:
 *   Features
 
     vhost-net is born to be a networking solution, which has lots of networking
-    related featuers, like multi queue, tso, multi-seg mbuf, etc.
+    related features, like multi queue, tso, multi-seg mbuf, etc.
 
 *   Performance
 
@@ -38,7 +38,7 @@ in :numref:`figure_virtio_user_as_exceptional_path`.
 
 .. figure:: img/virtio_user_as_exceptional_path.*
 
-   Overview of a DPDK app using virtio-user as excpetional path
+   Overview of a DPDK app using virtio-user as exceptional path
 
 
 Sample Usage
@@ -75,7 +75,7 @@ compiling the kernel and those kernel modules should be inserted.
 
 * ``queues``
 
-    Number of multi-queues. Each qeueue will be served by a kthread. For example:
+    Number of multi-queues. Each queue will be served by a kthread. For example:
 
     .. code-block:: console
 

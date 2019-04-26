@@ -18,7 +18,7 @@ Supported Feature Flags
      without making any modifications to it (no compression done).
 
    - "OOP SGL In SGL Out" feature flag stands for
-     "Out-of-place Scatter-gather list Input, Scatter-gater list Output",
+     "Out-of-place Scatter-gather list Input, Scatter-gather list Output",
      which means PMD supports different scatter-gather styled input and output buffers
      (i.e. both can consists of multiple segments).
 

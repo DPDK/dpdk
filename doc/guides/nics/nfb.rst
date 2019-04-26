@@ -81,7 +81,7 @@ The NFB cards are multi-port multi-queue cards, where (generally) data from any
 Ethernet port may be sent to any queue.
 They are represented in DPDK as a single port.
 
-NFB-200G2QL card employs an addon cable which allows to connect it to two
+NFB-200G2QL card employs an add-on cable which allows to connect it to two
 physical PCI-E slots at the same time (see the diagram below).
 This is done to allow 200 Gbps of traffic to be transferred through the PCI-E
 bus (note that a single PCI-E 3.0 x16 slot provides only 125 Gbps theoretical

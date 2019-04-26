@@ -106,7 +106,7 @@ examples are highlighted below.
   (packet arrival) and TX (packet transmission) by adding callbacks to the RX
   and TX packet processing functions.
 
-* :doc:`IPSec Security Gateway<ipsec_secgw>`: The IPSec Security
+* :doc:`IPsec Security Gateway<ipsec_secgw>`: The IPsec Security
   Gateway application is minimal example of something closer to a real world
   example. This is also a good example of an application using the DPDK
   Cryptodev framework.

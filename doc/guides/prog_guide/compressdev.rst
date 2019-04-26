@@ -17,7 +17,7 @@ Device Creation
 
 Physical compression devices are discovered during the bus probe of the EAL function
 which is executed at DPDK initialization, based on their unique device identifier.
-For eg. PCI devices can be identified using PCI BDF (bus/bridge, device, function).
+For e.g. PCI devices can be identified using PCI BDF (bus/bridge, device, function).
 Specific physical compression devices, like other physical devices in DPDK can be
 white-listed or black-listed using the EAL command line options.
 
@@ -379,7 +379,7 @@ using priv_xform would look like:
         setup op->m_src and op->m_dst;
     }
     num_enqd = rte_compressdev_enqueue_burst(cdev_id, 0, comp_ops, NUM_OPS);
-    /* wait for this to complete before enqueing next*/
+    /* wait for this to complete before enqueuing next*/
     do {
         num_deque = rte_compressdev_dequeue_burst(cdev_id, 0 , &processed_ops, NUM_OPS);
     } while (num_dqud < num_enqd);
@@ -526,7 +526,7 @@ An example pseudocode to set up and process a stream having NUM_CHUNKS with each
         op->src.length = CHUNK_LEN;
         op->input_chksum = 0;
         num_enqd = rte_compressdev_enqueue_burst(cdev_id, 0, &op[i], 1);
-        /* wait for this to complete before enqueing next*/
+        /* wait for this to complete before enqueuing next*/
         do {
             num_deqd = rte_compressdev_dequeue_burst(cdev_id, 0 , &processed_ops, 1);
         } while (num_deqd < num_enqd);

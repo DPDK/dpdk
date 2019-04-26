@@ -91,7 +91,7 @@ Run-time parameters
 -------------------
 
 This driver is invoked automatically in systems added with Intel FPGA,
-but PR and IFPGA Bus scan is trigged by command line using
+but PR and IFPGA Bus scan is triggered by command line using
 ``--vdev 'ifpga_rawdev_cfg`` EAL option.
 
 The following device parameters are supported:

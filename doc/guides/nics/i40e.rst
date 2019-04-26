@@ -580,7 +580,7 @@ bandwidth setting.
 TC TX scheduling mode setting
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-There're 2 TX scheduling modes for TCs, round robin and strict priority mode.
+There are 2 TX scheduling modes for TCs, round robin and strict priority mode.
 If a TC is set to strict priority mode, it can consume unlimited bandwidth.
 It means if APP has set the max bandwidth for that TC, it comes to no
 effect.

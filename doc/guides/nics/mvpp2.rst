@@ -91,7 +91,7 @@ Limitations
   chance to start in a sane state.
 
 - MUSDK architecture does not support changing configuration in run time.
-  All nessesary configurations should be done before first dev_start().
+  All necessary configurations should be done before first dev_start().
 
 - RX queue start/stop is not supported.
 

@@ -500,8 +500,8 @@ An application may save and retrieve a single pointer to application data in
 the L-thread struct.
 
 For legacy and backward compatibility reasons two alternative methods are also
-offered, the first is modelled directly on the pthread get/set specific APIs,
-the second approach is modelled on the ``RTE_PER_LCORE`` macros, whereby
+offered, the first is modeled directly on the pthread get/set specific APIs,
+the second approach is modeled on the ``RTE_PER_LCORE`` macros, whereby
 ``PER_LTHREAD`` macros are introduced, in both cases the storage is local to
 the L-thread.
 

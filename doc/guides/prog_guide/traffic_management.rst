@@ -39,7 +39,7 @@ whether a specific implementation does meet the needs to the user application.
 At the TM level, users can get high level idea with the help of various
 parameters such as maximum number of nodes, maximum number of hierarchical
 levels, maximum number of shapers, maximum number of private shapers, type of
-scheduling algorithm (Strict Priority, Weighted Fair Queueing , etc.), etc.,
+scheduling algorithm (Strict Priority, Weighted Fair Queuing , etc.), etc.,
 supported by the implementation.
 
 Likewise, users can query the capability of the TM at the hierarchical level to

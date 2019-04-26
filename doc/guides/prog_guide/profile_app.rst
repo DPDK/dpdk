@@ -64,7 +64,7 @@ The default ``cntvct_el0`` based ``rte_rdtsc()`` provides a portable means to
 get a wall clock counter in user space. Typically it runs at <= 100MHz.
 
 The alternative method to enable ``rte_rdtsc()`` for a high resolution wall
-clock counter is through the armv8 PMU subsystem. The PMU cycle counter runs
+clock counter is through the ARMv8 PMU subsystem. The PMU cycle counter runs
 at CPU frequency. However, access to the PMU cycle counter from user space is
 not enabled by default in the arm64 linux kernel. It is possible to enable
 cycle counter for user space access by configuring the PMU from the privileged
@@ -75,7 +75,7 @@ scheme.  Application can choose the PMU based implementation with
 ``CONFIG_RTE_ARM_EAL_RDTSC_USE_PMU``.
 
 The example below shows the steps to configure the PMU based cycle counter on
-an armv8 machine.
+an ARMv8 machine.
 
 .. code-block:: console
 

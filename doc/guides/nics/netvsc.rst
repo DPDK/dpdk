@@ -89,7 +89,7 @@ operations:
 
 .. Note::
 
-   The dpkd-devbind.py script can not be used since it only handles PCI devices.
+   The dpdk-devbind.py script can not be used since it only handles PCI devices.
 
 
 Prerequisites

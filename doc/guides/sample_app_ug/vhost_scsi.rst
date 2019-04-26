@@ -63,7 +63,7 @@ Vhost_scsi Common Issues
 
 * vhost_scsi can not start with block size 512 Bytes:
 
-  Currently DPDK vhost library was designed for NET device(althrough the APIs
+  Currently DPDK vhost library was designed for NET device(although the APIs
   are generic now), for 512 Bytes block device, Qemu BIOS(x86 BIOS Enhanced
   Disk Device) will enumerate all block device and do some IOs to those block
   devices with 512 Bytes sector size. DPDK vhost library can not process such

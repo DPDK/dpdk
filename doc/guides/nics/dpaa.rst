@@ -251,7 +251,7 @@ state during application initialization:
   automatically be assigned from the these high perf PUSH queues. Any queue
   configuration beyond that will be standard Rx queues. The application can
   choose to change their number if HW portals are limited.
-  The valid values are from '0' to '4'. The valuse shall be set to '0' if the
+  The valid values are from '0' to '4'. The values shall be set to '0' if the
   application want to use eventdev with DPAA device.
   Currently these queues are not used for LS1023/LS1043 platform by default.
 

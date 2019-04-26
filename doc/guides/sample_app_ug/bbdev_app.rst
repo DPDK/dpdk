@@ -68,7 +68,7 @@ The application accepts a number of command line options:
 
 where:
 
-* ``e ENCODING_CORES``: hexmask for encoding lcored (default = 0x2)
+* ``e ENCODING_CORES``: hexmask for encoding lcores (default = 0x2)
 * ``d DECODING_CORES``: hexmask for decoding lcores (default = 0x4)
 * ``p ETH_PORT_ID``: ethernet port ID (default = 0)
 * ``b BBDEV_ID``: BBDev ID (default = 0)
@@ -87,7 +87,7 @@ issue the command:
     $ ./build/bbdev --vdev='baseband_turbo_sw' -w <NIC0PCIADDR> -c 0x38 --socket-mem=2,2 \
     --file-prefix=bbdev -- -e 0x10 -d 0x20
 
-where, NIC0PCIADDR is the PCI addresse of the Rx port
+where, NIC0PCIADDR is the PCI address of the Rx port
 
 This command creates one virtual bbdev devices ``baseband_turbo_sw`` where the
 device gets linked to a corresponding ethernet port as whitelisted by

@@ -25,8 +25,8 @@ The application classifies the ports as *Protected* and *Unprotected*.
 Thus, traffic received on an Unprotected or Protected port is consider
 Inbound or Outbound respectively.
 
-The application also supports complete IPSec protocol offload to hardware
-(Look aside crypto accelarator or using ethernet device). It also support
+The application also supports complete IPsec protocol offload to hardware
+(Look aside crypto accelerator or using ethernet device). It also support
 inline ipsec processing by the supported ethernet device during transmission.
 These modes can be selected during the SA creation configuration.
 
@@ -124,7 +124,7 @@ Where:
 *   ``-e``: enables Security Association extended sequence number processing
     (available only with librte_ipsec code path).
 
-*   ``-a``: enables Security Association sequence number atomic behaviour
+*   ``-a``: enables Security Association sequence number atomic behavior
     (available only with librte_ipsec code path).
 
 *   ``--config (port,queue,lcore)[,(port,queue,lcore)]``: determines which queues
@@ -752,7 +752,7 @@ DUT OS(NIC1)--(IPsec)-->(NIC1)ipsec-secgw(TAP)--(plain)-->(TAP)SUT OS
 
 SUT OS(TAP)--(plain)-->(TAP)psec-secgw(NIC1)--(IPsec)-->(NIC1)DUT OS
 
-It then tries to perform some data transfer using the scheme decribed above.
+It then tries to perform some data transfer using the scheme described above.
 
 usage
 ~~~~~

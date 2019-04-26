@@ -165,7 +165,7 @@ operation:
    For pure small packet size (64 bytes) traffic however the multi-core mode is not
    an optimal solution, as it doesn't give significant per-core performance improvement.
    For mixed traffic (IMIX) the optimal number of worker cores is around 2-3.
-   For large packets (1.5 Kbytes) scheduler shows linear scaling in performance
+   For large packets (1.5 kbytes) scheduler shows linear scaling in performance
    up to eight cores.
    Each worker uses its own slave cryptodev. Only software cryptodevs
    are supported. Only the same type of cryptodevs should be used concurrently.

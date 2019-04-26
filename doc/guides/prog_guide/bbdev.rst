@@ -78,7 +78,7 @@ From the application point of view, each instance of a bbdev device consists of
 one or more queues identified by queue IDs. While different devices may have
 different capabilities (e.g. support different operation types), all queues on
 a device support identical configuration possibilities. A queue is configured
-for only one type of operation and is configured at initializations time.
+for only one type of operation and is configured at initialization time.
 When an operation is enqueued to a specific queue ID, the result is dequeued
 from the same queue ID.
 
@@ -678,7 +678,7 @@ bbdev framework, by giving a sample code performing a loop-back operation with a
 baseband processor capable of transceiving data packets.
 
 The following sample C-like pseudo-code shows the basic steps to encode several
-buffers using (**sw_trubo**) bbdev PMD.
+buffers using (**sw_turbo**) bbdev PMD.
 
 .. code-block:: c
 

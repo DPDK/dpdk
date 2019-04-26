@@ -168,7 +168,7 @@ Limitations
   - must specify the VXLAN item with tunnel outer parameters.
   - must specify the tunnel outer VNI in the VXLAN item.
   - must specify the tunnel outer remote (destination) UDP port in the VXLAN item.
-  - must specify the tunnel outer local (source) IPv4 or IPv6 in the , this address will locally (with scope link) assigned to the outer network interace, wildcards not allowed.
+  - must specify the tunnel outer local (source) IPv4 or IPv6 in the , this address will locally (with scope link) assigned to the outer network interface, wildcards not allowed.
   - must specify the tunnel outer remote (destination) IPv4 or IPv6 in the VXLAN item, group IPs allowed.
   - must specify the tunnel outer destination MAC address in the VXLAN item, this address will be used to create neigh rule.
 
@@ -216,7 +216,7 @@ These options can be modified in the ``.config`` file.
 
 - ``CONFIG_RTE_IBVERBS_LINK_STATIC`` (default **n**)
 
-  Embed static flavour of the dependencies **libibverbs** and **libmlx5**
+  Embed static flavor of the dependencies **libibverbs** and **libmlx5**
   in the PMD shared library or the executable static binary.
 
 - ``CONFIG_RTE_LIBRTE_MLX5_DEBUG`` (default **n**)

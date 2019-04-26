@@ -168,7 +168,7 @@ New Features
   * The DES CBC algorithm.
   * The DES DOCSIS BPI algorithm.
 
-  This change requires version 0.47 of the IPSec Multi-buffer library. For
+  This change requires version 0.47 of the IPsec Multi-buffer library. For
   more details see the :doc:`../cryptodevs/aesni_mb` documentation.
 
 * **Updated the OpenSSL PMD.**
@@ -198,7 +198,7 @@ New Features
 * **Added the Security Offload Library.**
 
   Added an experimental library - ``rte_security``. This provide security APIs
-  for protocols like IPSec using inline ipsec offload to ethernet devices or
+  for protocols like IPsec using inline ipsec offload to ethernet devices or
   full protocol offload with lookaside crypto devices.
 
   See the :doc:`../prog_guide/rte_security` section of the DPDK Programmers
@@ -207,11 +207,11 @@ New Features
 * **Updated the DPAA2_SEC crypto driver to support rte_security.**
 
   Updated the ``dpaa2_sec`` crypto PMD to support ``rte_security`` lookaside
-  protocol offload for IPSec.
+  protocol offload for IPsec.
 
 * **Updated the IXGBE ethernet driver to support rte_security.**
 
-  Updated ixgbe ethernet PMD to support ``rte_security`` inline IPSec offload.
+  Updated ixgbe ethernet PMD to support ``rte_security`` inline IPsec offload.
 
 * **Updated i40e driver to support GTP-C/GTP-U.**
 
@@ -509,7 +509,7 @@ ABI Changes
 * **New parameter added to rte_eth_dev.**
 
   A new parameter ``security_ctx`` has been added to ``rte_eth_dev`` to
-  support security operations like IPSec inline.
+  support security operations like IPsec inline.
 
 * **New parameter added to rte_cryptodev.**
 

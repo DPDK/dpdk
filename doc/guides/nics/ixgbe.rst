@@ -203,8 +203,8 @@ as a workaround.
 X550 does not support legacy interrupt mode
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Desccription
-^^^^^^^^^^^^
+Description
+^^^^^^^^^^^
 X550 cannot get interrupts if using ``uio_pci_generic`` module or using legacy
 interrupt mode of ``igb_uio`` or ``vfio``. Because the errata of X550 states
 that the Interrupt Status bit is not implemented. The errata is the item #22

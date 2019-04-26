@@ -129,7 +129,7 @@ Extra notes
 For AES Counter mode (AES-CTR), the library supports two different sizes for Initialization
 Vector (IV):
 
-* 12 bytes: used mainly for IPSec, as it requires 12 bytes from the user, which internally
+* 12 bytes: used mainly for IPsec, as it requires 12 bytes from the user, which internally
   are appended the counter block (4 bytes), which is set to 1 for the first block
   (no padding required from the user)
 

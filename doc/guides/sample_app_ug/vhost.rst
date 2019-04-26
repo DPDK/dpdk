@@ -116,7 +116,7 @@ will create it. Put simply, it's the server to create the socket file.
 The vm2vm parameter sets the mode of packet switching between guests in
 the host.
 
-- 0 disables vm2vm, impling that VM's packets will always go to the NIC port.
+- 0 disables vm2vm, implying that VM's packets will always go to the NIC port.
 - 1 means a normal mac lookup packet routing.
 - 2 means hardware mode packet forwarding between guests, it allows packets
   go to the NIC port, hardware L2 switch will determine which guest the
@@ -148,7 +148,7 @@ default value is 15.
 
 **--dequeue-zero-copy**
 Dequeue zero copy will be enabled when this option is given. it is worth to
-note that if NIC is binded to driver with iommu enabled, dequeue zero copy
+note that if NIC is bound to driver with iommu enabled, dequeue zero copy
 cannot work at VM2NIC mode (vm2vm=0) due to currently we don't setup iommu
 dma mapping for guest memory.
 

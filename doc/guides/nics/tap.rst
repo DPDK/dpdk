@@ -40,7 +40,7 @@ actual MAC address: ``00:64:74:61:70:[00-FF]``.
    --vdev=net_tap0,mac="00:64:74:61:70:11"
 
 The MAC address will have a user value passed as string. The MAC address is in
-format with delimeter ``:``. The string is byte converted to hex and you get
+format with delimiter ``:``. The string is byte converted to hex and you get
 the actual MAC address: ``00:64:74:61:70:11``.
 
 It is possible to specify a remote netdevice to capture packets from by adding

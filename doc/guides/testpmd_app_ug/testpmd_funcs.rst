@@ -303,7 +303,7 @@ The available information categories are:
   This is the default mode.
 
 * ``mac``: Changes the source and the destination Ethernet addresses of packets before forwarding them.
-  Default application behaviour is to set source Ethernet address to that of the transmitting interface, and destination
+  Default application behavior is to set source Ethernet address to that of the transmitting interface, and destination
   address to a dummy value (set during init). The user may specify a target destination Ethernet address via the 'eth-peer' or
   'eth-peers-configfile' command-line options. It is not currently possible to specify a specific source Ethernet address.
 
@@ -326,7 +326,7 @@ The available information categories are:
 * ``softnic``: Demonstrates the softnic forwarding operation. In this mode, packet forwarding is
   similar to I/O mode except for the fact that packets are loopback to the softnic ports only. Therefore, portmask parameter should be set to softnic port only. The various software based custom NIC pipelines specified through the softnic firmware (DPDK packet framework script) can be tested in this mode. Furthermore, it allows to build 5-level hierarchical QoS scheduler as a default option that can be enabled through CLI once testpmd application is initialised. The user can modify the default scheduler hierarchy or can specify the new QoS Scheduler hierarchy through CLI. Requires ``CONFIG_RTE_LIBRTE_PMD_SOFTNIC=y``.
 
-* ``noisy``: Noisy neighbour simulation.
+* ``noisy``: Noisy neighbor simulation.
   Simulate more realistic behavior of a guest machine engaged in receiving
   and sending packets performing Virtual Network Function (VNF).
 
@@ -2289,7 +2289,7 @@ set bonding lacp dedicated_queue
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Enable dedicated tx/rx queues on bonding devices slaves to handle LACP control plane traffic
-when in mode 4 (link-aggregration-802.3ad)::
+when in mode 4 (link-aggregation-802.3ad)::
 
    testpmd> set bonding lacp dedicated_queues (port_id) (enable|disable)
 
@@ -2297,7 +2297,7 @@ when in mode 4 (link-aggregration-802.3ad)::
 set bonding agg_mode
 ~~~~~~~~~~~~~~~~~~~~
 
-Enable one of the specific aggregators mode when in mode 4 (link-aggregration-802.3ad)::
+Enable one of the specific aggregators mode when in mode 4 (link-aggregation-802.3ad)::
 
    testpmd> set bonding agg_mode (port_id) (bandwidth|count|stable)
 
@@ -2691,8 +2691,8 @@ where:
 
 * ``shared_shaper_id``: Shared shaper ID to be deleted.
 
-Set port traffic management hiearchy node private shaper
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Set port traffic management hierarchy node private shaper
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 set the port traffic management hierarchy node private shaper::
 
@@ -2743,7 +2743,7 @@ Delete the WRED profile::
 Add port traffic management hierarchy nonleaf node
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Add nonleaf node to port traffic management hiearchy::
+Add nonleaf node to port traffic management hierarchy::
 
    testpmd> add port tm nonleaf node (port_id) (node_id) (parent_node_id) \
    (priority) (weight) (level_id) (shaper_profile_id) \
@@ -2758,7 +2758,7 @@ where:
 * ``weight``: Node weight (lowest weight is one). The node weight is relative
   to the weight sum of all siblings that have the same priority. It is used by
   the WFQ algorithm running on the parent node for scheduling this node.
-* ``level_id``: Hiearchy level of the node.
+* ``level_id``: Hierarchy level of the node.
 * ``shaper_profile_id``: Shaper profile ID of the private shaper to be used by
   the node.
 * ``n_sp_priorities``: Number of strict priorities.
@@ -2769,7 +2769,7 @@ where:
 Add port traffic management hierarchy leaf node
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Add leaf node to port traffic management hiearchy::
+Add leaf node to port traffic management hierarchy::
 
    testpmd> add port tm leaf node (port_id) (node_id) (parent_node_id) \
    (priority) (weight) (level_id) (shaper_profile_id) \
@@ -2784,7 +2784,7 @@ where:
 * ``weight``: Node weight (lowest weight is one). The node weight is relative
   to the weight sum of all siblings that have the same priority. It is used by
   the WFQ algorithm running on the parent node for scheduling this node.
-* ``level_id``: Hiearchy level of the node.
+* ``level_id``: Hierarchy level of the node.
 * ``shaper_profile_id``: Shaper profile ID of the private shaper to be used by
   the node.
 * ``cman_mode``: Congestion management mode to be enabled for this node.
@@ -2796,7 +2796,7 @@ where:
 Delete port traffic management hierarchy node
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Delete node from port traffic management hiearchy::
+Delete node from port traffic management hierarchy::
 
    testpmd> del port tm node (port_id) (node_id)
 
@@ -3989,7 +3989,7 @@ This section lists supported actions and their attributes, if any.
 
 - ``dec_ttl``: Performs a decrease TTL value action
 
-- ``set_ttl``: Set TTL value with specificed value
+- ``set_ttl``: Set TTL value with specified value
   - ``ttl_value {unsigned}``: The new TTL value to be set
 
 - ``set_mac_src``: set source MAC address
@@ -4522,7 +4522,7 @@ The following sections show functions to load/unload eBPF based filters.
 bpf-load
 ~~~~~~~~
 
-Load an eBPF program as a callback for partciular RX/TX queue::
+Load an eBPF program as a callback for particular RX/TX queue::
 
    testpmd> bpf-load rx|tx (portid) (queueid) (load-flags) (bpf-prog-filename)
 
@@ -4560,7 +4560,7 @@ To load (not JITed) t1.o at TX queue 0, port 0::
 bpf-unload
 ~~~~~~~~~~
 
-Unload previously loaded eBPF program for partciular RX/TX queue::
+Unload previously loaded eBPF program for particular RX/TX queue::
 
    testpmd> bpf-unload rx|tx (portid) (queueid)
 

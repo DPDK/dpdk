@@ -8,7 +8,7 @@ Contributing Code to DPDK
 
 This document outlines the guidelines for submitting code to DPDK.
 
-The DPDK development process is modelled (loosely) on the Linux Kernel development model so it is worth reading the
+The DPDK development process is modeled (loosely) on the Linux Kernel development model so it is worth reading the
 Linux kernel guide on submitting patches:
 `How to Get Your Change Into the Linux Kernel <https://www.kernel.org/doc/html/latest/process/submitting-patches.html>`_.
 The rationale for many of the DPDK guidelines is explained in greater detail in the kernel guidelines.
