@@ -358,6 +358,31 @@ cmac_test_vector = {
 };
 
 static const struct blockcipher_test_data
+null_auth_test_vector = {
+	.auth_algo = RTE_CRYPTO_AUTH_NULL,
+	.ciphertext = {		/* arbitrary data - shouldn't be used */
+		.data = plaintext_hash,
+		.len = 512
+	},
+	.auth_key = {		/* arbitrary data - shouldn't be used */
+		.data = {
+			0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6,
+			0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C
+		},
+		.len = 16
+	},
+	.digest = {
+		.data = {
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00
+		},
+		.len = 20,
+		.truncated_len = 12
+	}
+};
+
+static const struct blockcipher_test_data
 cmac_test_vector_12 = {
 	.auth_algo = RTE_CRYPTO_AUTH_AES_CMAC,
 	.ciphertext = {
@@ -741,7 +766,36 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB |
 			BLOCKCIPHER_TEST_TARGET_PMD_QAT
-	}
+	},
+	{
+		.test_descr = "NULL algo - auth generate",
+		.test_data = &null_auth_test_vector,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_NULL |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "NULL algo - auth verify",
+		.test_data = &null_auth_test_vector,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_NULL |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "NULL algo - auth generate - OOP",
+		.test_data = &null_auth_test_vector,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "NULL algo - auth verify - OOP",
+		.test_data = &null_auth_test_vector,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+
 };
 
 #endif /* TEST_CRYPTODEV_HASH_TEST_VECTORS_H_ */

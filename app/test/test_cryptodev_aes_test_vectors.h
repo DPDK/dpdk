@@ -221,6 +221,141 @@ static const uint8_t ciphertext512_aes128cbc[] = {
 	0xBB, 0xFF, 0xAE, 0xB5, 0x99, 0x6E, 0xCB, 0x0C
 };
 
+/* NULL cipher NULL auth 8-byte multiple test vector */
+static const struct blockcipher_test_data null_test_data_chain_x8_multiple = {
+	.crypto_algo = RTE_CRYPTO_CIPHER_NULL,
+	.cipher_key = {	/* arbitrary data - shouldn't be used */
+		.data = {
+			0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6,
+			0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C
+		},
+		.len = 16
+	},
+	.iv = {			/* arbitrary data - shouldn't be used */
+		.data = {
+			0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7,
+			0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF
+		},
+		.len = 16
+	},
+	.plaintext = {
+		.data = plaintext_aes_common,
+		.len = 512
+	},
+	.ciphertext = {
+		.data = plaintext_aes_common,
+		.len = 512
+	},
+	.auth_algo = RTE_CRYPTO_AUTH_NULL,
+	.auth_key = {		/* arbitrary data - shouldn't be used */
+		.data = {
+			0xF8, 0x2A, 0xC7, 0x54, 0xDB, 0x96, 0x18, 0xAA,
+			0xC3, 0xA1, 0x53, 0xF6, 0x1F, 0x17, 0x60, 0xBD,
+			0xDE, 0xF4, 0xDE, 0xAD
+		},
+		.len = 20
+	},
+	.digest = {
+		.data = {
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00
+		},
+		.len = 20,
+		.truncated_len = 12
+	}
+};
+
+/* NULL cipher NULL auth 4-byte multiple test vector */
+static const struct blockcipher_test_data null_test_data_chain_x4_multiple = {
+	.crypto_algo = RTE_CRYPTO_CIPHER_NULL,
+	.cipher_key = {	/* arbitrary data - shouldn't be used */
+		.data = {
+			0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6,
+			0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C
+		},
+		.len = 16
+	},
+	.iv = {			/* arbitrary data - shouldn't be used */
+		.data = {
+			0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7,
+			0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF
+		},
+		.len = 16
+	},
+	.plaintext = {
+		.data = plaintext_aes128ctr,
+		.len = 20
+	},
+	.ciphertext = {
+		.data = plaintext_aes128ctr,
+		.len = 20
+	},
+	.auth_algo = RTE_CRYPTO_AUTH_NULL,
+	.auth_key = {		/* arbitrary data - shouldn't be used */
+		.data = {
+			0xF8, 0x2A, 0xC7, 0x54, 0xDB, 0x96, 0x18, 0xAA,
+			0xC3, 0xA1, 0x53, 0xF6, 0x1F, 0x17, 0x60, 0xBD,
+			0xDE, 0xF4, 0xDE, 0xAD
+		},
+		.len = 20
+	},
+	.digest = {
+		.data = {
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00
+		},
+		.len = 20,
+		.truncated_len = 12
+	}
+};
+
+/* NULL cipher NULL auth 1-byte multiple test vector */
+static const struct blockcipher_test_data null_test_data_chain_x1_multiple = {
+	.crypto_algo = RTE_CRYPTO_CIPHER_NULL,
+	.cipher_key = {	/* arbitrary data - shouldn't be used */
+		.data = {
+			0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6,
+			0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C
+		},
+		.len = 16
+	},
+	.iv = {			/* arbitrary data - shouldn't be used */
+		.data = {
+			0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7,
+			0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF
+		},
+		.len = 16
+	},
+	.plaintext = {
+		.data = plaintext_aes128ctr,
+		.len = 21
+	},
+	.ciphertext = {
+		.data = plaintext_aes128ctr,
+		.len = 21
+	},
+	.auth_algo = RTE_CRYPTO_AUTH_NULL,
+	.auth_key = {		/* arbitrary data - shouldn't be used */
+		.data = {
+			0xF8, 0x2A, 0xC7, 0x54, 0xDB, 0x96, 0x18, 0xAA,
+			0xC3, 0xA1, 0x53, 0xF6, 0x1F, 0x17, 0x60, 0xBD,
+			0xDE, 0xF4, 0xDE, 0xAD
+		},
+		.len = 20
+	},
+	.digest = {
+		.data = {
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00
+		},
+		.len = 20,
+		.truncated_len = 12
+	}
+};
+
 /* AES128-CTR-SHA1 test vector */
 static const struct blockcipher_test_data aes_test_data_1 = {
 	.crypto_algo = RTE_CRYPTO_CIPHER_AES_CTR,
@@ -1822,6 +1957,90 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_CCP |
 			BLOCKCIPHER_TEST_TARGET_PMD_OCTEONTX
 	},
+	{
+		.test_descr = "NULL-CIPHER-NULL-AUTH encrypt & gen x8byte",
+		.test_data = &null_test_data_chain_x8_multiple,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_NULL |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "NULL-AUTH-NULL-CIPHER verify & decrypt x8byte",
+		.test_data = &null_test_data_chain_x8_multiple,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_NULL |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "NULL-CIPHER-NULL-AUTH encrypt & gen x8byte - OOP",
+		.test_data = &null_test_data_chain_x8_multiple,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "NULL-AUTH-NULL-CIPHER verify & decrypt x8byte - OOP",
+		.test_data = &null_test_data_chain_x8_multiple,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "NULL-CIPHER-NULL-AUTH encrypt & gen x4byte",
+		.test_data = &null_test_data_chain_x4_multiple,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_NULL |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "NULL-AUTH-NULL-CIPHER verify & decrypt x4byte",
+		.test_data = &null_test_data_chain_x4_multiple,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_NULL |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "NULL-CIPHER-NULL-AUTH encrypt & gen x4byte - OOP",
+		.test_data = &null_test_data_chain_x4_multiple,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "NULL-AUTH-NULL-CIPHER verify & decrypt x4byte - OOP",
+		.test_data = &null_test_data_chain_x4_multiple,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "NULL-CIPHER-NULL-AUTH encrypt & gen x1byte",
+		.test_data = &null_test_data_chain_x1_multiple,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_NULL |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "NULL-AUTH-NULL-CIPHER verify & decrypt x1byte",
+		.test_data = &null_test_data_chain_x1_multiple,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_NULL |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "NULL-CIPHER-NULL-AUTH encrypt & gen x1byte - OOP",
+		.test_data = &null_test_data_chain_x1_multiple,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "NULL-AUTH-NULL-CIPHER verify & decrypt x1byte - OOP",
+		.test_data = &null_test_data_chain_x1_multiple,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
 };
 
 static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
@@ -2125,7 +2344,63 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 		.test_data = &aes_test_data_xts_key_64_pt_48,
 		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT
-	}
+	},
+	{
+		.test_descr = "cipher-only - NULL algo - x8 - encryption",
+		.test_data = &null_test_data_chain_x8_multiple,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_NULL |
+				BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "cipher-only - NULL algo - x8 - decryption",
+		.test_data = &null_test_data_chain_x8_multiple,
+		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_NULL |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "cipher-only - NULL algo - x4 - encryption",
+		.test_data = &null_test_data_chain_x4_multiple,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_NULL |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "cipher-only - NULL algo - x4 - decryption",
+		.test_data = &null_test_data_chain_x4_multiple,
+		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_NULL |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "cipher-only - NULL algo - x4 - encryption - OOP",
+		.test_data = &null_test_data_chain_x4_multiple,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "cipher-only - NULL algo - x4 - decryption - OOP",
+		.test_data = &null_test_data_chain_x4_multiple,
+		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT
+		},
+	{
+		.test_descr = "cipher-only - NULL algo - x1 - encryption",
+		.test_data = &null_test_data_chain_x1_multiple,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_NULL |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "cipher-only - NULL algo - x1 - decryption",
+		.test_data = &null_test_data_chain_x1_multiple,
+		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_NULL |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
 };
 
 static const struct blockcipher_test_case aes_docsis_test_cases[] = {
