@@ -830,7 +830,6 @@ rte_timer_alt_manage(uint32_t timer_data_id,
 	union rte_timer_status status;
 	struct rte_timer *tim, *next_tim, **pprev;
 	struct rte_timer *run_first_tims[RTE_MAX_LCORE];
-	unsigned int runlist_lcore_ids[RTE_MAX_LCORE];
 	unsigned int this_lcore = rte_lcore_id();
 	struct rte_timer *prev[MAX_SKIPLIST_DEPTH + 1];
 	uint64_t cur_time;
@@ -899,7 +898,6 @@ rte_timer_alt_manage(uint32_t timer_data_id,
 
 		/* transition run-list from PENDING to RUNNING */
 		run_first_tims[nb_runlists] = tim;
-		runlist_lcore_ids[nb_runlists] = poll_lcore;
 		pprev = &run_first_tims[nb_runlists];
 		nb_runlists++;
 
@@ -946,25 +944,24 @@ rte_timer_alt_manage(uint32_t timer_data_id,
 			break;
 
 		tim = run_first_tims[min_idx];
-		privp = &data->priv_timer[runlist_lcore_ids[min_idx]];
 
 		/* Move down the runlist from which we picked a timer to
 		 * execute
 		 */
 		run_first_tims[min_idx] = run_first_tims[min_idx]->sl_next[0];
 
-		privp->updated = 0;
-		privp->running_tim = tim;
+		data->priv_timer[this_lcore].updated = 0;
+		data->priv_timer[this_lcore].running_tim = tim;
 
 		/* Call the provided callback function */
 		f(tim);
 
-		__TIMER_STAT_ADD(privp, pending, -1);
+		__TIMER_STAT_ADD(data->priv_timer, pending, -1);
 
 		/* the timer was stopped or reloaded by the callback
 		 * function, we have nothing to do here
 		 */
-		if (privp->updated == 1)
+		if (data->priv_timer[this_lcore].updated == 1)
 			continue;
 
 		if (tim->period == 0) {
@@ -989,7 +986,7 @@ rte_timer_alt_manage(uint32_t timer_data_id,
 				&data->priv_timer[this_lcore].list_lock);
 		}
 
-		privp->running_tim = NULL;
+		data->priv_timer[this_lcore].running_tim = NULL;
 	}
 
 	return 0;
