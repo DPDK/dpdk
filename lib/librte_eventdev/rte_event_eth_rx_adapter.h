@@ -173,6 +173,9 @@ struct rte_event_eth_rx_adapter_queue_conf {
 };
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
  * A structure used to retrieve statistics for an eth rx adapter instance.
  */
 struct rte_event_eth_rx_adapter_stats {
@@ -201,6 +204,9 @@ struct rte_event_eth_rx_adapter_stats {
 };
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
  * Callback function invoked by the SW adapter before it continues
  * to process packets. The callback is passed the size of the enqueue
  * buffer in the SW adapter and the occupancy of the buffer. The
@@ -392,6 +398,9 @@ int rte_event_eth_rx_adapter_start(uint8_t id);
 int rte_event_eth_rx_adapter_stop(uint8_t id);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
  * Retrieve statistics for an adapter
  *
  * @param id
@@ -404,7 +413,8 @@ int rte_event_eth_rx_adapter_stop(uint8_t id);
  *  - 0: Success, retrieved successfully.
  *  - <0: Error code on failure.
  */
-int rte_event_eth_rx_adapter_stats_get(uint8_t id,
+int __rte_experimental
+rte_event_eth_rx_adapter_stats_get(uint8_t id,
 				struct rte_event_eth_rx_adapter_stats *stats);
 
 /**
@@ -437,6 +447,9 @@ int rte_event_eth_rx_adapter_stats_reset(uint8_t id);
 int rte_event_eth_rx_adapter_service_id_get(uint8_t id, uint32_t *service_id);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
  * Register callback to process Rx packets, this is supported for
  * SW based packet transfers.
  * @see rte_event_eth_rx_cb_fn
@@ -453,7 +466,7 @@ int rte_event_eth_rx_adapter_service_id_get(uint8_t id, uint32_t *service_id);
  *  - 0: Success
  *  - <0: Error code on failure.
  */
-int
+int __rte_experimental
 rte_event_eth_rx_adapter_cb_register(uint8_t id,
 				uint16_t eth_dev_id,
 				rte_event_eth_rx_adapter_cb_fn cb_fn,

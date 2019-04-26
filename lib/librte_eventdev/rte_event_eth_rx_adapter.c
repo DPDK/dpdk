@@ -2296,7 +2296,7 @@ rte_event_eth_rx_adapter_stop(uint8_t id)
 	return rxa_ctrl(id, 0);
 }
 
-int
+int __rte_experimental
 rte_event_eth_rx_adapter_stats_get(uint8_t id,
 			       struct rte_event_eth_rx_adapter_stats *stats)
 {
@@ -2383,7 +2383,8 @@ rte_event_eth_rx_adapter_service_id_get(uint8_t id, uint32_t *service_id)
 	return rx_adapter->service_inited ? 0 : -ESRCH;
 }
 
-int rte_event_eth_rx_adapter_cb_register(uint8_t id,
+int __rte_experimental
+rte_event_eth_rx_adapter_cb_register(uint8_t id,
 					uint16_t eth_dev_id,
 					rte_event_eth_rx_adapter_cb_fn cb_fn,
 					void *cb_arg)

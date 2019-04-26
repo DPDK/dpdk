@@ -63,7 +63,6 @@ DPDK_17.11 {
 	rte_event_eth_rx_adapter_queue_del;
 	rte_event_eth_rx_adapter_service_id_get;
 	rte_event_eth_rx_adapter_start;
-	rte_event_eth_rx_adapter_stats_get;
 	rte_event_eth_rx_adapter_stats_reset;
 	rte_event_eth_rx_adapter_stop;
 } DPDK_17.08;
@@ -95,7 +94,6 @@ DPDK_19.05 {
 	rte_event_crypto_adapter_stats_get;
 	rte_event_crypto_adapter_stats_reset;
 	rte_event_crypto_adapter_stop;
-	rte_event_eth_rx_adapter_cb_register;
 	rte_event_port_unlinks_in_progress;
 	rte_event_eth_tx_adapter_caps_get;
 	rte_event_eth_tx_adapter_create;
@@ -124,3 +122,10 @@ DPDK_19.05 {
 	rte_event_timer_arm_tmo_tick_burst;
 	rte_event_timer_cancel_burst;
 } DPDK_18.05;
+
+EXPERIMENTAL {
+	global:
+
+	rte_event_eth_rx_adapter_cb_register;
+	rte_event_eth_rx_adapter_stats_get;
+};
