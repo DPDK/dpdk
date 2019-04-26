@@ -143,7 +143,7 @@ power_manager_get_current_frequency(unsigned core_num)
 	rte_spinlock_lock(&global_core_freq_info[core_num].power_sl);
 	index = rte_power_get_freq(core_num);
 	rte_spinlock_unlock(&global_core_freq_info[core_num].power_sl);
-	if (index >= RTE_MAX_LCORE)
+	if (index >= RTE_MAX_LCORE_FREQS)
 		freq = 0;
 	else
 		freq = global_core_freq_info[core_num].freqs[index];
