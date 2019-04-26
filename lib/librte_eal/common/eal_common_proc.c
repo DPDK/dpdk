@@ -678,11 +678,6 @@ send_msg(const char *dst_path, struct rte_mp_msg *msg, int type)
 			unlink(dst_path);
 			return 0;
 		}
-		if (errno == ENOBUFS) {
-			RTE_LOG(ERR, EAL, "Peer cannot receive message %s\n",
-				dst_path);
-			return 0;
-		}
 		RTE_LOG(ERR, EAL, "failed to send to (%s) due to %s\n",
 			dst_path, strerror(errno));
 		return -1;
