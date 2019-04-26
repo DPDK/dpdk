@@ -685,7 +685,9 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 		rte_vfio_clear_group(vfio_group_fd);
 		return -1;
 	} else if (!(group_status.flags & VFIO_GROUP_FLAGS_VIABLE)) {
-		RTE_LOG(ERR, EAL, "  %s VFIO group is not viable!\n", dev_addr);
+		RTE_LOG(ERR, EAL, "  %s VFIO group is not viable! "
+				"Not all devices in IOMMU group bound to VFIO or unbound\n",
+				dev_addr);
 		close(vfio_group_fd);
 		rte_vfio_clear_group(vfio_group_fd);
 		return -1;
