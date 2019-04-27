@@ -628,6 +628,36 @@ mlx5_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 }
 
 /**
+ * Retrieve the master device for representor in the same switch domain.
+ *
+ * @param dev
+ *   Pointer to representor Ethernet device structure.
+ *
+ * @return
+ *   Master device structure  on success, NULL otherwise.
+ */
+
+static struct rte_eth_dev *
+mlx5_find_master_dev(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv;
+	uint16_t port_id;
+	uint16_t domain_id;
+
+	priv = dev->data->dev_private;
+	domain_id = priv->domain_id;
+	assert(priv->representor);
+	RTE_ETH_FOREACH_DEV_OF(port_id, dev->device) {
+		priv = rte_eth_devices[port_id].data->dev_private;
+		if (priv &&
+		    priv->master &&
+		    priv->domain_id == domain_id)
+			return &rte_eth_devices[port_id];
+	}
+	return NULL;
+}
+
+/**
  * DPDK callback to retrieve physical link information.
  *
  * @param dev
@@ -666,10 +696,34 @@ mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev,
 	};
 	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
 	if (ret) {
-		DRV_LOG(WARNING,
-			"port %u ioctl(SIOCETHTOOL, ETHTOOL_GSET) failed: %s",
-			dev->data->port_id, strerror(rte_errno));
-		return ret;
+		if (ret == -ENOTSUP && priv->representor) {
+			struct rte_eth_dev *master;
+
+			/*
+			 * For representors we can try to inherit link
+			 * settings from the master device. Actually
+			 * link settings do not make a lot of sense
+			 * for representors due to missing physical
+			 * link. The old kernel drivers supported
+			 * emulated settings query for representors,
+			 * the new ones do not, so we have to add
+			 * this code for compatibility issues.
+			 */
+			master = mlx5_find_master_dev(dev);
+			if (master) {
+				ifr = (struct ifreq) {
+					.ifr_data = (void *)&edata,
+				};
+				ret = mlx5_ifreq(master, SIOCETHTOOL, &ifr);
+			}
+		}
+		if (ret) {
+			DRV_LOG(WARNING,
+				"port %u ioctl(SIOCETHTOOL,"
+				" ETHTOOL_GSET) failed: %s",
+				dev->data->port_id, strerror(rte_errno));
+			return ret;
+		}
 	}
 	link_speed = ethtool_cmd_speed(&edata);
 	if (link_speed == -1)
@@ -722,6 +776,7 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev,
 	struct ethtool_link_settings gcmd = { .cmd = ETHTOOL_GLINKSETTINGS };
 	struct ifreq ifr;
 	struct rte_eth_link dev_link;
+	struct rte_eth_dev *master = NULL;
 	uint64_t sc;
 	int ret;
 
@@ -740,11 +795,33 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev,
 	};
 	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
 	if (ret) {
-		DRV_LOG(DEBUG,
-			"port %u ioctl(SIOCETHTOOL, ETHTOOL_GLINKSETTINGS)"
-			" failed: %s",
-			dev->data->port_id, strerror(rte_errno));
-		return ret;
+		if (ret == -ENOTSUP && priv->representor) {
+			/*
+			 * For representors we can try to inherit link
+			 * settings from the master device. Actually
+			 * link settings do not make a lot of sense
+			 * for representors due to missing physical
+			 * link. The old kernel drivers supported
+			 * emulated settings query for representors,
+			 * the new ones do not, so we have to add
+			 * this code for compatibility issues.
+			 */
+			master = mlx5_find_master_dev(dev);
+			if (master) {
+				ifr = (struct ifreq) {
+					.ifr_data = (void *)&gcmd,
+				};
+				ret = mlx5_ifreq(master, SIOCETHTOOL, &ifr);
+			}
+		}
+		if (ret) {
+			DRV_LOG(DEBUG,
+				"port %u ioctl(SIOCETHTOOL,"
+				" ETHTOOL_GLINKSETTINGS) failed: %s",
+				dev->data->port_id, strerror(rte_errno));
+			return ret;
+		}
+
 	}
 	gcmd.link_mode_masks_nwords = -gcmd.link_mode_masks_nwords;
 
@@ -755,11 +832,11 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev,
 
 	*ecmd = gcmd;
 	ifr.ifr_data = (void *)ecmd;
-	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
+	ret = mlx5_ifreq(master ? master : dev, SIOCETHTOOL, &ifr);
 	if (ret) {
 		DRV_LOG(DEBUG,
-			"port %u ioctl(SIOCETHTOOL, ETHTOOL_GLINKSETTINGS)"
-			" failed: %s",
+			"port %u ioctl(SIOCETHTOOL,"
+			"ETHTOOL_GLINKSETTINGS) failed: %s",
 			dev->data->port_id, strerror(rte_errno));
 		return ret;
 	}
