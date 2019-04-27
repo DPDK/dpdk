@@ -99,7 +99,7 @@ struct mlx5_switch_info {
 	uint64_t switch_id; /**< Switch identifier. */
 };
 
-LIST_HEAD(mlx5_dev_list, mlx5_priv);
+LIST_HEAD(mlx5_dev_list, mlx5_ibv_shared);
 
 /* Shared data between primary and secondary processes. */
 struct mlx5_shared_data {
@@ -276,6 +276,8 @@ struct mlx5_ibv_shared {
 	char ibdev_path[IBV_SYSFS_PATH_MAX]; /* IB device path for secondary */
 	struct ibv_device_attr_ex device_attr; /* Device properties. */
 	struct rte_pci_device *pci_dev; /* Backend PCI device. */
+	LIST_ENTRY(mlx5_ibv_shared) mem_event_cb;
+	/**< Called by memory event callback. */
 	struct {
 		uint32_t dev_gen; /* Generation number to flush local caches. */
 		rte_rwlock_t rwlock; /* MR Lock. */
@@ -322,8 +324,6 @@ struct mlx5_proc_priv {
 	((struct mlx5_proc_priv *)rte_eth_devices[port_id].process_private)
 
 struct mlx5_priv {
-	LIST_ENTRY(mlx5_priv) mem_event_cb;
-	/**< Called by memory event callback. */
 	struct rte_eth_dev_data *dev_data;  /* Pointer to device data. */
 	struct mlx5_ibv_shared *sh; /* Shared IB device context. */
 	uint32_t ibv_port; /* IB device port number. */

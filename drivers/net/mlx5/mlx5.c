@@ -673,9 +673,9 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	mlx5_mprq_free_mp(dev);
 	/* Remove from memory callback device list. */
 	rte_rwlock_write_lock(&mlx5_shared_data->mem_event_rwlock);
-	LIST_REMOVE(priv, mem_event_cb);
-	rte_rwlock_write_unlock(&mlx5_shared_data->mem_event_rwlock);
 	assert(priv->sh);
+	LIST_REMOVE(priv->sh, mem_event_cb);
+	rte_rwlock_write_unlock(&mlx5_shared_data->mem_event_rwlock);
 	mlx5_free_shared_dr(priv);
 	if (priv->rss_conf.rss_key != NULL)
 		rte_free(priv->rss_conf.rss_key);
@@ -1574,7 +1574,7 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	/* Add device to memory callback list. */
 	rte_rwlock_write_lock(&mlx5_shared_data->mem_event_rwlock);
 	LIST_INSERT_HEAD(&mlx5_shared_data->mem_event_cb_list,
-			 priv, mem_event_cb);
+			 sh, mem_event_cb);
 	rte_rwlock_write_unlock(&mlx5_shared_data->mem_event_rwlock);
 	return eth_dev;
 error:
