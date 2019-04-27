@@ -147,6 +147,7 @@ struct mlx5_dev_spawn_data {
 	struct mlx5_switch_info info; /**< Switch information. */
 	struct ibv_device *ibv_dev; /**< Associated IB device. */
 	struct rte_eth_dev *eth_dev; /**< Associated Ethernet device. */
+	struct rte_pci_device *pci_dev; /**< Backend PCI device. */
 };
 
 static LIST_HEAD(, mlx5_ibv_shared) mlx5_ibv_list = LIST_HEAD_INITIALIZER();
@@ -225,6 +226,7 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn)
 		sizeof(sh->ibdev_name));
 	strncpy(sh->ibdev_path, sh->ctx->device->ibdev_path,
 		sizeof(sh->ibdev_path));
+	sh->pci_dev = spawn->pci_dev;
 	pthread_mutex_init(&sh->intr_mutex, NULL);
 	/*
 	 * Setting port_id to max unallowed value means
@@ -237,6 +239,22 @@ mlx5_alloc_shared_ibctx(const struct mlx5_dev_spawn_data *spawn)
 	if (sh->pd == NULL) {
 		DRV_LOG(ERR, "PD allocation failure");
 		err = ENOMEM;
+		goto error;
+	}
+	/*
+	 * Once the device is added to the list of memory event
+	 * callback, its global MR cache table cannot be expanded
+	 * on the fly because of deadlock. If it overflows, lookup
+	 * should be done by searching MR list linearly, which is slow.
+	 *
+	 * At this point the device is not added to the memory
+	 * event list yet, context is just being created.
+	 */
+	err = mlx5_mr_btree_init(&sh->mr.cache,
+				 MLX5_MR_BTREE_CACHE_N * 2,
+				 sh->pci_dev->device.numa_node);
+	if (err) {
+		err = rte_errno;
 		goto error;
 	}
 	LIST_INSERT_HEAD(&mlx5_ibv_list, sh, next);
@@ -286,6 +304,8 @@ mlx5_free_shared_ibctx(struct mlx5_ibv_shared *sh)
 	assert(rte_eal_process_type() == RTE_PROC_PRIMARY);
 	if (--sh->refcnt)
 		goto exit;
+	/* Release created Memory Regions. */
+	mlx5_mr_release(sh);
 	LIST_REMOVE(sh, next);
 	/*
 	 *  Ensure there is no async event handler installed.
@@ -651,7 +671,10 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	}
 	mlx5_proc_priv_uninit(dev);
 	mlx5_mprq_free_mp(dev);
-	mlx5_mr_release(dev);
+	/* Remove from memory callback device list. */
+	rte_rwlock_write_lock(&mlx5_shared_data->mem_event_rwlock);
+	LIST_REMOVE(priv, mem_event_cb);
+	rte_rwlock_write_unlock(&mlx5_shared_data->mem_event_rwlock);
 	assert(priv->sh);
 	mlx5_free_shared_dr(priv);
 	if (priv->rss_conf.rss_key != NULL)
@@ -1548,19 +1571,6 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		goto error;
 	}
 	priv->config.flow_prio = err;
-	/*
-	 * Once the device is added to the list of memory event
-	 * callback, its global MR cache table cannot be expanded
-	 * on the fly because of deadlock. If it overflows, lookup
-	 * should be done by searching MR list linearly, which is slow.
-	 */
-	err = mlx5_mr_btree_init(&priv->mr.cache,
-				 MLX5_MR_BTREE_CACHE_N * 2,
-				 eth_dev->device->numa_node);
-	if (err) {
-		err = rte_errno;
-		goto error;
-	}
 	/* Add device to memory callback list. */
 	rte_rwlock_write_lock(&mlx5_shared_data->mem_event_rwlock);
 	LIST_INSERT_HEAD(&mlx5_shared_data->mem_event_cb_list,
@@ -1757,6 +1767,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			list[ns].ibv_port = i;
 			list[ns].ibv_dev = ibv_match[0];
 			list[ns].eth_dev = NULL;
+			list[ns].pci_dev = pci_dev;
 			list[ns].ifindex = mlx5_nl_ifindex
 					(nl_rdma, list[ns].ibv_dev->name, i);
 			if (!list[ns].ifindex) {
@@ -1823,6 +1834,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			list[ns].ibv_port = 1;
 			list[ns].ibv_dev = ibv_match[i];
 			list[ns].eth_dev = NULL;
+			list[ns].pci_dev = pci_dev;
 			list[ns].ifindex = 0;
 			if (nl_rdma >= 0)
 				list[ns].ifindex = mlx5_nl_ifindex

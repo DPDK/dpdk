@@ -275,6 +275,14 @@ struct mlx5_ibv_shared {
 	char ibdev_name[IBV_SYSFS_NAME_MAX]; /* IB device name. */
 	char ibdev_path[IBV_SYSFS_PATH_MAX]; /* IB device path for secondary */
 	struct ibv_device_attr_ex device_attr; /* Device properties. */
+	struct rte_pci_device *pci_dev; /* Backend PCI device. */
+	struct {
+		uint32_t dev_gen; /* Generation number to flush local caches. */
+		rte_rwlock_t rwlock; /* MR Lock. */
+		struct mlx5_mr_btree cache; /* Global MR cache table. */
+		struct mlx5_mr_list mr_list; /* Registered MR list. */
+		struct mlx5_mr_list mr_free_list; /* Freed MR list. */
+	} mr;
 	/* Shared DV/DR flow data section. */
 	pthread_mutex_t dv_mutex; /* DV context mutex. */
 	uint32_t dv_refcnt; /* DV/DR data reference counter. */
@@ -347,13 +355,6 @@ struct mlx5_priv {
 	struct mlx5_flows ctrl_flows; /* Control flow rules. */
 	LIST_HEAD(counters, mlx5_flow_counter) flow_counters;
 	/* Flow counters. */
-	struct {
-		uint32_t dev_gen; /* Generation number to flush local caches. */
-		rte_rwlock_t rwlock; /* MR Lock. */
-		struct mlx5_mr_btree cache; /* Global MR cache table. */
-		struct mlx5_mr_list mr_list; /* Registered MR list. */
-		struct mlx5_mr_list mr_free_list; /* Freed MR list. */
-	} mr;
 	LIST_HEAD(rxq, mlx5_rxq_ctrl) rxqsctrl; /* DPDK Rx queues. */
 	LIST_HEAD(rxqibv, mlx5_rxq_ibv) rxqsibv; /* Verbs Rx queues. */
 	LIST_HEAD(hrxq, mlx5_hrxq) hrxqs; /* Verbs Hash Rx queues. */

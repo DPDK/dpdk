@@ -814,7 +814,7 @@ mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		goto error;
 	}
 	/* Save pointer of global generation number to check memory event. */
-	tmpl->txq.mr_ctrl.dev_gen_ptr = &priv->mr.dev_gen;
+	tmpl->txq.mr_ctrl.dev_gen_ptr = &priv->sh->mr.dev_gen;
 	assert(desc > MLX5_TX_COMP_THRESH);
 	tmpl->txq.offloads = conf->offloads |
 			     dev->data->dev_conf.txmode.offloads;
