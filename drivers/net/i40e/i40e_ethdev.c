@@ -12710,9 +12710,6 @@ i40e_config_rss_filter(struct i40e_pf *pf,
 		return -EINVAL;
 	}
 
-	if (rss_info->conf.queue_num)
-		return -EINVAL;
-
 	/* If both VMDQ and RSS enabled, not all of PF queues are configured.
 	 * It's necessary to calculate the actual PF queues that are configured.
 	 */
