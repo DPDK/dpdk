@@ -34,7 +34,6 @@
 #define HAL_ATLANTIC_WOL_FILTERS_COUNT     8
 #define HAL_ATLANTIC_UTILS_FW2X_MSG_WOL    0x0E
 
-#define HW_ATL_FW_FEATURE_EEPROM 0x03010025
 #define HW_ATL_FW_FEATURE_LED 0x03010026
 
 struct fw2x_msg_wol_pattern {
@@ -513,7 +512,7 @@ static int aq_fw2x_get_eeprom(struct aq_hw_s *self, int dev_addr,
 	u32 mpi_opts;
 	int err = 0;
 
-	if (self->fw_ver_actual < HW_ATL_FW_FEATURE_EEPROM)
+	if ((self->caps_lo & BIT(CAPS_LO_SMBUS_READ)) == 0)
 		return -EOPNOTSUPP;
 
 	request.msg_id = 0;
@@ -591,7 +590,7 @@ static int aq_fw2x_set_eeprom(struct aq_hw_s *self, int dev_addr,
 	u32 mpi_opts, result = 0;
 	int err = 0;
 
-	if (self->fw_ver_actual < HW_ATL_FW_FEATURE_EEPROM)
+	if ((self->caps_lo & BIT(CAPS_LO_SMBUS_WRITE)) == 0)
 		return -EOPNOTSUPP;
 
 	request.msg_id = 0;
