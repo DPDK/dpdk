@@ -1433,6 +1433,9 @@ int atl_dev_get_eeprom(struct rte_eth_dev *dev,
 	    eeprom->data == NULL)
 		return -EINVAL;
 
+	if (eeprom->magic > 0x7F)
+		return -EINVAL;
+
 	if (eeprom->magic)
 		dev_addr = eeprom->magic;
 
@@ -1451,6 +1454,9 @@ int atl_dev_set_eeprom(struct rte_eth_dev *dev,
 
 	if (eeprom->length + eeprom->offset > SFP_EEPROM_SIZE ||
 	    eeprom->data == NULL)
+		return -EINVAL;
+
+	if (eeprom->magic > 0x7F)
 		return -EINVAL;
 
 	if (eeprom->magic)
