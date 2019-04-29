@@ -761,6 +761,18 @@ check_input(const struct rte_mp_msg *msg)
 	if (validate_action_name(msg->name))
 		return false;
 
+	if (msg->len_param < 0) {
+		RTE_LOG(ERR, EAL, "Message data length is negative\n");
+		rte_errno = EINVAL;
+		return false;
+	}
+
+	if (msg->num_fds < 0) {
+		RTE_LOG(ERR, EAL, "Number of fd's is negative\n");
+		rte_errno = EINVAL;
+		return false;
+	}
+
 	if (msg->len_param > RTE_MP_MAX_PARAM_LEN) {
 		RTE_LOG(ERR, EAL, "Message data is too long\n");
 		rte_errno = E2BIG;
