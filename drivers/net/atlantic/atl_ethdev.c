@@ -179,6 +179,8 @@ static struct rte_pci_driver rte_atl_pmd = {
 			| DEV_TX_OFFLOAD_MACSEC_INSERT \
 			| DEV_TX_OFFLOAD_MULTI_SEGS)
 
+#define SFP_EEPROM_SIZE 0x100
+
 static const struct rte_eth_desc_lim rx_desc_lim = {
 	.nb_max = ATL_MAX_RING_DESC,
 	.nb_min = ATL_MIN_RING_DESC,
@@ -1411,7 +1413,6 @@ atl_dev_interrupt_handler(void *param)
 	atl_dev_interrupt_action(dev, dev->intr_handle);
 }
 
-#define SFP_EEPROM_SIZE 0xff
 
 static int
 atl_dev_get_eeprom_length(struct rte_eth_dev *dev __rte_unused)
