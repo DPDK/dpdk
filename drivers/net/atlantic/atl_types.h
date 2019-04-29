@@ -177,7 +177,7 @@ struct aq_fw_ops {
 			  u32 *data, u32 len, u32 offset);
 
 	int (*set_eeprom)(struct aq_hw_s *self, int dev_addr,
-			  u32 *data, u32 len);
+			  u32 *data, u32 len, u32 offset);
 
 	int (*send_macsec_req)(struct aq_hw_s *self,
 			       struct macsec_msg_fw_request *req,

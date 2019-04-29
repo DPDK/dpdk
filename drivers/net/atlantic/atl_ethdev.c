@@ -1448,14 +1448,15 @@ int atl_dev_set_eeprom(struct rte_eth_dev *dev,
 	if (hw->aq_fw_ops->set_eeprom == NULL)
 		return -ENOTSUP;
 
-	if (eeprom->length != SFP_EEPROM_SIZE || eeprom->data == NULL)
+	if (eeprom->length + eeprom->offset > SFP_EEPROM_SIZE ||
+	    eeprom->data == NULL)
 		return -EINVAL;
 
 	if (eeprom->magic)
 		dev_addr = eeprom->magic;
 
-	return hw->aq_fw_ops->set_eeprom(hw, dev_addr,
-					 eeprom->data, eeprom->length);
+	return hw->aq_fw_ops->set_eeprom(hw, dev_addr, eeprom->data,
+					 eeprom->length, eeprom->offset);
 }
 
 static int

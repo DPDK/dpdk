@@ -337,15 +337,8 @@ struct offload_info {
 	u8 buf[0];
 } __attribute__((__packed__));
 
-struct smbus_read_request {
-	u32 offset; /* not used */
-	u32 device_id;
-	u32 address;
-	u32 length;
-} __attribute__((__packed__));
-
-struct smbus_write_request {
-	u32 offset; /* not used */
+struct smbus_request {
+	u32 msg_id; /* not used */
 	u32 device_id;
 	u32 address;
 	u32 length;

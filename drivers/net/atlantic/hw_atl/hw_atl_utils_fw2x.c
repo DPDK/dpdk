@@ -498,14 +498,17 @@ static int aq_fw2x_led_control(struct aq_hw_s *self, u32 mode)
 static int aq_fw2x_get_eeprom(struct aq_hw_s *self, int dev_addr,
 			      u32 *data, u32 len, u32 offset)
 {
-	int err = 0;
-	struct smbus_read_request request;
-	u32 mpi_opts;
+	u32 bytes_remains = len % sizeof(u32);
+	u32 num_dwords = len / sizeof(u32);
+	struct smbus_request request;
 	u32 result = 0;
+	u32 mpi_opts;
+	int err = 0;
 
 	if (self->fw_ver_actual < HW_ATL_FW_FEATURE_EEPROM)
 		return -EOPNOTSUPP;
 
+	request.msg_id = 0;
 	request.device_id = dev_addr;
 	request.address = offset;
 	request.length = len;
@@ -540,34 +543,33 @@ static int aq_fw2x_get_eeprom(struct aq_hw_s *self, int dev_addr,
 	if (err < 0)
 		return err;
 
-	if (result == 0) {
-		u32 num_dwords = len / sizeof(u32);
-		u32 bytes_remains = len % sizeof(u32);
+	if (result)
+		return -EIO;
 
-		if (num_dwords) {
-			err = hw_atl_utils_fw_downld_dwords(self,
-				self->rpc_addr + sizeof(u32) * 2,
-				data,
-				num_dwords);
+	if (num_dwords) {
+		err = hw_atl_utils_fw_downld_dwords(self,
+			self->rpc_addr + sizeof(u32) * 2,
+			data,
+			num_dwords);
 
-			if (err < 0)
-				return err;
-		}
+		if (err < 0)
+			return err;
+	}
 
-		if (bytes_remains) {
-			u32 val = 0;
+	if (bytes_remains) {
+		u32 val = 0;
 
-			err = hw_atl_utils_fw_downld_dwords(self,
-				self->rpc_addr + sizeof(u32) * 2 + num_dwords,
-				&val,
-				sizeof(u32));
+		err = hw_atl_utils_fw_downld_dwords(self,
+			self->rpc_addr + (sizeof(u32) * 2) +
+			(num_dwords * sizeof(u32)),
+			&val,
+			1);
 
-			if (err < 0)
-				return err;
+		if (err < 0)
+			return err;
 
-			rte_memcpy((u8 *)data + len - bytes_remains,
-				   &val, bytes_remains);
-		}
+		rte_memcpy((u8 *)data + len - bytes_remains,
+				&val, bytes_remains);
 	}
 
 	return 0;
@@ -575,17 +577,18 @@ static int aq_fw2x_get_eeprom(struct aq_hw_s *self, int dev_addr,
 
 
 static int aq_fw2x_set_eeprom(struct aq_hw_s *self, int dev_addr,
-			      u32 *data, u32 len)
+			      u32 *data, u32 len, u32 offset)
 {
-	struct smbus_write_request request;
+	struct smbus_request request;
 	u32 mpi_opts, result = 0;
 	int err = 0;
 
 	if (self->fw_ver_actual < HW_ATL_FW_FEATURE_EEPROM)
 		return -EOPNOTSUPP;
 
+	request.msg_id = 0;
 	request.device_id = dev_addr;
-	request.address = 0;
+	request.address = offset;
 	request.length = len;
 
 	/* Write SMBUS request to cfg memory */
@@ -597,13 +600,34 @@ static int aq_fw2x_set_eeprom(struct aq_hw_s *self, int dev_addr,
 		return err;
 
 	/* Write SMBUS data to cfg memory */
-	err = hw_atl_utils_fw_upload_dwords(self,
-				self->rpc_addr + sizeof(request),
-				(u32 *)(void *)data,
-				RTE_ALIGN(len, sizeof(u32)));
+	u32 num_dwords = len / sizeof(u32);
+	u32 bytes_remains = len % sizeof(u32);
 
-	if (err < 0)
-		return err;
+	if (num_dwords) {
+		err = hw_atl_utils_fw_upload_dwords(self,
+			self->rpc_addr + sizeof(request),
+			(u32 *)(void *)data,
+			num_dwords);
+
+		if (err < 0)
+			return err;
+	}
+
+	if (bytes_remains) {
+		u32 val = 0;
+
+		rte_memcpy(&val, (u8 *)data + (sizeof(u32) * num_dwords),
+			   bytes_remains);
+
+		err = hw_atl_utils_fw_upload_dwords(self,
+			self->rpc_addr + sizeof(request) +
+			(num_dwords * sizeof(u32)),
+			&val,
+			1);
+
+		if (err < 0)
+			return err;
+	}
 
 	/* Toggle 0x368.CAPS_LO_SMBUS_WRITE bit */
 	mpi_opts = aq_hw_read_reg(self, HW_ATL_FW2X_MPI_CONTROL_ADDR);
@@ -626,6 +650,9 @@ static int aq_fw2x_set_eeprom(struct aq_hw_s *self, int dev_addr,
 
 	if (err < 0)
 		return err;
+
+	if (result)
+		return -EIO;
 
 	return 0;
 }
