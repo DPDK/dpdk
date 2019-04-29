@@ -2111,6 +2111,11 @@ tap_mp_attach_queues(const char *port_name, struct rte_eth_dev *dev)
 	TAP_LOG(DEBUG, "Received IPC reply for %s", reply_param->port_name);
 
 	/* Attach the queues from received file descriptors */
+	if (reply_param->rxq_count + reply_param->txq_count != reply->num_fds) {
+		TAP_LOG(ERR, "Unexpected number of fds received");
+		return -1;
+	}
+
 	dev->data->nb_rx_queues = reply_param->rxq_count;
 	dev->data->nb_tx_queues = reply_param->txq_count;
 	fd_iterator = 0;
@@ -2151,19 +2156,24 @@ tap_mp_sync_queues(const struct rte_mp_msg *request, const void *peer)
 	/* Fill file descriptors for all queues */
 	reply.num_fds = 0;
 	reply_param->rxq_count = 0;
+	if (dev->data->nb_rx_queues + dev->data->nb_tx_queues >
+			RTE_MP_MAX_FD_NUM){
+		TAP_LOG(ERR, "Number of rx/tx queues exceeds max number of fds");
+		return -1;
+	}
+
 	for (queue = 0; queue < dev->data->nb_rx_queues; queue++) {
 		reply.fds[reply.num_fds++] = process_private->rxq_fds[queue];
 		reply_param->rxq_count++;
 	}
 	RTE_ASSERT(reply_param->rxq_count == dev->data->nb_rx_queues);
-	RTE_ASSERT(reply_param->txq_count == dev->data->nb_tx_queues);
-	RTE_ASSERT(reply.num_fds <= RTE_MP_MAX_FD_NUM);
 
 	reply_param->txq_count = 0;
 	for (queue = 0; queue < dev->data->nb_tx_queues; queue++) {
 		reply.fds[reply.num_fds++] = process_private->txq_fds[queue];
 		reply_param->txq_count++;
 	}
+	RTE_ASSERT(reply_param->txq_count == dev->data->nb_tx_queues);
 
 	/* Send reply */
 	strlcpy(reply.name, request->name, sizeof(reply.name));
