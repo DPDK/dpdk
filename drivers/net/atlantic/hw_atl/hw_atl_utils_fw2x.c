@@ -671,7 +671,7 @@ static int aq_fw2x_send_macsec_request(struct aq_hw_s *self,
 	int err = 0;
 	u32 mpi_opts = 0;
 
-	if (!response || !response)
+	if (!req || !response)
 		return 0;
 
 	if ((self->caps_lo & BIT(CAPS_LO_MACSEC)) == 0)
