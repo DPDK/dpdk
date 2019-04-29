@@ -285,7 +285,15 @@ read_msg(struct mp_msg_internal *m, struct sockaddr_un *s)
 			break;
 		}
 	}
-
+	/* sanity-check the response */
+	if (m->msg.num_fds < 0 || m->msg.num_fds > RTE_MP_MAX_FD_NUM) {
+		RTE_LOG(ERR, EAL, "invalid number of fd's received\n");
+		return -1;
+	}
+	if (m->msg.len_param < 0 || m->msg.len_param > RTE_MP_MAX_PARAM_LEN) {
+		RTE_LOG(ERR, EAL, "invalid received data length\n");
+		return -1;
+	}
 	return 0;
 }
 
