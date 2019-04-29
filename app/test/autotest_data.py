@@ -303,12 +303,6 @@ parallel_test_list = [
         "Report":  None,
     },
     {
-        "Name":    "Devargs autotest",
-        "Command": "devargs_autotest",
-        "Func":    default_autotest,
-        "Report":  None,
-    },
-    {
         "Name":    "Link bonding autotest",
         "Command": "link_bonding_autotest",
         "Func":    default_autotest,

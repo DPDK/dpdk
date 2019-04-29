@@ -200,7 +200,6 @@ fast_non_parallel_test_names = [
         'cryptodev_openssl_asym_autotest',
         'cryptodev_sw_mvsam_autotest',
         'delay_us_sleep_autotest',
-        'devargs_autotest',
         'distributor_autotest',
         'eventdev_common_autotest',
         'eventdev_octeontx_autotest',
