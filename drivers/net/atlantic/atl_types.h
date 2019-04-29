@@ -169,6 +169,7 @@ struct aq_fw_ops {
 	int (*get_eee_rate)(struct aq_hw_s *self, u32 *rate,
 			u32 *supported_rates);
 
+	int (*get_flow_control)(struct aq_hw_s *self, u32 *fc);
 	int (*set_flow_control)(struct aq_hw_s *self);
 
 	int (*led_control)(struct aq_hw_s *self, u32 mode);

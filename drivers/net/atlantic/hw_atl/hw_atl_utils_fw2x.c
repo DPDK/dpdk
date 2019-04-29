@@ -473,7 +473,15 @@ static int aq_fw2x_get_eee_rate(struct aq_hw_s *self, u32 *rate,
 	return err;
 }
 
+static int aq_fw2x_get_flow_control(struct aq_hw_s *self, u32 *fc)
+{
+	u32 mpi_state = aq_hw_read_reg(self, HW_ATL_FW2X_MPI_CONTROL2_ADDR);
 
+	*fc = ((mpi_state & BIT(CAPS_HI_PAUSE)) ? AQ_NIC_FC_RX : 0) |
+	      ((mpi_state & BIT(CAPS_HI_ASYMMETRIC_PAUSE)) ? AQ_NIC_FC_TX : 0);
+
+	return 0;
+}
 
 static int aq_fw2x_set_flow_control(struct aq_hw_s *self)
 {
@@ -714,6 +722,7 @@ const struct aq_fw_ops aq_fw_2x_ops = {
 	.get_cable_len = aq_fw2x_get_cable_len,
 	.set_eee_rate = aq_fw2x_set_eee_rate,
 	.get_eee_rate = aq_fw2x_get_eee_rate,
+	.get_flow_control = aq_fw2x_get_flow_control,
 	.set_flow_control = aq_fw2x_set_flow_control,
 	.led_control = aq_fw2x_led_control,
 	.get_eeprom = aq_fw2x_get_eeprom,

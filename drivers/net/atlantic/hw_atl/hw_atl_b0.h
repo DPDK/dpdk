@@ -11,6 +11,8 @@
 int hw_atl_b0_hw_reset(struct aq_hw_s *self);
 int hw_atl_b0_hw_init(struct aq_hw_s *self, u8 *mac_addr);
 
+int hw_atl_b0_set_fc(struct aq_hw_s *self, u32 fc, u32 tc);
+
 int hw_atl_b0_hw_ring_tx_init(struct aq_hw_s *self, uint64_t base_addr,
 		int index, int size, int cpu, int vec);
 int hw_atl_b0_hw_ring_rx_init(struct aq_hw_s *self, uint64_t base_addr,
