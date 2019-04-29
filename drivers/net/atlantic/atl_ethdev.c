@@ -602,9 +602,6 @@ atl_dev_start(struct rte_eth_dev *dev)
 
 	dev->data->dev_link.link_status = hw->aq_link_status.mbps != 0;
 
-	if (err)
-		goto error;
-
 	if (rte_intr_allow_others(intr_handle)) {
 		/* check if lsc interrupt is enabled */
 		if (dev->data->dev_conf.intr_conf.lsc != 0)
