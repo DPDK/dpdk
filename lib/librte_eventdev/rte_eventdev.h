@@ -1363,7 +1363,8 @@ __rte_event_enqueue_burst(uint8_t dev_id, uint8_t port_id,
  *   which contain the event object enqueue operations to be processed.
  * @param nb_events
  *   The number of event objects to enqueue, typically number of
- *   rte_event_port_enqueue_depth() available for this port.
+ *   rte_event_port_attr_get(...RTE_EVENT_PORT_ATTR_ENQ_DEPTH...)
+ *   available for this port.
  *
  * @return
  *   The number of event objects actually enqueued on the event device. The
@@ -1378,7 +1379,7 @@ __rte_event_enqueue_burst(uint8_t dev_id, uint8_t port_id,
  *   - -ENOSPC  The event port was backpressured and unable to enqueue
  *              one or more events. This error code is only applicable to
  *              closed systems.
- * @see rte_event_port_enqueue_depth()
+ * @see rte_event_port_attr_get(), RTE_EVENT_PORT_ATTR_ENQ_DEPTH
  */
 static inline uint16_t
 rte_event_enqueue_burst(uint8_t dev_id, uint8_t port_id,
@@ -1412,7 +1413,8 @@ rte_event_enqueue_burst(uint8_t dev_id, uint8_t port_id,
  *   which contain the event object enqueue operations to be processed.
  * @param nb_events
  *   The number of event objects to enqueue, typically number of
- *   rte_event_port_enqueue_depth() available for this port.
+ *   rte_event_port_attr_get(...RTE_EVENT_PORT_ATTR_ENQ_DEPTH...)
+ *   available for this port.
  *
  * @return
  *   The number of event objects actually enqueued on the event device. The
@@ -1427,7 +1429,8 @@ rte_event_enqueue_burst(uint8_t dev_id, uint8_t port_id,
  *   - -ENOSPC  The event port was backpressured and unable to enqueue
  *              one or more events. This error code is only applicable to
  *              closed systems.
- * @see rte_event_port_enqueue_depth() rte_event_enqueue_burst()
+ * @see rte_event_port_attr_get(), RTE_EVENT_PORT_ATTR_ENQ_DEPTH
+ * @see rte_event_enqueue_burst()
  */
 static inline uint16_t
 rte_event_enqueue_new_burst(uint8_t dev_id, uint8_t port_id,
@@ -1461,7 +1464,8 @@ rte_event_enqueue_new_burst(uint8_t dev_id, uint8_t port_id,
  *   which contain the event object enqueue operations to be processed.
  * @param nb_events
  *   The number of event objects to enqueue, typically number of
- *   rte_event_port_enqueue_depth() available for this port.
+ *   rte_event_port_attr_get(...RTE_EVENT_PORT_ATTR_ENQ_DEPTH...)
+ *   available for this port.
  *
  * @return
  *   The number of event objects actually enqueued on the event device. The
@@ -1476,7 +1480,8 @@ rte_event_enqueue_new_burst(uint8_t dev_id, uint8_t port_id,
  *   - -ENOSPC  The event port was backpressured and unable to enqueue
  *              one or more events. This error code is only applicable to
  *              closed systems.
- * @see rte_event_port_enqueue_depth() rte_event_enqueue_burst()
+ * @see rte_event_port_attr_get(), RTE_EVENT_PORT_ATTR_ENQ_DEPTH
+ * @see rte_event_enqueue_burst()
  */
 static inline uint16_t
 rte_event_enqueue_forward_burst(uint8_t dev_id, uint8_t port_id,

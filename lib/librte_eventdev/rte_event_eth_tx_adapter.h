@@ -322,7 +322,8 @@ rte_event_eth_tx_adapter_event_port_get(uint8_t id, uint8_t *event_port_id);
  *  which contain the event object enqueue operations to be processed.
  * @param nb_events
  *  The number of event objects to enqueue, typically number of
- *  rte_event_port_enqueue_depth() available for this port.
+ *  rte_event_port_attr_get(...RTE_EVENT_PORT_ATTR_ENQ_DEPTH...)
+ *  available for this port.
  *
  * @return
  *   The number of event objects actually enqueued on the event device. The
