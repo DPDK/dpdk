@@ -463,7 +463,7 @@ rte_hash_lookup_with_hash(const struct rte_hash *h,
 
 /**
  * Calc a hash value by key.
- * This operation is not multi-thread safe.
+ * This operation is not multi-process safe.
  *
  * @param h
  *   Hash table to look in.

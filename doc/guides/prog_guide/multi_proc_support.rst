@@ -176,7 +176,7 @@ Some of these are documented below:
 
 *   The use of function pointers between multiple processes running based of different compiled binaries is not supported,
     since the location of a given function in one process may be different to its location in a second.
-    This prevents the librte_hash library from behaving properly as in a multi-threaded instance,
+    This prevents the librte_hash library from behaving properly as in a multi-process instance,
     since it uses a pointer to the hash function internally.
 
 To work around this issue, it is recommended that multi-process applications perform the hash calculations by directly calling
