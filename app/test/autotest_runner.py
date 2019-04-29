@@ -192,7 +192,6 @@ class AutotestRunner:
     def __init__(self, cmdline, target, blacklist, whitelist, n_processes):
         self.cmdline = cmdline
         self.target = target
-        self.binary = cmdline.split()[0]
         self.blacklist = blacklist
         self.whitelist = whitelist
         self.skipped = []
@@ -200,6 +199,16 @@ class AutotestRunner:
         self.non_parallel_tests = []
         self.n_processes = n_processes
         self.active_processes = 0
+
+        # parse the binary for available test commands
+        binary = cmdline.split()[0]
+        stripped = 'not stripped' not in \
+                   subprocess.check_output(['file', binary])
+        if not stripped:
+            symbols = subprocess.check_output(['nm', binary]).decode('utf-8')
+            self.avail_cmds = re.findall('test_register_(\w+)', symbols)
+        else:
+            self.avail_cmds = None
 
         # log file filename
         logfile = "%s.log" % target
@@ -275,20 +284,10 @@ class AutotestRunner:
             return False
 
         # if test wasn't compiled in, remove it as well
-
-        # parse the binary for available test commands
-        stripped = 'not stripped' not in \
-                   subprocess.check_output(['file', self.binary])
-        if not stripped:
-            symbols = subprocess.check_output(['nm',
-                                               self.binary]).decode('utf-8')
-            avail_cmds = re.findall('test_register_(\w+)', symbols)
-
-            if test_cmd not in avail_cmds:
-                # notify user
-                result = 0, "Skipped [Not compiled]", test_id, 0, "", None
-                self.skipped.append(tuple(result))
-                return False
+        if self.avail_cmds and test_cmd not in self.avail_cmds:
+            result = 0, "Skipped [Not compiled]", test_id, 0, "", None
+            self.skipped.append(tuple(result))
+            return False
 
         return True
 
