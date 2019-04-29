@@ -286,6 +286,8 @@ int hw_atl_b0_hw_init_rx_path(struct aq_hw_s *self)
 	hw_atl_rpfl2broadcast_flr_act_set(self, 1U);
 	hw_atl_rpfl2broadcast_count_threshold_set(self, 0xFFFFU & (~0U / 256U));
 
+	hw_atl_rpfl2broadcast_en_set(self, 1U);
+
 	hw_atl_rdm_rx_dca_en_set(self, 0U);
 	hw_atl_rdm_rx_dca_mode_set(self, 0U);
 
