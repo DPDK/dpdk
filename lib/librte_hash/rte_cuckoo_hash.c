@@ -1661,7 +1661,6 @@ compare_signatures(uint32_t *prim_hash_matches, uint32_t *sec_hash_matches,
 #elif defined(RTE_MACHINE_CPUFLAG_NEON)
 	case RTE_HASH_COMPARE_NEON: {
 		uint16x8_t vmat, vsig, x;
-		uint64x2_t x64;
 		int16x8_t shift = {-15, -13, -11, -9, -7, -5, -3, -1};
 
 		vsig = vld1q_dup_u16((uint16_t const *)&sig);
@@ -1669,16 +1668,13 @@ compare_signatures(uint32_t *prim_hash_matches, uint32_t *sec_hash_matches,
 		vmat = vceqq_u16(vsig,
 			vld1q_u16((uint16_t const *)prim_bkt->sig_current));
 		x = vshlq_u16(vandq_u16(vmat, vdupq_n_u16(0x8000)), shift);
-		x64 = vpaddlq_u32(vpaddlq_u16(x));
-		*prim_hash_matches = (uint32_t)(vgetq_lane_u64(x64, 0) +
-			vgetq_lane_u64(x64, 1));
+		*prim_hash_matches = (uint32_t)(vaddvq_u16(x));
 		/* Compare all signatures in the secondary bucket */
 		vmat = vceqq_u16(vsig,
 			vld1q_u16((uint16_t const *)sec_bkt->sig_current));
 		x = vshlq_u16(vandq_u16(vmat, vdupq_n_u16(0x8000)), shift);
-		x64 = vpaddlq_u32(vpaddlq_u16(x));
-		*sec_hash_matches = (uint32_t)(vgetq_lane_u64(x64, 0) +
-			vgetq_lane_u64(x64, 1)); }
+		*sec_hash_matches = (uint32_t)(vaddvq_u16(x));
+		}
 		break;
 #endif
 	default:
