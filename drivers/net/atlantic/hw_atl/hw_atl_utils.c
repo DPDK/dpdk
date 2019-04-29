@@ -305,10 +305,10 @@ int hw_atl_utils_fw_downld_dwords(struct aq_hw_s *self, u32 a,
 			AQ_HW_WAIT_FOR(!(0x100 & aq_hw_read_reg(self,
 							   HW_ATL_MIF_CMD)),
 				       1, 1000U);
-			if (err) {
-				err = -ETIMEDOUT;
-				goto err_exit;
-			}
+		if (err) {
+			err = -ETIMEDOUT;
+			goto err_exit;
+		}
 
 		*(p++) = aq_hw_read_reg(self, HW_ATL_MIF_VAL);
 		a += 4;
