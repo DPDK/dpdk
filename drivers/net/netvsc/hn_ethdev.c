@@ -112,6 +112,9 @@ eth_dev_vmbus_allocate(struct rte_vmbus_device *dev, size_t private_data_size)
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
 	eth_dev->intr_handle = &dev->intr_handle;
 
+	/* allow ethdev to remove on close */
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
+
 	return eth_dev;
 }
 
@@ -632,11 +635,12 @@ hn_dev_stop(struct rte_eth_dev *dev)
 }
 
 static void
-hn_dev_close(struct rte_eth_dev *dev __rte_unused)
+hn_dev_close(struct rte_eth_dev *dev)
 {
-	PMD_INIT_LOG(DEBUG, "close");
+	PMD_INIT_FUNC_TRACE();
 
 	hn_vf_close(dev);
+	hn_dev_free_queues(dev);
 }
 
 static const struct eth_dev_ops hn_eth_dev_ops = {

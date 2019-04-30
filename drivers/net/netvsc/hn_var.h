@@ -173,6 +173,7 @@ int	hn_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			      const struct rte_eth_rxconf *rx_conf,
 			      struct rte_mempool *mp);
 void	hn_dev_rx_queue_release(void *arg);
+void	hn_dev_free_queues(struct rte_eth_dev *dev);
 
 /* Check if VF is attached */
 static inline bool

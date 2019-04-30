@@ -362,7 +362,16 @@ void hn_vf_reset(struct rte_eth_dev *dev)
 
 void hn_vf_close(struct rte_eth_dev *dev)
 {
-	VF_ETHDEV_FUNC(dev, rte_eth_dev_close);
+	struct hn_data *hv = dev->data->dev_private;
+	uint16_t vf_port;
+
+	rte_spinlock_lock(&hv->vf_lock);
+	vf_port = hv->vf_port;
+	if (vf_port != HN_INVALID_PORT)
+		rte_eth_dev_close(vf_port);
+
+	hv->vf_port = HN_INVALID_PORT;
+	rte_spinlock_unlock(&hv->vf_lock);
 }
 
 void hn_vf_stats_reset(struct rte_eth_dev *dev)

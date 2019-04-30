@@ -840,12 +840,9 @@ fail:
 	return error;
 }
 
-void
-hn_dev_rx_queue_release(void *arg)
+static void
+hn_rx_queue_free(struct hn_rx_queue *rxq, bool keep_primary)
 {
-	struct hn_rx_queue *rxq = arg;
-
-	PMD_INIT_FUNC_TRACE();
 
 	if (!rxq)
 		return;
@@ -857,10 +854,21 @@ hn_dev_rx_queue_release(void *arg)
 	hn_vf_rx_queue_release(rxq->hv, rxq->queue_id);
 
 	/* Keep primary queue to allow for control operations */
-	if (rxq != rxq->hv->primary) {
-		rte_free(rxq->event_buf);
-		rte_free(rxq);
-	}
+	if (keep_primary && rxq == rxq->hv->primary)
+		return;
+
+	rte_free(rxq->event_buf);
+	rte_free(rxq);
+}
+
+void
+hn_dev_rx_queue_release(void *arg)
+{
+	struct hn_rx_queue *rxq = arg;
+
+	PMD_INIT_FUNC_TRACE();
+
+	hn_rx_queue_free(rxq, true);
 }
 
 int
@@ -1439,4 +1447,24 @@ hn_recv_pkts(void *prxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 				     rx_pkts + nb_rcv, nb_pkts - nb_rcv);
 
 	return nb_rcv;
+}
+
+void
+hn_dev_free_queues(struct rte_eth_dev *dev)
+{
+	unsigned int i;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		struct hn_rx_queue *rxq = dev->data->rx_queues[i];
+
+		hn_rx_queue_free(rxq, false);
+		dev->data->rx_queues[i] = NULL;
+	}
+	dev->data->nb_rx_queues = 0;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		hn_dev_tx_queue_release(dev->data->tx_queues[i]);
+		dev->data->tx_queues[i] = NULL;
+	}
+	dev->data->nb_tx_queues = 0;
 }
