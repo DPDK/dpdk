@@ -534,6 +534,9 @@ main(int argc, char **argv)
 	else
 		level = test_data->level.list[0];
 
+	printf("App uses socket: %u\n", rte_socket_id());
+	printf("Driver uses socket: %u\n",
+	       rte_compressdev_socket_id(test_data->cdev_id));
 	printf("Burst size = %u\n", test_data->burst_sz);
 	printf("File size = %zu\n", test_data->input_data_sz);
 
