@@ -1393,6 +1393,24 @@ fail:
 	return nb_tx;
 }
 
+static uint16_t
+hn_recv_vf(uint16_t vf_port, const struct hn_rx_queue *rxq,
+	   struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+{
+	uint16_t i, n;
+
+	if (unlikely(nb_pkts == 0))
+		return 0;
+
+	n = rte_eth_rx_burst(vf_port, rxq->queue_id, rx_pkts, nb_pkts);
+
+	/* relabel the received mbufs */
+	for (i = 0; i < n; i++)
+		rx_pkts[i]->port = rxq->port_id;
+
+	return n;
+}
+
 uint16_t
 hn_recv_pkts(void *prxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
@@ -1404,30 +1422,21 @@ hn_recv_pkts(void *prxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	if (unlikely(hv->closed))
 		return 0;
 
-	/* Transmit over VF if present and up */
+	/* Receive from VF if present and up */
 	vf_dev = hn_get_vf_dev(hv);
 
-	if (vf_dev && vf_dev->data->dev_started) {
-		/* Normally, with SR-IOV the ring buffer will be empty */
+	/* Check for new completions */
+	if (likely(rte_ring_count(rxq->rx_ring) < nb_pkts))
 		hn_process_events(hv, rxq->queue_id, 0);
 
-		/* Get mbufs some bufs off of staging ring */
-		nb_rcv = rte_ring_sc_dequeue_burst(rxq->rx_ring,
-						   (void **)rx_pkts,
-						   nb_pkts / 2, NULL);
-		/* And rest off of VF */
-		nb_rcv += rte_eth_rx_burst(vf_dev->data->port_id,
-					   rxq->queue_id,
-					   rx_pkts + nb_rcv, nb_pkts - nb_rcv);
-	} else {
-		/* If receive ring is not full then get more */
-		if (rte_ring_count(rxq->rx_ring) < nb_pkts)
-			hn_process_events(hv, rxq->queue_id, 0);
+	/* Always check the vmbus path for multicast and new flows */
+	nb_rcv = rte_ring_sc_dequeue_burst(rxq->rx_ring,
+					   (void **)rx_pkts, nb_pkts, NULL);
 
-		nb_rcv = rte_ring_sc_dequeue_burst(rxq->rx_ring,
-						   (void **)rx_pkts,
-						   nb_pkts, NULL);
-	}
+	/* If VF is available, check that as well */
+	if (vf_dev && vf_dev->data->dev_started)
+		nb_rcv += hn_recv_vf(vf_dev->data->port_id, rxq,
+				     rx_pkts + nb_rcv, nb_pkts - nb_rcv);
 
 	return nb_rcv;
 }
