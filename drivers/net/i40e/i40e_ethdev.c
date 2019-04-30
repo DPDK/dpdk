@@ -2670,11 +2670,11 @@ update_link_reg(struct i40e_hw *hw, struct rte_eth_link *link)
 #define I40E_PRTMAC_MACC		0x001E24E0
 #define I40E_REG_MACC_25GB		0x00020000
 #define I40E_REG_SPEED_MASK		0x38000000
-#define I40E_REG_SPEED_100MB		0x00000000
-#define I40E_REG_SPEED_1GB		0x08000000
-#define I40E_REG_SPEED_10GB		0x10000000
-#define I40E_REG_SPEED_20GB		0x20000000
-#define I40E_REG_SPEED_25_40GB		0x18000000
+#define I40E_REG_SPEED_0		0x00000000
+#define I40E_REG_SPEED_1		0x08000000
+#define I40E_REG_SPEED_2		0x10000000
+#define I40E_REG_SPEED_3		0x18000000
+#define I40E_REG_SPEED_4		0x20000000
 	uint32_t link_speed;
 	uint32_t reg_val;
 
@@ -2688,26 +2688,35 @@ update_link_reg(struct i40e_hw *hw, struct rte_eth_link *link)
 
 	/* Parse the link status */
 	switch (link_speed) {
-	case I40E_REG_SPEED_100MB:
+	case I40E_REG_SPEED_0:
 		link->link_speed = ETH_SPEED_NUM_100M;
 		break;
-	case I40E_REG_SPEED_1GB:
+	case I40E_REG_SPEED_1:
 		link->link_speed = ETH_SPEED_NUM_1G;
 		break;
-	case I40E_REG_SPEED_10GB:
-		link->link_speed = ETH_SPEED_NUM_10G;
-		break;
-	case I40E_REG_SPEED_20GB:
-		link->link_speed = ETH_SPEED_NUM_20G;
-		break;
-	case I40E_REG_SPEED_25_40GB:
-		reg_val = I40E_READ_REG(hw, I40E_PRTMAC_MACC);
-
-		if (reg_val & I40E_REG_MACC_25GB)
-			link->link_speed = ETH_SPEED_NUM_25G;
+	case I40E_REG_SPEED_2:
+		if (hw->mac.type == I40E_MAC_X722)
+			link->link_speed = ETH_SPEED_NUM_2_5G;
 		else
-			link->link_speed = ETH_SPEED_NUM_40G;
+			link->link_speed = ETH_SPEED_NUM_10G;
+		break;
+	case I40E_REG_SPEED_3:
+		if (hw->mac.type == I40E_MAC_X722) {
+			link->link_speed = ETH_SPEED_NUM_5G;
+		} else {
+			reg_val = I40E_READ_REG(hw, I40E_PRTMAC_MACC);
 
+			if (reg_val & I40E_REG_MACC_25GB)
+				link->link_speed = ETH_SPEED_NUM_25G;
+			else
+				link->link_speed = ETH_SPEED_NUM_40G;
+		}
+		break;
+	case I40E_REG_SPEED_4:
+		if (hw->mac.type == I40E_MAC_X722)
+			link->link_speed = ETH_SPEED_NUM_10G;
+		else
+			link->link_speed = ETH_SPEED_NUM_20G;
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "Unknown link speed info %u", link_speed);
