@@ -427,6 +427,19 @@ remove_xdp_program(struct pmd_internals *internals)
 }
 
 static void
+xdp_umem_destroy(struct xsk_umem_info *umem)
+{
+	rte_memzone_free(umem->mz);
+	umem->mz = NULL;
+
+	rte_ring_free(umem->buf_ring);
+	umem->buf_ring = NULL;
+
+	rte_free(umem);
+	umem = NULL;
+}
+
+static void
 eth_dev_close(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
@@ -444,6 +457,15 @@ eth_dev_close(struct rte_eth_dev *dev)
 	}
 
 	(void)xsk_umem__delete(internals->umem->umem);
+
+	/*
+	 * MAC is not allocated dynamically, setting it to NULL would prevent
+	 * from releasing it in rte_eth_dev_release_port.
+	 */
+	dev->data->mac_addrs = NULL;
+
+	xdp_umem_destroy(internals->umem);
+
 	remove_xdp_program(internals);
 }
 
@@ -457,19 +479,6 @@ eth_link_update(struct rte_eth_dev *dev __rte_unused,
 		int wait_to_complete __rte_unused)
 {
 	return 0;
-}
-
-static void
-xdp_umem_destroy(struct xsk_umem_info *umem)
-{
-	rte_memzone_free(umem->mz);
-	umem->mz = NULL;
-
-	rte_ring_free(umem->buf_ring);
-	umem->buf_ring = NULL;
-
-	rte_free(umem);
-	umem = NULL;
 }
 
 static struct
@@ -856,6 +865,8 @@ init_internals(struct rte_vdev_device *dev,
 	eth_dev->dev_ops = &ops;
 	eth_dev->rx_pkt_burst = eth_af_xdp_rx;
 	eth_dev->tx_pkt_burst = eth_af_xdp_tx;
+	/* Let rte_eth_dev_close() release the port resources. */
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_CLOSE_REMOVE;
 
 	return eth_dev;
 
@@ -923,7 +934,6 @@ static int
 rte_pmd_af_xdp_remove(struct rte_vdev_device *dev)
 {
 	struct rte_eth_dev *eth_dev = NULL;
-	struct pmd_internals *internals;
 
 	AF_XDP_LOG(INFO, "Removing AF_XDP ethdev on numa socket %u\n",
 		rte_socket_id());
@@ -936,12 +946,7 @@ rte_pmd_af_xdp_remove(struct rte_vdev_device *dev)
 	if (eth_dev == NULL)
 		return -1;
 
-	internals = eth_dev->data->dev_private;
-
-	rte_ring_free(internals->umem->buf_ring);
-	rte_memzone_free(internals->umem->mz);
-	rte_free(internals->umem);
-
+	eth_dev_close(eth_dev);
 	rte_eth_dev_release_port(eth_dev);
 
 
