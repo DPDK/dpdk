@@ -64,8 +64,8 @@ struct mlx5dv_devx_obj;
 #endif
 
 #ifndef HAVE_MLX5DV_DR
-struct mlx5dv_dr_ns;
-enum  mlx5dv_dr_ns_domain { unused, };
+enum  mlx5dv_dr_domain_type { unused, };
+struct mlx5dv_dr_domain;
 #endif
 
 /* LIB_GLUE_VERSION must be updated every time this structure is modified. */
@@ -146,13 +146,13 @@ struct mlx5_glue {
 	const char *(*port_state_str)(enum ibv_port_state port_state);
 	struct ibv_cq *(*cq_ex_to_cq)(struct ibv_cq_ex *cq);
 	void *(*dr_create_flow_action_dest_flow_tbl)(void *tbl);
-	void *(*dr_create_flow_action_dest_vport)(void *ns, uint32_t vport);
+	void *(*dr_create_flow_action_dest_vport)(void *domain, uint32_t vport);
 	void *(*dr_create_flow_action_drop)();
-	void *(*dr_create_flow_tbl)(void *ns, uint32_t level);
+	void *(*dr_create_flow_tbl)(void *domain, uint32_t level);
 	int (*dr_destroy_flow_tbl)(void *tbl);
-	void *(*dr_create_ns)(struct ibv_context *ctx,
-			      enum mlx5dv_dr_ns_domain domain);
-	int (*dr_destroy_ns)(void *ns);
+	void *(*dr_create_domain)(struct ibv_context *ctx,
+				  enum mlx5dv_dr_domain_type domain);
+	int (*dr_destroy_domain)(void *domain);
 	struct ibv_cq_ex *(*dv_create_cq)
 		(struct ibv_context *context,
 		 struct ibv_cq_init_attr_ex *cq_attr,
@@ -181,12 +181,13 @@ struct mlx5_glue {
 	void *(*dv_create_flow_action_dest_ibv_qp)(void *qp);
 	void *(*dv_create_flow_action_modify_header)
 		(struct ibv_context *ctx, enum mlx5dv_flow_table_type ft_type,
-		 void *ns, uint64_t flags, size_t actions_sz,
+		 void *domain, uint64_t flags, size_t actions_sz,
 		 uint64_t actions[]);
 	void *(*dv_create_flow_action_packet_reformat)
 		(struct ibv_context *ctx,
 		 enum mlx5dv_flow_action_packet_reformat_type reformat_type,
-		 enum mlx5dv_flow_table_type ft_type, struct mlx5dv_dr_ns *ns,
+		 enum mlx5dv_flow_table_type ft_type,
+		 struct mlx5dv_dr_domain *domain,
 		 uint32_t flags, size_t data_sz, void *data);
 	void *(*dv_create_flow_action_tag)(uint32_t tag);
 	int (*dv_destroy_flow)(void *flow);

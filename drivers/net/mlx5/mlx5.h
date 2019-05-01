@@ -288,13 +288,13 @@ struct mlx5_ibv_shared {
 	/* Shared DV/DR flow data section. */
 	pthread_mutex_t dv_mutex; /* DV context mutex. */
 	uint32_t dv_refcnt; /* DV/DR data reference counter. */
-	void *fdb_ns; /* FDB Direct Rules name space handle. */
+	void *fdb_domain; /* FDB Direct Rules name space handle. */
 	struct mlx5_flow_tbl_resource fdb_tbl[MLX5_MAX_TABLES_FDB];
 	/* FDB Direct Rules tables. */
-	void *rx_ns; /* RX Direct Rules name space handle. */
+	void *rx_domain; /* RX Direct Rules name space handle. */
 	struct mlx5_flow_tbl_resource rx_tbl[MLX5_MAX_TABLES];
 	/* RX Direct Rules tables. */
-	void *tx_ns; /* TX Direct Rules name space handle. */
+	void *tx_domain; /* TX Direct Rules name space handle. */
 	struct mlx5_flow_tbl_resource tx_tbl[MLX5_MAX_TABLES];
 	void *esw_drop_action; /* Pointer to DR E-Switch drop action. */
 	/* TX Direct Rules tables/ */

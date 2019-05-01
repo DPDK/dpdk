@@ -342,7 +342,7 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 #ifdef HAVE_MLX5DV_DR
 	struct mlx5_ibv_shared *sh = priv->sh;
 	int err = 0;
-	void *ns;
+	void *domain;
 
 	assert(sh);
 	if (sh->dv_refcnt) {
@@ -352,33 +352,33 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 		return 0;
 	}
 	/* Reference counter is zero, we should initialize structures. */
-	ns = mlx5_glue->dr_create_ns(sh->ctx,
-				     MLX5DV_DR_NS_DOMAIN_INGRESS_BYPASS);
-	if (!ns) {
-		DRV_LOG(ERR, "ingress mlx5dv_dr_create_ns failed");
+	domain = mlx5_glue->dr_create_domain(sh->ctx,
+					     MLX5DV_DR_DOMAIN_TYPE_NIC_RX);
+	if (!domain) {
+		DRV_LOG(ERR, "ingress mlx5dv_dr_create_domain failed");
 		err = errno;
 		goto error;
 	}
-	sh->rx_ns = ns;
-	ns = mlx5_glue->dr_create_ns(sh->ctx,
-				     MLX5DV_DR_NS_DOMAIN_EGRESS_BYPASS);
-	if (!ns) {
-		DRV_LOG(ERR, "egress mlx5dv_dr_create_ns failed");
+	sh->rx_domain = domain;
+	domain = mlx5_glue->dr_create_domain(sh->ctx,
+					     MLX5DV_DR_DOMAIN_TYPE_NIC_TX);
+	if (!domain) {
+		DRV_LOG(ERR, "egress mlx5dv_dr_create_domain failed");
 		err = errno;
 		goto error;
 	}
 	pthread_mutex_init(&sh->dv_mutex, NULL);
-	sh->tx_ns = ns;
+	sh->tx_domain = domain;
 #ifdef HAVE_MLX5DV_DR_ESWITCH
 	if (priv->config.dv_esw_en) {
-		ns  = mlx5_glue->dr_create_ns(sh->ctx,
-					      MLX5DV_DR_NS_DOMAIN_FDB_BYPASS);
-		if (!ns) {
-			DRV_LOG(ERR, "FDB mlx5dv_dr_create_ns failed");
+		domain  = mlx5_glue->dr_create_domain
+			(sh->ctx, MLX5DV_DR_DOMAIN_TYPE_FDB);
+		if (!domain) {
+			DRV_LOG(ERR, "FDB mlx5dv_dr_create_domain failed");
 			err = errno;
 			goto error;
 		}
-		sh->fdb_ns = ns;
+		sh->fdb_domain = domain;
 		sh->esw_drop_action = mlx5_glue->dr_create_flow_action_drop();
 	}
 #endif
@@ -388,17 +388,17 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 
 error:
        /* Rollback the created objects. */
-	if (sh->rx_ns) {
-		mlx5_glue->dr_destroy_ns(sh->rx_ns);
-		sh->rx_ns = NULL;
+	if (sh->rx_domain) {
+		mlx5_glue->dr_destroy_domain(sh->rx_domain);
+		sh->rx_domain = NULL;
 	}
-	if (sh->tx_ns) {
-		mlx5_glue->dr_destroy_ns(sh->tx_ns);
-		sh->tx_ns = NULL;
+	if (sh->tx_domain) {
+		mlx5_glue->dr_destroy_domain(sh->tx_domain);
+		sh->tx_domain = NULL;
 	}
-	if (sh->fdb_ns) {
-		mlx5_glue->dr_destroy_ns(sh->fdb_ns);
-		sh->fdb_ns = NULL;
+	if (sh->fdb_domain) {
+		mlx5_glue->dr_destroy_domain(sh->fdb_domain);
+		sh->fdb_domain = NULL;
 	}
 	if (sh->esw_drop_action) {
 		mlx5_glue->destroy_flow_action(sh->esw_drop_action);
@@ -431,18 +431,18 @@ mlx5_free_shared_dr(struct mlx5_priv *priv)
 	assert(sh->dv_refcnt);
 	if (sh->dv_refcnt && --sh->dv_refcnt)
 		return;
-	if (sh->rx_ns) {
-		mlx5_glue->dr_destroy_ns(sh->rx_ns);
-		sh->rx_ns = NULL;
+	if (sh->rx_domain) {
+		mlx5_glue->dr_destroy_domain(sh->rx_domain);
+		sh->rx_domain = NULL;
 	}
-	if (sh->tx_ns) {
-		mlx5_glue->dr_destroy_ns(sh->tx_ns);
-		sh->tx_ns = NULL;
+	if (sh->tx_domain) {
+		mlx5_glue->dr_destroy_domain(sh->tx_domain);
+		sh->tx_domain = NULL;
 	}
 #ifdef HAVE_MLX5DV_DR_ESWITCH
-	if (sh->fdb_ns) {
-		mlx5_glue->dr_destroy_ns(sh->fdb_ns);
-		sh->fdb_ns = NULL;
+	if (sh->fdb_domain) {
+		mlx5_glue->dr_destroy_domain(sh->fdb_domain);
+		sh->fdb_domain = NULL;
 	}
 	if (sh->esw_drop_action) {
 		mlx5_glue->destroy_flow_action(sh->esw_drop_action);

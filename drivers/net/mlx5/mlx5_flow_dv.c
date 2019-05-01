@@ -40,7 +40,9 @@
 #endif
 
 #ifndef HAVE_MLX5DV_DR_ESWITCH
+#ifndef MLX5DV_FLOW_TABLE_TYPE_FDB
 #define MLX5DV_FLOW_TABLE_TYPE_FDB 0
+#endif
 #endif
 
 #ifndef HAVE_MLX5DV_DR
@@ -943,15 +945,15 @@ flow_dv_encap_decap_resource_register
 	struct mlx5_ibv_shared *sh = priv->sh;
 	struct mlx5_flow_dv_encap_decap_resource *cache_resource;
 	struct rte_flow *flow = dev_flow->flow;
-	struct mlx5dv_dr_ns *ns;
+	struct mlx5dv_dr_domain *domain;
 
 	resource->flags = flow->group ? 0 : 1;
 	if (resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB)
-		ns = sh->fdb_ns;
+		domain = sh->fdb_domain;
 	else if (resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_NIC_RX)
-		ns = sh->rx_ns;
+		domain = sh->rx_domain;
 	else
-		ns = sh->tx_ns;
+		domain = sh->tx_domain;
 
 	/* Lookup a matching resource from cache. */
 	LIST_FOREACH(cache_resource, &sh->encaps_decaps, next) {
@@ -980,7 +982,7 @@ flow_dv_encap_decap_resource_register
 	cache_resource->verbs_action =
 		mlx5_glue->dv_create_flow_action_packet_reformat
 			(sh->ctx, cache_resource->reformat_type,
-			 cache_resource->ft_type, ns, cache_resource->flags,
+			 cache_resource->ft_type, domain, cache_resource->flags,
 			 cache_resource->size,
 			 (cache_resource->size ? cache_resource->buf : NULL));
 	if (!cache_resource->verbs_action) {
@@ -1108,8 +1110,8 @@ flow_dv_port_id_action_resource_register
 					  "cannot allocate resource memory");
 	*cache_resource = *resource;
 	cache_resource->action =
-		mlx5_glue->dr_create_flow_action_dest_vport(priv->sh->fdb_ns,
-							    resource->port_id);
+		mlx5_glue->dr_create_flow_action_dest_vport
+			(priv->sh->fdb_domain, resource->port_id);
 	if (!cache_resource->action) {
 		rte_free(cache_resource);
 		return rte_flow_error_set(error, ENOMEM,
@@ -1826,14 +1828,14 @@ flow_dv_modify_hdr_resource_register
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_ibv_shared *sh = priv->sh;
 	struct mlx5_flow_dv_modify_hdr_resource *cache_resource;
-	struct mlx5dv_dr_ns *ns;
+	struct mlx5dv_dr_domain *ns;
 
 	if (resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB)
-		ns = sh->fdb_ns;
+		ns = sh->fdb_domain;
 	else if (resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_NIC_TX)
-		ns = sh->tx_ns;
+		ns = sh->tx_domain;
 	else
-		ns = sh->rx_ns;
+		ns = sh->rx_domain;
 	resource->flags =
 		dev_flow->flow->group ? 0 : MLX5DV_DR_ACTION_FLAGS_ROOT_LEVEL;
 	/* Lookup a matching resource from cache. */
@@ -3305,17 +3307,17 @@ flow_dv_tbl_resource_get(struct rte_eth_dev *dev,
 		tbl = &sh->fdb_tbl[table_id];
 		if (!tbl->obj)
 			tbl->obj = mlx5_glue->dr_create_flow_tbl
-				(sh->fdb_ns, table_id);
+				(sh->fdb_domain, table_id);
 	} else if (egress) {
 		tbl = &sh->tx_tbl[table_id];
 		if (!tbl->obj)
 			tbl->obj = mlx5_glue->dr_create_flow_tbl
-				(sh->tx_ns, table_id);
+				(sh->tx_domain, table_id);
 	} else {
 		tbl = &sh->rx_tbl[table_id];
 		if (!tbl->obj)
 			tbl->obj = mlx5_glue->dr_create_flow_tbl
-				(sh->rx_ns, table_id);
+				(sh->rx_domain, table_id);
 	}
 	if (!tbl->obj) {
 		rte_flow_error_set(error, ENOMEM,
