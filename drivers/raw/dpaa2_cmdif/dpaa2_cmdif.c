@@ -270,6 +270,8 @@ dpaa2_cmdif_remove(struct rte_vdev_device *vdev)
 	int ret;
 
 	name = rte_vdev_device_name(vdev);
+	if (name == NULL)
+		return -1;
 
 	DPAA2_CMDIF_INFO("Closing %s on NUMA node %d", name, rte_socket_id());
 
