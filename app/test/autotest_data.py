@@ -700,6 +700,18 @@ non_parallel_test_list = [
         "Func":    default_autotest,
         "Report":  None,
     },
+    {
+        "Name":    "RCU QSBR autotest",
+        "Command": "rcu_qsbr_autotest",
+        "Func":    default_autotest,
+        "Report":  None,
+    },
+    {
+        "Name":    "RCU QSBR performance autotest",
+        "Command": "rcu_qsbr_perf_autotest",
+        "Func":    default_autotest,
+        "Report":  None,
+    },
     #
     # Please always make sure that ring_perf is the last test!
     #
