@@ -63,10 +63,11 @@
 /* Default maximum number of Tx queues for vectorized Tx. */
 #if defined(RTE_ARCH_ARM64)
 #define MLX5_VPMD_MAX_TXQS 8
+#define MLX5_VPMD_MAX_TXQS_BLUEFIELD 16
 #else
 #define MLX5_VPMD_MAX_TXQS 4
+#define MLX5_VPMD_MAX_TXQS_BLUEFIELD MLX5_VPMD_MAX_TXQS
 #endif
-#define MLX5_VPMD_MAX_TXQS_BLUEFIELD 16
 
 /* Threshold of buffer replenishment for vectorized Rx. */
 #define MLX5_VPMD_RXQ_RPLNSH_THRESH(n) \
