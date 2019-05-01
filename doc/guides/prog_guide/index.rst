@@ -12,6 +12,7 @@ Programmer's Guide
     overview
     env_abstraction_layer
     service_cores
+    rcu_lib
     ring_lib
     stack_lib
     mempool_lib
