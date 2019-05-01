@@ -679,6 +679,27 @@ mlx5_txq_ibv_verify(struct rte_eth_dev *dev)
 }
 
 /**
+ * Calcuate the total number of WQEBB for Tx queue.
+ *
+ * Simplified version of calc_sq_size() in rdma-core.
+ *
+ * @param txq_ctrl
+ *   Pointer to Tx queue control structure.
+ *
+ * @return
+ *   The number of WQEBB.
+ */
+static int
+txq_calc_wqebb_cnt(struct mlx5_txq_ctrl *txq_ctrl)
+{
+	unsigned int wqe_size;
+	const unsigned int desc = 1 << txq_ctrl->txq.elts_n;
+
+	wqe_size = MLX5_WQE_SIZE + txq_ctrl->max_inline_data;
+	return rte_align32pow2(wqe_size * desc) / MLX5_WQE_SIZE;
+}
+
+/**
  * Set Tx queue parameters from device configuration.
  *
  * @param txq_ctrl
@@ -824,10 +845,16 @@ mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	tmpl->txq.port_id = dev->data->port_id;
 	tmpl->txq.idx = idx;
 	txq_set_params(tmpl);
-	DRV_LOG(DEBUG, "port %u device_attr.max_qp_wr is %d",
-		dev->data->port_id, priv->sh->device_attr.orig_attr.max_qp_wr);
-	DRV_LOG(DEBUG, "port %u device_attr.max_sge is %d",
-		dev->data->port_id, priv->sh->device_attr.orig_attr.max_sge);
+	if (txq_calc_wqebb_cnt(tmpl) >
+	    priv->sh->device_attr.orig_attr.max_qp_wr) {
+		DRV_LOG(ERR,
+			"port %u Tx WQEBB count (%d) exceeds the limit (%d),"
+			" try smaller queue size",
+			dev->data->port_id, txq_calc_wqebb_cnt(tmpl),
+			priv->sh->device_attr.orig_attr.max_qp_wr);
+		rte_errno = ENOMEM;
+		goto error;
+	}
 	tmpl->txq.elts =
 		(struct rte_mbuf *(*)[1 << tmpl->txq.elts_n])(tmpl + 1);
 	rte_atomic32_inc(&tmpl->refcnt);
