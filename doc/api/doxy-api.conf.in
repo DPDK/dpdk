@@ -51,6 +51,7 @@ INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/lib/librte_port \
                           @TOPDIR@/lib/librte_power \
                           @TOPDIR@/lib/librte_rawdev \
+                          @TOPDIR@/lib/librte_rcu \
                           @TOPDIR@/lib/librte_reorder \
                           @TOPDIR@/lib/librte_ring \
                           @TOPDIR@/lib/librte_sched \

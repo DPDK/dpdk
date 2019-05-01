@@ -68,6 +68,13 @@ New Features
   Added a new lock-free stack handler, which uses the newly added stack
   library.
 
+* **Added RCU library.**
+
+  Added RCU library supporting quiescent state based memory reclamation method.
+  This library helps identify the quiescent state of the reader threads so
+  that the writers can free the memory associated with the lock free data
+  structures.
+
 * **Updated KNI module and PMD.**
 
   Updated the KNI kernel module to set the max_mtu according to the given
@@ -336,6 +343,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_port.so.3
      librte_power.so.1
      librte_rawdev.so.1
+   + librte_rcu.so.1
      librte_reorder.so.1
      librte_ring.so.2
      librte_sched.so.2

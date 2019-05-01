@@ -111,6 +111,8 @@ DIRS-$(CONFIG_RTE_LIBRTE_IPSEC) += librte_ipsec
 DEPDIRS-librte_ipsec := librte_eal librte_mbuf librte_cryptodev librte_security
 DIRS-$(CONFIG_RTE_LIBRTE_TELEMETRY) += librte_telemetry
 DEPDIRS-librte_telemetry := librte_eal librte_metrics librte_ethdev
+DIRS-$(CONFIG_RTE_LIBRTE_RCU) += librte_rcu
+DEPDIRS-librte_rcu := librte_eal
 
 ifeq ($(CONFIG_RTE_EXEC_ENV_LINUX),y)
 DIRS-$(CONFIG_RTE_LIBRTE_KNI) += librte_kni

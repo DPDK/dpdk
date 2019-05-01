@@ -1226,6 +1226,11 @@ M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/librte_kvargs/
 F: app/test/test_kvargs.c
 
+RCU - EXPERIMENTAL
+M: Honnappa Nagarahalli <honnappa.nagarahalli@arm.com>
+F: lib/librte_rcu/
+F: doc/guides/prog_guide/rcu_lib.rst
+
 PCI
 M: Gaetan Rivet <gaetan.rivet@6wind.com>
 F: lib/librte_pci/
