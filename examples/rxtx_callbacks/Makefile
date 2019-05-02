@@ -50,6 +50,9 @@ include $(RTE_SDK)/mk/rte.vars.mk
 
 CFLAGS += $(WERROR_FLAGS)
 
+# rte_eth_read_clock is experimental
+CFLAGS += -DALLOW_EXPERIMENTAL_API
+
 # workaround for a gcc bug with noreturn attribute
 # http://gcc.gnu.org/bugzilla/show_bug.cgi?id=12603
 ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)

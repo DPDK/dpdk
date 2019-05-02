@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 #include <inttypes.h>
+#include <getopt.h>
 #include <rte_eal.h>
 #include <rte_ethdev.h>
 #include <rte_cycles.h>
@@ -17,6 +18,9 @@
 #define MBUF_CACHE_SIZE 250
 #define BURST_SIZE 32
 
+static const char usage[] =
+	"%s EAL_ARGS -- [-t]\n";
+
 static const struct rte_eth_conf port_conf_default = {
 	.rxmode = {
 		.max_rx_pkt_len = RTE_ETHER_MAX_LEN,
@@ -25,9 +29,14 @@ static const struct rte_eth_conf port_conf_default = {
 
 static struct {
 	uint64_t total_cycles;
+	uint64_t total_queue_cycles;
 	uint64_t total_pkts;
 } latency_numbers;
 
+int hw_timestamping;
+
+#define TICKS_PER_CYCLE_SHIFT 16
+static uint64_t ticks_per_cycle_mult;
 
 static uint16_t
 add_timestamps(uint16_t port __rte_unused, uint16_t qidx __rte_unused,
@@ -43,22 +52,42 @@ add_timestamps(uint16_t port __rte_unused, uint16_t qidx __rte_unused,
 }
 
 static uint16_t
-calc_latency(uint16_t port __rte_unused, uint16_t qidx __rte_unused,
+calc_latency(uint16_t port, uint16_t qidx __rte_unused,
 		struct rte_mbuf **pkts, uint16_t nb_pkts, void *_ __rte_unused)
 {
 	uint64_t cycles = 0;
+	uint64_t queue_ticks = 0;
 	uint64_t now = rte_rdtsc();
+	uint64_t ticks;
 	unsigned i;
 
-	for (i = 0; i < nb_pkts; i++)
+	if (hw_timestamping)
+		rte_eth_read_clock(port, &ticks);
+
+	for (i = 0; i < nb_pkts; i++) {
 		cycles += now - pkts[i]->udata64;
+		if (hw_timestamping)
+			queue_ticks += ticks - pkts[i]->timestamp;
+	}
+
 	latency_numbers.total_cycles += cycles;
+	if (hw_timestamping)
+		latency_numbers.total_queue_cycles += (queue_ticks
+			* ticks_per_cycle_mult) >> TICKS_PER_CYCLE_SHIFT;
+
 	latency_numbers.total_pkts += nb_pkts;
 
 	if (latency_numbers.total_pkts > (100 * 1000 * 1000ULL)) {
 		printf("Latency = %"PRIu64" cycles\n",
 		latency_numbers.total_cycles / latency_numbers.total_pkts);
-		latency_numbers.total_cycles = latency_numbers.total_pkts = 0;
+		if (hw_timestamping) {
+			printf("Latency from HW = %"PRIu64" cycles\n",
+			   latency_numbers.total_queue_cycles
+			   / latency_numbers.total_pkts);
+		}
+		latency_numbers.total_cycles = 0;
+		latency_numbers.total_queue_cycles = 0;
+		latency_numbers.total_pkts = 0;
 	}
 	return nb_pkts;
 }
@@ -77,6 +106,7 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	int retval;
 	uint16_t q;
 	struct rte_eth_dev_info dev_info;
+	struct rte_eth_rxconf rxconf;
 	struct rte_eth_txconf txconf;
 
 	if (!rte_eth_dev_is_valid_port(port))
@@ -95,9 +125,20 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	if (retval != 0)
 		return retval;
 
+	rxconf = dev_info.default_rxconf;
+
+	if (hw_timestamping) {
+		if (!(dev_info.rx_offload_capa & DEV_RX_OFFLOAD_TIMESTAMP)) {
+			printf("\nERROR: Port %u does not support hardware timestamping\n"
+					, port);
+			return -1;
+		}
+		rxconf.offloads |= DEV_RX_OFFLOAD_TIMESTAMP;
+	}
+
 	for (q = 0; q < rx_rings; q++) {
 		retval = rte_eth_rx_queue_setup(port, q, nb_rxd,
-				rte_eth_dev_socket_id(port), NULL, mbuf_pool);
+			rte_eth_dev_socket_id(port), &rxconf, mbuf_pool);
 		if (retval < 0)
 			return retval;
 	}
@@ -114,6 +155,29 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	retval  = rte_eth_dev_start(port);
 	if (retval < 0)
 		return retval;
+
+	if (hw_timestamping && ticks_per_cycle_mult  == 0) {
+		uint64_t cycles_base = rte_rdtsc();
+		uint64_t ticks_base;
+		retval = rte_eth_read_clock(port, &ticks_base);
+		if (retval != 0)
+			return retval;
+		rte_delay_ms(100);
+		uint64_t cycles = rte_rdtsc();
+		uint64_t ticks;
+		rte_eth_read_clock(port, &ticks);
+		uint64_t c_freq = cycles - cycles_base;
+		uint64_t t_freq = ticks - ticks_base;
+		double freq_mult = (double)c_freq / t_freq;
+		printf("TSC Freq ~= %" PRIu64
+				"\nHW Freq ~= %" PRIu64
+				"\nRatio : %f\n",
+				c_freq * 10, t_freq * 10, freq_mult);
+		/* TSC will be faster than internal ticks so freq_mult is > 0
+		 * We convert the multiplication to an integer shift & mult
+		 */
+		ticks_per_cycle_mult = (1 << TICKS_PER_CYCLE_SHIFT) / freq_mult;
+	}
 
 	struct rte_ether_addr addr;
 
@@ -177,6 +241,11 @@ main(int argc, char *argv[])
 	struct rte_mempool *mbuf_pool;
 	uint16_t nb_ports;
 	uint16_t portid;
+	struct option lgopts[] = {
+		{ NULL,  0, 0, 0 }
+	};
+	int opt, option_index;
+
 
 	/* init EAL */
 	int ret = rte_eal_init(argc, argv);
@@ -185,6 +254,18 @@ main(int argc, char *argv[])
 		rte_exit(EXIT_FAILURE, "Error with EAL initialization\n");
 	argc -= ret;
 	argv += ret;
+
+	while ((opt = getopt_long(argc, argv, "t", lgopts, &option_index))
+			!= EOF)
+		switch (opt) {
+		case 't':
+			hw_timestamping = 1;
+			break;
+		default:
+			printf(usage, argv[0]);
+			return -1;
+		}
+	optind = 1; /* reset getopt lib */
 
 	nb_ports = rte_eth_dev_count_avail();
 	if (nb_ports < 2 || (nb_ports & 1))

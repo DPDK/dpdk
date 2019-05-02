@@ -13,6 +13,10 @@ In the sample application a user defined callback is applied to all received
 packets to add a timestamp. A separate callback is applied to all packets
 prior to transmission to calculate the elapsed time, in CPU cycles.
 
+If hardware timestamping is supported by the NIC, the sample application will
+also display the average latency since the packet was timestamped in hardware,
+on top of the latency since the packet was received and processed by the RX
+callback.
 
 Compiling the Application
 -------------------------
@@ -36,7 +40,10 @@ To run the example in a ``linux`` environment:
 
 .. code-block:: console
 
-    ./build/rxtx_callbacks -l 1 -n 4
+    ./build/rxtx_callbacks -l 1 -n 4 -- [-t]
+
+Use -t to enable hardware timestamping. If not supported by the NIC, an error
+will be displayed.
 
 Refer to *DPDK Getting Started Guide* for general information on running
 applications and the Environment Abstraction Layer (EAL) options.
