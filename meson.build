@@ -70,6 +70,8 @@ pkg.generate(name: meson.project_name(),
 	libraries: dpdk_libraries,
 	libraries_private: dpdk_drivers + dpdk_static_libraries +
 			['-Wl,-Bdynamic'] + dpdk_extra_ldflags,
+	requires: libbsd, # apps using rte_string_fns.h may need this if enabled
+	                  # if libbsd is not enabled, then this is blank
 	description: '''The Data Plane Development Kit (DPDK).
 Note that CFLAGS might contain an -march flag higher than typical baseline.
 This is required for a number of static inline functions in the public headers.''',

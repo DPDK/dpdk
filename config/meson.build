@@ -132,12 +132,10 @@ if numa_dep.found() and cc.has_header('numaif.h')
 	dpdk_extra_ldflags += '-lnuma'
 endif
 
-# check for strlcpy
-if is_linux
-	libbsd = dependency('libbsd', required: false)
-	if libbsd.found()
-		dpdk_conf.set('RTE_USE_LIBBSD', 1)
-	endif
+# check for libbsd
+libbsd = dependency('libbsd', required: false)
+if libbsd.found()
+	dpdk_conf.set('RTE_USE_LIBBSD', 1)
 endif
 
 # add -include rte_config to cflags
