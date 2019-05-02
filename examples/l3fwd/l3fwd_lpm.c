@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <getopt.h>
 #include <stdbool.h>
+#include <sys/socket.h>
 #include <arpa/inet.h>
 
 #include <rte_debug.h>
