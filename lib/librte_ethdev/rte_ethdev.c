@@ -4172,6 +4172,18 @@ rte_eth_timesync_write_time(uint16_t port_id, const struct timespec *timestamp)
 }
 
 int
+rte_eth_read_clock(uint16_t port_id, uint64_t *clock)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->read_clock, -ENOTSUP);
+	return eth_err(port_id, (*dev->dev_ops->read_clock)(dev, clock));
+}
+
+int
 rte_eth_dev_get_reg_info(uint16_t port_id, struct rte_dev_reg_info *info)
 {
 	struct rte_eth_dev *dev;

@@ -3795,6 +3795,53 @@ int rte_eth_timesync_read_time(uint16_t port_id, struct timespec *time);
 int rte_eth_timesync_write_time(uint16_t port_id, const struct timespec *time);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Read the current clock counter of an Ethernet device
+ *
+ * This returns the current raw clock value of an Ethernet device. It is
+ * a raw amount of ticks, with no given time reference.
+ * The value returned here is from the same clock than the one
+ * filling timestamp field of Rx packets when using hardware timestamp
+ * offload. Therefore it can be used to compute a precise conversion of
+ * the device clock to the real time.
+ *
+ * E.g, a simple heuristic to derivate the frequency would be:
+ * uint64_t start, end;
+ * rte_eth_read_clock(port, start);
+ * rte_delay_ms(100);
+ * rte_eth_read_clock(port, end);
+ * double freq = (end - start) * 10;
+ *
+ * Compute a common reference with:
+ * uint64_t base_time_sec = current_time();
+ * uint64_t base_clock;
+ * rte_eth_read_clock(port, base_clock);
+ *
+ * Then, convert the raw mbuf timestamp with:
+ * base_time_sec + (double)(mbuf->timestamp - base_clock) / freq;
+ *
+ * This simple example will not provide a very good accuracy. One must
+ * at least measure multiple times the frequency and do a regression.
+ * To avoid deviation from the system time, the common reference can
+ * be repeated from time to time. The integer division can also be
+ * converted by a multiplication and a shift for better performance.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param clock
+ *   Pointer to the uint64_t that holds the raw clock value.
+ *
+ * @return
+ *   - 0: Success.
+ *   - -ENODEV: The port ID is invalid.
+ *   - -ENOTSUP: The function is not supported by the Ethernet driver.
+ */
+int __rte_experimental
+rte_eth_read_clock(uint16_t port_id, uint64_t *clock);
+
+/**
  * Config l2 tunnel ether type of an Ethernet device for filtering specific
  * tunnel packets by ether type.
  *

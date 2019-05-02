@@ -668,6 +668,8 @@ struct rte_mbuf {
 
 	/** Valid if PKT_RX_TIMESTAMP is set. The unit and time reference
 	 * are not normalized but are always the same for a given port.
+	 * Some devices allow to query rte_eth_read_clock that will return the
+	 * current device timestamp.
 	 */
 	uint64_t timestamp;
 
