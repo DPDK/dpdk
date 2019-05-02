@@ -8,12 +8,20 @@ endif
 
 execinfo = cc.find_library('execinfo', required: false)
 
-allow_skips = true # don't flag an error if we can't build an app
+all_examples = run_command('sh', '-c',
+	'cd $MESON_SOURCE_ROOT/$MESON_SUBDIR && for d in * ; do if [ -d $d ] ; then echo $d ; fi ; done'
+	).stdout().split()
+# install all example code on install - irrespective of whether the example in
+# question is to be built as part of this build or not.
+foreach ex:all_examples
+	install_subdir(ex,
+			install_dir: get_option('datadir') + '/dpdk/examples',
+			exclude_files: 'meson.build')
+endforeach
 
 if get_option('examples').to_lower() == 'all'
-	dirs = run_command('sh', '-c',
-		'cd $MESON_SOURCE_ROOT/$MESON_SUBDIR && for d in * ; do if [ -d $d ] ; then echo $d ; fi ; done')
-	examples = dirs.stdout().split()
+	examples = all_examples
+	allow_skips = true # don't flag an error if we can't build an app
 else
 	examples = get_option('examples').split(',')
 	allow_skips = false # error out if we can't build a requested app
