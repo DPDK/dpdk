@@ -4,11 +4,9 @@
 # get binutils version for the workaround of Bug 97
 if not is_windows
 	ldver = run_command('ld', '-v').stdout().strip()
-	if ldver.contains('2.30')
-		if cc.has_argument('-mno-avx512f')
-			machine_args += '-mno-avx512f'
-			message('Binutils 2.30 detected, disabling AVX512 support as workaround for bug #97')
-		endif
+	if ldver.contains('2.30') and cc.has_argument('-mno-avx512f')
+		machine_args += '-mno-avx512f'
+		message('Binutils 2.30 detected, disabling AVX512 support as workaround for bug #97')
 	endif
 	if ldver.contains('2.31') and cc.has_argument('-mno-avx512f')
 		machine_args += '-mno-avx512f'
