@@ -329,6 +329,9 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 			dev->kdrv = RTE_KDRV_IGB_UIO;
 		else if (!strcmp(driver, "uio_pci_generic"))
 			dev->kdrv = RTE_KDRV_UIO_GENERIC;
+		else if (!strcmp(driver, "mlx4_core") ||
+				!strcmp(driver, "mlx5_core"))
+			dev->kdrv = RTE_KDRV_NIC_MLX;
 		else
 			dev->kdrv = RTE_KDRV_UNKNOWN;
 	} else
@@ -568,7 +571,8 @@ pci_one_device_has_iova_va(void)
 	FOREACH_DRIVER_ON_PCIBUS(drv) {
 		if (drv && drv->drv_flags & RTE_PCI_DRV_IOVA_AS_VA) {
 			FOREACH_DEVICE_ON_PCIBUS(dev) {
-				if (dev->kdrv == RTE_KDRV_VFIO &&
+				if ((dev->kdrv == RTE_KDRV_VFIO ||
+				     dev->kdrv == RTE_KDRV_NIC_MLX) &&
 				    rte_pci_match(drv, dev))
 					return 1;
 			}
