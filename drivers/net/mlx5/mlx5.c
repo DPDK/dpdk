@@ -2101,8 +2101,8 @@ static struct rte_pci_driver mlx5_driver = {
 	.remove = mlx5_pci_remove,
 	.dma_map = mlx5_dma_map,
 	.dma_unmap = mlx5_dma_unmap,
-	.drv_flags = (RTE_PCI_DRV_INTR_LSC | RTE_PCI_DRV_INTR_RMV |
-		      RTE_PCI_DRV_PROBE_AGAIN),
+	.drv_flags = RTE_PCI_DRV_INTR_LSC | RTE_PCI_DRV_INTR_RMV |
+		     RTE_PCI_DRV_PROBE_AGAIN | RTE_PCI_DRV_IOVA_AS_VA,
 };
 
 #ifdef RTE_IBVERBS_LINK_DLOPEN
