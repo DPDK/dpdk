@@ -5,7 +5,9 @@ Distributor Sample Application
 ==============================
 
 The distributor sample application is a simple example of packet distribution
-to cores using the Data Plane Development Kit (DPDK).
+to cores using the Data Plane Development Kit (DPDK). It also makes use of
+Intel Speed Select Technology - Base Frequency (Intel SST-BF) to pin the
+distributor to the higher frequency core if available.
 
 Overview
 --------
@@ -100,6 +102,22 @@ final statistics to the user.
 
    Distributor Sample Application Layout
 
+
+Intel SST-BF Support
+--------------------
+
+In DPDK 19.05, support was added to the power management library for
+Intel-SST-BF, a technology that allows some cores to run at a higher
+frequency than others. An application note for Intel SST-BF is available,
+and is entitled
+`Intel Speed Select Technology – Base Frequency - Enhancing Performance <https://builders.intel.com/docs/networkbuilders/intel-speed-select-technology-base-frequency-enhancing-performance.pdf>`_
+
+The distributor application was also enhanced to be aware of these higher
+frequency SST-BF cores, and when starting the application, if high frequency
+SST-BF cores are present in the core mask, the application will identify these
+cores and pin the workloads appropriately. The distributor core is usually
+the bottleneck, so this is given first choice of the high frequency SST-BF
+cores, followed by the rx core and the tx core.
 
 Debug Logging Support
 ---------------------

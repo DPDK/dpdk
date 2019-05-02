@@ -200,6 +200,17 @@ New Features
   Improved testpmd application performance on ARM platform. For ``macswap``
   forwarding mode, NEON intrinsics were used to do swap to save CPU cycles.
 
+* **Updated power management library.**
+
+  Added support for Intel Speed Select Technology - Base Frequency (SST-BF).
+  ``rte_power_get_capabilities`` now has a bit in it's returned mask
+  indicating it's a high frequency core.
+
+* **Updated distributor sample application.**
+
+  Added support for Intel SST-BF feature so that the distributor core is
+  pinned to a high frequency core if available.
+
 
 Removed Items
 -------------
