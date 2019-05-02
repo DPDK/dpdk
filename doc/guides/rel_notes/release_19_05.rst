@@ -368,6 +368,12 @@ Known Issues
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* **On x86 platforms, AVX512 support is disabled with binutils 2.31**
+
+  Because a defect in binutils 2.31 AVX512 support is disabled.
+  DPDK defect: https://bugs.dpdk.org/show_bug.cgi?id=249
+  GCC defect: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=90028
+
 * **No software AES-XTS implementation.**
 
   There are currently no cryptodev software PMDs available which implement

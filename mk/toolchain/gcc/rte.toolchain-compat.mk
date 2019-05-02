@@ -27,7 +27,14 @@ ifneq ($(filter 2.30%,$(LD_VERSION)),)
 FORCE_DISABLE_AVX512 := y
 # print warning only once for librte_eal
 ifneq ($(filter %librte_eal,$(CURDIR)),)
-$(warning AVX512 support disabled because of ld 2.30. See Bug 97)
+$(warning AVX512 support disabled because of binutils 2.30. See Bug 97)
+endif
+endif
+ifneq ($(filter 2.31%,$(LD_VERSION)),)
+FORCE_DISABLE_AVX512 := y
+# print warning only once for librte_eal
+ifneq ($(filter %librte_eal,$(CURDIR)),)
+$(warning AVX512 support disabled because of binutils 2.31. See Bug 249)
 endif
 endif
 endif

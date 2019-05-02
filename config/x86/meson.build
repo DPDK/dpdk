@@ -10,6 +10,10 @@ if not is_windows
 			message('Binutils 2.30 detected, disabling AVX512 support as workaround for bug #97')
 		endif
 	endif
+	if ldver.contains('2.31') and cc.has_argument('-mno-avx512f')
+		machine_args += '-mno-avx512f'
+		message('Binutils 2.31 detected, disabling AVX512 support as workaround for bug #249')
+	endif
 endif
 
 # we require SSE4.2 for DPDK
