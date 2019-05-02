@@ -88,6 +88,13 @@ mlx5_glue_query_device_ex(struct ibv_context *context,
 }
 
 static int
+mlx5_glue_query_rt_values_ex(struct ibv_context *context,
+			  struct ibv_values_ex *values)
+{
+	return ibv_query_rt_values_ex(context, values);
+}
+
+static int
 mlx5_glue_query_port(struct ibv_context *context, uint8_t port_num,
 		     struct ibv_port_attr *port_attr)
 {
@@ -854,6 +861,7 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue){
 	.close_device = mlx5_glue_close_device,
 	.query_device = mlx5_glue_query_device,
 	.query_device_ex = mlx5_glue_query_device_ex,
+	.query_rt_values_ex = mlx5_glue_query_rt_values_ex,
 	.query_port = mlx5_glue_query_port,
 	.create_comp_channel = mlx5_glue_create_comp_channel,
 	.destroy_comp_channel = mlx5_glue_destroy_comp_channel,

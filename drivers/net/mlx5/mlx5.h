@@ -404,6 +404,7 @@ int mlx5_set_flags(struct rte_eth_dev *dev, unsigned int keep,
 		   unsigned int flags);
 int mlx5_dev_configure(struct rte_eth_dev *dev);
 void mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info);
+int mlx5_read_clock(struct rte_eth_dev *dev, uint64_t *clock);
 int mlx5_fw_version_get(struct rte_eth_dev *dev, char *fw_ver, size_t fw_size);
 const uint32_t *mlx5_dev_supported_ptypes_get(struct rte_eth_dev *dev);
 int mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete);

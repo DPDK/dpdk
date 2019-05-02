@@ -569,6 +569,36 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 }
 
 /**
+ * Get device current raw clock counter
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param[out] time
+ *   Current raw clock counter of the device.
+ *
+ * @return
+ *   0 if the clock has correctly been read
+ *   The value of errno in case of error
+ */
+int
+mlx5_read_clock(struct rte_eth_dev *dev, uint64_t *clock)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct ibv_context *ctx = priv->sh->ctx;
+	struct ibv_values_ex values;
+	int err = 0;
+
+	values.comp_mask = IBV_VALUES_MASK_RAW_CLOCK;
+	err = mlx5_glue->query_rt_values_ex(ctx, &values);
+	if (err != 0) {
+		DRV_LOG(WARNING, "Could not query the clock !");
+		return err;
+	}
+	*clock = values.raw_clock.tv_nsec;
+	return 0;
+}
+
+/**
  * Get firmware version of a device.
  *
  * @param dev
