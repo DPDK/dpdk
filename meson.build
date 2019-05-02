@@ -63,13 +63,6 @@ configure_file(output: build_cfg,
 # them.
 dpdk_drivers = ['-Wl,--whole-archive'] + dpdk_drivers + ['-Wl,--no-whole-archive']
 
-# driver .so files often depend upon the bus drivers for their connect bus,
-# e.g. ixgbe depends on librte_bus_pci. This means that the bus drivers need
-# to be in the library path, so symlink the drivers from the main lib directory.
-meson.add_install_script('buildtools/symlink-drivers-solibs.sh',
-		driver_install_path,
-		get_option('libdir'))
-
 pkg = import('pkgconfig')
 pkg.generate(name: meson.project_name(),
 	filebase: 'lib' + meson.project_name().to_lower(),
