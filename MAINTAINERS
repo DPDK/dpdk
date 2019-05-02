@@ -1229,6 +1229,7 @@ F: app/test/test_kvargs.c
 RCU - EXPERIMENTAL
 M: Honnappa Nagarahalli <honnappa.nagarahalli@arm.com>
 F: lib/librte_rcu/
+F: app/test/test_rcu*
 F: doc/guides/prog_guide/rcu_lib.rst
 
 PCI
@@ -1291,7 +1292,6 @@ Test Applications
 -----------------
 
 Unit tests framework
-F: test/Makefile
 F: app/test/Makefile
 F: app/test/autotest*
 F: app/test/commands.c
