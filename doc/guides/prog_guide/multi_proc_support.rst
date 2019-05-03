@@ -309,6 +309,13 @@ If a response is required, a new ``rte_mp_msg`` message descriptor must be
 constructed and sent via ``rte_mp_reply()`` function, along with ``peer``
 pointer. The resulting response will then be delivered to the correct requestor.
 
+.. warning::
+    Simply returning a value when processing a request callback will not send a
+    response to the request - it must always be explicitly sent even in case
+    of errors. Implementation of error signalling rests with the application,
+    there is no built-in way to indicate success or error for a request. Failing
+    to do so will cause the requestor to time out while waiting on a response.
+
 Misc considerations
 ~~~~~~~~~~~~~~~~~~~~~~~~
 

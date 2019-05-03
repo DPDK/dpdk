@@ -226,6 +226,11 @@ struct rte_mp_reply {
  * As we create  socket channel for primary/secondary communication, use
  * this function typedef to register action for coming messages.
  *
+ * @note When handling IPC request callbacks, the reply must be sent even in
+ *   cases of error handling. Simply returning success or failure will *not*
+ *   send a response to the requestor.
+ *   Implementation of error signalling mechanism is up to the application.
+ *
  * @note No memory allocations should take place inside the callback.
  */
 typedef int (*rte_mp_t)(const struct rte_mp_msg *msg, const void *peer);
@@ -236,6 +241,11 @@ typedef int (*rte_mp_t)(const struct rte_mp_msg *msg, const void *peer);
  * As we create socket channel for primary/secondary communication, use
  * this function typedef to register action for coming responses to asynchronous
  * requests.
+ *
+ * @note When handling IPC request callbacks, the reply must be sent even in
+ *   cases of error handling. Simply returning success or failure will *not*
+ *   send a response to the requestor.
+ *   Implementation of error signalling mechanism is up to the application.
  *
  * @note No memory allocations should take place inside the callback.
  */
@@ -367,6 +377,11 @@ rte_mp_request_async(struct rte_mp_msg *req, const struct timespec *ts,
  *
  * This function will send a reply message in response to a request message
  * received previously.
+ *
+ * @note When handling IPC request callbacks, the reply must be sent even in
+ *   cases of error handling. Simply returning success or failure will *not*
+ *   send a response to the requestor.
+ *   Implementation of error signalling mechanism is up to the application.
  *
  * @param msg
  *   The msg argument contains the customized message.
