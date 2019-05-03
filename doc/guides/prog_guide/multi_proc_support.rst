@@ -263,9 +263,9 @@ To send a request, a message descriptor ``rte_mp_msg`` must be populated.
 Additionally, a ``timespec`` value must be specified as a timeout, after which
 IPC will stop waiting and return.
 
-For synchronous synchronous requests, the ``rte_mp_reply`` descriptor must also
-be created. This is where the responses will be stored. The list of fields that
-will be populated by IPC are as follows:
+For synchronous requests, the ``rte_mp_reply`` descriptor must also be created.
+This is where the responses will be stored.
+The list of fields that will be populated by IPC are as follows:
 
 * ``nb_sent`` - number indicating how many requests were sent (i.e. how many
   peer processes were active at the time of the request).
