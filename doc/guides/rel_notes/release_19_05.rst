@@ -186,7 +186,12 @@ New Features
 
   Added MACSEC hardware offload experimental API.
 
-* **Updated the QuickAssist Technology PMD.**
+* **Updated the Intel QuickAssist Technology (QAT) compression PMD.**
+
+  Simplified and made more robust QAT compressdev PMD's handling of SGLs with
+  more than 16 segments.
+
+* **Updated the QuickAssist Technology (QAT) symmetric crypto PMD.**
 
   Added support for AES-XTS with 128 and 256 bit AES keys.
 
