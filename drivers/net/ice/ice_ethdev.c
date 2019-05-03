@@ -32,6 +32,9 @@ static void ice_dev_info_get(struct rte_eth_dev *dev,
 			     struct rte_eth_dev_info *dev_info);
 static int ice_link_update(struct rte_eth_dev *dev,
 			   int wait_to_complete);
+static int ice_dev_set_link_up(struct rte_eth_dev *dev);
+static int ice_dev_set_link_down(struct rte_eth_dev *dev);
+
 static int ice_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static int ice_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 static int ice_vlan_tpid_set(struct rte_eth_dev *dev,
@@ -94,6 +97,8 @@ static const struct eth_dev_ops ice_eth_dev_ops = {
 	.dev_stop                     = ice_dev_stop,
 	.dev_close                    = ice_dev_close,
 	.dev_reset                    = ice_dev_reset,
+	.dev_set_link_up              = ice_dev_set_link_up,
+	.dev_set_link_down            = ice_dev_set_link_down,
 	.rx_queue_start               = ice_rx_queue_start,
 	.rx_queue_stop                = ice_rx_queue_stop,
 	.tx_queue_start               = ice_tx_queue_start,
@@ -1545,6 +1550,8 @@ ice_dev_stop(struct rte_eth_dev *dev)
 	/* Clear all queues and release mbufs */
 	ice_clear_queues(dev);
 
+	ice_dev_set_link_down(dev);
+
 	/* Clean datapath event and queue/vec mapping */
 	rte_intr_efd_disable(intr_handle);
 	if (intr_handle->intr_vec) {
@@ -1561,6 +1568,13 @@ ice_dev_close(struct rte_eth_dev *dev)
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
+	/* Since stop will make link down, then the link event will be
+	 * triggered, disable the irq firstly to avoid the port_infoe etc
+	 * resources deallocation causing the interrupt service thread
+	 * crash.
+	 */
+	ice_pf_disable_irq0(hw);
+
 	ice_dev_stop(dev);
 
 	/* release all queue resource */
@@ -1570,6 +1584,7 @@ ice_dev_close(struct rte_eth_dev *dev)
 	ice_release_vsi(pf->main_vsi);
 	ice_sched_cleanup_all(hw);
 	rte_free(hw->port_info);
+	hw->port_info = NULL;
 	ice_shutdown_all_ctrlq(hw);
 }
 
@@ -1940,6 +1955,8 @@ ice_dev_start(struct rte_eth_dev *dev)
 	if (ret != ICE_SUCCESS)
 		PMD_DRV_LOG(WARNING, "Fail to set phy mask");
 
+	ice_dev_set_link_up(dev);
+
 	/* Call get_link_info aq commond to enable/disable LSE */
 	ice_link_update(dev, 0);
 
@@ -2220,6 +2237,74 @@ out:
 		return -1;
 
 	return 0;
+}
+
+/* Force the physical link state by getting the current PHY capabilities from
+ * hardware and setting the PHY config based on the determined capabilities. If
+ * link changes, link event will be triggered because both the Enable Automatic
+ * Link Update and LESM Enable bits are set when setting the PHY capabilities.
+ */
+static enum ice_status
+ice_force_phys_link_state(struct ice_hw *hw, bool link_up)
+{
+	struct ice_aqc_set_phy_cfg_data cfg = { 0 };
+	struct ice_aqc_get_phy_caps_data *pcaps;
+	struct ice_port_info *pi;
+	enum ice_status status;
+
+	if (!hw || !hw->port_info)
+		return ICE_ERR_PARAM;
+
+	pi = hw->port_info;
+
+	pcaps = (struct ice_aqc_get_phy_caps_data *)
+		ice_malloc(hw, sizeof(*pcaps));
+	if (!pcaps)
+		return ICE_ERR_NO_MEMORY;
+
+	status = ice_aq_get_phy_caps(pi, false, ICE_AQC_REPORT_SW_CFG, pcaps,
+				     NULL);
+	if (status)
+		goto out;
+
+	/* No change in link */
+	if (link_up == !!(pcaps->caps & ICE_AQC_PHY_EN_LINK) &&
+	    link_up == !!(pi->phy.link_info.link_info & ICE_AQ_LINK_UP))
+		goto out;
+
+	cfg.phy_type_low = pcaps->phy_type_low;
+	cfg.phy_type_high = pcaps->phy_type_high;
+	cfg.caps = pcaps->caps | ICE_AQ_PHY_ENA_AUTO_LINK_UPDT;
+	cfg.low_power_ctrl = pcaps->low_power_ctrl;
+	cfg.eee_cap = pcaps->eee_cap;
+	cfg.eeer_value = pcaps->eeer_value;
+	cfg.link_fec_opt = pcaps->link_fec_options;
+	if (link_up)
+		cfg.caps |= ICE_AQ_PHY_ENA_LINK;
+	else
+		cfg.caps &= ~ICE_AQ_PHY_ENA_LINK;
+
+	status = ice_aq_set_phy_cfg(hw, pi->lport, &cfg, NULL);
+
+out:
+	ice_free(hw, pcaps);
+	return status;
+}
+
+static int
+ice_dev_set_link_up(struct rte_eth_dev *dev)
+{
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	return ice_force_phys_link_state(hw, true);
+}
+
+static int
+ice_dev_set_link_down(struct rte_eth_dev *dev)
+{
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	return ice_force_phys_link_state(hw, false);
 }
 
 static int
