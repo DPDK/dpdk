@@ -202,7 +202,7 @@ rte_mp_action_register(const char *name, rte_mp_t action)
 {
 	struct action_entry *entry;
 
-	if (validate_action_name(name))
+	if (validate_action_name(name) != 0)
 		return -1;
 
 	entry = malloc(sizeof(struct action_entry));
@@ -230,7 +230,7 @@ rte_mp_action_unregister(const char *name)
 {
 	struct action_entry *entry;
 
-	if (validate_action_name(name))
+	if (validate_action_name(name) != 0)
 		return;
 
 	pthread_mutex_lock(&mp_mutex_action);
@@ -749,50 +749,50 @@ mp_send(struct rte_mp_msg *msg, const char *peer, int type)
 	return ret;
 }
 
-static bool
+static int
 check_input(const struct rte_mp_msg *msg)
 {
 	if (msg == NULL) {
 		RTE_LOG(ERR, EAL, "Msg cannot be NULL\n");
 		rte_errno = EINVAL;
-		return false;
+		return -1;
 	}
 
-	if (validate_action_name(msg->name))
-		return false;
+	if (validate_action_name(msg->name) != 0)
+		return -1;
 
 	if (msg->len_param < 0) {
 		RTE_LOG(ERR, EAL, "Message data length is negative\n");
 		rte_errno = EINVAL;
-		return false;
+		return -1;
 	}
 
 	if (msg->num_fds < 0) {
 		RTE_LOG(ERR, EAL, "Number of fd's is negative\n");
 		rte_errno = EINVAL;
-		return false;
+		return -1;
 	}
 
 	if (msg->len_param > RTE_MP_MAX_PARAM_LEN) {
 		RTE_LOG(ERR, EAL, "Message data is too long\n");
 		rte_errno = E2BIG;
-		return false;
+		return -1;
 	}
 
 	if (msg->num_fds > RTE_MP_MAX_FD_NUM) {
 		RTE_LOG(ERR, EAL, "Cannot send more than %d FDs\n",
 			RTE_MP_MAX_FD_NUM);
 		rte_errno = E2BIG;
-		return false;
+		return -1;
 	}
 
-	return true;
+	return 0;
 }
 
 int __rte_experimental
 rte_mp_sendmsg(struct rte_mp_msg *msg)
 {
-	if (!check_input(msg))
+	if (check_input(msg) != 0)
 		return -1;
 
 	RTE_LOG(DEBUG, EAL, "sendmsg: %s\n", msg->name);
@@ -946,7 +946,7 @@ rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 	reply->nb_received = 0;
 	reply->msgs = NULL;
 
-	if (check_input(req) == false)
+	if (check_input(req) != 0)
 		goto err;
 
 	if (internal_config.no_shconf) {
@@ -1040,7 +1040,7 @@ rte_mp_request_async(struct rte_mp_msg *req, const struct timespec *ts,
 
 	RTE_LOG(DEBUG, EAL, "request: %s\n", req->name);
 
-	if (check_input(req) == false)
+	if (check_input(req) != 0)
 		return -1;
 
 	if (internal_config.no_shconf) {
@@ -1177,7 +1177,7 @@ rte_mp_reply(struct rte_mp_msg *msg, const char *peer)
 {
 	RTE_LOG(DEBUG, EAL, "reply: %s\n", msg->name);
 
-	if (check_input(msg) == false)
+	if (check_input(msg) != 0)
 		return -1;
 
 	if (peer == NULL) {
