@@ -147,6 +147,14 @@ A default validator callback is provided by EAL, which can be enabled with a
 ``--socket-limit`` command-line option, for a simple way to limit maximum amount
 of memory that can be used by DPDK application.
 
+.. warning::
+    Memory subsystem uses DPDK IPC internally, so memory allocations/callbacks
+    and IPC must not be mixed: it is not safe to allocate/free memory inside
+    memory-related or IPC callbacks, and it is not safe to use IPC inside
+    memory-related callbacks. See chapter
+    :ref:`Multi-process Support <Multi-process_Support>` for more details about
+    DPDK IPC.
+
 + Legacy memory mode
 
 This mode is enabled by specifying ``--legacy-mem`` command-line switch to the

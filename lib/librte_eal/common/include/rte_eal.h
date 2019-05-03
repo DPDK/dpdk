@@ -225,6 +225,8 @@ struct rte_mp_reply {
  *
  * As we create  socket channel for primary/secondary communication, use
  * this function typedef to register action for coming messages.
+ *
+ * @note No memory allocations should take place inside the callback.
  */
 typedef int (*rte_mp_t)(const struct rte_mp_msg *msg, const void *peer);
 
@@ -234,6 +236,8 @@ typedef int (*rte_mp_t)(const struct rte_mp_msg *msg, const void *peer);
  * As we create socket channel for primary/secondary communication, use
  * this function typedef to register action for coming responses to asynchronous
  * requests.
+ *
+ * @note No memory allocations should take place inside the callback.
  */
 typedef int (*rte_mp_async_reply_t)(const struct rte_mp_msg *request,
 		const struct rte_mp_reply *reply);
@@ -307,6 +311,9 @@ rte_mp_sendmsg(struct rte_mp_msg *msg);
  * block until receiving reply message from the peer process.
  *
  * @note The caller is responsible to free reply->replies.
+ *
+ * @note This API must not be used inside memory-related or IPC callbacks, and
+ *   no memory allocations should take place inside such callback.
  *
  * @param req
  *   The req argument contains the customized request message.
