@@ -97,7 +97,7 @@ check_for_rule_violations()
 			then
 				# Just inform the user of this occurrence, but
 				# don't flag it as an error
-				echo -n "INFO: symbol $syname is added but "
+				echo -n "INFO: symbol $symname is added but "
 				echo -n "patch has insuficient context "
 				echo -n "to determine the section name "
 				echo -n "please ensure the version is "
