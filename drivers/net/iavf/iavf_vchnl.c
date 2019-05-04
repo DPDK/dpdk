@@ -153,7 +153,7 @@ iavf_handle_pf_event_msg(struct rte_eth_dev *dev, uint8_t *msg,
 	case VIRTCHNL_EVENT_LINK_CHANGE:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_LINK_CHANGE event");
 		vf->link_up = pf_msg->event_data.link_event.link_status;
-		vf->link_speed = pf_msg->event_data.link_event.link_speed;
+		vf->link_speed = pf_msg->event_data.link_event_adv.link_speed;
 		iavf_dev_link_update(dev, 0);
 		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
 					      NULL);
@@ -344,7 +344,7 @@ iavf_get_vf_resource(struct iavf_adapter *adapter)
 	 * add advanced/optional offload capabilities
 	 */
 
-	caps = IAVF_BASIC_OFFLOAD_CAPS;
+	caps = IAVF_BASIC_OFFLOAD_CAPS | VIRTCHNL_VF_CAP_ADV_LINK_SPEED;
 
 	args.in_args = (uint8_t *)&caps;
 	args.in_args_size = sizeof(caps);

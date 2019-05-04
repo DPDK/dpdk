@@ -101,7 +101,7 @@ struct iavf_info {
 	/* Event from pf */
 	bool dev_closed;
 	bool link_up;
-	enum virtchnl_link_speed link_speed;
+	uint32_t link_speed;
 
 	struct iavf_vsi vsi;
 	bool vf_reset;

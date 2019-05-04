@@ -586,23 +586,32 @@ iavf_dev_link_update(struct rte_eth_dev *dev,
 	 *  when receive LINK_CHANGE evnet from PF by Virtchnnl.
 	 */
 	switch (vf->link_speed) {
-	case VIRTCHNL_LINK_SPEED_100MB:
+	case 10:
+		new_link.link_speed = ETH_SPEED_NUM_10M;
+		break;
+	case 100:
 		new_link.link_speed = ETH_SPEED_NUM_100M;
 		break;
-	case VIRTCHNL_LINK_SPEED_1GB:
+	case 1000:
 		new_link.link_speed = ETH_SPEED_NUM_1G;
 		break;
-	case VIRTCHNL_LINK_SPEED_10GB:
+	case 10000:
 		new_link.link_speed = ETH_SPEED_NUM_10G;
 		break;
-	case VIRTCHNL_LINK_SPEED_20GB:
+	case 20000:
 		new_link.link_speed = ETH_SPEED_NUM_20G;
 		break;
-	case VIRTCHNL_LINK_SPEED_25GB:
+	case 25000:
 		new_link.link_speed = ETH_SPEED_NUM_25G;
 		break;
-	case VIRTCHNL_LINK_SPEED_40GB:
+	case 40000:
 		new_link.link_speed = ETH_SPEED_NUM_40G;
+		break;
+	case 50000:
+		new_link.link_speed = ETH_SPEED_NUM_50G;
+		break;
+	case 100000:
+		new_link.link_speed = ETH_SPEED_NUM_100G;
 		break;
 	default:
 		new_link.link_speed = ETH_SPEED_NUM_NONE;
