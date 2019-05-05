@@ -3009,8 +3009,8 @@ ice_get_eeprom(struct rte_eth_dev *dev,
 	last_word = (eeprom->offset + eeprom->length - 1) >> 1;
 	nwords = last_word - first_word + 1;
 
-	if (first_word > hw->nvm.sr_words ||
-	    last_word > hw->nvm.sr_words) {
+	if (first_word >= hw->nvm.sr_words ||
+	    last_word >= hw->nvm.sr_words) {
 		PMD_DRV_LOG(ERR, "Requested EEPROM bytes out of range.");
 		return -EINVAL;
 	}
