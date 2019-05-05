@@ -428,27 +428,31 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
-	if (rxqs_n == priv->rxqs_n)
-		return 0;
-	DRV_LOG(INFO, "port %u Rx queues number update: %u -> %u",
-		dev->data->port_id, priv->rxqs_n, rxqs_n);
-	priv->rxqs_n = rxqs_n;
-	/* If the requested number of RX queues is not a power of two, use the
-	 * maximum indirection table size for better balancing.
-	 * The result is always rounded to the next power of two. */
-	reta_idx_n = (1 << log2above((rxqs_n & (rxqs_n - 1)) ?
-				     priv->config.ind_table_max_size :
-				     rxqs_n));
-	ret = mlx5_rss_reta_index_resize(dev, reta_idx_n);
-	if (ret)
-		return ret;
-	/* When the number of RX queues is not a power of two, the remaining
-	 * table entries are padded with reused WQs and hashes are not spread
-	 * uniformly. */
-	for (i = 0, j = 0; (i != reta_idx_n); ++i) {
-		(*priv->reta_idx)[i] = j;
-		if (++j == rxqs_n)
-			j = 0;
+	if (rxqs_n != priv->rxqs_n) {
+		DRV_LOG(INFO, "port %u Rx queues number update: %u -> %u",
+			dev->data->port_id, priv->rxqs_n, rxqs_n);
+		priv->rxqs_n = rxqs_n;
+		/*
+		 * If the requested number of RX queues is not a power of two,
+		 * use the maximum indirection table size for better balancing.
+		 * The result is always rounded to the next power of two.
+		 */
+		reta_idx_n = (1 << log2above((rxqs_n & (rxqs_n - 1)) ?
+					     priv->config.ind_table_max_size :
+					     rxqs_n));
+		ret = mlx5_rss_reta_index_resize(dev, reta_idx_n);
+		if (ret)
+			return ret;
+		/*
+		 * When the number of RX queues is not a power of two,
+		 * the remaining table entries are padded with reused WQs
+		 * and hashes are not spread uniformly.
+		 */
+		for (i = 0, j = 0; (i != reta_idx_n); ++i) {
+			(*priv->reta_idx)[i] = j;
+			if (++j == rxqs_n)
+				j = 0;
+		}
 	}
 	ret = mlx5_proc_priv_init(dev);
 	if (ret)
