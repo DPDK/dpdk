@@ -1591,7 +1591,7 @@ ice_dev_uninit(struct rte_eth_dev *dev)
 	/* disable uio intr before callback unregister */
 	rte_intr_disable(intr_handle);
 
-	/* register callback func to eal lib */
+	/* unregister callback func from eal lib */
 	rte_intr_callback_unregister(intr_handle,
 				     ice_interrupt_handler, dev);
 
@@ -2129,7 +2129,7 @@ ice_atomic_write_link_status(struct rte_eth_dev *dev,
 }
 
 static int
-ice_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
+ice_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 {
 #define CHECK_INTERVAL 100  /* 100ms */
 #define MAX_REPEAT_TIME 10  /* 1s (10 * 100ms) in total */
@@ -2506,7 +2506,7 @@ ice_vlan_tpid_set(struct rte_eth_dev *dev,
 			reg_id = 3;
 		else
 			reg_id = 5;
-	break;
+		break;
 	case ETH_VLAN_TYPE_INNER:
 		if (qinq) {
 			reg_id = 5;
