@@ -12,9 +12,10 @@
 #include <signal.h>
 #include <limits.h>
 
-#include <rte_string_fns.h>
-#include <rte_memcpy.h>
 #include <rte_atomic.h>
+#include <rte_memcpy.h>
+#include <rte_memory.h>
+#include <rte_string_fns.h>
 
 #include "power_acpi_cpufreq.h"
 #include "power_common.h"

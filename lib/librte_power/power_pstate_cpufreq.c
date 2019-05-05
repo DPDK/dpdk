@@ -14,9 +14,10 @@
 #include <errno.h>
 #include <inttypes.h>
 
-#include <rte_string_fns.h>
-#include <rte_memcpy.h>
 #include <rte_atomic.h>
+#include <rte_memcpy.h>
+#include <rte_memory.h>
+#include <rte_string_fns.h>
 
 #include "power_pstate_cpufreq.h"
 #include "power_common.h"
