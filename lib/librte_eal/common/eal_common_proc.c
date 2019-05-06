@@ -934,7 +934,7 @@ int __rte_experimental
 rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 		const struct timespec *ts)
 {
-	int dir_fd, ret = 0;
+	int dir_fd, ret = -1;
 	DIR *mp_dir;
 	struct dirent *ent;
 	struct timeval now;
@@ -947,7 +947,7 @@ rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 	reply->msgs = NULL;
 
 	if (check_input(req) != 0)
-		goto err;
+		goto end;
 
 	if (internal_config.no_shconf) {
 		RTE_LOG(DEBUG, EAL, "No shared files mode enabled, IPC is disabled\n");
@@ -957,7 +957,7 @@ rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 	if (gettimeofday(&now, NULL) < 0) {
 		RTE_LOG(ERR, EAL, "Failed to get current time\n");
 		rte_errno = errno;
-		goto err;
+		goto end;
 	}
 
 	end.tv_nsec = (now.tv_usec * 1000 + ts->tv_nsec) % 1000000000;
@@ -969,9 +969,7 @@ rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 		pthread_mutex_lock(&pending_requests.lock);
 		ret = mp_request_sync(eal_mp_socket_path(), req, reply, &end);
 		pthread_mutex_unlock(&pending_requests.lock);
-		if (ret)
-			goto err;
-		return ret;
+		goto end;
 	}
 
 	/* for primary process, broadcast request, and collect reply 1 by 1 */
@@ -979,7 +977,7 @@ rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 	if (!mp_dir) {
 		RTE_LOG(ERR, EAL, "Unable to open directory %s\n", mp_dir_path);
 		rte_errno = errno;
-		goto err;
+		goto end;
 	}
 
 	dir_fd = dirfd(mp_dir);
@@ -987,9 +985,8 @@ rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 	if (flock(dir_fd, LOCK_SH)) {
 		RTE_LOG(ERR, EAL, "Unable to lock directory %s\n",
 			mp_dir_path);
-		closedir(mp_dir);
 		rte_errno = errno;
-		goto err;
+		goto close_end;
 	}
 
 	pthread_mutex_lock(&pending_requests.lock);
@@ -1006,21 +1003,26 @@ rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 		 * locks on receive
 		 */
 		if (mp_request_sync(path, req, reply, &end))
-			goto err;
+			goto unlock_end;
 	}
+	ret = 0;
+
+unlock_end:
 	pthread_mutex_unlock(&pending_requests.lock);
 	/* unlock the directory */
 	flock(dir_fd, LOCK_UN);
 
+close_end:
 	/* dir_fd automatically closed on closedir */
 	closedir(mp_dir);
-	return ret;
 
-err:
-	free(reply->msgs);
-	reply->nb_received = 0;
-	reply->msgs = NULL;
-	return -1;
+end:
+	if (ret) {
+		free(reply->msgs);
+		reply->nb_received = 0;
+		reply->msgs = NULL;
+	}
+	return ret;
 }
 
 int __rte_experimental
