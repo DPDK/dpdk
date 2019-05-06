@@ -1272,7 +1272,7 @@ mlx5_mprq_alloc_mp(struct rte_eth_dev *dev)
 				return -rte_errno;
 		}
 	}
-	snprintf(name, sizeof(name), "%s-mprq", dev->device->name);
+	snprintf(name, sizeof(name), "port-%u-mprq", dev->data->port_id);
 	mp = rte_mempool_create(name, obj_num, obj_size, MLX5_MPRQ_MP_CACHE_SZ,
 				0, NULL, NULL, mlx5_mprq_buf_init, NULL,
 				dev->device->numa_node, 0);
