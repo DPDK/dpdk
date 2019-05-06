@@ -187,6 +187,9 @@ main(int argc, char **argv)
 	ret = 0;
 
 out:
+#ifdef RTE_LIBRTE_TIMER
+	rte_timer_subsystem_finalize();
+#endif
 	rte_eal_cleanup();
 	return ret;
 }
