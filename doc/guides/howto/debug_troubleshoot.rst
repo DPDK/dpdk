@@ -302,10 +302,6 @@ Custom worker function :numref:`dtg_distributor_worker`.
      performing scenarios. Identify lcore with ``rte_lcore`` and lcore index
      mapping with CPU using ``rte_lcore_index``.
 
-   * The functions running on CPU cores without context switches are the
-     performing scenarios. Identify lcore with ``rte_lcore`` and lcore index
-     mapping with CPU using ``rte_lcore_index``.
-
    * Use ``rte_thread_get_affinity`` to isolate functions running on the same
      CPU core.
 
@@ -404,8 +400,8 @@ Traffic Manager on TX interface :numref:`dtg_qos_tx`.
    for drops for hierarchy, schedulers and WRED configurations.
 
 
-Is the packet not in the unexpected format?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Is the packet in the unexpected format?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Packet capture before and after processing :numref:`dtg_pdump`.
 
