@@ -266,6 +266,11 @@ API Changes
 * power: ``rte_power_set_env`` and ``rte_power_unset_env`` functions
   have been modified to be thread safe.
 
+* timer: Functions have been introduced that allow multiple instances of the
+  timer lists to be created, and they are now allocated in shared memory. New
+  functions allow particular timer lists to be selected when timers are being
+  started, stopped, and managed.
+
 
 ABI Changes
 -----------
@@ -295,6 +300,9 @@ ABI Changes
   ``rte_crypto_op`` structure layout and alignment. Remove cache-line
   alignment for ``rte_crypto_asym_op`` to restore expected ``rte_crypto_op``
   layout and alignment.
+
+* timer: ``rte_timer_subsystem_init`` now returns success or failure to reflect
+  whether it was able to allocate memory.
 
 
 Shared Library Versions
