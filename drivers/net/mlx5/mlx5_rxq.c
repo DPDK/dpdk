@@ -730,6 +730,7 @@ mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	}
 	rxq_data->cq_arm_sn++;
 	mlx5_glue->ack_cq_events(rxq_ibv->cq, 1);
+	mlx5_rxq_ibv_release(rxq_ibv);
 	return 0;
 exit:
 	ret = rte_errno; /* Save rte_errno before cleanup. */
