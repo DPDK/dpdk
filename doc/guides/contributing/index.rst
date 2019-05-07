@@ -13,5 +13,6 @@ Contributor's Guidelines
     versioning
     documentation
     patches
+    vulnerability
     stable
     cheatsheet
