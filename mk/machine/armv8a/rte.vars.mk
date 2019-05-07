@@ -28,4 +28,4 @@
 # CPU_LDFLAGS =
 # CPU_ASFLAGS =
 
-MACHINE_CFLAGS += -march=armv8-a+crc+crypto
+MACHINE_CFLAGS += -march=armv8-a+crc

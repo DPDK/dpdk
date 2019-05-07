@@ -69,6 +69,8 @@ Removed Items
 
 * Removed KNI ethtool, CONFIG_RTE_KNI_KMOD_ETHTOOL, support.
 
+* build: armv8 crypto extension is disabled.
+
 
 API Changes
 -----------

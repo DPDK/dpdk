@@ -74,7 +74,7 @@ flags_octeontx2_extra = [
 	['RTE_USE_C11_MEM_MODEL', true]]
 
 machine_args_generic = [
-	['default', ['-march=armv8-a+crc+crypto']],
+	['default', ['-march=armv8-a+crc']],
 	['native', ['-march=native']],
 	['0xd03', ['-mcpu=cortex-a53']],
 	['0xd04', ['-mcpu=cortex-a35']],
