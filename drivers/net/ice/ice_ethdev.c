@@ -2015,6 +2015,8 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_tx_queues = vsi->nb_qps;
 	dev_info->max_mac_addrs = vsi->max_macaddrs;
 	dev_info->max_vfs = pci_dev->max_vfs;
+	dev_info->max_mtu = dev_info->max_rx_pktlen - ICE_ETH_OVERHEAD;
+	dev_info->min_mtu = ETHER_MIN_MTU;
 
 	dev_info->rx_offload_capa =
 		DEV_RX_OFFLOAD_VLAN_STRIP |
