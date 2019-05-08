@@ -593,11 +593,12 @@ mlx5_rx_intr_vec_disable(struct rte_eth_dev *dev)
 			continue;
 		/**
 		 * Need to access directly the queue to release the reference
-		 * kept in priv_rx_intr_vec_enable().
+		 * kept in mlx5_rx_intr_vec_enable().
 		 */
 		rxq_data = (*priv->rxqs)[i];
 		rxq_ctrl = container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
-		mlx5_rxq_ibv_release(rxq_ctrl->ibv);
+		if (rxq_ctrl->ibv)
+			mlx5_rxq_ibv_release(rxq_ctrl->ibv);
 	}
 free:
 	rte_intr_free_epoll_fd(intr_handle);
