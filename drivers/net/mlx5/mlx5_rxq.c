@@ -1527,8 +1527,9 @@ mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
  *   RX queue index.
  *
  * @return
- *   1 if the queue can be released, negative errno otherwise and rte_errno is
- *   set.
+ *   1 if the queue can be released
+ *   0 if the queue can not be released, there are references to it.
+ *   Negative errno and rte_errno is set if queue doesn't exist.
  */
 int
 mlx5_rxq_releasable(struct rte_eth_dev *dev, uint16_t idx)
