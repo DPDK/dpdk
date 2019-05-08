@@ -252,7 +252,7 @@ plock_test(uint32_t iter, enum plock_use_type utype)
 
 		/* race condition occurred, lock doesn't work properly */
 		if (sum[i] != pt[i].val || 2 * iter != pt[i].iter) {
-			printf("error: local and shared sums don't much\n");
+			printf("error: local and shared sums don't match\n");
 			rc = -1;
 		}
 	}
