@@ -592,7 +592,7 @@ Either RDMA Core library with a recent enough Linux kernel release
 (recommended) or Mellanox OFED/EN, which provides compatibility with older
 releases.
 
-RMDA Core with Linux Kernel
+RDMA Core with Linux Kernel
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - Minimal kernel version : v4.14 or the most recent 4.14-rc (see `Linux installation documentation`_)
