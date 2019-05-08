@@ -202,7 +202,7 @@ plock_test(uint32_t iter, enum plock_use_type utype)
 	printf("%s(iter=%u, utype=%u) started on %u lcores\n",
 		__func__, iter, utype, n);
 
-	if (pt == NULL || lpt == NULL) {
+	if (pt == NULL || lpt == NULL || sum == NULL) {
 		printf("%s: failed to allocate memory for %u lcores\n",
 			__func__, n);
 		free(pt);
