@@ -20,6 +20,9 @@ Deprecation Notices
 * kvargs: The function ``rte_kvargs_process`` will get a new parameter
   for returning key match count. It will ease handling of no-match case.
 
+* eal: The function ``rte_eal_remote_launch`` will return new error codes
+  after read or write error on the pipe, instead of calling ``rte_panic``.
+
 * eal: both declaring and identifying devices will be streamlined in v18.11.
   New functions will appear to query a specific port from buses, classes of
   device and device drivers. Device declaration will be made coherent with the
@@ -82,3 +85,6 @@ Deprecation Notices
 * cryptodev: the ``uint8_t *data`` member of ``key`` structure in the xforms
   structure (``rte_crypto_cipher_xform``, ``rte_crypto_auth_xform``, and
   ``rte_crypto_aead_xform``) will be changed to ``const uint8_t *data``.
+
+* metrics: The function ``rte_metrics_init`` will have a non-void return
+  in order to notify errors instead of calling ``rte_exit``.
