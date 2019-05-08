@@ -398,6 +398,33 @@ mlx5_get_rx_port_offloads(void)
 }
 
 /**
+ * Verify if the queue can be released.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param idx
+ *   RX queue index.
+ *
+ * @return
+ *   1 if the queue can be released
+ *   0 if the queue can not be released, there are references to it.
+ *   Negative errno and rte_errno is set if queue doesn't exist.
+ */
+static int
+mlx5_rxq_releasable(struct rte_eth_dev *dev, uint16_t idx)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_rxq_ctrl *rxq_ctrl;
+
+	if (!(*priv->rxqs)[idx]) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	rxq_ctrl = container_of((*priv->rxqs)[idx], struct mlx5_rxq_ctrl, rxq);
+	return (rte_atomic32_read(&rxq_ctrl->refcnt) == 1);
+}
+
+/**
  *
  * @param dev
  *   Pointer to Ethernet device structure.
@@ -482,6 +509,63 @@ mlx5_rx_queue_release(void *dpdk_rxq)
 			  " cannot be removed\n",
 			  PORT_ID(priv), rxq->idx);
 	mlx5_rxq_release(ETH_DEV(priv), rxq_ctrl->rxq.idx);
+}
+
+/**
+ * Get an Rx queue Verbs object.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param idx
+ *   Queue index in DPDK Rx queue array
+ *
+ * @return
+ *   The Verbs object if it exists.
+ */
+static struct mlx5_rxq_ibv *
+mlx5_rxq_ibv_get(struct rte_eth_dev *dev, uint16_t idx)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[idx];
+	struct mlx5_rxq_ctrl *rxq_ctrl;
+
+	if (idx >= priv->rxqs_n)
+		return NULL;
+	if (!rxq_data)
+		return NULL;
+	rxq_ctrl = container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
+	if (rxq_ctrl->ibv)
+		rte_atomic32_inc(&rxq_ctrl->ibv->refcnt);
+	return rxq_ctrl->ibv;
+}
+
+/**
+ * Release an Rx verbs queue object.
+ *
+ * @param rxq_ibv
+ *   Verbs Rx queue object.
+ *
+ * @return
+ *   1 while a reference on it exists, 0 when freed.
+ */
+static int
+mlx5_rxq_ibv_release(struct mlx5_rxq_ibv *rxq_ibv)
+{
+	assert(rxq_ibv);
+	assert(rxq_ibv->wq);
+	assert(rxq_ibv->cq);
+	if (rte_atomic32_dec_and_test(&rxq_ibv->refcnt)) {
+		rxq_free_elts(rxq_ibv->rxq_ctrl);
+		claim_zero(mlx5_glue->destroy_wq(rxq_ibv->wq));
+		claim_zero(mlx5_glue->destroy_cq(rxq_ibv->cq));
+		if (rxq_ibv->channel)
+			claim_zero(mlx5_glue->destroy_comp_channel
+				   (rxq_ibv->channel));
+		LIST_REMOVE(rxq_ibv, next);
+		rte_free(rxq_ibv);
+		return 0;
+	}
+	return 1;
 }
 
 /**
@@ -1013,64 +1097,6 @@ error:
 }
 
 /**
- * Get an Rx queue Verbs object.
- *
- * @param dev
- *   Pointer to Ethernet device.
- * @param idx
- *   Queue index in DPDK Rx queue array
- *
- * @return
- *   The Verbs object if it exists.
- */
-struct mlx5_rxq_ibv *
-mlx5_rxq_ibv_get(struct rte_eth_dev *dev, uint16_t idx)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_rxq_data *rxq_data = (*priv->rxqs)[idx];
-	struct mlx5_rxq_ctrl *rxq_ctrl;
-
-	if (idx >= priv->rxqs_n)
-		return NULL;
-	if (!rxq_data)
-		return NULL;
-	rxq_ctrl = container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
-	if (rxq_ctrl->ibv) {
-		rte_atomic32_inc(&rxq_ctrl->ibv->refcnt);
-	}
-	return rxq_ctrl->ibv;
-}
-
-/**
- * Release an Rx verbs queue object.
- *
- * @param rxq_ibv
- *   Verbs Rx queue object.
- *
- * @return
- *   1 while a reference on it exists, 0 when freed.
- */
-int
-mlx5_rxq_ibv_release(struct mlx5_rxq_ibv *rxq_ibv)
-{
-	assert(rxq_ibv);
-	assert(rxq_ibv->wq);
-	assert(rxq_ibv->cq);
-	if (rte_atomic32_dec_and_test(&rxq_ibv->refcnt)) {
-		rxq_free_elts(rxq_ibv->rxq_ctrl);
-		claim_zero(mlx5_glue->destroy_wq(rxq_ibv->wq));
-		claim_zero(mlx5_glue->destroy_cq(rxq_ibv->cq));
-		if (rxq_ibv->channel)
-			claim_zero(mlx5_glue->destroy_comp_channel
-				   (rxq_ibv->channel));
-		LIST_REMOVE(rxq_ibv, next);
-		rte_free(rxq_ibv);
-		return 0;
-	}
-	return 1;
-}
-
-/**
  * Verify the Verbs Rx queue list is empty
  *
  * @param dev
@@ -1519,33 +1545,6 @@ mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
 }
 
 /**
- * Verify if the queue can be released.
- *
- * @param dev
- *   Pointer to Ethernet device.
- * @param idx
- *   RX queue index.
- *
- * @return
- *   1 if the queue can be released
- *   0 if the queue can not be released, there are references to it.
- *   Negative errno and rte_errno is set if queue doesn't exist.
- */
-int
-mlx5_rxq_releasable(struct rte_eth_dev *dev, uint16_t idx)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_rxq_ctrl *rxq_ctrl;
-
-	if (!(*priv->rxqs)[idx]) {
-		rte_errno = EINVAL;
-		return -rte_errno;
-	}
-	rxq_ctrl = container_of((*priv->rxqs)[idx], struct mlx5_rxq_ctrl, rxq);
-	return (rte_atomic32_read(&rxq_ctrl->refcnt) == 1);
-}
-
-/**
  * Verify the Rx Queue list is empty
  *
  * @param dev
@@ -1582,7 +1581,7 @@ mlx5_rxq_verify(struct rte_eth_dev *dev)
  * @return
  *   The Verbs object initialised, NULL otherwise and rte_errno is set.
  */
-struct mlx5_ind_table_ibv *
+static struct mlx5_ind_table_ibv *
 mlx5_ind_table_ibv_new(struct rte_eth_dev *dev, const uint16_t *queues,
 		       uint32_t queues_n)
 {
@@ -1646,7 +1645,7 @@ error:
  * @return
  *   An indirection table if found.
  */
-struct mlx5_ind_table_ibv *
+static struct mlx5_ind_table_ibv *
 mlx5_ind_table_ibv_get(struct rte_eth_dev *dev, const uint16_t *queues,
 		       uint32_t queues_n)
 {
@@ -1681,7 +1680,7 @@ mlx5_ind_table_ibv_get(struct rte_eth_dev *dev, const uint16_t *queues,
  * @return
  *   1 while a reference on it exists, 0 when freed.
  */
-int
+static int
 mlx5_ind_table_ibv_release(struct rte_eth_dev *dev,
 			   struct mlx5_ind_table_ibv *ind_tbl)
 {
@@ -1965,7 +1964,7 @@ mlx5_hrxq_ibv_verify(struct rte_eth_dev *dev)
  * @return
  *   The Verbs object initialised, NULL otherwise and rte_errno is set.
  */
-struct mlx5_rxq_ibv *
+static struct mlx5_rxq_ibv *
 mlx5_rxq_ibv_drop_new(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -2025,7 +2024,7 @@ error:
  * @return
  *   The Verbs object initialised, NULL otherwise and rte_errno is set.
  */
-void
+static void
 mlx5_rxq_ibv_drop_release(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -2048,7 +2047,7 @@ mlx5_rxq_ibv_drop_release(struct rte_eth_dev *dev)
  * @return
  *   The Verbs object initialised, NULL otherwise and rte_errno is set.
  */
-struct mlx5_ind_table_ibv *
+static struct mlx5_ind_table_ibv *
 mlx5_ind_table_ibv_drop_new(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -2091,7 +2090,7 @@ error:
  * @param dev
  *   Pointer to Ethernet device.
  */
-void
+static void
 mlx5_ind_table_ibv_drop_release(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
