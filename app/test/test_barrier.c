@@ -92,12 +92,14 @@ plock_lock(struct plock *l, uint32_t self)
 	other = self ^ 1;
 
 	l->flag[self] = 1;
+	rte_smp_wmb();
 	l->victim = self;
 
 	store_load_barrier(l->utype);
 
 	while (l->flag[other] == 1 && l->victim == self)
 		rte_pause();
+	rte_smp_rmb();
 }
 
 static void
