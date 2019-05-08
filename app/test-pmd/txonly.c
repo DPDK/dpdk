@@ -167,7 +167,7 @@ pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
 		nb_segs = tx_pkt_nb_segs;
 
 	if (nb_segs > 1) {
-		if (rte_mempool_get_bulk(mbp, (void **)pkt_segs, nb_segs))
+		if (rte_mempool_get_bulk(mbp, (void **)pkt_segs, nb_segs - 1))
 			return false;
 	}
 
