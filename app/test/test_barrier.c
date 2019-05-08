@@ -55,8 +55,8 @@ struct plock {
  */
 struct plock_test {
 	struct plock lock;
-	uint32_t val;
-	uint32_t iter;
+	uint64_t val;
+	uint64_t iter;
 };
 
 /*
@@ -65,8 +65,8 @@ struct plock_test {
  */
 struct lcore_plock_test {
 	struct plock_test *pt[2]; /* shared, lock-protected data */
-	uint32_t sum[2];          /* local copy of the shared data */
-	uint32_t iter;            /* number of iterations to perfom */
+	uint64_t sum[2];          /* local copy of the shared data */
+	uint64_t iter;            /* number of iterations to perfom */
 	uint32_t lc;              /* given lcore id */
 };
 
@@ -130,7 +130,8 @@ static int
 plock_test1_lcore(void *data)
 {
 	uint64_t tm;
-	uint32_t i, lc, ln, n;
+	uint32_t lc, ln;
+	uint64_t i, n;
 	struct lcore_plock_test *lpt;
 
 	lpt = data;
@@ -166,9 +167,9 @@ plock_test1_lcore(void *data)
 
 	tm = rte_get_timer_cycles() - tm;
 
-	printf("%s(%u): %u iterations finished, in %" PRIu64
+	printf("%s(%u): %" PRIu64 " iterations finished, in %" PRIu64
 		" cycles, %#Lf cycles/iteration, "
-		"local sum={%u, %u}\n",
+		"local sum={%" PRIu64 ", %" PRIu64 "}\n",
 		__func__, lc, i, tm, (long double)tm / i,
 		lpt->sum[0], lpt->sum[1]);
 	return 0;
@@ -184,11 +185,11 @@ plock_test1_lcore(void *data)
  * and local data are the same.
  */
 static int
-plock_test(uint32_t iter, enum plock_use_type utype)
+plock_test(uint64_t iter, enum plock_use_type utype)
 {
 	int32_t rc;
 	uint32_t i, lc, n;
-	uint32_t *sum;
+	uint64_t *sum;
 	struct plock_test *pt;
 	struct lcore_plock_test *lpt;
 
@@ -199,7 +200,7 @@ plock_test(uint32_t iter, enum plock_use_type utype)
 	lpt = calloc(n, sizeof(*lpt));
 	sum = calloc(n + 1, sizeof(*sum));
 
-	printf("%s(iter=%u, utype=%u) started on %u lcores\n",
+	printf("%s(iter=%" PRIu64 ", utype=%u) started on %u lcores\n",
 		__func__, iter, utype, n);
 
 	if (pt == NULL || lpt == NULL || sum == NULL) {
@@ -247,7 +248,7 @@ plock_test(uint32_t iter, enum plock_use_type utype)
 
 	rc = 0;
 	for (i = 0; i != n; i++) {
-		printf("%s: sum[%u]=%u, pt[%u].val=%u, pt[%u].iter=%u;\n",
+		printf("%s: sum[%u]=%" PRIu64 ", pt[%u].val=%" PRIu64 ", pt[%u].iter=%" PRIu64 ";\n",
 			__func__, i, sum[i], i, pt[i].val, i, pt[i].iter);
 
 		/* race condition occurred, lock doesn't work properly */
