@@ -10,6 +10,7 @@ The following are platform specific guides and setup information.
     :maxdepth: 2
     :numbered:
 
+    bluefield
     dpaa
     dpaa2
     octeontx

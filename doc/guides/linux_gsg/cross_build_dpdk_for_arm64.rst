@@ -34,6 +34,8 @@ Unzip and add into the PATH
 
    For the host requirements and other info, refer to the release note section: https://releases.linaro.org/components/toolchain/binaries/
 
+.. _arm_cross_build_getting_the_prerequisite_library:
+
 Getting the prerequisite library
 --------------------------------
 
