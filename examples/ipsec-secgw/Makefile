@@ -53,7 +53,7 @@ clean:
 else
 
 ifeq ($(RTE_SDK),)
-	$(error "Please define RTE_SDK environment variable")
+$(error "Please define RTE_SDK environment variable")
 endif
 
 # Default target, detect a build directory, by looking for a path with a .config
