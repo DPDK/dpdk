@@ -249,7 +249,6 @@ int mlx5_rxq_mprq_enabled(struct mlx5_rxq_data *rxq);
 int mlx5_mprq_enabled(struct rte_eth_dev *dev);
 int mlx5_mprq_free_mp(struct rte_eth_dev *dev);
 int mlx5_mprq_alloc_mp(struct rte_eth_dev *dev);
-void mlx5_rxq_cleanup(struct mlx5_rxq_ctrl *rxq_ctrl);
 int mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			unsigned int socket, const struct rte_eth_rxconf *conf,
 			struct rte_mempool *mp);
@@ -261,7 +260,6 @@ int mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 struct mlx5_rxq_ibv *mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx);
 struct mlx5_rxq_ibv *mlx5_rxq_ibv_get(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_rxq_ibv_release(struct mlx5_rxq_ibv *rxq_ibv);
-int mlx5_rxq_ibv_releasable(struct mlx5_rxq_ibv *rxq_ibv);
 struct mlx5_rxq_ibv *mlx5_rxq_ibv_drop_new(struct rte_eth_dev *dev);
 void mlx5_rxq_ibv_drop_release(struct rte_eth_dev *dev);
 int mlx5_rxq_ibv_verify(struct rte_eth_dev *dev);
@@ -274,7 +272,6 @@ int mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_rxq_releasable(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_rxq_verify(struct rte_eth_dev *dev);
 int rxq_alloc_elts(struct mlx5_rxq_ctrl *rxq_ctrl);
-int rxq_alloc_mprq_buf(struct mlx5_rxq_ctrl *rxq_ctrl);
 struct mlx5_ind_table_ibv *mlx5_ind_table_ibv_new(struct rte_eth_dev *dev,
 						  const uint16_t *queues,
 						  uint32_t queues_n);
@@ -311,7 +308,6 @@ int mlx5_tx_uar_init_secondary(struct rte_eth_dev *dev, int fd);
 struct mlx5_txq_ibv *mlx5_txq_ibv_new(struct rte_eth_dev *dev, uint16_t idx);
 struct mlx5_txq_ibv *mlx5_txq_ibv_get(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_txq_ibv_release(struct mlx5_txq_ibv *txq_ibv);
-int mlx5_txq_ibv_releasable(struct mlx5_txq_ibv *txq_ibv);
 int mlx5_txq_ibv_verify(struct rte_eth_dev *dev);
 struct mlx5_txq_ctrl *mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx,
 				   uint16_t desc, unsigned int socket,

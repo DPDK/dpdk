@@ -642,19 +642,6 @@ mlx5_txq_ibv_release(struct mlx5_txq_ibv *txq_ibv)
 }
 
 /**
- * Return true if a single reference exists on the object.
- *
- * @param txq_ibv
- *   Verbs Tx queue object.
- */
-int
-mlx5_txq_ibv_releasable(struct mlx5_txq_ibv *txq_ibv)
-{
-	assert(txq_ibv);
-	return (rte_atomic32_read(&txq_ibv->refcnt) == 1);
-}
-
-/**
  * Verify the Verbs Tx queue list is empty
  *
  * @param dev

@@ -353,24 +353,6 @@ rxq_free_elts(struct mlx5_rxq_ctrl *rxq_ctrl)
 }
 
 /**
- * Clean up a RX queue.
- *
- * Destroy objects, free allocated memory and reset the structure for reuse.
- *
- * @param rxq_ctrl
- *   Pointer to RX queue structure.
- */
-void
-mlx5_rxq_cleanup(struct mlx5_rxq_ctrl *rxq_ctrl)
-{
-	DRV_LOG(DEBUG, "port %u cleaning up Rx queue %u",
-		PORT_ID(rxq_ctrl->priv), rxq_ctrl->rxq.idx);
-	if (rxq_ctrl->ibv)
-		mlx5_rxq_ibv_release(rxq_ctrl->ibv);
-	memset(rxq_ctrl, 0, sizeof(*rxq_ctrl));
-}
-
-/**
  * Returns the per-queue supported offloads.
  *
  * @param dev
@@ -1109,19 +1091,6 @@ mlx5_rxq_ibv_verify(struct rte_eth_dev *dev)
 		++ret;
 	}
 	return ret;
-}
-
-/**
- * Return true if a single reference exists on the object.
- *
- * @param rxq_ibv
- *   Verbs Rx queue object.
- */
-int
-mlx5_rxq_ibv_releasable(struct mlx5_rxq_ibv *rxq_ibv)
-{
-	assert(rxq_ibv);
-	return (rte_atomic32_read(&rxq_ibv->refcnt) == 1);
 }
 
 /**
