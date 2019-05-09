@@ -119,6 +119,18 @@ test_cryptodev_asym_op(struct crypto_testsuite_params *ts_params,
 
 	int status = TEST_SUCCESS;
 
+	xform_tc.next = NULL;
+	xform_tc.xform_type = data_tc->modex.xform_type;
+
+	cap_idx.type = xform_tc.xform_type;
+	capability = rte_cryptodev_asym_capability_get(dev_id, &cap_idx);
+
+	if (capability == NULL) {
+		RTE_LOG(INFO, USER1,
+			"Device doesn't support MODEX. Test Skipped\n");
+		return -ENOTSUP;
+	}
+
 	/* Generate crypto op data structure */
 	op = rte_crypto_op_alloc(ts_params->op_mpool,
 		RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
@@ -133,11 +145,6 @@ test_cryptodev_asym_op(struct crypto_testsuite_params *ts_params,
 	}
 
 	asym_op = op->asym;
-	xform_tc.next = NULL;
-	xform_tc.xform_type = data_tc->modex.xform_type;
-
-	cap_idx.type = xform_tc.xform_type;
-	capability = rte_cryptodev_asym_capability_get(dev_id, &cap_idx);
 
 	switch (xform_tc.xform_type) {
 	case RTE_CRYPTO_ASYM_XFORM_MODEX:
@@ -352,7 +359,7 @@ test_rsa_sign_verify(void)
 		RTE_LOG(INFO, USER1,
 				"Device doesn't support sign op with "
 				"exponent key type. Test Skipped\n");
-		return TEST_SKIPPED;
+		return -ENOTSUP;
 	}
 
 	sess = rte_cryptodev_asym_session_create(sess_mpool);
@@ -498,7 +505,7 @@ test_rsa_enc_dec(void)
 		RTE_LOG(INFO, USER1,
 				"Device doesn't support sign op with "
 				"exponent key type. Test Skipped\n");
-		return TEST_SKIPPED;
+		return -ENOTSUP;
 	}
 
 	sess = rte_cryptodev_asym_session_create(sess_mpool);
@@ -1260,7 +1267,7 @@ test_mod_inv(void)
 	if (rte_cryptodev_asym_get_xform_enum(
 		&modinv_xform.xform_type, "modinv") < 0) {
 		RTE_LOG(ERR, USER1,
-				 "Invalid ASYNC algorithm specified\n");
+				 "Invalid ASYM algorithm specified\n");
 		return -1;
 	}
 
@@ -1268,12 +1275,18 @@ test_mod_inv(void)
 	capability = rte_cryptodev_asym_capability_get(dev_id,
 					&cap_idx);
 
+	if (capability == NULL) {
+		RTE_LOG(INFO, USER1,
+			"Device doesn't support MOD INV. Test Skipped\n");
+		return -ENOTSUP;
+	}
+
 	if (rte_cryptodev_asym_xform_capability_check_modlen(
 		capability,
 		modinv_xform.modinv.modulus.length)) {
 		RTE_LOG(ERR, USER1,
-				 "Invalid MODULOUS length specified\n");
-				return -1;
+				 "Invalid MODULUS length specified\n");
+				return -ENOTSUP;
 		}
 
 	sess = rte_cryptodev_asym_session_create(sess_mpool);
@@ -1379,7 +1392,7 @@ test_mod_exp(void)
 		"modexp")
 		< 0) {
 		RTE_LOG(ERR, USER1,
-				"Invalid ASYNC algorithm specified\n");
+				"Invalid ASYM algorithm specified\n");
 		return -1;
 	}
 
@@ -1387,11 +1400,17 @@ test_mod_exp(void)
 	cap_idx.type = modex_xform.xform_type;
 	capability = rte_cryptodev_asym_capability_get(dev_id, &cap_idx);
 
+	if (capability == NULL) {
+		RTE_LOG(INFO, USER1,
+			"Device doesn't support MOD EXP. Test Skipped\n");
+		return -ENOTSUP;
+	}
+
 	if (rte_cryptodev_asym_xform_capability_check_modlen(
 			capability, modex_xform.modex.modulus.length)) {
 		RTE_LOG(ERR, USER1,
-				"Invalid MODULOUS length specified\n");
-				return -1;
+				"Invalid MODULUS length specified\n");
+				return -ENOTSUP;
 		}
 
 	/* generate crypto op data structure */
