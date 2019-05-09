@@ -482,6 +482,98 @@ static int test_add_update_delete_free(void)
 }
 
 /*
+ * Sequence of operations for a single key with 'rw concurrency lock free' set:
+ *	- add
+ *	- delete: hit
+ *	- free: hit
+ * Repeat the test case when 'multi writer add' is enabled.
+ *	- add
+ *	- delete: hit
+ *	- free: hit
+ */
+static int test_add_delete_free_lf(void)
+{
+/* Should match the #define LCORE_CACHE_SIZE value in rte_cuckoo_hash.h */
+#define LCORE_CACHE_SIZE	64
+	struct rte_hash *handle;
+	hash_sig_t hash_value;
+	int pos, expectedPos, delPos;
+	uint8_t extra_flag;
+	uint32_t i, ip_src;
+
+	extra_flag = ut_params.extra_flag;
+	ut_params.extra_flag = RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF;
+	handle = rte_hash_create(&ut_params);
+	RETURN_IF_ERROR(handle == NULL, "hash creation failed");
+	ut_params.extra_flag = extra_flag;
+
+	/*
+	 * The number of iterations is at least the same as the number of slots
+	 * rte_hash allocates internally. This is to reveal potential issues of
+	 * not freeing keys successfully.
+	 */
+	for (i = 0; i < ut_params.entries + 1; i++) {
+		hash_value = rte_hash_hash(handle, &keys[0]);
+		pos = rte_hash_add_key_with_hash(handle, &keys[0], hash_value);
+		print_key_info("Add", &keys[0], pos);
+		RETURN_IF_ERROR(pos < 0, "failed to add key (pos=%d)", pos);
+		expectedPos = pos;
+
+		pos = rte_hash_del_key_with_hash(handle, &keys[0], hash_value);
+		print_key_info("Del", &keys[0], pos);
+		RETURN_IF_ERROR(pos != expectedPos,
+				"failed to delete key (pos=%d)", pos);
+		delPos = pos;
+
+		pos = rte_hash_free_key_with_position(handle, delPos);
+		print_key_info("Free", &keys[0], delPos);
+		RETURN_IF_ERROR(pos != 0,
+				"failed to free key (pos=%d)", delPos);
+	}
+
+	rte_hash_free(handle);
+
+	extra_flag = ut_params.extra_flag;
+	ut_params.extra_flag = RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF |
+				RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD;
+	handle = rte_hash_create(&ut_params);
+	RETURN_IF_ERROR(handle == NULL, "hash creation failed");
+	ut_params.extra_flag = extra_flag;
+
+	ip_src = keys[0].ip_src;
+	/*
+	 * The number of iterations is at least the same as the number of slots
+	 * rte_hash allocates internally. This is to reveal potential issues of
+	 * not freeing keys successfully.
+	 */
+	for (i = 0; i < ut_params.entries + (RTE_MAX_LCORE - 1) *
+					(LCORE_CACHE_SIZE - 1) + 1; i++) {
+		keys[0].ip_src++;
+		hash_value = rte_hash_hash(handle, &keys[0]);
+		pos = rte_hash_add_key_with_hash(handle, &keys[0], hash_value);
+		print_key_info("Add", &keys[0], pos);
+		RETURN_IF_ERROR(pos < 0, "failed to add key (pos=%d)", pos);
+		expectedPos = pos;
+
+		pos = rte_hash_del_key_with_hash(handle, &keys[0], hash_value);
+		print_key_info("Del", &keys[0], pos);
+		RETURN_IF_ERROR(pos != expectedPos,
+			"failed to delete key (pos=%d)", pos);
+		delPos = pos;
+
+		pos = rte_hash_free_key_with_position(handle, delPos);
+		print_key_info("Free", &keys[0], delPos);
+		RETURN_IF_ERROR(pos != 0,
+			"failed to free key (pos=%d)", delPos);
+	}
+	keys[0].ip_src = ip_src;
+
+	rte_hash_free(handle);
+
+	return 0;
+}
+
+/*
  * Sequence of operations for retrieving a key with its position
  *
  *  - create table
@@ -1742,6 +1834,8 @@ test_hash(void)
 	if (test_add_update_delete() < 0)
 		return -1;
 	if (test_add_update_delete_free() < 0)
+		return -1;
+	if (test_add_delete_free_lf() < 0)
 		return -1;
 	if (test_five_keys() < 0)
 		return -1;
