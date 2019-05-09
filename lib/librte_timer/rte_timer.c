@@ -25,6 +25,7 @@
 #include <rte_memzone.h>
 #include <rte_malloc.h>
 #include <rte_compat.h>
+#include <rte_errno.h>
 
 #include "rte_timer.h"
 
@@ -155,40 +156,41 @@ rte_timer_subsystem_init_v1905(void)
 	struct rte_timer_data *data;
 	int i, lcore_id;
 	static const char *mz_name = "rte_timer_mz";
+	const size_t data_arr_size =
+				RTE_MAX_DATA_ELS * sizeof(*rte_timer_data_arr);
+	bool do_full_init = true;
 
 	if (rte_timer_subsystem_initialized)
 		return -EALREADY;
 
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
-		mz = rte_memzone_lookup(mz_name);
-		if (mz == NULL)
-			return -EEXIST;
+reserve:
+	rte_errno = 0;
+	mz = rte_memzone_reserve_aligned(mz_name, data_arr_size, SOCKET_ID_ANY,
+					 0, RTE_CACHE_LINE_SIZE);
+	if (mz == NULL) {
+		if (rte_errno == EEXIST) {
+			mz = rte_memzone_lookup(mz_name);
+			if (mz == NULL)
+				goto reserve;
 
-		rte_timer_data_arr = mz->addr;
-
-		rte_timer_data_arr[default_data_id].internal_flags |=
-			FL_ALLOCATED;
-
-		rte_timer_subsystem_initialized = 1;
-
-		return 0;
+			do_full_init = false;
+		} else
+			return -ENOMEM;
 	}
-
-	mz = rte_memzone_reserve_aligned(mz_name,
-			RTE_MAX_DATA_ELS * sizeof(*rte_timer_data_arr),
-			SOCKET_ID_ANY, 0, RTE_CACHE_LINE_SIZE);
-	if (mz == NULL)
-		return -ENOMEM;
 
 	rte_timer_data_arr = mz->addr;
 
-	for (i = 0; i < RTE_MAX_DATA_ELS; i++) {
-		data = &rte_timer_data_arr[i];
+	if (do_full_init) {
+		for (i = 0; i < RTE_MAX_DATA_ELS; i++) {
+			data = &rte_timer_data_arr[i];
 
-		for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
-			rte_spinlock_init(
-				&data->priv_timer[lcore_id].list_lock);
-			data->priv_timer[lcore_id].prev_lcore = lcore_id;
+			for (lcore_id = 0; lcore_id < RTE_MAX_LCORE;
+			     lcore_id++) {
+				rte_spinlock_init(
+					&data->priv_timer[lcore_id].list_lock);
+				data->priv_timer[lcore_id].prev_lcore =
+					lcore_id;
+			}
 		}
 	}
 
@@ -205,8 +207,8 @@ BIND_DEFAULT_SYMBOL(rte_timer_subsystem_init, _v1905, 19.05);
 void __rte_experimental
 rte_timer_subsystem_finalize(void)
 {
-	if (rte_timer_data_arr)
-		rte_free(rte_timer_data_arr);
+	if (!rte_timer_subsystem_initialized)
+		return;
 
 	rte_timer_subsystem_initialized = 0;
 }
