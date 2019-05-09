@@ -128,11 +128,30 @@ New Features
   * Added Tx prepare to do Tx offloads checks.
   * Added support for VXLAN and GENEVE encapsulated TSO.
 
-* **Updated Mellanox drivers.**
+* **Updated Mellanox mlx4 driver.**
 
-   New features and improvements were done in mlx4 and mlx5 PMDs:
+   New features and improvements were done:
 
    * Added firmware version reading.
+   * Added support for secondary process.
+   * Added support of per-process device registers, reserving identical VA space
+     is not needed anymore.
+   * Added support for multicast address list interface
+
+* **Updated Mellanox mlx5 driver.**
+
+   New features and improvements were done:
+
+   * Added firmware version reading.
+   * Added support of new naming scheme of representor.
+   * Added support for new PCI device DMA map/unmap API.
+   * Added support for multiport InfiniBand device.
+   * Added control of excessive memory pinning by kernel.
+   * Added support of DMA memory registration by secondary process.
+   * Added Direct Rule support in Direct Verbs flow driver.
+   * Added support of per-process device registers, reserving identical VA space
+     is not needed anymore.
+   * Added E-Switch support in Direct Verbs flow driver.
 
 * **Renamed avf to iavf.**
 
