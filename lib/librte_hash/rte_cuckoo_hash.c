@@ -1594,7 +1594,9 @@ rte_hash_free_key_with_position(const struct rte_hash *h,
 
 	unsigned int lcore_id, n_slots;
 	struct lcore_cache *cached_free_slots;
-	const uint32_t total_entries = h->num_buckets * RTE_HASH_BUCKET_ENTRIES;
+	const uint32_t total_entries = h->use_local_cache ?
+		h->entries + (RTE_MAX_LCORE - 1) * (LCORE_CACHE_SIZE - 1) + 1
+							: h->entries + 1;
 
 	/* Out of bounds */
 	if (key_idx >= total_entries)
