@@ -4444,6 +4444,14 @@ i40e_flow_parse_rss_action(struct rte_eth_dev *dev,
 		}
 	}
 
+	if (rss_info->conf.queue_num) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				act,
+				"rss only allow one valid rule");
+		return -rte_errno;
+	}
+
 	/* Parse RSS related parameters from configuration */
 	if (rss->func != RTE_ETH_HASH_FUNCTION_DEFAULT)
 		return rte_flow_error_set
