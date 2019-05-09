@@ -890,11 +890,6 @@ virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	rxvq = &vq->rxq;
 	rxvq->queue_id = queue_idx;
 	rxvq->mpool = mp;
-	if (rxvq->mpool == NULL) {
-		rte_exit(EXIT_FAILURE,
-			"Cannot allocate mbufs for rx virtqueue");
-	}
-
 	dev->data->rx_queues[queue_idx] = rxvq;
 
 	return 0;
