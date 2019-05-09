@@ -2066,6 +2066,13 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	uint64_t last_item = 0;
 	uint8_t next_protocol = 0xff;
 	int actions_n = 0;
+	struct rte_flow_item_tcp nic_tcp_mask = {
+		.hdr = {
+			.tcp_flags = 0xFF,
+			.src_port = RTE_BE16(UINT16_MAX),
+			.dst_port = RTE_BE16(UINT16_MAX),
+		}
+	};
 
 	if (items == NULL)
 		return -1;
@@ -2146,7 +2153,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			ret = mlx5_flow_validate_item_tcp
 						(items, item_flags,
 						 next_protocol,
-						 &rte_flow_item_tcp_mask,
+						 &nic_tcp_mask,
 						 error);
 			if (ret < 0)
 				return ret;
@@ -2862,6 +2869,10 @@ flow_dv_translate_item_tcp(void *matcher, void *key,
 		 rte_be_to_cpu_16(tcp_m->hdr.dst_port));
 	MLX5_SET(fte_match_set_lyr_2_4, headers_v, tcp_dport,
 		 rte_be_to_cpu_16(tcp_v->hdr.dst_port & tcp_m->hdr.dst_port));
+	MLX5_SET(fte_match_set_lyr_2_4, headers_m, tcp_flags,
+		 tcp_m->hdr.tcp_flags);
+	MLX5_SET(fte_match_set_lyr_2_4, headers_v, tcp_flags,
+		 (tcp_v->hdr.tcp_flags & tcp_m->hdr.tcp_flags));
 }
 
 /**
