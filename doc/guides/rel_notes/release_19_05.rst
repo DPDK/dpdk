@@ -54,24 +54,27 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
-* **Added new armv8 machine targets:**
+* **Added new armv8 machine targets.**
+
+  Added new armv8 machine targets:
 
   * BlueField (Mellanox)
   * OcteonTX2 (Marvell)
   * ThunderX2 (Marvell)
 
-* **Introduced Windows Support.**
+* **Added Windows Support.**
 
   Added Windows support to build Hello World sample application.
 
-* **Added Stack API.**
+* **Added Stack Library.**
 
-  Added a new stack API for configuration and use of a bounded stack of
-  pointers. The API provides MT-safe push and pop operations that can operate
-  on one or more pointers per operation.
+  Added a new stack library and APIs for configuration and use of a bounded
+  stack of pointers. The API provides multi-thread safe push and pop
+  operations that can operate on one or more pointers per operation.
 
-  The library supports two stack implementations: standard (lock-based) and lock-free.
-  The lock-free implementation is currently limited to x86-64 platforms.
+  The library supports two stack implementations: standard (lock-based) and
+  lock-free.  The lock-free implementation is currently limited to x86-64
+  platforms.
 
 * **Added Lock-Free Stack Mempool Handler.**
 
@@ -80,24 +83,24 @@ New Features
 
 * **Added RCU library.**
 
-  Added RCU library supporting quiescent state based memory reclamation method.
+  Added RCU library supporting a quiescent state based memory reclamation method.
   This library helps identify the quiescent state of the reader threads so
   that the writers can free the memory associated with the lock free data
   structures.
 
 * **Updated KNI module and PMD.**
 
-  Updated the KNI kernel module to set the max_mtu according to the given
+  Updated the KNI kernel module to set the ``max_mtu`` according to the given
   initial MTU size. Without it, the maximum MTU was 1500.
 
-  Updated the KNI PMD driver to set the mbuf_size and MTU based on
+  Updated the KNI PMD driver to set the ``mbuf_size`` and MTU based on
   the given mb-pool. This provide the ability to pass jumbo frames
-  if the mb-pool contains suitable buffers' size.
+  if the mb-pool contains a suitable buffer size.
 
 * **Added the AF_XDP PMD.**
 
-  Added a Linux-specific PMD driver for AF_XDP, it can create the AF_XDP socket
-  and bind it to a specific netdev queue, it allows a DPDK application to send
+  Added a Linux-specific PMD driver for AF_XDP. This PMD can create an AF_XDP socket
+  and bind it to a specific netdev queue. It allows a DPDK application to send
   and receive raw packets through the socket which would bypass the kernel
   network stack to achieve high performance packet processing.
 
@@ -108,48 +111,48 @@ New Features
 
 * **Added IPN3KE net PMD.**
 
-  Added the new ``ipn3ke`` net driver for Intel® FPGA PAC(Programmable
+  Added the new ``ipn3ke`` net driver for the Intel® FPGA PAC (Programmable
   Acceleration Card) N3000. See the :doc:`../nics/ipn3ke` NIC guide for more
   details on this new driver.
 
-  Aside from this, ifpga_rawdev is also updated to support Intel® FPGA PAC
-  N3000 with SPI interface access, I2C Read/Write and Ethernet PHY configuration.
+  In addition ``ifpga_rawdev`` was also updated to support Intel® FPGA PAC
+  N3000 with SPI interface access, I2C Read/Write, and Ethernet PHY configuration.
 
 * **Updated Solarflare network PMD.**
 
-  Updated the sfc_efx driver including the following changes:
+  Updated the Solarflare ``sfc_efx`` driver with changes including:
 
   * Added support for Rx descriptor status and related API in a secondary
     process.
   * Added support for Tx descriptor status API in a secondary process.
-  * Added support for RSS RETA and hash configuration get API in a secondary
-    process.
+  * Added support for RSS RETA and hash configuration reading API in a
+    secondary process.
   * Added support for Rx packet types list in a secondary process.
   * Added Tx prepare to do Tx offloads checks.
   * Added support for VXLAN and GENEVE encapsulated TSO.
 
 * **Updated Mellanox mlx4 driver.**
 
-   New features and improvements were done:
+   Updated Mellanox mlx4 driver with new features and improvements, including:
 
    * Added firmware version reading.
-   * Added support for secondary process.
-   * Added support of per-process device registers, reserving identical VA space
+   * Added support for secondary processes.
+   * Added support of per-process device registers. Reserving identical VA space
      is not needed anymore.
-   * Added support for multicast address list interface
+   * Added support for multicast address list interfaces.
 
 * **Updated Mellanox mlx5 driver.**
 
-   New features and improvements were done:
+   Updated Mellanox mlx5 driver with new features and improvements, including:
 
    * Added firmware version reading.
-   * Added support of new naming scheme of representor.
+   * Added support for new naming scheme of representor.
    * Added support for new PCI device DMA map/unmap API.
    * Added support for multiport InfiniBand device.
    * Added control of excessive memory pinning by kernel.
    * Added support of DMA memory registration by secondary process.
-   * Added support of per-process device registers, reserving identical VA space
-     is not needed anymore.
+   * Added support of per-process device registers. Reserving identical VA space
+     is not required anymore.
    * Added support for jump action for both E-Switch and NIC.
    * Added Support for multiple rte_flow groups in NIC steering.
    * Flow engine re-designed to support large scale deployments. this includes:
@@ -164,6 +167,8 @@ New Features
 
 * **Updated the enic driver.**
 
+   Updated enic driver with new features and improvements, including:
+
   * Fixed several flow (director) bugs related to MARK, SCTP, VLAN, VXLAN, and
     inner packet matching.
   * Added limited support for RAW.
@@ -172,11 +177,11 @@ New Features
 
 * **Updated the ixgbe driver.**
 
-  New features for VF:
-
-  * Added promiscuous mode support.
+  Updated the ixgbe driver to add promiscuous mode support for the VF.
 
 * **Updated the ice driver.**
+
+  Updated ice driver with new features and improvements, including:
 
   * Added support of SSE and AVX2 instructions in Rx and Tx paths.
   * Added package download support.
@@ -185,24 +190,24 @@ New Features
 
 * **Updated the i40e driver.**
 
-  New features for PF:
+  New features for PF in the i40e driver:
 
   * Added support for VXLAN-GPE packet.
   * Added support for VXLAN-GPE classification.
 
 * **Updated the ENETC driver.**
 
-  New features:
+  Updated ENETC driver with new features and improvements, including:
 
-  * Added physical addressing mode support
-  * Added SXGMII interface support
-  * Added basic statistics support
-  * Added promiscuous and allmulticast mode support
-  * Added MTU update support
-  * Added jumbo frame support
-  * Added queue start/stop
-  * Added CRC offload support
-  * Added Rx checksum offload validation support
+  * Added physical addressing mode support.
+  * Added SXGMII interface support.
+  * Added basic statistics support.
+  * Added promiscuous and allmulticast mode support.
+  * Added MTU update support.
+  * Added jumbo frame support.
+  * Added queue start/stop.
+  * Added CRC offload support.
+  * Added Rx checksum offload validation support.
 
 * **Updated the atlantic PMD.**
 
@@ -210,8 +215,9 @@ New Features
 
 * **Updated the Intel QuickAssist Technology (QAT) compression PMD.**
 
-  Simplified and made more robust QAT compressdev PMD's handling of SGLs with
-  more than 16 segments.
+  Updated the Intel QuickAssist Technology (QAT) compression PMD to simplify,
+  and make more robust, the handling of Scatter Gather Lists (SGLs) with more
+  than 16 segments.
 
 * **Updated the QuickAssist Technology (QAT) symmetric crypto PMD.**
 
@@ -219,9 +225,9 @@ New Features
 
 * **Added Intel QuickAssist Technology PMD for asymmetric crypto.**
 
-  A new QAT Crypto PMD has been added, which provides asymmetric cryptography
-  algorithms, in this release modular exponentiation and modular multiplicative
-  inverse algorithms were added.
+  Added a new QAT Crypto PMD which provides asymmetric cryptography
+  algorithms. Modular exponentiation and modular multiplicative
+  inverse algorithms were added in this release.
 
 * **Updated AESNI-MB PMD.**
 
@@ -230,36 +236,23 @@ New Features
 * **Updated the IPsec library.**
 
   The IPsec library has been updated with AES-CTR and 3DES-CBC cipher algorithms
-  support. The related ipsec-secgw test scripts have been added.
+  support. The related ``ipsec-secgw`` test scripts have been added.
 
 * **Updated the testpmd application.**
 
-  Improved testpmd application performance on ARM platform. For ``macswap``
-  forwarding mode, NEON intrinsics were used to do swap to save CPU cycles.
+  Improved the ``testpmd`` application performance on ARM platform. For ``macswap``
+  forwarding mode, NEON intrinsics are now used to do swap to save CPU cycles.
 
 * **Updated power management library.**
 
   Added support for Intel Speed Select Technology - Base Frequency (SST-BF).
-  ``rte_power_get_capabilities`` now has a bit in it's returned mask
-  indicating it's a high frequency core.
+  The ``rte_power_get_capabilities`` struct now has a bit in it's returned mask
+  indicating if it is a high frequency core.
 
 * **Updated distributor sample application.**
 
-  Added support for Intel SST-BF feature so that the distributor core is
+  Added support for the Intel SST-BF feature so that the distributor core is
   pinned to a high frequency core if available.
-
-
-Removed Items
--------------
-
-.. This section should contain removed items in this release. Sample format:
-
-   * Add a short 1-2 sentence description of the removed item
-     in the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
 
 
 API Changes
@@ -281,10 +274,10 @@ API Changes
   ``rte_service_attr_get()`` has been changed
   from ``uint32_t *`` to ``uint64_t *``.
 
-* meter: replace ``enum rte_meter_color`` in meter library with new
-  ``rte_color`` definition added in 19.02. To consolidate mulitple color
-  definitions replicated at many places such as: rte_mtr.h, rte_tm.h,
-  replacements with rte_color values are done.
+* meter: replace ``enum rte_meter_color`` in the meter library with new
+  ``rte_color`` definition added in 19.02. Replacements with ``rte_color``
+  values has been performed in many places such as ``rte_mtr.h`` and
+  ``rte_tm.h`` to consolidate multiple color definitions.
 
 * vfio: Functions ``rte_vfio_container_dma_map`` and
   ``rte_vfio_container_dma_unmap`` have been extended with an option to
@@ -294,9 +287,9 @@ API Changes
   have been modified to be thread safe.
 
 * timer: Functions have been introduced that allow multiple instances of the
-  timer lists to be created, and they are now allocated in shared memory. New
-  functions allow particular timer lists to be selected when timers are being
-  started, stopped, and managed.
+  timer lists to be created. In addition they are now allocated in shared
+  memory. New functions allow particular timer lists to be selected when
+  timers are being started, stopped, and managed.
 
 
 ABI Changes
@@ -321,8 +314,8 @@ ABI Changes
   The values of these fields can be set specifically by the PMD drivers as
   supported values can vary from device to device.
 
-* cryptodev: in 18.08 new structure ``rte_crypto_asym_op`` was introduced and
-  included into ``rte_crypto_op``. As ``rte_crypto_asym_op`` structure was
+* cryptodev: in 18.08 a new structure ``rte_crypto_asym_op`` was introduced and
+  included into ``rte_crypto_op``. As the ``rte_crypto_asym_op`` structure was
   defined as cache-line aligned that caused unintended changes in
   ``rte_crypto_op`` structure layout and alignment. Remove cache-line
   alignment for ``rte_crypto_asym_op`` to restore expected ``rte_crypto_op``
@@ -424,9 +417,9 @@ Known Issues
    Also, make sure to start the actual text at the margin.
    =========================================================
 
-* **On x86 platforms, AVX512 support is disabled with binutils 2.31**
+* **On x86 platforms, AVX512 support is disabled with binutils 2.31.**
 
-  Because a defect in binutils 2.31 AVX512 support is disabled.
+  Due to a defect in binutils 2.31 AVX512 support is disabled.
   DPDK defect: https://bugs.dpdk.org/show_bug.cgi?id=249
   GCC defect: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=90028
 
