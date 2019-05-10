@@ -44,13 +44,14 @@ trap "clean_tmp_files" INT
 
 print_usage () {
 	cat <<- END_OF_HELP
-	usage: $(basename $0) [-q] [-v] [-nX|patch1 [patch2] ...]]
+	usage: $(basename $0) [-q] [-v] [-nX|-r range|patch1 [patch2] ...]]
 
 	Run Linux kernel checkpatch.pl with DPDK options.
 	The environment variable DPDK_CHECKPATCH_PATH must be set.
 
 	The patches to check can be from stdin, files specified on the command line,
-	or latest git commits limited with -n option (default limit: origin/master).
+	latest git commits limited with -n option, or commits in the git range
+	specified with -r option (default: "origin/master..").
 	END_OF_HELP
 }
 
@@ -79,12 +80,14 @@ check_forbidden_additions() { # <patch>
 }
 
 number=0
+range='origin/master..'
 quiet=false
 verbose=false
-while getopts hn:qv ARG ; do
+while getopts hn:qr:v ARG ; do
 	case $ARG in
 		n ) number=$OPTARG ;;
 		q ) quiet=true ;;
+		r ) range=$OPTARG ;;
 		v ) verbose=true ;;
 		h ) print_usage ; exit 0 ;;
 		? ) print_usage ; exit 1 ;;
@@ -172,7 +175,7 @@ elif [ ! -t 0 ] ; then # stdin
 	check '' '' "$subject"
 else
 	if [ $number -eq 0 ] ; then
-		commits=$(git rev-list --reverse origin/master..)
+		commits=$(git rev-list --reverse $range)
 	else
 		commits=$(git rev-list --reverse --max-count=$number HEAD)
 	fi
