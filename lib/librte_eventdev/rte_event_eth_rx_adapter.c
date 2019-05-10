@@ -872,7 +872,7 @@ rxa_eth_rx(struct rte_event_eth_rx_adapter *rx_adapter,
 			break;
 	}
 
-	if (buf->count >= BATCH_SIZE)
+	if (buf->count > 0)
 		rxa_flush_event_buffer(rx_adapter);
 
 	return nb_rx;
