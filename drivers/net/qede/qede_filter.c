@@ -290,7 +290,7 @@ qede_config_arfs_filter(struct rte_eth_dev *eth_dev,
 	/* soft_id could have been used as memzone string, but soft_id is
 	 * not currently used so it has no significance.
 	 */
-	snprintf(mz_name, sizeof(mz_name) - 1, "%lx",
+	snprintf(mz_name, sizeof(mz_name), "%lx",
 		 (unsigned long)rte_get_timer_cycles());
 	mz = rte_memzone_reserve_aligned(mz_name, QEDE_MAX_FDIR_PKT_LEN,
 					 SOCKET_ID_ANY, 0, RTE_CACHE_LINE_SIZE);

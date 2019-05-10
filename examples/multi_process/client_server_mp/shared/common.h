@@ -49,7 +49,7 @@ get_rx_queue_name(unsigned id)
 	 * by maximum 3 digits (plus an extra byte for safety) */
 	static char buffer[sizeof(MP_CLIENT_RXQ_NAME) + 2];
 
-	snprintf(buffer, sizeof(buffer) - 1, MP_CLIENT_RXQ_NAME, id);
+	snprintf(buffer, sizeof(buffer), MP_CLIENT_RXQ_NAME, id);
 	return buffer;
 }
 

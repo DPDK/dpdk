@@ -61,7 +61,7 @@ get_rx_queue_name(unsigned int id)
 	 */
 	static char buffer[sizeof(MP_NODE_RXQ_NAME) + 2];
 
-	snprintf(buffer, sizeof(buffer) - 1, MP_NODE_RXQ_NAME, id);
+	snprintf(buffer, sizeof(buffer), MP_NODE_RXQ_NAME, id);
 	return buffer;
 }
 

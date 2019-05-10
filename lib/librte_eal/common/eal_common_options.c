@@ -260,8 +260,7 @@ eal_plugindir_init(const char *path)
 	while ((dent = readdir(d)) != NULL) {
 		struct stat sb;
 
-		snprintf(sopath, PATH_MAX-1, "%s/%s", path, dent->d_name);
-		sopath[PATH_MAX-1] = 0;
+		snprintf(sopath, sizeof(sopath), "%s/%s", path, dent->d_name);
 
 		if (!(stat(sopath, &sb) == 0 && S_ISREG(sb.st_mode)))
 			continue;

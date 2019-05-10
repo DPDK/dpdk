@@ -330,7 +330,7 @@ vdev_netvsc_sysfs_readlink(char *buf, size_t size, const char *if_name,
 	char in[RTE_MAX(sizeof(ctx->yield), 256u)];
 	int ret;
 
-	ret = snprintf(in, sizeof(in) - 1, "/sys/class/net/%s/%s",
+	ret = snprintf(in, sizeof(in), "/sys/class/net/%s/%s",
 		       if_name, relpath);
 	if (ret == -1 || (size_t)ret >= sizeof(in))
 		return -ENOBUFS;

@@ -1118,7 +1118,7 @@ malloc_heap_create_external_seg(void *va_addr, rte_iova_t iova_addrs[],
 		return NULL;
 	}
 
-	snprintf(fbarray_name, sizeof(fbarray_name) - 1, "%s_%p",
+	snprintf(fbarray_name, sizeof(fbarray_name), "%s_%p",
 			seg_name, va_addr);
 
 	/* create the backing fbarray */
@@ -1334,7 +1334,7 @@ rte_eal_malloc_heap_init(void)
 			char heap_name[RTE_HEAP_NAME_MAX_LEN];
 			int socket_id = rte_socket_id_by_idx(i);
 
-			snprintf(heap_name, sizeof(heap_name) - 1,
+			snprintf(heap_name, sizeof(heap_name),
 					"socket_%i", socket_id);
 			strlcpy(heap->name, heap_name, RTE_HEAP_NAME_MAX_LEN);
 			heap->socket_id = socket_id;
