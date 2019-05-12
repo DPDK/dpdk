@@ -9,8 +9,8 @@ Linux Drivers
 =============
 
 Different PMDs may require different kernel drivers in order to work properly.
-Depends on the PMD being used, a corresponding kernel driver should be load
-and bind to the network ports.
+Depending on the PMD being used, a corresponding kernel driver should be loaded
+and bound to the network ports.
 
 UIO
 ---
@@ -117,7 +117,7 @@ Binding and Unbinding Network Ports to/from the Kernel Modules
 
 .. note::
 
-    PMDs Which use the bifurcated driver should not be unbind from their kernel drivers. this section is for PMDs which use the UIO or VFIO drivers.
+    PMDs that use the bifurcated driver should not be unbound from their kernel drivers. This section is for PMDs that use the UIO or VFIO drivers.
 
 As of release 1.4, DPDK applications no longer automatically unbind all supported network ports from the kernel driver in use.
 Instead, in case the PMD being used use the UIO or VFIO drivers, all ports that are to be used by an DPDK application must be bound to the
