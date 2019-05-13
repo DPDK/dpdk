@@ -148,10 +148,13 @@ New Features
    * Added support for multiport InfiniBand device.
    * Added control of excessive memory pinning by kernel.
    * Added support of DMA memory registration by secondary process.
-   * Added Direct Rule support in Direct Verbs flow driver.
    * Added support of per-process device registers, reserving identical VA space
      is not needed anymore.
-   * Added E-Switch support in Direct Verbs flow driver.
+   * Added support for jump action for both E-Switch and NIC.
+   * Added Support for multiple rte_flow groups in NIC steering.
+   * Flow engine re-designed to support large scale deployments. this includes:
+      * Support millions of offloaded flow rules.
+      * Fast flow insertion and deletion up to 1M flow update per second.
 
 * **Renamed avf to iavf.**
 
