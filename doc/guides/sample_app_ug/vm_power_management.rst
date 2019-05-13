@@ -597,7 +597,7 @@ Profile destroy example:
 
   .. code-block:: javascript
 
-    {"profile": {
+    {"policy": {
       "name": "ubuntu",
       "command": "destroy",
     }}
@@ -606,8 +606,9 @@ Power command example:
 
   .. code-block:: javascript
 
-    {"command": {
+    {"instruction": {
       "name": "ubuntu",
+      "command": "power",
       "unit": "SCALE_MAX",
       "resource_id": 10
     }}
