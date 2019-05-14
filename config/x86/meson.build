@@ -28,6 +28,19 @@ foreach f:base_flags
 	compile_time_cpuflags += ['RTE_CPUFLAG_' + f]
 endforeach
 
+optional_flags = ['AES', 'PCLMUL',
+		'AVX', 'AVX2', 'AVX512F']
+foreach f:optional_flags
+	if cc.get_define('__@0@__'.format(f), args: machine_args) == '1'
+		if f == 'PCLMUL' # special case flags with different defines
+			f = 'PCLMULQDQ'
+		endif
+		dpdk_conf.set('RTE_MACHINE_CPUFLAG_' + f, 1)
+		compile_time_cpuflags += ['RTE_CPUFLAG_' + f]
+	endif
+endforeach
+
+
 dpdk_conf.set('RTE_ARCH_X86', 1)
 if dpdk_conf.get('RTE_ARCH_64')
 	dpdk_conf.set('RTE_ARCH_X86_64', 1)
@@ -35,27 +48,6 @@ if dpdk_conf.get('RTE_ARCH_64')
 else
 	dpdk_conf.set('RTE_ARCH_I686', 1)
 	dpdk_conf.set('RTE_ARCH', 'i686')
-endif
-
-if cc.get_define('__AES__', args: machine_args) != ''
-	dpdk_conf.set('RTE_MACHINE_CPUFLAG_AES', 1)
-	compile_time_cpuflags += ['RTE_CPUFLAG_AES']
-endif
-if cc.get_define('__PCLMUL__', args: machine_args) != ''
-	dpdk_conf.set('RTE_MACHINE_CPUFLAG_PCLMULQDQ', 1)
-	compile_time_cpuflags += ['RTE_CPUFLAG_PCLMULQDQ']
-endif
-if cc.get_define('__AVX__', args: machine_args) != ''
-	dpdk_conf.set('RTE_MACHINE_CPUFLAG_AVX', 1)
-	compile_time_cpuflags += ['RTE_CPUFLAG_AVX']
-endif
-if cc.get_define('__AVX2__', args: machine_args) != ''
-	dpdk_conf.set('RTE_MACHINE_CPUFLAG_AVX2', 1)
-	compile_time_cpuflags += ['RTE_CPUFLAG_AVX2']
-endif
-if cc.get_define('__AVX512F__', args: machine_args) != ''
-	dpdk_conf.set('RTE_MACHINE_CPUFLAG_AVX512F', 1)
-	compile_time_cpuflags += ['RTE_CPUFLAG_AVX512F']
 endif
 
 dpdk_conf.set('RTE_CACHE_LINE_SIZE', 64)
