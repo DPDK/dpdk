@@ -2376,7 +2376,7 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		tx_info->tx_descs = nb_hw_desc;
 
 		next_to_use++;
-		tx_ring->tx_stats.cnt += tx_info->num_of_bufs;
+		tx_ring->tx_stats.cnt++;
 		tx_ring->tx_stats.bytes += total_length;
 	}
 	tx_ring->tx_stats.available_desc =
