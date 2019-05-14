@@ -111,6 +111,11 @@ endif
 # always define _GNU_SOURCE
 CFLAGS += -D_GNU_SOURCE
 
+# define __BSD_VISIBLE when building for FreeBSD
+ifeq ($(CONFIG_RTE_EXEC_ENV_FREEBSD),y)
+CFLAGS += -D__BSD_VISIBLE
+endif
+
 export CFLAGS
 export LDFLAGS
 

@@ -22,9 +22,6 @@ lib_execinfo = cc.find_library('execinfo', required: false)
 
 default_cflags = machine_args
 
-# specify -D_GNU_SOURCE unconditionally
-default_cflags += '-D_GNU_SOURCE'
-
 foreach app:apps
 	build = true
 	name = app
