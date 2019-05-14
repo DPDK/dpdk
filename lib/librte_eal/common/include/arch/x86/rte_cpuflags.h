@@ -97,6 +97,7 @@ enum rte_cpu_flag_t {
 	RTE_CPUFLAG_INVPCID,                /**< INVPCID */
 	RTE_CPUFLAG_RTM,                    /**< Transactional memory */
 	RTE_CPUFLAG_AVX512F,                /**< AVX512F */
+	RTE_CPUFLAG_RDSEED,                 /**< RDSEED instruction */
 
 	/* (EAX 80000001h) ECX features */
 	RTE_CPUFLAG_LAHF_SAHF,              /**< LAHF_SAHF */

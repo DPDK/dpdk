@@ -29,11 +29,14 @@ foreach f:base_flags
 endforeach
 
 optional_flags = ['AES', 'PCLMUL',
-		'AVX', 'AVX2', 'AVX512F']
+		'AVX', 'AVX2', 'AVX512F',
+		'RDRND', 'RDSEED']
 foreach f:optional_flags
 	if cc.get_define('__@0@__'.format(f), args: machine_args) == '1'
 		if f == 'PCLMUL' # special case flags with different defines
 			f = 'PCLMULQDQ'
+		elif f == 'RDRND'
+			f = 'RDRAND'
 		endif
 		dpdk_conf.set('RTE_MACHINE_CPUFLAG_' + f, 1)
 		compile_time_cpuflags += ['RTE_CPUFLAG_' + f]

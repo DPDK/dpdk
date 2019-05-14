@@ -51,6 +51,10 @@ ifneq ($(filter $(AUTO_CPUFLAGS),__RDRND__),)
 CPUFLAGS += RDRAND
 endif
 
+ifneq ($(filter $(AUTO_CPUFLAGS),__RDSEED__),)
+CPUFLAGS += RDSEED
+endif
+
 ifneq ($(filter $(AUTO_CPUFLAGS),__FSGSBASE__),)
 CPUFLAGS += FSGSBASE
 endif
