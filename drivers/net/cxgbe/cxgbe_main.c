@@ -504,7 +504,6 @@ int cxgbe_cfg_queue_count(struct rte_eth_dev *eth_dev)
 
 void cxgbe_cfg_queues(struct rte_eth_dev *eth_dev)
 {
-	struct rte_config *config = rte_eal_get_configuration();
 	struct port_info *pi = (struct port_info *)(eth_dev->data->dev_private);
 	struct adapter *adap = pi->adapter;
 	struct sge *s = &adap->sge;
@@ -527,8 +526,8 @@ void cxgbe_cfg_queues(struct rte_eth_dev *eth_dev)
 				     (adap->params.nports - nb_ports)) /
 				     nb_ports;
 
-		if (q_per_port > config->lcore_count)
-			q_per_port = config->lcore_count;
+		if (q_per_port > rte_lcore_count())
+			q_per_port = rte_lcore_count();
 
 		for_each_port(adap, i) {
 			struct port_info *pi = adap2pinfo(adap, i);
