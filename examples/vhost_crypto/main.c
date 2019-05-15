@@ -354,12 +354,6 @@ static const struct vhost_device_ops virtio_crypto_device_ops = {
 	.destroy_device = destroy_device,
 };
 
-__attribute__((unused))
-static void clrscr(void)
-{
-	system("@cls||clear");
-}
-
 static int
 vhost_crypto_worker(void *arg)
 {
