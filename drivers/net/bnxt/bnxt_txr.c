@@ -123,7 +123,6 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 	struct tx_bd_long_hi *txbd1 = NULL;
 	uint32_t vlan_tag_flags, cfa_action;
 	bool long_bd = false;
-	uint16_t last_prod = 0;
 	struct rte_mbuf *m_seg;
 	struct bnxt_sw_tx_bd *tx_buf;
 	static const uint32_t lhint_arr[4] = {
@@ -143,8 +142,6 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 	tx_buf = &txr->tx_buf_ring[txr->tx_prod];
 	tx_buf->mbuf = tx_pkt;
 	tx_buf->nr_bds = long_bd + tx_pkt->nb_segs;
-	last_prod = (txr->tx_prod + tx_buf->nr_bds - 1) &
-				txr->tx_ring_struct->ring_mask;
 
 	if (unlikely(bnxt_tx_avail(txr) < tx_buf->nr_bds))
 		return -ENOMEM;
@@ -193,11 +190,17 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 		txbd1->cfa_action = cfa_action;
 
 		if (tx_pkt->ol_flags & PKT_TX_TCP_SEG) {
+			uint16_t hdr_size;
+
 			/* TSO */
 			txbd1->lflags |= TX_BD_LONG_LFLAGS_LSO;
-			txbd1->hdr_size = tx_pkt->l2_len + tx_pkt->l3_len +
+			hdr_size = tx_pkt->l2_len + tx_pkt->l3_len +
 					tx_pkt->l4_len + tx_pkt->outer_l2_len +
 					tx_pkt->outer_l3_len;
+			/* The hdr_size is multiple of 16bit units not 8bit.
+			 * Hence divide by 2.
+			 */
+			txbd1->hdr_size = hdr_size >> 1;
 			txbd1->mss = tx_pkt->tso_segsz;
 
 		} else if ((tx_pkt->ol_flags & PKT_TX_OIP_IIP_TCP_UDP_CKSUM) ==
@@ -282,7 +285,7 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 
 	m_seg = tx_pkt->next;
 	/* i is set at the end of the if(long_bd) block */
-	while (txr->tx_prod != last_prod) {
+	while (m_seg) {
 		txr->tx_prod = RING_NEXT(txr->tx_ring_struct, txr->tx_prod);
 		tx_buf = &txr->tx_buf_ring[txr->tx_prod];
 
@@ -295,8 +298,6 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 	}
 
 	txbd->flags_type |= TX_BD_LONG_FLAGS_PACKET_END;
-	if (txbd1)
-		txbd1->lflags = rte_cpu_to_le_32(txbd1->lflags);
 
 	txr->tx_prod = RING_NEXT(txr->tx_ring_struct, txr->tx_prod);
 
