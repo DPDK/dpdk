@@ -320,6 +320,7 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 		RTE_VERIFY(m_seg->data_len);
 		txr->tx_prod = RING_NEXT(txr->tx_ring_struct, txr->tx_prod);
 		tx_buf = &txr->tx_buf_ring[txr->tx_prod];
+		tx_buf->mbuf = m_seg;
 
 		txbd = &txr->tx_desc_ring[txr->tx_prod];
 		txbd->address = rte_cpu_to_le_64(rte_mbuf_data_iova(m_seg));
@@ -339,24 +340,53 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 static void bnxt_tx_cmp(struct bnxt_tx_queue *txq, int nr_pkts)
 {
 	struct bnxt_tx_ring_info *txr = txq->tx_ring;
+	struct rte_mempool *pool = NULL;
+	struct rte_mbuf **free = txq->free;
 	uint16_t cons = txr->tx_cons;
+	unsigned int blk = 0;
 	int i, j;
 
 	for (i = 0; i < nr_pkts; i++) {
-		struct bnxt_sw_tx_bd *tx_buf;
 		struct rte_mbuf *mbuf;
+		struct bnxt_sw_tx_bd *tx_buf = &txr->tx_buf_ring[cons];
+		unsigned short nr_bds = tx_buf->nr_bds;
 
-		tx_buf = &txr->tx_buf_ring[cons];
-		cons = RING_NEXT(txr->tx_ring_struct, cons);
-		mbuf = tx_buf->mbuf;
-		tx_buf->mbuf = NULL;
-
-		/* EW - no need to unmap DMA memory? */
-
-		for (j = 1; j < tx_buf->nr_bds; j++)
+		for (j = 0; j < nr_bds; j++) {
+			mbuf = tx_buf->mbuf;
+			tx_buf->mbuf = NULL;
 			cons = RING_NEXT(txr->tx_ring_struct, cons);
-		rte_pktmbuf_free(mbuf);
+			tx_buf = &txr->tx_buf_ring[cons];
+			if (!mbuf)	/* long_bd's tx_buf ? */
+				continue;
+
+			mbuf = rte_pktmbuf_prefree_seg(mbuf);
+			if (unlikely(!mbuf))
+				continue;
+
+			/* EW - no need to unmap DMA memory? */
+
+			if (likely(mbuf->pool == pool)) {
+				/* Add mbuf to the bulk free array */
+				free[blk++] = mbuf;
+			} else {
+				/* Found an mbuf from a different pool. Free
+				 * mbufs accumulated so far to the previous
+				 * pool
+				 */
+				if (likely(pool != NULL))
+					rte_mempool_put_bulk(pool,
+							     (void *)free,
+							     blk);
+
+				/* Start accumulating mbufs in a new pool */
+				free[0] = mbuf;
+				pool = mbuf->pool;
+				blk = 1;
+			}
+		}
 	}
+	if (blk)
+		rte_mempool_put_bulk(pool, (void *)free, blk);
 
 	txr->tx_cons = cons;
 }

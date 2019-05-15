@@ -69,6 +69,7 @@ void bnxt_tx_queue_release_op(void *tx_queue)
 		rte_memzone_free(txq->mz);
 		txq->mz = NULL;
 
+		rte_free(txq->free);
 		rte_free(txq);
 	}
 }
@@ -107,6 +108,16 @@ int bnxt_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (!txq) {
 		PMD_DRV_LOG(ERR, "bnxt_tx_queue allocation failed!");
+		rc = -ENOMEM;
+		goto out;
+	}
+
+	txq->free = rte_zmalloc_socket(NULL,
+				       sizeof(struct rte_mbuf *) * nb_desc,
+				       RTE_CACHE_LINE_SIZE, socket_id);
+	if (!txq->free) {
+		PMD_DRV_LOG(ERR, "allocation of tx mbuf free array failed!");
+		rte_free(txq);
 		rc = -ENOMEM;
 		goto out;
 	}
