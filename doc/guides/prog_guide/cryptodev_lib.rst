@@ -497,7 +497,10 @@ Symmetric Crypto transforms (``rte_crypto_sym_xform``) are the mechanism used
 to specify the details of the Crypto operation. For chaining of symmetric
 operations such as cipher encrypt and authentication generate, the next pointer
 allows transform to be chained together. Crypto devices which support chaining
-must publish the chaining of symmetric Crypto operations feature flag.
+must publish the chaining of symmetric Crypto operations feature flag. Allocation of the
+xform structure is in the the application domain. To allow future API extensions in a
+backwardly compatible manner, e.g. addition of a new parameter, the application should
+zero the full xform struct before populating it.
 
 Currently there are three transforms types cipher, authentication and AEAD.
 Also it is important to note that the order in which the
@@ -881,7 +884,10 @@ Transforms and Transform Chaining
 Asymmetric Crypto transforms (``rte_crypto_asym_xform``) are the mechanism used
 to specify the details of the asymmetric Crypto operation. Next pointer within
 xform allows transform to be chained together. Also it is important to note that
-the order in which the transforms are passed indicates the order of the chaining.
+the order in which the transforms are passed indicates the order of the chaining. Allocation
+of the xform structure is in the the application domain. To allow future API extensions in a
+backwardly compatible manner, e.g. addition of a new parameter, the application should
+zero the full xform struct before populating it.
 
 Not all asymmetric crypto xforms are supported for chaining. Currently supported
 asymmetric crypto chaining is Diffie-Hellman private key generation followed by
