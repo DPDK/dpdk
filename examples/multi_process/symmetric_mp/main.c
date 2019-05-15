@@ -271,7 +271,7 @@ static void
 assign_ports_to_cores(void)
 {
 
-	const unsigned lcores = rte_eal_get_configuration()->lcore_count;
+	const unsigned int lcores = rte_lcore_count();
 	const unsigned port_pairs = num_ports / 2;
 	const unsigned pairs_per_lcore = port_pairs / lcores;
 	unsigned extra_pairs = port_pairs % lcores;
