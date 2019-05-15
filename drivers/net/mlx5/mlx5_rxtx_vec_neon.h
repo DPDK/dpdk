@@ -171,7 +171,7 @@ txq_scatter_v(struct mlx5_txq_data *txq, struct rte_mbuf **pkts,
 		/* Fill ESEG in the header. */
 		vst1q_u32((void *)(t_wqe + 1),
 			  ((uint32x4_t){ 0,
-					 cs_flags << 16 | rte_cpu_to_be_16(len),
+					 rte_cpu_to_be_16(len) << 16 | cs_flags,
 					 metadata, 0 }));
 		txq->wqe_ci = wqe_ci;
 	}
