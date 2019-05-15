@@ -1333,6 +1333,9 @@ check_cipher_result(struct rte_crypto_op *op,
 	uint32_t len, src_len;
 	int ret;
 
+	if (!mbuf)
+		return -1;
+
 	if (dir == self_test_dir_enc_auth_gen) {
 		src = vec->output.data;
 		src_len = vec->output.len;
@@ -1342,7 +1345,7 @@ check_cipher_result(struct rte_crypto_op *op,
 	}
 
 	GET_MBUF_DATA(data, len, mbuf);
-	if (!data && !len)
+	if (!len)
 		return -1;
 
 	ret = memcmp(data, src, src_len);
@@ -1362,8 +1365,11 @@ check_auth_result(struct rte_crypto_op *op,
 	uint32_t len;
 	int ret;
 
+	if (mbuf == NULL)
+		return -1;
+
 	GET_MBUF_DATA(data, len, mbuf);
-	if (!data && !len)
+	if (!len)
 		return -1;
 
 	if (dir == self_test_dir_enc_auth_gen) {
@@ -1387,6 +1393,9 @@ check_aead_result(struct rte_crypto_op *op,
 	uint32_t len, src_len;
 	int ret;
 
+	if (!mbuf)
+		return -1;
+
 	if (op->sym->aead.aad.data)
 		rte_free(op->sym->aead.aad.data);
 
@@ -1399,7 +1408,7 @@ check_aead_result(struct rte_crypto_op *op,
 	}
 
 	GET_MBUF_DATA(data, len, mbuf);
-	if (!data && !len)
+	if (!len)
 		return -1;
 
 	ret = memcmp(data, src, src_len);
