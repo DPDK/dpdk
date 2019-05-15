@@ -201,7 +201,7 @@ for stateful processing of ops.
 Operation Status
 ~~~~~~~~~~~~~~~~
 Each operation carries a status information updated by PMD after it is processed.
-following are currently supported status:
+Following are currently supported:
 
 - RTE_COMP_OP_STATUS_SUCCESS,
     Operation is successfully completed
@@ -227,14 +227,24 @@ following are currently supported status:
     is not an error case. Output data up to op.produced can be used and
     next op in the stream should continue on from op.consumed+1.
 
+Operation status after enqueue / dequeue
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Some of the above values may arise in the op after an
+``rte_compressdev_enqueue_burst()``. If number ops enqueued < number ops requested then
+the app should check the op.status of nb_enqd+1. If status is RTE_COMP_OP_STATUS_NOT_PROCESSED,
+it likely indicates a full-queue case for a hardware device and a retry after dequeuing some ops is likely
+to be successful. If the op holds any other status, e.g. RTE_COMP_OP_STATUS_INVALID_ARGS, a retry with
+the same op is unlikely to be successful.
+
+
 Produced, Consumed And Operation Status
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - If status is RTE_COMP_OP_STATUS_SUCCESS,
     consumed = amount of data read from input buffer, and
     produced = amount of data written in destination buffer
-- If status is RTE_COMP_OP_STATUS_FAILURE,
-    consumed = produced = 0 or undefined
+- If status is RTE_COMP_OP_STATUS_ERROR,
+    consumed = produced = undefined
 - If status is RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED,
     consumed = 0 and
     produced = usually 0, but in decompression cases a PMD may return > 0
