@@ -99,17 +99,12 @@ softnic_thread_init(struct pmd_internals *softnic)
 static inline int
 thread_is_valid(struct pmd_internals *softnic, uint32_t thread_id)
 {
-	struct rte_config *cfg = rte_eal_get_configuration();
-	enum rte_lcore_role_t role;
-
-	if ((thread_id >= RTE_MAX_LCORE) ||
-		(thread_id == cfg->master_lcore))
+	if (thread_id == rte_get_master_lcore())
 		return 0; /* FALSE */
 
-	role = cfg->lcore_role[thread_id];
-
-	if ((softnic->params.sc && (role == ROLE_SERVICE)) ||
-		(!softnic->params.sc && (role == ROLE_RTE)))
+	if (softnic->params.sc && rte_lcore_has_role(thread_id, ROLE_SERVICE))
+		return 1; /* TRUE */
+	if (!softnic->params.sc && rte_lcore_has_role(thread_id, ROLE_RTE))
 		return 1; /* TRUE */
 
 	return 0; /* FALSE */
