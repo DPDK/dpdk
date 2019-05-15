@@ -73,6 +73,7 @@ Copy the NUMA header files and lib to the cross compiler's directories:
 
    cp <numa_install_dir>/include/numa*.h <cross_install_dir>/gcc-arm-8.2-2019.01-x86_64-aarch64-linux-gnu/bin/../aarch64-linux-gnu/libc/usr/include/
    cp <numa_install_dir>/lib/libnuma.a <cross_install_dir>/gcc-arm-8.2-2019.01-x86_64-aarch64-linux-gnu/lib/gcc/aarch64-linux-gnu/8.2/
+   cp <numa_install_dir>/lib/libnuma.so <cross_install_dir>/gcc-arm-8.2-2019.01-x86_64-aarch64-linux-gnu/lib/gcc/aarch64-linux-gnu/8.2/
 
 .. _configure_and_cross_compile_dpdk_build:
 
