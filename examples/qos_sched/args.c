@@ -90,16 +90,15 @@ static inline int str_is(const char *str, const char *is)
 static uint64_t
 app_eal_core_mask(void)
 {
-	uint32_t i;
 	uint64_t cm = 0;
-	struct rte_config *cfg = rte_eal_get_configuration();
+	uint32_t i;
 
 	for (i = 0; i < APP_MAX_LCORE; i++) {
-		if (cfg->lcore_role[i] == ROLE_RTE)
+		if (rte_lcore_has_role(i, ROLE_RTE))
 			cm |= (1ULL << i);
 	}
 
-	cm |= (1ULL << cfg->master_lcore);
+	cm |= (1ULL << rte_get_master_lcore());
 
 	return cm;
 }
