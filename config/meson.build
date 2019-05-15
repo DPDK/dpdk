@@ -143,6 +143,7 @@ add_project_arguments('-include', 'rte_config.h', language: 'c')
 
 # enable extra warnings and disable any unwanted warnings
 warning_flags = [
+	'-Wunused-parameter',
 	'-Wsign-compare',
 	'-Wcast-qual',
 	'-Wno-address-of-packed-member'
