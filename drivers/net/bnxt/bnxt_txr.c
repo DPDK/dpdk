@@ -121,7 +121,6 @@ static inline uint32_t bnxt_tx_avail(struct bnxt_tx_queue *txq)
 static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 				struct bnxt_tx_queue *txq,
 				uint16_t *coal_pkts,
-				uint16_t *cmpl_next,
 				struct tx_bd_long **last_txbd)
 {
 	struct bnxt_tx_ring_info *txr = txq->tx_ring;
@@ -184,12 +183,7 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 	txbd->opaque = *coal_pkts;
 	txbd->flags_type = nr_bds << TX_BD_LONG_FLAGS_BD_CNT_SFT;
 	txbd->flags_type |= TX_BD_SHORT_FLAGS_COAL_NOW;
-	if (!*cmpl_next) {
-		txbd->flags_type |= TX_BD_LONG_FLAGS_NO_CMPL;
-	} else {
-		*coal_pkts = 0;
-		*cmpl_next = false;
-	}
+	txbd->flags_type |= TX_BD_LONG_FLAGS_NO_CMPL;
 	txbd->len = tx_pkt->data_len;
 	if (tx_pkt->pkt_len >= 2014)
 		txbd->flags_type |= TX_BD_LONG_FLAGS_LHINT_GTE2K;
@@ -415,10 +409,10 @@ static int bnxt_handle_tx_cp(struct bnxt_tx_queue *txq)
 uint16_t bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			       uint16_t nb_pkts)
 {
-	struct bnxt_tx_queue *txq = tx_queue;
+	int rc;
 	uint16_t nb_tx_pkts = 0;
 	uint16_t coal_pkts = 0;
-	uint16_t cmpl_next = 0;
+	struct bnxt_tx_queue *txq = tx_queue;
 	struct tx_bd_long *last_txbd = NULL;
 
 	/* Handle TX completions */
@@ -432,27 +426,19 @@ uint16_t bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	/* Handle TX burst request */
 	for (nb_tx_pkts = 0; nb_tx_pkts < nb_pkts; nb_tx_pkts++) {
-		int rc;
-
-		/* Request a completion on the last packet */
-		cmpl_next |= (nb_pkts == nb_tx_pkts + 1);
 		coal_pkts++;
 		rc = bnxt_start_xmit(tx_pkts[nb_tx_pkts], txq,
-				     &coal_pkts, &cmpl_next, &last_txbd);
+				     &coal_pkts, &last_txbd);
 
-		if (unlikely(rc)) {
-			/* Request a completion on the last successfully
-			 * enqueued packet
-			 */
-			if (last_txbd)
-				last_txbd->flags_type &=
-					~TX_BD_LONG_FLAGS_NO_CMPL;
+		if (unlikely(rc))
 			break;
-		}
 	}
 
-	if (nb_tx_pkts)
+	if (likely(nb_tx_pkts)) {
+		/* Request a completion on the last packet */
+		last_txbd->flags_type &= ~TX_BD_LONG_FLAGS_NO_CMPL;
 		B_TX_DB(txq->tx_ring->tx_doorbell, txq->tx_ring->tx_prod);
+	}
 
 	return nb_tx_pkts;
 }
