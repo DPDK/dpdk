@@ -10,6 +10,8 @@
 
 #define MAX_TX_RINGS	16
 #define BNXT_TX_PUSH_THRESH 92
+#define BNXT_MAX_TSO_SEGS	32
+#define BNXT_MIN_PKT_SIZE	52
 
 #define B_TX_DB(db, prod)	rte_write32((DB_KEY_TX | (prod)), db)
 

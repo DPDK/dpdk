@@ -143,6 +143,33 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 	tx_buf->mbuf = tx_pkt;
 	tx_buf->nr_bds = long_bd + tx_pkt->nb_segs;
 
+	/* Check if number of Tx descriptors is above HW limit */
+	if (unlikely(tx_buf->nr_bds > BNXT_MAX_TSO_SEGS)) {
+		PMD_DRV_LOG(ERR,
+			    "Num descriptors %d exceeds HW limit\n",
+			    tx_buf->nr_bds);
+		return -ENOSPC;
+	}
+
+	/* If packet length is less than minimum packet size, pad it */
+	if (unlikely(rte_pktmbuf_pkt_len(tx_pkt) < BNXT_MIN_PKT_SIZE)) {
+		uint8_t pad = BNXT_MIN_PKT_SIZE - rte_pktmbuf_pkt_len(tx_pkt);
+		char *seg = rte_pktmbuf_append(tx_pkt, pad);
+
+		if (!seg) {
+			PMD_DRV_LOG(ERR,
+				    "Failed to pad mbuf by %d bytes\n",
+				    pad);
+			return -ENOMEM;
+		}
+
+		/* Note: data_len, pkt len are updated in rte_pktmbuf_append */
+		memset(seg, 0, pad);
+	}
+
+	/* Check non zero data_len */
+	RTE_VERIFY(tx_pkt->data_len);
+
 	if (unlikely(bnxt_tx_avail(txr) < tx_buf->nr_bds))
 		return -ENOMEM;
 
@@ -203,6 +230,7 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 			 */
 			txbd1->hdr_size = hdr_size >> 1;
 			txbd1->mss = tx_pkt->tso_segsz;
+			RTE_VERIFY(txbd1->mss);
 
 		} else if ((tx_pkt->ol_flags & PKT_TX_OIP_IIP_TCP_UDP_CKSUM) ==
 			   PKT_TX_OIP_IIP_TCP_UDP_CKSUM) {
@@ -285,8 +313,9 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 	}
 
 	m_seg = tx_pkt->next;
-	/* i is set at the end of the if(long_bd) block */
 	while (m_seg) {
+		/* Check non zero data_len */
+		RTE_VERIFY(m_seg->data_len);
 		txr->tx_prod = RING_NEXT(txr->tx_ring_struct, txr->tx_prod);
 		tx_buf = &txr->tx_buf_ring[txr->tx_prod];
 
