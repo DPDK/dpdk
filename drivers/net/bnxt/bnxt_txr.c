@@ -103,26 +103,33 @@ int bnxt_init_tx_ring_struct(struct bnxt_tx_queue *txq, unsigned int socket_id)
 	return 0;
 }
 
-static inline uint32_t bnxt_tx_avail(struct bnxt_tx_ring_info *txr)
+static inline uint32_t bnxt_tx_bds_in_hw(struct bnxt_tx_queue *txq)
+{
+	return ((txq->tx_ring->tx_prod - txq->tx_ring->tx_cons) &
+		txq->tx_ring->tx_ring_struct->ring_mask);
+}
+
+static inline uint32_t bnxt_tx_avail(struct bnxt_tx_queue *txq)
 {
 	/* Tell compiler to fetch tx indices from memory. */
 	rte_compiler_barrier();
 
-	return txr->tx_ring_struct->ring_size -
-		((txr->tx_prod - txr->tx_cons) &
-			txr->tx_ring_struct->ring_mask) - 1;
+	return ((txq->tx_ring->tx_ring_struct->ring_size -
+		 bnxt_tx_bds_in_hw(txq)) - 1);
 }
 
 static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 				struct bnxt_tx_queue *txq,
 				uint16_t *coal_pkts,
-				uint16_t *cmpl_next)
+				uint16_t *cmpl_next,
+				struct tx_bd_long **last_txbd)
 {
 	struct bnxt_tx_ring_info *txr = txq->tx_ring;
 	struct tx_bd_long *txbd;
 	struct tx_bd_long_hi *txbd1 = NULL;
 	uint32_t vlan_tag_flags, cfa_action;
 	bool long_bd = false;
+	unsigned short nr_bds = 0;
 	struct rte_mbuf *m_seg;
 	struct bnxt_sw_tx_bd *tx_buf;
 	static const uint32_t lhint_arr[4] = {
@@ -139,15 +146,14 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 				PKT_TX_TUNNEL_GENEVE))
 		long_bd = true;
 
-	tx_buf = &txr->tx_buf_ring[txr->tx_prod];
-	tx_buf->mbuf = tx_pkt;
-	tx_buf->nr_bds = long_bd + tx_pkt->nb_segs;
+	nr_bds = long_bd + tx_pkt->nb_segs;
+	if (unlikely(bnxt_tx_avail(txq) < nr_bds))
+		return -ENOMEM;
 
 	/* Check if number of Tx descriptors is above HW limit */
-	if (unlikely(tx_buf->nr_bds > BNXT_MAX_TSO_SEGS)) {
+	if (unlikely(nr_bds > BNXT_MAX_TSO_SEGS)) {
 		PMD_DRV_LOG(ERR,
-			    "Num descriptors %d exceeds HW limit\n",
-			    tx_buf->nr_bds);
+			    "Num descriptors %d exceeds HW limit\n", nr_bds);
 		return -ENOSPC;
 	}
 
@@ -170,12 +176,13 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 	/* Check non zero data_len */
 	RTE_VERIFY(tx_pkt->data_len);
 
-	if (unlikely(bnxt_tx_avail(txr) < tx_buf->nr_bds))
-		return -ENOMEM;
+	tx_buf = &txr->tx_buf_ring[txr->tx_prod];
+	tx_buf->mbuf = tx_pkt;
+	tx_buf->nr_bds = nr_bds;
 
 	txbd = &txr->tx_desc_ring[txr->tx_prod];
 	txbd->opaque = *coal_pkts;
-	txbd->flags_type = tx_buf->nr_bds << TX_BD_LONG_FLAGS_BD_CNT_SFT;
+	txbd->flags_type = nr_bds << TX_BD_LONG_FLAGS_BD_CNT_SFT;
 	txbd->flags_type |= TX_BD_SHORT_FLAGS_COAL_NOW;
 	if (!*cmpl_next) {
 		txbd->flags_type |= TX_BD_LONG_FLAGS_NO_CMPL;
@@ -189,6 +196,7 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 	else
 		txbd->flags_type |= lhint_arr[tx_pkt->pkt_len >> 9];
 	txbd->address = rte_cpu_to_le_64(rte_mbuf_data_iova(tx_buf->mbuf));
+	*last_txbd = txbd;
 
 	if (long_bd) {
 		txbd->flags_type |= TX_BD_LONG_TYPE_TX_BD_LONG;
@@ -321,7 +329,7 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 
 		txbd = &txr->tx_desc_ring[txr->tx_prod];
 		txbd->address = rte_cpu_to_le_64(rte_mbuf_data_iova(m_seg));
-		txbd->flags_type |= TX_BD_SHORT_TYPE_TX_BD_SHORT;
+		txbd->flags_type = TX_BD_SHORT_TYPE_TX_BD_SHORT;
 		txbd->len = m_seg->data_len;
 
 		m_seg = m_seg->next;
@@ -371,8 +379,7 @@ static int bnxt_handle_tx_cp(struct bnxt_tx_queue *txq)
 	uint32_t ring_mask = cp_ring_struct->ring_mask;
 	uint32_t opaque = 0;
 
-	if (((txq->tx_ring->tx_prod - txq->tx_ring->tx_cons) &
-		txq->tx_ring->tx_ring_struct->ring_mask) < txq->tx_free_thresh)
+	if (bnxt_tx_bds_in_hw(txq) < txq->tx_free_thresh)
 		return 0;
 
 	do {
@@ -411,7 +418,8 @@ uint16_t bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct bnxt_tx_queue *txq = tx_queue;
 	uint16_t nb_tx_pkts = 0;
 	uint16_t coal_pkts = 0;
-	uint16_t cmpl_next = txq->cmpl_next;
+	uint16_t cmpl_next = 0;
+	struct tx_bd_long *last_txbd = NULL;
 
 	/* Handle TX completions */
 	bnxt_handle_tx_cp(txq);
@@ -422,20 +430,23 @@ uint16_t bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		return 0;
 	}
 
-	txq->cmpl_next = 0;
 	/* Handle TX burst request */
 	for (nb_tx_pkts = 0; nb_tx_pkts < nb_pkts; nb_tx_pkts++) {
 		int rc;
 
-		/* Request a completion on first and last packet */
+		/* Request a completion on the last packet */
 		cmpl_next |= (nb_pkts == nb_tx_pkts + 1);
 		coal_pkts++;
 		rc = bnxt_start_xmit(tx_pkts[nb_tx_pkts], txq,
-				&coal_pkts, &cmpl_next);
+				     &coal_pkts, &cmpl_next, &last_txbd);
 
 		if (unlikely(rc)) {
-			/* Request a completion in next cycle */
-			txq->cmpl_next = 1;
+			/* Request a completion on the last successfully
+			 * enqueued packet
+			 */
+			if (last_txbd)
+				last_txbd->flags_type &=
+					~TX_BD_LONG_FLAGS_NO_CMPL;
 			break;
 		}
 	}

@@ -24,7 +24,6 @@ struct bnxt_tx_queue {
 	uint8_t			wthresh; /* Write-back threshold reg */
 	uint32_t		ctx_curr; /* Hardware context states */
 	uint8_t			tx_deferred_start; /* not in global dev start */
-	uint8_t			cmpl_next; /* Next BD to trigger a compl */
 
 	struct bnxt		*bp;
 	int			index;
