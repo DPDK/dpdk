@@ -26,6 +26,9 @@ a DPDK secondary process and is capable of enabling packet capture on dpdk ports
         Once the libpcap development files are installed, the libpcap based PMD
         can be enabled by setting CONFIG_RTE_LIBRTE_PMD_PCAP=y and recompiling the DPDK.
 
+      * The ``dpdk-pdump`` tool runs as a DPDK secondary process. It exits when
+        the primary application exits.
+
 
 Running the Application
 -----------------------

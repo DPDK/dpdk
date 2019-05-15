@@ -204,6 +204,10 @@ New Features
   Added telemetry mode to l3fwd-power application to report
   application level busyness, empty and full polls of rte_eth_rx_burst().
 
+* **Updated the pdump application.**
+
+  Add support for pdump to exit with primary process.
+
 
 Removed Items
 -------------

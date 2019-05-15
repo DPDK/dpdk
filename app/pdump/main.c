@@ -13,6 +13,7 @@
 #include <net/if.h>
 
 #include <rte_eal.h>
+#include <rte_alarm.h>
 #include <rte_common.h>
 #include <rte_debug.h>
 #include <rte_ethdev.h>
@@ -65,6 +66,8 @@
 #define SIZE 256
 #define BURST_SIZE 32
 #define NUM_VDEVS 2
+/* Maximum delay for exiting after primary process. */
+#define MONITOR_INTERVAL (500 * 1000)
 
 /* true if x is a power of 2 */
 #define POWEROF2(x) ((((x)-1) & (x)) == 0)
@@ -413,6 +416,21 @@ launch_args_parse(int argc, char **argv, char *prgname)
 }
 
 static void
+monitor_primary(void *arg __rte_unused)
+{
+	if (quit_signal)
+		return;
+
+	if (rte_eal_primary_proc_alive(NULL)) {
+		rte_eal_alarm_set(MONITOR_INTERVAL, monitor_primary, NULL);
+		return;
+	}
+
+	printf("Primary process is no longer active, exiting...\n");
+	quit_signal = 1;
+}
+
+static void
 print_pdump_stats(void)
 {
 	int i;
@@ -534,6 +552,21 @@ cleanup_pdump_resources(void)
 
 	}
 	cleanup_rings();
+}
+
+static void
+disable_primary_monitor(void)
+{
+	int ret;
+
+	/*
+	 * Cancel monitoring of primary process.
+	 * There will be no error if no alarm is set
+	 * (in case primary process kill was detected earlier).
+	 */
+	ret = rte_eal_alarm_cancel(monitor_primary, NULL);
+	if (ret < 0)
+		printf("Fail to disable monitor:%d\n", ret);
 }
 
 static void
@@ -910,6 +943,17 @@ dump_packets(void)
 		;
 }
 
+static void
+enable_primary_monitor(void)
+{
+	int ret;
+
+	/* Once primary exits, so will pdump. */
+	ret = rte_eal_alarm_set(MONITOR_INTERVAL, monitor_primary, NULL);
+	if (ret < 0)
+		printf("Fail to enable monitor:%d\n", ret);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -953,8 +997,10 @@ main(int argc, char **argv)
 	/* create mempool, ring and vdevs info */
 	create_mp_ring_vdev();
 	enable_pdump();
+	enable_primary_monitor();
 	dump_packets();
 
+	disable_primary_monitor();
 	cleanup_pdump_resources();
 	/* dump debug stats */
 	print_pdump_stats();
