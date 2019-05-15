@@ -2493,7 +2493,7 @@ flow_dv_prepare(const struct rte_flow_attr *attr __rte_unused,
 				   "not enough memory to create flow");
 		return NULL;
 	}
-	flow->dv.value.size = MLX5_ST_SZ_DB(fte_match_param);
+	flow->dv.value.size = MLX5_ST_SZ_BYTES(fte_match_param);
 	return flow;
 }
 
@@ -2517,7 +2517,7 @@ flow_dv_check_valid_spec(void *match_mask, void *match_value)
 	uint8_t *v = match_value;
 	unsigned int i;
 
-	for (i = 0; i < MLX5_ST_SZ_DB(fte_match_param); ++i) {
+	for (i = 0; i < MLX5_ST_SZ_BYTES(fte_match_param); ++i) {
 		if (v[i] & ~m[i]) {
 			DRV_LOG(ERR,
 				"match_value differs from match_criteria"
