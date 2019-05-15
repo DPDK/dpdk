@@ -193,7 +193,8 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 			uint16_t hdr_size;
 
 			/* TSO */
-			txbd1->lflags |= TX_BD_LONG_LFLAGS_LSO;
+			txbd1->lflags |= TX_BD_LONG_LFLAGS_LSO |
+					 TX_BD_LONG_LFLAGS_T_IPID;
 			hdr_size = tx_pkt->l2_len + tx_pkt->l3_len +
 					tx_pkt->l4_len + tx_pkt->outer_l2_len +
 					tx_pkt->outer_l3_len;
