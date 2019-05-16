@@ -3078,6 +3078,12 @@ i40e_flow_parse_fdir_action(struct rte_eth_dev *dev,
 	case RTE_FLOW_ACTION_TYPE_PASSTHRU:
 		filter->action.behavior = I40E_FDIR_PASSTHRU;
 		break;
+	case RTE_FLOW_ACTION_TYPE_MARK:
+		filter->action.behavior = I40E_FDIR_PASSTHRU;
+		mark_spec = act->conf;
+		filter->action.report_status = I40E_FDIR_REPORT_ID;
+		filter->soft_id = mark_spec->id;
+	break;
 	default:
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ACTION, act,
@@ -3090,12 +3096,35 @@ i40e_flow_parse_fdir_action(struct rte_eth_dev *dev,
 	NEXT_ITEM_OF_ACTION(act, actions, index);
 	switch (act->type) {
 	case RTE_FLOW_ACTION_TYPE_MARK:
+		if (!mark_spec) {
+			/* Double MARK actions requested */
+			rte_flow_error_set(error, EINVAL,
+			   RTE_FLOW_ERROR_TYPE_ACTION, act,
+			   "Invalid action.");
+			return -rte_errno;
+		}
 		mark_spec = act->conf;
 		filter->action.report_status = I40E_FDIR_REPORT_ID;
 		filter->soft_id = mark_spec->id;
 		break;
 	case RTE_FLOW_ACTION_TYPE_FLAG:
+		if (!mark_spec) {
+			/* MARK + FLAG not supported */
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ACTION, act,
+					   "Invalid action.");
+			return -rte_errno;
+		}
 		filter->action.report_status = I40E_FDIR_NO_REPORT_STATUS;
+		break;
+	case RTE_FLOW_ACTION_TYPE_RSS:
+		if (filter->action.behavior != I40E_FDIR_PASSTHRU) {
+			/* RSS filter won't be next if FDIR did not pass thru */
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ACTION, act,
+					   "Invalid action.");
+			return -rte_errno;
+		}
 		break;
 	case RTE_FLOW_ACTION_TYPE_END:
 		return 0;
