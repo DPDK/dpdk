@@ -1468,8 +1468,9 @@ eth_igb_stop(struct rte_eth_dev *dev)
 	igb_pf_reset_hw(hw);
 	E1000_WRITE_REG(hw, E1000_WUC, 0);
 
-	/* Set bit for Go Link disconnect */
-	if (hw->mac.type >= e1000_82580) {
+	/* Set bit for Go Link disconnect if PHY reset is not blocked */
+	if (hw->mac.type >= e1000_82580 &&
+	    (e1000_check_reset_block(hw) != E1000_BLK_PHY_RESET)) {
 		uint32_t phpm_reg;
 
 		phpm_reg = E1000_READ_REG(hw, E1000_82580_PHY_POWER_MGMT);
@@ -1544,8 +1545,9 @@ eth_igb_close(struct rte_eth_dev *dev)
 	igb_release_manageability(hw);
 	igb_hw_control_release(hw);
 
-	/* Clear bit for Go Link disconnect */
-	if (hw->mac.type >= e1000_82580) {
+	/* Clear bit for Go Link disconnect if PHY reset is not blocked */
+	if (hw->mac.type >= e1000_82580 &&
+	    (e1000_check_reset_block(hw) != E1000_BLK_PHY_RESET)) {
 		uint32_t phpm_reg;
 
 		phpm_reg = E1000_READ_REG(hw, E1000_82580_PHY_POWER_MGMT);
