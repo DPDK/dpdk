@@ -1132,8 +1132,8 @@ vmxnet3_dev_stats_reset(struct rte_eth_dev *dev)
 {
 	unsigned int i;
 	struct vmxnet3_hw *hw = dev->data->dev_private;
-	struct UPT1_TxStats txStats;
-	struct UPT1_RxStats rxStats;
+	struct UPT1_TxStats txStats = {0};
+	struct UPT1_RxStats rxStats = {0};
 
 	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD, VMXNET3_CMD_GET_STATS);
 
