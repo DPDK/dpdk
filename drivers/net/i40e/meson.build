@@ -35,8 +35,10 @@ if arch_subdir == 'x86'
 	# a. we have AVX supported in minimum instruction set baseline
 	# b. it's not minimum instruction set, but supported by compiler
 	if dpdk_conf.has('RTE_MACHINE_CPUFLAG_AVX2')
+		cflags += ['-DCC_AVX2_SUPPORT']
 		sources += files('i40e_rxtx_vec_avx2.c')
 	elif cc.has_argument('-mavx2')
+		cflags += ['-DCC_AVX2_SUPPORT']
 		i40e_avx2_lib = static_library('i40e_avx2_lib',
 				'i40e_rxtx_vec_avx2.c',
 				dependencies: [static_rte_ethdev,
