@@ -40,6 +40,16 @@ static struct rte_rcu_qsbr *t[TEST_RCU_MAX_LCORE];
 struct rte_hash *h[TEST_RCU_MAX_LCORE];
 char hash_name[TEST_RCU_MAX_LCORE][8];
 
+struct test_rcu_thread_info {
+	/* Index in RCU array */
+	int ir;
+	/* Index in hash array */
+	int ih;
+	/* lcore IDs registered on the RCU variable */
+	uint16_t r_core_ids[2];
+};
+struct test_rcu_thread_info thread_info[TEST_RCU_MAX_LCORE/4];
+
 static inline int
 get_enabled_cores_mask(void)
 {
@@ -629,11 +639,12 @@ test_rcu_qsbr_reader(void *arg)
 	struct rte_hash *hash = NULL;
 	int i;
 	uint32_t lcore_id = rte_lcore_id();
-	uint8_t read_type = (uint8_t)((uintptr_t)arg);
+	struct test_rcu_thread_info *ti;
 	uint32_t *pdata;
 
-	temp = t[read_type];
-	hash = h[read_type];
+	ti = (struct test_rcu_thread_info *)arg;
+	temp = t[ti->ir];
+	hash = h[ti->ih];
 
 	do {
 		rte_rcu_qsbr_thread_register(temp, lcore_id);
@@ -642,9 +653,9 @@ test_rcu_qsbr_reader(void *arg)
 			rte_rcu_qsbr_lock(temp, lcore_id);
 			if (rte_hash_lookup_data(hash, keys+i,
 					(void **)&pdata) != -ENOENT) {
-				*pdata = 0;
-				while (*pdata < COUNTER_VALUE)
-					++*pdata;
+				pdata[lcore_id] = 0;
+				while (pdata[lcore_id] < COUNTER_VALUE)
+					pdata[lcore_id]++;
 			}
 			rte_rcu_qsbr_unlock(temp, lcore_id);
 		}
@@ -661,44 +672,42 @@ static int
 test_rcu_qsbr_writer(void *arg)
 {
 	uint64_t token;
-	int32_t pos;
+	int32_t i, pos, del;
+	uint32_t c;
 	struct rte_rcu_qsbr *temp;
 	struct rte_hash *hash = NULL;
-	uint8_t writer_type = (uint8_t)((uintptr_t)arg);
+	struct test_rcu_thread_info *ti;
 
-	temp = t[(writer_type/2) % TEST_RCU_MAX_LCORE];
-	hash = h[(writer_type/2) % TEST_RCU_MAX_LCORE];
+	ti = (struct test_rcu_thread_info *)arg;
+	temp = t[ti->ir];
+	hash = h[ti->ih];
 
 	/* Delete element from the shared data structure */
-	pos = rte_hash_del_key(hash, keys + (writer_type % TOTAL_ENTRY));
+	del = rte_lcore_id() % TOTAL_ENTRY;
+	pos = rte_hash_del_key(hash, keys + del);
 	if (pos < 0) {
-		printf("Delete key failed #%d\n",
-		       keys[writer_type % TOTAL_ENTRY]);
+		printf("Delete key failed #%d\n", keys[del]);
 		return -1;
 	}
 	/* Start the quiescent state query process */
 	token = rte_rcu_qsbr_start(temp);
 	/* Check the quiescent state status */
 	rte_rcu_qsbr_check(temp, token, true);
-	if (*hash_data[(writer_type/2) % TEST_RCU_MAX_LCORE]
-	    [writer_type % TOTAL_ENTRY] != COUNTER_VALUE &&
-	    *hash_data[(writer_type/2) % TEST_RCU_MAX_LCORE]
-	    [writer_type % TOTAL_ENTRY] != 0) {
-		printf("Reader did not complete #%d = %d\t", writer_type,
-			*hash_data[(writer_type/2) % TEST_RCU_MAX_LCORE]
-				[writer_type % TOTAL_ENTRY]);
-		return -1;
+	for (i = 0; i < 2; i++) {
+		c = hash_data[ti->ih][del][ti->r_core_ids[i]];
+		if (c != COUNTER_VALUE && c != 0) {
+			printf("Reader lcore id %u did not complete = %u\t",
+				rte_lcore_id(), c);
+			return -1;
+		}
 	}
 
 	if (rte_hash_free_key_with_position(hash, pos) < 0) {
-		printf("Failed to free the key #%d\n",
-		       keys[writer_type % TOTAL_ENTRY]);
+		printf("Failed to free the key #%d\n", keys[del]);
 		return -1;
 	}
-	rte_free(hash_data[(writer_type/2) % TEST_RCU_MAX_LCORE]
-				[writer_type % TOTAL_ENTRY]);
-	hash_data[(writer_type/2) % TEST_RCU_MAX_LCORE]
-			[writer_type % TOTAL_ENTRY] = NULL;
+	rte_free(hash_data[ti->ih][del]);
+	hash_data[ti->ih][del] = NULL;
 
 	return 0;
 }
@@ -728,7 +737,9 @@ init_hash(int hash_id)
 	}
 
 	for (i = 0; i < TOTAL_ENTRY; i++) {
-		hash_data[hash_id][i] = rte_zmalloc(NULL, sizeof(uint32_t), 0);
+		hash_data[hash_id][i] =
+			rte_zmalloc(NULL,
+				sizeof(uint32_t) * TEST_RCU_MAX_LCORE, 0);
 		if (hash_data[hash_id][i] == NULL) {
 			printf("No memory\n");
 			return NULL;
@@ -762,6 +773,7 @@ static int
 test_rcu_qsbr_sw_sv_3qs(void)
 {
 	uint64_t token[3];
+	uint32_t c;
 	int i;
 	int32_t pos[3];
 
@@ -778,9 +790,15 @@ test_rcu_qsbr_sw_sv_3qs(void)
 		goto error;
 	}
 
+	/* No need to fill the registered core IDs as the writer
+	 * thread is not launched.
+	 */
+	thread_info[0].ir = 0;
+	thread_info[0].ih = 0;
+
 	/* Reader threads are launched */
 	for (i = 0; i < 4; i++)
-		rte_eal_remote_launch(test_rcu_qsbr_reader, NULL,
+		rte_eal_remote_launch(test_rcu_qsbr_reader, &thread_info[0],
 					enabled_core_ids[i]);
 
 	/* Delete element from the shared data structure */
@@ -812,9 +830,13 @@ test_rcu_qsbr_sw_sv_3qs(void)
 
 	/* Check the quiescent state status */
 	rte_rcu_qsbr_check(t[0], token[0], true);
-	if (*hash_data[0][0] != COUNTER_VALUE && *hash_data[0][0] != 0) {
-		printf("Reader did not complete #0 = %d\n", *hash_data[0][0]);
-		goto error;
+	for (i = 0; i < 4; i++) {
+		c = hash_data[0][0][enabled_core_ids[i]];
+		if (c != COUNTER_VALUE && c != 0) {
+			printf("Reader lcore %d did not complete #0 = %d\n",
+				enabled_core_ids[i], c);
+			goto error;
+		}
 	}
 
 	if (rte_hash_free_key_with_position(h[0], pos[0]) < 0) {
@@ -826,9 +848,13 @@ test_rcu_qsbr_sw_sv_3qs(void)
 
 	/* Check the quiescent state status */
 	rte_rcu_qsbr_check(t[0], token[1], true);
-	if (*hash_data[0][3] != COUNTER_VALUE && *hash_data[0][3] != 0) {
-		printf("Reader did not complete #3 = %d\n", *hash_data[0][3]);
-		goto error;
+	for (i = 0; i < 4; i++) {
+		c = hash_data[0][3][enabled_core_ids[i]];
+		if (c != COUNTER_VALUE && c != 0) {
+			printf("Reader lcore %d did not complete #3 = %d\n",
+				enabled_core_ids[i], c);
+			goto error;
+		}
 	}
 
 	if (rte_hash_free_key_with_position(h[0], pos[1]) < 0) {
@@ -840,9 +866,13 @@ test_rcu_qsbr_sw_sv_3qs(void)
 
 	/* Check the quiescent state status */
 	rte_rcu_qsbr_check(t[0], token[2], true);
-	if (*hash_data[0][6] != COUNTER_VALUE && *hash_data[0][6] != 0) {
-		printf("Reader did not complete #6 = %d\n", *hash_data[0][6]);
-		goto error;
+	for (i = 0; i < 4; i++) {
+		c = hash_data[0][6][enabled_core_ids[i]];
+		if (c != COUNTER_VALUE && c != 0) {
+			printf("Reader lcore %d did not complete #6 = %d\n",
+				enabled_core_ids[i], c);
+			goto error;
+		}
 	}
 
 	if (rte_hash_free_key_with_position(h[0], pos[2]) < 0) {
@@ -889,42 +919,61 @@ test_rcu_qsbr_mw_mv_mqs(void)
 	test_cores = num_cores / 4;
 	test_cores = test_cores * 4;
 
-	printf("Test: %d writers, %d QSBR variable, simultaneous QSBR queries\n"
-	       , test_cores / 2, test_cores / 4);
+	printf("Test: %d writers, %d QSBR variable, simultaneous QSBR queries\n",
+	       test_cores / 2, test_cores / 4);
 
-	for (i = 0; i < num_cores / 4; i++) {
+	for (i = 0; i < test_cores / 4; i++) {
+		j = i * 4;
 		rte_rcu_qsbr_init(t[i], TEST_RCU_MAX_LCORE);
 		h[i] = init_hash(i);
 		if (h[i] == NULL) {
 			printf("Hash init failed\n");
 			goto error;
 		}
+		thread_info[i].ir = i;
+		thread_info[i].ih = i;
+		thread_info[i].r_core_ids[0] = enabled_core_ids[j];
+		thread_info[i].r_core_ids[1] = enabled_core_ids[j + 1];
+
+		/* Reader threads are launched */
+		rte_eal_remote_launch(test_rcu_qsbr_reader,
+					(void *)&thread_info[i],
+					enabled_core_ids[j]);
+		rte_eal_remote_launch(test_rcu_qsbr_reader,
+					(void *)&thread_info[i],
+					enabled_core_ids[j + 1]);
+
+		/* Writer threads are launched */
+		rte_eal_remote_launch(test_rcu_qsbr_writer,
+					(void *)&thread_info[i],
+					enabled_core_ids[j + 2]);
+		rte_eal_remote_launch(test_rcu_qsbr_writer,
+					(void *)&thread_info[i],
+					enabled_core_ids[j + 3]);
 	}
 
-	/* Reader threads are launched */
-	for (i = 0; i < test_cores / 2; i++)
-		rte_eal_remote_launch(test_rcu_qsbr_reader,
-				      (void *)(uintptr_t)(i / 2),
-					enabled_core_ids[i]);
-
-	/* Writer threads are launched */
-	for (; i < test_cores; i++)
-		rte_eal_remote_launch(test_rcu_qsbr_writer,
-				      (void *)(uintptr_t)(i - (test_cores / 2)),
-					enabled_core_ids[i]);
 	/* Wait and check return value from writer threads */
-	for (i = test_cores / 2; i < test_cores;  i++)
-		if (rte_eal_wait_lcore(enabled_core_ids[i]) < 0)
+	for (i = 0; i < test_cores / 4; i++) {
+		j = i * 4;
+		if (rte_eal_wait_lcore(enabled_core_ids[j + 2]) < 0)
 			goto error;
 
+		if (rte_eal_wait_lcore(enabled_core_ids[j + 3]) < 0)
+			goto error;
+	}
 	writer_done = 1;
 
 	/* Wait and check return value from reader threads */
-	for (i = 0; i < test_cores / 2; i++)
-		if (rte_eal_wait_lcore(enabled_core_ids[i]) < 0)
+	for (i = 0; i < test_cores / 4; i++) {
+		j = i * 4;
+		if (rte_eal_wait_lcore(enabled_core_ids[j]) < 0)
 			goto error;
 
-	for (i = 0; i < num_cores / 4; i++)
+		if (rte_eal_wait_lcore(enabled_core_ids[j + 1]) < 0)
+			goto error;
+	}
+
+	for (i = 0; i < test_cores / 4; i++)
 		rte_hash_free(h[i]);
 
 	rte_free(keys);
@@ -936,10 +985,10 @@ error:
 	/* Wait until all readers and writers have exited */
 	rte_eal_mp_wait_lcore();
 
-	for (i = 0; i < num_cores / 4; i++)
+	for (i = 0; i < test_cores / 4; i++)
 		rte_hash_free(h[i]);
 	rte_free(keys);
-	for (j = 0; j < TEST_RCU_MAX_LCORE; j++)
+	for (j = 0; j < test_cores / 4; j++)
 		for (i = 0; i < TOTAL_ENTRY; i++)
 			rte_free(hash_data[j][i]);
 

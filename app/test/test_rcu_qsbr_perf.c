@@ -23,14 +23,14 @@ static uint8_t num_cores;
 static uint32_t *keys;
 #define TOTAL_ENTRY (1024 * 8)
 #define COUNTER_VALUE 4096
-static uint32_t *hash_data[TEST_RCU_MAX_LCORE][TOTAL_ENTRY];
+static uint32_t *hash_data[TOTAL_ENTRY];
 static volatile uint8_t writer_done;
 static volatile uint8_t all_registered;
 static volatile uint32_t thr_id;
 
 static struct rte_rcu_qsbr *t[TEST_RCU_MAX_LCORE];
-static struct rte_hash *h[TEST_RCU_MAX_LCORE];
-static char hash_name[TEST_RCU_MAX_LCORE][8];
+static struct rte_hash *h;
+static char hash_name[8];
 static rte_atomic64_t updates, checks;
 static rte_atomic64_t update_cycles, check_cycles;
 
@@ -309,7 +309,7 @@ test_rcu_qsbr_hash_reader(void *arg)
 	uint32_t *pdata;
 
 	temp = t[read_type];
-	hash = h[read_type];
+	hash = h;
 
 	rte_rcu_qsbr_thread_register(temp, thread_id);
 
@@ -319,11 +319,11 @@ test_rcu_qsbr_hash_reader(void *arg)
 		rte_rcu_qsbr_thread_online(temp, thread_id);
 		for (i = 0; i < TOTAL_ENTRY; i++) {
 			rte_rcu_qsbr_lock(temp, thread_id);
-			if (rte_hash_lookup_data(hash, keys+i,
+			if (rte_hash_lookup_data(hash, keys + i,
 					(void **)&pdata) != -ENOENT) {
-				*pdata = 0;
-				while (*pdata < COUNTER_VALUE)
-					++*pdata;
+				pdata[thread_id] = 0;
+				while (pdata[thread_id] < COUNTER_VALUE)
+					pdata[thread_id]++;
 			}
 			rte_rcu_qsbr_unlock(temp, thread_id);
 		}
@@ -342,13 +342,12 @@ test_rcu_qsbr_hash_reader(void *arg)
 	return 0;
 }
 
-static struct rte_hash *
-init_hash(int hash_id)
+static struct rte_hash *init_hash(void)
 {
 	int i;
-	struct rte_hash *h = NULL;
+	struct rte_hash *hash = NULL;
 
-	sprintf(hash_name[hash_id], "hash%d", hash_id);
+	snprintf(hash_name, 8, "hash");
 	struct rte_hash_parameters hash_params = {
 		.entries = TOTAL_ENTRY,
 		.key_len = sizeof(uint32_t),
@@ -357,18 +356,19 @@ init_hash(int hash_id)
 		.hash_func = rte_hash_crc,
 		.extra_flag =
 			RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF,
-		.name = hash_name[hash_id],
+		.name = hash_name,
 	};
 
-	h = rte_hash_create(&hash_params);
-	if (h == NULL) {
+	hash = rte_hash_create(&hash_params);
+	if (hash == NULL) {
 		printf("Hash create Failed\n");
 		return NULL;
 	}
 
 	for (i = 0; i < TOTAL_ENTRY; i++) {
-		hash_data[hash_id][i] = rte_zmalloc(NULL, sizeof(uint32_t), 0);
-		if (hash_data[hash_id][i] == NULL) {
+		hash_data[i] = rte_zmalloc(NULL,
+				sizeof(uint32_t) * TEST_RCU_MAX_LCORE, 0);
+		if (hash_data[i] == NULL) {
 			printf("No memory\n");
 			return NULL;
 		}
@@ -383,14 +383,13 @@ init_hash(int hash_id)
 		keys[i] = i;
 
 	for (i = 0; i < TOTAL_ENTRY; i++) {
-		if (rte_hash_add_key_data(h, keys + i,
-				(void *)((uintptr_t)hash_data[hash_id][i]))
-				< 0) {
+		if (rte_hash_add_key_data(hash, keys + i,
+				(void *)((uintptr_t)hash_data[i])) < 0) {
 			printf("Hash key add Failed #%d\n", i);
 			return NULL;
 		}
 	}
-	return h;
+	return hash;
 }
 
 /*
@@ -401,7 +400,7 @@ static int
 test_rcu_qsbr_sw_sv_1qs(void)
 {
 	uint64_t token, begin, cycles;
-	int i, tmp_num_cores, sz;
+	int i, j, tmp_num_cores, sz;
 	int32_t pos;
 
 	writer_done = 0;
@@ -427,8 +426,8 @@ test_rcu_qsbr_sw_sv_1qs(void)
 	rte_rcu_qsbr_init(t[0], tmp_num_cores);
 
 	/* Shared data structure created */
-	h[0] = init_hash(0);
-	if (h[0] == NULL) {
+	h = init_hash();
+	if (h == NULL) {
 		printf("Hash init failed\n");
 		goto error;
 	}
@@ -442,7 +441,7 @@ test_rcu_qsbr_sw_sv_1qs(void)
 
 	for (i = 0; i < TOTAL_ENTRY; i++) {
 		/* Delete elements from the shared data structure */
-		pos = rte_hash_del_key(h[0], keys + i);
+		pos = rte_hash_del_key(h, keys + i);
 		if (pos < 0) {
 			printf("Delete key failed #%d\n", keys[i]);
 			goto error;
@@ -452,19 +451,21 @@ test_rcu_qsbr_sw_sv_1qs(void)
 
 		/* Check the quiescent state status */
 		rte_rcu_qsbr_check(t[0], token, true);
-		if (*hash_data[0][i] != COUNTER_VALUE &&
-			*hash_data[0][i] != 0) {
-			printf("Reader did not complete #%d =  %d\n", i,
-							*hash_data[0][i]);
-			goto error;
+		for (j = 0; j < tmp_num_cores; j++) {
+			if (hash_data[i][j] != COUNTER_VALUE &&
+				hash_data[i][j] != 0) {
+				printf("Reader thread ID %u did not complete #%d =  %d\n",
+					j, i, hash_data[i][j]);
+				goto error;
+			}
 		}
 
-		if (rte_hash_free_key_with_position(h[0], pos) < 0) {
+		if (rte_hash_free_key_with_position(h, pos) < 0) {
 			printf("Failed to free the key #%d\n", keys[i]);
 			goto error;
 		}
-		rte_free(hash_data[0][i]);
-		hash_data[0][i] = NULL;
+		rte_free(hash_data[i]);
+		hash_data[i] = NULL;
 	}
 
 	cycles = rte_rdtsc_precise() - begin;
@@ -477,7 +478,7 @@ test_rcu_qsbr_sw_sv_1qs(void)
 	for (i = 0; i < num_cores; i++)
 		if (rte_eal_wait_lcore(enabled_core_ids[i]) < 0)
 			goto error;
-	rte_hash_free(h[0]);
+	rte_hash_free(h);
 	rte_free(keys);
 
 	printf("Following numbers include calls to rte_hash functions\n");
@@ -498,10 +499,10 @@ error:
 	/* Wait until all readers have exited */
 	rte_eal_mp_wait_lcore();
 
-	rte_hash_free(h[0]);
+	rte_hash_free(h);
 	rte_free(keys);
 	for (i = 0; i < TOTAL_ENTRY; i++)
-		rte_free(hash_data[0][i]);
+		rte_free(hash_data[i]);
 
 	rte_free(t[0]);
 
@@ -517,7 +518,7 @@ static int
 test_rcu_qsbr_sw_sv_1qs_non_blocking(void)
 {
 	uint64_t token, begin, cycles;
-	int i, ret, tmp_num_cores, sz;
+	int i, j, ret, tmp_num_cores, sz;
 	int32_t pos;
 
 	writer_done = 0;
@@ -538,8 +539,8 @@ test_rcu_qsbr_sw_sv_1qs_non_blocking(void)
 	rte_rcu_qsbr_init(t[0], tmp_num_cores);
 
 	/* Shared data structure created */
-	h[0] = init_hash(0);
-	if (h[0] == NULL) {
+	h = init_hash();
+	if (h == NULL) {
 		printf("Hash init failed\n");
 		goto error;
 	}
@@ -553,7 +554,7 @@ test_rcu_qsbr_sw_sv_1qs_non_blocking(void)
 
 	for (i = 0; i < TOTAL_ENTRY; i++) {
 		/* Delete elements from the shared data structure */
-		pos = rte_hash_del_key(h[0], keys + i);
+		pos = rte_hash_del_key(h, keys + i);
 		if (pos < 0) {
 			printf("Delete key failed #%d\n", keys[i]);
 			goto error;
@@ -565,19 +566,21 @@ test_rcu_qsbr_sw_sv_1qs_non_blocking(void)
 		do {
 			ret = rte_rcu_qsbr_check(t[0], token, false);
 		} while (ret == 0);
-		if (*hash_data[0][i] != COUNTER_VALUE &&
-			*hash_data[0][i] != 0) {
-			printf("Reader did not complete  #%d = %d\n", i,
-							*hash_data[0][i]);
-			goto error;
+		for (j = 0; j < tmp_num_cores; j++) {
+			if (hash_data[i][j] != COUNTER_VALUE &&
+				hash_data[i][j] != 0) {
+				printf("Reader thread ID %u did not complete #%d =  %d\n",
+					j, i, hash_data[i][j]);
+				goto error;
+			}
 		}
 
-		if (rte_hash_free_key_with_position(h[0], pos) < 0) {
+		if (rte_hash_free_key_with_position(h, pos) < 0) {
 			printf("Failed to free the key #%d\n", keys[i]);
 			goto error;
 		}
-		rte_free(hash_data[0][i]);
-		hash_data[0][i] = NULL;
+		rte_free(hash_data[i]);
+		hash_data[i] = NULL;
 	}
 
 	cycles = rte_rdtsc_precise() - begin;
@@ -589,7 +592,7 @@ test_rcu_qsbr_sw_sv_1qs_non_blocking(void)
 	for (i = 0; i < num_cores; i++)
 		if (rte_eal_wait_lcore(enabled_core_ids[i]) < 0)
 			goto error;
-	rte_hash_free(h[0]);
+	rte_hash_free(h);
 	rte_free(keys);
 
 	printf("Following numbers include calls to rte_hash functions\n");
@@ -610,10 +613,10 @@ error:
 	/* Wait until all readers have exited */
 	rte_eal_mp_wait_lcore();
 
-	rte_hash_free(h[0]);
+	rte_hash_free(h);
 	rte_free(keys);
 	for (i = 0; i < TOTAL_ENTRY; i++)
-		rte_free(hash_data[0][i]);
+		rte_free(hash_data[i]);
 
 	rte_free(t[0]);
 
