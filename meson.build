@@ -42,10 +42,9 @@ subdir('app')
 # build docs
 subdir('doc')
 
-# build any examples explicitly requested - useful for developers
-if get_option('examples') != ''
-	subdir('examples')
-endif
+# build any examples explicitly requested - useful for developers - and
+# install any example code into the appropriate install path
+subdir('examples')
 
 # build kernel modules if enabled
 if get_option('enable_kmods')

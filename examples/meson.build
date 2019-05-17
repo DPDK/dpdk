@@ -19,6 +19,10 @@ foreach ex:all_examples
 			exclude_files: 'meson.build')
 endforeach
 
+if get_option('examples') == ''
+	subdir_done()
+endif
+
 if get_option('examples').to_lower() == 'all'
 	examples = all_examples
 	allow_skips = true # don't flag an error if we can't build an app
