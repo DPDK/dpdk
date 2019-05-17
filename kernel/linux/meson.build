@@ -7,13 +7,8 @@ WARN_CROSS_COMPILE='Need "kernel_dir" option for kmod compilation when cross-com
 WARN_NO_HEADERS='Cannot compile kernel modules as requested - are kernel headers installed?'
 
 # if we are cross-compiling we need kernel_dir specified
-# NOTE: warning() function only available from version 0.44 onwards
 if get_option('kernel_dir') == '' and meson.is_cross_build()
-	if meson.version().version_compare('>=0.44')
-		warning(WARN_CROSS_COMPILE)
-	else
-		message('WARNING: ' + WARN_CROSS_COMPILE)
-	endif
+	warning(WARN_CROSS_COMPILE)
 else
 
 	kernel_dir = get_option('kernel_dir')
