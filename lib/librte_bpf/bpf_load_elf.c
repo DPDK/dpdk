@@ -77,10 +77,21 @@ resolve_xsym(const char *sn, size_t ofs, struct ebpf_insn *ins, size_t ins_sz,
 		return -ENOENT;
 
 	/* for function we just need an index in our xsym table */
-	if (type == RTE_BPF_XTYPE_FUNC)
+	if (type == RTE_BPF_XTYPE_FUNC) {
+
+		/* we don't support multiple functions per BPF module,
+		 * so treat EBPF_PSEUDO_CALL to extrernal function
+		 * as an ordinary EBPF_CALL.
+		 */
+		if (ins[idx].src_reg == EBPF_PSEUDO_CALL) {
+			RTE_BPF_LOG(INFO, "%s(%u): "
+				"EBPF_PSEUDO_CALL to external function: %s\n",
+				__func__, idx, sn);
+			ins[idx].src_reg = EBPF_REG_0;
+		}
 		ins[idx].imm = fidx;
 	/* for variable we need to store its absolute address */
-	else {
+	} else {
 		ins[idx].imm = (uintptr_t)prm->xsym[fidx].var.val;
 		ins[idx + 1].imm =
 			(uint64_t)(uintptr_t)prm->xsym[fidx].var.val >> 32;

@@ -121,6 +121,14 @@ enum {
 };
 
 /*
+ * When EBPF_CALL instruction has src_reg == EBPF_PSEUDO_CALL,
+ * it should be treated as pseudo-call instruction, where
+ * imm value contains pc-relative offset to another EBPF function.
+ * Right now DPDK EBPF library doesn't support it.
+ */
+#define	EBPF_PSEUDO_CALL	EBPF_REG_1
+
+/*
  * eBPF instruction format
  */
 struct ebpf_insn {
