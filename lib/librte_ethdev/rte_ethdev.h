@@ -1745,9 +1745,9 @@ rte_eth_dev_is_removed(uint16_t port_id);
  * @return
  *   - 0: Success, receive queue correctly set up.
  *   - -EIO: if device is removed.
- *   - -EINVAL: The size of network buffers which can be allocated from the
- *      memory pool does not fit the various buffer sizes allowed by the
- *      device controller.
+ *   - -EINVAL: The memory pool pointer is null or the size of network buffers
+ *      which can be allocated from this memory pool does not fit the various
+ *      buffer sizes allowed by the device controller.
  *   - -ENOMEM: Unable to allocate the receive ring descriptors or to
  *      allocate network memory buffers from the memory pool when
  *      initializing receive descriptors.
