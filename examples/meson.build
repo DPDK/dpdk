@@ -8,9 +8,34 @@ endif
 
 execinfo = cc.find_library('execinfo', required: false)
 
-all_examples = run_command('sh', '-c',
-	'cd $MESON_SOURCE_ROOT/$MESON_SUBDIR && for d in * ; do if [ -d $d ] ; then echo $d ; fi ; done'
-	).stdout().split()
+# list of all example apps. Keep 1-3 per line, in alphabetical order.
+all_examples = [
+	'bbdev_app', 'bond',
+	'bpf', 'cmdline',
+	'distributor', 'ethtool',
+	'eventdev_pipeline', 'exception_path',
+	'fips_validation', 'flow_classify',
+	'flow_filtering', 'helloworld',
+	'ip_fragmentation', 'ip_pipeline',
+	'ip_reassembly', 'ipsec-secgw',
+	'ipv4_multicast', 'kni',
+	'l2fwd', 'l2fwd-cat',
+	'l2fwd-crypto', 'l2fwd-jobstats',
+	'l2fwd-keepalive', 'l3fwd',
+	'l3fwd-acl', 'l3fwd-power',
+	'l3fwd-vf', 'link_status_interrupt',
+	'load_balancer', 'multi_process',
+	'netmap_compat', 'packet_ordering',
+	'performance-thread', 'ptpclient',
+	'qos_meter', 'qos_sched',
+	'quota_watermark', 'rxtx_callbacks',
+	'server_node_efd', 'service_cores',
+	'skeleton', 'tep_termination',
+	'timer', 'vdpa',
+	'vhost', 'vhost_crypto',
+	'vhost_scsi', 'vm_power_manager',
+	'vmdq', 'vmdq_dcb',
+]
 # install all example code on install - irrespective of whether the example in
 # question is to be built as part of this build or not.
 foreach ex:all_examples
