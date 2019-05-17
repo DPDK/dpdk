@@ -9,25 +9,25 @@ WARN_NO_HEADERS='Cannot compile kernel modules as requested - are kernel headers
 # if we are cross-compiling we need kernel_dir specified
 if get_option('kernel_dir') == '' and meson.is_cross_build()
 	warning(WARN_CROSS_COMPILE)
-else
+	subdir_done()
+endif
 
-	kernel_dir = get_option('kernel_dir')
-	if kernel_dir == ''
-		# use default path for native builds
-		kernel_version = run_command('uname', '-r').stdout().strip()
-		kernel_dir = '/lib/modules/' + kernel_version + '/build'
-	endif
+kernel_dir = get_option('kernel_dir')
+if kernel_dir == ''
+	# use default path for native builds
+	kernel_version = run_command('uname', '-r').stdout().strip()
+	kernel_dir = '/lib/modules/' + kernel_version + '/build'
+endif
 
-	# test running make in kernel directory, using "make kernelversion"
-	make_returncode = run_command('make', '-sC', kernel_dir,
-			'kernelversion').returncode()
-	if make_returncode != 0
-		warning(WARN_NO_HEADERS)
-	else # returncode == 0
+# test running make in kernel directory, using "make kernelversion"
+make_returncode = run_command('make', '-sC', kernel_dir,
+		'kernelversion').returncode()
+if make_returncode != 0
+	warning(WARN_NO_HEADERS)
+	subdir_done()
+endif
 
 # DO ACTUAL MODULE BUILDING
-		foreach d:subdirs
-			subdir(d)
-		endforeach
-	endif
-endif
+foreach d:subdirs
+	subdir(d)
+endforeach
