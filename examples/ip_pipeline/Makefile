@@ -55,7 +55,7 @@ build:
 .PHONY: clean
 clean:
 	rm -f build/$(APP)* build/*.o
-	rmdir --ignore-fail-on-non-empty build
+	test -d build && rmdir -p build || true
 
 else
 
