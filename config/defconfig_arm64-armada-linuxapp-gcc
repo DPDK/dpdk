@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2018 Marvell International Ltd
+#
+
+#include "defconfig_arm64-armv8a-linux-gcc"
+
+#
+# Compile Environment Abstraction Layer
+#
+CONFIG_RTE_MAX_LCORE=16
+CONFIG_RTE_MAX_NUMA_NODES=1
+CONFIG_RTE_CACHE_LINE_SIZE=64
+
+# Enable PMDs
+CONFIG_RTE_LIBRTE_MVEP_COMMON=y
+CONFIG_RTE_LIBRTE_MVPP2_PMD=y
+CONFIG_RTE_LIBRTE_MVNETA_PMD=y
+CONFIG_RTE_LIBRTE_PMD_MVSAM_CRYPTO=y
+
+# Disable NXP as it is conflict with MUSDK
+CONFIG_RTE_LIBRTE_DPAA_BUS=n
+
+# Doesn't support NUMA
+CONFIG_RTE_EAL_NUMA_AWARE_HUGEPAGES=n
+CONFIG_RTE_LIBRTE_VHOST_NUMA=n

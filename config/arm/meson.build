@@ -56,6 +56,12 @@ flags_dpaa2 = [
 	['RTE_MAX_NUMA_NODES', 1],
 	['RTE_MAX_LCORE', 16],
 	['RTE_LIBRTE_DPAA2_USE_PHYS_IOVA', false]]
+flags_armada = [
+	['RTE_MACHINE', '"armv8a"'],
+	['RTE_CACHE_LINE_SIZE', 64],
+	['RTE_MAX_NUMA_NODES', 1],
+	['RTE_MAX_LCORE', 16]]
+
 flags_default_extra = []
 flags_thunderx_extra = [
 	['RTE_MACHINE', '"thunderx"'],
@@ -104,7 +110,7 @@ impl_0x4e = ['NVIDIA', flags_generic, machine_args_generic]
 impl_0x50 = ['AppliedMicro', flags_generic, machine_args_generic]
 impl_0x51 = ['Qualcomm', flags_generic, machine_args_generic]
 impl_0x53 = ['Samsung', flags_generic, machine_args_generic]
-impl_0x56 = ['Marvell', flags_generic, machine_args_generic]
+impl_0x56 = ['Marvell ARMADA', flags_armada, machine_args_generic]
 impl_0x69 = ['Intel', flags_generic, machine_args_generic]
 impl_dpaa = ['NXP DPAA', flags_dpaa, machine_args_generic]
 impl_dpaa2 = ['NXP DPAA2', flags_dpaa2, machine_args_generic]
