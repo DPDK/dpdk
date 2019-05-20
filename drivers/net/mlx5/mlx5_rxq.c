@@ -843,7 +843,7 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 	} attr;
 	unsigned int cqe_n;
 	unsigned int wqe_n = 1 << rxq_data->elts_n;
-	struct mlx5_rxq_ibv *tmpl;
+	struct mlx5_rxq_ibv *tmpl = NULL;
 	struct mlx5dv_cq cq_info;
 	struct mlx5dv_rwq rwq;
 	unsigned int i;
@@ -1084,15 +1084,19 @@ mlx5_rxq_ibv_new(struct rte_eth_dev *dev, uint16_t idx)
 	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_NONE;
 	return tmpl;
 error:
-	ret = rte_errno; /* Save rte_errno before cleanup. */
-	if (tmpl->wq)
-		claim_zero(mlx5_glue->destroy_wq(tmpl->wq));
-	if (tmpl->cq)
-		claim_zero(mlx5_glue->destroy_cq(tmpl->cq));
-	if (tmpl->channel)
-		claim_zero(mlx5_glue->destroy_comp_channel(tmpl->channel));
+	if (tmpl) {
+		ret = rte_errno; /* Save rte_errno before cleanup. */
+		if (tmpl->wq)
+			claim_zero(mlx5_glue->destroy_wq(tmpl->wq));
+		if (tmpl->cq)
+			claim_zero(mlx5_glue->destroy_cq(tmpl->cq));
+		if (tmpl->channel)
+			claim_zero(mlx5_glue->destroy_comp_channel
+							(tmpl->channel));
+		rte_free(tmpl);
+		rte_errno = ret; /* Restore rte_errno. */
+	}
 	priv->verbs_alloc_ctx.type = MLX5_VERBS_ALLOC_TYPE_NONE;
-	rte_errno = ret; /* Restore rte_errno. */
 	return NULL;
 }
 
