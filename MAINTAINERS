@@ -644,7 +644,6 @@ F: doc/guides/nics/features/ipn3ke.ini
 Marvell mvpp2
 M: Tomasz Duszynski <tdu@semihalf.com>
 M: Liron Himi <lironh@marvell.com>
-M: Alan Winkowski <walan@marvell.com>
 F: drivers/common/mvep/
 F: drivers/net/mvpp2/
 F: doc/guides/nics/mvpp2.rst
@@ -653,7 +652,6 @@ F: doc/guides/nics/features/mvpp2.ini
 Marvell mvneta
 M: Zyta Szpak <zr@semihalf.com>
 M: Liron Himi <lironh@marvell.com>
-M: Alan Winkowski <walan@marvell.com>
 F: drivers/net/mvneta/
 F: doc/guides/nics/mvneta.rst
 F: doc/guides/nics/features/mvneta.ini
@@ -901,8 +899,8 @@ F: doc/guides/cryptodevs/features/kasumi.ini
 
 Marvell mvsam
 M: Tomasz Duszynski <tdu@semihalf.com>
+M: Michael Shamis <michaelsh@marvell.com>
 M: Liron Himi <lironh@marvell.com>
-M: Alan Winkowski <walan@marvell.com>
 F: drivers/crypto/mvsam/
 F: doc/guides/cryptodevs/mvsam.rst
 F: doc/guides/cryptodevs/features/mvsam.ini
