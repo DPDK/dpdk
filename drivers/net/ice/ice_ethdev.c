@@ -1154,6 +1154,12 @@ ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type)
 	TAILQ_INIT(&vsi->mac_list);
 	TAILQ_INIT(&vsi->vlan_list);
 
+	/* Be sync with ETH_RSS_RETA_SIZE_x maximum value definition */
+	pf->hash_lut_size = hw->func_caps.common_cap.rss_table_size >
+			ETH_RSS_RETA_SIZE_512 ? ETH_RSS_RETA_SIZE_512 :
+			hw->func_caps.common_cap.rss_table_size;
+	pf->flags |= ICE_FLAG_RSS_AQ_CAPABLE;
+
 	memset(&vsi_ctx, 0, sizeof(vsi_ctx));
 	/* base_queue in used in queue mapping of VSI add/update command.
 	 * Suppose vsi->base_queue is 0 now, don't consider SRIOV, VMDQ
@@ -1642,7 +1648,7 @@ static int ice_init_rss(struct ice_pf *pf)
 	rss_conf = &dev->data->dev_conf.rx_adv_conf.rss_conf;
 	nb_q = dev->data->nb_rx_queues;
 	vsi->rss_key_size = ICE_AQC_GET_SET_RSS_KEY_DATA_RSS_KEY_SIZE;
-	vsi->rss_lut_size = hw->func_caps.common_cap.rss_table_size;
+	vsi->rss_lut_size = pf->hash_lut_size;
 
 	if (is_safe_mode) {
 		PMD_DRV_LOG(WARNING, "RSS is not supported in safe mode\n");
@@ -2052,7 +2058,7 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->rx_queue_offload_capa = 0;
 	dev_info->tx_queue_offload_capa = 0;
 
-	dev_info->reta_size = hw->func_caps.common_cap.rss_table_size;
+	dev_info->reta_size = pf->hash_lut_size;
 	dev_info->hash_key_size = (VSIQF_HKEY_MAX_INDEX + 1) * sizeof(uint32_t);
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
@@ -2692,28 +2698,31 @@ ice_rss_reta_update(struct rte_eth_dev *dev,
 		    uint16_t reta_size)
 {
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint16_t i, lut_size = hw->func_caps.common_cap.rss_table_size;
+	uint16_t i, lut_size = pf->hash_lut_size;
 	uint16_t idx, shift;
 	uint8_t *lut;
 	int ret;
 
-	if (reta_size != lut_size ||
-	    reta_size > ETH_RSS_RETA_SIZE_512) {
+	if (reta_size != ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_128 &&
+	    reta_size != ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_512 &&
+	    reta_size != ICE_AQC_GSET_RSS_LUT_TABLE_SIZE_2K) {
 		PMD_DRV_LOG(ERR,
 			    "The size of hash lookup table configured (%d)"
 			    "doesn't match the number hardware can "
-			    "supported (%d)",
-			    reta_size, lut_size);
+			    "supported (128, 512, 2048)",
+			    reta_size);
 		return -EINVAL;
 	}
 
-	lut = rte_zmalloc(NULL, reta_size, 0);
+	/* It MUST use the current LUT size to get the RSS lookup table,
+	 * otherwise if will fail with -100 error code.
+	 */
+	lut = rte_zmalloc(NULL,  RTE_MAX(reta_size, lut_size), 0);
 	if (!lut) {
 		PMD_DRV_LOG(ERR, "No memory can be allocated");
 		return -ENOMEM;
 	}
-	ret = ice_get_rss_lut(pf->main_vsi, lut, reta_size);
+	ret = ice_get_rss_lut(pf->main_vsi, lut, lut_size);
 	if (ret)
 		goto out;
 
@@ -2724,6 +2733,12 @@ ice_rss_reta_update(struct rte_eth_dev *dev,
 			lut[i] = reta_conf[idx].reta[shift];
 	}
 	ret = ice_set_rss_lut(pf->main_vsi, lut, reta_size);
+	if (ret == 0 && lut_size != reta_size) {
+		PMD_DRV_LOG(INFO,
+			    "The size of hash lookup table is changed from (%d) to (%d)",
+			    lut_size, reta_size);
+		pf->hash_lut_size = reta_size;
+	}
 
 out:
 	rte_free(lut);
@@ -2737,14 +2752,12 @@ ice_rss_reta_query(struct rte_eth_dev *dev,
 		   uint16_t reta_size)
 {
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint16_t i, lut_size = hw->func_caps.common_cap.rss_table_size;
+	uint16_t i, lut_size = pf->hash_lut_size;
 	uint16_t idx, shift;
 	uint8_t *lut;
 	int ret;
 
-	if (reta_size != lut_size ||
-	    reta_size > ETH_RSS_RETA_SIZE_512) {
+	if (reta_size != lut_size) {
 		PMD_DRV_LOG(ERR,
 			    "The size of hash lookup table configured (%d)"
 			    "doesn't match the number hardware can "
