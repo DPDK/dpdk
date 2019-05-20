@@ -244,7 +244,8 @@ comp_perf_dump_input_data(struct comp_test_data *test_data)
 	if (test_data->input_data_sz == 0)
 		test_data->input_data_sz = actual_file_sz;
 
-	if (fseek(f, 0, SEEK_SET) != 0) {
+	if (test_data->input_data_sz <= 0 || actual_file_sz <= 0 ||
+			fseek(f, 0, SEEK_SET) != 0) {
 		RTE_LOG(ERR, USER1, "Size of input could not be calculated\n");
 		goto end;
 	}
