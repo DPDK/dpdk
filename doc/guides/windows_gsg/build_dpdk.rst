@@ -59,22 +59,30 @@ default.
 Using the ninja backend
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
+Specifying the compiler might be required to complete the meson command.
+
+.. code-block:: console
+
+    set CC=clang
+
+To compile the examples, the flag ``-Dexamples`` is required.
+
 .. code-block:: console
 
     cd C:\Users\me\dpdk
-    meson build
+    meson -Dexamples=helloworld build
     cd build
     ninja
 
 Run the helloworld example
 ==========================
 
-Navigate to the build directory and run `dpdk-helloworld.exe`.
+Navigate to the examples in the build directory and run `dpdk-helloworld.exe`.
 
 .. code-block:: console
 
-    cd C:\Users\me\dpdk\build
-    helloworld.exe
+    cd C:\Users\me\dpdk\build\examples
+    dpdk-helloworld.exe
     hello from core 1
     hello from core 3
     hello from core 0
