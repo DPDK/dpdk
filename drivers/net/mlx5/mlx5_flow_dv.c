@@ -1218,7 +1218,7 @@ flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
 	struct udp_hdr *udp = NULL;
 	struct rte_vxlan_hdr *vxlan = NULL;
 	struct rte_vxlan_gpe_hdr *vxlan_gpe = NULL;
-	struct gre_hdr *gre = NULL;
+	struct rte_gre_hdr *gre = NULL;
 	size_t len;
 	size_t temp_size = 0;
 
@@ -1331,7 +1331,7 @@ flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
 			break;
 		case RTE_FLOW_ITEM_TYPE_GRE:
 		case RTE_FLOW_ITEM_TYPE_NVGRE:
-			gre = (struct gre_hdr *)&buf[temp_size];
+			gre = (struct rte_gre_hdr *)&buf[temp_size];
 			if (!gre->proto)
 				return rte_flow_error_set(error, EINVAL,
 						RTE_FLOW_ERROR_TYPE_ACTION,

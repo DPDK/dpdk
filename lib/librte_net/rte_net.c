@@ -140,8 +140,8 @@ ptype_tunnel(uint16_t *proto, const struct rte_mbuf *m,
 			[0xa] = 12,
 			[0xb] = 16,
 		};
-		const struct gre_hdr *gh;
-		struct gre_hdr gh_copy;
+		const struct rte_gre_hdr *gh;
+		struct rte_gre_hdr gh_copy;
 		uint16_t flags;
 
 		gh = rte_pktmbuf_read(m, *off, sizeof(*gh), &gh_copy);
