@@ -1215,7 +1215,7 @@ flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
 	struct rte_vlan_hdr *vlan = NULL;
 	struct rte_ipv4_hdr *ipv4 = NULL;
 	struct rte_ipv6_hdr *ipv6 = NULL;
-	struct udp_hdr *udp = NULL;
+	struct rte_udp_hdr *udp = NULL;
 	struct rte_vxlan_hdr *vxlan = NULL;
 	struct rte_vxlan_gpe_hdr *vxlan_gpe = NULL;
 	struct rte_gre_hdr *gre = NULL;
@@ -1286,7 +1286,7 @@ flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
 				ipv6->hop_limits = MLX5_ENCAP_IPV6_HOP_LIMIT;
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
-			udp = (struct udp_hdr *)&buf[temp_size];
+			udp = (struct rte_udp_hdr *)&buf[temp_size];
 			if (!ipv4 && !ipv6)
 				return rte_flow_error_set(error, EINVAL,
 						RTE_FLOW_ERROR_TYPE_ACTION,

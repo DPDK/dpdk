@@ -508,7 +508,7 @@ tap_tx_l3_cksum(char *packet, uint64_t ol_flags, unsigned int l2_len,
 
 		l4_hdr = packet + l2_len + l3_len;
 		if ((ol_flags & PKT_TX_L4_MASK) == PKT_TX_UDP_CKSUM)
-			*l4_cksum = &((struct udp_hdr *)l4_hdr)->dgram_cksum;
+			*l4_cksum = &((struct rte_udp_hdr *)l4_hdr)->dgram_cksum;
 		else if ((ol_flags & PKT_TX_L4_MASK) == PKT_TX_TCP_CKSUM)
 			*l4_cksum = &((struct rte_tcp_hdr *)l4_hdr)->cksum;
 		else

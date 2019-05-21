@@ -184,7 +184,7 @@ init_traffic(struct rte_mempool *mp,
 {
 	struct rte_ether_hdr pkt_eth_hdr;
 	struct rte_ipv4_hdr pkt_ipv4_hdr;
-	struct udp_hdr pkt_udp_hdr;
+	struct rte_udp_hdr pkt_udp_hdr;
 	uint32_t pktlen;
 	static uint8_t src_mac[] = { 0x00, 0xFF, 0xAA, 0xFF, 0xAA, 0xFF };
 	static uint8_t dst_mac[] = { 0x00, 0xAA, 0xFF, 0xAA, 0xFF, 0xAA };

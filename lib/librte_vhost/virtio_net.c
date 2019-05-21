@@ -222,7 +222,7 @@ virtio_enqueue_offload(struct rte_mbuf *m_buf, struct virtio_net_hdr *net_hdr)
 						cksum));
 			break;
 		case PKT_TX_UDP_CKSUM:
-			net_hdr->csum_offset = (offsetof(struct udp_hdr,
+			net_hdr->csum_offset = (offsetof(struct rte_udp_hdr,
 						dgram_cksum));
 			break;
 		case PKT_TX_SCTP_CKSUM:
@@ -1028,7 +1028,7 @@ vhost_dequeue_offload(struct virtio_net_hdr *hdr, struct rte_mbuf *m)
 				if (l4_proto == IPPROTO_TCP)
 					m->ol_flags |= PKT_TX_TCP_CKSUM;
 				break;
-			case (offsetof(struct udp_hdr, dgram_cksum)):
+			case (offsetof(struct rte_udp_hdr, dgram_cksum)):
 				if (l4_proto == IPPROTO_UDP)
 					m->ol_flags |= PKT_TX_UDP_CKSUM;
 				break;
@@ -1054,7 +1054,7 @@ vhost_dequeue_offload(struct virtio_net_hdr *hdr, struct rte_mbuf *m)
 		case VIRTIO_NET_HDR_GSO_UDP:
 			m->ol_flags |= PKT_TX_UDP_SEG;
 			m->tso_segsz = hdr->gso_size;
-			m->l4_len = sizeof(struct udp_hdr);
+			m->l4_len = sizeof(struct rte_udp_hdr);
 			break;
 		default:
 			RTE_LOG(WARNING, VHOST_DATA,

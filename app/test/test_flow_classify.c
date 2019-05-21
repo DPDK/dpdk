@@ -493,7 +493,7 @@ init_ipv4_udp_traffic(struct rte_mempool *mp,
 {
 	struct rte_ether_hdr pkt_eth_hdr;
 	struct rte_ipv4_hdr pkt_ipv4_hdr;
-	struct udp_hdr pkt_udp_hdr;
+	struct rte_udp_hdr pkt_udp_hdr;
 	uint32_t src_addr = IPV4_ADDR(2, 2, 2, 3);
 	uint32_t dst_addr = IPV4_ADDR(2, 2, 2, 7);
 	uint16_t src_port = 32;

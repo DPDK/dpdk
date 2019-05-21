@@ -692,7 +692,7 @@ static const struct rte_flow_item_icmp rte_flow_item_icmp_mask = {
  * Matches a UDP header.
  */
 struct rte_flow_item_udp {
-	struct udp_hdr hdr; /**< UDP header definition. */
+	struct rte_udp_hdr hdr; /**< UDP header definition. */
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_UDP. */

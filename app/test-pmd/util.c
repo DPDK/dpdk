@@ -105,7 +105,7 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 		if (is_encapsulation) {
 			struct rte_ipv4_hdr *ipv4_hdr;
 			struct rte_ipv6_hdr *ipv6_hdr;
-			struct udp_hdr *udp_hdr;
+			struct rte_udp_hdr *udp_hdr;
 			uint8_t l2_len;
 			uint8_t l3_len;
 			uint8_t l4_len;
@@ -130,9 +130,9 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 			}
 			if (l4_proto == IPPROTO_UDP) {
 				udp_hdr = rte_pktmbuf_mtod_offset(mb,
-				struct udp_hdr *,
+				struct rte_udp_hdr *,
 				l2_len + l3_len);
-				l4_len = sizeof(struct udp_hdr);
+				l4_len = sizeof(struct rte_udp_hdr);
 				vxlan_hdr = rte_pktmbuf_mtod_offset(mb,
 				struct rte_vxlan_hdr *,
 				l2_len + l3_len + l4_len);

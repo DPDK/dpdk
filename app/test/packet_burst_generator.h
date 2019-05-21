@@ -35,7 +35,7 @@ initialize_arp_header(struct rte_arp_hdr *arp_hdr,
 		uint32_t src_ip, uint32_t dst_ip, uint32_t opcode);
 
 uint16_t
-initialize_udp_header(struct udp_hdr *udp_hdr, uint16_t src_port,
+initialize_udp_header(struct rte_udp_hdr *udp_hdr, uint16_t src_port,
 		uint16_t dst_port, uint16_t pkt_data_len);
 
 uint16_t
@@ -61,7 +61,7 @@ initialize_ipv4_header_proto(struct rte_ipv4_hdr *ip_hdr, uint32_t src_addr,
 int
 generate_packet_burst(struct rte_mempool *mp, struct rte_mbuf **pkts_burst,
 		struct rte_ether_hdr *eth_hdr, uint8_t vlan_enabled,
-		void *ip_hdr, uint8_t ipv4, struct udp_hdr *udp_hdr,
+		void *ip_hdr, uint8_t ipv4, struct rte_udp_hdr *udp_hdr,
 		int nb_pkt_per_burst, uint8_t pkt_len, uint8_t nb_pkt_segs);
 
 int

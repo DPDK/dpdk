@@ -93,12 +93,12 @@ initialize_arp_header(struct rte_arp_hdr *arp_hdr,
 }
 
 uint16_t
-initialize_udp_header(struct udp_hdr *udp_hdr, uint16_t src_port,
+initialize_udp_header(struct rte_udp_hdr *udp_hdr, uint16_t src_port,
 		uint16_t dst_port, uint16_t pkt_data_len)
 {
 	uint16_t pkt_len;
 
-	pkt_len = (uint16_t) (pkt_data_len + sizeof(struct udp_hdr));
+	pkt_len = (uint16_t) (pkt_data_len + sizeof(struct rte_udp_hdr));
 
 	udp_hdr->src_port = rte_cpu_to_be_16(src_port);
 	udp_hdr->dst_port = rte_cpu_to_be_16(dst_port);
@@ -129,7 +129,7 @@ initialize_sctp_header(struct rte_sctp_hdr *sctp_hdr, uint16_t src_port,
 {
 	uint16_t pkt_len;
 
-	pkt_len = (uint16_t) (pkt_data_len + sizeof(struct udp_hdr));
+	pkt_len = (uint16_t) (pkt_data_len + sizeof(struct rte_udp_hdr));
 
 	sctp_hdr->src_port = rte_cpu_to_be_16(src_port);
 	sctp_hdr->dst_port = rte_cpu_to_be_16(dst_port);
@@ -260,7 +260,7 @@ initialize_ipv4_header_proto(struct rte_ipv4_hdr *ip_hdr, uint32_t src_addr,
 int
 generate_packet_burst(struct rte_mempool *mp, struct rte_mbuf **pkts_burst,
 		struct rte_ether_hdr *eth_hdr, uint8_t vlan_enabled,
-		void *ip_hdr, uint8_t ipv4, struct udp_hdr *udp_hdr,
+		void *ip_hdr, uint8_t ipv4, struct rte_udp_hdr *udp_hdr,
 		int nb_pkt_per_burst, uint8_t pkt_len, uint8_t nb_pkt_segs)
 {
 	int i, nb_pkt = 0;
@@ -390,7 +390,7 @@ nomore_mbuf:
 			switch (proto) {
 			case IPPROTO_UDP:
 				copy_buf_to_pkt(proto_hdr,
-					sizeof(struct udp_hdr), pkt,
+					sizeof(struct rte_udp_hdr), pkt,
 					eth_hdr_size +
 						sizeof(struct rte_ipv4_hdr));
 				break;
@@ -415,7 +415,7 @@ nomore_mbuf:
 			switch (proto) {
 			case IPPROTO_UDP:
 				copy_buf_to_pkt(proto_hdr,
-					sizeof(struct udp_hdr), pkt,
+					sizeof(struct rte_udp_hdr), pkt,
 					eth_hdr_size +
 						sizeof(struct rte_ipv6_hdr));
 				break;

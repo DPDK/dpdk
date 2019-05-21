@@ -121,7 +121,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 	struct rte_mbuf  *pkt;
 	struct rte_ether_hdr *eth_hdr;
 	struct rte_ipv4_hdr *ip_hdr;
-	struct udp_hdr *udp_hdr;
+	struct rte_udp_hdr *udp_hdr;
 	uint16_t vlan_tci, vlan_tci_outer;
 	uint64_t ol_flags = 0;
 	uint16_t nb_rx;
@@ -193,7 +193,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 						 sizeof(*ip_hdr));
 
 		/* Initialize UDP header. */
-		udp_hdr = (struct udp_hdr *)(ip_hdr + 1);
+		udp_hdr = (struct rte_udp_hdr *)(ip_hdr + 1);
 		udp_hdr->src_port	= rte_cpu_to_be_16(cfg_udp_src);
 		udp_hdr->dst_port	= rte_cpu_to_be_16(cfg_udp_dst);
 		udp_hdr->dgram_cksum	= 0; /* No UDP checksum. */

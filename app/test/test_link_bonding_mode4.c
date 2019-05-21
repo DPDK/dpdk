@@ -733,7 +733,7 @@ generate_packets(struct rte_ether_addr *src_mac,
 	uint32_t ip_dst[4] = { [0 ... 2] = 0xFEEDFACE, [3] = RTE_IPv4(192, 168, 0, 2) };
 
 	struct rte_ether_hdr pkt_eth_hdr;
-	struct udp_hdr pkt_udp_hdr;
+	struct rte_udp_hdr pkt_udp_hdr;
 	union {
 		struct rte_ipv4_hdr v4;
 		struct rte_ipv6_hdr v6;

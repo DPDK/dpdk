@@ -799,7 +799,7 @@ i40e_fdir_construct_pkt(struct i40e_pf *pf,
 			     unsigned char *raw_pkt)
 {
 	unsigned char *payload, *ptr;
-	struct udp_hdr *udp;
+	struct rte_udp_hdr *udp;
 	struct rte_tcp_hdr *tcp;
 	struct rte_sctp_hdr *sctp;
 	uint8_t size, dst = 0;
@@ -815,8 +815,8 @@ i40e_fdir_construct_pkt(struct i40e_pf *pf,
 	/* fill the L4 head */
 	switch (fdir_input->flow_type) {
 	case RTE_ETH_FLOW_NONFRAG_IPV4_UDP:
-		udp = (struct udp_hdr *)(raw_pkt + len);
-		payload = (unsigned char *)udp + sizeof(struct udp_hdr);
+		udp = (struct rte_udp_hdr *)(raw_pkt + len);
+		payload = (unsigned char *)udp + sizeof(struct rte_udp_hdr);
 		/*
 		 * The source and destination fields in the transmitted packet
 		 * need to be presented in a reversed order with respect
@@ -860,8 +860,8 @@ i40e_fdir_construct_pkt(struct i40e_pf *pf,
 		break;
 
 	case RTE_ETH_FLOW_NONFRAG_IPV6_UDP:
-		udp = (struct udp_hdr *)(raw_pkt + len);
-		payload = (unsigned char *)udp + sizeof(struct udp_hdr);
+		udp = (struct rte_udp_hdr *)(raw_pkt + len);
+		payload = (unsigned char *)udp + sizeof(struct rte_udp_hdr);
 		/*
 		 * The source and destination fields in the transmitted packet
 		 * need to be presented in a reversed order with respect
@@ -1089,7 +1089,7 @@ i40e_flow_fdir_construct_pkt(struct i40e_pf *pf,
 {
 	unsigned char *payload = NULL;
 	unsigned char *ptr;
-	struct udp_hdr *udp;
+	struct rte_udp_hdr *udp;
 	struct rte_tcp_hdr *tcp;
 	struct rte_sctp_hdr *sctp;
 	struct rte_flow_item_gtp *gtp;
@@ -1116,8 +1116,8 @@ i40e_flow_fdir_construct_pkt(struct i40e_pf *pf,
 
 	/* fill the L4 head */
 	if (pctype == I40E_FILTER_PCTYPE_NONF_IPV4_UDP) {
-		udp = (struct udp_hdr *)(raw_pkt + len);
-		payload = (unsigned char *)udp + sizeof(struct udp_hdr);
+		udp = (struct rte_udp_hdr *)(raw_pkt + len);
+		payload = (unsigned char *)udp + sizeof(struct rte_udp_hdr);
 		/**
 		 * The source and destination fields in the transmitted packet
 		 * need to be presented in a reversed order with respect
@@ -1153,8 +1153,8 @@ i40e_flow_fdir_construct_pkt(struct i40e_pf *pf,
 		payload = raw_pkt + len;
 		set_idx = I40E_FLXPLD_L3_IDX;
 	} else if (pctype == I40E_FILTER_PCTYPE_NONF_IPV6_UDP) {
-		udp = (struct udp_hdr *)(raw_pkt + len);
-		payload = (unsigned char *)udp + sizeof(struct udp_hdr);
+		udp = (struct rte_udp_hdr *)(raw_pkt + len);
+		payload = (unsigned char *)udp + sizeof(struct rte_udp_hdr);
 		/**
 		 * The source and destination fields in the transmitted packet
 		 * need to be presented in a reversed order with respect
@@ -1206,12 +1206,13 @@ i40e_flow_fdir_construct_pkt(struct i40e_pf *pf,
 		    cus_pctype->index == I40E_CUSTOMIZED_GTPU_IPV4 ||
 		    cus_pctype->index == I40E_CUSTOMIZED_GTPU_IPV6 ||
 		    cus_pctype->index == I40E_CUSTOMIZED_GTPU) {
-			udp = (struct udp_hdr *)(raw_pkt + len);
+			udp = (struct rte_udp_hdr *)(raw_pkt + len);
 			udp->dgram_len =
 				rte_cpu_to_be_16(I40E_FDIR_UDP_DEFAULT_LEN);
 
 			gtp = (struct rte_flow_item_gtp *)
-				((unsigned char *)udp + sizeof(struct udp_hdr));
+				((unsigned char *)udp +
+					sizeof(struct rte_udp_hdr));
 			gtp->msg_len =
 				rte_cpu_to_be_16(I40E_FDIR_GTP_DEFAULT_LEN);
 			gtp->teid = fdir_input->flow.gtp_flow.teid;

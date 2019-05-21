@@ -2602,11 +2602,11 @@ flow_fdir_filter_convert(struct rte_eth_dev *dev,
 	/* Handle L4. */
 	switch (fdir_filter->input.flow_type) {
 	case RTE_ETH_FLOW_NONFRAG_IPV4_UDP:
-		attributes->l4.udp.hdr = (struct udp_hdr){
+		attributes->l4.udp.hdr = (struct rte_udp_hdr){
 			.src_port = input->flow.udp4_flow.src_port,
 			.dst_port = input->flow.udp4_flow.dst_port,
 		};
-		attributes->l4_mask.udp.hdr = (struct udp_hdr){
+		attributes->l4_mask.udp.hdr = (struct rte_udp_hdr){
 			.src_port = mask->src_port_mask,
 			.dst_port = mask->dst_port_mask,
 		};
@@ -2632,11 +2632,11 @@ flow_fdir_filter_convert(struct rte_eth_dev *dev,
 		};
 		break;
 	case RTE_ETH_FLOW_NONFRAG_IPV6_UDP:
-		attributes->l4.udp.hdr = (struct udp_hdr){
+		attributes->l4.udp.hdr = (struct rte_udp_hdr){
 			.src_port = input->flow.udp6_flow.src_port,
 			.dst_port = input->flow.udp6_flow.dst_port,
 		};
-		attributes->l4_mask.udp.hdr = (struct udp_hdr){
+		attributes->l4_mask.udp.hdr = (struct rte_udp_hdr){
 			.src_port = mask->src_port_mask,
 			.dst_port = mask->dst_port_mask,
 		};

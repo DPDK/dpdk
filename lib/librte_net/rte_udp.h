@@ -23,7 +23,7 @@ extern "C" {
 /**
  * UDP Header
  */
-struct udp_hdr {
+struct rte_udp_hdr {
 	uint16_t src_port;    /**< UDP source port. */
 	uint16_t dst_port;    /**< UDP destination port. */
 	uint16_t dgram_len;   /**< UDP datagram length */

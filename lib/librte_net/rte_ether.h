@@ -316,7 +316,7 @@ struct rte_vxlan_hdr {
 #define RTE_ETHER_TYPE_MPLSM 0x8848 /**< MPLS multicast ethertype. */
 
 #define RTE_ETHER_VXLAN_HLEN \
-	(sizeof(struct udp_hdr) + sizeof(struct rte_vxlan_hdr))
+	(sizeof(struct rte_udp_hdr) + sizeof(struct rte_vxlan_hdr))
 	/**< VXLAN tunnel header length. */
 
 /**
@@ -340,7 +340,7 @@ struct rte_vxlan_gpe_hdr {
 #define RTE_VXLAN_GPE_TYPE_GBP  6 /**< GBP Protocol. */
 #define RTE_VXLAN_GPE_TYPE_VBNG 7 /**< vBNG Protocol. */
 
-#define RTE_ETHER_VXLAN_GPE_HLEN (sizeof(struct udp_hdr) + \
+#define RTE_ETHER_VXLAN_GPE_HLEN (sizeof(struct rte_udp_hdr) + \
 			      sizeof(struct rte_vxlan_gpe_hdr))
 /**< VXLAN-GPE tunnel header length. */
 

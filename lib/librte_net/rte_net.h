@@ -115,7 +115,7 @@ rte_net_intel_cksum_flags_prepare(struct rte_mbuf *m, uint64_t ol_flags)
 	struct rte_ipv4_hdr *ipv4_hdr;
 	struct rte_ipv6_hdr *ipv6_hdr;
 	struct rte_tcp_hdr *tcp_hdr;
-	struct udp_hdr *udp_hdr;
+	struct rte_udp_hdr *udp_hdr;
 	uint64_t inner_l3_offset = m->l2_len;
 
 #ifdef RTE_LIBRTE_ETHDEV_DEBUG
@@ -153,7 +153,7 @@ rte_net_intel_cksum_flags_prepare(struct rte_mbuf *m, uint64_t ol_flags)
 
 	if ((ol_flags & PKT_TX_UDP_CKSUM) == PKT_TX_UDP_CKSUM) {
 		if (ol_flags & PKT_TX_IPV4) {
-			udp_hdr = (struct udp_hdr *)((char *)ipv4_hdr +
+			udp_hdr = (struct rte_udp_hdr *)((char *)ipv4_hdr +
 					m->l3_len);
 			udp_hdr->dgram_cksum = rte_ipv4_phdr_cksum(ipv4_hdr,
 					ol_flags);
@@ -161,7 +161,8 @@ rte_net_intel_cksum_flags_prepare(struct rte_mbuf *m, uint64_t ol_flags)
 			ipv6_hdr = rte_pktmbuf_mtod_offset(m,
 				struct rte_ipv6_hdr *, inner_l3_offset);
 			/* non-TSO udp */
-			udp_hdr = rte_pktmbuf_mtod_offset(m, struct udp_hdr *,
+			udp_hdr = rte_pktmbuf_mtod_offset(m,
+					struct rte_udp_hdr *,
 					inner_l3_offset + m->l3_len);
 			udp_hdr->dgram_cksum = rte_ipv6_phdr_cksum(ipv6_hdr,
 					ol_flags);

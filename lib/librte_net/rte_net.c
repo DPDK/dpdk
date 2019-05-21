@@ -357,7 +357,7 @@ l3:
 	}
 
 	if ((pkt_type & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_UDP) {
-		hdr_lens->l4_len = sizeof(struct udp_hdr);
+		hdr_lens->l4_len = sizeof(struct rte_udp_hdr);
 		return pkt_type;
 	} else if ((pkt_type & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_TCP) {
 		const struct rte_tcp_hdr *th;
@@ -493,7 +493,7 @@ l3:
 	}
 
 	if ((pkt_type & RTE_PTYPE_INNER_L4_MASK) == RTE_PTYPE_INNER_L4_UDP) {
-		hdr_lens->inner_l4_len = sizeof(struct udp_hdr);
+		hdr_lens->inner_l4_len = sizeof(struct rte_udp_hdr);
 	} else if ((pkt_type & RTE_PTYPE_INNER_L4_MASK) ==
 			RTE_PTYPE_INNER_L4_TCP) {
 		const struct rte_tcp_hdr *th;

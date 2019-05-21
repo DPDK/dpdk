@@ -244,7 +244,7 @@ em_set_xmit_ctx(struct em_tx_queue* txq,
 	switch (flags & PKT_TX_L4_MASK) {
 	case PKT_TX_UDP_CKSUM:
 		ctx.upper_setup.tcp_fields.tucso = (uint8_t)(ipcse +
-				offsetof(struct udp_hdr, dgram_cksum));
+				offsetof(struct rte_udp_hdr, dgram_cksum));
 		cmp_mask |= TX_MACIP_LEN_CMP_MASK;
 		break;
 	case PKT_TX_TCP_CKSUM:

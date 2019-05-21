@@ -46,9 +46,9 @@
 static inline void
 update_udp_header(struct rte_mbuf *pkt, uint16_t udp_offset)
 {
-	struct udp_hdr *udp_hdr;
+	struct rte_udp_hdr *udp_hdr;
 
-	udp_hdr = (struct udp_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
+	udp_hdr = (struct rte_udp_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
 			udp_offset);
 	udp_hdr->dgram_len = rte_cpu_to_be_16(pkt->pkt_len - udp_offset);
 }

@@ -230,7 +230,7 @@ static inline void dpaa_checksum(struct rte_mbuf *mbuf)
 							       tcp_hdr);
 	} else if ((mbuf->packet_type & RTE_PTYPE_L4_MASK) ==
 		   RTE_PTYPE_L4_UDP) {
-		struct udp_hdr *udp_hdr = (struct udp_hdr *)(l3_hdr +
+		struct rte_udp_hdr *udp_hdr = (struct rte_udp_hdr *)(l3_hdr +
 							     mbuf->l3_len);
 		udp_hdr->dgram_cksum = 0;
 		if (eth_hdr->ether_type == htons(RTE_ETHER_TYPE_IPv4))

@@ -55,7 +55,7 @@ uint32_t tx_ip_dst_addr = (192U << 24) | (18 << 16) | (0 << 8) | 2;
 
 static struct rte_ipv4_hdr pkt_ip_hdr; /**< IP header of transmitted packets. */
 RTE_DEFINE_PER_LCORE(uint8_t, _ip_var); /**< IP address variation */
-static struct udp_hdr pkt_udp_hdr; /**< UDP header of transmitted packets. */
+static struct rte_udp_hdr pkt_udp_hdr; /**< UDP header of tx packets. */
 
 static void
 copy_buf_to_pkt_segs(void* buf, unsigned len, struct rte_mbuf *pkt,
@@ -96,7 +96,7 @@ copy_buf_to_pkt(void* buf, unsigned len, struct rte_mbuf *pkt, unsigned offset)
 
 static void
 setup_pkt_udp_ip_headers(struct rte_ipv4_hdr *ip_hdr,
-			 struct udp_hdr *udp_hdr,
+			 struct rte_udp_hdr *udp_hdr,
 			 uint16_t pkt_data_len)
 {
 	uint16_t *ptr16;
@@ -106,7 +106,7 @@ setup_pkt_udp_ip_headers(struct rte_ipv4_hdr *ip_hdr,
 	/*
 	 * Initialize UDP header.
 	 */
-	pkt_len = (uint16_t) (pkt_data_len + sizeof(struct udp_hdr));
+	pkt_len = (uint16_t) (pkt_data_len + sizeof(struct rte_udp_hdr));
 	udp_hdr->src_port = rte_cpu_to_be_16(tx_udp_src_port);
 	udp_hdr->dst_port = rte_cpu_to_be_16(tx_udp_dst_port);
 	udp_hdr->dgram_len      = RTE_CPU_TO_BE_16(pkt_len);
@@ -350,7 +350,7 @@ tx_only_begin(__attribute__((unused)) portid_t pi)
 	pkt_data_len = (uint16_t) (tx_pkt_length - (
 					sizeof(struct rte_ether_hdr) +
 					sizeof(struct rte_ipv4_hdr) +
-					sizeof(struct udp_hdr)));
+					sizeof(struct rte_udp_hdr)));
 	setup_pkt_udp_ip_headers(&pkt_ip_hdr, &pkt_udp_hdr, pkt_data_len);
 }
 

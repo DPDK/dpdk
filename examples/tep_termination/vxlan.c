@@ -77,7 +77,7 @@ process_inner_cksums(struct rte_ether_hdr *eth_hdr,
 	uint16_t ethertype;
 	struct rte_ipv4_hdr *ipv4_hdr;
 	struct rte_ipv6_hdr *ipv6_hdr;
-	struct udp_hdr *udp_hdr;
+	struct rte_udp_hdr *udp_hdr;
 	struct rte_tcp_hdr *tcp_hdr;
 	struct rte_sctp_hdr *sctp_hdr;
 	uint64_t ol_flags = 0;
@@ -110,7 +110,7 @@ process_inner_cksums(struct rte_ether_hdr *eth_hdr,
 		return 0; /* packet type not supported, nothing to do */
 
 	if (l4_proto == IPPROTO_UDP) {
-		udp_hdr = (struct udp_hdr *)((char *)l3_hdr + info->l3_len);
+		udp_hdr = (struct rte_udp_hdr *)((char *)l3_hdr + info->l3_len);
 		ol_flags |= PKT_TX_UDP_CKSUM;
 		udp_hdr->dgram_cksum = get_psd_sum(l3_hdr,
 				ethertype, ol_flags);
@@ -143,7 +143,7 @@ decapsulation(struct rte_mbuf *pkt)
 {
 	uint8_t l4_proto = 0;
 	uint16_t outer_header_len;
-	struct udp_hdr *udp_hdr;
+	struct rte_udp_hdr *udp_hdr;
 	union tunnel_offload_info info = { .data = 0 };
 	struct rte_ether_hdr *phdr =
 		rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
@@ -153,7 +153,7 @@ decapsulation(struct rte_mbuf *pkt)
 	if (l4_proto != IPPROTO_UDP)
 		return -1;
 
-	udp_hdr = (struct udp_hdr *)((char *)phdr +
+	udp_hdr = (struct rte_udp_hdr *)((char *)phdr +
 		info.outer_l2_len + info.outer_l3_len);
 
 	/** check udp destination port, 4789 is the default vxlan port
@@ -163,7 +163,7 @@ decapsulation(struct rte_mbuf *pkt)
 		(pkt->packet_type & RTE_PTYPE_TUNNEL_MASK) == 0)
 		return -1;
 	outer_header_len = info.outer_l2_len + info.outer_l3_len
-		+ sizeof(struct udp_hdr) + sizeof(struct rte_vxlan_hdr);
+		+ sizeof(struct rte_udp_hdr) + sizeof(struct rte_vxlan_hdr);
 
 	rte_pktmbuf_adj(pkt, outer_header_len);
 
@@ -184,10 +184,10 @@ encapsulation(struct rte_mbuf *m, uint8_t queue_id)
 	struct rte_ether_hdr *pneth =
 		(struct rte_ether_hdr *) rte_pktmbuf_prepend(m,
 		sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr)
-		+ sizeof(struct udp_hdr) + sizeof(struct rte_vxlan_hdr));
+		+ sizeof(struct rte_udp_hdr) + sizeof(struct rte_vxlan_hdr));
 
 	struct rte_ipv4_hdr *ip = (struct rte_ipv4_hdr *) &pneth[1];
-	struct udp_hdr *udp = (struct udp_hdr *) &ip[1];
+	struct rte_udp_hdr *udp = (struct rte_udp_hdr *) &ip[1];
 	struct rte_vxlan_hdr *vxlan = (struct rte_vxlan_hdr *) &udp[1];
 
 	/* convert TX queue ID to vport ID */
@@ -231,7 +231,7 @@ encapsulation(struct rte_mbuf *m, uint8_t queue_id)
 	/*UDP HEADER*/
 	udp->dgram_cksum = 0;
 	udp->dgram_len = rte_cpu_to_be_16(old_len
-				+ sizeof(struct udp_hdr)
+				+ sizeof(struct rte_udp_hdr)
 				+ sizeof(struct rte_vxlan_hdr));
 
 	udp->dst_port = rte_cpu_to_be_16(vxdev.dst_port);

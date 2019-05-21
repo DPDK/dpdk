@@ -528,7 +528,7 @@ get_ipv4_dst_port(struct rte_ipv4_hdr *ipv4_hdr, uint16_t portid,
 {
 	struct ipv4_5tuple key;
 	struct rte_tcp_hdr *tcp;
-	struct udp_hdr *udp;
+	struct rte_udp_hdr *udp;
 	int ret = 0;
 
 	key.ip_dst = rte_be_to_cpu_32(ipv4_hdr->dst_addr);
@@ -544,7 +544,7 @@ get_ipv4_dst_port(struct rte_ipv4_hdr *ipv4_hdr, uint16_t portid,
 		break;
 
 	case IPPROTO_UDP:
-		udp = (struct udp_hdr *)((unsigned char *)ipv4_hdr +
+		udp = (struct rte_udp_hdr *)((unsigned char *)ipv4_hdr +
 					sizeof(struct rte_ipv4_hdr));
 		key.port_dst = rte_be_to_cpu_16(udp->dst_port);
 		key.port_src = rte_be_to_cpu_16(udp->src_port);
@@ -567,7 +567,7 @@ get_ipv6_dst_port(struct rte_ipv6_hdr *ipv6_hdr, uint16_t portid,
 {
 	struct ipv6_5tuple key;
 	struct rte_tcp_hdr *tcp;
-	struct udp_hdr *udp;
+	struct rte_udp_hdr *udp;
 	int ret = 0;
 
 	memcpy(key.ip_dst, ipv6_hdr->dst_addr, IPV6_ADDR_LEN);
@@ -584,7 +584,7 @@ get_ipv6_dst_port(struct rte_ipv6_hdr *ipv6_hdr, uint16_t portid,
 		break;
 
 	case IPPROTO_UDP:
-		udp = (struct udp_hdr *)((unsigned char *) ipv6_hdr +
+		udp = (struct rte_udp_hdr *)((unsigned char *) ipv6_hdr +
 					sizeof(struct rte_ipv6_hdr));
 		key.port_dst = rte_be_to_cpu_16(udp->dst_port);
 		key.port_src = rte_be_to_cpu_16(udp->src_port);

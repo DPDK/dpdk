@@ -1427,7 +1427,7 @@ iavf_txd_enable_checksum(uint64_t ol_flags,
 		break;
 	case PKT_TX_UDP_CKSUM:
 		*td_cmd |= IAVF_TX_DESC_CMD_L4T_EOFT_UDP;
-		*td_offset |= (sizeof(struct udp_hdr) >> 2) <<
+		*td_offset |= (sizeof(struct rte_udp_hdr) >> 2) <<
 			      IAVF_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
 		break;
 	default:

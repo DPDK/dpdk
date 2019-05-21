@@ -539,7 +539,7 @@ virtqueue_xmit_offload(struct virtio_net_hdr *hdr,
 		switch (cookie->ol_flags & PKT_TX_L4_MASK) {
 		case PKT_TX_UDP_CKSUM:
 			hdr->csum_start = cookie->l2_len + cookie->l3_len;
-			hdr->csum_offset = offsetof(struct udp_hdr,
+			hdr->csum_offset = offsetof(struct rte_udp_hdr,
 				dgram_cksum);
 			hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
 			break;

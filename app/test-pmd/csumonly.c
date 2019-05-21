@@ -113,7 +113,7 @@ parse_ipv4(struct rte_ipv4_hdr *ipv4_hdr, struct testpmd_offload_info *info)
 			((char *)ipv4_hdr + info->l3_len);
 		info->l4_len = (tcp_hdr->data_off & 0xf0) >> 2;
 	} else if (info->l4_proto == IPPROTO_UDP)
-		info->l4_len = sizeof(struct udp_hdr);
+		info->l4_len = sizeof(struct rte_udp_hdr);
 	else
 		info->l4_len = 0;
 }
@@ -133,7 +133,7 @@ parse_ipv6(struct rte_ipv6_hdr *ipv6_hdr, struct testpmd_offload_info *info)
 			((char *)ipv6_hdr + info->l3_len);
 		info->l4_len = (tcp_hdr->data_off & 0xf0) >> 2;
 	} else if (info->l4_proto == IPPROTO_UDP)
-		info->l4_len = sizeof(struct udp_hdr);
+		info->l4_len = sizeof(struct rte_udp_hdr);
 	else
 		info->l4_len = 0;
 }
@@ -181,7 +181,7 @@ parse_ethernet(struct rte_ether_hdr *eth_hdr, struct testpmd_offload_info *info)
 
 /* Parse a vxlan header */
 static void
-parse_vxlan(struct udp_hdr *udp_hdr,
+parse_vxlan(struct rte_udp_hdr *udp_hdr,
 	    struct testpmd_offload_info *info,
 	    uint32_t pkt_type)
 {
@@ -201,7 +201,7 @@ parse_vxlan(struct udp_hdr *udp_hdr,
 	info->outer_l4_proto = info->l4_proto;
 
 	eth_hdr = (struct rte_ether_hdr *)((char *)udp_hdr +
-		sizeof(struct udp_hdr) +
+		sizeof(struct rte_udp_hdr) +
 		sizeof(struct rte_vxlan_hdr));
 
 	parse_ethernet(eth_hdr, info);
@@ -210,7 +210,7 @@ parse_vxlan(struct udp_hdr *udp_hdr,
 
 /* Parse a vxlan-gpe header */
 static void
-parse_vxlan_gpe(struct udp_hdr *udp_hdr,
+parse_vxlan_gpe(struct rte_udp_hdr *udp_hdr,
 	    struct testpmd_offload_info *info)
 {
 	struct rte_ether_hdr *eth_hdr;
@@ -224,7 +224,7 @@ parse_vxlan_gpe(struct udp_hdr *udp_hdr,
 		return;
 
 	vxlan_gpe_hdr = (struct rte_vxlan_gpe_hdr *)((char *)udp_hdr +
-				sizeof(struct udp_hdr));
+				sizeof(struct rte_udp_hdr));
 
 	if (!vxlan_gpe_hdr->proto || vxlan_gpe_hdr->proto ==
 	    RTE_VXLAN_GPE_TYPE_IPV4) {
@@ -368,7 +368,7 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 	uint64_t tx_offloads)
 {
 	struct rte_ipv4_hdr *ipv4_hdr = l3_hdr;
-	struct udp_hdr *udp_hdr;
+	struct rte_udp_hdr *udp_hdr;
 	struct rte_tcp_hdr *tcp_hdr;
 	struct rte_sctp_hdr *sctp_hdr;
 	uint64_t ol_flags = 0;
@@ -408,7 +408,7 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 		return 0; /* packet type not supported, nothing to do */
 
 	if (info->l4_proto == IPPROTO_UDP) {
-		udp_hdr = (struct udp_hdr *)((char *)l3_hdr + info->l3_len);
+		udp_hdr = (struct rte_udp_hdr *)((char *)l3_hdr + info->l3_len);
 		/* do not recalculate udp cksum if it was 0 */
 		if (udp_hdr->dgram_cksum != 0) {
 			udp_hdr->dgram_cksum = 0;
@@ -461,7 +461,7 @@ process_outer_cksums(void *outer_l3_hdr, struct testpmd_offload_info *info,
 {
 	struct rte_ipv4_hdr *ipv4_hdr = outer_l3_hdr;
 	struct rte_ipv6_hdr *ipv6_hdr = outer_l3_hdr;
-	struct udp_hdr *udp_hdr;
+	struct rte_udp_hdr *udp_hdr;
 	uint64_t ol_flags = 0;
 
 	if (info->outer_ethertype == _htons(RTE_ETHER_TYPE_IPv4)) {
@@ -484,7 +484,8 @@ process_outer_cksums(void *outer_l3_hdr, struct testpmd_offload_info *info,
 		return ol_flags;
 	}
 
-	udp_hdr = (struct udp_hdr *)((char *)outer_l3_hdr + info->outer_l3_len);
+	udp_hdr = (struct rte_udp_hdr *)
+		((char *)outer_l3_hdr + info->outer_l3_len);
 
 	/* outer UDP checksum is done in software. In the other side, for
 	 * UDP tunneling, like VXLAN or Geneve, outer UDP checksum can be
@@ -782,10 +783,10 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 		/* check if it's a supported tunnel */
 		if (txp->parse_tunnel) {
 			if (info.l4_proto == IPPROTO_UDP) {
-				struct udp_hdr *udp_hdr;
+				struct rte_udp_hdr *udp_hdr;
 
-				udp_hdr = (struct udp_hdr *)((char *)l3_hdr +
-					info.l3_len);
+				udp_hdr = (struct rte_udp_hdr *)
+					((char *)l3_hdr + info.l3_len);
 				parse_vxlan_gpe(udp_hdr, &info);
 				if (info.is_tunnel) {
 					tx_ol_flags |= PKT_TX_TUNNEL_VXLAN_GPE;

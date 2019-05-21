@@ -492,7 +492,7 @@ struct encap_pppoe_data {
 struct encap_vxlan_ipv4_data {
 	struct rte_ether_hdr ether;
 	struct rte_ipv4_hdr ipv4;
-	struct udp_hdr udp;
+	struct rte_udp_hdr udp;
 	struct rte_vxlan_hdr vxlan;
 } __attribute__((__packed__));
 
@@ -500,14 +500,14 @@ struct encap_vxlan_ipv4_vlan_data {
 	struct rte_ether_hdr ether;
 	struct rte_vlan_hdr vlan;
 	struct rte_ipv4_hdr ipv4;
-	struct udp_hdr udp;
+	struct rte_udp_hdr udp;
 	struct rte_vxlan_hdr vxlan;
 } __attribute__((__packed__));
 
 struct encap_vxlan_ipv6_data {
 	struct rte_ether_hdr ether;
 	struct rte_ipv6_hdr ipv6;
-	struct udp_hdr udp;
+	struct rte_udp_hdr udp;
 	struct rte_vxlan_hdr vxlan;
 } __attribute__((__packed__));
 
@@ -515,7 +515,7 @@ struct encap_vxlan_ipv6_vlan_data {
 	struct rte_ether_hdr ether;
 	struct rte_vlan_hdr vlan;
 	struct rte_ipv6_hdr ipv6;
-	struct udp_hdr udp;
+	struct rte_udp_hdr udp;
 	struct rte_vxlan_hdr vxlan;
 } __attribute__((__packed__));
 
@@ -1006,13 +1006,13 @@ pkt_work_encap_vxlan_ipv4(struct rte_mbuf *mbuf,
 	ether_length = (uint16_t)mbuf->pkt_len;
 	ipv4_total_length = ether_length +
 		(sizeof(struct rte_vxlan_hdr) +
-		sizeof(struct udp_hdr) +
+		sizeof(struct rte_udp_hdr) +
 		sizeof(struct rte_ipv4_hdr));
 	ipv4_hdr_cksum = encap_vxlan_ipv4_checksum_update(vxlan_tbl->ipv4.hdr_checksum,
 		rte_htons(ipv4_total_length));
 	udp_length = ether_length +
 		(sizeof(struct rte_vxlan_hdr) +
-		sizeof(struct udp_hdr));
+		sizeof(struct rte_udp_hdr));
 
 	vxlan_pkt = encap(ether, vxlan_tbl, sizeof(*vxlan_tbl));
 	vxlan_pkt->ipv4.total_length = rte_htons(ipv4_total_length);
@@ -1036,13 +1036,13 @@ pkt_work_encap_vxlan_ipv4_vlan(struct rte_mbuf *mbuf,
 	ether_length = (uint16_t)mbuf->pkt_len;
 	ipv4_total_length = ether_length +
 		(sizeof(struct rte_vxlan_hdr) +
-		sizeof(struct udp_hdr) +
+		sizeof(struct rte_udp_hdr) +
 		sizeof(struct rte_ipv4_hdr));
 	ipv4_hdr_cksum = encap_vxlan_ipv4_checksum_update(vxlan_tbl->ipv4.hdr_checksum,
 		rte_htons(ipv4_total_length));
 	udp_length = ether_length +
 		(sizeof(struct rte_vxlan_hdr) +
-		sizeof(struct udp_hdr));
+		sizeof(struct rte_udp_hdr));
 
 	vxlan_pkt = encap(ether, vxlan_tbl, sizeof(*vxlan_tbl));
 	vxlan_pkt->ipv4.total_length = rte_htons(ipv4_total_length);
@@ -1066,10 +1066,10 @@ pkt_work_encap_vxlan_ipv6(struct rte_mbuf *mbuf,
 	ether_length = (uint16_t)mbuf->pkt_len;
 	ipv6_payload_length = ether_length +
 		(sizeof(struct rte_vxlan_hdr) +
-		sizeof(struct udp_hdr));
+		sizeof(struct rte_udp_hdr));
 	udp_length = ether_length +
 		(sizeof(struct rte_vxlan_hdr) +
-		sizeof(struct udp_hdr));
+		sizeof(struct rte_udp_hdr));
 
 	vxlan_pkt = encap(ether, vxlan_tbl, sizeof(*vxlan_tbl));
 	vxlan_pkt->ipv6.payload_len = rte_htons(ipv6_payload_length);
@@ -1092,10 +1092,10 @@ pkt_work_encap_vxlan_ipv6_vlan(struct rte_mbuf *mbuf,
 	ether_length = (uint16_t)mbuf->pkt_len;
 	ipv6_payload_length = ether_length +
 		(sizeof(struct rte_vxlan_hdr) +
-		sizeof(struct udp_hdr));
+		sizeof(struct rte_udp_hdr));
 	udp_length = ether_length +
 		(sizeof(struct rte_vxlan_hdr) +
-		sizeof(struct udp_hdr));
+		sizeof(struct rte_udp_hdr));
 
 	vxlan_pkt = encap(ether, vxlan_tbl, sizeof(*vxlan_tbl));
 	vxlan_pkt->ipv6.payload_len = rte_htons(ipv6_payload_length);
@@ -1366,7 +1366,7 @@ pkt_ipv4_work_nat(struct rte_ipv4_hdr *ip,
 			tcp->src_port = data->port;
 			tcp->cksum = tcp_cksum;
 		} else {
-			struct udp_hdr *udp = (struct udp_hdr *) &ip[1];
+			struct rte_udp_hdr *udp = (struct rte_udp_hdr *) &ip[1];
 			uint16_t ip_cksum, udp_cksum;
 
 			ip_cksum = nat_ipv4_checksum_update(ip->hdr_checksum,
@@ -1405,7 +1405,7 @@ pkt_ipv4_work_nat(struct rte_ipv4_hdr *ip,
 			tcp->dst_port = data->port;
 			tcp->cksum = tcp_cksum;
 		} else {
-			struct udp_hdr *udp = (struct udp_hdr *) &ip[1];
+			struct rte_udp_hdr *udp = (struct rte_udp_hdr *) &ip[1];
 			uint16_t ip_cksum, udp_cksum;
 
 			ip_cksum = nat_ipv4_checksum_update(ip->hdr_checksum,
@@ -1447,7 +1447,7 @@ pkt_ipv6_work_nat(struct rte_ipv6_hdr *ip,
 			tcp->src_port = data->port;
 			tcp->cksum = tcp_cksum;
 		} else {
-			struct udp_hdr *udp = (struct udp_hdr *) &ip[1];
+			struct rte_udp_hdr *udp = (struct rte_udp_hdr *) &ip[1];
 			uint16_t udp_cksum;
 
 			udp_cksum = nat_ipv6_tcp_udp_checksum_update(udp->dgram_cksum,
@@ -1475,7 +1475,7 @@ pkt_ipv6_work_nat(struct rte_ipv6_hdr *ip,
 			tcp->dst_port = data->port;
 			tcp->cksum = tcp_cksum;
 		} else {
-			struct udp_hdr *udp = (struct udp_hdr *) &ip[1];
+			struct rte_udp_hdr *udp = (struct rte_udp_hdr *) &ip[1];
 			uint16_t udp_cksum;
 
 			udp_cksum = nat_ipv6_tcp_udp_checksum_update(udp->dgram_cksum,

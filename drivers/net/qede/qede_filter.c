@@ -459,7 +459,7 @@ qede_arfs_construct_pkt(struct rte_eth_dev *eth_dev,
 	uint8_t *raw_pkt;
 	struct rte_ipv4_hdr *ip;
 	struct rte_ipv6_hdr *ip6;
-	struct udp_hdr *udp;
+	struct rte_udp_hdr *udp;
 	struct rte_tcp_hdr *tcp;
 	uint16_t len;
 
@@ -487,13 +487,13 @@ qede_arfs_construct_pkt(struct rte_eth_dev *eth_dev,
 		raw_pkt = (uint8_t *)buff;
 		/* UDP */
 		if (arfs->tuple.ip_proto == IPPROTO_UDP) {
-			udp = (struct udp_hdr *)(raw_pkt + len);
+			udp = (struct rte_udp_hdr *)(raw_pkt + len);
 			udp->dst_port = arfs->tuple.dst_port;
 			udp->src_port = arfs->tuple.src_port;
-			udp->dgram_len = sizeof(struct udp_hdr);
-			len += sizeof(struct udp_hdr);
+			udp->dgram_len = sizeof(struct rte_udp_hdr);
+			len += sizeof(struct rte_udp_hdr);
 			/* adjust ip total_length */
-			ip->total_length += sizeof(struct udp_hdr);
+			ip->total_length += sizeof(struct rte_udp_hdr);
 			params->udp = true;
 		} else { /* TCP */
 			tcp = (struct rte_tcp_hdr *)(raw_pkt + len);
@@ -522,10 +522,10 @@ qede_arfs_construct_pkt(struct rte_eth_dev *eth_dev,
 		raw_pkt = (uint8_t *)buff;
 		/* UDP */
 		if (arfs->tuple.ip_proto == IPPROTO_UDP) {
-			udp = (struct udp_hdr *)(raw_pkt + len);
+			udp = (struct rte_udp_hdr *)(raw_pkt + len);
 			udp->src_port = arfs->tuple.src_port;
 			udp->dst_port = arfs->tuple.dst_port;
-			len += sizeof(struct udp_hdr);
+			len += sizeof(struct rte_udp_hdr);
 			params->udp = true;
 		} else { /* TCP */
 			tcp = (struct rte_tcp_hdr *)(raw_pkt + len);

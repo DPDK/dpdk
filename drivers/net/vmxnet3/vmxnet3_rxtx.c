@@ -545,7 +545,9 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 					offsetof(struct rte_tcp_hdr, cksum);
 				break;
 			case PKT_TX_UDP_CKSUM:
-				gdesc->txd.msscof = gdesc->txd.hlen + offsetof(struct udp_hdr, dgram_cksum);
+				gdesc->txd.msscof = gdesc->txd.hlen +
+					offsetof(struct rte_udp_hdr,
+						dgram_cksum);
 				break;
 			default:
 				PMD_TX_LOG(WARNING, "requested cksum offload not supported %#llx",
