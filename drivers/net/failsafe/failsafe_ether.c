@@ -172,9 +172,10 @@ fs_eth_dev_conf_apply(struct rte_eth_dev *dev,
 		ret = rte_eth_dev_mac_addr_add(PORT_ID(sdev), ea,
 				PRIV(dev)->mac_addr_pool[i]);
 		if (ret) {
-			char ea_fmt[ETHER_ADDR_FMT_SIZE];
+			char ea_fmt[RTE_ETHER_ADDR_FMT_SIZE];
 
-			rte_ether_format_addr(ea_fmt, ETHER_ADDR_FMT_SIZE, ea);
+			rte_ether_format_addr(ea_fmt,
+					RTE_ETHER_ADDR_FMT_SIZE, ea);
 			ERROR("Adding MAC address %s failed", ea_fmt);
 			return ret;
 		}

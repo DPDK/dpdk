@@ -226,15 +226,15 @@ static inline void
 parse_mac(struct virtio_user_dev *dev, const char *mac)
 {
 	int i, r;
-	uint32_t tmp[ETHER_ADDR_LEN];
+	uint32_t tmp[RTE_ETHER_ADDR_LEN];
 
 	if (!mac)
 		return;
 
 	r = sscanf(mac, "%x:%x:%x:%x:%x:%x", &tmp[0],
 			&tmp[1], &tmp[2], &tmp[3], &tmp[4], &tmp[5]);
-	if (r == ETHER_ADDR_LEN) {
-		for (i = 0; i < ETHER_ADDR_LEN; ++i)
+	if (r == RTE_ETHER_ADDR_LEN) {
+		for (i = 0; i < RTE_ETHER_ADDR_LEN; ++i)
 			dev->mac_addr[i] = (uint8_t)tmp[i];
 		dev->mac_specified = 1;
 	} else {

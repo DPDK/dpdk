@@ -2035,9 +2035,9 @@ i40e_flow_parse_ethertype_pattern(struct rte_eth_dev *dev,
 			}
 			filter->ether_type = rte_be_to_cpu_16(eth_spec->type);
 
-			if (filter->ether_type == ETHER_TYPE_IPv4 ||
-			    filter->ether_type == ETHER_TYPE_IPv6 ||
-			    filter->ether_type == ETHER_TYPE_LLDP ||
+			if (filter->ether_type == RTE_ETHER_TYPE_IPv4 ||
+			    filter->ether_type == RTE_ETHER_TYPE_IPv6 ||
+			    filter->ether_type == RTE_ETHER_TYPE_LLDP ||
 			    filter->ether_type == outer_tpid) {
 				rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
@@ -2507,9 +2507,9 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				ether_type = rte_be_to_cpu_16(eth_spec->type);
 
 				if (next == RTE_FLOW_ITEM_TYPE_VLAN ||
-				    ether_type == ETHER_TYPE_IPv4 ||
-				    ether_type == ETHER_TYPE_IPv6 ||
-				    ether_type == ETHER_TYPE_ARP ||
+				    ether_type == RTE_ETHER_TYPE_IPv4 ||
+				    ether_type == RTE_ETHER_TYPE_IPv6 ||
+				    ether_type == RTE_ETHER_TYPE_ARP ||
 				    ether_type == outer_tpid) {
 					rte_flow_error_set(error, EINVAL,
 						     RTE_FLOW_ERROR_TYPE_ITEM,
@@ -2552,9 +2552,9 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				ether_type =
 					rte_be_to_cpu_16(vlan_spec->inner_type);
 
-				if (ether_type == ETHER_TYPE_IPv4 ||
-				    ether_type == ETHER_TYPE_IPv6 ||
-				    ether_type == ETHER_TYPE_ARP ||
+				if (ether_type == RTE_ETHER_TYPE_IPv4 ||
+				    ether_type == RTE_ETHER_TYPE_IPv6 ||
+				    ether_type == RTE_ETHER_TYPE_ARP ||
 				    ether_type == outer_tpid) {
 					rte_flow_error_set(error, EINVAL,
 						     RTE_FLOW_ERROR_TYPE_ITEM,
@@ -3338,12 +3338,12 @@ i40e_flow_parse_vxlan_pattern(__rte_unused struct rte_eth_dev *dev,
 				if (!vxlan_flag) {
 					rte_memcpy(&filter->outer_mac,
 						   &eth_spec->dst,
-						   ETHER_ADDR_LEN);
+						   RTE_ETHER_ADDR_LEN);
 					filter_type |= ETH_TUNNEL_FILTER_OMAC;
 				} else {
 					rte_memcpy(&filter->inner_mac,
 						   &eth_spec->dst,
-						   ETHER_ADDR_LEN);
+						   RTE_ETHER_ADDR_LEN);
 					filter_type |= ETH_TUNNEL_FILTER_IMAC;
 				}
 			}
@@ -3568,12 +3568,12 @@ i40e_flow_parse_nvgre_pattern(__rte_unused struct rte_eth_dev *dev,
 				if (!nvgre_flag) {
 					rte_memcpy(&filter->outer_mac,
 						   &eth_spec->dst,
-						   ETHER_ADDR_LEN);
+						   RTE_ETHER_ADDR_LEN);
 					filter_type |= ETH_TUNNEL_FILTER_OMAC;
 				} else {
 					rte_memcpy(&filter->inner_mac,
 						   &eth_spec->dst,
-						   ETHER_ADDR_LEN);
+						   RTE_ETHER_ADDR_LEN);
 					filter_type |= ETH_TUNNEL_FILTER_IMAC;
 				}
 			}

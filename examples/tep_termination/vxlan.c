@@ -16,9 +16,9 @@
 static uint16_t
 get_psd_sum(void *l3_hdr, uint16_t ethertype, uint64_t ol_flags)
 {
-	if (ethertype == ETHER_TYPE_IPv4)
+	if (ethertype == RTE_ETHER_TYPE_IPv4)
 		return rte_ipv4_phdr_cksum(l3_hdr, ol_flags);
-	else /* assume ethertype == ETHER_TYPE_IPv6 */
+	else /* assume ethertype == RTE_ETHER_TYPE_IPv6 */
 		return rte_ipv6_phdr_cksum(l3_hdr, ol_flags);
 }
 
@@ -38,7 +38,7 @@ parse_ethernet(struct rte_ether_hdr *eth_hdr, union tunnel_offload_info *info,
 	info->outer_l2_len = sizeof(struct rte_ether_hdr);
 	ethertype = rte_be_to_cpu_16(eth_hdr->ether_type);
 
-	if (ethertype == ETHER_TYPE_VLAN) {
+	if (ethertype == RTE_ETHER_TYPE_VLAN) {
 		struct rte_vlan_hdr *vlan_hdr =
 			(struct rte_vlan_hdr *)(eth_hdr + 1);
 		info->outer_l2_len  += sizeof(struct rte_vlan_hdr);
@@ -46,13 +46,13 @@ parse_ethernet(struct rte_ether_hdr *eth_hdr, union tunnel_offload_info *info,
 	}
 
 	switch (ethertype) {
-	case ETHER_TYPE_IPv4:
+	case RTE_ETHER_TYPE_IPv4:
 		ipv4_hdr = (struct ipv4_hdr *)
 			((char *)eth_hdr + info->outer_l2_len);
 		info->outer_l3_len = sizeof(struct ipv4_hdr);
 		*l4_proto = ipv4_hdr->next_proto_id;
 		break;
-	case ETHER_TYPE_IPv6:
+	case RTE_ETHER_TYPE_IPv6:
 		ipv6_hdr = (struct ipv6_hdr *)
 			((char *)eth_hdr + info->outer_l2_len);
 		info->outer_l3_len = sizeof(struct ipv6_hdr);
@@ -85,7 +85,7 @@ process_inner_cksums(struct rte_ether_hdr *eth_hdr,
 	info->l2_len = sizeof(struct rte_ether_hdr);
 	ethertype = rte_be_to_cpu_16(eth_hdr->ether_type);
 
-	if (ethertype == ETHER_TYPE_VLAN) {
+	if (ethertype == RTE_ETHER_TYPE_VLAN) {
 		struct rte_vlan_hdr *vlan_hdr =
 			(struct rte_vlan_hdr *)(eth_hdr + 1);
 		info->l2_len  += sizeof(struct rte_vlan_hdr);
@@ -94,14 +94,14 @@ process_inner_cksums(struct rte_ether_hdr *eth_hdr,
 
 	l3_hdr = (char *)eth_hdr + info->l2_len;
 
-	if (ethertype == ETHER_TYPE_IPv4) {
+	if (ethertype == RTE_ETHER_TYPE_IPv4) {
 		ipv4_hdr = (struct ipv4_hdr *)l3_hdr;
 		ipv4_hdr->hdr_checksum = 0;
 		ol_flags |= PKT_TX_IPV4;
 		ol_flags |= PKT_TX_IP_CKSUM;
 		info->l3_len = sizeof(struct ipv4_hdr);
 		l4_proto = ipv4_hdr->next_proto_id;
-	} else if (ethertype == ETHER_TYPE_IPv6) {
+	} else if (ethertype == RTE_ETHER_TYPE_IPv6) {
 		ipv6_hdr = (struct ipv6_hdr *)l3_hdr;
 		info->l3_len = sizeof(struct ipv6_hdr);
 		l4_proto = ipv6_hdr->proto;
@@ -212,7 +212,7 @@ encapsulation(struct rte_mbuf *m, uint8_t queue_id)
 		m->l2_len = tx_offload.l2_len;
 		m->l3_len = tx_offload.l3_len;
 		m->l4_len = tx_offload.l4_len;
-		m->l2_len += ETHER_VXLAN_HLEN;
+		m->l2_len += RTE_ETHER_VXLAN_HLEN;
 	}
 
 	m->outer_l2_len = sizeof(struct rte_ether_hdr);
@@ -234,7 +234,7 @@ encapsulation(struct rte_mbuf *m, uint8_t queue_id)
 				+ sizeof(struct rte_vxlan_hdr));
 
 	udp->dst_port = rte_cpu_to_be_16(vxdev.dst_port);
-	hash = rte_hash_crc(phdr, 2 * ETHER_ADDR_LEN, phdr->ether_type);
+	hash = rte_hash_crc(phdr, 2 * RTE_ETHER_ADDR_LEN, phdr->ether_type);
 	udp->src_port = rte_cpu_to_be_16((((uint64_t) hash * PORT_RANGE) >> 32)
 					+ PORT_MIN);
 

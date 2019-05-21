@@ -204,7 +204,7 @@ struct enic {
 static inline uint32_t enic_mtu_to_max_rx_pktlen(uint32_t mtu)
 {
 	/* ethdev max size includes eth whereas NIC MTU does not */
-	return mtu + ETHER_HDR_LEN;
+	return mtu + RTE_ETHER_HDR_LEN;
 }
 
 /* Get the CQ index from a Start of Packet(SOP) RQ index */

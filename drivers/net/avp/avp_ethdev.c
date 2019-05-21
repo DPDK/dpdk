@@ -88,7 +88,7 @@ static void avp_dev_stats_reset(struct rte_eth_dev *dev);
 #define AVP_MAX_RX_BURST 64
 #define AVP_MAX_TX_BURST 64
 #define AVP_MAX_MAC_ADDRS 1
-#define AVP_MIN_RX_BUFSIZE ETHER_MIN_LEN
+#define AVP_MIN_RX_BUFSIZE RTE_ETHER_MIN_LEN
 
 
 /*
@@ -867,7 +867,7 @@ avp_dev_create(struct rte_pci_device *pci_dev,
 		avp->host_features = host_info->features;
 		rte_spinlock_init(&avp->lock);
 		memcpy(&avp->ethaddr.addr_bytes[0],
-		       host_info->ethaddr, ETHER_ADDR_LEN);
+		       host_info->ethaddr, RTE_ETHER_ADDR_LEN);
 		/* adjust max values to not exceed our max */
 		avp->max_tx_queues =
 			RTE_MIN(host_info->max_tx_queues, RTE_AVP_MAX_QUEUES);
@@ -1006,10 +1006,11 @@ eth_avp_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	/* Allocate memory for storing MAC addresses */
-	eth_dev->data->mac_addrs = rte_zmalloc("avp_ethdev", ETHER_ADDR_LEN, 0);
+	eth_dev->data->mac_addrs = rte_zmalloc("avp_ethdev",
+					RTE_ETHER_ADDR_LEN, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		PMD_DRV_LOG(ERR, "Failed to allocate %d bytes needed to store MAC addresses\n",
-			    ETHER_ADDR_LEN);
+			    RTE_ETHER_ADDR_LEN);
 		return -ENOMEM;
 	}
 

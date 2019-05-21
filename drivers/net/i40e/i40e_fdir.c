@@ -113,7 +113,7 @@ i40e_fdir_rx_queue_init(struct i40e_rx_queue *rxq)
 #endif
 	rx_ctx.dtype = i40e_header_split_none;
 	rx_ctx.hsplit_0 = I40E_HEADER_SPLIT_NONE;
-	rx_ctx.rxmax = ETHER_MAX_LEN;
+	rx_ctx.rxmax = RTE_ETHER_MAX_LEN;
 	rx_ctx.tphrdesc_ena = 1;
 	rx_ctx.tphwdesc_ena = 1;
 	rx_ctx.tphdata_ena = 1;
@@ -725,7 +725,7 @@ i40e_fdir_fill_eth_ip_head(const struct rte_eth_fdir_input *fdir_input,
 	case RTE_ETH_FLOW_FRAG_IPV4:
 		ip = (struct ipv4_hdr *)raw_pkt;
 
-		*ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
+		*ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4);
 		ip->version_ihl = I40E_FDIR_IP_DEFAULT_VERSION_IHL;
 		/* set len to by default */
 		ip->total_length = rte_cpu_to_be_16(I40E_FDIR_IP_DEFAULT_LEN);
@@ -752,7 +752,7 @@ i40e_fdir_fill_eth_ip_head(const struct rte_eth_fdir_input *fdir_input,
 	case RTE_ETH_FLOW_FRAG_IPV6:
 		ip6 = (struct ipv6_hdr *)raw_pkt;
 
-		*ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv6);
+		*ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6);
 		ip6->vtc_flow =
 			rte_cpu_to_be_32(I40E_FDIR_IPv6_DEFAULT_VTC_FLOW |
 					 (fdir_input->flow.ipv6_flow.tc <<
@@ -910,7 +910,7 @@ i40e_fdir_construct_pkt(struct i40e_pf *pf,
 		 * starts after the whole ARP header
 		 */
 		if (fdir_input->flow.l2_flow.ether_type ==
-				rte_cpu_to_be_16(ETHER_TYPE_ARP))
+				rte_cpu_to_be_16(RTE_ETHER_TYPE_ARP))
 			payload += sizeof(struct rte_arp_hdr);
 		set_idx = I40E_FLXPLD_L2_IDX;
 		break;
@@ -1009,7 +1009,7 @@ i40e_flow_fdir_fill_eth_ip_head(struct i40e_pf *pf,
 		 is_customized_pctype) {
 		ip = (struct ipv4_hdr *)raw_pkt;
 
-		*ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
+		*ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4);
 		ip->version_ihl = I40E_FDIR_IP_DEFAULT_VERSION_IHL;
 		/* set len to by default */
 		ip->total_length = rte_cpu_to_be_16(I40E_FDIR_IP_DEFAULT_LEN);
@@ -1042,7 +1042,7 @@ i40e_flow_fdir_fill_eth_ip_head(struct i40e_pf *pf,
 		   pctype == I40E_FILTER_PCTYPE_FRAG_IPV6) {
 		ip6 = (struct ipv6_hdr *)raw_pkt;
 
-		*ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv6);
+		*ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6);
 		ip6->vtc_flow =
 			rte_cpu_to_be_32(I40E_FDIR_IPv6_DEFAULT_VTC_FLOW |
 					 (fdir_input->flow.ipv6_flow.tc <<
@@ -1196,7 +1196,7 @@ i40e_flow_fdir_construct_pkt(struct i40e_pf *pf,
 		 * starts after the whole ARP header
 		 */
 		if (fdir_input->flow.l2_flow.ether_type ==
-				rte_cpu_to_be_16(ETHER_TYPE_ARP))
+				rte_cpu_to_be_16(RTE_ETHER_TYPE_ARP))
 			payload += sizeof(struct rte_arp_hdr);
 		set_idx = I40E_FLXPLD_L2_IDX;
 	} else if (fdir_input->flow_ext.customized_pctype) {

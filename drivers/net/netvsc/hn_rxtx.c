@@ -100,7 +100,7 @@ struct hn_txdesc {
 
 /* Minimum space required for a packet */
 #define HN_PKTSIZE_MIN(align) \
-	RTE_ALIGN(ETHER_MIN_LEN + HN_RNDIS_PKT_LEN, align)
+	RTE_ALIGN(RTE_ETHER_MIN_LEN + HN_RNDIS_PKT_LEN, align)
 
 #define DEFAULT_TX_FREE_THRESH 32U
 
@@ -606,7 +606,7 @@ static void hn_rndis_rx_data(struct hn_rx_queue *rxq,
 	if (unlikely(data_off + data_len > pkt->len))
 		goto error;
 
-	if (unlikely(data_len < ETHER_HDR_LEN))
+	if (unlikely(data_len < RTE_ETHER_HDR_LEN))
 		goto error;
 
 	hn_rxpkt(rxq, rxb, data, data_off, data_len, &info);

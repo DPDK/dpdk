@@ -73,7 +73,7 @@ static inline unsigned int fl_mtu_bufsize(struct adapter *adapter,
 {
 	struct sge *s = &adapter->sge;
 
-	return CXGBE_ALIGN(s->pktshift + ETHER_HDR_LEN + VLAN_HLEN + mtu,
+	return CXGBE_ALIGN(s->pktshift + RTE_ETHER_HDR_LEN + VLAN_HLEN + mtu,
 			   s->fl_align);
 }
 
@@ -1128,7 +1128,7 @@ int t4_eth_xmit(struct sge_eth_txq *txq, struct rte_mbuf *mbuf,
 	 * The chip min packet length is 10 octets but play safe and reject
 	 * anything shorter than an Ethernet header.
 	 */
-	if (unlikely(m->pkt_len < ETHER_HDR_LEN)) {
+	if (unlikely(m->pkt_len < RTE_ETHER_HDR_LEN)) {
 out_free:
 		rte_pktmbuf_free(m);
 		return 0;
@@ -1145,7 +1145,8 @@ out_free:
 	/* align the end of coalesce WR to a 512 byte boundary */
 	txq->q.coalesce.max = (8 - (txq->q.pidx & 7)) * 8;
 
-	if (!((m->ol_flags & PKT_TX_TCP_SEG) || (m->pkt_len > ETHER_MAX_LEN))) {
+	if (!((m->ol_flags & PKT_TX_TCP_SEG) ||
+			m->pkt_len > RTE_ETHER_MAX_LEN)) {
 		if (should_tx_packet_coalesce(txq, mbuf, &cflits, adap)) {
 			if (unlikely(map_mbuf(mbuf, addr) < 0)) {
 				dev_warn(adap, "%s: mapping err for coalesce\n",
@@ -1230,7 +1231,7 @@ out_free:
 		v6 = (m->ol_flags & PKT_TX_IPV6) != 0;
 		l3hdr_len = m->l3_len;
 		l4hdr_len = m->l4_len;
-		eth_xtra_len = m->l2_len - ETHER_HDR_LEN;
+		eth_xtra_len = m->l2_len - RTE_ETHER_HDR_LEN;
 		len += sizeof(*lso);
 		wr->op_immdlen = htonl(V_FW_WR_OP(is_pf4(adap) ?
 						  FW_ETH_TX_PKT_WR :

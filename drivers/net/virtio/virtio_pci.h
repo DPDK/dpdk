@@ -251,7 +251,7 @@ struct virtio_hw {
 	bool        has_tx_offload;
 	bool        has_rx_offload;
 	uint16_t    port_id;
-	uint8_t     mac_addr[ETHER_ADDR_LEN];
+	uint8_t     mac_addr[RTE_ETHER_ADDR_LEN];
 	uint32_t    notify_off_multiplier;
 	uint8_t     *isr;
 	uint16_t    *notify_base;
@@ -294,7 +294,7 @@ extern struct virtio_hw_internal virtio_hw_internal[RTE_MAX_ETHPORTS];
  */
 struct virtio_net_config {
 	/* The config defining mac address (if VIRTIO_NET_F_MAC) */
-	uint8_t    mac[ETHER_ADDR_LEN];
+	uint8_t    mac[RTE_ETHER_ADDR_LEN];
 	/* See VIRTIO_NET_F_STATUS and VIRTIO_NET_S_* above */
 	uint16_t   status;
 	uint16_t   max_virtqueue_pairs;

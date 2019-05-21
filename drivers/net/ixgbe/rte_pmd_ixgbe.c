@@ -38,7 +38,7 @@ rte_pmd_ixgbe_set_vf_mac_addr(uint16_t port, uint16_t vf,
 	if (rte_is_valid_assigned_ether_addr(
 			(struct rte_ether_addr *)new_mac)) {
 		rte_memcpy(vfinfo[vf].vf_mac_addresses, new_mac,
-			   ETHER_ADDR_LEN);
+			   RTE_ETHER_ADDR_LEN);
 		return hw->mac.ops.set_rar(hw, rar_entry, new_mac, vf,
 					   IXGBE_RAH_AV);
 	}
@@ -155,7 +155,7 @@ rte_pmd_ixgbe_set_vf_vlan_insert(uint16_t port, uint16_t vf, uint16_t vlan_id)
 	if (vf >= pci_dev->max_vfs)
 		return -EINVAL;
 
-	if (vlan_id > ETHER_MAX_VLAN_ID)
+	if (vlan_id > RTE_ETHER_MAX_VLAN_ID)
 		return -EINVAL;
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -477,7 +477,7 @@ rte_pmd_ixgbe_set_vf_vlan_filter(uint16_t port, uint16_t vlan,
 	if (!is_ixgbe_supported(dev))
 		return -ENOTSUP;
 
-	if ((vlan > ETHER_MAX_VLAN_ID) || (vf_mask == 0))
+	if (vlan > RTE_ETHER_MAX_VLAN_ID || vf_mask == 0)
 		return -EINVAL;
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);

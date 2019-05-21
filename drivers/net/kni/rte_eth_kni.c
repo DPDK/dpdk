@@ -20,7 +20,7 @@
 #define MAX_KNI_PORTS 8
 
 #define KNI_ETHER_MTU(mbuf_size)       \
-	((mbuf_size) - ETHER_HDR_LEN) /**< Ethernet MTU. */
+	((mbuf_size) - RTE_ETHER_HDR_LEN) /**< Ethernet MTU. */
 
 #define ETH_KNI_NO_REQUEST_THREAD_ARG	"no_request_thread"
 static const char * const valid_arguments[] = {

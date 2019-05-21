@@ -101,6 +101,7 @@
 #define PTR_ALIGN(p, a) ((typeof(p))CXGBE_ALIGN((unsigned long)(p), (a)))
 
 #define VLAN_HLEN 4
+#define ETHER_ADDR_LEN 6
 
 #define rmb()     rte_rmb() /* dpdk rte provided rmb */
 #define wmb()     rte_wmb() /* dpdk rte provided wmb */

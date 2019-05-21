@@ -268,7 +268,7 @@ enum i40e_flxpld_layer_idx {
  * Considering QinQ packet, the VLAN tag needs to be counted twice.
  */
 #define I40E_ETH_OVERHEAD \
-	(ETHER_HDR_LEN + ETHER_CRC_LEN + I40E_VLAN_TAG_SIZE * 2)
+	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + I40E_VLAN_TAG_SIZE * 2)
 
 struct i40e_adapter;
 

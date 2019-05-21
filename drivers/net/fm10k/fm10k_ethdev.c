@@ -613,7 +613,7 @@ fm10k_dev_mq_rx_configure(struct rte_eth_dev *dev)
 
 	/* reset MAC/VLAN as it's based on VMDQ or PF main VSI */
 	memset(dev->data->mac_addrs, 0,
-		ETHER_ADDR_LEN * FM10K_MAX_MACADDR_NUM);
+		RTE_ETHER_ADDR_LEN * FM10K_MAX_MACADDR_NUM);
 	rte_ether_addr_copy((const struct rte_ether_addr *)hw->mac.addr,
 		&dev->data->mac_addrs[0]);
 	memset(macvlan, 0, sizeof(*macvlan));
@@ -3082,7 +3082,7 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 
 	/* Initialize MAC address(es) */
 	dev->data->mac_addrs = rte_zmalloc("fm10k",
-			ETHER_ADDR_LEN * FM10K_MAX_MACADDR_NUM, 0);
+			RTE_ETHER_ADDR_LEN * FM10K_MAX_MACADDR_NUM, 0);
 	if (dev->data->mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR, "Cannot allocate memory for MAC addresses");
 		return -ENOMEM;

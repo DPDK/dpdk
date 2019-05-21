@@ -40,7 +40,7 @@ dev_num_vf(struct rte_eth_dev *eth_dev)
 static inline
 int ixgbe_vf_perm_addr_gen(struct rte_eth_dev *dev, uint16_t vf_num)
 {
-	unsigned char vf_mac_addr[ETHER_ADDR_LEN];
+	unsigned char vf_mac_addr[RTE_ETHER_ADDR_LEN];
 	struct ixgbe_vf_info *vfinfo =
 		*IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private);
 	uint16_t vfn;
@@ -49,7 +49,7 @@ int ixgbe_vf_perm_addr_gen(struct rte_eth_dev *dev, uint16_t vf_num)
 		rte_eth_random_addr(vf_mac_addr);
 		/* keep the random address as default */
 		memcpy(vfinfo[vfn].vf_mac_addresses, vf_mac_addr,
-			   ETHER_ADDR_LEN);
+			   RTE_ETHER_ADDR_LEN);
 	}
 
 	return 0;
@@ -443,7 +443,7 @@ ixgbe_vf_reset(struct rte_eth_dev *dev, uint16_t vf, uint32_t *msgbuf)
 
 	/* reply to reset with ack and vf mac address */
 	msgbuf[0] = IXGBE_VF_RESET | IXGBE_VT_MSGTYPE_ACK;
-	rte_memcpy(new_mac, vf_mac, ETHER_ADDR_LEN);
+	rte_memcpy(new_mac, vf_mac, RTE_ETHER_ADDR_LEN);
 	/*
 	 * Piggyback the multicast filter type so VF can compute the
 	 * correct vectors
@@ -547,7 +547,7 @@ ixgbe_set_vf_lpe(struct rte_eth_dev *dev, __rte_unused uint32_t vf, uint32_t *ms
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t new_mtu = msgbuf[1];
 	uint32_t max_frs;
-	int max_frame = new_mtu + ETHER_HDR_LEN + ETHER_CRC_LEN;
+	int max_frame = new_mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
 
 	/* X540 and X550 support jumbo frames in IOV mode */
 	if (hw->mac.type != ixgbe_mac_X540 &&
@@ -556,7 +556,8 @@ ixgbe_set_vf_lpe(struct rte_eth_dev *dev, __rte_unused uint32_t vf, uint32_t *ms
 		hw->mac.type != ixgbe_mac_X550EM_a)
 		return -1;
 
-	if ((max_frame < ETHER_MIN_LEN) || (max_frame > ETHER_MAX_JUMBO_FRAME_LEN))
+	if (max_frame < RTE_ETHER_MIN_LEN ||
+			max_frame > RTE_ETHER_MAX_JUMBO_FRAME_LEN)
 		return -1;
 
 	max_frs = (IXGBE_READ_REG(hw, IXGBE_MAXFRS) &

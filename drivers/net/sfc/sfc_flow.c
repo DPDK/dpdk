@@ -951,7 +951,7 @@ sfc_flow_parse_geneve(const struct rte_flow_item *item,
 		return 0;
 
 	if (mask->protocol == supp_mask.protocol) {
-		if (spec->protocol != rte_cpu_to_be_16(ETHER_TYPE_TEB)) {
+		if (spec->protocol != rte_cpu_to_be_16(RTE_ETHER_TYPE_TEB)) {
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM, item,
 				"GENEVE encap. protocol must be Ethernet "

@@ -96,7 +96,7 @@ ipn3ke_pattern_vxlan(const struct rte_flow_item patterns[],
 
 			rte_memcpy(&parser->key[0],
 					eth->src.addr_bytes,
-					ETHER_ADDR_LEN);
+					RTE_ETHER_ADDR_LEN);
 			break;
 
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
@@ -160,7 +160,7 @@ ipn3ke_pattern_mac(const struct rte_flow_item patterns[],
 
 			rte_memcpy(parser->key,
 					eth->src.addr_bytes,
-					ETHER_ADDR_LEN);
+					RTE_ETHER_ADDR_LEN);
 			break;
 
 		default:

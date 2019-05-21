@@ -363,7 +363,7 @@ nfb_eth_mac_addr_set(struct rte_eth_dev *dev,
 	if (!rte_is_valid_assigned_ether_addr(mac_addr))
 		return -EINVAL;
 
-	for (i = 0; i < ETHER_ADDR_LEN; i++) {
+	for (i = 0; i < RTE_ETHER_ADDR_LEN; i++) {
 		mac <<= 8;
 		mac |= mac_addr->addr_bytes[i] & 0xFF;
 	}

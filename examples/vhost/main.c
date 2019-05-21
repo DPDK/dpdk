@@ -693,7 +693,7 @@ link_vmdq(struct vhost_dev *vdev, struct rte_mbuf *m)
 		return -1;
 	}
 
-	for (i = 0; i < ETHER_ADDR_LEN; i++)
+	for (i = 0; i < RTE_ETHER_ADDR_LEN; i++)
 		vdev->mac_address.addr_bytes[i] = pkt_hdr->s_addr.addr_bytes[i];
 
 	/* vlan_tag currently uses the device_id. */
@@ -858,7 +858,7 @@ get_psd_sum(void *l3_hdr, uint64_t ol_flags)
 {
 	if (ol_flags & PKT_TX_IPV4)
 		return rte_ipv4_phdr_cksum(l3_hdr, ol_flags);
-	else /* assume ethertype == ETHER_TYPE_IPv6 */
+	else /* assume ethertype == RTE_ETHER_TYPE_IPv6 */
 		return rte_ipv6_phdr_cksum(l3_hdr, ol_flags);
 }
 
@@ -949,7 +949,7 @@ queue2nic:
 	tx_q = &lcore_tx_queue[lcore_id];
 
 	nh = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
-	if (unlikely(nh->ether_type == rte_cpu_to_be_16(ETHER_TYPE_VLAN))) {
+	if (unlikely(nh->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN))) {
 		/* Guest has inserted the vlan tag. */
 		struct rte_vlan_hdr *vh = (struct rte_vlan_hdr *) (nh + 1);
 		uint16_t vlan_tag_be = rte_cpu_to_be_16(vlan_tag);

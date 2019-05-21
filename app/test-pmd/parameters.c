@@ -879,15 +879,15 @@ launch_args_parse(int argc, char** argv)
 			}
 			if (!strcmp(lgopts[opt_idx].name, "max-pkt-len")) {
 				n = atoi(optarg);
-				if (n >= ETHER_MIN_LEN) {
+				if (n >= RTE_ETHER_MIN_LEN) {
 					rx_mode.max_rx_pkt_len = (uint32_t) n;
-					if (n > ETHER_MAX_LEN)
+					if (n > RTE_ETHER_MAX_LEN)
 						rx_offloads |=
 							DEV_RX_OFFLOAD_JUMBO_FRAME;
 				} else
 					rte_exit(EXIT_FAILURE,
 						 "Invalid max-pkt-len=%d - should be > %d\n",
-						 n, ETHER_MIN_LEN);
+						 n, RTE_ETHER_MIN_LEN);
 			}
 			if (!strcmp(lgopts[opt_idx].name, "pkt-filter-mode")) {
 				if (!strcmp(optarg, "signature"))

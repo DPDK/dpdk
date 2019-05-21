@@ -115,7 +115,7 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 	eth_type = rte_be_to_cpu_16(eth_hdr->ether_type);
 
 	if (! (mb->ol_flags & PKT_RX_IEEE1588_PTP)) {
-		if (eth_type == ETHER_TYPE_1588) {
+		if (eth_type == RTE_ETHER_TYPE_1588) {
 			printf("Port %u Received PTP packet not filtered"
 			       " by hardware\n",
 			       fs->rx_port);
@@ -128,7 +128,7 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 		rte_pktmbuf_free(mb);
 		return;
 	}
-	if (eth_type != ETHER_TYPE_1588) {
+	if (eth_type != RTE_ETHER_TYPE_1588) {
 		printf("Port %u Received NON PTP packet incorrectly"
 		       " detected by hardware\n",
 		       fs->rx_port);

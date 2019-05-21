@@ -632,7 +632,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		if (buf->ol_flags & PKT_TX_VLAN_PKT) {
 			uint32_t vlan = rte_cpu_to_be_32(0x81000000 |
 							 buf->vlan_tci);
-			unsigned int len = 2 * ETHER_ADDR_LEN - 2;
+			unsigned int len = 2 * RTE_ETHER_ADDR_LEN - 2;
 
 			addr += 2;
 			length -= 2;
@@ -2058,7 +2058,7 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 							mcqe->rx_hash_result);
 			rxq_cq_to_mbuf(rxq, pkt, cqe, rss_hash_res);
 			if (rxq->crc_present)
-				len -= ETHER_CRC_LEN;
+				len -= RTE_ETHER_CRC_LEN;
 			PKT_LEN(pkt) = len;
 		}
 		DATA_LEN(rep) = DATA_LEN(seg);
@@ -2264,7 +2264,7 @@ mlx5_rx_burst_mprq(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		len = (byte_cnt & MLX5_MPRQ_LEN_MASK) >> MLX5_MPRQ_LEN_SHIFT;
 		assert((int)len >= (rxq->crc_present << 2));
 		if (rxq->crc_present)
-			len -= ETHER_CRC_LEN;
+			len -= RTE_ETHER_CRC_LEN;
 		offset = strd_idx * strd_sz + strd_shift;
 		addr = RTE_PTR_ADD(mlx5_mprq_buf_addr(buf), offset);
 		/* Initialize the offload flag. */

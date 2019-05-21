@@ -1505,12 +1505,12 @@ i40evf_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* copy mac addr */
 	eth_dev->data->mac_addrs = rte_zmalloc("i40evf_mac",
-					ETHER_ADDR_LEN * I40E_NUM_MACADDR_MAX,
-					0);
+				RTE_ETHER_ADDR_LEN * I40E_NUM_MACADDR_MAX,
+				0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR, "Failed to allocate %d bytes needed to"
 				" store MAC addresses",
-				ETHER_ADDR_LEN * I40E_NUM_MACADDR_MAX);
+				RTE_ETHER_ADDR_LEN * I40E_NUM_MACADDR_MAX);
 		return -ENOMEM;
 	}
 	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac.addr,
@@ -1767,21 +1767,22 @@ i40evf_rxq_init(struct rte_eth_dev *dev, struct i40e_rx_queue *rxq)
 	 * Check if the jumbo frame and maximum packet length are set correctly
 	 */
 	if (dev_data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
-		if (rxq->max_pkt_len <= ETHER_MAX_LEN ||
+		if (rxq->max_pkt_len <= RTE_ETHER_MAX_LEN ||
 		    rxq->max_pkt_len > I40E_FRAME_SIZE_MAX) {
 			PMD_DRV_LOG(ERR, "maximum packet length must be "
 				"larger than %u and smaller than %u, as jumbo "
-				"frame is enabled", (uint32_t)ETHER_MAX_LEN,
+				"frame is enabled", (uint32_t)RTE_ETHER_MAX_LEN,
 					(uint32_t)I40E_FRAME_SIZE_MAX);
 			return I40E_ERR_CONFIG;
 		}
 	} else {
-		if (rxq->max_pkt_len < ETHER_MIN_LEN ||
-		    rxq->max_pkt_len > ETHER_MAX_LEN) {
+		if (rxq->max_pkt_len < RTE_ETHER_MIN_LEN ||
+		    rxq->max_pkt_len > RTE_ETHER_MAX_LEN) {
 			PMD_DRV_LOG(ERR, "maximum packet length must be "
 				"larger than %u and smaller than %u, as jumbo "
-				"frame is disabled", (uint32_t)ETHER_MIN_LEN,
-						(uint32_t)ETHER_MAX_LEN);
+				"frame is disabled",
+				(uint32_t)RTE_ETHER_MIN_LEN,
+				(uint32_t)RTE_ETHER_MAX_LEN);
 			return I40E_ERR_CONFIG;
 		}
 	}
@@ -2218,7 +2219,7 @@ i40evf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_rx_bufsize = I40E_BUF_SIZE_MIN;
 	dev_info->max_rx_pktlen = I40E_FRAME_SIZE_MAX;
 	dev_info->max_mtu = dev_info->max_rx_pktlen - I40E_ETH_OVERHEAD;
-	dev_info->min_mtu = ETHER_MIN_MTU;
+	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 	dev_info->hash_key_size = (I40E_VFQF_HKEY_MAX_INDEX + 1) * sizeof(uint32_t);
 	dev_info->reta_size = ETH_RSS_RETA_SIZE_64;
 	dev_info->flow_type_rss_offloads = vf->adapter->flow_types_mask;
@@ -2680,7 +2681,7 @@ i40evf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	int ret = 0;
 
 	/* check if mtu is within the allowed range */
-	if ((mtu < ETHER_MIN_MTU) || (frame_size > I40E_FRAME_SIZE_MAX))
+	if (mtu < RTE_ETHER_MIN_MTU || frame_size > I40E_FRAME_SIZE_MAX)
 		return -EINVAL;
 
 	/* mtu setting is forbidden if port is start */
@@ -2690,7 +2691,7 @@ i40evf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EBUSY;
 	}
 
-	if (frame_size > ETHER_MAX_LEN)
+	if (frame_size > RTE_ETHER_MAX_LEN)
 		dev_data->dev_conf.rxmode.offloads |=
 			DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else

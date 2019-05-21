@@ -277,16 +277,16 @@ int cxgbe_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 	struct adapter *adapter = pi->adapter;
 	struct rte_eth_dev_info dev_info;
 	int err;
-	uint16_t new_mtu = mtu + ETHER_HDR_LEN + ETHER_CRC_LEN;
+	uint16_t new_mtu = mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
 
 	cxgbe_dev_info_get(eth_dev, &dev_info);
 
-	/* Must accommodate at least ETHER_MIN_MTU */
-	if ((new_mtu < ETHER_MIN_MTU) || (new_mtu > dev_info.max_rx_pktlen))
+	/* Must accommodate at least RTE_ETHER_MIN_MTU */
+	if (new_mtu < RTE_ETHER_MIN_MTU || new_mtu > dev_info.max_rx_pktlen)
 		return -EINVAL;
 
 	/* set to jumbo mode if needed */
-	if (new_mtu > ETHER_MAX_LEN)
+	if (new_mtu > RTE_ETHER_MAX_LEN)
 		eth_dev->data->dev_conf.rxmode.offloads |=
 			DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
@@ -587,7 +587,7 @@ int cxgbe_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 
 	cxgbe_dev_info_get(eth_dev, &dev_info);
 
-	/* Must accommodate at least ETHER_MIN_MTU */
+	/* Must accommodate at least RTE_ETHER_MIN_MTU */
 	if ((pkt_len < dev_info.min_rx_bufsize) ||
 	    (pkt_len > dev_info.max_rx_pktlen)) {
 		dev_err(adap, "%s: max pkt len must be > %d and <= %d\n",
@@ -626,7 +626,7 @@ int cxgbe_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 		rxq->fl.size = temp_nb_desc;
 
 	/* Set to jumbo mode if necessary */
-	if (pkt_len > ETHER_MAX_LEN)
+	if (pkt_len > RTE_ETHER_MAX_LEN)
 		eth_dev->data->dev_conf.rxmode.offloads |=
 			DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else

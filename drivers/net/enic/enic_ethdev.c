@@ -646,9 +646,9 @@ static int enicpmd_set_mac_addr(struct rte_eth_dev *eth_dev,
 
 static void debug_log_add_del_addr(struct rte_ether_addr *addr, bool add)
 {
-	char mac_str[ETHER_ADDR_FMT_SIZE];
+	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
 
-	rte_ether_format_addr(mac_str, ETHER_ADDR_FMT_SIZE, addr);
+	rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE, addr);
 	PMD_INIT_LOG(DEBUG, " %s address %s\n",
 		     add ? "add" : "remove", mac_str);
 }
@@ -658,7 +658,7 @@ static int enicpmd_set_mc_addr_list(struct rte_eth_dev *eth_dev,
 				    uint32_t nb_mc_addr)
 {
 	struct enic *enic = pmd_priv(eth_dev);
-	char mac_str[ETHER_ADDR_FMT_SIZE];
+	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
 	struct rte_ether_addr *addr;
 	uint32_t i, j;
 	int ret;
@@ -671,7 +671,7 @@ static int enicpmd_set_mc_addr_list(struct rte_eth_dev *eth_dev,
 		if (!rte_is_multicast_ether_addr(addr) ||
 		    rte_is_broadcast_ether_addr(addr)) {
 			rte_ether_format_addr(mac_str,
-					ETHER_ADDR_FMT_SIZE, addr);
+					RTE_ETHER_ADDR_FMT_SIZE, addr);
 			PMD_INIT_LOG(ERR, " invalid multicast address %s\n",
 				     mac_str);
 			return -EINVAL;

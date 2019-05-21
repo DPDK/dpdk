@@ -369,7 +369,7 @@ qed_fill_dev_info(struct ecore_dev *edev, struct qed_dev_info *dev_info)
 	dev_info->dev_type = edev->type;
 
 	rte_memcpy(&dev_info->hw_mac, &edev->hwfns[0].hw_info.hw_mac_addr,
-	       ETHER_ADDR_LEN);
+	       RTE_ETHER_ADDR_LEN);
 
 	dev_info->fw_major = FW_MAJOR_VERSION;
 	dev_info->fw_minor = FW_MINOR_VERSION;
@@ -434,7 +434,7 @@ qed_fill_eth_dev_info(struct ecore_dev *edev, struct qed_dev_eth_info *info)
 					 max_vf_vlan_filters;
 
 		rte_memcpy(&info->port_mac, &edev->hwfns[0].hw_info.hw_mac_addr,
-			   ETHER_ADDR_LEN);
+			   RTE_ETHER_ADDR_LEN);
 	} else {
 		ecore_vf_get_num_rxqs(ECORE_LEADING_HWFN(edev),
 				      &info->num_queues);
@@ -455,7 +455,7 @@ qed_fill_eth_dev_info(struct ecore_dev *edev, struct qed_dev_eth_info *info)
 	qed_fill_dev_info(edev, &info->common);
 
 	if (IS_VF(edev))
-		memset(&info->common.hw_mac, 0, ETHER_ADDR_LEN);
+		memset(&info->common.hw_mac, 0, RTE_ETHER_ADDR_LEN);
 
 	return 0;
 }

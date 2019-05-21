@@ -362,7 +362,7 @@ reassemble(struct rte_mbuf *m, uint16_t portid, uint32_t queue,
 			dst_port = next_hop;
 		}
 
-		eth_hdr->ether_type = rte_be_to_cpu_16(ETHER_TYPE_IPv4);
+		eth_hdr->ether_type = rte_be_to_cpu_16(RTE_ETHER_TYPE_IPv4);
 	} else if (RTE_ETH_IS_IPV6_HDR(m->packet_type)) {
 		/* if packet is IPv6 */
 		struct ipv6_extension_fragment *frag_hdr;
@@ -401,7 +401,7 @@ reassemble(struct rte_mbuf *m, uint16_t portid, uint32_t queue,
 			dst_port = next_hop;
 		}
 
-		eth_hdr->ether_type = rte_be_to_cpu_16(ETHER_TYPE_IPv6);
+		eth_hdr->ether_type = rte_be_to_cpu_16(RTE_ETHER_TYPE_IPv6);
 	}
 	/* if packet wasn't IPv4 or IPv6, it's forwarded to the port it came from */
 
@@ -694,8 +694,8 @@ parse_args(int argc, char **argv)
 static void
 print_ethaddr(const char *name, const struct rte_ether_addr *eth_addr)
 {
-	char buf[ETHER_ADDR_FMT_SIZE];
-	rte_ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
+	char buf[RTE_ETHER_ADDR_FMT_SIZE];
+	rte_ether_format_addr(buf, RTE_ETHER_ADDR_FMT_SIZE, eth_addr);
 	printf("%s%s", name, buf);
 }
 

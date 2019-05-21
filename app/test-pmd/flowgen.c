@@ -173,7 +173,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 		eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
 		rte_ether_addr_copy(&cfg_ether_dst, &eth_hdr->d_addr);
 		rte_ether_addr_copy(&cfg_ether_src, &eth_hdr->s_addr);
-		eth_hdr->ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
+		eth_hdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4);
 
 		/* Initialize IP header. */
 		ip_hdr = (struct ipv4_hdr *)(eth_hdr + 1);

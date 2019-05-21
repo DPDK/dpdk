@@ -565,9 +565,9 @@ tap_write_mbufs(struct tx_queue *txq, uint16_t num_mbufs,
 			char *buff_data = rte_pktmbuf_mtod(seg, void *);
 			proto = (*buff_data & 0xf0);
 			pi.proto = (proto == 0x40) ?
-				rte_cpu_to_be_16(ETHER_TYPE_IPv4) :
+				rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4) :
 				((proto == 0x60) ?
-					rte_cpu_to_be_16(ETHER_TYPE_IPv6) :
+					rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6) :
 					0x00);
 		}
 
@@ -657,7 +657,7 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		return 0;
 
 	struct rte_mbuf *gso_mbufs[MAX_GSO_MBUFS];
-	max_size = *txq->mtu + (ETHER_HDR_LEN + ETHER_CRC_LEN + 4);
+	max_size = *txq->mtu + (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + 4);
 	for (i = 0; i < nb_pkts; i++) {
 		struct rte_mbuf *mbuf_in = bufs[num_tx];
 		struct rte_mbuf **mbuf;
@@ -677,7 +677,7 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			/* TCP segmentation implies TCP checksum offload */
 			mbuf_in->ol_flags |= PKT_TX_TCP_CKSUM;
 
-			/* gso size is calculated without ETHER_CRC_LEN */
+			/* gso size is calculated without RTE_ETHER_CRC_LEN */
 			hdrs_len = mbuf_in->l2_len + mbuf_in->l3_len +
 					mbuf_in->l4_len;
 			tso_segsz = mbuf_in->tso_segsz + hdrs_len;
@@ -924,7 +924,7 @@ tap_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->if_index = internals->if_index;
 	dev_info->max_mac_addrs = 1;
-	dev_info->max_rx_pktlen = (uint32_t)ETHER_MAX_VLAN_FRAME_LEN;
+	dev_info->max_rx_pktlen = (uint32_t)RTE_ETHER_MAX_VLAN_FRAME_LEN;
 	dev_info->max_rx_queues = RTE_PMD_TAP_MAX_QUEUES;
 	dev_info->max_tx_queues = RTE_PMD_TAP_MAX_QUEUES;
 	dev_info->min_rx_bufsize = 0;
@@ -1185,11 +1185,11 @@ tap_mac_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 			mac_addr))
 		mode = LOCAL_AND_REMOTE;
 	ifr.ifr_hwaddr.sa_family = AF_LOCAL;
-	rte_memcpy(ifr.ifr_hwaddr.sa_data, mac_addr, ETHER_ADDR_LEN);
+	rte_memcpy(ifr.ifr_hwaddr.sa_data, mac_addr, RTE_ETHER_ADDR_LEN);
 	ret = tap_ioctl(pmd, SIOCSIFHWADDR, &ifr, 1, mode);
 	if (ret < 0)
 		return ret;
-	rte_memcpy(&pmd->eth_addr, mac_addr, ETHER_ADDR_LEN);
+	rte_memcpy(&pmd->eth_addr, mac_addr, RTE_ETHER_ADDR_LEN);
 	if (pmd->remote_if_index && !pmd->flow_isolate) {
 		/* Replace MAC redirection rule after a MAC change */
 		ret = tap_flow_implicit_destroy(pmd, TAP_REMOTE_LOCAL_MAC);
@@ -1782,7 +1782,7 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 		memset(&ifr, 0, sizeof(struct ifreq));
 		ifr.ifr_hwaddr.sa_family = AF_LOCAL;
 		rte_memcpy(ifr.ifr_hwaddr.sa_data, &pmd->eth_addr,
-				ETHER_ADDR_LEN);
+				RTE_ETHER_ADDR_LEN);
 		if (tap_ioctl(pmd, SIOCSIFHWADDR, &ifr, 0, LOCAL_ONLY) < 0)
 			goto error_exit;
 	}
@@ -1837,7 +1837,7 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 			goto error_remote;
 		}
 		rte_memcpy(&pmd->eth_addr, ifr.ifr_hwaddr.sa_data,
-			   ETHER_ADDR_LEN);
+			   RTE_ETHER_ADDR_LEN);
 		/* The desired MAC is already in ifreq after SIOCGIFHWADDR. */
 		if (tap_ioctl(pmd, SIOCSIFHWADDR, &ifr, 0, LOCAL_ONLY) < 0) {
 			TAP_LOG(ERR, "%s: failed to get %s MAC address.",
@@ -1996,8 +1996,10 @@ set_mac_type(const char *key __rte_unused,
 		static int iface_idx;
 
 		/* fixed mac = 00:64:74:61:70:<iface_idx> */
-		memcpy((char *)user_mac->addr_bytes, "\0dtap", ETHER_ADDR_LEN);
-		user_mac->addr_bytes[ETHER_ADDR_LEN - 1] = iface_idx++ + '0';
+		memcpy((char *)user_mac->addr_bytes, "\0dtap",
+			RTE_ETHER_ADDR_LEN);
+		user_mac->addr_bytes[RTE_ETHER_ADDR_LEN - 1] =
+			iface_idx++ + '0';
 		goto success;
 	}
 

@@ -1147,17 +1147,17 @@ eth_igb_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 */
 		rxm->next = NULL;
 		if (unlikely(rxq->crc_len > 0)) {
-			first_seg->pkt_len -= ETHER_CRC_LEN;
-			if (data_len <= ETHER_CRC_LEN) {
+			first_seg->pkt_len -= RTE_ETHER_CRC_LEN;
+			if (data_len <= RTE_ETHER_CRC_LEN) {
 				rte_pktmbuf_free_seg(rxm);
 				first_seg->nb_segs--;
 				last_seg->data_len = (uint16_t)
 					(last_seg->data_len -
-					 (ETHER_CRC_LEN - data_len));
+					 (RTE_ETHER_CRC_LEN - data_len));
 				last_seg->next = NULL;
 			} else
-				rxm->data_len =
-					(uint16_t) (data_len - ETHER_CRC_LEN);
+				rxm->data_len = (uint16_t)
+					(data_len - RTE_ETHER_CRC_LEN);
 		}
 
 		/*
@@ -1725,7 +1725,7 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 		queue_idx : RTE_ETH_DEV_SRIOV(dev).def_pool_q_idx + queue_idx);
 	rxq->port_id = dev->data->port_id;
 	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC)
-		rxq->crc_len = ETHER_CRC_LEN;
+		rxq->crc_len = RTE_ETHER_CRC_LEN;
 	else
 		rxq->crc_len = 0;
 
@@ -2378,7 +2378,7 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 		 *  call to configure
 		 */
 		if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC)
-			rxq->crc_len = ETHER_CRC_LEN;
+			rxq->crc_len = RTE_ETHER_CRC_LEN;
 		else
 			rxq->crc_len = 0;
 

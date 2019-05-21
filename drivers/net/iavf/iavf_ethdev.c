@@ -225,23 +225,23 @@ iavf_init_rxq(struct rte_eth_dev *dev, struct iavf_rx_queue *rxq)
 	 * correctly.
 	 */
 	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
-		if (max_pkt_len <= ETHER_MAX_LEN ||
+		if (max_pkt_len <= RTE_ETHER_MAX_LEN ||
 		    max_pkt_len > IAVF_FRAME_SIZE_MAX) {
 			PMD_DRV_LOG(ERR, "maximum packet length must be "
 				    "larger than %u and smaller than %u, "
 				    "as jumbo frame is enabled",
-				    (uint32_t)ETHER_MAX_LEN,
+				    (uint32_t)RTE_ETHER_MAX_LEN,
 				    (uint32_t)IAVF_FRAME_SIZE_MAX);
 			return -EINVAL;
 		}
 	} else {
-		if (max_pkt_len < ETHER_MIN_LEN ||
-		    max_pkt_len > ETHER_MAX_LEN) {
+		if (max_pkt_len < RTE_ETHER_MIN_LEN ||
+		    max_pkt_len > RTE_ETHER_MAX_LEN) {
 			PMD_DRV_LOG(ERR, "maximum packet length must be "
 				    "larger than %u and smaller than %u, "
 				    "as jumbo frame is disabled",
-				    (uint32_t)ETHER_MIN_LEN,
-				    (uint32_t)ETHER_MAX_LEN);
+				    (uint32_t)RTE_ETHER_MIN_LEN,
+				    (uint32_t)RTE_ETHER_MAX_LEN);
 			return -EINVAL;
 		}
 	}
@@ -917,7 +917,7 @@ iavf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	uint32_t frame_size = mtu + IAVF_ETH_OVERHEAD;
 	int ret = 0;
 
-	if (mtu < ETHER_MIN_MTU || frame_size > IAVF_FRAME_SIZE_MAX)
+	if (mtu < RTE_ETHER_MIN_MTU || frame_size > IAVF_FRAME_SIZE_MAX)
 		return -EINVAL;
 
 	/* mtu setting is forbidden if port is start */
@@ -926,7 +926,7 @@ iavf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EBUSY;
 	}
 
-	if (frame_size > ETHER_MAX_LEN)
+	if (frame_size > RTE_ETHER_MAX_LEN)
 		dev->data->dev_conf.rxmode.offloads |=
 				DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
@@ -1305,13 +1305,11 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* copy mac addr */
 	eth_dev->data->mac_addrs = rte_zmalloc(
-					"iavf_mac",
-					ETHER_ADDR_LEN * IAVF_NUM_MACADDR_MAX,
-					0);
+		"iavf_mac", RTE_ETHER_ADDR_LEN * IAVF_NUM_MACADDR_MAX, 0);
 	if (!eth_dev->data->mac_addrs) {
 		PMD_INIT_LOG(ERR, "Failed to allocate %d bytes needed to"
 			     " store MAC addresses",
-			     ETHER_ADDR_LEN * IAVF_NUM_MACADDR_MAX);
+			     RTE_ETHER_ADDR_LEN * IAVF_NUM_MACADDR_MAX);
 		return -ENOMEM;
 	}
 	/* If the MAC address is not configured by host,

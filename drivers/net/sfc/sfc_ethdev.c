@@ -93,7 +93,7 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	sfc_log_init(sa, "entry");
 
-	dev_info->min_mtu = ETHER_MIN_MTU;
+	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 	dev_info->max_mtu = EFX_MAC_SDU_MAX;
 
 	dev_info->max_rx_pktlen = EFX_MAC_PDU_MAX;
@@ -941,7 +941,7 @@ sfc_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	 * The driver does not use it, but other PMDs update jumbo frame
 	 * flag and max_rx_pkt_len when MTU is set.
 	 */
-	if (mtu > ETHER_MAX_LEN) {
+	if (mtu > RTE_ETHER_MAX_LEN) {
 		struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 		rxmode->offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	}
@@ -2095,7 +2095,7 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 
 	sfc_log_init(sa, "entry");
 
-	dev->data->mac_addrs = rte_zmalloc("sfc", ETHER_ADDR_LEN, 0);
+	dev->data->mac_addrs = rte_zmalloc("sfc", RTE_ETHER_ADDR_LEN, 0);
 	if (dev->data->mac_addrs == NULL) {
 		rc = ENOMEM;
 		goto fail_mac_addrs;

@@ -593,7 +593,7 @@ enic_copy_item_inner_vlan_v2(struct copy_item_args *arg)
 	arg->l2_proto_off = *off + offsetof(struct rte_vlan_hdr, eth_proto);
 	return copy_inner_common(&arg->filter->u.generic_1, off,
 		arg->item->spec, mask, sizeof(struct rte_vlan_hdr),
-		eth_type_off, rte_cpu_to_be_16(ETHER_TYPE_VLAN), 2);
+		eth_type_off, rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN), 2);
 }
 
 static int
@@ -609,7 +609,7 @@ enic_copy_item_inner_ipv4_v2(struct copy_item_args *arg)
 	arg->l3_proto_off = *off + offsetof(struct ipv4_hdr, next_proto_id);
 	return copy_inner_common(&arg->filter->u.generic_1, off,
 		arg->item->spec, mask, sizeof(struct ipv4_hdr),
-		arg->l2_proto_off, rte_cpu_to_be_16(ETHER_TYPE_IPv4), 2);
+		arg->l2_proto_off, rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4), 2);
 }
 
 static int
@@ -625,7 +625,7 @@ enic_copy_item_inner_ipv6_v2(struct copy_item_args *arg)
 	arg->l3_proto_off = *off + offsetof(struct ipv6_hdr, proto);
 	return copy_inner_common(&arg->filter->u.generic_1, off,
 		arg->item->spec, mask, sizeof(struct ipv6_hdr),
-		arg->l2_proto_off, rte_cpu_to_be_16(ETHER_TYPE_IPv6), 2);
+		arg->l2_proto_off, rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6), 2);
 }
 
 static int
@@ -679,14 +679,14 @@ enic_copy_item_eth_v2(struct copy_item_args *arg)
 		mask = &rte_flow_item_eth_mask;
 
 	memcpy(enic_spec.d_addr.addr_bytes, spec->dst.addr_bytes,
-	       ETHER_ADDR_LEN);
+	       RTE_ETHER_ADDR_LEN);
 	memcpy(enic_spec.s_addr.addr_bytes, spec->src.addr_bytes,
-	       ETHER_ADDR_LEN);
+	       RTE_ETHER_ADDR_LEN);
 
 	memcpy(enic_mask.d_addr.addr_bytes, mask->dst.addr_bytes,
-	       ETHER_ADDR_LEN);
+	       RTE_ETHER_ADDR_LEN);
 	memcpy(enic_mask.s_addr.addr_bytes, mask->src.addr_bytes,
-	       ETHER_ADDR_LEN);
+	       RTE_ETHER_ADDR_LEN);
 	enic_spec.ether_type = spec->type;
 	enic_mask.ether_type = mask->type;
 

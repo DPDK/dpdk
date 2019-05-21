@@ -538,17 +538,19 @@ tap_flow_create_eth(const struct rte_flow_item *item, void *data)
 		return 0;
 	msg = &flow->msg;
 	if (!rte_is_zero_ether_addr(&mask->dst)) {
-		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_ETH_DST, ETHER_ADDR_LEN,
+		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_ETH_DST,
+			RTE_ETHER_ADDR_LEN,
 			   &spec->dst.addr_bytes);
 		tap_nlattr_add(&msg->nh,
-			   TCA_FLOWER_KEY_ETH_DST_MASK, ETHER_ADDR_LEN,
+			   TCA_FLOWER_KEY_ETH_DST_MASK, RTE_ETHER_ADDR_LEN,
 			   &mask->dst.addr_bytes);
 	}
 	if (!rte_is_zero_ether_addr(&mask->src)) {
-		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_ETH_SRC, ETHER_ADDR_LEN,
-			   &spec->src.addr_bytes);
+		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_ETH_SRC,
+			RTE_ETHER_ADDR_LEN,
+			&spec->src.addr_bytes);
 		tap_nlattr_add(&msg->nh,
-			   TCA_FLOWER_KEY_ETH_SRC_MASK, ETHER_ADDR_LEN,
+			   TCA_FLOWER_KEY_ETH_SRC_MASK, RTE_ETHER_ADDR_LEN,
 			   &mask->src.addr_bytes);
 	}
 	return 0;

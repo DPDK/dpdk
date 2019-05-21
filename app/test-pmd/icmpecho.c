@@ -223,9 +223,9 @@ ipv4_addr_to_dot(uint32_t be_ipv4_addr, char *buf)
 static void
 ether_addr_dump(const char *what, const struct rte_ether_addr *ea)
 {
-	char buf[ETHER_ADDR_FMT_SIZE];
+	char buf[RTE_ETHER_ADDR_FMT_SIZE];
 
-	rte_ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, ea);
+	rte_ether_format_addr(buf, RTE_ETHER_ADDR_FMT_SIZE, ea);
 	if (what)
 		printf("%s", what);
 	printf("%s", buf);
@@ -330,7 +330,7 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 			ether_addr_dump("  ETH:  src=", &eth_h->s_addr);
 			ether_addr_dump(" dst=", &eth_h->d_addr);
 		}
-		if (eth_type == ETHER_TYPE_VLAN) {
+		if (eth_type == RTE_ETHER_TYPE_VLAN) {
 			vlan_h = (struct rte_vlan_hdr *)
 				((char *)eth_h + sizeof(struct rte_ether_hdr));
 			l2_len  += sizeof(struct rte_vlan_hdr);
@@ -346,7 +346,7 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 		}
 
 		/* Reply to ARP requests */
-		if (eth_type == ETHER_TYPE_ARP) {
+		if (eth_type == RTE_ETHER_TYPE_ARP) {
 			arp_h = (struct rte_arp_hdr *) ((char *)eth_h + l2_len);
 			arp_op = RTE_BE_TO_CPU_16(arp_h->arp_opcode);
 			arp_pro = RTE_BE_TO_CPU_16(arp_h->arp_protocol);
@@ -360,7 +360,7 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 			}
 			if ((RTE_BE_TO_CPU_16(arp_h->arp_hardware) !=
 			     RTE_ARP_HRD_ETHER) ||
-			    (arp_pro != ETHER_TYPE_IPv4) ||
+			    (arp_pro != RTE_ETHER_TYPE_IPv4) ||
 			    (arp_h->arp_hlen != 6) ||
 			    (arp_h->arp_plen != 4)
 			    ) {
@@ -414,7 +414,7 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 			continue;
 		}
 
-		if (eth_type != ETHER_TYPE_IPv4) {
+		if (eth_type != RTE_ETHER_TYPE_IPv4) {
 			rte_pktmbuf_free(pkt);
 			continue;
 		}

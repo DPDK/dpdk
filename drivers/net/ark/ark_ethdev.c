@@ -318,7 +318,7 @@ eth_ark_dev_init(struct rte_eth_dev *dev)
 
 	dev->dev_ops = &ark_eth_dev_ops;
 
-	dev->data->mac_addrs = rte_zmalloc("ark", ETHER_ADDR_LEN, 0);
+	dev->data->mac_addrs = rte_zmalloc("ark", RTE_ETHER_ADDR_LEN, 0);
 	if (!dev->data->mac_addrs) {
 		PMD_DRV_LOG(ERR,
 			    "Failed to allocated memory for storing mac address"
@@ -385,7 +385,8 @@ eth_ark_dev_init(struct rte_eth_dev *dev)
 
 		rte_eth_copy_pci_info(eth_dev, pci_dev);
 
-		eth_dev->data->mac_addrs = rte_zmalloc(name, ETHER_ADDR_LEN, 0);
+		eth_dev->data->mac_addrs = rte_zmalloc(name,
+						RTE_ETHER_ADDR_LEN, 0);
 		if (!eth_dev->data->mac_addrs) {
 			PMD_DRV_LOG(ERR,
 				    "Memory allocation for MAC failed!"

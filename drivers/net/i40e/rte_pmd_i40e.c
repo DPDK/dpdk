@@ -663,7 +663,7 @@ int rte_pmd_i40e_set_vf_vlan_insert(uint16_t port, uint16_t vf_id,
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
-	if (vlan_id > ETHER_MAX_VLAN_ID) {
+	if (vlan_id > RTE_ETHER_MAX_VLAN_ID) {
 		PMD_DRV_LOG(ERR, "Invalid VLAN ID.");
 		return -EINVAL;
 	}
@@ -765,7 +765,7 @@ int rte_pmd_i40e_set_vf_broadcast(uint16_t port, uint16_t vf_id,
 	}
 
 	if (on) {
-		rte_memcpy(&filter.mac_addr, &broadcast, ETHER_ADDR_LEN);
+		rte_memcpy(&filter.mac_addr, &broadcast, RTE_ETHER_ADDR_LEN);
 		filter.filter_type = RTE_MACVLAN_PERFECT_MATCH;
 		ret = i40e_vsi_add_mac(vsi, &filter);
 	} else {
@@ -893,7 +893,7 @@ int rte_pmd_i40e_set_vf_vlan_filter(uint16_t port, uint16_t vlan_id,
 	if (!is_i40e_supported(dev))
 		return -ENOTSUP;
 
-	if (vlan_id > ETHER_MAX_VLAN_ID || !vlan_id) {
+	if (vlan_id > RTE_ETHER_MAX_VLAN_ID || !vlan_id) {
 		PMD_DRV_LOG(ERR, "Invalid VLAN ID.");
 		return -EINVAL;
 	}

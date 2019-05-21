@@ -945,7 +945,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		priv->device_attr = device_attr;
 		priv->port = port;
 		priv->pd = pd;
-		priv->mtu = ETHER_MTU;
+		priv->mtu = RTE_ETHER_MTU;
 		priv->vf = vf;
 		priv->hw_csum =	!!(device_attr.device_cap_flags &
 				   IBV_DEVICE_RAW_IP_CSUM);

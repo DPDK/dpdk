@@ -889,17 +889,17 @@ i40e_recv_scattered_pkts(void *rx_queue,
 		 */
 		rxm->next = NULL;
 		if (unlikely(rxq->crc_len > 0)) {
-			first_seg->pkt_len -= ETHER_CRC_LEN;
-			if (rx_packet_len <= ETHER_CRC_LEN) {
+			first_seg->pkt_len -= RTE_ETHER_CRC_LEN;
+			if (rx_packet_len <= RTE_ETHER_CRC_LEN) {
 				rte_pktmbuf_free_seg(rxm);
 				first_seg->nb_segs--;
 				last_seg->data_len =
 					(uint16_t)(last_seg->data_len -
-					(ETHER_CRC_LEN - rx_packet_len));
+					(RTE_ETHER_CRC_LEN - rx_packet_len));
 				last_seg->next = NULL;
 			} else
 				rxm->data_len = (uint16_t)(rx_packet_len -
-								ETHER_CRC_LEN);
+							RTE_ETHER_CRC_LEN);
 		}
 
 		first_seg->port = rxq->port_id;
@@ -1839,7 +1839,7 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->reg_idx = reg_idx;
 	rxq->port_id = dev->data->port_id;
 	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC)
-		rxq->crc_len = ETHER_CRC_LEN;
+		rxq->crc_len = RTE_ETHER_CRC_LEN;
 	else
 		rxq->crc_len = 0;
 	rxq->drop_en = rx_conf->rx_drop_en;
@@ -2634,23 +2634,23 @@ i40e_rx_queue_config(struct i40e_rx_queue *rxq)
 	len = hw->func_caps.rx_buf_chain_len * rxq->rx_buf_len;
 	rxq->max_pkt_len = RTE_MIN(len, data->dev_conf.rxmode.max_rx_pkt_len);
 	if (data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
-		if (rxq->max_pkt_len <= ETHER_MAX_LEN ||
+		if (rxq->max_pkt_len <= RTE_ETHER_MAX_LEN ||
 			rxq->max_pkt_len > I40E_FRAME_SIZE_MAX) {
 			PMD_DRV_LOG(ERR, "maximum packet length must "
 				    "be larger than %u and smaller than %u,"
 				    "as jumbo frame is enabled",
-				    (uint32_t)ETHER_MAX_LEN,
+				    (uint32_t)RTE_ETHER_MAX_LEN,
 				    (uint32_t)I40E_FRAME_SIZE_MAX);
 			return I40E_ERR_CONFIG;
 		}
 	} else {
-		if (rxq->max_pkt_len < ETHER_MIN_LEN ||
-			rxq->max_pkt_len > ETHER_MAX_LEN) {
+		if (rxq->max_pkt_len < RTE_ETHER_MIN_LEN ||
+			rxq->max_pkt_len > RTE_ETHER_MAX_LEN) {
 			PMD_DRV_LOG(ERR, "maximum packet length must be "
 				    "larger than %u and smaller than %u, "
 				    "as jumbo frame is disabled",
-				    (uint32_t)ETHER_MIN_LEN,
-				    (uint32_t)ETHER_MAX_LEN);
+				    (uint32_t)RTE_ETHER_MIN_LEN,
+				    (uint32_t)RTE_ETHER_MAX_LEN);
 			return I40E_ERR_CONFIG;
 		}
 	}

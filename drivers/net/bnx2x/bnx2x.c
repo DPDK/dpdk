@@ -9787,13 +9787,13 @@ int bnx2x_attach(struct bnx2x_softc *sc)
 		bnx2x_get_phy_info(sc);
 	} else {
 		/* Left mac of VF unfilled, PF should set it for VF */
-		memset(sc->link_params.mac_addr, 0, ETHER_ADDR_LEN);
+		memset(sc->link_params.mac_addr, 0, RTE_ETHER_ADDR_LEN);
 	}
 
 	sc->wol = 0;
 
 	/* set the default MTU (changed via ifconfig) */
-	sc->mtu = ETHER_MTU;
+	sc->mtu = RTE_ETHER_MTU;
 
 	bnx2x_set_modes_bitmap(sc);
 

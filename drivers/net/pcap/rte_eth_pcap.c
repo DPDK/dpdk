@@ -28,7 +28,7 @@
 #include <rte_string_fns.h>
 
 #define RTE_ETH_PCAP_SNAPSHOT_LEN 65535
-#define RTE_ETH_PCAP_SNAPLEN ETHER_MAX_JUMBO_FRAME_LEN
+#define RTE_ETH_PCAP_SNAPLEN RTE_ETHER_MAX_JUMBO_FRAME_LEN
 #define RTE_ETH_PCAP_PROMISC 1
 #define RTE_ETH_PCAP_TIMEOUT -1
 
@@ -287,7 +287,7 @@ eth_pcap_tx_dumper(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			pcap_dump((u_char *)dumper, &header,
 				  rte_pktmbuf_mtod(mbuf, void*));
 		} else {
-			if (mbuf->pkt_len <= ETHER_MAX_JUMBO_FRAME_LEN) {
+			if (mbuf->pkt_len <= RTE_ETHER_MAX_JUMBO_FRAME_LEN) {
 				eth_pcap_gather_data(tx_pcap_data, mbuf);
 				pcap_dump((u_char *)dumper, &header,
 					  tx_pcap_data);
@@ -295,7 +295,7 @@ eth_pcap_tx_dumper(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 				PMD_LOG(ERR,
 					"Dropping PCAP packet. Size (%d) > max jumbo size (%d).",
 					mbuf->pkt_len,
-					ETHER_MAX_JUMBO_FRAME_LEN);
+					RTE_ETHER_MAX_JUMBO_FRAME_LEN);
 
 				rte_pktmbuf_free(mbuf);
 				break;
@@ -349,7 +349,7 @@ eth_pcap_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 					rte_pktmbuf_mtod(mbuf, u_char *),
 					mbuf->pkt_len);
 		} else {
-			if (mbuf->pkt_len <= ETHER_MAX_JUMBO_FRAME_LEN) {
+			if (mbuf->pkt_len <= RTE_ETHER_MAX_JUMBO_FRAME_LEN) {
 				eth_pcap_gather_data(tx_pcap_data, mbuf);
 				ret = pcap_sendpacket(pcap,
 						tx_pcap_data, mbuf->pkt_len);
@@ -357,7 +357,7 @@ eth_pcap_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 				PMD_LOG(ERR,
 					"Dropping PCAP packet. Size (%d) > max jumbo size (%d).",
 					mbuf->pkt_len,
-					ETHER_MAX_JUMBO_FRAME_LEN);
+					RTE_ETHER_MAX_JUMBO_FRAME_LEN);
 
 				rte_pktmbuf_free(mbuf);
 				break;
@@ -993,7 +993,7 @@ eth_pcap_update_mac(const char *if_name, struct rte_eth_dev *eth_dev,
 		return -1;
 	}
 
-	mac_addrs = rte_zmalloc_socket(NULL, ETHER_ADDR_LEN, 0, numa_node);
+	mac_addrs = rte_zmalloc_socket(NULL, RTE_ETHER_ADDR_LEN, 0, numa_node);
 	if (!mac_addrs) {
 		close(if_fd);
 		return -1;
@@ -1002,7 +1002,7 @@ eth_pcap_update_mac(const char *if_name, struct rte_eth_dev *eth_dev,
 	PMD_LOG(INFO, "Setting phy MAC for %s", if_name);
 	eth_dev->data->mac_addrs = mac_addrs;
 	rte_memcpy(eth_dev->data->mac_addrs[0].addr_bytes,
-			ifr.ifr_hwaddr.sa_data, ETHER_ADDR_LEN);
+			ifr.ifr_hwaddr.sa_data, RTE_ETHER_ADDR_LEN);
 
 	close(if_fd);
 
@@ -1040,7 +1040,7 @@ eth_pcap_update_mac(const char *if_name, struct rte_eth_dev *eth_dev,
 	ifm = (struct if_msghdr *)buf;
 	sdl = (struct sockaddr_dl *)(ifm + 1);
 
-	mac_addrs = rte_zmalloc_socket(NULL, ETHER_ADDR_LEN, 0, numa_node);
+	mac_addrs = rte_zmalloc_socket(NULL, RTE_ETHER_ADDR_LEN, 0, numa_node);
 	if (!mac_addrs) {
 		rte_free(buf);
 		return -1;
@@ -1049,7 +1049,7 @@ eth_pcap_update_mac(const char *if_name, struct rte_eth_dev *eth_dev,
 	PMD_LOG(INFO, "Setting phy MAC for %s", if_name);
 	eth_dev->data->mac_addrs = mac_addrs;
 	rte_memcpy(eth_dev->data->mac_addrs[0].addr_bytes,
-			LLADDR(sdl), ETHER_ADDR_LEN);
+			LLADDR(sdl), RTE_ETHER_ADDR_LEN);
 
 	rte_free(buf);
 

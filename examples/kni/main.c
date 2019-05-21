@@ -760,7 +760,7 @@ kni_change_mtu(uint16_t port_id, unsigned int new_mtu)
 
 	memcpy(&conf, &port_conf, sizeof(conf));
 	/* Set new MTU */
-	if (new_mtu > ETHER_MAX_LEN)
+	if (new_mtu > RTE_ETHER_MAX_LEN)
 		conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
 		conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
@@ -834,8 +834,8 @@ kni_config_network_interface(uint16_t port_id, uint8_t if_up)
 static void
 print_ethaddr(const char *name, struct rte_ether_addr *mac_addr)
 {
-	char buf[ETHER_ADDR_FMT_SIZE];
-	rte_ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, mac_addr);
+	char buf[RTE_ETHER_ADDR_FMT_SIZE];
+	rte_ether_format_addr(buf, RTE_ETHER_ADDR_FMT_SIZE, mac_addr);
 	RTE_LOG(INFO, APP, "\t%s%s\n", name, buf);
 }
 

@@ -501,8 +501,8 @@ struct vxlan_encap_conf {
 	rte_be16_t vlan_tci;
 	uint8_t ip_tos;
 	uint8_t ip_ttl;
-	uint8_t eth_src[ETHER_ADDR_LEN];
-	uint8_t eth_dst[ETHER_ADDR_LEN];
+	uint8_t eth_src[RTE_ETHER_ADDR_LEN];
+	uint8_t eth_dst[RTE_ETHER_ADDR_LEN];
 };
 struct vxlan_encap_conf vxlan_encap_conf;
 
@@ -516,8 +516,8 @@ struct nvgre_encap_conf {
 	uint8_t ipv6_src[16];
 	uint8_t ipv6_dst[16];
 	rte_be16_t vlan_tci;
-	uint8_t eth_src[ETHER_ADDR_LEN];
-	uint8_t eth_dst[ETHER_ADDR_LEN];
+	uint8_t eth_src[RTE_ETHER_ADDR_LEN];
+	uint8_t eth_dst[RTE_ETHER_ADDR_LEN];
 };
 struct nvgre_encap_conf nvgre_encap_conf;
 
@@ -526,8 +526,8 @@ struct l2_encap_conf {
 	uint32_t select_ipv4:1;
 	uint32_t select_vlan:1;
 	rte_be16_t vlan_tci;
-	uint8_t eth_src[ETHER_ADDR_LEN];
-	uint8_t eth_dst[ETHER_ADDR_LEN];
+	uint8_t eth_src[RTE_ETHER_ADDR_LEN];
+	uint8_t eth_dst[RTE_ETHER_ADDR_LEN];
 };
 struct l2_encap_conf l2_encap_conf;
 
@@ -547,8 +547,8 @@ struct mplsogre_encap_conf {
 	uint8_t ipv6_src[16];
 	uint8_t ipv6_dst[16];
 	rte_be16_t vlan_tci;
-	uint8_t eth_src[ETHER_ADDR_LEN];
-	uint8_t eth_dst[ETHER_ADDR_LEN];
+	uint8_t eth_src[RTE_ETHER_ADDR_LEN];
+	uint8_t eth_dst[RTE_ETHER_ADDR_LEN];
 };
 struct mplsogre_encap_conf mplsogre_encap_conf;
 
@@ -571,8 +571,8 @@ struct mplsoudp_encap_conf {
 	uint8_t ipv6_src[16];
 	uint8_t ipv6_dst[16];
 	rte_be16_t vlan_tci;
-	uint8_t eth_src[ETHER_ADDR_LEN];
-	uint8_t eth_dst[ETHER_ADDR_LEN];
+	uint8_t eth_src[RTE_ETHER_ADDR_LEN];
+	uint8_t eth_dst[RTE_ETHER_ADDR_LEN];
 };
 struct mplsoudp_encap_conf mplsoudp_encap_conf;
 

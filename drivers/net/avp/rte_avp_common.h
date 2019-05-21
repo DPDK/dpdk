@@ -345,7 +345,7 @@ struct rte_avp_device_info {
 	/* Ethernet info */
 	char ethaddr[ETH_ALEN];
 #else
-	char ethaddr[ETHER_ADDR_LEN];
+	char ethaddr[RTE_ETHER_ADDR_LEN];
 #endif
 
 	uint8_t mode; /**< device mode, i.e guest, host, trace */

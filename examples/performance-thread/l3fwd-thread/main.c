@@ -98,9 +98,9 @@ parse_ptype(struct rte_mbuf *m)
 
 	eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 	ether_type = eth_hdr->ether_type;
-	if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv4))
+	if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4))
 		packet_type |= RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
-	else if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv6))
+	else if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6))
 		packet_type |= RTE_PTYPE_L3_IPV6_EXT_UNKNOWN;
 
 	m->packet_type = packet_type;
@@ -302,7 +302,7 @@ static uint16_t nb_tx_thread_params = RTE_DIM(tx_thread_params_array_default);
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
 		.mq_mode = ETH_MQ_RX_RSS,
-		.max_rx_pkt_len = ETHER_MAX_LEN,
+		.max_rx_pkt_len = RTE_ETHER_MAX_LEN,
 		.split_hdr_size = 0,
 		.offloads = DEV_RX_OFFLOAD_CHECKSUM,
 	},
@@ -2977,7 +2977,9 @@ parse_args(int argc, char **argv)
 				port_conf.txmode.offloads |=
 						DEV_TX_OFFLOAD_MULTI_SEGS;
 
-				/* if no max-pkt-len set, use the default value ETHER_MAX_LEN */
+				/* if no max-pkt-len set, use the default value
+				 * RTE_ETHER_MAX_LEN
+				 */
 				if (0 == getopt_long(argc, argvopt, "", &lenopts,
 						&option_index)) {
 
@@ -3024,9 +3026,9 @@ parse_args(int argc, char **argv)
 static void
 print_ethaddr(const char *name, const struct rte_ether_addr *eth_addr)
 {
-	char buf[ETHER_ADDR_FMT_SIZE];
+	char buf[RTE_ETHER_ADDR_FMT_SIZE];
 
-	rte_ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
+	rte_ether_format_addr(buf, RTE_ETHER_ADDR_FMT_SIZE, eth_addr);
 	printf("%s%s", name, buf);
 }
 
@@ -3490,7 +3492,7 @@ main(int argc, char **argv)
 
 	/* pre-init dst MACs for all ports to 02:00:00:00:00:xx */
 	for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
-		dest_eth_addr[portid] = ETHER_LOCAL_ADMIN_ADDR +
+		dest_eth_addr[portid] = RTE_ETHER_LOCAL_ADMIN_ADDR +
 				((uint64_t)portid << 40);
 		*(uint64_t *)(val_eth + portid) = dest_eth_addr[portid];
 	}

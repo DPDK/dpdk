@@ -656,7 +656,7 @@ ice_add_vlan_filter(struct ice_vsi *vsi, uint16_t vlan_id)
 	struct ice_hw *hw;
 	int ret = 0;
 
-	if (!vsi || vlan_id > ETHER_MAX_VLAN_ID)
+	if (!vsi || vlan_id > RTE_ETHER_MAX_VLAN_ID)
 		return -EINVAL;
 
 	hw = ICE_VSI_TO_HW(vsi);
@@ -727,7 +727,7 @@ ice_remove_vlan_filter(struct ice_vsi *vsi, uint16_t vlan_id)
 	 * Vlan 0 is the generic filter for untagged packets
 	 * and can't be removed.
 	 */
-	if (!vsi || vlan_id == 0 || vlan_id > ETHER_MAX_VLAN_ID)
+	if (!vsi || vlan_id == 0 || vlan_id > RTE_ETHER_MAX_VLAN_ID)
 		return -EINVAL;
 
 	hw = ICE_VSI_TO_HW(vsi);
@@ -1235,12 +1235,12 @@ ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type)
 		   hw->port_info->mac.perm_addr,
 		   ETH_ADDR_LEN);
 
-	rte_memcpy(&mac_addr, &pf->dev_addr, ETHER_ADDR_LEN);
+	rte_memcpy(&mac_addr, &pf->dev_addr, RTE_ETHER_ADDR_LEN);
 	ret = ice_add_mac_filter(vsi, &mac_addr);
 	if (ret != ICE_SUCCESS)
 		PMD_INIT_LOG(ERR, "Failed to add dflt MAC filter");
 
-	rte_memcpy(&mac_addr, &broadcast, ETHER_ADDR_LEN);
+	rte_memcpy(&mac_addr, &broadcast, RTE_ETHER_ADDR_LEN);
 	ret = ice_add_mac_filter(vsi, &mac_addr);
 	if (ret != ICE_SUCCESS)
 		PMD_INIT_LOG(ERR, "Failed to add MAC filter");
@@ -2025,7 +2025,7 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_mac_addrs = vsi->max_macaddrs;
 	dev_info->max_vfs = pci_dev->max_vfs;
 	dev_info->max_mtu = dev_info->max_rx_pktlen - ICE_ETH_OVERHEAD;
-	dev_info->min_mtu = ETHER_MIN_MTU;
+	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 
 	dev_info->rx_offload_capa =
 		DEV_RX_OFFLOAD_VLAN_STRIP |
@@ -2326,7 +2326,7 @@ ice_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	uint32_t frame_size = mtu + ICE_ETH_OVERHEAD;
 
 	/* check if mtu is within the allowed range */
-	if (mtu < ETHER_MIN_MTU || frame_size > ICE_FRAME_SIZE_MAX)
+	if (mtu < RTE_ETHER_MIN_MTU || frame_size > ICE_FRAME_SIZE_MAX)
 		return -EINVAL;
 
 	/* mtu setting is forbidden if port is start */
@@ -2337,7 +2337,7 @@ ice_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EBUSY;
 	}
 
-	if (frame_size > ETHER_MAX_LEN)
+	if (frame_size > RTE_ETHER_MAX_LEN)
 		dev_data->dev_conf.rxmode.offloads |=
 			DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
@@ -3201,7 +3201,7 @@ ice_update_vsi_stats(struct ice_vsi *vsi)
 			   &nes->rx_broadcast);
 	/* exclude CRC bytes */
 	nes->rx_bytes -= (nes->rx_unicast + nes->rx_multicast +
-			  nes->rx_broadcast) * ETHER_CRC_LEN;
+			  nes->rx_broadcast) * RTE_ETHER_CRC_LEN;
 
 	ice_stat_update_32(hw, GLV_RDPC(idx), vsi->offset_loaded,
 			   &oes->rx_discards, &nes->rx_discards);
@@ -3274,10 +3274,11 @@ ice_read_stats_registers(struct ice_pf *pf, struct ice_hw *hw)
 			   &ns->eth.rx_discards);
 
 	/* Workaround: CRC size should not be included in byte statistics,
-	 * so subtract ETHER_CRC_LEN from the byte counter for each rx packet.
+	 * so subtract RTE_ETHER_CRC_LEN from the byte counter for each rx
+	 * packet.
 	 */
 	ns->eth.rx_bytes -= (ns->eth.rx_unicast + ns->eth.rx_multicast +
-			     ns->eth.rx_broadcast) * ETHER_CRC_LEN;
+			     ns->eth.rx_broadcast) * RTE_ETHER_CRC_LEN;
 
 	/* GLPRT_REPC not supported */
 	/* GLPRT_RMPC not supported */
@@ -3302,7 +3303,7 @@ ice_read_stats_registers(struct ice_pf *pf, struct ice_hw *hw)
 			   pf->offset_loaded, &os->eth.tx_broadcast,
 			   &ns->eth.tx_broadcast);
 	ns->eth.tx_bytes -= (ns->eth.tx_unicast + ns->eth.tx_multicast +
-			     ns->eth.tx_broadcast) * ETHER_CRC_LEN;
+			     ns->eth.tx_broadcast) * RTE_ETHER_CRC_LEN;
 
 	/* GLPRT_TEPC not supported */
 

@@ -214,7 +214,7 @@ static int bnxt_init_chip(struct bnxt *bp)
 	/* disable uio/vfio intr/eventfd mapping */
 	rte_intr_disable(intr_handle);
 
-	if (bp->eth_dev->data->mtu > ETHER_MTU) {
+	if (bp->eth_dev->data->mtu > RTE_ETHER_MTU) {
 		bp->eth_dev->data->dev_conf.rxmode.offloads |=
 			DEV_RX_OFFLOAD_JUMBO_FRAME;
 		bp->flags |= BNXT_FLAG_JUMBO;
@@ -462,8 +462,8 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 
 	/* Fast path specifics */
 	dev_info->min_rx_bufsize = 1;
-	dev_info->max_rx_pktlen = BNXT_MAX_MTU + ETHER_HDR_LEN + ETHER_CRC_LEN
-				  + VLAN_TAG_SIZE * 2;
+	dev_info->max_rx_pktlen = BNXT_MAX_MTU + RTE_ETHER_HDR_LEN +
+		RTE_ETHER_CRC_LEN + VLAN_TAG_SIZE * 2;
 
 	dev_info->rx_offload_capa = BNXT_DEV_RX_OFFLOAD_SUPPORT;
 	if (bp->flags & BNXT_FLAG_PTP_SUPPORTED)
@@ -595,9 +595,9 @@ static int bnxt_dev_configure_op(struct rte_eth_dev *eth_dev)
 
 	if (rx_offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
 		eth_dev->data->mtu =
-				eth_dev->data->dev_conf.rxmode.max_rx_pkt_len -
-				ETHER_HDR_LEN - ETHER_CRC_LEN - VLAN_TAG_SIZE *
-				BNXT_NUM_VLANS;
+			eth_dev->data->dev_conf.rxmode.max_rx_pkt_len -
+			RTE_ETHER_HDR_LEN - RTE_ETHER_CRC_LEN - VLAN_TAG_SIZE *
+			BNXT_NUM_VLANS;
 		bnxt_mtu_set_op(eth_dev, eth_dev->data->mtu);
 	}
 	return 0;
@@ -750,7 +750,7 @@ static void bnxt_mac_addr_remove_op(struct rte_eth_dev *eth_dev,
 						bnxt_filter_info, next);
 				bnxt_hwrm_clear_l2_filter(bp, filter);
 				filter->mac_index = INVALID_MAC_INDEX;
-				memset(&filter->l2_addr, 0, ETHER_ADDR_LEN);
+				memset(&filter->l2_addr, 0, RTE_ETHER_ADDR_LEN);
 				STAILQ_INSERT_TAIL(&bp->free_filter_list,
 						   filter, next);
 			}
@@ -791,7 +791,7 @@ static int bnxt_mac_addr_add_op(struct rte_eth_dev *eth_dev,
 	}
 	STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
 	filter->mac_index = index;
-	memcpy(filter->l2_addr, mac_addr, ETHER_ADDR_LEN);
+	memcpy(filter->l2_addr, mac_addr, RTE_ETHER_ADDR_LEN);
 	return bnxt_hwrm_set_l2_filter(bp, vnic->fw_vnic_id, filter);
 }
 
@@ -1312,7 +1312,7 @@ static int bnxt_del_vlan_filter(struct bnxt *bp, uint16_t vlan_id)
 				new_filter->mac_index =
 					filter->mac_index;
 				memcpy(new_filter->l2_addr, filter->l2_addr,
-				       ETHER_ADDR_LEN);
+				       RTE_ETHER_ADDR_LEN);
 				/* MAC only filter */
 				rc = bnxt_hwrm_set_l2_filter(bp,
 							     vnic->fw_vnic_id,
@@ -1381,7 +1381,7 @@ static int bnxt_add_vlan_filter(struct bnxt *bp, uint16_t vlan_id)
 			/* Inherit MAC from the previous filter */
 			new_filter->mac_index = filter->mac_index;
 			memcpy(new_filter->l2_addr, filter->l2_addr,
-			       ETHER_ADDR_LEN);
+			       RTE_ETHER_ADDR_LEN);
 			/* MAC + VLAN ID filter */
 			new_filter->l2_ivlan = vlan_id;
 			new_filter->l2_ivlan_mask = 0xF000;
@@ -1472,8 +1472,8 @@ bnxt_set_default_mac_addr_op(struct rte_eth_dev *dev,
 		rc = bnxt_hwrm_clear_l2_filter(bp, filter);
 		if (rc)
 			return rc;
-		memcpy(filter->l2_addr, bp->mac_addr, ETHER_ADDR_LEN);
-		memset(filter->l2_addr_mask, 0xff, ETHER_ADDR_LEN);
+		memcpy(filter->l2_addr, bp->mac_addr, RTE_ETHER_ADDR_LEN);
+		memset(filter->l2_addr_mask, 0xff, RTE_ETHER_ADDR_LEN);
 		filter->flags |= HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_PATH_RX;
 		filter->enables |=
 			HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR |
@@ -1508,8 +1508,9 @@ bnxt_dev_set_mc_addr_list_op(struct rte_eth_dev *eth_dev,
 	/* TODO Check for Duplicate mcast addresses */
 	vnic->flags &= ~BNXT_VNIC_INFO_ALLMULTI;
 	for (i = 0; i < nb_mc_addr; i++) {
-		memcpy(vnic->mc_list + off, &mc_addr_list[i], ETHER_ADDR_LEN);
-		off += ETHER_ADDR_LEN;
+		memcpy(vnic->mc_list + off, &mc_addr_list[i],
+			RTE_ETHER_ADDR_LEN);
+		off += RTE_ETHER_ADDR_LEN;
 	}
 
 	vnic->mc_addr_cnt = i;
@@ -1582,13 +1583,13 @@ static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 
 	bnxt_dev_info_get_op(eth_dev, &dev_info);
 
-	if (new_mtu < ETHER_MIN_MTU || new_mtu > BNXT_MAX_MTU) {
+	if (new_mtu < RTE_ETHER_MIN_MTU || new_mtu > BNXT_MAX_MTU) {
 		PMD_DRV_LOG(ERR, "MTU requested must be within (%d, %d)\n",
-			ETHER_MIN_MTU, BNXT_MAX_MTU);
+			RTE_ETHER_MIN_MTU, BNXT_MAX_MTU);
 		return -EINVAL;
 	}
 
-	if (new_mtu > ETHER_MTU) {
+	if (new_mtu > RTE_ETHER_MTU) {
 		bp->flags |= BNXT_FLAG_JUMBO;
 		bp->eth_dev->data->dev_conf.rxmode.offloads |=
 			DEV_RX_OFFLOAD_JUMBO_FRAME;
@@ -1599,7 +1600,8 @@ static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 	}
 
 	eth_dev->data->dev_conf.rxmode.max_rx_pkt_len =
-		new_mtu + ETHER_HDR_LEN + ETHER_CRC_LEN + VLAN_TAG_SIZE * 2;
+		new_mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN +
+		VLAN_TAG_SIZE * 2;
 
 	eth_dev->data->mtu = new_mtu;
 	PMD_DRV_LOG(INFO, "New MTU is %d\n", eth_dev->data->mtu);
@@ -1608,8 +1610,8 @@ static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 		struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
 		uint16_t size = 0;
 
-		vnic->mru = bp->eth_dev->data->mtu + ETHER_HDR_LEN +
-					ETHER_CRC_LEN + VLAN_TAG_SIZE * 2;
+		vnic->mru = bp->eth_dev->data->mtu + RTE_ETHER_HDR_LEN +
+					RTE_ETHER_CRC_LEN + VLAN_TAG_SIZE * 2;
 		rc = bnxt_hwrm_vnic_cfg(bp, vnic);
 		if (rc)
 			break;
@@ -1794,8 +1796,8 @@ bnxt_match_and_validate_ether_filter(struct bnxt *bp,
 	int match = 0;
 	*ret = 0;
 
-	if (efilter->ether_type == ETHER_TYPE_IPv4 ||
-		efilter->ether_type == ETHER_TYPE_IPv6) {
+	if (efilter->ether_type == RTE_ETHER_TYPE_IPv4 ||
+		efilter->ether_type == RTE_ETHER_TYPE_IPv6) {
 		PMD_DRV_LOG(ERR, "invalid ether_type(0x%04x) in"
 			" ethertype filter.", efilter->ether_type);
 		*ret = -EINVAL;
@@ -1818,7 +1820,7 @@ bnxt_match_and_validate_ether_filter(struct bnxt *bp,
 	if (efilter->flags & RTE_ETHTYPE_FLAGS_DROP) {
 		STAILQ_FOREACH(mfilter, &vnic0->filter, next) {
 			if ((!memcmp(efilter->mac_addr.addr_bytes,
-				     mfilter->l2_addr, ETHER_ADDR_LEN) &&
+				     mfilter->l2_addr, RTE_ETHER_ADDR_LEN) &&
 			     mfilter->flags ==
 			     HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_FLAGS_DROP &&
 			     mfilter->ethertype == efilter->ether_type)) {
@@ -1829,7 +1831,7 @@ bnxt_match_and_validate_ether_filter(struct bnxt *bp,
 	} else {
 		STAILQ_FOREACH(mfilter, &vnic->filter, next)
 			if ((!memcmp(efilter->mac_addr.addr_bytes,
-				     mfilter->l2_addr, ETHER_ADDR_LEN) &&
+				     mfilter->l2_addr, RTE_ETHER_ADDR_LEN) &&
 			     mfilter->ethertype == efilter->ether_type &&
 			     mfilter->flags ==
 			     HWRM_CFA_L2_FILTER_CFG_INPUT_FLAGS_PATH_RX)) {
@@ -1884,9 +1886,9 @@ bnxt_ethertype_filter(struct rte_eth_dev *dev,
 		}
 		bfilter->filter_type = HWRM_CFA_NTUPLE_FILTER;
 		memcpy(bfilter->l2_addr, efilter->mac_addr.addr_bytes,
-		       ETHER_ADDR_LEN);
+		       RTE_ETHER_ADDR_LEN);
 		memcpy(bfilter->dst_macaddr, efilter->mac_addr.addr_bytes,
-		       ETHER_ADDR_LEN);
+		       RTE_ETHER_ADDR_LEN);
 		bfilter->enables |= NTUPLE_FLTR_ALLOC_INPUT_EN_DST_MACADDR;
 		bfilter->ethertype = efilter->ether_type;
 		bfilter->enables |= NTUPLE_FLTR_ALLOC_INPUT_EN_ETHERTYPE;
@@ -2397,7 +2399,7 @@ bnxt_parse_fdir_filter(struct bnxt *bp,
 		//filter1 = bnxt_get_l2_filter(bp, filter, vnic0);
 	} else {
 		filter->dst_id = vnic->fw_vnic_id;
-		for (i = 0; i < ETHER_ADDR_LEN; i++)
+		for (i = 0; i < RTE_ETHER_ADDR_LEN; i++)
 			if (filter->dst_macaddr[i] == 0x00)
 				filter1 = STAILQ_FIRST(&vnic0->filter);
 			else
@@ -2441,13 +2443,14 @@ bnxt_match_fdir(struct bnxt *bp, struct bnxt_filter_info *nf,
 			    mf->l2_ovlan_mask == nf->l2_ovlan_mask &&
 			    mf->l2_ivlan == nf->l2_ivlan &&
 			    mf->l2_ivlan_mask == nf->l2_ivlan_mask &&
-			    !memcmp(mf->l2_addr, nf->l2_addr, ETHER_ADDR_LEN) &&
+			    !memcmp(mf->l2_addr, nf->l2_addr,
+				    RTE_ETHER_ADDR_LEN) &&
 			    !memcmp(mf->l2_addr_mask, nf->l2_addr_mask,
-				    ETHER_ADDR_LEN) &&
+				    RTE_ETHER_ADDR_LEN) &&
 			    !memcmp(mf->src_macaddr, nf->src_macaddr,
-				    ETHER_ADDR_LEN) &&
+				    RTE_ETHER_ADDR_LEN) &&
 			    !memcmp(mf->dst_macaddr, nf->dst_macaddr,
-				    ETHER_ADDR_LEN) &&
+				    RTE_ETHER_ADDR_LEN) &&
 			    !memcmp(mf->src_ipaddr, nf->src_ipaddr,
 				    sizeof(nf->src_ipaddr)) &&
 			    !memcmp(mf->src_ipaddr_mask, nf->src_ipaddr_mask,
@@ -3354,16 +3357,16 @@ skip_ext_stats:
 		goto error_free;
 	}
 	eth_dev->data->mac_addrs = rte_zmalloc("bnxt_mac_addr_tbl",
-					ETHER_ADDR_LEN * bp->max_l2_ctx, 0);
+					RTE_ETHER_ADDR_LEN * bp->max_l2_ctx, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		PMD_DRV_LOG(ERR,
 			"Failed to alloc %u bytes needed to store MAC addr tbl",
-			ETHER_ADDR_LEN * bp->max_l2_ctx);
+			RTE_ETHER_ADDR_LEN * bp->max_l2_ctx);
 		rc = -ENOMEM;
 		goto error_free;
 	}
 
-	if (bnxt_check_zero_bytes(bp->dflt_mac_addr, ETHER_ADDR_LEN)) {
+	if (bnxt_check_zero_bytes(bp->dflt_mac_addr, RTE_ETHER_ADDR_LEN)) {
 		PMD_DRV_LOG(ERR,
 			    "Invalid MAC addr %02X:%02X:%02X:%02X:%02X:%02X\n",
 			    bp->dflt_mac_addr[0], bp->dflt_mac_addr[1],
@@ -3374,7 +3377,7 @@ skip_ext_stats:
 	}
 	/* Copy the permanent MAC from the qcap response address now. */
 	memcpy(bp->mac_addr, bp->dflt_mac_addr, sizeof(bp->mac_addr));
-	memcpy(&eth_dev->data->mac_addrs[0], bp->mac_addr, ETHER_ADDR_LEN);
+	memcpy(&eth_dev->data->mac_addrs[0], bp->mac_addr, RTE_ETHER_ADDR_LEN);
 
 	if (bp->max_ring_grps < bp->rx_cp_nr_rings) {
 		/* 1 ring is for default completion ring */

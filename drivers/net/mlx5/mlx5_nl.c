@@ -344,7 +344,7 @@ mlx5_nl_mac_addr_cb(struct nlmsghdr *nh, void *arg)
 			DRV_LOG(DEBUG, "bridge MAC address %s", m);
 #endif
 			memcpy(&(*data->mac)[data->mac_n++],
-			       RTA_DATA(attribute), ETHER_ADDR_LEN);
+			       RTA_DATA(attribute), RTE_ETHER_ADDR_LEN);
 		}
 	}
 	return 0;
@@ -433,7 +433,7 @@ mlx5_nl_mac_addr_modify(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 		struct nlmsghdr hdr;
 		struct ndmsg ndm;
 		struct rtattr rta;
-		uint8_t buffer[ETHER_ADDR_LEN];
+		uint8_t buffer[RTE_ETHER_ADDR_LEN];
 	} req = {
 		.hdr = {
 			.nlmsg_len = NLMSG_LENGTH(sizeof(struct ndmsg)),
@@ -449,7 +449,7 @@ mlx5_nl_mac_addr_modify(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 		},
 		.rta = {
 			.rta_type = NDA_LLADDR,
-			.rta_len = RTA_LENGTH(ETHER_ADDR_LEN),
+			.rta_len = RTA_LENGTH(RTE_ETHER_ADDR_LEN),
 		},
 	};
 	int fd;
@@ -459,7 +459,7 @@ mlx5_nl_mac_addr_modify(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 	if (priv->nl_socket_route == -1)
 		return 0;
 	fd = priv->nl_socket_route;
-	memcpy(RTA_DATA(&req.rta), mac, ETHER_ADDR_LEN);
+	memcpy(RTA_DATA(&req.rta), mac, RTE_ETHER_ADDR_LEN);
 	req.hdr.nlmsg_len = NLMSG_ALIGN(req.hdr.nlmsg_len) +
 		RTA_ALIGN(req.rta.rta_len);
 	ret = mlx5_nl_send(fd, &req.hdr, sn);

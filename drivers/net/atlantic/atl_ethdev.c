@@ -416,7 +416,8 @@ eth_atl_dev_init(struct rte_eth_dev *eth_dev)
 	atl_disable_intr(hw);
 
 	/* Allocate memory for storing MAC addresses */
-	eth_dev->data->mac_addrs = rte_zmalloc("atlantic", ETHER_ADDR_LEN, 0);
+	eth_dev->data->mac_addrs = rte_zmalloc("atlantic",
+					RTE_ETHER_ADDR_LEN, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR, "MAC Malloc failed");
 		return -ENOMEM;
@@ -897,7 +898,8 @@ int atl_macsec_config_txsc(struct rte_eth_dev *dev, uint8_t *mac)
 		ATL_DEV_PRIVATE_TO_CFG(dev->data->dev_private);
 
 	memset(&cfg->aq_macsec.txsc.mac, 0, sizeof(cfg->aq_macsec.txsc.mac));
-	memcpy((uint8_t *)&cfg->aq_macsec.txsc.mac + 2, mac, ETHER_ADDR_LEN);
+	memcpy((uint8_t *)&cfg->aq_macsec.txsc.mac + 2, mac,
+		RTE_ETHER_ADDR_LEN);
 
 	return 0;
 }
@@ -909,7 +911,8 @@ int atl_macsec_config_rxsc(struct rte_eth_dev *dev,
 		ATL_DEV_PRIVATE_TO_CFG(dev->data->dev_private);
 
 	memset(&cfg->aq_macsec.rxsc.mac, 0, sizeof(cfg->aq_macsec.rxsc.mac));
-	memcpy((uint8_t *)&cfg->aq_macsec.rxsc.mac + 2, mac, ETHER_ADDR_LEN);
+	memcpy((uint8_t *)&cfg->aq_macsec.rxsc.mac + 2, mac,
+		RTE_ETHER_ADDR_LEN);
 	cfg->aq_macsec.rxsc.pi = pi;
 
 	return 0;
@@ -1604,11 +1607,11 @@ static int
 atl_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct rte_eth_dev_info dev_info;
-	uint32_t frame_size = mtu + ETHER_HDR_LEN + ETHER_CRC_LEN;
+	uint32_t frame_size = mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
 
 	atl_dev_info_get(dev, &dev_info);
 
-	if ((mtu < ETHER_MIN_MTU) || (frame_size > dev_info.max_rx_pktlen))
+	if (mtu < RTE_ETHER_MIN_MTU || frame_size > dev_info.max_rx_pktlen)
 		return -EINVAL;
 
 	/* update max frame size */

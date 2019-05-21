@@ -376,7 +376,7 @@ fs_get_mac_addr_arg(const char *key __rte_unused,
 		&ea->addr_bytes[0], &ea->addr_bytes[1],
 		&ea->addr_bytes[2], &ea->addr_bytes[3],
 		&ea->addr_bytes[4], &ea->addr_bytes[5]);
-	return ret != ETHER_ADDR_LEN;
+	return ret != RTE_ETHER_ADDR_LEN;
 }
 
 int

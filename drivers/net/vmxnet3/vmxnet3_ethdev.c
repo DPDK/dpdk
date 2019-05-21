@@ -307,12 +307,12 @@ eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 	memcpy(hw->perm_addr + 4, &mac_hi, 2);
 
 	/* Allocate memory for storing MAC addresses */
-	eth_dev->data->mac_addrs = rte_zmalloc("vmxnet3", ETHER_ADDR_LEN *
+	eth_dev->data->mac_addrs = rte_zmalloc("vmxnet3", RTE_ETHER_ADDR_LEN *
 					       VMXNET3_MAX_MAC_ADDRS, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR,
 			     "Failed to allocate %d bytes needed to store MAC addresses",
-			     ETHER_ADDR_LEN * VMXNET3_MAX_MAC_ADDRS);
+			     RTE_ETHER_ADDR_LEN * VMXNET3_MAX_MAC_ADDRS);
 		return -ENOMEM;
 	}
 	/* Copy the permanent MAC address */

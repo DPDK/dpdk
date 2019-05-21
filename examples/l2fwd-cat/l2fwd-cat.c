@@ -20,7 +20,7 @@
 #define BURST_SIZE 32
 
 static const struct rte_eth_conf port_conf_default = {
-	.rxmode = { .max_rx_pkt_len = ETHER_MAX_LEN }
+	.rxmode = { .max_rx_pkt_len = RTE_ETHER_MAX_LEN }
 };
 
 /* l2fwd-cat.c: CAT enabled, basic DPDK skeleton forwarding example. */

@@ -1348,7 +1348,7 @@ int cxgbe_link_start(struct port_info *pi)
 	int ret;
 
 	mtu = pi->eth_dev->data->dev_conf.rxmode.max_rx_pkt_len -
-	      (ETHER_HDR_LEN + ETHER_CRC_LEN);
+	      (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN);
 
 	conf_offloads = pi->eth_dev->data->dev_conf.rxmode.offloads;
 
@@ -1841,7 +1841,7 @@ allocate_mac:
 		rte_eth_copy_pci_info(pi->eth_dev, adapter->pdev);
 
 		pi->eth_dev->data->mac_addrs = rte_zmalloc(name,
-							   ETHER_ADDR_LEN, 0);
+							RTE_ETHER_ADDR_LEN, 0);
 		if (!pi->eth_dev->data->mac_addrs) {
 			dev_err(adapter, "%s: Mem allocation failed for storing mac addr, aborting\n",
 				__func__);

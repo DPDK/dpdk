@@ -530,8 +530,8 @@ pcmd_mtu_callback(void *ptr_params,
 	new_mtu = atoi(params->opt);
 	new_mtu = strtoul(params->opt, &ptr_parse_end, 10);
 	if (*ptr_parse_end != '\0' ||
-			new_mtu < ETHER_MIN_MTU ||
-			new_mtu > ETHER_MAX_JUMBO_FRAME_LEN) {
+			new_mtu < RTE_ETHER_MIN_MTU ||
+			new_mtu > RTE_ETHER_MAX_JUMBO_FRAME_LEN) {
 		printf("Port %i: Invalid MTU value\n", params->port);
 		return;
 	}

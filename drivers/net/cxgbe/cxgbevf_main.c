@@ -245,7 +245,7 @@ allocate_mac:
 
 		rte_eth_copy_pci_info(pi->eth_dev, adapter->pdev);
 		pi->eth_dev->data->mac_addrs = rte_zmalloc(name,
-							   ETHER_ADDR_LEN, 0);
+							RTE_ETHER_ADDR_LEN, 0);
 		if (!pi->eth_dev->data->mac_addrs) {
 			dev_err(adapter, "%s: Mem allocation failed for storing mac addr, aborting\n",
 				__func__);

@@ -533,7 +533,7 @@ my_ether_aton(const char *a)
 {
 	int i;
 	char *end;
-	unsigned long o[ETHER_ADDR_LEN];
+	unsigned long o[RTE_ETHER_ADDR_LEN];
 	static struct rte_ether_addr ether_addr;
 
 	i = 0;
@@ -550,14 +550,14 @@ my_ether_aton(const char *a)
 		return NULL;
 
 	/* Support the format XX:XX:XX:XX:XX:XX */
-	if (i == ETHER_ADDR_LEN) {
+	if (i == RTE_ETHER_ADDR_LEN) {
 		while (i-- != 0) {
 			if (o[i] > UINT8_MAX)
 				return NULL;
 			ether_addr.addr_bytes[i] = (uint8_t)o[i];
 		}
 	/* Support the format XXXX:XXXX:XXXX */
-	} else if (i == ETHER_ADDR_LEN / 2) {
+	} else if (i == RTE_ETHER_ADDR_LEN / 2) {
 		while (i-- != 0) {
 			if (o[i] > UINT16_MAX)
 				return NULL;

@@ -309,7 +309,7 @@ struct bnxt {
 	struct bnxt_irq         *irq_tbl;
 
 #define MAX_NUM_MAC_ADDR	32
-	uint8_t			mac_addr[ETHER_ADDR_LEN];
+	uint8_t			mac_addr[RTE_ETHER_ADDR_LEN];
 
 	uint16_t			hwrm_cmd_seq;
 	uint16_t			kong_cmd_seq;
@@ -326,7 +326,7 @@ struct bnxt {
 	uint8_t			tx_cosq_id;
 
 	uint16_t		fw_fid;
-	uint8_t			dflt_mac_addr[ETHER_ADDR_LEN];
+	uint8_t			dflt_mac_addr[RTE_ETHER_ADDR_LEN];
 	uint16_t		max_rsscos_ctx;
 	uint16_t		max_cp_rings;
 	uint16_t		max_tx_rings;

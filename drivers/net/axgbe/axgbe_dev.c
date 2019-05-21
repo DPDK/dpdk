@@ -10,8 +10,8 @@
 
 static inline unsigned int axgbe_get_max_frame(struct axgbe_port *pdata)
 {
-	return pdata->eth_dev->data->mtu + ETHER_HDR_LEN +
-		ETHER_CRC_LEN + VLAN_HLEN;
+	return pdata->eth_dev->data->mtu + RTE_ETHER_HDR_LEN +
+		RTE_ETHER_CRC_LEN + VLAN_HLEN;
 }
 
 /* query busy bit */

@@ -44,7 +44,7 @@
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[ETHER_ADDR_LEN])
+mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[RTE_ETHER_ADDR_LEN])
 {
 	struct ifreq request;
 	int ret;
@@ -52,7 +52,7 @@ mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[ETHER_ADDR_LEN])
 	ret = mlx5_ifreq(dev, SIOCGIFHWADDR, &request);
 	if (ret)
 		return ret;
-	memcpy(mac, request.ifr_hwaddr.sa_data, ETHER_ADDR_LEN);
+	memcpy(mac, request.ifr_hwaddr.sa_data, RTE_ETHER_ADDR_LEN);
 	return 0;
 }
 

@@ -120,7 +120,7 @@ static uint16_t nb_lcore_params = sizeof(lcore_params_array_default) /
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
 		.mq_mode = ETH_MQ_RX_RSS,
-		.max_rx_pkt_len = ETHER_MAX_LEN,
+		.max_rx_pkt_len = RTE_ETHER_MAX_LEN,
 		.split_hdr_size = 0,
 		.offloads = DEV_RX_OFFLOAD_CHECKSUM,
 	},
@@ -570,7 +570,7 @@ parse_args(int argc, char **argv)
 
 			/*
 			 * if no max-pkt-len set, use the default
-			 * value ETHER_MAX_LEN.
+			 * value RTE_ETHER_MAX_LEN.
 			 */
 			if (getopt_long(argc, argvopt, "",
 					&lenopts, &option_index) == 0) {
@@ -649,8 +649,8 @@ parse_args(int argc, char **argv)
 static void
 print_ethaddr(const char *name, const struct rte_ether_addr *eth_addr)
 {
-	char buf[ETHER_ADDR_FMT_SIZE];
-	rte_ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
+	char buf[RTE_ETHER_ADDR_FMT_SIZE];
+	rte_ether_format_addr(buf, RTE_ETHER_ADDR_FMT_SIZE, eth_addr);
 	printf("%s%s", name, buf);
 }
 
@@ -827,7 +827,7 @@ main(int argc, char **argv)
 	/* pre-init dst MACs for all ports to 02:00:00:00:00:xx */
 	for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
 		dest_eth_addr[portid] =
-			ETHER_LOCAL_ADMIN_ADDR + ((uint64_t)portid << 40);
+			RTE_ETHER_LOCAL_ADMIN_ADDR + ((uint64_t)portid << 40);
 		*(uint64_t *)(val_eth + portid) = dest_eth_addr[portid];
 	}
 

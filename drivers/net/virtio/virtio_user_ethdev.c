@@ -118,8 +118,8 @@ virtio_user_read_dev_config(struct virtio_hw *hw, size_t offset,
 	struct virtio_user_dev *dev = virtio_user_get_dev(hw);
 
 	if (offset == offsetof(struct virtio_net_config, mac) &&
-	    length == ETHER_ADDR_LEN) {
-		for (i = 0; i < ETHER_ADDR_LEN; ++i)
+	    length == RTE_ETHER_ADDR_LEN) {
+		for (i = 0; i < RTE_ETHER_ADDR_LEN; ++i)
 			((uint8_t *)dst)[i] = dev->mac_addr[i];
 		return;
 	}
@@ -179,8 +179,8 @@ virtio_user_write_dev_config(struct virtio_hw *hw, size_t offset,
 	struct virtio_user_dev *dev = virtio_user_get_dev(hw);
 
 	if ((offset == offsetof(struct virtio_net_config, mac)) &&
-	    (length == ETHER_ADDR_LEN))
-		for (i = 0; i < ETHER_ADDR_LEN; ++i)
+	    (length == RTE_ETHER_ADDR_LEN))
+		for (i = 0; i < RTE_ETHER_ADDR_LEN; ++i)
 			dev->mac_addr[i] = ((const uint8_t *)src)[i];
 	else
 		PMD_DRV_LOG(ERR, "not supported offset=%zu, len=%d",

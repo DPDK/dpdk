@@ -640,8 +640,8 @@ int bnxt_init_rx_ring_struct(struct bnxt_rx_queue *rxq, unsigned int socket_id)
 	struct bnxt_rx_ring_info *rxr;
 	struct bnxt_ring *ring;
 
-	rxq->rx_buf_use_size = BNXT_MAX_MTU + ETHER_HDR_LEN + ETHER_CRC_LEN +
-			       (2 * VLAN_TAG_SIZE);
+	rxq->rx_buf_use_size = BNXT_MAX_MTU + RTE_ETHER_HDR_LEN +
+		RTE_ETHER_CRC_LEN + (2 * VLAN_TAG_SIZE);
 	rxq->rx_buf_size = rxq->rx_buf_use_size + sizeof(struct rte_mbuf);
 
 	rxr = rte_zmalloc_socket("bnxt_rx_ring",

@@ -1247,7 +1247,7 @@ flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
 						(void *)items->type,
 						"eth header not found");
 			if (!eth->ether_type)
-				eth->ether_type = RTE_BE16(ETHER_TYPE_VLAN);
+				eth->ether_type = RTE_BE16(RTE_ETHER_TYPE_VLAN);
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			ipv4 = (struct ipv4_hdr *)&buf[temp_size];
@@ -1258,9 +1258,9 @@ flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
 						"neither eth nor vlan"
 						" header found");
 			if (vlan && !vlan->eth_proto)
-				vlan->eth_proto = RTE_BE16(ETHER_TYPE_IPv4);
+				vlan->eth_proto = RTE_BE16(RTE_ETHER_TYPE_IPv4);
 			else if (eth && !eth->ether_type)
-				eth->ether_type = RTE_BE16(ETHER_TYPE_IPv4);
+				eth->ether_type = RTE_BE16(RTE_ETHER_TYPE_IPv4);
 			if (!ipv4->version_ihl)
 				ipv4->version_ihl = MLX5_ENCAP_IPV4_VERSION |
 						    MLX5_ENCAP_IPV4_IHL_MIN;
@@ -1276,9 +1276,9 @@ flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
 						"neither eth nor vlan"
 						" header found");
 			if (vlan && !vlan->eth_proto)
-				vlan->eth_proto = RTE_BE16(ETHER_TYPE_IPv6);
+				vlan->eth_proto = RTE_BE16(RTE_ETHER_TYPE_IPv6);
 			else if (eth && !eth->ether_type)
-				eth->ether_type = RTE_BE16(ETHER_TYPE_IPv6);
+				eth->ether_type = RTE_BE16(RTE_ETHER_TYPE_IPv6);
 			if (!ipv6->vtc_flow)
 				ipv6->vtc_flow =
 					RTE_BE32(MLX5_ENCAP_IPV6_VTC_FLOW);
@@ -3094,7 +3094,7 @@ flow_dv_translate_item_mpls(void *matcher, void *key,
 	case MLX5_FLOW_LAYER_GRE:
 		MLX5_SET(fte_match_set_misc, misc_m, gre_protocol, 0xffff);
 		MLX5_SET(fte_match_set_misc, misc_v, gre_protocol,
-			 ETHER_TYPE_MPLS);
+			 RTE_ETHER_TYPE_MPLS);
 		break;
 	default:
 		MLX5_SET(fte_match_set_lyr_2_4, headers_m, ip_protocol, 0xff);

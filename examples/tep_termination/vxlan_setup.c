@@ -251,7 +251,7 @@ vxlan_link(struct vhost_dev *vdev, struct rte_mbuf *m)
 		return -1;
 	}
 
-	for (i = 0; i < ETHER_ADDR_LEN; i++) {
+	for (i = 0; i < RTE_ETHER_ADDR_LEN; i++) {
 		vdev->mac_address.addr_bytes[i] =
 			vxdev.port[portid].vport_mac.addr_bytes[i] =
 			pkt_hdr->s_addr.addr_bytes[i];
@@ -313,7 +313,7 @@ vxlan_link(struct vhost_dev *vdev, struct rte_mbuf *m)
 			&app_l2_hdr[portid].d_addr);
 	rte_ether_addr_copy(&ports_eth_addr[0],
 			&app_l2_hdr[portid].s_addr);
-	app_l2_hdr[portid].ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
+	app_l2_hdr[portid].ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4);
 
 	ip = &app_ip_hdr[portid];
 	ip->version_ihl = IP_VHL_DEF;
@@ -373,7 +373,7 @@ vxlan_unlink(struct vhost_dev *vdev)
 				vdev->rx_q);
 			return;
 		}
-		for (i = 0; i < ETHER_ADDR_LEN; i++)
+		for (i = 0; i < RTE_ETHER_ADDR_LEN; i++)
 			vdev->mac_address.addr_bytes[i] = 0;
 
 		/* Clear out the receive buffers */

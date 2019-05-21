@@ -577,7 +577,7 @@ tx_machine(struct bond_dev_private *internals, uint16_t slave_id)
 	/* Source and destination MAC */
 	rte_ether_addr_copy(&lacp_mac_addr, &hdr->eth_hdr.d_addr);
 	rte_eth_macaddr_get(slave_id, &hdr->eth_hdr.s_addr);
-	hdr->eth_hdr.ether_type = rte_cpu_to_be_16(ETHER_TYPE_SLOW);
+	hdr->eth_hdr.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_SLOW);
 
 	lacpdu = &hdr->lacpdu;
 	memset(lacpdu, 0, sizeof(*lacpdu));

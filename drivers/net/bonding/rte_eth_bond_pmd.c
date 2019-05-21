@@ -37,15 +37,15 @@ get_vlan_offset(struct rte_ether_hdr *eth_hdr, uint16_t *proto)
 {
 	size_t vlan_offset = 0;
 
-	if (rte_cpu_to_be_16(ETHER_TYPE_VLAN) == *proto ||
-		rte_cpu_to_be_16(ETHER_TYPE_QINQ) == *proto) {
+	if (rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN) == *proto ||
+		rte_cpu_to_be_16(RTE_ETHER_TYPE_QINQ) == *proto) {
 		struct rte_vlan_hdr *vlan_hdr =
 			(struct rte_vlan_hdr *)(eth_hdr + 1);
 
 		vlan_offset = sizeof(struct rte_vlan_hdr);
 		*proto = vlan_hdr->eth_proto;
 
-		if (rte_cpu_to_be_16(ETHER_TYPE_VLAN) == *proto) {
+		if (rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN) == *proto) {
 			vlan_hdr = vlan_hdr + 1;
 			*proto = vlan_hdr->eth_proto;
 			vlan_offset += sizeof(struct rte_vlan_hdr);
@@ -108,7 +108,8 @@ bond_ethdev_rx_burst_active_backup(void *queue, struct rte_mbuf **bufs,
 static inline uint8_t
 is_lacp_packets(uint16_t ethertype, uint8_t subtype, struct rte_mbuf *mbuf)
 {
-	const uint16_t ether_type_slow_be = rte_be_to_cpu_16(ETHER_TYPE_SLOW);
+	const uint16_t ether_type_slow_be =
+		rte_be_to_cpu_16(RTE_ETHER_TYPE_SLOW);
 
 	return !((mbuf->ol_flags & PKT_RX_VLAN) ? mbuf->vlan_tci : 0) &&
 		(ethertype == ether_type_slow_be &&
@@ -122,7 +123,7 @@ is_lacp_packets(uint16_t ethertype, uint8_t subtype, struct rte_mbuf *mbuf)
 static struct rte_flow_item_eth flow_item_eth_type_8023ad = {
 	.dst.addr_bytes = { 0 },
 	.src.addr_bytes = { 0 },
-	.type = RTE_BE16(ETHER_TYPE_SLOW),
+	.type = RTE_BE16(RTE_ETHER_TYPE_SLOW),
 };
 
 static struct rte_flow_item_eth flow_item_eth_mask_type_8023ad = {
@@ -398,7 +399,8 @@ bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 	struct rte_ether_addr *bond_mac = bonded_eth_dev->data->mac_addrs;
 	struct rte_ether_hdr *hdr;
 
-	const uint16_t ether_type_slow_be = rte_be_to_cpu_16(ETHER_TYPE_SLOW);
+	const uint16_t ether_type_slow_be =
+		rte_be_to_cpu_16(RTE_ETHER_TYPE_SLOW);
 	uint16_t num_rx_total = 0;	/* Total number of received packets */
 	uint16_t slaves[RTE_MAX_ETHPORTS];
 	uint16_t slave_count, idx;
@@ -605,7 +607,7 @@ mode6_debug(const char __attribute__((unused)) *info,
 	strlcpy(buf, info, 16);
 #endif
 
-	if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv4)) {
+	if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4)) {
 		ipv4_h = (struct ipv4_hdr *)((char *)(eth_h + 1) + offset);
 		ipv4_addr_to_dot(ipv4_h->src_addr, src_ip, MaxIPv4String);
 #ifdef RTE_LIBRTE_BOND_DEBUG_ALB
@@ -615,7 +617,7 @@ mode6_debug(const char __attribute__((unused)) *info,
 		update_client_stats(ipv4_h->src_addr, port, burstnumber);
 	}
 #ifdef RTE_LIBRTE_BOND_DEBUG_ALB
-	else if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_ARP)) {
+	else if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_ARP)) {
 		arp_h = (struct rte_arp_hdr *)((char *)(eth_h + 1) + offset);
 		ipv4_addr_to_dot(arp_h->arp_data.arp_sip, src_ip, MaxIPv4String);
 		ipv4_addr_to_dot(arp_h->arp_data.arp_tip, dst_ip, MaxIPv4String);
@@ -644,14 +646,14 @@ bond_ethdev_rx_burst_alb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		ether_type = eth_h->ether_type;
 		offset = get_vlan_offset(eth_h, &ether_type);
 
-		if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_ARP)) {
+		if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_ARP)) {
 #if defined(RTE_LIBRTE_BOND_DEBUG_ALB) || defined(RTE_LIBRTE_BOND_DEBUG_ALB_L1)
 			mode6_debug("RX ARP:", eth_h, bufs[i]->port, &burstnumberRX);
 #endif
 			bond_mode_alb_arp_recv(eth_h, offset, internals);
 		}
 #if defined(RTE_LIBRTE_BOND_DEBUG_ALB) || defined(RTE_LIBRTE_BOND_DEBUG_ALB_L1)
-		else if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv4))
+		else if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4))
 			mode6_debug("RX IPv4:", eth_h, bufs[i]->port, &burstnumberRX);
 #endif
 	}
@@ -809,12 +811,12 @@ burst_xmit_l23_hash(struct rte_mbuf **buf, uint16_t nb_pkts,
 
 		vlan_offset = get_vlan_offset(eth_hdr, &proto);
 
-		if (rte_cpu_to_be_16(ETHER_TYPE_IPv4) == proto) {
+		if (rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4) == proto) {
 			struct ipv4_hdr *ipv4_hdr = (struct ipv4_hdr *)
 					((char *)(eth_hdr + 1) + vlan_offset);
 			l3hash = ipv4_hash(ipv4_hdr);
 
-		} else if (rte_cpu_to_be_16(ETHER_TYPE_IPv6) == proto) {
+		} else if (rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6) == proto) {
 			struct ipv6_hdr *ipv6_hdr = (struct ipv6_hdr *)
 					((char *)(eth_hdr + 1) + vlan_offset);
 			l3hash = ipv6_hash(ipv6_hdr);
@@ -849,7 +851,7 @@ burst_xmit_l34_hash(struct rte_mbuf **buf, uint16_t nb_pkts,
 		l3hash = 0;
 		l4hash = 0;
 
-		if (rte_cpu_to_be_16(ETHER_TYPE_IPv4) == proto) {
+		if (rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4) == proto) {
 			struct ipv4_hdr *ipv4_hdr = (struct ipv4_hdr *)
 					((char *)(eth_hdr + 1) + vlan_offset);
 			size_t ip_hdr_offset;
@@ -880,7 +882,7 @@ burst_xmit_l34_hash(struct rte_mbuf **buf, uint16_t nb_pkts,
 						l4hash = HASH_L4_PORTS(udp_hdr);
 				}
 			}
-		} else if  (rte_cpu_to_be_16(ETHER_TYPE_IPv6) == proto) {
+		} else if  (rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6) == proto) {
 			struct ipv6_hdr *ipv6_hdr = (struct ipv6_hdr *)
 					((char *)(eth_hdr + 1) + vlan_offset);
 			l3hash = ipv6_hash(ipv6_hdr);
@@ -1107,7 +1109,7 @@ bond_ethdev_tx_burst_alb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		ether_type = eth_h->ether_type;
 		offset = get_vlan_offset(eth_h, &ether_type);
 
-		if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_ARP)) {
+		if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_ARP)) {
 			slave_idx = bond_mode_alb_arp_xmit(eth_h, offset, internals);
 
 			/* Change src mac in eth header */
@@ -2252,7 +2254,7 @@ bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->max_rx_pktlen = internals->candidate_max_rx_pktlen ?
 			internals->candidate_max_rx_pktlen :
-			ETHER_MAX_JUMBO_FRAME_LEN;
+			RTE_ETHER_MAX_JUMBO_FRAME_LEN;
 
 	/* Max number of tx/rx queues that the bonded device can support is the
 	 * minimum values of the bonded slaves, as all slaves must be capable
@@ -3084,12 +3086,12 @@ bond_alloc(struct rte_vdev_device *dev, uint8_t mode)
 	eth_dev->data->nb_tx_queues = (uint16_t)1;
 
 	/* Allocate memory for storing MAC addresses */
-	eth_dev->data->mac_addrs = rte_zmalloc_socket(name, ETHER_ADDR_LEN *
+	eth_dev->data->mac_addrs = rte_zmalloc_socket(name, RTE_ETHER_ADDR_LEN *
 			BOND_MAX_MAC_ADDRS, 0, socket_id);
 	if (eth_dev->data->mac_addrs == NULL) {
 		RTE_BOND_LOG(ERR,
 			     "Failed to allocate %u bytes needed to store MAC addresses",
-			     ETHER_ADDR_LEN * BOND_MAX_MAC_ADDRS);
+			     RTE_ETHER_ADDR_LEN * BOND_MAX_MAC_ADDRS);
 		goto err;
 	}
 
@@ -3148,7 +3150,7 @@ bond_alloc(struct rte_vdev_device *dev, uint8_t mode)
 	}
 
 	vlan_filter_bmp_size =
-		rte_bitmap_get_memory_footprint(ETHER_MAX_VLAN_ID + 1);
+		rte_bitmap_get_memory_footprint(RTE_ETHER_MAX_VLAN_ID + 1);
 	internals->vlan_filter_bmpmem = rte_malloc(name, vlan_filter_bmp_size,
 						   RTE_CACHE_LINE_SIZE);
 	if (internals->vlan_filter_bmpmem == NULL) {
@@ -3158,7 +3160,7 @@ bond_alloc(struct rte_vdev_device *dev, uint8_t mode)
 		goto err;
 	}
 
-	internals->vlan_filter_bmp = rte_bitmap_init(ETHER_MAX_VLAN_ID + 1,
+	internals->vlan_filter_bmp = rte_bitmap_init(RTE_ETHER_MAX_VLAN_ID + 1,
 			internals->vlan_filter_bmpmem, vlan_filter_bmp_size);
 	if (internals->vlan_filter_bmp == NULL) {
 		RTE_BOND_LOG(ERR,

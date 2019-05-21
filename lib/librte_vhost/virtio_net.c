@@ -977,7 +977,7 @@ parse_ethernet(struct rte_mbuf *m, uint16_t *l4_proto, void **l4_hdr)
 	m->l2_len = sizeof(struct rte_ether_hdr);
 	ethertype = rte_be_to_cpu_16(eth_hdr->ether_type);
 
-	if (ethertype == ETHER_TYPE_VLAN) {
+	if (ethertype == RTE_ETHER_TYPE_VLAN) {
 		struct rte_vlan_hdr *vlan_hdr =
 			(struct rte_vlan_hdr *)(eth_hdr + 1);
 
@@ -988,14 +988,14 @@ parse_ethernet(struct rte_mbuf *m, uint16_t *l4_proto, void **l4_hdr)
 	l3_hdr = (char *)eth_hdr + m->l2_len;
 
 	switch (ethertype) {
-	case ETHER_TYPE_IPv4:
+	case RTE_ETHER_TYPE_IPv4:
 		ipv4_hdr = l3_hdr;
 		*l4_proto = ipv4_hdr->next_proto_id;
 		m->l3_len = (ipv4_hdr->version_ihl & 0x0f) * 4;
 		*l4_hdr = (char *)l3_hdr + m->l3_len;
 		m->ol_flags |= PKT_TX_IPV4;
 		break;
-	case ETHER_TYPE_IPv6:
+	case RTE_ETHER_TYPE_IPv6:
 		ipv6_hdr = l3_hdr;
 		*l4_proto = ipv6_hdr->proto;
 		m->l3_len = sizeof(struct ipv6_hdr);

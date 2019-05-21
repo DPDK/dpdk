@@ -440,7 +440,7 @@ void mlx5_translate_port_name(const char *port_name_in,
 
 /* mlx5_mac.c */
 
-int mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[ETHER_ADDR_LEN]);
+int mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[RTE_ETHER_ADDR_LEN]);
 void mlx5_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index);
 int mlx5_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 		      uint32_t index, uint32_t vmdq);

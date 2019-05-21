@@ -707,7 +707,7 @@ flow_tcf_pedit_key_set_mac(const struct rte_flow_action *actions,
 	p_parser->keys_ex[idx].cmd = TCA_PEDIT_KEY_EX_CMD_SET;
 	memcpy(&p_parser->keys[idx].val,
 		conf->mac_addr + SZ_PEDIT_KEY_VAL,
-		ETHER_ADDR_LEN - SZ_PEDIT_KEY_VAL);
+		RTE_ETHER_ADDR_LEN - SZ_PEDIT_KEY_VAL);
 	p_parser->sel.nkeys = (++idx);
 }
 
@@ -984,11 +984,11 @@ flow_tcf_get_pedit_actions_size(const struct rte_flow_action **actions,
 			flags |= MLX5_FLOW_ACTION_DEC_TTL;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_MAC_SRC:
-			keys += NUM_OF_PEDIT_KEYS(ETHER_ADDR_LEN);
+			keys += NUM_OF_PEDIT_KEYS(RTE_ETHER_ADDR_LEN);
 			flags |= MLX5_FLOW_ACTION_SET_MAC_SRC;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_MAC_DST:
-			keys += NUM_OF_PEDIT_KEYS(ETHER_ADDR_LEN);
+			keys += NUM_OF_PEDIT_KEYS(RTE_ETHER_ADDR_LEN);
 			flags |= MLX5_FLOW_ACTION_SET_MAC_DST;
 			break;
 		default:
@@ -2521,7 +2521,7 @@ flow_tcf_get_items_size(const struct rte_flow_attr *attr,
 		case RTE_FLOW_ITEM_TYPE_PORT_ID:
 			break;
 		case RTE_FLOW_ITEM_TYPE_ETH:
-			size += SZ_NLATTR_DATA_OF(ETHER_ADDR_LEN) * 4;
+			size += SZ_NLATTR_DATA_OF(RTE_ETHER_ADDR_LEN) * 4;
 				/* dst/src MAC addr and mask. */
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
@@ -3336,18 +3336,18 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 			}
 			if (!rte_is_zero_ether_addr(&mask.eth->dst)) {
 				mnl_attr_put(nlh, TCA_FLOWER_KEY_ETH_DST,
-					     ETHER_ADDR_LEN,
+					     RTE_ETHER_ADDR_LEN,
 					     spec.eth->dst.addr_bytes);
 				mnl_attr_put(nlh, TCA_FLOWER_KEY_ETH_DST_MASK,
-					     ETHER_ADDR_LEN,
+					     RTE_ETHER_ADDR_LEN,
 					     mask.eth->dst.addr_bytes);
 			}
 			if (!rte_is_zero_ether_addr(&mask.eth->src)) {
 				mnl_attr_put(nlh, TCA_FLOWER_KEY_ETH_SRC,
-					     ETHER_ADDR_LEN,
+					     RTE_ETHER_ADDR_LEN,
 					     spec.eth->src.addr_bytes);
 				mnl_attr_put(nlh, TCA_FLOWER_KEY_ETH_SRC_MASK,
-					     ETHER_ADDR_LEN,
+					     RTE_ETHER_ADDR_LEN,
 					     mask.eth->src.addr_bytes);
 			}
 			assert(dev_flow->tcf.nlsize >= nlh->nlmsg_len);
@@ -4395,7 +4395,7 @@ flow_tcf_collect_neigh_cb(const struct nlmsghdr *nlh, void *arg)
 	/* Neigh rule with permanent attribute found. */
 	size = MNL_ALIGN(sizeof(struct nlmsghdr)) +
 	       MNL_ALIGN(sizeof(struct ndmsg)) +
-	       SZ_NLATTR_DATA_OF(ETHER_ADDR_LEN) +
+	       SZ_NLATTR_DATA_OF(RTE_ETHER_ADDR_LEN) +
 	       (family == AF_INET6 ? SZ_NLATTR_DATA_OF(IPV6_ADDR_LEN)
 				   : SZ_NLATTR_TYPE_OF(uint32_t));
 	cmd = flow_tcf_alloc_nlcmd(ctx, size);
@@ -4419,7 +4419,7 @@ flow_tcf_collect_neigh_cb(const struct nlmsghdr *nlh, void *arg)
 		mnl_attr_put(cmd, NDA_DST, IPV6_ADDR_LEN,
 			     mnl_attr_get_payload(na_ip));
 	}
-	mnl_attr_put(cmd, NDA_LLADDR, ETHER_ADDR_LEN,
+	mnl_attr_put(cmd, NDA_LLADDR, RTE_ETHER_ADDR_LEN,
 		     mnl_attr_get_payload(na_mac));
 	assert(size == cmd->nlmsg_len);
 	return 1;

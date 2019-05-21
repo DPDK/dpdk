@@ -120,7 +120,7 @@ static struct rte_mempool *mbuf_pool;
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
 		.mq_mode = ETH_MQ_RX_NONE,
-		.max_rx_pkt_len = ETHER_MAX_LEN,
+		.max_rx_pkt_len = RTE_ETHER_MAX_LEN,
 		.split_hdr_size = 0,
 	},
 	.rx_adv_conf = {
@@ -304,14 +304,14 @@ get_vlan_offset(struct rte_ether_hdr *eth_hdr, uint16_t *proto)
 {
 	size_t vlan_offset = 0;
 
-	if (rte_cpu_to_be_16(ETHER_TYPE_VLAN) == *proto) {
+	if (rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN) == *proto) {
 		struct rte_vlan_hdr *vlan_hdr =
 			(struct rte_vlan_hdr *)(eth_hdr + 1);
 
 		vlan_offset = sizeof(struct rte_vlan_hdr);
 		*proto = vlan_hdr->eth_proto;
 
-		if (rte_cpu_to_be_16(ETHER_TYPE_VLAN) == *proto) {
+		if (rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN) == *proto) {
 			vlan_hdr = vlan_hdr + 1;
 
 			*proto = vlan_hdr->eth_proto;
@@ -374,12 +374,12 @@ static int lcore_main(__attribute__((unused)) void *arg1)
 			eth_hdr = rte_pktmbuf_mtod(pkts[i],
 						struct rte_ether_hdr *);
 			ether_type = eth_hdr->ether_type;
-			if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_VLAN))
+			if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN))
 				printf("VLAN taged frame, offset:");
 			offset = get_vlan_offset(eth_hdr, &ether_type);
 			if (offset > 0)
 				printf("%d\n", offset);
-			if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_ARP)) {
+			if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_ARP)) {
 				if (rte_spinlock_trylock(&global_flag_stru_p->lock) == 1)     {
 					global_flag_stru_p->port_packets[1]++;
 					rte_spinlock_unlock(&global_flag_stru_p->lock);
@@ -404,7 +404,7 @@ static int lcore_main(__attribute__((unused)) void *arg1)
 						rte_eth_tx_burst(BOND_PORT, 0, NULL, 0);
 					}
 				}
-			} else if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv4)) {
+			} else if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4)) {
 				if (rte_spinlock_trylock(&global_flag_stru_p->lock) == 1)     {
 					global_flag_stru_p->port_packets[2]++;
 					rte_spinlock_unlock(&global_flag_stru_p->lock);
@@ -479,20 +479,20 @@ static void cmd_obj_send_parsed(void *parsed_result,
 
 	eth_hdr = rte_pktmbuf_mtod(created_pkt, struct rte_ether_hdr *);
 	rte_eth_macaddr_get(BOND_PORT, &eth_hdr->s_addr);
-	memset(&eth_hdr->d_addr, 0xFF, ETHER_ADDR_LEN);
-	eth_hdr->ether_type = rte_cpu_to_be_16(ETHER_TYPE_ARP);
+	memset(&eth_hdr->d_addr, 0xFF, RTE_ETHER_ADDR_LEN);
+	eth_hdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_ARP);
 
 	arp_hdr = (struct rte_arp_hdr *)(
 		(char *)eth_hdr + sizeof(struct rte_ether_hdr));
 	arp_hdr->arp_hardware = rte_cpu_to_be_16(RTE_ARP_HRD_ETHER);
-	arp_hdr->arp_protocol = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
-	arp_hdr->arp_hlen = ETHER_ADDR_LEN;
+	arp_hdr->arp_protocol = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4);
+	arp_hdr->arp_hlen = RTE_ETHER_ADDR_LEN;
 	arp_hdr->arp_plen = sizeof(uint32_t);
 	arp_hdr->arp_opcode = rte_cpu_to_be_16(RTE_ARP_OP_REQUEST);
 
 	rte_eth_macaddr_get(BOND_PORT, &arp_hdr->arp_data.arp_sha);
 	arp_hdr->arp_data.arp_sip = bond_ip;
-	memset(&arp_hdr->arp_data.arp_tha, 0, ETHER_ADDR_LEN);
+	memset(&arp_hdr->arp_data.arp_tha, 0, RTE_ETHER_ADDR_LEN);
 	arp_hdr->arp_data.arp_tip =
 			  ((unsigned char *)&res->ip.addr.ipv4)[0]        |
 			 (((unsigned char *)&res->ip.addr.ipv4)[1] << 8)  |

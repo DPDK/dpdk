@@ -1086,7 +1086,7 @@ dpaa2_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	int ret;
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
-	uint32_t frame_size = mtu + ETHER_HDR_LEN + ETHER_CRC_LEN
+	uint32_t frame_size = mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN
 				+ VLAN_TAG_SIZE;
 
 	PMD_INIT_FUNC_TRACE();
@@ -1097,10 +1097,10 @@ dpaa2_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	}
 
 	/* check that mtu is within the allowed range */
-	if ((mtu < ETHER_MIN_MTU) || (frame_size > DPAA2_MAX_RX_PKT_LEN))
+	if (mtu < RTE_ETHER_MIN_MTU || frame_size > DPAA2_MAX_RX_PKT_LEN)
 		return -EINVAL;
 
-	if (frame_size > ETHER_MAX_LEN)
+	if (frame_size > RTE_ETHER_MAX_LEN)
 		dev->data->dev_conf.rxmode.offloads &=
 						DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
@@ -2186,11 +2186,11 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	 * can add MAC entries when rte_eth_dev_mac_addr_add is called.
 	 */
 	eth_dev->data->mac_addrs = rte_zmalloc("dpni",
-		ETHER_ADDR_LEN * attr.mac_filter_entries, 0);
+		RTE_ETHER_ADDR_LEN * attr.mac_filter_entries, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		DPAA2_PMD_ERR(
 		   "Failed to allocate %d bytes needed to store MAC addresses",
-		   ETHER_ADDR_LEN * attr.mac_filter_entries);
+		   RTE_ETHER_ADDR_LEN * attr.mac_filter_entries);
 		ret = -ENOMEM;
 		goto init_err;
 	}

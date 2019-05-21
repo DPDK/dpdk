@@ -142,7 +142,8 @@ octeontx_port_open(struct octeontx_nic *nic)
 	nic->mcast_mode = bgx_port_conf.mcast_mode;
 	nic->speed	= bgx_port_conf.mode;
 
-	memcpy(&nic->mac_addr[0], &bgx_port_conf.macaddr[0], ETHER_ADDR_LEN);
+	memcpy(&nic->mac_addr[0], &bgx_port_conf.macaddr[0],
+		RTE_ETHER_ADDR_LEN);
 
 	octeontx_log_dbg("port opened %d", nic->port_id);
 	return res;
@@ -1064,7 +1065,7 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 	data->all_multicast = 0;
 	data->scattered_rx = 0;
 
-	data->mac_addrs = rte_zmalloc_socket(octtx_name, ETHER_ADDR_LEN, 0,
+	data->mac_addrs = rte_zmalloc_socket(octtx_name, RTE_ETHER_ADDR_LEN, 0,
 							socket_id);
 	if (data->mac_addrs == NULL) {
 		octeontx_log_err("failed to allocate memory for mac_addrs");
@@ -1085,7 +1086,7 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 	}
 
 	/* Update port_id mac to eth_dev */
-	memcpy(data->mac_addrs, nic->mac_addr, ETHER_ADDR_LEN);
+	memcpy(data->mac_addrs, nic->mac_addr, RTE_ETHER_ADDR_LEN);
 
 	PMD_INIT_LOG(DEBUG, "ethdev info: ");
 	PMD_INIT_LOG(DEBUG, "port %d, port_ena %d ochan %d num_ochan %d tx_q %d",

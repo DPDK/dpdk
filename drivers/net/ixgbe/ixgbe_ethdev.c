@@ -1213,13 +1213,13 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	ixgbe_reset_qstat_mappings(hw);
 
 	/* Allocate memory for storing MAC addresses */
-	eth_dev->data->mac_addrs = rte_zmalloc("ixgbe", ETHER_ADDR_LEN *
+	eth_dev->data->mac_addrs = rte_zmalloc("ixgbe", RTE_ETHER_ADDR_LEN *
 					       hw->mac.num_rar_entries, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR,
 			     "Failed to allocate %u bytes needed to store "
 			     "MAC addresses",
-			     ETHER_ADDR_LEN * hw->mac.num_rar_entries);
+			     RTE_ETHER_ADDR_LEN * hw->mac.num_rar_entries);
 		return -ENOMEM;
 	}
 	/* Copy the permanent MAC address */
@@ -1227,12 +1227,12 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 			&eth_dev->data->mac_addrs[0]);
 
 	/* Allocate memory for storing hash filter MAC addresses */
-	eth_dev->data->hash_mac_addrs = rte_zmalloc("ixgbe", ETHER_ADDR_LEN *
-						    IXGBE_VMDQ_NUM_UC_MAC, 0);
+	eth_dev->data->hash_mac_addrs = rte_zmalloc(
+		"ixgbe", RTE_ETHER_ADDR_LEN * IXGBE_VMDQ_NUM_UC_MAC, 0);
 	if (eth_dev->data->hash_mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR,
 			     "Failed to allocate %d bytes needed to store MAC addresses",
-			     ETHER_ADDR_LEN * IXGBE_VMDQ_NUM_UC_MAC);
+			     RTE_ETHER_ADDR_LEN * IXGBE_VMDQ_NUM_UC_MAC);
 		return -ENOMEM;
 	}
 
@@ -1502,7 +1502,7 @@ static int ixgbe_l2_tn_filter_init(struct rte_eth_dev *eth_dev)
 	}
 	l2_tn_info->e_tag_en = FALSE;
 	l2_tn_info->e_tag_fwd_en = FALSE;
-	l2_tn_info->e_tag_ether_type = ETHER_TYPE_ETAG;
+	l2_tn_info->e_tag_ether_type = RTE_ETHER_TYPE_ETAG;
 
 	return 0;
 }
@@ -1543,7 +1543,7 @@ generate_random_mac_addr(struct rte_ether_addr *mac_addr)
 	mac_addr->addr_bytes[1] = 0x09;
 	mac_addr->addr_bytes[2] = 0xC0;
 	/* Force indication of locally assigned MAC address. */
-	mac_addr->addr_bytes[0] |= ETHER_LOCAL_ADMIN_ADDR;
+	mac_addr->addr_bytes[0] |= RTE_ETHER_LOCAL_ADMIN_ADDR;
 	/* Generate the last 3 bytes of the MAC address with a random number. */
 	random = rte_rand();
 	memcpy(&mac_addr->addr_bytes[3], &random, 3);
@@ -1650,13 +1650,13 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	ixgbevf_get_queues(hw, &tcs, &tc);
 
 	/* Allocate memory for storing MAC addresses */
-	eth_dev->data->mac_addrs = rte_zmalloc("ixgbevf", ETHER_ADDR_LEN *
+	eth_dev->data->mac_addrs = rte_zmalloc("ixgbevf", RTE_ETHER_ADDR_LEN *
 					       hw->mac.num_rar_entries, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR,
 			     "Failed to allocate %u bytes needed to store "
 			     "MAC addresses",
-			     ETHER_ADDR_LEN * hw->mac.num_rar_entries);
+			     RTE_ETHER_ADDR_LEN * hw->mac.num_rar_entries);
 		return -ENOMEM;
 	}
 
@@ -3055,7 +3055,7 @@ ixgbe_read_stats_registers(struct ixgbe_hw *hw,
 		hw_stats->qbrc[i] +=
 		    ((uint64_t)IXGBE_READ_REG(hw, IXGBE_QBRC_H(i)) << 32);
 		if (crc_strip == 0)
-			hw_stats->qbrc[i] -= delta_qprc * ETHER_CRC_LEN;
+			hw_stats->qbrc[i] -= delta_qprc * RTE_ETHER_CRC_LEN;
 
 		hw_stats->qbtc[i] += IXGBE_READ_REG(hw, IXGBE_QBTC_L(i));
 		hw_stats->qbtc[i] +=
@@ -3100,12 +3100,12 @@ ixgbe_read_stats_registers(struct ixgbe_hw *hw,
 	hw_stats->tpt += IXGBE_READ_REG(hw, IXGBE_TPT);
 
 	if (crc_strip == 0)
-		hw_stats->gorc -= delta_gprc * ETHER_CRC_LEN;
+		hw_stats->gorc -= delta_gprc * RTE_ETHER_CRC_LEN;
 
 	uint64_t delta_gptc = IXGBE_READ_REG(hw, IXGBE_GPTC);
 	hw_stats->gptc += delta_gptc;
-	hw_stats->gotc -= delta_gptc * ETHER_CRC_LEN;
-	hw_stats->tor -= (hw_stats->tpr - old_tpr) * ETHER_CRC_LEN;
+	hw_stats->gotc -= delta_gptc * RTE_ETHER_CRC_LEN;
+	hw_stats->tor -= (hw_stats->tpr - old_tpr) * RTE_ETHER_CRC_LEN;
 
 	/*
 	 * Workaround: mprc hardware is incorrectly counting
@@ -3135,7 +3135,7 @@ ixgbe_read_stats_registers(struct ixgbe_hw *hw,
 	hw_stats->gptc -= total;
 	hw_stats->mptc -= total;
 	hw_stats->ptc64 -= total;
-	hw_stats->gotc -= total * ETHER_MIN_LEN;
+	hw_stats->gotc -= total * RTE_ETHER_MIN_LEN;
 
 	hw_stats->ruc += IXGBE_READ_REG(hw, IXGBE_RUC);
 	hw_stats->rfc += IXGBE_READ_REG(hw, IXGBE_RFC);
@@ -3757,7 +3757,7 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	else
 		dev_info->max_vmdq_pools = ETH_64_POOLS;
 	dev_info->max_mtu =  dev_info->max_rx_pktlen - IXGBE_ETH_OVERHEAD;
-	dev_info->min_mtu = ETHER_MIN_MTU;
+	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 	dev_info->vmdq_queue_num = dev_info->max_rx_queues;
 	dev_info->rx_queue_offload_capa = ixgbe_get_rx_queue_offloads(dev);
 	dev_info->rx_offload_capa = (ixgbe_get_rx_port_offloads(dev) |
@@ -4558,7 +4558,8 @@ ixgbe_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	 * At least reserve one Ethernet frame for watermark
 	 * high_water/low_water in kilo bytes for ixgbe
 	 */
-	max_high_water = (rx_buf_size - ETHER_MAX_LEN) >> IXGBE_RXPBSIZE_SHIFT;
+	max_high_water = (rx_buf_size -
+			RTE_ETHER_MAX_LEN) >> IXGBE_RXPBSIZE_SHIFT;
 	if ((fc_conf->high_water > max_high_water) ||
 		(fc_conf->high_water < fc_conf->low_water)) {
 		PMD_INIT_LOG(ERR, "Invalid high/low water setup value in KB");
@@ -4779,7 +4780,8 @@ ixgbe_priority_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_pfc_conf *p
 	 * At least reserve one Ethernet frame for watermark
 	 * high_water/low_water in kilo bytes for ixgbe
 	 */
-	max_high_water = (rx_buf_size - ETHER_MAX_LEN) >> IXGBE_RXPBSIZE_SHIFT;
+	max_high_water = (rx_buf_size -
+			RTE_ETHER_MAX_LEN) >> IXGBE_RXPBSIZE_SHIFT;
 	if ((pfc_conf->fc.high_water > max_high_water) ||
 	    (pfc_conf->fc.high_water <= pfc_conf->fc.low_water)) {
 		PMD_INIT_LOG(ERR, "Invalid high/low water setup value in KB");
@@ -4960,7 +4962,7 @@ ixgbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	ixgbe_dev_info_get(dev, &dev_info);
 
 	/* check that mtu is within the allowed range */
-	if ((mtu < ETHER_MIN_MTU) || (frame_size > dev_info.max_rx_pktlen))
+	if (mtu < RTE_ETHER_MIN_MTU || frame_size > dev_info.max_rx_pktlen)
 		return -EINVAL;
 
 	/* If device is started, refuse mtu that requires the support of
@@ -4977,7 +4979,7 @@ ixgbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	hlreg0 = IXGBE_READ_REG(hw, IXGBE_HLREG0);
 
 	/* switch to jumbo mode if needed */
-	if (frame_size > ETHER_MAX_LEN) {
+	if (frame_size > RTE_ETHER_MAX_LEN) {
 		dev->data->dev_conf.rxmode.offloads |=
 			DEV_RX_OFFLOAD_JUMBO_FRAME;
 		hlreg0 |= IXGBE_HLREG0_JUMBOEN;
@@ -6366,7 +6368,8 @@ ixgbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	if ((mtu < ETHER_MIN_MTU) || (max_frame > ETHER_MAX_JUMBO_FRAME_LEN))
+	if (mtu < RTE_ETHER_MIN_MTU ||
+			max_frame > RTE_ETHER_MAX_JUMBO_FRAME_LEN)
 		return -EINVAL;
 
 	/* If device is started, refuse mtu that requires the support of
@@ -6663,8 +6666,8 @@ ixgbe_add_del_ethertype_filter(struct rte_eth_dev *dev,
 	if (filter->queue >= IXGBE_MAX_RX_QUEUE_NUM)
 		return -EINVAL;
 
-	if (filter->ether_type == ETHER_TYPE_IPv4 ||
-		filter->ether_type == ETHER_TYPE_IPv6) {
+	if (filter->ether_type == RTE_ETHER_TYPE_IPv4 ||
+		filter->ether_type == RTE_ETHER_TYPE_IPv6) {
 		PMD_DRV_LOG(ERR, "unsupported ether_type(0x%04x) in"
 			" ethertype filter.", filter->ether_type);
 		return -EINVAL;
@@ -7072,7 +7075,7 @@ ixgbe_timesync_enable(struct rte_eth_dev *dev)
 
 	/* Enable L2 filtering of IEEE1588/802.1AS Ethernet frame types. */
 	IXGBE_WRITE_REG(hw, IXGBE_ETQF(IXGBE_ETQF_FILTER_1588),
-			(ETHER_TYPE_1588 |
+			(RTE_ETHER_TYPE_1588 |
 			 IXGBE_ETQF_FILTER_EN |
 			 IXGBE_ETQF_1588));
 

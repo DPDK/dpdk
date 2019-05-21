@@ -368,7 +368,7 @@ pcap_sink_write_pkt(struct rte_port_sink *port, struct rte_mbuf *mbuf)
 {
 	uint8_t *pcap_dumper = (port->dumper);
 	struct pcap_pkthdr pcap_hdr;
-	uint8_t jumbo_pkt_buf[ETHER_MAX_JUMBO_FRAME_LEN];
+	uint8_t jumbo_pkt_buf[RTE_ETHER_MAX_JUMBO_FRAME_LEN];
 	uint8_t *pkt;
 
 	/* Maximum num packets already reached */
@@ -385,10 +385,10 @@ pcap_sink_write_pkt(struct rte_port_sink *port, struct rte_mbuf *mbuf)
 		struct rte_mbuf *jumbo_mbuf;
 		uint32_t pkt_index = 0;
 
-		/* if packet size longer than ETHER_MAX_JUMBO_FRAME_LEN,
+		/* if packet size longer than RTE_ETHER_MAX_JUMBO_FRAME_LEN,
 		 * ignore it.
 		 */
-		if (mbuf->pkt_len > ETHER_MAX_JUMBO_FRAME_LEN)
+		if (mbuf->pkt_len > RTE_ETHER_MAX_JUMBO_FRAME_LEN)
 			return;
 
 		for (jumbo_mbuf = mbuf; jumbo_mbuf != NULL;

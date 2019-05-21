@@ -8,8 +8,8 @@
 static inline bool
 match_entry(struct mps_tcam_entry *entry, const u8 *eth_addr, const u8 *mask)
 {
-	if (!memcmp(eth_addr, entry->eth_addr, ETHER_ADDR_LEN) &&
-	    !memcmp(mask, entry->mask, ETHER_ADDR_LEN))
+	if (!memcmp(eth_addr, entry->eth_addr, RTE_ETHER_ADDR_LEN) &&
+	    !memcmp(mask, entry->mask, RTE_ETHER_ADDR_LEN))
 		return true;
 	return false;
 }
@@ -95,8 +95,8 @@ int cxgbe_mpstcam_alloc(struct port_info *pi, const u8 *eth_addr,
 
 	/* Fill in the new values */
 	entry = &mpstcam->entry[ret];
-	memcpy(entry->eth_addr, eth_addr, ETHER_ADDR_LEN);
-	memcpy(entry->mask, mask, ETHER_ADDR_LEN);
+	memcpy(entry->eth_addr, eth_addr, RTE_ETHER_ADDR_LEN);
+	memcpy(entry->mask, mask, RTE_ETHER_ADDR_LEN);
 	rte_atomic32_set(&entry->refcnt, 1);
 	entry->state = MPS_ENTRY_USED;
 
@@ -139,7 +139,7 @@ int cxgbe_mpstcam_modify(struct port_info *pi, int idx, const u8 *addr)
 
 	/* idx can now be different from what user provided */
 	entry = &mpstcam->entry[idx];
-	memcpy(entry->eth_addr, addr, ETHER_ADDR_LEN);
+	memcpy(entry->eth_addr, addr, RTE_ETHER_ADDR_LEN);
 	/* NOTE: we have considered the case that idx returned by t4_change_mac
 	 * will be different from the user provided value only if user
 	 * provided value is -1
@@ -161,8 +161,8 @@ int cxgbe_mpstcam_modify(struct port_info *pi, int idx, const u8 *addr)
  */
 static inline void reset_mpstcam_entry(struct mps_tcam_entry *entry)
 {
-	memset(entry->eth_addr, 0, ETHER_ADDR_LEN);
-	memset(entry->mask, 0, ETHER_ADDR_LEN);
+	memset(entry->eth_addr, 0, RTE_ETHER_ADDR_LEN);
+	memset(entry->mask, 0, RTE_ETHER_ADDR_LEN);
 	rte_atomic32_clear(&entry->refcnt);
 	entry->state = MPS_ENTRY_UNUSED;
 }

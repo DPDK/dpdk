@@ -887,8 +887,8 @@ ixgbe_parse_ethertype_filter(struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 
-	if (filter->ether_type == ETHER_TYPE_IPv4 ||
-		filter->ether_type == ETHER_TYPE_IPv6) {
+	if (filter->ether_type == RTE_ETHER_TYPE_IPv4 ||
+		filter->ether_type == RTE_ETHER_TYPE_IPv6) {
 		memset(filter, 0, sizeof(struct rte_eth_ethertype_filter));
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ITEM,
@@ -1705,7 +1705,7 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 			eth_spec = item->spec;
 
 			/* Get the dst MAC. */
-			for (j = 0; j < ETHER_ADDR_LEN; j++) {
+			for (j = 0; j < RTE_ETHER_ADDR_LEN; j++) {
 				rule->ixgbe_fdir.formatted.inner_mac[j] =
 					eth_spec->dst.addr_bytes[j];
 			}
@@ -1734,7 +1734,7 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 			 * src MAC address must be masked,
 			 * and don't support dst MAC address mask.
 			 */
-			for (j = 0; j < ETHER_ADDR_LEN; j++) {
+			for (j = 0; j < RTE_ETHER_ADDR_LEN; j++) {
 				if (eth_mask->src.addr_bytes[j] ||
 					eth_mask->dst.addr_bytes[j] != 0xFF) {
 					memset(rule, 0,
@@ -2660,7 +2660,7 @@ ixgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 	}
 
 	/* src MAC address should be masked. */
-	for (j = 0; j < ETHER_ADDR_LEN; j++) {
+	for (j = 0; j < RTE_ETHER_ADDR_LEN; j++) {
 		if (eth_mask->src.addr_bytes[j]) {
 			memset(rule, 0,
 			       sizeof(struct ixgbe_fdir_rule));
@@ -2671,7 +2671,7 @@ ixgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 		}
 	}
 	rule->mask.mac_addr_byte_mask = 0;
-	for (j = 0; j < ETHER_ADDR_LEN; j++) {
+	for (j = 0; j < RTE_ETHER_ADDR_LEN; j++) {
 		/* It's a per byte mask. */
 		if (eth_mask->dst.addr_bytes[j] == 0xFF) {
 			rule->mask.mac_addr_byte_mask |= 0x1 << j;
@@ -2692,7 +2692,7 @@ ixgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 		eth_spec = item->spec;
 
 		/* Get the dst MAC. */
-		for (j = 0; j < ETHER_ADDR_LEN; j++) {
+		for (j = 0; j < RTE_ETHER_ADDR_LEN; j++) {
 			rule->ixgbe_fdir.formatted.inner_mac[j] =
 				eth_spec->dst.addr_bytes[j];
 		}

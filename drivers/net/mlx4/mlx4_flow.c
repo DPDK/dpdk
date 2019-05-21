@@ -224,7 +224,7 @@ mlx4_flow_merge_eth(struct rte_flow *flow,
 				goto error;
 			}
 			flow->allmulti = 1;
-		} else if (sum_dst != (UINT8_C(0xff) * ETHER_ADDR_LEN)) {
+		} else if (sum_dst != (UINT8_C(0xff) * RTE_ETHER_ADDR_LEN)) {
 			msg = "mlx4 does not support matching partial"
 				" Ethernet fields";
 			goto error;
@@ -252,12 +252,12 @@ mlx4_flow_merge_eth(struct rte_flow *flow,
 		flow->promisc = 1;
 		return 0;
 	}
-	memcpy(eth->val.dst_mac, spec->dst.addr_bytes, ETHER_ADDR_LEN);
-	memcpy(eth->mask.dst_mac, mask->dst.addr_bytes, ETHER_ADDR_LEN);
+	memcpy(eth->val.dst_mac, spec->dst.addr_bytes, RTE_ETHER_ADDR_LEN);
+	memcpy(eth->mask.dst_mac, mask->dst.addr_bytes, RTE_ETHER_ADDR_LEN);
 	/* Remove unwanted bits from values. */
-	for (i = 0; i < ETHER_ADDR_LEN; ++i) {
+	for (i = 0; i < RTE_ETHER_ADDR_LEN; ++i)
 		eth->val.dst_mac[i] &= eth->mask.dst_mac[i];
-	}
+
 	return 0;
 error:
 	return rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM,

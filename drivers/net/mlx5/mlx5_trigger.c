@@ -337,7 +337,7 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 			continue;
 		memcpy(&unicast.dst.addr_bytes,
 		       mac->addr_bytes,
-		       ETHER_ADDR_LEN);
+		       RTE_ETHER_ADDR_LEN);
 		for (j = 0; j != vlan_filter_n; ++j) {
 			uint16_t vlan = priv->vlan_filter[j];
 

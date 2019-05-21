@@ -436,7 +436,7 @@ struct nfp_net_hw {
 #endif
 #endif
 
-	uint8_t mac_addr[ETHER_ADDR_LEN];
+	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
 
 	/* Records starting point for counters */
 	struct rte_eth_stats eth_stats_base;

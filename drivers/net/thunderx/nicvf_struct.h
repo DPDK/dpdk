@@ -105,7 +105,7 @@ struct nicvf {
 	uint16_t mtu;
 	int skip_bytes;
 	bool vlan_filter_en;
-	uint8_t mac_addr[ETHER_ADDR_LEN];
+	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
 	/* secondary queue set support */
 	uint8_t sqs_id;
 	uint8_t sqs_count;

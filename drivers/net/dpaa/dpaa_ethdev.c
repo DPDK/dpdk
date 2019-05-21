@@ -146,13 +146,13 @@ static int
 dpaa_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct dpaa_if *dpaa_intf = dev->data->dev_private;
-	uint32_t frame_size = mtu + ETHER_HDR_LEN + ETHER_CRC_LEN
+	uint32_t frame_size = mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN
 				+ VLAN_TAG_SIZE;
 	uint32_t buffsz = dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM;
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (mtu < ETHER_MIN_MTU || frame_size > DPAA_MAX_RX_PKT_LEN)
+	if (mtu < RTE_ETHER_MIN_MTU || frame_size > DPAA_MAX_RX_PKT_LEN)
 		return -EINVAL;
 	/*
 	 * Refuse mtu that requires the support of scattered packets
@@ -172,7 +172,7 @@ dpaa_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EINVAL;
 	}
 
-	if (frame_size > ETHER_MAX_LEN)
+	if (frame_size > RTE_ETHER_MAX_LEN)
 		dev->data->dev_conf.rxmode.offloads &=
 						DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
@@ -230,7 +230,7 @@ dpaa_eth_dev_configure(struct rte_eth_dev *dev)
 
 		fman_if_set_maxfrm(dpaa_intf->fif, max_len);
 		dev->data->mtu = max_len
-				- ETHER_HDR_LEN - ETHER_CRC_LEN - VLAN_TAG_SIZE;
+			- RTE_ETHER_HDR_LEN - RTE_ETHER_CRC_LEN - VLAN_TAG_SIZE;
 	}
 
 	if (rx_offloads & DEV_RX_OFFLOAD_SCATTER) {
@@ -1364,11 +1364,11 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* Allocate memory for storing MAC addresses */
 	eth_dev->data->mac_addrs = rte_zmalloc("mac_addr",
-		ETHER_ADDR_LEN * DPAA_MAX_MAC_FILTER, 0);
+		RTE_ETHER_ADDR_LEN * DPAA_MAX_MAC_FILTER, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		DPAA_PMD_ERR("Failed to allocate %d bytes needed to "
 						"store MAC addresses",
-				ETHER_ADDR_LEN * DPAA_MAX_MAC_FILTER);
+				RTE_ETHER_ADDR_LEN * DPAA_MAX_MAC_FILTER);
 		ret = -ENOMEM;
 		goto free_tx;
 	}
@@ -1396,7 +1396,7 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 	fman_if_stats_reset(fman_intf);
 	/* Disable SG by default */
 	fman_if_set_sg(fman_intf, 0);
-	fman_if_set_maxfrm(fman_intf, ETHER_MAX_LEN + VLAN_TAG_SIZE);
+	fman_if_set_maxfrm(fman_intf, RTE_ETHER_MAX_LEN + VLAN_TAG_SIZE);
 
 	return 0;
 

@@ -379,7 +379,7 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 	};
 	/* Restore the compressed count. Must be 16 bits. */
 	const uint16_t mcqe_n = t_pkt->data_len +
-				(rxq->crc_present * ETHER_CRC_LEN);
+				(rxq->crc_present * RTE_ETHER_CRC_LEN);
 	const uint64x2_t rearm =
 		vld1q_u64((void *)&t_pkt->rearm_data);
 	const uint32x4_t rxdf_mask = {
@@ -393,8 +393,8 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 			 vreinterpretq_u8_u32(rxdf_mask));
 	const uint16x8_t crc_adj = {
 		0, 0,
-		rxq->crc_present * ETHER_CRC_LEN, 0,
-		rxq->crc_present * ETHER_CRC_LEN, 0,
+		rxq->crc_present * RTE_ETHER_CRC_LEN, 0,
+		rxq->crc_present * RTE_ETHER_CRC_LEN, 0,
 		0, 0
 	};
 	const uint32_t flow_tag = t_pkt->hash.fdir.hi;
@@ -717,7 +717,7 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 		12, 13, 14, -1  /* 1st CQE */
 	};
 	const uint16x8_t crc_adj = {
-		0, 0, rxq->crc_present * ETHER_CRC_LEN, 0, 0, 0, 0, 0
+		0, 0, rxq->crc_present * RTE_ETHER_CRC_LEN, 0, 0, 0, 0, 0
 	};
 	const uint32x4_t flow_mark_adj = { 0, 0, 0, rxq->mark * (-1) };
 

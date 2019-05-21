@@ -17,7 +17,7 @@ enum ecore_int_mode;
 
 struct qed_dev_info {
 	uint8_t num_hwfns;
-	uint8_t hw_mac[ETHER_ADDR_LEN];
+	uint8_t hw_mac[RTE_ETHER_ADDR_LEN];
 	bool is_mf_default;
 
 	/* FW version */

@@ -229,7 +229,7 @@ The actual packet transmission is done in the mcast_send_pkt() function:
 
         rte_ether_addr_copy(dest_addr, &ethdr->d_addr);
         rte_ether_addr_copy(&ports_eth_addr[port], &ethdr->s_addr);
-        ethdr->ether_type = rte_be_to_cpu_16(ETHER_TYPE_IPv4);
+        ethdr->ether_type = rte_be_to_cpu_16(RTE_ETHER_TYPE_IPv4);
 
         /* Put new packet into the output queue */
 

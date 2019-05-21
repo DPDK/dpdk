@@ -212,7 +212,7 @@ struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
 		.mq_mode = ETH_MQ_RX_NONE,
-		.max_rx_pkt_len = ETHER_MAX_LEN,
+		.max_rx_pkt_len = RTE_ETHER_MAX_LEN,
 		.split_hdr_size = 0,
 	},
 	.txmode = {
@@ -396,7 +396,7 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 
 	eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 
-	if (eth_hdr->ether_type != rte_cpu_to_be_16(ETHER_TYPE_IPv4))
+	if (eth_hdr->ether_type != rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4))
 		return -1;
 
 	ipdata_offset = sizeof(struct rte_ether_hdr);

@@ -15,8 +15,9 @@
 #define CXGBE_DEFAULT_TX_DESC_SIZE    1024 /* Default TX ring size */
 #define CXGBE_DEFAULT_RX_DESC_SIZE    1024 /* Default RX ring size */
 
-#define CXGBE_MIN_RX_BUFSIZE ETHER_MIN_MTU /* min buf size */
-#define CXGBE_MAX_RX_PKTLEN (9000 + ETHER_HDR_LEN + ETHER_CRC_LEN) /* max pkt */
+#define CXGBE_MIN_RX_BUFSIZE RTE_ETHER_MIN_MTU /* min buf size */
+#define CXGBE_MAX_RX_PKTLEN (9000 + RTE_ETHER_HDR_LEN + \
+				RTE_ETHER_CRC_LEN) /* max pkt */
 
 /* Max poll time is 100 * 100msec = 10 sec */
 #define CXGBE_LINK_STATUS_POLL_MS 100 /* 100ms */

@@ -280,7 +280,7 @@ mcast_send_pkt(struct rte_mbuf *pkt, struct rte_ether_addr *dest_addr,
 
 	rte_ether_addr_copy(dest_addr, &ethdr->d_addr);
 	rte_ether_addr_copy(&ports_eth_addr[port], &ethdr->s_addr);
-	ethdr->ether_type = rte_be_to_cpu_16(ETHER_TYPE_IPv4);
+	ethdr->ether_type = rte_be_to_cpu_16(RTE_ETHER_TYPE_IPv4);
 
 	/* Put new packet into the output queue */
 	len = qconf->tx_mbufs[port].len;
@@ -539,8 +539,8 @@ parse_args(int argc, char **argv)
 static void
 print_ethaddr(const char *name, struct rte_ether_addr *eth_addr)
 {
-	char buf[ETHER_ADDR_FMT_SIZE];
-	rte_ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
+	char buf[RTE_ETHER_ADDR_FMT_SIZE];
+	rte_ether_format_addr(buf, RTE_ETHER_ADDR_FMT_SIZE, eth_addr);
 	printf("%s%s", name, buf);
 }
 

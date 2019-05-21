@@ -413,7 +413,8 @@ lcoreid_t latencystats_lcore_id = -1;
  * Ethernet device configuration.
  */
 struct rte_eth_rxmode rx_mode = {
-	.max_rx_pkt_len = ETHER_MAX_LEN, /**< Default maximum frame length. */
+	.max_rx_pkt_len = RTE_ETHER_MAX_LEN,
+		/**< Default maximum frame length. */
 };
 
 struct rte_eth_txmode tx_mode = {
@@ -526,7 +527,7 @@ static void dev_event_callback(const char *device_name,
 static int all_ports_started(void);
 
 struct gso_status gso_ports[RTE_MAX_ETHPORTS];
-uint16_t gso_max_segment_size = ETHER_MAX_LEN - ETHER_CRC_LEN;
+uint16_t gso_max_segment_size = RTE_ETHER_MAX_LEN - RTE_ETHER_CRC_LEN;
 
 /*
  * Helper function to check if socket is already discovered.
@@ -582,7 +583,7 @@ set_def_peer_eth_addrs(void)
 	portid_t i;
 
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
-		peer_eth_addrs[i].addr_bytes[0] = ETHER_LOCAL_ADMIN_ADDR;
+		peer_eth_addrs[i].addr_bytes[0] = RTE_ETHER_LOCAL_ADMIN_ADDR;
 		peer_eth_addrs[i].addr_bytes[5] = i;
 	}
 }
@@ -1223,8 +1224,8 @@ init_config(void)
 		fwd_lcores[lc_id]->gso_ctx.direct_pool = mbp;
 		fwd_lcores[lc_id]->gso_ctx.indirect_pool = mbp;
 		fwd_lcores[lc_id]->gso_ctx.gso_types = gso_types;
-		fwd_lcores[lc_id]->gso_ctx.gso_size = ETHER_MAX_LEN -
-			ETHER_CRC_LEN;
+		fwd_lcores[lc_id]->gso_ctx.gso_size = RTE_ETHER_MAX_LEN -
+			RTE_ETHER_CRC_LEN;
 		fwd_lcores[lc_id]->gso_ctx.flag = 0;
 	}
 

@@ -125,7 +125,7 @@ static uint16_t nb_lcore_params = sizeof(lcore_params_array_default) /
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
 		.mq_mode	= ETH_MQ_RX_RSS,
-		.max_rx_pkt_len = ETHER_MAX_LEN,
+		.max_rx_pkt_len = RTE_ETHER_MAX_LEN,
 		.split_hdr_size = 0,
 		.offloads = DEV_RX_OFFLOAD_CHECKSUM,
 	},
@@ -1701,7 +1701,7 @@ parse_args(int argc, char **argv)
 
 				/*
 				 * if no max-pkt-len set, then use the
-				 * default value ETHER_MAX_LEN
+				 * default value RTE_ETHER_MAX_LEN
 				 */
 				if (0 == getopt_long(argc, argvopt, "",
 						&lenopts, &option_index)) {
@@ -1756,8 +1756,8 @@ parse_args(int argc, char **argv)
 static void
 print_ethaddr(const char *name, const struct rte_ether_addr *eth_addr)
 {
-	char buf[ETHER_ADDR_FMT_SIZE];
-	rte_ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
+	char buf[RTE_ETHER_ADDR_FMT_SIZE];
+	rte_ether_format_addr(buf, RTE_ETHER_ADDR_FMT_SIZE, eth_addr);
 	printf("%s%s", name, buf);
 }
 

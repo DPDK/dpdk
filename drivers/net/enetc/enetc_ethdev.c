@@ -417,7 +417,7 @@ enetc_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	rx_ring->crc_len = (uint8_t)((rx_offloads & DEV_RX_OFFLOAD_KEEP_CRC) ?
-				     ETHER_CRC_LEN : 0);
+				     RTE_ETHER_CRC_LEN : 0);
 
 	return 0;
 fail:
@@ -595,7 +595,7 @@ enetc_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	struct enetc_eth_hw *hw =
 		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct enetc_hw *enetc_hw = &hw->hw;
-	uint32_t frame_size = mtu + ETHER_HDR_LEN + ETHER_CRC_LEN;
+	uint32_t frame_size = mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
 
 	/* check that mtu is within the allowed range */
 	if (mtu < ENETC_MAC_MINFRM_SIZE || frame_size > ENETC_MAC_MAXFRM_SIZE)
@@ -612,7 +612,7 @@ enetc_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EINVAL;
 	}
 
-	if (frame_size > ETHER_MAX_LEN)
+	if (frame_size > RTE_ETHER_MAX_LEN)
 		dev->data->dev_conf.rxmode.offloads &=
 						DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
@@ -654,7 +654,8 @@ enetc_dev_configure(struct rte_eth_dev *dev)
 			      ENETC_MAC_MAXFRM_SIZE);
 		enetc_port_wr(enetc_hw, ENETC_PTXMBAR,
 			      2 * ENETC_MAC_MAXFRM_SIZE);
-		dev->data->mtu = ETHER_MAX_LEN - ETHER_HDR_LEN - ETHER_CRC_LEN;
+		dev->data->mtu = RTE_ETHER_MAX_LEN - RTE_ETHER_HDR_LEN -
+			RTE_ETHER_CRC_LEN;
 	}
 
 	if (rx_offloads & DEV_RX_OFFLOAD_KEEP_CRC) {
@@ -830,11 +831,12 @@ enetc_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	/* Allocate memory for storing MAC addresses */
-	eth_dev->data->mac_addrs = rte_zmalloc("enetc_eth", ETHER_ADDR_LEN, 0);
+	eth_dev->data->mac_addrs = rte_zmalloc("enetc_eth",
+					RTE_ETHER_ADDR_LEN, 0);
 	if (!eth_dev->data->mac_addrs) {
 		ENETC_PMD_ERR("Failed to allocate %d bytes needed to "
 			      "store MAC addresses",
-			      ETHER_ADDR_LEN * 1);
+			      RTE_ETHER_ADDR_LEN * 1);
 		error = -ENOMEM;
 		return -1;
 	}
@@ -845,8 +847,9 @@ enetc_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* Set MTU */
 	enetc_port_wr(&hw->hw, ENETC_PM0_MAXFRM,
-		      ENETC_SET_MAXFRM(ETHER_MAX_LEN));
-	eth_dev->data->mtu = ETHER_MAX_LEN - ETHER_HDR_LEN - ETHER_CRC_LEN;
+		      ENETC_SET_MAXFRM(RTE_ETHER_MAX_LEN));
+	eth_dev->data->mtu = RTE_ETHER_MAX_LEN - RTE_ETHER_HDR_LEN -
+		RTE_ETHER_CRC_LEN;
 
 	ENETC_PMD_DEBUG("port_id %d vendorID=0x%x deviceID=0x%x",
 			eth_dev->data->port_id, pci_dev->id.vendor_id,

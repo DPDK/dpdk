@@ -332,7 +332,9 @@ u32 qede_find_first_zero_bit(unsigned long *, u32);
 	qede_find_first_zero_bit(bitmap, length)
 
 #define OSAL_BUILD_BUG_ON(cond)		nothing
-#define ETH_ALEN			ETHER_ADDR_LEN
+#define ETH_ALEN			RTE_ETHER_ADDR_LEN
+#define ETHER_TYPE_VLAN			RTE_ETHER_TYPE_VLAN
+#define ETHER_TYPE_QINQ			RTE_ETHER_TYPE_QINQ
 
 #define OSAL_BITMAP_WEIGHT(bitmap, count) 0
 

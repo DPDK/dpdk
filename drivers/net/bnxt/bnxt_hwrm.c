@@ -393,11 +393,11 @@ int bnxt_hwrm_set_l2_filter(struct bnxt *bp,
 	if (enables &
 	    HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR)
 		memcpy(req.l2_addr, filter->l2_addr,
-		       ETHER_ADDR_LEN);
+		       RTE_ETHER_ADDR_LEN);
 	if (enables &
 	    HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR_MASK)
 		memcpy(req.l2_addr_mask, filter->l2_addr_mask,
-		       ETHER_ADDR_LEN);
+		       RTE_ETHER_ADDR_LEN);
 	if (enables &
 	    HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_OVLAN)
 		req.l2_ovlan = filter->l2_ovlan;
@@ -571,7 +571,7 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	}
 
 	bp->fw_fid = rte_le_to_cpu_32(resp->fid);
-	memcpy(bp->dflt_mac_addr, &resp->mac_address, ETHER_ADDR_LEN);
+	memcpy(bp->dflt_mac_addr, &resp->mac_address, RTE_ETHER_ADDR_LEN);
 	bp->max_rsscos_ctx = rte_le_to_cpu_16(resp->max_rsscos_ctx);
 	bp->max_cp_rings = rte_le_to_cpu_16(resp->max_cmpl_rings);
 	bp->max_tx_rings = rte_le_to_cpu_16(resp->max_tx_rings);
@@ -1329,8 +1329,8 @@ int bnxt_hwrm_vnic_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	vnic->rss_rule = (uint16_t)HWRM_NA_SIGNATURE;
 	vnic->cos_rule = (uint16_t)HWRM_NA_SIGNATURE;
 	vnic->lb_rule = (uint16_t)HWRM_NA_SIGNATURE;
-	vnic->mru = bp->eth_dev->data->mtu + ETHER_HDR_LEN +
-				ETHER_CRC_LEN + VLAN_TAG_SIZE;
+	vnic->mru = bp->eth_dev->data->mtu + RTE_ETHER_HDR_LEN +
+				RTE_ETHER_CRC_LEN + VLAN_TAG_SIZE;
 	HWRM_PREP(req, VNIC_ALLOC, BNXT_USE_CHIMP_MB);
 
 	if (vnic->func_default)
@@ -2516,8 +2516,8 @@ static int bnxt_hwrm_pf_func_cfg(struct bnxt *bp, int tx_rings)
 			HWRM_FUNC_CFG_INPUT_ENABLES_NUM_HW_RING_GRPS);
 	req.flags = rte_cpu_to_le_32(bp->pf.func_cfg_flags);
 	req.mtu = rte_cpu_to_le_16(BNXT_MAX_MTU);
-	req.mru = rte_cpu_to_le_16(bp->eth_dev->data->mtu + ETHER_HDR_LEN +
-				   ETHER_CRC_LEN + VLAN_TAG_SIZE *
+	req.mru = rte_cpu_to_le_16(bp->eth_dev->data->mtu + RTE_ETHER_HDR_LEN +
+				   RTE_ETHER_CRC_LEN + VLAN_TAG_SIZE *
 				   BNXT_NUM_VLANS);
 	req.num_rsscos_ctxs = rte_cpu_to_le_16(bp->max_rsscos_ctx);
 	req.num_stat_ctxs = rte_cpu_to_le_16(bp->max_stat_ctx);
@@ -2554,11 +2554,11 @@ static void populate_vf_func_cfg_req(struct bnxt *bp,
 			HWRM_FUNC_CFG_INPUT_ENABLES_NUM_VNICS |
 			HWRM_FUNC_CFG_INPUT_ENABLES_NUM_HW_RING_GRPS);
 
-	req->mtu = rte_cpu_to_le_16(bp->eth_dev->data->mtu + ETHER_HDR_LEN +
-				    ETHER_CRC_LEN + VLAN_TAG_SIZE *
+	req->mtu = rte_cpu_to_le_16(bp->eth_dev->data->mtu + RTE_ETHER_HDR_LEN +
+				    RTE_ETHER_CRC_LEN + VLAN_TAG_SIZE *
 				    BNXT_NUM_VLANS);
-	req->mru = rte_cpu_to_le_16(bp->eth_dev->data->mtu + ETHER_HDR_LEN +
-				    ETHER_CRC_LEN + VLAN_TAG_SIZE *
+	req->mru = rte_cpu_to_le_16(bp->eth_dev->data->mtu + RTE_ETHER_HDR_LEN +
+				    RTE_ETHER_CRC_LEN + VLAN_TAG_SIZE *
 				    BNXT_NUM_VLANS);
 	req->num_rsscos_ctxs = rte_cpu_to_le_16(bp->max_rsscos_ctx /
 						(num_vfs + 1));
@@ -2589,7 +2589,8 @@ static void add_random_mac_if_needed(struct bnxt *bp,
 		rte_eth_random_addr(cfg_req->dflt_mac_addr);
 		bp->pf.vf_info[vf].random_mac = true;
 	} else {
-		memcpy(cfg_req->dflt_mac_addr, mac.addr_bytes, ETHER_ADDR_LEN);
+		memcpy(cfg_req->dflt_mac_addr, mac.addr_bytes,
+			RTE_ETHER_ADDR_LEN);
 	}
 }
 
@@ -3125,7 +3126,7 @@ int bnxt_hwrm_func_qcfg_vf_default_mac(struct bnxt *bp, uint16_t vf,
 
 	HWRM_CHECK_RESULT();
 
-	memcpy(mac->addr_bytes, resp->mac_address, ETHER_ADDR_LEN);
+	memcpy(mac->addr_bytes, resp->mac_address, RTE_ETHER_ADDR_LEN);
 
 	HWRM_UNLOCK();
 
@@ -3696,11 +3697,11 @@ int bnxt_hwrm_set_em_filter(struct bnxt *bp,
 	if (enables &
 	    HWRM_CFA_EM_FLOW_ALLOC_INPUT_ENABLES_SRC_MACADDR)
 		memcpy(req.src_macaddr, filter->src_macaddr,
-		       ETHER_ADDR_LEN);
+		       RTE_ETHER_ADDR_LEN);
 	if (enables &
 	    HWRM_CFA_EM_FLOW_ALLOC_INPUT_ENABLES_DST_MACADDR)
 		memcpy(req.dst_macaddr, filter->dst_macaddr,
-		       ETHER_ADDR_LEN);
+		       RTE_ETHER_ADDR_LEN);
 	if (enables &
 	    HWRM_CFA_EM_FLOW_ALLOC_INPUT_ENABLES_OVLAN_VID)
 		req.ovlan_vid = filter->l2_ovlan;
@@ -3799,11 +3800,11 @@ int bnxt_hwrm_set_ntuple_filter(struct bnxt *bp,
 	if (enables &
 	    HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_ENABLES_SRC_MACADDR)
 		memcpy(req.src_macaddr, filter->src_macaddr,
-		       ETHER_ADDR_LEN);
+		       RTE_ETHER_ADDR_LEN);
 	//if (enables &
 	    //HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_ENABLES_DST_MACADDR)
 		//memcpy(req.dst_macaddr, filter->dst_macaddr,
-		       //ETHER_ADDR_LEN);
+		       //RTE_ETHER_ADDR_LEN);
 	if (enables &
 	    HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_ENABLES_ETHERTYPE)
 		req.ethertype = rte_cpu_to_be_16(filter->ethertype);

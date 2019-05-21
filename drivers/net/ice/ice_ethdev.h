@@ -122,7 +122,7 @@
  * Considering QinQ packet, the VLAN tag needs to be counted twice.
  */
 #define ICE_ETH_OVERHEAD \
-	(ETHER_HDR_LEN + ETHER_CRC_LEN + ICE_VLAN_TAG_SIZE * 2)
+	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + ICE_VLAN_TAG_SIZE * 2)
 
 struct ice_adapter;
 

@@ -65,7 +65,7 @@ str_to_ether_addr(const char *a, struct rte_ether_addr *ether_addr)
 {
 	int i;
 	char *end;
-	unsigned long o[ETHER_ADDR_LEN];
+	unsigned long o[RTE_ETHER_ADDR_LEN];
 
 	i = 0;
 	do {
@@ -81,14 +81,14 @@ str_to_ether_addr(const char *a, struct rte_ether_addr *ether_addr)
 		return -1;
 
 	/* Support the format XX:XX:XX:XX:XX:XX */
-	if (i == ETHER_ADDR_LEN) {
+	if (i == RTE_ETHER_ADDR_LEN) {
 		while (i-- != 0) {
 			if (o[i] > UINT8_MAX)
 				return -1;
 			ether_addr->addr_bytes[i] = (uint8_t)o[i];
 		}
 	/* Support the format XXXX:XXXX:XXXX */
-	} else if (i == ETHER_ADDR_LEN / 2) {
+	} else if (i == RTE_ETHER_ADDR_LEN / 2) {
 		while (i-- != 0) {
 			if (o[i] > UINT16_MAX)
 				return -1;

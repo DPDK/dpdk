@@ -334,7 +334,7 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	rxq->queue_id = queue_idx;
 	rxq->port_id = eth_dev->data->port_id;
 	if (rx_offloads & DEV_RX_OFFLOAD_KEEP_CRC)
-		rxq->crc_len = ETHER_CRC_LEN;
+		rxq->crc_len = RTE_ETHER_CRC_LEN;
 	else
 		rxq->crc_len = 0;
 

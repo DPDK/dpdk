@@ -565,7 +565,7 @@ qede_ucast_filter(struct rte_eth_dev *eth_dev, struct ecore_filter_ucast *ucast,
 	if (add) {
 		SLIST_FOREACH(tmp, &qdev->uc_list_head, list) {
 			if ((memcmp(mac_addr, &tmp->mac,
-				    ETHER_ADDR_LEN) == 0) &&
+				    RTE_ETHER_ADDR_LEN) == 0) &&
 			     ucast->vni == tmp->vni &&
 			     ucast->vlan == tmp->vlan) {
 				DP_INFO(edev, "Unicast MAC is already added"
@@ -588,7 +588,7 @@ qede_ucast_filter(struct rte_eth_dev *eth_dev, struct ecore_filter_ucast *ucast,
 	} else {
 		SLIST_FOREACH(tmp, &qdev->uc_list_head, list) {
 			if ((memcmp(mac_addr, &tmp->mac,
-				    ETHER_ADDR_LEN) == 0) &&
+				    RTE_ETHER_ADDR_LEN) == 0) &&
 			    ucast->vlan == tmp->vlan	  &&
 			    ucast->vni == tmp->vni)
 			break;
@@ -1216,7 +1216,7 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 	if (rxmode->offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
 		eth_dev->data->mtu =
 			eth_dev->data->dev_conf.rxmode.max_rx_pkt_len -
-			ETHER_HDR_LEN - QEDE_ETH_OVERHEAD;
+			RTE_ETHER_HDR_LEN - QEDE_ETH_OVERHEAD;
 
 	if (rxmode->offloads & DEV_RX_OFFLOAD_SCATTER)
 		eth_dev->data->scattered_rx = 1;
@@ -2232,9 +2232,9 @@ static int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	qede_dev_info_get(dev, &dev_info);
 	max_rx_pkt_len = mtu + QEDE_MAX_ETHER_HDR_LEN;
 	frame_size = max_rx_pkt_len;
-	if ((mtu < ETHER_MIN_MTU) || (frame_size > dev_info.max_rx_pktlen)) {
+	if (mtu < RTE_ETHER_MIN_MTU || frame_size > dev_info.max_rx_pktlen) {
 		DP_ERR(edev, "MTU %u out of range, %u is maximum allowable\n",
-		       mtu, dev_info.max_rx_pktlen - ETHER_HDR_LEN -
+		       mtu, dev_info.max_rx_pktlen - RTE_ETHER_HDR_LEN -
 		       QEDE_ETH_OVERHEAD);
 		return -EINVAL;
 	}
@@ -2274,7 +2274,7 @@ static int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 			fp->rxq->rx_buf_size = rc;
 		}
 	}
-	if (max_rx_pkt_len > ETHER_MAX_LEN)
+	if (max_rx_pkt_len > RTE_ETHER_MAX_LEN)
 		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
 		dev->data->dev_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
@@ -2408,7 +2408,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	struct qed_slowpath_params params;
 	static bool do_once = true;
 	uint8_t bulletin_change;
-	uint8_t vf_mac[ETHER_ADDR_LEN];
+	uint8_t vf_mac[RTE_ETHER_ADDR_LEN];
 	uint8_t is_mac_forced;
 	bool is_mac_exist;
 	/* Fix up ecore debug level */
@@ -2538,7 +2538,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 
 	/* Allocate memory for storing MAC addr */
 	eth_dev->data->mac_addrs = rte_zmalloc(edev->name,
-					(ETHER_ADDR_LEN *
+					(RTE_ETHER_ADDR_LEN *
 					adapter->dev_info.num_mac_filters),
 					RTE_CACHE_LINE_SIZE);
 
@@ -2596,7 +2596,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	SLIST_INIT(&adapter->vlan_list_head);
 	SLIST_INIT(&adapter->uc_list_head);
 	SLIST_INIT(&adapter->mc_list_head);
-	adapter->mtu = ETHER_MTU;
+	adapter->mtu = RTE_ETHER_MTU;
 	adapter->vport_started = false;
 
 	/* VF tunnel offloads is enabled by default in PF driver */

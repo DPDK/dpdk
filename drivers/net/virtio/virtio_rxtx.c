@@ -1244,7 +1244,7 @@ virtio_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 		PMD_RX_LOG(DEBUG, "packet len:%d", len[i]);
 
-		if (unlikely(len[i] < hdr_size + ETHER_HDR_LEN)) {
+		if (unlikely(len[i] < hdr_size + RTE_ETHER_HDR_LEN)) {
 			PMD_RX_LOG(ERR, "Packet drop");
 			nb_enqueued++;
 			virtio_discard_rxbuf(vq, rxm);
@@ -1347,7 +1347,7 @@ virtio_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		PMD_RX_LOG(DEBUG, "packet len:%d", len[i]);
 
-		if (unlikely(len[i] < hdr_size + ETHER_HDR_LEN)) {
+		if (unlikely(len[i] < hdr_size + RTE_ETHER_HDR_LEN)) {
 			PMD_RX_LOG(ERR, "Packet drop");
 			nb_enqueued++;
 			virtio_discard_rxbuf(vq, rxm);
@@ -1461,7 +1461,7 @@ virtio_recv_pkts_inorder(void *rx_queue,
 
 		rxm = rcv_pkts[i];
 
-		if (unlikely(len[i] < hdr_size + ETHER_HDR_LEN)) {
+		if (unlikely(len[i] < hdr_size + RTE_ETHER_HDR_LEN)) {
 			PMD_RX_LOG(ERR, "Packet drop");
 			nb_enqueued++;
 			virtio_discard_rxbuf_inorder(vq, rxm);
@@ -1653,7 +1653,7 @@ virtio_recv_mergeable_pkts(void *rx_queue,
 
 		rxm = rcv_pkts[i];
 
-		if (unlikely(len[i] < hdr_size + ETHER_HDR_LEN)) {
+		if (unlikely(len[i] < hdr_size + RTE_ETHER_HDR_LEN)) {
 			PMD_RX_LOG(ERR, "Packet drop");
 			nb_enqueued++;
 			virtio_discard_rxbuf(vq, rxm);
@@ -1832,7 +1832,7 @@ virtio_recv_mergeable_pkts_packed(void *rx_queue,
 
 		rxm = rcv_pkts[i];
 
-		if (unlikely(len[i] < hdr_size + ETHER_HDR_LEN)) {
+		if (unlikely(len[i] < hdr_size + RTE_ETHER_HDR_LEN)) {
 			PMD_RX_LOG(ERR, "Packet drop");
 			nb_enqueued++;
 			virtio_discard_rxbuf(vq, rxm);

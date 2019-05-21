@@ -2955,7 +2955,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		queue_idx : RTE_ETH_DEV_SRIOV(dev).def_pool_q_idx + queue_idx);
 	rxq->port_id = dev->data->port_id;
 	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC)
-		rxq->crc_len = ETHER_CRC_LEN;
+		rxq->crc_len = RTE_ETHER_CRC_LEN;
 	else
 		rxq->crc_len = 0;
 	rxq->drop_en = rx_conf->rx_drop_en;
@@ -3980,7 +3980,8 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 	uint16_t max[IXGBE_DCB_MAX_TRAFFIC_CLASS] = {0};
 	uint8_t map[IXGBE_DCB_MAX_TRAFFIC_CLASS] = {0};
 	struct ixgbe_dcb_tc_config *tc;
-	uint32_t max_frame = dev->data->mtu + ETHER_HDR_LEN + ETHER_CRC_LEN;
+	uint32_t max_frame = dev->data->mtu + RTE_ETHER_HDR_LEN +
+		RTE_ETHER_CRC_LEN;
 	struct ixgbe_hw *hw =
 			IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ixgbe_bw_conf *bw_conf =
@@ -4963,7 +4964,7 @@ ixgbe_dev_rx_init(struct rte_eth_dev *dev)
 		 * call to configure.
 		 */
 		if (rx_conf->offloads & DEV_RX_OFFLOAD_KEEP_CRC)
-			rxq->crc_len = ETHER_CRC_LEN;
+			rxq->crc_len = RTE_ETHER_CRC_LEN;
 		else
 			rxq->crc_len = 0;
 

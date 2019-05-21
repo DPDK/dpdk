@@ -38,7 +38,7 @@ typedef rte_iova_t ecore_dma_addr_t; /* expected to be 64 bit wide */
 typedef volatile int ecore_atomic_t;
 
 
-#define ETH_ALEN ETHER_ADDR_LEN /* 6 */
+#define ETH_ALEN RTE_ETHER_ADDR_LEN /* 6 */
 
 #define ECORE_SWCID_SHIFT   17
 #define ECORE_SWCID_MASK    ((0x1 << ECORE_SWCID_SHIFT) - 1)

@@ -75,7 +75,7 @@ int axgbe_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	rxq->dma_tail_reg = (volatile uint32_t *)((uint8_t *)rxq->dma_regs +
 						  DMA_CH_RDTR_LO);
 	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC)
-		rxq->crc_len = ETHER_CRC_LEN;
+		rxq->crc_len = RTE_ETHER_CRC_LEN;
 	else
 		rxq->crc_len = 0;
 

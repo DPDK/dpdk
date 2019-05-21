@@ -85,7 +85,7 @@ static int
 is_addr_different(const struct rte_ether_addr addr, uint64_t num)
 {
 	int i;
-	for (i = 0; i < ETHER_ADDR_LEN; i++, num >>= 8)
+	for (i = 0; i < RTE_ETHER_ADDR_LEN; i++, num >>= 8)
 		if (addr.addr_bytes[i] != (num & 0xFF)) {
 			return 1;
 		}

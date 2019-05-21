@@ -211,7 +211,7 @@ static struct lcore_conf lcore_conf[RTE_MAX_LCORE];
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
 		.mq_mode	= ETH_MQ_RX_RSS,
-		.max_rx_pkt_len = ETHER_MAX_LEN,
+		.max_rx_pkt_len = RTE_ETHER_MAX_LEN,
 		.split_hdr_size = 0,
 		.offloads = DEV_RX_OFFLOAD_CHECKSUM,
 	},
@@ -236,8 +236,8 @@ prepare_one_packet(struct rte_mbuf *pkt, struct ipsec_traffic *t)
 	struct rte_ether_hdr *eth;
 
 	eth = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
-	if (eth->ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv4)) {
-		nlp = (uint8_t *)rte_pktmbuf_adj(pkt, ETHER_HDR_LEN);
+	if (eth->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4)) {
+		nlp = (uint8_t *)rte_pktmbuf_adj(pkt, RTE_ETHER_HDR_LEN);
 		nlp = RTE_PTR_ADD(nlp, offsetof(struct ip, ip_p));
 		if (*nlp == IPPROTO_ESP)
 			t->ipsec.pkts[(t->ipsec.num)++] = pkt;
@@ -247,8 +247,8 @@ prepare_one_packet(struct rte_mbuf *pkt, struct ipsec_traffic *t)
 		}
 		pkt->l2_len = 0;
 		pkt->l3_len = sizeof(struct ip);
-	} else if (eth->ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv6)) {
-		nlp = (uint8_t *)rte_pktmbuf_adj(pkt, ETHER_HDR_LEN);
+	} else if (eth->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6)) {
+		nlp = (uint8_t *)rte_pktmbuf_adj(pkt, RTE_ETHER_HDR_LEN);
 		nlp = RTE_PTR_ADD(nlp, offsetof(struct ip6_hdr, ip6_nxt));
 		if (*nlp == IPPROTO_ESP)
 			t->ipsec.pkts[(t->ipsec.num)++] = pkt;
@@ -330,12 +330,12 @@ prepare_tx_pkt(struct rte_mbuf *pkt, uint16_t port,
 	ip = rte_pktmbuf_mtod(pkt, struct ip *);
 
 	ethhdr = (struct rte_ether_hdr *)
-		rte_pktmbuf_prepend(pkt, ETHER_HDR_LEN);
+		rte_pktmbuf_prepend(pkt, RTE_ETHER_HDR_LEN);
 
 	if (ip->ip_v == IPVERSION) {
 		pkt->ol_flags |= qconf->outbound.ipv4_offloads;
 		pkt->l3_len = sizeof(struct ip);
-		pkt->l2_len = ETHER_HDR_LEN;
+		pkt->l2_len = RTE_ETHER_HDR_LEN;
 
 		ip->ip_sum = 0;
 
@@ -343,13 +343,13 @@ prepare_tx_pkt(struct rte_mbuf *pkt, uint16_t port,
 		if ((pkt->ol_flags & PKT_TX_IP_CKSUM) == 0)
 			ip->ip_sum = rte_ipv4_cksum((struct ipv4_hdr *)ip);
 
-		ethhdr->ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
+		ethhdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4);
 	} else {
 		pkt->ol_flags |= qconf->outbound.ipv6_offloads;
 		pkt->l3_len = sizeof(struct ip6_hdr);
-		pkt->l2_len = ETHER_HDR_LEN;
+		pkt->l2_len = RTE_ETHER_HDR_LEN;
 
-		ethhdr->ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv6);
+		ethhdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6);
 	}
 
 	memcpy(&ethhdr->s_addr, &ethaddr_tbl[port].src,
@@ -1427,8 +1427,8 @@ parse_args(int32_t argc, char **argv)
 static void
 print_ethaddr(const char *name, const struct rte_ether_addr *eth_addr)
 {
-	char buf[ETHER_ADDR_FMT_SIZE];
-	rte_ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
+	char buf[RTE_ETHER_ADDR_FMT_SIZE];
+	rte_ether_format_addr(buf, RTE_ETHER_ADDR_FMT_SIZE, eth_addr);
 	printf("%s%s", name, buf);
 }
 

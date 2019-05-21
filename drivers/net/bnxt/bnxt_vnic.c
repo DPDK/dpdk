@@ -116,7 +116,7 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 	uint32_t entry_length = RTE_CACHE_LINE_ROUNDUP(
 				HW_HASH_INDEX_SIZE * sizeof(*vnic->rss_table) +
 				HW_HASH_KEY_SIZE +
-				BNXT_MAX_MC_ADDRS * ETHER_ADDR_LEN);
+				BNXT_MAX_MC_ADDRS * RTE_ETHER_ADDR_LEN);
 	uint16_t max_vnics;
 	int i;
 	rte_iova_t mz_phys_addr;

@@ -500,7 +500,7 @@ rte_eth_dev_allocate(const char *name)
 	eth_dev = eth_dev_get(port_id);
 	strlcpy(eth_dev->data->name, name, sizeof(eth_dev->data->name));
 	eth_dev->data->port_id = port_id;
-	eth_dev->data->mtu = ETHER_MTU;
+	eth_dev->data->mtu = RTE_ETHER_MTU;
 
 unlock:
 	rte_spinlock_unlock(&rte_eth_dev_shared_data->ownership_lock);
@@ -1224,20 +1224,20 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 				dev_info.max_rx_pktlen);
 			ret = -EINVAL;
 			goto rollback;
-		} else if (dev_conf->rxmode.max_rx_pkt_len < ETHER_MIN_LEN) {
+		} else if (dev_conf->rxmode.max_rx_pkt_len < RTE_ETHER_MIN_LEN) {
 			RTE_ETHDEV_LOG(ERR,
 				"Ethdev port_id=%u max_rx_pkt_len %u < min valid value %u\n",
 				port_id, dev_conf->rxmode.max_rx_pkt_len,
-				(unsigned)ETHER_MIN_LEN);
+				(unsigned int)RTE_ETHER_MIN_LEN);
 			ret = -EINVAL;
 			goto rollback;
 		}
 	} else {
-		if (dev_conf->rxmode.max_rx_pkt_len < ETHER_MIN_LEN ||
-			dev_conf->rxmode.max_rx_pkt_len > ETHER_MAX_LEN)
+		if (dev_conf->rxmode.max_rx_pkt_len < RTE_ETHER_MIN_LEN ||
+			dev_conf->rxmode.max_rx_pkt_len > RTE_ETHER_MAX_LEN)
 			/* Use default value */
 			dev->data->dev_conf.rxmode.max_rx_pkt_len =
-							ETHER_MAX_LEN;
+							RTE_ETHER_MAX_LEN;
 	}
 
 	/* Any requested offloading must be within its device capabilities */
@@ -2552,7 +2552,7 @@ rte_eth_dev_info_get(uint16_t port_id, struct rte_eth_dev_info *dev_info)
 	dev_info->rx_desc_lim = lim;
 	dev_info->tx_desc_lim = lim;
 	dev_info->device = dev->device;
-	dev_info->min_mtu = ETHER_MIN_MTU;
+	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 	dev_info->max_mtu = UINT16_MAX;
 
 	RTE_FUNC_PTR_OR_RET(*dev->dev_ops->dev_infos_get);
@@ -3088,7 +3088,8 @@ get_mac_addr_index(uint16_t port_id, const struct rte_ether_addr *addr)
 	rte_eth_dev_info_get(port_id, &dev_info);
 
 	for (i = 0; i < dev_info.max_mac_addrs; i++)
-		if (memcmp(addr, &dev->data->mac_addrs[i], ETHER_ADDR_LEN) == 0)
+		if (memcmp(addr, &dev->data->mac_addrs[i],
+				RTE_ETHER_ADDR_LEN) == 0)
 			return i;
 
 	return -1;
@@ -3222,7 +3223,7 @@ get_hash_mac_addr_index(uint16_t port_id, const struct rte_ether_addr *addr)
 
 	for (i = 0; i < dev_info.max_hash_mac_addrs; i++)
 		if (memcmp(addr, &dev->data->hash_mac_addrs[i],
-			ETHER_ADDR_LEN) == 0)
+			RTE_ETHER_ADDR_LEN) == 0)
 			return i;
 
 	return -1;

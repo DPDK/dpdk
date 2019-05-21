@@ -81,10 +81,10 @@ static int write_l2e(struct rte_eth_dev *dev, struct l2t_entry *e, int sync,
 				  V_L2T_W_NOREPLY(!sync));
 	req->l2t_idx = cpu_to_be16(l2t_idx);
 	req->vlan = cpu_to_be16(e->vlan);
-	rte_memcpy(req->dst_mac, e->dmac, ETHER_ADDR_LEN);
+	rte_memcpy(req->dst_mac, e->dmac, RTE_ETHER_ADDR_LEN);
 
 	if (loopback)
-		memset(req->dst_mac, 0, ETHER_ADDR_LEN);
+		memset(req->dst_mac, 0, RTE_ETHER_ADDR_LEN);
 
 	t4_mgmt_tx(ctrlq, mbuf);
 
@@ -116,7 +116,7 @@ static struct l2t_entry *find_or_alloc_l2e(struct l2t_data *d, u16 vlan,
 				first_free = e;
 		} else {
 			if (e->state == L2T_STATE_SWITCHING) {
-				if ((!memcmp(e->dmac, dmac, ETHER_ADDR_LEN)) &&
+				if ((!memcmp(e->dmac, dmac, RTE_ETHER_ADDR_LEN)) &&
 				    e->vlan == vlan && e->lport == port)
 					goto exists;
 			}
@@ -154,7 +154,7 @@ static struct l2t_entry *t4_l2t_alloc_switching(struct rte_eth_dev *dev,
 			e->state = L2T_STATE_SWITCHING;
 			e->vlan = vlan;
 			e->lport = port;
-			rte_memcpy(e->dmac, eth_addr, ETHER_ADDR_LEN);
+			rte_memcpy(e->dmac, eth_addr, RTE_ETHER_ADDR_LEN);
 			rte_atomic32_set(&e->refcnt, 1);
 			ret = write_l2e(dev, e, 0, !L2T_LPBK, !L2T_ARPMISS);
 			if (ret < 0)

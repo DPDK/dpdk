@@ -52,15 +52,16 @@
  * Default byte size for the IPv6 Maximum Transfer Unit (MTU).
  * This value includes the size of IPv6 header.
  */
-#define	IPV4_MTU_DEFAULT	ETHER_MTU
-#define	IPV6_MTU_DEFAULT	ETHER_MTU
+#define	IPV4_MTU_DEFAULT	RTE_ETHER_MTU
+#define	IPV6_MTU_DEFAULT	RTE_ETHER_MTU
 
 /*
  * The overhead from max frame size to MTU.
  * We have to consider the max possible overhead.
  */
 #define MTU_OVERHEAD	\
-	(ETHER_HDR_LEN + ETHER_CRC_LEN + 2 * sizeof(struct rte_vlan_hdr))
+	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + \
+		2 * sizeof(struct rte_vlan_hdr))
 
 /*
  * Default payload in bytes for the IPv6 packet.
@@ -357,9 +358,11 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 		rte_ether_addr_copy(&ports_eth_addr[port_out],
 				&eth_hdr->s_addr);
 		if (ipv6)
-			eth_hdr->ether_type = rte_be_to_cpu_16(ETHER_TYPE_IPv6);
+			eth_hdr->ether_type =
+				rte_be_to_cpu_16(RTE_ETHER_TYPE_IPv6);
 		else
-			eth_hdr->ether_type = rte_be_to_cpu_16(ETHER_TYPE_IPv4);
+			eth_hdr->ether_type =
+				rte_be_to_cpu_16(RTE_ETHER_TYPE_IPv4);
 	}
 
 	len += len2;
@@ -572,8 +575,8 @@ parse_args(int argc, char **argv)
 static void
 print_ethaddr(const char *name, struct rte_ether_addr *eth_addr)
 {
-	char buf[ETHER_ADDR_FMT_SIZE];
-	rte_ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
+	char buf[RTE_ETHER_ADDR_FMT_SIZE];
+	rte_ether_format_addr(buf, RTE_ETHER_ADDR_FMT_SIZE, eth_addr);
 	printf("%s%s", name, buf);
 }
 
@@ -677,9 +680,9 @@ parse_ptype(struct rte_mbuf *m)
 
 	eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 	ether_type = eth_hdr->ether_type;
-	if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv4))
+	if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4))
 		packet_type |= RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
-	else if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv6))
+	else if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6))
 		packet_type |= RTE_PTYPE_L3_IPV6_EXT_UNKNOWN;
 
 	m->packet_type = packet_type;

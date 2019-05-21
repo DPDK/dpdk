@@ -160,7 +160,7 @@ The Ethernet ports are configured with default settings using the
 .. code-block:: c
 
     static const struct rte_eth_conf port_conf_default = {
-        .rxmode = { .max_rx_pkt_len = ETHER_MAX_LEN }
+        .rxmode = { .max_rx_pkt_len = RTE_ETHER_MAX_LEN }
     };
 
 For this example the ports are set up with 1 RX and 1 TX queue using the

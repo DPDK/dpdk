@@ -863,7 +863,7 @@ Item: ``VLAN``
 Matches an 802.1Q/ad VLAN tag.
 
 The corresponding standard outer EtherType (TPID) values are
-``ETHER_TYPE_VLAN`` or ``ETHER_TYPE_QINQ``. It can be overridden by the
+``RTE_ETHER_TYPE_VLAN`` or ``RTE_ETHER_TYPE_QINQ``. It can be overridden by the
 preceding pattern item.
 
 - ``tci``: tag control information.
@@ -940,7 +940,7 @@ Item: ``E_TAG``
 Matches an IEEE 802.1BR E-Tag header.
 
 The corresponding standard outer EtherType (TPID) value is
-``ETHER_TYPE_ETAG``. It can be overridden by the preceding pattern item.
+``RTE_ETHER_TYPE_ETAG``. It can be overridden by the preceding pattern item.
 
 - ``epcp_edei_in_ecid_b``: E-Tag control information (E-TCI), E-PCP (3b),
   E-DEI (1b), ingress E-CID base (12b).

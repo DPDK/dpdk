@@ -1925,16 +1925,16 @@ cmd_config_max_pkt_len_parsed(void *parsed_result,
 		uint64_t rx_offloads = port->dev_conf.rxmode.offloads;
 
 		if (!strcmp(res->name, "max-pkt-len")) {
-			if (res->value < ETHER_MIN_LEN) {
+			if (res->value < RTE_ETHER_MIN_LEN) {
 				printf("max-pkt-len can not be less than %d\n",
-						ETHER_MIN_LEN);
+						RTE_ETHER_MIN_LEN);
 				return;
 			}
 			if (res->value == port->dev_conf.rxmode.max_rx_pkt_len)
 				return;
 
 			port->dev_conf.rxmode.max_rx_pkt_len = res->value;
-			if (res->value > ETHER_MAX_LEN)
+			if (res->value > RTE_ETHER_MAX_LEN)
 				rx_offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 			else
 				rx_offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
@@ -1996,8 +1996,8 @@ cmd_config_mtu_parsed(void *parsed_result,
 {
 	struct cmd_config_mtu_result *res = parsed_result;
 
-	if (res->value < ETHER_MIN_LEN) {
-		printf("mtu cannot be less than %d\n", ETHER_MIN_LEN);
+	if (res->value < RTE_ETHER_MIN_LEN) {
+		printf("mtu cannot be less than %d\n", RTE_ETHER_MIN_LEN);
 		return;
 	}
 	port_mtu_set(res->port_id, res->value);
@@ -8236,7 +8236,7 @@ cmd_set_vf_macvlan_parsed(void *parsed_result,
 
 	memset(&filter, 0, sizeof(struct rte_eth_mac_filter));
 
-	rte_memcpy(&filter.mac_addr, &res->address, ETHER_ADDR_LEN);
+	rte_memcpy(&filter.mac_addr, &res->address, RTE_ETHER_ADDR_LEN);
 
 	/* set VF MAC filter */
 	filter.is_vf = 1;
@@ -9210,7 +9210,7 @@ cmd_set_mirror_mask_parsed(void *parsed_result,
 			return;
 
 		for (i = 0; i < nb_item; i++) {
-			if (vlan_list[i] > ETHER_MAX_VLAN_ID) {
+			if (vlan_list[i] > RTE_ETHER_MAX_VLAN_ID) {
 				printf("Invalid vlan_id: must be < 4096\n");
 				return;
 			}
@@ -15301,9 +15301,9 @@ static void cmd_set_vxlan_parsed(void *parsed_result,
 	if (vxlan_encap_conf.select_vlan)
 		vxlan_encap_conf.vlan_tci = rte_cpu_to_be_16(res->tci);
 	rte_memcpy(vxlan_encap_conf.eth_src, res->eth_src.addr_bytes,
-		   ETHER_ADDR_LEN);
+		   RTE_ETHER_ADDR_LEN);
 	rte_memcpy(vxlan_encap_conf.eth_dst, res->eth_dst.addr_bytes,
-		   ETHER_ADDR_LEN);
+		   RTE_ETHER_ADDR_LEN);
 }
 
 cmdline_parse_inst_t cmd_set_vxlan = {
@@ -15492,9 +15492,9 @@ static void cmd_set_nvgre_parsed(void *parsed_result,
 	if (nvgre_encap_conf.select_vlan)
 		nvgre_encap_conf.vlan_tci = rte_cpu_to_be_16(res->tci);
 	rte_memcpy(nvgre_encap_conf.eth_src, res->eth_src.addr_bytes,
-		   ETHER_ADDR_LEN);
+		   RTE_ETHER_ADDR_LEN);
 	rte_memcpy(nvgre_encap_conf.eth_dst, res->eth_dst.addr_bytes,
-		   ETHER_ADDR_LEN);
+		   RTE_ETHER_ADDR_LEN);
 }
 
 cmdline_parse_inst_t cmd_set_nvgre = {
@@ -15609,9 +15609,9 @@ static void cmd_set_l2_encap_parsed(void *parsed_result,
 	if (l2_encap_conf.select_vlan)
 		l2_encap_conf.vlan_tci = rte_cpu_to_be_16(res->tci);
 	rte_memcpy(l2_encap_conf.eth_src, res->eth_src.addr_bytes,
-		   ETHER_ADDR_LEN);
+		   RTE_ETHER_ADDR_LEN);
 	rte_memcpy(l2_encap_conf.eth_dst, res->eth_dst.addr_bytes,
-		   ETHER_ADDR_LEN);
+		   RTE_ETHER_ADDR_LEN);
 }
 
 cmdline_parse_inst_t cmd_set_l2_encap = {
@@ -15801,9 +15801,9 @@ static void cmd_set_mplsogre_encap_parsed(void *parsed_result,
 	if (mplsogre_encap_conf.select_vlan)
 		mplsogre_encap_conf.vlan_tci = rte_cpu_to_be_16(res->tci);
 	rte_memcpy(mplsogre_encap_conf.eth_src, res->eth_src.addr_bytes,
-		   ETHER_ADDR_LEN);
+		   RTE_ETHER_ADDR_LEN);
 	rte_memcpy(mplsogre_encap_conf.eth_dst, res->eth_dst.addr_bytes,
-		   ETHER_ADDR_LEN);
+		   RTE_ETHER_ADDR_LEN);
 }
 
 cmdline_parse_inst_t cmd_set_mplsogre_encap = {
@@ -16039,9 +16039,9 @@ static void cmd_set_mplsoudp_encap_parsed(void *parsed_result,
 	if (mplsoudp_encap_conf.select_vlan)
 		mplsoudp_encap_conf.vlan_tci = rte_cpu_to_be_16(res->tci);
 	rte_memcpy(mplsoudp_encap_conf.eth_src, res->eth_src.addr_bytes,
-		   ETHER_ADDR_LEN);
+		   RTE_ETHER_ADDR_LEN);
 	rte_memcpy(mplsoudp_encap_conf.eth_dst, res->eth_dst.addr_bytes,
-		   ETHER_ADDR_LEN);
+		   RTE_ETHER_ADDR_LEN);
 }
 
 cmdline_parse_inst_t cmd_set_mplsoudp_encap = {

@@ -1025,17 +1025,17 @@ iavf_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 */
 		rxm->next = NULL;
 		if (unlikely(rxq->crc_len > 0)) {
-			first_seg->pkt_len -= ETHER_CRC_LEN;
-			if (rx_packet_len <= ETHER_CRC_LEN) {
+			first_seg->pkt_len -= RTE_ETHER_CRC_LEN;
+			if (rx_packet_len <= RTE_ETHER_CRC_LEN) {
 				rte_pktmbuf_free_seg(rxm);
 				first_seg->nb_segs--;
 				last_seg->data_len =
 					(uint16_t)(last_seg->data_len -
-					(ETHER_CRC_LEN - rx_packet_len));
+					(RTE_ETHER_CRC_LEN - rx_packet_len));
 				last_seg->next = NULL;
 			} else
 				rxm->data_len = (uint16_t)(rx_packet_len -
-								ETHER_CRC_LEN);
+							RTE_ETHER_CRC_LEN);
 		}
 
 		first_seg->port = rxq->port_id;

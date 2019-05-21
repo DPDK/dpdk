@@ -57,7 +57,7 @@ struct flow_conf qos_conf[MAX_DATA_STREAMS];
 
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
-		.max_rx_pkt_len = ETHER_MAX_LEN,
+		.max_rx_pkt_len = RTE_ETHER_MAX_LEN,
 		.split_hdr_size = 0,
 	},
 	.txmode = {

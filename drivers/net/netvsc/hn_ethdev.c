@@ -766,7 +766,7 @@ eth_hn_dev_init(struct rte_eth_dev *eth_dev)
 	if (!hv->primary)
 		return -ENOMEM;
 
-	err = hn_attach(hv, ETHER_MTU);
+	err = hn_attach(hv, RTE_ETHER_MTU);
 	if  (err)
 		goto failed;
 

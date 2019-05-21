@@ -1005,17 +1005,17 @@ eth_em_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		 */
 		rxm->next = NULL;
 		if (unlikely(rxq->crc_len > 0)) {
-			first_seg->pkt_len -= ETHER_CRC_LEN;
-			if (data_len <= ETHER_CRC_LEN) {
+			first_seg->pkt_len -= RTE_ETHER_CRC_LEN;
+			if (data_len <= RTE_ETHER_CRC_LEN) {
 				rte_pktmbuf_free_seg(rxm);
 				first_seg->nb_segs--;
 				last_seg->data_len = (uint16_t)
 					(last_seg->data_len -
-					 (ETHER_CRC_LEN - data_len));
+					 (RTE_ETHER_CRC_LEN - data_len));
 				last_seg->next = NULL;
 			} else
-				rxm->data_len =
-					(uint16_t) (data_len - ETHER_CRC_LEN);
+				rxm->data_len = (uint16_t)
+					(data_len - RTE_ETHER_CRC_LEN);
 		}
 
 		/*
@@ -1368,7 +1368,7 @@ em_get_rx_port_offloads_capa(struct rte_eth_dev *dev)
 		DEV_RX_OFFLOAD_TCP_CKSUM   |
 		DEV_RX_OFFLOAD_KEEP_CRC    |
 		DEV_RX_OFFLOAD_SCATTER;
-	if (max_rx_pktlen > ETHER_MAX_LEN)
+	if (max_rx_pktlen > RTE_ETHER_MAX_LEN)
 		rx_offload_capa |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 
 	return rx_offload_capa;
@@ -1463,7 +1463,7 @@ eth_em_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->queue_id = queue_idx;
 	rxq->port_id = dev->data->port_id;
 	if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC)
-		rxq->crc_len = ETHER_CRC_LEN;
+		rxq->crc_len = RTE_ETHER_CRC_LEN;
 	else
 		rxq->crc_len = 0;
 
@@ -1799,7 +1799,7 @@ eth_em_rx_init(struct rte_eth_dev *dev)
 		 *  call to configure
 		 */
 		if (dev->data->dev_conf.rxmode.offloads & DEV_RX_OFFLOAD_KEEP_CRC)
-			rxq->crc_len = ETHER_CRC_LEN;
+			rxq->crc_len = RTE_ETHER_CRC_LEN;
 		else
 			rxq->crc_len = 0;
 
@@ -1832,7 +1832,7 @@ eth_em_rx_init(struct rte_eth_dev *dev)
 		 * one buffer.
 		 */
 		if (rxmode->offloads & DEV_RX_OFFLOAD_JUMBO_FRAME ||
-				rctl_bsize < ETHER_MAX_LEN) {
+				rctl_bsize < RTE_ETHER_MAX_LEN) {
 			if (!dev->data->scattered_rx)
 				PMD_INIT_LOG(DEBUG, "forcing scatter mode");
 			dev->rx_pkt_burst =

@@ -374,16 +374,16 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 			    -1, -1, -1, -1  /* skip packet_type */);
 	/* Restore the compressed count. Must be 16 bits. */
 	const uint16_t mcqe_n = t_pkt->data_len +
-				(rxq->crc_present * ETHER_CRC_LEN);
+				(rxq->crc_present * RTE_ETHER_CRC_LEN);
 	const __m128i rearm =
 		_mm_loadu_si128((__m128i *)&t_pkt->rearm_data);
 	const __m128i rxdf =
 		_mm_loadu_si128((__m128i *)&t_pkt->rx_descriptor_fields1);
 	const __m128i crc_adj =
 		_mm_set_epi16(0, 0, 0,
-			      rxq->crc_present * ETHER_CRC_LEN,
+			      rxq->crc_present * RTE_ETHER_CRC_LEN,
 			      0,
-			      rxq->crc_present * ETHER_CRC_LEN,
+			      rxq->crc_present * RTE_ETHER_CRC_LEN,
 			      0, 0);
 	const uint32_t flow_tag = t_pkt->hash.fdir.hi;
 #ifdef MLX5_PMD_SOFT_COUNTERS
@@ -699,9 +699,9 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n,
 	const __m128i ones = _mm_cmpeq_epi32(zero, zero);
 	const __m128i crc_adj =
 		_mm_set_epi16(0, 0, 0, 0, 0,
-			      rxq->crc_present * ETHER_CRC_LEN,
+			      rxq->crc_present * RTE_ETHER_CRC_LEN,
 			      0,
-			      rxq->crc_present * ETHER_CRC_LEN);
+			      rxq->crc_present * RTE_ETHER_CRC_LEN);
 	const __m128i flow_mark_adj = _mm_set_epi32(rxq->mark * (-1), 0, 0, 0);
 
 	assert(rxq->sges_n == 0);

@@ -261,7 +261,7 @@ mvneta_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 			mbuf_data_size, mtu, mru);
 	}
 
-	if (mtu < ETHER_MIN_MTU || mru > MVNETA_PKT_SIZE_MAX) {
+	if (mtu < RTE_ETHER_MIN_MTU || mru > MVNETA_PKT_SIZE_MAX) {
 		MVNETA_LOG(ERR, "Invalid MTU [%u] or MRU [%u]", mtu, mru);
 		return -EINVAL;
 	}
@@ -586,7 +586,7 @@ static void
 mvneta_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 {
 	struct mvneta_priv *priv = dev->data->dev_private;
-	char buf[ETHER_ADDR_FMT_SIZE];
+	char buf[RTE_ETHER_ADDR_FMT_SIZE];
 	int ret;
 
 	if (!priv->ppio)
@@ -621,7 +621,7 @@ mvneta_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 		  uint32_t index, uint32_t vmdq __rte_unused)
 {
 	struct mvneta_priv *priv = dev->data->dev_private;
-	char buf[ETHER_ADDR_FMT_SIZE];
+	char buf[RTE_ETHER_ADDR_FMT_SIZE];
 	int ret;
 
 	if (index == 0)
@@ -660,7 +660,7 @@ mvneta_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 
 	ret = neta_ppio_set_mac_addr(priv->ppio, mac_addr->addr_bytes);
 	if (ret) {
-		char buf[ETHER_ADDR_FMT_SIZE];
+		char buf[RTE_ETHER_ADDR_FMT_SIZE];
 		rte_ether_format_addr(buf, sizeof(buf), mac_addr);
 		MVNETA_LOG(ERR, "Failed to set mac to %s", buf);
 	}
@@ -794,7 +794,7 @@ mvneta_eth_dev_create(struct rte_vdev_device *vdev, const char *name)
 
 	eth_dev->data->mac_addrs =
 		rte_zmalloc("mac_addrs",
-			    ETHER_ADDR_LEN * MVNETA_MAC_ADDRS_MAX, 0);
+			    RTE_ETHER_ADDR_LEN * MVNETA_MAC_ADDRS_MAX, 0);
 	if (!eth_dev->data->mac_addrs) {
 		MVNETA_LOG(ERR, "Failed to allocate space for eth addrs");
 		ret = -ENOMEM;
@@ -808,7 +808,7 @@ mvneta_eth_dev_create(struct rte_vdev_device *vdev, const char *name)
 		goto out_free;
 
 	memcpy(eth_dev->data->mac_addrs[0].addr_bytes,
-	       req.ifr_addr.sa_data, ETHER_ADDR_LEN);
+	       req.ifr_addr.sa_data, RTE_ETHER_ADDR_LEN);
 
 	eth_dev->data->kdrv = RTE_KDRV_NONE;
 	eth_dev->device = &vdev->device;

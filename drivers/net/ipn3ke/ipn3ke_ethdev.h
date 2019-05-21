@@ -642,7 +642,7 @@ ipn3ke_tm_ops_get(struct rte_eth_dev *ethdev,
  * Considering QinQ packet, the VLAN tag needs to be counted twice.
  */
 #define IPN3KE_ETH_OVERHEAD \
-		(ETHER_HDR_LEN + ETHER_CRC_LEN + IPN3KE_VLAN_TAG_SIZE * 2)
+	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + IPN3KE_VLAN_TAG_SIZE * 2)
 
 #define IPN3KE_MAC_FRAME_SIZE_MAX    9728
 #define IPN3KE_MAC_RX_FRAME_MAXLENGTH    0x00AE

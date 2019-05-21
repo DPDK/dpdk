@@ -2336,7 +2336,7 @@ void rte_eth_macaddr_get(uint16_t port_id, struct rte_ether_addr *mac_addr);
  *  };
  *
  * device = dev->device
- * min_mtu = ETHER_MIN_MTU
+ * min_mtu = RTE_ETHER_MIN_MTU
  * max_mtu = UINT16_MAX
  *
  * The following fields will be populated if support for dev_infos_get()

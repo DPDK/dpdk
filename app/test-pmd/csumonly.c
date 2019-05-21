@@ -92,9 +92,9 @@ struct simple_gre_hdr {
 static uint16_t
 get_udptcp_checksum(void *l3_hdr, void *l4_hdr, uint16_t ethertype)
 {
-	if (ethertype == _htons(ETHER_TYPE_IPv4))
+	if (ethertype == _htons(RTE_ETHER_TYPE_IPv4))
 		return rte_ipv4_udptcp_cksum(l3_hdr, l4_hdr);
-	else /* assume ethertype == ETHER_TYPE_IPv6 */
+	else /* assume ethertype == RTE_ETHER_TYPE_IPv6 */
 		return rte_ipv6_udptcp_cksum(l3_hdr, l4_hdr);
 }
 
@@ -150,7 +150,7 @@ parse_ethernet(struct rte_ether_hdr *eth_hdr, struct testpmd_offload_info *info)
 	info->l2_len = sizeof(struct rte_ether_hdr);
 	info->ethertype = eth_hdr->ether_type;
 
-	if (info->ethertype == _htons(ETHER_TYPE_VLAN)) {
+	if (info->ethertype == _htons(RTE_ETHER_TYPE_VLAN)) {
 		struct rte_vlan_hdr *vlan_hdr = (
 			struct rte_vlan_hdr *)(eth_hdr + 1);
 
@@ -159,11 +159,11 @@ parse_ethernet(struct rte_ether_hdr *eth_hdr, struct testpmd_offload_info *info)
 	}
 
 	switch (info->ethertype) {
-	case _htons(ETHER_TYPE_IPv4):
+	case _htons(RTE_ETHER_TYPE_IPv4):
 		ipv4_hdr = (struct ipv4_hdr *) ((char *)eth_hdr + info->l2_len);
 		parse_ipv4(ipv4_hdr, info);
 		break;
-	case _htons(ETHER_TYPE_IPv6):
+	case _htons(RTE_ETHER_TYPE_IPv6):
 		ipv6_hdr = (struct ipv6_hdr *) ((char *)eth_hdr + info->l2_len);
 		parse_ipv6(ipv6_hdr, info);
 		break;
@@ -201,7 +201,7 @@ parse_vxlan(struct udp_hdr *udp_hdr,
 		sizeof(struct rte_vxlan_hdr));
 
 	parse_ethernet(eth_hdr, info);
-	info->l2_len += ETHER_VXLAN_HLEN; /* add udp + vxlan */
+	info->l2_len += RTE_ETHER_VXLAN_HLEN; /* add udp + vxlan */
 }
 
 /* Parse a vxlan-gpe header */
@@ -223,7 +223,7 @@ parse_vxlan_gpe(struct udp_hdr *udp_hdr,
 				sizeof(struct udp_hdr));
 
 	if (!vxlan_gpe_hdr->proto || vxlan_gpe_hdr->proto ==
-	    VXLAN_GPE_TYPE_IPV4) {
+	    RTE_VXLAN_GPE_TYPE_IPV4) {
 		info->is_tunnel = 1;
 		info->outer_ethertype = info->ethertype;
 		info->outer_l2_len = info->l2_len;
@@ -234,10 +234,10 @@ parse_vxlan_gpe(struct udp_hdr *udp_hdr,
 			   vxlan_gpe_len);
 
 		parse_ipv4(ipv4_hdr, info);
-		info->ethertype = _htons(ETHER_TYPE_IPv4);
+		info->ethertype = _htons(RTE_ETHER_TYPE_IPv4);
 		info->l2_len = 0;
 
-	} else if (vxlan_gpe_hdr->proto == VXLAN_GPE_TYPE_IPV6) {
+	} else if (vxlan_gpe_hdr->proto == RTE_VXLAN_GPE_TYPE_IPV6) {
 		info->is_tunnel = 1;
 		info->outer_ethertype = info->ethertype;
 		info->outer_l2_len = info->l2_len;
@@ -247,11 +247,11 @@ parse_vxlan_gpe(struct udp_hdr *udp_hdr,
 		ipv6_hdr = (struct ipv6_hdr *)((char *)vxlan_gpe_hdr +
 			   vxlan_gpe_len);
 
-		info->ethertype = _htons(ETHER_TYPE_IPv6);
+		info->ethertype = _htons(RTE_ETHER_TYPE_IPv6);
 		parse_ipv6(ipv6_hdr, info);
 		info->l2_len = 0;
 
-	} else if (vxlan_gpe_hdr->proto == VXLAN_GPE_TYPE_ETH) {
+	} else if (vxlan_gpe_hdr->proto == RTE_VXLAN_GPE_TYPE_ETH) {
 		info->is_tunnel = 1;
 		info->outer_ethertype = info->ethertype;
 		info->outer_l2_len = info->l2_len;
@@ -265,7 +265,7 @@ parse_vxlan_gpe(struct udp_hdr *udp_hdr,
 	} else
 		return;
 
-	info->l2_len += ETHER_VXLAN_GPE_HLEN;
+	info->l2_len += RTE_ETHER_VXLAN_GPE_HLEN;
 }
 
 /* Parse a gre header */
@@ -286,7 +286,7 @@ parse_gre(struct simple_gre_hdr *gre_hdr, struct testpmd_offload_info *info)
 	if (gre_hdr->flags & _htons(GRE_CHECKSUM_PRESENT))
 		gre_len += GRE_EXT_LEN;
 
-	if (gre_hdr->proto == _htons(ETHER_TYPE_IPv4)) {
+	if (gre_hdr->proto == _htons(RTE_ETHER_TYPE_IPv4)) {
 		info->is_tunnel = 1;
 		info->outer_ethertype = info->ethertype;
 		info->outer_l2_len = info->l2_len;
@@ -296,10 +296,10 @@ parse_gre(struct simple_gre_hdr *gre_hdr, struct testpmd_offload_info *info)
 		ipv4_hdr = (struct ipv4_hdr *)((char *)gre_hdr + gre_len);
 
 		parse_ipv4(ipv4_hdr, info);
-		info->ethertype = _htons(ETHER_TYPE_IPv4);
+		info->ethertype = _htons(RTE_ETHER_TYPE_IPv4);
 		info->l2_len = 0;
 
-	} else if (gre_hdr->proto == _htons(ETHER_TYPE_IPv6)) {
+	} else if (gre_hdr->proto == _htons(RTE_ETHER_TYPE_IPv6)) {
 		info->is_tunnel = 1;
 		info->outer_ethertype = info->ethertype;
 		info->outer_l2_len = info->l2_len;
@@ -308,11 +308,11 @@ parse_gre(struct simple_gre_hdr *gre_hdr, struct testpmd_offload_info *info)
 
 		ipv6_hdr = (struct ipv6_hdr *)((char *)gre_hdr + gre_len);
 
-		info->ethertype = _htons(ETHER_TYPE_IPv6);
+		info->ethertype = _htons(RTE_ETHER_TYPE_IPv6);
 		parse_ipv6(ipv6_hdr, info);
 		info->l2_len = 0;
 
-	} else if (gre_hdr->proto == _htons(ETHER_TYPE_TEB)) {
+	} else if (gre_hdr->proto == _htons(RTE_ETHER_TYPE_TEB)) {
 		info->is_tunnel = 1;
 		info->outer_ethertype = info->ethertype;
 		info->outer_l2_len = info->l2_len;
@@ -349,10 +349,10 @@ parse_encap_ip(void *encap_ip, struct testpmd_offload_info *info)
 
 	if (ip_version == 4) {
 		parse_ipv4(ipv4_hdr, info);
-		info->ethertype = _htons(ETHER_TYPE_IPv4);
+		info->ethertype = _htons(RTE_ETHER_TYPE_IPv4);
 	} else {
 		parse_ipv6(ipv6_hdr, info);
-		info->ethertype = _htons(ETHER_TYPE_IPv6);
+		info->ethertype = _htons(RTE_ETHER_TYPE_IPv6);
 	}
 	info->l2_len = 0;
 }
@@ -384,7 +384,7 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 			tso_segsz = info->tunnel_tso_segsz;
 	}
 
-	if (info->ethertype == _htons(ETHER_TYPE_IPv4)) {
+	if (info->ethertype == _htons(RTE_ETHER_TYPE_IPv4)) {
 		ipv4_hdr = l3_hdr;
 		ipv4_hdr->hdr_checksum = 0;
 
@@ -398,7 +398,7 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 				ipv4_hdr->hdr_checksum =
 					rte_ipv4_cksum(ipv4_hdr);
 		}
-	} else if (info->ethertype == _htons(ETHER_TYPE_IPv6))
+	} else if (info->ethertype == _htons(RTE_ETHER_TYPE_IPv6))
 		ol_flags |= PKT_TX_IPV6;
 	else
 		return 0; /* packet type not supported, nothing to do */
@@ -459,7 +459,7 @@ process_outer_cksums(void *outer_l3_hdr, struct testpmd_offload_info *info,
 	struct udp_hdr *udp_hdr;
 	uint64_t ol_flags = 0;
 
-	if (info->outer_ethertype == _htons(ETHER_TYPE_IPv4)) {
+	if (info->outer_ethertype == _htons(RTE_ETHER_TYPE_IPv4)) {
 		ipv4_hdr->hdr_checksum = 0;
 		ol_flags |= PKT_TX_OUTER_IPV4;
 
@@ -495,7 +495,7 @@ process_outer_cksums(void *outer_l3_hdr, struct testpmd_offload_info *info,
 	/* do not recalculate udp cksum if it was 0 */
 	if (udp_hdr->dgram_cksum != 0) {
 		udp_hdr->dgram_cksum = 0;
-		if (info->outer_ethertype == _htons(ETHER_TYPE_IPv4))
+		if (info->outer_ethertype == _htons(RTE_ETHER_TYPE_IPv4))
 			udp_hdr->dgram_cksum =
 				rte_ipv4_udptcp_cksum(ipv4_hdr, udp_hdr);
 		else

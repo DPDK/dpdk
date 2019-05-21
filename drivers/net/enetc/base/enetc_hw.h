@@ -215,8 +215,8 @@ struct enetc_hw {
 };
 
 struct enetc_eth_mac_info {
-	uint8_t addr[ETHER_ADDR_LEN];
-	uint8_t perm_addr[ETHER_ADDR_LEN];
+	uint8_t addr[RTE_ETHER_ADDR_LEN];
+	uint8_t perm_addr[RTE_ETHER_ADDR_LEN];
 	uint8_t get_link_status;
 };
 

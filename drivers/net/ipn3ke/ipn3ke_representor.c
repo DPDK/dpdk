@@ -128,7 +128,7 @@ ipn3ke_rpst_dev_start(struct rte_eth_dev *dev)
 			&rpst->mac_addr);
 
 	rte_ether_addr_copy(&rpst->mac_addr, &dev->data->mac_addrs[0]);
-	dev->data->mac_addrs->addr_bytes[ETHER_ADDR_LEN - 1] =
+	dev->data->mac_addrs->addr_bytes[RTE_ETHER_ADDR_LEN - 1] =
 		(uint8_t)rpst->port_id + 1;
 
 	if (hw->retimer.mac_type == IFPGA_RAWDEV_RETIMER_MAC_TYPE_10GE_XFI) {
@@ -692,7 +692,7 @@ ipn3ke_rpst_mtu_set(struct rte_eth_dev *ethdev, uint16_t mtu)
 	uint32_t frame_size = mtu  + IPN3KE_ETH_OVERHEAD;
 
 	/* check if mtu is within the allowed range */
-	if (mtu < ETHER_MIN_MTU ||
+	if (mtu < RTE_ETHER_MIN_MTU ||
 		frame_size > IPN3KE_MAC_FRAME_SIZE_MAX)
 		return -EINVAL;
 
@@ -712,7 +712,7 @@ ipn3ke_rpst_mtu_set(struct rte_eth_dev *ethdev, uint16_t mtu)
 		return -EBUSY;
 	}
 
-	if (frame_size > ETHER_MAX_LEN)
+	if (frame_size > RTE_ETHER_MAX_LEN)
 		dev_data->dev_conf.rxmode.offloads |=
 			(uint64_t)(DEV_RX_OFFLOAD_JUMBO_FRAME);
 	else
@@ -837,7 +837,7 @@ ipn3ke_rpst_init(struct rte_eth_dev *ethdev, void *init_params)
 	rpst->i40e_pf_eth = NULL;
 	rpst->i40e_pf_eth_port_id = 0xFFFF;
 
-	ethdev->data->mac_addrs = rte_zmalloc("ipn3ke", ETHER_ADDR_LEN, 0);
+	ethdev->data->mac_addrs = rte_zmalloc("ipn3ke", RTE_ETHER_ADDR_LEN, 0);
 	if (!ethdev->data->mac_addrs) {
 		IPN3KE_AFU_PMD_ERR("Failed to "
 			"allocated memory for storing mac address");
@@ -860,7 +860,7 @@ ipn3ke_rpst_init(struct rte_eth_dev *ethdev, void *init_params)
 	ethdev->data->nb_tx_queues = 1;
 
 	ethdev->data->mac_addrs = rte_zmalloc("ipn3ke_afu_representor",
-						ETHER_ADDR_LEN,
+						RTE_ETHER_ADDR_LEN,
 						0);
 	if (!ethdev->data->mac_addrs) {
 		IPN3KE_AFU_PMD_ERR("Failed to "

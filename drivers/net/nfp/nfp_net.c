@@ -1213,7 +1213,7 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->max_rx_queues = (uint16_t)hw->max_rx_queues;
 	dev_info->max_tx_queues = (uint16_t)hw->max_tx_queues;
-	dev_info->min_rx_bufsize = ETHER_MIN_MTU;
+	dev_info->min_rx_bufsize = RTE_ETHER_MIN_MTU;
 	dev_info->max_rx_pktlen = hw->max_mtu;
 	/* Next should change when PF support is implemented */
 	dev_info->max_mac_addrs = 1;
@@ -1486,7 +1486,7 @@ nfp_net_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	/* check that mtu is within the allowed range */
-	if ((mtu < ETHER_MIN_MTU) || ((uint32_t)mtu > hw->max_mtu))
+	if (mtu < RTE_ETHER_MIN_MTU || (uint32_t)mtu > hw->max_mtu)
 		return -EINVAL;
 
 	/* mtu setting is forbidden if port is started */
@@ -1497,7 +1497,7 @@ nfp_net_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	}
 
 	/* switch to jumbo mode if needed */
-	if ((uint32_t)mtu > ETHER_MAX_LEN)
+	if ((uint32_t)mtu > RTE_ETHER_MAX_LEN)
 		dev->data->dev_conf.rxmode.offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else
 		dev->data->dev_conf.rxmode.offloads &= ~DEV_RX_OFFLOAD_JUMBO_FRAME;
@@ -2905,7 +2905,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	hw->ver = nn_cfg_readl(hw, NFP_NET_CFG_VERSION);
 	hw->cap = nn_cfg_readl(hw, NFP_NET_CFG_CAP);
 	hw->max_mtu = nn_cfg_readl(hw, NFP_NET_CFG_MAX_MTU);
-	hw->mtu = ETHER_MTU;
+	hw->mtu = RTE_ETHER_MTU;
 
 	/* VLAN insertion is incompatible with LSOv2 */
 	if (hw->cap & NFP_NET_CFG_CTRL_LSO2)
@@ -2948,7 +2948,8 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	rte_spinlock_init(&hw->reconfig_lock);
 
 	/* Allocating memory for mac addr */
-	eth_dev->data->mac_addrs = rte_zmalloc("mac_addr", ETHER_ADDR_LEN, 0);
+	eth_dev->data->mac_addrs = rte_zmalloc("mac_addr",
+					       RTE_ETHER_ADDR_LEN, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR, "Failed to space for MAC address");
 		err = -ENOMEM;

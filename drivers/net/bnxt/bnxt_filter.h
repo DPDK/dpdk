@@ -25,14 +25,14 @@ struct bnxt_filter_info {
 	/* Filter Characteristics */
 	uint32_t		flags;
 	uint32_t		enables;
-	uint8_t			l2_addr[ETHER_ADDR_LEN];
-	uint8_t			l2_addr_mask[ETHER_ADDR_LEN];
+	uint8_t			l2_addr[RTE_ETHER_ADDR_LEN];
+	uint8_t			l2_addr_mask[RTE_ETHER_ADDR_LEN];
 	uint16_t		l2_ovlan;
 	uint16_t		l2_ovlan_mask;
 	uint16_t		l2_ivlan;
 	uint16_t		l2_ivlan_mask;
-	uint8_t			t_l2_addr[ETHER_ADDR_LEN];
-	uint8_t			t_l2_addr_mask[ETHER_ADDR_LEN];
+	uint8_t			t_l2_addr[RTE_ETHER_ADDR_LEN];
+	uint8_t			t_l2_addr_mask[RTE_ETHER_ADDR_LEN];
 	uint16_t		t_l2_ovlan;
 	uint16_t		t_l2_ovlan_mask;
 	uint16_t		t_l2_ivlan;

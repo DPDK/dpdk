@@ -136,7 +136,7 @@ static struct rte_eth_conf default_pmd_conf = {
 	.rxmode = {
 		.mq_mode = ETH_MQ_RX_NONE,
 		.split_hdr_size = 0,
-		.max_rx_pkt_len = ETHER_MAX_LEN,
+		.max_rx_pkt_len = RTE_ETHER_MAX_LEN,
 	},
 	.txmode = {
 		.mq_mode = ETH_MQ_TX_NONE,
@@ -237,7 +237,7 @@ test_setup(void)
 		for (i = 0; i < TEST_MAX_NUMBER_OF_PORTS; i++) {
 			char pmd_name[RTE_ETH_NAME_MAX_LEN];
 
-			mac_addr->addr_bytes[ETHER_ADDR_LEN-1] = i;
+			mac_addr->addr_bytes[RTE_ETHER_ADDR_LEN-1] = i;
 
 			snprintf(pmd_name, RTE_ETH_NAME_MAX_LEN, "eth_virt_%d", i);
 
@@ -396,7 +396,7 @@ test_remove_slave_from_bonded_device(void)
 
 
 	mac_addr = (struct rte_ether_addr *)slave_mac;
-	mac_addr->addr_bytes[ETHER_ADDR_LEN-1] =
+	mac_addr->addr_bytes[RTE_ETHER_ADDR_LEN-1] =
 			test_params->bonded_slave_count-1;
 
 	rte_eth_macaddr_get(
@@ -752,7 +752,7 @@ test_set_primary_slave(void)
 				test_params->bonded_port_id);
 
 		expected_mac_addr = (struct rte_ether_addr *)&slave_mac;
-		expected_mac_addr->addr_bytes[ETHER_ADDR_LEN-1] = i;
+		expected_mac_addr->addr_bytes[RTE_ETHER_ADDR_LEN-1] = i;
 
 		/* Check primary slave MAC */
 		rte_eth_macaddr_get(test_params->slave_port_ids[i], &read_mac_addr);
@@ -902,7 +902,8 @@ test_set_bonded_port_initialization_mac_assignment(void)
 		for (i = 0; i < BONDED_INIT_MAC_ASSIGNMENT_SLAVE_COUNT; i++) {
 			char pmd_name[RTE_ETH_NAME_MAX_LEN];
 
-			slave_mac_addr.addr_bytes[ETHER_ADDR_LEN-1] = i + 100;
+			slave_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN - 1] =
+				i + 100;
 
 			snprintf(pmd_name, RTE_ETH_NAME_MAX_LEN,
 				"eth_slave_%d", i);
@@ -942,8 +943,8 @@ test_set_bonded_port_initialization_mac_assignment(void)
 	/*
 	 * 3. Set explicit MAC address on bonded ethdev
 	 */
-	bonded_mac_addr.addr_bytes[ETHER_ADDR_LEN-2] = 0xFF;
-	bonded_mac_addr.addr_bytes[ETHER_ADDR_LEN-1] = 0xAA;
+	bonded_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-2] = 0xFF;
+	bonded_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-1] = 0xAA;
 
 	TEST_ASSERT_SUCCESS(rte_eth_bond_mac_address_set(
 			bonded_port_id, &bonded_mac_addr),
@@ -974,13 +975,13 @@ test_set_bonded_port_initialization_mac_assignment(void)
 			sizeof(read_mac_addr)),
 			"slave port 0 mac address not as expected");
 
-	slave_mac_addr.addr_bytes[ETHER_ADDR_LEN-1] = 1 + 100;
+	slave_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-1] = 1 + 100;
 	rte_eth_macaddr_get(slave_port_ids[1], &read_mac_addr);
 	TEST_ASSERT_SUCCESS(memcmp(&slave_mac_addr, &read_mac_addr,
 			sizeof(read_mac_addr)),
 			"slave port 1 mac address not as expected");
 
-	slave_mac_addr.addr_bytes[ETHER_ADDR_LEN-1] = 2 + 100;
+	slave_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-1] = 2 + 100;
 	rte_eth_macaddr_get(slave_port_ids[2], &read_mac_addr);
 	TEST_ASSERT_SUCCESS(memcmp(&slave_mac_addr, &read_mac_addr,
 			sizeof(read_mac_addr)),
@@ -1005,13 +1006,13 @@ test_set_bonded_port_initialization_mac_assignment(void)
 			sizeof(read_mac_addr)),
 			"bonded port mac address not as expected");
 
-	slave_mac_addr.addr_bytes[ETHER_ADDR_LEN-1] = 0 + 100;
+	slave_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-1] = 0 + 100;
 	rte_eth_macaddr_get(slave_port_ids[0], &read_mac_addr);
 	TEST_ASSERT_SUCCESS(memcmp(&slave_mac_addr, &read_mac_addr,
 			sizeof(read_mac_addr)),
 			"slave port 0 mac address not as expected");
 
-	slave_mac_addr.addr_bytes[ETHER_ADDR_LEN-1] = 1 + 100;
+	slave_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-1] = 1 + 100;
 	rte_eth_macaddr_get(slave_port_ids[1], &read_mac_addr);
 	TEST_ASSERT_SUCCESS(memcmp(&slave_mac_addr, &read_mac_addr,
 			sizeof(read_mac_addr)),
@@ -1042,19 +1043,19 @@ test_set_bonded_port_initialization_mac_assignment(void)
 			"Number of slaves (%d) is great than expected (%d).",
 			slave_count, 0);
 
-	slave_mac_addr.addr_bytes[ETHER_ADDR_LEN-1] = 0 + 100;
+	slave_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-1] = 0 + 100;
 	rte_eth_macaddr_get(slave_port_ids[0], &read_mac_addr);
 	TEST_ASSERT_SUCCESS(memcmp(&slave_mac_addr, &read_mac_addr,
 			sizeof(read_mac_addr)),
 			"slave port 0 mac address not as expected");
 
-	slave_mac_addr.addr_bytes[ETHER_ADDR_LEN-1] = 1 + 100;
+	slave_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-1] = 1 + 100;
 	rte_eth_macaddr_get(slave_port_ids[1], &read_mac_addr);
 	TEST_ASSERT_SUCCESS(memcmp(&slave_mac_addr, &read_mac_addr,
 			sizeof(read_mac_addr)),
 			"slave port 1 mac address not as expected");
 
-	slave_mac_addr.addr_bytes[ETHER_ADDR_LEN-1] = 2 + 100;
+	slave_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-1] = 2 + 100;
 	rte_eth_macaddr_get(slave_port_ids[2], &read_mac_addr);
 	TEST_ASSERT_SUCCESS(memcmp(&slave_mac_addr, &read_mac_addr,
 			sizeof(read_mac_addr)),
@@ -1271,9 +1272,9 @@ generate_test_burst(struct rte_mbuf **pkts_burst, uint16_t burst_size,
 	void *ip_hdr;
 
 	if (ipv4)
-		ether_type = ETHER_TYPE_IPv4;
+		ether_type = RTE_ETHER_TYPE_IPv4;
 	else
-		ether_type = ETHER_TYPE_IPv6;
+		ether_type = RTE_ETHER_TYPE_IPv6;
 
 	if (toggle_dst_mac)
 		initialize_eth_header(test_params->pkt_eth_hdr,
@@ -1953,7 +1954,7 @@ test_roundrobin_verfiy_polling_slave_link_status_change(void)
 	for (i = 0; i < TEST_RR_POLLING_LINK_STATUS_SLAVE_COUNT; i++) {
 		/* Generate slave name / MAC address */
 		snprintf(slave_name, RTE_ETH_NAME_MAX_LEN, "eth_virt_poll_%d", i);
-		mac_addr->addr_bytes[ETHER_ADDR_LEN-1] = i;
+		mac_addr->addr_bytes[RTE_ETHER_ADDR_LEN-1] = i;
 
 		/* Create slave devices with no ISR Support */
 		if (polling_test_slaves[i] == -1) {
@@ -2046,7 +2047,7 @@ test_activebackup_tx_burst(void)
 	initialize_eth_header(test_params->pkt_eth_hdr,
 			(struct rte_ether_addr *)src_mac,
 			(struct rte_ether_addr *)dst_mac_0,
-			ETHER_TYPE_IPv4,  0, 0);
+			RTE_ETHER_TYPE_IPv4,  0, 0);
 	pktlen = initialize_udp_header(test_params->pkt_udp_hdr, src_port,
 			dst_port_0, 16);
 	pktlen = initialize_ipv4_header(test_params->pkt_ipv4_hdr, src_addr,
@@ -2583,7 +2584,7 @@ test_balance_l2_tx_burst(void)
 	initialize_eth_header(test_params->pkt_eth_hdr,
 			(struct rte_ether_addr *)src_mac,
 			(struct rte_ether_addr *)dst_mac_0,
-			ETHER_TYPE_IPv4, 0, 0);
+			RTE_ETHER_TYPE_IPv4, 0, 0);
 	pktlen = initialize_udp_header(test_params->pkt_udp_hdr, src_port,
 			dst_port_0, 16);
 	pktlen = initialize_ipv4_header(test_params->pkt_ipv4_hdr, src_addr,
@@ -2599,7 +2600,7 @@ test_balance_l2_tx_burst(void)
 	initialize_eth_header(test_params->pkt_eth_hdr,
 			(struct rte_ether_addr *)src_mac,
 			(struct rte_ether_addr *)dst_mac_1,
-			ETHER_TYPE_IPv4, 0, 0);
+			RTE_ETHER_TYPE_IPv4, 0, 0);
 
 	/* Generate a burst 2 of packets to transmit */
 	TEST_ASSERT_EQUAL(generate_packet_burst(test_params->mbuf_pool, &pkts_burst[1][0],
@@ -3425,7 +3426,7 @@ test_broadcast_tx_burst(void)
 	initialize_eth_header(test_params->pkt_eth_hdr,
 			(struct rte_ether_addr *)src_mac,
 			(struct rte_ether_addr *)dst_mac_0,
-			ETHER_TYPE_IPv4, 0, 0);
+			RTE_ETHER_TYPE_IPv4, 0, 0);
 
 	pktlen = initialize_udp_header(test_params->pkt_udp_hdr, src_port,
 			dst_port_0, 16);
@@ -4011,12 +4012,12 @@ test_tlb_tx_burst(void)
 			initialize_eth_header(test_params->pkt_eth_hdr,
 					(struct rte_ether_addr *)src_mac,
 					(struct rte_ether_addr *)dst_mac_0,
-					ETHER_TYPE_IPv4, 0, 0);
+					RTE_ETHER_TYPE_IPv4, 0, 0);
 		} else {
 			initialize_eth_header(test_params->pkt_eth_hdr,
 					(struct rte_ether_addr *)test_params->default_slave_mac,
 					(struct rte_ether_addr *)dst_mac_0,
-					ETHER_TYPE_IPv4, 0, 0);
+					RTE_ETHER_TYPE_IPv4, 0, 0);
 		}
 		pktlen = initialize_udp_header(test_params->pkt_udp_hdr, src_port,
 				dst_port_0, 16);
@@ -4519,10 +4520,10 @@ test_alb_change_mac_in_reply_sent(void)
 	 * them through the bonding port.
 	 */
 	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
-	memcpy(client_mac.addr_bytes, mac_client1, ETHER_ADDR_LEN);
+	memcpy(client_mac.addr_bytes, mac_client1, RTE_ETHER_ADDR_LEN);
 	eth_pkt = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
-	initialize_eth_header(eth_pkt, &bond_mac, &client_mac, ETHER_TYPE_ARP, 0,
-			0);
+	initialize_eth_header(eth_pkt, &bond_mac, &client_mac,
+			RTE_ETHER_TYPE_ARP, 0, 0);
 	arp_pkt = (struct rte_arp_hdr *)((char *)eth_pkt +
 					sizeof(struct rte_ether_hdr));
 	initialize_arp_header(arp_pkt, &bond_mac, &client_mac, ip_host, ip_client1,
@@ -4530,10 +4531,10 @@ test_alb_change_mac_in_reply_sent(void)
 	rte_eth_tx_burst(test_params->bonded_port_id, 0, &pkt, 1);
 
 	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
-	memcpy(client_mac.addr_bytes, mac_client2, ETHER_ADDR_LEN);
+	memcpy(client_mac.addr_bytes, mac_client2, RTE_ETHER_ADDR_LEN);
 	eth_pkt = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
-	initialize_eth_header(eth_pkt, &bond_mac, &client_mac, ETHER_TYPE_ARP, 0,
-			0);
+	initialize_eth_header(eth_pkt, &bond_mac, &client_mac,
+			RTE_ETHER_TYPE_ARP, 0, 0);
 	arp_pkt = (struct rte_arp_hdr *)((char *)eth_pkt +
 					sizeof(struct rte_ether_hdr));
 	initialize_arp_header(arp_pkt, &bond_mac, &client_mac, ip_host, ip_client2,
@@ -4541,10 +4542,10 @@ test_alb_change_mac_in_reply_sent(void)
 	rte_eth_tx_burst(test_params->bonded_port_id, 0, &pkt, 1);
 
 	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
-	memcpy(client_mac.addr_bytes, mac_client3, ETHER_ADDR_LEN);
+	memcpy(client_mac.addr_bytes, mac_client3, RTE_ETHER_ADDR_LEN);
 	eth_pkt = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
-	initialize_eth_header(eth_pkt, &bond_mac, &client_mac, ETHER_TYPE_ARP, 0,
-			0);
+	initialize_eth_header(eth_pkt, &bond_mac, &client_mac,
+			RTE_ETHER_TYPE_ARP, 0, 0);
 	arp_pkt = (struct rte_arp_hdr *)((char *)eth_pkt +
 					sizeof(struct rte_ether_hdr));
 	initialize_arp_header(arp_pkt, &bond_mac, &client_mac, ip_host, ip_client3,
@@ -4552,10 +4553,10 @@ test_alb_change_mac_in_reply_sent(void)
 	rte_eth_tx_burst(test_params->bonded_port_id, 0, &pkt, 1);
 
 	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
-	memcpy(client_mac.addr_bytes, mac_client4, ETHER_ADDR_LEN);
+	memcpy(client_mac.addr_bytes, mac_client4, RTE_ETHER_ADDR_LEN);
 	eth_pkt = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
-	initialize_eth_header(eth_pkt, &bond_mac, &client_mac, ETHER_TYPE_ARP, 0,
-			0);
+	initialize_eth_header(eth_pkt, &bond_mac, &client_mac,
+			RTE_ETHER_TYPE_ARP, 0, 0);
 	arp_pkt = (struct rte_arp_hdr *)((char *)eth_pkt +
 					sizeof(struct rte_ether_hdr));
 	initialize_arp_header(arp_pkt, &bond_mac, &client_mac, ip_host, ip_client4,
@@ -4640,10 +4641,10 @@ test_alb_reply_from_client(void)
 	 * them in the rx queue to be received by the bonding driver on rx_burst.
 	 */
 	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
-	memcpy(client_mac.addr_bytes, mac_client1, ETHER_ADDR_LEN);
+	memcpy(client_mac.addr_bytes, mac_client1, RTE_ETHER_ADDR_LEN);
 	eth_pkt = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
-	initialize_eth_header(eth_pkt, &bond_mac, &client_mac, ETHER_TYPE_ARP, 0,
-			0);
+	initialize_eth_header(eth_pkt, &bond_mac, &client_mac,
+			RTE_ETHER_TYPE_ARP, 0, 0);
 	arp_pkt = (struct rte_arp_hdr *)((char *)eth_pkt +
 					sizeof(struct rte_ether_hdr));
 	initialize_arp_header(arp_pkt, &client_mac, &bond_mac, ip_client1, ip_host,
@@ -4652,10 +4653,10 @@ test_alb_reply_from_client(void)
 			1);
 
 	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
-	memcpy(client_mac.addr_bytes, mac_client2, ETHER_ADDR_LEN);
+	memcpy(client_mac.addr_bytes, mac_client2, RTE_ETHER_ADDR_LEN);
 	eth_pkt = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
-	initialize_eth_header(eth_pkt, &bond_mac, &client_mac, ETHER_TYPE_ARP, 0,
-			0);
+	initialize_eth_header(eth_pkt, &bond_mac, &client_mac,
+			RTE_ETHER_TYPE_ARP, 0, 0);
 	arp_pkt = (struct rte_arp_hdr *)((char *)eth_pkt +
 					sizeof(struct rte_ether_hdr));
 	initialize_arp_header(arp_pkt, &client_mac, &bond_mac, ip_client2, ip_host,
@@ -4664,10 +4665,10 @@ test_alb_reply_from_client(void)
 			1);
 
 	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
-	memcpy(client_mac.addr_bytes, mac_client3, ETHER_ADDR_LEN);
+	memcpy(client_mac.addr_bytes, mac_client3, RTE_ETHER_ADDR_LEN);
 	eth_pkt = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
-	initialize_eth_header(eth_pkt, &bond_mac, &client_mac, ETHER_TYPE_ARP, 0,
-			0);
+	initialize_eth_header(eth_pkt, &bond_mac, &client_mac,
+			RTE_ETHER_TYPE_ARP, 0, 0);
 	arp_pkt = (struct rte_arp_hdr *)((char *)eth_pkt +
 					sizeof(struct rte_ether_hdr));
 	initialize_arp_header(arp_pkt, &client_mac, &bond_mac, ip_client3, ip_host,
@@ -4676,10 +4677,10 @@ test_alb_reply_from_client(void)
 			1);
 
 	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
-	memcpy(client_mac.addr_bytes, mac_client4, ETHER_ADDR_LEN);
+	memcpy(client_mac.addr_bytes, mac_client4, RTE_ETHER_ADDR_LEN);
 	eth_pkt = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
-	initialize_eth_header(eth_pkt, &bond_mac, &client_mac, ETHER_TYPE_ARP, 0,
-			0);
+	initialize_eth_header(eth_pkt, &bond_mac, &client_mac,
+			RTE_ETHER_TYPE_ARP, 0, 0);
 	arp_pkt = (struct rte_arp_hdr *)((char *)eth_pkt +
 					sizeof(struct rte_ether_hdr));
 	initialize_arp_header(arp_pkt, &client_mac, &bond_mac, ip_client4, ip_host,
@@ -4774,16 +4775,16 @@ test_alb_receive_vlan_reply(void)
 	 * Generating packet with double VLAN header and placing it in the rx queue.
 	 */
 	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
-	memcpy(client_mac.addr_bytes, mac_client1, ETHER_ADDR_LEN);
+	memcpy(client_mac.addr_bytes, mac_client1, RTE_ETHER_ADDR_LEN);
 	eth_pkt = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
-	initialize_eth_header(eth_pkt, &bond_mac, &client_mac, ETHER_TYPE_VLAN, 0,
-			0);
+	initialize_eth_header(eth_pkt, &bond_mac, &client_mac,
+			RTE_ETHER_TYPE_VLAN, 0, 0);
 	vlan_pkt = (struct rte_vlan_hdr *)((char *)(eth_pkt + 1));
 	vlan_pkt->vlan_tci = rte_cpu_to_be_16(1);
-	vlan_pkt->eth_proto = rte_cpu_to_be_16(ETHER_TYPE_VLAN);
+	vlan_pkt->eth_proto = rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN);
 	vlan_pkt = vlan_pkt+1;
 	vlan_pkt->vlan_tci = rte_cpu_to_be_16(2);
-	vlan_pkt->eth_proto = rte_cpu_to_be_16(ETHER_TYPE_ARP);
+	vlan_pkt->eth_proto = rte_cpu_to_be_16(RTE_ETHER_TYPE_ARP);
 	arp_pkt = (struct rte_arp_hdr *)((char *)(vlan_pkt + 1));
 	initialize_arp_header(arp_pkt, &client_mac, &bond_mac, ip_client1, ip_host,
 			RTE_ARP_OP_REPLY);
@@ -4810,7 +4811,8 @@ test_alb_receive_vlan_reply(void)
 				retval = -1;
 				goto test_end;
 			}
-			if (vlan_pkt->eth_proto != rte_cpu_to_be_16(ETHER_TYPE_VLAN)) {
+			if (vlan_pkt->eth_proto != rte_cpu_to_be_16(
+					RTE_ETHER_TYPE_VLAN)) {
 				retval = -1;
 				goto test_end;
 			}
@@ -4819,7 +4821,8 @@ test_alb_receive_vlan_reply(void)
 				retval = -1;
 				goto test_end;
 			}
-			if (vlan_pkt->eth_proto != rte_cpu_to_be_16(ETHER_TYPE_ARP)) {
+			if (vlan_pkt->eth_proto != rte_cpu_to_be_16(
+					RTE_ETHER_TYPE_ARP)) {
 				retval = -1;
 				goto test_end;
 			}

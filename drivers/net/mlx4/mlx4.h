@@ -199,7 +199,7 @@ struct mlx4_priv {
 /* mlx4_ethdev.c */
 
 int mlx4_get_ifname(const struct mlx4_priv *priv, char (*ifname)[IF_NAMESIZE]);
-int mlx4_get_mac(struct mlx4_priv *priv, uint8_t (*mac)[ETHER_ADDR_LEN]);
+int mlx4_get_mac(struct mlx4_priv *priv, uint8_t (*mac)[RTE_ETHER_ADDR_LEN]);
 int mlx4_mtu_get(struct mlx4_priv *priv, uint16_t *mtu);
 int mlx4_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 int mlx4_dev_set_link_down(struct rte_eth_dev *dev);

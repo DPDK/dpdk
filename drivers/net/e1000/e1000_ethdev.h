@@ -92,7 +92,8 @@
  * The overhead from MTU to max frame size.
  * Considering VLAN so a tag needs to be counted.
  */
-#define E1000_ETH_OVERHEAD (ETHER_HDR_LEN + ETHER_CRC_LEN + VLAN_TAG_SIZE)
+#define E1000_ETH_OVERHEAD (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + \
+				VLAN_TAG_SIZE)
 
 /*
  * Maximum number of Ring Descriptors.
@@ -155,7 +156,7 @@ struct e1000_vfta {
  */
 #define E1000_MAX_VF_MC_ENTRIES         30
 struct e1000_vf_info {
-	uint8_t vf_mac_addresses[ETHER_ADDR_LEN];
+	uint8_t vf_mac_addresses[RTE_ETHER_ADDR_LEN];
 	uint16_t vf_mc_hashes[E1000_MAX_VF_MC_ENTRIES];
 	uint16_t num_vf_mc_hashes;
 	uint16_t default_vf_vlan_id;

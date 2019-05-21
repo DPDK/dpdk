@@ -56,7 +56,7 @@ configuration:
         Interface name: kni#
         force bind kernel thread to a core : NO
         mbuf size: (rte_pktmbuf_data_room_size(pktmbuf_pool) - RTE_PKTMBUF_HEADROOM)
-        mtu: (conf.mbuf_size - ETHER_HDR_LEN)
+        mtu: (conf.mbuf_size - RTE_ETHER_HDR_LEN)
 
 KNI control path is not supported with the PMD, since there is no physical
 backend device by default.

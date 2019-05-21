@@ -135,7 +135,7 @@ vhost_kernel_open_tap(char **p_ifname, int hdr_size, int req_mq,
 
 	memset(&ifr, 0, sizeof(ifr));
 	ifr.ifr_hwaddr.sa_family = ARPHRD_ETHER;
-	memcpy(ifr.ifr_hwaddr.sa_data, mac, ETHER_ADDR_LEN);
+	memcpy(ifr.ifr_hwaddr.sa_data, mac, RTE_ETHER_ADDR_LEN);
 	if (ioctl(tapfd, SIOCSIFHWADDR, (void *)&ifr) == -1) {
 		PMD_DRV_LOG(ERR, "SIOCSIFHWADDR failed: %s", strerror(errno));
 		goto error;

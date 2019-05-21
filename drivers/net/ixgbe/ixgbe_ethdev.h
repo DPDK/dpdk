@@ -102,7 +102,7 @@
 #define IXGBE_5TUPLE_MIN_PRI            1
 
 /* The overhead from MTU to max frame size. */
-#define IXGBE_ETH_OVERHEAD (ETHER_HDR_LEN + ETHER_CRC_LEN)
+#define IXGBE_ETH_OVERHEAD (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN)
 
 /* bit of VXLAN tunnel type | 7 bits of zeros  | 8 bits of zeros*/
 #define IXGBE_FDIR_VXLAN_TUNNEL_TYPE    0x8000
@@ -258,7 +258,7 @@ struct ixgbe_mirror_info {
 };
 
 struct ixgbe_vf_info {
-	uint8_t vf_mac_addresses[ETHER_ADDR_LEN];
+	uint8_t vf_mac_addresses[RTE_ETHER_ADDR_LEN];
 	uint16_t vf_mc_hashes[IXGBE_MAX_VF_MC_ENTRIES];
 	uint16_t num_vf_mc_hashes;
 	uint16_t default_vf_vlan_id;

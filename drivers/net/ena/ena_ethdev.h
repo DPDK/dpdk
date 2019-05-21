@@ -198,7 +198,7 @@ struct ena_adapter {
 
 	int id_number;
 	char name[ENA_NAME_MAX_LEN];
-	u8 mac_addr[ETHER_ADDR_LEN];
+	u8 mac_addr[RTE_ETHER_ADDR_LEN];
 
 	void *regs;
 	void *dev_mem_base;

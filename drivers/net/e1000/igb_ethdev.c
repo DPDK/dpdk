@@ -830,11 +830,11 @@ eth_igb_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* Allocate memory for storing MAC addresses */
 	eth_dev->data->mac_addrs = rte_zmalloc("e1000",
-		ETHER_ADDR_LEN * hw->mac.rar_entry_count, 0);
+		RTE_ETHER_ADDR_LEN * hw->mac.rar_entry_count, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR, "Failed to allocate %d bytes needed to "
 						"store MAC addresses",
-				ETHER_ADDR_LEN * hw->mac.rar_entry_count);
+				RTE_ETHER_ADDR_LEN * hw->mac.rar_entry_count);
 		error = -ENOMEM;
 		goto err_late;
 	}
@@ -1028,13 +1028,13 @@ eth_igbvf_dev_init(struct rte_eth_dev *eth_dev)
 	diag = hw->mac.ops.reset_hw(hw);
 
 	/* Allocate memory for storing MAC addresses */
-	eth_dev->data->mac_addrs = rte_zmalloc("igbvf", ETHER_ADDR_LEN *
+	eth_dev->data->mac_addrs = rte_zmalloc("igbvf", RTE_ETHER_ADDR_LEN *
 		hw->mac.rar_entry_count, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR,
 			"Failed to allocate %d bytes needed to store MAC "
 			"addresses",
-			ETHER_ADDR_LEN * hw->mac.rar_entry_count);
+			RTE_ETHER_ADDR_LEN * hw->mac.rar_entry_count);
 		return -ENOMEM;
 	}
 
@@ -1322,7 +1322,8 @@ eth_igb_start(struct rte_eth_dev *dev)
 	}
 	adapter->stopped = 0;
 
-	E1000_WRITE_REG(hw, E1000_VET, ETHER_TYPE_VLAN << 16 | ETHER_TYPE_VLAN);
+	E1000_WRITE_REG(hw, E1000_VET,
+			RTE_ETHER_TYPE_VLAN << 16 | RTE_ETHER_TYPE_VLAN);
 
 	ctrl_ext = E1000_READ_REG(hw, E1000_CTRL_EXT);
 	/* Set PF Reset Done bit so PF/VF Mail Ops can work */
@@ -1689,7 +1690,7 @@ igb_hardware_init(struct e1000_hw *hw)
 	 */
 	rx_buf_size = igb_get_rx_buffer_size(hw);
 
-	hw->fc.high_water = rx_buf_size - (ETHER_MAX_LEN * 2);
+	hw->fc.high_water = rx_buf_size - (RTE_ETHER_MAX_LEN * 2);
 	hw->fc.low_water = hw->fc.high_water - 1500;
 	hw->fc.pause_time = IGB_FC_PAUSE_TIME;
 	hw->fc.send_xon = 1;
@@ -1708,7 +1709,8 @@ igb_hardware_init(struct e1000_hw *hw)
 	if (diag < 0)
 		return diag;
 
-	E1000_WRITE_REG(hw, E1000_VET, ETHER_TYPE_VLAN << 16 | ETHER_TYPE_VLAN);
+	E1000_WRITE_REG(hw, E1000_VET,
+			RTE_ETHER_TYPE_VLAN << 16 | RTE_ETHER_TYPE_VLAN);
 	e1000_get_phy_info(hw);
 	e1000_check_for_link(hw);
 
@@ -1772,10 +1774,10 @@ igb_read_stats_registers(struct e1000_hw *hw, struct e1000_hw_stats *stats)
 	/* Workaround CRC bytes included in size, take away 4 bytes/packet */
 	stats->gorc += E1000_READ_REG(hw, E1000_GORCL);
 	stats->gorc += ((uint64_t)E1000_READ_REG(hw, E1000_GORCH) << 32);
-	stats->gorc -= (stats->gprc - old_gprc) * ETHER_CRC_LEN;
+	stats->gorc -= (stats->gprc - old_gprc) * RTE_ETHER_CRC_LEN;
 	stats->gotc += E1000_READ_REG(hw, E1000_GOTCL);
 	stats->gotc += ((uint64_t)E1000_READ_REG(hw, E1000_GOTCH) << 32);
-	stats->gotc -= (stats->gptc - old_gptc) * ETHER_CRC_LEN;
+	stats->gotc -= (stats->gptc - old_gptc) * RTE_ETHER_CRC_LEN;
 
 	stats->rnbc += E1000_READ_REG(hw, E1000_RNBC);
 	stats->ruc += E1000_READ_REG(hw, E1000_RUC);
@@ -1788,10 +1790,10 @@ igb_read_stats_registers(struct e1000_hw *hw, struct e1000_hw_stats *stats)
 
 	stats->tor += E1000_READ_REG(hw, E1000_TORL);
 	stats->tor += ((uint64_t)E1000_READ_REG(hw, E1000_TORH) << 32);
-	stats->tor -= (stats->tpr - old_tpr) * ETHER_CRC_LEN;
+	stats->tor -= (stats->tpr - old_tpr) * RTE_ETHER_CRC_LEN;
 	stats->tot += E1000_READ_REG(hw, E1000_TOTL);
 	stats->tot += ((uint64_t)E1000_READ_REG(hw, E1000_TOTH) << 32);
-	stats->tot -= (stats->tpt - old_tpt) * ETHER_CRC_LEN;
+	stats->tot -= (stats->tpt - old_tpt) * RTE_ETHER_CRC_LEN;
 
 	stats->ptc64 += E1000_READ_REG(hw, E1000_PTC64);
 	stats->ptc127 += E1000_READ_REG(hw, E1000_PTC127);
@@ -1825,10 +1827,10 @@ igb_read_stats_registers(struct e1000_hw *hw, struct e1000_hw_stats *stats)
 	stats->htcbdpc += E1000_READ_REG(hw, E1000_HTCBDPC);
 	stats->hgorc += E1000_READ_REG(hw, E1000_HGORCL);
 	stats->hgorc += ((uint64_t)E1000_READ_REG(hw, E1000_HGORCH) << 32);
-	stats->hgorc -= (stats->rpthc - old_rpthc) * ETHER_CRC_LEN;
+	stats->hgorc -= (stats->rpthc - old_rpthc) * RTE_ETHER_CRC_LEN;
 	stats->hgotc += E1000_READ_REG(hw, E1000_HGOTCL);
 	stats->hgotc += ((uint64_t)E1000_READ_REG(hw, E1000_HGOTCH) << 32);
-	stats->hgotc -= (stats->hgptc - old_hgptc) * ETHER_CRC_LEN;
+	stats->hgotc -= (stats->hgptc - old_hgptc) * RTE_ETHER_CRC_LEN;
 	stats->lenerrs += E1000_READ_REG(hw, E1000_LENERRS);
 	stats->scvpc += E1000_READ_REG(hw, E1000_SCVPC);
 	stats->hrmpc += E1000_READ_REG(hw, E1000_HRMPC);
@@ -2288,7 +2290,7 @@ eth_igb_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 			ETH_LINK_SPEED_1G;
 
 	dev_info->max_mtu = dev_info->max_rx_pktlen - E1000_ETH_OVERHEAD;
-	dev_info->min_mtu = ETHER_MIN_MTU;
+	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 
 }
 
@@ -3081,7 +3083,7 @@ eth_igb_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	PMD_INIT_LOG(DEBUG, "Rx packet buffer size = 0x%x", rx_buf_size);
 
 	/* At least reserve one Ethernet frame for watermark */
-	max_high_water = rx_buf_size - ETHER_MAX_LEN;
+	max_high_water = rx_buf_size - RTE_ETHER_MAX_LEN;
 	if ((fc_conf->high_water > max_high_water) ||
 	    (fc_conf->high_water < fc_conf->low_water)) {
 		PMD_INIT_LOG(ERR, "e1000 incorrect high/low water value");
@@ -3137,7 +3139,7 @@ eth_igb_rar_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 static void
 eth_igb_rar_clear(struct rte_eth_dev *dev, uint32_t index)
 {
-	uint8_t addr[ETHER_ADDR_LEN];
+	uint8_t addr[RTE_ETHER_ADDR_LEN];
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	memset(addr, 0, sizeof(addr));
@@ -4485,8 +4487,8 @@ eth_igb_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	eth_igb_infos_get(dev, &dev_info);
 
 	/* check that mtu is within the allowed range */
-	if ((mtu < ETHER_MIN_MTU) ||
-	    (frame_size > dev_info.max_rx_pktlen))
+	if (mtu < RTE_ETHER_MIN_MTU ||
+			frame_size > dev_info.max_rx_pktlen)
 		return -EINVAL;
 
 	/* refuse mtu that requires the support of scattered packets when this
@@ -4498,7 +4500,7 @@ eth_igb_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	rctl = E1000_READ_REG(hw, E1000_RCTL);
 
 	/* switch to jumbo mode if needed */
-	if (frame_size > ETHER_MAX_LEN) {
+	if (frame_size > RTE_ETHER_MAX_LEN) {
 		dev->data->dev_conf.rxmode.offloads |=
 			DEV_RX_OFFLOAD_JUMBO_FRAME;
 		rctl |= E1000_RCTL_LPE;
@@ -4744,8 +4746,8 @@ igb_add_del_ethertype_filter(struct rte_eth_dev *dev,
 	uint32_t etqf = 0;
 	int ret;
 
-	if (filter->ether_type == ETHER_TYPE_IPv4 ||
-		filter->ether_type == ETHER_TYPE_IPv6) {
+	if (filter->ether_type == RTE_ETHER_TYPE_IPv4 ||
+		filter->ether_type == RTE_ETHER_TYPE_IPv6) {
 		PMD_DRV_LOG(ERR, "unsupported ether_type(0x%04x) in"
 			" ethertype filter.", filter->ether_type);
 		return -EINVAL;
@@ -5156,7 +5158,7 @@ igb_timesync_enable(struct rte_eth_dev *dev)
 
 	/* Enable L2 filtering of IEEE1588/802.1AS Ethernet frame types. */
 	E1000_WRITE_REG(hw, E1000_ETQF(E1000_ETQF_FILTER_1588),
-			(ETHER_TYPE_1588 |
+			(RTE_ETHER_TYPE_1588 |
 			 E1000_ETQF_FILTER_ENABLE |
 			 E1000_ETQF_1588));
 

@@ -626,11 +626,11 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 	pdata->mac_addr.addr_bytes[5] = (mac_hi >> 8)  &  0xff;
 
 	eth_dev->data->mac_addrs = rte_zmalloc("axgbe_mac_addr",
-					       ETHER_ADDR_LEN, 0);
+					       RTE_ETHER_ADDR_LEN, 0);
 	if (!eth_dev->data->mac_addrs) {
 		PMD_INIT_LOG(ERR,
 			     "Failed to alloc %u bytes needed to store MAC addr tbl",
-			     ETHER_ADDR_LEN);
+			     RTE_ETHER_ADDR_LEN);
 		return -ENOMEM;
 	}
 

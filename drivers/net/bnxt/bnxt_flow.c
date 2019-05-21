@@ -682,7 +682,7 @@ bnxt_get_l2_filter(struct bnxt *bp, struct bnxt_filter_info *nf,
 	f0 = STAILQ_FIRST(&vnic0->filter);
 
 	/* This flow has same DST MAC as the port/l2 filter. */
-	if (memcmp(f0->l2_addr, nf->dst_macaddr, ETHER_ADDR_LEN) == 0)
+	if (memcmp(f0->l2_addr, nf->dst_macaddr, RTE_ETHER_ADDR_LEN) == 0)
 		return f0;
 
 	/* This flow needs DST MAC which is not same as port/l2 */
@@ -694,8 +694,8 @@ bnxt_get_l2_filter(struct bnxt *bp, struct bnxt_filter_info *nf,
 	filter1->flags = HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_PATH_RX;
 	filter1->enables = HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR |
 			L2_FILTER_ALLOC_INPUT_EN_L2_ADDR_MASK;
-	memcpy(filter1->l2_addr, nf->dst_macaddr, ETHER_ADDR_LEN);
-	memset(filter1->l2_addr_mask, 0xff, ETHER_ADDR_LEN);
+	memcpy(filter1->l2_addr, nf->dst_macaddr, RTE_ETHER_ADDR_LEN);
+	memset(filter1->l2_addr_mask, 0xff, RTE_ETHER_ADDR_LEN);
 	rc = bnxt_hwrm_set_l2_filter(bp, vnic->fw_vnic_id,
 				     filter1);
 	if (rc) {
@@ -951,13 +951,14 @@ bnxt_match_filter(struct bnxt *bp, struct bnxt_filter_info *nf)
 			    mf->l2_ovlan_mask == nf->l2_ovlan_mask &&
 			    mf->l2_ivlan == nf->l2_ivlan &&
 			    mf->l2_ivlan_mask == nf->l2_ivlan_mask &&
-			    !memcmp(mf->l2_addr, nf->l2_addr, ETHER_ADDR_LEN) &&
+			    !memcmp(mf->l2_addr, nf->l2_addr,
+				    RTE_ETHER_ADDR_LEN) &&
 			    !memcmp(mf->l2_addr_mask, nf->l2_addr_mask,
-				    ETHER_ADDR_LEN) &&
+				    RTE_ETHER_ADDR_LEN) &&
 			    !memcmp(mf->src_macaddr, nf->src_macaddr,
-				    ETHER_ADDR_LEN) &&
+				    RTE_ETHER_ADDR_LEN) &&
 			    !memcmp(mf->dst_macaddr, nf->dst_macaddr,
-				    ETHER_ADDR_LEN) &&
+				    RTE_ETHER_ADDR_LEN) &&
 			    !memcmp(mf->src_ipaddr, nf->src_ipaddr,
 				    sizeof(nf->src_ipaddr)) &&
 			    !memcmp(mf->src_ipaddr_mask, nf->src_ipaddr_mask,

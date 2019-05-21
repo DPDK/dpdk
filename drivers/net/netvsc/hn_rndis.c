@@ -1093,7 +1093,7 @@ hn_rndis_get_eaddr(struct hn_data *hv, uint8_t *eaddr)
 	uint32_t eaddr_len;
 	int error;
 
-	eaddr_len = ETHER_ADDR_LEN;
+	eaddr_len = RTE_ETHER_ADDR_LEN;
 	error = hn_rndis_query(hv, OID_802_3_PERMANENT_ADDRESS, NULL, 0,
 			       eaddr, eaddr_len);
 	if (error)

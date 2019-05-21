@@ -86,7 +86,7 @@ kni_change_mtu(uint16_t port_id, unsigned int new_mtu)
 	if (!rte_eth_dev_is_valid_port(port_id))
 		return -EINVAL;
 
-	if (new_mtu > ETHER_MAX_LEN)
+	if (new_mtu > RTE_ETHER_MAX_LEN)
 		return -EINVAL;
 
 	/* Set new MTU */

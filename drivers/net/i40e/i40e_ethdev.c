@@ -1479,7 +1479,7 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 	/* Set the global registers with default ether type value */
 	if (!pf->support_multi_driver) {
 		ret = i40e_vlan_tpid_set(dev, ETH_VLAN_TYPE_OUTER,
-					 ETHER_TYPE_VLAN);
+					 RTE_ETHER_TYPE_VLAN);
 		if (ret != I40E_SUCCESS) {
 			PMD_INIT_LOG(ERR,
 				     "Failed to set the default outer "
@@ -1510,9 +1510,9 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 	}
 
 	if (!vsi->max_macaddrs)
-		len = ETHER_ADDR_LEN;
+		len = RTE_ETHER_ADDR_LEN;
 	else
-		len = ETHER_ADDR_LEN * vsi->max_macaddrs;
+		len = RTE_ETHER_ADDR_LEN * vsi->max_macaddrs;
 
 	/* Should be after VSI initialized */
 	dev->data->mac_addrs = rte_zmalloc("i40e", len, 0);
@@ -2835,7 +2835,7 @@ i40e_update_vsi_stats(struct i40e_vsi *vsi)
 			    &nes->rx_broadcast);
 	/* exclude CRC bytes */
 	nes->rx_bytes -= (nes->rx_unicast + nes->rx_multicast +
-		nes->rx_broadcast) * ETHER_CRC_LEN;
+		nes->rx_broadcast) * RTE_ETHER_CRC_LEN;
 
 	i40e_stat_update_32(hw, I40E_GLV_RDPC(idx), vsi->offset_loaded,
 			    &oes->rx_discards, &nes->rx_discards);
@@ -2935,7 +2935,7 @@ i40e_read_stats_registers(struct i40e_pf *pf, struct i40e_hw *hw)
 	/* exclude CRC size */
 	pf->internal_stats.rx_bytes -= (pf->internal_stats.rx_unicast +
 		pf->internal_stats.rx_multicast +
-		pf->internal_stats.rx_broadcast) * ETHER_CRC_LEN;
+		pf->internal_stats.rx_broadcast) * RTE_ETHER_CRC_LEN;
 
 	/* Get statistics of struct i40e_eth_stats */
 	i40e_stat_update_48(hw, I40E_GLPRT_GORCH(hw->port),
@@ -2955,10 +2955,11 @@ i40e_read_stats_registers(struct i40e_pf *pf, struct i40e_hw *hw)
 			    pf->offset_loaded, &os->eth.rx_broadcast,
 			    &ns->eth.rx_broadcast);
 	/* Workaround: CRC size should not be included in byte statistics,
-	 * so subtract ETHER_CRC_LEN from the byte counter for each rx packet.
+	 * so subtract RTE_ETHER_CRC_LEN from the byte counter for each rx
+	 * packet.
 	 */
 	ns->eth.rx_bytes -= (ns->eth.rx_unicast + ns->eth.rx_multicast +
-		ns->eth.rx_broadcast) * ETHER_CRC_LEN;
+		ns->eth.rx_broadcast) * RTE_ETHER_CRC_LEN;
 
 	/* exclude internal rx bytes
 	 * Workaround: it is possible I40E_GLV_GORCH[H/L] is updated before
@@ -3012,7 +3013,7 @@ i40e_read_stats_registers(struct i40e_pf *pf, struct i40e_hw *hw)
 			    pf->offset_loaded, &os->eth.tx_broadcast,
 			    &ns->eth.tx_broadcast);
 	ns->eth.tx_bytes -= (ns->eth.tx_unicast + ns->eth.tx_multicast +
-		ns->eth.tx_broadcast) * ETHER_CRC_LEN;
+		ns->eth.tx_broadcast) * RTE_ETHER_CRC_LEN;
 
 	/* exclude internal tx bytes
 	 * Workaround: it is possible I40E_GLV_GOTCH[H/L] is updated before
@@ -3511,7 +3512,7 @@ i40e_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_mac_addrs = vsi->max_macaddrs;
 	dev_info->max_vfs = pci_dev->max_vfs;
 	dev_info->max_mtu = dev_info->max_rx_pktlen - I40E_ETH_OVERHEAD;
-	dev_info->min_mtu = ETHER_MIN_MTU;
+	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 	dev_info->rx_queue_offload_capa = 0;
 	dev_info->rx_offload_capa =
 		DEV_RX_OFFLOAD_VLAN_STRIP |
@@ -3777,9 +3778,9 @@ i40e_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			i40e_vsi_config_double_vlan(vsi, TRUE);
 			/* Set global registers with default ethertype. */
 			i40e_vlan_tpid_set(dev, ETH_VLAN_TYPE_OUTER,
-					   ETHER_TYPE_VLAN);
+					   RTE_ETHER_TYPE_VLAN);
 			i40e_vlan_tpid_set(dev, ETH_VLAN_TYPE_INNER,
-					   ETHER_TYPE_VLAN);
+					   RTE_ETHER_TYPE_VLAN);
 		}
 		else
 			i40e_vsi_config_double_vlan(vsi, FALSE);
@@ -4037,7 +4038,7 @@ i40e_macaddr_add(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
-	rte_memcpy(&mac_filter.mac_addr, mac_addr, ETHER_ADDR_LEN);
+	rte_memcpy(&mac_filter.mac_addr, mac_addr, RTE_ETHER_ADDR_LEN);
 	if (rxmode->offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
 		mac_filter.filter_type = RTE_MACVLAN_PERFECT_MATCH;
 	else
@@ -4142,11 +4143,11 @@ i40e_vf_mac_filter_set(struct i40e_pf *pf,
 	}
 
 	if (add) {
-		rte_memcpy(&old_mac, hw->mac.addr, ETHER_ADDR_LEN);
+		rte_memcpy(&old_mac, hw->mac.addr, RTE_ETHER_ADDR_LEN);
 		rte_memcpy(hw->mac.addr, new_mac->addr_bytes,
-				ETHER_ADDR_LEN);
+				RTE_ETHER_ADDR_LEN);
 		rte_memcpy(&mac_filter.mac_addr, &filter->mac_addr,
-				 ETHER_ADDR_LEN);
+				 RTE_ETHER_ADDR_LEN);
 
 		mac_filter.filter_type = filter->filter_type;
 		ret = i40e_vsi_add_mac(vf->vsi, &mac_filter);
@@ -4157,7 +4158,7 @@ i40e_vf_mac_filter_set(struct i40e_pf *pf,
 		rte_ether_addr_copy(new_mac, &pf->dev_addr);
 	} else {
 		rte_memcpy(hw->mac.addr, hw->mac.perm_addr,
-				ETHER_ADDR_LEN);
+				RTE_ETHER_ADDR_LEN);
 		ret = i40e_vsi_delete_mac(vf->vsi, &filter->mac_addr);
 		if (ret != I40E_SUCCESS) {
 			PMD_DRV_LOG(ERR, "Failed to delete MAC filter.");
@@ -5825,7 +5826,7 @@ i40e_vsi_setup(struct i40e_pf *pf,
 	}
 
 	/* MAC/VLAN configuration */
-	rte_memcpy(&filter.mac_addr, &broadcast, ETHER_ADDR_LEN);
+	rte_memcpy(&filter.mac_addr, &broadcast, RTE_ETHER_ADDR_LEN);
 	filter.filter_type = RTE_MACVLAN_PERFECT_MATCH;
 
 	ret = i40e_vsi_add_mac(vsi, &filter);
@@ -7111,7 +7112,7 @@ i40e_vsi_add_vlan(struct i40e_vsi *vsi, uint16_t vlan)
 	int mac_num;
 	int ret = I40E_SUCCESS;
 
-	if (!vsi || vlan > ETHER_MAX_VLAN_ID)
+	if (!vsi || vlan > RTE_ETHER_MAX_VLAN_ID)
 		return I40E_ERR_PARAM;
 
 	/* If it's already set, just return */
@@ -7162,7 +7163,7 @@ i40e_vsi_delete_vlan(struct i40e_vsi *vsi, uint16_t vlan)
 	 * Vlan 0 is the generic filter for untagged packets
 	 * and can't be removed.
 	 */
-	if (!vsi || vlan == 0 || vlan > ETHER_MAX_VLAN_ID)
+	if (!vsi || vlan == 0 || vlan > RTE_ETHER_MAX_VLAN_ID)
 		return I40E_ERR_PARAM;
 
 	/* If can't find it, just return */
@@ -8623,7 +8624,7 @@ i40e_tunnel_filter_param_check(struct i40e_pf *pf,
 		return -EINVAL;
 	}
 
-	if (filter->inner_vlan > ETHER_MAX_VLAN_ID) {
+	if (filter->inner_vlan > RTE_ETHER_MAX_VLAN_ID) {
 		PMD_DRV_LOG(ERR, "Invalid inner VLAN ID");
 		return -EINVAL;
 	}
@@ -9903,7 +9904,8 @@ static int
 i40e_ethertype_filter_convert(const struct rte_eth_ethertype_filter *input,
 			      struct i40e_ethertype_filter *filter)
 {
-	rte_memcpy(&filter->input.mac_addr, &input->mac_addr, ETHER_ADDR_LEN);
+	rte_memcpy(&filter->input.mac_addr, &input->mac_addr,
+		RTE_ETHER_ADDR_LEN);
 	filter->input.ether_type = input->ether_type;
 	filter->flags = input->flags;
 	filter->queue = input->queue;
@@ -9995,14 +9997,14 @@ i40e_ethertype_filter_set(struct i40e_pf *pf,
 		PMD_DRV_LOG(ERR, "Invalid queue ID");
 		return -EINVAL;
 	}
-	if (filter->ether_type == ETHER_TYPE_IPv4 ||
-		filter->ether_type == ETHER_TYPE_IPv6) {
+	if (filter->ether_type == RTE_ETHER_TYPE_IPv4 ||
+		filter->ether_type == RTE_ETHER_TYPE_IPv6) {
 		PMD_DRV_LOG(ERR,
 			"unsupported ether_type(0x%04x) in control packet filter.",
 			filter->ether_type);
 		return -EINVAL;
 	}
-	if (filter->ether_type == ETHER_TYPE_VLAN)
+	if (filter->ether_type == RTE_ETHER_TYPE_VLAN)
 		PMD_DRV_LOG(WARNING,
 			"filter vlan ether_type in first tag is not supported.");
 
@@ -12011,7 +12013,7 @@ i40e_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	int ret = 0;
 
 	/* check if mtu is within the allowed range */
-	if ((mtu < ETHER_MIN_MTU) || (frame_size > I40E_FRAME_SIZE_MAX))
+	if (mtu < RTE_ETHER_MIN_MTU || frame_size > I40E_FRAME_SIZE_MAX)
 		return -EINVAL;
 
 	/* mtu setting is forbidden if port is start */
@@ -12021,7 +12023,7 @@ i40e_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EBUSY;
 	}
 
-	if (frame_size > ETHER_MAX_LEN)
+	if (frame_size > RTE_ETHER_MAX_LEN)
 		dev_data->dev_conf.rxmode.offloads |=
 			DEV_RX_OFFLOAD_JUMBO_FRAME;
 	else

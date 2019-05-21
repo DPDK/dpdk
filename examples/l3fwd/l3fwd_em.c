@@ -572,7 +572,7 @@ em_parse_ptype(struct rte_mbuf *m)
 	eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 	ether_type = eth_hdr->ether_type;
 	l3 = (uint8_t *)eth_hdr + sizeof(struct rte_ether_hdr);
-	if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv4)) {
+	if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4)) {
 		ipv4_hdr = (struct ipv4_hdr *)l3;
 		hdr_len = (ipv4_hdr->version_ihl & IPV4_HDR_IHL_MASK) *
 			  IPV4_IHL_MULTIPLIER;
@@ -584,7 +584,7 @@ em_parse_ptype(struct rte_mbuf *m)
 				packet_type |= RTE_PTYPE_L4_UDP;
 		} else
 			packet_type |= RTE_PTYPE_L3_IPV4_EXT;
-	} else if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv6)) {
+	} else if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6)) {
 		ipv6_hdr = (struct ipv6_hdr *)l3;
 		if (ipv6_hdr->proto == IPPROTO_TCP)
 			packet_type |= RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_TCP;

@@ -352,7 +352,7 @@ eth_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_rx_queues = 1;
 	dev_info->max_tx_queues = 1;
 
-	dev_info->min_mtu = ETHER_MIN_MTU;
+	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 	dev_info->max_mtu = ETH_AF_XDP_FRAME_SIZE - ETH_AF_XDP_DATA_HEADROOM;
 
 	dev_info->default_rxportconf.nb_queues = 1;
@@ -816,7 +816,7 @@ get_iface_info(const char *if_name,
 	if (ioctl(sock, SIOCGIFHWADDR, &ifr))
 		goto error;
 
-	rte_memcpy(eth_addr, ifr.ifr_hwaddr.sa_data, ETHER_ADDR_LEN);
+	rte_memcpy(eth_addr, ifr.ifr_hwaddr.sa_data, RTE_ETHER_ADDR_LEN);
 
 	close(sock);
 	return 0;

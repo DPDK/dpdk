@@ -134,7 +134,7 @@ enum { VTNET_RQ = 0, VTNET_TQ = 1, VTNET_CQ = 2 };
  */
 struct virtio_net_ctrl_mac {
 	uint32_t entries;
-	uint8_t macs[][ETHER_ADDR_LEN];
+	uint8_t macs[][RTE_ETHER_ADDR_LEN];
 } __attribute__((__packed__));
 
 #define VIRTIO_NET_CTRL_MAC    1

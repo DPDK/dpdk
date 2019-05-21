@@ -604,8 +604,8 @@ static const struct rte_flow_item_eth rte_flow_item_eth_mask = {
  * Matches an 802.1Q/ad VLAN tag.
  *
  * The corresponding standard outer EtherType (TPID) values are
- * ETHER_TYPE_VLAN or ETHER_TYPE_QINQ. It can be overridden by the preceding
- * pattern item.
+ * RTE_ETHER_TYPE_VLAN or RTE_ETHER_TYPE_QINQ. It can be overridden by
+ * the preceding pattern item.
  */
 struct rte_flow_item_vlan {
 	rte_be16_t tci; /**< Tag control information. */
@@ -768,7 +768,7 @@ static const struct rte_flow_item_vxlan rte_flow_item_vxlan_mask = {
  * Matches a E-tag header.
  *
  * The corresponding standard outer EtherType (TPID) value is
- * ETHER_TYPE_ETAG. It can be overridden by the preceding pattern item.
+ * RTE_ETHER_TYPE_ETAG. It can be overridden by the preceding pattern item.
  */
 struct rte_flow_item_e_tag {
 	/**
@@ -2128,7 +2128,7 @@ struct rte_flow_action_set_ttl {
  * Set MAC address from the matched flow
  */
 struct rte_flow_action_set_mac {
-	uint8_t mac_addr[ETHER_ADDR_LEN];
+	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
 };
 
 /*

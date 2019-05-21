@@ -176,14 +176,14 @@ mlx4_ifreq(const struct mlx4_priv *priv, int req, struct ifreq *ifr)
  *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 int
-mlx4_get_mac(struct mlx4_priv *priv, uint8_t (*mac)[ETHER_ADDR_LEN])
+mlx4_get_mac(struct mlx4_priv *priv, uint8_t (*mac)[RTE_ETHER_ADDR_LEN])
 {
 	struct ifreq request;
 	int ret = mlx4_ifreq(priv, SIOCGIFHWADDR, &request);
 
 	if (ret)
 		return ret;
-	memcpy(mac, request.ifr_hwaddr.sa_data, ETHER_ADDR_LEN);
+	memcpy(mac, request.ifr_hwaddr.sa_data, RTE_ETHER_ADDR_LEN);
 	return 0;
 }
 

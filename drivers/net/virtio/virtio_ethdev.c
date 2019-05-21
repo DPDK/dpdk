@@ -832,16 +832,16 @@ static int
 virtio_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct virtio_hw *hw = dev->data->dev_private;
-	uint32_t ether_hdr_len = ETHER_HDR_LEN + VLAN_TAG_LEN +
+	uint32_t ether_hdr_len = RTE_ETHER_HDR_LEN + VLAN_TAG_LEN +
 				 hw->vtnet_hdr_size;
 	uint32_t frame_size = mtu + ether_hdr_len;
 	uint32_t max_frame_size = hw->max_mtu + ether_hdr_len;
 
 	max_frame_size = RTE_MIN(max_frame_size, VIRTIO_MAX_RX_PKTLEN);
 
-	if (mtu < ETHER_MIN_MTU || frame_size > max_frame_size) {
+	if (mtu < RTE_ETHER_MIN_MTU || frame_size > max_frame_size) {
 		PMD_INIT_LOG(ERR, "MTU should be between %d and %d",
-			ETHER_MIN_MTU, max_frame_size - ether_hdr_len);
+			RTE_ETHER_MIN_MTU, max_frame_size - ether_hdr_len);
 		return -EINVAL;
 	}
 	return 0;
@@ -1097,7 +1097,7 @@ virtio_set_hwaddr(struct virtio_hw *hw)
 {
 	vtpci_write_dev_config(hw,
 			offsetof(struct virtio_net_config, mac),
-			&hw->mac_addr, ETHER_ADDR_LEN);
+			&hw->mac_addr, RTE_ETHER_ADDR_LEN);
 }
 
 static void
@@ -1106,7 +1106,7 @@ virtio_get_hwaddr(struct virtio_hw *hw)
 	if (vtpci_with_feature(hw, VIRTIO_NET_F_MAC)) {
 		vtpci_read_dev_config(hw,
 			offsetof(struct virtio_net_config, mac),
-			&hw->mac_addr, ETHER_ADDR_LEN);
+			&hw->mac_addr, RTE_ETHER_ADDR_LEN);
 	} else {
 		rte_eth_random_addr(&hw->mac_addr[0]);
 		virtio_set_hwaddr(hw);
@@ -1129,10 +1129,10 @@ virtio_mac_table_set(struct virtio_hw *hw,
 	ctrl.hdr.class = VIRTIO_NET_CTRL_MAC;
 	ctrl.hdr.cmd = VIRTIO_NET_CTRL_MAC_TABLE_SET;
 
-	len[0] = uc->entries * ETHER_ADDR_LEN + sizeof(uc->entries);
+	len[0] = uc->entries * RTE_ETHER_ADDR_LEN + sizeof(uc->entries);
 	memcpy(ctrl.data, uc, len[0]);
 
-	len[1] = mc->entries * ETHER_ADDR_LEN + sizeof(mc->entries);
+	len[1] = mc->entries * RTE_ETHER_ADDR_LEN + sizeof(mc->entries);
 	memcpy(ctrl.data + len[0], mc, len[1]);
 
 	err = virtio_send_command(hw->cvq, &ctrl, len, 2);
@@ -1155,9 +1155,11 @@ virtio_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 		return -EINVAL;
 	}
 
-	uc = alloca(VIRTIO_MAX_MAC_ADDRS * ETHER_ADDR_LEN + sizeof(uc->entries));
+	uc = alloca(VIRTIO_MAX_MAC_ADDRS * RTE_ETHER_ADDR_LEN +
+		sizeof(uc->entries));
 	uc->entries = 0;
-	mc = alloca(VIRTIO_MAX_MAC_ADDRS * ETHER_ADDR_LEN + sizeof(mc->entries));
+	mc = alloca(VIRTIO_MAX_MAC_ADDRS * RTE_ETHER_ADDR_LEN +
+		sizeof(mc->entries));
 	mc->entries = 0;
 
 	for (i = 0; i < VIRTIO_MAX_MAC_ADDRS; i++) {
@@ -1166,7 +1168,7 @@ virtio_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 		struct virtio_net_ctrl_mac *tbl
 			= rte_is_multicast_ether_addr(addr) ? mc : uc;
 
-		memcpy(&tbl->macs[tbl->entries++], addr, ETHER_ADDR_LEN);
+		memcpy(&tbl->macs[tbl->entries++], addr, RTE_ETHER_ADDR_LEN);
 	}
 
 	return virtio_mac_table_set(hw, uc, mc);
@@ -1185,9 +1187,11 @@ virtio_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 		return;
 	}
 
-	uc = alloca(VIRTIO_MAX_MAC_ADDRS * ETHER_ADDR_LEN + sizeof(uc->entries));
+	uc = alloca(VIRTIO_MAX_MAC_ADDRS * RTE_ETHER_ADDR_LEN +
+		sizeof(uc->entries));
 	uc->entries = 0;
-	mc = alloca(VIRTIO_MAX_MAC_ADDRS * ETHER_ADDR_LEN + sizeof(mc->entries));
+	mc = alloca(VIRTIO_MAX_MAC_ADDRS * RTE_ETHER_ADDR_LEN +
+		sizeof(mc->entries));
 	mc->entries = 0;
 
 	for (i = 0; i < VIRTIO_MAX_MAC_ADDRS; i++) {
@@ -1197,7 +1201,8 @@ virtio_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 			continue;
 
 		tbl = rte_is_multicast_ether_addr(addrs + i) ? mc : uc;
-		memcpy(&tbl->macs[tbl->entries++], addrs + i, ETHER_ADDR_LEN);
+		memcpy(&tbl->macs[tbl->entries++], addrs + i,
+			RTE_ETHER_ADDR_LEN);
 	}
 
 	virtio_mac_table_set(hw, uc, mc);
@@ -1208,17 +1213,17 @@ virtio_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 {
 	struct virtio_hw *hw = dev->data->dev_private;
 
-	memcpy(hw->mac_addr, mac_addr, ETHER_ADDR_LEN);
+	memcpy(hw->mac_addr, mac_addr, RTE_ETHER_ADDR_LEN);
 
 	/* Use atomic update if available */
 	if (vtpci_with_feature(hw, VIRTIO_NET_F_CTRL_MAC_ADDR)) {
 		struct virtio_pmd_ctrl ctrl;
-		int len = ETHER_ADDR_LEN;
+		int len = RTE_ETHER_ADDR_LEN;
 
 		ctrl.hdr.class = VIRTIO_NET_CTRL_MAC;
 		ctrl.hdr.cmd = VIRTIO_NET_CTRL_MAC_ADDR_SET;
 
-		memcpy(ctrl.data, mac_addr, ETHER_ADDR_LEN);
+		memcpy(ctrl.data, mac_addr, RTE_ETHER_ADDR_LEN);
 		return virtio_send_command(hw->cvq, &ctrl, &len, 1);
 	}
 
@@ -1297,7 +1302,7 @@ virtio_negotiate_features(struct virtio_hw *hw, uint64_t req_features)
 			offsetof(struct virtio_net_config, mtu),
 			&config.mtu, sizeof(config.mtu));
 
-		if (config.mtu < ETHER_MIN_MTU)
+		if (config.mtu < RTE_ETHER_MIN_MTU)
 			req_features &= ~(1ULL << VIRTIO_NET_F_MTU);
 	}
 
@@ -1710,7 +1715,7 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 			 * time, but check again in case it has changed since
 			 * then, which should not happen.
 			 */
-			if (config->mtu < ETHER_MIN_MTU) {
+			if (config->mtu < RTE_ETHER_MIN_MTU) {
 				PMD_INIT_LOG(ERR, "invalid max MTU value (%u)",
 						config->mtu);
 				return -1;
@@ -1721,7 +1726,7 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 			eth_dev->data->mtu = config->mtu;
 
 		} else {
-			hw->max_mtu = VIRTIO_MAX_RX_PKTLEN - ETHER_HDR_LEN -
+			hw->max_mtu = VIRTIO_MAX_RX_PKTLEN - RTE_ETHER_HDR_LEN -
 				VLAN_TAG_LEN - hw->vtnet_hdr_size;
 		}
 
@@ -1736,7 +1741,7 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 	} else {
 		PMD_INIT_LOG(DEBUG, "config->max_virtqueue_pairs=1");
 		hw->max_queue_pairs = 1;
-		hw->max_mtu = VIRTIO_MAX_RX_PKTLEN - ETHER_HDR_LEN -
+		hw->max_mtu = VIRTIO_MAX_RX_PKTLEN - RTE_ETHER_HDR_LEN -
 			VLAN_TAG_LEN - hw->vtnet_hdr_size;
 	}
 
@@ -1835,11 +1840,12 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	/* Allocate memory for storing MAC addresses */
-	eth_dev->data->mac_addrs = rte_zmalloc("virtio", VIRTIO_MAX_MAC_ADDRS * ETHER_ADDR_LEN, 0);
+	eth_dev->data->mac_addrs = rte_zmalloc("virtio",
+				VIRTIO_MAX_MAC_ADDRS * RTE_ETHER_ADDR_LEN, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR,
 			"Failed to allocate %d bytes needed to store MAC addresses",
-			VIRTIO_MAX_MAC_ADDRS * ETHER_ADDR_LEN);
+			VIRTIO_MAX_MAC_ADDRS * RTE_ETHER_ADDR_LEN);
 		return -ENOMEM;
 	}
 
@@ -1990,7 +1996,7 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 	const struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	const struct rte_eth_txmode *txmode = &dev->data->dev_conf.txmode;
 	struct virtio_hw *hw = dev->data->dev_private;
-	uint32_t ether_hdr_len = ETHER_HDR_LEN + VLAN_TAG_LEN +
+	uint32_t ether_hdr_len = RTE_ETHER_HDR_LEN + VLAN_TAG_LEN +
 		hw->vtnet_hdr_size;
 	uint64_t rx_offloads = rxmode->offloads;
 	uint64_t tx_offloads = txmode->offloads;

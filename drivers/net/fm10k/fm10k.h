@@ -305,7 +305,7 @@ fm10k_addr_alignment_valid(struct rte_mbuf *mb)
 	/* 8B aligned, and max Ethernet frame would not cross a 4KB boundary? */
 	if (RTE_ALIGN(addr, 8) == addr) {
 		boundary1 = RTE_ALIGN_FLOOR(addr, 4096);
-		boundary2 = RTE_ALIGN_FLOOR(addr + ETHER_MAX_VLAN_FRAME_LEN,
+		boundary2 = RTE_ALIGN_FLOOR(addr + RTE_ETHER_MAX_VLAN_FRAME_LEN,
 						4096);
 		if (boundary1 == boundary2)
 			return 1;

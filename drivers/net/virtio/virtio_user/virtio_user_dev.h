@@ -43,7 +43,7 @@ struct virtio_user_dev {
 	uint64_t	unsupported_features; /* unsupported features mask */
 	uint8_t		status;
 	uint16_t	port_id;
-	uint8_t		mac_addr[ETHER_ADDR_LEN];
+	uint8_t		mac_addr[RTE_ETHER_ADDR_LEN];
 	char		path[PATH_MAX];
 	union {
 		struct vring		vrings[VIRTIO_MAX_VIRTQUEUES];

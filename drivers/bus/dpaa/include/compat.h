@@ -109,6 +109,8 @@ typedef uint32_t	phandle;
 typedef uint32_t	gfp_t;
 typedef uint32_t	irqreturn_t;
 
+#define ETHER_ADDR_LEN 6
+
 #define IRQ_HANDLED	0
 #define request_irq	qbman_request_irq
 #define free_irq	qbman_free_irq

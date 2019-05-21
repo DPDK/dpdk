@@ -102,7 +102,7 @@ struct ch_filter_specification {
 	uint32_t eport:2;	/* egress port to switch packet out */
 	uint32_t swapmac:1;     /* swap SMAC/DMAC for loopback packet */
 	uint32_t newvlan:2;     /* rewrite VLAN Tag */
-	uint8_t dmac[ETHER_ADDR_LEN];   /* new destination MAC address */
+	uint8_t dmac[RTE_ETHER_ADDR_LEN];   /* new destination MAC address */
 	uint16_t vlan;          /* VLAN Tag to insert */
 
 	/*
