@@ -915,7 +915,7 @@ static const struct rte_flow_item_gtp rte_flow_item_gtp_mask = {
  * Matches an ESP header.
  */
 struct rte_flow_item_esp {
-	struct esp_hdr hdr; /**< ESP header definition. */
+	struct rte_esp_hdr hdr; /**< ESP header definition. */
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_ESP. */

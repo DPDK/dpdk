@@ -49,7 +49,7 @@ esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 	}
 
 	payload_len = rte_pktmbuf_pkt_len(m) - ip_hdr_len -
-		sizeof(struct esp_hdr) - sa->iv_len - sa->digest_len;
+		sizeof(struct rte_esp_hdr) - sa->iv_len - sa->digest_len;
 
 	if ((payload_len & (sa->block_size - 1)) || (payload_len <= 0)) {
 		RTE_LOG_DP(DEBUG, IPSEC_ESP, "payload %d not multiple of %u\n",
@@ -61,13 +61,14 @@ esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 	sym_cop->m_src = m;
 
 	if (sa->aead_algo == RTE_CRYPTO_AEAD_AES_GCM) {
-		sym_cop->aead.data.offset =  ip_hdr_len + sizeof(struct esp_hdr) +
-			sa->iv_len;
+		sym_cop->aead.data.offset =
+			ip_hdr_len + sizeof(struct rte_esp_hdr) + sa->iv_len;
 		sym_cop->aead.data.length = payload_len;
 
 		struct cnt_blk *icb;
 		uint8_t *aad;
-		uint8_t *iv = RTE_PTR_ADD(ip4, ip_hdr_len + sizeof(struct esp_hdr));
+		uint8_t *iv = RTE_PTR_ADD(ip4, ip_hdr_len +
+					sizeof(struct rte_esp_hdr));
 
 		icb = get_cnt_blk(m);
 		icb->salt = sa->salt;
@@ -75,7 +76,7 @@ esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		icb->cnt = rte_cpu_to_be_32(1);
 
 		aad = get_aad(m);
-		memcpy(aad, iv - sizeof(struct esp_hdr), 8);
+		memcpy(aad, iv - sizeof(struct rte_esp_hdr), 8);
 		sym_cop->aead.aad.data = aad;
 		sym_cop->aead.aad.phys_addr = rte_pktmbuf_iova_offset(m,
 				aad - rte_pktmbuf_mtod(m, uint8_t *));
@@ -85,12 +86,14 @@ esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		sym_cop->aead.digest.phys_addr = rte_pktmbuf_iova_offset(m,
 				rte_pktmbuf_pkt_len(m) - sa->digest_len);
 	} else {
-		sym_cop->cipher.data.offset =  ip_hdr_len + sizeof(struct esp_hdr) +
+		sym_cop->cipher.data.offset =  ip_hdr_len +
+			sizeof(struct rte_esp_hdr) +
 			sa->iv_len;
 		sym_cop->cipher.data.length = payload_len;
 
 		struct cnt_blk *icb;
-		uint8_t *iv = RTE_PTR_ADD(ip4, ip_hdr_len + sizeof(struct esp_hdr));
+		uint8_t *iv = RTE_PTR_ADD(ip4, ip_hdr_len +
+					sizeof(struct rte_esp_hdr));
 		uint8_t *iv_ptr = rte_crypto_op_ctod_offset(cop,
 					uint8_t *, IV_OFFSET);
 
@@ -118,7 +121,7 @@ esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		case RTE_CRYPTO_AUTH_SHA1_HMAC:
 		case RTE_CRYPTO_AUTH_SHA256_HMAC:
 			sym_cop->auth.data.offset = ip_hdr_len;
-			sym_cop->auth.data.length = sizeof(struct esp_hdr) +
+			sym_cop->auth.data.length = sizeof(struct rte_esp_hdr) +
 				sa->iv_len + payload_len;
 			break;
 		default:
@@ -192,7 +195,7 @@ esp_inbound_post(struct rte_mbuf *m, struct ipsec_sa *sa,
 	if (unlikely(sa->flags == TRANSPORT)) {
 		ip = rte_pktmbuf_mtod(m, struct ip *);
 		ip4 = (struct ip *)rte_pktmbuf_adj(m,
-				sizeof(struct esp_hdr) + sa->iv_len);
+				sizeof(struct rte_esp_hdr) + sa->iv_len);
 		if (likely(ip->ip_v == IPVERSION)) {
 			memmove(ip4, ip, ip->ip_hl * 4);
 			ip4->ip_p = *nexthdr;
@@ -206,7 +209,7 @@ esp_inbound_post(struct rte_mbuf *m, struct ipsec_sa *sa,
 					      sizeof(struct ip6_hdr));
 		}
 	} else
-		ipip_inbound(m, sizeof(struct esp_hdr) + sa->iv_len);
+		ipip_inbound(m, sizeof(struct rte_esp_hdr) + sa->iv_len);
 
 	return 0;
 }
@@ -217,7 +220,7 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 {
 	struct ip *ip4;
 	struct ip6_hdr *ip6;
-	struct esp_hdr *esp = NULL;
+	struct rte_esp_hdr *esp = NULL;
 	uint8_t *padding = NULL, *new_ip, nlp;
 	struct rte_crypto_sym_op *sym_cop;
 	int32_t i;
@@ -268,7 +271,7 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 	}
 
 	/* Check maximum packet size */
-	if (unlikely(ip_hdr_len + sizeof(struct esp_hdr) + sa->iv_len +
+	if (unlikely(ip_hdr_len + sizeof(struct rte_esp_hdr) + sa->iv_len +
 			pad_payload_len + sa->digest_len > IP_MAXPACKET)) {
 		RTE_LOG(ERR, IPSEC_ESP, "ipsec packet is too big\n");
 		return -EINVAL;
@@ -290,20 +293,20 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 
 	switch (sa->flags) {
 	case IP4_TUNNEL:
-		ip4 = ip4ip_outbound(m, sizeof(struct esp_hdr) + sa->iv_len,
+		ip4 = ip4ip_outbound(m, sizeof(struct rte_esp_hdr) + sa->iv_len,
 				&sa->src, &sa->dst);
-		esp = (struct esp_hdr *)(ip4 + 1);
+		esp = (struct rte_esp_hdr *)(ip4 + 1);
 		break;
 	case IP6_TUNNEL:
-		ip6 = ip6ip_outbound(m, sizeof(struct esp_hdr) + sa->iv_len,
+		ip6 = ip6ip_outbound(m, sizeof(struct rte_esp_hdr) + sa->iv_len,
 				&sa->src, &sa->dst);
-		esp = (struct esp_hdr *)(ip6 + 1);
+		esp = (struct rte_esp_hdr *)(ip6 + 1);
 		break;
 	case TRANSPORT:
 		new_ip = (uint8_t *)rte_pktmbuf_prepend(m,
-				sizeof(struct esp_hdr) + sa->iv_len);
+				sizeof(struct rte_esp_hdr) + sa->iv_len);
 		memmove(new_ip, ip4, ip_hdr_len);
-		esp = (struct esp_hdr *)(new_ip + ip_hdr_len);
+		esp = (struct rte_esp_hdr *)(new_ip + ip_hdr_len);
 		ip4 = (struct ip *)new_ip;
 		if (likely(ip4->ip_v == IPVERSION)) {
 			ip4->ip_p = IPPROTO_ESP;
@@ -362,7 +365,7 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		uint8_t *aad;
 
 		sym_cop->aead.data.offset = ip_hdr_len +
-			sizeof(struct esp_hdr) + sa->iv_len;
+			sizeof(struct rte_esp_hdr) + sa->iv_len;
 		sym_cop->aead.data.length = pad_payload_len;
 
 		/* Fill pad_len using default sequential scheme */
@@ -392,12 +395,12 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		case RTE_CRYPTO_CIPHER_3DES_CBC:
 		case RTE_CRYPTO_CIPHER_AES_CBC:
 			sym_cop->cipher.data.offset = ip_hdr_len +
-				sizeof(struct esp_hdr);
+				sizeof(struct rte_esp_hdr);
 			sym_cop->cipher.data.length = pad_payload_len + sa->iv_len;
 			break;
 		case RTE_CRYPTO_CIPHER_AES_CTR:
 			sym_cop->cipher.data.offset = ip_hdr_len +
-				sizeof(struct esp_hdr) + sa->iv_len;
+				sizeof(struct rte_esp_hdr) + sa->iv_len;
 			sym_cop->cipher.data.length = pad_payload_len;
 			break;
 		default:
@@ -422,7 +425,7 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		case RTE_CRYPTO_AUTH_SHA1_HMAC:
 		case RTE_CRYPTO_AUTH_SHA256_HMAC:
 			sym_cop->auth.data.offset = ip_hdr_len;
-			sym_cop->auth.data.length = sizeof(struct esp_hdr) +
+			sym_cop->auth.data.length = sizeof(struct rte_esp_hdr) +
 				sa->iv_len + pad_payload_len;
 			break;
 		default:

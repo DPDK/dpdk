@@ -47,7 +47,7 @@ struct aead_gcm_aad {
 } __attribute__((packed));
 
 struct gcm_esph_iv {
-	struct esp_hdr esph;
+	struct rte_esp_hdr esph;
 	uint64_t iv;
 } __attribute__((packed));
 

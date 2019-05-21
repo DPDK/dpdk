@@ -569,12 +569,12 @@ setup_test_string_tunneled(struct rte_mempool *mpool, const char *string,
 	size_t len, uint32_t spi, uint32_t seq)
 {
 	struct rte_mbuf *m = rte_pktmbuf_alloc(mpool);
-	uint32_t hdrlen = sizeof(struct ipv4_hdr) + sizeof(struct esp_hdr);
+	uint32_t hdrlen = sizeof(struct ipv4_hdr) + sizeof(struct rte_esp_hdr);
 	uint32_t taillen = sizeof(struct esp_tail);
 	uint32_t t_len = len + hdrlen + taillen;
 	uint32_t padlen;
 
-	struct esp_hdr esph  = {
+	struct rte_esp_hdr esph  = {
 		.spi = rte_cpu_to_be_32(spi),
 		.seq = rte_cpu_to_be_32(seq)
 	};

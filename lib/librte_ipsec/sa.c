@@ -233,7 +233,7 @@ esp_inb_init(struct rte_ipsec_sa *sa)
 	/* these params may differ with new algorithms support */
 	sa->ctp.auth.offset = 0;
 	sa->ctp.auth.length = sa->icv_len - sa->sqh_len;
-	sa->ctp.cipher.offset = sizeof(struct esp_hdr) + sa->iv_len;
+	sa->ctp.cipher.offset = sizeof(struct rte_esp_hdr) + sa->iv_len;
 	sa->ctp.cipher.length = sa->icv_len + sa->ctp.cipher.offset;
 }
 
@@ -259,7 +259,8 @@ esp_outb_init(struct rte_ipsec_sa *sa, uint32_t hlen)
 
 	/* these params may differ with new algorithms support */
 	sa->ctp.auth.offset = hlen;
-	sa->ctp.auth.length = sizeof(struct esp_hdr) + sa->iv_len + sa->sqh_len;
+	sa->ctp.auth.length = sizeof(struct rte_esp_hdr) +
+		sa->iv_len + sa->sqh_len;
 
 	algo_type = sa->algo_type;
 
@@ -267,13 +268,14 @@ esp_outb_init(struct rte_ipsec_sa *sa, uint32_t hlen)
 	case ALGO_TYPE_AES_GCM:
 	case ALGO_TYPE_AES_CTR:
 	case ALGO_TYPE_NULL:
-		sa->ctp.cipher.offset = hlen + sizeof(struct esp_hdr) +
+		sa->ctp.cipher.offset = hlen + sizeof(struct rte_esp_hdr) +
 			sa->iv_len;
 		sa->ctp.cipher.length = 0;
 		break;
 	case ALGO_TYPE_AES_CBC:
 	case ALGO_TYPE_3DES_CBC:
-		sa->ctp.cipher.offset = sa->hdr_len + sizeof(struct esp_hdr);
+		sa->ctp.cipher.offset = sa->hdr_len +
+			sizeof(struct rte_esp_hdr);
 		sa->ctp.cipher.length = sa->iv_len;
 		break;
 	}

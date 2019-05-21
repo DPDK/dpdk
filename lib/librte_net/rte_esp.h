@@ -20,7 +20,7 @@ extern "C" {
 /**
  * ESP Header
  */
-struct esp_hdr {
+struct rte_esp_hdr {
 	rte_be32_t spi;  /**< Security Parameters Index */
 	rte_be32_t seq;  /**< packet sequence number */
 } __attribute__((__packed__));

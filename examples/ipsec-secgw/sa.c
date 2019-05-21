@@ -1219,7 +1219,7 @@ static inline void
 single_inbound_lookup(struct ipsec_sa *sadb, struct rte_mbuf *pkt,
 		struct ipsec_sa **sa_ret)
 {
-	struct esp_hdr *esp;
+	struct rte_esp_hdr *esp;
 	struct ip *ip;
 	uint32_t *src4_addr;
 	uint8_t *src6_addr;
@@ -1229,9 +1229,9 @@ single_inbound_lookup(struct ipsec_sa *sadb, struct rte_mbuf *pkt,
 
 	ip = rte_pktmbuf_mtod(pkt, struct ip *);
 	if (ip->ip_v == IPVERSION)
-		esp = (struct esp_hdr *)(ip + 1);
+		esp = (struct rte_esp_hdr *)(ip + 1);
 	else
-		esp = (struct esp_hdr *)(((struct ip6_hdr *)ip) + 1);
+		esp = (struct rte_esp_hdr *)(((struct ip6_hdr *)ip) + 1);
 
 	if (esp->spi == INVALID_SPI)
 		return;

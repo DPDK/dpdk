@@ -108,7 +108,7 @@ outb_tun_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 {
 	uint32_t clen, hlen, l2len, pdlen, pdofs, plen, tlen;
 	struct rte_mbuf *ml;
-	struct esp_hdr *esph;
+	struct rte_esp_hdr *esph;
 	struct esp_tail *espt;
 	char *ph, *pt;
 	uint64_t *iv;
@@ -156,7 +156,7 @@ outb_tun_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 			sqn_low16(sqc));
 
 	/* update spi, seqn and iv */
-	esph = (struct esp_hdr *)(ph + sa->hdr_len);
+	esph = (struct rte_esp_hdr *)(ph + sa->hdr_len);
 	iv = (uint64_t *)(esph + 1);
 	copy_iv(iv, ivp, sa->iv_len);
 
@@ -275,7 +275,7 @@ outb_trs_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 	uint8_t np;
 	uint32_t clen, hlen, pdlen, pdofs, plen, tlen, uhlen;
 	struct rte_mbuf *ml;
-	struct esp_hdr *esph;
+	struct rte_esp_hdr *esph;
 	struct esp_tail *espt;
 	char *ph, *pt;
 	uint64_t *iv;
@@ -318,7 +318,7 @@ outb_trs_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 			IPPROTO_ESP);
 
 	/* update spi, seqn and iv */
-	esph = (struct esp_hdr *)(ph + uhlen);
+	esph = (struct rte_esp_hdr *)(ph + uhlen);
 	iv = (uint64_t *)(esph + 1);
 	copy_iv(iv, ivp, sa->iv_len);
 

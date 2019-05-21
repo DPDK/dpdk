@@ -68,7 +68,7 @@ inb_cop_prepare(struct rte_crypto_op *cop,
 
 	algo = sa->algo_type;
 	ivp = rte_pktmbuf_mtod_offset(mb, uint64_t *,
-		pofs + sizeof(struct esp_hdr));
+		pofs + sizeof(struct rte_esp_hdr));
 
 	/* fill sym op fields */
 	sop = cop->sym;
@@ -139,9 +139,9 @@ inb_pkt_prepare(const struct rte_ipsec_sa *sa, const struct replay_sqn *rsn,
 	uint64_t sqn;
 	uint32_t clen, icv_ofs, plen;
 	struct rte_mbuf *ml;
-	struct esp_hdr *esph;
+	struct rte_esp_hdr *esph;
 
-	esph = rte_pktmbuf_mtod_offset(mb, struct esp_hdr *, hlen);
+	esph = rte_pktmbuf_mtod_offset(mb, struct rte_esp_hdr *, hlen);
 
 	/*
 	 * retrieve and reconstruct SQN, then check it, then
@@ -295,10 +295,10 @@ static inline void *
 tun_process_step2(struct rte_mbuf *mb, struct rte_mbuf *ml, uint32_t hlen,
 	uint32_t adj, uint32_t tlen, uint32_t *sqn)
 {
-	const struct esp_hdr *ph;
+	const struct rte_esp_hdr *ph;
 
 	/* read SQN value */
-	ph = rte_pktmbuf_mtod_offset(mb, const struct esp_hdr *, hlen);
+	ph = rte_pktmbuf_mtod_offset(mb, const struct rte_esp_hdr *, hlen);
 	sqn[0] = ph->seq;
 
 	/* cut of ICV, ESP tail and padding bytes */
