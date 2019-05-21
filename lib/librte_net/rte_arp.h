@@ -33,18 +33,18 @@ struct rte_arp_ipv4 {
  */
 struct rte_arp_hdr {
 	uint16_t arp_hardware;    /* format of hardware address */
-#define ARP_HRD_ETHER     1  /* ARP Ethernet address format */
+#define RTE_ARP_HRD_ETHER     1  /* ARP Ethernet address format */
 
 	uint16_t arp_protocol;    /* format of protocol address */
 	uint8_t  arp_hlen;    /* length of hardware address */
 	uint8_t  arp_plen;    /* length of protocol address */
 	uint16_t arp_opcode;     /* ARP opcode (command) */
-#define	ARP_OP_REQUEST    1 /* request to resolve address */
-#define	ARP_OP_REPLY      2 /* response to previous request */
-#define	ARP_OP_REVREQUEST 3 /* request proto addr given hardware */
-#define	ARP_OP_REVREPLY   4 /* response giving protocol address */
-#define	ARP_OP_INVREQUEST 8 /* request to identify peer */
-#define	ARP_OP_INVREPLY   9 /* response identifying peer */
+#define	RTE_ARP_OP_REQUEST    1 /* request to resolve address */
+#define	RTE_ARP_OP_REPLY      2 /* response to previous request */
+#define	RTE_ARP_OP_REVREQUEST 3 /* request proto addr given hardware */
+#define	RTE_ARP_OP_REVREPLY   4 /* response giving protocol address */
+#define	RTE_ARP_OP_INVREQUEST 8 /* request to identify peer */
+#define	RTE_ARP_OP_INVREPLY   9 /* response identifying peer */
 
 	struct rte_arp_ipv4 arp_data;
 } __attribute__((__packed__));

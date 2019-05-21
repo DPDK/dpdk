@@ -39,17 +39,17 @@ static const char *
 arp_op_name(uint16_t arp_op)
 {
 	switch (arp_op) {
-	case ARP_OP_REQUEST:
+	case RTE_ARP_OP_REQUEST:
 		return "ARP Request";
-	case ARP_OP_REPLY:
+	case RTE_ARP_OP_REPLY:
 		return "ARP Reply";
-	case ARP_OP_REVREQUEST:
+	case RTE_ARP_OP_REVREQUEST:
 		return "Reverse ARP Request";
-	case ARP_OP_REVREPLY:
+	case RTE_ARP_OP_REVREPLY:
 		return "Reverse ARP Reply";
-	case ARP_OP_INVREQUEST:
+	case RTE_ARP_OP_INVREQUEST:
 		return "Peer Identify Request";
-	case ARP_OP_INVREPLY:
+	case RTE_ARP_OP_INVREPLY:
 		return "Peer Identify Reply";
 	default:
 		break;
@@ -359,7 +359,7 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 				       arp_op_name(arp_op));
 			}
 			if ((RTE_BE_TO_CPU_16(arp_h->arp_hardware) !=
-			     ARP_HRD_ETHER) ||
+			     RTE_ARP_HRD_ETHER) ||
 			    (arp_pro != ETHER_TYPE_IPv4) ||
 			    (arp_h->arp_hlen != 6) ||
 			    (arp_h->arp_plen != 4)
@@ -381,7 +381,7 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 				ipv4_addr_dump(" tip=", ip_addr);
 				printf("\n");
 			}
-			if (arp_op != ARP_OP_REQUEST) {
+			if (arp_op != RTE_ARP_OP_REQUEST) {
 				rte_pktmbuf_free(pkt);
 				continue;
 			}
@@ -396,7 +396,7 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 			ether_addr_copy(&ports[fs->tx_port].eth_addr,
 					&eth_h->s_addr);
 
-			arp_h->arp_opcode = rte_cpu_to_be_16(ARP_OP_REPLY);
+			arp_h->arp_opcode = rte_cpu_to_be_16(RTE_ARP_OP_REPLY);
 			ether_addr_copy(&arp_h->arp_data.arp_tha, &eth_addr);
 			ether_addr_copy(&arp_h->arp_data.arp_sha, &arp_h->arp_data.arp_tha);
 			ether_addr_copy(&eth_h->s_addr, &arp_h->arp_data.arp_sha);

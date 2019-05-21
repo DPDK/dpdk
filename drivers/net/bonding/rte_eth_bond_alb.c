@@ -84,7 +84,7 @@ void bond_mode_alb_arp_recv(struct ether_hdr *eth_h, uint16_t offset,
 	arp = (struct rte_arp_hdr *)((char *)(eth_h + 1) + offset);
 
 	/* ARP Requests are forwarded to the application with no changes */
-	if (arp->arp_opcode != rte_cpu_to_be_16(ARP_OP_REPLY))
+	if (arp->arp_opcode != rte_cpu_to_be_16(RTE_ARP_OP_REPLY))
 		return;
 
 	/* From now on, we analyze only ARP Reply packets */
@@ -150,7 +150,7 @@ bond_mode_alb_arp_xmit(struct ether_hdr *eth_h, uint16_t offset,
 	client_info = &hash_table[hash_index];
 
 	rte_spinlock_lock(&internals->mode6.lock);
-	if (arp->arp_opcode == rte_cpu_to_be_16(ARP_OP_REPLY)) {
+	if (arp->arp_opcode == rte_cpu_to_be_16(RTE_ARP_OP_REPLY)) {
 		if (client_info->in_use) {
 			if (client_info->app_ip == arp->arp_data.arp_sip &&
 				client_info->cli_ip == arp->arp_data.arp_tip) {
@@ -220,11 +220,11 @@ bond_mode_alb_arp_upd(struct client_data *client_info,
 	ether_addr_copy(&client_info->cli_mac, &arp_h->arp_data.arp_tha);
 	arp_h->arp_data.arp_tip = client_info->cli_ip;
 
-	arp_h->arp_hardware = rte_cpu_to_be_16(ARP_HRD_ETHER);
+	arp_h->arp_hardware = rte_cpu_to_be_16(RTE_ARP_HRD_ETHER);
 	arp_h->arp_protocol = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
 	arp_h->arp_hlen = ETHER_ADDR_LEN;
 	arp_h->arp_plen = sizeof(uint32_t);
-	arp_h->arp_opcode = rte_cpu_to_be_16(ARP_OP_REPLY);
+	arp_h->arp_opcode = rte_cpu_to_be_16(RTE_ARP_OP_REPLY);
 
 	slave_idx = client_info->slave_idx;
 	rte_spinlock_unlock(&internals->mode6.lock);

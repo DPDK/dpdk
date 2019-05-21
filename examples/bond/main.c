@@ -385,8 +385,8 @@ static int lcore_main(__attribute__((unused)) void *arg1)
 				arp_hdr = (struct rte_arp_hdr *)(
 					(char *)(eth_hdr + 1) + offset);
 				if (arp_hdr->arp_data.arp_tip == bond_ip) {
-					if (arp_hdr->arp_opcode == rte_cpu_to_be_16(ARP_OP_REQUEST)) {
-						arp_hdr->arp_opcode = rte_cpu_to_be_16(ARP_OP_REPLY);
+					if (arp_hdr->arp_opcode == rte_cpu_to_be_16(RTE_ARP_OP_REQUEST)) {
+						arp_hdr->arp_opcode = rte_cpu_to_be_16(RTE_ARP_OP_REPLY);
 						/* Switch src and dst data and set bonding MAC */
 						ether_addr_copy(&eth_hdr->s_addr, &eth_hdr->d_addr);
 						rte_eth_macaddr_get(BOND_PORT, &eth_hdr->s_addr);
@@ -481,11 +481,11 @@ static void cmd_obj_send_parsed(void *parsed_result,
 
 	arp_hdr = (struct rte_arp_hdr *)(
 		(char *)eth_hdr + sizeof(struct ether_hdr));
-	arp_hdr->arp_hardware = rte_cpu_to_be_16(ARP_HRD_ETHER);
+	arp_hdr->arp_hardware = rte_cpu_to_be_16(RTE_ARP_HRD_ETHER);
 	arp_hdr->arp_protocol = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
 	arp_hdr->arp_hlen = ETHER_ADDR_LEN;
 	arp_hdr->arp_plen = sizeof(uint32_t);
-	arp_hdr->arp_opcode = rte_cpu_to_be_16(ARP_OP_REQUEST);
+	arp_hdr->arp_opcode = rte_cpu_to_be_16(RTE_ARP_OP_REQUEST);
 
 	rte_eth_macaddr_get(BOND_PORT, &arp_hdr->arp_data.arp_sha);
 	arp_hdr->arp_data.arp_sip = bond_ip;

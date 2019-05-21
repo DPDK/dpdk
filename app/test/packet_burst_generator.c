@@ -78,7 +78,7 @@ initialize_arp_header(struct rte_arp_hdr *arp_hdr, struct ether_addr *src_mac,
 		struct ether_addr *dst_mac, uint32_t src_ip, uint32_t dst_ip,
 		uint32_t opcode)
 {
-	arp_hdr->arp_hardware = rte_cpu_to_be_16(ARP_HRD_ETHER);
+	arp_hdr->arp_hardware = rte_cpu_to_be_16(RTE_ARP_HRD_ETHER);
 	arp_hdr->arp_protocol = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
 	arp_hdr->arp_hlen = ETHER_ADDR_LEN;
 	arp_hdr->arp_plen = sizeof(uint32_t);

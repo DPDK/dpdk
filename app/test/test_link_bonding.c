@@ -4507,7 +4507,7 @@ test_alb_change_mac_in_reply_sent(void)
 	arp_pkt = (struct rte_arp_hdr *)((char *)eth_pkt +
 					sizeof(struct ether_hdr));
 	initialize_arp_header(arp_pkt, &bond_mac, &client_mac, ip_host, ip_client1,
-			ARP_OP_REPLY);
+			RTE_ARP_OP_REPLY);
 	rte_eth_tx_burst(test_params->bonded_port_id, 0, &pkt, 1);
 
 	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
@@ -4518,7 +4518,7 @@ test_alb_change_mac_in_reply_sent(void)
 	arp_pkt = (struct rte_arp_hdr *)((char *)eth_pkt +
 					sizeof(struct ether_hdr));
 	initialize_arp_header(arp_pkt, &bond_mac, &client_mac, ip_host, ip_client2,
-			ARP_OP_REPLY);
+			RTE_ARP_OP_REPLY);
 	rte_eth_tx_burst(test_params->bonded_port_id, 0, &pkt, 1);
 
 	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
@@ -4529,7 +4529,7 @@ test_alb_change_mac_in_reply_sent(void)
 	arp_pkt = (struct rte_arp_hdr *)((char *)eth_pkt +
 					sizeof(struct ether_hdr));
 	initialize_arp_header(arp_pkt, &bond_mac, &client_mac, ip_host, ip_client3,
-			ARP_OP_REPLY);
+			RTE_ARP_OP_REPLY);
 	rte_eth_tx_burst(test_params->bonded_port_id, 0, &pkt, 1);
 
 	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
@@ -4540,7 +4540,7 @@ test_alb_change_mac_in_reply_sent(void)
 	arp_pkt = (struct rte_arp_hdr *)((char *)eth_pkt +
 					sizeof(struct ether_hdr));
 	initialize_arp_header(arp_pkt, &bond_mac, &client_mac, ip_host, ip_client4,
-			ARP_OP_REPLY);
+			RTE_ARP_OP_REPLY);
 	rte_eth_tx_burst(test_params->bonded_port_id, 0, &pkt, 1);
 
 	slave_mac1 =
@@ -4625,7 +4625,7 @@ test_alb_reply_from_client(void)
 	arp_pkt = (struct rte_arp_hdr *)((char *)eth_pkt +
 					sizeof(struct ether_hdr));
 	initialize_arp_header(arp_pkt, &client_mac, &bond_mac, ip_client1, ip_host,
-			ARP_OP_REPLY);
+			RTE_ARP_OP_REPLY);
 	virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[0], &pkt,
 			1);
 
@@ -4637,7 +4637,7 @@ test_alb_reply_from_client(void)
 	arp_pkt = (struct rte_arp_hdr *)((char *)eth_pkt +
 					sizeof(struct ether_hdr));
 	initialize_arp_header(arp_pkt, &client_mac, &bond_mac, ip_client2, ip_host,
-			ARP_OP_REPLY);
+			RTE_ARP_OP_REPLY);
 	virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[0], &pkt,
 			1);
 
@@ -4649,7 +4649,7 @@ test_alb_reply_from_client(void)
 	arp_pkt = (struct rte_arp_hdr *)((char *)eth_pkt +
 					sizeof(struct ether_hdr));
 	initialize_arp_header(arp_pkt, &client_mac, &bond_mac, ip_client3, ip_host,
-			ARP_OP_REPLY);
+			RTE_ARP_OP_REPLY);
 	virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[0], &pkt,
 			1);
 
@@ -4661,7 +4661,7 @@ test_alb_reply_from_client(void)
 	arp_pkt = (struct rte_arp_hdr *)((char *)eth_pkt +
 					sizeof(struct ether_hdr));
 	initialize_arp_header(arp_pkt, &client_mac, &bond_mac, ip_client4, ip_host,
-			ARP_OP_REPLY);
+			RTE_ARP_OP_REPLY);
 	virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[0], &pkt,
 			1);
 
@@ -4761,7 +4761,7 @@ test_alb_receive_vlan_reply(void)
 	vlan_pkt->eth_proto = rte_cpu_to_be_16(ETHER_TYPE_ARP);
 	arp_pkt = (struct rte_arp_hdr *)((char *)(vlan_pkt + 1));
 	initialize_arp_header(arp_pkt, &client_mac, &bond_mac, ip_client1, ip_host,
-			ARP_OP_REPLY);
+			RTE_ARP_OP_REPLY);
 	virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[0], &pkt,
 			1);
 

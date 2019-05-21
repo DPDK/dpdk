@@ -492,22 +492,22 @@ static void
 arp_op_name(uint16_t arp_op, char *buf, size_t buf_len)
 {
 	switch (arp_op) {
-	case ARP_OP_REQUEST:
+	case RTE_ARP_OP_REQUEST:
 		strlcpy(buf, "ARP Request", buf_len);
 		return;
-	case ARP_OP_REPLY:
+	case RTE_ARP_OP_REPLY:
 		strlcpy(buf, "ARP Reply", buf_len);
 		return;
-	case ARP_OP_REVREQUEST:
+	case RTE_ARP_OP_REVREQUEST:
 		strlcpy(buf, "Reverse ARP Request", buf_len);
 		return;
-	case ARP_OP_REVREPLY:
+	case RTE_ARP_OP_REVREPLY:
 		strlcpy(buf, "Reverse ARP Reply", buf_len);
 		return;
-	case ARP_OP_INVREQUEST:
+	case RTE_ARP_OP_INVREQUEST:
 		strlcpy(buf, "Peer Identify Request", buf_len);
 		return;
-	case ARP_OP_INVREPLY:
+	case RTE_ARP_OP_INVREPLY:
 		strlcpy(buf, "Peer Identify Reply", buf_len);
 		return;
 	default:

@@ -35,11 +35,11 @@ rte_net_make_rarp_packet(struct rte_mempool *mpool,
 
 	/* RARP header. */
 	rarp = (struct rte_arp_hdr *)(eth_hdr + 1);
-	rarp->arp_hardware = htons(ARP_HRD_ETHER);
+	rarp->arp_hardware = htons(RTE_ARP_HRD_ETHER);
 	rarp->arp_protocol = htons(ETHER_TYPE_IPv4);
 	rarp->arp_hlen = ETHER_ADDR_LEN;
 	rarp->arp_plen = 4;
-	rarp->arp_opcode  = htons(ARP_OP_REVREQUEST);
+	rarp->arp_opcode  = htons(RTE_ARP_OP_REVREQUEST);
 
 	ether_addr_copy(mac, &rarp->arp_data.arp_sha);
 	ether_addr_copy(mac, &rarp->arp_data.arp_tha);
