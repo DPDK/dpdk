@@ -12,22 +12,22 @@
 #include "ip_frag_common.h"
 
 /* Fragment Offset */
-#define	IPV4_HDR_DF_SHIFT			14
-#define	IPV4_HDR_MF_SHIFT			13
-#define	IPV4_HDR_FO_SHIFT			3
+#define	RTE_IPV4_HDR_DF_SHIFT			14
+#define	RTE_IPV4_HDR_MF_SHIFT			13
+#define	RTE_IPV4_HDR_FO_SHIFT			3
 
-#define	IPV4_HDR_DF_MASK			(1 << IPV4_HDR_DF_SHIFT)
-#define	IPV4_HDR_MF_MASK			(1 << IPV4_HDR_MF_SHIFT)
+#define	IPV4_HDR_DF_MASK			(1 << RTE_IPV4_HDR_DF_SHIFT)
+#define	IPV4_HDR_MF_MASK			(1 << RTE_IPV4_HDR_MF_SHIFT)
 
-#define	IPV4_HDR_FO_ALIGN			(1 << IPV4_HDR_FO_SHIFT)
+#define	IPV4_HDR_FO_ALIGN			(1 << RTE_IPV4_HDR_FO_SHIFT)
 
 static inline void __fill_ipv4hdr_frag(struct rte_ipv4_hdr *dst,
 		const struct rte_ipv4_hdr *src, uint16_t len, uint16_t fofs,
 		uint16_t dofs, uint32_t mf)
 {
 	rte_memcpy(dst, src, sizeof(*dst));
-	fofs = (uint16_t)(fofs + (dofs >> IPV4_HDR_FO_SHIFT));
-	fofs = (uint16_t)(fofs | mf << IPV4_HDR_MF_SHIFT);
+	fofs = (uint16_t)(fofs + (dofs >> RTE_IPV4_HDR_FO_SHIFT));
+	fofs = (uint16_t)(fofs | mf << RTE_IPV4_HDR_MF_SHIFT);
 	dst->fragment_offset = rte_cpu_to_be_16(fofs);
 	dst->total_length = rte_cpu_to_be_16(len);
 	dst->hdr_checksum = 0;

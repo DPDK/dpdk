@@ -515,15 +515,15 @@ test_build_ports_range(void)
 	static struct ipv4_7tuple test_data[] = {
 		{
 			.proto = 6,
-			.ip_src = IPv4(10, 1, 1, 1),
-			.ip_dst = IPv4(192, 168, 0, 33),
+			.ip_src = RTE_IPv4(10, 1, 1, 1),
+			.ip_dst = RTE_IPv4(192, 168, 0, 33),
 			.port_dst = 53,
 			.allow = 1,
 		},
 		{
 			.proto = 6,
-			.ip_src = IPv4(127, 84, 33, 1),
-			.ip_dst = IPv4(1, 2, 3, 4),
+			.ip_src = RTE_IPv4(127, 84, 33, 1),
+			.ip_dst = RTE_IPv4(1, 2, 3, 4),
 			.port_dst = 65281,
 			.allow = 1,
 		},

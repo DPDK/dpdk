@@ -138,21 +138,21 @@ struct mcast_group_params {
 };
 
 static struct mcast_group_params mcast_group_table[] = {
-		{IPv4(224,0,0,101), 0x1},
-		{IPv4(224,0,0,102), 0x2},
-		{IPv4(224,0,0,103), 0x3},
-		{IPv4(224,0,0,104), 0x4},
-		{IPv4(224,0,0,105), 0x5},
-		{IPv4(224,0,0,106), 0x6},
-		{IPv4(224,0,0,107), 0x7},
-		{IPv4(224,0,0,108), 0x8},
-		{IPv4(224,0,0,109), 0x9},
-		{IPv4(224,0,0,110), 0xA},
-		{IPv4(224,0,0,111), 0xB},
-		{IPv4(224,0,0,112), 0xC},
-		{IPv4(224,0,0,113), 0xD},
-		{IPv4(224,0,0,114), 0xE},
-		{IPv4(224,0,0,115), 0xF},
+		{RTE_IPv4(224,0,0,101), 0x1},
+		{RTE_IPv4(224,0,0,102), 0x2},
+		{RTE_IPv4(224,0,0,103), 0x3},
+		{RTE_IPv4(224,0,0,104), 0x4},
+		{RTE_IPv4(224,0,0,105), 0x5},
+		{RTE_IPv4(224,0,0,106), 0x6},
+		{RTE_IPv4(224,0,0,107), 0x7},
+		{RTE_IPv4(224,0,0,108), 0x8},
+		{RTE_IPv4(224,0,0,109), 0x9},
+		{RTE_IPv4(224,0,0,110), 0xA},
+		{RTE_IPv4(224,0,0,111), 0xB},
+		{RTE_IPv4(224,0,0,112), 0xC},
+		{RTE_IPv4(224,0,0,113), 0xD},
+		{RTE_IPv4(224,0,0,114), 0xE},
+		{RTE_IPv4(224,0,0,115), 0xF},
 };
 
 #define N_MCAST_GROUPS \
@@ -317,7 +317,7 @@ mcast_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf)
 	 * Check that it is a valid multicast address and
 	 * we have some active ports assigned to it.
 	 */
-	if(!IS_IPV4_MCAST(dest_addr) ||
+	if (!RTE_IS_IPV4_MCAST(dest_addr) ||
 	    (hash = rte_fbk_hash_lookup(mcast_hash, dest_addr)) <= 0 ||
 	    (port_mask = hash & enabled_port_mask) == 0) {
 		rte_pktmbuf_free(m);

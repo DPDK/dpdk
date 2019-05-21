@@ -862,8 +862,8 @@ burst_xmit_l34_hash(struct rte_mbuf **buf, uint16_t nb_pkts,
 			if (likely(rte_ipv4_frag_pkt_is_fragmented(ipv4_hdr)
 								== 0)) {
 				ip_hdr_offset = (ipv4_hdr->version_ihl
-					& IPV4_HDR_IHL_MASK) *
-					IPV4_IHL_MULTIPLIER;
+					& RTE_IPV4_HDR_IHL_MASK) *
+					RTE_IPV4_IHL_MULTIPLIER;
 
 				if (ipv4_hdr->next_proto_id == IPPROTO_TCP) {
 					tcp_hdr = (struct tcp_hdr *)

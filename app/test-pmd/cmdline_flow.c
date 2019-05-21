@@ -3532,12 +3532,12 @@ parse_vc_action_vxlan_encap(struct context *ctx, const struct token *token,
 			memcpy(&ipv6_mask_tos, &rte_flow_item_ipv6_mask,
 			       sizeof(ipv6_mask_tos));
 			ipv6_mask_tos.hdr.vtc_flow |=
-				RTE_BE32(0xfful << IPV6_HDR_TC_SHIFT);
+				RTE_BE32(0xfful << RTE_IPV6_HDR_TC_SHIFT);
 			ipv6_mask_tos.hdr.hop_limits = 0xff;
 			action_vxlan_encap_data->item_ipv6.hdr.vtc_flow |=
 				rte_cpu_to_be_32
 					((uint32_t)vxlan_encap_conf.ip_tos <<
-					 IPV6_HDR_TC_SHIFT);
+					 RTE_IPV6_HDR_TC_SHIFT);
 			action_vxlan_encap_data->item_ipv6.hdr.hop_limits =
 					vxlan_encap_conf.ip_ttl;
 			action_vxlan_encap_data->items[2].mask =

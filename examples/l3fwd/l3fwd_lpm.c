@@ -43,14 +43,14 @@ struct ipv6_l3fwd_lpm_route {
 
 /* 192.18.0.0/16 are set aside for RFC2544 benchmarking. */
 static struct ipv4_l3fwd_lpm_route ipv4_l3fwd_lpm_route_array[] = {
-	{IPv4(192, 18, 0, 0), 24, 0},
-	{IPv4(192, 18, 1, 0), 24, 1},
-	{IPv4(192, 18, 2, 0), 24, 2},
-	{IPv4(192, 18, 3, 0), 24, 3},
-	{IPv4(192, 18, 4, 0), 24, 4},
-	{IPv4(192, 18, 5, 0), 24, 5},
-	{IPv4(192, 18, 6, 0), 24, 6},
-	{IPv4(192, 18, 7, 0), 24, 7},
+	{RTE_IPv4(192, 18, 0, 0), 24, 0},
+	{RTE_IPv4(192, 18, 1, 0), 24, 1},
+	{RTE_IPv4(192, 18, 2, 0), 24, 2},
+	{RTE_IPv4(192, 18, 3, 0), 24, 3},
+	{RTE_IPv4(192, 18, 4, 0), 24, 4},
+	{RTE_IPv4(192, 18, 5, 0), 24, 5},
+	{RTE_IPv4(192, 18, 6, 0), 24, 6},
+	{RTE_IPv4(192, 18, 7, 0), 24, 7},
 };
 
 /* 2001:0200::/48 is IANA reserved range for IPv6 benchmarking (RFC5180) */

@@ -156,8 +156,8 @@ process_ipv4(struct rte_port_ring_writer_ras *p, struct rte_mbuf *pkt)
 
 	/* Get "More fragments" flag and fragment offset */
 	uint16_t frag_field = rte_be_to_cpu_16(pkt_hdr->fragment_offset);
-	uint16_t frag_offset = (uint16_t)(frag_field & IPV4_HDR_OFFSET_MASK);
-	uint16_t frag_flag = (uint16_t)(frag_field & IPV4_HDR_MF_FLAG);
+	uint16_t frag_offset = (uint16_t)(frag_field & RTE_IPV4_HDR_OFFSET_MASK);
+	uint16_t frag_flag = (uint16_t)(frag_field & RTE_IPV4_HDR_MF_FLAG);
 
 	/* If it is a fragmented packet, then try to reassemble */
 	if ((frag_flag == 0) && (frag_offset == 0))

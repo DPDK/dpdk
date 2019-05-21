@@ -552,7 +552,7 @@ static const struct {
 	},
 	.ipv6.hdr = {
 		.proto = 0xff,
-		.vtc_flow = RTE_BE32(0xfful << IPV6_HDR_FL_SHIFT),
+		.vtc_flow = RTE_BE32(0xfful << RTE_IPV6_HDR_FL_SHIFT),
 		.hop_limits = 0xff,
 		.src_addr =
 			"\xff\xff\xff\xff\xff\xff\xff\xff"
@@ -1426,7 +1426,7 @@ flow_tcf_validate_vxlan_encap_ipv6(const struct rte_flow_item *item,
 					  " vxlan encapsulation");
 	}
 	msk6 = (rte_be_to_cpu_32(mask->hdr.vtc_flow) >>
-		IPV6_HDR_TC_SHIFT) & 0xff;
+		RTE_IPV6_HDR_TC_SHIFT) & 0xff;
 	if (msk6 && msk6 != 0xff)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
@@ -2551,7 +2551,7 @@ flow_tcf_get_items_size(const struct rte_flow_attr *attr,
 			if (ipv6 && ipv6->hdr.hop_limits)
 				size += SZ_NLATTR_TYPE_OF(uint8_t) * 2;
 			if (ipv6 && (rte_be_to_cpu_32(ipv6->hdr.vtc_flow) &
-				     (0xfful << IPV6_HDR_TC_SHIFT)))
+				     (0xfful << RTE_IPV6_HDR_TC_SHIFT)))
 				size += SZ_NLATTR_TYPE_OF(uint8_t) * 2;
 			break;
 		}
@@ -2639,7 +2639,7 @@ flow_tcf_vxlan_encap_size(const struct rte_flow_action *action)
 			if (ipv6 && ipv6->hdr.hop_limits)
 				size += SZ_NLATTR_TYPE_OF(uint8_t) * 2;
 			if (ipv6 && (rte_be_to_cpu_32(ipv6->hdr.vtc_flow) &
-				     (0xfful << IPV6_HDR_TC_SHIFT)))
+				     (0xfful << RTE_IPV6_HDR_TC_SHIFT)))
 				size += SZ_NLATTR_TYPE_OF(uint8_t) * 2;
 			break;
 		}
@@ -3037,11 +3037,11 @@ flow_tcf_parse_vxlan_encap_ipv6(const struct rte_flow_item_ipv6 *spec,
 		       FLOW_TCF_ENCAP_IPV6_DST;
 	if (mask) {
 		if ((rte_be_to_cpu_32(mask->hdr.vtc_flow) >>
-		    IPV6_HDR_TC_SHIFT) & 0xff) {
+		    RTE_IPV6_HDR_TC_SHIFT) & 0xff) {
 			encap->mask |= FLOW_TCF_ENCAP_IP_TOS;
 			encap->ip_tos = (rte_be_to_cpu_32
 						(spec->hdr.vtc_flow) >>
-						 IPV6_HDR_TC_SHIFT) & 0xff;
+						 RTE_IPV6_HDR_TC_SHIFT) & 0xff;
 		}
 		if (mask->hdr.hop_limits) {
 			encap->mask |= FLOW_TCF_ENCAP_IP_TTL;
@@ -3590,11 +3590,11 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 					 mask.ipv6->hdr.hop_limits);
 			}
 			msk6 = (rte_be_to_cpu_32(mask.ipv6->hdr.vtc_flow) >>
-				IPV6_HDR_TC_SHIFT) & 0xff;
+				RTE_IPV6_HDR_TC_SHIFT) & 0xff;
 			if (msk6) {
 				tos6 = (rte_be_to_cpu_32
 					(spec.ipv6->hdr.vtc_flow) >>
-						IPV6_HDR_TC_SHIFT) & 0xff;
+						RTE_IPV6_HDR_TC_SHIFT) & 0xff;
 				mnl_attr_put_u8
 					(nlh, tunnel_outer ?
 					 TCA_FLOWER_KEY_ENC_IP_TOS :

@@ -315,7 +315,7 @@ l3:
 			return pkt_type;
 
 		if (ip4h->fragment_offset & rte_cpu_to_be_16(
-				IPV4_HDR_OFFSET_MASK | IPV4_HDR_MF_FLAG)) {
+				RTE_IPV4_HDR_OFFSET_MASK | RTE_IPV4_HDR_MF_FLAG)) {
 			pkt_type |= RTE_PTYPE_L4_FRAG;
 			hdr_lens->l4_len = 0;
 			return pkt_type;
@@ -446,8 +446,8 @@ l3:
 		if ((layers & RTE_PTYPE_INNER_L4_MASK) == 0)
 			return pkt_type;
 		if (ip4h->fragment_offset &
-				rte_cpu_to_be_16(IPV4_HDR_OFFSET_MASK |
-					IPV4_HDR_MF_FLAG)) {
+				rte_cpu_to_be_16(RTE_IPV4_HDR_OFFSET_MASK |
+					RTE_IPV4_HDR_MF_FLAG)) {
 			pkt_type |= RTE_PTYPE_INNER_L4_FRAG;
 			hdr_lens->inner_l4_len = 0;
 			return pkt_type;

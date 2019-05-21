@@ -99,10 +99,10 @@ struct ipv6_l3fwd_em_route {
 };
 
 static struct ipv4_l3fwd_em_route ipv4_l3fwd_em_route_array[] = {
-	{{IPv4(101, 0, 0, 0), IPv4(100, 10, 0, 1),  101, 11, IPPROTO_TCP}, 0},
-	{{IPv4(201, 0, 0, 0), IPv4(200, 20, 0, 1),  102, 12, IPPROTO_TCP}, 1},
-	{{IPv4(111, 0, 0, 0), IPv4(100, 30, 0, 1),  101, 11, IPPROTO_TCP}, 2},
-	{{IPv4(211, 0, 0, 0), IPv4(200, 40, 0, 1),  102, 12, IPPROTO_TCP}, 3},
+	{{RTE_IPv4(101, 0, 0, 0), RTE_IPv4(100, 10, 0, 1),  101, 11, IPPROTO_TCP}, 0},
+	{{RTE_IPv4(201, 0, 0, 0), RTE_IPv4(200, 20, 0, 1),  102, 12, IPPROTO_TCP}, 1},
+	{{RTE_IPv4(111, 0, 0, 0), RTE_IPv4(100, 30, 0, 1),  101, 11, IPPROTO_TCP}, 2},
+	{{RTE_IPv4(211, 0, 0, 0), RTE_IPv4(200, 40, 0, 1),  102, 12, IPPROTO_TCP}, 3},
 };
 
 static struct ipv6_l3fwd_em_route ipv6_l3fwd_em_route_array[] = {
@@ -426,19 +426,19 @@ populate_ipv4_many_flow_into_table(const struct rte_hash *h,
 		switch (i & (NUMBER_PORT_USED - 1)) {
 		case 0:
 			entry = ipv4_l3fwd_em_route_array[0];
-			entry.key.ip_dst = IPv4(101, c, b, a);
+			entry.key.ip_dst = RTE_IPv4(101, c, b, a);
 			break;
 		case 1:
 			entry = ipv4_l3fwd_em_route_array[1];
-			entry.key.ip_dst = IPv4(201, c, b, a);
+			entry.key.ip_dst = RTE_IPv4(201, c, b, a);
 			break;
 		case 2:
 			entry = ipv4_l3fwd_em_route_array[2];
-			entry.key.ip_dst = IPv4(111, c, b, a);
+			entry.key.ip_dst = RTE_IPv4(111, c, b, a);
 			break;
 		case 3:
 			entry = ipv4_l3fwd_em_route_array[3];
-			entry.key.ip_dst = IPv4(211, c, b, a);
+			entry.key.ip_dst = RTE_IPv4(211, c, b, a);
 			break;
 		};
 		convert_ipv4_5tuple(&entry.key, &newkey);
@@ -576,8 +576,8 @@ em_parse_ptype(struct rte_mbuf *m)
 	l3 = (uint8_t *)eth_hdr + sizeof(struct rte_ether_hdr);
 	if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4)) {
 		ipv4_hdr = (struct rte_ipv4_hdr *)l3;
-		hdr_len = (ipv4_hdr->version_ihl & IPV4_HDR_IHL_MASK) *
-			  IPV4_IHL_MULTIPLIER;
+		hdr_len = (ipv4_hdr->version_ihl & RTE_IPV4_HDR_IHL_MASK) *
+			  RTE_IPV4_IHL_MULTIPLIER;
 		if (hdr_len == sizeof(struct rte_ipv4_hdr)) {
 			packet_type |= RTE_PTYPE_L3_IPV4;
 			if (ipv4_hdr->next_proto_id == IPPROTO_TCP)

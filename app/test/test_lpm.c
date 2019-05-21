@@ -165,7 +165,7 @@ test3(void)
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
-	uint32_t ip = IPv4(0, 0, 0, 0), next_hop = 100;
+	uint32_t ip = RTE_IPv4(0, 0, 0, 0), next_hop = 100;
 	uint8_t depth = 24;
 	int32_t status = 0;
 
@@ -203,7 +203,7 @@ test4(void)
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
-	uint32_t ip = IPv4(0, 0, 0, 0);
+	uint32_t ip = RTE_IPv4(0, 0, 0, 0);
 	uint8_t depth = 24;
 	int32_t status = 0;
 
@@ -242,7 +242,7 @@ test5(void)
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
-	uint32_t ip = IPv4(0, 0, 0, 0), next_hop_return = 0;
+	uint32_t ip = RTE_IPv4(0, 0, 0, 0), next_hop_return = 0;
 	int32_t status = 0;
 
 	/* rte_lpm_lookup: lpm == NULL */
@@ -276,7 +276,7 @@ test6(void)
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
-	uint32_t ip = IPv4(0, 0, 0, 0), next_hop_add = 100, next_hop_return = 0;
+	uint32_t ip = RTE_IPv4(0, 0, 0, 0), next_hop_add = 100, next_hop_return = 0;
 	uint8_t depth = 24;
 	int32_t status = 0;
 
@@ -315,7 +315,7 @@ test7(void)
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
-	uint32_t ip = IPv4(0, 0, 0, 0), next_hop_add = 100, next_hop_return = 0;
+	uint32_t ip = RTE_IPv4(0, 0, 0, 0), next_hop_add = 100, next_hop_return = 0;
 	uint8_t depth = 32;
 	int32_t status = 0;
 
@@ -366,7 +366,7 @@ test8(void)
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
-	uint32_t ip1 = IPv4(127, 255, 255, 255), ip2 = IPv4(128, 0, 0, 0);
+	uint32_t ip1 = RTE_IPv4(127, 255, 255, 255), ip2 = RTE_IPv4(128, 0, 0, 0);
 	uint32_t next_hop_add, next_hop_return;
 	uint8_t depth;
 	int32_t status = 0;
@@ -457,7 +457,7 @@ test9(void)
 	int32_t status = 0;
 
 	/* Add & lookup to hit invalid TBL24 entry */
-	ip = IPv4(128, 0, 0, 0);
+	ip = RTE_IPv4(128, 0, 0, 0);
 	depth = 24;
 	next_hop_add = 100;
 
@@ -479,7 +479,7 @@ test9(void)
 	rte_lpm_delete_all(lpm);
 
 	/* Add & lookup to hit valid TBL24 entry not extended */
-	ip = IPv4(128, 0, 0, 0);
+	ip = RTE_IPv4(128, 0, 0, 0);
 	depth = 23;
 	next_hop_add = 100;
 
@@ -515,7 +515,7 @@ test9(void)
 
 	/* Add & lookup to hit valid extended TBL24 entry with invalid TBL8
 	 * entry */
-	ip = IPv4(128, 0, 0, 0);
+	ip = RTE_IPv4(128, 0, 0, 0);
 	depth = 32;
 	next_hop_add = 100;
 
@@ -525,7 +525,7 @@ test9(void)
 	status = rte_lpm_lookup(lpm, ip, &next_hop_return);
 	TEST_LPM_ASSERT((status == 0) && (next_hop_return == next_hop_add));
 
-	ip = IPv4(128, 0, 0, 5);
+	ip = RTE_IPv4(128, 0, 0, 5);
 	depth = 32;
 	next_hop_add = 101;
 
@@ -541,7 +541,7 @@ test9(void)
 	status = rte_lpm_lookup(lpm, ip, &next_hop_return);
 	TEST_LPM_ASSERT(status == -ENOENT);
 
-	ip = IPv4(128, 0, 0, 0);
+	ip = RTE_IPv4(128, 0, 0, 0);
 	depth = 32;
 	next_hop_add = 100;
 
@@ -558,11 +558,11 @@ test9(void)
 
 	/* Add & lookup to hit valid extended TBL24 entry with valid TBL8
 	 * entry */
-	ip_1 = IPv4(128, 0, 0, 0);
+	ip_1 = RTE_IPv4(128, 0, 0, 0);
 	depth_1 = 25;
 	next_hop_add_1 = 101;
 
-	ip_2 = IPv4(128, 0, 0, 5);
+	ip_2 = RTE_IPv4(128, 0, 0, 5);
 	depth_2 = 32;
 	next_hop_add_2 = 102;
 
@@ -629,7 +629,7 @@ test10(void)
 	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, &config);
 	TEST_LPM_ASSERT(lpm != NULL);
 
-	ip = IPv4(128, 0, 0, 0);
+	ip = RTE_IPv4(128, 0, 0, 0);
 	depth = 16;
 	next_hop_add = 100;
 
@@ -647,7 +647,7 @@ test10(void)
 
 	rte_lpm_delete_all(lpm);
 
-	ip = IPv4(128, 0, 0, 0);
+	ip = RTE_IPv4(128, 0, 0, 0);
 	depth = 25;
 	next_hop_add = 100;
 
@@ -665,14 +665,14 @@ test10(void)
 	/* Add rule that extends a TBL24 valid entry & lookup for both rules
 	 * (& delete & lookup) */
 
-	ip = IPv4(128, 0, 0, 0);
+	ip = RTE_IPv4(128, 0, 0, 0);
 	depth = 24;
 	next_hop_add = 100;
 
 	status = rte_lpm_add(lpm, ip, depth, next_hop_add);
 	TEST_LPM_ASSERT(status == 0);
 
-	ip = IPv4(128, 0, 0, 10);
+	ip = RTE_IPv4(128, 0, 0, 10);
 	depth = 32;
 	next_hop_add = 101;
 
@@ -682,13 +682,13 @@ test10(void)
 	status = rte_lpm_lookup(lpm, ip, &next_hop_return);
 	TEST_LPM_ASSERT((status == 0) && (next_hop_return == next_hop_add));
 
-	ip = IPv4(128, 0, 0, 0);
+	ip = RTE_IPv4(128, 0, 0, 0);
 	next_hop_add = 100;
 
 	status = rte_lpm_lookup(lpm, ip, &next_hop_return);
 	TEST_LPM_ASSERT((status == 0) && (next_hop_return == next_hop_add));
 
-	ip = IPv4(128, 0, 0, 0);
+	ip = RTE_IPv4(128, 0, 0, 0);
 	depth = 24;
 
 	status = rte_lpm_delete(lpm, ip, depth);
@@ -697,7 +697,7 @@ test10(void)
 	status = rte_lpm_lookup(lpm, ip, &next_hop_return);
 	TEST_LPM_ASSERT(status == -ENOENT);
 
-	ip = IPv4(128, 0, 0, 10);
+	ip = RTE_IPv4(128, 0, 0, 10);
 	depth = 32;
 
 	status = rte_lpm_delete(lpm, ip, depth);
@@ -711,7 +711,7 @@ test10(void)
 	/* Add rule that updates the next hop in TBL24 & lookup
 	 * (& delete & lookup) */
 
-	ip = IPv4(128, 0, 0, 0);
+	ip = RTE_IPv4(128, 0, 0, 0);
 	depth = 24;
 	next_hop_add = 100;
 
@@ -740,7 +740,7 @@ test10(void)
 	/* Add rule that updates the next hop in TBL8 & lookup
 	 * (& delete & lookup) */
 
-	ip = IPv4(128, 0, 0, 0);
+	ip = RTE_IPv4(128, 0, 0, 0);
 	depth = 32;
 	next_hop_add = 100;
 
@@ -768,7 +768,7 @@ test10(void)
 
 	/* Delete a rule that is not present in the TBL24 & lookup */
 
-	ip = IPv4(128, 0, 0, 0);
+	ip = RTE_IPv4(128, 0, 0, 0);
 	depth = 24;
 
 	status = rte_lpm_delete(lpm, ip, depth);
@@ -781,7 +781,7 @@ test10(void)
 
 	/* Delete a rule that is not present in the TBL8 & lookup */
 
-	ip = IPv4(128, 0, 0, 0);
+	ip = RTE_IPv4(128, 0, 0, 0);
 	depth = 32;
 
 	status = rte_lpm_delete(lpm, ip, depth);
@@ -818,14 +818,14 @@ test11(void)
 	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, &config);
 	TEST_LPM_ASSERT(lpm != NULL);
 
-	ip = IPv4(128, 0, 0, 0);
+	ip = RTE_IPv4(128, 0, 0, 0);
 	depth = 24;
 	next_hop_add = 100;
 
 	status = rte_lpm_add(lpm, ip, depth, next_hop_add);
 	TEST_LPM_ASSERT(status == 0);
 
-	ip = IPv4(128, 0, 0, 10);
+	ip = RTE_IPv4(128, 0, 0, 10);
 	depth = 32;
 	next_hop_add = 101;
 
@@ -835,13 +835,13 @@ test11(void)
 	status = rte_lpm_lookup(lpm, ip, &next_hop_return);
 	TEST_LPM_ASSERT((status == 0) && (next_hop_return == next_hop_add));
 
-	ip = IPv4(128, 0, 0, 0);
+	ip = RTE_IPv4(128, 0, 0, 0);
 	next_hop_add = 100;
 
 	status = rte_lpm_lookup(lpm, ip, &next_hop_return);
 	TEST_LPM_ASSERT((status == 0) && (next_hop_return == next_hop_add));
 
-	ip = IPv4(128, 0, 0, 0);
+	ip = RTE_IPv4(128, 0, 0, 0);
 	depth = 24;
 
 	status = rte_lpm_delete(lpm, ip, depth);
@@ -850,7 +850,7 @@ test11(void)
 	status = rte_lpm_lookup(lpm, ip, &next_hop_return);
 	TEST_LPM_ASSERT(status == -ENOENT);
 
-	ip = IPv4(128, 0, 0, 10);
+	ip = RTE_IPv4(128, 0, 0, 10);
 	depth = 32;
 
 	status = rte_lpm_delete(lpm, ip, depth);
@@ -889,7 +889,7 @@ test12(void)
 	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, &config);
 	TEST_LPM_ASSERT(lpm != NULL);
 
-	ip = IPv4(128, 0, 0, 0);
+	ip = RTE_IPv4(128, 0, 0, 0);
 	depth = 32;
 	next_hop_add = 100;
 
@@ -944,7 +944,7 @@ test13(void)
 	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, &config);
 	TEST_LPM_ASSERT(lpm != NULL);
 
-	ip = IPv4(128, 0, 0, 0);
+	ip = RTE_IPv4(128, 0, 0, 0);
 	depth = 24;
 	next_hop_add_1 = 100;
 
@@ -1014,10 +1014,10 @@ test14(void)
 
 	depth = 32;
 	next_hop_add = 100;
-	ip = IPv4(0, 0, 0, 0);
+	ip = RTE_IPv4(0, 0, 0, 0);
 
 	/* Add 256 rules that require a tbl8 extension */
-	for (; ip <= IPv4(0, 0, 255, 0); ip += 256) {
+	for (; ip <= RTE_IPv4(0, 0, 255, 0); ip += 256) {
 		status = rte_lpm_add(lpm, ip, depth, next_hop_add);
 		TEST_LPM_ASSERT(status == 0);
 
@@ -1028,7 +1028,7 @@ test14(void)
 
 	/* All tbl8 extensions have been used above. Try to add one more and
 	 * we get a fail */
-	ip = IPv4(1, 0, 0, 0);
+	ip = RTE_IPv4(1, 0, 0, 0);
 	depth = 32;
 
 	status = rte_lpm_add(lpm, ip, depth, next_hop_add);
@@ -1125,9 +1125,9 @@ test17(void)
 	config.max_rules = MAX_RULES;
 	config.number_tbl8s = NUMBER_TBL8S;
 	config.flags = 0;
-	const uint32_t ip_10_32 = IPv4(10, 10, 10, 2);
-	const uint32_t ip_10_24 = IPv4(10, 10, 10, 0);
-	const uint32_t ip_20_25 = IPv4(10, 10, 20, 2);
+	const uint32_t ip_10_32 = RTE_IPv4(10, 10, 10, 2);
+	const uint32_t ip_10_24 = RTE_IPv4(10, 10, 10, 0);
+	const uint32_t ip_20_25 = RTE_IPv4(10, 10, 20, 2);
 	const uint8_t d_ip_10_32 = 32,
 			d_ip_10_24 = 24,
 			d_ip_20_25 = 25;
@@ -1221,7 +1221,7 @@ test18(void)
 	lpm = rte_lpm_create(__func__, SOCKET_ID_ANY, &config);
 	TEST_LPM_ASSERT(lpm != NULL);
 
-	ip = IPv4(192, 168, 100, 100);
+	ip = RTE_IPv4(192, 168, 100, 100);
 	depth = 28;
 	next_hop = 1;
 	rte_lpm_add(lpm, ip, depth, next_hop);

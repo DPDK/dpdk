@@ -951,7 +951,7 @@ get_spi_proto(uint32_t spi, enum rte_security_ipsec_sa_direction dir)
 		if (rc6 >= 0) {
 			RTE_LOG(ERR, IPSEC,
 				"%s: SPI %u used simultaeously by "
-				"IPv4(%d) and IPv6 (%d) SP rules\n",
+				"RTE_IPv4(%d) and IPv6 (%d) SP rules\n",
 				__func__, spi, rc4, rc6);
 			return -EINVAL;
 		} else
@@ -1040,7 +1040,7 @@ ipsec_sa_init(struct ipsec_sa *lsa, struct rte_ipsec_sa *sa, uint32_t sa_size)
 	struct rte_ipsec_sa_prm prm;
 	struct rte_ipv4_hdr v4  = {
 		.version_ihl = IPVERSION << 4 |
-			sizeof(v4) / IPV4_IHL_MULTIPLIER,
+			sizeof(v4) / RTE_IPV4_IHL_MULTIPLIER,
 		.time_to_live = IPDEFTTL,
 		.next_proto_id = IPPROTO_ESP,
 		.src_addr = lsa->src.ip.ip4,

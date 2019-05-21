@@ -348,11 +348,12 @@ gro_vxlan_tcp4_reassemble(struct rte_mbuf *pkt,
 	 * whose DF bit is 1, IPv4 ID is ignored.
 	 */
 	frag_off = rte_be_to_cpu_16(outer_ipv4_hdr->fragment_offset);
-	outer_is_atomic = (frag_off & IPV4_HDR_DF_FLAG) == IPV4_HDR_DF_FLAG;
+	outer_is_atomic =
+		(frag_off & RTE_IPV4_HDR_DF_FLAG) == RTE_IPV4_HDR_DF_FLAG;
 	outer_ip_id = outer_is_atomic ? 0 :
 		rte_be_to_cpu_16(outer_ipv4_hdr->packet_id);
 	frag_off = rte_be_to_cpu_16(ipv4_hdr->fragment_offset);
-	is_atomic = (frag_off & IPV4_HDR_DF_FLAG) == IPV4_HDR_DF_FLAG;
+	is_atomic = (frag_off & RTE_IPV4_HDR_DF_FLAG) == RTE_IPV4_HDR_DF_FLAG;
 	ip_id = is_atomic ? 0 : rte_be_to_cpu_16(ipv4_hdr->packet_id);
 
 	sent_seq = rte_be_to_cpu_32(tcp_hdr->sent_seq);

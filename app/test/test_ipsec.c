@@ -533,11 +533,11 @@ const char null_encrypted_data[] =
 
 struct rte_ipv4_hdr ipv4_outer  = {
 	.version_ihl = IPVERSION << 4 |
-		sizeof(ipv4_outer) / IPV4_IHL_MULTIPLIER,
+		sizeof(ipv4_outer) / RTE_IPV4_IHL_MULTIPLIER,
 	.time_to_live = IPDEFTTL,
 	.next_proto_id = IPPROTO_ESP,
-	.src_addr = IPv4(192, 168, 1, 100),
-	.dst_addr = IPv4(192, 168, 2, 100),
+	.src_addr = RTE_IPv4(192, 168, 1, 100),
+	.dst_addr = RTE_IPv4(192, 168, 2, 100),
 };
 
 static struct rte_mbuf *

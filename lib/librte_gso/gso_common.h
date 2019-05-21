@@ -12,8 +12,8 @@
 #include <rte_tcp.h>
 #include <rte_udp.h>
 
-#define IS_FRAGMENTED(frag_off) (((frag_off) & IPV4_HDR_OFFSET_MASK) != 0 \
-		|| ((frag_off) & IPV4_HDR_MF_FLAG) == IPV4_HDR_MF_FLAG)
+#define IS_FRAGMENTED(frag_off) (((frag_off) & RTE_IPV4_HDR_OFFSET_MASK) != 0 \
+		|| ((frag_off) & RTE_IPV4_HDR_MF_FLAG) == RTE_IPV4_HDR_MF_FLAG)
 
 #define TCP_HDR_PSH_MASK ((uint8_t)0x08)
 #define TCP_HDR_FIN_MASK ((uint8_t)0x01)

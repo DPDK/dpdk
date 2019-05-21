@@ -258,10 +258,10 @@ struct ipv6_l3fwd_route {
 };
 
 static struct ipv4_l3fwd_route ipv4_l3fwd_route_array[] = {
-	{{IPv4(100,10,0,1), IPv4(200,10,0,1), 101, 11, IPPROTO_TCP}, 0},
-	{{IPv4(100,20,0,2), IPv4(200,20,0,2), 102, 12, IPPROTO_TCP}, 1},
-	{{IPv4(100,30,0,3), IPv4(200,30,0,3), 103, 13, IPPROTO_TCP}, 2},
-	{{IPv4(100,40,0,4), IPv4(200,40,0,4), 104, 14, IPPROTO_TCP}, 3},
+	{{RTE_IPv4(100,10,0,1), RTE_IPv4(200,10,0,1), 101, 11, IPPROTO_TCP}, 0},
+	{{RTE_IPv4(100,20,0,2), RTE_IPv4(200,20,0,2), 102, 12, IPPROTO_TCP}, 1},
+	{{RTE_IPv4(100,30,0,3), RTE_IPv4(200,30,0,3), 103, 13, IPPROTO_TCP}, 2},
+	{{RTE_IPv4(100,40,0,4), RTE_IPv4(200,40,0,4), 104, 14, IPPROTO_TCP}, 3},
 };
 
 static struct ipv6_l3fwd_route ipv6_l3fwd_route_array[] = {
@@ -300,14 +300,14 @@ struct ipv4_l3fwd_route {
 };
 
 static struct ipv4_l3fwd_route ipv4_l3fwd_route_array[] = {
-	{IPv4(1,1,1,0), 24, 0},
-	{IPv4(2,1,1,0), 24, 1},
-	{IPv4(3,1,1,0), 24, 2},
-	{IPv4(4,1,1,0), 24, 3},
-	{IPv4(5,1,1,0), 24, 4},
-	{IPv4(6,1,1,0), 24, 5},
-	{IPv4(7,1,1,0), 24, 6},
-	{IPv4(8,1,1,0), 24, 7},
+	{RTE_IPv4(1,1,1,0), 24, 0},
+	{RTE_IPv4(2,1,1,0), 24, 1},
+	{RTE_IPv4(3,1,1,0), 24, 2},
+	{RTE_IPv4(4,1,1,0), 24, 3},
+	{RTE_IPv4(5,1,1,0), 24, 4},
+	{RTE_IPv4(6,1,1,0), 24, 5},
+	{RTE_IPv4(7,1,1,0), 24, 6},
+	{RTE_IPv4(8,1,1,0), 24, 7},
 };
 
 #define IPV4_L3FWD_NUM_ROUTES \

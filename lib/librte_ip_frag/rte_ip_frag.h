@@ -309,8 +309,8 @@ rte_ipv4_frag_pkt_is_fragmented(const struct rte_ipv4_hdr *hdr)
 	uint16_t flag_offset, ip_flag, ip_ofs;
 
 	flag_offset = rte_be_to_cpu_16(hdr->fragment_offset);
-	ip_ofs = (uint16_t)(flag_offset & IPV4_HDR_OFFSET_MASK);
-	ip_flag = (uint16_t)(flag_offset & IPV4_HDR_MF_FLAG);
+	ip_ofs = (uint16_t)(flag_offset & RTE_IPV4_HDR_OFFSET_MASK);
+	ip_flag = (uint16_t)(flag_offset & RTE_IPV4_HDR_MF_FLAG);
 
 	return ip_flag != 0 || ip_ofs  != 0;
 }

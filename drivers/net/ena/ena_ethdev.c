@@ -2158,7 +2158,7 @@ eth_ena_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 						 m->l2_len);
 		frag_field = rte_be_to_cpu_16(ip_hdr->fragment_offset);
 
-		if ((frag_field & IPV4_HDR_DF_FLAG) != 0) {
+		if ((frag_field & RTE_IPV4_HDR_DF_FLAG) != 0) {
 			m->packet_type |= RTE_PTYPE_L4_NONFRAG;
 
 			/* If IPv4 header has DF flag enabled and TSO support is

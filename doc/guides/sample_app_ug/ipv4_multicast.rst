@@ -155,7 +155,7 @@ if the routing table has any ports assigned to the destination address:
 
 .. code-block:: c
 
-    if (!IS_IPV4_MCAST(dest_addr) ||
+    if (!RTE_IS_IPV4_MCAST(dest_addr) ||
        (hash = rte_fbk_hash_lookup(mcast_hash, dest_addr)) <= 0 ||
        (port_mask = hash & enabled_port_mask) == 0) {
            rte_pktmbuf_free(m);

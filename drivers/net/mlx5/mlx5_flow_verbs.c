@@ -480,17 +480,17 @@ flow_verbs_translate_item_ipv6(struct mlx5_flow *dev_flow,
 		vtc_flow_val = rte_be_to_cpu_32(spec->hdr.vtc_flow);
 		vtc_flow_mask = rte_be_to_cpu_32(mask->hdr.vtc_flow);
 		ipv6.val.flow_label =
-			rte_cpu_to_be_32((vtc_flow_val & IPV6_HDR_FL_MASK) >>
-					 IPV6_HDR_FL_SHIFT);
-		ipv6.val.traffic_class = (vtc_flow_val & IPV6_HDR_TC_MASK) >>
-					 IPV6_HDR_TC_SHIFT;
+			rte_cpu_to_be_32((vtc_flow_val & RTE_IPV6_HDR_FL_MASK) >>
+					 RTE_IPV6_HDR_FL_SHIFT);
+		ipv6.val.traffic_class = (vtc_flow_val & RTE_IPV6_HDR_TC_MASK) >>
+					 RTE_IPV6_HDR_TC_SHIFT;
 		ipv6.val.next_hdr = spec->hdr.proto;
 		ipv6.val.hop_limit = spec->hdr.hop_limits;
 		ipv6.mask.flow_label =
-			rte_cpu_to_be_32((vtc_flow_mask & IPV6_HDR_FL_MASK) >>
-					 IPV6_HDR_FL_SHIFT);
-		ipv6.mask.traffic_class = (vtc_flow_mask & IPV6_HDR_TC_MASK) >>
-					  IPV6_HDR_TC_SHIFT;
+			rte_cpu_to_be_32((vtc_flow_mask & RTE_IPV6_HDR_FL_MASK) >>
+					 RTE_IPV6_HDR_FL_SHIFT);
+		ipv6.mask.traffic_class = (vtc_flow_mask & RTE_IPV6_HDR_TC_MASK) >>
+					  RTE_IPV6_HDR_TC_SHIFT;
 		ipv6.mask.next_hdr = mask->hdr.proto;
 		ipv6.mask.hop_limit = mask->hdr.hop_limits;
 		/* Remove unwanted bits from values. */

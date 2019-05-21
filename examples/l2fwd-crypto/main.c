@@ -404,8 +404,8 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 	ip_hdr = (struct rte_ipv4_hdr *)(rte_pktmbuf_mtod(m, char *) +
 			ipdata_offset);
 
-	ipdata_offset += (ip_hdr->version_ihl & IPV4_HDR_IHL_MASK)
-			* IPV4_IHL_MULTIPLIER;
+	ipdata_offset += (ip_hdr->version_ihl & RTE_IPV4_HDR_IHL_MASK)
+			* RTE_IPV4_IHL_MULTIPLIER;
 
 
 	/* Zero pad data to be crypto'd so it is block aligned */

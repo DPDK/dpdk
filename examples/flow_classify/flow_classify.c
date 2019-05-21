@@ -379,7 +379,7 @@ parse_ipv4_net(char *in, uint32_t *addr, uint32_t *mask_len)
 	if (get_cb_field(&in, &m, 0, sizeof(uint32_t) * CHAR_BIT, 0))
 		return -EINVAL;
 
-	addr[0] = IPv4(a, b, c, d);
+	addr[0] = RTE_IPv4(a, b, c, d);
 	mask_len[0] = m;
 	return 0;
 }

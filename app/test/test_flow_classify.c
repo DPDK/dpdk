@@ -95,7 +95,8 @@ static struct rte_acl_field_def ipv4_defs[NUM_FIELDS_IPV4] = {
  *  dst mask 255.255.255.00 / udp src is 32 dst is 33 / end"
  */
 static struct rte_flow_item_ipv4 ipv4_udp_spec_1 = {
-	{ 0, 0, 0, 0, 0, 0, IPPROTO_UDP, 0, IPv4(2, 2, 2, 3), IPv4(2, 2, 2, 7)}
+	{ 0, 0, 0, 0, 0, 0, IPPROTO_UDP, 0,
+	  RTE_IPv4(2, 2, 2, 3), RTE_IPv4(2, 2, 2, 7)}
 };
 static const struct rte_flow_item_ipv4 ipv4_mask_24 = {
 	.hdr = {
@@ -131,7 +132,8 @@ static struct rte_flow_item  end_item_bad = { -1, 0, 0, 0 };
  *  dst mask 255.255.255.00 / tcp src is 16 dst is 17 / end"
  */
 static struct rte_flow_item_ipv4 ipv4_tcp_spec_1 = {
-	{ 0, 0, 0, 0, 0, 0, IPPROTO_TCP, 0, IPv4(1, 2, 3, 4), IPv4(5, 6, 7, 8)}
+	{ 0, 0, 0, 0, 0, 0, IPPROTO_TCP, 0,
+	  RTE_IPv4(1, 2, 3, 4), RTE_IPv4(5, 6, 7, 8)}
 };
 
 static struct rte_flow_item_tcp tcp_spec_1 = {
@@ -149,8 +151,8 @@ static struct rte_flow_item  tcp_item_1 = { RTE_FLOW_ITEM_TYPE_TCP,
  *  dst mask 255.255.255.00 / sctp src is 16 dst is 17/ end"
  */
 static struct rte_flow_item_ipv4 ipv4_sctp_spec_1 = {
-	{ 0, 0, 0, 0, 0, 0, IPPROTO_SCTP, 0, IPv4(11, 12, 13, 14),
-	IPv4(15, 16, 17, 18)}
+	{ 0, 0, 0, 0, 0, 0, IPPROTO_SCTP, 0, RTE_IPv4(11, 12, 13, 14),
+	RTE_IPv4(15, 16, 17, 18)}
 };
 
 static struct rte_flow_item_sctp sctp_spec_1 = {

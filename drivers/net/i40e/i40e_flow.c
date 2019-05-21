@@ -2606,8 +2606,8 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				/* Check if it is fragment. */
 				frag_off = ipv4_spec->hdr.fragment_offset;
 				frag_off = rte_be_to_cpu_16(frag_off);
-				if (frag_off & IPV4_HDR_OFFSET_MASK ||
-				    frag_off & IPV4_HDR_MF_FLAG)
+				if (frag_off & RTE_IPV4_HDR_OFFSET_MASK ||
+				    frag_off & RTE_IPV4_HDR_MF_FLAG)
 					pctype = I40E_FILTER_PCTYPE_FRAG_IPV4;
 
 				/* Get the filter info */
