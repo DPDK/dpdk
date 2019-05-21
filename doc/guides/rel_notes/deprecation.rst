@@ -17,10 +17,6 @@ Deprecation Notices
   can be got using the ``pip``, or ``pip3``, tool for downloading python
   packages.
 
-* network includes: Network structures, definitions and functions will
-  be prefixed by ``rte_`` to resolve conflicts with libc headers.
-  This change will break many DPDK APIs.
-
 * kvargs: The function ``rte_kvargs_process`` will get a new parameter
   for returning key match count. It will ease handling of no-match case.
 

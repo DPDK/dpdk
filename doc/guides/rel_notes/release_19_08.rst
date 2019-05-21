@@ -83,6 +83,9 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* The network structures, definitions and functions have
+  been prefixed by ``rte_`` to resolve conflicts with libc headers.
+
 
 ABI Changes
 -----------
