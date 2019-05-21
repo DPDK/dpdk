@@ -1108,7 +1108,7 @@ virtio_get_hwaddr(struct virtio_hw *hw)
 			offsetof(struct virtio_net_config, mac),
 			&hw->mac_addr, ETHER_ADDR_LEN);
 	} else {
-		eth_random_addr(&hw->mac_addr[0]);
+		rte_eth_random_addr(&hw->mac_addr[0]);
 		virtio_set_hwaddr(hw);
 	}
 }
@@ -1164,7 +1164,7 @@ virtio_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 		const struct rte_ether_addr *addr
 			= (i == index) ? mac_addr : addrs + i;
 		struct virtio_net_ctrl_mac *tbl
-			= is_multicast_ether_addr(addr) ? mc : uc;
+			= rte_is_multicast_ether_addr(addr) ? mc : uc;
 
 		memcpy(&tbl->macs[tbl->entries++], addr, ETHER_ADDR_LEN);
 	}
@@ -1193,10 +1193,10 @@ virtio_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 	for (i = 0; i < VIRTIO_MAX_MAC_ADDRS; i++) {
 		struct virtio_net_ctrl_mac *tbl;
 
-		if (i == index || is_zero_ether_addr(addrs + i))
+		if (i == index || rte_is_zero_ether_addr(addrs + i))
 			continue;
 
-		tbl = is_multicast_ether_addr(addrs + i) ? mc : uc;
+		tbl = rte_is_multicast_ether_addr(addrs + i) ? mc : uc;
 		memcpy(&tbl->macs[tbl->entries++], addrs + i, ETHER_ADDR_LEN);
 	}
 
@@ -1662,7 +1662,7 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 
 	/* Copy the permanent MAC address to: virtio_hw */
 	virtio_get_hwaddr(hw);
-	ether_addr_copy((struct rte_ether_addr *)hw->mac_addr,
+	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac_addr,
 			&eth_dev->data->mac_addrs[0]);
 	PMD_INIT_LOG(DEBUG,
 		     "PORT MAC: %02X:%02X:%02X:%02X:%02X:%02X",

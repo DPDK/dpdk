@@ -788,7 +788,7 @@ i40evf_add_mac_addr(struct rte_eth_dev *dev,
 	int err;
 	struct vf_cmd_info args;
 
-	if (is_zero_ether_addr(addr)) {
+	if (rte_is_zero_ether_addr(addr)) {
 		PMD_DRV_LOG(ERR, "Invalid mac:%x:%x:%x:%x:%x:%x",
 			    addr->addr_bytes[0], addr->addr_bytes[1],
 			    addr->addr_bytes[2], addr->addr_bytes[3],
@@ -1274,10 +1274,11 @@ i40evf_init_vf(struct rte_eth_dev *dev)
 	vf->vsi.adapter = I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 
 	/* Store the MAC address configured by host, or generate random one */
-	if (is_valid_assigned_ether_addr((struct rte_ether_addr *)hw->mac.addr))
+	if (rte_is_valid_assigned_ether_addr(
+			(struct rte_ether_addr *)hw->mac.addr))
 		vf->flags |= I40E_FLAG_VF_MAC_BY_PF;
 	else
-		eth_random_addr(hw->mac.addr); /* Generate a random one */
+		rte_eth_random_addr(hw->mac.addr); /* Generate a random one */
 
 	I40E_WRITE_REG(hw, I40E_VFINT_DYN_CTL01,
 		       (I40E_ITR_INDEX_DEFAULT <<
@@ -1512,7 +1513,7 @@ i40evf_dev_init(struct rte_eth_dev *eth_dev)
 				ETHER_ADDR_LEN * I40E_NUM_MACADDR_MAX);
 		return -ENOMEM;
 	}
-	ether_addr_copy((struct rte_ether_addr *)hw->mac.addr,
+	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac.addr,
 			&eth_dev->data->mac_addrs[0]);
 
 	return 0;
@@ -1937,7 +1938,7 @@ i40evf_add_del_all_mac_addr(struct rte_eth_dev *dev, bool add)
 		j = 0;
 		len = sizeof(struct virtchnl_ether_addr_list);
 		for (i = begin; i < I40E_NUM_MACADDR_MAX; i++, next_begin++) {
-			if (is_zero_ether_addr(&dev->data->mac_addrs[i]))
+			if (rte_is_zero_ether_addr(&dev->data->mac_addrs[i]))
 				continue;
 			len += sizeof(struct virtchnl_ether_addr);
 			if (len >= I40E_AQ_BUF_SZ) {
@@ -1954,7 +1955,7 @@ i40evf_add_del_all_mac_addr(struct rte_eth_dev *dev, bool add)
 
 		for (i = begin; i < next_begin; i++) {
 			addr = &dev->data->mac_addrs[i];
-			if (is_zero_ether_addr(addr))
+			if (rte_is_zero_ether_addr(addr))
 				continue;
 			rte_memcpy(list->list[j].addr, addr->addr_bytes,
 					 sizeof(addr->addr_bytes));
@@ -2707,7 +2708,7 @@ i40evf_set_default_mac_addr(struct rte_eth_dev *dev,
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	if (!is_valid_assigned_ether_addr(mac_addr)) {
+	if (!rte_is_valid_assigned_ether_addr(mac_addr)) {
 		PMD_DRV_LOG(ERR, "Tried to set invalid MAC address.");
 		return -EINVAL;
 	}
@@ -2720,7 +2721,7 @@ i40evf_set_default_mac_addr(struct rte_eth_dev *dev,
 	if (i40evf_add_mac_addr(dev, mac_addr, 0, 0) != 0)
 		return -EIO;
 
-	ether_addr_copy(mac_addr, (struct rte_ether_addr *)hw->mac.addr);
+	rte_ether_addr_copy(mac_addr, (struct rte_ether_addr *)hw->mac.addr);
 	return 0;
 }
 

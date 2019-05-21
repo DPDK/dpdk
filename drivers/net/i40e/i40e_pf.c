@@ -348,7 +348,7 @@ i40e_pf_host_process_cmd_get_vf_resource(struct i40e_pf_vf *vf, uint8_t *msg,
 	vf_res->vsi_res[0].vsi_type = VIRTCHNL_VSI_SRIOV;
 	vf_res->vsi_res[0].vsi_id = vf->vsi->vsi_id;
 	vf_res->vsi_res[0].num_queue_pairs = vf->vsi->nb_qps;
-	ether_addr_copy(&vf->mac_addr,
+	rte_ether_addr_copy(&vf->mac_addr,
 		(struct rte_ether_addr *)vf_res->vsi_res[0].default_mac_addr);
 
 send_msg:
@@ -845,7 +845,7 @@ i40e_pf_host_process_cmd_add_ether_address(struct i40e_pf_vf *vf,
 		mac = (struct rte_ether_addr *)(addr_list->list[i].addr);
 		rte_memcpy(&filter.mac_addr, mac, ETHER_ADDR_LEN);
 		filter.filter_type = RTE_MACVLAN_PERFECT_MATCH;
-		if (is_zero_ether_addr(mac) ||
+		if (rte_is_zero_ether_addr(mac) ||
 		    i40e_vsi_add_mac(vf->vsi, &filter)) {
 			ret = I40E_ERR_INVALID_MAC_ADDR;
 			goto send_msg;
@@ -887,7 +887,7 @@ i40e_pf_host_process_cmd_del_ether_address(struct i40e_pf_vf *vf,
 
 	for (i = 0; i < addr_list->num_elements; i++) {
 		mac = (struct rte_ether_addr *)(addr_list->list[i].addr);
-		if(is_zero_ether_addr(mac) ||
+		if (rte_is_zero_ether_addr(mac) ||
 			i40e_vsi_delete_mac(vf->vsi, mac)) {
 			ret = I40E_ERR_INVALID_MAC_ADDR;
 			goto send_msg;

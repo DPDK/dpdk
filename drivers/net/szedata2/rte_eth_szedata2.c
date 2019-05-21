@@ -1522,7 +1522,7 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev, struct port_info *pi)
 		return -ENOMEM;
 	}
 
-	ether_addr_copy(&eth_addr, data->mac_addrs);
+	rte_ether_addr_copy(&eth_addr, data->mac_addrs);
 
 	PMD_INIT_LOG(INFO, "%s device %s successfully initialized",
 			RTE_STR(RTE_SZEDATA2_DRIVER_NAME), data->name);

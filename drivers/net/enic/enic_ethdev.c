@@ -648,7 +648,7 @@ static void debug_log_add_del_addr(struct rte_ether_addr *addr, bool add)
 {
 	char mac_str[ETHER_ADDR_FMT_SIZE];
 
-	ether_format_addr(mac_str, ETHER_ADDR_FMT_SIZE, addr);
+	rte_ether_format_addr(mac_str, ETHER_ADDR_FMT_SIZE, addr);
 	PMD_INIT_LOG(DEBUG, " %s address %s\n",
 		     add ? "add" : "remove", mac_str);
 }
@@ -668,9 +668,10 @@ static int enicpmd_set_mc_addr_list(struct rte_eth_dev *eth_dev,
 	/* Validate the given addresses first */
 	for (i = 0; i < nb_mc_addr && mc_addr_set != NULL; i++) {
 		addr = &mc_addr_set[i];
-		if (!is_multicast_ether_addr(addr) ||
-		    is_broadcast_ether_addr(addr)) {
-			ether_format_addr(mac_str, ETHER_ADDR_FMT_SIZE, addr);
+		if (!rte_is_multicast_ether_addr(addr) ||
+		    rte_is_broadcast_ether_addr(addr)) {
+			rte_ether_format_addr(mac_str,
+					ETHER_ADDR_FMT_SIZE, addr);
 			PMD_INIT_LOG(ERR, " invalid multicast address %s\n",
 				     mac_str);
 			return -EINVAL;
@@ -704,7 +705,7 @@ static int enicpmd_set_mc_addr_list(struct rte_eth_dev *eth_dev,
 	for (i = 0; i < enic->mc_count; i++) {
 		addr = &enic->mc_addrs[i];
 		for (j = 0; j < nb_mc_addr; j++) {
-			if (is_same_ether_addr(addr, &mc_addr_set[j]))
+			if (rte_is_same_ether_addr(addr, &mc_addr_set[j]))
 				break;
 		}
 		if (j < nb_mc_addr)
@@ -718,7 +719,7 @@ static int enicpmd_set_mc_addr_list(struct rte_eth_dev *eth_dev,
 	for (i = 0; i < nb_mc_addr; i++) {
 		addr = &mc_addr_set[i];
 		for (j = 0; j < enic->mc_count; j++) {
-			if (is_same_ether_addr(addr, &enic->mc_addrs[j]))
+			if (rte_is_same_ether_addr(addr, &enic->mc_addrs[j]))
 				break;
 		}
 		if (j < enic->mc_count)

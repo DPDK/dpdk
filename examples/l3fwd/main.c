@@ -650,7 +650,7 @@ static void
 print_ethaddr(const char *name, const struct rte_ether_addr *eth_addr)
 {
 	char buf[ETHER_ADDR_FMT_SIZE];
-	ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
+	rte_ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
 	printf("%s%s", name, buf);
 }
 
@@ -914,7 +914,7 @@ main(int argc, char **argv)
 		/*
 		 * prepare src MACs for each port.
 		 */
-		ether_addr_copy(&ports_eth_addr[portid],
+		rte_ether_addr_copy(&ports_eth_addr[portid],
 			(struct rte_ether_addr *)(val_eth + portid) + 1);
 
 		/* init memory */

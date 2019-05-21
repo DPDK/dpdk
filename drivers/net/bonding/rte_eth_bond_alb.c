@@ -102,17 +102,21 @@ void bond_mode_alb_arp_recv(struct rte_ether_hdr *eth_h, uint16_t offset,
 	if (client_info->in_use == 0 ||
 			client_info->app_ip != arp->arp_data.arp_tip ||
 			client_info->cli_ip != arp->arp_data.arp_sip ||
-			!is_same_ether_addr(&client_info->cli_mac, &arp->arp_data.arp_sha) ||
+			!rte_is_same_ether_addr(&client_info->cli_mac,
+						&arp->arp_data.arp_sha) ||
 			client_info->vlan_count != offset / sizeof(struct rte_vlan_hdr) ||
 			memcmp(client_info->vlan, eth_h + 1, offset) != 0
 	) {
 		client_info->in_use = 1;
 		client_info->app_ip = arp->arp_data.arp_tip;
 		client_info->cli_ip = arp->arp_data.arp_sip;
-		ether_addr_copy(&arp->arp_data.arp_sha, &client_info->cli_mac);
+		rte_ether_addr_copy(&arp->arp_data.arp_sha,
+				&client_info->cli_mac);
 		client_info->slave_idx = calculate_slave(internals);
-		rte_eth_macaddr_get(client_info->slave_idx, &client_info->app_mac);
-		ether_addr_copy(&client_info->app_mac, &arp->arp_data.arp_tha);
+		rte_eth_macaddr_get(client_info->slave_idx,
+				&client_info->app_mac);
+		rte_ether_addr_copy(&client_info->app_mac,
+				&arp->arp_data.arp_tha);
 		memcpy(client_info->vlan, eth_h + 1, offset);
 		client_info->vlan_count = offset / sizeof(struct rte_vlan_hdr);
 	}
@@ -140,7 +144,7 @@ bond_mode_alb_arp_xmit(struct rte_ether_hdr *eth_h, uint16_t offset,
 	 * current primary port.
 	 */
 	rte_eth_macaddr_get(internals->port_id, &bonding_mac);
-	if (!is_same_ether_addr(&bonding_mac, &arp->arp_data.arp_sha)) {
+	if (!rte_is_same_ether_addr(&bonding_mac, &arp->arp_data.arp_sha)) {
 		rte_eth_macaddr_get(internals->current_primary_port,
 				&arp->arp_data.arp_sha);
 		return internals->current_primary_port;
@@ -156,13 +160,16 @@ bond_mode_alb_arp_xmit(struct rte_ether_hdr *eth_h, uint16_t offset,
 			if (client_info->app_ip == arp->arp_data.arp_sip &&
 				client_info->cli_ip == arp->arp_data.arp_tip) {
 				/* Entry is already assigned to this client */
-				if (!is_broadcast_ether_addr(&arp->arp_data.arp_tha)) {
-					ether_addr_copy(&arp->arp_data.arp_tha,
-							&client_info->cli_mac);
+				if (!rte_is_broadcast_ether_addr(
+						&arp->arp_data.arp_tha)) {
+					rte_ether_addr_copy(
+						&arp->arp_data.arp_tha,
+						&client_info->cli_mac);
 				}
 				rte_eth_macaddr_get(client_info->slave_idx,
 						&client_info->app_mac);
-				ether_addr_copy(&client_info->app_mac, &arp->arp_data.arp_sha);
+				rte_ether_addr_copy(&client_info->app_mac,
+						&arp->arp_data.arp_sha);
 				memcpy(client_info->vlan, eth_h + 1, offset);
 				client_info->vlan_count = offset / sizeof(struct rte_vlan_hdr);
 				rte_spinlock_unlock(&internals->mode6.lock);
@@ -174,11 +181,14 @@ bond_mode_alb_arp_xmit(struct rte_ether_hdr *eth_h, uint16_t offset,
 		client_info->in_use = 1;
 		client_info->ntt = 0;
 		client_info->app_ip = arp->arp_data.arp_sip;
-		ether_addr_copy(&arp->arp_data.arp_tha, &client_info->cli_mac);
+		rte_ether_addr_copy(&arp->arp_data.arp_tha,
+				&client_info->cli_mac);
 		client_info->cli_ip = arp->arp_data.arp_tip;
 		client_info->slave_idx = calculate_slave(internals);
-		rte_eth_macaddr_get(client_info->slave_idx, &client_info->app_mac);
-		ether_addr_copy(&client_info->app_mac, &arp->arp_data.arp_sha);
+		rte_eth_macaddr_get(client_info->slave_idx,
+				&client_info->app_mac);
+		rte_ether_addr_copy(&client_info->app_mac,
+				&arp->arp_data.arp_sha);
 		memcpy(client_info->vlan, eth_h + 1, offset);
 		client_info->vlan_count = offset / sizeof(struct rte_vlan_hdr);
 		rte_spinlock_unlock(&internals->mode6.lock);
@@ -203,8 +213,8 @@ bond_mode_alb_arp_upd(struct client_data *client_info,
 	rte_spinlock_lock(&internals->mode6.lock);
 	eth_h = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
 
-	ether_addr_copy(&client_info->app_mac, &eth_h->s_addr);
-	ether_addr_copy(&client_info->cli_mac, &eth_h->d_addr);
+	rte_ether_addr_copy(&client_info->app_mac, &eth_h->s_addr);
+	rte_ether_addr_copy(&client_info->cli_mac, &eth_h->d_addr);
 	if (client_info->vlan_count > 0)
 		eth_h->ether_type = rte_cpu_to_be_16(ETHER_TYPE_VLAN);
 	else
@@ -217,9 +227,9 @@ bond_mode_alb_arp_upd(struct client_data *client_info,
 	memcpy(eth_h + 1, client_info->vlan,
 			client_info->vlan_count * sizeof(struct rte_vlan_hdr));
 
-	ether_addr_copy(&client_info->app_mac, &arp_h->arp_data.arp_sha);
+	rte_ether_addr_copy(&client_info->app_mac, &arp_h->arp_data.arp_sha);
 	arp_h->arp_data.arp_sip = client_info->app_ip;
-	ether_addr_copy(&client_info->cli_mac, &arp_h->arp_data.arp_tha);
+	rte_ether_addr_copy(&client_info->cli_mac, &arp_h->arp_data.arp_tha);
 	arp_h->arp_data.arp_tip = client_info->cli_ip;
 
 	arp_h->arp_hardware = rte_cpu_to_be_16(RTE_ARP_HRD_ETHER);

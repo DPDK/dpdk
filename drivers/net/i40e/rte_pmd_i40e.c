@@ -560,7 +560,7 @@ rte_pmd_i40e_set_vf_mac_addr(uint16_t port, uint16_t vf_id,
 		return -EINVAL;
 	}
 
-	ether_addr_copy(mac_addr, &vf->mac_addr);
+	rte_ether_addr_copy(mac_addr, &vf->mac_addr);
 
 	/* Remove all existing mac */
 	TAILQ_FOREACH_SAFE(f, &vsi->mac_list, next, temp)
@@ -604,9 +604,9 @@ rte_pmd_i40e_remove_vf_mac_addr(uint16_t port, uint16_t vf_id,
 		return -EINVAL;
 	}
 
-	if (is_same_ether_addr(mac_addr, &vf->mac_addr))
+	if (rte_is_same_ether_addr(mac_addr, &vf->mac_addr))
 		/* Reset the mac with NULL address */
-		ether_addr_copy(&null_mac_addr, &vf->mac_addr);
+		rte_ether_addr_copy(&null_mac_addr, &vf->mac_addr);
 
 	/* Remove the mac */
 	i40e_vsi_delete_mac(vsi, mac_addr);
@@ -2387,7 +2387,7 @@ rte_pmd_i40e_add_vf_mac_addr(uint16_t port, uint16_t vf_id,
 	}
 
 	mac_filter.filter_type = RTE_MACVLAN_PERFECT_MATCH;
-	ether_addr_copy(mac_addr, &mac_filter.mac_addr);
+	rte_ether_addr_copy(mac_addr, &mac_filter.mac_addr);
 	ret = i40e_vsi_add_mac(vsi, &mac_filter);
 	if (ret != I40E_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Failed to add MAC filter.");
@@ -2515,7 +2515,7 @@ rte_pmd_i40e_query_vfid_by_mac(uint16_t port,
 		vf = &pf->vfs[vf_id];
 		mac = &vf->mac_addr;
 
-		if (is_same_ether_addr(mac, vf_mac))
+		if (rte_is_same_ether_addr(mac, vf_mac))
 			return vf_id;
 	}
 

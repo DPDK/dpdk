@@ -2214,8 +2214,8 @@ int bnx2x_tx_encap(struct bnx2x_tx_queue *txq, struct rte_mbuf *m0)
 
 		tx_parse_bd =
 		    &txq->tx_ring[TX_BD(bd_prod, txq)].parse_bd_e2;
-		if (is_multicast_ether_addr(&eh->d_addr)) {
-			if (is_broadcast_ether_addr(&eh->d_addr))
+		if (rte_is_multicast_ether_addr(&eh->d_addr)) {
+			if (rte_is_broadcast_ether_addr(&eh->d_addr))
 				mac_type = BROADCAST_ADDRESS;
 			else
 				mac_type = MULTICAST_ADDRESS;

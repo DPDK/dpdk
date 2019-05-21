@@ -174,7 +174,7 @@ fs_eth_dev_conf_apply(struct rte_eth_dev *dev,
 		if (ret) {
 			char ea_fmt[ETHER_ADDR_FMT_SIZE];
 
-			ether_format_addr(ea_fmt, ETHER_ADDR_FMT_SIZE, ea);
+			rte_ether_format_addr(ea_fmt, ETHER_ADDR_FMT_SIZE, ea);
 			ERROR("Adding MAC address %s failed", ea_fmt);
 			return ret;
 		}

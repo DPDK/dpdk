@@ -278,8 +278,8 @@ mcast_send_pkt(struct rte_mbuf *pkt, struct rte_ether_addr *dest_addr,
 		rte_pktmbuf_prepend(pkt, (uint16_t)sizeof(*ethdr));
 	RTE_ASSERT(ethdr != NULL);
 
-	ether_addr_copy(dest_addr, &ethdr->d_addr);
-	ether_addr_copy(&ports_eth_addr[port], &ethdr->s_addr);
+	rte_ether_addr_copy(dest_addr, &ethdr->d_addr);
+	rte_ether_addr_copy(&ports_eth_addr[port], &ethdr->s_addr);
 	ethdr->ether_type = rte_be_to_cpu_16(ETHER_TYPE_IPv4);
 
 	/* Put new packet into the output queue */
@@ -540,7 +540,7 @@ static void
 print_ethaddr(const char *name, struct rte_ether_addr *eth_addr)
 {
 	char buf[ETHER_ADDR_FMT_SIZE];
-	ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
+	rte_ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
 	printf("%s%s", name, buf);
 }
 

@@ -340,7 +340,7 @@ mlx5_nl_mac_addr_cb(struct nlmsghdr *nh, void *arg)
 #ifndef NDEBUG
 			char m[18];
 
-			ether_format_addr(m, 18, RTA_DATA(attribute));
+			rte_ether_format_addr(m, 18, RTA_DATA(attribute));
 			DRV_LOG(DEBUG, "bridge MAC address %s", m);
 #endif
 			memcpy(&(*data->mac)[data->mac_n++],
@@ -555,14 +555,14 @@ mlx5_nl_mac_addr_sync(struct rte_eth_dev *dev)
 
 		/* Verify the address is not in the array yet. */
 		for (j = 0; j != MLX5_MAX_MAC_ADDRESSES; ++j)
-			if (is_same_ether_addr(&macs[i],
+			if (rte_is_same_ether_addr(&macs[i],
 					       &dev->data->mac_addrs[j]))
 				break;
 		if (j != MLX5_MAX_MAC_ADDRESSES)
 			continue;
 		/* Find the first entry available. */
 		for (j = 0; j != MLX5_MAX_MAC_ADDRESSES; ++j) {
-			if (is_zero_ether_addr(&dev->data->mac_addrs[j])) {
+			if (rte_is_zero_ether_addr(&dev->data->mac_addrs[j])) {
 				dev->data->mac_addrs[j] = macs[i];
 				break;
 			}

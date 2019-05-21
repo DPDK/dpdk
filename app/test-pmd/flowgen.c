@@ -171,8 +171,8 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 
 		/* Initialize Ethernet header. */
 		eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
-		ether_addr_copy(&cfg_ether_dst, &eth_hdr->d_addr);
-		ether_addr_copy(&cfg_ether_src, &eth_hdr->s_addr);
+		rte_ether_addr_copy(&cfg_ether_dst, &eth_hdr->d_addr);
+		rte_ether_addr_copy(&cfg_ether_src, &eth_hdr->s_addr);
 		eth_hdr->ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
 
 		/* Initialize IP header. */

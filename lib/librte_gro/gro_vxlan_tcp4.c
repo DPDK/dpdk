@@ -164,9 +164,9 @@ insert_new_flow(struct gro_vxlan_tcp4_tbl *tbl,
 
 	dst = &(tbl->flows[flow_idx].key);
 
-	ether_addr_copy(&(src->inner_key.eth_saddr),
+	rte_ether_addr_copy(&(src->inner_key.eth_saddr),
 			&(dst->inner_key.eth_saddr));
-	ether_addr_copy(&(src->inner_key.eth_daddr),
+	rte_ether_addr_copy(&(src->inner_key.eth_daddr),
 			&(dst->inner_key.eth_daddr));
 	dst->inner_key.ip_src_addr = src->inner_key.ip_src_addr;
 	dst->inner_key.ip_dst_addr = src->inner_key.ip_dst_addr;
@@ -176,8 +176,8 @@ insert_new_flow(struct gro_vxlan_tcp4_tbl *tbl,
 
 	dst->vxlan_hdr.vx_flags = src->vxlan_hdr.vx_flags;
 	dst->vxlan_hdr.vx_vni = src->vxlan_hdr.vx_vni;
-	ether_addr_copy(&(src->outer_eth_saddr), &(dst->outer_eth_saddr));
-	ether_addr_copy(&(src->outer_eth_daddr), &(dst->outer_eth_daddr));
+	rte_ether_addr_copy(&(src->outer_eth_saddr), &(dst->outer_eth_saddr));
+	rte_ether_addr_copy(&(src->outer_eth_daddr), &(dst->outer_eth_daddr));
 	dst->outer_ip_src_addr = src->outer_ip_src_addr;
 	dst->outer_ip_dst_addr = src->outer_ip_dst_addr;
 	dst->outer_src_port = src->outer_src_port;
@@ -193,8 +193,9 @@ static inline int
 is_same_vxlan_tcp4_flow(struct vxlan_tcp4_flow_key k1,
 		struct vxlan_tcp4_flow_key k2)
 {
-	return (is_same_ether_addr(&k1.outer_eth_saddr, &k2.outer_eth_saddr) &&
-			is_same_ether_addr(&k1.outer_eth_daddr,
+	return (rte_is_same_ether_addr(&k1.outer_eth_saddr,
+					&k2.outer_eth_saddr) &&
+			rte_is_same_ether_addr(&k1.outer_eth_daddr,
 				&k2.outer_eth_daddr) &&
 			(k1.outer_ip_src_addr == k2.outer_ip_src_addr) &&
 			(k1.outer_ip_dst_addr == k2.outer_ip_dst_addr) &&
@@ -356,8 +357,8 @@ gro_vxlan_tcp4_reassemble(struct rte_mbuf *pkt,
 
 	sent_seq = rte_be_to_cpu_32(tcp_hdr->sent_seq);
 
-	ether_addr_copy(&(eth_hdr->s_addr), &(key.inner_key.eth_saddr));
-	ether_addr_copy(&(eth_hdr->d_addr), &(key.inner_key.eth_daddr));
+	rte_ether_addr_copy(&(eth_hdr->s_addr), &(key.inner_key.eth_saddr));
+	rte_ether_addr_copy(&(eth_hdr->d_addr), &(key.inner_key.eth_daddr));
 	key.inner_key.ip_src_addr = ipv4_hdr->src_addr;
 	key.inner_key.ip_dst_addr = ipv4_hdr->dst_addr;
 	key.inner_key.recv_ack = tcp_hdr->recv_ack;
@@ -366,8 +367,8 @@ gro_vxlan_tcp4_reassemble(struct rte_mbuf *pkt,
 
 	key.vxlan_hdr.vx_flags = vxlan_hdr->vx_flags;
 	key.vxlan_hdr.vx_vni = vxlan_hdr->vx_vni;
-	ether_addr_copy(&(outer_eth_hdr->s_addr), &(key.outer_eth_saddr));
-	ether_addr_copy(&(outer_eth_hdr->d_addr), &(key.outer_eth_daddr));
+	rte_ether_addr_copy(&(outer_eth_hdr->s_addr), &(key.outer_eth_saddr));
+	rte_ether_addr_copy(&(outer_eth_hdr->d_addr), &(key.outer_eth_daddr));
 	key.outer_ip_src_addr = outer_ipv4_hdr->src_addr;
 	key.outer_ip_dst_addr = outer_ipv4_hdr->dst_addr;
 	key.outer_src_port = udp_hdr->src_port;

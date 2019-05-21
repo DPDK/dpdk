@@ -402,7 +402,7 @@ sfc_port_attach(struct sfc_adapter *sa)
 
 	RTE_BUILD_BUG_ON(sizeof(encp->enc_mac_addr) != sizeof(*from));
 	from = (const struct rte_ether_addr *)(encp->enc_mac_addr);
-	ether_addr_copy(from, &port->default_mac_addr);
+	rte_ether_addr_copy(from, &port->default_mac_addr);
 
 	port->max_mcast_addrs = EFX_MAC_MULTICAST_LIST_MAX;
 	port->nb_mcast_addrs = 0;

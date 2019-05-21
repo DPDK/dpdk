@@ -467,7 +467,7 @@ Naturally, the number of ports in the portmask must be even, otherwise, the appl
 
         /* src addr */
 
-        ether_addr_copy(&l2fwd_ports_eth_addr[dst_port], &eth->s_addr);
+        rte_ether_addr_copy(&l2fwd_ports_eth_addr[dst_port], &eth->s_addr);
 
         l2fwd_send_packet(m, (uint8_t) dst_port);
     }

@@ -1014,7 +1014,7 @@ eth_avp_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	/* Get a mac from device config */
-	ether_addr_copy(&avp->ethaddr, &eth_dev->data->mac_addrs[0]);
+	rte_ether_addr_copy(&avp->ethaddr, &eth_dev->data->mac_addrs[0]);
 
 	return 0;
 }
@@ -1216,12 +1216,12 @@ _avp_mac_filter(struct avp_dev *avp, struct rte_mbuf *m)
 		return 0;
 	}
 
-	if (likely(is_broadcast_ether_addr(&eth->d_addr))) {
+	if (likely(rte_is_broadcast_ether_addr(&eth->d_addr))) {
 		/* allow all broadcast packets */
 		return 0;
 	}
 
-	if (likely(is_multicast_ether_addr(&eth->d_addr))) {
+	if (likely(rte_is_multicast_ether_addr(&eth->d_addr))) {
 		/* allow all multicast packets */
 		return 0;
 	}

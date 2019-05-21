@@ -329,8 +329,8 @@ vhost_count_multicast_broadcast(struct vhost_queue *vq,
 	struct vhost_stats *pstats = &vq->stats;
 
 	ea = rte_pktmbuf_mtod(mbuf, struct rte_ether_addr *);
-	if (is_multicast_ether_addr(ea)) {
-		if (is_broadcast_ether_addr(ea))
+	if (rte_is_multicast_ether_addr(ea)) {
+		if (rte_is_broadcast_ether_addr(ea))
 			pstats->xstats[VHOST_BROADCAST_PKT]++;
 		else
 			pstats->xstats[VHOST_MULTICAST_PKT]++;

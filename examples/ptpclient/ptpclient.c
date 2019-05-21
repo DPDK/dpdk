@@ -401,7 +401,7 @@ parse_fup(struct ptpv2_data_slave_ordinary *ptp_data)
 		rte_eth_macaddr_get(ptp_data->portid, &eth_hdr->s_addr);
 
 		/* Set multicast address 01-1B-19-00-00-00. */
-		ether_addr_copy(&eth_multicast, &eth_hdr->d_addr);
+		rte_ether_addr_copy(&eth_multicast, &eth_hdr->d_addr);
 
 		eth_hdr->ether_type = htons(PTP_PROTOCOL);
 		ptp_msg = (struct ptp_message *)

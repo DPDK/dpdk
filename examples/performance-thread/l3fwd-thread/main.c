@@ -1070,14 +1070,14 @@ simple_ipv4_fwd_8pkts(struct rte_mbuf *m[8], uint16_t portid)
 	*(uint64_t *)&eth_hdr[7]->d_addr = dest_eth_addr[dst_port[7]];
 
 	/* src addr */
-	ether_addr_copy(&ports_eth_addr[dst_port[0]], &eth_hdr[0]->s_addr);
-	ether_addr_copy(&ports_eth_addr[dst_port[1]], &eth_hdr[1]->s_addr);
-	ether_addr_copy(&ports_eth_addr[dst_port[2]], &eth_hdr[2]->s_addr);
-	ether_addr_copy(&ports_eth_addr[dst_port[3]], &eth_hdr[3]->s_addr);
-	ether_addr_copy(&ports_eth_addr[dst_port[4]], &eth_hdr[4]->s_addr);
-	ether_addr_copy(&ports_eth_addr[dst_port[5]], &eth_hdr[5]->s_addr);
-	ether_addr_copy(&ports_eth_addr[dst_port[6]], &eth_hdr[6]->s_addr);
-	ether_addr_copy(&ports_eth_addr[dst_port[7]], &eth_hdr[7]->s_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[0]], &eth_hdr[0]->s_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[1]], &eth_hdr[1]->s_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[2]], &eth_hdr[2]->s_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[3]], &eth_hdr[3]->s_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[4]], &eth_hdr[4]->s_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[5]], &eth_hdr[5]->s_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[6]], &eth_hdr[6]->s_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[7]], &eth_hdr[7]->s_addr);
 
 	send_single_packet(m[0], (uint8_t)dst_port[0]);
 	send_single_packet(m[1], (uint8_t)dst_port[1]);
@@ -1204,14 +1204,14 @@ simple_ipv6_fwd_8pkts(struct rte_mbuf *m[8], uint16_t portid)
 	*(uint64_t *)&eth_hdr[7]->d_addr = dest_eth_addr[dst_port[7]];
 
 	/* src addr */
-	ether_addr_copy(&ports_eth_addr[dst_port[0]], &eth_hdr[0]->s_addr);
-	ether_addr_copy(&ports_eth_addr[dst_port[1]], &eth_hdr[1]->s_addr);
-	ether_addr_copy(&ports_eth_addr[dst_port[2]], &eth_hdr[2]->s_addr);
-	ether_addr_copy(&ports_eth_addr[dst_port[3]], &eth_hdr[3]->s_addr);
-	ether_addr_copy(&ports_eth_addr[dst_port[4]], &eth_hdr[4]->s_addr);
-	ether_addr_copy(&ports_eth_addr[dst_port[5]], &eth_hdr[5]->s_addr);
-	ether_addr_copy(&ports_eth_addr[dst_port[6]], &eth_hdr[6]->s_addr);
-	ether_addr_copy(&ports_eth_addr[dst_port[7]], &eth_hdr[7]->s_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[0]], &eth_hdr[0]->s_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[1]], &eth_hdr[1]->s_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[2]], &eth_hdr[2]->s_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[3]], &eth_hdr[3]->s_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[4]], &eth_hdr[4]->s_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[5]], &eth_hdr[5]->s_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[6]], &eth_hdr[6]->s_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port[7]], &eth_hdr[7]->s_addr);
 
 	send_single_packet(m[0], dst_port[0]);
 	send_single_packet(m[1], dst_port[1]);
@@ -1262,7 +1262,8 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint16_t portid)
 		*(uint64_t *)&eth_hdr->d_addr = dest_eth_addr[dst_port];
 
 		/* src addr */
-		ether_addr_copy(&ports_eth_addr[dst_port], &eth_hdr->s_addr);
+		rte_ether_addr_copy(&ports_eth_addr[dst_port],
+				&eth_hdr->s_addr);
 
 		send_single_packet(m, dst_port);
 	} else if (RTE_ETH_IS_IPV6_HDR(m->packet_type)) {
@@ -1283,7 +1284,8 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint16_t portid)
 		*(uint64_t *)&eth_hdr->d_addr = dest_eth_addr[dst_port];
 
 		/* src addr */
-		ether_addr_copy(&ports_eth_addr[dst_port], &eth_hdr->s_addr);
+		rte_ether_addr_copy(&ports_eth_addr[dst_port],
+				&eth_hdr->s_addr);
 
 		send_single_packet(m, dst_port);
 	} else
@@ -3024,7 +3026,7 @@ print_ethaddr(const char *name, const struct rte_ether_addr *eth_addr)
 {
 	char buf[ETHER_ADDR_FMT_SIZE];
 
-	ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
+	rte_ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
 	printf("%s%s", name, buf);
 }
 
@@ -3582,7 +3584,7 @@ main(int argc, char **argv)
 		/*
 		 * prepare src MACs for each port.
 		 */
-		ether_addr_copy(&ports_eth_addr[portid],
+		rte_ether_addr_copy(&ports_eth_addr[portid],
 			(struct rte_ether_addr *)(val_eth + portid) + 1);
 
 		/* init memory */

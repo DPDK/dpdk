@@ -46,7 +46,7 @@ int ixgbe_vf_perm_addr_gen(struct rte_eth_dev *dev, uint16_t vf_num)
 	uint16_t vfn;
 
 	for (vfn = 0; vfn < vf_num; vfn++) {
-		eth_random_addr(vf_mac_addr);
+		rte_eth_random_addr(vf_mac_addr);
 		/* keep the random address as default */
 		memcpy(vfinfo[vfn].vf_mac_addresses, vf_mac_addr,
 			   ETHER_ADDR_LEN);
@@ -463,7 +463,8 @@ ixgbe_vf_set_mac_addr(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 	int rar_entry = hw->mac.num_rar_entries - (vf + 1);
 	uint8_t *new_mac = (uint8_t *)(&msgbuf[1]);
 
-	if (is_valid_assigned_ether_addr((struct rte_ether_addr *)new_mac)) {
+	if (rte_is_valid_assigned_ether_addr(
+			(struct rte_ether_addr *)new_mac)) {
 		rte_memcpy(vfinfo[vf].vf_mac_addresses, new_mac, 6);
 		return hw->mac.ops.set_rar(hw, rar_entry, new_mac, vf, IXGBE_RAH_AV);
 	}

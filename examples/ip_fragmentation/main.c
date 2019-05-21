@@ -354,7 +354,8 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 		*((uint64_t *)d_addr_bytes) = 0x000000000002 + ((uint64_t)port_out << 40);
 
 		/* src addr */
-		ether_addr_copy(&ports_eth_addr[port_out], &eth_hdr->s_addr);
+		rte_ether_addr_copy(&ports_eth_addr[port_out],
+				&eth_hdr->s_addr);
 		if (ipv6)
 			eth_hdr->ether_type = rte_be_to_cpu_16(ETHER_TYPE_IPv6);
 		else
@@ -572,7 +573,7 @@ static void
 print_ethaddr(const char *name, struct rte_ether_addr *eth_addr)
 {
 	char buf[ETHER_ADDR_FMT_SIZE];
-	ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
+	rte_ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
 	printf("%s%s", name, buf);
 }
 

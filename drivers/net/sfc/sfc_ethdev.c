@@ -983,7 +983,7 @@ sfc_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 	 * Copy the address to the device private data so that
 	 * it could be recalled in the case of adapter restart.
 	 */
-	ether_addr_copy(mac_addr, &port->default_mac_addr);
+	rte_ether_addr_copy(mac_addr, &port->default_mac_addr);
 
 	/*
 	 * Neither of the two following checks can return
@@ -1043,7 +1043,7 @@ sfc_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 
 unlock:
 	if (rc != 0)
-		ether_addr_copy(old_addr, &port->default_mac_addr);
+		rte_ether_addr_copy(old_addr, &port->default_mac_addr);
 
 	sfc_adapter_unlock(sa);
 
@@ -2126,7 +2126,7 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 	 * Linux kernel. Copy from NIC config to Ethernet device data.
 	 */
 	from = (const struct rte_ether_addr *)(encp->enc_mac_addr);
-	ether_addr_copy(from, &dev->data->mac_addrs[0]);
+	rte_ether_addr_copy(from, &dev->data->mac_addrs[0]);
 
 	sfc_adapter_unlock(sa);
 

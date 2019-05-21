@@ -1163,7 +1163,7 @@ tap_mac_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 		return -ENOTSUP;
 	}
 
-	if (is_zero_ether_addr(mac_addr)) {
+	if (rte_is_zero_ether_addr(mac_addr)) {
 		TAP_LOG(ERR, "%s: can't set an empty MAC address",
 			dev->device->name);
 		return -EINVAL;
@@ -1172,14 +1172,15 @@ tap_mac_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 	ret = tap_ioctl(pmd, SIOCGIFHWADDR, &ifr, 0, LOCAL_ONLY);
 	if (ret < 0)
 		return ret;
-	if (is_same_ether_addr((struct rte_ether_addr *)&ifr.ifr_hwaddr.sa_data,
-			       mac_addr))
+	if (rte_is_same_ether_addr(
+			(struct rte_ether_addr *)&ifr.ifr_hwaddr.sa_data,
+			mac_addr))
 		return 0;
 	/* Check the current MAC address on the remote */
 	ret = tap_ioctl(pmd, SIOCGIFHWADDR, &ifr, 0, REMOTE_ONLY);
 	if (ret < 0)
 		return ret;
-	if (!is_same_ether_addr(
+	if (!rte_is_same_ether_addr(
 			(struct rte_ether_addr *)&ifr.ifr_hwaddr.sa_data,
 			mac_addr))
 		mode = LOCAL_AND_REMOTE;
@@ -1754,8 +1755,8 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 	}
 
 	if (pmd->type == ETH_TUNTAP_TYPE_TAP) {
-		if (is_zero_ether_addr(mac_addr))
-			eth_random_addr((uint8_t *)&pmd->eth_addr);
+		if (rte_is_zero_ether_addr(mac_addr))
+			rte_eth_random_addr((uint8_t *)&pmd->eth_addr);
 		else
 			rte_memcpy(&pmd->eth_addr, mac_addr, sizeof(*mac_addr));
 	}

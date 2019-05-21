@@ -1673,7 +1673,7 @@ static int enic_dev_init(struct enic *enic)
 		dev_err(enic, "mac addr storage alloc failed, aborting.\n");
 		return -1;
 	}
-	ether_addr_copy((struct rte_ether_addr *)enic->mac_addr,
+	rte_ether_addr_copy((struct rte_ether_addr *)enic->mac_addr,
 			eth_dev->data->mac_addrs);
 
 	vnic_dev_set_reset_flag(enic->vdev, 0);

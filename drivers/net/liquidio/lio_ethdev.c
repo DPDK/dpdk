@@ -1835,7 +1835,7 @@ lio_dev_configure(struct rte_eth_dev *eth_dev)
 				       2 + i));
 
 	/* Copy the permanent MAC address */
-	ether_addr_copy((struct rte_ether_addr *)mac,
+	rte_ether_addr_copy((struct rte_ether_addr *)mac,
 			&eth_dev->data->mac_addrs[0]);
 
 	/* enable firmware checksum support for tunnel packets */

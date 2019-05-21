@@ -535,7 +535,7 @@ eth_dev_null_create(struct rte_vdev_device *dev,
 	internals->packet_size = packet_size;
 	internals->packet_copy = packet_copy;
 	internals->port_id = eth_dev->data->port_id;
-	eth_random_addr(internals->eth_addr.addr_bytes);
+	rte_eth_random_addr(internals->eth_addr.addr_bytes);
 
 	internals->flow_type_rss_offloads =  ETH_RSS_PROTO_MASK;
 	internals->reta_size = RTE_DIM(internals->reta_conf) * RTE_RETA_GROUP_SIZE;

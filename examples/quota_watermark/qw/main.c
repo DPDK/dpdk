@@ -67,7 +67,7 @@ static void send_pause_frame(uint16_t port_id, uint16_t duration)
 	pause_frame = (struct ether_fc_frame *) &hdr[1];
 
 	rte_eth_macaddr_get(port_id, &mac_addr);
-	ether_addr_copy(&mac_addr, &hdr->s_addr);
+	rte_ether_addr_copy(&mac_addr, &hdr->s_addr);
 
 	void *tmp = &hdr->d_addr.addr_bytes[0];
 	*((uint64_t *)tmp) = 0x010000C28001ULL;

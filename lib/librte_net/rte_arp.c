@@ -31,7 +31,7 @@ rte_net_make_rarp_packet(struct rte_mempool *mpool,
 
 	/* Ethernet header. */
 	memset(eth_hdr->d_addr.addr_bytes, 0xff, ETHER_ADDR_LEN);
-	ether_addr_copy(mac, &eth_hdr->s_addr);
+	rte_ether_addr_copy(mac, &eth_hdr->s_addr);
 	eth_hdr->ether_type = htons(ETHER_TYPE_RARP);
 
 	/* RARP header. */
@@ -42,8 +42,8 @@ rte_net_make_rarp_packet(struct rte_mempool *mpool,
 	rarp->arp_plen = 4;
 	rarp->arp_opcode  = htons(RTE_ARP_OP_REVREQUEST);
 
-	ether_addr_copy(mac, &rarp->arp_data.arp_sha);
-	ether_addr_copy(mac, &rarp->arp_data.arp_tha);
+	rte_ether_addr_copy(mac, &rarp->arp_data.arp_sha);
+	rte_ether_addr_copy(mac, &rarp->arp_data.arp_tha);
 	memset(&rarp->arp_data.arp_sip, 0x00, 4);
 	memset(&rarp->arp_data.arp_tip, 0x00, 4);
 

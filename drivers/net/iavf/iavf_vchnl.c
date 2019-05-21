@@ -647,7 +647,7 @@ iavf_add_del_all_mac_addr(struct iavf_adapter *adapter, bool add)
 		len = sizeof(struct virtchnl_ether_addr_list);
 		for (i = begin; i < IAVF_NUM_MACADDR_MAX; i++, next_begin++) {
 			addr = &adapter->eth_dev->data->mac_addrs[i];
-			if (is_zero_ether_addr(addr))
+			if (rte_is_zero_ether_addr(addr))
 				continue;
 			len += sizeof(struct virtchnl_ether_addr);
 			if (len >= IAVF_AQ_BUF_SZ) {
@@ -664,7 +664,7 @@ iavf_add_del_all_mac_addr(struct iavf_adapter *adapter, bool add)
 
 		for (i = begin; i < next_begin; i++) {
 			addr = &adapter->eth_dev->data->mac_addrs[i];
-			if (is_zero_ether_addr(addr))
+			if (rte_is_zero_ether_addr(addr))
 				continue;
 			rte_memcpy(list->list[j].addr, addr->addr_bytes,
 				   sizeof(addr->addr_bytes));

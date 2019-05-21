@@ -522,7 +522,7 @@ mlx4_set_mc_addr_list(struct rte_eth_dev *dev, struct rte_ether_addr *list,
 		for (i = RTE_DIM(priv->mac) - num;
 		     i != RTE_DIM(priv->mac) - priv->mac_mc;
 		     ++i)
-			if (!is_zero_ether_addr(&priv->mac[i])) {
+			if (!rte_is_zero_ether_addr(&priv->mac[i])) {
 				rte_errno = EBUSY;
 				return -rte_errno;
 			}

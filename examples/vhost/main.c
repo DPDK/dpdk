@@ -666,7 +666,7 @@ find_vhost_dev(struct rte_ether_addr *mac)
 
 	TAILQ_FOREACH(vdev, &vhost_dev_list, global_vdev_entry) {
 		if (vdev->ready == DEVICE_RX &&
-		    is_same_ether_addr(mac, &vdev->mac_address))
+		    rte_is_same_ether_addr(mac, &vdev->mac_address))
 			return vdev;
 	}
 
@@ -916,7 +916,7 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, uint16_t vlan_tag)
 
 
 	nh = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
-	if (unlikely(is_broadcast_ether_addr(&nh->d_addr))) {
+	if (unlikely(rte_is_broadcast_ether_addr(&nh->d_addr))) {
 		struct vhost_dev *vdev2;
 
 		TAILQ_FOREACH(vdev2, &vhost_dev_list, global_vdev_entry) {

@@ -1398,7 +1398,7 @@ next_vlan:
 			mac = &priv->mac[i];
 		else
 			mac = &eth_mask.dst;
-		if (is_zero_ether_addr(mac))
+		if (rte_is_zero_ether_addr(mac))
 			continue;
 		/* Check if MAC flow rule is already present. */
 		for (flow = LIST_FIRST(&priv->flows);

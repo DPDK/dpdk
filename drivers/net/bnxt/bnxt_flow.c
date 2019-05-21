@@ -187,10 +187,10 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 			 * Destination MAC address mask must not be partially
 			 * set. Should be all 1's or all 0's.
 			 */
-			if ((!is_zero_ether_addr(&eth_mask->src) &&
-			     !is_broadcast_ether_addr(&eth_mask->src)) ||
-			    (!is_zero_ether_addr(&eth_mask->dst) &&
-			     !is_broadcast_ether_addr(&eth_mask->dst))) {
+			if ((!rte_is_zero_ether_addr(&eth_mask->src) &&
+			     !rte_is_broadcast_ether_addr(&eth_mask->src)) ||
+			    (!rte_is_zero_ether_addr(&eth_mask->dst) &&
+			     !rte_is_broadcast_ether_addr(&eth_mask->dst))) {
 				rte_flow_error_set(error,
 						   EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
@@ -209,7 +209,7 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 				return -rte_errno;
 			}
 
-			if (is_broadcast_ether_addr(&eth_mask->dst)) {
+			if (rte_is_broadcast_ether_addr(&eth_mask->dst)) {
 				rte_memcpy(filter->dst_macaddr,
 					   &eth_spec->dst, 6);
 				en |= use_ntuple ?
@@ -217,7 +217,7 @@ bnxt_validate_and_parse_flow_type(struct bnxt *bp,
 					EM_FLOW_ALLOC_INPUT_EN_DST_MACADDR;
 			}
 
-			if (is_broadcast_ether_addr(&eth_mask->src)) {
+			if (rte_is_broadcast_ether_addr(&eth_mask->src)) {
 				rte_memcpy(filter->src_macaddr,
 					   &eth_spec->src, 6);
 				en |= use_ntuple ?

@@ -58,8 +58,8 @@ initialize_eth_header(struct rte_ether_hdr *eth_hdr,
 		struct rte_ether_addr *dst_mac, uint16_t ether_type,
 		uint8_t vlan_enabled, uint16_t van_id)
 {
-	ether_addr_copy(dst_mac, &eth_hdr->d_addr);
-	ether_addr_copy(src_mac, &eth_hdr->s_addr);
+	rte_ether_addr_copy(dst_mac, &eth_hdr->d_addr);
+	rte_ether_addr_copy(src_mac, &eth_hdr->s_addr);
 
 	if (vlan_enabled) {
 		struct rte_vlan_hdr *vhdr = (struct rte_vlan_hdr *)(
@@ -86,9 +86,9 @@ initialize_arp_header(struct rte_arp_hdr *arp_hdr,
 	arp_hdr->arp_hlen = ETHER_ADDR_LEN;
 	arp_hdr->arp_plen = sizeof(uint32_t);
 	arp_hdr->arp_opcode = rte_cpu_to_be_16(opcode);
-	ether_addr_copy(src_mac, &arp_hdr->arp_data.arp_sha);
+	rte_ether_addr_copy(src_mac, &arp_hdr->arp_data.arp_sha);
 	arp_hdr->arp_data.arp_sip = src_ip;
-	ether_addr_copy(dst_mac, &arp_hdr->arp_data.arp_tha);
+	rte_ether_addr_copy(dst_mac, &arp_hdr->arp_data.arp_tha);
 	arp_hdr->arp_data.arp_tip = dst_ip;
 }
 

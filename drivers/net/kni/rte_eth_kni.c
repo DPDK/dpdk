@@ -363,7 +363,7 @@ eth_kni_create(struct rte_vdev_device *vdev,
 	data->dev_link = pmd_link;
 	data->mac_addrs = &internals->eth_addr;
 
-	eth_random_addr(internals->eth_addr.addr_bytes);
+	rte_eth_random_addr(internals->eth_addr.addr_bytes);
 
 	eth_dev->dev_ops = &eth_kni_ops;
 

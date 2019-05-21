@@ -1114,8 +1114,8 @@ virtio_update_packet_stats(struct virtnet_stats *stats, struct rte_mbuf *mbuf)
 	}
 
 	ea = rte_pktmbuf_mtod(mbuf, struct rte_ether_addr *);
-	if (is_multicast_ether_addr(ea)) {
-		if (is_broadcast_ether_addr(ea))
+	if (rte_is_multicast_ether_addr(ea)) {
+		if (rte_is_broadcast_ether_addr(ea))
 			stats->broadcast++;
 		else
 			stats->multicast++;

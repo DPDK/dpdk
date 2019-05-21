@@ -2006,9 +2006,9 @@ i40e_flow_parse_ethertype_pattern(struct rte_eth_dev *dev,
 			 * Mask bits of destination MAC address must be full
 			 * of 1 or full of 0.
 			 */
-			if (!is_zero_ether_addr(&eth_mask->src) ||
-			    (!is_zero_ether_addr(&eth_mask->dst) &&
-			     !is_broadcast_ether_addr(&eth_mask->dst))) {
+			if (!rte_is_zero_ether_addr(&eth_mask->src) ||
+			    (!rte_is_zero_ether_addr(&eth_mask->dst) &&
+			     !rte_is_broadcast_ether_addr(&eth_mask->dst))) {
 				rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
 						   item,
@@ -2027,7 +2027,7 @@ i40e_flow_parse_ethertype_pattern(struct rte_eth_dev *dev,
 			/* If mask bits of destination MAC address
 			 * are full of 1, set RTE_ETHTYPE_FLAGS_MAC.
 			 */
-			if (is_broadcast_ether_addr(&eth_mask->dst)) {
+			if (rte_is_broadcast_ether_addr(&eth_mask->dst)) {
 				filter->mac_addr = eth_spec->dst;
 				filter->flags |= RTE_ETHTYPE_FLAGS_MAC;
 			} else {
@@ -2484,8 +2484,8 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 			eth_mask = item->mask;
 
 			if (eth_spec && eth_mask) {
-				if (!is_zero_ether_addr(&eth_mask->src) ||
-				    !is_zero_ether_addr(&eth_mask->dst)) {
+				if (!rte_is_zero_ether_addr(&eth_mask->src) ||
+				    !rte_is_zero_ether_addr(&eth_mask->dst)) {
 					rte_flow_error_set(error, EINVAL,
 						      RTE_FLOW_ERROR_TYPE_ITEM,
 						      item,
@@ -3325,8 +3325,8 @@ i40e_flow_parse_vxlan_pattern(__rte_unused struct rte_eth_dev *dev,
 				/* DST address of inner MAC shouldn't be masked.
 				 * SRC address of Inner MAC should be masked.
 				 */
-				if (!is_broadcast_ether_addr(&eth_mask->dst) ||
-				    !is_zero_ether_addr(&eth_mask->src) ||
+				if (!rte_is_broadcast_ether_addr(&eth_mask->dst) ||
+				    !rte_is_zero_ether_addr(&eth_mask->src) ||
 				    eth_mask->type) {
 					rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
@@ -3555,8 +3555,8 @@ i40e_flow_parse_nvgre_pattern(__rte_unused struct rte_eth_dev *dev,
 				/* DST address of inner MAC shouldn't be masked.
 				 * SRC address of Inner MAC should be masked.
 				 */
-				if (!is_broadcast_ether_addr(&eth_mask->dst) ||
-				    !is_zero_ether_addr(&eth_mask->src) ||
+				if (!rte_is_broadcast_ether_addr(&eth_mask->dst) ||
+				    !rte_is_zero_ether_addr(&eth_mask->src) ||
 				    eth_mask->type) {
 					rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
@@ -4810,9 +4810,9 @@ i40e_flow_destroy_tunnel_filter(struct i40e_pf *pf,
 	int ret = 0;
 
 	memset(&cld_filter, 0, sizeof(cld_filter));
-	ether_addr_copy((struct rte_ether_addr *)&filter->input.outer_mac,
+	rte_ether_addr_copy((struct rte_ether_addr *)&filter->input.outer_mac,
 			(struct rte_ether_addr *)&cld_filter.element.outer_mac);
-	ether_addr_copy((struct rte_ether_addr *)&filter->input.inner_mac,
+	rte_ether_addr_copy((struct rte_ether_addr *)&filter->input.inner_mac,
 			(struct rte_ether_addr *)&cld_filter.element.inner_mac);
 	cld_filter.element.inner_vlan = filter->input.inner_vlan;
 	cld_filter.element.flags = filter->input.flags;

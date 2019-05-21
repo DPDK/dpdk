@@ -537,14 +537,14 @@ tap_flow_create_eth(const struct rte_flow_item *item, void *data)
 	if (!flow)
 		return 0;
 	msg = &flow->msg;
-	if (!is_zero_ether_addr(&mask->dst)) {
+	if (!rte_is_zero_ether_addr(&mask->dst)) {
 		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_ETH_DST, ETHER_ADDR_LEN,
 			   &spec->dst.addr_bytes);
 		tap_nlattr_add(&msg->nh,
 			   TCA_FLOWER_KEY_ETH_DST_MASK, ETHER_ADDR_LEN,
 			   &mask->dst.addr_bytes);
 	}
-	if (!is_zero_ether_addr(&mask->src)) {
+	if (!rte_is_zero_ether_addr(&mask->src)) {
 		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_ETH_SRC, ETHER_ADDR_LEN,
 			   &spec->src.addr_bytes);
 		tap_nlattr_add(&msg->nh,

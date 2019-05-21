@@ -8813,8 +8813,8 @@ cmd_tunnel_filter_parsed(void *parsed_result,
 
 	memset(&tunnel_filter_conf, 0, sizeof(tunnel_filter_conf));
 
-	ether_addr_copy(&res->outer_mac, &tunnel_filter_conf.outer_mac);
-	ether_addr_copy(&res->inner_mac, &tunnel_filter_conf.inner_mac);
+	rte_ether_addr_copy(&res->outer_mac, &tunnel_filter_conf.outer_mac);
+	rte_ether_addr_copy(&res->inner_mac, &tunnel_filter_conf.inner_mac);
 	tunnel_filter_conf.inner_vlan = res->inner_vlan;
 
 	if (res->ip_value.family == AF_INET) {
@@ -12472,7 +12472,7 @@ static void cmd_mcast_addr_parsed(void *parsed_result,
 {
 	struct cmd_mcast_addr_result *res = parsed_result;
 
-	if (!is_multicast_ether_addr(&res->mc_addr)) {
+	if (!rte_is_multicast_ether_addr(&res->mc_addr)) {
 		printf("Invalid multicast addr %02X:%02X:%02X:%02X:%02X:%02X\n",
 		       res->mc_addr.addr_bytes[0], res->mc_addr.addr_bytes[1],
 		       res->mc_addr.addr_bytes[2], res->mc_addr.addr_bytes[3],

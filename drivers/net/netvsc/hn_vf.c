@@ -42,7 +42,7 @@ static int hn_vf_match(const struct rte_eth_dev *dev)
 		if (vf_dev == dev)
 			continue;
 
-		if (is_same_ether_addr(mac, vf_mac))
+		if (rte_is_same_ether_addr(mac, vf_mac))
 			return i;
 	}
 	return -ENOENT;

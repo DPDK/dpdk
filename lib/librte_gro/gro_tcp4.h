@@ -187,8 +187,8 @@ uint32_t gro_tcp4_tbl_pkt_count(void *tbl);
 static inline int
 is_same_tcp4_flow(struct tcp4_flow_key k1, struct tcp4_flow_key k2)
 {
-	return (is_same_ether_addr(&k1.eth_saddr, &k2.eth_saddr) &&
-			is_same_ether_addr(&k1.eth_daddr, &k2.eth_daddr) &&
+	return (rte_is_same_ether_addr(&k1.eth_saddr, &k2.eth_saddr) &&
+			rte_is_same_ether_addr(&k1.eth_daddr, &k2.eth_daddr) &&
 			(k1.ip_src_addr == k2.ip_src_addr) &&
 			(k1.ip_dst_addr == k2.ip_dst_addr) &&
 			(k1.recv_ack == k2.recv_ack) &&

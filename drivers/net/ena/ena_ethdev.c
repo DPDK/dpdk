@@ -1814,7 +1814,8 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* Copy MAC address and point DPDK to it */
 	eth_dev->data->mac_addrs = (struct rte_ether_addr *)adapter->mac_addr;
-	ether_addr_copy((struct rte_ether_addr *)get_feat_ctx.dev_attr.mac_addr,
+	rte_ether_addr_copy((struct rte_ether_addr *)
+			get_feat_ctx.dev_attr.mac_addr,
 			(struct rte_ether_addr *)adapter->mac_addr);
 
 	/*

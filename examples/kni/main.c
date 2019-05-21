@@ -835,7 +835,7 @@ static void
 print_ethaddr(const char *name, struct rte_ether_addr *mac_addr)
 {
 	char buf[ETHER_ADDR_FMT_SIZE];
-	ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, mac_addr);
+	rte_ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, mac_addr);
 	RTE_LOG(INFO, APP, "\t%s%s\n", name, buf);
 }
 

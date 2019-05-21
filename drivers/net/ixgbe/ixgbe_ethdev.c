@@ -1223,7 +1223,7 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 		return -ENOMEM;
 	}
 	/* Copy the permanent MAC address */
-	ether_addr_copy((struct rte_ether_addr *)hw->mac.perm_addr,
+	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac.perm_addr,
 			&eth_dev->data->mac_addrs[0]);
 
 	/* Allocate memory for storing hash filter MAC addresses */
@@ -1661,7 +1661,7 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	/* Generate a random MAC address, if none was assigned by PF. */
-	if (is_zero_ether_addr(perm_addr)) {
+	if (rte_is_zero_ether_addr(perm_addr)) {
 		generate_random_mac_addr(perm_addr);
 		diag = ixgbe_set_rar_vf(hw, 1, perm_addr->addr_bytes, 0, 1);
 		if (diag) {
@@ -1681,7 +1681,7 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	/* Copy the permanent MAC address */
-	ether_addr_copy(perm_addr, &eth_dev->data->mac_addrs[0]);
+	rte_ether_addr_copy(perm_addr, &eth_dev->data->mac_addrs[0]);
 
 	/* reset the hardware with the new settings */
 	diag = hw->mac.ops.start_hw(hw);
@@ -6092,7 +6092,7 @@ ixgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index)
 		if (i == index)
 			continue;
 		/* Skip NULL MAC addresses */
-		if (is_zero_ether_addr(mac_addr))
+		if (rte_is_zero_ether_addr(mac_addr))
 			continue;
 		/* Skip the permanent MAC address */
 		if (memcmp(perm_addr, mac_addr,

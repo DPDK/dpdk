@@ -360,7 +360,7 @@ nfb_eth_mac_addr_set(struct rte_eth_dev *dev,
 	struct pmd_internals *internals = (struct pmd_internals *)
 		data->dev_private;
 
-	if (!is_valid_assigned_ether_addr(mac_addr))
+	if (!rte_is_valid_assigned_ether_addr(mac_addr))
 		return -EINVAL;
 
 	for (i = 0; i < ETHER_ADDR_LEN; i++) {
@@ -371,7 +371,7 @@ nfb_eth_mac_addr_set(struct rte_eth_dev *dev,
 	for (i = 0; i < internals->max_rxmac; ++i)
 		nc_rxmac_set_mac(internals->rxmac[i], 0, mac, 1);
 
-	ether_addr_copy(mac_addr, data->mac_addrs);
+	rte_ether_addr_copy(mac_addr, data->mac_addrs);
 	return 0;
 }
 
@@ -472,7 +472,7 @@ nfb_eth_dev_init(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	eth_random_addr(eth_addr_init.addr_bytes);
+	rte_eth_random_addr(eth_addr_init.addr_bytes);
 	eth_addr_init.addr_bytes[0] = eth_addr.addr_bytes[0];
 	eth_addr_init.addr_bytes[1] = eth_addr.addr_bytes[1];
 	eth_addr_init.addr_bytes[2] = eth_addr.addr_bytes[2];

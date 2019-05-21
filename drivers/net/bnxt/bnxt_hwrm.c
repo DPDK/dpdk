@@ -2586,7 +2586,7 @@ static void add_random_mac_if_needed(struct bnxt *bp,
 	if (memcmp(mac.addr_bytes, "\x00\x00\x00\x00\x00", 6) == 0) {
 		cfg_req->enables |=
 		rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_DFLT_MAC_ADDR);
-		eth_random_addr(cfg_req->dflt_mac_addr);
+		rte_eth_random_addr(cfg_req->dflt_mac_addr);
 		bp->pf.vf_info[vf].random_mac = true;
 	} else {
 		memcpy(cfg_req->dflt_mac_addr, mac.addr_bytes, ETHER_ADDR_LEN);

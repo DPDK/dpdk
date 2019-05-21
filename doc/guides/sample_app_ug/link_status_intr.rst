@@ -324,7 +324,7 @@ The processing is very simple: processes the TX port from the RX port and then r
         *((uint64_t *)tmp) = 0x000000000002 + (dst_port << 40);
 
         /* src addr */
-        ether_addr_copy(&lsi_ports_eth_addr[dst_port], &eth->s_addr);
+        rte_ether_addr_copy(&lsi_ports_eth_addr[dst_port], &eth->s_addr);
 
         lsi_send_packet(m, dst_port);
     }

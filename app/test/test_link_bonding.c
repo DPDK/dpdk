@@ -4510,7 +4510,7 @@ test_alb_change_mac_in_reply_sent(void)
 				MAX_PKT_BURST);
 	}
 
-	ether_addr_copy(
+	rte_ether_addr_copy(
 			rte_eth_devices[test_params->bonded_port_id].data->mac_addrs,
 			&bond_mac);
 
@@ -4583,12 +4583,14 @@ test_alb_change_mac_in_reply_sent(void)
 						sizeof(struct rte_ether_hdr));
 
 			if (slave_idx%2 == 0) {
-				if (!is_same_ether_addr(slave_mac1, &arp_pkt->arp_data.arp_sha)) {
+				if (!rte_is_same_ether_addr(slave_mac1,
+						&arp_pkt->arp_data.arp_sha)) {
 					retval = -1;
 					goto test_end;
 				}
 			} else {
-				if (!is_same_ether_addr(slave_mac2, &arp_pkt->arp_data.arp_sha)) {
+				if (!rte_is_same_ether_addr(slave_mac2,
+						&arp_pkt->arp_data.arp_sha)) {
 					retval = -1;
 					goto test_end;
 				}
@@ -4629,7 +4631,7 @@ test_alb_reply_from_client(void)
 				MAX_PKT_BURST);
 	}
 
-	ether_addr_copy(
+	rte_ether_addr_copy(
 			rte_eth_devices[test_params->bonded_port_id].data->mac_addrs,
 			&bond_mac);
 
@@ -4710,12 +4712,14 @@ test_alb_reply_from_client(void)
 						sizeof(struct rte_ether_hdr));
 
 			if (slave_idx%2 == 0) {
-				if (!is_same_ether_addr(slave_mac1, &arp_pkt->arp_data.arp_sha)) {
+				if (!rte_is_same_ether_addr(slave_mac1,
+						&arp_pkt->arp_data.arp_sha)) {
 					retval = -1;
 					goto test_end;
 				}
 			} else {
-				if (!is_same_ether_addr(slave_mac2, &arp_pkt->arp_data.arp_sha)) {
+				if (!rte_is_same_ether_addr(slave_mac2,
+						&arp_pkt->arp_data.arp_sha)) {
 					retval = -1;
 					goto test_end;
 				}
@@ -4762,7 +4766,7 @@ test_alb_receive_vlan_reply(void)
 				MAX_PKT_BURST);
 	}
 
-	ether_addr_copy(
+	rte_ether_addr_copy(
 			rte_eth_devices[test_params->bonded_port_id].data->mac_addrs,
 			&bond_mac);
 

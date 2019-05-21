@@ -316,7 +316,7 @@ eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 		return -ENOMEM;
 	}
 	/* Copy the permanent MAC address */
-	ether_addr_copy((struct rte_ether_addr *)hw->perm_addr,
+	rte_ether_addr_copy((struct rte_ether_addr *)hw->perm_addr,
 			&eth_dev->data->mac_addrs[0]);
 
 	PMD_INIT_LOG(DEBUG, "MAC Address : %02x:%02x:%02x:%02x:%02x:%02x",
@@ -1209,7 +1209,7 @@ vmxnet3_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 {
 	struct vmxnet3_hw *hw = dev->data->dev_private;
 
-	ether_addr_copy(mac_addr, (struct rte_ether_addr *)(hw->perm_addr));
+	rte_ether_addr_copy(mac_addr, (struct rte_ether_addr *)(hw->perm_addr));
 	vmxnet3_write_mac(hw, mac_addr->addr_bytes);
 	return 0;
 }

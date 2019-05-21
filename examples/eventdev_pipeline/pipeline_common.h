@@ -104,8 +104,8 @@ exchange_mac(struct rte_mbuf *m)
 
 	/* change mac addresses on packet (to use mbuf data) */
 	eth = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
-	ether_addr_copy(&eth->d_addr, &addr);
-	ether_addr_copy(&addr, &eth->d_addr);
+	rte_ether_addr_copy(&eth->d_addr, &addr);
+	rte_ether_addr_copy(&addr, &eth->d_addr);
 }
 
 static __rte_always_inline void

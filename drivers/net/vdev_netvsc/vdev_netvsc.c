@@ -387,7 +387,7 @@ vdev_netvsc_device_probe(const struct if_nameindex *iface,
 		strlcpy(ctx->if_name, iface->if_name, sizeof(ctx->if_name));
 		return 0;
 	}
-	if (!is_same_ether_addr(eth_addr, &ctx->if_addr))
+	if (!rte_is_same_ether_addr(eth_addr, &ctx->if_addr))
 		return 0;
 	/* Look for associated PCI device. */
 	ret = vdev_netvsc_sysfs_readlink(buf, sizeof(buf), iface->if_name,
@@ -544,7 +544,7 @@ vdev_netvsc_netvsc_probe(const struct if_nameindex *iface,
 						pair->value);
 					return -EINVAL;
 				}
-				if (is_same_ether_addr(eth_addr, &tmp))
+				if (rte_is_same_ether_addr(eth_addr, &tmp))
 					break;
 			}
 		}

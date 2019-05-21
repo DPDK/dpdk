@@ -124,9 +124,10 @@ ipn3ke_rpst_dev_start(struct rte_eth_dev *dev)
 	snprintf(attr_name, IPN3KE_RAWDEV_ATTR_LEN_MAX, "%s",
 			"LineSideBaseMAC");
 	rawdev->dev_ops->attr_get(rawdev, attr_name, &base_mac);
-	ether_addr_copy((struct rte_ether_addr *)&base_mac, &rpst->mac_addr);
+	rte_ether_addr_copy((struct rte_ether_addr *)&base_mac,
+			&rpst->mac_addr);
 
-	ether_addr_copy(&rpst->mac_addr, &dev->data->mac_addrs[0]);
+	rte_ether_addr_copy(&rpst->mac_addr, &dev->data->mac_addrs[0]);
 	dev->data->mac_addrs->addr_bytes[ETHER_ADDR_LEN - 1] =
 		(uint8_t)rpst->port_id + 1;
 
@@ -656,13 +657,13 @@ ipn3ke_rpst_mac_addr_set(struct rte_eth_dev *ethdev,
 	struct ipn3ke_rpst *rpst = IPN3KE_DEV_PRIVATE_TO_RPST(ethdev);
 	uint32_t val;
 
-	if (!is_valid_assigned_ether_addr(mac_addr)) {
+	if (!rte_is_valid_assigned_ether_addr(mac_addr)) {
 		IPN3KE_AFU_PMD_ERR("Tried to set invalid MAC address.");
 		return -EINVAL;
 	}
 
 	if (hw->retimer.mac_type == IFPGA_RAWDEV_RETIMER_MAC_TYPE_10GE_XFI) {
-		ether_addr_copy(&mac_addr[0], &rpst->mac_addr);
+		rte_ether_addr_copy(&mac_addr[0], &rpst->mac_addr);
 
 		/* Set mac address */
 		rte_memcpy(((char *)(&val)), &mac_addr[0], sizeof(uint32_t));

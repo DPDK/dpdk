@@ -128,8 +128,8 @@ hn_update_packet_stats(struct hn_stats *stats, const struct rte_mbuf *m)
 	}
 
 	ea = rte_pktmbuf_mtod(m, const struct rte_ether_addr *);
-	if (is_multicast_ether_addr(ea)) {
-		if (is_broadcast_ether_addr(ea))
+	if (rte_is_multicast_ether_addr(ea)) {
+		if (rte_is_broadcast_ether_addr(ea))
 			stats->broadcast++;
 		else
 			stats->multicast++;

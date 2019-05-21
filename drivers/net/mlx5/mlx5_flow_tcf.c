@@ -3334,7 +3334,7 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 					" parameter is ignored");
 				break;
 			}
-			if (!is_zero_ether_addr(&mask.eth->dst)) {
+			if (!rte_is_zero_ether_addr(&mask.eth->dst)) {
 				mnl_attr_put(nlh, TCA_FLOWER_KEY_ETH_DST,
 					     ETHER_ADDR_LEN,
 					     spec.eth->dst.addr_bytes);
@@ -3342,7 +3342,7 @@ flow_tcf_translate(struct rte_eth_dev *dev, struct mlx5_flow *dev_flow,
 					     ETHER_ADDR_LEN,
 					     mask.eth->dst.addr_bytes);
 			}
-			if (!is_zero_ether_addr(&mask.eth->src)) {
+			if (!rte_is_zero_ether_addr(&mask.eth->src)) {
 				mnl_attr_put(nlh, TCA_FLOWER_KEY_ETH_SRC,
 					     ETHER_ADDR_LEN,
 					     spec.eth->src.addr_bytes);

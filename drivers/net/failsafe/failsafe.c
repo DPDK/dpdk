@@ -253,8 +253,8 @@ fs_eth_dev_create(struct rte_vdev_device *vdev)
 		 */
 		FOREACH_SUBDEV(sdev, i, dev)
 			if (sdev->state >= DEV_PROBED) {
-				ether_addr_copy(&ETH(sdev)->data->mac_addrs[0],
-						mac);
+				rte_ether_addr_copy(
+					&ETH(sdev)->data->mac_addrs[0], mac);
 				break;
 			}
 		/*
@@ -265,7 +265,7 @@ fs_eth_dev_create(struct rte_vdev_device *vdev)
 		 * probed slaves.
 		 */
 		if (i == priv->subs_tail)
-			eth_random_addr(&mac->addr_bytes[0]);
+			rte_eth_random_addr(&mac->addr_bytes[0]);
 	}
 	INFO("MAC address is %02x:%02x:%02x:%02x:%02x:%02x",
 		mac->addr_bytes[0], mac->addr_bytes[1],

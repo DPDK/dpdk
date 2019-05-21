@@ -410,7 +410,7 @@ reassemble(struct rte_mbuf *m, uint16_t portid, uint32_t queue,
 	*((uint64_t *)d_addr_bytes) = 0x000000000002 + ((uint64_t)dst_port << 40);
 
 	/* src addr */
-	ether_addr_copy(&ports_eth_addr[dst_port], &eth_hdr->s_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port], &eth_hdr->s_addr);
 
 	send_single_packet(m, dst_port);
 }
@@ -695,7 +695,7 @@ static void
 print_ethaddr(const char *name, const struct rte_ether_addr *eth_addr)
 {
 	char buf[ETHER_ADDR_FMT_SIZE];
-	ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
+	rte_ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
 	printf("%s%s", name, buf);
 }
 

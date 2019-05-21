@@ -634,11 +634,11 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 		return -ENOMEM;
 	}
 
-	if (!is_valid_assigned_ether_addr(&pdata->mac_addr))
-		eth_random_addr(pdata->mac_addr.addr_bytes);
+	if (!rte_is_valid_assigned_ether_addr(&pdata->mac_addr))
+		rte_eth_random_addr(pdata->mac_addr.addr_bytes);
 
 	/* Copy the permanent MAC address */
-	ether_addr_copy(&pdata->mac_addr, &eth_dev->data->mac_addrs[0]);
+	rte_ether_addr_copy(&pdata->mac_addr, &eth_dev->data->mac_addrs[0]);
 
 	/* Clock settings */
 	pdata->sysclk_rate = AXGBE_V2_DMA_CLOCK_FREQ;

@@ -322,7 +322,7 @@ rx_machine(struct bond_dev_private *internals, uint16_t slave_id,
 		agg = &bond_mode_8023ad_ports[port->aggregator_port_id];
 		bool match = port->actor.system_priority ==
 			lacp->partner.port_params.system_priority &&
-			is_same_ether_addr(&agg->actor.system,
+			rte_is_same_ether_addr(&agg->actor.system,
 			&lacp->partner.port_params.system) &&
 			port->actor.port_priority ==
 			lacp->partner.port_params.port_priority &&
@@ -575,7 +575,7 @@ tx_machine(struct bond_dev_private *internals, uint16_t slave_id)
 	hdr = rte_pktmbuf_mtod(lacp_pkt, struct lacpdu_header *);
 
 	/* Source and destination MAC */
-	ether_addr_copy(&lacp_mac_addr, &hdr->eth_hdr.d_addr);
+	rte_ether_addr_copy(&lacp_mac_addr, &hdr->eth_hdr.d_addr);
 	rte_eth_macaddr_get(slave_id, &hdr->eth_hdr.s_addr);
 	hdr->eth_hdr.ether_type = rte_cpu_to_be_16(ETHER_TYPE_SLOW);
 
@@ -592,7 +592,8 @@ tx_machine(struct bond_dev_private *internals, uint16_t slave_id)
 	memcpy(&hdr->lacpdu.actor.port_params, &port->actor,
 			sizeof(port->actor));
 	agg = &bond_mode_8023ad_ports[port->aggregator_port_id];
-	ether_addr_copy(&agg->actor.system, &hdr->lacpdu.actor.port_params.system);
+	rte_ether_addr_copy(&agg->actor.system,
+			&hdr->lacpdu.actor.port_params.system);
 	lacpdu->actor.state = port->actor_state;
 
 	/* PARTNER */
@@ -694,9 +695,10 @@ selection_logic(struct bond_dev_private *internals, uint16_t slave_id)
 		 * ID (MAC address). */
 		if ((agg->actor.key == port->actor.key &&
 			agg->partner.system_priority == port->partner.system_priority &&
-			is_same_ether_addr(&agg->partner.system, &port->partner.system) == 1
+			rte_is_same_ether_addr(&agg->partner.system,
+					&port->partner.system) == 1
 			&& (agg->partner.key == port->partner.key)) &&
-			is_zero_ether_addr(&port->partner.system) != 1 &&
+			rte_is_zero_ether_addr(&port->partner.system) != 1 &&
 			(agg->actor.key &
 				rte_cpu_to_be_16(BOND_LINK_FULL_DUPLEX_KEY)) != 0) {
 
@@ -791,7 +793,7 @@ rx_machine_update(struct bond_dev_private *internals, uint16_t slave_id,
 		RTE_ASSERT(lacp->lacpdu.subtype == SLOW_SUBTYPE_LACP);
 
 		partner = &lacp->lacpdu.partner;
-		if (is_same_ether_addr(&partner->port_params.system,
+		if (rte_is_same_ether_addr(&partner->port_params.system,
 			&internals->mode4.mac_addr)) {
 			/* This LACP frame is sending to the bonding port
 			 * so pass it to rx_machine.
@@ -842,8 +844,8 @@ bond_mode_8023ad_periodic_cb(void *arg)
 			SM_FLAG_SET(port, NTT);
 		}
 
-		if (!is_same_ether_addr(&port->actor.system, &slave_addr)) {
-			ether_addr_copy(&slave_addr, &port->actor.system);
+		if (!rte_is_same_ether_addr(&port->actor.system, &slave_addr)) {
+			rte_ether_addr_copy(&slave_addr, &port->actor.system);
 			if (port->aggregator_port_id == slave_id)
 				SM_FLAG_SET(port, NTT);
 		}
@@ -1055,10 +1057,10 @@ bond_mode_8023ad_mac_address_update(struct rte_eth_dev *bond_dev)
 		slave = &bond_mode_8023ad_ports[slave_id];
 		rte_eth_macaddr_get(slave_id, &slave_addr);
 
-		if (is_same_ether_addr(&slave_addr, &slave->actor.system))
+		if (rte_is_same_ether_addr(&slave_addr, &slave->actor.system))
 			continue;
 
-		ether_addr_copy(&slave_addr, &slave->actor.system);
+		rte_ether_addr_copy(&slave_addr, &slave->actor.system);
 		/* Do nothing if this port is not an aggregator. In other case
 		 * Set NTT flag on every port that use this aggregator. */
 		if (slave->aggregator_port_id != slave_id)

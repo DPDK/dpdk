@@ -228,7 +228,7 @@ int aq_fw2x_get_mac_permanent(struct aq_hw_s *self, u8 *mac)
 		mac_addr[1] = rte_constant_bswap32(mac_addr[1]);
 	}
 
-	ether_addr_copy((struct rte_ether_addr *)mac_addr,
+	rte_ether_addr_copy((struct rte_ether_addr *)mac_addr,
 			(struct rte_ether_addr *)mac);
 
 	if ((mac[0] & 0x01U) || ((mac[0] | mac[1] | mac[2]) == 0x00U)) {

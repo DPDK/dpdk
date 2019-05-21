@@ -840,7 +840,7 @@ eth_igb_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	/* Copy the permanent MAC address */
-	ether_addr_copy((struct rte_ether_addr *)hw->mac.addr,
+	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac.addr,
 			&eth_dev->data->mac_addrs[0]);
 
 	/* initialize the vfta */
@@ -1039,8 +1039,8 @@ eth_igbvf_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	/* Generate a random MAC address, if none was assigned by PF. */
-	if (is_zero_ether_addr(perm_addr)) {
-		eth_random_addr(perm_addr->addr_bytes);
+	if (rte_is_zero_ether_addr(perm_addr)) {
+		rte_eth_random_addr(perm_addr->addr_bytes);
 		PMD_INIT_LOG(INFO, "\tVF MAC address not assigned by Host PF");
 		PMD_INIT_LOG(INFO, "\tAssign randomly generated MAC address "
 			     "%02x:%02x:%02x:%02x:%02x:%02x",
@@ -1059,7 +1059,7 @@ eth_igbvf_dev_init(struct rte_eth_dev *eth_dev)
 		return diag;
 	}
 	/* Copy the permanent MAC address */
-	ether_addr_copy((struct rte_ether_addr *)hw->mac.perm_addr,
+	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac.perm_addr,
 			&eth_dev->data->mac_addrs[0]);
 
 	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x "

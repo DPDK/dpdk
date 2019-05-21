@@ -2962,17 +2962,17 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		nfp_net_vf_read_mac(hw);
 	}
 
-	if (!is_valid_assigned_ether_addr(
+	if (!rte_is_valid_assigned_ether_addr(
 		    (struct rte_ether_addr *)&hw->mac_addr)) {
 		PMD_INIT_LOG(INFO, "Using random mac address for port %d",
 				   port);
 		/* Using random mac addresses for VFs */
-		eth_random_addr(&hw->mac_addr[0]);
+		rte_eth_random_addr(&hw->mac_addr[0]);
 		nfp_net_write_mac(hw, (uint8_t *)&hw->mac_addr);
 	}
 
 	/* Copying mac address to DPDK eth_dev struct */
-	ether_addr_copy((struct rte_ether_addr *)hw->mac_addr,
+	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac_addr,
 			&eth_dev->data->mac_addrs[0]);
 
 	if (!(hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR))

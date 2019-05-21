@@ -1681,9 +1681,9 @@ flow_rule_action_get(struct pmd_internals *softnic,
 					item,
 					"VXLAN ENCAP: first encap item should be ether");
 			}
-			ether_addr_copy(&spec.eth.dst,
+			rte_ether_addr_copy(&spec.eth.dst,
 					&rule_action->encap.vxlan.ether.da);
-			ether_addr_copy(&spec.eth.src,
+			rte_ether_addr_copy(&spec.eth.src,
 					&rule_action->encap.vxlan.ether.sa);
 
 			item++;

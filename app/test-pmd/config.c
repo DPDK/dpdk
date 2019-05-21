@@ -111,7 +111,7 @@ static void
 print_ethaddr(const char *name, struct rte_ether_addr *eth_addr)
 {
 	char buf[ETHER_ADDR_FMT_SIZE];
-	ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
+	rte_ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
 	printf("%s%s", name, buf);
 }
 
@@ -3536,7 +3536,7 @@ mcast_addr_add(portid_t port_id, struct rte_ether_addr *mc_addr)
 	 * in the pool of multicast addresses.
 	 */
 	for (i = 0; i < port->mc_addr_nb; i++) {
-		if (is_same_ether_addr(mc_addr, &port->mc_addr_pool[i])) {
+		if (rte_is_same_ether_addr(mc_addr, &port->mc_addr_pool[i])) {
 			printf("multicast address already filtered by port\n");
 			return;
 		}
@@ -3544,7 +3544,7 @@ mcast_addr_add(portid_t port_id, struct rte_ether_addr *mc_addr)
 
 	if (mcast_addr_pool_extend(port) != 0)
 		return;
-	ether_addr_copy(mc_addr, &port->mc_addr_pool[i]);
+	rte_ether_addr_copy(mc_addr, &port->mc_addr_pool[i]);
 	eth_port_multicast_addr_list_set(port_id);
 }
 
@@ -3563,7 +3563,7 @@ mcast_addr_remove(portid_t port_id, struct rte_ether_addr *mc_addr)
 	 * Search the pool of multicast MAC addresses for the removed address.
 	 */
 	for (i = 0; i < port->mc_addr_nb; i++) {
-		if (is_same_ether_addr(mc_addr, &port->mc_addr_pool[i]))
+		if (rte_is_same_ether_addr(mc_addr, &port->mc_addr_pool[i]))
 			break;
 	}
 	if (i == port->mc_addr_nb) {

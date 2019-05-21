@@ -115,12 +115,12 @@ ch_rte_parsetype_eth(const void *dmask, const struct rte_flow_item *item,
 	mask = umask ? umask : (const struct rte_flow_item_eth *)dmask;
 
 	/* we don't support SRC_MAC filtering*/
-	if (!is_zero_ether_addr(&mask->src))
+	if (!rte_is_zero_ether_addr(&mask->src))
 		return rte_flow_error_set(e, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM,
 					  item,
 					  "src mac filtering not supported");
 
-	if (!is_zero_ether_addr(&mask->dst)) {
+	if (!rte_is_zero_ether_addr(&mask->dst)) {
 		const u8 *addr = (const u8 *)&spec->dst.addr_bytes[0];
 		const u8 *m = (const u8 *)&mask->dst.addr_bytes[0];
 		struct rte_flow *flow = (struct rte_flow *)fs->private;

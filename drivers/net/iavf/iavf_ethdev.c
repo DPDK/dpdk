@@ -706,7 +706,7 @@ iavf_dev_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *addr,
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
 	int err;
 
-	if (is_zero_ether_addr(addr)) {
+	if (rte_is_zero_ether_addr(addr)) {
 		PMD_DRV_LOG(ERR, "Invalid Ethernet Address");
 		return -EINVAL;
 	}
@@ -951,11 +951,11 @@ iavf_dev_set_default_mac_addr(struct rte_eth_dev *dev,
 	old_addr = (struct rte_ether_addr *)hw->mac.addr;
 	perm_addr = (struct rte_ether_addr *)hw->mac.perm_addr;
 
-	if (is_same_ether_addr(mac_addr, old_addr))
+	if (rte_is_same_ether_addr(mac_addr, old_addr))
 		return 0;
 
 	/* If the MAC address is configured by host, skip the setting */
-	if (is_valid_assigned_ether_addr(perm_addr))
+	if (rte_is_valid_assigned_ether_addr(perm_addr))
 		return -EPERM;
 
 	ret = iavf_add_del_eth_addr(adapter, old_addr, FALSE);
@@ -983,7 +983,7 @@ iavf_dev_set_default_mac_addr(struct rte_eth_dev *dev,
 	if (ret)
 		return -EIO;
 
-	ether_addr_copy(mac_addr, (struct rte_ether_addr *)hw->mac.addr);
+	rte_ether_addr_copy(mac_addr, (struct rte_ether_addr *)hw->mac.addr);
 	return 0;
 }
 
@@ -1317,10 +1317,10 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 	/* If the MAC address is not configured by host,
 	 * generate a random one.
 	 */
-	if (!is_valid_assigned_ether_addr(
+	if (!rte_is_valid_assigned_ether_addr(
 			(struct rte_ether_addr *)hw->mac.addr))
-		eth_random_addr(hw->mac.addr);
-	ether_addr_copy((struct rte_ether_addr *)hw->mac.addr,
+		rte_eth_random_addr(hw->mac.addr);
+	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac.addr,
 			&eth_dev->data->mac_addrs[0]);
 
 	/* register callback func to eal lib */

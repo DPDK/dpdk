@@ -485,13 +485,14 @@ ice_init_mac_address(struct rte_eth_dev *dev)
 {
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	if (!is_unicast_ether_addr
+	if (!rte_is_unicast_ether_addr
 		((struct rte_ether_addr *)hw->port_info[0].mac.lan_addr)) {
 		PMD_INIT_LOG(ERR, "Invalid MAC address");
 		return -EINVAL;
 	}
 
-	ether_addr_copy((struct rte_ether_addr *)hw->port_info[0].mac.lan_addr,
+	rte_ether_addr_copy(
+		(struct rte_ether_addr *)hw->port_info[0].mac.lan_addr,
 		(struct rte_ether_addr *)hw->port_info[0].mac.perm_addr);
 
 	dev->data->mac_addrs =
@@ -502,8 +503,9 @@ ice_init_mac_address(struct rte_eth_dev *dev)
 		return -ENOMEM;
 	}
 	/* store it to dev data */
-	ether_addr_copy((struct rte_ether_addr *)hw->port_info[0].mac.perm_addr,
-			&dev->data->mac_addrs[0]);
+	rte_ether_addr_copy(
+		(struct rte_ether_addr *)hw->port_info[0].mac.perm_addr,
+		&dev->data->mac_addrs[0]);
 	return 0;
 }
 
@@ -514,7 +516,7 @@ ice_find_mac_filter(struct ice_vsi *vsi, struct rte_ether_addr *macaddr)
 	struct ice_mac_filter *f;
 
 	TAILQ_FOREACH(f, &vsi->mac_list, next) {
-		if (is_same_ether_addr(macaddr, &f->mac_info.mac_addr))
+		if (rte_is_same_ether_addr(macaddr, &f->mac_info.mac_addr))
 			return f;
 	}
 
@@ -2357,13 +2359,13 @@ static int ice_macaddr_set(struct rte_eth_dev *dev,
 	uint8_t flags = 0;
 	int ret;
 
-	if (!is_valid_assigned_ether_addr(mac_addr)) {
+	if (!rte_is_valid_assigned_ether_addr(mac_addr)) {
 		PMD_DRV_LOG(ERR, "Tried to set invalid MAC address.");
 		return -EINVAL;
 	}
 
 	TAILQ_FOREACH(f, &vsi->mac_list, next) {
-		if (is_same_ether_addr(&pf->dev_addr, &f->mac_info.mac_addr))
+		if (rte_is_same_ether_addr(&pf->dev_addr, &f->mac_info.mac_addr))
 			break;
 	}
 

@@ -390,12 +390,13 @@ static int lcore_main(__attribute__((unused)) void *arg1)
 					if (arp_hdr->arp_opcode == rte_cpu_to_be_16(RTE_ARP_OP_REQUEST)) {
 						arp_hdr->arp_opcode = rte_cpu_to_be_16(RTE_ARP_OP_REPLY);
 						/* Switch src and dst data and set bonding MAC */
-						ether_addr_copy(&eth_hdr->s_addr, &eth_hdr->d_addr);
+						rte_ether_addr_copy(&eth_hdr->s_addr, &eth_hdr->d_addr);
 						rte_eth_macaddr_get(BOND_PORT, &eth_hdr->s_addr);
-						ether_addr_copy(&arp_hdr->arp_data.arp_sha, &arp_hdr->arp_data.arp_tha);
+						rte_ether_addr_copy(&arp_hdr->arp_data.arp_sha,
+								&arp_hdr->arp_data.arp_tha);
 						arp_hdr->arp_data.arp_tip = arp_hdr->arp_data.arp_sip;
 						rte_eth_macaddr_get(BOND_PORT, &d_addr);
-						ether_addr_copy(&d_addr, &arp_hdr->arp_data.arp_sha);
+						rte_ether_addr_copy(&d_addr, &arp_hdr->arp_data.arp_sha);
 						arp_hdr->arp_data.arp_sip = bond_ip;
 						rte_eth_tx_burst(BOND_PORT, 0, &pkts[i], 1);
 						is_free = 1;
@@ -410,7 +411,7 @@ static int lcore_main(__attribute__((unused)) void *arg1)
 				 }
 				ipv4_hdr = (struct ipv4_hdr *)((char *)(eth_hdr + 1) + offset);
 				if (ipv4_hdr->dst_addr == bond_ip) {
-					ether_addr_copy(&eth_hdr->s_addr, &eth_hdr->d_addr);
+					rte_ether_addr_copy(&eth_hdr->s_addr, &eth_hdr->d_addr);
 					rte_eth_macaddr_get(BOND_PORT, &eth_hdr->s_addr);
 					ipv4_hdr->dst_addr = ipv4_hdr->src_addr;
 					ipv4_hdr->src_addr = bond_ip;

@@ -1578,7 +1578,7 @@ static int
 atl_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 			uint32_t index __rte_unused, uint32_t pool __rte_unused)
 {
-	if (is_zero_ether_addr(mac_addr)) {
+	if (rte_is_zero_ether_addr(mac_addr)) {
 		PMD_DRV_LOG(ERR, "Invalid Ethernet Address");
 		return -EINVAL;
 	}

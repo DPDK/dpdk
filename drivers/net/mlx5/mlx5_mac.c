@@ -71,7 +71,7 @@ mlx5_internal_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 	const int vf = priv->config.vf;
 
 	assert(index < MLX5_MAX_MAC_ADDRESSES);
-	if (is_zero_ether_addr(&dev->data->mac_addrs[index]))
+	if (rte_is_zero_ether_addr(&dev->data->mac_addrs[index]))
 		return;
 	if (vf)
 		mlx5_nl_mac_addr_remove(dev, &dev->data->mac_addrs[index],
@@ -101,7 +101,7 @@ mlx5_internal_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 	unsigned int i;
 
 	assert(index < MLX5_MAX_MAC_ADDRESSES);
-	if (is_zero_ether_addr(mac)) {
+	if (rte_is_zero_ether_addr(mac)) {
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}

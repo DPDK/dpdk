@@ -2021,9 +2021,9 @@ populate_mac_addr(struct fsl_mc_io *dpni_dev, struct dpaa2_dev_priv *priv,
 	 *  If empty_mac(phy), return prime.
 	 *  if both are empty, create random MAC, set as prime and return
 	 */
-	if (!is_zero_ether_addr(&phy_mac)) {
+	if (!rte_is_zero_ether_addr(&phy_mac)) {
 		/* If the addresses are not same, overwrite prime */
-		if (!is_same_ether_addr(&phy_mac, &prime_mac)) {
+		if (!rte_is_same_ether_addr(&phy_mac, &prime_mac)) {
 			ret = dpni_set_primary_mac_addr(dpni_dev, CMD_PRI_LOW,
 							priv->token,
 							phy_mac.addr_bytes);
@@ -2035,9 +2035,9 @@ populate_mac_addr(struct fsl_mc_io *dpni_dev, struct dpaa2_dev_priv *priv,
 			memcpy(&prime_mac, &phy_mac,
 				sizeof(struct rte_ether_addr));
 		}
-	} else if (is_zero_ether_addr(&prime_mac)) {
+	} else if (rte_is_zero_ether_addr(&prime_mac)) {
 		/* In case phys and prime, both are zero, create random MAC */
-		eth_random_addr(prime_mac.addr_bytes);
+		rte_eth_random_addr(prime_mac.addr_bytes);
 		ret = dpni_set_primary_mac_addr(dpni_dev, CMD_PRI_LOW,
 						priv->token,
 						prime_mac.addr_bytes);

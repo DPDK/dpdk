@@ -327,7 +327,7 @@ rte_ethtool_net_validate_addr(uint16_t port_id __rte_unused,
 {
 	if (addr == NULL)
 		return -EINVAL;
-	return is_valid_assigned_ether_addr(addr);
+	return rte_is_valid_assigned_ether_addr(addr);
 }
 
 int

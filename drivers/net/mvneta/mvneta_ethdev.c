@@ -595,7 +595,7 @@ mvneta_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 	ret = neta_ppio_remove_mac_addr(priv->ppio,
 				       dev->data->mac_addrs[index].addr_bytes);
 	if (ret) {
-		ether_format_addr(buf, sizeof(buf),
+		rte_ether_format_addr(buf, sizeof(buf),
 				  &dev->data->mac_addrs[index]);
 		MVNETA_LOG(ERR, "Failed to remove mac %s", buf);
 	}
@@ -633,7 +633,7 @@ mvneta_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 
 	ret = neta_ppio_add_mac_addr(priv->ppio, mac_addr->addr_bytes);
 	if (ret) {
-		ether_format_addr(buf, sizeof(buf), mac_addr);
+		rte_ether_format_addr(buf, sizeof(buf), mac_addr);
 		MVNETA_LOG(ERR, "Failed to add mac %s", buf);
 		return -1;
 	}
@@ -661,7 +661,7 @@ mvneta_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 	ret = neta_ppio_set_mac_addr(priv->ppio, mac_addr->addr_bytes);
 	if (ret) {
 		char buf[ETHER_ADDR_FMT_SIZE];
-		ether_format_addr(buf, sizeof(buf), mac_addr);
+		rte_ether_format_addr(buf, sizeof(buf), mac_addr);
 		MVNETA_LOG(ERR, "Failed to set mac to %s", buf);
 	}
 	return 0;

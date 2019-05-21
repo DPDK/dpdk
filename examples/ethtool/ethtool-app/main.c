@@ -161,8 +161,8 @@ static void process_frame(struct app_port *ptr_port,
 	struct rte_ether_hdr *ptr_mac_hdr;
 
 	ptr_mac_hdr = rte_pktmbuf_mtod(ptr_frame, struct rte_ether_hdr *);
-	ether_addr_copy(&ptr_mac_hdr->s_addr, &ptr_mac_hdr->d_addr);
-	ether_addr_copy(&ptr_port->mac_addr, &ptr_mac_hdr->s_addr);
+	rte_ether_addr_copy(&ptr_mac_hdr->s_addr, &ptr_mac_hdr->d_addr);
+	rte_ether_addr_copy(&ptr_port->mac_addr, &ptr_mac_hdr->s_addr);
 }
 
 static int slave_main(__attribute__((unused)) void *ptr_data)

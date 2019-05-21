@@ -61,7 +61,7 @@ eth_mac_cmp(const char *key __rte_unused,
 	/* Return 0 if devargs MAC is matching one of the device MACs. */
 	rte_eth_dev_info_get(data->port_id, &dev_info);
 	for (index = 0; index < dev_info.max_mac_addrs; index++)
-		if (is_same_ether_addr(&mac, &data->mac_addrs[index]))
+		if (rte_is_same_ether_addr(&mac, &data->mac_addrs[index]))
 			return 0;
 	return -1; /* no match */
 }

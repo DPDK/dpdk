@@ -75,7 +75,7 @@ struct rte_ether_addr {
  *  True  (1) if the given two ethernet address are the same;
  *  False (0) otherwise.
  */
-static inline int is_same_ether_addr(const struct rte_ether_addr *ea1,
+static inline int rte_is_same_ether_addr(const struct rte_ether_addr *ea1,
 				     const struct rte_ether_addr *ea2)
 {
 	int i;
@@ -95,7 +95,7 @@ static inline int is_same_ether_addr(const struct rte_ether_addr *ea1,
  *   True  (1) if the given ethernet address is filled with zeros;
  *   false (0) otherwise.
  */
-static inline int is_zero_ether_addr(const struct rte_ether_addr *ea)
+static inline int rte_is_zero_ether_addr(const struct rte_ether_addr *ea)
 {
 	int i;
 	for (i = 0; i < ETHER_ADDR_LEN; i++)
@@ -114,7 +114,7 @@ static inline int is_zero_ether_addr(const struct rte_ether_addr *ea)
  *   True  (1) if the given ethernet address is a unicast address;
  *   false (0) otherwise.
  */
-static inline int is_unicast_ether_addr(const struct rte_ether_addr *ea)
+static inline int rte_is_unicast_ether_addr(const struct rte_ether_addr *ea)
 {
 	return (ea->addr_bytes[0] & ETHER_GROUP_ADDR) == 0;
 }
@@ -129,7 +129,7 @@ static inline int is_unicast_ether_addr(const struct rte_ether_addr *ea)
  *   True  (1) if the given ethernet address is a multicast address;
  *   false (0) otherwise.
  */
-static inline int is_multicast_ether_addr(const struct rte_ether_addr *ea)
+static inline int rte_is_multicast_ether_addr(const struct rte_ether_addr *ea)
 {
 	return ea->addr_bytes[0] & ETHER_GROUP_ADDR;
 }
@@ -144,7 +144,7 @@ static inline int is_multicast_ether_addr(const struct rte_ether_addr *ea)
  *   True  (1) if the given ethernet address is a broadcast address;
  *   false (0) otherwise.
  */
-static inline int is_broadcast_ether_addr(const struct rte_ether_addr *ea)
+static inline int rte_is_broadcast_ether_addr(const struct rte_ether_addr *ea)
 {
 	const unaligned_uint16_t *ea_words = (const unaligned_uint16_t *)ea;
 
@@ -162,7 +162,7 @@ static inline int is_broadcast_ether_addr(const struct rte_ether_addr *ea)
  *   True  (1) if the given ethernet address is a universally assigned address;
  *   false (0) otherwise.
  */
-static inline int is_universal_ether_addr(const struct rte_ether_addr *ea)
+static inline int rte_is_universal_ether_addr(const struct rte_ether_addr *ea)
 {
 	return (ea->addr_bytes[0] & ETHER_LOCAL_ADMIN_ADDR) == 0;
 }
@@ -177,7 +177,7 @@ static inline int is_universal_ether_addr(const struct rte_ether_addr *ea)
  *   True  (1) if the given ethernet address is a locally assigned address;
  *   false (0) otherwise.
  */
-static inline int is_local_admin_ether_addr(const struct rte_ether_addr *ea)
+static inline int rte_is_local_admin_ether_addr(const struct rte_ether_addr *ea)
 {
 	return (ea->addr_bytes[0] & ETHER_LOCAL_ADMIN_ADDR) != 0;
 }
@@ -193,9 +193,9 @@ static inline int is_local_admin_ether_addr(const struct rte_ether_addr *ea)
  *   True  (1) if the given ethernet address is valid;
  *   false (0) otherwise.
  */
-static inline int is_valid_assigned_ether_addr(const struct rte_ether_addr *ea)
+static inline int rte_is_valid_assigned_ether_addr(const struct rte_ether_addr *ea)
 {
-	return is_unicast_ether_addr(ea) && (!is_zero_ether_addr(ea));
+	return rte_is_unicast_ether_addr(ea) && (!rte_is_zero_ether_addr(ea));
 }
 
 /**
@@ -204,7 +204,7 @@ static inline int is_valid_assigned_ether_addr(const struct rte_ether_addr *ea)
  * @param addr
  *   A pointer to Ethernet address.
  */
-static inline void eth_random_addr(uint8_t *addr)
+static inline void rte_eth_random_addr(uint8_t *addr)
 {
 	uint64_t rand = rte_rand();
 	uint8_t *p = (uint8_t *)&rand;
@@ -222,7 +222,7 @@ static inline void eth_random_addr(uint8_t *addr)
  * @param ea_to
  *   A pointer to a ether_addr structure where to copy the Ethernet address.
  */
-static inline void ether_addr_copy(const struct rte_ether_addr *ea_from,
+static inline void rte_ether_addr_copy(const struct rte_ether_addr *ea_from,
 				   struct rte_ether_addr *ea_to)
 {
 #ifdef __INTEL_COMPILER
@@ -252,7 +252,7 @@ static inline void ether_addr_copy(const struct rte_ether_addr *ea_from,
  *   A pointer to a ether_addr structure.
  */
 static inline void
-ether_format_addr(char *buf, uint16_t size,
+rte_ether_format_addr(char *buf, uint16_t size,
 		  const struct rte_ether_addr *eth_addr)
 {
 	snprintf(buf, size, "%02X:%02X:%02X:%02X:%02X:%02X",

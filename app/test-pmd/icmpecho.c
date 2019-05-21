@@ -225,7 +225,7 @@ ether_addr_dump(const char *what, const struct rte_ether_addr *ea)
 {
 	char buf[ETHER_ADDR_FMT_SIZE];
 
-	ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, ea);
+	rte_ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, ea);
 	if (what)
 		printf("%s", what);
 	printf("%s", buf);
@@ -370,12 +370,14 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 				continue;
 			}
 			if (verbose_level > 0) {
-				ether_addr_copy(&arp_h->arp_data.arp_sha, &eth_addr);
+				rte_ether_addr_copy(&arp_h->arp_data.arp_sha,
+						&eth_addr);
 				ether_addr_dump("        sha=", &eth_addr);
 				ip_addr = arp_h->arp_data.arp_sip;
 				ipv4_addr_dump(" sip=", ip_addr);
 				printf("\n");
-				ether_addr_copy(&arp_h->arp_data.arp_tha, &eth_addr);
+				rte_ether_addr_copy(&arp_h->arp_data.arp_tha,
+						&eth_addr);
 				ether_addr_dump("        tha=", &eth_addr);
 				ip_addr = arp_h->arp_data.arp_tip;
 				ipv4_addr_dump(" tip=", ip_addr);
@@ -391,15 +393,18 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 			 */
 
 			/* Use source MAC address as destination MAC address. */
-			ether_addr_copy(&eth_h->s_addr, &eth_h->d_addr);
+			rte_ether_addr_copy(&eth_h->s_addr, &eth_h->d_addr);
 			/* Set source MAC address with MAC address of TX port */
-			ether_addr_copy(&ports[fs->tx_port].eth_addr,
+			rte_ether_addr_copy(&ports[fs->tx_port].eth_addr,
 					&eth_h->s_addr);
 
 			arp_h->arp_opcode = rte_cpu_to_be_16(RTE_ARP_OP_REPLY);
-			ether_addr_copy(&arp_h->arp_data.arp_tha, &eth_addr);
-			ether_addr_copy(&arp_h->arp_data.arp_sha, &arp_h->arp_data.arp_tha);
-			ether_addr_copy(&eth_h->s_addr, &arp_h->arp_data.arp_sha);
+			rte_ether_addr_copy(&arp_h->arp_data.arp_tha,
+					&eth_addr);
+			rte_ether_addr_copy(&arp_h->arp_data.arp_sha,
+					&arp_h->arp_data.arp_tha);
+			rte_ether_addr_copy(&eth_h->s_addr,
+					&arp_h->arp_data.arp_sha);
 
 			/* Swap IP addresses in ARP payload */
 			ip_addr = arp_h->arp_data.arp_sip;
@@ -456,9 +461,9 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 		 * ICMP checksum is computed by assuming it is valid in the
 		 * echo request and not verified.
 		 */
-		ether_addr_copy(&eth_h->s_addr, &eth_addr);
-		ether_addr_copy(&eth_h->d_addr, &eth_h->s_addr);
-		ether_addr_copy(&eth_addr, &eth_h->d_addr);
+		rte_ether_addr_copy(&eth_h->s_addr, &eth_addr);
+		rte_ether_addr_copy(&eth_h->d_addr, &eth_h->s_addr);
+		rte_ether_addr_copy(&eth_addr, &eth_h->d_addr);
 		ip_addr = ip_h->src_addr;
 		if (is_multicast_ipv4_addr(ip_h->dst_addr)) {
 			uint32_t ip_src;

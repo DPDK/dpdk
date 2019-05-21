@@ -176,7 +176,7 @@ lsi_simple_forward(struct rte_mbuf *m, unsigned portid)
 	*((uint64_t *)tmp) = 0x000000000002 + ((uint64_t)dst_port << 40);
 
 	/* src addr */
-	ether_addr_copy(&lsi_ports_eth_addr[dst_port], &eth->s_addr);
+	rte_ether_addr_copy(&lsi_ports_eth_addr[dst_port], &eth->s_addr);
 
 	buffer = tx_buffer[dst_port];
 	sent = rte_eth_tx_buffer(dst_port, 0, buffer, m);

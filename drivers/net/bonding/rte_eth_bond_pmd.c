@@ -454,8 +454,8 @@ bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 			if (unlikely(is_lacp_packets(hdr->ether_type, subtype, bufs[j]) ||
 				!collecting ||
 				(!promisc &&
-				 !is_multicast_ether_addr(&hdr->d_addr) &&
-				 !is_same_ether_addr(bond_mac,
+				 !rte_is_multicast_ether_addr(&hdr->d_addr) &&
+				 !rte_is_same_ether_addr(bond_mac,
 						     &hdr->d_addr)))) {
 
 				if (hdr->ether_type == ether_type_slow_be) {
@@ -1021,7 +1021,7 @@ bond_ethdev_tx_burst_tlb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 				sizeof(internals->tlb_slaves_order[0]) * num_of_slaves);
 
 
-	ether_addr_copy(primary_port->data->mac_addrs, &primary_slave_addr);
+	rte_ether_addr_copy(primary_port->data->mac_addrs, &primary_slave_addr);
 
 	if (nb_pkts > 3) {
 		for (i = 0; i < 3; i++)
@@ -1036,8 +1036,10 @@ bond_ethdev_tx_burst_tlb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 			ether_hdr = rte_pktmbuf_mtod(bufs[j],
 						struct rte_ether_hdr *);
-			if (is_same_ether_addr(&ether_hdr->s_addr, &primary_slave_addr))
-				ether_addr_copy(&active_slave_addr, &ether_hdr->s_addr);
+			if (rte_is_same_ether_addr(&ether_hdr->s_addr,
+							&primary_slave_addr))
+				rte_ether_addr_copy(&active_slave_addr,
+						&ether_hdr->s_addr);
 #if defined(RTE_LIBRTE_BOND_DEBUG_ALB) || defined(RTE_LIBRTE_BOND_DEBUG_ALB_L1)
 					mode6_debug("TX IPv4:", ether_hdr, slaves[i], &burstnumberTX);
 #endif
@@ -1523,7 +1525,7 @@ mac_address_get(struct rte_eth_dev *eth_dev,
 
 	mac_addr = eth_dev->data->mac_addrs;
 
-	ether_addr_copy(mac_addr, dst_mac_addr);
+	rte_ether_addr_copy(mac_addr, dst_mac_addr);
 	return 0;
 }
 
@@ -1566,7 +1568,7 @@ slave_add_mac_addresses(struct rte_eth_dev *bonded_eth_dev,
 
 	for (i = 1; i < BOND_MAX_MAC_ADDRS; i++) {
 		mac_addr = &bonded_eth_dev->data->mac_addrs[i];
-		if (is_same_ether_addr(mac_addr, &null_mac_addr))
+		if (rte_is_same_ether_addr(mac_addr, &null_mac_addr))
 			break;
 
 		ret = rte_eth_dev_mac_addr_add(slave_port_id, mac_addr, 0);
@@ -1595,7 +1597,7 @@ slave_remove_mac_addresses(struct rte_eth_dev *bonded_eth_dev,
 	rc = 0;
 	for (i = 1; i < BOND_MAX_MAC_ADDRS; i++) {
 		mac_addr = &bonded_eth_dev->data->mac_addrs[i];
-		if (is_same_ether_addr(mac_addr, &null_mac_addr))
+		if (rte_is_same_ether_addr(mac_addr, &null_mac_addr))
 			break;
 
 		ret = rte_eth_dev_mac_addr_remove(slave_port_id, mac_addr);

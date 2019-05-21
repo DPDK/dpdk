@@ -450,7 +450,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint16_t portid,
 #endif
 
 	/* src addr */
-	ether_addr_copy(&ports_eth_addr[dst_port], &eth_hdr->s_addr);
+	rte_ether_addr_copy(&ports_eth_addr[dst_port], &eth_hdr->s_addr);
 
 	send_single_packet(m, dst_port);
 
@@ -791,7 +791,7 @@ static void
 print_ethaddr(const char *name, const struct rte_ether_addr *eth_addr)
 {
 	char buf[ETHER_ADDR_FMT_SIZE];
-	ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
+	rte_ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
 	printf("%s%s", name, buf);
 }
 

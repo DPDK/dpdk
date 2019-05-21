@@ -160,8 +160,8 @@ insert_new_flow(struct gro_tcp4_tbl *tbl,
 
 	dst = &(tbl->flows[flow_idx].key);
 
-	ether_addr_copy(&(src->eth_saddr), &(dst->eth_saddr));
-	ether_addr_copy(&(src->eth_daddr), &(dst->eth_daddr));
+	rte_ether_addr_copy(&(src->eth_saddr), &(dst->eth_saddr));
+	rte_ether_addr_copy(&(src->eth_daddr), &(dst->eth_daddr));
 	dst->ip_src_addr = src->ip_src_addr;
 	dst->ip_dst_addr = src->ip_dst_addr;
 	dst->recv_ack = src->recv_ack;
@@ -243,8 +243,8 @@ gro_tcp4_reassemble(struct rte_mbuf *pkt,
 	ip_id = is_atomic ? 0 : rte_be_to_cpu_16(ipv4_hdr->packet_id);
 	sent_seq = rte_be_to_cpu_32(tcp_hdr->sent_seq);
 
-	ether_addr_copy(&(eth_hdr->s_addr), &(key.eth_saddr));
-	ether_addr_copy(&(eth_hdr->d_addr), &(key.eth_daddr));
+	rte_ether_addr_copy(&(eth_hdr->s_addr), &(key.eth_saddr));
+	rte_ether_addr_copy(&(eth_hdr->d_addr), &(key.eth_daddr));
 	key.ip_src_addr = ipv4_hdr->src_addr;
 	key.ip_dst_addr = ipv4_hdr->dst_addr;
 	key.src_port = tcp_hdr->src_port;

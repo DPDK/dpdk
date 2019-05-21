@@ -1363,7 +1363,7 @@ rte_eth_dev_mac_restore(struct rte_eth_dev *dev,
 			addr = &dev->data->mac_addrs[i];
 
 			/* skip zero address */
-			if (is_zero_ether_addr(addr))
+			if (rte_is_zero_ether_addr(addr))
 				continue;
 
 			pool = 0;
@@ -2597,7 +2597,7 @@ rte_eth_macaddr_get(uint16_t port_id, struct rte_ether_addr *mac_addr)
 
 	RTE_ETH_VALID_PORTID_OR_RET(port_id);
 	dev = &rte_eth_devices[port_id];
-	ether_addr_copy(&dev->data->mac_addrs[0], mac_addr);
+	rte_ether_addr_copy(&dev->data->mac_addrs[0], mac_addr);
 }
 
 
@@ -3109,7 +3109,7 @@ rte_eth_dev_mac_addr_add(uint16_t port_id, struct rte_ether_addr *addr,
 	dev = &rte_eth_devices[port_id];
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->mac_addr_add, -ENOTSUP);
 
-	if (is_zero_ether_addr(addr)) {
+	if (rte_is_zero_ether_addr(addr)) {
 		RTE_ETHDEV_LOG(ERR, "Port %u: Cannot add NULL MAC address\n",
 			port_id);
 		return -EINVAL;
@@ -3140,7 +3140,7 @@ rte_eth_dev_mac_addr_add(uint16_t port_id, struct rte_ether_addr *addr,
 
 	if (ret == 0) {
 		/* Update address in NIC data structure */
-		ether_addr_copy(addr, &dev->data->mac_addrs[index]);
+		rte_ether_addr_copy(addr, &dev->data->mac_addrs[index]);
 
 		/* Update pool bitmap in NIC data structure */
 		dev->data->mac_pool_sel[index] |= (1ULL << pool);
@@ -3172,7 +3172,7 @@ rte_eth_dev_mac_addr_remove(uint16_t port_id, struct rte_ether_addr *addr)
 	(*dev->dev_ops->mac_addr_remove)(dev, index);
 
 	/* Update address in NIC data structure */
-	ether_addr_copy(&null_mac_addr, &dev->data->mac_addrs[index]);
+	rte_ether_addr_copy(&null_mac_addr, &dev->data->mac_addrs[index]);
 
 	/* reset pool bitmap */
 	dev->data->mac_pool_sel[index] = 0;
@@ -3188,7 +3188,7 @@ rte_eth_dev_default_mac_addr_set(uint16_t port_id, struct rte_ether_addr *addr)
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 
-	if (!is_valid_assigned_ether_addr(addr))
+	if (!rte_is_valid_assigned_ether_addr(addr))
 		return -EINVAL;
 
 	dev = &rte_eth_devices[port_id];
@@ -3199,7 +3199,7 @@ rte_eth_dev_default_mac_addr_set(uint16_t port_id, struct rte_ether_addr *addr)
 		return ret;
 
 	/* Update default address in NIC data structure */
-	ether_addr_copy(addr, &dev->data->mac_addrs[0]);
+	rte_ether_addr_copy(addr, &dev->data->mac_addrs[0]);
 
 	return 0;
 }
@@ -3239,7 +3239,7 @@ rte_eth_dev_uc_hash_table_set(uint16_t port_id, struct rte_ether_addr *addr,
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 
 	dev = &rte_eth_devices[port_id];
-	if (is_zero_ether_addr(addr)) {
+	if (rte_is_zero_ether_addr(addr)) {
 		RTE_ETHDEV_LOG(ERR, "Port %u: Cannot add NULL MAC address\n",
 			port_id);
 		return -EINVAL;
@@ -3271,10 +3271,10 @@ rte_eth_dev_uc_hash_table_set(uint16_t port_id, struct rte_ether_addr *addr,
 	if (ret == 0) {
 		/* Update address in NIC data structure */
 		if (on)
-			ether_addr_copy(addr,
+			rte_ether_addr_copy(addr,
 					&dev->data->hash_mac_addrs[index]);
 		else
-			ether_addr_copy(&null_mac_addr,
+			rte_ether_addr_copy(&null_mac_addr,
 					&dev->data->hash_mac_addrs[index]);
 	}
 
