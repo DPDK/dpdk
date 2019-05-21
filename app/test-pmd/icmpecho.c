@@ -279,7 +279,7 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 	struct rte_vlan_hdr *vlan_h;
 	struct rte_arp_hdr  *arp_h;
 	struct ipv4_hdr *ip_h;
-	struct icmp_hdr *icmp_h;
+	struct rte_icmp_hdr *icmp_h;
 	struct rte_ether_addr eth_addr;
 	uint32_t retry;
 	uint32_t ip_addr;
@@ -430,7 +430,7 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 		/*
 		 * Check if packet is a ICMP echo request.
 		 */
-		icmp_h = (struct icmp_hdr *) ((char *)ip_h +
+		icmp_h = (struct rte_icmp_hdr *) ((char *)ip_h +
 					      sizeof(struct ipv4_hdr));
 		if (! ((ip_h->next_proto_id == IPPROTO_ICMP) &&
 		       (icmp_h->icmp_type == IP_ICMP_ECHO_REQUEST) &&

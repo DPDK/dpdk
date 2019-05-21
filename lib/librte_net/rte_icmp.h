@@ -23,7 +23,7 @@ extern "C" {
 /**
  * ICMP Header
  */
-struct icmp_hdr {
+struct rte_icmp_hdr {
 	uint8_t  icmp_type;   /* ICMP packet type. */
 	uint8_t  icmp_code;   /* ICMP packet code. */
 	uint16_t icmp_cksum;  /* ICMP packet checksum. */

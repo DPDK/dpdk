@@ -673,7 +673,7 @@ static const struct rte_flow_item_ipv6 rte_flow_item_ipv6_mask = {
  * Matches an ICMP header.
  */
 struct rte_flow_item_icmp {
-	struct icmp_hdr hdr; /**< ICMP header definition. */
+	struct rte_icmp_hdr hdr; /**< ICMP header definition. */
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_ICMP. */
