@@ -152,7 +152,7 @@ copy_fltr_v2(struct filter_v2 *fltr, const struct rte_eth_fdir_input *input,
 		enic_set_layer(gp, FILTER_GENERIC_1_TCP, FILTER_GENERIC_1_L4,
 			       &tcp_mask, &tcp_val, sizeof(struct tcp_hdr));
 	} else if (input->flow_type == RTE_ETH_FLOW_NONFRAG_IPV4_SCTP) {
-		struct sctp_hdr sctp_mask, sctp_val;
+		struct rte_sctp_hdr sctp_mask, sctp_val;
 		memset(&sctp_mask, 0, sizeof(sctp_mask));
 		memset(&sctp_val, 0, sizeof(sctp_val));
 
@@ -175,7 +175,7 @@ copy_fltr_v2(struct filter_v2 *fltr, const struct rte_eth_fdir_input *input,
 		 * manually set proto_id=sctp below.
 		 */
 		enic_set_layer(gp, 0, FILTER_GENERIC_1_L4, &sctp_mask,
-			       &sctp_val, sizeof(struct sctp_hdr));
+			       &sctp_val, sizeof(struct rte_sctp_hdr));
 	}
 
 	if (input->flow_type == RTE_ETH_FLOW_NONFRAG_IPV4_UDP ||
@@ -246,7 +246,7 @@ copy_fltr_v2(struct filter_v2 *fltr, const struct rte_eth_fdir_input *input,
 		enic_set_layer(gp, FILTER_GENERIC_1_TCP, FILTER_GENERIC_1_L4,
 			       &tcp_mask, &tcp_val, sizeof(struct tcp_hdr));
 	} else if (input->flow_type == RTE_ETH_FLOW_NONFRAG_IPV6_SCTP) {
-		struct sctp_hdr sctp_mask, sctp_val;
+		struct rte_sctp_hdr sctp_mask, sctp_val;
 		memset(&sctp_mask, 0, sizeof(sctp_mask));
 		memset(&sctp_val, 0, sizeof(sctp_val));
 
@@ -264,7 +264,7 @@ copy_fltr_v2(struct filter_v2 *fltr, const struct rte_eth_fdir_input *input,
 		}
 
 		enic_set_layer(gp, 0, FILTER_GENERIC_1_L4, &sctp_mask,
-			       &sctp_val, sizeof(struct sctp_hdr));
+			       &sctp_val, sizeof(struct rte_sctp_hdr));
 	}
 
 	if (input->flow_type == RTE_ETH_FLOW_NONFRAG_IPV6_UDP ||

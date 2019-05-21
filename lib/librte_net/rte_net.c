@@ -370,7 +370,7 @@ l3:
 		hdr_lens->l4_len = (th->data_off & 0xf0) >> 2;
 		return pkt_type;
 	} else if ((pkt_type & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_SCTP) {
-		hdr_lens->l4_len = sizeof(struct sctp_hdr);
+		hdr_lens->l4_len = sizeof(struct rte_sctp_hdr);
 		return pkt_type;
 	} else {
 		uint32_t prev_off = off;
@@ -506,7 +506,7 @@ l3:
 		hdr_lens->inner_l4_len = (th->data_off & 0xf0) >> 2;
 	} else if ((pkt_type & RTE_PTYPE_INNER_L4_MASK) ==
 			RTE_PTYPE_INNER_L4_SCTP) {
-		hdr_lens->inner_l4_len = sizeof(struct sctp_hdr);
+		hdr_lens->inner_l4_len = sizeof(struct rte_sctp_hdr);
 	} else {
 		hdr_lens->inner_l4_len = 0;
 	}

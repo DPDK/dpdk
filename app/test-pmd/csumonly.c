@@ -368,7 +368,7 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 	struct rte_ipv4_hdr *ipv4_hdr = l3_hdr;
 	struct udp_hdr *udp_hdr;
 	struct tcp_hdr *tcp_hdr;
-	struct sctp_hdr *sctp_hdr;
+	struct rte_sctp_hdr *sctp_hdr;
 	uint64_t ol_flags = 0;
 	uint32_t max_pkt_len, tso_segsz = 0;
 
@@ -435,7 +435,8 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 		if (info->gso_enable)
 			ol_flags |= PKT_TX_TCP_SEG;
 	} else if (info->l4_proto == IPPROTO_SCTP) {
-		sctp_hdr = (struct sctp_hdr *)((char *)l3_hdr + info->l3_len);
+		sctp_hdr = (struct rte_sctp_hdr *)
+			((char *)l3_hdr + info->l3_len);
 		sctp_hdr->cksum = 0;
 		/* sctp payload must be a multiple of 4 to be
 		 * offloaded */

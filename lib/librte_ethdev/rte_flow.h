@@ -730,7 +730,7 @@ static const struct rte_flow_item_tcp rte_flow_item_tcp_mask = {
  * Matches a SCTP header.
  */
 struct rte_flow_item_sctp {
-	struct sctp_hdr hdr; /**< SCTP header definition. */
+	struct rte_sctp_hdr hdr; /**< SCTP header definition. */
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_SCTP. */

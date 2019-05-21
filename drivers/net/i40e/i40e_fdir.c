@@ -801,7 +801,7 @@ i40e_fdir_construct_pkt(struct i40e_pf *pf,
 	unsigned char *payload, *ptr;
 	struct udp_hdr *udp;
 	struct tcp_hdr *tcp;
-	struct sctp_hdr *sctp;
+	struct rte_sctp_hdr *sctp;
 	uint8_t size, dst = 0;
 	uint8_t i, pit_idx, set_idx = I40E_FLXPLD_L4_IDX; /* use l4 by default*/
 	int len;
@@ -841,8 +841,8 @@ i40e_fdir_construct_pkt(struct i40e_pf *pf,
 		break;
 
 	case RTE_ETH_FLOW_NONFRAG_IPV4_SCTP:
-		sctp = (struct sctp_hdr *)(raw_pkt + len);
-		payload = (unsigned char *)sctp + sizeof(struct sctp_hdr);
+		sctp = (struct rte_sctp_hdr *)(raw_pkt + len);
+		payload = (unsigned char *)sctp + sizeof(struct rte_sctp_hdr);
 		/*
 		 * The source and destination fields in the transmitted packet
 		 * need to be presented in a reversed order with respect
@@ -886,8 +886,8 @@ i40e_fdir_construct_pkt(struct i40e_pf *pf,
 		break;
 
 	case RTE_ETH_FLOW_NONFRAG_IPV6_SCTP:
-		sctp = (struct sctp_hdr *)(raw_pkt + len);
-		payload = (unsigned char *)sctp + sizeof(struct sctp_hdr);
+		sctp = (struct rte_sctp_hdr *)(raw_pkt + len);
+		payload = (unsigned char *)sctp + sizeof(struct rte_sctp_hdr);
 		/*
 		 * The source and destination fields in the transmitted packet
 		 * need to be presented in a reversed order with respect
@@ -1091,7 +1091,7 @@ i40e_flow_fdir_construct_pkt(struct i40e_pf *pf,
 	unsigned char *ptr;
 	struct udp_hdr *udp;
 	struct tcp_hdr *tcp;
-	struct sctp_hdr *sctp;
+	struct rte_sctp_hdr *sctp;
 	struct rte_flow_item_gtp *gtp;
 	struct rte_ipv4_hdr *gtp_ipv4;
 	struct rte_ipv6_hdr *gtp_ipv6;
@@ -1138,8 +1138,8 @@ i40e_flow_fdir_construct_pkt(struct i40e_pf *pf,
 		tcp->dst_port = fdir_input->flow.tcp4_flow.src_port;
 		tcp->data_off = I40E_FDIR_TCP_DEFAULT_DATAOFF;
 	} else if (pctype == I40E_FILTER_PCTYPE_NONF_IPV4_SCTP) {
-		sctp = (struct sctp_hdr *)(raw_pkt + len);
-		payload = (unsigned char *)sctp + sizeof(struct sctp_hdr);
+		sctp = (struct rte_sctp_hdr *)(raw_pkt + len);
+		payload = (unsigned char *)sctp + sizeof(struct rte_sctp_hdr);
 		/**
 		 * The source and destination fields in the transmitted packet
 		 * need to be presented in a reversed order with respect
@@ -1175,8 +1175,8 @@ i40e_flow_fdir_construct_pkt(struct i40e_pf *pf,
 		tcp->src_port = fdir_input->flow.udp6_flow.dst_port;
 		tcp->dst_port = fdir_input->flow.udp6_flow.src_port;
 	} else if (pctype == I40E_FILTER_PCTYPE_NONF_IPV6_SCTP) {
-		sctp = (struct sctp_hdr *)(raw_pkt + len);
-		payload = (unsigned char *)sctp + sizeof(struct sctp_hdr);
+		sctp = (struct rte_sctp_hdr *)(raw_pkt + len);
+		payload = (unsigned char *)sctp + sizeof(struct rte_sctp_hdr);
 		/**
 		 * The source and destination fields in the transmitted packet
 		 * need to be presented in a reversed order with respect

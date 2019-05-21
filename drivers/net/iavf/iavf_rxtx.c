@@ -1422,7 +1422,7 @@ iavf_txd_enable_checksum(uint64_t ol_flags,
 		break;
 	case PKT_TX_SCTP_CKSUM:
 		*td_cmd |= IAVF_TX_DESC_CMD_L4T_EOFT_SCTP;
-		*td_offset |= (sizeof(struct sctp_hdr) >> 2) <<
+		*td_offset |= (sizeof(struct rte_sctp_hdr) >> 2) <<
 			      IAVF_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
 		break;
 	case PKT_TX_UDP_CKSUM:

@@ -567,7 +567,7 @@ init_ipv4_sctp_traffic(struct rte_mempool *mp,
 {
 	struct rte_ether_hdr pkt_eth_hdr;
 	struct rte_ipv4_hdr pkt_ipv4_hdr;
-	struct sctp_hdr pkt_sctp_hdr;
+	struct rte_sctp_hdr pkt_sctp_hdr;
 	uint32_t src_addr = IPV4_ADDR(11, 12, 13, 14);
 	uint32_t dst_addr = IPV4_ADDR(15, 16, 17, 18);
 	uint16_t src_port = 10;

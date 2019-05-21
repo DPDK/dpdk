@@ -43,7 +43,7 @@ initialize_tcp_header(struct tcp_hdr *tcp_hdr, uint16_t src_port,
 		uint16_t dst_port, uint16_t pkt_data_len);
 
 uint16_t
-initialize_sctp_header(struct sctp_hdr *sctp_hdr, uint16_t src_port,
+initialize_sctp_header(struct rte_sctp_hdr *sctp_hdr, uint16_t src_port,
 		uint16_t dst_port, uint16_t pkt_data_len);
 
 uint16_t

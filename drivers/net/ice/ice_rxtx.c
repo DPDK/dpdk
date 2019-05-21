@@ -1782,7 +1782,7 @@ ice_txd_enable_checksum(uint64_t ol_flags,
 		break;
 	case PKT_TX_SCTP_CKSUM:
 		*td_cmd |= ICE_TX_DESC_CMD_L4T_EOFT_SCTP;
-		*td_offset |= (sizeof(struct sctp_hdr) >> 2) <<
+		*td_offset |= (sizeof(struct rte_sctp_hdr) >> 2) <<
 			      ICE_TX_DESC_LEN_L4_LEN_S;
 		break;
 	case PKT_TX_UDP_CKSUM:

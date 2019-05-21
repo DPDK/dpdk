@@ -910,9 +910,9 @@ enic_copy_item_sctp_v2(struct copy_item_args *arg)
 		mask = &rte_flow_item_sctp_mask;
 
 	memcpy(gp->layer[FILTER_GENERIC_1_L4].mask, &mask->hdr,
-	       sizeof(struct sctp_hdr));
+	       sizeof(struct rte_sctp_hdr));
 	memcpy(gp->layer[FILTER_GENERIC_1_L4].val, &spec->hdr,
-	       sizeof(struct sctp_hdr));
+	       sizeof(struct rte_sctp_hdr));
 	return 0;
 }
 

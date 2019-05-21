@@ -226,7 +226,7 @@ virtio_enqueue_offload(struct rte_mbuf *m_buf, struct virtio_net_hdr *net_hdr)
 						dgram_cksum));
 			break;
 		case PKT_TX_SCTP_CKSUM:
-			net_hdr->csum_offset = (offsetof(struct sctp_hdr,
+			net_hdr->csum_offset = (offsetof(struct rte_sctp_hdr,
 						cksum));
 			break;
 		}
@@ -1032,7 +1032,7 @@ vhost_dequeue_offload(struct virtio_net_hdr *hdr, struct rte_mbuf *m)
 				if (l4_proto == IPPROTO_UDP)
 					m->ol_flags |= PKT_TX_UDP_CKSUM;
 				break;
-			case (offsetof(struct sctp_hdr, cksum)):
+			case (offsetof(struct rte_sctp_hdr, cksum)):
 				if (l4_proto == IPPROTO_SCTP)
 					m->ol_flags |= PKT_TX_SCTP_CKSUM;
 				break;

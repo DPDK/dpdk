@@ -79,7 +79,7 @@ process_inner_cksums(struct rte_ether_hdr *eth_hdr,
 	struct rte_ipv6_hdr *ipv6_hdr;
 	struct udp_hdr *udp_hdr;
 	struct tcp_hdr *tcp_hdr;
-	struct sctp_hdr *sctp_hdr;
+	struct rte_sctp_hdr *sctp_hdr;
 	uint64_t ol_flags = 0;
 
 	info->l2_len = sizeof(struct rte_ether_hdr);
@@ -129,7 +129,8 @@ process_inner_cksums(struct rte_ether_hdr *eth_hdr,
 		tcp_hdr->cksum = get_psd_sum(l3_hdr, ethertype, ol_flags);
 
 	} else if (l4_proto == IPPROTO_SCTP) {
-		sctp_hdr = (struct sctp_hdr *)((char *)l3_hdr + info->l3_len);
+		sctp_hdr = (struct rte_sctp_hdr *)
+			((char *)l3_hdr + info->l3_len);
 		sctp_hdr->cksum = 0;
 		ol_flags |= PKT_TX_SCTP_CKSUM;
 	}

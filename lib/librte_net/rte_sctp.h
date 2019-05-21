@@ -23,7 +23,7 @@ extern "C" {
 /**
  * SCTP Header
  */
-struct sctp_hdr {
+struct rte_sctp_hdr {
 	uint16_t src_port; /**< Source port. */
 	uint16_t dst_port; /**< Destin port. */
 	uint32_t tag;      /**< Validation tag. */
