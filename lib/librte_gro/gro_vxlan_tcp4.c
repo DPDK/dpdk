@@ -208,7 +208,7 @@ is_same_vxlan_tcp4_flow(struct vxlan_tcp4_flow_key k1,
 
 static inline int
 check_vxlan_seq_option(struct gro_vxlan_tcp4_item *item,
-		struct tcp_hdr *tcp_hdr,
+		struct rte_tcp_hdr *tcp_hdr,
 		uint32_t sent_seq,
 		uint16_t outer_ip_id,
 		uint16_t ip_id,
@@ -292,7 +292,7 @@ gro_vxlan_tcp4_reassemble(struct rte_mbuf *pkt,
 {
 	struct rte_ether_hdr *outer_eth_hdr, *eth_hdr;
 	struct rte_ipv4_hdr *outer_ipv4_hdr, *ipv4_hdr;
-	struct tcp_hdr *tcp_hdr;
+	struct rte_tcp_hdr *tcp_hdr;
 	struct udp_hdr *udp_hdr;
 	struct rte_vxlan_hdr *vxlan_hdr;
 	uint32_t sent_seq;
@@ -324,7 +324,7 @@ gro_vxlan_tcp4_reassemble(struct rte_mbuf *pkt,
 	eth_hdr = (struct rte_ether_hdr *)((char *)vxlan_hdr +
 			sizeof(struct rte_vxlan_hdr));
 	ipv4_hdr = (struct rte_ipv4_hdr *)((char *)udp_hdr + pkt->l2_len);
-	tcp_hdr = (struct tcp_hdr *)((char *)ipv4_hdr + pkt->l3_len);
+	tcp_hdr = (struct rte_tcp_hdr *)((char *)ipv4_hdr + pkt->l3_len);
 
 	/*
 	 * Don't process the packet which has FIN, SYN, RST, PSH, URG,

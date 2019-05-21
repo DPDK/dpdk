@@ -2617,11 +2617,11 @@ flow_fdir_filter_convert(struct rte_eth_dev *dev,
 		};
 		break;
 	case RTE_ETH_FLOW_NONFRAG_IPV4_TCP:
-		attributes->l4.tcp.hdr = (struct tcp_hdr){
+		attributes->l4.tcp.hdr = (struct rte_tcp_hdr){
 			.src_port = input->flow.tcp4_flow.src_port,
 			.dst_port = input->flow.tcp4_flow.dst_port,
 		};
-		attributes->l4_mask.tcp.hdr = (struct tcp_hdr){
+		attributes->l4_mask.tcp.hdr = (struct rte_tcp_hdr){
 			.src_port = mask->src_port_mask,
 			.dst_port = mask->dst_port_mask,
 		};
@@ -2647,11 +2647,11 @@ flow_fdir_filter_convert(struct rte_eth_dev *dev,
 		};
 		break;
 	case RTE_ETH_FLOW_NONFRAG_IPV6_TCP:
-		attributes->l4.tcp.hdr = (struct tcp_hdr){
+		attributes->l4.tcp.hdr = (struct rte_tcp_hdr){
 			.src_port = input->flow.tcp6_flow.src_port,
 			.dst_port = input->flow.tcp6_flow.dst_port,
 		};
-		attributes->l4_mask.tcp.hdr = (struct tcp_hdr){
+		attributes->l4_mask.tcp.hdr = (struct rte_tcp_hdr){
 			.src_port = mask->src_port_mask,
 			.dst_port = mask->dst_port_mask,
 		};

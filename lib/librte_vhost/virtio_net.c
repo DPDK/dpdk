@@ -218,7 +218,7 @@ virtio_enqueue_offload(struct rte_mbuf *m_buf, struct virtio_net_hdr *net_hdr)
 
 		switch (csum_l4) {
 		case PKT_TX_TCP_CKSUM:
-			net_hdr->csum_offset = (offsetof(struct tcp_hdr,
+			net_hdr->csum_offset = (offsetof(struct rte_tcp_hdr,
 						cksum));
 			break;
 		case PKT_TX_UDP_CKSUM:
@@ -1015,7 +1015,7 @@ vhost_dequeue_offload(struct virtio_net_hdr *hdr, struct rte_mbuf *m)
 {
 	uint16_t l4_proto = 0;
 	void *l4_hdr = NULL;
-	struct tcp_hdr *tcp_hdr = NULL;
+	struct rte_tcp_hdr *tcp_hdr = NULL;
 
 	if (hdr->flags == 0 && hdr->gso_type == VIRTIO_NET_HDR_GSO_NONE)
 		return;
@@ -1024,7 +1024,7 @@ vhost_dequeue_offload(struct virtio_net_hdr *hdr, struct rte_mbuf *m)
 	if (hdr->flags == VIRTIO_NET_HDR_F_NEEDS_CSUM) {
 		if (hdr->csum_start == (m->l2_len + m->l3_len)) {
 			switch (hdr->csum_offset) {
-			case (offsetof(struct tcp_hdr, cksum)):
+			case (offsetof(struct rte_tcp_hdr, cksum)):
 				if (l4_proto == IPPROTO_TCP)
 					m->ol_flags |= PKT_TX_TCP_CKSUM;
 				break;

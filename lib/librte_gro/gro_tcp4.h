@@ -20,7 +20,7 @@
 /* The maximum TCP header length */
 #define MAX_TCP_HLEN 60
 #define INVALID_TCP_HDRLEN(len) \
-	(((len) < sizeof(struct tcp_hdr)) || ((len) > MAX_TCP_HLEN))
+	(((len) < sizeof(struct rte_tcp_hdr)) || ((len) > MAX_TCP_HLEN))
 
 /* Header fields representing a TCP/IPv4 flow */
 struct tcp4_flow_key {
@@ -260,7 +260,7 @@ merge_two_tcp4_packets(struct gro_tcp4_item *item,
  */
 static inline int
 check_seq_option(struct gro_tcp4_item *item,
-		struct tcp_hdr *tcph,
+		struct rte_tcp_hdr *tcph,
 		uint32_t sent_seq,
 		uint16_t ip_id,
 		uint16_t tcp_hl,
@@ -270,16 +270,16 @@ check_seq_option(struct gro_tcp4_item *item,
 {
 	struct rte_mbuf *pkt_orig = item->firstseg;
 	struct rte_ipv4_hdr *iph_orig;
-	struct tcp_hdr *tcph_orig;
+	struct rte_tcp_hdr *tcph_orig;
 	uint16_t len, tcp_hl_orig;
 
 	iph_orig = (struct rte_ipv4_hdr *)(rte_pktmbuf_mtod(pkt_orig, char *) +
 			l2_offset + pkt_orig->l2_len);
-	tcph_orig = (struct tcp_hdr *)((char *)iph_orig + pkt_orig->l3_len);
+	tcph_orig = (struct rte_tcp_hdr *)((char *)iph_orig + pkt_orig->l3_len);
 	tcp_hl_orig = pkt_orig->l4_len;
 
 	/* Check if TCP option fields equal */
-	len = RTE_MAX(tcp_hl, tcp_hl_orig) - sizeof(struct tcp_hdr);
+	len = RTE_MAX(tcp_hl, tcp_hl_orig) - sizeof(struct rte_tcp_hdr);
 	if ((tcp_hl != tcp_hl_orig) || ((len > 0) &&
 				(memcmp(tcph + 1, tcph_orig + 1,
 					len) != 0)))

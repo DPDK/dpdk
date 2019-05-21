@@ -711,7 +711,7 @@ static const struct rte_flow_item_udp rte_flow_item_udp_mask = {
  * Matches a TCP header.
  */
 struct rte_flow_item_tcp {
-	struct tcp_hdr hdr; /**< TCP header definition. */
+	struct rte_tcp_hdr hdr; /**< TCP header definition. */
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_TCP. */

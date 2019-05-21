@@ -366,7 +366,7 @@ get_dst_port(struct rte_ipv4_hdr *ipv4_hdr, uint16_t portid,
 	      lookup_struct_t *l3fwd_lookup_struct)
 {
 	struct ipv4_5tuple key;
-	struct tcp_hdr *tcp;
+	struct rte_tcp_hdr *tcp;
 	struct udp_hdr *udp;
 	int ret = 0;
 
@@ -376,7 +376,7 @@ get_dst_port(struct rte_ipv4_hdr *ipv4_hdr, uint16_t portid,
 
 	switch (ipv4_hdr->next_proto_id) {
 	case IPPROTO_TCP:
-		tcp = (struct tcp_hdr *)((unsigned char *) ipv4_hdr +
+		tcp = (struct rte_tcp_hdr *)((unsigned char *) ipv4_hdr +
 					sizeof(struct rte_ipv4_hdr));
 		key.port_dst = rte_be_to_cpu_16(tcp->dst_port);
 		key.port_src = rte_be_to_cpu_16(tcp->src_port);

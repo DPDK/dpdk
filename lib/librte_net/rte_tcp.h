@@ -23,7 +23,7 @@ extern "C" {
 /**
  * TCP Header
  */
-struct tcp_hdr {
+struct rte_tcp_hdr {
 	uint16_t src_port;  /**< TCP source port. */
 	uint16_t dst_port;  /**< TCP destination port. */
 	uint32_t sent_seq;  /**< TX data sequence number. */

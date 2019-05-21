@@ -481,7 +481,7 @@ virtio_tso_fix_cksum(struct rte_mbuf *m)
 			m->l4_len)) {
 		struct rte_ipv4_hdr *iph;
 		struct rte_ipv6_hdr *ip6h;
-		struct tcp_hdr *th;
+		struct rte_tcp_hdr *th;
 		uint16_t prev_cksum, new_cksum, ip_len, ip_paylen;
 		uint32_t tmp;
 
@@ -546,7 +546,7 @@ virtqueue_xmit_offload(struct virtio_net_hdr *hdr,
 
 		case PKT_TX_TCP_CKSUM:
 			hdr->csum_start = cookie->l2_len + cookie->l3_len;
-			hdr->csum_offset = offsetof(struct tcp_hdr, cksum);
+			hdr->csum_offset = offsetof(struct rte_tcp_hdr, cksum);
 			hdr->flags = VIRTIO_NET_HDR_F_NEEDS_CSUM;
 			break;
 

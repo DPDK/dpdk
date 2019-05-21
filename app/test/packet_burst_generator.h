@@ -39,7 +39,7 @@ initialize_udp_header(struct udp_hdr *udp_hdr, uint16_t src_port,
 		uint16_t dst_port, uint16_t pkt_data_len);
 
 uint16_t
-initialize_tcp_header(struct tcp_hdr *tcp_hdr, uint16_t src_port,
+initialize_tcp_header(struct rte_tcp_hdr *tcp_hdr, uint16_t src_port,
 		uint16_t dst_port, uint16_t pkt_data_len);
 
 uint16_t

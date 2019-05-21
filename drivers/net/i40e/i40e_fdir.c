@@ -800,7 +800,7 @@ i40e_fdir_construct_pkt(struct i40e_pf *pf,
 {
 	unsigned char *payload, *ptr;
 	struct udp_hdr *udp;
-	struct tcp_hdr *tcp;
+	struct rte_tcp_hdr *tcp;
 	struct rte_sctp_hdr *sctp;
 	uint8_t size, dst = 0;
 	uint8_t i, pit_idx, set_idx = I40E_FLXPLD_L4_IDX; /* use l4 by default*/
@@ -828,8 +828,8 @@ i40e_fdir_construct_pkt(struct i40e_pf *pf,
 		break;
 
 	case RTE_ETH_FLOW_NONFRAG_IPV4_TCP:
-		tcp = (struct tcp_hdr *)(raw_pkt + len);
-		payload = (unsigned char *)tcp + sizeof(struct tcp_hdr);
+		tcp = (struct rte_tcp_hdr *)(raw_pkt + len);
+		payload = (unsigned char *)tcp + sizeof(struct rte_tcp_hdr);
 		/*
 		 * The source and destination fields in the transmitted packet
 		 * need to be presented in a reversed order with respect
@@ -873,8 +873,8 @@ i40e_fdir_construct_pkt(struct i40e_pf *pf,
 		break;
 
 	case RTE_ETH_FLOW_NONFRAG_IPV6_TCP:
-		tcp = (struct tcp_hdr *)(raw_pkt + len);
-		payload = (unsigned char *)tcp + sizeof(struct tcp_hdr);
+		tcp = (struct rte_tcp_hdr *)(raw_pkt + len);
+		payload = (unsigned char *)tcp + sizeof(struct rte_tcp_hdr);
 		/*
 		 * The source and destination fields in the transmitted packet
 		 * need to be presented in a reversed order with respect
@@ -1090,7 +1090,7 @@ i40e_flow_fdir_construct_pkt(struct i40e_pf *pf,
 	unsigned char *payload = NULL;
 	unsigned char *ptr;
 	struct udp_hdr *udp;
-	struct tcp_hdr *tcp;
+	struct rte_tcp_hdr *tcp;
 	struct rte_sctp_hdr *sctp;
 	struct rte_flow_item_gtp *gtp;
 	struct rte_ipv4_hdr *gtp_ipv4;
@@ -1127,8 +1127,8 @@ i40e_flow_fdir_construct_pkt(struct i40e_pf *pf,
 		udp->dst_port = fdir_input->flow.udp4_flow.src_port;
 		udp->dgram_len = rte_cpu_to_be_16(I40E_FDIR_UDP_DEFAULT_LEN);
 	} else if (pctype == I40E_FILTER_PCTYPE_NONF_IPV4_TCP) {
-		tcp = (struct tcp_hdr *)(raw_pkt + len);
-		payload = (unsigned char *)tcp + sizeof(struct tcp_hdr);
+		tcp = (struct rte_tcp_hdr *)(raw_pkt + len);
+		payload = (unsigned char *)tcp + sizeof(struct rte_tcp_hdr);
 		/**
 		 * The source and destination fields in the transmitted packet
 		 * need to be presented in a reversed order with respect
@@ -1164,8 +1164,8 @@ i40e_flow_fdir_construct_pkt(struct i40e_pf *pf,
 		udp->dst_port = fdir_input->flow.udp6_flow.src_port;
 		udp->dgram_len = rte_cpu_to_be_16(I40E_FDIR_IPv6_PAYLOAD_LEN);
 	} else if (pctype == I40E_FILTER_PCTYPE_NONF_IPV6_TCP) {
-		tcp = (struct tcp_hdr *)(raw_pkt + len);
-		payload = (unsigned char *)tcp + sizeof(struct tcp_hdr);
+		tcp = (struct rte_tcp_hdr *)(raw_pkt + len);
+		payload = (unsigned char *)tcp + sizeof(struct rte_tcp_hdr);
 		/**
 		 * The source and destination fields in the transmitted packet
 		 * need to be presented in a reversed order with respect

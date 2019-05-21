@@ -429,7 +429,8 @@ ixgbe_set_xmit_ctx(struct ixgbe_tx_queue *txq,
 		case PKT_TX_TCP_CKSUM:
 			type_tucmd_mlhl |= IXGBE_ADVTXD_TUCMD_L4T_TCP |
 				IXGBE_ADVTXD_DTYP_CTXT | IXGBE_ADVTXD_DCMD_DEXT;
-			mss_l4len_idx |= sizeof(struct tcp_hdr) << IXGBE_ADVTXD_L4LEN_SHIFT;
+			mss_l4len_idx |= sizeof(struct rte_tcp_hdr)
+				<< IXGBE_ADVTXD_L4LEN_SHIFT;
 			tx_offload_mask.l2_len |= ~0;
 			tx_offload_mask.l3_len |= ~0;
 			break;

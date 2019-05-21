@@ -866,7 +866,7 @@ static void virtio_tx_offload(struct rte_mbuf *m)
 {
 	void *l3_hdr;
 	struct rte_ipv4_hdr *ipv4_hdr = NULL;
-	struct tcp_hdr *tcp_hdr = NULL;
+	struct rte_tcp_hdr *tcp_hdr = NULL;
 	struct rte_ether_hdr *eth_hdr =
 		rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 
@@ -878,7 +878,7 @@ static void virtio_tx_offload(struct rte_mbuf *m)
 		m->ol_flags |= PKT_TX_IP_CKSUM;
 	}
 
-	tcp_hdr = (struct tcp_hdr *)((char *)l3_hdr + m->l3_len);
+	tcp_hdr = (struct rte_tcp_hdr *)((char *)l3_hdr + m->l3_len);
 	tcp_hdr->cksum = get_psd_sum(l3_hdr, m->ol_flags);
 }
 

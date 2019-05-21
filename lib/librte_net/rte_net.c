@@ -360,8 +360,8 @@ l3:
 		hdr_lens->l4_len = sizeof(struct udp_hdr);
 		return pkt_type;
 	} else if ((pkt_type & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_TCP) {
-		const struct tcp_hdr *th;
-		struct tcp_hdr th_copy;
+		const struct rte_tcp_hdr *th;
+		struct rte_tcp_hdr th_copy;
 
 		th = rte_pktmbuf_read(m, off, sizeof(*th), &th_copy);
 		if (unlikely(th == NULL))
@@ -496,8 +496,8 @@ l3:
 		hdr_lens->inner_l4_len = sizeof(struct udp_hdr);
 	} else if ((pkt_type & RTE_PTYPE_INNER_L4_MASK) ==
 			RTE_PTYPE_INNER_L4_TCP) {
-		const struct tcp_hdr *th;
-		struct tcp_hdr th_copy;
+		const struct rte_tcp_hdr *th;
+		struct rte_tcp_hdr th_copy;
 
 		th = rte_pktmbuf_read(m, off, sizeof(*th), &th_copy);
 		if (unlikely(th == NULL))

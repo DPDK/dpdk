@@ -219,7 +219,7 @@ static inline void dpaa_checksum(struct rte_mbuf *mbuf)
 		ipv6_hdr = (struct rte_ipv6_hdr *)l3_hdr;
 
 	if ((mbuf->packet_type & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_TCP) {
-		struct tcp_hdr *tcp_hdr = (struct tcp_hdr *)(l3_hdr +
+		struct rte_tcp_hdr *tcp_hdr = (struct rte_tcp_hdr *)(l3_hdr +
 					  mbuf->l3_len);
 		tcp_hdr->cksum = 0;
 		if (eth_hdr->ether_type == htons(RTE_ETHER_TYPE_IPv4))

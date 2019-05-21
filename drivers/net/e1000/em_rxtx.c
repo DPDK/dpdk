@@ -249,7 +249,7 @@ em_set_xmit_ctx(struct em_tx_queue* txq,
 		break;
 	case PKT_TX_TCP_CKSUM:
 		ctx.upper_setup.tcp_fields.tucso = (uint8_t)(ipcse +
-				offsetof(struct tcp_hdr, cksum));
+				offsetof(struct rte_tcp_hdr, cksum));
 		cmd_len |= E1000_TXD_CMD_TCP;
 		cmp_mask |= TX_MACIP_LEN_CMP_MASK;
 		break;

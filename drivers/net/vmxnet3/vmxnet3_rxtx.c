@@ -541,7 +541,8 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 			switch (txm->ol_flags & PKT_TX_L4_MASK) {
 			case PKT_TX_TCP_CKSUM:
-				gdesc->txd.msscof = gdesc->txd.hlen + offsetof(struct tcp_hdr, cksum);
+				gdesc->txd.msscof = gdesc->txd.hlen +
+					offsetof(struct rte_tcp_hdr, cksum);
 				break;
 			case PKT_TX_UDP_CKSUM:
 				gdesc->txd.msscof = gdesc->txd.hlen + offsetof(struct udp_hdr, dgram_cksum);
@@ -669,7 +670,7 @@ vmxnet3_guess_mss(struct vmxnet3_hw *hw, const Vmxnet3_RxCompDesc *rcd,
 	uint32_t hlen, slen;
 	struct rte_ipv4_hdr *ipv4_hdr;
 	struct rte_ipv6_hdr *ipv6_hdr;
-	struct tcp_hdr *tcp_hdr;
+	struct rte_tcp_hdr *tcp_hdr;
 	char *ptr;
 
 	RTE_ASSERT(rcd->tcp);
@@ -681,7 +682,7 @@ vmxnet3_guess_mss(struct vmxnet3_hw *hw, const Vmxnet3_RxCompDesc *rcd,
 	if (rcd->v4) {
 		if (unlikely(slen < hlen + sizeof(struct rte_ipv4_hdr)))
 			return hw->mtu - sizeof(struct rte_ipv4_hdr)
-					- sizeof(struct tcp_hdr);
+					- sizeof(struct rte_tcp_hdr);
 
 		ipv4_hdr = (struct rte_ipv4_hdr *)(ptr + hlen);
 		hlen += (ipv4_hdr->version_ihl & RTE_IPV4_HDR_IHL_MASK) *
@@ -689,7 +690,7 @@ vmxnet3_guess_mss(struct vmxnet3_hw *hw, const Vmxnet3_RxCompDesc *rcd,
 	} else if (rcd->v6) {
 		if (unlikely(slen < hlen + sizeof(struct rte_ipv6_hdr)))
 			return hw->mtu - sizeof(struct rte_ipv6_hdr) -
-					sizeof(struct tcp_hdr);
+					sizeof(struct rte_tcp_hdr);
 
 		ipv6_hdr = (struct rte_ipv6_hdr *)(ptr + hlen);
 		hlen += sizeof(struct rte_ipv6_hdr);
@@ -701,11 +702,11 @@ vmxnet3_guess_mss(struct vmxnet3_hw *hw, const Vmxnet3_RxCompDesc *rcd,
 		}
 	}
 
-	if (unlikely(slen < hlen + sizeof(struct tcp_hdr)))
-		return hw->mtu - hlen - sizeof(struct tcp_hdr) +
+	if (unlikely(slen < hlen + sizeof(struct rte_tcp_hdr)))
+		return hw->mtu - hlen - sizeof(struct rte_tcp_hdr) +
 				sizeof(struct rte_ether_hdr);
 
-	tcp_hdr = (struct tcp_hdr *)(ptr + hlen);
+	tcp_hdr = (struct rte_tcp_hdr *)(ptr + hlen);
 	hlen += (tcp_hdr->data_off & 0xf0) >> 2;
 
 	if (rxm->udata64 > 1)

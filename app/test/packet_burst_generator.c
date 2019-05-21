@@ -109,14 +109,14 @@ initialize_udp_header(struct udp_hdr *udp_hdr, uint16_t src_port,
 }
 
 uint16_t
-initialize_tcp_header(struct tcp_hdr *tcp_hdr, uint16_t src_port,
+initialize_tcp_header(struct rte_tcp_hdr *tcp_hdr, uint16_t src_port,
 		uint16_t dst_port, uint16_t pkt_data_len)
 {
 	uint16_t pkt_len;
 
-	pkt_len = (uint16_t) (pkt_data_len + sizeof(struct tcp_hdr));
+	pkt_len = (uint16_t) (pkt_data_len + sizeof(struct rte_tcp_hdr));
 
-	memset(tcp_hdr, 0, sizeof(struct tcp_hdr));
+	memset(tcp_hdr, 0, sizeof(struct rte_tcp_hdr));
 	tcp_hdr->src_port = rte_cpu_to_be_16(src_port);
 	tcp_hdr->dst_port = rte_cpu_to_be_16(dst_port);
 
@@ -396,7 +396,7 @@ nomore_mbuf:
 				break;
 			case IPPROTO_TCP:
 				copy_buf_to_pkt(proto_hdr,
-					sizeof(struct tcp_hdr), pkt,
+					sizeof(struct rte_tcp_hdr), pkt,
 					eth_hdr_size +
 						sizeof(struct rte_ipv4_hdr));
 				break;
@@ -421,7 +421,7 @@ nomore_mbuf:
 				break;
 			case IPPROTO_TCP:
 				copy_buf_to_pkt(proto_hdr,
-					sizeof(struct tcp_hdr), pkt,
+					sizeof(struct rte_tcp_hdr), pkt,
 					eth_hdr_size +
 						sizeof(struct rte_ipv6_hdr));
 				break;

@@ -114,7 +114,7 @@ rte_net_intel_cksum_flags_prepare(struct rte_mbuf *m, uint64_t ol_flags)
 {
 	struct rte_ipv4_hdr *ipv4_hdr;
 	struct rte_ipv6_hdr *ipv6_hdr;
-	struct tcp_hdr *tcp_hdr;
+	struct rte_tcp_hdr *tcp_hdr;
 	struct udp_hdr *udp_hdr;
 	uint64_t inner_l3_offset = m->l2_len;
 
@@ -170,7 +170,7 @@ rte_net_intel_cksum_flags_prepare(struct rte_mbuf *m, uint64_t ol_flags)
 			(ol_flags & PKT_TX_TCP_SEG)) {
 		if (ol_flags & PKT_TX_IPV4) {
 			/* non-TSO tcp or TSO */
-			tcp_hdr = (struct tcp_hdr *)((char *)ipv4_hdr +
+			tcp_hdr = (struct rte_tcp_hdr *)((char *)ipv4_hdr +
 					m->l3_len);
 			tcp_hdr->cksum = rte_ipv4_phdr_cksum(ipv4_hdr,
 					ol_flags);
@@ -178,7 +178,8 @@ rte_net_intel_cksum_flags_prepare(struct rte_mbuf *m, uint64_t ol_flags)
 			ipv6_hdr = rte_pktmbuf_mtod_offset(m,
 				struct rte_ipv6_hdr *, inner_l3_offset);
 			/* non-TSO tcp or TSO */
-			tcp_hdr = rte_pktmbuf_mtod_offset(m, struct tcp_hdr *,
+			tcp_hdr = rte_pktmbuf_mtod_offset(m,
+					struct rte_tcp_hdr *,
 					inner_l3_offset + m->l3_len);
 			tcp_hdr->cksum = rte_ipv6_phdr_cksum(ipv6_hdr,
 					ol_flags);

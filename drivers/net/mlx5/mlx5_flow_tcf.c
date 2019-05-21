@@ -776,8 +776,8 @@ flow_tcf_pedit_key_set_tp_port(const struct rte_flow_action *actions,
 	/* offset of src/dst port is same for TCP and UDP */
 	p_parser->keys[idx].off =
 		actions->type == RTE_FLOW_ACTION_TYPE_SET_TP_SRC ?
-		offsetof(struct tcp_hdr, src_port) :
-		offsetof(struct tcp_hdr, dst_port);
+		offsetof(struct rte_tcp_hdr, src_port) :
+		offsetof(struct rte_tcp_hdr, dst_port);
 	p_parser->keys[idx].mask = 0xFFFF0000;
 	p_parser->keys[idx].val =
 		(__u32)((const struct rte_flow_action_set_tp *)

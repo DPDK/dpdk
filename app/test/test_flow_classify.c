@@ -74,7 +74,7 @@ static struct rte_acl_field_def ipv4_defs[NUM_FIELDS_IPV4] = {
 		.input_index = SRCP_DESTP_INPUT_IPV4,
 		.offset = sizeof(struct rte_ether_hdr) +
 			sizeof(struct rte_ipv4_hdr) +
-			offsetof(struct tcp_hdr, src_port),
+			offsetof(struct rte_tcp_hdr, src_port),
 	},
 	{
 		/* rte_flow uses a bit mask for protocol ports */
@@ -84,7 +84,7 @@ static struct rte_acl_field_def ipv4_defs[NUM_FIELDS_IPV4] = {
 		.input_index = SRCP_DESTP_INPUT_IPV4,
 		.offset = sizeof(struct rte_ether_hdr) +
 			sizeof(struct rte_ipv4_hdr) +
-			offsetof(struct tcp_hdr, dst_port),
+			offsetof(struct rte_tcp_hdr, dst_port),
 	},
 };
 
@@ -530,7 +530,7 @@ init_ipv4_tcp_traffic(struct rte_mempool *mp,
 {
 	struct rte_ether_hdr pkt_eth_hdr;
 	struct rte_ipv4_hdr pkt_ipv4_hdr;
-	struct tcp_hdr pkt_tcp_hdr;
+	struct rte_tcp_hdr pkt_tcp_hdr;
 	uint32_t src_addr = IPV4_ADDR(1, 2, 3, 4);
 	uint32_t dst_addr = IPV4_ADDR(5, 6, 7, 8);
 	uint16_t src_port = 16;

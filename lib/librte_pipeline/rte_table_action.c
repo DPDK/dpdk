@@ -1348,7 +1348,7 @@ pkt_ipv4_work_nat(struct rte_ipv4_hdr *ip,
 {
 	if (cfg->source_nat) {
 		if (cfg->proto == 0x6) {
-			struct tcp_hdr *tcp = (struct tcp_hdr *) &ip[1];
+			struct rte_tcp_hdr *tcp = (struct rte_tcp_hdr *) &ip[1];
 			uint16_t ip_cksum, tcp_cksum;
 
 			ip_cksum = nat_ipv4_checksum_update(ip->hdr_checksum,
@@ -1387,7 +1387,7 @@ pkt_ipv4_work_nat(struct rte_ipv4_hdr *ip,
 		}
 	} else {
 		if (cfg->proto == 0x6) {
-			struct tcp_hdr *tcp = (struct tcp_hdr *) &ip[1];
+			struct rte_tcp_hdr *tcp = (struct rte_tcp_hdr *) &ip[1];
 			uint16_t ip_cksum, tcp_cksum;
 
 			ip_cksum = nat_ipv4_checksum_update(ip->hdr_checksum,
@@ -1434,7 +1434,7 @@ pkt_ipv6_work_nat(struct rte_ipv6_hdr *ip,
 {
 	if (cfg->source_nat) {
 		if (cfg->proto == 0x6) {
-			struct tcp_hdr *tcp = (struct tcp_hdr *) &ip[1];
+			struct rte_tcp_hdr *tcp = (struct rte_tcp_hdr *) &ip[1];
 			uint16_t tcp_cksum;
 
 			tcp_cksum = nat_ipv6_tcp_udp_checksum_update(tcp->cksum,
@@ -1462,7 +1462,7 @@ pkt_ipv6_work_nat(struct rte_ipv6_hdr *ip,
 		}
 	} else {
 		if (cfg->proto == 0x6) {
-			struct tcp_hdr *tcp = (struct tcp_hdr *) &ip[1];
+			struct rte_tcp_hdr *tcp = (struct rte_tcp_hdr *) &ip[1];
 			uint16_t tcp_cksum;
 
 			tcp_cksum = nat_ipv6_tcp_udp_checksum_update(tcp->cksum,

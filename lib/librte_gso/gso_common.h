@@ -71,9 +71,9 @@ static inline void
 update_tcp_header(struct rte_mbuf *pkt, uint16_t l4_offset, uint32_t sent_seq,
 		uint8_t non_tail)
 {
-	struct tcp_hdr *tcp_hdr;
+	struct rte_tcp_hdr *tcp_hdr;
 
-	tcp_hdr = (struct tcp_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
+	tcp_hdr = (struct rte_tcp_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
 			l4_offset);
 	tcp_hdr->sent_seq = rte_cpu_to_be_32(sent_seq);
 	if (likely(non_tail))

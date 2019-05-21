@@ -688,7 +688,7 @@ static const struct rte_acl_field_def table_acl_field_format_ipv4[] = {
 		.field_index = 3,
 		.input_index = 3,
 		.offset = sizeof(struct rte_ipv4_hdr) +
-			offsetof(struct tcp_hdr, src_port),
+			offsetof(struct rte_tcp_hdr, src_port),
 	},
 
 	/* Destination Port */
@@ -698,7 +698,7 @@ static const struct rte_acl_field_def table_acl_field_format_ipv4[] = {
 		.field_index = 4,
 		.input_index = 3,
 		.offset = sizeof(struct rte_ipv4_hdr) +
-			offsetof(struct tcp_hdr, dst_port),
+			offsetof(struct rte_tcp_hdr, dst_port),
 	},
 };
 
@@ -785,7 +785,7 @@ static const struct rte_acl_field_def table_acl_field_format_ipv6[] = {
 		.field_index = 9,
 		.input_index = 9,
 		.offset = sizeof(struct rte_ipv6_hdr) +
-			offsetof(struct tcp_hdr, src_port),
+			offsetof(struct rte_tcp_hdr, src_port),
 	},
 
 	/* Destination Port */
@@ -795,7 +795,7 @@ static const struct rte_acl_field_def table_acl_field_format_ipv6[] = {
 		.field_index = 10,
 		.input_index = 9,
 		.offset = sizeof(struct rte_ipv6_hdr) +
-			offsetof(struct tcp_hdr, dst_port),
+			offsetof(struct rte_tcp_hdr, dst_port),
 	},
 };
 

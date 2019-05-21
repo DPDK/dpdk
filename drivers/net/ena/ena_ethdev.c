@@ -75,7 +75,7 @@
 #define TEST_BIT(val, bit_shift) (val & (1UL << bit_shift))
 
 #define GET_L4_HDR_LEN(mbuf)					\
-	((rte_pktmbuf_mtod_offset(mbuf,	struct tcp_hdr *,	\
+	((rte_pktmbuf_mtod_offset(mbuf,	struct rte_tcp_hdr *,	\
 		mbuf->l3_len + mbuf->l2_len)->data_off) >> 4)
 
 #define ENA_RX_RSS_TABLE_LOG_SIZE  7

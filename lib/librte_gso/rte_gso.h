@@ -19,7 +19,7 @@ extern "C" {
 
 /* Minimum GSO segment size for TCP based packets. */
 #define RTE_GSO_SEG_SIZE_MIN (sizeof(struct rte_ether_hdr) + \
-		sizeof(struct rte_ipv4_hdr) + sizeof(struct tcp_hdr) + 1)
+		sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_tcp_hdr) + 1)
 
 /* Minimum GSO segment size for UDP based packets. */
 #define RTE_GSO_UDP_SEG_SIZE_MIN (sizeof(struct rte_ether_hdr) + \

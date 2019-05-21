@@ -294,7 +294,8 @@ igbe_set_xmit_ctx(struct igb_tx_queue* txq,
 		case PKT_TX_TCP_CKSUM:
 			type_tucmd_mlhl |= E1000_ADVTXD_TUCMD_L4T_TCP |
 				E1000_ADVTXD_DTYP_CTXT | E1000_ADVTXD_DCMD_DEXT;
-			mss_l4len_idx |= sizeof(struct tcp_hdr) << E1000_ADVTXD_L4LEN_SHIFT;
+			mss_l4len_idx |= sizeof(struct rte_tcp_hdr)
+				<< E1000_ADVTXD_L4LEN_SHIFT;
 			break;
 		case PKT_TX_SCTP_CKSUM:
 			type_tucmd_mlhl |= E1000_ADVTXD_TUCMD_L4T_SCTP |

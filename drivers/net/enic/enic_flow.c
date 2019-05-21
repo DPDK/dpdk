@@ -488,7 +488,7 @@ enic_copy_item_tcp_v1(struct copy_item_args *arg)
 	const struct rte_flow_item_tcp *spec = item->spec;
 	const struct rte_flow_item_tcp *mask = item->mask;
 	struct filter_ipv4_5tuple *enic_5tup = &enic_filter->u.ipv4;
-	struct tcp_hdr supported_mask = {
+	struct rte_tcp_hdr supported_mask = {
 		.src_port = 0xffff,
 		.dst_port = 0xffff,
 	};
@@ -654,7 +654,7 @@ enic_copy_item_inner_tcp_v2(struct copy_item_args *arg)
 		mask = &rte_flow_item_tcp_mask;
 	/* Append tcp header to L5 and set ip proto = tcp */
 	return copy_inner_common(&arg->filter->u.generic_1, off,
-		arg->item->spec, mask, sizeof(struct tcp_hdr),
+		arg->item->spec, mask, sizeof(struct rte_tcp_hdr),
 		arg->l3_proto_off, IPPROTO_TCP, 1);
 }
 
@@ -860,9 +860,9 @@ enic_copy_item_tcp_v2(struct copy_item_args *arg)
 		return ENOTSUP;
 
 	memcpy(gp->layer[FILTER_GENERIC_1_L4].mask, &mask->hdr,
-	       sizeof(struct tcp_hdr));
+	       sizeof(struct rte_tcp_hdr));
 	memcpy(gp->layer[FILTER_GENERIC_1_L4].val, &spec->hdr,
-	       sizeof(struct tcp_hdr));
+	       sizeof(struct rte_tcp_hdr));
 	return 0;
 }
 

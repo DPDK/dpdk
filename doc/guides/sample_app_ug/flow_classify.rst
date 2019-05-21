@@ -126,7 +126,7 @@ initialisation of the ``Flow Classify`` application..
             .input_index = SRCP_DESTP_INPUT_IPV4,
             .offset = sizeof(struct rte_ether_hdr) +
                 sizeof(struct rte_ipv4_hdr) +
-                offsetof(struct tcp_hdr, src_port),
+                offsetof(struct rte_tcp_hdr, src_port),
         },
         {
              /* rte_flow uses a bit mask for protocol ports */
@@ -136,7 +136,7 @@ initialisation of the ``Flow Classify`` application..
              .input_index = SRCP_DESTP_INPUT_IPV4,
              .offset = sizeof(struct rte_ether_hdr) +
                  sizeof(struct rte_ipv4_hdr) +
-                 offsetof(struct tcp_hdr, dst_port),
+                 offsetof(struct rte_tcp_hdr, dst_port),
         },
     };
 

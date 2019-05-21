@@ -102,14 +102,15 @@ get_udptcp_checksum(void *l3_hdr, void *l4_hdr, uint16_t ethertype)
 static void
 parse_ipv4(struct rte_ipv4_hdr *ipv4_hdr, struct testpmd_offload_info *info)
 {
-	struct tcp_hdr *tcp_hdr;
+	struct rte_tcp_hdr *tcp_hdr;
 
 	info->l3_len = (ipv4_hdr->version_ihl & 0x0f) * 4;
 	info->l4_proto = ipv4_hdr->next_proto_id;
 
 	/* only fill l4_len for TCP, it's useful for TSO */
 	if (info->l4_proto == IPPROTO_TCP) {
-		tcp_hdr = (struct tcp_hdr *)((char *)ipv4_hdr + info->l3_len);
+		tcp_hdr = (struct rte_tcp_hdr *)
+			((char *)ipv4_hdr + info->l3_len);
 		info->l4_len = (tcp_hdr->data_off & 0xf0) >> 2;
 	} else if (info->l4_proto == IPPROTO_UDP)
 		info->l4_len = sizeof(struct udp_hdr);
@@ -121,14 +122,15 @@ parse_ipv4(struct rte_ipv4_hdr *ipv4_hdr, struct testpmd_offload_info *info)
 static void
 parse_ipv6(struct rte_ipv6_hdr *ipv6_hdr, struct testpmd_offload_info *info)
 {
-	struct tcp_hdr *tcp_hdr;
+	struct rte_tcp_hdr *tcp_hdr;
 
 	info->l3_len = sizeof(struct rte_ipv6_hdr);
 	info->l4_proto = ipv6_hdr->proto;
 
 	/* only fill l4_len for TCP, it's useful for TSO */
 	if (info->l4_proto == IPPROTO_TCP) {
-		tcp_hdr = (struct tcp_hdr *)((char *)ipv6_hdr + info->l3_len);
+		tcp_hdr = (struct rte_tcp_hdr *)
+			((char *)ipv6_hdr + info->l3_len);
 		info->l4_len = (tcp_hdr->data_off & 0xf0) >> 2;
 	} else if (info->l4_proto == IPPROTO_UDP)
 		info->l4_len = sizeof(struct udp_hdr);
@@ -367,7 +369,7 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 {
 	struct rte_ipv4_hdr *ipv4_hdr = l3_hdr;
 	struct udp_hdr *udp_hdr;
-	struct tcp_hdr *tcp_hdr;
+	struct rte_tcp_hdr *tcp_hdr;
 	struct rte_sctp_hdr *sctp_hdr;
 	uint64_t ol_flags = 0;
 	uint32_t max_pkt_len, tso_segsz = 0;
@@ -421,7 +423,7 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 		if (info->gso_enable)
 			ol_flags |= PKT_TX_UDP_SEG;
 	} else if (info->l4_proto == IPPROTO_TCP) {
-		tcp_hdr = (struct tcp_hdr *)((char *)l3_hdr + info->l3_len);
+		tcp_hdr = (struct rte_tcp_hdr *)((char *)l3_hdr + info->l3_len);
 		tcp_hdr->cksum = 0;
 		if (tso_segsz)
 			ol_flags |= PKT_TX_TCP_SEG;

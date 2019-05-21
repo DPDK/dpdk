@@ -10,7 +10,7 @@ update_tunnel_ipv4_tcp_headers(struct rte_mbuf *pkt, uint8_t ipid_delta,
 		struct rte_mbuf **segs, uint16_t nb_segs)
 {
 	struct rte_ipv4_hdr *ipv4_hdr;
-	struct tcp_hdr *tcp_hdr;
+	struct rte_tcp_hdr *tcp_hdr;
 	uint32_t sent_seq;
 	uint16_t outer_id, inner_id, tail_idx, i;
 	uint16_t outer_ipv4_offset, inner_ipv4_offset;
@@ -32,7 +32,7 @@ update_tunnel_ipv4_tcp_headers(struct rte_mbuf *pkt, uint8_t ipid_delta,
 			inner_ipv4_offset);
 	inner_id = rte_be_to_cpu_16(ipv4_hdr->packet_id);
 
-	tcp_hdr = (struct tcp_hdr *)((char *)ipv4_hdr + pkt->l3_len);
+	tcp_hdr = (struct rte_tcp_hdr *)((char *)ipv4_hdr + pkt->l3_len);
 	sent_seq = rte_be_to_cpu_32(tcp_hdr->sent_seq);
 	tail_idx = nb_segs - 1;
 

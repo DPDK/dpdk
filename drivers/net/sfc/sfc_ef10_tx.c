@@ -373,7 +373,7 @@ sfc_ef10_xmit_tso_pkt(struct sfc_ef10_txq * const txq, struct rte_mbuf *m_seg,
 	size_t header_len = tcph_off + m_seg->l4_len;
 	/* Offset of the payload in the last segment that contains the header */
 	size_t in_off = 0;
-	const struct tcp_hdr *th;
+	const struct rte_tcp_hdr *th;
 	uint16_t packet_id = 0;
 	uint16_t outer_packet_id = 0;
 	uint32_t sent_seq;
@@ -489,7 +489,7 @@ sfc_ef10_xmit_tso_pkt(struct sfc_ef10_txq * const txq, struct rte_mbuf *m_seg,
 		outer_packet_id = sfc_tso_ip4_get_ipid(hdr_addr,
 						first_m_seg->outer_l2_len);
 
-	th = (const struct tcp_hdr *)(hdr_addr + tcph_off);
+	th = (const struct rte_tcp_hdr *)(hdr_addr + tcph_off);
 	rte_memcpy(&sent_seq, &th->sent_seq, sizeof(uint32_t));
 	sent_seq = rte_be_to_cpu_32(sent_seq);
 
