@@ -433,7 +433,7 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 		icmp_h = (struct rte_icmp_hdr *) ((char *)ip_h +
 					      sizeof(struct ipv4_hdr));
 		if (! ((ip_h->next_proto_id == IPPROTO_ICMP) &&
-		       (icmp_h->icmp_type == IP_ICMP_ECHO_REQUEST) &&
+		       (icmp_h->icmp_type == RTE_IP_ICMP_ECHO_REQUEST) &&
 		       (icmp_h->icmp_code == 0))) {
 			rte_pktmbuf_free(pkt);
 			continue;
@@ -457,7 +457,7 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 		 *     - switch the request IP source and destination
 		 *       addresses in the reply IP header,
 		 *     - keep the IP header checksum unchanged.
-		 * - set IP_ICMP_ECHO_REPLY in ICMP header.
+		 * - set RTE_IP_ICMP_ECHO_REPLY in ICMP header.
 		 * ICMP checksum is computed by assuming it is valid in the
 		 * echo request and not verified.
 		 */
@@ -480,10 +480,10 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 			ip_h->src_addr = ip_h->dst_addr;
 			ip_h->dst_addr = ip_addr;
 		}
-		icmp_h->icmp_type = IP_ICMP_ECHO_REPLY;
+		icmp_h->icmp_type = RTE_IP_ICMP_ECHO_REPLY;
 		cksum = ~icmp_h->icmp_cksum & 0xffff;
-		cksum += ~htons(IP_ICMP_ECHO_REQUEST << 8) & 0xffff;
-		cksum += htons(IP_ICMP_ECHO_REPLY << 8);
+		cksum += ~htons(RTE_IP_ICMP_ECHO_REQUEST << 8) & 0xffff;
+		cksum += htons(RTE_IP_ICMP_ECHO_REPLY << 8);
 		cksum = (cksum & 0xffff) + (cksum >> 16);
 		cksum = (cksum & 0xffff) + (cksum >> 16);
 		icmp_h->icmp_cksum = ~cksum;

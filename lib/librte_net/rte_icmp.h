@@ -32,8 +32,8 @@ struct rte_icmp_hdr {
 } __attribute__((__packed__));
 
 /* ICMP packet types */
-#define IP_ICMP_ECHO_REPLY   0
-#define IP_ICMP_ECHO_REQUEST 8
+#define RTE_IP_ICMP_ECHO_REPLY   0
+#define RTE_IP_ICMP_ECHO_REQUEST 8
 
 #ifdef __cplusplus
 }
