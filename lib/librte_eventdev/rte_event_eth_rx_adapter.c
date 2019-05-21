@@ -716,18 +716,6 @@ rxa_enq_block_end_ts(struct rte_event_eth_rx_adapter *rx_adapter,
 	}
 }
 
-/* Add event to buffer, free space check is done prior to calling
- * this function
- */
-static inline void
-rxa_buffer_event(struct rte_event_eth_rx_adapter *rx_adapter,
-		struct rte_event *ev)
-{
-	struct rte_eth_event_enqueue_buffer *buf =
-	    &rx_adapter->event_enqueue_buffer;
-	rte_memcpy(&buf->events[buf->count++], ev, sizeof(struct rte_event));
-}
-
 /* Enqueue buffered events to event device */
 static inline uint16_t
 rxa_flush_event_buffer(struct rte_event_eth_rx_adapter *rx_adapter)
@@ -770,11 +758,11 @@ rxa_buffer_mbufs(struct rte_event_eth_rx_adapter *rx_adapter,
 					&dev_info->rx_queue[rx_queue_id];
 	struct rte_eth_event_enqueue_buffer *buf =
 					&rx_adapter->event_enqueue_buffer;
+	struct rte_event *ev = &buf->events[buf->count];
 	int32_t qid = eth_rx_queue_info->event_queue_id;
 	uint8_t sched_type = eth_rx_queue_info->sched_type;
 	uint8_t priority = eth_rx_queue_info->priority;
 	uint32_t flow_id;
-	struct rte_event events[BATCH_SIZE];
 	struct rte_mbuf *m = mbufs[0];
 	uint32_t rss_mask;
 	uint32_t rss;
@@ -812,7 +800,6 @@ rxa_buffer_mbufs(struct rte_event_eth_rx_adapter *rx_adapter,
 
 	for (i = 0; i < num; i++) {
 		m = mbufs[i];
-		struct rte_event *ev = &events[i];
 
 		rss = do_rss ?
 			rxa_do_softrss(m, rx_adapter->rss_key_be) :
@@ -829,9 +816,10 @@ rxa_buffer_mbufs(struct rte_event_eth_rx_adapter *rx_adapter,
 		ev->sub_event_type = 0;
 		ev->priority = priority;
 		ev->mbuf = m;
-
-		rxa_buffer_event(rx_adapter, ev);
+		ev++;
 	}
+
+	buf->count += num;
 }
 
 /* Enqueue packets from  <port, q>  to event buffer */
