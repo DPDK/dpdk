@@ -614,8 +614,9 @@ static inline void
 rxa_mtoip(struct rte_mbuf *m, struct ipv4_hdr **ipv4_hdr,
 	struct ipv6_hdr **ipv6_hdr)
 {
-	struct ether_hdr *eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
-	struct vlan_hdr *vlan_hdr;
+	struct rte_ether_hdr *eth_hdr =
+		rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
+	struct rte_vlan_hdr *vlan_hdr;
 
 	*ipv4_hdr = NULL;
 	*ipv6_hdr = NULL;
@@ -630,7 +631,7 @@ rxa_mtoip(struct rte_mbuf *m, struct ipv4_hdr **ipv4_hdr,
 		break;
 
 	case RTE_BE16(ETHER_TYPE_VLAN):
-		vlan_hdr = (struct vlan_hdr *)(eth_hdr + 1);
+		vlan_hdr = (struct rte_vlan_hdr *)(eth_hdr + 1);
 		switch (vlan_hdr->eth_proto) {
 		case RTE_BE16(ETHER_TYPE_IPv4):
 			*ipv4_hdr = (struct ipv4_hdr *)(vlan_hdr + 1);

@@ -48,7 +48,7 @@ static void iavf_dev_promiscuous_disable(struct rte_eth_dev *dev);
 static void iavf_dev_allmulticast_enable(struct rte_eth_dev *dev);
 static void iavf_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static int iavf_dev_add_mac_addr(struct rte_eth_dev *dev,
-				struct ether_addr *addr,
+				struct rte_ether_addr *addr,
 				uint32_t index,
 				uint32_t pool);
 static void iavf_dev_del_mac_addr(struct rte_eth_dev *dev, uint32_t index);
@@ -67,7 +67,7 @@ static int iavf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 				     struct rte_eth_rss_conf *rss_conf);
 static int iavf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static int iavf_dev_set_default_mac_addr(struct rte_eth_dev *dev,
-					 struct ether_addr *mac_addr);
+					 struct rte_ether_addr *mac_addr);
 static int iavf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev,
 					uint16_t queue_id);
 static int iavf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev,
@@ -697,7 +697,7 @@ iavf_dev_allmulticast_disable(struct rte_eth_dev *dev)
 }
 
 static int
-iavf_dev_add_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr,
+iavf_dev_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *addr,
 		     __rte_unused uint32_t index,
 		     __rte_unused uint32_t pool)
 {
@@ -728,7 +728,7 @@ iavf_dev_del_mac_addr(struct rte_eth_dev *dev, uint32_t index)
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
-	struct ether_addr *addr;
+	struct rte_ether_addr *addr;
 	int err;
 
 	addr = &dev->data->mac_addrs[index];
@@ -940,16 +940,16 @@ iavf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 
 static int
 iavf_dev_set_default_mac_addr(struct rte_eth_dev *dev,
-			     struct ether_addr *mac_addr)
+			     struct rte_ether_addr *mac_addr)
 {
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(adapter);
-	struct ether_addr *perm_addr, *old_addr;
+	struct rte_ether_addr *perm_addr, *old_addr;
 	int ret;
 
-	old_addr = (struct ether_addr *)hw->mac.addr;
-	perm_addr = (struct ether_addr *)hw->mac.perm_addr;
+	old_addr = (struct rte_ether_addr *)hw->mac.addr;
+	perm_addr = (struct rte_ether_addr *)hw->mac.perm_addr;
 
 	if (is_same_ether_addr(mac_addr, old_addr))
 		return 0;
@@ -983,7 +983,7 @@ iavf_dev_set_default_mac_addr(struct rte_eth_dev *dev,
 	if (ret)
 		return -EIO;
 
-	ether_addr_copy(mac_addr, (struct ether_addr *)hw->mac.addr);
+	ether_addr_copy(mac_addr, (struct rte_ether_addr *)hw->mac.addr);
 	return 0;
 }
 
@@ -1317,9 +1317,10 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 	/* If the MAC address is not configured by host,
 	 * generate a random one.
 	 */
-	if (!is_valid_assigned_ether_addr((struct ether_addr *)hw->mac.addr))
+	if (!is_valid_assigned_ether_addr(
+			(struct rte_ether_addr *)hw->mac.addr))
 		eth_random_addr(hw->mac.addr);
-	ether_addr_copy((struct ether_addr *)hw->mac.addr,
+	ether_addr_copy((struct rte_ether_addr *)hw->mac.addr,
 			&eth_dev->data->mac_addrs[0]);
 
 	/* register callback func to eal lib */

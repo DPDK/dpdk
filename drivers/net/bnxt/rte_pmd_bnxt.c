@@ -132,7 +132,7 @@ int rte_pmd_bnxt_set_all_queues_drop_en(uint16_t port, uint8_t on)
 }
 
 int rte_pmd_bnxt_set_vf_mac_addr(uint16_t port, uint16_t vf,
-				struct ether_addr *mac_addr)
+				struct rte_ether_addr *mac_addr)
 {
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
@@ -647,7 +647,7 @@ int rte_pmd_bnxt_get_vf_tx_drop_count(uint16_t port, uint16_t vf_id,
 					     count);
 }
 
-int rte_pmd_bnxt_mac_addr_add(uint16_t port, struct ether_addr *addr,
+int rte_pmd_bnxt_mac_addr_add(uint16_t port, struct rte_ether_addr *addr,
 				uint32_t vf_id)
 {
 	struct rte_eth_dev *dev;
@@ -655,7 +655,7 @@ int rte_pmd_bnxt_mac_addr_add(uint16_t port, struct ether_addr *addr,
 	struct bnxt *bp;
 	struct bnxt_filter_info *filter;
 	struct bnxt_vnic_info vnic;
-	struct ether_addr dflt_mac;
+	struct rte_ether_addr dflt_mac;
 	int rc;
 
 	dev = &rte_eth_devices[port];

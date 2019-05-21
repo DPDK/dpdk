@@ -495,7 +495,7 @@ test_setup(void)
 	int port_id;
 	char name[256];
 	struct slave_conf *port;
-	struct ether_addr mac_addr = { .addr_bytes = {0} };
+	struct rte_ether_addr mac_addr = { .addr_bytes = {0} };
 
 	if (test_params.mbuf_pool == NULL) {
 

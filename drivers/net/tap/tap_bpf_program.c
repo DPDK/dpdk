@@ -37,7 +37,7 @@
 #define KEY_IDX			0
 #define BPF_MAP_ID_KEY	1
 
-struct vlan_hdr {
+struct rte_vlan_hdr {
 	__be16 proto;
 	__be16 tci;
 };
@@ -141,12 +141,12 @@ rss_l3_l4(struct __sk_buff *skb)
 
 	/* Get correct proto for 802.1ad */
 	if (skb->vlan_present && skb->vlan_proto == htons(ETH_P_8021AD)) {
-		if (data + ETH_ALEN * 2 + sizeof(struct vlan_hdr) +
+		if (data + ETH_ALEN * 2 + sizeof(struct rte_vlan_hdr) +
 		    sizeof(proto) > data_end)
 			return TC_ACT_OK;
 		proto = *(__u16 *)(data + ETH_ALEN * 2 +
-				   sizeof(struct vlan_hdr));
-		off += sizeof(struct vlan_hdr);
+				   sizeof(struct rte_vlan_hdr));
+		off += sizeof(struct rte_vlan_hdr);
 	}
 
 	if (proto == htons(ETH_P_IP)) {

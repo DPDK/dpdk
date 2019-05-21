@@ -2179,10 +2179,10 @@ nicvf_eth_dev_init(struct rte_eth_dev *eth_dev)
 		ret = -ENOMEM;
 		goto alarm_fail;
 	}
-	if (is_zero_ether_addr((struct ether_addr *)nic->mac_addr))
+	if (is_zero_ether_addr((struct rte_ether_addr *)nic->mac_addr))
 		eth_random_addr(&nic->mac_addr[0]);
 
-	ether_addr_copy((struct ether_addr *)nic->mac_addr,
+	ether_addr_copy((struct rte_ether_addr *)nic->mac_addr,
 			&eth_dev->data->mac_addrs[0]);
 
 	ret = nicvf_mbox_set_mac_addr(nic, nic->mac_addr);

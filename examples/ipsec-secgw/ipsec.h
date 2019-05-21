@@ -306,7 +306,7 @@ sa_check_offloads(uint16_t port_id, uint64_t *rx_offloads,
 		uint64_t *tx_offloads);
 
 int
-add_dst_ethaddr(uint16_t port, const struct ether_addr *addr);
+add_dst_ethaddr(uint16_t port, const struct rte_ether_addr *addr);
 
 void
 enqueue_cop_burst(struct cdev_qp *cqp);

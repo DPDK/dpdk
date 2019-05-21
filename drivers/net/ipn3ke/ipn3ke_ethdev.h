@@ -245,7 +245,7 @@ struct ipn3ke_rpst {
 	struct rte_eth_link ori_linfo;
 	struct ipn3ke_tm_internals tm;
 	/**< Private data store of assocaiated physical function */
-	struct ether_addr mac_addr;
+	struct rte_ether_addr mac_addr;
 };
 
 /* UUID IDs */
@@ -545,7 +545,7 @@ void
 ipn3ke_rpst_allmulticast_disable(struct rte_eth_dev *ethdev);
 int
 ipn3ke_rpst_mac_addr_set(struct rte_eth_dev *ethdev,
-		struct ether_addr *mac_addr);
+		struct rte_ether_addr *mac_addr);
 int
 ipn3ke_rpst_mtu_set(struct rte_eth_dev *ethdev, uint16_t mtu);
 

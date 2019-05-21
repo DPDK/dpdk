@@ -327,7 +327,7 @@ struct mlx5_priv {
 	struct rte_eth_dev_data *dev_data;  /* Pointer to device data. */
 	struct mlx5_ibv_shared *sh; /* Shared IB device context. */
 	uint32_t ibv_port; /* IB device port number. */
-	struct ether_addr mac[MLX5_MAX_MAC_ADDRESSES]; /* MAC addresses. */
+	struct rte_ether_addr mac[MLX5_MAX_MAC_ADDRESSES]; /* MAC addresses. */
 	BITFIELD_DECLARE(mac_own, uint64_t, MLX5_MAX_MAC_ADDRESSES);
 	/* Bit-field of MAC addresses owned by the PMD. */
 	uint16_t vlan_filter[MLX5_MAX_VLAN_IDS]; /* VLAN filters table. */
@@ -442,11 +442,12 @@ void mlx5_translate_port_name(const char *port_name_in,
 
 int mlx5_get_mac(struct rte_eth_dev *dev, uint8_t (*mac)[ETHER_ADDR_LEN]);
 void mlx5_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index);
-int mlx5_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac,
+int mlx5_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 		      uint32_t index, uint32_t vmdq);
-int mlx5_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr);
+int mlx5_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr);
 int mlx5_set_mc_addr_list(struct rte_eth_dev *dev,
-			  struct ether_addr *mc_addr_set, uint32_t nb_mc_addr);
+			struct rte_ether_addr *mc_addr_set,
+			uint32_t nb_mc_addr);
 
 /* mlx5_rss.c */
 
@@ -549,9 +550,9 @@ void mlx5_mp_uninit_secondary(void);
 /* mlx5_nl.c */
 
 int mlx5_nl_init(int protocol);
-int mlx5_nl_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac,
+int mlx5_nl_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 			 uint32_t index);
-int mlx5_nl_mac_addr_remove(struct rte_eth_dev *dev, struct ether_addr *mac,
+int mlx5_nl_mac_addr_remove(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 			    uint32_t index);
 void mlx5_nl_mac_addr_sync(struct rte_eth_dev *dev);
 void mlx5_nl_mac_addr_flush(struct rte_eth_dev *dev);

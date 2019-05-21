@@ -34,7 +34,7 @@ struct cmd_quit_result {
 };
 
 union PFID {
-	struct ether_addr addr;
+	struct rte_ether_addr addr;
 	uint64_t pfid;
 };
 

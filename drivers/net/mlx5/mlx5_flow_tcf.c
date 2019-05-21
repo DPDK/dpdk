@@ -402,7 +402,7 @@ struct mlx5_flow_tcf_context {
 struct tcf_neigh_rule {
 	LIST_ENTRY(tcf_neigh_rule) next;
 	uint32_t refcnt;
-	struct ether_addr eth;
+	struct rte_ether_addr eth;
 	uint16_t mask;
 	union {
 		struct {
@@ -475,8 +475,8 @@ struct flow_tcf_vxlan_encap {
 	uint8_t ip_tos;
 	uint8_t ip_ttl_hop;
 	struct {
-		struct ether_addr dst;
-		struct ether_addr src;
+		struct rte_ether_addr dst;
+		struct rte_ether_addr src;
 	} eth;
 	union {
 		struct {
@@ -689,8 +689,8 @@ flow_tcf_pedit_key_set_mac(const struct rte_flow_action *actions,
 {
 	int idx = p_parser->sel.nkeys;
 	uint32_t off = actions->type == RTE_FLOW_ACTION_TYPE_SET_MAC_SRC ?
-					offsetof(struct ether_hdr, s_addr) :
-					offsetof(struct ether_hdr, d_addr);
+					offsetof(struct rte_ether_hdr, s_addr) :
+					offsetof(struct rte_ether_hdr, d_addr);
 	const struct rte_flow_action_set_mac *conf =
 		(const struct rte_flow_action_set_mac *)actions->conf;
 

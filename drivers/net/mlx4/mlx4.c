@@ -841,7 +841,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		struct ibv_pd *pd = NULL;
 		struct mlx4_priv *priv = NULL;
 		struct rte_eth_dev *eth_dev = NULL;
-		struct ether_addr mac;
+		struct rte_ether_addr mac;
 		char name[RTE_ETH_NAME_MAX_LEN];
 
 		/* If port is not enabled, skip. */

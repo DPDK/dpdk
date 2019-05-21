@@ -572,9 +572,9 @@ enic_copy_item_inner_eth_v2(struct copy_item_args *arg)
 	FLOW_TRACE();
 	if (!mask)
 		mask = &rte_flow_item_eth_mask;
-	arg->l2_proto_off = *off + offsetof(struct ether_hdr, ether_type);
+	arg->l2_proto_off = *off + offsetof(struct rte_ether_hdr, ether_type);
 	return copy_inner_common(&arg->filter->u.generic_1, off,
-		arg->item->spec, mask, sizeof(struct ether_hdr),
+		arg->item->spec, mask, sizeof(struct rte_ether_hdr),
 		0 /* no previous protocol */, 0, 0);
 }
 
@@ -590,9 +590,9 @@ enic_copy_item_inner_vlan_v2(struct copy_item_args *arg)
 		mask = &rte_flow_item_vlan_mask;
 	/* Append vlan header to L5 and set ether type = TPID */
 	eth_type_off = arg->l2_proto_off;
-	arg->l2_proto_off = *off + offsetof(struct vlan_hdr, eth_proto);
+	arg->l2_proto_off = *off + offsetof(struct rte_vlan_hdr, eth_proto);
 	return copy_inner_common(&arg->filter->u.generic_1, off,
-		arg->item->spec, mask, sizeof(struct vlan_hdr),
+		arg->item->spec, mask, sizeof(struct rte_vlan_hdr),
 		eth_type_off, rte_cpu_to_be_16(ETHER_TYPE_VLAN), 2);
 }
 
@@ -663,8 +663,8 @@ enic_copy_item_eth_v2(struct copy_item_args *arg)
 {
 	const struct rte_flow_item *item = arg->item;
 	struct filter_v2 *enic_filter = arg->filter;
-	struct ether_hdr enic_spec;
-	struct ether_hdr enic_mask;
+	struct rte_ether_hdr enic_spec;
+	struct rte_ether_hdr enic_mask;
 	const struct rte_flow_item_eth *spec = item->spec;
 	const struct rte_flow_item_eth *mask = item->mask;
 	struct filter_generic_1 *gp = &enic_filter->u.generic_1;
@@ -692,9 +692,9 @@ enic_copy_item_eth_v2(struct copy_item_args *arg)
 
 	/* outer header */
 	memcpy(gp->layer[FILTER_GENERIC_1_L2].mask, &enic_mask,
-	       sizeof(struct ether_hdr));
+	       sizeof(struct rte_ether_hdr));
 	memcpy(gp->layer[FILTER_GENERIC_1_L2].val, &enic_spec,
-	       sizeof(struct ether_hdr));
+	       sizeof(struct rte_ether_hdr));
 	return 0;
 }
 
@@ -706,8 +706,8 @@ enic_copy_item_vlan_v2(struct copy_item_args *arg)
 	const struct rte_flow_item_vlan *spec = item->spec;
 	const struct rte_flow_item_vlan *mask = item->mask;
 	struct filter_generic_1 *gp = &enic_filter->u.generic_1;
-	struct ether_hdr *eth_mask;
-	struct ether_hdr *eth_val;
+	struct rte_ether_hdr *eth_mask;
+	struct rte_ether_hdr *eth_val;
 
 	FLOW_TRACE();
 
@@ -734,11 +734,11 @@ enic_copy_item_vlan_v2(struct copy_item_args *arg)
 	 * vlan tag remains in the L2 buffer.
 	 */
 	if (!arg->enic->vxlan && !arg->enic->ig_vlan_strip_en) {
-		struct vlan_hdr *vlan;
+		struct rte_vlan_hdr *vlan;
 
-		vlan = (struct vlan_hdr *)(eth_mask + 1);
+		vlan = (struct rte_vlan_hdr *)(eth_mask + 1);
 		vlan->eth_proto = mask->inner_type;
-		vlan = (struct vlan_hdr *)(eth_val + 1);
+		vlan = (struct rte_vlan_hdr *)(eth_val + 1);
 		vlan->eth_proto = spec->inner_type;
 	} else {
 		eth_mask->ether_type = mask->inner_type;
@@ -947,11 +947,11 @@ enic_copy_item_vxlan_v2(struct copy_item_args *arg)
 		mask = &rte_flow_item_vxlan_mask;
 
 	memcpy(gp->layer[FILTER_GENERIC_1_L5].mask, mask,
-	       sizeof(struct vxlan_hdr));
+	       sizeof(struct rte_vxlan_hdr));
 	memcpy(gp->layer[FILTER_GENERIC_1_L5].val, spec,
-	       sizeof(struct vxlan_hdr));
+	       sizeof(struct rte_vxlan_hdr));
 
-	*inner_ofst = sizeof(struct vxlan_hdr);
+	*inner_ofst = sizeof(struct rte_vxlan_hdr);
 	return 0;
 }
 
@@ -1051,7 +1051,7 @@ fixup_l5_layer(struct enic *enic, struct filter_generic_1 *gp,
 	if (!(inner_ofst > 0 && enic->vxlan))
 		return;
 	FLOW_TRACE();
-	vxlan = sizeof(struct vxlan_hdr);
+	vxlan = sizeof(struct rte_vxlan_hdr);
 	memcpy(gp->layer[FILTER_GENERIC_1_L4].mask + sizeof(struct udp_hdr),
 	       gp->layer[FILTER_GENERIC_1_L5].mask, vxlan);
 	memcpy(gp->layer[FILTER_GENERIC_1_L4].val + sizeof(struct udp_hdr),

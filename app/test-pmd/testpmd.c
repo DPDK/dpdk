@@ -137,7 +137,7 @@ uint8_t txring_numa[RTE_MAX_ETHPORTS];
  * Must be instantiated with the ethernet addresses of peer traffic generator
  * ports.
  */
-struct ether_addr peer_eth_addrs[RTE_MAX_ETHPORTS];
+struct rte_ether_addr peer_eth_addrs[RTE_MAX_ETHPORTS];
 portid_t nb_peer_eth_addrs = 0;
 
 /*
@@ -2018,7 +2018,7 @@ start_port(portid_t pid)
 	portid_t pi;
 	queueid_t qi;
 	struct rte_port *port;
-	struct ether_addr mac_addr;
+	struct rte_ether_addr mac_addr;
 
 	if (port_id_is_invalid(pid, ENABLED_WARN))
 		return 0;

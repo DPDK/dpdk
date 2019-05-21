@@ -70,8 +70,8 @@ struct pmd_internals {
 	char remote_iface[RTE_ETH_NAME_MAX_LEN]; /* Remote netdevice name */
 	char name[RTE_ETH_NAME_MAX_LEN];  /* Internal Tap device name */
 	int type;                         /* Type field - TUN|TAP */
-	struct ether_addr eth_addr;       /* Mac address of the device port */
-	struct ifreq remote_initial_flags;   /* Remote netdevice flags on init */
+	struct rte_ether_addr eth_addr;   /* Mac address of the device port */
+	struct ifreq remote_initial_flags;/* Remote netdevice flags on init */
 	int remote_if_index;              /* remote netdevice IF_INDEX */
 	int if_index;                     /* IF_INDEX for the port */
 	int ioctl_sock;                   /* socket for ioctl calls */

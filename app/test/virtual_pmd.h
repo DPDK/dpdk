@@ -15,7 +15,7 @@ int
 virtual_ethdev_init(void);
 
 int
-virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
+virtual_ethdev_create(const char *name, struct rte_ether_addr *mac_addr,
 		uint8_t socket_id, uint8_t isr_support);
 
 void

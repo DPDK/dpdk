@@ -539,7 +539,7 @@ struct axgbe_port {
 	/* Hardware features of the device */
 	struct axgbe_hw_features hw_feat;
 
-	struct ether_addr mac_addr;
+	struct rte_ether_addr mac_addr;
 
 	/* Software Tx/Rx structure pointers*/
 	void **rx_queues;

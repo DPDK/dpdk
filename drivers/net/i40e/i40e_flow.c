@@ -4810,10 +4810,10 @@ i40e_flow_destroy_tunnel_filter(struct i40e_pf *pf,
 	int ret = 0;
 
 	memset(&cld_filter, 0, sizeof(cld_filter));
-	ether_addr_copy((struct ether_addr *)&filter->input.outer_mac,
-			(struct ether_addr *)&cld_filter.element.outer_mac);
-	ether_addr_copy((struct ether_addr *)&filter->input.inner_mac,
-			(struct ether_addr *)&cld_filter.element.inner_mac);
+	ether_addr_copy((struct rte_ether_addr *)&filter->input.outer_mac,
+			(struct rte_ether_addr *)&cld_filter.element.outer_mac);
+	ether_addr_copy((struct rte_ether_addr *)&filter->input.inner_mac,
+			(struct rte_ether_addr *)&cld_filter.element.inner_mac);
 	cld_filter.element.inner_vlan = filter->input.inner_vlan;
 	cld_filter.element.flags = filter->input.flags;
 	cld_filter.element.tenant_id = filter->input.tenant_id;

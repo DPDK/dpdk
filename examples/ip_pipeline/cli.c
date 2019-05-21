@@ -245,7 +245,7 @@ static void
 print_link_info(struct link *link, char *out, size_t out_size)
 {
 	struct rte_eth_stats stats;
-	struct ether_addr mac_addr;
+	struct rte_ether_addr mac_addr;
 	struct rte_eth_link eth_link;
 	uint16_t mtu;
 
@@ -4777,7 +4777,7 @@ cmd_pipeline_table_rule_delete_default(char **tokens,
 }
 
 static void
-ether_addr_show(FILE *f, struct ether_addr *addr)
+ether_addr_show(FILE *f, struct rte_ether_addr *addr)
 {
 	fprintf(f, "%02x:%02x:%02x:%02x:%02x:%02x",
 		(uint32_t)addr->addr_bytes[0], (uint32_t)addr->addr_bytes[1],

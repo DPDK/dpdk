@@ -513,13 +513,13 @@ inet_pton6(const char *src, unsigned char *dst)
 	return 1;
 }
 
-static struct ether_addr *
+static struct rte_ether_addr *
 my_ether_aton(const char *a)
 {
 	int i;
 	char *end;
 	unsigned long o[ETHER_ADDR_LEN];
-	static struct ether_addr ether_addr;
+	static struct rte_ether_addr ether_addr;
 
 	i = 0;
 	do {
@@ -553,7 +553,7 @@ my_ether_aton(const char *a)
 	} else
 		return NULL;
 
-	return (struct ether_addr *)&ether_addr;
+	return (struct rte_ether_addr *)&ether_addr;
 }
 
 int
@@ -581,15 +581,15 @@ parse_ipv6_addr(const char *token, struct in6_addr *ipv6)
 }
 
 int
-parse_mac_addr(const char *token, struct ether_addr *addr)
+parse_mac_addr(const char *token, struct rte_ether_addr *addr)
 {
-	struct ether_addr *tmp;
+	struct rte_ether_addr *tmp;
 
 	tmp = my_ether_aton(token);
 	if (tmp == NULL)
 		return -1;
 
-	memcpy(addr, tmp, sizeof(struct ether_addr));
+	memcpy(addr, tmp, sizeof(struct rte_ether_addr));
 	return 0;
 }
 

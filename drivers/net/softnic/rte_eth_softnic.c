@@ -339,7 +339,7 @@ pmd_free(struct pmd_internals *p)
 	rte_free(p);
 }
 
-static struct ether_addr eth_addr = {
+static struct rte_ether_addr eth_addr = {
 	.addr_bytes = {0},
 };
 

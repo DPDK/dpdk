@@ -463,7 +463,7 @@ mlx4_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
  *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 int
-mlx4_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
+mlx4_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 		  uint32_t index, uint32_t vmdq)
 {
 	struct mlx4_priv *priv = dev->data->dev_private;
@@ -501,7 +501,7 @@ mlx4_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
  *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 int
-mlx4_set_mc_addr_list(struct rte_eth_dev *dev, struct ether_addr *list,
+mlx4_set_mc_addr_list(struct rte_eth_dev *dev, struct rte_ether_addr *list,
 		      uint32_t num)
 {
 	struct mlx4_priv *priv = dev->data->dev_private;
@@ -598,7 +598,7 @@ mlx4_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
  *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 int
-mlx4_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
+mlx4_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 {
 	return mlx4_mac_addr_add(dev, mac_addr, 0, 0);
 }

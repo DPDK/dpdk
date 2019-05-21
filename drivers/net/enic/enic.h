@@ -197,7 +197,7 @@ struct enic {
 
 	/* Multicast MAC addresses added to the NIC */
 	uint32_t mc_count;
-	struct ether_addr mc_addrs[ENIC_MULTICAST_PERFECT_FILTERS];
+	struct rte_ether_addr mc_addrs[ENIC_MULTICAST_PERFECT_FILTERS];
 };
 
 /* Compute ethdev's max packet size from MTU */

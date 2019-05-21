@@ -2316,7 +2316,7 @@ int rte_eth_dev_set_rx_queue_stats_mapping(uint16_t port_id,
  *   A pointer to a structure of type *ether_addr* to be filled with
  *   the Ethernet address of the Ethernet device.
  */
-void rte_eth_macaddr_get(uint16_t port_id, struct ether_addr *mac_addr);
+void rte_eth_macaddr_get(uint16_t port_id, struct rte_ether_addr *mac_addr);
 
 /**
  * Retrieve the contextual information of an Ethernet device.
@@ -3029,7 +3029,7 @@ int rte_eth_dev_priority_flow_ctrl_set(uint16_t port_id,
  *   - (-ENOSPC) if no more MAC addresses can be added.
  *   - (-EINVAL) if MAC address is invalid.
  */
-int rte_eth_dev_mac_addr_add(uint16_t port_id, struct ether_addr *mac_addr,
+int rte_eth_dev_mac_addr_add(uint16_t port_id, struct rte_ether_addr *mac_addr,
 				uint32_t pool);
 
 /**
@@ -3045,7 +3045,8 @@ int rte_eth_dev_mac_addr_add(uint16_t port_id, struct ether_addr *mac_addr,
  *   - (-ENODEV) if *port* invalid.
  *   - (-EADDRINUSE) if attempting to remove the default MAC address
  */
-int rte_eth_dev_mac_addr_remove(uint16_t port_id, struct ether_addr *mac_addr);
+int rte_eth_dev_mac_addr_remove(uint16_t port_id,
+				struct rte_ether_addr *mac_addr);
 
 /**
  * Set the default MAC address.
@@ -3061,7 +3062,7 @@ int rte_eth_dev_mac_addr_remove(uint16_t port_id, struct ether_addr *mac_addr);
  *   - (-EINVAL) if MAC address is invalid.
  */
 int rte_eth_dev_default_mac_addr_set(uint16_t port_id,
-		struct ether_addr *mac_addr);
+		struct rte_ether_addr *mac_addr);
 
 /**
  * Update Redirection Table(RETA) of Receive Side Scaling of Ethernet device.
@@ -3123,7 +3124,7 @@ int rte_eth_dev_rss_reta_query(uint16_t port_id,
  *   - (-EIO) if device is removed.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_eth_dev_uc_hash_table_set(uint16_t port_id, struct ether_addr *addr,
+int rte_eth_dev_uc_hash_table_set(uint16_t port_id, struct rte_ether_addr *addr,
 				  uint8_t on);
 
  /**
@@ -3668,7 +3669,7 @@ rte_eth_dev_get_module_eeprom(uint16_t port_id,
  *   - (-ENOSPC) if *port_id* has not enough multicast filtering resources.
  */
 int rte_eth_dev_set_mc_addr_list(uint16_t port_id,
-				 struct ether_addr *mc_addr_set,
+				 struct rte_ether_addr *mc_addr_set,
 				 uint32_t nb_mc_addr);
 
 /**

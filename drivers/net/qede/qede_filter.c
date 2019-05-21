@@ -465,8 +465,8 @@ qede_arfs_construct_pkt(struct rte_eth_dev *eth_dev,
 
 	raw_pkt = (uint8_t *)buff;
 
-	len =  2 * sizeof(struct ether_addr);
-	raw_pkt += 2 * sizeof(struct ether_addr);
+	len =  2 * sizeof(struct rte_ether_addr);
+	raw_pkt += 2 * sizeof(struct rte_ether_addr);
 	ether_type = (uint16_t *)raw_pkt;
 	raw_pkt += sizeof(uint16_t);
 	len += sizeof(uint16_t);

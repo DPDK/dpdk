@@ -48,13 +48,13 @@ processx4_step3(struct rte_mbuf *pkt[FWDSTEP], uint16_t dst_port[FWDSTEP])
 	vst1q_u32(p[2], ve[2]);
 	vst1q_u32(p[3], ve[3]);
 
-	rfc1812_process((struct ipv4_hdr *)((struct ether_hdr *)p[0] + 1),
+	rfc1812_process((struct ipv4_hdr *)((struct rte_ether_hdr *)p[0] + 1),
 		&dst_port[0], pkt[0]->packet_type);
-	rfc1812_process((struct ipv4_hdr *)((struct ether_hdr *)p[1] + 1),
+	rfc1812_process((struct ipv4_hdr *)((struct rte_ether_hdr *)p[1] + 1),
 		&dst_port[1], pkt[1]->packet_type);
-	rfc1812_process((struct ipv4_hdr *)((struct ether_hdr *)p[2] + 1),
+	rfc1812_process((struct ipv4_hdr *)((struct rte_ether_hdr *)p[2] + 1),
 		&dst_port[2], pkt[2]->packet_type);
-	rfc1812_process((struct ipv4_hdr *)((struct ether_hdr *)p[3] + 1),
+	rfc1812_process((struct ipv4_hdr *)((struct rte_ether_hdr *)p[3] + 1),
 		&dst_port[3], pkt[3]->packet_type);
 }
 
@@ -104,10 +104,10 @@ port_groupx4(uint16_t pn[FWDSTEP + 1], uint16_t *lp, uint16x8_t dp1,
 static inline void
 process_packet(struct rte_mbuf *pkt, uint16_t *dst_port)
 {
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 	uint32x4_t te, ve;
 
-	eth_hdr = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
+	eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
 
 	te = vld1q_u32((uint32_t *)eth_hdr);
 	ve = vreinterpretq_u32_s32(val_eth[dst_port[0]]);

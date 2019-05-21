@@ -70,7 +70,7 @@ void stats_reset(struct rte_eth_dev *dev,
 		 void *user_data);
 
 void mac_addr_add(struct rte_eth_dev *dev,
-		  struct ether_addr *macadr,
+		  struct rte_ether_addr *macadr,
 		  uint32_t index,
 		  uint32_t pool,
 		  void *user_data);
@@ -80,7 +80,7 @@ void mac_addr_remove(struct rte_eth_dev *dev,
 		     void *user_data);
 
 void mac_addr_set(struct rte_eth_dev *dev,
-		  struct ether_addr *mac_addr,
+		  struct rte_ether_addr *mac_addr,
 		  void *user_data);
 
 int set_mtu(struct rte_eth_dev *dev,

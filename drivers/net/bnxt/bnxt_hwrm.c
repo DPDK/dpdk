@@ -2578,7 +2578,7 @@ static void add_random_mac_if_needed(struct bnxt *bp,
 				     struct hwrm_func_cfg_input *cfg_req,
 				     int vf)
 {
-	struct ether_addr mac;
+	struct rte_ether_addr mac;
 
 	if (bnxt_hwrm_func_qcfg_vf_default_mac(bp, vf, &mac))
 		return;
@@ -3112,7 +3112,7 @@ int bnxt_hwrm_reject_fwd_resp(struct bnxt *bp, uint16_t target_id,
 }
 
 int bnxt_hwrm_func_qcfg_vf_default_mac(struct bnxt *bp, uint16_t vf,
-				       struct ether_addr *mac)
+				       struct rte_ether_addr *mac)
 {
 	struct hwrm_func_qcfg_input req = {0};
 	struct hwrm_func_qcfg_output *resp = bp->hwrm_cmd_resp_addr;

@@ -166,7 +166,7 @@ static int
 fs_eth_dev_create(struct rte_vdev_device *vdev)
 {
 	struct rte_eth_dev *dev;
-	struct ether_addr *mac;
+	struct rte_ether_addr *mac;
 	struct fs_priv *priv;
 	struct sub_device *sdev;
 	const char *params;

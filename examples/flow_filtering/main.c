@@ -45,7 +45,7 @@ struct rte_flow *flow;
 #include "flow_blocks.c"
 
 static inline void
-print_ether_addr(const char *what, struct ether_addr *eth_addr)
+print_ether_addr(const char *what, struct rte_ether_addr *eth_addr)
 {
 	char buf[ETHER_ADDR_FMT_SIZE];
 	ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
@@ -56,7 +56,7 @@ static void
 main_loop(void)
 {
 	struct rte_mbuf *mbufs[32];
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 	struct rte_flow_error error;
 	uint16_t nb_rx;
 	uint16_t i;
@@ -71,7 +71,7 @@ main_loop(void)
 					struct rte_mbuf *m = mbufs[j];
 
 					eth_hdr = rte_pktmbuf_mtod(m,
-							struct ether_hdr *);
+							struct rte_ether_hdr *);
 					print_ether_addr("src=",
 							&eth_hdr->s_addr);
 					print_ether_addr(" - dst=",

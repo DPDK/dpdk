@@ -19,25 +19,25 @@ processx4_step1(struct rte_mbuf *pkt[FWDSTEP],
 		uint32_t *ipv4_flag)
 {
 	struct ipv4_hdr *ipv4_hdr;
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 	int32_t dst[FWDSTEP];
 
-	eth_hdr = rte_pktmbuf_mtod(pkt[0], struct ether_hdr *);
+	eth_hdr = rte_pktmbuf_mtod(pkt[0], struct rte_ether_hdr *);
 	ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
 	dst[0] = ipv4_hdr->dst_addr;
 	ipv4_flag[0] = pkt[0]->packet_type & RTE_PTYPE_L3_IPV4;
 
-	eth_hdr = rte_pktmbuf_mtod(pkt[1], struct ether_hdr *);
+	eth_hdr = rte_pktmbuf_mtod(pkt[1], struct rte_ether_hdr *);
 	ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
 	dst[1] = ipv4_hdr->dst_addr;
 	ipv4_flag[0] &= pkt[1]->packet_type;
 
-	eth_hdr = rte_pktmbuf_mtod(pkt[2], struct ether_hdr *);
+	eth_hdr = rte_pktmbuf_mtod(pkt[2], struct rte_ether_hdr *);
 	ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
 	dst[2] = ipv4_hdr->dst_addr;
 	ipv4_flag[0] &= pkt[2]->packet_type;
 
-	eth_hdr = rte_pktmbuf_mtod(pkt[3], struct ether_hdr *);
+	eth_hdr = rte_pktmbuf_mtod(pkt[3], struct rte_ether_hdr *);
 	ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
 	dst[3] = ipv4_hdr->dst_addr;
 	ipv4_flag[0] &= pkt[3]->packet_type;
@@ -98,14 +98,14 @@ l3fwd_lpm_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 	if (k) {
 		for (i = 0; i < FWDSTEP; i++) {
 			rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[i],
-						struct ether_hdr *) + 1);
+						struct rte_ether_hdr *) + 1);
 		}
 
 		for (j = 0; j != k - FWDSTEP; j += FWDSTEP) {
 			for (i = 0; i < FWDSTEP; i++) {
 				rte_prefetch0(rte_pktmbuf_mtod(
 						pkts_burst[j + i + FWDSTEP],
-						struct ether_hdr *) + 1);
+						struct rte_ether_hdr *) + 1);
 			}
 
 			processx4_step1(&pkts_burst[j], &dip, &ipv4_flag);
@@ -125,17 +125,17 @@ l3fwd_lpm_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 		switch (m) {
 		case 3:
 			rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[j],
-						struct ether_hdr *) + 1);
+						struct rte_ether_hdr *) + 1);
 			j++;
 			/* fallthrough */
 		case 2:
 			rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[j],
-						struct ether_hdr *) + 1);
+						struct rte_ether_hdr *) + 1);
 			j++;
 			/* fallthrough */
 		case 1:
 			rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[j],
-						struct ether_hdr *) + 1);
+						struct rte_ether_hdr *) + 1);
 			j++;
 		}
 

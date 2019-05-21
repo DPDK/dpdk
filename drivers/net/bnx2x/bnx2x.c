@@ -2197,8 +2197,8 @@ int bnx2x_tx_encap(struct bnx2x_tx_queue *txq, struct rte_mbuf *m0)
 			tx_start_bd->vlan_or_ethertype =
 			    rte_cpu_to_le_16(pkt_prod);
 		else {
-			struct ether_hdr *eh =
-			    rte_pktmbuf_mtod(m0, struct ether_hdr *);
+			struct rte_ether_hdr *eh =
+			    rte_pktmbuf_mtod(m0, struct rte_ether_hdr *);
 
 			tx_start_bd->vlan_or_ethertype =
 			    rte_cpu_to_le_16(rte_be_to_cpu_16(eh->ether_type));
@@ -2208,8 +2208,8 @@ int bnx2x_tx_encap(struct bnx2x_tx_queue *txq, struct rte_mbuf *m0)
 	bd_prod = NEXT_TX_BD(bd_prod);
 	if (IS_VF(sc)) {
 		struct eth_tx_parse_bd_e2 *tx_parse_bd;
-		const struct ether_hdr *eh =
-		    rte_pktmbuf_mtod(m0, struct ether_hdr *);
+		const struct rte_ether_hdr *eh =
+		    rte_pktmbuf_mtod(m0, struct rte_ether_hdr *);
 		uint8_t mac_type = UNICAST_ADDRESS;
 
 		tx_parse_bd =

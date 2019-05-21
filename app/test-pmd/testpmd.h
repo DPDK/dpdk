@@ -162,7 +162,7 @@ struct softnic_port {
 struct rte_port {
 	struct rte_eth_dev_info dev_info;   /**< PCI info + driver name */
 	struct rte_eth_conf     dev_conf;   /**< Port configuration. */
-	struct ether_addr       eth_addr;   /**< Port ethernet address */
+	struct rte_ether_addr       eth_addr;   /**< Port ethernet address */
 	struct rte_eth_stats    stats;      /**< Last port statistics */
 	unsigned int            socket_id;  /**< For NUMA support */
 	uint16_t		parse_tunnel:1; /**< Parse internal headers */
@@ -182,7 +182,7 @@ struct rte_port {
 	uint16_t                nb_tx_desc[MAX_QUEUE_ID+1]; /**< per queue tx desc number */
 	struct rte_eth_rxconf   rx_conf[MAX_QUEUE_ID+1]; /**< per queue rx configuration */
 	struct rte_eth_txconf   tx_conf[MAX_QUEUE_ID+1]; /**< per queue tx configuration */
-	struct ether_addr       *mc_addr_pool; /**< pool of multicast addrs */
+	struct rte_ether_addr   *mc_addr_pool; /**< pool of multicast addrs */
 	uint32_t                mc_addr_nb; /**< nb. of addr. in mc_addr_pool */
 	uint8_t                 slave_flag; /**< bonding slave port */
 	struct port_flow        *flow_list; /**< Associated flows. */
@@ -460,7 +460,7 @@ extern struct fwd_stream **fwd_streams;
 extern uint16_t vxlan_gpe_udp_port; /**< UDP port of tunnel VXLAN-GPE. */
 
 extern portid_t nb_peer_eth_addrs; /**< Number of peer ethernet addresses. */
-extern struct ether_addr peer_eth_addrs[RTE_MAX_ETHPORTS];
+extern struct rte_ether_addr peer_eth_addrs[RTE_MAX_ETHPORTS];
 
 extern uint32_t burst_tx_delay_time; /**< Burst tx delay time(us) for mac-retry. */
 extern uint32_t burst_tx_retry_num;  /**< Burst tx retry number for mac-retry. */
@@ -819,8 +819,8 @@ void show_gro(portid_t port_id);
 void setup_gso(const char *mode, portid_t port_id);
 
 /* Functions to manage the set of filtered Multicast MAC addresses */
-void mcast_addr_add(portid_t port_id, struct ether_addr *mc_addr);
-void mcast_addr_remove(portid_t port_id, struct ether_addr *mc_addr);
+void mcast_addr_add(portid_t port_id, struct rte_ether_addr *mc_addr);
+void mcast_addr_remove(portid_t port_id, struct rte_ether_addr *mc_addr);
 void port_dcb_info_display(portid_t port_id);
 
 uint8_t *open_file(const char *file_path, uint32_t *size);

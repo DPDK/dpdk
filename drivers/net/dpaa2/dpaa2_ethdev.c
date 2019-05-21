@@ -1124,7 +1124,7 @@ dpaa2_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 
 static int
 dpaa2_dev_add_mac_addr(struct rte_eth_dev *dev,
-		       struct ether_addr *addr,
+		       struct rte_ether_addr *addr,
 		       __rte_unused uint32_t index,
 		       __rte_unused uint32_t pool)
 {
@@ -1155,7 +1155,7 @@ dpaa2_dev_remove_mac_addr(struct rte_eth_dev *dev,
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
 	struct rte_eth_dev_data *data = dev->data;
-	struct ether_addr *macaddr;
+	struct rte_ether_addr *macaddr;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1175,7 +1175,7 @@ dpaa2_dev_remove_mac_addr(struct rte_eth_dev *dev,
 
 static int
 dpaa2_dev_set_mac_addr(struct rte_eth_dev *dev,
-		       struct ether_addr *addr)
+		       struct rte_ether_addr *addr)
 {
 	int ret;
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
@@ -1992,13 +1992,13 @@ static struct eth_dev_ops dpaa2_ethdev_ops = {
  */
 static int
 populate_mac_addr(struct fsl_mc_io *dpni_dev, struct dpaa2_dev_priv *priv,
-		  struct ether_addr *mac_entry)
+		  struct rte_ether_addr *mac_entry)
 {
 	int ret;
-	struct ether_addr phy_mac, prime_mac;
+	struct rte_ether_addr phy_mac, prime_mac;
 
-	memset(&phy_mac, 0, sizeof(struct ether_addr));
-	memset(&prime_mac, 0, sizeof(struct ether_addr));
+	memset(&phy_mac, 0, sizeof(struct rte_ether_addr));
+	memset(&prime_mac, 0, sizeof(struct rte_ether_addr));
 
 	/* Get the physical device MAC address */
 	ret = dpni_get_port_mac_addr(dpni_dev, CMD_PRI_LOW, priv->token,
@@ -2032,7 +2032,8 @@ populate_mac_addr(struct fsl_mc_io *dpni_dev, struct dpaa2_dev_priv *priv,
 					      ret);
 				goto cleanup;
 			}
-			memcpy(&prime_mac, &phy_mac, sizeof(struct ether_addr));
+			memcpy(&prime_mac, &phy_mac,
+				sizeof(struct rte_ether_addr));
 		}
 	} else if (is_zero_ether_addr(&prime_mac)) {
 		/* In case phys and prime, both are zero, create random MAC */
@@ -2047,7 +2048,7 @@ populate_mac_addr(struct fsl_mc_io *dpni_dev, struct dpaa2_dev_priv *priv,
 	}
 
 	/* prime_mac the final MAC address */
-	memcpy(mac_entry, &prime_mac, sizeof(struct ether_addr));
+	memcpy(mac_entry, &prime_mac, sizeof(struct rte_ether_addr));
 	return 0;
 
 cleanup:

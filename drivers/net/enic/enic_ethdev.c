@@ -604,7 +604,7 @@ static void enicpmd_dev_allmulticast_disable(struct rte_eth_dev *eth_dev)
 }
 
 static int enicpmd_add_mac_addr(struct rte_eth_dev *eth_dev,
-	struct ether_addr *mac_addr,
+	struct rte_ether_addr *mac_addr,
 	__rte_unused uint32_t index, __rte_unused uint32_t pool)
 {
 	struct enic *enic = pmd_priv(eth_dev);
@@ -629,7 +629,7 @@ static void enicpmd_remove_mac_addr(struct rte_eth_dev *eth_dev, uint32_t index)
 }
 
 static int enicpmd_set_mac_addr(struct rte_eth_dev *eth_dev,
-				struct ether_addr *addr)
+				struct rte_ether_addr *addr)
 {
 	struct enic *enic = pmd_priv(eth_dev);
 	int ret;
@@ -644,7 +644,7 @@ static int enicpmd_set_mac_addr(struct rte_eth_dev *eth_dev,
 	return enic_set_mac_address(enic, addr->addr_bytes);
 }
 
-static void debug_log_add_del_addr(struct ether_addr *addr, bool add)
+static void debug_log_add_del_addr(struct rte_ether_addr *addr, bool add)
 {
 	char mac_str[ETHER_ADDR_FMT_SIZE];
 
@@ -654,12 +654,12 @@ static void debug_log_add_del_addr(struct ether_addr *addr, bool add)
 }
 
 static int enicpmd_set_mc_addr_list(struct rte_eth_dev *eth_dev,
-				    struct ether_addr *mc_addr_set,
+				    struct rte_ether_addr *mc_addr_set,
 				    uint32_t nb_mc_addr)
 {
 	struct enic *enic = pmd_priv(eth_dev);
 	char mac_str[ETHER_ADDR_FMT_SIZE];
-	struct ether_addr *addr;
+	struct rte_ether_addr *addr;
 	uint32_t i, j;
 	int ret;
 
@@ -730,7 +730,7 @@ static int enicpmd_set_mc_addr_list(struct rte_eth_dev *eth_dev,
 	}
 	/* Keep a copy so we can flush/apply later on.. */
 	memcpy(enic->mc_addrs, mc_addr_set,
-	       nb_mc_addr * sizeof(struct ether_addr));
+	       nb_mc_addr * sizeof(struct rte_ether_addr));
 	enic->mc_count = nb_mc_addr;
 	return 0;
 }

@@ -201,7 +201,7 @@ slave_port_init(uint16_t portid, struct rte_mempool *mbuf_pool)
 				"Start port %d failed (res=%d)",
 				portid, retval);
 
-	struct ether_addr addr;
+	struct rte_ether_addr addr;
 
 	rte_eth_macaddr_get(portid, &addr);
 	printf("Port %u MAC: ", portid);
@@ -291,7 +291,7 @@ bond_port_init(struct rte_mempool *mbuf_pool)
 
 	rte_eth_promiscuous_enable(BOND_PORT);
 
-	struct ether_addr addr;
+	struct rte_ether_addr addr;
 
 	rte_eth_macaddr_get(BOND_PORT, &addr);
 	printf("Port %u MAC: ", (unsigned)BOND_PORT);
@@ -300,21 +300,22 @@ bond_port_init(struct rte_mempool *mbuf_pool)
 }
 
 static inline size_t
-get_vlan_offset(struct ether_hdr *eth_hdr, uint16_t *proto)
+get_vlan_offset(struct rte_ether_hdr *eth_hdr, uint16_t *proto)
 {
 	size_t vlan_offset = 0;
 
 	if (rte_cpu_to_be_16(ETHER_TYPE_VLAN) == *proto) {
-		struct vlan_hdr *vlan_hdr = (struct vlan_hdr *)(eth_hdr + 1);
+		struct rte_vlan_hdr *vlan_hdr =
+			(struct rte_vlan_hdr *)(eth_hdr + 1);
 
-		vlan_offset = sizeof(struct vlan_hdr);
+		vlan_offset = sizeof(struct rte_vlan_hdr);
 		*proto = vlan_hdr->eth_proto;
 
 		if (rte_cpu_to_be_16(ETHER_TYPE_VLAN) == *proto) {
 			vlan_hdr = vlan_hdr + 1;
 
 			*proto = vlan_hdr->eth_proto;
-			vlan_offset += sizeof(struct vlan_hdr);
+			vlan_offset += sizeof(struct rte_vlan_hdr);
 		}
 	}
 	return vlan_offset;
@@ -336,9 +337,9 @@ struct global_flag_stru_t *global_flag_stru_p = &global_flag_stru;
 static int lcore_main(__attribute__((unused)) void *arg1)
 {
 	struct rte_mbuf *pkts[MAX_PKT_BURST] __rte_cache_aligned;
-	struct ether_addr d_addr;
+	struct rte_ether_addr d_addr;
 
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 	struct rte_arp_hdr *arp_hdr;
 	struct ipv4_hdr *ipv4_hdr;
 	uint16_t ether_type, offset;
@@ -370,7 +371,8 @@ static int lcore_main(__attribute__((unused)) void *arg1)
 				global_flag_stru_p->port_packets[0]++;
 				rte_spinlock_unlock(&global_flag_stru_p->lock);
 			}
-			eth_hdr = rte_pktmbuf_mtod(pkts[i], struct ether_hdr *);
+			eth_hdr = rte_pktmbuf_mtod(pkts[i],
+						struct rte_ether_hdr *);
 			ether_type = eth_hdr->ether_type;
 			if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_VLAN))
 				printf("VLAN taged frame, offset:");
@@ -450,7 +452,7 @@ static void cmd_obj_send_parsed(void *parsed_result,
 	char ip_str[INET6_ADDRSTRLEN];
 
 	struct rte_mbuf *created_pkt;
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 	struct rte_arp_hdr *arp_hdr;
 
 	uint32_t bond_ip;
@@ -470,17 +472,17 @@ static void cmd_obj_send_parsed(void *parsed_result,
 		return;
 	}
 
-	pkt_size = sizeof(struct ether_hdr) + sizeof(struct rte_arp_hdr);
+	pkt_size = sizeof(struct rte_ether_hdr) + sizeof(struct rte_arp_hdr);
 	created_pkt->data_len = pkt_size;
 	created_pkt->pkt_len = pkt_size;
 
-	eth_hdr = rte_pktmbuf_mtod(created_pkt, struct ether_hdr *);
+	eth_hdr = rte_pktmbuf_mtod(created_pkt, struct rte_ether_hdr *);
 	rte_eth_macaddr_get(BOND_PORT, &eth_hdr->s_addr);
 	memset(&eth_hdr->d_addr, 0xFF, ETHER_ADDR_LEN);
 	eth_hdr->ether_type = rte_cpu_to_be_16(ETHER_TYPE_ARP);
 
 	arp_hdr = (struct rte_arp_hdr *)(
-		(char *)eth_hdr + sizeof(struct ether_hdr));
+		(char *)eth_hdr + sizeof(struct rte_ether_hdr));
 	arp_hdr->arp_hardware = rte_cpu_to_be_16(RTE_ARP_HRD_ETHER);
 	arp_hdr->arp_protocol = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
 	arp_hdr->arp_hlen = ETHER_ADDR_LEN;
@@ -700,7 +702,7 @@ static void cmd_show_parsed(__attribute__((unused)) void *parsed_result,
 {
 	uint16_t slaves[16] = {0};
 	uint8_t len = 16;
-	struct ether_addr addr;
+	struct rte_ether_addr addr;
 	uint16_t i = 0;
 
 	while (i < slaves_count)	{

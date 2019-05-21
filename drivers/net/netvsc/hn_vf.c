@@ -32,12 +32,12 @@
 /* Search for VF with matching MAC address, return port id */
 static int hn_vf_match(const struct rte_eth_dev *dev)
 {
-	const struct ether_addr *mac = dev->data->mac_addrs;
+	const struct rte_ether_addr *mac = dev->data->mac_addrs;
 	int i;
 
 	RTE_ETH_FOREACH_DEV(i) {
 		const struct rte_eth_dev *vf_dev = &rte_eth_devices[i];
-		const struct ether_addr *vf_mac = vf_dev->data->mac_addrs;
+		const struct rte_ether_addr *vf_mac = vf_dev->data->mac_addrs;
 
 		if (vf_dev == dev)
 			continue;
@@ -400,7 +400,7 @@ void hn_vf_promiscuous_disable(struct rte_eth_dev *dev)
 }
 
 int hn_vf_mc_addr_list(struct rte_eth_dev *dev,
-			struct ether_addr *mc_addr_set,
+			struct rte_ether_addr *mc_addr_set,
 			uint32_t nb_mc_addr)
 {
 	struct hn_data *hv = dev->data->dev_private;

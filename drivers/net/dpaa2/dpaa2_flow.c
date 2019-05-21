@@ -214,27 +214,27 @@ dpaa2_configure_flow_eth(struct rte_flow *flow,
 	/* Key rule */
 	key_iova = flow->rule.key_iova + DPAA2_CLS_RULE_OFFSET_ETH;
 	memcpy((void *)key_iova, (const void *)(spec->src.addr_bytes),
-						sizeof(struct ether_addr));
-	key_iova += sizeof(struct ether_addr);
+						sizeof(struct rte_ether_addr));
+	key_iova += sizeof(struct rte_ether_addr);
 	memcpy((void *)key_iova, (const void *)(spec->dst.addr_bytes),
-						sizeof(struct ether_addr));
-	key_iova += sizeof(struct ether_addr);
+						sizeof(struct rte_ether_addr));
+	key_iova += sizeof(struct rte_ether_addr);
 	memcpy((void *)key_iova, (const void *)(&spec->type),
 						sizeof(rte_be16_t));
 
 	/* Key mask */
 	mask_iova = flow->rule.mask_iova + DPAA2_CLS_RULE_OFFSET_ETH;
 	memcpy((void *)mask_iova, (const void *)(mask->src.addr_bytes),
-						sizeof(struct ether_addr));
-	mask_iova += sizeof(struct ether_addr);
+						sizeof(struct rte_ether_addr));
+	mask_iova += sizeof(struct rte_ether_addr);
 	memcpy((void *)mask_iova, (const void *)(mask->dst.addr_bytes),
-						sizeof(struct ether_addr));
-	mask_iova += sizeof(struct ether_addr);
+						sizeof(struct rte_ether_addr));
+	mask_iova += sizeof(struct rte_ether_addr);
 	memcpy((void *)mask_iova, (const void *)(&mask->type),
 						sizeof(rte_be16_t));
 
 	flow->rule.key_size = (DPAA2_CLS_RULE_OFFSET_ETH +
-				((2  * sizeof(struct ether_addr)) +
+				((2  * sizeof(struct rte_ether_addr)) +
 				sizeof(rte_be16_t)));
 	return device_configured;
 }

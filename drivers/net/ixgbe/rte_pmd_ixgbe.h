@@ -42,7 +42,7 @@ int rte_pmd_ixgbe_ping_vf(uint16_t port, uint16_t vf);
  *   - (-EINVAL) if *vf* or *mac_addr* is invalid.
  */
 int rte_pmd_ixgbe_set_vf_mac_addr(uint16_t port, uint16_t vf,
-		struct ether_addr *mac_addr);
+		struct rte_ether_addr *mac_addr);
 
 /**
  * Enable/Disable VF VLAN anti spoofing.

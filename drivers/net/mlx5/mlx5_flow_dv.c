@@ -1211,13 +1211,13 @@ static int
 flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
 			   size_t *size, struct rte_flow_error *error)
 {
-	struct ether_hdr *eth = NULL;
-	struct vlan_hdr *vlan = NULL;
+	struct rte_ether_hdr *eth = NULL;
+	struct rte_vlan_hdr *vlan = NULL;
 	struct ipv4_hdr *ipv4 = NULL;
 	struct ipv6_hdr *ipv6 = NULL;
 	struct udp_hdr *udp = NULL;
-	struct vxlan_hdr *vxlan = NULL;
-	struct vxlan_gpe_hdr *vxlan_gpe = NULL;
+	struct rte_vxlan_hdr *vxlan = NULL;
+	struct rte_vxlan_gpe_hdr *vxlan_gpe = NULL;
 	struct gre_hdr *gre = NULL;
 	size_t len;
 	size_t temp_size = 0;
@@ -1237,10 +1237,10 @@ flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
 		rte_memcpy((void *)&buf[temp_size], items->spec, len);
 		switch (items->type) {
 		case RTE_FLOW_ITEM_TYPE_ETH:
-			eth = (struct ether_hdr *)&buf[temp_size];
+			eth = (struct rte_ether_hdr *)&buf[temp_size];
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
-			vlan = (struct vlan_hdr *)&buf[temp_size];
+			vlan = (struct rte_vlan_hdr *)&buf[temp_size];
 			if (!eth)
 				return rte_flow_error_set(error, EINVAL,
 						RTE_FLOW_ERROR_TYPE_ACTION,
@@ -1298,7 +1298,7 @@ flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
 				ipv6->proto = IPPROTO_UDP;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
-			vxlan = (struct vxlan_hdr *)&buf[temp_size];
+			vxlan = (struct rte_vxlan_hdr *)&buf[temp_size];
 			if (!udp)
 				return rte_flow_error_set(error, EINVAL,
 						RTE_FLOW_ERROR_TYPE_ACTION,
@@ -1311,7 +1311,7 @@ flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
 					RTE_BE32(MLX5_ENCAP_VXLAN_FLAGS);
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
-			vxlan_gpe = (struct vxlan_gpe_hdr *)&buf[temp_size];
+			vxlan_gpe = (struct rte_vxlan_gpe_hdr *)&buf[temp_size];
 			if (!udp)
 				return rte_flow_error_set(error, EINVAL,
 						RTE_FLOW_ERROR_TYPE_ACTION,

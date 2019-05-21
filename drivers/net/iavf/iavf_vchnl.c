@@ -636,7 +636,7 @@ iavf_add_del_all_mac_addr(struct iavf_adapter *adapter, bool add)
 {
 	struct virtchnl_ether_addr_list *list;
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
-	struct ether_addr *addr;
+	struct rte_ether_addr *addr;
 	struct iavf_cmd_info args;
 	int len, err, i, j;
 	int next_begin = 0;
@@ -753,7 +753,7 @@ iavf_config_promisc(struct iavf_adapter *adapter,
 }
 
 int
-iavf_add_del_eth_addr(struct iavf_adapter *adapter, struct ether_addr *addr,
+iavf_add_del_eth_addr(struct iavf_adapter *adapter, struct rte_ether_addr *addr,
 		     bool add)
 {
 	struct virtchnl_ether_addr_list *list;

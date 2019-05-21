@@ -832,7 +832,7 @@ kni_config_network_interface(uint16_t port_id, uint8_t if_up)
 }
 
 static void
-print_ethaddr(const char *name, struct ether_addr *mac_addr)
+print_ethaddr(const char *name, struct rte_ether_addr *mac_addr)
 {
 	char buf[ETHER_ADDR_FMT_SIZE];
 	ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, mac_addr);
@@ -851,10 +851,10 @@ kni_config_mac_address(uint16_t port_id, uint8_t mac_addr[])
 	}
 
 	RTE_LOG(INFO, APP, "Configure mac address of %d\n", port_id);
-	print_ethaddr("Address:", (struct ether_addr *)mac_addr);
+	print_ethaddr("Address:", (struct rte_ether_addr *)mac_addr);
 
 	ret = rte_eth_dev_default_mac_addr_set(port_id,
-					       (struct ether_addr *)mac_addr);
+					(struct rte_ether_addr *)mac_addr);
 	if (ret < 0)
 		RTE_LOG(ERR, APP, "Failed to config mac_addr for port %d\n",
 			port_id);
@@ -912,7 +912,7 @@ kni_alloc(uint16_t port_id)
 			}
 			/* Get the interface default mac address */
 			rte_eth_macaddr_get(port_id,
-					(struct ether_addr *)&conf.mac_addr);
+				(struct rte_ether_addr *)&conf.mac_addr);
 
 			rte_eth_dev_get_mtu(port_id, &conf.mtu);
 

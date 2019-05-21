@@ -221,7 +221,7 @@ ipv4_addr_to_dot(uint32_t be_ipv4_addr, char *buf)
 }
 
 static void
-ether_addr_dump(const char *what, const struct ether_addr *ea)
+ether_addr_dump(const char *what, const struct rte_ether_addr *ea)
 {
 	char buf[ETHER_ADDR_FMT_SIZE];
 
@@ -275,12 +275,12 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	struct rte_mbuf *pkt;
-	struct ether_hdr *eth_h;
-	struct vlan_hdr *vlan_h;
+	struct rte_ether_hdr *eth_h;
+	struct rte_vlan_hdr *vlan_h;
 	struct rte_arp_hdr  *arp_h;
 	struct ipv4_hdr *ip_h;
 	struct icmp_hdr *icmp_h;
-	struct ether_addr eth_addr;
+	struct rte_ether_addr eth_addr;
 	uint32_t retry;
 	uint32_t ip_addr;
 	uint16_t nb_rx;
@@ -321,9 +321,9 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 			rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[i + 1],
 						       void *));
 		pkt = pkts_burst[i];
-		eth_h = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
+		eth_h = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
 		eth_type = RTE_BE_TO_CPU_16(eth_h->ether_type);
-		l2_len = sizeof(struct ether_hdr);
+		l2_len = sizeof(struct rte_ether_hdr);
 		if (verbose_level > 0) {
 			printf("\nPort %d pkt-len=%u nb-segs=%u\n",
 			       fs->rx_port, pkt->pkt_len, pkt->nb_segs);
@@ -331,9 +331,9 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 			ether_addr_dump(" dst=", &eth_h->d_addr);
 		}
 		if (eth_type == ETHER_TYPE_VLAN) {
-			vlan_h = (struct vlan_hdr *)
-				((char *)eth_h + sizeof(struct ether_hdr));
-			l2_len  += sizeof(struct vlan_hdr);
+			vlan_h = (struct rte_vlan_hdr *)
+				((char *)eth_h + sizeof(struct rte_ether_hdr));
+			l2_len  += sizeof(struct rte_vlan_hdr);
 			eth_type = rte_be_to_cpu_16(vlan_h->eth_proto);
 			if (verbose_level > 0) {
 				vlan_id = rte_be_to_cpu_16(vlan_h->vlan_tci)

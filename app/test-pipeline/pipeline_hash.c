@@ -441,14 +441,14 @@ app_main_loop_rx_metadata(void) {
 
 			if (RTE_ETH_IS_IPV4_HDR(m->packet_type)) {
 				ip_hdr = (struct ipv4_hdr *)
-					&m_data[sizeof(struct ether_hdr)];
+					&m_data[sizeof(struct rte_ether_hdr)];
 				ip_dst = ip_hdr->dst_addr;
 
 				k32 = (uint32_t *) key;
 				k32[0] = ip_dst & 0xFFFFFF00;
 			} else if (RTE_ETH_IS_IPV6_HDR(m->packet_type)) {
 				ipv6_hdr = (struct ipv6_hdr *)
-					&m_data[sizeof(struct ether_hdr)];
+					&m_data[sizeof(struct rte_ether_hdr)];
 				ipv6_dst = ipv6_hdr->dst_addr;
 
 				memcpy(key, ipv6_dst, 16);

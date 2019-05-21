@@ -387,8 +387,8 @@ enum rte_table_action_encap_type {
 
 /** Pre-computed Ethernet header fields for encapsulation action. */
 struct rte_table_action_ether_hdr {
-	struct ether_addr da; /**< Destination address. */
-	struct ether_addr sa; /**< Source address. */
+	struct rte_ether_addr da; /**< Destination address. */
+	struct rte_ether_addr sa; /**< Source address. */
 };
 
 /** Pre-computed VLAN header fields for encapsulation action. */

@@ -268,7 +268,7 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 		.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
 	};
 	const unsigned int vlan_filter_n = priv->vlan_filter_n;
-	const struct ether_addr cmp = {
+	const struct rte_ether_addr cmp = {
 		.addr_bytes = "\x00\x00\x00\x00\x00\x00",
 	};
 	unsigned int i;
@@ -331,7 +331,7 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 	}
 	/* Add MAC address flows. */
 	for (i = 0; i != MLX5_MAX_MAC_ADDRESSES; ++i) {
-		struct ether_addr *mac = &dev->data->mac_addrs[i];
+		struct rte_ether_addr *mac = &dev->data->mac_addrs[i];
 
 		if (!memcmp(mac, &cmp, sizeof(*mac)))
 			continue;

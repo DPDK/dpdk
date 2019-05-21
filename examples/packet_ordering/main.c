@@ -255,7 +255,7 @@ configure_tx_buffers(struct rte_eth_dev_tx_buffer *tx_buffer[])
 static inline int
 configure_eth_port(uint16_t port_id)
 {
-	struct ether_addr addr;
+	struct rte_ether_addr addr;
 	const uint16_t rxRings = 1, txRings = 1;
 	int ret;
 	uint16_t q;

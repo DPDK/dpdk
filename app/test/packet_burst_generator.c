@@ -53,16 +53,17 @@ copy_buf_to_pkt(void *buf, unsigned len, struct rte_mbuf *pkt, unsigned offset)
 }
 
 void
-initialize_eth_header(struct ether_hdr *eth_hdr, struct ether_addr *src_mac,
-		struct ether_addr *dst_mac, uint16_t ether_type,
+initialize_eth_header(struct rte_ether_hdr *eth_hdr,
+		struct rte_ether_addr *src_mac,
+		struct rte_ether_addr *dst_mac, uint16_t ether_type,
 		uint8_t vlan_enabled, uint16_t van_id)
 {
 	ether_addr_copy(dst_mac, &eth_hdr->d_addr);
 	ether_addr_copy(src_mac, &eth_hdr->s_addr);
 
 	if (vlan_enabled) {
-		struct vlan_hdr *vhdr = (struct vlan_hdr *)((uint8_t *)eth_hdr +
-				sizeof(struct ether_hdr));
+		struct rte_vlan_hdr *vhdr = (struct rte_vlan_hdr *)(
+			(uint8_t *)eth_hdr + sizeof(struct rte_ether_hdr));
 
 		eth_hdr->ether_type = rte_cpu_to_be_16(ETHER_TYPE_VLAN);
 
@@ -74,8 +75,10 @@ initialize_eth_header(struct ether_hdr *eth_hdr, struct ether_addr *src_mac,
 }
 
 void
-initialize_arp_header(struct rte_arp_hdr *arp_hdr, struct ether_addr *src_mac,
-		struct ether_addr *dst_mac, uint32_t src_ip, uint32_t dst_ip,
+initialize_arp_header(struct rte_arp_hdr *arp_hdr,
+		struct rte_ether_addr *src_mac,
+		struct rte_ether_addr *dst_mac,
+		uint32_t src_ip, uint32_t dst_ip,
 		uint32_t opcode)
 {
 	arp_hdr->arp_hardware = rte_cpu_to_be_16(RTE_ARP_HRD_ETHER);
@@ -256,9 +259,9 @@ initialize_ipv4_header_proto(struct ipv4_hdr *ip_hdr, uint32_t src_addr,
 
 int
 generate_packet_burst(struct rte_mempool *mp, struct rte_mbuf **pkts_burst,
-		struct ether_hdr *eth_hdr, uint8_t vlan_enabled, void *ip_hdr,
-		uint8_t ipv4, struct udp_hdr *udp_hdr, int nb_pkt_per_burst,
-		uint8_t pkt_len, uint8_t nb_pkt_segs)
+		struct rte_ether_hdr *eth_hdr, uint8_t vlan_enabled,
+		void *ip_hdr, uint8_t ipv4, struct udp_hdr *udp_hdr,
+		int nb_pkt_per_burst, uint8_t pkt_len, uint8_t nb_pkt_segs)
 {
 	int i, nb_pkt = 0;
 	size_t eth_hdr_size;
@@ -293,9 +296,10 @@ nomore_mbuf:
 		 * Copy headers in first packet segment(s).
 		 */
 		if (vlan_enabled)
-			eth_hdr_size = sizeof(struct ether_hdr) + sizeof(struct vlan_hdr);
+			eth_hdr_size = sizeof(struct rte_ether_hdr) +
+				sizeof(struct rte_vlan_hdr);
 		else
-			eth_hdr_size = sizeof(struct ether_hdr);
+			eth_hdr_size = sizeof(struct rte_ether_hdr);
 
 		copy_buf_to_pkt(eth_hdr, eth_hdr_size, pkt, 0);
 
@@ -333,8 +337,8 @@ nomore_mbuf:
 
 int
 generate_packet_burst_proto(struct rte_mempool *mp,
-		struct rte_mbuf **pkts_burst,
-		struct ether_hdr *eth_hdr, uint8_t vlan_enabled, void *ip_hdr,
+		struct rte_mbuf **pkts_burst, struct rte_ether_hdr *eth_hdr,
+		uint8_t vlan_enabled, void *ip_hdr,
 		uint8_t ipv4, uint8_t proto, void *proto_hdr,
 		int nb_pkt_per_burst, uint8_t pkt_len, uint8_t nb_pkt_segs)
 {
@@ -371,10 +375,10 @@ nomore_mbuf:
 		 * Copy headers in first packet segment(s).
 		 */
 		if (vlan_enabled)
-			eth_hdr_size = sizeof(struct ether_hdr) +
-				sizeof(struct vlan_hdr);
+			eth_hdr_size = sizeof(struct rte_ether_hdr) +
+				sizeof(struct rte_vlan_hdr);
 		else
-			eth_hdr_size = sizeof(struct ether_hdr);
+			eth_hdr_size = sizeof(struct rte_ether_hdr);
 
 		copy_buf_to_pkt(eth_hdr, eth_hdr_size, pkt, 0);
 

@@ -46,6 +46,9 @@
 #include <rte_ether.h>
 #define NICVF_MAC_ADDR_SIZE ETHER_ADDR_LEN
 
+/* Ethernet */
+#define ether_addr_copy(x, y) memcpy(y, x, ETHER_ADDR_LEN)
+
 #include <rte_io.h>
 #define nicvf_addr_write(addr, val) rte_write64_relaxed((val), (void *)(addr))
 #define nicvf_addr_read(addr) rte_read64_relaxed((void *)(addr))

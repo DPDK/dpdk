@@ -56,12 +56,12 @@ static struct policy policies[MAX_CLIENTS];
 #ifdef USE_JANSSON
 
 union PFID {
-	struct ether_addr addr;
+	struct rte_ether_addr addr;
 	uint64_t pfid;
 };
 
 static int
-str_to_ether_addr(const char *a, struct ether_addr *ether_addr)
+str_to_ether_addr(const char *a, struct rte_ether_addr *ether_addr)
 {
 	int i;
 	char *end;
@@ -404,7 +404,7 @@ get_pfid(struct policy *pol)
 
 		RTE_ETH_FOREACH_DEV(x) {
 			ret = rte_pmd_i40e_query_vfid_by_mac(x,
-				(struct ether_addr *)&(pol->pkt.vfid[i]));
+				(struct rte_ether_addr *)&(pol->pkt.vfid[i]));
 			if (ret != -EINVAL) {
 				pol->port[i] = x;
 				break;

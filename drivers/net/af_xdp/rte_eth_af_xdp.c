@@ -109,7 +109,7 @@ struct pmd_internals {
 	int if_index;
 	char if_name[IFNAMSIZ];
 	uint16_t queue_idx;
-	struct ether_addr eth_addr;
+	struct rte_ether_addr eth_addr;
 	struct xsk_umem_info *umem;
 	struct rte_mempool *mb_pool_share;
 
@@ -798,7 +798,7 @@ free_kvlist:
 
 static int
 get_iface_info(const char *if_name,
-	       struct ether_addr *eth_addr,
+	       struct rte_ether_addr *eth_addr,
 	       int *if_index)
 {
 	struct ifreq ifr;

@@ -71,12 +71,13 @@ struct ark_user_ext {
 	int (*stats_get)(struct rte_eth_dev *, struct rte_eth_stats *, void *);
 	void (*stats_reset)(struct rte_eth_dev *, void *);
 	void (*mac_addr_add)(struct rte_eth_dev *,
-						  struct ether_addr *,
+						  struct rte_ether_addr *,
 						 uint32_t,
 						 uint32_t,
 						 void *);
 	void (*mac_addr_remove)(struct rte_eth_dev *, uint32_t, void *);
-	void (*mac_addr_set)(struct rte_eth_dev *, struct ether_addr *, void *);
+	void (*mac_addr_set)(struct rte_eth_dev *, struct rte_ether_addr *,
+			void *);
 	int (*set_mtu)(struct rte_eth_dev *, uint16_t, void *);
 };
 

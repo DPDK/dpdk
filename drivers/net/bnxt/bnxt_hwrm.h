@@ -130,7 +130,7 @@ int bnxt_hwrm_func_bw_cfg(struct bnxt *bp, uint16_t vf,
 			uint16_t max_bw, uint16_t enables);
 int bnxt_hwrm_set_vf_vlan(struct bnxt *bp, int vf);
 int bnxt_hwrm_func_qcfg_vf_default_mac(struct bnxt *bp, uint16_t vf,
-				       struct ether_addr *mac);
+				       struct rte_ether_addr *mac);
 int bnxt_hwrm_func_qcfg_current_vf_vlan(struct bnxt *bp, int vf);
 int bnxt_hwrm_tunnel_dst_port_alloc(struct bnxt *bp, uint16_t port,
 				uint8_t tunnel_type);

@@ -82,7 +82,7 @@ static uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
 static uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 
 /* ethernet addresses of ports */
-static struct ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
+static struct rte_ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
 
 /* mask of enabled ports */
 static uint32_t enabled_port_mask;
@@ -173,7 +173,7 @@ send_single_packet(struct rte_mbuf *m, uint16_t port);
 		*c = (unsigned char)(ip >> 8 & 0xff);\
 		*d = (unsigned char)(ip & 0xff);\
 	} while (0)
-#define OFF_ETHHEAD	(sizeof(struct ether_hdr))
+#define OFF_ETHHEAD	(sizeof(struct rte_ether_hdr))
 #define OFF_IPV42PROTO (offsetof(struct ipv4_hdr, next_proto_id))
 #define OFF_IPV62PROTO (offsetof(struct ipv6_hdr, proto))
 #define MBUF_IPV4_2PROTO(m)	\
@@ -542,9 +542,9 @@ dump_acl4_rule(struct rte_mbuf *m, uint32_t sig)
 {
 	uint32_t offset = sig & ~ACL_DENY_SIGNATURE;
 	unsigned char a, b, c, d;
-	struct ipv4_hdr *ipv4_hdr = rte_pktmbuf_mtod_offset(m,
-							    struct ipv4_hdr *,
-							    sizeof(struct ether_hdr));
+	struct ipv4_hdr *ipv4_hdr =
+		rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *,
+					sizeof(struct rte_ether_hdr));
 
 	uint32_t_to_char(rte_bswap32(ipv4_hdr->src_addr), &a, &b, &c, &d);
 	printf("Packet Src:%hhu.%hhu.%hhu.%hhu ", a, b, c, d);
@@ -566,9 +566,9 @@ dump_acl6_rule(struct rte_mbuf *m, uint32_t sig)
 {
 	unsigned i;
 	uint32_t offset = sig & ~ACL_DENY_SIGNATURE;
-	struct ipv6_hdr *ipv6_hdr = rte_pktmbuf_mtod_offset(m,
-							    struct ipv6_hdr *,
-							    sizeof(struct ether_hdr));
+	struct ipv6_hdr *ipv6_hdr =
+		rte_pktmbuf_mtod_offset(m, struct ipv6_hdr *,
+					sizeof(struct rte_ether_hdr));
 
 	printf("Packet Src");
 	for (i = 0; i < RTE_DIM(ipv6_hdr->src_addr); i += sizeof(uint16_t))
@@ -625,7 +625,7 @@ prepare_one_packet(struct rte_mbuf **pkts_in, struct acl_search_t *acl,
 
 	if (RTE_ETH_IS_IPV4_HDR(pkt->packet_type)) {
 		ipv4_hdr = rte_pktmbuf_mtod_offset(pkt, struct ipv4_hdr *,
-						   sizeof(struct ether_hdr));
+						sizeof(struct rte_ether_hdr));
 
 		/* Check to make sure the packet is valid (RFC1812) */
 		if (is_valid_ipv4_pkt(ipv4_hdr, pkt->pkt_len) >= 0) {
@@ -1754,7 +1754,7 @@ parse_args(int argc, char **argv)
 }
 
 static void
-print_ethaddr(const char *name, const struct ether_addr *eth_addr)
+print_ethaddr(const char *name, const struct rte_ether_addr *eth_addr)
 {
 	char buf[ETHER_ADDR_FMT_SIZE];
 	ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);

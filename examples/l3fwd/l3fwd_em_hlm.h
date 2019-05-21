@@ -92,7 +92,7 @@ em_get_dst_port(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
 
 		/* Handle IPv4 headers.*/
 		ipv4_hdr = rte_pktmbuf_mtod_offset(pkt, struct ipv4_hdr *,
-				sizeof(struct ether_hdr));
+				sizeof(struct rte_ether_hdr));
 
 		next_hop = em_get_ipv4_dst_port(ipv4_hdr, portid,
 				qconf->ipv4_lookup_struct);
@@ -107,7 +107,7 @@ em_get_dst_port(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
 
 		/* Handle IPv6 headers.*/
 		ipv6_hdr = rte_pktmbuf_mtod_offset(pkt, struct ipv6_hdr *,
-				sizeof(struct ether_hdr));
+				sizeof(struct rte_ether_hdr));
 
 		next_hop = em_get_ipv6_dst_port(ipv6_hdr, portid,
 				qconf->ipv6_lookup_struct);
@@ -142,7 +142,7 @@ l3fwd_em_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 
 	for (j = 0; j < EM_HASH_LOOKUP_COUNT && j < nb_rx; j++) {
 		rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[j],
-					       struct ether_hdr *) + 1);
+					       struct rte_ether_hdr *) + 1);
 	}
 
 	for (j = 0; j < n; j += EM_HASH_LOOKUP_COUNT) {
@@ -159,8 +159,9 @@ l3fwd_em_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 
 		for (i = 0, pos = j + EM_HASH_LOOKUP_COUNT;
 		     i < EM_HASH_LOOKUP_COUNT && pos < nb_rx; i++, pos++) {
-			rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[pos],
-						       struct ether_hdr *) + 1);
+			rte_prefetch0(rte_pktmbuf_mtod(
+					pkts_burst[pos],
+					struct rte_ether_hdr *) + 1);
 		}
 
 		if (tcp_or_udp && (l3_type == RTE_PTYPE_L3_IPV4)) {

@@ -73,7 +73,7 @@ struct pmd_internals {
 
 	int if_index;
 	char *if_name;
-	struct ether_addr eth_addr;
+	struct rte_ether_addr eth_addr;
 
 	struct tpacket_req req;
 

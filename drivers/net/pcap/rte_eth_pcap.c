@@ -78,7 +78,7 @@ struct pmd_internals {
 	struct pcap_rx_queue rx_queue[RTE_PMD_PCAP_MAX_QUEUES];
 	struct pcap_tx_queue tx_queue[RTE_PMD_PCAP_MAX_QUEUES];
 	char devargs[ETH_PCAP_ARG_MAXLEN];
-	struct ether_addr eth_addr;
+	struct rte_ether_addr eth_addr;
 	int if_index;
 	int single_iface;
 	int phy_mac;
@@ -953,7 +953,7 @@ pmd_init_internals(struct rte_vdev_device *vdev,
 	 * derived from: 'locally administered':'p':'c':'a':'p':'iface_idx'
 	 * where the middle 4 characters are converted to hex.
 	 */
-	(*internals)->eth_addr = (struct ether_addr) {
+	(*internals)->eth_addr = (struct rte_ether_addr) {
 		.addr_bytes = { 0x02, 0x70, 0x63, 0x61, 0x70, iface_idx++ }
 	};
 	(*internals)->phy_mac = 0;

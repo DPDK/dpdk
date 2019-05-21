@@ -453,7 +453,7 @@ int rte_pmd_i40e_set_vf_multicast_promisc(uint16_t port,
  *   - (-EINVAL) if *vf* or *mac_addr* is invalid.
  */
 int rte_pmd_i40e_set_vf_mac_addr(uint16_t port, uint16_t vf_id,
-				 struct ether_addr *mac_addr);
+				 struct rte_ether_addr *mac_addr);
 
 /**
  * Remove the VF MAC address.
@@ -471,7 +471,7 @@ int rte_pmd_i40e_set_vf_mac_addr(uint16_t port, uint16_t vf_id,
  */
 int
 rte_pmd_i40e_remove_vf_mac_addr(uint16_t port, uint16_t vf_id,
-	struct ether_addr *mac_addr);
+	struct rte_ether_addr *mac_addr);
 
 /**
  * Enable/Disable vf vlan strip for all queues in a pool
@@ -854,7 +854,7 @@ int rte_pmd_i40e_ptype_mapping_replace(uint16_t port,
  *   - (-EINVAL) if *vf* or *mac_addr* is invalid.
  */
 int rte_pmd_i40e_add_vf_mac_addr(uint16_t port, uint16_t vf_id,
-				 struct ether_addr *mac_addr);
+				 struct rte_ether_addr *mac_addr);
 
 #define RTE_PMD_I40E_PCTYPE_MAX		64
 #define RTE_PMD_I40E_FLOW_TYPE_MAX	64
@@ -924,7 +924,7 @@ int rte_pmd_i40e_flow_type_mapping_reset(uint16_t port);
  *    -ENOTSUP: i40e not supported for this port.
  */
 int rte_pmd_i40e_query_vfid_by_mac(uint16_t port,
-					const struct ether_addr *vf_mac);
+					const struct rte_ether_addr *vf_mac);
 
 /**
  * Do RSS queue region configuration for that port as

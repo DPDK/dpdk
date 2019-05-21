@@ -13,11 +13,11 @@
 
 struct client_data {
 	/** ARP data of single client */
-	struct ether_addr app_mac;
+	struct rte_ether_addr app_mac;
 	/**< MAC address of application running DPDK */
 	uint32_t app_ip;
 	/**< IP address of application running DPDK */
-	struct ether_addr cli_mac;
+	struct rte_ether_addr cli_mac;
 	/**< Client MAC address */
 	uint32_t cli_ip;
 	/**< Client IP address */
@@ -29,7 +29,7 @@ struct client_data {
 	uint8_t ntt;
 	/**< Flag indicating if we need to send update to this client on next tx */
 
-	struct vlan_hdr vlan[2];
+	struct rte_vlan_hdr vlan[2];
 	/**< Content of vlan headers */
 	uint8_t vlan_count;
 	/**< Number of nested vlan headers */
@@ -68,7 +68,7 @@ bond_mode_alb_enable(struct rte_eth_dev *bond_dev);
  * @param internals		Bonding data.
  */
 void
-bond_mode_alb_arp_recv(struct ether_hdr *eth_h, uint16_t offset,
+bond_mode_alb_arp_recv(struct rte_ether_hdr *eth_h, uint16_t offset,
 		struct bond_dev_private *internals);
 
 /**
@@ -85,7 +85,7 @@ bond_mode_alb_arp_recv(struct ether_hdr *eth_h, uint16_t offset,
  * Index of slave on which packet should be sent.
  */
 uint16_t
-bond_mode_alb_arp_xmit(struct ether_hdr *eth_h, uint16_t offset,
+bond_mode_alb_arp_xmit(struct rte_ether_hdr *eth_h, uint16_t offset,
 		struct bond_dev_private *internals);
 
 /**

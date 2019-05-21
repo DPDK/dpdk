@@ -105,7 +105,7 @@ struct szedata2_tx_queue {
 int szedata2_logtype_init;
 int szedata2_logtype_driver;
 
-static struct ether_addr eth_addr = {
+static struct rte_ether_addr eth_addr = {
 	.addr_bytes = { 0x00, 0x11, 0x17, 0x00, 0x00, 0x00 }
 };
 
@@ -1332,7 +1332,7 @@ eth_tx_queue_setup(struct rte_eth_dev *dev,
 
 static int
 eth_mac_addr_set(struct rte_eth_dev *dev __rte_unused,
-		struct ether_addr *mac_addr __rte_unused)
+		struct rte_ether_addr *mac_addr __rte_unused)
 {
 	return 0;
 }
@@ -1514,7 +1514,7 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev, struct port_info *pi)
 	eth_link_update(dev, 0);
 
 	/* Allocate space for one mac address */
-	data->mac_addrs = rte_zmalloc(data->name, sizeof(struct ether_addr),
+	data->mac_addrs = rte_zmalloc(data->name, sizeof(struct rte_ether_addr),
 			RTE_CACHE_LINE_SIZE);
 	if (data->mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR, "Could not alloc space for MAC address!");

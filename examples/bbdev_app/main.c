@@ -273,7 +273,7 @@ signal_handler(int signum)
 }
 
 static void
-print_mac(unsigned int portid, struct ether_addr *bbdev_ports_eth_address)
+print_mac(unsigned int portid, struct rte_ether_addr *bbdev_ports_eth_address)
 {
 	printf("Port %u, MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n\n",
 			(unsigned int) portid,
@@ -341,14 +341,14 @@ check_port_link_status(uint16_t port_id)
 static inline void
 add_ether_hdr(struct rte_mbuf *pkt_src, struct rte_mbuf *pkt_dst)
 {
-	struct ether_hdr *eth_from;
-	struct ether_hdr *eth_to;
+	struct rte_ether_hdr *eth_from;
+	struct rte_ether_hdr *eth_to;
 
-	eth_from = rte_pktmbuf_mtod(pkt_src, struct ether_hdr *);
-	eth_to = rte_pktmbuf_mtod(pkt_dst, struct ether_hdr *);
+	eth_from = rte_pktmbuf_mtod(pkt_src, struct rte_ether_hdr *);
+	eth_to = rte_pktmbuf_mtod(pkt_dst, struct rte_ether_hdr *);
 
 	/* copy header */
-	rte_memcpy(eth_to, eth_from, sizeof(struct ether_hdr));
+	rte_memcpy(eth_to, eth_from, sizeof(struct rte_ether_hdr));
 }
 
 static inline void
@@ -377,7 +377,7 @@ transform_enc_out_dec_in(struct rte_mbuf **mbufs, uint8_t *temp_buf,
 
 	for (i = 0; i < num_pkts; ++i) {
 		uint16_t pkt_data_len = rte_pktmbuf_data_len(mbufs[i]) -
-				sizeof(struct ether_hdr);
+				sizeof(struct rte_ether_hdr);
 
 		/* Resize the packet if needed */
 		if (pkt_data_len < ncb) {
@@ -395,7 +395,8 @@ transform_enc_out_dec_in(struct rte_mbuf **mbufs, uint8_t *temp_buf,
 			for (l = start_bit_idx; l < start_bit_idx + d; ++l) {
 				uint8_t *data = rte_pktmbuf_mtod_offset(
 					mbufs[i], uint8_t *,
-					sizeof(struct ether_hdr) + (l >> 3));
+					sizeof(struct rte_ether_hdr) +
+					(l >> 3));
 				if (*data & (0x80 >> (l & 7)))
 					temp_buf[out_idx] = LLR_1_BIT;
 				else
@@ -410,7 +411,7 @@ transform_enc_out_dec_in(struct rte_mbuf **mbufs, uint8_t *temp_buf,
 		}
 
 		rte_memcpy(rte_pktmbuf_mtod_offset(mbufs[i], uint8_t *,
-				sizeof(struct ether_hdr)), temp_buf, ncb);
+				sizeof(struct rte_ether_hdr)), temp_buf, ncb);
 	}
 }
 
@@ -423,9 +424,9 @@ verify_data(struct rte_mbuf **mbufs, uint16_t num_pkts)
 		struct rte_mbuf *in = out->userdata;
 
 		if (memcmp(rte_pktmbuf_mtod_offset(in, uint8_t *,
-				sizeof(struct ether_hdr)),
+				sizeof(struct rte_ether_hdr)),
 				rte_pktmbuf_mtod_offset(out, uint8_t *,
-				sizeof(struct ether_hdr)),
+				sizeof(struct rte_ether_hdr)),
 				K / 8 - CRC_24B_LEN))
 			printf("Input and output buffers are not equal!\n");
 	}
@@ -439,7 +440,7 @@ initialize_ports(struct app_config_params *app_params,
 	uint16_t port_id = app_params->port_id;
 	uint16_t q;
 	/* ethernet addresses of ports */
-	struct ether_addr bbdev_port_eth_addr;
+	struct rte_ether_addr bbdev_port_eth_addr;
 
 	/* initialize ports */
 	printf("\nInitializing port %u...\n", app_params->port_id);
@@ -707,14 +708,14 @@ run_encoding(struct lcore_conf *lcore_conf)
 		char *data;
 		const uint16_t pkt_data_len =
 				rte_pktmbuf_data_len(rx_pkts_burst[i]) -
-				sizeof(struct ether_hdr);
+				sizeof(struct rte_ether_hdr);
 		/* save input mbuf pointer for later comparison */
 		enc_out_pkts[i]->userdata = rx_pkts_burst[i];
 
 		/* copy ethernet header */
 		rte_pktmbuf_reset(enc_out_pkts[i]);
 		data = rte_pktmbuf_append(enc_out_pkts[i],
-				sizeof(struct ether_hdr));
+				sizeof(struct rte_ether_hdr));
 		if (data == NULL) {
 			printf(
 				"Not enough space for ethernet header in encoder output mbuf\n");
@@ -728,7 +729,7 @@ run_encoding(struct lcore_conf *lcore_conf)
 		bbdev_ops_burst[i]->turbo_enc.input.data =
 				rx_pkts_burst[i];
 		bbdev_ops_burst[i]->turbo_enc.input.offset =
-				sizeof(struct ether_hdr);
+				sizeof(struct rte_ether_hdr);
 		/* Encoder will attach the CRC24B, adjust the length */
 		bbdev_ops_burst[i]->turbo_enc.input.length = in_data_len;
 
@@ -746,7 +747,7 @@ run_encoding(struct lcore_conf *lcore_conf)
 		bbdev_ops_burst[i]->turbo_enc.output.data =
 				enc_out_pkts[i];
 		bbdev_ops_burst[i]->turbo_enc.output.offset =
-				sizeof(struct ether_hdr);
+				sizeof(struct rte_ether_hdr);
 	}
 
 	/* Enqueue packets on BBDevice */
@@ -834,15 +835,15 @@ run_decoding(struct lcore_conf *lcore_conf)
 
 		bbdev_ops_burst[i]->turbo_dec.input.data = recv_pkts_burst[i];
 		bbdev_ops_burst[i]->turbo_dec.input.offset =
-				sizeof(struct ether_hdr);
+				sizeof(struct rte_ether_hdr);
 		bbdev_ops_burst[i]->turbo_dec.input.length =
 				rte_pktmbuf_data_len(recv_pkts_burst[i])
-				- sizeof(struct ether_hdr);
+				- sizeof(struct rte_ether_hdr);
 
 		bbdev_ops_burst[i]->turbo_dec.hard_output.data =
 				recv_pkts_burst[i];
 		bbdev_ops_burst[i]->turbo_dec.hard_output.offset =
-				sizeof(struct ether_hdr);
+				sizeof(struct rte_ether_hdr);
 	}
 
 	/* Enqueue packets on BBDevice */

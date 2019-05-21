@@ -212,17 +212,17 @@ PTP IEEE1588 L2 functionality.
     void
     parse_ptp_frames(uint16_t portid, struct rte_mbuf *m) {
         struct ptp_header *ptp_hdr;
-        struct ether_hdr *eth_hdr;
+        struct rte_ether_hdr *eth_hdr;
         uint16_t eth_type;
 
-        eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
+        eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
         eth_type = rte_be_to_cpu_16(eth_hdr->ether_type);
 
         if (eth_type == PTP_PROTOCOL) {
             ptp_data.m = m;
             ptp_data.portid = portid;
             ptp_hdr = (struct ptp_header *)(rte_pktmbuf_mtod(m, char *)
-                        + sizeof(struct ether_hdr));
+                        + sizeof(struct rte_ether_hdr));
 
             switch (ptp_hdr->msgtype) {
             case SYNC:

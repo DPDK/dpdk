@@ -130,7 +130,7 @@ struct ice_adapter;
  * MAC filter structure
  */
 struct ice_mac_filter_info {
-	struct ether_addr mac_addr;
+	struct rte_ether_addr mac_addr;
 };
 
 TAILQ_HEAD(ice_mac_filter_list, ice_mac_filter);
@@ -247,7 +247,7 @@ struct ice_pf {
 	struct ice_res_pool_info qp_pool;    /*Queue pair pool */
 	struct ice_res_pool_info msix_pool;  /* MSIX interrupt pool */
 	struct rte_eth_dev_data *dev_data; /* Pointer to the device data */
-	struct ether_addr dev_addr; /* PF device mac address */
+	struct rte_ether_addr dev_addr; /* PF device mac address */
 	uint64_t flags; /* PF feature flags */
 	uint16_t hash_lut_size; /* The size of hash lookup table */
 	uint16_t lan_nb_qp_max;

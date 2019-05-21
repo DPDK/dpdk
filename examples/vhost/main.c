@@ -161,7 +161,7 @@ const uint16_t vlan_tags[] = {
 };
 
 /* ethernet addresses of ports */
-static struct ether_addr vmdq_ports_eth_addr[RTE_MAX_ETHPORTS];
+static struct rte_ether_addr vmdq_ports_eth_addr[RTE_MAX_ETHPORTS];
 
 static struct vhost_dev_tailq_list vhost_dev_list =
 	TAILQ_HEAD_INITIALIZER(vhost_dev_list);
@@ -660,7 +660,7 @@ static unsigned check_ports_num(unsigned nb_ports)
 }
 
 static __rte_always_inline struct vhost_dev *
-find_vhost_dev(struct ether_addr *mac)
+find_vhost_dev(struct rte_ether_addr *mac)
 {
 	struct vhost_dev *vdev;
 
@@ -680,11 +680,11 @@ find_vhost_dev(struct ether_addr *mac)
 static int
 link_vmdq(struct vhost_dev *vdev, struct rte_mbuf *m)
 {
-	struct ether_hdr *pkt_hdr;
+	struct rte_ether_hdr *pkt_hdr;
 	int i, ret;
 
 	/* Learn MAC address of guest device from packet */
-	pkt_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	pkt_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 
 	if (find_vhost_dev(&pkt_hdr->s_addr)) {
 		RTE_LOG(ERR, VHOST_DATA,
@@ -786,10 +786,10 @@ virtio_xmit(struct vhost_dev *dst_vdev, struct vhost_dev *src_vdev,
 static __rte_always_inline int
 virtio_tx_local(struct vhost_dev *vdev, struct rte_mbuf *m)
 {
-	struct ether_hdr *pkt_hdr;
+	struct rte_ether_hdr *pkt_hdr;
 	struct vhost_dev *dst_vdev;
 
-	pkt_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	pkt_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 
 	dst_vdev = find_vhost_dev(&pkt_hdr->d_addr);
 	if (!dst_vdev)
@@ -824,7 +824,8 @@ find_local_dest(struct vhost_dev *vdev, struct rte_mbuf *m,
 	uint32_t *offset, uint16_t *vlan_tag)
 {
 	struct vhost_dev *dst_vdev;
-	struct ether_hdr *pkt_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	struct rte_ether_hdr *pkt_hdr =
+		rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 
 	dst_vdev = find_vhost_dev(&pkt_hdr->d_addr);
 	if (!dst_vdev)
@@ -866,7 +867,8 @@ static void virtio_tx_offload(struct rte_mbuf *m)
 	void *l3_hdr;
 	struct ipv4_hdr *ipv4_hdr = NULL;
 	struct tcp_hdr *tcp_hdr = NULL;
-	struct ether_hdr *eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	struct rte_ether_hdr *eth_hdr =
+		rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 
 	l3_hdr = (char *)eth_hdr + m->l2_len;
 
@@ -910,10 +912,10 @@ virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, uint16_t vlan_tag)
 	struct mbuf_table *tx_q;
 	unsigned offset = 0;
 	const uint16_t lcore_id = rte_lcore_id();
-	struct ether_hdr *nh;
+	struct rte_ether_hdr *nh;
 
 
-	nh = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	nh = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 	if (unlikely(is_broadcast_ether_addr(&nh->d_addr))) {
 		struct vhost_dev *vdev2;
 
@@ -946,10 +948,10 @@ queue2nic:
 	/*Add packet to the port tx queue*/
 	tx_q = &lcore_tx_queue[lcore_id];
 
-	nh = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	nh = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 	if (unlikely(nh->ether_type == rte_cpu_to_be_16(ETHER_TYPE_VLAN))) {
 		/* Guest has inserted the vlan tag. */
-		struct vlan_hdr *vh = (struct vlan_hdr *) (nh + 1);
+		struct rte_vlan_hdr *vh = (struct rte_vlan_hdr *) (nh + 1);
 		uint16_t vlan_tag_be = rte_cpu_to_be_16(vlan_tag);
 		if ((vm2vm_mode == VM2VM_HARDWARE) &&
 			(vh->vlan_tci != vlan_tag_be))

@@ -76,7 +76,7 @@ mlx5_internal_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 	if (vf)
 		mlx5_nl_mac_addr_remove(dev, &dev->data->mac_addrs[index],
 					index);
-	memset(&dev->data->mac_addrs[index], 0, sizeof(struct ether_addr));
+	memset(&dev->data->mac_addrs[index], 0, sizeof(struct rte_ether_addr));
 }
 
 /**
@@ -93,7 +93,7 @@ mlx5_internal_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_internal_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac,
+mlx5_internal_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 			   uint32_t index)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -166,7 +166,7 @@ mlx5_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac,
+mlx5_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 		  uint32_t index, uint32_t vmdq __rte_unused)
 {
 	int ret;
@@ -195,7 +195,7 @@ mlx5_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
+mlx5_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 {
 	DRV_LOG(DEBUG, "port %u setting primary MAC address",
 		dev->data->port_id);
@@ -209,7 +209,7 @@ mlx5_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
  */
 int
 mlx5_set_mc_addr_list(struct rte_eth_dev *dev,
-		      struct ether_addr *mc_addr_set, uint32_t nb_mc_addr)
+		      struct rte_ether_addr *mc_addr_set, uint32_t nb_mc_addr)
 {
 	uint32_t i;
 	int ret;

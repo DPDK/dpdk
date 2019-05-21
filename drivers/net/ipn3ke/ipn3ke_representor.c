@@ -124,7 +124,7 @@ ipn3ke_rpst_dev_start(struct rte_eth_dev *dev)
 	snprintf(attr_name, IPN3KE_RAWDEV_ATTR_LEN_MAX, "%s",
 			"LineSideBaseMAC");
 	rawdev->dev_ops->attr_get(rawdev, attr_name, &base_mac);
-	ether_addr_copy((struct ether_addr *)&base_mac, &rpst->mac_addr);
+	ether_addr_copy((struct rte_ether_addr *)&base_mac, &rpst->mac_addr);
 
 	ether_addr_copy(&rpst->mac_addr, &dev->data->mac_addrs[0]);
 	dev->data->mac_addrs->addr_bytes[ETHER_ADDR_LEN - 1] =
@@ -650,7 +650,7 @@ ipn3ke_rpst_allmulticast_disable(struct rte_eth_dev *ethdev)
 
 int
 ipn3ke_rpst_mac_addr_set(struct rte_eth_dev *ethdev,
-				struct ether_addr *mac_addr)
+				struct rte_ether_addr *mac_addr)
 {
 	struct ipn3ke_hw *hw = IPN3KE_DEV_PRIVATE_TO_HW(ethdev);
 	struct ipn3ke_rpst *rpst = IPN3KE_DEV_PRIVATE_TO_RPST(ethdev);

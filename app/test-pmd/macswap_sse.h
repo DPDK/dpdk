@@ -11,7 +11,7 @@ static inline void
 do_macswap(struct rte_mbuf *pkts[], uint16_t nb,
 		struct rte_port *txp)
 {
-	struct ether_hdr *eth_hdr[4];
+	struct rte_ether_hdr *eth_hdr[4];
 	struct rte_mbuf *mb[4];
 	uint64_t ol_flags;
 	int i;
@@ -43,20 +43,20 @@ do_macswap(struct rte_mbuf *pkts[], uint16_t nb,
 		}
 
 		mb[0] = pkts[i++];
-		eth_hdr[0] = rte_pktmbuf_mtod(mb[0], struct ether_hdr *);
+		eth_hdr[0] = rte_pktmbuf_mtod(mb[0], struct rte_ether_hdr *);
 		addr0 = _mm_loadu_si128((__m128i *)eth_hdr[0]);
 
 		mb[1] = pkts[i++];
-		eth_hdr[1] = rte_pktmbuf_mtod(mb[1], struct ether_hdr *);
+		eth_hdr[1] = rte_pktmbuf_mtod(mb[1], struct rte_ether_hdr *);
 		addr1 = _mm_loadu_si128((__m128i *)eth_hdr[1]);
 
 
 		mb[2] = pkts[i++];
-		eth_hdr[2] = rte_pktmbuf_mtod(mb[2], struct ether_hdr *);
+		eth_hdr[2] = rte_pktmbuf_mtod(mb[2], struct rte_ether_hdr *);
 		addr2 = _mm_loadu_si128((__m128i *)eth_hdr[2]);
 
 		mb[3] = pkts[i++];
-		eth_hdr[3] = rte_pktmbuf_mtod(mb[3], struct ether_hdr *);
+		eth_hdr[3] = rte_pktmbuf_mtod(mb[3], struct rte_ether_hdr *);
 		addr3 = _mm_loadu_si128((__m128i *)eth_hdr[3]);
 
 		addr0 = _mm_shuffle_epi8(addr0, shfl_msk);
@@ -80,7 +80,7 @@ do_macswap(struct rte_mbuf *pkts[], uint16_t nb,
 		if (i < nb - 1)
 			rte_prefetch0(rte_pktmbuf_mtod(pkts[i+1], void *));
 		mb[0] = pkts[i];
-		eth_hdr[0] = rte_pktmbuf_mtod(mb[0], struct ether_hdr *);
+		eth_hdr[0] = rte_pktmbuf_mtod(mb[0], struct rte_ether_hdr *);
 
 		/* Swap dest and src mac addresses. */
 		addr0 = _mm_loadu_si128((__m128i *)eth_hdr[0]);

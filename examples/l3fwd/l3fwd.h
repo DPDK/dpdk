@@ -73,7 +73,7 @@ extern volatile bool force_quit;
 
 /* ethernet addresses of ports */
 extern uint64_t dest_eth_addr[RTE_MAX_ETHPORTS];
-extern struct ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
+extern struct rte_ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
 
 /* mask of enabled ports */
 extern uint32_t enabled_port_mask;

@@ -165,7 +165,7 @@ the MAC of VMDQ pool 2 on port 1 is 52:54:00:12:01:02.
     };
 
     /* pool mac addr template, pool mac addr is like: 52 54 00 12 port# pool# */
-    static struct ether_addr pool_addr_template = {
+    static struct rte_ether_addr pool_addr_template = {
         .addr_bytes = {0x52, 0x54, 0x00, 0x12, 0x00, 0x00}
     };
 
@@ -225,7 +225,7 @@ the MAC of VMDQ pool 2 on port 1 is 52:54:00:12:01:02.
 
     /* Set mac for each pool.*/
     for (q = 0; q < num_pools; q++) {
-        struct ether_addr mac;
+        struct rte_ether_addr mac;
         mac = pool_addr_template;
         mac.addr_bytes[4] = port;
         mac.addr_bytes[5] = q;

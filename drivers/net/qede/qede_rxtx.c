@@ -950,23 +950,23 @@ static inline uint8_t qede_check_notunn_csum_l4(uint16_t flag)
 static inline uint32_t qede_rx_cqe_to_pkt_type_outer(struct rte_mbuf *m)
 {
 	uint32_t packet_type = RTE_PTYPE_UNKNOWN;
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 	struct ipv4_hdr *ipv4_hdr;
 	struct ipv6_hdr *ipv6_hdr;
-	struct vlan_hdr *vlan_hdr;
+	struct rte_vlan_hdr *vlan_hdr;
 	uint16_t ethertype;
 	bool vlan_tagged = 0;
 	uint16_t len;
 
-	eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
-	len = sizeof(struct ether_hdr);
+	eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
+	len = sizeof(struct rte_ether_hdr);
 	ethertype = rte_cpu_to_be_16(eth_hdr->ether_type);
 
 	 /* Note: Valid only if VLAN stripping is disabled */
 	if (ethertype == ETHER_TYPE_VLAN) {
 		vlan_tagged = 1;
-		vlan_hdr = (struct vlan_hdr *)(eth_hdr + 1);
-		len += sizeof(struct vlan_hdr);
+		vlan_hdr = (struct rte_vlan_hdr *)(eth_hdr + 1);
+		len += sizeof(struct rte_vlan_hdr);
 		ethertype = rte_cpu_to_be_16(vlan_hdr->eth_proto);
 	}
 
@@ -1153,7 +1153,7 @@ qede_check_notunn_csum_l3(struct rte_mbuf *m, uint16_t flag)
 		m->packet_type = qede_rx_cqe_to_pkt_type(flag);
 		if (RTE_ETH_IS_IPV4_HDR(m->packet_type)) {
 			ip = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *,
-					   sizeof(struct ether_hdr));
+					   sizeof(struct rte_ether_hdr));
 			pkt_csum = ip->hdr_checksum;
 			ip->hdr_checksum = 0;
 			calc_csum = rte_ipv4_cksum(ip);

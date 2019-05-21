@@ -1354,7 +1354,7 @@ mlx4_flow_internal(struct mlx4_priv *priv, struct rte_flow_error *error)
 			.type = RTE_FLOW_ACTION_TYPE_END,
 		},
 	};
-	struct ether_addr *rule_mac = &eth_spec.dst;
+	struct rte_ether_addr *rule_mac = &eth_spec.dst;
 	rte_be16_t *rule_vlan =
 		(ETH_DEV(priv)->data->dev_conf.rxmode.offloads &
 		 DEV_RX_OFFLOAD_VLAN_FILTER) &&
@@ -1391,7 +1391,7 @@ next_vlan:
 		}
 	}
 	for (i = 0; i != RTE_DIM(priv->mac) + 1; ++i) {
-		const struct ether_addr *mac;
+		const struct rte_ether_addr *mac;
 
 		/* Broadcasts are handled by an extra iteration. */
 		if (i < RTE_DIM(priv->mac))

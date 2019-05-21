@@ -614,7 +614,7 @@ fm10k_dev_mq_rx_configure(struct rte_eth_dev *dev)
 	/* reset MAC/VLAN as it's based on VMDQ or PF main VSI */
 	memset(dev->data->mac_addrs, 0,
 		ETHER_ADDR_LEN * FM10K_MAX_MACADDR_NUM);
-	ether_addr_copy((const struct ether_addr *)hw->mac.addr,
+	ether_addr_copy((const struct rte_ether_addr *)hw->mac.addr,
 		&dev->data->mac_addrs[0]);
 	memset(macvlan, 0, sizeof(*macvlan));
 	macvlan->nb_queue_pools = nb_queue_pools;
@@ -1673,7 +1673,7 @@ static void fm10k_MAC_filter_set(struct rte_eth_dev *dev,
 /* Add a MAC address, and update filters */
 static int
 fm10k_macaddr_add(struct rte_eth_dev *dev,
-		struct ether_addr *mac_addr,
+		struct rte_ether_addr *mac_addr,
 		uint32_t index,
 		uint32_t pool)
 {
@@ -3090,7 +3090,7 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 
 	diag = fm10k_read_mac_addr(hw);
 
-	ether_addr_copy((const struct ether_addr *)hw->mac.addr,
+	ether_addr_copy((const struct rte_ether_addr *)hw->mac.addr,
 			&dev->data->mac_addrs[0]);
 
 	if (diag != FM10K_SUCCESS ||
@@ -3099,7 +3099,7 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 		/* Generate a random addr */
 		eth_random_addr(hw->mac.addr);
 		memcpy(hw->mac.perm_addr, hw->mac.addr, ETH_ALEN);
-		ether_addr_copy((const struct ether_addr *)hw->mac.addr,
+		ether_addr_copy((const struct rte_ether_addr *)hw->mac.addr,
 		&dev->data->mac_addrs[0]);
 	}
 

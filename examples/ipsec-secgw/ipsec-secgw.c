@@ -233,9 +233,9 @@ static inline void
 prepare_one_packet(struct rte_mbuf *pkt, struct ipsec_traffic *t)
 {
 	uint8_t *nlp;
-	struct ether_hdr *eth;
+	struct rte_ether_hdr *eth;
 
-	eth = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
+	eth = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
 	if (eth->ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv4)) {
 		nlp = (uint8_t *)rte_pktmbuf_adj(pkt, ETHER_HDR_LEN);
 		nlp = RTE_PTR_ADD(nlp, offsetof(struct ip, ip_p));
@@ -325,11 +325,12 @@ prepare_tx_pkt(struct rte_mbuf *pkt, uint16_t port,
 		const struct lcore_conf *qconf)
 {
 	struct ip *ip;
-	struct ether_hdr *ethhdr;
+	struct rte_ether_hdr *ethhdr;
 
 	ip = rte_pktmbuf_mtod(pkt, struct ip *);
 
-	ethhdr = (struct ether_hdr *)rte_pktmbuf_prepend(pkt, ETHER_HDR_LEN);
+	ethhdr = (struct rte_ether_hdr *)
+		rte_pktmbuf_prepend(pkt, ETHER_HDR_LEN);
 
 	if (ip->ip_v == IPVERSION) {
 		pkt->ol_flags |= qconf->outbound.ipv4_offloads;
@@ -352,9 +353,9 @@ prepare_tx_pkt(struct rte_mbuf *pkt, uint16_t port,
 	}
 
 	memcpy(&ethhdr->s_addr, &ethaddr_tbl[port].src,
-			sizeof(struct ether_addr));
+			sizeof(struct rte_ether_addr));
 	memcpy(&ethhdr->d_addr, &ethaddr_tbl[port].dst,
-			sizeof(struct ether_addr));
+			sizeof(struct rte_ether_addr));
 }
 
 static inline void
@@ -1424,7 +1425,7 @@ parse_args(int32_t argc, char **argv)
 }
 
 static void
-print_ethaddr(const char *name, const struct ether_addr *eth_addr)
+print_ethaddr(const char *name, const struct rte_ether_addr *eth_addr)
 {
 	char buf[ETHER_ADDR_FMT_SIZE];
 	ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
@@ -1435,7 +1436,7 @@ print_ethaddr(const char *name, const struct ether_addr *eth_addr)
  * Update destination ethaddr for the port.
  */
 int
-add_dst_ethaddr(uint16_t port, const struct ether_addr *addr)
+add_dst_ethaddr(uint16_t port, const struct rte_ether_addr *addr)
 {
 	if (port >= RTE_DIM(ethaddr_tbl))
 		return -EINVAL;
@@ -1832,7 +1833,7 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads)
 	uint16_t tx_queueid, rx_queueid, queue, lcore_id;
 	int32_t ret, socket_id;
 	struct lcore_conf *qconf;
-	struct ether_addr ethaddr;
+	struct rte_ether_addr ethaddr;
 	struct rte_eth_conf local_port_conf = port_conf;
 
 	rte_eth_dev_info_get(portid, &dev_info);

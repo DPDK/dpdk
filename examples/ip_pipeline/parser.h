@@ -47,7 +47,7 @@ int parse_hex_string(char *src, uint8_t *dst, uint32_t *size);
 
 int parse_ipv4_addr(const char *token, struct in_addr *ipv4);
 int parse_ipv6_addr(const char *token, struct in6_addr *ipv6);
-int parse_mac_addr(const char *token, struct ether_addr *addr);
+int parse_mac_addr(const char *token, struct rte_ether_addr *addr);
 int parse_mpls_labels(char *string, uint32_t *labels, uint32_t *n_labels);
 
 struct cpu_core_params {

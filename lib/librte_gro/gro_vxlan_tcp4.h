@@ -12,10 +12,10 @@
 /* Header fields representing a VxLAN flow */
 struct vxlan_tcp4_flow_key {
 	struct tcp4_flow_key inner_key;
-	struct vxlan_hdr vxlan_hdr;
+	struct rte_vxlan_hdr vxlan_hdr;
 
-	struct ether_addr outer_eth_saddr;
-	struct ether_addr outer_eth_daddr;
+	struct rte_ether_addr outer_eth_saddr;
+	struct rte_ether_addr outer_eth_daddr;
 
 	uint32_t outer_ip_src_addr;
 	uint32_t outer_ip_dst_addr;

@@ -186,7 +186,7 @@ struct mlx4_priv {
 	} mr;
 	LIST_HEAD(, mlx4_rss) rss; /**< Shared targets for Rx flow rules. */
 	LIST_HEAD(, rte_flow) flows; /**< Configured flow rule handles. */
-	struct ether_addr mac[MLX4_MAX_MAC_ADDRESSES];
+	struct rte_ether_addr mac[MLX4_MAX_MAC_ADDRESSES];
 	/**< Configured MAC addresses. Unused entries are zeroed. */
 	uint32_t mac_mc; /**< Number of trailing multicast entries in mac[]. */
 	struct mlx4_verbs_alloc_ctx verbs_alloc_ctx;
@@ -209,10 +209,10 @@ void mlx4_promiscuous_disable(struct rte_eth_dev *dev);
 void mlx4_allmulticast_enable(struct rte_eth_dev *dev);
 void mlx4_allmulticast_disable(struct rte_eth_dev *dev);
 void mlx4_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index);
-int mlx4_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
+int mlx4_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 		      uint32_t index, uint32_t vmdq);
-int mlx4_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr);
-int mlx4_set_mc_addr_list(struct rte_eth_dev *dev, struct ether_addr *list,
+int mlx4_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr);
+int mlx4_set_mc_addr_list(struct rte_eth_dev *dev, struct rte_ether_addr *list,
 			  uint32_t num);
 int mlx4_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on);
 int mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);

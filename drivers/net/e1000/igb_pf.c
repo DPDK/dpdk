@@ -306,8 +306,8 @@ igb_vf_set_mac_addr(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 	uint8_t *new_mac = (uint8_t *)(&msgbuf[1]);
 	int rah;
 
-	if (is_unicast_ether_addr((struct ether_addr *)new_mac)) {
-		if (!is_zero_ether_addr((struct ether_addr *)new_mac))
+	if (is_unicast_ether_addr((struct rte_ether_addr *)new_mac)) {
+		if (!is_zero_ether_addr((struct rte_ether_addr *)new_mac))
 			rte_memcpy(vfinfo[vf].vf_mac_addresses, new_mac,
 				sizeof(vfinfo[vf].vf_mac_addresses));
 		hw->mac.ops.rar_set(hw, new_mac, rar_entry);

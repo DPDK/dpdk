@@ -194,7 +194,7 @@ gro_tcp4_reassemble(struct rte_mbuf *pkt,
 		struct gro_tcp4_tbl *tbl,
 		uint64_t start_time)
 {
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 	struct ipv4_hdr *ipv4_hdr;
 	struct tcp_hdr *tcp_hdr;
 	uint32_t sent_seq;
@@ -215,7 +215,7 @@ gro_tcp4_reassemble(struct rte_mbuf *pkt,
 	if (unlikely(INVALID_TCP_HDRLEN(pkt->l4_len)))
 		return -1;
 
-	eth_hdr = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
+	eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
 	ipv4_hdr = (struct ipv4_hdr *)((char *)eth_hdr + pkt->l2_len);
 	tcp_hdr = (struct tcp_hdr *)((char *)ipv4_hdr + pkt->l3_len);
 	hdr_len = pkt->l2_len + pkt->l3_len + pkt->l4_len;

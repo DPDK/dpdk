@@ -145,11 +145,11 @@ static int eth_igb_led_off(struct rte_eth_dev *dev);
 static void igb_intr_disable(struct rte_eth_dev *dev);
 static int  igb_get_rx_buffer_size(struct e1000_hw *hw);
 static int eth_igb_rar_set(struct rte_eth_dev *dev,
-			   struct ether_addr *mac_addr,
+			   struct rte_ether_addr *mac_addr,
 			   uint32_t index, uint32_t pool);
 static void eth_igb_rar_clear(struct rte_eth_dev *dev, uint32_t index);
 static int eth_igb_default_mac_addr_set(struct rte_eth_dev *dev,
-		struct ether_addr *addr);
+		struct rte_ether_addr *addr);
 
 static void igbvf_intr_disable(struct e1000_hw *hw);
 static int igbvf_dev_configure(struct rte_eth_dev *dev);
@@ -174,7 +174,7 @@ static int igbvf_vlan_filter_set(struct rte_eth_dev *dev,
 static int igbvf_set_vfta(struct e1000_hw *hw, uint16_t vid, bool on);
 static void igbvf_set_vfta_all(struct rte_eth_dev *dev, bool on);
 static int igbvf_default_mac_addr_set(struct rte_eth_dev *dev,
-		struct ether_addr *addr);
+		struct rte_ether_addr *addr);
 static int igbvf_get_reg_length(struct rte_eth_dev *dev);
 static int igbvf_get_regs(struct rte_eth_dev *dev,
 		struct rte_dev_reg_info *regs);
@@ -231,7 +231,7 @@ static int eth_igb_get_module_info(struct rte_eth_dev *dev,
 static int eth_igb_get_module_eeprom(struct rte_eth_dev *dev,
 				     struct rte_dev_eeprom_info *info);
 static int eth_igb_set_mc_addr_list(struct rte_eth_dev *dev,
-				    struct ether_addr *mc_addr_set,
+				    struct rte_ether_addr *mc_addr_set,
 				    uint32_t nb_mc_addr);
 static int igb_timesync_enable(struct rte_eth_dev *dev);
 static int igb_timesync_disable(struct rte_eth_dev *dev);
@@ -840,7 +840,8 @@ eth_igb_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	/* Copy the permanent MAC address */
-	ether_addr_copy((struct ether_addr *)hw->mac.addr, &eth_dev->data->mac_addrs[0]);
+	ether_addr_copy((struct rte_ether_addr *)hw->mac.addr,
+			&eth_dev->data->mac_addrs[0]);
 
 	/* initialize the vfta */
 	memset(shadow_vfta, 0, sizeof(*shadow_vfta));
@@ -983,7 +984,8 @@ eth_igbvf_dev_init(struct rte_eth_dev *eth_dev)
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	int diag;
-	struct ether_addr *perm_addr = (struct ether_addr *)hw->mac.perm_addr;
+	struct rte_ether_addr *perm_addr =
+		(struct rte_ether_addr *)hw->mac.perm_addr;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1057,7 +1059,7 @@ eth_igbvf_dev_init(struct rte_eth_dev *eth_dev)
 		return diag;
 	}
 	/* Copy the permanent MAC address */
-	ether_addr_copy((struct ether_addr *) hw->mac.perm_addr,
+	ether_addr_copy((struct rte_ether_addr *)hw->mac.perm_addr,
 			&eth_dev->data->mac_addrs[0]);
 
 	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x "
@@ -3119,7 +3121,7 @@ eth_igb_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 
 #define E1000_RAH_POOLSEL_SHIFT      (18)
 static int
-eth_igb_rar_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
+eth_igb_rar_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 		uint32_t index, uint32_t pool)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -3145,7 +3147,7 @@ eth_igb_rar_clear(struct rte_eth_dev *dev, uint32_t index)
 
 static int
 eth_igb_default_mac_addr_set(struct rte_eth_dev *dev,
-				struct ether_addr *addr)
+				struct rte_ether_addr *addr)
 {
 	eth_igb_rar_clear(dev, 0);
 	eth_igb_rar_set(dev, (void *)addr, 0, 0);
@@ -3358,7 +3360,7 @@ igbvf_dev_close(struct rte_eth_dev *dev)
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct e1000_adapter *adapter =
 		E1000_DEV_PRIVATE(dev->data->dev_private);
-	struct ether_addr addr;
+	struct rte_ether_addr addr;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -3503,7 +3505,7 @@ igbvf_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 }
 
 static int
-igbvf_default_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *addr)
+igbvf_default_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
 {
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -4905,7 +4907,7 @@ eth_igb_filter_ctrl(struct rte_eth_dev *dev,
 
 static int
 eth_igb_set_mc_addr_list(struct rte_eth_dev *dev,
-			 struct ether_addr *mc_addr_set,
+			 struct rte_ether_addr *mc_addr_set,
 			 uint32_t nb_mc_addr)
 {
 	struct e1000_hw *hw;

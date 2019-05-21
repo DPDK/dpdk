@@ -229,8 +229,8 @@ uint32_t rte_net_get_ptype(const struct rte_mbuf *m,
 	struct rte_net_hdr_lens *hdr_lens, uint32_t layers)
 {
 	struct rte_net_hdr_lens local_hdr_lens;
-	const struct ether_hdr *eh;
-	struct ether_hdr eh_copy;
+	const struct rte_ether_hdr *eh;
+	struct rte_ether_hdr eh_copy;
 	uint32_t pkt_type = RTE_PTYPE_L2_ETHER;
 	uint32_t off = 0;
 	uint16_t proto;
@@ -253,8 +253,8 @@ uint32_t rte_net_get_ptype(const struct rte_mbuf *m,
 		goto l3; /* fast path if packet is IPv4 */
 
 	if (proto == rte_cpu_to_be_16(ETHER_TYPE_VLAN)) {
-		const struct vlan_hdr *vh;
-		struct vlan_hdr vh_copy;
+		const struct rte_vlan_hdr *vh;
+		struct rte_vlan_hdr vh_copy;
 
 		pkt_type = RTE_PTYPE_L2_ETHER_VLAN;
 		vh = rte_pktmbuf_read(m, off, sizeof(*vh), &vh_copy);
@@ -264,8 +264,8 @@ uint32_t rte_net_get_ptype(const struct rte_mbuf *m,
 		hdr_lens->l2_len += sizeof(*vh);
 		proto = vh->eth_proto;
 	} else if (proto == rte_cpu_to_be_16(ETHER_TYPE_QINQ)) {
-		const struct vlan_hdr *vh;
-		struct vlan_hdr vh_copy;
+		const struct rte_vlan_hdr *vh;
+		struct rte_vlan_hdr vh_copy;
 
 		pkt_type = RTE_PTYPE_L2_ETHER_QINQ;
 		vh = rte_pktmbuf_read(m, off + sizeof(*vh), sizeof(*vh),
@@ -402,8 +402,8 @@ l3:
 	}
 
 	if (proto == rte_cpu_to_be_16(ETHER_TYPE_VLAN)) {
-		const struct vlan_hdr *vh;
-		struct vlan_hdr vh_copy;
+		const struct rte_vlan_hdr *vh;
+		struct rte_vlan_hdr vh_copy;
 
 		pkt_type &= ~RTE_PTYPE_INNER_L2_MASK;
 		pkt_type |= RTE_PTYPE_INNER_L2_ETHER_VLAN;
@@ -414,8 +414,8 @@ l3:
 		hdr_lens->inner_l2_len += sizeof(*vh);
 		proto = vh->eth_proto;
 	} else if (proto == rte_cpu_to_be_16(ETHER_TYPE_QINQ)) {
-		const struct vlan_hdr *vh;
-		struct vlan_hdr vh_copy;
+		const struct rte_vlan_hdr *vh;
+		struct rte_vlan_hdr vh_copy;
 
 		pkt_type &= ~RTE_PTYPE_INNER_L2_MASK;
 		pkt_type |= RTE_PTYPE_INNER_L2_ETHER_QINQ;

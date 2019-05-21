@@ -33,21 +33,22 @@
 static uint64_t tlb_last_obytets[RTE_MAX_ETHPORTS];
 
 static inline size_t
-get_vlan_offset(struct ether_hdr *eth_hdr, uint16_t *proto)
+get_vlan_offset(struct rte_ether_hdr *eth_hdr, uint16_t *proto)
 {
 	size_t vlan_offset = 0;
 
 	if (rte_cpu_to_be_16(ETHER_TYPE_VLAN) == *proto ||
 		rte_cpu_to_be_16(ETHER_TYPE_QINQ) == *proto) {
-		struct vlan_hdr *vlan_hdr = (struct vlan_hdr *)(eth_hdr + 1);
+		struct rte_vlan_hdr *vlan_hdr =
+			(struct rte_vlan_hdr *)(eth_hdr + 1);
 
-		vlan_offset = sizeof(struct vlan_hdr);
+		vlan_offset = sizeof(struct rte_vlan_hdr);
 		*proto = vlan_hdr->eth_proto;
 
 		if (rte_cpu_to_be_16(ETHER_TYPE_VLAN) == *proto) {
 			vlan_hdr = vlan_hdr + 1;
 			*proto = vlan_hdr->eth_proto;
-			vlan_offset += sizeof(struct vlan_hdr);
+			vlan_offset += sizeof(struct rte_vlan_hdr);
 		}
 	}
 	return vlan_offset;
@@ -394,8 +395,8 @@ bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 	struct bond_dev_private *internals = bd_rx_q->dev_private;
 	struct rte_eth_dev *bonded_eth_dev =
 					&rte_eth_devices[internals->port_id];
-	struct ether_addr *bond_mac = bonded_eth_dev->data->mac_addrs;
-	struct ether_hdr *hdr;
+	struct rte_ether_addr *bond_mac = bonded_eth_dev->data->mac_addrs;
+	struct rte_ether_hdr *hdr;
 
 	const uint16_t ether_type_slow_be = rte_be_to_cpu_16(ETHER_TYPE_SLOW);
 	uint16_t num_rx_total = 0;	/* Total number of received packets */
@@ -444,7 +445,7 @@ bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 			if (j + 3 < num_rx_total)
 				rte_prefetch0(rte_pktmbuf_mtod(bufs[j + 3], void *));
 
-			hdr = rte_pktmbuf_mtod(bufs[j], struct ether_hdr *);
+			hdr = rte_pktmbuf_mtod(bufs[j], struct rte_ether_hdr *);
 			subtype = ((struct slow_protocol_frame *)hdr)->slow_protocol.subtype;
 
 			/* Remove packet from array if it is slow packet or slave is not
@@ -584,8 +585,9 @@ update_client_stats(uint32_t addr, uint16_t port, uint32_t *TXorRXindicator)
 #endif
 
 static void
-mode6_debug(const char __attribute__((unused)) *info, struct ether_hdr *eth_h,
-		uint16_t port, uint32_t __attribute__((unused)) *burstnumber)
+mode6_debug(const char __attribute__((unused)) *info,
+	struct rte_ether_hdr *eth_h, uint16_t port,
+	uint32_t __attribute__((unused)) *burstnumber)
 {
 	struct ipv4_hdr *ipv4_h;
 #ifdef RTE_LIBRTE_BOND_DEBUG_ALB
@@ -630,7 +632,7 @@ bond_ethdev_rx_burst_alb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
 	struct bond_tx_queue *bd_tx_q = (struct bond_tx_queue *)queue;
 	struct bond_dev_private *internals = bd_tx_q->dev_private;
-	struct ether_hdr *eth_h;
+	struct rte_ether_hdr *eth_h;
 	uint16_t ether_type, offset;
 	uint16_t nb_recv_pkts;
 	int i;
@@ -638,7 +640,7 @@ bond_ethdev_rx_burst_alb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	nb_recv_pkts = bond_ethdev_rx_burst(queue, bufs, nb_pkts);
 
 	for (i = 0; i < nb_recv_pkts; i++) {
-		eth_h = rte_pktmbuf_mtod(bufs[i], struct ether_hdr *);
+		eth_h = rte_pktmbuf_mtod(bufs[i], struct rte_ether_hdr *);
 		ether_type = eth_h->ether_type;
 		offset = get_vlan_offset(eth_h, &ether_type);
 
@@ -738,7 +740,7 @@ bond_ethdev_tx_burst_active_backup(void *queue,
 }
 
 static inline uint16_t
-ether_hash(struct ether_hdr *eth_hdr)
+ether_hash(struct rte_ether_hdr *eth_hdr)
 {
 	unaligned_uint16_t *word_src_addr =
 		(unaligned_uint16_t *)eth_hdr->s_addr.addr_bytes;
@@ -775,12 +777,12 @@ void
 burst_xmit_l2_hash(struct rte_mbuf **buf, uint16_t nb_pkts,
 		uint16_t slave_count, uint16_t *slaves)
 {
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 	uint32_t hash;
 	int i;
 
 	for (i = 0; i < nb_pkts; i++) {
-		eth_hdr = rte_pktmbuf_mtod(buf[i], struct ether_hdr *);
+		eth_hdr = rte_pktmbuf_mtod(buf[i], struct rte_ether_hdr *);
 
 		hash = ether_hash(eth_hdr);
 
@@ -793,13 +795,13 @@ burst_xmit_l23_hash(struct rte_mbuf **buf, uint16_t nb_pkts,
 		uint16_t slave_count, uint16_t *slaves)
 {
 	uint16_t i;
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 	uint16_t proto;
 	size_t vlan_offset;
 	uint32_t hash, l3hash;
 
 	for (i = 0; i < nb_pkts; i++) {
-		eth_hdr = rte_pktmbuf_mtod(buf[i], struct ether_hdr *);
+		eth_hdr = rte_pktmbuf_mtod(buf[i], struct rte_ether_hdr *);
 		l3hash = 0;
 
 		proto = eth_hdr->ether_type;
@@ -830,7 +832,7 @@ void
 burst_xmit_l34_hash(struct rte_mbuf **buf, uint16_t nb_pkts,
 		uint16_t slave_count, uint16_t *slaves)
 {
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 	uint16_t proto;
 	size_t vlan_offset;
 	int i;
@@ -840,7 +842,7 @@ burst_xmit_l34_hash(struct rte_mbuf **buf, uint16_t nb_pkts,
 	uint32_t hash, l3hash, l4hash;
 
 	for (i = 0; i < nb_pkts; i++) {
-		eth_hdr = rte_pktmbuf_mtod(buf[i], struct ether_hdr *);
+		eth_hdr = rte_pktmbuf_mtod(buf[i], struct rte_ether_hdr *);
 		size_t pkt_end = (size_t)eth_hdr + rte_pktmbuf_data_len(buf[i]);
 		proto = eth_hdr->ether_type;
 		vlan_offset = get_vlan_offset(eth_hdr, &proto);
@@ -1008,9 +1010,9 @@ bond_ethdev_tx_burst_tlb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	uint16_t num_of_slaves = internals->active_slave_count;
 	uint16_t slaves[RTE_MAX_ETHPORTS];
 
-	struct ether_hdr *ether_hdr;
-	struct ether_addr primary_slave_addr;
-	struct ether_addr active_slave_addr;
+	struct rte_ether_hdr *ether_hdr;
+	struct rte_ether_addr primary_slave_addr;
+	struct rte_ether_addr active_slave_addr;
 
 	if (num_of_slaves < 1)
 		return num_tx_total;
@@ -1032,7 +1034,8 @@ bond_ethdev_tx_burst_tlb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			if (j + 3 < nb_pkts)
 				rte_prefetch0(rte_pktmbuf_mtod(bufs[j+3], void*));
 
-			ether_hdr = rte_pktmbuf_mtod(bufs[j], struct ether_hdr *);
+			ether_hdr = rte_pktmbuf_mtod(bufs[j],
+						struct rte_ether_hdr *);
 			if (is_same_ether_addr(&ether_hdr->s_addr, &primary_slave_addr))
 				ether_addr_copy(&active_slave_addr, &ether_hdr->s_addr);
 #if defined(RTE_LIBRTE_BOND_DEBUG_ALB) || defined(RTE_LIBRTE_BOND_DEBUG_ALB_L1)
@@ -1068,7 +1071,7 @@ bond_ethdev_tx_burst_alb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	struct bond_tx_queue *bd_tx_q = (struct bond_tx_queue *)queue;
 	struct bond_dev_private *internals = bd_tx_q->dev_private;
 
-	struct ether_hdr *eth_h;
+	struct rte_ether_hdr *eth_h;
 	uint16_t ether_type, offset;
 
 	struct client_data *client_info;
@@ -1098,7 +1101,7 @@ bond_ethdev_tx_burst_alb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 	/* Search tx buffer for ARP packets and forward them to alb */
 	for (i = 0; i < nb_pkts; i++) {
-		eth_h = rte_pktmbuf_mtod(bufs[i], struct ether_hdr *);
+		eth_h = rte_pktmbuf_mtod(bufs[i], struct rte_ether_hdr *);
 		ether_type = eth_h->ether_type;
 		offset = get_vlan_offset(eth_h, &ether_type);
 
@@ -1132,10 +1135,10 @@ bond_ethdev_tx_burst_alb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 						     "Failed to allocate ARP packet from pool");
 					continue;
 				}
-				pkt_size = sizeof(struct ether_hdr) +
+				pkt_size = sizeof(struct rte_ether_hdr) +
 					sizeof(struct rte_arp_hdr) +
 					client_info->vlan_count *
-					sizeof(struct vlan_hdr);
+					sizeof(struct rte_vlan_hdr);
 				upd_pkt->data_len = pkt_size;
 				upd_pkt->pkt_len = pkt_size;
 
@@ -1166,7 +1169,8 @@ bond_ethdev_tx_burst_alb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 #if defined(RTE_LIBRTE_BOND_DEBUG_ALB) || defined(RTE_LIBRTE_BOND_DEBUG_ALB_L1)
 	/* Print TX stats including update packets */
 			for (j = 0; j < slave_bufs_pkts[i]; j++) {
-				eth_h = rte_pktmbuf_mtod(slave_bufs[i][j], struct ether_hdr *);
+				eth_h = rte_pktmbuf_mtod(slave_bufs[i][j],
+							struct rte_ether_hdr *);
 				mode6_debug("TX ARP:", eth_h, i, &burstnumberTX);
 			}
 #endif
@@ -1183,7 +1187,8 @@ bond_ethdev_tx_burst_alb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			}
 #if defined(RTE_LIBRTE_BOND_DEBUG_ALB) || defined(RTE_LIBRTE_BOND_DEBUG_ALB_L1)
 			for (j = 0; j < update_bufs_pkts[i]; j++) {
-				eth_h = rte_pktmbuf_mtod(update_bufs[i][j], struct ether_hdr *);
+				eth_h = rte_pktmbuf_mtod(update_bufs[i][j],
+							struct rte_ether_hdr *);
 				mode6_debug("TX ARPupd:", eth_h, i, &burstnumberTX);
 			}
 #endif
@@ -1501,9 +1506,10 @@ link_properties_valid(struct rte_eth_dev *ethdev,
 }
 
 int
-mac_address_get(struct rte_eth_dev *eth_dev, struct ether_addr *dst_mac_addr)
+mac_address_get(struct rte_eth_dev *eth_dev,
+		struct rte_ether_addr *dst_mac_addr)
 {
-	struct ether_addr *mac_addr;
+	struct rte_ether_addr *mac_addr;
 
 	if (eth_dev == NULL) {
 		RTE_BOND_LOG(ERR, "NULL pointer eth_dev specified");
@@ -1522,9 +1528,10 @@ mac_address_get(struct rte_eth_dev *eth_dev, struct ether_addr *dst_mac_addr)
 }
 
 int
-mac_address_set(struct rte_eth_dev *eth_dev, struct ether_addr *new_mac_addr)
+mac_address_set(struct rte_eth_dev *eth_dev,
+		struct rte_ether_addr *new_mac_addr)
 {
-	struct ether_addr *mac_addr;
+	struct rte_ether_addr *mac_addr;
 
 	if (eth_dev == NULL) {
 		RTE_BOND_LOG(ERR, "NULL pointer eth_dev specified");
@@ -1545,7 +1552,7 @@ mac_address_set(struct rte_eth_dev *eth_dev, struct ether_addr *new_mac_addr)
 	return 0;
 }
 
-static const struct ether_addr null_mac_addr;
+static const struct rte_ether_addr null_mac_addr;
 
 /*
  * Add additional MAC addresses to the slave
@@ -1555,7 +1562,7 @@ slave_add_mac_addresses(struct rte_eth_dev *bonded_eth_dev,
 		uint16_t slave_port_id)
 {
 	int i, ret;
-	struct ether_addr *mac_addr;
+	struct rte_ether_addr *mac_addr;
 
 	for (i = 1; i < BOND_MAX_MAC_ADDRS; i++) {
 		mac_addr = &bonded_eth_dev->data->mac_addrs[i];
@@ -1583,7 +1590,7 @@ slave_remove_mac_addresses(struct rte_eth_dev *bonded_eth_dev,
 		uint16_t slave_port_id)
 {
 	int i, rc, ret;
-	struct ether_addr *mac_addr;
+	struct rte_ether_addr *mac_addr;
 
 	rc = 0;
 	for (i = 1; i < BOND_MAX_MAC_ADDRS; i++) {
@@ -2006,7 +2013,7 @@ slave_add(struct bond_dev_private *internals,
 	slave_details->link_status_wait_to_complete = 0;
 	/* clean tlb_last_obytes when adding port for bonding device */
 	memcpy(&(slave_details->persisted_mac_addr), slave_eth_dev->data->mac_addrs,
-			sizeof(struct ether_addr));
+			sizeof(struct rte_ether_addr));
 }
 
 void
@@ -2052,7 +2059,7 @@ bond_ethdev_start(struct rte_eth_dev *eth_dev)
 	}
 
 	if (internals->user_defined_mac == 0) {
-		struct ether_addr *new_mac_addr = NULL;
+		struct rte_ether_addr *new_mac_addr = NULL;
 
 		for (i = 0; i < internals->slave_count; i++)
 			if (internals->slaves[i].port_id == internals->primary_port)
@@ -2938,7 +2945,8 @@ bond_ethdev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 }
 
 static int
-bond_ethdev_mac_address_set(struct rte_eth_dev *dev, struct ether_addr *addr)
+bond_ethdev_mac_address_set(struct rte_eth_dev *dev,
+			struct rte_ether_addr *addr)
 {
 	if (mac_address_set(dev, addr)) {
 		RTE_BOND_LOG(ERR, "Failed to update MAC address");
@@ -2960,8 +2968,9 @@ bond_filter_ctrl(struct rte_eth_dev *dev __rte_unused,
 }
 
 static int
-bond_ethdev_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
-				__rte_unused uint32_t index, uint32_t vmdq)
+bond_ethdev_mac_addr_add(struct rte_eth_dev *dev,
+			struct rte_ether_addr *mac_addr,
+			__rte_unused uint32_t index, uint32_t vmdq)
 {
 	struct rte_eth_dev *slave_eth_dev;
 	struct bond_dev_private *internals = dev->data->dev_private;
@@ -3011,7 +3020,7 @@ bond_ethdev_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 			goto end;
 	}
 
-	struct ether_addr *mac_addr = &dev->data->mac_addrs[index];
+	struct rte_ether_addr *mac_addr = &dev->data->mac_addrs[index];
 
 	for (i = 0; i < internals->slave_count; i++)
 		rte_eth_dev_mac_addr_remove(internals->slaves[i].port_id,
@@ -3389,7 +3398,7 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 	/* Parse MAC address for bonded device */
 	arg_count = rte_kvargs_count(kvlist, PMD_BOND_MAC_ADDR_KVARG);
 	if (arg_count == 1) {
-		struct ether_addr bond_mac;
+		struct rte_ether_addr bond_mac;
 
 		if (rte_kvargs_process(kvlist, PMD_BOND_MAC_ADDR_KVARG,
 				       &bond_ethdev_parse_bond_mac_addr_kvarg, &bond_mac) < 0) {

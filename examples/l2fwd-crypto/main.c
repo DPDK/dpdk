@@ -79,7 +79,7 @@ static uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
 static uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 
 /* ethernet addresses of ports */
-static struct ether_addr l2fwd_ports_eth_addr[RTE_MAX_ETHPORTS];
+static struct rte_ether_addr l2fwd_ports_eth_addr[RTE_MAX_ETHPORTS];
 
 /* mask of enabled ports */
 static uint64_t l2fwd_enabled_port_mask;
@@ -387,19 +387,19 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 		struct rte_crypto_op *op,
 		struct l2fwd_crypto_params *cparams)
 {
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 	struct ipv4_hdr *ip_hdr;
 
 	uint32_t ipdata_offset, data_len;
 	uint32_t pad_len = 0;
 	char *padding;
 
-	eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 
 	if (eth_hdr->ether_type != rte_cpu_to_be_16(ETHER_TYPE_IPv4))
 		return -1;
 
-	ipdata_offset = sizeof(struct ether_hdr);
+	ipdata_offset = sizeof(struct rte_ether_hdr);
 
 	ip_hdr = (struct ipv4_hdr *)(rte_pktmbuf_mtod(m, char *) +
 			ipdata_offset);
@@ -593,10 +593,10 @@ l2fwd_send_packet(struct rte_mbuf *m, uint16_t port)
 static void
 l2fwd_mac_updating(struct rte_mbuf *m, uint16_t dest_portid)
 {
-	struct ether_hdr *eth;
+	struct rte_ether_hdr *eth;
 	void *tmp;
 
-	eth = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	eth = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 
 	/* 02:00:00:00:00:xx */
 	tmp = &eth->d_addr.addr_bytes[0];

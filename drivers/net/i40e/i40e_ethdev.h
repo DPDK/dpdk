@@ -277,7 +277,7 @@ struct i40e_adapter;
  */
 struct i40e_mac_filter_info {
 	enum rte_mac_filter_type filter_type;
-	struct ether_addr mac_addr;
+	struct rte_ether_addr mac_addr;
 };
 
 TAILQ_HEAD(i40e_mac_filter_list, i40e_mac_filter);
@@ -330,7 +330,7 @@ struct i40e_veb {
 
 /* i40e MACVLAN filter structure */
 struct i40e_macvlan_filter {
-	struct ether_addr macaddr;
+	struct rte_ether_addr macaddr;
 	enum rte_mac_filter_type filter_type;
 	uint16_t vlan_id;
 };
@@ -421,7 +421,7 @@ struct i40e_pf_vf {
 	uint16_t vf_idx; /* VF index in pf->vfs */
 	uint16_t lan_nb_qps; /* Actual queues allocated */
 	uint16_t reset_cnt; /* Total vf reset times */
-	struct ether_addr mac_addr;  /* Default MAC address */
+	struct rte_ether_addr mac_addr;  /* Default MAC address */
 	/* version of the virtchnl from VF */
 	struct virtchnl_version_info version;
 	uint32_t request_caps; /* offload caps requested from VF */
@@ -641,7 +641,7 @@ struct i40e_fdir_info {
 
 /* Ethertype filter struct */
 struct i40e_ethertype_filter_input {
-	struct ether_addr mac_addr;   /* Mac address to match */
+	struct rte_ether_addr mac_addr;   /* Mac address to match */
 	uint16_t ether_type;          /* Ether type to match */
 };
 
@@ -759,8 +759,8 @@ enum i40e_tunnel_type {
  * Tunneling Packet filter configuration.
  */
 struct i40e_tunnel_filter_conf {
-	struct ether_addr outer_mac;    /**< Outer MAC address to match. */
-	struct ether_addr inner_mac;    /**< Inner MAC address to match. */
+	struct rte_ether_addr outer_mac;    /**< Outer MAC address to match. */
+	struct rte_ether_addr inner_mac;    /**< Inner MAC address to match. */
 	uint16_t inner_vlan;            /**< Inner VLAN to match. */
 	uint32_t outer_vlan;            /**< Outer VLAN to match */
 	enum i40e_tunnel_iptype ip_type; /**< IP address type. */
@@ -919,7 +919,7 @@ struct i40e_pf {
 	bool offset_loaded;
 
 	struct rte_eth_dev_data *dev_data; /* Pointer to the device data */
-	struct ether_addr dev_addr; /* PF device mac address */
+	struct rte_ether_addr dev_addr; /* PF device mac address */
 	uint64_t flags; /* PF feature flags */
 	/* All kinds of queue pair setting for different VSIs */
 	struct i40e_pf_vf *vfs;
@@ -1023,7 +1023,8 @@ struct i40e_vf {
 	uint16_t promisc_flags; /* Promiscuous setting */
 	uint32_t vlan[I40E_VFTA_SIZE]; /* VLAN bit map */
 
-	struct ether_addr mc_addrs[I40E_NUM_MACADDR_MAX]; /* Multicast addrs */
+	/* Multicast addrs */
+	struct rte_ether_addr mc_addrs[I40E_NUM_MACADDR_MAX];
 	uint16_t mc_addrs_num;   /* Multicast mac addresses number */
 
 	/* Event from pf */
@@ -1131,7 +1132,7 @@ int i40e_switch_tx_queue(struct i40e_hw *hw, uint16_t q_idx, bool on);
 int i40e_vsi_add_vlan(struct i40e_vsi *vsi, uint16_t vlan);
 int i40e_vsi_delete_vlan(struct i40e_vsi *vsi, uint16_t vlan);
 int i40e_vsi_add_mac(struct i40e_vsi *vsi, struct i40e_mac_filter_info *filter);
-int i40e_vsi_delete_mac(struct i40e_vsi *vsi, struct ether_addr *addr);
+int i40e_vsi_delete_mac(struct i40e_vsi *vsi, struct rte_ether_addr *addr);
 void i40e_update_vsi_stats(struct i40e_vsi *vsi);
 void i40e_pf_disable_irq0(struct i40e_hw *hw);
 void i40e_pf_enable_irq0(struct i40e_hw *hw);
@@ -1206,7 +1207,7 @@ int i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 int i40e_fdir_flush(struct rte_eth_dev *dev);
 int i40e_find_all_vlan_for_mac(struct i40e_vsi *vsi,
 			       struct i40e_macvlan_filter *mv_f,
-			       int num, struct ether_addr *addr);
+			       int num, struct rte_ether_addr *addr);
 int i40e_remove_macvlan_filters(struct i40e_vsi *vsi,
 				struct i40e_macvlan_filter *filter,
 				int total);

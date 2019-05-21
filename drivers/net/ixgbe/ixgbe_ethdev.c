@@ -223,11 +223,12 @@ static void ixgbe_dev_interrupt_handler(void *param);
 static void ixgbe_dev_interrupt_delayed_handler(void *param);
 static void ixgbe_dev_setup_link_alarm_handler(void *param);
 
-static int ixgbe_add_rar(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
-			 uint32_t index, uint32_t pool);
+static int ixgbe_add_rar(struct rte_eth_dev *dev,
+			struct rte_ether_addr *mac_addr,
+			uint32_t index, uint32_t pool);
 static void ixgbe_remove_rar(struct rte_eth_dev *dev, uint32_t index);
 static int ixgbe_set_default_mac_addr(struct rte_eth_dev *dev,
-					   struct ether_addr *mac_addr);
+					   struct rte_ether_addr *mac_addr);
 static void ixgbe_dcb_init(struct ixgbe_hw *hw, struct ixgbe_dcb_config *dcb_config);
 static bool is_device_supported(struct rte_eth_dev *dev,
 				struct rte_pci_driver *drv);
@@ -268,7 +269,7 @@ static void ixgbevf_dev_allmulticast_disable(struct rte_eth_dev *dev);
 
 /* For Eth VMDQ APIs support */
 static int ixgbe_uc_hash_table_set(struct rte_eth_dev *dev, struct
-		ether_addr * mac_addr, uint8_t on);
+		rte_ether_addr * mac_addr, uint8_t on);
 static int ixgbe_uc_all_hash_table_set(struct rte_eth_dev *dev, uint8_t on);
 static int ixgbe_mirror_rule_set(struct rte_eth_dev *dev,
 		struct rte_eth_mirror_conf *mirror_conf,
@@ -284,11 +285,11 @@ static void ixgbe_set_ivar_map(struct ixgbe_hw *hw, int8_t direction,
 static void ixgbe_configure_msix(struct rte_eth_dev *dev);
 
 static int ixgbevf_add_mac_addr(struct rte_eth_dev *dev,
-				struct ether_addr *mac_addr,
+				struct rte_ether_addr *mac_addr,
 				uint32_t index, uint32_t pool);
 static void ixgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index);
 static int ixgbevf_set_default_mac_addr(struct rte_eth_dev *dev,
-					     struct ether_addr *mac_addr);
+					     struct rte_ether_addr *mac_addr);
 static int ixgbe_syn_filter_get(struct rte_eth_dev *dev,
 			struct rte_eth_syn_filter *filter);
 static int ixgbe_syn_filter_handle(struct rte_eth_dev *dev,
@@ -315,7 +316,7 @@ static int ixgbe_dev_filter_ctrl(struct rte_eth_dev *dev,
 static int ixgbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu);
 
 static int ixgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
-				      struct ether_addr *mc_addr_set,
+				      struct rte_ether_addr *mc_addr_set,
 				      uint32_t nb_mc_addr);
 static int ixgbe_dev_get_dcb_info(struct rte_eth_dev *dev,
 				   struct rte_eth_dcb_info *dcb_info);
@@ -1222,7 +1223,7 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 		return -ENOMEM;
 	}
 	/* Copy the permanent MAC address */
-	ether_addr_copy((struct ether_addr *) hw->mac.perm_addr,
+	ether_addr_copy((struct rte_ether_addr *)hw->mac.perm_addr,
 			&eth_dev->data->mac_addrs[0]);
 
 	/* Allocate memory for storing hash filter MAC addresses */
@@ -1533,7 +1534,7 @@ ixgbevf_negotiate_api(struct ixgbe_hw *hw)
 }
 
 static void
-generate_random_mac_addr(struct ether_addr *mac_addr)
+generate_random_mac_addr(struct rte_ether_addr *mac_addr)
 {
 	uint64_t random;
 
@@ -1564,7 +1565,8 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 		IXGBE_DEV_PRIVATE_TO_VFTA(eth_dev->data->dev_private);
 	struct ixgbe_hwstrip *hwstrip =
 		IXGBE_DEV_PRIVATE_TO_HWSTRIP_BITMAP(eth_dev->data->dev_private);
-	struct ether_addr *perm_addr = (struct ether_addr *) hw->mac.perm_addr;
+	struct rte_ether_addr *perm_addr =
+		(struct rte_ether_addr *)hw->mac.perm_addr;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -4901,7 +4903,7 @@ ixgbe_dev_rss_reta_query(struct rte_eth_dev *dev,
 }
 
 static int
-ixgbe_add_rar(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
+ixgbe_add_rar(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 				uint32_t index, uint32_t pool)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -4920,7 +4922,7 @@ ixgbe_remove_rar(struct rte_eth_dev *dev, uint32_t index)
 }
 
 static int
-ixgbe_set_default_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
+ixgbe_set_default_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 
@@ -5370,7 +5372,7 @@ ixgbe_vt_check(struct ixgbe_hw *hw)
 }
 
 static uint32_t
-ixgbe_uta_vector(struct ixgbe_hw *hw, struct ether_addr *uc_addr)
+ixgbe_uta_vector(struct ixgbe_hw *hw, struct rte_ether_addr *uc_addr)
 {
 	uint32_t vector = 0;
 
@@ -5401,8 +5403,8 @@ ixgbe_uta_vector(struct ixgbe_hw *hw, struct ether_addr *uc_addr)
 }
 
 static int
-ixgbe_uc_hash_table_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
-			uint8_t on)
+ixgbe_uc_hash_table_set(struct rte_eth_dev *dev,
+			struct rte_ether_addr *mac_addr, uint8_t on)
 {
 	uint32_t vector;
 	uint32_t uta_idx;
@@ -6033,7 +6035,7 @@ ixgbe_set_queue_rate_limit(struct rte_eth_dev *dev,
 }
 
 static int
-ixgbevf_add_mac_addr(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
+ixgbevf_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 		     __attribute__((unused)) uint32_t index,
 		     __attribute__((unused)) uint32_t pool)
 {
@@ -6045,7 +6047,8 @@ ixgbevf_add_mac_addr(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 	 * operation. Trap this case to avoid exhausting the [very limited]
 	 * set of PF resources used to store VF MAC addresses.
 	 */
-	if (memcmp(hw->mac.perm_addr, mac_addr, sizeof(struct ether_addr)) == 0)
+	if (memcmp(hw->mac.perm_addr, mac_addr,
+			sizeof(struct rte_ether_addr)) == 0)
 		return -1;
 	diag = ixgbevf_set_uc_addr_vf(hw, 2, mac_addr->addr_bytes);
 	if (diag != 0)
@@ -6065,8 +6068,9 @@ static void
 ixgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ether_addr *perm_addr = (struct ether_addr *) hw->mac.perm_addr;
-	struct ether_addr *mac_addr;
+	struct rte_ether_addr *perm_addr =
+		(struct rte_ether_addr *)hw->mac.perm_addr;
+	struct rte_ether_addr *mac_addr;
 	uint32_t i;
 	int diag;
 
@@ -6091,7 +6095,8 @@ ixgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index)
 		if (is_zero_ether_addr(mac_addr))
 			continue;
 		/* Skip the permanent MAC address */
-		if (memcmp(perm_addr, mac_addr, sizeof(struct ether_addr)) == 0)
+		if (memcmp(perm_addr, mac_addr,
+				sizeof(struct rte_ether_addr)) == 0)
 			continue;
 		diag = ixgbevf_set_uc_addr_vf(hw, 2, mac_addr->addr_bytes);
 		if (diag != 0)
@@ -6110,7 +6115,8 @@ ixgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index)
 }
 
 static int
-ixgbevf_set_default_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
+ixgbevf_set_default_mac_addr(struct rte_eth_dev *dev,
+			struct rte_ether_addr *addr)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -6839,13 +6845,13 @@ ixgbe_dev_addr_list_itr(__attribute__((unused)) struct ixgbe_hw *hw,
 
 	*vmdq = 0;
 	mc_addr = *mc_addr_ptr;
-	*mc_addr_ptr = (mc_addr + sizeof(struct ether_addr));
+	*mc_addr_ptr = (mc_addr + sizeof(struct rte_ether_addr));
 	return mc_addr;
 }
 
 static int
 ixgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
-			  struct ether_addr *mc_addr_set,
+			  struct rte_ether_addr *mc_addr_set,
 			  uint32_t nb_mc_addr)
 {
 	struct ixgbe_hw *hw;

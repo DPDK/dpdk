@@ -9,7 +9,7 @@ extern uint16_t nb_devices;
 extern uint16_t udp_port;
 extern uint8_t filter_idx;
 extern uint16_t ports[RTE_MAX_ETHPORTS];
-extern struct ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
+extern struct rte_ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
 extern uint32_t enable_stats;
 extern struct device_statistics dev_statistics[MAX_DEVICES];
 extern uint8_t rx_decap;

@@ -840,7 +840,7 @@ enetc_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	/* Copy the permanent MAC address */
-	ether_addr_copy((struct ether_addr *)hw->mac.addr,
+	ether_addr_copy((struct rte_ether_addr *)hw->mac.addr,
 			&eth_dev->data->mac_addrs[0]);
 
 	/* Set MTU */

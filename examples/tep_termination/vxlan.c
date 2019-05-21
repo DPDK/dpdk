@@ -28,19 +28,20 @@ get_psd_sum(void *l3_hdr, uint16_t ethertype, uint64_t ol_flags)
  * header.
  */
 static void
-parse_ethernet(struct ether_hdr *eth_hdr, union tunnel_offload_info *info,
+parse_ethernet(struct rte_ether_hdr *eth_hdr, union tunnel_offload_info *info,
 		uint8_t *l4_proto)
 {
 	struct ipv4_hdr *ipv4_hdr;
 	struct ipv6_hdr *ipv6_hdr;
 	uint16_t ethertype;
 
-	info->outer_l2_len = sizeof(struct ether_hdr);
+	info->outer_l2_len = sizeof(struct rte_ether_hdr);
 	ethertype = rte_be_to_cpu_16(eth_hdr->ether_type);
 
 	if (ethertype == ETHER_TYPE_VLAN) {
-		struct vlan_hdr *vlan_hdr = (struct vlan_hdr *)(eth_hdr + 1);
-		info->outer_l2_len  += sizeof(struct vlan_hdr);
+		struct rte_vlan_hdr *vlan_hdr =
+			(struct rte_vlan_hdr *)(eth_hdr + 1);
+		info->outer_l2_len  += sizeof(struct rte_vlan_hdr);
 		ethertype = rte_be_to_cpu_16(vlan_hdr->eth_proto);
 	}
 
@@ -68,7 +69,8 @@ parse_ethernet(struct ether_hdr *eth_hdr, union tunnel_offload_info *info,
  * Calculate the checksum of a packet in hardware
  */
 static uint64_t
-process_inner_cksums(struct ether_hdr *eth_hdr, union tunnel_offload_info *info)
+process_inner_cksums(struct rte_ether_hdr *eth_hdr,
+		union tunnel_offload_info *info)
 {
 	void *l3_hdr = NULL;
 	uint8_t l4_proto;
@@ -80,12 +82,13 @@ process_inner_cksums(struct ether_hdr *eth_hdr, union tunnel_offload_info *info)
 	struct sctp_hdr *sctp_hdr;
 	uint64_t ol_flags = 0;
 
-	info->l2_len = sizeof(struct ether_hdr);
+	info->l2_len = sizeof(struct rte_ether_hdr);
 	ethertype = rte_be_to_cpu_16(eth_hdr->ether_type);
 
 	if (ethertype == ETHER_TYPE_VLAN) {
-		struct vlan_hdr *vlan_hdr = (struct vlan_hdr *)(eth_hdr + 1);
-		info->l2_len  += sizeof(struct vlan_hdr);
+		struct rte_vlan_hdr *vlan_hdr =
+			(struct rte_vlan_hdr *)(eth_hdr + 1);
+		info->l2_len  += sizeof(struct rte_vlan_hdr);
 		ethertype = rte_be_to_cpu_16(vlan_hdr->eth_proto);
 	}
 
@@ -141,7 +144,8 @@ decapsulation(struct rte_mbuf *pkt)
 	uint16_t outer_header_len;
 	struct udp_hdr *udp_hdr;
 	union tunnel_offload_info info = { .data = 0 };
-	struct ether_hdr *phdr = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
+	struct rte_ether_hdr *phdr =
+		rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
 
 	parse_ethernet(phdr, &info, &l4_proto);
 
@@ -158,7 +162,7 @@ decapsulation(struct rte_mbuf *pkt)
 		(pkt->packet_type & RTE_PTYPE_TUNNEL_MASK) == 0)
 		return -1;
 	outer_header_len = info.outer_l2_len + info.outer_l3_len
-		+ sizeof(struct udp_hdr) + sizeof(struct vxlan_hdr);
+		+ sizeof(struct udp_hdr) + sizeof(struct rte_vxlan_hdr);
 
 	rte_pktmbuf_adj(pkt, outer_header_len);
 
@@ -172,29 +176,31 @@ encapsulation(struct rte_mbuf *m, uint8_t queue_id)
 	uint64_t ol_flags = 0;
 	uint32_t old_len = m->pkt_len, hash;
 	union tunnel_offload_info tx_offload = { .data = 0 };
-	struct ether_hdr *phdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	struct rte_ether_hdr *phdr =
+		rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 
 	/*Allocate space for new ethernet, IPv4, UDP and VXLAN headers*/
-	struct ether_hdr *pneth = (struct ether_hdr *) rte_pktmbuf_prepend(m,
-		sizeof(struct ether_hdr) + sizeof(struct ipv4_hdr)
-		+ sizeof(struct udp_hdr) + sizeof(struct vxlan_hdr));
+	struct rte_ether_hdr *pneth =
+		(struct rte_ether_hdr *) rte_pktmbuf_prepend(m,
+		sizeof(struct rte_ether_hdr) + sizeof(struct ipv4_hdr)
+		+ sizeof(struct udp_hdr) + sizeof(struct rte_vxlan_hdr));
 
 	struct ipv4_hdr *ip = (struct ipv4_hdr *) &pneth[1];
 	struct udp_hdr *udp = (struct udp_hdr *) &ip[1];
-	struct vxlan_hdr *vxlan = (struct vxlan_hdr *) &udp[1];
+	struct rte_vxlan_hdr *vxlan = (struct rte_vxlan_hdr *) &udp[1];
 
 	/* convert TX queue ID to vport ID */
 	vport_id = queue_id - 1;
 
 	/* replace original Ethernet header with ours */
 	pneth = rte_memcpy(pneth, &app_l2_hdr[vport_id],
-		sizeof(struct ether_hdr));
+		sizeof(struct rte_ether_hdr));
 
 	/* copy in IP header */
 	ip = rte_memcpy(ip, &app_ip_hdr[vport_id],
 		sizeof(struct ipv4_hdr));
 	ip->total_length = rte_cpu_to_be_16(m->pkt_len
-				- sizeof(struct ether_hdr));
+				- sizeof(struct rte_ether_hdr));
 
 	/* outer IP checksum */
 	ol_flags |= PKT_TX_OUTER_IP_CKSUM;
@@ -209,7 +215,7 @@ encapsulation(struct rte_mbuf *m, uint8_t queue_id)
 		m->l2_len += ETHER_VXLAN_HLEN;
 	}
 
-	m->outer_l2_len = sizeof(struct ether_hdr);
+	m->outer_l2_len = sizeof(struct rte_ether_hdr);
 	m->outer_l3_len = sizeof(struct ipv4_hdr);
 
 	ol_flags |= PKT_TX_TUNNEL_VXLAN;
@@ -225,7 +231,7 @@ encapsulation(struct rte_mbuf *m, uint8_t queue_id)
 	udp->dgram_cksum = 0;
 	udp->dgram_len = rte_cpu_to_be_16(old_len
 				+ sizeof(struct udp_hdr)
-				+ sizeof(struct vxlan_hdr));
+				+ sizeof(struct rte_vxlan_hdr));
 
 	udp->dst_port = rte_cpu_to_be_16(vxdev.dst_port);
 	hash = rte_hash_crc(phdr, 2 * ETHER_ADDR_LEN, phdr->ether_type);

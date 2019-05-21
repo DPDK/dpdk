@@ -89,14 +89,15 @@ static int eth_em_led_on(struct rte_eth_dev *dev);
 static int eth_em_led_off(struct rte_eth_dev *dev);
 
 static int em_get_rx_buffer_size(struct e1000_hw *hw);
-static int eth_em_rar_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
-			  uint32_t index, uint32_t pool);
+static int eth_em_rar_set(struct rte_eth_dev *dev,
+			struct rte_ether_addr *mac_addr,
+			uint32_t index, uint32_t pool);
 static void eth_em_rar_clear(struct rte_eth_dev *dev, uint32_t index);
 static int eth_em_default_mac_addr_set(struct rte_eth_dev *dev,
-					 struct ether_addr *addr);
+					 struct rte_ether_addr *addr);
 
 static int eth_em_set_mc_addr_list(struct rte_eth_dev *dev,
-				   struct ether_addr *mc_addr_set,
+				   struct rte_ether_addr *mc_addr_set,
 				   uint32_t nb_mc_addr);
 
 #define EM_FC_PAUSE_TIME 0x0680
@@ -293,7 +294,7 @@ eth_em_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	/* Copy the permanent MAC address */
-	ether_addr_copy((struct ether_addr *) hw->mac.addr,
+	ether_addr_copy((struct rte_ether_addr *)hw->mac.addr,
 		eth_dev->data->mac_addrs);
 
 	/* initialize the vfta */
@@ -1735,7 +1736,7 @@ eth_em_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 }
 
 static int
-eth_em_rar_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
+eth_em_rar_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 		uint32_t index, __rte_unused uint32_t pool)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -1756,7 +1757,7 @@ eth_em_rar_clear(struct rte_eth_dev *dev, uint32_t index)
 
 static int
 eth_em_default_mac_addr_set(struct rte_eth_dev *dev,
-			    struct ether_addr *addr)
+			    struct rte_ether_addr *addr)
 {
 	eth_em_rar_clear(dev, 0);
 
@@ -1806,7 +1807,7 @@ eth_em_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 
 static int
 eth_em_set_mc_addr_list(struct rte_eth_dev *dev,
-			struct ether_addr *mc_addr_set,
+			struct rte_ether_addr *mc_addr_set,
 			uint32_t nb_mc_addr)
 {
 	struct e1000_hw *hw;

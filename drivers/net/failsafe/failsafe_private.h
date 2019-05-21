@@ -152,10 +152,10 @@ struct fs_priv {
 	TAILQ_HEAD(sub_flows, rte_flow) flow_list;
 	/* current number of mac_addr slots allocated. */
 	uint32_t nb_mac_addr;
-	struct ether_addr mac_addrs[FAILSAFE_MAX_ETHADDR];
+	struct rte_ether_addr mac_addrs[FAILSAFE_MAX_ETHADDR];
 	uint32_t mac_addr_pool[FAILSAFE_MAX_ETHADDR];
 	uint32_t nb_mcast_addr;
-	struct ether_addr *mcast_addrs;
+	struct rte_ether_addr *mcast_addrs;
 	/* current capabilities */
 	struct rte_eth_dev_info infos;
 	struct rte_eth_dev_owner my_owner; /* Unique owner. */

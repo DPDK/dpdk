@@ -685,7 +685,7 @@ i40e_fdir_fill_eth_ip_head(const struct rte_eth_fdir_input *fdir_input,
 {
 	static uint8_t vlan_frame[] = {0x81, 0, 0, 0};
 	uint16_t *ether_type;
-	uint8_t len = 2 * sizeof(struct ether_addr);
+	uint8_t len = 2 * sizeof(struct rte_ether_addr);
 	struct ipv4_hdr *ip;
 	struct ipv6_hdr *ip6;
 	static const uint8_t next_proto[] = {
@@ -701,7 +701,7 @@ i40e_fdir_fill_eth_ip_head(const struct rte_eth_fdir_input *fdir_input,
 		[RTE_ETH_FLOW_NONFRAG_IPV6_OTHER] = IPPROTO_NONE,
 	};
 
-	raw_pkt += 2 * sizeof(struct ether_addr);
+	raw_pkt += 2 * sizeof(struct rte_ether_addr);
 	if (vlan && fdir_input->flow_ext.vlan_tci) {
 		rte_memcpy(raw_pkt, vlan_frame, sizeof(vlan_frame));
 		rte_memcpy(raw_pkt + sizeof(uint16_t),
@@ -959,7 +959,7 @@ i40e_flow_fdir_fill_eth_ip_head(struct i40e_pf *pf,
 	struct i40e_customized_pctype *cus_pctype = NULL;
 	static uint8_t vlan_frame[] = {0x81, 0, 0, 0};
 	uint16_t *ether_type;
-	uint8_t len = 2 * sizeof(struct ether_addr);
+	uint8_t len = 2 * sizeof(struct rte_ether_addr);
 	struct ipv4_hdr *ip;
 	struct ipv6_hdr *ip6;
 	uint8_t pctype = fdir_input->pctype;
@@ -977,7 +977,7 @@ i40e_flow_fdir_fill_eth_ip_head(struct i40e_pf *pf,
 		[I40E_FILTER_PCTYPE_NONF_IPV6_OTHER] = IPPROTO_NONE,
 	};
 
-	raw_pkt += 2 * sizeof(struct ether_addr);
+	raw_pkt += 2 * sizeof(struct rte_ether_addr);
 	if (vlan && fdir_input->flow_ext.vlan_tci) {
 		rte_memcpy(raw_pkt, vlan_frame, sizeof(vlan_frame));
 		rte_memcpy(raw_pkt + sizeof(uint16_t),

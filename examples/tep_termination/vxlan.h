@@ -17,15 +17,15 @@
 #define DEFAULT_VXLAN_PORT 4789
 
 extern struct ipv4_hdr app_ip_hdr[VXLAN_N_PORTS];
-extern struct ether_hdr app_l2_hdr[VXLAN_N_PORTS];
+extern struct rte_ether_hdr app_l2_hdr[VXLAN_N_PORTS];
 extern uint8_t tx_checksum;
 extern uint16_t tso_segsz;
 
 struct vxlan_port {
 	uint32_t vport_id;           /**< VirtIO port id */
 	uint32_t peer_ip;            /**< remote VTEP IP address */
-	struct ether_addr peer_mac;  /**< remote VTEP MAC address */
-	struct ether_addr vport_mac; /**< VirtIO port MAC address */
+	struct rte_ether_addr peer_mac;  /**< remote VTEP MAC address */
+	struct rte_ether_addr vport_mac; /**< VirtIO port MAC address */
 } __rte_cache_aligned;
 
 struct vxlan_conf {

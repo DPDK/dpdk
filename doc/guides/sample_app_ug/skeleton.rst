@@ -115,7 +115,7 @@ Forwarding application is shown below:
     {
         struct rte_eth_conf port_conf = port_conf_default;
         const uint16_t rx_rings = 1, tx_rings = 1;
-        struct ether_addr addr;
+        struct rte_ether_addr addr;
         int retval;
         uint16_t q;
 

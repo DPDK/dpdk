@@ -617,7 +617,7 @@ mvneta_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
  *   0 on success, negative error value otherwise.
  */
 static int
-mvneta_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
+mvneta_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 		  uint32_t index, uint32_t vmdq __rte_unused)
 {
 	struct mvneta_priv *priv = dev->data->dev_private;
@@ -650,7 +650,7 @@ mvneta_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
  *   MAC address to register.
  */
 static int
-mvneta_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
+mvneta_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 {
 	struct mvneta_priv *priv = dev->data->dev_private;
 	int ret;

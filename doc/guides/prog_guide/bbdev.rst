@@ -752,12 +752,12 @@ buffers using (**sw_turbo**) bbdev PMD.
         for (j = 0; j < op_num; j++) {
             /* Append the size of the ethernet header */
             rte_pktmbuf_append(input_pkts_burst[j],
-                    sizeof(struct ether_hdr));
+                    sizeof(struct rte_ether_hdr));
 
             /* set op */
 
             ops_burst[j]->turbo_enc.input.offset =
-                sizeof(struct ether_hdr);
+                sizeof(struct rte_ether_hdr);
 
             ops_burst[j]->turbo_enc->input.length =
                 rte_pktmbuf_pkt_len(bbdev_pkts[j]);
@@ -766,7 +766,7 @@ buffers using (**sw_turbo**) bbdev PMD.
                 input_pkts_burst[j];
 
             ops_burst[j]->turbo_enc->output.offset =
-                sizeof(struct ether_hdr);
+                sizeof(struct rte_ether_hdr);
 
             ops_burst[j]->turbo_enc->output.data =
                     output_pkts_burst[j];

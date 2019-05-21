@@ -676,7 +676,7 @@ vmxnet3_guess_mss(struct vmxnet3_hw *hw, const Vmxnet3_RxCompDesc *rcd,
 
 	ptr = rte_pktmbuf_mtod(rxm, char *);
 	slen = rte_pktmbuf_data_len(rxm);
-	hlen = sizeof(struct ether_hdr);
+	hlen = sizeof(struct rte_ether_hdr);
 
 	if (rcd->v4) {
 		if (unlikely(slen < hlen + sizeof(struct ipv4_hdr)))
@@ -703,7 +703,7 @@ vmxnet3_guess_mss(struct vmxnet3_hw *hw, const Vmxnet3_RxCompDesc *rcd,
 
 	if (unlikely(slen < hlen + sizeof(struct tcp_hdr)))
 		return hw->mtu - hlen - sizeof(struct tcp_hdr) +
-				sizeof(struct ether_hdr);
+				sizeof(struct rte_ether_hdr);
 
 	tcp_hdr = (struct tcp_hdr *)(ptr + hlen);
 	hlen += (tcp_hdr->data_off & 0xf0) >> 2;
@@ -712,7 +712,7 @@ vmxnet3_guess_mss(struct vmxnet3_hw *hw, const Vmxnet3_RxCompDesc *rcd,
 		return (rte_pktmbuf_pkt_len(rxm) - hlen +
 				rxm->udata64 - 1) / rxm->udata64;
 	else
-		return hw->mtu - hlen + sizeof(struct ether_hdr);
+		return hw->mtu - hlen + sizeof(struct rte_ether_hdr);
 }
 
 /* Receive side checksum and other offloads */

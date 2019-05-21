@@ -784,7 +784,7 @@ txq_mbuf_to_swp(struct mlx5_txq_data *txq, struct rte_mbuf *buf,
 	 * in if any of SWP offsets is set. Therefore, all of the L3 offsets
 	 * should be set regardless of HW offload.
 	 */
-	off = buf->outer_l2_len + (vlan ? sizeof(struct vlan_hdr) : 0);
+	off = buf->outer_l2_len + (vlan ? sizeof(struct rte_vlan_hdr) : 0);
 	offsets[1] = off >> 1; /* Outer L3 offset. */
 	off += buf->outer_l3_len;
 	if (tunnel == PKT_TX_TUNNEL_UDP)

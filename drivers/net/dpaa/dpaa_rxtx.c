@@ -198,7 +198,8 @@ static inline void dpaa_eth_packet_info(struct rte_mbuf *m, void *fd_virt_addr)
 
 static inline void dpaa_checksum(struct rte_mbuf *mbuf)
 {
-	struct ether_hdr *eth_hdr = rte_pktmbuf_mtod(mbuf, struct ether_hdr *);
+	struct rte_ether_hdr *eth_hdr =
+		rte_pktmbuf_mtod(mbuf, struct rte_ether_hdr *);
 	char *l3_hdr = (char *)eth_hdr + mbuf->l2_len;
 	struct ipv4_hdr *ipv4_hdr = (struct ipv4_hdr *)l3_hdr;
 	struct ipv6_hdr *ipv6_hdr = (struct ipv6_hdr *)l3_hdr;

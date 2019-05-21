@@ -106,7 +106,7 @@ static int i40evf_dev_tx_queue_start(struct rte_eth_dev *dev,
 static int i40evf_dev_tx_queue_stop(struct rte_eth_dev *dev,
 				    uint16_t tx_queue_id);
 static int i40evf_add_mac_addr(struct rte_eth_dev *dev,
-			       struct ether_addr *addr,
+			       struct rte_ether_addr *addr,
 			       uint32_t index,
 			       uint32_t pool);
 static void i40evf_del_mac_addr(struct rte_eth_dev *dev, uint32_t index);
@@ -123,7 +123,7 @@ static int i40evf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 					struct rte_eth_rss_conf *rss_conf);
 static int i40evf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static int i40evf_set_default_mac_addr(struct rte_eth_dev *dev,
-					struct ether_addr *mac_addr);
+					struct rte_ether_addr *mac_addr);
 static int
 i40evf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id);
 static int
@@ -134,10 +134,11 @@ static void i40evf_handle_pf_event(struct rte_eth_dev *dev,
 
 static int
 i40evf_add_del_mc_addr_list(struct rte_eth_dev *dev,
-			struct ether_addr *mc_addr_set,
+			struct rte_ether_addr *mc_addr_set,
 			uint32_t nb_mc_addr, bool add);
 static int
-i40evf_set_mc_addr_list(struct rte_eth_dev *dev, struct ether_addr *mc_addr_set,
+i40evf_set_mc_addr_list(struct rte_eth_dev *dev,
+			struct rte_ether_addr *mc_addr_set,
 			uint32_t nb_mc_addr);
 
 /* Default hash key buffer for RSS */
@@ -776,7 +777,7 @@ i40evf_stop_queues(struct rte_eth_dev *dev)
 
 static int
 i40evf_add_mac_addr(struct rte_eth_dev *dev,
-		    struct ether_addr *addr,
+		    struct rte_ether_addr *addr,
 		    __rte_unused uint32_t index,
 		    __rte_unused uint32_t pool)
 {
@@ -818,7 +819,7 @@ i40evf_add_mac_addr(struct rte_eth_dev *dev,
 
 static void
 i40evf_del_mac_addr_by_addr(struct rte_eth_dev *dev,
-			    struct ether_addr *addr)
+			    struct rte_ether_addr *addr)
 {
 	struct virtchnl_ether_addr_list *list;
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
@@ -859,7 +860,7 @@ static void
 i40evf_del_mac_addr(struct rte_eth_dev *dev, uint32_t index)
 {
 	struct rte_eth_dev_data *data = dev->data;
-	struct ether_addr *addr;
+	struct rte_ether_addr *addr;
 
 	addr = &data->mac_addrs[index];
 
@@ -1273,7 +1274,7 @@ i40evf_init_vf(struct rte_eth_dev *dev)
 	vf->vsi.adapter = I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 
 	/* Store the MAC address configured by host, or generate random one */
-	if (is_valid_assigned_ether_addr((struct ether_addr *)hw->mac.addr))
+	if (is_valid_assigned_ether_addr((struct rte_ether_addr *)hw->mac.addr))
 		vf->flags |= I40E_FLAG_VF_MAC_BY_PF;
 	else
 		eth_random_addr(hw->mac.addr); /* Generate a random one */
@@ -1511,7 +1512,7 @@ i40evf_dev_init(struct rte_eth_dev *eth_dev)
 				ETHER_ADDR_LEN * I40E_NUM_MACADDR_MAX);
 		return -ENOMEM;
 	}
-	ether_addr_copy((struct ether_addr *)hw->mac.addr,
+	ether_addr_copy((struct rte_ether_addr *)hw->mac.addr,
 			&eth_dev->data->mac_addrs[0]);
 
 	return 0;
@@ -1929,7 +1930,7 @@ i40evf_add_del_all_mac_addr(struct rte_eth_dev *dev, bool add)
 	int next_begin = 0;
 	int begin = 0;
 	uint32_t len;
-	struct ether_addr *addr;
+	struct rte_ether_addr *addr;
 	struct vf_cmd_info args;
 
 	do {
@@ -2701,7 +2702,7 @@ i40evf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 
 static int
 i40evf_set_default_mac_addr(struct rte_eth_dev *dev,
-			    struct ether_addr *mac_addr)
+			    struct rte_ether_addr *mac_addr)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -2714,18 +2715,18 @@ i40evf_set_default_mac_addr(struct rte_eth_dev *dev,
 	if (vf->flags & I40E_FLAG_VF_MAC_BY_PF)
 		return -EPERM;
 
-	i40evf_del_mac_addr_by_addr(dev, (struct ether_addr *)hw->mac.addr);
+	i40evf_del_mac_addr_by_addr(dev, (struct rte_ether_addr *)hw->mac.addr);
 
 	if (i40evf_add_mac_addr(dev, mac_addr, 0, 0) != 0)
 		return -EIO;
 
-	ether_addr_copy(mac_addr, (struct ether_addr *)hw->mac.addr);
+	ether_addr_copy(mac_addr, (struct rte_ether_addr *)hw->mac.addr);
 	return 0;
 }
 
 static int
 i40evf_add_del_mc_addr_list(struct rte_eth_dev *dev,
-			struct ether_addr *mc_addrs,
+			struct rte_ether_addr *mc_addrs,
 			uint32_t mc_addrs_num, bool add)
 {
 	struct virtchnl_ether_addr_list *list;
@@ -2779,7 +2780,8 @@ i40evf_add_del_mc_addr_list(struct rte_eth_dev *dev,
 }
 
 static int
-i40evf_set_mc_addr_list(struct rte_eth_dev *dev, struct ether_addr *mc_addrs,
+i40evf_set_mc_addr_list(struct rte_eth_dev *dev,
+			struct rte_ether_addr *mc_addrs,
 			uint32_t mc_addrs_num)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);

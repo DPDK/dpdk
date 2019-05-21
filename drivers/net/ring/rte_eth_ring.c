@@ -51,7 +51,7 @@ struct pmd_internals {
 	struct ring_queue rx_ring_queues[RTE_PMD_RING_MAX_RX_RINGS];
 	struct ring_queue tx_ring_queues[RTE_PMD_RING_MAX_TX_RINGS];
 
-	struct ether_addr address;
+	struct rte_ether_addr address;
 	enum dev_action action;
 };
 
@@ -218,7 +218,7 @@ eth_mac_addr_remove(struct rte_eth_dev *dev __rte_unused,
 
 static int
 eth_mac_addr_add(struct rte_eth_dev *dev __rte_unused,
-	struct ether_addr *mac_addr __rte_unused,
+	struct rte_ether_addr *mac_addr __rte_unused,
 	uint32_t index __rte_unused,
 	uint32_t vmdq __rte_unused)
 {

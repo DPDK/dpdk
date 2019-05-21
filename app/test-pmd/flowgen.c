@@ -76,9 +76,9 @@ static uint32_t cfg_ip_src	= IPv4(10, 254, 0, 0);
 static uint32_t cfg_ip_dst	= IPv4(10, 253, 0, 0);
 static uint16_t cfg_udp_src	= 1000;
 static uint16_t cfg_udp_dst	= 1001;
-static struct ether_addr cfg_ether_src	=
+static struct rte_ether_addr cfg_ether_src =
 	{{ 0x00, 0x01, 0x02, 0x03, 0x04, 0x00 }};
-static struct ether_addr cfg_ether_dst	=
+static struct rte_ether_addr cfg_ether_dst =
 	{{ 0x00, 0x01, 0x02, 0x03, 0x04, 0x01 }};
 
 #define IP_DEFTTL  64   /* from RFC 1340. */
@@ -119,7 +119,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 	struct rte_mbuf  *pkts_burst[MAX_PKT_BURST];
 	struct rte_mempool *mbp;
 	struct rte_mbuf  *pkt;
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 	struct ipv4_hdr *ip_hdr;
 	struct udp_hdr *udp_hdr;
 	uint16_t vlan_tci, vlan_tci_outer;
@@ -170,7 +170,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 		pkt->next = NULL;
 
 		/* Initialize Ethernet header. */
-		eth_hdr = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
+		eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
 		ether_addr_copy(&cfg_ether_dst, &eth_hdr->d_addr);
 		ether_addr_copy(&cfg_ether_src, &eth_hdr->s_addr);
 		eth_hdr->ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
@@ -205,7 +205,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 		pkt->ol_flags		= ol_flags;
 		pkt->vlan_tci		= vlan_tci;
 		pkt->vlan_tci_outer	= vlan_tci_outer;
-		pkt->l2_len		= sizeof(struct ether_hdr);
+		pkt->l2_len		= sizeof(struct rte_ether_hdr);
 		pkt->l3_len		= sizeof(struct ipv4_hdr);
 		pkts_burst[nb_pkt]	= pkt;
 

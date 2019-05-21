@@ -166,7 +166,7 @@ fs_eth_dev_conf_apply(struct rte_eth_dev *dev,
 		DEBUG("Configure additional MAC address%s",
 			(PRIV(dev)->nb_mac_addr > 2 ? "es" : ""));
 	for (i = 1; i < PRIV(dev)->nb_mac_addr; i++) {
-		struct ether_addr *ea;
+		struct rte_ether_addr *ea;
 
 		ea = &dev->data->mac_addrs[i];
 		ret = rte_eth_dev_mac_addr_add(PORT_ID(sdev), ea,

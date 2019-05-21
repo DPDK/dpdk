@@ -989,7 +989,7 @@ mrvl_parse_eth(const struct rte_flow_item *item, struct rte_flow *flow,
 	       struct rte_flow_error *error)
 {
 	const struct rte_flow_item_eth *spec = NULL, *mask = NULL;
-	struct ether_addr zero;
+	struct rte_ether_addr zero;
 	int ret;
 
 	ret = mrvl_parse_init(item, (const void **)&spec, (const void **)&mask,

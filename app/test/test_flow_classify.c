@@ -39,7 +39,7 @@ static struct rte_acl_field_def ipv4_defs[NUM_FIELDS_IPV4] = {
 		.size = sizeof(uint8_t),
 		.field_index = PROTO_FIELD_IPV4,
 		.input_index = PROTO_INPUT_IPV4,
-		.offset = sizeof(struct ether_hdr) +
+		.offset = sizeof(struct rte_ether_hdr) +
 			offsetof(struct ipv4_hdr, next_proto_id),
 	},
 	/* next input field (IPv4 source address) - 4 consecutive bytes. */
@@ -49,7 +49,7 @@ static struct rte_acl_field_def ipv4_defs[NUM_FIELDS_IPV4] = {
 		.size = sizeof(uint32_t),
 		.field_index = SRC_FIELD_IPV4,
 		.input_index = SRC_INPUT_IPV4,
-		.offset = sizeof(struct ether_hdr) +
+		.offset = sizeof(struct rte_ether_hdr) +
 			offsetof(struct ipv4_hdr, src_addr),
 	},
 	/* next input field (IPv4 destination address) - 4 consecutive bytes. */
@@ -59,7 +59,7 @@ static struct rte_acl_field_def ipv4_defs[NUM_FIELDS_IPV4] = {
 		.size = sizeof(uint32_t),
 		.field_index = DST_FIELD_IPV4,
 		.input_index = DST_INPUT_IPV4,
-		.offset = sizeof(struct ether_hdr) +
+		.offset = sizeof(struct rte_ether_hdr) +
 			offsetof(struct ipv4_hdr, dst_addr),
 	},
 	/*
@@ -72,7 +72,7 @@ static struct rte_acl_field_def ipv4_defs[NUM_FIELDS_IPV4] = {
 		.size = sizeof(uint16_t),
 		.field_index = SRCP_FIELD_IPV4,
 		.input_index = SRCP_DESTP_INPUT_IPV4,
-		.offset = sizeof(struct ether_hdr) +
+		.offset = sizeof(struct rte_ether_hdr) +
 			sizeof(struct ipv4_hdr) +
 			offsetof(struct tcp_hdr, src_port),
 	},
@@ -82,7 +82,7 @@ static struct rte_acl_field_def ipv4_defs[NUM_FIELDS_IPV4] = {
 		.size = sizeof(uint16_t),
 		.field_index = DSTP_FIELD_IPV4,
 		.input_index = SRCP_DESTP_INPUT_IPV4,
-		.offset = sizeof(struct ether_hdr) +
+		.offset = sizeof(struct rte_ether_hdr) +
 			sizeof(struct ipv4_hdr) +
 			offsetof(struct tcp_hdr, dst_port),
 	},
@@ -489,7 +489,7 @@ static int
 init_ipv4_udp_traffic(struct rte_mempool *mp,
 	     struct rte_mbuf **pkts_burst, uint32_t burst_size)
 {
-	struct ether_hdr pkt_eth_hdr;
+	struct rte_ether_hdr pkt_eth_hdr;
 	struct ipv4_hdr pkt_ipv4_hdr;
 	struct udp_hdr pkt_udp_hdr;
 	uint32_t src_addr = IPV4_ADDR(2, 2, 2, 3);
@@ -503,9 +503,9 @@ init_ipv4_udp_traffic(struct rte_mempool *mp,
 
 	printf("Set up IPv4 UDP traffic\n");
 	initialize_eth_header(&pkt_eth_hdr,
-		(struct ether_addr *)src_mac,
-		(struct ether_addr *)dst_mac, ETHER_TYPE_IPv4, 0, 0);
-	pktlen = (uint16_t)(sizeof(struct ether_hdr));
+		(struct rte_ether_addr *)src_mac,
+		(struct rte_ether_addr *)dst_mac, ETHER_TYPE_IPv4, 0, 0);
+	pktlen = (uint16_t)(sizeof(struct rte_ether_hdr));
 	printf("ETH  pktlen %u\n", pktlen);
 
 	pktlen = initialize_ipv4_header(&pkt_ipv4_hdr, src_addr, dst_addr,
@@ -526,7 +526,7 @@ static int
 init_ipv4_tcp_traffic(struct rte_mempool *mp,
 	     struct rte_mbuf **pkts_burst, uint32_t burst_size)
 {
-	struct ether_hdr pkt_eth_hdr;
+	struct rte_ether_hdr pkt_eth_hdr;
 	struct ipv4_hdr pkt_ipv4_hdr;
 	struct tcp_hdr pkt_tcp_hdr;
 	uint32_t src_addr = IPV4_ADDR(1, 2, 3, 4);
@@ -540,9 +540,9 @@ init_ipv4_tcp_traffic(struct rte_mempool *mp,
 
 	printf("Set up IPv4 TCP traffic\n");
 	initialize_eth_header(&pkt_eth_hdr,
-		(struct ether_addr *)src_mac,
-		(struct ether_addr *)dst_mac, ETHER_TYPE_IPv4, 0, 0);
-	pktlen = (uint16_t)(sizeof(struct ether_hdr));
+		(struct rte_ether_addr *)src_mac,
+		(struct rte_ether_addr *)dst_mac, ETHER_TYPE_IPv4, 0, 0);
+	pktlen = (uint16_t)(sizeof(struct rte_ether_hdr));
 	printf("ETH  pktlen %u\n", pktlen);
 
 	pktlen = initialize_ipv4_header_proto(&pkt_ipv4_hdr, src_addr,
@@ -563,7 +563,7 @@ static int
 init_ipv4_sctp_traffic(struct rte_mempool *mp,
 	     struct rte_mbuf **pkts_burst, uint32_t burst_size)
 {
-	struct ether_hdr pkt_eth_hdr;
+	struct rte_ether_hdr pkt_eth_hdr;
 	struct ipv4_hdr pkt_ipv4_hdr;
 	struct sctp_hdr pkt_sctp_hdr;
 	uint32_t src_addr = IPV4_ADDR(11, 12, 13, 14);
@@ -577,9 +577,9 @@ init_ipv4_sctp_traffic(struct rte_mempool *mp,
 
 	printf("Set up IPv4 SCTP traffic\n");
 	initialize_eth_header(&pkt_eth_hdr,
-		(struct ether_addr *)src_mac,
-		(struct ether_addr *)dst_mac, ETHER_TYPE_IPv4, 0, 0);
-	pktlen = (uint16_t)(sizeof(struct ether_hdr));
+		(struct rte_ether_addr *)src_mac,
+		(struct rte_ether_addr *)dst_mac, ETHER_TYPE_IPv4, 0, 0);
+	pktlen = (uint16_t)(sizeof(struct rte_ether_hdr));
 	printf("ETH  pktlen %u\n", pktlen);
 
 	pktlen = initialize_ipv4_header_proto(&pkt_ipv4_hdr, src_addr,

@@ -367,7 +367,7 @@ static int
 fs_get_mac_addr_arg(const char *key __rte_unused,
 		const char *value, void *out)
 {
-	struct ether_addr *ea = out;
+	struct rte_ether_addr *ea = out;
 	int ret;
 
 	if ((value == NULL) || (out == NULL))

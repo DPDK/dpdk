@@ -37,7 +37,7 @@ em_get_dst_port(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
 
 		/* Handle IPv4 headers.*/
 		ipv4_hdr = rte_pktmbuf_mtod_offset(pkt, struct ipv4_hdr *,
-				sizeof(struct ether_hdr));
+				sizeof(struct rte_ether_hdr));
 
 		next_hop = em_get_ipv4_dst_port(ipv4_hdr, portid,
 				qconf->ipv4_lookup_struct);
@@ -52,7 +52,7 @@ em_get_dst_port(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
 
 		/* Handle IPv6 headers.*/
 		ipv6_hdr = rte_pktmbuf_mtod_offset(pkt, struct ipv6_hdr *,
-				sizeof(struct ether_hdr));
+				sizeof(struct rte_ether_hdr));
 
 		next_hop = em_get_ipv6_dst_port(ipv6_hdr, portid,
 				qconf->ipv6_lookup_struct);
@@ -81,13 +81,14 @@ l3fwd_em_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 
 	if (nb_rx > 0) {
 		rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[0],
-					       struct ether_hdr *) + 1);
+					       struct rte_ether_hdr *) + 1);
 	}
 
 	for (i = 1, j = 0; j < nb_rx; i++, j++) {
 		if (i < nb_rx) {
-			rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[i],
-						       struct ether_hdr *) + 1);
+			rte_prefetch0(rte_pktmbuf_mtod(
+					pkts_burst[i],
+					struct rte_ether_hdr *) + 1);
 		}
 		dst_port[j] = em_get_dst_port(qconf, pkts_burst[j], portid);
 	}

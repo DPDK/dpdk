@@ -260,7 +260,7 @@ int rte_ethtool_net_stop(uint16_t port_id);
  *   - (0) if successful.
  *   - (-ENODEV) if *port_id* invalid.
  */
-int rte_ethtool_net_get_mac_addr(uint16_t port_id, struct ether_addr *addr);
+int rte_ethtool_net_get_mac_addr(uint16_t port_id, struct rte_ether_addr *addr);
 
 /**
  * Setting the Ethernet device MAC address.
@@ -276,7 +276,7 @@ int rte_ethtool_net_get_mac_addr(uint16_t port_id, struct ether_addr *addr);
  *   - (-EINVAL) if parameters invalid.
  *   - others depends on the specific operations implementation.
  */
-int rte_ethtool_net_set_mac_addr(uint16_t port_id, struct ether_addr *addr);
+int rte_ethtool_net_set_mac_addr(uint16_t port_id, struct rte_ether_addr *addr);
 
 /**
  * Validate if the provided MAC address is valid unicast address
@@ -292,7 +292,8 @@ int rte_ethtool_net_set_mac_addr(uint16_t port_id, struct ether_addr *addr);
  *   - (-EINVAL) if parameters invalid.
  *   - others depends on the specific operations implementation.
  */
-int rte_ethtool_net_validate_addr(uint16_t port_id, struct ether_addr *addr);
+int rte_ethtool_net_validate_addr(uint16_t port_id,
+				struct rte_ether_addr *addr);
 
 /**
  * Setting the Ethernet device maximum Tx unit.

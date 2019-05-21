@@ -1102,7 +1102,7 @@ mrvl_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
  *   0 on success, negative error value otherwise.
  */
 static int
-mrvl_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
+mrvl_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 		  uint32_t index, uint32_t vmdq __rte_unused)
 {
 	struct mrvl_priv *priv = dev->data->dev_private;
@@ -1154,7 +1154,7 @@ mrvl_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
  *   0 on success, negative error value otherwise.
  */
 static int
-mrvl_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
+mrvl_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 {
 	struct mrvl_priv *priv = dev->data->dev_private;
 	int ret;

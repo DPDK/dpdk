@@ -292,7 +292,7 @@ hn_dev_allmulticast_disable(struct rte_eth_dev *dev)
 
 static int
 hn_dev_mc_addr_list(struct rte_eth_dev *dev,
-		     struct ether_addr *mc_addr_set,
+		     struct rte_ether_addr *mc_addr_set,
 		     uint32_t nb_mc_addr)
 {
 	/* No filtering on the synthetic path, but can do it on VF */

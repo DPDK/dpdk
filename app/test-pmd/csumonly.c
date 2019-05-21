@@ -142,18 +142,19 @@ parse_ipv6(struct ipv6_hdr *ipv6_hdr, struct testpmd_offload_info *info)
  * header. The l4_len argument is only set in case of TCP (useful for TSO).
  */
 static void
-parse_ethernet(struct ether_hdr *eth_hdr, struct testpmd_offload_info *info)
+parse_ethernet(struct rte_ether_hdr *eth_hdr, struct testpmd_offload_info *info)
 {
 	struct ipv4_hdr *ipv4_hdr;
 	struct ipv6_hdr *ipv6_hdr;
 
-	info->l2_len = sizeof(struct ether_hdr);
+	info->l2_len = sizeof(struct rte_ether_hdr);
 	info->ethertype = eth_hdr->ether_type;
 
 	if (info->ethertype == _htons(ETHER_TYPE_VLAN)) {
-		struct vlan_hdr *vlan_hdr = (struct vlan_hdr *)(eth_hdr + 1);
+		struct rte_vlan_hdr *vlan_hdr = (
+			struct rte_vlan_hdr *)(eth_hdr + 1);
 
-		info->l2_len  += sizeof(struct vlan_hdr);
+		info->l2_len  += sizeof(struct rte_vlan_hdr);
 		info->ethertype = vlan_hdr->eth_proto;
 	}
 
@@ -180,7 +181,7 @@ parse_vxlan(struct udp_hdr *udp_hdr,
 	    struct testpmd_offload_info *info,
 	    uint32_t pkt_type)
 {
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 
 	/* check udp destination port, 4789 is the default vxlan port
 	 * (rfc7348) or that the rx offload flag is set (i40e only
@@ -195,9 +196,9 @@ parse_vxlan(struct udp_hdr *udp_hdr,
 	info->outer_l3_len = info->l3_len;
 	info->outer_l4_proto = info->l4_proto;
 
-	eth_hdr = (struct ether_hdr *)((char *)udp_hdr +
+	eth_hdr = (struct rte_ether_hdr *)((char *)udp_hdr +
 		sizeof(struct udp_hdr) +
-		sizeof(struct vxlan_hdr));
+		sizeof(struct rte_vxlan_hdr));
 
 	parse_ethernet(eth_hdr, info);
 	info->l2_len += ETHER_VXLAN_HLEN; /* add udp + vxlan */
@@ -208,17 +209,17 @@ static void
 parse_vxlan_gpe(struct udp_hdr *udp_hdr,
 	    struct testpmd_offload_info *info)
 {
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 	struct ipv4_hdr *ipv4_hdr;
 	struct ipv6_hdr *ipv6_hdr;
-	struct vxlan_gpe_hdr *vxlan_gpe_hdr;
+	struct rte_vxlan_gpe_hdr *vxlan_gpe_hdr;
 	uint8_t vxlan_gpe_len = sizeof(*vxlan_gpe_hdr);
 
 	/* Check udp destination port. */
 	if (udp_hdr->dst_port != _htons(vxlan_gpe_udp_port))
 		return;
 
-	vxlan_gpe_hdr = (struct vxlan_gpe_hdr *)((char *)udp_hdr +
+	vxlan_gpe_hdr = (struct rte_vxlan_gpe_hdr *)((char *)udp_hdr +
 				sizeof(struct udp_hdr));
 
 	if (!vxlan_gpe_hdr->proto || vxlan_gpe_hdr->proto ==
@@ -257,7 +258,7 @@ parse_vxlan_gpe(struct udp_hdr *udp_hdr,
 		info->outer_l3_len = info->l3_len;
 		info->outer_l4_proto = info->l4_proto;
 
-		eth_hdr = (struct ether_hdr *)((char *)vxlan_gpe_hdr +
+		eth_hdr = (struct rte_ether_hdr *)((char *)vxlan_gpe_hdr +
 			  vxlan_gpe_len);
 
 		parse_ethernet(eth_hdr, info);
@@ -271,7 +272,7 @@ parse_vxlan_gpe(struct udp_hdr *udp_hdr,
 static void
 parse_gre(struct simple_gre_hdr *gre_hdr, struct testpmd_offload_info *info)
 {
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 	struct ipv4_hdr *ipv4_hdr;
 	struct ipv6_hdr *ipv6_hdr;
 	uint8_t gre_len = 0;
@@ -318,7 +319,7 @@ parse_gre(struct simple_gre_hdr *gre_hdr, struct testpmd_offload_info *info)
 		info->outer_l3_len = info->l3_len;
 		info->outer_l4_proto = info->l4_proto;
 
-		eth_hdr = (struct ether_hdr *)((char *)gre_hdr + gre_len);
+		eth_hdr = (struct rte_ether_hdr *)((char *)gre_hdr + gre_len);
 
 		parse_ethernet(eth_hdr, info);
 	} else
@@ -691,7 +692,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	struct rte_mbuf **tx_pkts_burst;
 	struct rte_port *txp;
 	struct rte_mbuf *m, *p;
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 	void *l3_hdr = NULL, *outer_l3_hdr = NULL; /* can be IPv4 or IPv6 */
 	void **gro_ctx;
 	uint16_t gro_pkts_num;
@@ -765,7 +766,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 		/* step 1: dissect packet, parsing optional vlan, ip4/ip6, vxlan
 		 * and inner headers */
 
-		eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
+		eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 		ether_addr_copy(&peer_eth_addrs[fs->peer_addr],
 				&eth_hdr->d_addr);
 		ether_addr_copy(&ports[fs->tx_port].eth_addr,

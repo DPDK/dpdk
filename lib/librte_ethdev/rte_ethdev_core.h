@@ -250,17 +250,17 @@ typedef void (*eth_mac_addr_remove_t)(struct rte_eth_dev *dev, uint32_t index);
 /**< @internal Remove MAC address from receive address register */
 
 typedef int (*eth_mac_addr_add_t)(struct rte_eth_dev *dev,
-				  struct ether_addr *mac_addr,
+				  struct rte_ether_addr *mac_addr,
 				  uint32_t index,
 				  uint32_t vmdq);
 /**< @internal Set a MAC address into Receive Address Address Register */
 
 typedef int (*eth_mac_addr_set_t)(struct rte_eth_dev *dev,
-				  struct ether_addr *mac_addr);
+				  struct rte_ether_addr *mac_addr);
 /**< @internal Set a MAC address into Receive Address Address Register */
 
 typedef int (*eth_uc_hash_table_set_t)(struct rte_eth_dev *dev,
-				  struct ether_addr *mac_addr,
+				  struct rte_ether_addr *mac_addr,
 				  uint8_t on);
 /**< @internal Set a Unicast Hash bitmap */
 
@@ -292,7 +292,7 @@ typedef int (*eth_udp_tunnel_port_del_t)(struct rte_eth_dev *dev,
 /**< @internal Delete tunneling UDP port */
 
 typedef int (*eth_set_mc_addr_list_t)(struct rte_eth_dev *dev,
-				      struct ether_addr *mc_addr_set,
+				      struct rte_ether_addr *mc_addr_set,
 				      uint32_t nb_mc_addr);
 /**< @internal set the list of multicast addresses on an Ethernet device */
 
@@ -597,13 +597,13 @@ struct rte_eth_dev_data {
 			/**< Common RX buffer size handled by all queues. */
 
 	uint64_t rx_mbuf_alloc_failed; /**< RX ring mbuf allocation failures. */
-	struct ether_addr *mac_addrs;
+	struct rte_ether_addr *mac_addrs;
 			/**< Device Ethernet link address.
 			 *   @see rte_eth_dev_release_port()
 			 */
 	uint64_t mac_pool_sel[ETH_NUM_RECEIVE_MAC_ADDR];
 			/**< Bitmap associating MAC addresses to pools. */
-	struct ether_addr *hash_mac_addrs;
+	struct rte_ether_addr *hash_mac_addrs;
 			/**< Device Ethernet MAC addresses of hash filtering.
 			 *   @see rte_eth_dev_release_port()
 			 */

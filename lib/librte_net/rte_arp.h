@@ -22,9 +22,9 @@ extern "C" {
  * ARP header IPv4 payload.
  */
 struct rte_arp_ipv4 {
-	struct ether_addr arp_sha;  /**< sender hardware address */
+	struct rte_ether_addr arp_sha;  /**< sender hardware address */
 	uint32_t          arp_sip;  /**< sender IP address */
-	struct ether_addr arp_tha;  /**< target hardware address */
+	struct rte_ether_addr arp_tha;  /**< target hardware address */
 	uint32_t          arp_tip;  /**< target IP address */
 } __attribute__((__packed__));
 
@@ -65,7 +65,7 @@ struct rte_arp_hdr {
  */
 struct rte_mbuf * __rte_experimental
 rte_net_make_rarp_packet(struct rte_mempool *mpool,
-		const struct ether_addr *mac);
+		const struct rte_ether_addr *mac);
 
 #ifdef __cplusplus
 }

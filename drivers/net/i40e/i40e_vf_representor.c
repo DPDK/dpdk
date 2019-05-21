@@ -324,7 +324,7 @@ i40e_vf_representor_mac_addr_remove(struct rte_eth_dev *ethdev, uint32_t index)
 
 static int
 i40e_vf_representor_mac_addr_set(struct rte_eth_dev *ethdev,
-		struct ether_addr *mac_addr)
+		struct rte_ether_addr *mac_addr)
 {
 	struct i40e_vf_representor *representor = ethdev->data->dev_private;
 

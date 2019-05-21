@@ -265,7 +265,7 @@ static int i40e_flow_ctrl_set(struct rte_eth_dev *dev,
 static int i40e_priority_flow_ctrl_set(struct rte_eth_dev *dev,
 				       struct rte_eth_pfc_conf *pfc_conf);
 static int i40e_macaddr_add(struct rte_eth_dev *dev,
-			    struct ether_addr *mac_addr,
+			    struct rte_ether_addr *mac_addr,
 			    uint32_t index,
 			    uint32_t pool);
 static void i40e_macaddr_remove(struct rte_eth_dev *dev, uint32_t index);
@@ -379,7 +379,7 @@ static int i40e_get_module_eeprom(struct rte_eth_dev *dev,
 				  struct rte_dev_eeprom_info *info);
 
 static int i40e_set_default_mac_addr(struct rte_eth_dev *dev,
-				      struct ether_addr *mac_addr);
+				      struct rte_ether_addr *mac_addr);
 
 static int i40e_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 
@@ -1469,8 +1469,8 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 		goto err_get_mac_addr;
 	}
 	/* Copy the permanent MAC address */
-	ether_addr_copy((struct ether_addr *) hw->mac.addr,
-			(struct ether_addr *) hw->mac.perm_addr);
+	ether_addr_copy((struct rte_ether_addr *)hw->mac.addr,
+			(struct rte_ether_addr *)hw->mac.perm_addr);
 
 	/* Disable flow control */
 	hw->fc.requested_mode = I40E_FC_NONE;
@@ -1521,7 +1521,7 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 			"Failed to allocated memory for storing mac address");
 		goto err_mac_alloc;
 	}
-	ether_addr_copy((struct ether_addr *)hw->mac.perm_addr,
+	ether_addr_copy((struct rte_ether_addr *)hw->mac.perm_addr,
 					&dev->data->mac_addrs[0]);
 
 	/* Init dcb to sw mode by default */
@@ -4012,7 +4012,7 @@ i40e_priority_flow_ctrl_set(__rte_unused struct rte_eth_dev *dev,
 /* Add a MAC address, and update filters */
 static int
 i40e_macaddr_add(struct rte_eth_dev *dev,
-		 struct ether_addr *mac_addr,
+		 struct rte_ether_addr *mac_addr,
 		 __rte_unused uint32_t index,
 		 uint32_t pool)
 {
@@ -4063,7 +4063,7 @@ i40e_macaddr_remove(struct rte_eth_dev *dev, uint32_t index)
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_vsi *vsi;
 	struct rte_eth_dev_data *data = dev->data;
-	struct ether_addr *macaddr;
+	struct rte_ether_addr *macaddr;
 	int ret;
 	uint32_t i;
 	uint64_t pool_sel;
@@ -4104,8 +4104,8 @@ i40e_vf_mac_filter_set(struct i40e_pf *pf,
 {
 	struct i40e_hw *hw;
 	struct i40e_mac_filter_info mac_filter;
-	struct ether_addr old_mac;
-	struct ether_addr *new_mac;
+	struct rte_ether_addr old_mac;
+	struct rte_ether_addr *new_mac;
 	struct i40e_pf_vf *vf = NULL;
 	uint16_t vf_id;
 	int ret;
@@ -4166,7 +4166,7 @@ i40e_vf_mac_filter_set(struct i40e_pf *pf,
 
 		/* Clear device address as it has been removed */
 		if (is_same_ether_addr(&(pf->dev_addr), new_mac))
-			memset(&pf->dev_addr, 0, sizeof(struct ether_addr));
+			memset(&pf->dev_addr, 0, sizeof(struct rte_ether_addr));
 	}
 
 	return 0;
@@ -5343,7 +5343,7 @@ i40e_update_default_filter_setting(struct i40e_vsi *vsi)
 	ret = i40e_aq_remove_macvlan(hw, vsi->seid, &def_filter, 1, NULL);
 	if (ret != I40E_SUCCESS) {
 		struct i40e_mac_filter *f;
-		struct ether_addr *mac;
+		struct rte_ether_addr *mac;
 
 		PMD_DRV_LOG(DEBUG,
 			    "Cannot remove the default macvlan filter");
@@ -5363,7 +5363,7 @@ i40e_update_default_filter_setting(struct i40e_vsi *vsi)
 		return ret;
 	}
 	rte_memcpy(&filter.mac_addr,
-		(struct ether_addr *)(hw->mac.perm_addr), ETH_ADDR_LEN);
+		(struct rte_ether_addr *)(hw->mac.perm_addr), ETH_ADDR_LEN);
 	filter.filter_type = RTE_MACVLAN_PERFECT_MATCH;
 	return i40e_vsi_add_mac(vsi, &filter);
 }
@@ -5481,7 +5481,7 @@ i40e_vsi_setup(struct i40e_pf *pf,
 	struct i40e_mac_filter_info filter;
 	int ret;
 	struct i40e_vsi_context ctxt;
-	struct ether_addr broadcast =
+	struct rte_ether_addr broadcast =
 		{.addr_bytes = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff}};
 
 	if (type != I40E_VSI_MAIN && type != I40E_VSI_SRIOV &&
@@ -6908,7 +6908,7 @@ DONE:
 /* Find out specific MAC filter */
 static struct i40e_mac_filter *
 i40e_find_mac_filter(struct i40e_vsi *vsi,
-			 struct ether_addr *macaddr)
+			 struct rte_ether_addr *macaddr)
 {
 	struct i40e_mac_filter *f;
 
@@ -6992,7 +6992,7 @@ i40e_set_vlan_filter(struct i40e_vsi *vsi,
 int
 i40e_find_all_vlan_for_mac(struct i40e_vsi *vsi,
 			   struct i40e_macvlan_filter *mv_f,
-			   int num, struct ether_addr *addr)
+			   int num, struct rte_ether_addr *addr)
 {
 	int i;
 	uint32_t j, k;
@@ -7286,7 +7286,7 @@ DONE:
 }
 
 int
-i40e_vsi_delete_mac(struct i40e_vsi *vsi, struct ether_addr *addr)
+i40e_vsi_delete_mac(struct i40e_vsi *vsi, struct rte_ether_addr *addr)
 {
 	struct i40e_mac_filter *f;
 	struct i40e_macvlan_filter *mv_f;
@@ -7586,10 +7586,10 @@ i40e_tunnel_filter_convert(
 	struct i40e_aqc_cloud_filters_element_bb *cld_filter,
 	struct i40e_tunnel_filter *tunnel_filter)
 {
-	ether_addr_copy((struct ether_addr *)&cld_filter->element.outer_mac,
-			(struct ether_addr *)&tunnel_filter->input.outer_mac);
-	ether_addr_copy((struct ether_addr *)&cld_filter->element.inner_mac,
-			(struct ether_addr *)&tunnel_filter->input.inner_mac);
+	ether_addr_copy((struct rte_ether_addr *)&cld_filter->element.outer_mac,
+		(struct rte_ether_addr *)&tunnel_filter->input.outer_mac);
+	ether_addr_copy((struct rte_ether_addr *)&cld_filter->element.inner_mac,
+		(struct rte_ether_addr *)&tunnel_filter->input.inner_mac);
 	tunnel_filter->input.inner_vlan = cld_filter->element.inner_vlan;
 	if ((rte_le_to_cpu_16(cld_filter->element.flags) &
 	     I40E_AQC_ADD_CLOUD_FLAGS_IPV6) ==
@@ -7698,9 +7698,9 @@ i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 	pfilter = cld_filter;
 
 	ether_addr_copy(&tunnel_filter->outer_mac,
-			(struct ether_addr *)&pfilter->element.outer_mac);
+			(struct rte_ether_addr *)&pfilter->element.outer_mac);
 	ether_addr_copy(&tunnel_filter->inner_mac,
-			(struct ether_addr *)&pfilter->element.inner_mac);
+			(struct rte_ether_addr *)&pfilter->element.inner_mac);
 
 	pfilter->element.inner_vlan =
 		rte_cpu_to_le_16(tunnel_filter->inner_vlan);
@@ -8145,9 +8145,9 @@ i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 	pfilter = cld_filter;
 
 	ether_addr_copy(&tunnel_filter->outer_mac,
-			(struct ether_addr *)&pfilter->element.outer_mac);
+			(struct rte_ether_addr *)&pfilter->element.outer_mac);
 	ether_addr_copy(&tunnel_filter->inner_mac,
-			(struct ether_addr *)&pfilter->element.inner_mac);
+			(struct rte_ether_addr *)&pfilter->element.inner_mac);
 
 	pfilter->element.inner_vlan =
 		rte_cpu_to_le_16(tunnel_filter->inner_vlan);
@@ -11951,7 +11951,7 @@ static int i40e_get_module_eeprom(struct rte_eth_dev *dev,
 }
 
 static int i40e_set_default_mac_addr(struct rte_eth_dev *dev,
-				     struct ether_addr *mac_addr)
+				     struct rte_ether_addr *mac_addr)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -12084,10 +12084,10 @@ i40e_tunnel_filter_restore(struct i40e_pf *pf)
 			vsi = vf->vsi;
 		}
 		memset(&cld_filter, 0, sizeof(cld_filter));
-		ether_addr_copy((struct ether_addr *)&f->input.outer_mac,
-			(struct ether_addr *)&cld_filter.element.outer_mac);
-		ether_addr_copy((struct ether_addr *)&f->input.inner_mac,
-			(struct ether_addr *)&cld_filter.element.inner_mac);
+		ether_addr_copy((struct rte_ether_addr *)&f->input.outer_mac,
+			(struct rte_ether_addr *)&cld_filter.element.outer_mac);
+		ether_addr_copy((struct rte_ether_addr *)&f->input.inner_mac,
+			(struct rte_ether_addr *)&cld_filter.element.inner_mac);
 		cld_filter.element.inner_vlan = f->input.inner_vlan;
 		cld_filter.element.flags = f->input.flags;
 		cld_filter.element.tenant_id = f->input.tenant_id;

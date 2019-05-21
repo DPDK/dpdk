@@ -41,9 +41,9 @@ static int eth_ark_dev_stats_get(struct rte_eth_dev *dev,
 				  struct rte_eth_stats *stats);
 static void eth_ark_dev_stats_reset(struct rte_eth_dev *dev);
 static int eth_ark_set_default_mac_addr(struct rte_eth_dev *dev,
-					 struct ether_addr *mac_addr);
+					 struct rte_ether_addr *mac_addr);
 static int eth_ark_macaddr_add(struct rte_eth_dev *dev,
-			       struct ether_addr *mac_addr,
+			       struct rte_ether_addr *mac_addr,
 			       uint32_t index,
 			       uint32_t pool);
 static void eth_ark_macaddr_remove(struct rte_eth_dev *dev,
@@ -220,14 +220,14 @@ check_for_ext(struct ark_adapter *ark)
 		(void (*)(struct rte_eth_dev *, void *))
 		dlsym(ark->d_handle, "stats_reset");
 	ark->user_ext.mac_addr_add =
-		(void (*)(struct rte_eth_dev *, struct ether_addr *, uint32_t,
-			  uint32_t, void *))
+		(void (*)(struct rte_eth_dev *, struct rte_ether_addr *,
+			uint32_t, uint32_t, void *))
 		dlsym(ark->d_handle, "mac_addr_add");
 	ark->user_ext.mac_addr_remove =
 		(void (*)(struct rte_eth_dev *, uint32_t, void *))
 		dlsym(ark->d_handle, "mac_addr_remove");
 	ark->user_ext.mac_addr_set =
-		(void (*)(struct rte_eth_dev *, struct ether_addr *,
+		(void (*)(struct rte_eth_dev *, struct rte_ether_addr *,
 			  void *))
 		dlsym(ark->d_handle, "mac_addr_set");
 	ark->user_ext.set_mtu =
@@ -833,7 +833,7 @@ eth_ark_dev_stats_reset(struct rte_eth_dev *dev)
 
 static int
 eth_ark_macaddr_add(struct rte_eth_dev *dev,
-		    struct ether_addr *mac_addr,
+		    struct rte_ether_addr *mac_addr,
 		    uint32_t index,
 		    uint32_t pool)
 {
@@ -864,7 +864,7 @@ eth_ark_macaddr_remove(struct rte_eth_dev *dev, uint32_t index)
 
 static int
 eth_ark_set_default_mac_addr(struct rte_eth_dev *dev,
-			     struct ether_addr *mac_addr)
+			     struct rte_ether_addr *mac_addr)
 {
 	struct ark_adapter *ark =
 		(struct ark_adapter *)dev->data->dev_private;

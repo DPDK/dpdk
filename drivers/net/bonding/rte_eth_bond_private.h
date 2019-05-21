@@ -85,7 +85,7 @@ struct bond_slave_details {
 	uint8_t link_status_wait_to_complete;
 	uint8_t last_link_status;
 	/**< Port Id of slave eth_dev */
-	struct ether_addr persisted_mac_addr;
+	struct rte_ether_addr persisted_mac_addr;
 
 	uint16_t reta_size;
 };
@@ -223,10 +223,12 @@ void
 activate_slave(struct rte_eth_dev *eth_dev, uint16_t port_id);
 
 int
-mac_address_set(struct rte_eth_dev *eth_dev, struct ether_addr *new_mac_addr);
+mac_address_set(struct rte_eth_dev *eth_dev,
+		struct rte_ether_addr *new_mac_addr);
 
 int
-mac_address_get(struct rte_eth_dev *eth_dev, struct ether_addr *dst_mac_addr);
+mac_address_get(struct rte_eth_dev *eth_dev,
+		struct rte_ether_addr *dst_mac_addr);
 
 int
 mac_address_slaves_update(struct rte_eth_dev *bonded_eth_dev);

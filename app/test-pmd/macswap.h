@@ -11,9 +11,9 @@ static inline void
 do_macswap(struct rte_mbuf *pkts[], uint16_t nb,
 		struct rte_port *txp)
 {
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 	struct rte_mbuf *mb;
-	struct ether_addr addr;
+	struct rte_ether_addr addr;
 	uint64_t ol_flags;
 	int i;
 
@@ -26,7 +26,7 @@ do_macswap(struct rte_mbuf *pkts[], uint16_t nb,
 			rte_prefetch0(rte_pktmbuf_mtod(pkts[i+1], void *));
 		mb = pkts[i];
 
-		eth_hdr = rte_pktmbuf_mtod(mb, struct ether_hdr *);
+		eth_hdr = rte_pktmbuf_mtod(mb, struct rte_ether_hdr *);
 
 		/* Swap dest and src mac addresses. */
 		ether_addr_copy(&eth_hdr->d_addr, &addr);

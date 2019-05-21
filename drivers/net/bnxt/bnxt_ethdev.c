@@ -760,7 +760,7 @@ static void bnxt_mac_addr_remove_op(struct rte_eth_dev *eth_dev,
 }
 
 static int bnxt_mac_addr_add_op(struct rte_eth_dev *eth_dev,
-				struct ether_addr *mac_addr,
+				struct rte_ether_addr *mac_addr,
 				uint32_t index, uint32_t pool)
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
@@ -1451,7 +1451,8 @@ bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask)
 }
 
 static int
-bnxt_set_default_mac_addr_op(struct rte_eth_dev *dev, struct ether_addr *addr)
+bnxt_set_default_mac_addr_op(struct rte_eth_dev *dev,
+			struct rte_ether_addr *addr)
 {
 	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
 	/* Default Filter is tied to VNIC 0 */
@@ -1489,7 +1490,7 @@ bnxt_set_default_mac_addr_op(struct rte_eth_dev *dev, struct ether_addr *addr)
 
 static int
 bnxt_dev_set_mc_addr_list_op(struct rte_eth_dev *eth_dev,
-			  struct ether_addr *mc_addr_set,
+			  struct rte_ether_addr *mc_addr_set,
 			  uint32_t nb_mc_addr)
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;

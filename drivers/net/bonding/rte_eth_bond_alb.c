@@ -72,8 +72,9 @@ mempool_alloc_error:
 	return -ENOMEM;
 }
 
-void bond_mode_alb_arp_recv(struct ether_hdr *eth_h, uint16_t offset,
-		struct bond_dev_private *internals) {
+void bond_mode_alb_arp_recv(struct rte_ether_hdr *eth_h, uint16_t offset,
+		struct bond_dev_private *internals)
+{
 	struct rte_arp_hdr *arp;
 
 	struct client_data *hash_table = internals->mode6.client_table;
@@ -102,7 +103,7 @@ void bond_mode_alb_arp_recv(struct ether_hdr *eth_h, uint16_t offset,
 			client_info->app_ip != arp->arp_data.arp_tip ||
 			client_info->cli_ip != arp->arp_data.arp_sip ||
 			!is_same_ether_addr(&client_info->cli_mac, &arp->arp_data.arp_sha) ||
-			client_info->vlan_count != offset / sizeof(struct vlan_hdr) ||
+			client_info->vlan_count != offset / sizeof(struct rte_vlan_hdr) ||
 			memcmp(client_info->vlan, eth_h + 1, offset) != 0
 	) {
 		client_info->in_use = 1;
@@ -113,14 +114,14 @@ void bond_mode_alb_arp_recv(struct ether_hdr *eth_h, uint16_t offset,
 		rte_eth_macaddr_get(client_info->slave_idx, &client_info->app_mac);
 		ether_addr_copy(&client_info->app_mac, &arp->arp_data.arp_tha);
 		memcpy(client_info->vlan, eth_h + 1, offset);
-		client_info->vlan_count = offset / sizeof(struct vlan_hdr);
+		client_info->vlan_count = offset / sizeof(struct rte_vlan_hdr);
 	}
 	internals->mode6.ntt = 1;
 	rte_spinlock_unlock(&internals->mode6.lock);
 }
 
 uint16_t
-bond_mode_alb_arp_xmit(struct ether_hdr *eth_h, uint16_t offset,
+bond_mode_alb_arp_xmit(struct rte_ether_hdr *eth_h, uint16_t offset,
 		struct bond_dev_private *internals)
 {
 	struct rte_arp_hdr *arp;
@@ -130,7 +131,7 @@ bond_mode_alb_arp_xmit(struct ether_hdr *eth_h, uint16_t offset,
 
 	uint8_t hash_index;
 
-	struct ether_addr bonding_mac;
+	struct rte_ether_addr bonding_mac;
 
 	arp = (struct rte_arp_hdr *)((char *)(eth_h + 1) + offset);
 
@@ -163,7 +164,7 @@ bond_mode_alb_arp_xmit(struct ether_hdr *eth_h, uint16_t offset,
 						&client_info->app_mac);
 				ether_addr_copy(&client_info->app_mac, &arp->arp_data.arp_sha);
 				memcpy(client_info->vlan, eth_h + 1, offset);
-				client_info->vlan_count = offset / sizeof(struct vlan_hdr);
+				client_info->vlan_count = offset / sizeof(struct rte_vlan_hdr);
 				rte_spinlock_unlock(&internals->mode6.lock);
 				return client_info->slave_idx;
 			}
@@ -179,7 +180,7 @@ bond_mode_alb_arp_xmit(struct ether_hdr *eth_h, uint16_t offset,
 		rte_eth_macaddr_get(client_info->slave_idx, &client_info->app_mac);
 		ether_addr_copy(&client_info->app_mac, &arp->arp_data.arp_sha);
 		memcpy(client_info->vlan, eth_h + 1, offset);
-		client_info->vlan_count = offset / sizeof(struct vlan_hdr);
+		client_info->vlan_count = offset / sizeof(struct rte_vlan_hdr);
 		rte_spinlock_unlock(&internals->mode6.lock);
 		return client_info->slave_idx;
 	}
@@ -195,12 +196,12 @@ uint16_t
 bond_mode_alb_arp_upd(struct client_data *client_info,
 		struct rte_mbuf *pkt, struct bond_dev_private *internals)
 {
-	struct ether_hdr *eth_h;
+	struct rte_ether_hdr *eth_h;
 	struct rte_arp_hdr *arp_h;
 	uint16_t slave_idx;
 
 	rte_spinlock_lock(&internals->mode6.lock);
-	eth_h = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
+	eth_h = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
 
 	ether_addr_copy(&client_info->app_mac, &eth_h->s_addr);
 	ether_addr_copy(&client_info->cli_mac, &eth_h->d_addr);
@@ -209,11 +210,12 @@ bond_mode_alb_arp_upd(struct client_data *client_info,
 	else
 		eth_h->ether_type = rte_cpu_to_be_16(ETHER_TYPE_ARP);
 
-	arp_h = (struct rte_arp_hdr *)((char *)eth_h + sizeof(struct ether_hdr)
-			+ client_info->vlan_count * sizeof(struct vlan_hdr));
+	arp_h = (struct rte_arp_hdr *)(
+		(char *)eth_h + sizeof(struct rte_ether_hdr)
+		+ client_info->vlan_count * sizeof(struct rte_vlan_hdr));
 
 	memcpy(eth_h + 1, client_info->vlan,
-			client_info->vlan_count * sizeof(struct vlan_hdr));
+			client_info->vlan_count * sizeof(struct rte_vlan_hdr));
 
 	ether_addr_copy(&client_info->app_mac, &arp_h->arp_data.arp_sha);
 	arp_h->arp_data.arp_sip = client_info->app_ip;

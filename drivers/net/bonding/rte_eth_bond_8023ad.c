@@ -126,7 +126,7 @@ bond_print_lacp(struct lacpdu *l)
 #define MODE4_DEBUG(fmt, ...) do { } while (0)
 #endif
 
-static const struct ether_addr lacp_mac_addr = {
+static const struct rte_ether_addr lacp_mac_addr = {
 	.addr_bytes = { 0x01, 0x80, 0xC2, 0x00, 0x00, 0x02 }
 };
 
@@ -810,7 +810,7 @@ bond_mode_8023ad_periodic_cb(void *arg)
 	struct bond_dev_private *internals = bond_dev->data->dev_private;
 	struct port *port;
 	struct rte_eth_link link_info;
-	struct ether_addr slave_addr;
+	struct rte_ether_addr slave_addr;
 	struct rte_mbuf *lacp_pkt = NULL;
 	uint16_t slave_id;
 	uint16_t i;
@@ -1044,7 +1044,7 @@ void
 bond_mode_8023ad_mac_address_update(struct rte_eth_dev *bond_dev)
 {
 	struct bond_dev_private *internals = bond_dev->data->dev_private;
-	struct ether_addr slave_addr;
+	struct rte_ether_addr slave_addr;
 	struct port *slave, *agg_slave;
 	uint16_t slave_id, i, j;
 

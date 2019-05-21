@@ -314,7 +314,7 @@ struct fman_if {
 	/* The index of this MAC (within the Fman it belongs to) */
 	uint8_t mac_idx;
 	/* The MAC address */
-	struct ether_addr mac_addr;
+	struct rte_ether_addr mac_addr;
 	/* The Qman channel to schedule Tx FQs to */
 	u16 tx_channel_id;
 	/* The hard-coded FQIDs for this interface. Note: this doesn't cover

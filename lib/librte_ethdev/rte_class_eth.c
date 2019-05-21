@@ -44,7 +44,7 @@ eth_mac_cmp(const char *key __rte_unused,
 		const char *value, void *opaque)
 {
 	int ret;
-	struct ether_addr mac;
+	struct rte_ether_addr mac;
 	const struct rte_eth_dev_data *data = opaque;
 	struct rte_eth_dev_info dev_info;
 	uint32_t index;

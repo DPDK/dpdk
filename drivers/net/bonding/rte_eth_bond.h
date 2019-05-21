@@ -225,7 +225,7 @@ rte_eth_bond_active_slaves_get(uint16_t bonded_port_id, uint16_t slaves[],
  */
 int
 rte_eth_bond_mac_address_set(uint16_t bonded_port_id,
-		struct ether_addr *mac_addr);
+		struct rte_ether_addr *mac_addr);
 
 /**
  * Reset bonded device to use MAC from primary slave on bonded device and it's

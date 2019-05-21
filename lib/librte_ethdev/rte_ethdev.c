@@ -1346,7 +1346,7 @@ static void
 rte_eth_dev_mac_restore(struct rte_eth_dev *dev,
 			struct rte_eth_dev_info *dev_info)
 {
-	struct ether_addr *addr;
+	struct rte_ether_addr *addr;
 	uint16_t i;
 	uint32_t pool = 0;
 	uint64_t pool_mask;
@@ -2591,7 +2591,7 @@ rte_eth_dev_get_supported_ptypes(uint16_t port_id, uint32_t ptype_mask,
 }
 
 void
-rte_eth_macaddr_get(uint16_t port_id, struct ether_addr *mac_addr)
+rte_eth_macaddr_get(uint16_t port_id, struct rte_ether_addr *mac_addr)
 {
 	struct rte_eth_dev *dev;
 
@@ -3078,7 +3078,7 @@ rte_eth_led_off(uint16_t port_id)
  * an empty spot.
  */
 static int
-get_mac_addr_index(uint16_t port_id, const struct ether_addr *addr)
+get_mac_addr_index(uint16_t port_id, const struct rte_ether_addr *addr)
 {
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
@@ -3094,10 +3094,10 @@ get_mac_addr_index(uint16_t port_id, const struct ether_addr *addr)
 	return -1;
 }
 
-static const struct ether_addr null_mac_addr;
+static const struct rte_ether_addr null_mac_addr;
 
 int
-rte_eth_dev_mac_addr_add(uint16_t port_id, struct ether_addr *addr,
+rte_eth_dev_mac_addr_add(uint16_t port_id, struct rte_ether_addr *addr,
 			uint32_t pool)
 {
 	struct rte_eth_dev *dev;
@@ -3150,7 +3150,7 @@ rte_eth_dev_mac_addr_add(uint16_t port_id, struct ether_addr *addr,
 }
 
 int
-rte_eth_dev_mac_addr_remove(uint16_t port_id, struct ether_addr *addr)
+rte_eth_dev_mac_addr_remove(uint16_t port_id, struct rte_ether_addr *addr)
 {
 	struct rte_eth_dev *dev;
 	int index;
@@ -3181,7 +3181,7 @@ rte_eth_dev_mac_addr_remove(uint16_t port_id, struct ether_addr *addr)
 }
 
 int
-rte_eth_dev_default_mac_addr_set(uint16_t port_id, struct ether_addr *addr)
+rte_eth_dev_default_mac_addr_set(uint16_t port_id, struct rte_ether_addr *addr)
 {
 	struct rte_eth_dev *dev;
 	int ret;
@@ -3210,7 +3210,7 @@ rte_eth_dev_default_mac_addr_set(uint16_t port_id, struct ether_addr *addr)
  * an empty spot.
  */
 static int
-get_hash_mac_addr_index(uint16_t port_id, const struct ether_addr *addr)
+get_hash_mac_addr_index(uint16_t port_id, const struct rte_ether_addr *addr)
 {
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
@@ -3229,7 +3229,7 @@ get_hash_mac_addr_index(uint16_t port_id, const struct ether_addr *addr)
 }
 
 int
-rte_eth_dev_uc_hash_table_set(uint16_t port_id, struct ether_addr *addr,
+rte_eth_dev_uc_hash_table_set(uint16_t port_id, struct rte_ether_addr *addr,
 				uint8_t on)
 {
 	int index;
@@ -4066,7 +4066,7 @@ rte_eth_tx_queue_info_get(uint16_t port_id, uint16_t queue_id,
 
 int
 rte_eth_dev_set_mc_addr_list(uint16_t port_id,
-			     struct ether_addr *mc_addr_set,
+			     struct rte_ether_addr *mc_addr_set,
 			     uint32_t nb_mc_addr)
 {
 	struct rte_eth_dev *dev;

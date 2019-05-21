@@ -11,7 +11,7 @@
 
 int
 rte_pmd_ixgbe_set_vf_mac_addr(uint16_t port, uint16_t vf,
-			      struct ether_addr *mac_addr)
+			      struct rte_ether_addr *mac_addr)
 {
 	struct ixgbe_hw *hw;
 	struct ixgbe_vf_info *vfinfo;
@@ -35,7 +35,7 @@ rte_pmd_ixgbe_set_vf_mac_addr(uint16_t port, uint16_t vf,
 	vfinfo = *(IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private));
 	rar_entry = hw->mac.num_rar_entries - (vf + 1);
 
-	if (is_valid_assigned_ether_addr((struct ether_addr *)new_mac)) {
+	if (is_valid_assigned_ether_addr((struct rte_ether_addr *)new_mac)) {
 		rte_memcpy(vfinfo[vf].vf_mac_addresses, new_mac,
 			   ETHER_ADDR_LEN);
 		return hw->mac.ops.set_rar(hw, rar_entry, new_mac, vf,

@@ -559,9 +559,9 @@ qede_ucast_filter(struct rte_eth_dev *eth_dev, struct ecore_filter_ucast *ucast,
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	struct qede_ucast_entry *tmp = NULL;
 	struct qede_ucast_entry *u;
-	struct ether_addr *mac_addr;
+	struct rte_ether_addr *mac_addr;
 
-	mac_addr  = (struct ether_addr *)ucast->mac;
+	mac_addr  = (struct rte_ether_addr *)ucast->mac;
 	if (add) {
 		SLIST_FOREACH(tmp, &qdev->uc_list_head, list) {
 			if ((memcmp(mac_addr, &tmp->mac,
@@ -605,8 +605,9 @@ qede_ucast_filter(struct rte_eth_dev *eth_dev, struct ecore_filter_ucast *ucast,
 }
 
 static int
-qede_add_mcast_filters(struct rte_eth_dev *eth_dev, struct ether_addr *mc_addrs,
-		       uint32_t mc_addrs_num)
+qede_add_mcast_filters(struct rte_eth_dev *eth_dev,
+		struct rte_ether_addr *mc_addrs,
+		uint32_t mc_addrs_num)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
@@ -629,7 +630,7 @@ qede_add_mcast_filters(struct rte_eth_dev *eth_dev, struct ether_addr *mc_addrs,
 	mcast.num_mc_addrs = mc_addrs_num;
 	mcast.opcode = ECORE_FILTER_ADD;
 	for (i = 0; i < mc_addrs_num; i++)
-		ether_addr_copy(&mc_addrs[i], (struct ether_addr *)
+		ether_addr_copy(&mc_addrs[i], (struct rte_ether_addr *)
 							&mcast.mac[i]);
 	rc = ecore_filter_mcast_cmd(edev, &mcast, ECORE_SPQ_MODE_CB, NULL);
 	if (rc != ECORE_SUCCESS) {
@@ -654,7 +655,8 @@ static int qede_del_mcast_filters(struct rte_eth_dev *eth_dev)
 	mcast.opcode = ECORE_FILTER_REMOVE;
 	j = 0;
 	SLIST_FOREACH(tmp, &qdev->mc_list_head, list) {
-		ether_addr_copy(&tmp->mac, (struct ether_addr *)&mcast.mac[j]);
+		ether_addr_copy(&tmp->mac,
+				(struct rte_ether_addr *)&mcast.mac[j]);
 		j++;
 	}
 	rc = ecore_filter_mcast_cmd(edev, &mcast, ECORE_SPQ_MODE_CB, NULL);
@@ -701,7 +703,7 @@ qede_mac_int_ops(struct rte_eth_dev *eth_dev, struct ecore_filter_ucast *ucast,
 }
 
 static int
-qede_mac_addr_add(struct rte_eth_dev *eth_dev, struct ether_addr *mac_addr,
+qede_mac_addr_add(struct rte_eth_dev *eth_dev, struct rte_ether_addr *mac_addr,
 		  __rte_unused uint32_t index, __rte_unused uint32_t pool)
 {
 	struct ecore_filter_ucast ucast;
@@ -713,7 +715,7 @@ qede_mac_addr_add(struct rte_eth_dev *eth_dev, struct ether_addr *mac_addr,
 	qede_set_ucast_cmn_params(&ucast);
 	ucast.opcode = ECORE_FILTER_ADD;
 	ucast.type = ECORE_FILTER_MAC;
-	ether_addr_copy(mac_addr, (struct ether_addr *)&ucast.mac);
+	ether_addr_copy(mac_addr, (struct rte_ether_addr *)&ucast.mac);
 	re = (int)qede_mac_int_ops(eth_dev, &ucast, 1);
 	return re;
 }
@@ -742,13 +744,13 @@ qede_mac_addr_remove(struct rte_eth_dev *eth_dev, uint32_t index)
 
 	/* Use the index maintained by rte */
 	ether_addr_copy(&eth_dev->data->mac_addrs[index],
-			(struct ether_addr *)&ucast.mac);
+			(struct rte_ether_addr *)&ucast.mac);
 
 	qede_mac_int_ops(eth_dev, &ucast, false);
 }
 
 static int
-qede_mac_addr_set(struct rte_eth_dev *eth_dev, struct ether_addr *mac_addr)
+qede_mac_addr_set(struct rte_eth_dev *eth_dev, struct rte_ether_addr *mac_addr)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
@@ -1757,8 +1759,9 @@ static void qede_allmulticast_disable(struct rte_eth_dev *eth_dev)
 }
 
 static int
-qede_set_mc_addr_list(struct rte_eth_dev *eth_dev, struct ether_addr *mc_addrs,
-		      uint32_t mc_addrs_num)
+qede_set_mc_addr_list(struct rte_eth_dev *eth_dev,
+		struct rte_ether_addr *mc_addrs,
+		uint32_t mc_addrs_num)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
@@ -2549,7 +2552,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	}
 
 	if (!is_vf) {
-		ether_addr_copy((struct ether_addr *)edev->hwfns[0].
+		ether_addr_copy((struct rte_ether_addr *)edev->hwfns[0].
 				hw_info.hw_mac_addr,
 				&eth_dev->data->mac_addrs[0]);
 		ether_addr_copy(&eth_dev->data->mac_addrs[0],
@@ -2565,8 +2568,9 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 						&is_mac_forced);
 			if (is_mac_exist) {
 				DP_INFO(edev, "VF macaddr received from PF\n");
-				ether_addr_copy((struct ether_addr *)&vf_mac,
-						&eth_dev->data->mac_addrs[0]);
+				ether_addr_copy(
+					(struct rte_ether_addr *)&vf_mac,
+					&eth_dev->data->mac_addrs[0]);
 				ether_addr_copy(&eth_dev->data->mac_addrs[0],
 						&adapter->primary_mac);
 			} else {

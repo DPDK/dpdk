@@ -108,7 +108,7 @@ const struct rss_type_info rss_type_table[] = {
 };
 
 static void
-print_ethaddr(const char *name, struct ether_addr *eth_addr)
+print_ethaddr(const char *name, struct rte_ether_addr *eth_addr)
 {
 	char buf[ETHER_ADDR_FMT_SIZE];
 	ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
@@ -391,7 +391,7 @@ void
 port_infos_display(portid_t port_id)
 {
 	struct rte_port *port;
-	struct ether_addr mac_addr;
+	struct rte_ether_addr mac_addr;
 	struct rte_eth_link link;
 	struct rte_eth_dev_info dev_info;
 	int vlan_offload;
@@ -538,7 +538,7 @@ port_summary_header_display(void)
 void
 port_summary_display(portid_t port_id)
 {
-	struct ether_addr mac_addr;
+	struct rte_ether_addr mac_addr;
 	struct rte_eth_link link;
 	struct rte_eth_dev_info dev_info;
 	char name[RTE_ETH_NAME_MAX_LEN];
@@ -2519,7 +2519,8 @@ set_tx_pkt_segments(unsigned *seg_lengths, unsigned nb_segs)
 	 * Check that each segment length is greater or equal than
 	 * the mbuf data sise.
 	 * Check also that the total packet length is greater or equal than the
-	 * size of an empty UDP/IP packet (sizeof(struct ether_hdr) + 20 + 8).
+	 * size of an empty UDP/IP packet (sizeof(struct rte_ether_hdr) +
+	 * 20 + 8).
 	 */
 	tx_pkt_len = 0;
 	for (i = 0; i < nb_segs; i++) {
@@ -2530,10 +2531,10 @@ set_tx_pkt_segments(unsigned *seg_lengths, unsigned nb_segs)
 		}
 		tx_pkt_len = (uint16_t)(tx_pkt_len + seg_lengths[i]);
 	}
-	if (tx_pkt_len < (sizeof(struct ether_hdr) + 20 + 8)) {
+	if (tx_pkt_len < (sizeof(struct rte_ether_hdr) + 20 + 8)) {
 		printf("total packet length=%u < %d - give up\n",
 				(unsigned) tx_pkt_len,
-				(int)(sizeof(struct ether_hdr) + 20 + 8));
+				(int)(sizeof(struct rte_ether_hdr) + 20 + 8));
 		return;
 	}
 
@@ -3453,7 +3454,7 @@ set_vf_rate_limit(portid_t port_id, uint16_t vf, uint16_t rate, uint64_t q_msk)
 static int
 mcast_addr_pool_extend(struct rte_port *port)
 {
-	struct ether_addr *mc_pool;
+	struct rte_ether_addr *mc_pool;
 	size_t mc_pool_size;
 
 	/*
@@ -3470,9 +3471,9 @@ mcast_addr_pool_extend(struct rte_port *port)
 	 * The previous test guarantees that port->mc_addr_nb is a multiple
 	 * of MCAST_POOL_INC.
 	 */
-	mc_pool_size = sizeof(struct ether_addr) * (port->mc_addr_nb +
+	mc_pool_size = sizeof(struct rte_ether_addr) * (port->mc_addr_nb +
 						    MCAST_POOL_INC);
-	mc_pool = (struct ether_addr *) realloc(port->mc_addr_pool,
+	mc_pool = (struct rte_ether_addr *) realloc(port->mc_addr_pool,
 						mc_pool_size);
 	if (mc_pool == NULL) {
 		printf("allocation of pool of %u multicast addresses failed\n",
@@ -3501,7 +3502,7 @@ mcast_addr_pool_remove(struct rte_port *port, uint32_t addr_idx)
 	}
 	memmove(&port->mc_addr_pool[addr_idx],
 		&port->mc_addr_pool[addr_idx + 1],
-		sizeof(struct ether_addr) * (port->mc_addr_nb - addr_idx));
+		sizeof(struct rte_ether_addr) * (port->mc_addr_nb - addr_idx));
 }
 
 static void
@@ -3520,7 +3521,7 @@ eth_port_multicast_addr_list_set(portid_t port_id)
 }
 
 void
-mcast_addr_add(portid_t port_id, struct ether_addr *mc_addr)
+mcast_addr_add(portid_t port_id, struct rte_ether_addr *mc_addr)
 {
 	struct rte_port *port;
 	uint32_t i;
@@ -3548,7 +3549,7 @@ mcast_addr_add(portid_t port_id, struct ether_addr *mc_addr)
 }
 
 void
-mcast_addr_remove(portid_t port_id, struct ether_addr *mc_addr)
+mcast_addr_remove(portid_t port_id, struct rte_ether_addr *mc_addr)
 {
 	struct rte_port *port;
 	uint32_t i;

@@ -60,7 +60,7 @@
  * We have to consider the max possible overhead.
  */
 #define MTU_OVERHEAD	\
-	(ETHER_HDR_LEN + ETHER_CRC_LEN + 2 * sizeof(struct vlan_hdr))
+	(ETHER_HDR_LEN + ETHER_CRC_LEN + 2 * sizeof(struct rte_vlan_hdr))
 
 /*
  * Default payload in bytes for the IPv6 packet.
@@ -90,7 +90,7 @@ static uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
 static uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 
 /* ethernet addresses of ports */
-static struct ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
+static struct rte_ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
 
 #ifndef IPv4_BYTES
 #define IPv4_BYTES_FMT "%" PRIu8 ".%" PRIu8 ".%" PRIu8 ".%" PRIu8
@@ -252,7 +252,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 	port_out = port_in;
 
 	/* Remove the Ethernet header and trailer from the input packet */
-	rte_pktmbuf_adj(m, (uint16_t)sizeof(struct ether_hdr));
+	rte_pktmbuf_adj(m, (uint16_t)sizeof(struct rte_ether_hdr));
 
 	/* Build transmission burst */
 	len = qconf->tx_mbufs[port_out].len;
@@ -340,13 +340,14 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 		void *d_addr_bytes;
 
 		m = qconf->tx_mbufs[port_out].m_table[i];
-		struct ether_hdr *eth_hdr = (struct ether_hdr *)
-			rte_pktmbuf_prepend(m, (uint16_t)sizeof(struct ether_hdr));
+		struct rte_ether_hdr *eth_hdr = (struct rte_ether_hdr *)
+			rte_pktmbuf_prepend(m,
+				(uint16_t)sizeof(struct rte_ether_hdr));
 		if (eth_hdr == NULL) {
 			rte_panic("No headroom in mbuf.\n");
 		}
 
-		m->l2_len = sizeof(struct ether_hdr);
+		m->l2_len = sizeof(struct rte_ether_hdr);
 
 		/* 02:00:00:00:00:xx */
 		d_addr_bytes = &eth_hdr->d_addr.addr_bytes[0];
@@ -568,7 +569,7 @@ parse_args(int argc, char **argv)
 }
 
 static void
-print_ethaddr(const char *name, struct ether_addr *eth_addr)
+print_ethaddr(const char *name, struct rte_ether_addr *eth_addr)
 {
 	char buf[ETHER_ADDR_FMT_SIZE];
 	ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);
@@ -669,11 +670,11 @@ check_ptype(int portid)
 static inline void
 parse_ptype(struct rte_mbuf *m)
 {
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 	uint32_t packet_type = RTE_PTYPE_UNKNOWN;
 	uint16_t ether_type;
 
-	eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 	ether_type = eth_hdr->ether_type;
 	if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv4))
 		packet_type |= RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;

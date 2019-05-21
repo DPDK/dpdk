@@ -49,7 +49,7 @@ int softnic_parse_hex_string(char *src, uint8_t *dst, uint32_t *size);
 
 int softnic_parse_ipv4_addr(const char *token, struct in_addr *ipv4);
 int softnic_parse_ipv6_addr(const char *token, struct in6_addr *ipv6);
-int softnic_parse_mac_addr(const char *token, struct ether_addr *addr);
+int softnic_parse_mac_addr(const char *token, struct rte_ether_addr *addr);
 int softnic_parse_mpls_labels(char *string,
 		uint32_t *labels, uint32_t *n_labels);
 

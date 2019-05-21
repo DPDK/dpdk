@@ -95,7 +95,7 @@ static uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
 static uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 
 /* ethernet addresses of ports */
-static struct ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
+static struct rte_ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
 
 #ifndef IPv4_BYTES
 #define IPv4_BYTES_FMT "%" PRIu8 ".%" PRIu8 ".%" PRIu8 ".%" PRIu8
@@ -308,7 +308,7 @@ static inline void
 reassemble(struct rte_mbuf *m, uint16_t portid, uint32_t queue,
 	struct lcore_queue_conf *qconf, uint64_t tms)
 {
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 	struct rte_ip_frag_tbl *tbl;
 	struct rte_ip_frag_death_row *dr;
 	struct rx_queue *rxq;
@@ -318,7 +318,7 @@ reassemble(struct rte_mbuf *m, uint16_t portid, uint32_t queue,
 
 	rxq = &qconf->rx_queue_list[queue];
 
-	eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 
 	dst_port = portid;
 
@@ -350,7 +350,7 @@ reassemble(struct rte_mbuf *m, uint16_t portid, uint32_t queue,
 			if (mo != m) {
 				m = mo;
 				eth_hdr = rte_pktmbuf_mtod(m,
-					struct ether_hdr *);
+					struct rte_ether_hdr *);
 				ip_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
 			}
 		}
@@ -388,7 +388,8 @@ reassemble(struct rte_mbuf *m, uint16_t portid, uint32_t queue,
 
 			if (mo != m) {
 				m = mo;
-				eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
+				eth_hdr = rte_pktmbuf_mtod(m,
+							struct rte_ether_hdr *);
 				ip_hdr = (struct ipv6_hdr *)(eth_hdr + 1);
 			}
 		}
@@ -691,7 +692,7 @@ parse_args(int argc, char **argv)
 }
 
 static void
-print_ethaddr(const char *name, const struct ether_addr *eth_addr)
+print_ethaddr(const char *name, const struct rte_ether_addr *eth_addr)
 {
 	char buf[ETHER_ADDR_FMT_SIZE];
 	ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);

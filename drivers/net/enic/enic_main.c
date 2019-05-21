@@ -1667,13 +1667,13 @@ static int enic_dev_init(struct enic *enic)
 	enic_fdir_info(enic);
 
 	eth_dev->data->mac_addrs = rte_zmalloc("enic_mac_addr",
-					sizeof(struct ether_addr) *
+					sizeof(struct rte_ether_addr) *
 					ENIC_UNICAST_PERFECT_FILTERS, 0);
 	if (!eth_dev->data->mac_addrs) {
 		dev_err(enic, "mac addr storage alloc failed, aborting.\n");
 		return -1;
 	}
-	ether_addr_copy((struct ether_addr *) enic->mac_addr,
+	ether_addr_copy((struct rte_ether_addr *)enic->mac_addr,
 			eth_dev->data->mac_addrs);
 
 	vnic_dev_set_reset_flag(enic->vdev, 0);

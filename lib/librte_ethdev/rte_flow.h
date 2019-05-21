@@ -584,8 +584,8 @@ static const struct rte_flow_item_raw rte_flow_item_raw_mask = {
  * same order as on the wire.
  */
 struct rte_flow_item_eth {
-	struct ether_addr dst; /**< Destination MAC. */
-	struct ether_addr src; /**< Source MAC. */
+	struct rte_ether_addr dst; /**< Destination MAC. */
+	struct rte_ether_addr src; /**< Source MAC. */
 	rte_be16_t type; /**< EtherType or TPID. */
 };
 
@@ -981,9 +981,9 @@ struct rte_flow_item_arp_eth_ipv4 {
 	uint8_t hln; /**< Hardware address length, normally 6. */
 	uint8_t pln; /**< Protocol address length, normally 4. */
 	rte_be16_t op; /**< Opcode (1 for request, 2 for reply). */
-	struct ether_addr sha; /**< Sender hardware address. */
+	struct rte_ether_addr sha; /**< Sender hardware address. */
 	rte_be32_t spa; /**< Sender IPv4 address. */
-	struct ether_addr tha; /**< Target hardware address. */
+	struct rte_ether_addr tha; /**< Target hardware address. */
 	rte_be32_t tpa; /**< Target IPv4 address. */
 };
 
@@ -1127,7 +1127,7 @@ rte_flow_item_icmp6_nd_opt_mask = {
 struct rte_flow_item_icmp6_nd_opt_sla_eth {
 	uint8_t type; /**< ND option type, normally 1. */
 	uint8_t length; /**< ND option length, normally 1. */
-	struct ether_addr sla; /**< Source Ethernet LLA. */
+	struct rte_ether_addr sla; /**< Source Ethernet LLA. */
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_ICMP6_ND_OPT_SLA_ETH. */
@@ -1152,7 +1152,7 @@ rte_flow_item_icmp6_nd_opt_sla_eth_mask = {
 struct rte_flow_item_icmp6_nd_opt_tla_eth {
 	uint8_t type; /**< ND option type, normally 2. */
 	uint8_t length; /**< ND option length, normally 1. */
-	struct ether_addr tla; /**< Target Ethernet LLA. */
+	struct rte_ether_addr tla; /**< Target Ethernet LLA. */
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_ICMP6_ND_OPT_TLA_ETH. */

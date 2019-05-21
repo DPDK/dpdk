@@ -32,7 +32,7 @@ struct txq_port {
 };
 
 struct app_port {
-	struct ether_addr mac_addr;
+	struct rte_ether_addr mac_addr;
 	struct txq_port txq;
 	rte_spinlock_t lock;
 	int port_active;
@@ -158,9 +158,9 @@ static void setup_ports(struct app_config *app_cfg, int cnt_ports)
 static void process_frame(struct app_port *ptr_port,
 	struct rte_mbuf *ptr_frame)
 {
-	struct ether_hdr *ptr_mac_hdr;
+	struct rte_ether_hdr *ptr_mac_hdr;
 
-	ptr_mac_hdr = rte_pktmbuf_mtod(ptr_frame, struct ether_hdr *);
+	ptr_mac_hdr = rte_pktmbuf_mtod(ptr_frame, struct rte_ether_hdr *);
 	ether_addr_copy(&ptr_mac_hdr->s_addr, &ptr_mac_hdr->d_addr);
 	ether_addr_copy(&ptr_port->mac_addr, &ptr_mac_hdr->s_addr);
 }

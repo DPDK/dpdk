@@ -65,11 +65,11 @@ static void virtio_dev_free_mbufs(struct rte_eth_dev *dev);
 static int virtio_vlan_filter_set(struct rte_eth_dev *dev,
 				uint16_t vlan_id, int on);
 static int virtio_mac_addr_add(struct rte_eth_dev *dev,
-				struct ether_addr *mac_addr,
+				struct rte_ether_addr *mac_addr,
 				uint32_t index, uint32_t vmdq);
 static void virtio_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index);
 static int virtio_mac_addr_set(struct rte_eth_dev *dev,
-				struct ether_addr *mac_addr);
+				struct rte_ether_addr *mac_addr);
 
 static int virtio_intr_disable(struct rte_eth_dev *dev);
 
@@ -1142,11 +1142,11 @@ virtio_mac_table_set(struct virtio_hw *hw,
 }
 
 static int
-virtio_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
+virtio_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 		    uint32_t index, uint32_t vmdq __rte_unused)
 {
 	struct virtio_hw *hw = dev->data->dev_private;
-	const struct ether_addr *addrs = dev->data->mac_addrs;
+	const struct rte_ether_addr *addrs = dev->data->mac_addrs;
 	unsigned int i;
 	struct virtio_net_ctrl_mac *uc, *mc;
 
@@ -1161,7 +1161,7 @@ virtio_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 	mc->entries = 0;
 
 	for (i = 0; i < VIRTIO_MAX_MAC_ADDRS; i++) {
-		const struct ether_addr *addr
+		const struct rte_ether_addr *addr
 			= (i == index) ? mac_addr : addrs + i;
 		struct virtio_net_ctrl_mac *tbl
 			= is_multicast_ether_addr(addr) ? mc : uc;
@@ -1176,7 +1176,7 @@ static void
 virtio_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 {
 	struct virtio_hw *hw = dev->data->dev_private;
-	struct ether_addr *addrs = dev->data->mac_addrs;
+	struct rte_ether_addr *addrs = dev->data->mac_addrs;
 	struct virtio_net_ctrl_mac *uc, *mc;
 	unsigned int i;
 
@@ -1204,7 +1204,7 @@ virtio_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 }
 
 static int
-virtio_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
+virtio_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 {
 	struct virtio_hw *hw = dev->data->dev_private;
 
@@ -1395,7 +1395,7 @@ virtio_notify_peers(struct rte_eth_dev *dev)
 		return;
 
 	rarp_mbuf = rte_net_make_rarp_packet(rxvq->mpool,
-			(struct ether_addr *)hw->mac_addr);
+			(struct rte_ether_addr *)hw->mac_addr);
 	if (rarp_mbuf == NULL) {
 		PMD_DRV_LOG(ERR, "failed to make RARP packet.");
 		return;
@@ -1662,7 +1662,7 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 
 	/* Copy the permanent MAC address to: virtio_hw */
 	virtio_get_hwaddr(hw);
-	ether_addr_copy((struct ether_addr *) hw->mac_addr,
+	ether_addr_copy((struct rte_ether_addr *)hw->mac_addr,
 			&eth_dev->data->mac_addrs[0]);
 	PMD_INIT_LOG(DEBUG,
 		     "PORT MAC: %02X:%02X:%02X:%02X:%02X:%02X",

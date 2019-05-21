@@ -451,7 +451,7 @@ kni_config_mac_address(uint16_t port_id, uint8_t mac_addr[])
 	RTE_LOG(INFO, KNI, "Configure mac address of %d", port_id);
 
 	ret = rte_eth_dev_default_mac_addr_set(port_id,
-					       (struct ether_addr *)mac_addr);
+					(struct rte_ether_addr *)mac_addr);
 	if (ret < 0)
 		RTE_LOG(ERR, KNI, "Failed to config mac_addr for port %d\n",
 			port_id);

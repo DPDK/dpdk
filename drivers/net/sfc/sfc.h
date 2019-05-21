@@ -134,7 +134,7 @@ struct sfc_port {
 	boolean_t			promisc;
 	boolean_t			allmulti;
 
-	struct ether_addr		default_mac_addr;
+	struct rte_ether_addr		default_mac_addr;
 
 	unsigned int			max_mcast_addrs;
 	unsigned int			nb_mcast_addrs;

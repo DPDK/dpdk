@@ -1092,7 +1092,7 @@ static inline void
 virtio_update_packet_stats(struct virtnet_stats *stats, struct rte_mbuf *mbuf)
 {
 	uint32_t s = mbuf->pkt_len;
-	struct ether_addr *ea;
+	struct rte_ether_addr *ea;
 
 	stats->bytes += s;
 
@@ -1113,7 +1113,7 @@ virtio_update_packet_stats(struct virtnet_stats *stats, struct rte_mbuf *mbuf)
 			stats->size_bins[7]++;
 	}
 
-	ea = rte_pktmbuf_mtod(mbuf, struct ether_addr *);
+	ea = rte_pktmbuf_mtod(mbuf, struct rte_ether_addr *);
 	if (is_multicast_ether_addr(ea)) {
 		if (is_broadcast_ether_addr(ea))
 			stats->broadcast++;

@@ -9,9 +9,9 @@
 #define RARP_PKT_SIZE	64
 struct rte_mbuf * __rte_experimental
 rte_net_make_rarp_packet(struct rte_mempool *mpool,
-		const struct ether_addr *mac)
+		const struct rte_ether_addr *mac)
 {
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 	struct rte_arp_hdr *rarp;
 	struct rte_mbuf *mbuf;
 
@@ -22,7 +22,8 @@ rte_net_make_rarp_packet(struct rte_mempool *mpool,
 	if (mbuf == NULL)
 		return NULL;
 
-	eth_hdr = (struct ether_hdr *)rte_pktmbuf_append(mbuf, RARP_PKT_SIZE);
+	eth_hdr = (struct rte_ether_hdr *)
+		rte_pktmbuf_append(mbuf, RARP_PKT_SIZE);
 	if (eth_hdr == NULL) {
 		rte_pktmbuf_free(mbuf);
 		return NULL;

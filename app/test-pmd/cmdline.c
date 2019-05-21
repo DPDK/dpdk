@@ -6124,7 +6124,7 @@ struct cmd_set_bond_mac_addr_result {
 	cmdline_fixed_string_t bonding;
 	cmdline_fixed_string_t mac_addr;
 	uint16_t port_num;
-	struct ether_addr address;
+	struct rte_ether_addr address;
 };
 
 static void cmd_set_bond_mac_addr_parsed(void *parsed_result,
@@ -7897,7 +7897,7 @@ struct cmd_mac_addr_result {
 	cmdline_fixed_string_t mac_addr_cmd;
 	cmdline_fixed_string_t what;
 	uint16_t port_num;
-	struct ether_addr address;
+	struct rte_ether_addr address;
 };
 
 static void cmd_mac_addr_parsed(void *parsed_result,
@@ -8096,7 +8096,7 @@ struct cmd_set_uc_hash_table {
 	cmdline_fixed_string_t port;
 	portid_t port_id;
 	cmdline_fixed_string_t what;
-	struct ether_addr address;
+	struct rte_ether_addr address;
 	cmdline_fixed_string_t mode;
 };
 
@@ -8220,7 +8220,7 @@ struct cmd_set_vf_macvlan_filter {
 	portid_t port_id;
 	cmdline_fixed_string_t vf;
 	uint8_t vf_id;
-	struct ether_addr address;
+	struct rte_ether_addr address;
 	cmdline_fixed_string_t filter_type;
 	cmdline_fixed_string_t mode;
 };
@@ -8479,7 +8479,7 @@ struct cmd_vf_mac_addr_result {
 	uint16_t port_num;
 	cmdline_fixed_string_t vf;
 	uint8_t vf_num;
-	struct ether_addr address;
+	struct rte_ether_addr address;
 };
 
 static void cmd_vf_mac_addr_parsed(void *parsed_result,
@@ -8792,8 +8792,8 @@ struct cmd_tunnel_filter_result {
 	cmdline_fixed_string_t cmd;
 	cmdline_fixed_string_t what;
 	portid_t port_id;
-	struct ether_addr outer_mac;
-	struct ether_addr inner_mac;
+	struct rte_ether_addr outer_mac;
+	struct rte_ether_addr inner_mac;
 	cmdline_ipaddr_t ip_value;
 	uint16_t inner_vlan;
 	cmdline_fixed_string_t tunnel_type;
@@ -10583,7 +10583,7 @@ struct cmd_ethertype_filter_result {
 	portid_t port_id;
 	cmdline_fixed_string_t ops;
 	cmdline_fixed_string_t mac;
-	struct ether_addr mac_addr;
+	struct rte_ether_addr mac_addr;
 	cmdline_fixed_string_t ethertype;
 	uint16_t ethertype_value;
 	cmdline_fixed_string_t drop;
@@ -10643,7 +10643,7 @@ cmd_ethertype_filter_parsed(void *parsed_result,
 	if (!strcmp(res->mac, "mac_addr")) {
 		filter.flags |= RTE_ETHTYPE_FLAGS_MAC;
 		rte_memcpy(&filter.mac_addr, &res->mac_addr,
-			sizeof(struct ether_addr));
+			sizeof(struct rte_ether_addr));
 	}
 	if (!strcmp(res->drop, "drop"))
 		filter.flags |= RTE_ETHTYPE_FLAGS_DROP;
@@ -10722,7 +10722,7 @@ struct cmd_flow_director_result {
 	cmdline_fixed_string_t fd_id;
 	uint32_t  fd_id_value;
 	cmdline_fixed_string_t mac;
-	struct ether_addr mac_addr;
+	struct rte_ether_addr mac_addr;
 	cmdline_fixed_string_t tunnel;
 	cmdline_fixed_string_t tunnel_type;
 	cmdline_fixed_string_t tunnel_id;
@@ -11025,12 +11025,12 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 	if (fdir_conf.mode ==  RTE_FDIR_MODE_PERFECT_MAC_VLAN)
 		rte_memcpy(&entry.input.flow.mac_vlan_flow.mac_addr,
 				 &res->mac_addr,
-				 sizeof(struct ether_addr));
+				 sizeof(struct rte_ether_addr));
 
 	if (fdir_conf.mode ==  RTE_FDIR_MODE_PERFECT_TUNNEL) {
 		rte_memcpy(&entry.input.flow.tunnel_flow.mac_addr,
 				 &res->mac_addr,
-				 sizeof(struct ether_addr));
+				 sizeof(struct rte_ether_addr));
 		entry.input.flow.tunnel_flow.tunnel_type =
 			str2fdir_tunneltype(res->tunnel_type);
 		entry.input.flow.tunnel_flow.tunnel_id =
@@ -12463,7 +12463,7 @@ struct cmd_mcast_addr_result {
 	cmdline_fixed_string_t mcast_addr_cmd;
 	cmdline_fixed_string_t what;
 	uint16_t port_num;
-	struct ether_addr mc_addr;
+	struct rte_ether_addr mc_addr;
 };
 
 static void cmd_mcast_addr_parsed(void *parsed_result,
@@ -13882,7 +13882,7 @@ struct cmd_set_vf_mac_addr_result {
 	cmdline_fixed_string_t addr;
 	portid_t port_id;
 	uint16_t vf_id;
-	struct ether_addr mac_addr;
+	struct rte_ether_addr mac_addr;
 
 };
 
@@ -14187,7 +14187,7 @@ struct cmd_macsec_sc_result {
 	cmdline_fixed_string_t sc;
 	cmdline_fixed_string_t tx_rx;
 	portid_t port_id;
-	struct ether_addr mac;
+	struct rte_ether_addr mac;
 	uint16_t pi;
 };
 
@@ -15188,8 +15188,8 @@ struct cmd_set_vxlan_result {
 	uint16_t tci;
 	uint8_t tos;
 	uint8_t ttl;
-	struct ether_addr eth_src;
-	struct ether_addr eth_dst;
+	struct rte_ether_addr eth_src;
+	struct rte_ether_addr eth_dst;
 };
 
 cmdline_parse_token_string_t cmd_set_vxlan_set =
@@ -15411,8 +15411,8 @@ struct cmd_set_nvgre_result {
 	cmdline_ipaddr_t ip_src;
 	cmdline_ipaddr_t ip_dst;
 	uint16_t tci;
-	struct ether_addr eth_src;
-	struct ether_addr eth_dst;
+	struct rte_ether_addr eth_src;
+	struct rte_ether_addr eth_dst;
 };
 
 cmdline_parse_token_string_t cmd_set_nvgre_set =
@@ -15557,8 +15557,8 @@ struct cmd_set_l2_encap_result {
 	cmdline_fixed_string_t ip_version;
 	uint32_t vlan_present:1;
 	uint16_t tci;
-	struct ether_addr eth_src;
-	struct ether_addr eth_dst;
+	struct rte_ether_addr eth_src;
+	struct rte_ether_addr eth_dst;
 };
 
 cmdline_parse_token_string_t cmd_set_l2_encap_set =
@@ -15714,8 +15714,8 @@ struct cmd_set_mplsogre_encap_result {
 	cmdline_ipaddr_t ip_src;
 	cmdline_ipaddr_t ip_dst;
 	uint16_t tci;
-	struct ether_addr eth_src;
-	struct ether_addr eth_dst;
+	struct rte_ether_addr eth_src;
+	struct rte_ether_addr eth_dst;
 };
 
 cmdline_parse_token_string_t cmd_set_mplsogre_encap_set =
@@ -15938,8 +15938,8 @@ struct cmd_set_mplsoudp_encap_result {
 	cmdline_ipaddr_t ip_src;
 	cmdline_ipaddr_t ip_dst;
 	uint16_t tci;
-	struct ether_addr eth_src;
-	struct ether_addr eth_dst;
+	struct rte_ether_addr eth_src;
+	struct rte_ether_addr eth_dst;
 };
 
 cmdline_parse_token_string_t cmd_set_mplsoudp_encap_set =

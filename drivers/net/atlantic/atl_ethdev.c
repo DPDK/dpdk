@@ -93,14 +93,14 @@ static void atl_dev_interrupt_handler(void *param);
 
 
 static int atl_add_mac_addr(struct rte_eth_dev *dev,
-			    struct ether_addr *mac_addr,
+			    struct rte_ether_addr *mac_addr,
 			    uint32_t index, uint32_t pool);
 static void atl_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index);
 static int atl_set_default_mac_addr(struct rte_eth_dev *dev,
-					   struct ether_addr *mac_addr);
+					   struct rte_ether_addr *mac_addr);
 
 static int atl_dev_set_mc_addr_list(struct rte_eth_dev *dev,
-				    struct ether_addr *mc_addr_set,
+				    struct rte_ether_addr *mc_addr_set,
 				    uint32_t nb_mc_addr);
 
 /* RSS */
@@ -1575,7 +1575,7 @@ atl_update_mac_addr(struct rte_eth_dev *dev, uint32_t index,
 }
 
 static int
-atl_add_mac_addr(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
+atl_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 			uint32_t index __rte_unused, uint32_t pool __rte_unused)
 {
 	if (is_zero_ether_addr(mac_addr)) {
@@ -1593,7 +1593,7 @@ atl_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index)
 }
 
 static int
-atl_set_default_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
+atl_set_default_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
 {
 	atl_remove_mac_addr(dev, 0);
 	atl_add_mac_addr(dev, addr, 0, 0);
@@ -1760,7 +1760,7 @@ atl_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue_id, int on)
 
 static int
 atl_dev_set_mc_addr_list(struct rte_eth_dev *dev,
-			  struct ether_addr *mc_addr_set,
+			  struct rte_ether_addr *mc_addr_set,
 			  uint32_t nb_mc_addr)
 {
 	struct aq_hw_s *hw = ATL_DEV_PRIVATE_TO_HW(dev->data->dev_private);

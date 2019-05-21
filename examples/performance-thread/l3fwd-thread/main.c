@@ -92,11 +92,11 @@ check_ptype(int portid)
 static inline void
 parse_ptype(struct rte_mbuf *m)
 {
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 	uint32_t packet_type = RTE_PTYPE_UNKNOWN;
 	uint16_t ether_type;
 
-	eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 	ether_type = eth_hdr->ether_type;
 	if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv4))
 		packet_type |= RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
@@ -186,7 +186,7 @@ static uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 
 /* ethernet addresses of ports */
 static uint64_t dest_eth_addr[RTE_MAX_ETHPORTS];
-static struct ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
+static struct rte_ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
 
 static xmm_t val_eth[RTE_MAX_ETHPORTS];
 
@@ -884,39 +884,39 @@ static inline void l3fwd_simple_forward(struct rte_mbuf *m, uint16_t portid)
 static inline void
 simple_ipv4_fwd_8pkts(struct rte_mbuf *m[8], uint16_t portid)
 {
-	struct ether_hdr *eth_hdr[8];
+	struct rte_ether_hdr *eth_hdr[8];
 	struct ipv4_hdr *ipv4_hdr[8];
 	uint16_t dst_port[8];
 	int32_t ret[8];
 	union ipv4_5tuple_host key[8];
 	__m128i data[8];
 
-	eth_hdr[0] = rte_pktmbuf_mtod(m[0], struct ether_hdr *);
-	eth_hdr[1] = rte_pktmbuf_mtod(m[1], struct ether_hdr *);
-	eth_hdr[2] = rte_pktmbuf_mtod(m[2], struct ether_hdr *);
-	eth_hdr[3] = rte_pktmbuf_mtod(m[3], struct ether_hdr *);
-	eth_hdr[4] = rte_pktmbuf_mtod(m[4], struct ether_hdr *);
-	eth_hdr[5] = rte_pktmbuf_mtod(m[5], struct ether_hdr *);
-	eth_hdr[6] = rte_pktmbuf_mtod(m[6], struct ether_hdr *);
-	eth_hdr[7] = rte_pktmbuf_mtod(m[7], struct ether_hdr *);
+	eth_hdr[0] = rte_pktmbuf_mtod(m[0], struct rte_ether_hdr *);
+	eth_hdr[1] = rte_pktmbuf_mtod(m[1], struct rte_ether_hdr *);
+	eth_hdr[2] = rte_pktmbuf_mtod(m[2], struct rte_ether_hdr *);
+	eth_hdr[3] = rte_pktmbuf_mtod(m[3], struct rte_ether_hdr *);
+	eth_hdr[4] = rte_pktmbuf_mtod(m[4], struct rte_ether_hdr *);
+	eth_hdr[5] = rte_pktmbuf_mtod(m[5], struct rte_ether_hdr *);
+	eth_hdr[6] = rte_pktmbuf_mtod(m[6], struct rte_ether_hdr *);
+	eth_hdr[7] = rte_pktmbuf_mtod(m[7], struct rte_ether_hdr *);
 
 	/* Handle IPv4 headers.*/
 	ipv4_hdr[0] = rte_pktmbuf_mtod_offset(m[0], struct ipv4_hdr *,
-			sizeof(struct ether_hdr));
+			sizeof(struct rte_ether_hdr));
 	ipv4_hdr[1] = rte_pktmbuf_mtod_offset(m[1], struct ipv4_hdr *,
-			sizeof(struct ether_hdr));
+			sizeof(struct rte_ether_hdr));
 	ipv4_hdr[2] = rte_pktmbuf_mtod_offset(m[2], struct ipv4_hdr *,
-			sizeof(struct ether_hdr));
+			sizeof(struct rte_ether_hdr));
 	ipv4_hdr[3] = rte_pktmbuf_mtod_offset(m[3], struct ipv4_hdr *,
-			sizeof(struct ether_hdr));
+			sizeof(struct rte_ether_hdr));
 	ipv4_hdr[4] = rte_pktmbuf_mtod_offset(m[4], struct ipv4_hdr *,
-			sizeof(struct ether_hdr));
+			sizeof(struct rte_ether_hdr));
 	ipv4_hdr[5] = rte_pktmbuf_mtod_offset(m[5], struct ipv4_hdr *,
-			sizeof(struct ether_hdr));
+			sizeof(struct rte_ether_hdr));
 	ipv4_hdr[6] = rte_pktmbuf_mtod_offset(m[6], struct ipv4_hdr *,
-			sizeof(struct ether_hdr));
+			sizeof(struct rte_ether_hdr));
 	ipv4_hdr[7] = rte_pktmbuf_mtod_offset(m[7], struct ipv4_hdr *,
-			sizeof(struct ether_hdr));
+			sizeof(struct rte_ether_hdr));
 
 #ifdef DO_RFC_1812_CHECKS
 	/* Check to make sure the packet is valid (RFC1812) */
@@ -967,28 +967,28 @@ simple_ipv4_fwd_8pkts(struct rte_mbuf *m[8], uint16_t portid)
 #endif /* End of #ifdef DO_RFC_1812_CHECKS */
 
 	data[0] = _mm_loadu_si128(rte_pktmbuf_mtod_offset(m[0], __m128i *,
-			sizeof(struct ether_hdr) +
+			sizeof(struct rte_ether_hdr) +
 			offsetof(struct ipv4_hdr, time_to_live)));
 	data[1] = _mm_loadu_si128(rte_pktmbuf_mtod_offset(m[1], __m128i *,
-			sizeof(struct ether_hdr) +
+			sizeof(struct rte_ether_hdr) +
 			offsetof(struct ipv4_hdr, time_to_live)));
 	data[2] = _mm_loadu_si128(rte_pktmbuf_mtod_offset(m[2], __m128i *,
-			sizeof(struct ether_hdr) +
+			sizeof(struct rte_ether_hdr) +
 			offsetof(struct ipv4_hdr, time_to_live)));
 	data[3] = _mm_loadu_si128(rte_pktmbuf_mtod_offset(m[3], __m128i *,
-			sizeof(struct ether_hdr) +
+			sizeof(struct rte_ether_hdr) +
 			offsetof(struct ipv4_hdr, time_to_live)));
 	data[4] = _mm_loadu_si128(rte_pktmbuf_mtod_offset(m[4], __m128i *,
-			sizeof(struct ether_hdr) +
+			sizeof(struct rte_ether_hdr) +
 			offsetof(struct ipv4_hdr, time_to_live)));
 	data[5] = _mm_loadu_si128(rte_pktmbuf_mtod_offset(m[5], __m128i *,
-			sizeof(struct ether_hdr) +
+			sizeof(struct rte_ether_hdr) +
 			offsetof(struct ipv4_hdr, time_to_live)));
 	data[6] = _mm_loadu_si128(rte_pktmbuf_mtod_offset(m[6], __m128i *,
-			sizeof(struct ether_hdr) +
+			sizeof(struct rte_ether_hdr) +
 			offsetof(struct ipv4_hdr, time_to_live)));
 	data[7] = _mm_loadu_si128(rte_pktmbuf_mtod_offset(m[7], __m128i *,
-			sizeof(struct ether_hdr) +
+			sizeof(struct rte_ether_hdr) +
 			offsetof(struct ipv4_hdr, time_to_live)));
 
 	key[0].xmm = _mm_and_si128(data[0], mask0);
@@ -1094,13 +1094,13 @@ static inline void get_ipv6_5tuple(struct rte_mbuf *m0, __m128i mask0,
 		__m128i mask1, union ipv6_5tuple_host *key)
 {
 	__m128i tmpdata0 = _mm_loadu_si128(rte_pktmbuf_mtod_offset(m0,
-			__m128i *, sizeof(struct ether_hdr) +
+			__m128i *, sizeof(struct rte_ether_hdr) +
 			offsetof(struct ipv6_hdr, payload_len)));
 	__m128i tmpdata1 = _mm_loadu_si128(rte_pktmbuf_mtod_offset(m0,
-			__m128i *, sizeof(struct ether_hdr) +
+			__m128i *, sizeof(struct rte_ether_hdr) +
 			offsetof(struct ipv6_hdr, payload_len) + sizeof(__m128i)));
 	__m128i tmpdata2 = _mm_loadu_si128(rte_pktmbuf_mtod_offset(m0,
-			__m128i *, sizeof(struct ether_hdr) +
+			__m128i *, sizeof(struct rte_ether_hdr) +
 			offsetof(struct ipv6_hdr, payload_len) + sizeof(__m128i) +
 			sizeof(__m128i)));
 	key->xmm[0] = _mm_and_si128(tmpdata0, mask0);
@@ -1113,37 +1113,37 @@ simple_ipv6_fwd_8pkts(struct rte_mbuf *m[8], uint16_t portid)
 {
 	int32_t ret[8];
 	uint16_t dst_port[8];
-	struct ether_hdr *eth_hdr[8];
+	struct rte_ether_hdr *eth_hdr[8];
 	union ipv6_5tuple_host key[8];
 
 	__attribute__((unused)) struct ipv6_hdr *ipv6_hdr[8];
 
-	eth_hdr[0] = rte_pktmbuf_mtod(m[0], struct ether_hdr *);
-	eth_hdr[1] = rte_pktmbuf_mtod(m[1], struct ether_hdr *);
-	eth_hdr[2] = rte_pktmbuf_mtod(m[2], struct ether_hdr *);
-	eth_hdr[3] = rte_pktmbuf_mtod(m[3], struct ether_hdr *);
-	eth_hdr[4] = rte_pktmbuf_mtod(m[4], struct ether_hdr *);
-	eth_hdr[5] = rte_pktmbuf_mtod(m[5], struct ether_hdr *);
-	eth_hdr[6] = rte_pktmbuf_mtod(m[6], struct ether_hdr *);
-	eth_hdr[7] = rte_pktmbuf_mtod(m[7], struct ether_hdr *);
+	eth_hdr[0] = rte_pktmbuf_mtod(m[0], struct rte_ether_hdr *);
+	eth_hdr[1] = rte_pktmbuf_mtod(m[1], struct rte_ether_hdr *);
+	eth_hdr[2] = rte_pktmbuf_mtod(m[2], struct rte_ether_hdr *);
+	eth_hdr[3] = rte_pktmbuf_mtod(m[3], struct rte_ether_hdr *);
+	eth_hdr[4] = rte_pktmbuf_mtod(m[4], struct rte_ether_hdr *);
+	eth_hdr[5] = rte_pktmbuf_mtod(m[5], struct rte_ether_hdr *);
+	eth_hdr[6] = rte_pktmbuf_mtod(m[6], struct rte_ether_hdr *);
+	eth_hdr[7] = rte_pktmbuf_mtod(m[7], struct rte_ether_hdr *);
 
 	/* Handle IPv6 headers.*/
 	ipv6_hdr[0] = rte_pktmbuf_mtod_offset(m[0], struct ipv6_hdr *,
-			sizeof(struct ether_hdr));
+			sizeof(struct rte_ether_hdr));
 	ipv6_hdr[1] = rte_pktmbuf_mtod_offset(m[1], struct ipv6_hdr *,
-			sizeof(struct ether_hdr));
+			sizeof(struct rte_ether_hdr));
 	ipv6_hdr[2] = rte_pktmbuf_mtod_offset(m[2], struct ipv6_hdr *,
-			sizeof(struct ether_hdr));
+			sizeof(struct rte_ether_hdr));
 	ipv6_hdr[3] = rte_pktmbuf_mtod_offset(m[3], struct ipv6_hdr *,
-			sizeof(struct ether_hdr));
+			sizeof(struct rte_ether_hdr));
 	ipv6_hdr[4] = rte_pktmbuf_mtod_offset(m[4], struct ipv6_hdr *,
-			sizeof(struct ether_hdr));
+			sizeof(struct rte_ether_hdr));
 	ipv6_hdr[5] = rte_pktmbuf_mtod_offset(m[5], struct ipv6_hdr *,
-			sizeof(struct ether_hdr));
+			sizeof(struct rte_ether_hdr));
 	ipv6_hdr[6] = rte_pktmbuf_mtod_offset(m[6], struct ipv6_hdr *,
-			sizeof(struct ether_hdr));
+			sizeof(struct rte_ether_hdr));
 	ipv6_hdr[7] = rte_pktmbuf_mtod_offset(m[7], struct ipv6_hdr *,
-			sizeof(struct ether_hdr));
+			sizeof(struct rte_ether_hdr));
 
 	get_ipv6_5tuple(m[0], mask1, mask2, &key[0]);
 	get_ipv6_5tuple(m[1], mask1, mask2, &key[1]);
@@ -1228,16 +1228,16 @@ simple_ipv6_fwd_8pkts(struct rte_mbuf *m[8], uint16_t portid)
 static __rte_always_inline void
 l3fwd_simple_forward(struct rte_mbuf *m, uint16_t portid)
 {
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 	struct ipv4_hdr *ipv4_hdr;
 	uint16_t dst_port;
 
-	eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 
 	if (RTE_ETH_IS_IPV4_HDR(m->packet_type)) {
 		/* Handle IPv4 headers.*/
 		ipv4_hdr = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *,
-				sizeof(struct ether_hdr));
+				sizeof(struct rte_ether_hdr));
 
 #ifdef DO_RFC_1812_CHECKS
 		/* Check to make sure the packet is valid (RFC1812) */
@@ -1270,7 +1270,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint16_t portid)
 		struct ipv6_hdr *ipv6_hdr;
 
 		ipv6_hdr = rte_pktmbuf_mtod_offset(m, struct ipv6_hdr *,
-				sizeof(struct ether_hdr));
+				sizeof(struct rte_ether_hdr));
 
 		dst_port = get_ipv6_dst_port(ipv6_hdr, portid,
 				RTE_PER_LCORE(lcore_conf)->ipv6_lookup_struct);
@@ -1346,7 +1346,7 @@ get_dst_port(struct rte_mbuf *pkt, uint32_t dst_ipv4, uint16_t portid)
 {
 	uint32_t next_hop;
 	struct ipv6_hdr *ipv6_hdr;
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 
 	if (RTE_ETH_IS_IPV4_HDR(pkt->packet_type)) {
 		return (uint16_t) ((rte_lpm_lookup(
@@ -1355,7 +1355,7 @@ get_dst_port(struct rte_mbuf *pkt, uint32_t dst_ipv4, uint16_t portid)
 
 	} else if (RTE_ETH_IS_IPV6_HDR(pkt->packet_type)) {
 
-		eth_hdr = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
+		eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
 		ipv6_hdr = (struct ipv6_hdr *)(eth_hdr + 1);
 
 		return (uint16_t) ((rte_lpm6_lookup(
@@ -1371,13 +1371,13 @@ get_dst_port(struct rte_mbuf *pkt, uint32_t dst_ipv4, uint16_t portid)
 static inline void
 process_packet(struct rte_mbuf *pkt, uint16_t *dst_port, uint16_t portid)
 {
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 	struct ipv4_hdr *ipv4_hdr;
 	uint32_t dst_ipv4;
 	uint16_t dp;
 	__m128i te, ve;
 
-	eth_hdr = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
+	eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
 	ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
 
 	dst_ipv4 = ipv4_hdr->dst_addr;
@@ -1403,25 +1403,25 @@ processx4_step1(struct rte_mbuf *pkt[FWDSTEP],
 		uint32_t *ipv4_flag)
 {
 	struct ipv4_hdr *ipv4_hdr;
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 	uint32_t x0, x1, x2, x3;
 
-	eth_hdr = rte_pktmbuf_mtod(pkt[0], struct ether_hdr *);
+	eth_hdr = rte_pktmbuf_mtod(pkt[0], struct rte_ether_hdr *);
 	ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
 	x0 = ipv4_hdr->dst_addr;
 	ipv4_flag[0] = pkt[0]->packet_type & RTE_PTYPE_L3_IPV4;
 
-	eth_hdr = rte_pktmbuf_mtod(pkt[1], struct ether_hdr *);
+	eth_hdr = rte_pktmbuf_mtod(pkt[1], struct rte_ether_hdr *);
 	ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
 	x1 = ipv4_hdr->dst_addr;
 	ipv4_flag[0] &= pkt[1]->packet_type;
 
-	eth_hdr = rte_pktmbuf_mtod(pkt[2], struct ether_hdr *);
+	eth_hdr = rte_pktmbuf_mtod(pkt[2], struct rte_ether_hdr *);
 	ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
 	x2 = ipv4_hdr->dst_addr;
 	ipv4_flag[0] &= pkt[2]->packet_type;
 
-	eth_hdr = rte_pktmbuf_mtod(pkt[3], struct ether_hdr *);
+	eth_hdr = rte_pktmbuf_mtod(pkt[3], struct rte_ether_hdr *);
 	ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
 	x3 = ipv4_hdr->dst_addr;
 	ipv4_flag[0] &= pkt[3]->packet_type;
@@ -1503,13 +1503,13 @@ processx4_step3(struct rte_mbuf *pkt[FWDSTEP], uint16_t dst_port[FWDSTEP])
 	_mm_store_si128(p[2], te[2]);
 	_mm_store_si128(p[3], te[3]);
 
-	rfc1812_process((struct ipv4_hdr *)((struct ether_hdr *)p[0] + 1),
+	rfc1812_process((struct ipv4_hdr *)((struct rte_ether_hdr *)p[0] + 1),
 			&dst_port[0], pkt[0]->packet_type);
-	rfc1812_process((struct ipv4_hdr *)((struct ether_hdr *)p[1] + 1),
+	rfc1812_process((struct ipv4_hdr *)((struct rte_ether_hdr *)p[1] + 1),
 			&dst_port[1], pkt[1]->packet_type);
-	rfc1812_process((struct ipv4_hdr *)((struct ether_hdr *)p[2] + 1),
+	rfc1812_process((struct ipv4_hdr *)((struct rte_ether_hdr *)p[2] + 1),
 			&dst_port[2], pkt[2]->packet_type);
-	rfc1812_process((struct ipv4_hdr *)((struct ether_hdr *)p[3] + 1),
+	rfc1812_process((struct ipv4_hdr *)((struct rte_ether_hdr *)p[3] + 1),
 			&dst_port[3], pkt[3]->packet_type);
 }
 
@@ -3020,7 +3020,7 @@ parse_args(int argc, char **argv)
 }
 
 static void
-print_ethaddr(const char *name, const struct ether_addr *eth_addr)
+print_ethaddr(const char *name, const struct rte_ether_addr *eth_addr)
 {
 	char buf[ETHER_ADDR_FMT_SIZE];
 
@@ -3576,14 +3576,14 @@ main(int argc, char **argv)
 		print_ethaddr(" Address:", &ports_eth_addr[portid]);
 		printf(", ");
 		print_ethaddr("Destination:",
-			(const struct ether_addr *)&dest_eth_addr[portid]);
+			(const struct rte_ether_addr *)&dest_eth_addr[portid]);
 		printf(", ");
 
 		/*
 		 * prepare src MACs for each port.
 		 */
 		ether_addr_copy(&ports_eth_addr[portid],
-			(struct ether_addr *)(val_eth + portid) + 1);
+			(struct rte_ether_addr *)(val_eth + portid) + 1);
 
 		/* init memory */
 		ret = init_mem(NB_MBUF);

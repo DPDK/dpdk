@@ -54,7 +54,7 @@ struct pmd_internals {
 	int stop_thread;
 	int no_request_thread;
 
-	struct ether_addr eth_addr;
+	struct rte_ether_addr eth_addr;
 
 	struct pmd_queue rx_queues[KNI_MAX_QUEUE_PER_PORT];
 	struct pmd_queue tx_queues[KNI_MAX_QUEUE_PER_PORT];

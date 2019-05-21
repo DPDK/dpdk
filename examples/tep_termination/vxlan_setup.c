@@ -49,7 +49,7 @@
 struct vxlan_conf vxdev;
 
 struct ipv4_hdr app_ip_hdr[VXLAN_N_PORTS];
-struct ether_hdr app_l2_hdr[VXLAN_N_PORTS];
+struct rte_ether_hdr app_l2_hdr[VXLAN_N_PORTS];
 
 /* local VTEP IP address */
 uint8_t vxlan_multicast_ips[2][4] = { {239, 1, 1, 1 }, {239, 1, 2, 1 } };
@@ -227,7 +227,7 @@ int
 vxlan_link(struct vhost_dev *vdev, struct rte_mbuf *m)
 {
 	int i, ret;
-	struct ether_hdr *pkt_hdr;
+	struct rte_ether_hdr *pkt_hdr;
 	uint64_t portid = vdev->vid;
 	struct ipv4_hdr *ip;
 
@@ -242,7 +242,7 @@ vxlan_link(struct vhost_dev *vdev, struct rte_mbuf *m)
 	}
 
 	/* Learn MAC address of guest device from packet */
-	pkt_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	pkt_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 	if (is_same_ether_addr(&(pkt_hdr->s_addr), &vdev->mac_address)) {
 		RTE_LOG(INFO, VHOST_DATA,
 			"(%d) WARNING: This device is using an existing"

@@ -1813,9 +1813,9 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 		ENA_ADMIN_FEATURE_OFFLOAD_DESC_RX_L4_IPV4_CSUM_MASK) != 0;
 
 	/* Copy MAC address and point DPDK to it */
-	eth_dev->data->mac_addrs = (struct ether_addr *)adapter->mac_addr;
-	ether_addr_copy((struct ether_addr *)get_feat_ctx.dev_attr.mac_addr,
-			(struct ether_addr *)adapter->mac_addr);
+	eth_dev->data->mac_addrs = (struct rte_ether_addr *)adapter->mac_addr;
+	ether_addr_copy((struct rte_ether_addr *)get_feat_ctx.dev_attr.mac_addr,
+			(struct rte_ether_addr *)adapter->mac_addr);
 
 	/*
 	 * Pass the information to the rte_eth_dev_close() that it should also
@@ -2151,7 +2151,7 @@ eth_ena_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		 * length of the ethernet header.
 		 */
 		if (unlikely(m->l2_len == 0))
-			m->l2_len = sizeof(struct ether_hdr);
+			m->l2_len = sizeof(struct rte_ether_hdr);
 
 		ip_hdr = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *,
 						 m->l2_len);

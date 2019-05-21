@@ -463,7 +463,7 @@ ixgbe_vf_set_mac_addr(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 	int rar_entry = hw->mac.num_rar_entries - (vf + 1);
 	uint8_t *new_mac = (uint8_t *)(&msgbuf[1]);
 
-	if (is_valid_assigned_ether_addr((struct ether_addr *)new_mac)) {
+	if (is_valid_assigned_ether_addr((struct rte_ether_addr *)new_mac)) {
 		rte_memcpy(vfinfo[vf].vf_mac_addresses, new_mac, 6);
 		return hw->mac.ops.set_rar(hw, rar_entry, new_mac, vf, IXGBE_RAH_AV);
 	}

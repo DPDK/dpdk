@@ -30,7 +30,7 @@ struct pcmd_intstr_params {
 struct pcmd_intmac_params {
 	cmdline_fixed_string_t cmd;
 	uint16_t port;
-	struct ether_addr mac;
+	struct rte_ether_addr mac;
 };
 struct pcmd_str_params {
 	cmdline_fixed_string_t cmd;
@@ -475,7 +475,7 @@ pcmd_macaddr_callback(void *ptr_params,
 	void *ptr_data)
 {
 	struct pcmd_intmac_params *params = ptr_params;
-	struct ether_addr mac_addr;
+	struct rte_ether_addr mac_addr;
 	int stat;
 
 	stat = 0;

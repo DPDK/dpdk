@@ -303,7 +303,7 @@ rte_ethtool_net_stop(uint16_t port_id)
 }
 
 int
-rte_ethtool_net_get_mac_addr(uint16_t port_id, struct ether_addr *addr)
+rte_ethtool_net_get_mac_addr(uint16_t port_id, struct rte_ether_addr *addr)
 {
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	if (addr == NULL)
@@ -314,7 +314,7 @@ rte_ethtool_net_get_mac_addr(uint16_t port_id, struct ether_addr *addr)
 }
 
 int
-rte_ethtool_net_set_mac_addr(uint16_t port_id, struct ether_addr *addr)
+rte_ethtool_net_set_mac_addr(uint16_t port_id, struct rte_ether_addr *addr)
 {
 	if (addr == NULL)
 		return -EINVAL;
@@ -323,7 +323,7 @@ rte_ethtool_net_set_mac_addr(uint16_t port_id, struct ether_addr *addr)
 
 int
 rte_ethtool_net_validate_addr(uint16_t port_id __rte_unused,
-	struct ether_addr *addr)
+	struct rte_ether_addr *addr)
 {
 	if (addr == NULL)
 		return -EINVAL;

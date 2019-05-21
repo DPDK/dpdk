@@ -30,8 +30,8 @@ struct netcfg_info {
 
 struct interface_info {
 	char *name;
-	struct ether_addr mac_addr;
-	struct ether_addr peer_mac;
+	struct rte_ether_addr mac_addr;
+	struct rte_ether_addr peer_mac;
 	int mac_present;
 	int fman_enabled_mac_interface;
 };

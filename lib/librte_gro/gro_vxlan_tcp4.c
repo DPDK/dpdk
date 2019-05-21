@@ -289,11 +289,11 @@ gro_vxlan_tcp4_reassemble(struct rte_mbuf *pkt,
 		struct gro_vxlan_tcp4_tbl *tbl,
 		uint64_t start_time)
 {
-	struct ether_hdr *outer_eth_hdr, *eth_hdr;
+	struct rte_ether_hdr *outer_eth_hdr, *eth_hdr;
 	struct ipv4_hdr *outer_ipv4_hdr, *ipv4_hdr;
 	struct tcp_hdr *tcp_hdr;
 	struct udp_hdr *udp_hdr;
-	struct vxlan_hdr *vxlan_hdr;
+	struct rte_vxlan_hdr *vxlan_hdr;
 	uint32_t sent_seq;
 	int32_t tcp_dl;
 	uint16_t frag_off, outer_ip_id, ip_id;
@@ -313,15 +313,15 @@ gro_vxlan_tcp4_reassemble(struct rte_mbuf *pkt,
 	if (unlikely(INVALID_TCP_HDRLEN(pkt->l4_len)))
 		return -1;
 
-	outer_eth_hdr = rte_pktmbuf_mtod(pkt, struct ether_hdr *);
+	outer_eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
 	outer_ipv4_hdr = (struct ipv4_hdr *)((char *)outer_eth_hdr +
 			pkt->outer_l2_len);
 	udp_hdr = (struct udp_hdr *)((char *)outer_ipv4_hdr +
 			pkt->outer_l3_len);
-	vxlan_hdr = (struct vxlan_hdr *)((char *)udp_hdr +
+	vxlan_hdr = (struct rte_vxlan_hdr *)((char *)udp_hdr +
 			sizeof(struct udp_hdr));
-	eth_hdr = (struct ether_hdr *)((char *)vxlan_hdr +
-			sizeof(struct vxlan_hdr));
+	eth_hdr = (struct rte_ether_hdr *)((char *)vxlan_hdr +
+			sizeof(struct rte_vxlan_hdr));
 	ipv4_hdr = (struct ipv4_hdr *)((char *)udp_hdr + pkt->l2_len);
 	tcp_hdr = (struct tcp_hdr *)((char *)ipv4_hdr + pkt->l3_len);
 

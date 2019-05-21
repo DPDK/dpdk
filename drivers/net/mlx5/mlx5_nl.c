@@ -80,7 +80,7 @@
 
 /* Add/remove MAC address through Netlink */
 struct mlx5_nl_mac_addr {
-	struct ether_addr (*mac)[];
+	struct rte_ether_addr (*mac)[];
 	/**< MAC address handled by the device. */
 	int mac_n; /**< Number of addresses in the array. */
 };
@@ -365,7 +365,7 @@ mlx5_nl_mac_addr_cb(struct nlmsghdr *nh, void *arg)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_nl_mac_addr_list(struct rte_eth_dev *dev, struct ether_addr (*mac)[],
+mlx5_nl_mac_addr_list(struct rte_eth_dev *dev, struct rte_ether_addr (*mac)[],
 		      int *mac_n)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -424,7 +424,7 @@ error:
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-mlx5_nl_mac_addr_modify(struct rte_eth_dev *dev, struct ether_addr *mac,
+mlx5_nl_mac_addr_modify(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 			int add)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -496,7 +496,7 @@ error:
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_nl_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac,
+mlx5_nl_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 		     uint32_t index)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -524,7 +524,7 @@ mlx5_nl_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_nl_mac_addr_remove(struct rte_eth_dev *dev, struct ether_addr *mac,
+mlx5_nl_mac_addr_remove(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 			uint32_t index)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -542,7 +542,7 @@ mlx5_nl_mac_addr_remove(struct rte_eth_dev *dev, struct ether_addr *mac,
 void
 mlx5_nl_mac_addr_sync(struct rte_eth_dev *dev)
 {
-	struct ether_addr macs[MLX5_MAX_MAC_ADDRESSES];
+	struct rte_ether_addr macs[MLX5_MAX_MAC_ADDRESSES];
 	int macs_n = 0;
 	int i;
 	int ret;
@@ -583,7 +583,7 @@ mlx5_nl_mac_addr_flush(struct rte_eth_dev *dev)
 	int i;
 
 	for (i = MLX5_MAX_MAC_ADDRESSES - 1; i >= 0; --i) {
-		struct ether_addr *m = &dev->data->mac_addrs[i];
+		struct rte_ether_addr *m = &dev->data->mac_addrs[i];
 
 		if (BITFIELD_ISSET(priv->mac_own, i))
 			mlx5_nl_mac_addr_remove(dev, m, i);

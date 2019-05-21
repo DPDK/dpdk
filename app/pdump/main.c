@@ -549,7 +549,7 @@ signal_handler(int sig_num)
 static inline int
 configure_vdev(uint16_t port_id)
 {
-	struct ether_addr addr;
+	struct rte_ether_addr addr;
 	const uint16_t rxRings = 0, txRings = 1;
 	int ret;
 	uint16_t q;

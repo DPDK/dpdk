@@ -671,7 +671,7 @@ static inline void t4_os_set_hw_addr(struct adapter *adapter, int port_idx,
 {
 	struct port_info *pi = adap2pinfo(adapter, port_idx);
 
-	ether_addr_copy((struct ether_addr *)hw_addr,
+	ether_addr_copy((struct rte_ether_addr *)hw_addr,
 			&pi->eth_dev->data->mac_addrs[0]);
 }
 

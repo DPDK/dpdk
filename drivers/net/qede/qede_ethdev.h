@@ -140,12 +140,12 @@ struct qede_vlan_entry {
 };
 
 struct qede_mcast_entry {
-	struct ether_addr mac;
+	struct rte_ether_addr mac;
 	SLIST_ENTRY(qede_mcast_entry) list;
 };
 
 struct qede_ucast_entry {
-	struct ether_addr mac;
+	struct rte_ether_addr mac;
 	uint16_t vlan;
 	uint16_t vni;
 	SLIST_ENTRY(qede_ucast_entry) list;
@@ -228,7 +228,7 @@ struct qede_dev {
 	SLIST_HEAD(vlan_list_head, qede_vlan_entry)vlan_list_head;
 	uint16_t configured_vlans;
 	bool accept_any_vlan;
-	struct ether_addr primary_mac;
+	struct rte_ether_addr primary_mac;
 	SLIST_HEAD(mc_list_head, qede_mcast_entry) mc_list_head;
 	uint16_t num_mc_addr;
 	SLIST_HEAD(uc_list_head, qede_ucast_entry) uc_list_head;

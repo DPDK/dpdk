@@ -68,7 +68,7 @@ get_printable_mac_addr(uint16_t port)
 {
 	static const char err_address[] = "00:00:00:00:00:00";
 	static char addresses[RTE_MAX_ETHPORTS][sizeof(err_address)];
-	struct ether_addr mac;
+	struct rte_ether_addr mac;
 
 	if (unlikely(port >= RTE_MAX_ETHPORTS))
 		return err_address;
@@ -253,7 +253,7 @@ process_packets(uint32_t port_num __rte_unused, struct rte_mbuf *pkts[],
 	for (i = 0; i < rx_count; i++) {
 		/* Handle IPv4 header.*/
 		ipv4_hdr = rte_pktmbuf_mtod_offset(pkts[i], struct ipv4_hdr *,
-				sizeof(struct ether_hdr));
+				sizeof(struct rte_ether_hdr));
 		ipv4_dst_ip[i] = ipv4_hdr->dst_addr;
 		key_ptrs[i] = (void *)&ipv4_dst_ip[i];
 	}

@@ -24,14 +24,15 @@ extern "C" {
 #define PACKET_BURST_GEN_PKT_LEN_128 128
 
 void
-initialize_eth_header(struct ether_hdr *eth_hdr, struct ether_addr *src_mac,
-		struct ether_addr *dst_mac, uint16_t ether_type,
+initialize_eth_header(struct rte_ether_hdr *eth_hdr,
+		struct rte_ether_addr *src_mac,
+		struct rte_ether_addr *dst_mac, uint16_t ether_type,
 		uint8_t vlan_enabled, uint16_t van_id);
 
 void
-initialize_arp_header(struct rte_arp_hdr *arp_hdr, struct ether_addr *src_mac,
-		struct ether_addr *dst_mac, uint32_t src_ip, uint32_t dst_ip,
-		uint32_t opcode);
+initialize_arp_header(struct rte_arp_hdr *arp_hdr,
+		struct rte_ether_addr *src_mac, struct rte_ether_addr *dst_mac,
+		uint32_t src_ip, uint32_t dst_ip, uint32_t opcode);
 
 uint16_t
 initialize_udp_header(struct udp_hdr *udp_hdr, uint16_t src_port,
@@ -59,14 +60,14 @@ initialize_ipv4_header_proto(struct ipv4_hdr *ip_hdr, uint32_t src_addr,
 
 int
 generate_packet_burst(struct rte_mempool *mp, struct rte_mbuf **pkts_burst,
-		struct ether_hdr *eth_hdr, uint8_t vlan_enabled, void *ip_hdr,
-		uint8_t ipv4, struct udp_hdr *udp_hdr, int nb_pkt_per_burst,
-		uint8_t pkt_len, uint8_t nb_pkt_segs);
+		struct rte_ether_hdr *eth_hdr, uint8_t vlan_enabled,
+		void *ip_hdr, uint8_t ipv4, struct udp_hdr *udp_hdr,
+		int nb_pkt_per_burst, uint8_t pkt_len, uint8_t nb_pkt_segs);
 
 int
 generate_packet_burst_proto(struct rte_mempool *mp,
-		struct rte_mbuf **pkts_burst,
-		struct ether_hdr *eth_hdr, uint8_t vlan_enabled, void *ip_hdr,
+		struct rte_mbuf **pkts_burst, struct rte_ether_hdr *eth_hdr,
+		uint8_t vlan_enabled, void *ip_hdr,
 		uint8_t ipv4, uint8_t proto, void *proto_hdr,
 		int nb_pkt_per_burst, uint8_t pkt_len, uint8_t nb_pkt_segs);
 

@@ -302,7 +302,7 @@ int bnx2x_vf_get_resources(struct bnx2x_softc *sc, uint8_t tx_count, uint8_t rx_
 
 	if (is_valid_assigned_ether_addr(&sc_resp.resc.current_mac_addr))
 		ether_addr_copy(&sc_resp.resc.current_mac_addr,
-				(struct ether_addr *)sc->link_params.mac_addr);
+			(struct rte_ether_addr *)sc->link_params.mac_addr);
 	else
 		eth_random_addr(sc->link_params.mac_addr);
 

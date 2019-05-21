@@ -438,7 +438,7 @@ encap_cfg_check(struct rte_table_action_encap_config *encap)
 }
 
 struct encap_ether_data {
-	struct ether_hdr ether;
+	struct rte_ether_hdr ether;
 } __attribute__((__packed__));
 
 #define VLAN(pcp, dei, vid)                                \
@@ -447,14 +447,14 @@ struct encap_ether_data {
 	(((uint64_t)(vid)) & 0xFFFLLU))                    \
 
 struct encap_vlan_data {
-	struct ether_hdr ether;
-	struct vlan_hdr vlan;
+	struct rte_ether_hdr ether;
+	struct rte_vlan_hdr vlan;
 } __attribute__((__packed__));
 
 struct encap_qinq_data {
-	struct ether_hdr ether;
-	struct vlan_hdr svlan;
-	struct vlan_hdr cvlan;
+	struct rte_ether_hdr ether;
+	struct rte_vlan_hdr svlan;
+	struct rte_vlan_hdr cvlan;
 } __attribute__((__packed__));
 
 #define ETHER_TYPE_MPLS_UNICAST                            0x8847
@@ -468,7 +468,7 @@ struct encap_qinq_data {
 	(((uint64_t)(ttl)) & 0xFFLLU)))
 
 struct encap_mpls_data {
-	struct ether_hdr ether;
+	struct rte_ether_hdr ether;
 	uint32_t mpls[RTE_TABLE_ACTION_MPLS_LABELS_MAX];
 	uint32_t mpls_count;
 } __attribute__((__packed__));
@@ -483,46 +483,46 @@ struct pppoe_ppp_hdr {
 } __attribute__((__packed__));
 
 struct encap_pppoe_data {
-	struct ether_hdr ether;
+	struct rte_ether_hdr ether;
 	struct pppoe_ppp_hdr pppoe_ppp;
 } __attribute__((__packed__));
 
 #define IP_PROTO_UDP                                       17
 
 struct encap_vxlan_ipv4_data {
-	struct ether_hdr ether;
+	struct rte_ether_hdr ether;
 	struct ipv4_hdr ipv4;
 	struct udp_hdr udp;
-	struct vxlan_hdr vxlan;
+	struct rte_vxlan_hdr vxlan;
 } __attribute__((__packed__));
 
 struct encap_vxlan_ipv4_vlan_data {
-	struct ether_hdr ether;
-	struct vlan_hdr vlan;
+	struct rte_ether_hdr ether;
+	struct rte_vlan_hdr vlan;
 	struct ipv4_hdr ipv4;
 	struct udp_hdr udp;
-	struct vxlan_hdr vxlan;
+	struct rte_vxlan_hdr vxlan;
 } __attribute__((__packed__));
 
 struct encap_vxlan_ipv6_data {
-	struct ether_hdr ether;
+	struct rte_ether_hdr ether;
 	struct ipv6_hdr ipv6;
 	struct udp_hdr udp;
-	struct vxlan_hdr vxlan;
+	struct rte_vxlan_hdr vxlan;
 } __attribute__((__packed__));
 
 struct encap_vxlan_ipv6_vlan_data {
-	struct ether_hdr ether;
-	struct vlan_hdr vlan;
+	struct rte_ether_hdr ether;
+	struct rte_vlan_hdr vlan;
 	struct ipv6_hdr ipv6;
 	struct udp_hdr udp;
-	struct vxlan_hdr vxlan;
+	struct rte_vxlan_hdr vxlan;
 } __attribute__((__packed__));
 
 struct encap_qinq_pppoe_data {
-	struct ether_hdr ether;
-	struct vlan_hdr svlan;
-	struct vlan_hdr cvlan;
+	struct rte_ether_hdr ether;
+	struct rte_vlan_hdr svlan;
+	struct rte_vlan_hdr cvlan;
 	struct pppoe_ppp_hdr pppoe_ppp;
 } __attribute__((__packed__));
 
@@ -997,13 +997,13 @@ pkt_work_encap_vxlan_ipv4(struct rte_mbuf *mbuf,
 
 	ether_length = (uint16_t)mbuf->pkt_len;
 	ipv4_total_length = ether_length +
-		(sizeof(struct vxlan_hdr) +
+		(sizeof(struct rte_vxlan_hdr) +
 		sizeof(struct udp_hdr) +
 		sizeof(struct ipv4_hdr));
 	ipv4_hdr_cksum = encap_vxlan_ipv4_checksum_update(vxlan_tbl->ipv4.hdr_checksum,
 		rte_htons(ipv4_total_length));
 	udp_length = ether_length +
-		(sizeof(struct vxlan_hdr) +
+		(sizeof(struct rte_vxlan_hdr) +
 		sizeof(struct udp_hdr));
 
 	vxlan_pkt = encap(ether, vxlan_tbl, sizeof(*vxlan_tbl));
@@ -1027,13 +1027,13 @@ pkt_work_encap_vxlan_ipv4_vlan(struct rte_mbuf *mbuf,
 
 	ether_length = (uint16_t)mbuf->pkt_len;
 	ipv4_total_length = ether_length +
-		(sizeof(struct vxlan_hdr) +
+		(sizeof(struct rte_vxlan_hdr) +
 		sizeof(struct udp_hdr) +
 		sizeof(struct ipv4_hdr));
 	ipv4_hdr_cksum = encap_vxlan_ipv4_checksum_update(vxlan_tbl->ipv4.hdr_checksum,
 		rte_htons(ipv4_total_length));
 	udp_length = ether_length +
-		(sizeof(struct vxlan_hdr) +
+		(sizeof(struct rte_vxlan_hdr) +
 		sizeof(struct udp_hdr));
 
 	vxlan_pkt = encap(ether, vxlan_tbl, sizeof(*vxlan_tbl));
@@ -1057,10 +1057,10 @@ pkt_work_encap_vxlan_ipv6(struct rte_mbuf *mbuf,
 
 	ether_length = (uint16_t)mbuf->pkt_len;
 	ipv6_payload_length = ether_length +
-		(sizeof(struct vxlan_hdr) +
+		(sizeof(struct rte_vxlan_hdr) +
 		sizeof(struct udp_hdr));
 	udp_length = ether_length +
-		(sizeof(struct vxlan_hdr) +
+		(sizeof(struct rte_vxlan_hdr) +
 		sizeof(struct udp_hdr));
 
 	vxlan_pkt = encap(ether, vxlan_tbl, sizeof(*vxlan_tbl));
@@ -1083,10 +1083,10 @@ pkt_work_encap_vxlan_ipv6_vlan(struct rte_mbuf *mbuf,
 
 	ether_length = (uint16_t)mbuf->pkt_len;
 	ipv6_payload_length = ether_length +
-		(sizeof(struct vxlan_hdr) +
+		(sizeof(struct rte_vxlan_hdr) +
 		sizeof(struct udp_hdr));
 	udp_length = ether_length +
-		(sizeof(struct vxlan_hdr) +
+		(sizeof(struct rte_vxlan_hdr) +
 		sizeof(struct udp_hdr));
 
 	vxlan_pkt = encap(ether, vxlan_tbl, sizeof(*vxlan_tbl));
@@ -1133,7 +1133,7 @@ pkt_work_encap(struct rte_mbuf *mbuf,
 	case 1LLU << RTE_TABLE_ACTION_ENCAP_MPLS:
 	{
 		struct encap_mpls_data *mpls = data;
-		size_t size = sizeof(struct ether_hdr) +
+		size_t size = sizeof(struct rte_ether_hdr) +
 			mpls->mpls_count * 4;
 
 		encap(ip, data, size);

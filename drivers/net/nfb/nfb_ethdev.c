@@ -20,7 +20,7 @@
 /**
  * Default MAC addr
  */
-static const struct ether_addr eth_addr = {
+static const struct rte_ether_addr eth_addr = {
 	.addr_bytes = { 0x00, 0x11, 0x17, 0x00, 0x00, 0x00 }
 };
 
@@ -352,7 +352,7 @@ nfb_eth_dev_set_link_down(struct rte_eth_dev *dev)
  */
 static int
 nfb_eth_mac_addr_set(struct rte_eth_dev *dev,
-	struct ether_addr *mac_addr)
+	struct rte_ether_addr *mac_addr)
 {
 	unsigned int i;
 	uint64_t mac = 0;
@@ -418,7 +418,7 @@ nfb_eth_dev_init(struct rte_eth_dev *dev)
 		data->dev_private;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_pci_addr *pci_addr = &pci_dev->addr;
-	struct ether_addr eth_addr_init;
+	struct rte_ether_addr eth_addr_init;
 
 	RTE_LOG(INFO, PMD, "Initializing NFB device (" PCI_PRI_FMT ")\n",
 		pci_addr->domain, pci_addr->bus, pci_addr->devid,
@@ -464,7 +464,7 @@ nfb_eth_dev_init(struct rte_eth_dev *dev)
 	nfb_eth_link_update(dev, 0);
 
 	/* Allocate space for one mac address */
-	data->mac_addrs = rte_zmalloc(data->name, sizeof(struct ether_addr),
+	data->mac_addrs = rte_zmalloc(data->name, sizeof(struct rte_ether_addr),
 		RTE_CACHE_LINE_SIZE);
 	if (data->mac_addrs == NULL) {
 		RTE_LOG(ERR, PMD, "Could not alloc space for MAC address!\n");

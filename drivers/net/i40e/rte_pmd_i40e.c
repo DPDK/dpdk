@@ -529,7 +529,7 @@ rte_pmd_i40e_set_vf_multicast_promisc(uint16_t port, uint16_t vf_id, uint8_t on)
 
 int
 rte_pmd_i40e_set_vf_mac_addr(uint16_t port, uint16_t vf_id,
-			     struct ether_addr *mac_addr)
+			     struct rte_ether_addr *mac_addr)
 {
 	struct i40e_mac_filter *f;
 	struct rte_eth_dev *dev;
@@ -571,11 +571,11 @@ rte_pmd_i40e_set_vf_mac_addr(uint16_t port, uint16_t vf_id,
 	return 0;
 }
 
-static const struct ether_addr null_mac_addr;
+static const struct rte_ether_addr null_mac_addr;
 
 int
 rte_pmd_i40e_remove_vf_mac_addr(uint16_t port, uint16_t vf_id,
-	struct ether_addr *mac_addr)
+	struct rte_ether_addr *mac_addr)
 {
 	struct rte_eth_dev *dev;
 	struct i40e_pf_vf *vf;
@@ -724,7 +724,7 @@ int rte_pmd_i40e_set_vf_broadcast(uint16_t port, uint16_t vf_id,
 	struct i40e_vsi *vsi;
 	struct i40e_hw *hw;
 	struct i40e_mac_filter_info filter;
-	struct ether_addr broadcast = {
+	struct rte_ether_addr broadcast = {
 		.addr_bytes = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff} };
 	int ret;
 
@@ -2355,7 +2355,7 @@ int rte_pmd_i40e_ptype_mapping_replace(uint16_t port,
 
 int
 rte_pmd_i40e_add_vf_mac_addr(uint16_t port, uint16_t vf_id,
-			     struct ether_addr *mac_addr)
+			     struct rte_ether_addr *mac_addr)
 {
 	struct rte_eth_dev *dev;
 	struct i40e_pf_vf *vf;
@@ -2492,10 +2492,11 @@ rte_pmd_i40e_flow_type_mapping_update(
 }
 
 int
-rte_pmd_i40e_query_vfid_by_mac(uint16_t port, const struct ether_addr *vf_mac)
+rte_pmd_i40e_query_vfid_by_mac(uint16_t port,
+			const struct rte_ether_addr *vf_mac)
 {
 	struct rte_eth_dev *dev;
-	struct ether_addr *mac;
+	struct rte_ether_addr *mac;
 	struct i40e_pf *pf;
 	int vf_id;
 	struct i40e_pf_vf *vf;

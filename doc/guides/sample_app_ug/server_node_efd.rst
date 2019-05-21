@@ -197,7 +197,7 @@ which tells the node where the packet has to be distributed.
         for (i = 0; i < rx_count; i++) {
             /* Handle IPv4 header.*/
             ipv4_hdr = rte_pktmbuf_mtod_offset(pkts[i], struct ipv4_hdr *,
-                    sizeof(struct ether_hdr));
+                    sizeof(struct rte_ether_hdr));
             ipv4_dst_ip[i] = ipv4_hdr->dst_addr;
             key_ptrs[i] = (void *)&ipv4_dst_ip[i];
         }
@@ -357,7 +357,7 @@ flow is not handled by the node.
         for (i = 0; i < num_packets; i++) {
             /* Handle IPv4 header.*/
             ipv4_hdr = rte_pktmbuf_mtod_offset(bufs[i], struct ipv4_hdr *,
-                    sizeof(struct ether_hdr));
+                    sizeof(struct rte_ether_hdr));
             ipv4_dst_ip[i] = ipv4_hdr->dst_addr;
             key_ptrs[i] = &ipv4_dst_ip[i];
         }

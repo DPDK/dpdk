@@ -50,7 +50,7 @@ struct vhost_dev {
 	/**< Memory region information for gpa to hpa translation. */
 	struct virtio_memory_regions_hpa *regions_hpa;
 	/**< Device MAC address (Obtained on first TX packet). */
-	struct ether_addr mac_address;
+	struct rte_ether_addr mac_address;
 	/**< RX queue number. */
 	uint16_t rx_q;
 	/**< Data core that the device is added to. */

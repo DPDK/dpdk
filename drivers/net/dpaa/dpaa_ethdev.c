@@ -934,7 +934,7 @@ dpaa_flow_ctrl_get(struct rte_eth_dev *dev,
 
 static int
 dpaa_dev_add_mac_addr(struct rte_eth_dev *dev,
-			     struct ether_addr *addr,
+			     struct rte_ether_addr *addr,
 			     uint32_t index,
 			     __rte_unused uint32_t pool)
 {
@@ -964,7 +964,7 @@ dpaa_dev_remove_mac_addr(struct rte_eth_dev *dev,
 
 static int
 dpaa_dev_set_mac_addr(struct rte_eth_dev *dev,
-		       struct ether_addr *addr)
+		       struct rte_ether_addr *addr)
 {
 	int ret;
 	struct dpaa_if *dpaa_intf = dev->data->dev_private;

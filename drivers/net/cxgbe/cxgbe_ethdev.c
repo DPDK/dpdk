@@ -1056,7 +1056,7 @@ static int cxgbe_get_regs(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
-int cxgbe_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *addr)
+int cxgbe_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
 {
 	struct port_info *pi = (struct port_info *)(dev->data->dev_private);
 	int ret;

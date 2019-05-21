@@ -73,7 +73,7 @@ struct pmd_internals {
 	struct null_queue rx_null_queues[RTE_MAX_QUEUES_PER_PORT];
 	struct null_queue tx_null_queues[RTE_MAX_QUEUES_PER_PORT];
 
-	struct ether_addr eth_addr;
+	struct rte_ether_addr eth_addr;
 	/** Bit mask of RSS offloads, the bit offset also means flow type */
 	uint64_t flow_type_rss_offloads;
 
@@ -467,7 +467,7 @@ eth_rss_hash_conf_get(struct rte_eth_dev *dev,
 
 static int
 eth_mac_address_set(__rte_unused struct rte_eth_dev *dev,
-		    __rte_unused struct ether_addr *addr)
+		    __rte_unused struct rte_ether_addr *addr)
 {
 	return 0;
 }

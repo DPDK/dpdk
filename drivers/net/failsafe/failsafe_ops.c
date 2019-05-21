@@ -1082,7 +1082,7 @@ fs_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 
 static int
 fs_mac_addr_add(struct rte_eth_dev *dev,
-		struct ether_addr *mac_addr,
+		struct rte_ether_addr *mac_addr,
 		uint32_t index,
 		uint32_t vmdq)
 {
@@ -1111,7 +1111,7 @@ fs_mac_addr_add(struct rte_eth_dev *dev,
 }
 
 static int
-fs_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
+fs_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 {
 	struct sub_device *sdev;
 	uint8_t i;
@@ -1135,7 +1135,7 @@ fs_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 
 static int
 fs_set_mc_addr_list(struct rte_eth_dev *dev,
-		    struct ether_addr *mc_addr_set, uint32_t nb_mc_addr)
+		    struct rte_ether_addr *mc_addr_set, uint32_t nb_mc_addr)
 {
 	struct sub_device *sdev;
 	uint8_t i;

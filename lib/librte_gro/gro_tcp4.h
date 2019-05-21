@@ -24,8 +24,8 @@
 
 /* Header fields representing a TCP/IPv4 flow */
 struct tcp4_flow_key {
-	struct ether_addr eth_saddr;
-	struct ether_addr eth_daddr;
+	struct rte_ether_addr eth_saddr;
+	struct rte_ether_addr eth_daddr;
 	uint32_t ip_src_addr;
 	uint32_t ip_dst_addr;
 

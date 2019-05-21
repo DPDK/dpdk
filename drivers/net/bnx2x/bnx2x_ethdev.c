@@ -501,7 +501,7 @@ bnx2x_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 }
 
 static int
-bnx2x_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
+bnx2x_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 		uint32_t index, uint32_t pool)
 {
 	struct bnx2x_softc *sc = dev->data->dev_private;
@@ -654,7 +654,8 @@ bnx2x_common_dev_init(struct rte_eth_dev *eth_dev, int is_vf)
 		}
 	}
 
-	eth_dev->data->mac_addrs = (struct ether_addr *)sc->link_params.mac_addr;
+	eth_dev->data->mac_addrs =
+		(struct rte_ether_addr *)sc->link_params.mac_addr;
 
 	if (IS_VF(sc)) {
 		rte_spinlock_init(&sc->vf2pf_lock);

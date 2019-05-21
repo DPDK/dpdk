@@ -261,7 +261,7 @@ tap_verify_csum(struct rte_mbuf *mbuf)
 	uint32_t l2 = mbuf->packet_type & RTE_PTYPE_L2_MASK;
 	uint32_t l3 = mbuf->packet_type & RTE_PTYPE_L3_MASK;
 	uint32_t l4 = mbuf->packet_type & RTE_PTYPE_L4_MASK;
-	unsigned int l2_len = sizeof(struct ether_hdr);
+	unsigned int l2_len = sizeof(struct rte_ether_hdr);
 	unsigned int l3_len;
 	uint16_t cksum = 0;
 	void *l3_hdr;
@@ -1150,7 +1150,7 @@ tap_allmulti_disable(struct rte_eth_dev *dev)
 }
 
 static int
-tap_mac_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
+tap_mac_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
 	enum ioctl_mode mode = LOCAL_ONLY;
@@ -1172,15 +1172,16 @@ tap_mac_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 	ret = tap_ioctl(pmd, SIOCGIFHWADDR, &ifr, 0, LOCAL_ONLY);
 	if (ret < 0)
 		return ret;
-	if (is_same_ether_addr((struct ether_addr *)&ifr.ifr_hwaddr.sa_data,
+	if (is_same_ether_addr((struct rte_ether_addr *)&ifr.ifr_hwaddr.sa_data,
 			       mac_addr))
 		return 0;
 	/* Check the current MAC address on the remote */
 	ret = tap_ioctl(pmd, SIOCGIFHWADDR, &ifr, 0, REMOTE_ONLY);
 	if (ret < 0)
 		return ret;
-	if (!is_same_ether_addr((struct ether_addr *)&ifr.ifr_hwaddr.sa_data,
-			       mac_addr))
+	if (!is_same_ether_addr(
+			(struct rte_ether_addr *)&ifr.ifr_hwaddr.sa_data,
+			mac_addr))
 		mode = LOCAL_AND_REMOTE;
 	ifr.ifr_hwaddr.sa_family = AF_LOCAL;
 	rte_memcpy(ifr.ifr_hwaddr.sa_data, mac_addr, ETHER_ADDR_LEN);
@@ -1458,7 +1459,7 @@ tap_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 
 static int
 tap_set_mc_addr_list(struct rte_eth_dev *dev __rte_unused,
-		     struct ether_addr *mc_addr_set __rte_unused,
+		     struct rte_ether_addr *mc_addr_set __rte_unused,
 		     uint32_t nb_mc_addr __rte_unused)
 {
 	/*
@@ -1682,7 +1683,7 @@ static const char *tuntap_types[ETH_TUNTAP_TYPE_MAX] = {
 
 static int
 eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
-		   char *remote_iface, struct ether_addr *mac_addr,
+		   char *remote_iface, struct rte_ether_addr *mac_addr,
 		   enum rte_tuntap_type type)
 {
 	int numa_node = rte_socket_id();
@@ -1957,7 +1958,7 @@ set_remote_iface(const char *key __rte_unused,
 	return 0;
 }
 
-static int parse_user_mac(struct ether_addr *user_mac,
+static int parse_user_mac(struct rte_ether_addr *user_mac,
 		const char *value)
 {
 	unsigned int index = 0;
@@ -1985,7 +1986,7 @@ set_mac_type(const char *key __rte_unused,
 	     const char *value,
 	     void *extra_args)
 {
-	struct ether_addr *user_mac = extra_args;
+	struct rte_ether_addr *user_mac = extra_args;
 
 	if (!value)
 		return 0;
@@ -2198,7 +2199,7 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 	int speed;
 	char tap_name[RTE_ETH_NAME_MAX_LEN];
 	char remote_iface[RTE_ETH_NAME_MAX_LEN];
-	struct ether_addr user_mac = { .addr_bytes = {0} };
+	struct rte_ether_addr user_mac = { .addr_bytes = {0} };
 	struct rte_eth_dev *eth_dev;
 	int tap_devices_count_increased = 0;
 

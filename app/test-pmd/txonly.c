@@ -152,7 +152,7 @@ setup_pkt_udp_ip_headers(struct ipv4_hdr *ip_hdr,
 
 static inline bool
 pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
-		struct ether_hdr *eth_hdr, const uint16_t vlan_tci,
+		struct rte_ether_hdr *eth_hdr, const uint16_t vlan_tci,
 		const uint16_t vlan_tci_outer, const uint64_t ol_flags)
 {
 	struct rte_mbuf *pkt_segs[RTE_MAX_SEGS_PER_PKT];
@@ -176,7 +176,7 @@ pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
 	pkt->ol_flags = ol_flags;
 	pkt->vlan_tci = vlan_tci;
 	pkt->vlan_tci_outer = vlan_tci_outer;
-	pkt->l2_len = sizeof(struct ether_hdr);
+	pkt->l2_len = sizeof(struct rte_ether_hdr);
 	pkt->l3_len = sizeof(struct ipv4_hdr);
 
 	pkt_len = pkt->data_len;
@@ -193,14 +193,14 @@ pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
 	 */
 	copy_buf_to_pkt(eth_hdr, sizeof(*eth_hdr), pkt, 0);
 	copy_buf_to_pkt(&pkt_ip_hdr, sizeof(pkt_ip_hdr), pkt,
-			sizeof(struct ether_hdr));
+			sizeof(struct rte_ether_hdr));
 	if (txonly_multi_flow) {
 		struct ipv4_hdr *ip_hdr;
 		uint32_t addr;
 
 		ip_hdr = rte_pktmbuf_mtod_offset(pkt,
 				struct ipv4_hdr *,
-				sizeof(struct ether_hdr));
+				sizeof(struct rte_ether_hdr));
 		/*
 		 * Generate multiple flows by varying IP src addr. This
 		 * enables packets are well distributed by RSS in
@@ -212,7 +212,7 @@ pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
 		ip_hdr->src_addr = rte_cpu_to_be_32(addr);
 	}
 	copy_buf_to_pkt(&pkt_udp_hdr, sizeof(pkt_udp_hdr), pkt,
-			sizeof(struct ether_hdr) +
+			sizeof(struct rte_ether_hdr) +
 			sizeof(struct ipv4_hdr));
 	/*
 	 * Complete first mbuf of packet and append it to the
@@ -234,7 +234,7 @@ pkt_burst_transmit(struct fwd_stream *fs)
 	struct rte_port *txp;
 	struct rte_mbuf *pkt;
 	struct rte_mempool *mbp;
-	struct ether_hdr eth_hdr;
+	struct rte_ether_hdr eth_hdr;
 	uint16_t nb_tx;
 	uint16_t nb_pkt;
 	uint16_t vlan_tci, vlan_tci_outer;
@@ -347,9 +347,10 @@ tx_only_begin(__attribute__((unused)) portid_t pi)
 {
 	uint16_t pkt_data_len;
 
-	pkt_data_len = (uint16_t) (tx_pkt_length - (sizeof(struct ether_hdr) +
-						    sizeof(struct ipv4_hdr) +
-						    sizeof(struct udp_hdr)));
+	pkt_data_len = (uint16_t) (tx_pkt_length - (
+					sizeof(struct rte_ether_hdr) +
+					sizeof(struct ipv4_hdr) +
+					sizeof(struct udp_hdr)));
 	setup_pkt_udp_ip_headers(&pkt_ip_hdr, &pkt_udp_hdr, pkt_data_len);
 }
 

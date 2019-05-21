@@ -150,7 +150,7 @@ struct mode8023ad_private {
 	uint64_t update_timeout_us;
 	rte_eth_bond_8023ad_ext_slowrx_fn slowrx_cb;
 	uint8_t external_sm;
-	struct ether_addr mac_addr;
+	struct rte_ether_addr mac_addr;
 
 	struct rte_eth_link slave_link;
 	/***< slave link properties */

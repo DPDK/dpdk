@@ -159,7 +159,7 @@ static const struct eth_dev_ops avp_eth_dev_ops = {
 struct avp_dev {
 	uint32_t magic; /**< Memory validation marker */
 	uint64_t device_id; /**< Unique system identifier */
-	struct ether_addr ethaddr; /**< Host specified MAC address */
+	struct rte_ether_addr ethaddr; /**< Host specified MAC address */
 	struct rte_eth_dev_data *dev_data;
 	/**< Back pointer to ethernet device data */
 	volatile uint32_t flags; /**< Device operational flags */
@@ -1199,7 +1199,7 @@ avp_dev_tx_queue_setup(struct rte_eth_dev *eth_dev,
 }
 
 static inline int
-_avp_cmp_ether_addr(struct ether_addr *a, struct ether_addr *b)
+_avp_cmp_ether_addr(struct rte_ether_addr *a, struct rte_ether_addr *b)
 {
 	uint16_t *_a = (uint16_t *)&a->addr_bytes[0];
 	uint16_t *_b = (uint16_t *)&b->addr_bytes[0];
@@ -1209,7 +1209,7 @@ _avp_cmp_ether_addr(struct ether_addr *a, struct ether_addr *b)
 static inline int
 _avp_mac_filter(struct avp_dev *avp, struct rte_mbuf *m)
 {
-	struct ether_hdr *eth = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	struct rte_ether_hdr *eth = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 
 	if (likely(_avp_cmp_ether_addr(&avp->ethaddr, &eth->d_addr) == 0)) {
 		/* allow all packets destined to our address */

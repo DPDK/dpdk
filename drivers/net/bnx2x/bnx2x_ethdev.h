@@ -75,7 +75,8 @@ typedef int bool;
 
 /* MAC address operations */
 struct bnx2x_mac_ops {
-	void (*mac_addr_add)(struct rte_eth_dev *dev, struct ether_addr *addr,
+	void (*mac_addr_add)(struct rte_eth_dev *dev,
+			struct rte_ether_addr *addr,
 			uint16_t index, uint32_t pool);                           /* not implemented yet */
 	void (*mac_addr_remove)(struct rte_eth_dev *dev, uint16_t index); /* not implemented yet */
 };

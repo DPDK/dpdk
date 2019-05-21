@@ -93,8 +93,8 @@ static void
 ieee1588_packet_fwd(struct fwd_stream *fs)
 {
 	struct rte_mbuf  *mb;
-	struct ether_hdr *eth_hdr;
-	struct ether_addr addr;
+	struct rte_ether_hdr *eth_hdr;
+	struct rte_ether_addr addr;
 	struct ptpv2_msg *ptp_hdr;
 	uint16_t eth_type;
 	uint32_t timesync_index;
@@ -111,7 +111,7 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 	 * Check that the received packet is a PTP packet that was detected
 	 * by the hardware.
 	 */
-	eth_hdr = rte_pktmbuf_mtod(mb, struct ether_hdr *);
+	eth_hdr = rte_pktmbuf_mtod(mb, struct rte_ether_hdr *);
 	eth_type = rte_be_to_cpu_16(eth_hdr->ether_type);
 
 	if (! (mb->ol_flags & PKT_RX_IEEE1588_PTP)) {
@@ -141,7 +141,7 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 	 * PTP_SYNC_MESSAGE.
 	 */
 	ptp_hdr = (struct ptpv2_msg *) (rte_pktmbuf_mtod(mb, char *) +
-					sizeof(struct ether_hdr));
+					sizeof(struct rte_ether_hdr));
 	if (ptp_hdr->version != 0x02) {
 		printf("Port %u Received PTP V2 Ethernet frame with wrong PTP"
 		       " protocol version 0x%x (should be 0x02)\n",

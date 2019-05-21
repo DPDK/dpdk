@@ -50,8 +50,8 @@ static void send_pause_frame(uint16_t port_id, uint16_t duration)
 {
 	struct rte_mbuf *mbuf;
 	struct ether_fc_frame *pause_frame;
-	struct ether_hdr *hdr;
-	struct ether_addr mac_addr;
+	struct rte_ether_hdr *hdr;
+	struct rte_ether_addr mac_addr;
 
 	RTE_LOG_DP(DEBUG, USER1,
 			"Sending PAUSE frame (duration=%d) on port %d\n",
@@ -63,7 +63,7 @@ static void send_pause_frame(uint16_t port_id, uint16_t duration)
 		return;
 
 	/* Prepare a PAUSE frame */
-	hdr = rte_pktmbuf_mtod(mbuf, struct ether_hdr *);
+	hdr = rte_pktmbuf_mtod(mbuf, struct rte_ether_hdr *);
 	pause_frame = (struct ether_fc_frame *) &hdr[1];
 
 	rte_eth_macaddr_get(port_id, &mac_addr);

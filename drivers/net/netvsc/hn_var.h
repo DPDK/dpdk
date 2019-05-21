@@ -131,7 +131,7 @@ struct hn_data {
 	rte_atomic32_t	rndis_req_id;
 	uint8_t		rndis_resp[256];
 
-	struct ether_addr mac_addr;
+	struct rte_ether_addr mac_addr;
 
 	struct rte_eth_dev_owner owner;
 	struct rte_intr_handle vf_intr;
@@ -213,7 +213,7 @@ void	hn_vf_allmulticast_disable(struct rte_eth_dev *dev);
 void	hn_vf_promiscuous_enable(struct rte_eth_dev *dev);
 void	hn_vf_promiscuous_disable(struct rte_eth_dev *dev);
 int	hn_vf_mc_addr_list(struct rte_eth_dev *dev,
-			   struct ether_addr *mc_addr_set,
+			   struct rte_ether_addr *mc_addr_set,
 			   uint32_t nb_mc_addr);
 
 int	hn_vf_link_update(struct rte_eth_dev *dev,

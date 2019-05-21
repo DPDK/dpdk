@@ -53,7 +53,7 @@ static const struct rte_eth_conf port_conf_default = {
 	},
 };
 
-static const struct ether_addr ether_multicast = {
+static const struct rte_ether_addr ether_multicast = {
 	.addr_bytes = {0x01, 0x1b, 0x19, 0x0, 0x0, 0x0}
 };
 
@@ -334,7 +334,7 @@ parse_sync(struct ptpv2_data_slave_ordinary *ptp_data, uint16_t rx_tstamp_idx)
 	struct ptp_header *ptp_hdr;
 
 	ptp_hdr = (struct ptp_header *)(rte_pktmbuf_mtod(ptp_data->m, char *)
-			+ sizeof(struct ether_hdr));
+			+ sizeof(struct rte_ether_hdr));
 	ptp_data->seqID_SYNC = rte_be_to_cpu_16(ptp_hdr->seq_id);
 
 	if (ptp_data->ptpset == 0) {
@@ -361,20 +361,20 @@ parse_sync(struct ptpv2_data_slave_ordinary *ptp_data, uint16_t rx_tstamp_idx)
 static void
 parse_fup(struct ptpv2_data_slave_ordinary *ptp_data)
 {
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 	struct ptp_header *ptp_hdr;
 	struct clock_id *client_clkid;
 	struct ptp_message *ptp_msg;
 	struct rte_mbuf *created_pkt;
 	struct tstamp *origin_tstamp;
-	struct ether_addr eth_multicast = ether_multicast;
+	struct rte_ether_addr eth_multicast = ether_multicast;
 	size_t pkt_size;
 	int wait_us;
 	struct rte_mbuf *m = ptp_data->m;
 
-	eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 	ptp_hdr = (struct ptp_header *)(rte_pktmbuf_mtod(m, char *)
-			+ sizeof(struct ether_hdr));
+			+ sizeof(struct rte_ether_hdr));
 	if (memcmp(&ptp_data->master_clock_id,
 			&ptp_hdr->source_port_id.clock_id,
 			sizeof(struct clock_id)) != 0)
@@ -382,7 +382,7 @@ parse_fup(struct ptpv2_data_slave_ordinary *ptp_data)
 
 	ptp_data->seqID_FOLLOWUP = rte_be_to_cpu_16(ptp_hdr->seq_id);
 	ptp_msg = (struct ptp_message *) (rte_pktmbuf_mtod(m, char *) +
-					  sizeof(struct ether_hdr));
+					  sizeof(struct rte_ether_hdr));
 
 	origin_tstamp = &ptp_msg->follow_up.precise_origin_tstamp;
 	ptp_data->tstamp1.tv_nsec = ntohl(origin_tstamp->ns);
@@ -393,11 +393,11 @@ parse_fup(struct ptpv2_data_slave_ordinary *ptp_data)
 	if (ptp_data->seqID_FOLLOWUP == ptp_data->seqID_SYNC) {
 
 		created_pkt = rte_pktmbuf_alloc(mbuf_pool);
-		pkt_size = sizeof(struct ether_hdr) +
+		pkt_size = sizeof(struct rte_ether_hdr) +
 			sizeof(struct ptp_message);
 		created_pkt->data_len = pkt_size;
 		created_pkt->pkt_len = pkt_size;
-		eth_hdr = rte_pktmbuf_mtod(created_pkt, struct ether_hdr *);
+		eth_hdr = rte_pktmbuf_mtod(created_pkt, struct rte_ether_hdr *);
 		rte_eth_macaddr_get(ptp_data->portid, &eth_hdr->s_addr);
 
 		/* Set multicast address 01-1B-19-00-00-00. */
@@ -406,7 +406,7 @@ parse_fup(struct ptpv2_data_slave_ordinary *ptp_data)
 		eth_hdr->ether_type = htons(PTP_PROTOCOL);
 		ptp_msg = (struct ptp_message *)
 			(rte_pktmbuf_mtod(created_pkt, char *) +
-			sizeof(struct ether_hdr));
+			sizeof(struct rte_ether_hdr));
 
 		ptp_msg->delay_req.hdr.seq_id = htons(ptp_data->seqID_SYNC);
 		ptp_msg->delay_req.hdr.msg_type = DELAY_REQ;
@@ -499,7 +499,7 @@ parse_drsp(struct ptpv2_data_slave_ordinary *ptp_data)
 	uint16_t seq_id;
 
 	ptp_msg = (struct ptp_message *) (rte_pktmbuf_mtod(m, char *) +
-					sizeof(struct ether_hdr));
+					sizeof(struct rte_ether_hdr));
 	seq_id = rte_be_to_cpu_16(ptp_msg->delay_resp.hdr.seq_id);
 	if (memcmp(&ptp_data->client_clock_id,
 		   &ptp_msg->delay_resp.req_port_id.clock_id,
@@ -535,17 +535,17 @@ parse_drsp(struct ptpv2_data_slave_ordinary *ptp_data)
 static void
 parse_ptp_frames(uint16_t portid, struct rte_mbuf *m) {
 	struct ptp_header *ptp_hdr;
-	struct ether_hdr *eth_hdr;
+	struct rte_ether_hdr *eth_hdr;
 	uint16_t eth_type;
 
-	eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
+	eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 	eth_type = rte_be_to_cpu_16(eth_hdr->ether_type);
 
 	if (eth_type == PTP_PROTOCOL) {
 		ptp_data.m = m;
 		ptp_data.portid = portid;
 		ptp_hdr = (struct ptp_header *)(rte_pktmbuf_mtod(m, char *)
-					+ sizeof(struct ether_hdr));
+					+ sizeof(struct rte_ether_hdr));
 
 		switch (ptp_hdr->msg_type) {
 		case SYNC:

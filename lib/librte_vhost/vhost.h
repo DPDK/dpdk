@@ -308,7 +308,7 @@ struct virtio_net {
 	uint64_t		log_size;
 	uint64_t		log_base;
 	uint64_t		log_addr;
-	struct ether_addr	mac;
+	struct rte_ether_addr	mac;
 	uint16_t		mtu;
 
 	struct vhost_device_ops const *notify_ops;

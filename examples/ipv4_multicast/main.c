@@ -80,7 +80,7 @@ static uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
 static uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 
 /* ethernet addresses of ports */
-static struct ether_addr ports_eth_addr[MAX_PORTS];
+static struct rte_ether_addr ports_eth_addr[MAX_PORTS];
 
 /* mask of enabled ports */
 static uint32_t enabled_port_mask = 0;
@@ -267,14 +267,15 @@ mcast_out_pkt(struct rte_mbuf *pkt, int use_clone)
  * and put it into the outgoing queue for the given port.
  */
 static inline void
-mcast_send_pkt(struct rte_mbuf *pkt, struct ether_addr *dest_addr,
+mcast_send_pkt(struct rte_mbuf *pkt, struct rte_ether_addr *dest_addr,
 		struct lcore_queue_conf *qconf, uint16_t port)
 {
-	struct ether_hdr *ethdr;
+	struct rte_ether_hdr *ethdr;
 	uint16_t len;
 
 	/* Construct Ethernet header. */
-	ethdr = (struct ether_hdr *)rte_pktmbuf_prepend(pkt, (uint16_t)sizeof(*ethdr));
+	ethdr = (struct rte_ether_hdr *)
+		rte_pktmbuf_prepend(pkt, (uint16_t)sizeof(*ethdr));
 	RTE_ASSERT(ethdr != NULL);
 
 	ether_addr_copy(dest_addr, &ethdr->d_addr);
@@ -302,11 +303,12 @@ mcast_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf)
 	uint16_t port;
 	union {
 		uint64_t as_int;
-		struct ether_addr as_addr;
+		struct rte_ether_addr as_addr;
 	} dst_eth_addr;
 
 	/* Remove the Ethernet header from the input packet */
-	iphdr = (struct ipv4_hdr *)rte_pktmbuf_adj(m, (uint16_t)sizeof(struct ether_hdr));
+	iphdr = (struct ipv4_hdr *)
+		rte_pktmbuf_adj(m, (uint16_t)sizeof(struct rte_ether_hdr));
 	RTE_ASSERT(iphdr != NULL);
 
 	dest_addr = rte_be_to_cpu_32(iphdr->dst_addr);
@@ -535,7 +537,7 @@ parse_args(int argc, char **argv)
 }
 
 static void
-print_ethaddr(const char *name, struct ether_addr *eth_addr)
+print_ethaddr(const char *name, struct rte_ether_addr *eth_addr)
 {
 	char buf[ETHER_ADDR_FMT_SIZE];
 	ether_format_addr(buf, ETHER_ADDR_FMT_SIZE, eth_addr);

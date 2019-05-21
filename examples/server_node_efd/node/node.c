@@ -275,7 +275,7 @@ handle_packets(struct rte_hash *h, struct rte_mbuf **bufs, uint16_t num_packets)
 	for (i = 0; i < num_packets; i++) {
 		/* Handle IPv4 header.*/
 		ipv4_hdr = rte_pktmbuf_mtod_offset(bufs[i], struct ipv4_hdr *,
-				sizeof(struct ether_hdr));
+				sizeof(struct rte_ether_hdr));
 		ipv4_dst_ip[i] = ipv4_hdr->dst_addr;
 		key_ptrs[i] = &ipv4_dst_ip[i];
 	}
