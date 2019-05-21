@@ -219,7 +219,7 @@ rte_ipv6_fragment_packet(struct rte_mbuf *pkt_in,
  */
 struct rte_mbuf *rte_ipv6_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
 		struct rte_ip_frag_death_row *dr,
-		struct rte_mbuf *mb, uint64_t tms, struct ipv6_hdr *ip_hdr,
+		struct rte_mbuf *mb, uint64_t tms, struct rte_ipv6_hdr *ip_hdr,
 		struct ipv6_extension_fragment *frag_hdr);
 
 /**
@@ -234,7 +234,7 @@ struct rte_mbuf *rte_ipv6_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
  *   present.
  */
 static inline struct ipv6_extension_fragment *
-rte_ipv6_frag_get_ipv6_fragment_header(struct ipv6_hdr *hdr)
+rte_ipv6_frag_get_ipv6_fragment_header(struct rte_ipv6_hdr *hdr)
 {
 	if (hdr->proto == IPPROTO_FRAGMENT) {
 		return (struct ipv6_extension_fragment *) ++hdr;
@@ -293,7 +293,7 @@ int32_t rte_ipv4_fragment_packet(struct rte_mbuf *pkt_in,
  */
 struct rte_mbuf * rte_ipv4_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
 		struct rte_ip_frag_death_row *dr,
-		struct rte_mbuf *mb, uint64_t tms, struct ipv4_hdr *ip_hdr);
+		struct rte_mbuf *mb, uint64_t tms, struct rte_ipv4_hdr *ip_hdr);
 
 /**
  * Check if the IPv4 packet is fragmented
@@ -304,7 +304,8 @@ struct rte_mbuf * rte_ipv4_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
  *   1 if fragmented, 0 if not fragmented
  */
 static inline int
-rte_ipv4_frag_pkt_is_fragmented(const struct ipv4_hdr * hdr) {
+rte_ipv4_frag_pkt_is_fragmented(const struct rte_ipv4_hdr *hdr)
+{
 	uint16_t flag_offset, ip_flag, ip_ofs;
 
 	flag_offset = rte_be_to_cpu_16(hdr->fragment_offset);

@@ -28,7 +28,7 @@ extern "C" {
 /**
  * IPv4 Header
  */
-struct ipv4_hdr {
+struct rte_ipv4_hdr {
 	uint8_t  version_ihl;		/**< version and header length */
 	uint8_t  type_of_service;	/**< type of service */
 	uint16_t total_length;		/**< length of packet */
@@ -249,10 +249,10 @@ rte_raw_cksum_mbuf(const struct rte_mbuf *m, uint32_t off, uint32_t len,
  *   The complemented checksum to set in the IP packet.
  */
 static inline uint16_t
-rte_ipv4_cksum(const struct ipv4_hdr *ipv4_hdr)
+rte_ipv4_cksum(const struct rte_ipv4_hdr *ipv4_hdr)
 {
 	uint16_t cksum;
-	cksum = rte_raw_cksum(ipv4_hdr, sizeof(struct ipv4_hdr));
+	cksum = rte_raw_cksum(ipv4_hdr, sizeof(struct rte_ipv4_hdr));
 	return (cksum == 0xffff) ? cksum : (uint16_t)~cksum;
 }
 
@@ -275,7 +275,7 @@ rte_ipv4_cksum(const struct ipv4_hdr *ipv4_hdr)
  *   The non-complemented checksum to set in the L4 header.
  */
 static inline uint16_t
-rte_ipv4_phdr_cksum(const struct ipv4_hdr *ipv4_hdr, uint64_t ol_flags)
+rte_ipv4_phdr_cksum(const struct rte_ipv4_hdr *ipv4_hdr, uint64_t ol_flags)
 {
 	struct ipv4_psd_header {
 		uint32_t src_addr; /* IP address of source host. */
@@ -294,7 +294,7 @@ rte_ipv4_phdr_cksum(const struct ipv4_hdr *ipv4_hdr, uint64_t ol_flags)
 	} else {
 		psd_hdr.len = rte_cpu_to_be_16(
 			(uint16_t)(rte_be_to_cpu_16(ipv4_hdr->total_length)
-				- sizeof(struct ipv4_hdr)));
+				- sizeof(struct rte_ipv4_hdr)));
 	}
 	return rte_raw_cksum(&psd_hdr, sizeof(psd_hdr));
 }
@@ -314,16 +314,16 @@ rte_ipv4_phdr_cksum(const struct ipv4_hdr *ipv4_hdr, uint64_t ol_flags)
  *   or 0 on error
  */
 static inline uint16_t
-rte_ipv4_udptcp_cksum(const struct ipv4_hdr *ipv4_hdr, const void *l4_hdr)
+rte_ipv4_udptcp_cksum(const struct rte_ipv4_hdr *ipv4_hdr, const void *l4_hdr)
 {
 	uint32_t cksum;
 	uint32_t l3_len, l4_len;
 
 	l3_len = rte_be_to_cpu_16(ipv4_hdr->total_length);
-	if (l3_len < sizeof(struct ipv4_hdr))
+	if (l3_len < sizeof(struct rte_ipv4_hdr))
 		return 0;
 
-	l4_len = l3_len - sizeof(struct ipv4_hdr);
+	l4_len = l3_len - sizeof(struct rte_ipv4_hdr);
 
 	cksum = rte_raw_cksum(l4_hdr, l4_len);
 	cksum += rte_ipv4_phdr_cksum(ipv4_hdr, 0);
@@ -339,7 +339,7 @@ rte_ipv4_udptcp_cksum(const struct ipv4_hdr *ipv4_hdr, const void *l4_hdr)
 /**
  * IPv6 Header
  */
-struct ipv6_hdr {
+struct rte_ipv6_hdr {
 	uint32_t vtc_flow;     /**< IP version, traffic class & flow label. */
 	uint16_t payload_len;  /**< IP packet length - includes sizeof(ip_header). */
 	uint8_t  proto;        /**< Protocol, next header. */
@@ -371,7 +371,7 @@ struct ipv6_hdr {
  *   The non-complemented checksum to set in the L4 header.
  */
 static inline uint16_t
-rte_ipv6_phdr_cksum(const struct ipv6_hdr *ipv6_hdr, uint64_t ol_flags)
+rte_ipv6_phdr_cksum(const struct rte_ipv6_hdr *ipv6_hdr, uint64_t ol_flags)
 {
 	uint32_t sum;
 	struct {
@@ -407,7 +407,7 @@ rte_ipv6_phdr_cksum(const struct ipv6_hdr *ipv6_hdr, uint64_t ol_flags)
  *   The complemented checksum to set in the IP packet.
  */
 static inline uint16_t
-rte_ipv6_udptcp_cksum(const struct ipv6_hdr *ipv6_hdr, const void *l4_hdr)
+rte_ipv6_udptcp_cksum(const struct rte_ipv6_hdr *ipv6_hdr, const void *l4_hdr)
 {
 	uint32_t cksum;
 	uint32_t l4_len;

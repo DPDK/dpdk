@@ -99,7 +99,7 @@ static struct rte_acl_field_def ipv4_defs[NUM_FIELDS_IPV4] = {
 		.field_index = PROTO_FIELD_IPV4,
 		.input_index = PROTO_INPUT_IPV4,
 		.offset = sizeof(struct rte_ether_hdr) +
-			offsetof(struct ipv4_hdr, next_proto_id),
+			offsetof(struct rte_ipv4_hdr, next_proto_id),
 	},
 	/* next input field (IPv4 source address) - 4 consecutive bytes. */
 	{
@@ -109,7 +109,7 @@ static struct rte_acl_field_def ipv4_defs[NUM_FIELDS_IPV4] = {
 		.field_index = SRC_FIELD_IPV4,
 		.input_index = SRC_INPUT_IPV4,
 		.offset = sizeof(struct rte_ether_hdr) +
-			offsetof(struct ipv4_hdr, src_addr),
+			offsetof(struct rte_ipv4_hdr, src_addr),
 	},
 	/* next input field (IPv4 destination address) - 4 consecutive bytes. */
 	{
@@ -119,7 +119,7 @@ static struct rte_acl_field_def ipv4_defs[NUM_FIELDS_IPV4] = {
 		.field_index = DST_FIELD_IPV4,
 		.input_index = DST_INPUT_IPV4,
 		.offset = sizeof(struct rte_ether_hdr) +
-			offsetof(struct ipv4_hdr, dst_addr),
+			offsetof(struct rte_ipv4_hdr, dst_addr),
 	},
 	/*
 	 * Next 2 fields (src & dst ports) form 4 consecutive bytes.
@@ -132,7 +132,7 @@ static struct rte_acl_field_def ipv4_defs[NUM_FIELDS_IPV4] = {
 		.field_index = SRCP_FIELD_IPV4,
 		.input_index = SRCP_DESTP_INPUT_IPV4,
 		.offset = sizeof(struct rte_ether_hdr) +
-			sizeof(struct ipv4_hdr) +
+			sizeof(struct rte_ipv4_hdr) +
 			offsetof(struct tcp_hdr, src_port),
 	},
 	{
@@ -142,7 +142,7 @@ static struct rte_acl_field_def ipv4_defs[NUM_FIELDS_IPV4] = {
 		.field_index = DSTP_FIELD_IPV4,
 		.input_index = SRCP_DESTP_INPUT_IPV4,
 		.offset = sizeof(struct rte_ether_hdr) +
-			sizeof(struct ipv4_hdr) +
+			sizeof(struct rte_ipv4_hdr) +
 			offsetof(struct tcp_hdr, dst_port),
 	},
 };

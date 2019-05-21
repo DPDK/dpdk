@@ -667,8 +667,8 @@ vmxnet3_guess_mss(struct vmxnet3_hw *hw, const Vmxnet3_RxCompDesc *rcd,
 		struct rte_mbuf *rxm)
 {
 	uint32_t hlen, slen;
-	struct ipv4_hdr *ipv4_hdr;
-	struct ipv6_hdr *ipv6_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
+	struct rte_ipv6_hdr *ipv6_hdr;
 	struct tcp_hdr *tcp_hdr;
 	char *ptr;
 
@@ -679,20 +679,20 @@ vmxnet3_guess_mss(struct vmxnet3_hw *hw, const Vmxnet3_RxCompDesc *rcd,
 	hlen = sizeof(struct rte_ether_hdr);
 
 	if (rcd->v4) {
-		if (unlikely(slen < hlen + sizeof(struct ipv4_hdr)))
-			return hw->mtu - sizeof(struct ipv4_hdr)
+		if (unlikely(slen < hlen + sizeof(struct rte_ipv4_hdr)))
+			return hw->mtu - sizeof(struct rte_ipv4_hdr)
 					- sizeof(struct tcp_hdr);
 
-		ipv4_hdr = (struct ipv4_hdr *)(ptr + hlen);
+		ipv4_hdr = (struct rte_ipv4_hdr *)(ptr + hlen);
 		hlen += (ipv4_hdr->version_ihl & IPV4_HDR_IHL_MASK) *
 				IPV4_IHL_MULTIPLIER;
 	} else if (rcd->v6) {
-		if (unlikely(slen < hlen + sizeof(struct ipv6_hdr)))
-			return hw->mtu - sizeof(struct ipv6_hdr) -
+		if (unlikely(slen < hlen + sizeof(struct rte_ipv6_hdr)))
+			return hw->mtu - sizeof(struct rte_ipv6_hdr) -
 					sizeof(struct tcp_hdr);
 
-		ipv6_hdr = (struct ipv6_hdr *)(ptr + hlen);
-		hlen += sizeof(struct ipv6_hdr);
+		ipv6_hdr = (struct rte_ipv6_hdr *)(ptr + hlen);
+		hlen += sizeof(struct rte_ipv6_hdr);
 		if (unlikely(ipv6_hdr->proto != IPPROTO_TCP)) {
 			int frag;
 

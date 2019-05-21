@@ -611,8 +611,8 @@ rxa_calc_wrr_sequence(struct rte_event_eth_rx_adapter *rx_adapter,
 }
 
 static inline void
-rxa_mtoip(struct rte_mbuf *m, struct ipv4_hdr **ipv4_hdr,
-	struct ipv6_hdr **ipv6_hdr)
+rxa_mtoip(struct rte_mbuf *m, struct rte_ipv4_hdr **ipv4_hdr,
+	struct rte_ipv6_hdr **ipv6_hdr)
 {
 	struct rte_ether_hdr *eth_hdr =
 		rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
@@ -623,21 +623,21 @@ rxa_mtoip(struct rte_mbuf *m, struct ipv4_hdr **ipv4_hdr,
 
 	switch (eth_hdr->ether_type) {
 	case RTE_BE16(RTE_ETHER_TYPE_IPv4):
-		*ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
+		*ipv4_hdr = (struct rte_ipv4_hdr *)(eth_hdr + 1);
 		break;
 
 	case RTE_BE16(RTE_ETHER_TYPE_IPv6):
-		*ipv6_hdr = (struct ipv6_hdr *)(eth_hdr + 1);
+		*ipv6_hdr = (struct rte_ipv6_hdr *)(eth_hdr + 1);
 		break;
 
 	case RTE_BE16(RTE_ETHER_TYPE_VLAN):
 		vlan_hdr = (struct rte_vlan_hdr *)(eth_hdr + 1);
 		switch (vlan_hdr->eth_proto) {
 		case RTE_BE16(RTE_ETHER_TYPE_IPv4):
-			*ipv4_hdr = (struct ipv4_hdr *)(vlan_hdr + 1);
+			*ipv4_hdr = (struct rte_ipv4_hdr *)(vlan_hdr + 1);
 			break;
 		case RTE_BE16(RTE_ETHER_TYPE_IPv6):
-			*ipv6_hdr = (struct ipv6_hdr *)(vlan_hdr + 1);
+			*ipv6_hdr = (struct rte_ipv6_hdr *)(vlan_hdr + 1);
 			break;
 		default:
 			break;
@@ -657,8 +657,8 @@ rxa_do_softrss(struct rte_mbuf *m, const uint8_t *rss_key_be)
 	void *tuple;
 	struct rte_ipv4_tuple ipv4_tuple;
 	struct rte_ipv6_tuple ipv6_tuple;
-	struct ipv4_hdr *ipv4_hdr;
-	struct ipv6_hdr *ipv6_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
+	struct rte_ipv6_hdr *ipv6_hdr;
 
 	rxa_mtoip(m, &ipv4_hdr, &ipv6_hdr);
 

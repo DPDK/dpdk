@@ -495,7 +495,7 @@ app_lcore_worker(
 
 		for (j = 0; j < bsz_rd; j ++) {
 			struct rte_mbuf *pkt;
-			struct ipv4_hdr *ipv4_hdr;
+			struct rte_ipv4_hdr *ipv4_hdr;
 			uint32_t ipv4_dst, pos;
 			uint32_t port;
 
@@ -508,7 +508,7 @@ app_lcore_worker(
 
 			pkt = lp->mbuf_in.array[j];
 			ipv4_hdr = rte_pktmbuf_mtod_offset(
-				pkt, struct ipv4_hdr *,
+				pkt, struct rte_ipv4_hdr *,
 				sizeof(struct rte_ether_hdr));
 			ipv4_dst = rte_be_to_cpu_32(ipv4_hdr->dst_addr);
 

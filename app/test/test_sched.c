@@ -80,7 +80,7 @@ prepare_pkt(struct rte_sched_port *port, struct rte_mbuf *mbuf)
 {
 	struct rte_ether_hdr *eth_hdr;
 	struct rte_vlan_hdr *vlan1, *vlan2;
-	struct ipv4_hdr *ip_hdr;
+	struct rte_ipv4_hdr *ip_hdr;
 
 	/* Simulate a classifier */
 	eth_hdr = rte_pktmbuf_mtod(mbuf, struct rte_ether_hdr *);
@@ -90,7 +90,7 @@ prepare_pkt(struct rte_sched_port *port, struct rte_mbuf *mbuf)
 	eth_hdr = (struct rte_ether_hdr *)(
 		(uintptr_t)&eth_hdr->ether_type +
 		2 * sizeof(struct rte_vlan_hdr));
-	ip_hdr = (struct ipv4_hdr *)(
+	ip_hdr = (struct rte_ipv4_hdr *)(
 		(uintptr_t)eth_hdr + sizeof(eth_hdr->ether_type));
 
 	vlan1->vlan_tci = rte_cpu_to_be_16(SUBPORT);

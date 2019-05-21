@@ -18,27 +18,27 @@ processx4_step1(struct rte_mbuf *pkt[FWDSTEP],
 		int32x4_t *dip,
 		uint32_t *ipv4_flag)
 {
-	struct ipv4_hdr *ipv4_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
 	struct rte_ether_hdr *eth_hdr;
 	int32_t dst[FWDSTEP];
 
 	eth_hdr = rte_pktmbuf_mtod(pkt[0], struct rte_ether_hdr *);
-	ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
+	ipv4_hdr = (struct rte_ipv4_hdr *)(eth_hdr + 1);
 	dst[0] = ipv4_hdr->dst_addr;
 	ipv4_flag[0] = pkt[0]->packet_type & RTE_PTYPE_L3_IPV4;
 
 	eth_hdr = rte_pktmbuf_mtod(pkt[1], struct rte_ether_hdr *);
-	ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
+	ipv4_hdr = (struct rte_ipv4_hdr *)(eth_hdr + 1);
 	dst[1] = ipv4_hdr->dst_addr;
 	ipv4_flag[0] &= pkt[1]->packet_type;
 
 	eth_hdr = rte_pktmbuf_mtod(pkt[2], struct rte_ether_hdr *);
-	ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
+	ipv4_hdr = (struct rte_ipv4_hdr *)(eth_hdr + 1);
 	dst[2] = ipv4_hdr->dst_addr;
 	ipv4_flag[0] &= pkt[2]->packet_type;
 
 	eth_hdr = rte_pktmbuf_mtod(pkt[3], struct rte_ether_hdr *);
-	ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
+	ipv4_hdr = (struct rte_ipv4_hdr *)(eth_hdr + 1);
 	dst[3] = ipv4_hdr->dst_addr;
 	ipv4_flag[0] &= pkt[3]->packet_type;
 

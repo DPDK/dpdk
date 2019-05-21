@@ -245,7 +245,7 @@ The get_ipv4_dst_port() function is shown below:
         int ret = 0;
         union ipv4_5tuple_host key;
 
-        ipv4_hdr = (uint8_t *)ipv4_hdr + offsetof(struct ipv4_hdr, time_to_live);
+        ipv4_hdr = (uint8_t *)ipv4_hdr + offsetof(struct rte_ipv4_hdr, time_to_live);
 
         m128i data = _mm_loadu_si128(( m128i*)(ipv4_hdr));
 
@@ -273,10 +273,10 @@ The key code snippet of simple_ipv4_fwd_4pkts() is shown below:
     {
         // ...
 
-        data[0] = _mm_loadu_si128(( m128i*)(rte_pktmbuf_mtod(m[0], unsigned char *) + sizeof(struct rte_ether_hdr) + offsetof(struct ipv4_hdr, time_to_live)));
-        data[1] = _mm_loadu_si128(( m128i*)(rte_pktmbuf_mtod(m[1], unsigned char *) + sizeof(struct rte_ether_hdr) + offsetof(struct ipv4_hdr, time_to_live)));
-        data[2] = _mm_loadu_si128(( m128i*)(rte_pktmbuf_mtod(m[2], unsigned char *) + sizeof(struct rte_ether_hdr) + offsetof(struct ipv4_hdr, time_to_live)));
-        data[3] = _mm_loadu_si128(( m128i*)(rte_pktmbuf_mtod(m[3], unsigned char *) + sizeof(struct rte_ether_hdr) + offsetof(struct ipv4_hdr, time_to_live)));
+        data[0] = _mm_loadu_si128(( m128i*)(rte_pktmbuf_mtod(m[0], unsigned char *) + sizeof(struct rte_ether_hdr) + offsetof(struct rte_ipv4_hdr, time_to_live)));
+        data[1] = _mm_loadu_si128(( m128i*)(rte_pktmbuf_mtod(m[1], unsigned char *) + sizeof(struct rte_ether_hdr) + offsetof(struct rte_ipv4_hdr, time_to_live)));
+        data[2] = _mm_loadu_si128(( m128i*)(rte_pktmbuf_mtod(m[2], unsigned char *) + sizeof(struct rte_ether_hdr) + offsetof(struct rte_ipv4_hdr, time_to_live)));
+        data[3] = _mm_loadu_si128(( m128i*)(rte_pktmbuf_mtod(m[3], unsigned char *) + sizeof(struct rte_ether_hdr) + offsetof(struct rte_ipv4_hdr, time_to_live)));
 
         key[0].xmm = _mm_and_si128(data[0], mask0);
         key[1].xmm = _mm_and_si128(data[1], mask0);
@@ -309,7 +309,7 @@ for LPM-based lookups is done by the get_ipv4_dst_port() function below:
 .. code-block:: c
 
     static inline uint16_t
-    get_ipv4_dst_port(struct ipv4_hdr *ipv4_hdr, uint16_t portid, lookup_struct_t *ipv4_l3fwd_lookup_struct)
+    get_ipv4_dst_port(struct rte_ipv4_hdr *ipv4_hdr, uint16_t portid, lookup_struct_t *ipv4_l3fwd_lookup_struct)
     {
         uint8_t next_hop;
 

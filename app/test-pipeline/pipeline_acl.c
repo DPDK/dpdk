@@ -40,7 +40,7 @@ struct rte_acl_field_def ipv4_field_formats[NUM_FIELDS_IPV4] = {
 		.field_index = PROTO_FIELD_IPV4,
 		.input_index = PROTO_FIELD_IPV4,
 		.offset = sizeof(struct rte_ether_hdr) +
-			offsetof(struct ipv4_hdr, next_proto_id),
+			offsetof(struct rte_ipv4_hdr, next_proto_id),
 	},
 	{
 		.type = RTE_ACL_FIELD_TYPE_MASK,
@@ -48,7 +48,7 @@ struct rte_acl_field_def ipv4_field_formats[NUM_FIELDS_IPV4] = {
 		.field_index = SRC_FIELD_IPV4,
 		.input_index = SRC_FIELD_IPV4,
 		.offset = sizeof(struct rte_ether_hdr) +
-			offsetof(struct ipv4_hdr, src_addr),
+			offsetof(struct rte_ipv4_hdr, src_addr),
 	},
 	{
 		.type = RTE_ACL_FIELD_TYPE_MASK,
@@ -56,7 +56,7 @@ struct rte_acl_field_def ipv4_field_formats[NUM_FIELDS_IPV4] = {
 		.field_index = DST_FIELD_IPV4,
 		.input_index = DST_FIELD_IPV4,
 		.offset = sizeof(struct rte_ether_hdr) +
-			offsetof(struct ipv4_hdr, dst_addr),
+			offsetof(struct rte_ipv4_hdr, dst_addr),
 	},
 	{
 		.type = RTE_ACL_FIELD_TYPE_RANGE,
@@ -64,7 +64,7 @@ struct rte_acl_field_def ipv4_field_formats[NUM_FIELDS_IPV4] = {
 		.field_index = SRCP_FIELD_IPV4,
 		.input_index = SRCP_FIELD_IPV4,
 		.offset = sizeof(struct rte_ether_hdr) +
-			sizeof(struct ipv4_hdr),
+			sizeof(struct rte_ipv4_hdr),
 	},
 	{
 		.type = RTE_ACL_FIELD_TYPE_RANGE,
@@ -72,7 +72,7 @@ struct rte_acl_field_def ipv4_field_formats[NUM_FIELDS_IPV4] = {
 		.field_index = DSTP_FIELD_IPV4,
 		.input_index = SRCP_FIELD_IPV4,
 		.offset = sizeof(struct rte_ether_hdr) +
-			sizeof(struct ipv4_hdr) + sizeof(uint16_t),
+			sizeof(struct rte_ipv4_hdr) + sizeof(uint16_t),
 	},
 };
 

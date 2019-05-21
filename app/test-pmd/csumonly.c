@@ -100,7 +100,7 @@ get_udptcp_checksum(void *l3_hdr, void *l4_hdr, uint16_t ethertype)
 
 /* Parse an IPv4 header to fill l3_len, l4_len, and l4_proto */
 static void
-parse_ipv4(struct ipv4_hdr *ipv4_hdr, struct testpmd_offload_info *info)
+parse_ipv4(struct rte_ipv4_hdr *ipv4_hdr, struct testpmd_offload_info *info)
 {
 	struct tcp_hdr *tcp_hdr;
 
@@ -119,11 +119,11 @@ parse_ipv4(struct ipv4_hdr *ipv4_hdr, struct testpmd_offload_info *info)
 
 /* Parse an IPv6 header to fill l3_len, l4_len, and l4_proto */
 static void
-parse_ipv6(struct ipv6_hdr *ipv6_hdr, struct testpmd_offload_info *info)
+parse_ipv6(struct rte_ipv6_hdr *ipv6_hdr, struct testpmd_offload_info *info)
 {
 	struct tcp_hdr *tcp_hdr;
 
-	info->l3_len = sizeof(struct ipv6_hdr);
+	info->l3_len = sizeof(struct rte_ipv6_hdr);
 	info->l4_proto = ipv6_hdr->proto;
 
 	/* only fill l4_len for TCP, it's useful for TSO */
@@ -144,8 +144,8 @@ parse_ipv6(struct ipv6_hdr *ipv6_hdr, struct testpmd_offload_info *info)
 static void
 parse_ethernet(struct rte_ether_hdr *eth_hdr, struct testpmd_offload_info *info)
 {
-	struct ipv4_hdr *ipv4_hdr;
-	struct ipv6_hdr *ipv6_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
+	struct rte_ipv6_hdr *ipv6_hdr;
 
 	info->l2_len = sizeof(struct rte_ether_hdr);
 	info->ethertype = eth_hdr->ether_type;
@@ -160,11 +160,13 @@ parse_ethernet(struct rte_ether_hdr *eth_hdr, struct testpmd_offload_info *info)
 
 	switch (info->ethertype) {
 	case _htons(RTE_ETHER_TYPE_IPv4):
-		ipv4_hdr = (struct ipv4_hdr *) ((char *)eth_hdr + info->l2_len);
+		ipv4_hdr = (struct rte_ipv4_hdr *)
+			((char *)eth_hdr + info->l2_len);
 		parse_ipv4(ipv4_hdr, info);
 		break;
 	case _htons(RTE_ETHER_TYPE_IPv6):
-		ipv6_hdr = (struct ipv6_hdr *) ((char *)eth_hdr + info->l2_len);
+		ipv6_hdr = (struct rte_ipv6_hdr *)
+			((char *)eth_hdr + info->l2_len);
 		parse_ipv6(ipv6_hdr, info);
 		break;
 	default:
@@ -210,8 +212,8 @@ parse_vxlan_gpe(struct udp_hdr *udp_hdr,
 	    struct testpmd_offload_info *info)
 {
 	struct rte_ether_hdr *eth_hdr;
-	struct ipv4_hdr *ipv4_hdr;
-	struct ipv6_hdr *ipv6_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
+	struct rte_ipv6_hdr *ipv6_hdr;
 	struct rte_vxlan_gpe_hdr *vxlan_gpe_hdr;
 	uint8_t vxlan_gpe_len = sizeof(*vxlan_gpe_hdr);
 
@@ -230,7 +232,7 @@ parse_vxlan_gpe(struct udp_hdr *udp_hdr,
 		info->outer_l3_len = info->l3_len;
 		info->outer_l4_proto = info->l4_proto;
 
-		ipv4_hdr = (struct ipv4_hdr *)((char *)vxlan_gpe_hdr +
+		ipv4_hdr = (struct rte_ipv4_hdr *)((char *)vxlan_gpe_hdr +
 			   vxlan_gpe_len);
 
 		parse_ipv4(ipv4_hdr, info);
@@ -244,7 +246,7 @@ parse_vxlan_gpe(struct udp_hdr *udp_hdr,
 		info->outer_l3_len = info->l3_len;
 		info->outer_l4_proto = info->l4_proto;
 
-		ipv6_hdr = (struct ipv6_hdr *)((char *)vxlan_gpe_hdr +
+		ipv6_hdr = (struct rte_ipv6_hdr *)((char *)vxlan_gpe_hdr +
 			   vxlan_gpe_len);
 
 		info->ethertype = _htons(RTE_ETHER_TYPE_IPv6);
@@ -273,8 +275,8 @@ static void
 parse_gre(struct simple_gre_hdr *gre_hdr, struct testpmd_offload_info *info)
 {
 	struct rte_ether_hdr *eth_hdr;
-	struct ipv4_hdr *ipv4_hdr;
-	struct ipv6_hdr *ipv6_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
+	struct rte_ipv6_hdr *ipv6_hdr;
 	uint8_t gre_len = 0;
 
 	gre_len += sizeof(struct simple_gre_hdr);
@@ -293,7 +295,7 @@ parse_gre(struct simple_gre_hdr *gre_hdr, struct testpmd_offload_info *info)
 		info->outer_l3_len = info->l3_len;
 		info->outer_l4_proto = info->l4_proto;
 
-		ipv4_hdr = (struct ipv4_hdr *)((char *)gre_hdr + gre_len);
+		ipv4_hdr = (struct rte_ipv4_hdr *)((char *)gre_hdr + gre_len);
 
 		parse_ipv4(ipv4_hdr, info);
 		info->ethertype = _htons(RTE_ETHER_TYPE_IPv4);
@@ -306,7 +308,7 @@ parse_gre(struct simple_gre_hdr *gre_hdr, struct testpmd_offload_info *info)
 		info->outer_l3_len = info->l3_len;
 		info->outer_l4_proto = info->l4_proto;
 
-		ipv6_hdr = (struct ipv6_hdr *)((char *)gre_hdr + gre_len);
+		ipv6_hdr = (struct rte_ipv6_hdr *)((char *)gre_hdr + gre_len);
 
 		info->ethertype = _htons(RTE_ETHER_TYPE_IPv6);
 		parse_ipv6(ipv6_hdr, info);
@@ -333,8 +335,8 @@ parse_gre(struct simple_gre_hdr *gre_hdr, struct testpmd_offload_info *info)
 static void
 parse_encap_ip(void *encap_ip, struct testpmd_offload_info *info)
 {
-	struct ipv4_hdr *ipv4_hdr = encap_ip;
-	struct ipv6_hdr *ipv6_hdr = encap_ip;
+	struct rte_ipv4_hdr *ipv4_hdr = encap_ip;
+	struct rte_ipv6_hdr *ipv6_hdr = encap_ip;
 	uint8_t ip_version;
 
 	ip_version = (ipv4_hdr->version_ihl & 0xf0) >> 4;
@@ -363,7 +365,7 @@ static uint64_t
 process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 	uint64_t tx_offloads)
 {
-	struct ipv4_hdr *ipv4_hdr = l3_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr = l3_hdr;
 	struct udp_hdr *udp_hdr;
 	struct tcp_hdr *tcp_hdr;
 	struct sctp_hdr *sctp_hdr;
@@ -454,8 +456,8 @@ static uint64_t
 process_outer_cksums(void *outer_l3_hdr, struct testpmd_offload_info *info,
 	uint64_t tx_offloads, int tso_enabled)
 {
-	struct ipv4_hdr *ipv4_hdr = outer_l3_hdr;
-	struct ipv6_hdr *ipv6_hdr = outer_l3_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr = outer_l3_hdr;
+	struct rte_ipv6_hdr *ipv6_hdr = outer_l3_hdr;
 	struct udp_hdr *udp_hdr;
 	uint64_t ol_flags = 0;
 

@@ -98,9 +98,9 @@ update_tcp_header(struct rte_mbuf *pkt, uint16_t l4_offset, uint32_t sent_seq,
 static inline void
 update_ipv4_header(struct rte_mbuf *pkt, uint16_t l3_offset, uint16_t id)
 {
-	struct ipv4_hdr *ipv4_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
 
-	ipv4_hdr = (struct ipv4_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
+	ipv4_hdr = (struct rte_ipv4_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
 			l3_offset);
 	ipv4_hdr->total_length = rte_cpu_to_be_16(pkt->pkt_len - l3_offset);
 	ipv4_hdr->packet_id = rte_cpu_to_be_16(id);

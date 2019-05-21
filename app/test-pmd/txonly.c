@@ -53,7 +53,7 @@ uint32_t tx_ip_dst_addr = (192U << 24) | (18 << 16) | (0 << 8) | 2;
 #define IP_HDRLEN  0x05 /* default IP header length == five 32-bits words. */
 #define IP_VHL_DEF (IP_VERSION | IP_HDRLEN)
 
-static struct ipv4_hdr  pkt_ip_hdr;  /**< IP header of transmitted packets. */
+static struct rte_ipv4_hdr pkt_ip_hdr; /**< IP header of transmitted packets. */
 RTE_DEFINE_PER_LCORE(uint8_t, _ip_var); /**< IP address variation */
 static struct udp_hdr pkt_udp_hdr; /**< UDP header of transmitted packets. */
 
@@ -95,7 +95,7 @@ copy_buf_to_pkt(void* buf, unsigned len, struct rte_mbuf *pkt, unsigned offset)
 }
 
 static void
-setup_pkt_udp_ip_headers(struct ipv4_hdr *ip_hdr,
+setup_pkt_udp_ip_headers(struct rte_ipv4_hdr *ip_hdr,
 			 struct udp_hdr *udp_hdr,
 			 uint16_t pkt_data_len)
 {
@@ -115,7 +115,7 @@ setup_pkt_udp_ip_headers(struct ipv4_hdr *ip_hdr,
 	/*
 	 * Initialize IP header.
 	 */
-	pkt_len = (uint16_t) (pkt_len + sizeof(struct ipv4_hdr));
+	pkt_len = (uint16_t) (pkt_len + sizeof(struct rte_ipv4_hdr));
 	ip_hdr->version_ihl   = IP_VHL_DEF;
 	ip_hdr->type_of_service   = 0;
 	ip_hdr->fragment_offset = 0;
@@ -177,7 +177,7 @@ pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
 	pkt->vlan_tci = vlan_tci;
 	pkt->vlan_tci_outer = vlan_tci_outer;
 	pkt->l2_len = sizeof(struct rte_ether_hdr);
-	pkt->l3_len = sizeof(struct ipv4_hdr);
+	pkt->l3_len = sizeof(struct rte_ipv4_hdr);
 
 	pkt_len = pkt->data_len;
 	pkt_seg = pkt;
@@ -195,11 +195,11 @@ pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
 	copy_buf_to_pkt(&pkt_ip_hdr, sizeof(pkt_ip_hdr), pkt,
 			sizeof(struct rte_ether_hdr));
 	if (txonly_multi_flow) {
-		struct ipv4_hdr *ip_hdr;
+		struct rte_ipv4_hdr *ip_hdr;
 		uint32_t addr;
 
 		ip_hdr = rte_pktmbuf_mtod_offset(pkt,
-				struct ipv4_hdr *,
+				struct rte_ipv4_hdr *,
 				sizeof(struct rte_ether_hdr));
 		/*
 		 * Generate multiple flows by varying IP src addr. This
@@ -213,7 +213,7 @@ pkt_burst_prepare(struct rte_mbuf *pkt, struct rte_mempool *mbp,
 	}
 	copy_buf_to_pkt(&pkt_udp_hdr, sizeof(pkt_udp_hdr), pkt,
 			sizeof(struct rte_ether_hdr) +
-			sizeof(struct ipv4_hdr));
+			sizeof(struct rte_ipv4_hdr));
 	/*
 	 * Complete first mbuf of packet and append it to the
 	 * burst of packets to be transmitted.
@@ -349,7 +349,7 @@ tx_only_begin(__attribute__((unused)) portid_t pi)
 
 	pkt_data_len = (uint16_t) (tx_pkt_length - (
 					sizeof(struct rte_ether_hdr) +
-					sizeof(struct ipv4_hdr) +
+					sizeof(struct rte_ipv4_hdr) +
 					sizeof(struct udp_hdr)));
 	setup_pkt_udp_ip_headers(&pkt_ip_hdr, &pkt_udp_hdr, pkt_data_len);
 }

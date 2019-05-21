@@ -491,7 +491,7 @@ struct encap_pppoe_data {
 
 struct encap_vxlan_ipv4_data {
 	struct rte_ether_hdr ether;
-	struct ipv4_hdr ipv4;
+	struct rte_ipv4_hdr ipv4;
 	struct udp_hdr udp;
 	struct rte_vxlan_hdr vxlan;
 } __attribute__((__packed__));
@@ -499,14 +499,14 @@ struct encap_vxlan_ipv4_data {
 struct encap_vxlan_ipv4_vlan_data {
 	struct rte_ether_hdr ether;
 	struct rte_vlan_hdr vlan;
-	struct ipv4_hdr ipv4;
+	struct rte_ipv4_hdr ipv4;
 	struct udp_hdr udp;
 	struct rte_vxlan_hdr vxlan;
 } __attribute__((__packed__));
 
 struct encap_vxlan_ipv6_data {
 	struct rte_ether_hdr ether;
-	struct ipv6_hdr ipv6;
+	struct rte_ipv6_hdr ipv6;
 	struct udp_hdr udp;
 	struct rte_vxlan_hdr vxlan;
 } __attribute__((__packed__));
@@ -514,7 +514,7 @@ struct encap_vxlan_ipv6_data {
 struct encap_vxlan_ipv6_vlan_data {
 	struct rte_ether_hdr ether;
 	struct rte_vlan_hdr vlan;
-	struct ipv6_hdr ipv6;
+	struct rte_ipv6_hdr ipv6;
 	struct udp_hdr udp;
 	struct rte_vxlan_hdr vxlan;
 } __attribute__((__packed__));
@@ -1007,7 +1007,7 @@ pkt_work_encap_vxlan_ipv4(struct rte_mbuf *mbuf,
 	ipv4_total_length = ether_length +
 		(sizeof(struct rte_vxlan_hdr) +
 		sizeof(struct udp_hdr) +
-		sizeof(struct ipv4_hdr));
+		sizeof(struct rte_ipv4_hdr));
 	ipv4_hdr_cksum = encap_vxlan_ipv4_checksum_update(vxlan_tbl->ipv4.hdr_checksum,
 		rte_htons(ipv4_total_length));
 	udp_length = ether_length +
@@ -1037,7 +1037,7 @@ pkt_work_encap_vxlan_ipv4_vlan(struct rte_mbuf *mbuf,
 	ipv4_total_length = ether_length +
 		(sizeof(struct rte_vxlan_hdr) +
 		sizeof(struct udp_hdr) +
-		sizeof(struct ipv4_hdr));
+		sizeof(struct rte_ipv4_hdr));
 	ipv4_hdr_cksum = encap_vxlan_ipv4_checksum_update(vxlan_tbl->ipv4.hdr_checksum,
 		rte_htons(ipv4_total_length));
 	udp_length = ether_length +
@@ -1342,7 +1342,7 @@ nat_ipv6_tcp_udp_checksum_update(uint16_t cksum0,
 }
 
 static __rte_always_inline void
-pkt_ipv4_work_nat(struct ipv4_hdr *ip,
+pkt_ipv4_work_nat(struct rte_ipv4_hdr *ip,
 	struct nat_ipv4_data *data,
 	struct rte_table_action_nat_config *cfg)
 {
@@ -1428,7 +1428,7 @@ pkt_ipv4_work_nat(struct ipv4_hdr *ip,
 }
 
 static __rte_always_inline void
-pkt_ipv6_work_nat(struct ipv6_hdr *ip,
+pkt_ipv6_work_nat(struct rte_ipv6_hdr *ip,
 	struct nat_ipv6_data *data,
 	struct rte_table_action_nat_config *cfg)
 {
@@ -1536,7 +1536,7 @@ ttl_apply(void *data,
 }
 
 static __rte_always_inline uint64_t
-pkt_ipv4_work_ttl(struct ipv4_hdr *ip,
+pkt_ipv4_work_ttl(struct rte_ipv4_hdr *ip,
 	struct ttl_data *data)
 {
 	uint32_t drop;
@@ -1557,7 +1557,7 @@ pkt_ipv4_work_ttl(struct ipv4_hdr *ip,
 }
 
 static __rte_always_inline uint64_t
-pkt_ipv6_work_ttl(struct ipv6_hdr *ip,
+pkt_ipv6_work_ttl(struct rte_ipv6_hdr *ip,
 	struct ttl_data *data)
 {
 	uint32_t drop;
@@ -2893,16 +2893,16 @@ pkt_work(struct rte_mbuf *mbuf,
 	uint16_t total_length;
 
 	if (cfg->common.ip_version) {
-		struct ipv4_hdr *hdr = ip;
+		struct rte_ipv4_hdr *hdr = ip;
 
 		dscp = hdr->type_of_service >> 2;
 		total_length = rte_ntohs(hdr->total_length);
 	} else {
-		struct ipv6_hdr *hdr = ip;
+		struct rte_ipv6_hdr *hdr = ip;
 
 		dscp = (rte_ntohl(hdr->vtc_flow) & 0x0F600000) >> 18;
-		total_length =
-			rte_ntohs(hdr->payload_len) + sizeof(struct ipv6_hdr);
+		total_length = rte_ntohs(hdr->payload_len) +
+			sizeof(struct rte_ipv6_hdr);
 	}
 
 	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_LB)) {
@@ -3041,10 +3041,10 @@ pkt4_work(struct rte_mbuf **mbufs,
 	uint16_t total_length0, total_length1, total_length2, total_length3;
 
 	if (cfg->common.ip_version) {
-		struct ipv4_hdr *hdr0 = ip0;
-		struct ipv4_hdr *hdr1 = ip1;
-		struct ipv4_hdr *hdr2 = ip2;
-		struct ipv4_hdr *hdr3 = ip3;
+		struct rte_ipv4_hdr *hdr0 = ip0;
+		struct rte_ipv4_hdr *hdr1 = ip1;
+		struct rte_ipv4_hdr *hdr2 = ip2;
+		struct rte_ipv4_hdr *hdr3 = ip3;
 
 		dscp0 = hdr0->type_of_service >> 2;
 		dscp1 = hdr1->type_of_service >> 2;
@@ -3056,24 +3056,24 @@ pkt4_work(struct rte_mbuf **mbufs,
 		total_length2 = rte_ntohs(hdr2->total_length);
 		total_length3 = rte_ntohs(hdr3->total_length);
 	} else {
-		struct ipv6_hdr *hdr0 = ip0;
-		struct ipv6_hdr *hdr1 = ip1;
-		struct ipv6_hdr *hdr2 = ip2;
-		struct ipv6_hdr *hdr3 = ip3;
+		struct rte_ipv6_hdr *hdr0 = ip0;
+		struct rte_ipv6_hdr *hdr1 = ip1;
+		struct rte_ipv6_hdr *hdr2 = ip2;
+		struct rte_ipv6_hdr *hdr3 = ip3;
 
 		dscp0 = (rte_ntohl(hdr0->vtc_flow) & 0x0F600000) >> 18;
 		dscp1 = (rte_ntohl(hdr1->vtc_flow) & 0x0F600000) >> 18;
 		dscp2 = (rte_ntohl(hdr2->vtc_flow) & 0x0F600000) >> 18;
 		dscp3 = (rte_ntohl(hdr3->vtc_flow) & 0x0F600000) >> 18;
 
-		total_length0 =
-			rte_ntohs(hdr0->payload_len) + sizeof(struct ipv6_hdr);
-		total_length1 =
-			rte_ntohs(hdr1->payload_len) + sizeof(struct ipv6_hdr);
-		total_length2 =
-			rte_ntohs(hdr2->payload_len) + sizeof(struct ipv6_hdr);
-		total_length3 =
-			rte_ntohs(hdr3->payload_len) + sizeof(struct ipv6_hdr);
+		total_length0 = rte_ntohs(hdr0->payload_len) +
+			sizeof(struct rte_ipv6_hdr);
+		total_length1 = rte_ntohs(hdr1->payload_len) +
+			sizeof(struct rte_ipv6_hdr);
+		total_length2 = rte_ntohs(hdr2->payload_len) +
+			sizeof(struct rte_ipv6_hdr);
+		total_length3 = rte_ntohs(hdr3->payload_len) +
+			sizeof(struct rte_ipv6_hdr);
 	}
 
 	if (cfg->action_mask & (1LLU << RTE_TABLE_ACTION_LB)) {

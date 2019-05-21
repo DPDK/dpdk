@@ -103,8 +103,8 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 		if (sw_packet_type & RTE_PTYPE_INNER_L4_MASK)
 			printf(" - inner_l4_len=%d", hdr_lens.inner_l4_len);
 		if (is_encapsulation) {
-			struct ipv4_hdr *ipv4_hdr;
-			struct ipv6_hdr *ipv6_hdr;
+			struct rte_ipv4_hdr *ipv4_hdr;
+			struct rte_ipv6_hdr *ipv6_hdr;
 			struct udp_hdr *udp_hdr;
 			uint8_t l2_len;
 			uint8_t l3_len;
@@ -116,15 +116,15 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 
 			/* Do not support ipv4 option field */
 			if (RTE_ETH_IS_IPV4_HDR(packet_type)) {
-				l3_len = sizeof(struct ipv4_hdr);
+				l3_len = sizeof(struct rte_ipv4_hdr);
 				ipv4_hdr = rte_pktmbuf_mtod_offset(mb,
-				struct ipv4_hdr *,
+				struct rte_ipv4_hdr *,
 				l2_len);
 				l4_proto = ipv4_hdr->next_proto_id;
 			} else {
-				l3_len = sizeof(struct ipv6_hdr);
+				l3_len = sizeof(struct rte_ipv6_hdr);
 				ipv6_hdr = rte_pktmbuf_mtod_offset(mb,
-				struct ipv6_hdr *,
+				struct rte_ipv6_hdr *,
 				l2_len);
 				l4_proto = ipv6_hdr->proto;
 			}

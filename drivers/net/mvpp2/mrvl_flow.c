@@ -1170,7 +1170,7 @@ mrvl_parse_ip6(const struct rte_flow_item *item,
 	       struct rte_flow_error *error)
 {
 	const struct rte_flow_item_ipv6 *spec = NULL, *mask = NULL;
-	struct ipv6_hdr zero;
+	struct rte_ipv6_hdr zero;
 	uint32_t flow_mask;
 	int ret;
 

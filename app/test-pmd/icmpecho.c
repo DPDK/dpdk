@@ -243,7 +243,7 @@ ipv4_addr_dump(const char *what, uint32_t be_ipv4_addr)
 }
 
 static uint16_t
-ipv4_hdr_cksum(struct ipv4_hdr *ip_h)
+ipv4_hdr_cksum(struct rte_ipv4_hdr *ip_h)
 {
 	uint16_t *v16_h;
 	uint32_t ip_cksum;
@@ -278,7 +278,7 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 	struct rte_ether_hdr *eth_h;
 	struct rte_vlan_hdr *vlan_h;
 	struct rte_arp_hdr  *arp_h;
-	struct ipv4_hdr *ip_h;
+	struct rte_ipv4_hdr *ip_h;
 	struct rte_icmp_hdr *icmp_h;
 	struct rte_ether_addr eth_addr;
 	uint32_t retry;
@@ -418,7 +418,7 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 			rte_pktmbuf_free(pkt);
 			continue;
 		}
-		ip_h = (struct ipv4_hdr *) ((char *)eth_h + l2_len);
+		ip_h = (struct rte_ipv4_hdr *) ((char *)eth_h + l2_len);
 		if (verbose_level > 0) {
 			ipv4_addr_dump("  IPV4: src=", ip_h->src_addr);
 			ipv4_addr_dump(" dst=", ip_h->dst_addr);
@@ -431,7 +431,7 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 		 * Check if packet is a ICMP echo request.
 		 */
 		icmp_h = (struct rte_icmp_hdr *) ((char *)ip_h +
-					      sizeof(struct ipv4_hdr));
+					      sizeof(struct rte_ipv4_hdr));
 		if (! ((ip_h->next_proto_id == IPPROTO_ICMP) &&
 		       (icmp_h->icmp_type == RTE_IP_ICMP_ECHO_REQUEST) &&
 		       (icmp_h->icmp_code == 0))) {

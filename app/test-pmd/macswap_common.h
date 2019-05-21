@@ -40,7 +40,7 @@ mbuf_field_set(struct rte_mbuf *mb, uint64_t ol_flags)
 	mb->ol_flags &= IND_ATTACHED_MBUF | EXT_ATTACHED_MBUF;
 	mb->ol_flags |= ol_flags;
 	mb->l2_len = sizeof(struct rte_ether_hdr);
-	mb->l3_len = sizeof(struct ipv4_hdr);
+	mb->l3_len = sizeof(struct rte_ipv4_hdr);
 }
 
 #endif /* _MACSWAP_COMMON_H_ */

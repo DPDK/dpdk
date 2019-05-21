@@ -967,7 +967,7 @@ get_spi_proto(uint32_t spi, enum rte_security_ipsec_sa_direction dir)
 
 static int
 fill_ipsec_sa_prm(struct rte_ipsec_sa_prm *prm, const struct ipsec_sa *ss,
-	const struct ipv4_hdr *v4, struct ipv6_hdr *v6)
+	const struct rte_ipv4_hdr *v4, struct rte_ipv6_hdr *v6)
 {
 	int32_t rc;
 
@@ -1038,7 +1038,7 @@ ipsec_sa_init(struct ipsec_sa *lsa, struct rte_ipsec_sa *sa, uint32_t sa_size)
 {
 	int rc;
 	struct rte_ipsec_sa_prm prm;
-	struct ipv4_hdr v4  = {
+	struct rte_ipv4_hdr v4  = {
 		.version_ihl = IPVERSION << 4 |
 			sizeof(v4) / IPV4_IHL_MULTIPLIER,
 		.time_to_live = IPDEFTTL,
@@ -1046,7 +1046,7 @@ ipsec_sa_init(struct ipsec_sa *lsa, struct rte_ipsec_sa *sa, uint32_t sa_size)
 		.src_addr = lsa->src.ip.ip4,
 		.dst_addr = lsa->dst.ip.ip4,
 	};
-	struct ipv6_hdr v6 = {
+	struct rte_ipv6_hdr v6 = {
 		.vtc_flow = htonl(IP6_VERSION << 28),
 		.proto = IPPROTO_ESP,
 	};

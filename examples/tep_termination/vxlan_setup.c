@@ -48,7 +48,7 @@
 /* VXLAN device */
 struct vxlan_conf vxdev;
 
-struct ipv4_hdr app_ip_hdr[VXLAN_N_PORTS];
+struct rte_ipv4_hdr app_ip_hdr[VXLAN_N_PORTS];
 struct rte_ether_hdr app_l2_hdr[VXLAN_N_PORTS];
 
 /* local VTEP IP address */
@@ -229,7 +229,7 @@ vxlan_link(struct vhost_dev *vdev, struct rte_mbuf *m)
 	int i, ret;
 	struct rte_ether_hdr *pkt_hdr;
 	uint64_t portid = vdev->vid;
-	struct ipv4_hdr *ip;
+	struct rte_ipv4_hdr *ip;
 
 	struct rte_eth_tunnel_filter_conf tunnel_filter_conf;
 

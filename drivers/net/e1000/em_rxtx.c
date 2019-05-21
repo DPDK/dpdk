@@ -222,7 +222,7 @@ em_set_xmit_ctx(struct em_tx_queue* txq,
 	/* setup IPCS* fields */
 	ctx.lower_setup.ip_fields.ipcss = (uint8_t)l2len;
 	ctx.lower_setup.ip_fields.ipcso = (uint8_t)(l2len +
-			offsetof(struct ipv4_hdr, hdr_checksum));
+			offsetof(struct rte_ipv4_hdr, hdr_checksum));
 
 	/*
 	 * When doing checksum or TCP segmentation with IPv6 headers,

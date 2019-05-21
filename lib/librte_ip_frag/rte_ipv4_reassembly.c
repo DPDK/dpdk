@@ -14,7 +14,7 @@
 struct rte_mbuf *
 ipv4_frag_reassemble(struct ip_frag_pkt *fp)
 {
-	struct ipv4_hdr *ip_hdr;
+	struct rte_ipv4_hdr *ip_hdr;
 	struct rte_mbuf *m, *prev;
 	uint32_t i, n, ofs, first_len;
 	uint32_t curr_idx = 0;
@@ -70,7 +70,7 @@ ipv4_frag_reassemble(struct ip_frag_pkt *fp)
 	m->ol_flags |= PKT_TX_IP_CKSUM;
 
 	/* update ipv4 header for the reassembled packet */
-	ip_hdr = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *, m->l2_len);
+	ip_hdr = rte_pktmbuf_mtod_offset(m, struct rte_ipv4_hdr *, m->l2_len);
 
 	ip_hdr->total_length = rte_cpu_to_be_16((uint16_t)(fp->total_size +
 		m->l3_len));
@@ -100,7 +100,7 @@ ipv4_frag_reassemble(struct ip_frag_pkt *fp)
 struct rte_mbuf *
 rte_ipv4_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
 	struct rte_ip_frag_death_row *dr, struct rte_mbuf *mb, uint64_t tms,
-	struct ipv4_hdr *ip_hdr)
+	struct rte_ipv4_hdr *ip_hdr)
 {
 	struct ip_frag_pkt *fp;
 	struct ip_frag_key key;

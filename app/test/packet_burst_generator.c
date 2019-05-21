@@ -140,7 +140,7 @@ initialize_sctp_header(struct sctp_hdr *sctp_hdr, uint16_t src_port,
 }
 
 uint16_t
-initialize_ipv6_header(struct ipv6_hdr *ip_hdr, uint8_t *src_addr,
+initialize_ipv6_header(struct rte_ipv6_hdr *ip_hdr, uint8_t *src_addr,
 		uint8_t *dst_addr, uint16_t pkt_data_len)
 {
 	ip_hdr->vtc_flow = 0;
@@ -151,11 +151,11 @@ initialize_ipv6_header(struct ipv6_hdr *ip_hdr, uint8_t *src_addr,
 	rte_memcpy(ip_hdr->src_addr, src_addr, sizeof(ip_hdr->src_addr));
 	rte_memcpy(ip_hdr->dst_addr, dst_addr, sizeof(ip_hdr->dst_addr));
 
-	return (uint16_t) (pkt_data_len + sizeof(struct ipv6_hdr));
+	return (uint16_t) (pkt_data_len + sizeof(struct rte_ipv6_hdr));
 }
 
 uint16_t
-initialize_ipv4_header(struct ipv4_hdr *ip_hdr, uint32_t src_addr,
+initialize_ipv4_header(struct rte_ipv4_hdr *ip_hdr, uint32_t src_addr,
 		uint32_t dst_addr, uint16_t pkt_data_len)
 {
 	uint16_t pkt_len;
@@ -165,7 +165,7 @@ initialize_ipv4_header(struct ipv4_hdr *ip_hdr, uint32_t src_addr,
 	/*
 	 * Initialize IP header.
 	 */
-	pkt_len = (uint16_t) (pkt_data_len + sizeof(struct ipv4_hdr));
+	pkt_len = (uint16_t) (pkt_data_len + sizeof(struct rte_ipv4_hdr));
 
 	ip_hdr->version_ihl   = IP_VHL_DEF;
 	ip_hdr->type_of_service   = 0;
@@ -203,7 +203,7 @@ initialize_ipv4_header(struct ipv4_hdr *ip_hdr, uint32_t src_addr,
 }
 
 uint16_t
-initialize_ipv4_header_proto(struct ipv4_hdr *ip_hdr, uint32_t src_addr,
+initialize_ipv4_header_proto(struct rte_ipv4_hdr *ip_hdr, uint32_t src_addr,
 		uint32_t dst_addr, uint16_t pkt_data_len, uint8_t proto)
 {
 	uint16_t pkt_len;
@@ -213,7 +213,7 @@ initialize_ipv4_header_proto(struct ipv4_hdr *ip_hdr, uint32_t src_addr,
 	/*
 	 * Initialize IP header.
 	 */
-	pkt_len = (uint16_t) (pkt_data_len + sizeof(struct ipv4_hdr));
+	pkt_len = (uint16_t) (pkt_data_len + sizeof(struct rte_ipv4_hdr));
 
 	ip_hdr->version_ihl   = IP_VHL_DEF;
 	ip_hdr->type_of_service   = 0;
@@ -304,13 +304,15 @@ nomore_mbuf:
 		copy_buf_to_pkt(eth_hdr, eth_hdr_size, pkt, 0);
 
 		if (ipv4) {
-			copy_buf_to_pkt(ip_hdr, sizeof(struct ipv4_hdr), pkt, eth_hdr_size);
-			copy_buf_to_pkt(udp_hdr, sizeof(*udp_hdr), pkt, eth_hdr_size +
-					sizeof(struct ipv4_hdr));
+			copy_buf_to_pkt(ip_hdr, sizeof(struct rte_ipv4_hdr),
+				pkt, eth_hdr_size);
+			copy_buf_to_pkt(udp_hdr, sizeof(*udp_hdr), pkt,
+				eth_hdr_size + sizeof(struct rte_ipv4_hdr));
 		} else {
-			copy_buf_to_pkt(ip_hdr, sizeof(struct ipv6_hdr), pkt, eth_hdr_size);
-			copy_buf_to_pkt(udp_hdr, sizeof(*udp_hdr), pkt, eth_hdr_size +
-					sizeof(struct ipv6_hdr));
+			copy_buf_to_pkt(ip_hdr, sizeof(struct rte_ipv6_hdr),
+				pkt, eth_hdr_size);
+			copy_buf_to_pkt(udp_hdr, sizeof(*udp_hdr), pkt,
+				eth_hdr_size + sizeof(struct rte_ipv6_hdr));
 		}
 
 		/*
@@ -323,10 +325,10 @@ nomore_mbuf:
 
 		if (ipv4) {
 			pkt->vlan_tci  = RTE_ETHER_TYPE_IPv4;
-			pkt->l3_len = sizeof(struct ipv4_hdr);
+			pkt->l3_len = sizeof(struct rte_ipv4_hdr);
 		} else {
 			pkt->vlan_tci  = RTE_ETHER_TYPE_IPv6;
-			pkt->l3_len = sizeof(struct ipv6_hdr);
+			pkt->l3_len = sizeof(struct rte_ipv6_hdr);
 		}
 
 		pkts_burst[nb_pkt] = pkt;
@@ -383,45 +385,51 @@ nomore_mbuf:
 		copy_buf_to_pkt(eth_hdr, eth_hdr_size, pkt, 0);
 
 		if (ipv4) {
-			copy_buf_to_pkt(ip_hdr, sizeof(struct ipv4_hdr), pkt,
-				eth_hdr_size);
+			copy_buf_to_pkt(ip_hdr, sizeof(struct rte_ipv4_hdr),
+					pkt, eth_hdr_size);
 			switch (proto) {
 			case IPPROTO_UDP:
 				copy_buf_to_pkt(proto_hdr,
 					sizeof(struct udp_hdr), pkt,
-					eth_hdr_size + sizeof(struct ipv4_hdr));
+					eth_hdr_size +
+						sizeof(struct rte_ipv4_hdr));
 				break;
 			case IPPROTO_TCP:
 				copy_buf_to_pkt(proto_hdr,
 					sizeof(struct tcp_hdr), pkt,
-					eth_hdr_size + sizeof(struct ipv4_hdr));
+					eth_hdr_size +
+						sizeof(struct rte_ipv4_hdr));
 				break;
 			case IPPROTO_SCTP:
 				copy_buf_to_pkt(proto_hdr,
 					sizeof(struct sctp_hdr), pkt,
-					eth_hdr_size + sizeof(struct ipv4_hdr));
+					eth_hdr_size +
+						sizeof(struct rte_ipv4_hdr));
 				break;
 			default:
 				break;
 			}
 		} else {
-			copy_buf_to_pkt(ip_hdr, sizeof(struct ipv6_hdr), pkt,
-				eth_hdr_size);
+			copy_buf_to_pkt(ip_hdr, sizeof(struct rte_ipv6_hdr),
+					pkt, eth_hdr_size);
 			switch (proto) {
 			case IPPROTO_UDP:
 				copy_buf_to_pkt(proto_hdr,
 					sizeof(struct udp_hdr), pkt,
-					eth_hdr_size + sizeof(struct ipv6_hdr));
+					eth_hdr_size +
+						sizeof(struct rte_ipv6_hdr));
 				break;
 			case IPPROTO_TCP:
 				copy_buf_to_pkt(proto_hdr,
 					sizeof(struct tcp_hdr), pkt,
-					eth_hdr_size + sizeof(struct ipv6_hdr));
+					eth_hdr_size +
+						sizeof(struct rte_ipv6_hdr));
 				break;
 			case IPPROTO_SCTP:
 				copy_buf_to_pkt(proto_hdr,
 					sizeof(struct sctp_hdr), pkt,
-					eth_hdr_size + sizeof(struct ipv6_hdr));
+					eth_hdr_size +
+						sizeof(struct rte_ipv6_hdr));
 				break;
 			default:
 				break;
@@ -438,10 +446,10 @@ nomore_mbuf:
 
 		if (ipv4) {
 			pkt->vlan_tci  = RTE_ETHER_TYPE_IPv4;
-			pkt->l3_len = sizeof(struct ipv4_hdr);
+			pkt->l3_len = sizeof(struct rte_ipv4_hdr);
 		} else {
 			pkt->vlan_tci  = RTE_ETHER_TYPE_IPv6;
-			pkt->l3_len = sizeof(struct ipv6_hdr);
+			pkt->l3_len = sizeof(struct rte_ipv6_hdr);
 		}
 
 		pkts_burst[nb_pkt] = pkt;

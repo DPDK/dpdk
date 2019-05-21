@@ -263,14 +263,14 @@ merge_two_vxlan_tcp4_packets(struct gro_vxlan_tcp4_item *item,
 static inline void
 update_vxlan_header(struct gro_vxlan_tcp4_item *item)
 {
-	struct ipv4_hdr *ipv4_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
 	struct udp_hdr *udp_hdr;
 	struct rte_mbuf *pkt = item->inner_item.firstseg;
 	uint16_t len;
 
 	/* Update the outer IPv4 header. */
 	len = pkt->pkt_len - pkt->outer_l2_len;
-	ipv4_hdr = (struct ipv4_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
+	ipv4_hdr = (struct rte_ipv4_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
 			pkt->outer_l2_len);
 	ipv4_hdr->total_length = rte_cpu_to_be_16(len);
 
@@ -281,7 +281,7 @@ update_vxlan_header(struct gro_vxlan_tcp4_item *item)
 
 	/* Update the inner IPv4 header. */
 	len -= pkt->l2_len;
-	ipv4_hdr = (struct ipv4_hdr *)((char *)udp_hdr + pkt->l2_len);
+	ipv4_hdr = (struct rte_ipv4_hdr *)((char *)udp_hdr + pkt->l2_len);
 	ipv4_hdr->total_length = rte_cpu_to_be_16(len);
 }
 
@@ -291,7 +291,7 @@ gro_vxlan_tcp4_reassemble(struct rte_mbuf *pkt,
 		uint64_t start_time)
 {
 	struct rte_ether_hdr *outer_eth_hdr, *eth_hdr;
-	struct ipv4_hdr *outer_ipv4_hdr, *ipv4_hdr;
+	struct rte_ipv4_hdr *outer_ipv4_hdr, *ipv4_hdr;
 	struct tcp_hdr *tcp_hdr;
 	struct udp_hdr *udp_hdr;
 	struct rte_vxlan_hdr *vxlan_hdr;
@@ -315,7 +315,7 @@ gro_vxlan_tcp4_reassemble(struct rte_mbuf *pkt,
 		return -1;
 
 	outer_eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
-	outer_ipv4_hdr = (struct ipv4_hdr *)((char *)outer_eth_hdr +
+	outer_ipv4_hdr = (struct rte_ipv4_hdr *)((char *)outer_eth_hdr +
 			pkt->outer_l2_len);
 	udp_hdr = (struct udp_hdr *)((char *)outer_ipv4_hdr +
 			pkt->outer_l3_len);
@@ -323,7 +323,7 @@ gro_vxlan_tcp4_reassemble(struct rte_mbuf *pkt,
 			sizeof(struct udp_hdr));
 	eth_hdr = (struct rte_ether_hdr *)((char *)vxlan_hdr +
 			sizeof(struct rte_vxlan_hdr));
-	ipv4_hdr = (struct ipv4_hdr *)((char *)udp_hdr + pkt->l2_len);
+	ipv4_hdr = (struct rte_ipv4_hdr *)((char *)udp_hdr + pkt->l2_len);
 	tcp_hdr = (struct tcp_hdr *)((char *)ipv4_hdr + pkt->l3_len);
 
 	/*

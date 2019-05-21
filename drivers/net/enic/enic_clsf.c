@@ -182,9 +182,9 @@ copy_fltr_v2(struct filter_v2 *fltr, const struct rte_eth_fdir_input *input,
 	    input->flow_type == RTE_ETH_FLOW_NONFRAG_IPV4_TCP ||
 	    input->flow_type == RTE_ETH_FLOW_NONFRAG_IPV4_SCTP ||
 	    input->flow_type == RTE_ETH_FLOW_NONFRAG_IPV4_OTHER) {
-		struct ipv4_hdr ip4_mask, ip4_val;
-		memset(&ip4_mask, 0, sizeof(struct ipv4_hdr));
-		memset(&ip4_val, 0, sizeof(struct ipv4_hdr));
+		struct rte_ipv4_hdr ip4_mask, ip4_val;
+		memset(&ip4_mask, 0, sizeof(struct rte_ipv4_hdr));
+		memset(&ip4_val, 0, sizeof(struct rte_ipv4_hdr));
 
 		if (input->flow.ip4_flow.tos) {
 			ip4_mask.type_of_service = masks->ipv4_mask.tos;
@@ -212,7 +212,7 @@ copy_fltr_v2(struct filter_v2 *fltr, const struct rte_eth_fdir_input *input,
 		}
 
 		enic_set_layer(gp, FILTER_GENERIC_1_IPV4, FILTER_GENERIC_1_L3,
-			       &ip4_mask, &ip4_val, sizeof(struct ipv4_hdr));
+			&ip4_mask, &ip4_val, sizeof(struct rte_ipv4_hdr));
 	}
 
 	if (input->flow_type == RTE_ETH_FLOW_NONFRAG_IPV6_UDP) {
@@ -271,9 +271,9 @@ copy_fltr_v2(struct filter_v2 *fltr, const struct rte_eth_fdir_input *input,
 	    input->flow_type == RTE_ETH_FLOW_NONFRAG_IPV6_TCP ||
 	    input->flow_type == RTE_ETH_FLOW_NONFRAG_IPV6_SCTP ||
 	    input->flow_type == RTE_ETH_FLOW_NONFRAG_IPV6_OTHER) {
-		struct ipv6_hdr ipv6_mask, ipv6_val;
-		memset(&ipv6_mask, 0, sizeof(struct ipv6_hdr));
-		memset(&ipv6_val, 0, sizeof(struct ipv6_hdr));
+		struct rte_ipv6_hdr ipv6_mask, ipv6_val;
+		memset(&ipv6_mask, 0, sizeof(struct rte_ipv6_hdr));
+		memset(&ipv6_val, 0, sizeof(struct rte_ipv6_hdr));
 
 		if (input->flow.ipv6_flow.proto) {
 			ipv6_mask.proto = masks->ipv6_mask.proto;
@@ -301,7 +301,7 @@ copy_fltr_v2(struct filter_v2 *fltr, const struct rte_eth_fdir_input *input,
 		}
 
 		enic_set_layer(gp, FILTER_GENERIC_1_IPV6, FILTER_GENERIC_1_L3,
-			       &ipv6_mask, &ipv6_val, sizeof(struct ipv6_hdr));
+			&ipv6_mask, &ipv6_val, sizeof(struct rte_ipv6_hdr));
 	}
 }
 

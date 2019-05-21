@@ -1213,8 +1213,8 @@ flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
 {
 	struct rte_ether_hdr *eth = NULL;
 	struct rte_vlan_hdr *vlan = NULL;
-	struct ipv4_hdr *ipv4 = NULL;
-	struct ipv6_hdr *ipv6 = NULL;
+	struct rte_ipv4_hdr *ipv4 = NULL;
+	struct rte_ipv6_hdr *ipv6 = NULL;
 	struct udp_hdr *udp = NULL;
 	struct rte_vxlan_hdr *vxlan = NULL;
 	struct rte_vxlan_gpe_hdr *vxlan_gpe = NULL;
@@ -1250,7 +1250,7 @@ flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
 				eth->ether_type = RTE_BE16(RTE_ETHER_TYPE_VLAN);
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
-			ipv4 = (struct ipv4_hdr *)&buf[temp_size];
+			ipv4 = (struct rte_ipv4_hdr *)&buf[temp_size];
 			if (!vlan && !eth)
 				return rte_flow_error_set(error, EINVAL,
 						RTE_FLOW_ERROR_TYPE_ACTION,
@@ -1268,7 +1268,7 @@ flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
 				ipv4->time_to_live = MLX5_ENCAP_IPV4_TTL_DEF;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
-			ipv6 = (struct ipv6_hdr *)&buf[temp_size];
+			ipv6 = (struct rte_ipv6_hdr *)&buf[temp_size];
 			if (!vlan && !eth)
 				return rte_flow_error_set(error, EINVAL,
 						RTE_FLOW_ERROR_TYPE_ACTION,

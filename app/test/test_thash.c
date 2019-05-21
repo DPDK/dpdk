@@ -110,7 +110,7 @@ test_thash(void)
 	union rte_thash_tuple tuple;
 	uint32_t rss_l3, rss_l3l4;
 	uint8_t rss_key_be[RTE_DIM(default_rss_key)];
-	struct ipv6_hdr ipv6_hdr;
+	struct rte_ipv6_hdr ipv6_hdr;
 
 	/* Convert RSS key*/
 	rte_convert_rss_key((uint32_t *)&default_rss_key,

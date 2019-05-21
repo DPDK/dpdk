@@ -29,10 +29,10 @@ extern "C" {
 static inline uint16_t
 sfc_tso_ip4_get_ipid(const uint8_t *pkt_hdrp, size_t ip_hdr_off)
 {
-	const struct ipv4_hdr *ip_hdrp;
+	const struct rte_ipv4_hdr *ip_hdrp;
 	uint16_t ipid;
 
-	ip_hdrp = (const struct ipv4_hdr *)(pkt_hdrp + ip_hdr_off);
+	ip_hdrp = (const struct rte_ipv4_hdr *)(pkt_hdrp + ip_hdr_off);
 	rte_memcpy(&ipid, &ip_hdrp->packet_id, sizeof(ipid));
 
 	return rte_be_to_cpu_16(ipid);

@@ -173,7 +173,7 @@ ptype_tunnel(uint16_t *proto, const struct rte_mbuf *m,
 
 /* get the ipv4 header length */
 static uint8_t
-ip4_hlen(const struct ipv4_hdr *hdr)
+ip4_hlen(const struct rte_ipv4_hdr *hdr)
 {
 	return (hdr->version_ihl & 0xf) * 4;
 }
@@ -300,8 +300,8 @@ l3:
 		return pkt_type;
 
 	if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4)) {
-		const struct ipv4_hdr *ip4h;
-		struct ipv4_hdr ip4h_copy;
+		const struct rte_ipv4_hdr *ip4h;
+		struct rte_ipv4_hdr ip4h_copy;
 
 		ip4h = rte_pktmbuf_read(m, off, sizeof(*ip4h), &ip4h_copy);
 		if (unlikely(ip4h == NULL))
@@ -323,8 +323,8 @@ l3:
 		proto = ip4h->next_proto_id;
 		pkt_type |= ptype_l4(proto);
 	} else if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6)) {
-		const struct ipv6_hdr *ip6h;
-		struct ipv6_hdr ip6h_copy;
+		const struct rte_ipv6_hdr *ip6h;
+		struct rte_ipv6_hdr ip6h_copy;
 		int frag = 0;
 
 		ip6h = rte_pktmbuf_read(m, off, sizeof(*ip6h), &ip6h_copy);
@@ -432,8 +432,8 @@ l3:
 		return pkt_type;
 
 	if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4)) {
-		const struct ipv4_hdr *ip4h;
-		struct ipv4_hdr ip4h_copy;
+		const struct rte_ipv4_hdr *ip4h;
+		struct rte_ipv4_hdr ip4h_copy;
 
 		ip4h = rte_pktmbuf_read(m, off, sizeof(*ip4h), &ip4h_copy);
 		if (unlikely(ip4h == NULL))
@@ -455,8 +455,8 @@ l3:
 		proto = ip4h->next_proto_id;
 		pkt_type |= ptype_inner_l4(proto);
 	} else if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6)) {
-		const struct ipv6_hdr *ip6h;
-		struct ipv6_hdr ip6h_copy;
+		const struct rte_ipv6_hdr *ip6h;
+		struct rte_ipv6_hdr ip6h_copy;
 		int frag = 0;
 
 		ip6h = rte_pktmbuf_read(m, off, sizeof(*ip6h), &ip6h_copy);

@@ -99,7 +99,7 @@ pkt_burst_mac_forward(struct fwd_stream *fs)
 		mb->ol_flags &= IND_ATTACHED_MBUF | EXT_ATTACHED_MBUF;
 		mb->ol_flags |= ol_flags;
 		mb->l2_len = sizeof(struct rte_ether_hdr);
-		mb->l3_len = sizeof(struct ipv4_hdr);
+		mb->l3_len = sizeof(struct rte_ipv4_hdr);
 		mb->vlan_tci = txp->tx_vlan_id;
 		mb->vlan_tci_outer = txp->tx_vlan_id_outer;
 	}

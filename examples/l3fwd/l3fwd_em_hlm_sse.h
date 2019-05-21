@@ -14,7 +14,7 @@ get_ipv4_5tuple(struct rte_mbuf *m0, __m128i mask0,
 	 __m128i tmpdata0 = _mm_loadu_si128(
 			rte_pktmbuf_mtod_offset(m0, __m128i *,
 				sizeof(struct rte_ether_hdr) +
-				offsetof(struct ipv4_hdr, time_to_live)));
+				offsetof(struct rte_ipv4_hdr, time_to_live)));
 
 	key->xmm = _mm_and_si128(tmpdata0, mask0);
 }
@@ -26,18 +26,18 @@ get_ipv6_5tuple(struct rte_mbuf *m0, __m128i mask0,
 	__m128i tmpdata0 = _mm_loadu_si128(
 			rte_pktmbuf_mtod_offset(m0, __m128i *,
 				sizeof(struct rte_ether_hdr) +
-				offsetof(struct ipv6_hdr, payload_len)));
+				offsetof(struct rte_ipv6_hdr, payload_len)));
 
 	__m128i tmpdata1 = _mm_loadu_si128(
 			rte_pktmbuf_mtod_offset(m0, __m128i *,
 				sizeof(struct rte_ether_hdr) +
-				offsetof(struct ipv6_hdr, payload_len) +
+				offsetof(struct rte_ipv6_hdr, payload_len) +
 				sizeof(__m128i)));
 
 	__m128i tmpdata2 = _mm_loadu_si128(
 			rte_pktmbuf_mtod_offset(m0, __m128i *,
 				sizeof(struct rte_ether_hdr) +
-				offsetof(struct ipv6_hdr, payload_len) +
+				offsetof(struct rte_ipv6_hdr, payload_len) +
 				sizeof(__m128i) + sizeof(__m128i)));
 
 	key->xmm[0] = _mm_and_si128(tmpdata0, mask0);

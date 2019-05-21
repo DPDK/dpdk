@@ -14,7 +14,7 @@
 #define	IPV4_MAX_VER_IHL_DIFF	(IPV4_MAX_VER_IHL - IPV4_MIN_VER_IHL)
 
 /* Minimum value of IPV4 total length (20B) in network byte order. */
-#define	IPV4_MIN_LEN_BE	(sizeof(struct ipv4_hdr) << 8)
+#define	IPV4_MIN_LEN_BE	(sizeof(struct rte_ipv4_hdr) << 8)
 
 /*
  * From http://www.rfc-editor.org/rfc/rfc1812.txt section 5.2.2:
@@ -28,7 +28,7 @@
  * to BAD_PORT value.
  */
 static __rte_always_inline void
-rfc1812_process(struct ipv4_hdr *ipv4_hdr, uint16_t *dp, uint32_t ptype)
+rfc1812_process(struct rte_ipv4_hdr *ipv4_hdr, uint16_t *dp, uint32_t ptype)
 {
 	uint8_t ihl;
 

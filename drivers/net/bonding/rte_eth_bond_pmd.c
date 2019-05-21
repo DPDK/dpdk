@@ -591,7 +591,7 @@ mode6_debug(const char __attribute__((unused)) *info,
 	struct rte_ether_hdr *eth_h, uint16_t port,
 	uint32_t __attribute__((unused)) *burstnumber)
 {
-	struct ipv4_hdr *ipv4_h;
+	struct rte_ipv4_hdr *ipv4_h;
 #ifdef RTE_LIBRTE_BOND_DEBUG_ALB
 	struct rte_arp_hdr *arp_h;
 	char dst_ip[16];
@@ -608,7 +608,7 @@ mode6_debug(const char __attribute__((unused)) *info,
 #endif
 
 	if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4)) {
-		ipv4_h = (struct ipv4_hdr *)((char *)(eth_h + 1) + offset);
+		ipv4_h = (struct rte_ipv4_hdr *)((char *)(eth_h + 1) + offset);
 		ipv4_addr_to_dot(ipv4_h->src_addr, src_ip, MaxIPv4String);
 #ifdef RTE_LIBRTE_BOND_DEBUG_ALB
 		ipv4_addr_to_dot(ipv4_h->dst_addr, dst_ip, MaxIPv4String);
@@ -755,13 +755,13 @@ ether_hash(struct rte_ether_hdr *eth_hdr)
 }
 
 static inline uint32_t
-ipv4_hash(struct ipv4_hdr *ipv4_hdr)
+ipv4_hash(struct rte_ipv4_hdr *ipv4_hdr)
 {
 	return ipv4_hdr->src_addr ^ ipv4_hdr->dst_addr;
 }
 
 static inline uint32_t
-ipv6_hash(struct ipv6_hdr *ipv6_hdr)
+ipv6_hash(struct rte_ipv6_hdr *ipv6_hdr)
 {
 	unaligned_uint32_t *word_src_addr =
 		(unaligned_uint32_t *)&(ipv6_hdr->src_addr[0]);
@@ -812,12 +812,12 @@ burst_xmit_l23_hash(struct rte_mbuf **buf, uint16_t nb_pkts,
 		vlan_offset = get_vlan_offset(eth_hdr, &proto);
 
 		if (rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4) == proto) {
-			struct ipv4_hdr *ipv4_hdr = (struct ipv4_hdr *)
+			struct rte_ipv4_hdr *ipv4_hdr = (struct rte_ipv4_hdr *)
 					((char *)(eth_hdr + 1) + vlan_offset);
 			l3hash = ipv4_hash(ipv4_hdr);
 
 		} else if (rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6) == proto) {
-			struct ipv6_hdr *ipv6_hdr = (struct ipv6_hdr *)
+			struct rte_ipv6_hdr *ipv6_hdr = (struct rte_ipv6_hdr *)
 					((char *)(eth_hdr + 1) + vlan_offset);
 			l3hash = ipv6_hash(ipv6_hdr);
 		}
@@ -852,7 +852,7 @@ burst_xmit_l34_hash(struct rte_mbuf **buf, uint16_t nb_pkts,
 		l4hash = 0;
 
 		if (rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4) == proto) {
-			struct ipv4_hdr *ipv4_hdr = (struct ipv4_hdr *)
+			struct rte_ipv4_hdr *ipv4_hdr = (struct rte_ipv4_hdr *)
 					((char *)(eth_hdr + 1) + vlan_offset);
 			size_t ip_hdr_offset;
 
@@ -883,7 +883,7 @@ burst_xmit_l34_hash(struct rte_mbuf **buf, uint16_t nb_pkts,
 				}
 			}
 		} else if  (rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6) == proto) {
-			struct ipv6_hdr *ipv6_hdr = (struct ipv6_hdr *)
+			struct rte_ipv6_hdr *ipv6_hdr = (struct rte_ipv6_hdr *)
 					((char *)(eth_hdr + 1) + vlan_offset);
 			l3hash = ipv6_hash(ipv6_hdr);
 

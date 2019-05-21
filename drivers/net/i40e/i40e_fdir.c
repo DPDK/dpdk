@@ -686,8 +686,8 @@ i40e_fdir_fill_eth_ip_head(const struct rte_eth_fdir_input *fdir_input,
 	static uint8_t vlan_frame[] = {0x81, 0, 0, 0};
 	uint16_t *ether_type;
 	uint8_t len = 2 * sizeof(struct rte_ether_addr);
-	struct ipv4_hdr *ip;
-	struct ipv6_hdr *ip6;
+	struct rte_ipv4_hdr *ip;
+	struct rte_ipv6_hdr *ip6;
 	static const uint8_t next_proto[] = {
 		[RTE_ETH_FLOW_FRAG_IPV4] = IPPROTO_IP,
 		[RTE_ETH_FLOW_NONFRAG_IPV4_TCP] = IPPROTO_TCP,
@@ -723,7 +723,7 @@ i40e_fdir_fill_eth_ip_head(const struct rte_eth_fdir_input *fdir_input,
 	case RTE_ETH_FLOW_NONFRAG_IPV4_SCTP:
 	case RTE_ETH_FLOW_NONFRAG_IPV4_OTHER:
 	case RTE_ETH_FLOW_FRAG_IPV4:
-		ip = (struct ipv4_hdr *)raw_pkt;
+		ip = (struct rte_ipv4_hdr *)raw_pkt;
 
 		*ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4);
 		ip->version_ihl = I40E_FDIR_IP_DEFAULT_VERSION_IHL;
@@ -743,14 +743,14 @@ i40e_fdir_fill_eth_ip_head(const struct rte_eth_fdir_input *fdir_input,
 		 */
 		ip->src_addr = fdir_input->flow.ip4_flow.dst_ip;
 		ip->dst_addr = fdir_input->flow.ip4_flow.src_ip;
-		len += sizeof(struct ipv4_hdr);
+		len += sizeof(struct rte_ipv4_hdr);
 		break;
 	case RTE_ETH_FLOW_NONFRAG_IPV6_TCP:
 	case RTE_ETH_FLOW_NONFRAG_IPV6_UDP:
 	case RTE_ETH_FLOW_NONFRAG_IPV6_SCTP:
 	case RTE_ETH_FLOW_NONFRAG_IPV6_OTHER:
 	case RTE_ETH_FLOW_FRAG_IPV6:
-		ip6 = (struct ipv6_hdr *)raw_pkt;
+		ip6 = (struct rte_ipv6_hdr *)raw_pkt;
 
 		*ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6);
 		ip6->vtc_flow =
@@ -776,7 +776,7 @@ i40e_fdir_fill_eth_ip_head(const struct rte_eth_fdir_input *fdir_input,
 		rte_memcpy(&(ip6->dst_addr),
 			   &(fdir_input->flow.ipv6_flow.src_ip),
 			   IPV6_ADDR_LEN);
-		len += sizeof(struct ipv6_hdr);
+		len += sizeof(struct rte_ipv6_hdr);
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "unknown flow type %u.",
@@ -960,8 +960,8 @@ i40e_flow_fdir_fill_eth_ip_head(struct i40e_pf *pf,
 	static uint8_t vlan_frame[] = {0x81, 0, 0, 0};
 	uint16_t *ether_type;
 	uint8_t len = 2 * sizeof(struct rte_ether_addr);
-	struct ipv4_hdr *ip;
-	struct ipv6_hdr *ip6;
+	struct rte_ipv4_hdr *ip;
+	struct rte_ipv6_hdr *ip6;
 	uint8_t pctype = fdir_input->pctype;
 	bool is_customized_pctype = fdir_input->flow_ext.customized_pctype;
 	static const uint8_t next_proto[] = {
@@ -1007,7 +1007,7 @@ i40e_flow_fdir_fill_eth_ip_head(struct i40e_pf *pf,
 		 pctype == I40E_FILTER_PCTYPE_NONF_IPV4_OTHER ||
 		 pctype == I40E_FILTER_PCTYPE_FRAG_IPV4 ||
 		 is_customized_pctype) {
-		ip = (struct ipv4_hdr *)raw_pkt;
+		ip = (struct rte_ipv4_hdr *)raw_pkt;
 
 		*ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4);
 		ip->version_ihl = I40E_FDIR_IP_DEFAULT_VERSION_IHL;
@@ -1034,13 +1034,13 @@ i40e_flow_fdir_fill_eth_ip_head(struct i40e_pf *pf,
 			 cus_pctype->index == I40E_CUSTOMIZED_GTPU_IPV6 ||
 			 cus_pctype->index == I40E_CUSTOMIZED_GTPU)
 			ip->next_proto_id = IPPROTO_UDP;
-		len += sizeof(struct ipv4_hdr);
+		len += sizeof(struct rte_ipv4_hdr);
 	} else if (pctype == I40E_FILTER_PCTYPE_NONF_IPV6_TCP ||
 		   pctype == I40E_FILTER_PCTYPE_NONF_IPV6_UDP ||
 		   pctype == I40E_FILTER_PCTYPE_NONF_IPV6_SCTP ||
 		   pctype == I40E_FILTER_PCTYPE_NONF_IPV6_OTHER ||
 		   pctype == I40E_FILTER_PCTYPE_FRAG_IPV6) {
-		ip6 = (struct ipv6_hdr *)raw_pkt;
+		ip6 = (struct rte_ipv6_hdr *)raw_pkt;
 
 		*ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6);
 		ip6->vtc_flow =
@@ -1066,7 +1066,7 @@ i40e_flow_fdir_fill_eth_ip_head(struct i40e_pf *pf,
 		rte_memcpy(&ip6->dst_addr,
 			   &fdir_input->flow.ipv6_flow.src_ip,
 			   IPV6_ADDR_LEN);
-		len += sizeof(struct ipv6_hdr);
+		len += sizeof(struct rte_ipv6_hdr);
 	} else {
 		PMD_DRV_LOG(ERR, "unknown pctype %u.",
 			    fdir_input->pctype);
@@ -1093,8 +1093,8 @@ i40e_flow_fdir_construct_pkt(struct i40e_pf *pf,
 	struct tcp_hdr *tcp;
 	struct sctp_hdr *sctp;
 	struct rte_flow_item_gtp *gtp;
-	struct ipv4_hdr *gtp_ipv4;
-	struct ipv6_hdr *gtp_ipv6;
+	struct rte_ipv4_hdr *gtp_ipv4;
+	struct rte_ipv6_hdr *gtp_ipv6;
 	uint8_t size, dst = 0;
 	uint8_t i, pit_idx, set_idx = I40E_FLXPLD_L4_IDX; /* use l4 by default*/
 	int len;
@@ -1232,7 +1232,7 @@ i40e_flow_fdir_construct_pkt(struct i40e_pf *pf,
 
 			if (cus_pctype->index == I40E_CUSTOMIZED_GTPU_IPV4) {
 				gtp->msg_type = I40E_FDIR_GTP_MSG_TYPE_0XFF;
-				gtp_ipv4 = (struct ipv4_hdr *)
+				gtp_ipv4 = (struct rte_ipv4_hdr *)
 					((unsigned char *)gtp +
 					 sizeof(struct rte_flow_item_gtp));
 				gtp_ipv4->version_ihl =
@@ -1242,11 +1242,11 @@ i40e_flow_fdir_construct_pkt(struct i40e_pf *pf,
 					rte_cpu_to_be_16(
 						I40E_FDIR_INNER_IP_DEFAULT_LEN);
 				payload = (unsigned char *)gtp_ipv4 +
-					sizeof(struct ipv4_hdr);
+					sizeof(struct rte_ipv4_hdr);
 			} else if (cus_pctype->index ==
 				   I40E_CUSTOMIZED_GTPU_IPV6) {
 				gtp->msg_type = I40E_FDIR_GTP_MSG_TYPE_0XFF;
-				gtp_ipv6 = (struct ipv6_hdr *)
+				gtp_ipv6 = (struct rte_ipv6_hdr *)
 					((unsigned char *)gtp +
 					 sizeof(struct rte_flow_item_gtp));
 				gtp_ipv6->vtc_flow =
@@ -1260,7 +1260,7 @@ i40e_flow_fdir_construct_pkt(struct i40e_pf *pf,
 				gtp_ipv6->hop_limits =
 					I40E_FDIR_IPv6_DEFAULT_HOP_LIMITS;
 				payload = (unsigned char *)gtp_ipv6 +
-					sizeof(struct ipv6_hdr);
+					sizeof(struct rte_ipv6_hdr);
 			} else
 				payload = (unsigned char *)gtp +
 					sizeof(struct rte_flow_item_gtp);

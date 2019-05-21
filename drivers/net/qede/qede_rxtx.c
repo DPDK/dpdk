@@ -951,8 +951,8 @@ static inline uint32_t qede_rx_cqe_to_pkt_type_outer(struct rte_mbuf *m)
 {
 	uint32_t packet_type = RTE_PTYPE_UNKNOWN;
 	struct rte_ether_hdr *eth_hdr;
-	struct ipv4_hdr *ipv4_hdr;
-	struct ipv6_hdr *ipv6_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
+	struct rte_ipv6_hdr *ipv6_hdr;
 	struct rte_vlan_hdr *vlan_hdr;
 	uint16_t ethertype;
 	bool vlan_tagged = 0;
@@ -972,14 +972,16 @@ static inline uint32_t qede_rx_cqe_to_pkt_type_outer(struct rte_mbuf *m)
 
 	if (ethertype == RTE_ETHER_TYPE_IPv4) {
 		packet_type |= RTE_PTYPE_L3_IPV4;
-		ipv4_hdr = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *, len);
+		ipv4_hdr = rte_pktmbuf_mtod_offset(m,
+					struct rte_ipv4_hdr *, len);
 		if (ipv4_hdr->next_proto_id == IPPROTO_TCP)
 			packet_type |= RTE_PTYPE_L4_TCP;
 		else if (ipv4_hdr->next_proto_id == IPPROTO_UDP)
 			packet_type |= RTE_PTYPE_L4_UDP;
 	} else if (ethertype == RTE_ETHER_TYPE_IPv6) {
 		packet_type |= RTE_PTYPE_L3_IPV6;
-		ipv6_hdr = rte_pktmbuf_mtod_offset(m, struct ipv6_hdr *, len);
+		ipv6_hdr = rte_pktmbuf_mtod_offset(m,
+						struct rte_ipv6_hdr *, len);
 		if (ipv6_hdr->proto == IPPROTO_TCP)
 			packet_type |= RTE_PTYPE_L4_TCP;
 		else if (ipv6_hdr->proto == IPPROTO_UDP)
@@ -1141,7 +1143,7 @@ static inline uint32_t qede_rx_cqe_to_pkt_type(uint16_t flags)
 static inline uint8_t
 qede_check_notunn_csum_l3(struct rte_mbuf *m, uint16_t flag)
 {
-	struct ipv4_hdr *ip;
+	struct rte_ipv4_hdr *ip;
 	uint16_t pkt_csum;
 	uint16_t calc_csum;
 	uint16_t val;
@@ -1152,7 +1154,7 @@ qede_check_notunn_csum_l3(struct rte_mbuf *m, uint16_t flag)
 	if (unlikely(val)) {
 		m->packet_type = qede_rx_cqe_to_pkt_type(flag);
 		if (RTE_ETH_IS_IPV4_HDR(m->packet_type)) {
-			ip = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *,
+			ip = rte_pktmbuf_mtod_offset(m, struct rte_ipv4_hdr *,
 					   sizeof(struct rte_ether_hdr));
 			pkt_csum = ip->hdr_checksum;
 			ip->hdr_checksum = 0;

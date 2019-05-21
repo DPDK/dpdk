@@ -146,7 +146,7 @@ Firstly, the Ethernet* header is removed from the packet and the IPv4 address is
 
     /* Remove the Ethernet header from the input packet */
 
-    iphdr = (struct ipv4_hdr *)rte_pktmbuf_adj(m, sizeof(struct rte_ether_hdr));
+    iphdr = (struct rte_ipv4_hdr *)rte_pktmbuf_adj(m, sizeof(struct rte_ether_hdr));
     RTE_ASSERT(iphdr != NULL);
     dest_addr = rte_be_to_cpu_32(iphdr->dst_addr);
 

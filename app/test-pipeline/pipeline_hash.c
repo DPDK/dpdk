@@ -426,8 +426,8 @@ app_main_loop_rx_metadata(void) {
 		for (j = 0; j < n_mbufs; j++) {
 			struct rte_mbuf *m;
 			uint8_t *m_data, *key;
-			struct ipv4_hdr *ip_hdr;
-			struct ipv6_hdr *ipv6_hdr;
+			struct rte_ipv4_hdr *ip_hdr;
+			struct rte_ipv6_hdr *ipv6_hdr;
 			uint32_t ip_dst;
 			uint8_t *ipv6_dst;
 			uint32_t *signature, *k32;
@@ -440,14 +440,14 @@ app_main_loop_rx_metadata(void) {
 					APP_METADATA_OFFSET(32));
 
 			if (RTE_ETH_IS_IPV4_HDR(m->packet_type)) {
-				ip_hdr = (struct ipv4_hdr *)
+				ip_hdr = (struct rte_ipv4_hdr *)
 					&m_data[sizeof(struct rte_ether_hdr)];
 				ip_dst = ip_hdr->dst_addr;
 
 				k32 = (uint32_t *) key;
 				k32[0] = ip_dst & 0xFFFFFF00;
 			} else if (RTE_ETH_IS_IPV6_HDR(m->packet_type)) {
-				ipv6_hdr = (struct ipv6_hdr *)
+				ipv6_hdr = (struct rte_ipv6_hdr *)
 					&m_data[sizeof(struct rte_ether_hdr)];
 				ipv6_dst = ipv6_hdr->dst_addr;
 

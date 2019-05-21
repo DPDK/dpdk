@@ -120,7 +120,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 	struct rte_mempool *mbp;
 	struct rte_mbuf  *pkt;
 	struct rte_ether_hdr *eth_hdr;
-	struct ipv4_hdr *ip_hdr;
+	struct rte_ipv4_hdr *ip_hdr;
 	struct udp_hdr *udp_hdr;
 	uint16_t vlan_tci, vlan_tci_outer;
 	uint64_t ol_flags = 0;
@@ -176,7 +176,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 		eth_hdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4);
 
 		/* Initialize IP header. */
-		ip_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
+		ip_hdr = (struct rte_ipv4_hdr *)(eth_hdr + 1);
 		memset(ip_hdr, 0, sizeof(*ip_hdr));
 		ip_hdr->version_ihl	= IP_VHL_DEF;
 		ip_hdr->type_of_service	= 0;
@@ -206,7 +206,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 		pkt->vlan_tci		= vlan_tci;
 		pkt->vlan_tci_outer	= vlan_tci_outer;
 		pkt->l2_len		= sizeof(struct rte_ether_hdr);
-		pkt->l3_len		= sizeof(struct ipv4_hdr);
+		pkt->l3_len		= sizeof(struct rte_ipv4_hdr);
 		pkts_burst[nb_pkt]	= pkt;
 
 		next_flow = (next_flow + 1) % cfg_n_flows;

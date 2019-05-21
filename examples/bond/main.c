@@ -341,7 +341,7 @@ static int lcore_main(__attribute__((unused)) void *arg1)
 
 	struct rte_ether_hdr *eth_hdr;
 	struct rte_arp_hdr *arp_hdr;
-	struct ipv4_hdr *ipv4_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
 	uint16_t ether_type, offset;
 
 	uint16_t rx_cnt;
@@ -409,7 +409,7 @@ static int lcore_main(__attribute__((unused)) void *arg1)
 					global_flag_stru_p->port_packets[2]++;
 					rte_spinlock_unlock(&global_flag_stru_p->lock);
 				 }
-				ipv4_hdr = (struct ipv4_hdr *)((char *)(eth_hdr + 1) + offset);
+				ipv4_hdr = (struct rte_ipv4_hdr *)((char *)(eth_hdr + 1) + offset);
 				if (ipv4_hdr->dst_addr == bond_ip) {
 					rte_ether_addr_copy(&eth_hdr->s_addr, &eth_hdr->d_addr);
 					rte_eth_macaddr_get(BOND_PORT, &eth_hdr->s_addr);

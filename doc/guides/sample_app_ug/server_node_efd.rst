@@ -191,12 +191,12 @@ which tells the node where the packet has to be distributed.
         efd_value_t data[EFD_BURST_MAX];
         const void *key_ptrs[EFD_BURST_MAX];
 
-        struct ipv4_hdr *ipv4_hdr;
+        struct rte_ipv4_hdr *ipv4_hdr;
         uint32_t ipv4_dst_ip[EFD_BURST_MAX];
 
         for (i = 0; i < rx_count; i++) {
             /* Handle IPv4 header.*/
-            ipv4_hdr = rte_pktmbuf_mtod_offset(pkts[i], struct ipv4_hdr *,
+            ipv4_hdr = rte_pktmbuf_mtod_offset(pkts[i], struct rte_ipv4_hdr *,
                     sizeof(struct rte_ether_hdr));
             ipv4_dst_ip[i] = ipv4_hdr->dst_addr;
             key_ptrs[i] = (void *)&ipv4_dst_ip[i];
@@ -348,7 +348,7 @@ flow is not handled by the node.
     static inline void
     handle_packets(struct rte_hash *h, struct rte_mbuf **bufs, uint16_t num_packets)
     {
-        struct ipv4_hdr *ipv4_hdr;
+        struct rte_ipv4_hdr *ipv4_hdr;
         uint32_t ipv4_dst_ip[PKT_READ_SIZE];
         const void *key_ptrs[PKT_READ_SIZE];
         unsigned int i;
@@ -356,7 +356,7 @@ flow is not handled by the node.
 
         for (i = 0; i < num_packets; i++) {
             /* Handle IPv4 header.*/
-            ipv4_hdr = rte_pktmbuf_mtod_offset(bufs[i], struct ipv4_hdr *,
+            ipv4_hdr = rte_pktmbuf_mtod_offset(bufs[i], struct rte_ipv4_hdr *,
                     sizeof(struct rte_ether_hdr));
             ipv4_dst_ip[i] = ipv4_hdr->dst_addr;
             key_ptrs[i] = &ipv4_dst_ip[i];

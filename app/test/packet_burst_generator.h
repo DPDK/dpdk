@@ -47,15 +47,15 @@ initialize_sctp_header(struct sctp_hdr *sctp_hdr, uint16_t src_port,
 		uint16_t dst_port, uint16_t pkt_data_len);
 
 uint16_t
-initialize_ipv6_header(struct ipv6_hdr *ip_hdr, uint8_t *src_addr,
+initialize_ipv6_header(struct rte_ipv6_hdr *ip_hdr, uint8_t *src_addr,
 		uint8_t *dst_addr, uint16_t pkt_data_len);
 
 uint16_t
-initialize_ipv4_header(struct ipv4_hdr *ip_hdr, uint32_t src_addr,
+initialize_ipv4_header(struct rte_ipv4_hdr *ip_hdr, uint32_t src_addr,
 		uint32_t dst_addr, uint16_t pkt_data_len);
 
 uint16_t
-initialize_ipv4_header_proto(struct ipv4_hdr *ip_hdr, uint32_t src_addr,
+initialize_ipv4_header_proto(struct rte_ipv4_hdr *ip_hdr, uint32_t src_addr,
 		uint32_t dst_addr, uint16_t pkt_data_len, uint8_t proto);
 
 int

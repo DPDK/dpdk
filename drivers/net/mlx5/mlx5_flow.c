@@ -2548,13 +2548,13 @@ flow_fdir_filter_convert(struct rte_eth_dev *dev,
 	case RTE_ETH_FLOW_NONFRAG_IPV4_UDP:
 	case RTE_ETH_FLOW_NONFRAG_IPV4_TCP:
 	case RTE_ETH_FLOW_NONFRAG_IPV4_OTHER:
-		attributes->l3.ipv4.hdr = (struct ipv4_hdr){
+		attributes->l3.ipv4.hdr = (struct rte_ipv4_hdr){
 			.src_addr = input->flow.ip4_flow.src_ip,
 			.dst_addr = input->flow.ip4_flow.dst_ip,
 			.time_to_live = input->flow.ip4_flow.ttl,
 			.type_of_service = input->flow.ip4_flow.tos,
 		};
-		attributes->l3_mask.ipv4.hdr = (struct ipv4_hdr){
+		attributes->l3_mask.ipv4.hdr = (struct rte_ipv4_hdr){
 			.src_addr = mask->ipv4_mask.src_ip,
 			.dst_addr = mask->ipv4_mask.dst_ip,
 			.time_to_live = mask->ipv4_mask.ttl,
@@ -2570,7 +2570,7 @@ flow_fdir_filter_convert(struct rte_eth_dev *dev,
 	case RTE_ETH_FLOW_NONFRAG_IPV6_UDP:
 	case RTE_ETH_FLOW_NONFRAG_IPV6_TCP:
 	case RTE_ETH_FLOW_NONFRAG_IPV6_OTHER:
-		attributes->l3.ipv6.hdr = (struct ipv6_hdr){
+		attributes->l3.ipv6.hdr = (struct rte_ipv6_hdr){
 			.hop_limits = input->flow.ipv6_flow.hop_limits,
 			.proto = input->flow.ipv6_flow.proto,
 		};

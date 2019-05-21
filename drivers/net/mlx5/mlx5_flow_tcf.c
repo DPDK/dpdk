@@ -732,12 +732,12 @@ flow_tcf_pedit_key_set_dec_ttl(const struct rte_flow_action *actions,
 	if (item_flags & MLX5_FLOW_LAYER_OUTER_L3_IPV4) {
 		p_parser->keys_ex[idx].htype = TCA_PEDIT_KEY_EX_HDR_TYPE_IP4;
 		p_parser->keys[idx].off =
-			offsetof(struct ipv4_hdr, time_to_live);
+			offsetof(struct rte_ipv4_hdr, time_to_live);
 	}
 	if (item_flags & MLX5_FLOW_LAYER_OUTER_L3_IPV6) {
 		p_parser->keys_ex[idx].htype = TCA_PEDIT_KEY_EX_HDR_TYPE_IP6;
 		p_parser->keys[idx].off =
-			offsetof(struct ipv6_hdr, hop_limits);
+			offsetof(struct rte_ipv6_hdr, hop_limits);
 	}
 	if (actions->type == RTE_FLOW_ACTION_TYPE_DEC_TTL) {
 		p_parser->keys_ex[idx].cmd = TCA_PEDIT_KEY_EX_CMD_ADD;
@@ -801,8 +801,8 @@ flow_tcf_pedit_key_set_ipv6_addr(const struct rte_flow_action *actions,
 	int keys = NUM_OF_PEDIT_KEYS(IPV6_ADDR_LEN);
 	int off_base =
 		actions->type == RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC ?
-		offsetof(struct ipv6_hdr, src_addr) :
-		offsetof(struct ipv6_hdr, dst_addr);
+		offsetof(struct rte_ipv6_hdr, src_addr) :
+		offsetof(struct rte_ipv6_hdr, dst_addr);
 	const struct rte_flow_action_set_ipv6 *conf =
 		(const struct rte_flow_action_set_ipv6 *)actions->conf;
 
@@ -836,8 +836,8 @@ flow_tcf_pedit_key_set_ipv4_addr(const struct rte_flow_action *actions,
 	p_parser->keys_ex[idx].cmd = TCA_PEDIT_KEY_EX_CMD_SET;
 	p_parser->keys[idx].off =
 		actions->type == RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC ?
-		offsetof(struct ipv4_hdr, src_addr) :
-		offsetof(struct ipv4_hdr, dst_addr);
+		offsetof(struct rte_ipv4_hdr, src_addr) :
+		offsetof(struct rte_ipv4_hdr, dst_addr);
 	p_parser->keys[idx].mask = ~UINT32_MAX;
 	p_parser->keys[idx].val =
 		((const struct rte_flow_action_set_ipv4 *)

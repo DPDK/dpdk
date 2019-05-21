@@ -40,8 +40,8 @@ static inline int
 update_trs_l3hdr(const struct rte_ipsec_sa *sa, void *p, uint32_t plen,
 		uint32_t l2len, uint32_t l3len, uint8_t proto)
 {
-	struct ipv4_hdr *v4h;
-	struct ipv6_hdr *v6h;
+	struct rte_ipv4_hdr *v4h;
+	struct rte_ipv6_hdr *v6h;
 	int32_t rc;
 
 	if ((sa->type & RTE_IPSEC_SATP_IPV_MASK) == RTE_IPSEC_SATP_IPV4) {
@@ -67,8 +67,8 @@ static inline void
 update_tun_l3hdr(const struct rte_ipsec_sa *sa, void *p, uint32_t plen,
 		uint32_t l2len, rte_be16_t pid)
 {
-	struct ipv4_hdr *v4h;
-	struct ipv6_hdr *v6h;
+	struct rte_ipv4_hdr *v4h;
+	struct rte_ipv6_hdr *v6h;
 
 	if (sa->type & RTE_IPSEC_SATP_MODE_TUNLV4) {
 		v4h = p;

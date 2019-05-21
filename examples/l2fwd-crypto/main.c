@@ -388,7 +388,7 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 		struct l2fwd_crypto_params *cparams)
 {
 	struct rte_ether_hdr *eth_hdr;
-	struct ipv4_hdr *ip_hdr;
+	struct rte_ipv4_hdr *ip_hdr;
 
 	uint32_t ipdata_offset, data_len;
 	uint32_t pad_len = 0;
@@ -401,7 +401,7 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 
 	ipdata_offset = sizeof(struct rte_ether_hdr);
 
-	ip_hdr = (struct ipv4_hdr *)(rte_pktmbuf_mtod(m, char *) +
+	ip_hdr = (struct rte_ipv4_hdr *)(rte_pktmbuf_mtod(m, char *) +
 			ipdata_offset);
 
 	ipdata_offset += (ip_hdr->version_ihl & IPV4_HDR_IHL_MASK)

@@ -2137,7 +2137,7 @@ eth_ena_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint32_t i;
 	struct rte_mbuf *m;
 	struct ena_ring *tx_ring = (struct ena_ring *)(tx_queue);
-	struct ipv4_hdr *ip_hdr;
+	struct rte_ipv4_hdr *ip_hdr;
 	uint64_t ol_flags;
 	uint16_t frag_field;
 
@@ -2154,7 +2154,7 @@ eth_ena_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		if (unlikely(m->l2_len == 0))
 			m->l2_len = sizeof(struct rte_ether_hdr);
 
-		ip_hdr = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *,
+		ip_hdr = rte_pktmbuf_mtod_offset(m, struct rte_ipv4_hdr *,
 						 m->l2_len);
 		frag_field = rte_be_to_cpu_16(ip_hdr->fragment_offset);
 

@@ -78,14 +78,14 @@ struct link_bonding_unittest_params {
 
 	/* Packet Headers */
 	struct rte_ether_hdr *pkt_eth_hdr;
-	struct ipv4_hdr *pkt_ipv4_hdr;
-	struct ipv6_hdr *pkt_ipv6_hdr;
+	struct rte_ipv4_hdr *pkt_ipv4_hdr;
+	struct rte_ipv6_hdr *pkt_ipv6_hdr;
 	struct udp_hdr *pkt_udp_hdr;
 
 };
 
-static struct ipv4_hdr pkt_ipv4_hdr;
-static struct ipv6_hdr pkt_ipv6_hdr;
+static struct rte_ipv4_hdr pkt_ipv4_hdr;
+static struct rte_ipv6_hdr pkt_ipv6_hdr;
 static struct udp_hdr pkt_udp_hdr;
 
 static struct link_bonding_unittest_params default_params  = {

@@ -272,12 +272,12 @@ tap_verify_csum(struct rte_mbuf *mbuf)
 	else if (l2 == RTE_PTYPE_L2_ETHER_QINQ)
 		l2_len += 8;
 	/* Don't verify checksum for packets with discontinuous L2 header */
-	if (unlikely(l2_len + sizeof(struct ipv4_hdr) >
+	if (unlikely(l2_len + sizeof(struct rte_ipv4_hdr) >
 		     rte_pktmbuf_data_len(mbuf)))
 		return;
 	l3_hdr = rte_pktmbuf_mtod_offset(mbuf, void *, l2_len);
 	if (l3 == RTE_PTYPE_L3_IPV4 || l3 == RTE_PTYPE_L3_IPV4_EXT) {
-		struct ipv4_hdr *iph = l3_hdr;
+		struct rte_ipv4_hdr *iph = l3_hdr;
 
 		/* ihl contains the number of 4-byte words in the header */
 		l3_len = 4 * (iph->version_ihl & 0xf);
@@ -295,9 +295,9 @@ tap_verify_csum(struct rte_mbuf *mbuf)
 			PKT_RX_IP_CKSUM_BAD :
 			PKT_RX_IP_CKSUM_GOOD;
 	} else if (l3 == RTE_PTYPE_L3_IPV6) {
-		struct ipv6_hdr *iph = l3_hdr;
+		struct rte_ipv6_hdr *iph = l3_hdr;
 
-		l3_len = sizeof(struct ipv6_hdr);
+		l3_len = sizeof(struct rte_ipv6_hdr);
 		/* check that the total length reported by header is not
 		 * greater than the total received size
 		 */
@@ -496,7 +496,7 @@ tap_tx_l3_cksum(char *packet, uint64_t ol_flags, unsigned int l2_len,
 	void *l3_hdr = packet + l2_len;
 
 	if (ol_flags & (PKT_TX_IP_CKSUM | PKT_TX_IPV4)) {
-		struct ipv4_hdr *iph = l3_hdr;
+		struct rte_ipv4_hdr *iph = l3_hdr;
 		uint16_t cksum;
 
 		iph->hdr_checksum = 0;

@@ -238,9 +238,9 @@ virtio_enqueue_offload(struct rte_mbuf *m_buf, struct virtio_net_hdr *net_hdr)
 
 	/* IP cksum verification cannot be bypassed, then calculate here */
 	if (m_buf->ol_flags & PKT_TX_IP_CKSUM) {
-		struct ipv4_hdr *ipv4_hdr;
+		struct rte_ipv4_hdr *ipv4_hdr;
 
-		ipv4_hdr = rte_pktmbuf_mtod_offset(m_buf, struct ipv4_hdr *,
+		ipv4_hdr = rte_pktmbuf_mtod_offset(m_buf, struct rte_ipv4_hdr *,
 						   m_buf->l2_len);
 		ipv4_hdr->hdr_checksum = rte_ipv4_cksum(ipv4_hdr);
 	}
@@ -966,8 +966,8 @@ virtio_net_with_host_offload(struct virtio_net *dev)
 static void
 parse_ethernet(struct rte_mbuf *m, uint16_t *l4_proto, void **l4_hdr)
 {
-	struct ipv4_hdr *ipv4_hdr;
-	struct ipv6_hdr *ipv6_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
+	struct rte_ipv6_hdr *ipv6_hdr;
 	void *l3_hdr = NULL;
 	struct rte_ether_hdr *eth_hdr;
 	uint16_t ethertype;
@@ -998,7 +998,7 @@ parse_ethernet(struct rte_mbuf *m, uint16_t *l4_proto, void **l4_hdr)
 	case RTE_ETHER_TYPE_IPv6:
 		ipv6_hdr = l3_hdr;
 		*l4_proto = ipv6_hdr->proto;
-		m->l3_len = sizeof(struct ipv6_hdr);
+		m->l3_len = sizeof(struct rte_ipv6_hdr);
 		*l4_hdr = (char *)l3_hdr + m->l3_len;
 		m->ol_flags |= PKT_TX_IPV6;
 		break;

@@ -457,8 +457,8 @@ qede_arfs_construct_pkt(struct rte_eth_dev *eth_dev,
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	uint16_t *ether_type;
 	uint8_t *raw_pkt;
-	struct ipv4_hdr *ip;
-	struct ipv6_hdr *ip6;
+	struct rte_ipv4_hdr *ip;
+	struct rte_ipv6_hdr *ip6;
 	struct udp_hdr *udp;
 	struct tcp_hdr *tcp;
 	uint16_t len;
@@ -474,14 +474,14 @@ qede_arfs_construct_pkt(struct rte_eth_dev *eth_dev,
 	*ether_type = rte_cpu_to_be_16(arfs->tuple.eth_proto);
 	switch (arfs->tuple.eth_proto) {
 	case RTE_ETHER_TYPE_IPv4:
-		ip = (struct ipv4_hdr *)raw_pkt;
+		ip = (struct rte_ipv4_hdr *)raw_pkt;
 		ip->version_ihl = QEDE_FDIR_IP_DEFAULT_VERSION_IHL;
-		ip->total_length = sizeof(struct ipv4_hdr);
+		ip->total_length = sizeof(struct rte_ipv4_hdr);
 		ip->next_proto_id = arfs->tuple.ip_proto;
 		ip->time_to_live = QEDE_FDIR_IPV4_DEF_TTL;
 		ip->dst_addr = arfs->tuple.dst_ipv4;
 		ip->src_addr = arfs->tuple.src_ipv4;
-		len += sizeof(struct ipv4_hdr);
+		len += sizeof(struct rte_ipv4_hdr);
 		params->ipv4 = true;
 
 		raw_pkt = (uint8_t *)buff;
@@ -507,7 +507,7 @@ qede_arfs_construct_pkt(struct rte_eth_dev *eth_dev,
 		}
 		break;
 	case RTE_ETHER_TYPE_IPv6:
-		ip6 = (struct ipv6_hdr *)raw_pkt;
+		ip6 = (struct rte_ipv6_hdr *)raw_pkt;
 		ip6->proto = arfs->tuple.ip_proto;
 		ip6->vtc_flow =
 			rte_cpu_to_be_32(QEDE_FDIR_IPV6_DEFAULT_VTC_FLOW);
@@ -516,7 +516,7 @@ qede_arfs_construct_pkt(struct rte_eth_dev *eth_dev,
 			   IPV6_ADDR_LEN);
 		rte_memcpy(&ip6->dst_addr, arfs->tuple.dst_ipv6,
 			   IPV6_ADDR_LEN);
-		len += sizeof(struct ipv6_hdr);
+		len += sizeof(struct rte_ipv6_hdr);
 		params->ipv6 = true;
 
 		raw_pkt = (uint8_t *)buff;

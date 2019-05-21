@@ -466,14 +466,14 @@ send_single_packet(struct rte_mbuf *m, uint16_t port)
 
 #ifdef DO_RFC_1812_CHECKS
 static inline int
-is_valid_ipv4_pkt(struct ipv4_hdr *pkt, uint32_t link_len)
+is_valid_ipv4_pkt(struct rte_ipv4_hdr *pkt, uint32_t link_len)
 {
 	/* From http://www.rfc-editor.org/rfc/rfc1812.txt section 5.2.2 */
 	/*
 	 * 1. The packet length reported by the Link Layer must be large
 	 * enough to hold the minimum length legal IP datagram (20 bytes).
 	 */
-	if (link_len < sizeof(struct ipv4_hdr))
+	if (link_len < sizeof(struct rte_ipv4_hdr))
 		return -1;
 
 	/* 2. The IP checksum must be correct. */
@@ -498,7 +498,7 @@ is_valid_ipv4_pkt(struct ipv4_hdr *pkt, uint32_t link_len)
 	 * datagram header, whose length is specified in the IP header length
 	 * field.
 	 */
-	if (rte_cpu_to_be_16(pkt->total_length) < sizeof(struct ipv4_hdr))
+	if (rte_cpu_to_be_16(pkt->total_length) < sizeof(struct rte_ipv4_hdr))
 		return -5;
 
 	return 0;
@@ -523,7 +523,7 @@ print_ipv6_key(struct ipv6_5tuple key)
 }
 
 static inline uint16_t
-get_ipv4_dst_port(struct ipv4_hdr *ipv4_hdr, uint16_t portid,
+get_ipv4_dst_port(struct rte_ipv4_hdr *ipv4_hdr, uint16_t portid,
 		lookup_struct_t * ipv4_l3fwd_lookup_struct)
 {
 	struct ipv4_5tuple key;
@@ -538,14 +538,14 @@ get_ipv4_dst_port(struct ipv4_hdr *ipv4_hdr, uint16_t portid,
 	switch (ipv4_hdr->next_proto_id) {
 	case IPPROTO_TCP:
 		tcp = (struct tcp_hdr *)((unsigned char *)ipv4_hdr +
-					sizeof(struct ipv4_hdr));
+					sizeof(struct rte_ipv4_hdr));
 		key.port_dst = rte_be_to_cpu_16(tcp->dst_port);
 		key.port_src = rte_be_to_cpu_16(tcp->src_port);
 		break;
 
 	case IPPROTO_UDP:
 		udp = (struct udp_hdr *)((unsigned char *)ipv4_hdr +
-					sizeof(struct ipv4_hdr));
+					sizeof(struct rte_ipv4_hdr));
 		key.port_dst = rte_be_to_cpu_16(udp->dst_port);
 		key.port_src = rte_be_to_cpu_16(udp->src_port);
 		break;
@@ -562,7 +562,7 @@ get_ipv4_dst_port(struct ipv4_hdr *ipv4_hdr, uint16_t portid,
 }
 
 static inline uint16_t
-get_ipv6_dst_port(struct ipv6_hdr *ipv6_hdr, uint16_t portid,
+get_ipv6_dst_port(struct rte_ipv6_hdr *ipv6_hdr, uint16_t portid,
 			lookup_struct_t *ipv6_l3fwd_lookup_struct)
 {
 	struct ipv6_5tuple key;
@@ -578,14 +578,14 @@ get_ipv6_dst_port(struct ipv6_hdr *ipv6_hdr, uint16_t portid,
 	switch (ipv6_hdr->proto) {
 	case IPPROTO_TCP:
 		tcp = (struct tcp_hdr *)((unsigned char *) ipv6_hdr +
-					sizeof(struct ipv6_hdr));
+					sizeof(struct rte_ipv6_hdr));
 		key.port_dst = rte_be_to_cpu_16(tcp->dst_port);
 		key.port_src = rte_be_to_cpu_16(tcp->src_port);
 		break;
 
 	case IPPROTO_UDP:
 		udp = (struct udp_hdr *)((unsigned char *) ipv6_hdr +
-					sizeof(struct ipv6_hdr));
+					sizeof(struct rte_ipv6_hdr));
 		key.port_dst = rte_be_to_cpu_16(udp->dst_port);
 		key.port_src = rte_be_to_cpu_16(udp->src_port);
 		break;
@@ -604,7 +604,7 @@ get_ipv6_dst_port(struct ipv6_hdr *ipv6_hdr, uint16_t portid,
 
 #if (APP_LOOKUP_METHOD == APP_LOOKUP_LPM)
 static inline uint16_t
-get_ipv4_dst_port(struct ipv4_hdr *ipv4_hdr, uint16_t portid,
+get_ipv4_dst_port(struct rte_ipv4_hdr *ipv4_hdr, uint16_t portid,
 		lookup_struct_t *ipv4_l3fwd_lookup_struct)
 {
 	uint32_t next_hop;
@@ -662,7 +662,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint16_t portid,
 				struct lcore_conf *qconf)
 {
 	struct rte_ether_hdr *eth_hdr;
-	struct ipv4_hdr *ipv4_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
 	void *d_addr_bytes;
 	uint16_t dst_port;
 
@@ -671,7 +671,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint16_t portid,
 	if (RTE_ETH_IS_IPV4_HDR(m->packet_type)) {
 		/* Handle IPv4 headers.*/
 		ipv4_hdr =
-			rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *,
+			rte_pktmbuf_mtod_offset(m, struct rte_ipv4_hdr *,
 						sizeof(struct rte_ether_hdr));
 
 #ifdef DO_RFC_1812_CHECKS
@@ -707,10 +707,10 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint16_t portid,
 	} else if (RTE_ETH_IS_IPV6_HDR(m->packet_type)) {
 		/* Handle IPv6 headers.*/
 #if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
-		struct ipv6_hdr *ipv6_hdr;
+		struct rte_ipv6_hdr *ipv6_hdr;
 
 		ipv6_hdr =
-			rte_pktmbuf_mtod_offset(m, struct ipv6_hdr *,
+			rte_pktmbuf_mtod_offset(m, struct rte_ipv6_hdr *,
 						sizeof(struct rte_ether_hdr));
 
 		dst_port = get_ipv6_dst_port(ipv6_hdr, portid,

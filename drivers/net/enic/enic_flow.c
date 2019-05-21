@@ -411,7 +411,7 @@ enic_copy_item_ipv4_v1(struct copy_item_args *arg)
 	const struct rte_flow_item_ipv4 *spec = item->spec;
 	const struct rte_flow_item_ipv4 *mask = item->mask;
 	struct filter_ipv4_5tuple *enic_5tup = &enic_filter->u.ipv4;
-	struct ipv4_hdr supported_mask = {
+	struct rte_ipv4_hdr supported_mask = {
 		.src_addr = 0xffffffff,
 		.dst_addr = 0xffffffff,
 	};
@@ -606,9 +606,9 @@ enic_copy_item_inner_ipv4_v2(struct copy_item_args *arg)
 	if (!mask)
 		mask = &rte_flow_item_ipv4_mask;
 	/* Append ipv4 header to L5 and set ether type = ipv4 */
-	arg->l3_proto_off = *off + offsetof(struct ipv4_hdr, next_proto_id);
+	arg->l3_proto_off = *off + offsetof(struct rte_ipv4_hdr, next_proto_id);
 	return copy_inner_common(&arg->filter->u.generic_1, off,
-		arg->item->spec, mask, sizeof(struct ipv4_hdr),
+		arg->item->spec, mask, sizeof(struct rte_ipv4_hdr),
 		arg->l2_proto_off, rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4), 2);
 }
 
@@ -622,9 +622,9 @@ enic_copy_item_inner_ipv6_v2(struct copy_item_args *arg)
 	if (!mask)
 		mask = &rte_flow_item_ipv6_mask;
 	/* Append ipv6 header to L5 and set ether type = ipv6 */
-	arg->l3_proto_off = *off + offsetof(struct ipv6_hdr, proto);
+	arg->l3_proto_off = *off + offsetof(struct rte_ipv6_hdr, proto);
 	return copy_inner_common(&arg->filter->u.generic_1, off,
-		arg->item->spec, mask, sizeof(struct ipv6_hdr),
+		arg->item->spec, mask, sizeof(struct rte_ipv6_hdr),
 		arg->l2_proto_off, rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6), 2);
 }
 
@@ -773,9 +773,9 @@ enic_copy_item_ipv4_v2(struct copy_item_args *arg)
 		mask = &rte_flow_item_ipv4_mask;
 
 	memcpy(gp->layer[FILTER_GENERIC_1_L3].mask, &mask->hdr,
-	       sizeof(struct ipv4_hdr));
+	       sizeof(struct rte_ipv4_hdr));
 	memcpy(gp->layer[FILTER_GENERIC_1_L3].val, &spec->hdr,
-	       sizeof(struct ipv4_hdr));
+	       sizeof(struct rte_ipv4_hdr));
 	return 0;
 }
 
@@ -802,9 +802,9 @@ enic_copy_item_ipv6_v2(struct copy_item_args *arg)
 		mask = &rte_flow_item_ipv6_mask;
 
 	memcpy(gp->layer[FILTER_GENERIC_1_L3].mask, &mask->hdr,
-	       sizeof(struct ipv6_hdr));
+	       sizeof(struct rte_ipv6_hdr));
 	memcpy(gp->layer[FILTER_GENERIC_1_L3].val, &spec->hdr,
-	       sizeof(struct ipv6_hdr));
+	       sizeof(struct rte_ipv6_hdr));
 	return 0;
 }
 
@@ -884,16 +884,16 @@ enic_copy_item_sctp_v2(struct copy_item_args *arg)
 	 * the protocol number in the IP pattern.
 	 */
 	if (gp->val_flags & FILTER_GENERIC_1_IPV4) {
-		struct ipv4_hdr *ip;
-		ip = (struct ipv4_hdr *)gp->layer[FILTER_GENERIC_1_L3].mask;
+		struct rte_ipv4_hdr *ip;
+		ip = (struct rte_ipv4_hdr *)gp->layer[FILTER_GENERIC_1_L3].mask;
 		ip_proto_mask = &ip->next_proto_id;
-		ip = (struct ipv4_hdr *)gp->layer[FILTER_GENERIC_1_L3].val;
+		ip = (struct rte_ipv4_hdr *)gp->layer[FILTER_GENERIC_1_L3].val;
 		ip_proto = &ip->next_proto_id;
 	} else if (gp->val_flags & FILTER_GENERIC_1_IPV6) {
-		struct ipv6_hdr *ip;
-		ip = (struct ipv6_hdr *)gp->layer[FILTER_GENERIC_1_L3].mask;
+		struct rte_ipv6_hdr *ip;
+		ip = (struct rte_ipv6_hdr *)gp->layer[FILTER_GENERIC_1_L3].mask;
 		ip_proto_mask = &ip->proto;
-		ip = (struct ipv6_hdr *)gp->layer[FILTER_GENERIC_1_L3].val;
+		ip = (struct rte_ipv6_hdr *)gp->layer[FILTER_GENERIC_1_L3].val;
 		ip_proto = &ip->proto;
 	} else {
 		/* Need IPv4/IPv6 pattern first */

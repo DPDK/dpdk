@@ -865,7 +865,7 @@ get_psd_sum(void *l3_hdr, uint64_t ol_flags)
 static void virtio_tx_offload(struct rte_mbuf *m)
 {
 	void *l3_hdr;
-	struct ipv4_hdr *ipv4_hdr = NULL;
+	struct rte_ipv4_hdr *ipv4_hdr = NULL;
 	struct tcp_hdr *tcp_hdr = NULL;
 	struct rte_ether_hdr *eth_hdr =
 		rte_pktmbuf_mtod(m, struct rte_ether_hdr *);

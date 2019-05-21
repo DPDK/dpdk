@@ -16,7 +16,7 @@
 #define VXLAN_HF_VNI 0x08000000
 #define DEFAULT_VXLAN_PORT 4789
 
-extern struct ipv4_hdr app_ip_hdr[VXLAN_N_PORTS];
+extern struct rte_ipv4_hdr app_ip_hdr[VXLAN_N_PORTS];
 extern struct rte_ether_hdr app_l2_hdr[VXLAN_N_PORTS];
 extern uint8_t tx_checksum;
 extern uint16_t tso_segsz;

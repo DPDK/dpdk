@@ -146,7 +146,7 @@ static struct rte_mempool *pktmbuf_pool[NB_SOCKETS];
 /***********************start of ACL part******************************/
 #ifdef DO_RFC_1812_CHECKS
 static inline int
-is_valid_ipv4_pkt(struct ipv4_hdr *pkt, uint32_t link_len);
+is_valid_ipv4_pkt(struct rte_ipv4_hdr *pkt, uint32_t link_len);
 #endif
 static inline void
 send_single_packet(struct rte_mbuf *m, uint16_t port);
@@ -174,8 +174,8 @@ send_single_packet(struct rte_mbuf *m, uint16_t port);
 		*d = (unsigned char)(ip & 0xff);\
 	} while (0)
 #define OFF_ETHHEAD	(sizeof(struct rte_ether_hdr))
-#define OFF_IPV42PROTO (offsetof(struct ipv4_hdr, next_proto_id))
-#define OFF_IPV62PROTO (offsetof(struct ipv6_hdr, proto))
+#define OFF_IPV42PROTO (offsetof(struct rte_ipv4_hdr, next_proto_id))
+#define OFF_IPV62PROTO (offsetof(struct rte_ipv6_hdr, proto))
 #define MBUF_IPV4_2PROTO(m)	\
 	rte_pktmbuf_mtod_offset((m), uint8_t *, OFF_ETHHEAD + OFF_IPV42PROTO)
 #define MBUF_IPV6_2PROTO(m)	\
@@ -252,32 +252,32 @@ struct rte_acl_field_def ipv4_defs[NUM_FIELDS_IPV4] = {
 		.size = sizeof(uint32_t),
 		.field_index = SRC_FIELD_IPV4,
 		.input_index = RTE_ACL_IPV4VLAN_SRC,
-		.offset = offsetof(struct ipv4_hdr, src_addr) -
-			offsetof(struct ipv4_hdr, next_proto_id),
+		.offset = offsetof(struct rte_ipv4_hdr, src_addr) -
+			offsetof(struct rte_ipv4_hdr, next_proto_id),
 	},
 	{
 		.type = RTE_ACL_FIELD_TYPE_MASK,
 		.size = sizeof(uint32_t),
 		.field_index = DST_FIELD_IPV4,
 		.input_index = RTE_ACL_IPV4VLAN_DST,
-		.offset = offsetof(struct ipv4_hdr, dst_addr) -
-			offsetof(struct ipv4_hdr, next_proto_id),
+		.offset = offsetof(struct rte_ipv4_hdr, dst_addr) -
+			offsetof(struct rte_ipv4_hdr, next_proto_id),
 	},
 	{
 		.type = RTE_ACL_FIELD_TYPE_RANGE,
 		.size = sizeof(uint16_t),
 		.field_index = SRCP_FIELD_IPV4,
 		.input_index = RTE_ACL_IPV4VLAN_PORTS,
-		.offset = sizeof(struct ipv4_hdr) -
-			offsetof(struct ipv4_hdr, next_proto_id),
+		.offset = sizeof(struct rte_ipv4_hdr) -
+			offsetof(struct rte_ipv4_hdr, next_proto_id),
 	},
 	{
 		.type = RTE_ACL_FIELD_TYPE_RANGE,
 		.size = sizeof(uint16_t),
 		.field_index = DSTP_FIELD_IPV4,
 		.input_index = RTE_ACL_IPV4VLAN_PORTS,
-		.offset = sizeof(struct ipv4_hdr) -
-			offsetof(struct ipv4_hdr, next_proto_id) +
+		.offset = sizeof(struct rte_ipv4_hdr) -
+			offsetof(struct rte_ipv4_hdr, next_proto_id) +
 			sizeof(uint16_t),
 	},
 };
@@ -314,80 +314,84 @@ struct rte_acl_field_def ipv6_defs[NUM_FIELDS_IPV6] = {
 		.size = sizeof(uint32_t),
 		.field_index = SRC1_FIELD_IPV6,
 		.input_index = SRC1_FIELD_IPV6,
-		.offset = offsetof(struct ipv6_hdr, src_addr) -
-			offsetof(struct ipv6_hdr, proto),
+		.offset = offsetof(struct rte_ipv6_hdr, src_addr) -
+			offsetof(struct rte_ipv6_hdr, proto),
 	},
 	{
 		.type = RTE_ACL_FIELD_TYPE_MASK,
 		.size = sizeof(uint32_t),
 		.field_index = SRC2_FIELD_IPV6,
 		.input_index = SRC2_FIELD_IPV6,
-		.offset = offsetof(struct ipv6_hdr, src_addr) -
-			offsetof(struct ipv6_hdr, proto) + sizeof(uint32_t),
+		.offset = offsetof(struct rte_ipv6_hdr, src_addr) -
+			offsetof(struct rte_ipv6_hdr, proto) + sizeof(uint32_t),
 	},
 	{
 		.type = RTE_ACL_FIELD_TYPE_MASK,
 		.size = sizeof(uint32_t),
 		.field_index = SRC3_FIELD_IPV6,
 		.input_index = SRC3_FIELD_IPV6,
-		.offset = offsetof(struct ipv6_hdr, src_addr) -
-			offsetof(struct ipv6_hdr, proto) + 2 * sizeof(uint32_t),
+		.offset = offsetof(struct rte_ipv6_hdr, src_addr) -
+			offsetof(struct rte_ipv6_hdr, proto) +
+			2 * sizeof(uint32_t),
 	},
 	{
 		.type = RTE_ACL_FIELD_TYPE_MASK,
 		.size = sizeof(uint32_t),
 		.field_index = SRC4_FIELD_IPV6,
 		.input_index = SRC4_FIELD_IPV6,
-		.offset = offsetof(struct ipv6_hdr, src_addr) -
-			offsetof(struct ipv6_hdr, proto) + 3 * sizeof(uint32_t),
+		.offset = offsetof(struct rte_ipv6_hdr, src_addr) -
+			offsetof(struct rte_ipv6_hdr, proto) +
+			3 * sizeof(uint32_t),
 	},
 	{
 		.type = RTE_ACL_FIELD_TYPE_MASK,
 		.size = sizeof(uint32_t),
 		.field_index = DST1_FIELD_IPV6,
 		.input_index = DST1_FIELD_IPV6,
-		.offset = offsetof(struct ipv6_hdr, dst_addr)
-				- offsetof(struct ipv6_hdr, proto),
+		.offset = offsetof(struct rte_ipv6_hdr, dst_addr)
+				- offsetof(struct rte_ipv6_hdr, proto),
 	},
 	{
 		.type = RTE_ACL_FIELD_TYPE_MASK,
 		.size = sizeof(uint32_t),
 		.field_index = DST2_FIELD_IPV6,
 		.input_index = DST2_FIELD_IPV6,
-		.offset = offsetof(struct ipv6_hdr, dst_addr) -
-			offsetof(struct ipv6_hdr, proto) + sizeof(uint32_t),
+		.offset = offsetof(struct rte_ipv6_hdr, dst_addr) -
+			offsetof(struct rte_ipv6_hdr, proto) + sizeof(uint32_t),
 	},
 	{
 		.type = RTE_ACL_FIELD_TYPE_MASK,
 		.size = sizeof(uint32_t),
 		.field_index = DST3_FIELD_IPV6,
 		.input_index = DST3_FIELD_IPV6,
-		.offset = offsetof(struct ipv6_hdr, dst_addr) -
-			offsetof(struct ipv6_hdr, proto) + 2 * sizeof(uint32_t),
+		.offset = offsetof(struct rte_ipv6_hdr, dst_addr) -
+			offsetof(struct rte_ipv6_hdr, proto) +
+			2 * sizeof(uint32_t),
 	},
 	{
 		.type = RTE_ACL_FIELD_TYPE_MASK,
 		.size = sizeof(uint32_t),
 		.field_index = DST4_FIELD_IPV6,
 		.input_index = DST4_FIELD_IPV6,
-		.offset = offsetof(struct ipv6_hdr, dst_addr) -
-			offsetof(struct ipv6_hdr, proto) + 3 * sizeof(uint32_t),
+		.offset = offsetof(struct rte_ipv6_hdr, dst_addr) -
+			offsetof(struct rte_ipv6_hdr, proto) +
+			3 * sizeof(uint32_t),
 	},
 	{
 		.type = RTE_ACL_FIELD_TYPE_RANGE,
 		.size = sizeof(uint16_t),
 		.field_index = SRCP_FIELD_IPV6,
 		.input_index = SRCP_FIELD_IPV6,
-		.offset = sizeof(struct ipv6_hdr) -
-			offsetof(struct ipv6_hdr, proto),
+		.offset = sizeof(struct rte_ipv6_hdr) -
+			offsetof(struct rte_ipv6_hdr, proto),
 	},
 	{
 		.type = RTE_ACL_FIELD_TYPE_RANGE,
 		.size = sizeof(uint16_t),
 		.field_index = DSTP_FIELD_IPV6,
 		.input_index = SRCP_FIELD_IPV6,
-		.offset = sizeof(struct ipv6_hdr) -
-			offsetof(struct ipv6_hdr, proto) + sizeof(uint16_t),
+		.offset = sizeof(struct rte_ipv6_hdr) -
+			offsetof(struct rte_ipv6_hdr, proto) + sizeof(uint16_t),
 	},
 };
 
@@ -542,8 +546,8 @@ dump_acl4_rule(struct rte_mbuf *m, uint32_t sig)
 {
 	uint32_t offset = sig & ~ACL_DENY_SIGNATURE;
 	unsigned char a, b, c, d;
-	struct ipv4_hdr *ipv4_hdr =
-		rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *,
+	struct rte_ipv4_hdr *ipv4_hdr =
+		rte_pktmbuf_mtod_offset(m, struct rte_ipv4_hdr *,
 					sizeof(struct rte_ether_hdr));
 
 	uint32_t_to_char(rte_bswap32(ipv4_hdr->src_addr), &a, &b, &c, &d);
@@ -566,8 +570,8 @@ dump_acl6_rule(struct rte_mbuf *m, uint32_t sig)
 {
 	unsigned i;
 	uint32_t offset = sig & ~ACL_DENY_SIGNATURE;
-	struct ipv6_hdr *ipv6_hdr =
-		rte_pktmbuf_mtod_offset(m, struct ipv6_hdr *,
+	struct rte_ipv6_hdr *ipv6_hdr =
+		rte_pktmbuf_mtod_offset(m, struct rte_ipv6_hdr *,
 					sizeof(struct rte_ether_hdr));
 
 	printf("Packet Src");
@@ -620,11 +624,11 @@ static inline void
 prepare_one_packet(struct rte_mbuf **pkts_in, struct acl_search_t *acl,
 	int index)
 {
-	struct ipv4_hdr *ipv4_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
 	struct rte_mbuf *pkt = pkts_in[index];
 
 	if (RTE_ETH_IS_IPV4_HDR(pkt->packet_type)) {
-		ipv4_hdr = rte_pktmbuf_mtod_offset(pkt, struct ipv4_hdr *,
+		ipv4_hdr = rte_pktmbuf_mtod_offset(pkt, struct rte_ipv4_hdr *,
 						sizeof(struct rte_ether_hdr));
 
 		/* Check to make sure the packet is valid (RFC1812) */
@@ -1281,14 +1285,14 @@ send_single_packet(struct rte_mbuf *m, uint16_t port)
 
 #ifdef DO_RFC_1812_CHECKS
 static inline int
-is_valid_ipv4_pkt(struct ipv4_hdr *pkt, uint32_t link_len)
+is_valid_ipv4_pkt(struct rte_ipv4_hdr *pkt, uint32_t link_len)
 {
 	/* From http://www.rfc-editor.org/rfc/rfc1812.txt section 5.2.2 */
 	/*
 	 * 1. The packet length reported by the Link Layer must be large
 	 * enough to hold the minimum length legal IP datagram (20 bytes).
 	 */
-	if (link_len < sizeof(struct ipv4_hdr))
+	if (link_len < sizeof(struct rte_ipv4_hdr))
 		return -1;
 
 	/* 2. The IP checksum must be correct. */
@@ -1313,7 +1317,7 @@ is_valid_ipv4_pkt(struct ipv4_hdr *pkt, uint32_t link_len)
 	 * datagram header, whose length is specified in the IP header length
 	 * field.
 	 */
-	if (rte_cpu_to_be_16(pkt->total_length) < sizeof(struct ipv4_hdr))
+	if (rte_cpu_to_be_16(pkt->total_length) < sizeof(struct rte_ipv4_hdr))
 		return -5;
 
 	return 0;

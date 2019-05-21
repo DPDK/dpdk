@@ -628,7 +628,7 @@ static const struct rte_flow_item_vlan rte_flow_item_vlan_mask = {
  * Note: IPv4 options are handled by dedicated pattern items.
  */
 struct rte_flow_item_ipv4 {
-	struct ipv4_hdr hdr; /**< IPv4 header definition. */
+	struct rte_ipv4_hdr hdr; /**< IPv4 header definition. */
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_IPV4. */
@@ -650,7 +650,7 @@ static const struct rte_flow_item_ipv4 rte_flow_item_ipv4_mask = {
  * RTE_FLOW_ITEM_TYPE_IPV6_EXT.
  */
 struct rte_flow_item_ipv6 {
-	struct ipv6_hdr hdr; /**< IPv6 header definition. */
+	struct rte_ipv6_hdr hdr; /**< IPv6 header definition. */
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_IPV6. */

@@ -266,7 +266,7 @@ transmit_packet(struct rte_mbuf *buf)
 static inline void
 handle_packets(struct rte_hash *h, struct rte_mbuf **bufs, uint16_t num_packets)
 {
-	struct ipv4_hdr *ipv4_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
 	uint32_t ipv4_dst_ip[PKT_READ_SIZE];
 	const void *key_ptrs[PKT_READ_SIZE];
 	unsigned int i;
@@ -274,8 +274,8 @@ handle_packets(struct rte_hash *h, struct rte_mbuf **bufs, uint16_t num_packets)
 
 	for (i = 0; i < num_packets; i++) {
 		/* Handle IPv4 header.*/
-		ipv4_hdr = rte_pktmbuf_mtod_offset(bufs[i], struct ipv4_hdr *,
-				sizeof(struct rte_ether_hdr));
+		ipv4_hdr = rte_pktmbuf_mtod_offset(bufs[i],
+			struct rte_ipv4_hdr *, sizeof(struct rte_ether_hdr));
 		ipv4_dst_ip[i] = ipv4_hdr->dst_addr;
 		key_ptrs[i] = &ipv4_dst_ip[i];
 	}

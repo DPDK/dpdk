@@ -154,7 +154,7 @@ To define classification for the IPv6 2-tuple: <protocol, IPv6 source address> o
 
 .. code-block:: c
 
-    struct struct ipv6_hdr {
+    struct struct rte_ipv6_hdr {
         uint32_t vtc_flow;     /* IP version, traffic class & flow label. */
         uint16_t payload_len;  /* IP packet length - includes sizeof(ip_header). */
         uint8_t proto;         /* Protocol, next header. */
@@ -173,7 +173,7 @@ The following array of field definitions can be used:
             .size = sizeof (uint8_t),
             .field_index = 0,
             .input_index = 0,
-            .offset = offsetof (struct ipv6_hdr, proto),
+            .offset = offsetof (struct rte_ipv6_hdr, proto),
         },
 
         {
@@ -181,7 +181,7 @@ The following array of field definitions can be used:
             .size = sizeof (uint32_t),
             .field_index = 1,
             .input_index = 1,
-            .offset = offsetof (struct ipv6_hdr, src_addr[0]),
+            .offset = offsetof (struct rte_ipv6_hdr, src_addr[0]),
         },
 
         {
@@ -189,7 +189,7 @@ The following array of field definitions can be used:
             .size = sizeof (uint32_t),
             .field_index = 2,
             .input_index = 2,
-            .offset = offsetof (struct ipv6_hdr, src_addr[4]),
+            .offset = offsetof (struct rte_ipv6_hdr, src_addr[4]),
         },
 
         {
@@ -197,7 +197,7 @@ The following array of field definitions can be used:
             .size = sizeof (uint32_t),
             .field_index = 3,
             .input_index = 3,
-           .offset = offsetof (struct ipv6_hdr, src_addr[8]),
+           .offset = offsetof (struct rte_ipv6_hdr, src_addr[8]),
         },
 
         {
@@ -205,7 +205,7 @@ The following array of field definitions can be used:
            .size = sizeof (uint32_t),
            .field_index = 4,
            .input_index = 4,
-           .offset = offsetof (struct ipv6_hdr, src_addr[12]),
+           .offset = offsetof (struct rte_ipv6_hdr, src_addr[12]),
         },
     };
 

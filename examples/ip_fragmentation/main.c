@@ -66,8 +66,8 @@
 /*
  * Default payload in bytes for the IPv6 packet.
  */
-#define	IPV4_DEFAULT_PAYLOAD	(IPV4_MTU_DEFAULT - sizeof(struct ipv4_hdr))
-#define	IPV6_DEFAULT_PAYLOAD	(IPV6_MTU_DEFAULT - sizeof(struct ipv6_hdr))
+#define	IPV4_DEFAULT_PAYLOAD	(IPV4_MTU_DEFAULT - sizeof(struct rte_ipv4_hdr))
+#define	IPV6_DEFAULT_PAYLOAD	(IPV6_MTU_DEFAULT - sizeof(struct rte_ipv6_hdr))
 
 /*
  * Max number of fragments per packet expected - defined by config file.
@@ -260,10 +260,10 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 
 	/* if this is an IPv4 packet */
 	if (RTE_ETH_IS_IPV4_HDR(m->packet_type)) {
-		struct ipv4_hdr *ip_hdr;
+		struct rte_ipv4_hdr *ip_hdr;
 		uint32_t ip_dst;
 		/* Read the lookup key (i.e. ip_dst) from the input packet */
-		ip_hdr = rte_pktmbuf_mtod(m, struct ipv4_hdr *);
+		ip_hdr = rte_pktmbuf_mtod(m, struct rte_ipv4_hdr *);
 		ip_dst = rte_be_to_cpu_32(ip_hdr->dst_addr);
 
 		/* Find destination port */
@@ -295,12 +295,12 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 		}
 	} else if (RTE_ETH_IS_IPV6_HDR(m->packet_type)) {
 		/* if this is an IPv6 packet */
-		struct ipv6_hdr *ip_hdr;
+		struct rte_ipv6_hdr *ip_hdr;
 
 		ipv6 = 1;
 
 		/* Read the lookup key (i.e. ip_dst) from the input packet */
-		ip_hdr = rte_pktmbuf_mtod(m, struct ipv6_hdr *);
+		ip_hdr = rte_pktmbuf_mtod(m, struct rte_ipv6_hdr *);
 
 		/* Find destination port */
 		if (rte_lpm6_lookup(rxq->lpm6, ip_hdr->dst_addr,

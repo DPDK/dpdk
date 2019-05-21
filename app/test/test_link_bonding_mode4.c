@@ -735,8 +735,8 @@ generate_packets(struct rte_ether_addr *src_mac,
 	struct rte_ether_hdr pkt_eth_hdr;
 	struct udp_hdr pkt_udp_hdr;
 	union {
-		struct ipv4_hdr v4;
-		struct ipv6_hdr v6;
+		struct rte_ipv4_hdr v4;
+		struct rte_ipv6_hdr v6;
 	} pkt_ip_hdr;
 
 	int retval;

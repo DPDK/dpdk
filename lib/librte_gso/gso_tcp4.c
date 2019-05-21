@@ -9,14 +9,14 @@ static void
 update_ipv4_tcp_headers(struct rte_mbuf *pkt, uint8_t ipid_delta,
 		struct rte_mbuf **segs, uint16_t nb_segs)
 {
-	struct ipv4_hdr *ipv4_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
 	struct tcp_hdr *tcp_hdr;
 	uint32_t sent_seq;
 	uint16_t id, tail_idx, i;
 	uint16_t l3_offset = pkt->l2_len;
 	uint16_t l4_offset = l3_offset + pkt->l3_len;
 
-	ipv4_hdr = (struct ipv4_hdr *)(rte_pktmbuf_mtod(pkt, char*) +
+	ipv4_hdr = (struct rte_ipv4_hdr *)(rte_pktmbuf_mtod(pkt, char*) +
 			l3_offset);
 	tcp_hdr = (struct tcp_hdr *)((char *)ipv4_hdr + pkt->l3_len);
 	id = rte_be_to_cpu_16(ipv4_hdr->packet_id);
@@ -40,13 +40,13 @@ gso_tcp4_segment(struct rte_mbuf *pkt,
 		struct rte_mbuf **pkts_out,
 		uint16_t nb_pkts_out)
 {
-	struct ipv4_hdr *ipv4_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
 	uint16_t pyld_unit_size, hdr_offset;
 	uint16_t frag_off;
 	int ret;
 
 	/* Don't process the fragmented packet */
-	ipv4_hdr = (struct ipv4_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
+	ipv4_hdr = (struct rte_ipv4_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
 			pkt->l2_len);
 	frag_off = rte_be_to_cpu_16(ipv4_hdr->fragment_offset);
 	if (unlikely(IS_FRAGMENTED(frag_off))) {

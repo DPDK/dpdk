@@ -86,7 +86,7 @@ lpm_get_ipv4_dst_port(void *ipv4_hdr, uint16_t portid, void *lookup_struct)
 		(struct rte_lpm *)lookup_struct;
 
 	return (uint16_t) ((rte_lpm_lookup(ipv4_l3fwd_lookup_struct,
-		rte_be_to_cpu_32(((struct ipv4_hdr *)ipv4_hdr)->dst_addr),
+		rte_be_to_cpu_32(((struct rte_ipv4_hdr *)ipv4_hdr)->dst_addr),
 		&next_hop) == 0) ? next_hop : portid);
 }
 
@@ -98,7 +98,7 @@ lpm_get_ipv6_dst_port(void *ipv6_hdr, uint16_t portid, void *lookup_struct)
 		(struct rte_lpm6 *)lookup_struct;
 
 	return (uint16_t) ((rte_lpm6_lookup(ipv6_l3fwd_lookup_struct,
-			((struct ipv6_hdr *)ipv6_hdr)->dst_addr,
+			((struct rte_ipv6_hdr *)ipv6_hdr)->dst_addr,
 			&next_hop) == 0) ?  next_hop : portid);
 }
 
@@ -106,21 +106,21 @@ static __rte_always_inline uint16_t
 lpm_get_dst_port(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
 		uint16_t portid)
 {
-	struct ipv6_hdr *ipv6_hdr;
-	struct ipv4_hdr *ipv4_hdr;
+	struct rte_ipv6_hdr *ipv6_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
 	struct rte_ether_hdr *eth_hdr;
 
 	if (RTE_ETH_IS_IPV4_HDR(pkt->packet_type)) {
 
 		eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
-		ipv4_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
+		ipv4_hdr = (struct rte_ipv4_hdr *)(eth_hdr + 1);
 
 		return lpm_get_ipv4_dst_port(ipv4_hdr, portid,
 					     qconf->ipv4_lookup_struct);
 	} else if (RTE_ETH_IS_IPV6_HDR(pkt->packet_type)) {
 
 		eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
-		ipv6_hdr = (struct ipv6_hdr *)(eth_hdr + 1);
+		ipv6_hdr = (struct rte_ipv6_hdr *)(eth_hdr + 1);
 
 		return lpm_get_ipv6_dst_port(ipv6_hdr, portid,
 					     qconf->ipv6_lookup_struct);
@@ -139,7 +139,7 @@ lpm_get_dst_port_with_ipv4(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
 	uint32_t dst_ipv4, uint16_t portid)
 {
 	uint32_t next_hop;
-	struct ipv6_hdr *ipv6_hdr;
+	struct rte_ipv6_hdr *ipv6_hdr;
 	struct rte_ether_hdr *eth_hdr;
 
 	if (RTE_ETH_IS_IPV4_HDR(pkt->packet_type)) {
@@ -150,7 +150,7 @@ lpm_get_dst_port_with_ipv4(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
 	} else if (RTE_ETH_IS_IPV6_HDR(pkt->packet_type)) {
 
 		eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
-		ipv6_hdr = (struct ipv6_hdr *)(eth_hdr + 1);
+		ipv6_hdr = (struct rte_ipv6_hdr *)(eth_hdr + 1);
 
 		return (uint16_t) ((rte_lpm6_lookup(qconf->ipv6_lookup_struct,
 				ipv6_hdr->dst_addr, &next_hop) == 0)

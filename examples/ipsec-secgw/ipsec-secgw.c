@@ -341,7 +341,7 @@ prepare_tx_pkt(struct rte_mbuf *pkt, uint16_t port,
 
 		/* calculate IPv4 cksum in SW */
 		if ((pkt->ol_flags & PKT_TX_IP_CKSUM) == 0)
-			ip->ip_sum = rte_ipv4_cksum((struct ipv4_hdr *)ip);
+			ip->ip_sum = rte_ipv4_cksum((struct rte_ipv4_hdr *)ip);
 
 		ethhdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4);
 	} else {

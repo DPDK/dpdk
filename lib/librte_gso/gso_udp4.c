@@ -11,7 +11,7 @@ static inline void
 update_ipv4_udp_headers(struct rte_mbuf *pkt, struct rte_mbuf **segs,
 		uint16_t nb_segs)
 {
-	struct ipv4_hdr *ipv4_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
 	uint16_t frag_offset = 0, is_mf;
 	uint16_t l2_hdrlen = pkt->l2_len, l3_hdrlen = pkt->l3_len;
 	uint16_t tail_idx = nb_segs - 1, length, i;
@@ -22,8 +22,8 @@ update_ipv4_udp_headers(struct rte_mbuf *pkt, struct rte_mbuf **segs,
 	 * length.
 	 */
 	for (i = 0; i < nb_segs; i++) {
-		ipv4_hdr = rte_pktmbuf_mtod_offset(segs[i], struct ipv4_hdr *,
-			l2_hdrlen);
+		ipv4_hdr = rte_pktmbuf_mtod_offset(segs[i],
+			struct rte_ipv4_hdr *, l2_hdrlen);
 		length = segs[i]->pkt_len - l2_hdrlen;
 		ipv4_hdr->total_length = rte_cpu_to_be_16(length);
 
@@ -42,13 +42,13 @@ gso_udp4_segment(struct rte_mbuf *pkt,
 		struct rte_mbuf **pkts_out,
 		uint16_t nb_pkts_out)
 {
-	struct ipv4_hdr *ipv4_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
 	uint16_t pyld_unit_size, hdr_offset;
 	uint16_t frag_off;
 	int ret;
 
 	/* Don't process the fragmented packet */
-	ipv4_hdr = rte_pktmbuf_mtod_offset(pkt, struct ipv4_hdr *,
+	ipv4_hdr = rte_pktmbuf_mtod_offset(pkt, struct rte_ipv4_hdr *,
 			pkt->l2_len);
 	frag_off = rte_be_to_cpu_16(ipv4_hdr->fragment_offset);
 	if (unlikely(IS_FRAGMENTED(frag_off))) {

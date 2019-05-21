@@ -252,7 +252,8 @@ em_get_ipv4_dst_port(void *ipv4_hdr, uint16_t portid, void *lookup_struct)
 	struct rte_hash *ipv4_l3fwd_lookup_struct =
 		(struct rte_hash *)lookup_struct;
 
-	ipv4_hdr = (uint8_t *)ipv4_hdr + offsetof(struct ipv4_hdr, time_to_live);
+	ipv4_hdr = (uint8_t *)ipv4_hdr +
+		offsetof(struct rte_ipv4_hdr, time_to_live);
 
 	/*
 	 * Get 5 tuple: dst port, src port, dst IP address,
@@ -273,7 +274,8 @@ em_get_ipv6_dst_port(void *ipv6_hdr, uint16_t portid, void *lookup_struct)
 	struct rte_hash *ipv6_l3fwd_lookup_struct =
 		(struct rte_hash *)lookup_struct;
 
-	ipv6_hdr = (uint8_t *)ipv6_hdr + offsetof(struct ipv6_hdr, payload_len);
+	ipv6_hdr = (uint8_t *)ipv6_hdr +
+		offsetof(struct rte_ipv6_hdr, payload_len);
 	void *data0 = ipv6_hdr;
 	void *data1 = ((uint8_t *)ipv6_hdr) + sizeof(xmm_t);
 	void *data2 = ((uint8_t *)ipv6_hdr) + sizeof(xmm_t) + sizeof(xmm_t);
@@ -566,17 +568,17 @@ em_parse_ptype(struct rte_mbuf *m)
 	uint16_t ether_type;
 	void *l3;
 	int hdr_len;
-	struct ipv4_hdr *ipv4_hdr;
-	struct ipv6_hdr *ipv6_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
+	struct rte_ipv6_hdr *ipv6_hdr;
 
 	eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 	ether_type = eth_hdr->ether_type;
 	l3 = (uint8_t *)eth_hdr + sizeof(struct rte_ether_hdr);
 	if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4)) {
-		ipv4_hdr = (struct ipv4_hdr *)l3;
+		ipv4_hdr = (struct rte_ipv4_hdr *)l3;
 		hdr_len = (ipv4_hdr->version_ihl & IPV4_HDR_IHL_MASK) *
 			  IPV4_IHL_MULTIPLIER;
-		if (hdr_len == sizeof(struct ipv4_hdr)) {
+		if (hdr_len == sizeof(struct rte_ipv4_hdr)) {
 			packet_type |= RTE_PTYPE_L3_IPV4;
 			if (ipv4_hdr->next_proto_id == IPPROTO_TCP)
 				packet_type |= RTE_PTYPE_L4_TCP;
@@ -585,7 +587,7 @@ em_parse_ptype(struct rte_mbuf *m)
 		} else
 			packet_type |= RTE_PTYPE_L3_IPV4_EXT;
 	} else if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6)) {
-		ipv6_hdr = (struct ipv6_hdr *)l3;
+		ipv6_hdr = (struct rte_ipv6_hdr *)l3;
 		if (ipv6_hdr->proto == IPPROTO_TCP)
 			packet_type |= RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_TCP;
 		else if (ipv6_hdr->proto == IPPROTO_UDP)

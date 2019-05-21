@@ -80,8 +80,8 @@ em_get_dst_port(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
 		uint16_t portid)
 {
 	uint16_t next_hop;
-	struct ipv4_hdr *ipv4_hdr;
-	struct ipv6_hdr *ipv6_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
+	struct rte_ipv6_hdr *ipv6_hdr;
 	uint32_t tcp_or_udp;
 	uint32_t l3_ptypes;
 
@@ -91,7 +91,7 @@ em_get_dst_port(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
 	if (tcp_or_udp && (l3_ptypes == RTE_PTYPE_L3_IPV4)) {
 
 		/* Handle IPv4 headers.*/
-		ipv4_hdr = rte_pktmbuf_mtod_offset(pkt, struct ipv4_hdr *,
+		ipv4_hdr = rte_pktmbuf_mtod_offset(pkt, struct rte_ipv4_hdr *,
 				sizeof(struct rte_ether_hdr));
 
 		next_hop = em_get_ipv4_dst_port(ipv4_hdr, portid,
@@ -106,7 +106,7 @@ em_get_dst_port(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
 	} else if (tcp_or_udp && (l3_ptypes == RTE_PTYPE_L3_IPV6)) {
 
 		/* Handle IPv6 headers.*/
-		ipv6_hdr = rte_pktmbuf_mtod_offset(pkt, struct ipv6_hdr *,
+		ipv6_hdr = rte_pktmbuf_mtod_offset(pkt, struct rte_ipv6_hdr *,
 				sizeof(struct rte_ether_hdr));
 
 		next_hop = em_get_ipv6_dst_port(ipv6_hdr, portid,

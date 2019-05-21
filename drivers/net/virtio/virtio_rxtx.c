@@ -479,13 +479,14 @@ virtio_tso_fix_cksum(struct rte_mbuf *m)
 	/* common case: header is not fragmented */
 	if (likely(rte_pktmbuf_data_len(m) >= m->l2_len + m->l3_len +
 			m->l4_len)) {
-		struct ipv4_hdr *iph;
-		struct ipv6_hdr *ip6h;
+		struct rte_ipv4_hdr *iph;
+		struct rte_ipv6_hdr *ip6h;
 		struct tcp_hdr *th;
 		uint16_t prev_cksum, new_cksum, ip_len, ip_paylen;
 		uint32_t tmp;
 
-		iph = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *, m->l2_len);
+		iph = rte_pktmbuf_mtod_offset(m,
+					struct rte_ipv4_hdr *, m->l2_len);
 		th = RTE_PTR_ADD(iph, m->l3_len);
 		if ((iph->version_ihl >> 4) == 4) {
 			iph->hdr_checksum = 0;
@@ -494,7 +495,7 @@ virtio_tso_fix_cksum(struct rte_mbuf *m)
 			ip_paylen = rte_cpu_to_be_16(rte_be_to_cpu_16(ip_len) -
 				m->l3_len);
 		} else {
-			ip6h = (struct ipv6_hdr *)iph;
+			ip6h = (struct rte_ipv6_hdr *)iph;
 			ip_paylen = ip6h->payload_len;
 		}
 

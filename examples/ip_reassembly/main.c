@@ -324,10 +324,10 @@ reassemble(struct rte_mbuf *m, uint16_t portid, uint32_t queue,
 
 	/* if packet is IPv4 */
 	if (RTE_ETH_IS_IPV4_HDR(m->packet_type)) {
-		struct ipv4_hdr *ip_hdr;
+		struct rte_ipv4_hdr *ip_hdr;
 		uint32_t ip_dst;
 
-		ip_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
+		ip_hdr = (struct rte_ipv4_hdr *)(eth_hdr + 1);
 
 		 /* if it is a fragmented packet, then try to reassemble. */
 		if (rte_ipv4_frag_pkt_is_fragmented(ip_hdr)) {
@@ -351,7 +351,7 @@ reassemble(struct rte_mbuf *m, uint16_t portid, uint32_t queue,
 				m = mo;
 				eth_hdr = rte_pktmbuf_mtod(m,
 					struct rte_ether_hdr *);
-				ip_hdr = (struct ipv4_hdr *)(eth_hdr + 1);
+				ip_hdr = (struct rte_ipv4_hdr *)(eth_hdr + 1);
 			}
 		}
 		ip_dst = rte_be_to_cpu_32(ip_hdr->dst_addr);
@@ -366,9 +366,9 @@ reassemble(struct rte_mbuf *m, uint16_t portid, uint32_t queue,
 	} else if (RTE_ETH_IS_IPV6_HDR(m->packet_type)) {
 		/* if packet is IPv6 */
 		struct ipv6_extension_fragment *frag_hdr;
-		struct ipv6_hdr *ip_hdr;
+		struct rte_ipv6_hdr *ip_hdr;
 
-		ip_hdr = (struct ipv6_hdr *)(eth_hdr + 1);
+		ip_hdr = (struct rte_ipv6_hdr *)(eth_hdr + 1);
 
 		frag_hdr = rte_ipv6_frag_get_ipv6_fragment_header(ip_hdr);
 
@@ -390,7 +390,7 @@ reassemble(struct rte_mbuf *m, uint16_t portid, uint32_t queue,
 				m = mo;
 				eth_hdr = rte_pktmbuf_mtod(m,
 							struct rte_ether_hdr *);
-				ip_hdr = (struct ipv6_hdr *)(eth_hdr + 1);
+				ip_hdr = (struct rte_ipv6_hdr *)(eth_hdr + 1);
 			}
 		}
 

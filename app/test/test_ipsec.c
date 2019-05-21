@@ -531,7 +531,7 @@ const char null_encrypted_data[] =
 	"Network Security People Have A Strange Sense Of Humor unlike Other "
 	"People who have a normal sense of humour";
 
-struct ipv4_hdr ipv4_outer  = {
+struct rte_ipv4_hdr ipv4_outer  = {
 	.version_ihl = IPVERSION << 4 |
 		sizeof(ipv4_outer) / IPV4_IHL_MULTIPLIER,
 	.time_to_live = IPDEFTTL,
@@ -569,7 +569,8 @@ setup_test_string_tunneled(struct rte_mempool *mpool, const char *string,
 	size_t len, uint32_t spi, uint32_t seq)
 {
 	struct rte_mbuf *m = rte_pktmbuf_alloc(mpool);
-	uint32_t hdrlen = sizeof(struct ipv4_hdr) + sizeof(struct rte_esp_hdr);
+	uint32_t hdrlen = sizeof(struct rte_ipv4_hdr) +
+		sizeof(struct rte_esp_hdr);
 	uint32_t taillen = sizeof(struct esp_tail);
 	uint32_t t_len = len + hdrlen + taillen;
 	uint32_t padlen;

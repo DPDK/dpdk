@@ -68,14 +68,18 @@ processx4_step3(struct rte_mbuf *pkt[FWDSTEP], uint16_t dst_port[FWDSTEP])
 	*p[2] = te[2];
 	*p[3] = te[3];
 
-	rfc1812_process((struct ipv4_hdr *)((struct rte_ether_hdr *)p[0] + 1),
-		&dst_port[0], pkt[0]->packet_type);
-	rfc1812_process((struct ipv4_hdr *)((struct rte_ether_hdr *)p[1] + 1),
-		&dst_port[1], pkt[1]->packet_type);
-	rfc1812_process((struct ipv4_hdr *)((struct rte_ether_hdr *)p[2] + 1),
-		&dst_port[2], pkt[2]->packet_type);
-	rfc1812_process((struct ipv4_hdr *)((struct rte_ether_hdr *)p[3] + 1),
-		&dst_port[3], pkt[3]->packet_type);
+	rfc1812_process((struct rte_ipv4_hdr *)
+			((struct rte_ether_hdr *)p[0] + 1),
+			&dst_port[0], pkt[0]->packet_type);
+	rfc1812_process((struct rte_ipv4_hdr *)
+			((struct rte_ether_hdr *)p[1] + 1),
+			&dst_port[1], pkt[1]->packet_type);
+	rfc1812_process((struct rte_ipv4_hdr *)
+			((struct rte_ether_hdr *)p[2] + 1),
+			&dst_port[2], pkt[2]->packet_type);
+	rfc1812_process((struct rte_ipv4_hdr *)
+			((struct rte_ether_hdr *)p[3] + 1),
+			&dst_port[3], pkt[3]->packet_type);
 }
 
 /*
@@ -129,7 +133,7 @@ process_packet(struct rte_mbuf *pkt, uint16_t *dst_port)
 	te = *(vector unsigned int *)eth_hdr;
 	ve = (vector unsigned int)val_eth[dst_port[0]];
 
-	rfc1812_process((struct ipv4_hdr *)(eth_hdr + 1), dst_port,
+	rfc1812_process((struct rte_ipv4_hdr *)(eth_hdr + 1), dst_port,
 			pkt->packet_type);
 
 	/* dynamically vec_sel te and ve for MASK_ETH (0x3f) */

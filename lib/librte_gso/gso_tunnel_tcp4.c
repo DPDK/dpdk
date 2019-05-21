@@ -9,7 +9,7 @@ static void
 update_tunnel_ipv4_tcp_headers(struct rte_mbuf *pkt, uint8_t ipid_delta,
 		struct rte_mbuf **segs, uint16_t nb_segs)
 {
-	struct ipv4_hdr *ipv4_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
 	struct tcp_hdr *tcp_hdr;
 	uint32_t sent_seq;
 	uint16_t outer_id, inner_id, tail_idx, i;
@@ -23,12 +23,12 @@ update_tunnel_ipv4_tcp_headers(struct rte_mbuf *pkt, uint8_t ipid_delta,
 	tcp_offset = inner_ipv4_offset + pkt->l3_len;
 
 	/* Outer IPv4 header. */
-	ipv4_hdr = (struct ipv4_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
+	ipv4_hdr = (struct rte_ipv4_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
 			outer_ipv4_offset);
 	outer_id = rte_be_to_cpu_16(ipv4_hdr->packet_id);
 
 	/* Inner IPv4 header. */
-	ipv4_hdr = (struct ipv4_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
+	ipv4_hdr = (struct rte_ipv4_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
 			inner_ipv4_offset);
 	inner_id = rte_be_to_cpu_16(ipv4_hdr->packet_id);
 
@@ -60,12 +60,12 @@ gso_tunnel_tcp4_segment(struct rte_mbuf *pkt,
 		struct rte_mbuf **pkts_out,
 		uint16_t nb_pkts_out)
 {
-	struct ipv4_hdr *inner_ipv4_hdr;
+	struct rte_ipv4_hdr *inner_ipv4_hdr;
 	uint16_t pyld_unit_size, hdr_offset, frag_off;
 	int ret = 1;
 
 	hdr_offset = pkt->outer_l2_len + pkt->outer_l3_len + pkt->l2_len;
-	inner_ipv4_hdr = (struct ipv4_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
+	inner_ipv4_hdr = (struct rte_ipv4_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
 			hdr_offset);
 	/*
 	 * Don't process the packet whose MF bit or offset in the inner

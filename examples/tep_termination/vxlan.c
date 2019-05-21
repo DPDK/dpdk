@@ -31,8 +31,8 @@ static void
 parse_ethernet(struct rte_ether_hdr *eth_hdr, union tunnel_offload_info *info,
 		uint8_t *l4_proto)
 {
-	struct ipv4_hdr *ipv4_hdr;
-	struct ipv6_hdr *ipv6_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
+	struct rte_ipv6_hdr *ipv6_hdr;
 	uint16_t ethertype;
 
 	info->outer_l2_len = sizeof(struct rte_ether_hdr);
@@ -47,15 +47,15 @@ parse_ethernet(struct rte_ether_hdr *eth_hdr, union tunnel_offload_info *info,
 
 	switch (ethertype) {
 	case RTE_ETHER_TYPE_IPv4:
-		ipv4_hdr = (struct ipv4_hdr *)
+		ipv4_hdr = (struct rte_ipv4_hdr *)
 			((char *)eth_hdr + info->outer_l2_len);
-		info->outer_l3_len = sizeof(struct ipv4_hdr);
+		info->outer_l3_len = sizeof(struct rte_ipv4_hdr);
 		*l4_proto = ipv4_hdr->next_proto_id;
 		break;
 	case RTE_ETHER_TYPE_IPv6:
-		ipv6_hdr = (struct ipv6_hdr *)
+		ipv6_hdr = (struct rte_ipv6_hdr *)
 			((char *)eth_hdr + info->outer_l2_len);
-		info->outer_l3_len = sizeof(struct ipv6_hdr);
+		info->outer_l3_len = sizeof(struct rte_ipv6_hdr);
 		*l4_proto = ipv6_hdr->proto;
 		break;
 	default:
@@ -75,8 +75,8 @@ process_inner_cksums(struct rte_ether_hdr *eth_hdr,
 	void *l3_hdr = NULL;
 	uint8_t l4_proto;
 	uint16_t ethertype;
-	struct ipv4_hdr *ipv4_hdr;
-	struct ipv6_hdr *ipv6_hdr;
+	struct rte_ipv4_hdr *ipv4_hdr;
+	struct rte_ipv6_hdr *ipv6_hdr;
 	struct udp_hdr *udp_hdr;
 	struct tcp_hdr *tcp_hdr;
 	struct sctp_hdr *sctp_hdr;
@@ -95,15 +95,15 @@ process_inner_cksums(struct rte_ether_hdr *eth_hdr,
 	l3_hdr = (char *)eth_hdr + info->l2_len;
 
 	if (ethertype == RTE_ETHER_TYPE_IPv4) {
-		ipv4_hdr = (struct ipv4_hdr *)l3_hdr;
+		ipv4_hdr = (struct rte_ipv4_hdr *)l3_hdr;
 		ipv4_hdr->hdr_checksum = 0;
 		ol_flags |= PKT_TX_IPV4;
 		ol_flags |= PKT_TX_IP_CKSUM;
-		info->l3_len = sizeof(struct ipv4_hdr);
+		info->l3_len = sizeof(struct rte_ipv4_hdr);
 		l4_proto = ipv4_hdr->next_proto_id;
 	} else if (ethertype == RTE_ETHER_TYPE_IPv6) {
-		ipv6_hdr = (struct ipv6_hdr *)l3_hdr;
-		info->l3_len = sizeof(struct ipv6_hdr);
+		ipv6_hdr = (struct rte_ipv6_hdr *)l3_hdr;
+		info->l3_len = sizeof(struct rte_ipv6_hdr);
 		l4_proto = ipv6_hdr->proto;
 		ol_flags |= PKT_TX_IPV6;
 	} else
@@ -182,10 +182,10 @@ encapsulation(struct rte_mbuf *m, uint8_t queue_id)
 	/*Allocate space for new ethernet, IPv4, UDP and VXLAN headers*/
 	struct rte_ether_hdr *pneth =
 		(struct rte_ether_hdr *) rte_pktmbuf_prepend(m,
-		sizeof(struct rte_ether_hdr) + sizeof(struct ipv4_hdr)
+		sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr)
 		+ sizeof(struct udp_hdr) + sizeof(struct rte_vxlan_hdr));
 
-	struct ipv4_hdr *ip = (struct ipv4_hdr *) &pneth[1];
+	struct rte_ipv4_hdr *ip = (struct rte_ipv4_hdr *) &pneth[1];
 	struct udp_hdr *udp = (struct udp_hdr *) &ip[1];
 	struct rte_vxlan_hdr *vxlan = (struct rte_vxlan_hdr *) &udp[1];
 
@@ -198,7 +198,7 @@ encapsulation(struct rte_mbuf *m, uint8_t queue_id)
 
 	/* copy in IP header */
 	ip = rte_memcpy(ip, &app_ip_hdr[vport_id],
-		sizeof(struct ipv4_hdr));
+		sizeof(struct rte_ipv4_hdr));
 	ip->total_length = rte_cpu_to_be_16(m->pkt_len
 				- sizeof(struct rte_ether_hdr));
 
@@ -216,7 +216,7 @@ encapsulation(struct rte_mbuf *m, uint8_t queue_id)
 	}
 
 	m->outer_l2_len = sizeof(struct rte_ether_hdr);
-	m->outer_l3_len = sizeof(struct ipv4_hdr);
+	m->outer_l3_len = sizeof(struct rte_ipv4_hdr);
 
 	ol_flags |= PKT_TX_TUNNEL_VXLAN;
 

@@ -297,7 +297,7 @@ static inline void
 mcast_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf)
 {
 	struct rte_mbuf *mc;
-	struct ipv4_hdr *iphdr;
+	struct rte_ipv4_hdr *iphdr;
 	uint32_t dest_addr, port_mask, port_num, use_clone;
 	int32_t hash;
 	uint16_t port;
@@ -307,7 +307,7 @@ mcast_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf)
 	} dst_eth_addr;
 
 	/* Remove the Ethernet header from the input packet */
-	iphdr = (struct ipv4_hdr *)
+	iphdr = (struct rte_ipv4_hdr *)
 		rte_pktmbuf_adj(m, (uint16_t)sizeof(struct rte_ether_hdr));
 	RTE_ASSERT(iphdr != NULL);
 
