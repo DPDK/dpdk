@@ -911,7 +911,7 @@ i40e_fdir_construct_pkt(struct i40e_pf *pf,
 		 */
 		if (fdir_input->flow.l2_flow.ether_type ==
 				rte_cpu_to_be_16(ETHER_TYPE_ARP))
-			payload += sizeof(struct arp_hdr);
+			payload += sizeof(struct rte_arp_hdr);
 		set_idx = I40E_FLXPLD_L2_IDX;
 		break;
 	default:
@@ -1197,7 +1197,7 @@ i40e_flow_fdir_construct_pkt(struct i40e_pf *pf,
 		 */
 		if (fdir_input->flow.l2_flow.ether_type ==
 				rte_cpu_to_be_16(ETHER_TYPE_ARP))
-			payload += sizeof(struct arp_hdr);
+			payload += sizeof(struct rte_arp_hdr);
 		set_idx = I40E_FLXPLD_L2_IDX;
 	} else if (fdir_input->flow_ext.customized_pctype) {
 		/* If customized pctype is used */

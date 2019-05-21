@@ -29,7 +29,7 @@ initialize_eth_header(struct ether_hdr *eth_hdr, struct ether_addr *src_mac,
 		uint8_t vlan_enabled, uint16_t van_id);
 
 void
-initialize_arp_header(struct arp_hdr *arp_hdr, struct ether_addr *src_mac,
+initialize_arp_header(struct rte_arp_hdr *arp_hdr, struct ether_addr *src_mac,
 		struct ether_addr *dst_mac, uint32_t src_ip, uint32_t dst_ip,
 		uint32_t opcode);
 

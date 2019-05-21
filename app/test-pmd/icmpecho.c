@@ -38,7 +38,7 @@
 static const char *
 arp_op_name(uint16_t arp_op)
 {
-	switch (arp_op ) {
+	switch (arp_op) {
 	case ARP_OP_REQUEST:
 		return "ARP Request";
 	case ARP_OP_REPLY:
@@ -277,7 +277,7 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 	struct rte_mbuf *pkt;
 	struct ether_hdr *eth_h;
 	struct vlan_hdr *vlan_h;
-	struct arp_hdr  *arp_h;
+	struct rte_arp_hdr  *arp_h;
 	struct ipv4_hdr *ip_h;
 	struct icmp_hdr *icmp_h;
 	struct ether_addr eth_addr;
@@ -347,22 +347,22 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 
 		/* Reply to ARP requests */
 		if (eth_type == ETHER_TYPE_ARP) {
-			arp_h = (struct arp_hdr *) ((char *)eth_h + l2_len);
-			arp_op = RTE_BE_TO_CPU_16(arp_h->arp_op);
-			arp_pro = RTE_BE_TO_CPU_16(arp_h->arp_pro);
+			arp_h = (struct rte_arp_hdr *) ((char *)eth_h + l2_len);
+			arp_op = RTE_BE_TO_CPU_16(arp_h->arp_opcode);
+			arp_pro = RTE_BE_TO_CPU_16(arp_h->arp_protocol);
 			if (verbose_level > 0) {
 				printf("  ARP:  hrd=%d proto=0x%04x hln=%d "
 				       "pln=%d op=%u (%s)\n",
-				       RTE_BE_TO_CPU_16(arp_h->arp_hrd),
-				       arp_pro, arp_h->arp_hln,
-				       arp_h->arp_pln, arp_op,
+				       RTE_BE_TO_CPU_16(arp_h->arp_hardware),
+				       arp_pro, arp_h->arp_hlen,
+				       arp_h->arp_plen, arp_op,
 				       arp_op_name(arp_op));
 			}
-			if ((RTE_BE_TO_CPU_16(arp_h->arp_hrd) !=
+			if ((RTE_BE_TO_CPU_16(arp_h->arp_hardware) !=
 			     ARP_HRD_ETHER) ||
 			    (arp_pro != ETHER_TYPE_IPv4) ||
-			    (arp_h->arp_hln != 6) ||
-			    (arp_h->arp_pln != 4)
+			    (arp_h->arp_hlen != 6) ||
+			    (arp_h->arp_plen != 4)
 			    ) {
 				rte_pktmbuf_free(pkt);
 				if (verbose_level > 0)
@@ -396,7 +396,7 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 			ether_addr_copy(&ports[fs->tx_port].eth_addr,
 					&eth_h->s_addr);
 
-			arp_h->arp_op = rte_cpu_to_be_16(ARP_OP_REPLY);
+			arp_h->arp_opcode = rte_cpu_to_be_16(ARP_OP_REPLY);
 			ether_addr_copy(&arp_h->arp_data.arp_tha, &eth_addr);
 			ether_addr_copy(&arp_h->arp_data.arp_sha, &arp_h->arp_data.arp_tha);
 			ether_addr_copy(&eth_h->s_addr, &arp_h->arp_data.arp_sha);

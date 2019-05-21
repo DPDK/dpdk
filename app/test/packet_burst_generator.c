@@ -74,15 +74,15 @@ initialize_eth_header(struct ether_hdr *eth_hdr, struct ether_addr *src_mac,
 }
 
 void
-initialize_arp_header(struct arp_hdr *arp_hdr, struct ether_addr *src_mac,
+initialize_arp_header(struct rte_arp_hdr *arp_hdr, struct ether_addr *src_mac,
 		struct ether_addr *dst_mac, uint32_t src_ip, uint32_t dst_ip,
 		uint32_t opcode)
 {
-	arp_hdr->arp_hrd = rte_cpu_to_be_16(ARP_HRD_ETHER);
-	arp_hdr->arp_pro = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
-	arp_hdr->arp_hln = ETHER_ADDR_LEN;
-	arp_hdr->arp_pln = sizeof(uint32_t);
-	arp_hdr->arp_op = rte_cpu_to_be_16(opcode);
+	arp_hdr->arp_hardware = rte_cpu_to_be_16(ARP_HRD_ETHER);
+	arp_hdr->arp_protocol = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
+	arp_hdr->arp_hlen = ETHER_ADDR_LEN;
+	arp_hdr->arp_plen = sizeof(uint32_t);
+	arp_hdr->arp_opcode = rte_cpu_to_be_16(opcode);
 	ether_addr_copy(src_mac, &arp_hdr->arp_data.arp_sha);
 	arp_hdr->arp_data.arp_sip = src_ip;
 	ether_addr_copy(dst_mac, &arp_hdr->arp_data.arp_tha);

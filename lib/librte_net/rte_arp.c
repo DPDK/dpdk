@@ -12,7 +12,7 @@ rte_net_make_rarp_packet(struct rte_mempool *mpool,
 		const struct ether_addr *mac)
 {
 	struct ether_hdr *eth_hdr;
-	struct arp_hdr *rarp;
+	struct rte_arp_hdr *rarp;
 	struct rte_mbuf *mbuf;
 
 	if (mpool == NULL)
@@ -34,12 +34,12 @@ rte_net_make_rarp_packet(struct rte_mempool *mpool,
 	eth_hdr->ether_type = htons(ETHER_TYPE_RARP);
 
 	/* RARP header. */
-	rarp = (struct arp_hdr *)(eth_hdr + 1);
-	rarp->arp_hrd = htons(ARP_HRD_ETHER);
-	rarp->arp_pro = htons(ETHER_TYPE_IPv4);
-	rarp->arp_hln = ETHER_ADDR_LEN;
-	rarp->arp_pln = 4;
-	rarp->arp_op  = htons(ARP_OP_REVREQUEST);
+	rarp = (struct rte_arp_hdr *)(eth_hdr + 1);
+	rarp->arp_hardware = htons(ARP_HRD_ETHER);
+	rarp->arp_protocol = htons(ETHER_TYPE_IPv4);
+	rarp->arp_hlen = ETHER_ADDR_LEN;
+	rarp->arp_plen = 4;
+	rarp->arp_opcode  = htons(ARP_OP_REVREQUEST);
 
 	ether_addr_copy(mac, &rarp->arp_data.arp_sha);
 	ether_addr_copy(mac, &rarp->arp_data.arp_tha);

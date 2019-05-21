@@ -589,7 +589,7 @@ mode6_debug(const char __attribute__((unused)) *info, struct ether_hdr *eth_h,
 {
 	struct ipv4_hdr *ipv4_h;
 #ifdef RTE_LIBRTE_BOND_DEBUG_ALB
-	struct arp_hdr *arp_h;
+	struct rte_arp_hdr *arp_h;
 	char dst_ip[16];
 	char ArpOp[24];
 	char buf[16];
@@ -614,10 +614,10 @@ mode6_debug(const char __attribute__((unused)) *info, struct ether_hdr *eth_h,
 	}
 #ifdef RTE_LIBRTE_BOND_DEBUG_ALB
 	else if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_ARP)) {
-		arp_h = (struct arp_hdr *)((char *)(eth_h + 1) + offset);
+		arp_h = (struct rte_arp_hdr *)((char *)(eth_h + 1) + offset);
 		ipv4_addr_to_dot(arp_h->arp_data.arp_sip, src_ip, MaxIPv4String);
 		ipv4_addr_to_dot(arp_h->arp_data.arp_tip, dst_ip, MaxIPv4String);
-		arp_op_name(rte_be_to_cpu_16(arp_h->arp_op),
+		arp_op_name(rte_be_to_cpu_16(arp_h->arp_opcode),
 				ArpOp, sizeof(ArpOp));
 		MODE6_DEBUG(buf, src_ip, dst_ip, eth_h, ArpOp, port, *burstnumber);
 	}
@@ -1132,8 +1132,10 @@ bond_ethdev_tx_burst_alb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 						     "Failed to allocate ARP packet from pool");
 					continue;
 				}
-				pkt_size = sizeof(struct ether_hdr) + sizeof(struct arp_hdr)
-						+ client_info->vlan_count * sizeof(struct vlan_hdr);
+				pkt_size = sizeof(struct ether_hdr) +
+					sizeof(struct rte_arp_hdr) +
+					client_info->vlan_count *
+					sizeof(struct vlan_hdr);
 				upd_pkt->data_len = pkt_size;
 				upd_pkt->pkt_len = pkt_size;
 
