@@ -727,7 +727,7 @@ mrvl_crypto_pmd_sym_session_get_size(__rte_unused struct rte_cryptodev *dev)
 /** Configure the session from a crypto xform chain (PMD ops callback).
  *
  * @param dev Pointer to the device structure.
- * @param xform Pointer to the crytpo configuration structure.
+ * @param xform Pointer to the crypto configuration structure.
  * @param sess Pointer to the empty session structure.
  * @returns 0 upon success, negative value otherwise.
  */
