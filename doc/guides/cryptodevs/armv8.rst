@@ -59,7 +59,6 @@ User can use app/test application to check how to use this PMD and to verify
 crypto processing.
 
 Test name is cryptodev_sw_armv8_autotest.
-For performance test cryptodev_sw_armv8_perftest can be used.
 
 Limitations
 -----------

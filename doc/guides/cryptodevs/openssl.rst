@@ -87,7 +87,6 @@ User can use app/test application to check how to use this pmd and to verify
 crypto processing.
 
 Test name is cryptodev_openssl_autotest.
-For performance test cryptodev_openssl_perftest can be used.
 For asymmetric crypto operations testing, run cryptodev_openssl_asym_autotest.
 
 To verify real traffic l2fwd-crypto example can be used with this command:
