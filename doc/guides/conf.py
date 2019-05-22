@@ -64,6 +64,7 @@ latex_documents = [
 custom_latex_preamble = r"""
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
+\usepackage{textalpha}
 \usepackage{helvet}
 \renewcommand{\familydefault}{\sfdefault}
 \RecustomVerbatimEnvironment{Verbatim}{Verbatim}{xleftmargin=5mm}

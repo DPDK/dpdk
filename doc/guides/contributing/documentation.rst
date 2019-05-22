@@ -199,10 +199,10 @@ The main required packages can be installed as follows:
 .. code-block:: console
 
    # Ubuntu/Debian.
-   sudo apt-get -y install texlive-latex-extra
+   sudo apt-get -y install texlive-latex-extra texlive-lang-greek
 
    # Red Hat/Fedora, selective install.
-   sudo dnf     -y install texlive-collection-latexextra
+   sudo dnf     -y install texlive-collection-latexextra texlive-greek-fontenc
 
 `Latexmk <http://personal.psu.edu/jcc8/software/latexmk-jcc/>`_ is a perl script
 for running LaTeX for resolving cross references,
