@@ -499,8 +499,8 @@ ifpga_rawdev_get_attr(struct rte_rawdev *dev,
 	if (!strcmp(attr_name, "LineSideLinkPortNum")) {
 		if (opae_manager_get_retimer_info(mgr, &opae_rtm_info))
 			return -1;
-		uint64_t tmp = opae_rtm_info.ports_per_retimer *
-			opae_rtm_info.nums_retimer;
+		uint64_t tmp = (uint64_t)opae_rtm_info.ports_per_retimer *
+					(uint64_t)opae_rtm_info.nums_retimer;
 		*attr_value = tmp;
 		return 0;
 	}
@@ -552,8 +552,8 @@ ifpga_rawdev_get_attr(struct rte_rawdev *dev,
 	if (!strcmp(attr_name, "NICSideLinkPortNum")) {
 		if (opae_manager_get_retimer_info(mgr, &opae_rtm_info))
 			return -1;
-		uint64_t tmp = opae_rtm_info.nums_fvl *
-					opae_rtm_info.ports_per_fvl;
+		uint64_t tmp = (uint64_t)opae_rtm_info.nums_fvl *
+					(uint64_t)opae_rtm_info.ports_per_fvl;
 		*attr_value = tmp;
 		return 0;
 	}
