@@ -1541,23 +1541,12 @@ ipn3ke_tm_hierarchy_commit_check(struct rte_eth_dev *dev,
 						NULL,
 						rte_strerror(EINVAL));
 			}
-		} else if (n->node_state ==
-			IPN3KE_TM_NODE_STATE_CONFIGURED_DEL) {
-			if (n->level != IPN3KE_TM_NODE_LEVEL_VT ||
-				n->n_children != 0) {
-				return -rte_tm_error_set(error,
+		} else if (n->node_state == IPN3KE_TM_NODE_STATE_CONFIGURED_DEL)
+			return -rte_tm_error_set(error,
 						EINVAL,
 						RTE_TM_ERROR_TYPE_UNSPECIFIED,
 						NULL,
 						rte_strerror(EINVAL));
-			} else {
-				return -rte_tm_error_set(error,
-						EINVAL,
-						RTE_TM_ERROR_TYPE_UNSPECIFIED,
-						NULL,
-						rte_strerror(EINVAL));
-			}
-		}
 	}
 
 	n = tm->h.port_commit_node;
