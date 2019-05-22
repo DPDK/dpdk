@@ -568,7 +568,7 @@ operations is usually completed during the enqueue call to the compression
 device. The dequeue burst API will retrieve any processed operations available
 from the queue pair on the compression device, from physical devices this is usually
 directly from the devices processed queue, and for virtual device's from a
-``rte_ring`` where processed operations are place after being processed on the
+``rte_ring`` where processed operations are placed after being processed on the
 enqueue call.
 
 A burst in DPDK compression can be a combination of stateless and stateful operations with a condition
