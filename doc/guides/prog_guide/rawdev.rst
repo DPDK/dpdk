@@ -100,7 +100,7 @@ From the command line using the --vdev EAL option
 
    --vdev 'rawdev_dev1'
 
-Our using the rte_vdev_init API within the application code.
+Or using the rte_vdev_init API within the application code.
 
 .. code-block:: c
 

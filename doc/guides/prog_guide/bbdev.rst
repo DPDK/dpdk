@@ -44,7 +44,7 @@ From the command line using the --vdev EAL option
 
    --vdev 'baseband_turbo_sw,max_nb_queues=8,socket_id=0'
 
-Our using the rte_vdev_init API within the application code.
+Or using the rte_vdev_init API within the application code.
 
 .. code-block:: c
 

@@ -52,7 +52,7 @@ From the command line using the --vdev EAL option
 
    Example: ``--vdev  'crypto_aesni_mb0' --vdev  'crypto_aesni_mb1'``
 
-Our using the rte_vdev_init API within the application code.
+Or using the rte_vdev_init API within the application code.
 
 .. code-block:: c
 
