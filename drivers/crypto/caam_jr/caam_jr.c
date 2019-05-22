@@ -70,7 +70,7 @@ static inline void
 caam_jr_op_ending(struct caam_jr_op_ctx *ctx)
 {
 	PMD_INIT_FUNC_TRACE();
-	/* report op status to sym->op and then free the ctx memeory  */
+	/* report op status to sym->op and then free the ctx memory  */
 	rte_mempool_put(ctx->ctx_pool, (void *)ctx);
 }
 

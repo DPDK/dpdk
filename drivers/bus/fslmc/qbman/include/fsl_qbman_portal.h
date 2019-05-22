@@ -15,7 +15,7 @@
  * - Enqueue, including setting the enqueue descriptor, and issuing enqueue
  *   command etc.
  * - Dequeue, including setting the dequeue descriptor, issuing dequeue command,
- *   parsing the dequeue response in DQRR and memeory, parsing the state change
+ *   parsing the dequeue response in DQRR and memory, parsing the state change
  *   notifications etc.
  * - Release, including setting the release descriptor, and issuing the buffer
  *   release command.

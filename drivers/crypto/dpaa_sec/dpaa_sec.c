@@ -61,7 +61,7 @@ dpaa_sec_op_ending(struct dpaa_sec_op_ctx *ctx)
 		ctx->op->status = RTE_CRYPTO_OP_STATUS_ERROR;
 	}
 
-	/* report op status to sym->op and then free the ctx memeory  */
+	/* report op status to sym->op and then free the ctx memory  */
 	rte_mempool_put(ctx->ctx_pool, (void *)ctx);
 }
 
