@@ -853,11 +853,10 @@ test_rcu_qsbr_sw_sv_3qs(void)
 	hash_data[0][6] = NULL;
 
 	writer_done = 1;
-	/* Wait until all readers have exited */
-	rte_eal_mp_wait_lcore();
-	/* Check return value from threads */
+
+	/* Wait and check return value from reader threads */
 	for (i = 0; i < 4; i++)
-		if (lcore_config[enabled_core_ids[i]].ret < 0)
+		if (rte_eal_wait_lcore(enabled_core_ids[i]) < 0)
 			goto error;
 	rte_hash_free(h[0]);
 	rte_free(keys);
@@ -913,17 +912,16 @@ test_rcu_qsbr_mw_mv_mqs(void)
 		rte_eal_remote_launch(test_rcu_qsbr_writer,
 				      (void *)(uintptr_t)(i - (test_cores / 2)),
 					enabled_core_ids[i]);
-	/* Wait for writers to complete */
+	/* Wait and check return value from writer threads */
 	for (i = test_cores / 2; i < test_cores;  i++)
-		rte_eal_wait_lcore(enabled_core_ids[i]);
+		if (rte_eal_wait_lcore(enabled_core_ids[i]) < 0)
+			goto error;
 
 	writer_done = 1;
-	/* Wait for readers to complete */
-	rte_eal_mp_wait_lcore();
 
-	/* Check return value from threads */
-	for (i = 0; i < test_cores; i++)
-		if (lcore_config[enabled_core_ids[i]].ret < 0)
+	/* Wait and check return value from reader threads */
+	for (i = 0; i < test_cores / 2; i++)
+		if (rte_eal_wait_lcore(enabled_core_ids[i]) < 0)
 			goto error;
 
 	for (i = 0; i < num_cores / 4; i++)
@@ -935,7 +933,7 @@ test_rcu_qsbr_mw_mv_mqs(void)
 
 error:
 	writer_done = 1;
-	/* Wait until all readers have exited */
+	/* Wait until all readers and writers have exited */
 	rte_eal_mp_wait_lcore();
 
 	for (i = 0; i < num_cores / 4; i++)

@@ -473,11 +473,9 @@ test_rcu_qsbr_sw_sv_1qs(void)
 
 	writer_done = 1;
 
-	/* Wait until all readers have exited */
-	rte_eal_mp_wait_lcore();
-	/* Check return value from threads */
+	/* Wait and check return value from reader threads */
 	for (i = 0; i < num_cores; i++)
-		if (lcore_config[enabled_core_ids[i]].ret < 0)
+		if (rte_eal_wait_lcore(enabled_core_ids[i]) < 0)
 			goto error;
 	rte_hash_free(h[0]);
 	rte_free(keys);
@@ -587,11 +585,9 @@ test_rcu_qsbr_sw_sv_1qs_non_blocking(void)
 	rte_atomic64_add(&checks, i);
 
 	writer_done = 1;
-	/* Wait until all readers have exited */
-	rte_eal_mp_wait_lcore();
-	/* Check return value from threads */
+	/* Wait and check return value from reader threads */
 	for (i = 0; i < num_cores; i++)
-		if (lcore_config[enabled_core_ids[i]].ret < 0)
+		if (rte_eal_wait_lcore(enabled_core_ids[i]) < 0)
 			goto error;
 	rte_hash_free(h[0]);
 	rte_free(keys);
