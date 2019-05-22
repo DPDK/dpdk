@@ -67,6 +67,9 @@ custom_latex_preamble = r"""
 \usepackage{helvet}
 \renewcommand{\familydefault}{\sfdefault}
 \RecustomVerbatimEnvironment{Verbatim}{Verbatim}{xleftmargin=5mm}
+\usepackage{etoolbox}
+\robustify\(
+\robustify\)
 """
 
 # Configuration for the latex/pdf docs.
