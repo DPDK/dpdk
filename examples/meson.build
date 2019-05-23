@@ -64,7 +64,7 @@ endif
 default_cflags += '-D_GNU_SOURCE'
 
 foreach example: examples
-	name = example
+	name = example.split('/')[-1]
 	build = true
 	sources = []
 	allow_experimental_apis = false
