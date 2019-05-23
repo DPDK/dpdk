@@ -736,12 +736,15 @@ ipn3ke_afu_filter_ctrl(struct rte_eth_dev *ethdev,
 	enum rte_filter_type filter_type, enum rte_filter_op filter_op,
 	void *arg)
 {
-	struct ipn3ke_hw *hw = IPN3KE_DEV_PRIVATE_TO_HW(ethdev);
-	struct ipn3ke_rpst *rpst = IPN3KE_DEV_PRIVATE_TO_RPST(ethdev);
 	int ret = 0;
+	struct ipn3ke_hw *hw;
+	struct ipn3ke_rpst *rpst;
 
 	if (ethdev == NULL)
 		return -EINVAL;
+
+	hw = IPN3KE_DEV_PRIVATE_TO_HW(ethdev);
+	rpst = IPN3KE_DEV_PRIVATE_TO_RPST(ethdev);
 
 	if (hw->acc_flow)
 		switch (filter_type) {
