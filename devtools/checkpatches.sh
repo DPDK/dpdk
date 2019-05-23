@@ -6,6 +6,7 @@
 # - DPDK_CHECKPATCH_PATH
 # - DPDK_CHECKPATCH_CODESPELL
 # - DPDK_CHECKPATCH_LINE_LENGTH
+# - DPDK_CHECKPATCH_OPTIONS
 . $(dirname $(readlink -e $0))/load-devel-config
 
 VALIDATE_NEW_API=$(dirname $(readlink -e $0))/check-symbol-change.sh
@@ -33,6 +34,7 @@ PREFER_KERNEL_TYPES,BIT_MACRO,CONST_STRUCT,\
 SPLIT_STRING,LONG_LINE_STRING,\
 LINE_SPACING,PARENTHESIS_ALIGNMENT,NETWORKING_BLOCK_COMMENT_STYLE,\
 NEW_TYPEDEFS,COMPARISON_TO_NULL"
+options="$options $DPDK_CHECKPATCH_OPTIONS"
 
 clean_tmp_files() {
 	if echo $tmpinput | grep -q '^checkpatches\.' ; then
