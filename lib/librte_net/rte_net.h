@@ -129,8 +129,7 @@ rte_net_intel_cksum_flags_prepare(struct rte_mbuf *m, uint64_t ol_flags)
 		return 0;
 #endif
 
-	if ((ol_flags & PKT_TX_OUTER_IP_CKSUM) ||
-		(ol_flags & PKT_TX_OUTER_IPV6))
+	if (ol_flags & (PKT_TX_OUTER_IPV4 | PKT_TX_OUTER_IPV6))
 		inner_l3_offset += m->outer_l2_len + m->outer_l3_len;
 
 #ifdef RTE_LIBRTE_ETHDEV_DEBUG
