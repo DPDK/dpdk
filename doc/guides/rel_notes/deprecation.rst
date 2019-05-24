@@ -62,15 +62,6 @@ Deprecation Notices
   Target release for removal of the legacy API will be defined once most
   PMDs have switched to rte_flow.
 
-* kni: remove KNI ethtool support. To clarify, this is not to remove the KNI,
-  but only to remove ethtool support of it that is disabled by default and
-  can be enabled via ``CONFIG_RTE_KNI_KMOD_ETHTOOL`` config option.
-  Existing KNI ethtool implementation is only supported by ``igb`` & ``ixgbe``
-  drivers, by using a copy of kernel drivers in DPDK. This model cannot be
-  extended to all drivers in DPDK and it is too much effort to maintain
-  kernel modules in DPDK. As a result users won't be able to use ``ethtool``
-  via ``igb`` & ``ixgbe`` anymore.
-
 * cryptodev: New member in ``rte_cryptodev_config`` to allow applications to
   disable features supported by the crypto device. Only the following features
   would be allowed to be disabled this way,

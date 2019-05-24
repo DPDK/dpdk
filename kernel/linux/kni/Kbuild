@@ -3,6 +3,4 @@
 
 ccflags-y := $(MODULE_CFLAGS)
 obj-m := rte_kni.o
-rte_kni-y := $(patsubst $(src)/%.c,%.o,$(wildcard $(src)/*.c)) \
- $(patsubst $(src)/%.c,%.o,$(wildcard $(src)/ethtool/ixgbe/*.c)) \
- $(patsubst $(src)/%.c,%.o,$(wildcard $(src)/ethtool/igb/*.c))
+rte_kni-y := $(patsubst $(src)/%.c,%.o,$(wildcard $(src)/*.c))

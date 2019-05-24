@@ -67,6 +67,8 @@ Removed Items
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* Removed KNI ethtool, CONFIG_RTE_KNI_KMOD_ETHTOOL, support.
+
 
 API Changes
 -----------

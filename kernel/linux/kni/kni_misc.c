@@ -29,9 +29,6 @@ MODULE_DESCRIPTION("Kernel Module for managing kni devices");
 
 #define KNI_MAX_DEVICES 32
 
-extern const struct pci_device_id ixgbe_pci_tbl[];
-extern const struct pci_device_id igb_pci_tbl[];
-
 /* loopback mode */
 static char *lo_mode;
 
@@ -182,15 +179,6 @@ kni_dev_remove(struct kni_dev *dev)
 	if (!dev)
 		return -ENODEV;
 
-#ifdef RTE_KNI_KMOD_ETHTOOL
-	if (dev->pci_dev) {
-		if (pci_match_id(ixgbe_pci_tbl, dev->pci_dev))
-			ixgbe_kni_remove(dev->pci_dev);
-		else if (pci_match_id(igb_pci_tbl, dev->pci_dev))
-			igb_kni_remove(dev->pci_dev);
-	}
-#endif
-
 	if (dev->net_dev) {
 		unregister_netdev(dev->net_dev);
 		free_netdev(dev->net_dev);
@@ -306,11 +294,6 @@ kni_ioctl_create(struct net *net, uint32_t ioctl_num,
 	struct rte_kni_device_info dev_info;
 	struct net_device *net_dev = NULL;
 	struct kni_dev *kni, *dev, *n;
-#ifdef RTE_KNI_KMOD_ETHTOOL
-	struct pci_dev *found_pci = NULL;
-	struct net_device *lad_dev = NULL;
-	struct pci_dev *pci = NULL;
-#endif
 
 	pr_info("Creating kni...\n");
 	/* Check the buffer size, to avoid warning */
@@ -400,62 +383,15 @@ kni_ioctl_create(struct net *net, uint32_t ioctl_num,
 					dev_info.function,
 					dev_info.vendor_id,
 					dev_info.device_id);
-#ifdef RTE_KNI_KMOD_ETHTOOL
-	pci = pci_get_device(dev_info.vendor_id, dev_info.device_id, NULL);
-
-	/* Support Ethtool */
-	while (pci) {
-		pr_debug("pci_bus: %02x:%02x:%02x\n",
-					pci->bus->number,
-					PCI_SLOT(pci->devfn),
-					PCI_FUNC(pci->devfn));
-
-		if ((pci->bus->number == dev_info.bus) &&
-			(PCI_SLOT(pci->devfn) == dev_info.devid) &&
-			(PCI_FUNC(pci->devfn) == dev_info.function)) {
-			found_pci = pci;
-
-			if (pci_match_id(ixgbe_pci_tbl, found_pci))
-				ret = ixgbe_kni_probe(found_pci, &lad_dev);
-			else if (pci_match_id(igb_pci_tbl, found_pci))
-				ret = igb_kni_probe(found_pci, &lad_dev);
-			else
-				ret = -1;
-
-			pr_debug("PCI found: pci=0x%p, lad_dev=0x%p\n",
-							pci, lad_dev);
-			if (ret == 0) {
-				kni->lad_dev = lad_dev;
-				kni_set_ethtool_ops(kni->net_dev);
-			} else {
-				pr_err("Device not supported by ethtool");
-				kni->lad_dev = NULL;
-			}
-
-			kni->pci_dev = found_pci;
-			kni->device_id = dev_info.device_id;
-			break;
-		}
-		pci = pci_get_device(dev_info.vendor_id,
-				dev_info.device_id, pci);
-	}
-	if (pci)
-		pci_dev_put(pci);
-#endif
-
-	if (kni->lad_dev)
-		ether_addr_copy(net_dev->dev_addr, kni->lad_dev->dev_addr);
-	else {
-		/* if user has provided a valid mac address */
-		if (is_valid_ether_addr(dev_info.mac_addr))
-			memcpy(net_dev->dev_addr, dev_info.mac_addr, ETH_ALEN);
-		else
-			/*
-			 * Generate random mac address. eth_random_addr() is the
-			 * newer version of generating mac address in kernel.
-			 */
-			random_ether_addr(net_dev->dev_addr);
-	}
+	/* if user has provided a valid mac address */
+	if (is_valid_ether_addr(dev_info.mac_addr))
+		memcpy(net_dev->dev_addr, dev_info.mac_addr, ETH_ALEN);
+	else
+		/*
+		 * Generate random mac address. eth_random_addr() is the
+		 * newer version of generating mac address in kernel.
+		 */
+		random_ether_addr(net_dev->dev_addr);
 
 	if (dev_info.mtu)
 		net_dev->mtu = dev_info.mtu;

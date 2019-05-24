@@ -242,11 +242,6 @@ rte_kni_alloc(struct rte_mempool *pktmbuf_pool,
 		kni->ops.port_id = UINT16_MAX;
 
 	memset(&dev_info, 0, sizeof(dev_info));
-	dev_info.bus = conf->addr.bus;
-	dev_info.devid = conf->addr.devid;
-	dev_info.function = conf->addr.function;
-	dev_info.vendor_id = conf->id.vendor_id;
-	dev_info.device_id = conf->id.device_id;
 	dev_info.core_id = conf->core_id;
 	dev_info.force_bind = conf->force_bind;
 	dev_info.group_id = conf->group_id;
