@@ -60,6 +60,9 @@ static rte_spinlock_t mlx4_shared_data_lock = RTE_SPINLOCK_INITIALIZER;
 /* Process local data for secondary processes. */
 static struct mlx4_local_data mlx4_local_data;
 
+/** Driver-specific log messages type. */
+int mlx4_logtype;
+
 /** Configuration structure for device arguments. */
 struct mlx4_conf {
 	struct {
@@ -1272,6 +1275,11 @@ glue_error:
  */
 RTE_INIT(rte_mlx4_pmd_init)
 {
+	/* Initialize driver log type. */
+	mlx4_logtype = rte_log_register("pmd.net.mlx4");
+	if (mlx4_logtype >= 0)
+		rte_log_set_level(mlx4_logtype, RTE_LOG_NOTICE);
+
 	/*
 	 * MLX4_DEVICE_FATAL_CLEANUP tells ibv_destroy functions we
 	 * want to get success errno value in case of calling them

@@ -15,6 +15,8 @@
 
 #include "mlx4.h"
 
+extern int mlx4_logtype;
+
 #ifndef NDEBUG
 
 /*
@@ -35,7 +37,7 @@ pmd_drv_log_basename(const char *s)
 }
 
 #define PMD_DRV_LOG(level, ...) \
-	RTE_LOG(level, PMD, \
+	rte_log(RTE_LOG_ ## level, mlx4_logtype, \
 		RTE_FMT("%s:%u: %s(): " RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
 			pmd_drv_log_basename(__FILE__), \
 			__LINE__, \
@@ -52,7 +54,7 @@ pmd_drv_log_basename(const char *s)
  */
 
 #define PMD_DRV_LOG(level, ...) \
-	RTE_LOG(level, PMD, \
+	rte_log(RTE_LOG_ ## level, mlx4_logtype, \
 		RTE_FMT(MLX4_DRIVER_NAME ": " \
 			RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
 		RTE_FMT_TAIL(__VA_ARGS__,)))
