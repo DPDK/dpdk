@@ -534,7 +534,9 @@ def display_devices(title, dev_list, extra_params=None):
                 strings.append("%s '%s'" % (dev["Slot"], dev["Device_str"]))
     # sort before printing, so that the entries appear in PCI order
     strings.sort()
-    print("\n".join(strings))  # print one per line
+    # add device index in front of each device
+    enum_dev_list = ['%2d' % index + ": " + device for index, device in enumerate(strings)]
+    print("\n".join(enum_dev_list))  # print one per line
 
 def show_device_status(devices_type, device_name):
     global dpdk_drivers
