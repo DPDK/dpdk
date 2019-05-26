@@ -677,6 +677,224 @@ nix_tm_clear_shaper_profiles(struct otx2_eth_dev *dev)
 }
 
 static int
+nix_smq_xoff(struct otx2_eth_dev *dev, uint16_t smq, bool enable)
+{
+	struct otx2_mbox *mbox = dev->mbox;
+	struct nix_txschq_config *req;
+
+	req = otx2_mbox_alloc_msg_nix_txschq_cfg(mbox);
+	req->lvl = NIX_TXSCH_LVL_SMQ;
+	req->num_regs = 1;
+
+	req->reg[0] = NIX_AF_SMQX_CFG(smq);
+	/* Unmodified fields */
+	req->regval[0] = ((uint64_t)NIX_MAX_VTAG_INS << 36) |
+				(NIX_MAX_HW_FRS << 8) | NIX_MIN_HW_FRS;
+
+	if (enable)
+		req->regval[0] |= BIT_ULL(50) | BIT_ULL(49);
+	else
+		req->regval[0] |= 0;
+
+	return otx2_mbox_process(mbox);
+}
+
+int
+otx2_nix_sq_sqb_aura_fc(void *__txq, bool enable)
+{
+	struct otx2_eth_txq *txq = __txq;
+	struct npa_aq_enq_req *req;
+	struct npa_aq_enq_rsp *rsp;
+	struct otx2_npa_lf *lf;
+	struct otx2_mbox *mbox;
+	uint64_t aura_handle;
+	int rc;
+
+	lf = otx2_npa_lf_obj_get();
+	if (!lf)
+		return -EFAULT;
+	mbox = lf->mbox;
+	/* Set/clear sqb aura fc_ena */
+	aura_handle = txq->sqb_pool->pool_id;
+	req = otx2_mbox_alloc_msg_npa_aq_enq(mbox);
+
+	req->aura_id = npa_lf_aura_handle_to_aura(aura_handle);
+	req->ctype = NPA_AQ_CTYPE_AURA;
+	req->op = NPA_AQ_INSTOP_WRITE;
+	/* Below is not needed for aura writes but AF driver needs it */
+	/* AF will translate to associated poolctx */
+	req->aura.pool_addr = req->aura_id;
+
+	req->aura.fc_ena = enable;
+	req->aura_mask.fc_ena = 1;
+
+	rc = otx2_mbox_process(mbox);
+	if (rc)
+		return rc;
+
+	/* Read back npa aura ctx */
+	req = otx2_mbox_alloc_msg_npa_aq_enq(mbox);
+
+	req->aura_id = npa_lf_aura_handle_to_aura(aura_handle);
+	req->ctype = NPA_AQ_CTYPE_AURA;
+	req->op = NPA_AQ_INSTOP_READ;
+
+	rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		return rc;
+
+	/* Init when enabled as there might be no triggers */
+	if (enable)
+		*(volatile uint64_t *)txq->fc_mem = rsp->aura.count;
+	else
+		*(volatile uint64_t *)txq->fc_mem = txq->nb_sqb_bufs;
+	/* Sync write barrier */
+	rte_wmb();
+
+	return 0;
+}
+
+static void
+nix_txq_flush_sq_spin(struct otx2_eth_txq *txq)
+{
+	uint16_t sqb_cnt, head_off, tail_off;
+	struct otx2_eth_dev *dev = txq->dev;
+	uint16_t sq = txq->sq;
+	uint64_t reg, val;
+	int64_t *regaddr;
+
+	while (true) {
+		reg = ((uint64_t)sq << 32);
+		regaddr = (int64_t *)(dev->base + NIX_LF_SQ_OP_PKTS);
+		val = otx2_atomic64_add_nosync(reg, regaddr);
+
+		regaddr = (int64_t *)(dev->base + NIX_LF_SQ_OP_STATUS);
+		val = otx2_atomic64_add_nosync(reg, regaddr);
+		sqb_cnt = val & 0xFFFF;
+		head_off = (val >> 20) & 0x3F;
+		tail_off = (val >> 28) & 0x3F;
+
+		/* SQ reached quiescent state */
+		if (sqb_cnt <= 1 && head_off == tail_off &&
+		    (*txq->fc_mem == txq->nb_sqb_bufs)) {
+			break;
+		}
+
+		rte_pause();
+	}
+}
+
+int
+otx2_nix_tm_sw_xoff(void *__txq, bool dev_started)
+{
+	struct otx2_eth_txq *txq = __txq;
+	struct otx2_eth_dev *dev = txq->dev;
+	struct otx2_mbox *mbox = dev->mbox;
+	struct nix_aq_enq_req *req;
+	struct nix_aq_enq_rsp *rsp;
+	uint16_t smq;
+	int rc;
+
+	/* Get smq from sq */
+	req = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
+	req->qidx = txq->sq;
+	req->ctype = NIX_AQ_CTYPE_SQ;
+	req->op = NIX_AQ_INSTOP_READ;
+	rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
+	if (rc) {
+		otx2_err("Failed to get smq, rc=%d", rc);
+		return -EIO;
+	}
+
+	/* Check if sq is enabled */
+	if (!rsp->sq.ena)
+		return 0;
+
+	smq = rsp->sq.smq;
+
+	/* Enable CGX RXTX to drain pkts */
+	if (!dev_started) {
+		rc = otx2_cgx_rxtx_start(dev);
+		if (rc)
+			return rc;
+	}
+
+	rc = otx2_nix_sq_sqb_aura_fc(txq, false);
+	if (rc < 0) {
+		otx2_err("Failed to disable sqb aura fc, rc=%d", rc);
+		goto cleanup;
+	}
+
+	/* Disable smq xoff for case it was enabled earlier */
+	rc = nix_smq_xoff(dev, smq, false);
+	if (rc) {
+		otx2_err("Failed to enable smq for sq %u, rc=%d", txq->sq, rc);
+		goto cleanup;
+	}
+
+	/* Wait for sq entries to be flushed */
+	nix_txq_flush_sq_spin(txq);
+
+	/* Flush and enable smq xoff */
+	rc = nix_smq_xoff(dev, smq, true);
+	if (rc) {
+		otx2_err("Failed to disable smq for sq %u, rc=%d", txq->sq, rc);
+		return rc;
+	}
+
+cleanup:
+	/* Restore cgx state */
+	if (!dev_started)
+		rc |= otx2_cgx_rxtx_stop(dev);
+
+	return rc;
+}
+
+static int
+nix_tm_sw_xon(struct otx2_eth_txq *txq,
+	      uint16_t smq, uint32_t rr_quantum)
+{
+	struct otx2_eth_dev *dev = txq->dev;
+	struct otx2_mbox *mbox = dev->mbox;
+	struct nix_aq_enq_req *req;
+	int rc;
+
+	otx2_tm_dbg("Enabling sq(%u)->smq(%u), rr_quantum %u",
+		    txq->sq, txq->sq, rr_quantum);
+	/* Set smq from sq */
+	req = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
+	req->qidx = txq->sq;
+	req->ctype = NIX_AQ_CTYPE_SQ;
+	req->op = NIX_AQ_INSTOP_WRITE;
+	req->sq.smq = smq;
+	req->sq.smq_rr_quantum = rr_quantum;
+	req->sq_mask.smq = ~req->sq_mask.smq;
+	req->sq_mask.smq_rr_quantum = ~req->sq_mask.smq_rr_quantum;
+
+	rc = otx2_mbox_process(mbox);
+	if (rc) {
+		otx2_err("Failed to set smq, rc=%d", rc);
+		return -EIO;
+	}
+
+	/* Enable sqb_aura fc */
+	rc = otx2_nix_sq_sqb_aura_fc(txq, true);
+	if (rc < 0) {
+		otx2_err("Failed to enable sqb aura fc, rc=%d", rc);
+		return rc;
+	}
+
+	/* Disable smq xoff */
+	rc = nix_smq_xoff(dev, smq, false);
+	if (rc) {
+		otx2_err("Failed to enable smq for sq %u", txq->sq);
+		return rc;
+	}
+
+	return 0;
+}
+
+static int
 nix_tm_free_resources(struct otx2_eth_dev *dev, uint32_t flags_mask,
 		      uint32_t flags, bool hw_only)
 {
@@ -929,9 +1147,10 @@ static int
 nix_tm_alloc_resources(struct rte_eth_dev *eth_dev, bool xmit_enable)
 {
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct otx2_nix_tm_node *tm_node;
+	uint16_t sq, smq, rr_quantum;
+	struct otx2_eth_txq *txq;
 	int rc;
-
-	RTE_SET_USED(xmit_enable);
 
 	nix_tm_update_parent_info(dev);
 
@@ -947,7 +1166,43 @@ nix_tm_alloc_resources(struct rte_eth_dev *eth_dev, bool xmit_enable)
 		return rc;
 	}
 
-	return 0;
+	/* Enable xmit as all the topology is ready */
+	TAILQ_FOREACH(tm_node, &dev->node_list, node) {
+		if (tm_node->flags & NIX_TM_NODE_ENABLED)
+			continue;
+
+		/* Enable xmit on sq */
+		if (tm_node->level_id != OTX2_TM_LVL_QUEUE) {
+			tm_node->flags |= NIX_TM_NODE_ENABLED;
+			continue;
+		}
+
+		/* Don't enable SMQ or mark as enable */
+		if (!xmit_enable)
+			continue;
+
+		sq = tm_node->id;
+		if (sq > eth_dev->data->nb_tx_queues) {
+			rc = -EFAULT;
+			break;
+		}
+
+		txq = eth_dev->data->tx_queues[sq];
+
+		smq = tm_node->parent->hw_id;
+		rr_quantum = (tm_node->weight *
+			      NIX_TM_RR_QUANTUM_MAX) / MAX_SCHED_WEIGHT;
+
+		rc = nix_tm_sw_xon(txq, smq, rr_quantum);
+		if (rc)
+			break;
+		tm_node->flags |= NIX_TM_NODE_ENABLED;
+	}
+
+	if (rc)
+		otx2_err("TM failed to enable xmit on sq %u, rc=%d", sq, rc);
+
+	return rc;
 }
 
 static int
@@ -1102,5 +1357,40 @@ otx2_nix_tm_fini(struct rte_eth_dev *eth_dev)
 	nix_tm_clear_shaper_profiles(dev);
 
 	dev->tm_flags = 0;
+	return 0;
+}
+
+int
+otx2_nix_tm_get_leaf_data(struct otx2_eth_dev *dev, uint16_t sq,
+			  uint32_t *rr_quantum, uint16_t *smq)
+{
+	struct otx2_nix_tm_node *tm_node;
+	int rc;
+
+	/* 0..sq_cnt-1 are leaf nodes */
+	if (sq >= dev->tm_leaf_cnt)
+		return -EINVAL;
+
+	/* Search for internal node first */
+	tm_node = nix_tm_node_search(dev, sq, false);
+	if (!tm_node)
+		tm_node = nix_tm_node_search(dev, sq, true);
+
+	/* Check if we found a valid leaf node */
+	if (!tm_node || tm_node->level_id != OTX2_TM_LVL_QUEUE ||
+	    !tm_node->parent || tm_node->parent->hw_id == UINT32_MAX) {
+		return -EIO;
+	}
+
+	/* Get SMQ Id of leaf node's parent */
+	*smq = tm_node->parent->hw_id;
+	*rr_quantum = (tm_node->weight * NIX_TM_RR_QUANTUM_MAX)
+		/ MAX_SCHED_WEIGHT;
+
+	rc = nix_smq_xoff(dev, *smq, false);
+	if (rc)
+		return rc;
+	tm_node->flags |= NIX_TM_NODE_ENABLED;
+
 	return 0;
 }

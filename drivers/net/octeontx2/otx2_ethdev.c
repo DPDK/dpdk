@@ -120,6 +120,32 @@ nix_lf_free(struct otx2_eth_dev *dev)
 	return otx2_mbox_process(mbox);
 }
 
+int
+otx2_cgx_rxtx_start(struct otx2_eth_dev *dev)
+{
+	struct otx2_mbox *mbox = dev->mbox;
+
+	if (otx2_dev_is_vf(dev))
+		return 0;
+
+	otx2_mbox_alloc_msg_cgx_start_rxtx(mbox);
+
+	return otx2_mbox_process(mbox);
+}
+
+int
+otx2_cgx_rxtx_stop(struct otx2_eth_dev *dev)
+{
+	struct otx2_mbox *mbox = dev->mbox;
+
+	if (otx2_dev_is_vf(dev))
+		return 0;
+
+	otx2_mbox_alloc_msg_cgx_stop_rxtx(mbox);
+
+	return otx2_mbox_process(mbox);
+}
+
 static inline void
 nix_rx_queue_reset(struct otx2_eth_rxq *rxq)
 {
@@ -461,9 +487,18 @@ nix_sq_init(struct otx2_eth_txq *txq)
 	struct otx2_eth_dev *dev = txq->dev;
 	struct otx2_mbox *mbox = dev->mbox;
 	struct nix_aq_enq_req *sq;
+	uint32_t rr_quantum;
+	uint16_t smq;
+	int rc;
 
 	if (txq->sqb_pool->pool_id == 0)
 		return -EINVAL;
+
+	rc = otx2_nix_tm_get_leaf_data(dev, txq->sq, &rr_quantum, &smq);
+	if (rc) {
+		otx2_err("Failed to get sq->smq(leaf node), rc=%d", rc);
+		return rc;
+	}
 
 	sq = otx2_mbox_alloc_msg_nix_aq_enq(mbox);
 	sq->qidx = txq->sq;
@@ -471,6 +506,8 @@ nix_sq_init(struct otx2_eth_txq *txq)
 	sq->op = NIX_AQ_INSTOP_INIT;
 	sq->sq.max_sqe_size = nix_sq_max_sqe_sz(txq);
 
+	sq->sq.smq = smq;
+	sq->sq.smq_rr_quantum = rr_quantum;
 	sq->sq.default_chan = dev->tx_chan_base;
 	sq->sq.sqe_stype = NIX_STYPE_STF;
 	sq->sq.ena = 1;
@@ -711,11 +748,17 @@ static void
 otx2_nix_tx_queue_release(void *_txq)
 {
 	struct otx2_eth_txq *txq = _txq;
+	struct rte_eth_dev *eth_dev;
 
 	if (!txq)
 		return;
 
+	eth_dev = txq->dev->eth_dev;
+
 	otx2_nix_dbg("Releasing txq %u", txq->sq);
+
+	/* Flush and disable tm */
+	otx2_nix_tm_sw_xoff(txq, eth_dev->data->dev_started);
 
 	/* Free sqb's and disable sq */
 	nix_sq_uninit(txq);
@@ -1142,24 +1185,52 @@ int
 otx2_nix_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t qidx)
 {
 	struct rte_eth_dev_data *data = eth_dev->data;
+	struct otx2_eth_txq *txq;
+	int rc = -EINVAL;
+
+	txq = eth_dev->data->tx_queues[qidx];
 
 	if (data->tx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STARTED)
 		return 0;
 
+	rc = otx2_nix_sq_sqb_aura_fc(txq, true);
+	if (rc) {
+		otx2_err("Failed to enable sqb aura fc, txq=%u, rc=%d",
+			 qidx, rc);
+		goto done;
+	}
+
 	data->tx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STARTED;
-	return 0;
+
+done:
+	return rc;
 }
 
 int
 otx2_nix_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qidx)
 {
 	struct rte_eth_dev_data *data = eth_dev->data;
+	struct otx2_eth_txq *txq;
+	int rc;
+
+	txq = eth_dev->data->tx_queues[qidx];
 
 	if (data->tx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STOPPED)
 		return 0;
 
+	txq->fc_cache_pkts = 0;
+
+	rc = otx2_nix_sq_sqb_aura_fc(txq, false);
+	if (rc) {
+		otx2_err("Failed to disable sqb aura fc, txq=%u, rc=%d",
+			 qidx, rc);
+		goto done;
+	}
+
 	data->tx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STOPPED;
-	return 0;
+
+done:
+	return rc;
 }
 
 static int
