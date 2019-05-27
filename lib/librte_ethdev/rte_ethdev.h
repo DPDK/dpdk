@@ -2333,6 +2333,8 @@ void rte_eth_macaddr_get(uint16_t port_id, struct rte_ether_addr *mac_addr);
  *      .nb_max = UINT16_MAX,
  *      .nb_min = 0,
  *      .nb_align = 1,
+ *	.nb_seg_max = UINT16_MAX,
+ *	.nb_mtu_seg_max = UINT16_MAX,
  *  };
  *
  * device = dev->device

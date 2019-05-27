@@ -2548,6 +2548,8 @@ rte_eth_dev_info_get(uint16_t port_id, struct rte_eth_dev_info *dev_info)
 		.nb_max = UINT16_MAX,
 		.nb_min = 0,
 		.nb_align = 1,
+		.nb_seg_max = UINT16_MAX,
+		.nb_mtu_seg_max = UINT16_MAX,
 	};
 
 	RTE_ETH_VALID_PORTID_OR_RET(port_id);
