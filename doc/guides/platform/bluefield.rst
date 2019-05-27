@@ -65,7 +65,7 @@ make build
 
 .. code-block:: console
 
-        make config T=arm64-bluefield-linuxapp-gcc
+        make config T=arm64-bluefield-linux-gcc
         make -j
 
 meson build
@@ -135,7 +135,7 @@ make build
 
 .. code-block:: console
 
-        make config T=arm64-bluefield-linuxapp-gcc
+        make config T=arm64-bluefield-linux-gcc
         make -j CROSS=aarch64-linux-gnu- CONFIG_RTE_KNI_KMOD=n CONFIG_RTE_EAL_IGB_UIO=n
 
 meson build
