@@ -313,7 +313,7 @@ mlx5_free_shared_ibctx(struct mlx5_ibv_shared *sh)
 	 **/
 	assert(!sh->intr_cnt);
 	if (sh->intr_cnt)
-		rte_intr_callback_unregister
+		mlx5_intr_callback_unregister
 			(&sh->intr_handle, mlx5_dev_interrupt_handler, sh);
 	pthread_mutex_destroy(&sh->intr_mutex);
 	if (sh->pd)

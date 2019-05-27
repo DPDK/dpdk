@@ -438,6 +438,8 @@ void mlx5_nl_check_switch_info(bool nun_vf_set,
 			       struct mlx5_switch_info *switch_info);
 void mlx5_translate_port_name(const char *port_name_in,
 			      struct mlx5_switch_info *port_info_out);
+void mlx5_intr_callback_unregister(const struct rte_intr_handle *handle,
+				   rte_intr_callback_fn cb_fn, void *cb_arg);
 
 /* mlx5_mac.c */
 

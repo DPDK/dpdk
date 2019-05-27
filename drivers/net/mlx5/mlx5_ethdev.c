@@ -33,6 +33,7 @@
 #include <rte_malloc.h>
 #include <rte_string_fns.h>
 #include <rte_rwlock.h>
+#include <rte_cycles.h>
 
 #include "mlx5.h"
 #include "mlx5_glue.h"
@@ -1256,9 +1257,80 @@ mlx5_dev_interrupt_handler(void *cb_arg)
 	}
 }
 
+/*
+ * Unregister callback handler safely. The handler may be active
+ * while we are trying to unregister it, in this case code -EAGAIN
+ * is returned by rte_intr_callback_unregister(). This routine checks
+ * the return code and tries to unregister handler again.
+ *
+ * @param handle
+ *   interrupt handle
+ * @param cb_fn
+ *   pointer to callback routine
+ * @cb_arg
+ *   opaque callback parameter
+ */
+void
+mlx5_intr_callback_unregister(const struct rte_intr_handle *handle,
+			      rte_intr_callback_fn cb_fn, void *cb_arg)
+{
+	/*
+	 * Try to reduce timeout management overhead by not calling
+	 * the timer related routines on the first iteration. If the
+	 * unregistering succeeds on first call there will be no
+	 * timer calls at all.
+	 */
+	uint64_t twait = 0;
+	uint64_t start = 0;
+
+	do {
+		int ret;
+
+		ret = rte_intr_callback_unregister(handle, cb_fn, cb_arg);
+		if (ret >= 0)
+			return;
+		if (ret != -EAGAIN) {
+			DRV_LOG(INFO, "failed to unregister interrupt"
+				      " handler (error: %d)", ret);
+			assert(false);
+			return;
+		}
+		if (twait) {
+			struct timespec onems;
+
+			/* Wait one millisecond and try again. */
+			onems.tv_sec = 0;
+			onems.tv_nsec = NS_PER_S / MS_PER_S;
+			nanosleep(&onems, 0);
+			/* Check whether one second elapsed. */
+			if ((rte_get_timer_cycles() - start) <= twait)
+				continue;
+		} else {
+			/*
+			 * We get the amount of timer ticks for one second.
+			 * If this amount elapsed it means we spent one
+			 * second in waiting. This branch is executed once
+			 * on first iteration.
+			 */
+			twait = rte_get_timer_hz();
+			assert(twait);
+		}
+		/*
+		 * Timeout elapsed, show message (once a second) and retry.
+		 * We have no other acceptable option here, if we ignore
+		 * the unregistering return code the handler will not
+		 * be unregistered, fd will be closed and we may get the
+		 * crush. Hanging and messaging in the loop seems not to be
+		 * the worst choice.
+		 */
+		DRV_LOG(INFO, "Retrying to unregister interrupt handler");
+		start = rte_get_timer_cycles();
+	} while (true);
+}
+
 /**
  * Uninstall shared asynchronous device events handler.
- * This function is implemeted to support event sharing
+ * This function is implemented to support event sharing
  * between multiple ports of single IB device.
  *
  * @param dev
@@ -1284,7 +1356,7 @@ mlx5_dev_shared_handler_uninstall(struct rte_eth_dev *dev)
 	sh->port[priv->ibv_port - 1].ih_port_id = RTE_MAX_ETHPORTS;
 	if (!sh->intr_cnt || --sh->intr_cnt)
 		goto exit;
-	rte_intr_callback_unregister(&sh->intr_handle,
+	mlx5_intr_callback_unregister(&sh->intr_handle,
 				     mlx5_dev_interrupt_handler, sh);
 	sh->intr_handle.fd = 0;
 	sh->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
@@ -1293,8 +1365,8 @@ exit:
 }
 
 /**
- * Install shared asyncronous device events handler.
- * This function is implemeted to support event sharing
+ * Install shared asynchronous device events handler.
+ * This function is implemented to support event sharing
  * between multiple ports of single IB device.
  *
  * @param dev
