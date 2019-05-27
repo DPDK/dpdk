@@ -1101,6 +1101,8 @@ init_config(void)
 	uint8_t port_per_socket[RTE_MAX_NUMA_NODES];
 	struct rte_gro_param gro_param;
 	uint32_t gso_types;
+	uint16_t data_size;
+	bool warning = 0;
 	int k;
 
 	memset(port_per_socket,0,RTE_MAX_NUMA_NODES);
@@ -1168,7 +1170,26 @@ init_config(void)
 		port->need_reconfig = 1;
 		port->need_reconfig_queues = 1;
 		port->tx_metadata = 0;
+
+		/* Check for maximum number of segments per MTU. Accordingly
+		 * update the mbuf data size.
+		 */
+		if (port->dev_info.rx_desc_lim.nb_mtu_seg_max != UINT16_MAX) {
+			data_size = rx_mode.max_rx_pkt_len /
+				port->dev_info.rx_desc_lim.nb_mtu_seg_max;
+
+			if ((data_size + RTE_PKTMBUF_HEADROOM) >
+							mbuf_data_size) {
+				mbuf_data_size = data_size +
+						 RTE_PKTMBUF_HEADROOM;
+				warning = 1;
+			}
+		}
 	}
+
+	if (warning)
+		TESTPMD_LOG(WARNING, "Configured mbuf size %hu\n",
+			    mbuf_data_size);
 
 	/*
 	 * Create pools of mbuf.
