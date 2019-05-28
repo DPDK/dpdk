@@ -15,6 +15,14 @@ CFLAGS += -I$(RTE_SDK)/drivers/mempool/octeontx2
 CFLAGS += -I$(RTE_SDK)/drivers/net/octeontx2
 CFLAGS += -O3
 
+ifneq ($(CONFIG_RTE_ARCH_64),y)
+CFLAGS += -Wno-int-to-pointer-cast
+CFLAGS += -Wno-pointer-to-int-cast
+ifeq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)
+CFLAGS += -diag-disable 2259
+endif
+endif
+
 EXPORT_MAP := rte_pmd_octeontx2_version.map
 
 LIBABIVER := 1
@@ -25,6 +33,7 @@ LIBABIVER := 1
 SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX2_PMD) += \
 	otx2_ethdev.c
 
-LDLIBS += -lrte_common_octeontx2 -lrte_mempool_octeontx2
+LDLIBS += -lrte_common_octeontx2 -lrte_mempool_octeontx2 -lrte_eal
+LDLIBS += -lrte_ethdev -lrte_bus_pci
 
 include $(RTE_SDK)/mk/rte.lib.mk
