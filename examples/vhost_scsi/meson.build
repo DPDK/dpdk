@@ -15,7 +15,6 @@ if not cc.has_header('linux/virtio_scsi.h')
 endif
 
 deps += 'vhost'
-cflags += ['-D_FILE_OFFSET_BITS=64']
 sources = files(
 	'scsi.c', 'vhost_scsi.c'
 )

@@ -11,7 +11,7 @@ EXPORT_MAP := rte_vhost_version.map
 LIBABIVER := 4
 
 CFLAGS += -DALLOW_EXPERIMENTAL_API
-CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3 -D_FILE_OFFSET_BITS=64
+CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3
 CFLAGS += -I vhost_user
 CFLAGS += -fno-strict-aliasing
 LDLIBS += -lpthread

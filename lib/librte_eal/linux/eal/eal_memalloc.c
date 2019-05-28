@@ -2,7 +2,6 @@
  * Copyright(c) 2017-2018 Intel Corporation
  */
 
-#define _FILE_OFFSET_BITS 64
 #include <errno.h>
 #include <stdarg.h>
 #include <stdbool.h>
