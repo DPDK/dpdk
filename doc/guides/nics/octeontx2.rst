@@ -16,6 +16,8 @@ Features
 
 Features of the OCTEON TX2 Ethdev PMD are:
 
+- SR-IOV VF
+- Lock-free Tx queue
 
 Prerequisites
 -------------

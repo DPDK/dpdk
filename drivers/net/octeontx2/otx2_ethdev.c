@@ -64,6 +64,11 @@ nix_lf_free(struct otx2_eth_dev *dev)
 	return otx2_mbox_process(mbox);
 }
 
+/* Initialize and register driver with DPDK Application */
+static const struct eth_dev_ops otx2_eth_dev_ops = {
+	.dev_infos_get            = otx2_nix_info_get,
+};
+
 static inline int
 nix_lf_attach(struct otx2_eth_dev *dev)
 {
@@ -119,6 +124,8 @@ otx2_eth_dev_init(struct rte_eth_dev *eth_dev)
 	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
 	struct rte_pci_device *pci_dev;
 	int rc, max_entries;
+
+	eth_dev->dev_ops = &otx2_eth_dev_ops;
 
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {

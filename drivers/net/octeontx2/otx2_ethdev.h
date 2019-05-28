@@ -33,9 +33,50 @@
 /* Used for struct otx2_eth_dev::flags */
 #define OTX2_LINK_CFG_IN_PROGRESS_F	BIT_ULL(0)
 
+/* VLAN tag inserted by NIX_TX_VTAG_ACTION.
+ * In Tx space is always reserved for this in FRS.
+ */
+#define NIX_MAX_VTAG_INS		2
+#define NIX_MAX_VTAG_ACT_SIZE		(4 * NIX_MAX_VTAG_INS)
+
+/* ETH_HLEN+ETH_FCS+2*VLAN_HLEN */
+#define NIX_L2_OVERHEAD \
+	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + 8)
+
+/* HW config of frame size doesn't include FCS */
+#define NIX_MAX_HW_FRS			9212
+#define NIX_MIN_HW_FRS			60
+
+/* Since HW FRS includes NPC VTAG insertion space, user has reduced FRS */
+#define NIX_MAX_FRS	\
+	(NIX_MAX_HW_FRS + RTE_ETHER_CRC_LEN - NIX_MAX_VTAG_ACT_SIZE)
+
+#define NIX_MIN_FRS	\
+	(NIX_MIN_HW_FRS + RTE_ETHER_CRC_LEN)
+
+#define NIX_MAX_MTU	\
+	(NIX_MAX_FRS - NIX_L2_OVERHEAD)
+
 #define NIX_MAX_SQB			512
 #define NIX_MIN_SQB			32
+#define NIX_HASH_KEY_SIZE		48 /* 352 Bits */
 #define NIX_RSS_RETA_SIZE		64
+#define	NIX_RX_MIN_DESC			16
+#define NIX_RX_MIN_DESC_ALIGN		16
+#define NIX_RX_NB_SEG_MAX		6
+
+/* If PTP is enabled additional SEND MEM DESC is required which
+ * takes 2 words, hence max 7 iova address are possible
+ */
+#if defined(RTE_LIBRTE_IEEE1588)
+#define NIX_TX_NB_SEG_MAX		7
+#else
+#define NIX_TX_NB_SEG_MAX		9
+#endif
+
+#define NIX_RSS_OFFLOAD		(ETH_RSS_PORT | ETH_RSS_IP | ETH_RSS_UDP |\
+				 ETH_RSS_TCP | ETH_RSS_SCTP | \
+				 ETH_RSS_TUNNEL | ETH_RSS_L2_PAYLOAD)
 
 #define NIX_TX_OFFLOAD_CAPA ( \
 	DEV_TX_OFFLOAD_MBUF_FAST_FREE	| \
@@ -104,6 +145,10 @@ otx2_eth_pmd_priv(struct rte_eth_dev *eth_dev)
 {
 	return eth_dev->data->dev_private;
 }
+
+/* Ops */
+void otx2_nix_info_get(struct rte_eth_dev *eth_dev,
+		       struct rte_eth_dev_info *dev_info);
 
 /* IRQ */
 int otx2_nix_register_irqs(struct rte_eth_dev *eth_dev);

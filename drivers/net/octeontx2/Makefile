@@ -34,6 +34,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX2_PMD) += \
 	otx2_mac.c	\
 	otx2_ethdev.c	\
 	otx2_ethdev_irq.c \
+	otx2_ethdev_ops.c \
 	otx2_ethdev_devargs.c
 
 LDLIBS += -lrte_common_octeontx2 -lrte_mempool_octeontx2 -lrte_eal
