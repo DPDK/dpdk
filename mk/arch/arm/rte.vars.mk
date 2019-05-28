@@ -4,7 +4,7 @@
 ARCH  ?= arm
 CROSS ?=
 
-CPU_CFLAGS  ?= -marm -munaligned-access
+CPU_CFLAGS  ?= -marm -munaligned-access -D_FILE_OFFSET_BITS=64
 CPU_LDFLAGS ?=
 CPU_ASFLAGS ?= -felf
 

@@ -99,7 +99,7 @@ read_memory_node(unsigned int *count)
 		goto cleanup;
 	}
 
-	DPAAX_DEBUG("Size of device-tree mem node: %lu", statbuf.st_size);
+	DPAAX_DEBUG("Size of device-tree mem node: %" PRIu64, statbuf.st_size);
 	if (statbuf.st_size > MEM_NODE_FILE_LEN) {
 		DPAAX_DEBUG("More memory nodes available than assumed.");
 		DPAAX_DEBUG("System may not work properly!");
@@ -118,7 +118,7 @@ read_memory_node(unsigned int *count)
 	 */
 	*count = (statbuf.st_size / 16);
 	if ((*count) <= 0 || (statbuf.st_size % 16 != 0)) {
-		DPAAX_DEBUG("Invalid memory node values or count. (size=%lu)",
+		DPAAX_DEBUG("Invalid memory node values or count. (size=%" PRIu64 ")",
 			    statbuf.st_size);
 		goto cleanup;
 	}
