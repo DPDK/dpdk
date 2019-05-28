@@ -237,10 +237,6 @@ static int i40e_dev_xstats_get_names(struct rte_eth_dev *dev,
 				     struct rte_eth_xstat_name *xstats_names,
 				     unsigned limit);
 static void i40e_dev_stats_reset(struct rte_eth_dev *dev);
-static int i40e_dev_queue_stats_mapping_set(struct rte_eth_dev *dev,
-					    uint16_t queue_id,
-					    uint8_t stat_idx,
-					    uint8_t is_rx);
 static int i40e_fw_version_get(struct rte_eth_dev *dev,
 				char *fw_version, size_t fw_size);
 static void i40e_dev_info_get(struct rte_eth_dev *dev,
@@ -457,7 +453,6 @@ static const struct eth_dev_ops i40e_eth_dev_ops = {
 	.xstats_get_names             = i40e_dev_xstats_get_names,
 	.stats_reset                  = i40e_dev_stats_reset,
 	.xstats_reset                 = i40e_dev_stats_reset,
-	.queue_stats_mapping_set      = i40e_dev_queue_stats_mapping_set,
 	.fw_version_get               = i40e_fw_version_get,
 	.dev_infos_get                = i40e_dev_info_get,
 	.dev_supported_ptypes_get     = i40e_dev_supported_ptypes_get,
@@ -3429,17 +3424,6 @@ i40e_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	}
 
 	return count;
-}
-
-static int
-i40e_dev_queue_stats_mapping_set(__rte_unused struct rte_eth_dev *dev,
-				 __rte_unused uint16_t queue_id,
-				 __rte_unused uint8_t stat_idx,
-				 __rte_unused uint8_t is_rx)
-{
-	PMD_INIT_FUNC_TRACE();
-
-	return -ENOSYS;
 }
 
 static int
