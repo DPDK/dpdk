@@ -175,12 +175,17 @@ otx2_eth_dev_init(struct rte_eth_dev *eth_dev)
 	if (rc)
 		goto otx2_npa_uninit;
 
+	/* Register LF irq handlers */
+	rc = otx2_nix_register_irqs(eth_dev);
+	if (rc)
+		goto mbox_detach;
+
 	/* Get maximum number of supported MAC entries */
 	max_entries = otx2_cgx_mac_max_entries_get(dev);
 	if (max_entries < 0) {
 		otx2_err("Failed to get max entries for mac addr");
 		rc = -ENOTSUP;
-		goto mbox_detach;
+		goto unregister_irq;
 	}
 
 	/* For VFs, returned max_entries will be 0. But to keep default MAC
@@ -194,7 +199,7 @@ otx2_eth_dev_init(struct rte_eth_dev *eth_dev)
 	if (eth_dev->data->mac_addrs == NULL) {
 		otx2_err("Failed to allocate memory for mac addr");
 		rc = -ENOMEM;
-		goto mbox_detach;
+		goto unregister_irq;
 	}
 
 	dev->max_mac_entries = max_entries;
@@ -226,6 +231,8 @@ otx2_eth_dev_init(struct rte_eth_dev *eth_dev)
 
 free_mac_addrs:
 	rte_free(eth_dev->data->mac_addrs);
+unregister_irq:
+	otx2_nix_unregister_irqs(eth_dev);
 mbox_detach:
 	otx2_eth_dev_lf_detach(dev->mbox);
 otx2_npa_uninit:
@@ -261,6 +268,7 @@ otx2_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool mbox_close)
 	dev->drv_inited = false;
 
 	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	otx2_nix_unregister_irqs(eth_dev);
 
 	rc = otx2_eth_dev_lf_detach(dev->mbox);
 	if (rc)

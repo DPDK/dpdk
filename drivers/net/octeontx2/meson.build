@@ -5,6 +5,7 @@
 sources = files(
 		'otx2_mac.c',
 		'otx2_ethdev.c',
+		'otx2_ethdev_irq.c',
 		'otx2_ethdev_devargs.c'
 		)
 
