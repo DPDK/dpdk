@@ -9,11 +9,13 @@
 
 #include <rte_common.h>
 #include <rte_ethdev.h>
+#include <rte_kvargs.h>
 
 #include "otx2_common.h"
 #include "otx2_dev.h"
 #include "otx2_irq.h"
 #include "otx2_mempool.h"
+#include "otx2_rx.h"
 
 #define OTX2_ETH_DEV_PMD_VERSION	"1.0"
 
@@ -30,6 +32,10 @@
 
 /* Used for struct otx2_eth_dev::flags */
 #define OTX2_LINK_CFG_IN_PROGRESS_F	BIT_ULL(0)
+
+#define NIX_MAX_SQB			512
+#define NIX_MIN_SQB			32
+#define NIX_RSS_RETA_SIZE		64
 
 #define NIX_TX_OFFLOAD_CAPA ( \
 	DEV_TX_OFFLOAD_MBUF_FAST_FREE	| \
@@ -56,6 +62,15 @@
 	DEV_RX_OFFLOAD_QINQ_STRIP | \
 	DEV_RX_OFFLOAD_TIMESTAMP)
 
+struct otx2_rss_info {
+	uint16_t rss_size;
+};
+
+struct otx2_npc_flow_info {
+	uint16_t flow_prealloc_size;
+	uint16_t flow_max_priority;
+};
+
 struct otx2_eth_dev {
 	OTX2_DEV; /* Base class */
 	MARKER otx2_eth_dev_data_start;
@@ -72,12 +87,16 @@ struct otx2_eth_dev {
 	uint16_t nix_msixoff;
 	uintptr_t base;
 	uintptr_t lmt_addr;
+	uint16_t scalar_ena;
+	uint16_t max_sqb_count;
 	uint16_t rx_offload_flags; /* Selected Rx offload flags(NIX_RX_*_F) */
 	uint64_t rx_offloads;
 	uint16_t tx_offload_flags; /* Selected Tx offload flags(NIX_TX_*_F) */
 	uint64_t tx_offloads;
 	uint64_t rx_offload_capa;
 	uint64_t tx_offload_capa;
+	struct otx2_rss_info rss_info;
+	struct otx2_npc_flow_info npc_flow;
 } __rte_cache_aligned;
 
 static inline struct otx2_eth_dev *
@@ -95,5 +114,9 @@ int otx2_cgx_mac_addr_set(struct rte_eth_dev *eth_dev,
 /* Mac address handling */
 int otx2_nix_mac_addr_get(struct rte_eth_dev *eth_dev, uint8_t *addr);
 int otx2_cgx_mac_max_entries_get(struct otx2_eth_dev *dev);
+
+/* Devargs */
+int otx2_ethdev_parse_devargs(struct rte_devargs *devargs,
+			      struct otx2_eth_dev *dev);
 
 #endif /* __OTX2_ETHDEV_H__ */

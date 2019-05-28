@@ -137,6 +137,13 @@ otx2_eth_dev_init(struct rte_eth_dev *eth_dev)
 	memset(&dev->otx2_eth_dev_data_start, 0, sizeof(*dev) -
 		offsetof(struct otx2_eth_dev, otx2_eth_dev_data_start));
 
+	/* Parse devargs string */
+	rc = otx2_ethdev_parse_devargs(eth_dev->device->devargs, dev);
+	if (rc) {
+		otx2_err("Failed to parse devargs rc=%d", rc);
+		goto error;
+	}
+
 	if (!dev->mbox_active) {
 		/* Initialize the base otx2_dev object
 		 * only if already present

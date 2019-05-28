@@ -5,6 +5,7 @@
 sources = files(
 		'otx2_mac.c',
 		'otx2_ethdev.c',
+		'otx2_ethdev_devargs.c'
 		)
 
 deps += ['bus_pci', 'common_octeontx2', 'mempool_octeontx2']
