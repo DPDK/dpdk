@@ -2089,8 +2089,10 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		ena_rx_mbuf_prepare(mbuf_head, &ena_rx_ctx);
 
 		if (unlikely(mbuf_head->ol_flags &
-			(PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD)))
+				(PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD))) {
+			rte_atomic64_inc(&rx_ring->adapter->drv_stats->ierrors);
 			++rx_ring->rx_stats.bad_csum;
+		}
 
 		mbuf_head->hash.rss = ena_rx_ctx.hash;
 
@@ -2317,10 +2319,6 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		/* Set TX offloads flags, if applicable */
 		ena_tx_mbuf_prepare(mbuf, &ena_tx_ctx, tx_ring->offloads);
-
-		if (unlikely(mbuf->ol_flags &
-			     (PKT_RX_L4_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD)))
-			rte_atomic64_inc(&tx_ring->adapter->drv_stats->ierrors);
 
 		rte_prefetch0(tx_pkts[(sent_idx + 4) & ring_mask]);
 
