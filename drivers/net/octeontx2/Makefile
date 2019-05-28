@@ -31,6 +31,7 @@ LIBABIVER := 1
 # all source are stored in SRCS-y
 #
 SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX2_PMD) += \
+	otx2_mac.c	\
 	otx2_ethdev.c
 
 LDLIBS += -lrte_common_octeontx2 -lrte_mempool_octeontx2 -lrte_eal

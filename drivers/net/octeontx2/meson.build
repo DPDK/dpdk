@@ -3,6 +3,7 @@
 #
 
 sources = files(
+		'otx2_mac.c',
 		'otx2_ethdev.c',
 		)
 
