@@ -198,11 +198,8 @@ struct eth_rx_queue_info {
 	int queue_enabled;	/* True if added */
 	int intr_enabled;
 	uint16_t wt;		/* Polling weight */
-	uint8_t event_queue_id;	/* Event queue to enqueue packets to */
-	uint8_t sched_type;	/* Sched type for events */
-	uint8_t priority;	/* Event priority */
-	uint32_t flow_id;	/* App provided flow identifier */
 	uint32_t flow_id_mask;	/* Set to ~0 if app provides flow id else 0 */
+	uint64_t event;
 };
 
 static struct rte_event_eth_rx_adapter **event_eth_rx_adapter;
@@ -759,10 +756,8 @@ rxa_buffer_mbufs(struct rte_event_eth_rx_adapter *rx_adapter,
 	struct rte_eth_event_enqueue_buffer *buf =
 					&rx_adapter->event_enqueue_buffer;
 	struct rte_event *ev = &buf->events[buf->count];
-	int32_t qid = eth_rx_queue_info->event_queue_id;
-	uint8_t sched_type = eth_rx_queue_info->sched_type;
-	uint8_t priority = eth_rx_queue_info->priority;
-	uint32_t flow_id;
+	uint64_t event = eth_rx_queue_info->event;
+	uint32_t flow_id_mask = eth_rx_queue_info->flow_id_mask;
 	struct rte_mbuf *m = mbufs[0];
 	uint32_t rss_mask;
 	uint32_t rss;
@@ -804,17 +799,9 @@ rxa_buffer_mbufs(struct rte_event_eth_rx_adapter *rx_adapter,
 		rss = do_rss ?
 			rxa_do_softrss(m, rx_adapter->rss_key_be) :
 			m->hash.rss;
-		flow_id =
-		    eth_rx_queue_info->flow_id &
-				eth_rx_queue_info->flow_id_mask;
-		flow_id |= rss & ~eth_rx_queue_info->flow_id_mask;
-		ev->flow_id = flow_id;
-		ev->op = RTE_EVENT_OP_NEW;
-		ev->sched_type = sched_type;
-		ev->queue_id = qid;
-		ev->event_type = RTE_EVENT_TYPE_ETH_RX_ADAPTER;
-		ev->sub_event_type = 0;
-		ev->priority = priority;
+		ev->event = event;
+		ev->flow_id = (rss & ~flow_id_mask) |
+				(ev->flow_id & flow_id_mask);
 		ev->mbuf = m;
 		ev++;
 	}
@@ -1706,6 +1693,7 @@ rxa_add_queue(struct rte_event_eth_rx_adapter *rx_adapter,
 	int pollq;
 	int intrq;
 	int sintrq;
+	struct rte_event *qi_ev;
 
 	if (rx_queue_id == -1) {
 		uint16_t nb_rx_queues;
@@ -1722,16 +1710,19 @@ rxa_add_queue(struct rte_event_eth_rx_adapter *rx_adapter,
 	sintrq = rxa_shared_intr(dev_info, rx_queue_id);
 
 	queue_info = &dev_info->rx_queue[rx_queue_id];
-	queue_info->event_queue_id = ev->queue_id;
-	queue_info->sched_type = ev->sched_type;
-	queue_info->priority = ev->priority;
 	queue_info->wt = conf->servicing_weight;
+
+	qi_ev = (struct rte_event *)&queue_info->event;
+	qi_ev->event = ev->event;
+	qi_ev->op = RTE_EVENT_OP_NEW;
+	qi_ev->event_type = RTE_EVENT_TYPE_ETH_RX_ADAPTER;
+	qi_ev->sub_event_type = 0;
 
 	if (conf->rx_queue_flags &
 			RTE_EVENT_ETH_RX_ADAPTER_QUEUE_FLOW_ID_VALID) {
-		queue_info->flow_id = ev->flow_id;
 		queue_info->flow_id_mask = ~0;
-	}
+	} else
+		qi_ev->flow_id = 0;
 
 	rxa_update_queue(rx_adapter, dev_info, rx_queue_id, 1);
 	if (rxa_polled_queue(dev_info, rx_queue_id)) {
