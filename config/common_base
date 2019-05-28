@@ -412,6 +412,11 @@ CONFIG_RTE_LIBRTE_LIO_DEBUG_REGS=n
 CONFIG_RTE_LIBRTE_OCTEONTX_PMD=y
 
 #
+# Compile burst-oriented Marvell OCTEON TX2 network PMD driver
+#
+CONFIG_RTE_LIBRTE_OCTEONTX2_PMD=y
+
+#
 # Compile WRS accelerated virtual port (AVP) guest PMD driver
 #
 CONFIG_RTE_LIBRTE_AVP_PMD=n

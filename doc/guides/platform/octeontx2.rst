@@ -98,6 +98,9 @@ HW Offload Drivers
 
 This section lists dataplane H/W block(s) available in OCTEON TX2 SoC.
 
+#. **Ethdev Driver**
+   See :doc:`../nics/octeontx2` for NIX Ethdev driver information.
+
 #. **Mempool Driver**
    See :doc:`../mempool/octeontx2` for NPA mempool driver information.
 
