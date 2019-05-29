@@ -192,7 +192,7 @@ init_traffic(struct rte_mempool *mp,
 
 	initialize_eth_header(&pkt_eth_hdr,
 		(struct rte_ether_addr *)src_mac,
-		(struct rte_ether_addr *)dst_mac, RTE_ETHER_TYPE_IPv4, 0, 0);
+		(struct rte_ether_addr *)dst_mac, RTE_ETHER_TYPE_IPV4, 0, 0);
 
 	pktlen = initialize_ipv4_header(&pkt_ipv4_hdr,
 					IPV4_ADDR(10, 0, 0, 1),

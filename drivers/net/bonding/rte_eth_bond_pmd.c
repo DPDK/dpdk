@@ -607,7 +607,7 @@ mode6_debug(const char __attribute__((unused)) *info,
 	strlcpy(buf, info, 16);
 #endif
 
-	if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4)) {
+	if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4)) {
 		ipv4_h = (struct rte_ipv4_hdr *)((char *)(eth_h + 1) + offset);
 		ipv4_addr_to_dot(ipv4_h->src_addr, src_ip, MaxIPv4String);
 #ifdef RTE_LIBRTE_BOND_DEBUG_ALB
@@ -653,7 +653,7 @@ bond_ethdev_rx_burst_alb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			bond_mode_alb_arp_recv(eth_h, offset, internals);
 		}
 #if defined(RTE_LIBRTE_BOND_DEBUG_ALB) || defined(RTE_LIBRTE_BOND_DEBUG_ALB_L1)
-		else if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4))
+		else if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4))
 			mode6_debug("RX IPv4:", eth_h, bufs[i]->port, &burstnumberRX);
 #endif
 	}
@@ -811,12 +811,12 @@ burst_xmit_l23_hash(struct rte_mbuf **buf, uint16_t nb_pkts,
 
 		vlan_offset = get_vlan_offset(eth_hdr, &proto);
 
-		if (rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4) == proto) {
+		if (rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4) == proto) {
 			struct rte_ipv4_hdr *ipv4_hdr = (struct rte_ipv4_hdr *)
 					((char *)(eth_hdr + 1) + vlan_offset);
 			l3hash = ipv4_hash(ipv4_hdr);
 
-		} else if (rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6) == proto) {
+		} else if (rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6) == proto) {
 			struct rte_ipv6_hdr *ipv6_hdr = (struct rte_ipv6_hdr *)
 					((char *)(eth_hdr + 1) + vlan_offset);
 			l3hash = ipv6_hash(ipv6_hdr);
@@ -851,7 +851,7 @@ burst_xmit_l34_hash(struct rte_mbuf **buf, uint16_t nb_pkts,
 		l3hash = 0;
 		l4hash = 0;
 
-		if (rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4) == proto) {
+		if (rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4) == proto) {
 			struct rte_ipv4_hdr *ipv4_hdr = (struct rte_ipv4_hdr *)
 					((char *)(eth_hdr + 1) + vlan_offset);
 			size_t ip_hdr_offset;
@@ -882,7 +882,7 @@ burst_xmit_l34_hash(struct rte_mbuf **buf, uint16_t nb_pkts,
 						l4hash = HASH_L4_PORTS(udp_hdr);
 				}
 			}
-		} else if  (rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6) == proto) {
+		} else if  (rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6) == proto) {
 			struct rte_ipv6_hdr *ipv6_hdr = (struct rte_ipv6_hdr *)
 					((char *)(eth_hdr + 1) + vlan_offset);
 			l3hash = ipv6_hash(ipv6_hdr);

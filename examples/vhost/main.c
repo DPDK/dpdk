@@ -858,7 +858,7 @@ get_psd_sum(void *l3_hdr, uint64_t ol_flags)
 {
 	if (ol_flags & PKT_TX_IPV4)
 		return rte_ipv4_phdr_cksum(l3_hdr, ol_flags);
-	else /* assume ethertype == RTE_ETHER_TYPE_IPv6 */
+	else /* assume ethertype == RTE_ETHER_TYPE_IPV6 */
 		return rte_ipv6_phdr_cksum(l3_hdr, ol_flags);
 }
 

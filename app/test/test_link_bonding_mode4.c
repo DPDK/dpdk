@@ -729,8 +729,8 @@ generate_packets(struct rte_ether_addr *src_mac,
 
 	uint16_t src_port = 10, dst_port = 20;
 
-	uint32_t ip_src[4] = { [0 ... 2] = 0xDEADBEEF, [3] = RTE_IPv4(192, 168, 0, 1) };
-	uint32_t ip_dst[4] = { [0 ... 2] = 0xFEEDFACE, [3] = RTE_IPv4(192, 168, 0, 2) };
+	uint32_t ip_src[4] = { [0 ... 2] = 0xDEADBEEF, [3] = RTE_IPV4(192, 168, 0, 1) };
+	uint32_t ip_dst[4] = { [0 ... 2] = 0xFEEDFACE, [3] = RTE_IPV4(192, 168, 0, 2) };
 
 	struct rte_ether_hdr pkt_eth_hdr;
 	struct rte_udp_hdr pkt_udp_hdr;

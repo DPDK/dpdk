@@ -565,9 +565,9 @@ tap_write_mbufs(struct tx_queue *txq, uint16_t num_mbufs,
 			char *buff_data = rte_pktmbuf_mtod(seg, void *);
 			proto = (*buff_data & 0xf0);
 			pi.proto = (proto == 0x40) ?
-				rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4) :
+				rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4) :
 				((proto == 0x60) ?
-					rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6) :
+					rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6) :
 					0x00);
 		}
 

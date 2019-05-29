@@ -970,7 +970,7 @@ static inline uint32_t qede_rx_cqe_to_pkt_type_outer(struct rte_mbuf *m)
 		ethertype = rte_cpu_to_be_16(vlan_hdr->eth_proto);
 	}
 
-	if (ethertype == RTE_ETHER_TYPE_IPv4) {
+	if (ethertype == RTE_ETHER_TYPE_IPV4) {
 		packet_type |= RTE_PTYPE_L3_IPV4;
 		ipv4_hdr = rte_pktmbuf_mtod_offset(m,
 					struct rte_ipv4_hdr *, len);
@@ -978,7 +978,7 @@ static inline uint32_t qede_rx_cqe_to_pkt_type_outer(struct rte_mbuf *m)
 			packet_type |= RTE_PTYPE_L4_TCP;
 		else if (ipv4_hdr->next_proto_id == IPPROTO_UDP)
 			packet_type |= RTE_PTYPE_L4_UDP;
-	} else if (ethertype == RTE_ETHER_TYPE_IPv6) {
+	} else if (ethertype == RTE_ETHER_TYPE_IPV6) {
 		packet_type |= RTE_PTYPE_L3_IPV6;
 		ipv6_hdr = rte_pktmbuf_mtod_offset(m,
 						struct rte_ipv6_hdr *, len);

@@ -161,10 +161,10 @@ ptype_tunnel(uint16_t *proto, const struct rte_mbuf *m,
 			return RTE_PTYPE_TUNNEL_GRE;
 	}
 	case IPPROTO_IPIP:
-		*proto = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4);
+		*proto = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 		return RTE_PTYPE_TUNNEL_IP;
 	case IPPROTO_IPV6:
-		*proto = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6);
+		*proto = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
 		return RTE_PTYPE_TUNNEL_IP; /* IP is also valid for IPv6 */
 	default:
 		return 0;
@@ -249,7 +249,7 @@ uint32_t rte_net_get_ptype(const struct rte_mbuf *m,
 	if ((layers & RTE_PTYPE_L2_MASK) == 0)
 		return 0;
 
-	if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4))
+	if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4))
 		goto l3; /* fast path if packet is IPv4 */
 
 	if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN)) {
@@ -299,7 +299,7 @@ l3:
 	if ((layers & RTE_PTYPE_L3_MASK) == 0)
 		return pkt_type;
 
-	if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4)) {
+	if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4)) {
 		const struct rte_ipv4_hdr *ip4h;
 		struct rte_ipv4_hdr ip4h_copy;
 
@@ -322,7 +322,7 @@ l3:
 		}
 		proto = ip4h->next_proto_id;
 		pkt_type |= ptype_l4(proto);
-	} else if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6)) {
+	} else if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6)) {
 		const struct rte_ipv6_hdr *ip6h;
 		struct rte_ipv6_hdr ip6h_copy;
 		int frag = 0;
@@ -431,7 +431,7 @@ l3:
 	if ((layers & RTE_PTYPE_INNER_L3_MASK) == 0)
 		return pkt_type;
 
-	if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4)) {
+	if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4)) {
 		const struct rte_ipv4_hdr *ip4h;
 		struct rte_ipv4_hdr ip4h_copy;
 
@@ -454,7 +454,7 @@ l3:
 		}
 		proto = ip4h->next_proto_id;
 		pkt_type |= ptype_inner_l4(proto);
-	} else if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6)) {
+	} else if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6)) {
 		const struct rte_ipv6_hdr *ip6h;
 		struct rte_ipv6_hdr ip6h_copy;
 		int frag = 0;

@@ -951,7 +951,7 @@ get_spi_proto(uint32_t spi, enum rte_security_ipsec_sa_direction dir)
 		if (rc6 >= 0) {
 			RTE_LOG(ERR, IPSEC,
 				"%s: SPI %u used simultaeously by "
-				"RTE_IPv4(%d) and IPv6 (%d) SP rules\n",
+				"RTE_IPV4(%d) and IPv6 (%d) SP rules\n",
 				__func__, spi, rc4, rc6);
 			return -EINVAL;
 		} else

@@ -1272,9 +1272,9 @@ generate_test_burst(struct rte_mbuf **pkts_burst, uint16_t burst_size,
 	void *ip_hdr;
 
 	if (ipv4)
-		ether_type = RTE_ETHER_TYPE_IPv4;
+		ether_type = RTE_ETHER_TYPE_IPV4;
 	else
-		ether_type = RTE_ETHER_TYPE_IPv6;
+		ether_type = RTE_ETHER_TYPE_IPV6;
 
 	if (toggle_dst_mac)
 		initialize_eth_header(test_params->pkt_eth_hdr,
@@ -2047,7 +2047,7 @@ test_activebackup_tx_burst(void)
 	initialize_eth_header(test_params->pkt_eth_hdr,
 			(struct rte_ether_addr *)src_mac,
 			(struct rte_ether_addr *)dst_mac_0,
-			RTE_ETHER_TYPE_IPv4,  0, 0);
+			RTE_ETHER_TYPE_IPV4,  0, 0);
 	pktlen = initialize_udp_header(test_params->pkt_udp_hdr, src_port,
 			dst_port_0, 16);
 	pktlen = initialize_ipv4_header(test_params->pkt_ipv4_hdr, src_addr,
@@ -2584,7 +2584,7 @@ test_balance_l2_tx_burst(void)
 	initialize_eth_header(test_params->pkt_eth_hdr,
 			(struct rte_ether_addr *)src_mac,
 			(struct rte_ether_addr *)dst_mac_0,
-			RTE_ETHER_TYPE_IPv4, 0, 0);
+			RTE_ETHER_TYPE_IPV4, 0, 0);
 	pktlen = initialize_udp_header(test_params->pkt_udp_hdr, src_port,
 			dst_port_0, 16);
 	pktlen = initialize_ipv4_header(test_params->pkt_ipv4_hdr, src_addr,
@@ -2600,7 +2600,7 @@ test_balance_l2_tx_burst(void)
 	initialize_eth_header(test_params->pkt_eth_hdr,
 			(struct rte_ether_addr *)src_mac,
 			(struct rte_ether_addr *)dst_mac_1,
-			RTE_ETHER_TYPE_IPv4, 0, 0);
+			RTE_ETHER_TYPE_IPV4, 0, 0);
 
 	/* Generate a burst 2 of packets to transmit */
 	TEST_ASSERT_EQUAL(generate_packet_burst(test_params->mbuf_pool, &pkts_burst[1][0],
@@ -3426,7 +3426,7 @@ test_broadcast_tx_burst(void)
 	initialize_eth_header(test_params->pkt_eth_hdr,
 			(struct rte_ether_addr *)src_mac,
 			(struct rte_ether_addr *)dst_mac_0,
-			RTE_ETHER_TYPE_IPv4, 0, 0);
+			RTE_ETHER_TYPE_IPV4, 0, 0);
 
 	pktlen = initialize_udp_header(test_params->pkt_udp_hdr, src_port,
 			dst_port_0, 16);
@@ -4012,12 +4012,12 @@ test_tlb_tx_burst(void)
 			initialize_eth_header(test_params->pkt_eth_hdr,
 					(struct rte_ether_addr *)src_mac,
 					(struct rte_ether_addr *)dst_mac_0,
-					RTE_ETHER_TYPE_IPv4, 0, 0);
+					RTE_ETHER_TYPE_IPV4, 0, 0);
 		} else {
 			initialize_eth_header(test_params->pkt_eth_hdr,
 					(struct rte_ether_addr *)test_params->default_slave_mac,
 					(struct rte_ether_addr *)dst_mac_0,
-					RTE_ETHER_TYPE_IPv4, 0, 0);
+					RTE_ETHER_TYPE_IPV4, 0, 0);
 		}
 		pktlen = initialize_udp_header(test_params->pkt_udp_hdr, src_port,
 				dst_port_0, 16);

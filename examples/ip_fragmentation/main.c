@@ -169,14 +169,14 @@ struct l3fwd_ipv4_route {
 };
 
 struct l3fwd_ipv4_route l3fwd_ipv4_route_array[] = {
-		{RTE_IPv4(100,10,0,0), 16, 0},
-		{RTE_IPv4(100,20,0,0), 16, 1},
-		{RTE_IPv4(100,30,0,0), 16, 2},
-		{RTE_IPv4(100,40,0,0), 16, 3},
-		{RTE_IPv4(100,50,0,0), 16, 4},
-		{RTE_IPv4(100,60,0,0), 16, 5},
-		{RTE_IPv4(100,70,0,0), 16, 6},
-		{RTE_IPv4(100,80,0,0), 16, 7},
+		{RTE_IPV4(100,10,0,0), 16, 0},
+		{RTE_IPV4(100,20,0,0), 16, 1},
+		{RTE_IPV4(100,30,0,0), 16, 2},
+		{RTE_IPV4(100,40,0,0), 16, 3},
+		{RTE_IPV4(100,50,0,0), 16, 4},
+		{RTE_IPV4(100,60,0,0), 16, 5},
+		{RTE_IPV4(100,70,0,0), 16, 6},
+		{RTE_IPV4(100,80,0,0), 16, 7},
 };
 
 /*
@@ -359,10 +359,10 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 				&eth_hdr->s_addr);
 		if (ipv6)
 			eth_hdr->ether_type =
-				rte_be_to_cpu_16(RTE_ETHER_TYPE_IPv6);
+				rte_be_to_cpu_16(RTE_ETHER_TYPE_IPV6);
 		else
 			eth_hdr->ether_type =
-				rte_be_to_cpu_16(RTE_ETHER_TYPE_IPv4);
+				rte_be_to_cpu_16(RTE_ETHER_TYPE_IPV4);
 	}
 
 	len += len2;
@@ -680,9 +680,9 @@ parse_ptype(struct rte_mbuf *m)
 
 	eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 	ether_type = eth_hdr->ether_type;
-	if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4))
+	if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4))
 		packet_type |= RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
-	else if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6))
+	else if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6))
 		packet_type |= RTE_PTYPE_L3_IPV6_EXT_UNKNOWN;
 
 	m->packet_type = packet_type;

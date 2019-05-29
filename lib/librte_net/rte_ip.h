@@ -42,7 +42,7 @@ struct rte_ipv4_hdr {
 } __attribute__((__packed__));
 
 /** Create IPv4 address */
-#define RTE_IPv4(a, b, c, d) ((uint32_t)(((a) & 0xff) << 24) | \
+#define RTE_IPV4(a, b, c, d) ((uint32_t)(((a) & 0xff) << 24) | \
 					   (((b) & 0xff) << 16) | \
 					   (((c) & 0xff) << 8)  | \
 					   ((d) & 0xff))
@@ -84,9 +84,9 @@ struct rte_ipv4_hdr {
  * IPv4 Multicast-related macros
  */
 #define RTE_IPV4_MIN_MCAST \
-	RTE_IPv4(224, 0, 0, 0)          /**< Minimal IPv4-multicast address */
+	RTE_IPV4(224, 0, 0, 0)          /**< Minimal IPv4-multicast address */
 #define RTE_IPV4_MAX_MCAST \
-	RTE_IPv4(239, 255, 255, 255)    /**< Maximum IPv4 multicast address */
+	RTE_IPV4(239, 255, 255, 255)    /**< Maximum IPv4 multicast address */
 
 #define RTE_IS_IPV4_MCAST(x) \
 	((x) >= RTE_IPV4_MIN_MCAST && (x) <= RTE_IPV4_MAX_MCAST)

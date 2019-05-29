@@ -190,14 +190,14 @@ struct l3fwd_ipv4_route {
 };
 
 struct l3fwd_ipv4_route l3fwd_ipv4_route_array[] = {
-		{RTE_IPv4(100,10,0,0), 16, 0},
-		{RTE_IPv4(100,20,0,0), 16, 1},
-		{RTE_IPv4(100,30,0,0), 16, 2},
-		{RTE_IPv4(100,40,0,0), 16, 3},
-		{RTE_IPv4(100,50,0,0), 16, 4},
-		{RTE_IPv4(100,60,0,0), 16, 5},
-		{RTE_IPv4(100,70,0,0), 16, 6},
-		{RTE_IPv4(100,80,0,0), 16, 7},
+		{RTE_IPV4(100,10,0,0), 16, 0},
+		{RTE_IPV4(100,20,0,0), 16, 1},
+		{RTE_IPV4(100,30,0,0), 16, 2},
+		{RTE_IPV4(100,40,0,0), 16, 3},
+		{RTE_IPV4(100,50,0,0), 16, 4},
+		{RTE_IPV4(100,60,0,0), 16, 5},
+		{RTE_IPV4(100,70,0,0), 16, 6},
+		{RTE_IPV4(100,80,0,0), 16, 7},
 };
 
 /*
@@ -362,7 +362,7 @@ reassemble(struct rte_mbuf *m, uint16_t portid, uint32_t queue,
 			dst_port = next_hop;
 		}
 
-		eth_hdr->ether_type = rte_be_to_cpu_16(RTE_ETHER_TYPE_IPv4);
+		eth_hdr->ether_type = rte_be_to_cpu_16(RTE_ETHER_TYPE_IPV4);
 	} else if (RTE_ETH_IS_IPV6_HDR(m->packet_type)) {
 		/* if packet is IPv6 */
 		struct ipv6_extension_fragment *frag_hdr;
@@ -401,7 +401,7 @@ reassemble(struct rte_mbuf *m, uint16_t portid, uint32_t queue,
 			dst_port = next_hop;
 		}
 
-		eth_hdr->ether_type = rte_be_to_cpu_16(RTE_ETHER_TYPE_IPv6);
+		eth_hdr->ether_type = rte_be_to_cpu_16(RTE_ETHER_TYPE_IPV6);
 	}
 	/* if packet wasn't IPv4 or IPv6, it's forwarded to the port it came from */
 

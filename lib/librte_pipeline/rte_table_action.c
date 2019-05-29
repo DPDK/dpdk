@@ -611,8 +611,8 @@ encap_ether_apply(void *data,
 {
 	struct encap_ether_data *d = data;
 	uint16_t ethertype = (common_cfg->ip_version) ?
-		RTE_ETHER_TYPE_IPv4 :
-		RTE_ETHER_TYPE_IPv6;
+		RTE_ETHER_TYPE_IPV4 :
+		RTE_ETHER_TYPE_IPV6;
 
 	/* Ethernet */
 	rte_ether_addr_copy(&p->ether.ether.da, &d->ether.d_addr);
@@ -629,8 +629,8 @@ encap_vlan_apply(void *data,
 {
 	struct encap_vlan_data *d = data;
 	uint16_t ethertype = (common_cfg->ip_version) ?
-		RTE_ETHER_TYPE_IPv4 :
-		RTE_ETHER_TYPE_IPv6;
+		RTE_ETHER_TYPE_IPV4 :
+		RTE_ETHER_TYPE_IPV6;
 
 	/* Ethernet */
 	rte_ether_addr_copy(&p->vlan.ether.da, &d->ether.d_addr);
@@ -653,8 +653,8 @@ encap_qinq_apply(void *data,
 {
 	struct encap_qinq_data *d = data;
 	uint16_t ethertype = (common_cfg->ip_version) ?
-		RTE_ETHER_TYPE_IPv4 :
-		RTE_ETHER_TYPE_IPv6;
+		RTE_ETHER_TYPE_IPV4 :
+		RTE_ETHER_TYPE_IPV6;
 
 	/* Ethernet */
 	rte_ether_addr_copy(&p->qinq.ether.da, &d->ether.d_addr);
@@ -786,7 +786,7 @@ encap_vxlan_apply(void *data,
 			d->vlan.vlan_tci = rte_htons(VLAN(p->vxlan.vlan.pcp,
 				p->vxlan.vlan.dei,
 				p->vxlan.vlan.vid));
-			d->vlan.eth_proto = rte_htons(RTE_ETHER_TYPE_IPv4);
+			d->vlan.eth_proto = rte_htons(RTE_ETHER_TYPE_IPV4);
 
 			/* IPv4*/
 			d->ipv4.version_ihl = 0x45;
@@ -821,7 +821,7 @@ encap_vxlan_apply(void *data,
 					&d->ether.d_addr);
 			rte_ether_addr_copy(&p->vxlan.ether.sa,
 					&d->ether.s_addr);
-			d->ether.ether_type = rte_htons(RTE_ETHER_TYPE_IPv4);
+			d->ether.ether_type = rte_htons(RTE_ETHER_TYPE_IPV4);
 
 			/* IPv4*/
 			d->ipv4.version_ihl = 0x45;
@@ -864,7 +864,7 @@ encap_vxlan_apply(void *data,
 			d->vlan.vlan_tci = rte_htons(VLAN(p->vxlan.vlan.pcp,
 				p->vxlan.vlan.dei,
 				p->vxlan.vlan.vid));
-			d->vlan.eth_proto = rte_htons(RTE_ETHER_TYPE_IPv6);
+			d->vlan.eth_proto = rte_htons(RTE_ETHER_TYPE_IPV6);
 
 			/* IPv6*/
 			d->ipv6.vtc_flow = rte_htonl((6 << 28) |
@@ -899,7 +899,7 @@ encap_vxlan_apply(void *data,
 					&d->ether.d_addr);
 			rte_ether_addr_copy(&p->vxlan.ether.sa,
 					&d->ether.s_addr);
-			d->ether.ether_type = rte_htons(RTE_ETHER_TYPE_IPv6);
+			d->ether.ether_type = rte_htons(RTE_ETHER_TYPE_IPV6);
 
 			/* IPv6*/
 			d->ipv6.vtc_flow = rte_htonl((6 << 28) |

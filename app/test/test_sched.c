@@ -95,8 +95,8 @@ prepare_pkt(struct rte_sched_port *port, struct rte_mbuf *mbuf)
 
 	vlan1->vlan_tci = rte_cpu_to_be_16(SUBPORT);
 	vlan2->vlan_tci = rte_cpu_to_be_16(PIPE);
-	eth_hdr->ether_type =  rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4);
-	ip_hdr->dst_addr = RTE_IPv4(0,0,TC,QUEUE);
+	eth_hdr->ether_type =  rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
+	ip_hdr->dst_addr = RTE_IPV4(0,0,TC,QUEUE);
 
 
 	rte_sched_port_pkt_write(port, mbuf, SUBPORT, PIPE, TC, QUEUE,

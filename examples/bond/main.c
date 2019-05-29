@@ -404,7 +404,7 @@ static int lcore_main(__attribute__((unused)) void *arg1)
 						rte_eth_tx_burst(BOND_PORT, 0, NULL, 0);
 					}
 				}
-			} else if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4)) {
+			} else if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4)) {
 				if (rte_spinlock_trylock(&global_flag_stru_p->lock) == 1)     {
 					global_flag_stru_p->port_packets[2]++;
 					rte_spinlock_unlock(&global_flag_stru_p->lock);
@@ -485,7 +485,7 @@ static void cmd_obj_send_parsed(void *parsed_result,
 	arp_hdr = (struct rte_arp_hdr *)(
 		(char *)eth_hdr + sizeof(struct rte_ether_hdr));
 	arp_hdr->arp_hardware = rte_cpu_to_be_16(RTE_ARP_HRD_ETHER);
-	arp_hdr->arp_protocol = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4);
+	arp_hdr->arp_protocol = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 	arp_hdr->arp_hlen = RTE_ETHER_ADDR_LEN;
 	arp_hdr->arp_plen = sizeof(uint32_t);
 	arp_hdr->arp_opcode = rte_cpu_to_be_16(RTE_ARP_OP_REQUEST);

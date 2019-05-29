@@ -72,8 +72,8 @@
 
 /* hardcoded configuration (for now) */
 static unsigned cfg_n_flows	= 1024;
-static uint32_t cfg_ip_src	= RTE_IPv4(10, 254, 0, 0);
-static uint32_t cfg_ip_dst	= RTE_IPv4(10, 253, 0, 0);
+static uint32_t cfg_ip_src	= RTE_IPV4(10, 254, 0, 0);
+static uint32_t cfg_ip_dst	= RTE_IPV4(10, 253, 0, 0);
 static uint16_t cfg_udp_src	= 1000;
 static uint16_t cfg_udp_dst	= 1001;
 static struct rte_ether_addr cfg_ether_src =
@@ -173,7 +173,7 @@ pkt_burst_flow_gen(struct fwd_stream *fs)
 		eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
 		rte_ether_addr_copy(&cfg_ether_dst, &eth_hdr->d_addr);
 		rte_ether_addr_copy(&cfg_ether_src, &eth_hdr->s_addr);
-		eth_hdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4);
+		eth_hdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 
 		/* Initialize IP header. */
 		ip_hdr = (struct rte_ipv4_hdr *)(eth_hdr + 1);

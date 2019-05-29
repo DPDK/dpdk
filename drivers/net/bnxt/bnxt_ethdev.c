@@ -1796,8 +1796,8 @@ bnxt_match_and_validate_ether_filter(struct bnxt *bp,
 	int match = 0;
 	*ret = 0;
 
-	if (efilter->ether_type == RTE_ETHER_TYPE_IPv4 ||
-		efilter->ether_type == RTE_ETHER_TYPE_IPv6) {
+	if (efilter->ether_type == RTE_ETHER_TYPE_IPV4 ||
+		efilter->ether_type == RTE_ETHER_TYPE_IPV6) {
 		PMD_DRV_LOG(ERR, "invalid ether_type(0x%04x) in"
 			" ethertype filter.", efilter->ether_type);
 		*ret = -EINVAL;

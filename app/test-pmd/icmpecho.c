@@ -360,7 +360,7 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 			}
 			if ((RTE_BE_TO_CPU_16(arp_h->arp_hardware) !=
 			     RTE_ARP_HRD_ETHER) ||
-			    (arp_pro != RTE_ETHER_TYPE_IPv4) ||
+			    (arp_pro != RTE_ETHER_TYPE_IPV4) ||
 			    (arp_h->arp_hlen != 6) ||
 			    (arp_h->arp_plen != 4)
 			    ) {
@@ -414,7 +414,7 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 			continue;
 		}
 
-		if (eth_type != RTE_ETHER_TYPE_IPv4) {
+		if (eth_type != RTE_ETHER_TYPE_IPV4) {
 			rte_pktmbuf_free(pkt);
 			continue;
 		}

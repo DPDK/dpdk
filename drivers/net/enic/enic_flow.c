@@ -609,7 +609,7 @@ enic_copy_item_inner_ipv4_v2(struct copy_item_args *arg)
 	arg->l3_proto_off = *off + offsetof(struct rte_ipv4_hdr, next_proto_id);
 	return copy_inner_common(&arg->filter->u.generic_1, off,
 		arg->item->spec, mask, sizeof(struct rte_ipv4_hdr),
-		arg->l2_proto_off, rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4), 2);
+		arg->l2_proto_off, rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4), 2);
 }
 
 static int
@@ -625,7 +625,7 @@ enic_copy_item_inner_ipv6_v2(struct copy_item_args *arg)
 	arg->l3_proto_off = *off + offsetof(struct rte_ipv6_hdr, proto);
 	return copy_inner_common(&arg->filter->u.generic_1, off,
 		arg->item->spec, mask, sizeof(struct rte_ipv6_hdr),
-		arg->l2_proto_off, rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6), 2);
+		arg->l2_proto_off, rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6), 2);
 }
 
 static int

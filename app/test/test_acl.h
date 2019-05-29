@@ -82,13 +82,13 @@ struct rte_acl_ipv4vlan_rule invalid_layout_rules[] = {
 		{
 				.data = {.userdata = 1, .category_mask = 1,
 					.priority = 1},
-				.src_addr = RTE_IPv4(10,0,0,0),
+				.src_addr = RTE_IPV4(10,0,0,0),
 				.src_mask_len = 24,
 		},
 		{
 				.data = {.userdata = 2, .category_mask = 1,
 					.priority = 1},
-				.dst_addr = RTE_IPv4(10,0,0,0),
+				.dst_addr = RTE_IPV4(10,0,0,0),
 				.dst_mask_len = 24,
 		},
 		/* test src and dst ports */
@@ -124,8 +124,8 @@ struct rte_acl_ipv4vlan_rule invalid_layout_rules[] = {
  * results using the wrong data layout.
  */
 struct ipv4_7tuple invalid_layout_data[] = {
-		{.ip_src = RTE_IPv4(10,0,1,0)},             /* should not match */
-		{.ip_src = RTE_IPv4(10,0,0,1), .allow = 2}, /* should match 2 */
+		{.ip_src = RTE_IPV4(10,0,1,0)},             /* should not match */
+		{.ip_src = RTE_IPV4(10,0,0,1), .allow = 2}, /* should match 2 */
 		{.port_src = 100, .allow = 4},          /* should match 4 */
 		{.port_dst = 0xf, .allow = 6},          /* should match 6 */
 };
@@ -142,7 +142,7 @@ struct rte_acl_ipv4vlan_rule acl_test_rules[] = {
 		{
 				.data = {.userdata = 1, .category_mask = ACL_ALLOW_MASK,
 						.priority = 230},
-				.dst_addr = RTE_IPv4(192,168,0,0),
+				.dst_addr = RTE_IPV4(192,168,0,0),
 				.dst_mask_len = 16,
 				.src_port_low = 0,
 				.src_port_high = 0xffff,
@@ -153,7 +153,7 @@ struct rte_acl_ipv4vlan_rule acl_test_rules[] = {
 		{
 				.data = {.userdata = 2, .category_mask = ACL_ALLOW_MASK,
 						.priority = 330},
-				.dst_addr = RTE_IPv4(192,168,1,0),
+				.dst_addr = RTE_IPV4(192,168,1,0),
 				.dst_mask_len = 24,
 				.src_port_low = 0,
 				.src_port_high = 0xffff,
@@ -164,7 +164,7 @@ struct rte_acl_ipv4vlan_rule acl_test_rules[] = {
 		{
 				.data = {.userdata = 3, .category_mask = ACL_DENY_MASK,
 						.priority = 230},
-				.dst_addr = RTE_IPv4(192,168,1,50),
+				.dst_addr = RTE_IPV4(192,168,1,50),
 				.dst_mask_len = 32,
 				.src_port_low = 0,
 				.src_port_high = 0xffff,
@@ -177,7 +177,7 @@ struct rte_acl_ipv4vlan_rule acl_test_rules[] = {
 		{
 				.data = {.userdata = 4, .category_mask = ACL_ALLOW_MASK,
 						.priority = 240},
-				.src_addr = RTE_IPv4(10,0,0,0),
+				.src_addr = RTE_IPV4(10,0,0,0),
 				.src_mask_len = 8,
 				.src_port_low = 0,
 				.src_port_high = 0xffff,
@@ -188,7 +188,7 @@ struct rte_acl_ipv4vlan_rule acl_test_rules[] = {
 		{
 				.data = {.userdata = 5, .category_mask = ACL_ALLOW_MASK,
 						.priority = 340},
-				.src_addr = RTE_IPv4(10,1,1,0),
+				.src_addr = RTE_IPV4(10,1,1,0),
 				.src_mask_len = 24,
 				.src_port_low = 0,
 				.src_port_high = 0xffff,
@@ -199,7 +199,7 @@ struct rte_acl_ipv4vlan_rule acl_test_rules[] = {
 		{
 				.data = {.userdata = 6, .category_mask = ACL_DENY_MASK,
 						.priority = 240},
-				.src_addr = RTE_IPv4(10,1,1,1),
+				.src_addr = RTE_IPV4(10,1,1,1),
 				.src_mask_len = 32,
 				.src_port_low = 0,
 				.src_port_high = 0xffff,
@@ -393,9 +393,9 @@ struct rte_acl_ipv4vlan_rule acl_test_rules[] = {
 				.data = {.userdata = 24, .category_mask = ACL_ALLOW_MASK,
 						.priority = 400},
 				/** make sure that unmasked bytes don't fail! */
-				.dst_addr = RTE_IPv4(1,2,3,4),
+				.dst_addr = RTE_IPV4(1,2,3,4),
 				.dst_mask_len = 16,
-				.src_addr = RTE_IPv4(5,6,7,8),
+				.src_addr = RTE_IPV4(5,6,7,8),
 				.src_mask_len = 24,
 				.proto = 0x5,
 				.proto_mask = 0xff,
@@ -411,9 +411,9 @@ struct rte_acl_ipv4vlan_rule acl_test_rules[] = {
 		{
 				.data = {.userdata = 25, .category_mask = ACL_DENY_MASK,
 						.priority = 400},
-				.dst_addr = RTE_IPv4(5,6,7,8),
+				.dst_addr = RTE_IPV4(5,6,7,8),
 				.dst_mask_len = 24,
-				.src_addr = RTE_IPv4(1,2,3,4),
+				.src_addr = RTE_IPV4(1,2,3,4),
 				.src_mask_len = 16,
 				.proto = 0x5,
 				.proto_mask = 0xff,
@@ -429,9 +429,9 @@ struct rte_acl_ipv4vlan_rule acl_test_rules[] = {
 		{
 				.data = {.userdata = 26, .category_mask = ACL_ALLOW_MASK,
 						.priority = 500},
-				.dst_addr = RTE_IPv4(1,2,3,4),
+				.dst_addr = RTE_IPV4(1,2,3,4),
 				.dst_mask_len = 8,
-				.src_addr = RTE_IPv4(5,6,7,8),
+				.src_addr = RTE_IPV4(5,6,7,8),
 				.src_mask_len = 32,
 				.proto = 0x5,
 				.proto_mask = 0xff,
@@ -445,9 +445,9 @@ struct rte_acl_ipv4vlan_rule acl_test_rules[] = {
 		{
 				.data = {.userdata = 27, .category_mask = ACL_DENY_MASK,
 						.priority = 500},
-				.dst_addr = RTE_IPv4(5,6,7,8),
+				.dst_addr = RTE_IPV4(5,6,7,8),
 				.dst_mask_len = 32,
-				.src_addr = RTE_IPv4(1,2,3,4),
+				.src_addr = RTE_IPV4(1,2,3,4),
 				.src_mask_len = 8,
 				.proto = 0x5,
 				.proto_mask = 0xff,
@@ -463,20 +463,20 @@ struct rte_acl_ipv4vlan_rule acl_test_rules[] = {
 /* data for ACL unit test */
 struct ipv4_7tuple acl_test_data[] = {
 /* testing single rule aspects */
-		{.ip_src = RTE_IPv4(10,0,0,0), .allow = 4}, /* should match 4 */
-		{.ip_src = RTE_IPv4(10,1,1,2), .allow = 5}, /* should match 5 */
-		{.ip_src = RTE_IPv4(10,1,1,1), .allow = 5,
+		{.ip_src = RTE_IPV4(10,0,0,0), .allow = 4}, /* should match 4 */
+		{.ip_src = RTE_IPV4(10,1,1,2), .allow = 5}, /* should match 5 */
+		{.ip_src = RTE_IPV4(10,1,1,1), .allow = 5,
 				.deny = 6},                     /* should match 5, 6 */
-		{.ip_dst = RTE_IPv4(10,0,0,0)},             /* should not match */
-		{.ip_dst = RTE_IPv4(10,1,1,2)},             /* should not match */
-		{.ip_dst = RTE_IPv4(10,1,1,1)},             /* should not match */
+		{.ip_dst = RTE_IPV4(10,0,0,0)},             /* should not match */
+		{.ip_dst = RTE_IPV4(10,1,1,2)},             /* should not match */
+		{.ip_dst = RTE_IPV4(10,1,1,1)},             /* should not match */
 
-		{.ip_src = RTE_IPv4(192,168,2,50)},             /* should not match */
-		{.ip_src = RTE_IPv4(192,168,1,2)},              /* should not match */
-		{.ip_src = RTE_IPv4(192,168,1,50)},             /* should not match */
-		{.ip_dst = RTE_IPv4(192,168,2,50), .allow = 1}, /* should match 1 */
-		{.ip_dst = RTE_IPv4(192,168,1,49), .allow = 2}, /* should match 2 */
-		{.ip_dst = RTE_IPv4(192,168,1,50), .allow = 2,
+		{.ip_src = RTE_IPV4(192,168,2,50)},             /* should not match */
+		{.ip_src = RTE_IPV4(192,168,1,2)},              /* should not match */
+		{.ip_src = RTE_IPV4(192,168,1,50)},             /* should not match */
+		{.ip_dst = RTE_IPV4(192,168,2,50), .allow = 1}, /* should match 1 */
+		{.ip_dst = RTE_IPV4(192,168,1,49), .allow = 2}, /* should match 2 */
+		{.ip_dst = RTE_IPV4(192,168,1,50), .allow = 2,
 				.deny = 3},                         /* should match 2, 3 */
 
 		{.vlan = 0x64, .allow = 7},            /* should match 7 */
@@ -515,20 +515,20 @@ struct ipv4_7tuple acl_test_data[] = {
 		{.proto = 0x5, .allow = 22, .deny = 23},  /* should match 22, 23 */
 
 /* testing matching multiple rules at once */
-		{.vlan = 0x5, .ip_src = RTE_IPv4(10,1,1,1),
+		{.vlan = 0x5, .ip_src = RTE_IPV4(10,1,1,1),
 				.allow = 5, .deny = 9},               /* should match 5, 9 */
-		{.vlan = 0x5, .ip_src = RTE_IPv4(192,168,2,50),
+		{.vlan = 0x5, .ip_src = RTE_IPV4(192,168,2,50),
 				.allow = 8, .deny = 9},               /* should match 8, 9 */
-		{.vlan = 0x55, .ip_src = RTE_IPv4(192,168,1,49),
+		{.vlan = 0x55, .ip_src = RTE_IPV4(192,168,1,49),
 				.allow = 8},                          /* should match 8 */
 		{.port_dst = 80, .port_src = 1024,
 				.allow = 13, .deny = 20},             /* should match 13,20 */
 		{.port_dst = 79, .port_src = 1024,
 				.allow = 14, .deny = 20},             /* should match 14,20 */
-		{.proto = 0x5, .ip_dst = RTE_IPv4(192,168,2,50),
+		{.proto = 0x5, .ip_dst = RTE_IPV4(192,168,2,50),
 				.allow = 1, .deny = 23},               /* should match 1, 23 */
 
-		{.proto = 0x5, .ip_dst = RTE_IPv4(192,168,1,50),
+		{.proto = 0x5, .ip_dst = RTE_IPV4(192,168,1,50),
 				.allow = 2, .deny = 23},              /* should match 2, 23 */
 		{.vlan = 0x64, .domain = 0x5,
 				.allow = 11, .deny = 12},             /* should match 11, 12 */
@@ -537,16 +537,16 @@ struct ipv4_7tuple acl_test_data[] = {
 		{.proto = 0x5, .port_dst = 80,
 				.allow = 13, .deny = 23},             /* should match 13, 23 */
 		{.proto = 0x51, .port_src = 5000},            /* should not match */
-		{.ip_src = RTE_IPv4(192,168,1,50),
-				.ip_dst = RTE_IPv4(10,0,0,0),
+		{.ip_src = RTE_IPV4(192,168,1,50),
+				.ip_dst = RTE_IPV4(10,0,0,0),
 				.proto = 0x51,
 				.port_src = 5000,
 				.port_dst = 5000},                    /* should not match */
 
 /* test full packet rules */
 		{
-				.ip_dst = RTE_IPv4(1,2,100,200),
-				.ip_src = RTE_IPv4(5,6,7,254),
+				.ip_dst = RTE_IPV4(1,2,100,200),
+				.ip_src = RTE_IPV4(5,6,7,254),
 				.proto = 0x5,
 				.vlan = 0x8100,
 				.domain = 0x64,
@@ -556,8 +556,8 @@ struct ipv4_7tuple acl_test_data[] = {
 				.deny = 23
 		}, /* should match 23, 24 */
 		{
-				.ip_dst = RTE_IPv4(5,6,7,254),
-				.ip_src = RTE_IPv4(1,2,100,200),
+				.ip_dst = RTE_IPV4(5,6,7,254),
+				.ip_src = RTE_IPV4(1,2,100,200),
 				.proto = 0x5,
 				.vlan = 0x8100,
 				.domain = 0x64,
@@ -567,8 +567,8 @@ struct ipv4_7tuple acl_test_data[] = {
 				.deny = 25
 		}, /* should match 13, 25 */
 		{
-				.ip_dst = RTE_IPv4(1,10,20,30),
-				.ip_src = RTE_IPv4(5,6,7,8),
+				.ip_dst = RTE_IPV4(1,10,20,30),
+				.ip_src = RTE_IPV4(5,6,7,8),
 				.proto = 0x5,
 				.vlan = 0x64,
 				.port_src = 12345,
@@ -577,8 +577,8 @@ struct ipv4_7tuple acl_test_data[] = {
 				.deny = 23
 		}, /* should match 23, 26 */
 		{
-				.ip_dst = RTE_IPv4(5,6,7,8),
-				.ip_src = RTE_IPv4(1,10,20,30),
+				.ip_dst = RTE_IPV4(5,6,7,8),
+				.ip_src = RTE_IPV4(1,10,20,30),
 				.proto = 0x5,
 				.vlan = 0x64,
 				.port_src = 12345,
@@ -587,8 +587,8 @@ struct ipv4_7tuple acl_test_data[] = {
 				.deny = 27
 		}, /* should match 13, 27 */
 		{
-				.ip_dst = RTE_IPv4(2,2,3,4),
-				.ip_src = RTE_IPv4(4,6,7,8),
+				.ip_dst = RTE_IPV4(2,2,3,4),
+				.ip_src = RTE_IPV4(4,6,7,8),
 				.proto = 0x5,
 				.vlan = 0x64,
 				.port_src = 12345,
@@ -597,8 +597,8 @@ struct ipv4_7tuple acl_test_data[] = {
 				.deny = 23
 		}, /* should match 13, 23 */
 		{
-				.ip_dst = RTE_IPv4(1,2,3,4),
-				.ip_src = RTE_IPv4(4,6,7,8),
+				.ip_dst = RTE_IPV4(1,2,3,4),
+				.ip_src = RTE_IPV4(4,6,7,8),
 				.proto = 0x5,
 				.vlan = 0x64,
 				.port_src = 12345,
@@ -610,8 +610,8 @@ struct ipv4_7tuple acl_test_data[] = {
 
 /* visual separator! */
 		{
-				.ip_dst = RTE_IPv4(1,2,100,200),
-				.ip_src = RTE_IPv4(5,6,7,254),
+				.ip_dst = RTE_IPV4(1,2,100,200),
+				.ip_src = RTE_IPV4(5,6,7,254),
 				.proto = 0x55,
 				.vlan = 0x8000,
 				.domain = 0x6464,
@@ -620,8 +620,8 @@ struct ipv4_7tuple acl_test_data[] = {
 				.allow = 10
 		}, /* should match 10 */
 		{
-				.ip_dst = RTE_IPv4(5,6,7,254),
-				.ip_src = RTE_IPv4(1,2,100,200),
+				.ip_dst = RTE_IPV4(5,6,7,254),
+				.ip_src = RTE_IPV4(1,2,100,200),
 				.proto = 0x55,
 				.vlan = 0x8100,
 				.domain = 0x6464,
@@ -630,8 +630,8 @@ struct ipv4_7tuple acl_test_data[] = {
 				.allow = 10
 		}, /* should match 10 */
 		{
-				.ip_dst = RTE_IPv4(1,10,20,30),
-				.ip_src = RTE_IPv4(5,6,7,8),
+				.ip_dst = RTE_IPV4(1,10,20,30),
+				.ip_src = RTE_IPV4(5,6,7,8),
 				.proto = 0x55,
 				.vlan = 0x64,
 				.port_src = 12345,
@@ -639,8 +639,8 @@ struct ipv4_7tuple acl_test_data[] = {
 				.allow = 7
 		}, /* should match 7 */
 		{
-				.ip_dst = RTE_IPv4(5,6,7,8),
-				.ip_src = RTE_IPv4(1,10,20,30),
+				.ip_dst = RTE_IPV4(5,6,7,8),
+				.ip_src = RTE_IPV4(1,10,20,30),
 				.proto = 0x55,
 				.vlan = 0x64,
 				.port_src = 12345,
@@ -648,8 +648,8 @@ struct ipv4_7tuple acl_test_data[] = {
 				.allow = 7
 		}, /* should match 7 */
 		{
-				.ip_dst = RTE_IPv4(2,2,3,4),
-				.ip_src = RTE_IPv4(4,6,7,8),
+				.ip_dst = RTE_IPV4(2,2,3,4),
+				.ip_src = RTE_IPV4(4,6,7,8),
 				.proto = 0x55,
 				.vlan = 0x64,
 				.port_src = 12345,
@@ -657,8 +657,8 @@ struct ipv4_7tuple acl_test_data[] = {
 				.allow = 7
 		}, /* should match 7 */
 		{
-				.ip_dst = RTE_IPv4(1,2,3,4),
-				.ip_src = RTE_IPv4(4,6,7,8),
+				.ip_dst = RTE_IPV4(1,2,3,4),
+				.ip_src = RTE_IPV4(4,6,7,8),
 				.proto = 0x50,
 				.vlan = 0x6466,
 				.port_src = 12345,

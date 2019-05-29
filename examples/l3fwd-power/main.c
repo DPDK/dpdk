@@ -258,10 +258,10 @@ struct ipv6_l3fwd_route {
 };
 
 static struct ipv4_l3fwd_route ipv4_l3fwd_route_array[] = {
-	{{RTE_IPv4(100,10,0,1), RTE_IPv4(200,10,0,1), 101, 11, IPPROTO_TCP}, 0},
-	{{RTE_IPv4(100,20,0,2), RTE_IPv4(200,20,0,2), 102, 12, IPPROTO_TCP}, 1},
-	{{RTE_IPv4(100,30,0,3), RTE_IPv4(200,30,0,3), 103, 13, IPPROTO_TCP}, 2},
-	{{RTE_IPv4(100,40,0,4), RTE_IPv4(200,40,0,4), 104, 14, IPPROTO_TCP}, 3},
+	{{RTE_IPV4(100,10,0,1), RTE_IPV4(200,10,0,1), 101, 11, IPPROTO_TCP}, 0},
+	{{RTE_IPV4(100,20,0,2), RTE_IPV4(200,20,0,2), 102, 12, IPPROTO_TCP}, 1},
+	{{RTE_IPV4(100,30,0,3), RTE_IPV4(200,30,0,3), 103, 13, IPPROTO_TCP}, 2},
+	{{RTE_IPV4(100,40,0,4), RTE_IPV4(200,40,0,4), 104, 14, IPPROTO_TCP}, 3},
 };
 
 static struct ipv6_l3fwd_route ipv6_l3fwd_route_array[] = {
@@ -300,14 +300,14 @@ struct ipv4_l3fwd_route {
 };
 
 static struct ipv4_l3fwd_route ipv4_l3fwd_route_array[] = {
-	{RTE_IPv4(1,1,1,0), 24, 0},
-	{RTE_IPv4(2,1,1,0), 24, 1},
-	{RTE_IPv4(3,1,1,0), 24, 2},
-	{RTE_IPv4(4,1,1,0), 24, 3},
-	{RTE_IPv4(5,1,1,0), 24, 4},
-	{RTE_IPv4(6,1,1,0), 24, 5},
-	{RTE_IPv4(7,1,1,0), 24, 6},
-	{RTE_IPv4(8,1,1,0), 24, 7},
+	{RTE_IPV4(1,1,1,0), 24, 0},
+	{RTE_IPV4(2,1,1,0), 24, 1},
+	{RTE_IPV4(3,1,1,0), 24, 2},
+	{RTE_IPV4(4,1,1,0), 24, 3},
+	{RTE_IPV4(5,1,1,0), 24, 4},
+	{RTE_IPV4(6,1,1,0), 24, 5},
+	{RTE_IPV4(7,1,1,0), 24, 6},
+	{RTE_IPV4(8,1,1,0), 24, 7},
 };
 
 #define IPV4_L3FWD_NUM_ROUTES \
@@ -624,9 +624,9 @@ parse_ptype_one(struct rte_mbuf *m)
 
 	eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 	ether_type = eth_hdr->ether_type;
-	if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4))
+	if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4))
 		packet_type |= RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
-	else if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6))
+	else if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6))
 		packet_type |= RTE_PTYPE_L3_IPV6_EXT_UNKNOWN;
 
 	m->packet_type = packet_type;

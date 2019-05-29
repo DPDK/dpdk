@@ -233,7 +233,7 @@ bond_mode_alb_arp_upd(struct client_data *client_info,
 	arp_h->arp_data.arp_tip = client_info->cli_ip;
 
 	arp_h->arp_hardware = rte_cpu_to_be_16(RTE_ARP_HRD_ETHER);
-	arp_h->arp_protocol = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4);
+	arp_h->arp_protocol = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 	arp_h->arp_hlen = RTE_ETHER_ADDR_LEN;
 	arp_h->arp_plen = sizeof(uint32_t);
 	arp_h->arp_opcode = rte_cpu_to_be_16(RTE_ARP_OP_REPLY);

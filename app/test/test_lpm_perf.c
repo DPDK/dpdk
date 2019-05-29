@@ -285,11 +285,11 @@ static void generate_large_route_rule_table(void)
 	 * they are 4 rules with private local IP address and 1 all-zeros prefix
 	 * with depth = 8.
 	 */
-	insert_rule_in_random_pos(RTE_IPv4(0, 0, 0, 0), 8);
-	insert_rule_in_random_pos(RTE_IPv4(10, 2, 23, 147), 32);
-	insert_rule_in_random_pos(RTE_IPv4(192, 168, 100, 10), 24);
-	insert_rule_in_random_pos(RTE_IPv4(192, 168, 25, 100), 24);
-	insert_rule_in_random_pos(RTE_IPv4(192, 168, 129, 124), 32);
+	insert_rule_in_random_pos(RTE_IPV4(0, 0, 0, 0), 8);
+	insert_rule_in_random_pos(RTE_IPV4(10, 2, 23, 147), 32);
+	insert_rule_in_random_pos(RTE_IPV4(192, 168, 100, 10), 24);
+	insert_rule_in_random_pos(RTE_IPV4(192, 168, 25, 100), 24);
+	insert_rule_in_random_pos(RTE_IPV4(192, 168, 129, 124), 32);
 }
 
 static void

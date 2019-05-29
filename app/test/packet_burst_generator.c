@@ -82,7 +82,7 @@ initialize_arp_header(struct rte_arp_hdr *arp_hdr,
 		uint32_t opcode)
 {
 	arp_hdr->arp_hardware = rte_cpu_to_be_16(RTE_ARP_HRD_ETHER);
-	arp_hdr->arp_protocol = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4);
+	arp_hdr->arp_protocol = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 	arp_hdr->arp_hlen = RTE_ETHER_ADDR_LEN;
 	arp_hdr->arp_plen = sizeof(uint32_t);
 	arp_hdr->arp_opcode = rte_cpu_to_be_16(opcode);
@@ -324,10 +324,10 @@ nomore_mbuf:
 		pkt->l2_len = eth_hdr_size;
 
 		if (ipv4) {
-			pkt->vlan_tci  = RTE_ETHER_TYPE_IPv4;
+			pkt->vlan_tci  = RTE_ETHER_TYPE_IPV4;
 			pkt->l3_len = sizeof(struct rte_ipv4_hdr);
 		} else {
-			pkt->vlan_tci  = RTE_ETHER_TYPE_IPv6;
+			pkt->vlan_tci  = RTE_ETHER_TYPE_IPV6;
 			pkt->l3_len = sizeof(struct rte_ipv6_hdr);
 		}
 
@@ -445,10 +445,10 @@ nomore_mbuf:
 		pkt->l2_len = eth_hdr_size;
 
 		if (ipv4) {
-			pkt->vlan_tci  = RTE_ETHER_TYPE_IPv4;
+			pkt->vlan_tci  = RTE_ETHER_TYPE_IPV4;
 			pkt->l3_len = sizeof(struct rte_ipv4_hdr);
 		} else {
-			pkt->vlan_tci  = RTE_ETHER_TYPE_IPv6;
+			pkt->vlan_tci  = RTE_ETHER_TYPE_IPV6;
 			pkt->l3_len = sizeof(struct rte_ipv6_hdr);
 		}
 

@@ -419,7 +419,7 @@ Classify with Multiple Categories
             .data = {.userdata = 1, .category_mask = 3, .priority = 1},
 
             /* destination IPv4 */
-            .field[2] = {.value.u32 = RTE_IPv4(192,168,0,0),. mask_range.u32 = 16,},
+            .field[2] = {.value.u32 = RTE_IPV4(192,168,0,0),. mask_range.u32 = 16,},
 
             /* source port */
             .field[3] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},
@@ -433,7 +433,7 @@ Classify with Multiple Categories
             .data = {.userdata = 2, .category_mask = 1, .priority = 2},
 
             /* destination IPv4 */
-            .field[2] = {.value.u32 = RTE_IPv4(192,168,1,0),. mask_range.u32 = 24,},
+            .field[2] = {.value.u32 = RTE_IPV4(192,168,1,0),. mask_range.u32 = 24,},
 
             /* source port */
             .field[3] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},
@@ -447,7 +447,7 @@ Classify with Multiple Categories
             .data = {.userdata = 3, .category_mask = 2, .priority = 3},
 
             /* source IPv4 */
-            .field[1] = {.value.u32 = RTE_IPv4(10,1,1,1),. mask_range.u32 = 32,},
+            .field[1] = {.value.u32 = RTE_IPV4(10,1,1,1),. mask_range.u32 = 32,},
 
             /* source port */
             .field[3] = {.value.u16 = 0, .mask_range.u16 = 0xffff,},

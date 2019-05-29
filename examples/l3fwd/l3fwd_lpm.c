@@ -43,14 +43,14 @@ struct ipv6_l3fwd_lpm_route {
 
 /* 192.18.0.0/16 are set aside for RFC2544 benchmarking. */
 static struct ipv4_l3fwd_lpm_route ipv4_l3fwd_lpm_route_array[] = {
-	{RTE_IPv4(192, 18, 0, 0), 24, 0},
-	{RTE_IPv4(192, 18, 1, 0), 24, 1},
-	{RTE_IPv4(192, 18, 2, 0), 24, 2},
-	{RTE_IPv4(192, 18, 3, 0), 24, 3},
-	{RTE_IPv4(192, 18, 4, 0), 24, 4},
-	{RTE_IPv4(192, 18, 5, 0), 24, 5},
-	{RTE_IPv4(192, 18, 6, 0), 24, 6},
-	{RTE_IPv4(192, 18, 7, 0), 24, 7},
+	{RTE_IPV4(192, 18, 0, 0), 24, 0},
+	{RTE_IPV4(192, 18, 1, 0), 24, 1},
+	{RTE_IPV4(192, 18, 2, 0), 24, 2},
+	{RTE_IPV4(192, 18, 3, 0), 24, 3},
+	{RTE_IPV4(192, 18, 4, 0), 24, 4},
+	{RTE_IPV4(192, 18, 5, 0), 24, 5},
+	{RTE_IPV4(192, 18, 6, 0), 24, 6},
+	{RTE_IPV4(192, 18, 7, 0), 24, 7},
 };
 
 /* 2001:0200::/48 is IANA reserved range for IPv6 benchmarking (RFC5180) */
@@ -386,9 +386,9 @@ lpm_parse_ptype(struct rte_mbuf *m)
 
 	eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 	ether_type = eth_hdr->ether_type;
-	if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv4))
+	if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4))
 		packet_type |= RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
-	else if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPv6))
+	else if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6))
 		packet_type |= RTE_PTYPE_L3_IPV6_EXT_UNKNOWN;
 
 	m->packet_type = packet_type;
