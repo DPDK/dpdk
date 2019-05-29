@@ -15,11 +15,6 @@
 
 #define OTX_CPT_MBOX_MSG_TIMEOUT    2000 /* In Milli Seconds */
 
-#define OTX_CPT_MBOX_MSG_TYPE_REQ	0
-#define OTX_CPT_MBOX_MSG_TYPE_ACK	1
-#define OTX_CPT_MBOX_MSG_TYPE_NACK	2
-#define OTX_CPT_MBOX_MSG_TYPE_NOP	3
-
 /* CPT mailbox structure */
 struct cpt_mbox {
 	/** Message type MBOX[0] */
@@ -28,7 +23,8 @@ struct cpt_mbox {
 	uint64_t data;
 };
 
-typedef enum {
+/* PF-VF message opcodes */
+enum otx_cpt_mbox_opcode {
 	OTX_CPT_MSG_VF_UP = 1,
 	OTX_CPT_MSG_VF_DOWN,
 	OTX_CPT_MSG_READY,
@@ -36,7 +32,9 @@ typedef enum {
 	OTX_CPT_MSG_QBIND_GRP,
 	OTX_CPT_MSG_VQ_PRIORITY,
 	OTX_CPT_MSG_PF_TYPE,
-} otx_cpt_mbox_opcode_t;
+	OTX_CPT_MBOX_MSG_TYPE_ACK,
+	OTX_CPT_MBOX_MSG_TYPE_NACK
+};
 
 typedef union {
 	uint64_t u64;

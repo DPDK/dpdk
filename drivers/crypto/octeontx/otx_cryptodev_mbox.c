@@ -24,6 +24,9 @@ otx_cpt_handle_mbox_intr(struct cpt_vf *cptvf)
 	CPT_LOG_DP_DEBUG("%s: Mailbox msg 0x%lx from PF",
 		    cptvf->dev_name, (unsigned int long)mbx.msg);
 	switch (mbx.msg) {
+	case OTX_CPT_MSG_VF_UP:
+		cptvf->pf_acked = true;
+		break;
 	case OTX_CPT_MSG_READY:
 		{
 			otx_cpt_chipid_vfid_t cid;
