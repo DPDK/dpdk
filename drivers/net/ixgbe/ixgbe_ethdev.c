@@ -2408,8 +2408,7 @@ ixgbe_dev_configure(struct rte_eth_dev *dev)
 {
 	struct ixgbe_interrupt *intr =
 		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
-	struct ixgbe_adapter *adapter =
-		(struct ixgbe_adapter *)dev->data->dev_private;
+	struct ixgbe_adapter *adapter = dev->data->dev_private;
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
@@ -2817,8 +2816,7 @@ static void
 ixgbe_dev_stop(struct rte_eth_dev *dev)
 {
 	struct rte_eth_link link;
-	struct ixgbe_adapter *adapter =
-		(struct ixgbe_adapter *)dev->data->dev_private;
+	struct ixgbe_adapter *adapter = dev->data->dev_private;
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ixgbe_vf_info *vfinfo =
@@ -4815,8 +4813,7 @@ ixgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
 	uint8_t j, mask;
 	uint32_t reta, r;
 	uint16_t idx, shift;
-	struct ixgbe_adapter *adapter =
-		(struct ixgbe_adapter *)dev->data->dev_private;
+	struct ixgbe_adapter *adapter = dev->data->dev_private;
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t reta_reg;
 
@@ -5049,8 +5046,7 @@ static int
 ixgbevf_dev_configure(struct rte_eth_dev *dev)
 {
 	struct rte_eth_conf *conf = &dev->data->dev_conf;
-	struct ixgbe_adapter *adapter =
-			(struct ixgbe_adapter *)dev->data->dev_private;
+	struct ixgbe_adapter *adapter = dev->data->dev_private;
 
 	PMD_INIT_LOG(DEBUG, "Configured Virtual Function port id: %d",
 		     dev->data->port_id);
@@ -5182,8 +5178,7 @@ static void
 ixgbevf_dev_stop(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_adapter *adapter =
-		(struct ixgbe_adapter *)dev->data->dev_private;
+	struct ixgbe_adapter *adapter = dev->data->dev_private;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
@@ -6945,8 +6940,7 @@ static void
 ixgbe_start_timecounters(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_adapter *adapter =
-		(struct ixgbe_adapter *)dev->data->dev_private;
+	struct ixgbe_adapter *adapter = dev->data->dev_private;
 	struct rte_eth_link link;
 	uint32_t incval = 0;
 	uint32_t shift = 0;
@@ -7014,8 +7008,7 @@ ixgbe_start_timecounters(struct rte_eth_dev *dev)
 static int
 ixgbe_timesync_adjust_time(struct rte_eth_dev *dev, int64_t delta)
 {
-	struct ixgbe_adapter *adapter =
-			(struct ixgbe_adapter *)dev->data->dev_private;
+	struct ixgbe_adapter *adapter = dev->data->dev_private;
 
 	adapter->systime_tc.nsec += delta;
 	adapter->rx_tstamp_tc.nsec += delta;
@@ -7028,8 +7021,7 @@ static int
 ixgbe_timesync_write_time(struct rte_eth_dev *dev, const struct timespec *ts)
 {
 	uint64_t ns;
-	struct ixgbe_adapter *adapter =
-			(struct ixgbe_adapter *)dev->data->dev_private;
+	struct ixgbe_adapter *adapter = dev->data->dev_private;
 
 	ns = rte_timespec_to_ns(ts);
 	/* Set the timecounters to a new value. */
@@ -7044,8 +7036,7 @@ static int
 ixgbe_timesync_read_time(struct rte_eth_dev *dev, struct timespec *ts)
 {
 	uint64_t ns, systime_cycles;
-	struct ixgbe_adapter *adapter =
-			(struct ixgbe_adapter *)dev->data->dev_private;
+	struct ixgbe_adapter *adapter = dev->data->dev_private;
 
 	systime_cycles = ixgbe_read_systime_cyclecounter(dev);
 	ns = rte_timecounter_update(&adapter->systime_tc, systime_cycles);
@@ -7126,8 +7117,7 @@ ixgbe_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
 				 uint32_t flags __rte_unused)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_adapter *adapter =
-		(struct ixgbe_adapter *)dev->data->dev_private;
+	struct ixgbe_adapter *adapter = dev->data->dev_private;
 	uint32_t tsync_rxctl;
 	uint64_t rx_tstamp_cycles;
 	uint64_t ns;
@@ -7148,8 +7138,7 @@ ixgbe_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 				 struct timespec *timestamp)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_adapter *adapter =
-		(struct ixgbe_adapter *)dev->data->dev_private;
+	struct ixgbe_adapter *adapter = dev->data->dev_private;
 	uint32_t tsync_txctl;
 	uint64_t tx_tstamp_cycles;
 	uint64_t ns;

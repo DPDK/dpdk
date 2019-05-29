@@ -2919,8 +2919,7 @@ ixgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	struct ixgbe_rx_queue *rxq;
 	struct ixgbe_hw     *hw;
 	uint16_t len;
-	struct ixgbe_adapter *adapter =
-		(struct ixgbe_adapter *)dev->data->dev_private;
+	struct ixgbe_adapter *adapter = dev->data->dev_private;
 	uint64_t offloads;
 
 	PMD_INIT_FUNC_TRACE();
@@ -3221,8 +3220,7 @@ void __attribute__((cold))
 ixgbe_dev_clear_queues(struct rte_eth_dev *dev)
 {
 	unsigned i;
-	struct ixgbe_adapter *adapter =
-		(struct ixgbe_adapter *)dev->data->dev_private;
+	struct ixgbe_adapter *adapter = dev->data->dev_private;
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	PMD_INIT_FUNC_TRACE();
@@ -3485,7 +3483,7 @@ ixgbe_rss_configure(struct rte_eth_dev *dev)
 	uint32_t reta_reg;
 
 	PMD_INIT_FUNC_TRACE();
-	adapter = (struct ixgbe_adapter *)dev->data->dev_private;
+	adapter = dev->data->dev_private;
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	sp_reta_size = ixgbe_reta_size_get(hw->mac.type);
@@ -4630,8 +4628,7 @@ void __attribute__((cold))
 ixgbe_set_rx_function(struct rte_eth_dev *dev)
 {
 	uint16_t i, rx_using_sse;
-	struct ixgbe_adapter *adapter =
-		(struct ixgbe_adapter *)dev->data->dev_private;
+	struct ixgbe_adapter *adapter = dev->data->dev_private;
 
 	/*
 	 * In order to allow Vector Rx there are a few configuration
@@ -5309,8 +5306,7 @@ int __attribute__((cold))
 ixgbe_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
 	struct ixgbe_hw     *hw;
-	struct ixgbe_adapter *adapter =
-		(struct ixgbe_adapter *)dev->data->dev_private;
+	struct ixgbe_adapter *adapter = dev->data->dev_private;
 	struct ixgbe_rx_queue *rxq;
 	uint32_t rxdctl;
 	int poll_ms;
