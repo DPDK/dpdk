@@ -624,6 +624,26 @@ static int bnxt_dev_lsc_intr_setup(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+/*
+ * Determine whether the current configuration requires support for scattered
+ * receive; return 1 if scattered receive is required and 0 if not.
+ */
+static int bnxt_scattered_rx(struct rte_eth_dev *eth_dev)
+{
+	uint16_t buf_size;
+	int i;
+
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		struct bnxt_rx_queue *rxq = eth_dev->data->rx_queues[i];
+
+		buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mb_pool) -
+				      RTE_PKTMBUF_HEADROOM);
+		if (eth_dev->data->dev_conf.rxmode.max_rx_pkt_len > buf_size)
+			return 1;
+	}
+	return 0;
+}
+
 static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
@@ -641,6 +661,8 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	rc = bnxt_init_chip(bp);
 	if (rc)
 		goto error;
+
+	eth_dev->data->scattered_rx = bnxt_scattered_rx(eth_dev);
 
 	bnxt_link_update_op(eth_dev, 1);
 
