@@ -40,6 +40,52 @@ nix_get_tx_offload_capa(struct otx2_eth_dev *dev)
 }
 
 static int
+nix_lf_alloc(struct otx2_eth_dev *dev, uint32_t nb_rxq, uint32_t nb_txq)
+{
+	struct otx2_mbox *mbox = dev->mbox;
+	struct nix_lf_alloc_req *req;
+	struct nix_lf_alloc_rsp *rsp;
+	int rc;
+
+	req = otx2_mbox_alloc_msg_nix_lf_alloc(mbox);
+	req->rq_cnt = nb_rxq;
+	req->sq_cnt = nb_txq;
+	req->cq_cnt = nb_rxq;
+	/* XQE_SZ should be in Sync with NIX_CQ_ENTRY_SZ */
+	RTE_BUILD_BUG_ON(NIX_CQ_ENTRY_SZ != 128);
+	req->xqe_sz = NIX_XQESZ_W16;
+	req->rss_sz = dev->rss_info.rss_size;
+	req->rss_grps = NIX_RSS_GRPS;
+	req->npa_func = otx2_npa_pf_func_get();
+	req->sso_func = otx2_sso_pf_func_get();
+	req->rx_cfg = BIT_ULL(35 /* DIS_APAD */);
+	if (dev->rx_offloads & (DEV_RX_OFFLOAD_TCP_CKSUM |
+			 DEV_RX_OFFLOAD_UDP_CKSUM)) {
+		req->rx_cfg |= BIT_ULL(37 /* CSUM_OL4 */);
+		req->rx_cfg |= BIT_ULL(36 /* CSUM_IL4 */);
+	}
+
+	rc = otx2_mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		return rc;
+
+	dev->sqb_size = rsp->sqb_size;
+	dev->tx_chan_base = rsp->tx_chan_base;
+	dev->rx_chan_base = rsp->rx_chan_base;
+	dev->rx_chan_cnt = rsp->rx_chan_cnt;
+	dev->tx_chan_cnt = rsp->tx_chan_cnt;
+	dev->lso_tsov4_idx = rsp->lso_tsov4_idx;
+	dev->lso_tsov6_idx = rsp->lso_tsov6_idx;
+	dev->lf_tx_stats = rsp->lf_tx_stats;
+	dev->lf_rx_stats = rsp->lf_rx_stats;
+	dev->cints = rsp->cints;
+	dev->qints = rsp->qints;
+	dev->npc_flow.channel = dev->rx_chan_base;
+
+	return 0;
+}
+
+static int
 nix_lf_free(struct otx2_eth_dev *dev)
 {
 	struct otx2_mbox *mbox = dev->mbox;
@@ -64,9 +110,114 @@ nix_lf_free(struct otx2_eth_dev *dev)
 	return otx2_mbox_process(mbox);
 }
 
+static int
+otx2_nix_configure(struct rte_eth_dev *eth_dev)
+{
+	struct otx2_eth_dev *dev = otx2_eth_pmd_priv(eth_dev);
+	struct rte_eth_dev_data *data = eth_dev->data;
+	struct rte_eth_conf *conf = &data->dev_conf;
+	struct rte_eth_rxmode *rxmode = &conf->rxmode;
+	struct rte_eth_txmode *txmode = &conf->txmode;
+	char ea_fmt[RTE_ETHER_ADDR_FMT_SIZE];
+	struct rte_ether_addr *ea;
+	uint8_t nb_rxq, nb_txq;
+	int rc;
+
+	rc = -EINVAL;
+
+	/* Sanity checks */
+	if (rte_eal_has_hugepages() == 0) {
+		otx2_err("Huge page is not configured");
+		goto fail;
+	}
+
+	if (rte_eal_iova_mode() != RTE_IOVA_VA) {
+		otx2_err("iova mode should be va");
+		goto fail;
+	}
+
+	if (conf->link_speeds & ETH_LINK_SPEED_FIXED) {
+		otx2_err("Setting link speed/duplex not supported");
+		goto fail;
+	}
+
+	if (conf->dcb_capability_en == 1) {
+		otx2_err("dcb enable is not supported");
+		goto fail;
+	}
+
+	if (conf->fdir_conf.mode != RTE_FDIR_MODE_NONE) {
+		otx2_err("Flow director is not supported");
+		goto fail;
+	}
+
+	if (rxmode->mq_mode != ETH_MQ_RX_NONE &&
+	    rxmode->mq_mode != ETH_MQ_RX_RSS) {
+		otx2_err("Unsupported mq rx mode %d", rxmode->mq_mode);
+		goto fail;
+	}
+
+	if (txmode->mq_mode != ETH_MQ_TX_NONE) {
+		otx2_err("Unsupported mq tx mode %d", txmode->mq_mode);
+		goto fail;
+	}
+
+	/* Free the resources allocated from the previous configure */
+	if (dev->configured == 1)
+		nix_lf_free(dev);
+
+	if (otx2_dev_is_A0(dev) &&
+	    (txmode->offloads & DEV_TX_OFFLOAD_SCTP_CKSUM) &&
+	    ((txmode->offloads & DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM) ||
+	    (txmode->offloads & DEV_TX_OFFLOAD_OUTER_UDP_CKSUM))) {
+		otx2_err("Outer IP and SCTP checksum unsupported");
+		rc = -EINVAL;
+		goto fail;
+	}
+
+	dev->rx_offloads = rxmode->offloads;
+	dev->tx_offloads = txmode->offloads;
+	dev->rss_info.rss_grps = NIX_RSS_GRPS;
+
+	nb_rxq = RTE_MAX(data->nb_rx_queues, 1);
+	nb_txq = RTE_MAX(data->nb_tx_queues, 1);
+
+	/* Alloc a nix lf */
+	rc = nix_lf_alloc(dev, nb_rxq, nb_txq);
+	if (rc) {
+		otx2_err("Failed to init nix_lf rc=%d", rc);
+		goto fail;
+	}
+
+	/* Update the mac address */
+	ea = eth_dev->data->mac_addrs;
+	memcpy(ea, dev->mac_addr, RTE_ETHER_ADDR_LEN);
+	if (rte_is_zero_ether_addr(ea))
+		rte_eth_random_addr((uint8_t *)ea);
+
+	rte_ether_format_addr(ea_fmt, RTE_ETHER_ADDR_FMT_SIZE, ea);
+
+	otx2_nix_dbg("Configured port%d mac=%s nb_rxq=%d nb_txq=%d"
+		" rx_offloads=0x%" PRIx64 " tx_offloads=0x%" PRIx64 ""
+		" rx_flags=0x%x tx_flags=0x%x",
+		eth_dev->data->port_id, ea_fmt, nb_rxq,
+		nb_txq, dev->rx_offloads, dev->tx_offloads,
+		dev->rx_offload_flags, dev->tx_offload_flags);
+
+	/* All good */
+	dev->configured = 1;
+	dev->configured_nb_rx_qs = data->nb_rx_queues;
+	dev->configured_nb_tx_qs = data->nb_tx_queues;
+	return 0;
+
+fail:
+	return rc;
+}
+
 /* Initialize and register driver with DPDK Application */
 static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.dev_infos_get            = otx2_nix_info_get,
+	.dev_configure            = otx2_nix_configure,
 };
 
 static inline int

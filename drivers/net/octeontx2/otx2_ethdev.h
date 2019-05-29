@@ -59,11 +59,14 @@
 
 #define NIX_MAX_SQB			512
 #define NIX_MIN_SQB			32
+/* Group 0 will be used for RSS, 1 -7 will be used for rte_flow RSS action*/
+#define NIX_RSS_GRPS			8
 #define NIX_HASH_KEY_SIZE		48 /* 352 Bits */
 #define NIX_RSS_RETA_SIZE		64
 #define	NIX_RX_MIN_DESC			16
 #define NIX_RX_MIN_DESC_ALIGN		16
 #define NIX_RX_NB_SEG_MAX		6
+#define NIX_CQ_ENTRY_SZ			128
 
 /* If PTP is enabled additional SEND MEM DESC is required which
  * takes 2 words, hence max 7 iova address are possible
@@ -105,9 +108,11 @@
 
 struct otx2_rss_info {
 	uint16_t rss_size;
+	uint8_t rss_grps;
 };
 
 struct otx2_npc_flow_info {
+	uint16_t channel; /*rx channel */
 	uint16_t flow_prealloc_size;
 	uint16_t flow_max_priority;
 };
@@ -124,7 +129,13 @@ struct otx2_eth_dev {
 	uint8_t lso_tsov6_idx;
 	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
 	uint8_t max_mac_entries;
+	uint8_t lf_tx_stats;
+	uint8_t lf_rx_stats;
+	uint16_t cints;
+	uint16_t qints;
 	uint8_t configured;
+	uint8_t configured_nb_rx_qs;
+	uint8_t configured_nb_tx_qs;
 	uint16_t nix_msixoff;
 	uintptr_t base;
 	uintptr_t lmt_addr;
