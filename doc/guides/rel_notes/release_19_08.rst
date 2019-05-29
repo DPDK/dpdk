@@ -54,6 +54,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Updated the bnxt PMD.**
+
+  Updated the bnxt PMD. The major enhancements include:
+
+  * Performance optimizations in non-vector Tx path
+
 
 Removed Items
 -------------
