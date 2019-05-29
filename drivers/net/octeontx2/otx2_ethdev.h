@@ -136,6 +136,7 @@ struct otx2_eth_dev {
 	uint8_t max_mac_entries;
 	uint8_t lf_tx_stats;
 	uint8_t lf_rx_stats;
+	uint16_t flags;
 	uint16_t cints;
 	uint16_t qints;
 	uint8_t configured;
@@ -156,6 +157,7 @@ struct otx2_eth_dev {
 	struct otx2_qint qints_mem[RTE_MAX_QUEUES_PER_PORT];
 	struct otx2_rss_info rss_info;
 	struct otx2_npc_flow_info npc_flow;
+	struct rte_eth_dev *eth_dev;
 } __rte_cache_aligned;
 
 static inline struct otx2_eth_dev *
@@ -167,6 +169,12 @@ otx2_eth_pmd_priv(struct rte_eth_dev *eth_dev)
 /* Ops */
 void otx2_nix_info_get(struct rte_eth_dev *eth_dev,
 		       struct rte_eth_dev_info *dev_info);
+
+/* Link */
+void otx2_nix_toggle_flag_link_cfg(struct otx2_eth_dev *dev, bool set);
+int otx2_nix_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete);
+void otx2_eth_dev_link_status_update(struct otx2_dev *dev,
+				     struct cgx_link_user_info *link);
 
 /* IRQ */
 int otx2_nix_register_irqs(struct rte_eth_dev *eth_dev);

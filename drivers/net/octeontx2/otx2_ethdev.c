@@ -39,6 +39,10 @@ nix_get_tx_offload_capa(struct otx2_eth_dev *dev)
 	return NIX_TX_OFFLOAD_CAPA;
 }
 
+static const struct otx2_dev_ops otx2_dev_ops = {
+	.link_status_update = otx2_eth_dev_link_status_update,
+};
+
 static int
 nix_lf_alloc(struct otx2_eth_dev *dev, uint32_t nb_rxq, uint32_t nb_txq)
 {
@@ -229,6 +233,7 @@ fail:
 static const struct eth_dev_ops otx2_eth_dev_ops = {
 	.dev_infos_get            = otx2_nix_info_get,
 	.dev_configure            = otx2_nix_configure,
+	.link_update              = otx2_nix_link_update,
 	.get_reg                  = otx2_nix_dev_get_reg,
 };
 
@@ -324,6 +329,9 @@ otx2_eth_dev_init(struct rte_eth_dev *eth_dev)
 			goto error;
 		}
 	}
+	/* Device generic callbacks */
+	dev->ops = &otx2_dev_ops;
+	dev->eth_dev = eth_dev;
 
 	/* Grab the NPA LF if required */
 	rc = otx2_npa_lf_init(pci_dev, dev);
