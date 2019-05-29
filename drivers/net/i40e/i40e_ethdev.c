@@ -1211,10 +1211,8 @@ i40e_parse_latest_vec_handler(__rte_unused const char *key,
 				const char *value,
 				void *opaque)
 {
-	struct i40e_adapter *ad;
+	struct i40e_adapter *ad = opaque;
 	int use_latest_vec;
-
-	ad = (struct i40e_adapter *)opaque;
 
 	use_latest_vec = atoi(value);
 
@@ -10843,8 +10841,7 @@ static void
 i40e_start_timecounters(struct rte_eth_dev *dev)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct i40e_adapter *adapter =
-			(struct i40e_adapter *)dev->data->dev_private;
+	struct i40e_adapter *adapter = dev->data->dev_private;
 	struct rte_eth_link link;
 	uint32_t tsync_inc_l;
 	uint32_t tsync_inc_h;
@@ -10896,8 +10893,7 @@ i40e_start_timecounters(struct rte_eth_dev *dev)
 static int
 i40e_timesync_adjust_time(struct rte_eth_dev *dev, int64_t delta)
 {
-	struct i40e_adapter *adapter =
-			(struct i40e_adapter *)dev->data->dev_private;
+	struct i40e_adapter *adapter = dev->data->dev_private;
 
 	adapter->systime_tc.nsec += delta;
 	adapter->rx_tstamp_tc.nsec += delta;
@@ -10910,8 +10906,7 @@ static int
 i40e_timesync_write_time(struct rte_eth_dev *dev, const struct timespec *ts)
 {
 	uint64_t ns;
-	struct i40e_adapter *adapter =
-			(struct i40e_adapter *)dev->data->dev_private;
+	struct i40e_adapter *adapter = dev->data->dev_private;
 
 	ns = rte_timespec_to_ns(ts);
 
@@ -10927,8 +10922,7 @@ static int
 i40e_timesync_read_time(struct rte_eth_dev *dev, struct timespec *ts)
 {
 	uint64_t ns, systime_cycles;
-	struct i40e_adapter *adapter =
-			(struct i40e_adapter *)dev->data->dev_private;
+	struct i40e_adapter *adapter = dev->data->dev_private;
 
 	systime_cycles = i40e_read_systime_cyclecounter(dev);
 	ns = rte_timecounter_update(&adapter->systime_tc, systime_cycles);
@@ -11004,9 +10998,7 @@ i40e_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
 				struct timespec *timestamp, uint32_t flags)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct i40e_adapter *adapter =
-		(struct i40e_adapter *)dev->data->dev_private;
-
+	struct i40e_adapter *adapter = dev->data->dev_private;
 	uint32_t sync_status;
 	uint32_t index = flags & 0x03;
 	uint64_t rx_tstamp_cycles;
@@ -11028,9 +11020,7 @@ i40e_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 				struct timespec *timestamp)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct i40e_adapter *adapter =
-		(struct i40e_adapter *)dev->data->dev_private;
-
+	struct i40e_adapter *adapter = dev->data->dev_private;
 	uint32_t sync_status;
 	uint64_t tx_tstamp_cycles;
 	uint64_t ns;
